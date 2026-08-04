@@ -64,10 +64,14 @@ const render = d => page.evaluate(async j => {
 const R = await render(real || { bull: [{ s: '8464', c: 382.5, t: '換手量(洗籌續攻)', g: 'A', n: 1309, w: 42.4, exp: 0.68 }], scanned: 2315, base_win: 36.4, data_date: '2026-08-03', cost_note: '期望值未扣交易成本(來回約 0.44%,當沖 0.25%)', risk_n: 6158, risk_syms: 2079 });
 const t = txt(R.html);
 ok('② 有資料時要顯示', !R.hidden && t.length > 80, `hidden=${R.hidden}`);
-ok('② ⭐ 標題要點出「全市場 N 檔只有 M 檔」(這就是「只給最好的」)',
-   /全市場 [\d,]+ 檔只有/.test(t), t.slice(0, 160));
+ok('② ⭐ 標題要講「扣完成本還會賺」的檔數(⛔ 不是毛期望值為正的檔數)',
+   /扣完成本還會賺/.test(t) && /全市場 [\d,]+ 檔中/.test(t), t.slice(0, 200));
 ok('② ⭐ 必須標基準勝率(否則 42% 會被誤讀成輸)', /基準勝率 \d+%/.test(t), t.slice(-320));
-ok('② ⭐⛔ 必須寫明未扣交易成本', /未扣交易成本/.test(t), t.slice(-320));
+// 💸 V72.3.1 改成「已經扣掉了」—— 只寫免責、卻讓賠錢訊號排最前面,等於沒講
+ok('② ⭐⛔ 必須把來回成本寫成數字(而且是已扣掉的)',
+   /扣成本/.test(t) && /來回 [\d.]+%/.test(t), t.slice(-360));
+ok('② ⭐⛔ 賺不回成本的**不可刪掉**,要收在摺疊區並說明',
+   !/另有 \d+ 筆/.test(t) || (/扣完成本不夠賺/.test(t) && /不是叫你做/.test(t)), t.slice(-420));
 ok('② ⭐ 必須寫明「不是保證」', /不是保證/.test(t), t.slice(-320));
 ok('② 要標資料日期(⛔ 別讓人以為是即時)', /收盤資料/.test(t), t.slice(-320));
 ok('② ⭐ 風險只給檔數、⛔ 不逐檔列', /檔出現風險訊號/.test(t) && /不逐檔列出/.test(t), t.slice(-320));
@@ -83,13 +87,15 @@ const R2 = await render({ ...(real || {}), scanned: 2316, bull_total: 137, bull_
         : [{ s: '2511', c: 8.5, t: 'x', g: 'A', n: 100, w: 42, exp: 0.68 }],
     base_win: 36.4, data_date: '2026-08-04', cost_note: '期望值未扣交易成本(來回約 0.44%,當沖 0.25%)', risk_n: 1, risk_syms: 1 });
 const t2 = txt(R2.html);
-ok('②b ⭐ 「幾檔」要用不重複股票數(⛔ 不是 bull 陣列長度)', /只有 96 檔/.test(t2), t2.slice(0, 200));
-ok('②b ⭐⛔ 有截斷要講出來(⛔ silent cap = 假裝「這就是全部」)',
-   /共 137 筆訊號/.test(t2) && /列期望值最高的 \d+ 筆/.test(t2), t2.slice(0, 260));
+ok('②b ⭐ 全榜的「檔/筆」要用採礦端的真值(⛔ 不是截斷後的陣列長度)',
+   /全榜 96 檔 \/ 137 筆/.test(t2), t2.slice(0, 260));
+ok('②b ⭐⛔ 有截斷就要看得出來(silent cap = 假裝「這就是全部」)',
+   /全榜 \d+ 檔 \/ \d+ 筆/.test(t2), t2.slice(0, 260));
 const R3 = await render({ ...(real || {}), bull_total: 3, bull_syms: 3,
     bull: [{ s: '1', c: 1, t: 'x', g: 'A', n: 100, w: 42, exp: 0.1 }, { s: '2', c: 1, t: 'x', g: 'A', n: 100, w: 42, exp: 0.1 }, { s: '3', c: 1, t: 'x', g: 'A', n: 100, w: 42, exp: 0.1 }],
     scanned: 2316, base_win: 36.4, data_date: '2026-08-04', cost_note: '未扣交易成本', risk_n: 1, risk_syms: 1 });
-ok('②b ⛔ 沒截斷時不可出現「共 N 筆」那段贅字', !/共 \d+ 筆訊號/.test(txt(R3.html)), txt(R3.html).slice(0, 200));
+ok('②b ⛔ 沒截斷時不可出現「全榜 N 檔 / N 筆」那段贅字',
+   !/全榜 \d+ 檔/.test(txt(R3.html)), txt(R3.html).slice(0, 200));
 const scanSrc2 = fs.readFileSync(path.join(ROOT, 'scripts/daily_signal_scan.mjs'), 'utf8');
 ok('②b ⭐ 採礦端要輸出 bull_total / bull_syms(截斷前的真值)',
    /bull_total: bull\.length/.test(scanSrc2) && /bull_syms: new Set\(bull\.map/.test(scanSrc2), '');
@@ -108,8 +114,9 @@ const help = await page.evaluate(() => {
 });
 ok('④ ⭐ 教學要解釋「為什麼通常只有十幾檔」', /為什麼通常只有十幾檔/.test(help), help.slice(0, 300));
 ok('④ ⭐ 要說明「大部分訊號常對但輸更大」', /輸的時候輸更大/.test(help), help.slice(0, 500));
-ok('④ ⭐ 三個免責都要在(基準/成本/不是保證)',
-   /不是 50%/.test(help) && /沒有.{0,4}扣交易成本/.test(help) && /不是保證/.test(help), help.slice(-400));
+ok('④ ⭐ 三個免責都要在(基準不是 50% / 成本 / 不是保證)',
+   /不是 50%/.test(help) && /手續費.{0,6}證交稅/.test(help) && /不是保證/.test(help), help.slice(-500));
+ok('④ ⭐ 教學要解釋「為什麼要扣完成本才算數」', /為什麼要「扣完成本」才算數/.test(help), help.slice(0, 600));
 ok('④ 要說明只看 K 線、沒看籌碼基本面', /沒有看籌碼/.test(help), help.slice(-300));
 
 // ── ⑤ 接線:選股頁進入時要載入,ETF 模式要隱藏 ────────────────

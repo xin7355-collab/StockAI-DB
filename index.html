@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.3.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6920,8 +6920,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.2.9',
+    _APP_VERSION: 'V72.3.0',
     _CHANGELOG: [
+        { v: 'V72.3.0', dt: '2026-08-04', t: '💸 「今天會賺的訊號」現在是扣完手續費才算 —— 289 檔變 21 檔', d: [
+            '⚠️ 採礦機今天第一次真的跑出全市場榜單,一看就發現問題:297 筆訊號裡有 175 筆的期望值只有 +0.079%,而買賣一趟的手續費+證交稅約 0.38% —— 那些**毛看是賺、扣完是賠**,卻排在榜單最前面。',
+            '之前只在最下面寫一行「未扣交易成本」就算交代 → 等於沒講。現在直接幫你扣掉:標題那個檔數是「**扣完成本還會賺**」的,今天全市場 2,316 檔裡只有 **21 檔**(不是 289 檔)。',
+            '每一列也直接顯「扣成本 +0.30%」而不是毛期望值,一眼看得出真正剩多少。手續費折數用你設定裡那個,改折數會跟著變。',
+            '⛔ 賺不回成本的**沒有刪掉** —— 收在「另有 N 筆」摺疊區,點開看得到,但明說「做了平均還是賠」。',
+            '🐛 順手修:採礦機有一行寫錯變數名,那條路走到就會讓融資維持率再次靜默消失(還沒走到,先拆掉這顆未爆彈)。',
+        ] },
         { v: 'V72.2.9', dt: '2026-08-04', t: '🕳️ 再挖出兩個「壞掉但完全看不出來」的地方', d: [
             '做了一支新工具:把程式裡 1,008 個「錯誤攔截區塊」全部裝上回報器,再把整個 App 走一遍 —— 專門抓那種「壞了但被吃掉、畫面看起來正常」的錯。',
             '🐛 抓到:頂部報價的「總量 / 量縮」那一格,程式一直在讀一個不存在的變數 → **從來沒顯示過**。',
@@ -18310,6 +18317,16 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (!(buy > 0) || !(sell > 0) || !(shares > 0)) return null;
         const fd = this._feeDisc();
         return Math.round((sell - buy) * shares - (buy + sell) * shares * 0.001425 * fd - sell * shares * 0.003);
+    },
+
+    // 💸 V72.3.1 「來回一趟要先賺回多少 %」——**單一真相源**,跟 `_netPL` 用同一組費率。
+    //   買賣各一次手續費(0.1425% × 你的折數)+ 賣出證交稅 0.3%。
+    //   ⚠️ 為什麼一定要有這個:實測 2026-08-04 的今日訊號榜,200 筆裡有 **175 筆**
+    //      期望值是 **+0.079%** —— 而來回成本約 0.38%,那些**扣完成本是賠的**。
+    //      ⛔ 只在下面寫一行「未扣成本」免責、卻讓它們佔滿榜單,等於沒講。
+    _roundTripCostPct() {
+        const fd = this._feeDisc();
+        return +(0.1425 * fd * 2 + 0.3).toFixed(3);
     },
 
     // 🧹 V71.8.8 空殼卡清掃(使用者:「該出現的顯示出來,不需要看的就隱藏」)。
@@ -36465,8 +36482,19 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         //   → 一律用採礦端輸出的 `bull_syms`(不重複檔數)與 `bull_total`(總筆數)。
         const nRows = Number.isFinite(+j.bull_total) ? +j.bull_total : list.length;
         const nSyms = Number.isFinite(+j.bull_syms) ? +j.bull_syms : new Set(list.map(x => String(x.s))).size;
-        const shown = Math.min(12, list.length);
-        const rows = list.slice(0, 12).map(x => `
+        // 💸 V72.3.1 ⭐⭐ 「會賺」必須是「**扣完來回成本還會賺**」。
+        //   實測 2026-08-04(採礦第一次真的跑出全榜):297 筆裡 **175 筆**期望值只有 **+0.079%**,
+        //   而來回成本約 **0.38%** → 那些**扣完是賠的**,卻佔滿整個榜單最前面。
+        //   ⛔ 只在最下面寫一行「未扣交易成本」免責、卻讓它們排第一,等於沒講
+        //      (CLAUDE.md 早就寫「別讓 +0.1% 的訊號被當成有賺頭」)。
+        //   → 分兩區:先給「連成本都賺得回來」的;其餘**不刪**,收進摺疊區並說明為什麼。
+        const cost = this._roundTripCostPct ? this._roundTripCostPct() : 0.44;
+        const net = x => (+x.exp || 0) - cost;
+        const worth = list.filter(x => net(x) > 0).sort((a, b) => net(b) - net(a) || ((+b.v || 0) - (+a.v || 0)));
+        const thin = list.filter(x => net(x) <= 0);
+        const worthSyms = new Set(worth.map(x => String(x.s))).size;
+        const shown = Math.min(12, worth.length);
+        const mkRow = x => `
             <div onclick="app.analyze('${x.s}')" class="flex items-center justify-between gap-2 px-2 py-1.5 rounded ${mine.has(String(x.s)) ? 'bg-amber-900/15 border border-amber-700/50' : 'bg-[#0d1117] border border-[#30363d]'} cursor-pointer hover:bg-white/5 transition-colors">
                 <div class="min-w-0 flex items-baseline gap-1.5">
                     ${mine.has(String(x.s)) ? '<span class="text-[9px] font-black text-amber-300 flex-shrink-0">👜</span>' : ''}
@@ -36476,22 +36504,32 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 </div>
                 <div class="flex items-center gap-1.5 flex-shrink-0">
                     <span class="text-[10px] text-red-300 truncate max-w-[110px]">${x.t}</span>
-                    <span class="font-mono text-[9px] px-1 rounded bg-red-900/40 text-red-300">期望 +${x.exp}%</span>
+                    <span class="font-mono text-[9px] px-1 rounded ${net(x) > 0 ? 'bg-red-900/40 text-red-300' : 'bg-gray-700/40 text-gray-400'}" title="毛期望 +${x.exp}%,扣掉來回成本 ${cost}% 後 ${net(x) >= 0 ? '+' : ''}${net(x).toFixed(2)}%">扣成本 ${net(x) >= 0 ? '+' : ''}${net(x).toFixed(2)}%</span>
                     <span class="font-mono text-[9px] text-gray-500">勝率 ${x.w}%${this._wrTag(x.w, x.n, (j.base_win || 36.4) / 100)}</span>
                 </div>
-            </div>`).join('');
+            </div>`;
+        const rows = worth.slice(0, 12).map(mkRow).join('');
+        // ⛔ 扣完成本不夠賺的**不刪**(誠實顯示),收進摺疊區並講清楚為什麼不推薦
+        const thinBlock = thin.length ? `<details class="mt-1.5">
+            <summary class="text-[10px] text-gray-500 cursor-pointer">➕ 另有 ${thin.length} 筆「有訊號,但扣完成本不夠賺」(點開看)</summary>
+            <div class="text-[9px] text-gray-600 my-1 leading-snug">這些訊號的歷史期望值是正的,但<b class="text-gray-500">贏不過來回成本 ${cost}%</b> → 做了平均還是賠。⛔ 列出來是讓你知道它們存在,不是叫你做。</div>
+            <div class="space-y-1">${thin.slice(0, 8).map(mkRow).join('')}</div>
+            ${thin.length > 8 ? `<div class="text-[9px] text-gray-600 mt-1">…另有 ${thin.length - 8} 筆同類</div>` : ''}
+        </details>` : '';
         box.className = 'mb-2 bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r p-2.5';
         box.innerHTML = `
             <div class="flex items-center justify-between mb-1.5">
-                <span class="text-[12px] font-black text-gray-100">🎯 今天出現「實測會賺」的訊號 <span class="text-[10px] text-gray-500 font-normal">全市場 ${(j.scanned || 0).toLocaleString()} 檔只有 <b class="text-red-300">${nSyms}</b> 檔${nRows > shown ? `<span class="text-gray-600">(共 ${nRows} 筆訊號,下面列期望值最高的 ${shown} 筆)</span>` : ''}</span></span>
+                <span class="text-[12px] font-black text-gray-100">🎯 今天「扣完成本還會賺」的訊號 <span class="text-[10px] text-gray-500 font-normal">全市場 ${(j.scanned || 0).toLocaleString()} 檔中 <b class="${worthSyms ? 'text-red-300' : 'text-gray-400'}">${worthSyms}</b> 檔${worth.length > shown ? `<span class="text-gray-600">(共 ${worth.length} 筆,下面列最賺的 ${shown} 筆)</span>` : ''}${nRows > list.length ? `<span class="text-gray-600"> ・全榜 ${nSyms} 檔 / ${nRows} 筆</span>` : ''}</span></span>
                 <button onclick="event.stopPropagation();app._showTodaySigHelp()" class="text-[9px] text-gray-500 hover:text-cyan-300 flex-shrink-0">ⓘ 怎麼看</button>
             </div>
             ${mineLine}
-            <div class="space-y-1">${rows}</div>
+            ${worth.length ? `<div class="space-y-1">${rows}</div>`
+              : `<div class="text-[11px] text-gray-300 bg-[#0d1117] border-l-4 border-gray-500 rounded-r px-2.5 py-2 leading-relaxed">⛔ <b>今天沒有一檔的訊號賺得回交易成本</b>(來回約 ${cost}%)。<br><span class="text-gray-500">榜上那些毛期望值雖然是正的,扣完手續費 + 證交稅平均還是賠 → 今天就別硬找理由進場。</span></div>`}
+            ${thinBlock}
             <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">
                 📅 ${this._dW ? this._dW(j.data_date) : (j.data_date || '')} 收盤資料。
-                只列<b class="text-gray-500">實測期望值為正</b>的看多訊號(基準勝率 ${(j.base_win || 36).toFixed(0)}%)。
-                ⚠️ ${j.cost_note || '期望值未扣交易成本'};歷史統計<b class="text-gray-500">不是保證</b>。
+                採礦端只收<b class="text-gray-500">實測期望值為正</b>的看多訊號(基準勝率 ${(j.base_win || 36).toFixed(0)}%),這裡再<b class="text-gray-400">扣掉交易成本</b>排一次。
+                <b class="text-gray-400">「扣成本」= 毛期望值減掉來回 ${cost}%</b>(手續費 ${this._feeDisc ? this._feeDisc() : 0.28} 折 ×2 + 證交稅 0.3%,折數可在設定改);歷史統計<b class="text-gray-500">不是保證</b>。
                 ${j.risk_syms ? `<br>另有 <b class="text-gray-500">${j.risk_syms.toLocaleString()}</b> 檔出現風險訊號(僅供了解今天大盤氛圍,⛔ 不逐檔列出)。` : ''}
             </div>`;
         box.classList.remove('hidden');
@@ -36506,9 +36544,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             + `我回測過 ${(j.edge_syms || 2227).toLocaleString()} 檔股票、129 個訊號,\n`
             + '其中【期望值為正的只有 9 個】—— 大部分訊號雖然「常常對」,但輸的時候輸更大。\n'
             + '所以能同時滿足「今天有訊號」+「那個訊號真的會賺」的股票,本來就很少。\n\n'
+            + '💸【為什麼要「扣完成本」才算數】\n'
+            + `買賣一趟要付 手續費×2 + 證交稅 = 約 ${(app._roundTripCostPct ? app._roundTripCostPct() : 0.44)}%(依你設定的折數)。\n`
+            + '實測 2026-08-04:全榜 297 筆裡有 175 筆的期望值只有 +0.079% —— 毛看是賺,扣完成本是【賠】。\n'
+            + '所以上面那個檔數是【扣完成本還會賺】的,其餘收在「另有 N 筆」裡,點開看得到但不建議做。\n\n'
             + '⚠️【一定要知道的三件事】\n'
             + `① 基準勝率是 ${(j.base_win || 36).toFixed(0)}%,不是 50%(加權指數是市值加權,中位數個股本來就跑輸)。\n`
-            + '② 期望值【沒有扣交易成本】(來回約 0.44%)—— 實際門檻比表上更高。\n'
+            + '② 期望值是【歷史平均】,不是每一次都會賺;而且滑價沒算在內。\n'
             + '③ 這是【歷史統計,不是保證】,而且只看 K 線,沒有看籌碼與基本面。\n\n'
             + '👉 點任一檔會跳到個股頁,那裡有完整的判讀與價位。');
     },
