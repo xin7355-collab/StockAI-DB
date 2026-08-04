@@ -37,7 +37,7 @@ const SYMS = process.argv.slice(2).length ? process.argv.slice(2) : ['2327', '23
 const SUBTABS = ['strategy', 'live', 'daytrade', 'chart', 'chip', 'corp', 'backtest', 'bullbear'];
 const OVPANES = ['now', 'entry', 'exit'];
 
-// ── 四類缺陷的樣式 ───────────────────────────────────────────
+// ── 五類缺陷的樣式 ───────────────────────────────────────────
 // ① 動詞 + 缺值:只抓「動詞後面 10 字內就出現缺值」,避免整頁到處誤報
 // ⚠️ ⛔ 破折號 `—`/`——` **不可列入** —— 全 App 拿它當標點(「今日低 526 — 收盤不破就沒壞」),
 //    第一版列進去,兩筆命中全是誤報。缺值的真面目是 `--`(`nf()` 的 fallback)與 NaN/undefined。
@@ -127,6 +127,18 @@ for (const sym of SYMS) {
                     if (t.length < 12 || t.length > 4000) continue;
                     seen.push(el); out.push({ id: el.id, t });
                 }
+                // ⭐ 補漏:有些頁(尤其「大盤」)整頁 3 萬字,但幾乎沒有**帶 id 且 12~4000 字**的容器
+                //   → 上面那輪只收到個位數張卡,等於那一頁根本沒被掃到,而輸出看起來卻很正常。
+                //   → 找出可見的分頁根容器,把「還沒被任何卡涵蓋」的字切塊補進來。
+                //   ⚠️ 判斷「可見」一律用 offsetParent/computedStyle —— `innerText` 對
+                //      **display:none** 的元素照樣回傳全文(排查時差點據此誤判成 App bug)。
+                const covered = out.reduce((n, o) => n + o.t.length, 0);
+                for (const root of document.querySelectorAll('[id^="tabContent"], [id^="subContent"]')) {
+                    if (!root.offsetParent) continue;
+                    const rt = (root.innerText || '').replace(/\s+/g, ' ').trim();
+                    if (rt.length < 2000 || covered >= rt.length * 0.5) continue;
+                    for (let i = 0; i < rt.length; i += 3000) out.push({ id: `${root.id}(整頁${Math.floor(i / 3000) + 1})`, t: rt.slice(i, i + 3000) });
+                }
                 return out;
             }, { tab, pane });
 
@@ -184,6 +196,13 @@ for (const tab of ['market', 'radar', 'hunt', 'broker', 'inv', 'fav']) {
     const cards = await page.evaluate(async t => {
         try { app.switchAppTab(t); } catch (_) { return []; }
         await new Promise(r => setTimeout(r, 1800));
+        // ⭐ 空過守門:init() 尾端會 `switchAppTab('inv')`,而它排在 `await fetchMacroData()` 之後
+        //   —— 沙箱抓不到資料要等 timeout,期間任何切頁都會**在幾秒後被它蓋回庫存頁**。
+        //   不驗這一下,掃出來的會是「庫存頁的字」卻標成 market/radar,而輸出看起來完全正常。
+        //   (⚠️ 排查時差點誤判成 App bug —— `innerText` 對 **display:none** 的元素照樣回傳全文,
+        //    所以「有字」不代表「看得見」,一定要看 computedStyle。)
+        const root = document.getElementById('tabContent' + t[0].toUpperCase() + t.slice(1));
+        if (root && getComputedStyle(root).display === 'none') return { blocked: true };
         const seen = [], out = [];
         for (const el of document.querySelectorAll('[id]')) {
             if (!el.id || el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
@@ -193,8 +212,17 @@ for (const tab of ['market', 'radar', 'hunt', 'broker', 'inv', 'fav']) {
             if (x.length < 12 || x.length > 4000) continue;
             seen.push(el); out.push({ id: el.id, t: x });
         }
+        // ⭐ 同上補漏:大盤頁整頁 3 萬字卻幾乎沒有帶 id 的中型容器 → 切塊補進來
+        const covered = out.reduce((n, o) => n + o.t.length, 0);
+        for (const root of document.querySelectorAll('[id^="tabContent"]')) {
+            if (!root.offsetParent) continue;
+            const rt = (root.innerText || '').replace(/\s+/g, ' ').trim();
+            if (rt.length < 2000 || covered >= rt.length * 0.5) continue;
+            for (let i = 0; i < rt.length; i += 3000) out.push({ id: `${root.id}(整頁${Math.floor(i / 3000) + 1})`, t: rt.slice(i, i + 3000) });
+        }
         return out;
     }, tab);
+    if (cards && cards.blocked) { process.stdout.write(`${tab}:⚠️切不過去(init 把頁面切回庫存了,這頁沒掃到) `); continue; }
     for (const c of cards) {
         for (const m of c.t.matchAll(RE_MISSING)) add('(全站)', tab, '💥缺值', c.id, m[0], ctxOf(c.t, m.index));
         for (const m of c.t.matchAll(RE_PCT)) {
