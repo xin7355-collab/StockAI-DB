@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.2.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.2.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.2.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6920,8 +6920,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.2.4',
+    _APP_VERSION: 'V72.2.5',
     _CHANGELOG: [
+        { v: 'V72.2.5', dt: '2026-08-04', t: '🔎 把「勝率」的漏網之魚一次抓完(五處,含最嚴重的那個)', d: [
+            '總覽的「打法雷達」寫「主打 N字底黃金右腳 勝率 100%・3 次(本股歷史最會賺)」,但同一支程式的回測頁已經把它標成「⏳樣本不足」→ 兩頁各說各話。現在會優先挑樣本夠的當主打,真的都不夠就直說「先別把它當依據」。',
+            '⚠️ 最嚴重的一處:K線頁「多空訊號打架 → 看本股股性誰勝率高」的裁決,原本**完全沒有樣本門檻** —— 打過 1 次的型態也能拿來決定「以偏多為主」。',
+            '另外三處也補上:清單列會閃的「⚡買點」badge、「這檔的專屬招(平常就盯這幾招)」、個股 DNA 的「最吃 XX」,並且都把次數顯示出來。',
+            '⚠️ 「這檔的地雷型態」那側刻意維持較鬆的門檻 —— 風險提醒寧可多提醒,不打折。',
+            '測試改成「盤點式」:把每一個會講勝率的地方抓出來逐一檢查,不是只驗某一處 —— 這樣下次再漏才擋得住。',
+        ] },
         { v: 'V72.2.4', dt: '2026-08-04', t: '⭐ 「主打」的星星本身也要樣本夠 + 跌停板要講白話', d: [
             '「⭐主打」那顆星的視覺份量壓過旁邊的「⏳ 只有 3 次」→ 現在樣本不到 10 次就不給星,改標「⏳樣本不足」。⛔ 那一列的資料照顯示,只是不再叫它主打。',
             '「⚠️避開」那側刻意不加樣本門檻 —— 風險提醒寧可多提醒。',
@@ -19041,12 +19048,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 tc = 'text-green-400'; bc = 'border-green-500';
                 inner = `<div class="text-[10px] text-gray-300 leading-relaxed">這招在這檔歷史是<b>賠錢的</b>(${stat(avoidFired)})→ 別做,等主打型態出現。</div>`;
             } else {
-                const t0 = tops[0] || ranked[0];
+                // 🎲 V72.2.5 ⭐ 「等的那個主打」也要樣本夠 —— `page_sweep` 掃到 5871:
+                //   這裡寫「主打『N字底黃金右腳』… 勝率 **100%**・賺賠比 全贏・**3 次**(本股歷史最會賺)」,
+                //   而同一支程式的**回測頁**已經把它標成「⏳樣本不足」→ 兩頁各說各話(使用者最在意的那件事)。
+                //   → 優先挑樣本夠的那個當「要等的訊號」;真的都不夠才退回第一名,並明講「先別把它當依據」。
+                const t0 = tops.find(r => this._wrEnough(r.count)) || tops[0] || ranked[0];
+                const _t0ok = this._wrEnough(t0.count);
                 big = `⏳ 等訊號:主打「${nm(t0.key)}」未出現`;
                 tc = 'text-gray-300'; bc = 'border-gray-500';
                 inner = `
-                <div class="text-[10px] text-gray-400 font-mono mb-1">${stat(t0)}(本股歷史最會賺)</div>
-                <div class="text-[10px] text-gray-300 leading-relaxed">主打=這檔<b>歷史期望值最高</b>的打法,但要「訊號當天出現」才進場 —— 今天沒觸發就<b>別硬做</b>,等它出現我會在這裡亮綠燈+算好進場/停損/目標。</div>`;
+                <div class="text-[10px] text-gray-400 font-mono mb-1">${stat(t0)}${this._wrTag(t0.winRate, t0.count)}(本股歷史期望值最高)</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">${_t0ok ? '' : `<b class="text-orange-300">⚠️ 但它只出現過 ${t0.count} 次,樣本太少 —— 先別把它當依據</b>(回測頁同一列也標「樣本不足」)。<br>`}主打=這檔<b>歷史期望值最高</b>的打法,但要「訊號當天出現」才進場 —— 今天沒觸發就<b>別硬做</b>,等它出現我會在這裡亮綠燈+算好進場/停損/目標。</div>`;
             }
             el.className = `bg-[#161b22] border-2 ${bc} rounded-lg p-3 shadow-lg`;
             el.innerHTML = `
@@ -19711,10 +19723,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         let ranked = [];
         try { ranked = this._playbookRankedFor(data, sym) || []; } catch (_) { return ''; }
         if (!ranked.length) return '';
-        const good = ranked.filter(r => r.expectancy > 0.3 && r.count >= 4).slice(0, 3);
+        // 🎲 V72.2.5 「平常就盯這幾招」是**指令** → 樣本要夠;
+        //   ⚠️ 下面 `bad`(這檔的地雷)刻意維持 4 次 —— 多空不對稱,風險提醒不打折。
+        const good = ranked.filter(r => r.expectancy > 0.3 && this._wrEnough(r.count)).slice(0, 3);
         const bad = ranked.filter(r => r.expectancy <= -0.3 && r.count >= 4).slice(0, 3);
         if (!good.length && !bad.length) return '';
-        const goodTxt = good.map(r => `<b class="text-red-300">${r.key}</b><span class="text-gray-500 text-[10px]">(勝率${r.winRate.toFixed(0)}%·期望+${r.expectancy.toFixed(1)}%)</span>`).join('、');
+        const goodTxt = good.map(r => `<b class="text-red-300">${r.key}</b><span class="text-gray-500 text-[10px]">(勝率${r.winRate.toFixed(0)}%·期望+${r.expectancy.toFixed(1)}%·${r.count}次)</span>`).join('、');
         const badTxt = bad.map(r => r.key).join('、');
         return `<div class="mt-2 bg-[#0d1117] border border-emerald-700/40 rounded-lg p-2.5">
             <div class="text-[11px] font-bold text-emerald-300 mb-1">🎯 這檔的「專屬招」<span class="text-[9px] font-normal text-gray-500">每檔股性不同·盯對的才準</span></div>
@@ -19995,11 +20009,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     if (cn && hasConflict) {
                         const ranked = this._playbookRankedFor(data, _sym) || [];
                         const firedSet = new Set(this._playbookSignalsToday(data) || []);
-                        const bestBull = ranked.filter(r => firedSet.has(r.key) && r.expectancy > 0).sort((a, b) => b.expectancy - a.expectancy)[0];
+                        // 🎲 V72.2.5 ⭐ 這裡原本**完全沒有樣本門檻** —— 打過 1 次的型態也能拿來裁決「以偏多為主」。
+                        //   ⛔ 這是全 App 少數會直接下方向的地方,一律走 `_wrEnough`(⛔ 別寫死次數)。
+                        const bestBull = ranked.filter(r => firedSet.has(r.key) && r.expectancy > 0 && this._wrEnough(r.count)).sort((a, b) => b.expectancy - a.expectancy)[0];
                         let inner;
                         if (bestBull) {
                             inner = `<div class="text-[11px] font-bold text-amber-300 mb-0.5">⚖️ 多空訊號打架 → 看「本股股性」誰勝率高</div>
-                                <div class="text-[12px] text-gray-200 leading-relaxed">今天同時出現偏多(轉強)和偏空(出貨/假突破)型態。以<b>這檔的回測</b>看,<b class="text-red-300">${bestBull.key} 勝率 ${bestBull.winRate.toFixed(0)}%、期望 +${bestBull.expectancy.toFixed(1)}%</b>(打過 ${bestBull.count} 次)——這股歷史上吃這招 → <b class="text-red-300">以偏多為主</b>,但只要<b>跌破月線 ${nf(ma20)} 或前低 ${nf(recentLow)}</b> 就翻臉出場,別凹。</div>`;
+                                <div class="text-[12px] text-gray-200 leading-relaxed">今天同時出現偏多(轉強)和偏空(出貨/假突破)型態。以<b>這檔的回測</b>看,<b class="text-red-300">${bestBull.key} 勝率 ${bestBull.winRate.toFixed(0)}%、期望 +${bestBull.expectancy.toFixed(1)}%</b>(打過 ${bestBull.count} 次)${this._wrTag(bestBull.winRate, bestBull.count)}——這股歷史上吃這招 → <b class="text-red-300">以偏多為主</b>,但只要<b>跌破月線 ${nf(ma20)} 或前低 ${nf(recentLow)}</b> 就翻臉出場,別凹。</div>`;
                         } else {
                             inner = `<div class="text-[11px] font-bold text-amber-300 mb-0.5">⚖️ 多空訊號打架 → 本股無高勝率多方型態撐腰</div>
                                 <div class="text-[12px] text-gray-200 leading-relaxed">今天多空型態同時出現,但<b>這檔回測</b>裡沒有正期望的多方型態能背書 → <b class="text-green-300">保守偏空/先觀望</b>,別急著追多;要進場等站穩月線 ${nf(ma20)}+帶量長紅再說。</div>`;
@@ -20178,11 +20194,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const ranked = this._playbookRankedFor(data, sym);   // per-sym 快取,批量不重算
             if (!ranked.length) return '';
             const firedSet = new Set(fired);
-            const good = ranked.filter(r => firedSet.has(r.key) && r.expectancy > 0.5 && r.winRate >= 55 && r.count >= 5)
+            // 🎲 V72.2.5 這顆會 animate-pulse 的「⚡買點」badge 出現在清單列上,說服力很強 → 樣本門檻走 `_wrEnough`
+            const good = ranked.filter(r => firedSet.has(r.key) && r.expectancy > 0.5 && r.winRate >= 55 && this._wrEnough(r.count))
                                .sort((a, b) => b.expectancy - a.expectancy)[0];
             if (!good) return '';
             const nm = good.key.replace(/^[^一-龥A-Za-z]+/, '');   // 去掉開頭 emoji,只留型態名
-            return `<span class="text-[9px] font-bold bg-red-900/40 text-red-300 border border-red-700/50 rounded px-1 animate-pulse whitespace-nowrap" title="今日觸發「${good.key}」,本股回測勝率 ${good.winRate.toFixed(0)}%、期望 +${good.expectancy.toFixed(1)}%">⚡買點 ${nm} 勝${good.winRate.toFixed(0)}%</span>`;
+            return `<span class="text-[9px] font-bold bg-red-900/40 text-red-300 border border-red-700/50 rounded px-1 animate-pulse whitespace-nowrap" title="今日觸發「${good.key}」,本股回測勝率 ${good.winRate.toFixed(0)}%、期望 +${good.expectancy.toFixed(1)}%(${good.count} 次)">⚡買點 ${nm} 勝${good.winRate.toFixed(0)}%</span>`;
         } catch (_) { return ''; }
     },
     _klineWinRateStripHtml(sym, data) {
@@ -33581,8 +33598,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const bits = [];
         try {
             const ranked = this._playbookRankedFor(data, sym) || [];
-            const top = ranked.filter(r => r.expectancy > 0.3 && r.count >= 4)[0];
-            if (top) bits.push(`最吃 <b class="text-red-300">${top.key}</b>(勝率 ${top.winRate.toFixed(0)}%)`);
+            const top = ranked.filter(r => r.expectancy > 0.3 && this._wrEnough(r.count))[0];   // 🎲 V72.2.5 樣本門檻統一
+            if (top) bits.push(`最吃 <b class="text-red-300">${top.key}</b>(勝率 ${top.winRate.toFixed(0)}%・${top.count} 次)`);
         } catch (_) {}
         try {
             const g = this._gapEventBehavior(data);

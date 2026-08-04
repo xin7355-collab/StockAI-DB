@@ -275,7 +275,51 @@ ok('⑦ 找得到當沖儀表板三格', dtSrc.length > 0, '');
 ok('⑦ ⭐ 距離 ≈0 時要明寫「已鎖漲停/已鎖跌停」(⛔ 別只顯「距0.0%」)',
    /已鎖\$\{word\}/.test(dtSrc) && /d <= 0\.05/.test(dtSrc), (dtSrc.match(/const _lim = [^\n]*/) || [''])[0]);
 
-ok('⑧ 無 pageerror', errs.length === 0, errs.join(' | '));
+
+// ══ ⑨ ⭐⭐ 全檔盤點:每一個「勝率 X%」的呼叫端都要有樣本門檻(陷阱 #37)══
+//   V72.2.2 說「已經接上了」,V72.2.4 又漏一處(⭐主打 的星),V72.2.5 再漏四處
+//   —— 其中最嚴重的是**多空訊號仲裁**:它拿「本股回測勝率」裁決要不要「以偏多為主」,
+//      卻**完全沒有樣本門檻**(打過 1 次的型態也算)。
+//   ⭐ 所以這裡改成**盤點式**斷言:把所有相關函式抓出來,逐一確認有 `_wrEnough`。
+//     ⛔ 不是驗某一處,是驗「沒有漏網的」—— 這才擋得住下一次又漏。
+const audit = await page.evaluate(() => {
+    const need = {
+        // 函式判別特徵 → 用途說明(找不到就算失敗,代表函式被改名了要更新這份清單)
+        '以偏多為主': '多空訊號仲裁',
+        '⚡買點 ': '清單列的閃爍買點 badge',
+        '平常就盯這幾招': '「這檔的專屬招」',
+        '最吃 <b class="text-red-300">': '個股 DNA 一句話',
+        '等訊號:主打': '打法雷達「要等哪個訊號」',
+    };
+    const out = {};
+    for (const [mark, desc] of Object.entries(need)) {
+        let found = null;
+        for (const k of Object.keys(app)) {
+            if (typeof app[k] !== 'function') continue;
+            const src = app[k].toString();
+            if (src.includes(mark)) { found = { fn: k, ok: /_wrEnough\(/.test(src) }; break; }
+        }
+        out[desc] = found;
+    }
+    return out;
+});
+for (const [desc, r] of Object.entries(audit)) {
+    ok(`⑨ ⭐ 「${desc}」找得到,而且有樣本門檻 _wrEnough`, !!(r && r.ok),
+       r ? `在 ${r.fn} 找到但沒有 _wrEnough` : '整個函式找不到(是不是改名了?清單要更新)');
+}
+// ⭐ 打法雷達要「優先挑樣本夠的」,真的都不夠才退回第一名並明講
+const radarSrc = await page.evaluate(() => {
+    for (const k of Object.keys(app)) {
+        if (typeof app[k] === 'function' && app[k].toString().includes('等訊號:主打')) return app[k].toString();
+    }
+    return '';
+});
+ok('⑨ ⭐ 打法雷達要優先挑「樣本夠」的當主打',
+   /tops\.find\(r => this\._wrEnough\(r\.count\)\) \|\| tops\[0\]/.test(radarSrc), '');
+ok('⑨ ⭐ 退回樣本不足的那個時,要明講「先別把它當依據」+ 指出回測頁也這樣標(⛔ 兩頁不可各說各話)',
+   /先別把它當依據/.test(radarSrc) && /回測頁同一列也標/.test(radarSrc), '');
+
+ok('⑩ 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();
 console.log('');
