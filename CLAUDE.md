@@ -1249,6 +1249,19 @@ V72.0.3 只改了顯示 → `_entryCheckup` 的計分**還是只看分級**(A �
 4. ⛔ **跌破 130% ≠「跌破就該買」** —— 那只是「賣壓正在被強制清出」的觀察;
    教學要寫「不要第一天就衝、等長下影線/紅 K」「2~3 年才一次,好市況別用,不然變接刀子」。
 
+#### 🐛 V72.1.1 它**從上線到現在一次都沒產出過**(被 P/B 卡住)
+實測 2026-08-04 讀 gh-pages:`market_stats.json` **只有 118 bytes、只有 `pb` 沒有 `margin`**。
+根因:margin 那段被**巢狀在 `if pb_pct:` 裡面** → P/B 分位抓不到 fundamentals 時,
+整段走「保留既有值」,融資維持率完全沒機會寫 —— 即使它自己算得出來
+(`compute_market_margin_health()` **不收任何參數**,只讀 `margin_balance` + 收盤價)。
+⚠️ 症狀極難察覺:**檔案在、workflow 全綠、零錯誤訊息,就是少一半內容**(同陷阱 #9)。
+
+⭐ **通用鐵則:兩個互相獨立的指標,⛔ 不可綁在同一個 `if` 裡** —— 一個失敗會拖累另一個。
+修法:各自成功各自寫,用 `_ms_dirty` 旗標決定寫檔;
+算不出來寫 `margin_error`(陷阱 #22),成功時要 `pop` 掉舊的 error(否則永遠掛著假警報)。
+實跑確認 **127.9%・1,827 檔有效**。測試 `scripts/test_marketstats_indep.py` 19 條
+(⑥ 用 `inspect.signature` 斷言它不收參數 = 證明不依賴 fundamentals;⑦ 實跑真資料)。
+
 📍 **併進 `#bubbleCrashCard`(泡沫風控面板)的 `#marginHealthBox`,⛔ 沒開新卡。**
 測試 `scripts/test_marginhealth.mjs` 22 條。
 

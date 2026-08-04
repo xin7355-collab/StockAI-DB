@@ -3563,40 +3563,66 @@ def fetch_broker_chips():
                     print("  ⏭️ 產業 PE 聚合無資料,保留既有 industry_pe.json")
 
                 # V16.2 — 全市場 P/B 分位數寫 data/market_stats.json(供前端動態判斷取代固定 <2/>5)
+                # 🐛 V72.1.1 **融資維持率原本被巢狀在 `if pb_pct:` 裡面** → P/B 分位算不出來時
+                #   融資維持率就完全不會寫,即使它自己算得出來(它只讀 data/*.json 的
+                #   margin_balance + 收盤價,**根本不需要 fund_cache**)。
+                #   實測 2026-08-04 gh-pages:market_stats.json 只有 118 bytes、只有 pb 沒有 margin
+                #   → V72.0.3 上線後一次都沒產出過,而且**零錯誤訊息**(同陷阱 #9 的症狀)。
+                #   ⭐ 通用:**兩個互相獨立的指標不可綁在同一個 if 裡**,一個失敗會拖累另一個。
                 try:
+                    ms_path = Path('data', 'market_stats.json')
+                    existing_ms = {}
+                    if ms_path.exists():
+                        try: existing_ms = json.loads(ms_path.read_text(encoding='utf-8'))
+                        except Exception: pass
+                    _ms_dirty = False
+
                     pb_pct = compute_market_pb_percentiles(fund_cache)
                     if pb_pct:
-                        ms_path = Path('data', 'market_stats.json')
-                        existing_ms = {}
-                        if ms_path.exists():
-                            try: existing_ms = json.loads(ms_path.read_text(encoding='utf-8'))
-                            except Exception: pass
                         existing_ms['pb'] = pb_pct
-                        # 💳 V72.0.3 全市場融資維持率 + 逐日歷史(危機溫度計;接近 140% 就要注意)
-                        try:
-                            mh = compute_market_margin_health()
-                            if mh:
-                                existing_ms['margin'] = mh
-                                # 歷史:一天一筆(同日重跑覆蓋),留 500 筆
-                                _h = existing_ms.get('margin_hist')
-                                if not isinstance(_h, list):
-                                    _h = []
-                                _d = mh.get('date') or datetime.now(TW).strftime('%Y-%m-%d')
-                                _rec = {'d': _d, 'r': mh['ratio'], 'n': mh['n']}
-                                if _h and _h[-1].get('d') == _d:
-                                    _h[-1] = _rec
-                                else:
-                                    _h.append(_rec)
-                                existing_ms['margin_hist'] = _h[-500:]
-                        except Exception as _e_mh:
-                            print(f"  ⚠️ 全市場融資維持率計算失敗(不影響其他):{str(_e_mh)[:80]}")
-                        ms_path.write_text(json.dumps(existing_ms, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-                        print(f"  💾 全市場 P/B 分位 → data/market_stats.json(P25/P50/P75/P90 = {pb_pct['p25']}/{pb_pct['p50']}/{pb_pct['p75']}/{pb_pct['p90']},{pb_pct['count']} 檔)")
+                        _ms_dirty = True
+                        print(f"  💾 全市場 P/B 分位(P25/P50/P75/P90 = {pb_pct['p25']}/{pb_pct['p50']}/{pb_pct['p75']}/{pb_pct['p90']},{pb_pct['count']} 檔)")
                     else:
                         # 明細已由 compute_market_pb_percentiles 印出(掃幾檔/有欄幾檔/合理區間幾檔)
-                        print("  ⏭️ 不寫 market_stats.json(保留既有值)")
+                        print("  ⏭️ P/B 分位算不出來,保留既有值(⭐ 不影響下面的融資維持率)")
+
+                    # 💳 V72.0.3 全市場融資維持率 + 逐日歷史(危機溫度計;跌破 130% = 斷頭區)
+                    #   ⭐ V72.1.1 起與 P/B **完全獨立**,各自成功各自寫。
+                    try:
+                        mh = compute_market_margin_health()
+                        if mh:
+                            existing_ms['margin'] = mh
+                            existing_ms.pop('margin_error', None)
+                            # 歷史:一天一筆(同日重跑覆蓋),留 500 筆
+                            _h = existing_ms.get('margin_hist')
+                            if not isinstance(_h, list):
+                                _h = []
+                            _d = mh.get('date') or datetime.now(TW).strftime('%Y-%m-%d')
+                            _rec = {'d': _d, 'r': mh['ratio'], 'n': mh['n']}
+                            if _h and _h[-1].get('d') == _d:
+                                _h[-1] = _rec
+                            else:
+                                _h.append(_rec)
+                            existing_ms['margin_hist'] = _h[-500:]
+                            _ms_dirty = True
+                            print(f"  💳 全市場融資維持率 {mh['ratio']}%({mh['n']} 檔有效)")
+                        else:
+                            # ⭐ 陷阱 #22:算不出來要留原因,否則從 JSON 分不出「沒跑」還是「被守門擋掉」
+                            existing_ms['margin_error'] = '樣本不足(有效檔數 < 200)或無融資餘額資料'
+                            _ms_dirty = True
+                            print("  ⏭️ 全市場融資維持率:樣本不足,寫入 margin_error 留線索")
+                    except Exception as _e_mh:
+                        existing_ms['margin_error'] = f'計算失敗:{str(_e_mh)[:120]}'
+                        _ms_dirty = True
+                        print(f"  ⚠️ 全市場融資維持率計算失敗(不影響其他):{str(_e_mh)[:80]}")
+
+                    if _ms_dirty:
+                        ms_path.write_text(json.dumps(existing_ms, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                        print(f"  💾 → data/market_stats.json({ms_path.stat().st_size} bytes)")
+                    else:
+                        print("  ⏭️ market_stats.json 無新內容,保留既有檔")
                 except Exception as e:
-                    print(f"  ⚠️ 全市場 P/B 分位失敗(不影響主流程):{e}")
+                    print(f"  ⚠️ market_stats 寫入失敗(不影響主流程):{e}")
             except Exception as e:
                 print(f"  ⚠️ 產業 PE 聚合失敗(不影響主流程):{e}")
         else:

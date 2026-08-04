@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.1.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.1.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.1.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6912,8 +6912,21 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.1.0',
+    _APP_VERSION: 'V72.1.1',
     _CHANGELOG: [
+        { v: 'V72.1.1', dt: '2026-08-04', t: '💳 融資維持率其實一次都沒產出過(被另一個功能卡住)', d: [
+            '你問「有沒有資料被隱藏、卡片被隱藏起來、應該要出現的」—— 我去對了一次線上的資料檔,抓到一個:',
+            '',
+            '**前天做的「全市場融資維持率」(那個 127% 已在斷頭區的指標),從上線到現在一次都沒真的產出過。**',
+            '',
+            '原因很陰:那段程式被**包在「全市場 P/B 分位數」算成功的裡面** —— 只要 P/B 那邊抓不到資料,融資維持率就完全不會寫,即使它自己算得出來(它只讀融資餘額跟收盤價,**根本不需要 P/B**)。',
+            '',
+            '⚠️ 而且這種錯**最難發現**:檔案在、採礦全綠、沒有任何錯誤訊息,就是少了一半內容。',
+            '',
+            '✅ 修好了:兩個指標現在**各算各的、各自寫入**,一個失敗不會拖累另一個。另外算不出來時也會**留下原因**,以後查得出是「沒跑」還是「被守門擋掉」。',
+            '',
+            '📊 實跑確認:**全市場融資維持率 127.9%**(1,827 檔有效)—— 已經在斷頭區。下一輪採礦後你就會在「泡沫風控面板」看到它。',
+        ] },
         { v: 'V72.1.0', dt: '2026-08-04', t: '🎯 「今天最該看的一件事」—— 你要的「只給勝率最高的」', d: [
             '你說「**只要給我最好、勝率最高的資料**,不要老是所有資料都打出來,根本不知道看哪一個」。',
             '',
