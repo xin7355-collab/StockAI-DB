@@ -6926,6 +6926,7 @@ ${list}
             '選股頁最上方那條「全市場只有 N 檔」對你來說還是有點遠 —— 你真正關心的是自己手上/自選那幾檔有沒有中。',
             '現在會先對一次:有中就在最上面點名「👜 你手上/自選的 XXXX 今天也在榜上 —— 先看這幾檔」,榜單裡那幾列也會標 👜 + 琥珀底。',
             '⛔ 沒有中就完全不顯示這一行(不留空格、也不會寫「你今天沒有命中」)。沒有開新卡,只是併進既有那條。',
+            '每一列補上勝率 + 樣本強度徽章。⚠️ 那個勝率是拿「回測真實基準約 36%」在比,不是 50% —— 42% 其實是贏的。',
             '🩺 資料體檢新增一類:「檔案在、能解析,但少了該有的那半」—— 融資維持率那次(檔案只有 P/B 沒有融資)就是這樣躲過檢查的,現在會直接抓出來。',
         ] },
         { v: 'V72.2.5', dt: '2026-08-04', t: '🔎 把「勝率」的漏網之魚一次抓完(五處,含最嚴重的那個)', d: [
@@ -36405,6 +36406,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 👜 <b>你手上/自選的 ${hitMine.map(x => `${x.s}${nm(x.s) ? ' ' + nm(x.s) : ''}`).join('、')}</b> 今天也在榜上
                 <span class="text-[10px] text-amber-200/70">—— 先看這幾檔,下面是全市場的。</span>
             </div>` : '';
+        // 🎲 V72.2.6 每列的勝率一律配共用的 _wrTag(⛔ 別另寫一套樣本判斷)。
+        //   ⚠️ 第 3 參數要傳**回測的真實基準**(約 36%),⛔ 不可用 50% ——
+        //      42% 對 36% 是贏,對 50% 會被標成「跟丟銅板差不多」(陷阱 #36)。
+        //   ⚠️⚠️ 這段註解**一定要寫在模板字串外面** —— 第一版寫進 `...` 裡面,
+        //      而註解本身含反引號(包 _wrTag 那個)→ 提前結束模板字串 →
+        //      整份 index.html 語法錯、App 完全起不來。smoke_test 當場擋下。
         const rows = list.slice(0, 12).map(x => `
             <div onclick="app.analyze('${x.s}')" class="flex items-center justify-between gap-2 px-2 py-1.5 rounded ${mine.has(String(x.s)) ? 'bg-amber-900/15 border border-amber-700/50' : 'bg-[#0d1117] border border-[#30363d]'} cursor-pointer hover:bg-white/5 transition-colors">
                 <div class="min-w-0 flex items-baseline gap-1.5">
@@ -36414,8 +36421,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     <span class="font-mono text-[10px] text-gray-500">${(+x.c).toLocaleString()}</span>
                 </div>
                 <div class="flex items-center gap-1.5 flex-shrink-0">
-                    <span class="text-[10px] text-red-300 truncate max-w-[128px]">${x.t}</span>
+                    <span class="text-[10px] text-red-300 truncate max-w-[110px]">${x.t}</span>
                     <span class="font-mono text-[9px] px-1 rounded bg-red-900/40 text-red-300">期望 +${x.exp}%</span>
+                    <span class="font-mono text-[9px] text-gray-500">勝率 ${x.w}%${this._wrTag(x.w, x.n, (j.base_win || 36.4) / 100)}</span>
                 </div>
             </div>`).join('');
         box.className = 'mb-2 bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r p-2.5';

@@ -111,6 +111,15 @@ ok('⑥ ⛔ 不可在採礦端重複存股票名稱(前端已有 getStockName)',
    /刻意\*\*不存股票名稱\*\*/.test(scan), '');
 
 
+
+// ── ⑧b 勝率必須配樣本,而且基準是回測實測值不是 50%(陷阱 #36/#37)──
+ok('⑧b ⭐ 每列要顯示勝率', /勝率 \d+(\.\d+)?%/.test(t), t.slice(0, 260));
+const barSrc = await page.evaluate(() => app._renderTodaySignalBar.toString());
+ok('⑧b ⭐⛔ 要走共用的 `_wrTag`(⛔ 別另寫一套樣本判斷)', /_wrTag\(x\.w, x\.n,/.test(barSrc),
+   (barSrc.match(/_wrTag\([^\n]*/) || [''])[0]);
+ok('⑧b ⭐⛔ 第 3 參數要傳回測真實基準(⛔ 不可用 0.5) —— 42% 對 36% 是贏、對 50% 會被標成丟銅板',
+   /_wrTag\(x\.w, x\.n, \(j\.base_win \|\| 36\.4\) \/ 100\)/.test(barSrc), '');
+
 // ── ⑧ 👜 庫存/自選命中(V72.2.6)⛔ 沒交集要完全不顯示 ────────────
 const withMine = (syms, d) => page.evaluate(async a => {
     const realInv = app._getInventory, realFav = app.favGroups;
