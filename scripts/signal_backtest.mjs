@@ -30,7 +30,12 @@ import path from 'path';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = path.join(ROOT, 'data');
-const MAX_SYMS = +(process.argv[2] || 300);
+// 🐛 V72.1.7 預設改成**全市場**。舊版預設只取「代號排序的前 N 檔」——
+//   實測 500 檔那版**完全沒有 3xxx~9xxx**(佔全市場 1,744 檔 = 74%),
+//   大立光 3008 / 矽力 6415 / 緯創 3231 這些重要電子股全部缺席。
+//   ⛔「500 檔」聽起來樣本很大,實際上只涵蓋 1xxx~2xxx 的傳產金融 —— 那是**選樣偏誤**。
+//   ⭐ 通用:任何「取前 N 檔」的抽樣,都要先問「排序之後前 N 是不是有系統性偏向」。
+const MAX_SYMS = +(process.argv[2] || 99999);
 const STEP = 2;              // 每 2 根 K 掃一次(降計算量;訊號本來就不是天天有)
 const DEDUP = 5;             // 同檔同訊號 5 日內只算一次
 const HORIZONS = [5, 10, 20];
@@ -71,7 +76,7 @@ if (!twiiRows) { console.log('❌ 找不到 ^TWII.json'); process.exit(2); }
 const TWII = Object.fromEntries(twiiRows.map(r => [r.date, r.close]));
 
 const files = fs.readdirSync(DATA).filter(f => /^\d{4}\.json$/.test(f)).sort();
-log(`📂 掃描 ${files.length} 檔,取前 ${MAX_SYMS} 檔有效樣本`);
+log(`📂 掃描 ${files.length} 檔,上限 ${MAX_SYMS >= 99999 ? "全市場(不設限)" : "前 " + MAX_SYMS + " 檔"}`);
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 const page = await browser.newPage();
@@ -88,12 +93,14 @@ log(`🔎 偵測器:${alive.length}/${DETECTORS.length} 存在` +
 const acc = new Map();
 const base = { 5: [], 10: [], 20: [] };   // 對照組:所有掃到的交易日(見下方說明)
 let used = 0, t0 = Date.now();
+const usedPrefix = {};   // ⭐ V72.1.7 代號開頭分布,用來自我檢查有沒有選樣偏誤
 
 for (const f of files) {
     if (used >= MAX_SYMS) break;
     const rows = loadSeries(path.join(DATA, f));
     if (!rows) continue;
     used++;
+    usedPrefix[f[0]] = (usedPrefix[f[0]] || 0) + 1;
 
     // 一次把整檔丟進瀏覽器跑完(避免每根 K 都跨 IPC)
     let fired;
@@ -241,6 +248,9 @@ log('   p 值 = 假設這個訊號其實沒用,純靠運氣出現這種成績的
 const out = {
     updated: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
     syms: used, step: STEP, dedup: DEDUP, min_n: MIN_N,
+    // ⭐ V72.1.7 記錄「代號開頭分布」—— 日後一眼看得出樣本有沒有選樣偏誤
+    //   (舊的 500 檔版本這裡會是 {0:10,1:238,2:252},完全沒有 3~9 開頭)
+    cover: usedPrefix,
     base: { n: base[10].length, med: baseMed, win: baseWin },
     grades: { A: nA, B: nB, C: withP.length - nA - nB },
     signals: withP,
