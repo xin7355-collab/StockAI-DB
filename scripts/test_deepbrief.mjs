@@ -224,6 +224,41 @@ ok('⑨ ⭐ 會存「可回頭驗證」的紀錄(invalidate + 當時收盤 + 日
    /aiVerifyLog/.test(s3) && /invalidate:/.test(s3) && /close: f\.pC/.test(s3), s3.slice(0, 150));
 ok('⑨ 紀錄有滾動上限(⛔ 不可無限長大爆 localStorage)', /slice\(-200\)/.test(s3));
 
+// ── ⑩ V72.4.5 持有結構:套牢比例(實測過)vs 散戶佔比(⛔ 只准講事實)──
+const trap = await (async () => {
+    const pg = page;
+    return pg.evaluate(async (s) => {
+        const r = await fetch(`data/${s}.json`);
+        const d = (await r.json()).map(x => ({ ...x, close: +x.close, open: +x.open, high: +x.high, low: +x.low, volume: +x.volume }));
+        app.currentSymbolId = s; app.rawDailyData = d; app.activeData = d;
+        app.renderDeepBrief(d);
+        return {
+            t: app._trappedRatio(d),
+            txt: (document.getElementById('deepBriefCard')?.innerText || '').replace(/\s+/g, ' '),
+            src: app._trappedRatio.toString() + app._retailStructure.toString(),
+            ai: app.analyzeStockDeep.toString(),
+        };
+    }, SYMS[0]);
+})().catch(() => null);
+
+ok('⑩ 套牢比例算得出來且在 0~100', !!trap?.t && trap.t.pct >= 0 && trap.t.pct <= 100, JSON.stringify(trap?.t));
+ok('⑩ ⭐ 有附實測勝率與基準(⛔ 不可只給比例不給成績)',
+   !!trap?.t?.w60 && !!trap?.t?.baseW60 && !!trap?.t?.rng, JSON.stringify(trap?.t));
+ok('⑩ ⭐ 卡片有「誰在手上」區塊', /誰在手上/.test(trap?.txt || ''));
+ok('⑩ ⭐⛔ 必須寫明套牢比例「不是進場或放空的理由」(差距只有 5pp)',
+   /不是進場或放空的理由/.test(trap?.txt || ''), (trap?.txt || '').slice(0, 200));
+ok('⑩ ⭐ 用典型價不用收盤(振幅大的日子會失真)', /H\(b\) \+ L\(b\) \+ C\(b\)\) \/ 3/.test(trap?.src || ''));
+// ⭐ 最重要:散戶那條**只准當事實**,⛔ 不准生出沒驗證過的心理推論
+const aiSrc4 = trap?.ai || '';
+ok('⑩ ⭐⛔ 提示詞明令「不准講散戶多容易多殺多/信心不足」(那是沒驗證過的預測)',
+   /不准講「?散戶多容易多殺多|多殺多/.test(aiSrc4) && /沒驗證/.test(aiSrc4), aiSrc4.slice(0, 150));
+// ⚠️ 驗**語意**不驗確切寫法 —— 第一版把 `${f.retail?.weeks || '?'}` 的跳脫寫死進 regex,
+//    模板稍微換個寫法就假失敗(測試不該綁死實作細節)。
+ok('⑩ ⭐ 提示詞有說明集保只有幾週(誠實揭露樣本限制)',
+   /集保資料只有/.test(aiSrc4) && /weeks/.test(aiSrc4), aiSrc4.slice(0, 120));
+ok('⑩ ⭐ 套牢比例可以講「期待值要放低」但⛔ 不可當進場理由',
+   /期待值要放低/.test(aiSrc4) && /不是進場或放空的理由/.test(aiSrc4));
+
 await browser.close();
 console.log();
 if (fails.length) { console.log(`❌ DEEPBRIEF_TEST_FAIL:${fails.length} 條`); process.exit(1); }

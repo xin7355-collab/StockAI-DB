@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.4.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.4.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.4 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.5 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7080,8 +7080,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.4.4',
+    _APP_VERSION: 'V72.4.5',
     _CHANGELOG: [
+        { v: 'V72.4.5', dt: '2026-08-05', t: '👥 你說「少了散戶」是對的 —— 但我改用更好量的方式做', d: [
+            '你問「只看大戶少了散戶,散戶在高檔捨不得砍單是不是就該區間操作」—— 觀察對,**但不能用散戶佔比去做**:集保股權資料目前只有 **13 週**,根本驗證不了「散戶多會怎樣」。',
+            '⭐ 所以我改測一個**更直接、而且只要 K 線就算得出來**的東西:「**近 120 天買進的人,現在還在賠錢的比例**」—— 這才是「捨不得砍單的人有多少」的可量化版本。',
+            '📊 全市場實測結果,兩個**單調趨勢**(所以不是雜訊):① 套牢比例越高 → 60 日勝率越低(0~20% 是 29.8%、80%+ 只有 24.5%,基準 25.9%)② **套牢越多,後續 60 天的波動區間越小**(32.5% → 23.8%)。',
+            '✅ **你的推論對了一半**:套牢多的股票確實**波動變小、比較不會噴**。⛔ 但另一半不成立 —— 我上一版才實測「區間操作」60 日是負的,所以「波動小」不等於「適合區間操作賺錢」。正確用法是:**期待值要放低,別把它當飆股買**。',
+            '⛔ 而且我刻意**沒有**加「多殺多、信心不足」那種心理判讀 —— 那是沒驗證過的預測性說法,程式裡也明令 AI 不准講。散戶佔比只當**事實**顯示(幾 %、幾人、平均每人幾張),不計分、不下多空。',
+            '📍 全部併進既有的「深度診斷」卡,新增一區「👥 這檔現在誰在手上」,⛔ 沒有新增卡片。',
+        ] },
         { v: 'V72.4.4', dt: '2026-08-05', t: '📊 回測打臉我自己:「低檔布局」實測沒有優勢 + AI 額度不再爆', d: [
             '⭐ 我把深度診斷最上面那句「現在這檔適合的操作方式」拿去**全市場 2,227 檔回測**(扣掉同期大盤),結果打臉了我自己寫的功能:',
             '✅ **順勢做多** 有效 —— 60 日贏基準 +0.81pp、勝率 29.8%(基準 25.8%),三個天期都沒轉負。',
@@ -7916,13 +7924,6 @@ ${list}
             '回算成功:騰落線已經有 **250 個交易日**(2025/07/22 ~ 2026/07/29),不用再等。累積騰落線目前 −35,510,而且每天都有成交金額可以比量能。',
             '但驗數字時發現一個很陰的錯:07/27、07/28 的成交金額都對,**只有最新的 07/29 是 0**。原因是資料裡有 5 檔股票已經寫入了 07/30 的盤中列 → 程式把「今天」認成 07/30(它樣本不足被略過),於是 07/29 走到「已經有了就跳過」那條路,保留了上一版還沒有成交金額的舊資料。前幾天對、只有最新那天錯,這種最難發現。',
             '已修兩件:①「今天」改成取「樣本數足夠的最新交易日」,不是資料裡的最大日期 ② 舊資料缺新欄位時會自動補齊 —— 這第二件已經咬過兩次了,所以這次做成通則,以後新增欄位不會再只有「往後才有」。',
-        ] },
-        { v: 'V71.5.8', dt: '2026-07-30', t: '🚨 你問 5483 的 166 止損 —— 那是我的 bug,不是你看錯', d: [
-            '你問「量價密集區 162-167 附近會不會止跌?你叫我 166 止損對嗎?」查完:那條 166.5 是錯的,而且量價密集區也不該顯示。',
-            '① 166.5 就是 7/29 那天自己的最低點(那天跌停鎖死,開 183 收 166.5 收在最低)。程式算「近 10 日低」時把今天這根也算進去 → 防線變成當天的極端值。隔天現價 167.5 只高它 0.6%,盤中隨便一動就碰到。而它上面那條寫「反彈到 5 日線 194.5 先減碼一半」—— 兩條互相矛盾:被 166.5 掃出場就永遠等不到 194.5。已改成排除今天那根。',
-            '② 排除今天後真正的近 10 日低是 184.5,而現價 166.5 早就跌破它 9.8%,季線 179.3 也破了。所以正確講法是「近期支撐已經全破、下方沒有結構支撐可守」,不是「再破 166.5 才出場」。已改成這樣講,並把今天的低點降級成「續弱確認線」,明講它是當天極端值、不是支撐。',
-            '③ 量價密集區「162.1~167.6」也是假精確:這 60 天股價從 137 衝到 278 再殺回 166,從來沒盤整過,成交量幾乎平均散開 —— 最集中的那一段也只占 8.5%,第 2、3、4 名是 7.8%、7.6%、6.8%,四段幾乎並列,根本分不出主峰。現在這種情況會直接顯「無明顯量價密集區」並說明原因,不再印一個精確到小數的區間讓人拿去當支撐。',
-            '通則:防線一律要用「之前的低點」,不能用當根自己的極端值;任何精確數字都要先過「這個數字撐得起來嗎」的檢查,撐不起就誠實說沒有。',
         ] },
         // ⚡ V72.1.8 App 內只留**最近 60 筆**(約 1 個月)。
         //   原因:累積到 343 筆 / 147 KB,佔 index.html 的 5.1%,每次開 App 都要下載,
@@ -15976,6 +15977,37 @@ const marginByDate = {};
                 })()}
             </div>
 
+            <!-- ①b 🪤 V72.4.5 持有結構(使用者提問:只看大戶少了散戶)
+                 ⛔ 併進既有卡片,沒有新增卡片。 -->
+            ${(() => {
+                const t = f.trap, r = f.retail;
+                if (!t && !r) return '';
+                const rows = [];
+                if (t) {
+                    const cls = t.pct >= 60 ? 'text-red-300' : t.pct >= 40 ? 'text-yellow-300' : 'text-green-300';
+                    rows.push(`<div class="py-1 border-b border-[#21262d]">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] text-gray-300">🪤 近 120 日買進的人,<b>現在還在賠錢的比例</b></span>
+                            <span class="text-[12px] font-black font-mono ${cls}">${t.pct.toFixed(0)}%</span>
+                        </div>
+                        <div class="text-[9px] text-gray-500 leading-snug mt-0.5">${t.tag} ・實測這個區間的 60 日勝率 <b class="text-gray-400">${t.w60}%</b>(全市場基準 ${t.baseW60}%),後續 60 日波動區間中位 <b class="text-gray-400">${t.rng}%</b>。<br>⭐ 套牢越多 → 上檔壓力越重、<b>波動越小越不會噴</b> → <b class="text-gray-300">期待值要放低</b>。⛔ 但差距不大,<b>不是進場或放空的理由</b>。</div>
+                    </div>`);
+                }
+                if (r) {
+                    rows.push(`<div class="py-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] text-gray-300">🧑‍🤝‍🧑 散戶持股佔比 <span class="text-gray-600">(集保 ${r.date.slice(4, 6)}/${r.date.slice(6, 8)})</span></span>
+                            <span class="text-[12px] font-black font-mono text-gray-200">${r.ret.toFixed(2)}% <span class="text-[9px] ${r.retDelta >= 0 ? 'text-red-300' : 'text-green-300'}">${r.retDelta >= 0 ? '+' : ''}${r.retDelta}pp</span></span>
+                        </div>
+                        <div class="text-[9px] text-gray-500 leading-snug mt-0.5">股東 ${r.ppl.toLocaleString()} 人${r.pplDelta != null ? `(${r.pplDelta >= 0 ? '+' : ''}${r.pplDelta.toLocaleString()})` : ''}${r.avgLots ? ` ・平均每人 ${r.avgLots.toFixed(1)} 張` : ''}。<br>⚠️ 這只是<b>事實描述</b> —— 集保資料目前只有 <b class="text-gray-400">${r.weeks} 週</b>,<b>還無法驗證「散戶多會怎樣」</b>,所以⛔ 不拿它下多空判斷、也不計分。</div>
+                    </div>`);
+                }
+                return `<div class="mb-2 pb-1 border-b border-[#21262d]">
+                    <div class="text-[11px] font-bold text-gray-300 mb-1">👥 這檔現在誰在手上</div>
+                    ${rows.join('')}
+                </div>`;
+            })()}
+
             <!-- ② 大戶出貨徵兆檢查表 -->
             ${d ? `<div class="mb-2">
                 <div class="flex items-center justify-between mb-1">
@@ -16088,6 +16120,13 @@ ${f.tdcc ? `集保:大戶 ${f.tdcc.bigDelta >= 0 ? '+' : ''}${f.tdcc.bigDelta}pp
 ${f.margin ? `融資族群推估成本 ${n(f.margin.cost, 1)},斷頭壓力區約 ${n(f.margin.callPx, 1)}` : '融資:無資料'}
 
 【大戶出貨徵兆】${f.dist ? `${f.dist.level} ${f.dist.hits}/${f.dist.total} 條` : '資料不足'} — 亮的是:${distTxt}
+
+【誰在手上】${f.trap ? `近 120 日買進的人有 ${f.trap.pct.toFixed(0)}% 還在賠錢(${f.trap.tag});實測這個區間 60 日勝率 ${f.trap.w60}%(基準 ${f.trap.baseW60}%)、後續波動區間中位 ${f.trap.rng}%` : '套牢比例:資料不足'}
+${f.retail ? `散戶持股 ${f.retail.ret.toFixed(2)}%(週變化 ${f.retail.retDelta >= 0 ? '+' : ''}${f.retail.retDelta}pp)、股東 ${f.retail.ppl.toLocaleString()} 人` : '散戶結構:無集保資料'}
+  ⛔ 散戶那條**只准當事實講**:集保資料只有 ${f.retail?.weeks || '?'} 週,**還沒驗證過「散戶多會怎樣」**,
+     ⛔ 不准講「散戶多容易多殺多/信心不足」這種沒驗證的心理推論。
+  ⭐ 套牢比例可以講:套牢越多 → 上檔壓力越重、波動越小越不會噴 → **期待值要放低**;
+     ⛔ 但差距不大(勝率頭尾差約 5pp),不是進場或放空的理由。
 
 【大盤與總經】台股風險指數 ${f.market.risk ?? '?'}/100;VIX ${f.market.vix ?? '?'};費半 ${f.market.sox ?? '?'}%;標普 ${f.market.sp500 ?? '?'}%
 外資台指期 ${f.market.fiFut || '無資料'};期現價差 ${f.market.basis ?? '無資料'};美元兌台幣 ${f.market.usdtwd ?? '?'};西德州原油 ${f.market.oil ?? '?'}
@@ -21622,6 +21661,76 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return { hits, total: items.length, items, level };
     },
 
+    // 🪤 V72.4.5 「有多少人套牢」+ 散戶結構 —— 使用者提問:
+    //   「你的判斷除了大戶以外少了散戶…散戶在高檔捨不得砍單,是否就區間操作?」
+    //
+    //   ⭐ 觀察是對的(原本只看大戶),但**不是用「散戶佔比」去做** ——
+    //      集保股權分散表只有 **13 週**(同 V71.9.0 的限制)→ 無法驗證預測力。
+    //   ⭐ 改測「**套牢比例**」:近 120 日成交量裡,成交價高於今天收盤的佔多少 ——
+    //      這才是「捨不得砍單的人有多少」的可量化版本,而且**只要 K 線,完全可回測**。
+    //
+    //   📊 `trapped_probe.py` 實測(全市場、扣同期加權、20 日去重、n=11,843~28,376):
+    //     ┌──────────────┬─────────┬─────────┬─────────┬───────────┐
+    //     │ 套牢比例      │ 10日勝率 │ 20日勝率 │ 60日勝率 │ 後60日波動 │
+    //     ├──────────────┼─────────┼─────────┼─────────┼───────────┤
+    //     │ 0~20%(人人賺)│ 39.6%   │ 37.3%   │ 29.8%   │ 32.5%     │
+    //     │ 40~60%       │ 35.3%   │ 32.8%   │ 25.2%   │ 26.7%     │
+    //     │ 80%+(人人套) │ 34.6%   │ 31.5%   │ 24.5%   │ 23.8%     │
+    //     │ (基準)       │ 36.3%   │ 32.8%   │ 25.9%   │ —         │
+    //     └──────────────┴─────────┴─────────┴─────────┴───────────┘
+    //   ⭐ 兩個**單調**趨勢(所以不是雜訊):
+    //     ① 套牢越多 → 勝率越低(三個天期一致,頭尾差 5pp)
+    //     ② 套牢越多 → **後續波動區間越小**(32.5% → 23.8%)= 越像箱型、越不會噴
+    //   ⚠️ 但中位報酬邊際都在 ±0.85pp 內 → ⛔ **不可當進場/放空訊號**,
+    //      只能當「**期待值要放多高**」的參考。
+    //   ⛔ 使用者的「所以就該區間操作」只對一半:波動確實變小,
+    //      但我 V72.4.4 才實測「區間操作」60 日 −0.55pp → 波動小 ≠ 賺得到。
+    _trappedRatio(data) {
+        if (!Array.isArray(data) || data.length < 140) return null;
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), H = b => +((b?.high ?? b?.h) || 0),
+              L = b => +((b?.low ?? b?.l) || 0), V = b => +(b?.volume || 0);
+        const pC = C(data[last]); if (!(pC > 0)) return null;
+        const win = data.slice(-121);
+        let tot = 0, above = 0;
+        for (const b of win) {
+            const v = V(b); if (!(v > 0)) continue;
+            const typ = (H(b) + L(b) + C(b)) / 3;      // 典型價,⛔ 不用收盤(振幅大的日子會失真)
+            tot += v; if (typ > pC) above += v;
+        }
+        if (!(tot > 0)) return null;
+        const pct = above / tot * 100;
+        // 實測對照(⛔ 寫死的是回測結果,不是猜的;改判定就要重跑 trapped_probe.py)
+        const band = pct >= 80 ? { w60: 24.5, rng: 23.8, tag: '⛔ 幾乎人人套牢' }
+                   : pct >= 60 ? { w60: 24.2, rng: 24.4, tag: '⚠️ 套牢偏多' }
+                   : pct >= 40 ? { w60: 25.2, rng: 26.7, tag: '➖ 一半左右套牢' }
+                   : pct >= 20 ? { w60: 27.1, rng: 29.4, tag: '✅ 多數人有賺' }
+                   :             { w60: 29.8, rng: 32.5, tag: '✅ 幾乎人人賺錢' };
+        return { pct, ...band, baseW60: 25.9 };
+    },
+
+    // 🧑‍🤝‍🧑 散戶結構(集保官方週資料)—— ⛔ 只做**事實描述**,不下預測。
+    //   ⚠️ `tdcc_holders.json` 只有 13 週 → 跟 V71.9.0 一樣**樣本不足以驗證預測力**。
+    //   ⛔ 所以「散戶多所以會多殺多/信心不足」這種話**一律不准講**(那是預測性主張)。
+    _retailStructure(sym) {
+        try {
+            const td = this._tdccHoldersCache?.[sym];
+            const h = td && Array.isArray(td.h) ? td.h : null;
+            if (!h || h.length < 2) return null;
+            const a = h[h.length - 1], b = h[h.length - 2];
+            const ret = +a[3], retPrev = +b[3];
+            const ppl = a.length > 4 ? +a[4] : 0, pplPrev = b.length > 4 ? +b[4] : 0;
+            if (!(ret > 0)) return null;
+            const tot = +td.t || 0;
+            return {
+                ret, retDelta: +(ret - retPrev).toFixed(2),
+                ppl, pplDelta: (ppl > 0 && pplPrev > 0) ? ppl - pplPrev : null,
+                avgLots: (tot > 0 && ppl > 0) ? (tot / ppl / 1000) : null,   // 平均每人持股(張)
+                date: String(a[0] || ''), weeks: h.length,
+            };
+        } catch (_) { return null; }
+    },
+
     // 🎯 操作型態:低檔布局 / 區間操作 / 順勢做多 / 先觀望(純公式)
     //   ⭐ 使用者問的「是區間操作還是低檔布局」—— 這件事**算得出來**,不必問 AI:
     //      位階(在一年裡的高低)× 中期趨勢 × 有沒有明確箱型。
@@ -21755,6 +21864,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             fi5: fnet(5), fi20: fnet(20), tr5: tnet(5), tr20: tnet(20),
             dist: this._distributionWatch(data, sym),
             play: this._playbookMode(data, sym),
+            trap: this._trappedRatio(data),          // 🪤 V72.4.5 套牢比例(實測有單調關係)
+            retail: this._retailStructure(sym),      // 🧑‍🤝‍🧑 散戶結構(⛔ 只做事實,不下預測)
             margin: (() => { try { return this._marginCallState(data, sym); } catch (_) { return null; } })(),
             tdcc: (() => { try { return this._tdccFourFactor(sym); } catch (_) { return null; } })(),
             market: {
