@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.4.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.4.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.5 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.6 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7080,8 +7080,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.4.5',
+    _APP_VERSION: 'V72.4.6',
     _CHANGELOG: [
+        { v: 'V72.4.6', dt: '2026-08-05', t: '🚨 你截圖抓到兩個「照著做會出事」的 bug(國巨 2327)', d: [
+            '🐛 **最危險的一個**:空頭那段寫「反彈碰到 5 日線 **533** → 先出一半」,但你當下**現價已經 591**。5 日線是昨天收盤算的,今天盤中大漲 4.9% 早就站上去了 —— 那句話是拿**已經達成的條件**叫你「等它發生」,照著掛單會完全錯亂。現在會改口說「**已經站上 5 日線,要出就是現在這一帶分批出**」。同理「跌破 532.95 全部出」也會改成「這個價位早就破了,現在是上方壓力,別再拿它當停損掛單」。',
+            '🐛 **金額差 14 倍**:「上檔空間」寫「**一張**淨賺 +49,210 元」,但你只有 **0.07 張**,實際只有 +3,445 元。現在有庫存就用**你實際的股數**算,標題也會寫「你手上 0.07 張淨賺 …」。風報比也一起用同一個股數。',
+            '🐛 摺疊列寫「20MA **891.00** 跌破」—— 現價 594,891 在**上方 50%**。字面沒錯但會被當成可以掛單的防守價,現在離太遠(>15%)會直接改口說「遠在上方 50%(是壓力不是防守)」。',
+            '⭐ 通用鐵則已寫進開發筆記:**任何「等它碰到 X」的指令,都要先確認現價還沒到 X** —— 到了就要改口,不可原文照顯示。',
+        ] },
         { v: 'V72.4.5', dt: '2026-08-05', t: '👥 你說「少了散戶」是對的 —— 但我改用更好量的方式做', d: [
             '你問「只看大戶少了散戶,散戶在高檔捨不得砍單是不是就該區間操作」—— 觀察對,**但不能用散戶佔比去做**:集保股權資料目前只有 **13 週**,根本驗證不了「散戶多會怎樣」。',
             '⭐ 所以我改測一個**更直接、而且只要 K 線就算得出來**的東西:「**近 120 天買進的人,現在還在賠錢的比例**」—— 這才是「捨不得砍單的人有多少」的可量化版本。',
@@ -7919,11 +7925,6 @@ ${list}
             '守住兩條鐵則:所有數字都由程式算好才餵進去(不讓 AI 自己算),而且明確要求它用「偏多/偏空」文字而不是紅綠符號。資料不足時要它直說「無法判斷」,不准硬掰。結果存整天,切頁回來自動還原不重複燒額度。',
             '② 名稱改了:原本叫「盤前新聞重點」,但你截圖是中午 12:42,裡面全是 11:38、11:35、10:48 的盤中新聞 —— 叫「盤前」根本不對。改成「📰 台股新聞焦點(盤前+盤中,依時間排序)」。',
             '③ 順手修一個顏色反了的 bug:「利多」原本顯**綠色**、「利空」顯**紅色** —— 那是美股慣例。這是台股 App,紅=漲=好、綠=跌=壞,所以掃一眼會完全看反,而且跟其他每一張卡的紅綠語意打架。兩處都改了。',
-        ] },
-        { v: 'V71.5.9', dt: '2026-07-30', t: '📈 騰落線 250 天上線了,順手修一個「只有最新那天錯」的坑', d: [
-            '回算成功:騰落線已經有 **250 個交易日**(2025/07/22 ~ 2026/07/29),不用再等。累積騰落線目前 −35,510,而且每天都有成交金額可以比量能。',
-            '但驗數字時發現一個很陰的錯:07/27、07/28 的成交金額都對,**只有最新的 07/29 是 0**。原因是資料裡有 5 檔股票已經寫入了 07/30 的盤中列 → 程式把「今天」認成 07/30(它樣本不足被略過),於是 07/29 走到「已經有了就跳過」那條路,保留了上一版還沒有成交金額的舊資料。前幾天對、只有最新那天錯,這種最難發現。',
-            '已修兩件:①「今天」改成取「樣本數足夠的最新交易日」,不是資料裡的最大日期 ② 舊資料缺新欄位時會自動補齊 —— 這第二件已經咬過兩次了,所以這次做成通則,以後新增欄位不會再只有「往後才有」。',
         ] },
         // ⚡ V72.1.8 App 內只留**最近 60 筆**(約 1 個月)。
         //   原因:累積到 343 筆 / 147 KB,佔 index.html 的 5.1%,每次開 App 都要下載,
@@ -18860,6 +18861,18 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     // 買 buy → 賣 sell,shares 股的「淨」損益(元,已四捨五入到元)
     //   扣:買+賣兩邊手續費(牌價 0.1425% × 你的折數)+ 賣出證交稅 0.3%(波段;當沖減半由當沖試算機另算)
+    // 🧮 V72.4.6 你手上這檔實際有幾股(沒有就回 null)——⭐ 使用者截圖抓到:
+    //   他只有 **0.07 張(70 股)**,但「上檔空間」寫「一張淨賺 +49,210 元」,
+    //   實際只有 +3,445 元 —— **差 14 倍**。零股/小資族看了會嚴重高估。
+    //   ⛔ 任何「賺/賠多少元」的顯示,有庫存就用**實際股數**,沒庫存才用一張當範例。
+    _myShares(sym) {
+        try {
+            const it = (this.inventory || []).find(i => String(i.symbol) === String(sym || this.currentSymbolId));
+            const s = it ? +it.shares : 0;
+            return s > 0 ? s : null;
+        } catch (_) { return null; }
+    },
+
     _netPL(buy, sell, shares = 1000) {
         if (!(buy > 0) || !(sell > 0) || !(shares > 0)) return null;
         const fd = this._feeDisc();
@@ -18990,19 +19003,24 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         add('60MA 保衛價', gs.g60, '已跌破・變壓力');
         add('突破棒防守價', gs.boMid, '已跌破・變壓力');
         out.sort((a, b) => a.v - b.v);
-        out.forEach(o => { o.pct = (o.v - pC) / pC * 100; o.ntd = this._netPL(pC, o.v); });
+        // 💰 V72.4.6 有庫存就用**你實際的股數**算金額(⛔ 不再一律當「一張」)
+        const _sh = this._myShares();
+        out.forEach(o => { o.pct = (o.v - pC) / pC * 100; o.ntd = this._netPL(pC, o.v, _sh || 1000); });
+        out._shares = _sh;   // 顯示端要據此改用詞(你手上 X 張 / 一張)
         // 風報比:用「第一個上檔目標」對「出場總表的停損價」——兩邊都是既有數字,不自己訂
         const stopV = Number.isFinite(+dx.def) && +dx.def > 0 && +dx.def < pC ? +dx.def : null;
         const first = out[0] || null;
-        const risk = stopV ? this._netPL(pC, stopV) : null;              // 負值
+        const risk = stopV ? this._netPL(pC, stopV, _sh || 1000) : null;  // 負值(⭐ 風報比也要用同一個股數)
         const rr = (first && risk != null && risk < 0) ? (first.ntd / -risk) : null;
-        return { list: out, first, stop: stopV, risk, rr, pC };
+        return { list: out, first, stop: stopV, risk, rr, pC, shares: _sh };
     },
 
     // 「還有多少空間」區塊 HTML(給防守價一覽用;沒東西可講就回空字串)
     _upsideRoomHtml(u) {
         if (!u) return '';
         const money = n => (n == null ? '—' : `${n >= 0 ? '+' : '−'}${Math.abs(n).toLocaleString('en-US')} 元`);
+        // 💰 V72.4.6 金額基準要說清楚是「你手上的量」還是「一張」(⛔ 零股族看到「一張」會高估十幾倍)
+        this._upsideUnitLbl = u.shares ? `你手上 ${(u.shares / 1000).toFixed(u.shares % 1000 ? 2 : 0)} 張` : '一張';
         if (!u.list.length) {
             return `<div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 border-red-500 pl-2.5 py-1.5 rounded-r mb-2 leading-relaxed">
                 🚀 <b class="text-red-300">上方已經沒有近期壓力</b> —— 這一帶沒有套牢賣壓擋著(創高或已突破所有前高)。
@@ -19022,10 +19040,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <span class="font-mono text-[10px] w-[64px] text-right ${x.ntd >= 0 ? 'text-red-300' : 'text-green-300'}">${money(x.ntd)}</span>
         </div>`).join('');
         return `<div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 border-red-500 pl-2.5 py-1.5 rounded-r mb-2 leading-relaxed">
-                現在買,先碰到的是 <b class="text-red-300">${f.n} ${f.v.toFixed(2)}</b> —— 還有 <b class="text-red-300 font-mono">+${f.pct.toFixed(1)}%</b> 的空間,<b class="text-red-300 font-mono">一張淨賺 ${money(f.ntd)}</b>。${f.pct < 3 ? '<b class="text-yellow-300">空間不到 3%,扣掉成本幾乎沒得賺 —— 現在追等於幫人抬轎。</b>' : ''}
+                現在買,先碰到的是 <b class="text-red-300">${f.n} ${f.v.toFixed(2)}</b> —— 還有 <b class="text-red-300 font-mono">+${f.pct.toFixed(1)}%</b> 的空間,<b class="text-red-300 font-mono">${this._upsideUnitLbl}淨賺 ${money(f.ntd)}</b>。${f.pct < 3 ? '<b class="text-yellow-300">空間不到 3%,扣掉成本幾乎沒得賺 —— 現在追等於幫人抬轎。</b>' : ''}
             </div>
             ${rrTxt}
-            <div class="text-[9px] text-gray-500 mt-2 mb-0.5">⬆️ 上檔空間(由近到遠・元=一張淨賺,已扣費稅)</div>${rows}`;
+            <div class="text-[9px] text-gray-500 mt-2 mb-0.5">⬆️ 上檔空間(由近到遠・元=${this._upsideUnitLbl}淨賺,已扣費稅)</div>${rows}`;
     },
 
     // 🛡️ V71.0.1 — 防守價一覽(U-18):把下方 4 張卡各自算出的防守價彙整成一條「由近到遠」的尺。
@@ -27623,8 +27641,20 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     rules.push(`🔺 之後站回 5 日線 ${nfP(ma5)} 再重新評估`);
                 } else if (trend === 'bear') { big = '🚪 建議離場'; bigCls = 'text-orange-400'; cmdBorder = 'border-orange-500';
                     why = '這檔已翻成空頭(愈盤愈低),抱著只會越套越深 — 反彈是給你離場用的,不是加碼用的。';
-                    rules.push(`🔺 反彈碰到 5 日線 ${nfP(ma5)} → 先出一半以上`);
-                    if (slF != null) rules.push(`🔻 跌破 ${nfP(slF)} → 全部出,不等了`);
+                    // 🐛 V72.4.6 使用者截圖抓到最危險的一種:寫「反彈碰到 5 日線 533 → 先出一半」,
+                    //   但當下**現價已經 591**(盤中大漲 +4.9%,5 日線還是昨天收盤算的)。
+                    //   → 那條指令是拿**已經達成的條件**叫人「等它發生」,照著掛單會完全錯亂。
+                    //   ⛔ 通用鐵則:任何「等它碰到 X」的指令,都要先確認**現價還沒到 X**;
+                    //      已經到了就要改口說「已經站上/已經跌破」,⛔ 不可原文照顯示。
+                    if (ma5 != null && C > ma5 * 1.005) {
+                        rules.push(`🔺 <b>已經站上 5 日線 ${nfP(ma5)}</b>(現價高它 ${((C - ma5) / ma5 * 100).toFixed(1)}%)→ 這波反彈已經在進行中,<b>要出就是現在這一帶分批出</b>,別再等它「碰到」5 日線`);
+                    } else {
+                        rules.push(`🔺 反彈碰到 5 日線 ${nfP(ma5)} → 先出一半以上`);
+                    }
+                    if (slF != null) {
+                        if (C < slF) rules.push(`🔻 <b>${nfP(slF)} 早就跌破了</b>(現價低它 ${((slF - C) / slF * 100).toFixed(1)}%)→ 這個價位已經不是「防守點」,是**上方壓力**;⛔ 別再拿它當停損掛單`);
+                        else rules.push(`🔻 跌破 ${nfP(slF)} → 全部出,不等了`);
+                    }
                 } else if (effTpS != null && C < effTpS) { big = '🟡 警戒・先減碼'; bigCls = 'text-yellow-400'; cmdBorder = 'border-yellow-500'; gridMode = 'full';
                     why = pnlPct > 0 ? `${_ts.label}轉弱(跌破${effLineLbl})— 先把一半獲利放進口袋,剩下的讓它去跑。` : `${_ts.label}轉弱(跌破${effLineLbl})— 沒破停損前不砍,但也絕不加碼攤平。`;
                     if (pnlPct > 0) rules.push('🔻 現在 → 先賣一半,鎖住獲利');
@@ -28659,7 +28689,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const u = this._upsideStash;
         const money = n => `${n >= 0 ? '+' : '−'}${Math.abs(n).toLocaleString('en-US')} 元`;
         const room = (u && u.first && Math.abs(u.pC - (data[last] || {}).close) < 0.01)
-            ? `<div class="text-[10px] text-gray-200 mt-1.5 bg-[#0d1117] border-l-2 border-red-500 pl-2 py-1 rounded-r leading-snug">💰 現在買到第一道 <b class="text-red-300 font-mono">${u.first.v.toFixed(2)}</b> 還有 <b class="text-red-300 font-mono">+${u.first.pct.toFixed(1)}%</b>,一張淨賺 <b class="text-red-300 font-mono">${money(u.first.ntd)}</b>${u.rr != null ? ` ・風報比 1:${u.rr.toFixed(1)}` : ''} <span class="text-gray-500">(完整清單見「📐 上檔空間 ・ 防守價」)</span></div>`
+            ? `<div class="text-[10px] text-gray-200 mt-1.5 bg-[#0d1117] border-l-2 border-red-500 pl-2 py-1 rounded-r leading-snug">💰 現在買到第一道 <b class="text-red-300 font-mono">${u.first.v.toFixed(2)}</b> 還有 <b class="text-red-300 font-mono">+${u.first.pct.toFixed(1)}%</b>,${this._upsideUnitLbl||"一張"}淨賺 <b class="text-red-300 font-mono">${money(u.first.ntd)}</b>${u.rr != null ? ` ・風報比 1:${u.rr.toFixed(1)}` : ''} <span class="text-gray-500">(完整清單見「📐 上檔空間 ・ 防守價」)</span></div>`
             : '';
         return `<div class="mt-2 pt-2 border-t border-amber-800/40">
             <div class="text-[10px] font-bold text-amber-300 mb-1">⚠️ 上方壓力區(近 120 日 M 頭)</div>
@@ -33674,7 +33704,21 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 _mhg.innerHTML = `<div class="flex items-center gap-1.5 mb-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">明日均線保衛價</span><button onclick="app.showJargon('扣抵')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button></div>${_hero}${_rows}`;
                 _mhg.classList.remove('hidden');
                 // 🚦 V58.4 收合列燈號:20MA 保衛價 + 守住/跌破(拆自「更多守價」後這卡有自己的收合殼)
-                try { this._setLight('lightGuard', g20 != null ? `<span class="font-mono ${pC > g20 ? 'text-red-300' : 'text-green-300'}">20MA ${g20.toFixed(2)} ${pC > g20 ? '守住' : '跌破'}</span>` : '—'); } catch (_) {}
+                // 🐛 V72.4.6 使用者截圖:摺疊列寫「20MA 891.00 跌破」,但現價 594 —— 891 在**上方 50%**。
+                //   「跌破」在字面上沒錯(早就破了),但把一個離現價 50% 的價位放在「防守出場」的摘要列,
+                //   會讓人以為那是可以掛單的防守價。⛔ 離太遠(>15%)就要改口說它已經變成**上方壓力**。
+                try {
+                    let _gl = '—';
+                    if (g20 != null) {
+                        const _gp = (g20 - pC) / pC * 100;
+                        _gl = pC > g20
+                            ? `<span class="font-mono text-red-300">20MA ${g20.toFixed(2)} 守住</span>`
+                            : _gp > 15
+                            ? `<span class="font-mono text-gray-400">20MA ${g20.toFixed(2)} 遠在上方 ${_gp.toFixed(0)}%(是壓力不是防守)</span>`
+                            : `<span class="font-mono text-green-300">20MA ${g20.toFixed(2)} 跌破</span>`;
+                    }
+                    this._setLight('lightGuard', _gl);
+                } catch (_) {}
             } else { _mhg.classList.add('hidden'); try { this._setLight('lightGuard', '—'); } catch (_) {} }
         }
         // 🧱 V31.8 突破棒防守監測器:回掃 ≤25 根找最近爆量長紅(實體漲幅≥5% + 量≥前5根均量×1.5),½價=結構防守價
