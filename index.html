@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.4.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.4.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -683,7 +683,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7102,8 +7102,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.4.8',
+    _APP_VERSION: 'V72.4.9',
     _CHANGELOG: [
+        { v: 'V72.4.9', dt: '2026-08-05', t: '🏚️ 新增「全市場跌到地板的有幾檔」= 大盤跌完了沒(附實測),另外兩招實測不成立所以沒做', d: [
+            '① 🏚️ **大盤 → 市場廣度**卡新增一行「全市場跌到『地板』的有幾檔」。地板 = 這檔離月線的距離落在**它自己歷史最慘的 5%**(跟自己比,不是寫死跌幾%)。一檔跌到地板只是那檔倒楣;**一大票同時跌到地板 = 整個市場在投降**,那才是短線低點的樣子。',
+            '② 📊 實測(2,251 檔 × 486 個交易日):**300 檔以上的那 51 天**,之後 5/10/20 日大盤比「隨便挑一天」多 **+1.55 / +1.44 / +1.45 個百分點**、勝率 67/78/74%。⚠️ 但 **50~299 檔那一段反而略差** → 這不是「越多越好」的指標,只有極端那端才算數,卡上有寫。',
+            '③ ⚠️ 原始說法是「地板股大概 100 檔就是短線低點」,但那個門檻在我兩年資料裡**只出現 11 天**、樣本太少無法驗證 → 我改用自己實測出來有邊際的 **300 檔**,並在教學裡把差別講清楚。',
+            '④ 🗄️ 歷史**一次回算 250 個交易日**(不是從今天開始存),上線當天就有一年可看。',
+            '⑤ ❌ **實測不成立、所以沒做**:「低檔高週轉=起漲、高檔高週轉=出貨」(邊際 −0.06~+0.09pp,方向還反了)、「月線斜率 ≥1%/日 = 飆股」(5/10/20 日邊際 **−0.67 / −1.06 / −2.07pp**,越陡越糟)。把驗過不成立的寫下來,以後才不會再做一次。',
+        ] },
         { v: 'V72.4.8', dt: '2026-08-05', t: '🐛 你回報的三件事全修好(其中一件是我踩了自己寫過的坑)', d: [
             '① 🎯「今天扣完成本還會賺的訊號」**卡住不能往下滑** —— 根因:選股頁是**刻意不讓整頁捲動**的(設計上讓左右兩欄各自捲),但這張訊號卡掛在那些捲動區**外面**,列數一多就被切掉、外層又不能捲 → 卡死。現在讓它**自己捲**,而且下面的榜單不會被擠掉。',
             '② 🧠 深度診斷**四個頁籤都出現** —— 這是我自己踩了開發筆記裡白紙黑字寫過的坑:卡片放在兩個頁籤區塊**中間**,結果不管切哪頁都顯示。已移進「現在怎麼做」頁籤(它回答的正是「這檔現在該怎麼操作」),其他頁不再重複。',
@@ -7940,13 +7947,6 @@ ${list}
         { v: 'V71.6.3', dt: '2026-07-30', t: '📊 大盤官方成交量改成涵蓋整份歷史(上一版只蓋到最新三個月)', d: [
             '上一版把官方成交量併在錯的位置 —— 那支函式只回最近三個月,所以只有最新 63 天拿到官方量,舊的 423 天永遠沒有,一年期的量能趨勢還是算不出來。改到合併之後才併,現在整份兩年歷史都有。',
             '順手加節流:一次要抓約 30 個月份檔,證交所對連續快速請求會擋,每檔之間停 0.3 秒。',
-        ] },
-        { v: 'V71.6.2', dt: '2026-07-30', t: '🔧 修兩個「工具說沒問題、其實從沒運作過」的採礦缺口', d: [
-            '基本面 X 光機的 P/B 判斷,從上線到現在一直用固定門檻(<2 便宜 / >5 貴)—— 因為全市場 P/B 分位數那個檔案「一次都沒產出過」。真因是採礦時把 P/B 這欄丟掉了,不是抓不到。修好後 P/B 會改用「全市場排在第幾名」來判,AI 行情下不會再全部顯示貴。',
-            '大盤 K 線補上證交所官方成交股數與成交金額,涵蓋整份兩年歷史(486 天)—— 之前最新三個月的成交量一直是 0。',
-            '順手把「樣本不足」的訊息改成印出實際數字 —— 舊訊息只寫「不足」,所以「一直是 0」跟「今天剛好少」長得一模一樣,這才是它躲了這麼久沒被發現的原因。',
-            '加權指數「今天漲跌幾 %」補上了 —— 這個數字後端從來沒產出過,所以新聞綜合分析在判今天盤勢時,其實一直看不到「今天到底漲跌多少」。改成前端用大盤 K 線自己算,不用等採礦。',
-            '台指 VIX 的錯誤訊息改成一句白話結論。查證結果:是金鑰的帳號等級不夠(免費層開不了這個資料集),不是程式問題 —— 改程式不會有值,詳情見下方說明。',
         ] },
         // ⚡ V72.1.8 App 內只留**最近 60 筆**(約 1 個月)。
         //   原因:累積到 343 筆 / 147 KB,佔 index.html 的 5.1%,每次開 App 都要下載,
@@ -39660,6 +39660,88 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             + '⚠️ 中位數含上市+上櫃、不含 ETF;這是描述今天長什麼樣,不是買賣訊號。');
     },
 
+    // 🏚️📊 V72.4.9 「全市場地板股家數」—— 權證小哥《哥有籌必爆》S2 第22集 + 兆華艾綸說:
+    //   「假如**地板股有大概 100 檔,那大概就是短線的低點**」「最近地板股還不多 → 代表這個盤
+    //     還沒跌到可以撿的位置」。
+    //   ⛔ 別跟個股頁的「極端超跌」(`_detectFloorBounce`)搞混 —— 那張問「**這一檔**該不該接刀」
+    //      (實測:接刀平均輸大盤);這裡問的是「**大盤**跌完了沒」,完全是兩件事。
+    //   📊 `floorcount_probe.py` 實測(2,251 檔 × 486 個交易日,2024-07-30 ~ 2026-07-30):
+    //     ≥300 檔那 51 天 → 加權指數後 5/10/20 日邊際 +1.55 / +1.44 / +1.45pp、
+    //     勝率 67 / 78 / 74%(基準 61 / 64 / 74%),三個天期方向一致。
+    //   ⚠️⚠️ 四個限制**必須留在卡上**,⛔ 別為了好看拿掉:
+    //     ① **非單調** —— 中間段(50~299 檔)反而 −0.15~−0.58pp,只有極端那端有邊際
+    //     ② 他說的「**有量** 100 檔」在 2 年窗口只出現 11 天 → 樣本不足,無法驗證(所以主指標用不看量的)
+    //     ③ 回測窗口整段是多頭(基準 20 日勝率就有 73.6%)→ ⛔ 不可外推到空頭
+    //     ④ 交易日高度重疊(連著幾天都算低點是同一件事)→ n=51 不是 51 個獨立樣本
+    _floorCountState() {
+        const h = this._breadthHist;
+        const hist = (Array.isArray(h) ? h : []).filter(x => x && typeof x.flr === 'number');
+        if (hist.length < 20) return null;
+        const last = hist[hist.length - 1];
+        const n = +last.flr || 0, nv = +last.flrv || 0;
+        const win = hist.slice(-250).map(x => +x.flr || 0);
+        const pct = win.length >= 60 ? win.filter(v => v < n).length / win.length * 100 : null;
+        // ⛔ 門檻用實測有邊際的那一端(300),⛔ 不是他口述的 100 —— 100 那條在我的資料上樣本不足
+        const hot = n >= 300;
+        return { n, nv, pct, hot, days: hist.length, d: last.d, total: +last.total || 0 };
+    },
+
+    _floorCountHtml() {
+        const s = this._floorCountState();
+        if (!s) return '';
+        const pctTxt = s.pct == null ? '' : `(近 ${Math.min(250, s.days)} 日位階 ${s.pct.toFixed(0)}%)`;
+        // ⛔ 燈號鐵則:這裡講的是「跌完沒/風險」不是漲跌方向 → 用 ⚠️ / 💡 / ➖,不可用 🔴🟢
+        const head = s.hot
+            ? `⚠️ <b class="text-gray-100">今天有 ${s.n.toLocaleString()} 檔同時跌到「自己歷史最極端的那 5%」</b> —— 這是全市場一起被殺的樣子。`
+            : `➖ 今天 <b class="text-gray-100">${s.n.toLocaleString()}</b> 檔跌到自己的極端區${pctTxt},<b class="text-gray-100">還沒到實測有邊際的那一區(300 檔以上)</b>。`;
+        const body = s.hot
+            ? `📊 <b>實測</b>:過去兩年這種日子有 <b>51 天</b>,之後 5 / 10 / 20 日加權指數比「隨便挑一天」多 <b>+1.55 / +1.44 / +1.45 個百分點</b>(勝率 67 / 78 / 74%,基準 61 / 64 / 74%)。`
+              + `<br>💡 白話:<b>這是「大盤跌到可以開始分批撿」的參考</b>,⛔ <b>不是叫你今天就 all in</b>。要撿也是分批撿指數型(0050/006208),不是去猜哪一檔會反彈。`
+            : `💡 白話:地板股不多 = <b>還沒跌到大家一起投降的位置</b>,也就是「跌深反彈」這張牌現在還不能打。⛔ 這不代表可以放心做多 —— 它只是說「還沒到抄底時機」。`;
+        return `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 mb-1.5">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-[10px] text-gray-400">🏚️ 全市場跌到「地板」的有幾檔 <span class="text-[9px] text-gray-600">${this._dW ? this._dW(s.d) : (s.d || '')}收盤 ${s.total.toLocaleString()} 檔</span></span>
+                <button onclick="event.stopPropagation();app._showFloorCountHelp()" class="text-[9px] text-gray-600 hover:text-cyan-300">ⓘ 怎麼看</button>
+            </div>
+            <div class="grid grid-cols-3 gap-1.5 mb-1">
+                <div class="text-center"><div class="text-[9px] text-gray-500">地板股</div><div class="font-mono font-black text-base text-gray-100">${s.n.toLocaleString()}</div></div>
+                <div class="text-center"><div class="text-[9px] text-gray-500">其中有爆量</div><div class="font-mono font-black text-base text-gray-300">${s.nv.toLocaleString()}</div></div>
+                <div class="text-center"><div class="text-[9px] text-gray-500">近一年位階</div><div class="font-mono font-black text-base text-gray-200">${s.pct == null ? '累積中' : s.pct.toFixed(0) + '%'}</div></div>
+            </div>
+            <div class="text-[10px] text-gray-300 leading-relaxed">${head}<br>${body}</div>
+            <div class="text-[9px] text-gray-600 mt-1 leading-relaxed">⚠️ 這個統計**只有在極端多的時候才有邊際** —— 中間段(50~299 檔)實測反而略差,⛔ 別把它當成「數字越大越好」的連續指標。回測窗口是一段多頭,未扣交易成本。</div>
+        </div>`;
+    },
+
+    _showFloorCountHelp() {
+        const s = this._floorCountState() || {};
+        alert('【全市場跌到「地板」的有幾檔】\n\n'
+            + '📌 什麼叫「地板股」\n'
+            + '把這一檔股票離月線多遠(乖離)排成它自己的歷史,\n'
+            + '今天落在【它自己最慘的那 5%】,就算跌到地板了。\n'
+            + '⭐ 用「跟自己比」而不是寫死「跌 20%」——\n'
+            + '   台積電跌 8% 跟小型股跌 8% 根本不是同一件事。\n\n'
+            + '📌 為什麼要看「全市場有幾檔」\n'
+            + '一檔跌到地板 = 那一檔倒楣;\n'
+            + '一大票同時跌到地板 = 【整個市場在投降】,那才是短線低點的樣子。\n\n'
+            + '📊【實測數字】(2,251 檔 × 486 個交易日)\n'
+            + '・300 檔以上的那 51 天:之後 5/10/20 日加權指數\n'
+            + '  比「隨便挑一天」多 +1.55 / +1.44 / +1.45 個百分點,勝率 67/78/74%。\n'
+            + '・⚠️ 但 50~299 檔那一段反而【略差】(−0.15~−0.58pp)。\n'
+            + '  → 所以這【不是「越多越好」的連續指標】,只有極端那一端才有意義。\n\n'
+            + '⚠️【我沒有照抄的地方】\n'
+            + '原本的說法是「地板股大概 100 檔就是短線低點」,\n'
+            + '但那個門檻在我兩年的資料裡只出現 11 天,樣本太少無法驗證,\n'
+            + '所以我改用【自己實測出來有邊際的 300 檔】。\n\n'
+            + '⚠️【限制,請一定要知道】\n'
+            + '・回測窗口整段是多頭 → 空頭時會不會一樣,沒驗證過。\n'
+            + '・連著幾天都算低點其實是同一件事 → 51 天不是 51 個獨立樣本。\n'
+            + '・未扣交易成本(來回約 0.44%)。\n'
+            + '・這是【大盤層級】的參考,⛔ 不是叫你去買某一檔。\n'
+            + '  個股要不要接刀請看個股頁的「極端超跌」——那張實測是【接刀平均輸大盤】。\n\n'
+            + (s.n != null ? `📍 今天:${s.n.toLocaleString()} 檔(其中爆量 ${s.nv.toLocaleString()} 檔)` : ''));
+    },
+
     _adlState() {
         const h = this._breadthHist;
         // 🐛 V71.4.8 原本 <3 天直接回 null → 卡上「什麼都不顯示」。
@@ -39746,6 +39828,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                     <span>強勢(≥3%) <b class="text-red-300">${strong}</b> / 弱勢 <b class="text-green-300">${weak}</b></span>
                 </div>
                 ${this._medGapHtml()}
+                ${this._floorCountHtml()}
                 ${(() => {   // 📈 V71.3.8 累積騰落線併進本卡(不另開新卡)
                     const a = this._adlState();
                     if (!a) return '';

@@ -4664,6 +4664,61 @@ def _fetch_market_margin_total_ms(d: date, max_fallback_days: int = 5):
     return None
 
 
+def _mark_floor_days(raw, by_date, lookback_rows, pctl=5.0, vol_x=2.0, min_bars=260):
+    """⭐ V72.4.9 標記「這一天這檔是不是地板股」,累加進 by_date 的 flr / flrv。
+
+    ⛔ 判定必須跟前端 `_detectFloorBounce` 完全一致(同一套定義,不另立第二份真相):
+      乖離 = (收盤 − 20MA) / 20MA;落在「這檔**自己**歷史分布的最低 pctl%」才算。
+      ⚠️ 用「相對自己的位階」不是寫死的乖離門檻 —— 台積電跌 8% 跟小型股跌 8% 不是同一件事
+      (同 V71.1.6 外資期貨、V71.8.1 波動率的教訓)。
+
+    ⚠️ **不可有前視偏誤**:第 i 天的位階只能用第 0~i 天的乖離去排,⛔ 不能用整段排序。
+      這裡用 bisect 維護一個「到今天為止」的排序陣列,插入後再算名次。
+    """
+    import bisect
+    closes, vols, dks = [], [], []
+    for r in raw:
+        try:
+            c = float(r['close'])
+            v = float(r.get('volume') or 0)
+            d = str(r.get('date') or '')
+        except (TypeError, ValueError, KeyError):
+            continue
+        if c > 0 and d:
+            closes.append(c)
+            vols.append(v)
+            dks.append(d.replace('-', '/'))
+    n = len(closes)
+    if n < min_bars:
+        return
+    bias = [None] * n
+    run = sum(closes[:20])
+    for i in range(19, n):
+        if i > 19:
+            run += closes[i] - closes[i - 20]
+        m = run / 20
+        if m > 0:
+            bias[i] = (closes[i] - m) / m * 100
+    start = max(0, n - lookback_rows)      # 只標最近這段(跟 breadth 回算範圍一致)
+    hist = []
+    for i in range(n):
+        b = bias[i]
+        if b is None:
+            continue
+        bisect.insort(hist, b)             # ⚠️ 先插入,分母才跟 `_detectFloorBounce` 的 hist 一致
+        if i < start or len(hist) < 200:
+            continue
+        if bisect.bisect_left(hist, b) / len(hist) * 100 > pctl:
+            continue
+        rec = by_date[dks[i]]
+        rec['flr'] += 1
+        vs = [v for v in vols[max(0, i - 20):i] if v > 0]
+        if len(vs) >= 10:
+            vma = sum(vs) / len(vs)
+            if vma > 0 and vols[i] / vma >= vol_x:
+                rec['flrv'] += 1
+
+
 def build_breadth_history():
     """全市場漲跌家數 → data/breadth.json,**同時回算歷史**(累積騰落線 ADL 的資料源)。
     回傳「今日漲停家數」給 build_bubble_warning 用。
@@ -4706,8 +4761,23 @@ def build_breadth_history():
     #   ⛔ 我**不去推估官方權重**(官方用流通股數/free float,我只有總股數,推出來會錯);
     #      改用「中位數個股漲跌幅」—— 零假設、零推估,而且它才是「你隨便挑一檔」的真實基準。
     #   ⭐ 這跟 `_SIGNAL_EDGE` 基準勝率只有 36%(不是 50%)是同一件事的一體兩面。
+    # ⭐ V72.4.9 多收 flr / flrv =「全市場地板股家數」(權證小哥《哥有籌必爆》S2 第22集 +
+    #   兆華艾綸說 2026-07-08:「假如**地板股有大概 100 檔,那大概就是短線的低點**」)。
+    #   ⛔ 別跟個股版 `_detectFloorBounce` 混為一談 —— 那張回答「**這一檔**該不該接刀」
+    #      (V71.8.9 實測:接刀平均輸大盤);這裡問的是完全不同的問題:「**大盤**跌完了沒」。
+    #   定義跟前端 `_detectFloorBounce` 同一套(⛔ 不另立第二份真相):
+    #     地板股 = 對 20MA 的乖離落在「這檔自己歷史分布的最低 5%」
+    #     flrv 另外要求「當日量 ≥ 20 日均量 × 2」(他強調的「一定要有量」)
+    #   📊 `floorcount_probe.py` 實測(2,251 檔 × 486 個交易日,2024-07-30 ~ 2026-07-30):
+    #     ・**不看量 ≥300 檔**(n=51 天):後 5/10/20 日加權指數中位 +2.38/+2.99/+4.77%,
+    #       邊際 **+1.55/+1.44/+1.45pp**、勝率 67/78/74%(基準 61/64/74%)→ 三天期方向一致 ✅
+    #     ・⚠️ **非單調** —— 中間段(50~299 檔)反而是 −0.15~−0.58pp;只有極端那一端有邊際
+    #     ・⚠️ 他說的「**有量** 100 檔」在 2 年窗口只出現 **11 天** → 樣本不足,無法驗證
+    #     ・⚠️ 窗口整段是多頭(基準 20 日勝率就有 73.6%)→ ⛔ 不可外推到空頭
+    #   → 所以前端只在「極端多」時下結論,平時只做事實描述。⛔ 別把它做成連續計分因子。
     by_date = collections.defaultdict(
-        lambda: dict(up=0, dn=0, flat=0, lu=0, ld=0, st=0, wk=0, total=0, amt=0.0, chgs=[]))
+        lambda: dict(up=0, dn=0, flat=0, lu=0, ld=0, st=0, wk=0, total=0, amt=0.0,
+                     chgs=[], flr=0, flrv=0))
     for f in Path(DATA_DIR).glob('*.json'):
         sym = f.stem
         if not (len(sym) == 4 and sym.isdigit()):
@@ -4761,6 +4831,9 @@ def build_breadth_history():
                     r['wk'] += 1
                 r['chgs'].append(chg)
                 r['total'] += 1
+            # ⭐ V72.4.9 地板股判定(⛔ 只算個股,ETF 前面已 continue 掉家數但這裡要自己再擋)
+            if not is_etf:
+                _mark_floor_days(raw, by_date, LOOKBACK_ROWS)
         except Exception:
             continue
 
@@ -4832,6 +4905,10 @@ def build_breadth_history():
                 _extra['med'] = _med
             if _idx is not None:
                 _extra['idx'] = _idx
+            # ⭐ V72.4.9 地板股家數 —— 照同一條 schema self-heal 通則(陷阱 #15),
+            #   歷史列一次補齊,⛔ 不要「從今天開始累積」(使用者鐵則:要馬上就能用)。
+            _extra['flr'] = r['flr']
+            _extra['flrv'] = r['flrv']
             if d == today_key:
                 # 今天這筆一律用最新算出來的覆蓋(同日重跑要能更新)
                 _hist = [h for h in _hist if isinstance(h, dict) and str(h.get('d')) != d]
