@@ -86,6 +86,7 @@ const R = await page.evaluate(async (syms) => {
         out.bullMode = app._playbookMode(d0, s0)?.mode;
         app._bearGate = orig;
         out.aiSrc = app.analyzeStockDeep.toString();
+        out.briefSrc = app.renderDeepBrief.toString();
         out.jargon = app.jargonDict?.['深度診斷'] || '';
         // ⑦ V72.4.2 品質守門:拿**使用者實測說「沒什麼屁用」的那一版原文**當測資
         out.qBad = app._deepBriefQuality({
@@ -207,6 +208,21 @@ ok('⑧ ⭐ 均線要連「現價在它上面還下面幾%」一起給(上一版
 ok('⑧ ⭐ 量能兩種定義都給,並警告只提一個會打架',
    /不同基準|只提其中一個會跟畫面上另一處打架/.test(s2));
 ok('⑧ facts 有均線相對位置與量能兩種定義', R.factsHasRel === true, `factsHasRel=${R.factsHasRel}`);
+
+// ── ⑨ V72.4.4 額度控管:快取綁「資料日期」而不是時間 ──────────────
+//   使用者問「每次開啟都重新分析會不會爆掉」→ 綁日期就不會:同一檔同一天只算一次。
+const s3 = R.aiSrc || '';
+ok('⑨ ⭐ 快取鍵含資料日期(⛔ 不可再用 30 分鐘那種時間窗)',
+   /dataDate/.test(s3) && /cacheKey\s*=\s*`aiCache_deepBrief_\$\{sym\}_\$\{f\.dataDate/.test(s3), s3.slice(0, 200));
+ok('⑨ ⭐ 快取鍵含模型(兩個模型的結果不可互相覆蓋)', /_\$\{engine\}`/.test(s3));
+ok('⑨ ⭐ 有 cacheOnly 模式(自動顯示用,⛔ 沒算過就不打 AI)', /opts\.cacheOnly/.test(s3));
+ok('⑨ ⭐ renderDeepBrief 會自動吃快取(有算過就直接顯示,零額度)',
+   /cacheOnly:\s*true/.test(R.briefSrc || ''));
+ok('⑨ ⭐ 可切 Groq 做比對,但⛔ 不可變成自動 fallback',
+   /engine === 'groq' \? 'groq-only'/.test(s3));
+ok('⑨ ⭐ 會存「可回頭驗證」的紀錄(invalidate + 當時收盤 + 日期)',
+   /aiVerifyLog/.test(s3) && /invalidate:/.test(s3) && /close: f\.pC/.test(s3), s3.slice(0, 150));
+ok('⑨ 紀錄有滾動上限(⛔ 不可無限長大爆 localStorage)', /slice\(-200\)/.test(s3));
 
 await browser.close();
 console.log();

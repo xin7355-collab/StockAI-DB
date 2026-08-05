@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.4.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.4.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7080,8 +7080,18 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.4.3',
+    _APP_VERSION: 'V72.4.4',
     _CHANGELOG: [
+        { v: 'V72.4.4', dt: '2026-08-05', t: '📊 回測打臉我自己:「低檔布局」實測沒有優勢 + AI 額度不再爆', d: [
+            '⭐ 我把深度診斷最上面那句「現在這檔適合的操作方式」拿去**全市場 2,227 檔回測**(扣掉同期大盤),結果打臉了我自己寫的功能:',
+            '✅ **順勢做多** 有效 —— 60 日贏基準 +0.81pp、勝率 29.8%(基準 25.8%),三個天期都沒轉負。',
+            '⛔ **低檔布局(分批)沒有優勢** —— 10/20/60 日全是負的(−0.15/−0.25/−0.58pp),勝率 23.2% 還低於基準 25.8%,而且樣本 16,358 筆不是雜訊。**「便宜」本身不是買進理由**,要等帶量紅K或站回均線才動。這句話現在直接寫在卡片上。',
+            '⚠️ **區間操作只適合短打** —— 10/20 日 +0.18/+0.50pp,但 60 日轉負,別拿它當中期抱著的理由。',
+            '⛔ 我沒有把「低檔布局」刪掉(刪了你會以為沒有這種情況),而是**照顯示但誠實標成「實測沒有優勢」** —— 跟訊號成績表同一個原則。',
+            '💾 **AI 額度問題解決**:快取從「30 分鐘」改成綁「**資料日期**」—— 收盤資料一天只變一次,所以**同一檔同一天只算一次**,你開幾次 App 都不會重算。算過的一打開就直接顯示,零消耗。',
+            '📝 你問「沒點 AI 是不是不會存紀錄」—— 對,而且以前就算點了也只存畫面 HTML,沒辦法回頭驗證。現在會另外存一份**可驗證的紀錄**(當時的結論、「什麼情況代表判斷錯了」的條件、當天收盤價),之後可以回頭對帳。',
+            '⚖️ 新增「**換模型比對**」按鈕:用 Groq 跑同一份數字,下方顯示兩邊的品質檢查結果讓你自己比。⛔ 兩邊拿到的數字完全一樣(都是程式算的),差的只是講得清不清楚。',
+        ] },
         { v: 'V72.4.3', dt: '2026-08-05', t: '🐛 你截圖抓到頂部量能錯 1000 倍 + 上櫃股終於有本益比了', d: [
             '你問「貼的資料對嗎」—— 我逐個核對過:**AI 那段的數字全是對的**,反而是**頂部那行錯了**。',
             '🚨 頂部顯示「總量 4331.8萬張・**量增 117944%**」—— 中美晶一天實際成交約 **4.3 萬張**,差 1000 倍。根因:即時報價在盤前會退回備援來源,那個來源給的單位是「股」不是「張」,而程式只有對「昨天的量」做單位換算,**忘了對「今天的量」做**。已把換算抽成同一支函式,兩邊一起用,測試會擋住只改一邊。',
@@ -7913,12 +7923,6 @@ ${list}
             '② 排除今天後真正的近 10 日低是 184.5,而現價 166.5 早就跌破它 9.8%,季線 179.3 也破了。所以正確講法是「近期支撐已經全破、下方沒有結構支撐可守」,不是「再破 166.5 才出場」。已改成這樣講,並把今天的低點降級成「續弱確認線」,明講它是當天極端值、不是支撐。',
             '③ 量價密集區「162.1~167.6」也是假精確:這 60 天股價從 137 衝到 278 再殺回 166,從來沒盤整過,成交量幾乎平均散開 —— 最集中的那一段也只占 8.5%,第 2、3、4 名是 7.8%、7.6%、6.8%,四段幾乎並列,根本分不出主峰。現在這種情況會直接顯「無明顯量價密集區」並說明原因,不再印一個精確到小數的區間讓人拿去當支撐。',
             '通則:防線一律要用「之前的低點」,不能用當根自己的極端值;任何精確數字都要先過「這個數字撐得起來嗎」的檢查,撐不起就誠實說沒有。',
-        ] },
-        { v: 'V71.5.7', dt: '2026-07-30', t: '🔍 採礦跑完逐項對數字,又抓出三件事', d: [
-            '這次不看綠燈,拿你給的籌碼K線數字逐欄對帳。結果:美股現貨四雄全對、期貨價格修對了(7,376 vs 真值 7,370),但還有三個沒好,而且錯誤訊息給了新線索。',
-            '① 台指 VIX:金鑰確實傳進去了(訊息從「沒有金鑰」變成「金鑰不被接受」),所以是那一把有問題。你的金鑰是「付費1把+免費3把」,程式卻只試第一把 → 第一把壞掉整個功能就死。已改成每一把都試,哪一把能用就用哪一把。',
-            '② 美股期貨的漲跌%還是反的:查出來是因為凌晨已經進到新的交易時段,但世界標準時間還算前一天,所以程式判斷不出來。更關鍵的是 —— 資料來源裡**根本沒有**正確的比較基準(真值的基準價兩根都不是)。所以我的決定是:**拿不到可信基準就不給方向**,只顯價格。盤前看期貨是為了判斷開盤方向,給反的比不給更糟。',
-            '③ 亞股(日經/韓股/恆指)還是舊的 —— 資料來源對亞洲指數穩定落後,我改不了。但至少現在會標出「這是哪一天的收盤」,而且如果比上一個交易日還舊會直接顯「⚠️ 比上個交易日還舊」,不會再讓你以為是最新的。',
         ] },
         // ⚡ V72.1.8 App 內只留**最近 60 筆**(約 1 個月)。
         //   原因:累積到 343 筆 / 147 KB,佔 index.html 的 5.1%,每次開 App 都要下載,
@@ -15957,6 +15961,19 @@ const marginByDate = {};
                 <div class="text-[9px] text-gray-500 mb-0.5">現在這檔適合的操作方式</div>
                 <div class="text-sm font-black text-gray-100 mb-1">${f.play.mode}</div>
                 <div class="text-[10px] text-gray-300 leading-relaxed">${f.play.why}</div>
+                ${(() => {
+                    // 📊 V72.4.4 把「這個建議實測準不準」直接標出來(⛔ 不可只給建議不給成績)
+                    const ed = this._playbookEdge(f.play.mode);
+                    if (!ed) return '';
+                    const tag = ed.ok === true ? '<span class="text-green-300">✅ 實測有效</span>'
+                              : ed.ok === 'short' ? '<span class="text-yellow-300">⚠️ 只有短線有效</span>'
+                              : ed.ok === false ? '<span class="text-red-300">⛔ 實測沒有優勢</span>'
+                              : '<span class="text-gray-400">➖ 觀望型,不計成績</span>';
+                    return `<div class="mt-1.5 pt-1.5 border-t border-[#21262d]">
+                        <div class="text-[9px] mb-0.5">${tag} <span class="text-gray-600 font-mono">全市場 2,227 檔回測・n=${ed.n.toLocaleString()}</span></div>
+                        <div class="text-[9px] text-gray-400 leading-snug">${ed.note}</div>
+                    </div>`;
+                })()}
             </div>
 
             <!-- ② 大戶出貨徵兆檢查表 -->
@@ -15970,10 +15987,19 @@ const marginByDate = {};
             </div>` : ''}
 
             <!-- ③ AI 白話解讀(加值層,點了才跑)-->
-            <button onclick="app.analyzeStockDeep(); app.vibrate(40);" ondblclick="app.analyzeStockDeep({force:true});" class="w-full bg-purple-900/40 hover:bg-purple-800/50 border border-purple-600/60 rounded text-[11px] font-bold text-purple-200 py-2 transition-colors">🤖 讓 AI 把上面這些串成白話(含未來要盯什麼)</button>
-            <div class="text-center text-[8px] text-gray-600 mt-0.5">30 分鐘內快取 ・ 雙擊強制重抽 ・ ⛔ AI 不給買賣價位(那些下方卡片已精算)</div>
+            <div class="flex gap-1.5">
+                <button onclick="app.analyzeStockDeep(); app.vibrate(40);" ondblclick="app.analyzeStockDeep({force:true});" class="flex-1 bg-purple-900/40 hover:bg-purple-800/50 border border-purple-600/60 rounded text-[11px] font-bold text-purple-200 py-2 transition-colors">🤖 AI 白話解讀</button>
+                <button onclick="app.analyzeStockDeep({engine:'groq'}); app.vibrate(30);" ondblclick="app.analyzeStockDeep({engine:'groq',force:true});" title="用另一個模型(Groq)跑同一份數字,下方會顯示兩邊的品質分數讓你自己比" class="px-2.5 bg-[#161b22] hover:bg-[#1c2128] border border-[#30363d] rounded text-[10px] font-bold text-gray-400 transition-colors">⚖️ 換模型比對</button>
+            </div>
+            <div class="text-center text-[8px] text-gray-600 mt-0.5">同一檔同一天只算一次(開幾次 App 都不重算)・雙擊強制重抽 ・ ⛔ AI 不給買賣價位(那些下方卡片已精算)</div>
             <div id="deepBriefAi" class="text-[11px] text-gray-200 leading-relaxed"></div>
         `;
+
+        // 🤖 V72.4.4 自動顯示:**只要今天這檔算過就直接秀出來**(零額度)。
+        //   ⛔ 沒算過時不自動打 AI —— 掃榜單快速切股會連續觸發、把額度燒光。
+        //   ⭐ 使用者問「每次開啟就跑一次會不會爆」:綁「資料日期」的快取就是答案 ——
+        //      跑過的直接顯示、沒跑過的等你點,兩邊都不浪費。
+        try { this.analyzeStockDeep({ silent: true, cacheOnly: true }); } catch (_) { }
     },
 
     // 🔍 V72.4.2 AI 輸出品質守門 —— ⭐ 使用者實測後說「沒什麼屁用」,而那一版**沒有任何檢查**。
@@ -16010,15 +16036,24 @@ const marginByDate = {};
         if (!sym || !box) return;
         const f = this._deepFacts;
         if (!f || f.sym !== sym) { box.innerHTML = '<div class="mt-2 p-2 text-yellow-300 text-[11px]">⚠️ 資料還在載入,稍後再點</div>'; return; }
-        const cacheKey = `aiCache_deepBrief_${sym}`;
+        // 💾 V72.4.4 快取鍵綁「**資料日期 + 模型**」而不是時間 ——
+        //   使用者問「每次開啟都重新分析會不會爆掉」:綁時間(30 分)確實會,
+        //   但**收盤資料一天只變一次** → 同一檔同一天算一次就夠,開幾次 App 都不用重算。
+        //   ⭐ 這是「自動跑」能成立的前提:有當日結果就直接顯示,零額度消耗。
+        const engine = opts.engine || 'deep';
+        const cacheKey = `aiCache_deepBrief_${sym}_${f.dataDate || 'na'}_${engine}`;
         if (!opts.force) {
             try {
-                const c = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-                if (c && (Date.now() - c.at) < 30 * 60 * 1000) {
-                    box.innerHTML = c.html; this.showToast('💾 30 分鐘內快取(雙擊強制重抽)', 'info'); return;
+                const c = this._lsJson ? this._lsJson(cacheKey, null) : JSON.parse(localStorage.getItem(cacheKey) || 'null');
+                if (c && c.html) {
+                    box.innerHTML = c.html;
+                    if (!opts.silent) this.showToast(`💾 ${f.dataDate || ''} 這檔已分析過,直接顯示(雙擊可重抽)`, 'info');
+                    return;
                 }
             } catch (_) { }
         }
+        // ⛔ cacheOnly:只吃快取、⛔ 不打 AI(給「自動顯示」用 —— 沒算過就靜靜什麼都不做)
+        if (opts.cacheOnly) return;
         const n = (v, d = 1) => (v == null || isNaN(v)) ? '無資料' : (+v).toFixed(d);
         const k = v => (v == null || isNaN(v)) ? '無資料' : Math.round(v).toLocaleString();
         const e = f.entry || {};
@@ -16085,7 +16120,13 @@ ${f.margin ? `融資族群推估成本 ${n(f.margin.cost, 1)},斷頭壓力區約
         if (btn) btn.disabled = true;
         box.innerHTML = '<div class="mt-2 p-2 text-purple-300 text-[11px]">⏳ AI 解讀中…</div>';
         try {
-            const text = await this._callDeepAI({ prompt, max_tokens: 1200, temperature: 0.4, chain: 'gemini-openrouter' });
+            // 🤖 V72.4.4 模型可切:預設走深度鏈(Gemini→OpenRouter);`engine:'groq'` 走 Groq 做比對。
+            //   ⚠️ CLAUDE.md 鐵則「深度判讀不該降級到 Groq」仍成立 → Groq **只在使用者主動比對時**用,
+            //      ⛔ 不會變成自動 fallback。比對結果由 `_deepBriefQuality` 量化,不是憑感覺。
+            const text = await this._callDeepAI({
+                prompt, max_tokens: 1200, temperature: 0.4,
+                chain: engine === 'groq' ? 'groq-only' : 'gemini-openrouter',
+            });
             if (this.currentSymbolId !== sym) return;   // 🛡️ 切股競態守門
             const p = JSON.parse(String(text).replace(/```json\s*|\s*```/g, '').trim());
             const q = this._deepBriefQuality(p);   // 🔍 V72.4.2 輸出品質守門(⛔ 光靠提示詞擋不住)
@@ -16104,10 +16145,32 @@ ${f.margin ? `融資族群推估成本 ${n(f.margin.cost, 1)},斷頭壓力區約
                     ${sec('🛑', '什麼情況代表判斷錯了', p.invalidate, 'text-amber-200')}
                     ${sec('🕳️', '這份分析看不到什麼', p.blindspot, 'text-gray-400')}
                     ${q.bad.length ? `<div class="mt-2 pt-2 border-t border-red-900/40 text-[10px] text-red-300 leading-snug">⚠️ <b>這次 AI 回得很空泛</b>(${q.bad.join('、')})→ 上面那段參考價值低,<b>建議雙擊按鈕重抽</b>;或直接看上半部程式算的結論就好。</div>` : ''}
-                    <div class="text-[8px] text-gray-600 mt-2 pt-1.5 border-t border-[#21262d] leading-snug">🤖 所有數字都是程式算好再交給 AI 解讀(AI 不會算數,不讓它算)。⛔ 進出場價請看下方各卡精算值。${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div class="mt-1.5 pt-1.5 border-t border-[#21262d] flex items-center justify-between text-[9px]">
+                        <span class="text-gray-500">模型:<b class="text-gray-300">${engine === 'groq' ? 'Groq' : 'Gemini / DeepSeek R1'}</b></span>
+                        <span class="${q.bad.length === 0 ? 'text-green-400' : q.bad.length <= 1 ? 'text-yellow-400' : 'text-red-400'}">品質檢查 ${q.bad.length === 0 ? '✅ 全過' : `⚠️ ${q.bad.length} 項未過`}</span>
+                    </div>
+                    <div class="text-[8px] text-gray-600 mt-0.5 leading-snug">⚖️ 想比較不同模型:點「換模型比對」跑同一份數字,看哪邊品質檢查過得多。⛔ 兩邊拿到的數字完全一樣(都是程式算的),差的只是<b>講得清不清楚</b>。</div>
+                    <div class="text-[8px] text-gray-600 mt-2 pt-1.5 border-t border-[#21262d] leading-snug">🤖 所有數字都是程式算好再交給 AI 解讀(AI 不會算數,不讓它算)。⛔ 進出場價請看下方各卡精算值。${f.dataDate || ''} ${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}</div>
                 </div>`;
             box.innerHTML = html;
             try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), html })); } catch (_) { }
+            // 🗂️ V72.4.4 存一份**可回頭驗證**的紀錄(⛔ 只存 HTML 是驗不了的)。
+            //   ⭐ 這是參考來源那個開源專案的**唯一可借鏡邏輯**:它的 ai_decisions 表設計了
+            //      `executed`/`execution_result` 卻 116 筆全沒驗過。我們有 `invalidate`
+            //      (「收盤跌破季線 179.78」)這種**單一可驗證條件**,所以驗得成。
+            //   ⚠️ 只從今天開始累積(AI 的歷史判斷沒存過 → 不能回算),滾動保留 200 筆。
+            try {
+                const log = this._lsJson ? this._lsJson('aiVerifyLog', []) : [];
+                const arr = Array.isArray(log) ? log : [];
+                arr.push({
+                    sym, name: f.name, d: f.dataDate, at: Date.now(), engine,
+                    close: f.pC, mode: f.play?.mode || '',
+                    headline: String(p.headline || '').slice(0, 60),
+                    invalidate: String(p.invalidate || '').slice(0, 60),
+                    q: q.bad.length,                       // 當時的品質守門扣分數
+                });
+                localStorage.setItem('aiVerifyLog', JSON.stringify(arr.slice(-200)));
+            } catch (_) { }
         } catch (err) {
             box.innerHTML = `<div class="mt-2 p-2 bg-amber-900/30 rounded text-amber-300 text-[11px]">${this._humanizeError(err, 'AI 深度診斷')}</div>`;
         } finally {
@@ -21563,6 +21626,31 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ⭐ 使用者問的「是區間操作還是低檔布局」—— 這件事**算得出來**,不必問 AI:
     //      位階(在一年裡的高低)× 中期趨勢 × 有沒有明確箱型。
     //   ⛔ 一律先過 `_bearGate` —— 空頭時不管位階多低都不給「布局」這種進場指令。
+    // 📊 V72.4.4 `_playbookMode` 的**實測成績**(`scripts/playbook_backtest.mjs` 全市場 2,227 檔、
+    //   扣同期加權、同檔同型態 20 日去重;n = 7,500~19,900/型態)。
+    //   ⭐ 這是驗證**我自己的功能準不準** —— 比再加一個沒驗證過的指標有價值得多。
+    //   🚨 結果打臉了其中一項:**「低檔布局」三個天期全是負的**(而且樣本 16,358 筆,不是雜訊)。
+    //      ⛔ 但不可以把它刪掉(刪了使用者會以為沒有這種情況)→ 照 `_SIGNAL_EDGE` 的做法:
+    //      **照顯示,但誠實標出實測結果**。
+    //   ⚠️ 回測時沒有 `_bearGate`/`_ovTrend` 快取 → 這是「沒有空頭守門」的**保守下界**。
+    _PLAYBOOK_EDGE: {
+        '順勢做多': { e10: -0.06, e20: 0.02, e60: 0.81, w60: 29.8, n: 12271, ok: true,
+                      note: '實測有效:60 日贏大盤基準 +0.81pp、勝率 29.8%(基準 25.8%),三個天期都沒有轉負。' },
+        '區間操作': { e10: 0.18, e20: 0.50, e60: -0.55, w60: 23.1, n: 7542, ok: 'short',
+                      note: '實測只適合短打:10/20 日 +0.18/+0.50pp,但 **60 日轉負 −0.55pp** → ⛔ 別拿它當中期抱著的理由。' },
+        '低檔布局': { e10: -0.15, e20: -0.25, e60: -0.58, w60: 23.2, n: 16358, ok: false,
+                      note: '⚠️ 實測**沒有優勢**:10/20/60 日邊際 −0.15/−0.25/−0.58pp,勝率 23.2% 還低於基準 25.8%。「便宜」本身不是買進理由 —— 要等其他訊號(帶量紅K、站回均線)才動。' },
+        '別接刀': { e10: 0.38, e20: 0.65, e60: 0.27, w60: 25.4, n: 9656, ok: true,
+                    note: '實測 20 日 +0.65pp —— ⚠️ 但這張卡本來就是**警告不是進場理由**,不要反過來當買訊。' },
+        '先不做': { e10: -0.10, e20: -0.02, e60: 0.53, w60: 26.1, n: 19899, ok: null,
+                    note: '這是觀望不是進場,邊際接近 0 本來就符合預期。' },
+    },
+    _playbookEdge(mode) {
+        const m = String(mode || '');
+        for (const k of Object.keys(this._PLAYBOOK_EDGE)) if (m.includes(k)) return { key: k, ...this._PLAYBOOK_EDGE[k] };
+        return null;
+    },
+
     _playbookMode(data, sym) {
         if (!Array.isArray(data) || data.length < 60) return null;
         const last = data.length - 1;
