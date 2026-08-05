@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.5.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.5.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.5.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.5.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7114,8 +7114,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.5.1',
+    _APP_VERSION: 'V72.5.2',
     _CHANGELOG: [
+        { v: 'V72.5.2', dt: '2026-08-05', t: '🧭 集保加了「這幾週誰在收、誰在放」小圖;另外兩個網路上常見的判讀法我實測後不成立', d: [
+            '① 🧭 **籌碼分佈卡新增兩排迷你走勢圖**(上排大戶、下排散戶,每根一週)+ 起訖值與變化量,**一眼看出籌碼往哪邊跑**,不用自己比數字。',
+            '② ❌ 你貼的那套「**大戶增+散戶減=偏多、大戶減+散戶增=偏空**」四象限,我用剛做出來的 **104 週集保歷史、28,532 筆**實測 —— **它說偏多跟偏空的兩格只差 0.12%**,而且它說最差的那格反而最好。⛔ 所以那張圖只講「現在長什麼樣」,不下多空。',
+            '③ ❌「**千張大戶增減減掉法人買賣超 = 公司派在買**」也不成立:**買和賣兩邊後續都是正的、而且賣的還更好** → 那其實是「籌碼有沒有在動」,不是方向。',
+            '④ ✅ 你貼的其他項目(地緣分點、隔日沖分點、董監質押、集保戶數)**本來就都有了**。',
+            '⑤ 🔧 修採礦:上一版深歷史只拿到 740/2,956 檔,**大權值股(如台積電)全缺** —— 真因是老牌大股資料量大、30 秒逾時不夠;已延長並加「拿不到 2 年就退而求其次拿 1 年」。',
+        ] },
         { v: 'V72.5.1', dt: '2026-08-05', t: '🕳️ 集保大戶/散戶的歷史從 13 週拉到 2 年 —— 卡了很多版的「樣本不足」是我自己設的上限', d: [
             '① 你傳的那張「怎麼查集保千張大戶與散戶比例」**我全都已經有了**(每週自動抓集保結算所官方資料,零金鑰),而且已經用在籌碼乾淨度、大戶籌碼總結、集保分佈、多空計分、兩上兩下、鬆動推播共 6 個地方。',
             '② 🚨 **但順著查下去抓到一個大缺口**:我只留 **13 週**歷史 —— 而那是當初隨手設的,**不是資料的限制**。因為它,好幾個功能長期只能「顯示事實、不敢下判斷」(兩上兩下、散戶結構、千張大戶連週增減、大戶單週 ±3%)。',
@@ -7960,11 +7967,6 @@ ${list}
             '個股消息面從 7/27 就沒更新。查採礦紀錄才發現:防呆規則寫「命中不到 20 檔股票就當作來源被擋,不寫檔」,但每輪只判讀 25 篇新聞,本來就很難命中 20 檔以上不同股票。',
             '更糟的是:它擋掉今天算出的 16 檔,保留的舊檔其實只有 7 檔 —— 用更差的資料取代更好的。',
             '改成只在真的壞掉時才擋(股名表沒載到 / 完全沒新聞 / 一檔都沒命中),另外加一條「算出來比現有的少才保留舊檔」。',
-        ] },
-        { v: 'V71.6.5', dt: '2026-07-30', t: '💰 成交金額改用證交所官方數字(對得上電視上講的「站回一兆」)', d: [
-            '之前顯示的是我自己把每檔股票加總出來的「上市+上櫃」金額,比電視/券商講的數字系統性偏高。實測 7/29 官方 1.149 兆、我自算 1.191 兆。',
-            '現在以證交所官方的「集中市場成交值」為主 —— 這才是新聞和老師們口中的那個一兆。官方拿不到時才退回自算,而且名字會跟著換,不會出現「官方的數字配全市場的名字」。',
-            '兩個數字不是誰算錯,是不同的東西(一個只含上市、一個含上櫃),所以名字一定不同。',
         ] },
         // ⚡ V72.1.8 App 內只留**最近 60 筆**(約 1 個月)。
         //   原因:累積到 343 筆 / 147 KB,佔 index.html 的 5.1%,每次開 App 都要下載,
@@ -22693,7 +22695,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 </div>`;
                 return;
             }
-            let latest, bigNow, bigDelta, retailNow, midNow, bigPeople, bigLots, histArr;
+            let latest, bigNow, bigDelta, retailNow, midNow, bigPeople, bigLots, histArr, retArr = null;
             if (tdH) {
                 const lastR = tdH[tdH.length - 1], prevR = tdH.length >= 2 ? tdH[tdH.length - 2] : null;
                 latest = `${String(lastR[0]).slice(0, 4)}-${String(lastR[0]).slice(4, 6)}-${String(lastR[0]).slice(6, 8)}`;
@@ -22704,6 +22706,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 bigLots = td.t > 0 ? Math.round(td.t * bigNow / 100 / 1000) : (+(h && h.lots) || 0);
                 bigPeople = +(h && h.people) || 0;   // 人數只有舊源有,沒有就不顯
                 histArr = tdH.map(r => +r[1]);
+                retArr = tdH.map(r => +r[3]);   // 🧭 V72.5.2 散戶% 也收起來 → 才畫得出「誰在收、誰在放」
             } else {
                 latest = h.d || '';
                 bigNow = +h.big || 0;
@@ -22804,6 +22807,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                             <div class="text-[8px] text-gray-600 mt-0.5">近 ${recent.length} 週大戶%</div>
                         </div>
                     </div>
+                    ${this._tdccWhoIsBuyingHtml(histArr, retArr)}
                     <!-- 大戶/中實戶/散戶 100% 堆疊條 -->
                     <div class="flex h-4 rounded overflow-hidden bg-[#21262d] mb-1">
                         <div class="bg-red-500 h-full flex items-center justify-center" style="width:${bigNow}%" title="千張大戶"></div>
@@ -22842,6 +22846,50 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             console.warn('[chipDist]', e);
             if (this.currentSymbolId && String(this.currentSymbolId) === sym) box.innerHTML = `<div class="bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-4 text-center"><div class="text-sm text-gray-200 font-bold mb-1">集保資料抓取中</div><div class="text-[11px] text-gray-500">稍後再點一次籌碼分佈。</div></div>`;
         }
+    },
+
+    // 🧭 V72.5.2 「這幾週誰在收、誰在放」—— 使用者要求「用圖表方式很容易就看懂」。
+    //   ⛔ 這是**事實描述,不是買賣訊號**。`tdcc_matrix_probe.py` 實測(104 週深歷史、
+    //      28,532 筆事件)已經證明「大戶↑散戶↓ = 偏多 / 大戶↓散戶↑ = 偏空」那套四象限**不成立**:
+    //        大戶↑人數↓ 60日 +1.04pp ・大戶↓人數↑ +0.92pp ・大戶↑人數↑ +0.14pp ・大戶↓人數↓ **+1.81pp**
+    //        → 四格幾乎一樣,而且它說「偏空」的那格跟「偏多」那格只差 0.12pp;
+    //          交互作用**全部是負的**(−0.06 ~ −1.23pp)= 兩條腿交叉之後反而比各自相加還差。
+    //   ⭐ 所以這張圖只回答「現在長什麼樣」,⛔ 不下多空;文案裡必須留著那句實測免責。
+    _tdccWhoIsBuyingHtml(bigArr, retArr) {
+        if (!Array.isArray(bigArr) || !Array.isArray(retArr) || bigArr.length < 3
+            || bigArr.length !== retArr.length) return '';
+        const n = bigArr.length;
+        const row = (arr, cls) => {
+            const mn = Math.min(...arr), mx = Math.max(...arr), rng = (mx - mn) || 1;
+            return arr.map((v, i) => {
+                const hgt = 3 + Math.round((v - mn) / rng * 15);
+                return `<div class="flex flex-col justify-end" style="height:18px"><div class="${i === n - 1 ? cls.on : cls.off} rounded-sm" style="width:100%;height:${hgt}px"></div></div>`;
+            }).join('');
+        };
+        const dB = +(bigArr[n - 1] - bigArr[0]).toFixed(2);
+        const dR = +(retArr[n - 1] - retArr[0]).toFixed(2);
+        // ⛔ 只描述「往哪邊移動」,⛔ 不寫偏多/偏空(實測沒有鑑別力)
+        let note;
+        if (dB > 0.2 && dR < -0.1) note = '籌碼這段時間<b class="text-gray-100">往大戶那邊集中</b>(大戶增、散戶減)。';
+        else if (dB < -0.2 && dR > 0.1) note = '籌碼這段時間<b class="text-gray-100">從大戶流向散戶</b>(大戶減、散戶增)。';
+        else if (dB > 0.2 && dR > 0.1) note = '大戶跟散戶<b class="text-gray-100">同時增加</b>(中實戶的股票被兩邊分掉)。';
+        else if (dB < -0.2 && dR < -0.1) note = '大戶跟散戶<b class="text-gray-100">同時減少</b>(股票流向中實戶)。';
+        else note = '這段時間籌碼結構<b class="text-gray-100">變化不大</b>。';
+        const f = v => `${v > 0 ? '+' : ''}${v}%`;
+        const cc = v => v > 0 ? 'text-red-300' : v < 0 ? 'text-green-300' : 'text-gray-400';
+        const line = (label, arr, d, cls) => `
+            <div class="flex items-center gap-1.5 mb-0.5">
+                <span class="text-[9px] text-gray-400 w-[30px] flex-shrink-0">${label}</span>
+                <div class="grid flex-1 min-w-0 gap-[1px]" style="grid-template-columns:repeat(${n},minmax(0,1fr))">${row(arr, cls)}</div>
+                <span class="text-[9px] font-mono w-[74px] text-right flex-shrink-0 text-gray-400">${arr[0].toFixed(1)}→<b class="text-gray-200">${arr[n - 1].toFixed(1)}</b> <b class="${cc(d)}">${f(d)}</b></span>
+            </div>`;
+        return `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1.5 mb-2">
+            <div class="text-[10px] text-gray-400 mb-1">🧭 這 ${n} 週誰在收、誰在放 <span class="text-[9px] text-gray-600">(每根 = 一週)</span></div>
+            ${line('大戶', bigArr, dB, { on: 'bg-red-400', off: 'bg-red-500/40' })}
+            ${line('散戶', retArr, dR, { on: 'bg-amber-400', off: 'bg-amber-500/40' })}
+            <div class="text-[10px] text-gray-300 leading-snug mt-1">${note}</div>
+            <div class="text-[8px] text-gray-600 leading-snug mt-0.5">⚠️ 這是<b class="text-gray-500">現況描述,不是買賣訊號</b>。我拿 104 週集保歷史、28,532 筆實測過「大戶增散戶減 = 偏多、大戶減散戶增 = 偏空」這套說法 —— <b class="text-gray-500">四種組合後續表現幾乎一樣</b>(60 日差距在 1pp 內),⛔ 不能只靠它決定買賣。</div>
+        </div>`;
     },
 
     // 🥧 V69.8.1 持股身份分布(對標付費 App):這檔股票「誰拿著」— 董監(官方月報)/外資(官方持股)/

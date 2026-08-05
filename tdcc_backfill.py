@@ -46,6 +46,7 @@ DEEP_FILE = 'data/tdcc_deep.json'
 DEEP_WEEKS = int(os.getenv('TDCC_DEEP_WEEKS', '104'))        # 深歷史保留週數(約 2 年)
 BACKFILL_DAYS = int(os.getenv('TDCC_BACKFILL_DAYS', '760'))  # 往前抓幾天(2 年 + 緩衝)
 DEEP_ENOUGH = int(os.getenv('TDCC_DEEP_ENOUGH', '90'))       # 深歷史已達幾週就跳過(重跑接續用)
+LONG_TIMEOUT = int(os.getenv('TDCC_TIMEOUT', '120'))         # ⚠️ 2 年 × 17 級距 ≈ 1,700 列,老牌大股回應很大,30 秒不夠
 API = 'https://api.finmindtrade.com/api/v4/data'
 TOKENS = [''.join(t.split()) for t in (os.getenv('FINMIND_TOKENS') or os.getenv('FINMIND_TOKEN', '')).split(',') if t.strip()]
 WORKERS = 3
@@ -91,8 +92,16 @@ def _next_token():
     return tok
 
 
-def fetch(sym: str, start: str):
-    """回 list(rows)/[](查無)/None(全 token 失敗)"""
+REASON = {}          # 診斷用:失敗原因計數(⛔ 只記類型,絕不記 token 值)
+
+
+def _bump(k):
+    with _lock:
+        REASON[k] = REASON.get(k, 0) + 1
+
+
+def _fetch_once(sym: str, start: str, timeout: int):
+    """單次嘗試。回 list(rows)/[](查無)/None(該試失敗)"""
     for _ in range(max(len(TOKENS), 1) + 1):
         _throttle()
         tok = _next_token()
@@ -102,18 +111,44 @@ def fetch(sym: str, start: str):
         url = API + '?' + urllib.parse.urlencode(q)
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=30) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 j = json.loads(r.read().decode('utf-8', errors='replace'))
             return j.get('data') or []
         except urllib.error.HTTPError as e:
             if e.code in (402, 429):
-                _slow_down(); continue
+                _bump(f'http{e.code}'); _slow_down(); continue
             if e.code in (500, 502, 503, 504):
-                continue
+                _bump(f'http{e.code}'); continue
+            _bump(f'http{e.code}')
             return []
-        except Exception:
+        except Exception as e:
+            _bump('timeout' if 'timed out' in str(e).lower() else type(e).__name__)
             continue
     return None
+
+
+def fetch(sym: str, start: str):
+    """回 list(rows)/[](查無)/None(全失敗)
+
+    🐛 V72.5.2 首次深度回補只拿到 **740 / 2,956** 檔四碼股(**2330 這種大權值股全缺**)。
+       真因:2 年 × 17 個持股級距 ≈ 1,700 列,**上市越久的股票回應越大** →
+       30 秒 timeout 對它們不夠,而小型股/興櫃回應小所以都成功
+       —— 這就是為什麼失敗的**剛好都是最重要的那些**,看起來像「資料源沒有」。
+    ⭐ 兩層修法(⛔ 別只改其中一層):
+       ① timeout 30 → `LONG_TIMEOUT`(大檔要更久)
+       ② 還是失敗就**退而求其次抓半個窗口**(1 年)—— 拿到 1 年遠好過拿到 0。
+          ⚠️ 退化時要記進 REASON,否則「只拿到一半深度」會靜默發生。
+    """
+    rows = _fetch_once(sym, start, LONG_TIMEOUT)
+    if rows:
+        return rows
+    half = (datetime.now(TW_TZ) - timedelta(days=max(BACKFILL_DAYS // 2, 120))).date().isoformat()
+    if half <= start:
+        return rows
+    rows2 = _fetch_once(sym, half, LONG_TIMEOUT)
+    if rows2:
+        _bump('degraded_half_window')
+    return rows2 if rows2 else rows
 
 
 def build_rows(rows):
@@ -154,6 +189,10 @@ def merge_one(data, sym, rows, deep=None):
     built = build_rows(rows)
     if deep is not None:
         dent = deep.setdefault(sym, {})
+        # ⭐ V72.5.2 深檔也要存 `t`(總發行股數)—— 沒有它就無法把「大戶 %」換成「張數」,
+        #   「隱藏大戶扣抵」那條探針第一次跑就因為缺這欄拿到 0 筆樣本(看起來像沒資料)。
+        if not dent.get('t'):
+            dent['t'] = (data.get(sym) or {}).get('t') or 0
         dh = [h for h in (dent.get('h') or []) if isinstance(h, list) and len(h) >= 5]
         dhave = {h[0] for h in dh}
         dh.extend(v for d8, v in built.items() if d8 not in dhave)
@@ -259,6 +298,10 @@ def main():
     _med = sorted(_dw)[len(_dw) // 2] if _dw else 0
     print(f'📊 回補結果:{touched} 檔補進 {added} 週;空 {empty}、敗 {hard_fail}、共處理 {done}', flush=True)
     print(f'🕳️ 深歷史:{len(_dw)} 檔有資料,週數中位 {_med}(目標 {DEEP_WEEKS})', flush=True)
+    # 🔍 失敗原因分類(⛔ 只印類型與次數,絕不印 token 值)—— 沒有這個就查不出
+    #   「為什麼剛好是大股票拿不到」(V72.5.2 那次差點誤判成「資料源沒有」)
+    if REASON:
+        print('🔍 失敗/降級原因:' + '、'.join(f'{k}×{v}' for k, v in sorted(REASON.items(), key=lambda x: -x[1])), flush=True)
     # ⛔ 淺檔沒補到不代表白跑 —— 重跑加深時淺檔本來就早就滿了,深檔才是這輪的產出
     if touched == 0 and not _dw:
         print('⚠️ 沒補到任何歷史(API 失敗或已全補過)→ 不改寫檔案'); return
