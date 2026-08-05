@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.5.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.5.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.5.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.5.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7114,8 +7114,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.5.2',
+    _APP_VERSION: 'V72.5.3',
     _CHANGELOG: [
+        { v: 'V72.5.3', dt: '2026-08-05', t: '🔑 集保深歷史只拿到一半 —— 真因是金鑰權限,不是我上一版猜的「逾時」', d: [
+            '① 上一版我猜「大股票資料量大、逾時不夠」,**猜錯了**。加上失敗原因統計後真相是:**逾時 0 次**,而是 **2,442 次權限被拒** —— 你的 4 把 FinMind 金鑰**不是每把都是付費層**,程式碰到壞的那把就直接放棄該檔,不會換下一把。',
+            '② 🔧 現在碰到權限錯誤會**自動換下一把金鑰重試**。覆蓋率預期會從 55% 拉到接近全部(目前 2,272 檔已有 2 年歷史,台積電等大檔下一輪補上)。',
+            '③ ⭐ 這件事也留成教訓寫進文件:**先加分類統計、再下結論**;而且權限失敗原本被算成「查無資料」,所以紀錄上「失敗 0 筆」看起來很健康,其實有 2,442 次躲在裡面。',
+        ] },
         { v: 'V72.5.2', dt: '2026-08-05', t: '🧭 集保加了「這幾週誰在收、誰在放」小圖;另外兩個網路上常見的判讀法我實測後不成立', d: [
             '① 🧭 **籌碼分佈卡新增兩排迷你走勢圖**(上排大戶、下排散戶,每根一週)+ 起訖值與變化量,**一眼看出籌碼往哪邊跑**,不用自己比數字。',
             '② ❌ 你貼的那套「**大戶增+散戶減=偏多、大戶減+散戶增=偏空**」四象限,我用剛做出來的 **104 週集保歷史、28,532 筆**實測 —— **它說偏多跟偏空的兩格只差 0.12%**,而且它說最差的那格反而最好。⛔ 所以那張圖只講「現在長什麼樣」,不下多空。',
@@ -7962,11 +7967,6 @@ ${list}
         { v: 'V71.6.7', dt: '2026-07-30', t: '🔧 修上一版自己種下的問題(個股新聞會慢慢又卡住)', d: [
             '上一版加的「比現有的少就不覆蓋」其實是個只進不退的棘輪 —— 檔數哪天衝到 40,之後正常的清淡日就永遠寫不進去,過一陣子又會卡住,跟原本要修的毛病一模一樣。',
             '改成只擋「崩塌」(掉到不足三分之一才算異常),日常多寡照常更新;而且舊檔超過 12 小時一律覆蓋 —— 一份新鮮的小檔,永遠好過一份三天前的大檔。',
-        ] },
-        { v: 'V71.6.6', dt: '2026-07-30', t: '📰 個股新聞卡了 3 天沒更新 —— 是自己的防呆把好資料擋掉了', d: [
-            '個股消息面從 7/27 就沒更新。查採礦紀錄才發現:防呆規則寫「命中不到 20 檔股票就當作來源被擋,不寫檔」,但每輪只判讀 25 篇新聞,本來就很難命中 20 檔以上不同股票。',
-            '更糟的是:它擋掉今天算出的 16 檔,保留的舊檔其實只有 7 檔 —— 用更差的資料取代更好的。',
-            '改成只在真的壞掉時才擋(股名表沒載到 / 完全沒新聞 / 一檔都沒命中),另外加一條「算出來比現有的少才保留舊檔」。',
         ] },
         // ⚡ V72.1.8 App 內只留**最近 60 筆**(約 1 個月)。
         //   原因:累積到 343 筆 / 147 KB,佔 index.html 的 5.1%,每次開 App 都要下載,
