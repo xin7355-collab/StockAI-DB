@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.4.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.4.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1514,13 +1514,25 @@
                 <!-- 🚦 頁籤① 現在怎麼做:趨勢照表操課主卡(三情境決策)+ 盤中即時雷達 -->
                 <div data-ovpane="now" class="flex flex-col gap-2">
                     <div id="trendCommandCard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
-                    <!-- 📖 V69.8.3 今日盤勢解讀(盤後敘事,短線/波段雙視角;動作以上方「現在怎麼做」為準) -->
-                    <div id="dailyRecapCard" class="hidden w-full"></div>
-                    <!-- 🎯 V66.9 ATR 波動率部位管理:這檔該買幾張才不會爆倉(機構級風控) -->
-                    <div id="positionSizerCard" class="hidden"></div>
-                    <div id="chuActionCard" class="hidden"></div>
-                    <!-- ⚡ V14.8 朱老師盤中即時雷達(只在盤中顯示;V65.7 移入「現在怎麼做」頁籤) -->
-                    <div id="chuIntradayCard" class="hidden w-full bg-[#0d1117] border border-cyan-700/40 rounded-xl p-3"></div>
+                    <!-- 🧹 V72.4.7 使用者要求「最上方只留一句話 + 兩個價位,其他收進摺疊區」——
+                         這四張卡各自也在下結論(今日盤勢給一組價、朱老師雷達給一個判斷…),
+                         全部攤開就是**五張卡各說各話**。⛔ 沒有刪掉任何一張(內容都在),
+                         只是預設收起 → 主結論(上面那張)成為第一眼唯一的答案(單一劇本原則)。 -->
+                    <details id="ovNowMore" class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
+                        <summary class="cursor-pointer select-none px-3 py-2.5 text-[12px] font-bold text-gray-300 flex items-center justify-between">
+                            <span>📖 更多解讀 <span class="text-[9px] text-gray-500 font-normal">今日盤勢・該買幾張・盤中雷達</span></span>
+                            <span class="text-[9px] text-gray-500 font-normal">動作以上面那張為準 ▾</span>
+                        </summary>
+                        <div class="flex flex-col gap-2 px-2 pb-2">
+                            <!-- 📖 V69.8.3 今日盤勢解讀(盤後敘事,短線/波段雙視角;動作以上方「現在怎麼做」為準) -->
+                            <div id="dailyRecapCard" class="hidden w-full"></div>
+                            <!-- 🎯 V66.9 ATR 波動率部位管理:這檔該買幾張才不會爆倉(機構級風控) -->
+                            <div id="positionSizerCard" class="hidden"></div>
+                            <div id="chuActionCard" class="hidden"></div>
+                            <!-- ⚡ V14.8 朱老師盤中即時雷達(只在盤中顯示;V65.7 移入「現在怎麼做」頁籤) -->
+                            <div id="chuIntradayCard" class="hidden w-full bg-[#0d1117] border border-cyan-700/40 rounded-xl p-3"></div>
+                        </div>
+                    </details>
                 </div>
                 <!-- 💼 頁籤② 庫存:損益 + 回檔健檢/套牢診斷 + 加碼策略(_renderTrendCommand 同引擎寫入) -->
                 <div data-ovpane="inv" style="display:none" class="flex flex-col gap-2">
@@ -7080,8 +7092,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.4.6',
+    _APP_VERSION: 'V72.4.7',
     _CHANGELOG: [
+        { v: 'V72.4.7', dt: '2026-08-05', t: '🧹 總覽大掃除:一眼只剩「一句話 + 兩個價位」,五張卡不再各說各話', d: [
+            '你說「不要模擬兩可、不要資訊打架」—— 我照你的總覽截圖逐張看完,問題是**五張卡都在下指令**,而且方向不一致。三個都改好了:',
+            '① **要出場時,進場價位整組收起** —— 以前主結論寫「建議離場」,底下的「進場劇本」還在給你「進場 558 / 停損 524 / 目標 664.80」。你都要走了,給進場價只會混淆。現在會直接說「這檔目前是出場管理,打法/進場價已收起」。',
+            '② **「上檔空間」在出場狀態改講「反彈到哪裡該出」** —— 以前寫「還有 +8.7% 的空間、淨賺 +49,210 元」,跟「建議離場」直接打架。⛔ 數字完全沒變(同一組壓力價),改的是它對「要出場的人」代表什麼:**彈到這附近就是減碼點**,清單標題也改成「⛔ 不是買進目標」。',
+            '③ **總覽第一眼只剩主卡** —— 今日盤勢解讀、該買幾張、盤中雷達三張(它們各自也在下結論)收進「📖 更多解讀」摺疊;主卡裡的「重點判讀 + 新聞」也收進「⭐ 為什麼是這個結論」。⛔ **一張卡、一個字都沒刪**,只是預設收起。而且「照這樣做」的價位提到大字結論正下方,不用再往下滑。',
+            '🔒 這三處現在吃**同一個判斷點**(以前只有分批計畫有守門,其他各判各的),而且綁股票代號防切股殘留。測試 18 條把「出場時不可再給進場價」「非出場時不可誤傷」兩邊都釘住。',
+        ] },
         { v: 'V72.4.6', dt: '2026-08-05', t: '🚨 你截圖抓到兩個「照著做會出事」的 bug(國巨 2327)', d: [
             '🐛 **最危險的一個**:空頭那段寫「反彈碰到 5 日線 **533** → 先出一半」,但你當下**現價已經 591**。5 日線是昨天收盤算的,今天盤中大漲 4.9% 早就站上去了 —— 那句話是拿**已經達成的條件**叫你「等它發生」,照著掛單會完全錯亂。現在會改口說「**已經站上 5 日線,要出就是現在這一帶分批出**」。同理「跌破 532.95 全部出」也會改成「這個價位早就破了,現在是上方壓力,別再拿它當停損掛單」。',
             '🐛 **金額差 14 倍**:「上檔空間」寫「**一張**淨賺 +49,210 元」,但你只有 **0.07 張**,實際只有 +3,445 元。現在有庫存就用**你實際的股數**算,標題也會寫「你手上 0.07 張淨賺 …」。風報比也一起用同一個股數。',
@@ -7918,13 +7937,6 @@ ${list}
             '數字向證交所官方「月報」要,不是把每天的值自己加起來 —— 每日快照遇到上游沒更新會沿用前一天,加總會重複計算(實測 7/9、7/10、7/13 都是同一個數字)。',
             '首席 AI、新聞綜合分析、事件深度分析都吃到這個水位,判外資態度不會再只看單日。',
             '抓不到就完全不顯示,不給半套的累計數字。',
-        ] },
-        { v: 'V71.6.0', dt: '2026-07-30', t: '🧠 新聞加「綜合分析」+ 改名 + 修一個利多利空顏色反了的 bug', d: [
-            '① 你要的綜合分析做好了:新聞清單上方多一顆「🧠 綜合分析:這些新聞對台股的意思」。原本每則右邊的「🔎 查」是一則一則問,看不出主線;這顆是把**全部新聞 + 當下已經算好的盤面數字**(加權漲跌、上漲/下跌家數、漲停跌停、成交金額、外資現貨期貨、融資去槓桿、反攻雷達結論)一起餵給深度 AI。',
-            '它會回答五件事:一句話定調偏多偏空 → 主線是哪一條(還是各自獨立)→ 實質影響哪些族群(而且要分清「整個族群」還是「只有個別公司」)→ **有沒有「新聞利多但盤面沒反映」的落差** → 哪幾則其實是雜訊不用理。',
-            '守住兩條鐵則:所有數字都由程式算好才餵進去(不讓 AI 自己算),而且明確要求它用「偏多/偏空」文字而不是紅綠符號。資料不足時要它直說「無法判斷」,不准硬掰。結果存整天,切頁回來自動還原不重複燒額度。',
-            '② 名稱改了:原本叫「盤前新聞重點」,但你截圖是中午 12:42,裡面全是 11:38、11:35、10:48 的盤中新聞 —— 叫「盤前」根本不對。改成「📰 台股新聞焦點(盤前+盤中,依時間排序)」。',
-            '③ 順手修一個顏色反了的 bug:「利多」原本顯**綠色**、「利空」顯**紅色** —— 那是美股慣例。這是台股 App,紅=漲=好、綠=跌=壞,所以掃一眼會完全看反,而且跟其他每一張卡的紅綠語意打架。兩處都改了。',
         ] },
         // ⚡ V72.1.8 App 內只留**最近 60 筆**(約 1 個月)。
         //   原因:累積到 343 筆 / 147 KB,佔 index.html 的 5.1%,每次開 App 都要下載,
@@ -19016,6 +19028,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
 
     // 「還有多少空間」區塊 HTML(給防守價一覽用;沒東西可講就回空字串)
+    // 🚪 V72.4.7 是不是「出場管理狀態」—— 全 App 只有這一個判斷點(⛔ 別各寫各的)
+    _inExitMode(sym) {
+        const e = this._exitMode;
+        return !!(e && e.sym === String(sym || this.currentSymbolId) && e.on);
+    },
+
     _upsideRoomHtml(u) {
         if (!u) return '';
         const money = n => (n == null ? '—' : `${n >= 0 ? '+' : '−'}${Math.abs(n).toLocaleString('en-US')} 元`);
@@ -19039,6 +19057,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <span class="font-mono text-[10px] w-[46px] text-right text-red-300">+${x.pct.toFixed(1)}%</span>
             <span class="font-mono text-[10px] w-[64px] text-right ${x.ntd >= 0 ? 'text-red-300' : 'text-green-300'}">${money(x.ntd)}</span>
         </div>`).join('');
+        // 🚪 V72.4.7 出場管理狀態時**改講「反彈到哪裡該出」** ——
+        //   使用者截圖:主結論寫「建議離場」,這張卻寫「還有 +8.7% 的空間、一張淨賺 +49,210 元」
+        //   → 同一畫面一邊叫你走、一邊告訴你還能賺,是最典型的資訊打架(單一劇本原則)。
+        //   ⛔ 數字完全不變(同一組壓力價位),改的只是**它對「要出場的人」代表什麼**。
+        if (this._inExitMode()) {
+            return `<div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 border-orange-500 pl-2.5 py-1.5 rounded-r mb-2 leading-relaxed">
+                    🚪 你現在是<b class="text-orange-300">出場管理狀態</b> → 下面這些不是「還能賺多少」,是<b class="text-orange-300">反彈到哪裡該分批出</b>。<br>
+                    最近一道是 <b class="text-orange-300">${f.n} ${f.v.toFixed(2)}</b>(現價上方 <b class="font-mono">${f.pct.toFixed(1)}%</b>)—— <b>彈到這附近就是減碼點</b>,${f.pct < 5 ? '而且空間只有 ' + f.pct.toFixed(1) + '%,不值得為它扛風險。' : '別期待一次走完。'}
+                </div>
+                <div class="text-[9px] text-gray-500 mt-2 mb-0.5">⬆️ 反彈減碼參考位(由近到遠・⛔ 不是買進目標)</div>${rows}`;
+        }
         return `<div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 border-red-500 pl-2.5 py-1.5 rounded-r mb-2 leading-relaxed">
                 現在買,先碰到的是 <b class="text-red-300">${f.n} ${f.v.toFixed(2)}</b> —— 還有 <b class="text-red-300 font-mono">+${f.pct.toFixed(1)}%</b> 的空間,<b class="text-red-300 font-mono">${this._upsideUnitLbl}淨賺 ${money(f.ntd)}</b>。${f.pct < 3 ? '<b class="text-yellow-300">空間不到 3%,扣掉成本幾乎沒得賺 —— 現在追等於幫人抬轎。</b>' : ''}
             </div>
@@ -19598,6 +19627,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (!el) return;
         const sym = this.currentSymbolId;
         if (!Array.isArray(data) || data.length < 80 || !sym) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        // 🚪 V72.4.7 出場管理守門(單一劇本原則)—— 使用者截圖:主結論寫「建議離場」,
+        //   這張卻給「進場 558・停損 524・目標 664.80」。你都要走了,給進場價只會混淆。
+        //   ⛔ 以前只有「分批進場計畫」吃到這個守門,打法雷達沒有 → 補上,兩張同一個判斷點。
+        if (this._inExitMode(sym)) {
+            el.classList.remove('hidden');
+            el.innerHTML = `<div class="bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-r p-2.5">
+                <div class="text-[11px] font-bold text-orange-300 mb-1">⛔ 這檔目前是「出場管理」→ 打法/進場價已收起</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">主結論是「${this._exitMode?.big || '出場'}」,這時候再給你進場價會跟出場劇本打架。<br>先照「🚦 現在怎麼做」執行;等它解除警報、重新轉成可進場,這裡才會出現打法與價位。</div>
+            </div>`;
+            return;
+        }
         const paint = (ranked) => {
             if (this.currentSymbolId !== sym) return;
             if (!Array.isArray(ranked) || !ranked.length) { el.classList.add('hidden'); el.innerHTML = ''; return; }
@@ -27741,6 +27781,16 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             this._armTrigStash = { sym: this.currentSymbolId, triggers: armTriggers };
             // 🪞 V69.7.1 存主結論劇本(big + rules 傳參考,含後續套牢診斷補進的行),供「出場」頁鏡射同一套指令 → 全 App 只有一個聲音
             this._lastOvPlan = { sym: this.currentSymbolId, big, rules };
+            // 🚪 V72.4.7 「出場管理狀態」抽成**單一真相** —— 使用者截圖抓到:主結論寫「建議離場」,
+            //   但同一頁的「進場劇本」還在給進場價 558、「上檔空間」還在講「還能賺 +8.7%」
+            //   → 三張卡互相打架(單一劇本原則被破壞)。
+            //   ⛔ 以前只有「分批進場計畫」吃到這個守門,其餘卡片各自為政 → 統一成這一個旗標。
+            //   ⚠️ 綁 sym 防切股殘留(同 `_ovTrend` 的做法)。
+            this._exitMode = {
+                sym: this.currentSymbolId,
+                on: /出場|離場|反彈再出|減碼/.test(big || ''),
+                big, slF: (typeof slF === 'number' && slF > 0) ? slF : null,
+            };
             // 🩺 回檔健檢 / 套牢診斷(持有時;全純公式:大盤因素 twPct + 大戶動向 inst5 + 支撐/量縮)
             //    使用者需求:回檔要分「危險(該走)/大盤拖累(續抱)/洗散戶(可加碼)」;深套 ≤-8% 走原套牢 4 分法
             let trappedHtml = '';
@@ -27832,13 +27882,22 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 </div>
                 ${(() => { try { return this._ovEmergencyBar(); } catch (_) { return ''; } })()}
                 ${(() => { try { return this._ovConfidenceBar(); } catch (_) { return ''; } })()}
-                <div id="ovStrongSig">${(() => { try { return this._ovStrongSignals(); } catch (_) { return ''; } })()}</div>
-                <div id="ovNews">${(() => { try { return this._ovNewsHtml(); } catch (_) { return ''; } })()}</div>
+                <!-- 🧹 V72.4.7 「照這樣做」提到大字結論正下方 —— 使用者要「一眼就知道要怎麼做」,
+                     ⛔ 不該先滑過重點判讀/新聞才看到要做什麼。⚠️ 內容一個字沒改,只是換順序。 -->
                 <div class="bg-[#0d1117] border-l-4 ${cmdBorder} rounded-r px-2.5 py-2 mt-2">
                     <div class="text-[10px] font-bold text-gray-500 mb-0.5">📍 照這樣做(碰到價位就動作,不用猜)</div>
                     ${rules.map(r => `<div class="text-[12px] text-gray-100 leading-relaxed py-0.5">${r}</div>`).join('')}
                     ${armTriggers.length ? `<button onclick="app._armStrategyAlerts(); app.vibrate(20);" class="mt-1.5 w-full text-[11px] font-bold text-emerald-200 bg-emerald-900/30 hover:bg-emerald-800/40 border border-emerald-700/50 rounded py-2 transition-colors">🔔 幫我盯這 ${armTriggers.length} 個價(到價自動推播提醒買/賣,不用盯盤)</button>` : ''}
                 </div>
+                <!-- 🧹 V72.4.7 重點判讀 + 新聞收進摺疊(它們是**解釋**不是**指令**)——
+                     ⛔ 一個字都沒刪,只是預設收起,讓第一眼只剩「大字結論 + 兩個價位」。 -->
+                <details class="mt-2 bg-[#0d1117] border border-[#30363d] rounded">
+                    <summary class="cursor-pointer select-none px-2.5 py-1.5 text-[10px] font-bold text-gray-400">⭐ 為什麼是這個結論(重點判讀・相關新聞) ▾</summary>
+                    <div class="px-2.5 pb-2">
+                        <div id="ovStrongSig">${(() => { try { return this._ovStrongSignals(); } catch (_) { return ''; } })()}</div>
+                        <div id="ovNews">${(() => { try { return this._ovNewsHtml(); } catch (_) { return ''; } })()}</div>
+                    </div>
+                </details>
                 ${(() => { try { return this._ovKeyLevelsHtml(data, C, cost, { exitMode: /出場|離場|反彈再出/.test(big || ''), slF }); } catch (_) { return ''; } })()}
                 ${(pullback && !/出場|離場|反彈再出/.test(big || '')) ? `<div class="bg-[#0d1117] border-l-4 border-cyan-500 rounded-r px-2.5 py-2 mt-2">
                     <div class="text-[10px] font-bold text-cyan-300 mb-0.5">📌 回後買上漲・建議掛單價 <span class="text-[9px] text-gray-500 font-normal">(多頭回檔最穩的買法)</span></div>
