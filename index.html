@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.4.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.4.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -403,6 +403,15 @@
         .scrollable-main:has(> #tabContentRadar.tab-active) { overflow: hidden !important; display: flex; flex-direction: column; }
         #tabContentRadar.tab-active { min-height: 0 !important; flex: 1 1 auto; overflow: hidden !important; }
         #radarModeStrategy, #radarModeEtf, #tabContentBroker { overscroll-behavior: contain; }
+        /* 🐛 V72.4.8 使用者回報「今天扣完成本還會賺的訊號卡住、不能往下滑」——
+           根因:選股頁**整頁刻意不捲動**(上面那兩條 overflow:hidden,設計上是讓左右兩欄各自捲),
+           但 V72.2.0 新加的訊號條掛在那些捲動區**外面**,列數一多就被切掉、而且外層又不能捲 → 卡死。
+           ⛔ 不可把外層改回可捲(那會讓左右兩欄的獨立捲動失效,是 V69.1.21 特地修過的)。
+           ⭐ 正解:讓它**自己捲** —— 跟這一頁其他區塊同一個設計。
+           ⚠️ `flex-shrink-0` 不可省:不然它會被下面的榜單擠到剩幾十 px。 */
+        #tabContentRadar.tab-active > #todaySignalBar:not(.hidden) {
+            flex: 0 0 auto; max-height: 42vh; overflow-y: auto; overscroll-behavior: contain;
+        }
 
         .swipe-container { position: relative; overflow: hidden; background: #dc2626; border-radius: 0.5rem; }
         .swipe-content { position: relative; z-index: 10; width: 100%; transition: transform 0.2s ease-out; }
@@ -674,7 +683,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1533,6 +1542,11 @@
                             <div id="chuIntradayCard" class="hidden w-full bg-[#0d1117] border border-cyan-700/40 rounded-xl p-3"></div>
                         </div>
                     </details>
+                    <!-- 🧠 V72.4.0 深度診斷(個股 + 籌碼 + 大盤總經)
+                         🐛 V72.4.8 使用者回報「三個頁籤都有」—— 它原本放在**兩個 pane 中間**(不在任何
+                         `data-ovpane` 裡)→ 不管切哪一頁都顯示(CLAUDE.md 陷阱 #32 明文寫過的坑,我自己踩了)。
+                         ⭐ 移進「現在怎麼做」pane —— 它回答的正是「這檔現在該怎麼操作」,跟主結論同一頁最合理。 -->
+                    <div id="deepBriefCard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-xl p-2.5"></div>
                 </div>
                 <!-- 💼 頁籤② 庫存:損益 + 回檔健檢/套牢診斷 + 加碼策略(_renderTrendCommand 同引擎寫入) -->
                 <div data-ovpane="inv" style="display:none" class="flex flex-col gap-2">
@@ -1559,10 +1573,6 @@
                         <div id="stockPredictResult" class="text-[11px] text-gray-200 leading-relaxed"></div>
                         </div><!-- /隱藏 首席AI + 此股預判AI -->
 
-                        <!-- 🧠 V72.4.0 深度診斷(使用者要求:個股資料 + 總經 + 大盤一起看)
-                             ⭐ 純公式摘要「自動出現」不用點、不燒額度;AI 白話解讀是加值層,點了才跑。
-                             ⛔ 沒有新增卡片 —— 這裡就是原本「此股預判 AI」那個位置(它整塊被 hidden 很久了)。 -->
-                        <div id="deepBriefCard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-xl p-2.5"></div>
                         <!-- 🔎 V45.12 免費查最新消息按鈕已刪除(🤖 AI 股神已涵蓋「你可能還想問」免費查) -->
                         <!-- 🚥 V39.3 戰術訊號燈卡已移除(使用者要求);computeUnifiedSignal 仍餵首席 AI + 頂部指揮部 LED,updateConfidenceLed 對 confLed/confText 已 null-guard -->
 
@@ -7092,8 +7102,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.4.7',
+    _APP_VERSION: 'V72.4.8',
     _CHANGELOG: [
+        { v: 'V72.4.8', dt: '2026-08-05', t: '🐛 你回報的三件事全修好(其中一件是我踩了自己寫過的坑)', d: [
+            '① 🎯「今天扣完成本還會賺的訊號」**卡住不能往下滑** —— 根因:選股頁是**刻意不讓整頁捲動**的(設計上讓左右兩欄各自捲),但這張訊號卡掛在那些捲動區**外面**,列數一多就被切掉、外層又不能捲 → 卡死。現在讓它**自己捲**,而且下面的榜單不會被擠掉。',
+            '② 🧠 深度診斷**四個頁籤都出現** —— 這是我自己踩了開發筆記裡白紙黑字寫過的坑:卡片放在兩個頁籤區塊**中間**,結果不管切哪頁都顯示。已移進「現在怎麼做」頁籤(它回答的正是「這檔現在該怎麼操作」),其他頁不再重複。',
+            '③ 你問「分點有把全部挖過一遍嗎」—— **有,而且遠比你想的多**:實測線上 `data/chips/` 共 **2,653 檔**,中美晶 5483 也有 75KB、日期是最新的 08/04。所以「此股無分點資料(只追約 50 檔)」那句話是**過期的錯誤訊息**,真正原因是**要開過「籌碼」分頁才會載入**。現在總覽會自動背景補載,那條就會有數字。',
+            '🛡️ 順手修一個沒人發現的:分點資料以前**沒有綁股票代號** —— 切股後如果新的還沒載完,會拿**上一檔的分點**來算這一檔。已加守門。',
+        ] },
         { v: 'V72.4.7', dt: '2026-08-05', t: '🧹 總覽大掃除:一眼只剩「一句話 + 兩個價位」,五張卡不再各說各話', d: [
             '你說「不要模擬兩可、不要資訊打架」—— 我照你的總覽截圖逐張看完,問題是**五張卡都在下指令**,而且方向不一致。三個都改好了:',
             '① **要出場時,進場價位整組收起** —— 以前主結論寫「建議離場」,底下的「進場劇本」還在給你「進場 558 / 停損 524 / 目標 664.80」。你都要走了,給進場價只會混淆。現在會直接說「這檔目前是出場管理,打法/進場價已收起」。',
@@ -7931,12 +7947,6 @@ ${list}
             '順手把「樣本不足」的訊息改成印出實際數字 —— 舊訊息只寫「不足」,所以「一直是 0」跟「今天剛好少」長得一模一樣,這才是它躲了這麼久沒被發現的原因。',
             '加權指數「今天漲跌幾 %」補上了 —— 這個數字後端從來沒產出過,所以新聞綜合分析在判今天盤勢時,其實一直看不到「今天到底漲跌多少」。改成前端用大盤 K 線自己算,不用等採礦。',
             '台指 VIX 的錯誤訊息改成一句白話結論。查證結果:是金鑰的帳號等級不夠(免費層開不了這個資料集),不是程式問題 —— 改程式不會有值,詳情見下方說明。',
-        ] },
-        { v: 'V71.6.1', dt: '2026-07-30', t: '📅 外資「這個月累計買賣超」上線(單日數字看不出輕重)', d: [
-            '外資現貨那格多一行「7月累計賣超 X,XXX 億」—— 只看今天賣 222 億看不出輕重,月累計才看得出這個月外資是不是一直在撤。',
-            '數字向證交所官方「月報」要,不是把每天的值自己加起來 —— 每日快照遇到上游沒更新會沿用前一天,加總會重複計算(實測 7/9、7/10、7/13 都是同一個數字)。',
-            '首席 AI、新聞綜合分析、事件深度分析都吃到這個水位,判外資態度不會再只看單日。',
-            '抓不到就完全不顯示,不給半套的累計數字。',
         ] },
         // ⚡ V72.1.8 App 內只留**最近 60 筆**(約 1 個月)。
         //   原因:累積到 343 筆 / 147 KB,佔 index.html 的 5.1%,每次開 App 都要下載,
@@ -15951,6 +15961,16 @@ const marginByDate = {};
         if (!this._fundAllCache) {
             this._loadFundCache().then(fc => { if (fc) this._fundAllCache = fc; }).catch(() => { });
         }
+        // 🧩 V72.4.8 分點同理:`_chipPeriods` 要開過「籌碼」分頁才有 → 總覽看不到分點那條。
+        //   採礦端其實**全市場 2,653 檔都有**,只是沒載進來 → 背景補載一次,下次渲染就有數字。
+        //   ⛔ 不 await(別拖慢首次渲染);⛔ 只補這一檔,不預載全市場。
+        if (this._chipSym !== String(sym) && !this._deepChipLoading) {
+            this._deepChipLoading = sym;
+            Promise.resolve(this.loadBrokerChips?.(sym, true))
+                .then(() => { if (this.currentSymbolId === sym) { try { this.renderDeepBrief(data); } catch (_) { } } })
+                .catch(() => { })
+                .finally(() => { if (this._deepChipLoading === sym) this._deepChipLoading = null; });
+        }
         let f = null;
         try { f = this._deepBriefFacts(data, sym); } catch (e) { console.warn('[深度診斷] facts 失敗', e); }
         if (!f || !f.play) { el.classList.add('hidden'); el.innerHTML = ''; return; }
@@ -21676,11 +21696,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // ④ 分點主力近 5 日賣超(券商分點,只有觀察清單股才有)
         let mf = null;
         try {
-            const P = this._chipPeriods; if (P) mf = this._chipMainForce(P, pC);
+            // 🐛 V72.4.8 使用者問「分點有把全部挖過一遍嗎」——**有**,gh-pages 實測 `data/chips/` 共 **2,653 檔**
+            //   (中美晶 5483 也有 75KB、日期 08/04 最新)。⛔ 所以「只追約 50 檔」那句話是**過期的**。
+            //   真正的原因是:`_chipPeriods` 只有**開過「籌碼」分頁**才會填 → 總覽當然是空的
+            //   (跟基本面 PE/殖利率 V72.4.3 同一種:**沒載入 ≠ 沒有**)。
+            //   ⚠️ 而且必須綁 `_chipSym` —— 沒綁的話會拿**上一檔**的分點資料算這一檔(跨股污染)。
+            const P = (this._chipSym === String(sym)) ? this._chipPeriods : null;
+            if (P) mf = this._chipMainForce(P, pC);
         } catch (_) { }
         add(!!(mf && mf.net5 < 0), '分點主力近 5 日賣超',
             mf ? `前 15 大分點近 5 日 ${Math.round(mf.net5 || 0).toLocaleString()} 張`
-               : '此股無分點資料(只追約 50 檔熱門股)');
+               : '分點資料載入中(開過「籌碼」分頁後這條就會有數字)');
 
         // ⑤ 集保大戶減、散戶增(四因子反向)
         const td = this._tdccFourFactor?.(sym) || null;

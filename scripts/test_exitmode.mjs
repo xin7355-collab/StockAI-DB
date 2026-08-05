@@ -129,6 +129,58 @@ ok('③ ⭐ 金額真的差 ~14 倍(1000/70)',
 ok('④ ⭐ 「更多解讀」預設收起', R.moreCollapsed === true);
 ok('④ ⭐ 四張次要卡都在摺疊區裡(⛔ 是收起不是刪掉)', R.moreHasCards === true);
 
+// ── ⑤ V72.4.8 使用者三個回報 ──────────────────────────────────
+const R5 = await page.evaluate(async (sym) => {
+    const out = {};
+    // (1) 深度診斷不可四頁都顯示(陷阱 #32:放在兩個 pane 中間)
+    const el = document.getElementById('deepBriefCard');
+    out.pane = el?.closest('[data-ovpane]')?.getAttribute('data-ovpane') || null;
+    el.classList.remove('hidden'); el.innerHTML = 'X';
+    out.vis = {};
+    for (const t of ['now', 'inv', 'entry', 'exit']) { try { app.switchOvTab(t); } catch (_) { } out.vis[t] = !!el.offsetParent; }
+
+    // (2) 選股頁訊號條要能自己捲(整頁刻意不捲)
+    app.switchAppTab('radar');
+    const bar = document.getElementById('todaySignalBar');
+    bar.classList.remove('hidden');
+    bar.innerHTML = Array.from({ length: 25 }, (_, i) => `<div style="padding:14px">列${i}</div>`).join('');
+    const cs = getComputedStyle(bar);
+    out.barOverflow = cs.overflowY;
+    out.barScrolls = bar.scrollHeight > bar.clientHeight + 4;
+    out.listH = document.getElementById('radarModeStrategy')?.clientHeight || 0;
+
+    // (3) 分點:綁 sym 防跨股污染 + 文案不可再說「只追約 50 檔」
+    const r = await fetch(`data/${sym}.json`);
+    const d = (await r.json()).map(x => ({ ...x, close: +x.close, open: +x.open, high: +x.high, low: +x.low, volume: +x.volume }));
+    app._chipSym = '9999'; app._chipPeriods = { '5d': { buy: [{ broker_name: 'X', net: -9999000 }], sell: [] } };
+    app.currentSymbolId = sym;
+    const w = app._distributionWatch(d, sym);
+    out.crossWhy = w.items.find(x => x.name.includes('分點主力'))?.why || '';
+    app._chipSym = sym;
+    out.sameWhy = app._distributionWatch(d, sym).items.find(x => x.name.includes('分點主力'))?.why || '';
+    out.srcWatch = app._distributionWatch.toString();
+    return out;
+}, SYM);
+
+ok('⑤ ⭐⛔ 深度診斷必須在某個 ovpane 裡(⛔ 不可放在 pane 之間 → 四頁都顯示)',
+   R5.pane === 'now', `pane=${R5.pane}`);
+// ⚠️ `inv` 在 V68.7.2 就併進 `now`(switchOvTab 第一行直接改寫)→ 它顯示是**正確**的,
+//    第一版測試把它當成失敗是我搞錯。真正要擋的是「進場/出場」兩頁也跟著顯示。
+ok('⑤ ⭐ 只在「現在怎麼做」顯示(inv 已併入 now),⛔ 進場/出場頁不可出現',
+   R5.vis?.now === true && !R5.vis?.entry && !R5.vis?.exit, JSON.stringify(R5.vis));
+ok('⑤ ⭐ 選股頁訊號條要能自己捲(整頁刻意不捲,⛔ 不可改回外層可捲)',
+   R5.barOverflow === 'auto' && R5.barScrolls === true, `overflow=${R5.barOverflow} scrolls=${R5.barScrolls}`);
+ok('⑤ ⭐ 訊號條變高時,下方榜單不可被擠沒(flex-shrink-0 + max-height)',
+   R5.listH > 120, `listH=${R5.listH}`);
+ok('⑤ ⭐⛔ 分點必須綁 _chipSym(⛔ 不可拿上一檔的分點算這一檔)',
+   /_chipSym === String\(sym\)/.test(R5.srcWatch || ''), (R5.srcWatch || '').slice(0, 120));
+ok('⑤ 上一檔分點殘留時要判成「沒有」', /載入中/.test(R5.crossWhy), R5.crossWhy);
+ok('⑤ 綁對時吃得到數字', /前 15 大分點/.test(R5.sameWhy), R5.sameWhy);
+// ⚠️ 只驗**顯示給使用者的字串**,⛔ 不驗註解(註解裡本來就要記「這句話為什麼過期」——
+//    同「禁止出現某句話的測試要先 strip 否定形」那條教訓,本 session 第 7 次踩到)
+ok('⑤ ⭐⛔ 顯示文案不可再寫「只追約 50 檔」(實測 gh-pages 有 2,653 檔)',
+   !/只追約 ?50 ?檔/.test(R5.crossWhy + R5.sameWhy), `${R5.crossWhy} | ${R5.sameWhy}`);
+
 await browser.close();
 console.log();
 if (fails.length) { console.log(`❌ EXITMODE_TEST_FAIL:${fails.length} 條`); process.exit(1); }
