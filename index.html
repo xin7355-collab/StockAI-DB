@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.5.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.5.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.5.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.5.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7114,8 +7114,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.5.0',
+    _APP_VERSION: 'V72.5.1',
     _CHANGELOG: [
+        { v: 'V72.5.1', dt: '2026-08-05', t: '🕳️ 集保大戶/散戶的歷史從 13 週拉到 2 年 —— 卡了很多版的「樣本不足」是我自己設的上限', d: [
+            '① 你傳的那張「怎麼查集保千張大戶與散戶比例」**我全都已經有了**(每週自動抓集保結算所官方資料,零金鑰),而且已經用在籌碼乾淨度、大戶籌碼總結、集保分佈、多空計分、兩上兩下、鬆動推播共 6 個地方。',
+            '② 🚨 **但順著查下去抓到一個大缺口**:我只留 **13 週**歷史 —— 而那是當初隨手設的,**不是資料的限制**。因為它,好幾個功能長期只能「顯示事實、不敢下判斷」(兩上兩下、散戶結構、千張大戶連週增減、大戶單週 ±3%)。',
+            '③ ⭐ **加深的成本是零** —— 每檔還是只打一次 API,只是把起始日期往前推。現在改成 **104 週(2 年)**,存成另一個只給回測用的檔,**前端下載的那份完全沒變大**(還是 1.9 MB,開 App 速度不受影響)。',
+            '④ 🔧 順手修一個藏很深的:舊版「這檔補過就跳過」→ 第一輪跑完之後**永遠不會再加深**。改成「不夠深就繼續補」。',
+            '⑤ ⏳ 要生效需要手動跑一次採礦(Actions → 集保大戶散戶週採礦 → backfill 選 yes),之後那幾個「樣本不足」的功能就能真的回測、有效果才會開始計分。',
+        ] },
         { v: 'V72.5.0', dt: '2026-08-05', t: '🧹 你說「訊號那塊佔太大、文字太多太亂」—— 整塊搬進榜單、每列改兩行、字砍掉一半', d: [
             '① 📍 **「扣完成本還會賺的訊號」不再佔滿選股頁第一屏** —— 改成**榜單清單裡的第一個榜**(🎯 會賺訊號),跟其他榜同一個位置、同一種捲動。',
             '② 🔴 **不會因此被埋掉**:那顆按鈕會顯示**紅點數字**(今天有幾檔),而且**今天真的有訊號時會自動幫你開這個榜**,不用自己去點。',
@@ -7958,11 +7965,6 @@ ${list}
             '之前顯示的是我自己把每檔股票加總出來的「上市+上櫃」金額,比電視/券商講的數字系統性偏高。實測 7/29 官方 1.149 兆、我自算 1.191 兆。',
             '現在以證交所官方的「集中市場成交值」為主 —— 這才是新聞和老師們口中的那個一兆。官方拿不到時才退回自算,而且名字會跟著換,不會出現「官方的數字配全市場的名字」。',
             '兩個數字不是誰算錯,是不同的東西(一個只含上市、一個含上櫃),所以名字一定不同。',
-        ] },
-        { v: 'V71.6.4', dt: '2026-07-30', t: '📊 大盤官方成交量:補上「缺的正好是最近兩個月」那個坑', d: [
-            '上線後去看採礦紀錄才發現:25 個月份檔裡有 3 個被證交所擋掉(HTTP 307),而且缺的正好是 2026/06、2026/07 —— 最該有的那兩個月。',
-            '這是證交所對雲端主機的間歇性阻擋,不是那幾個月沒資料(同一支網址對其他 22 個月都通)。已加重試 3 次 + 每次換一組瀏覽器識別,照這個專案原本就在用的做法。',
-            '證交所明講「沒有符合條件的資料」時就不重試(休市月/未來月),不浪費時間。',
         ] },
         // ⚡ V72.1.8 App 內只留**最近 60 筆**(約 1 個月)。
         //   原因:累積到 343 筆 / 147 KB,佔 index.html 的 5.1%,每次開 App 都要下載,

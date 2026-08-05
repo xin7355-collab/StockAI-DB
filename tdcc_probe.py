@@ -56,10 +56,18 @@ def daily(rows):
 
 
 def main():
-    tdcc = load(DATA / 'tdcc_holders.json')
+    # 🕳️ V72.5.1 深歷史優先(`tdcc_deep.json` 104 週,採礦端 V72.5.1 起產出)。
+    #   ⛔ 前端讀的仍是 13 週的 `tdcc_holders.json`(每次開 App 要下載,不能變大);
+    #      這裡是探針,吃得下大檔 → 有多深就用多深。沒有深檔就自動退回淺檔。
+    tdcc = load(DATA / 'tdcc_deep.json')
+    src = 'tdcc_deep.json(深歷史)'
     if not isinstance(tdcc, dict) or len(tdcc) < 100:
-        print('❌ 找不到 data/tdcc_holders.json')
+        tdcc = load(DATA / 'tdcc_holders.json')
+        src = 'tdcc_holders.json(13 週淺檔)'
+    if not isinstance(tdcc, dict) or len(tdcc) < 100:
+        print('❌ 找不到 data/tdcc_deep.json 或 data/tdcc_holders.json')
         return 2
+    print(f'📥 資料源:{src}')
     twii_map, twii_days = daily(load(DATA / '^TWII.json') or [])
     if not twii_map:
         print('⚠️ 沒有 ^TWII.json → 無法扣同期大盤')
