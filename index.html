@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.4.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.4.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -674,7 +674,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.4.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7080,8 +7080,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.4.2',
+    _APP_VERSION: 'V72.4.3',
     _CHANGELOG: [
+        { v: 'V72.4.3', dt: '2026-08-05', t: '🐛 你截圖抓到頂部量能錯 1000 倍 + 上櫃股終於有本益比了', d: [
+            '你問「貼的資料對嗎」—— 我逐個核對過:**AI 那段的數字全是對的**,反而是**頂部那行錯了**。',
+            '🚨 頂部顯示「總量 4331.8萬張・**量增 117944%**」—— 中美晶一天實際成交約 **4.3 萬張**,差 1000 倍。根因:即時報價在盤前會退回備援來源,那個來源給的單位是「股」不是「張」,而程式只有對「昨天的量」做單位換算,**忘了對「今天的量」做**。已把換算抽成同一支函式,兩邊一起用,測試會擋住只改一邊。',
+            '📅 另一個你可能沒注意到的:頂部寫 181.00、AI 說 182.00 —— **兩個都沒算錯,是不同來源**(頂部是即時報價商、AI 用的是證交所官方收盤)。現在深度診斷會明確標「官方收盤 08/04(二)」,AI 也不准再把它講成「現價」,免得看起來在打架。',
+            '⛏️ ⭐ 你說的「缺基本面本益比、殖利率」查下來有兩層:① 深度診斷沒去載已經有的全市場快取(已修)② **中美晶是上櫃股,而那份快取 840 檔全是上市** —— 上櫃的本益比殖利率**一檔都沒有**。這是真缺口,已加採礦補上櫃(官方免費資料,不需金鑰),下一輪採礦後上櫃股就會有本益比和殖利率了。',
+            '⚠️ 合併時只補「上市沒給的」,⛔ 不覆蓋上市既有數值,避免兩邊打架。',
+        ] },
         { v: 'V72.4.2', dt: '2026-08-05', t: '🔧 AI 深度診斷大修:你說「沒什麼屁用」是對的,問題出在我的提示詞', d: [
             '你拿中美晶(5483)實測給我看,那份輸出確實沒用。我逐條看完,問題不在 AI,在**我叫它做的事本身就錯了**:',
             '🚫 **它在複述我寫給它的規則** —— 「大戶出貨徵兆代表大戶減持和散戶增持的信號,而非預測出貨時間」,那是我給它的免責條款,不是這檔的狀況。已改成「只准講這檔實際亮了哪幾條、數字多少」,一條都沒亮就直接說沒亮。',
@@ -15921,6 +15928,11 @@ const marginByDate = {};
         if (!sym || !Array.isArray(data) || data.length < 60) {
             el.classList.add('hidden'); el.innerHTML = ''; return;
         }
+        // 🧾 V72.4.3 先把全市場基本面快取拉起來(PE/殖利率),不然 AI 會誠實地說「缺基本面資料」——
+        //   但那是**沒載入**不是**沒有**。⛔ 不 await(拉到就下一次用,不拖慢首次渲染)。
+        if (!this._fundAllCache) {
+            this._loadFundCache().then(fc => { if (fc) this._fundAllCache = fc; }).catch(() => { });
+        }
         let f = null;
         try { f = this._deepBriefFacts(data, sym); } catch (e) { console.warn('[深度診斷] facts 失敗', e); }
         if (!f || !f.play) { el.classList.add('hidden'); el.innerHTML = ''; return; }
@@ -15936,7 +15948,7 @@ const marginByDate = {};
 
         el.innerHTML = `
             <div class="flex items-center justify-between mb-1.5 pb-1.5 border-b border-[#30363d]">
-                <h4 class="font-bold text-sm text-gray-100">🧠 深度診斷 <span class="text-[9px] text-gray-500 font-normal">個股 + 籌碼 + 大盤總經</span></h4>
+                <h4 class="font-bold text-sm text-gray-100">🧠 深度診斷 <span class="text-[9px] text-gray-500 font-normal">${f.dataDate ? `官方收盤 ${this._dW ? this._dW(f.dataDate) : f.dataDate}` : '個股 + 籌碼 + 大盤總經'}</span></h4>
                 <button onclick="app.showJargon('深度診斷')" class="text-[9px] text-gray-500 hover:text-blue-300">ⓘ 說明</button>
             </div>
 
@@ -16017,7 +16029,9 @@ const marginByDate = {};
         const prompt = `你是台股研究員,講話白話、國中生看得懂,禁廢話禁客套。
 以下**所有數字都已經由程式精算完成**,你的工作是「解讀與串連」,⛔ 絕對不要自己做任何加減乘除或推算新數字,也⛔ 不要給任何買賣價位(那些由程式另外算)。
 
-【這檔】${f.name}(${f.sym}) 現價 ${n(f.pC, 2)}(今日 ${f.chg >= 0 ? '+' : ''}${n(f.chg, 2)}%${f.twChg != null ? `,同日大盤 ${f.twChg >= 0 ? '+' : ''}${n(f.twChg, 2)}%` : ''})
+【這檔】${f.name}(${f.sym}) ${f.dataDate ? `${f.dataDate} ` : ''}官方收盤 ${n(f.pC, 2)}(當日 ${f.chg >= 0 ? '+' : ''}${n(f.chg, 2)}%${f.twChg != null ? `,同日大盤 ${f.twChg >= 0 ? '+' : ''}${n(f.twChg, 2)}%` : ''})
+  ⚠️ 這是**證交所官方收盤價**;畫面頂部那個是**即時報價商**給的數字,兩邊可能差幾角到一元(來源不同,都沒算錯)。
+  ⛔ 提到價格時一律講「收盤 X」,不要講成「現價」。
 量能:今量是昨量的 ${f.volVsPrev != null ? (f.volVsPrev >= 0 ? '+' : '') + n(f.volVsPrev, 0) + '%' : '無資料'};同時是 20 日均量的 ${n(f.volX, 1)} 倍
   ⚠️ 這兩個是**不同基準**(比昨天 vs 比 20 日平均),⛔ 只提其中一個會跟畫面上另一處打架 —— 要提就兩個一起講。
 均線與現價的相對位置(⭐ 這是重點,⛔ 不准只念均線數字而不說現價在它上面還下面):
@@ -21630,12 +21644,24 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 均線相對位置(%)——⭐ 這是上一版最大的缺口:AI 只拿到均線數字、拿不到「現價在它上面還下面幾%」,
         //   於是講出「月線209.6和季線179.78的突破或跌破將是關鍵」這種沒講到現價 181 在哪的廢話。
         const rel = m => (m && m > 0) ? (pC - m) / m * 100 : null;
+        // 📅 V72.4.3 資料日期(V70.2.0 鐵則:任何顯示「資料」的卡片都要標日期)。
+        //   ⚠️ 使用者截圖抓到:頂部寫 181.00(即時報價源),深度診斷算出 182.00(官方 K 線收盤)——
+        //      **兩個都沒算錯,是不同來源**(即時報價商 vs 證交所),但同一畫面兩個現價會被當成打架。
+        //   ⛔ 照「不同來源就給不同名字」鐵則:這裡明確標成「官方收盤(日期)」,⛔ 不冒充即時價。
+        const dRaw = String(data[last]?.date || data[last]?.t || '').slice(0, 10);
         return {
             sym, name: this.getStockName?.(sym) || sym,
             pC, chg, volX: v20 > 0 ? vNow / v20 : null, volVsPrev,
+            dataDate: dRaw,
             ma5: ma(5), ma20: ma(20), ma60: ma(60), ma240: ma(240),
             relMa5: rel(ma(5)), relMa20: rel(ma(20)), relMa60: rel(ma(60)), relMa240: rel(ma(240)),
-            fund: (this._fundCache?.sym === sym) ? this._fundCache : null,
+            // 🐛 V72.4.3 使用者回報「還缺基本面本益比、殖利率」——⛔ 其實**資料早就有**,
+            //   只是這裡讀的 `_fundCache` 要**開過「基本」分頁**才會填,總覽頁當然是空的。
+            //   → 改讀全市場 `fundamentals_cache.json`(採礦端本來就在產,`_loadFundCache()` 已存在),
+            //     `_fundAllCache` 由 renderDeepBrief 先預載;讀不到才退回 `_fundCache`。
+            //   ⭐ 通用教訓:「AI 說沒有資料」要先查是**真的沒有**還是**沒載進來**(同 V72.1.6「欄位存在 ≠ 有資料」的鏡像)。
+            fund: (this._fundAllCache && this._fundAllCache[sym])
+                || ((this._fundCache?.sym === sym) ? this._fundCache : null),
             twChg: (() => { const t = this._medGapCache || null; return t?.idx ?? null; })(),
             rank, entry, upside, xray,
             fi5: fnet(5), fi20: fnet(20), tr5: tnet(5), tr20: tnet(20),
@@ -29359,9 +29385,22 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
 
     // B1. 預估量達標度 — V56.3 改「分時量能曲線」推估:預估總量 = 累計量 ÷ 該時點典型累計比例(取代線性外推)
+    // 🧮 V72.4.3 成交量單位正規化(股 → 張)—— ⛔ 全 App 只有這一份,別再各寫各的
+    //   台股一天「股」數最低約 7e6、「張」數最高約 5e5 → 1e6 當閾值中間沒有誤判區。
+    _volToLots(v) {
+        v = Number(v) || 0;
+        return v < 1_000_000 ? Math.round(v) : Math.round(v / 1000);
+    },
+
     _chuVolumeProgress(fugleData, baseRawData) {
         if (!fugleData || !baseRawData || !baseRawData.length) return null;
-        const cur = Number(fugleData.volume) || 0;
+        // 🐛 V72.4.3 使用者截圖抓到:頂部顯示「總量 4331.8萬張・量增 117944%」——
+        //   實際只有 4.3 萬張(差 1000 倍)。根因:`prevVol` 有做「股/張」自動偵測,
+        //   但 `cur` **沒有** → 即時報價走 Yahoo fallback 時回的是**股**
+        //   (`regularMarketVolume`),被當成張直接顯示。
+        //   量增% = (cur − prevVol)/prevVol → 43,318,000 vs 36,700 = +117,944% ✓ 完全吻合。
+        //   ⚠️ 盤前特別容易踩到(Fugle 還沒資料 → 走 Yahoo)。⛔ 兩邊必須用同一支正規化函式。
+        const cur = this._volToLots(fugleData.volume);
         const elapsed = this._chuElapsedMinutes();
         // 昨日總量:baseRawData 最後一筆若為今日(無 fugle 即時 → 是歷史)用倒數第二筆;否則用最後一筆
         const lastBar = baseRawData[baseRawData.length - 1];
@@ -29374,8 +29413,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // V17.9 — auto-detect 單位 bug fix(2026/06/16 起採礦寫法不一致 — 歷史「股」,新近 row 變「張」):
         //         < 1e6 視為已是張(不轉);≥ 1e6 視為股(÷ 1000 轉張)。1e6 閾值區分安全
         //         (「股」一日最低約 7e6,「張」一日最高約 5e5,中間 1e6 無誤判風險)
-        const prevVolRaw = Number((lastIsToday && prevBar ? prevBar : lastBar).volume) || 0;
-        const prevVol = prevVolRaw < 1_000_000 ? Math.round(prevVolRaw) : Math.round(prevVolRaw / 1000);
+        const prevVol = this._volToLots((lastIsToday && prevBar ? prevBar : lastBar).volume);
         if (!elapsed || elapsed < 5 || !prevVol || !cur) return { cur, prevVol, estimated: null, pct: null, lamp: 'gray' };
         const frac = this._twVolCurveFrac(elapsed);
         const estimated = frac > 0 ? Math.round(cur / frac) : null;

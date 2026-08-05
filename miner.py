@@ -1467,6 +1467,86 @@ def fetch_twse_fundamentals(d: date) -> dict:
     return res
 
 
+# ── TPEx 上櫃全市場基本面(本益比 / 殖利率 / 股價淨值比)────────────────────────
+def fetch_tpex_fundamentals() -> dict:
+    """🆕 V72.4.3 一次查全**上櫃**股票的 PE / 殖利率 / PBR。
+
+    ⚠️ 為什麼需要:`fetch_twse_fundamentals`(BWIBBU_d)**只涵蓋上市**,
+       於是 `fundamentals_cache.json` 840 檔全是上市 —— 上櫃股票的本益比/殖利率
+       **一檔都沒有**。使用者實測中美晶(5483,上櫃)時,深度診斷誠實回報
+       「缺乏基本面的本益比和殖利率數據」,查下來就是這個缺口。
+    ⭐ 這是**真的缺資料**(不是沒載入),所以照使用者指示補採礦。
+       TPEx OpenAPI 免金鑰、免登入,跟既有的 `t187ap03` 同一個站。
+
+    ⛔ 候選端點是猜的(沙箱連不到 tpex)→ 全部試一輪,失敗時把「站方到底回了什麼」
+       印出來,不要只印一句「失敗」(陷阱 #23:回 200 + HTML 去 parse JSON 的簽名)。
+    """
+    urls = [
+        "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_peratio_analysis",
+        "https://www.tpex.org.tw/openapi/v1/mainboard_peratio_analysis",
+        "https://www.tpex.org.tw/openapi/v1/tpex_esb_latest_statistics",
+    ]
+    res, errs = {}, []
+    for url in urls:
+        try:
+            r = http_session.get(url, headers=_rnd_hdrs(), timeout=25)
+            if r.status_code != 200:
+                errs.append(f"{url.rsplit('/', 1)[-1]}:HTTP {r.status_code}")
+                continue
+            try:
+                rows = r.json()
+            except Exception as je:
+                ct = (r.headers.get("Content-Type") or "?")[:40]
+                errs.append(f"{url.rsplit('/', 1)[-1]}:非JSON({ct}) {str(je)[:40]}")
+                continue
+            if not isinstance(rows, list) or not rows:
+                errs.append(f"{url.rsplit('/', 1)[-1]}:空或結構不符({type(rows).__name__})")
+                continue
+            # 欄位名依站方版本而異 → 用關鍵字比對,⛔ 不寫死
+            sample = rows[0] if isinstance(rows[0], dict) else {}
+            def pick(*kws):
+                for k in sample:
+                    if any(w in str(k) for w in kws):
+                        return k
+                return None
+            k_id = pick("SecuritiesCompanyCode", "股票代號", "Code", "代號")
+            k_pe = pick("本益比", "PERatio", "PriceEarningRatio")
+            k_yd = pick("殖利率", "YieldRatio", "DividendYield")
+            k_pb = pick("股價淨值比", "PBRatio", "PriceBookRatio")
+            if not k_id or not (k_pe or k_yd):
+                errs.append(f"{url.rsplit('/', 1)[-1]}:欄位對不上 keys={list(sample)[:8]}")
+                continue
+
+            def flt(v):
+                s = str(v).replace(",", "").strip()
+                try:
+                    return float(s) if s not in ("--", "", "N/A", "-") else None
+                except ValueError:
+                    return None
+
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                sym = str(row.get(k_id, "")).strip()
+                if not sym or not sym[0].isdigit():
+                    continue
+                res[sym] = {
+                    "pe": flt(row.get(k_pe)) if k_pe else None,
+                    "yield_rate": flt(row.get(k_yd)) if k_yd else None,
+                    "pbr": flt(row.get(k_pb)) if k_pb else None,
+                }
+            if res:
+                print(f"  ✓ TPEx 上櫃基本面 {len(res)} 檔(來源 {url.rsplit('/', 1)[-1]})")
+                break
+        except Exception as e:
+            errs.append(f"{url.rsplit('/', 1)[-1]}:{type(e).__name__} {str(e)[:60]}")
+    if not res:
+        # ⛔ 只印「失敗」查不出真因 → 把每一條的實際回應都留下來
+        print(f"  ⚠️ TPEx 上櫃基本面全部失敗:{' | '.join(errs)[:400]}")
+    time.sleep(random.uniform(1.0, 2.0))
+    return res
+
+
 # ── FinMind 全台券商代碼→中文名對照（免費無 Token）────────────────────────────
 def _load_broker_info_map() -> dict:
     """
@@ -3498,6 +3578,31 @@ def fetch_broker_chips():
                 fund_cache = {}
             base_src = 'cache(TWSE空)'
             print(f"  ⏭️ TWSE 基本面回空,沿用既有 fundamentals_cache.json({len(fund_cache)} 檔)再補 YoY/毛利")
+
+        # 🆕 V72.4.3 併入**上櫃**基本面 —— BWIBBU_d 只有上市,上櫃(4/5/6/8 開頭居多)
+        #   本益比/殖利率一檔都沒有。使用者實測中美晶 5483(上櫃)時發現的缺口。
+        #   ⚠️ 只補「TWSE 沒給的」與「TWSE 給了但值是 None」的欄位,⛔ 不覆蓋上市既有值。
+        #   ⛔ 失敗一律不擋(它是加值資料),而且不可洗掉既有快取。
+        try:
+            tpex_fund = fetch_tpex_fundamentals() or {}
+        except Exception as _te:
+            tpex_fund = {}
+            print(f"  ⚠️ TPEx 基本面例外(不擋):{str(_te)[:100]}")
+        if tpex_fund:
+            _new = _fill = 0
+            for s, v in tpex_fund.items():
+                if not isinstance(v, dict):
+                    continue
+                cur = fund_cache.get(s)
+                if not isinstance(cur, dict):
+                    fund_cache[s] = {'pe': v.get('pe'), 'yield_rate': v.get('yield_rate'),
+                                     'pbr': v.get('pbr')}
+                    _new += 1
+                else:
+                    for k in ('pe', 'yield_rate', 'pbr'):
+                        if cur.get(k) is None and v.get(k) is not None:
+                            cur[k] = v[k]; _fill += 1
+            print(f"  ✓ 併入上櫃基本面:新增 {_new} 檔、補齊 {_fill} 個欄位 → 合計 {len(fund_cache)} 檔")
 
         # V35.8 — bulk YoY/毛利:經 __status 實證 FinMind 免費版「不帶 data_id」抓營收/財報回 0,已棄用。
         #   改在下方分點逐檔迴圈把「觀察清單已算好的 YoY/毛利」併入(免費、零額外 API);全市場 YoY/毛利需 Sponsor。
