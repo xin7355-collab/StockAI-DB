@@ -58,7 +58,9 @@ ok('① 大戶上升 → bigUp=true', r.f && r.f.bigUp === true, JSON.stringify(
 ok('① 散戶下降 → retDown=true', r.f && r.f.retDown === true, JSON.stringify(r.f));
 ok('① 融資減少 → mgDir=down', r.f && r.f.mgDir === 'down', JSON.stringify(r.f));
 // ⚠️ V71.9.7 起 hits 是**四項**的命中數(第 4 項=股東人數↓);判定門檻另用 core3(前三項)。
-ok('① hits=4(四項全過)', r.f && r.f.hits === 4, JSON.stringify(r.f));
+// ⚠️ V72.5.4 起 `hits` **只算前三項** —— 股東人數那項用 104 週深歷史重測後邊際消失
+//    (13 週 +0.88pp → 104 週 −0.21pp,方向還反過來)→ 依鐵則降級成「只顯示不計分」。
+ok('① hits=3(⛔ 股東人數不再計分)', r.f && r.f.hits === 3, JSON.stringify(r.f));
 ok('① 三項全過時三個 ✅', (r.html.match(/✅/g) || []).length >= 3, r.html.slice(0, 200));
 
 // ⭐ 最重要的一條:結論必須帶實測數字,而且⛔不可講成「會賺」
@@ -78,14 +80,14 @@ ok('④ 必須寫非投資建議', /非投資建議/.test(r.html));
 
 // ── ⑤ 融資還在增 → 最差那組,文案要講「基本上無效」──────────────
 r = await run(mkTdcc(60.0, 61.5, 25.0, 23.8), mkDaily(1100, 1000));
-ok('⑤ 融資增加 → mgDir=up、hits=3(大戶/散戶/股東人數過)', r.f.mgDir === 'up' && r.f.hits === 3, JSON.stringify(r.f));
+ok('⑤ 融資增加 → mgDir=up、hits=2(只剩大戶/散戶)', r.f.mgDir === 'up' && r.f.hits === 2, JSON.stringify(r.f));
 ok('⑤ 融資↑ 要帶實測墊底數字(−2.21~−2.60)',
    /2\.21/.test(r.html) && /2\.60/.test(r.html), r.html.slice(0, 500));
 ok('⑤ 融資↑ 要明說這套選股法無效', /無效/.test(r.html), r.html.slice(0, 500));
 
 // ── ⑥ 大戶↓散戶↑ 但融資↓ → 中間那檔,不可顯示成三項全過 ────────
 r = await run(mkTdcc(61.5, 60.0, 23.8, 25.0), mkDaily(900, 1000));
-ok('⑥ 大戶下降/散戶上升 → hits=2(只剩融資↓與股東人數↓)', r.f.hits === 2 && !r.f.bigUp && !r.f.retDown, JSON.stringify(r.f));
+ok('⑥ 大戶下降/散戶上升 → hits=1(只剩融資↓)', r.f.hits === 1 && !r.f.bigUp && !r.f.retDown, JSON.stringify(r.f));
 ok('⑥ 不可誤標成三項全過', !/三項全過/.test(r.html), r.html.slice(0, 200));
 
 // ── ⑦ 沒有融資資料 → ⏳ 而不是判成過關 ─────────────────────
@@ -119,7 +121,12 @@ ok('⑩ 全程無 pageerror', errs.length === 0, errs.join(' | '));
 r = await run(mkTdcc(60.0, 61.5, 25.0, 23.8, 500000, 499000), mkDaily(900, 1000));
 ok('⑪ 股東人數減少 → pplDown=true', r.f.pplDown === true, JSON.stringify(r.f));
 ok('⑪ 要顯示人數與變化%', /499,000 人/.test(r.html) && /-0\.2%/.test(r.html), r.html.slice(0, 900));
-ok('⑪ ⭐ 要誠實標「加分不多」(實測只有 +0.88pp)', /加分不多/.test(r.html), r.html.slice(0, 900));
+// ⭐ 這條是本專案「重跑後邊際消失就降級」鐵則的實例 —— ⛔ 別把它改回「加分不多」
+ok('⑪ ⭐ 第 4 項要標「重測無效」(⛔ 不可再寫成加分項)',
+   /重測無效/.test(r.html) && !/加分不多/.test(r.html), r.html.slice(0, 900));
+ok('⑪ ⭐ 免責要寫出重測前後的數字(+0.88 → −0.21)',
+   /\+0\.88/.test(r.html) && /−0\.21|-0\.21/.test(r.html), r.html.slice(-700));
+ok('⑪ ⭐ 要寫明「只顯示、不計分」', /只顯示.{0,3}不計分/.test(r.html.replace(/<[^>]+>/g, '')), r.html.slice(-700));
 ok('⑪ 要帶第 4 因子的實測數字', /0\.88/.test(r.html), r.html.slice(-600));
 r = await run(mkTdcc(60.0, 61.5, 25.0, 23.8, 490000, 500000), mkDaily(900, 1000));
 ok('⑪ 股東人數增加 → pplDown=false', r.f.pplDown === false, JSON.stringify(r.f));

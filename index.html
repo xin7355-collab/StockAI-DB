@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.5.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.5.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.5.3 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.5.4 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7114,8 +7114,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.5.3',
+    _APP_VERSION: 'V72.5.4',
     _CHANGELOG: [
+        { v: 'V72.5.4', dt: '2026-08-05', t: '🚨 用新的 2 年集保歷史重測 —— 我自己的一個加分項被證明沒用,已降級', d: [
+            '① 「兩上兩下」卡的**第 4 項(股東人數集中)不再計分**。當初用 13 週資料看起來有 +0.88 個百分點的優勢,拉長到 **104 週(樣本大 8 倍)**變成 **−0.21 個百分點、方向還反過來** → 那只是短期雜訊。',
+            '② 現在它**只顯示不計分**,過關數只看前三項(大戶↑・散戶↓・融資↓),卡上直接寫出重測前後的數字。',
+            '③ ✅ 主結論**沒變**:「兩上兩下」仍是 8 種組合裡的前段班,而且**融資方向做掉大部分的工作** —— 融資還在增加時這套基本上無效。',
+            '④ ✅ 「高檔主力賣散戶買最慘」重測後**更確定不成立**(高位階兩種情況一模一樣),所以維持不加位階限制。',
+            '⭐ 這就是把集保歷史從 13 週加深到 2 年最大的價值 —— **不是多一個訊號,而是把一個其實不成立的加分項抓出來**。',
+        ] },
         { v: 'V72.5.3', dt: '2026-08-05', t: '🔑 集保深歷史只拿到一半 —— 真因是金鑰權限,不是我上一版猜的「逾時」', d: [
             '① 上一版我猜「大股票資料量大、逾時不夠」,**猜錯了**。加上失敗原因統計後真相是:**逾時 0 次**,而是 **2,442 次權限被拒** —— 你的 4 把 FinMind 金鑰**不是每把都是付費層**,程式碰到壞的那把就直接放棄該檔,不會換下一把。',
             '② 🔧 現在碰到權限錯誤會**自動換下一把金鑰重試**。覆蓋率預期會從 55% 拉到接近全部(目前 2,272 檔已有 2 年歷史,台積電等大檔下一輪補上)。',
@@ -7963,10 +7970,6 @@ ${list}
             '點櫃買/台指電子盤跳出的說明,原本寫「官方端點改版中,修正已排隊驗證」—— 那是我自己的內部用語,而且「改版中」還是沒查證的猜測。已改成白話,並告訴你現在可以去哪裡看。',
             '台指期那格補上真正的理由:它是每月換一次合約的商品,不同月份接成一條線會有假跳空,所以刻意不做線圖,不是漏做。想看趨勢請點左邊的加權指數。',
             '櫃買歷史 K 線的真因也查出來了:官方管道其實是通的(回 200、狀態正常),是我們解析時只認一種資料格式。已放寬並補上診斷,下一輪採礦就會知道有沒有成功。',
-        ] },
-        { v: 'V71.6.7', dt: '2026-07-30', t: '🔧 修上一版自己種下的問題(個股新聞會慢慢又卡住)', d: [
-            '上一版加的「比現有的少就不覆蓋」其實是個只進不退的棘輪 —— 檔數哪天衝到 40,之後正常的清淡日就永遠寫不進去,過一陣子又會卡住,跟原本要修的毛病一模一樣。',
-            '改成只擋「崩塌」(掉到不足三分之一才算異常),日常多寡照常更新;而且舊檔超過 12 小時一律覆蓋 —— 一份新鮮的小檔,永遠好過一份三天前的大檔。',
         ] },
         // ⚡ V72.1.8 App 內只留**最近 60 筆**(約 1 個月)。
         //   原因:累積到 343 筆 / 147 KB,佔 index.html 的 5.1%,每次開 App 都要下載,
@@ -22601,12 +22604,19 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             // 🧑‍🤝‍🧑 V71.9.7 第 4 個因子:股東人數(集保戶數)—— 他自己說的三個必看指標之一
             //   「我最喜歡看這三個指標:主力買超、主力買散戶賣、**集保戶數**」
             //   人數減少 = 同樣的股票被更少人拿著 = 籌碼集中。這欄(h 每列第 5 個)本來就有,一直沒用。
-            //   ⚠️ 實測邊際只有 +0.88pp(集中 −3.39% vs 分散 −4.28%,n=12,321/6,567),
-            //      比前三項弱 → 文案要誠實說「加分不多」,⛔ 別把它講得跟融資那條一樣重要。
+            //   ⚠️⚠️ V72.5.4 **深歷史重測後這一項的邊際消失,而且方向反過來**:
+            //      13 週版:集中 −3.39% vs 分散 −4.28% = **+0.88pp**(當時據此列為加分項)
+            //      104 週版:集中 −4.06% vs 分散 −3.85% = **−0.21pp**(n=99,159 / 78,064)
+            //      → 樣本大了 8 倍之後,原本那點邊際被證明是**短窗口的雜訊**。
+            //   ⛔ 依 CLAUDE.md 鐵則「重跑後邊際消失就降級或移除」:
+            //      這一項改成**只顯示事實、⛔ 不計入 hits**,文案要明說重測結果。
+            //   ⭐ 這正是把集保歷史從 13 週加深到 104 週最大的價值 —— 不是多一個訊號,
+            //      而是**把一個其實不成立的加分項抓出來**。
             const pplNow = (a.length > 4) ? +a[4] : 0, pplPrev = (b.length > 4) ? +b[4] : 0;
             const pplDown = (pplNow > 0 && pplPrev > 0) ? pplNow < pplPrev : null;
             const bigUp = bigNow > bigPrev, retDown = retNow < retPrev;
-            const hits = [bigUp, retDown, mgDir === 'down', pplDown === true].filter(Boolean).length;
+            // ⛔ V72.5.4 起 `hits` **只算前三項** —— 股東人數那項深歷史重測後沒有邊際(見上方註解)
+            const hits = [bigUp, retDown, mgDir === 'down'].filter(Boolean).length;
             return {
                 bigNow, bigDelta: +(bigNow - bigPrev).toFixed(2), bigUp,
                 retNow, retDelta: +(retNow - retPrev).toFixed(2), retDown,
@@ -22651,13 +22661,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 ${row(f.bigUp, '大戶持股(≥400張)要↑', `${f.bigNow.toFixed(1)}% (${f.bigDelta >= 0 ? '+' : ''}${f.bigDelta})`, '週增=大戶進場')}
                 ${row(f.retDown, '散戶持股(<100張)要↓', `${f.retNow.toFixed(1)}% (${f.retDelta >= 0 ? '+' : ''}${f.retDelta})`, '週減=散戶離場')}
                 ${row(f.mgDir == null ? null : f.mgDir === 'down', '融資餘額要↓', mgTxt, '⭐ 最關鍵那項')}
-                ${row(f.pplDown, '股東人數要↓(集中)', pplTxt, '加分不多')}
+                ${row(f.pplDown, '股東人數↓(集中)', pplTxt, '❌ 重測無效')}
             </div>
             <div class="text-[10px] text-gray-300 leading-relaxed">${verdict.s}</div>
-            <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 實測樣本:4,015 檔集保 × 13 週 = 7,221 個事件,報酬已扣同期加權指數,每檔每週最多算一次。
-                股東人數那項另外實測 12,321/6,567 筆:集中 −3.39% vs 分散 −4.28%(<b class="text-gray-500">差 0.88 個百分點,所以只算加分</b>)。
-                ⓘ 也驗過「高檔才算數」嗎?<b class="text-gray-500">驗了,不成立</b> —— 大戶↓散戶↑ 在低/中/高位階都一樣差(0.55~0.95pp),所以不加位階限制。
-                ⚠️ 集保只有 13 週、同一個市場環境、且不含已下市個股 → 只能當方向參考,不是保證。非投資建議。</div>
+            <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 實測樣本:3,576 檔集保 × <b class="text-gray-500">104 週(2 年)</b>,報酬已扣同期加權指數,每檔每週最多算一次。
+                ⚠️ <b class="text-gray-500">第 4 項(股東人數)重測後不算數了</b> —— 13 週時看起來有 +0.88 個百分點,拉長到 104 週變成 <b class="text-gray-500">−0.21 個百分點(方向還反過來)</b>,樣本大 8 倍後證明那只是短期雜訊 → 現在<b class="text-gray-500">只顯示、不計分</b>,上面的過關數只看前三項。
+                ⓘ 也驗過「高檔才算數」嗎?<b class="text-gray-500">驗了,不成立</b> —— 大戶↓散戶↑ 在低/中/高位階都一樣差(0.00~0.11pp),所以不加位階限制。
+                ⚠️ 集保歷史 2 年、同一段市場環境、且不含已下市個股 → 只能當方向參考,不是保證。非投資建議。</div>
         </div>`;
     },
 
