@@ -168,6 +168,41 @@ ok('⑩ ⭐ 標題抽不到,但簡介抽得到', {x['s'] for x in i0['syms']} ==
 ok('⑩ ⛔ 簡介本身不可寫進輸出(只當抽取來源,含贊助商文案又佔空間)',
    'x' not in i0, list(i0.keys()))
 
+# ── ⑪ ⭐⭐ 贊助商不可被當成「他提到的標的」(2026-08-07 實測:股癌 EP684 抽到 5903 全家)──
+A._name_map = lambda: {'台積電': '2330', '鴻海': '2317', '全家': '5903'}
+A.OUT.unlink(missing_ok=True)
+A._resolve_youtube = lambda a: ([{'t': 'EP685 | 🤓', 'u': 'https://y/9', 'd': '2026-08-05', 'kind': 'yt',
+                                 'x': A._topic_part('這集聊台積電法說跟鴻海 AI 伺服器。本集贊助:全家便利商店,優惠碼 GOOAYE')}], 'YouTube @Gooaye')
+A.build()
+d5 = json.loads(A.OUT.read_text(encoding='utf-8'))
+i5 = d5['analysts'][0]['items'][0]
+got = {x['s'] for x in i5['syms']}
+ok('⑪ ⭐⭐ 贊助商(全家 5903)必須被切掉', '5903' not in got, i5['syms'])
+ok('⑪ ⭐ 大綱裡真正聊到的還是要抽到', got == {'2330', '2317'}, i5['syms'])
+ok('⑪ ⭐ 大綱抽到的要標 via="x"(證據比標題弱)',
+   all(x.get('via') == 'x' for x in i5['syms']), i5['syms'])
+A._resolve_youtube = lambda a: ([{'t': '台積電怎麼看', 'u': 'https://y/10', 'd': '2026-08-05', 'kind': 'yt', 'x': ''}], 'YouTube @x')
+A.OUT.unlink(missing_ok=True)
+A.build()
+i6 = json.loads(A.OUT.read_text(encoding='utf-8'))['analysts'][0]['items'][0]
+ok('⑪ ⭐ 標題抽到的要標 via="t"', i6['syms'][0].get('via') == 't', i6['syms'])
+
+# ── ⑫ ⭐ 相關性守門要**連舊資料一起套**(`must` 是後來加的,舊的壞資料會一直留著)──
+A.OUT.write_text(json.dumps({'updated': 'x', 'analysts': [
+    {'k': A.ANALYSTS[0]['k'], 'items': [
+        {'t': '【理周飆股列車】20260806盤中-許江鎮', 'u': 'https://n/old', 'd': '2026-08-06', 'kind': 'news', 'syms': []},
+        {'t': '股惑仔談台積電', 'u': 'https://n/keep', 'd': '2026-08-06', 'kind': 'news', 'syms': []},
+        {'t': 'EP685 | 🤓', 'u': 'https://y/ep', 'd': '2026-08-06', 'kind': 'yt', 'syms': []},
+    ]}]}, ensure_ascii=False), encoding='utf-8')
+A._resolve_youtube = lambda a: ([{'t': '新的一集', 'u': 'https://y/new', 'd': '2026-08-07', 'kind': 'yt', 'x': ''}], 'YouTube @x')
+A.build()
+d7 = json.loads(A.OUT.read_text(encoding='utf-8'))
+urls = {i['u'] for i in d7['analysts'][0]['items']}
+ok('⑫ ⭐⭐ 舊的「別人的節目」要被清掉', 'https://n/old' not in urls, sorted(urls))
+ok('⑫ ⭐ 舊的「真的有提到他」要留著', 'https://n/keep' in urls, sorted(urls))
+ok('⑫ ⛔ 原始節目(kind=yt)不可被 must 誤殺(節目標題本來就不會寫自己名字)',
+   'https://y/ep' in urls, sorted(urls))
+
 print()
 if FAILS:
     print(f'❌ {len(FAILS)} 條失敗:')

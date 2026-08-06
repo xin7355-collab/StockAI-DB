@@ -158,8 +158,24 @@ def _close_on(sym, ymd):
 _NS = {'a': 'http://www.w3.org/2005/Atom', 'yt': 'http://www.youtube.com/xml/schemas/2015'}
 
 
+# 🚨 V72.6.4 節目簡介裡的**贊助商**會被誤抽成「他提到的標的」——
+#   實測股癌 EP684 抽到 5903(全家),那是贊助商不是他聊的股票。
+#   ⛔ 把贊助商當成「他提到的標的」= 顯示錯的資料給使用者,比沒有更糟。
+#   → 只取「贊助/業配/合作」這類標記**之前**那段(節目大綱通常寫在最前面)。
+_SPONSOR_RE = re.compile(r'(贊助|業配|合作|廣告|抽獎|優惠碼|折扣碼|團購|開箱|訂閱|加入頻道|會員|來賓介紹|節目資訊|聯絡我們|免責聲明|風險警語)')
+
+
 def _strip_html(x):
     return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', x or '')).strip()
+
+
+def _topic_part(x):
+    """簡介 → 只留「可能是節目大綱」的那一段。⛔ 寧可少抽,也不要抽到贊助商。"""
+    t = _strip_html(x)
+    m = _SPONSOR_RE.search(t)
+    if m:
+        t = t[:m.start()]
+    return t[:300]
 
 
 def _parse_feed(xml_bytes, kind):
@@ -178,7 +194,7 @@ def _parse_feed(xml_bytes, kind):
         x = ''
         for d_el in e.iter():
             if d_el.tag.endswith('}description'):
-                x = _strip_html(d_el.text or '')
+                x = _topic_part(d_el.text or '')
                 break
         if t:
             out.append({'t': t, 'u': u, 'd': pub, 'kind': kind, 'x': x[:900]})
@@ -190,7 +206,7 @@ def _parse_feed(xml_bytes, kind):
         u = (it.findtext('link') or '').strip()
         pub = (it.findtext('pubDate') or '').strip()
         # ⛔ Google News 的 description 是「相關報導清單」= 純雜訊 → 不收
-        x = '' if kind == 'news' else _strip_html(
+        x = '' if kind == 'news' else _topic_part(
             it.findtext('description') or it.findtext('{http://www.itunes.com/dtds/podcast-1.0.dtd}summary') or '')
         d = ''
         if pub:
@@ -297,6 +313,10 @@ def build():
             items, note = _resolve_podcast(a)
         if not items:
             items, note = _resolve_news(a)
+        # 🚨 V72.6.4 相關性守門要**連舊資料一起套**:`must` 是後來才加的,
+        #   在那之前存下來的「別人的節目」會一直留到過期(實測 14 天)——
+        #   ⛔ 使用者不會知道那是舊規則留下來的,只會以為那就是他講的。
+        _must = (a.get('must') or '').strip()
         merged = {}
         for it in (old.get(a['k']) or []) + items:
             u = it.get('u') or it.get('t')
@@ -304,6 +324,9 @@ def build():
                 continue
             d = (it.get('d') or '')[:10]
             if d and d < cutoff:
+                continue
+            # 只擋 news(媒體報導)—— 原始節目本來就不會在標題寫自己的名字
+            if _must and (it.get('kind') == 'news') and _must not in (it.get('t') or ''):
                 continue
             merged[u] = {**merged.get(u, {}), **it}
         rows = sorted(merged.values(), key=lambda x: (x.get('d') or ''), reverse=True)[:MAX_ITEMS]
@@ -313,13 +336,17 @@ def build():
             d = (it.get('d') or today)[:10]
             if not it.get('syms'):
                 syms = []
-                # ⭐ 標題 + 內文摘要一起抽(股癌那種「EP685 | 🤓」標題只能靠簡介)
-                for nm, code in _pick_syms(((it.get('t') or '') + ' ' + (it.get('x') or '')), names_by_len, name_map):
+                # ⭐ 標題 + 節目大綱一起抽(股癌那種「EP685 | 🤓」標題只能靠大綱)
+                _ttl = it.get('t') or ''
+                _from_title = {c for _, c in _pick_syms(_ttl, names_by_len, name_map)}
+                for nm, code in _pick_syms(_ttl + ' ' + (it.get('x') or ''), names_by_len, name_map):
                     px, pxd = _close_on(code, d)
                     mkt, _ = _close_on('^TWII', d)
                     # px/pxd/mkt = **他講的那天**的快照 → ⭐ 一旦寫入就不再重算(冪等),
                     #   否則明天重跑會被明天的收盤蓋掉,「他說的時候的價格」就沒意義了。
-                    syms.append({'s': code, 'n': nm, 'px': px, 'pxd': pxd, 'mkt': mkt})
+                    # via:'t'=標題(證據強) / 'x'=節目大綱(證據弱,前端要標出來)
+                    syms.append({'s': code, 'n': nm, 'px': px, 'pxd': pxd, 'mkt': mkt,
+                                 'via': 't' if code in _from_title else 'x'})
                 it['syms'] = syms
             # ⭐ 現價(pxn)與現在的大盤(mktn)**每輪都刷新** —— 這兩個本來就該是最新的。
             #   ⛔ 刻意放在採礦端算:前端要算就得為每檔各發一次 fetch,而這裡讀檔零成本
