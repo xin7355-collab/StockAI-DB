@@ -184,7 +184,10 @@ def _close_on(sym, ymd):
 #     ⛔ 但整包會拖進 playwright+chromium(~400MB)+ litellm/nltk/numpy/shapely,
 #        而 news_express 一天跑 10 次 → **不划算**。
 #     ⭐ 所以這裡**照它的觀念自己實作**:`_main_text()` 取密度最高的正文段落。
-FETCH_BUDGET = int(os.getenv('ANALYST_FETCH_BUDGET', '10'))   # 每輪最多抓幾則內容(增量,別一次打爆)
+# 🚨 V72.7.1 改成**每位分析師各自**的預算。舊版是全域 10 則 → 股癌 12 則就吃光,
+#    排在後面的郭哲榮**一則內容都沒抓到**(csrc 全是 None)。
+#    ⭐ 通用:任何「共用配額」的迴圈,要確認排在後面的拿不拿得到 —— 否則等於只服務第一個。
+FETCH_BUDGET = int(os.getenv('ANALYST_FETCH_BUDGET', '4'))   # **每位**每輪最多抓幾則(增量累積)
 BODY_MAX = int(os.getenv('ANALYST_BODY_MAX', '4000'))         # 抽標的用的內文上限
 
 
@@ -198,16 +201,26 @@ def _main_text(html):
     return ' '.join(out)[:BODY_MAX]
 
 
+_YT_LAST_ERR = ''
+
+
 def _yt_transcript(vid):
     """YouTube 逐字稿(字幕)。零金鑰:watch 頁 HTML → captionTracks → timedtext XML。
     ⚠️ `bpctr` + `has_verified` 是繞過同意頁的標準參數(V72.6.8 實測搜尋頁被同意頁擋)。
     ⛔ 抓不到就回 '' —— 很多影片沒有字幕,那是正常的,不是壞掉。"""
+    global _YT_LAST_ERR
+    _YT_LAST_ERR = ''
     try:
         html = _get(f'https://www.youtube.com/watch?v={vid}&bpctr=9999999999&has_verified=1&hl=zh-TW').decode('utf-8', 'ignore')
-    except Exception:
+    except Exception as e:
+        _YT_LAST_ERR = f'watch 頁 {type(e).__name__} {e}'
         return ''
     m = re.search(r'"captionTracks":(\[.*?\])', html)
     if not m:
+        _YT_LAST_ERR = (f'HTML {len(html)//1024}KB 沒有 captionTracks('
+                        + ('同意頁' if re.search(r'consent\.youtube|CONSENT', html) else
+                           '這部沒字幕' if 'playerCaptionsTracklistRenderer' in html or 'ytInitialPlayerResponse' in html else
+                           '不是播放頁') + ')')
         return ''
     try:
         tracks = json.loads(m.group(1).replace('\\u0026', '&'))
@@ -242,6 +255,8 @@ def _fetch_body(it):
             t = _yt_transcript(vid)
             if t:
                 return t, 'transcript'
+            # ⛔ 只看到 csrc='desc' 查不出是「這部沒字幕」還是「被擋」→ 把原因記下來
+            _log(f'逐字稿抓不到 {vid}:{_YT_LAST_ERR or "未知"}')
         return (it.get('x') or ''), ('desc' if it.get('x') else '')
     if k == 'podcast':
         return (it.get('x') or ''), ('shownotes' if it.get('x') else '')
@@ -261,7 +276,11 @@ _NS = {'a': 'http://www.w3.org/2005/Atom', 'yt': 'http://www.youtube.com/xml/sch
 #   實測股癌 EP684 抽到 5903(全家),那是贊助商不是他聊的股票。
 #   ⛔ 把贊助商當成「他提到的標的」= 顯示錯的資料給使用者,比沒有更糟。
 #   → 只取「贊助/業配/合作」這類標記**之前**那段(節目大綱通常寫在最前面)。
-_SPONSOR_RE = re.compile(r'(贊助|業配|合作|廣告|抽獎|優惠碼|折扣碼|團購|開箱|訂閱|加入頻道|會員|來賓介紹|節目資訊|聯絡我們|免責聲明|風險警語)')
+# ⚠️ V72.7.1 實測補上「本集節目由【NordVPN】」這種寫法 —— 舊表只有「贊助/業配」抓不到它,
+#    結果摘要第一句就變成廣告。⭐ 這類表要**主動想對稱寫法**(同新聞關鍵字漏掉「漲價」那次)。
+_SPONSOR_RE = re.compile(
+    r'(本集節目由|本集由|本集贊助|特別感謝|感謝.{0,6}贊助|贊助|業配|廣告合作|合作|廣告|抽獎|優惠碼|折扣碼'
+    r'|團購|開箱|訂閱|加入頻道|會員|來賓介紹|節目資訊|聯絡我們|免責聲明|風險警語|快來看看|了解更多)')
 
 
 def _strip_html(x):
@@ -274,7 +293,7 @@ def _topic_part(x):
     m = _SPONSOR_RE.search(t)
     if m:
         t = t[:m.start()]
-    return t[:300]
+    return t[:300].strip()
 
 
 def _parse_feed(xml_bytes, kind):
@@ -465,8 +484,8 @@ def build():
             old = {}
 
     out_analysts, n_ok = [], 0
-    _budget = {'n': FETCH_BUDGET}   # 每輪抓內容的總預算(4 位分析師共用)
     for a in ANALYSTS:
+        _budget = {'n': FETCH_BUDGET}   # ⭐ 每位各自的預算(⛔ 不共用,否則只有第一位拿得到)
         items, note = _resolve_youtube(a)
         if not items:
             items, note = _resolve_podcast(a)

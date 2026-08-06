@@ -21,6 +21,7 @@ import analyst_miner as A   # noqa: E402
 # ⚠️ 後面的區塊會 stub 掉這些函式 → 先把**真的**存起來,
 #    否則 ⑨ 會測到自己前面塞的 stub(第一版就這樣,測出來永遠是空的)。
 _REAL_NEWS = A._resolve_news
+_REAL_YT_TX = A._yt_transcript
 
 FAILS = []
 
@@ -327,6 +328,51 @@ ok('⑯ ⭐⛔ 而且不可假造摘要', not iB.get('sum'), iB.get('sum'))
 
 # 預算:一輪不可無限抓
 ok('⑯ ⭐ 每輪抓取有預算上限(⛔ 別一次打爆對方)', A.FETCH_BUDGET <= 20, A.FETCH_BUDGET)
+
+# ── ⑰ V72.7.1 實測抓到的三件事 ─────────────────────────────────────────────
+# (a) 贊助商寫法「本集節目由【NordVPN】」舊表抓不到 → 摘要第一句就是廣告
+ok('⑰ ⭐ 「本集節目由…」要被切掉',
+   A._topic_part('人類又找回勇氣了 本集節目由【NordVPN】贊助播出') == '人類又找回勇氣了',
+   A._topic_part('人類又找回勇氣了 本集節目由【NordVPN】贊助播出'))
+ok('⑰ ⭐ 「特別感謝」也要切', '感謝' not in A._topic_part('聊台積電 特別感謝 XX 提供'),
+   A._topic_part('聊台積電 特別感謝 XX 提供'))
+ok('⑰ ⛔ 沒有贊助字樣的不可誤切',
+   A._topic_part('這集聊台積電法說會與鴻海 AI 伺服器') == '這集聊台積電法說會與鴻海 AI 伺服器')
+
+# (b) ⭐ 預算要**每位各自**,否則第一位吃光後面全拿不到(實測郭哲榮 csrc 全 None)
+ok('⑰ ⭐⭐ 抓取預算是「每位各自」不是全域共用',
+   '_budget = {\'n\': FETCH_BUDGET}' in A.build.__doc__ if A.build.__doc__ else True)
+import inspect as _insp
+_src = _insp.getsource(A.build)
+ok('⑰ ⭐⭐ 預算宣告要在「for a in ANALYSTS」之後(每位重設)',
+   _src.index('for a in ANALYSTS:') < _src.index("_budget = {'n': FETCH_BUDGET}"), 'budget 宣告在迴圈外 = 共用')
+
+A._name_map = lambda: {'台積電': '2330'}
+A.OUT.unlink(missing_ok=True)
+_hits = {'n': 0}
+
+
+def _cnt_body(it):
+    _hits['n'] += 1
+    return '聊台積電', 'transcript'
+
+
+A._fetch_body = _cnt_body
+_many = [{'t': f'EP{i}', 'u': f'https://y/{i}', 'd': _dt.now(A.TPE).strftime('%Y-%m-%d'), 'kind': 'yt', 'x': ''} for i in range(12)]
+A._resolve_youtube = lambda a: (list(_many), 'YouTube @x')
+A._resolve_podcast = lambda a: ([], 'n/a')
+A._resolve_news = lambda a: ([], 'n/a')
+A.build()
+d10 = json.loads(A.OUT.read_text(encoding='utf-8'))
+per = [sum(1 for i in a['items'] if i.get('csrc')) for a in d10['analysts']]
+ok('⑰ ⭐⭐ 4 位都抓到內容(⛔ 不可只有第一位有)', all(p > 0 for p in per), per)
+ok('⑰ ⭐ 每位不超過自己的預算', all(p <= A.FETCH_BUDGET for p in per), (per, A.FETCH_BUDGET))
+
+# (c) 逐字稿抓不到要留原因
+A._get = lambda url: ('<html>' + 'y' * 3000 + 'ytInitialPlayerResponse</html>').encode('utf-8')
+A._yt_transcript = _REAL_YT_TX        # ⬅️ 前面的區塊 stub 掉了,換回真的(同 ⑨ 那個坑)
+A._yt_transcript('abc12345678')
+ok('⑰ ⭐ 逐字稿失敗要記下可辨識原因', bool(A._YT_LAST_ERR) and 'KB' in A._YT_LAST_ERR, A._YT_LAST_ERR)
 
 print()
 if FAILS:
