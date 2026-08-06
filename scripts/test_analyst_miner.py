@@ -239,6 +239,28 @@ ok('⑬ ⭐ 同一版重跑,當日快照不變(只有現價會動)',
    == json.dumps({k: v for k, v in leg.items() if k != 'syms'}, sort_keys=True, ensure_ascii=False)
    and leg2['syms'][0]['px'] == 999.0, leg2['syms'])
 
+# ── ⑭ ⭐⭐ 猜不到 handle → 讓 YouTube 自己說(搜尋頻道),但頻道名必須含 must ──────
+#    🚨 實測:@guhuozai 解得到 channelId,但最新影片是 2025-09-30 = **解到別人的頻道**。
+#       ⛔ 拿別人的頻道充數比「沒有」更糟。
+_HTML_HIT = ('...{"text":"某某財經頻道","x":1,"browseId":"UCaaaaaaaaaaaaaaaaaaaaaa"}...'
+             '{"text":"兆華與股惑仔","y":2,"browseId":"UCbbbbbbbbbbbbbbbbbbbbbb"}...')
+_HTML_MISS = '...{"text":"理周TV","browseId":"UCcccccccccccccccccccccc"}...'
+
+A._get = lambda url: _HTML_HIT.encode('utf-8')
+cid, cname = A._yt_search_channel({'n': '兆華與股惑仔', 'must': '股惑仔'})
+ok('⑭ ⭐⭐ 搜尋結果裡挑「頻道名含 must」那個', cid == 'UCbbbbbbbbbbbbbbbbbbbbbb', (cid, cname))
+ok('⑭ ⛔ 不可挑到排在前面但名字不符的', cname == '兆華與股惑仔', (cid, cname))
+
+A._get = lambda url: _HTML_MISS.encode('utf-8')
+cid2, _ = A._yt_search_channel({'n': '兆華與股惑仔', 'must': '股惑仔'})
+ok('⑭ ⭐⭐ 沒有一個名字符合 → 回 None(⛔ 不硬選第一個)', cid2 is None, cid2)
+ok('⑭ ⭐ 而且要把候選寫進 log(下一輪才查得出來)',
+   any('不含' in m and '理周TV' in m for m in A.RESOLVE_LOG[-3:]), A.RESOLVE_LOG[-2:])
+
+A._get = lambda url: '<html>沒有任何 browseId</html>'.encode('utf-8')
+cid3, _ = A._yt_search_channel({'n': 'x', 'must': 'x'})
+ok('⑭ HTML 沒東西 → 回 None 不爆炸', cid3 is None, cid3)
+
 print()
 if FAILS:
     print(f'❌ {len(FAILS)} 條失敗:')

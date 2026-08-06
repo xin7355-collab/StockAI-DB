@@ -234,6 +234,38 @@ def _get(url):
     return r.content
 
 
+def _yt_search_channel(a):
+    """⭐ V72.6.6 猜 handle 猜不到 → **讓 YouTube 自己說**(同 `_taifex_list_endpoints` 的做法)。
+    搜尋節目名 → 從搜尋結果 HTML 撈「頻道名 + channelId」配對 →
+    ⛔ **頻道名必須含 `must`** 才採用(否則會拿到別人的頻道,同 GNews 那條守門)。
+    回 (channelId, 頻道名) 或 (None, None)。"""
+    must = (a.get('must') or '').strip()
+    if not must:
+        return None, None
+    try:
+        html = _get('https://www.youtube.com/results?search_query='
+                    + requests.utils.quote(a['n']) + '&sp=EgIQAg%253D%253D').decode('utf-8', 'ignore')   # sp=只搜頻道
+    except Exception as e:
+        _log(f'{a["n"]}/YT搜尋:{type(e).__name__} {e}')
+        return None, None
+    # 「文字 … browseId」成對出現(YouTube 的 ytInitialData 結構)
+    pairs = re.findall(r'"text":"([^"]{2,40})"[^{}]{0,400}?"browseId":"(UC[\w-]{20,})"', html)
+    seen, cands = set(), []
+    for nm, cid in pairs:
+        if cid in seen:
+            continue
+        seen.add(cid)
+        cands.append((nm, cid))
+    hit = next(((nm, cid) for nm, cid in cands if must in nm), None)
+    if hit:
+        _log(f'🔎 {a["n"]}/YT搜尋 → 「{hit[0]}」{hit[1]}(頻道名含「{must}」)')
+        return hit[1], hit[0]
+    # ⛔ 沒有一個頻道名含 must → 不硬選第一個(那正是「解到別人的頻道」的來源)
+    _log(f'{a["n"]}/YT搜尋:{len(cands)} 個候選都不含「{must}」→ 不採用'
+         + (f'(前 3 個:{", ".join(n for n, _ in cands[:3])})' if cands else ''))
+    return None, None
+
+
 def _resolve_youtube(a):
     """handle → channelId → Atom feed。回 (items, note);失敗回 ([], 原因)。"""
     for h in a.get('yt') or []:
@@ -256,13 +288,27 @@ def _resolve_youtube(a):
                 # ⚠️ 解得到頻道但**最新一部也超過保留天數** → 多半是解到別人的/停更的頻道。
                 #    照樣回傳(下游用日期濾掉),但要留線索,否則下一輪只會看到「0 則」查不出原因。
                 _log(f'{"⚠️" if _stale else "✅"} {a["n"]}/YT {h} → {cid}({len(items)} 部,最新 {_newest}'
-                     + ('・已超過保留天數,可能解到別人的頻道)' if _stale else ')'))
-                return items, f'YouTube {h}'
+                     + ('・已超過保留天數,可能解到別人的頻道 → 先試搜尋)' if _stale else ')'))
+                # ⚠️ 全是舊片多半是解錯頻道 → ⛔ 不直接採用,先讓搜尋試一次(同 V72.6.6 實測 @guhuozai)
+                if not _stale:
+                    return items, f'YouTube {h}'
             _log(f'{a["n"]}/YT {h} → {cid}:feed 是空的')
         except Exception as e:
             _log(f'{a["n"]}/YT {h} → {cid}:feed {type(e).__name__} {e}')
         time.sleep(RSS_SLEEP)
-    return [], 'YouTube 全部候選 handle 都解析不到'
+    # 候選 handle 全部落空 → 改用「搜尋頻道」自動找(⛔ 頻道名要含 must 才採用)
+    cid, cname = _yt_search_channel(a)
+    if cid:
+        try:
+            items = _parse_feed(_get(f'https://www.youtube.com/feeds/videos.xml?channel_id={cid}'), 'yt')
+            if items:
+                _newest = max((x.get('d') or '') for x in items)
+                _log(f'✅ {a["n"]}/YT搜尋命中「{cname}」({len(items)} 部,最新 {_newest})')
+                return items, f'YouTube 搜尋命中「{cname}」'
+            _log(f'{a["n"]}/YT搜尋「{cname}」:feed 是空的')
+        except Exception as e:
+            _log(f'{a["n"]}/YT搜尋「{cname}」feed:{type(e).__name__} {e}')
+    return [], 'YouTube 全部候選 handle 與搜尋都找不到'
 
 
 def _resolve_podcast(a):
