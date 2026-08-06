@@ -286,6 +286,48 @@ A._yt_search_channel({'n': 'x', 'must': 'x'})
 ok('⑮b ⭐ 拿到 200 但抓不到配對 → 要寫出 HTML 大小與可能原因',
    any('抓不到頻道配對' in m for m in A.RESOLVE_LOG[-2:]), A.RESOLVE_LOG[-1:])
 
+# ── ⑯ 📄 V72.7.0 抓「內容」不是標題 ────────────────────────────────────────
+#    使用者原話:「我覺得標題沒有用,用其它的方式」。股癌標題就是「EP685 | 🤓」。
+ok('⑯ 正文抽取:剝掉 script/nav,只留夠長的段落',
+   A._main_text('<nav><p>回首頁</p></nav><script><p>x</p></script>'
+                '<p>台積電法說會釋出樂觀展望,今年資本支出上修,先進封裝продовж滿載。</p><p>短</p>')
+   .startswith('台積電法說會'), A._main_text('<p>台積電法說會釋出樂觀展望,今年資本支出上修,先進封裝滿載。</p>'))
+ok('⑯ videoId 抽得出來', A._vid_of('https://www.youtube.com/watch?v=abc12345678') == 'abc12345678',
+   A._vid_of('https://www.youtube.com/watch?v=abc12345678'))
+ok('⑯ 短網址也要吃', A._vid_of('https://youtu.be/abc12345678') == 'abc12345678')
+ok('⑯ 不是影片 → 空字串(⛔ 不亂猜)', A._vid_of('https://news.x/1') == '')
+
+# ⭐ 內容抽標的:標題抽不到、逐字稿抽得到
+A._name_map = lambda: {'台積電': '2330', '鴻海': '2317'}
+A.OUT.unlink(missing_ok=True)
+A._get = lambda url: b''
+A._yt_transcript = lambda vid: '這集我們先聊台積電的法說會,後面再談鴻海的 AI 伺服器出貨'
+A._resolve_youtube = lambda a: ([{'t': 'EP685 | 🤓', 'u': 'https://www.youtube.com/watch?v=abc12345678',
+                                 'd': _dt.now(A.TPE).strftime('%Y-%m-%d'), 'kind': 'yt', 'x': ''}], 'YouTube @Gooaye')
+A._resolve_podcast = lambda a: ([], 'n/a')
+A._resolve_news = lambda a: ([], 'n/a')
+A.build()
+dA = json.loads(A.OUT.read_text(encoding='utf-8'))
+iA = dA['analysts'][0]['items'][0]
+ok('⑯ ⭐⭐ 標題「EP685 | 🤓」抽不到,逐字稿抽得到', {x['s'] for x in iA['syms']} == {'2330', '2317'}, iA['syms'])
+ok('⑯ ⭐ 要記下內容來源', iA.get('csrc') == 'transcript', iA.get('csrc'))
+ok('⑯ ⭐ 要有顯示用摘要(這才是使用者要看的)', '台積電' in (iA.get('sum') or ''), iA.get('sum'))
+ok('⑯ ⛔ 全文不可寫進檔案(逐字稿可能上萬字)', '_body' not in iA, list(iA.keys()))
+ok('⑯ ⭐ 摘要要夠短(≤120)', len(iA.get('sum') or '') <= 120, len(iA.get('sum') or ''))
+
+# 抓不到內容 → csrc='' 且不假造摘要
+A.OUT.unlink(missing_ok=True)
+A._yt_transcript = lambda vid: ''
+A._resolve_youtube = lambda a: ([{'t': 'EP686', 'u': 'https://www.youtube.com/watch?v=zzz12345678',
+                                 'd': _dt.now(A.TPE).strftime('%Y-%m-%d'), 'kind': 'yt', 'x': ''}], 'YouTube @Gooaye')
+A.build()
+iB = json.loads(A.OUT.read_text(encoding='utf-8'))['analysts'][0]['items'][0]
+ok('⑯ ⭐⛔ 抓不到內容 → csrc 空字串(有記錄「試過了」)', iB.get('csrc') == '', iB.get('csrc'))
+ok('⑯ ⭐⛔ 而且不可假造摘要', not iB.get('sum'), iB.get('sum'))
+
+# 預算:一輪不可無限抓
+ok('⑯ ⭐ 每輪抓取有預算上限(⛔ 別一次打爆對方)', A.FETCH_BUDGET <= 20, A.FETCH_BUDGET)
+
 print()
 if FAILS:
     print(f'❌ {len(FAILS)} 條失敗:')

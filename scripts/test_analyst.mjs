@@ -25,9 +25,10 @@ const FIX = {
         { k: 'gooaye', n: '股癌 Gooaye', tag: '🎧 Podcast', src: 'Podcast RSS', error: null, fresh: 2,
           items: [
               { t: '台積電還能不能追?順便聊鴻海', u: 'https://x/1', d: '2026-08-04', kind: 'podcast',
+                sum: '這集先聊台積電法說會的重點,再談鴻海在 AI 伺服器的位置', csrc: 'shownotes',
                 syms: [{ s: '2330', n: '台積電', px: 1000, pxd: '2026-08-04', mkt: 23000, pxn: 1100, mktn: 24150 },
                        { s: '2317', n: '鴻海', px: 250, pxd: '2026-08-04', mkt: 23000, pxn: 240, mktn: 24150 }] },
-              { t: '大盤到底崩不崩', u: 'https://x/2', d: '2026-08-02', kind: 'podcast', syms: [] },
+              { t: '大盤到底崩不崩', u: 'https://x/2', d: '2026-08-02', kind: 'podcast', csrc: '', syms: [] },
           ] },
         { k: 'kuo_zhe_rong', n: '郭哲榮分析師', tag: '📺 YouTube', src: 'Google News 搜尋「郭哲榮」', fresh: 0,
           error: '本輪沒抓到新的(YouTube 全部候選 handle 都解析不到);以下是先前存下來的 1 則',
@@ -95,9 +96,13 @@ ok('⑤ ⛔ 不可出現多空判斷', !/(偏多|偏空|看多|看空|多方優�
 ok('⑤ ⛔ 不可出現操作指令', !/(可以進場|建議買|該買|該賣|可加碼|停損價)/.test(clean), clean.slice(0, 300));
 ok('⑤ ⛔ 不可出現勝率/準確率', !/(勝率|準確率|命中率)/.test(clean), clean.slice(0, 300));
 ok('⑤ ⭐ 必須寫明「不下多空、不計分」', /不下多空/.test(R.txt) && /不計分/.test(R.txt), R.txt.slice(-500));
-ok('⑤ ⭐ 必須寫明「只有標題、沒有逐字稿」', /沒有逐字稿/.test(R.txt), R.txt.slice(-500));
-ok('⑤ ⭐ 必須寫明「標的是從文字抽的」', /從文字抽的/.test(R.txt), R.txt.slice(-500));
+ok('⑤ ⭐ 必須寫明「標的是從內容抽的」', /從內容/.test(R.txt), R.txt.slice(-500));
 ok('⑤ ⭐ 必須提醒「簡介抽的證據較弱」', /證據比標題弱/.test(R.txt), R.txt.slice(-500));
+
+// ── ⑤b 📄 V72.7.0「標題沒有用」→ 要顯示真正講了什麼 ───────────────────────
+ok('⑤b ⭐⭐ 標題底下要有內容摘要', /台積電法說會的重點/.test(R.txt), R.txt.slice(0, 400));
+ok('⑤b ⭐ 要標明摘要的來源層級', /節目大綱/.test(R.txt), R.txt.slice(0, 400));
+ok('⑤b ⭐⛔ 抓不到內容的要誠實說(⛔ 不假造)', /內容抓不到,只有標題/.test(R.txt), R.txt.slice(0, 700));
 ok('⑤ ⭐ 必須寫明樣本還不夠、不能說誰準', /樣本還不夠/.test(R.txt), R.txt.slice(-400));
 
 // ── ⑥ 沒有資料時的誠實空狀態 ──────────────────────────────────────────

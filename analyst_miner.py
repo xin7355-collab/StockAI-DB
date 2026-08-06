@@ -171,6 +171,88 @@ def _close_on(sym, ymd):
         return None, None
 
 
+# ═══ 📄 V72.7.0 抓「內容」而不是標題 ══════════════════════════════════════
+#   使用者原話:「我覺得**標題沒有用**,用其它的方式」。他是對的 ——
+#   股癌的影片標題就是「EP685 | 🤓」,郭哲榮的新聞標題是媒體下的殺人標題。
+#   → 三條腿各自去拿**真正講了什麼**:
+#     ① YouTube 逐字稿(字幕)  ② Podcast shownotes  ③ 新聞內文
+#   ⚠️ 抓到的內容有兩個用途:(a) 抽標的(準確度遠高於標題)(b) 給前端顯示一句摘要。
+#
+#   💡 使用者上傳的 `crawl4ai` 評估結果(2026-08-07):
+#     ⛔ 它**沒有** YouTube 逐字稿功能(grep timedtext/captionTrack/transcript = 0 檔)
+#     ✅ 它真正的價值是 `PruningContentFilter`(把新聞頁的導覽/廣告/推薦剝掉只留正文)
+#     ⛔ 但整包會拖進 playwright+chromium(~400MB)+ litellm/nltk/numpy/shapely,
+#        而 news_express 一天跑 10 次 → **不划算**。
+#     ⭐ 所以這裡**照它的觀念自己實作**:`_main_text()` 取密度最高的正文段落。
+FETCH_BUDGET = int(os.getenv('ANALYST_FETCH_BUDGET', '10'))   # 每輪最多抓幾則內容(增量,別一次打爆)
+BODY_MAX = int(os.getenv('ANALYST_BODY_MAX', '4000'))         # 抽標的用的內文上限
+
+
+def _main_text(html):
+    """HTML → 正文。⭐ 觀念取自 crawl4ai 的 PruningContentFilter:
+    先砍掉 script/style/nav/footer/aside,再只留 <p>,最後丟掉太短的(那多半是導覽/版權)。
+    ⛔ 不用整包 crawl4ai —— 它會拖進 400MB 的瀏覽器,而這裡要的只有這 10 行。"""
+    h = re.sub(r'(?is)<(script|style|nav|footer|aside|form|noscript)[^>]*>.*?</\1>', ' ', html or '')
+    ps = re.findall(r'(?is)<p[^>]*>(.*?)</p>', h)
+    out = [t for t in (_strip_html(p) for p in ps) if len(t) >= 20]
+    return ' '.join(out)[:BODY_MAX]
+
+
+def _yt_transcript(vid):
+    """YouTube 逐字稿(字幕)。零金鑰:watch 頁 HTML → captionTracks → timedtext XML。
+    ⚠️ `bpctr` + `has_verified` 是繞過同意頁的標準參數(V72.6.8 實測搜尋頁被同意頁擋)。
+    ⛔ 抓不到就回 '' —— 很多影片沒有字幕,那是正常的,不是壞掉。"""
+    try:
+        html = _get(f'https://www.youtube.com/watch?v={vid}&bpctr=9999999999&has_verified=1&hl=zh-TW').decode('utf-8', 'ignore')
+    except Exception:
+        return ''
+    m = re.search(r'"captionTracks":(\[.*?\])', html)
+    if not m:
+        return ''
+    try:
+        tracks = json.loads(m.group(1).replace('\\u0026', '&'))
+    except Exception:
+        return ''
+    if not tracks:
+        return ''
+    pick = next((t for t in tracks if str(t.get('languageCode', '')).startswith('zh')), tracks[0])
+    url = (pick.get('baseUrl') or '').replace('\\u0026', '&')
+    if not url:
+        return ''
+    try:
+        xml = _get(url).decode('utf-8', 'ignore')
+    except Exception:
+        return ''
+    import html as _h
+    txt = ' '.join(_h.unescape(re.sub(r'<[^>]+>', '', t)) for t in re.findall(r'(?is)<text[^>]*>(.*?)</text>', xml))
+    return re.sub(r'\s+', ' ', txt).strip()[:BODY_MAX]
+
+
+def _vid_of(url):
+    m = re.search(r'(?:v=|youtu\.be/)([\w-]{11})', url or '')
+    return m.group(1) if m else ''
+
+
+def _fetch_body(it):
+    """依項目類型抓內容 → (內容, 來源標籤)。⛔ 抓不到回 ('','') —— 不假造。"""
+    k, u = it.get('kind'), it.get('u') or ''
+    if k == 'yt':
+        vid = _vid_of(u)
+        if vid:
+            t = _yt_transcript(vid)
+            if t:
+                return t, 'transcript'
+        return (it.get('x') or ''), ('desc' if it.get('x') else '')
+    if k == 'podcast':
+        return (it.get('x') or ''), ('shownotes' if it.get('x') else '')
+    if k == 'news':
+        try:
+            return _main_text(_get(u).decode('utf-8', 'ignore')), 'article'
+        except Exception:
+            return '', ''
+    return '', ''
+
+
 # ── RSS 解析(YouTube / Podcast / Google News 共用) ─────────────────────────
 _NS = {'a': 'http://www.w3.org/2005/Atom', 'yt': 'http://www.youtube.com/xml/schemas/2015'}
 
@@ -383,6 +465,7 @@ def build():
             old = {}
 
     out_analysts, n_ok = [], 0
+    _budget = {'n': FETCH_BUDGET}   # 每輪抓內容的總預算(4 位分析師共用)
     for a in ANALYSTS:
         items, note = _resolve_youtube(a)
         if not items:
@@ -408,6 +491,21 @@ def build():
         rows = sorted(merged.values(), key=lambda x: (x.get('d') or ''), reverse=True)[:MAX_ITEMS]
 
         mkt_now, _ = _close_on('^TWII', today)
+        # 📄 V72.7.0 抓內容(增量,每輪有預算)——「標題沒有用」的解法。
+        #   ⛔ 只抓還沒抓過的(`csrc` 未設),抓過就不再打網路(冪等 + 省流量)。
+        for it in rows:
+            if _budget['n'] <= 0:
+                break
+            if 'csrc' in it:
+                continue
+            body, src = _fetch_body(it)
+            _budget['n'] -= 1
+            it['csrc'] = src
+            if body:
+                it['_body'] = body                       # 抽標的用,不寫檔
+                it['sum'] = body[:110].strip()           # ⭐ 顯示用摘要(這才是使用者要看的)
+                it['sv'] = None                          # 有新內容 → 逼它重抽標的
+            time.sleep(RSS_SLEEP)
         for it in rows:
             d = (it.get('d') or today)[:10]
             if not it.get('syms') or it.get('sv') != SYMS_V:
@@ -417,7 +515,9 @@ def build():
                 # ⭐ 標題 + 節目大綱一起抽(股癌那種「EP685 | 🤓」標題只能靠大綱)
                 _ttl = it.get('t') or ''
                 _from_title = {c for _, c in _pick_syms(_ttl, names_by_len, name_map)}
-                for nm, code in _pick_syms(_ttl + ' ' + (it.get('x') or ''), names_by_len, name_map):
+                # ⭐ 內容(逐字稿/shownotes/新聞正文)優先,沒有才退回節目大綱
+                _body = it.get('_body') or it.get('x') or ''
+                for nm, code in _pick_syms(_ttl + ' ' + _body, names_by_len, name_map):
                     _old = _keep.get(code)
                     px, pxd = (_old['px'], _old.get('pxd')) if _old else _close_on(code, d)
                     mkt = _old.get('mkt') if _old else _close_on('^TWII', d)[0]
@@ -439,6 +539,7 @@ def build():
         #   ⛔ 不可留在輸出裡:它是節目簡介,含大量贊助商文案,既是雜訊又會把檔案撐大。
         for it in rows:
             it.pop('x', None)
+            it.pop('_body', None)   # ⛔ 全文不寫檔(逐字稿可能上萬字,檔案會爆)
         # 🚨 守門要看「**本輪**有沒有抓到新的」,⛔ 不可看合併後的 rows ——
         #   舊檔的內容還在 KEEP_DAYS 內就會被併進來,於是**上游全掛的那天看起來也「成功」**,
         #   還會把 updated 換成今天、error 寫成 None(自我測試當場抓到)。

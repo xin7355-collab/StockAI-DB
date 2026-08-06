@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.6.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.7.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.6.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.7.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7158,8 +7158,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.6.8',
+    _APP_VERSION: 'V72.7.0',
     _CHANGELOG: [
+        { v: 'V72.7.0', dt: '2026-08-07', t: '📄 你說得對:標題沒有用 —— 改成抓「他到底講了什麼」', d: [
+            '股癌的標題就是「EP685 | 🤓」、郭哲榮的是媒體下的殺人標題 —— 從標題根本看不出他講什麼,也抽不到標的。',
+            '→ 現在每一則會去抓**真正的內容**:🎬 影片逐字稿(字幕)/ 📝 節目大綱 / 📰 新聞正文,標題底下直接顯示一段摘要,並標明來源是哪一種。',
+            '⭐ 標的也改**從內容抽**,比從標題準得多(逐字稿講到台積電、鴻海就抓得到)。',
+            '⛔ 有些影片沒字幕、有些新聞擋爬蟲 → 那幾則會誠實標「內容抓不到,只有標題」,不假造。',
+            '⚙️ 每輪限量抓、抓過就不再抓(不打爆對方、也不重複耗流量)。',
+            '📎 你上傳的 crawl4ai 我看過了:它**沒有**逐字稿功能;真正有價值的是「把新聞頁的導覽廣告剝掉只留正文」那套觀念,我照著自己寫了 10 行 —— 整包裝進來會拖 400MB 的瀏覽器,一天跑十次不划算。',
+        ] },
         { v: 'V72.6.8', dt: '2026-08-07', t: '🎙️ YouTube 把採礦機擋在「同意頁」—— 上一版加的診斷直接指出真因', d: [
             '上一版補的診斷立刻有用:log 寫著「HTML 768KB 但抓不到頻道配對(**同意頁**)」—— 不是我的比對寫錯,是 YouTube 對機房 IP 顯示同意畫面。',
             '→ 加上標準的同意 cookie 繞過。⛔ 這不是登入,不含任何個人資料。',
@@ -42920,9 +42928,14 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             const items = (a.items || []).slice(0, 5);
             const rows = items.map(it => {
                 const syms = (it.syms || []).map(x => this._analystSymChip(x)).join(' ');
+                // 📄 V72.7.0 使用者:「標題沒有用」→ 標題底下顯示**真正講了什麼**的摘要
+                //   (逐字稿 / 節目大綱 / 新聞正文),並標明來源層級。
+                const CSRC = { transcript: '🎬 影片逐字稿', shownotes: '📝 節目大綱', article: '📰 新聞內文', desc: '📝 影片說明' };
+                const sum = it.sum ? `<div class="text-[10px] text-gray-400 leading-snug mt-0.5 bg-[#161b22] border-l-2 border-[#30363d] pl-2 py-1 rounded-r">${it.sum}…<span class="text-gray-600 ml-1">(${CSRC[it.csrc] || '內容'})</span></div>` : '';
                 return `<div class="border-t border-[#21262d] pt-1.5 mt-1.5 first:border-0 first:pt-0 first:mt-0">
                     <a href="${it.u || '#'}" target="_blank" rel="noopener" class="text-[11px] text-gray-100 leading-snug hover:text-cyan-300">${it.t || ''}</a>
-                    <div class="text-[9px] text-gray-600 mt-0.5">${it.d ? this._dW(it.d, { rel: 1 }) : ''} ・${KIND[it.kind] || it.kind || ''}</div>
+                    ${sum}
+                    <div class="text-[9px] text-gray-600 mt-0.5">${it.d ? this._dW(it.d, { rel: 1 }) : ''} ・${KIND[it.kind] || it.kind || ''}${it.csrc === '' ? ' ・<span class="text-gray-700">內容抓不到,只有標題</span>' : ''}</div>
                     ${syms ? `<div class="flex flex-wrap gap-1 mt-1">${syms}</div>` : '<div class="text-[9px] text-gray-700 mt-0.5">標題沒提到可辨識的台股</div>'}
                 </div>`;
             }).join('');
@@ -42940,7 +42953,8 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 <div class="text-[10px] font-bold text-gray-300 mb-0.5">📌 這頁怎麼看(必讀)</div>
                 <div class="text-[10px] text-gray-400 leading-relaxed">
                     ⛔ <b>這裡不下多空、不計分</b> —— 名嘴說法的預測力從來沒被驗證過,這頁只做「他講了什麼、那天多少錢」的紀錄。<br>
-                    ⚠️ 只收得到<b>標題與節目大綱</b>(沒有逐字稿),標題常是釣魚式的;標的是<b>從文字抽的</b>,可能不是他當集的重點。<br>
+                    ⭐ 標題常是釣魚式的 → 底下那行灰字才是<b>他真正講的內容</b>(逐字稿 / 節目大綱 / 新聞正文);標的也是**從內容**抽的,比從標題準得多。<br>
+                    ⚠️ 但有些影片沒有字幕、有些新聞擋爬蟲 → 那幾則會標「內容抓不到,只有標題」,⛔ 不假造。<br>
                     ⚠️ 標「<span class="text-gray-500">簡介·</span>」的那幾檔是從<b>節目大綱</b>抓到的,證據比標題弱(可能只是順口提到)。<br>
                     ⭐ 「講的時候 → 現在」一定要看<b>贏不贏大盤</b>那一欄 —— 個股漲 3% 在大盤漲 5% 的日子其實是輸的。<br>
                     📅 紀錄從今天開始累積,⛔ 樣本還不夠<b>不能</b>拿來說誰準誰不準。
