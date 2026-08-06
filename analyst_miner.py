@@ -49,7 +49,12 @@ UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.3
 # 保留幾天的內容。⭐ 使用者要求「第一次挖礦多挖 3 天前的資訊」——
 # YouTube/Podcast RSS 一次就給最近 10~15 集,天然涵蓋好幾天,所以首跑就會有;
 # 這個參數只是**保留上限**,避免檔案無限長大。
-KEEP_DAYS = int(os.getenv('ANALYST_KEEP_DAYS', '14'))
+# 🚨 V72.6.7 實測:14 天太短。兆華兩位確實抓到內容(股惑仔 3 則、艾綸 9 則,
+#   都通過「標題必須提到他」的守門),但**全部被 14 天窗濾掉** → 畫面上是 0 則。
+#   使用者的訴求是「看得到」,而冷門節目本來就不會天天上媒體。
+#   → 拉長到 60 天,靠**排序(最新在前)+ 前端顯示相對日期**讓使用者自己判斷新舊,
+#     ⛔ 不用「一刀切掉」的方式決定什麼叫新。
+KEEP_DAYS = int(os.getenv('ANALYST_KEEP_DAYS', '60'))
 MAX_ITEMS = int(os.getenv('ANALYST_MAX_ITEMS', '12'))     # 每位最多留幾則
 RSS_SLEEP = float(os.getenv('ANALYST_RSS_SLEEP', '1.0'))
 TIMEOUT = int(os.getenv('ANALYST_TIMEOUT', '20'))
@@ -250,6 +255,14 @@ def _yt_search_channel(a):
         return None, None
     # 「文字 … browseId」成對出現(YouTube 的 ytInitialData 結構)
     pairs = re.findall(r'"text":"([^"]{2,40})"[^{}]{0,400}?"browseId":"(UC[\w-]{20,})"', html)
+    if not pairs:
+        # ⚠️ 陷阱 #23:拿到 200 不代表拿到搜尋結果(YouTube 可能回同意頁/機器人頁)。
+        #    ⛔ 只印「0 個候選」查不出真因 → 把可辨識的特徵寫進 log。
+        _hint = ('同意頁' if re.search(r'consent\.youtube|CONSENT|同意', html) else
+                 '機器人驗證' if re.search(r'captcha|unusual traffic|驗證', html, re.I) else
+                 f'ytInitialData={"有" if "ytInitialData" in html else "沒有"}')
+        _log(f'{a["n"]}/YT搜尋:HTML {len(html)//1024}KB 但抓不到頻道配對({_hint})')
+        return None, None
     seen, cands = set(), []
     for nm, cid in pairs:
         if cid in seen:

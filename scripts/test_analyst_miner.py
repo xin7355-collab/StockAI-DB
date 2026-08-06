@@ -261,6 +261,31 @@ A._get = lambda url: '<html>沒有任何 browseId</html>'.encode('utf-8')
 cid3, _ = A._yt_search_channel({'n': 'x', 'must': 'x'})
 ok('⑭ HTML 沒東西 → 回 None 不爆炸', cid3 is None, cid3)
 
+# ── ⑮ ⭐ 保留窗要夠長,而且「太舊」要由排序+顯示處理,不是一刀切掉 ────────────
+#    🚨 實測:14 天窗把兆華兩位僅有的內容(3 則 / 9 則,都已通過名字守門)全濾掉 → 畫面 0 則。
+ok('⑮ ⭐ KEEP_DAYS 至少 60 天(冷門節目不會天天上媒體)', A.KEEP_DAYS >= 60, A.KEEP_DAYS)
+A._name_map = lambda: {'台積電': '2330'}
+A.OUT.unlink(missing_ok=True)
+from datetime import datetime as _dt, timedelta as _td
+_d20 = (_dt.now(A.TPE) - _td(days=20)).strftime('%Y-%m-%d')
+_d90 = (_dt.now(A.TPE) - _td(days=90)).strftime('%Y-%m-%d')
+A._resolve_youtube = lambda a: ([
+    {'t': '20 天前談台積電', 'u': 'https://y/20', 'd': _d20, 'kind': 'yt', 'x': ''},
+    {'t': '90 天前的老影片', 'u': 'https://y/90', 'd': _d90, 'kind': 'yt', 'x': ''},
+], 'YouTube @x')
+A.build()
+d9 = json.loads(A.OUT.read_text(encoding='utf-8'))
+u9 = [i['u'] for i in d9['analysts'][0]['items']]
+ok('⑮ ⭐ 20 天前的要留著(以前會被 14 天窗殺掉)', 'https://y/20' in u9, u9)
+ok('⑮ 90 天前的仍要濾掉(檔案不能無限長大)', 'https://y/90' not in u9, u9)
+ok('⑮ ⭐ 最新的排最前面(靠排序而不是切掉來表達新舊)', u9[0] == 'https://y/20', u9)
+
+# ⑮b YouTube 搜尋抓不到配對時要留下可辨識的線索(陷阱 #23)
+A._get = lambda url: ('<html>' + 'x' * 5000 + 'CONSENT</html>').encode('utf-8')
+A._yt_search_channel({'n': 'x', 'must': 'x'})
+ok('⑮b ⭐ 拿到 200 但抓不到配對 → 要寫出 HTML 大小與可能原因',
+   any('抓不到頻道配對' in m for m in A.RESOLVE_LOG[-2:]), A.RESOLVE_LOG[-1:])
+
 print()
 if FAILS:
     print(f'❌ {len(FAILS)} 條失敗:')

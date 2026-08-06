@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.6.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.6.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.6.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.6.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7158,8 +7158,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.6.6',
+    _APP_VERSION: 'V72.6.7',
     _CHANGELOG: [
+        { v: 'V72.6.7', dt: '2026-08-07', t: '🎙️ 兆華兩位「0 則」的真因找到了 —— 不是抓不到,是被我自己的 14 天窗濾光', d: [
+            '🚨 資料裡看得很清楚:兆華與股惑仔實際抓到 **3 則**、艾綸 **9 則**,而且都通過「標題必須提到他」的檢查 —— 但**全部超過 14 天**,所以畫面上是 0 則。',
+            '→ 保留窗 14 天 → **60 天**。冷門節目本來就不會天天上媒體;新舊改由「最新的排最前面 + 顯示幾天前」讓你自己判斷,⛔ 不用一刀切掉的方式決定什麼叫新。',
+            '⚠️ 順手補診斷:YouTube 搜尋抓不到頻道時,會記下「HTML 幾 KB、是不是被擋在同意頁」—— 只寫「找不到」下次還是查不出原因。',
+        ] },
         { v: 'V72.6.6', dt: '2026-08-07', t: '🎙️ 兆華兩位的頻道找不到 → 改成「讓 YouTube 自己說」', d: [
             '前幾版是用猜的頻道代號,兆華兩位全部猜不中(其中一個還猜到一個 2025 年就停更的別人的頻道)。',
             '→ 現在改成**直接去 YouTube 搜尋節目名稱**,從搜尋結果找頻道。⛔ 但**頻道名稱必須真的含有「股惑仔」「艾綸」**才採用 —— 沒有一個符合就誠實留空,不拿別人的頻道充數。',
