@@ -137,17 +137,14 @@ const R5 = await page.evaluate(async (sym) => {
     out.pane = el?.closest('[data-ovpane]')?.getAttribute('data-ovpane') || null;
     el.classList.remove('hidden'); el.innerHTML = 'X';
     out.vis = {};
-    for (const t of ['now', 'inv', 'entry', 'exit']) { try { app.switchOvTab(t); } catch (_) { } out.vis[t] = !!el.offsetParent; }
+    for (const t of ['now', 'entry', 'exit']) { try { app.switchOvTab(t); } catch (_) { } out.vis[t] = !!el.offsetParent; }
+    // ⚠️ V72.5.5 起 'inv' 那個 pane 已整個移除(switchOvTab 早就把它導向 'now'),⛔ 別再測它
 
-    // (2) 選股頁訊號條要能自己捲(整頁刻意不捲)
+    // (2) V72.5.5:原「今天最該看」常駐條(#todaySignalBar)已改成**選股頁的第一個榜單分頁**
+    //     → 這裡改驗那個分頁還在、而且排在第一個(⛔ 別留著測一個已經不存在的 id)
     app.switchAppTab('radar');
-    const bar = document.getElementById('todaySignalBar');
-    bar.classList.remove('hidden');
-    bar.innerHTML = Array.from({ length: 25 }, (_, i) => `<div style="padding:14px">列${i}</div>`).join('');
-    const cs = getComputedStyle(bar);
-    out.barOverflow = cs.overflowY;
-    out.barScrolls = bar.scrollHeight > bar.clientHeight + 4;
-    out.listH = document.getElementById('radarModeStrategy')?.clientHeight || 0;
+    out.sigTabFirst = Object.keys(app._RADAR_TABS || {})[0] || null;   // 它是物件不是陣列,第一個 key = 第一個榜單
+    out.sigViewExists = !!document.getElementById('radarTodaySigView');
 
     // (3) 分點:綁 sym 防跨股污染 + 文案不可再說「只追約 50 檔」
     const r = await fetch(`data/${sym}.json`);
@@ -168,10 +165,8 @@ ok('⑤ ⭐⛔ 深度診斷必須在某個 ovpane 裡(⛔ 不可放在 pane 之�
 //    第一版測試把它當成失敗是我搞錯。真正要擋的是「進場/出場」兩頁也跟著顯示。
 ok('⑤ ⭐ 只在「現在怎麼做」顯示(inv 已併入 now),⛔ 進場/出場頁不可出現',
    R5.vis?.now === true && !R5.vis?.entry && !R5.vis?.exit, JSON.stringify(R5.vis));
-ok('⑤ ⭐ 選股頁訊號條要能自己捲(整頁刻意不捲,⛔ 不可改回外層可捲)',
-   R5.barOverflow === 'auto' && R5.barScrolls === true, `overflow=${R5.barOverflow} scrolls=${R5.barScrolls}`);
-ok('⑤ ⭐ 訊號條變高時,下方榜單不可被擠沒(flex-shrink-0 + max-height)',
-   R5.listH > 120, `listH=${R5.listH}`);
+ok('⑤ ⭐ 「今天最該看」是選股頁的第一個榜單(⛔ 不可被埋到後面)',
+   R5.sigTabFirst === 'todaysig' && R5.sigViewExists === true, `first=${R5.sigTabFirst} view=${R5.sigViewExists}`);
 ok('⑤ ⭐⛔ 分點必須綁 _chipSym(⛔ 不可拿上一檔的分點算這一檔)',
    /_chipSym === String\(sym\)/.test(R5.srcWatch || ''), (R5.srcWatch || '').slice(0, 120));
 ok('⑤ 上一檔分點殘留時要判成「沒有」', /載入中/.test(R5.crossWhy), R5.crossWhy);
@@ -180,6 +175,45 @@ ok('⑤ 綁對時吃得到數字', /前 15 大分點/.test(R5.sameWhy), R5.sameW
 //    同「禁止出現某句話的測試要先 strip 否定形」那條教訓,本 session 第 7 次踩到)
 ok('⑤ ⭐⛔ 顯示文案不可再寫「只追約 50 檔」(實測 gh-pages 有 2,653 檔)',
    !/只追約 ?50 ?檔/.test(R5.crossWhy + R5.sameWhy), `${R5.crossWhy} | ${R5.sameWhy}`);
+
+// ── ⑥ V72.5.6 出場守門要接到**全部**進場類卡片(⛔ 不可只接發現的那兩張)────────
+//    V72.4.7 只接了「進場劇本」與「上檔空間」→ 四關卡、分批進場計畫、進場體檢
+//    在出場狀態下照樣給買點。⭐ 這次抽出共用的 `_exitModeNoticeHtml`,三張一起接。
+const R6 = await page.evaluate(async (sym) => {
+    const raw = await (await fetch(`data/${sym}.json`)).json();
+    const d = raw.map(x => ({ ...x, close: +x.close, open: +x.open, high: +x.high, low: +x.low, volume: +x.volume }));
+    const ind = app._calcIndicatorsSync ? app._calcIndicatorsSync(d) : (app.indicators || {});
+    const last = d.length - 1;
+    const grab = () => ({
+        gates: (document.getElementById('chuFourGatesCard')?.innerText || '').replace(/\s+/g, ' '),
+        plan: (document.getElementById('chuPositionPlanCard')?.innerText || '').replace(/\s+/g, ' '),
+        chk: (document.getElementById('entryCheckup')?.innerText || '').replace(/\s+/g, ' '),
+    });
+    const paint = () => {
+        try { app._renderChuFourGates(d, ind, last); } catch (_) { }
+        try { app._renderChuPositionPlan(d, ind, last); } catch (_) { }
+        try { app.renderEntryCheckup(d); } catch (_) { }
+    };
+    app.currentSymbolId = sym;
+    // (a) 正常狀態
+    app._exitMode = null; app._ovTrend = null;
+    paint(); const normal = grab();
+    // (b) 出場狀態
+    app._exitMode = { sym: String(sym), on: true, big: '🚪 建議離場', slF: 100 };
+    paint(); const exiting = grab();
+    return { normal, exiting, shared: /_exitModeNoticeHtml/.test(app._renderChuFourGates.toString()) && /_exitModeNoticeHtml/.test(app._renderChuPositionPlan.toString()) };
+}, SYM);
+
+ok('⑥ ⭐ 四關卡與分批計畫都走**共用**的告示函式(⛔ 別各寫一份文案)', R6.shared === true);
+ok('⑥ ⭐ 出場時「四關卡」收起', /出場管理/.test(R6.exiting.gates), R6.exiting.gates.slice(0, 140));
+ok('⑥ ⭐ 出場時「分批進場計畫」收起', /出場管理/.test(R6.exiting.plan), R6.exiting.plan.slice(0, 140));
+ok('⑥ ⛔ 出場時不可再出現「第一批 / 加碼」那種買進指令',
+   !/第一批|加碼1|試單買/.test(R6.exiting.plan), R6.exiting.plan.slice(0, 200));
+ok('⑥ ⭐ 進場體檢**不整張收起**(庫存股還要看),但對策要改口',
+   R6.exiting.chk.length > 60 && /出場管理狀態/.test(R6.exiting.chk), R6.exiting.chk.slice(-260));
+ok('⑥ ⛔ 進場體檢對策不可再寫「可分批試單」', !/可分批試單/.test(R6.exiting.chk), R6.exiting.chk.slice(-260));
+ok('⑥ ⭐ 正常狀態不可誤傷 —— 三張都不該出現出場告示',
+   !/出場管理/.test(R6.normal.gates + R6.normal.plan), (R6.normal.gates + ' | ' + R6.normal.plan).slice(0, 200));
 
 await browser.close();
 console.log();

@@ -49,6 +49,10 @@ const R = await pg.evaluate((real) => {
     out.liveWrappers = ['directActionBox', 'ovBodyEntry', 'ovBodyExit']
         .filter(id => app._EMPTY_SHELLS.includes(id));
     const shell = document.getElementById('chuMergedCard');
+    // ⚠️ V72.5.6:K棒戰法卡搬進 chuMergedCard 之後,這檔股票**真的有訊號** → 它不再是空殼。
+    //    ⛔ 測試不可依賴「這檔今天剛好沒東西」(同「測試不可綁死會浮動的資料狀態」)→
+    //    這裡明確把所有子層藏起來,製造出「定義上的空殼」再驗清掃器。
+    if (shell) [...shell.children].forEach(c => { c.classList.add('hidden'); c.innerHTML = ''; });
     out.shellBefore = shell ? shell.classList.contains('hidden') : null;
     app._sweepEmptyShells();
     out.shellAfter = shell ? shell.classList.contains('hidden') : null;

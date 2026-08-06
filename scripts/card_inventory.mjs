@@ -111,17 +111,32 @@ for (const tab of SUBTABS) {
                 const t = (el.innerText || '').replace(/\s+/g, ' ').trim();
                 if (t.length < 12 || t.length > 2500) continue;
                 seen.push(el);
-                // 這張卡裡面「收在 <details> 摺疊區」的字數 → 攤開的才算第一眼成本
+                // 這張卡裡面「使用者第一眼看不到」的字數 → 剩下的才是版面成本。
+                // 🐛 V72.5.6 修兩個「安靜地量錯」的缺陷(代理審查抓到的):
+                //   ① 舊版只扣 `<details>:not([open])`,**沒扣 Tailwind `.hidden`** ——
+                //      而沙箱連不到 Tailwind CDN、`.hidden{display:none}` 根本沒載入
+                //      → 那些卡的內容全被算成「攤開」,字數被系統性高估。
+                //   ② 巢狀重複扣:`details` 裡面又有 `.hidden` 會被扣兩次 → 用 Set 去重祖先。
+                const foldedEls = [];
+                const pushFold = n => { if (!foldedEls.some(p => p.contains(n))) foldedEls.push(n); };
+                for (const d of el.querySelectorAll('details:not([open])')) pushFold(d);
+                for (const h of el.querySelectorAll('.hidden')) {
+                    const st = h.style && h.style.display;
+                    if (st && st !== 'none') continue;       // inline display 會蓋掉 class(switchAppTab 就這樣做)
+                    pushFold(h);
+                }
                 let folded = 0;
-                for (const d of el.querySelectorAll('details:not([open])')) {
+                for (const d of foldedEls) {
                     const dt = (d.innerText || '').replace(/\s+/g, ' ').trim();
-                    const sm = (d.querySelector('summary')?.innerText || '').replace(/\s+/g, ' ').trim();
+                    const sm = (d.tagName === 'DETAILS' ? (d.querySelector('summary')?.innerText || '') : '').replace(/\s+/g, ' ').trim();
                     folded += Math.max(0, dt.length - sm.length);
                 }
                 // ⚠️ folded 可能**大於** len:`innerText` 對摺疊起來的 <details> 內容回傳的是全文,
                 //    但外層那張卡的 innerText 反而不含它 → 相減會變負數(實測 −445)。
                 //    ⛔ 不可讓「攤開字數」出現負值(會讓報表看起來像壞掉),一律 clamp。
-                out.push({ id: el.id, len: t.length, folded: Math.min(folded, t.length), txt: t.slice(0, 400) });
+                // ⛔ `txt` 不可截斷:舊版只留前 400 字 → 「有沒有下操作指令」只掃到卡片開頭,
+                //    而指令通常寫在**最後**的「💡 對策 / 怎麼做」那一段 → 幾乎全部漏判。
+                out.push({ id: el.id, len: t.length, folded: Math.min(folded, t.length), txt: t });
             }
             return out;
         }, { tab, pane });

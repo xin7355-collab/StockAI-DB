@@ -240,9 +240,11 @@ ok('⑤ ⭐ 「可順勢操作」要同時滿足「四面向多數」與「命�
 ok('⑤ ⭐⛔ 空方(風險)那側不加樣本門檻 —— 多空不對稱,寧可多提醒',
    /bad\.length >= 3 \? '多面向警訊齊發/.test(bbSrc) && !/bad\.length >= 3 && hits/.test(bbSrc), '');
 const rendSrc = await page.evaluate(() => app._renderBullBearCardSync.toString());
-ok('⑤ ⭐ 百分比旁一定要同時顯示「命中 N/28」(⛔ 100% 不可孤零零出現)',
-   /多方 \$\{pct\}%<\/span><span[^>]*>\(命中 \$\{scan\.hits\}\/28\)/.test(rendSrc),
-   (rendSrc.match(/多方 \$\{pct\}%[^\n]{0,120}/) || [''])[0]);
+// ⚠️ V72.5.5 起分母改成 `scan.rulesN`(實跑 29 條,⛔ 不再寫死 28)→ 這裡也不可寫死數字,
+//    否則規則一增減測試就假失敗(同 V72.1.8「測試不可綁死會浮動的資料狀態」)。
+ok('⑤ ⭐ 百分比旁一定要同時顯示「命中 N/總數」(⛔ 100% 不可孤零零出現)',
+   /多方 \$\{pct\}%<\/span><span[^>]*>\(命中 \$\{scan\.hits\}\/\$\{scan\.rulesN[^}]*\}\)/.test(rendSrc),
+   (rendSrc.match(/多方 \$\{pct\}%[^\n]{0,160}/) || [''])[0]);
 
 
 // ══ ⑥ ⭐主打 的星星本身也要樣本夠(V72.2.4)═══════════════════
