@@ -22,6 +22,7 @@ import analyst_miner as A   # noqa: E402
 #    否則 ⑨ 會測到自己前面塞的 stub(第一版就這樣,測出來永遠是空的)。
 _REAL_NEWS = A._resolve_news
 _REAL_YT_TX = A._yt_transcript
+_REAL_FETCH_BODY = A._fetch_body
 
 FAILS = []
 
@@ -373,6 +374,42 @@ A._get = lambda url: ('<html>' + 'y' * 3000 + 'ytInitialPlayerResponse</html>').
 A._yt_transcript = _REAL_YT_TX        # ⬅️ 前面的區塊 stub 掉了,換回真的(同 ⑨ 那個坑)
 A._yt_transcript('abc12345678')
 ok('⑰ ⭐ 逐字稿失敗要記下可辨識原因', bool(A._YT_LAST_ERR) and 'KB' in A._YT_LAST_ERR, A._YT_LAST_ERR)
+
+# ── ⑱ V72.7.2:規則改了,**已經存進去的摘要**也要重清 ────────────────────────
+#    🚨 實測:V72.7.1 補了「本集節目由」之後,畫面上還是「…本集節目由【NordVPN】」
+#       —— 那些項目 csrc 已設 → 跳過重抓 → 舊摘要沒人重算。(本 session 第 4 次踩同一類)
+A._name_map = lambda: {'台積電': '2330'}
+A._fetch_body = lambda it: ('', '')
+A.OUT.write_text(json.dumps({'updated': 'x', 'analysts': [
+    {'k': A.ANALYSTS[0]['k'], 'items': [
+        {'t': 'EP685', 'u': 'https://y/s1', 'd': _dt.now(A.TPE).strftime('%Y-%m-%d'), 'kind': 'yt',
+         'csrc': 'desc', 'sum': '人類又找回勇氣了 本集節目由【NordVPN】', 'syms': [], 'sv': A.SYMS_V},
+        {'t': 'EP684', 'u': 'https://y/s2', 'd': _dt.now(A.TPE).strftime('%Y-%m-%d'), 'kind': 'yt',
+         'csrc': 'desc', 'sum': '本集節目由【AWSON】贊助', 'syms': [], 'sv': A.SYMS_V},
+    ]}]}, ensure_ascii=False), encoding='utf-8')
+A._resolve_youtube = lambda a: ([{'t': '新一集', 'u': 'https://y/s3', 'd': _dt.now(A.TPE).strftime('%Y-%m-%d'), 'kind': 'yt', 'x': ''}], 'YouTube @x')
+A.build()
+dS = {i['u']: i for i in json.loads(A.OUT.read_text(encoding='utf-8'))['analysts'][0]['items']}
+ok('⑱ ⭐⭐ 舊摘要要被現在的規則重清', dS['https://y/s1'].get('sum') == '人類又找回勇氣了', dS['https://y/s1'].get('sum'))
+ok('⑱ ⭐ 整句都是廣告 → 整個拿掉(⛔ 寧可不顯示)', 'sum' not in dS['https://y/s2'], dS['https://y/s2'].get('sum'))
+
+# ⑱b Google News 是跳轉頁 → 要追到真正的出處
+_PAGES = {'https://news.google.com/rss/articles/CBMx':
+          '<html><a href="https://udn.com/news/story/1">前往</a></html>',
+          'https://udn.com/news/story/1':
+          '<html><p>郭哲榮表示台積電法說會後資本支出上修,先進封裝需求續強,值得留意。</p></html>'}
+A._get = lambda url: _PAGES[url].encode('utf-8')
+A._fetch_body = _REAL_FETCH_BODY      # ⬅️ 前面 stub 掉了,換回真的(⚠️ 本 session 第 3 次踩)
+body, src = A._fetch_body({'kind': 'news', 'u': 'https://news.google.com/rss/articles/CBMx'})
+ok('⑱b ⭐⭐ 跳轉頁要追到出處才拿得到正文', '郭哲榮表示台積電' in body, body[:80])
+ok('⑱b ⭐ 有正文才標 article', src == 'article', src)
+A._get = lambda url: '<html>沒有連結也沒有正文</html>'.encode('utf-8')
+b2, s2 = A._fetch_body({'kind': 'news', 'u': 'https://news.google.com/rss/articles/CBMy'})
+ok('⑱b ⭐⛔ 追不到 → csrc 空字串(⛔ 不可標成 article 卻沒內容)', (b2, s2) == ('', ''), (b2, s2))
+
+# ⑱c 429 → 降預算 + watch 頁節流
+ok('⑱c ⭐ 每輪抓取降到 ≤2(實測 YouTube watch 頁回 429)', A.FETCH_BUDGET <= 2, A.FETCH_BUDGET)
+ok('⑱c ⭐ watch 頁之間要有間隔', A.YT_SLEEP >= 2, A.YT_SLEEP)
 
 print()
 if FAILS:

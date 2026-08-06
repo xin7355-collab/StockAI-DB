@@ -187,7 +187,10 @@ def _close_on(sym, ymd):
 # 🚨 V72.7.1 改成**每位分析師各自**的預算。舊版是全域 10 則 → 股癌 12 則就吃光,
 #    排在後面的郭哲榮**一則內容都沒抓到**(csrc 全是 None)。
 #    ⭐ 通用:任何「共用配額」的迴圈,要確認排在後面的拿不拿得到 —— 否則等於只服務第一個。
-FETCH_BUDGET = int(os.getenv('ANALYST_FETCH_BUDGET', '4'))   # **每位**每輪最多抓幾則(增量累積)
+# ⚠️ V72.7.2 實測 YouTube watch 頁回 **HTTP 429**(限流)→ 每輪少抓一點,靠多輪累積
+#   (news_express 平日盤中每小時跑一次,兩三輪就補滿)。
+FETCH_BUDGET = int(os.getenv('ANALYST_FETCH_BUDGET', '2'))   # **每位**每輪最多抓幾則(增量累積)
+YT_SLEEP = float(os.getenv('ANALYST_YT_SLEEP', '3.0'))       # 抓 watch 頁之間的間隔(防 429)
 BODY_MAX = int(os.getenv('ANALYST_BODY_MAX', '4000'))         # 抽標的用的內文上限
 
 
@@ -252,6 +255,7 @@ def _fetch_body(it):
     if k == 'yt':
         vid = _vid_of(u)
         if vid:
+            time.sleep(YT_SLEEP)   # 防 429(實測 watch 頁會限流)
             t = _yt_transcript(vid)
             if t:
                 return t, 'transcript'
@@ -262,7 +266,16 @@ def _fetch_body(it):
         return (it.get('x') or ''), ('shownotes' if it.get('x') else '')
     if k == 'news':
         try:
-            return _main_text(_get(u).decode('utf-8', 'ignore')), 'article'
+            html = _get(u).decode('utf-8', 'ignore')
+            body = _main_text(html)
+            # 🚨 V72.7.2 Google News 的連結是**跳轉頁**(news.google.com/rss/articles/CBM…),
+            #   HTML 裡沒有正文只有一段跳轉 → `_main_text` 回空(實測 csrc='article' 卻沒有摘要)。
+            #   → 先從頁面撈出真正的出處網址再抓一次。
+            if not body and 'news.google.com' in u:
+                m = re.search(r'<a[^>]+href="(https?://(?!news\.google\.com)[^"]+)"', html)
+                if m:
+                    body = _main_text(_get(m.group(1)).decode('utf-8', 'ignore'))
+            return body, ('article' if body else '')
         except Exception:
             return '', ''
     return '', ''
@@ -559,6 +572,18 @@ def build():
         for it in rows:
             it.pop('x', None)
             it.pop('_body', None)   # ⛔ 全文不寫檔(逐字稿可能上萬字,檔案會爆)
+            # 🚨 V72.7.2 摘要要用**現在的**贊助字表重清一次。
+            #   實測:V72.7.1 補了「本集節目由」之後,畫面上還是
+            #   「人類又找回勇氣了 本集節目由【NordVPN】」—— 因為那些項目 `csrc` 已設 → 跳過重抓
+            #   → **舊摘要是用舊規則產生的,沒人重算它**。
+            #   ⭐ 本 session 第 4 次踩到同一類:**加規則要問「已經存進去的怎麼辦」**。
+            #   ⛔ 重清是純字串運算、零網路成本,沒有理由不做。
+            if it.get('sum'):
+                _c = _topic_part(it['sum'])
+                if _c:
+                    it['sum'] = _c
+                else:
+                    it.pop('sum', None)   # 整句都是廣告 → 寧可不顯示
         # 🚨 守門要看「**本輪**有沒有抓到新的」,⛔ 不可看合併後的 rows ——
         #   舊檔的內容還在 KEEP_DAYS 內就會被併進來,於是**上游全掛的那天看起來也「成功」**,
         #   還會把 updated 換成今天、error 寫成 None(自我測試當場抓到)。

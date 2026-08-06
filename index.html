@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.7.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.7.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.7.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.7.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7158,8 +7158,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.7.1',
+    _APP_VERSION: 'V72.7.2',
     _CHANGELOG: [
+        { v: 'V72.7.2', dt: '2026-08-07', t: '📄 摘要終於乾淨了 + 郭哲榮的新聞內文抓得到了', d: [
+            '🚨 上一版明明補了「本集節目由」,畫面上還是「人類又找回勇氣了 **本集節目由【NordVPN】**」—— 因為那幾則已經抓過了就跳過,**舊摘要沒人重算**。現在每輪都會用最新規則重清一次(純字串運算,零成本);整句都是廣告的就整個不顯示。',
+            '🚨 郭哲榮那幾則標了「新聞內文」卻沒有摘要 —— Google News 給的是**跳轉頁**,裡面沒有正文。現在會先追到真正的出處(經濟日報/UDN)再抓。',
+            '⚠️ YouTube 逐字稿被限流(HTTP 429)→ 每輪少抓一點、加間隔,靠盤中每小時跑一次慢慢補滿。',
+        ] },
         { v: 'V72.7.1', dt: '2026-08-07', t: '📄 上一版實測三個小毛病:摘要第一句是廣告、郭哲榮一則內容都沒抓到', d: [
             '🚨 股癌的摘要變成「人類又找回勇氣了 **本集節目由【NordVPN】**」—— 舊的贊助字表只有「贊助/業配」,抓不到「本集節目由」這種寫法。已補上(還有「特別感謝」「優惠碼」等)。',
             '🚨 郭哲榮的內容**一則都沒抓到** —— 抓取額度是四位共用的,股癌 12 則就吃光了,排在後面的完全拿不到。改成**每位各自有額度**。',
