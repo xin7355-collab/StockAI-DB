@@ -103,6 +103,14 @@
 - **根因（勿回退）**：舊版 `sw.js` 的 `CACHE_NAME='stockai-v2'` 是固定字串，每次部署內容不變 → 瀏覽器不認得新 SW → 既有的 `controllerchange` 自動 reload 不觸發。
 - **已根治機制**：`deploy_pages.yml` 部署時用 `sed` 把 `CACHE_NAME` 注入 commit SHA（`stockai-<sha8>`）→ 每次部署 sw.js 內容必變 → 新 SW 自動 install→skipWaiting→activate→clients.claim→controllerchange→自動 reload。`index.html` 的 `registerServiceWorker` 每 10 分鐘 + 切回前景即 `reg.update()`。
   - ⚠️ **不要把 `sw.js` 的 `CACHE_NAME` 改回固定字串**；main 模板留 `stockai-v2` 即可，注入只發生在 gh-pages 部署產物。
+- ⚠️ **push 不一定會觸發部署(2026-08-06 實例)**:當天 16:06~18:35 UTC GitHub **hosted runner 配不出來**
+  —— 4 支採礦 workflow 全部「job 從來沒開始跑」(`total_ms: 0`、無 steps、無 log,統一在 15 分被砍;
+  `macro_cron` 自己的 timeout 是 8 分卻活了 15 分 → 證明那個上限**不是 workflow 訂的**)。
+  ⛔ **別去查 miner.py / Shioaji 金鑰 / FinMind 額度** —— 同一個 commit 當天稍早跑成功過 7 次。
+  同一時段之後 push 的 V72.5.6 / V72.6.0 **也沒有產生 push 觸發的 deploy_pages run**(只有手動 dispatch 那筆)。
+  ⭐ **所以 push 完一定要用上面的版本號指令確認**;沒動就 Actions → `🚀 部署到 GitHub Pages` → Run workflow(main)。
+  ⛔ 「workflow 沒跑」跟「workflow 跑了但失敗」是兩件事:前者 `run.conclusion=failure` 但 `job.conclusion=cancelled`
+  且**用量 0 ms**,看到這個組合就是 GitHub 那邊的事,不是程式的問題。
 - **Claude 每次前端部署後必做**：① 用上面**版本號**指令確認 gh-pages == main；② 明確回報使用者「已部署，開著的分頁最久約 10 分鐘自動換新版、切回前景更快，硬重整可立即見效（iOS PWA 可能需完全關閉 App 重開）」。
 - **AI 結果快取**：`_aiCacheKey` 已含「提示詞雜湊」→ 改 `set_aiPrompt` 自動重算。
   ⚠️ 舊文寫的「雙擊 🧠 首席 AI 全盤分析鈕＝強制重抽 `runUnifiedGroqAnalysis({force:true})`」**已作廢** —
