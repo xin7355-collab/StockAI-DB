@@ -528,8 +528,13 @@ def build():
         for it in rows:
             if _budget['n'] <= 0:
                 break
-            if 'csrc' in it:
-                continue
+            # 🚨 V72.7.3 「標了來源卻沒有內容」是**自相矛盾狀態**(csrc='article' 但 sum 空)——
+            #   那是上一版的 bug 留下的殘骸,`csrc in it` 會讓它永遠不再重試。
+            #   ⛔ 跳過條件不能只看「做過沒」,要看「**做到的結果有沒有用**」(同陷阱 #10)。
+            if it.get('csrc') and it.get('sum'):
+                continue           # 真的抓到過 → 不重抓
+            if it.get('csrc') == '':
+                continue           # 明確標記「試過但這則沒有內容」→ 也不重抓(⛔ 別每輪都白打)
             body, src = _fetch_body(it)
             _budget['n'] -= 1
             it['csrc'] = src

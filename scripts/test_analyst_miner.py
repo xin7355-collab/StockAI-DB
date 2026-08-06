@@ -411,6 +411,38 @@ ok('⑱b ⭐⛔ 追不到 → csrc 空字串(⛔ 不可標成 article 卻沒內�
 ok('⑱c ⭐ 每輪抓取降到 ≤2(實測 YouTube watch 頁回 429)', A.FETCH_BUDGET <= 2, A.FETCH_BUDGET)
 ok('⑱c ⭐ watch 頁之間要有間隔', A.YT_SLEEP >= 2, A.YT_SLEEP)
 
+# ── ⑲ V72.7.3 跳過條件要看「做到的結果有沒有用」而不是「做過沒」(陷阱 #10)────
+#    🚨 實測:郭哲榮那幾則 csrc='article' 但 sum 空(上一版 bug 的殘骸)→ 永遠不再重試。
+A._name_map = lambda: {'台積電': '2330'}
+_tries = {'n': 0}
+
+
+def _cnt(it):
+    _tries['n'] += 1
+    return '聊台積電法說會', 'article'
+
+
+A._fetch_body = _cnt
+_today = _dt.now(A.TPE).strftime('%Y-%m-%d')
+A.OUT.write_text(json.dumps({'updated': 'x', 'analysts': [
+    {'k': A.ANALYSTS[0]['k'], 'items': [
+        # (a) 自相矛盾:標了來源卻沒內容 → 要重試
+        {'t': '股惑仔談 A', 'u': 'https://n/a', 'd': _today, 'kind': 'news', 'csrc': 'article', 'syms': [], 'sv': A.SYMS_V},
+        # (b) 真的抓到過 → ⛔ 不可重抓
+        {'t': '股惑仔談 B', 'u': 'https://n/b', 'd': _today, 'kind': 'news', 'csrc': 'article', 'sum': '有內容', 'syms': [], 'sv': A.SYMS_V},
+        # (c) 明確試過但沒有 → ⛔ 也不重抓(別每輪白打)
+        {'t': '股惑仔談 C', 'u': 'https://n/c', 'd': _today, 'kind': 'news', 'csrc': '', 'syms': [], 'sv': A.SYMS_V},
+    ]}]}, ensure_ascii=False), encoding='utf-8')
+A._resolve_youtube = lambda a: ([], 'n/a')
+A._resolve_podcast = lambda a: ([], 'n/a')
+A._resolve_news = lambda a: ([{'t': '股惑仔談 A', 'u': 'https://n/a', 'd': _today, 'kind': 'news'}], 'GNews')
+A.build()
+dT = {i['u']: i for i in json.loads(A.OUT.read_text(encoding='utf-8'))['analysts'][0]['items']}
+ok('⑲ ⭐⭐ 「標了來源卻沒內容」要重試', dT['https://n/a'].get('sum') == '聊台積電法說會', dT['https://n/a'])
+ok('⑲ ⭐ 真的抓到過的不重抓(內容不變)', dT['https://n/b'].get('sum') == '有內容', dT['https://n/b'])
+ok('⑲ ⭐ 明確「試過但沒有」的也不重抓', dT['https://n/c'].get('sum') is None, dT['https://n/c'])
+ok('⑲ ⭐ 只重試了那一則(⛔ 不是全部重打)', _tries['n'] == 1, _tries['n'])
+
 print()
 if FAILS:
     print(f'❌ {len(FAILS)} 條失敗:')
