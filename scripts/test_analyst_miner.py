@@ -18,6 +18,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import analyst_miner as A   # noqa: E402
 
+# ⚠️ 後面的區塊會 stub 掉這些函式 → 先把**真的**存起來,
+#    否則 ⑨ 會測到自己前面塞的 stub(第一版就這樣,測出來永遠是空的)。
+_REAL_NEWS = A._resolve_news
+
 FAILS = []
 
 
@@ -124,6 +128,45 @@ ok('⑧ 四位都在', len(A.ANALYSTS) == 4, names)
 ok('⑧ ⭐ 是「兆華艾綸說」不是「艾倫」', any('艾綸' in n for n in names) and not any('艾倫' in n for n in names), names)
 ok('⑧ 每位都有保底的 Google News 關鍵字(⛔ 不可只靠 YouTube)',
    all(a.get('news_kw') for a in A.ANALYSTS), [a.get('news_kw') for a in A.ANALYSTS])
+
+# ── ⑨ ⭐⭐ Google News 保底的「相關性守門」(2026-08-07 首跑實測抓到的真問題)────
+#    搜「兆華艾綸說」回來的是《理財達人秀》《理周飆股列車》—— 完全不是他的節目。
+#    ⛔ 那比「沒有資料」更糟:使用者會以為那是他講的。
+import xml.etree.ElementTree as _ET   # noqa: E402
+
+_RSS = """<?xml version="1.0"?><rss version="2.0"><channel>
+<item><title>郭哲榮:明天輝達財報 再次屠殺台股?</title><link>https://n/1</link>
+      <pubDate>Wed, 05 Aug 2026 10:00:00 GMT</pubDate><description>&lt;a&gt;相關報導&lt;/a&gt;</description></item>
+<item><title>【理周飆股列車】20260806盤中-許江鎮</title><link>https://n/2</link>
+      <pubDate>Thu, 06 Aug 2026 10:00:00 GMT</pubDate></item>
+</channel></rss>"""
+
+A._get = lambda url: _RSS.encode('utf-8')
+A._resolve_news = _REAL_NEWS          # ⬅️ 換回真的
+kept, note = A._resolve_news({'n': '郭哲榮分析師', 'news_kw': '郭哲榮 分析師', 'must': '郭哲榮'})
+ok('⑨ ⭐⭐ 標題有提到他的才收', len(kept) == 1 and '郭哲榮' in kept[0]['t'], [k['t'] for k in kept])
+ok('⑨ ⭐⭐ 別人的節目要被濾掉(⛔ 不可拿來充數)',
+   all('理周' not in k['t'] for k in kept), [k['t'] for k in kept])
+kept2, note2 = A._resolve_news({'n': '兆華艾綸說', 'news_kw': '兆華艾綸說', 'must': '艾綸'})
+ok('⑨ ⭐ 全部沒提到他 → 回空(⛔ 寧可沒有,也不給錯的)', kept2 == [], kept2)
+ok('⑨ ⭐ 而且要寫明原因', '全濾掉' in ''.join(A.RESOLVE_LOG[-3:]) or '沒提到' in ''.join(A.RESOLVE_LOG[-3:]),
+   A.RESOLVE_LOG[-2:])
+ok('⑨ ⛔ Google News 的 description 是雜訊 → 不可收進 x',
+   all(not k.get('x') for k in kept), [k.get('x') for k in kept])
+
+# ── ⑩ 標的抽取要吃「標題 + 內文摘要」(股癌標題就是「EP685 | 🤓」)──────────
+A.OUT.unlink(missing_ok=True)
+A._resolve_youtube = lambda a: ([{'t': 'EP685 | 🤓', 'u': 'https://y/1', 'd': '2026-08-05',
+                                 'kind': 'yt', 'x': '這集聊台積電法說跟鴻海的 AI 伺服器'}], 'YouTube @Gooaye')
+A._resolve_podcast = lambda a: ([], 'n/a')
+A._resolve_news = lambda a: ([], 'n/a')
+A.build()
+d4 = json.loads(A.OUT.read_text(encoding='utf-8'))
+i0 = d4['analysts'][0]['items'][0]
+ok('⑩ ⭐ 標題抽不到,但簡介抽得到', {x['s'] for x in i0['syms']} == {'2330', '2317'}, i0['syms'])
+# ⚠️ ⛔ 別用 `'x' not in json.dumps(...)` 判斷 —— `pxd`/`pxnd` 裡面就有字母 x(第一版誤報)。
+ok('⑩ ⛔ 簡介本身不可寫進輸出(只當抽取來源,含贊助商文案又佔空間)',
+   'x' not in i0, list(i0.keys()))
 
 print()
 if FAILS:

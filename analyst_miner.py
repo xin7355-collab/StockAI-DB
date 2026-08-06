@@ -56,20 +56,26 @@ TIMEOUT = int(os.getenv('ANALYST_TIMEOUT', '20'))
 
 # ⚠️ handle 是**候選清單**不是定論 —— 沙箱連不到 YouTube,無法在這裡驗證。
 #    解析失敗會寫進 resolve_log,下一輪照著改就好(⛔ 別憑猜的把錯的寫死當成功)。
+# ⚠️ handle 是**候選清單**不是定論。2026-08-07 首跑實測(resolve_log 有紀錄):
+#     ✅ 股癌 @Gooaye → UC23rnlQU_qE3cec9x709peA(通)
+#     ❌ 兆華兩位、郭哲榮的候選 handle 全部 404(@moneymoore 解得到 id 但 feed 是空的)
+#   → 那三位目前吃 Google News 保底。要接通只要把正確的 @handle 加進 `yt` 就好,
+#     ⛔ 別把 `must` 拿掉(那是擋「別人的節目」的唯一防線)。
+# `must`:Google News 保底時,標題**必須**出現這個字才收(見 `_resolve_news`)。
 ANALYSTS = [
     {'k': 'zhaohua_guhuozai', 'n': '兆華與股惑仔', 'tag': '📺 YouTube',
-     'yt': ['@stockmasterTW', '@兆華與股惑仔', '@zhaohuastock'],
-     'news_kw': '兆華 股惑仔 台股'},
+     'yt': ['@stockmasterTW', '@兆華與股惑仔', '@zhaohuastock', '@guhuozai'],
+     'news_kw': '兆華 股惑仔', 'must': '股惑仔'},
     {'k': 'zhaohua_ailun', 'n': '兆華艾綸說', 'tag': '📺 YouTube',
-     'yt': ['@兆華艾綸說', '@ailun_talk', '@zhaohua_ailun'],
-     'news_kw': '兆華艾綸說'},
+     'yt': ['@兆華艾綸說', '@ailun_talk', '@zhaohua_ailun', '@ailunshuo'],
+     'news_kw': '兆華艾綸說', 'must': '艾綸'},
     {'k': 'gooaye', 'n': '股癌 Gooaye', 'tag': '🎧 Podcast',
      'yt': ['@Gooaye', '@gooaye_'],
      'podcast': ['https://feeds.soundon.fm/podcasts/954689a5-3096-43a4-a80b-7810b219cef3.xml'],
-     'news_kw': '股癌 謝孟恭'},
+     'news_kw': '股癌 謝孟恭', 'must': '股癌'},
     {'k': 'kuo_zhe_rong', 'n': '郭哲榮分析師', 'tag': '📺 YouTube',
-     'yt': ['@kuozherong', '@郭哲榮分析師', '@moneymoore'],
-     'news_kw': '郭哲榮 分析師 台股'},
+     'yt': ['@kuozherong', '@郭哲榮分析師', '@moneymoore', '@kuozherong168'],
+     'news_kw': '郭哲榮 分析師', 'must': '郭哲榮'},
 ]
 
 RESOLVE_LOG = []
@@ -152,25 +158,40 @@ def _close_on(sym, ymd):
 _NS = {'a': 'http://www.w3.org/2005/Atom', 'yt': 'http://www.youtube.com/xml/schemas/2015'}
 
 
+def _strip_html(x):
+    return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', x or '')).strip()
+
+
 def _parse_feed(xml_bytes, kind):
-    """回 [{'t','u','d'}](d = YYYY-MM-DD 台北)。Atom(YouTube)與 RSS2(Podcast/GNews)都吃。"""
+    """回 [{'t','u','d','x'}](d = YYYY-MM-DD 台北;x = 內文摘要,只給抽標的用)。
+    ⭐ V72.6.3 加 `x`:實測**股癌的影片標題就是「EP685 | 🤓」** —— 標題完全抽不到標的,
+       但節目簡介裡通常會列當集聊到什麼。⛔ `x` 只拿來抽標的,**不顯示給使用者**
+       (簡介常含大量贊助商文案,顯示出來只是雜訊)。"""
     out = []
     root = ET.fromstring(xml_bytes)
-    # Atom
+    # Atom(YouTube)
     for e in root.findall('a:entry', _NS):
         t = (e.findtext('a:title', default='', namespaces=_NS) or '').strip()
         link = e.find('a:link', _NS)
         u = link.get('href') if link is not None else ''
         pub = (e.findtext('a:published', default='', namespaces=_NS) or '')[:10]
+        x = ''
+        for d_el in e.iter():
+            if d_el.tag.endswith('}description'):
+                x = _strip_html(d_el.text or '')
+                break
         if t:
-            out.append({'t': t, 'u': u, 'd': pub, 'kind': kind})
+            out.append({'t': t, 'u': u, 'd': pub, 'kind': kind, 'x': x[:900]})
     if out:
         return out
-    # RSS 2.0
+    # RSS 2.0(Podcast / Google News)
     for it in root.iter('item'):
         t = (it.findtext('title') or '').strip()
         u = (it.findtext('link') or '').strip()
         pub = (it.findtext('pubDate') or '').strip()
+        # ⛔ Google News 的 description 是「相關報導清單」= 純雜訊 → 不收
+        x = '' if kind == 'news' else _strip_html(
+            it.findtext('description') or it.findtext('{http://www.itunes.com/dtds/podcast-1.0.dtd}summary') or '')
         d = ''
         if pub:
             try:
@@ -179,7 +200,7 @@ def _parse_feed(xml_bytes, kind):
             except Exception:
                 d = ''
         if t:
-            out.append({'t': t, 'u': u, 'd': d, 'kind': kind})
+            out.append({'t': t, 'u': u, 'd': d, 'kind': kind, 'x': x[:900]})
     return out
 
 
@@ -236,10 +257,18 @@ def _resolve_news(a):
            + '&hl=zh-TW&gl=TW&ceid=TW:zh-Hant')
     try:
         items = _parse_feed(_get(url), 'news')
-        if items:
-            _log(f'✅ {a["n"]}/GNews「{kw}」→ {len(items)} 則')
-            return items, f'Google News 搜尋「{kw}」'
-        _log(f'{a["n"]}/GNews「{kw}」:0 則')
+        # 🚨 V72.6.3 相關性守門(首跑實測抓到的真問題):
+        #   搜「兆華艾綸說」回來的是《理財達人秀》《理周飆股列車》—— **完全不是他的節目**,
+        #   Google News 是模糊比對,關鍵字冷門時會拿一堆沾邊的東西塞給你。
+        #   ⛔ 那比「沒有資料」更糟:使用者會以為那是他講的。
+        #   → 標題**必須真的出現他的名字**(取關鍵字第一個詞,如「兆華」「郭哲榮」「股癌」)才收。
+        need = (a.get('must') or (kw.split() or [a['n']])[0]).strip()
+        kept = [x for x in items if need and need in (x.get('t') or '')]
+        drop = len(items) - len(kept)
+        if kept:
+            _log(f'✅ {a["n"]}/GNews「{kw}」→ {len(kept)} 則(濾掉 {drop} 則沒提到「{need}」的)')
+            return kept, f'Google News 搜尋「{kw}」'
+        _log(f'{a["n"]}/GNews「{kw}」:{len(items)} 則全部沒提到「{need}」→ 全濾掉(⛔ 不拿別人的節目充數)')
     except Exception as e:
         _log(f'{a["n"]}/GNews:{type(e).__name__} {e}')
     return [], 'Google News 也沒有'
@@ -284,7 +313,8 @@ def build():
             d = (it.get('d') or today)[:10]
             if not it.get('syms'):
                 syms = []
-                for nm, code in _pick_syms(it.get('t') or '', names_by_len, name_map):
+                # ⭐ 標題 + 內文摘要一起抽(股癌那種「EP685 | 🤓」標題只能靠簡介)
+                for nm, code in _pick_syms(((it.get('t') or '') + ' ' + (it.get('x') or '')), names_by_len, name_map):
                     px, pxd = _close_on(code, d)
                     mkt, _ = _close_on('^TWII', d)
                     # px/pxd/mkt = **他講的那天**的快照 → ⭐ 一旦寫入就不再重算(冪等),
@@ -298,6 +328,10 @@ def build():
                 pxn, pxnd = _close_on(x['s'], today)
                 x['pxn'], x['pxnd'], x['mktn'] = pxn, pxnd, mkt_now
 
+        # 🧹 `x`(內文摘要)只在抽標的時用得到 → 寫檔前丟掉。
+        #   ⛔ 不可留在輸出裡:它是節目簡介,含大量贊助商文案,既是雜訊又會把檔案撐大。
+        for it in rows:
+            it.pop('x', None)
         # 🚨 守門要看「**本輪**有沒有抓到新的」,⛔ 不可看合併後的 rows ——
         #   舊檔的內容還在 KEEP_DAYS 內就會被併進來,於是**上游全掛的那天看起來也「成功」**,
         #   還會把 updated 換成今天、error 寫成 None(自我測試當場抓到)。
