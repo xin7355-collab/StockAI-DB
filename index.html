@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.5.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.6.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.5.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.6.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1918,6 +1918,8 @@
             </div>
 
             <div id="subContentBacktest" class="hidden flex-col gap-3 mt-3 px-2 md:px-4 pb-10">
+                <!-- 🧭 V72.6.0 每頁一句話(共用 `_renderPageLead`;算不出來整條不顯) -->
+                <div id="pageLeadBacktest" class="hidden"></div>
                 <!-- 🎯 V41.31 — 個股打法適配儀(性格標籤 + 型態實戰回測排名) -->
                 <div class="panel p-4 border border-amber-700/40 rounded-lg bg-[#0d1117] shadow-sm border-l-4 border-l-amber-500">
                     <div class="flex items-center justify-between mb-1.5">
@@ -1969,6 +1971,8 @@
 
             <!-- ⚖️ V21.5 — 多空優勢計分卡(對標籌碼 K 線 App「多空優勢」總覽頁)-->
             <div id="subContentBullBear" class="hidden flex-col gap-3 mt-3 px-2 md:px-4 pb-10">
+                <!-- 🧭 V72.6.0 每頁一句話(共用 `_renderPageLead`) -->
+                <div id="pageLeadBullBear" class="hidden"></div>
                 <!-- 頂部總覽計分條 + Verdict + 白話一句結論 -->
                 <div id="bullBearScoreBar" class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg"></div>
                 <!-- 四面向摺疊區(籌碼/價量/基本/技術) -->
@@ -1991,6 +1995,8 @@
 
             <!-- 🏢 企業情報與消息體檢 -->
             <div id="subContentCorp" class="hidden flex-col gap-2 mt-3 px-2 md:px-4 pb-10">
+                <!-- 🧭 V72.6.0 每頁一句話(共用 `_renderPageLead`) -->
+                <div id="pageLeadCorp" class="hidden"></div>
 
                 <!-- 🔎 V45.12 免費查公司卡已刪除(🤖 AI 股神已涵蓋公司/新聞/財報/供應鏈免費查) -->
 
@@ -6995,6 +7001,7 @@ ${list}
             const btn = document.getElementById(`subTabBtn${t}`);
             if (btn) btn.classList.toggle('active', t.toLowerCase() === tab);
         });
+        try { this._renderPageLead?.(tab); } catch (_) {}   // 🧭 V72.6.0 每頁一句話(各頁渲染完會再補一次)
         if (tab === 'chart' && this.chartInstance) setTimeout(() => this.chartInstance.resize(), 100);
         // 🧹 V71.8.8 切到 K線/籌碼時,那兩頁的卡才剛渲染 → 稍後掃一次空殼
         if (tab === 'chart' || tab === 'chip') setTimeout(() => { try { this._sweepEmptyShells?.(); } catch (_) {} }, 800);
@@ -7125,8 +7132,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.5.6',
+    _APP_VERSION: 'V72.6.0',
     _CHANGELOG: [
+        { v: 'V72.6.0', dt: '2026-08-06', t: '🧭 每頁最上面先給「一句話答案」—— 回測 / 多空 / 基本三頁補上', d: [
+            '你說「資料及卡片很多,連我自己都看到混亂」。⛔ 我**沒有**把分頁合併 —— 那只會讓單頁更擠。改成:**每一頁最上面先用一句話回答「這頁在講什麼、答案是什麼」**,細節留在下面給想細看的人。',
+            '總覽(主卡)、K線(一句話結論)、籌碼(其他指標怎麼說)、當沖(今天怎麼做)本來就有了;這版補上還沒有的三頁:',
+            '🎯 **回測頁**:「這檔歷史上哪一招最會賺?」—— 直接講出最會賺的那一招與每趟期望值;⛔ 樣本不到 10 次就誠實說「沒有站得住腳的打法」,不硬推。',
+            '⚔️ **多空頁**:「今天站哪一邊?」—— 命中太少時直接說「不給方向」,⛔ 不再丟一個沒有意義的百分比給你。',
+            '🧬 **基本頁**:「這家公司體質好不好?」—— 並且明寫「體質好壞跟現在該不該買是兩件事」。',
+            '三條都會先過空頭/出場守門:主結論叫你走的時候,這裡不會反過來鼓勵你進場。算不出來就整條不顯示,不留空白。',
+        ] },
         { v: 'V72.5.6', dt: '2026-08-06', t: '🚦 當沖那個「勝率約 57%」有一半是編出來的 —— 整段改掉;順手把埋錯地方的卡搬回家', d: [
             '當沖「今天這檔怎麼做」的勝率,以前會被大盤分數、族群、量比等係數加減最多 ±15 個百分點 —— 那些係數是憑空訂的,從來沒驗證過。現在勝率**純粹是歷史統計**,那些訊號只列在下面當背景,並明講「沒有計入」。',
             '改用「**扣掉當沖來回成本 0.25% 之後,每趟平均賺賠多少**」當主要判準:算完是負的就直說「這檔今天不值得當沖」,不再硬給一個方向。實測台積電/0050 都是不值得,鴻海偏做空。',
@@ -12152,6 +12167,8 @@ const marginByDate = {};
         const grid = document.getElementById('bullBearCategoryCards');
         if (!bar || !grid) return;
         const scan = this._calcBullBearScan(sym);
+        this._lastBBScan = scan ? { ...scan, sym: String(sym) } : null;   // ⚠️ sym 放後面(scan 裡也有一個,型別可能不同)
+        try { this._renderPageLead?.('bullbear'); } catch (_) {}   // 🧭 V72.6.0 供「每頁一句話」用
         if (!scan) {
             bar.innerHTML = `<div class="text-center text-gray-500 text-sm py-4">⚪ 資料不足(需 ≥ 30 個交易日)</div>`;
             grid.innerHTML = '';
@@ -19029,6 +19046,84 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const e = this._exitMode;
         return !!(e && e.sym === String(sym || this.currentSymbolId) && e.on);
     },
+    // ═══ 🧭 V72.6.0 「每頁一句話」—— 統一的頁首結論條 ═══════════════════════
+    //   使用者原話:「我的總覽、K線、籌碼頁面資料及卡片很多,我開發者都看到混亂」
+    //   ⭐ 解法**不是**把分頁合併(那只會讓單頁更擠),而是每一頁最上面先給
+    //      「這頁在回答什麼問題 + 一句話答案」,細節留在下面給想看的人。
+    //   ⭐ 總覽(主卡)、K線(`_headline`)、籌碼(`_chipConsensusLine`)、當沖(hero)已經有了;
+    //      這支補上還沒有的三頁:回測 / 多空 / 基本。
+    //   ⛔ 三條鐵則:
+    //     ① **不新增卡片** —— 它是一條 bar(單行為主),不是卡。
+    //     ② **不產生新結論** —— 只轉述各頁自己算好的東西(⛔ 別在這裡又算一套,那會變第二份真相)。
+    //     ③ **會下指令的一律先過 `_bearGate` / `_inExitMode`**(單一劇本原則)。
+    _pageLeadHtml(q, verdict, tone, why) {
+        const C = { bull: ['text-red-300', 'border-red-500'], bear: ['text-green-300', 'border-green-500'],
+                    warn: ['text-yellow-300', 'border-yellow-500'], flat: ['text-gray-300', 'border-gray-600'] }[tone] || ['text-gray-300', 'border-gray-600'];
+        return `<div class="bg-[#0d1117] border-l-4 ${C[1]} border-y border-r border-[#30363d] rounded-r px-2.5 py-1.5">
+            <div class="text-[9px] text-gray-500">🧭 這頁回答:${q}</div>
+            <div class="text-[13px] font-black ${C[0]} leading-tight mt-0.5">${verdict}</div>
+            ${why ? `<div class="text-[10px] text-gray-400 leading-snug mt-0.5">${why}</div>` : ''}
+        </div>`;
+    },
+    _renderPageLead(tab) {
+        const map = { backtest: 'pageLeadBacktest', bullbear: 'pageLeadBullBear', corp: 'pageLeadCorp' };
+        const el = document.getElementById(map[tab] || '');
+        if (!el) return;
+        const sym = String(this.currentSymbolId || '');
+        let h = '';
+        try {
+            if (tab === 'backtest') h = this._leadBacktest(sym);
+            else if (tab === 'bullbear') h = this._leadBullBear(sym);
+            else if (tab === 'corp') h = this._leadCorp(sym);
+        } catch (_) { h = ''; }
+        el.innerHTML = h || '';
+        el.classList.toggle('hidden', !h);   // ⛔ 算不出來就整條不顯(不留空殼)
+    },
+    // 🎯 回測頁:「這檔歷史上最會賺的打法是哪一招?」
+    //   ⭐ 判準跟卡片內完全一致(期望值 > 0 + `_wrEnough`),⛔ 別在這裡另訂一套。
+    _leadBacktest(sym) {
+        const pb = this._lastPlaybook;
+        if (!pb || !Array.isArray(pb.ranked) || !pb.ranked.length) return '';
+        const good = pb.ranked.filter(r => r.expectancy > 0 && this._wrEnough(r.count))
+                              .sort((a, b) => b.expectancy - a.expectancy);
+        const best = good[0];
+        if (!best) {
+            const top = pb.ranked.filter(r => r.expectancy > 0).sort((a, b) => b.expectancy - a.expectancy)[0];
+            return this._pageLeadHtml('這檔歷史上哪一招最會賺?', '➖ 這檔沒有站得住腳的打法', 'flat',
+                top ? `期望值最高的「${top.key}」只出現過 <b>${top.count}</b> 次,樣本不到 10 次 → <b>還不能當結論</b>。下面資料照顯示,但⛔ 別拿來當進場理由。`
+                    : '所有型態的每趟期望值都是負的(對的次數再多也賠錢)→ <b>這檔不適合用型態打法</b>。');
+        }
+        const bear = this._bearGate(sym), exiting = this._inExitMode(sym);
+        const fired = best.firedToday;
+        const act = exiting ? '⛔ 但你現在是<b>出場管理狀態</b> —— 先照「🚦 現在怎麼做」處理部位,別反手做多。'
+            : bear ? '⚠️ 但中期趨勢是<b>空頭</b> → 只能做短、倉位放小,⛔ 不是波段進場理由。'
+            : (fired ? '🔔 <b>今天剛好觸發這招</b> —— 進場價位以總覽「現在怎麼做」為準。' : '今天沒有觸發,等它出現再說。');
+        return this._pageLeadHtml('這檔歷史上哪一招最會賺?',
+            `${fired && !bear && !exiting ? '🔔 ' : ''}最會賺的是「${best.key}」・每趟期望 <b>+${best.expectancy.toFixed(1)}%</b>`, bear || exiting ? 'warn' : 'bull',
+            `勝率 ${best.winRate.toFixed(0)}%・打過 ${best.count} 次${this._wrTag(best.winRate, best.count)}。${act}<br><span class="text-gray-600">⚠️ 未扣交易成本(來回約 0.44%),歷史回測不是保證。</span>`);
+    },
+    // ⚔️ 多空頁:「28+ 條規則今天站哪一邊?」⛔ 樣本不足時不給方向(陷阱 #27)
+    _leadBullBear(sym) {
+        const sc = this._lastBBScan;
+        if (!sc || sc.sym !== sym) return '';
+        const n = sc.rulesN || 29;
+        if (sc.lowSample) return this._pageLeadHtml('這檔的多空條件今天站哪一邊?', '⏳ 訊號不足,不給方向', 'flat',
+            `${n} 條規則只命中 <b>${sc.hits}</b> 條 —— 命中太少時算出來的百分比沒有意義(1÷1 也是 100%)。<br>多半是這檔的籌碼/基本面資料還沒到齊,⛔ 不代表沒有風險。`);
+        const bull = sc.bullScore > sc.bearScore;
+        const bear = this._bearGate(sym);
+        return this._pageLeadHtml('這檔的多空條件今天站哪一邊?',
+            `${sc.verdict}・命中 ${sc.hits}/${n}`, bull ? (bear ? 'warn' : 'bull') : 'bear',
+            `${bull && bear ? '⚠️ 條件面偏多,<b>但中期價格趨勢是空頭</b> —— 兩者可以背離(籌碼亮不代表價格會漲)。以趨勢為準,⛔ 別直接當進場理由。<br>' : ''}<span class="text-gray-600">⚠️ 這些規則的預測力尚未逐條回測,是「條件盤點」不是勝率。</span>`);
+    },
+    // 🧬 基本頁:「這家公司的體質好不好?」⛔ 估值≠時機,這頁不給買賣點
+    _leadCorp(sym) {
+        const x = this._lastXrayVerdict;
+        if (!x || String(x.sym) !== sym || !x.verdict) return '';
+        const tone = { bull: 'bull', good: 'bull', warn: 'warn', bear: 'bear', flat: 'flat' }[x.tone] || 'flat';
+        return this._pageLeadHtml('這家公司的體質好不好?', x.verdict, tone,
+            `${x.act || ''}<br><span class="text-gray-600">⚠️ 體質好壞跟「現在該不該買」是兩件事 —— 進出時機看總覽與 K線頁。</span>`);
+    },
+
     // 🚪 V72.5.6 出場狀態下,「進場類卡片」統一換成這段告示。
     //   ⭐ 抽成共用的原因跟 `_bearGate` 一樣:V72.4.7 只接了 2 張卡,結果「四關卡」與
     //      「分批進場計畫」還在照常給買點 —— 同一個錯又是各寫各的造成的。
@@ -28991,6 +29086,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         else { tone = 'bear'; verdict = '🚨 體質偏弱 / 偏貴'; act = '獲利或估值有警訊 → 不適合存股長抱;真要做只做短線價差,快進快出。'; }
         // 🧭 V68.4.6 供總覽「總評儀表板」基本面維度(資料不足=null,不硬灌)
         this._lastXrayScore = { sym: (this._xrayMetrics || {}).sym, score: (pct != null && hasProfit && pillars >= 2) ? Math.round(pct * 100) : null };
+        this._lastXrayVerdict = { sym: (this._xrayMetrics || {}).sym, verdict, tone, act };   // 🧭 V72.6.0 供「每頁一句話」用
+        try { this._renderPageLead?.('corp'); } catch (_) {}
         const col = { bull: 'red', good: 'amber', warn: 'yellow', bear: 'orange', flat: 'gray' }[tone];
         const chips = (arr, c) => arr.slice(0, 4).map(t => `<span class="text-[10px] px-1.5 py-0.5 rounded bg-${c}-900/25 text-${c}-300 border border-${c}-800/40 whitespace-nowrap">${t}</span>`).join(' ');
         // 🎯 V68.3.6 五維一眼儀表板 —— 燈號用「不吃台股紅綠慣例」的符號(✅好 🟡普 ⚠️弱 —缺),
@@ -34990,7 +35087,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (!Array.isArray(data) || data.length < 80) { box.classList.remove('hidden'); box.innerHTML = '<div class="text-[11px] text-gray-400 py-2 text-center">此股歷史資料不足 80 根,無法可靠回測打法(換主流波段股再試)。</div>'; return; }
         const d = new Date(), dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const ckey = `playbook_${sym}`;   // 依股號(非股號+日期)→ 每檔只留一筆,不會無限累積
-        try { const c = JSON.parse(localStorage.getItem(ckey) || 'null'); if (c && c.date === dateStr && c.html) { this._lastPlaybook = { ranked: c.ranked || [], per: c.per || null }; box.classList.remove('hidden'); box.innerHTML = c.html; return; } } catch (_) {}
+        try { const c = JSON.parse(localStorage.getItem(ckey) || 'null'); if (c && c.date === dateStr && c.html) { this._lastPlaybook = { ranked: c.ranked || [], per: c.per || null }; box.classList.remove('hidden'); box.innerHTML = c.html; try { this._renderPageLead?.('backtest'); } catch (_) {} return; } } catch (_) {}
         if (btn) { btn.disabled = true; btn.innerHTML = '⏳ 分析中(逐根回測)…'; }
         setTimeout(() => {
             try {
@@ -35000,6 +35097,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 const neg = ranked.filter(r => r.expectancy <= -0.3 && r.count >= 4);
                 const eCol = e => e > 0.5 ? 'text-red-300' : e >= 0 ? 'text-yellow-300' : 'text-green-300';
                 this._lastPlaybook = { ranked, per };   // 供點型態看教學時取用(含快取還原)
+                try { this._renderPageLead?.('backtest'); } catch (_) {}   // 🧭 V72.6.0 每頁一句話
                 const rows = ranked.map((r, idx) => {
                     // 🎲 V72.2.4 ⭐主打**要樣本夠才給** —— 實測 2603 的「晨星轉折 勝率 100%・3 次」
                     //   排進 top3 就掛 ⭐主打,而它旁邊的「⏳ 只有 3 次」根本搶不過那顆星的視覺份量。
