@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.6.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.6.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.6.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.6.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7132,8 +7132,17 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.6.0',
+    _APP_VERSION: 'V72.6.1',
     _CHANGELOG: [
+        { v: 'V72.6.1', dt: '2026-08-06', t: '⚔️ 觀察頁改造:紅色那塊改成「這檔勝率最高的策略 + 最重要的事」,清單補上加入時的價格', d: [
+            '**紅色觸發卡**以前是「一個訊號一張卡」—— 同一檔中 2 個就佔滿整個畫面,而且每張只寫策略名。現在改成**每檔一張**,訊號縮成小標籤,卡片主體換成你要的兩件事:',
+            '🏆 **這檔勝率最高的策略**:用這檔自己的歷史回測,而且**每趟期望值要 > 0 且打過 10 次以上**才敢寫。⛔ 樣本不夠或長期會賠的招,直接說「沒有站得住腳的」並告訴你為什麼 —— 不硬推。',
+            '🎯 **最重要的事**:風險優先。有風險訊號就先講風險(並標明「這是提醒不是賣出指令」),沒有才講今天出現的實測有效訊號。中期是空頭時會自動加註「不是波段進場理由」。',
+            '📅 **觀察清單加上「當初加入時的價格」**:顯示「加入 @210.50(07/10) → +25.7% ・一張 +53,017 元」。⭐ 金額是**扣掉手續費和證交稅之後**的淨損益,不是帳面毛利。',
+            '📊 而且會跟大盤比:「贏大盤 20.0pp(同期大盤 +5.7%)」—— 個股漲 3% 在大盤漲 5% 的日子其實是輸的,只看個股漲跌會誤導自己。',
+            '⛔ 舊資料沒存加入價的,誠實顯示「加入價未記錄」—— 絕不拿現價假裝(那會讓報酬永遠是 0%,比空白更糟)。',
+            '🔀 清單排序改成:今天有觸發的排最前面,再依「加入至今表現」由差到好 —— 落後的那幾檔才是你需要決定「還要不要留」的。',
+        ] },
         { v: 'V72.6.0', dt: '2026-08-06', t: '🧭 每頁最上面先給「一句話答案」—— 回測 / 多空 / 基本三頁補上', d: [
             '你說「資料及卡片很多,連我自己都看到混亂」。⛔ 我**沒有**把分頁合併 —— 那只會讓單頁更擠。改成:**每一頁最上面先用一句話回答「這頁在講什麼、答案是什麼」**,細節留在下面給想細看的人。',
             '總覽(主卡)、K線(一句話結論)、籌碼(其他指標怎麼說)、當沖(今天怎麼做)本來就有了;這版補上還沒有的三頁:',
@@ -42668,6 +42677,8 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const today = new Date().toISOString().split('T')[0];
         const newAlerts = [];
         const total = this.monitorList.length;
+        // 📈 V72.6.1 大盤基準(算「加入至今贏不贏大盤」)—— 走既有的 `_getTwiiRows`,⛔ 別另外寫一份 fetch
+        try { if (!this._twiiRows) this._twiiRows = await this._getTwiiRows(); } catch (_) { this._twiiRows = null; }
 
         for (let idx = 0; idx < this.monitorList.length; idx++) {
             const entry = this.monitorList[idx];
@@ -42714,6 +42725,45 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                     this._checkElitePatterns(data, entry),   // 🏆 V68.6.8 機構級:VCP/口袋支點/威科夫/RS
                     this._chuTriggerFor(entry.strategySource, tech, entry),
                 ].filter(Boolean);
+                // ⭐ V72.6.1 使用者要求:紅色跳出的那塊改成「這檔勝率最高的策略 + 最重要的事情」。
+                //   ⛔ 三條鐵則(全部沿用既有規格,別在這裡另訂一套):
+                //     ① 「勝率最高的策略」= `_patternFitBacktest`(這檔**自己的**歷史回測),
+                //        而且必須 `expectancy > 0` **且** `_wrEnough(count)` —— 樣本不足或
+                //        期望值為負一律**不給策略**,誠實說沒有(V72.0.3「勝率高≠會賺錢」)。
+                //     ② 「最重要的事情」風險優先:有看空/警示的實測訊號就先講它
+                //        (多空不對稱 —— 風險提醒不打折)。
+                //     ③ 空頭/出場守門照走(這裡只存資料,顯示端再過 `_bearGate`)。
+                try {
+                    const rk = this._patternFitBacktest(data) || [];
+                    const bp = rk.filter(r => r.expectancy > 0 && this._wrEnough(r.count))
+                                 .sort((a, b) => b.expectancy - a.expectancy)[0];
+                    entry.bestPlay = bp ? { key: bp.key, exp: +bp.expectancy.toFixed(2), wr: Math.round(bp.winRate), n: bp.count, fired: !!bp.firedToday } : null;
+                    // ⚠️ 樣本不足時要留下「為什麼沒有」的線索(陷阱 #22:設 null 一定要寫原因)
+                    if (!bp) {
+                        const t0 = rk.filter(r => r.expectancy > 0).sort((a, b) => b.expectancy - a.expectancy)[0];
+                        entry.bestPlayWhy = t0 ? `期望值最高的「${t0.key}」只打過 ${t0.count} 次,樣本不到 10 次` : '所有型態的每趟期望值都是負的';
+                    } else entry.bestPlayWhy = null;
+                } catch (_) { entry.bestPlay = null; entry.bestPlayWhy = '回測失敗'; }
+                try {
+                    const ck = this._entryCheckup(data);
+                    if (ck) {
+                        const risk = (ck.proven || []).find(x => x.tone === 'bear' || x.tone === 'warn');
+                        const good = (ck.proven || []).find(x => x.tone === 'bull' && x._e && x._e.exp > 0);
+                        entry.headline = risk
+                            ? { k: 'risk', t: risk.title, e: risk._e ? risk._e.e10 : null }
+                            : good ? { k: 'good', t: good.title, e: good._e ? good._e.exp : null }
+                            : { k: 'plain', t: ck.verdict, e: null };
+                        entry.ckScore = ck.score;
+                    }
+                } catch (_) {}
+                // 📈 加入至今 vs 大盤(超額報酬)—— 只在拿得到基準時才存,⛔ 拿不到不硬給
+                try {
+                    if (entry.addDate && entry.mktAtAdd == null && Array.isArray(this._twiiRows) && this._twiiRows.length) {
+                        const d0 = String(entry.addDate).slice(0, 10);
+                        const hit = this._twiiRows.filter(r => String(r.date || '').replace(/\//g, '-').slice(0, 10) <= d0).pop();
+                        if (hit && +hit.close > 0) entry.mktAtAdd = +hit.close;
+                    }
+                } catch (_) {}
                 if (!entry.firedAlerts) entry.firedAlerts = [];
                 for (const alert of checks) {
                     const alertKey = `${entry.sym}_${alert.strategy}_${today}`;
@@ -42748,6 +42798,90 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             setTimeout(() => { if (statusDiv) statusDiv.classList.add('hidden'); }, 4000);
         }
         return newAlerts.length;
+    },
+
+    // 📅 V72.6.1 「當初加入時的價格」—— 使用者要求。⭐ 好消息:`addPrice`/`addDate` 從一開始
+    //   就存在 entry 裡了(`_addToMonitor`),只是**從來沒顯示過**。
+    //   ⛔ 三條鐵則:
+    //     ① 舊資料沒有 `addPrice` → 誠實顯「加入價未記錄」,⛔ 絕不可拿現價假裝成加入價
+    //        (那會讓報酬永遠是 0%,比空白更糟)。
+    //     ② % 一定要配**實際金額**(使用者鐵則),而且走共用 `_netPL`(已扣手續費+證交稅),
+    //        ⛔ 別 inline 再寫一份淨損益公式。
+    //     ③ 有大盤基準才給「贏大盤幾 pp」—— 拿不到就不給,⛔ 不硬算
+    //        (個股漲 3% 在大盤漲 5% 的日子其實是輸的,只給個股漲跌會誤導)。
+    _huntSinceAddHtml(e) {
+        const add = +e.addPrice, px = +e.currentPrice;
+        if (!(add > 0)) {
+            return `<div class="text-[9px] text-gray-600 mt-1">📅 加入日 ${e.addDate ? this._dW(e.addDate) : '未記錄'} ・<span class="text-gray-500">加入價未記錄(這筆是舊版加入的,之後加入的都會有)</span></div>`;
+        }
+        if (!(px > 0)) return `<div class="text-[9px] text-gray-600 mt-1">📅 加入 @${add.toFixed(2)}(${this._dW(e.addDate)})・現價還沒掃到</div>`;
+        const pct = (px - add) / add * 100;
+        const cls = pct >= 0 ? 'text-red-300' : 'text-green-300';
+        // 一張(1,000 股)的淨損益 —— 共用公式,已扣買賣手續費與證交稅
+        let money = null;
+        try { money = this._netPL(add, px, 1000); } catch (_) {}
+        // vs 大盤:加入當天的加權 → 現在
+        let vsMkt = '';
+        try {
+            const m0 = +e.mktAtAdd, rows = this._twiiRows;
+            const m1 = (Array.isArray(rows) && rows.length) ? +rows[rows.length - 1].close : 0;
+            if (m0 > 0 && m1 > 0) {
+                const mp = (m1 - m0) / m0 * 100, ex = pct - mp;
+                vsMkt = ` ・<span class="${ex >= 0 ? 'text-red-300' : 'text-green-300'}">${ex >= 0 ? '贏' : '輸'}大盤 ${Math.abs(ex).toFixed(1)}pp</span><span class="text-gray-600">(同期大盤 ${mp >= 0 ? '+' : ''}${mp.toFixed(1)}%)</span>`;
+            }
+        } catch (_) {}
+        return `<div class="text-[10px] font-mono mt-1 leading-snug">
+            <span class="text-gray-500">📅 加入 @</span><b class="text-gray-300">${add.toFixed(2)}</b><span class="text-gray-600">(${this._dW(e.addDate)})</span>
+            <span class="text-gray-600"> → </span><b class="${cls}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</b>${money != null ? `<span class="${cls}"> ・一張 ${money >= 0 ? '+' : '−'}${Math.abs(Math.round(money)).toLocaleString('en-US')} 元</span>` : ''}${vsMkt}
+        </div>`;
+    },
+
+    // ⚔️ V72.6.1 觸發卡(每檔一張)—— 使用者原話:「上面紅色會跳出的資料,是否改成
+    //   **該股票勝率最高的策略**,還有**最重要的事情**」。
+    //   ⛔ 四條鐵則:
+    //     ① 「勝率最高的策略」必須 `expectancy > 0` **且** `_wrEnough` —— 否則誠實說沒有,
+    //        ⛔ 不可把「常對但不賺」的招掛上去(V72.0.3 的教訓)。
+    //     ② 「最重要的事情」**風險優先**(多空不對稱:風險提醒不打折)。
+    //     ③ 空頭時不給進場口吻 → 走共用 `_bearGate`。
+    //     ④ 觸發訊號本身縮成小標籤 —— 它們是「為什麼跳出來」,不是操作指令。
+    _huntAlertCardHtml(g) {
+        const e = (this.monitorList || []).find(m => m.sym === g.sym) || {};
+        const bear = this._bearGate ? this._bearGate(g.sym) : false;
+        const tags = [...new Set(g.list)].map(k => `<span class="text-[9px] bg-red-950/60 text-red-300 border border-red-800/60 rounded px-1.5 py-0.5">${this._strategyLabel(k)}</span>`).join(' ');
+        // ── 勝率最高的策略 ──
+        const bp = e.bestPlay;
+        const playLine = bp
+            ? `<div class="text-[11px] text-gray-200 leading-snug mt-1"><b class="text-amber-300">🏆 這檔勝率最高的策略:</b>${bp.key}<br>
+                 <span class="font-mono">每趟期望 <b class="text-amber-300">+${bp.exp}%</b> ・勝率 ${bp.wr}% ・打過 ${bp.n} 次</span>${this._wrTag(bp.wr, bp.n)}
+                 ${bp.fired ? ' <span class="text-[9px] bg-amber-900/50 text-amber-200 border border-amber-700/60 rounded px-1">🔔 今天觸發</span>' : ''}</div>`
+            : `<div class="text-[11px] text-gray-400 leading-snug mt-1"><b class="text-gray-300">🏆 這檔勝率最高的策略:</b>⛔ 沒有站得住腳的<br>
+                 <span class="text-[10px]">${e.bestPlayWhy || '還沒掃描過(按上面「立即掃描」)'} → 這幾個訊號只能當「留意」,⛔ 不是進場理由。</span></div>`;
+        // ── 最重要的事情(風險優先)──
+        const h = e.headline;
+        let mustLine = '';
+        if (h && h.k === 'risk') {
+            mustLine = `<div class="text-[11px] text-orange-200 bg-orange-900/20 border-l-2 border-orange-500 pl-2 py-1 rounded-r mt-1.5 leading-snug">
+                <b>⚠️ 最重要的事:</b>同時出現「${h.t}」${h.e != null ? `(訊號後 10 日平均 <b class="font-mono">${h.e.toFixed(2)}%</b> —— 跌得越多代表這個警示越準)` : ''}<br>這是<b>風險提醒不是賣出指令</b>,進場前先看清楚。</div>`;
+        } else if (h && h.k === 'good') {
+            mustLine = `<div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 border-red-500 pl-2 py-1 rounded-r mt-1.5 leading-snug">
+                <b class="text-red-300">🎯 最重要的事:</b>今天同時出現實測有效的「${h.t}」${h.e != null ? `(每趟期望 <b class="font-mono">${h.e > 0 ? '+' : ''}${h.e.toFixed(2)}%</b>)` : ''}${bear ? '<br>⚠️ 但中期趨勢是<b>空頭</b> → 只能做短、倉位放小,⛔ 不是波段進場理由。' : ''}</div>`;
+        } else if (h && h.t) {
+            mustLine = `<div class="text-[11px] text-gray-300 bg-[#0d1117] border-l-2 border-gray-600 pl-2 py-1 rounded-r mt-1.5 leading-snug"><b>📋 最重要的事:</b>${h.t}${e.ckScore != null ? ` ・進場友善度 <b class="font-mono">${e.ckScore}</b>/100` : ''}${bear ? '<br>⚠️ 中期趨勢是空頭,⛔ 別當進場理由。' : ''}</div>`;
+        }
+        const px = e.currentPrice, add = e.addPrice;
+        const pct = (px > 0 && add > 0) ? (px - add) / add * 100 : null;
+        const since = (pct != null) ? ` <span class="text-[10px] font-mono ${pct >= 0 ? 'text-red-300' : 'text-green-300'}">加入至今 ${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</span>` : '';
+        return `<div class="bg-[#161b22] border-l-4 ${bear ? 'border-yellow-500' : 'border-red-500'} border-y border-r border-[#30363d] rounded-r p-2.5 cursor-pointer" onclick="app.analyze('${g.sym}'); app.switchAppTab('diag');">
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-base">⚔️</span>
+                <span class="text-red-300 font-black text-sm">${g.name}</span><span class="text-gray-500 text-xs">${g.sym}</span>
+                ${px > 0 ? `<span class="font-mono text-[11px] text-gray-200">${(+px).toFixed(2)}</span>` : ''}${since}
+            </div>
+            <div class="flex flex-wrap gap-1 mt-1">${tags}</div>
+            ${playLine}
+            ${mustLine}
+            <div class="text-[9px] text-gray-600 mt-1">👆 點卡片進個股頁看完整判讀 ・ 觸發=強烈關注,⛔ 不是立刻買</div>
+        </div>`;
     },
 
     _fireHuntNotification(alert) {
@@ -42812,14 +42946,13 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const alertBox = document.getElementById('huntAlertBox');
         if (alertBox) {
             if (allAlerts.length > 0) {
-                alertBox.innerHTML = allAlerts.map(a => `
-                    <div class="bg-red-900/60 border border-red-500 rounded-lg p-3 flex items-start gap-2 cursor-pointer" onclick="app.analyze('${a.sym}'); app.switchAppTab('diag');">
-                        <span class="text-2xl flex-shrink-0">⚔️</span>
-                        <div class="flex-1 min-w-0">
-                            <div class="text-red-300 font-black text-sm">${a.name}(${a.sym})</div>
-                            <div class="text-red-400 text-xs mt-0.5">${this._strategyLabel(a.strategy)} — 點擊進入診斷 →</div>
-                        </div>
-                    </div>`).join('');
+                // ⭐ V72.6.1 使用者要求:這塊改成「該股票**勝率最高的策略** + **最重要的事情**」。
+                //   ⛔ 舊版是**一個訊號一張紅卡** → 同一檔觸發 2 個就佔掉整個第一屏,
+                //      而且每張只寫策略名(沒有勝率、沒有期望值、沒有輕重),等於逼使用者自己判斷。
+                //   → 改成**每檔一張**,訊號縮成小標籤;卡片主體是回測結論與最該注意的一件事。
+                const byS = {};
+                for (const a of allAlerts) (byS[a.sym] ||= { sym: a.sym, name: a.name, list: [] }).list.push(a.strategy);
+                alertBox.innerHTML = Object.values(byS).map(g => this._huntAlertCardHtml(g)).join('');
                 alertBox.classList.remove('hidden');
                 alertBox.style.display = 'flex';
                 alertBox.style.flexDirection = 'column';
@@ -42834,7 +42967,17 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             container.innerHTML = `<div class="text-center py-10 text-gray-600"><div class="text-4xl mb-3">🗡️</div><div class="text-sm font-bold">監控清單為空</div><div class="text-xs mt-1 text-gray-700">在「診斷」頁看到心儀標的後<br>按 🗡️ 圖示加入監控</div></div>`;
             return;
         }
-        container.innerHTML = this.monitorList.map(entry => {
+        // 🔀 V72.6.1 排序:①今天有觸發的排最前 ②再依「加入至今表現」由差到好
+        //   (⛔ 不是由好到壞 —— 落後的那幾檔才是你需要決定「還要不要留」的)
+        const _sorted = this.monitorList.slice().sort((a, b) => {
+            const fa = (a.firedAlerts || []).filter(k => k.includes(`_${today}`)).length;
+            const fb = (b.firedAlerts || []).filter(k => k.includes(`_${today}`)).length;
+            if (fa !== fb) return fb - fa;
+            const ra = (a.currentPrice > 0 && a.addPrice > 0) ? (a.currentPrice - a.addPrice) / a.addPrice : 99;
+            const rb = (b.currentPrice > 0 && b.addPrice > 0) ? (b.currentPrice - b.addPrice) / b.addPrice : 99;
+            return ra - rb;
+        });
+        container.innerHTML = _sorted.map(entry => {
             const pC = entry.currentPrice || entry.addPrice;
             const ma20 = entry.currentMA20 || entry.ma20AtAdd;
             const ma5  = entry.currentMA5  || entry.ma5AtAdd;
@@ -42867,6 +43010,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                         <span class="text-cyan-400">5日線 <span class="font-bold">${ma5 ? ma5.toFixed(2) : '--'}</span></span>
                         ${chip ? `<span class="text-yellow-400" title="近10日成交量加權平均價=短線市場平均成本">10日均價 <span class="font-bold">${chip.toFixed(2)}</span></span>` : ''}
                     </div>
+                    ${this._huntSinceAddHtml(entry)}
                 </div>
                 <button onclick="app.removeFromMonitor('${entry.sym}')" class="text-gray-600 hover:text-red-400 transition-colors text-lg font-bold flex-shrink-0 px-1">✕</button>
             </div>`;
