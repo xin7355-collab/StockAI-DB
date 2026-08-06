@@ -44,7 +44,12 @@ DATA_DIR = Path('data')
 OUT = DATA_DIR / 'analyst_focus.json'
 
 TPE = timezone(timedelta(hours=8))
-UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36'}
+# 🍪 V72.6.8 `CONSENT=YES+cb` —— 實測診斷抓到:YouTube 對 GitHub 的機房 IP 會回**同意頁**
+#   (768KB HTML 但一個 channelId 都沒有)。這個 cookie 是繞過同意牆的標準做法。
+#   ⛔ 不是登入態、不含任何個人資料 —— 本專案「不接需要登入的站」那條鐵則沒有被打破。
+UA = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36',
+      'Accept-Language': 'zh-TW,zh;q=0.9',
+      'Cookie': 'CONSENT=YES+cb.20260101-00-p0.zh-TW+FX+000'}
 
 # 保留幾天的內容。⭐ 使用者要求「第一次挖礦多挖 3 天前的資訊」——
 # YouTube/Podcast RSS 一次就給最近 10~15 集,天然涵蓋好幾天,所以首跑就會有;
