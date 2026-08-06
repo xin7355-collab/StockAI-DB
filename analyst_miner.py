@@ -78,6 +78,13 @@ ANALYSTS = [
      'news_kw': '郭哲榮 分析師', 'must': '郭哲榮'},
 ]
 
+# 🔢 標的抽取的「規則版本」。⭐ 規則一改就 +1 → 舊資料會被**重新抽一次**。
+#   🚨 為什麼需要這個(V72.6.4 實測抓到):舊版把「舊項目已經有 syms 就跳過」當成冪等,
+#      結果 V72.6.4 加了贊助商過濾之後,**先前用舊規則抽出來的 5903(全家)還掛在那裡**
+#      —— 而且因為沒有 via 欄位,前端還把它顯示成「標題抽到的」(證據最強那一級)。
+#   ⛔ 冪等要冪等的是**價格快照**(px/mkt,那是歷史事實),⛔ 不是抽取結果(那是規則的產物)。
+SYMS_V = 2
+
 RESOLVE_LOG = []
 
 
@@ -244,7 +251,12 @@ def _resolve_youtube(a):
         try:
             items = _parse_feed(_get(f'https://www.youtube.com/feeds/videos.xml?channel_id={cid}'), 'yt')
             if items:
-                _log(f'✅ {a["n"]}/YT {h} → {cid}({len(items)} 部)')
+                _newest = max((x.get('d') or '') for x in items)
+                _stale = _newest and _newest < (datetime.now(TPE) - timedelta(days=KEEP_DAYS)).strftime('%Y-%m-%d')
+                # ⚠️ 解得到頻道但**最新一部也超過保留天數** → 多半是解到別人的/停更的頻道。
+                #    照樣回傳(下游用日期濾掉),但要留線索,否則下一輪只會看到「0 則」查不出原因。
+                _log(f'{"⚠️" if _stale else "✅"} {a["n"]}/YT {h} → {cid}({len(items)} 部,最新 {_newest}'
+                     + ('・已超過保留天數,可能解到別人的頻道)' if _stale else ')'))
                 return items, f'YouTube {h}'
             _log(f'{a["n"]}/YT {h} → {cid}:feed 是空的')
         except Exception as e:
@@ -334,20 +346,24 @@ def build():
         mkt_now, _ = _close_on('^TWII', today)
         for it in rows:
             d = (it.get('d') or today)[:10]
-            if not it.get('syms'):
+            if not it.get('syms') or it.get('sv') != SYMS_V:
+                # ⭐ 重算時**保留舊的價格快照**(px/mkt 是他講那天的歷史事實,不隨規則變)
+                _keep = {x['s']: x for x in (it.get('syms') or []) if x.get('px') is not None}
                 syms = []
                 # ⭐ 標題 + 節目大綱一起抽(股癌那種「EP685 | 🤓」標題只能靠大綱)
                 _ttl = it.get('t') or ''
                 _from_title = {c for _, c in _pick_syms(_ttl, names_by_len, name_map)}
                 for nm, code in _pick_syms(_ttl + ' ' + (it.get('x') or ''), names_by_len, name_map):
-                    px, pxd = _close_on(code, d)
-                    mkt, _ = _close_on('^TWII', d)
+                    _old = _keep.get(code)
+                    px, pxd = (_old['px'], _old.get('pxd')) if _old else _close_on(code, d)
+                    mkt = _old.get('mkt') if _old else _close_on('^TWII', d)[0]
                     # px/pxd/mkt = **他講的那天**的快照 → ⭐ 一旦寫入就不再重算(冪等),
                     #   否則明天重跑會被明天的收盤蓋掉,「他說的時候的價格」就沒意義了。
                     # via:'t'=標題(證據強) / 'x'=節目大綱(證據弱,前端要標出來)
                     syms.append({'s': code, 'n': nm, 'px': px, 'pxd': pxd, 'mkt': mkt,
                                  'via': 't' if code in _from_title else 'x'})
                 it['syms'] = syms
+                it['sv'] = SYMS_V
             # ⭐ 現價(pxn)與現在的大盤(mktn)**每輪都刷新** —— 這兩個本來就該是最新的。
             #   ⛔ 刻意放在採礦端算:前端要算就得為每檔各發一次 fetch,而這裡讀檔零成本
             #     (而且「同一個數字只有一個地方算」)。

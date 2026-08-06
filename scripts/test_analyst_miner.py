@@ -203,6 +203,42 @@ ok('⑫ ⭐ 舊的「真的有提到他」要留著', 'https://n/keep' in urls, 
 ok('⑫ ⛔ 原始節目(kind=yt)不可被 must 誤殺(節目標題本來就不會寫自己名字)',
    'https://y/ep' in urls, sorted(urls))
 
+# ── ⑬ ⭐⭐ 規則改了 → 舊資料的抽取結果要**重算**,但價格快照要留著 ──────────
+#    🚨 V72.6.4 實測抓到:舊版「已經有 syms 就跳過」→ 加了贊助商過濾之後,
+#       先前用舊規則抽出來的 5903(全家)還掛在那裡,而且沒有 via 欄位 →
+#       前端把它顯示成「標題抽到的」= 證據最強那一級。
+#    ⛔ 冪等要冪等的是**價格快照**(歷史事實),⛔ 不是抽取結果(規則的產物)。
+A._name_map = lambda: {'台積電': '2330', '全家': '5903'}
+A.OUT.write_text(json.dumps({'updated': 'x', 'analysts': [
+    {'k': A.ANALYSTS[0]['k'], 'items': [
+        {'t': '台積電怎麼看', 'u': 'https://y/legacy', 'd': '2026-08-05', 'kind': 'yt',
+         # 舊規則留下的:5903 是贊助商誤抽,而且沒有 via / sv
+         'syms': [{'s': '2330', 'n': '台積電', 'px': 999.0, 'pxd': '2026-08-05', 'mkt': 22222.0},
+                  {'s': '5903', 'n': '全家', 'px': 180.0, 'pxd': '2026-08-05', 'mkt': 22222.0}]},
+    ]}]}, ensure_ascii=False), encoding='utf-8')
+PX.update({'2330': 1234.0, '^TWII': 30000.0})
+A._resolve_youtube = lambda a: ([{'t': '新的一集', 'u': 'https://y/n2', 'd': '2026-08-07', 'kind': 'yt', 'x': ''}], 'YouTube @x')
+A._resolve_podcast = lambda a: ([], 'n/a')
+A._resolve_news = lambda a: ([], 'n/a')
+A.build()
+d8 = json.loads(A.OUT.read_text(encoding='utf-8'))
+leg = [i for i in d8['analysts'][0]['items'] if i['u'] == 'https://y/legacy'][0]
+got8 = {x['s'] for x in leg['syms']}
+ok('⑬ ⭐⭐ 舊規則誤抽的贊助商要被重算掉', '5903' not in got8, leg['syms'])
+ok('⑬ ⭐ 標題真的有的還在', got8 == {'2330'}, leg['syms'])
+ok('⑬ ⭐⭐ 但「他講那天的價格」必須留著(⛔ 不可被今天的收盤蓋掉)',
+   leg['syms'][0]['px'] == 999.0 and leg['syms'][0]['mkt'] == 22222.0, leg['syms'])
+ok('⑬ ⭐ 重算後要補上 via', leg['syms'][0].get('via') == 't', leg['syms'])
+ok('⑬ ⭐ 要記下規則版本(下次規則再改才知道要重算)', leg.get('sv') == A.SYMS_V, leg.get('sv'))
+# 同一版重跑不可再動(避免每輪都重算)
+_snap = json.dumps(leg, sort_keys=True, ensure_ascii=False)
+A.build()
+leg2 = [i for i in json.loads(A.OUT.read_text(encoding='utf-8'))['analysts'][0]['items'] if i['u'] == 'https://y/legacy'][0]
+ok('⑬ ⭐ 同一版重跑,當日快照不變(只有現價會動)',
+   json.dumps({k: v for k, v in leg2.items() if k != 'syms'}, sort_keys=True, ensure_ascii=False)
+   == json.dumps({k: v for k, v in leg.items() if k != 'syms'}, sort_keys=True, ensure_ascii=False)
+   and leg2['syms'][0]['px'] == 999.0, leg2['syms'])
+
 print()
 if FAILS:
     print(f'❌ {len(FAILS)} 條失敗:')
