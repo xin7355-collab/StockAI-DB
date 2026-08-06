@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.6.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.6.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.6.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.6.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2254,6 +2254,15 @@
             <!-- ════════ 【區 3-A】🗞️ 消息面(盤前新聞 + 財經行事曆)════════ -->
             <div id="subContent_global" class="flex flex-col gap-3">
 
+            <!-- 🗞️ V72.6.2 消息面拆三格(使用者要求)。⛔ 三張卡的 DOM id 全不變 → JS 零改動,
+                 只是各自被包進一個 pane;沒選到的 pane `display:none`。 -->
+            <div class="flex gap-1 bg-[#0d1117] border border-[#30363d] rounded-lg p-1 sticky top-0 z-30 backdrop-blur">
+                <button data-newspane="news" onclick="app.switchNewsPane('news')" class="flex-1 py-1.5 text-[11px] font-black rounded-md transition-colors">📰 新聞焦點</button>
+                <button data-newspane="cal" onclick="app.switchNewsPane('cal')" class="flex-1 py-1.5 text-[11px] font-black rounded-md transition-colors">📅 財經行事曆</button>
+                <button data-newspane="analyst" onclick="app.switchNewsPane('analyst')" class="flex-1 py-1.5 text-[11px] font-black rounded-md transition-colors">🎙️ 分析師焦點</button>
+            </div>
+
+            <div data-newspane-body="news" class="flex flex-col gap-3">
             <!-- 🗞️ V50.3 盤前新聞重點(移到本 tab 最上方;AI 分析 localStorage 按日快取,關頁不清、一天 1 次省額度;每則右側 🔎 查=Perplexity) -->
             <div class="bg-[#010409] border border-[#30363d] rounded-xl p-2.5">
                 <div class="flex items-center justify-between mb-1.5">
@@ -2275,6 +2284,9 @@
                 </div>
             </div>
 
+            </div><!-- /newspane=news -->
+
+            <div data-newspane-body="cal" class="flex flex-col gap-3" style="display:none">
             <!-- 📅 V71.4.4 財經行事曆搬進本分頁(使用者要求)。
                  為什麼放這裡:新聞＝已經發生的消息,行事曆＝還沒發生的消息,同一個「消息面」腦袋看。
                  深度 AI 按鈕(macroDeepBtn)跟著卡片一起搬,DOM id 全不變 → JS 零改動。 -->
@@ -2289,6 +2301,20 @@
                     <div class="text-[10px] text-gray-600 text-center py-2">載入中...</div>
                 </div>
             </div>
+
+            </div><!-- /newspane=cal -->
+
+            <!-- 🎙️ V72.6.2 財經分析師焦點(兆華與股惑仔 / 兆華艾綸說 / 股癌 / 郭哲榮)
+                 ⛔ 只做事實描述 + 「他講的那天多少錢」的價格快照,不下多空、不計分。 -->
+            <div data-newspane-body="analyst" class="flex flex-col gap-3" style="display:none">
+                <div class="bg-[#010409] border border-[#30363d] rounded-xl p-2.5">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="text-[11px] font-black text-amber-300">🎙️ 財經分析師焦點 <span class="text-[9px] text-gray-500 font-normal">最新一集 + 他講的那天股價</span></div>
+                        <div id="analystTs" class="text-[9px] text-gray-600">--</div>
+                    </div>
+                    <div id="analystFocusBox"><div class="text-[10px] text-gray-600 text-center py-3">載入中...</div></div>
+                </div>
+            </div><!-- /newspane=analyst -->
 
             <!-- V35 — 「今日全球彙整(AI 摘要)」卡已移除(使用者要求取消新聞 AI 分析) -->
 
@@ -7132,8 +7158,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.6.1',
+    _APP_VERSION: 'V72.6.2',
     _CHANGELOG: [
+        { v: 'V72.6.2', dt: '2026-08-06', t: '🗞️ 消息面拆成三格,新增「財經分析師焦點」(兆華與股惑仔・兆華艾綸說・股癌・郭哲榮)', d: [
+            '消息面現在有三格:📰 新聞焦點 / 📅 財經行事曆 / 🎙️ 分析師焦點(會記住你上次看哪一格)。',
+            '🎙️ 新的分析師焦點會抓四位的**最新一集**:標題、日期、連結,並從標題抓出提到哪幾檔台股。',
+            '⭐ 最有價值的一欄:**「他講的那天多少錢 → 現在多少」**,而且一定跟大盤比 ——「贏大盤 5.0pp」。個股漲 3% 在大盤漲 5% 的日子其實是輸的,只看個股漲跌會騙自己。',
+            '⚠️ 老實說三件事:① 只拿得到**標題**(沒有逐字稿),標題常是釣魚式的 ② 標的是**從標題抽的**,可能不是他當集的重點 ③ 抓不到時會告訴你原因,不會假裝有。',
+            '⛔ 這一頁**不下多空、不計分** —— 名嘴說法的預測力從來沒被驗證過。紀錄從今天開始累積,樣本夠了才談誰準。',
+            '(你寫的「兆華艾倫說」正確是「兆華艾**綸**說」,已用正確名稱。)',
+        ] },
         { v: 'V72.6.1', dt: '2026-08-06', t: '⚔️ 觀察頁改造:紅色那塊改成「這檔勝率最高的策略 + 最重要的事」,清單補上加入時的價格', d: [
             '**紅色觸發卡**以前是「一個訊號一張卡」—— 同一檔中 2 個就佔滿整個畫面,而且每張只寫策略名。現在改成**每檔一張**,訊號縮成小標籤,卡片主體換成你要的兩件事:',
             '🏆 **這檔勝率最高的策略**:用這檔自己的歷史回測,而且**每趟期望值要 > 0 且打過 10 次以上**才敢寫。⛔ 樣本不夠或長期會賠的招,直接說「沒有站得住腳的」並告訴你為什麼 —— 不硬推。',
@@ -26438,6 +26472,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         styleBtn('subTab_tw2', tab === 'tw', 'purple');
         styleBtn('subTab_global2', tab === 'global', 'cyan');
         if (tab === 'idx') { try { this._renderIndexRow(); } catch (_) {} try { this.renderMarketBreadth(); } catch (_) {} try { this.renderMarketRegime(); } catch (_) {} }
+        // 🗞️ V72.6.2 進「消息面」時把三格分頁初始化(記住上次選的;預設新聞焦點)
+        if (tab === 'global') { try { this.switchNewsPane(this._newsPane || localStorage.getItem('newsPane') || 'news'); } catch (_) {} }
         try { localStorage.setItem('mktSubTab', tab); } catch(_) {}
         // 🐛 V71.4.4 修對接錯位:盤前體檢(#marketBriefing)在「盤前檢視」格,新聞清單在「消息面」格,
         //    但原本寫反了(進消息面才刷體檢、進盤前檢視才拉新聞)。分頁改名後一併校正。
@@ -42798,6 +42834,120 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             setTimeout(() => { if (statusDiv) statusDiv.classList.add('hidden'); }, 4000);
         }
         return newAlerts.length;
+    },
+
+    // ═══ 🗞️ V72.6.2 消息面三格(新聞焦點 / 財經行事曆 / 分析師焦點) ═══════════
+    //   ⛔ 三張卡的 DOM id 全不變 —— 只是被包進 pane,JS 其他地方零改動(同 V26.14 搬卡的做法)。
+    switchNewsPane(k) {
+        this._newsPane = k;
+        try { localStorage.setItem('newsPane', k); } catch (_) {}
+        try {
+            document.querySelectorAll('[data-newspane-body]').forEach(el => {
+                el.style.display = el.dataset.newspaneBody === k ? '' : 'none';
+            });
+            document.querySelectorAll('[data-newspane]').forEach(b => {
+                const on = b.dataset.newspane === k;
+                b.className = `flex-1 py-1.5 text-[11px] font-black rounded-md transition-colors ${on ? 'bg-blue-600/20 text-blue-200 border border-blue-500/60' : 'bg-[#161b22] text-gray-400 border border-[#30363d]'}`;
+            });
+        } catch (_) {}
+        if (k === 'analyst') { try { this._loadAnalystFocus(); } catch (_) {} }
+        this.vibrate?.(20);
+    },
+
+    // 🎙️ 財經分析師焦點 —— 兆華與股惑仔 / 兆華艾綸說 / 股癌 / 郭哲榮
+    //   ⛔⛔ 四條鐵則(⛔ 別為了好看拿掉):
+    //     ① **不下多空、不計分** —— 名嘴說法的預測力從未驗證過;CLAUDE.md 對郭哲榮的評估
+    //        已寫明他「準」的一半是話術結構(條件式預告、雙向皆贏)。
+    //     ② 只收得到**標題層級**(沒有逐字稿)→ 卡上要講清楚,⛔ 別讓人以為是他的完整論點。
+    //     ③ 標的是**從標題抽的**,可能不是他的重點 → 一樣要標。
+    //     ④ 「他講的那天多少錢 → 現在多少」是這整件事**唯一可回頭驗證**的部分,
+    //        而且一定要**跟大盤比**(個股 +3% 在大盤 +5% 的日子其實是輸的)。
+    async _loadAnalystFocus() {
+        const box = document.getElementById('analystFocusBox');
+        if (!box) return;
+        if (this._analystCache) { this._renderAnalystFocus(this._analystCache); return; }
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/analyst_focus.json', ghBase).href + `?t=${Date.now()}`);
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            this._analystCache = await r.json();
+            this._renderAnalystFocus(this._analystCache);
+        } catch (e) {
+            box.innerHTML = `<div class="bg-[#161b22] border-l-4 border-gray-600 border-y border-r border-[#30363d] rounded-r p-2.5">
+                <div class="text-[11px] font-bold text-gray-300 mb-1">⏳ 分析師焦點還沒開始供應</div>
+                <div class="text-[10px] text-gray-400 leading-relaxed">採礦機每小時會去抓四位分析師的最新一集(兆華與股惑仔・兆華艾綸說・股癌・郭哲榮)。第一次要等下一輪採礦跑完才會出現。</div>
+            </div>`;
+        }
+    },
+    _renderAnalystFocus(d) {
+        const box = document.getElementById('analystFocusBox');
+        if (!box || !d) return;
+        try { const t = document.getElementById('analystTs'); if (t) t.textContent = d.updated || '--'; } catch (_) {}
+        const KIND = { yt: '📺 影片標題', podcast: '🎧 單集標題', news: '📰 媒體報導(不是他本人的節目)' };
+        const cards = (d.analysts || []).map(a => {
+            const items = (a.items || []).slice(0, 5);
+            const rows = items.map(it => {
+                const syms = (it.syms || []).map(x => this._analystSymChip(x)).join(' ');
+                return `<div class="border-t border-[#21262d] pt-1.5 mt-1.5 first:border-0 first:pt-0 first:mt-0">
+                    <a href="${it.u || '#'}" target="_blank" rel="noopener" class="text-[11px] text-gray-100 leading-snug hover:text-cyan-300">${it.t || ''}</a>
+                    <div class="text-[9px] text-gray-600 mt-0.5">${it.d ? this._dW(it.d, { rel: 1 }) : ''} ・${KIND[it.kind] || it.kind || ''}</div>
+                    ${syms ? `<div class="flex flex-wrap gap-1 mt-1">${syms}</div>` : '<div class="text-[9px] text-gray-700 mt-0.5">標題沒提到可辨識的台股</div>'}
+                </div>`;
+            }).join('');
+            return `<div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2.5 mb-2">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[12px] font-black text-gray-100">${a.n} <span class="text-[9px] text-gray-500 font-normal">${a.tag || ''}</span></span>
+                    <span class="text-[9px] text-gray-600">${a.src || ''}</span>
+                </div>
+                ${a.error ? `<div class="text-[10px] text-yellow-300/90 bg-yellow-900/15 border-l-2 border-yellow-600 pl-2 py-1 rounded-r mb-1 leading-snug">⚠️ ${a.error}</div>` : ''}
+                ${rows || '<div class="text-[10px] text-gray-600">目前沒有內容</div>'}
+            </div>`;
+        }).join('');
+        box.innerHTML = `${cards}
+            <div class="bg-[#161b22] border-l-4 border-gray-600 border-y border-r border-[#30363d] rounded-r p-2 mt-1">
+                <div class="text-[10px] font-bold text-gray-300 mb-0.5">📌 這頁怎麼看(必讀)</div>
+                <div class="text-[10px] text-gray-400 leading-relaxed">
+                    ⛔ <b>這裡不下多空、不計分</b> —— 名嘴說法的預測力從來沒被驗證過,這頁只做「他講了什麼、那天多少錢」的紀錄。<br>
+                    ⚠️ 只收得到<b>標題</b>(沒有逐字稿),標題常是釣魚式的;標的是<b>從標題抽的</b>,可能不是他當集的重點。<br>
+                    ⭐ 「講的時候 → 現在」一定要看<b>贏不贏大盤</b>那一欄 —— 個股漲 3% 在大盤漲 5% 的日子其實是輸的。<br>
+                    📅 紀錄從今天開始累積,⛔ 樣本還不夠<b>不能</b>拿來說誰準誰不準。
+                </div>
+            </div>`;
+    },
+    // 一顆標的 chip:代號 + 他講那天的價格 → 現在(含跟大盤比)
+    _analystSymChip(x) {
+        // 現價與現在的大盤由**採礦端**每輪刷新(pxn/mktn)—— 前端只在有即時報價時覆蓋。
+        // ⛔ 別改成前端逐檔 fetch:那是每檔一次網路請求,而採礦端讀檔零成本。
+        const cur = this._analystCurPx(x.s) || +x.pxn || 0;
+        const p0 = +x.px;
+        let perf = '';
+        if (p0 > 0 && cur > 0) {
+            const pct = (cur - p0) / p0 * 100;
+            const cls = pct >= 0 ? 'text-red-300' : 'text-green-300';
+            let ex = '';
+            try {
+                const m0 = +x.mkt, rows = this._twiiRows;
+                const m1 = (Array.isArray(rows) && rows.length) ? +rows[rows.length - 1].close : (+x.mktn || 0);
+                if (m0 > 0 && m1 > 0) {
+                    const e = pct - (m1 - m0) / m0 * 100;
+                    ex = ` <span class="${e >= 0 ? 'text-red-300' : 'text-green-300'}">${e >= 0 ? '贏' : '輸'}大盤${Math.abs(e).toFixed(1)}pp</span>`;
+                }
+            } catch (_) {}
+            perf = ` <span class="${cls}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</span>${ex}`;
+        } else if (p0 > 0) {
+            perf = ' <span class="text-gray-600">(現價載入中)</span>';
+        }
+        return `<span class="text-[9px] font-mono bg-[#161b22] border border-[#30363d] rounded px-1.5 py-0.5 cursor-pointer hover:border-cyan-600" onclick="app.analyze('${x.s}'); app.switchAppTab('diag'); app.vibrate(20);">
+            ${x.n}${x.s}${p0 > 0 ? ` <span class="text-gray-500">@${p0.toFixed(2)}</span>` : ' <span class="text-gray-600">(當日價未取得)</span>'}${perf}</span>`;
+    },
+    // 現價:優先用已載入的即時報價,退回 K 線快取;都沒有回 0(⛔ 不硬給)
+    _analystCurPx(sym) {
+        try {
+            const q = this._liveQuote?.(sym);
+            const v = q ? (+q.p || +q.price || +q.c) : 0;
+            if (v > 0) return v;
+        } catch (_) {}
+        return 0;   // ⛔ 拿不到就回 0,由呼叫端退回採礦端的 pxn(不硬給)
     },
 
     // 📅 V72.6.1 「當初加入時的價格」—— 使用者要求。⭐ 好消息:`addPrice`/`addDate` 從一開始

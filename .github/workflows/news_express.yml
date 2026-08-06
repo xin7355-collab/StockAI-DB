@@ -53,6 +53,14 @@ jobs:
       - name: 📦 安裝相依套件
         run: pip install requests feedparser --quiet
 
+      # 🎙️ V72.6.2 分析師焦點要在 **gh-pages 工作樹**上跑(那裡才有 data/*.json 可以查
+      #    「他說的時候的價格」)。切分支之後 main 的 .py 會消失 → 先複製出去。
+      #    ⛔ 別改成在 main 上跑:main 的 data/ 是 gitignore 的,價格會全部變 null。
+      - name: 🎒 備份要在 gh-pages 上執行的腳本
+        run: |
+          mkdir -p /tmp/bin
+          cp analyst_miner.py universal_radar.py /tmp/bin/
+
       - name: 📰 執行 universal_radar.py 抓 RSS + AI 翻譯
         env:
           GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
@@ -91,3 +99,38 @@ jobs:
             git push origin gh-pages
             echo "✅ gh-pages 新聞 JSON 已更新"
           }
+
+      # 🎙️ V72.6.2 財經分析師焦點(兆華與股惑仔 / 兆華艾綸說 / 股癌 / 郭哲榮)
+      #   ⚠️ 這一步跑在**上一步切好的 gh-pages 工作樹**上 —— 那裡有 data/*.json 與 ^TWII.json,
+      #      `analyst_miner` 才算得出「他提到的那天,那檔多少錢、大盤幾點」。
+      #   ⚠️ 要**同時推 gh-pages 與 data 兩個分支**:daily_miner 每天用 `git archive origin/data`
+      #      重建 gh-pages(orphan force-push)→ 只推 gh-pages 的檔案隔天就會被抹掉
+      #      (同 tick_hist.json 的教訓)。
+      - name: 🎙️ 財經分析師焦點採礦 + 推 gh-pages / data
+        run: |
+          if [ "$(git rev-parse --abbrev-ref HEAD)" != "gh-pages" ]; then
+            echo "⛔ 不在 gh-pages(上一步可能提早結束)→ 跳過"; exit 0
+          fi
+          python /tmp/bin/analyst_miner.py || echo "⚠️ analyst_miner 非零退出(守門擋下空檔),保留舊檔"
+          [ -s data/analyst_focus.json ] || { echo "📭 沒有產出,跳過"; exit 0; }
+          git add -f data/analyst_focus.json
+          if git diff --cached --quiet; then
+            echo "📭 分析師焦點無變化,跳過 commit"
+          else
+            git commit -m "🎙️ 分析師焦點更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push origin gh-pages
+            echo "✅ gh-pages 已更新"
+          fi
+          # data 分支快照(讓 daily_miner 重建 gh-pages 時保得住)
+          cp data/analyst_focus.json /tmp/analyst_focus.json
+          git fetch origin data 2>/dev/null || true
+          if git checkout data 2>/dev/null; then
+            mkdir -p data && cp /tmp/analyst_focus.json data/analyst_focus.json
+            git add -f data/analyst_focus.json
+            git diff --cached --quiet || {
+              git commit -m "🎙️ 分析師焦點快照 $(date -u '+%Y-%m-%d %H:%M UTC')"
+              git push origin data && echo "✅ data 分支已更新"
+            }
+          else
+            echo "⚠️ data 分支不存在,只推了 gh-pages"
+          fi
