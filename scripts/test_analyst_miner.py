@@ -401,11 +401,10 @@ _PAGES = {'https://news.google.com/rss/articles/CBMx':
 A._get = lambda url: _PAGES[url].encode('utf-8')
 A._fetch_body = _REAL_FETCH_BODY      # ⬅️ 前面 stub 掉了,換回真的(⚠️ 本 session 第 3 次踩)
 body, src = A._fetch_body({'kind': 'news', 'u': 'https://news.google.com/rss/articles/CBMx'})
-ok('⑱b ⭐⭐ 跳轉頁要追到出處才拿得到正文', '郭哲榮表示台積電' in body, body[:80])
-ok('⑱b ⭐ 有正文才標 article', src == 'article', src)
-A._get = lambda url: '<html>沒有連結也沒有正文</html>'.encode('utf-8')
-b2, s2 = A._fetch_body({'kind': 'news', 'u': 'https://news.google.com/rss/articles/CBMy'})
-ok('⑱b ⭐⛔ 追不到 → csrc 空字串(⛔ 不可標成 article 卻沒內容)', (b2, s2) == ('', ''), (b2, s2))
+# ⚠️ V72.7.4 `analyst_probe` 實測:Google News 新格式(`CBMi…`)**不再 redirect、頁面裡也沒有
+#    <a href> 可撈** → 正文實測 **0 字**。⛔ 所以「追出處」那條路已移除(每則打一槍且必定失敗)。
+#    ⭐ 改成:媒體報導直接標 `headline` —— 標題本身就是記者幫他做的摘要。
+ok('⑱b ⭐⭐ 媒體報導 → 標 headline 且不打網路', (body, src) == ('', 'headline'), (body, src))
 
 # ⑱c 429 → 降預算 + watch 頁節流
 ok('⑱c ⭐ 每輪抓取降到 ≤2(實測 YouTube watch 頁回 429)', A.FETCH_BUDGET <= 2, A.FETCH_BUDGET)
@@ -442,6 +441,33 @@ ok('⑲ ⭐⭐ 「標了來源卻沒內容」要重試', dT['https://n/a'].get('
 ok('⑲ ⭐ 真的抓到過的不重抓(內容不變)', dT['https://n/b'].get('sum') == '有內容', dT['https://n/b'])
 ok('⑲ ⭐ 明確「試過但沒有」的也不重抓', dT['https://n/c'].get('sum') is None, dT['https://n/c'])
 ok('⑲ ⭐ 只重試了那一則(⛔ 不是全部重打)', _tries['n'] == 1, _tries['n'])
+
+# ── ⑳ V72.7.4 探針(analyst_probe)實測後的三個修正 ─────────────────────────
+#    🧪 一次跑完四組的結論:A 逐字稿 1/4(全被同意頁擋)、B shownotes 通但**整段是廣告**、
+#       C 新聞正文 0 字(Google News 新格式不 redirect)、D 兆華兩位 0/10。
+#    ⭐ 而探針也照出真正的缺口:**name_map 一檔 ETF 都沒有**(它來自公司基本資料)。
+A.DATA_DIR = Path('data')          # 用真的 data/ 判斷代號存不存在
+_nm = {'台積電': '2330'}
+_by = sorted(_nm, key=len, reverse=True)
+r1 = A._pick_syms('買「瑤池金母」的00981A衝至32塊後換0050?郭哲榮曝靠市值型賺長線', _by, _nm)
+ok('⑳ ⭐⭐ ETF 代號要抽得到(0050 / 00981A)', {c for _, c in r1} == {'0050', '00981A'}, r1)
+r2 = A._pick_syms('0050砸1億已賺1200萬!郭哲榮曝台股雲霄飛車行情', _by, _nm)
+ok('⑳ ⭐ 「1200萬」不可被誤當成代號(data/ 沒有這一檔)', {c for _, c in r2} == {'0050'}, r2)
+ok('⑳ ⭐ 公司簡稱照樣抽得到', A._pick_syms('台積電還能不能追', _by, _nm) == [('台積電', '2330')])
+A.DATA_DIR = TMP
+
+# 新聞:⛔ 不再打「追內文」那一槍(探針證明必定 0 字),改標 headline
+A._fetch_body = _REAL_FETCH_BODY      # ⬅️ ⑲ 把它 stub 掉了,換回真的(⚠️ 第 4 次踩)
+b, c = A._fetch_body({'kind': 'news', 'u': 'https://news.google.com/rss/articles/CBMx'})
+ok('⑳ ⭐⭐ 媒體報導標成 headline(標題本身就是摘要)', (b, c) == ('', 'headline'), (b, c))
+
+# 節目說明切完只剩標語 → 標 ad(⛔ 不顯示那句話,對使用者零價值)
+b2, c2 = A._fetch_body({'kind': 'podcast', 'u': 'x', 'x': A._topic_part('人類又找回勇氣了 本集節目由【NordVPN】贊助')})
+ok('⑳ ⭐ 整段是廣告 → 標 ad(⛔ 不顯示那句標語)', c2 == 'ad' and b2 == '', (b2, c2))
+b3, c3 = A._fetch_body({'kind': 'podcast', 'u': 'x', 'x': '這集聊台積電法說會與鴻海的 AI 伺服器出貨狀況'})
+ok('⑳ ⭐ 真的有大綱時照收', c3 == 'shownotes' and '台積電' in b3, (b3[:30], c3))
+b4, c4 = A._fetch_body({'kind': 'podcast', 'u': 'x', 'x': ''})
+ok('⑳ ⭐ 根本沒說明 → 空字串(⛔ 跟「整段是廣告」要分開)', (b4, c4) == ('', ''), (b4, c4))
 
 print()
 if FAILS:

@@ -127,16 +127,29 @@ def _name_map():
 
 
 def _pick_syms(title, names_by_len, name_map):
-    """標題 → 命中的台股代號。去子字串(「南亞」⊂「南亞科」只留長的),同 build_stock_news。"""
+    """文字 → 命中的台股代號。去子字串(「南亞」⊂「南亞科」只留長的),同 build_stock_news。"""
     hits = [nm for nm in names_by_len if nm in title]
     hits = [nm for nm in hits if not any(nm != o and nm in o for o in hits)]
-    # 標題直接寫代號(如「2330」)也收
-    for code in set(re.findall(r'(?<!\d)(\d{4})(?!\d)', title)):
+    out = [(nm, name_map[nm]) for nm in hits]
+    # 🚨 V72.7.4 探針實測抓到的真缺口:`_fetch_full_name_map` 來自
+    #   **TWSE/TPEX 公司基本資料** → 裡面**一檔 ETF 都沒有**。
+    #   而郭哲榮的新聞標題滿滿是「0050」「00981A」「006208」—— 全部抽不到。
+    #   ⭐ 修法不是去弄一張 ETF 名稱表(那又是一份要維護的清單),而是
+    #      **拿代號直接去問 `data/` 有沒有這一檔** —— 有 K 線就是有效標的,
+    #      自動涵蓋 ETF、槓桿反向、主動式,零維護。
+    seen = {c for _, c in out}
+    for code in re.findall(r'(?<![\dA-Za-z])(\d{4,6}[A-Z]?)(?![\dA-Za-z])', title):
+        if code in seen:
+            continue
         if code in name_map.values():
-            inv = [n for n, c in name_map.items() if c == code]
-            if inv and inv[0] not in hits:
-                hits.append(inv[0])
-    return [(nm, name_map[nm]) for nm in hits][:6]
+            nm = next((n for n, c in name_map.items() if c == code), code)
+        elif (DATA_DIR / f'{code}.json').exists():
+            nm = code            # ETF 等沒有簡稱的,直接用代號當名字
+        else:
+            continue
+        seen.add(code)
+        out.append((nm, code))
+    return out[:6]
 
 
 # ── 價格快照:他講的**那天**的收盤 ──────────────────────────────────────────
@@ -249,6 +262,18 @@ def _vid_of(url):
     return m.group(1) if m else ''
 
 
+def _desc_or_ad(it, label):
+    """節目說明/大綱 → (內容, 來源標籤)。
+    🚨 V72.7.4 探針實測:股癌的 shownotes 是「一句標語 + 一整段贊助」(206/422/355 字),
+       切掉贊助後只剩「人類又找回勇氣了」這種標語 —— **不是我抓錯,是他就這樣寫**。
+       ⛔ 顯示那句話對使用者零價值 → 標成 'ad',前端誠實說「這個節目不公開當集大綱」。
+    ⚠️ 三種要分清楚:有大綱(label)/ 有說明但整段是廣告('ad')/ 根本沒說明('')。"""
+    x = (it.get('x') or '').strip()
+    if len(x) >= 12:
+        return x, label
+    return '', ('ad' if x else '')
+
+
 def _fetch_body(it):
     """依項目類型抓內容 → (內容, 來源標籤)。⛔ 抓不到回 ('','') —— 不假造。"""
     k, u = it.get('kind'), it.get('u') or ''
@@ -261,23 +286,17 @@ def _fetch_body(it):
                 return t, 'transcript'
             # ⛔ 只看到 csrc='desc' 查不出是「這部沒字幕」還是「被擋」→ 把原因記下來
             _log(f'逐字稿抓不到 {vid}:{_YT_LAST_ERR or "未知"}')
-        return (it.get('x') or ''), ('desc' if it.get('x') else '')
+        return _desc_or_ad(it, 'desc')
     if k == 'podcast':
-        return (it.get('x') or ''), ('shownotes' if it.get('x') else '')
+        return _desc_or_ad(it, 'shownotes')
     if k == 'news':
-        try:
-            html = _get(u).decode('utf-8', 'ignore')
-            body = _main_text(html)
-            # 🚨 V72.7.2 Google News 的連結是**跳轉頁**(news.google.com/rss/articles/CBM…),
-            #   HTML 裡沒有正文只有一段跳轉 → `_main_text` 回空(實測 csrc='article' 卻沒有摘要)。
-            #   → 先從頁面撈出真正的出處網址再抓一次。
-            if not body and 'news.google.com' in u:
-                m = re.search(r'<a[^>]+href="(https?://(?!news\.google\.com)[^"]+)"', html)
-                if m:
-                    body = _main_text(_get(m.group(1)).decode('utf-8', 'ignore'))
-            return body, ('article' if body else '')
-        except Exception:
-            return '', ''
+        # 🚨 V72.7.4 `analyst_probe` 實測結論:Google News 的新連結格式(`CBMi…`)
+        #   **不再 redirect,頁面裡也沒有 <a href> 可撈** → 正文實測 **0 字**。
+        #   ⛔ 別再為了追內文打那一槍(每則一次網路請求,而且必定失敗)。
+        #   ⭐ 但媒體標題**本身就是摘要**(「郭哲榮:明天輝達財報 再次屠殺台股?」
+        #     「跌破四萬點就是轉折點」)—— 那才是這條線真正的價值。
+        #   → 標成 'headline':標題已顯示在上面,不另外給摘要,也⛔不顯示「內容抓不到」。
+        return '', 'headline'
     return '', ''
 
 
@@ -555,6 +574,8 @@ def build():
                 # ⭐ 內容(逐字稿/shownotes/新聞正文)優先,沒有才退回節目大綱
                 _body = it.get('_body') or it.get('x') or ''
                 for nm, code in _pick_syms(_ttl + ' ' + _body, names_by_len, name_map):
+                    if nm == code:
+                        nm = ''      # ETF:沒有簡稱 → 前端只顯代號,⛔ 不重複顯示「0050 0050」
                     _old = _keep.get(code)
                     px, pxd = (_old['px'], _old.get('pxd')) if _old else _close_on(code, d)
                     mkt = _old.get('mkt') if _old else _close_on('^TWII', d)[0]
@@ -600,7 +621,12 @@ def build():
             'items': rows,
             'fresh': len(items),
             # 陷阱 #22:抓不到一定要寫原因,⛔ 不可只留空陣列
-            'error': None if items else (f'本輪沒抓到新的({note});以下是先前存下來的 {len(rows)} 則' if rows else note),
+            # ⭐ V72.7.4 抓不到時要給**可操作的下一步**,⛔ 不是只報「找不到」。
+            #   (`analyst_probe` 已實測:兆華兩位 10 條路全滅,handle 全 404、YouTube 搜尋 0 候選。)
+            'error': None if items else (
+                f'本輪沒抓到新的({note});以下是先前存下來的 {len(rows)} 則' if rows
+                else f'{note} —— 已試過所有公開來源(頻道代號候選、YouTube 搜尋、Google News)。'
+                     f'把他的頻道網址貼給開發者就能接通。'),
         })
 
     payload = {
