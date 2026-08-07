@@ -93,7 +93,14 @@ ANALYSTS = [
 #      結果 V72.6.4 加了贊助商過濾之後,**先前用舊規則抽出來的 5903(全家)還掛在那裡**
 #      —— 而且因為沒有 via 欄位,前端還把它顯示成「標題抽到的」(證據最強那一級)。
 #   ⛔ 冪等要冪等的是**價格快照**(px/mkt,那是歷史事實),⛔ 不是抽取結果(那是規則的產物)。
-SYMS_V = 2
+SYMS_V = 3      # V72.7.4:ETF 代號改用「data/ 有沒有這一檔」判斷 → 舊資料要重抽
+
+# 🔢 內容抽取的規則版本(同 SYMS_V 的道理)。
+#   🚨 V72.7.5 為什麼需要:V72.7.4 把新聞改標 `headline`、節目說明改標 `ad`,
+#      但**已經存進去的** `csrc=''` 會被跳過條件永久擋住 → 規則等於沒生效。
+#      這是本 session 第 5 次踩到「規則改了,舊資料不重算」。
+#   ⛔ 冪等要冪等的是**歷史事實**(px/mkt),⛔ 不是規則的產物(csrc/sum/syms)。
+CSRC_V = 1
 
 RESOLVE_LOG = []
 
@@ -550,13 +557,16 @@ def build():
             # 🚨 V72.7.3 「標了來源卻沒有內容」是**自相矛盾狀態**(csrc='article' 但 sum 空)——
             #   那是上一版的 bug 留下的殘骸,`csrc in it` 會讓它永遠不再重試。
             #   ⛔ 跳過條件不能只看「做過沒」,要看「**做到的結果有沒有用**」(同陷阱 #10)。
-            if it.get('csrc') and it.get('sum'):
-                continue           # 真的抓到過 → 不重抓
-            if it.get('csrc') == '':
-                continue           # 明確標記「試過但這則沒有內容」→ 也不重抓(⛔ 別每輪都白打)
+            if it.get('cv') == CSRC_V:
+                # 這一版的規則已經跑過它了
+                if it.get('csrc') and it.get('sum'):
+                    continue       # 真的抓到過 → 不重抓
+                if it.get('csrc') in ('', 'headline', 'ad'):
+                    continue       # 明確標記「試過,這則就是沒有可顯示的內容」→ 不重抓
             body, src = _fetch_body(it)
             _budget['n'] -= 1
             it['csrc'] = src
+            it['cv'] = CSRC_V
             if body:
                 it['_body'] = body                       # 抽標的用,不寫檔
                 it['sum'] = body[:110].strip()           # ⭐ 顯示用摘要(這才是使用者要看的)

@@ -425,12 +425,14 @@ A._fetch_body = _cnt
 _today = _dt.now(A.TPE).strftime('%Y-%m-%d')
 A.OUT.write_text(json.dumps({'updated': 'x', 'analysts': [
     {'k': A.ANALYSTS[0]['k'], 'items': [
+        # ⚠️ V72.7.5 起這組要帶 `cv`(同一版規則跑過的標記)—— 這一節測的是**同一版之內**的跳過邏輯;
+        #    「規則換版要重跑」是 ㉑ 在測的,兩件事分開。
         # (a) 自相矛盾:標了來源卻沒內容 → 要重試
-        {'t': '股惑仔談 A', 'u': 'https://n/a', 'd': _today, 'kind': 'news', 'csrc': 'article', 'syms': [], 'sv': A.SYMS_V},
+        {'t': '股惑仔談 A', 'u': 'https://n/a', 'd': _today, 'kind': 'news', 'csrc': 'article', 'cv': A.CSRC_V, 'syms': [], 'sv': A.SYMS_V},
         # (b) 真的抓到過 → ⛔ 不可重抓
-        {'t': '股惑仔談 B', 'u': 'https://n/b', 'd': _today, 'kind': 'news', 'csrc': 'article', 'sum': '有內容', 'syms': [], 'sv': A.SYMS_V},
+        {'t': '股惑仔談 B', 'u': 'https://n/b', 'd': _today, 'kind': 'news', 'csrc': 'article', 'cv': A.CSRC_V, 'sum': '有內容', 'syms': [], 'sv': A.SYMS_V},
         # (c) 明確試過但沒有 → ⛔ 也不重抓(別每輪白打)
-        {'t': '股惑仔談 C', 'u': 'https://n/c', 'd': _today, 'kind': 'news', 'csrc': '', 'syms': [], 'sv': A.SYMS_V},
+        {'t': '股惑仔談 C', 'u': 'https://n/c', 'd': _today, 'kind': 'news', 'csrc': '', 'cv': A.CSRC_V, 'syms': [], 'sv': A.SYMS_V},
     ]}]}, ensure_ascii=False), encoding='utf-8')
 A._resolve_youtube = lambda a: ([], 'n/a')
 A._resolve_podcast = lambda a: ([], 'n/a')
@@ -468,6 +470,36 @@ b3, c3 = A._fetch_body({'kind': 'podcast', 'u': 'x', 'x': '這集聊台積電法
 ok('⑳ ⭐ 真的有大綱時照收', c3 == 'shownotes' and '台積電' in b3, (b3[:30], c3))
 b4, c4 = A._fetch_body({'kind': 'podcast', 'u': 'x', 'x': ''})
 ok('⑳ ⭐ 根本沒說明 → 空字串(⛔ 跟「整段是廣告」要分開)', (b4, c4) == ('', ''), (b4, c4))
+
+# ── ㉑ V72.7.5 內容規則也要有版本號(⚠️ 本 session 第 5 次踩「規則改了舊資料不重算」)──
+A._name_map = lambda: {'台積電': '2330'}
+_n = {'n': 0}
+
+
+def _mark(it):
+    _n['n'] += 1
+    return '', 'headline'
+
+
+A._fetch_body = _mark
+_t = _dt.now(A.TPE).strftime('%Y-%m-%d')
+A.OUT.write_text(json.dumps({'updated': 'x', 'analysts': [
+    {'k': A.ANALYSTS[0]['k'], 'items': [
+        # 舊版規則跑過的(沒有 cv)→ 必須重跑
+        {'t': '股惑仔談 X', 'u': 'https://n/x', 'd': _t, 'kind': 'news', 'csrc': '', 'syms': [], 'sv': A.SYMS_V},
+        # 這一版規則跑過的 → ⛔ 不可重跑
+        {'t': '股惑仔談 Y', 'u': 'https://n/y', 'd': _t, 'kind': 'news', 'csrc': 'headline',
+         'cv': A.CSRC_V, 'syms': [], 'sv': A.SYMS_V},
+    ]}]}, ensure_ascii=False), encoding='utf-8')
+A._resolve_youtube = lambda a: ([], 'n/a')
+A._resolve_podcast = lambda a: ([], 'n/a')
+A._resolve_news = lambda a: ([{'t': '股惑仔談 X', 'u': 'https://n/x', 'd': _t, 'kind': 'news'}], 'GNews')
+A.build()
+dV = {i['u']: i for i in json.loads(A.OUT.read_text(encoding='utf-8'))['analysts'][0]['items']}
+ok('㉑ ⭐⭐ 舊版規則跑過的要重跑(csrc 從 "" → headline)', dV['https://n/x'].get('csrc') == 'headline', dV['https://n/x'])
+ok('㉑ ⭐ 而且要蓋上這一版的版本號', dV['https://n/x'].get('cv') == A.CSRC_V, dV['https://n/x'].get('cv'))
+ok('㉑ ⭐ 這一版跑過的⛔ 不可重跑', _n['n'] == 1, f'重跑了 {_n["n"]} 則(應該只有 1)')
+ok('㉑ ⭐ ETF 規則改了 → SYMS_V 也要 +1', A.SYMS_V >= 3, A.SYMS_V)
 
 print()
 if FAILS:
