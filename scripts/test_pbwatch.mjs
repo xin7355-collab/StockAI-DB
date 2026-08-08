@@ -215,6 +215,11 @@ ok('⑨j 有單筆張數與金額硬上限', /MAX_LOTS_PER_TRADE/.test(at) && /M
 ok('⑨k 時窗鎖在尾盤(⛔ 不可整天跑)', /EOD_FROM/.test(at) && /if mins > EOD_TO/.test(at));
 ok('⑨l 沒有觸發價的一律跳過(⛔ 不可用「差不多的條件」代替)', /本機跳過,請看 App 提醒/.test(at));
 ok('⑨m 送出後立刻記狀態(寧可漏一次也不重複下單)', /st\['done'\]\.append\(sym\); save_state\(st\)/.test(at));
+// 🚨 V73.0.1:改了 App 的部位算法卻忘了改這支(陷阱 #37),而它是**會下真單**的。
+ok('⑨p ⭐ 下單程式也用**等權**(⛔ 不可留著風險法 —— 實測少賺 112 萬)',
+   /def lots_for_playbook/.test(at) && !/def lots_for_risk/.test(at) && /POS_PCT/.test(at));
+ok('⑨q 一天最多 2 檔(跟 App 一致)', /MAX_PICKS', '2'/.test(at));
+ok('⑨r 停損太寬要印警告(等權的代價要講出來)', /超過 2%,考慮手動減量/.test(at));
 {
   const wf = fs.readdirSync(path.join(ROOT, '.github/workflows'));
   const hit = wf.filter(f => /\.ya?ml$/.test(f) &&

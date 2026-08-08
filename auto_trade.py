@@ -28,10 +28,11 @@
 ═══════════════════════════════════════════════════════════════════════════
 ⏰ 為什麼是尾盤 13:00~13:28(⛔ 別改成開盤或整天跑)
 ═══════════════════════════════════════════════════════════════════════════
-`scripts/portfolio_backtest.mjs` 實測(600 檔・13 個月・本金 100 萬):
+`scripts/portfolio_backtest.mjs` 實測(600 檔・13 個月・本金 100 萬・每天 3 檔那組):
     訊號日**尾盤**買        +1,361,088 元(vs 0050 多賺 528,588・回撤 −9.4%)
     隔天**開盤**買            +818,734 元(比 0050 還少賺 13,766・回撤 −19.1%)
     隔天開盤・跳空>1% 不追    −147,644 元(倒賠・回撤 −36.4%)
+⭐ 改成「每天 2 檔 + 等權」之後是 **+1,718,529 元 ・回撤 −9.31%**(現行設定)。
 真因:打法的判定條件全部用**收盤價**算 → 09:30 站上去、13:20 又掉下來的**不算數**。
 
 跑法:
@@ -59,11 +60,21 @@ LIVE = os.getenv('LIVE') == '1'            # ⛔ 預設 False = 模擬模式
 DRY_RUN = os.getenv('DRY_RUN') == '1'      # 只印不送單(連模擬單都不送)
 EOD_FROM = int(os.getenv('EOD_FROM', '13')) * 60 + int(os.getenv('EOD_FROM_M', '0'))
 EOD_TO = int(os.getenv('EOD_TO', '13')) * 60 + int(os.getenv('EOD_TO_M', '28'))
-MAX_PICKS = int(os.getenv('MAX_PICKS', '3'))              # 一天最多買幾檔
+# ⭐ V73.0.0 實測「一天最多做 2 檔」(⛔ 原本 3):600 檔・13 個月・本金 100 萬
+#   6 檔 +735,938 / 3 檔 +1,361,088 / ⭐2 檔 +1,718,529 / 1 檔 +1,720,402(回撤變大)
+#   → 單調趨勢,2 檔是甜蜜點(賺最多且回撤最小)。⛔ 別「順手放寬」成更多。
+MAX_PICKS = int(os.getenv('MAX_PICKS', '2'))              # 一天最多買幾檔
 MAX_LOTS_PER_TRADE = int(os.getenv('MAX_LOTS_PER_TRADE', '1'))   # 單筆張數上限(硬煞車)
 MAX_AMT_PER_TRADE = int(os.getenv('MAX_AMT_PER_TRADE', '100000'))  # 單筆金額上限(元)
 ACCOUNT_SIZE = int(os.getenv('ACCOUNT_SIZE', '0'))        # 帳戶總資金(算張數用;0 = 只買 1 張)
-RISK_PCT = float(os.getenv('RISK_PCT', '1'))              # 單筆最多虧帳戶幾 %
+# 💰 V73.0.1 部位大小改用**等權**(⛔ 不是風險法)—— 跟 App 的 `_lotsForPlaybook` 同一套。
+#   實測(600 檔・13 個月・本金 100 萬・每天 2 檔,只改「每筆買多少」):
+#     ⭐ 等權(每筆本金 15%)  +1,718,529 元 ・回撤 −9.31% ・資金使用率 92%
+#       風險法 1%              +593,234 元 ・回撤 −9.15% ・資金使用率 59%(還輸 0050 +832,500)
+#   ⛔ 風險法的回撤**沒有比較小** → 不是取捨,是單純比較差:停損寬時只買很少張甚至 0 張,
+#     資金長期只用到 59%,四成的錢一直在睡覺。
+#   ⚠️ 這支是**會下真單**的程式 → 部位算法一定要跟回測驗證過的那一套一致。
+POS_PCT = float(os.getenv('POS_PCT', '15'))               # 每筆投入 = 帳戶總資金的幾 %
 POLL_SEC = int(os.getenv('POLL_SEC', '60'))
 STATE_PATH = os.getenv('STATE_PATH', os.path.expanduser('~/.stockai_auto_trade.json'))
 
@@ -107,18 +118,19 @@ def fetch_picks():
     return j, picks
 
 
-def lots_for_risk(price, stop):
-    """💰 該買幾張 —— 跟 App 的 `_lotsForRisk` 同一條公式(⛔ 別在這裡另立一套)。
-    風險法:單筆最多虧「帳戶 × RISK_PCT%」;再套單筆張數/金額硬上限。"""
-    per = price - stop
-    if per <= 0 or price <= 0:
-        return 0
-    if ACCOUNT_SIZE > 0:
-        lots = int((ACCOUNT_SIZE * RISK_PCT / 100) // (per * 1000))
-    else:
-        lots = 1
+def lots_for_playbook(price, stop):
+    """💰 該買幾張 —— 跟 App 的 `_lotsForPlaybook` 同一條公式(⛔ 別在這裡另立一套)。
+    **等權**:每筆投入 = 帳戶總資金 × POS_PCT%(理由見檔頭 POS_PCT 的註解)。
+    再套 MAX_LOTS_PER_TRADE / MAX_AMT_PER_TRADE 兩個硬煞車。
+    ⚠️ 等權的代價:每筆的「風險%」會浮動 → 回傳時一併給出來,呼叫端要印給使用者看。"""
+    if price <= 0:
+        return 0, None
+    lots = int((ACCOUNT_SIZE * POS_PCT / 100) // (price * 1000)) if ACCOUNT_SIZE > 0 else 1
     lots = min(lots, MAX_LOTS_PER_TRADE, int(MAX_AMT_PER_TRADE // (price * 1000)) or 0)
-    return max(0, lots)
+    lots = max(0, lots)
+    per = price - stop
+    risk_pct = (lots * 1000 * per / ACCOUNT_SIZE * 100) if (ACCOUNT_SIZE > 0 and per > 0 and lots > 0) else None
+    return lots, risk_pct
 
 
 def main():
@@ -200,12 +212,16 @@ def main():
                 log(f"   {sym} {px} < 觸發 {trig} → 還沒到")
                 continue
 
-            lots = lots_for_risk(px, float(stop))
+            lots, risk_pct = lots_for_playbook(px, float(stop))
             if lots <= 0:
-                log(f"⏭️ {sym} 算出來 0 張(停損距離太寬或超過金額上限)→ 跳過")
+                log(f"⏭️ {sym} 算出來 0 張(本金不夠買 1 張,或超過單筆金額上限)→ 跳過")
                 continue
 
-            log(f"🚨 {sym} 觸發!現價 {px} ≥ {trig} ・買 {lots} 張 ・停損 {stop}")
+            _rk = f" ・停損時虧本金 {risk_pct:.1f}%" if risk_pct is not None else ""
+            log(f"🚨 {sym} 觸發!現價 {px} ≥ {trig} ・買 {lots} 張"
+                f"(約 {int(lots * 1000 * px):,} 元){_rk} ・停損 {stop}")
+            if risk_pct is not None and risk_pct > 2:
+                log(f"   ⚠️ 這檔停損很寬,一次會虧本金 {risk_pct:.1f}% —— 超過 2%,考慮手動減量")
             if DRY_RUN:
                 log(f"   🧪 DRY_RUN:不送單"); st['done'].append(sym); save_state(st); continue
             try:
