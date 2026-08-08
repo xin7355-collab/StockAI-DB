@@ -164,8 +164,14 @@ for (const f of files) {
                 //   ⛔ 不可驗中間值。實例 4716:c0=16.65,`up` 因浮點是 16.650000000000002
                 //   → 通過 `up <= c0` 的檢查,但存進 JSON 前 round 成 16.65 → 畫面出現
                 //   「現價 16.65 → 漲過 16.65」。→ **先 round 再比**,而且比較要留 epsilon。
+                // 🚨🚨 第五輪還是漏掉同一筆(4716)—— 因為上一版**只把一邊換成顯示值**:
+                //   `upR` 是四捨五入後的 16.65,但 `c0` 還是**原始浮點** 16.649999618530273
+                //   (資料源給的 float)→ `16.65 <= 16.6499996` 是 false,守門放行;
+                //   可是輸出的現價寫的是 `+c0.toFixed(2)` = **16.65** → 畫面照樣「16.65 → 漲過 16.65」。
+                //   ⭐⭐ **比較的兩邊都必須是「使用者會看到的那個值」** —— 只換一邊等於沒換。
                 const upR = Math.round(up * 100) / 100;
-                if (upR <= c0 + 1e-9) return { loose: true };
+                const cR = Math.round(c0 * 100) / 100;      // ⚠️ 跟輸出的 `c` 用同一個式子
+                if (upR <= cR) return { loose: true };
                 return { trig: upR };
             };
 
@@ -184,7 +190,7 @@ for (const f of files) {
                 else out.push({ ...row, trig: t.trig, loose: 0 });   // ⚠️ trigOf 內已 round + 對齊跳動單位,⛔ 別在這裡再動
             }
             // ⚠️ 收盤價會帶浮點誤差(實跑出現 42.04999923706055)→ 一律 round 到 2 位
-            return { c: +c0.toFixed(2), v: Math.round(rows[last].volume / 1000), d: rows[last].date, out, fired };
+            return { c: Math.round(c0 * 100) / 100, v: Math.round(rows[last].volume / 1000), d: rows[last].date, out, fired };
         }, { rows, minN: MIN_N, cost: COST, near: NEAR });
     } catch (_) { continue; }
     if (!r) continue;

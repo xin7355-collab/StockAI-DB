@@ -89,9 +89,15 @@ ok('⑤a9 觸發價**無條件進位**到跳動單位(⛔ 四捨五入會低於�
    /Math\.ceil\(\(b2 - 1e-9\) \/ tickOf\(b2\)\) \* tickOf\(b2\)/.test(scan)
    && /const tickOf = v => v < 10 \? 0\.01/.test(scan));
 ok('⑤a10 進位後沒真的高於現價 → 當成無閘門(⛔「漲過 90.1」而現價 90.1 是零資訊)',
-   /if \(upR <= c0 \+ 1e-9\) return \{ loose: true \};/.test(scan));
+   /if \(upR <= cR\) return \{ loose: true \};/.test(scan));
 ok('⑤a11 ⭐ 守門要驗「將會被存下來的那個值」(⛔ 不可驗中間值 —— 浮點會漏)',
    /const upR = Math\.round\(up \* 100\) \/ 100;/.test(scan) && /return \{ trig: upR \};/.test(scan));
+// ⭐⭐ 第六輪才修對:上一版只把**一邊**換成顯示值(upR),另一邊 c0 還是原始浮點
+//   → 16.65 <= 16.6499996 是 false,守門放行,但畫面兩邊都印 16.65。
+ok('⑤a13 ⭐⭐ 比較的**兩邊**都要是顯示值(⛔ 只換一邊等於沒換)',
+   /const cR = Math\.round\(c0 \* 100\) \/ 100;/.test(scan) && /if \(upR <= cR\) return \{ loose: true \};/.test(scan));
+ok('⑤a14 輸出的現價與守門用的 cR 是同一個式子(⛔ toFixed 與 round 在 .005 邊界會不一致)',
+   /return \{ c: Math\.round\(c0 \* 100\) \/ 100, v:/.test(scan));
 ok('⑤a12 跳動單位看**進位後**那個價落在哪一檔(498→501 會跨檔)',
    /const tk = tickOf\(up\)/.test(scan));
 ok('⑤b 有樣本門檻', /x\.count >= minN/.test(scan));
