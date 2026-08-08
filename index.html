@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.9.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.9.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.2 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.3 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7153,8 +7153,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.9.2',
+    _APP_VERSION: 'V72.9.3',
     _CHANGELOG: [
+        { v: 'V72.9.3', dt: '2026-08-08', t: '🐛 修「叫你漲過一個比現價還低的數字」', d: [
+            '第二次全市場實跑又抓到 6 筆:算出來的觸發價比現價還低(例:現價 179,卻寫「漲過 168」)。意思其實是「照現在的價位就已經符合了」,但寫成「漲過 168」會被讀成「要等它跌回去再漲上來」——方向完全相反。',
+            '現在這種一律改成誠實說「沒有固定的觸發價 —— App 盤中會用即時價重算,真的成立才提醒你」,停損也改用現價當基準(原本會算成離現價 −11%)。',
+        ] },
         { v: 'V72.9.2', dt: '2026-08-08', t: '📐 修掉「僥倖股排最前面」的選股偏誤', d: [
             '第一次全市場實跑抓到:2,317 檔 × 22 招排「平均每趟最賺」取前面 → 前段班全被「只打過十幾次、剛好很賺」的僥倖佔滿(首名寫著每趟 +17.63%、賺賠比 12.63,但只打過 24 次)。',
             '改用「保守下界」= 平均每趟 − 1.28×波動÷√次數 —— 打過越少次罰得越重。修完首名變成每趟 +2.61%(保守 +1.14%)、打過 16 次,實在多了;候選檔數也從 509 檔收斂到合理範圍。',
@@ -37697,7 +37701,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <div class="text-[10px] text-gray-200 mt-1 leading-relaxed">
                 ${hasTrig
                     ? `📈 <b>漲過 ${trig.toLocaleString()}</b> 才進(離現價 +${(+x.up).toFixed(1)}%)`
-                    : `📈 <b>這招不是靠價位觸發</b> —— App 盤中會幫你重算,成立才提醒`}・🛑 停損 <b>${stop.toLocaleString()}</b><br>
+                    : `📈 <b>沒有固定的觸發價</b> —— 這招不是靠「漲過某個數字」成立,App 盤中會用即時價重算,真的成立才提醒你`}・🛑 停損 <b>${stop.toLocaleString()}</b><br>
                 ${lotLine}
             </div>
             <div class="font-mono text-[9px] text-gray-500 mt-0.5">勝率 ${x.w}%${this._wrTag ? this._wrTag(x.w, x.n, 0.364) : ''} ・賺賠比 ${x.po} ・打過 ${x.n} 次</div>

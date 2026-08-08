@@ -79,6 +79,10 @@ ok('⑤a3 ⛔ 排序也要用下界(只改門檻等於沒改)', /sort\(\(a, b\) 
 ok('⑤a4 _patternFitBacktest 有回 sd', /const sd = n > 1 \? Math\.sqrt/.test(src) && /expectancy: mean, sd,/.test(src));
 ok('⑤a5 前端顯示與排序也用下界', /const shown = Number\.isFinite\(\+x\.lb\)/.test(src) && (src.match(/const _lb = x => Number\.isFinite\(\+x\.lb\)/g) || []).length === 2);
 ok('⑤a6 沒有觸發價(loose)時⛔ 不可顯示「漲過 null」', /const hasTrig = x\.trig != null/.test(src) && /這招不是靠價位觸發/.test(src));
+ok('⑤a7 ⛔ 觸發價不可低於現價(算出來比現價低=已經符合,要當成無閘門)',
+   /if \(b2 <= c0\) return \{ loose: true \};/.test(scan));
+ok('⑤a8 loose 一律不給觸發價(⛔ 不可回一個假的價)',
+   !/return \{ trig: lo, loose: true \}/.test(scan) && /if \(firstHit === 0\) return \{ loose: true \}/.test(scan));
 ok('⑤b 有樣本門檻', /x\.count >= minN/.test(scan));
 ok('⑤c 用「這一檔自己」的成績(⛔ 不是全市場平均)', /_patternFitBacktest\(rows\)/.test(scan));
 ok('⑤d 有截斷就把總數寫進 JSON(no silent caps)', /picks_total/.test(scan) && /picks_cap/.test(scan));

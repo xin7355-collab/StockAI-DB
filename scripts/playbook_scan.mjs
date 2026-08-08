@@ -141,10 +141,15 @@ for (const f of files) {
                     if (fireAt(key, P)) { firstHit = k; break; }
                 }
                 if (firstHit < 0) return null;                       // 明天漲到上限也不會觸發
-                if (firstHit === 0) return { trig: lo, loose: true };  // 連跌 6% 都觸發 → 不是價格閘門
+                if (firstHit === 0) return { loose: true };            // 連跌 6% 都觸發 → 不是價格閘門
                 let a2 = lo + (hi - lo) * (firstHit - 1) / STEP;
                 let b2 = lo + (hi - lo) * firstHit / STEP;
                 for (let k = 0; k < 12; k++) { const m = (a2 + b2) / 2; if (fireAt(key, m)) b2 = m; else a2 = m; }
+                // 🚨 第二輪實跑又抓到 6 筆:算出來的觸發價**比現價還低**(例:現價 179 → 「漲過 168」)。
+                //   意思是「照現在的價位明天就已經符合了」,⛔ 但寫成「漲過 168」會被讀成
+                //   「要等它漲到 168」—— 方向完全相反,而且那個價已經過去了。
+                //   → 一律當成「沒有價格閘門」處理,顯示端改講「現在的價位就符合,盤中確認即可」。
+                if (b2 <= c0) return { loose: true };
                 return { trig: b2 };
             };
 
