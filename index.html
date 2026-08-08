@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.9.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.9.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.7 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.8 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1758,6 +1758,10 @@
                         <button data-period="3d"  onclick="app.renderChipGlobal('3d')"  class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-red-700 bg-red-900/40 text-red-300 transition-all shadow-[0_0_8px_rgba(220,38,38,0.3)]">3日</button>
                         <button data-period="5d"  onclick="app.renderChipGlobal('5d')"  class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">5日</button>
                         <button data-period="10d" onclick="app.renderChipGlobal('10d')" class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">10日</button>
+                        <!-- 📅 V72.9.8 使用者要求「分點增加日期,現在只有10日」→ 採礦端 CHIP_PERIODS_HOT 加了 20d。
+                             ⚠️ 熱門股才有(冷門股逐檔模式只抓 3 天)→ 沒資料時 renderChipGlobal 會誠實顯空狀態,⛔ 不留空白。
+                             ⏳ 第一次要等 daily_miner 跑完才會有(hist 需累積到 20 天,約 2 週後才完整)。 -->
+                        <button data-period="20d" onclick="app.renderChipGlobal('20d')" class="chip-g-btn flex-1 py-2 rounded text-sm font-bold border border-[#30363d] text-gray-400 transition-all hover:bg-[#30363d]">20日</button>
                     </div>
                 </div>
 
@@ -7153,8 +7157,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.9.7',
+    _APP_VERSION: 'V72.9.8',
     _CHANGELOG: [
+        { v: 'V72.9.8', dt: '2026-08-08', t: '📅 分點加到 20 日 + 開始存 ETF 經理人動向', d: [
+            '你說「籌碼分點只有 10 日,請增加日期」→ 分點歷史從 12 天加到 22 天,週期多了 20 日(1/3/5/10/20)。⭐ 之所以做得到,是因為分點有「一次抓全市場一天」的批次模式 —— 加深 10 天只是多 11 次 API 呼叫,不是多 2 萬次。',
+            '⚠️ 代價量過:檔案從 39MB 變約 53MB(GitHub 空間 388MB/1GB,可接受)。⛔ 刻意不推到 60 天 —— 那要多 140MB,而且你每開一次籌碼頁要多下載 3 倍。要更長的歷史走既有的「關鍵分點累計」,那個深度無上限。',
+            '⏳ 20 日那格要等兩週左右才會完整(每天累積一天);在那之前選到它會誠實顯示「這個週期還沒有資料」,⛔ 不會給你半截的數字。',
+            '🕵️ ETF 經理人動向開始存歷史:之前「今天加碼了誰」算完就丟,所以「跟著 ETF 買會不會賺」永遠驗不了。現在每天存起來,累積約 3 個月就能跑第一次回測。⛔ 前端還不會顯示 —— 沒驗證過的東西不上。',
+        ] },
         { v: 'V72.9.7', dt: '2026-08-08', t: '🧪 實測六種「提高勝率」的方法 —— 全部讓你賺更少', d: [
             '你問「有沒有把籌碼算進去、有沒有更好的策略」。誠實說:籌碼一個字都沒算(22 種打法全是純 K 線),而且現在加不了 —— 外資買賣超每檔只有中位 28 天有值、投信 203/291 檔完全沒有、分點只有 3 天,回測窗口卻是 486 天。等資料滿一年再測。',
             '改測三個資料夠的濾網,加上分散與嚴格樣本,共六種。⛔ 結果沒有一個賺更多:大盤月線 −12 萬、成交值≥1億 −31 萬、2招共振 −50 萬、分散6檔 −63 萬。',
@@ -23341,7 +23351,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         } catch (_) { return false; }
     },
 
-    // 券商分點頁週期切換(1/3/5/10日)
+    // 📅 V72.9.8 分點週期清單 —— ⛔ 全 App 只有這一份(原本 `_renderBrokerFenDian` 裡寫了兩次,
+    //   加 20d 時只改一邊的話,按鈕出得來但「哪些週期有資料」的判斷會漏掉它)。
+    //   ⚠️ 要跟採礦端 `miner.py::CHIP_PERIODS_HOT` 一致;冷門股只有 1d/3d,顯示端已有誠實空狀態。
+    _CHIP_FEN_PERIODS: ['1d', '3d', '5d', '10d', '20d'],
+
+    // 券商分點頁週期切換(1/3/5/10/20日)
     switchChipFenPeriod(period) {
         this._chipFenPeriod = period;
         this._renderBrokerFenDian(period);
@@ -23355,7 +23370,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._chipFenPeriod = period;
         const n = period.replace('d', '');
 
-        const perBtns = ['1d', '3d', '5d', '10d'].map(p => {
+        const perBtns = this._CHIP_FEN_PERIODS.map(p => {
             const on = p === period;
             return `<button onclick="app.switchChipFenPeriod('${p}'); app.vibrate(12);" class="flex-1 py-1.5 rounded text-[11px] font-bold border transition-all ${on ? 'border-amber-600 bg-amber-900/40 text-amber-300' : 'border-[#30363d] text-gray-400 hover:bg-[#30363d]'}">${p.replace('d', '')}日</button>`;
         }).join('');
@@ -23393,7 +23408,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const names = this._chipBrokerNames || {};
         // V68.9.8 冷門股(全市場滾動)只採 1/3 日分點 → 選了無資料的長週期時顯誠實提示,不顯空表
         const _hasPd = P[period] && (((P[period].buy || []).length) || ((P[period].sell || []).length));
-        const _availP = ['1d', '3d', '5d', '10d'].filter(k => P[k] && (((P[k].buy || []).length) || ((P[k].sell || []).length)));
+        const _availP = this._CHIP_FEN_PERIODS.filter(k => P[k] && (((P[k].buy || []).length) || ((P[k].sell || []).length)));
         if (!_hasPd && _availP.length) {
             const _al = _availP.map(a => a.replace('d', '')).join(' / ');
             box.innerHTML = switcher + `<div class="bg-[#161b22] border-l-4 border-gray-600 border-y border-r border-[#30363d] rounded-r p-3 mt-2">

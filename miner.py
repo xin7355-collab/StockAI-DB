@@ -3322,7 +3322,22 @@ def _fetch_twse_bsr(symbol: str, max_retries=4) -> dict:
 
 
 # ── 分點籌碼（混合雙擎：TWSE Sniper + TPEX FinMind）──────────────────────
-def _fetch_chips_bulk(dates, need_days=11, top_per_day=25, min_syms=200):
+# 📅 V72.9.8 分點歷史深度(使用者要求:「籌碼分點請增加日期,現在只有10日」)
+#   ⭐ 之所以做得到,是因為 V71.2.6 的「單日全市場批次」——省略 data_id 只給日期,
+#     一次呼叫拿回**該日全市場**所有分點 → 加深 N 天只是多 N 次呼叫,⛔ 不是 N×2,653 次。
+#   ⚠️ 代價有兩個,都量過:
+#     ① 檔案大小:實測 hist 每天每檔約 1.38 KB(2330),12→22 天 → chips 總量 39.2MB → 約 53MB
+#        (GitHub Pages 已用 388MB / 上限 1GB,可接受)。⛔ 別再往 60 天推 —— 那要 +140MB,
+#        而且前端每開一次個股籌碼頁就要多下載 3 倍(83KB → 250KB)。
+#     ② 時間:多 11 次批次呼叫,每次 timeout 180s。
+#   ⛔ 要更深的歷史一律走 `bstat`(V71.9.8 的增量聚合,深度無上限、體積固定)。
+CHIP_DAYS = int(os.getenv('CHIP_DAYS', '22'))          # 批次要抓幾個交易日(要 > 最大週期)
+CHIP_HIST_KEEP = int(os.getenv('CHIP_HIST_KEEP', '22'))  # 每檔 hist 保留幾天
+CHIP_PERIODS_HOT = (1, 3, 5, 10, 20)                   # 熱門股的彙總窗口(⚠️ 最大值要 <= CHIP_DAYS)
+CHIP_PERIODS_COLD = (1, 3)                             # 冷門股(逐檔模式只抓 3 天)
+
+
+def _fetch_chips_bulk(dates, need_days=CHIP_DAYS, top_per_day=25, min_syms=200):
     """🚀 V71.2.6 分點「單日全市場批次」——把全市場採礦從 1 萬次呼叫壓成 11 次。
 
     【為什麼要做】
@@ -3808,7 +3823,7 @@ def fetch_broker_chips():
     _bulk_idx = None
     if paid and os.getenv('CHIPS_BULK', '1') == '1':
         try:
-            _bulk_idx = _fetch_chips_bulk(_recent_finmind_dates(16), need_days=11)
+            _bulk_idx = _fetch_chips_bulk(_recent_finmind_dates(CHIP_DAYS * 3 // 2 + 10), need_days=CHIP_DAYS)
         except Exception as _e:
             print(f"  ⚠️ 分點全市場批次例外(退回逐檔):{str(_e)[:80]}")
             _bulk_idx = None
@@ -3915,7 +3930,7 @@ def fetch_broker_chips():
                 # 💰 V68.2.7 分點正解:專屬端點 taiwan_stock_trading_daily_report(單日 date + Bearer)。
                 #   逐日往回累積 ~11 個交易日(供 1/3/5/10 週期),含上櫃/冷門股如中美晶 5483。
                 # V68.9.8 分層深度:熱門 11 交易日(1/3/5/10 週期);冷門 3 交易日(1/3 週期)控管額度
-                _need_days = 11 if _is_hot else 3
+                _need_days = CHIP_DAYS if _is_hot else 3
                 _lookback = 16 if _is_hot else 6
                 seen_dates: set = set()
                 # 🚀 V71.2.9【增量採礦】只補「本地還沒有的日期」——這是 1 把付費金鑰下當天採完的唯一解。
@@ -4046,8 +4061,9 @@ def fetch_broker_chips():
                         buy_top  = sorted([x for x in vals if x['net'] > 0], key=lambda x: -x['net'])[:15]
                         sell_top = sorted([x for x in vals if x['net'] < 0], key=lambda x:  x['net'])[:15]
                         return {'buy': buy_top, 'sell': sell_top}
-                    # V68.9.8 熱門股完整 1/3/5/10 週期;冷門股只抓 3 日 → 只給 1/3d(5/10d 前端顯「熱門股才有」)
-                    periods = {f'{n}d': _agg_period(n) for n in ((1, 3, 5, 10) if _is_hot else (1, 3))}
+                    # V68.9.8 熱門股完整週期;冷門股只抓 3 日 → 只給 1/3d(其餘前端顯「熱門股才有」)
+                    # 📅 V72.9.8 熱門股加到 20d(使用者要求),窗口清單見檔頭 CHIP_PERIODS_HOT
+                    periods = {f'{n}d': _agg_period(n) for n in (CHIP_PERIODS_HOT if _is_hot else CHIP_PERIODS_COLD)}
                     # Sniper 已拿到今日真分點時不被 FinMind 覆蓋(Sniper=官方 TWSE 較準);
                     # 否則用 FinMind 當日資料
                     if not sniper_data:
@@ -4197,7 +4213,7 @@ def fetch_broker_chips():
         output = {
             'fundamentals': fundamentals,
             'data_date': recent_dates[-1] if recent_dates else None,  # 最新可用交易日
-            'periods': out_periods,   # 多週期：熱門{1d,3d,5d,10d} / 冷門{1d,3d}，各含 buy/sell（broker_name）
+            'periods': out_periods,   # 多週期：熱門{1d,3d,5d,10d,20d} / 冷門{1d,3d}，各含 buy/sell（broker_name）
             'chips': [records_map[d] for d in recent_dates],
             'data_completeness': data_completeness,
             'tier': 'hot' if _is_hot else 'cold',   # V68.9.8 分層標記(冷門股週期較淺,前端據此顯示)
@@ -4240,7 +4256,8 @@ def fetch_broker_chips():
                     _hist[-1] = _snap        # 同一交易日重跑 → 覆蓋,不重複
                 else:
                     _hist.append(_snap)
-                _hist = _hist[-12:]          # 🚀 V71.2.9 10 → 12:10 日週期要算得完整,得多留 2 天緩衝
+                # 🚀 V71.2.9 10→12;📅 V72.9.8 12→CHIP_HIST_KEEP(22):20 日週期要算得完整,得多留緩衝
+                _hist = _hist[-CHIP_HIST_KEEP:]
             if _hist:
                 output['hist'] = _hist
 

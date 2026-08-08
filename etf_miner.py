@@ -709,6 +709,30 @@ def main():
     # 預設按持股變化排序(降序),前端可二次排
     consensus_stocks.sort(key=lambda x: x["shares_delta"], reverse=True)
 
+    # 🕵️ V72.9.8 「經理人動向」歷史 —— ⛔ 這是**現在不存、以後永遠沒有**的那種資料。
+    #   使用者問「ETF 跟單策略有沒有用」→ 查下來發現:`shares_delta` 是「今天 vs 上一版快照」的差,
+    #   算完就丟,`etf_tracking.json` 的 `hist` 存的是規模/折溢價**不是持股變動**
+    #   → 「經理人加碼 → 跟著買會不會賺」這個問題**完全沒有歷史可以回測**。
+    #   ⭐ 而且主動式 ETF 2025/05 才上市 → 過去也回算不出來(PCF 每日公布但我們沒存過)。
+    #   → 從今天開始存,滾動 250 個交易日;累積約 3 個月就可以跑第一次探針。
+    #   ⚠️ 體積:只存有動作的股票 [代號, 張數變化],實測 54 檔 × 250 日 ≈ 300 KB,可接受。
+    #   ⛔ 只存**變化**不存 total_shares(那個每天都在、可以從當日 consensus_stocks 讀)。
+    try:
+        _mh = prev.get("mgr_hist")
+        if not isinstance(_mh, list):
+            _mh = []
+        _mh = [r for r in _mh if isinstance(r, dict) and r.get("d") != today]   # 同日重跑覆蓋
+        _mv = [[c["sym"], int(c["shares_delta"])] for c in consensus_stocks
+               if int(c.get("shares_delta") or 0) != 0]
+        if _mv:
+            _mh.append({"d": today, "v": _mv})
+        _mh.sort(key=lambda r: r.get("d") or "")
+        out_mgr_hist = _mh[-250:]
+        print(f"  🕵️ 經理人動向歷史:今日 {len(_mv)} 檔有異動 ・累計 {len(out_mgr_hist)} 個交易日")
+    except Exception as _me:
+        out_mgr_hist = prev.get("mgr_hist") if isinstance(prev.get("mgr_hist"), list) else []
+        print(f"  ⚠️ 經理人動向歷史累積失敗(保留舊值): {_me}")
+
     # 🪙 V34.1 — 折溢價(best-effort TWSE;抓不到自動略過,前端 graceful)
     try:
         premiums = fetch_etf_premium()
@@ -780,6 +804,8 @@ def main():
                 key=lambda x: -x["count"]),
         },
         "consensus_stocks": consensus_stocks[:200],   # V17.15 — 前 200 檔給前端
+        # 🕵️ V72.9.8 經理人動向歷史(滾動 250 個交易日)——⛔ 給未來的回測用,前端目前不讀
+        "mgr_hist": out_mgr_hist,
         "benchmarks": [
             {"symbol": b, "name": etf_name(b), "perf": perf_with_tr(b, load_prices(b)),
              "fill": dividend_fill_metrics(b),   # 🆕 缺口3:填息力(高息 ETF 硬指標)
