@@ -40,6 +40,7 @@ const WARMUP = 240;          // 暖身:前 N 個交易日只累積成績、不�
 const MIN_N = +(process.env.MIN_N || 4);   // **這一檔**在**這個型態**打過幾次才准用
 const MIN_MKT_N = 20;                       // 全市場該型態的最低樣本(第二層門檻)
 const ENTRY = process.env.ENTRY || 'close';   // close | nextopen | nextclose(見 page.evaluate 內註解)
+const GAPCAP = +(process.env.GAPCAP || 1);   // nextopen_lim:跳空開高超過幾 % 就不追
 const COST = 0.44;           // 來回交易成本 %(手續費 0.1425%×2 + 證交稅 0.3%,未打折)
 const LOT = +(process.env.LOT || 100000);        // 每筆投入(等權)
 const CAPITAL = +(process.env.CAPITAL || 1000000); // 💰 你手上的總本金 —— 錢用完就買不了(這才貼近現實)
@@ -66,7 +67,7 @@ const syms = [];
 const cover = {};
 for (const s of syms) cover[s[0]] = (cover[s[0]] || 0) + 1;
 console.log(`💼 組合回測 ・${syms.length} 檔(分層抽樣,代號開頭分布 ${JSON.stringify(cover)})`);
-console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・進場=${ENTRY}\n`);
+console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・進場=${ENTRY}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
 
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -109,11 +110,16 @@ for (const sym of syms) {
                     //   close    = 訊號當天收盤買(回測慣例,但**現實中你收盤前不知道訊號會成立**)
                     //   nextopen = 隔天開盤買(⭐ 這才是「每晚推薦 → 隔天買」真正會發生的事)
                     //   nextclose= 隔天收盤買(等一天看穩再買)
+                    //   nextopen_lim = 隔天開盤買,**但跳空開高超過 GAPCAP% 就不追**(限價單)
                     const eIdx = a.entry === 'close' ? i : i + 1;
                     if (eIdx > last) { i++; continue; }
-                    const entry = a.entry === 'nextopen' ? (O(eIdx) > 0 ? O(eIdx) : C(eIdx))
-                                : a.entry === 'nextclose' ? C(eIdx)
-                                : C(i);
+                    let entry = a.entry === 'nextopen' ? (O(eIdx) > 0 ? O(eIdx) : C(eIdx))
+                              : a.entry === 'nextclose' ? C(eIdx)
+                              : a.entry === 'nextopen_lim' ? (O(eIdx) > 0 ? O(eIdx) : C(eIdx))
+                              : C(i);
+                    // ⛔ 跳空開太高就整筆放棄(= 現實中掛限價單沒成交),⛔ 不可改成「用限價成交」
+                    //   那等於假設你買到一個當天沒出現的價格
+                    if (a.entry === 'nextopen_lim' && entry > C(i) * (1 + a.gapCap / 100)) { i++; continue; }
                     if (entry > 0) {
                         // ⚠️ 停損基準跟著進場點走 —— ⛔ 不可沿用「訊號當天低點」配「隔天開盤價」
                         //   (跳空開高時那個停損會變成 -10% 以上,等於偷偷放寬風險)
@@ -138,7 +144,7 @@ for (const sym of syms) {
             }
         }
         return out;
-    }, { rows, entry: ENTRY });
+    }, { rows, entry: ENTRY, gapCap: GAPCAP });
     for (const t of tr) allTrades.push({ ...t, sym });
     if (++done % 50 === 0) {
         const el = (Date.now() - t0) / 1000;
