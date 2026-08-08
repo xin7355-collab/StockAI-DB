@@ -170,6 +170,37 @@ ok('⑧h 讀取走 _lsJson(壞值自動清掉)', /this\._lsJson\(this\._PB_TRADE
 ok('⑧i 一筆都沒有 → 整塊不顯示(不留空殼)', /if \(!rows\.length\) return '';/.test(trk));
 ok('⑧j 觸發時有記一筆待確認', /this\._pbRecordFire\(sym, x\.k, chk\.price, chk\.stop, x\)/.test(src));
 
+
+console.log('⑨ 自動/半自動交易(V72.9.9)');
+ok('⑨a 條件單複製一定要講「尾盤 vs 觸價」的時點落差(⛔ 不可省略)',
+   /_copyCondOrder/.test(src) && /回測是「尾盤買」算的;條件單是「觸價就買」/.test(src));
+ok('⑨b 沒有固定觸發價的不給條件單(⛔ 不可硬編一個價)',
+   /x\.trig == null\) \{ alert\('這一檔沒有固定的觸發價/.test(src));
+ok('⑨c 實盤記錄一定要問「實際成交價」(⛔ 拿觸發價充當會把滑價藏起來)',
+   /你實際成交在多少\?/.test(src) && /all\[i\]\.slip = /.test(src));
+ok('⑨d 出場也要問實際賣價,金額走共用 _netPL', /你實際賣在多少\?/.test(src) && /this\._netPL\(base, v, 1000\)/.test(src));
+ok('⑨e 樣本不足⛔ 不下結論', /還不能下任何結論/.test(src) && /_wrEnough/.test(src));
+ok('⑨f 沒有實盤紀錄 → 整塊不顯示(不留空殼)', /_pbScoreHtml\(\) \{[\s\S]{0,400}?if \(!done\.length\) return '';/.test(src));
+
+// 🔐 最重要的一條:下單程式絕不可進 CI
+const at = fs.existsSync(path.join(ROOT, 'auto_trade.py')) ? fs.readFileSync(path.join(ROOT, 'auto_trade.py'), 'utf8') : '';
+ok('⑨g auto_trade.py 存在', at.length > 2000);
+ok('⑨h ⛔ 預設是模擬模式(要真下單必須明確設 LIVE=1)', /LIVE = os\.getenv\('LIVE'\) == '1'/.test(at) && /simulation=not LIVE/.test(at));
+ok('⑨i 憑證只走環境變數(⛔ 不可寫進檔案)', /os\.getenv\('SJ_CA_PATH'\)/.test(at) && !/\.pfx['"]\s*$/m.test(at));
+ok('⑨j 有單筆張數與金額硬上限', /MAX_LOTS_PER_TRADE/.test(at) && /MAX_AMT_PER_TRADE/.test(at));
+ok('⑨k 時窗鎖在尾盤(⛔ 不可整天跑)', /EOD_FROM/.test(at) && /if mins > EOD_TO/.test(at));
+ok('⑨l 沒有觸發價的一律跳過(⛔ 不可用「差不多的條件」代替)', /本機跳過,請看 App 提醒/.test(at));
+ok('⑨m 送出後立刻記狀態(寧可漏一次也不重複下單)', /st\['done'\]\.append\(sym\); save_state\(st\)/.test(at));
+{
+  const wf = fs.readdirSync(path.join(ROOT, '.github/workflows'));
+  const hit = wf.filter(f => /\.ya?ml$/.test(f) &&
+      /auto_trade\.py|SJ_CA_PASSWD|SJ_PERSON_ID/.test(fs.readFileSync(path.join(ROOT, '.github/workflows', f), 'utf8')));
+  ok('⑨n 🔐 ⛔ 下單程式/憑證機密沒有出現在任何 workflow(repo 是 public)', hit.length === 0, hit.join(','));
+}
+const cwp = fs.readFileSync(path.join(ROOT, 'scripts/check_workflow_paths.py'), 'utf8');
+ok('⑨o 這條規則有納入 push 前四驗證(⛔ 光靠人記會忘)',
+   /def check_no_trading_in_ci/.test(cwp) && /ok = check_no_trading_in_ci\(\) and ok/.test(cwp));
+
 await browser.close();
 console.log(`\n${fail ? '❌' : '✅'} ${pass} 通過 / ${fail} 失敗`);
 process.exit(fail ? 1 : 0);

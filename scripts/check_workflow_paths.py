@@ -174,8 +174,48 @@ def check_script_secrets():
     return True
 
 
+# 🔐 V72.9.9 下單程式**絕不可**進 workflow ——————————————————————————————
+#   本 repo 是 **public**;GitHub Actions 的 log/artifact 有外洩風險,而且任何能改
+#   workflow 的人都能把 Secrets 印出來。而下單需要「電子憑證 .pfx + 密碼 + 身分證字號」,
+#   那等於「代表本人動錢」,外洩 = 別人可以拿這個帳戶下單。
+#   ⭐ 分界:**行情可以在雲端跑,下單只能在自己的電腦跑。**
+#   ⛔ 這是純粹靠人記不住的那種規則 → 寫成守門,納入 push 前四驗證。
+NEVER_IN_CI = ('auto_trade.py',)
+
+
+def check_no_trading_in_ci():
+    bad = []
+    for f in sorted(WF_DIR.glob('*.yml')) + sorted(WF_DIR.glob('*.yaml')):
+        try:
+            txt = f.read_text(encoding='utf-8')
+        except Exception:
+            continue
+        for name in NEVER_IN_CI:
+            if name in txt:
+                bad.append((f.name, name))
+    # 順便擋「憑證類機密被塞進 workflow」
+    CA_SECRETS = ('SJ_CA_PATH', 'SJ_CA_PASSWD', 'SJ_PERSON_ID', 'CA_PASSWD', 'PERSON_ID')
+    for f in sorted(WF_DIR.glob('*.yml')) + sorted(WF_DIR.glob('*.yaml')):
+        try:
+            txt = f.read_text(encoding='utf-8')
+        except Exception:
+            continue
+        for sec in CA_SECRETS:
+            if sec in txt:
+                bad.append((f.name, sec))
+    if bad:
+        print('❌ 🔐 下單程式/憑證機密出現在 workflow 裡(repo 是 public,這會外洩下單權限):')
+        for wfn, name in bad:
+            print(f'   • {wfn} 提到 {name}')
+        print('   → 下單一律只能在自己的電腦跑;⛔ 不要為了「方便」把它接進 CI。')
+        return False
+    print('✅ 沒有下單程式/憑證機密進入 workflow(行情在雲端、下單在本機)')
+    return True
+
+
 if __name__ == '__main__':
     ok = check_inline_comments()
     ok = check_outputs_uploaded() and ok
     ok = check_script_secrets() and ok
+    ok = check_no_trading_in_ci() and ok
     sys.exit(0 if ok else 1)

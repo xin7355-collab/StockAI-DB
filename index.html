@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.9.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.9.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.8 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.9 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7157,8 +7157,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.9.8',
+    _APP_VERSION: 'V72.9.9',
     _CHANGELOG: [
+        { v: 'V72.9.9', dt: '2026-08-08', t: '🤖 半自動交易三件套(條件單複製 / 實盤記錄 / 本機下單)', d: [
+            '📋 每一列多一顆「條件單」鈕:一次複製代號、觸發價、停損價、幾張、最多虧多少元,貼進永豐 App 的智慧單照著填。⚠️ 上面一定會寫「回測是尾盤買、條件單是觸價就買」的時點落差 —— 能設 13:00 後才觸發最好。',
+            '📒 標記「我買了」時會問你**實際成交在多少**(⛔ 不拿我算的價充數,那會把滑價藏起來),出場時問實際賣價。累積後直接顯示「你的勝率/每趟 vs 回測說的」+ 平均滑價。⏳ 不滿 10 筆一律不下結論。',
+            '🤖 新增 auto_trade.py:只在**你自己的電腦**跑的尾盤自動下單(永豐 Shioaji),⛔ 預設模擬模式,要真下單必須明確開 LIVE=1,而且有單筆張數與金額硬上限。',
+            '🔐 下單程式與憑證機密**絕不可進 GitHub**(這個 repo 是公開的)—— 已經寫成守門納入每次 push 前的檢查,而且用「故意塞進去」驗證過它真的擋得住。',
+        ] },
         { v: 'V72.9.8', dt: '2026-08-08', t: '📅 分點加到 20 日 + 開始存 ETF 經理人動向', d: [
             '你說「籌碼分點只有 10 日,請增加日期」→ 分點歷史從 12 天加到 22 天,週期多了 20 日(1/3/5/10/20)。⭐ 之所以做得到,是因為分點有「一次抓全市場一天」的批次模式 —— 加深 10 天只是多 11 次 API 呼叫,不是多 2 萬次。',
             '⚠️ 代價量過:檔案從 39MB 變約 53MB(GitHub 空間 388MB/1GB,可接受)。⛔ 刻意不推到 60 天 —— 那要多 140MB,而且你每開一次籌碼頁要多下載 3 倍。要更長的歷史走既有的「關鍵分點累計」,那個深度無上限。',
@@ -37737,8 +37743,42 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     : `📈 <b>沒有固定的觸發價</b> —— 這招不是靠「漲過某個數字」成立,App 盤中會用即時價重算,真的成立才提醒你`}・🛑 停損 <b>${stop.toLocaleString()}</b><br>
                 ${lotLine}
             </div>
-            <div class="font-mono text-[9px] text-gray-500 mt-0.5">勝率 ${x.w}%${this._wrTag ? this._wrTag(x.w, x.n, 0.364) : ''} ・賺賠比 ${x.po} ・打過 ${x.n} 次</div>
+            <div class="flex items-center justify-between gap-2 mt-1">
+                <span class="font-mono text-[9px] text-gray-500 truncate">勝率 ${x.w}%${this._wrTag ? this._wrTag(x.w, x.n, 0.364) : ''} ・賺賠比 ${x.po} ・打過 ${x.n} 次</span>
+                ${hasTrig ? `<button onclick="event.stopPropagation();app._copyCondOrder('${x.s}')" class="text-[9px] text-cyan-300 border border-cyan-700/50 rounded px-1.5 py-0.5 flex-shrink-0 hover:bg-cyan-900/30">📋 條件單</button>` : ''}
+            </div>
         </div>`;
+    },
+
+    // 📋 V72.9.9 條件單一鍵複製 —— 使用者用**永豐金證券**,App 內有「智慧單/觸價委託」。
+    //   ⭐ 這是三個自動化層級裡**最安全**的一個:完全不碰下單權限、不碰憑證,
+    //     只是把清單上的數字排版好讓你照著填。
+    //   ⚠️⚠️ **必須講的時點落差**(⛔ 不可省略):
+    //     回測 +1,361,088 元 是「**訊號日尾盤**買」算出來的;
+    //     條件單是「**觸價就買**」,可能早上 09:30 就成交 —— **那個時點我沒有測過**。
+    //     實測相關數字:隔天開盤買只剩 +818,734 元(還輸 0050)→ 進場時點影響非常大。
+    //     → 永豐智慧單若能設「限定 13:00 之後才觸發」就設上去;不能的話這是已知落差。
+    _copyCondOrder(sym) {
+        const j = this._pbEdge || {};
+        const x = (j.picks || []).find(p => String(p.s) === String(sym));
+        if (!x || x.trig == null) { alert('這一檔沒有固定的觸發價(這招不是靠價位成立)→ 不適合掛條件單,請等 App 盤中提醒。'); return; }
+        const nm = this.getStockName ? (this.getStockName(sym) || '') : '';
+        const ps = this._lotsForRisk(+x.trig, +x.stop);
+        const lots = ps.acc > 0 ? ps.lots : null;
+        const txt = [
+            `【明日條件單】${sym} ${nm !== sym ? nm : ''}`.trim(),
+            `觸發:成交價 ≥ ${x.trig}`,
+            `買進:${x.trig} 元` + (lots ? ` × ${lots} 張(約 ${Math.round(ps.investAmt).toLocaleString()} 元)` : '(張數請先到設定填帳戶總資金)'),
+            `停損:跌破 ${x.stop} 出場` + (lots ? `(最多虧 ${ps.maxLoss.toLocaleString()} 元)` : ''),
+            `打法:${x.k}(保守每趟 +${x.lb}%・勝率 ${x.w}%・打過 ${x.n} 次)`,
+            `⚠️ 回測是「尾盤買」算的;條件單是「觸價就買」,時點不同。能設 13:00 後才觸發最好。`,
+        ].join('\n');
+        const done = () => alert('✅ 已複製,貼到永豐 App 的「智慧單 / 觸價委託」照著填:\n\n' + txt);
+        try {
+            if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(txt).then(done).catch(() => done()); return; }
+        } catch (_) { }
+        // ⚠️ 舊 Safari / 非 https 沒有 clipboard API → 直接把文字顯出來讓使用者自己選取
+        done();
     },
 
     async _tomorrowWatchHtml() {
@@ -37989,20 +38029,68 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                    w: stat?.w, po: stat?.po, exp: stat?.exp, n: stat?.n, took: null });
         this._pbSaveTrades(all);
     },
+    // 📒 V72.9.9 實盤成績記錄 —— ⭐ 這是三件事裡最重要的「打地基」。
+    //   ⛔ 沒有這個,以後永遠不知道「回測說的」跟「我真的賺到的」差多少,
+    //     也就永遠不敢把它自動化(而回測 ≠ 實盤:滑價、漲停買不到、量太小掛不進去)。
+    //   ⚠️ 實際成交價**一定要問**,⛔ 不可拿觸發價當成交價 —— 那正好會把滑價藏起來,
+    //     讓實盤看起來跟回測一樣好,那這份紀錄就失去意義了。
     _pbMark(i, took) {
         const all = this._pbTrades();
         if (!all[i]) return;
         all[i].took = !!took;
-        if (!took) all[i].done = '沒進場';
+        if (!took) { all[i].done = '沒進場'; }
+        else {
+            const d = prompt(`你實際成交在多少?(不是我算的 ${all[i].e},是你真的買到的價)\n\n⚠️ 這個數字很重要 —— 有它才知道「滑價」吃掉多少,以後才敢談自動下單。`, String(all[i].e));
+            const v = parseFloat(String(d || '').replace(/[^0-9.]/g, ''));
+            if (v > 0) { all[i].fill = +v.toFixed(2); all[i].slip = +((v - all[i].e) / all[i].e * 100).toFixed(2); }
+        }
         this._pbSaveTrades(all);
         this._renderTodaySignalView().catch(() => { });
     },
     _pbClose(i, why) {
         const all = this._pbTrades();
         if (!all[i]) return;
-        all[i].done = why || '已出場';
+        const t = all[i];
+        const d = prompt(`你實際賣在多少?\n\n(進場 ${t.fill || t.e} ・當初設的停損 ${t.sl})`, '');
+        const v = parseFloat(String(d || '').replace(/[^0-9.]/g, ''));
+        if (v > 0) {
+            t.out = +v.toFixed(2);
+            const base = t.fill || t.e;
+            t.pl = Math.round(this._netPL ? this._netPL(base, v, 1000) : (v - base) * 1000);   // 一張的淨損益(已扣費稅)
+            t.retPct = +((v - base) / base * 100).toFixed(2);
+        }
+        t.done = why || '已出場';
+        t.outD = this._tpeMinutes().ymd;
         this._pbSaveTrades(all);
         this._renderTodaySignalView().catch(() => { });
+    },
+
+    // 📊 我實際的成績 vs 回測說的(⛔ 只在真的有記錄時才顯示,不留空殼)
+    _pbScoreHtml() {
+        const done = this._pbTrades().filter(t => t.took === true && t.done && Number.isFinite(+t.retPct));
+        if (!done.length) return '';
+        const n = done.length;
+        const win = done.filter(t => +t.pl > 0).length;
+        const sumPL = done.reduce((a, t) => a + (+t.pl || 0), 0);
+        const avgRet = done.reduce((a, t) => a + (+t.retPct || 0), 0) / n;
+        const slips = done.filter(t => Number.isFinite(+t.slip));
+        const avgSlip = slips.length ? slips.reduce((a, t) => a + +t.slip, 0) / slips.length : null;
+        // ⚠️ 回測基準:勝率 33.2%、每趟 +1.96%(600 檔・13 個月・已扣成本)
+        const cmp = (a, b) => a > b ? 'text-red-300' : (a < b ? 'text-gray-400' : 'text-gray-300');
+        // 🎲 樣本不足一律不下結論(⛔ 10 筆以下說「比回測好」毫無意義)
+        const enough = this._wrEnough ? this._wrEnough(n) : n >= 10;
+        return `<div class="mb-2.5 bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
+            <div class="text-[12px] font-black text-gray-100 mb-1">📒 你自己的實盤成績(${n} 筆)</div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div><div class="text-[9px] text-gray-500">勝率</div><div class="font-mono font-black text-[15px] ${cmp(win / n * 100, 33.2)}">${(win / n * 100).toFixed(0)}%</div><div class="text-[9px] text-gray-600">回測 33.2%</div></div>
+                <div><div class="text-[9px] text-gray-500">每趟平均</div><div class="font-mono font-black text-[15px] ${cmp(avgRet, 1.96)}">${avgRet >= 0 ? '+' : ''}${avgRet.toFixed(2)}%</div><div class="text-[9px] text-gray-600">回測 +1.96%</div></div>
+                <div><div class="text-[9px] text-gray-500">累積(每張)</div><div class="font-mono font-black text-[15px] ${sumPL >= 0 ? 'text-red-300' : 'text-green-300'}">${sumPL >= 0 ? '+' : ''}${sumPL.toLocaleString()}</div><div class="text-[9px] text-gray-600">元・已扣費稅</div></div>
+            </div>
+            ${avgSlip != null ? `<div class="text-[10px] text-gray-400 mt-1.5 leading-snug">📉 <b>平均滑價 ${avgSlip >= 0 ? '+' : ''}${avgSlip.toFixed(2)}%</b> —— 你實際買到的價比 App 算的${avgSlip > 0 ? '貴' : '便宜'}。<span class="text-gray-600">回測沒有算滑價,所以實盤本來就會比回測差一點。</span></div>` : ''}
+            <div class="text-[10px] ${enough ? 'text-gray-400' : 'text-yellow-200'} mt-1.5 leading-snug">${enough
+                ? '⭐ 樣本夠了,可以開始比較。差很多的話先找原因(是滑價?還是沒守紀律?),⛔ 別急著改策略。'
+                : `⏳ 才 ${n} 筆,<b>還不能下任何結論</b>(至少要 10 筆)。勝率只有三成,前幾筆連錯是正常的。`}</div>
+        </div>`;
     },
 
     // 🚪 出場守望:⛔ **不限量、不去重成一天一次** —— 停損到了要一直講到你處理掉
@@ -38130,7 +38218,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 🎯 V72.9.0 明日作戰清單放**最上面** —— 它是「還來得及動作」的那一份;
         //   下面的今日訊號是收盤後才產出的(已經來不及買),兩份問的問題不同,⛔ 別合併。
         //   📌 追蹤中的部位排在**最上面** —— 手上的事永遠比找新標的重要(單一劇本原則)
-        const pbHtml = (this._pbTrackHtml() || '') + (await this._tomorrowWatchHtml().catch(() => ''));
+        const pbHtml = (this._pbScoreHtml() || '') + (this._pbTrackHtml() || '') + (await this._tomorrowWatchHtml().catch(() => ''));
         if (!list.length) {
             // ⛔ 這裡是**分頁**不是常駐條 → 使用者是主動點進來的,不能空白(陷阱 #4:silent return)
             //   ⚠️ 但明日清單若有資料仍要顯示 —— 兩份是不同資料來源,⛔ 不可因為今日訊號沒有就一起藏掉
