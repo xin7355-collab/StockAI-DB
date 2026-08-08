@@ -57,6 +57,10 @@ const CONF = +(process.env.CONF || 2);     // 共振:同一天同一檔至少幾
 //   ⚠️ 出場一改,**排序用的 per-stock 成績也跟著改**(同一批交易算出來的)→ 是一整套的替換,前後可比。
 const EXIT = process.env.EXIT || 'ma5';
 const MAXD = +(process.env.MAXD || 20);    // 最長持有幾個交易日
+// 🛑 V72.9.9 停損距離實驗 —— ⭐ 這是整套裡**最沒根據**的一個參數:
+//   現行 `min(訊號日最低, 進場×0.95)` 的 −5% 是當初拍腦袋定的,從來沒驗過。
+//   lo5(現行) | pct3 | pct8 | pct10 | atr2(2倍ATR) | lo(只用訊號日最低,不設 % 底)
+const STOP = process.env.STOP || 'lo5';
 const GAPCAP = +(process.env.GAPCAP || 1);   // nextopen_lim:跳空開高超過幾 % 就不追
 const COST = 0.44;           // 來回交易成本 %(手續費 0.1425%×2 + 證交稅 0.3%,未打折)
 const LOT = +(process.env.LOT || 100000);        // 每筆投入(等權)
@@ -84,7 +88,7 @@ const syms = [];
 const cover = {};
 for (const s of syms) cover[s[0]] = (cover[s[0]] || 0) + 1;
 console.log(`💼 組合回測 ・${syms.length} 檔(分層抽樣,代號開頭分布 ${JSON.stringify(cover)})`);
-console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・出場=${EXIT}/${MAXD}日 ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
+console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・停損=${STOP} ・出場=${EXIT}/${MAXD}日 ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
 
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -140,7 +144,21 @@ for (const sym of syms) {
                     if (entry > 0) {
                         // ⚠️ 停損基準跟著進場點走 —— ⛔ 不可沿用「訊號當天低點」配「隔天開盤價」
                         //   (跳空開高時那個停損會變成 -10% 以上,等於偷偷放寬風險)
-                        const stop = Math.min(L(eIdx), entry * 0.95);
+                        // 🛑 停損:⛔ 一律「進場價」為基準(⛔ 不可用訊號日的低點配隔天的進場價)
+                        let stop;
+                        if (a.stop === 'lo') stop = L(eIdx);
+                        else if (/^pct(\d+)$/.test(a.stop)) stop = entry * (1 - +RegExp.$1 / 100);
+                        else if (a.stop === 'atr2') {
+                            // ATR(14):真實波幅均值 × 2(⚠️ 只用 eIdx 之前的資料,零前視)
+                            let tr = 0, k = 0;
+                            for (let q = Math.max(1, eIdx - 13); q <= eIdx; q++) {
+                                const h = data[q].high, l = data[q].low, pc = C(q - 1);
+                                tr += Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)); k++;
+                            }
+                            const atr = k ? tr / k : 0;
+                            stop = atr > 0 ? entry - 2 * atr : entry * 0.95;
+                        } else stop = Math.min(L(eIdx), entry * 0.95);   // lo5 = 現行
+                        if (!(stop > 0) || stop >= entry) stop = entry * 0.95;   // 守門:算壞就退回現行
                         let exitP = C(last), exitIdx = last;
                         const endJ = Math.min(last, eIdx + a.maxD);
                         const maN = a.exit === 'ma10' ? 10 : a.exit === 'ma20' ? 20 : a.exit === 'ma5' ? 5 : 0;
@@ -171,7 +189,7 @@ for (const sym of syms) {
             }
         }
         return out;
-    }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD });
+    }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP });
     for (const t of tr) allTrades.push({ ...t, sym });
     if (++done % 50 === 0) {
         const el = (Date.now() - t0) / 1000;
