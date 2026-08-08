@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.9.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.9.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.6 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.7 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7153,8 +7153,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.9.6',
+    _APP_VERSION: 'V72.9.7',
     _CHANGELOG: [
+        { v: 'V72.9.7', dt: '2026-08-08', t: '🧪 實測六種「提高勝率」的方法 —— 全部讓你賺更少', d: [
+            '你問「有沒有把籌碼算進去、有沒有更好的策略」。誠實說:籌碼一個字都沒算(22 種打法全是純 K 線),而且現在加不了 —— 外資買賣超每檔只有中位 28 天有值、投信 203/291 檔完全沒有、分點只有 3 天,回測窗口卻是 486 天。等資料滿一年再測。',
+            '改測三個資料夠的濾網,加上分散與嚴格樣本,共六種。⛔ 結果沒有一個賺更多:大盤月線 −12 萬、成交值≥1億 −31 萬、2招共振 −50 萬、分散6檔 −63 萬。',
+            '⭐ 最該記住的一行:「只做成交值 1 億以上」讓勝率從 33.2% 升到 36.6%,卻少賺 307,528 元、回撤還從 −9.4% 惡化到 −16.6% —— 因為跑最遠的那幾檔正好都是被濾掉的小型股。勝率是「對幾次」,錢是「對的時候賺多少」,這兩件事常常反方向。',
+            '⭐ 唯一值得給你選的是「大盤月線」:少賺 12 萬,但中途最難熬的時候從 −9.4% 減到 −6.6%、每趟品質從 +1.96% 升到 +2.36%。⛔ 我沒有自動幫你濾掉 —— 清單上會直接標「今天大盤在月線之下」+ 這組數字,你自己決定要不要休息。',
+        ] },
         { v: 'V72.9.6', dt: '2026-08-08', t: '🔬 同一個道理只修了一半 —— 這次兩邊都修', d: [
             '第五輪還是漏掉同一筆(4716「現價 16.65 → 漲過 16.65」)。上一版把「觸發價」換成了四捨五入後的顯示值,但拿去比的「現價」還是原始浮點 16.649999618530273 → 16.65 ≤ 16.6499996 是不成立的,守門就放行了;可是畫面上那兩個數字印出來都是 16.65。',
             '⭐ 比較的**兩邊**都必須是「你會看到的那個數字」—— 只換一邊等於沒換。已用實際出問題的那個浮點數驗證過:舊寫法三種情況全放行、新寫法全擋掉。',
@@ -37732,6 +37738,29 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const _lb = x => Number.isFinite(+x.lb) ? +x.lb : +x.exp;
         const rows = list.slice().sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (_lb(b) - _lb(a)));
         const SHOW = 12;
+        // 🏛️ V72.9.7 大盤月線狀態 —— ⛔ 這是**事實標示**不是自動濾網。
+        //   `portfolio_backtest.mjs` 實測六種變體(600 檔・13 個月・本金 100 萬):
+        //     ⭐ 原版(不加濾網)      +1,361,088 元 ・回撤 −9.4%  ・勝率 33.2%
+        //     🏛️ 只在大盤站上月線做   +1,240,531 元 ・回撤 −6.6%  ・勝率 32.0%
+        //     💧 只做成交值≥1億       +1,053,560 元 ・回撤 −16.6% ・勝率 36.6%  ← 勝率最高但少賺 30 萬
+        //     🤝 至少 2 招共振          +858,533 元 ・回撤 −15.9%
+        //     🍱 分散成 6 檔×5 萬       +735,938 元 ・回撤 −18.4%  ← 分散反而最差
+        //   ⛔⛔ **沒有一個濾網賺更多** → 預設不濾,把事實給使用者自己決定。
+        //   ⭐ 唯一值得講的是大盤月線:少賺 12 萬,但回撤 −9.4% → −6.6%、每趟 +1.96% → +2.36%。
+        let mktLine = '';
+        try {
+            const tw = await this._getTwiiRows();
+            if (Array.isArray(tw) && tw.length >= 20) {
+                const cl = tw.map(r => +r.close).filter(v => v > 0);
+                const c = cl[cl.length - 1];
+                const ma20 = cl.slice(-20).reduce((a, b) => a + b, 0) / 20;
+                const above = c > ma20;
+                mktLine = `<div class="mt-1.5 bg-[#0d1117] border-l-4 ${above ? 'border-gray-600' : 'border-yellow-500'} rounded-r px-2 py-1 text-[10px] leading-snug ${above ? 'text-gray-400' : 'text-yellow-100'}">
+                    🏛️ 加權指數 ${Math.round(c).toLocaleString()},月線 ${Math.round(ma20).toLocaleString()} —— <b>${above ? '在月線之上' : '在月線之下'}</b>
+                    ${above ? '(順風)' : `<br><b>實測這種日子不做的話</b>:13 個月會少賺 <b>120,557 元</b>,但中途最難熬的時候從 −9.4% 減到 −6.6%、每趟品質從 +1.96% 升到 +2.36%。<br>⛔ 我沒有自動幫你濾掉 —— <b>想睡得好就今天休息,想賺滿就照做</b>。`}
+                </div>`;
+            }
+        } catch (_) { }
         // ⚠️ 大盤風險高時照顯示,但要講白 —— ⛔ 不可默默照推(單一劇本原則:風險先講)
         let riskLine = '';
         try {
@@ -37747,7 +37776,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 ⛔ <b>不是叫你明天開盤買</b> —— 是「漲過那個價才買,而且要等到<b>尾盤 13:00~13:25</b> 確認還站得住」。<br>
                 <span class="text-cyan-300/70">實測開盤就買會把賺頭全部吃光(甚至倒賠)。App 盤中會幫你盯,到價自動提醒。</span>
             </div>
-            ${riskLine}
+            ${mktLine}${riskLine}
             <div class="space-y-1 mt-1.5">${rows.slice(0, SHOW).map(x => this._pbRowHtml(x, mine)).join('')}</div>
             ${rows.length > SHOW ? `<details class="mt-1.5"><summary class="text-[10px] text-gray-500 cursor-pointer">➕ 另外 ${rows.length - SHOW} 檔(同樣標準,只是期望值排後面)</summary><div class="space-y-1 mt-1">${rows.slice(SHOW).map(x => this._pbRowHtml(x, mine)).join('')}</div></details>` : ''}
             <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📅 ${this._dW ? this._dW(j.data_date) : (j.data_date || '')} 收盤算的・全市場 ${(j.scanned || 0).toLocaleString()} 檔 ｜ 上面的每趟 % <b class="text-gray-500">已扣來回成本 ${j.cost || 0.44}%</b>・觸發價是<b class="text-gray-500">估計值</b>(盤中會用即時價重算)</div>
@@ -37792,6 +37821,26 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 ・只看 K 線,沒看籌碼/基本面/消息
 ・「還在市場上的股票」才有資料 → 下市的沒算到,結果偏樂觀
 ・觸發價是估計的(明天真正的開高低還不知道),盤中會用即時價重算
+
+【⛔ 我試過的「提高勝率」方法,全部讓你賺更少】
+同一套邏輯、只加一個濾網(600 檔・13 個月・本金 100 萬):
+  ⭐ 不加任何濾網        賺 1,361,088 元 ・回撤 -9.4%  ・勝率 33.2%
+  🏛️ 大盤站上月線才做    賺 1,240,531 元 ・回撤 -6.6%  ・勝率 32.0%
+  💧 只做成交值 1 億以上  賺 1,053,560 元 ・回撤 -16.6% ・勝率 36.6%
+  🤝 至少 2 招同時觸發    賺   858,533 元 ・回撤 -15.9% ・勝率 31.4%
+  🍱 分散成 6 檔 x 5 萬   賺   735,938 元 ・回撤 -18.4% ・勝率 32.8%
+
+看「成交值 1 億」那行:勝率從 33.2% 升到 36.6%,但**少賺 30 萬**。
+因為濾掉小型股之後,對的次數變多了,但跑最遠的那幾檔正好都是小型股。
+⭐ 勝率是「對幾次」,錢是「對的時候賺多少」—— 這兩件事常常反方向。
+⭐ 分散成 6 檔反而最差,也說明一件事:排序是有效的,
+   硬挑到第 4~6 名就是在買比較差的標的。
+
+【籌碼有算進去嗎?沒有,而且現在加不了】
+這 22 種打法全部只吃 K 線。籌碼資料實測:
+外資買賣超每檔只有中位 28 天有值、投信 203/291 檔完全沒有、分點只有 3 天,
+而回測窗口是 486 天 -> 加下去只能驗最近 3 個月而且全是下跌段,結論不會可信。
+等外資資料累積滿一年再重測。
 
 【最重要的一句】
 停損價跟觸發價是一組的。破了就走,不要凹 —— 這套會賺全靠這件事。`);
