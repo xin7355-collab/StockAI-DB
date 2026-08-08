@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.1.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.1.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.1.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.1.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4034,6 +4034,7 @@ const app = {
         this.refreshUSMarketBar();
         this.initCommandCenter();
         this.registerServiceWorker();
+        try { this._renderEnvBadge(); } catch (_) {}   // 📦 V73.1.1 網頁/PWA/APK 徽章
         setTimeout(() => this.scanAllMonitored(), 8000);
         // ⚡ V69.8.5 P1-7:閒置時清 IndexedDB 過期 K 線快取(>7 天;原本只寫不刪)
         setTimeout(() => { try { this.idb.prune(); } catch (_) {} }, 15000);
@@ -7157,8 +7158,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.1.0',
+    _APP_VERSION: 'V73.1.1',
     _CHANGELOG: [
+        { v: 'V73.1.1', dt: '2026-08-08', t: '📦 區分 網頁/PWA/APK + APK 打包指南', d: [
+            '設定中心版本號旁多一顆徽章,直接顯示你現在用的是 🌐 網頁 / 📱 PWA / 🤖 APK,點它看三種版本差在哪、怎麼換。判斷順序是先認 APK 再認 PWA(APK 也符合 PWA 的全螢幕條件,順序反了會誤判)。',
+            'APK 版已鋪好路:.well-known/assetlinks.json(安卓驗證「這個 APK 跟這個網站是同一人」用)接進兩條部署路徑;docs/APK_BUILD.md 一步一步教你用 PWABuilder 免寫程式打包,約 15 分鐘。',
+            '⭐ 三種版本載的是同一份程式、同一份資料,更新也同步 —— APK 不用重新打包就會自動更新。差別只在安裝方式與通知可靠度(APK 走系統通知欄,最不容易被省電機制睡死)。',
+        ] },
         { v: 'V73.1.0', dt: '2026-08-08', t: '🧩 支援零股 —— 把被跳過的 20% 救回來', d: [
             '你提醒盤後只能買零股,我去量了一下才發現一個大洞:原本只算「整張」,結果本金 100 萬時 **159 筆候選裡有 32 筆(20%)因為「不夠買 1 張」被整個跳過**,而且**全部集中在排名最前面**(台光電 6949 一張要 100 萬、7861 一張 115 萬)。',
             '→ 改成用**股數**算,買法直接寫「1 張 + 500 股」或「159 股(零股)」,是零股會特別標出來提醒你下單要選零股。自動下單程式也一起改了,而且整張與零股會**分成兩筆送**(委託類別不同,不能混)。',
@@ -8055,6 +8061,8 @@ ${list}
     },
 
     openSettings() {
+        // 📦 V73.1.1 每次開設定就重算環境徽章(🌐/📱/🤖)—— init 那次太早的話這裡補上
+        try { this._renderEnvBadge(); } catch (_) { }
         // ↩️ V71.3.2 進設定先拍快照 → 「取消」才真的救得回誤刪的金鑰/誤改的數字。
         //   仍維持「改了就即時存」(關 App / 當機不會丟),但多一條明確的反悔路。
         try { this._settingsSnapshot = JSON.stringify(this.settings || {}); } catch (_) { this._settingsSnapshot = null; }
@@ -40114,6 +40122,65 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
     },
 
 
+
+    // 📦 V73.1.1 執行環境偵測:網頁 / PWA / APK(使用者要求「區分 PWA 及 APK」)
+    //
+    //   三種環境怎麼分(⛔ 判斷順序不可換 —— APK 也符合 PWA 的 standalone 條件):
+    //   ① APK(TWA 包裝):啟動那一頁的 `document.referrer` 是 `android-app://<套件名>`,
+    //      ⚠️ **只有第一頁看得到** → 一看到就寫進 localStorage 記住;
+    //      另外 APK 打包時 start_url 設 `?source=twa`(見 docs/APK_BUILD.md),雙保險。
+    //   ② PWA(加到主畫面):display-mode standalone(Android/桌面)或
+    //      navigator.standalone(iOS),或 manifest 的 `?source=pwa`。
+    //   ③ 都不是 → 一般瀏覽器分頁。
+    _runtimeEnv() {
+        try {
+            if (document.referrer && document.referrer.startsWith('android-app://')) {
+                try { localStorage.setItem('proTerm_env_apk', '1'); } catch (_) { }
+            }
+            const src = new URLSearchParams(location.search).get('source');
+            if (src === 'twa') { try { localStorage.setItem('proTerm_env_apk', '1'); } catch (_) { } }
+            let apk = null; try { apk = localStorage.getItem('proTerm_env_apk'); } catch (_) { }
+            if (apk === '1') return 'apk';
+            const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches)
+                || navigator.standalone === true || src === 'pwa';
+            return standalone ? 'pwa' : 'browser';
+        } catch (_) { return 'browser'; }
+    },
+    _renderEnvBadge() {
+        const el = document.getElementById('envBadge');
+        if (!el) return;
+        const env = this._runtimeEnv();
+        const M = { apk: ['🤖 APK', 'text-green-300 border-green-600/40 bg-green-500/5'],
+                    pwa: ['📱 PWA', 'text-amber-300 border-amber-600/40 bg-amber-500/5'],
+                    browser: ['🌐 網頁', 'text-gray-400 border-[#30363d] bg-white/5'] };
+        const [txt, cls] = M[env] || M.browser;
+        el.textContent = txt;
+        el.className = `text-[10px] font-mono font-bold tracking-wider px-1.5 py-0.5 rounded border leading-none flex-shrink-0 cursor-pointer ${cls}`;
+        el.classList.remove('hidden');
+        this._env = env;   // 給其他地方讀(⛔ 別再各自呼叫 _runtimeEnv 存第二份)
+    },
+    _showEnvInfo() {
+        const env = this._runtimeEnv();
+        const name = env === 'apk' ? '🤖 APK(安卓安裝檔)' : env === 'pwa' ? '📱 PWA(加到主畫面)' : '🌐 一般瀏覽器';
+        alert(`📦 你現在用的版本:${name}
+
+【三種版本的差別】
+🌐 網頁:直接開網址。⚠️ 通知最不可靠(分頁關掉就收不到)。
+📱 PWA:瀏覽器選單 →「加入主畫面」。有獨立圖示、
+   全螢幕、背景通知比網頁可靠;iOS 上這是唯一選擇。
+🤖 APK:把同一套程式包成安卓安裝檔(見 docs/APK_BUILD.md)。
+   跟 PWA 功能一樣,但像真的 App 一樣從安裝來的,
+   通知走系統通知欄,最不容易被系統睡死。
+
+【內容有差嗎?】
+沒有 —— 三種載的是同一份程式、同一份資料,
+更新也同步(部署完 10 分鐘內自動換新版)。
+差別只在「怎麼安裝」與「通知可靠度」。
+
+【想換版本?】
+・裝 PWA:瀏覽器選單 → 加入主畫面
+・做 APK:看 repo 裡的 docs/APK_BUILD.md(用 PWABuilder,免寫程式)`);
+    },
 
     async registerServiceWorker() {
         if (!('serviceWorker' in navigator)) return;

@@ -470,6 +470,7 @@ jobs:
           git checkout origin/main -- index.html sw.js 2>/dev/null || true
           git checkout origin/main -- manifest.json 2>/dev/null || true   # V17.0 PWA manifest
           git checkout origin/main -- apple-touch-icon.jpg icon-192.jpg icon-512.jpg 2>/dev/null || true   # ⚡ V69.8.7 P2-2
+          git checkout origin/main -- .well-known/assetlinks.json 2>/dev/null || true   # 📦 V73.1.1 APK(TWA)驗證檔
 
           # 備份合併後的完整資料
           mkdir -p /tmp/mine/data/chips
@@ -484,6 +485,7 @@ jobs:
           cp sw.js                 /tmp/mine/               2>/dev/null || true
           cp manifest.json         /tmp/mine/               2>/dev/null || true   # V17.0 PWA
           cp apple-touch-icon.jpg icon-192.jpg icon-512.jpg /tmp/mine/ 2>/dev/null || true   # ⚡ V69.8.7
+          mkdir -p /tmp/mine/.well-known && cp .well-known/assetlinks.json /tmp/mine/.well-known/ 2>/dev/null || true   # 📦 V73.1.1
 
           # 切換到發布分支
           git checkout main 2>/dev/null || true
@@ -499,6 +501,7 @@ jobs:
           cp /tmp/mine/index.html           .               2>/dev/null || true
           cp /tmp/mine/sw.js                .               2>/dev/null || true
           cp /tmp/mine/manifest.json        .               2>/dev/null || true   # V17.0 PWA
+          mkdir -p .well-known && cp /tmp/mine/.well-known/assetlinks.json .well-known/ 2>/dev/null || true   # 📦 V73.1.1
           cp /tmp/mine/apple-touch-icon.jpg /tmp/mine/icon-192.jpg /tmp/mine/icon-512.jpg . 2>/dev/null || true   # ⚡ V69.8.7
           cp /tmp/mine/broker_names.json    .               2>/dev/null || true
           cp /tmp/mine/margin_cache_stock.json . 2>/dev/null || true
@@ -538,6 +541,7 @@ jobs:
           git add -f index.html data/
           [ -f sw.js ]                   && git add -f sw.js                   || true
           [ -f manifest.json ]           && git add -f manifest.json           || true   # V17.0 PWA
+          [ -f .well-known/assetlinks.json ] && git add -f .well-known/assetlinks.json || true   # 📦 V73.1.1 APK 驗證檔
           [ -f broker_names.json ]       && git add -f broker_names.json       || true
           [ -f futures_cache.json ]      && git add -f futures_cache.json      || true
           [ -f macro_cache.json ]        && git add -f macro_cache.json        || true

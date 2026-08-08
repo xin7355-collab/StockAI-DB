@@ -2205,6 +2205,23 @@ done
 ⭐ **通用:改「該買幾張 / 該賣多少」這類參數時,清單一定要含 `auto_trade.py`** ——
   前端錯了是顯示錯,那支錯了是**真的下錯單**。測試 ⑨p~⑨r 已釘住。
 
+### 📦 V73.1.1 網頁 / PWA / APK 三環境區分(使用者要求「區分 PWA 及 APK」)
+- **`app._runtimeEnv()`** 回 `'apk' | 'pwa' | 'browser'`。⛔ **判斷順序不可換**:
+  APK(TWA)也符合 PWA 的 standalone 條件 → 一定要**先**判 APK 再判 PWA。
+  APK 的三個線索:① `document.referrer` 是 `android-app://…`(⚠️ **只有啟動那一頁看得到**
+  → 一看到就寫 localStorage `proTerm_env_apk` 記住)② 打包時 start_url 設 `?source=twa`
+  ③ localStorage 記號。PWA:display-mode standalone / `navigator.standalone`(iOS)/ `?source=pwa`。
+- 設定中心版本號旁 `#envBadge`(🌐/📱/🤖),`openSettings()` 每次重算(init 那次在多個 await
+  之後,沙箱等不到 → 兩處都接;⚠️ 測試走 openSettings 那條路)。
+- **APK = TWA 包裝**:⛔ 不是第二套程式 —— 三種環境載同一份 index.html,push 即同步更新,
+  APK **不需要**重新打包。打包用 PWABuilder,見 `docs/APK_BUILD.md`
+  (Package ID `io.github.xin7355collab.stockai`,⚠️ 要跟 assetlinks 一致)。
+- **`.well-known/assetlinks.json`**(APK↔網站互認,沒它 APK 頂端會有網址列;fingerprint 是
+  placeholder,等使用者 PWABuilder 打包後回填)已接進**兩條**部署路徑,各**四步缺一不可**
+  (paths 觸發/暫存/放回/`git add`)—— 漏 `git add` 的話「暫存放回了但沒 commit」→
+  **每天被 daily_miner 洗掉且零錯誤訊息**(陷阱 #9 同型)。測試 `scripts/test_envdetect.mjs` ②cd 釘住。
+- 測試 `scripts/test_envdetect.mjs` 15 條(三種環境實跑各驗一次 + 部署佈線)。
+
 ## 🎯 V72.2.0 「今天出現實測會賺的訊號」—— 全市場掃描
 使用者:「只要給我最好、勝率最高的資料」。
 問題:`_SIGNAL_EDGE` 的成績只在**個股頁**看得到 → 使用者得先想到要看哪一檔,
