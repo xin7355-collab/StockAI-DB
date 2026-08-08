@@ -61,6 +61,14 @@ const MAXD = +(process.env.MAXD || 20);    // 最長持有幾個交易日
 //   現行 `min(訊號日最低, 進場×0.95)` 的 −5% 是當初拍腦袋定的,從來沒驗過。
 //   lo5(現行) | pct3 | pct8 | pct10 | atr2(2倍ATR) | lo(只用訊號日最低,不設 % 底)
 const STOP = process.env.STOP || 'lo5';
+// 💰 V73.0.1 部位大小 —— ⚠️⚠️ 這是一個**真正的對接落差**,不是新實驗:
+//   前面所有回測都用 **等權**(每筆固定 LOT 元),但 App 的 `_lotsForRisk` 用的是
+//   **風險法**(單筆最多虧帳戶 RISK_PCT%,再套單檔上限 25% 帳戶)→ 每筆金額會浮動。
+//   ⛔ 也就是說:「買 N 張」這個 App 直接叫使用者照做的數字,**從來沒被回測過**。
+//   equal(等權,= 前面所有結果) | risk(風險法,= App 實際給的建議)
+const SIZING = process.env.SIZING || 'equal';
+const RISK_PCT = +(process.env.RISK_PCT || 1);
+const POS_CAP_PCT = +(process.env.POS_CAP_PCT || 25);   // 單檔上限:帳戶的幾 %(跟 App 一致)
 const GAPCAP = +(process.env.GAPCAP || 1);   // nextopen_lim:跳空開高超過幾 % 就不追
 const COST = 0.44;           // 來回交易成本 %(手續費 0.1425%×2 + 證交稅 0.3%,未打折)
 const LOT = +(process.env.LOT || 100000);        // 每筆投入(等權)
@@ -88,7 +96,7 @@ const syms = [];
 const cover = {};
 for (const s of syms) cover[s[0]] = (cover[s[0]] || 0) + 1;
 console.log(`💼 組合回測 ・${syms.length} 檔(分層抽樣,代號開頭分布 ${JSON.stringify(cover)})`);
-console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・停損=${STOP} ・出場=${EXIT}/${MAXD}日 ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
+console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日 ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
 
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -181,6 +189,7 @@ for (const sym of syms) {
                         out.push({ key: p.key, inD: data[i].date, outD: data[exitIdx].date,
                                    // 成交值(億):`volume` 是股 → ×收盤÷1e8
                                    amt: data[i].volume * data[i].close / 1e8,
+                                   entry, stop,   // 💰 風險法算張數要用(⛔ 別在外面重算,基準會不一致)
                                    ret: (exitP - entry) / entry * 100 });
                         i = exitIdx + 1; continue;
                     }
@@ -232,8 +241,10 @@ for (let i = 0; i < days.length; i++) {
     const d = days[i];
     // 今天到期的先出場 → 錢回來
     for (const x of live.filter(x => dIdx.get(x.outD) <= i)) {
-        cash += LOT + LOT * (x.ret - COST) / 100;
-        realized += LOT * (x.ret - COST) / 100;
+        // 💰 用**這一筆自己的投入金額**還原(等權時 _amt 就等於 LOT,結果與舊版完全相同)
+        const a0 = x._amt || LOT;
+        cash += a0 + a0 * (x.ret - COST) / 100;
+        realized += a0 * (x.ret - COST) / 100;
     }
     live = live.filter(x => dIdx.get(x.outD) > i);
     // (a) 先把「今天之前已出場」的交易計入成績(⛔ 今天出場的還不能用 —— 那是今天才知道的)
@@ -267,13 +278,28 @@ for (let i = 0; i < days.length; i++) {
     for (const { t } of cand) {
         if (picked >= PICKS_PER_DAY) break;
         if (seen.has(t.sym)) continue;      // 同一檔不重複開倉
-        // 💰 錢不夠就買不了 —— ⛔ 這條一定要有,不然等於假設無限資金(那個報酬率是假的)
-        if (cash < LOT) { skipped++; continue; }
-        seen.add(t.sym); cash -= LOT;
+        // 💰 這一筆要投入多少?
+        //   equal = 固定 LOT(前面所有結果都是這個)
+        //   risk  = **App 實際給使用者的算法**:單筆最多虧帳戶 RISK_PCT%,
+        //           張數 = 風險金額 ÷(每股風險 × 1000),再套單檔上限 POS_CAP_PCT% 帳戶
+        //   ⛔ 這裡一定要用交易自己的 entry/stop,別在外面重算(基準會不一致)
+        let amt = LOT;
+        if (SIZING === 'risk') {
+            const per = (+t.entry || 0) - (+t.stop || 0);
+            if (!(per > 0) || !(+t.entry > 0)) { continue; }
+            let lots = Math.floor((CAPITAL * RISK_PCT / 100) / (per * 1000));
+            lots = Math.min(lots, Math.floor(CAPITAL * POS_CAP_PCT / 100 / (t.entry * 1000)));
+            if (lots <= 0) { continue; }          // 停損太寬 → App 也會顯「算出來 0 張」
+            amt = lots * 1000 * t.entry;
+        }
+        // ⛔ 錢不夠就買不了 —— 這條一定要有,不然等於假設無限資金(那個報酬率是假的)
+        if (cash < amt) { skipped++; continue; }
+        seen.add(t.sym); cash -= amt;
+        t._amt = amt;
         taken.push(t); live.push(t); picked++;
     }
     openCnt.push(live.length);
-    equity.push(cash + live.length * LOT);   // 持倉以成本計(保守,不逐日 mark-to-market)
+    equity.push(cash + live.reduce((a, x) => a + (x._amt || LOT), 0));   // 持倉以成本計(保守,不逐日 mark-to-market)
 }
 
 if (!taken.length) { console.log('❌ 暖身後一筆都沒進場(門檻太嚴或樣本太小)'); process.exit(1); }
