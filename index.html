@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.9.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.9.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7153,8 +7153,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.9.0',
+    _APP_VERSION: 'V72.9.1',
     _CHANGELOG: [
+        { v: 'V72.9.1', dt: '2026-08-08', t: '📌 紀律追蹤:出場提醒不限次數', d: [
+            '收到尾盤買點提醒後,會自動記一筆「待確認」,你按「我買了」才開始幫你盯停損 —— ⛔ 不預設你買了(不然會對著你沒有的部位一直喊停損)。',
+            '⛔ 出場提醒**不限次數、也不受 13:00 時段限制**:進場錯過還有下一次,出場錯過就是住套房。跌破停損每 30 分鐘再提醒一次,直到你標記已出場。',
+            '停利用的是回測同一條規則(跌破 5 日線),提醒裡直接給「一張賺/賠多少元」(已扣手續費證交稅)。',
+            '追蹤清單排在「明天要盯這幾檔」上面 —— 手上的事永遠比找新標的重要。一筆都沒有時整塊不顯示。',
+        ] },
         { v: 'V72.9.0', dt: '2026-08-08', t: '🎯 明日作戰清單 + 尾盤買點大力提醒', d: [
             '每晚採礦後全市場算「這一檔自己最會賺的那一招」,選股頁最上方給「明天要盯這幾檔」——每列是一張完整下單票:漲過多少才進、停損掛哪、依你的本金該買幾張、停損時最多虧多少元。',
             '⛔ 刻意不是「明天開盤買」:回測 600 檔 13 個月(本金 100 萬)—— 訊號日尾盤買賺 1,361,088 元、隔天開盤買只賺 818,734 元(比 0050 還少賺 13,766 元),因為打法的條件都是用收盤價算的,隔天開盤時突破已經反映在跳空裡。',
@@ -37834,6 +37840,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     ? (ps.lots > 0 ? `買 ${ps.lots} 張(約 ${Math.round(ps.investAmt).toLocaleString()} 元),停損時最多虧 ${ps.maxLoss.toLocaleString()} 元`
                                    : `⚠️ 依你的風險設定算出來是 0 張 → 這檔停損距離太寬,別勉強做`)
                     : `(想知道買幾張:去 ⚙️ 設定填「帳戶總資金」)`;
+                // 📌 記一筆「待確認」→ 你按「我買了」之後才會幫你盯停損(⛔ 不預設你買了)
+                try { this._pbRecordFire(sym, x.k, chk.price, chk.stop, x); } catch (_) { }
                 this._fireAlert(`🚨 尾盤買點成立｜${name}`,
                     `${name}(${sym}) 現價 ${chk.price} —「${x.k}」現在成立了。\n` +
                     `🛑 停損 ${chk.stop.toFixed(2)}(破了就走,不要凹)\n` +
@@ -37844,10 +37852,144 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         } catch (_) { } finally { this._eodBusy = false; }
     },
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 📌 V72.9.1 紀律追蹤 —— 使用者原話:「如果我依照紀律撤退就好」「叫我守好紀律」
+    //
+    // ⛔⛔ 為什麼**出場**比進場重要(這不是感覺,是回測數字):
+    //   勝率只有 30~33% —— 十次錯七次。整套會賺**完全靠**「錯的時候小賠、對的時候抱住」。
+    //   → 進場提醒可以限量(錯過還有下一次);**出場提醒⛔ 一律不限量**
+    //     (錯過一次就是住套房,少提醒的代價遠大於多提醒)。
+    //
+    // ⚠️ 這裡刻意**不自動當成你買了** —— App 不知道你有沒有真的下單。
+    //   收到買點提醒 → 記一筆「待確認」,你自己按「我買了 / 沒買」。
+    //   ⛔ 不可預設成已買(那會對著你沒有的部位喊停損,久了你就不信它了)。
+    _PB_TRADES_KEY: 'proTerm_pbTrades',
+    _pbTrades() { const a = this._lsJson(this._PB_TRADES_KEY, []); return Array.isArray(a) ? a : []; },
+    _pbSaveTrades(arr) {
+        // ⚠️ setItem 也要包 try —— 空間不足會 throw(陷阱 #18)
+        try { localStorage.setItem(this._PB_TRADES_KEY, JSON.stringify(arr.slice(-60))); } catch (_) { }
+    },
+    _pbRecordFire(sym, key, entry, stop, stat) {
+        const all = this._pbTrades();
+        const d = this._tpeMinutes().ymd;
+        if (all.some(t => t.s === sym && t.k === key && t.d === d)) return;   // 同日同招不重複
+        all.push({ s: sym, k: key, e: +(+entry).toFixed(2), sl: +(+stop).toFixed(2), d,
+                   w: stat?.w, po: stat?.po, exp: stat?.exp, n: stat?.n, took: null });
+        this._pbSaveTrades(all);
+    },
+    _pbMark(i, took) {
+        const all = this._pbTrades();
+        if (!all[i]) return;
+        all[i].took = !!took;
+        if (!took) all[i].done = '沒進場';
+        this._pbSaveTrades(all);
+        this._renderTodaySignalView().catch(() => { });
+    },
+    _pbClose(i, why) {
+        const all = this._pbTrades();
+        if (!all[i]) return;
+        all[i].done = why || '已出場';
+        this._pbSaveTrades(all);
+        this._renderTodaySignalView().catch(() => { });
+    },
+
+    // 🚪 出場守望:⛔ **不限量、不去重成一天一次** —— 停損到了要一直講到你處理掉
+    async _pbExitSweep() {
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        const all = this._pbTrades();
+        const open = all.map((t, i) => ({ t, i })).filter(x => x.t.took === true && !x.t.done);
+        if (!open.length) return;
+        for (const { t, i } of open.slice(0, 12)) {
+            let live = null;
+            try { live = await this.fetchFugleData(t.s, 60000); } catch (_) { }
+            const px = +(live?.price || 0);
+            if (!(px > 0)) continue;
+            const name = this.getStockName(t.s) || t.s;
+            // ① 停損:⛔ 這條最重要,一天可以講多次(每 30 分一則,避免一分鐘響三次)
+            if (px <= t.sl) {
+                const k = `pbsl_${t.s}_${Math.floor(Date.now() / 1800000)}`;
+                if (!this._kbarFiredToday(k)) {
+                    const pl = this._netPL ? this._netPL(t.e, px, 1000) : Math.round((px - t.e) * 1000);
+                    this._fireAlert(`🛑 停損到了｜${name}`,
+                        `${name}(${t.s}) 現價 ${px} 已跌破你進場時設的停損 ${t.sl}。\n` +
+                        `一張約 ${pl >= 0 ? '+' : ''}${Math.round(pl).toLocaleString()} 元。\n` +
+                        `⛔ 這套會賺完全靠這一步 —— 十次本來就會錯七次,小賠出場才有下一次。別凹。\n` +
+                        `處理完到「明天要盯這幾檔」把它標成已出場,就不再吵你。`, t.s);
+                }
+                continue;
+            }
+            // ② 停利:跌破 5MA(= 回測用的出場規則,⛔ 別另立一套)
+            try {
+                const c = await this.idb.get(`proTerm_kline_${t.s}`);
+                const rows = c?.data;
+                if (Array.isArray(rows) && rows.length >= 5) {
+                    const cl = rows.slice(-4).map(r => +(r.close || 0)).filter(v => v > 0);
+                    if (cl.length === 4) {
+                        const ma5 = (cl.reduce((a, b) => a + b, 0) + px) / 5;
+                        if (px < ma5) {
+                            const k = `pbtp_${t.s}_${this._tpeMinutes().ymd}`;
+                            if (!this._kbarFiredToday(k)) {
+                                const pl = this._netPL ? this._netPL(t.e, px, 1000) : Math.round((px - t.e) * 1000);
+                                this._fireAlert(`💰 停利條件到了｜${name}`,
+                                    `${name}(${t.s}) 現價 ${px} 跌破 5 日線 ${ma5.toFixed(2)} —— 這就是當初回測用的出場規則。\n` +
+                                    `一張約 ${pl >= 0 ? '+' : ''}${Math.round(pl).toLocaleString()} 元(已扣手續費證交稅)。\n` +
+                                    `⚠️ 不是叫你一定要走,但當初賺的那些就是這樣出的。`, t.s);
+                            }
+                        }
+                    }
+                }
+            } catch (_) { }
+        }
+    },
+
+    // 📋 追蹤中的清單(⛔ 一筆都沒有就整塊不顯示,不留空殼)
+    _pbTrackHtml() {
+        const all = this._pbTrades();
+        const rows = all.map((t, i) => ({ t, i })).filter(x => !x.t.done);
+        if (!rows.length) return '';
+        const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? n : ''; };
+        const pend = rows.filter(x => x.t.took === null);
+        const held = rows.filter(x => x.t.took === true);
+        const mk = ({ t, i }) => {
+            const live = this._liveQuote ? this._liveQuote(t.s) : null;
+            const px = +(live?.p || 0);
+            const plTxt = (px > 0 && this._netPL)
+                ? (() => { const v = this._netPL(t.e, px, 1000); return `・現價 ${px}(一張 ${v >= 0 ? '+' : ''}${Math.round(v).toLocaleString()} 元)`; })()
+                : '';
+            return `<div class="px-2 py-1.5 rounded bg-[#0d1117] border border-[#30363d]">
+                <div class="flex items-baseline justify-between gap-2">
+                    <div class="min-w-0 flex items-baseline gap-1.5">
+                        <span class="font-mono font-black text-[12px] text-gray-100 flex-shrink-0">${t.s}</span>
+                        <span class="text-[11px] text-gray-200 truncate">${nm(t.s)}</span>
+                    </div>
+                    <span class="text-[9px] text-gray-500 flex-shrink-0">${this._dW ? this._dW(t.d) : t.d}</span>
+                </div>
+                <div class="text-[10px] text-gray-300 mt-0.5 leading-snug">${t.k}<br>進場 ${t.e} ・🛑 停損 <b class="text-orange-300">${t.sl}</b>${plTxt}</div>
+                ${t.took === null
+                    ? `<div class="flex gap-1.5 mt-1.5">
+                         <button onclick="event.stopPropagation();app._pbMark(${i},true)" class="flex-1 text-[10px] font-bold text-white bg-red-700 hover:bg-red-600 rounded py-1">我買了 → 幫我盯停損</button>
+                         <button onclick="event.stopPropagation();app._pbMark(${i},false)" class="flex-1 text-[10px] text-gray-300 border border-[#30363d] rounded py-1">沒買</button>
+                       </div>`
+                    : `<button onclick="event.stopPropagation();app._pbClose(${i},'已出場')" class="mt-1.5 w-full text-[10px] text-gray-300 border border-[#30363d] rounded py-1">我出場了 → 停止提醒</button>`}
+            </div>`;
+        };
+        return `<div class="mb-2.5 bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
+            <div class="text-[12px] font-black text-gray-100 mb-1">📌 追蹤中(${rows.length})</div>
+            ${pend.length ? `<div class="text-[10px] text-gray-400 mb-1">收到過買點提醒,但還沒告訴我你有沒有買 —— 按一下才知道要不要幫你盯停損:</div><div class="space-y-1">${pend.map(mk).join('')}</div>` : ''}
+            ${held.length ? `<div class="text-[10px] text-orange-300 mt-1.5 mb-1">🛑 盯著停損中(⛔ 這類提醒<b>不限次數</b> —— 出場錯過一次就是住套房):</div><div class="space-y-1">${held.map(mk).join('')}</div>` : ''}
+        </div>`;
+    },
+
     // ⏱️ 每 90 秒醒來看一次(⛔ 只有 13:00~13:28 才真的做事,其餘立刻 return → 幾乎零成本)
     _startEodWatcher() {
         if (this._eodTimer) return;
-        const tick = () => { this._eodTriggerSweep().catch(() => { }); };
+        const tick = () => {
+            this._eodTriggerSweep().catch(() => { });
+            // 🚪 出場守望:⛔ **不受 13:00 時窗限制** —— 停損是整個交易時段都要盯的
+            //   (進場錯過還有下一次,出場錯過就是住套房)。非交易時段 fetch 拿不到即時價會自己跳過。
+            const t = this._pbTrades ? this._pbTrades() : [];
+            if (t.some(x => x.took === true && !x.done)) this._pbExitSweep().catch(() => { });
+        };
         this._eodTimer = setInterval(tick, 90000);
         setTimeout(tick, 8000);
     },
@@ -37875,7 +38017,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const list = (j && Array.isArray(j.bull)) ? j.bull : [];
         // 🎯 V72.9.0 明日作戰清單放**最上面** —— 它是「還來得及動作」的那一份;
         //   下面的今日訊號是收盤後才產出的(已經來不及買),兩份問的問題不同,⛔ 別合併。
-        const pbHtml = await this._tomorrowWatchHtml().catch(() => '');
+        //   📌 追蹤中的部位排在**最上面** —— 手上的事永遠比找新標的重要(單一劇本原則)
+        const pbHtml = (this._pbTrackHtml() || '') + (await this._tomorrowWatchHtml().catch(() => ''));
         if (!list.length) {
             // ⛔ 這裡是**分頁**不是常駐條 → 使用者是主動點進來的,不能空白(陷阱 #4:silent return)
             //   ⚠️ 但明日清單若有資料仍要顯示 —— 兩份是不同資料來源,⛔ 不可因為今日訊號沒有就一起藏掉

@@ -121,6 +121,26 @@ ok('⑥g 尾盤掃描函式都在', r.hasSweep);
 // ⑦ 空過守門:確認上面那些斷言真的跑在**有載起來**的 App 上
 ok('⑦ 無 pageerror', errs.length === 0, errs.slice(0, 2).join(' | '));
 
+
+console.log('⑧ 紀律追蹤:出場提醒⛔ 不可限量、⛔ 不可預設你買了');
+const trkA = src.indexOf('_PB_TRADES_KEY:');
+const trkB = src.indexOf('_startEodWatcher()', trkA);
+const trk = (trkA >= 0 && trkB > trkA) ? src.slice(trkA, trkB) : '';
+ok('⑧ 紀律追蹤區塊存在', trk.length > 2000, `只有 ${trk.length} 字`);
+ok('⑧a ⛔ 不預設「你買了」(took 初始為 null)', /took: null/.test(trk));
+ok('⑧b 只有標記 took===true 才盯停損', /x\.t\.took === true/.test(trk));
+ok('⑧c 停損提醒⛔ 不是一天一次(用時間分桶才能重複提醒)',
+   /Math\.floor\(Date\.now\(\) \/ 1800000\)/.test(trk));
+ok('⑧d 出場守望⛔ 不受 13:00 時窗限制', /不受 13:00 時窗限制/.test(src));
+ok('⑧e 停利用的是回測同一條規則(跌破 5MA)', /跌破 5 日線/.test(trk) && /ma5/.test(trk));
+ok('⑧f 金額走共用 _netPL(⛔ 別 inline 再寫一份損益公式)',
+   /this\._netPL\(t\.e, px, 1000\)/.test(trk));
+ok('⑧g localStorage 寫入有包 try(空間不足會 throw,陷阱 #18)',
+   /try \{ localStorage\.setItem\(this\._PB_TRADES_KEY/.test(trk));
+ok('⑧h 讀取走 _lsJson(壞值自動清掉)', /this\._lsJson\(this\._PB_TRADES_KEY/.test(trk));
+ok('⑧i 一筆都沒有 → 整塊不顯示(不留空殼)', /if \(!rows\.length\) return '';/.test(trk));
+ok('⑧j 觸發時有記一筆待確認', /this\._pbRecordFire\(sym, x\.k, chk\.price, chk\.stop, x\)/.test(src));
+
 await browser.close();
 console.log(`\n${fail ? '❌' : '✅'} ${pass} 通過 / ${fail} 失敗`);
 process.exit(fail ? 1 : 0);
