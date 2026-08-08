@@ -81,14 +81,19 @@ ok('⑤a5 前端顯示與排序也用下界', /const shown = Number\.isFinite\(\
 ok('⑤a6 沒有觸發價(loose)時⛔ 不可顯示「漲過 null」', /const hasTrig = x\.trig != null/.test(src) && /這招不是靠價位觸發/.test(src));
 // ⚠️ V72.9.4 起這條由 ⑤a10 用「進位到跳動單位之後」的版本承接(更嚴)。
 //   ⛔ 這裡改驗「⛔ 不可退回成無條件回傳 b2」——原始 b2 沒對齊跳動單位也可能 <= 現價。
-ok('⑤a7 ⛔ 不可無條件回傳原始二分結果(要先進位再比現價)',
-   !/return \{ trig: b2 \};/.test(scan) && /return \{ trig: up \};/.test(scan));
+ok('⑤a7 ⛔ 不可無條件回傳原始二分結果(要先進位、round、再比現價)',
+   !/return \{ trig: b2 \};/.test(scan) && /return \{ trig: upR \};/.test(scan));
 ok('⑤a8 loose 一律不給觸發價(⛔ 不可回一個假的價)',
    !/return \{ trig: lo, loose: true \}/.test(scan) && /if \(firstHit === 0\) return \{ loose: true \}/.test(scan));
 ok('⑤a9 觸發價**無條件進位**到跳動單位(⛔ 四捨五入會低於真門檻=叫人提早買)',
-   /Math\.ceil\(\(b2 - 1e-9\) \/ tick\) \* tick/.test(scan) && /const tick = c0 < 10 \? 0\.01/.test(scan));
+   /Math\.ceil\(\(b2 - 1e-9\) \/ tickOf\(b2\)\) \* tickOf\(b2\)/.test(scan)
+   && /const tickOf = v => v < 10 \? 0\.01/.test(scan));
 ok('⑤a10 進位後沒真的高於現價 → 當成無閘門(⛔「漲過 90.1」而現價 90.1 是零資訊)',
-   /if \(up <= c0\) return \{ loose: true \};/.test(scan));
+   /if \(upR <= c0 \+ 1e-9\) return \{ loose: true \};/.test(scan));
+ok('⑤a11 ⭐ 守門要驗「將會被存下來的那個值」(⛔ 不可驗中間值 —— 浮點會漏)',
+   /const upR = Math\.round\(up \* 100\) \/ 100;/.test(scan) && /return \{ trig: upR \};/.test(scan));
+ok('⑤a12 跳動單位看**進位後**那個價落在哪一檔(498→501 會跨檔)',
+   /const tk = tickOf\(up\)/.test(scan));
 ok('⑤b 有樣本門檻', /x\.count >= minN/.test(scan));
 ok('⑤c 用「這一檔自己」的成績(⛔ 不是全市場平均)', /_patternFitBacktest\(rows\)/.test(scan));
 ok('⑤d 有截斷就把總數寫進 JSON(no silent caps)', /picks_total/.test(scan) && /picks_cap/.test(scan));
