@@ -2222,6 +2222,37 @@ done
   **每天被 daily_miner 洗掉且零錯誤訊息**(陷阱 #9 同型)。測試 `scripts/test_envdetect.mjs` ②cd 釘住。
 - 測試 `scripts/test_envdetect.mjs` 15 條(三種環境實跑各驗一次 + 部署佈線)。
 
+### 📦 V73.1.3 APK 一鍵打包(雲端後台)+ 🐛 PWA 圖示從沒上線過
+使用者:「怎麼下載 apk」→「apk 做好了嗎?」
+
+⛔ **沙箱打不出 APK(實測,不是猜的)**:`dl.google.com` / `maven.google.com`(會 302 轉去 dl)
+/ GitHub raw 的 android.jar 鏡像 **全部被 gateway 403**;Maven Central 與 Gradle 通但缺 android.jar 沒用。
+→ 改成**雲端 runner 打包**(那邊本來就有 Android SDK),使用者按一顆按鈕下載 artifact。
+
+⭐ **`android/` 外殼 ⛔ 一行 Java 都沒有** —— TWA 的 `LauncherActivity` 由 `androidx.browser` 提供,
+整包只是「用哪個網址 + 什麼圖示/顏色」。功能永遠只改 `index.html`,⛔ 不用動這裡,
+以後 App 更新也**不需要重新打包**(TWA 載的就是線上網站)。
+
+⛔ **簽章金鑰刻意公開**(`android/twa-key.jks`,密碼/別名照安卓官方 debug key 慣例):
+只給自己裝、不上架 Play → 它唯一的作用是「覆蓋安裝認得出同一個 App」,**不能動錢、不能存取資料**。
+⚠️ 這**不推翻**「下單憑證絕不進雲端」那條 —— 兩者是完全不同的東西
+(`check_workflow_paths.py::check_no_trading_in_ci` 仍然把 `auto_trade.py` / `SJ_CA_*` 擋在 workflow 外)。
+SHA-256 已填進 `.well-known/assetlinks.json`(不再是 placeholder)。
+
+⭐ **build_apk.yml 的兩個空過守門**(⛔ 別拿掉):
+① 圖示 5 種尺寸沒全產出就失敗(免得打出沒有圖示的 APK)
+② **打包後驗「APK 簽章 == assetlinks.json 的 fingerprint」,對不上直接失敗** ——
+   那種 APK 裝上去**頂端會多一條瀏覽器網址列**,⛔ 別讓人白裝一次才發現。
+⚠️ `applicationId`(app/build.gradle)與 `package_name`(assetlinks.json)**必須一模一樣**,改一邊就會出網址列。
+
+#### 🐛 順手抓到:PWA 主畫面圖示從 V69.8.7 起**一次都沒上線過**
+兩條部署路徑(`deploy_pages.yml` / `daily_miner.yml`)都**只 `cp` 圖示、沒有 `git add`**
+→ 「暫存放回了但沒 commit」→ gh-pages 根目錄只有 7 個檔,`manifest.json` 指的
+`icon-192.jpg` / `icon-512.jpg` **全部 404**,而且 workflow 全綠、零錯誤訊息。
+⭐ 這正是 CLAUDE.md 自己在 V73.1.1 assetlinks 那段寫過的警告(**漏 `git add` = 每天被洗掉**)——
+**寫下警告的下一個檔案就再犯一次**。⛔ 通用:workflow 裡任何 `cp` 進部署目錄的檔案,
+**當場 grep 同一段有沒有對應的 `git add`**,別只加自己這次新增的那個。
+
 ### 🕶️ V73.1.2 低調化三件套(使用者要求,2026-08-08)⭐ 詳細內容**刻意不寫進 `_CHANGELOG`**
 使用者:「①把程式的 GitHub 相關資訊刪除,我不想讓人輕易知道 ②版本更新資訊改成當天顯示而已
 ③這次的告知資料不要放在版本內,另外也紀錄下來」→ **這一節就是那份「另外的紀錄」**。
