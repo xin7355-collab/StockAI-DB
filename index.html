@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.9.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.9 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.0.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7157,8 +7157,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.9.9',
+    _APP_VERSION: 'V73.0.0',
     _CHANGELOG: [
+        { v: 'V73.0.0', dt: '2026-08-08', t: '⭐ 一天只做 2 檔(實測多賺 35 萬、回撤還更小)', d: [
+            '實測每天挑幾檔(本金 100 萬・13 個月):6 檔賺 735,938 元、3 檔 1,361,088 元、⭐ 2 檔 1,718,529 元、1 檔 1,720,402 元。越集中越好,到 2 檔是甜蜜點 —— 賺得跟 1 檔一樣多,但回撤最小(−9.3% vs −13.0%)。',
+            '比現行(3 檔)多賺 357,441 元、回撤更小、每趟從 +1.96% 升到 +2.47% —— ⭐ 這是 27 次實驗裡第一次「沒有任何一項變差」。→ 尾盤推播上限從 6 檔改成 2 檔,清單上也直接標出來。',
+            '⭐ 這反過來證明「每檔自己最會賺那一招」的排序真的有鑑別力:挑到第 3 名以後就是在拉低成績,⛔ 不是做越多賺越多。',
+            '⚠️ 順便記一個反例:停損從 −5% 改 −3%,在「每天 3 檔」時多賺 115,335 元看起來很棒,但跟「2 檔」合起來反而少賺 229,007 元 —— 那個改善只是在補償「3 檔挑到較差標的」,而 2 檔已經從源頭解決了。⛔ 所以停損維持原樣。單獨測有效 ≠ 合起來還有效。',
+        ] },
         { v: 'V72.9.9', dt: '2026-08-08', t: '🤖 半自動交易三件套(條件單複製 / 實盤記錄 / 本機下單)', d: [
             '📋 每一列多一顆「條件單」鈕:一次複製代號、觸發價、停損價、幾張、最多虧多少元,貼進永豐 App 的智慧單照著填。⚠️ 上面一定會寫「回測是尾盤買、條件單是觸價就買」的時點落差 —— 能設 13:00 後才觸發最好。',
             '📒 標記「我買了」時會問你**實際成交在多少**(⛔ 不拿我算的價充數,那會把滑價藏起來),出場時問實際賣價。累積後直接顯示「你的勝率/每趟 vs 回測說的」+ 平均滑價。⏳ 不滿 10 筆一律不下結論。',
@@ -37827,6 +37833,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <span class="text-[12px] font-black text-gray-100">🎯 明天要盯這 <b class="text-red-300">${j.picks_syms || rows.length}</b> 檔</span>
                 <button onclick="event.stopPropagation();app._showPbHelp()" class="text-[9px] text-gray-500 hover:text-cyan-300 flex-shrink-0">ⓘ 怎麼用</button>
             </div>
+            <div class="text-[10px] text-amber-100 bg-[#0d1117] border-l-4 border-amber-500 rounded-r px-2 py-1 leading-snug mb-1.5">
+                ⭐ <b>一天最多做前 2 檔就好</b> —— 實測(本金 100 萬・13 個月):
+                每天做 2 檔賺 <b>1,718,529 元</b>、做 3 檔 1,361,088 元、做 6 檔只剩 735,938 元。
+                <span class="text-amber-200/70">挑到第 3 名以後就是在拉低成績,⛔ 不是做越多賺越多。</span>
+            </div>
             <div class="text-[10px] text-cyan-200 bg-[#0d1117] border-l-4 border-cyan-600 rounded-r px-2 py-1 leading-snug mb-1.5">
                 ⛔ <b>不是叫你明天開盤買</b> —— 是「漲過那個價才買,而且要等到<b>尾盤 13:00~13:25</b> 確認還站得住」。<br>
                 <span class="text-cyan-300/70">實測開盤就買會把賺頭全部吃光(甚至倒賠)。App 盤中會幫你盯,到價自動提醒。</span>
@@ -37876,6 +37887,23 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 ・只看 K 線,沒看籌碼/基本面/消息
 ・「還在市場上的股票」才有資料 → 下市的沒算到,結果偏樂觀
 ・觸發價是估計的(明天真正的開高低還不知道),盤中會用即時價重算
+
+【⭐ 一天做幾檔:實測 2 檔最好(本金 100 萬・13 個月)】
+  1 檔  賺 1,720,402 元 ・回撤 -13.0%
+  ⭐ 2 檔  賺 1,718,529 元 ・回撤 -9.3%  <- 賺一樣多,但回撤最小
+  3 檔  賺 1,361,088 元 ・回撤 -9.4%
+  6 檔  賺   735,938 元 ・回撤 -18.4%
+越集中越好(到 2 檔),因為排序真的有鑑別力 —— 挑到第 3 名以後就在拉低成績。
+1 檔賺一樣多但少了分散,回撤反而變大 -> 2 檔是甜蜜點。
+
+【⚠️ 一個「單獨測有效、合起來卻無效」的例子(值得記住)】
+停損從 -5% 改成 -3%:在「每天 3 檔」的設定下多賺 115,335 元、回撤還變小,
+看起來是明顯的改善。但把它跟「每天 2 檔」合起來測 ->
+  2 檔 + 現行停損   賺 1,718,529 元
+  2 檔 + 停損 -3%   賺 1,489,522 元  <- 反而少賺 229,007 元
+=> 那個「改善」不是獨立的,它只是在補償「3 檔時挑到較差標的」的問題;
+   而「只做 2 檔」已經從源頭解決了 -> ⛔ 所以停損維持原樣。
+⭐ 通用:單獨測有效 != 合起來還有效。這也是為什麼我不隨便疊參數。
 
 【⛔ 我試過的「提高勝率」方法,全部讓你賺更少】
 同一套邏輯、只加一個濾網(600 檔・13 個月・本金 100 萬):
@@ -37976,7 +38004,18 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             //   自己手上/自選的優先,再補期望值最高的,合計最多 6 檔。
             const _lb = x => Number.isFinite(+x.lb) ? +x.lb : +x.exp;   // ⛔ 同上:保守下界
             const ranked = list.slice().sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (_lb(b) - _lb(a)));
-            for (const x of ranked.slice(0, 6)) {
+            // ⭐⭐ V73.0.0 實測改成「一天最多做 **2 檔**」(⛔ 原本是 6):
+            //   `portfolio_backtest.mjs`(600 檔・13 個月・本金 100 萬)每天挑幾檔:
+            //     6 檔×5萬  +735,938 元 ・回撤 −18.4%
+            //     3 檔×10萬 +1,361,088 元 ・回撤 −9.39%
+            //     ⭐ 2 檔×15萬 **+1,718,529 元** ・回撤 **−9.31%** ・每趟 +2.47%
+            //     1 檔×30萬 +1,720,402 元 ・回撤 −13.0%(賺一樣多但少了分散,回撤變大)
+            //   → **單調趨勢**:越集中越好,到 2 檔是甜蜜點(賺最多且回撤最小)。
+            //   ⭐ 這反過來證明「每檔自己的打法排序」真的有鑑別力 —— 挑到第 3 名以後就在拉低成績。
+            //   ⚠️ 掃 8 檔但**最多推 2 則** —— 掃得多是因為不是每一檔都會真的成立。
+            let _pushed = 0;
+            for (const x of ranked.slice(0, 8)) {
+                if (_pushed >= 2) break;
                 const sym = String(x.s);
                 const dkey = `eod_${sym}_${x.k}`;
                 if (this._kbarFiredToday(dkey)) continue;
@@ -38000,6 +38039,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     `💰 ${lotTxt}\n` +
                     `📊 這招在這檔:勝率 ${x.w}%・賺賠比 ${x.po}・每趟 +${Number.isFinite(+x.lb) ? x.lb : x.exp}%(已扣成本、依樣本數打過折)・打過 ${x.n} 次\n` +
                     `⏰ 現在是尾盤時段,收盤前確認還站得住再進。⚠️ 十次會錯七次,靠的是守紀律。`, sym);
+                _pushed++;
             }
         } catch (_) { } finally { this._eodBusy = false; }
     },
