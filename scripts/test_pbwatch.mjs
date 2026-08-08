@@ -85,7 +85,13 @@ ok('④0b 三個顯示點(清單/推播/條件單)都接上了',
    (src.match(/this\._lotsForPlaybook\(/g) || []).length >= 3);
 ok('④0c 等權的代價要誠實顯示(每筆風險%會浮動)',
    /riskPct/.test(src) && /本金的 \$\{ps\.riskPct\.toFixed\(1\)\}%/.test(src));
-ok('④0d 停損太寬要警告(超過本金 2%)', /要虧超過本金 2%,可考慮減量/.test(src));
+ok('④0d 停損太寬要警告(超過本金 2%)', /一次會虧超過本金 2%,可考慮減量/.test(src));
+// 🧩 V73.1.0 零股:⛔ 只算整張會讓 20% 的候選(而且是排名最前面的高價股)被整個跳過
+ok('④0e ⭐ 支援零股(用**股數**算,⛔ 不是只算整張)',
+   /const shares = Math\.floor\(budget \/ price\)/.test(src) && /oddOnly/.test(src));
+ok('④0f 零股要明講「下單要選零股」', /這是<b>零股<\/b>,下單要選「零股」/.test(src));
+ok('④0g 買法要白話(1 張 + N 股 / N 股)',
+   src.includes('張 + ${odd} 股') && src.includes('${odd} 股(零股)'));
 const lotsDefs = (src.match(/_lotsForRisk\(price, stop\)\s*\{/g) || []).length;
 ok('④a _lotsForRisk 只定義一次', lotsDefs === 1, `定義了 ${lotsDefs} 次`);
 ok('④b 部位風控卡改用共用函式', /const _ps = this\._lotsForRisk\(price, stop\);/.test(src));
@@ -217,7 +223,10 @@ ok('⑨l 沒有觸發價的一律跳過(⛔ 不可用「差不多的條件」代
 ok('⑨m 送出後立刻記狀態(寧可漏一次也不重複下單)', /st\['done'\]\.append\(sym\); save_state\(st\)/.test(at));
 // 🚨 V73.0.1:改了 App 的部位算法卻忘了改這支(陷阱 #37),而它是**會下真單**的。
 ok('⑨p ⭐ 下單程式也用**等權**(⛔ 不可留著風險法 —— 實測少賺 112 萬)',
-   /def lots_for_playbook/.test(at) && !/def lots_for_risk/.test(at) && /POS_PCT/.test(at));
+   /def shares_for_playbook/.test(at) && !/def lots_for_risk/.test(at) && /POS_PCT/.test(at));
+ok('⑨p2 🧩 下單程式支援零股,而且整張/零股分開送(⛔ 委託類別不可混)',
+   /StockOrderLot\.IntradayOdd/.test(at) && /StockOrderLot\.Common/.test(at)
+   && /divmod\(shares, 1000\)/.test(at));
 ok('⑨q 一天最多 2 檔(跟 App 一致)', /MAX_PICKS', '2'/.test(at));
 ok('⑨r 停損太寬要印警告(等權的代價要講出來)', /超過 2%,考慮手動減量/.test(at));
 {

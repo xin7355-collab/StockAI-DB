@@ -118,19 +118,24 @@ def fetch_picks():
     return j, picks
 
 
-def lots_for_playbook(price, stop):
-    """💰 該買幾張 —— 跟 App 的 `_lotsForPlaybook` 同一條公式(⛔ 別在這裡另立一套)。
-    **等權**:每筆投入 = 帳戶總資金 × POS_PCT%(理由見檔頭 POS_PCT 的註解)。
-    再套 MAX_LOTS_PER_TRADE / MAX_AMT_PER_TRADE 兩個硬煞車。
-    ⚠️ 等權的代價:每筆的「風險%」會浮動 → 回傳時一併給出來,呼叫端要印給使用者看。"""
+def shares_for_playbook(price, stop):
+    """💰 該買幾股 —— 跟 App 的 `_lotsForPlaybook` 同一條公式(⛔ 別在這裡另立一套)。
+    **等權 + 支援零股**:每筆投入 = 帳戶總資金 × POS_PCT%,換算成**股數**。
+
+    🧩 為什麼要支援零股(V73.1.0):只算整張的話,實測 2026-08-07 那份清單
+       **159 筆裡有 32 筆(20%)因為「不夠買 1 張」被整個跳過**,而且集中在排名最前面
+       (台光電 6949 一張要 100 萬)。台股本來就能買零股 → 用股數算就全部救回來。
+    ⚠️ 零股的代價:流動性較差、盤中零股是**每分鐘集合競價**(不是連續成交)。
+    回傳 (股數, 風險%)。"""
     if price <= 0:
         return 0, None
-    lots = int((ACCOUNT_SIZE * POS_PCT / 100) // (price * 1000)) if ACCOUNT_SIZE > 0 else 1
-    lots = min(lots, MAX_LOTS_PER_TRADE, int(MAX_AMT_PER_TRADE // (price * 1000)) or 0)
-    lots = max(0, lots)
+    shares = int((ACCOUNT_SIZE * POS_PCT / 100) // price) if ACCOUNT_SIZE > 0 else 1000
+    # 硬煞車(⛔ 別拿掉):張數上限換算成股數、單筆金額上限
+    shares = min(shares, MAX_LOTS_PER_TRADE * 1000, int(MAX_AMT_PER_TRADE // price))
+    shares = max(0, shares)
     per = price - stop
-    risk_pct = (lots * 1000 * per / ACCOUNT_SIZE * 100) if (ACCOUNT_SIZE > 0 and per > 0 and lots > 0) else None
-    return lots, risk_pct
+    risk_pct = (shares * per / ACCOUNT_SIZE * 100) if (ACCOUNT_SIZE > 0 and per > 0 and shares > 0) else None
+    return shares, risk_pct
 
 
 def main():
@@ -212,28 +217,43 @@ def main():
                 log(f"   {sym} {px} < 觸發 {trig} → 還沒到")
                 continue
 
-            lots, risk_pct = lots_for_playbook(px, float(stop))
-            if lots <= 0:
-                log(f"⏭️ {sym} 算出來 0 張(本金不夠買 1 張,或超過單筆金額上限)→ 跳過")
+            shares, risk_pct = shares_for_playbook(px, float(stop))
+            if shares <= 0:
+                log(f"⏭️ {sym} 算出來 0 股(本金太小或超過單筆金額上限)→ 跳過")
                 continue
-
+            _lots, _odd = divmod(shares, 1000)
+            _how = (f"{_lots} 張 + {_odd} 股" if _lots and _odd else
+                    f"{_lots} 張" if _lots else f"{_odd} 股(零股)")
             _rk = f" ・停損時虧本金 {risk_pct:.1f}%" if risk_pct is not None else ""
-            log(f"🚨 {sym} 觸發!現價 {px} ≥ {trig} ・買 {lots} 張"
-                f"(約 {int(lots * 1000 * px):,} 元){_rk} ・停損 {stop}")
+            log(f"🚨 {sym} 觸發!現價 {px} ≥ {trig} ・買 {_how}"
+                f"(約 {int(shares * px):,} 元){_rk} ・停損 {stop}")
             if risk_pct is not None and risk_pct > 2:
                 log(f"   ⚠️ 這檔停損很寬,一次會虧本金 {risk_pct:.1f}% —— 超過 2%,考慮手動減量")
             if DRY_RUN:
                 log(f"   🧪 DRY_RUN:不送單"); st['done'].append(sym); save_state(st); continue
             try:
-                order = api.Order(
-                    price=px, quantity=lots,
-                    action=sj.constant.Action.Buy,
-                    price_type=sj.constant.StockPriceType.LMT,
-                    order_type=sj.constant.OrderType.ROD,
-                    account=api.stock_account,
-                )
-                trade = api.place_order(contract, order)
-                log(f"   ✅ 已送出:{trade}")
+                # 🧩 零股與整張是**不同的委託類別**,⛔ 不可混:
+                #    整張 → quantity 用「張」+ StockOrderLot.Common
+                #    零股 → quantity 用「股」+ StockOrderLot.IntradayOdd(盤中零股)
+                #    ⚠️ 有零股尾數時拆兩筆送(整張一筆 + 零股一筆)。
+                sent = []
+                if _lots > 0:
+                    o_c = api.Order(price=px, quantity=_lots,
+                                    action=sj.constant.Action.Buy,
+                                    price_type=sj.constant.StockPriceType.LMT,
+                                    order_type=sj.constant.OrderType.ROD,
+                                    order_lot=sj.constant.StockOrderLot.Common,
+                                    account=api.stock_account)
+                    sent.append(api.place_order(contract, o_c))
+                if _odd > 0:
+                    o_o = api.Order(price=px, quantity=_odd,
+                                    action=sj.constant.Action.Buy,
+                                    price_type=sj.constant.StockPriceType.LMT,
+                                    order_type=sj.constant.OrderType.ROD,
+                                    order_lot=sj.constant.StockOrderLot.IntradayOdd,
+                                    account=api.stock_account)
+                    sent.append(api.place_order(contract, o_o))
+                log(f"   ✅ 已送出 {len(sent)} 筆:{sent}")
                 # ⚠️ 先記再說 —— 寧可漏一次,也⛔ 不可重複下單
                 st['done'].append(sym); save_state(st)
             except Exception as e:
