@@ -39,6 +39,7 @@ const WARMUP = 240;          // 暖身:前 N 個交易日只累積成績、不�
 //     ⛔ 不是全市場平均。→ 成績改成 **per-stock × per-pattern**。
 const MIN_N = +(process.env.MIN_N || 4);   // **這一檔**在**這個型態**打過幾次才准用
 const MIN_MKT_N = 20;                       // 全市場該型態的最低樣本(第二層門檻)
+const ENTRY = process.env.ENTRY || 'close';   // close | nextopen | nextclose(見 page.evaluate 內註解)
 const COST = 0.44;           // 來回交易成本 %(手續費 0.1425%×2 + 證交稅 0.3%,未打折)
 const LOT = +(process.env.LOT || 100000);        // 每筆投入(等權)
 const CAPITAL = +(process.env.CAPITAL || 1000000); // 💰 你手上的總本金 —— 錢用完就買不了(這才貼近現實)
@@ -65,7 +66,7 @@ const syms = [];
 const cover = {};
 for (const s of syms) cover[s[0]] = (cover[s[0]] || 0) + 1;
 console.log(`💼 組合回測 ・${syms.length} 檔(分層抽樣,代號開頭分布 ${JSON.stringify(cover)})`);
-console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟\n`);
+console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・進場=${ENTRY}\n`);
 
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -94,7 +95,7 @@ for (const sym of syms) {
         })).filter(r => r.close > 0);
         if (data.length < 120) return [];
         const last = data.length - 1;
-        const C = i => data[i].close, L = i => data[i].low;
+        const C = i => data[i].close, L = i => data[i].low, O = i => data[i].open;
         let P;
         try { P = app._playbookPatternDefs(data); } catch (_) { return []; }
         const out = [];
@@ -104,18 +105,30 @@ for (const sym of syms) {
                 let fired = false;
                 try { fired = p.test(i); } catch (_) {}
                 if (fired) {
-                    const entry = C(i);
+                    // 🚪 進場點(ENTRY 決定,⛔ 預設 close 維持既有結果不變)
+                    //   close    = 訊號當天收盤買(回測慣例,但**現實中你收盤前不知道訊號會成立**)
+                    //   nextopen = 隔天開盤買(⭐ 這才是「每晚推薦 → 隔天買」真正會發生的事)
+                    //   nextclose= 隔天收盤買(等一天看穩再買)
+                    const eIdx = a.entry === 'close' ? i : i + 1;
+                    if (eIdx > last) { i++; continue; }
+                    const entry = a.entry === 'nextopen' ? (O(eIdx) > 0 ? O(eIdx) : C(eIdx))
+                                : a.entry === 'nextclose' ? C(eIdx)
+                                : C(i);
                     if (entry > 0) {
-                        const stop = Math.min(L(i), entry * 0.95);
+                        // ⚠️ 停損基準跟著進場點走 —— ⛔ 不可沿用「訊號當天低點」配「隔天開盤價」
+                        //   (跳空開高時那個停損會變成 -10% 以上,等於偷偷放寬風險)
+                        const stop = Math.min(L(eIdx), entry * 0.95);
                         let exitP = C(last), exitIdx = last;
-                        const endJ = Math.min(last, i + 20);
-                        for (let j = i + 1; j <= endJ; j++) {
+                        const endJ = Math.min(last, eIdx + 20);
+                        for (let j = eIdx + 1; j <= endJ; j++) {
                             const c = C(j);
                             const ma5 = j >= 4 ? (C(j) + C(j - 1) + C(j - 2) + C(j - 3) + C(j - 4)) / 5 : null;
                             if (c <= stop) { exitP = stop; exitIdx = j; break; }
                             if (ma5 != null && c < ma5) { exitP = c; exitIdx = j; break; }
                             if (j === endJ) { exitP = c; exitIdx = j; }
                         }
+                        // ⚠️ inD 一律記「**訊號日**」—— 選股是那天晚上做的決定,
+                        //   實際成交日在 eIdx。⛔ 若記成 eIdx,walk-forward 的時間軸會偏一天。
                         out.push({ key: p.key, inD: data[i].date, outD: data[exitIdx].date,
                                    ret: (exitP - entry) / entry * 100 });
                         i = exitIdx + 1; continue;
@@ -125,7 +138,7 @@ for (const sym of syms) {
             }
         }
         return out;
-    }, { rows });
+    }, { rows, entry: ENTRY });
     for (const t of tr) allTrades.push({ ...t, sym });
     if (++done % 50 === 0) {
         const el = (Date.now() - t0) / 1000;
