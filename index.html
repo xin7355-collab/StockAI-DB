@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.9.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.9.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.1 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.2 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7153,8 +7153,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.9.1',
+    _APP_VERSION: 'V72.9.2',
     _CHANGELOG: [
+        { v: 'V72.9.2', dt: '2026-08-08', t: '📐 修掉「僥倖股排最前面」的選股偏誤', d: [
+            '第一次全市場實跑抓到:2,317 檔 × 22 招排「平均每趟最賺」取前面 → 前段班全被「只打過十幾次、剛好很賺」的僥倖佔滿(首名寫著每趟 +17.63%、賺賠比 12.63,但只打過 24 次)。',
+            '改用「保守下界」= 平均每趟 − 1.28×波動÷√次數 —— 打過越少次罰得越重。修完首名變成每趟 +2.61%(保守 +1.14%)、打過 16 次,實在多了;候選檔數也從 509 檔收斂到合理範圍。',
+            '順手修兩個顯示 bug:① 有些招不是靠價位觸發,原本會寫成「漲過 168」而現價是 179(叫你漲過一個比現價低的數字),而且停損被算成離現價 −11%;現在改成誠實說「這招不是靠價位,盤中重算才知道」。② 現價出現 42.04999923706055 這種浮點數尾巴。',
+        ] },
         { v: 'V72.9.1', dt: '2026-08-08', t: '📌 紀律追蹤:出場提醒不限次數', d: [
             '收到尾盤買點提醒後,會自動記一筆「待確認」,你按「我買了」才開始幫你盯停損 —— ⛔ 不預設你買了(不然會對著你沒有的部位一直喊停損)。',
             '⛔ 出場提醒**不限次數、也不受 13:00 時段限制**:進場錯過還有下一次,出場錯過就是住套房。跌破停損每 30 分鐘再提醒一次,直到你標記已出場。',
@@ -34982,7 +34987,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const wins = trades.filter(t => t > 0), losses = trades.filter(t => t < 0);
             const avgWin = wins.length ? wins.reduce((a, b) => a + b, 0) / wins.length : 0;
             const avgLoss = losses.length ? losses.reduce((a, b) => a + b, 0) / losses.length : 0;
-            return { count: n, winRate: wins.length / n * 100, expectancy: trades.reduce((a, b) => a + b, 0) / n, plRatio: avgLoss < 0 ? Math.abs(avgWin / avgLoss) : (avgWin > 0 ? 99 : 0) };
+            const mean = trades.reduce((a, b) => a + b, 0) / n;
+            // 📐 V72.9.2 加回報準差 `sd` —— 給呼叫端算「保守下界」用。
+            //   ⛔ 為什麼需要:拿 2,317 檔 × 22 招**排期望值取前面**,前段班必然被
+            //      「樣本少但剛好很賺」的僥倖佔滿(實跑第一版首名 每趟 +17.63%・賺賠比 12.63・只有 24 次)。
+            //      那是**選樣偏誤**不是實力(同陷阱 #27「1÷1 也是 100%」)。
+            //   → `playbook_scan.mjs` 改用 `expectancy − 1.28×sd/√n` 當排序與門檻。
+            //   ⚠️ 既有呼叫端只是多一個欄位,行為不變(向後相容)。
+            const sd = n > 1 ? Math.sqrt(trades.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1)) : 0;
+            return { count: n, winRate: wins.length / n * 100, expectancy: mean, sd,
+                     plRatio: avgLoss < 0 ? Math.abs(avgWin / avgLoss) : (avgWin > 0 ? 99 : 0) };
         };
         const ranked = P.map(p => {
             const r = bt(p.test);
@@ -37655,8 +37669,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _pbRowHtml(x, mine) {
         const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? n : ''; };
         const isMine = mine.has(String(x.s));
-        const c = +x.c, trig = +x.trig, stop = +x.stop;
+        const c = +x.c, stop = +x.stop;
+        // ⚠️ `trig` 可能是 null(這招不是靠價位觸發)→ 一律用現價當基準,⛔ 不可拿 null 去算
+        const hasTrig = x.trig != null && +x.trig > 0;
+        const trig = hasTrig ? +x.trig : c;
         const ps = this._lotsForRisk(trig, stop);
+        // 📐 主數字用**保守下界**(期望值 − 1.28×標準差/√次數),⛔ 不可用原始期望值 ——
+        //   2,317 檔 × 22 招排期望值取前面,前段班必然被「樣本少但剛好很賺」佔滿(首跑實測)。
+        const shown = Number.isFinite(+x.lb) ? +x.lb : +x.exp;
         // 💰 使用者鐵則:% 一定要配「元」。沒填帳戶資金就誠實說要去設定,⛔ 不自己編一個本金
         const lotLine = ps.acc > 0
             ? (ps.lots > 0
@@ -37671,14 +37691,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     <span class="text-[11px] text-gray-200 truncate">${nm(x.s)}</span>
                     <span class="font-mono text-[10px] text-gray-500 flex-shrink-0">${c.toLocaleString()}</span>
                 </div>
-                <span class="font-mono font-black text-[12px] text-red-300 flex-shrink-0">+${(+x.exp).toFixed(2)}%</span>
+                <span class="font-mono font-black text-[12px] text-red-300 flex-shrink-0" title="保守估計每趟 +${shown.toFixed(2)}%(原始平均 +${(+x.exp).toFixed(2)}%,已扣來回成本並依樣本數打折)">+${shown.toFixed(2)}%</span>
             </div>
             <div class="text-[10px] text-red-300/90 truncate mt-0.5">${x.k}</div>
             <div class="text-[10px] text-gray-200 mt-1 leading-relaxed">
-                📈 <b>漲過 ${trig.toLocaleString()}</b> 才進(離現價 +${(+x.up).toFixed(1)}%)・🛑 停損 <b>${stop.toLocaleString()}</b><br>
+                ${hasTrig
+                    ? `📈 <b>漲過 ${trig.toLocaleString()}</b> 才進(離現價 +${(+x.up).toFixed(1)}%)`
+                    : `📈 <b>這招不是靠價位觸發</b> —— App 盤中會幫你重算,成立才提醒`}・🛑 停損 <b>${stop.toLocaleString()}</b><br>
                 ${lotLine}
             </div>
-            <div class="font-mono text-[9px] text-gray-500 mt-0.5">勝率 ${x.w}%${this._wrTag ? this._wrTag(x.w, x.n, 0.364) : ''} ・賺賠比 ${x.po} ・打過 ${x.n} 次${+x.loose ? ' ・<span class="text-yellow-500">⚠️ 這招不是靠價位觸發,要盤中看</span>' : ''}</div>
+            <div class="font-mono text-[9px] text-gray-500 mt-0.5">勝率 ${x.w}%${this._wrTag ? this._wrTag(x.w, x.n, 0.364) : ''} ・賺賠比 ${x.po} ・打過 ${x.n} 次</div>
         </div>`;
     },
 
@@ -37690,7 +37712,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         try { for (const i of (this._getInventory?.() || [])) if (i && i.symbol) mine.add(String(i.symbol)); } catch (_) { }
         try { for (const g of Object.values(this.favGroups || {})) for (const s of (g || [])) mine.add(String(s)); } catch (_) { }
         // 👜 自己手上/自選的排最前面(跟今日訊號那塊同一個規則)
-        const rows = list.slice().sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (b.exp - a.exp));
+        // ⛔ 用保守下界排,⛔ 不是原始期望值(理由見 _pbRowHtml 的 `shown`)
+        const _lb = x => Number.isFinite(+x.lb) ? +x.lb : +x.exp;
+        const rows = list.slice().sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (_lb(b) - _lb(a)));
         const SHOW = 12;
         // ⚠️ 大盤風險高時照顯示,但要講白 —— ⛔ 不可默默照推(單一劇本原則:風險先講)
         let riskLine = '';
@@ -37726,6 +37750,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 ② 只留「這一檔在這一招上,扣掉來回成本 ${j.cost || 0.44}% 之後平均還是賺」的
 ③ 而且這一招在這檔至少打過 ${j.min_n || 8} 次(⛔ 打 3 次的 100% 勝率不算數)
 ④ 再問偵測器本人:「明天收在多少,這一招才會成立?」→ 那個價就是觸發價
+
+【⚠️ 為什麼上面的 % 看起來比較保守】
+排序與門檻用的是「保守下界」= 平均每趟 − 1.28×波動/√次數。
+⛔ 直接排「平均每趟最高」會出事:2,300 多檔 × 22 招挑前面,
+前段班一定被「只打過十幾次、剛好很賺」的僥倖佔滿
+(第一次實跑首名就是「每趟 +17.63%、賺賠比 12.63」,只有 24 次)。
+打過越少次罰得越重 —— 這樣留下來的才是比較站得住的。
 
 【⛔ 最重要:什麼時候買】
 不是開盤買。實測(600 檔・13 個月・本金 100 萬):
@@ -37823,7 +37854,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             try { for (const g of Object.values(this.favGroups || {})) for (const s of (g || [])) mine.add(String(s)); } catch (_) { }
             // ⛔ **嚴格限量**:全市場今天可能上百檔觸發,全推 = 使用者三天後關掉通知 = 整套失效。
             //   自己手上/自選的優先,再補期望值最高的,合計最多 6 檔。
-            const ranked = list.slice().sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (b.exp - a.exp));
+            const _lb = x => Number.isFinite(+x.lb) ? +x.lb : +x.exp;   // ⛔ 同上:保守下界
+            const ranked = list.slice().sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (_lb(b) - _lb(a)));
             for (const x of ranked.slice(0, 6)) {
                 const sym = String(x.s);
                 const dkey = `eod_${sym}_${x.k}`;
@@ -37846,7 +37878,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     `${name}(${sym}) 現價 ${chk.price} —「${x.k}」現在成立了。\n` +
                     `🛑 停損 ${chk.stop.toFixed(2)}(破了就走,不要凹)\n` +
                     `💰 ${lotTxt}\n` +
-                    `📊 這招在這檔:勝率 ${x.w}%・賺賠比 ${x.po}・每趟 +${x.exp}%(已扣成本)・打過 ${x.n} 次\n` +
+                    `📊 這招在這檔:勝率 ${x.w}%・賺賠比 ${x.po}・每趟 +${Number.isFinite(+x.lb) ? x.lb : x.exp}%(已扣成本、依樣本數打過折)・打過 ${x.n} 次\n` +
                     `⏰ 現在是尾盤時段,收盤前確認還站得住再進。⚠️ 十次會錯七次,靠的是守紀律。`, sym);
             }
         } catch (_) { } finally { this._eodBusy = false; }

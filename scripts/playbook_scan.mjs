@@ -104,8 +104,15 @@ for (const f of files) {
             // ① 這一檔自己的打法成績(⛔ 直接用 App 的,不複製邏輯)
             let ranked; try { ranked = app._patternFitBacktest(rows); } catch (_) { return null; }
             if (!ranked || !ranked.length) return null;
-            // ② 扣成本後仍為正 + 樣本足(⛔ 不可只看勝率)
-            const good = ranked.filter(x => x.count >= minN && (x.expectancy - cost) > 0);
+            // ② ⭐⭐ V72.9.2 改用「**保守下界**」,⛔ 不可用原始期望值排序。
+            //   首跑實測抓到的問題:2,317 檔 × 22 招排期望值取前面 → 前段班全被
+            //   「樣本少但剛好很賺」佔滿(首名 每趟 +17.63%・賺賠比 12.63・只有 24 次)。
+            //   那是**選樣偏誤**不是實力(陷阱 #27「1÷1 也是 100%」的大規模版)。
+            //   下界 = 期望值 − 1.28×標準差/√n(約 90% 信心的下緣)→ 樣本越少罰得越重。
+            //   ⛔ 門檻與排序都要用它,只改一邊等於沒改。
+            const lb = x => x.expectancy - 1.28 * (x.sd || 0) / Math.sqrt(Math.max(1, x.count));
+            const good = ranked.filter(x => x.count >= minN && (lb(x) - cost) > 0)
+                               .sort((a, b) => lb(b) - lb(a));
             if (!good.length) return { none: true };
 
             const last = rows.length - 1;
@@ -144,24 +151,32 @@ for (const f of files) {
             const out = [], fired = [];
             for (const g of good.slice(0, 2)) {          // 一檔最多留 2 招(⛔ 免得一檔洗版)
                 const row = { k: g.key, w: +g.winRate.toFixed(1), po: +g.plRatio.toFixed(2),
-                              exp: +g.expectancy.toFixed(2), n: g.count };
+                              exp: +g.expectancy.toFixed(2), lb: +lb(g).toFixed(2), n: g.count };
                 if (g.firedToday) { fired.push(row); continue; }      // 今天已觸發 → 明天買已太晚,另外放
                 const t = trigOf(g.key);
                 if (!t) continue;
-                out.push({ ...row, trig: +t.trig.toFixed(2), loose: t.loose ? 1 : 0 });
+                // 🚨 首跑抓到的顯示 bug:`loose`(連跌 6% 都觸發 = 不是價格閘門)那 37 筆
+                //   被寫成「漲過 168.26」而現價是 179 → **叫人漲過一個比現價低的數字**,
+                //   而且停損 = trig×0.95 變成離現價 −11%(不是 −5%)。
+                //   → loose 一律**不給觸發價**,顯示端改講「這招不是靠價位,盤中重算才知道」。
+                if (t.loose) out.push({ ...row, trig: null, loose: 1 });
+                else out.push({ ...row, trig: +t.trig.toFixed(2), loose: 0 });
             }
-            return { c: c0, v: Math.round(rows[last].volume / 1000), d: rows[last].date, out, fired };
+            // ⚠️ 收盤價會帶浮點誤差(實跑出現 42.04999923706055)→ 一律 round 到 2 位
+            return { c: +c0.toFixed(2), v: Math.round(rows[last].volume / 1000), d: rows[last].date, out, fired };
         }, { rows, minN: MIN_N, cost: COST, near: NEAR });
     } catch (_) { continue; }
     if (!r) continue;
     if (r.none) { noEdge++; continue; }
     if (r.d > latest) latest = r.d;
     for (const x of r.out) {
-        // 停損 = 觸發價 −5%(⛔ 跟 App 回測的出場規則一致:min(當日低點, 進場×0.95);
+        // 停損 = 進場價 −5%(⛔ 跟 App 回測的出場規則一致:min(當日低點, 進場×0.95);
         //   明天的低點還不知道 → 保守用 ×0.95,盤中重算時會換成真的)
+        // ⚠️ loose(沒有觸發價)一律用**現價**當基準,⛔ 不可拿 null 去算(會變 NaN)
+        const base = x.trig != null ? x.trig : r.c;
         picks.push({ s: sym, c: r.c, v: r.v, d: r.d, ...x,
-                     up: +((x.trig - r.c) / r.c * 100).toFixed(2),
-                     stop: +(x.trig * 0.95).toFixed(2) });
+                     up: x.trig != null ? +((x.trig - r.c) / r.c * 100).toFixed(2) : null,
+                     stop: +(base * 0.95).toFixed(2) });
     }
     for (const x of r.fired) firedToday.push({ s: sym, c: r.c, v: r.v, d: r.d, ...x });
     if (used % 200 === 0) log(`   …${used} 檔 / ${((Date.now() - t0) / 1000).toFixed(0)}s / 候選 ${picks.length}・今日已觸發 ${firedToday.length}`);
@@ -178,8 +193,8 @@ if (used >= 200 && picks.length === 0 && firedToday.length === 0) {
 }
 
 // 期望值高的排前面;同分用成交量(⛔ 別退化成代號順序 —— 那等於「1xxx 永遠排前面」)
-picks.sort((a, b) => (b.exp - a.exp) || (b.v - a.v));
-firedToday.sort((a, b) => (b.exp - a.exp) || (b.v - a.v));
+picks.sort((a, b) => (b.lb - a.lb) || (b.v - a.v));   // ⛔ 用保守下界排,不是原始期望值
+firedToday.sort((a, b) => (b.lb - a.lb) || (b.v - a.v));
 
 const out = {
     updated: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
@@ -191,6 +206,7 @@ const out = {
     entry_note: '有效的進場時點是「觸發當天的尾盤(13:00~13:25)」—— 打法的判定條件都是用收盤價算的。',
     trig_note: '觸發價是**估計值**(明天真正的開高低還不知道);盤中會用即時報價重算,以那次為準。',
     cost_note: `期望值已扣來回成本 ${COST}%(手續費+證交稅,未打折)`,
+    lb_note: '排序與門檻用的是「保守下界」= 期望值 − 1.28×標準差/√次數 —— 樣本少的會被罰,⛔ 免得前段班全是僥倖',
     picks_total: picks.length,
     picks_syms: new Set(picks.map(p => p.s)).size,
     picks_cap: CAP,
@@ -210,8 +226,8 @@ if (picks.length > out.picks.length) log(`   ⚠️ 有截斷:${picks.length} �
 if (out.picks.length) {
     log('\n🏆 期望值最高的 10 筆:');
     for (const p of out.picks.slice(0, 10)) {
-        log(`   ${p.s}  現價 ${String(p.c).padStart(8)} → 漲過 ${String(p.trig).padStart(8)} 觸發(+${p.up}%)  ${p.k}`);
-        log(`         停損 ${p.stop} ・勝率 ${p.w}% ・賺賠比 ${p.po} ・每趟 +${p.exp}% ・打過 ${p.n} 次${p.loose ? ' ・⚠️不是價格閘門' : ''}`);
+        log(`   ${p.s}  現價 ${String(p.c).padStart(8)} → ${p.trig != null ? `漲過 ${p.trig}(+${p.up}%)` : '無價格閘門(盤中重算)'}  ${p.k}`);
+        log(`         停損 ${p.stop} ・勝率 ${p.w}% ・賺賠比 ${p.po} ・每趟 +${p.exp}%(保守下界 +${p.lb}%)・打過 ${p.n} 次${p.loose ? ' ・⚠️不是價格閘門' : ''}`);
     }
 }
 log(`\n💾 已寫 data/playbook_edge.json (${(fs.statSync(path.join(DATA, 'playbook_edge.json')).size / 1024).toFixed(1)} KB)`);

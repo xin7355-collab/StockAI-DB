@@ -70,7 +70,15 @@ ok('④c ⛔ 沒有殘留的第二份 inline 公式', inlineLots === 0, `還有 
 
 console.log('⑤ 採礦端:門檻與免責');
 const scan = fs.readFileSync(path.join(ROOT, 'scripts/playbook_scan.mjs'), 'utf8');
-ok('⑤a 期望值要**扣成本後**仍為正(⛔ 不可只看勝率)', /\(x\.expectancy - cost\) > 0/.test(scan));
+// ⭐ V72.9.2 起門檻升級成「**保守下界**扣成本後仍為正」,⛔ 不是原始期望值。
+//   理由:2,317 檔 × 22 招排期望值取前面,前段班必然被「樣本少但剛好很賺」佔滿
+//   (首跑實測首名 每趟 +17.63%・賺賠比 12.63・只有 24 次 = 選樣偏誤)。
+ok('⑤a 門檻用**保守下界**扣成本(⛔ 不可退回原始期望值)', /\(lb\(x\) - cost\) > 0/.test(scan));
+ok('⑤a2 下界公式是 期望值 − 1.28×sd/√n', /x\.expectancy - 1\.28 \* \(x\.sd \|\| 0\) \/ Math\.sqrt/.test(scan));
+ok('⑤a3 ⛔ 排序也要用下界(只改門檻等於沒改)', /sort\(\(a, b\) => lb\(b\) - lb\(a\)\)/.test(scan) && /picks\.sort\(\(a, b\) => \(b\.lb - a\.lb\)/.test(scan));
+ok('⑤a4 _patternFitBacktest 有回 sd', /const sd = n > 1 \? Math\.sqrt/.test(src) && /expectancy: mean, sd,/.test(src));
+ok('⑤a5 前端顯示與排序也用下界', /const shown = Number\.isFinite\(\+x\.lb\)/.test(src) && (src.match(/const _lb = x => Number\.isFinite\(\+x\.lb\)/g) || []).length === 2);
+ok('⑤a6 沒有觸發價(loose)時⛔ 不可顯示「漲過 null」', /const hasTrig = x\.trig != null/.test(src) && /這招不是靠價位觸發/.test(src));
 ok('⑤b 有樣本門檻', /x\.count >= minN/.test(scan));
 ok('⑤c 用「這一檔自己」的成績(⛔ 不是全市場平均)', /_patternFitBacktest\(rows\)/.test(scan));
 ok('⑤d 有截斷就把總數寫進 JSON(no silent caps)', /picks_total/.test(scan) && /picks_cap/.test(scan));
