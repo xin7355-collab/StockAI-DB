@@ -51,6 +51,12 @@ const ENTRY = process.env.ENTRY || 'close';   // close | nextopen | nextclose | 
 const FILTER = (process.env.FILTER || '').split('+').filter(Boolean);
 const LIQ = +(process.env.LIQ || 1);       // 億元
 const CONF = +(process.env.CONF || 2);     // 共振:同一天同一檔至少幾招同時觸發
+// 🚪 V72.9.8 出場方式實驗 —— ⭐ 進場濾網六種全部實測沒用之後,剩下的槓桿就是**出場**。
+//   勝率只有 33%、全靠少數大賺 → 「跌破 5MA 就出」很可能把贏家太早洗掉。
+//   ma5(現行) | ma10 | ma20 | trailN(最高點回落 N%) | 純看停損+天數
+//   ⚠️ 出場一改,**排序用的 per-stock 成績也跟著改**(同一批交易算出來的)→ 是一整套的替換,前後可比。
+const EXIT = process.env.EXIT || 'ma5';
+const MAXD = +(process.env.MAXD || 20);    // 最長持有幾個交易日
 const GAPCAP = +(process.env.GAPCAP || 1);   // nextopen_lim:跳空開高超過幾 % 就不追
 const COST = 0.44;           // 來回交易成本 %(手續費 0.1425%×2 + 證交稅 0.3%,未打折)
 const LOT = +(process.env.LOT || 100000);        // 每筆投入(等權)
@@ -78,7 +84,7 @@ const syms = [];
 const cover = {};
 for (const s of syms) cover[s[0]] = (cover[s[0]] || 0) + 1;
 console.log(`💼 組合回測 ・${syms.length} 檔(分層抽樣,代號開頭分布 ${JSON.stringify(cover)})`);
-console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
+console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・出場=${EXIT}/${MAXD}日 ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
 
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -136,12 +142,20 @@ for (const sym of syms) {
                         //   (跳空開高時那個停損會變成 -10% 以上,等於偷偷放寬風險)
                         const stop = Math.min(L(eIdx), entry * 0.95);
                         let exitP = C(last), exitIdx = last;
-                        const endJ = Math.min(last, eIdx + 20);
+                        const endJ = Math.min(last, eIdx + a.maxD);
+                        const maN = a.exit === 'ma10' ? 10 : a.exit === 'ma20' ? 20 : a.exit === 'ma5' ? 5 : 0;
+                        const trailPct = /^trail(\d+)$/.test(a.exit) ? +RegExp.$1 : 0;
+                        let peak = entry;
                         for (let j = eIdx + 1; j <= endJ; j++) {
                             const c = C(j);
-                            const ma5 = j >= 4 ? (C(j) + C(j - 1) + C(j - 2) + C(j - 3) + C(j - 4)) / 5 : null;
+                            if (c > peak) peak = c;
                             if (c <= stop) { exitP = stop; exitIdx = j; break; }
-                            if (ma5 != null && c < ma5) { exitP = c; exitIdx = j; break; }
+                            // 🚪 移動停利:從進場後的最高收盤回落 N% 就走(讓贏家跑,輸家照樣被 stop 砍)
+                            if (trailPct > 0 && c <= peak * (1 - trailPct / 100)) { exitP = c; exitIdx = j; break; }
+                            if (maN > 0 && j >= maN - 1) {
+                                let sum = 0; for (let q = 0; q < maN; q++) sum += C(j - q);
+                                if (c < sum / maN) { exitP = c; exitIdx = j; break; }
+                            }
                             if (j === endJ) { exitP = c; exitIdx = j; }
                         }
                         // ⚠️ inD 一律記「**訊號日**」—— 選股是那天晚上做的決定,
@@ -157,7 +171,7 @@ for (const sym of syms) {
             }
         }
         return out;
-    }, { rows, entry: ENTRY, gapCap: GAPCAP });
+    }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD });
     for (const t of tr) allTrades.push({ ...t, sym });
     if (++done % 50 === 0) {
         const el = (Date.now() - t0) / 1000;
