@@ -57,8 +57,8 @@ const modalHtml = await page.evaluate(() => {
 });
 const mt = String(modalHtml).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 ok('③ ⭐ 跳窗要說明「只顯示最近 N 個版本」', /這裡顯示最近\s*\d+\s*個版本/.test(mt), mt.slice(-320));
-ok('③ ⭐⛔ 要明說「完整保存在 GitHub、一個字都沒刪」',
-   /完整保存在 ?GitHub/.test(mt) && /一個字都沒刪/.test(mt), mt.slice(-320));
+ok('③ ⭐⛔ 要明說「完整保存在雲端紀錄檔、一個字都沒刪」',
+   /完整保存在 ?雲端紀錄檔/.test(mt) && /一個字都沒刪/.test(mt), mt.slice(-320));
 ok('③ 要給得到檔案位置', /CHANGELOG\.md/.test(mt), mt.slice(-320));
 ok('③ 要交代為什麼這樣做(省下載)', /少下載/.test(mt), mt.slice(-320));
 

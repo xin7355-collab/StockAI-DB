@@ -2222,6 +2222,34 @@ done
   **每天被 daily_miner 洗掉且零錯誤訊息**(陷阱 #9 同型)。測試 `scripts/test_envdetect.mjs` ②cd 釘住。
 - 測試 `scripts/test_envdetect.mjs` 15 條(三種環境實跑各驗一次 + 部署佈線)。
 
+### 🕶️ V73.1.2 低調化三件套(使用者要求,2026-08-08)⭐ 詳細內容**刻意不寫進 `_CHANGELOG`**
+使用者:「①把程式的 GitHub 相關資訊刪除,我不想讓人輕易知道 ②版本更新資訊改成當天顯示而已
+③這次的告知資料不要放在版本內,另外也紀錄下來」→ **這一節就是那份「另外的紀錄」**。
+
+**① UI 可見層的 GitHub 字樣已全部改白話**(9 處):
+Telegram 教學連結(原本直接連 repo)→「見專案文件 cloud-worker/README.md」・
+「GitHub Pages CDN」→「雲端主機」・「GitHub Actions」→「雲端後台/雲端部署流程」・
+`_CHANGELOG` 舊條目與 updateLogModal 底部的「保存在 GitHub」→「雲端紀錄檔」等。
+⛔ **功能性的不能動也沒動**:`api.github.com` 呼叫(採礦中 banner)、OpenRouter 的
+`HTTP-Referer`、動態 `ghBase` —— 動了 App 會壞,而且那些不顯示在畫面上。
+⚠️ **誠實限制(已知會、⛔ 別假裝做得到)**:網址本身就是 `xin7355-collab.github.io`,
+瀏覽器網址列藏不掉;repo 也是 public。這次做的是「畫面上不主動講」,不是匿名化。
+⚠️ 日後寫 UI 文案:**GitHub/repo/Actions/push 這類字一律不出現在使用者可見層**
+(V26.18 錯誤訊息白話化鐵則本來就有,這次是全面掃過一遍 + 使用者明示)。
+
+**② 更新跳窗只在「發佈當天」自動顯示**(`_checkVersionUpdate`):
+比對 `_CHANGELOG[0].dt` 與台北今天(`Intl.DateTimeFormat en-CA Asia/Taipei`,
+⛔ 不可用 `toISOString` —— 那是 UTC,台北晚上會差一天)。
+非當天 → 默默記 `proTerm_lastSeenVer`,⛔ 不跳窗。設定中心「🆕 更新紀錄」手動看不受影響。
+
+**③ 敏感/內部性質的改動,`_CHANGELOG` 只寫中性一句**(如 V73.1.2「🧹 例行維護」),
+詳細記在 CLAUDE.md(= 本節)。⚠️ `_CHANGELOG[0].v` 必須等於 `_APP_VERSION`(測試釘住),
+所以條目本身不能省,只是內容中性化。
+
+**順手:`_CHANGELOG` 第二次搬移**(90 筆 → 60 筆,30 筆搬進 `CHANGELOG.md`,一字不刪;
+同 V72.1.9 的做法)。⚠️ `test_changelog_trim` ③ 的斷言跟著文案改成「完整保存在雲端紀錄檔」——
+⛔ 改斷言要**名稱與 regex 兩邊一起改**(第一版只改到名稱那行,regex 還在驗舊字樣)。
+
 ## 🎯 V72.2.0 「今天出現實測會賺的訊號」—— 全市場掃描
 使用者:「只要給我最好、勝率最高的資料」。
 問題:`_SIGNAL_EDGE` 的成績只在**個股頁**看得到 → 使用者得先想到要看哪一檔,
