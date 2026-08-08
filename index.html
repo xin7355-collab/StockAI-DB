@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.0.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.0.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.0.1 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7157,8 +7157,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.0.0',
+    _APP_VERSION: 'V73.0.1',
     _CHANGELOG: [
+        { v: 'V73.0.1', dt: '2026-08-08', t: '🚨 「該買幾張」算錯了 —— 少賺 112 萬', d: [
+            '我發現一個真正的漏洞:我一路報給你的獲利數字是用「**等權**(每筆固定金額)」算的,但 App 叫你買的張數是用「**風險法**」算的 —— 兩者根本不是同一套,而風險法從來沒被回測過。',
+            '補測結果(每天 2 檔・本金 100 萬・13 個月):等權賺 **1,718,529 元**、風險法只賺 **593,234 元** —— 少賺 1,125,295 元,而且**還輸給 0050 買進放著**。',
+            '⛔ 最關鍵的是:風險法的回撤**沒有比較小**(−9.15% vs −9.31%,幾乎一樣)→ 它不是「安全一點但賺少一點」的取捨,就是**單純比較差**。真因:停損寬的時候它只買很少張甚至 0 張,結果資金長期只用到 **59%**(等權是 92%),等於四成的錢一直在睡覺。',
+            '→ 明日清單、尾盤推播、條件單複製全部改成**等權**(每筆用本金 15%)。同時誠實顯示「這筆停損會虧本金的幾 %」,超過 2% 會提醒你可以減量。',
+        ] },
         { v: 'V73.0.0', dt: '2026-08-08', t: '⭐ 一天只做 2 檔(實測多賺 35 萬、回撤還更小)', d: [
             '實測每天挑幾檔(本金 100 萬・13 個月):6 檔賺 735,938 元、3 檔 1,361,088 元、⭐ 2 檔 1,718,529 元、1 檔 1,720,402 元。越集中越好,到 2 檔是甜蜜點 —— 賺得跟 1 檔一樣多,但回撤最小(−9.3% vs −13.0%)。',
             '比現行(3 檔)多賺 357,441 元、回撤更小、每趟從 +1.96% 升到 +2.47% —— ⭐ 這是 27 次實驗裡第一次「沒有任何一項變差」。→ 尾盤推播上限從 6 檔改成 2 檔,清單上也直接標出來。',
@@ -27489,6 +27495,40 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                  maxLoss: Math.round(lots * 1000 * per) };
     },
 
+    // 💰💰 V73.0.1 明日作戰清單專用的部位大小 —— ⭐ **等權**,⛔ 不是風險法。
+    //
+    // 🚨 為什麼要跟 `_lotsForRisk` 分開(這是實測抓到的,不是設計偏好):
+    //   `portfolio_backtest.mjs`(600 檔・13 個月・本金 100 萬・每天 2 檔)只改「每筆買多少」:
+    //     ⭐ 等權(每筆 15 萬 = 本金 15%)  **+1,718,529 元** ・回撤 −9.31% ・資金使用率 **92%**
+    //     風險法 1%(= `_lotsForRisk`)      **+593,234 元** ・回撤 −9.15% ・資金使用率 **59%**
+    //     風險法 2%                           +517,418 元 ・回撤 −13.54% ・資金使用率 51%
+    //   → 風險法**少賺 1,125,295 元**,而且**輸給 0050 買進放著(+832,500)**。
+    //   ⛔⛔ 最關鍵的一點:風險法的回撤**沒有比較小**(−9.15% vs −9.31%,幾乎一樣)
+    //      → 它**不是取捨,就是單純比較差**。少賺的錢沒有換到任何安全性。
+    //   真因:風險法在停損寬的時候買很少張(甚至 0 張)→ 資金長期只用到 59%,
+    //        等於一直有四成的錢在睡覺;而且它把錢集中壓在「停損很近」的標的上。
+    //
+    // ⚠️ ⛔ 這**不是**說 `_lotsForRisk` 錯了 —— 那張卡回答的是「這檔用 ATR 風控該買幾張」,
+    //    是通用問題;這裡回答的是「照這套**實測過的**打法該投入多少」,答案就是等權。
+    //    兩個問題不同、答案不同,所以**刻意不共用**(⛔ 別為了「統一」把這裡改回風險法)。
+    _PB_POS_PCT: 15,          // 每筆投入 = 帳戶總資金的幾 %(= 回測用的 15 萬 / 100 萬)
+    _lotsForPlaybook(price, stop) {
+        const acc = +(this.settings?.accountSize || 0);
+        if (!(acc > 0) || !(price > 0)) return { acc, lots: 0 };
+        const budget = acc * this._PB_POS_PCT / 100;
+        const lots = Math.floor(budget / (price * 1000));
+        const investAmt = lots * 1000 * price;
+        const per = price - stop;
+        const maxLoss = per > 0 ? Math.round(lots * 1000 * per) : null;
+        return {
+            acc, lots, investAmt,
+            investPct: acc > 0 ? investAmt / acc * 100 : 0,
+            maxLoss,
+            // ⚠️ 等權的代價:每筆的「風險%」會浮動(停損越寬、虧越多)→ 要誠實顯示出來
+            riskPct: maxLoss != null && acc > 0 ? maxLoss / acc * 100 : null,
+        };
+    },
+
     _renderPositionSizer(data) {
         // 🎯 V70.0.0 U-8 復活:全 App 唯一回答「該買幾張」的卡(ATR 風控;未填帳戶資金顯 CTA 引導)
         const box = document.getElementById('positionSizerCard');
@@ -37722,15 +37762,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // ⚠️ `trig` 可能是 null(這招不是靠價位觸發)→ 一律用現價當基準,⛔ 不可拿 null 去算
         const hasTrig = x.trig != null && +x.trig > 0;
         const trig = hasTrig ? +x.trig : c;
-        const ps = this._lotsForRisk(trig, stop);
+        // ⭐ V73.0.1 改用**等權**(⛔ 不是風險法)—— 理由見 `_lotsForPlaybook` 上方的實測數字
+        const ps = this._lotsForPlaybook(trig, stop);
         // 📐 主數字用**保守下界**(期望值 − 1.28×標準差/√次數),⛔ 不可用原始期望值 ——
         //   2,317 檔 × 22 招排期望值取前面,前段班必然被「樣本少但剛好很賺」佔滿(首跑實測)。
         const shown = Number.isFinite(+x.lb) ? +x.lb : +x.exp;
         // 💰 使用者鐵則:% 一定要配「元」。沒填帳戶資金就誠實說要去設定,⛔ 不自己編一個本金
         const lotLine = ps.acc > 0
             ? (ps.lots > 0
-                ? `買 <b class="text-red-300">${ps.lots} 張</b>(約 ${Math.round(ps.investAmt).toLocaleString()} 元)・停損時最多虧 <b>${ps.maxLoss.toLocaleString()} 元</b>${ps.capped ? '<span class="text-yellow-400">・已被單檔上限 25% 壓下來</span>' : ''}`
-                : `<span class="text-yellow-400">⚠️ 依你的風險設定算出來是 0 張</span> —— 停損距離太寬(${((trig - stop) / trig * 100).toFixed(1)}%),這檔對你的本金太大`)
+                ? `買 <b class="text-red-300">${ps.lots} 張</b>(約 ${Math.round(ps.investAmt).toLocaleString()} 元,佔本金 ${ps.investPct.toFixed(0)}%)・停損時虧 <b>${ps.maxLoss.toLocaleString()} 元</b>(本金的 ${ps.riskPct.toFixed(1)}%)${ps.riskPct > 2 ? '<span class="text-yellow-400">・⚠️ 這檔停損很寬,要虧超過本金 2%,可考慮減量</span>' : ''}`
+                : `<span class="text-yellow-400">⚠️ 本金不夠買 1 張</span>(這檔一張要 ${Math.round(trig * 1000).toLocaleString()} 元)`)
             : `<span class="text-gray-500">買幾張?先到 ⚙️ 設定填「帳戶總資金」就會幫你算</span>`;
         return `<div onclick="app.analyze('${x.s}')" class="px-2 py-1.5 rounded ${isMine ? 'bg-amber-900/15 border border-amber-700/50' : 'bg-[#0d1117] border border-[#30363d]'} cursor-pointer hover:bg-white/5 transition-colors">
             <div class="flex items-baseline justify-between gap-2">
@@ -37769,13 +37810,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const x = (j.picks || []).find(p => String(p.s) === String(sym));
         if (!x || x.trig == null) { alert('這一檔沒有固定的觸發價(這招不是靠價位成立)→ 不適合掛條件單,請等 App 盤中提醒。'); return; }
         const nm = this.getStockName ? (this.getStockName(sym) || '') : '';
-        const ps = this._lotsForRisk(+x.trig, +x.stop);
+        const ps = this._lotsForPlaybook(+x.trig, +x.stop);   // ⭐ 等權(見該函式)
         const lots = ps.acc > 0 ? ps.lots : null;
         const txt = [
             `【明日條件單】${sym} ${nm !== sym ? nm : ''}`.trim(),
             `觸發:成交價 ≥ ${x.trig}`,
             `買進:${x.trig} 元` + (lots ? ` × ${lots} 張(約 ${Math.round(ps.investAmt).toLocaleString()} 元)` : '(張數請先到設定填帳戶總資金)'),
-            `停損:跌破 ${x.stop} 出場` + (lots ? `(最多虧 ${ps.maxLoss.toLocaleString()} 元)` : ''),
+            `停損:跌破 ${x.stop} 出場` + (lots ? `(會虧 ${ps.maxLoss.toLocaleString()} 元,本金的 ${ps.riskPct.toFixed(1)}%)` : ''),
             `打法:${x.k}(保守每趟 +${x.lb}%・勝率 ${x.w}%・打過 ${x.n} 次)`,
             `⚠️ 回測是「尾盤買」算的;條件單是「觸價就買」,時點不同。能設 13:00 後才觸發最好。`,
         ].join('\n');
@@ -38026,10 +38067,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 if (!chk || !chk.fired) continue;                 // ⛔ 沒真的成立就不吵
                 if (this._kbarFiredToday(dkey)) continue;         // 併發保險
                 const name = this.getStockName(sym) || sym;
-                const ps = this._lotsForRisk(chk.price, chk.stop);
+                const ps = this._lotsForPlaybook(chk.price, chk.stop);   // ⭐ 等權(見該函式)
                 const lotTxt = ps.acc > 0
-                    ? (ps.lots > 0 ? `買 ${ps.lots} 張(約 ${Math.round(ps.investAmt).toLocaleString()} 元),停損時最多虧 ${ps.maxLoss.toLocaleString()} 元`
-                                   : `⚠️ 依你的風險設定算出來是 0 張 → 這檔停損距離太寬,別勉強做`)
+                    ? (ps.lots > 0 ? `買 ${ps.lots} 張(約 ${Math.round(ps.investAmt).toLocaleString()} 元,佔本金 ${ps.investPct.toFixed(0)}%),停損時虧 ${ps.maxLoss.toLocaleString()} 元(本金 ${ps.riskPct.toFixed(1)}%)`
+                                   : `⚠️ 本金不夠買 1 張`)
                     : `(想知道買幾張:去 ⚙️ 設定填「帳戶總資金」)`;
                 // 📌 記一筆「待確認」→ 你按「我買了」之後才會幫你盯停損(⛔ 不預設你買了)
                 try { this._pbRecordFire(sym, x.k, chk.price, chk.stop, x); } catch (_) { }

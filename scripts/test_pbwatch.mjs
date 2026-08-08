@@ -69,7 +69,23 @@ ok('③c 沒真的成立就不推', /if \(!chk \|\| !chk\.fired\) continue;/.tes
 ok('③d 量的單位走共用 _volToLots(⛔ 別各判一次,V72.4.3 教訓)', /this\._volToLots\(live\.volume\)/.test(pbBlock));
 ok('③e 同一天不可 append 成兩根 K', /norm\.slice\(0, -1\)\.concat/.test(pbBlock));
 
-console.log('④ 靜態:「該買幾張」只有一份公式');
+console.log('④ 靜態:「該買幾張」—— 兩個問題兩個答案(⛔ 刻意不共用)');
+// 🚨 V73.0.1 實測抓到:App 原本用「風險法」給張數,但那從來沒被回測過。
+//   同樣每天 2 檔、只改部位大小(600 檔・13 個月・本金 100 萬):
+//     等權       +1,718,529 元 ・回撤 −9.31% ・資金使用率 92%
+//     風險法 1%    +593,234 元 ・回撤 −9.15% ・資金使用率 59%  ← 還輸 0050(+832,500)
+//   回撤幾乎一樣 → ⛔ 不是取捨,是單純比較差。→ 清單/推播/條件單一律改等權。
+// 🚨 這條第一次跑就抓到真 bug:函式被呼叫但**根本沒定義**(改檔腳本中途 assert 失敗,
+//   只寫進了呼叫端)。⚠️ smoke_test 抓不到 —— 沙箱沒有 playbook 資料,那段程式不會執行。
+//   ⭐ 教訓:「新增共用函式」要同時驗**定義存在**與**呼叫端都接上**,只驗其中一邊會漏。
+ok('④0 明日清單用**等權** _lotsForPlaybook(⛔ 不可退回風險法)',
+   /_lotsForPlaybook\(price, stop\)\s*\{/.test(src)
+   && !/const ps = this\._lotsForRisk\(/.test(src));
+ok('④0b 三個顯示點(清單/推播/條件單)都接上了',
+   (src.match(/this\._lotsForPlaybook\(/g) || []).length >= 3);
+ok('④0c 等權的代價要誠實顯示(每筆風險%會浮動)',
+   /riskPct/.test(src) && /本金的 \$\{ps\.riskPct\.toFixed\(1\)\}%/.test(src));
+ok('④0d 停損太寬要警告(超過本金 2%)', /要虧超過本金 2%,可考慮減量/.test(src));
 const lotsDefs = (src.match(/_lotsForRisk\(price, stop\)\s*\{/g) || []).length;
 ok('④a _lotsForRisk 只定義一次', lotsDefs === 1, `定義了 ${lotsDefs} 次`);
 ok('④b 部位風控卡改用共用函式', /const _ps = this\._lotsForRisk\(price, stop\);/.test(src));
