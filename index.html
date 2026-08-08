@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V72.8.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V72.9.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.8.0 ›</button></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V72.9.0 ›</button></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4199,6 +4199,8 @@ const app = {
         setTimeout(() => this._kbarDailySweep(), 6000);
         // 🧙 V68.5.6 — 神分點跟單:每日開 App 掃訂閱分點今天買超哪些股 → 推播(localStorage 當日去重)
         setTimeout(() => { try { this._brokerFollowSweep(); } catch (_) {} }, 8000);
+        // ⏰ V72.9.0 — 尾盤買點守望:只在平日 13:00~13:28 真的做事,其餘時間立刻 return(見 _eodTriggerSweep)
+        try { this._startEodWatcher(); } catch (_) {}
         // 🔮 V69.1.10 — 明日劇本推播:每日開 App 掃庫存+自選(有分點的)籌碼面 → 偏空的推 1 則(當日去重)
         setTimeout(() => { try { this._dailyChipScenarioSweep(); } catch (_) {} }, 9500);
         // 🕯️ V69.1.28 — 長黑K壓力推播:每日開 App 掃庫存+自選,壓在近期長黑K最低價下(回檔確認/彈後空)→ 推(當日去重)
@@ -7151,8 +7153,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V72.8.0',
+    _APP_VERSION: 'V72.9.0',
     _CHANGELOG: [
+        { v: 'V72.9.0', dt: '2026-08-08', t: '🎯 明日作戰清單 + 尾盤買點大力提醒', d: [
+            '每晚採礦後全市場算「這一檔自己最會賺的那一招」,選股頁最上方給「明天要盯這幾檔」——每列是一張完整下單票:漲過多少才進、停損掛哪、依你的本金該買幾張、停損時最多虧多少元。',
+            '⛔ 刻意不是「明天開盤買」:回測 600 檔 13 個月(本金 100 萬)—— 訊號日尾盤買賺 1,361,088 元、隔天開盤買只賺 818,734 元(比 0050 還少賺 13,766 元),因為打法的條件都是用收盤價算的,隔天開盤時突破已經反映在跳空裡。',
+            '⚠️ 而且「跳空太多就不追」實測最慘(倒賠 147,644 元)—— 跳空開高的那幾檔正是後來走最遠的,濾掉等於專挑爛的買。',
+            '盤中 13:00~13:28 自動幫你盯:用即時價把「今天這根 K」接上歷史重算一次(跟回測同一支程式),真的成立才推播,內容直接是下單指令 + 停損 + 張數。⛔ 每天最多推 6 檔,免得洗頻。',
+            '「該買幾張」抽成全 App 唯一一份公式(_lotsForRisk),部位風控卡與新清單共用,改風險比例不會有一邊沒跟上。',
+            '⚠️ 誠實話:勝率只有三成、十次錯七次;回測那 13 個月是大多頭,空頭沒測過;只看 K 線沒看籌碼基本面。要賺全靠停損守得住。',
+        ] },
         { v: 'V72.8.0', dt: '2026-08-07', t: '🗑️ 「分析師焦點」整組移除', d: [
             '你說沒用,確實沒用 —— 拿得到的只有標題,而標題看不出他講什麼。整組拿掉(消息面回到「新聞焦點 / 財經行事曆」兩格)。',
             '為什麼做不到已經記在開發筆記裡,免得日後有人再走一次同樣的路:YouTube 逐字稿被同意頁擋死、股癌的節目說明整段是贊助、Google News 抓不到內文、兆華兩位的頻道 10 條路全滅。',
@@ -27397,6 +27407,28 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         } catch (_) { return ''; }
     },
 
+    // 💰 V72.9.0 「該買幾張」的**唯一**公式(⛔ 別再 inline 寫第二份 —— 同 `_netPL` 的處置)。
+    //   風險法:單筆最多虧「帳戶 × riskPct%」→ 張數 = 風險金額 ÷(每股風險 × 1000);
+    //   再套單檔上限 25% 帳戶(防單押)。
+    //   ⚠️ 沒填帳戶資金就回 `{acc:0}`,呼叫端要自己顯 CTA,⛔ 不可自己編一個本金。
+    //   ⭐ 抽出來的原因(陷阱 #37):明日作戰清單也要算張數,再抄一份的話
+    //      改風險比例時一定有一邊沒跟上。
+    _lotsForRisk(price, stop) {
+        const acc = +(this.settings?.accountSize || 0);
+        const riskPct = this.settings?.riskPct ?? 1;
+        const per = price - stop;                       // 每股風險
+        if (!(acc > 0) || !(price > 0) || !(per > 0)) return { acc, riskPct, lots: 0, per };
+        const riskAmt = acc * riskPct / 100;
+        let lots = Math.floor(riskAmt / (per * 1000));
+        const capLots = Math.floor(acc * 0.25 / (price * 1000));   // 單檔上限 25% 帳戶(防單押)
+        let capped = false;
+        if (lots > capLots) { lots = capLots; capped = true; }
+        const investAmt = lots * 1000 * price;
+        return { acc, riskPct, riskAmt, per, lots, capped, investAmt,
+                 investPct: acc > 0 ? investAmt / acc * 100 : 0,
+                 maxLoss: Math.round(lots * 1000 * per) };
+    },
+
     _renderPositionSizer(data) {
         // 🎯 V70.0.0 U-8 復活:全 App 唯一回答「該買幾張」的卡(ATR 風控;未填帳戶資金顯 CTA 引導)
         const box = document.getElementById('positionSizerCard');
@@ -27426,12 +27458,12 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     ${this._warrantFitLine(data)}`;
                 box.classList.remove('hidden'); return;
             }
-            const riskAmt = acc * riskPct / 100;
-            let lots = riskPerShare > 0 ? Math.floor(riskAmt / (riskPerShare * 1000)) : 0;
-            const capLots = Math.floor(acc * 0.25 / (price * 1000));   // 單檔上限 25% 帳戶(防單押)
-            let capped = false;
-            if (lots > capLots) { lots = capLots; capped = true; }
-            const investAmt = lots * 1000 * price, investPct = acc > 0 ? investAmt / acc * 100 : 0, maxLoss = Math.round(lots * 1000 * riskPerShare);
+            // ⭐ V72.9.0 改用共用的 `_lotsForRisk`(⛔ 公式全 App 只有一份,見該函式註解)
+            const _ps = this._lotsForRisk(price, stop);
+            const riskAmt = _ps.riskAmt;
+            let lots = _ps.lots;
+            const capped = _ps.capped;
+            const investAmt = _ps.investAmt, investPct = _ps.investPct, maxLoss = _ps.maxLoss;
             const _nf = v => Math.round(v).toLocaleString();
             let heldWarn = '';
             if (cost && heldLots > 0) {
@@ -37585,6 +37617,241 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return this._todaySig;
     },
 
+    // 🎯 V72.9.0 明日作戰清單 —— `scripts/playbook_scan.mjs` 每晚 19:00 產的 data/playbook_edge.json
+    //
+    // ⛔⛔ 這份跟上面 `today_signals.json` **不是**同一件事,⛔ 別合併也別互相取代:
+    //   ・today_signals = 「今天出現了哪些**全市場統計上**有效的訊號」(⚠️ 收盤後才產出 → 已經來不及買)
+    //   ・playbook_edge = 「**這一檔自己**最會賺的那一招,明天漲過多少會觸發」(⭐ 這個是**還來得及**的)
+    //
+    // ⭐ 為什麼要有這份(`scripts/portfolio_backtest.mjs` 實測,600 檔・13 個月・本金 100 萬):
+    //     用全市場型態平均排序 → +35,491 元(576 筆有 479 筆押同一招 = 等於亂挑)
+    //     用這檔自己的成績排序 → +1,361,088 元(vs 0050 多賺 528,588 元)
+    //
+    // ⛔⛔ 最重要的一條(⛔ 文案絕不可寫成「明天開盤買」):
+    //     同一套邏輯只改進場時機 —— 訊號日**尾盤**買 +1,361,088 元;隔天**開盤**買 +818,734 元
+    //     (比 0050 還少賺 13,766 元、回撤從 −9.4% 惡化到 −19.1%);
+    //     隔天開盤+「跳空>1% 不追」更慘,**倒賠 147,644 元**、回撤 −36.4%
+    //     (真因:跳空開高的那幾檔正是後來走最遠的,濾掉等於專挑爛的買)。
+    //     → 打法的判定條件全部用**收盤價**算 → 有效進場點只有「觸發當天的尾盤」。
+    _PB_ENTRY_NOTE: '有效進場時點是「觸發當天尾盤 13:00~13:25」,⛔ 不是隔天開盤(實測隔天開盤買會把賺頭吃光)',
+    async _loadPlaybookEdge() {
+        if (this._pbEdge !== undefined) return this._pbEdge;
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/playbook_edge.json', ghBase).href + `?t=${Date.now()}`,
+                                  { signal: AbortSignal.timeout(8000) });
+            this._pbEdge = r.ok ? await r.json() : null;
+        } catch (_) { this._pbEdge = null; }
+        return this._pbEdge;
+    },
+
+    // 📋 一列 = 一張完整的下單票(⛔ 只寫「可以買」等於把最難的部分丟給使用者)
+    _pbRowHtml(x, mine) {
+        const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? n : ''; };
+        const isMine = mine.has(String(x.s));
+        const c = +x.c, trig = +x.trig, stop = +x.stop;
+        const ps = this._lotsForRisk(trig, stop);
+        // 💰 使用者鐵則:% 一定要配「元」。沒填帳戶資金就誠實說要去設定,⛔ 不自己編一個本金
+        const lotLine = ps.acc > 0
+            ? (ps.lots > 0
+                ? `買 <b class="text-red-300">${ps.lots} 張</b>(約 ${Math.round(ps.investAmt).toLocaleString()} 元)・停損時最多虧 <b>${ps.maxLoss.toLocaleString()} 元</b>${ps.capped ? '<span class="text-yellow-400">・已被單檔上限 25% 壓下來</span>' : ''}`
+                : `<span class="text-yellow-400">⚠️ 依你的風險設定算出來是 0 張</span> —— 停損距離太寬(${((trig - stop) / trig * 100).toFixed(1)}%),這檔對你的本金太大`)
+            : `<span class="text-gray-500">買幾張?先到 ⚙️ 設定填「帳戶總資金」就會幫你算</span>`;
+        return `<div onclick="app.analyze('${x.s}')" class="px-2 py-1.5 rounded ${isMine ? 'bg-amber-900/15 border border-amber-700/50' : 'bg-[#0d1117] border border-[#30363d]'} cursor-pointer hover:bg-white/5 transition-colors">
+            <div class="flex items-baseline justify-between gap-2">
+                <div class="min-w-0 flex items-baseline gap-1.5">
+                    ${isMine ? '<span class="text-[10px] flex-shrink-0">👜</span>' : ''}
+                    <span class="font-mono font-black text-[12px] text-gray-100 flex-shrink-0">${x.s}</span>
+                    <span class="text-[11px] text-gray-200 truncate">${nm(x.s)}</span>
+                    <span class="font-mono text-[10px] text-gray-500 flex-shrink-0">${c.toLocaleString()}</span>
+                </div>
+                <span class="font-mono font-black text-[12px] text-red-300 flex-shrink-0">+${(+x.exp).toFixed(2)}%</span>
+            </div>
+            <div class="text-[10px] text-red-300/90 truncate mt-0.5">${x.k}</div>
+            <div class="text-[10px] text-gray-200 mt-1 leading-relaxed">
+                📈 <b>漲過 ${trig.toLocaleString()}</b> 才進(離現價 +${(+x.up).toFixed(1)}%)・🛑 停損 <b>${stop.toLocaleString()}</b><br>
+                ${lotLine}
+            </div>
+            <div class="font-mono text-[9px] text-gray-500 mt-0.5">勝率 ${x.w}%${this._wrTag ? this._wrTag(x.w, x.n, 0.364) : ''} ・賺賠比 ${x.po} ・打過 ${x.n} 次${+x.loose ? ' ・<span class="text-yellow-500">⚠️ 這招不是靠價位觸發,要盤中看</span>' : ''}</div>
+        </div>`;
+    },
+
+    async _tomorrowWatchHtml() {
+        const j = await this._loadPlaybookEdge();
+        const list = (j && Array.isArray(j.picks)) ? j.picks : [];
+        if (!list.length) return '';           // ⛔ 沒資料整塊不顯示(不留空殼)
+        const mine = new Set();
+        try { for (const i of (this._getInventory?.() || [])) if (i && i.symbol) mine.add(String(i.symbol)); } catch (_) { }
+        try { for (const g of Object.values(this.favGroups || {})) for (const s of (g || [])) mine.add(String(s)); } catch (_) { }
+        // 👜 自己手上/自選的排最前面(跟今日訊號那塊同一個規則)
+        const rows = list.slice().sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (b.exp - a.exp));
+        const SHOW = 12;
+        // ⚠️ 大盤風險高時照顯示,但要講白 —— ⛔ 不可默默照推(單一劇本原則:風險先講)
+        let riskLine = '';
+        try {
+            const rs = this._calcRiskScore();
+            if (Number.isFinite(+rs) && +rs >= 60) riskLine = `<div class="mt-1.5 bg-[#0d1117] border-l-4 border-orange-500 rounded-r px-2 py-1 text-[10px] text-orange-200 leading-snug">⚠️ <b>今天大盤風險 ${Math.round(+rs)} 分(偏高)</b> —— 清單照給,但這種盤建議<b>減量或空手</b>;實測 2026-07 那種月份整組是虧的。</div>`;
+        } catch (_) { }
+        return `<div class="mb-2.5 bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-[12px] font-black text-gray-100">🎯 明天要盯這 <b class="text-red-300">${j.picks_syms || rows.length}</b> 檔</span>
+                <button onclick="event.stopPropagation();app._showPbHelp()" class="text-[9px] text-gray-500 hover:text-cyan-300 flex-shrink-0">ⓘ 怎麼用</button>
+            </div>
+            <div class="text-[10px] text-cyan-200 bg-[#0d1117] border-l-4 border-cyan-600 rounded-r px-2 py-1 leading-snug mb-1.5">
+                ⛔ <b>不是叫你明天開盤買</b> —— 是「漲過那個價才買,而且要等到<b>尾盤 13:00~13:25</b> 確認還站得住」。<br>
+                <span class="text-cyan-300/70">實測開盤就買會把賺頭全部吃光(甚至倒賠)。App 盤中會幫你盯,到價自動提醒。</span>
+            </div>
+            ${riskLine}
+            <div class="space-y-1 mt-1.5">${rows.slice(0, SHOW).map(x => this._pbRowHtml(x, mine)).join('')}</div>
+            ${rows.length > SHOW ? `<details class="mt-1.5"><summary class="text-[10px] text-gray-500 cursor-pointer">➕ 另外 ${rows.length - SHOW} 檔(同樣標準,只是期望值排後面)</summary><div class="space-y-1 mt-1">${rows.slice(SHOW).map(x => this._pbRowHtml(x, mine)).join('')}</div></details>` : ''}
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📅 ${this._dW ? this._dW(j.data_date) : (j.data_date || '')} 收盤算的・全市場 ${(j.scanned || 0).toLocaleString()} 檔 ｜ 上面的每趟 % <b class="text-gray-500">已扣來回成本 ${j.cost || 0.44}%</b>・觸發價是<b class="text-gray-500">估計值</b>(盤中會用即時價重算)</div>
+        </div>`;
+    },
+
+    _showPbHelp() {
+        const j = this._pbEdge || {};
+        alert(`🎯 明日作戰清單 —— 怎麼用
+
+【這份在回答什麼】
+「明天盤中,哪幾檔漲過某個價位之後,值得照它自己最會賺的那一招進場。」
+
+【怎麼挑出來的】
+① 對全市場 ${(j.scanned || 0).toLocaleString()} 檔,每一檔都用「它自己的歷史」回測 22 種打法
+② 只留「這一檔在這一招上,扣掉來回成本 ${j.cost || 0.44}% 之後平均還是賺」的
+③ 而且這一招在這檔至少打過 ${j.min_n || 8} 次(⛔ 打 3 次的 100% 勝率不算數)
+④ 再問偵測器本人:「明天收在多少,這一招才會成立?」→ 那個價就是觸發價
+
+【⛔ 最重要:什麼時候買】
+不是開盤買。實測(600 檔・13 個月・本金 100 萬):
+・訊號日尾盤買 → 賺 1,361,088 元(同期 0050 賺 832,500 元)
+・隔天開盤買   → 賺   818,734 元(比 0050 還少賺 13,766 元)
+・隔天開盤 + 「跳空超過 1% 就不追」→ 倒賠 147,644 元
+原因:這些打法的條件都是用「收盤價」算的,隔天開盤時
+突破早就反映在跳空裡了 —— 跳空吃掉的就是全部利潤。
+⚠️ 而「不追高」反而最慘,因為跳空開高的正是後來走最遠的那幾檔。
+
+→ 正確做法:盤中 13:00 之後看價格站不站得住,站得住才在尾盤買。
+   App 會在那個時段幫你盯,到價自動提醒。
+
+【要有心理準備的事】
+・勝率只有三成左右 —— 十次會錯七次,靠的是「對的時候賺比較多」
+・回測那 13 個月是大多頭(0050 +83%),空頭會是什麼樣子沒人測過
+・只看 K 線,沒看籌碼/基本面/消息
+・「還在市場上的股票」才有資料 → 下市的沒算到,結果偏樂觀
+・觸發價是估計的(明天真正的開高低還不知道),盤中會用即時價重算
+
+【最重要的一句】
+停損價跟觸發價是一組的。破了就走,不要凹 —— 這套會賺全靠這件事。`);
+    },
+
+    // ⏰ V72.9.0 尾盤觸發掃描 —— 這是整套「大力提醒」的心臟
+    //
+    // ⛔⛔ 為什麼是**尾盤**不是開盤(⛔ 別改成整天掃或開盤掃):
+    //   `portfolio_backtest.mjs` 實測(600 檔・13 個月・本金 100 萬):
+    //     訊號日尾盤買 +1,361,088 元 / 隔天開盤買 +818,734 元 / 隔天開盤+不追高 −147,644 元。
+    //   打法的判定條件全部用**收盤價**算 → 09:30 站上去、13:20 又掉下來的那種**不算數**,
+    //   在盤中早早提醒等於叫人買一個最後不會成立的訊號。
+    //
+    // ⭐ 而且這裡做的是**精確重算**,⛔ 不是拿昨晚的估計觸發價比大小:
+    //   把「今天這根 K」(真實的開/高/低 + 即時價當收盤)接上歷史,
+    //   直接呼叫 App 自己的 `_playbookPatternDefs().test()` —— 跟回測**同一支程式**。
+    _EOD_FROM: 13 * 60 + 0,     // 13:00 開始盯
+    _EOD_TO: 13 * 60 + 28,      // 13:28 之後就來不及下單了
+    _tpeMinutes() {
+        const p = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', hour12: false,
+            weekday: 'short', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date());
+        const g = k => (p.find(x => x.type === k) || {}).value || '';
+        return { wd: g('weekday'), min: (+g('hour')) * 60 + (+g('minute')),
+                 ymd: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date()) };
+    },
+
+    // 🎯 拿今天的即時價,重算「這一招現在到底成不成立」(⛔ 這是唯一準的判斷)
+    async _pbExactCheck(sym, key, live) {
+        let rows = null;
+        try { const c = await this.idb.get(`proTerm_kline_${sym}`); rows = c?.data; } catch (_) { }
+        if (!Array.isArray(rows) || rows.length < 120) {
+            try {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL(`data/${sym}.json`, ghBase).href + `?t=${Date.now()}`,
+                                      { signal: AbortSignal.timeout(8000) });
+                rows = r.ok ? await r.json() : null;
+            } catch (_) { }
+        }
+        if (!Array.isArray(rows) || rows.length < 120) return null;
+        const norm = rows.map(r => ({
+            date: String(r.date || '').replace(/\//g, '-').slice(0, 10),
+            open: +(r.open || r.close), high: +(r.high || r.close),
+            low: +(r.low || r.close), close: +r.close, volume: +(r.volume || 0),
+        })).filter(r => r.close > 0 && r.date);
+        if (norm.length < 120) return null;
+        const today = this._tpeMinutes().ymd;
+        // ⚠️ 量的單位:`data/*.json` 是**股**、Fugle 即時報價是**張**
+        //   → 一律走共用的 `_volToLots`(⛔ 別在這裡自己判斷,V72.4.3 就是兩邊各判一次才出包)
+        const bar = { date: today, open: +live.open || +live.price, high: +live.high || +live.price,
+                      low: +live.low || +live.price, close: +live.price,
+                      volume: this._volToLots(live.volume) * 1000 };
+        if (!(bar.close > 0)) return null;
+        // 採礦端可能已經寫了今天的盤中列 → 取代它,⛔ 不可 append 成兩根同一天
+        const ext = (norm[norm.length - 1].date === today) ? norm.slice(0, -1).concat([bar]) : norm.concat([bar]);
+        let defs; try { defs = this._playbookPatternDefs(ext); } catch (_) { return null; }
+        const p = defs.find(d => d.key === key);
+        if (!p) return null;
+        let fired = false; try { fired = !!p.test(ext.length - 1); } catch (_) { return null; }
+        return { fired, stop: Math.min(bar.low, bar.close * 0.95), price: bar.close };
+    },
+
+    async _eodTriggerSweep() {
+        if (!this.settings?.watchlistAlert) return;
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        const t = this._tpeMinutes();
+        if (['Sat', 'Sun'].includes(t.wd)) return;
+        if (t.min < this._EOD_FROM || t.min > this._EOD_TO) return;
+        if (this._eodBusy) return;
+        this._eodBusy = true;
+        try {
+            const j = await this._loadPlaybookEdge();
+            const list = (j && Array.isArray(j.picks)) ? j.picks : [];
+            if (!list.length) return;
+            const mine = new Set();
+            try { for (const i of (this._getInventory?.() || [])) if (i && i.symbol) mine.add(String(i.symbol)); } catch (_) { }
+            try { for (const g of Object.values(this.favGroups || {})) for (const s of (g || [])) mine.add(String(s)); } catch (_) { }
+            // ⛔ **嚴格限量**:全市場今天可能上百檔觸發,全推 = 使用者三天後關掉通知 = 整套失效。
+            //   自己手上/自選的優先,再補期望值最高的,合計最多 6 檔。
+            const ranked = list.slice().sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (b.exp - a.exp));
+            for (const x of ranked.slice(0, 6)) {
+                const sym = String(x.s);
+                const dkey = `eod_${sym}_${x.k}`;
+                if (this._kbarFiredToday(dkey)) continue;
+                let live = null;
+                try { live = await this.fetchFugleData(sym, 60000); } catch (_) { }
+                if (!live || !(+live.price > 0)) continue;
+                const chk = await this._pbExactCheck(sym, x.k, live);
+                if (!chk || !chk.fired) continue;                 // ⛔ 沒真的成立就不吵
+                if (this._kbarFiredToday(dkey)) continue;         // 併發保險
+                const name = this.getStockName(sym) || sym;
+                const ps = this._lotsForRisk(chk.price, chk.stop);
+                const lotTxt = ps.acc > 0
+                    ? (ps.lots > 0 ? `買 ${ps.lots} 張(約 ${Math.round(ps.investAmt).toLocaleString()} 元),停損時最多虧 ${ps.maxLoss.toLocaleString()} 元`
+                                   : `⚠️ 依你的風險設定算出來是 0 張 → 這檔停損距離太寬,別勉強做`)
+                    : `(想知道買幾張:去 ⚙️ 設定填「帳戶總資金」)`;
+                this._fireAlert(`🚨 尾盤買點成立｜${name}`,
+                    `${name}(${sym}) 現價 ${chk.price} —「${x.k}」現在成立了。\n` +
+                    `🛑 停損 ${chk.stop.toFixed(2)}(破了就走,不要凹)\n` +
+                    `💰 ${lotTxt}\n` +
+                    `📊 這招在這檔:勝率 ${x.w}%・賺賠比 ${x.po}・每趟 +${x.exp}%(已扣成本)・打過 ${x.n} 次\n` +
+                    `⏰ 現在是尾盤時段,收盤前確認還站得住再進。⚠️ 十次會錯七次,靠的是守紀律。`, sym);
+            }
+        } catch (_) { } finally { this._eodBusy = false; }
+    },
+
+    // ⏱️ 每 90 秒醒來看一次(⛔ 只有 13:00~13:28 才真的做事,其餘立刻 return → 幾乎零成本)
+    _startEodWatcher() {
+        if (this._eodTimer) return;
+        const tick = () => { this._eodTriggerSweep().catch(() => { }); };
+        this._eodTimer = setInterval(tick, 90000);
+        setTimeout(tick, 8000);
+    },
+
     // 🔢 V72.5.0 左欄那顆按鈕的紅點數字(⛔ 只算「扣完成本還會賺」的檔數,
     //   ⛔ 不可用 `bull.length` —— 那是**逐筆訊號**又被採礦端 slice 過,會寫出比實際小的數字)。
     async _refreshTodaySigBadge() {
@@ -37606,9 +37873,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (!box) return;
         const j = await this._loadTodaySignals();
         const list = (j && Array.isArray(j.bull)) ? j.bull : [];
+        // 🎯 V72.9.0 明日作戰清單放**最上面** —— 它是「還來得及動作」的那一份;
+        //   下面的今日訊號是收盤後才產出的(已經來不及買),兩份問的問題不同,⛔ 別合併。
+        const pbHtml = await this._tomorrowWatchHtml().catch(() => '');
         if (!list.length) {
             // ⛔ 這裡是**分頁**不是常駐條 → 使用者是主動點進來的,不能空白(陷阱 #4:silent return)
-            box.innerHTML = `<div class="text-[11px] text-gray-300 bg-[#0d1117] border-l-4 border-gray-500 rounded-r px-2.5 py-2 leading-relaxed">
+            //   ⚠️ 但明日清單若有資料仍要顯示 —— 兩份是不同資料來源,⛔ 不可因為今日訊號沒有就一起藏掉
+            box.innerHTML = pbHtml + `<div class="text-[11px] text-gray-300 bg-[#0d1117] border-l-4 border-gray-500 rounded-r px-2.5 py-2 leading-relaxed">
                 ⏳ <b>今天還沒有掃描結果</b> —— 每天收盤採礦完才會產出。<br>
                 <span class="text-gray-500">若一直是這樣,代表今天全市場一檔都沒出現期望值為正的訊號。</span></div>`;
             return;
@@ -37691,7 +37962,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 🧹 V72.5.0 標題只留「幾檔」;原本那串「(共 21 筆,下面列最賺的 12 筆)・全榜 296 檔 / 303 筆」
         //   對使用者沒有可操作性 → 移進 `ⓘ 怎麼看`。底部四行免責也同樣收進去,只留一行日期。
         //   ⭐ 這是分頁不是常駐條 → 可以直接列**全部**(有自己的捲動區),不用再截斷成 12 筆。
-        box.innerHTML = `
+        box.innerHTML = pbHtml + `
             <div class="flex items-center justify-between mb-1.5">
                 <span class="text-[12px] font-black text-gray-100">🎯 扣完成本還會賺 <b class="${worthSyms ? 'text-red-300' : 'text-gray-400'}">${worthSyms}</b> 檔</span>
                 <button onclick="event.stopPropagation();app._showTodaySigHelp()" class="text-[9px] text-gray-500 hover:text-cyan-300 flex-shrink-0">ⓘ 怎麼看</button>
