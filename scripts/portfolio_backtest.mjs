@@ -39,7 +39,18 @@ const WARMUP = 240;          // 暖身:前 N 個交易日只累積成績、不�
 //     ⛔ 不是全市場平均。→ 成績改成 **per-stock × per-pattern**。
 const MIN_N = +(process.env.MIN_N || 4);   // **這一檔**在**這個型態**打過幾次才准用
 const MIN_MKT_N = 20;                       // 全市場該型態的最低樣本(第二層門檻)
-const ENTRY = process.env.ENTRY || 'close';   // close | nextopen | nextclose(見 page.evaluate 內註解)
+const ENTRY = process.env.ENTRY || 'close';   // close | nextopen | nextclose | nextopen_lim(見 page.evaluate 內註解)
+// 🧪 V72.9.7 濾網實驗(使用者問「有沒有更好的策略提高勝率」)
+//   ⛔ 籌碼濾網做不了 —— 實測 foreign_net 每檔只有中位 28 天有值、trust_net 203/291 檔完全沒有、
+//      分點只有 3 天,而回測窗口是 486 天 → 加下去等於做一個無法驗證的東西。
+//   ⭐ 下面這三個資料完全足夠(全部來自 K 線 / 加權指數,486 天都在):
+//      regime = 大盤(^TWII)收在月線之上才進場
+//      liq    = 訊號日成交值 >= LIQ 億(避開流動性差的)
+//      conf   = 同一天同一檔至少 CONF 招同時觸發
+//   ⚠️ 每一個都可能讓總獲利**下降**(濾掉的可能正是賺最多的)—— 這就是要實測的原因。
+const FILTER = (process.env.FILTER || '').split('+').filter(Boolean);
+const LIQ = +(process.env.LIQ || 1);       // 億元
+const CONF = +(process.env.CONF || 2);     // 共振:同一天同一檔至少幾招同時觸發
 const GAPCAP = +(process.env.GAPCAP || 1);   // nextopen_lim:跳空開高超過幾 % 就不追
 const COST = 0.44;           // 來回交易成本 %(手續費 0.1425%×2 + 證交稅 0.3%,未打折)
 const LOT = +(process.env.LOT || 100000);        // 每筆投入(等權)
@@ -67,7 +78,7 @@ const syms = [];
 const cover = {};
 for (const s of syms) cover[s[0]] = (cover[s[0]] || 0) + 1;
 console.log(`💼 組合回測 ・${syms.length} 檔(分層抽樣,代號開頭分布 ${JSON.stringify(cover)})`);
-console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・進場=${ENTRY}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
+console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
 
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -136,6 +147,8 @@ for (const sym of syms) {
                         // ⚠️ inD 一律記「**訊號日**」—— 選股是那天晚上做的決定,
                         //   實際成交日在 eIdx。⛔ 若記成 eIdx,walk-forward 的時間軸會偏一天。
                         out.push({ key: p.key, inD: data[i].date, outD: data[exitIdx].date,
+                                   // 成交值(億):`volume` 是股 → ×收盤÷1e8
+                                   amt: data[i].volume * data[i].close / 1e8,
                                    ret: (exitP - entry) / entry * 100 });
                         i = exitIdx + 1; continue;
                     }
@@ -160,6 +173,10 @@ if (!allTrades.length) { console.log('❌ 一筆交易都沒有 → 回測無效
 const twii = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', '^TWII.json'), 'utf8'))
     .map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close }))
     .filter(r => r.d && r.c > 0);
+// 🏛️ 大盤月線(20MA):第 i 天只用 0..i 的資料 → ⛔ 零前視偏誤
+const twiiMa20 = twii.map((_, i) => i < 19 ? null
+    : twii.slice(i - 19, i + 1).reduce((s2, r) => s2 + r.c, 0) / 20);
+const regimeOk = i => twiiMa20[i] != null && twii[i].c > twiiMa20[i];
 const days = twii.map(r => r.d);
 const dIdx = new Map(days.map((d, i) => [d, i]));
 
@@ -200,10 +217,18 @@ for (let i = 0; i < days.length; i++) {
     //     ① **這一檔**在**這個型態**上,到昨天為止扣成本後仍是賺的(= App 說「這檔適合這招」)
     //     ② 全市場該型態樣本夠(⛔ 擋掉「這檔剛好打中 4 次」的假強)
     //   排序用**這檔自己**的期望值 —— 這才是「每個個股最好的打法」。
-    const cand = (byIn.get(d) || [])
+    // 🏛️ 大盤環境濾網:大盤自己都在月線之下就整天不進場(⛔ 個股再強也不做)
+    if (FILTER.includes('regime') && !regimeOk(i)) { continue; }
+    const todays = byIn.get(d) || [];
+    // 🤝 同一檔今天有幾招同時觸發(共振)
+    const hitCnt = {};
+    for (const t of todays) hitCnt[t.sym] = (hitCnt[t.sym] || 0) + 1;
+    const cand = todays
         .map(t => ({ t, s: stat[`${t.sym}|${t.key}`], m: mkt[t.key] }))
         .filter(x => x.s && x.s.n >= MIN_N && (x.s.sum / x.s.n) - COST > 0
-                  && x.m && x.m.n >= MIN_MKT_N)
+                  && x.m && x.m.n >= MIN_MKT_N
+                  && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
+                  && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF))
         .sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
     const seen = new Set(live.map(x => x.sym));
     let picked = 0;
