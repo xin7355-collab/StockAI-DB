@@ -542,6 +542,9 @@ jobs:
           [ -f sw.js ]                   && git add -f sw.js                   || true
           [ -f manifest.json ]           && git add -f manifest.json           || true   # V17.0 PWA
           [ -f .well-known/assetlinks.json ] && git add -f .well-known/assetlinks.json || true   # 📦 V73.1.1 APK 驗證檔
+          # 🖼️ 圖示:上面早就 cp 進來了,但從 V69.8.7 起一直漏掉這行 git add
+          #    → 檔案「放回去了卻沒 commit」,gh-pages 上永遠沒有 → PWA 主畫面圖示 404(零錯誤訊息)
+          for f in apple-touch-icon.jpg icon-192.jpg icon-512.jpg; do [ -f "$f" ] && git add -f "$f" || true; done
           [ -f broker_names.json ]       && git add -f broker_names.json       || true
           [ -f futures_cache.json ]      && git add -f futures_cache.json      || true
           [ -f macro_cache.json ]        && git add -f macro_cache.json        || true

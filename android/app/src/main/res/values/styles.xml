@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色底,開啟瞬間不會白閃 -->
+    <style name="Theme.LauncherActivity" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@color/backgroundColor</item>
+        <item name="android:statusBarColor">@color/backgroundColor</item>
+        <item name="android:navigationBarColor">@color/backgroundColor</item>
+    </style>
+</resources>

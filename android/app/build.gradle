@@ -1,0 +1,48 @@
+plugins {
+    id 'com.android.application'
+}
+
+// ⚠️ 版本號從環境變數帶入(雲端後台用 run number)——
+//    versionCode 每次都要比上次大,手機才裝得上去(覆蓋安裝)。
+def vCode = (System.getenv('TWA_VERSION_CODE') ?: '1') as Integer
+def vName = System.getenv('TWA_VERSION_NAME') ?: '1.0.0'
+
+android {
+    namespace 'io.github.xin7355collab.stockai'
+    compileSdk 34
+
+    defaultConfig {
+        // ⚠️ 要跟 .well-known/assetlinks.json 的 package_name 一模一樣,否則 APK 頂端會有網址列
+        applicationId "io.github.xin7355collab.stockai"
+        minSdk 21
+        targetSdk 34
+        versionCode vCode
+        versionName vName
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(System.getenv('TWA_KEYSTORE') ?: '../twa-key.jks')
+            storePassword System.getenv('TWA_STORE_PASS') ?: 'android'
+            keyAlias System.getenv('TWA_KEY_ALIAS') ?: 'androiddebugkey'
+            keyPassword System.getenv('TWA_KEY_PASS') ?: 'android'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // TWA 的 LauncherActivity 就在這包裡 → 整個 App 一行 Java 都不用寫
+    implementation 'androidx.browser:browser:1.8.0'
+}

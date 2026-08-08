@@ -41,3 +41,7 @@ skills-lock.json
 
 # Shioaji SDK 執行時產生的 log(勿進版控)
 shioaji.log
+
+# Android(TWA 外殼)打包產物
+android/.gradle/
+android/local.properties

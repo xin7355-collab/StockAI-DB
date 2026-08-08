@@ -1,0 +1,96 @@
+name: 📦 打包 APK（安卓安裝檔）
+
+# ⛔ 只能手動觸發 —— 它不碰 gh-pages、不碰 data、不碰採礦,純粹產出一個可下載的 .apk
+#    APK 只是把網站包成安卓外殼(TWA),裡面載的還是線上那份 index.html
+#    → 以後 App 更新**不需要**重新打包,只有改圖示/名稱/套件名才要重打
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: ☕ JDK 17（Android Gradle Plugin 8.x 需要）
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 🔖 版本號跟著 App 走
+        run: |
+          set -e
+          V=$(grep -oE "_APP_VERSION: ?['\"]V[0-9.]+" index.html | head -1 | grep -oE "[0-9.]+" || true)
+          [ -z "$V" ] && V="1.0.0"
+          echo "TWA_VERSION_NAME=$V"        >> "$GITHUB_ENV"
+          echo "TWA_VERSION_CODE=${{ github.run_number }}" >> "$GITHUB_ENV"
+          echo "APK_NAME=stockai-v${V}-b${{ github.run_number }}.apk" >> "$GITHUB_ENV"
+          echo "版本 $V ・ versionCode ${{ github.run_number }}"
+
+      - name: 🖼️ 產生 App 圖示（從 icon-512.jpg 轉各尺寸 PNG）
+        run: |
+          set -e
+          IM=$(command -v magick || command -v convert)
+          [ -z "$IM" ] && { echo "❌ 找不到 ImageMagick"; exit 1; }
+          for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            n="${d%%:*}"; s="${d##*:}"
+            out="android/app/src/main/res/mipmap-$n"
+            mkdir -p "$out"
+            "$IM" icon-512.jpg -resize "${s}x${s}" "$out/ic_launcher.png"
+          done
+          find android/app/src/main/res -name ic_launcher.png | sort
+          # 空過守門:一張都沒產出就別往下走(避免打出沒有圖示的 APK)
+          [ "$(find android/app/src/main/res -name ic_launcher.png | wc -l)" -eq 5 ] || { echo "❌ 圖示數量不對"; exit 1; }
+
+      - name: 🔧 確認 Android SDK 元件
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ -x "$SDKM" ]; then
+            yes | "$SDKM" --licenses >/dev/null 2>&1 || true
+            "$SDKM" "platforms;android-34" "build-tools;34.0.0" >/dev/null 2>&1 || true
+          fi
+          ls "$ANDROID_HOME/platforms" || true
+
+      - name: 🏗️ 準備 Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: 🔨 打包 release APK
+        working-directory: android
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: 🔐 驗簽章：必須跟 assetlinks.json 對得起來
+        run: |
+          set -e
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          [ -s "$APK" ] || { echo "❌ 沒有產出 APK"; exit 1; }
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          GOT=$("$BT/apksigner" verify --print-certs "$APK" \
+                | grep -i 'SHA-256 digest' | head -1 | awk '{print $NF}' | tr 'A-Z' 'a-z')
+          WANT=$(grep -oE '[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){31}' .well-known/assetlinks.json \
+                | head -1 | tr -d ':' | tr 'A-Z' 'a-z')
+          echo "APK  : $GOT"
+          echo "網站 : $WANT"
+          # ⛔ 對不起來就代表裝上去頂端會有網址列 → 直接失敗,別讓人白裝一次
+          [ "$GOT" = "$WANT" ] || { echo "❌ 簽章與 assetlinks.json 不符"; exit 1; }
+          echo "✅ 簽章與網站對得起來,裝上去會是全螢幕"
+          cp "$APK" "$APK_NAME"
+          ls -lh "$APK_NAME"
+
+      - name: ⬆️ 上傳 APK（到這個 run 的 Artifacts 下載）
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          if-no-files-found: error
+          retention-days: 30
+          # ⚠️ 這是 YAML block scalar,行尾不可寫註解(註解只能寫在 path: 這行之上)
+          path: |
+            ${{ env.APK_NAME }}
