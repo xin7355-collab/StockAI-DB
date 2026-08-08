@@ -149,8 +149,15 @@ for (const f of files) {
                 //   意思是「照現在的價位明天就已經符合了」,⛔ 但寫成「漲過 168」會被讀成
                 //   「要等它漲到 168」—— 方向完全相反,而且那個價已經過去了。
                 //   → 一律當成「沒有價格閘門」處理,顯示端改講「現在的價位就符合,盤中確認即可」。
-                if (b2 <= c0) return { loose: true };
-                return { trig: b2 };
+                // 📏 對齊台股真實跳動單位,並**無條件進位** ——
+                //   ⛔ 四捨五入會把觸發價修到比真正的門檻**低**,等於叫人在條件還沒成立時就買。
+                //   而且對不到跳動單位的價格根本掛不出去(89.97 那種)。
+                const tick = c0 < 10 ? 0.01 : c0 < 50 ? 0.05 : c0 < 100 ? 0.1 : c0 < 500 ? 0.5 : c0 < 1000 ? 1 : 5;
+                const up = Math.ceil((b2 - 1e-9) / tick) * tick;
+                // ⚠️ 進位後若沒有真的高於現價(哪怕只差一檔),那句「漲過 X」對使用者是零資訊
+                //   —— 實跑抓到 2535「現價 90.1 → 漲過 90.1」。→ 當成沒有價格閘門。
+                if (up <= c0) return { loose: true };
+                return { trig: up };
             };
 
             const out = [], fired = [];
@@ -165,7 +172,7 @@ for (const f of files) {
                 //   而且停損 = trig×0.95 變成離現價 −11%(不是 −5%)。
                 //   → loose 一律**不給觸發價**,顯示端改講「這招不是靠價位,盤中重算才知道」。
                 if (t.loose) out.push({ ...row, trig: null, loose: 1 });
-                else out.push({ ...row, trig: +t.trig.toFixed(2), loose: 0 });
+                else out.push({ ...row, trig: Math.round(t.trig * 100) / 100, loose: 0 });
             }
             // ⚠️ 收盤價會帶浮點誤差(實跑出現 42.04999923706055)→ 一律 round 到 2 位
             return { c: +c0.toFixed(2), v: Math.round(rows[last].volume / 1000), d: rows[last].date, out, fired };
