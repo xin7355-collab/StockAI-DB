@@ -79,6 +79,13 @@ const SCALE = process.env.SCALE || '';
 //   ⛔ 但同一支探針也證明「每檔股票**各有**偏好」不成立(四種狀態延續性全部 ≈ 0)
 //      → 所以只能當**全市場通用**的濾網,⛔ 不可做成「這檔喜歡爆量」那種個股標籤。
 const SELF = (process.env.SELF || '').split('+').filter(Boolean);
+// 🔬 V73.2.5 偵測器訊號濾網(對照表由 sig_x_playbook_probe.mjs 的 SIGX_OUT 產生)
+//   plus  = 只做「命中至少 1 個加分訊號」的
+//   minus = 排除「命中任何扣分訊號」的
+//   ⚠️ 加分/扣分名單是從**同一份資料**選出來的 → 有 in-sample 之嫌,
+//      唯一防線是「前後半段同向」(探針已檢定)+ 這裡再看**賺到的錢**。
+const SIGX = (process.env.SIGX || '').split('+').filter(Boolean);
+const SIGMAP = process.env.SIGMAP || '';
 // ⚠️ 門檻做成可調 —— 防過度配適的關鍵檢定:如果只有某個數字才有效,那就是配適出來的
 const RANK_MIN = +(process.env.RANK_MIN || 80);
 const VOLAT_MIN = +(process.env.VOLAT_MIN || 60);
@@ -443,6 +450,33 @@ const selfOk = t => {
     return true;
 };
 
+// 🔬 訊號對照表
+let sigNames = [], sigOf = new Map(), plusIdx = new Set(), minusIdx = new Set();
+if (SIGX.length && SIGMAP && fs.existsSync(SIGMAP)) {
+    const sj = JSON.parse(fs.readFileSync(SIGMAP, 'utf8'));
+    sigNames = sj.names || [];
+    for (const [k, v] of Object.entries(sj.map || {})) sigOf.set(k, v);
+    // ⭐ 名單寫死在這裡(⛔ 不自動從資料重挑,否則就是徹底的 in-sample)
+    const PLUS = ['正乖離過大', '負乖離過大', 'W底(雙重底)', '換手量(洗籌續攻)', '多頭但追高',
+                  '疑似竭盡缺口(高檔)', 'ABC下降切線突破', '實體長黑棒(最強空壓)',
+                  '站上長黑K高點', '連漲過熱停利', '極端超跌・沒量', '站上長黑K平均成本'];
+    const MINUS = ['威科夫·出貨段', '群星晨星', '群星夜星', '晨星轉折+爆量', '群星晨星+爆量'];
+    sigNames.forEach((n, i) => {
+        if (PLUS.some(p => n.includes(p))) plusIdx.add(i);
+        if (MINUS.some(p => n.includes(p))) minusIdx.add(i);
+    });
+    console.log(`🔬 訊號對照表:${sigNames.length} 個訊號 ・加分 ${plusIdx.size} / 扣分 ${minusIdx.size} ・${sigOf.size.toLocaleString()} 個(股,日)`);
+    // 🚧 空過守門:名單一個都沒對到 = 訊號改名 → ⛔ 不可讓它靜默變成「不過濾」
+    if (!plusIdx.size || !minusIdx.size) { console.log('❌ 加分或扣分名單一個都沒對到 → 中止'); process.exit(1); }
+}
+const sigOk = t => {
+    if (!SIGX.length) return true;
+    const v = sigOf.get(`${t.sym}|${t.inD}`) || [];
+    if (SIGX.includes('plus') && !v.some(i => plusIdx.has(i))) return false;
+    if (SIGX.includes('minus') && v.some(i => minusIdx.has(i))) return false;
+    return true;
+};
+
 // ── ③ Walk-forward 模擬 ────────────────────────────────────────────────
 //    第 T 天選股時,型態成績只用「**出場日 < T**」的已完成交易 ⇒ 零前視偏誤。
 const byIn = new Map();      // 進場日 → 候選交易
@@ -496,7 +530,7 @@ for (let i = 0; i < days.length; i++) {
                   && x.m && x.m.n >= MIN_MKT_N
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
                   && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF)
-                  && selfOk(x.t))
+                  && selfOk(x.t) && sigOk(x.t))
         .sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
     const seen = new Set(live.map(x => x.sym));
     let picked = 0;
