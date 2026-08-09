@@ -72,6 +72,13 @@ const TRADES_CACHE = process.env.TRADES_CACHE || '';
 //   ⚠️ 這些桶是從**同一份資料**看出來的 → 有 in-sample 之嫌,
 //      唯一的防線是「前後半段一致」(已檢定)+ 機制講得通,⛔ 不可當成保證。
 const SCALE = process.env.SCALE || '';
+// 🧬 V73.2.3 **個股自身狀態**濾網(使用者:「每隻股票都有他的特性,要用個股的資料檢測」)
+//   ⚠️ 先前 53 種測的全是**大盤**狀態,個股自身狀態從沒當過濾網。
+//   探針(26 萬筆)顯示全市場層級差異比大盤狀態大:
+//     位階高檔 +0.24% vs 低檔 −0.43% ・高波動 +0.31% vs 低波動 −0.40% ・爆量 −0.01% vs 量縮 −0.37%
+//   ⛔ 但同一支探針也證明「每檔股票**各有**偏好」不成立(四種狀態延續性全部 ≈ 0)
+//      → 所以只能當**全市場通用**的濾網,⛔ 不可做成「這檔喜歡爆量」那種個股標籤。
+const SELF = (process.env.SELF || '').split('+').filter(Boolean);
 const FILTER = (process.env.FILTER || '').split('+').filter(Boolean);
 const LIQ = +(process.env.LIQ || 1);       // 億元
 const CONF = +(process.env.CONF || 2);     // 共振:同一天同一檔至少幾招同時觸發
@@ -390,6 +397,41 @@ const calOk = (d, i) => {
 
 const dIdx = new Map(days.map((d, i) => [d, i]));
 
+// 🧬 個股自身狀態表(⛔ 只用該日以前的資料 → 無前視偏誤)
+const selfFeat = new Map();
+if (SELF.length) {
+    for (const sym of syms) {
+        let rows;
+        try { rows = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', `${sym}.json`), 'utf8')); } catch (_) { continue; }
+        const dd = rows.map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close, v: +r.volume || 0 }))
+                       .filter(r => r.d && r.c > 0);
+        const m = new Map();
+        for (let i = 60; i < dd.length; i++) {
+            const w = dd.slice(Math.max(0, i - 249), i + 1).map(r => r.c);
+            const rank = w.filter(c => c <= dd[i].c).length / w.length * 100;
+            let av = 0, cn = 0; for (let k = Math.max(0, i - 19); k <= i; k++) { av += dd[k].v; cn++; }
+            let s3 = 0; for (let k = i - 19; k <= i; k++) s3 += Math.pow((dd[k].c - dd[k - 1].c) / dd[k - 1].c, 2);
+            m.set(dd[i].d, { rank, volr: (cn && av) ? dd[i].v / (av / cn) : null, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100 });
+        }
+        selfFeat.set(sym, m);
+    }
+    console.log(`🧬 個股自身狀態表:${selfFeat.size} 檔`);
+}
+const selfOk = t => {
+    if (!SELF.length) return true;
+    const f = selfFeat.get(t.sym)?.get(t.inD);
+    if (!f) return false;                       // ⛔ 算不出來就不做(⛔ 不可當成通過)
+    for (const c of SELF) {
+        if (c === 'high' && !(f.rank >= 80)) return false;
+        if (c === 'low' && !(f.rank < 40)) return false;
+        if (c === 'hivolat' && !(f.vol >= 60)) return false;
+        if (c === 'lovolat' && !(f.vol < 35)) return false;
+        if (c === 'volup' && !(f.volr != null && f.volr >= 2)) return false;
+        if (c === 'novolshrink' && !(f.volr != null && f.volr >= 1)) return false;
+    }
+    return true;
+};
+
 // ── ③ Walk-forward 模擬 ────────────────────────────────────────────────
 //    第 T 天選股時,型態成績只用「**出場日 < T**」的已完成交易 ⇒ 零前視偏誤。
 const byIn = new Map();      // 進場日 → 候選交易
@@ -442,7 +484,8 @@ for (let i = 0; i < days.length; i++) {
         .filter(x => x.s && x.s.n >= MIN_N && (x.s.sum / x.s.n) - COST > 0
                   && x.m && x.m.n >= MIN_MKT_N
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
-                  && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF))
+                  && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF)
+                  && selfOk(x.t))
         .sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
     const seen = new Set(live.map(x => x.sym));
     let picked = 0;
