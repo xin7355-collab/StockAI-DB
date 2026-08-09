@@ -37368,7 +37368,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 ? `買 <b class="text-red-300">${ps.howTxt}</b>(約 ${Math.round(ps.investAmt).toLocaleString()} 元,佔本金 ${ps.investPct.toFixed(0)}%)・停損時虧 <b>${ps.maxLoss.toLocaleString()} 元</b>(本金的 ${ps.riskPct.toFixed(1)}%)${ps.oddOnly ? '<span class="text-cyan-300">・🧩 這是<b>零股</b>,下單要選「零股」</span>' : ''}${ps.riskPct > 2 ? '<span class="text-yellow-400">・⚠️ 停損很寬,一次會虧超過本金 2%,可考慮減量</span>' : ''}`
                 : `<span class="text-yellow-400">⚠️ 本金太小,連 1 股都買不起</span>(這檔 1 股要 ${Math.round(trig).toLocaleString()} 元)`)
             : `<span class="text-gray-500">買幾張?先到 ⚙️ 設定填「帳戶總資金」就會幫你算</span>`;
-        return `<div onclick="app.analyze('${x.s}')" class="px-2 py-1.5 rounded ${isMine ? 'bg-amber-900/15 border border-amber-700/50' : 'bg-[#0d1117] border border-[#30363d]'} cursor-pointer hover:bg-white/5 transition-colors">
+        return `<div onclick="app.analyze('${x.s}'); app.switchAppTab('diag'); app.vibrate(15);" class="px-2 py-1.5 rounded ${isMine ? 'bg-amber-900/15 border border-amber-700/50' : 'bg-[#0d1117] border border-[#30363d]'} cursor-pointer hover:bg-white/5 transition-colors">
             <div class="flex items-baseline justify-between gap-2">
                 <div class="min-w-0 flex items-baseline gap-1.5">
                     ${isMine ? '<span class="text-[10px] flex-shrink-0">👜</span>' : ''}
@@ -37977,7 +37977,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const mkRow = x => {
             const isMine = mine.has(String(x.s));
             const e = net(x);
-            return `<div onclick="app.analyze('${x.s}')" class="px-2 py-1.5 rounded ${isMine ? 'bg-amber-900/15 border border-amber-700/50' : 'bg-[#0d1117] border border-[#30363d]'} cursor-pointer hover:bg-white/5 transition-colors">
+            return `<div onclick="app.analyze('${x.s}'); app.switchAppTab('diag'); app.vibrate(15);" class="px-2 py-1.5 rounded ${isMine ? 'bg-amber-900/15 border border-amber-700/50' : 'bg-[#0d1117] border border-[#30363d]'} cursor-pointer hover:bg-white/5 transition-colors">
                 <div class="flex items-baseline justify-between gap-2">
                     <div class="min-w-0 flex items-baseline gap-1.5">
                         ${isMine ? '<span class="text-[10px] flex-shrink-0">👜</span>' : ''}
