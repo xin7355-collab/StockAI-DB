@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # 發佈 Release 需要(讓手機能直接下載 .apk,不用解壓縮)
 
 jobs:
   build:
@@ -87,6 +87,36 @@ jobs:
           echo "✅ 簽章與網站對得起來,裝上去會是全螢幕"
           cp "$APK" "$APK_NAME"
           ls -lh "$APK_NAME"
+
+      # 📲 Artifacts 一律會被壓成 zip,手機點下去只會拿到壓縮檔 → 裝不起來。
+      #    Release 的附件是**原檔**,手機點連結就直接下載 .apk。
+      - name: 📲 發佈到 Releases（手機可直接下載，⛔ 不用解壓縮）
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG="apk-v${TWA_VERSION_NAME}-b${{ github.run_number }}"
+          # ⚠️ 說明文字一律走檔案 —— 多行字串直接寫在 --notes 後面,
+          #    續行會頂到第 0 欄而跳出 YAML 的 block scalar,整支 workflow 解析失敗
+          # ⚠️ 一律用 printf 逐行寫,⛔ 不用 heredoc ——
+          #    heredoc 的結束標記必須頂到第 0 欄,那又會跳出 YAML 的 block scalar;
+          #    而把內文縮排的話,10 個空白在 Markdown 會被當成程式碼區塊。
+          printf '%s\n' \
+            '手機直接點下面的 `.apk` 就能裝（⛔ 不用解壓縮）。' \
+            '' \
+            '安裝後開 ⚙️ 設定中心，版本號旁邊會顯示 🤖。' \
+            '' \
+            '⚠️ 顯示「**應用程式未安裝**」→ 手機上有同名的舊版（或別處打包的同一個 App），' \
+            '簽章不同安卓一定會擋。先到「設定 → 應用程式」把舊的移除，再裝一次。' \
+            '' \
+            '⚠️ 安卓專用。iPhone 請用 Safari → 分享 → 加入主畫面。' \
+            '' \
+            '⭐ 以後 App 更新**不需要**重裝這個檔 —— 它載的就是線上網站。' \
+            > /tmp/apk_notes.md
+          gh release create "$TAG" "$APK_NAME" \
+            --title "散戶救星 APK v${TWA_VERSION_NAME}" \
+            --latest --notes-file /tmp/apk_notes.md
+          echo "✅ 已發佈:$TAG"
 
       - name: ⬆️ 上傳 APK（到這個 run 的 Artifacts 下載）
         uses: actions/upload-artifact@v4
