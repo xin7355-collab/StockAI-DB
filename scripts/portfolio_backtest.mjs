@@ -414,7 +414,11 @@ if (SELF.length) {
             const rank = w.filter(c => c <= dd[i].c).length / w.length * 100;
             let av = 0, cn = 0; for (let k = Math.max(0, i - 19); k <= i; k++) { av += dd[k].v; cn++; }
             let s3 = 0; for (let k = i - 19; k <= i; k++) s3 += Math.pow((dd[k].c - dd[k - 1].c) / dd[k - 1].c, 2);
-            m.set(dd[i].d, { rank, volr: (cn && av) ? dd[i].v / (av / cn) : null, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100 });
+            // 📐 乖離年線(240MA)—— V72.x 實測:向上穿越 200% 後 60 日邊際 −6.24%(中期壓力)
+            //   ⚠️ 它跟「高位階」高度重疊 → 正好用來檢查「追高」策略的盲點
+            let b240 = null;
+            if (i >= 239) { let sm = 0; for (let k = i - 239; k <= i; k++) sm += dd[k].c; b240 = (dd[i].c / (sm / 240) - 1) * 100; }
+            m.set(dd[i].d, { rank, volr: (cn && av) ? dd[i].v / (av / cn) : null, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100, b240 });
         }
         selfFeat.set(sym, m);
     }
@@ -431,6 +435,10 @@ const selfOk = t => {
         if (c === 'lovolat' && !(f.vol < 35)) return false;
         if (c === 'volup' && !(f.volr != null && f.volr >= 2)) return false;
         if (c === 'novolshrink' && !(f.volr != null && f.volr >= 1)) return false;
+        // 📐 乖離年線太大就不做(⛔ 這是**排除**條件,測的是它會不會保護到「追高」策略)
+        if (c === 'nobias200' && (f.b240 != null && f.b240 > 200)) return false;
+        if (c === 'nobias150' && (f.b240 != null && f.b240 > 150)) return false;
+        if (c === 'nobias100' && (f.b240 != null && f.b240 > 100)) return false;
     }
     return true;
 };
