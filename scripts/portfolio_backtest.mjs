@@ -48,6 +48,23 @@ const ENTRY = process.env.ENTRY || 'close';   // close | nextopen | nextclose | 
 //      liq    = 訊號日成交值 >= LIQ 億(避開流動性差的)
 //      conf   = 同一天同一檔至少 CONF 招同時觸發
 //   ⚠️ 每一個都可能讓總獲利**下降**(濾掉的可能正是賺最多的)—— 這就是要實測的原因。
+// 📅 V73.2.0 行事曆濾網實驗(使用者問「禮拜五容易跌 / 法說會 / 月份 / 結算見轉折」)
+//   ⛔ 法說會**沒有資料源**(FinMind 沒有法說會行事曆,MOPS 也沒有結構化免費 API)
+//      → 只能用「財報公布截止日」當**近似**,而且必須標明那不是法說會。
+//   ⚠️ 月份效應在 13 個月的窗口裡**每個月只有 1 個樣本** —— 驗不了,別假裝驗得了。
+//   下面全部是純日期運算,零採礦:
+//     nofri/nomon/...  = 那一天不進場(dow 1=一 … 5=五)
+//     noset  = 台指期結算日(每月第三個星期三,遇假日順延)不進場
+//     nosetw = 結算日那一週都不進場
+//     onlyset= **只**在結算日進場(反向檢定 —— 若「結算見轉折」成立,這組應該特別好)
+//     norev  = 每月 1~10 日(月營收公布期)不進場
+//     nofin  = 財報公布截止日前後 3 個交易日不進場(3/31・5/15・8/14・11/14)
+//     nohol  = 長假(休市 >= 4 天)前最後一個交易日不進場
+const CAL = (process.env.CAL || '').split('+').filter(Boolean);
+// 💾 掃描結果快取:同一組 ENTRY/EXIT/STOP/MAXD/GAPCAP 的交易完全一樣 →
+//    存起來重用,後面每試一個行事曆假設就從 3 分鐘變成 3 秒。
+//    ⛔ 參數不同一定要重掃(檔案內有 meta,對不上會拒絕載入)。
+const TRADES_CACHE = process.env.TRADES_CACHE || '';
 const FILTER = (process.env.FILTER || '').split('+').filter(Boolean);
 const LIQ = +(process.env.LIQ || 1);       // 億元
 const CONF = +(process.env.CONF || 2);     // 共振:同一天同一檔至少幾招同時觸發
@@ -98,6 +115,23 @@ for (const s of syms) cover[s[0]] = (cover[s[0]] || 0) + 1;
 console.log(`💼 組合回測 ・${syms.length} 檔(分層抽樣,代號開頭分布 ${JSON.stringify(cover)})`);
 console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日 ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
 
+// 💾 掃描結果快取(只跟這幾個參數有關;行事曆濾網完全不影響掃描結果)
+const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP });
+const allTrades = [];        // {sym, key, inD, outD, ret, amt, entry, stop}
+let cacheHit = false;
+if (TRADES_CACHE && fs.existsSync(TRADES_CACHE)) {
+    try {
+        const j = JSON.parse(fs.readFileSync(TRADES_CACHE, 'utf8'));
+        // ⛔ 參數對不上一定要重掃 —— 拿別組參數的交易來套等於結論全錯
+        if (j.key === CACHE_KEY && Array.isArray(j.trades) && j.trades.length) {
+            allTrades.push(...j.trades); cacheHit = true;
+            console.log(`💾 載入交易快取:${allTrades.length} 筆(參數相符,跳過掃描)`);
+        } else {
+            console.log('⚠️ 交易快取參數不符 → 重新掃描');
+        }
+    } catch (_) { console.log('⚠️ 交易快取讀不起來 → 重新掃描'); }
+}
+if (!cacheHit) {
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
@@ -111,7 +145,6 @@ await page.waitForFunction(() => typeof app !== 'undefined' && !!app._playbookPa
 //       停損 = min(訊號日最低, 進場×0.95) ・停利 = 跌破 5MA ・最長 20 日
 const t0 = Date.now();
 let done = 0;
-const allTrades = [];        // {sym, key, inD, outD, retPct}
 for (const sym of syms) {
     let rows;
     try {
@@ -207,6 +240,12 @@ for (const sym of syms) {
 }
 console.log(`\r   ✅ 掃描完成:${done} 檔 ・${allTrades.length} 筆候選交易 ・${((Date.now() - t0) / 1000).toFixed(0)}s      \n`);
 await browser.close();
+    if (TRADES_CACHE) {
+        fs.writeFileSync(TRADES_CACHE, JSON.stringify({ key: CACHE_KEY, trades: allTrades }));
+        console.log(`💾 交易已快取:${TRADES_CACHE}`);
+    }
+}
+
 
 if (!allTrades.length) { console.log('❌ 一筆交易都沒有 → 回測無效'); process.exit(1); }
 
@@ -219,6 +258,70 @@ const twiiMa20 = twii.map((_, i) => i < 19 ? null
     : twii.slice(i - 19, i + 1).reduce((s2, r) => s2 + r.c, 0) / 20);
 const regimeOk = i => twiiMa20[i] != null && twii[i].c > twiiMa20[i];
 const days = twii.map(r => r.d);
+// ── 📅 行事曆特徵(純日期運算,零採礦;⛔ 全部只用「當天以前就知道的事」→ 無前視偏誤)
+const dow = d => new Date(d + 'T00:00:00Z').getUTCDay();          // 0=日 1=一 … 5=五
+const ym = d => d.slice(0, 7);
+// 台指期結算日 = 每月第三個星期三;遇休市則順延到下一個交易日
+//   ⚠️ 用「實際有開盤的日子」推,⛔ 不可用日曆硬算(會落在休市日上)
+const setDay = new Map();      // 'YYYY-MM' → 結算日(交易日)
+{
+    const byM = {};
+    for (const d of days) (byM[ym(d)] ||= []).push(d);
+    for (const m of Object.keys(byM)) {
+        const third = `${m}-${String(15 + ((3 - new Date(m + '-01T00:00:00Z').getUTCDay() + 7) % 7)).padStart(2, '0')}`;
+        // 第三個星期三的日曆日期 → 取「>= 它」的第一個交易日
+        const hit = byM[m].find(d => d >= third);
+        if (hit) setDay.set(m, hit);
+    }
+}
+const isSet = d => setDay.get(ym(d)) === d;
+const setWeekSet = new Set();  // 結算日所在那一週的所有交易日
+for (const [m, sd] of setDay) {
+    const i = days.indexOf(sd);
+    for (let k = -4; k <= 4; k++) {
+        const d2 = days[i + k];
+        if (!d2) continue;
+        // 同一個 ISO 週:用「距離結算日 <= 4 天且星期幾單調」太脆弱 → 直接比日曆週
+        const w = x => { const t = new Date(x + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() - ((t.getUTCDay() + 6) % 7)); return t.toISOString().slice(0, 10); };
+        if (w(d2) === w(sd)) setWeekSet.add(d2);
+    }
+}
+// 長假前最後一個交易日(下一個交易日隔了 >= 4 個日曆天)
+const preHol = new Set();
+for (let i = 0; i < days.length - 1; i++) {
+    const gap = (new Date(days[i + 1]) - new Date(days[i])) / 86400000;
+    if (gap >= 4) preHol.add(days[i]);
+}
+// 財報公布截止日前後 3 個交易日(⚠️ 這**不是法說會** —— 法說會沒有免費結構化資料源)
+const finNear = new Set();
+{
+    const dl = ['-03-31', '-05-15', '-08-14', '-11-14'];
+    const yrs = [...new Set(days.map(d => d.slice(0, 4)))];
+    for (const y of yrs) for (const t of dl) {
+        const target = y + t;
+        let i = days.findIndex(d => d >= target);
+        if (i < 0) continue;
+        for (let k = -3; k <= 3; k++) if (days[i + k]) finNear.add(days[i + k]);
+    }
+}
+// 🚦 這一天准不准進場(⛔ 只影響「要不要開新倉」,不影響既有部位的出場)
+const calOk = d => {
+    for (const c of CAL) {
+        if (c === 'nomon' && dow(d) === 1) return false;
+        if (c === 'notue' && dow(d) === 2) return false;
+        if (c === 'nowed' && dow(d) === 3) return false;
+        if (c === 'nothu' && dow(d) === 4) return false;
+        if (c === 'nofri' && dow(d) === 5) return false;
+        if (c === 'noset' && isSet(d)) return false;
+        if (c === 'nosetw' && setWeekSet.has(d)) return false;
+        if (c === 'onlyset' && !isSet(d)) return false;
+        if (c === 'norev' && +d.slice(8, 10) <= 10) return false;
+        if (c === 'nofin' && finNear.has(d)) return false;
+        if (c === 'nohol' && preHol.has(d)) return false;
+    }
+    return true;
+};
+
 const dIdx = new Map(days.map((d, i) => [d, i]));
 
 // ── ③ Walk-forward 模擬 ────────────────────────────────────────────────
@@ -262,6 +365,8 @@ for (let i = 0; i < days.length; i++) {
     //   排序用**這檔自己**的期望值 —— 這才是「每個個股最好的打法」。
     // 🏛️ 大盤環境濾網:大盤自己都在月線之下就整天不進場(⛔ 個股再強也不做)
     if (FILTER.includes('regime') && !regimeOk(i)) { continue; }
+    // 📅 行事曆濾網:這一天不准開新倉(既有部位照原規則出場,⛔ 不受影響)
+    if (CAL.length && !calOk(d)) { openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); continue; }
     const todays = byIn.get(d) || [];
     // 🤝 同一檔今天有幾招同時觸發(共振)
     const hitCnt = {};
