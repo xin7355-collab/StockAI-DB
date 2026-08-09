@@ -178,7 +178,7 @@ for (const f of files) {
             // 🧬 V73.2.4 這檔**自己的狀態**(位階/波動率)—— 全市場實測最強的一組條件
             //   位階 = 收盤在近 250 日的百分位 ・波動 = 近 20 日報酬標準差年化 %
             //   ⛔ 只用「今天以前」的資料(rows 本來就到今天為止)→ 無前視偏誤
-            let selfRank = null, selfVol = null;
+            let selfRank = null, selfVol = null, selfBear = 0;
             try {
                 const w = rows.slice(Math.max(0, last - 249), last + 1).map(r => r.close);
                 selfRank = Math.round(w.filter(c => c <= rows[last].close).length / w.length * 100);
@@ -188,6 +188,14 @@ for (const f of files) {
                     s2 += pr * pr; cn++;
                 }
                 selfVol = cn >= 10 ? Math.round(Math.sqrt(s2 / cn) * Math.sqrt(252) * 100) : null;
+                // 📉 趨勢事實:跌破 20MA 且跌破 60MA = 全面破線(⛔ 只標記不排除 ——
+                //   實測「站上均線才做」單獨用多賺 24.7 萬,但疊在「高位階+高波動」之上
+                //   反而少賺 4~6 萬 → 沒有增量,不做成濾網)
+                let m20 = 0, m60 = 0;
+                for (let k = last - 19; k <= last; k++) m20 += rows[k].close;
+                m20 /= 20;
+                if (last >= 59) { for (let k = last - 59; k <= last; k++) m60 += rows[k].close; m60 /= 60; }
+                selfBear = (rows[last].close < m20 && m60 > 0 && rows[last].close < m60) ? 1 : 0;
             } catch (_) { }
 
             const out = [], fired = [];
@@ -205,7 +213,7 @@ for (const f of files) {
                 else out.push({ ...row, trig: t.trig, loose: 0 });   // ⚠️ trigOf 內已 round + 對齊跳動單位,⛔ 別在這裡再動
             }
             // ⚠️ 收盤價會帶浮點誤差(實跑出現 42.04999923706055)→ 一律 round 到 2 位
-            return { c: Math.round(c0 * 100) / 100, v: Math.round(rows[last].volume / 1000), d: rows[last].date, rank: selfRank, vol: selfVol, out, fired };
+            return { c: Math.round(c0 * 100) / 100, v: Math.round(rows[last].volume / 1000), d: rows[last].date, rank: selfRank, vol: selfVol, bear: selfBear, out, fired };
         }, { rows, minN: MIN_N, cost: COST, near: NEAR });
     } catch (_) { continue; }
     if (!r) continue;
@@ -220,7 +228,7 @@ for (const f of files) {
         //   ⛔ 不符合的**照樣輸出**(同 _SIGNAL_EDGE 對 C 級的處置)—— 只標記,由顯示端決定要不要收起來
         const hq = (r.rank != null && r.rank >= 75 && r.vol != null && r.vol >= 60) ? 1 : 0;
         picks.push({ s: sym, c: r.c, v: r.v, d: r.d, ...x,
-                     rank: r.rank, vol: r.vol, hq,
+                     rank: r.rank, vol: r.vol, hq, bear: r.bear || 0,
                      up: x.trig != null ? +((x.trig - r.c) / r.c * 100).toFixed(2) : null,
                      stop: +(base * 0.95).toFixed(2) });
     }

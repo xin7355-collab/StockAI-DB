@@ -425,7 +425,10 @@ if (SELF.length) {
             //   ⚠️ 它跟「高位階」高度重疊 → 正好用來檢查「追高」策略的盲點
             let b240 = null;
             if (i >= 239) { let sm = 0; for (let k = i - 239; k <= i; k++) sm += dd[k].c; b240 = (dd[i].c / (sm / 240) - 1) * 100; }
-            m.set(dd[i].d, { rank, volr: (cn && av) ? dd[i].v / (av / cn) : null, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100, b240 });
+            let ma20 = null, ma60 = null;
+            { let s20 = 0; for (let k = i - 19; k <= i; k++) s20 += dd[k].c; ma20 = s20 / 20; }
+            if (i >= 59) { let s60 = 0; for (let k = i - 59; k <= i; k++) s60 += dd[k].c; ma60 = s60 / 60; }
+            m.set(dd[i].d, { ma20, ma60, c: dd[i].c, rank, volr: (cn && av) ? dd[i].v / (av / cn) : null, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100, b240 });
         }
         selfFeat.set(sym, m);
     }
@@ -443,6 +446,10 @@ const selfOk = t => {
         if (c === 'volup' && !(f.volr != null && f.volr >= 2)) return false;
         if (c === 'novolshrink' && !(f.volr != null && f.volr >= 1)) return false;
         // 📐 乖離年線太大就不做(⛔ 這是**排除**條件,測的是它會不會保護到「追高」策略)
+        // 📉 個股自己的趨勢守門(⛔ 先前測的「大盤月線」少賺,個股層級沒測過 → 這次測)
+        if (c === 'ma20' && !(f.ma20 != null && f.c > f.ma20)) return false;
+        if (c === 'ma60' && !(f.ma60 != null && f.c > f.ma60)) return false;
+        if (c === 'ma2060' && !(f.ma20 != null && f.c > f.ma20 && f.ma60 != null && f.c > f.ma60)) return false;
         if (c === 'nobias200' && (f.b240 != null && f.b240 > 200)) return false;
         if (c === 'nobias150' && (f.b240 != null && f.b240 > 150)) return false;
         if (c === 'nobias100' && (f.b240 != null && f.b240 > 100)) return false;

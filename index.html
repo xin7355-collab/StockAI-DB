@@ -37372,6 +37372,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <div class="flex items-baseline justify-between gap-2">
                 <div class="min-w-0 flex items-baseline gap-1.5">
                     ${isMine ? '<span class="text-[10px] flex-shrink-0">👜</span>' : ''}
+                    ${+x.bear ? `<span class="text-[9px] flex-shrink-0 px-1 rounded bg-[#21262d] border border-[#30363d] text-yellow-300" title="這檔收盤同時跌破 20 日線與 60 日線(全面破線)。實測「站上均線才做」單獨用 13 個月多賺 24.7 萬,但疊在『強勢高波動』之上反而少賺 → 沒有增量,所以⛔ 不排除它,只標記。它給的是「漲過某價才進」,沒漲過就不會成立。">⚠️ 破線中</span>` : ''}
                     ${+x.hq ? `<span class="text-[9px] flex-shrink-0 px-1 rounded bg-[#21262d] border border-[#30363d] text-gray-300" title="這檔自己的位階 ${x.rank}%(近一年)、波動率 ${x.vol}%(年化)——落在實測表現最好的那一格。實測 +89% 且回撤更小(6 道關卡全過、24 格門檻網格全贏基準)。⚠️ 回測窗口整段是大多頭,空頭沒有驗證過。">🧬 強勢高波動</span>` : ''}
                     <span class="font-mono font-black text-[12px] text-gray-100 flex-shrink-0">${x.s}</span>
                     <span class="text-[11px] text-gray-200 truncate">${nm(x.s)}</span>
@@ -37415,6 +37416,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             `停損:跌破 ${x.stop} 出場` + (lots ? `(會虧 ${ps.maxLoss.toLocaleString()} 元,本金的 ${ps.riskPct.toFixed(1)}%)` : ''),
             `打法:${x.k}(保守每趟 +${x.lb}%・勝率 ${x.w}%・打過 ${x.n} 次)`,
             `⚠️ 回測是「尾盤買」算的;條件單是「觸價就買」,時點不同。能設 13:00 後才觸發最好。`,
+            ...(ps.oddOnly ? ['⚠️ 這是零股數量 —— 券商的智慧單/觸價委託**多半只吃整股**,零股通常要盤中自己下「零股」單。掛不進去就改手動。'] : []),
+            ...(this._pbEdge?.picks?.find(p2 => String(p2.s) === String(sym))?.bear ? ['⚠️ 這檔目前跌破 20 日線與 60 日線(全面破線)—— 沒漲過觸發價就不會成立,別提前買。'] : []),
         ].join('\n');
         const done = () => alert('✅ 已複製,貼到永豐 App 的「智慧單 / 觸價委託」照著填:\n\n' + txt);
         try {
