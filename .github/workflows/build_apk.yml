@@ -85,6 +85,20 @@ jobs:
           # ⛔ 對不起來就代表裝上去頂端會有網址列 → 直接失敗,別讓人白裝一次
           [ "$GOT" = "$WANT" ] || { echo "❌ 簽章與 assetlinks.json 不符"; exit 1; }
           echo "✅ 簽章與網站對得起來,裝上去會是全螢幕"
+
+          # ⛔ AndroidManifest 指向的啟動類別必須真的存在於 APK ——
+          #    b5 就是栽在這:寫成 androidx.browser.trusted.LauncherActivity(不存在的類別),
+          #    打包照過(manifest 的類別名編譯期不檢查)、裝得起來,**一啟動就閃退**。
+          ACT=$(grep -oE 'android:name="[A-Za-z0-9_.]+\.LauncherActivity"' \
+                android/app/src/main/AndroidManifest.xml | head -1 | sed 's/.*"\(.*\)"/\1/')
+          if [ -z "$ACT" ]; then echo "❌ 讀不到啟動類別名稱"; exit 1; fi
+          DESC="L$(echo "$ACT" | tr '.' '/');"
+          if unzip -p "$APK" 'classes*.dex' | strings -a | grep -qF "$DESC"; then
+            echo "✅ 啟動類別真的在 APK 裡:$ACT"
+          else
+            echo "❌ $ACT 不在 APK 裡 → 裝得起來但一開就閃退"; exit 1
+          fi
+
           cp "$APK" "$APK_NAME"
           ls -lh "$APK_NAME"
 

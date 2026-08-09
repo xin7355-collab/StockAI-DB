@@ -48,6 +48,10 @@ android {
 }
 
 dependencies {
-    // TWA 的 LauncherActivity 就在這包裡 → 整個 App 一行 Java 都不用寫
+    // ⭐ TWA 的 LauncherActivity 在 androidbrowserhelper,**不在 androidx.browser** ——
+    //    b5 那版就是把 AndroidManifest 指到 androidx.browser.trusted.LauncherActivity,
+    //    那個類別根本不存在 → 打包照過(manifest 類別名編譯期不檢查),一啟動就閃退。
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.browser:browser:1.8.0'
 }

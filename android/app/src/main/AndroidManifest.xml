@@ -17,7 +17,7 @@
             android:resource="@string/asset_statements" />
 
         <activity
-            android:name="androidx.browser.trusted.LauncherActivity"
+            android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:screenOrientation="portrait"
