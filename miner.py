@@ -3112,7 +3112,11 @@ def fetch_us_macro_cache():
             is_long = key in LONG_HIST_KEYS
             # 🛡️ SIGALRM 硬逾時，防 yfinance 無限 hang
             #    台股指數抓 2y(供前端個股頁完整功能)、其他維持 10d(省 API 額度)
-            _period = '2y' if is_long else '10d'
+            # 📏 V73.2.8 指數 2y → 5y:回測窗口的天花板是**指數**不是個股 ——
+            #   個股有 763 筆(3 年)但 ^TWII 只有 486 筆(2 年),而超額報酬要扣同期大盤
+            #   → 整套回測只能算 2 年,連 2022 那次 −32% 空頭都涵蓋不到。
+            #   ⛔ 只放寬指數(2 檔);2,700 檔個股全部重抓會被 yfinance 限流。
+            _period = '5y' if is_long else '10d'
             hist = call_with_timeout(lambda: yf.Ticker(ticker).history(period=_period), 30, None)
             yf_empty = (hist is None or hist.empty)
             # 🐛 V40.1 長線台股指數(twii/twoii)即使 yfinance 空/逾時也「不可 continue」,
@@ -3182,7 +3186,14 @@ def fetch_us_macro_cache():
                 #      跟官方股數差約 1,500 倍,混同一欄會做出 1000 倍斷崖 —— 詳見 _merge_twii_volume)。
                 if key == 'twii' and long_rows:
                     try:
-                        _mo = _months_span(long_rows, cap=30)
+                        # 📊 只抓「還缺 amount」的月份 —— 拉長到 5 年後若照舊 cap=30,
+                        #   最舊那 2 年永遠拿不到 amount(指數量能是「整條序列換成 amount」,
+                        #   缺了會出現空洞 → 陷阱 #29/#17)。改成自我限縮:
+                        #   首次補歷史時抓多一點,之後每天只剩 1~2 個月要補。
+                        _need = [r for r in long_rows if not r.get('amount')]
+                        # ⚠️ 補完之後 _need 會變空 —— 這時**只刷最近 3 個月**(當月數字會被官方回補),
+                        #   ⛔ 不可退回全量,否則拉長到 5 年後每天都要打 60 次 FMTQIK。
+                        _mo = _months_span(_need, cap=70) if _need else _months_span(long_rows, cap=3)
                         long_rows, _hit = _merge_twii_volume(long_rows, _fetch_fmtqik_months(_mo))
                         print(f"  📊 官方量能(mkt_vol/amount)併入 {_hit}/{len(long_rows)} 列"
                               f"(FMTQIK {len(_mo)} 個月份檔)")
