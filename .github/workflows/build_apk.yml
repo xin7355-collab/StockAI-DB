@@ -71,6 +71,9 @@ jobs:
           [ -s "$APK" ] || { echo "❌ 沒有產出 APK"; exit 1; }
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* 2>/dev/null | sort -V | tail -1)
           if [ -z "$BT" ]; then echo "❌ 找不到 build-tools"; exit 1; fi
+          # -v 會印出「v1/v2/v3 各自有沒有驗過」→ 日後有人說裝不起來,log 裡直接看得到
+          "$BT/apksigner" verify -v "$APK" | head -8
+          echo "APK 大小:$(stat -c%s "$APK") bytes ・ 檔案型別:$(file -b "$APK" | cut -c1-60)"
           GOT=$("$BT/apksigner" verify --print-certs "$APK" \
                 | grep -i 'SHA-256 digest' | head -1 | awk '{print $NF}' | tr 'A-Z' 'a-z')
           WANT=$(grep -oE '[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){31}' .well-known/assetlinks.json \
