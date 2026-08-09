@@ -124,12 +124,15 @@ if (TRADES_CACHE && fs.existsSync(TRADES_CACHE)) {
         const j = JSON.parse(fs.readFileSync(TRADES_CACHE, 'utf8'));
         // ⛔ 參數對不上一定要重掃 —— 拿別組參數的交易來套等於結論全錯
         if (j.key === CACHE_KEY && Array.isArray(j.trades) && j.trades.length) {
-            allTrades.push(...j.trades); cacheHit = true;
+            // ⛔ 不可用 push(...arr) —— 20 幾萬筆會直接爆呼叫堆疊,
+            //    而且會被下面的 try/catch 吞成「讀不起來」然後默默重掃(白等 3 分鐘)
+            for (const t of j.trades) allTrades.push(t);
+            cacheHit = true;
             console.log(`💾 載入交易快取:${allTrades.length} 筆(參數相符,跳過掃描)`);
         } else {
             console.log('⚠️ 交易快取參數不符 → 重新掃描');
         }
-    } catch (_) { console.log('⚠️ 交易快取讀不起來 → 重新掃描'); }
+    } catch (e) { console.log(`⚠️ 交易快取讀不起來(${e.message})→ 重新掃描`); }
 }
 if (!cacheHit) {
 const browser = await chromium.launch({
@@ -318,6 +321,9 @@ const calOk = d => {
         if (c === 'norev' && +d.slice(8, 10) <= 10) return false;
         if (c === 'nofin' && finNear.has(d)) return false;
         if (c === 'nohol' && preHol.has(d)) return false;
+        // 📅 交易層級探針發現「月內位置」是唯一單調的一組(中旬最好、下旬最差)
+        if (c === 'nolate' && +d.slice(8, 10) >= 21) return false;      // 下旬不進場
+        if (c === 'onlymid') { const n2 = +d.slice(8, 10); if (n2 < 11 || n2 > 20) return false; }
     }
     return true;
 };
