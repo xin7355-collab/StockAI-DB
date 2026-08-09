@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.1.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.2.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.1.2 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.2.4 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7158,8 +7158,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.1.2',
+    _APP_VERSION: 'V73.2.4',
     _CHANGELOG: [
+        { v: 'V73.2.4', dt: '2026-08-09', t: '🧬 明日清單新增「強勢高波動」標記', d: [
+            '實測 80 種變體之後,唯一每一關都過的條件:這檔自己的**位階 ≥75%(近一年)且波動率 ≥60%**。',
+            '同樣的打法、同樣每天 2 檔,只挑這一格 → 13 個月從賺 112 萬變 209 萬,而且最大回撤從 −14.4% 縮到 −9.1%。',
+            '反過來只做低波動的牛皮股是**倒賠**的(−21 萬,回撤 −65.9%)→ 這也是為什麼標記值得看。',
+            '⛔ 沒標到的**照樣顯示**,只是排後面 —— 不是不能做。',
+            '⚠️ 回測那 13 個月整段是大多頭,**空頭沒有驗證過**;而「追高 + 高波動」正是空頭最容易受傷的組合。',
+        ] },
         { v: 'V73.1.2', dt: '2026-08-08', t: '🧹 例行維護', d: [
             '介面文字整理與顯示調整。',
         ] },
@@ -37361,6 +37368,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <div class="flex items-baseline justify-between gap-2">
                 <div class="min-w-0 flex items-baseline gap-1.5">
                     ${isMine ? '<span class="text-[10px] flex-shrink-0">👜</span>' : ''}
+                    ${+x.hq ? `<span class="text-[9px] flex-shrink-0 px-1 rounded bg-[#21262d] border border-[#30363d] text-gray-300" title="這檔自己的位階 ${x.rank}%(近一年)、波動率 ${x.vol}%(年化)——落在實測表現最好的那一格。實測 +89% 且回撤更小(6 道關卡全過、24 格門檻網格全贏基準)。⚠️ 回測窗口整段是大多頭,空頭沒有驗證過。">🧬 強勢高波動</span>` : ''}
                     <span class="font-mono font-black text-[12px] text-gray-100 flex-shrink-0">${x.s}</span>
                     <span class="text-[11px] text-gray-200 truncate">${nm(x.s)}</span>
                     <span class="font-mono text-[10px] text-gray-500 flex-shrink-0">${c.toLocaleString()}</span>
@@ -37375,7 +37383,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 ${lotLine}
             </div>
             <div class="flex items-center justify-between gap-2 mt-1">
-                <span class="font-mono text-[9px] text-gray-500 truncate">勝率 ${x.w}%${this._wrTag ? this._wrTag(x.w, x.n, 0.364) : ''} ・賺賠比 ${x.po} ・打過 ${x.n} 次</span>
+                <span class="font-mono text-[9px] text-gray-500 truncate">勝率 ${x.w}%${this._wrTag ? this._wrTag(x.w, x.n, 0.364) : ''} ・賺賠比 ${x.po} ・打過 ${x.n} 次${(x.rank != null && x.vol != null) ? ` ・位階 ${x.rank}%/波動 ${x.vol}%` : ''}</span>
                 ${hasTrig ? `<button onclick="event.stopPropagation();app._copyCondOrder('${x.s}')" class="text-[9px] text-cyan-300 border border-cyan-700/50 rounded px-1.5 py-0.5 flex-shrink-0 hover:bg-cyan-900/30">📋 條件單</button>` : ''}
             </div>
         </div>`;
@@ -37453,6 +37461,22 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const rs = this._calcRiskScore();
             if (Number.isFinite(+rs) && +rs >= 60) riskLine = `<div class="mt-1.5 bg-[#0d1117] border-l-4 border-orange-500 rounded-r px-2 py-1 text-[10px] text-orange-200 leading-snug">⚠️ <b>今天大盤風險 ${Math.round(+rs)} 分(偏高)</b> —— 清單照給,但這種盤建議<b>減量或空手</b>;實測 2026-07 那種月份整組是虧的。</div>`;
         } catch (_) { }
+        // 🧬 V73.2.4 高位階+高波動 —— 唯一「六道關卡全過」的條件(⛔ 只排序不刪除)
+        //   實測(600 檔・13 個月・本金 100 萬・每天 2 檔):
+        //     位階≥75 且 波動≥60 → +2,090,809 元 ・回撤 −9.09%(基準 +1,127,315 / −14.35%)
+        //   反向:只做低位階 −27,439(回撤 −35.7%)・只做低波動 −210,967(回撤 −65.9%)
+        //   ⚠️ 窗口整段是大多頭 → 空頭沒驗證過,而「追高+高波動」正是空頭最容易受傷的組合
+        const hqN = rows.filter(x => +x.hq).length;
+        const hqLine = hqN
+            ? `<div class="text-[10px] text-gray-200 bg-[#0d1117] border-l-4 border-[#30363d] rounded-r px-2 py-1 leading-snug mb-1.5">
+                🧬 標 <b>強勢高波動</b> 的有 <b class="text-gray-100">${hqN}</b> 檔(這檔自己的位階 ≥75%、波動率 ≥60%)——
+                實測這一格<b>賺 +89%、回撤還更小</b>;反過來只做低波動股是<b>倒賠</b>的。已排在前面。
+                <span class="text-gray-500">⚠️ 回測窗口整段是大多頭,<b>空頭沒有驗證過</b>;沒標的仍照顯示,不是不能做。</span>
+               </div>`
+            : `<div class="text-[10px] text-gray-400 bg-[#0d1117] border-l-4 border-[#30363d] rounded-r px-2 py-1 leading-snug mb-1.5">
+                🧬 今天沒有一檔同時符合「位階 ≥75% + 波動率 ≥60%」(實測表現最好的那一格)——
+                <span class="text-gray-500">清單照給,但這種日子期望值本來就比較低。</span>
+               </div>`;
         return `<div class="mb-2.5 bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
             <div class="flex items-center justify-between mb-1">
                 <span class="text-[12px] font-black text-gray-100">🎯 明天要盯這 <b class="text-red-300">${j.picks_syms || rows.length}</b> 檔</span>
@@ -37467,6 +37491,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 ⛔ <b>不是叫你明天開盤買</b> —— 是「漲過那個價才買,而且要等到<b>尾盤 13:00~13:25</b> 確認還站得住」。<br>
                 <span class="text-cyan-300/70">實測開盤就買會把賺頭全部吃光(甚至倒賠)。App 盤中會幫你盯,到價自動提醒。</span>
             </div>
+            ${hqLine}
             ${mktLine}${riskLine}
             <div class="space-y-1 mt-1.5">${rows.slice(0, SHOW).map(x => this._pbRowHtml(x, mine)).join('')}</div>
             ${rows.length > SHOW ? `<details class="mt-1.5"><summary class="text-[10px] text-gray-500 cursor-pointer">➕ 另外 ${rows.length - SHOW} 檔(同樣標準,只是期望值排後面)</summary><div class="space-y-1 mt-1">${rows.slice(SHOW).map(x => this._pbRowHtml(x, mine)).join('')}</div></details>` : ''}
@@ -37628,7 +37653,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             // ⛔ **嚴格限量**:全市場今天可能上百檔觸發,全推 = 使用者三天後關掉通知 = 整套失效。
             //   自己手上/自選的優先,再補期望值最高的,合計最多 6 檔。
             const _lb = x => Number.isFinite(+x.lb) ? +x.lb : +x.exp;   // ⛔ 同上:保守下界
-            const ranked = list.slice().sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (_lb(b) - _lb(a)));
+            // 🧬 V73.2.4 hq(這檔自己的位階 ≥75 且波動 ≥60)優先 —— 實測 +89% 且回撤更小(6 關全過)
+            //   ⛔ 只影響**排序**,不影響「有沒有真的觸發」;不符合的仍可能被推(前面沒 2 檔成立時)
+            const _hq = x => (this.settings?.pbHqOff ? 0 : (+x.hq || 0));
+            const ranked = list.slice().sort((a, b) =>
+                (mine.has(String(b.s)) - mine.has(String(a.s))) || (_hq(b) - _hq(a)) || (_lb(b) - _lb(a)));
             // ⭐⭐ V73.0.0 實測改成「一天最多做 **2 檔**」(⛔ 原本是 6):
             //   `portfolio_backtest.mjs`(600 檔・13 個月・本金 100 萬)每天挑幾檔:
             //     6 檔×5萬  +735,938 元 ・回撤 −18.4%

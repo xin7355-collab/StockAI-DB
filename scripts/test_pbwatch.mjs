@@ -105,7 +105,18 @@ const scan = fs.readFileSync(path.join(ROOT, 'scripts/playbook_scan.mjs'), 'utf8
 //   (首跑實測首名 每趟 +17.63%・賺賠比 12.63・只有 24 次 = 選樣偏誤)。
 ok('⑤a 門檻用**保守下界**扣成本(⛔ 不可退回原始期望值)', /\(lb\(x\) - cost\) > 0/.test(scan));
 ok('⑤a2 下界公式是 期望值 − 1.28×sd/√n', /x\.expectancy - 1\.28 \* \(x\.sd \|\| 0\) \/ Math\.sqrt/.test(scan));
-ok('⑤a3 ⛔ 排序也要用下界(只改門檻等於沒改)', /sort\(\(a, b\) => lb\(b\) - lb\(a\)\)/.test(scan) && /picks\.sort\(\(a, b\) => \(b\.lb - a\.lb\)/.test(scan));
+// ⚠️ V73.2.4 起 picks.sort 前面多了 hq(高位階+高波動)這一鍵 —— 但**下界仍必須在排序式子裡**,
+//    ⛔ 不可退回原始期望值。這條同時釘住「hq 只能是第一鍵、lb 必須緊接在後」。
+ok('⑤a3 ⛔ 排序也要用下界(只改門檻等於沒改)', /sort\(\(a, b\) => lb\(b\) - lb\(a\)\)/.test(scan) && /picks\.sort\(\(a, b\) => \(b\.hq - a\.hq\) \|\| \(b\.lb - a\.lb\)/.test(scan));
+// 🧬 V73.2.4 高位階+高波動(六道關卡全過的唯一一組)
+ok('⑤a3b 掃描端要算這檔自己的位階與波動率', /selfRank = Math\.round/.test(scan) && /selfVol = cn >= 10/.test(scan));
+ok('⑤a3c hq 門檻寫死 75/60,且⛔ 不符合的仍要輸出(只標記不刪除)',
+   /rank >= 75 && r\.vol != null && r\.vol >= 60/.test(scan) && /picks\.push\(\{ s: sym/.test(scan));
+ok('⑤a3d 尾盤推播 hq 優先,但只影響排序',
+   /const _hq = x => \(this\.settings\?\.pbHqOff \? 0 : \(\+x\.hq \|\| 0\)\)/.test(src) && /_hq\(b\) - _hq\(a\)/.test(src));
+ok('⑤a3e 卡上必須寫「空頭沒有驗證過」(⛔ 不可只報好消息)', /空頭沒有驗證過/.test(src));
+ok('⑤a3f 徽章⛔ 不可用紅綠(燈號鐵則:紅綠只表示漲跌方向)',
+   /🧬 強勢高波動/.test(src) && !/text-(red|green)-\d00[^>]*>🧬 強勢高波動/.test(src));
 ok('⑤a4 _patternFitBacktest 有回 sd', /const sd = n > 1 \? Math\.sqrt/.test(src) && /expectancy: mean, sd,/.test(src));
 ok('⑤a5 前端顯示與排序也用下界', /const shown = Number\.isFinite\(\+x\.lb\)/.test(src) && (src.match(/const _lb = x => Number\.isFinite\(\+x\.lb\)/g) || []).length === 2);
 ok('⑤a6 沒有觸發價(loose)時⛔ 不可顯示「漲過 null」', /const hasTrig = x\.trig != null/.test(src) && /這招不是靠價位觸發/.test(src));

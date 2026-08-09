@@ -175,6 +175,21 @@ for (const f of files) {
                 return { trig: upR };
             };
 
+            // 🧬 V73.2.4 這檔**自己的狀態**(位階/波動率)—— 全市場實測最強的一組條件
+            //   位階 = 收盤在近 250 日的百分位 ・波動 = 近 20 日報酬標準差年化 %
+            //   ⛔ 只用「今天以前」的資料(rows 本來就到今天為止)→ 無前視偏誤
+            let selfRank = null, selfVol = null;
+            try {
+                const w = rows.slice(Math.max(0, last - 249), last + 1).map(r => r.close);
+                selfRank = Math.round(w.filter(c => c <= rows[last].close).length / w.length * 100);
+                let s2 = 0, cn = 0;
+                for (let k = Math.max(1, last - 19); k <= last; k++) {
+                    const pr = (rows[k].close - rows[k - 1].close) / rows[k - 1].close;
+                    s2 += pr * pr; cn++;
+                }
+                selfVol = cn >= 10 ? Math.round(Math.sqrt(s2 / cn) * Math.sqrt(252) * 100) : null;
+            } catch (_) { }
+
             const out = [], fired = [];
             for (const g of good.slice(0, 2)) {          // 一檔最多留 2 招(⛔ 免得一檔洗版)
                 const row = { k: g.key, w: +g.winRate.toFixed(1), po: +g.plRatio.toFixed(2),
@@ -190,7 +205,7 @@ for (const f of files) {
                 else out.push({ ...row, trig: t.trig, loose: 0 });   // ⚠️ trigOf 內已 round + 對齊跳動單位,⛔ 別在這裡再動
             }
             // ⚠️ 收盤價會帶浮點誤差(實跑出現 42.04999923706055)→ 一律 round 到 2 位
-            return { c: Math.round(c0 * 100) / 100, v: Math.round(rows[last].volume / 1000), d: rows[last].date, out, fired };
+            return { c: Math.round(c0 * 100) / 100, v: Math.round(rows[last].volume / 1000), d: rows[last].date, rank: selfRank, vol: selfVol, out, fired };
         }, { rows, minN: MIN_N, cost: COST, near: NEAR });
     } catch (_) { continue; }
     if (!r) continue;
@@ -201,7 +216,11 @@ for (const f of files) {
         //   明天的低點還不知道 → 保守用 ×0.95,盤中重算時會換成真的)
         // ⚠️ loose(沒有觸發價)一律用**現價**當基準,⛔ 不可拿 null 去算(會變 NaN)
         const base = x.trig != null ? x.trig : r.c;
+        // 🧬 hq = 高位階(>=75)且高波動(>=60):實測 +89% 且回撤更小(6 道關卡全過,24 格網格全贏)
+        //   ⛔ 不符合的**照樣輸出**(同 _SIGNAL_EDGE 對 C 級的處置)—— 只標記,由顯示端決定要不要收起來
+        const hq = (r.rank != null && r.rank >= 75 && r.vol != null && r.vol >= 60) ? 1 : 0;
         picks.push({ s: sym, c: r.c, v: r.v, d: r.d, ...x,
+                     rank: r.rank, vol: r.vol, hq,
                      up: x.trig != null ? +((x.trig - r.c) / r.c * 100).toFixed(2) : null,
                      stop: +(base * 0.95).toFixed(2) });
     }
@@ -220,7 +239,10 @@ if (used >= 200 && picks.length === 0 && firedToday.length === 0) {
 }
 
 // 期望值高的排前面;同分用成交量(⛔ 別退化成代號順序 —— 那等於「1xxx 永遠排前面」)
-picks.sort((a, b) => (b.lb - a.lb) || (b.v - a.v));   // ⛔ 用保守下界排,不是原始期望值
+// 🧬 V73.2.4 hq(高位階+高波動)優先 —— 實測 +89% 且回撤更小(6 關全過)
+//   ⛔ 只是**排序**不是刪除:不符合的仍在清單裡,由顯示端決定收不收起來
+//   ⛔ 第二鍵仍是保守下界(不是原始期望值),第三鍵成交量(避免退化成代號序)
+picks.sort((a, b) => (b.hq - a.hq) || (b.lb - a.lb) || (b.v - a.v));
 firedToday.sort((a, b) => (b.lb - a.lb) || (b.v - a.v));
 
 const out = {
@@ -247,6 +269,7 @@ fs.writeFileSync(path.join(DATA, 'playbook_edge.json'), JSON.stringify(out), 'ut
 
 log(`\n✅ ${used} 檔 ・${((Date.now() - t0) / 1000).toFixed(0)}s`);
 log(`   🎯 明日候選:${picks.length} 筆 / ${out.picks_syms} 檔(輸出前 ${out.picks.length} 筆)`);
+log(`   🧬 其中高位階+高波動(hq):${picks.filter(x => x.hq).length} 筆`);
 log(`   🔥 今天已觸發:${firedToday.length} 筆(⛔ 明天買太晚,只當參考)`);
 log(`   ➖ 沒有任何一招扣成本後為正的:${noEdge} 檔`);
 if (picks.length > out.picks.length) log(`   ⚠️ 有截斷:${picks.length} → ${out.picks.length};picks_total/picks_syms 已寫進 JSON`);
