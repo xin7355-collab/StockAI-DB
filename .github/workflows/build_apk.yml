@@ -27,26 +27,23 @@ jobs:
         run: |
           set -e
           V=$(grep -oE "_APP_VERSION: ?['\"]V[0-9.]+" index.html | head -1 | grep -oE "[0-9.]+" || true)
-          [ -z "$V" ] && V="1.0.0"
+          if [ -z "$V" ]; then V="1.0.0"; fi
           echo "TWA_VERSION_NAME=$V"        >> "$GITHUB_ENV"
           echo "TWA_VERSION_CODE=${{ github.run_number }}" >> "$GITHUB_ENV"
           echo "APK_NAME=stockai-v${V}-b${{ github.run_number }}.apk" >> "$GITHUB_ENV"
           echo "版本 $V ・ versionCode ${{ github.run_number }}"
 
-      - name: 🖼️ 產生 App 圖示（從 icon-512.jpg 轉各尺寸 PNG）
+      # 🖼️ 圖示是**事先產好進版控**的,⛔ 不在 CI 轉檔 ——
+      #    run #1 就是栽在這:runner 上根本沒有 ImageMagick,而且 set -e 讓它連錯誤訊息都印不出來
+      #    (IM=$(command -v ...) 這種賦值失敗會直接中止,不像 `a && b` 有豁免)
+      - name: 🖼️ 確認 App 圖示齊全
         run: |
           set -e
-          IM=$(command -v magick || command -v convert)
-          [ -z "$IM" ] && { echo "❌ 找不到 ImageMagick"; exit 1; }
-          for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
-            n="${d%%:*}"; s="${d##*:}"
-            out="android/app/src/main/res/mipmap-$n"
-            mkdir -p "$out"
-            "$IM" icon-512.jpg -resize "${s}x${s}" "$out/ic_launcher.png"
-          done
+          N=$(find android/app/src/main/res -name ic_launcher.png | wc -l)
           find android/app/src/main/res -name ic_launcher.png | sort
-          # 空過守門:一張都沒產出就別往下走(避免打出沒有圖示的 APK)
-          [ "$(find android/app/src/main/res -name ic_launcher.png | wc -l)" -eq 5 ] || { echo "❌ 圖示數量不對"; exit 1; }
+          # 空過守門:少一張就別往下走(避免打出沒有圖示的 APK)
+          if [ "$N" -ne 5 ]; then echo "❌ 圖示只有 $N 張,應為 5 張"; exit 1; fi
+          echo "✅ 圖示 5 種尺寸齊全"
 
       - name: 🔧 確認 Android SDK 元件
         run: |
@@ -72,13 +69,16 @@ jobs:
           set -e
           APK=android/app/build/outputs/apk/release/app-release.apk
           [ -s "$APK" ] || { echo "❌ 沒有產出 APK"; exit 1; }
-          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* 2>/dev/null | sort -V | tail -1)
+          if [ -z "$BT" ]; then echo "❌ 找不到 build-tools"; exit 1; fi
           GOT=$("$BT/apksigner" verify --print-certs "$APK" \
                 | grep -i 'SHA-256 digest' | head -1 | awk '{print $NF}' | tr 'A-Z' 'a-z')
           WANT=$(grep -oE '[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){31}' .well-known/assetlinks.json \
                 | head -1 | tr -d ':' | tr 'A-Z' 'a-z')
           echo "APK  : $GOT"
           echo "網站 : $WANT"
+          # 兩邊都要真的讀到東西,⛔ 不可讓「空 == 空」矇混過關
+          if [ -z "$GOT" ] || [ -z "$WANT" ]; then echo "❌ 指紋讀不到(APK:${#GOT} 網站:${#WANT})"; exit 1; fi
           # ⛔ 對不起來就代表裝上去頂端會有網址列 → 直接失敗,別讓人白裝一次
           [ "$GOT" = "$WANT" ] || { echo "❌ 簽章與 assetlinks.json 不符"; exit 1; }
           echo "✅ 簽章與網站對得起來,裝上去會是全螢幕"
