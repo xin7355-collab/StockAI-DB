@@ -28,6 +28,10 @@ const CACHE = process.argv[2];
 const MAX_SYMS = +(process.argv[3] || 99999);
 const COST = 0.44;
 const MIN_N = +(process.env.MIN_N || 300);
+// 📤 把「(股|日)→ 命中哪些訊號」倒出來,讓 portfolio_backtest 直接讀,
+//    ⛔ 免得每測一個變體就要重掃 4 分鐘(同交易快取的理由)
+const SIGX_OUT = process.env.SIGX_OUT || '';
+const sigMap = {};
 if (!CACHE || !fs.existsSync(CACHE)) { console.log('❌ 請給交易快取路徑'); process.exit(1); }
 
 const DETECTORS = [
@@ -115,6 +119,9 @@ for (const [sym, arr] of bySym) {
             return out;
         }, { rows, dets: alive, want });
     } catch (_) { continue; }
+    if (SIGX_OUT) for (const [d, names] of Object.entries(fired)) {
+        if (names && names.length) sigMap[`${sym}|${d}`] = names;
+    }
     for (const t of arr) {
         const names = fired[t.inD];
         if (!names) continue;
@@ -170,5 +177,18 @@ console.log(`⭐ 同時滿足「邊際 > +0.5pp」且「前後半段同向」的
 for (const r of good) console.log(`   ✅ ${r.k}  (n=${r.n}, +${r.d.toFixed(2)}pp)`);
 console.log(`⛔ 同時滿足「邊際 < −0.5pp」且「前後半段同向」的:${bad.length} 個`);
 for (const r of bad) console.log(`   ⛔ ${r.k}  (n=${r.n}, ${r.d.toFixed(2)}pp)`);
+if (SIGX_OUT) {
+    // 只留通過樣本門檻的訊號(⛔ 全存會爆檔案大小,而且低樣本的本來就不能用)
+    const keep = new Set(rows2.map(r => r.k));
+    const names = [...keep];
+    const idx = new Map(names.map((n, i) => [n, i]));
+    const out = {};
+    for (const [k, arr2] of Object.entries(sigMap)) {
+        const v = arr2.filter(n => idx.has(n)).map(n => idx.get(n));
+        if (v.length) out[k] = v;
+    }
+    fs.writeFileSync(SIGX_OUT, JSON.stringify({ names, map: out }));
+    console.log(`📤 已輸出訊號對照表:${names.length} 個訊號 / ${Object.keys(out).length.toLocaleString()} 個(股,日) → ${SIGX_OUT}`);
+}
 console.log('\n⚠️ 這裡的「加分」是**條件表現**,不等於「加進去總獲利會變多」——');
 console.log('   要當濾網用,一定要再跑一次 portfolio_backtest 看**賺到的錢**(前 56 種變體幾乎都栽在這一步)。');
