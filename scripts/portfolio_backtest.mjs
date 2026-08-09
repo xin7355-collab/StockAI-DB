@@ -65,6 +65,13 @@ const CAL = (process.env.CAL || '').split('+').filter(Boolean);
 //    存起來重用,後面每試一個行事曆假設就從 3 分鐘變成 3 秒。
 //    ⛔ 參數不同一定要重掃(檔案內有 meta,對不上會拒絕載入)。
 const TRADES_CACHE = process.env.TRADES_CACHE || '';
+// ⚖️ V73.2.2 部位縮放實驗 —— ⭐ 這才是上面 53 種濾網真正指向的方向:
+//   實測發現「差的環境」每趟**還是正的**(貼著波段高 +0.86%)→ 砍掉它就是砍獲利,
+//   所以該調的是**押多少**不是**做不做**。
+//   dd60 = 大盤回檔越深押越大 ・flr = 地板股太少(市場太平靜)就減碼 ・both = 兩者相乘
+//   ⚠️ 這些桶是從**同一份資料**看出來的 → 有 in-sample 之嫌,
+//      唯一的防線是「前後半段一致」(已檢定)+ 機制講得通,⛔ 不可當成保證。
+const SCALE = process.env.SCALE || '';
 const FILTER = (process.env.FILTER || '').split('+').filter(Boolean);
 const LIQ = +(process.env.LIQ || 1);       // 億元
 const CONF = +(process.env.CONF || 2);     // 共振:同一天同一檔至少幾招同時觸發
@@ -448,6 +455,17 @@ for (let i = 0; i < days.length; i++) {
         //           張數 = 風險金額 ÷(每股風險 × 1000),再套單檔上限 POS_CAP_PCT% 帳戶
         //   ⛔ 這裡一定要用交易自己的 entry/stop,別在外面重算(基準會不一致)
         let amt = LOT;
+        if (SCALE) {
+            let k = 1;
+            const x = dd60(i - 1), b3 = yBr(i);
+            if (SCALE === 'dd60' || SCALE === 'both') {
+                if (x != null) k *= x > 5 ? 1.5 : x < 1 ? 0.7 : 1;
+            }
+            if (SCALE === 'flr' || SCALE === 'both') {
+                if (b3) k *= (b3.flr || 0) < 50 ? 0.5 : 1;
+            }
+            amt = Math.round(LOT * k);
+        }
         if (SIZING === 'risk') {
             const per = (+t.entry || 0) - (+t.stop || 0);
             if (!(per > 0) || !(+t.entry > 0)) { continue; }
@@ -460,6 +478,7 @@ for (let i = 0; i < days.length; i++) {
         if (cash < amt) { skipped++; continue; }
         seen.add(t.sym); cash -= amt;
         t._amt = amt;
+        t._d = d; t._i = i;   // 📤 TAKEN_OUT 用:記下實際成交那天(⛔ 事後才標環境會對不上)
         taken.push(t); live.push(t); picked++;
     }
     openCnt.push(live.length);
@@ -467,6 +486,28 @@ for (let i = 0; i < days.length; i++) {
 }
 
 if (!taken.length) { console.log('❌ 暖身後一筆都沒進場(門檻太嚴或樣本太小)'); process.exit(1); }
+
+// 📤 把實際成交的交易(含當天市場環境)倒出來 —— 用來算「哪一種盤這套打法比較行」
+//    ⛔ 這是**事實統計**不是預測;要當成訊號用之前一定要過穩健性檢定。
+if (process.env.TAKEN_OUT) {
+    const rows = taken.map(t => {
+        const i = t._i, d = t._d, b2 = yBr(i);
+        return {
+            d, sym: t.sym, key: t.key, ret: t.ret,
+            dow: new Date(d + 'T00:00:00Z').getUTCDay(),
+            dom: +d.slice(8, 10),
+            set: isSet(d) ? 1 : 0,
+            vol: volPct(i - 1),                 // 大盤波動率位階
+            dd60: dd60(i - 1),                  // 大盤距 60 日高回檔 %
+            pret: prevRet(i),                   // 昨天大盤漲跌 %
+            up: b2 && b2.total ? (b2.up || 0) / b2.total * 100 : null,   // 昨天上漲家數佔比
+            flr: b2 ? (b2.flr || 0) : null,     // 昨天地板股家數
+            lag: b2 && b2.idx != null && b2.med != null ? b2.idx - b2.med : null,
+        };
+    });
+    fs.writeFileSync(process.env.TAKEN_OUT, JSON.stringify(rows));
+    console.log(`📤 已輸出實際成交交易 ${rows.length} 筆 → ${process.env.TAKEN_OUT}`);
+}
 
 // ── ④ 結果:整體 / 每月 / vs 0050 ────────────────────────────────────────
 const net = t => t.ret - COST;                       // 扣成本後的單趟報酬 %
