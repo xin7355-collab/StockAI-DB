@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.2.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.2.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.2.4 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.2.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -782,8 +782,8 @@
                         <p class="text-[10px] text-gray-500 leading-snug">牌價手續費 0.1425%×折數。設一次,<b class="text-cyan-300">當沖試算機、作戰指令的掛單賺賠元</b>全部自動用你的折數算(在試算機改折數也會自動記住回這裡)。</p>
                     </div>
                     <!-- 🎯 V66.9 — 風控:帳戶總資金 + 單筆風險%(ATR 波動率部位管理用:算「這檔該買幾張」把單筆虧損控在風險%內) -->
-                    <!-- 🧭 V68.4.6 — 「該買幾張」已改為總覽「總評儀表板 → 部位水位」(不用填資金);此設定停用隱藏 -->
-                    <div class="hidden flex-col gap-2 p-2.5 bg-[#161b22] border border-red-700/40 rounded">
+                    <!-- 🎯 V73.2.6 — 重新顯示:V72.9 起「明日作戰清單/尾盤買點」要用它算「買幾張、會虧多少元」,沒填就只能顯示 CTA -->
+                    <div class="flex flex-col gap-2 p-2.5 bg-[#161b22] border border-red-700/40 rounded">
                         <label class="text-xs font-bold text-red-300 flex items-center gap-1.5">🎯 風控部位管理<span class="text-[9px] text-gray-500 font-normal">(散戶虧錢真因:買太多)</span></label>
                         <div class="flex items-center gap-2">
                             <span class="text-[11px] text-gray-400 whitespace-nowrap flex-shrink-0">帳戶總資金</span>
@@ -7158,8 +7158,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.2.4',
+    _APP_VERSION: 'V73.2.6',
     _CHANGELOG: [
+        { v: 'V73.2.6', dt: '2026-08-09', t: '🧹 例行維護', d: ['介面小調整。'] },
         { v: 'V73.2.4', dt: '2026-08-09', t: '🧬 明日清單新增「強勢高波動」標記', d: [
             '實測 80 種變體之後,唯一每一關都過的條件:這檔自己的**位階 ≥75%(近一年)且波動率 ≥60%**。',
             '同樣的打法、同樣每天 2 檔,只挑這一格 → 13 個月從賺 112 萬變 209 萬,而且最大回撤從 −14.4% 縮到 −9.1%。',
@@ -31583,9 +31584,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const wr = r.win_rate, wrCls = wr >= 70 ? 'text-red-300' : wr >= 55 ? 'text-yellow-300' : 'text-gray-400';
             const retCls = r.avg_ret >= 0 ? 'text-red-400' : 'text-green-400';
             const bn = (r.broker || '').replace(/'/g, '');
-            return `<div class="flex items-center gap-2 py-1 border-b border-[#21262d]">
+            // 👆 V73.2.6 整列都是熱區 —— 原本只有「名字那幾個字」可點,手機上很難點中
+            //    (點了是看**這家分點買了哪些股**,不是跳個股頁 —— 分點本身不是一檔股票)
+            const _go = `app._renderRadarBroker('${bn}'); { const s=app._brokerEl('radarBrokerSel'); if(s) s.value='${bn}'; }`;
+            return `<div onclick="${_go}" class="flex items-center gap-2 py-1 border-b border-[#21262d] cursor-pointer hover:bg-white/5 rounded transition-colors" title="點看這家分點最近買賣哪些股">
                 <span class="text-[10px] font-mono text-gray-600 w-4 flex-shrink-0">${i + 1}</span>
-                <button onclick="app._renderRadarBroker('${bn}'); { const s=app._brokerEl('radarBrokerSel'); if(s) s.value='${bn}'; }" class="flex-1 min-w-0 text-left text-[11px] font-bold text-gray-200 truncate hover:underline">${r.broker}${g ? ` <span class="text-[8px] text-amber-300">${g}</span>` : ''}</button>
+                <button onclick="event.stopPropagation(); ${_go}" class="flex-1 min-w-0 text-left text-[11px] font-bold text-gray-200 truncate hover:underline">${r.broker}${g ? ` <span class="text-[8px] text-amber-300">${g}</span>` : ''}</button>
                 <span class="text-[11px] font-mono font-black ${wrCls} flex-shrink-0 w-10 text-right">${wr}%</span>
                 <span class="text-[10px] font-mono ${retCls} flex-shrink-0 w-12 text-right">${r.avg_ret >= 0 ? '+' : ''}${r.avg_ret}%</span>
                 <span class="text-[9px] text-gray-600 flex-shrink-0 w-8 text-right">${r.count}筆</span>
@@ -31597,7 +31601,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </div>
             <div class="flex items-center gap-2 px-0 pb-0.5 text-[9px] text-gray-600 border-b border-[#30363d]"><span class="w-4"></span><span class="flex-1">分點</span><span class="w-10 text-right">勝率</span><span class="w-12 text-right">均報酬</span><span class="w-8 text-right">樣本</span></div>
             ${list}
-            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">💡 ${isFloat ? '前瞻回測累積中,暫顯「即時浮動戰績」(買超均價 vs 現價)。' : `前瞻回測:分點「買超那天的均價」→ ${cfg[3]} 個交易日後收盤,算勝率(賺的比例)+ 平均報酬。每天累積、逐日更準。`}${(!isFloat && (p.backfill?.[mode] || 0) > 0 && (mode === 'short' || mode === 'swing')) ? `<span class="text-amber-500/70"> ※ 含約 ${p.backfill[mode]} 筆歷史回推近似(過渡用,不用等;真實訊號逐日累積後自動轉純前瞻)。</span>` : ''}點分點名可看它今天全市場買賣。參考跟單方向,非投資建議。</div>`;
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">👆 點任一列 → 看那家分點最近買賣哪些股(分點不是股票,⛔ 不會跳個股頁)<br>💡 ${isFloat ? '前瞻回測累積中,暫顯「即時浮動戰績」(買超均價 vs 現價)。' : `前瞻回測:分點「買超那天的均價」→ ${cfg[3]} 個交易日後收盤,算勝率(賺的比例)+ 平均報酬。每天累積、逐日更準。`}${(!isFloat && (p.backfill?.[mode] || 0) > 0 && (mode === 'short' || mode === 'swing')) ? `<span class="text-amber-500/70"> ※ 含約 ${p.backfill[mode]} 筆歷史回推近似(過渡用,不用等;真實訊號逐日累積後自動轉純前瞻)。</span>` : ''}點分點名可看它今天全市場買賣。參考跟單方向,非投資建議。</div>`;
     },
     _renderBrokerPerfInto() {
         const el = this._brokerEl('brokerPerfBox');
