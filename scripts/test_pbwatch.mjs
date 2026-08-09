@@ -251,5 +251,24 @@ ok('⑨o 這條規則有納入 push 前四驗證(⛔ 光靠人記會忘)',
    /def check_no_trading_in_ci/.test(cwp) && /ok = check_no_trading_in_ci\(\) and ok/.test(cwp));
 
 await browser.close();
+
+// ─── ⑩ 📊 歷史成績區(V73.2.7)——「要讓使用者有信心」但⛔ 不可只報好消息 ───
+{
+    // ⚠️ 起點要抓**註解那一行**,不是常數本身 —— 「改了要重跑」那句寫在常數上方,
+    //    從常數開始切會把它切掉(第一版就是這樣假失敗的)
+    const A = src.indexOf('📊 V73.2.7 這套打法的歷史總成績'), B = src.indexOf('_pbRowHtml(x, mine)');
+    const blk = A > 0 && B > A ? src.slice(A, B) : '';
+    ok('⑩a 有 _PB_TRACK 常數,且標明「改回測配置就要重跑」', /_PB_TRACK: \{/.test(src) && /改了任何規則就要重跑更新/.test(blk));
+    ok('⑩b 兩種做法都要給(照清單做 / 只做 🧬 標記的)', /照清單順序做/.test(blk) && /只做有 🧬 強勢高波動 標記的/.test(blk));
+    ok('⑩c 必須有 0050 對照組(⛔ 沒有基準的報酬率沒有意義)', /同期買 0050 放著/.test(blk));
+    // ⭐ 這三條是「不可只報好消息」的守門
+    ok('⑩d 必須寫出勝率低(十次會錯七次)', /十次會錯七次/.test(blk));
+    ok('⑩e 必須寫出最大回撤的**金額**(使用者鐵則:% 一定要配元)', /回檔 \$\{Math\.abs\(T\.all\.mdd\)\}%/.test(blk) && /T\.cap \* Math\.abs\(T\.all\.mdd\) \/ 100/.test(blk));
+    ok('⑩f 必須寫「空頭完全沒有驗證過」', /空頭完全沒有驗證過/.test(blk));
+    ok('⑩g 必須寫出場三條規則(⛔ 只給進場等於只講一半)', /5 日線/.test(blk) && /20 個交易日/.test(blk) && /沒有目標價/.test(blk));
+    ok('⑩h 併在既有卡片裡(⛔ 不開新卡片)', /\$\{this\._pbTrackRecordHtml\(\)\}/.test(src) && !/id="pbTrackRecordCard"/.test(src));
+}
+
+
 console.log(`\n${fail ? '❌' : '✅'} ${pass} 通過 / ${fail} 失敗`);
 process.exit(fail ? 1 : 0);

@@ -37350,6 +37350,55 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
 
     // 📋 一列 = 一張完整的下單票(⛔ 只寫「可以買」等於把最難的部分丟給使用者)
+    // 📊 V73.2.7 這套打法的歷史總成績 —— 使用者:「要讓我有信心知道這個策略是對的」
+    //   ⛔ 這些數字是 `scripts/portfolio_backtest.mjs` 實跑出來的,**改了任何規則就要重跑更新**
+    //     (同 `_SIGNAL_EDGE` 的規矩:成績跟程式碼綁,不同步就會騙人)
+    //   跑法:TRADES_CACHE=... LOT=150000 node scripts/portfolio_backtest.mjs 600 2
+    _PB_TRACK: {
+        from: '2025-07', to: '2026-07', months: 13, syms: 600, cap: 1000000, per: 150000,
+        // 照清單順序做(不挑標記)
+        all: { pnl: 1127315, ret: 112.73, mdd: -14.35, wr: 29.9, avg: 1.69, n: 445 },
+        // ⭐ 只做有「🧬 強勢高波動」標記的
+        hq: { pnl: 2136115, ret: 213.61, mdd: -9.35, wr: 37.4, avg: 3.08, n: 462 },
+        etf50: 83.25, twii: 70.92, winMon: 5,
+    },
+
+    // 📊 這套打法的歷史成績(摺疊,⛔ 不開新卡片 —— 併在「明天要盯這幾檔」裡)
+    _pbTrackRecordHtml() {
+        const T = this._PB_TRACK; if (!T) return '';
+        const m = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
+        const row = (lab, o, star) => `<div class="grid grid-cols-[1fr_auto] gap-2 items-baseline py-1 border-b border-[#21262d]">
+            <div><div class="text-[11px] ${star ? 'text-gray-100 font-bold' : 'text-gray-300'}">${star ? '⭐ ' : ''}${lab}</div>
+                 <div class="text-[9px] text-gray-500 font-mono">勝率 ${o.wr}% ・每趟 +${o.avg}% ・${o.n} 筆 ・最大回撤 ${o.mdd}%</div></div>
+            <div class="font-mono font-black text-[13px] text-red-300 text-right">${m(o.pnl)}<span class="text-[9px] text-gray-500 font-normal"> 元</span></div>
+        </div>`;
+        return `<details class="mb-1.5 bg-[#0d1117] border border-[#30363d] rounded">
+            <summary class="cursor-pointer text-[10px] text-gray-300 px-2 py-1.5 select-none">📊 <b>這套打法的歷史成績</b> —— 照它做 ${T.months} 個月會怎樣?(點開)</summary>
+            <div class="px-2 pb-2">
+                <div class="text-[9px] text-gray-500 mb-1">本金 ${(T.cap / 10000).toFixed(0)} 萬 ・每天最多 2 檔 ・每筆 ${(T.per / 10000).toFixed(0)} 萬 ・${T.syms} 檔全市場抽樣 ・${T.from} ~ ${T.to}</div>
+                ${row('照清單順序做(不挑標記)', T.all)}
+                ${row('只做有 🧬 強勢高波動 標記的', T.hq, 1)}
+                <div class="grid grid-cols-[1fr_auto] gap-2 items-baseline py-1 border-b border-[#21262d]">
+                    <div><div class="text-[11px] text-gray-400">🆚 同期買 0050 放著</div>
+                         <div class="text-[9px] text-gray-500 font-mono">什麼都不做,最省事的比較基準</div></div>
+                    <div class="font-mono font-black text-[13px] text-gray-300 text-right">+${Math.round(T.cap * T.etf50 / 100).toLocaleString()}<span class="text-[9px] text-gray-500 font-normal"> 元</span></div>
+                </div>
+                <div class="text-[10px] text-gray-200 mt-1.5 leading-relaxed">
+                    📤 <b>出場一律照這三條</b>(回測就是這樣算的,⛔ 自己改就不算數):
+                    ① 收盤跌破 <b>5 日線</b> → 隔天出 ② 跌破<b>停損價</b> → 立刻出 ③ 最長 <b>20 個交易日</b>。
+                    <span class="text-gray-500">⛔ 沒有目標價 —— 這套是「錯的小賠、對的讓它跑」,設目標價會把大賺那幾筆砍掉。</span>
+                </div>
+                <div class="text-[10px] text-yellow-200/90 bg-[#161b22] border-l-4 border-yellow-600 rounded-r px-2 py-1 mt-1.5 leading-snug">
+                    ⚠️ <b>這些是歷史統計,不是保證</b>。三件事一定要知道:<br>
+                    ① 勝率只有 ${T.all.wr}% —— <b>十次會錯七次</b>,靠少數大賺賺回來;${T.months} 個月裡只有 <b>${T.winMon}/${T.months} 個月</b>是賺的。<br>
+                    ② 中途最慘曾經<b>回檔 ${Math.abs(T.all.mdd)}%</b>(約 ${Math.round(T.cap * Math.abs(T.all.mdd) / 100).toLocaleString()} 元)—— 撐不住砍在那裡就前功盡棄。<br>
+                    ③ 這段期間<b>大盤本身漲了 ${T.twii}%</b>(0050 +${T.etf50}%)—— <b>空頭完全沒有驗證過</b>。
+                </div>
+                <div class="text-[9px] text-gray-600 mt-1 leading-snug">已扣來回成本 0.44%;用收盤價成交(沒算滑價);只含現在還在市場的股票(倖存者偏誤 → 偏樂觀)。想知道你**自己**照做的真實成績,看下面「📒 你自己的實盤成績」。</div>
+            </div>
+        </details>`;
+    },
+
     _pbRowHtml(x, mine) {
         const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? n : ''; };
         const isMine = mine.has(String(x.s));
@@ -37506,6 +37555,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <span class="text-cyan-300/70">實測開盤就買會把賺頭全部吃光(甚至倒賠)。App 盤中會幫你盯,到價自動提醒。</span>
             </div>
             ${hqLine}
+            ${this._pbTrackRecordHtml()}
             ${mktLine}${riskLine}
             <div class="space-y-1 mt-1.5">${rows.slice(0, SHOW).map(x => this._pbRowHtml(x, mine)).join('')}</div>
             ${rows.length > SHOW ? `<details class="mt-1.5"><summary class="text-[10px] text-gray-500 cursor-pointer">➕ 另外 ${rows.length - SHOW} 檔(同樣標準,只是期望值排後面)</summary><div class="space-y-1 mt-1">${rows.slice(SHOW).map(x => this._pbRowHtml(x, mine)).join('')}</div></details>` : ''}
