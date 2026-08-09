@@ -307,8 +307,47 @@ const finNear = new Set();
         for (let k = -3; k <= 3; k++) if (days[i + k]) finNear.add(days[i + k]);
     }
 }
+// ── 📊 市場狀態事件(V73.2.1)——「特別的日子」之外,「特別的盤」才是重點
+//    ⛔ 一律用 **i-1(昨天)** 的資料判斷:尾盤 13:00~13:28 掃描時,
+//       今天的漲跌家數/地板股家數還沒結算 → 用今天的等於前視偏誤。
+const bh = (() => {
+    try {
+        const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'breadth.json'), 'utf8'));
+        const m = new Map();
+        for (const r of (j.history || [])) m.set(String(r.d || '').replace(/\//g, '-').slice(0, 10), r);
+        return m;
+    } catch (_) { return new Map(); }
+})();
+// 大盤 20 日波動率(年化 %)與它在近 250 日的位階
+const twiiVol = twii.map((_, i) => {
+    if (i < 20) return null;
+    let s2 = 0;
+    for (let k = i - 19; k <= i; k++) { const r = (twii[k].c - twii[k - 1].c) / twii[k - 1].c; s2 += r * r; }
+    return Math.sqrt(s2 / 20) * Math.sqrt(252) * 100;
+});
+const volPct = i => {                     // 波動率位階(只看 i 之前,⛔ 無前視)
+    if (twiiVol[i] == null) return null;
+    const w = twiiVol.slice(Math.max(0, i - 249), i + 1).filter(x => x != null);
+    if (w.length < 60) return null;
+    return w.filter(x => x <= twiiVol[i]).length / w.length * 100;
+};
+const dd60 = i => {                        // 大盤距近 60 日高點回檔 %
+    if (i < 60) return null;
+    let hi = 0; for (let k = i - 59; k <= i; k++) hi = Math.max(hi, twii[k].c);
+    return (hi - twii[i].c) / hi * 100;
+};
+const prevRet = i => i < 1 ? null : (twii[i - 1].c - twii[i - 2]?.c) / (twii[i - 2]?.c || 1) * 100;
+const yBr = i => i < 1 ? null : bh.get(days[i - 1]) || null;   // 昨天的市場廣度
+// 月底/季底最後 N 個交易日
+const isMonthEnd = (i, n) => { const m = ym(days[i]); let c = 0; for (let k = i + 1; k < days.length && ym(days[k]) === m; k++) c++; return c < n; };
+const isQEnd = (i, n) => ['03', '06', '09', '12'].includes(days[i].slice(5, 7)) && isMonthEnd(i, n);
+// 長假後第一個交易日
+const postHol = new Set();
+for (let i = 1; i < days.length; i++)
+    if ((new Date(days[i]) - new Date(days[i - 1])) / 86400000 >= 4) postHol.add(days[i]);
+
 // 🚦 這一天准不准進場(⛔ 只影響「要不要開新倉」,不影響既有部位的出場)
-const calOk = d => {
+const calOk = (d, i) => {
     for (const c of CAL) {
         if (c === 'nomon' && dow(d) === 1) return false;
         if (c === 'notue' && dow(d) === 2) return false;
@@ -324,6 +363,20 @@ const calOk = d => {
         // 📅 交易層級探針發現「月內位置」是唯一單調的一組(中旬最好、下旬最差)
         if (c === 'nolate' && +d.slice(8, 10) >= 21) return false;      // 下旬不進場
         if (c === 'onlymid') { const n2 = +d.slice(8, 10); if (n2 < 11 || n2 > 20) return false; }
+        // ── 📊 市場狀態事件(全部用昨天的資料判斷)
+        if (c === 'posthol' && postHol.has(d)) return false;          // 長假後第一天不做
+        if (c === 'onlyposthol' && !postHol.has(d)) return false;
+        if (c === 'nomend' && isMonthEnd(i, 3)) return false;         // 月底最後 3 日不做
+        if (c === 'noqend' && isQEnd(i, 5)) return false;             // 季底最後 5 日不做
+        if (c === 'nodrop') { const r = prevRet(i); if (r != null && r < -1.5) return false; }
+        if (c === 'onlydrop') { const r = prevRet(i); if (!(r != null && r < -1.5)) return false; }
+        if (c === 'nohivol') { const v = volPct(i - 1); if (v != null && v >= 80) return false; }
+        if (c === 'onlyhivol') { const v = volPct(i - 1); if (!(v != null && v >= 80)) return false; }
+        if (c === 'nochase') { const x = dd60(i - 1); if (x != null && x < 1) return false; }   // 大盤貼著波段高 = 追高
+        if (c === 'flr300') { const b2 = yBr(i); if (!(b2 && (b2.flr || 0) >= 300)) return false; }  // 地板股家數(V72.4.9 實測有邊際)
+        if (c === 'noweak') { const b2 = yBr(i); if (b2 && b2.total > 0 && (b2.up || 0) / b2.total < 0.3) return false; }
+        if (c === 'onlyweak') { const b2 = yBr(i); if (!(b2 && b2.total > 0 && (b2.up || 0) / b2.total < 0.3)) return false; }
+        if (c === 'nolag') { const b2 = yBr(i); if (b2 && b2.idx != null && b2.med != null && (b2.idx - b2.med) > 0.5) return false; }
     }
     return true;
 };
@@ -372,7 +425,7 @@ for (let i = 0; i < days.length; i++) {
     // 🏛️ 大盤環境濾網:大盤自己都在月線之下就整天不進場(⛔ 個股再強也不做)
     if (FILTER.includes('regime') && !regimeOk(i)) { continue; }
     // 📅 行事曆濾網:這一天不准開新倉(既有部位照原規則出場,⛔ 不受影響)
-    if (CAL.length && !calOk(d)) { openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); continue; }
+    if (CAL.length && !calOk(d, i)) { openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); continue; }
     const todays = byIn.get(d) || [];
     // 🤝 同一檔今天有幾招同時觸發(共振)
     const hitCnt = {};
