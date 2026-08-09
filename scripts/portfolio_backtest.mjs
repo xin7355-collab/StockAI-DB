@@ -79,6 +79,9 @@ const SCALE = process.env.SCALE || '';
 //   ⛔ 但同一支探針也證明「每檔股票**各有**偏好」不成立(四種狀態延續性全部 ≈ 0)
 //      → 所以只能當**全市場通用**的濾網,⛔ 不可做成「這檔喜歡爆量」那種個股標籤。
 const SELF = (process.env.SELF || '').split('+').filter(Boolean);
+// ⚠️ 門檻做成可調 —— 防過度配適的關鍵檢定:如果只有某個數字才有效,那就是配適出來的
+const RANK_MIN = +(process.env.RANK_MIN || 80);
+const VOLAT_MIN = +(process.env.VOLAT_MIN || 60);
 const FILTER = (process.env.FILTER || '').split('+').filter(Boolean);
 const LIQ = +(process.env.LIQ || 1);       // 億元
 const CONF = +(process.env.CONF || 2);     // 共振:同一天同一檔至少幾招同時觸發
@@ -422,9 +425,9 @@ const selfOk = t => {
     const f = selfFeat.get(t.sym)?.get(t.inD);
     if (!f) return false;                       // ⛔ 算不出來就不做(⛔ 不可當成通過)
     for (const c of SELF) {
-        if (c === 'high' && !(f.rank >= 80)) return false;
+        if (c === 'high' && !(f.rank >= RANK_MIN)) return false;
         if (c === 'low' && !(f.rank < 40)) return false;
-        if (c === 'hivolat' && !(f.vol >= 60)) return false;
+        if (c === 'hivolat' && !(f.vol >= VOLAT_MIN)) return false;
         if (c === 'lovolat' && !(f.vol < 35)) return false;
         if (c === 'volup' && !(f.volr != null && f.volr >= 2)) return false;
         if (c === 'novolshrink' && !(f.volr != null && f.volr >= 1)) return false;
