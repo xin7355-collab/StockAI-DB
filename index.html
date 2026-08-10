@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.2.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.2.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.2.7 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.2.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7158,8 +7158,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.2.7',
+    _APP_VERSION: 'V73.2.8',
     _CHANGELOG: [
+        { v: 'V73.2.8', dt: '2026-08-10', t: '🚦 現在怎麼做:三個打架點修掉', d: ['價位已經過了就不再叫你「等它到」,會改口說「已經突破/早就跌破」。','緊急警示跟買點同時出現時,會明講「買點要等警示消失再執行」。','頂端「波段空頭」跟下面「線型」不一致時,主動說明兩個尺不一樣。'] },
         { v: 'V73.2.7', dt: '2026-08-10', t: '🧹 例行維護', d: ['介面小調整。'] },
         { v: 'V73.2.6', dt: '2026-08-09', t: '🧹 例行維護', d: ['介面小調整。'] },
         { v: 'V73.2.4', dt: '2026-08-09', t: '🧬 明日清單新增「強勢高波動」標記', d: [
@@ -27495,7 +27496,20 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const dnPct = stopShow != null ? (C - stopShow) / C * 100 : null;
             const rr = (upPct != null && dnPct != null && dnPct > 0.3) ? upPct / dnPct : null;
             // 🧬 線型 / 籌碼 一行摘要(一眼看懂,術語最少)
-            const lineTxt = trend === 'bull' ? (sigType !== '無明確訊號' ? `多頭・買點出現(${sigType})` : bias20 > 12 ? '多頭・但短線漲太多' : '多頭・行進間') : trend === 'bear' ? '空頭・還在跌' : '盤整・方向不明';
+            // 🐛 V73.2.8 使用者截圖(6533/6206)抓到:頂端 badge 寫「❌ 波段空頭」,
+            //   這裡卻寫「多頭・行進間」/「盤整・方向不明」→ 看起來像自己跟自己打架。
+            //   ⭐ 兩個**都沒算錯,是不同的尺**(同 V72.0.8「同名不同義」那條):
+            //     ・badge  = **波段結構**(頭頭低+底底低,朱家泓的轉折高低點)
+            //     ・這一行 = **均線排列**(5>20>60 且月線上彎)
+            //   均線是落後指標 → 波段結構已經轉空、均線還沒跟上 = **頭部剛形成**,
+            //   這其實是有意義的資訊。⛔ 但不可讓使用者自己去發現,要主動點出來。
+            let _swingClash = '';
+            try {
+                const _sw = this._detectChuShortTrend ? (this._detectChuShortTrend(data) || []) : [];
+                const _isSwingBear = _sw.some(s => s && /波段空頭|頭頭低/.test(String(s.title) + String(s.msg || '')));
+                if (_isSwingBear && trend !== 'bear') _swingClash = '（⚠️ 上面 badge 是「波段空頭」= 高低點結構已轉弱,這裡看的是均線排列 — 均線落後,兩個同時出現通常是<b>頭部剛形成</b>,買點要更嚴）';
+            } catch (_) {}
+            const lineTxt = (trend === 'bull' ? (sigType !== '無明確訊號' ? `多頭・買點出現(${sigType})` : bias20 > 12 ? '多頭・但短線漲太多' : '多頭・行進間') : trend === 'bear' ? '空頭・還在跌' : '盤整・方向不明') + _swingClash;
             const lineCls = trend === 'bull' ? 'text-red-300' : trend === 'bear' ? 'text-green-300' : 'text-yellow-300';
             // 🆓 V66.0 免費資料:法人撈不到就整條略過(chipTxt=null → 不顯「大戶」那格,不放「資料整備中」噪音)
             const chipTxt = !hasInst ? null : instBuy ? `法人 5 日買超 ${Math.round(inst5).toLocaleString()} 張${instStreak >= 2 ? `・連 ${instStreak} 天買` : ''}(在收貨)` : instFled ? `法人 5 日賣超 ${Math.abs(Math.round(inst5)).toLocaleString()} 張(在出貨)` : `法人 5 日 ${inst5 >= 0 ? '+' : ''}${Math.round(inst5).toLocaleString()} 張(沒大動作)`;
@@ -27613,19 +27627,45 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 }
             } else if (trend === 'bear') { big = '🔴 別碰'; bigCls = 'text-green-400'; cmdBorder = 'border-red-500';
                 why = '這檔在空頭(愈盤愈低),現在買 = 接下落的刀子;錢放在多頭股才會長大。';
-                rules.push(`🔺 站回月線 ${nfP(ma20)} 且不再創新低 → 才重新考慮`);
+                // 🐛 V73.2.8 現價已經站回月線了就不能再叫人「等它站回」(陷阱 #46)
+                if (ma20 != null && C > ma20) rules.push(`🔺 <b>已經站回月線 ${nfP(ma20)}</b>(現價高它 ${((C - ma20) / ma20 * 100).toFixed(1)}%)→ 這是第一個轉強跡象,但還要<b>不再創新低</b>才算數,先看不追`);
+                else rules.push(`🔺 站回月線 ${nfP(ma20)} 且不再創新低 → 才重新考慮`);
                 rules.push('⚪ 在那之前 → 空手,看看就好');
             } else { big = '🟡 先等它表態'; bigCls = 'text-yellow-400'; cmdBorder = 'border-yellow-500'; gridMode = 'hint';
                 why = '這檔在盤整(方向不明),現在進場一半機率被上下洗出去 — 讓它自己先說話。';
-                if (rHigh != null) rules.push(`🔺 帶量突破前高 ${nfP(rHigh)} → 買進(那根就是起漲第一根)`);
-                if (rLow != null) rules.push(`🔻 跌破前低 ${nfP(rLow)} → 轉弱,這檔不做`);
+                // 🐛 V73.2.8 使用者截圖(6206 飛捷)抓到:現價 158 已經漲停鎖死,
+                //   這裡卻還寫「帶量突破前高 153.50 → 買進」—— 拿**已經達成的條件**叫人等它發生。
+                //   ⚠️ 同一段的 `_pushTrig` 早就有 `rHigh > C` 守門,**只有顯示端漏掉** → 自相矛盾。
+                //   ⛔ 陷阱 #46 已寫成鐵則:任何「等它碰到 X」顯示前都要先確認現價還沒到 X。
+                if (rHigh != null) {
+                    if (rHigh > C) rules.push(`🔺 帶量突破前高 ${nfP(rHigh)} → 買進(那根就是起漲第一根)`);
+                    else rules.push(`🔺 <b>前高 ${nfP(rHigh)} 已經被突破了</b>(現價高它 ${((C - rHigh) / Math.max(rHigh, 1e-9) * 100).toFixed(1)}%)→ 起漲那根<b>已經過去</b>,現在追是追高;要進就等它<b>回測 ${nfP(rHigh)} 不破</b>再說`);
+                }
+                if (rLow != null) {
+                    if (rLow < C) rules.push(`🔻 跌破前低 ${nfP(rLow)} → 轉弱,這檔不做`);
+                    else rules.push(`🔻 <b>前低 ${nfP(rLow)} 早就跌破了</b>(現價低它 ${((rLow - C) / Math.max(rLow, 1e-9) * 100).toFixed(1)}%)→ 已經轉弱,這檔不做;那個價位現在是<b>上方壓力</b>,⛔ 別拿它當停損掛單`);
+                }
             }
             // ⚠️ 注意(只挑一條最重要的,避免轟炸)
             let warn = '';
+            // 🚨 V73.2.8 使用者截圖(6533 晶心科)抓到:同一張卡上面寫
+            //   「緊急警示(最優先):今天高檔爆量收黑 → 疑主力出貨,明天不漲快跑」,
+            //   下面大字卻寫「可以布局」—— 卡片自己說那條最優先,結論卻完全沒理它。
+            //   ⛔ 這正是使用者講最多次的「邏輯不打架」。
+            //   修法:⛔ 不改警示也不改結論的**事實**(兩者都沒算錯 —— 一個對持有者說、
+            //   一個對空手者說),而是**把關係講明白**:買點要等警示消失再執行。
+            let _emgOn = false;
+            try {
+                const _emg = this._lastGauge && Array.isArray(this._lastGauge.emg) ? this._lastGauge.emg : [];
+                _emgOn = _emg.length > 0 && !cost && big.indexOf('別碰') < 0;
+                if (_emgOn) rules.push('⛔ <b>今天有緊急警示(卡片最上面那條紅框)</b> → 上面那個買點<b>要等警示消失再執行</b>;現在進場等於買在主力疑似出貨的隔天');
+            } catch (_) {}
             try { const m0 = this._chuPositionAdvice(); if (m0 && m0.regime === 'bear') warn = `大盤現在偏空 — 就算這檔訊號再好,部位也要放小(建議總部位 ${m0.pct})。`; } catch (_) {}
             if (!warn && !cost && trend === 'bull' && instFled) warn = '線型是多頭,但大戶這幾天在出貨 — 只買半量,或等大戶回頭再進。';
             if (!warn && vr != null && vr >= 2) warn = bias20 > 12 ? '今天高檔爆大量 — 明天不漲就是主力出貨,要提前走。' : '今天爆大量 — 看明天:漲=換手繼續做,跌=出貨快跑。';
             if (!warn && rr != null && rr < 1 && !cost && gridMode === 'full') warn = `到目標只剩 +${upPct.toFixed(0)}%、停損卻要虧 ${dnPct.toFixed(1)}% — 賺賠不划算,等回檔再進比較聰明。`;
+            // 🚨 緊急警示比上面任何一條都急 → 最後覆寫,確保它一定被看到(⛔ 不可被大盤/賺賠比那條蓋掉)
+            if (_emgOn) warn = '緊急警示跟買點同時出現時,以警示為準 — 那條講的是「今天已經發生的事」,買點講的是「之後到價才動作」,順序別搞反。';
             // 🔔 V68.1.6 一鍵到價提醒:把這張卡算好的關鍵買賣價包成 triggers → 一鍵設 priceAlerts,到價自動推播(不用盯盤)
             const armTriggers = [];
             const _pushTrig = (price, cond, label) => { const p = +price; if (Number.isFinite(p) && p > 0 && !armTriggers.some(t => t.cond === cond && Math.abs(t.price - p) < 0.001)) armTriggers.push({ price: +p.toFixed(2), cond, label }); };
