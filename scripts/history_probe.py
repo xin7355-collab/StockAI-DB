@@ -31,22 +31,37 @@ SAMPLE = ['2330', '2317', '0050', '5483']
 
 
 def fm(dataset, extra=None, tok_i=0, timeout=60):
-    """回 (rows, err)。⛔ 只回報第幾把 token,不回報 token 值。"""
-    q = {'dataset': dataset}
-    q.update(extra or {})
-    if TOKENS:
-        q['token'] = TOKENS[tok_i % len(TOKENS)]
-    url = API + '?' + urllib.parse.urlencode(q)
-    try:
-        with urllib.request.urlopen(url, timeout=timeout) as r:
-            j = json.loads(r.read().decode('utf-8'))
-    except Exception as e:
-        return None, f'{type(e).__name__}: {str(e)[:120]}'
-    if not isinstance(j, dict):
-        return None, 'resp 不是 dict'
-    if j.get('status') not in (200, None):
-        return None, f"status={j.get('status')} msg={str(j.get('msg'))[:100]}"
-    return (j.get('data') or []), None
+    """回 (rows, err, used_i)。⛔ 只回報第幾把 token,不回報 token 值。
+
+    🚨 V2 修正(首跑實測抓到):4 把 token 有 3 把回 HTTP 400 ——
+       第一版每組固定用某一把,結果「還原股價/除權息」那組剛好全用到壞的,
+       ❌ 就被誤讀成「FinMind 沒有這些資料」。
+       這正是 CLAUDE.md V72.5.3 的教訓:**400/403 要換下一把再試,
+       ⛔ 不可當成「沒資料」**。→ 這裡一律把每一把都試過才放棄。
+    """
+    tries = max(1, len(TOKENS)) if TOKENS else 1
+    last = 'no-token'
+    for k in range(tries):
+        q = {'dataset': dataset}
+        q.update(extra or {})
+        i = (tok_i + k) % max(1, len(TOKENS))
+        if TOKENS:
+            q['token'] = TOKENS[i]
+        url = API + '?' + urllib.parse.urlencode(q)
+        try:
+            with urllib.request.urlopen(url, timeout=timeout) as r:
+                j = json.loads(r.read().decode('utf-8'))
+        except Exception as e:
+            last = f'{type(e).__name__}: {str(e)[:100]}'
+            continue
+        if not isinstance(j, dict):
+            last = 'resp 不是 dict'
+            continue
+        if j.get('status') not in (200, None):
+            last = f"status={j.get('status')} msg={str(j.get('msg'))[:90]}"
+            continue
+        return (j.get('data') or []), None, i + 1
+    return None, f'{tries} 把 token 全失敗;最後一個錯誤 → {last}', None
 
 
 def main():
@@ -58,19 +73,21 @@ def main():
     # ── ① 深度:一次呼叫能拿多久 ──────────────────────────────────────
     print("\n① TaiwanStockPrice 深度(一檔一次呼叫)")
     res['depth'] = {}
+    res['token_ok'] = set()
     for i, sym in enumerate(SAMPLE):
         t0 = time.time()
-        rows, err = fm('TaiwanStockPrice',
-                       {'data_id': sym, 'start_date': '2008-01-01'}, tok_i=i)
+        rows, err, used = fm('TaiwanStockPrice',
+                             {'data_id': sym, 'start_date': '2008-01-01'}, tok_i=i)
         el = time.time() - t0
         if err:
-            print(f"   {sym}: ❌ {err}  (token #{i % max(1, len(TOKENS)) + 1})")
+            print(f"   {sym}: ❌ {err}")
             res['depth'][sym] = {'err': err}
             continue
         ds = sorted(r.get('date', '') for r in rows if r.get('date'))
         size = len(json.dumps(rows, ensure_ascii=False))
         print(f"   {sym}: ✅ {len(rows):5} 筆 ・{ds[0] if ds else '?'} ~ {ds[-1] if ds else '?'}"
-              f" ・{el:.1f}s ・原始 JSON {size/1024:.0f} KB")
+              f" ・{el:.1f}s ・原始 JSON {size/1024:.0f} KB ・用第 {used} 把")
+        res['token_ok'].add(used)
         res['depth'][sym] = {'n': len(rows), 'from': ds[0] if ds else None,
                              'to': ds[-1] if ds else None, 'sec': round(el, 1), 'bytes': size}
         if i == 0 and rows:
@@ -81,7 +98,7 @@ def main():
     print("\n② 下市股票清單(決定階段3 的倖存者偏誤修不修得掉)")
     res['delisted'] = {}
     for ds_name in ['TaiwanStockDelisting', 'TaiwanStockInfoWithWarrant', 'TaiwanStockInfo']:
-        rows, err = fm(ds_name, {}, tok_i=1)
+        rows, err, _u = fm(ds_name, {}, tok_i=1)
         if err:
             print(f"   {ds_name}: ❌ {err}")
             res['delisted'][ds_name] = {'err': err}
@@ -98,7 +115,7 @@ def main():
         ('TaiwanStockDividend', {'data_id': '2330', 'start_date': '2015-01-01'}),
         ('TaiwanStockDividendResult', {'data_id': '2330', 'start_date': '2015-01-01'}),
     ]:
-        rows, err = fm(ds_name, extra, tok_i=2)
+        rows, err, _u = fm(ds_name, extra, tok_i=2)
         if err:
             print(f"   {ds_name}: ❌ {err}")
             res['adjust'][ds_name] = {'err': err}
@@ -119,6 +136,9 @@ def main():
             res['space_mb_estimate'] = round(slim * n / 1e6)
         print("   ⚠️ gh-pages 上限 1GB、已用約 388MB → 若超過就**只推 data 分支**(前端不讀深歷史)")
 
+    res['token_ok'] = sorted(res.get('token_ok') or [])
+    print(f"\n🔑 實測可用的 token:第 {res['token_ok']} 把(共 {len(TOKENS)} 把)"
+          f" —— ⚠️ 壞的那幾把會直接壓低覆蓋率,深歷史採礦一定要輪動重試")
     with open(OUT, 'w', encoding='utf-8') as f:
         json.dump(res, f, ensure_ascii=False, indent=1)
     print(f"\n📤 已寫入 {OUT}")
