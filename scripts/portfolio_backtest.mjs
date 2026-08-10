@@ -616,7 +616,14 @@ const capital = CAPITAL;
 let peak = -Infinity, mdd = 0;
 for (const e of equity) { if (e > peak) peak = e; mdd = Math.min(mdd, (e - peak) / peak * 100); }
 
-const from = days[WARMUP], to = days[days.length - 1];
+// 🚨 V73.2.9 比較基準 bug:`from` 原本寫死 days[WARMUP],但 WARMUP 是從**指數**第 0 天算的。
+//   指數補深到 5 年(1,213 筆)之後,days[240] 落在 2022-08 —— 而個股資料 2023-06 才開始
+//   → 拿「5 年的大盤漲幅」去比「3 年的策略」,而且 0050 那時還沒資料 → 對照組直接消失
+//     (實測輸出「0050 買進持有 (無資料)」「加權指數 +199.29%」)。
+//   ⭐ 正解:對照組期間必須跟**實際交易期間**對齊 → 用第一筆成交日。
+//   ⛔ 沒有對照組的報酬率沒有意義(本專案鐵則),所以這條不可省。
+const _tk = taken.map(t => t._d || t.inD).filter(Boolean).sort();
+const from = _tk[0] || days[WARMUP], to = days[days.length - 1];
 const i0 = dIdx.get(from), i1 = days.length - 1;
 // 0050 買進持有(同一段期間)
 const f50 = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', '0050.json'), 'utf8'))

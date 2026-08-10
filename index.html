@@ -37350,38 +37350,51 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
 
     // 📋 一列 = 一張完整的下單票(⛔ 只寫「可以買」等於把最難的部分丟給使用者)
-    // 📊 V73.2.7 這套打法的歷史總成績 —— 使用者:「要讓我有信心知道這個策略是對的」
+    // 📊 V73.2.9 這套打法的歷史總成績 —— 使用者:「要讓我有信心知道這個策略是對的」
     //   ⛔ 這些數字是 `scripts/portfolio_backtest.mjs` 實跑出來的,**改了任何規則就要重跑更新**
     //     (同 `_SIGNAL_EDGE` 的規矩:成績跟程式碼綁,不同步就會騙人)
     //   跑法:TRADES_CACHE=... LOT=150000 node scripts/portfolio_backtest.mjs 600 2
+    //
+    // 🚨🚨 V73.2.9 窗口從 13 個月拉到 **36 個月**之後,結論**整個翻轉**:
+    //   舊窗口(13個月,整段 AI 大多頭):照清單做 +1,127,315 vs 0050 +832,500 → 看起來贏
+    //   新窗口(36個月):照清單做 +1,260,926 vs 0050 **+2,011,700** → **大輸 75pp**
+    //   ⭐⭐ 也就是說:**不挑「🧬 強勢高波動」的話,這套輸給什麼都不做買 0050**。
+    //   → 🧬 不是「加分項」,是**必要條件**。前端文案必須照這個講,⛔ 不可再寫成「加分」。
     _PB_TRACK: {
-        from: '2025-07', to: '2026-07', months: 13, syms: 600, cap: 1000000, per: 150000,
-        // 照清單順序做(不挑標記)
-        all: { pnl: 1127315, ret: 112.73, mdd: -14.35, wr: 29.9, avg: 1.69, n: 445 },
+        from: '2023-08', to: '2026-08', months: 36, syms: 600, cap: 1000000, per: 150000,
+        // 照清單順序做(不挑標記)—— ⚠️ 實測**輸給 0050**
+        all: { pnl: 1260926, ret: 126.09, mdd: -23.96, wr: 27.6, avg: 0.66, n: 1274, winMon: 17 },
         // ⭐ 只做有「🧬 強勢高波動」標記的
-        hq: { pnl: 2136115, ret: 213.61, mdd: -9.35, wr: 37.4, avg: 3.08, n: 462 },
-        etf50: 83.25, twii: 70.92, winMon: 5,
+        hq: { pnl: 2896478, ret: 289.65, mdd: -22.44, wr: 32.4, avg: 1.51, n: 1276, winMon: 22 },
+        etf50: 201.17, twii: 169.05,
     },
 
     // 📊 這套打法的歷史成績(摺疊,⛔ 不開新卡片 —— 併在「明天要盯這幾檔」裡)
     _pbTrackRecordHtml() {
         const T = this._PB_TRACK; if (!T) return '';
         const m = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
-        const row = (lab, o, star) => `<div class="grid grid-cols-[1fr_auto] gap-2 items-baseline py-1 border-b border-[#21262d]">
+        const ref50 = Math.round(T.cap * T.etf50 / 100);   // 同期買 0050 賺多少元
+        const row = (lab, o, star, note) => `<div class="grid grid-cols-[1fr_auto] gap-2 items-baseline py-1 border-b border-[#21262d]">
             <div><div class="text-[11px] ${star ? 'text-gray-100 font-bold' : 'text-gray-300'}">${star ? '⭐ ' : ''}${lab}</div>
-                 <div class="text-[9px] text-gray-500 font-mono">勝率 ${o.wr}% ・每趟 +${o.avg}% ・${o.n} 筆 ・最大回撤 ${o.mdd}%</div></div>
-            <div class="font-mono font-black text-[13px] text-red-300 text-right">${m(o.pnl)}<span class="text-[9px] text-gray-500 font-normal"> 元</span></div>
+                 <div class="text-[9px] text-gray-500 font-mono">勝率 ${o.wr}% ・每趟 +${o.avg}% ・${o.n} 筆 ・最大回撤 ${o.mdd}% ・賺錢月 ${o.winMon}/${T.months}</div>
+                 ${note ? `<div class="text-[9px] ${o.pnl >= ref50 ? 'text-gray-400' : 'text-yellow-300'} mt-0.5">${note}</div>` : ''}</div>
+            <div class="font-mono font-black text-[13px] ${o.pnl >= ref50 ? 'text-red-300' : 'text-gray-400'} text-right">${m(o.pnl)}<span class="text-[9px] text-gray-500 font-normal"> 元</span></div>
         </div>`;
         return `<details class="mb-1.5 bg-[#0d1117] border border-[#30363d] rounded">
-            <summary class="cursor-pointer text-[10px] text-gray-300 px-2 py-1.5 select-none">📊 <b>這套打法的歷史成績</b> —— 照它做 ${T.months} 個月會怎樣?(點開)</summary>
+            <summary class="cursor-pointer text-[10px] text-gray-300 px-2 py-1.5 select-none">📊 <b>這套打法的歷史成績</b> —— 照它做 ${T.months} 個月會怎樣?<b class="text-yellow-300">(⚠️ 一定要點開看)</b></summary>
             <div class="px-2 pb-2">
                 <div class="text-[9px] text-gray-500 mb-1">本金 ${(T.cap / 10000).toFixed(0)} 萬 ・每天最多 2 檔 ・每筆 ${(T.per / 10000).toFixed(0)} 萬 ・${T.syms} 檔全市場抽樣 ・${T.from} ~ ${T.to}</div>
-                ${row('照清單順序做(不挑標記)', T.all)}
-                ${row('只做有 🧬 強勢高波動 標記的', T.hq, 1)}
+                ${row('照清單順序做(不挑標記)', T.all, 0, '⚠️ 這樣做**輸給什麼都不做買 0050**(少賺 ' + Math.round((T.cap * T.etf50 / 100) - T.all.pnl).toLocaleString() + ' 元)')}
+                ${row('只做有 🧬 強勢高波動 標記的', T.hq, 1, '比 0050 多賺 ' + Math.round(T.hq.pnl - (T.cap * T.etf50 / 100)).toLocaleString() + ' 元')}
                 <div class="grid grid-cols-[1fr_auto] gap-2 items-baseline py-1 border-b border-[#21262d]">
                     <div><div class="text-[11px] text-gray-400">🆚 同期買 0050 放著</div>
                          <div class="text-[9px] text-gray-500 font-mono">什麼都不做,最省事的比較基準</div></div>
                     <div class="font-mono font-black text-[13px] text-gray-300 text-right">+${Math.round(T.cap * T.etf50 / 100).toLocaleString()}<span class="text-[9px] text-gray-500 font-normal"> 元</span></div>
+                </div>
+                <div class="text-[10px] text-gray-100 bg-[#161b22] border-l-4 border-gray-500 rounded-r px-2 py-1 mt-1.5 leading-snug">
+                    ⭐⭐ <b>最重要的一句</b>:🧬 <b>不是「加分項」,是「必要條件」</b> ——
+                    不挑標記、照清單順序做的話,這套<b>輸給什麼都不做買 0050</b>。
+                    <span class="text-gray-500">(舊版只有 13 個月、整段大多頭時看起來是贏的;窗口拉到 36 個月就翻轉了)</span>
                 </div>
                 <div class="text-[10px] text-gray-200 mt-1.5 leading-relaxed">
                     📤 <b>出場一律照這三條</b>(回測就是這樣算的,⛔ 自己改就不算數):
@@ -37390,7 +37403,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 </div>
                 <div class="text-[10px] text-yellow-200/90 bg-[#161b22] border-l-4 border-yellow-600 rounded-r px-2 py-1 mt-1.5 leading-snug">
                     ⚠️ <b>這些是歷史統計,不是保證</b>。三件事一定要知道:<br>
-                    ① 勝率只有 ${T.all.wr}% —— <b>十次會錯七次</b>,靠少數大賺賺回來;${T.months} 個月裡只有 <b>${T.winMon}/${T.months} 個月</b>是賺的。<br>
+                    ① 勝率只有 ${T.all.wr}% —— <b>十次會錯七次</b>,靠少數大賺賺回來;${T.months} 個月裡只有 <b>${T.all.winMon}/${T.months} 個月</b>是賺的。<br>
                     ② 中途最慘曾經<b>回檔 ${Math.abs(T.all.mdd)}%</b>(約 ${Math.round(T.cap * Math.abs(T.all.mdd) / 100).toLocaleString()} 元)—— 撐不住砍在那裡就前功盡棄。<br>
                     ③ 這段期間<b>大盤本身漲了 ${T.twii}%</b>(0050 +${T.etf50}%)—— <b>空頭完全沒有驗證過</b>。
                 </div>
