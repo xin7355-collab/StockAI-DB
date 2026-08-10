@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.2.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.2.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.2.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.2.7 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7158,8 +7158,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.2.6',
+    _APP_VERSION: 'V73.2.7',
     _CHANGELOG: [
+        { v: 'V73.2.7', dt: '2026-08-10', t: '🧹 例行維護', d: ['介面小調整。'] },
         { v: 'V73.2.6', dt: '2026-08-09', t: '🧹 例行維護', d: ['介面小調整。'] },
         { v: 'V73.2.4', dt: '2026-08-09', t: '🧬 明日清單新增「強勢高波動」標記', d: [
             '實測 80 種變體之後,唯一每一關都過的條件:這檔自己的**位階 ≥75%(近一年)且波動率 ≥60%**。',
@@ -31586,10 +31587,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const bn = (r.broker || '').replace(/'/g, '');
             // 👆 V73.2.6 整列都是熱區 —— 原本只有「名字那幾個字」可點,手機上很難點中
             //    (點了是看**這家分點買了哪些股**,不是跳個股頁 —— 分點本身不是一檔股票)
-            const _go = `app._renderRadarBroker('${bn}'); { const s=app._brokerEl('radarBrokerSel'); if(s) s.value='${bn}'; }`;
-            return `<div onclick="${_go}" class="flex items-center gap-2 py-1 border-b border-[#21262d] cursor-pointer hover:bg-white/5 rounded transition-colors" title="點看這家分點最近買賣哪些股">
+            // 🐛 V73.2.7 舊版呼叫 `_renderRadarBroker` 寫進 #radarBrokerDetail,
+            //    但**這一頁沒有那個容器** → 直接 return → 點了完全沒反應。
+            //    改成就地展開(`_perfBrokerOpen`),⛔ 不跳頁。
+            const _go = `app._perfBrokerOpen('${bn}')`;
+            const open = this._perfBrokerCur === r.broker;
+            return `<div onclick="${_go}" class="flex items-center gap-2 py-1 border-b border-[#21262d] cursor-pointer ${open ? 'bg-white/5' : 'hover:bg-white/5'} rounded transition-colors" title="點看這家分點最近買賣哪些股">
                 <span class="text-[10px] font-mono text-gray-600 w-4 flex-shrink-0">${i + 1}</span>
-                <button onclick="event.stopPropagation(); ${_go}" class="flex-1 min-w-0 text-left text-[11px] font-bold text-gray-200 truncate hover:underline">${r.broker}${g ? ` <span class="text-[8px] text-amber-300">${g}</span>` : ''}</button>
+                <button onclick="event.stopPropagation(); ${_go}" class="flex-1 min-w-0 text-left text-[11px] font-bold text-gray-200 truncate hover:underline">${open ? '▾ ' : ''}${r.broker}${g ? ` <span class="text-[8px] text-amber-300">${g}</span>` : ''}</button>
                 <span class="text-[11px] font-mono font-black ${wrCls} flex-shrink-0 w-10 text-right">${wr}%</span>
                 <span class="text-[10px] font-mono ${retCls} flex-shrink-0 w-12 text-right">${r.avg_ret >= 0 ? '+' : ''}${r.avg_ret}%</span>
                 <span class="text-[9px] text-gray-600 flex-shrink-0 w-8 text-right">${r.count}筆</span>
@@ -31601,7 +31606,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </div>
             <div class="flex items-center gap-2 px-0 pb-0.5 text-[9px] text-gray-600 border-b border-[#30363d]"><span class="w-4"></span><span class="flex-1">分點</span><span class="w-10 text-right">勝率</span><span class="w-12 text-right">均報酬</span><span class="w-8 text-right">樣本</span></div>
             ${list}
-            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">👆 點任一列 → 看那家分點最近買賣哪些股(分點不是股票,⛔ 不會跳個股頁)<br>💡 ${isFloat ? '前瞻回測累積中,暫顯「即時浮動戰績」(買超均價 vs 現價)。' : `前瞻回測:分點「買超那天的均價」→ ${cfg[3]} 個交易日後收盤,算勝率(賺的比例)+ 平均報酬。每天累積、逐日更準。`}${(!isFloat && (p.backfill?.[mode] || 0) > 0 && (mode === 'short' || mode === 'swing')) ? `<span class="text-amber-500/70"> ※ 含約 ${p.backfill[mode]} 筆歷史回推近似(過渡用,不用等;真實訊號逐日累積後自動轉純前瞻)。</span>` : ''}點分點名可看它今天全市場買賣。參考跟單方向,非投資建議。</div>`;
+            ${this._perfBrokerCur ? `<div id="brokerPerfDetail" class="mt-2 pt-2 border-t border-amber-700/40">
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="text-[11px] font-bold text-amber-200 truncate">🕵️ ${this._perfBrokerCur} 最近買賣什麼</div>
+                    <button onclick="app._perfBrokerOpen('${(this._perfBrokerCur || '').replace(/'/g, '')}')" class="text-[10px] text-gray-500 px-2 py-0.5 rounded border border-[#30363d] flex-shrink-0">收起</button>
+                </div>
+                ${this._brokerDetailHtml(this._perfBrokerCur)}
+            </div>` : ''}
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">👆 點任一列 → 就地展開那家分點最近買賣哪些股(分點不是股票,⛔ 不會跳個股頁;股票名可以點,那個才會跳)<br>💡 ${isFloat ? '前瞻回測累積中,暫顯「即時浮動戰績」(買超均價 vs 現價)。' : `前瞻回測:分點「買超那天的均價」→ ${cfg[3]} 個交易日後收盤,算勝率(賺的比例)+ 平均報酬。每天累積、逐日更準。`}${(!isFloat && (p.backfill?.[mode] || 0) > 0 && (mode === 'short' || mode === 'swing')) ? `<span class="text-amber-500/70"> ※ 含約 ${p.backfill[mode]} 筆歷史回推近似(過渡用,不用等;真實訊號逐日累積後自動轉純前瞻)。</span>` : ''}參考跟單方向,非投資建議。</div>`;
     },
     _renderBrokerPerfInto() {
         const el = this._brokerEl('brokerPerfBox');
@@ -31713,10 +31725,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (m && !m.classList.contains('hidden')) { const inM = m.querySelector('#' + id); if (inM) return inM; }
         return document.getElementById(id);
     },
-    _renderRadarBroker(bn) {
-        const el = this._brokerEl('radarBrokerDetail');
-        if (!el) return;
-        this._radarBrokerCur = bn;
+    // 🕵️ V73.2.7 抽出「分點明細 HTML」—— 原本整段寫死在 _renderRadarBroker 裡面,
+    //   而它只認 #radarBrokerDetail 這一個容器。**券商勝率榜那頁根本沒有那個容器**
+    //   (`_renderBrokerCat('perf')` 只吐 #brokerPerfBox)→ `if (!el) return;`
+    //   → 點下去**零反應、零錯誤訊息**,使用者以為壞掉。
+    //   ⭐ 照陷阱 #37:抽成共用函式,⛔ 不可為勝率榜再複製一份明細版面。
+    _brokerDetailHtml(bn) {
         const nm = (s) => (this.getStockName ? (this.getStockName(s) || s) : s);
         const book = this._bookFind(bn);   // 🕵️ V68.9.9 優先用 broker_book(多週期+行為+標籤+新卡位)
         const followed = this._isBrokerFollowed(bn);
@@ -31725,16 +31739,38 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (!book) {
             // 退回:broker_book 還沒生效時,用既有 broker_radar(1日、名稱鍵)
             const d = this._radarData; const b = (d && d.brokers) ? d.brokers[bn] : null;
-            if (!b) { el.innerHTML = `<div class="text-[10px] text-gray-500 py-2">此分點的多週期檔案整備中(採礦完成後自動顯示屬性標籤/勝率/布局行為);先顯今日買賣。</div>`; return; }
+            // ⚠️ 空狀態要**指名是哪一家**(陷阱 #19):不寫名字的話使用者分不出
+            //   是「這家沒資料」還是「App 壞了」。
+            if (!b) return `<div class="text-[10px] text-gray-500 py-2 leading-relaxed">🕵️ <span class="text-gray-300 font-bold">${bn}</span> 的分點明細還沒下來。<br>分點資料每天盤後採礦才更新,而且只涵蓋有買賣紀錄的分點;明天再看一次。</div>`;
             const gTag = this._brokerGodTag(bn);
             const line = (x, buy) => `<div class="flex items-center justify-between py-1"><button onclick="app.openStockFromRadar('${x.sym}')" class="text-[11px] ${buy ? 'text-red-300' : 'text-green-300'} font-bold hover:underline">${x.sym} ${nm(x.sym)}</button><span class="text-[11px] font-mono ${buy ? 'text-red-400' : 'text-green-400'}">${buy ? '+' : ''}${this._fmtEok(x.net)}</span></div>`;
-            el.innerHTML = `${gTag ? `<div class="text-[10px] text-amber-300 font-bold mb-1.5">🧙 ${bn} — ${gTag}</div>` : ''}${followBtn}<div class="grid grid-cols-2 gap-3">
+            return `${gTag ? `<div class="text-[10px] text-amber-300 font-bold mb-1.5">🧙 ${bn} — ${gTag}</div>` : ''}${followBtn}<div class="grid grid-cols-2 gap-3">
                 <div><div class="text-[10px] text-red-300 mb-0.5">買超</div>${(b.buy || []).map(x => line(x, true)).join('') || '<div class="text-[10px] text-gray-600">無</div>'}</div>
                 <div><div class="text-[10px] text-green-300 mb-0.5">賣超</div>${(b.sell || []).map(x => line(x, false)).join('') || '<div class="text-[10px] text-gray-600">無</div>'}</div>
               </div>`;
-            return;
         }
-        el.innerHTML = this._brokerProfileHtml(book, followBtn);
+        return this._brokerProfileHtml(book, followBtn);
+    },
+    _renderRadarBroker(bn) {
+        this._radarBrokerCur = bn;
+        const el = this._brokerEl('radarBrokerDetail');
+        // 🎯 沒有 radarBrokerDetail(例:正停在「券商勝率」頁)→ 改寫進勝率榜自己的明細框,
+        //    ⛔ 不可像舊版直接 return(那就是「按了沒反應」)。
+        if (!el) { if (this._perfBrokerCur !== undefined && this._brokerEl('brokerPerfBox')) this._perfBrokerOpen(bn, true); return; }
+        el.innerHTML = this._brokerDetailHtml(bn);
+    },
+    // 📈 券商勝率榜:點一列 → 就地展開那家分點的明細(再點一次收起)
+    //   ⛔ 刻意不跳頁 —— 使用者正在比較排行,跳走會失去脈絡(而且分點不是股票,沒有個股頁)。
+    _perfBrokerCur: '',
+    _perfBrokerOpen(bn, force) {
+        this._perfBrokerCur = (!force && this._perfBrokerCur === bn) ? '' : bn;
+        if (this._perfBrokerCur) this._radarBrokerCur = this._perfBrokerCur;
+        this._renderBrokerPerfInto();
+        if (this._perfBrokerCur) {
+            const d = this._brokerEl('brokerPerfDetail');
+            if (d) d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        this.vibrate(10);
     },
     // 🕵️ V68.9.9 分點檔案完整卡:標籤 + 歷史勝率 + 多週期在買什麼 + 行為 + 新卡位 + 跟單建議
     _brokerProfileHtml(book, followBtn) {
