@@ -1,0 +1,40 @@
+name: 🕳️ 深歷史探針（只問不寫）
+
+# ⛔ 只能手動觸發。它**不寫任何採礦產物、不碰 gh-pages/data**,
+#    只是去問 FinMind「深歷史/下市股票/還原股價 給不給得起」,答案印在 log + artifact。
+#    ⭐ 先探針再改採礦 —— 「改→等 workflow→看結果」一輪 10 分鐘,
+#       V72.7.0 那次連跑 7 輪只驗了 7 個假設,寫探針 9 秒問完四組。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 🐍 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🕳️ 問 FinMind
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          OUT: history_probe_result.json
+        run: python3 scripts/history_probe.py
+
+      - name: ⬆️ 上傳結果
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: history-probe
+          if-no-files-found: warn
+          retention-days: 7
+          # ⚠️ 這是 YAML block scalar,行尾不可寫註解
+          path: |
+            history_probe_result.json
