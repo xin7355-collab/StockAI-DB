@@ -116,6 +116,43 @@ const txtEmg = await run({ lastClose: 105, rHigh: 112, rLow: 96, emg: ['今天�
 ok('②c 有緊急警示時要明說「等警示消失再執行」', /等警示消失再執行/.test(txtEmg || ''), String(txtEmg).slice(0, 400));
 ok('②d 沒有緊急警示時⛔ 不可亂加那句', !/等警示消失再執行/.test(txtMid || ''));
 
+// ── ⑤ 大盤部位上限:個股卡與「明日劇本」都要跟著大盤狀態改口 ──────────
+//    🐛 page_sweep 抓到:個股卡寫「可順勢做多/抱單」,大盤條卻寫
+//       「多頭(過熱)・建議 3~5 成・**絕不追高**」→ 同一畫面兩個相反的動詞。
+//    ⛔ 舊版只在 regime==='bear' 提醒,漏掉 過熱 / 轉弱 / 盤整 三種。
+const regimeCase = (pct, label, advice, regime) => page.evaluate(a => {
+    const _orig = app._chuPositionAdvice;
+    app._chuPositionAdvice = () => ({ regime: a.regime, regimeLabel: a.label, pct: a.pct, advice: a.advice, bias: 0, color: '' });
+    let out = '';
+    try {
+        let box = document.getElementById('trendCommandCard');
+        if (!box) { box = document.createElement('div'); box.id = 'trendCommandCard'; document.body.appendChild(box); }
+        box.innerHTML = ''; box.classList.remove('hidden');
+        const rows = []; for (let i = 0; i < 200; i++) { const b = 120 - i * 0.1 + ((Math.floor(i / 10) % 2 === 0) ? (i % 10) : (10 - (i % 10))) * 1.4 - 7; rows.push({ date: `2025-01-0${1 + (i % 9)}`, open: b, high: b + 1.5, low: b - 1.5, close: b, volume: 3000000 }); }
+        rows.push({ date: '2026-08-10', open: 102, high: 106, low: 101, close: 105, volume: 9000000 });
+        const ma = n => rows.map((_, i) => { if (i < n - 1) return null; let s = 0; for (let k = i - n + 1; k <= i; k++) s += rows[k].close; return s / n; });
+        const ind = { ma5: ma(5), ma20: ma(20), ma60: ma(60) };
+        app.currentSymbolId = 'TST'; app.rawDailyData = rows; app.activeData = rows; app.inventory = [];
+        app.indicators = ind; app.peaks = [{ i: 190, val: 112 }]; app.troughs = [{ i: 195, val: 96 }]; app._lastGauge = { emg: [] };
+        app._renderTrendCommand(rows, ind, rows.length - 1);
+        out = document.getElementById('trendCommandCard').innerText;
+    } catch (e) { out = 'ERR:' + e.message; }
+    app._chuPositionAdvice = _orig;
+    return out;
+}, { pct, label, advice, regime });
+
+const overheat = await regimeCase('3~5 成(只留強勢股)', '🐂 多頭(過熱)', '位階過高、乖離過大,絕不追高;嚴設停損、分批停利,提防急拉回', 'bull');
+ok('⑤a 大盤過熱時要在個股卡講出總部位上限', /3~5 成/.test(overheat) && /多頭\(過熱\)/.test(overheat), String(overheat).slice(0, 300));
+const full = await regimeCase('8 成', '🐂 多頭', '可順勢做多,擇優股建倉', 'bull');
+ok('⑤b 大盤正常(8 成)時⛔ 不可亂加上限提醒(防過度修正)', !/總部位建議/.test(full), String(full).slice(0, 300));
+const bearMkt = await regimeCase('3 成以下 或 空手', '🐻 空頭', '空手觀望最安全,別硬接刀', 'bear');
+ok('⑤c 大盤空頭時仍要用原本那句(⛔ 不可被新分支蓋掉)', /大盤現在偏空/.test(bearMkt), String(bearMkt).slice(0, 200));
+
+// ⑥ 明日劇本的「開高」動詞要跟著大盤改
+ok('⑥a 明日劇本有讀大盤部位上限', /_mktCap/.test(src));
+ok('⑥b 大盤要縮手時⛔ 不可再寫「可順勢做多」', /_mktCap[\s\S]{0,400}?別追高加碼/.test(src));
+ok('⑥c 大盤正常時仍保留原句(⛔ 不可一律改掉)', src.includes('可順勢做多/抱單,回不破昨高續抱'));
+
 ok('④ 全程無 pageerror', errs.length === 0, errs.join(' | '));
 await browser.close();
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ 全部通過');

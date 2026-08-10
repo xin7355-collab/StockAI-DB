@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.2.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.2.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.2.9 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7158,8 +7158,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.2.8',
+    _APP_VERSION: 'V73.2.9',
     _CHANGELOG: [
+        { v: 'V73.2.9', dt: '2026-08-10', t: '🧭 大盤要縮手時,個股卡不再叫你追高', d: ['大盤過熱/轉弱/盤整時,個股卡會直接寫出總部位上限,不再只有空頭才提醒。','明日劇本的「開高」不再一律說「順勢做多」——大盤要縮手時改成「可續抱、別追高加碼」。'] },
         { v: 'V73.2.8', dt: '2026-08-10', t: '🚦 現在怎麼做:三個打架點修掉', d: ['價位已經過了就不再叫你「等它到」,會改口說「已經突破/早就跌破」。','緊急警示跟買點同時出現時,會明講「買點要等警示消失再執行」。','頂端「波段空頭」跟下面「線型」不一致時,主動說明兩個尺不一樣。'] },
         { v: 'V73.2.7', dt: '2026-08-10', t: '🧹 例行維護', d: ['介面小調整。'] },
         { v: 'V73.2.6', dt: '2026-08-09', t: '🧹 例行維護', d: ['介面小調整。'] },
@@ -22900,7 +22901,16 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 scen.push({ ic: '📉', c: 'green', t: `開低跌破昨低 <b class="font-mono">${f2(yLow)}</b>`, d: '空頭續行 → 減碼/避開,別搶反彈。' });
                 if (ma20) scen.push({ ic: '⚖️', c: 'yellow', t: `站回月線 <b class="font-mono">${f2(ma20)}</b> 並守住`, d: '這才是「中期轉折」的第一個條件 → 在那之前的紅K都當反彈看。' });
             } else {
-            scen.push({ ic: '📈', c: 'red', t: `開高站上昨高 <b class="font-mono">${f2(yHigh)}</b>`, d: '買盤延續、上方無套牢的話續強 → 可順勢做多/抱單,回不破昨高續抱。' });
+            // 🐛 V73.2.9 `page_sweep` 抓到:這句寫「可順勢做多/抱單」,同一畫面的大盤條卻寫
+            //   「多頭(過熱)・建議 3~5 成・**絕不追高**・分批停利」→ 使用者第一眼看到兩個相反的動詞。
+            //   ⛔ 舊版只擋「這一檔自己空頭」(`_mainBear`),**大盤過熱/轉弱/盤整完全沒擋**。
+            //   ⭐ 事實不動(續強是真的),改的只有那句「叫你怎麼做」——「抱單」留著、「做多(追買)」拿掉。
+            let _mktCap = null;
+            try { const _m = this._chuPositionAdvice(); if (_m && !(_m.regime === 'bull' && /^8 成/.test(_m.pct || ''))) _mktCap = _m; } catch (_) {}
+            scen.push({ ic: '📈', c: _mktCap ? 'yellow' : 'red', t: `開高站上昨高 <b class="font-mono">${f2(yHigh)}</b>`,
+                d: _mktCap
+                    ? `買盤延續、上方無套牢的話續強 → <b>有貨的可以續抱</b>(回不破昨高續抱);⛔ 但大盤 ${_mktCap.regimeLabel}、總部位上限 ${_mktCap.pct} → <b>別追高加碼</b>。`
+                    : '買盤延續、上方無套牢的話續強 → 可順勢做多/抱單,回不破昨高續抱。' });
             scen.push({ ic: '📉', c: 'green', t: `開低跌破昨低 <b class="font-mono">${f2(yLow)}</b>`, d: '賣壓宣洩、支撐失守 → 減碼/避開,別搶反彈;有空單可續抱。' });
             if (ma20) scen.push({ ic: '⚖️', c: 'yellow', t: `開平游走昨高低之間(守月線 <b class="font-mono">${f2(ma20)}</b>)`, d: '方向未定 → 觀望等量表態;守穩月線偏多、跌破月線偏空。' });
             }
@@ -27660,7 +27670,22 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 _emgOn = _emg.length > 0 && !cost && big.indexOf('別碰') < 0;
                 if (_emgOn) rules.push('⛔ <b>今天有緊急警示(卡片最上面那條紅框)</b> → 上面那個買點<b>要等警示消失再執行</b>;現在進場等於買在主力疑似出貨的隔天');
             } catch (_) {}
-            try { const m0 = this._chuPositionAdvice(); if (m0 && m0.regime === 'bear') warn = `大盤現在偏空 — 就算這檔訊號再好,部位也要放小(建議總部位 ${m0.pct})。`; } catch (_) {}
+            // 🐛 V73.2.9 `page_sweep` 掃出來的真打架:個股卡寫「可順勢做多/抱單」,
+            //   同一畫面的大盤條卻寫「多頭(過熱)・建議 3~5 成・絕不追高・分批停利」。
+            //   ⛔ 舊版**只在 regime==='bear' 時**才提醒 → 另外三種同樣要縮手的狀態全漏掉:
+            //     ・bull + weakening(已破月線+季線,轉弱)← 使用者截圖的加權指數正是這個
+            //     ・bull + overheat(位階過高、乖離過大)
+            //     ・range(盤整,5 成以下)
+            //   ⭐ 直接引用 `_chuPositionAdvice()` 自己的文案,⛔ 不另寫一套(免得變第二份真相)。
+            try {
+                const m0 = this._chuPositionAdvice();
+                // 只有「多頭且不過熱不轉弱」才是滿倉狀態 → 其餘一律要在個股卡上講出來
+                if (m0 && !(m0.regime === 'bull' && /^8 成/.test(m0.pct || ''))) {
+                    warn = m0.regime === 'bear'
+                        ? `大盤現在偏空 — 就算這檔訊號再好,部位也要放小(建議總部位 ${m0.pct})。`
+                        : `大盤 ${m0.regimeLabel} — ${m0.advice};總部位建議 ${m0.pct}。這檔就算條件到了,也照這個上限做。`;
+                }
+            } catch (_) {}
             if (!warn && !cost && trend === 'bull' && instFled) warn = '線型是多頭,但大戶這幾天在出貨 — 只買半量,或等大戶回頭再進。';
             if (!warn && vr != null && vr >= 2) warn = bias20 > 12 ? '今天高檔爆大量 — 明天不漲就是主力出貨,要提前走。' : '今天爆大量 — 看明天:漲=換手繼續做,跌=出貨快跑。';
             if (!warn && rr != null && rr < 1 && !cost && gridMode === 'full') warn = `到目標只剩 +${upPct.toFixed(0)}%、停損卻要虧 ${dnPct.toFixed(1)}% — 賺賠不划算,等回檔再進比較聰明。`;
