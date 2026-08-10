@@ -39,7 +39,9 @@ SKIP = ('broker_names', 'radar', 'top_picks', 'macro_risk', 'bubble_warning', 'a
 
 # ── FinMind Token 輪動(self-contained,對齊 miner.py 精神)─────────────────
 _fm_env = os.getenv('FINMIND_TOKENS') or os.getenv('FINMIND_TOKEN', '')
-TOKENS = [t.strip() for t in _fm_env.split(',') if t.strip()]
+# 🚨 V73.2.7:金鑰**內部**可能夾空白(網頁複製帶進換行)→ `.strip()` 清不掉 →
+#   FinMind 回 `Token is illegal.`(實測 4 把中 3 把)。一律用 `''.join(t.split())`。
+TOKENS = [''.join(t.split()) for t in _fm_env.split(',') if t.strip()]
 _tok_idx = 0
 _BLOCKED = False
 _session = requests.Session()

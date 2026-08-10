@@ -1480,7 +1480,12 @@ def fetch_tw_vix():
     print(f"  [台指VIX] 期交所那條沒拿到({_terr})→ 改試 FinMind(需付費層)")
 
     # ② 備援:FinMind(需付費會員層級)
-    toks = [t.strip() for t in (os.getenv('FINMIND_TOKENS') or os.getenv('FINMIND_TOKEN') or '').split(',') if t.strip()]
+    # 🚨 V73.2.7 實測抓到:金鑰**內部**會夾到空白(從 FinMind 網頁複製時把換行帶進來)。
+    #   `.strip()` 只清頭尾 → 中間那個空格留著 → FinMind 回 `Token is illegal.`
+    #   實測使用者 4 把有 3 把中招(原始 174/173/176 → 清完 173/172/175 字元)。
+    #   ⛔ 一律用 `''.join(t.split())`(同 miner.py:118 / finmind_check.py),別再寫 `.strip()`。
+    #   ⚠️ 這正是「台指 VIX 三把回 illegal」的真因 —— **不是金鑰過期,是被自己這邊弄壞的**。
+    toks = [''.join(t.split()) for t in (os.getenv('FINMIND_TOKENS') or os.getenv('FINMIND_TOKEN') or '').split(',') if t.strip()]
     if not toks:
         return None, None, f'{_terr};FinMind 無 token'
     sd = (datetime.now(timezone.utc) - timedelta(days=20)).strftime('%Y-%m-%d')

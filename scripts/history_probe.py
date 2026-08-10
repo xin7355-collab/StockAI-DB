@@ -25,7 +25,10 @@ import urllib.request
 from datetime import datetime
 
 API = 'https://api.finmindtrade.com/api/v4/data'
-TOKENS = [t.strip() for t in (os.getenv('FINMIND_TOKENS') or '').split(',') if t.strip()]
+# 🚨 V73.2.7:⛔ 不可用 `.strip()` —— 它只清頭尾,而金鑰**中間**常夾一個空白
+#   (從 FinMind 網頁複製時把換行帶進來)→ FinMind 回 `Token is illegal.`。
+#   這支探針 V2 就是栽在這裡,把 3 把好金鑰誤判成「無效/過期」。
+TOKENS = [''.join(t.split()) for t in (os.getenv('FINMIND_TOKENS') or '').split(',') if t.strip()]
 OUT = os.getenv('OUT', 'history_probe_result.json')
 # 代表性樣本:大型/中型/ETF/上櫃 各一(⛔ 不用全市場,探針只要問「給不給」)
 SAMPLE = ['2330', '2317', '0050', '5483']
@@ -194,6 +197,10 @@ def main():
         ('TaiwanStockMonthRevenue', {'data_id': '2330', 'start_date': '2015-01-01'}, '月營收'),
         ('TaiwanStockDelisting', {}, '下市清單(階段3)'),
         ('TaiwanStockTradingDailyReport', {'date': '2026-08-06'}, '分點籌碼(付費層)'),
+        # ⭐ V73.2.7 重測台指 VIX:CLAUDE.md 當時的結論(「沒有一把能開」「帳號等級不足」)
+        #    是用 `.strip()` 版跑出來的 —— **付費那把根本沒被正確送出去過**。
+        #    金鑰正規化修好之後,這一格才是第一次的有效測試。
+        ('TaiwanOptionVix', {'start_date': '2026-07-01'}, '台指 VIX'),
     ]
     for ti in range(len(TOKENS)):
         row = {}

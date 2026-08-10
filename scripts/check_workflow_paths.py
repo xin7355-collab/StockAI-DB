@@ -213,9 +213,50 @@ def check_no_trading_in_ci():
     return True
 
 
+def check_finmind_token_normalize():
+    """🔑 FinMind 金鑰**內部**夾到空白時,`.strip()` 清不掉 → FinMind 回 `Token is illegal.`
+
+    🚨 V73.2.7 實測(`finmind_check.py` 對真金鑰):使用者 4 把有 **3 把**含 1 個內部空白
+       (原始 174/173/176 字元 → 清完 173/172/175)。用 `.strip()` 的腳本
+       (macro_miner / rotation_miner / history_probe)只剩 1 把能用,
+       而那 1 把剛好是免費層 → 於是「台指 VIX 開不了」被誤判成**帳號等級問題**,
+       實際上**付費那把根本沒被正確送出去過**。而且三支全綠、零錯誤訊息。
+
+    ⛔ 一律用 `''.join(t.split())`(同 miner.py / finmind_check.py),別再寫 `.strip()`。
+    """
+    import re
+    bad = []
+    for f in sorted(ROOT.glob('*.py')) + sorted((ROOT / 'scripts').glob('*.py')):
+        try:
+            src = f.read_text(encoding='utf-8', errors='ignore')
+        except Exception:
+            continue
+        for i, ln in enumerate(src.splitlines(), 1):
+            if 'FINMIND_TOKEN' not in ln and 'FINMIND_TOKENS' not in ln and '_fm_env' not in ln:
+                continue
+            # 只看「切逗號 → 逐把處理」那一行
+            if '.split(\',\')' not in ln:
+                continue
+            # ⚠️ 只看**元素運算式**(`[` 到 ` for ` 之間);
+            #    尾巴的 `if t.strip()]` 是過濾條件,那個是對的,⛔ 不可誤報
+            #    (第一版就因為整行掃而把 5 支全報成壞的 —— 誤報會讓人養成無視守門的習慣)
+            m = re.search(r'\[\s*(.*?)\s+for\s+t\s+in\b', ln)
+            if m and 't.strip()' in m.group(1):
+                bad.append((f.name, i, ln.strip()[:90]))
+    if bad:
+        print('❌ 🔑 FinMind 金鑰用 .strip() 解析(清不掉金鑰**中間**的空白 → Token is illegal):')
+        for fn, i, ln in bad:
+            print(f'   • {fn}:{i}  {ln}')
+        print("   → 改成 [''.join(t.split()) for t in …](同 miner.py / finmind_check.py)")
+        return False
+    print('✅ FinMind 金鑰解析都用了 join(split())(清得掉金鑰中間的空白)')
+    return True
+
+
 if __name__ == '__main__':
     ok = check_inline_comments()
     ok = check_outputs_uploaded() and ok
     ok = check_script_secrets() and ok
     ok = check_no_trading_in_ci() and ok
+    ok = check_finmind_token_normalize() and ok
     sys.exit(0 if ok else 1)
