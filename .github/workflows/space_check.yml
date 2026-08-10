@@ -1,0 +1,31 @@
+name: 📦 空間體檢（還剩多少空間）
+
+# ⛔ 只能手動觸發、只讀不寫:不碰 gh-pages/data、不採礦、不刪任何東西。
+#    想知道「還剩多少空間」時:Actions → 這一支 → Run workflow → 看 log。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pages: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 🐍 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 算空間
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_OWNER: ${{ github.repository_owner }}
+          GH_REPO: ${{ github.event.repository.name }}
+        run: python3 scripts/space_check.py
