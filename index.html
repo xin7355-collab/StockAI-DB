@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.2.9 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7158,8 +7158,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.2.9',
+    _APP_VERSION: 'V73.3.0',
     _CHANGELOG: [
+        { v: 'V73.3.0', dt: '2026-08-10', t: '🎯 會賺訊號榜:名次、擁擠、重複 一次修掉', d: ['每一列前面加名次 #1 #2,不用再自己數。','股票名稱不會再被徽章擠掉 —— 徽章移到第二行。','同一檔出現兩次時會標「同檔第 2 招」,那是兩種不同打法不是重複。','同一個訊號的好幾檔會明講「彼此沒有名次之分」。'] },
         { v: 'V73.2.9', dt: '2026-08-10', t: '🧭 大盤要縮手時,個股卡不再叫你追高', d: ['大盤過熱/轉弱/盤整時,個股卡會直接寫出總部位上限,不再只有空頭才提醒。','明日劇本的「開高」不再一律說「順勢做多」——大盤要縮手時改成「可續抱、別追高加碼」。'] },
         { v: 'V73.2.8', dt: '2026-08-10', t: '🚦 現在怎麼做:三個打架點修掉', d: ['價位已經過了就不再叫你「等它到」,會改口說「已經突破/早就跌破」。','緊急警示跟買點同時出現時,會明講「買點要等警示消失再執行」。','頂端「波段空頭」跟下面「線型」不一致時,主動說明兩個尺不一樣。'] },
         { v: 'V73.2.7', dt: '2026-08-10', t: '🧹 例行維護', d: ['介面小調整。'] },
@@ -37513,7 +37514,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         </details>`;
     },
 
-    _pbRowHtml(x, mine) {
+    _pbRowHtml(x, mine, rank, dupN) {
         const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? n : ''; };
         const isMine = mine.has(String(x.s));
         const c = +x.c, stop = +x.stop;
@@ -37533,17 +37534,26 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             : `<span class="text-gray-500">買幾張?先到 ⚙️ 設定填「帳戶總資金」就會幫你算</span>`;
         return `<div onclick="app.analyze('${x.s}'); app.switchAppTab('diag'); app.vibrate(15);" class="px-2 py-1.5 rounded ${isMine ? 'bg-amber-900/15 border border-amber-700/50' : 'bg-[#0d1117] border border-[#30363d]'} cursor-pointer hover:bg-white/5 transition-colors">
             <div class="flex items-baseline justify-between gap-2">
-                <div class="min-w-0 flex items-baseline gap-1.5">
+                <div class="min-w-0 flex-1 flex items-baseline gap-1.5">
+                    ${rank ? `<span class="font-mono font-black text-[11px] flex-shrink-0 ${rank <= 3 ? 'text-amber-300' : 'text-gray-600'}" title="第 ${rank} 名(依「保守下界」排,樣本少的會被罰)">#${rank}</span>` : ''}
                     ${isMine ? '<span class="text-[10px] flex-shrink-0">👜</span>' : ''}
-                    ${+x.bear ? `<span class="text-[9px] flex-shrink-0 px-1 rounded bg-[#21262d] border border-[#30363d] text-yellow-300" title="這檔收盤同時跌破 20 日線與 60 日線(全面破線)。實測「站上均線才做」單獨用 13 個月多賺 24.7 萬,但疊在『強勢高波動』之上反而少賺 → 沒有增量,所以⛔ 不排除它,只標記。它給的是「漲過某價才進」,沒漲過就不會成立。">⚠️ 破線中</span>` : ''}
-                    ${+x.hq ? `<span class="text-[9px] flex-shrink-0 px-1 rounded bg-[#21262d] border border-[#30363d] text-gray-300" title="這檔自己的位階 ${x.rank}%(近一年)、波動率 ${x.vol}%(年化)——落在實測表現最好的那一格。實測 +89% 且回撤更小(6 道關卡全過、24 格門檻網格全贏基準)。⚠️ 回測窗口整段是大多頭,空頭沒有驗證過。">🧬 強勢高波動</span>` : ''}
                     <span class="font-mono font-black text-[12px] text-gray-100 flex-shrink-0">${x.s}</span>
                     <span class="text-[11px] text-gray-200 truncate">${nm(x.s)}</span>
                     <span class="font-mono text-[10px] text-gray-500 flex-shrink-0">${c.toLocaleString()}</span>
                 </div>
                 <span class="font-mono font-black text-[12px] text-red-300 flex-shrink-0 flex items-baseline gap-0.5" title="這是「照這招做,平均每一趟賺多少」的保守估計(+${shown.toFixed(2)}%;原始平均 +${(+x.exp).toFixed(2)}%,已扣來回成本 0.44% 並依樣本數打折)。⛔ 不是今天的漲跌幅。"><span class="text-[8px] font-normal text-gray-500">每趟</span>+${shown.toFixed(2)}%</span>
             </div>
-            <div class="text-[10px] text-red-300/90 truncate mt-0.5">${x.k}</div>
+            <!-- 🐛 V73.3.0 使用者回報「文字太擠、股票名稱被蓋住」——
+                 真因:徽章跟股名擠在同一行,而徽章都是 flex-shrink-0、
+                 唯一能縮的只有股名 → 兩顆徽章一出現,名稱就被 truncate 到 0 寬。
+                 ⛔ 修法不是縮字級(那只會更難看),是把徽章移到**第二行**跟打法放一起,
+                 並讓第一行的名稱有 flex-1 可用空間。 -->
+            <div class="flex items-center flex-wrap gap-1 mt-0.5">
+                ${+x.bear ? `<span class="text-[9px] flex-shrink-0 px-1 rounded bg-[#21262d] border border-[#30363d] text-yellow-300" title="這檔收盤同時跌破 20 日線與 60 日線(全面破線)。實測「站上均線才做」單獨用 13 個月多賺 24.7 萬,但疊在『強勢高波動』之上反而少賺 → 沒有增量,所以⛔ 不排除它,只標記。它給的是「漲過某價才進」,沒漲過就不會成立。">⚠️ 破線中</span>` : ''}
+                ${+x.hq ? `<span class="text-[9px] flex-shrink-0 px-1 rounded bg-[#21262d] border border-[#30363d] text-gray-300" title="這檔自己的位階 ${x.rank}%(近一年)、波動率 ${x.vol}%(年化)——落在實測表現最好的那一格。實測 +89% 且回撤更小(6 道關卡全過、24 格門檻網格全贏基準)。⚠️ 回測窗口整段是大多頭,空頭沒有驗證過。">🧬 強勢高波動</span>` : ''}
+                ${dupN ? `<span class="text-[9px] flex-shrink-0 px-1 rounded bg-[#21262d] border border-[#30363d] text-cyan-300" title="同一檔股票可以有不只一種會賺的打法 —— 這是這檔的第 ${dupN} 招,兩招的觸發價與停損都不一樣,⛔ 不是重複列。">同檔第 ${dupN} 招</span>` : ''}
+                <span class="text-[10px] text-red-300/90 truncate">${x.k}</span>
+            </div>
             <div class="text-[10px] text-gray-200 mt-1 leading-relaxed">
                 ${hasTrig
                     ? `📈 <b>漲過 ${trig.toLocaleString()}</b> 才進(離現價 +${(+x.up).toFixed(1)}%)`
@@ -37608,6 +37618,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // ⛔ 用保守下界排,⛔ 不是原始期望值(理由見 _pbRowHtml 的 `shown`)
         const _lb = x => Number.isFinite(+x.lb) ? +x.lb : +x.exp;
         const rows = list.slice().sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (_lb(b) - _lb(a)));
+        // 🐛 V73.3.0 使用者問「為何有 2 個華城」—— 清單是「(股票 × 打法)」不是「股票」,
+        //   同一檔可以有不只一種會賺的打法(實測 158 檔裡有 13 檔各有 2 招)。
+        //   ⛔ 不去重(兩招的觸發價與停損完全不同,砍掉一招 = 少一個機會),
+        //   改成**標記**「同檔第 N 招」,讓使用者一眼知道不是重複列。
+        const _seen = new Map(), _dupIdx = new Map();
+        for (const r of rows) {
+            const k = String(r.s), n = (_seen.get(k) || 0) + 1;
+            _seen.set(k, n);
+            if (n > 1) _dupIdx.set(r, n);
+        }
         const SHOW = 12;
         // 🏛️ V72.9.7 大盤月線狀態 —— ⛔ 這是**事實標示**不是自動濾網。
         //   `portfolio_backtest.mjs` 實測六種變體(600 檔・13 個月・本金 100 萬):
@@ -37671,8 +37691,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ${hqLine}
             ${this._pbTrackRecordHtml()}
             ${mktLine}${riskLine}
-            <div class="space-y-1 mt-1.5">${rows.slice(0, SHOW).map(x => this._pbRowHtml(x, mine)).join('')}</div>
-            ${rows.length > SHOW ? `<details class="mt-1.5"><summary class="text-[10px] text-gray-500 cursor-pointer">➕ 另外 ${rows.length - SHOW} 檔(同樣標準,只是期望值排後面)</summary><div class="space-y-1 mt-1">${rows.slice(SHOW).map(x => this._pbRowHtml(x, mine)).join('')}</div></details>` : ''}
+            <div class="space-y-1 mt-1.5">${rows.slice(0, SHOW).map((x, i) => this._pbRowHtml(x, mine, i + 1, _dupIdx.get(x) || 0)).join('')}</div>
+            ${rows.length > SHOW ? `<details class="mt-1.5"><summary class="text-[10px] text-gray-500 cursor-pointer">➕ 另外 ${rows.length - SHOW} 檔(同樣標準,只是期望值排後面)</summary><div class="space-y-1 mt-1">${rows.slice(SHOW).map((x, i) => this._pbRowHtml(x, mine, SHOW + i + 1, _dupIdx.get(x) || 0)).join('')}</div></details>` : ''}
             <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📅 ${this._dW ? this._dW(j.data_date) : (j.data_date || '')} 收盤算的・全市場 ${(j.scanned || 0).toLocaleString()} 檔 ｜ 上面的每趟 % <b class="text-gray-500">已扣來回成本 ${j.cost || 0.44}%</b>・觸發價是<b class="text-gray-500">估計值</b>(盤中會用即時價重算)</div>
         </div>`;
     },
@@ -38167,6 +38187,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 </div>
             </div>`;
         };
+        // 🐛 V73.3.0 使用者連問兩次「第一名是誰 / 第二名是不是台勝科」——
+        //   ⚠️ 真相是:當這幾檔**都是同一個訊號**時,期望值/勝率是**同一組統計數字**
+        //   (那是「這個訊號」的歷史成績,不是「這一檔」的)→ **根本沒有名次之分**,
+        //   排序只是用成交量當第二鍵。⛔ 不講清楚的話,使用者會以為第一列比較強。
+        const _sigKinds = new Set(worth.map(x => String(x.t)));
+        const sameSigLine = (worth.length >= 2 && _sigKinds.size === 1)
+            ? `<div class="text-[10px] text-gray-300 bg-[#0d1117] border-l-4 border-gray-500 rounded-r px-2.5 py-1.5 mb-1.5 leading-relaxed">ℹ️ 這 ${worth.length} 檔<b>都是同一個訊號「${[..._sigKinds][0]}」</b> → 期望值與勝率是<b class="text-gray-200">這個訊號的歷史成績</b>,不是各檔自己的 → <b class="text-gray-200">彼此沒有名次之分</b>,上下順序只是成交量大小。<br><span class="text-gray-500">要挑就挑你熟、成交量夠大的;⛔ 別以為第一列比較強。</span></div>`
+            : (worth.length >= 2 && _sigKinds.size < worth.length)
+                ? `<div class="text-[10px] text-gray-400 mb-1.5 leading-relaxed">ℹ️ 同一個訊號的幾檔會顯示<b class="text-gray-200">一樣的期望值與勝率</b>(那是訊號的成績,不是個股的)→ 那幾檔之間沒有名次之分。</div>`
+                : '';
         // ⛔ 扣完成本不夠賺的**不刪**(誠實顯示),收進摺疊區並講清楚為什麼不推薦
         const thinBlock = thin.length ? `<details class="mt-1.5">
             <summary class="text-[10px] text-gray-500 cursor-pointer">➕ 另有 ${thin.length} 筆「有訊號,但扣完成本不夠賺」</summary>
@@ -38183,6 +38213,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <button onclick="event.stopPropagation();app._showTodaySigHelp()" class="text-[9px] text-gray-500 hover:text-cyan-300 flex-shrink-0">ⓘ 怎麼看</button>
             </div>
             ${mineLine}
+            ${sameSigLine}
             ${worth.length ? `<div class="space-y-1">${worth.map(mkRow).join('')}</div>`
               : `<div class="text-[11px] text-gray-300 bg-[#0d1117] border-l-4 border-gray-500 rounded-r px-2.5 py-2 leading-relaxed">⛔ <b>今天沒有一檔的訊號賺得回交易成本</b>(來回約 ${cost}%)。<br><span class="text-gray-500">榜上那些毛期望值雖然是正的,扣完手續費 + 證交稅平均還是賠 → 今天就別硬找理由進場。</span></div>`}
             ${thinBlock}

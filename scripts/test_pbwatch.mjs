@@ -257,8 +257,10 @@ await browser.close();
     // ⚠️ 起點要抓**註解那一行**,不是常數本身 —— 「改了要重跑」那句寫在常數上方,
     //    從常數開始切會把它切掉(第一版就是這樣假失敗的)
     // ⚠️ 錨點⛔ 不可綁版本號 —— V73.2.7 → V73.2.9 時這 7 條全部假失敗。
-    //    改抓不會變的那幾個字。
-    const A = src.indexOf('這套打法的歷史總成績'), B = src.indexOf('_pbRowHtml(x, mine)');
+    //    ⚠️ 也⛔ 不可綁**函式簽章** —— V73.3.0 加了 rank/dupN 參數,
+    //    `_pbRowHtml(x, mine)` 立刻對不上 → 同樣 8 條假失敗(同一種錯犯第二次)。
+    //    ⭐ 通用:結束錨點要用「不會因為改功能而變的字」。
+    const A = src.indexOf('這套打法的歷史總成績'), B = src.indexOf('_pbRowHtml(');
     const blk = A > 0 && B > A ? src.slice(A, B) : '';
     ok('⑩a 有 _PB_TRACK 常數,且標明「改回測配置就要重跑」', /_PB_TRACK: \{/.test(src) && /改了任何規則就要重跑更新/.test(blk));
     ok('⑩b 兩種做法都要給(照清單做 / 只做 🧬 標記的)', /照清單順序做/.test(blk) && /只做有 🧬 強勢高波動 標記的/.test(blk));
