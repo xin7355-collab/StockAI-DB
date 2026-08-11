@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.3.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.3.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.2 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -942,9 +942,12 @@
                     <div class="flex items-center justify-between pt-2">
                         <div>
                             <label class="text-xs font-bold text-purple-400">🔔 手機推播告警(關 App 也能收)</label>
-                            <p class="text-[10px] text-gray-500 leading-snug">庫存破 -5%/-10% 防守、盯價到價 → 直接推手機。<br>需:①iOS 16.4+ 加入主畫面開啟 ②下方 Worker 已部署最新版。啟用會發測試推播驗證。</p>
+                            <p class="text-[10px] text-gray-500 leading-snug">庫存破 -5%/-10% 防守、盯價到價 → 直接推手機。<br>需:①iOS 16.4+ 加入主畫面開啟 ②下方 Worker 已部署最新版。啟用會發測試推播驗證。<br><span class="text-purple-300">收不到?先按「🩺 體檢」,它會直接告訴你卡在哪一關。</span></p>
                         </div>
-                        <button id="pushSubscribeBtn" onclick="app.togglePushSubscription()" class="px-3 py-1.5 bg-purple-900 hover:bg-purple-800 text-white text-xs font-bold rounded border border-purple-700 transition-colors">啟用推播</button>
+                        <div class="flex gap-1.5 flex-shrink-0">
+                            <button onclick="app._pushDiagnose()" class="px-2.5 py-1.5 bg-[#161b22] hover:bg-[#21262d] text-purple-200 text-xs font-bold rounded border border-purple-700/50 transition-colors">🩺 體檢</button>
+                            <button id="pushSubscribeBtn" onclick="app.togglePushSubscription()" class="px-3 py-1.5 bg-purple-900 hover:bg-purple-800 text-white text-xs font-bold rounded border border-purple-700 transition-colors">啟用推播</button>
+                        </div>
                     </div>
                 </div>
 
@@ -7158,8 +7161,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.3.1',
+    _APP_VERSION: 'V73.3.2',
     _CHANGELOG: [
+        { v: 'V73.3.2', dt: '2026-08-11', t: '🩺 推播收不到?按一下就知道卡在哪', d: ['設定中心的推播那一列多了「🩺 體檢」按鈕,會逐項檢查並直接告訴你要先修哪一個。','同時說清楚:關掉 App 時只會推「庫存停損」和「到價提醒」兩種,其他提醒要 App 開著。'] },
         { v: 'V73.3.1', dt: '2026-08-11', t: '🐛 點櫃買指數 / 台指電子盤會跳錯誤 — 修好了', d: ['點那兩格會跳「JS 錯誤」的問題已修,現在會正常跳出說明。','同一個原因的第二處(融資追繳的「這是什麼」)一併修掉。'] },
         { v: 'V73.3.0', dt: '2026-08-10', t: '🎯 會賺訊號榜:名次、擁擠、重複 一次修掉', d: ['每一列前面加名次 #1 #2,不用再自己數。','股票名稱不會再被徽章擠掉 —— 徽章移到第二行。','同一檔出現兩次時會標「同檔第 2 招」,那是兩種不同打法不是重複。','同一個訊號的好幾檔會明講「彼此沒有名次之分」。'] },
         { v: 'V73.2.9', dt: '2026-08-10', t: '🧭 大盤要縮手時,個股卡不再叫你追高', d: ['大盤過熱/轉弱/盤整時,個股卡會直接寫出總部位上限,不再只有空頭才提醒。','明日劇本的「開高」不再一律說「順勢做多」——大盤要縮手時改成「可續抱、別追高加碼」。'] },
@@ -40030,6 +40034,72 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
     // 🔔 V69.7.4 真・Web Push(修「說關 App 能推其實不能」):pushManager.subscribe + VAPID +
     //   訂閱與庫存/盯價清單同步到你的 Cloudflare Worker,由 Worker 盤中每 15 分掃、關 App 也推。
+    // 🩺 V73.3.2 推播體檢 —— 使用者:「關螢幕/關網頁還是沒有背景提醒,是我做錯還是功能限制?」
+    //   ⭐ 先講清楚**原理**(這不是 bug):網頁一旦關掉,裡面的 JS 全部停止,
+    //      `setInterval` 也跟著死 → **PWA 本身沒有「自己醒來」的能力**,這是規格,不是缺陷。
+    //      唯一能在關 App 時通知你的機制是 **Web Push**:
+    //        你的 Worker(一直醒著)→ 蘋果/Google 的推播服務 → 系統喚醒 Service Worker → 跳通知。
+    //      所以一定要有一台「一直醒著的機器」,那就是你的 Cloudflare Worker。
+    //   ⛔ 舊版失敗時只在按「啟用推播」時跳 alert,平常完全看不出卡在哪 → 使用者只會覺得「壞了」。
+    //      這支把 7 個必要條件一次驗完,直接指出**要修哪一個**。
+    async _pushDiagnose() {
+        const L = [];
+        let blocker = '';
+        const add = (ok, name, hint) => { L.push(`${ok ? '✅' : '❌'} ${name}`); if (!ok && !blocker) blocker = hint; };
+
+        const hasSW = 'serviceWorker' in navigator;
+        const hasPM = typeof PushManager !== 'undefined';
+        const standalone = !!(window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone);
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const wu = (this.settings.workerUrl || '').trim().replace(/\/+$/, '');
+
+        add(hasSW, '瀏覽器支援 Service Worker', '換一個新版瀏覽器再試。');
+        // ⚠️ iOS 的 PushManager **只有從主畫面開啟時才存在** → 這一格同時驗了「iOS 16.4+」與「已加入主畫面」
+        add(hasPM, '瀏覽器支援 Web Push' + (isIOS ? '(iOS 需 16.4+ 且從主畫面開啟)' : ''),
+            isIOS ? '你在 iPhone 上:先「分享 → 加入主畫面」,然後**從主畫面那個圖示打開**(Safari 分頁裡打開是收不到的),iOS 也要 16.4 以上。'
+                  : '你的瀏覽器不支援 Web Push,換 Chrome/Edge 再試。');
+        if (isIOS) add(standalone, '從主畫面開啟(不是 Safari 分頁)', '先「分享 → 加入主畫面」,再從主畫面的圖示打開這個 App。');
+        const perm = (typeof Notification === 'undefined') ? 'unsupported' : Notification.permission;
+        add(perm === 'granted', `通知權限(目前:${perm === 'granted' ? '已允許' : perm === 'denied' ? '已封鎖' : '還沒問過'})`,
+            perm === 'denied' ? '你之前按了「不允許」→ 要到 手機設定 → 通知 → 找到這個 App → 把通知打開。'
+                              : '按下面的「啟用推播」時會跳出詢問,選「允許」。');
+        add(!!wu, '已填 Worker 網址', '⚠️ **這一關最常卡** —— 關 App 時要有一台「一直醒著的機器」幫你盯價,那就是你自己的 Cloudflare Worker(免費)。請照設定頁下方「☁️ Telegram 雲端推播」的教學部署一次,把網址填進去。');
+
+        let vapidOk = false, subOk = false;
+        if (wu) {
+            const v = await fetch(wu + '/vapid', { signal: AbortSignal.timeout(8000) }).then(r => r.ok ? r.json() : null).catch(() => null);
+            vapidOk = !!(v && v.key);
+            add(vapidOk, 'Worker 是最新版(有推播功能)', '你的 Worker 是舊版 → 照教學把最新的 worker.js 貼上覆蓋、重新 Deploy 一次。');
+        }
+        if (hasSW && hasPM) {
+            // ⚠️ `navigator.serviceWorker.ready` 在**註冊失敗時永遠不會 resolve**(不是 reject)——
+            //    沒有逾時的話,體檢自己會卡死在這裡、什麼都不顯示 = 比沒有體檢更糟。
+            //    ⛔ 任何「等瀏覽器回應」的 await 都要有逾時。
+            try {
+                const reg = this._swReg || await Promise.race([
+                    navigator.serviceWorker.ready,
+                    new Promise(r => setTimeout(() => r(null), 4000)),
+                ]);
+                if (reg && reg.pushManager) subOk = !!(await reg.pushManager.getSubscription());
+                else L.push('⚠️ Service Worker 沒註冊起來(離線快取/推播都會失效)→ 試著硬重新整理,或把 App 從主畫面移除再加一次');
+            } catch (_) {}
+            add(subOk, '已完成推播訂閱', '上面都 ✅ 之後,按「啟用推播」那顆按鈕完成訂閱(會發一則測試推播給你)。');
+        }
+
+        const allOk = !blocker;
+        alert('🩺 推播體檢\n' + '─'.repeat(22) + '\n' + L.join('\n') + '\n' + '─'.repeat(22) + '\n\n'
+            + (allOk
+                ? '🎉 全部通過!關掉 App 也收得到。\n\n'
+                : `🔧 要先修這一個:\n${blocker}\n\n`)
+            + '📌 關 App 時會推的**只有兩種**:\n'
+            + '  ・庫存跌破成本 −5% / −10%\n'
+            + '  ・你自己設的到價提醒\n\n'
+            + '⚠️ 其他提醒(尾盤買點、K棒訊號、分點跟單…)**必須 App 開著**才會跑 —— '
+            + '那些要算幾十萬根 K 線,雲端那台小機器做不動。\n\n'
+            + '💡 為什麼一定要 Worker?網頁一關,裡面的程式就全部停了,'
+            + '手機不會替它繼續算 —— 這是所有網頁 App 的共同限制,不是這支壞掉。'
+            + '要在關掉之後還能通知你,一定要有一台「一直醒著的機器」主動推給你。');
+    },
     async togglePushSubscription() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
             alert('您的瀏覽器不支援 Web Push。\niPhone 需 iOS 16.4+,先「分享 → 加入主畫面」,再從主畫面開啟才有此功能。'); return;
