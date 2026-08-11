@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.3.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4587,7 +4587,7 @@ const app = {
             <div class="bg-[#161b22] border-l-4 border-${col}-500 border-y border-r border-[#30363d] rounded-r p-2.5">
                 <div class="flex items-center justify-between gap-2 mb-1">
                     <span class="text-[11px] font-black text-${col}-300">${M.ico} ${M.t}</span>
-                    <button onclick="app.showJargonText &amp;&amp; app.showJargonText('融資追繳是什麼', '${'借錢買股票(融資)時,券商只借你一部分,其餘要自備。當股價跌到「你的股票市值 ÷ 借款金額」低於 130% 時,券商會通知你補錢(追繳);兩個營業日內沒補,第三天券商會直接幫你賣掉(斷頭)。\n\n這是全市場一致的硬規則,所以當很多人的融資成本集中在同一區,跌到那附近就會出現「不看好壞、被迫賣」的連續賣壓。\n\n⚠️ 這裡的成本是「推估」:我們看不到每個人的買價,只能用融資餘額增加那幾天的價格加權推算,而且只回溯約兩個多月。處置股會被調降融資成數,公式也會失準。所以請當成「壓力區參考」,不是精準預測。'}')" class="text-[9px] text-gray-500 underline shrink-0">📖 這是什麼</button>
+                    <button onclick="app._showIdxWhy('margincall')" class="text-[9px] text-gray-500 underline shrink-0">📖 這是什麼</button>
                 </div>
                 <div class="grid grid-cols-3 gap-2 text-center my-1.5">
                     <div><div class="text-[9px] text-gray-500">融資族群成本</div>
@@ -7158,8 +7158,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.3.0',
+    _APP_VERSION: 'V73.3.1',
     _CHANGELOG: [
+        { v: 'V73.3.1', dt: '2026-08-11', t: '🐛 點櫃買指數 / 台指電子盤會跳錯誤 — 修好了', d: ['點那兩格會跳「JS 錯誤」的問題已修,現在會正常跳出說明。','同一個原因的第二處(融資追繳的「這是什麼」)一併修掉。'] },
         { v: 'V73.3.0', dt: '2026-08-10', t: '🎯 會賺訊號榜:名次、擁擠、重複 一次修掉', d: ['每一列前面加名次 #1 #2,不用再自己數。','股票名稱不會再被徽章擠掉 —— 徽章移到第二行。','同一檔出現兩次時會標「同檔第 2 招」,那是兩種不同打法不是重複。','同一個訊號的好幾檔會明講「彼此沒有名次之分」。'] },
         { v: 'V73.2.9', dt: '2026-08-10', t: '🧭 大盤要縮手時,個股卡不再叫你追高', d: ['大盤過熱/轉弱/盤整時,個股卡會直接寫出總部位上限,不再只有空頭才提醒。','明日劇本的「開高」不再一律說「順勢做多」——大盤要縮手時改成「可續抱、別追高加碼」。'] },
         { v: 'V73.2.8', dt: '2026-08-10', t: '🚦 現在怎麼做:三個打架點修掉', d: ['價位已經過了就不再叫你「等它到」,會改口說「已經突破/早就跌破」。','緊急警示跟買點同時出現時,會明講「買點要等警示消失再執行」。','頂端「波段空頭」跟下面「線型」不一致時,主動說明兩個尺不一樣。'] },
@@ -30029,9 +30030,22 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const pct = chg.pct;
             const cls = pct == null ? 'text-gray-300' : pct > 0 ? 'text-[#f87171]' : pct < 0 ? 'text-[#4ade80]' : 'text-gray-300';
             const arrow = pct == null ? '' : pct > 0 ? '▲' : pct < 0 ? '▼' : '';
+            // 🚨 V73.3.1 使用者截圖:點「櫃買指數 / 台指電子盤」跳
+            //   `SyntaxError: Unexpected EOF`(而且自我檢查說「文件完整 3390KB」→ 不是檔案截斷)。
+            //   ⛔ 真因:舊版把 `opt.why` **直接插進 onclick 屬性裡的 JS 字串**,
+            //      而那段說明含有真正的**換行字元**(`\n\n原因:…`)。
+            //      JS 的 '單引號字串' **不能跨行** → 瀏覽器解析那個 inline handler 時
+            //      讀到行尾字串還沒收掉 → Unexpected EOF。
+            //      加權指數那格因為走 `opt.onclick`(沒有 why)所以正常 —— 完全吻合使用者的描述。
+            //   ⭐ 修法不是「跳脫換行」(那還有引號、反斜線、結束標籤 一堆邊界要顧)——
+            //   🤦 註腳:我寫這段註解時,原本在括號裡打了「那個結束標籤」六個字的英文原文,
+            //      結果**整個 <script> 當場被 HTML 解析器提前切斷** → 全 App 白畫面。
+            //      ⛔ HTML 解析器看不懂 JS 註解,它只認那六個字 → 連註解裡都不能寫。
+            //      這正好證明了上面那句話:邊界不只換行,別想靠跳脫解決。
+            //      **改成不要把文字放進 HTML 屬性**:文字存在 JS 物件裡,onclick 只傳一個 key。
             const go = opt.onclick
                 ? `onclick="${opt.onclick}"`
-                : `onclick="app.showJargonText &amp;&amp; app.showJargonText('${label}', '${opt.why}') || alert('${opt.why}')"`;
+                : `onclick="app._showIdxWhy('${opt.whyKey}')"`;
             return `<div ${go} class="bg-[#161b22] border ${opt.onclick ? 'border-amber-600/50' : 'border-[#30363d]'} rounded-lg px-2 py-2 text-center cursor-pointer active:bg-[#21262d] transition-colors">
                 <div class="text-[10px] text-gray-400 mb-0.5">${label}${opt.onclick ? ' <span class="text-amber-400/70">›</span>' : ''}</div>
                 <div class="text-base font-black font-mono ${cls} leading-tight truncate">${has ? val : '--'}</div>
@@ -30042,11 +30056,22 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             row.innerHTML =
                 cell('加權指數', pick('mktTWII_main'), pickChg('mktTWII_chg_main'),
                      { onclick: "app.analyze('^TWII'); app.switchAppTab('diag'); app.vibrate(30);" }) +
-                cell('櫃買指數', pick('mktTWOII_main'), pickChg('mktTWOII_chg_main'),
-                     { why: '櫃買指數的即時報價是正常的(上面這個數字可以放心看),但它的歷史 K 線目前抓不到,所以還不能點進去看線圖。\n\n原因:提供上櫃指數歷史資料的官方管道回的格式跟以前不一樣,還在調整讀取方式。抓到就會自動開放,不用你做任何事。\n\n想先看櫃買走勢:可以看「盤前檢視」裡的櫃買漲跌幅,或用券商 App 看線圖。' }) +
-                cell('台指電子盤', pick('taiexFuturesInfo'), { txt: '', pct: null },
-                     { why: '台指期這格只顯示即時價和結算倒數,沒有歷史線圖。\n\n原因:台指期是「每個月換一次合約」的商品,不同月份的合約價格不能直接接成一條連續的線(接起來會有假跳空),所以這裡不做線圖,避免誤導。\n\n想看台股趨勢:點左邊的「加權指數」,那個才是連續的。' });
+                cell('櫃買指數', pick('mktTWOII_main'), pickChg('mktTWOII_chg_main'), { whyKey: 'twoii' }) +
+                cell('台指電子盤', pick('taiexFuturesInfo'), { txt: '', pct: null }, { whyKey: 'txf' });
         } catch (_) {}
+    },
+    // 📖 V73.3.1 這兩段說明**刻意放在 JS 物件裡**,⛔ 不可搬回 onclick 屬性 ——
+    //   裡面有換行,插進 HTML 屬性的 JS 字串會直接讓那個 handler 語法錯誤(見上方註解)。
+    _IDX_WHY: {
+        twoii: ['櫃買指數', '櫃買指數的即時報價是正常的(上面這個數字可以放心看),但它的歷史 K 線目前抓不到,所以還不能點進去看線圖。\n\n原因:提供上櫃指數歷史資料的官方管道回的格式跟以前不一樣,還在調整讀取方式。抓到就會自動開放,不用你做任何事。\n\n想先看櫃買走勢:可以看「盤前檢視」裡的櫃買漲跌幅,或用券商 App 看線圖。'],
+        margincall: ['融資追繳是什麼', '借錢買股票(融資)時,券商只借你一部分,其餘要自備。當股價跌到「你的股票市值 ÷ 借款金額」低於 130% 時,券商會通知你補錢(追繳);兩個營業日內沒補,第三天券商會直接幫你賣掉(斷頭)。\n\n這是全市場一致的硬規則,所以當很多人的融資成本集中在同一區,跌到那附近就會出現「不看好壞、被迫賣」的連續賣壓。\n\n⚠️ 這裡的成本是「推估」:我們看不到每個人的買價,只能用融資餘額增加那幾天的價格加權推算,而且只回溯約兩個多月。處置股會被調降融資成數,公式也會失準。所以請當成「壓力區參考」,不是精準預測。'],
+        txf: ['台指電子盤', '台指期這格只顯示即時價和結算倒數,沒有歷史線圖。\n\n原因:台指期是「每個月換一次合約」的商品,不同月份的合約價格不能直接接成一條連續的線(接起來會有假跳空),所以這裡不做線圖,避免誤導。\n\n想看台股趨勢:點左邊的「加權指數」,那個才是連續的。'],
+    },
+    _showIdxWhy(key) {
+        const e = this._IDX_WHY[key];
+        if (!e) return;
+        try { if (this.showJargonText) { this.showJargonText(e[0], e[1]); return; } } catch (_) {}
+        alert(`【${e[0]}】\n\n${e[1]}`);
     },
 
     _applyLiveIndex(id, price, pct, dec) {
