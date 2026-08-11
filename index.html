@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.3.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.2 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.3 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7161,8 +7161,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.3.2',
+    _APP_VERSION: 'V73.3.3',
     _CHANGELOG: [
+        { v: 'V73.3.3', dt: '2026-08-11', t: '🩺 推播體檢會告訴你「雲端那台是哪一版」', d: ['體檢多顯示雲端主機的版本 —— 推播內容過時、不跟著設定更新,多半是它停在舊版。'] },
         { v: 'V73.3.2', dt: '2026-08-11', t: '🩺 推播收不到?按一下就知道卡在哪', d: ['設定中心的推播那一列多了「🩺 體檢」按鈕,會逐項檢查並直接告訴你要先修哪一個。','同時說清楚:關掉 App 時只會推「庫存停損」和「到價提醒」兩種,其他提醒要 App 開著。'] },
         { v: 'V73.3.1', dt: '2026-08-11', t: '🐛 點櫃買指數 / 台指電子盤會跳錯誤 — 修好了', d: ['點那兩格會跳「JS 錯誤」的問題已修,現在會正常跳出說明。','同一個原因的第二處(融資追繳的「這是什麼」)一併修掉。'] },
         { v: 'V73.3.0', dt: '2026-08-10', t: '🎯 會賺訊號榜:名次、擁擠、重複 一次修掉', d: ['每一列前面加名次 #1 #2,不用再自己數。','股票名稱不會再被徽章擠掉 —— 徽章移到第二行。','同一檔出現兩次時會標「同檔第 2 招」,那是兩種不同打法不是重複。','同一個訊號的好幾檔會明講「彼此沒有名次之分」。'] },
@@ -40067,9 +40068,16 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
         let vapidOk = false, subOk = false;
         if (wu) {
+            // 🩺 V73.3.3 先問 /health 拿版本 —— 使用者回報「推播內容是過時的、不跟著 App 設定更新」,
+            //   真因是**雲端那台跑的是舊版程式**(自動部署一直失敗,沒人發現)。
+            //   ⛔ 只驗 /vapid 只知道「有沒有推播」,說不出「你這台是哪一版」→ 使用者無從判斷。
+            const h = await fetch(wu + '/health', { signal: AbortSignal.timeout(8000) }).then(r => r.ok ? r.json() : null).catch(() => null);
+            add(!!h, 'Worker 連得上', '網址可能打錯,或那台 Worker 已經被刪掉了 —— 到 Cloudflare 確認一下。');
+            if (h) L.push(`   ↳ 雲端版本:${h.ver || '(舊版,沒有版本資訊)'}`);
             const v = await fetch(wu + '/vapid', { signal: AbortSignal.timeout(8000) }).then(r => r.ok ? r.json() : null).catch(() => null);
             vapidOk = !!(v && v.key);
-            add(vapidOk, 'Worker 是最新版(有推播功能)', '你的 Worker 是舊版 → 照教學把最新的 worker.js 貼上覆蓋、重新 Deploy 一次。');
+            add(vapidOk, 'Worker 是最新版(有推播功能)',
+                '⚠️ 你的 Worker 跑的是**舊版程式**(這也是為什麼推播內容過時、不跟著 App 設定更新)。\n   → 自動更新一直失敗,已經修好了;把 Cloudflare 的 API Token 設好,重新部署一次就會更新。');
         }
         if (hasSW && hasPM) {
             // ⚠️ `navigator.serviceWorker.ready` 在**註冊失敗時永遠不會 resolve**(不是 reject)——

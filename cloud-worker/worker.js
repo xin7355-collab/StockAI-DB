@@ -259,6 +259,9 @@ function tplPriceAlert(label, sym, hitPrice, livePrice, condText) {
     ].join('\n');
 }
 
+const WORKER_VER = 'V22.3 (2026-08-11)';
+const WORKER_FEAT = ['push', 'vapid', 'names', 'sync'];   // 有 push/vapid 才支援「關 App 推播」
+
 export default {
     async fetch(request, env, ctx) {
         if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -272,7 +275,12 @@ export default {
             if (route === 'POST /sync')    return await handleSync(request, env);
             if (route === 'POST /unbind')  return await handleUnbind(request, env);
             if (route === 'POST /bot')     return await handleBot(request, env, ctx);
-            if (route === 'GET /health')   return json({ ok: true, t: Date.now() });
+            // 🩺 V73.3.3 /health 回報**版本 + 有哪些功能** —— 使用者回報「推播是過時的、
+            //   不會跟著 App 設定更新」,查下來真因是**自動部署 13 次全失敗**,
+            //   雲端跑的是 2026-07 以前手動部署的舊版(沒有 Web Push、沒有股名)。
+            //   ⛔ 舊版沒有這些欄位 → App 的體檢一問就知道「你這台是不是舊的」。
+            //   ⚠️ 改功能時記得同步 WORKER_VER,否則體檢會報錯的版本(陷阱 #9:別只看部署綠燈)。
+            if (route === 'GET /health')   return json({ ok: true, t: Date.now(), ver: WORKER_VER, feat: WORKER_FEAT });
             // 🔔 V22.3 Web Push(iOS 16.4+ PWA 關 App 推播;VAPID 金鑰自動生成,零設定)
             if (route === 'GET /vapid')       { const v = await getVapid(env); return json({ key: v.pubB64 }); }
             if (route === 'POST /push/sub')   return await handlePushSub(request, env);
