@@ -229,6 +229,55 @@ def main():
             time.sleep(0.4)
         res['per_token'][str(ti + 1)] = row
 
+    # ── ⑥ 法人買賣超能回溯多久?(決定「籌碼訊號能不能回測」)─────────────
+    # 🚨 使用者問「籌碼新增最久的日期可以到多久」。現況:`foreign_net` 只回溯到 2026/04
+    #    —— 但那**不是資料源的限制**,是 miner.py 只用它當「當天的備援」:
+    #    `start_date={d_iso}&end_date={d_iso}` 一次只抓一天。
+    #    ⭐ 如果這個資料集吃日期區間,就能一口氣回補好幾年 → 所有籌碼訊號才談得上回測。
+    # ⛔ 兩種抓法成本差很多,要實測才知道哪條可行:
+    #    (a) 不給 data_id → 一次一天、全市場(2 年約 490 次呼叫)
+    #    (b) 給 data_id + 區間 → 一次一檔多年(2,700 檔就是 2,700 次)
+    print("\n⑥ 法人買賣超的歷史深度(決定籌碼訊號能不能回測)")
+    res['inst_hist'] = {}
+    for label, extra in [
+        ('(a) 單日·全市場', {'date': '2026-08-07'}),
+        ('(b) 單檔·長區間', {'data_id': '2330', 'start_date': '2015-01-01'}),
+        ('(c) 單檔·近2年', {'data_id': '2330', 'start_date': '2024-08-01'}),
+    ]:
+        t0 = time.time()
+        rows, err, used = fm('TaiwanStockInstitutionalInvestorsBuySell', extra, tok_i=0)
+        el = time.time() - t0
+        if err:
+            print(f"   {label}: ❌ {err}")
+            res['inst_hist'][label] = {'err': err}
+            continue
+        ds = sorted({r.get('date', '') for r in rows if r.get('date')})
+        size = len(json.dumps(rows, ensure_ascii=False))
+        print(f"   {label}: ✅ {len(rows):6} 列 ・{len(ds)} 個交易日 ・{ds[0] if ds else '?'} ~ {ds[-1] if ds else '?'}"
+              f" ・{el:.1f}s ・{size/1024:.0f} KB ・用第 {used} 把")
+        if rows:
+            print(f"      欄位:{sorted(rows[0].keys())} ・樣本:{json.dumps(rows[0], ensure_ascii=False)[:130]}")
+        res['inst_hist'][label] = {'n': len(rows), 'days': len(ds),
+                                   'from': ds[0] if ds else None, 'to': ds[-1] if ds else None,
+                                   'sec': round(el, 1), 'bytes': size}
+
+    # ── ⑦ 融資券 / 借券 的歷史深度(同一個問題)─────────────────────────
+    print("\n⑦ 融資券・借券的歷史深度")
+    res['margin_hist'] = {}
+    for ds_name, extra, label in [
+        ('TaiwanStockMarginPurchaseShortSale', {'data_id': '2330', 'start_date': '2015-01-01'}, '融資融券'),
+        ('TaiwanStockSecuritiesLending', {'data_id': '2330', 'start_date': '2015-01-01'}, '借券'),
+        ('TaiwanStockShareholding', {'data_id': '2330', 'start_date': '2015-01-01'}, '外資持股比'),
+    ]:
+        rows, err, used = fm(ds_name, extra, tok_i=0)
+        if err:
+            print(f"   {label:<10} ❌ {err}")
+            res['margin_hist'][ds_name] = {'err': err}
+            continue
+        dd = sorted({r.get('date', '') for r in rows if r.get('date')})
+        print(f"   {label:<10} ✅ {len(rows):6} 列 ・{dd[0] if dd else '?'} ~ {dd[-1] if dd else '?'} ・用第 {used} 把")
+        res['margin_hist'][ds_name] = {'n': len(rows), 'from': dd[0] if dd else None, 'to': dd[-1] if dd else None}
+
     # ── ④ 空間推估 ────────────────────────────────────────────────
     ok = [v for v in res['depth'].values() if v.get('bytes')]
     if ok:
