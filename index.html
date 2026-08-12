@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.3.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.3.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.4 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.5 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6163,6 +6163,82 @@ ${list}
         const cc = (this._etfCache?.concentration || []).find(e => String(e.symbol) === c);
         return (cc && cc.name) || '';
     },
+    // 🔁 V73.3.5 大戶「來回做」—— 使用者:「籌碼不是可以看到大戶來回做,這些資訊也沒有看到」
+    //   ⭐ 資料本來就在:`chips/{sym}.json` 的 `hist` 是**逐日**分點明細(名稱/淨股數/均價),
+    //      只是既有畫面只用它算「昨日 vs 今日」→ 看不出「同一家買了又賣」。
+    //   ⛔ 只做**事實**(誰在來回、買賣均價差多少、現在站哪邊),
+    //      ⛔ 不寫「跟著做會賺」—— 那要 `broker_perf` 的實測背書(V71.7.2:
+    //      人工標籤實測會錯,「賺 X% 才出」「開高就倒」兩個假設都不成立)。
+    _brokerRoundTrip(sym) {
+        const h = (this._fenSym === sym && Array.isArray(this._fenHist)) ? this._fenHist : null;
+        if (!h || h.length < 3) return null;
+        const m = {};   // 分點 → {bLot,bAmt,bDays,sLot,sAmt,sDays}
+        for (const day of h) {
+            const acc = (arr, isBuy) => {
+                for (const e of (arr || [])) {
+                    const nm = e[0]; const shares = +e[1] || 0; const avg = +e[2] || 0;
+                    if (!nm || !shares) continue;
+                    const o = m[nm] || (m[nm] = { bLot: 0, bAmt: 0, bDays: 0, sLot: 0, sAmt: 0, sDays: 0 });
+                    const lots = Math.abs(shares) / 1000;
+                    if (isBuy) { o.bLot += lots; o.bAmt += lots * avg; o.bDays++; }
+                    else { o.sLot += lots; o.sAmt += lots * avg; o.sDays++; }
+                }
+            };
+            acc(day.b, true); acc(day.s, false);
+        }
+        const out = [];
+        for (const [nm, o] of Object.entries(m)) {
+            // 「來回做」= 買方賣方**都出現過至少 2 天**(⛔ 只出現一次那叫單邊,不是來回)
+            if (o.bDays < 2 || o.sDays < 2) continue;
+            if (o.bLot < 100 || o.sLot < 100) continue;          // 太小的不看(雜訊)
+            const bAvg = o.bAmt / o.bLot, sAvg = o.sAmt / o.sLot;
+            if (!(bAvg > 0 && sAvg > 0)) continue;
+            const done = Math.min(o.bLot, o.sLot);                // 已完成來回的張數
+            const gapPct = (sAvg - bAvg) / bAvg * 100;            // 賣均價 vs 買均價
+            out.push({
+                nm, bLot: o.bLot, sLot: o.sLot, bAvg, sAvg, done, gapPct,
+                net: o.bLot - o.sLot, days: o.bDays + o.sDays,
+            });
+        }
+        // 排序:來回量大的在前
+        out.sort((a, b) => b.done - a.done);
+        return { rows: out.slice(0, 6), n: h.length, from: h[0]?.d, to: h[h.length - 1]?.d };
+    },
+    _brokerRoundTripHtml(sym) {
+        const r = this._brokerRoundTrip(sym);
+        if (!r || !r.rows.length) return '';    // ⛔ 沒有就整塊不顯(不留空殼)
+        const nf = v => Math.round(v).toLocaleString();
+        const rows = r.rows.map(x => {
+            const short = String(x.nm).replace(/\(.*?\)/g, '').slice(0, 8);
+            // 🎨 賺賠用紅綠(這是「賺/賠」不是漲跌方向 → 照台股慣例紅=賺)
+            const gCls = x.gapPct >= 0 ? 'text-red-300' : 'text-green-300';
+            const side = x.net > 50 ? '<span class="text-red-300">目前偏買</span>'
+                : x.net < -50 ? '<span class="text-green-300">目前偏賣</span>'
+                : '<span class="text-gray-400">進出打平</span>';
+            return `<div class="py-1 border-b border-[#21262d] last:border-0">
+                <div class="flex items-baseline gap-2 text-[11px]">
+                    <span class="font-bold text-gray-100 truncate flex-1 min-w-0">${short}</span>
+                    <span class="font-mono text-gray-500 flex-shrink-0">買 ${nf(x.bLot)} / 賣 ${nf(x.sLot)} 張</span>
+                </div>
+                <div class="flex items-baseline gap-2 text-[10px] mt-0.5">
+                    <span class="text-gray-500 flex-1 min-w-0">買均 <b class="font-mono text-gray-300">${x.bAvg.toFixed(1)}</b> → 賣均 <b class="font-mono text-gray-300">${x.sAvg.toFixed(1)}</b></span>
+                    <span class="font-mono font-black ${gCls} flex-shrink-0">${x.gapPct >= 0 ? '+' : ''}${x.gapPct.toFixed(1)}%</span>
+                    <span class="flex-shrink-0">${side}</span>
+                </div>
+            </div>`;
+        }).join('');
+        return `<details class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+            <summary class="text-[12px] font-bold text-gray-100 cursor-pointer">🔁 大戶來回做 <span class="text-[9px] text-gray-500 font-normal">(近 ${r.n} 個交易日,同一家買了又賣的前 ${r.rows.length} 家)</span></summary>
+            <div class="mt-2">${rows}</div>
+            <div class="text-[9px] text-gray-600 mt-2 leading-snug">
+                💡 <b class="text-gray-400">怎麼看</b>:「買均 → 賣均」中間那個 % 是<b class="text-gray-400">它這一趟做得賺不賺</b>(正=賣得比買貴)。<br>
+                ⚠️ <b class="text-gray-400">⛔ 不要直接跟著做</b>,三個理由:①這是<b>已經發生</b>的進出,你看到時它可能做完了
+                ②很多來回量大的是<b>權證避險/造市</b>分點,它買賣是為了避險不是看多空
+                ③只有 ${r.n} 個交易日,而且<b class="text-gray-400">跟單會不會賺,本 App 沒有驗證過</b>。<br>
+                📌 真正驗證過的在「券商」頁的<b class="text-gray-400">券商勝率榜</b>(那個有前瞻回測)。
+            </div>
+        </details>`;
+    },
     async renderEtfFollowCard(sym) {
         const card = document.getElementById('etfFollowCard');
         if (!card) return;
@@ -7201,8 +7277,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.3.4',
+    _APP_VERSION: 'V73.3.5',
     _CHANGELOG: [
+        { v: 'V73.3.5', dt: '2026-08-12', t: '📊 籌碼補「最後一天」+ 大戶來回做 + 壓力價提醒', d: ['大戶籌碼總結多了「最後一天」的法人買賣超 —— 連賣之後轉買(俗稱認錯回補)現在看得到了。','籌碼頁新增「🔁 大戶來回做」:同一家分點買了又賣、買均價賣均價差多少,一眼看完。','到價監控新增「🧱 壓力價快設」,跟上檔空間那張卡用同一組數字。'] },
         { v: 'V73.3.4', dt: '2026-08-11', t: '🧩 個股頁看得到「被哪些 ETF 抱、各佔多少」', d: ['個股頁新增:這檔被幾支 ETF 持有、在每一支裡各佔多少比例,並換算成「買 1 萬元那支 ETF 等於買到多少錢這一檔」。','ETF 追蹤從 4 支擴到 17 支(0050／0056／00878／00919／00929 等主流都納入),市值型的完整成分股也開始保留。'] },
         { v: 'V73.3.3', dt: '2026-08-11', t: '🩺 推播體檢會告訴你「雲端那台是哪一版」', d: ['體檢多顯示雲端主機的版本 —— 推播內容過時、不跟著設定更新,多半是它停在舊版。'] },
         { v: 'V73.3.2', dt: '2026-08-11', t: '🩺 推播收不到?按一下就知道卡在哪', d: ['設定中心的推播那一列多了「🩺 體檢」按鈕,會逐項檢查並直接告訴你要先修哪一個。','同時說清楚:關掉 App 時只會推「庫存停損」和「到價提醒」兩種,其他提醒要 App 開著。'] },
@@ -12731,7 +12808,21 @@ const marginByDate = {};
             if (ps[10].hasInst) {
                 const fWord = f10 > 0 ? '買超' : f10 < 0 ? '賣超' : '持平';
                 const fStreakTxt = fSt.n >= 3 ? `,已<b class="${fSt.dir > 0 ? 'text-red-300' : 'text-green-300'}">連 ${fSt.n} 天${fSt.dir > 0 ? '買' : '賣'}</b>(連續方向比單日更重要)` : '';
-                lines.push(`🏛️ <b>外資</b>(最大咖):10日${fWord} <b class="${f10 >= 0 ? 'text-red-300' : 'text-green-300'}">${sgn(f10)}</b> 張、近3日 ${sgn(f3)} 張${fStreakTxt}。`);
+                // 🆕 V73.3.5 使用者:「有 3 日、10 日大賣,**前 1 日買進訊號沒有**」
+                //   ⚠️ `ps[1]` 本來就算了,只是**從來沒顯示過** —— 而「昨天單日」正是
+                //      分析師口中「外資認錯回補」的那個轉折點,10 日/3 日的加總會把它蓋掉。
+                const f1 = ps[1].foreign, t1 = ps[1].trust, d1 = ps[1].dealer;
+                const day1 = f1 + t1 + d1;
+                lines.push(`🏛️ <b>外資</b>(最大咖):10日${fWord} <b class="${f10 >= 0 ? 'text-red-300' : 'text-green-300'}">${sgn(f10)}</b> 張、近3日 ${sgn(f3)} 張、<b>最後一天</b> <b class="${f1 >= 0 ? 'text-red-300' : 'text-green-300'}">${sgn(f1)}</b> 張${fStreakTxt}。`);
+                // 🔄 「連賣之後轉買」= 分析師講的「認錯回補」。
+                //   ⛔⛔ 只做**事實描述**,不下方向 —— 籌碼歷史只回溯到 2026/04(約 60 個交易日,
+                //   而且全落在同一段行情)→ **根本沒有樣本可以回測**「轉買之後會不會漲」。
+                //   ⚠️ 這條鐵則跟 V72.1.6 一樣:算術事實可以顯示,預測性主張一定要先實測。
+                if (ps[10].hasInst && f10 < -1000 && f1 > 0) {
+                    lines.push(`🔄 <b class="text-yellow-300">連賣之後最後一天轉買</b>(10日賣 ${Math.abs(Math.round(f10)).toLocaleString()} 張,但最後一天買 ${Math.round(f1).toLocaleString()} 張)—— 這就是常聽到的「<b>外資認錯回補</b>」講法。<br><span class="text-[10px] text-gray-500">⚠️ 但這只是<b class="text-gray-400">今天的事實</b>:單日轉買可能是回補空單、也可能只是換手。它到底會不會漲,<b class="text-gray-400">本 App 沒有驗證過</b>(籌碼歷史只有 60 個交易日、全在同一段行情,回測不了)→ ⛔ 別當進場訊號,要看<b class="text-gray-400">連續 2~3 天同方向</b>才算數。</span>`);
+                } else if (ps[10].hasInst && f10 > 1000 && f1 < 0) {
+                    lines.push(`🔄 <b class="text-yellow-300">連買之後最後一天轉賣</b>(10日買 ${Math.round(f10).toLocaleString()} 張,但最後一天賣 ${Math.abs(Math.round(f1)).toLocaleString()} 張)—— <span class="text-[10px] text-gray-500">同樣只是事實,單日轉向可能只是調節;⛔ 要連續 2~3 天才算數。</span>`);
+                }
                 const inWord = (t10 + d10) > 0 ? '站買方' : (t10 + d10) < 0 ? '站賣方' : '沒動作';
                 lines.push(`🧑‍💼 <b>投信+自營</b>(內資):10日投信 ${sgn(t10)}、自營 ${sgn(d10)} 張 → 內資${inWord}${tSt.n >= 3 ? `,投信<b class="${tSt.dir > 0 ? 'text-red-300' : 'text-green-300'}">連 ${tSt.n} 天${tSt.dir > 0 ? '買' : '賣'}</b>` : ''}。`);
             }
@@ -23514,7 +23605,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const _totLots2 = _tShares ? _tShares / 1000 : null;
         const capPct = (_totLots2 && netLots) ? (netLots / _totLots2 * 100) : null;
         const turnPct = (_totLots2 && periodVolLots > 0) ? (periodVolLots / _totLots2 * 100) : null;
-        box.innerHTML = switcher + `
+        const rtHtml = this._brokerRoundTripHtml(sym);   // 🔁 V73.3.5 大戶來回做
+        box.innerHTML = switcher + rtHtml + `
         <!-- 主力動向(專業版:大字方向 + 右側數據 + 買賣比例條)-->
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
             <div class="flex items-start justify-between gap-3">
@@ -42605,6 +42697,27 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         this.vibrate?.(15);
         this._renderPriceAlertModal();
     },
+    // 🧱 V73.3.5 壓力價快設 —— 使用者:「到價監控新增壓力價格提醒」
+    //   ⛔ 鐵則:壓力價**只讀 `_upsideRoom` 統一算好的那一份**(`_upsideStash`),
+    //      ⛔ 絕不自己再算一套 —— 不然同一個「壓力價」在兩個地方會有兩個數字
+    //      (CLAUDE.md 連動清單白紙黑字寫著這條)。
+    //   ⚠️ `_upsideStash` 是**開過那一檔的個股頁**才會有 → 沒有時誠實說,⛔ 不硬給。
+    _paResistList() {
+        const sym = this._paCurrentSym;
+        const u = this._upsideStash;
+        if (!u || !Array.isArray(u.list) || !u.list.length) return null;
+        if (sym && this.currentSymbolId && String(sym) !== String(this.currentSymbolId)) return null;   // 防跨股殘留
+        return u.list.slice(0, 4);
+    },
+    _paQuickSetResist(idx) {
+        const l = this._paResistList();
+        if (!l || !l[idx]) { this.showToast?.('先在個股頁看過這檔,才算得出壓力價'); return; }
+        const target = this._roundTick(l[idx].v);
+        this._paPrice = target;
+        this._paCond = 'gte';                    // 壓力價一定在上方 → 「漲到」才提醒
+        this.vibrate?.(15);
+        this._renderPriceAlertModal();
+    },
     // 🔎 V48.4 — 到價監控搜尋改股:輸入代號或股名 → 換成該股(反查 allStockList),補抓現價
     async _paSearchStock(q) {
         q = String(q || '').trim();
@@ -42740,6 +42853,15 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                     <div class="text-[11px] text-blue-300 font-bold mb-2">📐 均線快設<span class="text-[9px] text-gray-500 font-normal">(觸發價設成該股均線現值)</span></div>
                     <div class="flex flex-wrap gap-1.5">${maChip(5, '5 日線')}${maChip(10, '10 日線')}${maChip(20, '20 日線(月線)')}</div>
                 </div>` : '';
+        // 🧱 V73.3.5 壓力價快設(使用者要求)—— 讀「上檔空間」那張卡算好的同一組數字,⛔ 不重算
+        const _rl = sym ? this._paResistList() : null;
+        const resRow = sym ? `
+                <div class="bg-[#0d1117] border border-amber-900/40 rounded-lg p-2.5">
+                    <div class="text-[11px] text-amber-300 font-bold mb-2">🧱 壓力價快設<span class="text-[9px] text-gray-500 font-normal">(漲到就提醒你「可能上不去」)</span></div>
+                    ${_rl ? `<div class="flex flex-wrap gap-1.5">${_rl.map((x, i) => `<button onclick="app._paQuickSetResist(${i})" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold border bg-amber-900/25 text-amber-200 border-amber-800/50 whitespace-nowrap" title="${x.src || ''}">${x.n} <span class="font-mono">${(+x.v).toFixed(2)}</span></button>`).join('')}</div>
+                       <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">跟「📐 上檔空間 ・ 防守價」<b class="text-gray-500">同一組數字</b>(前高／套牢區／目標價),⛔ 不是另外算的。<br>⚠️ 壓力價是<b class="text-gray-500">「可能上不去」的提醒</b>,不是賣出訊號 —— 帶量過了反而是強勢。</div>`
+                      : `<div class="text-[10px] text-gray-500 leading-snug">先到<b class="text-gray-400">個股頁</b>看一下這檔(總覽 → 進場),壓力價算好之後這裡就會出現一鍵設定。<br><span class="text-gray-600">⛔ 這裡刻意不自己算一份 —— 同一個壓力價全 App 只能有一個數字。</span></div>`}
+                </div>` : '';
         const lazyRow = cur != null ? `
                 <div class="bg-[#0d1117] border border-cyan-900/40 rounded-lg p-2.5">
                     <div class="text-[11px] text-cyan-300 font-bold mb-2">💤 懶人快設<span class="text-[9px] text-gray-500 font-normal">(依現價 ${cur.toFixed(2)} 一鍵算,免慢慢按)</span></div>
@@ -42771,6 +42893,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 </div>
                 ${lazyRow}
                 ${maRow}
+                ${resRow}
                 <div>
                     <div class="text-[11px] text-gray-400 mb-1.5 font-bold">觸發條件</div>
                     <div class="flex gap-2">
