@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.3.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.3 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.4 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6146,6 +6146,23 @@ ${list}
         </div>`;
     },
 
+    // 🧩 V73.3.4 這檔在每一支 ETF 裡各佔多少 %(採礦端 `cross_ref.weights`,零額外請求)
+    //   ⚠️ 名稱一律走 `getStockName`,⛔ 採礦端不存第二份(存兩份會不同步 —— V72.2.0 的教訓)。
+    _etfWeightsForStock(sym) {
+        const w = this._etfCache?.cross_ref?.weights?.[String(sym)];
+        if (!w) return [];
+        return Object.entries(w)
+            .filter(([, v]) => Number.isFinite(+v) && +v > 0)
+            .map(([etf, v]) => ({ etf, w: +v, name: this._etfNameOf ? this._etfNameOf(etf) : '' }))
+            .sort((a, b) => b.w - a.w);
+    },
+    _etfNameOf(code) {
+        const c = String(code);
+        const hit = (this._etfCache?.etfs || []).find(e => String(e.symbol) === c);
+        if (hit && hit.name) return hit.name;
+        const cc = (this._etfCache?.concentration || []).find(e => String(e.symbol) === c);
+        return (cc && cc.name) || '';
+    },
     async renderEtfFollowCard(sym) {
         const card = document.getElementById('etfFollowCard');
         if (!card) return;
@@ -6155,7 +6172,13 @@ ${list}
             try { await this._loadEtfTracking(); } catch(_) {}
         }
         const actions = this._etfActionsForStock(sym);
-        if (!actions.length) { card.classList.add('hidden'); return; }
+        // ⭐ V73.3.4 使用者要求「買入個股的個股全部比例」= 站在個股頁問
+        //   「我這檔在每一支 ETF 裡各佔多少 %」。
+        //   ⛔ 舊版只要「今天沒有換入/加碼/減碼/換出」就整張卡藏起來 →
+        //      被 10 檔 ETF 抱著的權值股,平常什麼都看不到。
+        //   → 有權重也要顯示(⛔ 但仍維持「沒資料就整張不顯」,不留空殼)。
+        const wRow = this._etfWeightsForStock(sym);
+        if (!actions.length && !wRow.length) { card.classList.add('hidden'); return; }
         const updated = String(this._etfCache?.updated || '').replace(/\//g, '-') || '—';
         // 進場價:從 activeData 找日期 <= updated 的最後一筆(不依賴 array 順序,且 normalize 日期格式)
         let entryPx = null, entryDate = '';
@@ -6235,6 +6258,22 @@ ${list}
             else                         _techBadge = '<span class="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400 border border-[#30363d] font-bold">⚖️ 均線糾結</span>';
         }
         const trustWidget = this._renderTrustMomentumWidget(sym, this.getStockName(sym), _techBadge, _trustAna);
+        // 🧩 V73.3.4「這檔在哪些 ETF、各佔多少」——⛔ 併進既有這張卡,不開新卡片。
+        //   ⭐ 使用者鐵則「% 一定要配元/實體意義」→ 這裡配的是「買 1 萬元那支 ETF,等於買到這檔多少錢」。
+        const wBlock = wRow.length ? `
+            <details class="bg-[#0d1117] border border-[#30363d] rounded p-2 mb-2" ${wRow.length <= 4 ? 'open' : ''}>
+                <summary class="text-[11px] text-amber-200 font-bold cursor-pointer">🧩 這檔被 <b class="text-amber-300">${wRow.length}</b> 支 ETF 持有 ・ 各佔多少比例
+                    <span class="text-[9px] text-gray-500 font-normal">(點開看全部)</span></summary>
+                <div class="mt-1.5 space-y-0.5">
+                    ${wRow.map(r => `<div class="flex items-center gap-2 text-[11px] py-0.5 border-b border-[#21262d]">
+                        <span class="font-mono font-bold text-gray-100 flex-shrink-0 w-14">${r.etf}</span>
+                        <span class="text-gray-400 truncate flex-1 min-w-0">${r.name || ''}</span>
+                        <span class="flex-shrink-0 w-16 h-1.5 bg-[#21262d] rounded-full overflow-hidden"><span class="block h-full bg-amber-500" style="width:${Math.min(100, r.w * 2).toFixed(0)}%"></span></span>
+                        <span class="font-mono font-black text-amber-200 flex-shrink-0 w-12 text-right">${r.w.toFixed(2)}%</span>
+                    </div>`).join('')}
+                </div>
+                <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">💡 怎麼看:${wRow[0].etf} 佔 ${wRow[0].w.toFixed(2)}% = 你買那支 ETF <b>1 萬元</b>,裡面約有 <b class="text-gray-400">${Math.round(wRow[0].w * 100).toLocaleString()} 元</b>是這一檔。<br>⚠️ 權重每天隨股價與經理人調整而變;⛔ 這是<b>持有比例</b>不是買賣訊號。</div>
+            </details>` : '';
         card.innerHTML = `
             <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-amber-700/40">
                 <h4 class="text-amber-300 font-bold text-sm">🚦 ETF 跟車狀態</h4>
@@ -6253,6 +6292,7 @@ ${list}
                     </div>
                 </div>
             </div>
+            ${wBlock}
             <div class="text-[10px] text-gray-500 mb-1">📊 動作明細 ・ 換入 ${cntIn} ・ 加碼 ${cntUp} ・ 減碼 ${cntDn} ・ 換出 ${cntOut}</div>
             <div>${rowsHtml}</div>
             <div class="mt-2 px-2 py-1.5 rounded border ${verdict.cls} text-[11px] leading-snug">${verdict.txt}</div>
@@ -7161,8 +7201,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.3.3',
+    _APP_VERSION: 'V73.3.4',
     _CHANGELOG: [
+        { v: 'V73.3.4', dt: '2026-08-11', t: '🧩 個股頁看得到「被哪些 ETF 抱、各佔多少」', d: ['個股頁新增:這檔被幾支 ETF 持有、在每一支裡各佔多少比例,並換算成「買 1 萬元那支 ETF 等於買到多少錢這一檔」。','ETF 追蹤從 4 支擴到 17 支(0050／0056／00878／00919／00929 等主流都納入),市值型的完整成分股也開始保留。'] },
         { v: 'V73.3.3', dt: '2026-08-11', t: '🩺 推播體檢會告訴你「雲端那台是哪一版」', d: ['體檢多顯示雲端主機的版本 —— 推播內容過時、不跟著設定更新,多半是它停在舊版。'] },
         { v: 'V73.3.2', dt: '2026-08-11', t: '🩺 推播收不到?按一下就知道卡在哪', d: ['設定中心的推播那一列多了「🩺 體檢」按鈕,會逐項檢查並直接告訴你要先修哪一個。','同時說清楚:關掉 App 時只會推「庫存停損」和「到價提醒」兩種,其他提醒要 App 開著。'] },
         { v: 'V73.3.1', dt: '2026-08-11', t: '🐛 點櫃買指數 / 台指電子盤會跳錯誤 — 修好了', d: ['點那兩格會跳「JS 錯誤」的問題已修,現在會正常跳出說明。','同一個原因的第二處(融資追繳的「這是什麼」)一併修掉。'] },

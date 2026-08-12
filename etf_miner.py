@@ -39,7 +39,18 @@ BENCHMARKS = ["0050", "0056", "00878"]
 # 🆕 缺口7(12-3 市值型集中度):市值型 ETF 單一成分股集中度對照。
 #   逐字稿核心例:0050 台積電佔約 5 成(買 0050 等於買半個台積電)vs 00922 等權重降到約 1 成。
 #   抓這幾檔的 holdings 算 top1 集中度,讓使用者一眼看出「集中 vs 分散」。
-CONC_WATCH = ["0050", "006208", "00922", "00923"]
+# ⭐ V73.3.4 使用者要求「ETF 新增成分股 + 比例」→ 這份清單從 4 檔擴到台股主流被動式 ETF。
+#   ⚠️ 每多一檔就多打一次 etfinfo(每天一次、無金鑰)→ 成本可忽略;
+#      體積實測每檔成分股約 50 筆 × ~40 bytes ≈ 2 KB,20 檔約 40 KB(gh-pages 完全吃得下)。
+#   ⛔ 抓不到的那一檔會自己跳過,不影響其他檔(既有 try/except 已保證)。
+CONC_WATCH = [
+    "0050", "006208",                        # 市值型(台灣 50)
+    "0056", "00878", "00919", "00929", "00713",   # 高股息
+    "00922", "00923",                        # ESG / 低碳(等權重對照)
+    "00891", "00892", "00881",               # 半導體 / 5G 主題
+    "00757", "00830",                        # 美股科技(成分股是美股,權重照樣有用)
+    "006201", "00733",                       # 櫃買 / 中小型
+]
 
 # 🆕 缺口4(12-5 資產配置分層):ETF 類型。只標「可確定」的,未知不標(避免誤分類)。
 #   主動型由代號規則(00\d{3}A)判定;其餘查此已知字典。
@@ -587,6 +598,10 @@ def main():
     print(f"🏆 績效前段班取前 {len(top)} 檔")
 
     etfs, by_stock, hot = [], {}, {}
+    # ⭐ V73.3.4 `_w_ref[個股][ETF] = 權重%` —— 使用者要「買入個股的個股全部比例」,
+    #   也就是站在個股頁問「我這檔在每一支 ETF 裡各佔多少」。
+    #   ⛔ 舊版 by_stock 只有 ETF 代號清單、**沒有比例** → 看得到有誰買、看不出買多重。
+    _w_ref = {}
     got_holdings = 0
     price_cache = {}  # 個股最新 close 共用 cache(估算張數時避免重讀 JSON)
     for s, m in top:
@@ -645,6 +660,7 @@ def main():
         for h in curr_h:
             if h.get("sym"):
                 by_stock.setdefault(h["sym"], []).append(s)
+                _w_ref.setdefault(h["sym"], {})[s] = h.get("weight")
         for h in changes["added"]:
             if h.get("sym"):
                 hot[h["sym"]] = hot.get(h["sym"], 0) + 1
@@ -784,8 +800,19 @@ def main():
                 "top1": {"sym": t1.get("sym"), "name": t1.get("name"), "weight": t1.get("weight")},
                 "top5_weight": top5w,
                 "holdings_count": len(c_holds),
+                # ⭐ V73.3.4 使用者要求「新增成分股 + 比例」——
+                #   ⛔ 舊版把 c_holds 抓下來、算完 top1/top5 就**整包丟掉**,
+                #      所以市值型 ETF(0050 等)在前端連一張成分股清單都看不到。
+                #   ⚠️ 名稱不存(前端 `getStockName` 已有全市場對照,存兩份會不同步 —— 同 V72.2.0 的教訓)。
+                "holdings": [{"sym": h.get("sym"), "weight": h.get("weight")}
+                             for h in c_holds if h.get("sym")],
             })
-            print(f"  ✓ [集中度] {cs}: top1={t1.get('sym')} {t1.get('weight')}% / top5={top5w}%")
+            # 🔁 市值型也併進「個股 → 有哪些 ETF 持有」的反查表(以前只有主動式進得去)
+            for h in c_holds:
+                if h.get("sym"):
+                    by_stock.setdefault(h["sym"], []).append(cs)
+                    _w_ref.setdefault(h["sym"], {})[cs] = h.get("weight")
+            print(f"  ✓ [集中度] {cs}: top1={t1.get('sym')} {t1.get('weight')}% / top5={top5w}% ・成分股 {len(c_holds)} 檔")
         except Exception as _ce:
             print(f"  ⚠️ [集中度] {cs}: {type(_ce).__name__}: {str(_ce)[:80]}")
 
@@ -799,6 +826,10 @@ def main():
         "etfs": etfs,
         "cross_ref": {
             "by_stock": by_stock,
+            # ⭐ V73.3.4 個股 → {ETF: 佔該 ETF 的權重%}(主動式 + 市值型都在裡面)
+            #   ⚠️ 只留有權重的,⛔ 不填 0 冒充(抓不到就是抓不到,前端會誠實顯「—」)
+            "weights": {k: {a: b for a, b in v.items() if b is not None}
+                        for k, v in _w_ref.items() if any(x is not None for x in v.values())},
             "hot_adds": sorted(
                 [{"sym": k, "count": v} for k, v in hot.items() if v >= 2],
                 key=lambda x: -x["count"]),
