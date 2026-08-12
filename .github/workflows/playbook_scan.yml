@@ -15,9 +15,22 @@ name: 🎯 明日作戰清單 (playbook_scan)
 #    → 明天 daily_miner deploy 的 `git archive origin/data` 鋪底層時會自動保留,
 #      不會被 orphan force-push 洗掉(同 fund_sweep.py 的做法)。
 
+# 🚨 V73.3.7 使用者回報「會賺訊號的資料都不會更新」——
+#   查證:這支從 2026-08-08 上線到 08-12,**排程一次都沒觸發過**(total_count=1,
+#   那 1 次還是我手動 dispatch 的)→ 清單停在 08/10,整整兩天沒動。
+#   ⛔ 真因不是程式壞掉,是**只靠 cron**:
+#     ① `0 11` 正好是整點 —— GitHub 官方文件自己講排程在整點負載尖峰**會被延遲甚至丟掉**
+#     ② 排程本來就是 best-effort,沒有任何重試,掉了也不會通知你
+#   ⭐ 修法:**改成掛在每日採礦完成之後**(那支跑了 354 次、排程 100% 正常),
+#      cron 降級成備援、而且錯開整點。這樣還順便解決一個時序問題:
+#      本來 cron 11:00 是「賭」採礦(08:30 開跑、30-60 分)已經跑完;
+#      現在是**確定跑完才開始**,一定讀得到當天收盤資料。
 on:
+  workflow_run:
+    workflows: ["🤖 每日籌碼採礦機 (平行宇宙版)"]
+    types: [completed]
   schedule:
-    - cron: '0 11 * * 1-5'
+    - cron: '17 11 * * 1-5'
   workflow_dispatch:
     inputs:
       max_syms:
@@ -37,6 +50,14 @@ jobs:
   scan:
     name: 🎯 全市場打法掃描
     runs-on: ubuntu-latest
+    # ⛔ 掛 workflow_run 之後要擋兩種情況,否則會白跑 25 分鐘:
+    #   ① 採礦**失敗**了 → 資料不完整,掃了也是垃圾
+    #   ② 採礦是被 **push 觸發**的(改 miner.py 一天可能好幾次)→ 只跟排程那一輪
+    # ⚠️ 手動 dispatch 與 cron 備援不受這個 if 影響(它們的 event 不是 workflow_run)
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'schedule')
     timeout-minutes: 75   # 掃描 ~25 分 + 還原資料 ~5 分 + 安裝 ~3 分,給足餘裕
     steps:
       - name: 📥 下載程式碼 (main)

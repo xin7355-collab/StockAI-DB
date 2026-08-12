@@ -253,10 +253,45 @@ def check_finmind_token_normalize():
     return True
 
 
+def check_workflow_run_names():
+    """🔗 `workflow_run` 引用的 workflow 名稱必須**完全等於**對方的 `name:`。
+
+    🚨 V73.3.7 起 playbook_scan 掛在 daily_miner 完成之後跑。
+       ⛔ 名稱只要差一個字(空格、全形括號、emoji)→ **永遠不會觸發**,
+          而且 GitHub **不會報錯、不會警告** —— 跟排程被丟掉一樣安靜。
+       (playbook_scan 就是因為只靠 cron,4 天一次都沒跑,使用者才發現清單不更新。)
+    """
+    import re
+    names = {}
+    for f in sorted(WF_DIR.glob('*.yml')) + sorted(WF_DIR.glob('*.yaml')):
+        m = re.search(r'^name:\s*(.+?)\s*$', f.read_text(encoding='utf-8', errors='ignore'), re.M)
+        if m:
+            names[m.group(1).strip().strip('"\'')] = f.name
+    bad = []
+    for f in sorted(WF_DIR.glob('*.yml')) + sorted(WF_DIR.glob('*.yaml')):
+        txt = f.read_text(encoding='utf-8', errors='ignore')
+        m = re.search(r'workflow_run:\s*\n\s*workflows:\s*\[(.*?)\]', txt)
+        if not m:
+            continue
+        for raw in m.group(1).split(','):
+            ref = raw.strip().strip('"\'')
+            if ref and ref not in names:
+                bad.append((f.name, ref))
+    if bad:
+        print('❌ 🔗 workflow_run 引用了不存在的 workflow 名稱(會靜默永不觸發):')
+        for fn, ref in bad:
+            print(f'   • {fn} 引用 {ref!r}')
+        print('   → 名稱要**逐字**等於對方檔案的 `name:`(含 emoji 與空格)')
+        return False
+    print('✅ workflow_run 引用的名稱都對得上')
+    return True
+
+
 if __name__ == '__main__':
     ok = check_inline_comments()
     ok = check_outputs_uploaded() and ok
     ok = check_script_secrets() and ok
     ok = check_no_trading_in_ci() and ok
     ok = check_finmind_token_normalize() and ok
+    ok = check_workflow_run_names() and ok
     sys.exit(0 if ok else 1)
