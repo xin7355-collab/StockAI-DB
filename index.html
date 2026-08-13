@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.3.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.3.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.5 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7277,8 +7277,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.3.5',
+    _APP_VERSION: 'V73.3.6',
     _CHANGELOG: [
+        { v: 'V73.3.6', dt: '2026-08-12', t: '📊 籌碼訊號第一次有實測成績了', d: ['法人買賣超的歷史從 60 天補到約 3 年(2,613 檔)—— 以前樣本不夠、什麼都驗不了,現在可以驗了。','籌碼卡新增「實測成績」:今天出現的法人型態,歷史上到底有沒有用、勝率多少、樣本幾次,一次講清楚。','⛔ 誠實結果:分析師常講的「外資認錯回補」實測等於沒用(邊際 -0.04pp,而且前後半段方向相反)。','✅ 真正有用的是「外資+投信同一天都買」(20 日多賺 0.99%、勝率 40.3% 對基準 34.6%),扣掉手續費還是正的。','「明日作戰清單」不再會停更 —— 改成採礦跑完自動接著跑,排程只當備援。'] },
         { v: 'V73.3.5', dt: '2026-08-12', t: '📊 籌碼補「最後一天」+ 大戶來回做 + 壓力價提醒', d: ['大戶籌碼總結多了「最後一天」的法人買賣超 —— 連賣之後轉買(俗稱認錯回補)現在看得到了。','籌碼頁新增「🔁 大戶來回做」:同一家分點買了又賣、買均價賣均價差多少,一眼看完。','到價監控新增「🧱 壓力價快設」,跟上檔空間那張卡用同一組數字。'] },
         { v: 'V73.3.4', dt: '2026-08-11', t: '🧩 個股頁看得到「被哪些 ETF 抱、各佔多少」', d: ['個股頁新增:這檔被幾支 ETF 持有、在每一支裡各佔多少比例,並換算成「買 1 萬元那支 ETF 等於買到多少錢這一檔」。','ETF 追蹤從 4 支擴到 17 支(0050／0056／00878／00919／00929 等主流都納入),市值型的完整成分股也開始保留。'] },
         { v: 'V73.3.3', dt: '2026-08-11', t: '🩺 推播體檢會告訴你「雲端那台是哪一版」', d: ['體檢多顯示雲端主機的版本 —— 推播內容過時、不跟著設定更新,多半是它停在舊版。'] },
@@ -12866,6 +12867,7 @@ const marginByDate = {};
                     ${lines.map(l => `<div>${l}</div>`).join('')}
                 </div>
                 ${(() => { try { return this._chipConsensusLine(sym, sc); } catch (_) { return ''; } })()}
+                ${(() => { try { return this._chipEdgeHtml(sym); } catch (_) { return ''; } })()}
                 <div id="chipCleanSlot" class="mt-2"></div>
                 <div id="chipOvernightSlot" class="mt-2"></div>
                 <div class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[12px] text-gray-100 leading-relaxed"><b class="${bigCls}">💡 操作:</b>${act}</div>
@@ -12886,6 +12888,107 @@ const marginByDate = {};
     //   ⛔ 不新開卡、⛔ 不改任何一個子指標的數字(那會失真);只做「收斂 + 點出分歧」。
     //   ⚠️ 每一項都要標**時間範圍**(今日 / 近5日 / 近10日)—— 這正是 V72.1.3 那次
     //      「今日 vs 近5日 被當成同一件事」的教訓。
+    // 📊 V73.3.8 — 籌碼訊號**實測成績**(`scripts/chip_probe.py`,2,002 檔 / 3 年 / 對照組 70,098 筆)
+    //   ⭐ 這張表在 V73.3.6 之前**做不出來** —— `foreign_net` 那時只有 60 天,而且全落在同一段
+    //      下跌行情,CLAUDE.md 明寫「樣本不足以回測」。回補到 765~786 天之後才第一次驗得動。
+    //   ⚠️ 基準勝率 **34.6%**(⛔ 不是 50%)—— 超額報酬是對**市值加權**的加權指數算的,
+    //      中位數個股本來就跑輸(同 `_SIGNAL_EDGE` 的 36.4%)。
+    //   ⛔ 六道關卡:對照組同母體不抽樣 ・20日去重 ・扣同期大盤 ・前後半段同向 ・
+    //      拿掉貢獻最大的月份仍成立 ・反向檢定方向要相反。少一條就標成「不成立」。
+    //   [20日邊際pp, 20日勝率%, n, 前半pp, 後半pp, 拿掉最好月份pp, 過關與否]
+    _CHIP_EDGE: {
+        both:   { e: 0.99, w: 40.3, n: 10761, h1: 0.38, h2: 1.59, dm: 0.90, ok: 1,
+                  t: '外資+投信同一天都買' },
+        bothRe: { e: 1.06, w: 39.3, n: 4411,  h1: 0.37, h2: 1.58, dm: 0.98, ok: 1,
+                  t: '外資連賣後轉買・而且投信也買' },
+        re3:    { e: -0.04, w: 34.8, n: 35242, h1: 0.02, h2: -0.05, dm: -0.05, ok: 0,
+                  t: '外資連賣3天以上後轉買(「認錯回補」)' },
+        re8:    { e: 0.32, w: 34.3, n: 6220,  h1: 0.35, h2: 0.25, dm: 0.23, ok: 2,
+                  t: '外資連賣8天以上後轉買' },
+        buy4:   { e: 0.22, w: 36.4, n: 26006, h1: 0.26, h2: 0.33, dm: 0.14, ok: 2,
+                  t: '外資連買4天' },
+        marginOut: { e: 0.21, w: 35.9, n: 32671, h1: 0.17, h2: 0.30, dm: 0.19, ok: 2,
+                  t: '外資買・同時融資5日減3%以上(散戶退場)' },
+    },
+    _CHIP_EDGE_META: { base: 34.6, files: 2002, ctrl: 70098, cost: 0.44, from: '2023-06', to: '2026-08' },
+
+    // 判斷「今天這一根」命中哪個實測過的籌碼型態。⛔ 純公式,不下買賣指令。
+    _chipEdgeState(sym) {
+        try {
+            const a = this.rawDailyData || [];
+            if (a.length < 20) return null;
+            const i = a.length - 1;
+            const f0 = a[i].foreign_net, t0 = a[i].trust_net;
+            if (f0 == null) return null;
+            // 連賣天數:⛔ 從昨天起算,不含今天
+            let sell = 0;
+            for (let k = i - 1; k >= Math.max(i - 15, 0); k--) {
+                const v = a[k].foreign_net;
+                if (v != null && v < 0) sell++; else break;
+            }
+            let buy = 0;
+            for (let k = i - 1; k >= Math.max(i - 15, 0); k--) {
+                const v = a[k].foreign_net;
+                if (v != null && v > 0) buy++; else break;
+            }
+            const hits = [];
+            if (f0 > 0 && t0 != null && t0 > 0) hits.push(sell >= 3 ? 'bothRe' : 'both');
+            if (f0 > 0 && sell >= 8) hits.push('re8');
+            else if (f0 > 0 && sell >= 3) hits.push('re3');
+            if (f0 > 0 && buy >= 3) hits.push('buy4');
+            const mb = a[i].margin_balance, mb5 = a[Math.max(i - 5, 0)].margin_balance;
+            if (f0 > 0 && mb && mb5 && mb < mb5 * 0.97) hits.push('marginOut');
+            if (!hits.length) return null;
+            // 只留最強的那一個(⛔ 全部列出來又變資訊爆炸);同分時取樣本大的
+            hits.sort((x, y) => (this._CHIP_EDGE[y].e - this._CHIP_EDGE[x].e) || (this._CHIP_EDGE[y].n - this._CHIP_EDGE[x].n));
+            return { key: hits[0], all: hits, ...this._CHIP_EDGE[hits[0]] };
+        } catch (_) { return null; }
+    },
+
+    // 把實測成績寫成一段人話。⛔ 不給買賣價位、不下指令(單一劇本原則);空頭時要收口。
+    _chipEdgeHtml(sym) {
+        const M = this._CHIP_EDGE_META;
+        const s = this._chipEdgeState(sym);
+        const foot = `<div class="text-[9px] text-gray-600 mt-1 leading-snug">📐 實測範圍:${M.files.toLocaleString()} 檔 ・${M.from}~${M.to} ・對照組 ${M.ctrl.toLocaleString()} 筆(<b>所有交易日,不抽樣</b>)。`
+            + `「邊際」= 訊號後 20 日報酬<b>減掉同期加權指數、再減掉隨便挑一天</b>的結果。`
+            + `<b>基準勝率是 ${M.base}% 不是 50%</b>(中位數個股本來就跑輸市值加權的大盤)。`
+            + `⚠️ 未扣交易成本(來回約 ${M.cost}%),歷史統計<b>不保證未來</b>。</div>`;
+        if (!s) {
+            return `<div class="mt-2 bg-[#0d1117] border-l-4 border-[#30363d] pl-2.5 py-1.5 rounded-r">
+                <div class="text-[9px] text-gray-500 font-bold mb-0.5">📊 籌碼訊號實測成績</div>
+                <div class="text-[11px] text-gray-300 leading-relaxed">今天這檔<b class="text-gray-100">沒有出現實測過的籌碼型態</b> —— 上面那幾項是「今天的籌碼長什麼樣」的描述,<b>不是勝率</b>。</div>
+                ${foot}</div>`;
+        }
+        const bear = this._bearGate(sym);
+        const net = (s.e - M.cost).toFixed(2);
+        // ⛔ 別硬寫 '+' —— 負數會變成「+-0.04pp」(反向驗證時當場印出來過)
+        const sg = v => (Number(v) >= 0 ? '+' : '') + v;
+        let body, color;
+        if (s.ok === 1) {
+            color = 'border-red-500';
+            body = `✅ <b class="text-gray-100">今天出現:${s.t}</b><br>`
+                + `<span class="text-gray-300">實測 20 日邊際 <b class="text-red-300 font-mono">${sg(s.e)}pp</b> ・勝率 <b class="font-mono">${s.w}%</b>(基準 ${M.base}%)・樣本 <b class="font-mono">${s.n.toLocaleString()}</b> 次</span><br>`
+                + `<span class="text-gray-400">前半段 ${sg(s.h1)}pp / 後半段 ${sg(s.h2)}pp <b>兩段同向</b>;拿掉貢獻最大的那個月仍有 ${sg(s.dm)}pp → <b class="text-gray-100">不是靠單一行情</b>。</span><br>`
+                + `<span class="text-gray-400">扣掉來回成本 ${M.cost}% 之後還剩 <b class="font-mono">${sg(net)}pp</b> —— <b>正的,但不大</b>。</span>`;
+        } else if (s.ok === 2) {
+            color = 'border-yellow-500';
+            body = `⚠️ <b class="text-gray-100">今天出現:${s.t}</b><br>`
+                + `<span class="text-gray-300">實測 20 日邊際 <b class="font-mono">${sg(s.e)}pp</b> ・勝率 ${s.w}%(基準 ${M.base}%)・樣本 ${s.n.toLocaleString()} 次</span><br>`
+                + `<span class="text-gray-400"><b class="text-gray-100">邊際比交易成本(${M.cost}%)還小</b> → 扣完等於白做。當背景資訊看就好,⛔ 別拿它當進場理由。</span>`;
+        } else {
+            color = 'border-[#30363d]';
+            body = `⛔ <b class="text-gray-100">今天出現:${s.t}</b><br>`
+                + `<span class="text-gray-300">但這一招<b class="text-gray-100">實測沒有用</b> —— 20 日邊際 <b class="font-mono">${s.e}pp</b>(等於 0),勝率 ${s.w}% 跟基準 ${M.base}% 一樣,樣本 ${s.n.toLocaleString()} 次<b>夠大,不是樣本不足</b>。</span><br>`
+                + `<span class="text-gray-400">前半段 ${s.h1 >= 0 ? '+' : ''}${s.h1}pp、後半段 ${s.h2}pp <b>方向還相反</b> → 這是雜訊。</span><br>`
+                + `<span class="text-gray-400">💡 <b class="text-gray-100">要「連賣後轉買」真的有意義,得等投信也一起買</b>(那組實測 +1.06pp)。單看外資回頭買一天,不夠。</span>`;
+        }
+        return `<div class="mt-2 bg-[#0d1117] border-l-4 ${color} pl-2.5 py-1.5 rounded-r">
+            <div class="text-[9px] text-gray-500 font-bold mb-0.5">📊 籌碼訊號實測成績 <span class="text-gray-600">(V73.3.6 首次驗得動)</span></div>
+            <div class="text-[11px] leading-relaxed">${body}</div>
+            ${bear && s.ok === 1 ? `<div class="text-[10px] text-gray-300 leading-relaxed mt-1">⚠️ <b>但這檔中期趨勢是空頭</b> —— 籌碼亮不代表價格會漲,兩者可以背離。以趨勢為準,⛔ 別直接當進場理由。</div>` : ''}
+            ${foot}</div>`;
+    },
+
     _chipConsensusLine(sym, mainScore) {
         try {
             const items = [];
@@ -12937,7 +13040,7 @@ const marginByDate = {};
                 <div class="text-[11px] text-gray-200 leading-relaxed">${head}</div>
                 <div class="text-[10px] mt-1 flex flex-wrap gap-1">${row}</div>
                 ${cleanWarn ? `<div class="text-[10px] text-gray-300 leading-relaxed mt-1">${cleanWarn}</div>` : ''}
-                <div class="text-[9px] text-gray-600 mt-1 leading-snug">⚠️ 這幾項的<b>預測力還沒驗證過</b> —— 法人買賣超的歷史只回溯到 2026/04(約 60 個交易日,而且全在同一段行情),樣本不夠做回測。<b>這裡只是把「今天的籌碼長什麼樣」講清楚,不是勝率</b>。K線訊號那邊才有實測成績。</div>
+                <div class="text-[9px] text-gray-600 mt-1 leading-snug">⚠️ <b>上面這幾項是「今天的籌碼長什麼樣」的描述,不是勝率</b> —— 分點那兩項的預測力仍未驗證(逐日分點只有滾動快照,沒有歷史)。<b>法人(外資/投信)那部分已經可以驗了,成績在下面那塊</b>。</div>
             </div>`;
         } catch (_) { return ''; }
     },
