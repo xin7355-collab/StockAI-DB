@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       which:
-        description: '跑哪一支:both / gap(dataset 清單)/ margin(維持率回測)'
+        description: '跑哪一支:both / gap / margin / pe(PE位階回測)'
         required: false
         default: 'both'
 
@@ -25,13 +25,25 @@ jobs:
         with:
           python-version: '3.11'
       - name: 🔎 缺口探針(哪些 dataset 拿得到)
-        if: ${{ github.event.inputs.which != 'margin' }}
+        if: ${{ github.event.inputs.which == 'both' || github.event.inputs.which == 'gap' }}
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
         run: python3 scripts/finmind_gap_probe.py
 
       - name: 💳 大盤融資維持率門檻回測
-        if: ${{ github.event.inputs.which != 'gap' }}
+        if: ${{ github.event.inputs.which == 'both' || github.event.inputs.which == 'margin' }}
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
         run: python3 scripts/margin_maint_probe.py
+
+      - name: 📐 PE/PB 自身位階回測
+        if: ${{ github.event.inputs.which == 'pe' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          N_SYMS: '300'
+        run: |
+          # ⚠️ 回測要對齊 K 線清單 → 先從 data 分支還原(只要檔名,不要內容也行,但一併還原最省事)
+          git fetch --depth=1 origin data
+          git archive origin/data data | tar -x
+          echo "還原 $(ls data/*.json | wc -l) 檔"
+          python3 scripts/pe_band_probe.py
