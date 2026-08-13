@@ -1903,6 +1903,54 @@ def fetch_business_signal():
                 err = f"{err} || 官方頁面沒撈到 /json/ 或 /api/ 路徑(可能是前端動態組出來的)"
     except Exception as _pe:
         err = f"{err} || 端點列舉也失敗:{str(_pe)[:60]}"
+
+    # 🆕 V73.3.9 FinMind 備援(`TaiwanBusinessIndicator`)
+    #   🚨 這一格從 V72.3.2 起就是空的 —— 真因是陷阱 #23(NDC 對不存在的路徑回 HTTP 200 + HTML,
+    #      拿去 parse JSON 就爆 `Expecting value: line 1 column 1`),而且錯誤被包在 dict 裡
+    #      → 連資料體檢的 C 類都掃不到。改了幾輪端點都沒猜中。
+    #   ⭐ FinMind 缺口探針實測:這個 dataset **免費層就拿得到**,2015 起 138 個月。
+    #      → ⛔ 別再猜 NDC 的端點了,換來源就好(同 V71.7.0 台指 VIX 改走期交所那次)。
+    #   ⛔ 欄位名**不猜**:找「數值落在 9~45」的那一欄當分數(國發會分數區間),
+    #      找不到就把原始列寫進 error 讓它自己說(同陷阱 #23 的做法)。
+    try:
+        import urllib.parse as _up
+        import urllib.request as _ur
+        _toks = [''.join(t.split()) for t in (os.getenv('FINMIND_TOKENS') or '').split(',') if t.strip()]
+        _rows = None
+        for _i in range(max(1, len(_toks))):
+            _q = {'dataset': 'TaiwanBusinessIndicator', 'start_date': '2023-01-01'}
+            if _toks:
+                _q['token'] = _toks[_i]
+            try:
+                with _ur.urlopen('https://api.finmindtrade.com/api/v4/data?' + _up.urlencode(_q), timeout=40) as _r:
+                    _j = json.loads(_r.read().decode('utf-8'))
+            except Exception:
+                continue        # ⭐ V72.5.3:換下一把再試,⛔ 不可當成「沒資料」
+            _rows = (_j or {}).get('data') or None
+            if _rows:
+                break
+        if _rows:
+            _rows.sort(key=lambda x: str(x.get('date') or ''))
+            _last = _rows[-1]
+            _score = None
+            _col = None
+            for _k, _v in _last.items():
+                if isinstance(_v, (int, float)) and 9 <= float(_v) <= 45 and 'date' not in _k.lower():
+                    _score, _col = int(round(float(_v))), _k
+                    break
+            if _score is not None:
+                _light = ('blue' if _score <= 16 else 'yellowblue' if _score <= 22
+                          else 'green' if _score <= 31 else 'yellowred' if _score <= 37 else 'red')
+                _m = str(_last.get('date') or '')[:7]
+                print(f"  🌡️ 景氣對策信號(FinMind 備援):{_score} 分 / {_light} / {_m} ・欄位 `{_col}`")
+                return (_light, _score, _m, None)
+            # ⛔ 找不到分數欄 → 把實際欄位寫進 error,別只說「失敗」(否則下一個人只能繼續猜)
+            err = f"{err} || FinMind 有 {len(_rows)} 列但找不到 9~45 的分數欄;實際欄位:{sorted(_last.keys())[:12]}"
+        else:
+            err = f"{err} || FinMind TaiwanBusinessIndicator 也回空(token {len(_toks)} 把全試過)"
+    except Exception as _fe:
+        err = f"{err} || FinMind 備援失敗:{str(_fe)[:80]}"
+
     return (None, None, None, err[:600])
 
 
