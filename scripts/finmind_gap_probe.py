@@ -53,13 +53,13 @@ CAND = [
     ('TaiwanStockActiveETFHoldingChange', {'data_id': '00981A'}, '主動 ETF 持股**異動**(Sponsor)⭐ 若有歷史就不用等 3 個月'),
     ('TaiwanStockMarginShortSaleSuspension', {'data_id': '2330'}, '融券回補日(軋空前提)'),
     ('TaiwanStockDayTradingSuspension', {}, '暫停當沖預告'),
-    ('TaiwanStockTradingDailyReportSecIdAgg', {'data_id': '2330'}, '分點**總公司聚合**'),
+    ('TaiwanStockTradingDailyReportSecIdAgg', {'data_id': '2330', 'securities_trader_id': '1020'}, '分點**總公司聚合**'),  # 🐛 實跑 422 → 還要 securities_trader_id
     ('TaiwanStockIndustryChain', {'data_id': '2330'}, '所屬產業鏈'),
     ('CnnFearGreedIndex', {}, '恐懼貪婪指數(macro 已自己抓,比對是否更穩)'),
     ('TaiwanStockPriceLimit', {}, '每日漲跌停價'),
     ('TaiwanStockTradingDate', {}, 'official 交易日曆(算「N 個交易日後」不用自己推)'),
     # ── ⏳ 第三:CLAUDE.md 說「無逐筆歷史」的 ──
-    ('TaiwanStockStatisticsOfOrderBookAndTrade', {'date': '2026-08-11'}, '每 5 秒委託成交統計:明寫「盤前試撮無逐筆歷史」'),
+    ('TaiwanStockStatisticsOfOrderBookAndTrade', {'start_date': '2026-08-11', 'end_date': '2026-08-11'}, '每 5 秒委託成交統計:明寫「盤前試撮無逐筆歷史」'),  # 🐛 實跑才知道它要 start_date 不是 date
     ('TaiwanStockEvery5SecondsIndex', {'date': '2026-08-11'}, '每 5 秒指數'),
     ('TaiwanStockKBar', {'data_id': '2330', 'date': '2026-08-11'}, '分K:ORB 目前靠 Shioaji(要釘版本、要登入)'),
 ]
@@ -84,7 +84,7 @@ def call(dataset, extra, start='2015-01-01'):
     for i in range(max(1, len(TOKENS))):
         q = {'dataset': dataset}
         q.update(extra)
-        if 'date' not in extra:
+        if 'date' not in extra and 'start_date' not in extra:
             q['start_date'] = start
         if TOKENS:
             q['token'] = TOKENS[i]
