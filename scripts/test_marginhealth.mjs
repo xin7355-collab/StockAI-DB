@@ -22,42 +22,59 @@ const errs = []; page.on('pageerror', e => { const t = (e && e.message) ? e.mess
 await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof app !== 'undefined' && !!app._marginHealth, null, { timeout: 20000 });
 
-const run = (ratio, hist = null) => page.evaluate(a => {
-    app._marketStats = { margin: { ratio: a.ratio, n: 1827, lots: 8488067, val_e: 9948.6, amt_e: 7812.6, date: '2026-08-04' },
+const run = (ratio, hist = null, src = 'estimate') => page.evaluate(a => {
+    app._marketStats = { margin: { ratio: a.ratio, src: a.src, n: 1827, lots: 8488067, val_e: 9948.6, amt_e: 7812.6, date: '2026-08-04' },
                          margin_hist: a.hist };
     return { r: app._marginHealth(), html: app._marginHealthHtml() };
-}, { ratio, hist });
+}, { ratio, hist, src });
 
-// ① 分級
+// ⚠️⚠️ V73.3.8 這一節整個改寫,原因**不是測試太嚴,是它釘的事實已經被實測推翻**:
+//   舊版釘「127.3% → 已跌破 130% → 斷頭區 🚨」。但拿證交所官方 11 年資料實測後發現:
+//     ・2015 起 2,821 個交易日**一次都沒跌破過 130%**(史上最低 130.4%)
+//     ・而我那個 127.3% 是**推估值**,官方同一天是 194.7%(差 67pp、方向相反)
+//   ⛔ 所以「130% 分級」本身就是錯的判準,不可再釘。
+//   🚨 而且舊版第 ② 條釘「推估會**偏高**」—— **那個方向本來就寫反了**,
+//      實測是推估 127.9% vs 官方 194.7% = 系統性**偏低**。舊測試等於把一個錯的說法釘住了。
+//   ⭐ 但保護使用者的那幾條(不可引用未驗證勝率、不可說「跌破就該買」)**一條都不放寬**,
+//      而且改成更強的版本:現在要求明說「那條線 11 年沒觸發過」「方向跟流行說法相反」。
+
+// ① 分級改用**11 年實測分布的位階**(⛔ 不再用寫死的 130/140/165)
 let x = await run(127.3);
-ok('① 127.3% → 斷頭區', /已跌破 130%/.test(x.html) && /🚨/.test(x.html), x.html.slice(0, 300));
-x = await run(136);
-ok('① 136% → 接近危險線', /接近危險線/.test(x.html), x.html.slice(0, 300));
-x = await run(155);
-ok('① 155% → 正常區間', /正常區間/.test(x.html), x.html.slice(0, 300));
+ok('① 127.3% → 11 年來最低的 5%(⛔ 不再叫「斷頭區」)', /最低的 5%/.test(x.html), x.html.slice(0, 400));
+x = await run(160);
+ok('① 160% → 低於 11 年中位數', /低於 11 年中位數/.test(x.html), x.html.slice(0, 400));
+x = await run(175);
+ok('① 175% → 11 年來的正常區間', /正常區間/.test(x.html), x.html.slice(0, 400));
+x = await run(194.7, null, 'official');
+ok('① 194.7% → 11 年來最高的 5%', /最高的 5%/.test(x.html), x.html.slice(0, 400));
 
-// ② ⭐ 必須標明是「推估」不是官方值
+// ② 推估 fallback 時仍必須標明是推估 —— ⭐ 但偏誤方向要寫**偏低**(舊版寫反了)
 x = await run(127.3);
-ok('② ⭐ 標題要標「推估」', /\(推估\)/.test(x.html), x.html.slice(0, 300));
-ok('② ⭐ 必須明寫「不是官方公布值」', /不是官方公布值/.test(x.html), x.html.slice(0, 1500));
-ok('② ⭐ 必須說明偏誤方向(推估會偏高)', /偏高/.test(x.html), x.html.slice(0, 1500));
-ok('② ⭐ 必須說明資料只回溯到 2026/05', /2026\/05/.test(x.html), x.html.slice(0, 1500));
-ok('② 要勸「看趨勢別對絕對值」', /看趨勢/.test(x.html), x.html.slice(0, 1500));
+ok('② ⭐ 推估時標題要標「推估・非官方」', /推估・非官方/.test(x.html), x.html.slice(0, 400));
+ok('② ⭐ 必須說明偏誤方向是**偏低**(⛔ 舊版寫成偏高是錯的)', /系統性偏低/.test(x.html), x.html.slice(0, 1600));
+ok('② ⭐ 要給出推估 vs 官方的實際落差當證據', /127\.9/.test(x.html) && /194\.7/.test(x.html), x.html.slice(0, 1600));
+ok('② ⛔ 推估時不可自稱官方值', !/證交所公布的官方值/.test(x.html), x.html.slice(0, 600));
 
-// ③ ⭐⛔ 不可引用他的 85% 勝率、不可說「跌破就該買」
-// ⚠️ 「⛔ 那不是「跌破就該買」」這句**本身含「跌破就該買」五個字**,那是正確的免責寫法
-//    → 比對前先拿掉否定形(同 test_tdcc4 / test_trustvol / test_buyexhaust 的做法)。
-//    ⛔ 別把 BAD 放寬成不檢查 —— 要擋的是「正面主張」,不是「引用後打臉」。
+// ②b 官方值時反過來:⛔ 不可再標推估
+x = await run(194.7, null, 'official');
+ok('②b 官方時標題要寫「官方公布值」', /官方公布值/.test(x.html), x.html.slice(0, 400));
+ok('②b ⛔ 官方時不可標「推估・非官方」', !/推估・非官方/.test(x.html), x.html.slice(0, 400));
+
+// ③ ⭐⛔ 不可引用未驗證勝率、不可說「跌破就該買」—— **一條都不放寬**
+// ⚠️ 免責句本身含被禁的字 → 比對前先拿掉否定形(這個坑本專案踩過 6 次)
 const strip = h => h.replace(/(?:不是|並非|⛔\s*那不是)\s*[「『]?跌破就(?:該|要)買[」』]?/g, '');
 const BAD = /85%|27\.4%|勝率高達|聖杯|跌破就(該|要)買/;
 ok('③ ⭐⛔ 卡片不可引用未驗證的勝率宣稱', !BAD.test(strip(x.html)), (strip(x.html).match(BAD) || []).join(','));
-ok('③ ⭐ 要明說「不是跌破就該買」', /不是「跌破就該買」|⛔.{0,20}跌破就該買/.test(x.html), x.html.slice(0, 1200));
+// ⭐ 舊版只要求「說一句不是跌破就該買」;現在有實測了 → 要求給出**證據**
+ok('③ ⭐ 必須明說 11 年一次都沒跌破過 130%', /一次都沒有跌破 130%/.test(x.html), x.html.slice(0, 1400));
+ok('③ ⭐ 必須點出實測方向跟流行說法相反', /跟流行說法相反/.test(x.html), x.html.slice(0, 1600));
+
 const help = await page.evaluate(() => { let t = ''; const o = window.alert; window.alert = s => { t = s; }; app._showMarginHelp(); window.alert = o; return t; });
-ok('③ ⭐ 教學要明說「我沒有驗證過」', /沒有.{0,3}驗證過/.test(help), help.slice(0, 400));
-ok('③ ⭐ 教學要說明那個 85% 不是我算的、不背書', /不是我算的/.test(help) && /不敢背書/.test(help), help.slice(0, 900));
-ok('③ ⭐ 教學要說「不要第一天就衝」', /不要第一天就衝/.test(help), help.slice(0, 900));
-ok('③ 教學要說要等長下影線/紅K', /長下影線/.test(help) && /紅 ?K/.test(help), help.slice(0, 900));
-ok('③ 教學要說 2~3 年才一次、好市況別用', /2~3 年才一次/.test(help) && /接刀子/.test(help), help.slice(0, 1200));
+ok('③ ⭐ 教學⛔ 不可再說「常常跟著一波反彈」當賣點', !/常常跟著一波反彈/.test(help.replace(/⛔[^\n]*/g, '')), help.slice(0, 900));
+ok('③ ⭐ 教學要給實測天數當證據', /2,821|2821/.test(help), help.slice(0, 900));
+ok('③ ⭐ 教學要說明「那條線幾乎永遠不會觸發」', /永遠不會觸發/.test(help), help.slice(0, 1200));
+ok('③ ⭐ 教學要坦承之前顯示的推估是錯的', /差 67 個百分點/.test(help), help.slice(0, 2000));
+ok('③ ⭐ 教學仍要說「不是買賣訊號」', /不是買賣訊號/.test(help), help.slice(0, 2000));
 
 // ④ 趨勢
 x = await run(127.3, Array.from({ length: 8 }, (_, i) => ({ d: `2026-07-2${i}`, r: 135 - i, n: 1800 })));

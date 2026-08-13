@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.3.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.3.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.7 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7277,8 +7277,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.3.7',
+    _APP_VERSION: 'V73.3.8',
     _CHANGELOG: [
+        { v: 'V73.3.8', dt: '2026-08-13', t: '🚨 融資維持率之前是錯的(而且方向相反),已換成官方值', d: ['之前那張卡顯示 127.9%、說「已在斷頭區」—— 那是我自己推估的。證交所官方同一天是 194.7%,是歷史高檔區。差 67 個百分點而且方向完全相反,已全面改用官方值。','⛔ 順便推翻一個流行說法:「大盤維持率跌破 130% 就會 V 型反彈」—— 拿官方 11 年資料實測,2015 年到現在 2,821 個交易日「一次都沒跌破過 130%」(史上最低 130.4%),那條線根本等不到。','而且方向是反的:融資維持率越低,後面 20 天反而輸大盤;越健康反而略好。卡上已寫實測數字。','這些是靠 FinMind 官方 11 年資料才驗得出來的 —— 之前資料只有 3 個月,什麼都驗不了。'] },
         { v: 'V73.3.7', dt: '2026-08-12', t: '📅 分點「20 日」其實不到 20 天 —— 現在會誠實講', d: ['你問「分點到 20 天了嗎」→ 查出真 bug:標「20 日」的 246 檔,沒有一檔真的有 20 天(最多 15、最少 4)。','採礦端天數不夠時會「有幾天算幾天」,但標籤照樣寫 20 日 → 你看到的期間比標籤短。','⛔ 資料沒有藏起來(數字是真的),只是現在會多一行告訴你「這格實際只加總了 N 天、再過幾天才會滿」。','冷門股只有 1 日 / 3 日是正常的 —— 分點額度有限,只有約 278 檔熱門股採完整週期。'] },
         { v: 'V73.3.6', dt: '2026-08-12', t: '📊 籌碼訊號第一次有實測成績了', d: ['法人買賣超的歷史從 60 天補到約 3 年(2,613 檔)—— 以前樣本不夠、什麼都驗不了,現在可以驗了。','籌碼卡新增「實測成績」:今天出現的法人型態,歷史上到底有沒有用、勝率多少、樣本幾次,一次講清楚。','⛔ 誠實結果:分析師常講的「外資認錯回補」實測等於沒用(邊際 -0.04pp,而且前後半段方向相反)。','✅ 真正有用的是「外資+投信同一天都買」(20 日多賺 0.99%、勝率 40.3% 對基準 34.6%),扣掉手續費還是正的。','「明日作戰清單」不再會停更 —— 改成採礦跑完自動接著跑,排程只當備援。'] },
         { v: 'V73.3.5', dt: '2026-08-12', t: '📊 籌碼補「最後一天」+ 大戶來回做 + 壓力價提醒', d: ['大戶籌碼總結多了「最後一天」的法人買賣超 —— 連賣之後轉買(俗稱認錯回補)現在看得到了。','籌碼頁新增「🔁 大戶來回做」:同一家分點買了又賣、買均價賣均價差多少,一眼看完。','到價監控新增「🧱 壓力價快設」,跟上檔空間那張卡用同一組數字。'] },
@@ -18609,15 +18610,35 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ③ ⛔ 他宣稱「26 年回測勝率 85%、6 個月 27.4%」—— **那是他的數字,我沒有驗證過**,
     //      我的融資資料窗口(約 55 個交易日)根本不夠驗那種等級的崩盤。
     //      → 只顯示**現在的水位與機制**,⛔ 絕不可引用那個勝率。
+    // 💳 V73.3.8 **官方 11 年實測**(`scripts/margin_maint_probe.py`,2015-01-05 起 2,821 天)
+    //   🚨 這張表推翻了原本寫死的門檻,而且是**方向相反**的推翻:
+    //     ① 11 年來**從來沒有跌破 130%**(史上最低 130.4%)→「跌破 130% → V 型反彈」
+    //        這個流行說法在整整 11 年裡**一次都沒發生過**,根本不是可操作的訊號。
+    //     ② 兆華說的「<135% 恐慌 / <140% 斷頭潮」:<135% 只出現 **1 天**、<140% 只有 **5 天**。
+    //     ③ ⭐ **方向還是反的** —— 用「相對自己近 3 年的位階」測(⛔ 不寫死數字,同 V71.1.6):
+    //          維持率最低 5%  → 20日 **−1.77pp** ・最低 10% → −1.13pp ・最低 20% → −0.81pp
+    //          維持率最高 20% → 20日 **+0.59pp**(前後半段同向 + 拿掉最好那年仍成立 ✅)
+    //        = **融資越健康,後面反而略好**;「斷頭出清是買點」實測不成立。
+    //   ⚠️ 唯一過三關的 `最高 20%` 也只有 +0.59pp,⛔ 不足以當進場理由,只當背景資訊。
+    _MARGIN_EDGE: {
+        from: '2015-01-05', days: 2821, lo: 130.4, p5: 151.4, med: 168.5, p95: 182.9, hi: 210.4,
+        n130: 0, n135: 1, n140: 5,
+        rel: { lo5: -1.77, lo10: -1.13, lo20: -0.81, hi20: 0.59 },
+    },
     _marginHealth() {
         try {
             const m = this._marketStats && this._marketStats.margin;
             if (!m || !(+m.ratio > 0)) return null;
             const r = +m.ratio;
-            const lv = r < 130 ? { ic: '🚨', t: '已跌破 130%(斷頭區)', c: 'text-orange-300', b: 'border-orange-500' }
-                : r < 140 ? { ic: '⚠️', t: '接近危險線(140% 以下)', c: 'text-yellow-300', b: 'border-yellow-500' }
-                : r < 165 ? { ic: '➖', t: '正常區間', c: 'text-gray-300', b: 'border-gray-600' }
-                : { ic: '✅', t: '槓桿健康', c: 'text-gray-300', b: 'border-gray-600' };
+            const E = this._MARGIN_EDGE;
+            const official = m.src === 'official';
+            // ⛔ 不再用寫死的 130/140/165 —— 改用**11 年實測分布的位階**(同 V71.1.6 外資期貨的教訓:
+            //    寫死絕對門檻會隨市場結構失真)。⚠️ 而且燈號只講「在歷史的哪個位置」,⛔ 不講安全/危險。
+            const lv = r < E.p5  ? { ic: '⛔', t: `11 年來最低的 5%(史上最低 ${E.lo}%)`, c: 'text-orange-300', b: 'border-orange-500' }
+                : r < E.med      ? { ic: '⚠️', t: '低於 11 年中位數', c: 'text-yellow-300', b: 'border-yellow-500' }
+                : r < E.p95      ? { ic: '➖', t: '11 年來的正常區間', c: 'text-gray-300', b: 'border-gray-600' }
+                : { ic: '✅', t: `11 年來最高的 5%`, c: 'text-gray-300', b: 'border-gray-600' };
+            lv.official = official;
             // 近期趨勢(歷史有幾筆就用幾筆)
             const h = (this._marketStats.margin_hist || []).filter(x => x && +x.r > 0);
             let trend = null;
@@ -18626,7 +18647,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 trend = +(now - ago).toFixed(1);
             }
             return { ratio: r, lv, n: m.n, lots: m.lots, valE: m.val_e, amtE: m.amt_e,
-                     date: m.date, trend, days: h.length };
+                     date: m.date, trend, days: h.length,
+                     official: m.src === 'official', est: m.est_ratio };
         } catch (_) { return null; }
     },
     _marginHealthHtml() {
@@ -18636,7 +18658,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             : ` ・近 5 日 <b class="font-mono ${m.trend >= 0 ? 'text-red-300' : 'text-green-300'}">${m.trend >= 0 ? '+' : ''}${m.trend}pp</b>`;
         return `<div class="bg-[#161b22] border-l-4 ${m.lv.b} border-y border-r border-[#30363d] rounded-r p-3">
             <div class="flex items-center justify-between mb-1">
-                <span class="text-[12px] font-black text-gray-100">💳 全市場融資維持率<span class="text-[9px] text-gray-500 font-normal ml-1">(推估)</span></span>
+                <span class="text-[12px] font-black text-gray-100">💳 全市場融資維持率<span class="text-[9px] ${m.official ? 'text-gray-400' : 'text-yellow-400'} font-normal ml-1">${m.official ? '(官方公布值)' : '(推估・非官方)'}</span></span>
                 <button onclick="event.stopPropagation();app._showMarginHelp()" class="text-[9px] text-gray-600 hover:text-blue-300">ⓘ 這是什麼</button>
             </div>
             <div class="flex items-end gap-3 mb-1">
@@ -18644,38 +18666,55 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="text-[11px] ${m.lv.c} font-bold pb-0.5">${m.lv.ic} ${m.lv.t}</div>
             </div>
             <div class="text-[10px] text-gray-400 leading-relaxed">
-                融資部位現值約 <b class="font-mono">${(+m.valE).toLocaleString()}</b> 億 ÷ 推估融資金額 <b class="font-mono">${(+m.amtE).toLocaleString()}</b> 億${tTxt}
-                <span class="text-gray-600">(${m.n} 檔・${this._dW ? this._dW(m.date) : m.date})</span>
+                ${m.official
+                    ? `證交所公布的整體市場擔保維持率${tTxt} <span class="text-gray-600">(${this._dW ? this._dW(m.date) : m.date})</span>`
+                    : `融資部位現值約 <b class="font-mono">${(+m.valE).toLocaleString()}</b> 億 ÷ 推估融資金額 <b class="font-mono">${(+m.amtE).toLocaleString()}</b> 億${tTxt} <span class="text-gray-600">(${m.n} 檔・${this._dW ? this._dW(m.date) : m.date})</span>`}
+                ${m.official && +m.est > 0 ? `<div class="text-[9px] text-gray-600 mt-0.5">(我自己推估是 ${(+m.est).toFixed(1)}% —— 兩者差很多時<b>以官方為準</b>,推估只留著對照)</div>` : ''}
             </div>
-            <div class="text-[10px] text-gray-300 mt-1.5 leading-relaxed">${
-                m.ratio < 130
-                ? '⚠️ <b>低於 130% 是什麼意思</b>:融資戶的擔保品跌到這條線,券商會打電話追繳;不補錢隔天<b>電腦就自動強制賣掉</b>(斷頭)。所以這個區間會出現「跟情緒無關的機械式賣壓」。歷史上這種強制去槓桿把浮額清乾淨之後,常常跟著一波反彈 —— 但<b class="text-gray-100">⛔ 那不是「跌破就該買」</b>,見下方說明。'
-                : m.ratio < 140
-                ? '⚠️ 接近 130% 那條線了。跌破的話會開始出現「券商電腦自動斷頭」的機械式賣壓,跟情緒無關。先降低槓桿、別再融資加碼。'
-                : '➖ 目前融資槓桿在正常區間,沒有系統性的斷頭壓力。'
-            }</div>
-            <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">⚠️ <b class="text-gray-500">這是我自己推估的,不是官方公布值</b>:成本用「融資餘額增加日的加權均價」推,而融資資料只回溯到 2026/05,更早進場的部位成本抓不到(近期下跌時我的推估會<b class="text-gray-500">偏高</b>,真實可能更低)。融資成數用 6 成概估。<b class="text-gray-500">請看趨勢方向,別跟官方數字逐位元對。</b></div>
+            <div class="text-[10px] text-gray-300 mt-1.5 leading-relaxed">${(() => {
+                const E = this._MARGIN_EDGE;
+                if (m.ratio < E.p5) return `⛔ 落在 <b>11 年來最低的 5%</b>(史上最低 ${E.lo}%)。融資戶被追繳、被強制賣出的壓力大。<b class="text-gray-100">⛔ 但實測「這種時候進場」後續 20 日反而輸大盤 ${Math.abs(E.rel.lo5)}pp</b> —— 見下面那段。`;
+                if (m.ratio < E.med) return `⚠️ 低於 11 年中位數(${E.med}%),融資槓桿偏重。⛔ 但這<b>不是</b>買賣訊號 —— 實測維持率偏低的時期,後續反而略差。`;
+                if (m.ratio < E.p95) return `➖ 落在 11 年來的正常區間(中位 ${E.med}%)。融資槓桿沒有異常。`;
+                return `✅ 落在 <b>11 年來最高的 5%</b>,融資槓桿很輕。實測這種時期後續 20 日<b>略優於大盤 +${E.rel.hi20}pp</b>(唯一通過穩健性檢定的一格,但幅度很小,⛔ 不足以當進場理由)。`;
+            })()}</div>
+            <div class="mt-1.5 bg-[#161b22] border-l-4 border-gray-600 border-y border-r border-[#30363d] rounded-r px-2 py-1.5">
+                <div class="text-[10px] text-gray-200 leading-relaxed">📊 <b class="text-gray-100">11 年實測:「跌破 130% 抄底」這招是假的</b></div>
+                <div class="text-[10px] text-gray-400 leading-relaxed mt-0.5">
+                    ・2015 年到現在 <b>${this._MARGIN_EDGE.days.toLocaleString()}</b> 個交易日,<b class="text-gray-100">一次都沒有跌破 130%</b>(史上最低 ${this._MARGIN_EDGE.lo}%)。
+                    低於 135% 只出現 <b>${this._MARGIN_EDGE.n135}</b> 天、低於 140% 只有 <b>${this._MARGIN_EDGE.n140}</b> 天 —— 那條線幾乎永遠不會觸發。<br>
+                    ・改用「相對自己近 3 年的位階」測,結果<b class="text-gray-100">跟流行說法相反</b>:
+                    維持率最低 5% 的時期 → 後 20 日 <b class="font-mono">${this._MARGIN_EDGE.rel.lo5}pp</b>、
+                    最高 20% → <b class="font-mono">+${this._MARGIN_EDGE.rel.hi20}pp</b>。<b>融資越健康,後面反而略好。</b>
+                </div>
+            </div>
+            <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">${m.official
+                ? '✅ <b class="text-gray-500">證交所公布的官方值</b>(V73.3.8 起改用官方;在那之前這裡顯示的是我自己推估的數字,實測跟官方差到 67 個百分點、而且方向相反,已停用)。⚠️ 實測數字未扣交易成本,歷史統計不保證未來。'
+                : '⚠️ <b class="text-yellow-500">官方值今天抓不到,暫時顯示我自己的推估</b>:成本用「融資餘額增加日的加權均價」推,會<b class="text-gray-500">系統性偏低</b>(實測推估 127.9% vs 官方 194.7%)。<b class="text-gray-500">⛔ 別拿這個數字跟上面那些門檻對照。</b>'}</div>
         </div>`;
     },
     _showMarginHelp() {
+        const E = this._MARGIN_EDGE;
         alert('【全市場融資維持率】\n\n'
-            + '融資維持率 = 你用融資買的股票現在值多少 ÷ 你跟券商借的錢。\n\n'
-            + '為什麼 130% 這條線很重要?\n'
-            + '因為那是台股的【硬性規定】:跌破 130%,券商會打電話叫你補錢;\n'
-            + '不補的話,隔天【電腦就自動把你的股票強制賣掉】(斷頭)。\n'
-            + '⭐ 重點是「自動、強制」——這種賣壓跟人性恐慌無關,是規則造成的。\n\n'
-            + '所以整個市場的維持率跌破 130% 時,會發生:\n'
-            + '斷頭令一個一個爆 → 券商電腦無情拋售 → 被迫賣的人清光 → 賣壓突然消失。\n'
-            + '歷史上這種「強制去槓桿」結束後,常常跟著一波反彈。\n\n'
-            + '⛔【但千萬不要理解成「跌破就該買」】\n'
-            + '① 我【沒有驗證過】這個策略的勝率——我的融資資料只有 3 個月,\n'
-            + '   根本不夠驗 2000/2008/2020 那種等級的崩盤。網路上流傳的「85% 勝率」\n'
-            + '   不是我算的,我不敢背書。\n'
-            + '② 就算要接,也【不要第一天就衝】。要等市場自己表態——\n'
-            + '   例如出現長下影線的 K 棒,或隔天開出強力紅 K,\n'
-            + '   代表那批強制賣壓已經被更有錢的人接走了。\n'
-            + '③ 這種機會 2~3 年才一次。市場好好的時候用這招,那不是撿鑽石,是接刀子。\n\n'
-            + '⚠️ 我這個數字是【自行推估】不是官方值,方法與偏差寫在卡片下方。請看趨勢,別看絕對值。');
+            + '融資維持率 = 用融資買的股票現在值多少 ÷ 跟券商借的錢。\n'
+            + '跌破 130% 券商會叫你補錢,不補隔天電腦自動強制賣掉(斷頭)。\n\n'
+            + '🚨【但我實測之後,把原本這張卡的說法整個推翻了】\n\n'
+            + '① 網路上很流行「大盤維持率跌破 130% → 斷頭殺完 → V 型反彈,快去撿」。\n'
+            + '   我拿證交所官方資料從 2015 年算到現在,共 ' + E.days.toLocaleString() + ' 個交易日:\n'
+            + '   ⛔【一次都沒有跌破過 130%】,史上最低是 ' + E.lo + '%。\n'
+            + '   低於 135% 只出現 ' + E.n135 + ' 天,低於 140% 只有 ' + E.n140 + ' 天。\n'
+            + '   → 那條線幾乎永遠不會觸發,不是一個你等得到的訊號。\n\n'
+            + '② 那改成「相對自己的高低」來看呢?結果【跟流行說法相反】:\n'
+            + '   ・維持率在近 3 年最低的 5% → 之後 20 天輸大盤 ' + Math.abs(E.rel.lo5) + ' 個百分點\n'
+            + '   ・維持率在近 3 年最高的 20% → 之後 20 天贏大盤 ' + E.rel.hi20 + ' 個百分點\n'
+            + '   → 融資越健康,後面反而略好。「斷頭出清是買點」我測不出來。\n\n'
+            + '③ 唯一通過穩健性檢定的那一格也只有 +' + E.rel.hi20 + ' 個百分點,幅度太小,\n'
+            + '   ⛔ 不足以拿來當進場理由。這張卡請當【背景溫度】看,不是買賣訊號。\n\n'
+            + '⚠️ 另外要說清楚:V73.3.8 之前這裡顯示的是我【自己推估】的數字。\n'
+            + '   換成官方值之後才發現,我的推估算出 127.9%(看起來像「已在斷頭區」),\n'
+            + '   官方同一天是 194.7%(其實是歷史高檔)——【差 67 個百分點而且方向相反】。\n'
+            + '   原因是我用「融資餘額增加日的均價」反推成本,會系統性偏低。已停用。\n\n'
+            + '⚠️ 實測未扣交易成本,而且歷史統計不保證未來。');
         this.vibrate?.(20);
     },
 

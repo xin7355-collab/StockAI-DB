@@ -19,6 +19,8 @@ import requests
 import io
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+import urllib.parse       # ⚠️ 只 import urllib3 不會帶進 urllib(check_undefined_py 當場擋下這個 NameError)
+import urllib.request
 import time
 import random
 from datetime import datetime, timezone, timedelta, date
@@ -1286,6 +1288,51 @@ def _mf(v) -> float:
         return float(str(v).replace(',', '').strip() or 0)
     except (TypeError, ValueError):
         return 0.0
+
+
+def fetch_official_margin_maintenance() -> dict:
+    """💳 V73.3.8 **官方**大盤融資維持率(FinMind TaiwanTotalExchangeMarginMaintenance)。
+
+    🚨 為什麼一定要換掉推估值:`margin_maint_probe.py` 實跑(2015-01-05 ~ 今,2,821 天)
+       官方最新是 **194.70%**,而 `compute_market_margin_health()` 推估出來是 **127.9%**
+       —— **差 67 個百分點,而且方向相反**:推估說「已跌破 130% = 斷頭區」,
+       官方說那是**歷史高檔**(11 年 P95 = 182.9%,最高 210.4%)。
+       ⛔ 前端那張卡等於在對使用者說反話,必須以官方值為準。
+
+    ⭐ 推估為什麼會系統性偏低:成本用「融資餘額**增加日**的加權均價」反推 →
+       只算加碼日、沒算攤平/減碼,而且是族群平均不是任何人的實際成本。
+       ⚠️ 保留推估值當備援(官方抓不到時仍有東西看),但**顯示端一律以官方優先**。
+
+    回 {'ratio', 'date', 'src'};抓不到回 {}(⛔ 由呼叫端寫 *_error 留原因,陷阱 #22)。
+    """
+    toks = [''.join(t.split()) for t in (os.getenv('FINMIND_TOKENS') or '').split(',') if t.strip()]
+    if not toks:
+        return {}
+    start = (datetime.now(timezone(timedelta(hours=8))) - timedelta(days=30)).strftime('%Y-%m-%d')
+    for i in range(len(toks)):
+        try:
+            q = urllib.parse.urlencode({'dataset': 'TaiwanTotalExchangeMarginMaintenance',
+                                        'start_date': start, 'token': toks[i]})
+            with urllib.request.urlopen('https://api.finmindtrade.com/api/v4/data?' + q, timeout=45) as r:
+                j = json.loads(r.read().decode('utf-8'))
+        except Exception:
+            continue    # ⭐ V72.5.3:403/400 要換下一把,⛔ 不可當成「沒資料」
+        rows = (j or {}).get('data') or []
+        if not rows:
+            continue
+        rows.sort(key=lambda x: str(x.get('date') or ''))
+        last = rows[-1]
+        v = last.get('TotalExchangeMarginMaintenance')
+        if not isinstance(v, (int, float)) or not (50 <= float(v) <= 400):
+            continue    # 🚧 離譜值守門(維持率合理區間;⛔ 不硬給假數字)
+        return {'ratio': round(float(v), 2),
+                'date': str(last.get('date') or '')[:10],
+                'src': 'official',
+                'hist': [{'d': str(x.get('date') or '')[:10],
+                          'r': round(float(x['TotalExchangeMarginMaintenance']), 2)}
+                         for x in rows
+                         if isinstance(x.get('TotalExchangeMarginMaintenance'), (int, float))][-30:]}
+    return {}
 
 
 def compute_market_margin_health() -> dict:
@@ -3730,6 +3777,22 @@ def fetch_broker_chips():
             #   ⭐ V72.1.1 起與 P/B **完全獨立**,各自成功各自寫。
             try:
                 mh = compute_market_margin_health()
+                # 🚨 V73.3.8 官方值優先:推估與官方實測差 67pp 且**方向相反**(見 fetch_official_margin_maintenance)
+                _off = fetch_official_margin_maintenance()
+                if _off:
+                    if not mh:
+                        mh = {'n': 0, 'lots': 0, 'val_e': 0, 'amt_e': 0}
+                    mh['est_ratio'] = mh.get('ratio')      # 推估值降級保留(可查、可比對)
+                    mh['ratio'] = _off['ratio']
+                    mh['date'] = _off['date']
+                    mh['src'] = 'official'
+                    if _off.get('hist'):
+                        existing_ms['margin_hist_official'] = _off['hist']
+                    print(f"  💳 官方大盤融資維持率 {_off['ratio']}%({_off['date']})"
+                          f" ・我的推估 {mh.get('est_ratio')}%")
+                elif mh:
+                    mh['src'] = 'estimate'
+                    existing_ms['margin_official_error'] = '官方維持率抓不到(金鑰/額度),暫用推估值'
                 if mh:
                     existing_ms['margin'] = mh
                     existing_ms.pop('margin_error', None)
