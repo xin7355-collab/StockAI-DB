@@ -1,0 +1,25 @@
+name: 🔎 FinMind 缺口探針
+
+# 🔎 只讀探針:一次測完「FinMind 有、但我還沒用」的候選 dataset。
+#    ⛔ 不寫任何產物、不推任何分支 —— 結果只在 log。
+#    ⚠️ 沙箱連不到 FinMind(proxy 403,已實測)→ 只能在這裡跑。
+#    ⭐ 照 CLAUDE.md 鐵則:會需要「改→等 workflow→看結果」超過兩輪的事,先寫探針。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 🔎 探針
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/finmind_gap_probe.py
