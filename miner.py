@@ -4045,6 +4045,12 @@ def fetch_broker_chips():
                             if bid and e['broker_name'] and not str(e['broker_name']).isdigit():
                                 broker_name_map[bid] = e['broker_name']
 
+                    # 🚨 V73.3.7 使用者問「分點是到 20 天了嗎?為何有些還是只有 10 天」→ 查出真 bug:
+                    #    這裡 `[-n:]` 在**天數不足時會給幾天算幾天**,而外面照樣把它標成 `20d`。
+                    #    實測 gh-pages:246 檔標「20 日」,**沒有一檔真的有 20 天**(最多 15,最少 4)。
+                    #    ⛔ 那是「數字不足額卻標成足額」—— 使用者按 20 日看到的其實是 4~15 天的加總。
+                    #    ⭐ 修法:回傳多帶 `days`(**實際**用了幾天),由顯示端誠實標出來。
+                    #    ⛔ 刻意**不刪資料**(不足也照給,使用者看得到),只是不准謊報天數。
                     def _agg_period(n: int) -> dict:
                         wdates = sorted(by_date.keys())[-n:]
                         agg: dict = {}
@@ -4071,7 +4077,8 @@ def fetch_broker_chips():
                             a.pop('pv', None); a.pop('vol', None)
                         buy_top  = sorted([x for x in vals if x['net'] > 0], key=lambda x: -x['net'])[:15]
                         sell_top = sorted([x for x in vals if x['net'] < 0], key=lambda x:  x['net'])[:15]
-                        return {'buy': buy_top, 'sell': sell_top}
+                        # `days` = 實際加總了幾個交易日(⛔ 可能 < n,見上方註解);`want` = 標籤上寫的那個數字
+                        return {'buy': buy_top, 'sell': sell_top, 'days': len(wdates), 'want': n}
                     # V68.9.8 熱門股完整週期;冷門股只抓 3 日 → 只給 1/3d(其餘前端顯「熱門股才有」)
                     # 📅 V72.9.8 熱門股加到 20d(使用者要求),窗口清單見檔頭 CHIP_PERIODS_HOT
                     periods = {f'{n}d': _agg_period(n) for n in (CHIP_PERIODS_HOT if _is_hot else CHIP_PERIODS_COLD)}

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.3.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.3.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.7 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7277,8 +7277,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.3.6',
+    _APP_VERSION: 'V73.3.7',
     _CHANGELOG: [
+        { v: 'V73.3.7', dt: '2026-08-12', t: '📅 分點「20 日」其實不到 20 天 —— 現在會誠實講', d: ['你問「分點到 20 天了嗎」→ 查出真 bug:標「20 日」的 246 檔,沒有一檔真的有 20 天(最多 15、最少 4)。','採礦端天數不夠時會「有幾天算幾天」,但標籤照樣寫 20 日 → 你看到的期間比標籤短。','⛔ 資料沒有藏起來(數字是真的),只是現在會多一行告訴你「這格實際只加總了 N 天、再過幾天才會滿」。','冷門股只有 1 日 / 3 日是正常的 —— 分點額度有限,只有約 278 檔熱門股採完整週期。'] },
         { v: 'V73.3.6', dt: '2026-08-12', t: '📊 籌碼訊號第一次有實測成績了', d: ['法人買賣超的歷史從 60 天補到約 3 年(2,613 檔)—— 以前樣本不夠、什麼都驗不了,現在可以驗了。','籌碼卡新增「實測成績」:今天出現的法人型態,歷史上到底有沒有用、勝率多少、樣本幾次,一次講清楚。','⛔ 誠實結果:分析師常講的「外資認錯回補」實測等於沒用(邊際 -0.04pp,而且前後半段方向相反)。','✅ 真正有用的是「外資+投信同一天都買」(20 日多賺 0.99%、勝率 40.3% 對基準 34.6%),扣掉手續費還是正的。','「明日作戰清單」不再會停更 —— 改成採礦跑完自動接著跑,排程只當備援。'] },
         { v: 'V73.3.5', dt: '2026-08-12', t: '📊 籌碼補「最後一天」+ 大戶來回做 + 壓力價提醒', d: ['大戶籌碼總結多了「最後一天」的法人買賣超 —— 連賣之後轉買(俗稱認錯回補)現在看得到了。','籌碼頁新增「🔁 大戶來回做」:同一家分點買了又賣、買均價賣均價差多少,一眼看完。','到價監控新增「🧱 壓力價快設」,跟上檔空間那張卡用同一組數字。'] },
         { v: 'V73.3.4', dt: '2026-08-11', t: '🧩 個股頁看得到「被哪些 ETF 抱、各佔多少」', d: ['個股頁新增:這檔被幾支 ETF 持有、在每一支裡各佔多少比例,並換算成「買 1 萬元那支 ETF 等於買到多少錢這一檔」。','ETF 追蹤從 4 支擴到 17 支(0050／0056／00878／00919／00929 等主流都納入),市值型的完整成分股也開始保留。'] },
@@ -23268,6 +23269,18 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return;
         }
         const pd = P[period] || { buy: [], sell: [] };
+        // 🚨 V73.3.7 誠實標出「這格其實加總了幾天」——
+        //   採礦端 `_agg_period` 在天數不足時會給幾天算幾天(實測 246 檔標 20 日、實際只有 4~15 天)。
+        //   ⛔ 不藏資料、⛔ 也不謊報天數:不足就把真實天數寫在按鈕下面。
+        //   ⚠️ `days` 是 V73.3.7 才加的 → 舊檔沒有這個欄位,此時**不顯示**(⛔ 別假裝知道)。
+        const _shortNote = (() => {
+            const w = Number(n), have = Number(pd.days);
+            if (!Number.isFinite(have) || !Number.isFinite(w) || have >= w) return '';
+            return `<div class="mt-1 bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r px-2.5 py-1.5">
+                <div class="text-[11px] text-gray-200 leading-relaxed">⚠️ 這格<b class="text-gray-100">實際只加總了 ${have} 個交易日</b>,還不到 ${w} 天 —— 分點歷史每天累積一天,再過 <b>${w - have}</b> 個交易日才會滿。</div>
+                <div class="text-[10px] text-gray-500 leading-relaxed mt-0.5">數字是真的,只是<b>期間比標籤短</b>;要比較長短期差異時記得這件事。</div>
+            </div>`;
+        })();
         const buy = (pd.buy || []).slice(0, 15);
         const sell = (pd.sell || []).slice(0, 15);
 
@@ -23709,7 +23722,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const capPct = (_totLots2 && netLots) ? (netLots / _totLots2 * 100) : null;
         const turnPct = (_totLots2 && periodVolLots > 0) ? (periodVolLots / _totLots2 * 100) : null;
         const rtHtml = this._brokerRoundTripHtml(sym);   // 🔁 V73.3.5 大戶來回做
-        box.innerHTML = switcher + rtHtml + `
+        box.innerHTML = switcher + _shortNote + rtHtml + `
         <!-- 主力動向(專業版:大字方向 + 右側數據 + 買賣比例條)-->
         <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
             <div class="flex items-start justify-between gap-3">
