@@ -6,6 +6,11 @@ name: 🔎 FinMind 缺口探針
 #    ⭐ 照 CLAUDE.md 鐵則:會需要「改→等 workflow→看結果」超過兩輪的事,先寫探針。
 on:
   workflow_dispatch:
+    inputs:
+      which:
+        description: '跑哪一支:both / gap(dataset 清單)/ margin(維持率回測)'
+        required: false
+        default: 'both'
 
 permissions:
   contents: read
@@ -19,7 +24,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: 🔎 探針
+      - name: 🔎 缺口探針(哪些 dataset 拿得到)
+        if: ${{ github.event.inputs.which != 'margin' }}
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
         run: python3 scripts/finmind_gap_probe.py
+
+      - name: 💳 大盤融資維持率門檻回測
+        if: ${{ github.event.inputs.which != 'gap' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/margin_maint_probe.py
