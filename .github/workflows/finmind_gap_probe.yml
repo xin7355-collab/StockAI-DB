@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       which:
-        description: '跑哪一支:both / gap / margin / pe / split(減資分割交叉驗證)'
+        description: '跑哪一支:both / gap / margin / pe / split / warrant(權證)'
         required: false
         default: 'both'
 
@@ -57,3 +57,9 @@ jobs:
           git archive origin/data data | tar -x
           echo "還原 $(ls data/*.json | wc -l) 檔"
           python3 scripts/split_check_probe.py
+
+      - name: 🎫 權證資料探針(分點 / 溢價率 / 標的對照)
+        if: ${{ github.event.inputs.which == 'warrant' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/warrant_probe.py
