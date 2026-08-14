@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       which:
-        description: '跑哪一支:both / gap / margin / pe(PE位階回測)'
+        description: '跑哪一支:both / gap / margin / pe / split(減資分割交叉驗證)'
         required: false
         default: 'both'
 
@@ -47,3 +47,13 @@ jobs:
           git archive origin/data data | tar -x
           echo "還原 $(ls data/*.json | wc -l) 檔"
           python3 scripts/pe_band_probe.py
+
+      - name: 🔧 減資/分割 官方 vs 我猜的 交叉驗證
+        if: ${{ github.event.inputs.which == 'split' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: |
+          git fetch --depth=1 origin data
+          git archive origin/data data | tar -x
+          echo "還原 $(ls data/*.json | wc -l) 檔"
+          python3 scripts/split_check_probe.py
