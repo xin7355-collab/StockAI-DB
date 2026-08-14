@@ -52,6 +52,41 @@ CONC_WATCH = [
     "006201", "00733",                       # 櫃買 / 中小型
 ]
 
+
+def _discover_active_etfs():
+    """🆕 V73.4.0 **自動發現主動式 ETF**(代號結尾 A),⛔ 不寫死清單。
+
+    🚨 為什麼要改:`CONC_WATCH` 原本是**寫死 17 檔,一檔主動式 ETF 都沒有** ——
+       而實測 `data/` 裡就有 **30 檔**(00400A ~ 00410A、00981A…)。
+       使用者明確要過「ETF 新增成分股,還有比例」,那 30 檔卻一直是空的。
+
+    ⭐ 而且這正好踩到 CLAUDE.md 的既有教訓(概念標籤那次):
+       **「寫死的對照表要有採礦更新機制,否則過期」** ——
+       主動式 ETF 一直在新上市,寫死清單**必然**過期。
+
+    ⛔ 刻意**不爬 `etfinfo.tw/active` 的 HTML**(使用者上傳的 Taiwan-Active-ETF-Analyzer
+       是那樣做的):那要多裝 BeautifulSoup,而且**版面一改就壞**。
+       ⭐ 我需要的只是「自動發現」這個**觀念**,不是它的爬蟲
+       —— 同 crawl4ai 那次的結論(「先問我需要它的哪一個函式」)。
+    ⭐ 零新資料源、零額外依賴:直接看 `data/` 裡有哪些代號。
+    """
+    # ⚠️ 這裡原本漏了 `import os` → NameError 被下面的 `except` 吞成「一檔都沒有」,
+    #    **零錯誤訊息**(陷阱 #9)。`check_undefined_py.py` 當場擋下來,寫在這當紀錄。
+    import os as _os
+    import re as _re
+    from pathlib import Path as _P
+    try:
+        d = _P(_os.getenv('DATA_DIR', 'data'))
+        # ⚠️ regex 跟本檔既有的判斷式對齊(L139/L156 已在用 `00\d{3}A`),
+        #    ⛔ 別在同一個檔案裡放兩套「什麼算主動式 ETF」的定義。
+        found = sorted(p.stem for p in d.glob('*.json')
+                       if _re.fullmatch(r'00\d{3}A', p.stem))
+        return found
+    except Exception as _e:
+        # ⛔ 不可靜默回 [] —— 那正是這個 bug 躲那麼久的原因
+        print(f"  ⚠️ 自動發現主動式 ETF 失敗:{type(_e).__name__}:{str(_e)[:60]}")
+        return []
+
 # 🆕 缺口4(12-5 資產配置分層):ETF 類型。只標「可確定」的,未知不標(避免誤分類)。
 #   主動型由代號規則(00\d{3}A)判定;其餘查此已知字典。
 ETF_CATEGORY = {
@@ -786,7 +821,11 @@ def main():
     # 🆕 缺口7(12-3):市值型 ETF 單一持股集中度對照(0050 集中 vs 00922/00923 等權重分散)。
     #   用既有 fetch_etf_detail(CI 有網路),抓不到就略過該檔(不誤判)。
     concentration = []
-    for cs in CONC_WATCH:
+    # ⭐ 核心清單 + 自動發現的主動式 ETF(⛔ 去重、⛔ 保持順序讓 log 好讀)
+    _act = _discover_active_etfs()
+    _watch = list(dict.fromkeys(list(CONC_WATCH) + _act))
+    print(f"  📦 ETF 成分股採集:核心 {len(CONC_WATCH)} 檔 + 自動發現主動式 {len(_act)} 檔 = {len(_watch)} 檔")
+    for cs in _watch:
         try:
             c_name, c_holds, _cfs, _cfee = fetch_etf_detail(cs)
             if not c_holds:
