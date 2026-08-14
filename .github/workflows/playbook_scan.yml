@@ -95,6 +95,22 @@ jobs:
           [ "$rc" -ne 0 ] && echo "⚠️ 掃描 rc=$rc → 不部署,保留線上舊檔"
           exit 0
 
+      # 📸 V73.4.1 榜單事後驗證快照 —— ⚠️ **累積型檔案**
+      #   ⛔ 一定要先從 data 分支還原舊檔,否則每天從零開始、而且**零錯誤訊息**
+      #      (同 tick_hist / ETF mgr_hist 的教訓)。
+      #   ⭐ 上一步的「還原 data/」用的是 `git checkout origin/data -- data/`,
+      #      pick_history.json 若已存在就會一起被還原回來 → 這裡只需確認一下。
+      - name: 📸 榜單快照(事後驗證用)
+        if: steps.scan.outputs.scan_rc == '0'
+        run: |
+          set -e
+          if [ -s data/pick_history.json ]; then
+            echo "✅ 已還原既有快照:$(python3 -c "import json;print(json.load(open('data/pick_history.json')).get('n_days'))" ) 天"
+          else
+            echo "ℹ️ 尚無既有快照(第一次跑,之後會累積)"
+          fi
+          python3 pick_snapshot.py
+
       - name: 🚀 部署 playbook_edge.json 到 gh-pages + data
         if: steps.scan.outputs.scan_rc == '0'
         run: |
@@ -104,6 +120,8 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # data/ 在 main 是 gitignore 的未追蹤檔 → 切分支前要清乾淨,先存到 /tmp
           cp data/playbook_edge.json /tmp/playbook_edge.json
+          # ⛔ 快照也要一起推,否則存了等於沒存
+          [ -s data/pick_history.json ] && cp data/pick_history.json /tmp/pick_history.json || true
 
           deploy_branch () {
             local BR="$1"
@@ -114,9 +132,10 @@ jobs:
             git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
             mkdir -p data
             cp /tmp/playbook_edge.json data/playbook_edge.json
-            git add -f data/playbook_edge.json
+            [ -s /tmp/pick_history.json ] && cp /tmp/pick_history.json data/pick_history.json || true
+            git add -f data/playbook_edge.json data/pick_history.json 2>/dev/null || git add -f data/playbook_edge.json
             if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
-            git commit -q -m "🎯 明日作戰清單 playbook_edge.json $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json
+            git commit -q -m "🎯 明日作戰清單 + 榜單快照 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json
             for i in 1 2 3 4 5; do
               if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
               [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
@@ -125,7 +144,7 @@ jobs:
               git reset --hard -q "origin/$BR" 2>/dev/null || true
               cp /tmp/playbook_edge.json data/playbook_edge.json
               git add -f data/playbook_edge.json
-              git commit -q -m "🎯 明日作戰清單 playbook_edge.json $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json 2>/dev/null || true
+              git commit -q -m "🎯 明日作戰清單 + 榜單快照 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json 2>/dev/null || true
             done
           }
 
