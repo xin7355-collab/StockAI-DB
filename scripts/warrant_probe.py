@@ -137,18 +137,33 @@ def main():
 
     # ── 權證清單:能不能知道「哪些權證對應哪一檔標的」──
     print('\n═══ ⑤ 權證 ↔ 標的股 對照(要做「權證大戶」必須有這個)═══')
-    for ds in ('TaiwanStockInfo',):
+    # ⚠️ 第一版用「代號長度 ≥6」當條件 → **誤把 ETF 當權證**(抓到 00835B 那種)。
+    #    ⭐ 實測發現權證代號長這樣:`03013T`(0 開頭 + 4 碼 + 英文字母)。
+    #    ⛔ 但「代號像權證」不等於「查得到它對應哪一檔標的」—— 那才是做功能的關鍵。
+    for ds in ('TaiwanStockInfo', 'TaiwanStockInfoWithWarrant'):
         j, tok, err = call('data', {'dataset': ds})
         rows = (j or {}).get('data') or [] if j else []
-        if rows:
-            w = [r for r in rows if str(r.get('industry_category') or '') in ('權證', 'Warrant')
-                 or len(str(r.get('stock_id') or '')) >= 6]
-            print(f'  ✅ {ds}:{len(rows):,} 列 ・其中疑似權證 {len(w):,} 檔')
-            if w:
-                found += 1
-                print(f'     範例:{json.dumps(w[:3], ensure_ascii=False)[:300]}')
-        else:
+        if not rows:
             print(f'  ❌ {ds}:{err}')
+            continue
+        import re as _re
+        w = [r for r in rows if _re.fullmatch(r'0[3-9]\d{3}[A-Z]', str(r.get('stock_id') or ''))]
+        cats = {}
+        for r in rows:
+            c = str(r.get('industry_category') or '')
+            if '權證' in c:
+                cats[c] = cats.get(c, 0) + 1
+        print(f'  ✅ {ds}:{len(rows):,} 列 ・代號長得像權證的 {len(w):,} 檔'
+              f' ・產業別含「權證」的分類:{cats or "(無)"}')
+        if w:
+            found += 1
+            print(f'     範例:{json.dumps(w[:3], ensure_ascii=False)[:300]}')
+            # 🚨 關鍵:欄位裡**有沒有**「標的股」那一欄?沒有的話功能就做不出來
+            keys = sorted(w[0].keys())
+            und = [k for k in keys if any(t in k.lower() for t in
+                                          ('underly', 'target', 'ref', 'parent', 'base'))]
+            print(f'     欄位:{keys}')
+            print(f'     ⭐ 疑似「標的股」欄位:{und or "❌ 沒有 → 權證對不回標的股,功能做不出來"}')
 
     print('\n⛔ 怎麼讀這份報告:')
     print('   ・`402` / `403` / 「level is register」= **權限**問題 → 換金鑰或升級,⛔ 不是程式問題')
