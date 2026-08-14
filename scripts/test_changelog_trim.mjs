@@ -75,6 +75,21 @@ console.log(`   ↳ 目前 ${cl.length} 筆 ・${(size / 1024).toFixed(1)} KB �
 ok('⑥ 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();
+// 🚨 V73.4.0 加這條:我用 Python 腳本改 `_CHANGELOG` 時**兩次**留下相鄰的字串字面量
+//   (`'…',''…'`)—— Python 有隱式串接、**JS 沒有** → 整份 index.html 直接 SyntaxError,
+//   症狀是「App 完全打不開」。smoke_test 抓得到,但要跑 30 秒 + playwright;
+//   ⭐ 這裡加一條**秒級**靜態守門,改完當場就知道。
+{
+    const _src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf-8');
+    const _i = _src.indexOf('_CHANGELOG: [');
+    const _seg = _src.slice(_i, _i + 80000);
+    // 只抓「中文字 + 兩個引號 + 中文字」這種必炸組合;
+    // ⛔ 合法的空字串 '' 兩側會有 , : ( ) 等符號,不會被夾在中文之間。
+    const _bad = _seg.match(/[\u4e00-\u9fa5%\)][''"]{2}[\u4e00-\u9fa5]/g) || [];
+    ok('⑦ ⛔ _CHANGELOG 不可有相鄰字串字面量(JS 無隱式串接)',
+       _bad.length === 0, _bad.slice(0, 3).join(' | '));
+}
+
 console.log('');
 if (fails.length) { console.log(`❌ CHANGELOG_TRIM_FAIL: ${JSON.stringify(fails)}`); process.exit(1); }
 console.log('✅ CHANGELOG_TRIM_PASS');

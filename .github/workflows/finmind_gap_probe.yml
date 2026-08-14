@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       which:
-        description: '跑哪一支:both / gap / margin / pe / split / warrant(權證)'
+        description: '跑哪一支:both / gap / margin / pe / split / warrant / fund(基本面缺漏)'
         required: false
         default: 'both'
 
@@ -63,3 +63,9 @@ jobs:
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
         run: python3 scripts/warrant_probe.py
+
+      - name: 📊 基本面缺漏探針(股利/EPS/營收 為什麼是空的)
+        if: ${{ github.event.inputs.which == 'fund' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/fund_gap_probe.py

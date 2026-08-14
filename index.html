@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.3.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.4.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.9 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.4.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2016,7 +2016,7 @@
                 <!-- 🔗 V69.7.8 產業鏈定位(官方對照;有資料才顯,無則整塊隱藏) -->
                 <div id="chainRow" class="hidden mb-2"></div>
 
-                <details class="bg-[#0d1117] border border-[#30363d] rounded-lg">
+                <details class="bg-[#0d1117] border border-[#30363d] rounded-lg" open>
                     <summary class="px-3 py-2.5 cursor-pointer select-none text-[12px] font-bold text-gray-300 list-none flex items-center justify-between">
                         <span>🔬 看完整基本面數據 <span class="text-[9px] text-gray-500 font-normal">投資屬性・盈利力・估值・配息・EPS・月營收</span></span>
                         <span class="text-gray-500 text-[10px]">▾ 點開</span>
@@ -2056,7 +2056,7 @@
                                 <div id="xrayInvBest" class="text-[10px] text-gray-400 mt-0.5 leading-snug">--</div>
                             </div>
                         </div>
-                        <details class="mt-1.5">
+                        <details class="mt-1.5" open>
                             <summary class="cursor-pointer text-[10px] text-gray-500 hover:text-purple-300">💡 評分構成因子(點開)</summary>
                             <div id="xrayInvFactors" class="text-[9px] text-gray-500 mt-1 leading-relaxed pl-1"></div>
                         </details>
@@ -2153,7 +2153,7 @@
                             <span id="xrayFillDays" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                     </div>
-                    <details id="xrayFillHistDetails" class="bg-[#0d1117] rounded mb-3 hidden">
+                    <details id="xrayFillHistDetails" class="bg-[#0d1117] rounded mb-3 hidden" open>
                         <summary class="cursor-pointer px-2 py-1.5 text-[10px] text-amber-300 font-bold">📜 近 5 次除息紀錄(歷史·點開)</summary>
                         <div id="xrayFillHistTable" class="px-2 pb-2 text-[10px]"></div>
                     </details>
@@ -7281,8 +7281,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.3.9',
+    _APP_VERSION: 'V73.4.0',
     _CHANGELOG: [
+        { v: 'V73.4.0', dt: '2026-08-14', t: '📂 基本面頁折疊全部打開', d: ['基本面分頁那三個要點才開的區塊(完整基本面數據、評分構成因子、近5次除息紀錄)現在預設就是打開的。','你截圖那個「股利政策 --」我查出來了:不是 2327 特例 —— 全市場 2,074 檔只有 46 檔(2.2%)有股利,連台積電、鴻海的 EPS 也是空的。已寫探針去查真因(是權限問題還是抓取時間窗太短),查到再修。'] },
         { v: 'V73.3.9', dt: '2026-08-14', t: '📐 新增「這檔現在貴不貴 —— 跟它自己以前比」', d: ['基本面 X 光機多一格「vs 自己」:現在的本益比,在它自己近 3 年的哪個位置(0%=最便宜、100%=最貴)。','跟旁邊那格「vs 同業」問的是不同的事 —— 有些股票是整個產業都貴,有些是自己漲太多。','⭐ 有實測過才做:300 檔 11 年回測,最便宜 10% 之後 60 天贏大盤 0.68 個百分點,由便宜到貴完全單調。','⛔ 但幅度小,扣掉買賣成本只剩 0.24 → 當背景參考就好,買賣還是看總覽那張「現在怎麼做」。','⛔ 股價淨值比(P/B)同一套方法測出來前後半段方向相反,是雜訊 → 刻意沒做。','景氣對策信號改走新資料源,那格空了很久,下次採礦後會有值。'] },
         { v: 'V73.3.8', dt: '2026-08-13', t: '🚨 融資維持率之前是錯的(而且方向相反),已換成官方值', d: ['之前那張卡顯示 127.9%、說「已在斷頭區」—— 那是我自己推估的。證交所官方同一天是 194.7%,是歷史高檔區。差 67 個百分點而且方向完全相反,已全面改用官方值。','⛔ 順便推翻一個流行說法:「大盤維持率跌破 130% 就會 V 型反彈」—— 拿官方 11 年資料實測,2015 年到現在 2,821 個交易日「一次都沒跌破過 130%」(史上最低 130.4%),那條線根本等不到。','而且方向是反的:融資維持率越低,後面 20 天反而輸大盤;越健康反而略好。卡上已寫實測數字。','這些是靠 FinMind 官方 11 年資料才驗得出來的 —— 之前資料只有 3 個月,什麼都驗不了。'] },
         { v: 'V73.3.7', dt: '2026-08-12', t: '📅 分點「20 日」其實不到 20 天 —— 現在會誠實講', d: ['你問「分點到 20 天了嗎」→ 查出真 bug:標「20 日」的 246 檔,沒有一檔真的有 20 天(最多 15、最少 4)。','採礦端天數不夠時會「有幾天算幾天」,但標籤照樣寫 20 日 → 你看到的期間比標籤短。','⛔ 資料沒有藏起來(數字是真的),只是現在會多一行告訴你「這格實際只加總了 N 天、再過幾天才會滿」。','冷門股只有 1 日 / 3 日是正常的 —— 分點額度有限,只有約 278 檔熱門股採完整週期。'] },
