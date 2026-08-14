@@ -1714,6 +1714,24 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
     except Exception as e:
         print(f"    ⚠️ FinMind ThreadPool {sym}: {e}")
 
+    # 🩺 V73.4.1 診斷:三支 fetch 到底拿回幾列 —— **寫進產物**,⛔ 不是只印 log
+    #   🚨 為什麼要加:使用者截圖 2327 股利全空 → 實測 gh-pages 全市場 2,074 檔
+    #      **只有 46 檔(2.2%)有股利**,而且 2330/2317/2327 連 eps 都空,2454 卻有。
+    #      而 `scripts/fund_gap_probe.py` 雲端實測證明 **FinMind 那三支全都給得出來**
+    #      (2330:股利 31 列 / 財報 714 列 / 月營收 120 列,CashEarningsDistribution=6.0)
+    #      → **不是資料源問題,是這邊的問題**,但光看程式碼推不出來是哪一步斷掉。
+    #   ⭐ 照 CLAUDE.md 鐵則:「先加診斷,再下結論」+「診斷要寫進 JSON,不是只印 log」
+    #      (job log 會過期,寫進產物才能 `git show origin/gh-pages:...` 直接讀)。
+    result['_fetch_diag'] = {
+        'fs': len((fs_json or {}).get('data') or []),
+        'rev': len((rev_json or {}).get('data') or []),
+        'div': len((div_json or {}).get('data') or []),
+        'start_div': start_div,
+    }
+    if not any(result['_fetch_diag'][k] for k in ('fs', 'rev', 'div')):
+        # ⛔ 三支全空 → 一定要留原因,否則下一個人只會看到「欄位都是 None」而查不出為什麼
+        result['fund_error'] = f"FinMind 三支全回空(fs/rev/div=0);窗口 {start_div}~{today_str}"
+
     # 1. 財務報表 (Q1~Q4 EPS 歷史與毛利) ──────────────────────────────
     try:
         j = fs_json
@@ -4233,6 +4251,10 @@ def fetch_broker_chips():
                 'op_margin_trend':    fm_fund.get('op_margin_trend'),    # 🆕 營業利益率趨勢(三率三升)
                 'net_margin_trend':   fm_fund.get('net_margin_trend'),   # 🆕 淨利率趨勢(三率三升)
                 'payout_ratio':       fm_fund.get('payout_ratio'),
+                # 🩺 V73.4.1 診斷欄位一定要挑進來 —— `fundamentals` 是**逐欄挑**的,
+                #   加在 fetch 端卻沒挑進來 = 白加(陷阱 #37:寫好了卻沒接上)。
+                '_fetch_diag':        fm_fund.get('_fetch_diag'),
+                'fund_error':         fm_fund.get('fund_error'),
                 'total_dividend':     fm_fund.get('total_dividend'),
                 'total_dividend_4q':  fm_fund.get('total_dividend_4q'),
                 'quarterly_dividends': fm_fund.get('quarterly_dividends', []),
