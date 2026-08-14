@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.4.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.4.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.4.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.4.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7281,8 +7281,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.4.0',
+    _APP_VERSION: 'V73.4.1',
     _CHANGELOG: [
+        { v: 'V73.4.1', dt: '2026-08-14', t: '💰 修好股利政策那三格', d: ['殖利率現在算得出來了(年化股利 ÷ 收盤價),之前那一格永遠是空的。','發配率、每股股利其實資料早就有(全市場 1,455 檔),你重新整理就會出現。','填息機率/平均填息天數:找到真因了 —— 夜間採礦漏還原 K 線,而算填息要用到它,所以 1,627 檔全部算不出來、還完全沒有錯誤訊息。已修,今晚採礦後就會有。'] },
         { v: 'V73.4.0', dt: '2026-08-14', t: '📂 基本面頁折疊全部打開', d: ['基本面分頁那三個要點才開的區塊(完整基本面數據、評分構成因子、近5次除息紀錄)現在預設就是打開的。','你截圖那個「股利政策 --」我查出來了:不是 2327 特例 —— 全市場 2,074 檔只有 46 檔(2.2%)有股利,連台積電、鴻海的 EPS 也是空的。已寫探針去查真因(是權限問題還是抓取時間窗太短),查到再修。'] },
         { v: 'V73.3.9', dt: '2026-08-14', t: '📐 新增「這檔現在貴不貴 —— 跟它自己以前比」', d: ['基本面 X 光機多一格「vs 自己」:現在的本益比,在它自己近 3 年的哪個位置(0%=最便宜、100%=最貴)。','跟旁邊那格「vs 同業」問的是不同的事 —— 有些股票是整個產業都貴,有些是自己漲太多。','⭐ 有實測過才做:300 檔 11 年回測,最便宜 10% 之後 60 天贏大盤 0.68 個百分點,由便宜到貴完全單調。','⛔ 但幅度小,扣掉買賣成本只剩 0.24 → 當背景參考就好,買賣還是看總覽那張「現在怎麼做」。','⛔ 股價淨值比(P/B)同一套方法測出來前後半段方向相反,是雜訊 → 刻意沒做。','景氣對策信號改走新資料源,那格空了很久,下次採礦後會有值。'] },
         { v: 'V73.3.8', dt: '2026-08-13', t: '🚨 融資維持率之前是錯的(而且方向相反),已換成官方值', d: ['之前那張卡顯示 127.9%、說「已在斷頭區」—— 那是我自己推估的。證交所官方同一天是 194.7%,是歷史高檔區。差 67 個百分點而且方向完全相反,已全面改用官方值。','⛔ 順便推翻一個流行說法:「大盤維持率跌破 130% 就會 V 型反彈」—— 拿官方 11 年資料實測,2015 年到現在 2,821 個交易日「一次都沒跌破過 130%」(史上最低 130.4%),那條線根本等不到。','而且方向是反的:融資維持率越低,後面 20 天反而輸大盤;越健康反而略好。卡上已寫實測數字。','這些是靠 FinMind 官方 11 年資料才驗得出來的 —— 之前資料只有 3 個月,什麼都驗不了。'] },
@@ -24612,6 +24613,22 @@ ${lightExplain[queryType]}
                     if (localFund.pb == null && typeof _v.pb === 'number') { localFund.pb = _v.pb; localFund.pb_unavailable = false; }
                     if (localFund.payout_ratio == null && typeof _v.payout === 'number') localFund.payout_ratio = _v.payout;
                     if (localFund.total_dividend_4q == null && typeof _v.div === 'number') localFund.total_dividend_4q = _v.div;
+                    // 💰 V73.4.1 殖利率 fallback —— ⭐ **零採礦**:年化股利 ÷ 現價。
+                    //   🚨 使用者截圖 2327「殖利率 --」:`fund_yoy_gm.json` **沒有殖利率欄位**
+                    //      (實測 0 檔),但它有 `div`(年化股利,1,455 檔)→ 除以現價就算得出來。
+                    //   ⛔ 現價用**當天收盤**(rawDailyData 最後一根),不是即時報價 ——
+                    //      殖利率是「存股參考值」,盤中跳動沒有意義,而且兩者混用會出現
+                    //      「同一畫面兩個殖利率」(同名不同值)。
+                    if (localFund.yield_rate == null && typeof _v.div === 'number' && _v.div > 0) {
+                        try {
+                            const _a = this.rawDailyData || [];
+                            const _px = _a.length ? +_a[_a.length - 1].close : 0;
+                            if (_px > 0) {
+                                localFund.yield_rate = +(_v.div / _px * 100).toFixed(2);
+                                localFund._yield_calc = true;   // ⭐ 標記「這是算的不是官方給的」
+                            }
+                        } catch (_) {}
+                    }
                     if (localFund.dividend_fill_prob == null && typeof _v.fillp === 'number') localFund.dividend_fill_prob = _v.fillp;
                     if (localFund.dividend_avg_fill_days == null && typeof _v.filld === 'number') localFund.dividend_avg_fill_days = _v.filld;
                     if ((!Array.isArray(localFund.quarterly_eps) || !localFund.quarterly_eps.length) && Array.isArray(_v.qeps) && _v.qeps.length) localFund.quarterly_eps = _v.qeps;

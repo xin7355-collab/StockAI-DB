@@ -57,13 +57,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: 📂 還原所需資料 (origin/data → data/,只取兩檔)
+      # 🚨 V73.4.1 使用者截圖:填息機率/平均填息天數 永遠「採礦更新中」。
+      #   真因就在這一步 —— 舊版**只還原 2 個檔**,而 `fund_sweep.py` 算填息時要讀
+      #   `data/{sym}.json` 的 OHLCV(`op.exists()`);檔案不在 → 那段被 `if` 靜默跳過
+      #   → **1,627 檔全部算不出填息,而且零錯誤訊息**(實測 `fillp` / `filld` 都是 **0 檔**)。
+      #   ⭐ 填息的程式碼本身**早就寫好了**,缺的只是它要吃的資料 —— 同陷阱 #9 的味道:
+      #      「腳本 rc=0」不等於「功能有跑」。
+      #   ⛔ 還原全市場 K 線約 450MB,但這支是**夜間**跑、又分 4 片,時間充裕。
+      - name: 📂 還原所需資料 (origin/data → data/)
         run: |
           git fetch origin data 2>/dev/null || echo "⚠️ 尚無 data 分支(首跑)"
           mkdir -p data
           git show origin/data:data/fundamentals_cache.json > data/fundamentals_cache.json 2>/dev/null || echo "⚠️ 無 fundamentals_cache.json(首跑會略過)"
           git show origin/data:data/fund_yoy_gm.json > data/fund_yoy_gm.json 2>/dev/null || echo "ℹ️ 尚無 fund_yoy_gm.json(首次夜跑,從零建)"
-          echo "還原後 data/ 檔案數:$(ls data 2>/dev/null | wc -l)"
+          # ⭐ 個股 OHLCV —— 填息計算的必要輸入(⛔ 少了它 fillp/filld 永遠是 None)
+          git archive origin/data data 2>/dev/null | tar -x || echo "⚠️ 個股 K 線還原失敗 → 填息會算不出來"
+          _k=$(ls data/*.json 2>/dev/null | wc -l)
+          echo "還原後 data/ 檔案數:$_k"
+          # 🚧 空過守門:K 線沒還原到就明說 —— ⛔ 別讓它靜默跑完再回報「成功」
+          if [ "$_k" -lt 500 ]; then
+            echo "::warning::只還原到 $_k 檔 K 線 → 填息(fillp/filld)這一輪會算不出來"
+          fi
 
       - name: 🌙 執行分片基本面補齊 (shard ${{ matrix.shard }})
         env:
