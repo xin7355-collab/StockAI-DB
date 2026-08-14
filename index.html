@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.3.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.3.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.3.9 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2108,6 +2108,10 @@
                         <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-violet-900/40">
                             <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">vs 同業 <button onclick="app.showJargon('產業相對PE'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button> <span id="xrayIndustryPeTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
                             <span id="xrayIndustryPe" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
+                        </div>
+                        <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-violet-900/40">
+                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">vs 自己 <button onclick="app._showPeBandHelp(); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button> <span id="xrayPeBandTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
+                            <span id="xrayPeBand" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-violet-900/40">
                             <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">P/B <button onclick="app.showJargon('股價淨值比PB'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
@@ -7277,8 +7281,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.3.8',
+    _APP_VERSION: 'V73.3.9',
     _CHANGELOG: [
+        { v: 'V73.3.9', dt: '2026-08-14', t: '📐 新增「這檔現在貴不貴 —— 跟它自己以前比」', d: ['基本面 X 光機多一格「vs 自己」:現在的本益比,在它自己近 3 年的哪個位置(0%=最便宜、100%=最貴)。','跟旁邊那格「vs 同業」問的是不同的事 —— 有些股票是整個產業都貴,有些是自己漲太多。','⭐ 有實測過才做:300 檔 11 年回測,最便宜 10% 之後 60 天贏大盤 0.68 個百分點,由便宜到貴完全單調。','⛔ 但幅度小,扣掉買賣成本只剩 0.24 → 當背景參考就好,買賣還是看總覽那張「現在怎麼做」。','⛔ 股價淨值比(P/B)同一套方法測出來前後半段方向相反,是雜訊 → 刻意沒做。','景氣對策信號改走新資料源,那格空了很久,下次採礦後會有值。'] },
         { v: 'V73.3.8', dt: '2026-08-13', t: '🚨 融資維持率之前是錯的(而且方向相反),已換成官方值', d: ['之前那張卡顯示 127.9%、說「已在斷頭區」—— 那是我自己推估的。證交所官方同一天是 194.7%,是歷史高檔區。差 67 個百分點而且方向完全相反,已全面改用官方值。','⛔ 順便推翻一個流行說法:「大盤維持率跌破 130% 就會 V 型反彈」—— 拿官方 11 年資料實測,2015 年到現在 2,821 個交易日「一次都沒跌破過 130%」(史上最低 130.4%),那條線根本等不到。','而且方向是反的:融資維持率越低,後面 20 天反而輸大盤;越健康反而略好。卡上已寫實測數字。','這些是靠 FinMind 官方 11 年資料才驗得出來的 —— 之前資料只有 3 個月,什麼都驗不了。'] },
         { v: 'V73.3.7', dt: '2026-08-12', t: '📅 分點「20 日」其實不到 20 天 —— 現在會誠實講', d: ['你問「分點到 20 天了嗎」→ 查出真 bug:標「20 日」的 246 檔,沒有一檔真的有 20 天(最多 15、最少 4)。','採礦端天數不夠時會「有幾天算幾天」,但標籤照樣寫 20 日 → 你看到的期間比標籤短。','⛔ 資料沒有藏起來(數字是真的),只是現在會多一行告訴你「這格實際只加總了 N 天、再過幾天才會滿」。','冷門股只有 1 日 / 3 日是正常的 —— 分點額度有限,只有約 278 檔熱門股採完整週期。'] },
         { v: 'V73.3.6', dt: '2026-08-12', t: '📊 籌碼訊號第一次有實測成績了', d: ['法人買賣超的歷史從 60 天補到約 3 年(2,613 檔)—— 以前樣本不夠、什麼都驗不了,現在可以驗了。','籌碼卡新增「實測成績」:今天出現的法人型態,歷史上到底有沒有用、勝率多少、樣本幾次,一次講清楚。','⛔ 誠實結果:分析師常講的「外資認錯回補」實測等於沒用(邊際 -0.04pp,而且前後半段方向相反)。','✅ 真正有用的是「外資+投信同一天都買」(20 日多賺 0.99%、勝率 40.3% 對基準 34.6%),扣掉手續費還是正的。','「明日作戰清單」不再會停更 —— 改成採礦跑完自動接著跑,排程只當備援。'] },
@@ -10147,6 +10152,84 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     // 🏭 V35.2 — 全市場基本面快取(fundamentals_cache.json:{sym:{pe,yield_rate}}),供同業 PE 對比(一次抓全市場,免逐檔 API)
     // 🔄 V46.7 — 併入 fundamentals_rotation.json(每小時輪動採礦補的冷門股 EPS/YoY/毛利);
     //            合併規則:輪動當底、daily 覆蓋在上(daily 較新較準,輪動只補 daily 缺的欄/檔)。
+    // 📐 V73.3.9 「這檔 PE 在它自己近 3 年的哪個位階」(`data/pe_band.json`,pe_band_miner.py)
+    //   ⭐ CLAUDE.md 原本判定「假的河流圖,不要做」—— 那是因為只有當前 PE、得用現在的 EPS
+    //      回推歷史。`TaiwanStockPER` 給的是**每一天當時的真實 PE** → 那個理由不成立了。
+    //   ✅ 而且**先驗證過才上**(`pe_band_probe.py`,300 檔跨代號段均勻抽樣、11 年、扣同期加權):
+    //      最低 10% → 60 日 +0.68pp ・最低 25% +0.63 ・中間 −0.31 ・最高 25% −0.43 ・最高 10% −0.49
+    //      **完全單調 + 反向檢定成立 + 前後半段同向 + 拿掉 2022 仍成立** = 六道關卡全過。
+    //   ⛔ 但幅度小(扣來回成本 0.44% 只剩 +0.24pp)→ **只當背景資訊**,不下指令、不計分。
+    //   ⛔ PB 位階實測**不成立**(最低 10% 前半 +0.32 / 後半 −2.32 方向相反)→ 刻意不做。
+    async _loadPeBand() {
+        if (this._peBandAll && (Date.now() - this._peBandAll.ts) < 12 * 3600e3) return this._peBandAll.data;
+        try {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/pe_band.json', base).href + `?t=${Date.now()}`,
+                                  { signal: AbortSignal.timeout(8000) });
+            if (!r.ok) return null;
+            const j = await r.json();
+            if (!j || !j.data) return null;
+            this._peBandAll = { ts: Date.now(), data: j };
+            return j;
+        } catch (_) { return null; }
+    },
+
+    // 把位階填進 X 光機「vs 自己」那格。⛔ 沒資料就留 `--`(不假裝知道)。
+    async _renderPeBand(sym) {
+        const el = document.getElementById('xrayPeBand');
+        const tag = document.getElementById('xrayPeBandTag');
+        if (!el) return;
+        el.textContent = '--'; el.className = 'font-mono font-black text-xl text-gray-600 leading-tight';
+        if (tag) { tag.textContent = ''; tag.className = 'text-[9px] font-mono px-1.5 py-0.5 rounded'; }
+        const j = await this._loadPeBand();
+        if (!j || String(this.currentSymbolId) !== String(sym)) return;   // ⚠️ 切股競態守門
+        const d = j.data[String(sym)];
+        if (!d || !Number.isFinite(+d.pct)) return;
+        const p = +d.pct;
+        el.textContent = `${p.toFixed(0)}%`;
+        // ⛔ 這裡的顏色講的是「便宜/貴」不是漲跌 —— 但台股紅=漲,為免打架,一律用中性灰,
+        //    語意交給下面的文字標籤(燈號鐵則:紅綠只准表示漲跌方向)。
+        el.className = 'font-mono font-black text-xl text-gray-100 leading-tight';
+        if (tag) {
+            const t = p <= 10 ? '近3年最便宜' : p <= 25 ? '偏便宜'
+                    : p >= 90 ? '近3年最貴' : p >= 75 ? '偏貴' : '中間';
+            tag.textContent = t;
+            tag.className = 'text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-gray-300';
+        }
+        el.title = `PE ${d.pe} ・近 3 年區間 ${d.lo}~${d.hi}(中位 ${d.med})・樣本 ${d.n} 天 ・資料日 ${d.d}`;
+    },
+
+    _showPeBandHelp() {
+        const j = this._peBandAll && this._peBandAll.data;
+        const e = (j && j.edge) || { lo10: 0.68, lo25: 0.63, mid: -0.31, hi25: -0.43, hi10: -0.49,
+                                     horizon: 60, cost: 0.44, files: 300, years: 11 };
+        const d = j && j.data && j.data[String(this.currentSymbolId)];
+        alert('【vs 自己 = 這檔現在的本益比,在它自己近 3 年的哪個位置】\n\n'
+            + '0% = 近 3 年最便宜的時候;100% = 最貴的時候。\n'
+            + (d ? `這檔現在 PE ${d.pe},近 3 年區間 ${d.lo}~${d.hi}(中位 ${d.med}),位階 ${d.pct}%。\n\n` : '\n')
+            + '⭐【跟旁邊那格「vs 同業」不一樣,別搞混】\n'
+            + '  ・vs 同業  = 跟別人比,貴不貴\n'
+            + '  ・vs 自己  = 跟它自己以前比,貴不貴\n'
+            + '  兩個都要看 —— 有些股票整個產業都貴,有些是自己漲太多。\n\n'
+            + '📊【這個有沒有用?我實測過了】\n'
+            + `  拿 ${e.files} 檔股票、${e.years} 年資料回測(報酬已扣掉同期大盤):\n`
+            + `  ・位階最低 10%(自己最便宜)→ 之後 ${e.horizon} 天贏大盤 ${e.lo10} 個百分點\n`
+            + `  ・位階最低 25%              → 贏 ${e.lo25}\n`
+            + `  ・中間                      → ${e.mid}\n`
+            + `  ・最高 25%                  → ${e.hi25}\n`
+            + `  ・最高 10%(自己最貴)      → ${e.hi10}\n`
+            + '  ⭐ 由便宜到貴【完全單調】,而且貴的那頭是負的 → 不是碰巧。\n'
+            + '     前後半段分開算方向一致,拿掉表現最好的那一年也還成立。\n\n'
+            + '⛔【但別把它當進場理由】\n'
+            + `  ・${e.lo10} 個百分點是 ${e.horizon} 天的幅度,扣掉買賣來回成本約 ${e.cost}% 之後只剩 0.24。\n`
+            + '  ・便宜不代表會漲 —— 我另外實測過「低檔布局」這種打法,三個天期全是負的。\n'
+            + '  ・景氣循環股(航運/塑化/鋼鐵)PE 低反而常是景氣高點,要特別小心。\n'
+            + '  → 這格請當【背景參考】,買賣還是看總覽那張「現在怎麼做」。\n\n'
+            + '⛔【P/B 我刻意沒做】:同一套方法測 P/B 位階,前半段 +0.32、後半段 −2.32,\n'
+            + '   方向完全相反 = 雜訊。不能因為 PE 成立就順便把 P/B 一起做。');
+        this.vibrate?.(20);
+    },
+
     async _loadFundCache() {
         if (this._fundCacheAll && (Date.now() - this._fundCacheAll.ts) < 6 * 3600e3) return this._fundCacheAll.data;
         try {
@@ -24433,7 +24516,12 @@ ${lightExplain[queryType]}
         this._xrayMetrics = { sym };   // 🧮 純公式體質總評用的指標暫存(逐項算好塞進來,末端統一產結論)
         // 🧩 V34.0 — ETF 不適用個股本益比/EPS/營收 → 顯說明、跳過抓財報(改看成分股卡)
         if (this._isETF && this._isETF(sym)) {
-            ['xrayYoy','xrayPe','xrayYield','xrayGrossMargin','xrayPayout','xrayEpsYoY','xrayEpsQoQ','xrayPb','xrayPeg'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+            // 📐 V73.3.9 `xrayPeBand`(vs 自己歷史位階)一併加進來 ——
+            //   ⚠️ 陷阱 #19 已經犯過**兩次**(ETF、指數),鐵則就是「新增任何 X 光機欄位時,
+            //      ETF 早退清單要一起加」。它是 async 才填的 → 不清就會留上一檔的位階。
+            ['xrayYoy','xrayPe','xrayYield','xrayGrossMargin','xrayPayout','xrayEpsYoY','xrayEpsQoQ','xrayPb','xrayPeg','xrayPeBand'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+            // 位階旁邊那個文字標籤也要清(⛔ 只清數字會留下「近3年最便宜」這種殘影)
+            { const _t = document.getElementById('xrayPeBandTag'); if (_t) { _t.textContent = ''; _t.className = 'text-[9px] font-mono px-1.5 py-0.5 rounded'; } }
             // 🐛 V72.4.1 陷阱 #19 再犯(使用者截圖抓到):ETF 早退**只清了上面那幾格**,
             //   於是「毛利率 +3.0pp(從 2 季前 20.2%)」「每季 EPS 2.64」「投資屬性 52/75/80」
             //   會原封不動留著**上一檔個股**的數字 —— ETF 根本沒有毛利率/EPS/本益比,
@@ -24794,6 +24882,9 @@ ${lightExplain[queryType]}
             } else { momEl.textContent = ''; }
         }
         setCell('xrayPe', pe, 'x', pe==null?null:pe<15?'text-green-400':pe>40?'text-red-400':'text-yellow-400');
+        // 📐 V73.3.9 「vs 自己」位階(⛔ 非同步,不 await —— 別讓它拖慢整頁渲染)
+        //   ⚠️ 陷阱 #37:共用函式寫好卻只接一處 → 這裡是**唯一**呼叫點,測試 ⑦ 有釘。
+        try { this._renderPeBand(sym); } catch (_) {}
         // 🏷️ V71.4.5 本益比旁的「跟同業比」標籤 —— xrayPeTag 那個 span 一直是空的(有版位沒內容)。
         //    用 industry_pe.json 的產業中位 PE 比,不用「PE<15 就是便宜」那種絕對門檻
         //    (金融股 10 倍是常態、IC 設計 30 倍也是常態,絕對門檻跨產業會判反)。
