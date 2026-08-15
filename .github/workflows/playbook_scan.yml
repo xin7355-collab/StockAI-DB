@@ -111,6 +111,16 @@ jobs:
           fi
           python3 pick_snapshot.py
 
+      # 🔎 V73.5.0 自訂選股的地基 —— 全市場逐檔特徵快照
+      #   ⛔ 前端不可能為了篩選去下載 2,700 個 data/{sym}.json → 這裡先算好壓成一個檔。
+      #   ⭐ 掛在這裡是因為上面那步已經 `git checkout origin/data -- data/` 還原了全市場 OHLCV,
+      #      不必再抓一次;而且這支 workflow 本來就會推 gh-pages + data 兩個分支。
+      #   ⚠️ 這是**每天重算**的快照(⛔ 不是累積型)→ 不需要先還原舊檔。
+      - name: 🔎 全市場特徵快照(自訂選股用)
+        if: steps.scan.outputs.scan_rc == '0'
+        continue-on-error: true      # ⛔ 它失敗不該擋掉明日作戰清單的部署
+        run: python3 screener_miner.py
+
       - name: 🚀 部署 playbook_edge.json 到 gh-pages + data
         if: steps.scan.outputs.scan_rc == '0'
         run: |
@@ -122,6 +132,14 @@ jobs:
           cp data/playbook_edge.json /tmp/playbook_edge.json
           # ⛔ 快照也要一起推,否則存了等於沒存
           [ -s data/pick_history.json ] && cp data/pick_history.json /tmp/pick_history.json || true
+          [ -s data/screener.json ] && cp data/screener.json /tmp/screener.json || echo "⚠️ 沒有 screener.json → 自訂選股這輪不更新(前端會顯示既有日期)"
+
+          # ⭐ 三個產物一次放回,⛔ 別在 retry 分支只放回其中一個(那正是以前漏掉快照的原因)
+          restore_files () {
+            cp /tmp/playbook_edge.json data/playbook_edge.json
+            [ -s /tmp/pick_history.json ] && cp /tmp/pick_history.json data/pick_history.json || true
+            [ -s /tmp/screener.json ] && cp /tmp/screener.json data/screener.json || true
+          }
 
           deploy_branch () {
             local BR="$1"
@@ -131,20 +149,20 @@ jobs:
             # ⚠️ 用 -B + origin/$BR 明確指定:避開「data 既是資料夾又是分支名」的 git 歧義 fatal
             git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
             mkdir -p data
-            cp /tmp/playbook_edge.json data/playbook_edge.json
-            [ -s /tmp/pick_history.json ] && cp /tmp/pick_history.json data/pick_history.json || true
-            git add -f data/playbook_edge.json data/pick_history.json 2>/dev/null || git add -f data/playbook_edge.json
+            restore_files
+            git add -f data/playbook_edge.json data/pick_history.json data/screener.json 2>/dev/null || git add -f data/playbook_edge.json
             if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
-            git commit -q -m "🎯 明日作戰清單 + 榜單快照 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json
+            git commit -q -m "🎯 明日作戰清單 + 榜單快照 + 選股快照 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json data/screener.json
             for i in 1 2 3 4 5; do
               if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
               [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
               echo "⚠️ $BR push attempt $i 失敗,sleep $((i*5))s 重試…"; sleep $((i*5))
               git fetch origin "$BR" 2>/dev/null || true
               git reset --hard -q "origin/$BR" 2>/dev/null || true
-              cp /tmp/playbook_edge.json data/playbook_edge.json
-              git add -f data/playbook_edge.json
-              git commit -q -m "🎯 明日作戰清單 + 榜單快照 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json 2>/dev/null || true
+              mkdir -p data
+              restore_files
+              git add -f data/playbook_edge.json data/pick_history.json data/screener.json 2>/dev/null || git add -f data/playbook_edge.json
+              git commit -q -m "🎯 明日作戰清單 + 榜單快照 + 選股快照 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json data/screener.json 2>/dev/null || true
             done
           }
 
