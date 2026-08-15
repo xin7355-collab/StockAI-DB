@@ -294,6 +294,31 @@ ok('⑧ 無 pageerror', errs.length === 0, errs.join(' | '));
     ok('⑬e 換排序鍵 → 第一名要跟著變(⛔ 否則沒接上)', R4.first1 !== R4.first2, `${R4.first1} vs ${R4.first2}`);
 }
 
+
+// ── ⑭ V73.5.3 讀不到條件表時的空狀態:⛔ 不可只講一句無用的通則 ──
+{
+    const R5 = await page.evaluate(async () => {
+        const o = {};
+        const keep = app._scrData;
+        for (const err of ['notyet', 'timeout', 'net']) {
+            app._scrData = null; app._scrErr = err;
+            await app._renderCustomScreener();
+            o[err] = document.getElementById('radarModeCustom').innerText;
+        }
+        o.hasReload = !!document.querySelector('#radarModeCustom button[onclick="app.scrReload()"]');
+        app._scrData = keep; app._scrErr = null;
+        await app._renderCustomScreener();
+        return o;
+    });
+    ok('⑭ 三種原因給三種不同說法(⛔ 不可都一樣)',
+       R5.notyet !== R5.timeout && R5.timeout !== R5.net, '');
+    ok('⑭b ⭐ 第一次還沒產生時要說「已在排隊 + 多久」', /已經在排隊|20~30/.test(R5.notyet), R5.notyet.slice(0, 90));
+    ok('⑭c ⛔ 不可再出現「19:00 之後就會有」那種對半夜沒幫助的話', !/19:00 之後就會有/.test(R5.notyet + R5.timeout + R5.net), '');
+    ok('⑭d 有「重新檢查」按鈕(⛔ 不可只叫人等)', R5.hasReload === true, '');
+    ok('⑭e ⭐ 要解釋「為什麼要先算好」(篩選其實是手機即時跑的)',
+       /你手機上即時跑|即時跑的/.test(R5.notyet), '');
+}
+
 await browser.close();
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ SCREENER_PASS(全部通過)');
 process.exit(fails.length ? 1 : 0);
