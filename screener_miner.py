@@ -94,6 +94,8 @@ COLS = [
     # ── 分類(數值旗標)──
     'etf',      # 1=ETF
     'att',      # 0 無 / 1 注意股 / 2 處置中
+    'tse',      # 1=上市(有官方產業別);0=其他(上櫃/興櫃/ETF)
+    'dr',       # 1=存託憑證(DR,代號 6 碼且 91 開頭)
 ]
 CI = {k: i for i, k in enumerate(COLS)}
 
@@ -374,7 +376,12 @@ def main():
         st = (att.get(sym) or {}).get('status') or ''
         v[CI['att']] = 2 if '處置' in st else (1 if '注意' in st else 0)
 
+        # ⭐ 上市判定:`industry_map.json` 來自 TWSE 公司基本資料(t187ap03)= **只有上市**。
+        #    實測 2026-08:表內 1,093 檔;知名上市 6/6 都在,知名上櫃幾乎都不在。
+        #    ⚠️ 這是**推導**不是官方掛牌欄位 → 剛轉上市的可能還沒進表,文案要說清楚。
         code = imap.get(sym)
+        v[CI['tse']] = 1 if code else 0
+        v[CI['dr']] = 1 if (len(sym) == 6 and sym.startswith('91')) else 0
         if code:
             names_ind[sym] = IND.get(str(code), str(code))
 

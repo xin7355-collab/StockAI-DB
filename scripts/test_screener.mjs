@@ -40,8 +40,12 @@ const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 // ── ⑥ 判定邏輯只有一份 ──
 {
     const block = src.slice(src.indexOf('_SCR_CONDS:'), src.indexOf('_loadTodaySignals()'));
-    const fnCount = (block.match(/\bfn:\s*\(/g) || []).length;
-    ok('⑥ 條件表以宣告式為主(fn 只用在跨欄位的少數幾條)', fnCount <= 8, `fn 有 ${fnCount} 條`);
+    // ⭐⭐ 重點不是 fn 有幾條,而是 fn 裡**不可有裸比較** ——
+    //    JS 的 `null < 80` 是 true(null 當 0)→ 沒資料的股票會通過「量縮」那種條件。
+    //    ⚠️ 反方向 `null > 80` 剛好是 false,所以只驗「大於」抓不到(V73.5.1 實際踩到)。
+    const raw = block.match(/a\._scrV\(r, '\w+'\)\s*[<>]/g) || [];
+    ok('⑥ ⛔ fn 條件裡不可有裸比較(null < x 在 JS 是 true)', raw.length === 0, raw.join(' | '));
+    ok('⑥c null-safe helper 存在', /_scrGt\(r, k, v\)/.test(src) && /_scrLt\(r, k, v\)/.test(src), '');
     ok('⑥b ⭐ null 規則只寫在 _scrPass 一處',
        (src.match(/沒有資料一律不通過,⛔ 不當成 0/g) || []).length === 1, '');
 }
@@ -85,6 +89,20 @@ const R = await page.evaluate(async () => {
         for (const s in d.rows) { if (d.rows[s][C.pe] === null) { nullPe = s; break; } }
         out.nullLtPass = nullPe ? app._scrPass(cPe, d.rows[nullPe], nullPe) : 'no-sample';
 
+        // ⭐⭐ fn 條件的 null 行為(靜態 grep 只擋寫法,這裡驗**實際行為**)
+        //    找一檔「量比是 null」的,確認它 ⛔ 不會通過「量縮上漲」(`vr < 80`)
+        const cQ = app._SCR_CONDS.find(c => c.id === 'quietup');
+        let nullVr = null;
+        for (const s in d.rows) { if (d.rows[s][C.vr] === null) { nullVr = s; break; } }
+        out.nullVr = nullVr;
+        out.nullVrPass = nullVr ? app._scrPass(cQ, d.rows[nullVr], nullVr) : 'no-sample';
+        // ⚠️ 上面那條會被 AND 的另一半遮住(vr 是 null 的股票通常也沒在漲)→ 直接測 helper 本身才決定性
+        const nullRow = (d.cols || []).map(() => null);
+        out.hLt = app._scrLt(nullRow, 'vr', 80);      // ⛔ 必須 false(裸寫 null<80 會是 true)
+        out.hGt = app._scrGt(nullRow, 'vr', 80);      // 必須 false
+        out.hBt = app._scrBt(nullRow, 'pe', 5, 15);   // 必須 false
+        out.hLtOk = app._scrLt([...nullRow].map((x, i) => i === app._scrC.vr ? 50 : x), 'vr', 80);  // 有值要 true
+
         // ② AND:條件越多,選出來只能越少
         const count = ids => {
             const cs = ids.map(i => app._SCR_CONDS.find(c => c.id === i)).filter(Boolean);
@@ -107,6 +125,7 @@ const R = await page.evaluate(async () => {
         // 渲染:切到選股 → 自訂
         app.switchAppTab('radar');
         app.switchRadarStrategy('custom');
+        app._scrGroup = 'pv'; app._scrSub = '價格';   // ⚠️ 預設分頁是「⭐ 推薦」,沒有 chip → 要先切到價量
         await app._renderCustomScreener();
         const box = document.getElementById('radarCustomView');
         out.hidden = box ? box.classList.contains('hidden') : true;
@@ -138,6 +157,11 @@ ok('④c 欄位數合理(>40)', R.cols > 40, `cols=${R.cols}`);
 ok('① ⭐ 殖利率是 null 的股票 ⛔ 不通過「殖利率 > 3%」', R.nullPass === false, `sym=${R.nullSym} pass=${R.nullPass}`);
 ok('①b ⭐ 反向:殖利率真的 >3% 的必須通過(⛔ 不可一律擋掉)', R.posPass === true, `sym=${R.posSym} pass=${R.posPass}`);
 ok('①c ⭐⭐ PE 是 null 的 ⛔ 不通過「本益比 < 15」(null 當 0 會誤過)', R.nullLtPass === false, `pass=${R.nullLtPass}`);
+ok('①d ⭐⭐ _scrLt 對 null ⛔ 必須 false(裸寫 null<80 會是 true)', R.hLt === false, `hLt=${R.hLt}`);
+ok('①e _scrGt / _scrBt 對 null 也必須 false', R.hGt === false && R.hBt === false, `${R.hGt} ${R.hBt}`);
+ok('①f ⭐ 反向:有值時 _scrLt 要正常運作(⛔ 不可一律 false)', R.hLtOk === true, `hLtOk=${R.hLtOk}`);
+ok('①g fn 條件實跑:量比 null ⛔ 不通過「量縮上漲」',
+   R.nullVrPass === false || R.nullVrPass === 'no-sample', `sym=${R.nullVr} pass=${R.nullVrPass}`);
 ok('② AND:加條件只會變少', R.c1 >= R.c2 && R.c2 >= R.c3, `${R.c1} → ${R.c2} → ${R.c3}`);
 ok('②b 🚧 空過守門:第一個條件真的有選到東西', R.c1 > 0, `c1=${R.c1}`);
 ok('②c 抽樣核對:選出來的每一檔 b20 真的 > 0', R.maBad === 0 && R.maChecked > 0, `checked=${R.maChecked} bad=${R.maBad}`);
@@ -162,6 +186,53 @@ ok('⑧ 無 pageerror', errs.length === 0, errs.join(' | '));
        /git add -f[^\n]*data\/screener\.json/.test(wf), '');
     ok('⑨f ⭐ commit 有帶上路徑', /git commit[^\n]*data\/screener\.json/.test(wf), '');
     ok('⑨g ⭐ retry 分支也要放回三個檔(⛔ 只放回一個是老 bug)', /restore_files/.test(wf), '');
+}
+
+
+// ── ⑩ 推薦組合(V73.5.1):三區可信度必須分開,⛔ 不可長得一樣 ──
+{
+    const R2 = await page.evaluate(async () => {
+        const o = {};
+        app._scrGroup = 'rec'; app._scrPicked = [];
+        await app._renderCustomScreener();
+        const box = document.getElementById('radarCustomView');
+        o.txt = box ? box.innerText : '';
+        o.btnN = box ? box.querySelectorAll('button[onclick^="app.scrPreset"]').length : 0;
+        // 套用「有實測」那組 → 條件要真的進去,而且選得出東西
+        app.scrPreset('p_edge');
+        o.picked = app._scrPicked.slice();
+        const res = document.getElementById('scrResult');
+        o.resText = res ? res.innerText.slice(0, 80) : '';
+        // 每一個 preset 的條件 id 都必須存在(⛔ 打錯字會變成靜默少一個條件)
+        o.badIds = [];
+        app._SCR_PRESETS.forEach(p => p.ids.forEach(i => { if (!app._SCR_CONDS.find(c => c.id === i)) o.badIds.push(p.id + ':' + i); }));
+        // 每個 preset 選出幾檔(⛔ 全部 0 檔代表條件組壞了)
+        o.counts = app._SCR_PRESETS.map(p => {
+            const cs = p.ids.map(i => app._SCR_CONDS.find(c => c.id === i)).filter(Boolean);
+            let n = 0; const d = app._scrData;
+            for (const s in d.rows) { if (cs.every(c => app._scrPass(c, d.rows[s], s))) n++; }
+            return [p.id, n];
+        });
+        app._scrPicked = []; app._scrGroup = 'pv'; await app._renderCustomScreener();
+        return o;
+    });
+    ok('⑩ 推薦分頁有渲染出組合', R2.btnN >= 8, `btn=${R2.btnN}`);
+    ok('⑩b ⭐ 三區標題都在(可信度必須分開講)',
+       /有實測依據/.test(R2.txt) && /教科書經典/.test(R2.txt) && /邏輯組合/.test(R2.txt), R2.txt.slice(0, 120));
+    ok('⑩c ⭐⭐ 教科書/邏輯兩區必須明寫「本站沒驗過」',
+       (R2.txt.match(/本站沒驗過/g) || []).length >= 2, '');
+    ok('⑩d 套用 preset 後條件真的進去', R2.picked.length === 4, JSON.stringify(R2.picked));
+    ok('⑩e ⛔ preset 的條件 id 不可打錯字', R2.badIds.length === 0, R2.badIds.join(','));
+    ok('⑩f 🚧 空過守門:⛔ 不可每一組都選出 0 檔',
+       R2.counts.filter(x => x[1] > 0).length >= 6, JSON.stringify(R2.counts));
+}
+
+// ── ⑪ 「跌深觀察」必須帶勸阻語(⛔ 實測接刀輸大盤,不可包裝成買訊)──
+{
+    const blk = src.slice(src.indexOf('_SCR_PRESETS:'), src.indexOf('_scrV(row, key)'));
+    ok('⑪ 跌深那組要明說「不是買訊」', /⛔ 不是買訊/.test(blk), '');
+    ok('⑪b 跌深那組要引用實測(接刀輸大盤)', /輸<\/?b?>?大盤|輸<b>大盤<\/b>/.test(blk) || /接刀/.test(blk), '');
+    ok('⑪c ⭐ 有實測那組要寫清楚「不是這樣選股就會賺」', /不是<\/b>「這樣選股就會賺」|不是「這樣選股就會賺」/.test(blk), '');
 }
 
 await browser.close();

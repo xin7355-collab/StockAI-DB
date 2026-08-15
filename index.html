@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.5.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.5.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.5.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.5.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7288,8 +7288,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.5.0',
+    _APP_VERSION: 'V73.5.1',
     _CHANGELOG: [
+        { v: 'V73.5.1', dt: '2026-08-15', t: '⭐ 自訂選股加「推薦組合」+ 30 個新條件', d: ['自訂選股多一個「⭐ 推薦」分頁,10 組一鍵套用 —— 而且**刻意分成三區**:有實測依據的 / 教科書經典 / 邏輯組合。','⭐ 有實測依據的只有 1 組(強勢+高波動)—— 那是本站測過 86 種變體裡唯一六道檢定全過的。其他 9 組都明寫「本站沒驗過」,⛔ 不會讓你以為它們一樣可信。','巴菲特／葛拉漢／彼得林區／歐沙那希四組大師條件都附「哪裡跟原版不一樣」(我沒有 ROE、負債比那些資料)。','新增 30 個條件:上市/上櫃、過濾 KY・DR、過濾營建股、只看電子/傳產、量增價漲、爆量下跌、長紅棒長黑棒、下影止穩、三大法人同買、外資買但股價跌(偷布局)、融資減股價漲(換手)、排除低價股與流動性太差的…','🐛 修一個自己犯的 bug:有些條件寫成「量比 < 80」時,**沒有量比資料的股票也會通過**(JS 裡 null < 80 是成立的)。已全部改走統一的比較函式。'] },
         { v: 'V73.5.0', dt: '2026-08-15', t: '🛠️ 新增「自訂選股」—— 自己勾條件', d: ['選股頁多一個「🛠️ 自訂」:自己從 價量／籌碼／財務 三大類點條件,想怎麼組就怎麼組,即時算出全市場有幾檔同時符合。','85 個條件:漲停、創N日新高、站上月線、爆量、RSI、位階、外資投信連買、買超佔成交量、連3賣後轉買、融資券、大戶散戶、本益比殖利率毛利率、過濾ETF金融股…','滿意的組合可以「💾 存成榜單」,下次一鍵叫出來(點一下套用、雙擊刪除)。','⚠️ 一件重要的事:某檔沒有那個資料時,不會被當成 0,而是「這條不通過」。所以財務類條件(只有約 35~38% 個股有)勾了會大幅縮小範圍 —— 按鈕下面會標黃字提醒。','⛔ 刻意沒有「回測」按鈕:要回測任意條件組合,需要過去每一天的全市場快照,本站沒有那份歷史。做一個沒有對照組的假回測比不做更糟。想看有實測成績的請用「🎯 會賺訊號」。'] },
         { v: 'V73.4.1', dt: '2026-08-14', t: '💰 修好股利政策那三格', d: ['殖利率現在算得出來了(年化股利 ÷ 收盤價),之前那一格永遠是空的。','發配率、每股股利其實資料早就有(全市場 1,455 檔),你重新整理就會出現。','填息機率/平均填息天數:找到真因了 —— 夜間採礦漏還原 K 線,而算填息要用到它,所以 1,627 檔全部算不出來、還完全沒有錯誤訊息。已修,今晚採礦後就會有。'] },
         { v: 'V73.4.0', dt: '2026-08-14', t: '📂 基本面頁折疊全部打開', d: ['基本面分頁那三個要點才開的區塊(完整基本面數據、評分構成因子、近5次除息紀錄)現在預設就是打開的。','你截圖那個「股利政策 --」我查出來了:不是 2327 特例 —— 全市場 2,074 檔只有 46 檔(2.2%)有股利,連台積電、鴻海的 EPS 也是空的。已寫探針去查真因(是權限問題還是抓取時間窗太短),查到再修。'] },
@@ -37870,9 +37871,40 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //     本站沒有那份歷史。做一個沒有對照組的假回測比不做更糟(同 ORB / 假數字的立場)。
     // ══════════════════════════════════════════════════════════════════════
     _SCR_GROUPS: [
+        { k: 'rec', n: '⭐ 推薦', subs: [] },        // 一鍵套用的組合(⚠️ 分「有實測」「教科書」「邏輯組合」三區)
         { k: 'pv', n: '價量', subs: ['價格', '量能', '均線', '指標', '型態'] },
         { k: 'ch', n: '籌碼', subs: ['法人', '資券', '股東'] },
         { k: 'fi', n: '財務', subs: ['分類', '價值', '營利'] },
+    ],
+
+    // ⭐⭐ 推薦組合 —— ⛔ 三區**刻意分開**,因為它們的可信度差非常多。
+    //    tier:'edge' = 本站實測過 ・ 'book' = 教科書經典但**本站沒驗過** ・ 'logic' = 邏輯組合,沒驗過
+    //    ⛔ 絕不可把三區長成一樣 —— 那等於把「有證據」和「聽起來很有道理」混為一談。
+    _SCR_PRESETS: [
+        {
+            id: 'p_edge', tier: 'edge', ico: '🧬', n: '強勢 + 高波動',
+            ids: ['poshi', 'volhi', 'amt5', 'noetf'],
+            why: '本站測過 86 種變體,<b class="text-blue-300">只有這一組六道穩健性檢定全過</b>:賺更多、回撤更小、拿掉最好的月份仍贏、前後半段都贏、反向檢定方向相反。',
+            warn: '⚠️ 但那是「<b>在既有打法上加這個過濾</b>」測出來的(獲利 +89%),<b>不是</b>「這樣選股就會賺」。而且回測窗口整段是多頭,空頭沒驗過 —— 追高+高波動正是空頭最容易受傷的組合。',
+        },
+        { id: 'p_buf',  tier: 'book', ico: '🧔', n: '巴菲特(價值+護城河)', ids: ['pe20', 'pb15', 'gm30', 'yld3', 'noetf', 'noatt'],
+          why: '低估值 + 高毛利(有定價權)+ 願意配息。', warn: '⚠️ 少了 ROE 與負債比(本站沒有這兩個資料),所以只是近似。' },
+        { id: 'p_gra',  tier: 'book', ico: '📗', n: '葛拉漢(深度價值)', ids: ['pe15', 'pb1', 'yld5', 'noetf', 'noatt'],
+          why: '買在清算價值附近:本益比低、股價低於淨值、殖利率高。', warn: '⚠️ 便宜常常有原因;本站實測「低檔布局」三個天期全是負的,⛔ 便宜本身不是買進理由。' },
+        { id: 'p_lyn',  tier: 'book', ico: '🔍', n: '彼得林區(成長合理價)', ids: ['yoy20', 'pe20', 'ma20up', 'noetf'],
+          why: '成長還在、但價格還沒反映完。', warn: '⚠️ 真正的 PEG 要用「每股盈餘成長率」,本站用<b>月營收 YoY</b> 近似 —— 兩者不同,別當成同一件事。' },
+        { id: 'p_osh',  tier: 'book', ico: '🏇', n: '歐沙那希(價值+動能)', ids: ['pb15', 'poshi', 'chg60up', 'amt1', 'noetf'],
+          why: '他的 Cornerstone:先用估值篩,再挑其中最強的 —— 便宜且已經在漲。', warn: '⚠️ 原版用的是市值/營收比等多個估值指標,本站只有 P/B 可用。' },
+        { id: 'p_dual', tier: 'logic', ico: '🏦', n: '法人同買強勢股', ids: ['dual', 'ma20up', 'amt5', 'noetf', 'noatt'],
+          why: '外資與投信今天同方向買,而且股價在月線之上、量夠大跑得掉。' },
+        { id: 'p_steal',tier: 'logic', ico: '🕵️', n: '外資偷布局(跌深仍買)', ids: ['ddfar', 'f3d', 'amt1', 'noetf'],
+          why: '跌深但外資還在連續買 —— 同一個概念在<b>板塊</b>層級本站實測過有邊際(+3.8pp)。', warn: '⚠️ 那是板塊層級的實測,<b>個股層級沒驗過</b>,⛔ 不可直接套用。' },
+        { id: 'p_break',tier: 'logic', ico: '🚀', n: '帶量突破', ids: ['nh60', 'vr150', 'ma20up', 'amt5', 'noetf'],
+          why: '創 60 日新高 + 量增 1.5 倍 + 站上月線。', warn: '⚠️ 突破後被打回來很常見,務必先想好跌破哪裡要走。' },
+        { id: 'p_div',  tier: 'logic', ico: '💎', n: '高息穩健', ids: ['yld5', 'pb15', 'ma240up', 'noatt', 'noetf'],
+          why: '殖利率 5% 以上、股價淨值比不貴、而且還站在年線上(⛔ 不是一路下跌的高息陷阱)。' },
+        { id: 'p_over', tier: 'logic', ico: '🧊', n: '跌深觀察(⛔ 不是買訊)', ids: ['ddfar', 'rsi30', 'amt1', 'noetf'],
+          why: '距 60 日高跌超過 30% 且 RSI 超賣。', warn: '⛔ 本站實測「接刀」平均<b>輸大盤</b>、「低檔布局」20/60 日都是負的 —— 這組只拿來<b>觀察清單</b>,別直接買。' },
     ],
     // tone:'b'=偏多(紅) 'e'=偏空(綠) ''=中性 —— ⚠️ 燈號鐵則:紅綠只表示漲跌方向,不表示好壞
     _SCR_CONDS: [
@@ -37888,8 +37920,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         { id: 'dn5d10',  g: 'pv', s: '價格', t: '5 日跌幅大於 10%',   k: 'chg5', op: 'lt',  v: -10, tone: 'e' },
         { id: 'nl5',     g: 'pv', s: '價格', t: '創 5 日新低',        k: 'nl',   op: 'gte', v: 5,   tone: 'e' },
         { id: 'closelo', g: 'pv', s: '價格', t: '收在最低',           k: 'clr',  op: 'lte', v: 5,   tone: 'e' },
-        { id: 'p20_60',  g: 'pv', s: '價格', t: '股價 20~60 元',      fn: (r, s, a) => { const c = a._scrV(r, 'c'); return c !== null && c >= 20 && c <= 60; } },
+        { id: 'p20_60',  g: 'pv', s: '價格', t: '股價 20~60 元',      fn: (r, s, a) => a._scrBt(r, 'c', 20, 60) },
         { id: 'plt100',  g: 'pv', s: '價格', t: '股價低於 100 元',    k: 'c',    op: 'lt',  v: 100 },
+        { id: 'pgt10',   g: 'pv', s: '價格', t: '排除 10 元以下低價股', k: 'c',  op: 'gte', v: 10 },
+        { id: 'chg20up', g: 'pv', s: '價格', t: '近 20 日漲幅 > 20%',  k: 'chg20', op: 'gt', v: 20, tone: 'b' },
+        { id: 'chg60up', g: 'pv', s: '價格', t: '近 60 日還是上漲',    k: 'chg60', op: 'gt', v: 0,  tone: 'b' },
+        { id: 'chg60dn', g: 'pv', s: '價格', t: '近 60 日跌超過 30%',  k: 'chg60', op: 'lt', v: -30, tone: 'e' },
         // ── 價量 · 量能 ──
         { id: 'amt1',    g: 'pv', s: '量能', t: '成交額 > 1 億',      k: 'amt',  op: 'gt',  v: 1 },
         { id: 'amt5',    g: 'pv', s: '量能', t: '成交額 > 5 億',      k: 'amt',  op: 'gt',  v: 5 },
@@ -37897,6 +37933,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         { id: 'vr150',   g: 'pv', s: '量能', t: '量增(> 1.5 倍均量)', k: 'vr',   op: 'gt',  v: 150 },
         { id: 'vr250',   g: 'pv', s: '量能', t: '爆量(> 2.5 倍均量)', k: 'vr',   op: 'gt',  v: 250 },
         { id: 'vr70',    g: 'pv', s: '量能', t: '量縮(< 0.7 倍均量)', k: 'vr',   op: 'lt',  v: 70 },
+        { id: 'liquid',  g: 'pv', s: '量能', t: '排除流動性太差(< 3000 萬)', k: 'amt', op: 'gte', v: 0.3 },
+        { id: 'volup',   g: 'pv', s: '量能', t: '量增價漲(量比>150 且上漲)', fn: (r, s, a) => (a._scrGt(r, 'vr', 150) && a._scrGt(r, 'chg', 0)), tone: 'b' },
+        { id: 'voldn',   g: 'pv', s: '量能', t: '爆量下跌(出貨警訊)', fn: (r, s, a) => (a._scrGt(r, 'vr', 200) && a._scrLt(r, 'chg', -2)), tone: 'e' },
+        { id: 'quietup', g: 'pv', s: '量能', t: '量縮上漲(浮額少)',   fn: (r, s, a) => (a._scrLt(r, 'vr', 80) && a._scrGt(r, 'chg', 0)) },
         // ── 價量 · 均線 ──
         { id: 'ma5up',   g: 'pv', s: '均線', t: '站上 5 日線',        k: 'b5',   op: 'gt',  v: 0,   tone: 'b' },
         { id: 'ma20up',  g: 'pv', s: '均線', t: '站上月線(20MA)',    k: 'b20',  op: 'gt',  v: 0,   tone: 'b' },
@@ -37904,12 +37944,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         { id: 'ma240up', g: 'pv', s: '均線', t: '站上年線(240MA)',   k: 'b240', op: 'gt',  v: 0,   tone: 'b' },
         { id: 'ma20dn',  g: 'pv', s: '均線', t: '跌破月線',           k: 'b20',  op: 'lt',  v: 0,   tone: 'e' },
         { id: 'bull',    g: 'pv', s: '均線', t: '均線多頭排列',       k: 'bull', op: 'eq',  v: 1,   tone: 'b' },
-        { id: 'nearma20',g: 'pv', s: '均線', t: '貼近月線(±3%)',     fn: (r, s, a) => { const b = a._scrV(r, 'b20'); return b !== null && Math.abs(b) <= 3; } },
+        { id: 'nearma20',g: 'pv', s: '均線', t: '貼近月線(±3%)',     fn: (r, s, a) => a._scrBt(r, 'b20', -3, 3) },
         { id: 'bias20hi',g: 'pv', s: '均線', t: '正乖離月線 > 10%',   k: 'b20',  op: 'gt',  v: 10 },
         // ── 價量 · 指標 ──
         { id: 'rsi70',   g: 'pv', s: '指標', t: 'RSI > 70(超買)',    k: 'rsi',  op: 'gt',  v: 70 },
         { id: 'rsi30',   g: 'pv', s: '指標', t: 'RSI < 30(超賣)',    k: 'rsi',  op: 'lt',  v: 30 },
-        { id: 'rsi5060', g: 'pv', s: '指標', t: 'RSI 50~65(不過熱)', fn: (r, s, a) => { const x = a._scrV(r, 'rsi'); return x !== null && x >= 50 && x <= 65; } },
+        { id: 'rsi5060', g: 'pv', s: '指標', t: 'RSI 50~65(不過熱)', fn: (r, s, a) => a._scrBt(r, 'rsi', 50, 65) },
         { id: 'volhi',   g: 'pv', s: '指標', t: '高波動(年化 ≥ 60%)', k: 'vol20', op: 'gte', v: 60 },
         { id: 'vollo',   g: 'pv', s: '指標', t: '低波動(年化 < 30%)', k: 'vol20', op: 'lt',  v: 30 },
         // ── 價量 · 型態 ──
@@ -37923,6 +37963,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         { id: 'poslo',   g: 'pv', s: '型態', t: '位階低檔(一年 ≤ 25%)', k: 'pos252', op: 'lte', v: 25 },
         { id: 'dd20',    g: 'pv', s: '型態', t: '距 60 日高 10% 內',  k: 'dd60', op: 'gte', v: -10 },
         { id: 'ddfar',   g: 'pv', s: '型態', t: '距 60 日高跌逾 30%', k: 'dd60', op: 'lte', v: -30, tone: 'e' },
+        { id: 'nl20',    g: 'pv', s: '型態', t: '創 20 日新低',       k: 'nl',   op: 'gte', v: 20, tone: 'e' },
+        { id: 'ampbig',  g: 'pv', s: '型態', t: '振幅大(20 日平均 > 5%)', k: 'amp20', op: 'gt', v: 5 },
+        { id: 'ampsm',   g: 'pv', s: '型態', t: '盤整收斂(振幅 < 2.5%)',  k: 'amp20', op: 'lt', v: 2.5 },
+        { id: 'redlong', g: 'pv', s: '型態', t: '長紅棒(漲 > 3% 且收上緣)', fn: (r, s, a) => (a._scrGt(r, 'chg', 3) && a._scrGt(r, 'clr', 79.999)), tone: 'b' },
+        { id: 'blklong', g: 'pv', s: '型態', t: '長黑棒(跌 > 3% 且收下緣)', fn: (r, s, a) => (a._scrLt(r, 'chg', -3) && a._scrLt(r, 'clr', 20.001)), tone: 'e' },
+        { id: 'revbar',  g: 'pv', s: '型態', t: '下影止穩(跌但收上緣)',   fn: (r, s, a) => (a._scrLt(r, 'chg', 0) && a._scrGt(r, 'clr', 69.999)) },
         // ── 籌碼 · 法人 ──
         { id: 'f3d',     g: 'ch', s: '法人', t: '外資連續 3 日買進',  k: 'fd',   op: 'gte', v: 3,   tone: 'b' },
         { id: 't3d',     g: 'ch', s: '法人', t: '投信連續 3 日買進',  k: 'td',   op: 'gte', v: 3,   tone: 'b' },
@@ -37937,11 +37983,18 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         { id: 'fdays7',  g: 'ch', s: '法人', t: '外資 10 日買超天數 ≥ 7',   k: 'fdays', op: 'gte', v: 7, tone: 'b' },
         { id: 'tdays7',  g: 'ch', s: '法人', t: '投信 10 日買超天數 ≥ 7',   k: 'tdays', op: 'gte', v: 7, tone: 'b' },
         { id: 'fsell3',  g: 'ch', s: '法人', t: '外資連續 3 日賣出',  k: 'fd',   op: 'lte', v: -3,  tone: 'e' },
-        { id: 'dual',    g: 'ch', s: '法人', t: '外資+投信同買(今日)', fn: (r, s, a) => (a._scrV(r, 'f1') > 0 && a._scrV(r, 't1') > 0), tone: 'b' },
+        { id: 'dual',    g: 'ch', s: '法人', t: '外資+投信同買(今日)', fn: (r, s, a) => (a._scrGt(r, 'f1', 0) && a._scrGt(r, 't1', 0)), tone: 'b' },
+        { id: 'tri',     g: 'ch', s: '法人', t: '三大法人同買(今日)',  fn: (r, s, a) => (a._scrGt(r, 'f1', 0) && a._scrGt(r, 't1', 0) && a._scrGt(r, 'd1', 0)), tone: 'b' },
+        { id: 'fbuydn',  g: 'ch', s: '法人', t: '外資買但股價跌(偷布局)', fn: (r, s, a) => (a._scrGt(r, 'f3', 0) && a._scrLt(r, 'chg5', 0)) },
+        { id: 'fselup',  g: 'ch', s: '法人', t: '外資賣但股價漲(逆勢拉抬)', fn: (r, s, a) => (a._scrLt(r, 'f3', 0) && a._scrGt(r, 'chg5', 0)) },
+        { id: 'tsell3',  g: 'ch', s: '法人', t: '投信連續 3 日賣出',  k: 'td',   op: 'lte', v: -3, tone: 'e' },
+        { id: 'f10_2k',  g: 'ch', s: '法人', t: '近 10 日外資買超 > 2000 張', k: 'f10', op: 'gt', v: 2000, tone: 'b' },
         // ── 籌碼 · 資券 ──
         { id: 'mgup10',  g: 'ch', s: '資券', t: '融資 5 日增加 > 10%', k: 'mgp', op: 'gt',  v: 10 },
         { id: 'mgdn10',  g: 'ch', s: '資券', t: '融資 5 日減少 > 10%', k: 'mgp', op: 'lt',  v: -10 },
         { id: 'sbr10',   g: 'ch', s: '資券', t: '券資比 > 10%',        k: 'sbr', op: 'gt',  v: 10 },
+        { id: 'mgdnup',  g: 'ch', s: '資券', t: '融資減、股價漲(換手)', fn: (r, s, a) => (a._scrLt(r, 'mgp', -3) && a._scrGt(r, 'chg5', 0)) },
+        { id: 'mgupdn',  g: 'ch', s: '資券', t: '融資增、股價跌(套牢中)', fn: (r, s, a) => (a._scrGt(r, 'mgp', 3) && a._scrLt(r, 'chg5', 0)), tone: 'e' },
         // ── 籌碼 · 股東(集保,週更)──
         { id: 'big50',   g: 'ch', s: '股東', t: '千張大戶 > 50%',      k: 'big',  op: 'gt',  v: 50 },
         { id: 'bigup',   g: 'ch', s: '股東', t: '大戶近 4 週增加',     k: 'bchg', op: 'gt',  v: 0 },
@@ -37954,7 +38007,20 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         { id: 'onlyatt', g: 'fi', s: '分類', t: '只看注意股',          k: 'att', op: 'eq',  v: 1 },
         { id: 'onlydis', g: 'fi', s: '分類', t: '只看處置股',          k: 'att', op: 'eq',  v: 2 },
         { id: 'nofin',   g: 'fi', s: '分類', t: '過濾金融股',          fn: (r, s, a) => (a._scrInd(s) !== '金融保險') },
+        { id: 'nobuild', g: 'fi', s: '分類', t: '過濾營建股',          fn: (r, s, a) => (a._scrInd(s) !== '營建') },
         { id: 'onlysemi',g: 'fi', s: '分類', t: '只看半導體',          fn: (r, s, a) => (a._scrInd(s) === '半導體') },
+        { id: 'onlyele', g: 'fi', s: '分類', t: '只看電子相關',        fn: (r, s, a) => /半導體|光電|電腦週邊|電子零組件|電子通路|通信網路|資訊服務|其他電子|電子/.test(a._scrInd(s)) },
+        { id: 'onlytrad',g: 'fi', s: '分類', t: '只看傳產',            fn: (r, s, a) => { const i = a._scrInd(s); return !!i && !/半導體|光電|電腦週邊|電子零組件|電子通路|通信網路|資訊服務|其他電子|電子|金融保險/.test(i); } },
+        { id: 'tse',     g: 'fi', s: '分類', t: '只看上市(排除上櫃)',  k: 'tse', op: 'eq', v: 1 },
+        { id: 'otc',     g: 'fi', s: '分類', t: '只看上櫃/興櫃',        k: 'tse', op: 'eq', v: 0 },
+        // ⚠️ KY/DR 用**股票名稱**判斷(採礦端沒有名稱來源)→ 清單還沒載入時判不出來,
+        //    此時**不過濾**(⛔ 不可反過來把全部擋掉);說明文字有寫。
+        { id: 'noky',    g: 'fi', s: '分類', t: '過濾 KY / DR(海外註冊)', fn: (r, s, a) => {
+            if (a._scrV(r, 'dr') === 1) return false;
+            const n = a.getStockName(s);
+            if (!n || n === s) return true;      // 名稱還沒載入 → 不過濾
+            return !/KY|DR$/.test(n);
+        } },
         // ── 財務 · 價值 ──
         { id: 'pe15',    g: 'fi', s: '價值', t: '本益比 < 15',         k: 'pe',  op: 'lt',  v: 15 },
         { id: 'pe20',    g: 'fi', s: '價值', t: '本益比 < 20',         k: 'pe',  op: 'lt',  v: 20 },
@@ -37971,6 +38037,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         { id: 'gm30',    g: 'fi', s: '營利', t: '毛利率 > 30%',        k: 'gm',  op: 'gt',  v: 30 },
         { id: 'gm50',    g: 'fi', s: '營利', t: '毛利率 > 50%',        k: 'gm',  op: 'gt',  v: 50 },
         { id: 'pay50',   g: 'fi', s: '營利', t: '盈餘發配率 > 50%',    k: 'payout', op: 'gt', v: 50 },
+        { id: 'payok',   g: 'fi', s: '營利', t: '發配率 30~80%(健康)', fn: (r, s, a) => a._scrBt(r, 'payout', 30, 80) },
+        { id: 'yldok',   g: 'fi', s: '營利', t: '殖利率 3~8%(排除異常高)', fn: (r, s, a) => a._scrBt(r, 'yld', 3, 8) },
+        { id: 'peok',    g: 'fi', s: '營利', t: '本益比 5~15(排除虧損股)',  fn: (r, s, a) => a._scrBt(r, 'pe', 5, 15) },
+        { id: 'gmup',    g: 'fi', s: '營利', t: '毛利率 > 20% 且營收成長',  fn: (r, s, a) => (a._scrGt(r, 'gm', 20) && a._scrGt(r, 'yoy', 0)), tone: 'b' },
     ],
 
     _scrV(row, key) {
@@ -37980,6 +38050,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return (x === null || x === undefined) ? null : x;
     },
     _scrInd(sym) { return (this._scrData && this._scrData.ind) ? (this._scrData.ind[sym] || '') : ''; },
+    // ⭐⭐ 給 `fn` 條件用的 null-safe 比較 —— ⛔ 別在 fn 裡直接寫 `a._scrV(r,'vr') < 80`:
+    //    JS 的 `null < 80` 會是 **true**(null 被當成 0),於是「沒有量比資料」的股票會通過
+    //    「量縮」條件 —— 這正是本檔案最上面那條鐵則要防的事,卻最容易從 fn 這條路繞過去。
+    //    (⚠️ 反方向的 `null > 80` 剛好是 false,所以只寫「大於」的測試抓不到 → 兩邊都要用這個。)
+    _scrGt(r, k, v) { const x = this._scrV(r, k); return x !== null && x > v; },
+    _scrLt(r, k, v) { const x = this._scrV(r, k); return x !== null && x < v; },
+    _scrBt(r, k, lo, hi) { const x = this._scrV(r, k); return x !== null && x >= lo && x <= hi; },
 
     // ⭐⭐ 全 App **唯一**一處條件判斷 —— null 規則只寫這一次(⛔ 別在別處再寫一份)
     _scrPass(cond, row, sym) {
@@ -38013,7 +38090,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
 
     _scrPicked: [],
-    _scrGroup: 'pv',
+    _scrGroup: 'rec',
     _scrSub: '價格',
 
     async _renderCustomScreener() {
@@ -38032,11 +38109,40 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             return;
         }
         const grp = this._SCR_GROUPS.find(g => g.k === this._scrGroup) || this._SCR_GROUPS[0];
-        if (!grp.subs.includes(this._scrSub)) this._scrSub = grp.subs[0];
+        if (grp.subs.length && !grp.subs.includes(this._scrSub)) this._scrSub = grp.subs[0];
         const nTot = d.n || Object.keys(d.rows).length;
 
         const gTabs = this._SCR_GROUPS.map(g => `<button onclick="app.scrGroup('${g.k}')" class="flex-1 px-2 py-2 rounded-lg text-[12px] font-black border transition-all ${g.k === this._scrGroup ? 'bg-blue-600/30 text-blue-100 border-blue-500' : 'bg-[#161b22] text-gray-400 border-[#30363d]'}">${g.n}</button>`).join('');
         const sTabs = grp.subs.map(s => `<button onclick="app.scrSub('${s}')" class="px-2.5 py-1 rounded text-[11px] font-bold border transition-all ${s === this._scrSub ? 'bg-white/10 text-gray-100 border-gray-500' : 'bg-transparent text-gray-500 border-transparent'}">${s}</button>`).join('');
+
+        // ⭐ 推薦組合分頁:⛔ 三區必須長得不一樣(有實測 / 教科書 / 邏輯組合),
+        //    否則使用者會以為它們的可信度一樣 —— 那是本專案最忌諱的事。
+        const TIER = {
+            edge:  { n: '⭐ 有實測依據', d: '本站拿全市場歷史回測過、而且通過穩健性檢定的', bd: 'border-blue-500' },
+            book:  { n: '📖 教科書經典(⛔ 本站沒驗過)', d: '投資名著裡的知名條件。⚠️ 台股適不適用、現在還有沒有效,本站沒有回測過', bd: 'border-gray-600' },
+            logic: { n: '🛠️ 邏輯組合(⛔ 本站沒驗過)', d: '把常識性的條件湊在一起,方便你快速起手。⚠️ 同樣沒有回測成績', bd: 'border-gray-600' },
+        };
+        const presetHtml = ['edge', 'book', 'logic'].map(t => {
+            const arr = this._SCR_PRESETS.filter(p => p.tier === t);
+            if (!arr.length) return '';
+            return `<div class="mb-3">
+              <div class="text-[11px] font-black text-gray-200 mb-0.5">${TIER[t].n}</div>
+              <div class="text-[9px] text-gray-500 mb-1.5 leading-relaxed">${TIER[t].d}</div>
+              ${arr.map(p => {
+                  const on = p.ids.length === this._scrPicked.length && p.ids.every(x => this._scrPicked.includes(x));
+                  return `<div class="bg-[#161b22] border-l-4 ${TIER[t].bd} border-y border-r border-[#30363d] rounded-r p-2.5 mb-1.5">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="min-w-0 flex-1">
+                        <div class="text-[12px] font-black text-gray-100">${p.ico} ${p.n}</div>
+                        <div class="text-[10px] text-gray-400 leading-relaxed mt-1">${p.why}</div>
+                        ${p.warn ? `<div class="text-[9px] text-yellow-300/90 leading-relaxed mt-1">${p.warn}</div>` : ''}
+                        <div class="text-[9px] text-gray-600 mt-1 truncate">${p.ids.map(i => (this._SCR_CONDS.find(c => c.id === i) || {}).t || i).join(' ・ ')}</div>
+                      </div>
+                      <button onclick="app.scrPreset('${p.id}')" class="flex-shrink-0 px-2.5 py-1.5 rounded text-[10px] font-black border ${on ? 'bg-blue-600/30 text-blue-100 border-blue-500' : 'bg-[#21262d] text-gray-300 border-[#30363d]'}">${on ? '✓ 已套用' : '套用'}</button>
+                    </div></div>`;
+              }).join('')}
+            </div>`;
+        }).join('');
 
         const list = this._SCR_CONDS.filter(c => c.g === this._scrGroup && c.s === this._scrSub);
         const chips = list.map(c => {
@@ -38079,8 +38185,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
           <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 flex-1 min-h-0 flex flex-col">
             <div class="flex gap-1.5 mb-2 flex-shrink-0">${gTabs}</div>
-            <div class="flex gap-1 mb-2 overflow-x-auto flex-shrink-0" style="scrollbar-width:none">${sTabs}</div>
-            <div class="grid grid-cols-2 gap-1.5 overflow-y-auto min-h-0 flex-1">${chips}</div>
+            ${grp.subs.length ? `<div class="flex gap-1 mb-2 overflow-x-auto flex-shrink-0" style="scrollbar-width:none">${sTabs}</div>` : ''}
+            ${this._scrGroup === 'rec'
+                ? `<div class="overflow-y-auto min-h-0 flex-1">${presetHtml}</div>`
+                : `<div class="grid grid-cols-2 gap-1.5 overflow-y-auto min-h-0 flex-1">${chips}</div>`}
             <div class="text-[9px] text-gray-600 mt-2 flex-shrink-0 leading-relaxed">
               資料日 ${this._dW(d.data_date || '', { rel: 1 })} ・ 全市場 ${nTot.toLocaleString()} 檔 ・ <b class="text-gray-500">收盤價</b>不是盤中即時
             </div>
@@ -38089,7 +38197,15 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         this._scrRun();
     },
 
-    scrGroup(k) { this._scrGroup = k; const g = this._SCR_GROUPS.find(x => x.k === k); if (g) this._scrSub = g.subs[0]; this._renderCustomScreener(); },
+    scrGroup(k) { this._scrGroup = k; const g = this._SCR_GROUPS.find(x => x.k === k); if (g && g.subs.length) this._scrSub = g.subs[0]; this._renderCustomScreener(); },
+    scrPreset(id) {
+        const p = this._SCR_PRESETS.find(x => x.id === id);
+        if (!p) return;
+        const on = p.ids.length === this._scrPicked.length && p.ids.every(x => this._scrPicked.includes(x));
+        this._scrPicked = on ? [] : p.ids.slice();   // 再點一次 = 取消
+        this.vibrate(15);
+        this._renderCustomScreener();
+    },
     scrSub(s) { this._scrSub = s; this._renderCustomScreener(); },
     scrToggle(id) {
         const i = this._scrPicked.indexOf(id);
