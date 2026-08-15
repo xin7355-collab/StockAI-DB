@@ -45,7 +45,8 @@ const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     //    ⚠️ 反方向 `null > 80` 剛好是 false,所以只驗「大於」抓不到(V73.5.1 實際踩到)。
     const raw = block.match(/a\._scrV\(r, '\w+'\)\s*[<>]/g) || [];
     ok('⑥ ⛔ fn 條件裡不可有裸比較(null < x 在 JS 是 true)', raw.length === 0, raw.join(' | '));
-    ok('⑥c null-safe helper 存在', /_scrGt\(r, k, v\)/.test(src) && /_scrLt\(r, k, v\)/.test(src), '');
+    ok('⑥c null-safe helper 存在(含欄位對欄位)',
+       /_scrGt\(r, k, v\)/.test(src) && /_scrLt\(r, k, v\)/.test(src) && /_scrCmp\(r, ka, kb\)/.test(src), '');
     ok('⑥b ⭐ null 規則只寫在 _scrPass 一處',
        (src.match(/沒有資料一律不通過,⛔ 不當成 0/g) || []).length === 1, '');
 }
@@ -124,10 +125,10 @@ const R = await page.evaluate(async () => {
 
         // 渲染:切到選股 → 自訂
         app.switchAppTab('radar');
-        app.switchRadarStrategy('custom');
+        app.switchRadarMode('custom');   // ⭐ V73.5.2 起是**頂層模式**,跟 策略/ETF 同層(⛔ 不再是策略裡的一個榜)
         app._scrGroup = 'pv'; app._scrSub = '價格';   // ⚠️ 預設分頁是「⭐ 推薦」,沒有 chip → 要先切到價量
         await app._renderCustomScreener();
-        const box = document.getElementById('radarCustomView');
+        const box = document.getElementById('radarModeCustom');
         out.hidden = box ? box.classList.contains('hidden') : true;
         out.chipN = box ? box.querySelectorAll('button[onclick^="app.scrToggle"]').length : 0;
         out.thinN = box ? (box.innerHTML.match(/僅 \d+% 個股有此資料/g) || []).length : 0;
@@ -193,9 +194,9 @@ ok('⑧ 無 pageerror', errs.length === 0, errs.join(' | '));
 {
     const R2 = await page.evaluate(async () => {
         const o = {};
-        app._scrGroup = 'rec'; app._scrPicked = [];
+        app.switchRadarMode('custom'); app._scrGroup = 'rec'; app._scrPicked = [];
         await app._renderCustomScreener();
-        const box = document.getElementById('radarCustomView');
+        const box = document.getElementById('radarModeCustom');
         o.txt = box ? box.innerText : '';
         o.btnN = box ? box.querySelectorAll('button[onclick^="app.scrPreset"]').length : 0;
         // 套用「有實測」那組 → 條件要真的進去,而且選得出東西
@@ -233,6 +234,64 @@ ok('⑧ 無 pageerror', errs.length === 0, errs.join(' | '));
     ok('⑪ 跌深那組要明說「不是買訊」', /⛔ 不是買訊/.test(blk), '');
     ok('⑪b 跌深那組要引用實測(接刀輸大盤)', /輸<\/?b?>?大盤|輸<b>大盤<\/b>/.test(blk) || /接刀/.test(blk), '');
     ok('⑪c ⭐ 有實測那組要寫清楚「不是這樣選股就會賺」', /不是<\/b>「這樣選股就會賺」|不是「這樣選股就會賺」/.test(blk), '');
+}
+
+
+// ── ⑫ V73.5.2 位置:⭐ 自訂選股必須是**頂層模式**(跟 策略/ETF 同層),⛔ 不可退回策略裡的一個榜 ──
+{
+    const R3 = await page.evaluate(() => {
+        const o = {};
+        const b = document.getElementById('radarModeCustomBtn');
+        o.btn = !!b;
+        o.btnTxt = b ? b.innerText.trim() : '';
+        // 三個頂層按鈕在同一列
+        o.sameRow = !!(b && b.parentElement && b.parentElement.querySelector('#radarModeStrategyBtn') && b.parentElement.querySelector('#radarModeEtfBtn'));
+        app.switchRadarMode('custom');
+        o.shown = !document.getElementById('radarModeCustom').classList.contains('hidden');
+        o.stratHidden = document.getElementById('radarModeStrategy').classList.contains('hidden');
+        app.switchRadarMode('strategy');
+        o.backHidden = document.getElementById('radarModeCustom').classList.contains('hidden');
+        o.inRail = !!document.getElementById('radarTabCustom');       // ⛔ 必須 false
+        o.inTabs = !!(app._RADAR_TABS && app._RADAR_TABS.custom);     // ⛔ 必須 false
+        return o;
+    });
+    ok('⑫ 頂層有「自訂選股」按鈕', R3.btn === true, '');
+    ok('⑫b ⭐ 跟 策略 / ETF 同一列(平起平坐)', R3.sameRow === true, '');
+    ok('⑫c 切到自訂時顯示、策略要收起', R3.shown === true && R3.stratHidden === true, `${R3.shown}/${R3.stratHidden}`);
+    ok('⑫d 切回策略時自訂要收起', R3.backHidden === true, '');
+    ok('⑫e ⛔ 不可再出現在策略左欄榜單裡', R3.inRail === false && R3.inTabs === false, `rail=${R3.inRail} tabs=${R3.inTabs}`);
+}
+
+
+// ── ⑬ V73.5.2 排序(對應 XQ 的「◯◯排行」)──
+{
+    const R4 = await page.evaluate(() => {
+        const o = {};
+        o.n = (app._SCR_SORTS || []).length;
+        app.switchRadarMode('custom');
+        app._scrPicked = ['amt1'];
+        // 依殖利率排序 —— ⭐ 沒有殖利率資料的 ⛔ 不可排在前面(null 當 0 會混進來)
+        app._scrSort = 'yld'; app._scrRun();
+        const rows = [...document.querySelectorAll('#scrResult [onclick^="app.analyze"]')];
+        o.rowN = rows.length;
+        const C = app._scrC, d = app._scrData;
+        const syms = rows.map(x => (x.getAttribute('onclick').match(/'(\w+)'/) || [])[1]).filter(Boolean);
+        o.top = syms.slice(0, 8).map(x => d.rows[x][C.yld]);
+        o.anyNullTop = o.top.some(x => x === null);
+        o.desc = o.top.every((x, i) => i === 0 || x === null || o.top[i - 1] === null || o.top[i - 1] >= x);
+        // 換成成交金額排序 → 第一名要不一樣(⛔ 否則排序根本沒接上)
+        app._scrSort = 'amt'; app._scrRun();
+        const r2 = [...document.querySelectorAll('#scrResult [onclick^="app.analyze"]')];
+        o.first2 = (r2[0]?.getAttribute('onclick').match(/'(\w+)'/) || [])[1];
+        o.first1 = syms[0];
+        app._scrPicked = []; app._scrRun();
+        return o;
+    });
+    ok('⑬ 有排序選項(≥10 種)', R4.n >= 10, `n=${R4.n}`);
+    ok('⑬b 🚧 空過守門:排序測試真的有渲染出列', R4.rowN > 10, `rows=${R4.rowN}`);
+    ok('⑬c ⭐ 依殖利率排序時,⛔ 沒資料的不可排前面', R4.anyNullTop === false, JSON.stringify(R4.top));
+    ok('⑬d 排序真的是遞減', R4.desc === true, JSON.stringify(R4.top));
+    ok('⑬e 換排序鍵 → 第一名要跟著變(⛔ 否則沒接上)', R4.first1 !== R4.first2, `${R4.first1} vs ${R4.first2}`);
 }
 
 await browser.close();

@@ -70,6 +70,20 @@ COLS = [
     'rs',       # 相對強度:今日漲跌% − 大盤今日漲跌%(>0 = 優於大盤)
     'bull',     # 1=均線多頭排列(5>20>60)
     'amp20',    # 20 日平均振幅 %
+    'b10',      # 乖離 10MA %
+    'sl5', 'sl60',   # 5MA / 60MA 斜率(對 5 日前,%)—— 「均線翻揚/翻黑」
+    'knot',     # 均線糾結度:5/10/20MA 三者最大差距 %(越小越糾結)
+    'k', 'd',   # KD(9,3,3)
+    'kx',       # 1=今日 KD 黃金交叉 ・ −1=死亡交叉 ・ 0=沒交叉
+    'dif', 'dea',
+    'mx',       # 1=今日 MACD 黃金交叉 ・ −1=死亡交叉
+    'bb',       # 布林通道位置 %(0=下軌 100=上軌;>100 = 突破上軌)
+    'mtm6',     # 6 日動量(c − 6 日前 c)
+    'mtmt',     # 1=MTM 由負轉正 ・ −1=由正轉負
+    'v5',       # 5 日均量(張)
+    'vr5',      # 今量 ÷ 5 日均量 ×100
+    'vnh', 'vnl',    # 成交量創 N 日新高 / 新低(5/20;0=沒有)
+    'turn5',    # 近 5 日週轉率 %(5 日成交股數 ÷ 總股數)
     # ── 籌碼 ──
     'f1', 'f3', 'f5', 'f10',   # 外資買賣超(張)
     'fd',       # 外資連買(+)/連賣(−)天數
@@ -85,7 +99,15 @@ COLS = [
     'dd',       # 自營商連買/連賣天數
     'mg5',      # 融資 5 日增減(張)
     'mgp',      # 融資 5 日增減 %
+    'mgd',      # 融資連續增加(+)/減少(−)天數
+    'mgnl',     # 1=融資餘額創 5 日新低 ・ −1=創 5 日新高
     'sbr',      # 券資比 %
+    'sb3',      # 融券近 3 日增減(張)
+    'sbd',      # 融券連續增加(+)/減少(−)天數
+    'sbnh',     # 1=融券餘額創 5 日新高
+    'sbv',      # 融券餘額 ÷ 10 日均量 %(軋空空間)
+    'fcap',     # 外資今日買超佔總股數 %(= XQ 的「佔股本比例」)
+    'tcap',     # 投信今日買超佔總股數 %
     'big',      # 千張大戶持股 %
     'sml',      # 散戶(<10 張)持股 %
     'bchg',     # 大戶近 4 週變化 pp
@@ -252,6 +274,94 @@ def build_one(rows, twii_chg=None):
             a += (hi[i] - lo[i]) / cl[i]
     v[CI['amp20']] = rd(a / 20.0 * 100, 2)
 
+    # ── 均線:10MA 乖離、5/60MA 斜率(對 5 日前)、5/10/20 糾結度 ──
+    def ma_at(end, k):
+        """end = 索引(含),回 k 日均價;不足回 None。"""
+        if end + 1 - k < 0:
+            return None
+        return sum(cl[end + 1 - k:end + 1]) / k
+
+    m10 = ma_at(n - 1, 10)
+    if m10 and m10 > 0:
+        v[CI['b10']] = rd((c / m10 - 1) * 100)
+    for key, k in (('sl5', 5), ('sl60', 60)):
+        cur, prev = ma_at(n - 1, k), ma_at(n - 6, k)
+        if cur and prev and prev > 0:
+            v[CI[key]] = rd((cur / prev - 1) * 100, 2)
+    m5v, m20v = ma_at(n - 1, 5), ma_at(n - 1, 20)
+    if m5v and m10 and m20v and c > 0:
+        v[CI['knot']] = rd((max(m5v, m10, m20v) - min(m5v, m10, m20v)) / c * 100, 2)
+
+    # ── KD(9,3,3):要算出「今天有沒有交叉」→ 需要昨天的 K/D,所以整條遞推 ──
+    if n >= 30:
+        kv = dv = 50.0
+        prev_k = prev_d = None
+        start = max(9, n - 200)
+        for i in range(start, n):
+            ll, hh = min(lo[i - 8:i + 1]), max(hi[i - 8:i + 1])
+            rsv = 50.0 if hh <= ll else (cl[i] - ll) / (hh - ll) * 100
+            prev_k, prev_d = kv, dv
+            kv = kv * 2 / 3 + rsv / 3
+            dv = dv * 2 / 3 + kv / 3
+        v[CI['k']], v[CI['d']] = rd(kv, 1), rd(dv, 1)
+        if prev_k is not None:
+            v[CI['kx']] = 1 if (prev_k <= prev_d and kv > dv) else (-1 if (prev_k >= prev_d and kv < dv) else 0)
+
+    # ── MACD(12,26,9)──
+    if n >= 40:
+        ef = es = cl[max(0, n - 250)]
+        dif_hist = []
+        for i in range(max(0, n - 250), n):
+            ef = ef + (cl[i] - ef) * 2 / 13
+            es = es + (cl[i] - es) * 2 / 27
+            dif_hist.append(ef - es)
+        dea = dif_hist[0]
+        prev_dif = prev_dea = None
+        for x in dif_hist:
+            prev_dif, prev_dea = x, dea
+            dea = dea + (x - dea) * 2 / 10
+        dif = dif_hist[-1]
+        v[CI['dif']], v[CI['dea']] = rd(dif, 3), rd(dea, 3)
+        if len(dif_hist) >= 2:
+            # 重算前一根的 dea 才能判交叉
+            dea2 = dif_hist[0]
+            for x in dif_hist[:-1]:
+                dea2 = dea2 + (x - dea2) * 2 / 10
+            p_dif = dif_hist[-2]
+            v[CI['mx']] = 1 if (p_dif <= dea2 and dif > dea) else (-1 if (p_dif >= dea2 and dif < dea) else 0)
+
+    # ── 布林通道位置(20, 2σ)──
+    if n >= 20 and m20v:
+        var = sum((x - m20v) ** 2 for x in cl[-20:]) / 20.0
+        sd = math.sqrt(var)
+        if sd > 0:
+            v[CI['bb']] = rd((c - (m20v - 2 * sd)) / (4 * sd) * 100, 1)
+
+    # ── 6 日動量 ──
+    if n >= 8:
+        m_now = c - cl[-7]
+        m_prev = cl[-2] - cl[-8]
+        v[CI['mtm6']] = rd(m_now)
+        v[CI['mtmt']] = 1 if (m_prev <= 0 < m_now) else (-1 if (m_prev >= 0 > m_now) else 0)
+
+    # ── 量能:5 日均量、量創新高低 ──
+    v5 = sum(vo[-5:]) / 5.0
+    if v5 > 0:
+        v[CI['v5']] = rd(v5 / 1000.0, 0)          # 張
+        v[CI['vr5']] = rd(vo[-1] / v5 * 100, 1)
+    vnh = 0
+    for dd_ in (20, 5):
+        if n >= dd_ and vo[-1] >= max(vo[-dd_:]) - 1e-9:
+            vnh = dd_
+            break
+    v[CI['vnh']] = vnh
+    vnl = 0
+    for dd_ in (20, 5):
+        if n >= dd_ and vo[-1] <= min(vo[-dd_:]) + 1e-9:
+            vnl = dd_
+            break
+    v[CI['vnl']] = vnl
+
     # ── 籌碼(⛔ 只有近期才有值 → 沒有一律 None,不補 0)──
     def acc(field, d):
         seg = [r.get(field) for r in rows[-d:]]
@@ -298,6 +408,29 @@ def build_one(rows, twii_chg=None):
     m_last, s_last = rows[-1].get('margin_balance'), rows[-1].get('short_balance')
     if m_last and s_last is not None and float(m_last) > 0:
         v[CI['sbr']] = rd(float(s_last) / float(m_last) * 100, 1)
+
+    # ── 融資券的「連續天數 / 創 N 日新高低」(⛔ 有缺值就不算,不可拿 None 當 0)──
+    def _bal_seq(field, k):
+        seg = [r.get(field) for r in rows[-k:]]
+        return seg if (len(seg) == k and all(x is not None for x in seg)) else None
+
+    mg = _bal_seq('margin_balance', 7)
+    if mg:
+        v[CI['mgd']] = streak_of([mg[i] - mg[i - 1] for i in range(1, len(mg))])
+    mg5s = _bal_seq('margin_balance', 5)
+    if mg5s:
+        v[CI['mgnl']] = 1 if mg5s[-1] <= min(mg5s) else (-1 if mg5s[-1] >= max(mg5s) else 0)
+    sb = _bal_seq('short_balance', 7)
+    if sb:
+        v[CI['sbd']] = streak_of([sb[i] - sb[i - 1] for i in range(1, len(sb))])
+        v[CI['sb3']] = rd(sb[-1] - sb[-4], 0)
+    sb5 = _bal_seq('short_balance', 5)
+    if sb5:
+        v[CI['sbnh']] = 1 if sb5[-1] >= max(sb5) else 0
+    if s_last is not None and n >= 10:
+        v10 = sum(vo[-10:]) / 10.0 / 1000.0      # 10 日均量(張)
+        if v10 > 0:
+            v[CI['sbv']] = rd(float(s_last) / v10 * 100, 1)
     return v
 
 
@@ -351,6 +484,25 @@ def main():
         # 大戶/散戶(集保週更;⛔ 沒有就 None,別拿舊到過期的值硬填)
         t = td.get(sym) or {}
         h = t.get('h') or []
+        # ⭐ 總股數(集保 `t`)→ 週轉率 與「買超佔股本比例」的分母。
+        #    ⛔ 沒有總股數就整組留 None(⛔ 不可拿成交量硬湊一個看起來合理的數字)
+        try:
+            tot = float(t.get('t') or 0)
+        except Exception:
+            tot = 0.0
+        if tot > 0:
+            try:
+                d5 = d[-5:]
+                vol5 = sum(float(r.get('volume') or 0) for r in d5)
+                v[CI['turn5']] = rd(vol5 / tot * 100, 2)
+            except Exception:
+                pass
+            fn_ = d[-1].get('foreign_net')
+            tn_ = d[-1].get('trust_net')
+            if fn_ is not None:
+                v[CI['fcap']] = rd(float(fn_) / tot * 100, 3)
+            if tn_ is not None:
+                v[CI['tcap']] = rd(float(tn_) / tot * 100, 3)
         if h:
             try:
                 v[CI['big']] = rd(float(h[-1][1]), 2)
