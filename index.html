@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.4.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.5.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.4.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.5.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2893,6 +2893,10 @@
                              而且 `switchRadarMode('strategy')` 會在今天有訊號時自動選它。
                              `sigCount` 紅點徽章由 `_renderTodaySignalView` 填,沒訊號時 hidden。 -->
                         <button onclick="app.switchRadarStrategy('todaysig')" id="radarTabTodaySig" class="radar-tab relative w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="今天出現、而且扣完交易成本還會賺的訊號(全市場掃描,唯一有實測成績的榜)"><span class="block text-[11px]">🎯 會賺訊號</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">扣完成本</span><span id="radarTodaySigCount" class="hidden absolute -top-1 -right-1 min-w-[16px] px-1 py-[1px] rounded-full bg-red-600 text-white text-[9px] font-black leading-none"></span></button>
+                        <!-- 🛠️ V73.5.0 自訂選股:自己勾條件自由組合(對標 XQ 的「自訂」)。
+                             資料來自採礦端每晚產的 data/screener.json(全市場逐檔特徵快照),
+                             ⛔ 前端不可能為了篩選去下載 2,700 個個股檔。 -->
+                        <button onclick="app.switchRadarStrategy('custom')" id="radarTabCustom" class="radar-tab relative w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="自訂選股:自己勾條件(價量/籌碼/財務)自由組合,可存成自己的榜單"><span class="block text-[11px]">🛠️ 自訂</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">自己勾條件</span><span id="radarCustomCount" class="hidden absolute -top-1 -right-1 min-w-[16px] px-1 py-[1px] rounded-full bg-blue-600 text-white text-[9px] font-black leading-none"></span></button>
                         <button onclick="app.switchRadarStrategy('daytrade')" id="radarTabDaytrade" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="當沖雷達:今天怎麼做(歷史勝率×大盤方向,做多/做空)+ 全市場即時強勢"><span class="block text-[11px]">當沖雷達</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">今天怎麼做</span></button>
                         <button onclick="app.switchRadarStrategy('layup')" id="radarTabLayup" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">送分題</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">高勝率</span></button>
                         <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">渣男賽車</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">動能</span></button>
@@ -2926,6 +2930,9 @@
 
                 <!-- 🎯 V72.5.0 今日「扣完成本還會賺」的訊號 view(todaysig tab 專用,預設隱藏) -->
                 <div id="radarTodaySigView" class="hidden flex-grow"></div>
+
+                <!-- 🛠️ V73.5.0 自訂選股 view(custom tab 專用,預設隱藏)。整段由 _renderCustomScreener 填。 -->
+                <div id="radarCustomView" class="hidden flex-grow"></div>
 
                 <!-- 🚦 當沖雷達 view(daytrade tab 專用,預設隱藏):今天怎麼做(勝率×大盤方向 做多/做空)+ 全市場即時強勢 -->
                 <div id="radarDaytradeView" class="hidden flex-grow"></div>
@@ -7281,8 +7288,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.4.1',
+    _APP_VERSION: 'V73.5.0',
     _CHANGELOG: [
+        { v: 'V73.5.0', dt: '2026-08-15', t: '🛠️ 新增「自訂選股」—— 自己勾條件', d: ['選股頁多一個「🛠️ 自訂」:自己從 價量／籌碼／財務 三大類點條件,想怎麼組就怎麼組,即時算出全市場有幾檔同時符合。','85 個條件:漲停、創N日新高、站上月線、爆量、RSI、位階、外資投信連買、買超佔成交量、連3賣後轉買、融資券、大戶散戶、本益比殖利率毛利率、過濾ETF金融股…','滿意的組合可以「💾 存成榜單」,下次一鍵叫出來(點一下套用、雙擊刪除)。','⚠️ 一件重要的事:某檔沒有那個資料時,不會被當成 0,而是「這條不通過」。所以財務類條件(只有約 35~38% 個股有)勾了會大幅縮小範圍 —— 按鈕下面會標黃字提醒。','⛔ 刻意沒有「回測」按鈕:要回測任意條件組合,需要過去每一天的全市場快照,本站沒有那份歷史。做一個沒有對照組的假回測比不做更糟。想看有實測成績的請用「🎯 會賺訊號」。'] },
         { v: 'V73.4.1', dt: '2026-08-14', t: '💰 修好股利政策那三格', d: ['殖利率現在算得出來了(年化股利 ÷ 收盤價),之前那一格永遠是空的。','發配率、每股股利其實資料早就有(全市場 1,455 檔),你重新整理就會出現。','填息機率/平均填息天數:找到真因了 —— 夜間採礦漏還原 K 線,而算填息要用到它,所以 1,627 檔全部算不出來、還完全沒有錯誤訊息。已修,今晚採礦後就會有。'] },
         { v: 'V73.4.0', dt: '2026-08-14', t: '📂 基本面頁折疊全部打開', d: ['基本面分頁那三個要點才開的區塊(完整基本面數據、評分構成因子、近5次除息紀錄)現在預設就是打開的。','你截圖那個「股利政策 --」我查出來了:不是 2327 特例 —— 全市場 2,074 檔只有 46 檔(2.2%)有股利,連台積電、鴻海的 EPS 也是空的。已寫探針去查真因(是權限問題還是抓取時間窗太短),查到再修。'] },
         { v: 'V73.3.9', dt: '2026-08-14', t: '📐 新增「這檔現在貴不貴 —— 跟它自己以前比」', d: ['基本面 X 光機多一格「vs 自己」:現在的本益比,在它自己近 3 年的哪個位置(0%=最便宜、100%=最貴)。','跟旁邊那格「vs 同業」問的是不同的事 —— 有些股票是整個產業都貴,有些是自己漲太多。','⭐ 有實測過才做:300 檔 11 年回測,最便宜 10% 之後 60 天贏大盤 0.68 個百分點,由便宜到貴完全單調。','⛔ 但幅度小,扣掉買賣成本只剩 0.24 → 當背景參考就好,買賣還是看總覽那張「現在怎麼做」。','⛔ 股價淨值比(P/B)同一套方法測出來前後半段方向相反,是雜訊 → 刻意沒做。','景氣對策信號改走新資料源,那格空了很久,下次採礦後會有值。'] },
@@ -37581,6 +37589,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _RADAR_TAB_INACTIVE: 'bg-[#161b22] text-gray-400 border-[#30363d] hover:border-gray-500',
     _RADAR_TABS: {
         todaysig:  { id: 'radarTabTodaySig',  active: 'bg-red-600/30 text-red-100 border-red-500' },
+        custom:    { id: 'radarTabCustom',    active: 'bg-blue-600/30 text-blue-100 border-blue-500' },
         daytrade:  { id: 'radarTabDaytrade',  active: 'bg-cyan-600/30 text-cyan-100 border-cyan-500' },
         layup:     { id: 'radarTabLayup',     active: 'bg-yellow-600/30 text-yellow-200 border-yellow-500' },
         momentum:  { id: 'radarTabMomentum',  active: 'bg-red-600/20 text-red-300 border-red-500' },
@@ -37604,6 +37613,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         potential: { id: 'radarTabPotential', active: 'bg-cyan-600/25 text-cyan-200 border-cyan-500' },
     },
     _RADAR_HINT: {
+        custom:    '🛠️ 自訂選股｜自己勾條件、自由組合(全部是 AND:每一條都要成立)。資料是每晚採礦後的**全市場逐檔快照**,所以是**收盤價**不是盤中即時。⚠️ 沒有那個欄位資料的股票**一律不通過**該條件(⛔ 不會被當成 0),所以條件越多、被「資料缺漏」濾掉的也越多 —— 選出來太少時先看看是不是勾到覆蓋率低的條件。⛔ 這裡刻意沒有「回測」按鈕:任意條件組合的回測需要每天一份全市場歷史快照,本站沒有那份歷史,做一個沒有對照組的假回測比不做更糟。',
         todaysig:  '🎯 會賺訊號｜每天收盤後把全市場每一檔都跑過所有 K 線訊號,只留「那個訊號的**實測期望值是正的**」、而且**扣完來回交易成本還有得賺**的。這是 16 個榜裡唯一有實測成績的。⚠️ 基準勝率是 36% 不是 50%;期望值是歷史平均、不是保證,而且只看 K 線沒看籌碼基本面。',
         daytrade:  '🚦 當沖雷達｜盤前做功課用:①「今天怎麼做」= 各股歷史當沖勝率 × 今天推估大盤開盤方向(外資期+P/C+台指期大額),做多/做空分開,只挑勝率最高的;②全市場即時強勢/漲停/期貨補漲。⚠️ 歷史勝率非保證,盤中務必看即時量價、嚴設停損;當沖來回成本約 0.25%,沒肉別硬沖。',
         layup:     '⭐ 送分題｜每天自動從十幾套選股策略裡,挑「同時被多套方法看好」的股:命中越多套排越前面。每檔都寫「為何入選 + 怎麼操作(停損價算好給你)」,照做就行。',
@@ -37734,10 +37744,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const potView   = document.getElementById('radarPotentialView');
         const dtView    = document.getElementById('radarDaytradeView');
         const tsView    = document.getElementById('radarTodaySigView');
-        [layupView, tableWrap, attView, wkView, themeView, potView, dtView, tsView].forEach(v => v && v.classList.add('hidden'));
+        const csView    = document.getElementById('radarCustomView');
+        [layupView, tableWrap, attView, wkView, themeView, potView, dtView, tsView, csView].forEach(v => v && v.classList.add('hidden'));
         if (key === 'todaysig') {
             if (tsView) tsView.classList.remove('hidden');
             this._renderTodaySignalView().catch(() => {});
+        } else if (key === 'custom') {
+            if (csView) csView.classList.remove('hidden');
+            this._renderCustomScreener().catch(() => {});
         } else if (key === 'daytrade') {
             if (dtView) dtView.classList.remove('hidden');
             this._renderDaytradeRadar();
@@ -37839,6 +37853,379 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //      使用者得先想到要看哪一檔才知道它有沒有訊號,等於要他自己翻 2,315 檔。
     //   ⛔ 榜單只收**看多且 exp>0**(常對但不賺的不進榜);
     //      風險訊號⛔ 不出清單(全市場 6,158 筆沒有可操作性,截斷反而誤導),只給總數當氛圍。
+    // ══════════════════════════════════════════════════════════════════════
+    // 🛠️ V73.5.0 自訂選股(對標 XQ 的「自訂」)—— 自己勾條件、自由組合
+    //
+    // 📐 資料:`data/screener.json`(採礦端 screener_miner.py 每晚產,全市場逐檔特徵快照)
+    //    ⛔ 前端不可能為了篩選去下載 2,700 個 data/{sym}.json,所以一定要有這份快照。
+    //
+    // ⛔ 三條鐵則(⛔ 改之前先讀):
+    //  ① **沒有資料一律不通過** —— `_scrPass` 是全 App **唯一**一處判斷,null/undefined 直接 false。
+    //     ⛔ 絕不可把 null 當 0 去比大小:0 在「外資買賣超」是「沒買沒賣」、
+    //     在「殖利率」是「不配息」,跟「沒有資料」是完全不同的三件事。
+    //  ② **條件用宣告式**(`{k, op, v}`),⛔ 別每條各寫一個判斷函式 ——
+    //     那樣 null 規則就會散成幾十份,漏掉一份就是一個安靜的錯(陷阱 #37)。
+    //     真的需要跨欄位的才用 `fn`。
+    //  ③ ⛔ **不提供「回測」按鈕** —— 任意條件組合的回測需要「每天一份全市場快照」的歷史,
+    //     本站沒有那份歷史。做一個沒有對照組的假回測比不做更糟(同 ORB / 假數字的立場)。
+    // ══════════════════════════════════════════════════════════════════════
+    _SCR_GROUPS: [
+        { k: 'pv', n: '價量', subs: ['價格', '量能', '均線', '指標', '型態'] },
+        { k: 'ch', n: '籌碼', subs: ['法人', '資券', '股東'] },
+        { k: 'fi', n: '財務', subs: ['分類', '價值', '營利'] },
+    ],
+    // tone:'b'=偏多(紅) 'e'=偏空(綠) ''=中性 —— ⚠️ 燈號鐵則:紅綠只表示漲跌方向,不表示好壞
+    _SCR_CONDS: [
+        // ── 價量 · 價格 ──
+        { id: 'limup',   g: 'pv', s: '價格', t: '漲停股',            k: 'lim',  op: 'eq',  v: 1,   tone: 'b' },
+        { id: 'up5',     g: 'pv', s: '價格', t: '漲幅大於 5%',        k: 'chg',  op: 'gt',  v: 5,   tone: 'b' },
+        { id: 'up5d10',  g: 'pv', s: '價格', t: '5 日漲幅大於 10%',   k: 'chg5', op: 'gt',  v: 10,  tone: 'b' },
+        { id: 'nh5',     g: 'pv', s: '價格', t: '創 5 日新高',        k: 'nh',   op: 'gte', v: 5,   tone: 'b' },
+        { id: 'closehi', g: 'pv', s: '價格', t: '收在最高',           k: 'clr',  op: 'gte', v: 95,  tone: 'b' },
+        { id: 'beatmkt', g: 'pv', s: '價格', t: '優於大盤',           k: 'rs',   op: 'gt',  v: 0,   tone: 'b' },
+        { id: 'limdn',   g: 'pv', s: '價格', t: '跌停股',            k: 'lim',  op: 'eq',  v: -1,  tone: 'e' },
+        { id: 'dn5',     g: 'pv', s: '價格', t: '跌幅大於 5%',        k: 'chg',  op: 'lt',  v: -5,  tone: 'e' },
+        { id: 'dn5d10',  g: 'pv', s: '價格', t: '5 日跌幅大於 10%',   k: 'chg5', op: 'lt',  v: -10, tone: 'e' },
+        { id: 'nl5',     g: 'pv', s: '價格', t: '創 5 日新低',        k: 'nl',   op: 'gte', v: 5,   tone: 'e' },
+        { id: 'closelo', g: 'pv', s: '價格', t: '收在最低',           k: 'clr',  op: 'lte', v: 5,   tone: 'e' },
+        { id: 'p20_60',  g: 'pv', s: '價格', t: '股價 20~60 元',      fn: (r, s, a) => { const c = a._scrV(r, 'c'); return c !== null && c >= 20 && c <= 60; } },
+        { id: 'plt100',  g: 'pv', s: '價格', t: '股價低於 100 元',    k: 'c',    op: 'lt',  v: 100 },
+        // ── 價量 · 量能 ──
+        { id: 'amt1',    g: 'pv', s: '量能', t: '成交額 > 1 億',      k: 'amt',  op: 'gt',  v: 1 },
+        { id: 'amt5',    g: 'pv', s: '量能', t: '成交額 > 5 億',      k: 'amt',  op: 'gt',  v: 5 },
+        { id: 'amt20',   g: 'pv', s: '量能', t: '成交額 > 20 億',     k: 'amt',  op: 'gt',  v: 20 },
+        { id: 'vr150',   g: 'pv', s: '量能', t: '量增(> 1.5 倍均量)', k: 'vr',   op: 'gt',  v: 150 },
+        { id: 'vr250',   g: 'pv', s: '量能', t: '爆量(> 2.5 倍均量)', k: 'vr',   op: 'gt',  v: 250 },
+        { id: 'vr70',    g: 'pv', s: '量能', t: '量縮(< 0.7 倍均量)', k: 'vr',   op: 'lt',  v: 70 },
+        // ── 價量 · 均線 ──
+        { id: 'ma5up',   g: 'pv', s: '均線', t: '站上 5 日線',        k: 'b5',   op: 'gt',  v: 0,   tone: 'b' },
+        { id: 'ma20up',  g: 'pv', s: '均線', t: '站上月線(20MA)',    k: 'b20',  op: 'gt',  v: 0,   tone: 'b' },
+        { id: 'ma60up',  g: 'pv', s: '均線', t: '站上季線(60MA)',    k: 'b60',  op: 'gt',  v: 0,   tone: 'b' },
+        { id: 'ma240up', g: 'pv', s: '均線', t: '站上年線(240MA)',   k: 'b240', op: 'gt',  v: 0,   tone: 'b' },
+        { id: 'ma20dn',  g: 'pv', s: '均線', t: '跌破月線',           k: 'b20',  op: 'lt',  v: 0,   tone: 'e' },
+        { id: 'bull',    g: 'pv', s: '均線', t: '均線多頭排列',       k: 'bull', op: 'eq',  v: 1,   tone: 'b' },
+        { id: 'nearma20',g: 'pv', s: '均線', t: '貼近月線(±3%)',     fn: (r, s, a) => { const b = a._scrV(r, 'b20'); return b !== null && Math.abs(b) <= 3; } },
+        { id: 'bias20hi',g: 'pv', s: '均線', t: '正乖離月線 > 10%',   k: 'b20',  op: 'gt',  v: 10 },
+        // ── 價量 · 指標 ──
+        { id: 'rsi70',   g: 'pv', s: '指標', t: 'RSI > 70(超買)',    k: 'rsi',  op: 'gt',  v: 70 },
+        { id: 'rsi30',   g: 'pv', s: '指標', t: 'RSI < 30(超賣)',    k: 'rsi',  op: 'lt',  v: 30 },
+        { id: 'rsi5060', g: 'pv', s: '指標', t: 'RSI 50~65(不過熱)', fn: (r, s, a) => { const x = a._scrV(r, 'rsi'); return x !== null && x >= 50 && x <= 65; } },
+        { id: 'volhi',   g: 'pv', s: '指標', t: '高波動(年化 ≥ 60%)', k: 'vol20', op: 'gte', v: 60 },
+        { id: 'vollo',   g: 'pv', s: '指標', t: '低波動(年化 < 30%)', k: 'vol20', op: 'lt',  v: 30 },
+        // ── 價量 · 型態 ──
+        { id: 'nh20',    g: 'pv', s: '型態', t: '創 20 日新高',       k: 'nh',   op: 'gte', v: 20,  tone: 'b' },
+        { id: 'nh60',    g: 'pv', s: '型態', t: '創 60 日新高',       k: 'nh',   op: 'gte', v: 60,  tone: 'b' },
+        { id: 'nh252',   g: 'pv', s: '型態', t: '創一年新高',         k: 'nh',   op: 'gte', v: 252, tone: 'b' },
+        { id: 'nl252',   g: 'pv', s: '型態', t: '創一年新低',         k: 'nl',   op: 'gte', v: 252, tone: 'e' },
+        { id: 'st3',     g: 'pv', s: '型態', t: '連漲 3 天以上',      k: 'streak', op: 'gte', v: 3, tone: 'b' },
+        { id: 'stn3',    g: 'pv', s: '型態', t: '連跌 3 天以上',      k: 'streak', op: 'lte', v: -3, tone: 'e' },
+        { id: 'poshi',   g: 'pv', s: '型態', t: '位階高檔(一年 ≥ 75%)', k: 'pos252', op: 'gte', v: 75 },
+        { id: 'poslo',   g: 'pv', s: '型態', t: '位階低檔(一年 ≤ 25%)', k: 'pos252', op: 'lte', v: 25 },
+        { id: 'dd20',    g: 'pv', s: '型態', t: '距 60 日高 10% 內',  k: 'dd60', op: 'gte', v: -10 },
+        { id: 'ddfar',   g: 'pv', s: '型態', t: '距 60 日高跌逾 30%', k: 'dd60', op: 'lte', v: -30, tone: 'e' },
+        // ── 籌碼 · 法人 ──
+        { id: 'f3d',     g: 'ch', s: '法人', t: '外資連續 3 日買進',  k: 'fd',   op: 'gte', v: 3,   tone: 'b' },
+        { id: 't3d',     g: 'ch', s: '法人', t: '投信連續 3 日買進',  k: 'td',   op: 'gte', v: 3,   tone: 'b' },
+        { id: 'd3d',     g: 'ch', s: '法人', t: '自營商連續 3 日買進', k: 'dd',  op: 'gte', v: 3,   tone: 'b' },
+        { id: 'f3_500',  g: 'ch', s: '法人', t: '近 3 日外資買超 > 500 張',  k: 'f3', op: 'gt', v: 500, tone: 'b' },
+        { id: 't3_500',  g: 'ch', s: '法人', t: '近 3 日投信買超 > 500 張',  k: 't3', op: 'gt', v: 500, tone: 'b' },
+        { id: 'd3_500',  g: 'ch', s: '法人', t: '近 3 日自營買超 > 500 張',  k: 'd3', op: 'gt', v: 500, tone: 'b' },
+        { id: 'fpct10',  g: 'ch', s: '法人', t: '外資買超 > 成交量 10%',    k: 'fpct', op: 'gt', v: 10, tone: 'b' },
+        { id: 'tpct10',  g: 'ch', s: '法人', t: '投信買超 > 成交量 10%',    k: 'tpct', op: 'gt', v: 10, tone: 'b' },
+        { id: 'fturn',   g: 'ch', s: '法人', t: '外資連 3 日賣超後轉買',    k: 'fturn', op: 'eq', v: 1, tone: 'b' },
+        { id: 'tturn',   g: 'ch', s: '法人', t: '投信連 3 日賣超後轉買',    k: 'tturn', op: 'eq', v: 1, tone: 'b' },
+        { id: 'fdays7',  g: 'ch', s: '法人', t: '外資 10 日買超天數 ≥ 7',   k: 'fdays', op: 'gte', v: 7, tone: 'b' },
+        { id: 'tdays7',  g: 'ch', s: '法人', t: '投信 10 日買超天數 ≥ 7',   k: 'tdays', op: 'gte', v: 7, tone: 'b' },
+        { id: 'fsell3',  g: 'ch', s: '法人', t: '外資連續 3 日賣出',  k: 'fd',   op: 'lte', v: -3,  tone: 'e' },
+        { id: 'dual',    g: 'ch', s: '法人', t: '外資+投信同買(今日)', fn: (r, s, a) => (a._scrV(r, 'f1') > 0 && a._scrV(r, 't1') > 0), tone: 'b' },
+        // ── 籌碼 · 資券 ──
+        { id: 'mgup10',  g: 'ch', s: '資券', t: '融資 5 日增加 > 10%', k: 'mgp', op: 'gt',  v: 10 },
+        { id: 'mgdn10',  g: 'ch', s: '資券', t: '融資 5 日減少 > 10%', k: 'mgp', op: 'lt',  v: -10 },
+        { id: 'sbr10',   g: 'ch', s: '資券', t: '券資比 > 10%',        k: 'sbr', op: 'gt',  v: 10 },
+        // ── 籌碼 · 股東(集保,週更)──
+        { id: 'big50',   g: 'ch', s: '股東', t: '千張大戶 > 50%',      k: 'big',  op: 'gt',  v: 50 },
+        { id: 'bigup',   g: 'ch', s: '股東', t: '大戶近 4 週增加',     k: 'bchg', op: 'gt',  v: 0 },
+        { id: 'bigdn',   g: 'ch', s: '股東', t: '大戶近 4 週減少',     k: 'bchg', op: 'lt',  v: 0 },
+        { id: 'sml15',   g: 'ch', s: '股東', t: '散戶 < 15%(籌碼集中)', k: 'sml', op: 'lt', v: 15 },
+        // ── 財務 · 分類 ──
+        { id: 'noetf',   g: 'fi', s: '分類', t: '過濾 ETF(只看個股)', k: 'etf', op: 'eq',  v: 0 },
+        { id: 'onlyetf', g: 'fi', s: '分類', t: '只看 ETF',            k: 'etf', op: 'eq',  v: 1 },
+        { id: 'noatt',   g: 'fi', s: '分類', t: '排除注意/處置股',     k: 'att', op: 'eq',  v: 0 },
+        { id: 'onlyatt', g: 'fi', s: '分類', t: '只看注意股',          k: 'att', op: 'eq',  v: 1 },
+        { id: 'onlydis', g: 'fi', s: '分類', t: '只看處置股',          k: 'att', op: 'eq',  v: 2 },
+        { id: 'nofin',   g: 'fi', s: '分類', t: '過濾金融股',          fn: (r, s, a) => (a._scrInd(s) !== '金融保險') },
+        { id: 'onlysemi',g: 'fi', s: '分類', t: '只看半導體',          fn: (r, s, a) => (a._scrInd(s) === '半導體') },
+        // ── 財務 · 價值 ──
+        { id: 'pe15',    g: 'fi', s: '價值', t: '本益比 < 15',         k: 'pe',  op: 'lt',  v: 15 },
+        { id: 'pe20',    g: 'fi', s: '價值', t: '本益比 < 20',         k: 'pe',  op: 'lt',  v: 20 },
+        { id: 'pehi',    g: 'fi', s: '價值', t: '本益比 > 30',         k: 'pe',  op: 'gt',  v: 30 },
+        { id: 'pb1',     g: 'fi', s: '價值', t: '股價淨值比 < 1',      k: 'pb',  op: 'lt',  v: 1 },
+        { id: 'pb15',    g: 'fi', s: '價值', t: '股價淨值比 < 1.5',    k: 'pb',  op: 'lt',  v: 1.5 },
+        { id: 'yld3',    g: 'fi', s: '價值', t: '殖利率 > 3%',         k: 'yld', op: 'gt',  v: 3 },
+        { id: 'yld5',    g: 'fi', s: '價值', t: '殖利率 > 5%',         k: 'yld', op: 'gt',  v: 5 },
+        // ── 財務 · 營利 ──
+        { id: 'yoy0',    g: 'fi', s: '營利', t: '月營收 YoY 轉正',     k: 'yoy', op: 'gt',  v: 0,  tone: 'b' },
+        { id: 'yoy20',   g: 'fi', s: '營利', t: '月營收 YoY > 20%',    k: 'yoy', op: 'gt',  v: 20, tone: 'b' },
+        { id: 'yoy50',   g: 'fi', s: '營利', t: '月營收 YoY > 50%',    k: 'yoy', op: 'gt',  v: 50, tone: 'b' },
+        { id: 'yoyneg',  g: 'fi', s: '營利', t: '月營收 YoY 衰退',     k: 'yoy', op: 'lt',  v: 0,  tone: 'e' },
+        { id: 'gm30',    g: 'fi', s: '營利', t: '毛利率 > 30%',        k: 'gm',  op: 'gt',  v: 30 },
+        { id: 'gm50',    g: 'fi', s: '營利', t: '毛利率 > 50%',        k: 'gm',  op: 'gt',  v: 50 },
+        { id: 'pay50',   g: 'fi', s: '營利', t: '盈餘發配率 > 50%',    k: 'payout', op: 'gt', v: 50 },
+    ],
+
+    _scrV(row, key) {
+        const i = this._scrC ? this._scrC[key] : null;
+        if (i === null || i === undefined) return null;
+        const x = row[i];
+        return (x === null || x === undefined) ? null : x;
+    },
+    _scrInd(sym) { return (this._scrData && this._scrData.ind) ? (this._scrData.ind[sym] || '') : ''; },
+
+    // ⭐⭐ 全 App **唯一**一處條件判斷 —— null 規則只寫這一次(⛔ 別在別處再寫一份)
+    _scrPass(cond, row, sym) {
+        if (cond.fn) { try { return !!cond.fn(row, sym, this); } catch (_) { return false; } }
+        const x = this._scrV(row, cond.k);
+        if (x === null) return false;          // ⭐ 沒有資料一律不通過,⛔ 不當成 0
+        switch (cond.op) {
+            case 'gt':  return x > cond.v;
+            case 'gte': return x >= cond.v;
+            case 'lt':  return x < cond.v;
+            case 'lte': return x <= cond.v;
+            case 'eq':  return x === cond.v;
+            case 'ne':  return x !== cond.v;
+            default: return false;
+        }
+    },
+
+    async _loadScreener() {
+        if (this._scrData !== undefined) return this._scrData;
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/screener.json', ghBase).href + `?t=${Date.now()}`,
+                                  { signal: AbortSignal.timeout(20000) });
+            this._scrData = r.ok ? await r.json() : null;
+        } catch (_) { this._scrData = null; }
+        if (this._scrData && Array.isArray(this._scrData.cols)) {
+            this._scrC = {};
+            this._scrData.cols.forEach((k, i) => { this._scrC[k] = i; });
+        }
+        return this._scrData;
+    },
+
+    _scrPicked: [],
+    _scrGroup: 'pv',
+    _scrSub: '價格',
+
+    async _renderCustomScreener() {
+        const box = document.getElementById('radarCustomView');
+        if (!box) return;
+        if (this._scrData === undefined) {
+            box.innerHTML = '<div class="text-center text-gray-500 text-xs py-10">🛠️ 載入全市場條件資料…</div>';
+            await this._loadScreener();
+        }
+        const d = this._scrData;
+        if (!d || !d.rows) {
+            box.innerHTML = `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-3">
+                <div class="text-[11px] font-bold text-yellow-300 mb-1">⏳ 條件資料還在準備中</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">自訂選股需要每晚採礦後產生的「全市場條件快照」,現在還讀不到。
+                通常在收盤後 19:00 之後就會有;請稍後再開,或先用左邊其他榜單。</div></div>`;
+            return;
+        }
+        const grp = this._SCR_GROUPS.find(g => g.k === this._scrGroup) || this._SCR_GROUPS[0];
+        if (!grp.subs.includes(this._scrSub)) this._scrSub = grp.subs[0];
+        const nTot = d.n || Object.keys(d.rows).length;
+
+        const gTabs = this._SCR_GROUPS.map(g => `<button onclick="app.scrGroup('${g.k}')" class="flex-1 px-2 py-2 rounded-lg text-[12px] font-black border transition-all ${g.k === this._scrGroup ? 'bg-blue-600/30 text-blue-100 border-blue-500' : 'bg-[#161b22] text-gray-400 border-[#30363d]'}">${g.n}</button>`).join('');
+        const sTabs = grp.subs.map(s => `<button onclick="app.scrSub('${s}')" class="px-2.5 py-1 rounded text-[11px] font-bold border transition-all ${s === this._scrSub ? 'bg-white/10 text-gray-100 border-gray-500' : 'bg-transparent text-gray-500 border-transparent'}">${s}</button>`).join('');
+
+        const list = this._SCR_CONDS.filter(c => c.g === this._scrGroup && c.s === this._scrSub);
+        const chips = list.map(c => {
+            const on = this._scrPicked.includes(c.id);
+            const col = c.tone === 'b' ? 'text-red-300' : (c.tone === 'e' ? 'text-green-300' : 'text-gray-300');
+            // 覆蓋率低的條件要先講,否則使用者會以為是程式壞了(⛔ 不是預測,是事實)
+            const cov = (!c.fn && d.cov && d.cov[c.k] !== undefined) ? d.cov[c.k] / nTot : 1;
+            const thin = cov < 0.6 ? `<span class="block text-[8px] text-yellow-500/80 font-normal mt-0.5">⚠️ 僅 ${Math.round(cov * 100)}% 個股有此資料</span>` : '';
+            return `<button onclick="app.scrToggle('${c.id}')" class="text-left px-2.5 py-2.5 rounded-lg border transition-all ${on ? 'bg-blue-600/25 border-blue-500' : 'bg-[#161b22] border-[#30363d]'}">
+                <span class="block text-[11px] font-bold ${on ? 'text-blue-100' : col} leading-tight">${on ? '✓ ' : ''}${c.t}</span>${thin}</button>`;
+        }).join('');
+
+        const picked = this._scrPicked.map(id => {
+            const c = this._SCR_CONDS.find(x => x.id === id);
+            return c ? `<button onclick="app.scrToggle('${id}')" class="px-2 py-1 rounded-full bg-blue-600/25 border border-blue-500 text-[10px] font-bold text-blue-100">${c.t} ✕</button>` : '';
+        }).join('');
+
+        const saved = this._lsJson('proTerm_scrSaved', []) || [];
+        const savedHtml = saved.length ? `<div class="flex flex-wrap gap-1.5 mt-2">${saved.map((s, i) =>
+            `<button onclick="app.scrLoad(${i})" ondblclick="app.scrDel(${i})" class="px-2 py-1 rounded bg-[#21262d] border border-[#30363d] text-[10px] text-gray-300 font-bold" title="點=套用・雙擊=刪除">📁 ${this._escHtml(s.name)}<span class="text-gray-600 ml-1">${s.ids.length}</span></button>`).join('')}</div>
+            <div class="text-[9px] text-gray-600 mt-1">點一下套用 ・ 雙擊刪除</div>` : '';
+
+        box.innerHTML = `
+        <div class="flex flex-col gap-2 h-full min-h-0">
+          <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 flex-shrink-0">
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="text-[11px] font-black text-gray-200">🛠️ 我的選股條件
+                <span class="text-[10px] font-normal text-gray-500 ml-1">(${this._scrPicked.length} 個・全部要同時成立)</span></div>
+              <div class="flex gap-1.5">
+                <button onclick="app._showScrHelp()" class="px-2 py-1 rounded bg-[#21262d] border border-[#30363d] text-[10px] text-gray-300 font-bold">📖 教學</button>
+                <button onclick="app.scrClear()" class="px-2 py-1 rounded bg-[#21262d] border border-[#30363d] text-[10px] text-gray-400 font-bold">清除</button>
+                <button onclick="app.scrSave()" class="px-2 py-1 rounded bg-blue-600/30 border border-blue-500 text-[10px] text-blue-100 font-bold">💾 存成榜單</button>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-1.5">${picked || '<span class="text-[10px] text-gray-600">還沒選條件 —— 從下面點幾個加進來</span>'}</div>
+            ${savedHtml}
+          </div>
+
+          <div id="scrResult" class="flex-shrink-0"></div>
+
+          <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 flex-1 min-h-0 flex flex-col">
+            <div class="flex gap-1.5 mb-2 flex-shrink-0">${gTabs}</div>
+            <div class="flex gap-1 mb-2 overflow-x-auto flex-shrink-0" style="scrollbar-width:none">${sTabs}</div>
+            <div class="grid grid-cols-2 gap-1.5 overflow-y-auto min-h-0 flex-1">${chips}</div>
+            <div class="text-[9px] text-gray-600 mt-2 flex-shrink-0 leading-relaxed">
+              資料日 ${this._dW(d.data_date || '', { rel: 1 })} ・ 全市場 ${nTot.toLocaleString()} 檔 ・ <b class="text-gray-500">收盤價</b>不是盤中即時
+            </div>
+          </div>
+        </div>`;
+        this._scrRun();
+    },
+
+    scrGroup(k) { this._scrGroup = k; const g = this._SCR_GROUPS.find(x => x.k === k); if (g) this._scrSub = g.subs[0]; this._renderCustomScreener(); },
+    scrSub(s) { this._scrSub = s; this._renderCustomScreener(); },
+    scrToggle(id) {
+        const i = this._scrPicked.indexOf(id);
+        if (i >= 0) this._scrPicked.splice(i, 1); else this._scrPicked.push(id);
+        this.vibrate(10);
+        this._renderCustomScreener();
+    },
+    scrClear() { this._scrPicked = []; this._renderCustomScreener(); },
+    scrSave() {
+        if (!this._scrPicked.length) { this.showToast && this.showToast('先選幾個條件再存'); return; }
+        const name = prompt('這組條件叫什麼名字?', `我的選股 ${new Date().getMonth() + 1}/${new Date().getDate()}`);
+        if (!name) return;
+        const saved = this._lsJson('proTerm_scrSaved', []) || [];
+        saved.unshift({ name: String(name).slice(0, 12), ids: this._scrPicked.slice() });
+        try { localStorage.setItem('proTerm_scrSaved', JSON.stringify(saved.slice(0, 12))); } catch (_) {}
+        this._renderCustomScreener();
+    },
+    scrLoad(i) {
+        const saved = this._lsJson('proTerm_scrSaved', []) || [];
+        if (saved[i]) { this._scrPicked = (saved[i].ids || []).slice(); this._renderCustomScreener(); }
+    },
+    scrDel(i) {
+        const saved = this._lsJson('proTerm_scrSaved', []) || [];
+        saved.splice(i, 1);
+        try { localStorage.setItem('proTerm_scrSaved', JSON.stringify(saved)); } catch (_) {}
+        this._renderCustomScreener();
+    },
+
+    _scrRun() {
+        const out = document.getElementById('scrResult');
+        const d = this._scrData;
+        if (!out || !d || !d.rows) return;
+        const badge = document.getElementById('radarCustomCount');
+        if (!this._scrPicked.length) {
+            out.innerHTML = `<div class="bg-[#161b22] border-l-4 border-blue-500 border-y border-r border-[#30363d] rounded-r p-3">
+              <div class="text-[11px] font-bold text-blue-300 mb-1">💡 怎麼用</div>
+              <div class="text-[10px] text-gray-300 leading-relaxed">從下面點幾個條件(例如「站上月線」+「外資連續 3 日買進」+「成交額 &gt; 5 億」),
+              上面就會即時算出全市場有幾檔同時符合。滿意的話按「💾 存成榜單」下次一鍵叫出來。</div></div>`;
+            if (badge) badge.classList.add('hidden');
+            return;
+        }
+        const conds = this._scrPicked.map(id => this._SCR_CONDS.find(c => c.id === id)).filter(Boolean);
+        const hits = [];
+        for (const sym in d.rows) {
+            const row = d.rows[sym];
+            let ok = true;
+            for (const c of conds) { if (!this._scrPass(c, row, sym)) { ok = false; break; } }
+            if (ok) hits.push(sym);
+        }
+        // 預設用成交金額排序(流動性),⛔ 別退化成代號序(那等於「1xxx 永遠排前面」)
+        const ai = this._scrC.amt;
+        hits.sort((a, b) => (d.rows[b][ai] || 0) - (d.rows[a][ai] || 0));
+        if (badge) { badge.textContent = hits.length > 99 ? '99+' : String(hits.length); badge.classList.toggle('hidden', !hits.length); }
+
+        const CAP = 60;
+        const show = hits.slice(0, CAP);
+        // ⭐ 每一列把「使用者勾的那幾個條件的實際數值」秀出來 = 為什麼入選的證據
+        const evKeys = [...new Set(conds.map(c => c.k).filter(Boolean))].slice(0, 4);
+        const rowsHtml = show.map((sym, i) => {
+            const r = d.rows[sym];
+            const c0 = this._scrV(r, 'c'), ch = this._scrV(r, 'chg');
+            const nm = this.getStockName(sym);
+            const chCol = ch > 0 ? 'text-red-400' : (ch < 0 ? 'text-green-400' : 'text-gray-400');
+            const ev = evKeys.map(k => {
+                const x = this._scrV(r, k);
+                return x === null ? '' : `<span class="text-[9px] text-gray-500 font-mono mr-1.5">${this._SCR_LBL[k] || k} ${typeof x === 'number' ? x.toLocaleString() : x}</span>`;
+            }).join('');
+            const att = this._scrV(r, 'att');
+            const tag = att === 2 ? '<span class="text-[8px] px-1 rounded bg-orange-900/40 text-orange-300 font-bold ml-1">處置</span>'
+                      : (att === 1 ? '<span class="text-[8px] px-1 rounded bg-yellow-900/40 text-yellow-300 font-bold ml-1">注意</span>' : '');
+            return `<div onclick="app.analyze('${sym}')" class="grid grid-cols-[26px_1fr_auto] gap-2 items-center px-2 py-2 border-b border-[#21262d] cursor-pointer active:bg-white/5">
+                <div class="text-[10px] text-gray-600 font-mono">#${i + 1}</div>
+                <div class="min-w-0">
+                  <div class="text-[12px] font-bold text-gray-100 truncate">${sym}${nm && nm !== sym ? ' ' + this._escHtml(nm) : ''}${tag}</div>
+                  <div class="truncate mt-0.5">${ev || `<span class="text-[9px] text-gray-600">${this._escHtml(this._scrInd(sym) || '')}</span>`}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-[13px] font-black font-mono text-gray-100">${c0 === null ? '--' : c0.toLocaleString()}</div>
+                  <div class="text-[10px] font-mono font-bold ${chCol}">${ch === null ? '--' : (ch > 0 ? '+' : '') + ch.toFixed(2) + '%'}</div>
+                </div></div>`;
+        }).join('');
+
+        const more = hits.length > CAP ? `<div class="text-[10px] text-gray-500 text-center py-2">還有 ${(hits.length - CAP).toLocaleString()} 檔沒顯示 —— 再加一兩個條件把清單縮小</div>` : '';
+        out.innerHTML = hits.length ? `
+          <div class="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+            <div class="flex items-center justify-between px-2.5 py-2 border-b border-[#30363d]">
+              <div class="text-[12px] font-black text-gray-100">選出 <span class="text-blue-300 text-base">${hits.length.toLocaleString()}</span> 檔
+                <span class="text-[9px] font-normal text-gray-500 ml-1">/ ${(d.n || 0).toLocaleString()} 檔</span></div>
+              <div class="text-[9px] text-gray-600">依成交金額排序</div>
+            </div>
+            <div class="max-h-[46vh] overflow-y-auto">${rowsHtml}${more}</div>
+          </div>` : `
+          <div class="bg-[#161b22] border-l-4 border-gray-500 border-y border-r border-[#30363d] rounded-r p-3">
+            <div class="text-[11px] font-bold text-gray-300 mb-1">➖ 全市場沒有一檔同時符合這 ${conds.length} 個條件</div>
+            <div class="text-[10px] text-gray-400 leading-relaxed">這不一定是壞事 —— 條件越嚴,本來就越可能一檔都沒有。
+            拿掉一兩個條件再試;⚠️ 也可能是勾到了「只有少數股票才有資料」的條件(那種按鈕下面會標黃字)。</div></div>`;
+    },
+    _SCR_LBL: {
+        c: '收', chg: '漲跌', chg5: '5日', chg20: '20日', chg60: '60日', amt: '成交(億)', vr: '量比',
+        pos252: '位階', dd60: '距高', b5: '離5MA', b20: '離月線', b60: '離季線', b240: '離年線',
+        rsi: 'RSI', vol20: '波動', clr: '收位', streak: '連', nh: '新高', nl: '新低', rs: '贏大盤',
+        f1: '外資', f3: '外資3日', f5: '外資5日', f10: '外資10日', fd: '外資連', fpct: '外資佔量',
+        fdays: '外資買天', t1: '投信', t3: '投信3日', t5: '投信5日', td: '投信連', tpct: '投信佔量',
+        tdays: '投信買天', d1: '自營', d3: '自營3日', dd: '自營連', mg5: '融資增減', mgp: '融資%',
+        sbr: '券資比', big: '大戶%', sml: '散戶%', bchg: '大戶變化', pe: 'PE', pb: 'PB',
+        yld: '殖利率', yoy: 'YoY', gm: '毛利', payout: '發配率',
+    },
+    _showScrHelp() {
+        const d = this._scrData || {};
+        alert(`🛠️ 自訂選股 —— 怎麼用
+
+【基本】
+從下面三大類(價量／籌碼／財務)點條件,點過的會加到上面。
+所有條件是「而且」的關係 —— 每一條都要同時成立才會選進來。
+滿意就按「💾 存成榜單」,下次一鍵叫出來(點一下套用、雙擊刪除)。
+
+【資料是什麼時候的】
+資料日:${d.data_date || '—'} ・ 全市場 ${(d.n || 0).toLocaleString()} 檔
+這是每天收盤後採礦算好的快照 → 是「收盤價」,不是盤中即時報價。
+
+【⚠️ 最重要的一件事:沒有資料 ≠ 0】
+某檔股票如果沒有「殖利率」這個資料,它不會被當成「殖利率 0」,
+而是「這個條件不通過」。所以:
+・條件按鈕下面標黃字「僅 N% 個股有此資料」的,勾了會大幅縮小範圍
+・本益比／殖利率／毛利率這類財務資料目前只有約 35~38% 的股票有
+  (上櫃股的官方基本面資料來源涵蓋不到,不是程式壞掉)
+
+【⛔ 為什麼沒有「回測」按鈕】
+要回測任意條件組合,需要「過去每一天的全市場快照」,本站沒有那份歷史。
+做一個沒有對照組的假回測,比不做更容易害人 —— 所以刻意不做。
+想看有實測成績的,請用左邊「🎯 會賺訊號」那個榜(那是唯一有回測的)。
+
+【搭配建議】
+選出來的名單點進去就是個股頁,那裡才有完整的進出場劇本與實測成績。`);
+    },
+
     async _loadTodaySignals() {
         if (this._todaySig !== undefined) return this._todaySig;
         try {

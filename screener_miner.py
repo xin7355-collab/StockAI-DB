@@ -80,7 +80,9 @@ COLS = [
     'td',       # 投信連買/連賣天數
     'tdays',    # 投信近 10 日買超天數
     'tturn',    # 1 = 投信連 3 日賣超之後今天轉買
-    'd1',       # 自營商今日(張)
+    'tpct',     # 投信今日買超佔成交量 %
+    'd1', 'd3',  # 自營商買賣超(張)
+    'dd',       # 自營商連買/連賣天數
     'mg5',      # 融資 5 日增減(張)
     'mgp',      # 融資 5 日增減 %
     'sbr',      # 券資比 %
@@ -279,7 +281,11 @@ def build_one(rows, twii_chg=None):
 
     v[CI['fdays']], v[CI['tdays']] = days_pos('foreign_net'), days_pos('trust_net')
     v[CI['fturn']], v[CI['tturn']] = turn_buy('foreign_net'), turn_buy('trust_net')
+    if vo[-1] > 0 and rows[-1].get('trust_net') is not None:
+        v[CI['tpct']] = rd(float(rows[-1]['trust_net']) / vo[-1] * 100, 2)
     v[CI['d1']] = rd(lots(rows[-1].get('dealer_net')), 0) if rows[-1].get('dealer_net') is not None else None
+    v[CI['d3']] = acc('dealer_net', 3)
+    v[CI['dd']] = streak_of([r.get('dealer_net') for r in rows[-15:]])
 
     mb = [r.get('margin_balance') for r in rows[-6:]]
     mb = [x for x in mb if x is not None]
