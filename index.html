@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.7.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.7.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6117,7 +6117,13 @@ ${list}
         const last3 = valid.slice(-3), prevSeg = valid.slice(0, -3);
         const avgL = last3.length ? last3.reduce((a, b) => a + b, 0) / last3.length : 0;
         const avgP = prevSeg.length ? prevSeg.reduce((a, b) => a + b, 0) / prevSeg.length : avgL;
-        const trend = avgL > avgP * 1.1 ? '放大' : (avgL < avgP * 0.7 ? '縮小' : '持平');
+        // 🐛 V73.7.1 使用者截圖抓到:畫面同時顯示「連買 **0** 天」與「買超**放大**」——自相矛盾。
+        //   真因:`valid` 含**負值(賣超)**,而這裡只比大小 →「賣得比較少」(−10 > −100×1.1)
+        //   會被講成「買超放大」。⛔ 這不是文案問題,是把「賣超縮小」講成「買超放大」。
+        //   → 近 3 日**平均是負的**(還在淨賣)時,一律講「賣超」;⛔ 不可再出現「買超放大」。
+        const trend = avgL <= 0
+            ? (avgL < avgP ? '賣超擴大' : '賣超收斂')
+            : (avgL > avgP * 1.1 ? '放大' : (avgL < avgP * 0.7 ? '縮小' : '持平'));
         // 5日均量 + cover_days(單位防呆)
         const vols = arr.slice(-5).map(b => (typeof b.volume === 'number' ? b.volume : 0)).filter(v => v > 0);
         const ma5vol = vols.length ? vols.reduce((a, b) => a + b, 0) / vols.length : null;
@@ -6140,7 +6146,9 @@ ${list}
             HIGH: { bar: 'bg-orange-500',  txt: 'text-orange-400',  em: '🟠' },
         }[a.ring];
         const cover = (a.coverDays != null) ? `${a.coverDays} 天均量` : '—';
-        const trendCls = a.trend === '放大' ? 'text-red-300' : a.trend === '縮小' ? 'text-green-300' : 'text-gray-400';
+        // ⚠️ 顏色照台股慣例(紅=買盤變強、綠=買盤變弱);⛔ 賣超那兩種一律綠(買盤在退)
+        const trendCls = a.trend === '放大' ? 'text-red-300'
+                       : (a.trend === '縮小' || /賣超/.test(a.trend)) ? 'text-green-300' : 'text-gray-400';
         return `
         <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 mb-2">
             <div class="flex items-start justify-between mb-2">
@@ -6156,7 +6164,7 @@ ${list}
             <div class="w-full h-2 bg-[#21262d] rounded-full overflow-hidden mb-1"><div class="h-full ${theme.bar} transition-all duration-500" style="width:${Math.min(100, a.momentum)}%"></div></div>
             <div class="flex items-center justify-between text-[10px] mb-2">
                 <span class="${theme.txt} font-bold">${theme.em} ${a.risk}</span>
-                <span class="text-gray-500">連買 <b class="text-gray-300">${a.consecutive}</b> 天 ・ 買超<b class="${trendCls}">${a.trend}</b></span>
+                <span class="text-gray-500">連買 <b class="text-gray-300">${a.consecutive}</b> 天 ・ ${/賣超/.test(a.trend) ? '' : '買超'}<b class="${trendCls}">${a.trend}</b></span>
             </div>
             <div class="flex items-center justify-between gap-2 pt-2 border-t border-[#21262d]">
                 <div class="text-[10px] text-gray-500 leading-tight">近10日累計買超 ≈<br><b class="text-gray-300 font-mono">${cover}</b></div>
@@ -6278,8 +6286,20 @@ ${list}
         // 進場價:從 activeData 找日期 <= updated 的最後一筆(不依賴 array 順序,且 normalize 日期格式)
         let entryPx = null, entryDate = '';
         let todayPx = null, todayDate = '';
-        if (Array.isArray(this.activeData) && this.activeData.length) {
-            for (const bar of this.activeData) {
+        // 🚨🚨 V73.7.1 使用者截圖抓到的**真錯誤**:卡上寫「進場價取 2026-08-14 收盤 ≈ 608.00」,
+        //   但 08/14 官方收盤是 **622**;608 是**當天(08/17)的即時價**。
+        //   真因:`activeData` 是由 `applyLatestPrice` 重建的 —— 盤後且採礦還沒產出今天那根時,
+        //   它會把**即時價寫進「最後一根真實交易日」的 close**(那段的註解本來就寫是為了補正)。
+        //   於是「找日期 <= 換股日的最後一根收盤」就抓到被覆蓋過的價 → 進場價、換股當日漲跌全歪:
+        //     實際 08/14 = 662 → 622 = −6.0%,畫面卻寫 −8.2%(= 608 vs 662,拿今天的價比上週四)。
+        //   ⭐ 修法:這張卡問的是**歷史某一天的官方收盤**,一律讀 `baseRawData`(⛔ 未被即時價覆蓋的那份);
+        //     只有「今價」才可以用即時價。
+        //   ⭐ 通用:**「歷史某天的收盤」與「現在多少錢」是兩個不同的東西,⛔ 不可共用同一個陣列**
+        //     (同陷阱 #22/#26:拿不同日期的數字相減,會得到一個看起來合理但其實錯的值)。
+        const _hist = (Array.isArray(this.baseRawData) && this.baseRawData.length)
+            ? this.baseRawData : this.activeData;
+        if (Array.isArray(_hist) && _hist.length) {
+            for (const bar of _hist) {
                 const dRaw = String(bar.date || bar.t || '').slice(0, 10);
                 if (!dRaw) continue;
                 const d = dRaw.replace(/\//g, '-');  // '2026/06/19' → '2026-06-19'
@@ -6291,32 +6311,51 @@ ${list}
                 if (d > todayDate) { todayDate = d; todayPx = close; }
             }
         }
+        // ⭐ 「今價」才可以吃即時價(盤中/盤後都要是最新的)→ 這一格單獨從 activeData 取
+        try {
+            const _a = this.activeData;
+            if (Array.isArray(_a) && _a.length) {
+                const _l = _a[_a.length - 1];
+                const _c = _l.close ?? _l.c;
+                if (_c != null) { todayPx = _c; todayDate = String(_l.date || _l.t || '').slice(0, 10).replace(/\//g, '-') || todayDate; }
+            }
+        } catch (_) {}
         let lamp = this._etfFollowLamp(entryPx, todayPx);
         // 🐛 V40.2 day-0 修正:ETF 換股當日=最新交易日時 entryPx==todayPx → 必為 +0.0%「還沒漲(可跟)」誤導。
         //   改看「該股換股當日自身漲幅」:當天已大漲=進場價就是當日高,跟車=追高(與籌碼卡『勿追高』一致)
         const isDay0 = !!(entryDate && entryDate === todayDate);
         let entryDayChg = null;
-        if (entryDate && Array.isArray(this.activeData)) {
-            const sorted = this.activeData
+        if (entryDate && Array.isArray(_hist)) {
+            // ⛔ 同上:換股當日漲跌是「歷史事實」→ 一律用官方收盤那份,不可用即時價
+            const sorted = _hist
                 .map(b => ({ d: String(b.date || b.t || '').slice(0, 10).replace(/\//g, '-'), c: (b.close ?? b.c) }))
                 .filter(x => x.d && x.c != null).sort((a, b) => a.d < b.d ? -1 : 1);
             const i = sorted.findIndex(x => x.d === entryDate);
             if (i > 0 && sorted[i - 1].c > 0) entryDayChg = (sorted[i].c - sorted[i - 1].c) / sorted[i - 1].c * 100;
         }
+        // ⭐ 動作分組計數要在 lamp 之前算好 —— lamp 的文案得看「ETF 到底在買還在賣」
+        const actionsIn  = actions.filter(a => a.action === 1).length;
+        const actionsUp  = actions.filter(a => a.action === 2).length;
+        const actionsDn  = actions.filter(a => a.action === 3).length;
+        const actionsOut = actions.filter(a => a.action === 4).length;
         if (isDay0) {
             if (entryDayChg != null && entryDayChg >= 5)
                 lamp = { lamp: '⚠️', text: `換股當日已噴 +${entryDayChg.toFixed(1)}% ・ 進場=當日高,追高小心`, pct: 0, cls: 'text-yellow-400' };
-            else if (entryDayChg != null && entryDayChg <= -3)
-                lamp = { lamp: '💡', text: `換股當日回 ${entryDayChg.toFixed(1)}% ・ 進場價偏低可留意`, pct: 0, cls: 'text-green-400' };
+            else if (entryDayChg != null && entryDayChg <= -3) {
+                // 🚨 V73.7.1 使用者截圖抓到自相矛盾:同一張卡上面寫「進場價偏低**可留意**」(偏多),
+                //   下面卻寫「ETF 在減碼/換出,**法人撤退中,別逆勢**」。
+                //   ⛔ 「可留意」是會被讀成「可以買」的話 → 一律先看 ETF 到底在買還在賣:
+                //   只有**真的有人換入/加碼**時才准講「可留意」;整批在減碼/換出時只描述事實。
+                const _in = actionsIn + actionsUp;
+                lamp = _in > 0
+                    ? { lamp: '💡', text: `換股當日回 ${entryDayChg.toFixed(1)}% ・ 進場價偏低可留意`, pct: 0, cls: 'text-green-400' }
+                    : { lamp: '➖', text: `換股當日回 ${entryDayChg.toFixed(1)}% ・ 但 ETF 這次是減碼/換出,⛔ 不是進場理由`, pct: 0, cls: 'text-gray-400' };
+            }
             else
                 lamp = { lamp: '⏳', text: 'ETF 今日才換入 ・ 進場=今收,明起追蹤走勢', pct: 0, cls: 'text-gray-400' };
         }
         const pctStr = (isDay0 || lamp.pct == null) ? '—' : `${lamp.pct >= 0 ? '+' : ''}${lamp.pct.toFixed(1)}%`;
-        // 動作分組計數
-        const cntIn = actions.filter(a => a.action === 1).length;
-        const cntUp = actions.filter(a => a.action === 2).length;
-        const cntDn = actions.filter(a => a.action === 3).length;
-        const cntOut = actions.filter(a => a.action === 4).length;
+        const cntIn = actionsIn, cntUp = actionsUp, cntDn = actionsDn, cntOut = actionsOut;
         const verdict = (() => {
             // 🐛 V40.2 換股當日該股已大漲(+5%↑)→ 進場價=當日高,跟車=追在高點,不可顯「適合跟車」(修台燿 +8% 卻喊可跟 vs 籌碼卡勿追高矛盾)
             if ((cntIn + cntUp) >= 1 && entryDayChg != null && entryDayChg >= 5)
@@ -7296,8 +7335,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.7.0',
+    _APP_VERSION: 'V73.7.1',
     _CHANGELOG: [
+        { v: 'V73.7.1', dt: '2026-08-17', t: '🚨 你截圖那張 ETF 跟車卡有三個錯,都修了', d: ['🚨 **進場價是錯的**:卡上寫「進場價取 08/14 收盤 ≈ 608」,但 08/14 官方收盤是 **622** —— 608 其實是**當天(08/17)的價**。連帶「換股當日 −8.2%」也錯,正確是 **−6.0%**。','真因:盤後採礦還沒產出當天那根 K 時,程式會把即時價**寫進最後一根真實交易日**(那是為了讓報價顯示最新)。這張卡問的是「歷史某一天的收盤」,卻讀到那份被覆蓋過的資料。已改成讀原始收盤,「今價」才用即時價。','🚨 **「連買 0 天 ・ 買超放大」自相矛盾**:因為算趨勢時只比大小,而數列裡有負數(賣超)→「賣得比較少」被講成「買超放大」。現在淨賣超時會誠實寫「賣超收斂/賣超擴大」。','🚨 **同一張卡自己打架**:上面寫「進場價偏低**可留意**」(偏多),下面卻寫「ETF 在減碼/換出,法人撤退中,別逆勢」。現在只有真的有 ETF 換入/加碼才會講「可留意」;整批減碼時改寫「⛔ 這不是進場理由」。'] },
         { v: 'V73.7.0', dt: '2026-08-17', t: '🧠 總覽三頁改成「我消化完直接告訴你」', d: ['🚦現在怎麼做 / ➕加碼 / 🛡️出場 三頁最上面各多一條**一句話消化**:籌碼和 K 線我幫你看完了,直接寫結論,不用你自己去翻。','⭐ 只寫**有實測成績**的:K 線那條會附「這訊號出現後 10 日平均賺/跌多少、幾次」;籌碼那條會附「20 日平均贏大盤幾個百分點、幾次」。沒有實測成績的一律不寫。','⭐ 三頁問的問題不同,講法也不同 —— 出場頁只講警訊(⛔ 不會在那裡叫你買);加碼頁遇到空頭或出場狀態會直接說「只做短、別加碼」。','🗑️ 雜訊清掉:「現在怎麼做」原本攤開 1,108 字,其中 844 字(76%)是 AI 深度診斷那一長篇 → 收進「📖 更多解讀」摺疊。⛔ 一個字都沒刪,只是不再佔第一眼。現在攤開只剩 473 字。','⚠️ 那兩條是歷史統計不是保證:基準勝率是 36% 不是 50%,而且都沒扣買賣成本(來回約 0.44%)—— 卡上都有寫。'] },
         { v: 'V73.6.0', dt: '2026-08-15', t: '💰 當沖新增「成本關卡」+ 砍掉一張實測沒用的卡', d: ['當沖頁大字結論下面多一行**成本關卡**:這檔跳一檔賺多少 %、至少要跳幾檔才回本。這是算術不是預測 —— 105 元跳一檔賺 0.48%(一檔就回本),91 元只賺 0.11%(要三檔)。','⭐ 為什麼重要:同樣的波動,價位選錯你賺得比別人少。回不了本的價位,方向看再準都沒用 —— 所以它排在方向結論的正下方。效率差的會直接建議你換一檔或改用股票期貨。','🗑️ 「🔴 盤中連量偵測」從常顯區降級收進摺疊:這招我實測過兩次都不成立(日線 6.5 萬個爆量日只差 0.14 個百分點而且方向相反;真 1 分 K 扣完成本後八個情境勝率全在 18~32%,而對照組是 49~52%)。⛔ 沒有刪掉,但不再用紅綠給你多空方向,而且把那三個數字寫在卡上。','📄 你給的 53 份當沖逐字稿我全看完了:唯一值得做的就是上面那個成本關卡。「開盤跳空 2~4% 法」我拿全市場 177 萬筆實測 —— 跳空越大當天越糟,而且是單調的,他說的 2~4% 甜蜜點不成立,所以不做。'] },
         { v: 'V73.5.3', dt: '2026-08-15', t: '🔧 自訂選股「還在準備中」講清楚 + 加重新檢查', d: ['你看到的「條件資料還在準備中」是因為那份全市場條件表**還沒產生過第一份**(功能太新),不是壞掉。已手動叫雲端現在算,算完就能用。','空狀態改成分三種原因講(還沒產生／載入逾時／連不上),而且加了「🔄 重新檢查」按鈕,⛔ 不再只叫你等。','⭐ 順便說明白:**篩選是在你手機上即時跑的**,勾條件就馬上出結果。雲端每晚只是把 2,300 多檔的均線、KD、法人買賣超先算成一個小檔案 —— 否則你手機要下載好幾百 MB 才篩得動。專業看盤軟體也是同一套做法。','另外條件表如果超過 4 天沒更新,畫面最上方會直接警告,⛔ 不會讓你把上週的數字當今天用。'] },
