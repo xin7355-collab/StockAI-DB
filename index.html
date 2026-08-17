@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.5.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.6.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.5.3 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.6.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7287,8 +7287,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.5.3',
+    _APP_VERSION: 'V73.6.0',
     _CHANGELOG: [
+        { v: 'V73.6.0', dt: '2026-08-15', t: '💰 當沖新增「成本關卡」+ 砍掉一張實測沒用的卡', d: ['當沖頁大字結論下面多一行**成本關卡**:這檔跳一檔賺多少 %、至少要跳幾檔才回本。這是算術不是預測 —— 105 元跳一檔賺 0.48%(一檔就回本),91 元只賺 0.11%(要三檔)。','⭐ 為什麼重要:同樣的波動,價位選錯你賺得比別人少。回不了本的價位,方向看再準都沒用 —— 所以它排在方向結論的正下方。效率差的會直接建議你換一檔或改用股票期貨。','🗑️ 「🔴 盤中連量偵測」從常顯區降級收進摺疊:這招我實測過兩次都不成立(日線 6.5 萬個爆量日只差 0.14 個百分點而且方向相反;真 1 分 K 扣完成本後八個情境勝率全在 18~32%,而對照組是 49~52%)。⛔ 沒有刪掉,但不再用紅綠給你多空方向,而且把那三個數字寫在卡上。','📄 你給的 53 份當沖逐字稿我全看完了:唯一值得做的就是上面那個成本關卡。「開盤跳空 2~4% 法」我拿全市場 177 萬筆實測 —— 跳空越大當天越糟,而且是單調的,他說的 2~4% 甜蜜點不成立,所以不做。'] },
         { v: 'V73.5.3', dt: '2026-08-15', t: '🔧 自訂選股「還在準備中」講清楚 + 加重新檢查', d: ['你看到的「條件資料還在準備中」是因為那份全市場條件表**還沒產生過第一份**(功能太新),不是壞掉。已手動叫雲端現在算,算完就能用。','空狀態改成分三種原因講(還沒產生／載入逾時／連不上),而且加了「🔄 重新檢查」按鈕,⛔ 不再只叫你等。','⭐ 順便說明白:**篩選是在你手機上即時跑的**,勾條件就馬上出結果。雲端每晚只是把 2,300 多檔的均線、KD、法人買賣超先算成一個小檔案 —— 否則你手機要下載好幾百 MB 才篩得動。專業看盤軟體也是同一套做法。','另外條件表如果超過 4 天沒更新,畫面最上方會直接警告,⛔ 不會讓你把上週的數字當今天用。'] },
         { v: 'V73.5.2', dt: '2026-08-15', t: '🛠️ 自訂選股搬到跟「策略」同一排 + 條件翻倍', d: ['⭐ 位置改對了:「🛠️ 自訂選股」現在跟「📊 策略」「🏦 ETF」同一排,⛔ 不再藏在策略的左欄榜單裡。分工是:策略=我幫你選好的榜,自訂=你自己訂條件。','條件從 85 個加到 145 個 —— 補齊 KD 黃金/死亡交叉、MACD 交叉、布林上下軌、6日動量轉向、均線糾結與突破、5日/季線翻揚翻黑、短均vs長均、成交量創5/20日新高低、5日均量、週轉率、融資連續增減、融資餘額創5日新低、融券連續增加、融券佔均量(軋空空間)、外資投信買超佔股本比例…','⭐ 新增「排序」下拉(對應專業軟體的各種『排行』):成交金額／漲幅／跌幅／外資買超／外資賣超／投信買超／佔股本比例／量比／週轉率／融資減少／融券增加／位階／殖利率,共 15 種。存榜單時排序也會一起記住。','⚠️ 排序時「沒有那個資料」的股票一律排最後 —— ⛔ 不會被當成 0 混進前段班。'] },
         { v: 'V73.5.1', dt: '2026-08-15', t: '⭐ 自訂選股加「推薦組合」+ 30 個新條件', d: ['自訂選股多一個「⭐ 推薦」分頁,10 組一鍵套用 —— 而且**刻意分成三區**:有實測依據的 / 教科書經典 / 邏輯組合。','⭐ 有實測依據的只有 1 組(強勢+高波動)—— 那是本站測過 86 種變體裡唯一六道檢定全過的。其他 9 組都明寫「本站沒驗過」,⛔ 不會讓你以為它們一樣可信。','巴菲特／葛拉漢／彼得林區／歐沙那希四組大師條件都附「哪裡跟原版不一樣」(我沒有 ROE、負債比那些資料)。','新增 30 個條件:上市/上櫃、過濾 KY・DR、過濾營建股、只看電子/傳產、量增價漲、爆量下跌、長紅棒長黑棒、下影止穩、三大法人同買、外資買但股價跌(偷布局)、融資減股價漲(換手)、排除低價股與流動性太差的…','🐛 修一個自己犯的 bug:有些條件寫成「量比 < 80」時,**沒有量比資料的股票也會通過**(JS 裡 null < 80 是成立的)。已全部改走統一的比較函式。'] },
@@ -18743,6 +18744,40 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _feeDisc() {
         const v = this.settings?.feeDiscount;
         return (Number.isFinite(+v) && +v >= 0.1 && +v <= 1) ? +v : 0.28;
+    },
+    // 📏 台股升降單位(全 App 唯一一份;採礦端 playbook_scan.mjs 有對應的一份,兩邊要一致)
+    //    ⛔ 別再 inline 寫 `v < 50 ? 0.05 : …`(陷阱 #37:同一個公式散成好幾份,改一處就會不同步)
+    _tickOf(p) { const v = +p || 0; return v < 10 ? 0.01 : v < 50 ? 0.05 : v < 100 ? 0.1 : v < 500 ? 0.5 : v < 1000 ? 1 : 5; },
+
+    // 💰 V73.6.0 當沖成本關卡 —— ⭐ 這是**算術事實不是預測**:
+    //    當沖來回成本 = 買賣兩邊手續費(0.1425% × 你的折數)+ 賣出證交稅 0.15%(當沖減半)。
+    //    股價跳一檔賺多少 % 是固定的 → 兩者一比,就知道「這檔至少要跳幾檔才回本」。
+    //    ⚠️ 這條在 53 份當沖逐字稿裡是**唯一不需要驗證就成立**的(它不是「會不會漲」的主張)。
+    //    實例:105 元跳 0.5 = 0.48%(一檔就賺)・91 元跳 0.1 = 0.11%(要三檔)。
+    _dtCostGate(price) {
+        const p = +price;
+        if (!(p > 0)) return null;
+        const tick = this._tickOf(p);
+        const tickPct = tick / p * 100;
+        const cost = 0.1425 * this._feeDisc() * 2 + 0.15;   // 來回手續費 + 當沖稅(減半)
+        const need = Math.max(1, Math.ceil(cost / tickPct));
+        return { tick, tickPct, cost, need,
+                 // 一檔就回本 = 效率好;要 3 檔以上 = 同樣的波動你賺得比別人少
+                 lvl: need <= 1 ? 'ok' : need === 2 ? 'mid' : 'bad' };
+    },
+    _dtCostGateHtml(price) {
+        const g = this._dtCostGate(price);
+        if (!g) return '';
+        const M = {
+            ok:  ['✅', 'border-green-600', 'text-green-300',  '跳 1 檔就回本 —— 這個價位做當沖效率好。'],
+            mid: ['⚠️', 'border-yellow-600', 'text-yellow-300', '要跳 2 檔才回本 —— 還可以,但別做太小的波。'],
+            bad: ['⛔', 'border-orange-500', 'text-orange-300', `要跳 ${g.need} 檔才回本 —— <b>這個價位當沖效率差</b>,同樣的波動你賺得比別人少。`],
+        }[g.lvl];
+        return `<div class="bg-[#0d1117] border-l-4 ${M[1]} pl-2.5 py-1.5 rounded-r mt-1.5">
+            <div class="text-[11px] ${M[2]} font-bold leading-relaxed">${M[0]} 成本關卡:${M[3]}</div>
+            <div class="text-[9px] text-gray-500 mt-0.5 font-mono">跳一檔 ${g.tick} 元 = ${g.tickPct.toFixed(2)}% ・ 來回成本 ${g.cost.toFixed(2)}%(手續費 ${(this._feeDisc() * 10).toFixed(1)} 折 + 當沖稅減半)</div>
+            ${g.lvl === 'bad' ? '<div class="text-[9px] text-gray-400 mt-0.5 leading-snug">💡 想做這種價位,改用<b>股票期貨</b>成本低很多;或直接換一檔跳一檔就回本的。</div>' : ''}
+        </div>`;
     },
     // 買 buy → 賣 sell,shares 股的「淨」損益(元,已四捨五入到元)
     //   扣:買+賣兩邊手續費(牌價 0.1425% × 你的折數)+ 賣出證交稅 0.3%(波段;當沖減半由當沖試算機另算)
@@ -41098,7 +41133,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
     _dtLimitPrice(base, dir) {
         base = +base || 0; if (base <= 0) return null;
         const raw = dir > 0 ? base * 1.1 : base * 0.9;
-        const t = raw < 10 ? 0.01 : raw < 50 ? 0.05 : raw < 100 ? 0.1 : raw < 500 ? 0.5 : raw < 1000 ? 1 : 5;
+        const t = this._tickOf(raw);      // ⛔ 別再 inline 一份階梯(陷阱 #37)
         const snapped = dir > 0 ? Math.floor(raw / t) * t : Math.ceil(raw / t) * t;
         return +snapped.toFixed(2);
     },
@@ -42902,20 +42937,25 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
         // ── 卡:🔴 盤中連量偵測(V68.0 近似 CMoney 連量;零逐筆 tick)──────
         if (volStreak) {
-            const _vst = volStreak.tone === 'bull' ? { b: 'border-red-500', t: 'text-red-300', bg: 'bg-red-900/20' }
-                       : volStreak.tone === 'bear' ? { b: 'border-green-500', t: 'text-green-300', bg: 'bg-green-900/20' }
-                       : { b: 'border-yellow-500', t: 'text-yellow-300', bg: 'bg-yellow-900/20' };
-            cards.push(`
-            <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg">
-                <div class="flex items-center justify-between mb-2">
-                    <div class="text-[12px] font-black text-gray-100">🔴 盤中連量偵測 <span class="text-[9px] text-gray-500 font-normal">分鐘K近似·主力連續攻擊</span></div>
-                    <span class="text-[9px] text-gray-600 font-mono">${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}</span>
+            // 🚨 V73.6.0 使用者要求「把沒有用的刪掉,不要無限疊加」→ 這張**降級收進摺疊**。
+            //   ⛔ 不是刪掉(刪了使用者會以為沒這回事、跑去別處學),而是照 `_SIGNAL_EDGE` 對 C 級的處置:
+            //      照顯示,但誠實標「本站實測不成立」。
+            //   📊 本專案已經**測過兩次都不成立**(CLAUDE.md V71.9.8):
+            //      日線版 `volstall_probe`:爆量漲不動 vs 對照組 **+0.14pp**(方向還跟坊間說法相反)
+            //      分K版 `volseq_probe`(101 天真 1 分 K,扣成本 0.25%):8 個桶勝率全在 **18~32%**,
+            //      而對照組(量價同向)是 **49~52%** → 不只沒邊際,是明顯比對照組差。
+            //   ⛔ 所以它**不可以再放在常顯區、不可以再用紅綠下方向**。
+            detail.push(`
+            <div class="p-3">
+                <div class="text-[12px] font-black text-gray-300 mb-1">🔴 盤中連量偵測 <span class="text-[9px] text-orange-300 font-normal">⛔ 本站實測不成立</span></div>
+                <div class="bg-[#0d1117] border-l-4 border-gray-600 pl-3 py-2 rounded-r">
+                    <div class="text-[11px] font-bold text-gray-300 mb-0.5">${volStreak.title}</div>
+                    <div class="text-[10px] text-gray-400 leading-relaxed">${volStreak.msg}</div>
                 </div>
-                <div class="${_vst.bg} border-l-4 ${_vst.b} pl-3 py-2 rounded-r">
-                    <div class="text-sm font-black ${_vst.t} mb-1">${volStreak.title}</div>
-                    <div class="text-[11px] text-gray-200 leading-relaxed">${volStreak.msg}</div>
-                </div>
-                <div class="text-[9px] text-gray-600 mt-1.5 leading-relaxed">📖 這是「<b>連量</b>」近似(連續分鐘K爆量=主力連續進場);券商賣的「<b>連次</b>」(連續同方向大單竭盡)需逐筆 tick,免費資料做不到,參考用別當明牌。</div>
+                <div class="text-[9px] text-gray-500 mt-1.5 leading-relaxed">📊 <b class="text-gray-400">為什麼降級:</b>「爆量漲不動就空、爆量跌不動就買」這套我實測過兩次都不成立 ——
+                日線版(6.5 萬個爆量日)跟對照組只差 <b>+0.14pp</b> 而且<b>方向相反</b>;分 K 版(101 天真 1 分 K、扣掉來回成本 0.25%)
+                八個情境勝率全在 <b>18~32%</b>,而對照組(量價同向)是 <b>49~52%</b>。
+                ⛔ 所以這裡只當「現在量很集中」的事實描述,<b>不下多空方向</b>。</div>
             </div>`);
         }
 
@@ -43074,6 +43114,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 </div>
                 ${dashGrid}
                 <div class="text-lg font-black ${vMap[vC].split(' ')[0]} leading-tight mt-1.5">${vTone}</div>
+                ${this._dtCostGateHtml(price)}
                 ${showPlan ? (this._dtVerdictInner(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw) || '') : `<div class="bg-[#0d1117] border-l-4 ${vMap[vC].split(' ')[1]} pl-2.5 py-1 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">${vNote}</div></div>`}
                 ${planHtml}
                 ${showPlan ? `<details class="mt-1.5"><summary class="text-[9px] text-gray-500 cursor-pointer">▾ 資格說明 / 量能提醒</summary><div class="bg-[#0d1117] border-l-2 ${vMap[vC].split(' ')[1]} pl-2 py-1 rounded-r mt-1"><div class="text-[10px] text-gray-300 leading-relaxed">${_foldNote}</div></div></details>` : ''}
@@ -43417,7 +43458,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
     // 🎯 依台股升降單位把價格 snap 到最近檔位(免出現 210.37 這種不可掛的價)
     _roundTick(p) {
         p = +p || 0; if (p <= 0) return 0;
-        const t = p < 10 ? 0.01 : p < 50 ? 0.05 : p < 100 ? 0.1 : p < 500 ? 0.5 : p < 1000 ? 1 : 5;
+        const t = this._tickOf(p);      // ⛔ 別再 inline 一份階梯(陷阱 #37:改一處就會不同步)
         return +(Math.round(p / t) * t).toFixed(2);
     },
     // 💤 懶人快設:依現價一鍵算觸發價(現價/±%),並自動選好 ≥/≤ 條件
