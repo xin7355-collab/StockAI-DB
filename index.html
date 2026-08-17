@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.6.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.7.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.6.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1521,6 +1521,8 @@
                 </div>
                 <!-- 🚦 頁籤① 現在怎麼做:趨勢照表操課主卡(三情境決策)+ 盤中即時雷達 -->
                 <div data-ovpane="now" class="flex flex-col gap-2">
+                    <!-- 🧠 V73.7.0 一句話消化(籌碼+K線)。⛔ 算不出來整條不顯示,不留空殼。 -->
+                    <div id="ovDigestNow" class="hidden w-full"></div>
                     <div id="trendCommandCard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg p-3"></div>
                     <!-- 🧹 V72.4.7 使用者要求「最上方只留一句話 + 兩個價位,其他收進摺疊區」——
                          這四張卡各自也在下結論(今日盤勢給一組價、朱老師雷達給一個判斷…),
@@ -1532,6 +1534,12 @@
                             <span class="text-[9px] text-gray-500 font-normal">動作以上面那張為準 ▾</span>
                         </summary>
                         <div class="flex flex-col gap-2 px-2 pb-2">
+                            <!-- 🧠 V73.7.0 深度診斷收進摺疊 —— 使用者:「把不必要的雜訊移除」。
+                                 實測(card_inventory)「現在怎麼做」攤開 1,108 字裡,**它一張就佔 844 字(76%)**,
+                                 而且它是 AI 生成的長篇敘述 = 最需要「猜」的那一塊。
+                                 ⭐ 上面新增的「一句話消化」已經把籌碼+K線的結論直接講完 → 這張降級為想細看才點。
+                                 ⛔ 沒有刪掉(內容一字未動),只是不再佔第一眼(同 V72.4.7 對五張卡的處置)。 -->
+                            <div id="deepBriefCard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-xl p-2.5"></div>
                             <!-- 📖 V69.8.3 今日盤勢解讀(盤後敘事,短線/波段雙視角;動作以上方「現在怎麼做」為準) -->
                             <div id="dailyRecapCard" class="hidden w-full"></div>
                             <!-- 🎯 V66.9 ATR 波動率部位管理:這檔該買幾張才不會爆倉(機構級風控) -->
@@ -1548,7 +1556,6 @@
                          🐛 V72.4.8 使用者回報「三個頁籤都有」—— 它原本放在**兩個 pane 中間**(不在任何
                          `data-ovpane` 裡)→ 不管切哪一頁都顯示(CLAUDE.md 陷阱 #32 明文寫過的坑,我自己踩了)。
                          ⭐ 移進「現在怎麼做」pane —— 它回答的正是「這檔現在該怎麼操作」,跟主結論同一頁最合理。 -->
-                    <div id="deepBriefCard" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-xl p-2.5"></div>
                 </div>
                 <!-- 🗑️ V72.5.6 移除「頁籤② 庫存」(`data-ovpane="inv"` + `#invTabCard`)——
                      ⛔ 它自 V68.7.2 起就**永遠看不到**:`switchOvTab()` 第一行把 'inv' 導向 'now',
@@ -1625,6 +1632,7 @@
                         <!-- 🧭 錨點導覽已由 V65.7 總覽四頁籤(ovTabBar)取代 -->
                         <!-- 🎯 頁籤③ 進場(持有時改名「加碼」):進場明細 + 進場劇本(主結論在「現在怎麼做」,打架時以它為準) -->
                         <div data-ovpane="entry" style="display:none" class="w-full flex flex-col gap-3">
+                        <div id="ovDigestEntry" class="hidden w-full"></div>
                         <!-- ① 🩺 進場明細(合併原 進場體檢+四關卡+位階溫度計+盤中vs大盤+法人目標價 五張) -->
                         <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
                             <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyEntry', this); app.vibrate(20);">
@@ -1686,6 +1694,7 @@
 
                         <!-- 🛡️ 頁籤④ 出場:防守出場(合併原 出場總表+明日均線保衛+K棒戰法(½價/突破棒/四大金剛) 四張;防守價由近到遠一次看) -->
                         <div data-ovpane="exit" style="display:none" class="w-full flex flex-col gap-3">
+                        <div id="ovDigestExit" class="hidden w-full"></div>
                         <div class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
                             <div class="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none" onclick="app.toggleCollapse('ovBodyExit', this); app.vibrate(20);">
                                 <span class="text-[12px] font-bold text-gray-200 flex-shrink-0">🛡️ 防守出場 <span class="text-[9px] text-gray-500 font-normal">停利停損・保衛價・K棒</span></span>
@@ -7287,8 +7296,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.6.0',
+    _APP_VERSION: 'V73.7.0',
     _CHANGELOG: [
+        { v: 'V73.7.0', dt: '2026-08-17', t: '🧠 總覽三頁改成「我消化完直接告訴你」', d: ['🚦現在怎麼做 / ➕加碼 / 🛡️出場 三頁最上面各多一條**一句話消化**:籌碼和 K 線我幫你看完了,直接寫結論,不用你自己去翻。','⭐ 只寫**有實測成績**的:K 線那條會附「這訊號出現後 10 日平均賺/跌多少、幾次」;籌碼那條會附「20 日平均贏大盤幾個百分點、幾次」。沒有實測成績的一律不寫。','⭐ 三頁問的問題不同,講法也不同 —— 出場頁只講警訊(⛔ 不會在那裡叫你買);加碼頁遇到空頭或出場狀態會直接說「只做短、別加碼」。','🗑️ 雜訊清掉:「現在怎麼做」原本攤開 1,108 字,其中 844 字(76%)是 AI 深度診斷那一長篇 → 收進「📖 更多解讀」摺疊。⛔ 一個字都沒刪,只是不再佔第一眼。現在攤開只剩 473 字。','⚠️ 那兩條是歷史統計不是保證:基準勝率是 36% 不是 50%,而且都沒扣買賣成本(來回約 0.44%)—— 卡上都有寫。'] },
         { v: 'V73.6.0', dt: '2026-08-15', t: '💰 當沖新增「成本關卡」+ 砍掉一張實測沒用的卡', d: ['當沖頁大字結論下面多一行**成本關卡**:這檔跳一檔賺多少 %、至少要跳幾檔才回本。這是算術不是預測 —— 105 元跳一檔賺 0.48%(一檔就回本),91 元只賺 0.11%(要三檔)。','⭐ 為什麼重要:同樣的波動,價位選錯你賺得比別人少。回不了本的價位,方向看再準都沒用 —— 所以它排在方向結論的正下方。效率差的會直接建議你換一檔或改用股票期貨。','🗑️ 「🔴 盤中連量偵測」從常顯區降級收進摺疊:這招我實測過兩次都不成立(日線 6.5 萬個爆量日只差 0.14 個百分點而且方向相反;真 1 分 K 扣完成本後八個情境勝率全在 18~32%,而對照組是 49~52%)。⛔ 沒有刪掉,但不再用紅綠給你多空方向,而且把那三個數字寫在卡上。','📄 你給的 53 份當沖逐字稿我全看完了:唯一值得做的就是上面那個成本關卡。「開盤跳空 2~4% 法」我拿全市場 177 萬筆實測 —— 跳空越大當天越糟,而且是單調的,他說的 2~4% 甜蜜點不成立,所以不做。'] },
         { v: 'V73.5.3', dt: '2026-08-15', t: '🔧 自訂選股「還在準備中」講清楚 + 加重新檢查', d: ['你看到的「條件資料還在準備中」是因為那份全市場條件表**還沒產生過第一份**(功能太新),不是壞掉。已手動叫雲端現在算,算完就能用。','空狀態改成分三種原因講(還沒產生／載入逾時／連不上),而且加了「🔄 重新檢查」按鈕,⛔ 不再只叫你等。','⭐ 順便說明白:**篩選是在你手機上即時跑的**,勾條件就馬上出結果。雲端每晚只是把 2,300 多檔的均線、KD、法人買賣超先算成一個小檔案 —— 否則你手機要下載好幾百 MB 才篩得動。專業看盤軟體也是同一套做法。','另外條件表如果超過 4 天沒更新,畫面最上方會直接警告,⛔ 不會讓你把上週的數字當今天用。'] },
         { v: 'V73.5.2', dt: '2026-08-15', t: '🛠️ 自訂選股搬到跟「策略」同一排 + 條件翻倍', d: ['⭐ 位置改對了:「🛠️ 自訂選股」現在跟「📊 策略」「🏦 ETF」同一排,⛔ 不再藏在策略的左欄榜單裡。分工是:策略=我幫你選好的榜,自訂=你自己訂條件。','條件從 85 個加到 145 個 —— 補齊 KD 黃金/死亡交叉、MACD 交叉、布林上下軌、6日動量轉向、均線糾結與突破、5日/季線翻揚翻黑、短均vs長均、成交量創5/20日新高低、5日均量、週轉率、融資連續增減、融資餘額創5日新低、融券連續增加、融券佔均量(軋空空間)、外資投信買超佔股本比例…','⭐ 新增「排序」下拉(對應專業軟體的各種『排行』):成交金額／漲幅／跌幅／外資買超／外資賣超／投信買超／佔股本比例／量比／週轉率／融資減少／融券增加／位階／殖利率,共 15 種。存榜單時排序也會一起記住。','⚠️ 排序時「沒有那個資料」的股票一律排最後 —— ⛔ 不會被當成 0 混進前段班。'] },
@@ -28434,7 +28444,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     //   ⛔ 只放一個,不整份搬過來(否則兩頁重複 = 又變成資訊爆炸,違反「合併不重複」鐵則)。
     //   ⛔ 期望值 ≤0 的不放這裡 —— 那是「常對但不賺」,不該佔第一眼(V72.0.3 的教訓);
     //      它們仍會出現在進場頁籤的完整清單,只是不搶版面。
-    _ovTopEdge(data, sym) {
+    // 🧠 V73.7.0 抽出「挑出那一個實測訊號」——⛔ `_ovTopEdge`(顯示)與 `_ovDigest`(消化條)
+    //    必須共用同一個挑法,⛔ 不可各挑各的(那就是第二份真相,兩張卡會講不一樣的訊號)。
+    _ovEdgePick(data, sym) {
         try {
             // 小快取:_entryCheckup 會跑 40 個偵測器,同一次渲染別跑兩遍
             const now = Date.now();
@@ -28443,7 +28455,104 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             }
             const pv = (this._ecCache.r && this._ecCache.r.proven) || [];
             // 看多要正期望值才准上第一眼;看空/警示不設期望值門檻(⛔ 風險提醒不打折,同 V72.0.6)
-            const pick = pv.find(x => x._e && (x.tone === 'bull' ? (x._e.exp != null && x._e.exp > 0) : true));
+            return pv.find(x => x._e && (x.tone === 'bull' ? (x._e.exp != null && x._e.exp > 0) : true)) || null;
+        } catch (_) { return null; }
+    },
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 🧠 V73.7.0 總覽三頁的「一句話消化」—— 使用者:「把籌碼及 K 線有用資訊,
+    //    你消化完直接告訴我不用猜」。
+    //
+    // ⛔ 四條鐵則(測試 scripts/test_ovdigest.mjs 釘住):
+    //  ① **只轉述,不新增判斷** —— 全部讀既有函式的結果
+    //     (`_ovTrend` 主結論 / `_inExitMode` / `_bearGate` / `_ovEdgePick` K線 / `_chipEdgeState` 籌碼)。
+    //     ⛔ 這裡不可以自己算任何一條均線或籌碼統計(那會變成第二份真相)。
+    //  ② **單一劇本**:只有「🚦 現在怎麼做」那張卡能下操作指令。
+    //     進場/出場頁的消化條只講「籌碼與 K 線怎麼說」,並明寫「動作以主卡為準」。
+    //  ③ **空頭守門**:任何會被讀成「可以買/可以加碼」的句子,一律先過 `_bearGate` / `_inExitMode`。
+    //  ④ **算不出來就整條不顯示**(⛔ 不留空殼、不寫「資料整備中」佔版面)。
+    // ═══════════════════════════════════════════════════════════════════
+    _ovDigest(pane, data, sym) {
+        try {
+            if (!data || !data.length || !sym) return '';
+            const bear = this._bearGate(sym);
+            const exiting = this._inExitMode(sym);
+            const trend = (this._ovTrend && this._ovTrend.sym === sym) ? this._ovTrend : null;
+
+            // ── K 線:唯一有實測成績的那一個訊號(⛔ 沒有就誠實說沒有,不硬找)──
+            const k = this._ovEdgePick(data, sym);
+            let kLine = null;
+            if (k && k._e) {
+                const isBull = k.tone === 'bull';
+                const exp = k._e.exp;
+                kLine = isBull
+                    ? { ic: '📈', t: `K線 <b class="text-red-300">${k.title}</b>`,
+                        s: `實測這訊號出現後 10 日平均賺 ${exp > 0 ? '+' : ''}${(+exp).toFixed(2)}%(${k._e.n} 次)` }
+                    // ⚠️ 期望值對看空是相反的意思:−X% = 訊號後平均**跌** X% = 這個警示很準
+                    : { ic: '⚠️', t: `K線 <b class="text-yellow-300">${k.title}</b>`,
+                        s: `這是風險提醒不是賣出指令;實測訊號後 10 日平均 ${(+exp).toFixed(2)}%(跌得越多代表這個警示越準)` };
+            }
+
+            // ── 籌碼:同樣只取有實測成績的(_CHIP_EDGE),⛔ 沒有就不掰 ──
+            const c = this._chipEdgeState(sym);
+            let cLine = null;
+            if (c) {
+                const good = c.ok === 1;
+                cLine = { ic: good ? '🏦' : (c.ok === 2 ? '🏦' : '➖'),
+                          t: `籌碼 <b class="${good ? 'text-red-300' : 'text-gray-300'}">${c.t}</b>`,
+                          s: good
+                              ? `實測 20 日平均贏大盤 ${c.e > 0 ? '+' : ''}${c.e}pp(${c.n.toLocaleString()} 次,前後半段都成立)`
+                              : (c.ok === 2
+                                  ? `實測邊際只有 ${c.e > 0 ? '+' : ''}${c.e}pp —— 很小,當背景看就好`
+                                  : `⛔ 這個組合實測**沒有**邊際(${c.e}pp)—— 別當進場理由`) };
+            }
+            if (!kLine && !cLine) return '';     // ④ 兩邊都沒有 → 整條不顯示
+
+            // ── 每一頁問的問題不同 → 開頭那句不同(⛔ 三頁不可長一樣)──
+            const HEAD = {
+                now: exiting
+                    ? ['⛔', 'text-orange-300', '你現在是出場管理狀態 —— 下面這兩件事只是佐證,動作以上面主卡為準']
+                    : bear
+                        ? ['⚠️', 'text-yellow-300', '中期是空頭 —— 下面兩件事就算偏多,也只做短、⛔ 不加碼']
+                        : ['🚦', 'text-gray-200', `把籌碼和 K 線消化完${trend ? `(中期${trend.txt})` : ''},結論是這樣`],
+                entry: exiting
+                    ? ['⛔', 'text-orange-300', '你現在是出場管理狀態,⛔ 這頁的價位不是叫你進場']
+                    : bear
+                        ? ['⚠️', 'text-yellow-300', '中期空頭 → 籌碼/K線再好也只做短,⛔ 別把這頁當加碼理由']
+                        : ['➕', 'text-gray-200', '要不要加碼,籌碼和 K 線是這樣說的'],
+                exit: ['🛡️', 'text-gray-200', '要不要跑,籌碼和 K 線有沒有給警訊'],
+            }[pane];
+            if (!HEAD) return '';
+
+            // 出場頁:只留風險面的話(⛔ 不在出場頁講「可以買」)
+            let rows = [kLine, cLine].filter(Boolean);
+            if (pane === 'exit') {
+                const risk = rows.filter(r => r.ic === '⚠️' || r.ic === '➖');
+                rows = risk.length ? risk
+                     : [{ ic: '✅', t: '籌碼與 K 線<b class="text-gray-200">目前沒有給出警訊</b>',
+                          s: '沒有警訊 ≠ 保證不跌 —— 防守價還是要守,下面那幾條就是。' }];
+            }
+            return `<div class="bg-[#161b22] border-l-4 border-blue-500 border-y border-r border-[#30363d] rounded-r p-2.5">
+                <div class="text-[11px] font-black ${HEAD[1]} leading-relaxed">${HEAD[0]} ${HEAD[2]}</div>
+                <div class="mt-1.5 flex flex-col gap-1">
+                ${rows.map(r => `<div class="flex gap-1.5 items-start">
+                    <span class="text-[11px] flex-shrink-0">${r.ic}</span>
+                    <div class="min-w-0">
+                      <div class="text-[11px] text-gray-200 leading-snug">${r.t}</div>
+                      <div class="text-[9px] text-gray-500 leading-snug mt-0.5">${r.s}</div>
+                    </div></div>`).join('')}
+                </div>
+                <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">
+                  ⚠️ 這兩條是**歷史統計**不是保證;基準勝率是 36% 不是 50%,而且都**沒扣**買賣成本(來回約 0.44%)。
+                  ${pane === 'now' ? '' : '⛔ 操作指令一律以「🚦 現在怎麼做」那張為準,這裡只負責解讀。'}
+                </div>
+            </div>`;
+        } catch (_) { return ''; }
+    },
+
+    _ovTopEdge(data, sym) {
+        try {
+            const pick = this._ovEdgePick(data, sym);
             if (!pick) return null;
             const e = pick._e, isBull = pick.tone === 'bull';
             const tone = isBull ? 'text-red-300' : pick.tone === 'bear' ? 'text-green-300' : 'text-yellow-300';
@@ -30093,6 +30202,21 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 盤中時自動把「盤後四關卡」改成可摺起的 collapsible(預設折起,點 ▾ 展開)
         // 盤後則確保完全展開
         this._chuApplyPostMarketCollapse();
+        // 🧠 V73.7.0 三頁的「一句話消化」——⚠️ 必須排在 `_renderTrendCommand` **之後**,
+        //    它才寫好 `_ovTrend` / `_exitMode`;排前面會拿到上一檔的結論(切股殘留)。
+        try { this._renderOvDigest(data); } catch (_) {}
+    },
+
+    _renderOvDigest(data) {
+        const sym = String(this.currentSymbolId || '');
+        for (const [pane, id] of [['now', 'ovDigestNow'], ['entry', 'ovDigestEntry'], ['exit', 'ovDigestExit']]) {
+            const el = document.getElementById(id);
+            if (!el) continue;
+            let html = '';
+            try { html = this._ovDigest(pane, data, sym) || ''; } catch (_) { html = ''; }
+            el.innerHTML = html;
+            el.classList.toggle('hidden', !html);      // ④ 算不出來整條不顯示
+        }
     },
 
     // 盤中時把 chuFourGatesCard 改成「collapsible」摺起版,避免盤中卡 + 盤後卡都展開太擠
@@ -34226,6 +34350,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // 🗂️ V65.7 總覽四頁籤:現在怎麼做/庫存/進場(持有時=加碼)/出場;pane 用 data-ovpane wrapper 的 display 切,
     //    不動內部卡片的 classList hidden(渲染器照常控制自己的卡),避免互相打架
     switchOvTab(name, opts) {
+        // 🧠 V73.7.0 切頁時補刷一次消化條(⚠️ 只在 _chuRenderAll 刷的話,
+        //    非同步卡片後到時這條會停在舊值;而且切股殘留也靠這裡兜底)
+        try { if (this.rawDailyData && this.rawDailyData.length) this._renderOvDigest(this.rawDailyData); } catch (_) {}
         if (name === 'inv') name = 'now';   // 🗂️ V68.7.2 庫存頁併入「現在怎麼做」,舊呼叫導向 now
         // 🏛️ V71.8.2 指數(加權/櫃買)沒有「進場/出場」可言 —— 那兩個頁籤整組藏起來,只留位置解讀。
         //   (使用者:加權要看符合加權的東西;⛔ 指數不能買,給進出場價位會誤導)
