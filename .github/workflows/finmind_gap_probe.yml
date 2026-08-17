@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       which:
-        description: '跑哪一支:both / gap / margin / pe / split / warrant / fund(基本面缺漏)'
+        description: '跑哪一支:both / gap / margin / pe / split / warrant / fund / otc(櫃買指數歷史)'
         required: false
         default: 'both'
 
@@ -69,3 +69,9 @@ jobs:
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
         run: python3 scripts/fund_gap_probe.py
+
+      - name: 🏪 櫃買指數歷史探針(^TWOII 從沒抓成功過的真因)
+        if: ${{ github.event.inputs.which == 'otc' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/otc_probe.py
