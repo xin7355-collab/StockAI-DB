@@ -2992,6 +2992,62 @@ def _fetch_twii_history_official(months_back=2):
     return uniq if uniq else None
 
 
+def _fetch_otc_history_finmind(days_back=400):
+    """🏪 V73.6.1 櫃買指數歷史 —— **FinMind `TaiwanStockPrice` + data_id='TPEx'**。
+
+    ⭐ 為什麼新增這條:`data/^TWOII.json` **從上線到現在一次都沒產出過**,
+       前面五輪(V71.2.5~V71.6.8)都在猜「TPEX 的日期格式 / 資料鍵值」——
+       `scripts/otc_probe.py` 一次試完 22 個候選,答案完全不是那個方向:
+
+         ・TPEx **整站對 GitHub runner 回 403**(連本專案一直在用、從沒出過事的
+           `/openapi/v1/t187ap03_O` 也 403)→ ⛔ 不是端點改版、不是日期格式,是 **IP 被擋**。
+         ・FinMind `TaiwanStockPrice` + `data_id='TPEx'` → ✅ 完整 OHLCV + 成交量/成交金額。
+         ・⚠️ `data_id='OTC'` **回空**(HTTP 200、msg=success)—— 坊間文章常寫 'OTC',
+           那是**錯的**;正確代碼是 `TPEx`(⛔ 別改回去)。
+         ・yfinance `^TWO` 抓到的是**美國 CBOE 選擇權**(currency USD),不是台灣櫃買 →
+           舊註解說「^TWO 幾乎永遠回空」其實是抓錯東西;正確是 `^TWOII`。
+
+    ⛔ 安全:走既有的 `fm_request()`(它會做 token 輪動 + 429 斷路器),⛔ 不另外處理金鑰。
+    """
+    try:
+        start = (datetime.utcnow() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+    except Exception:
+        return []
+    url = ('https://api.finmindtrade.com/api/v4/data'
+           f'?dataset=TaiwanStockPrice&data_id=TPEx&start_date={start}')
+    j = fm_request(url, timeout=25) or {}
+    rows = (j.get('data') or []) if isinstance(j, dict) else []
+    out = []
+    for r in rows:
+        try:
+            d = str(r.get('date') or '')[:10]
+            o, h, l, c = r.get('open'), r.get('max'), r.get('min'), r.get('close')
+            if not d or c in (None, ''):
+                continue
+            c = float(c)
+            if c <= 0:
+                continue
+            out.append({
+                'date':   d,
+                'open':   round(float(o), 2) if o not in (None, '') else c,
+                'high':   round(float(h), 2) if h not in (None, '') else c,
+                'low':    round(float(l), 2) if l not in (None, '') else c,
+                'close':  round(c, 2),
+                # ⚠️ 指數的 volume 給 0,金額另存(同 ^TWII 的 `amount`,陷阱 #17:
+                #    不同來源/不同單位就不可共用欄位名)
+                'volume': 0,
+                'amount': int(float(r.get('Trading_money') or 0)) or None,
+            })
+        except Exception:
+            continue
+    out.sort(key=lambda x: x['date'])
+    if out:
+        print(f"  🏪 櫃買指數(FinMind TPEx):{len(out)} 筆(最新 {out[-1]['date']} 收 {out[-1]['close']})")
+    else:
+        print("  🚨 櫃買指數(FinMind TPEx)回空 → 退回 yfinance ^TWOII / TPEX 官網")
+    return out
+
+
 def _fetch_otc_history_official(months_back=2):
     """TPEX 上櫃指數 OHLC 官方歷史 — st41 月份檔。
     端點:https://www.tpex.org.tw/web/stock/aftertrading/daily_index/st41_result.php
@@ -3166,7 +3222,11 @@ def fetch_us_macro_cache():
                'ukoil': 'BZ=F',     # 布蘭特原油期貨
                'dxy':   'DX-Y.NYB', # 美元指數
                'twii':  '^TWII',    # 台股加權指數（供泡沫預警 K 線型態判讀 + 個股查詢頁）
-               'twoii': '^TWO',     # 台股上櫃指數（OTC,供個股查詢頁查上櫃整體走勢)
+               # 🐛 V73.6.1 `^TWO` 是**錯的 ticker** —— 實測(scripts/otc_probe.py)yfinance 回的是
+               #    `exchangeName: CBO / currency: USD` = **美國 CBOE 的選擇權**,根本不是台灣櫃買。
+               #    這就是舊註解說「^TWO yfinance 幾乎永遠回空」的真相:不是回空,是抓錯東西被過濾掉。
+               #    正確 ticker 是 `^TWOII`(實測 66 根)。
+               'twoii': '^TWOII',   # 台股上櫃指數（OTC,供個股查詢頁查上櫃整體走勢)
                }
     # 🎯 台股指數特例:這些 ticker 抓 period=2y 充足歷史(支援前端 240MA/季線等技術指標)
     LONG_HIST_KEYS = {'twii', 'twoii'}
@@ -3219,7 +3279,11 @@ def fetch_us_macro_cache():
                     if key == 'twii':
                         official_rows = _fetch_twii_history_official(months_back=2)
                     elif key == 'twoii':
-                        official_rows = _fetch_otc_history_official(months_back=2)
+                        # ⭐ V73.6.1 先走 FinMind(實測唯一穩定拿得到的);⛔ 空了才退回 TPEX 官網
+                        #   (官網對 GitHub runner 會 403,見 _fetch_otc_history_finmind 的說明)
+                        official_rows = _fetch_otc_history_finmind(days_back=400)
+                        if not official_rows:
+                            official_rows = _fetch_otc_history_official(months_back=2)
                 except Exception as _e:
                     print(f"  ⚠️ 官方來源 {key} 抓取例外: {str(_e)[:80]}")
                 # 🔊 V71.2.3:官方來源掛掉時要「大聲講」,不能靜靜退回 yfinance。
