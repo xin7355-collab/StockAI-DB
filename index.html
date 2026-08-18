@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.7.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.7.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.2 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.3 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7335,8 +7335,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.7.2',
+    _APP_VERSION: 'V73.7.3',
     _CHANGELOG: [
+        { v: 'V73.7.3', dt: '2026-08-18', t: '📅 財經行事曆全測完:方向零個能用,但「顛不顛」是真的', d: ['你問「各種財經行事曆的漲跌機率、漲多少跌多少」→ 我拿 **2,055 檔 × 757 個交易日 × 155 萬筆**實測了 **37 種**日子(星期幾、月初月底、季底、期貨結算、長假前後、封關開紅盤、月營收公布、財報截止、每個月份)。','❌ **方向:一個能用的都沒有。** 唯一通過所有穩健檢定的「結算日後一天」(比平常好 0.334%),扣掉買賣來回成本 0.44% 之後是 **−0.106%** —— 白做;而且拿沒用過的舊資料再測一次,**方向還相反**。','⭐ **但「哪種日子比較顛」是真的**,而且只有一個原因:**休市越久,開市第一天越顛**(隔天 1.00 倍 → 週末後 **1.09 倍** → 長假後 **1.43 倍**),另外月初 1-10 日(月營收密集公布)**1.13 倍**。','📍 命中的日子會在**當沖頁大字結論下面**自動出現一行提醒(沒命中完全不顯示)。⛔ 它**只講顛不顛、不講多空** —— 波動大不等於會漲也不等於會跌,意思是「停損容易被掃到,部位放小一點」。','🚨 順便回答「個股是不是各有各的日子」:**算得出來,但學不到**。例如 4587 星期五只有 23% 上漲、平均 −1.12%,看起來很嚇人 —— 但把日期整組平移到日曆別的位置,一樣會跑出這種數字,代表那是巧合不是特性。'] },
         { v: 'V73.7.2', dt: '2026-08-18', t: '📖 當沖注意事項整份重寫:只留「算術事實」與「實測過的」', d: ['你說「簡化精簡、說明清楚明瞭、用最直接的方式告訴我怎麼操作」→ 那份說明整個重寫成 **5 段編號**,每段一個問題。','🗑️ **刪掉一半** —— 舊版裡「量能≥80%」「跌破 −1.5% 立刻砍」「賺 2~3% 先落袋一半」「三條件對齊才進」這些具體數字**沒有任何實證來源**(逐字稿也是隨口講的),留著會讓你以為那是驗證過的規則。停損改成「價位你自己定,重點是**到價就執行、不凹**」。','⭐ **新增一整段「這些坊間招式我實測過:不成立」** —— 連次量、開盤跳空 2~4%、開盤區間突破(ORB)、順大盤勝率 80%,每一條都附上實測數字。寫出來不是叫你別學,是省掉你去別處學了再回來問。','⭐ 保留的只有兩種:**算術事實**(成本關、13:25 平倉)與**本站實測過的**(一律附數字與樣本數)。','📄 你這次傳的 55 份逐字稿,其中 **53 份跟上次那批是同一份檔案**;新的 2 份是同一場直播的字幕版與影片版,內容是當天盤勢評論、沒有可以驗證的規則 —— 所以這次沒有新東西可以加。'] },
         { v: 'V73.7.1', dt: '2026-08-17', t: '🚨 你截圖那張 ETF 跟車卡有三個錯,都修了', d: ['🚨 **進場價是錯的**:卡上寫「進場價取 08/14 收盤 ≈ 608」,但 08/14 官方收盤是 **622** —— 608 其實是**當天(08/17)的價**。連帶「換股當日 −8.2%」也錯,正確是 **−6.0%**。','真因:盤後採礦還沒產出當天那根 K 時,程式會把即時價**寫進最後一根真實交易日**(那是為了讓報價顯示最新)。這張卡問的是「歷史某一天的收盤」,卻讀到那份被覆蓋過的資料。已改成讀原始收盤,「今價」才用即時價。','🚨 **「連買 0 天 ・ 買超放大」自相矛盾**:因為算趨勢時只比大小,而數列裡有負數(賣超)→「賣得比較少」被講成「買超放大」。現在淨賣超時會誠實寫「賣超收斂/賣超擴大」。','🚨 **同一張卡自己打架**:上面寫「進場價偏低**可留意**」(偏多),下面卻寫「ETF 在減碼/換出,法人撤退中,別逆勢」。現在只有真的有 ETF 換入/加碼才會講「可留意」;整批減碼時改寫「⛔ 這不是進場理由」。'] },
         { v: 'V73.7.0', dt: '2026-08-17', t: '🧠 總覽三頁改成「我消化完直接告訴你」', d: ['🚦現在怎麼做 / ➕加碼 / 🛡️出場 三頁最上面各多一條**一句話消化**:籌碼和 K 線我幫你看完了,直接寫結論,不用你自己去翻。','⭐ 只寫**有實測成績**的:K 線那條會附「這訊號出現後 10 日平均賺/跌多少、幾次」;籌碼那條會附「20 日平均贏大盤幾個百分點、幾次」。沒有實測成績的一律不寫。','⭐ 三頁問的問題不同,講法也不同 —— 出場頁只講警訊(⛔ 不會在那裡叫你買);加碼頁遇到空頭或出場狀態會直接說「只做短、別加碼」。','🗑️ 雜訊清掉:「現在怎麼做」原本攤開 1,108 字,其中 844 字(76%)是 AI 深度診斷那一長篇 → 收進「📖 更多解讀」摺疊。⛔ 一個字都沒刪,只是不再佔第一眼。現在攤開只剩 473 字。','⚠️ 那兩條是歷史統計不是保證:基準勝率是 36% 不是 50%,而且都沒扣買賣成本(來回約 0.44%)—— 卡上都有寫。'] },
@@ -18830,6 +18831,59 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             ${g.lvl === 'bad' ? '<div class="text-[9px] text-gray-400 mt-0.5 leading-snug">💡 想做這種價位,改用<b>股票期貨</b>成本低很多;或直接換一檔跳一檔就回本的。</div>' : ''}
         </div>`;
     },
+    // 📅 V73.7.3 「今天這種日子顛不顛」—— ⭐⭐ 只講**波動**,⛔ 絕不講方向。
+    //
+    // 使用者問「財經行事曆各種日子的漲跌機率與幅度」→ `scripts/calendar_stock_probe.mjs`
+    // 全市場 2,055 檔 × 757 個交易日 × 155 萬個(股·日)實測 37 種行事曆切法。結論兩句話:
+    //   ❌ **方向:零個可用。** 唯一通過穩健性檢定的「結算日後一交易日」(+0.334pp)
+    //      扣掉來回成本 0.44% 後是 **−0.106pp**,而且拿沒用過的期外資料再測**方向相反**。
+    //   ⭐ **波動:確實有,而且機制單一。** 休市越久,開市第一天越顛(單調):
+    //      隔天 1.00x → 週末 **1.09x** → 長假 **1.43x**;月初 1-10 日(月營收密集公布)**1.13x**。
+    //
+    // ⛔ 三條不可以改掉的設計:
+    //   ① **不給方向、不計分、不用紅綠** —— 波動大 ≠ 會漲也 ≠ 會跌(燈號鐵則)。
+    //   ② 「星期一」與「長假後」⛔ **不是兩個發現**,是同一個(休市累積的消息一次反映)
+    //      → 這裡一律用「休市幾天」表達,不寫成兩條。
+    //   ③ 判斷「今天休市幾天」要用**真實交易日曆**(K 線最後兩根 + 台北今天),
+    //      ⛔ 不可用「星期一 = 休市 3 天」硬算 —— 週一放假時第一個交易日是週二。
+    _calDayVol(data) {
+        try {
+            const d = Array.isArray(data) ? data : [];
+            if (d.length < 2) return null;
+            const iso = x => String(x || '').replace(/\//g, '-').slice(0, 10);
+            const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
+            const last = iso(d[d.length - 1].date), prev = iso(d[d.length - 2].date);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(last) || !/^\d{4}-\d{2}-\d{2}$/.test(prev)) return null;
+            // 🚨 資料過期守門:台股最長休市是農曆年約 9 天 → 距今超過 10 天 = **資料舊了**,
+            //    不是連假。⛔ 沒有這條的話,採礦沒跑/使用者離線很久時會顯示「休市 151 天後的
+            //    第一個交易日」這種荒謬結果(測試 ②g 實際抓到)。過期時改成描述「資料裡的最後一天」。
+            const dGap = Math.round((new Date(today + 'T00:00:00Z') - new Date(last + 'T00:00:00Z')) / 86400000);
+            const fresh = today > last && dGap <= 10;
+            const from = fresh ? last : prev, to = fresh ? today : last;
+            const gap = Math.round((new Date(to + 'T00:00:00Z') - new Date(from + 'T00:00:00Z')) / 86400000);
+            if (!(gap >= 1 && gap <= 12)) return null;   // 再保險一層(資料本身有跳號時)
+            const dom = +to.slice(8, 10);
+            const tags = [];
+            if (gap >= 4) tags.push({ t: `休市 ${gap} 天後的第一個交易日`, mult: 1.43, n: 21, why: '連假期間累積的消息,開市第一天一次反映完' });
+            else if (gap >= 2) tags.push({ t: `休市 ${gap} 天後的第一個交易日`, mult: 1.09, n: 152, why: '週末累積的消息,開市第一天一次反映完' });
+            if (dom <= 10) tags.push({ t: '每月 1-10 日(月營收密集公布)', mult: 1.13, n: 238, why: '上市櫃每月 10 日前公布上月營收,消息密集' });
+            if (!tags.length) return null;
+            tags.sort((a, b) => b.mult - a.mult);
+            return { gap, dom, tags, top: tags[0], date: to };
+        } catch (_) { return null; }
+    },
+    _calDayVolHtml(data) {
+        const v = this._calDayVol(data);
+        if (!v) return '';                       // ⛔ 沒命中整條不顯示(不留空殼)
+        const t = v.top, up = Math.round((t.mult - 1) * 100);
+        return `<div class="bg-[#0d1117] border-l-4 border-[#8b949e] pl-2.5 py-1.5 rounded-r mt-1.5">
+            <div class="text-[11px] text-gray-200 font-bold leading-relaxed">📅 今天是<b>${t.t}</b> —— 實測全市場波動比平常大 <b class="font-mono">${up}%</b>(${t.mult.toFixed(2)}x)</div>
+            <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${t.why}。<b>波動大不等於會漲、也不等於會跌</b> —— 只代表比較顛:停損容易被掃到,<b>部位放小一點</b>、停損拉遠一點。</div>
+            ${v.tags.length > 1 ? `<div class="text-[9px] text-gray-500 mt-0.5">今天同時也是「${v.tags[1].t}」(${v.tags[1].mult.toFixed(2)}x)</div>` : ''}
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">📊 樣本 ${t.n} 天(2,055 檔 × 757 個交易日)。⚠️ <b>方向沒有邊際</b> —— 37 種行事曆日全測過,沒有一種的漲跌差大到能扣掉來回成本 0.44%,所以這裡<b>只講顛不顛,不講多空</b>。</div>
+        </div>`;
+    },
+
     // 買 buy → 賣 sell,shares 股的「淨」損益(元,已四捨五入到元)
     //   扣:買+賣兩邊手續費(牌價 0.1425% × 你的折數)+ 賣出證交稅 0.3%(波段;當沖減半由當沖試算機另算)
     // 🧮 V72.4.6 你手上這檔實際有幾股(沒有就回 null)——⭐ 使用者截圖抓到:
@@ -43302,6 +43356,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 ${dashGrid}
                 <div class="text-lg font-black ${vMap[vC].split(' ')[0]} leading-tight mt-1.5">${vTone}</div>
                 ${this._dtCostGateHtml(price)}
+                ${this._calDayVolHtml(this.rawDailyData)}
                 ${showPlan ? (this._dtVerdictInner(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw) || '') : `<div class="bg-[#0d1117] border-l-4 ${vMap[vC].split(' ')[1]} pl-2.5 py-1 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">${vNote}</div></div>`}
                 ${planHtml}
                 ${showPlan ? `<details class="mt-1.5"><summary class="text-[9px] text-gray-500 cursor-pointer">▾ 資格說明 / 量能提醒</summary><div class="bg-[#0d1117] border-l-2 ${vMap[vC].split(' ')[1]} pl-2 py-1 rounded-r mt-1"><div class="text-[10px] text-gray-300 leading-relaxed">${_foldNote}</div></div></details>` : ''}
