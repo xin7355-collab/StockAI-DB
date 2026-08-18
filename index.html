@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.7.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.7.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.3 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.4 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7335,8 +7335,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.7.3',
+    _APP_VERSION: 'V73.7.4',
     _CHANGELOG: [
+        { v: 'V73.7.4', dt: '2026-08-18', t: '🏭 K線頁新增「這波是誰在漲」:缺貨 / 供貨 / 做夢行情,全部回測過', d: ['你說的「缺貨時、供貨時機、做夢行情」我全部回測了。⛔ 但**不是用財報** —— 財報資料只有 8 季,YoY 只算得出 4 個點,拿那個定義「缺貨週期」等於憑空編門檻。','⭐ 改用**盤面看得到的樣子**:漲價缺貨 = 整條族群一起漲(不會只有一家)・供貨產能開出 = 整條族群一起跌・做夢行情 = 族群沒動只有它自己在漲。全市場 2 年、**68,082 個事件**實測七種狀態。','🚨 **七種裡只有「做夢行情(獨走)」扣完成本還有剩**:之後 20 日平均比大盤多 0.89%(拿掉最好的那一年仍有 0.67%,扣成本後 0.23%)。⚠️ 但它是**賠率型不是勝率型** —— 中位數跟平常一樣,賺的錢全來自少數大賺(前 10% 賺 +15.2%,但後 10% 也賠 −15.8%)→ **不能重壓**。','❌ **其餘六種扣完成本都是負的**,包括「族群齊漲跟上」「補漲候選」「族群剛由弱轉強」。特別提醒兩個跟直覺相反的:①「補漲候選」實測沒有邊際 ②「族群在跌它還撐著」不是抗跌,實測反而**略差**(多半是還沒補跌)。','📍 在 **K線頁**自動顯示(那頁刻意只解讀、不給買賣價位,正好符合「這不能當進出場訊號」)。⚠️ 上櫃股會誠實說「判斷不了」—— 證交所的官方產業分類只涵蓋上市。'] },
         { v: 'V73.7.3', dt: '2026-08-18', t: '📅 財經行事曆全測完:方向零個能用,但「顛不顛」是真的', d: ['你問「各種財經行事曆的漲跌機率、漲多少跌多少」→ 我拿 **2,055 檔 × 757 個交易日 × 155 萬筆**實測了 **37 種**日子(星期幾、月初月底、季底、期貨結算、長假前後、封關開紅盤、月營收公布、財報截止、每個月份)。','❌ **方向:一個能用的都沒有。** 唯一通過所有穩健檢定的「結算日後一天」(比平常好 0.334%),扣掉買賣來回成本 0.44% 之後是 **−0.106%** —— 白做;而且拿沒用過的舊資料再測一次,**方向還相反**。','⭐ **但「哪種日子比較顛」是真的**,而且只有一個原因:**休市越久,開市第一天越顛**(隔天 1.00 倍 → 週末後 **1.09 倍** → 長假後 **1.43 倍**),另外月初 1-10 日(月營收密集公布)**1.13 倍**。','📍 命中的日子會在**當沖頁大字結論下面**自動出現一行提醒(沒命中完全不顯示)。⛔ 它**只講顛不顛、不講多空** —— 波動大不等於會漲也不等於會跌,意思是「停損容易被掃到,部位放小一點」。','🚨 順便回答「個股是不是各有各的日子」:**算得出來,但學不到**。例如 4587 星期五只有 23% 上漲、平均 −1.12%,看起來很嚇人 —— 但把日期整組平移到日曆別的位置,一樣會跑出這種數字,代表那是巧合不是特性。'] },
         { v: 'V73.7.2', dt: '2026-08-18', t: '📖 當沖注意事項整份重寫:只留「算術事實」與「實測過的」', d: ['你說「簡化精簡、說明清楚明瞭、用最直接的方式告訴我怎麼操作」→ 那份說明整個重寫成 **5 段編號**,每段一個問題。','🗑️ **刪掉一半** —— 舊版裡「量能≥80%」「跌破 −1.5% 立刻砍」「賺 2~3% 先落袋一半」「三條件對齊才進」這些具體數字**沒有任何實證來源**(逐字稿也是隨口講的),留著會讓你以為那是驗證過的規則。停損改成「價位你自己定,重點是**到價就執行、不凹**」。','⭐ **新增一整段「這些坊間招式我實測過:不成立」** —— 連次量、開盤跳空 2~4%、開盤區間突破(ORB)、順大盤勝率 80%,每一條都附上實測數字。寫出來不是叫你別學,是省掉你去別處學了再回來問。','⭐ 保留的只有兩種:**算術事實**(成本關、13:25 平倉)與**本站實測過的**(一律附數字與樣本數)。','📄 你這次傳的 55 份逐字稿,其中 **53 份跟上次那批是同一份檔案**;新的 2 份是同一場直播的字幕版與影片版,內容是當天盤勢評論、沒有可以驗證的規則 —— 所以這次沒有新東西可以加。'] },
         { v: 'V73.7.1', dt: '2026-08-17', t: '🚨 你截圖那張 ETF 跟車卡有三個錯,都修了', d: ['🚨 **進場價是錯的**:卡上寫「進場價取 08/14 收盤 ≈ 608」,但 08/14 官方收盤是 **622** —— 608 其實是**當天(08/17)的價**。連帶「換股當日 −8.2%」也錯,正確是 **−6.0%**。','真因:盤後採礦還沒產出當天那根 K 時,程式會把即時價**寫進最後一根真實交易日**(那是為了讓報價顯示最新)。這張卡問的是「歷史某一天的收盤」,卻讀到那份被覆蓋過的資料。已改成讀原始收盤,「今價」才用即時價。','🚨 **「連買 0 天 ・ 買超放大」自相矛盾**:因為算趨勢時只比大小,而數列裡有負數(賣超)→「賣得比較少」被講成「買超放大」。現在淨賣超時會誠實寫「賣超收斂/賣超擴大」。','🚨 **同一張卡自己打架**:上面寫「進場價偏低**可留意**」(偏多),下面卻寫「ETF 在減碼/換出,法人撤退中,別逆勢」。現在只有真的有 ETF 換入/加碼才會講「可留意」;整批減碼時改寫「⛔ 這不是進場理由」。'] },
@@ -18884,6 +18885,121 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         </div>`;
     },
 
+    // 🏭 V73.7.4 「這波是誰在漲?」—— 族群 vs 個股 的行情階段
+    //
+    // 使用者:「個股漲跌時機紀錄到說明,比如說缺貨時、供貨時機、做夢行情!
+    //          把我說錯的沒有說到的去回測時間點,並在個股說明中列出」
+    //
+    // ⛔⛔ **為什麼不用基本面判斷「缺貨」**(⛔ 別再試一次):
+    //    「缺貨 → 漲價 → 毛利率上升 → 營收 YoY 加速」觀念完全正確,但**回測不了** ——
+    //    實測 `fund_yoy_gm.json` 的 `qeps` 只有 **8 季、918 檔** → YoY 只剩 4 個點,
+    //    而且全擠在同一段行情;毛利率只存了 3 個點的趨勢字串。⛔ 拿 4 個點定義週期 = 憑空門檻。
+    //
+    // ⭐ 改用**價量代理**(3 年 × 全市場,`scripts/regime_probe.mjs`,68,082 個事件):
+    //    缺貨/漲價 → 整條族群一起漲 ・ 供貨/產能開出 → 整條族群一起跌 ・ 做夢 → 只有它獨走
+    //
+    // 🚨 實測結論(七種狀態,關卡:前後半段同向 + 逐年同向 + 拿掉最好那年 + 扣成本 0.44%):
+    //    **只有「🎯 獨走」全關通過**,而且它是**賠率型不是勝率型**(中位跟平常一樣,賺在右尾)。
+    //    ⛔ 其餘六種扣完成本都是負的 → **只能當「現在是什麼盤」的描述,不可當進出場訊號**。
+    //
+    // ⚠️ 母體必須跟回測一致(⛔ 這點錯了整組數字就不能用):
+    //    回測用 `industry_map`(證交所公司基本資料 = **只有上市 1,075 檔**),
+    //    而 `screener.json` 的 `ind` 剛好也只有那 1,075 檔(實測完全對齊)→ 這裡一律只用有 `ind` 的股票
+    //    算全市場分位,⛔ 不可拿 2,356 檔全部去算(那會變成跟回測不同的母體)。
+    //    ⚠️ 上櫃股沒有官方產業分類 → **誠實說判斷不了**,⛔ 不可靜默不顯示(不然使用者會以為壞了)。
+    _REGIME_EDGE: {
+        // [事件數, 20日平均超額pp, 拿掉最好年份的保守值pp, 20日勝率%, 是否全關通過]
+        ind_up_follow: [13027, 0.39, 0.16, 36.0, false],
+        ind_up_lag:    [7809, 0.12, -0.05, 34.4, false],
+        solo:          [8999, 0.89, 0.67, 37.7, true],
+        ind_dn_follow: [12466, -0.25, -0.74, 34.0, false],
+        ind_dn_strong: [7230, -0.13, -0.23, 34.9, false],
+    },
+    _regimeStats() {
+        // 全市場橫斷面(每次 screener 換資料才重算一次)
+        const D = this._scrData;
+        if (!D || !D.rows || !D.ind) return null;
+        if (this._regCache && this._regCache.src === D) return this._regCache;
+        const all = [], byInd = new Map();
+        for (const s of Object.keys(D.rows)) {
+            const k = D.ind[s];
+            if (!k) continue;                                  // ⭐ 只用「有官方產業別」的那批(= 回測母體)
+            const x = this._scrV(D.rows[s], 'chg20');
+            if (x === null) continue;
+            all.push(x);
+            if (!byInd.has(k)) byInd.set(k, []);
+            byInd.get(k).push(x);
+        }
+        if (all.length < 300) return null;                     // 空過守門
+        const srt = a => a.slice().sort((p, q) => p - q);
+        const md = a => { const b = srt(a); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+        const A = srt(all);
+        const meds = [];
+        for (const [k, arr] of byInd) if (arr.length >= 5) meds.push([k, md(arr)]);   // 同 MIN_IND=5
+        meds.sort((p, q) => p[1] - q[1]);
+        const rank = new Map(), imed = new Map();
+        meds.forEach(([k, v], j) => { rank.set(k, meds.length > 1 ? j / (meds.length - 1) : 0.5); imed.set(k, v); });
+        return (this._regCache = {
+            src: D, n: all.length, rank, imed,
+            mktMed: A[A.length >> 1], mktP80: A[Math.floor(A.length * 0.8)],
+        });
+    },
+    _stockRegime(sym) {
+        const D = this._scrData;
+        if (!D || !D.rows) return null;
+        const s = String(sym || this.currentSymbolId || '');
+        const row = D.rows[s];
+        if (!row) return null;
+        const ind = (D.ind || {})[s];
+        if (!ind) return { na: 'noind' };                      // 上櫃:沒有官方產業分類
+        const S = this._regimeStats();
+        if (!S) return null;
+        const me = this._scrV(row, 'chg20');
+        const ir = S.rank.get(ind);
+        if (me === null || ir === undefined) return { na: 'thin', ind };
+        let k;
+        if (ir >= 0.8) k = me >= S.mktMed ? 'ind_up_follow' : 'ind_up_lag';
+        else if (ir <= 0.2) k = me <= S.mktMed ? 'ind_dn_follow' : 'ind_dn_strong';
+        else if (me >= S.mktP80) k = 'solo';
+        else return { na: 'none', ind, me, indMed: S.imed.get(ind), ir };
+        return { k, ind, me, indMed: S.imed.get(ind), ir, edge: this._REGIME_EDGE[k] };
+    },
+    _stockRegimeHtml(sym) {
+        const r = this._stockRegime(sym);
+        if (!r) return '';                                     // 資料還沒載入 → 整條不顯示
+        const wrap = (b, t) => `<div class="bg-[#0d1117] border-l-2 border-[#8b949e] pl-2.5 py-1.5 rounded-r mb-2">
+            <div class="text-[11px] font-bold text-gray-200 leading-relaxed">${b}</div>
+            ${t ? `<div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${t}</div>` : ''}
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">🏭 「這波是誰在漲」= 拿這檔近 20 日漲跌 跟<b>同產業其他股票</b>比(全市場 2 年、68,082 個事件實測)。⛔ 七種狀態裡只有「只有它獨走」扣完成本還有剩,其餘<b>只能當描述,不是進出場訊號</b>。</div>
+        </div>`;
+        // ⚠️ 「沒有資料」與「條件沒過」是兩件事,⛔ 不可都靜默不顯示
+        if (r.na === 'noind') return wrap('🏭 這波是誰在漲:<b>這檔判斷不了</b>', '證交所的官方產業分類<b>只涵蓋上市股</b>,上櫃股沒有 → 沒辦法跟「同產業其他股票」比。⛔ 不是程式壞掉,是資料源就沒有。');
+        if (r.na === 'thin') return wrap('🏭 這波是誰在漲:<b>算不出來</b>', `「${r.ind}」這一類當天的樣本太少(不到 5 檔),中位數不可靠 → ⛔ 不硬給結論。`);
+        const pn = (x, d = 1) => (x >= 0 ? '+' : '') + (+x).toFixed(d);
+        const cl = x => x >= 0 ? 'text-red-300' : 'text-green-300';
+        const num = `<span class="text-[9px] text-gray-500">(這檔 20 日 <span class="${cl(r.me)} font-mono">${pn(r.me)}%</span>・${r.ind}同業中位 <span class="${cl(r.indMed)} font-mono">${pn(r.indMed)}%</span>)</span>`;
+        if (r.na === 'none') return wrap(`🏭 這波是誰在漲:<b>族群和它自己都沒特別動</b> ${num}`, '不屬於任何一種行情階段 —— 這是最常見的狀態。');
+        const [n, avg, cons, wr, pass] = r.edge;
+        const M = {
+            ind_up_follow: ['🏭 <b>整條族群一起漲,它有跟上</b>',
+                '這就是「<b>缺貨/漲價行情</b>」在盤面上的樣子 —— 漲價是整條供應鏈一起反映,不會只有一家。'],
+            ind_up_lag: ['🐌 <b>族群在漲,它還沒動</b>',
+                '常被講成「補漲候選」。⚠️ 但實測<b>沒有邊際</b> —— 落後有可能是還沒輪到,也可能是它本來就比較弱,兩種混在一起。'],
+            solo: ['🎯 <b>族群沒動,只有它自己在漲</b>',
+                '這就是「<b>做夢行情</b>」—— 個別題材,沒有整個產業的基本面撐著。'],
+            ind_dn_follow: ['📉 <b>整條族群一起跌,它也跟著跌</b>',
+                '這是「<b>供貨/產能開出、砍單</b>」在盤面上的樣子 —— 整條供應鏈一起被殺。'],
+            ind_dn_strong: ['💪 <b>族群在跌,它還撐著</b>',
+                '⚠️ 直覺會覺得是「抗跌強勢股」,但實測之後<b>反而略差</b> —— 多半是<b>還沒補跌</b>。'],
+        }[r.k];
+        const edgeTxt = pass
+            ? `⭐ <b>七種狀態裡唯一全部檢定都通過的</b>:之後 20 日平均比同期大盤多 <b class="font-mono">${pn(avg, 2)}%</b>(拿掉最好的那一年仍有 <b class="font-mono">${pn(cons, 2)}%</b>,扣掉來回成本 0.44% 後 <b class="font-mono">${pn(cons - 0.44, 2)}%</b>)・勝率 ${wr}%(平常 34.7%)・${n.toLocaleString()} 次。<br>`
+              + `🚨 <b>但它是「賠率型」不是「勝率型」</b>:中位數跟平常一樣(−3.2%),賺的錢<b>全部來自少數大賺</b> —— 最好的 10% 賺 +15.2%(平常 +9.9%),但最差的 10% 也賠 −15.8%(平常 −13.7%)。<br>`
+              + `💡 意思是:這種盤<b>不能重壓</b>,要能承受「多數被打回原形、少數大賺」。`
+            : `⛔ <b>實測沒有可用的邊際</b>:之後 20 日平均比大盤 <b class="font-mono">${pn(avg, 2)}%</b>,拿掉最好的那一年只剩 <b class="font-mono">${pn(cons, 2)}%</b> —— 扣掉來回成本 0.44% 後是 <b class="font-mono">${pn(cons - 0.44, 2)}%</b>。勝率 ${wr}%(平常 34.7%)・${n.toLocaleString()} 次。<br>💡 所以這一行只是<b>告訴你現在是什麼盤</b>,⛔ 不是叫你買或賣。`;
+        return wrap(`🏭 這波是誰在漲:${M[0]} ${num}`, `${M[1]}<br>${edgeTxt}`);
+    },
+
     // 買 buy → 賣 sell,shares 股的「淨」損益(元,已四捨五入到元)
     //   扣:買+賣兩邊手續費(牌價 0.1425% × 你的折數)+ 賣出證交稅 0.3%(波段;當沖減半由當沖試算機另算)
     // 🧮 V72.4.6 你手上這檔實際有幾股(沒有就回 null)——⭐ 使用者截圖抓到:
@@ -19415,7 +19531,29 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._tagPush(sigs, '_detectTrendline', data);               // ⭐ V41.30 趨勢線突破/跌破
         this._tagPush(sigs, '_detectMaGoldenCross', data);           // ⭐ V60.x 月線穿季線黃金/死亡交叉事件
 
-        if (!sigs.length) { el.classList.add('hidden'); el.innerHTML = ''; _kbShow(false); try { this._setLight('lightKbar', '無訊號'); } catch (_) {} return; }
+        // 🏭 V73.7.4 screener 是非同步載入的 —— 第一次進個股頁時 `_scrData` 還是 undefined,
+        //    「這波是誰在漲」會算不出來。⛔ 不可就這樣算了(那條會變成「有時有、有時沒有」),
+        //    要載完再重繪一次。⚠️ 用旗標鎖住,⛔ 否則 load 失敗會變成無限重繪(同 V68.9.2 分點那個無限迴圈)。
+        if (this._scrData === undefined && !this._regLoading) {
+            this._regLoading = true;
+            const _sym = String(this.currentSymbolId || '');
+            this._loadScreener().then(() => {
+                if (String(this.currentSymbolId || '') === _sym) { try { this.renderKbarTactics(data); } catch (_) {} }
+            }).catch(() => {});
+        }
+        if (!sigs.length) {
+            // ⭐ 「K 棒沒訊號」≠「這張卡沒東西可講」—— 行情階段跟 K 棒訊號是兩件事。
+            //    ⛔ 這裡直接 return 的話,那條只會在剛好有 K 棒訊號的日子出現 = 隨機出現,不是條件觸發。
+            const _rg = this._stockRegimeHtml(this.currentSymbolId);
+            if (_rg) {
+                el.classList.remove('hidden'); _kbShow(true);
+                el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>`
+                    + `<div class="bg-[#0d1117] border-l-2 border-[#8b949e] pl-2.5 py-1.5 rounded-r mb-2"><div class="text-[11px] text-gray-300 leading-relaxed">➖ K 棒這邊<b>今天一個型態訊號都沒偵測到</b> —— 沒有訊號就是「不做」,等它表態。</div></div>`
+                    + _rg;
+            } else { el.classList.add('hidden'); el.innerHTML = ''; _kbShow(false); }
+            try { this._setLight('lightKbar', '無訊號'); } catch (_) {}
+            return;
+        }
         // 🚦 V58.4 收合列燈號:訊號數 + 多空傾向(拆自「更多守價」後這卡有自己的收合殼)
         try {
             const _nb = sigs.filter(s => s.tone === 'bull').length, _ns = sigs.filter(s => s.tone === 'bear').length;
@@ -19522,7 +19660,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="mt-1">${rest.slice(0, 12).map(s => _card(s, false)).join('')}
                 ${rest.length > 12 ? `<div class="text-[9px] text-gray-600 text-center py-1">⋯ 另有 ${rest.length - 12} 條</div>` : ''}</div></details>` : '');
         const turnHint = hasTurn ? `<div class="text-[10px] text-amber-300/90 mt-1.5 leading-snug bg-amber-900/15 border-l-2 border-amber-500/60 pl-2 py-1 rounded-r">🔑 朱家泓鐵律「開盤定生死」:出現變盤/轉折K後,看<b>次日開盤</b>——開低=變盤確認,多單該跑;開高=化解疑慮,可續抱。</div>` : '';
-        el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>${_headline}${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
+        el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>${_headline}${this._stockRegimeHtml(this.currentSymbolId)}${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
         el.classList.remove('hidden');
         _kbShow(true);
     },
