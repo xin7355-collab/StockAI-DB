@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.7.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.7.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.5 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2800,6 +2800,8 @@
             <div class="p-2">
                 <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col relative overflow-hidden">
                     <!-- ⭐ V61.7 自選頁:新增/排序/刪除/新增至 全收進「✏️ 編輯」全螢幕頁(openFavEditPage);已移除突兀的浮動 + 鈕 -->
+                    <!-- 🌅 V73.7.6 盤前台指期領先條(⭐ 只在台北 08:30~09:20 顯示,其餘時間大盤頁已有)-->
+                    <div id="preOpenFutBar" class="hidden"></div>
                     <!-- 📢 V31.9 多頭待發射:自選掃打底 + 距突破由近到遠(重用 _chuResistanceZones) -->
                     <div class="mx-2 mt-2 mb-1 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2">
                         <div class="flex items-center gap-1.5">
@@ -4000,6 +4002,9 @@ const app = {
         setInterval(() => { try { this._renderTaiexFutures(); } catch(_) {} }, 60_000);
         setInterval(() => { try { this._refreshLiveBtc(); } catch(_) {} }, 60_000);   // ₿ V66.1 比特幣前端即時(僅大盤頁顯示時真的抓,見 offsetParent 守門)
         setInterval(() => { try { this._refreshLiveTwIndices(); } catch(_) {} }, 30_000);   // 📊 V66.2 加權/櫃買前端即時(offsetParent 守門,盤中才有變動)
+        // 🌅 V73.7.6 盤前台指期領先條(自選頁);函式自己有「台北 08:30~09:20」+ DOM 守門 → 其餘時間零成本、零請求
+        try { this._renderPreOpenFut(); } catch (_) {}
+        setInterval(() => { try { this._renderPreOpenFut(); } catch(_) {} }, 30_000);
         setInterval(() => { try { this._maybeAutoRefreshIndices(); } catch(_) {} }, 30_000);
         setInterval(() => { try { this._dtCloseReminderCheck(); } catch(_) {} }, 30_000);   // ⚡ V55.3 當沖 13:25 平倉提醒
         // 🗑️ V62.7 移除「📌 朱老師鎖股」自選 tab(使用者要求;無 UI 觸發、恆空清單 → 開頁清掉)
@@ -7335,8 +7340,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.7.5',
+    _APP_VERSION: 'V73.7.6',
     _CHANGELOG: [
+        { v: 'V73.7.6', dt: '2026-08-20', t: '🌅 自選頁加「盤前台指期」—— 你說的對,但用途要講清楚', d: ['✅ 你說「期貨比現股早開盤」**完全正確**:台指期 **08:45** 開盤(現貨 09:00)、收 13:45;更重要的是**夜盤 15:00~次日 05:00**,早就把隔夜美股反映過一輪。','📍 自選頁最上方新增一條**台指期領先條**,只在**台北 08:30~09:20** 出現(其他時間大盤頁本來就有,不重複佔版面)。盤前拿不到採礦快照時會自動退到電子盤報價,兩層都沒有就整條不顯示。','⚠️ **但用途要講清楚**:它是「隔夜美股 + 盤後消息,台灣資金怎麼定價」的風向 —— ⛔ **不是拿來決定要不要追**。本站實測過:照打法「隔天開盤買」比「訊號日尾盤買」**少賺 54 萬**;而「跳空 >1% 就不追」**反而倒賠**(開高跑最遠的常是那幾檔)。','⛔ 刻意**不顯示「期貨−現貨」的價差點數**:基差常態就有幾百到上千點,而本站的順逆價差歷史只有 18 筆,沒有「平常是多少」的基準 → 顯示它只會被誤讀成「大漲」。','🔎 順便查到兩件事會另外處理:① **順逆價差有一半的日子是空的**(36 天裡只有 18 天有值),因為官方每日期貨行情的日期落後現貨 ② **盤前 08:45~09:00 那 15 分鐘,採礦端完全沒在跑**(排程從 09:00 才開始)。'] },
         { v: 'V73.7.5', dt: '2026-08-19', t: '💰 自訂選股加估值篩選 —— 但先講:你要的「本益比由低到高」實測是輸的', d: ['你要的都做了:**本益比低→高排序**、**股價淨值比低→高**、**比同業便宜**(相對同業本益比)、**PEG 低→高**,加 10 個估值條件。','🚨 **但我先回測了你的前提,結果跟直覺相反而且是單調的**:把全市場依本益比分五等分,之後 20 日比大盤 —— 最便宜的 20% **−0.69%**、−0.44%、−0.06%、+0.38%、最貴的 20% **+0.79%**。**越便宜反而越差。**','⛔ 更要小心「排序取最前面」:實測本益比 <5 那批,前半段 +4.29%、後半段 −4.49% = **純雜訊**。實跑全市場最便宜的 5 檔本益比是 1.84 / 2.45 / 2.49 / 2.58 / 2.92 —— 那種數字幾乎都是**賣土地、賣股票的一次性收入**,不是真便宜。','⭐ **真正有用的是「價值陷阱」**:低本益比 **配營收衰退** → 之後 20 日比大盤 **−1.89%**、勝率 29.7%(平常 32.9%),前後半段一致;配**營收成長**則是 +0.18%、勝率 34.6%。→ 低本益比本身沒用,**要搭配營收方向看**。所以我做了「⛔ 價值陷阱」和「⭐ 低本益比+營收成長」兩個條件。','⚠️ 你說的「同族群相比」我也做了,但誠實告訴你:實測**沒有邊際**(比同業便宜 4 成以上只有 +0.12%,而且前後半段不同向)。用估值排序或勾估值條件時,上面會自動出現這組實測數字。','➕ 順便補了你沒想到的:**配息率 > 100%**(配得比賺的多 = 吃老本,殖利率再高也不可信,全市場有 1,002 檔中招)、**殖利率 >4% 且配息率 <80%**(配得起的高息股,只有 26 檔)。'] },
         { v: 'V73.7.4', dt: '2026-08-18', t: '🏭 K線頁新增「這波是誰在漲」:缺貨 / 供貨 / 做夢行情,全部回測過', d: ['你說的「缺貨時、供貨時機、做夢行情」我全部回測了。⛔ 但**不是用財報** —— 財報資料只有 8 季,YoY 只算得出 4 個點,拿那個定義「缺貨週期」等於憑空編門檻。','⭐ 改用**盤面看得到的樣子**:漲價缺貨 = 整條族群一起漲(不會只有一家)・供貨產能開出 = 整條族群一起跌・做夢行情 = 族群沒動只有它自己在漲。全市場 2 年、**68,082 個事件**實測七種狀態。','🚨 **七種裡只有「做夢行情(獨走)」扣完成本還有剩**:之後 20 日平均比大盤多 0.89%(拿掉最好的那一年仍有 0.67%,扣成本後 0.23%)。⚠️ 但它是**賠率型不是勝率型** —— 中位數跟平常一樣,賺的錢全來自少數大賺(前 10% 賺 +15.2%,但後 10% 也賠 −15.8%)→ **不能重壓**。','❌ **其餘六種扣完成本都是負的**,包括「族群齊漲跟上」「補漲候選」「族群剛由弱轉強」。特別提醒兩個跟直覺相反的:①「補漲候選」實測沒有邊際 ②「族群在跌它還撐著」不是抗跌,實測反而**略差**(多半是還沒補跌)。','📍 在 **K線頁**自動顯示(那頁刻意只解讀、不給買賣價位,正好符合「這不能當進出場訊號」)。⚠️ 上櫃股會誠實說「判斷不了」—— 證交所的官方產業分類只涵蓋上市。'] },
         { v: 'V73.7.3', dt: '2026-08-18', t: '📅 財經行事曆全測完:方向零個能用,但「顛不顛」是真的', d: ['你問「各種財經行事曆的漲跌機率、漲多少跌多少」→ 我拿 **2,055 檔 × 757 個交易日 × 155 萬筆**實測了 **37 種**日子(星期幾、月初月底、季底、期貨結算、長假前後、封關開紅盤、月營收公布、財報截止、每個月份)。','❌ **方向:一個能用的都沒有。** 唯一通過所有穩健檢定的「結算日後一天」(比平常好 0.334%),扣掉買賣來回成本 0.44% 之後是 **−0.106%** —— 白做;而且拿沒用過的舊資料再測一次,**方向還相反**。','⭐ **但「哪種日子比較顛」是真的**,而且只有一個原因:**休市越久,開市第一天越顛**(隔天 1.00 倍 → 週末後 **1.09 倍** → 長假後 **1.43 倍**),另外月初 1-10 日(月營收密集公布)**1.13 倍**。','📍 命中的日子會在**當沖頁大字結論下面**自動出現一行提醒(沒命中完全不顯示)。⛔ 它**只講顛不顛、不講多空** —— 波動大不等於會漲也不等於會跌,意思是「停損容易被掃到,部位放小一點」。','🚨 順便回答「個股是不是各有各的日子」:**算得出來,但學不到**。例如 4587 星期五只有 23% 上漲、平均 −1.12%,看起來很嚇人 —— 但把日期整組平移到日曆別的位置,一樣會跑出這種數字,代表那是巧合不是特性。'] },
@@ -18999,6 +19005,71 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
               + `💡 意思是:這種盤<b>不能重壓</b>,要能承受「多數被打回原形、少數大賺」。`
             : `⛔ <b>實測沒有可用的邊際</b>:之後 20 日平均比大盤 <b class="font-mono">${pn(avg, 2)}%</b>,拿掉最好的那一年只剩 <b class="font-mono">${pn(cons, 2)}%</b> —— 扣掉來回成本 0.44% 後是 <b class="font-mono">${pn(cons - 0.44, 2)}%</b>。勝率 ${wr}%(平常 34.7%)・${n.toLocaleString()} 次。<br>💡 所以這一行只是<b>告訴你現在是什麼盤</b>,⛔ 不是叫你買或賣。`;
         return wrap(`🏭 這波是誰在漲:${M[0]} ${num}`, `${M[1]}<br>${edgeTxt}`);
+    },
+
+    // 🌅 V73.7.6 盤前台指期領先條(自選頁最上方)—— ⭐ 使用者:「期貨比現股早開盤,可以用來比對」
+    //
+    // ✅ **這個前提是對的**:台指期 **08:45** 開盤(現貨 09:00,早 15 分鐘)、收 13:45;
+    //    更重要的是**夜盤 15:00~次日 05:00**,把整個美股時段的反應先反映掉。
+    //
+    // ⚠️ 但「用來比對」要講清楚是比對**什麼**:
+    //   ✅ 可以:當成「隔夜美股 + 盤後消息,台灣資金怎麼定價」的風向 —— 盤前體檢早就在用它計分。
+    //   ⛔ 不可以:拿它決定「要不要追」。本專案實測過(V72.9.0):
+    //      「隔天開盤買」比「訊號日尾盤買」**少賺 54 萬**;而「跳空 >1% 就不追」**直接倒賠**
+    //      —— 因為跳空開高的那幾檔正是後來走最遠的。所以這條**只描述、不下指令**。
+    //
+    // ⛔ 三個設計:
+    //   ① **只在台北 08:30~09:20 顯示**(期貨領先資訊唯一有用的時段);其餘時間大盤頁本來就有 → ⛔ 不重複佔版面。
+    //   ② 資料優先序:① `_liveIdx.txf`(採礦端 Shioaji 快照,真報價真漲跌,09:00 後才有)
+    //      → ② Yahoo `^TXF=F` 電子盤(**盤前也有**,而且不吃 Fugle 額度)。兩層都沒有 → 整條不顯示。
+    //   ③ ⛔ **不顯示「期貨 − 現貨」的價差點數** —— 基差常態就有幾百到一千多點,
+    //      而本專案的順逆價差歷史只有 18 筆(沒有可靠的「平常是多少」基準)→ 顯示它只會被誤讀成「大漲」。
+    _preOpenFutWindow() {
+        try {
+            const f = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', weekday: 'short', hour12: false });
+            const p = {}; for (const x of f.formatToParts(new Date())) p[x.type] = x.value;
+            if (['Sat', 'Sun'].includes(p.weekday)) return { on: false };
+            const m = (+p.hour) * 60 + (+p.minute);
+            if (m < 8 * 60 + 30 || m > 9 * 60 + 20) return { on: false };
+            return { on: true, pre: m < 9 * 60, hhmm: `${p.hour}:${p.minute}` };
+        } catch (_) { return { on: false }; }
+    },
+    async _renderPreOpenFut() {
+        const el = document.getElementById('preOpenFutBar');
+        if (!el) return;
+        const hide = () => { el.classList.add('hidden'); el.innerHTML = ''; };
+        const w = this._preOpenFutWindow();
+        if (!w.on) return hide();
+        let px = null, chg = null, src = '';
+        const li = this._liveIdx && this._liveIdx.txf;
+        if (li && li.p != null && isFinite(+li.p) && +li.p > 0) {
+            px = +li.p; chg = (li.c != null && isFinite(+li.c)) ? +li.c : null; src = '大台近月・即時';
+        }
+        if (px === null) {
+            const y = await this._fetchLiveIndexYahoo('^TXF=F').catch(() => null);
+            if (y && y.price > 0) { px = y.price; chg = y.chgPct; src = '台指期電子盤'; }
+        }
+        if (px === null) return hide();                       // ⛔ 拿不到就整條不顯示(不留空殼)
+        // 紅綠在這裡是**漲跌方向**(台股色),符合燈號鐵則
+        const cls = chg == null ? 'text-gray-200' : chg > 0.05 ? 'text-red-300' : chg < -0.05 ? 'text-green-300' : 'text-gray-200';
+        const arrow = chg == null ? '' : chg > 0.05 ? '🔺' : chg < -0.05 ? '🔻' : '→';
+        const chgTxt = chg == null
+            ? '<span class="text-[10px] text-gray-500">方向待確認</span>'      // V72.0.5:拿不到可信基準就不給方向
+            : `<span class="${cls} font-mono font-bold text-[12px]">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%</span>`;
+        el.classList.remove('hidden');
+        el.innerHTML = `<div class="mx-2 mt-2 mb-1 bg-[#161b22] border-l-4 border-[#8b949e] border-y border-r border-[#30363d] rounded-r px-3 py-2">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-[13px]">🌅</span>
+                <span class="text-[12px] font-black text-gray-100">台指期${w.pre ? '(現貨還沒開盤)' : ''}</span>
+                <span class="${cls} font-mono font-black text-base">${px.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+                ${arrow} ${chgTxt}
+                <span class="ml-auto text-[9px] text-gray-500">${src} ・ ${w.hhmm}</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mt-1 leading-snug">${w.pre
+                ? '期貨 <b>08:45</b> 就開了(現貨 09:00),夜盤 15:00~05:00 已經把隔夜美股反映過一輪 → 這是<b>開盤前唯一看得到的台灣資金定價</b>。'
+                : '現貨已開盤。期貨早 15 分鐘開、晚 15 分鐘收(08:45~13:45)。'}</div>
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">⚠️ 這是<b>期貨自己的漲跌</b>,⛔ 不是現貨開盤預測。<b>本站實測</b>:照打法「隔天開盤買」比「訊號日尾盤買」少賺 54 萬;而「跳空 &gt;1% 就不追」<b>反而倒賠</b>(開高跑最遠的常是那幾檔)→ ⛔ 別拿期貨方向決定要不要追。</div>
+        </div>`;
     },
 
     // 買 buy → 賣 sell,shares 股的「淨」損益(元,已四捨五入到元)
