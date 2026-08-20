@@ -88,6 +88,45 @@ ok('③ 差一天時兩條腿仍要留著(才看得出差在哪一天)',
    M._LAST_BACK_LEGS.get('taifex_fut_date') == '2026-07-31'
    and M._LAST_BACK_LEGS.get('taiex_date') == '2026-07-30', str(M._LAST_BACK_LEGS))
 
+# ── ⑧ 🚨 V73.7.8 期貨天生落後 1 天 → **把現貨對齊到期貨那天**,⛔ 不是直接放棄 ────
+#   `scripts/taifex_probe.py` 實測(2026-08-20 11:05 在雲端跑):
+#     官方 `DailyMarketReportFut` ✅ 通,但回的是 **08-19**(今天 08-20)——
+#     因為每日行情要**收盤後**才更新,盤中跑一定落後 1 天,這是**正常**的。
+#   而現貨那條腿用 `^TWII.json` 的**最後一根**(當天下午就有)→ 兩邊天生對不上
+#   → 舊版守門每次都擋掉 → 實測 `risk_history.json` 36 天裡只有 18 天有值。
+#   ⭐ 正解:`^TWII.json` 有完整歷史 → 查得到期貨那天的收盤,對齊後價差就是真的
+#      (標成「那一天的價差」,`taiex_date` 會跟著變成期貨那天)。
+#   ⛔ 仍然**不可**放寬「兩條腿必須同一天」—— 對齊不到(期貨那天不在歷史裡)還是要回 None。
+def _mk_twii_multi(tmp, rows):
+    p = Path(tmp) / '^TWII.json'
+    p.write_text('[' + ','.join(
+        f'{{"date":"{d}","open":1,"high":1,"low":1,"close":{c},"volume":1}}' for d, c in rows
+    ) + ']', encoding='utf-8')
+    return p
+
+
+# ^TWII 有 07/31 與 08/01(最後一根是 08/01);期貨是 07/31 → 要對齊到 07/31
+_mk_twii_multi(tmp, [('2026/07/31', 40039), ('2026/08/01', 40500)])
+M._LAST_TX_FUT_DATE = None
+M._LAST_BACK_LEGS = {}
+back8, err8 = M.fetch_taifex_backwardation()
+ok('⑧ 🚨 期貨落後 1 天 → 對齊到期貨那天,算得出價差(⛔ 不再整片空白)',
+   back8 == 231.0 and err8 is None, f'{back8=} {err8=}')
+ok('⑧b ⭐ 現貨那條腿要換成**期貨那天**的收盤(40039,⛔ 不是最後一根的 40500)',
+   M._LAST_BACK_LEGS.get('taiex_close') == 40039.0, str(M._LAST_BACK_LEGS))
+ok('⑧c ⭐ 日期要標成期貨那天(價差是「那一天的」,⛔ 不可假裝是今天的)',
+   M._LAST_BACK_LEGS.get('taiex_date') == '2026-07-31'
+   and M._LAST_BACK_LEGS.get('taifex_fut_date') == '2026-07-31', str(M._LAST_BACK_LEGS))
+
+# ⛔ 對齊不到(期貨那天完全不在 ^TWII 歷史裡)→ 仍要誠實回 None
+_mk_twii_multi(tmp, [('2026/08/01', 40500), ('2026/08/04', 40600)])
+M._LAST_TX_FUT_DATE = None
+M._LAST_BACK_LEGS = {}
+back9, err9 = M.fetch_taifex_backwardation()
+ok('⑧d ⛔ 對齊不到時仍不硬算', back9 is None, str(back9))
+ok('⑧e ⭐ 而且錯誤訊息要說「歷史裡沒有那一天」+ 有幾天(⛔ 不可只寫「不同交易日」)',
+   bool(err9) and '沒有' in err9 and '共' in err9, str(err9)[:180])
+
 # ── ④ 端點自我診斷:期交所對未知路徑回「網頁」而不是 404 ───────────────
 class _Resp:
     def __init__(self, text, code=200):

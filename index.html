@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.7.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.7.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.7 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7340,8 +7340,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.7.7',
+    _APP_VERSION: 'V73.7.8',
     _CHANGELOG: [
+        { v: 'V73.7.8', dt: '2026-08-20', t: '📐 順逆價差修好了 —— 探針查出真因不是資料抓不到,是配對方式錯了', d: ['探針在雲端跑完了,答案跟我原本猜的不一樣:官方期貨行情端點**是通的**(2,357 列),它回的日期落後 1 天 —— 而那是**正常**的,因為每日行情要收盤後才更新。','🚨 **真正的 bug 在配對**:現貨那條腿用的是加權指數的「最後一根」(當天下午就有),期貨那條腿天生落後一天 → 兩邊永遠對不上 → 守門每次都擋掉,所以 36 天裡只有 18 天有價差。','⭐ 修法:加權指數本來就有完整歷史 → 直接**查期貨那天的收盤**來配對。價差因此會標成「那一天的價差」而不是今天的。⛔ 沒有放寬守門 —— 對齊不到(期貨那天不在歷史裡)還是誠實留白,因為差一天的價差是假的。','⭐ 探針的**對照組**設計證明有用:匯率那個已知會通的端點通了 → 立刻排除「機器連不到期交所」,不用再去猜端點名字。'] },
         { v: 'V73.7.7', dt: '2026-08-20', t: '🌅 盤前 08:45~09:00 的台指期,採礦端開始跑了 + 查價差的探針', d: ['**A. 補上盤前那 15 分鐘**:採礦排程原本從台北 09:00 才開始(現貨開盤後),所以台指期 08:45 開盤後那段一直是空的。現在加了 **08:45 / 08:50 / 08:55** 三輪。','⛔ **關鍵是不能為了盤前放寬守門**:採礦本來有「抓不到 300 檔股票就整份不產出」的自我保護(那是盤中快照的命脈,壞資料覆蓋掉好資料會直接影響當沖頁)。盤前現貨還沒開,一定過不了那關。→ 盤前改成**只抓期貨、寫到另一個檔**,`live_quotes.json` 一個位元組都不碰。','🚨 前端加了**新鮮度守門**:那個盤前檔會留在伺服器上,如果你 08:35 開 App(當天第一輪還沒跑),會讀到**昨天**的期貨價 → 現在只認「今天而且 30 分鐘內」的,否則自動退到電子盤報價。','**B. 順逆價差為什麼一半是空的**:36 天裡只有 18 天有值,因為官方每日期貨行情的日期落後現貨 2 天,而「期貨與現貨必須同一天」的守門正確地擋掉了(差一天的價差是假的)。已寫好探針丟雲端後台查真因 —— ⛔ 在查清楚之前**不會**放寬那個守門。','⭐ 探針有放**對照組**(兩個已知會通的端點):它們也失敗就代表是機器連不到,不是端點改名 —— 沒有對照組的話會一輪一輪猜欄位名(櫃買指數那次就卡了五輪)。'] },
         { v: 'V73.7.6', dt: '2026-08-20', t: '🌅 自選頁加「盤前台指期」—— 你說的對,但用途要講清楚', d: ['✅ 你說「期貨比現股早開盤」**完全正確**:台指期 **08:45** 開盤(現貨 09:00)、收 13:45;更重要的是**夜盤 15:00~次日 05:00**,早就把隔夜美股反映過一輪。','📍 自選頁最上方新增一條**台指期領先條**,只在**台北 08:30~09:20** 出現(其他時間大盤頁本來就有,不重複佔版面)。盤前拿不到採礦快照時會自動退到電子盤報價,兩層都沒有就整條不顯示。','⚠️ **但用途要講清楚**:它是「隔夜美股 + 盤後消息,台灣資金怎麼定價」的風向 —— ⛔ **不是拿來決定要不要追**。本站實測過:照打法「隔天開盤買」比「訊號日尾盤買」**少賺 54 萬**;而「跳空 >1% 就不追」**反而倒賠**(開高跑最遠的常是那幾檔)。','⛔ 刻意**不顯示「期貨−現貨」的價差點數**:基差常態就有幾百到上千點,而本站的順逆價差歷史只有 18 筆,沒有「平常是多少」的基準 → 顯示它只會被誤讀成「大漲」。','🔎 順便查到兩件事會另外處理:① **順逆價差有一半的日子是空的**(36 天裡只有 18 天有值),因為官方每日期貨行情的日期落後現貨 ② **盤前 08:45~09:00 那 15 分鐘,採礦端完全沒在跑**(排程從 09:00 才開始)。'] },
         { v: 'V73.7.5', dt: '2026-08-19', t: '💰 自訂選股加估值篩選 —— 但先講:你要的「本益比由低到高」實測是輸的', d: ['你要的都做了:**本益比低→高排序**、**股價淨值比低→高**、**比同業便宜**(相對同業本益比)、**PEG 低→高**,加 10 個估值條件。','🚨 **但我先回測了你的前提,結果跟直覺相反而且是單調的**:把全市場依本益比分五等分,之後 20 日比大盤 —— 最便宜的 20% **−0.69%**、−0.44%、−0.06%、+0.38%、最貴的 20% **+0.79%**。**越便宜反而越差。**','⛔ 更要小心「排序取最前面」:實測本益比 <5 那批,前半段 +4.29%、後半段 −4.49% = **純雜訊**。實跑全市場最便宜的 5 檔本益比是 1.84 / 2.45 / 2.49 / 2.58 / 2.92 —— 那種數字幾乎都是**賣土地、賣股票的一次性收入**,不是真便宜。','⭐ **真正有用的是「價值陷阱」**:低本益比 **配營收衰退** → 之後 20 日比大盤 **−1.89%**、勝率 29.7%(平常 32.9%),前後半段一致;配**營收成長**則是 +0.18%、勝率 34.6%。→ 低本益比本身沒用,**要搭配營收方向看**。所以我做了「⛔ 價值陷阱」和「⭐ 低本益比+營收成長」兩個條件。','⚠️ 你說的「同族群相比」我也做了,但誠實告訴你:實測**沒有邊際**(比同業便宜 4 成以上只有 +0.12%,而且前後半段不同向)。用估值排序或勾估值條件時,上面會自動出現這組實測數字。','➕ 順便補了你沒想到的:**配息率 > 100%**(配得比賺的多 = 吃老本,殖利率再高也不可信,全市場有 1,002 檔中招)、**殖利率 >4% 且配息率 <80%**(配得起的高息股,只有 26 檔)。'] },

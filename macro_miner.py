@@ -2333,16 +2333,25 @@ def fetch_taifex_backwardation():
         #      落後的現貨配上落後的期貨,逆價差算出來「數字自洽但整組是昨天的」,
         #      前端又把它跟當天的指數並排 → 使用者讀到不存在的價差。yfinance 留作備援。
         spot, spot_date = None, None
+        twii_by_date = {}   # ⭐ V73.7.8 日期 → 收盤;期貨天生落後 1 天,要拿**同一天**的現貨來配
         try:
             _tf = DATA_DIR / '^TWII.json'
             if _tf.exists():
                 _rows = json.loads(_tf.read_text(encoding='utf-8'))
                 if isinstance(_rows, list) and _rows:
+                    for _r in _rows:
+                        _d = str(_r.get('date') or '').replace('/', '-')[:10]
+                        try:
+                            _v = float(_r.get('close') or 0)
+                        except Exception:
+                            _v = 0
+                        if len(_d) == 10 and _v > 0:
+                            twii_by_date[_d] = _v
                     _c = float(_rows[-1].get('close') or 0)
                     if _c > 0:
                         spot = _c
                         spot_date = str(_rows[-1].get('date') or '').replace('/', '-')[:10]
-                        print(f"  [台指逆價差] 現貨用本地證交所收盤 {spot:.0f}({spot_date})")
+                        print(f"  [台指逆價差] 現貨用本地證交所收盤 {spot:.0f}({spot_date}),歷史 {len(twii_by_date)} 天")
         except Exception as e:
             print(f"  [台指逆價差] 本地 ^TWII.json 讀取失敗({str(e)[:50]}),改用 yfinance")
         if spot is None:
@@ -2401,12 +2410,26 @@ def fetch_taifex_backwardation():
         #   (空單大但正價差=避險;空單大又深逆價差=真的在殺),算錯會把避險誤判成看空。
         #   對不上日期就誠實回 None,讓前端顯「整備中」——不硬給一個看起來合理的假數字。
         fut_date = _LAST_TX_FUT_DATE
+        # 🚨🚨 V73.7.8 真因不是 API 壞掉,是**配對方式錯了**(`scripts/taifex_probe.py` 實測):
+        #   官方每日期貨行情要**收盤後**才更新 → 盤中跑一定落後 1 天(實測 08-20 11:05 拿到 08-19,正常);
+        #   而現貨那條腿用的是 `^TWII.json` 的**最後一根**(當天下午就有)。
+        #   → 兩邊天生對不上 → V71.4.9 的守門每次都擋掉 → 實測 36 天裡只有 18 天有值。
+        # ⛔ **正解不是放寬守門**(差一天的價差是假的,V71.4.9 記過:
+        #    期貨 41,613 配現貨 40,039 = +1,574 點的假正價差)。
+        # ⭐ 正解是**把現貨對齊到期貨那一天** —— `^TWII.json` 有完整歷史,查得到那天的收盤。
+        #    價差因此標成「那一天的價差」而不是「今天的」(`taiex_date` 會跟著變)。
+        if fut_date and spot_date and fut_date != spot_date and fut_date in twii_by_date:
+            spot = twii_by_date[fut_date]
+            spot_date = fut_date
+            print(f"  [台指逆價差] 🔄 現貨對齊到期貨那天 {fut_date}:收盤 {spot:.0f}")
         globals()['_LAST_BACK_LEGS'] = {
             'taifex_near': round(float(fut_close), 2), 'taifex_fut_date': fut_date,
             'taiex_close': round(float(spot), 2),      'taiex_date': spot_date,
         }
         if spot_date and fut_date and spot_date != fut_date:
-            msg = f"期貨({fut_date})與現貨({spot_date})不同交易日,不計價差"
+            # 對齊失敗(期貨那天不在 ^TWII 歷史裡)→ 仍然誠實回 None,⛔ 不硬算
+            msg = (f"期貨({fut_date})與現貨({spot_date})不同交易日,而且 ^TWII 歷史裡沒有 {fut_date}"
+                   f"(共 {len(twii_by_date)} 天),不計價差")
             print(f"  [台指逆價差] ⏭️ {msg}")
             return None, msg
         back = round(fut_close - spot, 0)
