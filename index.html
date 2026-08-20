@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.7.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.7.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.4 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.5 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7335,8 +7335,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.7.4',
+    _APP_VERSION: 'V73.7.5',
     _CHANGELOG: [
+        { v: 'V73.7.5', dt: '2026-08-19', t: '💰 自訂選股加估值篩選 —— 但先講:你要的「本益比由低到高」實測是輸的', d: ['你要的都做了:**本益比低→高排序**、**股價淨值比低→高**、**比同業便宜**(相對同業本益比)、**PEG 低→高**,加 10 個估值條件。','🚨 **但我先回測了你的前提,結果跟直覺相反而且是單調的**:把全市場依本益比分五等分,之後 20 日比大盤 —— 最便宜的 20% **−0.69%**、−0.44%、−0.06%、+0.38%、最貴的 20% **+0.79%**。**越便宜反而越差。**','⛔ 更要小心「排序取最前面」:實測本益比 <5 那批,前半段 +4.29%、後半段 −4.49% = **純雜訊**。實跑全市場最便宜的 5 檔本益比是 1.84 / 2.45 / 2.49 / 2.58 / 2.92 —— 那種數字幾乎都是**賣土地、賣股票的一次性收入**,不是真便宜。','⭐ **真正有用的是「價值陷阱」**:低本益比 **配營收衰退** → 之後 20 日比大盤 **−1.89%**、勝率 29.7%(平常 32.9%),前後半段一致;配**營收成長**則是 +0.18%、勝率 34.6%。→ 低本益比本身沒用,**要搭配營收方向看**。所以我做了「⛔ 價值陷阱」和「⭐ 低本益比+營收成長」兩個條件。','⚠️ 你說的「同族群相比」我也做了,但誠實告訴你:實測**沒有邊際**(比同業便宜 4 成以上只有 +0.12%,而且前後半段不同向)。用估值排序或勾估值條件時,上面會自動出現這組實測數字。','➕ 順便補了你沒想到的:**配息率 > 100%**(配得比賺的多 = 吃老本,殖利率再高也不可信,全市場有 1,002 檔中招)、**殖利率 >4% 且配息率 <80%**(配得起的高息股,只有 26 檔)。'] },
         { v: 'V73.7.4', dt: '2026-08-18', t: '🏭 K線頁新增「這波是誰在漲」:缺貨 / 供貨 / 做夢行情,全部回測過', d: ['你說的「缺貨時、供貨時機、做夢行情」我全部回測了。⛔ 但**不是用財報** —— 財報資料只有 8 季,YoY 只算得出 4 個點,拿那個定義「缺貨週期」等於憑空編門檻。','⭐ 改用**盤面看得到的樣子**:漲價缺貨 = 整條族群一起漲(不會只有一家)・供貨產能開出 = 整條族群一起跌・做夢行情 = 族群沒動只有它自己在漲。全市場 2 年、**68,082 個事件**實測七種狀態。','🚨 **七種裡只有「做夢行情(獨走)」扣完成本還有剩**:之後 20 日平均比大盤多 0.89%(拿掉最好的那一年仍有 0.67%,扣成本後 0.23%)。⚠️ 但它是**賠率型不是勝率型** —— 中位數跟平常一樣,賺的錢全來自少數大賺(前 10% 賺 +15.2%,但後 10% 也賠 −15.8%)→ **不能重壓**。','❌ **其餘六種扣完成本都是負的**,包括「族群齊漲跟上」「補漲候選」「族群剛由弱轉強」。特別提醒兩個跟直覺相反的:①「補漲候選」實測沒有邊際 ②「族群在跌它還撐著」不是抗跌,實測反而**略差**(多半是還沒補跌)。','📍 在 **K線頁**自動顯示(那頁刻意只解讀、不給買賣價位,正好符合「這不能當進出場訊號」)。⚠️ 上櫃股會誠實說「判斷不了」—— 證交所的官方產業分類只涵蓋上市。'] },
         { v: 'V73.7.3', dt: '2026-08-18', t: '📅 財經行事曆全測完:方向零個能用,但「顛不顛」是真的', d: ['你問「各種財經行事曆的漲跌機率、漲多少跌多少」→ 我拿 **2,055 檔 × 757 個交易日 × 155 萬筆**實測了 **37 種**日子(星期幾、月初月底、季底、期貨結算、長假前後、封關開紅盤、月營收公布、財報截止、每個月份)。','❌ **方向:一個能用的都沒有。** 唯一通過所有穩健檢定的「結算日後一天」(比平常好 0.334%),扣掉買賣來回成本 0.44% 之後是 **−0.106%** —— 白做;而且拿沒用過的舊資料再測一次,**方向還相反**。','⭐ **但「哪種日子比較顛」是真的**,而且只有一個原因:**休市越久,開市第一天越顛**(隔天 1.00 倍 → 週末後 **1.09 倍** → 長假後 **1.43 倍**),另外月初 1-10 日(月營收密集公布)**1.13 倍**。','📍 命中的日子會在**當沖頁大字結論下面**自動出現一行提醒(沒命中完全不顯示)。⛔ 它**只講顛不顛、不講多空** —— 波動大不等於會漲也不等於會跌,意思是「停損容易被掃到,部位放小一點」。','🚨 順便回答「個股是不是各有各的日子」:**算得出來,但學不到**。例如 4587 星期五只有 23% 上漲、平均 −1.12%,看起來很嚇人 —— 但把日期整組平移到日曆別的位置,一樣會跑出這種數字,代表那是巧合不是特性。'] },
         { v: 'V73.7.2', dt: '2026-08-18', t: '📖 當沖注意事項整份重寫:只留「算術事實」與「實測過的」', d: ['你說「簡化精簡、說明清楚明瞭、用最直接的方式告訴我怎麼操作」→ 那份說明整個重寫成 **5 段編號**,每段一個問題。','🗑️ **刪掉一半** —— 舊版裡「量能≥80%」「跌破 −1.5% 立刻砍」「賺 2~3% 先落袋一半」「三條件對齊才進」這些具體數字**沒有任何實證來源**(逐字稿也是隨口講的),留著會讓你以為那是驗證過的規則。停損改成「價位你自己定,重點是**到價就執行、不凹**」。','⭐ **新增一整段「這些坊間招式我實測過:不成立」** —— 連次量、開盤跳空 2~4%、開盤區間突破(ORB)、順大盤勝率 80%,每一條都附上實測數字。寫出來不是叫你別學,是省掉你去別處學了再回來問。','⭐ 保留的只有兩種:**算術事實**(成本關、13:25 平倉)與**本站實測過的**(一律附數字與樣本數)。','📄 你這次傳的 55 份逐字稿,其中 **53 份跟上次那批是同一份檔案**;新的 2 份是同一場直播的字幕版與影片版,內容是當天盤勢評論、沒有可以驗證的規則 —— 所以這次沒有新東西可以加。'] },
@@ -38336,6 +38337,21 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         { id: 'yldok',   g: 'fi', s: '營利', t: '殖利率 3~8%(排除異常高)', fn: (r, s, a) => a._scrBt(r, 'yld', 3, 8) },
         { id: 'peok',    g: 'fi', s: '營利', t: '本益比 5~15(排除虧損股)',  fn: (r, s, a) => a._scrBt(r, 'pe', 5, 15) },
         { id: 'gmup',    g: 'fi', s: '營利', t: '毛利率 > 20% 且營收成長',  fn: (r, s, a) => (a._scrGt(r, 'gm', 20) && a._scrGt(r, 'yoy', 0)), tone: 'b' },
+        // ── 💰 V73.7.5 估值比較(⭐ 每條後面括號裡是**實測**結果,⛔ 不是我猜的)──
+        // ⚠️ 這些 fn 一律走 `_scrRelPe` / `_scrPeLow` 等 null-safe 函式,
+        //    ⛔ 別在這裡寫裸比較(`a._scrV(r,'pe') < 15` 那種)—— null < 15 在 JS 是 true(陷阱 V73.5.1)
+        { id: 'relcheap',  g: 'fi', s: '估值', t: '比同業便宜(相對 PE < 0.85)',        fn: (r, s, a) => { const x = a._scrRelPe(s); return x !== null && x < 0.85; } },
+        { id: 'relcheap4', g: 'fi', s: '估值', t: '比同業便宜 4 成以上(< 0.6)',        fn: (r, s, a) => { const x = a._scrRelPe(s); return x !== null && x < 0.6; } },
+        { id: 'relrich',   g: 'fi', s: '估值', t: '比同業貴(相對 PE > 1.15)',          fn: (r, s, a) => { const x = a._scrRelPe(s); return x !== null && x > 1.15; } },
+        { id: 'relpbch',   g: 'fi', s: '估值', t: '股價淨值比比同業便宜(< 0.85)',      fn: (r, s, a) => { const x = a._scrRelPb(s); return x !== null && x < 0.85; } },
+        { id: 'pelow30',   g: 'fi', s: '估值', t: '本益比在全市場最低 30%(不寫死門檻)', fn: (r, s, a) => a._scrPeLow(s) },
+        // 🚨 全表唯一「前後半段一致 + 差距夠大」的:低 PE 配營收衰退 = 價值陷阱
+        { id: 'valtrap',   g: 'fi', s: '估值', t: '⛔ 價值陷阱:低本益比 + 營收衰退(實測 −1.89pp)', fn: (r, s, a) => (a._scrPeLow(s) && a._scrLt(r, 'yoy', 0)), tone: 'e' },
+        { id: 'peval',     g: 'fi', s: '估值', t: '⭐ 低本益比 + 營收成長(避開價值陷阱)', fn: (r, s, a) => (a._scrPeLow(s) && a._scrGt(r, 'yoy', 0)), tone: 'b' },
+        { id: 'peg1',      g: 'fi', s: '估值', t: 'PEG < 1(本益比 ÷ 營收成長率)',      fn: (r, s, a) => { const x = a._scrPeg(s); return x !== null && x < 1; } },
+        // ⚠️ 配息率 > 100% = 配的比賺的多(吃老本)→ 殖利率再高也不可持續
+        { id: 'payoutbad', g: 'fi', s: '估值', t: '⛔ 配息率 > 100%(配得比賺的多)',    fn: (r, s, a) => a._scrGt(r, 'payout', 100), tone: 'e' },
+        { id: 'yldsafe',   g: 'fi', s: '估值', t: '⭐ 殖利率 > 4% 且配息率 < 80%(配得起)', fn: (r, s, a) => (a._scrGt(r, 'yld', 4) && a._scrLt(r, 'payout', 80)), tone: 'b' },
     ],
 
     _scrV(row, key) {
@@ -38354,6 +38370,83 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _scrBt(r, k, lo, hi) { const x = this._scrV(r, k); return x !== null && x >= lo && x <= hi; },
     // 欄位 vs 欄位(如「10MA 乖離 > 20MA 乖離」= 短均在長均之上)—— 任一邊沒資料就 false
     _scrCmp(r, ka, kb) { const a = this._scrV(r, ka), b = this._scrV(r, kb); return a !== null && b !== null && a > b; },
+
+    // ═══ 💰 V73.7.5 估值比較 —— 「同業比價」與「價值陷阱」 ═══════════════════
+    //
+    // 使用者:「幫我做一個本益比,由低到高的篩選器,其中還要包含同族群相比有沒有比較便宜
+    //          還有財報等等我沒想到的比拚,看一下我有沒有說錯,還有推薦」
+    //
+    // 🚨🚨 **實測結果跟「PE 低 = 便宜 = 會漲」相反,而且是單調的**
+    //    (`scripts/pe_probe.mjs`:用 qeps 重建歷史 TTM EPS → 歷史 PE,1,629 檔 × 12 個月 × 13,952 事件,
+    //     報酬扣同期加權指數,同檔 20 日去重):
+    //      PE 最低 20%  −0.69pp ・ 20-40% −0.44 ・ 40-60% −0.06 ・ 60-80% +0.38 ・ **最高 20% +0.79pp**
+    //    → ⛔ **「由低到高排序取前面」實測是輸的**。而且 PE<5 那批前半 +4.29 / 後半 −4.49(純雜訊)
+    //      —— 排序取最前面必然挑到極不穩定的一批(同 V72.9.2「排點估計值必定挑到僥倖股」)。
+    //
+    // ⭐ **真正有邊際的是「價值陷阱」偵測**(全表唯一前後半段一致且差距夠大的):
+    //      低 PE × 營收**衰退** → **−1.89pp**、勝率 29.7%(對照 32.9%),前半 −2.16 / 後半 −1.65
+    //      低 PE × 營收**成長** → +0.18pp、勝率 34.6%
+    //    → 低 PE 本身沒用,**低 PE 配營收衰退才是地雷**。
+    //
+    // ⚠️ 「比同業便宜」也**沒有邊際**(比同業便宜 4 成以上 +0.12pp,而且前後半段不同向)。
+    //    ⛔ 但照使用者要求還是做出來 —— 資料照顯示,只是把實測數字寫在旁邊(同 `_SIGNAL_EDGE` 對 C 級的處置)。
+    //
+    // ⚠️ 三個限制:① 窗口只有 12 個月且整段偏多頭 ② EPS 含一次性業外收益(低 PE 那批有假便宜)
+    //    ③ `industry_pe.json` 的 `is_cyclical` **目前全部是空的** → 「循環股低 PE 陷阱」這次**測不了**。
+    _SCR_PE_EDGE: { q0: -0.69, q1: -0.44, q2: -0.06, q3: 0.38, q4: 0.79, trap: -1.89, trapWr: 29.7,
+                    grow: 0.18, growWr: 34.6, baseWr: 32.9, rel4: 0.12, n: 13952, months: 12 },
+    // 同業中位 PE / PB(⭐ 從**這一頁自己的資料**算,母體 = 有官方產業別的上市股)
+    // ⚠️ 個股頁用的是 `industry_pe.json`,母體略有不同(實測最大差是半導體 31.8 vs 29.1)
+    //    → 這裡顯示時一律標「同業 N 檔」把母體講清楚,⛔ 不可只寫「產業中位 PE」讓兩邊看起來是同一個數字。
+    _scrIndVal() {
+        const D = this._scrData;
+        if (!D || !D.rows || !D.ind) return null;
+        if (this._scrIVCache && this._scrIVCache.src === D) return this._scrIVCache;
+        const gPe = new Map(), gPb = new Map(), allPe = [];
+        for (const s of Object.keys(D.rows)) {
+            const k = D.ind[s]; if (!k) continue;
+            const pe = this._scrV(D.rows[s], 'pe'), pb = this._scrV(D.rows[s], 'pb');
+            if (pe !== null && pe > 0 && pe < 300) { allPe.push(pe); if (!gPe.has(k)) gPe.set(k, []); gPe.get(k).push(pe); }
+            if (pb !== null && pb > 0 && pb < 50) { if (!gPb.has(k)) gPb.set(k, []); gPb.get(k).push(pb); }
+        }
+        if (allPe.length < 100) return null;
+        const md = a => { const b = a.slice().sort((x, y) => x - y); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+        const pe = new Map(), pb = new Map(), cnt = new Map();
+        for (const [k, a] of gPe) if (a.length >= 5) { pe.set(k, md(a)); cnt.set(k, a.length); }
+        for (const [k, a] of gPb) if (a.length >= 5) pb.set(k, md(a));
+        const A = allPe.slice().sort((x, y) => x - y);
+        return (this._scrIVCache = { src: D, pe, pb, cnt,
+            p20: A[Math.floor(A.length * 0.2)], p30: A[Math.floor(A.length * 0.3)], p80: A[Math.floor(A.length * 0.8)] });
+    },
+    // 相對同業 PE(<1 = 比同業便宜)。⛔ 一律 null-safe:算不出來回 null,⛔ 不可回 0
+    //    (回 0 的話「沒有 PE 的股票」會排在「最便宜」的最前面 —— 那正是 V73.5.1 踩過的 null 陷阱)
+    _scrRelPe(sym) {
+        const D = this._scrData, S = this._scrIndVal();
+        if (!D || !S || !D.rows[sym]) return null;
+        const k = (D.ind || {})[sym]; if (!k) return null;
+        const im = S.pe.get(k), v = this._scrV(D.rows[sym], 'pe');
+        return (im > 0 && v !== null && v > 0 && v < 300) ? v / im : null;
+    },
+    _scrRelPb(sym) {
+        const D = this._scrData, S = this._scrIndVal();
+        if (!D || !S || !D.rows[sym]) return null;
+        const k = (D.ind || {})[sym]; if (!k) return null;
+        const im = S.pb.get(k), v = this._scrV(D.rows[sym], 'pb');
+        return (im > 0 && v !== null && v > 0 && v < 50) ? v / im : null;
+    },
+    // PEG = 本益比 ÷ 營收成長率。⚠️ 教科書用「盈餘成長率」,我只有**營收** YoY → 名字要誠實
+    _scrPeg(sym) {
+        const D = this._scrData; if (!D || !D.rows[sym]) return null;
+        const pe = this._scrV(D.rows[sym], 'pe'), yoy = this._scrV(D.rows[sym], 'yoy');
+        return (pe !== null && pe > 0 && pe < 300 && yoy !== null && yoy > 0) ? pe / yoy : null;
+    },
+    // 「便宜」判定:PE 在全市場最低 30%(⛔ 不寫死「PE<15」—— 跨產業一定判反)
+    _scrPeLow(sym) {
+        const S = this._scrIndVal(), D = this._scrData;
+        if (!S || !D || !D.rows[sym]) return false;
+        const v = this._scrV(D.rows[sym], 'pe');
+        return v !== null && v > 0 && v <= S.p30;
+    },
 
     // ⭐⭐ 全 App **唯一**一處條件判斷 —— null 規則只寫這一次(⛔ 別在別處再寫一份)
     _scrPass(cond, row, sym) {
@@ -38419,6 +38512,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         { k: 'sb3',   n: '融券增加',   d: -1, f: 'sb3' },
         { k: 'pos252', n: '位階高',    d: -1 },
         { k: 'yld',   n: '殖利率',     d: -1 },
+        // 💰 V73.7.5 估值排序 —— ⚠️ `vfn` 是**衍生值**(不在 screener 欄位裡),排序時要走它
+        //    ⛔ null 一律排最後(既有邏輯已處理)—— 不然「沒有 PE 的股票」會佔滿「最便宜」的前段班
+        { k: 'pe_a',    n: '本益比低→高', d: 1, f: 'pe' },
+        { k: 'pb_a',    n: '股價淨值比低→高', d: 1, f: 'pb' },
+        { k: 'relpe_a', n: '比同業便宜',  d: 1, vfn: (s, a) => a._scrRelPe(s) },
+        { k: 'peg_a',   n: 'PEG 低→高',  d: 1, vfn: (s, a) => a._scrPeg(s) },
     ],
 
     async _renderCustomScreener() {
@@ -38622,7 +38721,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const so = this._SCR_SORTS.find(x => x.k === this._scrSort) || this._SCR_SORTS[0];
         const sk = so.f || so.k;
         hits.sort((a, b) => {
-            const xa = this._scrV(d.rows[a], sk), xb = this._scrV(d.rows[b], sk);
+            // ⚠️ 衍生值(相對同業 PE / PEG)不在 screener 欄位裡 → 走 vfn
+            const xa = so.vfn ? so.vfn(a, this) : this._scrV(d.rows[a], sk),
+                  xb = so.vfn ? so.vfn(b, this) : this._scrV(d.rows[b], sk);
             if (xa === null && xb === null) return 0;
             if (xa === null) return 1;
             if (xb === null) return -1;
@@ -38659,7 +38760,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }).join('');
 
         const more = hits.length > CAP ? `<div class="text-[10px] text-gray-500 text-center py-2">還有 ${(hits.length - CAP).toLocaleString()} 檔沒顯示 —— 再加一兩個條件把清單縮小</div>` : '';
-        out.innerHTML = hits.length ? `
+        const valNote = this._scrValNote(conds);
+        out.innerHTML = valNote + (hits.length ? `
           <div class="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
             <div class="flex items-center justify-between px-2.5 py-2 border-b border-[#30363d]">
               <div class="text-[12px] font-black text-gray-100">選出 <span class="text-blue-300 text-base">${hits.length.toLocaleString()}</span> 檔
@@ -38673,7 +38775,41 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
           <div class="bg-[#161b22] border-l-4 border-gray-500 border-y border-r border-[#30363d] rounded-r p-3">
             <div class="text-[11px] font-bold text-gray-300 mb-1">➖ 全市場沒有一檔同時符合這 ${conds.length} 個條件</div>
             <div class="text-[10px] text-gray-400 leading-relaxed">這不一定是壞事 —— 條件越嚴,本來就越可能一檔都沒有。
-            拿掉一兩個條件再試;⚠️ 也可能是勾到了「只有少數股票才有資料」的條件(那種按鈕下面會標黃字)。</div></div>`;
+            拿掉一兩個條件再試;⚠️ 也可能是勾到了「只有少數股票才有資料」的條件(那種按鈕下面會標黃字)。</div></div>`);
+    },
+    // 💰 V73.7.5 估值實測提醒 —— ⭐ **條件觸發**:只有用估值排序或勾了估值條件才出現(⛔ 平常完全不顯示)
+    //    ⚠️ 這條的存在理由:使用者的直覺是「本益比由低到高挑最前面」,而實測**方向剛好相反**。
+    //    ⛔ 不寫的話,這個篩選器等於在幫使用者做一件實測會輸的事。
+    _scrValNote(conds) {
+        const E = this._SCR_PE_EDGE;
+        const valSort = ['pe_a', 'pb_a', 'relpe_a', 'peg_a'].includes(this._scrSort);
+        const valIds = ['relcheap', 'relcheap4', 'relrich', 'relpbch', 'pelow30', 'valtrap', 'peval', 'peg1', 'payoutbad', 'yldsafe',
+                        'pe15', 'pe20', 'pehi', 'pb1', 'pb15', 'peok'];
+        const picked = (conds || []).filter(c => valIds.includes(c.id));
+        if (!valSort && !picked.length) return '';
+        const S = this._scrIndVal();
+        const trap = picked.some(c => c.id === 'valtrap'), safe = picked.some(c => c.id === 'peval');
+        return `<div class="bg-[#161b22] border-l-4 border-[#8b949e] border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
+            <div class="text-[11px] font-bold text-gray-200 mb-1">💰 用估值挑股之前,先看這組實測數字</div>
+            <div class="text-[10px] text-gray-300 leading-relaxed">
+              🚨 <b>「本益比由低到高」實測是<u>輸</u>的,而且單調</b>:把全市場依本益比分成五等分,
+              之後 20 日比大盤 —— 最便宜的 20% <b class="font-mono">${E.q0}pp</b>、
+              ${E.q1}pp、${E.q2}pp、+${E.q3}pp、<b class="font-mono">最貴的 20% +${E.q4}pp</b>。
+              <b>越便宜反而越差。</b><br>
+              ⛔ 而且 <b>PE&lt;5</b> 那批前半段 +4.29pp、後半段 −4.49pp = <b>純雜訊</b> ——
+              「排序取最前面」必然挑到最不穩定的一批。<br>
+              ⭐ <b>真正有用的是「價值陷阱」</b>:低本益比 <b>配營收衰退</b> → <b class="font-mono">${E.trap}pp</b>、
+              勝率 ${E.trapWr}%(平常 ${E.baseWr}%),前後半段一致;配<b>營收成長</b>則是 +${E.grow}pp、勝率 ${E.growWr}%。
+              <b>低本益比本身沒用,搭配營收方向才有意義。</b><br>
+              ⚠️ 「比同業便宜」也<b>沒有邊際</b>(便宜 4 成以上 +${E.rel4}pp,而且前後半段不同向)——
+              你要的功能我做出來了,但數字誠實告訴你它沒被驗證出優勢。
+            </div>
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">📊 用季報 EPS 重建歷史本益比回測(1,629 檔・${E.months} 個月・${E.n.toLocaleString()} 個事件・已扣同期大盤)。
+              ⚠️ 窗口整段偏多頭 ⛔ 不可外推到空頭;每股盈餘含<b>一次性業外收益</b>(賣土地/賣股票)→ 最便宜那批有<b>假便宜</b>。
+              ${S ? `同業中位本益比是拿<b>這一頁有官方產業別的上市股</b>(每個產業至少 5 檔)自己算的,個股頁用的是另一份採礦檔,母體略有不同。` : ''}</div>
+            ${trap ? `<div class="text-[10px] text-orange-300 mt-1 leading-snug">⛔ 你勾的是<b>價值陷阱</b> —— 這張清單是<b>要避開的</b>,不是拿來買的。</div>` : ''}
+            ${safe ? `<div class="text-[10px] text-gray-300 mt-1 leading-snug">⭐ 你勾的是「低本益比 + 營收成長」—— 實測 +${E.grow}pp、勝率 ${E.growWr}%,比單看便宜好,但<b>扣掉來回成本 0.44% 後仍是負的</b>,⛔ 別當成穩賺。</div>` : ''}
+        </div>`;
     },
     _SCR_LBL: {
         c: '收', chg: '漲跌', chg5: '5日', chg20: '20日', chg60: '60日', amt: '成交(億)', vr: '量比',
