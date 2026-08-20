@@ -11,9 +11,21 @@ on:
     - cron: '3,13,23,33,43,53 1-4 * * 1-5'   # UTC 01~04 每 10 分(台北 09:00~12:55),錯開 live_snapshot 的整 5 分
     - cron: '3,13,23 5 * * 1-5'              # UTC 05:03~05:23(台北 13:03~13:23 收盤前)
 
-# 與 deploy_pages / daily_miner / live_snapshot / stock_futures 共用 gh-pages-push group,避免同時 push 打架
+# 🚨 V73.7.9 從共用的 `gh-pages-push` 搬出來,改用自己的 group。
+#    真因:GitHub 的 concurrency **每個 group 只留一個 pending run** —— 後面來的會把前面
+#    還在排隊的那個直接取消掉。盤中 live_snapshot(每 5 分)+ tick_flow(每 10 分)
+#    合計約 82 個事件全擠進同一個 group,只要機器排隊超過幾分鐘就整串互相擠掉
+#    → 實測 `tick_flow.json` 停在 08-07、`live_quotes.json` 根本沒產出過,而且**全綠零錯誤訊息**。
+# 🚨🚨 這支**刻意跟 live_snapshot 不一樣**,維持 `cancel-in-progress: false`:
+#    ticks 比 snapshot 重(timeout 12 分),而 cron 是每 **10** 分鐘一發
+#    → 若設 true,跑超過 10 分鐘的那一輪會被下一輪砍掉,**永遠跑不完**。
+#    live_snapshot 只跑 84 秒 ≪ 5 分鐘,才可以安全用 true。
+#    ⭐ 通用:`cancel-in-progress: true` 只有在「執行時間 ≪ 觸發間隔」時才安全。
+# ⚠️ 代價:可能與 deploy_pages / daily_miner 同時 push gh-pages → 靠下面既有的
+#    「5 次 retry + fetch/pull --rebase」吸收(那個迴圈本來就是為此而寫)。
+#    ⛔ 別為了「避免打架」把它搬回共用 group —— 那正是它 13 天沒產出的原因。
 concurrency:
-  group: gh-pages-push
+  group: gh-pages-intraday-tick
   cancel-in-progress: false
 
 permissions:

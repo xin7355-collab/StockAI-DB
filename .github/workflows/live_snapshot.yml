@@ -16,10 +16,21 @@ on:
     - cron: '*/5 1-4 * * 1-5'      # UTC 01:00~04:55 每 5 分(台北 09:00~12:55)
     - cron: '0,5,10,15,20,25,30 5 * * 1-5'   # UTC 05:00~05:30(台北 13:00~13:30 收盤)
 
-# 與 deploy_pages / daily_miner / stock_futures 共用 gh-pages-push group,避免同時 push 打架
+# 🚨 V73.7.9 從共用的 `gh-pages-push` 搬出來,改用自己的 group。
+#    真因:GitHub 的 concurrency **每個 group 只留一個 pending run** —— 後面來的會把前面
+#    還在排隊的那個直接取消掉。這支每 5 分鐘一發、tick_flow 每 10 分鐘一發,
+#    再加上 deploy_pages / daily_miner deploy 也在同一個 group → 盤中約 82 個事件擠一個位子,
+#    只要機器排隊超過幾分鐘就整串互相擠掉。
+#    實測(2026-08-20):`data/live_quotes.json` **從來沒出現在 gh-pages 上過**,
+#    手動觸發同一份程式碼卻 84 秒跑完、2,330 檔 + 台指期全對 → 程式沒問題,是排程被擠掉。
+#    ⛔ 而且**全綠、零錯誤訊息**(陷阱 #9),所以撐了很久都沒人發現。
+# ⭐ `cancel-in-progress: true` 是刻意的:快照要的是「最新」,舊的還在跑就該砍掉。
+# ⚠️ 代價:可能與 deploy_pages / daily_miner 同時 push gh-pages → 靠下面既有的
+#    「5 次 retry + fetch/pull --rebase」吸收(那個迴圈本來就是為此而寫)。
+#    ⛔ 別為了「避免打架」把它搬回共用 group —— 那正是它產不出東西的原因。
 concurrency:
-  group: gh-pages-push
-  cancel-in-progress: false
+  group: gh-pages-intraday-quotes
+  cancel-in-progress: true
 
 permissions:
   contents: write

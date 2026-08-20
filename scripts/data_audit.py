@@ -291,6 +291,56 @@ def audit(ref):
             add('⚠️', 'B', f'data/{f} 已過期 {age_h:.0f} 小時(預期 ≤{limit}h,更新於 {ts:%m/%d %H:%M})')
     print(f'   完成,問題 {sum(1 for p in problems if p[1] == "B")} 件')
 
+    # ── B2. 盤中檔:相對「全站最新資料日」的落後 ─────────────────────
+    # 🚨 V73.7.9 補上的盲點(2026-08-20 抓到,而且它已經瞎了 13 天):
+    #    INTRADAY_ONLY 這幾個檔在 CADENCE_H 一律標 None → **B 類整個 continue 跳過**,
+    #    A 類的 MISSING 也被無條件原諒 → `tick_flow.json` 停在 08-07、
+    #    `live_quotes.json` 根本沒產出過,體檢每次都一片乾淨。
+    #    ⭐ 原本的豁免本身沒錯(收盤/假日本來就會舊),錯在**無條件**。
+    #
+    # ⭐ 判準刻意用「相對」不用絕對天數 —— 這是為了**連假不誤報**:
+    #    比的是「全站最新資料日」(所有檔案裡最新的那個 ts)。連假時所有採礦一起停、
+    #    那個基準也跟著停 → 落後量不會膨脹。寫死「≤4 天」會在春節連假整排誤報,
+    #    而誤報留著就會讓人養成忽略體檢輸出的習慣(同 SUPERSEDED 清單的理由)。
+    print('\n── B2. 盤中檔有沒有默默停產(相對全站最新資料日)──────────')
+    all_ts = [t for t in (parse_ts(j) for j in cache.values() if isinstance(j, dict)) if t]
+    newest = max(all_ts) if all_ts else None
+    LAG_DAYS = 3          # 全站還在更新,盤中檔卻落後這麼多天 = 停產,不是「今天剛好沒開盤」
+    INTRADAY_FRESH_MIN = 60   # 盤中時段內,這幾個檔該有多新(分鐘)
+    if newest is None:
+        print('   ⏳ 全站一個時間戳都讀不到,跳過(這本身要先查 B 類)')
+    else:
+        print(f'   基準:全站最新資料日 = {newest:%m/%d %H:%M}')
+        in_session = (now.weekday() < 5 and (9 * 60 + 5) <= (now.hour * 60 + now.minute) <= (13 * 60 + 30))
+        for f in sorted(INTRADAY_ONLY):
+            j = cache.get(f)
+            if not isinstance(j, dict):
+                # A 類已經印過「盤中才產出」那句 —— 但那句在停產時是**假的安慰**,
+                # 所以這裡要在盤中時段補一句真正的錯誤。
+                if in_session:
+                    add('❌', 'B2', f'data/{f} 現在是盤中卻不在 {ref} —— 該產出的時段沒產出')
+                else:
+                    print(f'   ➖ data/{f} 不在 {ref},且現在非盤中 —— 無法判斷,請盤中再跑一次')
+                continue
+            ts = parse_ts(j)
+            if ts is None:
+                add('⚠️', 'B2', f'data/{f} 找不到更新時間欄位,無法判斷有沒有停產')
+                continue
+            lag_d = (newest.date() - ts.date()).days
+            if lag_d > LAG_DAYS:
+                add('❌', 'B2', f'data/{f} 停在 {ts:%m/%d %H:%M},比全站最新資料日落後 {lag_d} 天'
+                                f' —— 這不是「收盤後本來就舊」,是那支採礦已經沒在跑了')
+            elif in_session:
+                age_m = (now - ts).total_seconds() / 60
+                if age_m > INTRADAY_FRESH_MIN:
+                    add('⚠️', 'B2', f'data/{f} 現在是盤中,但它 {age_m:.0f} 分鐘沒更新了'
+                                    f'(預期 ≤{INTRADAY_FRESH_MIN} 分,更新於 {ts:%m/%d %H:%M})')
+                else:
+                    print(f'   ✅ data/{f} 盤中新鮮({age_m:.0f} 分鐘前)')
+            else:
+                print(f'   ✅ data/{f} 更新於 {ts:%m/%d %H:%M},沒有停產跡象')
+    print(f'   完成,問題 {sum(1 for p in problems if p[1] == "B2")} 件')
+
     print('\n── C. 錯誤欄位(*_error 有值)───────────────────────────')
     for f in files:
         j = cache.get(f)

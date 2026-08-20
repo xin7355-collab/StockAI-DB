@@ -45,6 +45,53 @@
 - 想手動停跑中的 daily_miner:Actions UI → 該 run → 右上「Cancel workflow」按鈕,**完全無風險**(SQLite 逐股 commit、`if: always()` 上傳 artifact、deploy job STOCKS<100 守門擋空部署)
 - deploy_pages.yml 1 分鐘部署不會被新 push cancel(`cancel-in-progress: false`),完整性優先
 
+### 🚨🚨 V73.7.9 ⭐⭐ 高頻採礦**不可跟別人共用 concurrency group** —— 它們會互相擠掉,而且全綠零訊息
+使用者只是說「(盤前台指期)沒看到」,查下去發現的是**完全不同、而且藏了很久的**問題:
+
+| 檔 | 實測(2026-08-20) |
+|---|---|
+| `data/live_quotes.json`(全市場即時報價,每 5 分) | 🚨 **從來沒出現在 gh-pages 上過** |
+| `data/tick_flow.json`(逐筆內外盤,每 10 分) | 🚨 停在 **08-07**(13 天) |
+| `data/daytrade_pack.json` | 🚨 停在 **08-07** |
+| 手動觸發 live_snapshot(同一份程式碼) | ✅ **84 秒跑完、2,330 檔 + 台指期全對** |
+
+⭐⭐ **真因是 GitHub concurrency 的語意,不是程式**:
+**每個 group 只留一個 pending run —— 後面來的會把前面還在排隊的直接取消掉。**
+盤中 `live_snapshot`(每 5 分 ≈55 次)+ `tick_flow`(每 10 分 ≈27 次)約 **82 個事件**
+全擠進共用的 `gh-pages-push`(還跟 `deploy_pages` / `daily_miner` 的 deploy job 同一個)
+→ 只要機器排隊超過幾分鐘就整串互相擠掉。
+📊 佐證:live_snapshot 建立 38 天、cron 要求每天約 70 次,`run_number` 卻只有 **62**;
+   tick_flow 每天約 27 次,`run_number` 只有 **50**。
+
+⛔ **兩支已搬出共用 group**(`gh-pages-intraday-quotes` / `gh-pages-intraday-tick`),
+⛔ **別再搬回去** —— 那正是它們產不出東西的原因。離開共用鎖之後,防撞就只剩
+各自 deploy step 裡既有的「**5 次 retry + fetch/pull --rebase**」迴圈(⛔ 不可拿掉)。
+
+⭐⭐ **`cancel-in-progress: true` 只有在「執行時間 ≪ 觸發間隔」時才安全**(這條最容易被「順手統一」):
+- `live_snapshot` 跑 **84 秒** ≪ 5 分鐘 → **true**(快照要最新的,舊的還在跑就該砍)
+- `tick_flow` timeout **12 分** vs 10 分一發 → ⛔ **必須 false**,設 true 會讓跑超過 10 分鐘的那輪
+  被下一輪砍掉、**永遠跑不完**(把 starvation 換成另一種 starvation)
+- ⚠️ **改觸發間隔時要重新檢查這條**(測試 ③d/③e 釘住現行間隔,改密了會失敗提醒你)
+
+🔍 **同版補掉讓它瞎了 13 天的盲點**:`data_audit.py` 的 `INTRADAY_ONLY` 三個檔在
+`CADENCE_H` 標 `None` → **B 類整個 continue 跳過**,A 類的 MISSING 也被**無條件**原諒
+(「盤中才產出,收盤/假日沒有是正常的」)→ 停產 13 天,體檢每次都一片乾淨。
+⭐ 豁免本身沒錯,錯在**無條件** → 新增 **B2 類**:
+- **判準用「相對全站最新資料日」不用寫死天數** —— 連假時所有採礦一起停、基準也跟著停
+  → ⛔ 不會誤報(寫死「≤4 天」會在春節整排誤報,而誤報會讓人養成忽略體檢的習慣)
+- **盤中時段(台北平日 09:05~13:30)檔案不在 → 報 ❌**,⛔ 不可再回「沒有是正常的」
+- 實測當場抓出上面那三個(13 天 / 13 天 / 盤中 89 分沒更新)
+
+⭐ **通用鐵則**:① 「workflow 是 active」「run 全綠」都**不等於它有在產出**(陷阱 #9)——
+判斷一支採礦活著,要看**產物的日期**,不是 Actions 頁面的顏色。
+② **任何「這種檔本來就會舊」的豁免,都必須有條件**;無條件豁免 = 對體檢隱形。
+測試 `scripts/test_intraday_sched.py` 17 條(已用「注入缺陷 → 確認叫得出來」自我驗證過)。
+
+⚠️ **還沒查清楚的**:`stock_futures_night.json` 停在 **08-08**(296 小時)。
+它只有每天 2 次 cron,⛔ **不像**是被擠掉;`stock_futures_miner.py` 有三處 `sys.exit(1)`
+→ 比較可能是**跑了但失敗**。⛔ 它是**夜盤**採礦,白天手動觸發會把日盤資料寫成「夜盤」
+→ **只能等夜盤時段看 log**,別在白天亂觸發。
+
 ---
 
 ## 部署與同步規則（鐵律）
