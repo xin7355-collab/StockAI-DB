@@ -5,6 +5,15 @@ name: 🔬 總經採礦驗證探針 (macro probe)
 # push macro_miner.py / 本檔即自動跑（免 dispatch 權限），方便快速迭代收斂 TAIFEX schema。
 on:
   workflow_dispatch:   # ⚡ V69.8.6 P3-6:改純手動(原每次 push macro_miner.py 就對十幾個外部 API 打一輪完整採礦)
+    inputs:
+      which:
+        description: '跑哪一個'
+        type: choice
+        default: taifex
+        options:
+          - taifex   # 📐 只跑台指期順逆價差探針(~15 秒,只讀 TAIFEX OpenAPI)
+          - macro    # 🌐 完整總經採礦(~2 分,打十幾個外部 API)
+          - both
 
 permissions:
   contents: read
@@ -25,7 +34,14 @@ jobs:
       - name: 📦 安裝相依套件
         run: pip install requests yfinance --quiet
 
+      # 📐 V73.7.7 台指期順逆價差探針 —— 查「期貨那條腿的日期為什麼落後」。
+      #    只讀、不寫任何產物;含對照組(已知會通的端點)分辨「機器被擋」與「端點改名」。
+      - name: 📐 台指期順逆價差探針
+        if: ${{ inputs.which == 'taifex' || inputs.which == 'both' }}
+        run: python3 scripts/taifex_probe.py
+
       - name: 🌐 執行總經採礦
+        if: ${{ inputs.which == 'macro' || inputs.which == 'both' }}
         # 🐛 V71.5.3 補上機密 —— 這支的用途是「純驗證,把每一欄印出來查」,
         #   但原本一把 key 都沒給,於是 fetch_tw_vix 一律回 'no-token'、行事曆 AI 一律跳過
         #   → 探針永遠驗不出真正的問題(台指 VIX 到底是資料集改名還是沒 token,查不出來)。
@@ -40,14 +56,15 @@ jobs:
         run: python macro_miner.py || echo "⚠️ macro_miner.py 非零退出（仍印出結果）"
 
       - name: 🔎 印出 macro_risk.json（驗證每一欄）
-        if: always()
+        # ⚠️ always() 是刻意的(採礦失敗也要看得到檔);但 taifex-only 模式根本不產這個檔 → 跳過
+        if: ${{ always() && inputs.which != 'taifex' }}
         run: |
           echo "================ data/macro_risk.json ================"
           cat data/macro_risk.json || echo "❌ 檔案不存在"
           echo "======================================================"
 
       - name: 📤 上傳 macro_risk.json artifact
-        if: always()
+        if: ${{ always() && inputs.which != 'taifex' }}
         uses: actions/upload-artifact@v4
         with:
           name: macro-risk-probe

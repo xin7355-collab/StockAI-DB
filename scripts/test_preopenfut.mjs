@@ -82,6 +82,28 @@ const R = await page.evaluate(async () => {
     await app._renderPreOpenFut();
     out.nanPxHidden = el().classList.contains('hidden');
 
+    // ── 情境 G0:🚨 盤前快照的**新鮮度守門** ──
+    //   `live_index.json` 會一直留在伺服器上 → 08:35 開 App(當天第一輪 08:45 還沒跑)
+    //   會讀到**昨天**的期貨價。⛔ 必須擋掉(同陷阱 #34「守門擋掉了、舊值卻被沿用」)。
+    const mkIdx = (iso) => ({ updated: iso, ts: '08:47', premarket: true, idx: { txf: { p: 46500, c: 0.5 } } });
+    const realFetch = window.fetch;
+    const stubJson = (obj) => { window.fetch = async () => ({ ok: true, json: async () => obj }); };
+    const nowIso = new Date().toISOString();
+    const yesterdayIso = new Date(Date.now() - 26 * 3600e3).toISOString();
+    const oldIso = new Date(Date.now() - 90 * 60e3).toISOString();
+    stubJson(mkIdx(nowIso));      out.preFresh = await app._loadPreOpenIdx();
+    stubJson(mkIdx(yesterdayIso)); out.preYesterday = await app._loadPreOpenIdx();
+    stubJson(mkIdx(oldIso));      out.preStale = await app._loadPreOpenIdx();
+    stubJson({ idx: { txf: { p: 46500 } } });   // 沒有 updated 欄
+    out.preNoTs = await app._loadPreOpenIdx();
+    // 新鮮的盤前快照要真的被用到(優先於 Yahoo)
+    stubJson(mkIdx(nowIso));
+    app._liveIdx = null;
+    app._fetchLiveIndexYahoo = async () => ({ price: 99999, prev: 99000, chgPct: 1.0 });
+    await app._renderPreOpenFut();
+    out.preUsedHtml = el().innerHTML;
+    window.fetch = realFetch;
+
     // ── 情境 G:Yahoo 兜底(採礦快照沒有,但電子盤有)──
     app._liveIdx = null;
     app._fetchLiveIndexYahoo = async (s) => (s === '^TXF=F' ? { price: 46100, prev: 46000, chgPct: 0.2174 } : null);
@@ -140,6 +162,14 @@ ok('⑥b 下跌用綠(台股色)', /text-green-300/.test(R.downHtml) && /🔻/.t
     ok('⑤ ⛔ 不可顯示「期貨 − 現貨」的價差點數', !/價差|基差|逆價差|正價差/.test(t), t.slice(0, 200));
     ok('⑤b 開盤後文案要換掉「現貨還沒開盤」', !/現貨還沒開盤/.test(strip(R.openHtml)) && /現貨已開盤/.test(strip(R.openHtml)), strip(R.openHtml).slice(0, 140));
 }
+
+// ── 🚨 盤前快照新鮮度守門 ──────────────────────────────────────────
+ok('⑨ 今天剛產出的盤前快照 → 採用', !!R.preFresh && R.preFresh.p === 46500, JSON.stringify(R.preFresh));
+ok('⑨b 🚨 **昨天**的檔 → ⛔ 一律不用(不然 08:35 開 App 會看到昨天的期貨價)', R.preYesterday === null, JSON.stringify(R.preYesterday));
+ok('⑨c 🚨 超過 30 分鐘 → ⛔ 不用', R.preStale === null, JSON.stringify(R.preStale));
+ok('⑨d 沒有 updated 欄 → ⛔ 不用(⛔ 不可當作「應該是新的」)', R.preNoTs === null, JSON.stringify(R.preNoTs));
+ok('⑨e 新鮮的盤前快照要**優先於** Yahoo 被用到',
+   /46,500/.test(R.preUsedHtml.replace(/<[^>]+>/g, ' ')) && /盤前/.test(R.preUsedHtml), R.preUsedHtml.replace(/<[^>]+>/g, ' ').slice(0, 140));
 
 // ── 接線 ───────────────────────────────────────────────────────────
 ok('⑦ 容器在自選頁「多頭待發射」之上',

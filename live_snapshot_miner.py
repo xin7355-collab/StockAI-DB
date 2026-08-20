@@ -30,6 +30,25 @@ from datetime import datetime, timezone, timedelta
 TW = timezone(timedelta(hours=8))
 MIN_STOCKS = 300   # 抓到 < 300 檔 = 登入/行情異常 → 不覆寫、不部署(自我修復,保留舊檔)
 
+# 🌅 V73.7.7 盤前模式(台北 08:30~09:00)——台指期 08:45 就開盤,現貨要 09:00。
+#   🚨 為什麼要另外開一個模式、而且寫到**不同的檔**:
+#      盤前現貨還沒開 → `data` 幾乎抓不到有效價 → 會撞上 MIN_STOCKS 守門 → 整份不產出,
+#      連台指期那格也一起沒了(使用者要的正是那 15 分鐘)。
+#   ⛔ **絕對不可以為了盤前而放寬 MIN_STOCKS** —— 那個守門是盤中快照的自我保護
+#      (抓太少就保留舊檔),放寬會讓「登入異常」的垃圾覆蓋掉好資料,而盤中快照是當沖頁的命脈。
+#   ⭐ 正解:盤前**只抓期貨、只寫 live_index.json**,`live_quotes.json` 一個位元組都不碰。
+PRE_START_MIN = 8 * 60 + 30
+PRE_END_MIN = 9 * 60
+
+
+def _is_premarket():
+    """台北平日 08:30~09:00 = 期貨已開、現貨未開。
+    ⚠️ 排程延遲到 09:00 之後才跑 → 自動走一般模式(那時現貨已開,全市場掃是對的)。"""
+    n = datetime.now(TW)
+    if n.weekday() >= 5:
+        return False
+    return PRE_START_MIN <= (n.hour * 60 + n.minute) < PRE_END_MIN
+
 
 def _now_str():
     return datetime.now(TW).strftime('%m/%d %H:%M')
@@ -57,6 +76,32 @@ def _near_month(cat):
     return best
 
 
+def _fetch_index_futures(api):
+    """台指期(大台 TXF / 小台 MXF)近月快照。⭐ 盤前與盤中**共用這一份**,⛔ 別複製第二份。"""
+    idx = {}
+    for tag, sym in (('txf', 'TXF'), ('mxf', 'MXF')):
+        try:
+            cat = getattr(api.Contracts.Futures, sym, None)
+            if cat is None:
+                continue
+            c = _near_month(cat)
+            if c is None:
+                continue
+            snap = api.snapshots([c])[0]
+            cl = _snap_num(snap, 'close')
+            cr = _snap_num(snap, 'change_rate')
+            tv = _snap_num(snap, 'total_volume', 'volume') or 0
+            if cl is not None and float(cl) > 0:
+                idx[tag] = {
+                    'p': round(float(cl), 2),
+                    'c': round(float(cr), 2) if cr is not None else None,
+                    'v': int(tv or 0),
+                }
+        except Exception as e:
+            print(f'⚠️ 台指期 {sym} 抓取失敗:{e}')
+    return idx
+
+
 def main():
     key = os.environ.get('SHIOAJI_API_KEY', '').strip()
     sec = os.environ.get('SHIOAJI_SECRET_KEY', '').strip()
@@ -72,6 +117,29 @@ def main():
     except Exception as e:
         print(f'❌ Shioaji 登入失敗:{e}')
         sys.exit(1)
+
+    # ── 🌅 盤前模式:只抓期貨,⛔ 完全不碰 live_quotes.json ──
+    if _is_premarket():
+        print('🌅 盤前模式(台北 08:30~09:00):台指期已開盤、現貨還沒 → 只抓期貨')
+        idx = _fetch_index_futures(api)
+        try:
+            api.logout()
+        except Exception:
+            pass
+        # 空過守門:期貨也沒抓到 → 不產出(⛔ 不寫空檔覆蓋掉前一輪)
+        if not idx or not any((v or {}).get('p') for v in idx.values()):
+            print('❌ 盤前沒抓到有效台指期報價 → 不產出 JSON')
+            sys.exit(1)
+        payload = {
+            'updated': datetime.now(TW).isoformat(),
+            'ts': _now_str(),
+            'premarket': True,
+            'idx': idx,
+        }
+        with open('live_index.json', 'w', encoding='utf-8') as f:
+            json.dump(payload, f, ensure_ascii=False, separators=(',', ':'))
+        print(f'✅ 盤前台指期快照完成:{ {k: v.get("p") for k, v in idx.items()} } → live_index.json')
+        return
 
     # ── 1) 全上市櫃股票合約 ──
     stock_contracts = []
@@ -133,27 +201,7 @@ def main():
     print(f'✅ 股票快照 {len(data)} 檔')
 
     # ── 2) 台指期(大台 TXF / 小台 MXF)近月 ──
-    idx = {}
-    for tag, sym in (('txf', 'TXF'), ('mxf', 'MXF')):
-        try:
-            cat = getattr(api.Contracts.Futures, sym, None)
-            if cat is None:
-                continue
-            c = _near_month(cat)
-            if c is None:
-                continue
-            snap = api.snapshots([c])[0]
-            cl = _snap_num(snap, 'close')
-            cr = _snap_num(snap, 'change_rate')
-            tv = _snap_num(snap, 'total_volume', 'volume') or 0
-            if cl is not None and float(cl) > 0:
-                idx[tag] = {
-                    'p': round(float(cl), 2),
-                    'c': round(float(cr), 2) if cr is not None else None,
-                    'v': int(tv or 0),
-                }
-        except Exception as e:
-            print(f'⚠️ 台指期 {sym} 抓取失敗:{e}')
+    idx = _fetch_index_futures(api)
     print(f'✅ 台指期 idx:{list(idx.keys())}')
 
     try:

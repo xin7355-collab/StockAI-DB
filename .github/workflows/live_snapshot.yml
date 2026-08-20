@@ -6,9 +6,13 @@ name: 📸 全市場即時快照 (Shioaji)
 # 🧪 第一次請「Run workflow」手動觸發看 log,確認抓到 >300 檔再靠 cron。
 # ⏱️ 排程:台股盤中(09:00~13:30 = UTC 01:00~05:30)每 5 分鐘一次。
 #    GitHub Actions 排程為 best-effort,尖峰可能延遲數分鐘 → 前端會顯「更新 時間」讓你判斷新鮮度。
+# 🌅 V73.7.7 加盤前三輪(台北 08:45/08:50/08:55):台指期 08:45 就開盤,現貨要 09:00。
+#    ⚠️ 那三輪 `live_snapshot_miner.py` 會自動走**盤前模式** —— 只抓期貨、寫 `live_index.json`,
+#    ⛔ **完全不碰 `live_quotes.json`**(盤中快照是當沖頁命脈,不可被盤前的空資料覆蓋)。
 on:
   workflow_dispatch:
   schedule:
+    - cron: '45,50,55 0 * * 1-5'   # UTC 00:45~00:55(台北 08:45~08:55 盤前,只抓期貨)
     - cron: '*/5 1-4 * * 1-5'      # UTC 01:00~04:55 每 5 分(台北 09:00~12:55)
     - cron: '0,5,10,15,20,25,30 5 * * 1-5'   # UTC 05:00~05:30(台北 13:00~13:30 收盤)
 
@@ -48,25 +52,31 @@ jobs:
       #    盤中會不斷刷新、盤後前端不讀(isMarketOpen 守門)。daily_miner 下午洗掉它無妨——
       #    下個交易日開盤第一次 cron 就重建。若進 data 分支反而讓備份分支每 5 分鐘 churn 一次,不值得。
       #    (對比 stock_futures_night.json 是隔夜持久資料 → 那支才走雙分支保存。)
-      - name: 🚀 部署 live_quotes.json 到 gh-pages(即時快照,每 5 分鐘重生)
+      # 🌅 V73.7.7 盤前模式產出的是 live_index.json(只有台指期);盤中是 live_quotes.json(全市場)。
+      #    ⭐ 兩者部署到**不同檔名**,⛔ 盤前那輪絕不覆蓋盤中快照。
+      - name: 🚀 部署到 gh-pages(盤中:live_quotes.json / 盤前:live_index.json)
         run: |
-          if [ ! -f live_quotes.json ]; then echo "❌ 沒產出 JSON,略過部署"; exit 1; fi
+          SRC=""; DST=""
+          if   [ -f live_quotes.json ]; then SRC=live_quotes.json; DST=data/live_quotes.json
+          elif [ -f live_index.json  ]; then SRC=live_index.json;  DST=data/live_index.json
+          else echo "❌ 沒產出 JSON,略過部署"; exit 1; fi
+          echo "📦 部署 $SRC → $DST"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          cp live_quotes.json /tmp/lq.json
+          cp "$SRC" /tmp/lq.json
 
           git fetch origin gh-pages 2>/dev/null || true
           git checkout gh-pages 2>/dev/null || { echo "❌ gh-pages 不存在(等 daily_miner 先建)"; exit 1; }
 
           mkdir -p data
-          cp /tmp/lq.json data/live_quotes.json
-          git add data/live_quotes.json
+          cp /tmp/lq.json "$DST"
+          git add "$DST"
           git diff --cached --quiet && echo "無變更,跳過" || {
-            git commit -m "📸 全市場即時快照 $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git commit -m "📸 即時快照 $(basename $DST) $(date -u '+%Y-%m-%d %H:%M UTC')"
             for i in 1 2 3 4 5; do
               git push origin gh-pages && { echo "✅ push 成功 ($i)"; break; }
               [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; exit 1; }
               sleep $((i*5)); git fetch origin gh-pages 2>/dev/null || true; git pull --rebase origin gh-pages 2>/dev/null || true
             done
           }
-          echo "✅ data/live_quotes.json 已部署"
+          echo "✅ $DST 已部署"
