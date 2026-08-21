@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.7.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.8.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.7.9 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.8.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7340,8 +7340,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.7.9',
+    _APP_VERSION: 'V73.8.0',
     _CHANGELOG: [
+        { v: 'V73.8.0', dt: '2026-08-21', t: '🔧 財經行事曆的 AI 判讀壞掉了(⚠️ AI 例外:HTTP 404)—— 修好而且以後會自己修', d: ['你截圖看到的那個 404,**不是金鑰壞掉、也不是額度用完** —— 是那家 AI 供應商把我們指定的那個免費模型**下架/改名**了。免費模型改版是常態,而我們把名字寫死在程式裡 → 一改版就整條掛掉。','⭐ 修法不是換一個新名字寫死(那只是把同一顆地雷往後埋)—— 改成**去問供應商現在實際有哪些模型**再挑,而且**遇到 404 會自動換一個重打一次**。下次它再改版,App 自己就接上了,不用等我改。','🗣️ 順手把錯誤訊息改成人話:以前只寫「HTTP 404」完全看不出是哪一種問題;現在會分清楚是「模型下架」「金鑰無效 → 去設定中心」「額度用完」「用量到上限」還是「對方伺服器忙」。','🔍 順手抓到同樣的寫死問題**還有 3 處**(金鑰健檢、深度分析、輕量分析)—— 全部接到同一個入口了,以後不會再改一處漏三處。'] },
         { v: 'V73.7.9', dt: '2026-08-20', t: '🚨 抓到一個藏很久的問題:盤中即時資料的排程一直被自己擠掉', d: ['你回報「沒看到台指期」→ 查下去發現的**不是那條 bar 的問題**,而是**盤中即時採礦根本沒在跑**:全市場即時報價從來沒產出過、逐筆內外盤停在 08/07(13 天)。而且後台**全綠、一個錯誤訊息都沒有**。','⭐ 真因跟程式無關:我手動觸發同一份程式碼,**84 秒跑完、2,330 檔 + 台指期全對**。問題是那些採礦被設定成「大家排同一個隊伍」,而盤中每 5 分鐘、每 10 分鐘各發一次,合計約 82 次全擠在一個位子 → **後面的把前面還在排隊的擠掉**,誰都跑不成。','✅ 已改成各自排隊,互不影響。盤中的全市場即時報價 / 逐筆內外盤 / 即時台指期應該會恢復正常刷新。','🔍 順手補了**體檢的盲點**:這幾個盤中檔以前被無條件豁免「收盤後本來就舊」,所以停產 13 天完全沒被抓到。現在改成跟「全站最新資料日」比對 —— 連假不會誤報,但真的停產一天就叫得出來。','⚠️ 個股期貨夜盤那支也停在 08/08,那是另一個原因(要夜盤時段才驗得到),還在查。'] },
         { v: 'V73.7.8', dt: '2026-08-20', t: '📐 順逆價差修好了 —— 探針查出真因不是資料抓不到,是配對方式錯了', d: ['探針在雲端跑完了,答案跟我原本猜的不一樣:官方期貨行情端點**是通的**(2,357 列),它回的日期落後 1 天 —— 而那是**正常**的,因為每日行情要收盤後才更新。','🚨 **真正的 bug 在配對**:現貨那條腿用的是加權指數的「最後一根」(當天下午就有),期貨那條腿天生落後一天 → 兩邊永遠對不上 → 守門每次都擋掉,所以 36 天裡只有 18 天有價差。','⭐ 修法:加權指數本來就有完整歷史 → 直接**查期貨那天的收盤**來配對。價差因此會標成「那一天的價差」而不是今天的。⛔ 沒有放寬守門 —— 對齊不到(期貨那天不在歷史裡)還是誠實留白,因為差一天的價差是假的。','⭐ 探針的**對照組**設計證明有用:匯率那個已知會通的端點通了 → 立刻排除「機器連不到期交所」,不用再去猜端點名字。'] },
         { v: 'V73.7.7', dt: '2026-08-20', t: '🌅 盤前 08:45~09:00 的台指期,採礦端開始跑了 + 查價差的探針', d: ['**A. 補上盤前那 15 分鐘**:採礦排程原本從台北 09:00 才開始(現貨開盤後),所以台指期 08:45 開盤後那段一直是空的。現在加了 **08:45 / 08:50 / 08:55** 三輪。','⛔ **關鍵是不能為了盤前放寬守門**:採礦本來有「抓不到 300 檔股票就整份不產出」的自我保護(那是盤中快照的命脈,壞資料覆蓋掉好資料會直接影響當沖頁)。盤前現貨還沒開,一定過不了那關。→ 盤前改成**只抓期貨、寫到另一個檔**,`live_quotes.json` 一個位元組都不碰。','🚨 前端加了**新鮮度守門**:那個盤前檔會留在伺服器上,如果你 08:35 開 App(當天第一輪還沒跑),會讀到**昨天**的期貨價 → 現在只認「今天而且 30 分鐘內」的,否則自動退到電子盤報價。','**B. 順逆價差為什麼一半是空的**:36 天裡只有 18 天有值,因為官方每日期貨行情的日期落後現貨 2 天,而「期貨與現貨必須同一天」的守門正確地擋掉了(差一天的價差是假的)。已寫好探針丟雲端後台查真因 —— ⛔ 在查清楚之前**不會**放寬那個守門。','⭐ 探針有放**對照組**(兩個已知會通的端點):它們也失敗就代表是機器連不到,不是端點改名 —— 沒有對照組的話會一輪一輪猜欄位名(櫃買指數那次就卡了五輪)。'] },
@@ -8004,11 +8005,9 @@ ${list}
             if (!key) throw new Error('OpenRouter 金鑰未填寫');
             const _msgs = systemInstruction ? [{ role: 'system', content: systemInstruction }, { role: 'user', content: pFull }] : [{ role: 'user', content: pFull }];
             this._setAIStatus('openrouter', 1, 'trying');
-            const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://xin7355-collab.github.io/StockAI-DB/', 'X-Title': 'StockAI-DB' },
-                body: JSON.stringify({ model: 'deepseek/deepseek-r1:free', messages: _msgs, max_tokens, temperature })
-            }, { timeout: 90000, maxRetries: 1 });
-            if (!res.ok) { this._recordAIFail('openrouter', 1, res.status); this._setAIStatus('openrouter', 1, 'rate-limited'); throw new Error(`OpenRouter HTTP ${res.status}`); }
+            // 🚀 V73.8.0 走共用入口(模型名由官方清單解析 + 404 自動換模型重試)
+            const res = await this._orChat(key, { messages: _msgs, max_tokens, temperature }, { timeout: 90000, maxRetries: 1 });
+            if (!res.ok) { this._recordAIFail('openrouter', 1, res.status); this._setAIStatus('openrouter', 1, 'rate-limited'); throw new Error(this._orErr(res.status)); }
             const data = await res.json();
             const content = data?.choices?.[0]?.message?.content;
             if (!content) throw new Error('OpenRouter 回應為空');
@@ -8050,12 +8049,105 @@ ${list}
         return true;
     },
     async _pingOpenRouterKey(key) {
-        const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://xin7355-collab.github.io/StockAI-DB/', 'X-Title': 'StockAI-DB' },
-            body: JSON.stringify({ model: 'deepseek/deepseek-r1:free', messages: [{ role: 'user', content: '回OK' }], max_tokens: 5 })
-        }, { timeout: 30000, maxRetries: 0 });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // 🚀 V73.8.0 走共用入口:金鑰健檢也要能自我修復,否則模型下架時會誤報「金鑰壞了」
+        const res = await this._orChat(key, { messages: [{ role: 'user', content: '回OK' }], max_tokens: 5 }, { timeout: 30000, maxRetries: 0 });
+        if (!res.ok) throw new Error(this._orErr(res.status));
         return true;
+    },
+
+    // ═══ 🚀 OpenRouter 模型解析(V73.8.0)══════════════════════════════
+    // 🐛 使用者截圖:財經行事曆每一列都顯「⚠️ AI 例外:OpenRouter HTTP 404」。
+    //    404 = **那個模型名字在 OpenRouter 上已經不存在**(免費模型的 slug 會改版/下架),
+    //    ⛔ 不是金鑰壞掉、不是額度用完 —— 但畫面只寫「HTTP 404」,看不出是哪一種。
+    //
+    // ⛔ **不可以再寫死一個新的 slug** —— 那只是把同一顆地雷往後埋(下次改版又 404)。
+    // ⭐ 照本專案「**讓官方自己說**」的做法(同 `_taifex_list_endpoints` / FinMind 資料集名那兩次):
+    //    去問 `/api/v1/models` 現在**實際有哪些**,用「樣式偏好」挑,而不是比對固定字串。
+    // ⭐ 而且**會自我修復**:chat 回 404 → 清快取 → 重新解析 → 再試一次(見 `_orChat`)。
+    //
+    // ⚠️ 三個必須留著的保險(⛔ 別「簡化」掉):
+    //   ① 解析失敗 → 退回上次成功過的(localStorage),再退回舊 slug —— **絕不能比現在更糟**
+    //   ② 快取 24 小時就好(模型下架是常態,不能永久快取)
+    //   ③ 一個都配不到時,錯誤訊息要**列出它實際有的 deepseek 模型**,
+    //      不然下一個人只能重新猜一輪(這正是 404 只寫「HTTP 404」害我們查半天的原因)
+    _OR_MODEL_LEGACY: 'deepseek/deepseek-r1:free',
+    _OR_MODEL_PREFS: [
+        /^deepseek\/deepseek-r1[^/]*:free$/i,   // 免費 R1(任何版本號)
+        /^deepseek\/deepseek-r1/i,              // R1 付費版
+        /^deepseek\/[^/]*(r1|reason)/i,         // 其他 R1／推理型
+        /^deepseek\//i,                          // 任何 deepseek
+    ],
+    _orModelMem: null,
+    _orModelKey: 'proTerm_orModel',
+    _orModelClear() {
+        this._orModelMem = null;
+        try { localStorage.removeItem(this._orModelKey); } catch (_) {}
+    },
+    async _orModel(key, { force = false } = {}) {
+        const TTL = 24 * 3600 * 1000;
+        if (!force) {
+            if (this._orModelMem) return this._orModelMem;
+            const c = this._lsJson(this._orModelKey, null);
+            if (c && c.id && (Date.now() - (c.ts || 0)) < TTL) { this._orModelMem = c.id; return c.id; }
+        }
+        let id = null, avail = [];
+        try {
+            const r = await this.safeFetch('https://openrouter.ai/api/v1/models',
+                key ? { headers: { 'Authorization': `Bearer ${key}` } } : {}, { timeout: 12000, maxRetries: 1 });
+            const j = await r.json().catch(() => ({}));
+            const ids = (Array.isArray(j?.data) ? j.data : []).map(m => String(m?.id || '')).filter(Boolean);
+            if (ids.length) {
+                avail = ids.filter(x => /deepseek/i.test(x));
+                for (const re of this._OR_MODEL_PREFS) { const hit = ids.find(x => re.test(x)); if (hit) { id = hit; break; } }
+                if (!id) {
+                    // ⭐ 一個都配不到 → 把它**實際有的**寫進錯誤,別讓下一個人再猜一輪
+                    console.warn('[OpenRouter] 找不到可用的 deepseek 模型,它現在有的是:', avail.slice(0, 8));
+                }
+            }
+        } catch (e) { console.warn('[OpenRouter] 問不到模型清單:', e?.message || e); }
+        if (id) {
+            this._orModelMem = id;
+            try { localStorage.setItem(this._orModelKey, JSON.stringify({ id, ts: Date.now() })); } catch (_) {}
+            return id;
+        }
+        // ① 退回上次成功過的(即使過期也比亂猜好)
+        const stale = this._lsJson(this._orModelKey, null);
+        if (stale && stale.id) { this._orModelMem = stale.id; return stale.id; }
+        // ⛔ 最後才用舊 slug —— 保證不會比改版前更糟
+        return this._OR_MODEL_LEGACY;
+    },
+    // 🔁 OpenRouter 對話(全 App 唯一入口)—— 404 會自動重挑模型再試一次
+    //    ⛔ 別在別處自己 fetch openrouter chat/completions(陷阱 #37:寫死的 slug 一改就漏一處)
+    async _orChat(key, body, opt = {}) {
+        const H = { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json', 'HTTP-Referer': 'https://xin7355-collab.github.io/StockAI-DB/', 'X-Title': 'StockAI-DB' };
+        // ⚠️ 呼叫端可以指定模型(如 `_callAI` 第三鏈用輕量 8b);沒指定才去解析
+        const pinned = body && body.model;
+        let model = pinned || await this._orModel(key);
+        let res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions',
+            { method: 'POST', headers: H, body: JSON.stringify({ ...body, model }) }, opt);
+        if (res.status === 404) {
+            // 🚑 自我修復:這個 slug 已經被下架 → 重新問一次官方,換一個再試
+            console.warn(`[OpenRouter] 模型 ${model} 回 404(多半是下架/改名),重新解析中…`);
+            if (!pinned) this._orModelClear();   // 只有「自己解析出來的」才需要作廢快取
+            const m2 = await this._orModel(key, { force: !pinned });
+            if (m2 && m2 !== model) {
+                res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions',
+                    { method: 'POST', headers: H, body: JSON.stringify({ ...body, model: m2 }) }, opt);
+                if (res.ok) console.info(`[OpenRouter] 已自動改用 ${m2}`);
+            }
+        }
+        return res;
+    },
+    // 🗣️ 把光禿禿的狀態碼翻成人話(V26.18 鐵則:UI 不可只丟 `HTTP 404` 這種術語)
+    //    ⚠️ 使用者截圖那次就是只顯「OpenRouter HTTP 404」→ 完全看不出是模型下架還是金鑰壞了
+    _orErr(status) {
+        const s = Number(status);
+        if (s === 404) return 'AI 供應商把這個模型下架了(已自動試著換一個仍不成功),稍後再試或改用其他 AI 引擎';
+        if (s === 401 || s === 403) return 'AI 金鑰無效或沒有權限 → 設定中心 → OpenRouter 重新填一次';
+        if (s === 402) return 'AI 額度用完了(免費模型有每日上限),明天再試或改用其他引擎';
+        if (s === 429) return 'AI 用量到上限,等幾分鐘再試';
+        if (s >= 500) return 'AI 供應商伺服器忙碌,稍後再試';
+        return `AI 暫時無法使用(代碼 ${s})`;
     },
 
     // [AI 狀態追蹤] V14.16 — 擴充為「每次 attempt / 429 / switch / success / failed」5 狀態都更新
@@ -10472,19 +10564,12 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             const orKey = orKeys[i];
             try {
                 this._setAIStatus('openrouter', i + 1, 'trying');
-                const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${orKey}`,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': 'https://xin7355-collab.github.io/StockAI-DB/',
-                        'X-Title': 'StockAI-DB',
-                    },
-                    body: JSON.stringify({
-                        model: openrouter_model,
-                        messages: _msgs,   // V19.3 — 共用上方 _msgs(含 systemInstruction 時自動加 system role)
-                        max_tokens, temperature,
-                    })
+                // 🚀 V73.8.0 走共用入口 `_orChat`:這裡指定輕量 8b,但它 404(下架)時會自動換一個
+                //    ⛔ 別改回自己 fetch —— 那個寫死的 slug 正是 404 的來源(陷阱 #37)
+                const res = await this._orChat(orKey, {
+                    model: openrouter_model,
+                    messages: _msgs,   // V19.3 — 共用上方 _msgs(含 systemInstruction 時自動加 system role)
+                    max_tokens, temperature,
                 }, { timeout: 60000, maxRetries: 1 });
                 if (res.ok) {
                     const data = await res.json();
@@ -10596,19 +10681,11 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 const orKey = orKeys[i];
                 try {
                     this._setAIStatus('openrouter', i + 1);
-                    const res = await this.safeFetch('https://openrouter.ai/api/v1/chat/completions', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${orKey}`,
-                            'Content-Type': 'application/json',
-                            'HTTP-Referer': 'https://xin7355-collab.github.io/StockAI-DB/',
-                            'X-Title': 'StockAI-DB',
-                        },
-                        body: JSON.stringify({
-                            model: 'deepseek/deepseek-r1:free',
-                            messages: _msgsFull,   // V19.3 — 含 system role
-                            max_tokens, temperature,
-                        })
+                    // 🚀 V73.8.0 走共用入口 `_orChat`(模型名由官方清單解析 + 404 自動換模型重試)
+                    //    ⛔ 別改回自己 fetch + 寫死 slug —— 那正是 404 出現的原因(陷阱 #37)
+                    const res = await this._orChat(orKey, {
+                        messages: _msgsFull,   // V19.3 — 含 system role
+                        max_tokens, temperature,
                     }, { timeout: 90000, maxRetries: 1 });
                     if (res.ok) {
                         const data = await res.json();
@@ -10618,7 +10695,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                         lastErr = new Error('OpenRouter 回應為空');
                     } else {
                         this._recordAIFail('openrouter', i + 1, res.status);
-                        lastErr = new Error(`OpenRouter HTTP ${res.status}`);
+                        lastErr = new Error(this._orErr(res.status));
                         if ((res.status === 429 || res.status === 401 || res.status >= 500) && i < orKeys.length - 1) {
                             const _jitter = Math.round(2000 + Math.random() * 3000);
                             console.warn(`[OpenRouter 輪動] Key #${i + 1} 收到 ${res.status},等 ${_jitter}ms 切第 ${i + 2} 把...`);
