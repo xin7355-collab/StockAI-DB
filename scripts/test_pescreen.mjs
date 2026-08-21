@@ -168,8 +168,11 @@ ok('③c 勾估值條件 → 顯示', R.noteByCond.length > 200, String(R.noteBy
 }
 
 // ── 接線 ───────────────────────────────────────────────────────────
+// ⚠️ V73.8.2 這條原本寫死整行 `const valNote = this._scrValNote(conds);` ——
+//    加了第二個提醒(`_scrTurnNote`,週轉率)串在後面就假失敗了。
+//    ⭐ 釘**意圖**(valNote 有含估值提醒、而且兩個分支都吃得到)⛔ 不要釘那一行長什麼樣子。
 ok('⑧ 提醒接進結果區(有結果 / 沒結果兩個分支都要)',
-   /const valNote = this\._scrValNote\(conds\);/.test(src) && /out\.innerHTML = valNote \+ \(hits\.length \?/.test(src), '');
+   /const valNote = this\._scrValNote\(conds\)/.test(src) && /out\.innerHTML = valNote \+ \(hits\.length \?/.test(src), '');
 ok('⑧b 排序支援 vfn 衍生值', /so\.vfn \? so\.vfn\(a, this\)/.test(src), '');
 ok('⑧c ⛔ 沒有新增卡片 id', !/id="scrVal/.test(src), '');
 ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));

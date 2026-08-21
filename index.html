@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.8.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.8.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.8.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.8.2 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7340,8 +7340,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.8.1',
+    _APP_VERSION: 'V73.8.2',
     _CHANGELOG: [
+        { v: 'V73.8.2', dt: '2026-08-21', t: '🔄 「高週轉率有沒有用?」實測第三次 —— 沒有獨立的用處,選股頁現在會誠實告訴你', d: ['先講結論:**單看週轉率沒有參考價值**。全市場分桶看起來是「越高越好」(8~20% 那桶比大盤多 1.68%),**但每一桶的前半段都是負的、後半段才變正** → 那個優勢只存在於最近這一段行情,不是穩定的規律。','⛔ 更關鍵:把它疊在本站實測最有效的「高位階 + 高波動」之上,**增量幾乎歸零**(−0.08 ~ +0.52%),而來回手續費就要 0.44%。原因很單純 —— **「高週轉」跟「高波動」講的本來就是同一件事**。','⭐ 週轉率**唯一**實測有效的用法是「**漲停的隔一天**」:中等週轉(1~3%)次日 +1.54%,而**量太大(≥8%)反而衰減到 +0.78%** —— 那是出貨不是助力。那張卡在**當沖頁**,而且只有次日有效。','📍 選股頁的「5 日週轉率」條件與排序**照留**(你想用還是能用),但現在勾了會自動跳出這組實測數字 —— 以前它旁邊一個數字都沒有,勾了會以為是驗證過的做法。'] },
         { v: 'V73.8.1', dt: '2026-08-21', t: '🎫 你上傳的 40 份逐字稿看完了 —— 實測 2 條,**都不成立,所以沒改功能**', d: ['先比對過:這批跟你 8/5 上傳的是**同一個系列**,大部分我已經測過或已經確認拿不到資料。掃完所有數字門檻後,只有 **2 條**是「沒測過而且測得動」的。','**① 布林「夾娃娃」(壓縮之後會噴出)** → ⛔ **方向剛好相反**。實測壓縮那格是全表**最差**的(比隨便挑一天還差 0.89%),壓縮後擴張也是負的。','**② 地板股要有量才能接** → 方向確實跟他說的一樣(有量 +0.70% / 沒量 −0.30%),看起來成立 —— **但拿掉表現最好的那一年就變成 −1.03%**,整個好處靠 2025 一年,不能算數。','⭐ 另外發現一件事:「布林帶寬大」統計上真的有一點點優勢(+0.42%),**但比手續費還小**(來回 0.44%),而且它有 78% 跟 App 現在已經在用的「高波動」重疊 → 加了也是白加。','⛔ 所以這次 App 一行判斷邏輯都沒改。測過不成立的結論已經記下來,以後不會再花時間重做一次。'] },
         { v: 'V73.8.0', dt: '2026-08-21', t: '🔧 財經行事曆的 AI 判讀壞掉了(⚠️ AI 例外:HTTP 404)—— 修好而且以後會自己修', d: ['你截圖看到的那個 404,**不是金鑰壞掉、也不是額度用完** —— 是那家 AI 供應商把我們指定的那個免費模型**下架/改名**了。免費模型改版是常態,而我們把名字寫死在程式裡 → 一改版就整條掛掉。','⭐ 修法不是換一個新名字寫死(那只是把同一顆地雷往後埋)—— 改成**去問供應商現在實際有哪些模型**再挑,而且**遇到 404 會自動換一個重打一次**。下次它再改版,App 自己就接上了,不用等我改。','🗣️ 順手把錯誤訊息改成人話:以前只寫「HTTP 404」完全看不出是哪一種問題;現在會分清楚是「模型下架」「金鑰無效 → 去設定中心」「額度用完」「用量到上限」還是「對方伺服器忙」。','🔍 順手抓到同樣的寫死問題**還有 3 處**(金鑰健檢、深度分析、輕量分析)—— 全部接到同一個入口了,以後不會再改一處漏三處。'] },
         { v: 'V73.7.9', dt: '2026-08-20', t: '🚨 抓到一個藏很久的問題:盤中即時資料的排程一直被自己擠掉', d: ['你回報「沒看到台指期」→ 查下去發現的**不是那條 bar 的問題**,而是**盤中即時採礦根本沒在跑**:全市場即時報價從來沒產出過、逐筆內外盤停在 08/07(13 天)。而且後台**全綠、一個錯誤訊息都沒有**。','⭐ 真因跟程式無關:我手動觸發同一份程式碼,**84 秒跑完、2,330 檔 + 台指期全對**。問題是那些採礦被設定成「大家排同一個隊伍」,而盤中每 5 分鐘、每 10 分鐘各發一次,合計約 82 次全擠在一個位子 → **後面的把前面還在排隊的擠掉**,誰都跑不成。','✅ 已改成各自排隊,互不影響。盤中的全市場即時報價 / 逐筆內外盤 / 即時台指期應該會恢復正常刷新。','🔍 順手補了**體檢的盲點**:這幾個盤中檔以前被無條件豁免「收盤後本來就舊」,所以停產 13 天完全沒被抓到。現在改成跟「全站最新資料日」比對 —— 連假不會誤報,但真的停產一天就叫得出來。','⚠️ 個股期貨夜盤那支也停在 08/08,那是另一個原因(要夜盤時段才驗得到),還在查。'] },
@@ -38574,6 +38575,19 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //    ③ `industry_pe.json` 的 `is_cyclical` **目前全部是空的** → 「循環股低 PE 陷阱」這次**測不了**。
     _SCR_PE_EDGE: { q0: -0.69, q1: -0.44, q2: -0.06, q3: 0.38, q4: 0.79, trap: -1.89, trapWr: 29.7,
                     grow: 0.18, growWr: 34.6, baseWr: 32.9, rel4: 0.12, n: 13952, months: 12 },
+    // 🔄 V73.8.2 週轉率實測成績(`scripts/turnover_edge_probe.mjs`,2,229 檔 / 86,749 事件)
+    //    ⚠️ 這是**第三次**測週轉率了 —— 前兩次:V72.0.1(× 昨日漲跌幅)、V72.4.9(× 位階),
+    //       這次問的是唯一還沒答過的「疊在 🧬 高位階+高波動 之上有沒有增量」(V73.2.5 的做法)。
+    //    ⛔ 改判定邏輯或換窗口就要重跑這支探針更新數字(同 `_SIGNAL_EDGE` 的鐵則)。
+    _SCR_TURN_EDGE: {
+        base: -2.24, baseWr: 33.3,                       // 全市場對照組 20 日平均超額 / 勝率
+        d: { lt1: -0.21, a13: 0.86, a38: 1.16, a820: 1.68, gt20: 1.22 },   // vs 對照(pp)
+        h1: { lt1: -0.01, a13: -0.22, a38: -0.39, a820: -0.36, gt20: -0.11 },  // 前半
+        h2: { lt1: -0.35, a13: 1.48, a38: 2.09, a820: 2.93, gt20: 2.05 },      // 後半
+        inc: { lt1: 0.33, a13: 0.52, a38: -0.08, a820: 0.51, gt20: 0.08 },     // 疊在高位階+高波動之上的增量
+        n: 86749, syms: 2229, cost: 0.44,
+        luMid: 1.54, luHi: 0.78,                          // V72.0.1 漲停隔日:中(1~3%) vs 極高(≥8%)
+    },
     // 同業中位 PE / PB(⭐ 從**這一頁自己的資料**算,母體 = 有官方產業別的上市股)
     // ⚠️ 個股頁用的是 `industry_pe.json`,母體略有不同(實測最大差是半導體 31.8 vs 29.1)
     //    → 這裡顯示時一律標「同業 N 檔」把母體講清楚,⛔ 不可只寫「產業中位 PE」讓兩邊看起來是同一個數字。
@@ -38939,7 +38953,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }).join('');
 
         const more = hits.length > CAP ? `<div class="text-[10px] text-gray-500 text-center py-2">還有 ${(hits.length - CAP).toLocaleString()} 檔沒顯示 —— 再加一兩個條件把清單縮小</div>` : '';
-        const valNote = this._scrValNote(conds);
+        const valNote = this._scrValNote(conds) + this._scrTurnNote(conds);
         out.innerHTML = valNote + (hits.length ? `
           <div class="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
             <div class="flex items-center justify-between px-2.5 py-2 border-b border-[#30363d]">
@@ -38959,6 +38973,44 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // 💰 V73.7.5 估值實測提醒 —— ⭐ **條件觸發**:只有用估值排序或勾了估值條件才出現(⛔ 平常完全不顯示)
     //    ⚠️ 這條的存在理由:使用者的直覺是「本益比由低到高挑最前面」,而實測**方向剛好相反**。
     //    ⛔ 不寫的話,這個篩選器等於在幫使用者做一件實測會輸的事。
+    // 🔄 V73.8.2 週轉率的實測提醒 —— **條件觸發**(只有用週轉率排序或勾週轉率條件才出現)
+    //    ⛔ 為什麼一定要有這段:選股頁本來就有「5 日週轉率 > 10%」這個條件,
+    //       但它旁邊**一個實測數字都沒有** → 使用者勾了會以為那是驗證過的做法。
+    //       依 `_SIGNAL_EDGE` 對 C 級的處置原則:**條件照留、資料照顯示,但要誠實標成績**。
+    //    ⚠️ 燈號鐵則:這裡講的是「有沒有用」不是「漲跌」→ ⛔ 一律不用紅綠,只用 ⭐/⚠️/⛔。
+    _scrTurnNote(conds) {
+        const E = this._SCR_TURN_EDGE;
+        const turnSort = this._scrSort === 'turn5';
+        const picked = (conds || []).filter(c => c.id === 'turn5hi' || c.id === 'turn5lo');
+        if (!turnSort && !picked.length) return '';
+        const hi = picked.some(c => c.id === 'turn5hi'), lo = picked.some(c => c.id === 'turn5lo');
+        const p = x => (x >= 0 ? '+' : '') + x.toFixed(2);
+        return `<div class="bg-[#161b22] border-l-4 border-[#8b949e] border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
+            <div class="text-[11px] font-bold text-gray-200 mb-1">🔄 用週轉率挑股之前,先看這組實測(已經測第三次了)</div>
+            <div class="text-[10px] text-gray-300 leading-relaxed">
+              📊 全市場依 5 日週轉率分桶,之後 20 日比大盤(對照組 ${E.base}%、勝率 ${E.baseWr}%):
+              冷門&lt;1% <b class="font-mono">${p(E.d.lt1)}pp</b>・1~3% <b class="font-mono">${p(E.d.a13)}pp</b>・
+              3~8% <b class="font-mono">${p(E.d.a38)}pp</b>・8~20% <b class="font-mono">${p(E.d.a820)}pp</b>・
+              &gt;20% <b class="font-mono">${p(E.d.gt20)}pp</b>。<br>
+              🚨 <b>看起來高週轉比較好,但每一桶的前後半段都<u>不同向</u></b> ——
+              例如 8~20% 那桶:前半 <b class="font-mono">${p(E.h1.a820)}pp</b>、後半 <b class="font-mono">${p(E.h2.a820)}pp</b>。
+              <b>那個優勢只存在於最近這一段行情</b>,⛔ 不是穩定的規律。<br>
+              ⛔ 更關鍵:把它疊在本站實測最有效的「<b>高位階 + 高波動</b>」之上,增量幾乎歸零 ——
+              ${p(E.inc.lt1)} / ${p(E.inc.a13)} / ${p(E.inc.a38)} / ${p(E.inc.a820)} / ${p(E.inc.gt20)}pp
+              (來回成本就要 ${E.cost}%)。<b>因為「高週轉」跟「高波動」講的本來就是同一件事。</b><br>
+              ⭐ <b>週轉率唯一實測有效的用法是「漲停的隔一天」</b>:中等週轉(1~3%)次日 +${E.luMid}%,
+              但<b>極高(≥8%)反而衰減到 +${E.luHi}%</b> ——「量太大」是出貨不是助力。
+              那張卡在<b>當沖頁</b>,⚠️ 而且<b>只有次日有效</b>,3 日就轉負。
+            </div>
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">📊 ${E.syms.toLocaleString()} 檔・${E.n.toLocaleString()} 個事件・同檔同桶 20 日去重・報酬已扣同期大盤。
+              另兩次已測過:「低檔高週轉=起漲」不成立、「高檔高週轉=出貨」<b>方向剛好相反</b>。
+              ⚠️ 分母用集保總股數(今天的快照),增資減資的股票會有偏差;窗口整段偏多頭 ⛔ 不可外推到空頭。</div>
+            ${hi ? `<div class="text-[10px] text-orange-300 mt-1 leading-snug">⚠️ 你勾的是<b>高週轉</b> —— 它會幫你濾掉沒量的股票(這點有用),
+              但⛔ <b>別把它當成進場理由</b>:上面那組數字顯示它沒有獨立的優勢。</div>` : ''}
+            ${lo ? `<div class="text-[10px] text-gray-300 mt-1 leading-snug">⭐ 你勾的是<b>排除冷門</b> —— 這半邊比較站得住:
+              冷門股(&lt;1%)是唯一在兩個母體都偏負的一桶(${p(E.d.lt1)}pp / 疊加後 ${p(E.inc.lt1)}pp)。</div>` : ''}
+        </div>`;
+    },
     _scrValNote(conds) {
         const E = this._SCR_PE_EDGE;
         const valSort = ['pe_a', 'pb_a', 'relpe_a', 'peg_a'].includes(this._scrSort);
