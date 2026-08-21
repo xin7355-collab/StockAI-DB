@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.8.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.8.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.8.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.8.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7340,8 +7340,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.8.0',
+    _APP_VERSION: 'V73.8.1',
     _CHANGELOG: [
+        { v: 'V73.8.1', dt: '2026-08-21', t: '🎫 你上傳的 40 份逐字稿看完了 —— 實測 2 條,**都不成立,所以沒改功能**', d: ['先比對過:這批跟你 8/5 上傳的是**同一個系列**,大部分我已經測過或已經確認拿不到資料。掃完所有數字門檻後,只有 **2 條**是「沒測過而且測得動」的。','**① 布林「夾娃娃」(壓縮之後會噴出)** → ⛔ **方向剛好相反**。實測壓縮那格是全表**最差**的(比隨便挑一天還差 0.89%),壓縮後擴張也是負的。','**② 地板股要有量才能接** → 方向確實跟他說的一樣(有量 +0.70% / 沒量 −0.30%),看起來成立 —— **但拿掉表現最好的那一年就變成 −1.03%**,整個好處靠 2025 一年,不能算數。','⭐ 另外發現一件事:「布林帶寬大」統計上真的有一點點優勢(+0.42%),**但比手續費還小**(來回 0.44%),而且它有 78% 跟 App 現在已經在用的「高波動」重疊 → 加了也是白加。','⛔ 所以這次 App 一行判斷邏輯都沒改。測過不成立的結論已經記下來,以後不會再花時間重做一次。'] },
         { v: 'V73.8.0', dt: '2026-08-21', t: '🔧 財經行事曆的 AI 判讀壞掉了(⚠️ AI 例外:HTTP 404)—— 修好而且以後會自己修', d: ['你截圖看到的那個 404,**不是金鑰壞掉、也不是額度用完** —— 是那家 AI 供應商把我們指定的那個免費模型**下架/改名**了。免費模型改版是常態,而我們把名字寫死在程式裡 → 一改版就整條掛掉。','⭐ 修法不是換一個新名字寫死(那只是把同一顆地雷往後埋)—— 改成**去問供應商現在實際有哪些模型**再挑,而且**遇到 404 會自動換一個重打一次**。下次它再改版,App 自己就接上了,不用等我改。','🗣️ 順手把錯誤訊息改成人話:以前只寫「HTTP 404」完全看不出是哪一種問題;現在會分清楚是「模型下架」「金鑰無效 → 去設定中心」「額度用完」「用量到上限」還是「對方伺服器忙」。','🔍 順手抓到同樣的寫死問題**還有 3 處**(金鑰健檢、深度分析、輕量分析)—— 全部接到同一個入口了,以後不會再改一處漏三處。'] },
         { v: 'V73.7.9', dt: '2026-08-20', t: '🚨 抓到一個藏很久的問題:盤中即時資料的排程一直被自己擠掉', d: ['你回報「沒看到台指期」→ 查下去發現的**不是那條 bar 的問題**,而是**盤中即時採礦根本沒在跑**:全市場即時報價從來沒產出過、逐筆內外盤停在 08/07(13 天)。而且後台**全綠、一個錯誤訊息都沒有**。','⭐ 真因跟程式無關:我手動觸發同一份程式碼,**84 秒跑完、2,330 檔 + 台指期全對**。問題是那些採礦被設定成「大家排同一個隊伍」,而盤中每 5 分鐘、每 10 分鐘各發一次,合計約 82 次全擠在一個位子 → **後面的把前面還在排隊的擠掉**,誰都跑不成。','✅ 已改成各自排隊,互不影響。盤中的全市場即時報價 / 逐筆內外盤 / 即時台指期應該會恢復正常刷新。','🔍 順手補了**體檢的盲點**:這幾個盤中檔以前被無條件豁免「收盤後本來就舊」,所以停產 13 天完全沒被抓到。現在改成跟「全站最新資料日」比對 —— 連假不會誤報,但真的停產一天就叫得出來。','⚠️ 個股期貨夜盤那支也停在 08/08,那是另一個原因(要夜盤時段才驗得到),還在查。'] },
         { v: 'V73.7.8', dt: '2026-08-20', t: '📐 順逆價差修好了 —— 探針查出真因不是資料抓不到,是配對方式錯了', d: ['探針在雲端跑完了,答案跟我原本猜的不一樣:官方期貨行情端點**是通的**(2,357 列),它回的日期落後 1 天 —— 而那是**正常**的,因為每日行情要收盤後才更新。','🚨 **真正的 bug 在配對**:現貨那條腿用的是加權指數的「最後一根」(當天下午就有),期貨那條腿天生落後一天 → 兩邊永遠對不上 → 守門每次都擋掉,所以 36 天裡只有 18 天有價差。','⭐ 修法:加權指數本來就有完整歷史 → 直接**查期貨那天的收盤**來配對。價差因此會標成「那一天的價差」而不是今天的。⛔ 沒有放寬守門 —— 對齊不到(期貨那天不在歷史裡)還是誠實留白,因為差一天的價差是假的。','⭐ 探針的**對照組**設計證明有用:匯率那個已知會通的端點通了 → 立刻排除「機器連不到期交所」,不用再去猜端點名字。'] },
