@@ -264,11 +264,169 @@ def build_watch_alerts():
     return alerts
 
 
+SEP2 = '━━━━━━━━━━━━━━━━━━━━'
+MAX_PICKS = 2          # ⭐ V73.0.0 實測:每天做 2 檔最好(6 檔 +73 萬 / 3 檔 +136 萬 / 2 檔 +171 萬)
+SITE = 'https://xin7355-collab.github.io/StockAI-DB/'
+
+
+def _rank_picks(picks):
+    """跟前端 `_eodTriggerSweep` **同一套排序**:🧬 高位階高波動優先 → 保守下界。
+    ⛔ 不可改成排原始期望值 —— V72.9.2 實測那樣必定挑到「樣本少但剛好很賺」的僥倖股。
+    ⚠️ 雲端**讀不到**使用者的自選/庫存(那存在手機 localStorage)→ 少了「自己手上的優先」那一層,
+       所以推播文案要誠實說「這是全市場排序」。
+    """
+    def key(p):
+        lb = p.get('lb')
+        lb = float(lb) if isinstance(lb, (int, float)) else float(p.get('exp') or 0)
+        return (int(p.get('hq') or 0), lb)
+    return sorted(picks, key=key, reverse=True)
+
+
+def _pick_line(p, i):
+    """一檔的推播內容。⛔ 文案不可出現「開盤買」(V72.9.0 實測那樣少賺一半以上)。"""
+    s = p.get('s')
+    trig = p.get('trig')
+    loose = int(p.get('loose') or 0)
+    stop = p.get('stop')
+    n = p.get('n')
+    w = p.get('w')
+    lb = p.get('lb')
+    hq = int(p.get('hq') or 0)
+    bear = int(p.get('bear') or 0)
+    t = f"*{i}. {stock_label(s)}* ・ {p.get('k', '')}\n"
+    if loose or trig in (None, 0):
+        t += "   ▸ 這招不是靠價位觸發,要盤中重算才知道\n"
+    else:
+        t += f"   ▸ 漲過 *{trig}* 才算成立(昨收 {p.get('c')})\n"
+    if stop:
+        t += f"   ▸ 停損 {stop}\n"
+    t += f"   ▸ 這招在這檔打過 {n} 次 ・ 勝率 {w}% ・ 保守期望 {lb}%\n"
+    if hq:
+        t += "   ▸ 🧬 高位階+高波動(實測唯一每一關都過的條件)\n"
+    if bear:
+        t += "   ▸ ⚠️ 這檔中期趨勢偏空,別重壓\n"
+    return t
+
+
+def build_playbook_brief():
+    """【A】盤後推「明日作戰清單」—— 讓使用者不用自己記得開 App 看。"""
+    j = load_json("playbook_edge.json")
+    if not j:
+        print("   ⚠️ 沒有 playbook_edge.json,不發")
+        return None
+    picks = j.get('picks') or []
+    if not picks:
+        print("   ✅ 今天全市場一檔都沒有值得做的打法 —— 這本來就是常態,不發")
+        return None
+    # 🚧 新鮮度守門:⛔ 過期清單絕不推(推了會讓人拿舊觸發價去掛單)
+    dd = str(j.get('data_date') or '')[:10]
+    try:
+        from datetime import date
+        gap = (_tpe_now().date() - date(*map(int, dd.split('-')))).days
+    except Exception:
+        gap = 99
+    if gap > 4:
+        print(f"   ❌ playbook_edge 資料日 {dd} 已距今 {gap} 天,過期不發")
+        return None
+    top = _rank_picks(picks)[:MAX_PICKS]
+    msg = (f"🎯 *明天的作戰清單*\n{SEP2}\n"
+           f"全市場掃了 {j.get('scanned', '?')} 檔,{j.get('picks_syms', len(picks))} 檔有值得做的打法。\n"
+           f"⭐ *一天最多做前 2 檔就好*(實測:做 2 檔賺 171 萬、做 6 檔只剩 73 萬)\n\n")
+    for i, p in enumerate(top, 1):
+        msg += _pick_line(p, i) + "\n"
+    msg += (f"{SEP2}\n"
+            f"⛔ *不是叫你明天一開盤就買* —— 要「漲過那個價,而且撐到*尾盤 13:00~13:25* 還站得住」才進場。\n"
+            f"　 實測同一套打法只改時機:尾盤買賺 136 萬、隔天開盤買只剩 82 萬(還輸給買 0050)。\n"
+            f"⚠️ 這是*全市場*排序,雲端看不到你的自選/庫存 —— App 裡的清單會把你手上的排前面。\n"
+            f"👉 {SITE}")
+    return msg
+
+
+def build_eod_triggers():
+    """【B】尾盤 13:20 一輪:比對即時價,買點到了就推。
+
+    ⛔ 刻意**只跑一輪**(不是每 5 分鐘):
+       ① 無狀態 → 不用維護「今天推過誰」的檔案,也就不可能重複推
+       ② 13:20 正是實測有效的進場時窗(13:00~13:28)的中間
+    """
+    j = load_json("playbook_edge.json")
+    q = load_json("live_quotes.json")
+    if not j or not q:
+        print(f"   ❌ 缺資料(playbook_edge={'有' if j else '無'} / live_quotes={'有' if q else '無'})")
+        return None
+    # 🚧 即時報價新鮮度:⛔ 舊快照絕不拿來判斷「買點到了」(V73.7.7 的教訓)
+    upd = str(q.get('updated') or '')
+    now = _tpe_now()
+    try:
+        from datetime import datetime as _dt
+        ts = _dt.fromisoformat(upd)
+        age_min = (now - ts).total_seconds() / 60
+    except Exception:
+        age_min = 9999
+    if not (0 <= age_min <= 30):
+        print(f"   ❌ 即時報價不新鮮(updated={upd},{age_min:.0f} 分鐘前)→ 不發")
+        print("      ⚠️ 這代表盤中快照採礦沒跑到,要去查 live_snapshot,⛔ 不是把守門放寬")
+        return None
+    data = q.get('data') or {}
+    picks = j.get('picks') or []
+    hit = []
+    for p in _rank_picks(picks):
+        if int(p.get('loose') or 0):
+            continue                      # 這招不是靠價位 → 雲端算不出來,交給 App
+        trig = p.get('trig')
+        if not trig:
+            continue
+        row = data.get(str(p.get('s')))
+        px = None
+        if isinstance(row, dict):
+            px = row.get('p') or row.get('c')
+        elif isinstance(row, (int, float)):
+            px = row
+        if px is None:
+            continue
+        try:
+            px = float(px)
+        except Exception:
+            continue
+        if px >= float(trig):
+            p = dict(p, _px=px)
+            hit.append(p)
+        if len(hit) >= MAX_PICKS:
+            break
+    print(f"   📊 掃 {len(picks)} 個候選 ・ 報價 {len(data)} 檔 ・ 觸發 {len(hit)} 檔")
+    if not hit:
+        print("   ✅ 今天沒有買點成立,不發(這是常態,⛔ 不是壞掉)")
+        return None
+    msg = f"⏰ *買點到了 — 現在是尾盤,可以進場*\n{SEP2}\n"
+    for i, p in enumerate(hit, 1):
+        msg += _pick_line(p, i)
+        msg += f"   ▸ *現在 {p['_px']}*(已站上觸發價)\n\n"
+    msg += (f"{SEP2}\n"
+            f"⚠️ 現在約 {now:%H:%M} —— 實測有效的進場時窗是 *13:00~13:28*,再晚就來不及了。\n"
+            f"⚠️ 這是*全市場*排序,雲端看不到你的自選/庫存。\n"
+            f"⛔ 一天最多做 2 檔(實測做越多賺越少)。\n"
+            f"👉 {SITE}")
+    return msg
+
+
 def main():
     print(f"🚨 alert_system 啟動 — MODE={MODE} / {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     if not BOT_TOKEN or not CHAT_ID:
         print("❌ Telegram 未設定 secrets,跳過(workflow 繼續)")
         sys.exit(0)
+
+    # 🎯 V73.8.5 兩個新模式(使用者要求:「買點到了跟我說,不用一直盯」)
+    #    ⛔ 跟舊的 summary/watch 完全分開 —— 那兩個是**大盤層級籠統摘要**,V21.4 已刻意停用。
+    if MODE in ("playbook", "eod"):
+        msg = build_playbook_brief() if MODE == "playbook" else build_eod_triggers()
+        if msg is None:
+            print("   ✅ 本輪沒有要發的內容(上面已印原因)")
+            sys.exit(0)
+        if send_telegram(msg):
+            print(f"   📡 已發送 {MODE}({len(msg)} chars)")
+        else:
+            print(f"   ❌ {MODE} 送出失敗")
+        return
 
     if MODE == "watch":
         # 盤中監聽:只在重大事件發
