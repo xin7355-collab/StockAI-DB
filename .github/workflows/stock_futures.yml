@@ -11,8 +11,14 @@ on:
     - cron: '0 21 * * 1-5'
 
 # 與 deploy_pages / daily_miner 共用 gh-pages-push group,避免同時 push gh-pages 打架
+# 🚨 V73.8.6 搬出共用的 `gh-pages-push`(同 V73.7.9 對 live_snapshot/tick_flow 的修法)。
+#    理由:`0 14 * * 1-5` = 台北 22:00,正好可能撞上 daily_miner 20:00 那輪的 deploy job
+#    (它也在 gh-pages-push 裡)。GitHub 的 concurrency **每個 group 只留一個 pending run**,
+#    撞上就可能被擠掉 —— 而這支一天只有 2 次機會,擠掉一次就少一天資料。
+# ⛔ `cancel-in-progress: false`:夜盤採礦要跑完才有意義,⛔ 不可設 true。
+# ⚠️ 離開共用鎖後,防撞只剩下面既有的 push retry 迴圈(⛔ 不可拿掉)。
 concurrency:
-  group: gh-pages-push
+  group: gh-pages-stock-futures
   cancel-in-progress: false
 
 permissions:

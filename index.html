@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.8.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.8.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.8.5 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.8.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7340,8 +7340,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.8.5',
+    _APP_VERSION: 'V73.8.6',
     _CHANGELOG: [
+        { v: 'V73.8.6', dt: '2026-08-24', t: '🏀 自選頁加個股期貨夜盤 + 🚨 修掉一個「拿 16 天前資料當昨晚」的嚴重問題', d: ['你要的功能做好了:**自選列多一個「🏀 期夜 +X%」小標籤**,一眼看到那檔昨晚期貨怎麼走(只有約 269 檔有個股期貨,沒有的不會顯示,不會把版面塞爆)。夜盤領先現貨很多會多標「補漲?」。','🚨 但做之前先抓到一個**你截圖裡就有的嚴重問題**:當沖頁那張「個股期貨夜盤 −5.06% / 期 544.0 → 有人放空避險,偏空留意」—— 那份資料**停在 08/08(16 天前)**,畫面卻當成昨晚的在判讀。','⛔ 夜盤是**當天晚上的快照**(昨天 −5% 今天可能 +3%),拿 16 天前的來判會完全相反。已加守門:資料太舊時**不再照算**,改成誠實寫「資料停在 08/08(16 天前)→ 先不判讀」。自選的小標籤則整個不顯示。','⚠️ 順帶說明:個股期貨夜盤採礦從 08/08 就沒再產出過。我已經把它從共用的排隊群組搬出來(跟前幾天修即時報價同一個原因),但**它是夜盤採礦,只能等晚上跑一輪才驗得到** —— 白天硬觸發會把日盤資料寫成「夜盤」,反而更糟。'] },
         { v: 'V73.8.5', dt: '2026-08-22', t: '📲 買點提醒改走雲端 —— 手機關掉 App 也收得到(Telegram)', d: ['之前的提醒是**手機瀏覽器本身的通知**,App 完全關掉就不會響 —— 而買點時窗是平日 13:00~13:28,你上班時多半沒開著。現在多一條**雲端**的路,關 App 也收得到。','**① 每天晚上 20:00** 推「明天的作戰清單」:哪 2 檔、漲過多少才算成立、停損多少、這招在這檔打過幾次。不用自己記得開 App 看。','**② 平日 13:20** 推「買點到了」:拿盤中即時報價比對觸發價,站上了才通知你。⭐ **刻意只跑這一輪** —— 那正是實測唯一有效的進場時窗,而且不會一直吵你。','🚧 三道守門(寧可不發也不亂發):即時報價**超過 30 分鐘就不發**(拿舊價判「買點到了」會害你追高)、清單日期太舊不發、一天最多 2 檔。','⚠️ 需要在雲端設定 Telegram 才會生效;另外雲端**看不到你的自選/庫存**(那存在手機裡),所以推的是全市場排序 —— App 內的清單才會把你手上的排最前面。'] },
         { v: 'V73.8.4', dt: '2026-08-22', t: '🔔 「買點到了通知我」—— 這功能一直都在,但清單上從來沒告訴你要開', d: ['你說的那套(盤後給清單、買點到了通知我、不用一直盯)**App 早就做好了**,而且比你想的更完整:每晚掃全市場找出「**這一檔自己**最會賺的那一招 + 明天漲過多少觸發」,盤中到價自動推播,**你的自選/庫存排最前面**。','🚨 但清單上**從來沒說這件事存在、也沒說要開啟通知** → 等於沒有。現在明日作戰清單多一行狀態:沒開就給你一鍵開啟,開了就顯示「買點到了會提醒你」。','⚠️ 同時把一句**不老實的話**拿掉:原本無條件寫著「App 盤中會幫你盯,到價自動提醒」—— 沒開通知時那是假的。現在會誠實寫「**App 要開著或放背景才收得到**」。','🚨 另外糾正一個關鍵點:你說「當天開盤買」—— **實測那樣會少賺一半以上**。同一套打法只改進場時機:訊號日**尾盤**買賺 136 萬、隔天**開盤**買只剩 82 萬(還輸給買 0050);「跳空太多就不追」更慘,直接**倒賠**。所以提醒時窗刻意只有 **13:00~13:28**。'] },
         { v: 'V73.8.3', dt: '2026-08-21', t: '🚀 「起漲點怎麼看」—— 把實測答案寫進 App(以前只在開發筆記裡)', d: ['你問起漲點怎麼看。這件事 App 早就用 **129 個 K 線訊號**全市場實測過了,但那個結論以前只寫在開發筆記,你在畫面上只看得到「單一訊號幾分」,看不到整片森林。','🚨 **實測結果跟直覺相反**:129 個訊號裡期望值為正的**只有 9 個**。而坊間教的「等它回檔再買」那一批(21 個)裡,**18 個是負的** —— 包括費波納契回撤買點、葛蘭碧買點、多頭回檔等買點(那個樣本最大,22,668 次)。','⭐ 反而是「**已經在動、甚至看起來過熱**」的才是正的:換手量(洗籌續攻)+0.68%、急漲過熱 +0.59%、正乖離過大 +0.52%。一句話:**追強 > 抄底**。','⚠️ 也誠實講例外:抄底型裡「頭肩底」+3.38% 是全表最好的,**但它只出現 147 次**,樣本偏小,別當鐵律。','📍 看法:個股頁 → **K線** → K棒戰法卡右上「ⓘ 怎麼看」就會跳出這段。想直接看「這一檔自己最會賺哪一招、明天漲過多少觸發」→ **選股頁 →「🎯 會賺訊號」**最上面那份。'] },
@@ -36907,6 +36908,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 chips.push(`<span class="text-[9px] font-mono font-bold px-1 rounded border text-gray-300 border-gray-700/50">PE ${(+f.pe).toFixed(1)}</span>`);
             }
         } catch (_) {}
+        // 🏀 V73.8.6 個股期貨夜盤(使用者要求放進自選快速查看)——
+        //   ⛔ 只有 ~269 檔有;⛔ 資料太舊會整個不顯示(見 `_stockFutFresh`)
+        try { const fc = this._favFutChip(sym, data); if (fc) chips.push(fc); } catch (_) {}
         return chips.join(' ');
     },
 
@@ -41953,6 +41957,53 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
     _stockFutureNight(sym) {
         return (this._stockFutureCache && this._stockFutureCache[String(sym)]) || null;
     },
+    // 🚧 V73.8.6 個股期貨夜盤的**新鮮度守門**(⛔ 全 App 唯一判斷點)
+    //
+    // 🚨 為什麼一定要有:使用者截圖顯示「個股期貨夜盤 −5.06% / 期 544.0」並據此判「偏空留意」——
+    //    但那份資料**停在 08-08**(16 天前),畫面卻當成昨晚的在判讀。
+    //    這正是陷阱 #34:**顯示一個不該相信的數字,比空白更危險**。
+    //    夜盤是**當日快照**(昨天 −5% 今天可能 +3%),⛔ 絕對不可沿用。
+    //
+    // ⚠️ 門檻用「日曆天」不用小時 —— 夜盤 cron 一天 2 次,但**週末沒有夜盤**,
+    //    用 30 小時會讓每個週一都判成停產(誤報會讓人養成忽略的習慣)。
+    //    4 天足以涵蓋週末 + 一天國定假日,而真的停產(16 天)一定擋得住。
+    _STOCK_FUT_MAX_D: 4,
+    _stockFutFresh() {
+        const u = this._stockFutureUpdated;
+        if (!u) return { ok: false, why: 'no-data' };
+        const t = new Date(u);
+        if (isNaN(+t)) return { ok: false, why: 'bad-ts' };
+        const d = Math.floor((Date.now() - +t) / 86400000);
+        return { ok: d <= this._STOCK_FUT_MAX_D, days: d, label: `${t.getMonth() + 1}/${String(t.getDate()).padStart(2, '0')}`, why: d > this._STOCK_FUT_MAX_D ? 'stale' : '' };
+    },
+    // 🏀 V73.8.6 自選列的個股期貨迷你標籤(使用者要求:「放在自選裡面,比較可以快速查看」)
+    //   ⛔ 只有 ~269 檔有個股期貨 → 沒有的列自然不顯示,不會把版面塞爆(符合「沒事完全隱藏」)
+    //   ⚠️ 紅綠在這裡表示的是**漲跌方向**(台股慣例),符合燈號鐵則
+    _favFutChip(sym, data) {
+        try {
+            const fr = this._stockFutFresh();
+            if (!fr.ok) return '';                       // 🚧 停產/太舊 → ⛔ 整個不顯示
+            const f = this._stockFutureNight(sym);
+            if (!f || !isFinite(+f.nightChgPct)) return '';
+            const nc = +f.nightChgPct;
+            const cls = nc > 0 ? 'text-red-300 border-red-800/50' : nc < 0 ? 'text-green-300 border-green-800/50' : 'text-gray-400 border-gray-700/50';
+            // 補漲:夜盤已經漲、現貨還沒跟上(跟當沖卡同一個判準 gap >= 1.5)
+            let extra = '', tip = '';
+            const closes = Array.isArray(data) ? data.filter(b => +b.close > 0) : [];
+            if (closes.length >= 2) {
+                const c1 = +closes[closes.length - 1].close, c0 = +closes[closes.length - 2].close;
+                const sc = c0 > 0 ? (c1 - c0) / c0 * 100 : 0;
+                if (nc - sc >= 1.5) extra = '·補漲?';
+                const fp = +f.price;
+                if (isFinite(fp) && fp > 0 && c1 > 0) {
+                    const b = (fp - c1) / c1 * 100;
+                    tip = ` ・價差 ${b >= 0 ? '+' : ''}${b.toFixed(2)}%(期 ${fp} / 現 ${c1})`;
+                }
+            }
+            const title = `個股期貨夜盤 ${f.ts || fr.label}${tip} —— 夜盤反映隔夜消息,⛔ 不是買賣訊號`;
+            return `<span title="${title}" class="text-[9px] font-mono font-bold px-1 rounded border ${cls}">🏀 期夜 ${nc >= 0 ? '+' : ''}${nc.toFixed(1)}%${extra}</span>`;
+        } catch (_) { return ''; }
+    },
     // 🔌 V62.9 載入個股期貨夜盤(stock_futures_miner.py 產出);無檔=靜默(卡片自動隱藏)
     async _loadStockFutures() {
         try {
@@ -42990,7 +43041,19 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         }
         // ④ 個股期貨夜盤補漲(hook,有資料才顯 → 無資料源時整張不出現,不顯技術字)
         const fut = this._stockFutureNight(sym);
-        if (fut && isFinite(+fut.nightChgPct)) {
+        // 🚨 V73.8.6 新鮮度守門 —— 使用者截圖抓到:這張卡把 **16 天前**的夜盤當成昨晚在判讀
+        //   (「期貨夜盤 −5.06% / 期 544.0 → 有人放空避險,偏空留意」全是 08-08 的資料)。
+        //   夜盤是**當日快照**,⛔ 絕對不可沿用(陷阱 #34)。
+        //   ⭐ 但⛔ 不可靜默消失 —— 要誠實說「停在哪一天」,否則使用者只會覺得功能壞了。
+        const _futFr = this._stockFutFresh();
+        if (fut && !_futFr.ok && _futFr.why === 'stale') {
+            parts.push(`<div class="bg-[#161b22] border-l-4 border-gray-600 border-y border-r border-[#30363d] rounded-r p-2">
+                <div class="text-[11px] font-bold text-gray-300 mb-0.5">🏀 個股期貨夜盤 —— 資料停在 ${_futFr.label}(${_futFr.days} 天前)</div>
+                <div class="text-[10px] text-gray-400 leading-snug">夜盤是<b>當天晚上</b>的快照,拿 ${_futFr.days} 天前的來判讀會完全相反 →
+                <b class="text-gray-200">先不判讀</b>。這是採礦端沒跑到,不是這檔沒有期貨。</div>
+            </div>`);
+        }
+        if (fut && _futFr.ok && isFinite(+fut.nightChgPct)) {
             const nc = +fut.nightChgPct, sc = (chgPct != null) ? chgPct : 0, gap = nc - sc, catchUp = gap >= 1.5;
             // 正逆價差:期貨價 vs 現貨價。正價差(期>現)=主力看多易補漲;逆價差(期<現)=有人放空避險偏空
             let basisHtml = '';
