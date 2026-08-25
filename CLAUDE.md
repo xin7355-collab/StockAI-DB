@@ -45,6 +45,76 @@
 - 想手動停跑中的 daily_miner:Actions UI → 該 run → 右上「Cancel workflow」按鈕,**完全無風險**(SQLite 逐股 commit、`if: always()` 上傳 artifact、deploy job STOCKS<100 守門擋空部署)
 - deploy_pages.yml 1 分鐘部署不會被新 push cancel(`cancel-in-progress: false`),完整性優先
 
+### 🚨🚨🚨 V73.9.0 ⭐⭐⭐ 真因是 **GitHub 每個 repo 的排程配額**,不是 concurrency（V73.7.9 只對了一半）
+
+V73.7.9 搬出共用 group 之後,`live_quotes.json` **確實第一次上得了 gh-pages** —— 那部分是對的。
+⛔ **但它仍然一天只跑一輪**,而且 `tick_flow` 一筆都沒有。去查 run 清單才看到真相
+(2026-08-19 ~ 08-25,全部 workflow 都是 `state: active`):
+
+| workflow | cron 要求/天 | 6 天實際 run |
+|---|---|---|
+| `live_snapshot`(每 5 分) | ~58 | **3** |
+| `tick_flow`(每 10 分) | ~27 | **0** |
+| `macro_cron` / `news_express` / `daytrade_data` | 5~8 | **0** |
+| 🚨 `stock_futures`(一天只要 **2** 次) | 2 | **0**(`total_count: 0`) |
+| `theme_news` / `daily_miner` / `fund_sweep` / `playbook_scan`(1~2 次) | 1~2 | ✅ 全部正常 |
+
+⭐⭐ **全 repo 一天只有 7~10 筆 schedule run 進得來,而 cron 要求超過 100 筆。**
+而且**進得來的每一筆都遲到 24~49 分鐘** —— 那不是「偶爾塞車」,是**配額用完就丟**。
+高頻的那兩支(85 次/天)把配額吃光 → 連一天只要 2 次的 `stock_futures` 都擠不進來。
+
+⛔⛔ **兩個一定要記住的誤判**:
+1. 🚨 **CLAUDE.md 原本寫 `stock_futures_night` 「比較可能是**跑了但失敗**」(因為 miner 有三處
+   `sys.exit(1)`)—— 那是錯的**。`total_count: 0`,它**一筆 run 都沒有**,跟程式完全無關。
+   ⭐ **通用:下「程式有問題」的結論之前,先確認它到底有沒有被觸發過**
+   (`actions_list` 的 `total_count`)。我當時是從「有三處 exit(1)」推理出來的,那只是**可能性**。
+2. ⛔ 被丟掉的**不是 `cancelled`,是連 run 都沒產生** → Actions 頁面一片乾淨,
+   什麼都看不出來。這是陷阱 #9 的極端版:**連「有沒有跑」都看不到**。
+
+⭐ **修法:⛔ 不要求 GitHub 幫我們排 58 次,改成排 1 次、自己在 job 裡迴圈。**
+`scripts/intraday_window.py`(RUN / SLEEP n / DONE)+ workflow 裡的 `once()` 迴圈。
+需求從 **85 次/天 → 5 次/天**,而每天 1~2 次的頻率在這個 repo 實測 **100% 可靠**。
+
+⛔ **六條不可改掉的設計**(測試 `scripts/test_intraday_loop.py` 37 條釘住,已用注入缺陷自我驗證):
+① 🚨 **每輪開頭要 `git checkout -f "$BASE_SHA"`** —— deploy 結束時工作區停在 gh-pages/data,
+   那裡**沒有採礦機**。⛔ 少了這行第二輪起全部失敗,而且**只有實跑才看得到**。
+② **節拍計算器要先 `cp` 到 `/tmp`** —— 同理,gh-pages 上沒有 `scripts/`。
+   而且複製完要**立刻試跑一次**,不能用就直接紅燈(否則迴圈一拍都不跑卻看起來很正常)。
+③ ⭐ **先無條件跑一輪再進迴圈** —— 手動觸發(盤後測試)完全靠那一輪。
+④ **收盤那一拍必須跑得到**(quotes 13:30 / ticks 13:23)—— 收盤價就在那一拍,
+   所以窗口判斷用 `now > end + 90s` 而**不是** `>=`。
+⑤ **空過守門**:一拍都沒成功要 `exit 1`(⛔ 不可全綠沒資料)。連 5 拍失敗要提前收工
+   (⛔ 也不可無限重試 —— 金鑰過期會空轉 5 小時)。
+⑥ **每輪把 gh-pages 重設到 `origin/gh-pages`**(`checkout -f -B`)—— 否則第二輪起本地分支
+   落後,每次都先撞一次 push 失敗才靠 rebase 救回來。
+
+🚨🚨 **`tick_flow` 的 `cancel-in-progress` 從 `false` 改成 `true` 是刻意推翻,⛔ 不是「順手統一」**:
+V73.7.9 的理由是「執行 12 分 vs cron 每 10 分 → true 會讓它永遠跑不完」。
+**新架構下已經沒有每 10 分鐘的 cron 了**(節拍在 job 裡,跑完才排下一拍,不可能自己砍自己),
+而接手用的排程**必須殺得掉還活著的主迴圈**才能真的接手 → 只能是 true。
+⭐ 原本那條通用鐵則(**`cancel-in-progress: true` 只有在「執行時間 ≪ 觸發間隔」時才安全**)
+**仍然成立**,只是代入的數字變了(觸發間隔 90 分 ≫ 一拍 2 分)。
+⛔ **判斷可不可以設 true 永遠要看「現在的」觸發間隔,不是抄上一版的結論。**
+
+⛔ **我一度想做但收回的事**:把整點的 cron(`0 14`、`0 6`…)挪開,理由是 GitHub 文件寫
+「高負載時段包含每個整點」。⛔ **但同一份資料裡有三個整點的反例照樣正常跑**
+(`fund_sweep 0 18`・`daytrade_probe 0 10`・`telegram_alert 0 12`)→ 那個假設**被推翻了**,
+所以**一行都沒改**。⭐ 通用:**零成本的改動也不可以基於已被反例推翻的假設** ——
+它會混淆歸因,下次就分不出到底是哪個修法有效。
+
+⏭️ **怎麼驗有沒有修好**(⛔ 一律看**產物的日期**,不是 Actions 頁面的顏色):
+```bash
+for f in live_quotes live_index tick_flow daytrade_pack stock_futures_night; do
+  echo -n "$f: "; git show origin/gh-pages:data/$f.json 2>/dev/null | grep -oE '"updated"[^,}]*' | head -1 || echo "不存在"
+done
+```
+盤中 `live_quotes` 應該 **5 分鐘內**、`tick_flow` **10 分鐘內**。
+⚠️ 若釋出配額後 `stock_futures` / `macro_cron` 仍然 0 筆 → 那才輪到查它們自己的程式。
+⚠️ 若 GitHub 對「5 小時的常駐 job」有意見,下一步是走 **Cloudflare Worker cron →
+`repository_dispatch`**(專案已有 `cloud-worker/`),⛔ 別退回高頻 cron。
+
+---
+
 ### 🚨🚨 V73.7.9 ⭐⭐ 高頻採礦**不可跟別人共用 concurrency group** —— 它們會互相擠掉,而且全綠零訊息
 使用者只是說「(盤前台指期)沒看到」,查下去發現的是**完全不同、而且藏了很久的**問題:
 

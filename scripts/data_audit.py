@@ -66,6 +66,7 @@ CADENCE_H = {
     'live_quotes.json': None,
     'tick_flow.json': None,
     'daytrade_pack.json': None,
+    'live_index.json': None,     # 🌅 V73.9.0 盤前(08:45~09:00)才產的台指期快照
     'paper_trades.json': None,   # 紙上交易,有訊號才寫
 }
 
@@ -73,7 +74,10 @@ META_KEYS = {'updated', 'generated', 'date', 'data_date', 'ts', 'miner_version',
 
 # 🕐 盤中才產出的檔:收盤後/假日不在 gh-pages 是正常的,不是缺口。
 #    ⚠️ 要驗這幾個檔,必須**盤中**再跑一次體檢 —— 收盤後跑再久都不會出現。
-INTRADAY_ONLY = {'live_quotes.json', 'tick_flow.json', 'daytrade_pack.json'}
+INTRADAY_ONLY = {'live_quotes.json', 'tick_flow.json', 'daytrade_pack.json',
+                 # 🌅 V73.9.0 盤前台指期快照 —— 收盤後不在 gh-pages 是正常的,
+                 #    但 B2 仍會用「相對全站最新資料日」條件式檢查它有沒有默默停產。
+                 'live_index.json'}
 
 # 📌 「刻意不在 gh-pages」的檔:報成缺口會誤導,把「為什麼」寫在這裡當活文件。
 #    2026-07-30 首跑時我把這幾條都寫成「缺口待修」,逐條讀原始碼才發現是刻意的 ——

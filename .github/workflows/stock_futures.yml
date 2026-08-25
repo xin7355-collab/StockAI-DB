@@ -3,6 +3,18 @@ name: 🏀 個股期貨夜盤採礦 (Shioaji)
 # 抓「個股期貨近月合約」即時漲跌%(含夜盤)→ data/stock_futures_night.json
 # ⚠️ 需先設 GitHub Secrets:SHIOAJI_API_KEY、SHIOAJI_SECRET_KEY(永豐 e-Leader 產生;只做行情不下單→免憑證)
 # 🧪 第一次請用「Run workflow」手動觸發,看 log 確認登入/抓取成功再靠 cron 自動跑。
+# 🚨🚨 V73.9.0 錯誤診斷更正:CLAUDE.md 原本推測這支「**跑了但失敗**」(因為 miner 有三處 sys.exit(1))。
+#    ⛔ 那是**錯的** —— 去查 run 清單:`total_count: 0`,**一筆 run 都沒有**,
+#    所以 `stock_futures_night.json` 停在 08-08 跟程式完全無關。
+#    真因:全 repo 一天只有 7~10 筆 schedule run 進得來(而 cron 要求超過 100 筆),
+#    而 live_snapshot(58/天)+ tick_flow(27/天)把配額吃光 → 連一天只要 2 次的這支都擠不進來。
+#    → V73.9.0 已把那兩支從 85 次/天壓到 5 次/天,這支應該就會恢復。
+# ⛔ **刻意不改 cron 分鐘**:我一度想把 `0` 挪開(GitHub 文件寫「高負載時段包含每個整點」),
+#    但同一份資料裡有**三個整點的反例照樣正常跑**(`fund_sweep 0 18`・`daytrade_probe 0 10`・
+#    `telegram_alert 0 12`)→ 那個假設**被推翻了**,⛔ 不拿推論當結論。
+#    這支本身沒有任何問題,不要動它;要驗證的是「配額釋出後它會不會自己恢復」。
+# ⭐ 判斷有沒有修好一律看**產物的日期**(`stock_futures_night.json` 的 updated),
+#    ⛔ 不是看 Actions 頁面的顏色(陷阱 #9)。
 on:
   workflow_dispatch:
   schedule:

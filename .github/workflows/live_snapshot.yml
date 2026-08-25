@@ -4,30 +4,42 @@ name: 📸 全市場即時快照 (Shioaji)
 # 供:當沖全市場強勢榜 + 庫存/自選現價基準(免每檔打 Fugle 撞 429)+ 即時台指期
 # ⚠️ 需 GitHub Secrets:SHIOAJI_API_KEY、SHIOAJI_SECRET_KEY(同個股期貨那支,已設好)
 # 🧪 第一次請「Run workflow」手動觸發看 log,確認抓到 >300 檔再靠 cron。
-# ⏱️ 排程:台股盤中(09:00~13:30 = UTC 01:00~05:30)每 5 分鐘一次。
-#    GitHub Actions 排程為 best-effort,尖峰可能延遲數分鐘 → 前端會顯「更新 時間」讓你判斷新鮮度。
-# 🌅 V73.7.7 加盤前三輪(台北 08:45/08:50/08:55):台指期 08:45 就開盤,現貨要 09:00。
-#    ⚠️ 那三輪 `live_snapshot_miner.py` 會自動走**盤前模式** —— 只抓期貨、寫 `live_index.json`,
-#    ⛔ **完全不碰 `live_quotes.json`**(盤中快照是當沖頁命脈,不可被盤前的空資料覆蓋)。
+# 🚨🚨 V73.9.0 架構改了:**⛔ 不再叫 GitHub 幫我們排 58 次,改成排 1 次、自己在 job 裡迴圈。**
+#
+#    V73.7.9 判定「是 concurrency 互相擠掉」——**那只對了一半**。搬出共用 group 之後
+#    `live_quotes.json` 確實第一次上得了 gh-pages,但實測仍然**一天只跑一輪**。
+#    去查 run 清單才看到真因(2026-08-19 ~ 08-25,全部 workflow 都是 state=active):
+#
+#      live_snapshot(每 5 分)   cron 要求 ~58/天 → 6 天只有 **3** 筆 run
+#      tick_flow    (每 10 分)  cron 要求 ~27/天 → **0** 筆
+#      macro_cron / news_express                 → **0** 筆
+#      theme_news / daily_miner(每天 1~2 次)     → ✅ 全部正常
+#
+#    ⭐⭐ 分界線非常清楚:**一天 1~2 次的排程 100% 可靠,高頻的幾乎全被 GitHub 丟掉。**
+#    ⛔ 而且它們**不是 `cancelled`,是連 run 都沒產生** → Actions 頁面一片乾淨,
+#       看不出任何異常。這就是為什麼撐了這麼久都沒人發現(陷阱 #9 的極端版)。
+#    ⚠️ GitHub 官方文件本來就寫「schedule 事件在高負載時可能延遲,**部分排隊的 job 會被丟棄**」
+#       —— 我們一直把它讀成「偶爾晚幾分鐘」,實際上是「幾乎全部不會發生」。
+#
+# ⏱️ 現行排程:每天 **3 次**(全部落在實測可靠的頻率),每次進 job 後自己跑到收盤。
+#    第一次 08:44 涵蓋整段(盤前台指期 08:45 → 收盤 13:30);另外兩次是**接手用的**,
+#    萬一主迴圈中途掛掉(runner 被回收 / Shioaji 斷線),下一次排程會重新接上。
+# 🌅 08:45~09:00 那幾拍 `live_snapshot_miner.py` 會自動走**盤前模式** —— 只抓期貨、
+#    寫 `live_index.json`,⛔ **完全不碰 `live_quotes.json`**(盤中快照是當沖頁命脈)。
 on:
   workflow_dispatch:
   schedule:
-    - cron: '45,50,55 0 * * 1-5'   # UTC 00:45~00:55(台北 08:45~08:55 盤前,只抓期貨)
-    - cron: '*/5 1-4 * * 1-5'      # UTC 01:00~04:55 每 5 分(台北 09:00~12:55)
-    - cron: '0,5,10,15,20,25,30 5 * * 1-5'   # UTC 05:00~05:30(台北 13:00~13:30 收盤)
+    - cron: '44 0 * * 1-5'   # 台北 08:44 —— 主迴圈(盤前台指期 → 一路跑到 13:30 收盤)
+    - cron: '17 2 * * 1-5'   # 台北 10:17 —— 接手①(主迴圈掛了才有意義)
+    - cron: '17 4 * * 1-5'   # 台北 12:17 —— 接手②
 
-# 🚨 V73.7.9 從共用的 `gh-pages-push` 搬出來,改用自己的 group。
-#    真因:GitHub 的 concurrency **每個 group 只留一個 pending run** —— 後面來的會把前面
-#    還在排隊的那個直接取消掉。這支每 5 分鐘一發、tick_flow 每 10 分鐘一發,
-#    再加上 deploy_pages / daily_miner deploy 也在同一個 group → 盤中約 82 個事件擠一個位子,
-#    只要機器排隊超過幾分鐘就整串互相擠掉。
-#    實測(2026-08-20):`data/live_quotes.json` **從來沒出現在 gh-pages 上過**,
-#    手動觸發同一份程式碼卻 84 秒跑完、2,330 檔 + 台指期全對 → 程式沒問題,是排程被擠掉。
-#    ⛔ 而且**全綠、零錯誤訊息**(陷阱 #9),所以撐了很久都沒人發現。
-# ⭐ `cancel-in-progress: true` 是刻意的:快照要的是「最新」,舊的還在跑就該砍掉。
-# ⚠️ 代價:可能與 deploy_pages / daily_miner 同時 push gh-pages → 靠下面既有的
-#    「5 次 retry + fetch/pull --rebase」吸收(那個迴圈本來就是為此而寫)。
-#    ⛔ 別為了「避免打架」把它搬回共用 group —— 那正是它產不出東西的原因。
+# ⭐ `cancel-in-progress: true` 是刻意的,而且在新架構下**更必要**:
+#    接手用的排程必須殺得掉還活著的主迴圈,才能真的「接手」。
+#    代價是每天 2 次、每次約 2 分鐘的空窗(前端顯示「更新時間」看得出來),
+#    換到的是「主迴圈掛掉最多 2 小時內自動恢復」。
+# ⚠️ 可能與 deploy_pages / daily_miner 同時 push gh-pages → 靠下面既有的
+#    「5 次 retry + fetch/pull --rebase」吸收(那個迴圈本來就是為此而寫,⛔ 不可拿掉)。
+# ⛔ 別為了「避免打架」把它搬回共用的 `gh-pages-push` —— 那是 V73.7.9 修掉的另一個問題。
 concurrency:
   group: gh-pages-intraday-quotes
   cancel-in-progress: true
@@ -38,7 +50,10 @@ permissions:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # ⏱️ 窗口 08:44~13:30(台北)= 4 小時 46 分 → 給 300 分(5 小時)含收尾緩衝。
+    #    ⚠️ 改 `intraday_window.py` 的 PROFILES['quotes'] 要同步改這裡,否則會被 GitHub 中途砍掉。
+    #    (GitHub 單一 job 上限 6 小時,300 分還有餘裕。)
+    timeout-minutes: 300
     steps:
       - name: 📥 下載程式碼
         uses: actions/checkout@v4
@@ -53,41 +68,99 @@ jobs:
       - name: 📦 安裝 shioaji
         run: pip install "shioaji<1.7"   # 📌 1.7.0 移除 login(fetch_contract=) → 釘在 1.6.x 保留既有登入寫法
 
-      - name: 📸 採全市場即時快照
+      # ══════════════════════════════════════════════════════════════════════
+      # 🔁 盤中常駐迴圈(V73.9.0)—— 一輪 = 採快照 + 部署,自己算下一拍
+      #
+      # ℹ️ 只 push gh-pages,不進 data 分支(刻意):live_quotes 是「每 5 分鐘重生」的即時快照,
+      #    盤中會不斷刷新、盤後前端不讀(isMarketOpen 守門)。daily_miner 下午洗掉它無妨——
+      #    下個交易日開盤第一輪就重建。若進 data 分支反而讓備份分支每 5 分鐘 churn 一次,不值得。
+      #    (對比 stock_futures_night.json 是隔夜持久資料 → 那支才走雙分支保存。)
+      # 🌅 盤前模式產出的是 live_index.json(只有台指期);盤中是 live_quotes.json(全市場)。
+      #    ⭐ 兩者部署到**不同檔名**,⛔ 盤前那輪絕不覆蓋盤中快照。
+      # ══════════════════════════════════════════════════════════════════════
+      - name: 🔁 盤中常駐迴圈(採快照 → 部署 → 等下一拍)
         env:
           SHIOAJI_API_KEY: ${{ secrets.SHIOAJI_API_KEY }}
           SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
-        run: python3 live_snapshot_miner.py
-
-      # ℹ️ 只 push gh-pages,不進 data 分支(刻意):live_quotes 是「每 5 分鐘重生」的即時快照,
-      #    盤中會不斷刷新、盤後前端不讀(isMarketOpen 守門)。daily_miner 下午洗掉它無妨——
-      #    下個交易日開盤第一次 cron 就重建。若進 data 分支反而讓備份分支每 5 分鐘 churn 一次,不值得。
-      #    (對比 stock_futures_night.json 是隔夜持久資料 → 那支才走雙分支保存。)
-      # 🌅 V73.7.7 盤前模式產出的是 live_index.json(只有台指期);盤中是 live_quotes.json(全市場)。
-      #    ⭐ 兩者部署到**不同檔名**,⛔ 盤前那輪絕不覆蓋盤中快照。
-      - name: 🚀 部署到 gh-pages(盤中:live_quotes.json / 盤前:live_index.json)
         run: |
-          SRC=""; DST=""
-          if   [ -f live_quotes.json ]; then SRC=live_quotes.json; DST=data/live_quotes.json
-          elif [ -f live_index.json  ]; then SRC=live_index.json;  DST=data/live_index.json
-          else echo "❌ 沒產出 JSON,略過部署"; exit 1; fi
-          echo "📦 部署 $SRC → $DST"
+          BASE_SHA=$(git rev-parse HEAD)
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          cp "$SRC" /tmp/lq.json
 
-          git fetch origin gh-pages 2>/dev/null || true
-          git checkout gh-pages 2>/dev/null || { echo "❌ gh-pages 不存在(等 daily_miner 先建)"; exit 1; }
+          # 🚨 節拍計算器要複製出去 —— 每輪結束時工作區停在 **gh-pages**,
+          #    那個分支上沒有 scripts/,直接呼叫會 "No such file"(而且迴圈會整個停掉)。
+          cp scripts/intraday_window.py /tmp/win.py
+          # 🚧 空過守門:節拍計算器不能用的話,迴圈會一拍都不跑而且看起來很正常 → 直接紅燈
+          python3 /tmp/win.py quotes >/dev/null || { echo "❌ 節拍計算器不能用"; exit 1; }
 
-          mkdir -p data
-          cp /tmp/lq.json "$DST"
-          git add "$DST"
-          git diff --cached --quiet && echo "無變更,跳過" || {
-            git commit -m "📸 即時快照 $(basename $DST) $(date -u '+%Y-%m-%d %H:%M UTC')"
+          deploy() {
+            local SRC="" DST=""
+            if   [ -f live_quotes.json ]; then SRC=live_quotes.json; DST=data/live_quotes.json
+            elif [ -f live_index.json  ]; then SRC=live_index.json;  DST=data/live_index.json
+            else echo "❌ 沒產出 JSON,略過部署"; return 1; fi
+            echo "📦 部署 $SRC → $DST"
+            cp "$SRC" /tmp/lq.json
+
+            git fetch origin gh-pages 2>/dev/null || true
+            git checkout -f -B gh-pages origin/gh-pages 2>/dev/null || { echo "❌ gh-pages 不存在(等 daily_miner 先建)"; return 1; }
+
+            mkdir -p data
+            cp /tmp/lq.json "$DST"
+            git add "$DST"
+            if git diff --cached --quiet; then
+              echo "無變更,跳過"; return 0
+            fi
+            git commit -q -m "📸 即時快照 $(basename $DST) $(date -u '+%Y-%m-%d %H:%M UTC')"
+            # ⛔ 這個 retry 迴圈不可拿掉:離開共用 concurrency group 之後,
+            #    它就是唯一擋「跟 deploy_pages / daily_miner 同時 push」的東西。
             for i in 1 2 3 4 5; do
-              git push origin gh-pages && { echo "✅ push 成功 ($i)"; break; }
-              [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; exit 1; }
-              sleep $((i*5)); git fetch origin gh-pages 2>/dev/null || true; git pull --rebase origin gh-pages 2>/dev/null || true
+              git push origin gh-pages 2>/dev/null && { echo "✅ push 成功 ($i)"; return 0; }
+              [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; return 1; }
+              sleep $((i*5))
+              git fetch origin gh-pages 2>/dev/null || true
+              git pull --rebase origin gh-pages 2>/dev/null || true
             done
           }
-          echo "✅ $DST 已部署"
+
+          once() {
+            # 🚨 每輪開頭一定要回到主程式碼 —— 上一輪的 deploy 把我們留在 gh-pages,
+            #    那裡沒有 live_snapshot_miner.py。⛔ 少了這行第二輪就開始失敗。
+            git checkout -f "$BASE_SHA" >/dev/null 2>&1 || { echo "❌ 回不到主程式碼"; return 1; }
+            rm -f live_quotes.json live_index.json   # ⛔ 免得採礦失敗時部署到上一輪的舊檔
+            python3 live_snapshot_miner.py || return 1
+            deploy || return 1
+          }
+
+          # ⭐ 先無條件跑一輪 —— **手動觸發(盤後測試)完全靠這輪**,⛔ 不可拿掉。
+          #    排程觸發時這輪落在 08:44,採礦機自己會判定成盤前模式(只抓期貨)。
+          FIRST_RC=0
+          once || FIRST_RC=$?
+          [ "$FIRST_RC" -eq 0 ] && echo "✅ 首輪完成" || echo "⚠️ 首輪失敗(rc=$FIRST_RC),仍進入迴圈"
+
+          OKN=0; FAILN=0; STREAK=0
+          while :; do
+            S=$(python3 /tmp/win.py quotes)
+            case "$S" in
+              DONE)
+                echo "🏁 窗口結束($(TZ=Asia/Taipei date '+%H:%M'))"; break ;;
+              SLEEP*)
+                sleep "${S#SLEEP }" ;;
+              RUN)
+                echo "──── ⏱️ $(TZ=Asia/Taipei date '+%H:%M:%S') 第 $((OKN+FAILN+1)) 拍 ────"
+                if once; then OKN=$((OKN+1)); STREAK=0
+                else FAILN=$((FAILN+1)); STREAK=$((STREAK+1)); fi
+                # ⛔ 連 5 拍失敗才收工(單拍失敗很常見:Shioaji 偶爾斷線、push 撞車)
+                #    ⚠️ 但也不可無限重試 —— 金鑰過期時會空轉 5 小時。
+                if [ "$STREAK" -ge 5 ]; then echo "❌ 連 5 拍失敗,提前收工"; break; fi
+                sleep 45 ;;   # ⛔ 防同一分鐘內重複觸發(採礦若快速失敗會變成緊迴圈)
+              *)
+                echo "❌ 節拍計算器回了看不懂的東西:$S"; break ;;
+            esac
+          done
+
+          echo "📊 本次共 成功 $OKN 拍 / 失敗 $FAILN 拍"
+          # 🚧 空過守門:一拍都沒成功 **而且** 首輪也失敗 → 這次 run 什麼都沒產出,要紅燈。
+          #    ⛔ 不可無條件 exit 0 —— 那就會變成「全綠但沒有資料」(陷阱 #9)。
+          if [ "$OKN" -eq 0 ] && [ "$FIRST_RC" -ne 0 ]; then
+            echo "❌ 這次 run 完全沒有產出任何快照"; exit 1
+          fi

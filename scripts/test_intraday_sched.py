@@ -69,18 +69,31 @@ ok('①b 🚨 tick_flow ⛔ 不可用共用的 gh-pages-push group', tf_g not in
 ok('② 兩支盤中採礦要各自獨立的 group(⛔ 不可互相擠)', ls_g != tf_g, f'{ls_g} vs {tf_g}')
 
 # ── ③ ⭐ cancel-in-progress 只有「執行時間 ≪ 觸發間隔」才安全 ──────
-ok('③ live_snapshot 用 cancel-in-progress: true(84 秒 ≪ 5 分,取最新才對)', ls_c is True, f'={ls_c}')
-ok('③b 🚨 tick_flow ⛔ 不可設 true(12 分 timeout / 10 分一發 → 會永遠跑不完)',
-   tf_c is False, f'={tf_c}')
-# 把「為什麼不一樣」釘在註解裡,免得日後有人「順手統一」
-ok('③c 檔頭要寫清楚為什麼兩支不一樣', '執行時間 ≪ 觸發間隔' in TF, head(TF, 30))
+#
+# 🚨🚨 V73.9.0 這一組**刻意改寫**(⛔ 不是放寬)—— 原本 ③b/③d/③e 釘的是舊架構
+#      「live_snapshot 每 5 分 / tick_flow 每 10 分 / 所以 tick_flow 必須是 false」。
+#      新架構下**節拍搬進 job 裡面了**,cron 只剩每天 2~3 次 → 那三條的**前提消失**。
+#      ⭐ 上面那條通用鐵則本身**仍然成立**,只是代入的數字變了:
+#         觸發間隔 90~120 分 ≫ 一拍 1~2 分 → 兩支都可以、而且**必須**是 true
+#         (接手用的排程要殺得掉還活著的主迴圈,才能真的接手)。
+#      ⛔ 判斷「可不可以設 true」永遠要看**現在的**觸發間隔,不是抄上一版的結論。
+ok('③ live_snapshot 用 cancel-in-progress: true(接手排程要殺得掉主迴圈)', ls_c is True, f'={ls_c}')
+ok('③b tick_flow 也是 true —— 前提變了(已無每 10 分的 cron,不可能自己砍自己)',
+   tf_c is True, f'={tf_c}')
+ok('③c 檔頭要寫清楚這是「刻意推翻」而不是「順手統一」',
+   '前提消失' in TF or '前提' in TF, head(TF, 32))
 
-# ── ③d 觸發間隔沒有變密(變密會讓 true 不再安全)──────────────────
-ls_intraday = [c for c in crons(LS) if c.startswith('*/')]
-ok('③d live_snapshot 盤中仍是每 5 分鐘(改更密就要重新檢查 ③)',
-   any(c.startswith('*/5 ') for c in ls_intraday), str(crons(LS)))
-ok('③e tick_flow 盤中仍是每 10 分鐘',
-   any(re.match(r'^3,13,23,33,43,53 ', c) for c in crons(TF)), str(crons(TF)))
+# ── ③d 🚨 反過來釘:cron ⛔ 不可再變密 ────────────────────────────
+#    實測(2026-08-19~25)全 repo 一天只有 7~10 筆 schedule run 進得來,
+#    而 cron 要求超過 100 筆 → 高頻排程會被整批丟掉(連 run 都不產生)。
+#    ⛔ 任何人想把節拍改回 cron,這兩條會擋下來。
+for nm, src in (('live_snapshot', LS), ('tick_flow', TF)):
+    cs = crons(src)
+    ok(f'③d {nm} cron ≤3 條(⛔ 高頻排程會被 GitHub 整批丟掉)', len(cs) <= 3, str(cs))
+    ok(f'③e {nm} ⛔ 不可再出現 `*/N` 或逗號列舉的高頻寫法',
+       all('*/' not in c.split()[0] and ',' not in c.split()[0] for c in cs), str(cs))
+ok('③f 節拍改在 job 裡跑(兩支都要接上 intraday_window.py)',
+   'intraday_window.py' in LS and 'intraday_window.py' in TF)
 
 # ── ④ 離開共用鎖後,retry + rebase 是唯一防撞機制,必須還在 ────────
 for nm, src in (('live_snapshot', LS), ('tick_flow', TF)):
