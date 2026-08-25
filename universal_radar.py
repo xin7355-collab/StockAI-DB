@@ -32,7 +32,14 @@ _groq_env = os.environ.get("GROQ_API_KEYS") or os.environ.get("GROQ_API_KEY", ""
 GROQ_API_KEYS = [t.strip() for t in _groq_env.split(",") if t.strip()]
 GROQ_API_KEY = GROQ_API_KEYS[0] if GROQ_API_KEYS else ""   # 向下相容（保留變數）
 GROQ_URL     = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL   = "llama-3.1-8b-instant"
+# 🚨 V73.9.1 ⛔ 不再寫死模型名 —— 舊版寫死 `llama-3.1-8b-instant`,Groq 把它下架之後
+#    每一次呼叫都回 **404**,而 404 一次打掉三件事(全在同一個呼叫裡):
+#      ① title_zh → 國際新聞標題完全沒翻譯(前端卻寫著「已由採礦機翻成中文」)
+#      ② sentiment → 全部退回「中立」
+#      ③ important → 失敗時預設 True → 垃圾新聞全部放行
+#    ⭐ 改成問官方「現在有哪些」+ 404 自我修復,見 groq_common.py。
+from groq_common import groq_model, groq_reason, invalidate as _groq_invalidate
+GROQ_TIER    = "light"   # 這支是「大量新聞逐則判讀 + 翻譯」→ 走輕量層
 
 # 【防禦機制】建立全域連線池與自動退避重試
 http_session = requests.Session()
@@ -84,7 +91,10 @@ def _call_groq_with_rotation(payload: dict, label: str = ""):
     """
     if not GROQ_API_KEYS:
         return None
-    max_attempts = len(GROQ_API_KEYS) + 1
+    max_attempts = len(GROQ_API_KEYS) + 4   # +4:留給「換模型」重試(⛔ 不可只留換 key 的次數)
+    _tried = set()                          # 已知不存在的模型名
+    _last = None                            # 最後一個非 200 的回應(次數用完時要交出去)
+    payload = dict(payload); payload.setdefault("model", None)
     for _ in range(max_attempts):
         idx = _groq_active_idx(time.time())
         if idx is None:
@@ -95,7 +105,18 @@ def _call_groq_with_rotation(payload: dict, label: str = ""):
             "Content-Type":  "application/json",
         }
         try:
+            # ⭐ 模型名一律在這裡注入 —— 呼叫端只要不自己填 model,就自動吃到最新的可用模型
+            #    (⛔ 三個呼叫端各寫一份 = 陷阱 #37,遲早只改到一邊)
+            payload["model"] = payload.get("model") or groq_model(GROQ_API_KEYS, GROQ_TIER, avoid=_tried)
             res = http_session.post(GROQ_URL, json=payload, headers=headers, timeout=20)
+            # 🩹 自我修復:404 = 這個模型名不存在 → 清快取、換一個、再打一次
+            #    ⛔ 換 key 沒用(所有 key 看到的模型清單一樣),所以走的是「換模型」不是「換 key」
+            if res.status_code == 404 and len(_tried) < 3:
+                bad = payload.get("model")
+                print(f"  🩹 [Groq] 模型 {bad} 已下架(404),換一個重試")
+                _tried.add(bad); _groq_invalidate(GROQ_TIER, bad); payload["model"] = None
+                _last = res
+                continue
             if res.status_code == 429:
                 try:
                     retry_after = int(res.headers.get("Retry-After", 0))
@@ -109,8 +130,12 @@ def _call_groq_with_rotation(payload: dict, label: str = ""):
             return res
         except Exception as e:
             print(f"  ⚠️ Groq 例外 (key #{idx + 1}): {e}")
+            _last = None
             time.sleep(1)
-    return None
+    # 🚨 次數用完時要把**最後一個非 200 的回應**交出去,⛔ 不可回 None ——
+    #    回 None 的話呼叫端只會說「AI 暫時無法分析」,把真正的原因(例如模型被下架)吃掉,
+    #    那正是這次害我們查很久的那種錯誤訊息。(V73.9.1 用注入缺陷才發現。)
+    return _last
 
 RSS_SOURCES = {
     "科技新報":         "https://technews.tw/feed/",
@@ -212,7 +237,7 @@ def analyze_sentiment(title: str, summary: str) -> tuple:
         f"生活消費、體育娛樂、與台股無關的外國本地新聞、廣告業配=false。"
     )
     payload = {
-        "model":           GROQ_MODEL,
+        "model":           None,   # ⭐ 由 _call_groq_with_rotation 注入(V73.9.1)
         "messages":        [{"role": "user", "content": user_prompt}],
         "max_tokens":      180,
         "temperature":     0.3,
@@ -223,7 +248,8 @@ def analyze_sentiment(title: str, summary: str) -> tuple:
     if res is None:
         return ("中立", "AI 暫時無法分析", "", True)
     if res.status_code != 200:
-        return ("中立", f"API 錯誤 {res.status_code}", "", True)
+        # 🗣️ 白話化(V26.18 鐵則):光禿禿的「API 錯誤 404」看不出真因,害我們查了很久
+        return ("中立", groq_reason(res.status_code), "", True)
 
     try:
         content = res.json()["choices"][0]["message"]["content"].strip()
@@ -493,7 +519,7 @@ def fetch_global_news():
                 f"輸出純JSON，格式：{{\"title_zh\":\"繁體中文標題\",\"impact\":\"...\",\"impact_level\":\"bullish|bearish|neutral\"}}"
             )
             payload = {
-                "model": GROQ_MODEL,
+                "model": None,   # ⭐ 由 _call_groq_with_rotation 注入
                 "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": 100,
                 "temperature": 0.3,
@@ -554,7 +580,7 @@ def fetch_tech_giants_news():
             for it in arr[:3]:
                 try:
                     payload = {
-                        "model": GROQ_MODEL,
+                        "model": None,   # ⭐ 由 _call_groq_with_rotation 注入
                         "messages": [{"role": "user", "content":
                             f"請把以下英文新聞標題翻譯成繁體中文(25 字以內),只輸出 JSON。\n標題:{it['title']}\n格式:{{\"title_zh\":\"...\"}}"}],
                         "max_tokens": 80,

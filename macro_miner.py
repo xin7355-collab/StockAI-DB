@@ -53,8 +53,12 @@ BOJ_SCHEDULE = [
 _groq_env_mm = os.environ.get("GROQ_API_KEYS") or os.environ.get("GROQ_API_KEY", "")
 GROQ_KEYS_MM = [t.strip() for t in _groq_env_mm.split(",") if t.strip()]
 GROQ_URL_MM = "https://api.groq.com/openai/v1/chat/completions"
-# llama-3.3-70b:行事曆解讀屬「質化判讀」,用 70b 比 8b 準(專案 AI 分工鐵則:輕量判讀走 Groq)
-GROQ_MODEL_MM = "llama-3.3-70b-versatile"
+# 🚨 V73.9.1 ⛔ 不再寫死模型名 —— universal_radar 就是寫死 `llama-3.1-8b-instant`,
+#    Groq 下架之後每次呼叫都 404,而錯誤訊息只有「API 錯誤 404」看不出真因。
+#    這支目前用的 70b 還在,但**同一顆地雷**,一起拆掉(陷阱 #37:同一個修法要掃過所有地方)。
+#    行事曆解讀屬「質化判讀」→ 走 heavy 層(70b 比 8b 準)。
+from groq_common import groq_model as _groq_pick, invalidate as _groq_invalidate
+GROQ_TIER_MM = "heavy"
 
 
 def _groq_chat_mm(messages, label="", max_tokens=1400, temperature=0.4):
@@ -62,18 +66,27 @@ def _groq_chat_mm(messages, label="", max_tokens=1400, temperature=0.4):
     if not GROQ_KEYS_MM:
         print(f"  ⚠️ [Groq] 無 GROQ_API_KEYS,跳過 {label}")
         return None
-    payload = {"model": GROQ_MODEL_MM, "messages": messages,
+    _tried = set()
+    payload = {"model": None, "messages": messages,
                "temperature": temperature, "max_tokens": max_tokens}
-    for i, key in enumerate(GROQ_KEYS_MM):
+    # ⚠️ 要多繞幾圈才夠「換模型」用(⛔ 只有 len(keys) 圈的話,404 會把換 key 的次數吃光)
+    for i, key in enumerate(list(GROQ_KEYS_MM) * 2):
         try:
             # 🐛 V71.3.9 這裡原本寫 http_session —— macro_miner 根本沒有這個名字
             #    (本檔的 session 叫 http,定義在 L455)。每次呼叫都 NameError,
             #    又剛好被下面的 `except Exception` 吞掉只印「例外 NameError」,
             #    所以財經行事曆的 AI 解讀**從上線到現在一次都沒成功過**
             #    (實測 gh-pages 的 macro_risk.json:macro_events_ai 一直是空的)。
+            payload["model"] = payload.get("model") or _groq_pick(GROQ_KEYS_MM, GROQ_TIER_MM, avoid=_tried)
             r = http.post(GROQ_URL_MM, json=payload,
                                   headers={"Authorization": f"Bearer {key}",
                                            "Content-Type": "application/json"}, timeout=45)
+            # 🩹 自我修復:404 = 模型名不存在(⛔ 換 key 沒用,所有 key 看到的清單一樣)
+            if r.status_code == 404 and len(_tried) < 3:
+                bad = payload.get("model")
+                print(f"  🩹 [Groq] 模型 {bad} 已下架(404),換一個重試")
+                _tried.add(bad); _groq_invalidate(GROQ_TIER_MM, bad); payload["model"] = None
+                continue
             if r.status_code == 429:
                 print(f"  ⏳ [Groq] key#{i+1} 429,換下一把")
                 continue
@@ -221,7 +234,9 @@ def build_macro_events_ai(out):
     return {
         "updated": datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M"),
         # 🧠 V71.3.9 誠實標示實際用哪個引擎產的(前端/日後除錯要看得出來)
-        "model": (GEMINI_MODEL_MM if _engine == "gemini" else GROQ_MODEL_MM),
+        # ⚠️ V73.9.1 Groq 的模型名現在是動態解析的 → 這裡也要問一次同一支解析器,
+        #    ⛔ 不可寫死(否則 JSON 上標的引擎跟實際用的會對不起來 = 又一個「同名不同義」)
+        "model": (GEMINI_MODEL_MM if _engine == "gemini" else _groq_pick(GROQ_KEYS_MM, GROQ_TIER_MM)),
         "summary": str(data.get("summary", ""))[:400],
         "focus": [{
             "date": str(f.get("date", ""))[:10],
