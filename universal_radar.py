@@ -52,6 +52,7 @@ http_session.mount("https://", HTTPAdapter(max_retries=retry_strategy))
 
 # ── [Key 輪動] per-key 冷卻狀態（Actions VM 是一次性容器，run 結束自動回收，不需持久化）──
 _groq_key_idx = 0
+_GROQ_LAST_NONE = ""      # 🔍 V73.9.4 最後一次「回 None」的真正原因(給 _groq_json 寫進資料檔)
 _groq_key_cooldown = {}   # idx → 解除冷卻 unix_ts
 
 
@@ -98,6 +99,11 @@ def _call_groq_with_rotation(payload: dict, label: str = ""):
     for _ in range(max_attempts):
         idx = _groq_active_idx(time.time())
         if idx is None:
+            # 🔍 V73.9.4 記下「為什麼回 None」—— 舊版一律寫成籠統的「AI 暫時無法分析」,
+            #    查不出是**額度用完**還是網路壞掉。實測 15 則有 13 則卡在這裡,
+            #    而畫面上完全看不出真因(同「診斷要寫進 JSON 不是只印 log」那條鐵則)。
+            global _GROQ_LAST_NONE
+            _GROQ_LAST_NONE = f"AI 用量到上限(全部 {len(GROQ_API_KEYS)} 把金鑰冷卻中,約 1 小時後恢復)"
             print(f"  🚫 [Groq 輪動] {label or 'call'}：全 {len(GROQ_API_KEYS)} 把 key 均冷卻中，回 None")
             return None
         headers = {
@@ -146,8 +152,13 @@ def _groq_json(payload: dict, label: str = "") -> tuple:
        ⛔ 那正是陷阱 #37(共用邏輯寫好了卻只接一處),第三處遲早會漏。
 
     ⛔ 三條不可拿掉的行為:
-     ① **400 → 拿掉 `response_format` 再打一次**。實測 15 則有 14 則卡在嚴格 JSON 模式:
-        輸出被 `max_tokens` 截斷 → 不是合法 JSON → Groq 直接回 400(⚠️ 不是 200 配半截內容)。
+     ① 🚨 **呼叫端一律不帶 `response_format`(嚴格 JSON 模式)**,這裡只留它當安全網。
+        V73.9.2 的做法是「400 → 拿掉 response_format 再打一次」,⛔ **那是錯的方向**:
+        它讓每一則的呼叫次數**變兩倍** → 金鑰提早撞 429、冷卻 1 小時
+        → 實測 15 則有 **13 則**變成「全冷卻拿不到」,**比不修還糟**。
+        ⭐ 通用:**加重試解決不了「額度不夠」** —— 要從源頭少打一次。
+        而 400 的源頭就是嚴格模式(輸出稍長就被判不合法),不用它就沒有 400。
+        ⭐ 專案本來就靠「提示詞要求純 JSON + 寬鬆解析」(JSON 防呆鐵則),⛔ 不靠 API 強制。
      ② 寬鬆模式可能回 ```json 圍欄或前後多講一句 → 撈出第一個 {...} 再 parse
         (專案 JSON 防呆鐵則:嚴禁 Markdown 標籤導致程式崩潰)。
      ③ 🔍 失敗時把**對方回的原文**一起交出去 —— job log 會過期,
@@ -163,7 +174,8 @@ def _groq_json(payload: dict, label: str = "") -> tuple:
         if r2 is not None and r2.status_code == 200:
             res = r2
     if res is None:
-        return (None, "AI 暫時無法分析")
+        # ⛔ 不可只寫「AI 暫時無法分析」—— 那句話對排查完全沒有幫助
+        return (None, _GROQ_LAST_NONE or "AI 暫時無法分析")
     if res.status_code != 200:
         detail = ""
         try:
@@ -293,7 +305,7 @@ def analyze_sentiment(title: str, summary: str) -> tuple:
         #    ⚠️ 這是「輸出上限」不是「花費」—— 實際只會用到需要的長度,調大不會多燒額度。
         "max_tokens":      500,
         "temperature":     0.3,
-        "response_format": {"type": "json_object"},
+        # ⛔ 刻意不帶 `response_format`(嚴格 JSON 模式)—— 原因見 `_groq_json` 說明
     }
 
     # ⭐ V73.9.3 改走共用的 `_groq_json`(⛔ 不再自己寫一份,見該函式的說明)
@@ -585,7 +597,7 @@ def fetch_global_news():
                 #    這裡比 analyze_sentiment 更小,所以**更容易踩到**(實測一則都沒翻出來)。
                 "max_tokens": 400,
                 "temperature": 0.3,
-                "response_format": {"type": "json_object"},
+                # ⛔ 刻意不帶 `response_format` —— 原因見 `_groq_json` 說明
             }
             parsed, _err = _groq_json(payload, label="fetch_global_news")
             if parsed:
@@ -649,7 +661,7 @@ def fetch_tech_giants_news():
                         # 🚨 V73.9.3 80 → 300(同上:太小 → JSON 被截斷 → Groq 回 400)
                         "max_tokens": 300,
                         "temperature": 0.2,
-                        "response_format": {"type": "json_object"},
+                        # ⛔ 刻意不帶 `response_format` —— 原因見 `_groq_json` 說明
                     }
                     parsed, _err = _groq_json(payload, label=f"tech_giants_{key}")
                     if parsed:

@@ -203,8 +203,14 @@ class _Sess400:
 U.http_session = _Sess400()
 with contextlib.redirect_stdout(io.StringIO()):
     res3 = U.analyze_sentiment('t', 's')
-ok('⑩ 🚨 空過守門:嚴格模式真的先被打了', 'strict' in seen2, seen2)
-ok('⑩b 400 → 要**拿掉嚴格 JSON 模式**再試一次(⛔ 不可直接放棄)', 'loose' in seen2, seen2)
+# 🚨 V73.9.4 這兩條**刻意改寫**(⛔ 不是放寬):V73.9.3 的設計是「先打嚴格模式,
+#    400 再退一步」—— 實測那讓每則的呼叫次數**變兩倍**,金鑰提早撞 429、冷卻 1 小時,
+#    15 則有 13 則變成「全冷卻拿不到」,**比不修還糟**。
+#    ⭐ 現在呼叫端一律不帶 response_format → 正常情況**只打一次**。
+ok('⑩ 🚨 正常情況 ⛔ 只可以打一次(V73.9.3 打兩次 → 額度燒光 → 比不修還糟)',
+   len(seen2) == 1 and seen2[0] == 'loose', seen2)
+ok('⑩b 安全網仍在:呼叫端若真的帶了 response_format,400 之後要能退一步',
+   'p2.pop("response_format"' in open(os.path.join(ROOT, 'universal_radar.py'), encoding='utf-8').read())
 ok('⑩c 寬鬆模式回來的 ```json 圍欄要解析得掉(專案 JSON 防呆鐵則)',
    res3[2] == '寬鬆也翻好了' and res3[0] == '利空', res3)
 
@@ -258,6 +264,27 @@ ok('⑪c ⛔ 三個呼叫端都要走共用 `_groq_json`,不可再自己解析�
 small = [int(m) for m in re.findall(r'"max_tokens":\s*(\d+)', _ur2) if int(m) < 250]
 ok('⑪d ⛔ 不可有 max_tokens < 250 的呼叫(舊版 100/80 就是一則都翻不出來的原因)',
    not small, small)
+
+# ── ⑫ V73.9.4:⛔ 呼叫端不可再帶嚴格 JSON 模式(那是 400 與額度加倍的源頭)──
+_ur3 = open(os.path.join(ROOT, 'universal_radar.py'), encoding='utf-8').read()
+_code3 = '\n'.join(ln for ln in _ur3.splitlines() if not ln.lstrip().startswith('#'))
+ok('⑫ 🚨 ⛔ 三個呼叫端都不可帶 response_format('
+   'V73.9.3 因此呼叫次數加倍 → 金鑰全冷卻 → 15 則有 13 則拿不到,比不修還糟)',
+   'response_format": {"type"' not in _code3,
+   [ln.strip() for ln in _code3.splitlines() if 'response_format": {' in ln][:2])
+ok('⑫b 但共用函式要留它當安全網(萬一日後有人加回去)', 'p2.pop("response_format"' in _ur3)
+
+# 全冷卻時的原因要具體,⛔ 不可只寫「AI 暫時無法分析」
+sys.modules.pop('universal_radar', None)
+import universal_radar as U2  # noqa: E402
+U2.GROQ_API_KEYS = [SECRET, SECRET + 'B']
+U2.SKIP_AI = False
+U2._groq_key_cooldown.update({0: 9e18, 1: 9e18})     # 兩把都冷卻
+with contextlib.redirect_stdout(io.StringIO()):
+    r5 = U2.analyze_sentiment('t', 's')
+ok('⑫c 🔍 全部金鑰冷卻時,原因要說出「用量到上限」(⛔ 不可只寫「暫時無法分析」)',
+   '用量到上限' in r5[1], r5[1])
+ok('⑫d 而且要講得出「幾把 / 多久恢復」', '2 把' in r5[1] and '小時' in r5[1], r5[1])
 
 print()
 print(f'❌ {len(fails)} 條失敗' if fails else '✅ GROQMODEL_PASS(全部通過)')
