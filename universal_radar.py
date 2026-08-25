@@ -243,20 +243,48 @@ def analyze_sentiment(title: str, summary: str) -> tuple:
     payload = {
         "model":           None,   # ⭐ 由 _call_groq_with_rotation 注入(V73.9.1)
         "messages":        [{"role": "user", "content": user_prompt}],
-        "max_tokens":      180,
+        # 🚨 V73.9.2 180 → 500:嚴格 JSON 模式下,輸出**被截斷**就是無效 JSON,
+        #    Groq 直接回 **400**(不是 200 配半截內容)。換模型之後輸出變長就會踩到。
+        #    ⚠️ 這是「輸出上限」不是「花費」—— 實際只會用到需要的長度,調大不會多燒額度。
+        "max_tokens":      500,
         "temperature":     0.3,
         "response_format": {"type": "json_object"},
     }
 
     res = _call_groq_with_rotation(payload, label="analyze_sentiment")
+    # 🩹 V73.9.2 400 通常是**嚴格 JSON 模式**(response_format)出問題 ——
+    #    模型輸出不合 schema / 被截斷,Groq 一律回 400 而不是 200。
+    #    ⭐ 退一步:拿掉 response_format 再打一次,自己從文字裡撈 JSON。
+    #    ⛔ 不要因為「有 response_format 比較保險」就不做退路 —— 實測 15 則有 14 則卡在這。
+    if res is not None and res.status_code == 400:
+        p2 = dict(payload)
+        p2.pop("response_format", None)
+        p2["model"] = None
+        print("  🩹 [Groq] 400(嚴格 JSON 模式)→ 改用寬鬆模式重試一次")
+        r2 = _call_groq_with_rotation(p2, label="analyze_sentiment_loose")
+        if r2 is not None and r2.status_code == 200:
+            res = r2
     if res is None:
         return ("中立", "AI 暫時無法分析", "", True)
     if res.status_code != 200:
-        # 🗣️ 白話化(V26.18 鐵則):光禿禿的「API 錯誤 404」看不出真因,害我們查了很久
-        return ("中立", groq_reason(res.status_code), "", True)
+        # 🗣️ 白話化(V26.18 鐵則):光禿禿的「API 錯誤 404」看不出真因,害我們查了很久。
+        # 🔍 而且要把**對方回的原文**一起帶回去寫進 JSON —— job log 會過期,
+        #    只印 log 的話下一個人還是只看得到一個狀態碼(V72.6.x 的教訓)。
+        _detail = ""
+        try:
+            _detail = (res.text or "")[:90].replace("\n", " ")
+        except Exception:
+            pass
+        return ("中立", (groq_reason(res.status_code) + (f" · {_detail}" if _detail else ""))[:120], "", True)
 
     try:
         content = res.json()["choices"][0]["message"]["content"].strip()
+        # 🧹 寬鬆模式下模型可能包 ```json 圍欄或前後多講一句 → 撈出第一個 {...}
+        #    (專案 JSON 防呆鐵則:嚴禁 Markdown 標籤導致程式崩潰)
+        if not content.startswith("{"):
+            _m = re.search(r"\{.*\}", content, re.S)
+            if _m:
+                content = _m.group(0)
         parsed  = json.loads(content)
         sentiment = parsed.get("sentiment", "中立")
         if sentiment not in ("利多", "利空", "中立"):

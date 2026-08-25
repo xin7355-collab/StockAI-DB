@@ -176,11 +176,61 @@ with contextlib.redirect_stdout(io.StringIO()):
 #    ⭐ 正解:釘**指定的那句白話**,⛔ 不是「沒有出現某個字」。
 ok('⑧f 🚨 全部模型都 404 → 要回「模型已被下架」那句白話(⛔ 不可是「API 錯誤 404」,'
    '也⛔不可退成籠統的「暫時無法分析」把真因吃掉)',
-   res2[1] == G.groq_reason(404), res2[1])
+   res2[1].startswith(G.groq_reason(404)), res2[1])   # ⚠️ V73.9.2 起後面會附上對方回的原文
 ok('⑧g 而且要收斂,⛔ 不可無限重試', len(seen) <= 8, len(seen))
 
 # ── ⑨ 快取不可永久 ───────────────────────────────────────────────
 ok('⑨ 快取 TTL ≤12 小時(模型下架是常態,⛔ 不可永久快取)', 0 < G._TTL <= 12 * 3600, G._TTL)
+
+# ── ⑩ V73.9.2:400(嚴格 JSON 模式)要退一步重試,而且原因要看得見 ────────
+# 🚨 實測:404 修好之後**換成 400** —— 15 則有 14 則卡住,判讀又等於沒有。
+#    400 通常是 `response_format:json_object` 出問題(輸出不合 schema / 被截斷),
+#    ⛔ 光把模型換掉解決不了。
+seen2 = []
+
+
+class _Sess400:
+    """第一次(帶 response_format)回 400;拿掉之後回 200 + ```json 圍欄。"""
+    def post(self, url, json=None, headers=None, timeout=None):
+        p = json or {}
+        seen2.append('strict' if p.get('response_format') else 'loose')
+        if p.get('response_format'):
+            return FakeResp(400, {}, '{"error":{"code":"json_validate_failed"}}')
+        return FakeResp(200, {'choices': [{'message': {'content':
+            '```json\n{"sentiment":"利空","reason":"r","title_zh":"寬鬆也翻好了","important":false}\n```'}}]})
+
+
+U.http_session = _Sess400()
+with contextlib.redirect_stdout(io.StringIO()):
+    res3 = U.analyze_sentiment('t', 's')
+ok('⑩ 🚨 空過守門:嚴格模式真的先被打了', 'strict' in seen2, seen2)
+ok('⑩b 400 → 要**拿掉嚴格 JSON 模式**再試一次(⛔ 不可直接放棄)', 'loose' in seen2, seen2)
+ok('⑩c 寬鬆模式回來的 ```json 圍欄要解析得掉(專案 JSON 防呆鐵則)',
+   res3[2] == '寬鬆也翻好了' and res3[0] == '利空', res3)
+
+# 兩邊都 400 → 訊息要帶**對方回的原文**(⛔ job log 會過期,只印 log 下次還是查不到)
+seen2.clear()
+
+
+class _AllBad:
+    def post(self, *a, **k):
+        seen2.append((k.get('json') or {}).get('response_format') and 'strict' or 'loose')
+        return FakeResp(400, {}, '{"error":{"code":"json_validate_failed","message":"bad"}}')
+
+
+U.http_session = _AllBad()
+with contextlib.redirect_stdout(io.StringIO()):
+    res4 = U.analyze_sentiment('t', 's')
+ok('⑩d 🔍 兩邊都失敗時,原因要帶對方回的原文寫進 JSON(⛔ 不可只有一句白話)',
+   'json_validate_failed' in res4[1], res4[1])
+ok('⑩e 但白話那句也要在(⛔ 不可只丟一串英文 JSON 給使用者看)',
+   res4[1].startswith(G.groq_reason(400)), res4[1])
+
+# max_tokens 要夠 —— 太小會讓 JSON 被截斷,那正是 400 的來源之一
+_ur = open(os.path.join(ROOT, 'universal_radar.py'), encoding='utf-8').read()
+_mt = re.search(r'"max_tokens":\s*(\d+)', _ur)
+ok('⑩f max_tokens 要 ≥400(⛔ 太小 → JSON 被截斷 → Groq 回 400)',
+   _mt and int(_mt.group(1)) >= 400, _mt.group(1) if _mt else 'not found')
 
 print()
 print(f'❌ {len(fails)} 條失敗' if fails else '✅ GROQMODEL_PASS(全部通過)')
