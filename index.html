@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.8.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.8.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.8.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.8.7 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7340,8 +7340,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.8.6',
+    _APP_VERSION: 'V73.8.7',
     _CHANGELOG: [
+        { v: 'V73.8.7', dt: '2026-08-25', t: '🔁 「怎麼常常是同幾檔?」—— 你的感覺是對的,而且順手抓到一個排序打架', d: ['**先回答你**:我量了。隔 3 個交易日(08/19→08/24)清單 167 → 164 檔,**重疊 111 檔 = 68%**;前 12 名重疊 5/12。所以不是你的錯覺。','⭐ **但這是設計的必然,不是壞掉**:清單問的是「**這一檔自己歷史上最會賺的那一招**」,而歷史成績**不會天天變** → 會上榜的大致就是那批。⛔ 我**不會**為了「看起來新鮮」硬換一批,那等於把最會賺的幾檔擠掉。','⭐ **每天真正在變的是「離觸發價還有多遠」** —— 同一檔昨天差 8%、今天差 1%,意義完全不同。看清單先看那個距離,不是看它有沒有出現過。清單上多了一行摺疊說明,點開就有這組數字。','🚨 **順手抓到真 bug**:你「看到的清單順序」跟「實際會推播給你的順序」**用不同規則排** —— 清單只看保守期望值,推播卻會把「🧬 強勢高波動」排前面。而實測不挑 🧬 的話整套會**輸給買 0050 一百多萬** → 已改成兩邊同一套,你看到的第 1 名就是真的會通知你的那一檔。'] },
         { v: 'V73.8.6', dt: '2026-08-24', t: '🏀 自選頁加個股期貨夜盤 + 🚨 修掉一個「拿 16 天前資料當昨晚」的嚴重問題', d: ['你要的功能做好了:**自選列多一個「🏀 期夜 +X%」小標籤**,一眼看到那檔昨晚期貨怎麼走(只有約 269 檔有個股期貨,沒有的不會顯示,不會把版面塞爆)。夜盤領先現貨很多會多標「補漲?」。','🚨 但做之前先抓到一個**你截圖裡就有的嚴重問題**:當沖頁那張「個股期貨夜盤 −5.06% / 期 544.0 → 有人放空避險,偏空留意」—— 那份資料**停在 08/08(16 天前)**,畫面卻當成昨晚的在判讀。','⛔ 夜盤是**當天晚上的快照**(昨天 −5% 今天可能 +3%),拿 16 天前的來判會完全相反。已加守門:資料太舊時**不再照算**,改成誠實寫「資料停在 08/08(16 天前)→ 先不判讀」。自選的小標籤則整個不顯示。','⚠️ 順帶說明:個股期貨夜盤採礦從 08/08 就沒再產出過。我已經把它從共用的排隊群組搬出來(跟前幾天修即時報價同一個原因),但**它是夜盤採礦,只能等晚上跑一輪才驗得到** —— 白天硬觸發會把日盤資料寫成「夜盤」,反而更糟。'] },
         { v: 'V73.8.5', dt: '2026-08-22', t: '📲 買點提醒改走雲端 —— 手機關掉 App 也收得到(Telegram)', d: ['之前的提醒是**手機瀏覽器本身的通知**,App 完全關掉就不會響 —— 而買點時窗是平日 13:00~13:28,你上班時多半沒開著。現在多一條**雲端**的路,關 App 也收得到。','**① 每天晚上 20:00** 推「明天的作戰清單」:哪 2 檔、漲過多少才算成立、停損多少、這招在這檔打過幾次。不用自己記得開 App 看。','**② 平日 13:20** 推「買點到了」:拿盤中即時報價比對觸發價,站上了才通知你。⭐ **刻意只跑這一輪** —— 那正是實測唯一有效的進場時窗,而且不會一直吵你。','🚧 三道守門(寧可不發也不亂發):即時報價**超過 30 分鐘就不發**(拿舊價判「買點到了」會害你追高)、清單日期太舊不發、一天最多 2 檔。','⚠️ 需要在雲端設定 Telegram 才會生效;另外雲端**看不到你的自選/庫存**(那存在手機裡),所以推的是全市場排序 —— App 內的清單才會把你手上的排最前面。'] },
         { v: 'V73.8.4', dt: '2026-08-22', t: '🔔 「買點到了通知我」—— 這功能一直都在,但清單上從來沒告訴你要開', d: ['你說的那套(盤後給清單、買點到了通知我、不用一直盯)**App 早就做好了**,而且比你想的更完整:每晚掃全市場找出「**這一檔自己**最會賺的那一招 + 明天漲過多少觸發」,盤中到價自動推播,**你的自選/庫存排最前面**。','🚨 但清單上**從來沒說這件事存在、也沒說要開啟通知** → 等於沒有。現在明日作戰清單多一行狀態:沒開就給你一鍵開啟,開了就顯示「買點到了會提醒你」。','⚠️ 同時把一句**不老實的話**拿掉:原本無條件寫著「App 盤中會幫你盯,到價自動提醒」—— 沒開通知時那是假的。現在會誠實寫「**App 要開著或放背景才收得到**」。','🚨 另外糾正一個關鍵點:你說「當天開盤買」—— **實測那樣會少賺一半以上**。同一套打法只改進場時機:訊號日**尾盤**買賺 136 萬、隔天**開盤**買只剩 82 萬(還輸給買 0050);「跳空太多就不追」更慘,直接**倒賠**。所以提醒時窗刻意只有 **13:00~13:28**。'] },
@@ -39364,6 +39365,39 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <div class="text-[9px] text-gray-600 mt-0.5">⚠️ 這是手機/瀏覽器本身的通知,<b>App 要開著或放在背景</b>才收得到;完全關掉就不會響。</div>
         </div>`;
     },
+    // 🔁 V73.8.7 「怎麼常常是同幾檔?」—— 使用者直接問了,所以要在清單上答
+    //
+    // ⭐ 實測(08/19 → 08/24,隔 3 個交易日):全清單 167 → 164 檔,**重疊 111 檔 = 68%**;
+    //    前 12 名重疊 5/12。→ **使用者的感覺是對的,而且這是設計的必然,不是 bug**:
+    //    清單問的是「**這一檔自己歷史上最會賺的招**」,而歷史成績**不會天天變** →
+    //    會不會上榜主要看它的歷史,每天真正在變的是「**離觸發價還有多遠**」。
+    // ⛔ 不可因此改成「每天換一批」——那等於用隨機性冒充多樣性,會把最會賺的那幾檔擠掉。
+    // ⚠️ 打法集中度是**現算**的(⛔ 不寫死),因為它會隨清單變。
+    _pbWhySameHtml(picks) {
+        try {
+            if (!Array.isArray(picks) || !picks.length) return '';
+            const c = {};
+            for (const p of picks) { const k = String(p.k || '?'); c[k] = (c[k] || 0) + 1; }
+            const top = Object.entries(c).sort((a, b) => b[1] - a[1])[0];
+            if (!top) return '';
+            const pctTop = (top[1] / picks.length * 100).toFixed(0);
+            const syms = new Set(picks.map(p => String(p.s))).size;
+            return `<details class="mb-1.5"><summary class="text-[10px] text-gray-500 cursor-pointer select-none list-none">
+                🔁 <b class="text-gray-400">怎麼常常是同幾檔?</b> —— 這是正常的,點開看為什麼
+            </summary>
+            <div class="text-[10px] text-gray-300 bg-[#0d1117] border-l-4 border-gray-600 rounded-r px-2 py-1.5 mt-1 leading-relaxed">
+              ⭐ 因為這張清單問的是「<b>這一檔自己歷史上最會賺的那一招</b>」——
+              而<b>歷史成績不會天天變</b>,所以會上榜的大致就是那批。<br>
+              📊 實測隔 3 個交易日:清單 167 → 164 檔,<b class="font-mono">重疊 68%</b>。
+              今天這份是 <b class="font-mono">${picks.length}</b> 筆 / <b class="font-mono">${syms}</b> 檔,
+              最多的打法是「${top[0]}」佔 <b class="font-mono">${pctTop}%</b>
+              (⚠️ 那是全市場最常出現的型態,不是它比較厲害)。<br>
+              ⭐ <b>每天真正在變的是「離觸發價還有多遠」</b> —— 同一檔昨天差 8%、今天差 1%,
+              意義完全不同。看清單時<b>先看那個距離</b>,不是看它有沒有出現過。<br>
+              ⛔ 也因此<b>不會為了「看起來新鮮」硬換一批</b> —— 那等於把最會賺的幾檔擠掉。
+            </div></details>`;
+        } catch (_) { return ''; }
+    },
     async _tomorrowWatchHtml() {
         const j = await this._loadPlaybookEdge();
         const list = (j && Array.isArray(j.picks)) ? j.picks : [];
@@ -39374,7 +39408,15 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 👜 自己手上/自選的排最前面(跟今日訊號那塊同一個規則)
         // ⛔ 用保守下界排,⛔ 不是原始期望值(理由見 _pbRowHtml 的 `shown`)
         const _lb = x => Number.isFinite(+x.lb) ? +x.lb : +x.exp;
-        const rows = list.slice().sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (_lb(b) - _lb(a)));
+        // 🚨 V73.8.7 修「看到的順序」跟「實際會推播的順序」不一樣:
+        //   這裡本來只有 `(自己的) || (保守下界)`,但 `_eodTriggerSweep`(真的會通知你的那支)
+        //   是 `(自己的) || (🧬 高位階高波動) || (保守下界)` → **兩邊排出來的第 1 名可能是不同檔**。
+        //   ⭐ 而 V73.2.9 已經實測:不挑 🧬 的話整套會**輸給買 0050 一百多萬**
+        //      → 🧬 是**必要條件不是加分項**,清單當然也要照它排。
+        //   ⛔ 兩處必須用同一個式子(陷阱 #37:同一套規則寫兩份,遲早只改到一邊)。
+        const _hq = x => (this.settings?.pbHqOff ? 0 : (+x.hq || 0));
+        const rows = list.slice().sort((a, b) =>
+            (mine.has(String(b.s)) - mine.has(String(a.s))) || (_hq(b) - _hq(a)) || (_lb(b) - _lb(a)));
         // 🐛 V73.3.0 使用者問「為何有 2 個華城」—— 清單是「(股票 × 打法)」不是「股票」,
         //   同一檔可以有不只一種會賺的打法(實測 158 檔裡有 13 檔各有 2 招)。
         //   ⛔ 不去重(兩招的觸發價與停損完全不同,砍掉一招 = 少一個機會),
@@ -39446,6 +39488,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <span class="text-cyan-300/70">實測開盤就買會把賺頭全部吃光(甚至倒賠)。</span>
             </div>
             ${this._pbAlertBarHtml()}
+            ${this._pbWhySameHtml(list)}
             ${hqLine}
             ${this._pbTrackRecordHtml()}
             ${mktLine}${riskLine}
