@@ -232,6 +232,33 @@ _mt = re.search(r'"max_tokens":\s*(\d+)', _ur)
 ok('⑩f max_tokens 要 ≥400(⛔ 太小 → JSON 被截斷 → Groq 回 400)',
    _mt and int(_mt.group(1)) >= 400, _mt.group(1) if _mt else 'not found')
 
+# ── ⑪ V73.9.3:非聊天模型要在「取清單」時就濾掉 ────────────────────
+# 🚨 實測踩到:解析器挑到 `whisper-large-v3`(語音辨識)與 `canopylabs/orpheus`(語音合成)
+#    → Groq 回 400「The model … does not support」/「failed to template request」。
+#    ⛔ 真因是我自己在「硬清單也要尊重 avoid」那段加的緊急退路**沒有限制模型種類**。
+#    ⭐ 正解:在**取清單的當下**就濾掉,⛔ 不是在每一條挑選路徑各補一次判斷(那遲早會漏一條)。
+DIRTY = ['whisper-large-v3', 'canopylabs/orpheus-tts', 'llama-guard-4-12b',
+         'playai-tts', 'text-embedding-3', 'llama-3.3-70b-versatile']
+reset(); stub_models(ids=DIRTY)
+picked = [G.groq_model([SECRET], 'light'),
+          G.groq_model([SECRET], 'heavy'),
+          G.groq_model([SECRET], 'light', avoid={'llama-3.3-70b-versatile'})]
+bad = [p for p in picked if re.search(r'whisper|tts|orpheus|guard|embed', p or '', re.I)]
+ok('⑪ 🚨 ⛔ 任何路徑都不可挑到語音/嵌入/防護類模型(含 avoid 用光後的緊急退路)',
+   not bad, picked)
+ok('⑪b 濾完仍要挑得到能用的', picked[0] == 'llama-3.3-70b-versatile', picked)
+
+# ⛔ 不可有第四份「呼叫 Groq → 解析 JSON」的複製品(陷阱 #37)
+_ur2 = open(os.path.join(ROOT, 'universal_radar.py'), encoding='utf-8').read()
+n_direct = len(re.findall(r'json\.loads\(res\.json\(\)\["choices"\]', _ur2))
+ok('⑪c ⛔ 三個呼叫端都要走共用 `_groq_json`,不可再自己解析一份',
+   n_direct == 0 and _ur2.count('_groq_json(payload') >= 3,
+   f'直接解析 {n_direct} 處 / 共用 {_ur2.count("_groq_json(payload")} 處')
+# 三處的 max_tokens 都要夠(⛔ 太小 → JSON 被截斷 → 400)
+small = [int(m) for m in re.findall(r'"max_tokens":\s*(\d+)', _ur2) if int(m) < 250]
+ok('⑪d ⛔ 不可有 max_tokens < 250 的呼叫(舊版 100/80 就是一則都翻不出來的原因)',
+   not small, small)
+
 print()
 print(f'❌ {len(fails)} 條失敗' if fails else '✅ GROQMODEL_PASS(全部通過)')
 sys.exit(1 if fails else 0)

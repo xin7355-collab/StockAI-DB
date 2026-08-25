@@ -46,6 +46,16 @@ _PREFS = {
 # 🛟 保險②:解析不到時的硬清單(⛔ 只當最後手段,不是主要來源)
 _LEGACY = {'heavy': 'llama-3.3-70b-versatile', 'light': 'llama-3.1-8b-instant'}
 
+# 🚨 V73.9.3 **非聊天模型一律先濾掉**(實測踩到:解析器挑到 `whisper-large-v3`(語音辨識)
+#    與 `canopylabs/orpheus`(語音合成)→ Groq 回 400
+#    「The model … does not support」/「failed to template request」)。
+#    ⛔ 真因是我自己在「硬清單也要尊重 avoid」那段加的緊急退路**沒有限制模型種類**。
+#    ⭐ 正解:**在取清單的當下就濾掉**,而不是在每一條挑選路徑各補一次判斷
+#       —— 補在挑選端遲早會漏掉一條(陷阱 #37 的同型)。
+_NON_CHAT = re.compile(
+    r'whisper|tts|orpheus|speech|audio|embed|guard|moderation|rerank|vision-only|playai',
+    re.I)
+
 _cache = {'ids': None, 'at': 0.0, 'err': ''}
 _good = {}          # tier → 上次成功過的模型名
 _TTL = 6 * 3600     # ⚠️ 模型下架是常態,⛔ 不可永久快取
@@ -63,7 +73,10 @@ def _list_models(keys):
             if r.status_code != 200:
                 err = f'key#{i + 1} HTTP {r.status_code}'   # 🔐 只記第幾把
                 continue
-            ids = [m.get('id') for m in (r.json().get('data') or []) if m.get('id')]
+            raw = [m.get('id') for m in (r.json().get('data') or []) if m.get('id')]
+            ids = [m for m in raw if not _NON_CHAT.search(m)]
+            if len(raw) != len(ids):
+                print(f'  🧹 [Groq] 濾掉 {len(raw) - len(ids)} 個非聊天模型(語音/嵌入/防護類)')
             if ids:
                 err = ''
                 break
@@ -98,7 +111,7 @@ def groq_model(keys, tier='light', avoid=None):
             if mid not in avoid:
                 return mid
         for t2, v2 in _LEGACY.items():
-            if v2 not in avoid:
+            if v2 not in avoid and not _NON_CHAT.search(v2):
                 return v2
     return leg
 

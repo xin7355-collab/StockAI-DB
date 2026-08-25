@@ -137,6 +137,51 @@ def _call_groq_with_rotation(payload: dict, label: str = ""):
     #    那正是這次害我們查很久的那種錯誤訊息。(V73.9.1 用注入缺陷才發現。)
     return _last
 
+def _groq_json(payload: dict, label: str = "") -> tuple:
+    """🧩 V73.9.3 打 Groq 要一包 JSON —— 回 (dict|None, err_note)。
+
+    ⭐ 為什麼抽出來:同一段「呼叫 → 解析 JSON」在本檔**有三份**
+       (`analyze_sentiment` / `fetch_global_news` / `fetch_tech_giants_news`),
+       而 400 退路、寬鬆解析、原因回傳這三件事本來只補在其中一份 →
+       ⛔ 那正是陷阱 #37(共用邏輯寫好了卻只接一處),第三處遲早會漏。
+
+    ⛔ 三條不可拿掉的行為:
+     ① **400 → 拿掉 `response_format` 再打一次**。實測 15 則有 14 則卡在嚴格 JSON 模式:
+        輸出被 `max_tokens` 截斷 → 不是合法 JSON → Groq 直接回 400(⚠️ 不是 200 配半截內容)。
+     ② 寬鬆模式可能回 ```json 圍欄或前後多講一句 → 撈出第一個 {...} 再 parse
+        (專案 JSON 防呆鐵則:嚴禁 Markdown 標籤導致程式崩潰)。
+     ③ 🔍 失敗時把**對方回的原文**一起交出去 —— job log 會過期,
+        只印 log 的話下一個人還是只看得到一個狀態碼。
+    """
+    res = _call_groq_with_rotation(payload, label=label)
+    if res is not None and res.status_code == 400:
+        p2 = dict(payload)
+        p2.pop("response_format", None)
+        p2["model"] = None
+        print(f"  🩹 [Groq] {label} 400(嚴格 JSON 模式)→ 改用寬鬆模式重試一次")
+        r2 = _call_groq_with_rotation(p2, label=f"{label}_loose")
+        if r2 is not None and r2.status_code == 200:
+            res = r2
+    if res is None:
+        return (None, "AI 暫時無法分析")
+    if res.status_code != 200:
+        detail = ""
+        try:
+            detail = (res.text or "")[:90].replace("\n", " ")
+        except Exception:
+            pass
+        return (None, (groq_reason(res.status_code) + (f" · {detail}" if detail else ""))[:120])
+    try:
+        content = res.json()["choices"][0]["message"]["content"].strip()
+        if not content.startswith("{"):
+            m = re.search(r"\{.*\}", content, re.S)
+            if m:
+                content = m.group(0)
+        return (json.loads(content), "")
+    except Exception as e:
+        return (None, f"AI 回的內容看不懂({type(e).__name__})")
+
+
 RSS_SOURCES = {
     "科技新報":         "https://technews.tw/feed/",
     "鉅亨網台股":       "https://www.cnyes.com/rss/cat/tw_stock",
@@ -251,52 +296,18 @@ def analyze_sentiment(title: str, summary: str) -> tuple:
         "response_format": {"type": "json_object"},
     }
 
-    res = _call_groq_with_rotation(payload, label="analyze_sentiment")
-    # 🩹 V73.9.2 400 通常是**嚴格 JSON 模式**(response_format)出問題 ——
-    #    模型輸出不合 schema / 被截斷,Groq 一律回 400 而不是 200。
-    #    ⭐ 退一步:拿掉 response_format 再打一次,自己從文字裡撈 JSON。
-    #    ⛔ 不要因為「有 response_format 比較保險」就不做退路 —— 實測 15 則有 14 則卡在這。
-    if res is not None and res.status_code == 400:
-        p2 = dict(payload)
-        p2.pop("response_format", None)
-        p2["model"] = None
-        print("  🩹 [Groq] 400(嚴格 JSON 模式)→ 改用寬鬆模式重試一次")
-        r2 = _call_groq_with_rotation(p2, label="analyze_sentiment_loose")
-        if r2 is not None and r2.status_code == 200:
-            res = r2
-    if res is None:
-        return ("中立", "AI 暫時無法分析", "", True)
-    if res.status_code != 200:
-        # 🗣️ 白話化(V26.18 鐵則):光禿禿的「API 錯誤 404」看不出真因,害我們查了很久。
-        # 🔍 而且要把**對方回的原文**一起帶回去寫進 JSON —— job log 會過期,
-        #    只印 log 的話下一個人還是只看得到一個狀態碼(V72.6.x 的教訓)。
-        _detail = ""
-        try:
-            _detail = (res.text or "")[:90].replace("\n", " ")
-        except Exception:
-            pass
-        return ("中立", (groq_reason(res.status_code) + (f" · {_detail}" if _detail else ""))[:120], "", True)
-
-    try:
-        content = res.json()["choices"][0]["message"]["content"].strip()
-        # 🧹 寬鬆模式下模型可能包 ```json 圍欄或前後多講一句 → 撈出第一個 {...}
-        #    (專案 JSON 防呆鐵則:嚴禁 Markdown 標籤導致程式崩潰)
-        if not content.startswith("{"):
-            _m = re.search(r"\{.*\}", content, re.S)
-            if _m:
-                content = _m.group(0)
-        parsed  = json.loads(content)
-        sentiment = parsed.get("sentiment", "中立")
-        if sentiment not in ("利多", "利空", "中立"):
-            print(f"  ⚠️ Groq 回傳異常 sentiment={sentiment!r}，已退回中立。原始 content={content[:120]}")
-            sentiment = "中立"
-        reason = str(parsed.get("reason", "")).strip()[:30] or "AI 未提供說明"
-        title_zh = str(parsed.get("title_zh", "")).strip()[:50]
-        important = bool(parsed.get("important", True))
-        return (sentiment, reason, title_zh, important)
-    except Exception as e:
-        print(f"  ⚠️ analyze_sentiment 解析例外：{e}")
-        return ("中立", "AI 暫時無法分析", "", True)
+    # ⭐ V73.9.3 改走共用的 `_groq_json`(⛔ 不再自己寫一份,見該函式的說明)
+    parsed, _err = _groq_json(payload, label="analyze_sentiment")
+    if parsed is None:
+        return ("中立", _err or "AI 暫時無法分析", "", True)
+    sentiment = parsed.get("sentiment", "中立")
+    if sentiment not in ("利多", "利空", "中立"):
+        print(f"  ⚠️ Groq 回傳異常 sentiment={sentiment!r},已退回中立。")
+        sentiment = "中立"
+    return (sentiment,
+            (str(parsed.get("reason", "")).strip()[:30] or "AI 未提供說明"),
+            str(parsed.get("title_zh", "")).strip()[:50],
+            bool(parsed.get("important", True)))
 
 
 def _fetch_rss_with_encoding_fallback(url: str):
@@ -570,20 +581,23 @@ def fetch_global_news():
             payload = {
                 "model": None,   # ⭐ 由 _call_groq_with_rotation 注入
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 100,
+                # 🚨 V73.9.3 100 → 400:嚴格 JSON 模式下輸出被截斷就是無效 JSON,Groq 回 400。
+                #    這裡比 analyze_sentiment 更小,所以**更容易踩到**(實測一則都沒翻出來)。
+                "max_tokens": 400,
                 "temperature": 0.3,
                 "response_format": {"type": "json_object"},
             }
-            res = _call_groq_with_rotation(payload, label="fetch_global_news")
-            if res is not None and res.status_code == 200:
-                try:
-                    parsed = json.loads(res.json()["choices"][0]["message"]["content"])
-                    impact = str(parsed.get("impact", "暫無分析"))[:30]
-                    lvl = parsed.get("impact_level", "neutral")
-                    level = lvl if lvl in ("bullish", "bearish", "neutral") else "neutral"
-                    title_zh = str(parsed.get("title_zh", ""))[:40]
-                except Exception as e:
-                    print(f"  ⚠️ fetch_global_news 解析例外: {e}")
+            parsed, _err = _groq_json(payload, label="fetch_global_news")
+            if parsed:
+                impact = str(parsed.get("impact", "暫無分析"))[:30]
+                lvl = parsed.get("impact_level", "neutral")
+                level = lvl if lvl in ("bullish", "bearish", "neutral") else "neutral"
+                title_zh = str(parsed.get("title_zh", ""))[:40]
+            elif _err:
+                # 🔍 ⛔ 不可靜默 —— 舊版失敗時 title_zh 就是空字串,
+                #    前端只看到英文標題,查不出是「沒翻」還是「翻譯掛了」。
+                impact = _err[:60]
+                print(f"  ⚠️ fetch_global_news: {_err}")
             time.sleep(2.5)
 
         analyzed.append({**item, "title_zh": title_zh, "impact": impact, "impact_level": level})
@@ -632,14 +646,16 @@ def fetch_tech_giants_news():
                         "model": None,   # ⭐ 由 _call_groq_with_rotation 注入
                         "messages": [{"role": "user", "content":
                             f"請把以下英文新聞標題翻譯成繁體中文(25 字以內),只輸出 JSON。\n標題:{it['title']}\n格式:{{\"title_zh\":\"...\"}}"}],
-                        "max_tokens": 80,
+                        # 🚨 V73.9.3 80 → 300(同上:太小 → JSON 被截斷 → Groq 回 400)
+                        "max_tokens": 300,
                         "temperature": 0.2,
                         "response_format": {"type": "json_object"},
                     }
-                    res = _call_groq_with_rotation(payload, label=f"tech_giants_{key}")
-                    if res is not None and res.status_code == 200:
-                        parsed = json.loads(res.json()["choices"][0]["message"]["content"])
+                    parsed, _err = _groq_json(payload, label=f"tech_giants_{key}")
+                    if parsed:
                         it["title_zh"] = str(parsed.get("title_zh", ""))[:50]
+                    elif _err:
+                        print(f"  ⚠️ tech_giants_{key}: {_err}")
                 except Exception as e:
                     print(f"  ⚠️ {key} 翻譯例外: {e}")
                 time.sleep(2.5)
