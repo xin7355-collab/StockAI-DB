@@ -184,8 +184,12 @@ NEWS_CATEGORIES = {
     # 💱 匯率成本 —— 台幣急升殺出口股毛利,是很多人忽略的
     "💱 匯率成本": ["台幣升值", "台幣貶值", "匯損", "匯兌", "新台幣升", "新台幣貶", "油價", "運價"],
     # 📊 財務事件
+    # 📊 V73.9.1 補財報詞 —— 舊版只有「財測/法說」,而中文媒體寫美股巨頭一律用
+    #   「輝達財報」「財報優於預期」「本季展望」,一個都不命中 → 整類抓不到。
     "📊 財務事件": ["財測", "上修", "下修", "法說", "併購", "收購", "合併", "減資", "增資",
-                    "重訊", "庫藏股", "現金增資"],
+                    "重訊", "庫藏股", "現金增資",
+                    "財報", "季報", "年報", "營收", "毛利率", "每股盈餘", "EPS",
+                    "優於預期", "不如預期", "展望", "資本支出"],
     # 🛡️ 資安法律 —— 台積電 2018 中毒停機是前例
     "🛡️ 資安法律": ["駭客", "勒索軟體", "資安事件", "個資外洩", "專利訴訟", "侵權", "召回", "瑕疵"],
     # 📈 股價異動(原本就有的那幾個)
@@ -351,6 +355,15 @@ GLOBAL_NEWS_SOURCES = {
     #   收斂在**會傳導到金融市場**的那一類,⛔ 不做純戰報(那是新聞台的事,對股價沒有可操作性)。
     "🌍 地緣突發":    "https://news.google.com/rss/search?q=(Iran+OR+Israel+OR+%22Middle+East%22+OR+%22Taiwan+Strait%22+OR+Russia+OR+Ukraine)+(strike+OR+missile+OR+attack+OR+war+OR+sanctions+OR+blockade+OR+oil+OR+markets)+when:1d&hl=en&gl=US&ceid=US:en",
     "🌍 油價航運":    "https://news.google.com/rss/search?q=(%22oil+price%22+OR+Brent+OR+OPEC+OR+%22Strait+of+Hormuz%22+OR+%22Red+Sea%22+OR+shipping)+when:1d&hl=en&gl=US&ceid=US:en",
+    # 📊 V73.9.1 使用者:「輝達財報還有重點新聞…沒有抓到資料」。查證後屬實 ——
+    #   舊來源都是「公司/人名」導向,**沒有任何一條是財報導向** → 財報當晚的結果撈不到。
+    #   ⚠️ 財報是**當日事件**(隔天就過期)→ 一律掛 `when:1d`,⛔ 不然會撈到一堆舊分析文。
+    "📊 巨頭財報":    "https://news.google.com/rss/search?q=(Nvidia+OR+Alphabet+OR+Google+OR+Microsoft+OR+Apple+OR+Amazon+OR+Meta+OR+Broadcom+OR+AMD+OR+TSMC+OR+Micron)+(earnings+OR+results+OR+guidance+OR+outlook+OR+forecast+OR+revenue)+when:1d&hl=en&gl=US&ceid=US:en",
+    # 🏢 V73.9.1 使用者:「還有 google 等等巨頭的」。實測舊來源**完全沒有涵蓋**
+    #   Google/Alphabet・微軟・Meta・甲骨文 —— 而它們正是 AI 資本支出(台股伺服器鏈)的金主。
+    #   ⭐ 綁「AI / cloud / capex / data center」而不是只給公司名,⛔ 不然會撈到一堆消費性新聞
+    #   (Gmail 改版、Android 更新那種對台股沒有可操作性)。
+    "🏢 雲端巨頭":    "https://news.google.com/rss/search?q=(Alphabet+OR+Google+OR+Microsoft+OR+Meta+OR+Oracle+OR+OpenAI)+(AI+OR+cloud+OR+capex+OR+%22data+center%22+OR+chip+OR+TPU+OR+GPU)&hl=en&gl=US&ceid=US:en",
     # ⚡🔥🚫🧪 V72.3.4 使用者要求的四類(缺貨/延遲交貨/火災/新技術)+ 出口管制。
     #   ⚠️ 每條都綁「chip OR semiconductor OR memory…」之類的**產業限定詞** ——
     #      不綁的話 `fire`/`shortage`/`delay` 會撈到一堆跟台股無關的社會新聞。
@@ -368,6 +381,9 @@ TECH_GIANTS_SOURCES = {
     "huang":  "https://news.google.com/rss/search?q=%22Jensen+Huang%22+OR+(NVIDIA+AI+chip)&hl=en&gl=US&ceid=US:en",
     "spacex": "https://news.google.com/rss/search?q=SpaceX+(Starlink+OR+Starship+OR+launch)&hl=en&gl=US&ceid=US:en",
     "kuiper": "https://news.google.com/rss/search?q=Amazon+(%22Project+Kuiper%22+OR+satellite)&hl=en&gl=US&ceid=US:en",
+    # 📊 V73.9.1 第 5 桶:巨頭財報(使用者指名要的)。⚠️ when:1d —— 財報是當日事件。
+    #   ⛔ 加了桶就一定要把前端也接上,不然是死資料(陷阱 #32:功能存在但使用者看不到)。
+    "earnings": "https://news.google.com/rss/search?q=(Nvidia+OR+Alphabet+OR+Microsoft+OR+Apple+OR+Amazon+OR+Meta+OR+Broadcom+OR+AMD+OR+TSMC+OR+Micron)+(earnings+OR+guidance+OR+revenue)+when:1d&hl=en&gl=US&ceid=US:en",
 }
 TECH_GIANTS_FILE = DATA_DIR / "tech_giants_news.json"
 
@@ -385,6 +401,11 @@ TW_RELATED_KEYWORDS = [
     # 宏觀（影響台股大盤）
     'tariff', 'tariffs', 'fed', 'interest rate', 'inflation', 'cpi', 'gdp',
     'recession', 'rate cut', 'rate hike', 'stock market', 'stocks', 'shares',
+    # 📊 V73.9.1 財報詞 —— ⚠️ 舊白名單靠「公司名」命中,所以標題若只寫
+    #   「chipmaker beats estimates」會被 `_is_tw_relevant()` 整條濾掉。
+    'earnings', 'guidance', 'outlook', 'forecast', 'revenue', 'beats estimates',
+    'misses estimates', 'quarterly results', 'capex', 'capital expenditure',
+    'data center', 'datacenter', 'cloud', 'alphabet', 'broadcom', 'micron',
     'markets', 'tech', 'equities', 'wall street', 'nasdaq', 'dow jones',
     # 🌍 V72.3.3 地緣政治 / 軍事 / 能源(使用者要求)——
     #   ⚠️ **這一整段以前完全沒有** → 像「Israel strikes Iran nuclear site」這種標題

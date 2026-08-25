@@ -272,6 +272,100 @@ def _warn_schedule_expiry(today):
         print(f"  ⚠️ 排程到期檢查略過:{str(_e)[:60]}")
 
 
+# ═══ 📊 V73.9.1 美股巨頭財報日(使用者:「輝達財報…沒有抓到資料」)═══
+#
+# ⭐ 為什麼這個比「財報新聞」有價值:**新聞是發生後才知道,財報日是可以提前知道的。**
+#    輝達財報當晚台股 AI 鏈整條會跳,提前兩天知道才來得及調部位;
+#    等新聞出來的時候,台股已經反映完了。
+#
+# ⚠️ 既有的 `fetch_earnings_calls` 抓的是**台股法說會**(742 場,全是本土公司),
+#    ⛔ 完全沒有美股巨頭 —— 這是真缺口,不是「已經有了」。
+#
+# ⛔ 三條刻意的設計:
+#  ① **標 `us_earn: True` 旗標**,⛔ 不靠關鍵字比對 —— 前端把「法說會」整批收進摺疊區
+#     (免得 742 場淹掉核彈事件),但**輝達財報對台股是宏觀等級事件**,不該被一起埋掉。
+#     ⭐ 用旗標而不是文字比對,才不會因為文案改字就失效。
+#  ② **附台股對應族群** —— 只寫「NVDA 財報」對使用者沒有可操作性;
+#     要寫「台股 AI 伺服器鏈(2382 廣達・3231 緯創・2317 鴻海)看這個」。
+#  ③ **沙箱連不到 Yahoo → 這支只能在 Actions 驗**。所以它自己要能說出「用哪條路拿到的」
+#     (`_src`),⛔ 不然拿不到時分不出是 API 改了還是這台機器連不到(同對照組的道理)。
+US_EARNINGS_WATCH = [
+    # (ticker, 中文名, 台股對應族群)
+    ("NVDA",  "輝達",     "AI 伺服器鏈(廣達2382・緯創3231・鴻海2317・台積電2330)"),
+    ("TSM",   "台積電ADR", "台積電本尊 2330"),
+    ("AVGO",  "博通",     "ASIC/網通(創意3443・世芯3661)"),
+    ("AMD",   "超微",     "AI 加速器鏈(緯穎6669・技嘉2376)"),
+    ("MU",    "美光",     "記憶體(南亞科2408・華邦電2344・威剛3260)"),
+    ("GOOGL", "谷歌",     "TPU/雲端資本支出(創意3443・光寶科2301)"),
+    ("MSFT",  "微軟",     "雲端資本支出(伺服器整機廠)"),
+    ("AAPL",  "蘋果",     "蘋概股(大立光3008・鴻海2317・玉晶光3406)"),
+    ("AMZN",  "亞馬遜",   "AWS 資本支出(伺服器/散熱)"),
+    ("META",  "Meta",     "AI 資本支出(伺服器/光通訊)"),
+    ("DELL",  "戴爾",     "AI 伺服器出貨指標"),
+    ("MRVL",  "邁威爾",   "光通訊/ASIC"),
+]
+
+
+def fetch_us_earnings(window_days=21):
+    """回 [{date, event, severity, us_earn}] —— 未來 N 天內的美股巨頭財報日。
+    ⛔ 任何失敗都回 [](⚠️ 但要印出原因),絕不讓它擋住整個行事曆。"""
+    try:
+        import yfinance as yf
+    except Exception as e:
+        print(f"  ⚠️ [美股財報] 沒有 yfinance({type(e).__name__}),跳過")
+        return []
+    from datetime import date as _date
+    today = _date.today()
+    out, srcs, fails = [], {}, []
+    for tk, zh, chain in US_EARNINGS_WATCH:
+        d, src = None, ''
+        try:
+            t = yf.Ticker(tk)
+            # 路線 A:calendar(新版是 dict,舊版是 DataFrame)
+            try:
+                cal = t.calendar
+                if isinstance(cal, dict):
+                    v = cal.get('Earnings Date') or cal.get('earningsDate')
+                    if isinstance(v, (list, tuple)) and v:
+                        v = v[0]
+                    d, src = getattr(v, 'date', lambda: v)(), 'calendar.dict'
+                elif cal is not None and hasattr(cal, 'loc'):
+                    v = cal.loc['Earnings Date'][0]
+                    d, src = getattr(v, 'date', lambda: v)(), 'calendar.df'
+            except Exception:
+                pass
+            # 路線 B:get_earnings_dates(取第一個「未來」的)
+            if d is None:
+                ed = t.get_earnings_dates(limit=12)
+                if ed is not None and len(ed):
+                    for ix in sorted(ed.index):
+                        dd = ix.date() if hasattr(ix, 'date') else ix
+                        if dd >= today:
+                            d, src = dd, 'earnings_dates'
+                            break
+        except Exception as e:
+            fails.append(f'{tk}:{type(e).__name__}')
+            continue
+        if d is None:
+            fails.append(f'{tk}:no-date')
+            continue
+        gap = (d - today).days
+        if not (0 <= gap <= window_days):
+            continue
+        srcs[src] = srcs.get(src, 0) + 1
+        out.append({
+            "date": d.strftime("%Y-%m-%d"),
+            # ⭐ ② 一定要帶台股對應族群 —— 只寫「NVDA 財報」沒有可操作性
+            "event": f"📊 {zh}({tk}) 財報 — 看 {chain}",
+            "severity": "high" if tk in ("NVDA", "TSM", "AVGO", "MU") else "mid",
+            "us_earn": True,          # ⭐ ① 旗標,⛔ 前端不可用關鍵字比對
+        })
+    # ③ 說得出「用哪條路拿到的」,⛔ 不然分不出是 API 改了還是這台機器連不到
+    print(f"  📊 [美股財報] {len(out)} 場(來源:{srcs or '無'}"
+          + (f";失敗 {', '.join(fails[:6])}" if fails else "") + ")")
+    return sorted(out, key=lambda x: x["date"])
+
+
 def _compute_upcoming_macro_events(today, window_days=14):
     """演算法計算未來 N 天的全球重大財經事件,純函式無 IO,絕對不會拋例外。
     14 天視窗(2026/06 起,從 7 → 14 涵蓋更多籌備期事件)。
@@ -3070,6 +3164,15 @@ def main():
                 print(f"  📞 法說會併入 {len(_ec)} 場 → 行事曆共 {len(out['upcoming_macro_events'])} 場")
         except Exception as _e:
             print(f"  ⚠️ 法說會併入失敗(不影響):{_e}")
+        # 📊 V73.9.1 併入**美股巨頭財報日**(窗口放 21 天:輝達那種要提前幾天調部位)
+        #   ⛔ 失敗回 [] 不影響其他事件
+        try:
+            _ue = fetch_us_earnings(window_days=21)
+            if _ue:
+                out["upcoming_macro_events"] = sorted(
+                    out["upcoming_macro_events"] + _ue, key=lambda x: x["date"])
+        except Exception as _e:
+            print(f"  ⚠️ 美股財報併入失敗(不影響):{_e}")
         print(f"📅 未來 14 日財經行事曆:{len(out['upcoming_macro_events'])} 場")
         # 🤖 V70.3.0 Groq 解讀(失敗不影響行事曆本身)
         try:

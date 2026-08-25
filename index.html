@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.9.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.9.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.9.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.9.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7340,8 +7340,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.9.0',
+    _APP_VERSION: 'V73.9.1',
     _CHANGELOG: [
+        { v:'V73.9.1', dt:'2026-08-25', d:[
+            '📊 財經行事曆新增**美股巨頭財報日**(輝達、台積電ADR、博通、美光、谷歌、微軟…),'
+            + '而且每一場都直接寫「台股要看哪幾檔」。⭐ 新聞是發生後才知道,財報日可以提前知道 ——'
+            + '輝達財報當晚台股 AI 鏈整條會跳,提前兩天知道才來得及調部位。',
+            '🏢 新聞來源補上 Google、微軟、Meta(之前完全沒有涵蓋)+ 一條專門抓財報結果的來源。'
+        ] },
         { v:'V73.9.0', dt:'2026-08-25', d:[
             '🌍 國際新聞終於會翻成中文了 —— 原因是採礦機用的 AI 模型被對方下架,'
             + '而翻譯、利多利空判讀、垃圾新聞過濾**都靠同一個呼叫**,所以三件事一起失效'
@@ -27558,7 +27564,11 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             return '<span class="text-[8px] font-black text-gray-400 bg-gray-800/60 border border-gray-700 px-1 rounded">低</span>';
         };
         // 📅 V50.9 — 法說會單獨折疊:財經行事曆常有一堆法說會把核彈事件淹沒,把「法說」類收進 <details>,主列表只留宏觀核彈事件
-        const isEarnings = ev => /法說|法人說明會|earnings/i.test(String(ev.event || ''));
+        // 🚨 V73.9.1 美股巨頭財報**不可跟台股法說會一起摺疊** ——
+        //    摺疊的理由是「742 場台股法說會會淹掉核彈事件」,而輝達/台積電ADR/美光財報
+        //    對台股是**宏觀等級**事件(當晚整條 AI 鏈會跳),埋起來等於沒做。
+        //    ⭐ 用採礦端給的 `us_earn` 旗標判斷,⛔ 不用關鍵字比對 —— 文案改個字就會失效。
+        const isEarnings = ev => !ev.us_earn && /法說|法人說明會|earnings/i.test(String(ev.event || ''));
         const renderRow = (ev, idx) => {
             const d = new Date(ev.date + 'T00:00:00');
             if (isNaN(d.getTime())) return '';
@@ -41325,7 +41335,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             : '';
 
         // 🛰️ 科技巨頭專屬新聞:優先讀 data/tech_giants_news.json(universal_radar 採),缺則 fallback _globalNewsItems 篩關鍵字
-        let _trumpRaw = '今日無重大更新', _huangRaw = '今日無重大更新', _spacexRaw = '今日無重大更新', _kuiperRaw = '今日無重大更新';
+        // 📊 V73.9.1 第 5 桶「巨頭財報」(使用者:「輝達財報還有重點新聞…沒有抓到資料」)。
+        //    ⛔ 採礦端加了桶就一定要接前端,不然是死資料(陷阱 #32:功能存在但使用者看不到)。
+        let _trumpRaw = '今日無重大更新', _huangRaw = '今日無重大更新', _spacexRaw = '今日無重大更新', _kuiperRaw = '今日無重大更新', _earnRaw = '今日無重大更新';
         try {
             const tgUrl = new URL('data/tech_giants_news.json', window.location.href.split('?')[0]).href + `?t=${Date.now()}`;
             const tgRes = await fetch(tgUrl, { signal: AbortSignal.timeout(4000) });
@@ -41334,6 +41346,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 const join = arr => (arr && arr.length) ? arr.slice(0, 3).map(x => x.title_zh || x.title).join(' | ') : '今日無重大更新';
                 _trumpRaw = join(tg.trump); _huangRaw = join(tg.huang);
                 _spacexRaw = join(tg.spacex); _kuiperRaw = join(tg.kuiper);
+                _earnRaw = join(tg.earnings);
             }
         } catch(_) {}
         const _itemsRaw = this._globalNewsItems || [];
@@ -41343,6 +41356,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (_huangRaw === '今日無重大更新')  { const h = _hitKW(/Huang|Jensen|黃仁勳|NVIDIA|NVDA/i); if (h) _huangRaw = h; }
         if (_spacexRaw === '今日無重大更新') { const h = _hitKW(/SpaceX|Musk|馬斯克|Starship|Falcon|Starlink/i); if (h) _spacexRaw = h; }
         if (_kuiperRaw === '今日無重大更新') { const h = _hitKW(/Kuiper|Amazon|衛星/i); if (h) _kuiperRaw = h; }
+        // ⚠️ fallback 要收「財報詞」而不是公司名 —— 公司名那幾條上面已經各自收過了,
+        //    這一桶問的是「今天有沒有財報結果」,⛔ 不是「有沒有這家公司的新聞」。
+        if (_earnRaw === '今日無重大更新')   { const h = _hitKW(/earnings|guidance|財報|季報|營收|優於預期|不如預期|每股盈餘|EPS/i); if (h) _earnRaw = h; }
 
         const _today = new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
         const _nowTpe = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
@@ -41399,6 +41415,7 @@ ${_pullChipAlert ? '- ' + _pullChipAlert : ''}
 - 川普: ${_trumpRaw}
 - 黃仁勳/NVIDIA: ${_huangRaw}
 - SpaceX/馬斯克: ${_spacexRaw}
+- 📊 巨頭財報: ${_earnRaw}
 - Project Kuiper/亞馬遜: ${_kuiperRaw}
 
 【4 大戰區】
@@ -41441,6 +41458,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 🔹 川普政經: ${_trumpRaw}
 👉 [若有事件:時機與台/美股連動 + 受影響台股族群;無則「靜待後續發言」]
 🔹 黃仁勳/NVIDIA: ${_huangRaw}
+🔹 📊 巨頭財報: ${_earnRaw}
 👉 [若有動態:對先進封裝/HBM/散熱/AI 伺服器牽動,點名台股代號;無則「靜待 GTC 或法說催化」]
 🔹 SpaceX / Kuiper 衛星鏈: ${_spacexRaw} ・ ${_kuiperRaw}
 👉 [若有料:帶出低軌衛星台股代碼;無則「無」]
