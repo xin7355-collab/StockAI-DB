@@ -231,6 +231,20 @@ def main():
     #  ② **單日全市場批次要單獨試** —— 它需要更高的等級,可能只有它掛掉
     #     (逐檔還通、批次不通 → 採礦會退回逐檔慢速模式,長尾就永遠輪不到)。
     #  ③ 🔐 只印「第幾把」,⛔ 絕不印 token。
+    # ⛔ 沒有付費金鑰時**不可靜默跳過** —— 那樣使用者只會看到一片空白,
+    #    不知道是「沒跑」還是「跑了沒事」(診斷不可靜默,同陷阱 #22)。
+    if not (any_paid and paid_tok):
+        print('\n🕵️ 分點新鮮度探針')
+        print('=' * 60)
+        print('   ⏭️ 跳過:**沒有任何一把是付費金鑰**,分點端點本來就會被擋,測了也只會全紅。')
+        print('   ⭐ 但上面那段已經是決定性的證據了:')
+        print('      ・免費資料集(TaiwanStockInfo)四把**全部 200 success** → 金鑰有效、網路正常')
+        print('      ・付費分點端點四把**全部回 `Your level is register`** → 這是**帳號等級**問題')
+        print('   → ⛔ 不是程式壞掉、不是排程問題、也不是 FinMind 資料落後,')
+        print('      是 **FinMind 的付費(Sponsor)訂閱失效了**。')
+        print('   📌 只有帳號擁有者能處理:去 FinMind 確認訂閱狀態,')
+        print('      續約後把**付費那把**金鑰放進 GitHub Secrets 的 FINMIND_TOKENS,再跑一次這支確認。')
+        print('=' * 60)
     if any_paid and paid_tok:
         print('\n🕵️ 分點新鮮度探針(最重要的一段)')
         print('=' * 60)
