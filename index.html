@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.9.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.9.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.9.5 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.9.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7340,8 +7340,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.9.5',
+    _APP_VERSION: 'V73.9.6',
     _CHANGELOG: [
+        { v:'V73.9.6', dt:'2026-08-26', d:[
+            '🔽 大盤→行情的板塊表**可以排序了** —— 點表頭「美股昨收 / 台股今日 / 外資5日」'
+            + '就依那一欄排,再點一次反向,第三次回到原本順序。沒有資料的板塊一律排最後,'
+            + '⛔ 不會假裝成最弱的。你排好的順序會記住,下次打開還在。'
+        ] },
         { v:'V73.9.5', dt:'2026-08-25', d:[
             '🎁 修好「殖利率/發配率/每股股利」三格空白 —— 資料其實一直都在,'
             + '是頁面上有兩個地方會寫同一格,後跑的那個查不到就把先查到的**洗掉**了。'
@@ -16385,6 +16390,24 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
         this.vibrate?.(12);
     },
 
+    // 🔽 V73.9.6 板塊表排序(使用者要求)。點同一欄第二次 → 反向;第三次 → 回復原本的板塊順序。
+    //   ⚠️ 狀態要存在 `this` 上 —— `renderSectorGapTable` 在 `sector_chip_flow.json` 載完後
+    //      會**再重繪一次**,存在區域變數的話使用者排好的順序會自己跳回去。
+    //   ⭐ 順便寫進 localStorage,下次打開還記得(⛔ 用 _lsJson 那套,壞值不會炸掉 App)。
+    _secSort(key) {
+        if (this._secSortKey === key) {
+            // 第二次 → 反向;第三次 → 取消排序(回原本的板塊順序)
+            if (this._secSortDir === 1) { this._secSortKey = null; this._secSortDir = -1; }
+            else { this._secSortDir = 1; }
+        } else {
+            this._secSortKey = key;
+            this._secSortDir = key === 'name' ? 1 : -1;   // 數字欄預設由大到小,名稱欄由 A→Z
+        }
+        try { localStorage.setItem('proTerm_secSort', JSON.stringify({ k: this._secSortKey, d: this._secSortDir })); } catch (_) {}
+        this.vibrate?.(10);
+        this.renderSectorGapTable?.();
+    },
+
     renderSectorGapTable() {
         const result = document.getElementById('predictGapTableResult');
         if (!result) return;
@@ -16420,8 +16443,53 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
         const _shFresh = (() => { try { return (this._sectorHeatCache?.updated || '') === new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' })).toISOString().slice(0, 10); } catch (_) { return false; } })();
         let html = '<div class="bg-[#0d1117] rounded-lg p-2 mt-2">';
         // V30.1 — 四欄表頭(只出現一次,取代每列重複的「美」「台」前綴 → 數字垂直對齊)
-        html += '<div class="grid grid-cols-[1fr_46px_46px_58px_76px] gap-1.5 items-center text-[9px] text-gray-500 font-bold pb-1 mb-1 border-b border-[#30363d]"><span>板塊</span><span class="text-right">美股昨收</span><span class="text-right">台股今日</span><span class="text-right">外資5日<span class="text-gray-600">(張)</span></span><span class="text-right">訊號</span></div>';
-        for (const [sk, sl] of Object.entries(sectorLabels)) {
+        // 🔽 V73.9.6 使用者要求:表頭可點排序。
+        //   ⛔ 三條刻意的設計:
+        //    ① 預設 `null` = **維持原本的板塊順序**(⛔ 不預設幫他排,不然每次打開順序都不一樣)
+        //    ② 🚨 **沒有值的板塊一律排最後** —— JS 的 `null < 15` 是 **true**,
+        //       照 `a-b` 排會把「沒資料」的排到最前面看起來像最弱/最強(V73.5.1 踩過同一個坑)
+        //    ③ 排序用的數字**就是畫面上顯示的那個**(同一個來源),⛔ 不另外算一份
+        if (this._secSortKey === undefined) {   // 第一次進來 → 還原上次的選擇
+            const _sv = this._lsJson ? this._lsJson('proTerm_secSort', null) : null;
+            this._secSortKey = (_sv && _sv.k) || null;
+            this._secSortDir = (_sv && _sv.d === 1) ? 1 : -1;
+        }
+        const _sKey = this._secSortKey || null, _sDir = this._secSortDir === 1 ? 1 : -1;
+        const _th = (key, label, extra = '') => {
+            const on = _sKey === key;
+            const arrow = on ? (_sDir === -1 ? ' ▼' : ' ▲') : '';
+            return `<span onclick="app._secSort('${key}'); event.stopPropagation();" class="${key === 'name' ? '' : 'text-right '}cursor-pointer select-none ${on ? 'text-cyan-300' : 'hover:text-gray-300'}" title="點一下排序,再點一下反向">${label}${extra}${arrow}</span>`;
+        };
+        html += '<div class="grid grid-cols-[1fr_46px_46px_58px_76px] gap-1.5 items-center text-[9px] text-gray-500 font-bold pb-1 mb-1 border-b border-[#30363d]">'
+             + _th('name', '板塊') + _th('us', '美股昨收') + _th('tw', '台股今日')
+             + _th('fi5', '外資5日', '<span class="text-gray-600">(張)</span>')
+             + '<span class="text-right">訊號</span></div>';
+        // ⭐ 先算出排序要用的三個數字(跟下面顯示用的是**同一個來源**,⛔ 不另外算一份),
+        //   再依使用者選的欄位排。沒選就維持原順序。
+        let _entries = Object.entries(sectorLabels);
+        if (_sKey && _sKey !== 'name') {
+            const _val = (sk) => {
+                if (_sKey === 'us') { const e = etfMap[sk]; return e?.chg_pct != null ? parseFloat(e.chg_pct) : null; }
+                if (_sKey === 'tw') {
+                    if (_intraTw && _intraTw[sk] != null) return _intraTw[sk];
+                    return (_shTw[sk] && _shTw[sk].chg != null) ? _shTw[sk].chg : null;
+                }
+                if (_sKey === 'fi5') { const f = _cf[sk]; return f ? (+f.fi5 || 0) : null; }
+                return null;
+            };
+            _entries = _entries.slice().sort((a, b) => {
+                const va = _val(a[0]), vb = _val(b[0]);
+                const na = !Number.isFinite(va), nb = !Number.isFinite(vb);
+                // ② 🚨 沒有值的一律排最後(⛔ 不可讓 null 參與大小比較)
+                if (na && nb) return 0;
+                if (na) return 1;
+                if (nb) return -1;
+                return (va - vb) * _sDir;
+            });
+        } else if (_sKey === 'name') {
+            _entries = _entries.slice().sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'zh-Hant') * _sDir);
+        }
+        for (const [sk, sl] of _entries) {
             const etf = etfMap[sk];
             // V27.2 — TW 漲跌:盤中即時 liveChg 優先,否則挖礦 sector_heat 日值(不再讀不存在的 .sector-heat DOM)
             const _fromLive = !!(_intraTw && _intraTw[sk] != null);
