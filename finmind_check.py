@@ -210,6 +210,80 @@ def main():
             print(f'▸ 例外 {str(e)[:80]}')
         print('=' * 60)
 
+    # ═══ 🚨 V73.9.6 分點「新鮮度」探針(使用者:「籌碼採礦重新看一下有沒有問題」)═══
+    #
+    # 🔍 實測背景(2026-08-26 掃 gh-pages 的 data/chips/):
+    #    ・熱門股(2330/2317/2454/2382…)的 `chips_fetched_on` = **08-26(昨天)**
+    #      → **採礦有跑到它們**,⛔ 不是「輪不到」
+    #    ・但它們的**最新分點日全部停在 08-14**(落後 12 天)
+    #    ・抽樣 50 檔:最大一群卡在 **07-28**(約一個月前)
+    #
+    # ⭐⭐ 「採礦有跑」+「資料還是舊的」= 上游給不出新的,⛔ 不是排程問題。
+    #    但那還有兩種可能,**必須分清楚**才知道要修哪裡:
+    #      ① FinMind 的分點資料本身就落後(那就只能等,程式再怎麼改都沒用)
+    #      ② 我們的金鑰掉了 Sponsor 等級(那要使用者去續約/換金鑰)
+    #    → 這段就是用來分這兩件事的:**從今天往回一天一天問,找出「最新拿得到的分點日」**。
+    #
+    # ⛔ 三條刻意的設計:
+    #  ① **要有對照組** —— 同時問「一定拿得到」的免費資料集(股價)最新到哪天。
+    #     兩邊一起落後 = 上游/假日問題;只有分點落後 = 權限或該資料集的問題。
+    #     ⛔ 沒有對照組的話,又會變成「猜是不是自己壞掉」(同 V73.7.8 期交所那次)。
+    #  ② **單日全市場批次要單獨試** —— 它需要更高的等級,可能只有它掛掉
+    #     (逐檔還通、批次不通 → 採礦會退回逐檔慢速模式,長尾就永遠輪不到)。
+    #  ③ 🔐 只印「第幾把」,⛔ 絕不印 token。
+    if any_paid and paid_tok:
+        print('\n🕵️ 分點新鮮度探針(最重要的一段)')
+        print('=' * 60)
+        hdr = {'Authorization': f'Bearer {paid_tok}'}
+        today = date.today()
+
+        def newest(url_fn, label, max_back=25):
+            """從今天往回找第一個有資料的日子。回 (日期, 落後幾個日曆天) 或 (None, None)。"""
+            for back in range(max_back):
+                d = (today - timedelta(days=back)).strftime('%Y-%m-%d')
+                st, msg, rows = probe(url_fn(d), hdr)
+                if st == 200 and rows > 0:
+                    print(f'   {label}:最新 {d}(往回第 {back} 天)・{rows} 列')
+                    return d, back
+                if st not in (200,):
+                    print(f'   {label}:{d} status={st} msg={str(msg)[:50]}')
+                    if st in (401, 402, 403):
+                        print(f'   → ⛔ 這是**權限**問題,不是「沒有資料」')
+                        return None, None
+            print(f'   {label}:往回 {max_back} 天都沒有資料')
+            return None, None
+
+        # ① 對照組:免費的股價資料集(⛔ 沒有它就分不出「上游落後」與「我們沒權限」)
+        d_px, b_px = newest(
+            lambda d: f'{BASE}/data?dataset=TaiwanStockPrice&data_id=2330&start_date={d}&end_date={d}',
+            '📈 對照組·股價(免費)')
+        # 逐檔分點
+        d_ch, b_ch = newest(
+            lambda d: f'{BASE}/taiwan_stock_trading_daily_report?data_id=2330&date={d}',
+            '🧙 分點·逐檔(付費)')
+        # ② 單日全市場批次(省略 data_id;需要更高等級)
+        d_bulk, b_bulk = newest(
+            lambda d: f'{BASE}/taiwan_stock_trading_daily_report?date={d}',
+            '🚀 分點·全市場批次(需 Sponsor)', max_back=8)
+
+        print('\n📋 結論')
+        if d_ch and d_px:
+            gap = (date.fromisoformat(d_px) - date.fromisoformat(d_ch)).days
+            if gap <= 1:
+                print(f'   ✅ 分點沒有落後(股價 {d_px} / 分點 {d_ch})')
+                print('      → 那 chips 檔還舊的話,問題在**採礦端的跳過邏輯或輪動速度**,不是上游。')
+            else:
+                print(f'   🚨 分點比股價落後 {gap} 天(股價 {d_px} / 分點 {d_ch})')
+                print('      → 上游那個資料集自己在落後,⛔ 改程式沒有用,只能等或換來源。')
+        elif d_px and not d_ch:
+            print('   🚨 股價拿得到、分點拿不到 → **權限/等級**問題,要去確認 FinMind 訂閱')
+        elif not d_px:
+            print('   ⚠️ 連免費的股價都拿不到 → 這台機器或帳號整個不通,⛔ 別急著怪分點')
+        if d_bulk is None:
+            print('   ⚠️ 單日全市場批次不通 → 採礦會退回「逐檔」慢速模式,')
+            print('      長尾冷門股會輪不到(實測抽樣有一群卡在 07-28)。')
+        print('=' * 60)
+
 
 if __name__ == '__main__':
     main()
