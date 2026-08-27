@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.9.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.9.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.9.4 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.9.5 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7340,8 +7340,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.9.4',
+    _APP_VERSION: 'V73.9.5',
     _CHANGELOG: [
+        { v:'V73.9.5', dt:'2026-08-25', d:[
+            '🎁 修好「殖利率/發配率/每股股利」三格空白 —— 資料其實一直都在,'
+            + '是頁面上有兩個地方會寫同一格,後跑的那個查不到就把先查到的**洗掉**了。'
+            + '(同一張卡的填息機率有值、上面三格卻空白,就是這個原因。)',
+            '🚦 「超預期空間大」原本用 🟢 表示 —— 但台股綠色是跌,看起來剛好相反,'
+            + '而且同一張卡的外框是紅色,自己跟自己打架。已改成 ✅(講好壞不用紅綠燈)。'
+        ] },
         { v:'V73.9.4', dt:'2026-08-25', d:[
             '🌍 新聞翻譯第四修(這次是把上一版的錯改回來)—— 上一版加的「失敗就再試一次」'
             + '讓每則新聞的 AI 呼叫次數變兩倍,額度提早用完,反而比修之前更糟。'
@@ -24465,11 +24472,37 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     // 新增：將基本面快取物件填入 X 光機 6 格（供自動載入與手動掃描共用）
     _applyFundamentalsToXray(fund) {
         if (!fund) return;
+        // 🚨 V73.9.5 使用者截圖(富喬 1815):股利政策三格全是 `--`,
+        //    但同一張卡的「填息機率 100% / 平均填息天數 3 天」**有值** —— 自相矛盾。
+        //    查下去是**兩個寫入者打架**:
+        //      ・`fetchFundamentalAnalysis` 有完整 fallback 鏈(會去 `fund_yoy_gm.json` 撈)
+        //      ・這支**沒有**,而且讀的欄位名 `payout_ratio` / `total_dividend`
+        //        在資料裡**根本不存在**(實際叫 `payout` / `div`)
+        //    → 它後跑就把好不容易填好的格子**洗成 `--`**。
+        //    ⛔ 兩條修法缺一不可:
+        //     ① 拿不到值時 **⛔ 不可覆蓋已經有真值的格子**(切股的清空另有專門的地方做,
+        //        `fetchFundamentalAnalysis` 開頭會統一清成 '—')
+        //     ② 欄位名要吃得到實際存在的那幾個(見下方 `pick`)
+        const BLANKS = new Set(['', '--', '—', '⏳ 整編中']);
         const set = (id, val, cls) => {
             const el = document.getElementById(id);
             if (!el) return;
-            el.innerText = val ?? '--';
+            if (val == null) {
+                // ⛔ 已經有真值就不要動它(⛔ 不可把別人查到的資料洗掉)
+                if (!BLANKS.has((el.innerText || '').trim())) return;
+                el.innerText = '--';
+            } else {
+                el.innerText = val;
+            }
             if (cls) el.className = el.className.replace(/text-\w+-\d+/g, '') + ' ' + cls;
+        };
+        // ⭐ 同一個意思在不同資料源有不同欄位名 → 一律走這支,⛔ 別在各處各寫一份
+        const pick = (...names) => {
+            for (const n of names) {
+                const v = fund[n];
+                if (v != null && v !== '') return v;
+            }
+            return null;
         };
         const eps = fund.eps;
         this._latestEpsCache = eps != null ? eps : null;
@@ -24484,7 +24517,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             ? (eps != null && eps < 0 ? 'text-red-400' : 'text-gray-600')
             : (pe < 15 ? 'text-green-400' : pe > 40 ? 'text-red-400' : 'text-yellow-400');
         set('xrayPe', peText, peColor);
-        const yr = fund.yield_rate;
+        const yr = pick('yield_rate');
         set('xrayYield',
             yr != null ? `${yr}%` : null,
             yr == null ? 'text-gray-600' : yr > 5 ? 'text-green-400' : yr < 2 ? 'text-gray-500' : 'text-yellow-400');
@@ -24492,11 +24525,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         set('xrayGrossMargin',
             gm || null,
             !gm ? 'text-gray-600' : gm.includes('↑') ? 'text-green-400' : 'text-red-400');
-        const pr = fund.payout_ratio;
+        // 🚨 `fund_yoy_gm.json` 用的是 `payout`,⛔ 不是 `payout_ratio`(舊版永遠讀到 undefined)
+        const pr = pick('payout_ratio', 'payout');
         set('xrayPayout',
             pr != null ? `${pr}%` : null,
             pr == null ? 'text-gray-600' : pr > 100 ? 'text-red-400' : pr > 70 ? 'text-yellow-400' : 'text-green-400');
-        const td = fund.total_dividend;
+        // 🚨 三個名字都要吃:`total_dividend`(舊)/`total_dividend_4q`(merge 寫的)/`div`(採礦端原名)
+        const td = pick('total_dividend', 'total_dividend_4q', 'div');
         const tdEl = document.getElementById('xrayDividend');
         if (tdEl) {
             if (td != null && td > 0) {
@@ -24505,7 +24540,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             } else if (td === 0) {
                 tdEl.innerText = '⚠️ 未發放';
                 tdEl.className = tdEl.className.replace(/text-\w+-\d+/g, '') + ' text-amber-400';
-            } else {
+            } else if (BLANKS.has((tdEl.innerText || '').trim()) || /未發放/.test(tdEl.innerText || '')) {
+                // ⛔ 同 `set()`:拿不到值時**不可洗掉已經有真值的格子**
+                //    (這一格沒走 set(),所以保護要在這裡自己補一次 —— 測試 ① 就是這樣抓到的)
                 tdEl.innerText = '--';
                 tdEl.className = tdEl.className.replace(/text-\w+-\d+/g, '') + ' text-gray-600';
             }
@@ -24908,8 +24945,12 @@ ${lightExplain[queryType]}
         this._lastExpectScore = { sym: m.sym, score: reasons.length ? Math.max(10, Math.min(90, Math.round(50 - risk * 15))) : null };
         let verdict, cls, tip;
         if (risk >= 2) { verdict = '⛔ 利多出盡風險高'; cls = 'orange'; tip = '就算財報亮眼,市場「早就期待」→ 別追高,反而留意「利多不漲=先賣」訊號。'; }
-        else if (risk <= -1) { verdict = '🟢 超預期空間大'; cls = 'red'; tip = '市場期待不高 + 基本面在轉好 → 財報若優於預期,較有驚喜上漲動能。'; }
-        else { verdict = '🟡 預期大致反映完'; cls = 'yellow'; tip = '好壞大致 price in → 看財報「相對預期」的方向,別只看絕對數字好不好。'; }
+        // 🚨 V73.9.5 燈號鐵則:🔴🟢 **只准表示漲跌方向**,⛔ 不可拿來表示好壞/風險。
+        //    使用者截圖抓到:這裡用 🟢 表示「超預期空間大(好事)」,
+        //    但台股 🟢 = 跌 → **讀起來剛好相反**;更糟的是同一張卡的邊框是 `red`(漲)
+        //    → emoji 跟顏色自己打架。風險/程度一律改用 ✅ ⚠️ ⛔ ➖。
+        else if (risk <= -1) { verdict = '✅ 超預期空間大'; cls = 'red'; tip = '市場期待不高 + 基本面在轉好 → 財報若優於預期,較有驚喜上漲動能。'; }
+        else { verdict = '➖ 預期大致反映完'; cls = 'yellow'; tip = '好壞大致 price in → 看財報「相對預期」的方向,別只看絕對數字好不好。'; }
         box.innerHTML = `
             <div class="bg-[#161b22] border-l-4 border-${cls}-500 border-y border-r border-[#30363d] rounded-r p-2.5">
                 <div class="flex items-center justify-between mb-1">
