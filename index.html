@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.9.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.9.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.9.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.9.7 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7340,8 +7340,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.9.6',
+    _APP_VERSION: 'V73.9.7',
     _CHANGELOG: [
+        { v:'V73.9.7', dt:'2026-08-28', d:[
+            '⏳ 補上「抱滿 20 個交易日」的出場提醒 —— 當初回測的出場其實有**三條**'
+            + '(停損、跌破5日線、最長抱20個交易日),但 App 只會提醒前兩條。'
+            + '遇到一路沿著5日線走的強勢股,你會一直抱下去,而那已經不是被驗證過的那套打法了。'
+        ] },
         { v:'V73.9.6', dt:'2026-08-26', d:[
             '🔽 大盤→行情的板塊表**可以排序了** —— 點表頭「美股昨收 / 台股今日 / 外資5日」'
             + '就依那一欄排,再點一次反向,第三次回到原本順序。沒有資料的板塊一律排最後,'
@@ -39975,6 +39980,26 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                                     `${name}(${t.s}) 現價 ${px} 跌破 5 日線 ${ma5.toFixed(2)} —— 這就是當初回測用的出場規則。\n` +
                                     `一張約 ${pl >= 0 ? '+' : ''}${Math.round(pl).toLocaleString()} 元(已扣手續費證交稅)。\n` +
                                     `⚠️ 不是叫你一定要走,但當初賺的那些就是這樣出的。`, t.s);
+                            }
+                        }
+                    }
+                    // ③ 🚨 V73.9.7 **最長 20 個交易日** —— 回測(MAXD=20)有這一條,
+                    //    但 App 的出場提醒原本**只有停損與跌破 5MA**,漏了它。
+                    //    後果:遇到一路沿著 5MA 走的強勢股,回測第 20 天就出場了,
+                    //    使用者卻會一直抱下去 → **實際做的已經不是那套被驗證過的打法**。
+                    //    ⚠️ 用「K 線根數」數交易日,⛔ 不可用日曆天(遇到連假會提早叫)。
+                    //    ⚠️ K 線的日期是 `2026/08/26`,記錄存的是 `2026-08-26` → 要正規化再比。
+                    const _di = rows.findIndex(r => String(r.date || '').replace(/\//g, '-') === t.d);
+                    if (_di >= 0) {
+                        const _held = rows.length - 1 - _di;
+                        if (_held >= 20) {
+                            const k = `pbmx_${t.s}_${this._tpeMinutes().ymd}`;
+                            if (!this._kbarFiredToday(k)) {
+                                const pl = this._netPL ? this._netPL(t.e, px, 1000) : Math.round((px - t.e) * 1000);
+                                this._fireAlert(`⏳ 抱滿 20 個交易日了｜${name}`,
+                                    `${name}(${t.s}) 已經抱了 ${_held} 個交易日 —— 當初回測就是**最多抱 20 天**。\n` +
+                                    `一張約 ${pl >= 0 ? '+' : ''}${Math.round(pl).toLocaleString()} 元(已扣手續費證交稅)。\n` +
+                                    `⚠️ 再抱下去就不是那套驗證過的打法了(抱更久實測賺更多,但回撤會翻一倍)。`, t.s);
                             }
                         }
                     }
