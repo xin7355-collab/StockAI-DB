@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.9.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.9.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.9.7 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.9.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7340,8 +7340,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.9.7',
+    _APP_VERSION: 'V73.9.8',
     _CHANGELOG: [
+        { v:'V73.9.8', dt:'2026-08-28', d:[
+            '📊 「會賺訊號」清單裡新增**驗證過的成績表** —— 實測過的 86 種做法、'
+            + '只採用 2 種,連「哪些做法反而變差」都列出來。以前這些只在開發筆記裡,'
+            + '現在你自己點開就看得到,不用再問。',
+            '🏆 買點通知會分級了:五關全過(強勢高波動、樣本≥10次、扣完成本仍為正、'
+            + '勝率贏基準、賺賠比≥2)才標「A 級」,並把證據一起寫在通知裡;沒到 A 級也會'
+            + '告訴你**卡在哪一關**。⛔ 沒有新增第三種通知,免得吵到你關掉。'
+        ] },
         { v:'V73.9.7', dt:'2026-08-28', d:[
             '⏳ 補上「抱滿 20 個交易日」的出場提醒 —— 當初回測的出場其實有**三條**'
             + '(停損、跌破5日線、最長抱20個交易日),但 App 只會提醒前兩條。'
@@ -39526,6 +39534,112 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //    會不會上榜主要看它的歷史,每天真正在變的是「**離觸發價還有多遠**」。
     // ⛔ 不可因此改成「每天換一批」——那等於用隨機性冒充多樣性,會把最會賺的那幾檔擠掉。
     // ⚠️ 打法集中度是**現算**的(⛔ 不寫死),因為它會隨清單變。
+    // 📊 V73.9.8 **驗證過的成績表**(使用者:「把驗證過的勝率寫起來,這樣才不用一直問你」)
+    //
+    // ⭐ 這份以前只存在開發筆記裡 —— 陷阱 #32 的典型:**測過了但使用者看不到**。
+    //   全部來自 `scripts/portfolio_backtest.mjs` 實跑,⛔ 不是估的、不是抄的。
+    //   ⚠️ 改回測參數就要回來更新這張表(同 `_SIGNAL_EDGE` / `_PLAYBOOK_EDGE` 的規矩)。
+    _VERIFIED_EDGE: {
+        base: { n: 86, adopted: 2, winBase: 36.4, cost: 0.44 },
+        // 36 個月版(600 檔・2023-06~2026-08・本金 100 萬・每天 2 檔)
+        long: [
+            { k: '🧬 只做「高位階+高波動」(現行)', pl: 2896478, dd: -22.4, star: 1 },
+            { k: '🐢 什麼都不做,買 0050 放著',      pl: 2011700, dd: null },
+            { k: '📋 照清單做但不挑 🧬',            pl: 1260926, dd: -23.96 },
+        ],
+        // 13 個月版(同一支腳本,變體比較都在這個窗口做的)
+        vars: [
+            { k: '⭐ 原版(不加任何濾網)',      pl: 1361088, dd: -9.4,  wr: 33.2, per: 1.96, n: 695 },
+            { k: '🧬 高位階+高波動',            pl: 2136115, dd: -9.35, wr: 37.4, per: 3.08, n: 462, star: 1 },
+            { k: '🏛️ 大盤站上月線才做',         pl: 1240531, dd: -6.6,  wr: 32.0, per: 2.36, n: 525, note: '取捨' },
+            { k: '💧 只做成交值 ≥1 億',         pl: 1053560, dd: -16.6, wr: 36.6, per: 1.59, n: 662, note: '勝率↑卻少賺' },
+            { k: '🤝 至少 2 招共振',            pl: 858533,  dd: -15.9, wr: 31.4, per: 1.31, n: 653 },
+            { k: '🍱 分散成 6 檔',              pl: 735938,  dd: -18.4, wr: 32.8, per: 1.07, n: 1381 },
+            { k: '📉 只在大盤昨天大跌後做',      pl: 511112,  dd: -2.30, wr: 44.2, per: 6.55, n: 52, note: '勝率最高但只做 52 次' },
+        ],
+        // 進場時機(V72.9.0)—— 這組是「同一批股票、同一套打法,只改買點」
+        entry: [
+            { k: '訊號日尾盤買(現行)', pl: 1361088, dd: -9.4,  star: 1 },
+            { k: '隔天開盤買',          pl: 818734,  dd: -19.1 },
+            { k: '隔天收盤買',          pl: 731380,  dd: -14.8 },
+            { k: '隔天開盤・跳空>1% 不追', pl: -147644, dd: -36.4, note: '倒賠' },
+        ],
+    },
+
+    // 📊 把上面那張表畫出來(⛔ 沒新增卡片,是清單裡一段預設收起的說明)
+    // 🏆 V73.9.8 訊號分級(使用者:「遇到高勝率值得買的訊號要跳出訊息告訴我」)
+    //
+    // ⛔ **刻意不新增第三種通知** —— 一天最多推 2 檔是實測出來的上限(V73.0.0),
+    //    再多一種通知只會把人吵到關掉,那整套就等於沒有(V73.8.5 ①的教訓)。
+    //    ⭐ 改成:讓**既有那則**買點通知在夠格時「升級」並附上證據。
+    //
+    // ⛔ 五個門檻**全部**來自實測,不是我訂的:
+    //  ① 🧬 高位階+高波動 —— V73.2.9 實測**不挑它整套輸給買 0050**,所以是**必要條件**
+    //  ② 樣本 ≥ `_wrEnough`(10)—— ⛔ 全 App 同一份,別在這裡寫死數字
+    //  ③ 保守下界 `lb` > 0 —— 已扣成本、且**依樣本數打過折**(V72.9.2:排點估計值必挑到僥倖股)
+    //  ④ 勝率要**贏得過基準**(36.4%,⛔ 不是 50%)且統計上站得住(`_winRateConfidence` p≤25%)
+    //  ⑤ 賺賠比 ≥ 2 —— V72.0.3 的教訓:42 個 A 級訊號有 36 個「常對但期望值是負的」
+    _pbGrade(x) {
+        const w = +x.w, n = +x.n, po = +x.po;
+        const lb = Number.isFinite(+x.lb) ? +x.lb : +x.exp;
+        const hq = !!(+x.hq);
+        const base = this._VERIFIED_EDGE?.base?.winBase ?? 36.4;
+        const enough = this._wrEnough ? this._wrEnough(n) : (n >= 10);
+        let p = null;
+        try { p = this._winRateConfidence ? this._winRateConfidence(w, n, base / 100) : null; } catch (_) { }
+        const solid = p ? (p.p <= 0.25) : (w >= base + 8);
+        const pass = hq && enough && lb > 0 && w > base && solid && po >= 2;
+        return {
+            top: pass, hq, enough, lb, w, n, po, base,
+            // 🔍 沒過的話說得出**卡在哪一關**(⛔ 不可只回 false —— 那查不出原因)
+            miss: [!hq && '不是強勢高波動', !enough && `樣本只有 ${n} 次`,
+                   !(lb > 0) && '扣完成本後期望值不正', !(w > base) && `勝率沒贏基準 ${base}%`,
+                   !solid && '樣本不足以排除運氣', !(po >= 2) && '賺賠比不到 2'].filter(Boolean),
+        };
+    },
+
+    _verifiedEdgeHtml() {
+        const E = this._VERIFIED_EDGE; if (!E) return '';
+        const m = v => (v == null) ? '—' : `${v >= 0 ? '+' : '−'}${Math.abs(v).toLocaleString()}`;
+        const row = (r, showWr) => `<tr class="${r.star ? 'bg-amber-500/10' : ''}">
+            <td class="py-1 pr-2 text-gray-200">${r.star ? '⭐ ' : ''}${r.k}</td>
+            <td class="py-1 px-1 text-right font-mono ${r.pl > 0 ? 'text-red-300' : 'text-green-300'}">${m(r.pl)}</td>
+            ${showWr ? `<td class="py-1 px-1 text-right font-mono text-gray-300">${r.wr != null ? r.wr.toFixed(1) + '%' : '—'}</td>` : ''}
+            <td class="py-1 pl-1 text-right font-mono text-gray-400">${r.dd != null ? r.dd.toFixed(1) + '%' : '—'}</td>
+        </tr>`;
+        const tbl = (rows, showWr, head) => `<table class="w-full text-[10px] mt-1">
+            <tr class="text-gray-500"><td class="pb-0.5">${head}</td><td class="text-right pb-0.5">賺到的錢</td>${showWr ? '<td class="text-right pb-0.5">勝率</td>' : ''}<td class="text-right pb-0.5">最大回撤</td></tr>
+            ${rows.map(r => row(r, showWr)).join('')}</table>`;
+        return `<details class="mt-2 bg-[#0d1117] border border-[#30363d] rounded-lg">
+            <summary class="cursor-pointer select-none px-2.5 py-2 text-[11px] font-bold text-amber-300">📊 驗證過的成績(實測 ${E.base.n} 種做法,只採用 ${E.base.adopted} 種)</summary>
+            <div class="px-2.5 pb-2.5 text-[10px] text-gray-300 leading-relaxed">
+                <div class="text-gray-400 mt-1">① <b class="text-gray-200">36 個月</b>・600 檔・本金 100 萬・每天 2 檔</div>
+                ${tbl(E.long, false, '做法')}
+                <div class="text-amber-300/90 mt-1.5">⭐ 不挑 🧬 的話,整套<b>輸給單純買 0050</b> —— 所以它是<b>必要條件</b>,不是加分項。</div>
+
+                <div class="text-gray-400 mt-2.5">② 改<b class="text-gray-200">一個條件</b>會怎樣(13 個月窗口)</div>
+                ${tbl(E.vars, true, '變體')}
+                <div class="text-amber-300/90 mt-1.5">🚨 看 💧 那行:勝率<b>高 3.4pp 卻少賺 30 萬</b>、回撤還更差 ——
+                    <b>「提高勝率」不是對的目標</b>。這套是「十次錯七次、靠少數大賺」的體質,
+                    任何讓你少做的濾網都在賭「被濾掉的不是大賺那幾筆」。</div>
+                <div class="text-gray-400 mt-1">📉 那行勝率 44.2% 最高,但<b class="text-gray-200">一年只做 52 次</b>、少賺 61.6 萬 ——
+                    勝率幾乎總是用「少做」換來的。</div>
+
+                <div class="text-gray-400 mt-2.5">③ <b class="text-gray-200">只改買點</b>(同一批股票、同一套打法)</div>
+                ${tbl(E.entry, false, '買點')}
+                <div class="text-amber-300/90 mt-1.5">⛔ 所以「明天開盤再買」不是小事 —— 少賺一半以上;
+                    而「跳空太多就不追」聽起來很有紀律,實測<b>倒賠</b>。</div>
+
+                <div class="mt-2.5 pt-2 border-t border-[#30363d] text-gray-500 leading-relaxed">
+                    ⚠️ 三件一定要知道:<br>
+                    ・基準勝率是 <b class="text-gray-400">${E.base.winBase}%</b> 不是 50%(中位數個股本來就輸大盤)→ 勝率 37% 已經是贏基準。<br>
+                    ・上面全部<b class="text-gray-400">已扣</b>來回成本 ${E.base.cost}%,但<b class="text-gray-400">沒扣滑價</b>(你實際成交價跟收盤價的差)。<br>
+                    ・窗口 2023-06 起,<b class="text-red-300">期間沒有一年是空頭</b> —— 而「追強勢高波動」正是空頭最容易受傷的組合。
+                </div>
+            </div>
+        </details>`;
+    },
+
     _pbWhySameHtml(picks) {
         try {
             if (!Array.isArray(picks) || !picks.length) return '';
@@ -39641,7 +39755,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <span class="text-cyan-300/70">實測開盤就買會把賺頭全部吃光(甚至倒賠)。</span>
             </div>
             ${this._pbAlertBarHtml()}
-            ${this._pbWhySameHtml(list)}
+            ${this._pbWhySameHtml(list)}${this._verifiedEdgeHtml()}
             ${hqLine}
             ${this._pbTrackRecordHtml()}
             ${mktLine}${riskLine}
@@ -39839,11 +39953,18 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     : `(想知道買幾張:去 ⚙️ 設定填「帳戶總資金」)`;
                 // 📌 記一筆「待確認」→ 你按「我買了」之後才會幫你盯停損(⛔ 不預設你買了)
                 try { this._pbRecordFire(sym, x.k, chk.price, chk.stop, x); } catch (_) { }
-                this._fireAlert(`🚨 尾盤買點成立｜${name}`,
+                // 🏆 V73.9.8 夠格的才升級標題並附證據(⛔ 不另開一種通知,見 `_pbGrade`)
+                const _g = this._pbGrade(x);
+                this._fireAlert(
+                    _g.top ? `🏆 A 級買點成立｜${name}` : `🚨 尾盤買點成立｜${name}`,
                     `${name}(${sym}) 現價 ${chk.price} —「${x.k}」現在成立了。\n` +
                     `🛑 停損 ${chk.stop.toFixed(2)}(破了就走,不要凹)\n` +
                     `💰 ${lotTxt}\n` +
                     `📊 這招在這檔:勝率 ${x.w}%・賺賠比 ${x.po}・每趟 +${Number.isFinite(+x.lb) ? x.lb : x.exp}%(已扣成本、依樣本數打過折)・打過 ${x.n} 次\n` +
+                    (_g.top
+                        ? `🏆 這筆五關全過:🧬 強勢高波動 ・樣本 ${x.n} 次(≥10)・扣成本後仍為正 ・勝率 ${x.w}% 贏基準 ${_g.base}% ・賺賠比 ${x.po}(≥2)\n` +
+                          `⛔ 但「A 級」不等於會賺:基準勝率是 ${_g.base}% 不是 50%,而且回測窗口**沒有經歷過空頭**。\n`
+                        : `ℹ️ 這筆沒到 A 級(${_g.miss.slice(0, 2).join('、')})—— 照樣可以做,只是證據沒那麼強。\n`) +
                     `⏰ 現在是尾盤時段,收盤前確認還站得住再進。⚠️ 十次會錯七次,靠的是守紀律。`, sym);
                 _pushed++;
             }

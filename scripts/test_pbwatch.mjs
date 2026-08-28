@@ -56,7 +56,22 @@ ok('②a2 ⭐ 一天最多推 2 檔(⛔ 實測做越多賺越少)',
 ok('②a3 清單上有明講「一天最多做前 2 檔」+ 數字', /一天最多做前 2 檔就好/.test(pbBlock) && /1,718,529/.test(pbBlock));
 ok('②a4 ⛔ 停損維持原樣(-3% 那個改善在 2 檔設定下反而更差,教學要留著這個反例)',
    /單獨測有效 != 合起來還有效/.test(src));
-ok('②b 推播內容一定帶停損', /停損/.test(pbBlock) && /_fireAlert\(`🚨 尾盤買點成立/.test(pbBlock));
+// ⚠️ V73.9.8 這條**刻意改寫**(⛔ 不是放寬):買點通知改成「夠格才升級標題」的三元式,
+//    所以不能再釘 `_fireAlert(\`🚨 尾盤買點成立` 這個字面。
+//    ⭐ 改釘更重要的不變量:**兩種標題都要在** + **停損照樣要帶** + **仍然只發一則**。
+ok('②b 推播內容一定帶停損', /停損/.test(pbBlock));
+ok('②b2 兩種標題都在(A 級只是升級,⛔ 普通訊號不可因此不發)',
+   /🏆 A 級買點成立/.test(pbBlock) && /🚨 尾盤買點成立/.test(pbBlock));
+{   // ⚠️ `pbBlock` 範圍涵蓋到出場提醒(停損/停利/抱滿20天 3 則)→ 不能整段數。
+    //    要**只看買點推播那一段**(_eodTriggerSweep 到 _pbRecordFire 定義為止)。
+    const _i = src.indexOf('async _eodTriggerSweep()');
+    const _j = src.indexOf('_pbRecordFire(sym, key', _i);
+    const _buy = (_i > 0 && _j > _i) ? src.slice(_i, _j) : '';
+    ok('②b3a 🚧 空過守門:抓得到買點推播那一段', _buy.length > 500, _buy.length);
+    ok('②b3 🚨 ⛔ 買點仍然只發一則(⛔ 不可為了 A 級另開第三種通知 —— 會被吵到關掉)',
+       (_buy.match(/this\._fireAlert\(/g) || []).length === 1,
+       (_buy.match(/this\._fireAlert\(/g) || []).length);
+}
 ok('②c 推播內容一定帶「會錯幾次」的心理準備', /十次會錯七次/.test(pbBlock));
 ok('②d 有當日去重(⛔ 同一檔同一招不可重複吵)', /_kbarFiredToday\(dkey\)/.test(pbBlock));
 ok('②e 沒開通知 / 沒開自選提醒 → 不做事', /settings\?\.watchlistAlert/.test(pbBlock) && /Notification\.permission !== 'granted'/.test(pbBlock));
