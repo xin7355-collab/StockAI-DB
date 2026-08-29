@@ -6,117 +6,151 @@
 <meta name="robots" content="noindex">
 <title>產業作戰室 PRO</title>
 <!--
-  🛰️ 產業作戰室 PRO(V74.0.1)—— 獨立介面,⛔ 不掛在散戶救星(index.html)的任何入口。
+  🛰️ 產業作戰室 PRO(V74.1.0)—— 獨立介面,⛔ 不掛在散戶救星(index.html)的任何入口。
   資料庫 = 散戶救星 gh-pages 既有產物(零新採礦):
-    screener.json(現價/PE/YoY/毛利/法人5日)・pe_band.json(真實每日 PE 近3年 P5/中位/P95,TaiwanStockPER)
-    industry_pe.json(同業中位 PE)・FinMind TaiwanStockInfo 匿名(中文名,同 App fetchStockList 做法)
-  ⛔ 三條鐵則(跟主 App 一致):
-    ① 「預估 EPS」不存在(台股無免費分析師預期)→ 一律用「年化 EPS = 現價 ÷ 官方 PE」並明標,⛔ 不假稱預估。
-    ② 隱含區間 = 年化EPS × 近3年 P5/中位/P95 PE ——「歷史估值對照區間」,⛔ 不是目標價、不給買賣評等。
-    ③ 台股色:紅=漲、綠=跌;風險用 ⚠️⛔✅,⛔ 不用紅綠表安全危險。
-  ⚠️ AI 鏈資料是 index.html `_AI_CHAIN` 的副本(獨立頁不共用程式)→ 改名單要兩邊一起改(CLAUDE.md 有記)。
+    screener.json(現價/官方PE/YoY/毛利/法人/股價位階 pos252)・
+    pe_band.json(真實每日 PE 近3年 P5/P25/中位/P75/P95,TaiwanStockPER)・
+    industry_pe.json(同業中位)・FinMind TaiwanStockInfo 匿名(中文名,localStorage 快取 3 天)
+
+  ⛔ 五條誠實鐵則(改文案前先讀):
+    ① 台股**沒有免費的分析師預估 EPS** → 一律「年化EPS = 現價 ÷ 官方PE(近4季已公布)」並明標「不是預估」。
+    ② 「價位對照」= 年化EPS × 該股自己的歷史 PE 分位 —— 這是**算術**(如果市場給它跟過去一樣的評價),
+       ⛔ 不是目標價、不是預測、不是買賣建議。標題一律用「歷史估值對照價位」。
+    ③ 基期分兩種且**可能背離**:股價基期(近一年價格位置)vs 估值基期(PE 在自己近3年的位置)。
+       ⛔ 不可混為一談 —— 股價創高但 PE 位階低 = 獲利長得比股價快。
+    ④ 燈號鐵則:🔴🟢 只表漲跌方向;貴/便宜用藍→琥珀,風險用 ✅⚠️⛔➖。
+    ⑤ 階段落差(領先/同步/落後)用的是「最近 20 天資金打哪一層」的**事實描述**,
+       ⛔ 預測力未實測,不可寫成買賣訊號。
+
+  ⚠️ AI 鏈名單是 index.html `_AI_CHAIN` 的副本(獨立頁不共用程式)→ 改名單要兩邊一起改。
 -->
 <style>
 :root{
   --bg:#070b12; --panel:#0e141f; --panel2:#131b29; --line:#1e2837; --line2:#2a3648;
   --txt:#dbe4f0; --sub:#8b98ab; --dim:#5a6577; --dim2:#495669;
-  --blue:#3d8bfd; --cyan:#22d3ee; --amber:#f5b942; --up:#ff5d5d; --dn:#3ddc84;
+  --blue:#3d8bfd; --cyan:#22d3ee; --amber:#f5b942; --violet:#a78bfa; --up:#ff5d5d; --dn:#3ddc84;
   --mono:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace;
 }
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
-body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',sans-serif;font-size:14px;line-height:1.55;min-height:100vh}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',sans-serif;font-size:14px;line-height:1.55;min-height:100vh;overflow-x:hidden;overscroll-behavior-y:contain}
 body::before{content:'';position:fixed;inset:0;background:
   radial-gradient(1200px 500px at 80% -10%, rgba(61,139,253,.07), transparent 60%),
   radial-gradient(900px 400px at 10% 110%, rgba(34,211,238,.05), transparent 60%);pointer-events:none}
-.wrap{max-width:1180px;margin:0 auto;padding:0 16px 80px;position:relative}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px calc(80px + env(safe-area-inset-bottom));position:relative}
 a{color:var(--cyan)}
 .mono{font-family:var(--mono)}
 .up{color:var(--up)} .dn{color:var(--dn)} .flat{color:var(--sub)}
+/* ── 下拉重新整理 ── */
+#ptr{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;justify-content:center;
+  height:0;overflow:hidden;background:linear-gradient(180deg,rgba(61,139,253,.18),transparent);
+  font-size:12px;color:var(--cyan);z-index:80;transition:height .12s;pointer-events:none}
 /* ── 頂欄 ── */
-.topbar{position:sticky;top:0;z-index:50;background:rgba(7,11,18,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.topbar-in{max-width:1180px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(7,11,18,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+.topbar-in{max-width:1180px;margin:0 auto;padding:11px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:10px}
 .brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#123,#154);border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;font-size:18px}
 .brand h1{font-size:17px;font-weight:900;letter-spacing:.5px}
 .brand .ver{font-size:10px;color:var(--dim2);font-weight:400}
 .tabs{display:flex;gap:6px;margin-left:auto}
-.tab-btn{border:1px solid var(--line2);background:var(--panel);color:var(--sub);padding:7px 16px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+.tab-btn{border:1px solid var(--line2);background:var(--panel);color:var(--sub);padding:7px 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
 .tab-btn.on{background:linear-gradient(135deg,rgba(61,139,253,.22),rgba(34,211,238,.12));color:#cfe3ff;border-color:#2f5f9e}
 .datebadge{font-size:10px;color:var(--dim2);font-family:var(--mono)}
+.swipehint{font-size:9px;color:var(--dim2);width:100%;text-align:center;margin-top:-2px}
 /* ── 面板 ── */
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
 .panel h2{font-size:14px;font-weight:900;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .panel h2 .sub{font-size:10px;color:var(--dim2);font-weight:400}
 label{display:block;font-size:11px;color:var(--sub);margin:10px 0 4px;font-weight:700}
-input[type=text],textarea{width:100%;background:#0a101a;border:1px solid var(--line2);border-radius:9px;padding:9px 12px;color:var(--txt);font-size:13px;outline:none;transition:.15s}
+input[type=text],textarea{width:100%;background:#0a101a;border:1px solid var(--line2);border-radius:9px;padding:9px 12px;color:var(--txt);font-size:16px;outline:none;transition:.15s}
 input[type=text]:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(61,139,253,.12)}
-textarea{resize:vertical;min-height:56px;font-family:inherit}
+textarea{resize:vertical;min-height:56px;font-family:inherit;font-size:14px}
 .presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .preset{border:1px solid var(--line2);background:var(--panel2);color:var(--sub);font-size:11px;padding:4px 10px;border-radius:99px;cursor:pointer;transition:.15s}
-.preset:hover{color:#cfe3ff;border-color:#2f5f9e}
-.go-btn{margin-top:14px;width:100%;padding:12px;border:0;border-radius:10px;font-size:15px;font-weight:900;color:#fff;cursor:pointer;
+.preset:active{color:#cfe3ff;border-color:#2f5f9e}
+.go-btn{margin-top:14px;width:100%;padding:13px;border:0;border-radius:10px;font-size:15px;font-weight:900;color:#fff;cursor:pointer;
   background:linear-gradient(135deg,#2563eb,#0891b2);letter-spacing:2px;transition:.15s}
-.go-btn:hover{filter:brightness(1.15)} .go-btn:disabled{opacity:.5;cursor:wait}
+.go-btn:active{filter:brightness(1.2)} .go-btn:disabled{opacity:.5;cursor:wait}
 .note{font-size:10px;color:var(--dim2);line-height:1.7;margin-top:8px}
 .warnbox{border-left:3px solid var(--amber);background:rgba(245,185,66,.06);border-radius:0 9px 9px 0;padding:9px 12px;font-size:11px;color:#e8d9b0;line-height:1.7;margin-top:12px}
 /* ── 估值卡 ── */
 .vgrid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
+.inrow{display:grid;grid-template-columns:1fr 2fr;gap:12px}
+@media(max-width:600px){.inrow{grid-template-columns:1fr}}
 .vcard{background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:14px 16px;position:relative;overflow:hidden}
 .vcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),var(--cyan),transparent)}
-.vhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.vhead{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.vhead .nmbtn{display:inline-flex;align-items:baseline;gap:7px;background:none;border:0;padding:0;cursor:pointer;color:inherit;font:inherit}
 .vhead .code{font-family:var(--mono);color:var(--dim2);font-size:12px}
-.vhead .nm{font-size:17px;font-weight:900}
-.vhead .px{font-family:var(--mono);font-size:19px;font-weight:900;margin-left:2px}
+.vhead .nm{font-size:17px;font-weight:900;border-bottom:1px dashed var(--line2)}
+.vhead .px{font-family:var(--mono);font-size:19px;font-weight:900}
 .vhead .chg{font-family:var(--mono);font-size:12px;font-weight:700}
-.vhead .inst{margin-left:auto;font-size:11px;color:var(--sub)}
-.bandwrap{margin:14px 4px 4px}
+.vtools{margin-left:auto;display:flex;gap:5px;flex-wrap:wrap}
+.minibtn{border:1px solid var(--line2);background:#0a101a;color:var(--sub);font-size:10px;font-weight:700;padding:4px 9px;border-radius:7px;cursor:pointer;transition:.15s}
+.minibtn:active{border-color:var(--blue);color:#cfe3ff}
+.badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.bdg{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;border:1px solid}
+.bdg-lo{background:rgba(61,139,253,.12);border-color:#2f5f9e;color:#9ec5ff}
+.bdg-mid{background:rgba(139,148,171,.1);border-color:var(--line2);color:var(--sub)}
+.bdg-hi{background:rgba(245,185,66,.12);border-color:#7a5a1a;color:#f3ce7e}
+.bdg-na{background:rgba(139,148,171,.06);border-color:var(--line2);color:var(--dim2)}
+.bandwrap{margin:13px 4px 4px}
 /* ⚠️ 估值帶漸層刻意用「冷→熱」(藍→琥珀),⛔ 不用紅綠 —— 紅綠在台股是漲跌方向,貴便宜不是方向 */
 .band{position:relative;height:10px;border-radius:6px;background:linear-gradient(90deg,#1d4066,#3d4a4a,#6b5220,#7a4a18);opacity:.95}
 .band .medtick{position:absolute;top:-4px;bottom:-4px;width:2px;background:#9db4d0;border-radius:2px}
 .band .dot{position:absolute;top:50%;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--blue);box-shadow:0 0 10px rgba(61,139,253,.8)}
 .bandlbl{display:flex;justify-content:space-between;font-size:10px;color:var(--dim2);font-family:var(--mono);margin-top:6px}
 .vmsg{font-size:12px;margin-top:10px;line-height:1.7}
-.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin-top:12px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin-top:12px}
 .metric{background:#0a101a;border:1px solid var(--line);border-radius:9px;padding:7px 10px}
 .metric .k{font-size:9px;color:var(--dim2)}
 .metric .v{font-family:var(--mono);font-size:14px;font-weight:800;margin-top:2px}
+/* 價位對照表 */
+.pxtbl{width:100%;margin-top:11px;border-collapse:collapse;font-size:11px}
+.pxtbl th{color:var(--dim2);font-size:9px;font-weight:700;text-align:right;padding:4px 6px;border-bottom:1px solid var(--line)}
+.pxtbl th:first-child{text-align:left}
+.pxtbl td{padding:5px 6px;text-align:right;font-family:var(--mono);border-bottom:1px solid rgba(30,40,55,.5)}
+.pxtbl td:first-child{text-align:left;font-family:inherit;color:var(--sub)}
+.pxtbl tr.now td{background:rgba(61,139,253,.08)}
 /* ── prompt 區 ── */
 .promptbox{background:#05080d;border:1px solid #1c3a5e;border-radius:13px;overflow:hidden;margin-top:14px;position:relative}
 .promptbox::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),var(--cyan))}
-.prompthead{display:flex;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)}
+.prompthead{display:flex;align-items:center;gap:6px;padding:11px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .prompthead b{color:#7db4ff;font-size:13px}
-.copybtn{margin-left:auto;border:1px solid var(--line2);background:var(--panel2);color:var(--txt);font-size:12px;font-weight:700;padding:6px 14px;border-radius:8px;cursor:pointer;transition:.15s}
+.copybtn{margin-left:auto;border:1px solid var(--line2);background:var(--panel2);color:var(--txt);font-size:12px;font-weight:700;padding:6px 13px;border-radius:8px;cursor:pointer;transition:.15s}
 .copybtn.done{background:#14532d;border-color:#166534;color:#bbf7d0}
-pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;white-space:pre-wrap;line-height:1.65;max-height:420px;overflow:auto}
+.askbtn{border:1px solid #4c1d95;background:rgba(167,139,250,.12);color:#c4b5fd;font-size:12px;font-weight:700;padding:6px 13px;border-radius:8px;cursor:pointer;transition:.15s}
+.askbtn:active{background:rgba(167,139,250,.25)}
+pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;white-space:pre-wrap;line-height:1.65;max-height:380px;overflow:auto}
 /* ── 表格 ── */
-.tblwrap{overflow-x:auto;margin-top:10px}
-table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
-th{color:var(--sub);font-size:11px;text-align:right;padding:8px 10px;border-bottom:1px solid var(--line2);cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel)}
-th:first-child,td:first-child{text-align:left}
-th.on{color:var(--cyan)}
-td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono)}
-td.txtcell{font-family:inherit;text-align:left}
-tr:hover td{background:rgba(61,139,253,.05)}
+.tblwrap{overflow-x:auto;margin-top:10px;-webkit-overflow-scrolling:touch}
+table.grid{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+table.grid th{color:var(--sub);font-size:11px;text-align:right;padding:8px 9px;border-bottom:1px solid var(--line2);cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel)}
+table.grid th:first-child,table.grid td:first-child{text-align:left}
+table.grid th.on{color:var(--cyan)}
+table.grid td{padding:9px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono)}
+table.grid td.txtcell{font-family:inherit;text-align:left}
+table.grid tr:active td{background:rgba(61,139,253,.09)}
+.namebtn{background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;font-weight:700;border-bottom:1px dashed var(--line2)}
 /* ── AI 鏈 ── */
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
-.kpi{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 15px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin-top:14px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px 14px}
 .kpi .k{font-size:10px;color:var(--sub);font-weight:700}
-.kpi .v{font-size:21px;font-weight:900;font-family:var(--mono);margin-top:3px}
+.kpi .v{font-size:20px;font-weight:900;font-family:var(--mono);margin-top:3px}
 .kpi .s{font-size:10px;color:var(--dim2);margin-top:2px}
-.lvflow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:12px}
+.lvflow{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-top:12px}
 @media(max-width:820px){.lvflow{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.lvflow{grid-template-columns:1fr}}
-.lvcard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px;cursor:pointer;transition:.15s;position:relative}
-.lvcard:hover{border-color:#2f5f9e}
+.lvcard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px;cursor:pointer;transition:.15s;position:relative}
 .lvcard.on{border-color:var(--blue);background:linear-gradient(180deg,rgba(61,139,253,.1),var(--panel))}
+.lvcard.front{box-shadow:0 0 0 1px rgba(245,185,66,.35)}
 .lvcard .lno{font-family:var(--mono);font-size:10px;color:var(--dim2)}
 .lvcard .lnm{font-size:15px;font-weight:900;margin-top:2px}
 .lvcard .lst{font-size:10px;color:var(--amber);margin-top:2px}
 .lvcard .lbar{height:5px;border-radius:4px;background:#1a2333;margin-top:9px;overflow:hidden}
 .lvcard .lbar i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan))}
 .lvcard .lm{font-size:10px;color:var(--sub);margin-top:7px;font-family:var(--mono)}
-.lvdetail{margin-top:12px}
+.lvcard .flag{position:absolute;top:9px;right:10px;font-size:9px;color:var(--amber);font-weight:700}
 .transgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
 @media(max-width:760px){.transgrid{grid-template-columns:1fr}}
 .tcard{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px 14px}
@@ -125,8 +159,9 @@ tr:hover td{background:rgba(61,139,253,.05)}
 .tcard .imp{color:var(--amber)}
 .tcard p{font-size:11px;color:var(--sub);margin-top:6px;line-height:1.7}
 .chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
-.chip{font-size:10px;border:1px solid var(--line2);background:#0a101a;border-radius:7px;padding:2px 8px;color:#b9c6d8}
+.chip{font-size:10px;border:1px solid var(--line2);background:#0a101a;border-radius:7px;padding:2px 8px;color:#b9c6d8;cursor:pointer}
 .chip .c{font-family:var(--mono);color:var(--dim2);margin-right:4px}
+.chip.dead{color:var(--dim2);cursor:default}
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
 @media(max-width:860px){.duo{grid-template-columns:1fr}}
 .poolrow{margin-top:10px}
@@ -141,19 +176,26 @@ tr:hover td{background:rgba(61,139,253,.05)}
 .step .bd b{color:var(--txt);font-size:12px}
 .step .lead{font-size:10px;color:var(--amber)}
 .seg-up{color:#7db4ff}.seg-mid{color:#c4a7ff}.seg-down{color:#7ee2c8}
+.layerbar{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+.lbtn{border:1px solid var(--line2);background:var(--panel2);color:var(--sub);font-size:11px;padding:4px 11px;border-radius:99px;cursor:pointer}
+.lbtn.on{border-color:var(--violet);background:rgba(167,139,250,.14);color:#d8ccff}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--cyan);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px}
 @keyframes sp{to{transform:rotate(360deg)}}
 .hidden{display:none!important}
-footer{margin-top:30px;font-size:10px;color:var(--dim2);line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(14,20,31,.96);border:1px solid var(--line2);border-radius:10px;padding:9px 16px;font-size:12px;color:var(--txt);z-index:90;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.on{opacity:1}
 </style>
 </head>
 <body>
+<div id="ptr"></div>
 <div class="topbar"><div class="topbar-in">
   <div class="brand"><div class="logo">🛰️</div><div><h1>產業作戰室 <span style="color:var(--cyan)">PRO</span></h1><div class="ver">估值 × 籌碼 × AI 產業鏈 <span class="datebadge" id="dataDate"></span></div></div></div>
   <div class="tabs">
     <button class="tab-btn on" id="tabBtnVal" onclick="PRO.switchTab('val')">📊 產業估值</button>
     <button class="tab-btn" id="tabBtnChain" onclick="PRO.switchTab('chain')">🤖 AI 產業鏈</button>
   </div>
+  <div class="swipehint">👈 左右滑動可切換分頁 ・ 在最上方下拉可重新整理 ・ 點股名跳到散戶救星(返回鍵回到原位)</div>
 </div></div>
 
 <div class="wrap">
@@ -161,7 +203,7 @@ footer{margin-top:30px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 <div id="tabVal">
   <div class="panel">
     <h2>🛡️ 進階產業估值系統 <span class="sub">防幻覺架構・全部真實數字,零模擬值</span></h2>
-    <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px">
+    <div class="inrow">
       <div><label>產業名稱</label><input type="text" id="inIndustry" value="AI 伺服器與代工"></div>
       <div><label>成分股(逗號分隔,最多 12 檔)</label><input type="text" id="inCodes" class="mono" value="2382, 3231, 2356, 2376"></div>
     </div>
@@ -169,7 +211,7 @@ footer{margin-top:30px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <label>產業近期動態補充(給 AI 判讀情緒與催化劑用,自己填最新消息)</label>
     <textarea id="inNews" placeholder="例如:GB200 出貨進度、水冷散熱良率疑慮、CSP 資本支出指引…"></textarea>
     <button class="go-btn" id="goBtn" onclick="PRO.runValuation()">⚡ 抓取真實估值數據</button>
-    <div class="note">資料來源:散戶救星資料庫(每日收盤後更新)。<b>年化 EPS</b> = 現價 ÷ 證交所官方本益比(近4季已公布獲利,⛔ 台股沒有免費的分析師預估 EPS,不假造)。<b>PE 帶</b> = 這檔自己近 3 年<b>每一天的真實本益比</b>分布(P5/中位/P95,⛔ 不是用現在 EPS 回推的假河流圖)。</div>
+    <div class="note">資料來源:散戶救星資料庫(每日收盤後更新)。<b>年化 EPS</b> = 現價 ÷ 證交所官方本益比(近4季已公布獲利,⛔ 台股沒有免費的分析師預估 EPS,不假造)。<b>PE 帶</b> = 這檔自己近 3 年<b>每一天的真實本益比</b>分布(⛔ 不是用現在 EPS 回推的假河流圖)。</div>
   </div>
   <div id="valOut"></div>
 </div>
@@ -180,15 +222,17 @@ footer{margin-top:30px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
   <div class="panel">
     <h2>🪜 AI 演進五級 <span class="sub">點一級 → 篩選成員・再點取消(框架對應 OpenAI 五級 AGI)</span></h2>
     <div class="lvflow" id="lvFlow"></div>
-    <div class="lvdetail" id="lvDetail"></div>
+    <div id="lvDetail"></div>
+    <div id="frontNote"></div>
   </div>
   <div class="panel">
     <h2>🗺️ 個股戰情表 <span class="sub" id="mapSub"></span></h2>
-    <div class="tblwrap"><table id="chainTbl"><thead><tr>
-      <th data-k="nm">標的</th><th data-k="seg">段</th><th data-k="theme">題材</th><th data-k="lv">層級</th>
-      <th data-k="chg20">近20日</th><th data-k="yoy">營收YoY</th><th data-k="gm">毛利率</th><th data-k="f10">外資10日</th>
+    <div class="layerbar" id="layerBar"></div>
+    <div class="tblwrap"><table class="grid" id="chainTbl"><thead><tr>
+      <th data-k="nm">標的</th><th data-k="layer">供應鏈層</th><th data-k="theme">題材</th><th data-k="stage">階段位置</th>
+      <th data-k="chg20">近20日</th><th data-k="pos252">股價基期</th><th data-k="yoy">營收YoY</th><th data-k="gm">毛利率</th><th data-k="f10">外資10日</th>
     </tr></thead><tbody id="chainBody"></tbody></table></div>
-    <div class="note">點欄位標題排序。近20日/YoY/毛利/外資 = 散戶救星每日收盤快照;— = 該檔無此資料。</div>
+    <div class="note">點欄位標題排序、點股名跳到散戶救星看完整分析。數字為每日收盤快照;— = 該檔無此資料。</div>
   </div>
   <div class="panel">
     <h2>🔄 技術轉折雷達 <span class="sub">正在發生的「誰上位、誰被替代」(人工整理)</span></h2>
@@ -209,14 +253,16 @@ footer{margin-top:30px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 
 <footer>
   🛰️ 產業作戰室 PRO ・ 資料庫:散戶救星(每日收盤後自動更新)・ 本頁僅整理客觀數據與人工產業框架,不構成投資建議,⛔ 不給目標價與買賣評等。<br>
-  估值方法:隱含區間 = 年化EPS(近4季)× 近3年真實 PE 分布(P5/中位/P95)——「歷史估值對照區間」,過去的估值不保證未來會回到同一區間。
+  估值方法:隱含價位 = 年化EPS(近4季) × 該股近3年真實 PE 分位 ——「<b>歷史估值對照價位</b>」,意思是「如果市場給它跟過去一樣的評價,現在的獲利值多少錢」。過去的估值<b>不保證</b>未來會回到同一區間。
 </footer>
 </div>
+<div id="toast"></div>
 
 <script>
 'use strict';
 const PRO = {
   _cache: {},
+  _tab: 'val',
   async fetchJson(path, timeout = 15000) {
     if (this._cache[path] !== undefined) return this._cache[path];
     try {
@@ -226,6 +272,13 @@ const PRO = {
     } catch (_) {}
     return this._cache[path] !== undefined ? this._cache[path] : null;
   },
+  toast(msg, ms = 1800) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('on');
+    clearTimeout(this._tt); this._tt = setTimeout(() => t.classList.remove('on'), ms);
+  },
+  buzz(ms = 15) { try { navigator.vibrate && navigator.vibrate(ms); } catch (_) {} },
+
   // ── 中文名:同散戶救星 fetchStockList 的來源(FinMind 匿名,localStorage 快取 3 天)──
   _names: null,
   async loadNames() {
@@ -247,7 +300,6 @@ const PRO = {
     const s = this.CHAIN.stocks.find(x => x[0] === code);
     return (s && s[1]) || (this._names && this._names[code]) || '';
   },
-  // ── screener 取值 ──
   _scrV(sym, key) {
     const D = this._cache['data/screener.json'];
     if (!D || !D.rows || !D.rows[sym] || !D.cols) return null;
@@ -272,12 +324,108 @@ const PRO = {
     { n: 'PCB/載板', c: '3037, 8046, 2383, 2368' },
     { n: '光通訊/CPO', c: '2345, 4977, 3363' },
   ],
-  switchTab(t) {
+
+  // ═══════════ 🧭 導航:點股名 → 散戶救星,返回鍵回到原位 ═══════════
+  // ⚠️ 同分頁跳轉(⛔ 不開新分頁):手機上新分頁會堆積,而且 iOS PWA 會留空白頁。
+  //    跳之前把「捲動位置 + 分頁 + 篩選 + 估值輸入」存進 sessionStorage;
+  //    回來時若瀏覽器 bfcache 生效就什麼都不用做,若整頁重載才用存檔還原。
+  _saveNav() {
+    try {
+      sessionStorage.setItem('proWar_nav', JSON.stringify({
+        y: window.scrollY, tab: this._tab, lv: this._lvSel, layer: this._layerSel,
+        sk: this._sortK, sd: this._sortD,
+        ind: (document.getElementById('inIndustry') || {}).value || '',
+        codes: (document.getElementById('inCodes') || {}).value || '',
+        news: (document.getElementById('inNews') || {}).value || '',
+        val: !!(this._valRows && this._valRows.length),
+        at: Date.now(),
+      }));
+    } catch (_) {}
+  },
+  async _restoreNav() {
+    let s = null;
+    try { s = JSON.parse(sessionStorage.getItem('proWar_nav') || 'null'); } catch (_) {}
+    if (!s || !s.at || Date.now() - s.at > 30 * 60e3) return false;   // 逾 30 分鐘不還原(免得看到過期畫面)
+    try {
+      if (s.ind) document.getElementById('inIndustry').value = s.ind;
+      if (s.codes) document.getElementById('inCodes').value = s.codes;
+      if (s.news) document.getElementById('inNews').value = s.news;
+      this._lvSel = s.lv ?? null; this._layerSel = s.layer ?? null;
+      if (s.sk) { this._sortK = s.sk; this._sortD = s.sd || -1; }
+      if (s.tab === 'chain') this.switchTab('chain', true);
+      if (s.val) await this.runValuation(true);
+      // 兩次 rAF:等 DOM 真的排版完再捲(⛔ 直接 scrollTo 會捲不到,因為內容還沒撐開)
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      window.scrollTo(0, s.y || 0);
+      return true;
+    } catch (_) { return false; }
+  },
+  gotoStock(code) {
+    if (!code) return;
+    this.buzz(25);
+    this._saveNav();
+    location.href = 'index.html?sym=' + encodeURIComponent(code);
+  },
+
+  // ═══════════ 🖐️ 手勢(iOS / Android 通用)═══════════
+  // ⛔ 三個必須留著的守門(⛔ 別「簡化」掉):
+  //   ① 起點在可橫向捲動的容器(表格)裡 → 不攔截,否則表格滑不動。
+  //   ② 水平位移要明顯大於垂直(2 倍以上)才算左右滑,否則正常上下捲會誤觸發。
+  //   ③ 下拉重新整理只在 scrollY <= 0 時起算,而且要拉超過 70px 才觸發。
+  _initGestures() {
+    let x0 = 0, y0 = 0, t0 = 0, lock = '', inScroller = false, pull = 0;
+    const ptr = document.getElementById('ptr');
+    const canSwipe = el => {
+      for (let n = el; n && n !== document.body; n = n.parentElement) {
+        if (n.tagName === 'INPUT' || n.tagName === 'TEXTAREA' || n.tagName === 'PRE') return false;
+        const st = getComputedStyle(n);
+        if ((st.overflowX === 'auto' || st.overflowX === 'scroll') && n.scrollWidth > n.clientWidth + 4) return false;
+      }
+      return true;
+    };
+    document.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) { lock = 'x'; return; }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
+      lock = ''; pull = 0; inScroller = !canSwipe(e.target);
+    }, { passive: true });
+    document.addEventListener('touchmove', e => {
+      if (e.touches.length !== 1 || lock === 'x') return;
+      const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+      if (!lock && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) lock = Math.abs(dx) > Math.abs(dy) * 2 ? 'h' : 'v';
+      if (lock === 'v' && dy > 0 && window.scrollY <= 0 && !inScroller) {
+        pull = Math.min(dy * 0.5, 90);
+        ptr.style.height = pull + 'px';
+        ptr.textContent = pull >= 70 ? '放開重新整理' : '↓ 下拉重新整理';
+      }
+    }, { passive: true });
+    document.addEventListener('touchend', e => {
+      const ch = e.changedTouches[0];
+      const dx = ch.clientX - x0, dy = ch.clientY - y0, dt = Date.now() - t0;
+      ptr.style.height = '0px';
+      if (pull >= 70) { this.buzz(30); this.hardRefresh(); pull = 0; return; }
+      if (lock === 'h' && !inScroller && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 2 && dt < 600) {
+        if (dx < 0 && this._tab === 'val') { this.buzz(20); this.switchTab('chain'); }
+        else if (dx > 0 && this._tab === 'chain') { this.buzz(20); this.switchTab('val'); }
+      }
+      lock = ''; pull = 0;
+    }, { passive: true });
+  },
+  async hardRefresh() {
+    this._cache = {};                       // ⛔ 一定要清 —— 不清的話「重新整理」等於什麼都沒做
+    this.toast('🔄 重新抓取最新資料…');
+    if (this._tab === 'chain') await this.renderChain();
+    if (this._valRows && this._valRows.length) await this.runValuation(true);
+    this.toast('✅ 已更新');
+  },
+
+  switchTab(t, silent) {
+    this._tab = t;
     document.getElementById('tabVal').classList.toggle('hidden', t !== 'val');
     document.getElementById('tabChain').classList.toggle('hidden', t !== 'chain');
     document.getElementById('tabBtnVal').classList.toggle('on', t === 'val');
     document.getElementById('tabBtnChain').classList.toggle('on', t === 'chain');
     if (t === 'chain') this.renderChain();
+    if (!silent) window.scrollTo(0, 0);
   },
 
   // ═══════════ 📊 估值 ═══════════
@@ -295,7 +443,16 @@ const PRO = {
     }
     return null;
   },
-  async runValuation() {
+  // ⚠️ 基期有兩種,而且**可能背離** —— ⛔ 不可混為一談
+  //   股價基期(pos252)= 股價在近一年區間的位置;估值基期(PE 位階)= 本益比在自己近3年的位置。
+  //   股價創高但 PE 位階低 = 獲利長得比股價快(不是「貴」)。
+  baseTag(v) {
+    if (!Number.isFinite(v)) return { t: '資料不足', c: 'bdg-na' };
+    if (v <= 25) return { t: '低基期', c: 'bdg-lo' };
+    if (v >= 75) return { t: '高基期', c: 'bdg-hi' };
+    return { t: '中基期', c: 'bdg-mid' };
+  },
+  async runValuation(silent) {
     const btn = document.getElementById('goBtn'), out = document.getElementById('valOut');
     const codes = (document.getElementById('inCodes').value || '').split(/[,，\s]+/).map(c => c.trim().toUpperCase()).filter(c => /^\d{4,5}[A-Z]?$/.test(c)).slice(0, 12);
     if (!codes.length) { out.innerHTML = '<div class="panel">⚠️ 請輸入至少一檔 4 碼股票代號</div>'; return; }
@@ -319,8 +476,12 @@ const PRO = {
       return {
         code, nm: this.nameOf(code) || code, px, pe, eps, b, peer, indK,
         chg: this._scrV(code, 'chg'), yoy: this._scrV(code, 'yoy'), gm: this._scrV(code, 'gm'),
+        pos: this._scrV(code, 'pos252'), chg20: this._scrV(code, 'chg20'), pb: this._scrV(code, 'pb'),
         f5, t5, inst5,
         lo: okBand ? eps * b.p5 : null, mid: okBand ? eps * b.med : null, hi: okBand ? eps * b.p95 : null,
+        q25: okBand && Number.isFinite(b.p25) ? eps * b.p25 : null,
+        q75: okBand && Number.isFinite(b.p75) ? eps * b.p75 : null,
+        peerPx: (eps !== null && Number.isFinite(peer)) ? eps * peer : null,
         rank: okBand ? this.peRank(pe, b) : null,
       };
     });
@@ -329,61 +490,106 @@ const PRO = {
                       dd: scr.data_date || '', bandUpd: band ? String(band.updated || '').slice(0, 10) : '' };
     out.innerHTML = this._valCardsHtml(rows) + this._promptBoxHtml();
     document.getElementById('promptPre').textContent = this.buildPrompt();
+    if (!silent) this.toast(`✅ ${rows.length} 檔資料已載入`);
+  },
+  // 💰 歷史估值對照價位(使用者要的「目標價」誠實版)
+  // ⛔ 這不是目標價、不是預測 —— 是**算術**:「如果市場給它跟過去一樣的評價,現在的獲利值多少錢」。
+  //    所以每一列都必須寫出它的前提(哪一個 PE),且標題不可出現「目標價」。
+  _pxTableHtml(r) {
+    if (r.lo === null) return '';
+    const cur = r.px;
+    const rows = [
+      ['近3年最便宜(P5 PE ' + this.fmt(r.b.p5, 1) + 'x)', r.lo],
+      ['偏便宜(P25 PE ' + this.fmt(r.b.p25, 1) + 'x)', r.q25],
+      ['⭐ 中位(PE ' + this.fmt(r.b.med, 1) + 'x)', r.mid],
+      ['偏貴(P75 PE ' + this.fmt(r.b.p75, 1) + 'x)', r.q75],
+      ['近3年最貴(P95 PE ' + this.fmt(r.b.p95, 1) + 'x)', r.hi],
+    ].filter(x => Number.isFinite(x[1]));
+    if (Number.isFinite(r.peerPx)) rows.push(['同業中位 PE ' + this.fmt(r.peer, 1) + 'x', r.peerPx]);
+    const body = rows.map(([k, v]) => {
+      const diff = (v - cur) / cur * 100;
+      const oneLot = (v - cur) * 1000;
+      return `<tr><td>${k}</td><td>${this.fmt(v, 1)}</td><td class="${this.cls(diff)}">${this.fmt(diff, 1, true)}%</td>
+        <td class="${this.cls(oneLot)}">${oneLot >= 0 ? '+' : ''}${Math.round(oneLot).toLocaleString()}</td></tr>`;
+    }).join('');
+    return `<table class="pxtbl"><thead><tr><th>如果市場給它這個評價…</th><th>對應股價</th><th>距現價</th><th>一張差多少元</th></tr></thead>
+      <tbody><tr class="now"><td>📍 <b>現在</b>(PE ${this.fmt(r.pe, 1)}x)</td><td><b>${this.fmt(cur, 1)}</b></td><td class="flat">—</td><td class="flat">—</td></tr>${body}</tbody></table>
+      <div class="note">⛔ <b>這不是目標價,也不是預測</b> —— 只是把「同樣的獲利、乘上它自己過去被給過的本益比」算出來。獲利變了、產業變了,市場就不會再給同一個 PE;循環股尤其危險。</div>`;
   },
   _valCardsHtml(rows) {
-    const cards = rows.map(r => {
-      const head = `<div class="vhead"><span class="code">${r.code}</span><span class="nm">${r.nm}</span>
+    const cards = rows.map((r, i) => {
+      const pb = this.baseTag(r.pos), vb = this.baseTag(r.rank);
+      const head = `<div class="vhead">
+        <button class="nmbtn" onclick="PRO.gotoStock('${r.code}')" title="點我跳到散戶救星看這檔的完整分析(返回鍵可回到這裡)">
+          <span class="code">${r.code}</span><span class="nm">${r.nm}</span></button>
         <span class="px">${this.fmt(r.px, 1)}</span><span class="chg ${this.cls(r.chg)}">${this.fmt(r.chg, 2, true)}%</span>
-        <span class="inst">法人5日 <b class="mono ${this.cls(r.inst5)}">${r.inst5 === null ? '—' : this.fmt(r.inst5, 0, true) + ' 張'}</b>
-        <span style="color:var(--dim2)">(外資 ${this.fmtN(r.f5)}・投信 ${this.fmtN(r.t5)})</span></span></div>`;
+        <span class="vtools">
+          <button class="minibtn" onclick="PRO.gotoStock('${r.code}')">📈 看個股</button>
+          <button class="minibtn" onclick="PRO.askStock(${i})">🟣 問 AI</button>
+          <button class="minibtn" onclick="PRO.copyStock(${i})">📋 複製提示詞</button>
+        </span></div>
+        <div class="badges">
+          <span class="bdg ${pb.c}">📉 股價${pb.t}${Number.isFinite(r.pos) ? ' ' + this.fmt(r.pos, 0) + '%' : ''}</span>
+          <span class="bdg ${vb.c}">💰 估值${vb.t}${Number.isFinite(r.rank) ? ' ' + r.rank + '%' : ''}</span>
+          <span class="bdg bdg-mid">法人5日 ${r.inst5 === null ? '—' : (r.inst5 >= 0 ? '+' : '') + Math.round(r.inst5).toLocaleString() + ' 張'}</span>
+        </div>`;
       let bandHtml = '', msg = '';
       if (r.lo !== null) {
         const pos = Math.max(0, Math.min(100, (r.px - r.lo) / (r.hi - r.lo) * 100));
         const medPos = Math.max(0, Math.min(100, (r.mid - r.lo) / (r.hi - r.lo) * 100));
         bandHtml = `<div class="bandwrap"><div class="band"><div class="medtick" style="left:${medPos}%"></div><div class="dot" style="left:${pos}%"></div></div>
-          <div class="bandlbl"><span>低緣 ${this.fmt(r.lo, 1)}<br><span style="opacity:.6">P5 PE ${this.fmt(r.b.p5, 1)}x</span></span>
-          <span style="text-align:center">中位 ${this.fmt(r.mid, 1)}<br><span style="opacity:.6">PE ${this.fmt(r.b.med, 1)}x</span></span>
-          <span style="text-align:right">高緣 ${this.fmt(r.hi, 1)}<br><span style="opacity:.6">P95 PE ${this.fmt(r.b.p95, 1)}x</span></span></div></div>`;
-        if (r.px > r.hi) msg = `⚠️ <b>現價已高於近3年 P95 隱含價(${this.fmt(r.hi, 1)})</b> —— 基期已高,市場給的是超越過去 3 年的評價,要靠獲利上修撐住。`;
-        else if (r.px < r.lo) msg = `🧊 現價低於近3年 P5 隱含價(${this.fmt(r.lo, 1)})—— 基期極低。⚠️ 極端便宜通常有原因,先查獲利是不是在衰退。`;
+          <div class="bandlbl"><span>便宜 ${this.fmt(r.lo, 1)}</span><span>中位 ${this.fmt(r.mid, 1)}</span><span>貴 ${this.fmt(r.hi, 1)}</span></div></div>`;
+        if (r.px > r.hi) msg = `⚠️ <b>現價已超過近3年最貴的評價(${this.fmt(r.hi, 1)})</b> —— 市場給的是超越過去 3 年的分數,要靠獲利再上修才撐得住。`;
+        else if (r.px < r.lo) msg = `🧊 現價低於近3年最便宜的評價(${this.fmt(r.lo, 1)})。⚠️ 極端便宜通常有原因,先確認獲利是不是在衰退。`;
         else msg = `📐 現在 PE <b class="mono">${this.fmt(r.pe, 1)}x</b> = 這檔自己近3年第 <b class="mono">${r.rank}%</b> 位階(0=最便宜,100=最貴)。`;
         if (Number.isFinite(r.peer)) msg += ` 同業(${this.IND_NAME[r.indK] || r.indK})中位 <b class="mono">${this.fmt(r.peer, 1)}x</b>。`;
+        // ⭐ 兩種基期背離時要主動點出來(⛔ 不可讓使用者自己去發現,那正是「邏輯不打架」在防的事)
+        if (Number.isFinite(r.pos) && Number.isFinite(r.rank)) {
+          if (r.pos >= 70 && r.rank <= 35) msg += `<br>⭐ <b>股價在高位、但估值在低位</b> —— 代表獲利成長得比股價還快,所以「股價創高」不等於「貴」。`;
+          else if (r.pos <= 35 && r.rank >= 70) msg += `<br>⚠️ <b>股價在低位、但估值反而在高位</b> —— 通常是獲利掉得比股價快,⛔ 別只看「跌很多」就當便宜。`;
+        }
       } else {
         msg = `➖ <b>PE 帶算不出來</b>:${!Number.isFinite(r.pe) || r.pe <= 0 ? '這檔目前虧損或官方沒給本益比' : '資料庫沒有它的 PE 歷史'} —— 這套估值法對它不適用,⛔ 不硬給區間(下方 YoY/毛利/籌碼照看)。`;
       }
       const metrics = [
         ['年化EPS(近4季)', r.eps === null ? '—' : this.fmt(r.eps, 2), ''],
         ['現在 PE', r.pe === null ? '—' : this.fmt(r.pe, 1) + 'x', ''],
-        ['同業中位 PE', r.peer === null ? '—' : this.fmt(r.peer, 1) + 'x', ''],
+        ['股價淨值比', Number.isFinite(r.pb) ? this.fmt(r.pb, 2) : '—', ''],
         ['營收YoY', this.fmt(r.yoy, 1, true) + (Number.isFinite(r.yoy) ? '%' : ''), this.cls(r.yoy)],
         ['毛利率', Number.isFinite(r.gm) ? this.fmt(r.gm, 1) + '%' : '—', ''],
+        ['近20日', this.fmt(r.chg20, 1, true) + (Number.isFinite(r.chg20) ? '%' : ''), this.cls(r.chg20)],
       ].map(([k, v, c]) => `<div class="metric"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join('');
-      return `<div class="vcard">${head}${bandHtml}<div class="vmsg">${msg}</div><div class="metrics">${metrics}</div></div>`;
+      return `<div class="vcard">${head}${bandHtml}<div class="vmsg">${msg}</div><div class="metrics">${metrics}</div>${this._pxTableHtml(r)}</div>`;
     }).join('');
-    return `<div class="panel"><h2>📐 估值帶 × 現價位置 <span class="sub">白點=現價・直線=中位隱含價;帶=年化EPS × 近3年真實PE P5~P95</span></h2><div class="vgrid">${cards}</div>
-      <div class="warnbox">⚠️ 這是「<b>歷史估值對照區間</b>」:講的是「照過去 3 年市場給它的評價,現在的獲利值多少」。⛔ <b>不是目標價、不是進出場點</b> —— 獲利變了、產業變了,市場就不會再給同一個 PE。循環股尤其危險(獲利頂峰時 PE 最低,看起來最便宜的時候常是最該跑的時候)。</div></div>`;
+    return `<div class="panel"><h2>📐 估值帶 × 現價位置 <span class="sub">白點=現價・直線=中位;帶=年化EPS × 近3年真實PE P5~P95</span></h2><div class="vgrid">${cards}</div>
+      <div class="warnbox">⚠️ 這是「<b>歷史估值對照區間</b>」:講的是「照過去 3 年市場給它的評價,現在的獲利值多少」。⛔ <b>不是目標價、不是進出場點</b>。⭐ <b>兩種基期要分開看</b>:「股價基期」是價格在近一年的位置,「估值基期」是本益比在自己近三年的位置 —— 兩者背離時才是重點。</div></div>`;
   },
   _promptBoxHtml() {
-    return `<div class="promptbox"><div class="prompthead"><b>🛡️ 防幻覺分析 Prompt(真實數據已代入,複製後貼給任何 AI)</b>
+    return `<div class="promptbox"><div class="prompthead"><b>🛡️ 防幻覺分析 Prompt(真實數據已代入)</b>
+      <button class="askbtn" onclick="PRO.askIndustry()">🟣 直接問 AI</button>
       <button class="copybtn" id="copyBtn" onclick="PRO.copyPrompt()">📋 複製</button></div>
       <pre class="prompt" id="promptPre"></pre></div>`;
   },
-  buildPrompt() {
-    const M = this._valMeta || {}, rows = this._valRows || [];
-    let t = `# 角色設定 (Role)
+  _promptHeader(scope) {
+    return `# 角色設定 (Role)
 你是一位擁有 20 年全球與台股市場經驗的資深產業分析師兼實戰操盤手。
 
 # 語氣與風格 (Style)
 請用「犀利直接、明確點出風險的操盤手風格」進行分析。一律使用「白話文」敘述,不說廢話、不講空泛的學術術語,一針見血地讓看報告的人秒懂潛在風險與股價位階。
 
 # 任務背景與限制 (Context)
-我將提供一份「${M.industry || '產業'}」個股的客觀數據表,以及近期的產業動態。請根據這些資訊,撰寫一份實戰導向的產業短評。
+我將提供${scope}的客觀數據表,以及近期的產業動態。請根據這些資訊,撰寫一份實戰導向的短評。
 
 【⚠️ 防幻覺嚴格指令 (Crucial Constraints) - 違反即屬重大錯誤】
 1. 絕對禁止「主觀預測」未來股價或給出「具體目標價」、「買賣評等」。
 2. 估值與基期推算【必須且只能】使用公式:「年化EPS × 近3年 P5/中位/P95 PE」計算「隱含歷史對照區間」。⚠️ 表中 EPS 是**已公布近4季合計(年化)**,不是分析師預估 —— 敘述時不可寫成「市場預估」。
 3. 所有的推論、風險報酬比評估,都必須有數據表中的數字作為支撐,絕不可自行編造未提供的資訊;表中「—」代表無資料,直接說「無資料」,不可腦補。
-4. 循環股警語:若毛利率高但 PE 位階極低,必須提醒「循環股獲利頂峰時 PE 最低」的陷阱,不可直接判定「便宜」。
+4. 「股價基期」與「估值基期」是兩件事:前者是股價在近一年區間的位置,後者是本益比在該股自己近三年的位置。兩者背離時必須點出來,不可混為一談。
+5. 循環股警語:若毛利率高但 PE 位階極低,必須提醒「循環股獲利頂峰時 PE 最低」的陷阱,不可直接判定「便宜」。`;
+  },
+  buildPrompt() {
+    const M = this._valMeta || {}, rows = this._valRows || [];
+    let t = this._promptHeader(`一份「${M.industry || '產業'}」個股`) + `
 
 # 輸出格式 (Output)
 請產出一份「精簡實戰報告」,全程以「條列式(Bullet points)」列出重點,包含以下四個區塊:
@@ -407,106 +613,195 @@ const PRO = {
 ${M.news || '(無)'}
 
 [數據說明]:
-收盤價與法人為 ${M.dd || '最新'} 收盤快照;PE 帶取自各股近 3 年每日真實本益比分布(P5/中位/P95${M.bandUpd ? ',統計至 ' + M.bandUpd : ''});年化EPS = 收盤價 ÷ 官方本益比。
+收盤價與法人為 ${M.dd || '最新'} 收盤快照;PE 帶取自各股近 3 年每日真實本益比分布(P5/中位/P95${M.bandUpd ? ',統計至 ' + M.bandUpd : ''});年化EPS = 收盤價 ÷ 官方本益比;股價基期 = 近一年價格區間位置(0=最低,100=最高)。
 
 [客觀數據表]:
-| 代號 | 名稱 | 收盤價 | 年化EPS(近4季) | 近3年PE P5/中位/P95 | PE位階(0最便宜) | 同業中位PE | 營收YoY(%) | 毛利率(%) | 外資+投信5日買賣超(張) |
-|---|---|---|---|---|---|---|---|---|---|
+| 代號 | 名稱 | 收盤價 | 年化EPS(近4季) | 近3年PE P5/中位/P95 | 估值基期(0最便宜) | 股價基期 | 同業中位PE | 營收YoY(%) | 毛利率(%) | 近20日(%) | 外資+投信5日(張) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
 `;
     const F = (x, d = 1) => Number.isFinite(x) ? (+x).toFixed(d) : '—';
     rows.forEach(r => {
       const bandTxt = r.b && Number.isFinite(r.b.p5) ? `${F(r.b.p5)} / ${F(r.b.med)} / ${F(r.b.p95)}` : '—';
-      t += `| ${r.code} | ${r.nm} | ${F(r.px)} | ${F(r.eps, 2)} | ${bandTxt} | ${r.rank === null ? '—' : r.rank + '%'} | ${F(r.peer)} | ${F(r.yoy)} | ${F(r.gm)} | ${r.inst5 === null ? '—' : (r.inst5 >= 0 ? '+' : '') + Math.round(r.inst5)} |\n`;
+      t += `| ${r.code} | ${r.nm} | ${F(r.px)} | ${F(r.eps, 2)} | ${bandTxt} | ${r.rank === null ? '—' : r.rank + '%'} | ${r.pos === null ? '—' : F(r.pos, 0) + '%'} | ${F(r.peer)} | ${F(r.yoy)} | ${F(r.gm)} | ${F(r.chg20)} | ${r.inst5 === null ? '—' : (r.inst5 >= 0 ? '+' : '') + Math.round(r.inst5)} |\n`;
     });
     return t;
   },
-  copyPrompt() {
-    const b = document.getElementById('copyBtn');
-    navigator.clipboard.writeText(this.buildPrompt()).then(() => {
-      b.classList.add('done'); b.textContent = '✅ 已複製';
-      setTimeout(() => { b.classList.remove('done'); b.textContent = '📋 複製'; }, 2000);
-    }).catch(() => { b.textContent = '⚠️ 請手動全選複製'; });
+  // 🔎 單一個股的 Prompt(使用者第 7 點:提示詞要不要帶個股 → 帶,而且把 AI 鏈定位一起塞進去)
+  buildStockPrompt(i) {
+    const r = (this._valRows || [])[i]; if (!r) return '';
+    const M = this._valMeta || {}, F = (x, d = 1) => Number.isFinite(x) ? (+x).toFixed(d) : '—';
+    const ch = this.CHAIN.stocks.find(s => s[0] === r.code);
+    const chainTxt = ch
+      ? `${this.CHAIN.seg[ch[2]]}・${ch[3]}・受惠層級 ${ch[4].split('').map(n => 'L' + n + ' ' + this.CHAIN.lv[n].n).join('/')}・供應鏈層 ${this.LAYER[ch[7]].n}(${this.LAYER[ch[7]].tag})・已知風險:${ch[6]}`
+      : '(不在本站 AI 產業鏈名單內)';
+    const bandTxt = r.b && Number.isFinite(r.b.p5)
+      ? `P5 ${F(r.b.p5)}x → ${F(r.lo)} 元 / P25 ${F(r.b.p25)}x → ${F(r.q25)} 元 / 中位 ${F(r.b.med)}x → ${F(r.mid)} 元 / P75 ${F(r.b.p75)}x → ${F(r.q75)} 元 / P95 ${F(r.b.p95)}x → ${F(r.hi)} 元`
+      : '無資料(虧損或無 PE 歷史)';
+    return this._promptHeader(`一檔台股個股`) + `
+
+# 輸出格式 (Output)
+請針對這一檔,以條列式產出:
+- 🎯 【一句話總評】:50 字內講清楚它現在的位置(基期高低、獲利趨勢、籌碼站哪邊)。
+- 📊 【估值位階拆解】:用下方 PE 對照價位,說明現價落在什麼位置;若「股價基期」與「估值基期」背離,必須解釋為什麼。
+- 🕵️ 【基本面 vs 籌碼】:營收YoY、毛利率、法人買賣超三者是否同向?若矛盾,誰比較可信?
+- 🏭 【產業定位】:根據下方 AI 產業鏈定位,說明它在這波 AI 進程中屬於「核心/基礎建設/受惠周邊/瓶頸/前沿」哪一種,以及這代表什麼。
+- ⚠️ 【最大風險與觀察點】:指出 1~2 個會讓上述判斷失效的事件。
+
+---
+【輸入區】
+
+[產業近期動態補充]:
+${M.news || '(無)'}
+
+[個股客觀數據](${M.dd || '最新'} 收盤快照):
+- 代號名稱:${r.code} ${r.nm}
+- 收盤價:${F(r.px)} 元(當日 ${F(r.chg, 2)}%,近20日 ${F(r.chg20)}%)
+- 年化EPS(近4季已公布,⛔ 不是分析師預估):${F(r.eps, 2)} 元
+- 現在本益比:${F(r.pe)}x ・ 股價淨值比:${F(r.pb, 2)}
+- 估值基期(PE 在自己近3年的位階,0=最便宜):${r.rank === null ? '—' : r.rank + '%'}
+- 股價基期(價格在近一年區間位置,0=最低):${r.pos === null ? '—' : F(r.pos, 0) + '%'}
+- 歷史估值對照價位:${bandTxt}
+- 同業(${this.IND_NAME[r.indK] || r.indK || '未分類'})中位 PE:${F(r.peer)}x${Number.isFinite(r.peerPx) ? `(對應 ${F(r.peerPx)} 元)` : ''}
+- 營收 YoY:${F(r.yoy)}% ・ 毛利率:${F(r.gm)}%
+- 法人近5日:外資 ${F(r.f5, 0)} 張 / 投信 ${F(r.t5, 0)} 張
+- AI 產業鏈定位:${chainTxt}
+`;
+  },
+  copyPrompt() { this._copy(this.buildPrompt(), document.getElementById('copyBtn')); },
+  copyStock(i) { this._copy(this.buildStockPrompt(i)); this.toast('📋 已複製這一檔的提示詞'); },
+  _copy(txt, btn) {
+    const done = () => { if (btn) { btn.classList.add('done'); btn.textContent = '✅ 已複製'; setTimeout(() => { btn.classList.remove('done'); btn.textContent = '📋 複製'; }, 2000); } };
+    navigator.clipboard.writeText(txt).then(done).catch(() => {
+      // ⚠️ iOS 在非使用者手勢或非 https 時 clipboard 會失敗 → 退回可全選的暫存框(⛔ 不可默默失敗)
+      const ta = document.createElement('textarea');
+      ta.value = txt; ta.style.cssText = 'position:fixed;top:50%;left:5%;width:90%;height:40%;z-index:99';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (_) { this.toast('請長按選取後複製'); }
+      setTimeout(() => ta.remove(), 300);
+    });
+  },
+  // 🟣 一鍵問 AI(Perplexity/ChatGPT/Google)—— 照散戶救星 `_freeAiOpen` 的做法
+  // ⚠️ 用真實 <a target="_blank"> 點擊,⛔ 不用 window.open:iOS PWA 用 window.open 會留一個空白 Safari 分頁。
+  _askAi(q) {
+    if (!q || !q.trim()) return;
+    const eng = localStorage.getItem('proWar_ai') || 'perplexity';
+    const today = (() => { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); } catch (_) { return new Date().toISOString().slice(0, 10); } })();
+    const hint = `今天是 ${today}(台北時間)。請以「今天」為基準判斷「最近/最新」,只用截至今天為止的最新公開資訊。\n\n`;
+    const url = {
+      perplexity: 'https://www.perplexity.ai/search?q=',
+      chatgpt: 'https://chatgpt.com/?hints=search&q=',
+      google: 'https://www.google.com/search?q=',
+    }[eng] + encodeURIComponent(hint + q);
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 100);
+    this.buzz(20);
+  },
+  askIndustry() {
+    if (!this._valRows || !this._valRows.length) { this.toast('請先按「抓取真實估值數據」'); return; }
+    this._askAi(this.buildPrompt());
+    this.toast('🟣 已把整份數據帶去 AI');
+  },
+  askStock(i) {
+    const q = this.buildStockPrompt(i);
+    if (!q) return;
+    this._askAi(q);
+    this.toast('🟣 已把這一檔的數據帶去 AI');
   },
 
-  // ═══════════ 🤖 AI 產業鏈(⚠️ 資料 = 散戶救星 index.html `_AI_CHAIN` 的副本,改名單兩邊一起改)═══════════
+  // ═══════════ 🤖 AI 產業鏈 ═══════════
+  // ⚠️ 資料 = 散戶救星 index.html `_AI_CHAIN` 的副本(獨立頁不共用程式)→ 改名單要兩邊一起改。
+  // 每檔格式:[代號, 名稱, 段(up/mid/down), 題材, 受惠層級字串, 毛利(高中低), 主要風險, 供應鏈層(A~E)]
+  //
+  // 🔬 供應鏈五層來自使用者上傳的規格(§38),⭐ 但**對台股做過修正**:
+  //   規格把「記憶體/HBM」列為 AI Core —— 那對**全球**成立(HBM 是海力士/三星/美光),
+  //   ⛔ 但台廠沒有 HBM,台廠是利基型 DRAM / NOR / 模組 → 對台股是 **Enabler(受惠周邊)不是 Core**。
+  //   ⚠️ 這個修正很重要:標成 Core 會讓人以為台系記憶體有 HBM 的定價權,那是錯的。
+  LAYER: {
+    A: { n: 'A 核心運算', tag: 'Core', d: 'GPU/CPU/ASIC/加速器 —— 直接決定 AI 算力', c: '#7db4ff' },
+    B: { n: 'B 記憶體與半導體', tag: 'Core+瓶頸', d: 'DRAM/NAND/先進封裝/載板/測試 —— 目前最常塞車的環節', c: '#f5b942' },
+    C: { n: 'C 資料中心建置', tag: '基礎建設', d: 'Server/機櫃/PCB/網通/光通訊/儲存 —— 蓋機房必需', c: '#22d3ee' },
+    D: { n: 'D 電力與散熱', tag: '瓶頸', d: '液冷/電源/變壓器/電網/被動元件 —— 功率越高越吃緊', c: '#fb923c' },
+    E: { n: 'E 前沿應用', tag: '前沿', d: 'Agent/軟體/機器人/邊緣AI/低軌衛星 —— AI 與新興科技交叉', c: '#a78bfa' },
+  },
   CHAIN: {
     ver: '2026-08-29',
     lv: {
       1: { n: '聊天機器人', en: 'Chatbots', mat: 100, st: '完全普及', d: '會對話、寫文章、做基礎整理(ChatGPT 初代那種)', tw: '帶動第一波 AI 伺服器建置潮(訓練算力)—— 台廠這輪大爆發的起點:伺服器組裝、高階晶片代工。' },
-      2: { n: '推理者', en: 'Reasoners', mat: 85, st: '當前主力階段', d: '先思考再回答,有專家級的推理與解題能力', tw: '算力從「訓練」外溢到「推論」:推論晶片、HBM/記憶體、散熱、電源、AI PC 是這一階段的主受惠。' },
+      2: { n: '推理者', en: 'Reasoners', mat: 85, st: '當前主力階段', d: '先思考再回答,有專家級的推理與解題能力', tw: '算力從「訓練」外溢到「推論」:推論晶片、記憶體、散熱、電源、AI PC 是這一階段的主受惠。' },
       3: { n: '智能體', en: 'Agents', mat: 40, st: '快速爆發期', d: '給目標就會自己拆步驟、開工具、把事做完', tw: '終端要能常駐跑模型:NPU/邊緣運算/AIoT;實體化就是機器人(關節傳動/減速機/AI 視覺是台廠切入點)。' },
       4: { n: '創新者', en: 'Innovators', mat: 10, st: '研發實驗室階段', d: '自己提出科學假設、設計實驗、發現新藥新材料', tw: '超級電腦與更高頻寬互連:高階矽光子/CPO 是台廠對應。' },
       5: { n: '組織者', en: 'Organizations', mat: 0, st: '遠期理論構想', d: '像一整家公司一樣自主協調資源營運', tw: '算力=水電:電網重電、綠能、低軌衛星這類「底層基建」對應這一層。' },
     },
     seg: { up: '上游・算力硬體', mid: '中游・平台整合', down: '下游・應用軟體' },
     stocks: [
-      ['2330', '台積電', 'up', '先進製程 / CoWoS', '1234', '高', '地緣政治、資本支出高峰'],
-      ['2454', '聯發科', 'up', '邊緣 AI SoC', '23', '高', '手機景氣連動'],
-      ['3661', '世芯-KY', 'up', 'ASIC 設計服務', '123', '中', '大客戶集中(北美 CSP)'],
-      ['3443', '創意', 'up', 'ASIC / IP', '123', '中', '訂單依存母公司生態'],
-      ['3035', '智原', 'up', 'ASIC 設計服務(聯電系)', '123', '中', '訂單認列波動、同業競爭'],
-      ['5274', '信驊', 'up', 'BMC 伺服器管理晶片', '12', '高', '伺服器出貨週期'],
-      ['3711', '日月光投控', 'up', '先進封測', '12', '中', '稼動率景氣循環'],
-      ['2317', '鴻海', 'up', 'AI 伺服器 / 機櫃', '123', '低', '低毛利、基期龐大'],
-      ['2382', '廣達', 'up', 'AI 伺服器', '12', '低', '組裝低毛利、CSP 議價'],
-      ['3231', '緯創', 'up', 'AI 伺服器', '12', '低', '組裝低毛利、競爭者多'],
-      ['6669', '緯穎', 'up', '雲端資料中心', '12', '低', '客戶高度集中'],
-      ['8210', '勤誠', 'up', 'AI 伺服器機殼', '12', '中', '組裝鏈砍價壓力'],
-      ['2308', '台達電', 'up', '電源 / 液冷', '125', '中', '估值已高'],
-      ['3017', '奇鋐', 'up', '散熱模組 / 液冷', '2', '中', '液冷競爭者湧入'],
-      ['3324', '雙鴻', 'up', '水冷板', '2', '中', '液冷競爭者湧入'],
-      ['2421', '建準', 'up', '散熱風扇', '2', '中', '液冷排擠氣冷風險'],
-      ['3037', '欣興', 'up', 'ABF 載板', '12', '中', '玻璃基板替代(2027+)'],
-      ['8046', '南電', 'up', 'ABF 載板', '12', '中', '玻璃基板替代(2027+)'],
-      ['2383', '台光電', 'up', '高階 CCL', '12', '中', '高階材料競爭'],
-      ['2368', '金像電', 'up', 'AI 伺服器 PCB', '12', '中', '產能擴張執行力'],
-      ['2345', '智邦', 'up', '資料中心交換器', '123', '中', '白牌交換器競爭'],
-      ['4977', '眾達-KY', 'up', '光收發模組', '23', '中', 'CPO 長期替代可插拔'],
-      ['3363', '上詮', 'up', '矽光子 / CPO', '24', '中', '量產時程不確定'],
-      ['2408', '南亞科', 'up', '記憶體', '2', '中', '記憶體景氣循環'],
-      ['8299', '群聯', 'up', 'AI 儲存 / aiDAPTIV', '23', '中', 'NAND 價格波動'],
-      ['2379', '瑞昱', 'up', '網通 / 邊緣晶片', '3', '高', '消費性市場連動'],
-      ['3227', '原相', 'up', '感測晶片', '3', '高', '新應用放量時程'],
-      ['1513', '中興電', 'up', '重電 / 電網', '25', '中', '交期長、原物料波動'],
-      ['1519', '華城', 'up', '變壓器', '25', '中', '北美需求持續性'],
-      ['3491', '昇達科', 'up', '低軌衛星微波元件', '35', '高', '衛星客戶認證週期長'],
-      ['6285', '啟碁', 'up', '衛星地面設備 / 網通', '35', '中', '消費性網通比重高'],
-      ['2314', '台揚', 'up', '衛星通訊設備', '35', '中', '訂單波動大'],
-      ['3105', '穩懋', 'up', 'GaAs PA / 衛星射頻', '35', '中', '稼動率景氣循環'],
-      ['2049', '上銀', 'up', '滾珠螺桿 / 線性傳動', '3', '中', '工具機景氣連動'],
-      ['4576', '大銀微系統', 'up', '力矩馬達 / 機器人關節', '3', '中', '放量時程不確定'],
-      ['1597', '直得', 'up', '微型線性滑軌', '3', '中', '客戶集中'],
-      ['1536', '和大', 'up', '減速機 / 精密齒輪', '3', '中', '車用轉型陣痛'],
-      ['6188', '廣明', 'up', '協作機器人(持股達明)', '3', '中', '機器人市場競爭激烈'],
-      ['4585', '達明', 'up', '協作機器人本尊', '3', '中', '放量時程、上市未滿一年籌碼不穩'],
-      ['3131', '弘塑', 'up', '先進封裝濕製程設備', '12', '高', '訂單集中台積電'],
-      ['3583', '辛耘', 'up', '先進封裝設備 / 再生晶圓', '12', '中', '訂單認列波動'],
-      ['6187', '萬潤', 'up', 'CoWoS 點膠 / 檢測設備', '12', '中', '訂單認列波動'],
-      ['2449', '京元電子', 'up', 'AI 晶片測試', '12', '中', '單一大客戶比重高'],
-      ['2357', '華碩', 'up', 'AI PC / 品牌伺服器', '23', '中', '通路庫存波動'],
-      ['3529', '力旺', 'up', 'eNVM 矽智財 / 邊緣安全', '23', '高', '授權金認列波動'],
-      ['2344', '華邦電', 'up', '利基型 DRAM / Flash', '2', '中', '循環股:原廠擴產回歸時反轉快'],
-      ['2337', '旺宏', 'up', 'NOR Flash', '2', '中', '循環股:報價回落風險'],
-      ['3006', '晶豪科', 'up', '利基型記憶體 IC', '23', '中', '循環股:報價回落風險'],
-      ['3260', '威剛', 'up', '記憶體模組(漲價受惠)', '2', '中', '循環股:庫存利益隨價反轉'],
-      ['2327', '國巨', 'up', 'MLCC / 鉭質電容龍頭', '23', '中', '循環+結構並存,追高風險'],
-      ['2492', '華新科', 'up', 'MLCC / 晶片電阻', '2', '中', '循環股:擴產供給回歸'],
-      ['3026', '禾伸堂', 'up', '高壓 MLCC(AI 電源)', '2', '中', '循環股:報價回落風險'],
-      ['2059', '川湖', 'up', 'AI 機櫃滑軌(近寡占)', '12', '高', '單一產品線集中'],
-      ['3211', '順達', 'up', '機櫃 BBU 備援電池', '2', '中', 'BBU 競爭者增加'],
-      ['6223', '旺矽', 'up', 'AI 晶片探針卡', '12', '高', '客戶認證週期'],
-      ['6515', '穎崴', 'up', '測試介面 / 探針卡', '12', '高', '訂單集中大客戶'],
-      ['6689', '伊雲谷', 'mid', '雲端 MSP / GenAI 代理', '123', '低', '轉售毛利偏低'],
-      ['6214', '精誠', 'mid', 'AI 系統整合', '123', '中', '人力成本上升'],
-      ['2480', '敦陽科', 'mid', '系統整合', '23', '中', '內需市場天花板'],
-      ['6112', '邁達特', 'mid', '雲端代理', '12', '低', '轉售毛利偏低'],
-      ['5203', '訊連', 'mid', 'AI 影像模型 FaceMe', '12', '高', '授權放量時程'],
-      ['4953', '緯軟', 'mid', '軟體外包 / AI 導入', '23', '中', '中國業務比重'],
-      ['2359', '所羅門', 'mid', 'AI 3D 視覺軟體', '3', '中', '題材先行、獲利待驗證'],
-      ['6752', '叡揚', 'down', '企業軟體 / RAG', '123', '高', '內需市場天花板'],
-      ['6183', '關貿', 'down', '政府 / 關務資訊', '23', '中', '標案週期性'],
-      ['2471', '資通', 'down', '金融資訊系統', '23', '中', '專案認列波動'],
-      ['6865', '偉康科技', 'down', '數位金融應用', '23', '高', '客戶集中金融業'],
+      ['2330', '台積電', 'up', '先進製程 / CoWoS', '1234', '高', '地緣政治、資本支出高峰', 'A'],
+      ['2454', '聯發科', 'up', '邊緣 AI SoC', '23', '高', '手機景氣連動', 'A'],
+      ['3661', '世芯-KY', 'up', 'ASIC 設計服務', '123', '中', '大客戶集中(北美 CSP)', 'A'],
+      ['3443', '創意', 'up', 'ASIC / IP', '123', '中', '訂單依存母公司生態', 'A'],
+      ['3035', '智原', 'up', 'ASIC 設計服務(聯電系)', '123', '中', '訂單認列波動、同業競爭', 'A'],
+      ['3529', '力旺', 'up', 'eNVM 矽智財 / 邊緣安全', '23', '高', '授權金認列波動', 'A'],
+      ['3711', '日月光投控', 'up', '先進封測', '12', '中', '稼動率景氣循環', 'B'],
+      ['3131', '弘塑', 'up', '先進封裝濕製程設備', '12', '高', '訂單集中台積電', 'B'],
+      ['3583', '辛耘', 'up', '先進封裝設備 / 再生晶圓', '12', '中', '訂單認列波動', 'B'],
+      ['6187', '萬潤', 'up', 'CoWoS 點膠 / 檢測設備', '12', '中', '訂單認列波動', 'B'],
+      ['2449', '京元電子', 'up', 'AI 晶片測試', '12', '中', '單一大客戶比重高', 'B'],
+      ['6223', '旺矽', 'up', 'AI 晶片探針卡', '12', '高', '客戶認證週期', 'B'],
+      ['6515', '穎崴', 'up', '測試介面 / 探針卡', '12', '高', '訂單集中大客戶', 'B'],
+      ['3037', '欣興', 'up', 'ABF 載板', '12', '中', '玻璃基板替代(2027+)', 'B'],
+      ['8046', '南電', 'up', 'ABF 載板', '12', '中', '玻璃基板替代(2027+)', 'B'],
+      ['2408', '南亞科', 'up', '記憶體(利基型 DRAM)', '2', '中', '記憶體景氣循環', 'B'],
+      ['2344', '華邦電', 'up', '利基型 DRAM / Flash', '2', '中', '循環股:原廠擴產回歸時反轉快', 'B'],
+      ['2337', '旺宏', 'up', 'NOR Flash', '2', '中', '循環股:報價回落風險', 'B'],
+      ['3006', '晶豪科', 'up', '利基型記憶體 IC', '23', '中', '循環股:報價回落風險', 'B'],
+      ['3260', '威剛', 'up', '記憶體模組(漲價受惠)', '2', '中', '循環股:庫存利益隨價反轉', 'B'],
+      ['8299', '群聯', 'up', 'AI 儲存 / aiDAPTIV', '23', '中', 'NAND 價格波動', 'B'],
+      ['2317', '鴻海', 'up', 'AI 伺服器 / 機櫃', '123', '低', '低毛利、基期龐大', 'C'],
+      ['2382', '廣達', 'up', 'AI 伺服器', '12', '低', '組裝低毛利、CSP 議價', 'C'],
+      ['3231', '緯創', 'up', 'AI 伺服器', '12', '低', '組裝低毛利、競爭者多', 'C'],
+      ['6669', '緯穎', 'up', '雲端資料中心', '12', '低', '客戶高度集中', 'C'],
+      ['8210', '勤誠', 'up', 'AI 伺服器機殼', '12', '中', '組裝鏈砍價壓力', 'C'],
+      ['2059', '川湖', 'up', 'AI 機櫃滑軌(近寡占)', '12', '高', '單一產品線集中', 'C'],
+      ['5274', '信驊', 'up', 'BMC 伺服器管理晶片', '12', '高', '伺服器出貨週期', 'C'],
+      ['2345', '智邦', 'up', '資料中心交換器', '123', '中', '白牌交換器競爭', 'C'],
+      ['4977', '眾達-KY', 'up', '光收發模組', '23', '中', 'CPO 長期替代可插拔', 'C'],
+      ['3363', '上詮', 'up', '矽光子 / CPO', '24', '中', '量產時程不確定', 'C'],
+      ['2383', '台光電', 'up', '高階 CCL', '12', '中', '高階材料競爭', 'C'],
+      ['2368', '金像電', 'up', 'AI 伺服器 PCB', '12', '中', '產能擴張執行力', 'C'],
+      ['2357', '華碩', 'up', 'AI PC / 品牌伺服器', '23', '中', '通路庫存波動', 'C'],
+      ['2308', '台達電', 'up', '電源 / 液冷', '125', '中', '估值已高', 'D'],
+      ['3017', '奇鋐', 'up', '散熱模組 / 液冷', '2', '中', '液冷競爭者湧入', 'D'],
+      ['3324', '雙鴻', 'up', '水冷板', '2', '中', '液冷競爭者湧入', 'D'],
+      ['2421', '建準', 'up', '散熱風扇', '2', '中', '液冷排擠氣冷風險', 'D'],
+      ['3211', '順達', 'up', '機櫃 BBU 備援電池', '2', '中', 'BBU 競爭者增加', 'D'],
+      ['1513', '中興電', 'up', '重電 / 電網', '25', '中', '交期長、原物料波動', 'D'],
+      ['1519', '華城', 'up', '變壓器', '25', '中', '北美需求持續性', 'D'],
+      ['2327', '國巨', 'up', 'MLCC / 鉭質電容龍頭', '23', '中', '循環+結構並存,追高風險', 'D'],
+      ['2492', '華新科', 'up', 'MLCC / 晶片電阻', '2', '中', '循環股:擴產供給回歸', 'D'],
+      ['3026', '禾伸堂', 'up', '高壓 MLCC(AI 電源)', '2', '中', '循環股:報價回落風險', 'D'],
+      ['2379', '瑞昱', 'up', '網通 / 邊緣晶片', '3', '高', '消費性市場連動', 'E'],
+      ['3227', '原相', 'up', '感測晶片', '3', '高', '新應用放量時程', 'E'],
+      ['2049', '上銀', 'up', '滾珠螺桿 / 線性傳動', '3', '中', '工具機景氣連動', 'E'],
+      ['4576', '大銀微系統', 'up', '力矩馬達 / 機器人關節', '3', '中', '放量時程不確定', 'E'],
+      ['1597', '直得', 'up', '微型線性滑軌', '3', '中', '客戶集中', 'E'],
+      ['1536', '和大', 'up', '減速機 / 精密齒輪', '3', '中', '車用轉型陣痛', 'E'],
+      ['6188', '廣明', 'up', '協作機器人(持股達明)', '3', '中', '機器人市場競爭激烈', 'E'],
+      ['4585', '達明', 'up', '協作機器人本尊', '3', '中', '放量時程、上市未滿一年籌碼不穩', 'E'],
+      ['3491', '昇達科', 'up', '低軌衛星微波元件', '35', '高', '衛星客戶認證週期長', 'E'],
+      ['6285', '啟碁', 'up', '衛星地面設備 / 網通', '35', '中', '消費性網通比重高', 'E'],
+      ['2314', '台揚', 'up', '衛星通訊設備', '35', '中', '訂單波動大', 'E'],
+      ['3105', '穩懋', 'up', 'GaAs PA / 衛星射頻', '35', '中', '稼動率景氣循環', 'E'],
+      ['6689', '伊雲谷', 'mid', '雲端 MSP / GenAI 代理', '123', '低', '轉售毛利偏低', 'E'],
+      ['6214', '精誠', 'mid', 'AI 系統整合', '123', '中', '人力成本上升', 'E'],
+      ['2480', '敦陽科', 'mid', '系統整合', '23', '中', '內需市場天花板', 'E'],
+      ['6112', '邁達特', 'mid', '雲端代理', '12', '低', '轉售毛利偏低', 'E'],
+      ['5203', '訊連', 'mid', 'AI 影像模型 FaceMe', '12', '高', '授權放量時程', 'E'],
+      ['4953', '緯軟', 'mid', '軟體外包 / AI 導入', '23', '中', '中國業務比重', 'E'],
+      ['2359', '所羅門', 'mid', 'AI 3D 視覺軟體', '3', '中', '題材先行、獲利待驗證', 'E'],
+      ['6752', '叡揚', 'down', '企業軟體 / RAG', '123', '高', '內需市場天花板', 'E'],
+      ['6183', '關貿', 'down', '政府 / 關務資訊', '23', '中', '標案週期性', 'E'],
+      ['2471', '資通', 'down', '金融資訊系統', '23', '中', '專案認列波動', 'E'],
+      ['6865', '偉康科技', 'down', '數位金融應用', '23', '高', '客戶集中金融業', 'E'],
     ],
     pool: [
       { n: '運算晶片(GPU/ASIC+HBM)', sh: 70, gm: '60~75%', tw: ['2330 代工', '3711 封測', '3661 ASIC', '3443 ASIC', '3035 ASIC'], note: '價值與毛利雙重集中地。台股入口是「代工與設計服務抽成」,不是晶片本身。' },
@@ -532,17 +827,40 @@ ${M.news || '(無)'}
       { t: '資料中心電力缺口', st: '結構性長多', imp: '中', win: ['1513 中興電', '1519 華城', '2308 台達電'], lose: [], note: '電力是比晶片更難擴產的瓶頸,重電交期以「年」計,訂單能見度最長。' },
       { t: '數位 AI → 實體 AI(機器人)', st: '人形機器人放量前期', imp: '高', win: ['2049 上銀', '4576 大銀微系統', '6188 廣明', '4585 達明', '2359 所羅門'], lose: [], note: '人形機器人是 L3 智能體的實體化。關節傳動、減速機、AI 視覺是台廠最確定的切入點。' },
       { t: '地面網路 → 低軌衛星星系', st: '第二代星系部署中', imp: '中', win: ['3491 昇達科', '6285 啟碁', '3105 穩懋'], lose: [], note: 'Agent 無所不在的連線需求 + 各國主權通訊自主,低軌衛星是 L3/L5 的通訊底層基建。' },
-      { t: 'HBM 排擠 → 傳統記憶體漲價循環', st: '漲價循環進行中', imp: '高', win: ['2408 南亞科', '2344 華邦電', '2337 旺宏', '3006 晶豪科', '3260 威剛', '8299 群聯'], lose: [], note: '原廠產能轉 HBM,成熟製程供給塌陷、台廠利基產能變稀缺。⚠️ 循環股鐵律:反轉快,盯 2027~28 擴產回歸,⛔ 別當純成長股抱。' },
+      { t: 'HBM 排擠 → 傳統記憶體漲價循環', st: '漲價循環進行中', imp: '高', win: ['2408 南亞科', '2344 華邦電', '2337 旺宏', '3006 晶豪科', '3260 威剛', '8299 群聯'], lose: [], note: '原廠產能轉 HBM,成熟製程供給塌陷、台廠利基產能變稀缺。⚠️ 台廠做的是**利基型記憶體不是 HBM**,沒有 HBM 的定價權;循環股反轉快,盯 2027~28 擴產回歸。' },
       { t: 'AI 機櫃內容價值暴增(被動元件/BBU/滑軌)', st: '結構性缺貨', imp: '高', win: ['2327 國巨', '2492 華新科', '3026 禾伸堂', '3211 順達', '2059 川湖'], lose: [], note: '單機櫃 MLCC 用量大增(業界估從數千顆到數萬顆);日韓大廠滿載外溢台廠。⚠️ 與記憶體同屬漲價循環,要跟純成長股分開對待。' },
     ],
   },
-  _lvSel: null, _sortK: 'chg20', _sortD: -1,
+  _lvSel: null, _layerSel: null, _sortK: 'chg20', _sortD: -1,
+  _med(a) { const x = a.filter(Number.isFinite).sort((p, q) => p - q); return x.length ? x[Math.floor(x.length / 2)] : null; },
+  // 🎯 「主戰場在哪一層」(使用者第 6 點)
+  // ⛔ **不是**預測 AI 進度,也⛔ 不是自己編一個成熟度百分比(上傳規格 §11 那種預測本站不做,無法驗證)。
+  //    這裡回答的是可觀察的事實:**最近 20 天,資金打的是哪一層的股票**。
+  // ⚠️ 樣本守門:該層至少 5 檔有資料才納入比較,⛔ 否則 1~2 檔就能決定主戰場(1÷1=100% 的同型錯誤)。
+  _frontLevel() {
+    const C = this.CHAIN, out = [];
+    for (const n of [1, 2, 3, 4, 5]) {
+      const vals = C.stocks.filter(s => s[4].includes(String(n))).map(s => this._scrV(s[0], 'chg20')).filter(Number.isFinite);
+      if (vals.length >= 5) out.push({ lv: n, m: this._med(vals), n: vals.length });
+    }
+    if (!out.length) return null;
+    out.sort((a, b) => b.m - a.m);
+    return out[0];
+  },
+  // 每檔的「階段位置」:它最高只做到第幾層 vs 現在資金打第幾層
+  _stagePos(lvStr, front) {
+    if (!front) return { t: '—', c: 'flat', d: '' };
+    const top = Math.max(...String(lvStr).split('').map(Number));
+    if (top < front.lv) return { t: '⏳ 落後', c: 'flat', d: `它最高只做到 L${top},而資金正在打 L${front.lv}` };
+    if (top > front.lv + 1) return { t: '🌱 太早', c: 'flat', d: `它主打 L${top},比現在的戰場早了 ${top - front.lv} 階,題材可能還沒輪到` };
+    return { t: '🎯 主戰場', c: '', d: `它做到 L${top},正好在資金打的範圍內` };
+  },
   async renderChain() {
     await Promise.all([this.fetchJson('data/screener.json'), this.loadNames()]);
     const scr = this._cache['data/screener.json'];
     if (scr && scr.data_date) document.getElementById('dataDate').textContent = '・數字 ' + scr.data_date;
-    const C = this.CHAIN;
-    const med = a => { const x = a.filter(Number.isFinite).sort((p, q) => p - q); return x.length ? x[Math.floor(x.length / 2)] : null; };
+    const C = this.CHAIN, med = a => this._med(a);
+    const front = this._frontLevel();
     // KPI
     const segs = ['up', 'mid', 'down'].map(sg => {
       const ss = C.stocks.filter(s => s[2] === sg);
@@ -555,7 +873,9 @@ ${M.news || '(無)'}
     document.getElementById('lvFlow').innerHTML = [1, 2, 3, 4, 5].map(n => {
       const L = C.lv[n], mem = C.stocks.filter(s => s[4].includes(String(n)));
       const m = med(mem.map(s => this._scrV(s[0], 'chg20')));
-      return `<div class="lvcard ${this._lvSel === n ? 'on' : ''}" onclick="PRO.selLv(${n})">
+      const isFront = front && front.lv === n;
+      return `<div class="lvcard ${this._lvSel === n ? 'on' : ''} ${isFront ? 'front' : ''}" onclick="PRO.selLv(${n})">
+        ${isFront ? '<span class="flag">🎯 資金主戰場</span>' : ''}
         <div class="lno">LEVEL ${n}・${L.en}</div><div class="lnm">${L.n}</div><div class="lst">${L.st}</div>
         <div class="lbar"><i style="width:${Math.max(L.mat, 2)}%"></i></div>
         <div class="lm">成熟度 ${L.mat}%・${mem.length} 檔・20日中位 <span class="${this.cls(m)}">${this.fmt(m, 1, true)}%</span></div></div>`;
@@ -564,67 +884,95 @@ ${M.news || '(無)'}
     document.getElementById('lvDetail').innerHTML = D
       ? `<div class="warnbox" style="border-color:var(--blue);background:rgba(61,139,253,.06);color:#c3d6f2">
          <b>L${this._lvSel} ${D.n}</b>:${D.d}<br>🇹🇼 ${D.tw}<br><span style="opacity:.7">下方戰情表已篩成這一層的成員,再點一次取消。</span></div>` : '';
+    document.getElementById('frontNote').innerHTML = front
+      ? `<div class="note">🎯 <b>資金主戰場 = L${front.lv} ${C.lv[front.lv].n}</b>(該層 ${front.n} 檔近 20 日中位 <span class="${this.cls(front.m)}">${this.fmt(front.m, 1, true)}%</span>,五級裡最強)。
+         ⚠️ 這是「<b>最近 20 天股價打哪一層</b>」的事實描述,<b>⛔ 不是 AI 進度預測、也沒有實測過預測力</b> —— 只用來看「這檔的題材有沒有跟上現在的主流」。
+         ⛔ 成熟度那條 bar 是<b>人工設定的框架估值</b>,不會隨時間自己增加,也⛔ 不是官方統計。</div>`
+      : `<div class="note">⏳ 資料還沒載入完,或每層樣本不足 5 檔 → ⛔ 不判定主戰場(1~2 檔就能決定的結論不可信)。</div>`;
+    // 供應鏈層篩選
+    document.getElementById('layerBar').innerHTML =
+      `<span style="font-size:10px;color:var(--dim2);align-self:center">供應鏈層:</span>` +
+      Object.entries(this.LAYER).map(([k, L]) =>
+        `<span class="lbtn ${this._layerSel === k ? 'on' : ''}" onclick="PRO.selLayer('${k}')" title="${L.d}">${L.n}</span>`).join('') +
+      (this._layerSel ? `<span class="lbtn" onclick="PRO.selLayer(null)">✕ 全部</span>` : '');
     // 表格
     const rows = C.stocks
-      .filter(s => !this._lvSel || s[4].includes(String(this._lvSel)))
-      .map(s => ({ code: s[0], nm: s[1], seg: s[2], theme: s[3], lv: s[4], gmSeed: s[5], risk: s[6],
-        chg20: this._scrV(s[0], 'chg20'), yoy: this._scrV(s[0], 'yoy'), gm: this._scrV(s[0], 'gm'), f10: this._scrV(s[0], 'f10') }));
+      .filter(s => (!this._lvSel || s[4].includes(String(this._lvSel))) && (!this._layerSel || s[7] === this._layerSel))
+      .map(s => ({ code: s[0], nm: s[1], seg: s[2], theme: s[3], lv: s[4], gmSeed: s[5], risk: s[6], layer: s[7],
+        stage: this._stagePos(s[4], front),
+        chg20: this._scrV(s[0], 'chg20'), yoy: this._scrV(s[0], 'yoy'), gm: this._scrV(s[0], 'gm'),
+        f10: this._scrV(s[0], 'f10'), pos252: this._scrV(s[0], 'pos252') }));
     const k = this._sortK, d = this._sortD;
     rows.sort((a, b) => {
       if (k === 'nm') return d * a.code.localeCompare(b.code);
-      if (k === 'seg') return d * a.seg.localeCompare(b.seg);
+      if (k === 'layer') return d * a.layer.localeCompare(b.layer);
       if (k === 'theme') return d * a.theme.localeCompare(b.theme, 'zh-Hant');
-      if (k === 'lv') return d * (a.lv.length - b.lv.length);
+      if (k === 'stage') return d * a.stage.t.localeCompare(b.stage.t, 'zh-Hant');
       const av = a[k], bv = b[k], A = Number.isFinite(av), B = Number.isFinite(bv);
       if (A !== B) return A ? -1 : 1;   // ⚠️ 沒資料一律排最後(不論升降,⛔ 不當 0 —— null-sort 陷阱)
       if (!A) return 0;
       return d === -1 ? bv - av : av - bv;
     });
-    document.getElementById('mapSub').textContent = this._lvSel ? `只顯 L${this._lvSel} ${C.lv[this._lvSel].n} 成員(${rows.length} 檔)` : `${rows.length} 檔`;
+    const flt = [this._lvSel ? `L${this._lvSel} ${C.lv[this._lvSel].n}` : '', this._layerSel ? this.LAYER[this._layerSel].n : ''].filter(Boolean).join(' × ');
+    document.getElementById('mapSub').textContent = flt ? `${flt}(${rows.length} 檔)` : `${rows.length} 檔`;
     document.querySelectorAll('#chainTbl th').forEach(th => {
       th.classList.toggle('on', th.dataset.k === k);
       th.onclick = () => { if (this._sortK === th.dataset.k) this._sortD *= -1; else { this._sortK = th.dataset.k; this._sortD = -1; } this.renderChain(); };
     });
-    document.getElementById('chainBody').innerHTML = rows.map(r => `<tr title="⚠️ ${r.risk}">
-      <td class="txtcell"><span class="mono" style="color:var(--dim2);font-size:10px">${r.code}</span> <b>${r.nm}</b></td>
-      <td class="txtcell seg-${r.seg}" style="font-size:10px">${{ up: '上游', mid: '中游', down: '下游' }[r.seg]}</td>
-      <td class="txtcell" style="font-size:11px;color:var(--sub);max-width:180px;overflow:hidden;text-overflow:ellipsis">${r.theme}</td>
-      <td class="txtcell" style="font-size:10px;color:var(--dim2)">${r.lv.split('').map(x => 'L' + x).join(' ')}</td>
+    document.getElementById('chainBody').innerHTML = rows.map(r => {
+      const bt = this.baseTag(r.pos252);
+      return `<tr title="⚠️ ${r.risk}">
+      <td class="txtcell"><span class="mono" style="color:var(--dim2);font-size:10px">${r.code}</span>
+        <button class="namebtn" onclick="PRO.gotoStock('${r.code}')">${r.nm}</button></td>
+      <td class="txtcell" style="font-size:10px;color:${this.LAYER[r.layer].c}">${r.layer} ${this.LAYER[r.layer].tag}</td>
+      <td class="txtcell" style="font-size:11px;color:var(--sub);max-width:170px;overflow:hidden;text-overflow:ellipsis">${r.theme}</td>
+      <td class="txtcell" style="font-size:10px" title="${r.stage.d}">${r.stage.t}</td>
       <td class="${this.cls(r.chg20)}">${this.fmt(r.chg20, 1, true)}%</td>
+      <td style="font-size:10px" class="flat">${bt.t}${Number.isFinite(r.pos252) ? ' ' + this.fmt(r.pos252, 0) : ''}</td>
       <td class="${this.cls(r.yoy)}">${Number.isFinite(r.yoy) ? this.fmt(r.yoy, 0, true) + '%' : '—'}</td>
       <td>${Number.isFinite(r.gm) ? this.fmt(r.gm, 0) + '%' : '毛利' + r.gmSeed}</td>
-      <td class="${this.cls(r.f10)}">${Number.isFinite(r.f10) ? this.fmt(r.f10, 0, true) : '—'}</td></tr>`).join('');
-    // 轉折 / 利潤池 / 傳導鏈(靜態,只畫一次也無妨,重畫冪等)
-    const chip = t => { const m = String(t).match(/^(\d{4,5}[A-Z]?)\s*(.*)$/); return m ? `<span class="chip"><span class="c">${m[1]}</span>${m[2]}</span>` : `<span class="chip" style="color:var(--dim2)">${t}</span>`; };
+      <td class="${this.cls(r.f10)}">${Number.isFinite(r.f10) ? this.fmt(r.f10, 0, true) : '—'}</td></tr>`;
+    }).join('');
+    // 轉折 / 利潤池 / 傳導鏈
+    const chip = t => { const m = String(t).match(/^(\d{4,5}[A-Z]?)\s*(.*)$/);
+      return m ? `<span class="chip" onclick="PRO.gotoStock('${m[1]}')"><span class="c">${m[1]}</span>${m[2]}</span>`
+               : `<span class="chip dead">${t}</span>`; };
     document.getElementById('transGrid').innerHTML = C.trans.map(x => `<div class="tcard">
       <div class="tt">${x.t}<span class="tag">${x.st}</span><span class="tag ${x.imp === '高' ? 'imp' : ''}">影響${x.imp}</span></div>
       <p>${x.note}</p><div class="chips"><span style="font-size:9px;color:var(--dim2);align-self:center">受惠</span>${x.win.map(chip).join('')}</div>
       ${x.lose.length ? `<div class="chips"><span style="font-size:9px;color:var(--dim2);align-self:center">被替代</span>${x.lose.map(chip).join('')}</div>` : ''}</div>`).join('');
     document.getElementById('poolBox').innerHTML = C.pool.map(p => {
-      const tws = p.tw.map(e => { const [c, ...role] = String(e).split(' '); const nm = this.nameOf(c); return `${c} ${nm}${role.length ? '(' + role.join(' ') + ')' : ''}`; }).join('・');
+      const tws = p.tw.map(e => { const [c, ...role] = String(e).split(' '); const nm = this.nameOf(c);
+        return `<span class="chip" onclick="PRO.gotoStock('${c}')"><span class="c">${c}</span>${nm}${role.length ? ' ' + role.join(' ') : ''}</span>`; }).join('');
       return `<div class="poolrow"><div class="ph"><span>${p.n}</span><span class="mono">${p.sh}%</span></div>
-        <div class="pb"><i style="width:${p.sh}%"></i></div><div class="ps">毛利約 ${p.gm}・${tws}<br>${p.note}</div></div>`;
+        <div class="pb"><i style="width:${p.sh}%"></i></div>
+        <div class="ps">毛利約 ${p.gm}<div class="chips">${tws}</div>${p.note}</div></div>`;
     }).join('');
     document.getElementById('chainSteps').innerHTML = C.chain.map((x, i) => `<div class="step ${i === 4 ? 'risk' : ''}">
       <div class="no">${i + 1}</div><div class="bd"><b>${x.t}</b> <span class="lead">${x.lead}</span><br>${x.d}</div></div>`).join('');
   },
-  selLv(n) { this._lvSel = this._lvSel === n ? null : n; this.renderChain(); },
+  selLv(n) { this.buzz(10); this._lvSel = this._lvSel === n ? null : n; this.renderChain(); },
+  selLayer(k) { this.buzz(10); this._layerSel = (k && this._layerSel !== k) ? k : null; this.renderChain(); },
 
-  init() {
+  async init() {
     document.getElementById('presetBar').innerHTML =
       '<span style="font-size:10px;color:var(--dim2);align-self:center">快選:</span>' +
       this.PRESETS.map((p, i) => `<span class="preset" onclick="PRO.usePreset(${i})">${p.n}</span>`).join('');
-    // 背景先暖名稱快取(非同步,不擋畫面)
+    this._initGestures();
     this.loadNames().catch(() => {});
+    await this._restoreNav();
   },
   usePreset(i) {
     const p = this.PRESETS[i];
     document.getElementById('inIndustry').value = p.n;
     document.getElementById('inCodes').value = p.c;
+    this.buzz(10);
   },
 };
 window.PRO = PRO;
 PRO.init();
+// ⚠️ bfcache 回來時(iOS Safari 上一頁)DOM 還在,只要補捲動位置就好
+window.addEventListener('pageshow', e => { if (e.persisted) { try { PRO._restoreNav(); } catch (_) {} } });
 window.__pageComplete = true;
 </script>
 </body>

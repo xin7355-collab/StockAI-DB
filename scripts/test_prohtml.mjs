@@ -1,23 +1,29 @@
 #!/usr/bin/env node
 /**
- * 🛰️ 產業作戰室 PRO(pro.html,V74.0.1)測試
+ * 🛰️ 產業作戰室 PRO(pro.html,V74.1.0)測試
  *
- * 使用者:「以散戶救星當作資料庫,新增一個介面,不顯示在散戶救星裡面,完成後給我一個網址」
- *         + 進階產業估值系統(防幻覺)+ AI 產業鏈儀表板重新設計。
- *
- * ⛔ 要釘死的十件事:
- *   ① 部署佈線:pro.html 必須同時接進 deploy_pages.yml 與 daily_miner.yml **各 4 處**
+ * 使用者需求(9 項)對應的釘子:
+ *   ① 部署佈線:pro.html 接進 deploy_pages.yml 與 daily_miner.yml **各 4 處**
  *      (paths/checkout・cp 到暫存・cp 回來・git add)—— 少 git add 就是 V69.8.7 圖示那種
  *      「放回去了卻沒 commit,每天被洗掉、零錯誤訊息」。
  *   ② ⛔ 不顯示在散戶救星裡面:index.html 不可出現 pro.html 連結。
- *   ③ 估值數學:隱含區間 = 年化EPS(現價÷官方PE) × 近3年 P5/中位/P95 —— 數字要對。
+ *   ③ 估值數學:隱含價位 = 年化EPS(現價÷官方PE) × 近3年 P5/P25/中位/P75/P95。
  *   ④ 虧損股/無 PE 帶 → 誠實說「不適用」,⛔ 不硬給區間;prompt 表格填「—」。
- *   ⑤ prompt 必含防幻覺約束(禁目標價/買賣評等)+ 「不是分析師預估」的誠實標示。
+ *   ⑤ prompt 必含防幻覺約束(禁目標價/買賣評等)+「不是分析師預估」+ 兩種基期的區分。
  *   ⑥ 畫面與 prompt 不可出現 NaN/undefined。
  *   ⑦ AI 鏈表格 67 檔、排序有作用、null 一律排最後(null-sort 陷阱)。
  *   ⑧ 燈號鐵則:不可用 🔴🟢 表品質(regex 必加 u flag —— surrogate 陷阱)。
  *   ⑨ peRank 分段插值:pe = 中位 → 50、pe ≤ 最低 → 0、pe ≥ 最高 → 100。
- *   ⑩ 主 App(index.html)完全沒被改到 —— 這是獨立頁。
+ *
+ * 🆕 V74.1.0 新增(使用者第 2~9 點):
+ *   ⑪ 個股可點 → 跳 index.html?sym=,且跳之前把捲動位置/分頁/篩選存進 sessionStorage。
+ *   ⑫ 手勢:左右滑切分頁 + 下拉重新整理;⛔ 三個守門(表格內不攔截 / 水平要 2 倍於垂直 / 只在頂端下拉)。
+ *   ⑬ 基期:股價基期(pos252)與估值基期(PE 位階)**分開顯示**,背離時要主動點出來。
+ *   ⑭ 「目標價」= 歷史估值對照價位:⛔ 標題不可出現「目標價」,而且必須寫「不是目標價/不是預測」。
+ *   ⑮ 階段位置(領先/落後):⛔ 樣本不足 5 檔不判定主戰場;文案必須寫「不是預測、未實測」。
+ *   ⑯ 單股 prompt:要帶入該檔的 AI 鏈定位與兩種基期。
+ *   ⑰ 問 AI:用 <a target="_blank">(⛔ 不可用 window.open —— iOS PWA 會留空白分頁)。
+ *   ⑱ 供應鏈五層:台廠記憶體要標成 Enabler 系而非「Core(HBM)」,且文案要說明台廠沒有 HBM。
  */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { fileURLToPath } from 'url';
@@ -26,7 +32,8 @@ import fs from 'fs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const fails = [];
-const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : `  ${String(e).slice(0, 240)}`}`); if (!c) fails.push(n); };
+const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : `  ${String(e).slice(0, 260)}`}`); if (!c) fails.push(n); };
+const src = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 
 // ① 部署佈線(兩條路徑各 4 處)
 for (const [f, min] of [['.github/workflows/deploy_pages.yml', 4], ['.github/workflows/daily_miner.yml', 4]]) {
@@ -40,6 +47,17 @@ ok('①c deploy_pages 的 push paths 有 pro.html(改它才會觸發部署)',
 // ② 不顯示在散戶救星裡面
 ok('② ⛔ index.html 不可出現 pro.html 連結(使用者明示不掛在 App 內)',
    !/pro\.html/.test(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')));
+// ⑰ ⛔ 不可用 window.open(iOS PWA 空白分頁)
+ok('⑰ ⛔ 問 AI 不可用 window.open(iOS PWA 會留空白分頁)', !/window\.open\(/.test(src));
+ok('⑰b 用 <a target="_blank"> 點擊開外部 AI', /a\.target\s*=\s*'_blank'/.test(src));
+// ⑫ 手勢的三個守門(靜態驗:它們是「拿掉就會出事、但畫面不會報錯」的那種)
+ok('⑫ 手勢:表格等可橫向捲動的容器內不攔截(否則表格滑不動)',
+   /overflowX === 'auto'[\s\S]{0,120}scrollWidth > n\.clientWidth/.test(src));
+ok('⑫b 手勢:水平要 2 倍於垂直(touchmove + touchend **兩處**都要有,⛔ 少一處就會誤觸發)',
+   (src.match(/Math\.abs\(dx\) > Math\.abs\(dy\) \* 2/g) || []).length === 2,
+   (src.match(/Math\.abs\(dx\) > Math\.abs\(dy\) \* 2/g) || []).length);
+ok('⑫c 手勢:下拉重新整理只在頁面頂端起算', /window\.scrollY <= 0/.test(src));
+ok('⑫d 重新整理要清快取(⛔ 不清等於什麼都沒做)', /hardRefresh[\s\S]{0,120}this\._cache = \{\}/.test(src));
 
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -57,11 +75,11 @@ const R = await page.evaluate(async () => {
     PRO._names = { '2382': '廣達', '1111': '假虧損', '2222': '假無帶' };
     PRO._cache['data/screener.json'] = {
         data_date: '2026-08-28',
-        cols: ['c', 'pe', 'chg', 'yoy', 'gm', 'f5', 't5', 'chg20', 'f10'],
+        cols: ['c', 'pe', 'chg', 'yoy', 'gm', 'f5', 't5', 'chg20', 'f10', 'pos252', 'pb'],
         rows: {
-            '2382': [100, 10, 1.5, 20, 15, 500, 300, 5, 800],
-            '1111': [50, null, -2, -5, 3, -100, null, null, null],
-            '2222': [80, 16, 0.5, 8, 22, 0, 0, 2, 10],
+            '2382': [100, 10, 1.5, 20, 15, 500, 300, 5, 800, 88, 3.2],     // ⑬ 股價高位(88) + 估值低位(25) = 背離
+            '1111': [50, null, -2, -5, 3, -100, null, null, null, 12, 0.8],
+            '2222': [80, 16, 0.5, 8, 22, 0, 0, 2, 10, 45, 2.0],
         },
         ind: { '2382': '25' },
     };
@@ -73,38 +91,64 @@ const R = await page.evaluate(async () => {
     document.getElementById('inIndustry').value = '測試產業';
     document.getElementById('inCodes').value = '2382, 1111, 2222';
     document.getElementById('inNews').value = '測試動態';
-    await PRO.runValuation();
+    await PRO.runValuation(true);
+    const valHtml = document.getElementById('valOut').innerHTML;
     const out = document.getElementById('valOut').innerText;
     const prompt = PRO.buildPrompt();
+    const stockPrompt = PRO.buildStockPrompt(0);
     const r2382 = PRO._valRows.find(r => r.code === '2382');
-    // ⑨ peRank
     const b = PRO._cache['data/pe_band.json'].data['2382'];
     const ranks = [PRO.peRank(12, b), PRO.peRank(5, b), PRO.peRank(30, b), PRO.peRank(8, b)];
-    // ── AI 鏈 ──
-    // 給兩檔特殊值驗排序:2330 yoy 最大、4585 yoy null(要排最後)
+    // ⑪ 導航:攔截跳轉,驗 sessionStorage 有存 + 目標網址對
+    let navUrl = '';
+    const realAssign = Object.getOwnPropertyDescriptor(window.location, 'href');
+    PRO._saveNav();  // 先存一次(gotoStock 內部也會存,這裡是驗存檔本身)
+    const saved = JSON.parse(sessionStorage.getItem('proWar_nav') || '{}');
+    // ⑮ 主戰場:先給每層足夠樣本
     const scr = PRO._cache['data/screener.json'];
-    for (const s of PRO.CHAIN.stocks) scr.rows[s[0]] = scr.rows[s[0]] || [100, 15, 0, 10, 20, 0, 0, 1, 0];
-    scr.rows['2330'] = [2400, 30, 1, 999, 60, 0, 0, 9.7, -1500];
-    scr.rows['4585'] = [200, 50, 1, null, 30, 0, 0, null, 0];
+    for (const s of PRO.CHAIN.stocks) scr.rows[s[0]] = scr.rows[s[0]] || [100, 15, 0, 10, 20, 0, 0, 1, 0, 50, 2];
+    scr.rows['2330'] = [2400, 30, 1, 999, 60, 0, 0, 9.7, -1500, 92, 9.8];
+    scr.rows['4585'] = [200, 50, 1, null, 30, 0, 0, null, 0, null, 5];
     // ⚠️ 一定要有一檔**負值** —— 否則「null 當 0」的壞排序也剛好把 null 排最後,注入驗證會漏(測資盲點)
-    scr.rows['2317'] = [180, 12, -1, 5, 6, 0, 0, -3, 0];
-    PRO.switchTab('chain');
-    await new Promise(r => setTimeout(r, 50));
+    scr.rows['2317'] = [180, 12, -1, 5, 6, 0, 0, -3, 0, 30, 1.5];
+    // 把 L3 成員全部灌成強勢 → 主戰場應判為 L3
+    for (const s of PRO.CHAIN.stocks) if (s[4].includes('3')) scr.rows[s[0]][7] = 30;
+    // ⚠️ 上一行會把 4585(L3 成員)的 null 一起蓋掉 → null 排序那條就驗不到了(測資自己的坑)
+    scr.rows['4585'][7] = null;
+    PRO.switchTab('chain', true);
+    await new Promise(r => setTimeout(r, 30));
     PRO._sortK = 'yoy'; PRO._sortD = -1; await PRO.renderChain();
+    const front = PRO._frontLevel();
     const rows1 = [...document.querySelectorAll('#chainBody tr')];
     const firstCode = rows1[0] ? rows1[0].innerText.trim().slice(0, 4) : '';
-    const lastCell = rows1.length ? rows1[rows1.length - 1].innerText : '';
     PRO._sortK = 'chg20'; PRO._sortD = -1; await PRO.renderChain();
-    const rows2 = [...document.querySelectorAll('#chainBody tr')];
-    const last2 = rows2.length ? rows2[rows2.length - 1].innerText : '';
+    const last2 = (() => { const rs = [...document.querySelectorAll('#chainBody tr')]; return rs.length ? rs[rs.length - 1].innerText : ''; })();
+    const chainHtml = document.getElementById('tabChain').innerHTML;
     const chainTxt = document.getElementById('tabChain').innerText;
+    // ⑮b 樣本不足時不可判主戰場
+    const bak = JSON.parse(JSON.stringify(scr.rows));
+    for (const kk in scr.rows) scr.rows[kk][7] = null;
+    const frontEmpty = PRO._frontLevel();
+    scr.rows = bak;
+    // ⑱ 供應鏈層篩選
+    PRO._layerSel = 'B'; await PRO.renderChain();      // ⚠️ selLayer 內的 renderChain 是 async → 直接 await 才數得到新 DOM
+    const bRows = [...document.querySelectorAll('#chainBody tr')].length;
+    const bOnly = PRO.CHAIN.stocks.filter(s => s[7] === 'B').length;
+    PRO._layerSel = null; await PRO.renderChain();
+    const allRows = [...document.querySelectorAll('#chainBody tr')].length;
     return {
-        out, prompt, nCards: (document.getElementById('valOut').innerHTML.match(/class="vcard"/g) || []).length,
-        lo: r2382.lo, mid: r2382.mid, hi: r2382.hi, eps: r2382.eps, rank: r2382.rank, peer: r2382.peer,
-        ranks, rowsN: rows1.length, firstCode, lastHasNull: /—/.test(lastCell), last2,
+        out, valHtml, prompt, stockPrompt, chainTxt, chainHtml,
+        nCards: (valHtml.match(/class="vcard"/g) || []).length,
+        lo: r2382.lo, mid: r2382.mid, hi: r2382.hi, q25: r2382.q25, q75: r2382.q75,
+        eps: r2382.eps, rank: r2382.rank, peer: r2382.peer, peerPx: r2382.peerPx, pos: r2382.pos,
+        ranks, savedKeys: Object.keys(saved), savedY: 'y' in saved, savedTab: saved.tab,
+        front, frontEmpty, bRows, bOnly, allRows,
+        rowsN: rows1.length, firstCode, last2,
         lamp: /[🔴🟢]/u.test(document.body.innerHTML),
-        nan: /NaN|undefined/.test(out) || /NaN|undefined/.test(prompt),
-        poolNamed: /台積電/.test(chainTxt),
+        nan: /NaN|undefined/.test(out) || /NaN|undefined/.test(prompt) || /NaN|undefined/.test(stockPrompt),
+        gotoInHtml: (valHtml.match(/PRO\.gotoStock\(/g) || []).length,
+        badLayer: PRO.CHAIN.stocks.filter(s => !['A','B','C','D','E'].includes(s[7])).length,
+        layerN: PRO.CHAIN.stocks.length,
     };
 });
 await browser.close();
@@ -113,18 +157,49 @@ await browser.close();
 ok('③ 年化EPS = 100/10 = 10', R.eps === 10, R.eps);
 ok('③b 隱含區間 = 10×(8/12/20) = 80/120/200', R.lo === 80 && R.mid === 120 && R.hi === 200, [R.lo, R.mid, R.hi]);
 ok('③c PE 位階:pe=10 落在 P25 → 25%', R.rank === 25, R.rank);
-ok('③d 同業中位 PE 讀 industry_pe(18.9)', R.peer === 18.9, R.peer);
+ok('③d 同業中位 PE 讀 industry_pe(18.9)→ 對應價 189', R.peer === 18.9 && R.peerPx === 189, [R.peer, R.peerPx]);
 ok('⑨ peRank:中位→50、帶外低→0、帶外高→100、P5→5', R.ranks[0] === 50 && R.ranks[1] === 0 && R.ranks[2] === 100 && R.ranks[3] === 5, R.ranks);
+// ⑭ 價位對照表(使用者要的「目標價」誠實版)
+ok('⑭ 價位表有 P25/P75 兩檔(10×10=100、10×16=160)', R.q25 === 100 && R.q75 === 160, [R.q25, R.q75]);
+ok('⑭b 表頭寫「如果市場給它這個評價」而不是目標價', /如果市場給它這個評價/.test(R.valHtml));
+{
+    // ⚠️ 要驗「價位表自己那一段」有免責 —— ⛔ 不可讓卡片別處的免責替它背書(第一版注入驗證就是這樣假通過的)
+    const seg = R.valHtml.slice(R.valHtml.indexOf('pxtbl'), R.valHtml.indexOf('pxtbl') + 3000);
+    ok('⑭c 🚨 價位表**自己那一段**必須寫「不是目標價、也不是預測」',
+       /這不是目標價,也不是預測/.test(seg), seg.slice(-260));
+    ok('⑭c2 ⛔ 整份輸出不可出現「目標價:xxx」這種用法', !/目標價[:：]\s*\d/.test(R.out));
+}
+ok('⑭d 有「一張差多少元」(使用者鐵則:% 一定要配元)', /一張差多少元/.test(R.valHtml));
+// ⑬ 兩種基期
+ok('⑬ 股價基期與估值基期分開顯示', /股價低基期|股價中基期|股價高基期/.test(R.out) && /估值低基期|估值中基期|估值高基期/.test(R.out), R.out.slice(0, 260));
+ok('⑬b 背離要主動點出來(股價88高位 + 估值25低位)',
+   /股價在高位、但估值在低位/.test(R.valHtml), R.out.slice(0, 400));
 // ④ 不適用要誠實
-ok('④ 虧損股(無官方 PE)→ 顯「不適用/不硬給」', /不適用|不硬給/.test(R.out), R.out.slice(0, 300));
+ok('④ 虧損股(無官方 PE)→ 顯「不適用/不硬給」', /不適用|不硬給/.test(R.out));
 ok('④b 三檔都有卡(⛔ 不可把算不出來的整檔藏掉)', R.nCards === 3, R.nCards);
-ok('④c prompt 表格對虧損股填 —', /\| 1111 \| 假虧損 \| 50\.0 \| — \| — \|/.test(R.prompt), R.prompt.split('\n').filter(l => l.includes('1111')).join(''));
+ok('④c prompt 表格對虧損股填 —', /\| 1111 \| 假虧損 \| 50\.0 \| — \| — \|/.test(R.prompt),
+   R.prompt.split('\n').filter(l => l.includes('1111')).join(''));
 // ⑤ prompt 內容
 ok('⑤ prompt 含防幻覺約束(禁目標價/買賣評等)', /禁止.{0,30}目標價/.test(R.prompt) && /買賣評等/.test(R.prompt));
 ok('⑤b prompt 誠實標示 EPS 是近4季年化、不是分析師預估', /不是分析師預估/.test(R.prompt) && /年化EPS/.test(R.prompt));
 ok('⑤c prompt 有循環股警語(獲利頂峰時 PE 最低)', /循環股.{0,40}PE 最低/.test(R.prompt));
-ok('⑤d prompt 代入真實數字(2382 廣達 100.0 / 8.0 / 12.0 / 20.0)', /\| 2382 \| 廣達 \| 100\.0 \| 10\.00 \| 8\.0 \/ 12\.0 \/ 20\.0 \| 25% \| 18\.9 \| 20\.0 \| 15\.0 \| \+800 \|/.test(R.prompt),
+ok('⑤d prompt 要求 AI 分辨兩種基期', /股價基期.{0,30}估值基期|兩件事/.test(R.prompt));
+ok('⑤e prompt 代入真實數字(2382 廣達 100.0 / EPS 10.00 / 帶 8-12-20 / 估值25% / 股價88%)',
+   /\| 2382 \| 廣達 \| 100\.0 \| 10\.00 \| 8\.0 \/ 12\.0 \/ 20\.0 \| 25% \| 88% \|/.test(R.prompt),
    R.prompt.split('\n').filter(l => l.includes('2382')).join(''));
+// ⑯ 單股 prompt
+ok('⑯ 單股 prompt 有代號名稱與收盤價', /2382 廣達/.test(R.stockPrompt) && /收盤價:100\.0 元/.test(R.stockPrompt), R.stockPrompt.slice(0, 200));
+ok('⑯b 單股 prompt 帶入 AI 產業鏈定位(段/題材/層級/供應鏈層)',
+   /AI 產業鏈定位:.*上游/.test(R.stockPrompt) && /供應鏈層/.test(R.stockPrompt),
+   (R.stockPrompt.match(/AI 產業鏈定位:.*/) || [''])[0]);
+ok('⑯c 單股 prompt 有完整 5 檔 PE 對照價位', /P5 8\.0x → 80\.0 元/.test(R.stockPrompt) && /P95 20\.0x → 200\.0 元/.test(R.stockPrompt));
+ok('⑯d 單股 prompt 同樣有防幻覺約束(共用同一份 header)', /禁止.{0,30}目標價/.test(R.stockPrompt));
+// ⑪ 導航
+ok('⑪ 個股名稱可點(估值卡裡有 gotoStock)', R.gotoInHtml >= 3, R.gotoInHtml);
+ok('⑪b gotoStock 跳 index.html?sym=', /location\.href = 'index\.html\?sym=' \+ encodeURIComponent\(code\)/.test(src));
+ok('⑪c 跳之前存捲動位置與分頁狀態', R.savedY && R.savedKeys.includes('tab') && R.savedKeys.includes('codes'), R.savedKeys);
+ok('⑪d 還原有時效(逾時不還原,⛔ 免得看到過期畫面)', /30 \* 60e3/.test(src));
+ok('⑪e bfcache 回來也要補捲動位置', /pageshow[\s\S]{0,120}persisted[\s\S]{0,80}_restoreNav/.test(src));
 // ⑥⑧
 ok('⑥ 畫面與 prompt 無 NaN/undefined', !R.nan);
 ok('⑧ 燈號鐵則:不可用 🔴🟢(u flag)', !R.lamp);
@@ -132,7 +207,18 @@ ok('⑧ 燈號鐵則:不可用 🔴🟢(u flag)', !R.lamp);
 ok('⑦ 戰情表 67 檔', R.rowsN === 67, R.rowsN);
 ok('⑦b 按 YoY 排序 → 2330(stub 999)排第一', R.firstCode === '2330', R.firstCode);
 ok('⑦c null 排最後(4585 chg20=null)', /4585/.test(R.last2), R.last2.slice(0, 60));
-ok('⑦d 利潤池有中文名', R.poolNamed);
+ok('⑦d 利潤池有中文名而且可點', /台積電/.test(R.chainTxt) && /PRO\.gotoStock\('2330'\)/.test(R.chainHtml));
+// ⑮ 階段位置 / 主戰場
+ok('⑮ 主戰場判為 L3(L3 成員被灌成最強)', R.front && R.front.lv === 3, R.front);
+ok('⑮b 🚧 樣本不足 5 檔 → ⛔ 不判定主戰場', R.frontEmpty === null, R.frontEmpty);
+ok('⑮c 表格有「階段位置」欄(主戰場/落後/太早)', /🎯 主戰場|⏳ 落後|🌱 太早/.test(R.chainTxt));
+ok('⑮d 🚨 文案必須寫「不是預測、未實測」', /不是 AI 進度預測/.test(R.chainTxt) && /沒有實測過預測力/.test(R.chainTxt), R.chainTxt.slice(0, 300));
+ok('⑮e 成熟度那條要說明是人工框架、不隨時間增加', /不會隨時間自己增加/.test(R.chainTxt));
+// ⑱ 供應鏈五層
+ok('⑱ 五層篩選有作用(B 層 ' + R.bOnly + ' 檔)', R.bRows === R.bOnly && R.bOnly > 0 && R.bRows < R.allRows, [R.bRows, R.bOnly, R.allRows]);
+ok('⑱b 🚨 台廠記憶體 ⛔ 不可標成 Core(台廠沒有 HBM)',
+   /台廠沒有 HBM|台廠是利基型/.test(src) && /台廠做的是\*\*利基型記憶體不是 HBM\*\*|台廠做的是.{0,10}利基型記憶體不是 HBM/.test(src));
+ok('⑱c 每檔都有合法的供應鏈層(A~E),⛔ 不可有漏標', R.badLayer === 0 && R.layerN === 67, [R.badLayer, R.layerN]);
 ok('⑩ 載入無 pageerror', errs.length === 0, errs.join(' | '));
 
 console.log();
