@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.9.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.9.9 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7348,8 +7348,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.9.9',
+    _APP_VERSION: 'V74.0.0',
     _CHANGELOG: [
+        { v:'V74.0.0', dt:'2026-08-29', d:[
+            '🤖 AI 鏈地圖照回饋優化:①五級點開**直接列出成員**(中文名+毛利率,'
+            + '公司越會賺的排越前;⚠️ 公司會賺錢≠股價會漲,別直接當買進順序)'
+            + '②利潤池「台股入口」補上中文名,而且每一檔都可以直接點進個股頁。',
+        ]},
         { v:'V73.9.9', dt:'2026-08-29', d:[
             '🤖 選股頁新增「AI 鏈・產業地圖」:AI 演進五級(聊天機器人→推理者→智能體→創新者→組織者)'
             + '對應台股受惠股 67 檔 —— 點一級看台鏈在那一層怎麼賺錢、篩選成員名單;'
@@ -41185,13 +41190,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ['6865', '偉康科技', 'down', '數位金融應用', '23', '高', '客戶集中金融業'],
         ],
         // 💰 利潤池:整條鏈的錢被誰賺走(份額為約略估計,人工整理)
+        //    ⭐ tw 只存「代號 + 角色」,中文名一律**從上面 stocks 表查**(⛔ 不寫第二份名字,陷阱 #37)
         pool: [
-            { n: '運算晶片(GPU/ASIC+HBM)', sh: 70, gm: '60~75%', tw: '2330 代工・3711 封測・3661/3443/3035 ASIC', note: '價值與毛利雙重集中地。台股入口是「代工與設計服務抽成」,不是晶片本身。' },
-            { n: '伺服器組裝 / 機櫃', sh: 12, gm: '5~9%', tw: '2317・2382・3231・6669', note: '賺量不賺價,看營收動能與市佔,毛利率沒有想像空間。' },
-            { n: '網通交換器 / 光通訊', sh: 6, gm: '20~40%', tw: '2345・4977・3363', note: '頻寬升級(800G→1.6T)單價跳升,少數量價齊揚的環節。' },
-            { n: '散熱(液冷滲透中)', sh: 5, gm: '25~35%', tw: '3017・3324・2421', note: '氣冷→液冷讓單機櫃散熱價值翻倍。' },
-            { n: '電源(PSU/BBU/電網)', sh: 4, gm: '25~30%', tw: '2308・1513・1519', note: '機櫃功耗越高越受惠,外溢到電網重電。' },
-            { n: 'PCB / 載板 / CCL', sh: 3, gm: '20~30%', tw: '3037・2383・2368', note: '層數與材料升級撐單價,但要盯玻璃基板替代。' },
+            { n: '運算晶片(GPU/ASIC+HBM)', sh: 70, gm: '60~75%', tw: ['2330 代工', '3711 封測', '3661 ASIC', '3443 ASIC', '3035 ASIC'], note: '價值與毛利雙重集中地。台股入口是「代工與設計服務抽成」,不是晶片本身。' },
+            { n: '伺服器組裝 / 機櫃', sh: 12, gm: '5~9%', tw: ['2317', '2382', '3231', '6669'], note: '賺量不賺價,看營收動能與市佔,毛利率沒有想像空間。' },
+            { n: '網通交換器 / 光通訊', sh: 6, gm: '20~40%', tw: ['2345', '4977', '3363'], note: '頻寬升級(800G→1.6T)單價跳升,少數量價齊揚的環節。' },
+            { n: '散熱(液冷滲透中)', sh: 5, gm: '25~35%', tw: ['3017', '3324', '2421'], note: '氣冷→液冷讓單機櫃散熱價值翻倍。' },
+            { n: '電源(PSU/BBU/電網)', sh: 4, gm: '25~30%', tw: ['2308', '1513', '1519'], note: '機櫃功耗越高越受惠,外溢到電網重電。' },
+            { n: 'PCB / 載板 / CCL', sh: 3, gm: '20~30%', tw: ['3037', '2383', '2368'], note: '層數與材料升級撐單價,但要盯玻璃基板替代。' },
         ],
         // 🧭 傳導鏈:訊號從哪裡先出現(領先→確認)
         chain: [
@@ -41252,12 +41258,24 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const fmtMed = m => m === null ? '' : `<span class="font-mono ${cl(m)}">${pn(m)}%</span>`;
         const lvStocks = lv => C.stocks.filter(s => s[4].includes(String(lv)));
 
-        // ① 五級演進條(點一級 = 篩選下方個股地圖)
+        // ① 五級演進條(點一級 = 展開成員名單 + 篩選下方個股地圖)
         const lvRows = [1, 2, 3, 4, 5].map(n => {
             const L = C.lv[n], on = this._aicLv === n;
             const m = med(lvStocks(n).map(s => val(s[0], 'chg20')));
             const bar = `<div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden mt-1"><div class="h-full ${L.mat >= 80 ? 'bg-gray-500' : L.mat >= 30 ? 'bg-amber-500' : 'bg-blue-500'}" style="width:${Math.max(L.mat, 2)}%"></div></div>`;
-            const detail = on ? `<div class="text-[10px] text-gray-400 mt-1.5 leading-relaxed">${L.d}<br><span class="text-gray-300">🇹🇼 ${L.tw}</span></div>` : '';
+            // 👥 展開時直接列成員(使用者要求:要看得到裡面有誰、越會賺的排越前)。
+            //    「會賺錢」用**毛利率**(公司賺錢能力的真實數字,screener 每日快照;沒有數字的用人工標的高/中/低墊後)
+            //    ⚠️ ⛔ 不可用「預期會漲」排 —— 那是沒驗證過的主張;毛利率是事實,但也要明講「公司會賺 ≠ 股價會漲」。
+            let memHtml = '';
+            if (on) {
+                const rank = { '高': 0, '中': 1, '低': 2 };
+                const mem = lvStocks(n).map(s => ({ s, g: val(s[0], 'gm') }))
+                    .sort((a, b) => ((Number.isFinite(b.g) ? b.g : -1) - (Number.isFinite(a.g) ? a.g : -1)) || (rank[a.s[5]] - rank[b.s[5]]));
+                memHtml = `<div class="text-[9px] text-gray-500 mt-1.5 leading-snug">👥 這一層的成員,按<b class="text-gray-300">毛利率</b>排(公司越會賺排越前)。⚠️ 公司會賺錢 ≠ 股價會漲,⛔ 別直接當買進順序;點一檔進個股頁看「現在怎麼做」。</div>
+                <div class="flex flex-wrap gap-1 mt-1">${mem.map(({ s, g }) =>
+                    `<span onclick="event.stopPropagation(); app.analyze('${s[0]}'); app.switchAppTab('diag'); app.vibrate(30);" class="cursor-pointer inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-[#30363d] text-[9px] text-gray-300 hover:border-blue-600"><span class="font-mono text-gray-500">${s[0]}</span>${s[1]}<span class="font-mono ${Number.isFinite(g) ? 'text-amber-300/90' : 'text-gray-600'}">${Number.isFinite(g) ? g.toFixed(0) + '%' : '毛利' + s[5]}</span></span>`).join('')}</div>`;
+            }
+            const detail = on ? `<div class="text-[10px] text-gray-400 mt-1.5 leading-relaxed">${L.d}<br><span class="text-gray-300">🇹🇼 ${L.tw}</span></div>${memHtml}` : '';
             return `<div onclick="app._aicSetLv(${n})" class="cursor-pointer bg-[#161b22] border ${on ? 'border-blue-500' : 'border-[#30363d]'} rounded-lg px-2.5 py-2 transition-all">
                 <div class="flex items-center gap-2">
                     <span class="flex-shrink-0 w-7 h-7 rounded-full ${on ? 'bg-blue-600 text-white' : 'bg-[#21262d] text-gray-400'} text-[11px] font-black flex items-center justify-center">L${n}</span>
@@ -41265,7 +41283,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         <div class="flex items-center gap-1.5 flex-wrap"><span class="text-[12px] font-black text-gray-100">${L.n}</span><span class="text-[9px] text-gray-600">${L.en}</span><span class="text-[9px] px-1 rounded bg-white/5 text-gray-400">${L.st}</span></div>
                         <div class="text-[9px] text-gray-600 mt-0.5">成熟度 ${L.mat}%・成員 ${lvStocks(n).length} 檔${m !== null ? `・近20日中位 ${fmtMed(m)}` : ''}</div>
                     </div>
-                    <span class="text-[9px] text-gray-600 flex-shrink-0">${on ? '▲ 收合' : '▼ 詳情'}</span>
+                    <span class="text-[9px] text-gray-600 flex-shrink-0">${on ? '▲ 收合' : '▼ 看成員'}</span>
                 </div>${bar}${detail}
             </div>`;
         }).join('');
@@ -41305,10 +41323,18 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <div class="flex items-center gap-1 flex-wrap mt-1"><span class="text-[9px] text-gray-600">受惠:</span>${x.win.map(chip).join('')}</div>
             ${x.lose.length ? `<div class="flex items-center gap-1 flex-wrap mt-0.5"><span class="text-[9px] text-gray-600">被替代:</span>${x.lose.map(chip).join('')}</div>` : ''}
         </div>`).join('');
+        // 利潤池的台股入口:代號 → 從 stocks 表查中文名(使用者要求:不要只有代號),做成可點 chip
+        const nameOf = code => { const s = C.stocks.find(x => x[0] === code); return s ? s[1] : ''; };
+        const poolChip = ent => {
+            const [code, ...role] = String(ent).split(' ');
+            const nm = nameOf(code), r = role.join(' ');
+            return `<span onclick="event.stopPropagation(); app.analyze('${code}'); app.switchAppTab('diag'); app.vibrate(30);" class="cursor-pointer inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-[#30363d] text-[9px] text-gray-300 hover:border-blue-600"><span class="font-mono text-gray-500">${code}</span>${nm}${r ? `<span class="text-gray-600">${r}</span>` : ''}</span>`;
+        };
         const poolHtml = C.pool.map(p => `<div class="bg-[#161b22] border border-[#30363d] rounded-lg px-2.5 py-2">
             <div class="flex items-center gap-2"><span class="text-[10px] font-bold text-gray-200 flex-1">${p.n}</span><span class="font-mono text-[12px] font-black text-gray-100">${p.sh}%</span></div>
             <div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden mt-1"><div class="h-full bg-amber-600" style="width:${p.sh}%"></div></div>
-            <div class="text-[9px] text-gray-500 mt-1 leading-snug">毛利約 ${p.gm}・台股入口:${p.tw}<br>${p.note}</div>
+            <div class="flex items-center gap-1 flex-wrap mt-1"><span class="text-[9px] text-gray-600">毛利約 ${p.gm}・台股入口:</span>${p.tw.map(poolChip).join('')}</div>
+            <div class="text-[9px] text-gray-500 mt-1 leading-snug">${p.note}</div>
         </div>`).join('');
         const chainHtml = C.chain.map((x, i) => `<div class="flex gap-2.5"><div class="flex flex-col items-center flex-shrink-0"><div class="w-5 h-5 rounded-full ${i === 4 ? 'bg-amber-600' : 'bg-blue-600'} text-white text-[10px] font-black flex items-center justify-center">${i + 1}</div>${i < 4 ? '<div class="w-0.5 flex-1 bg-[#30363d] my-1"></div>' : ''}</div><div class="flex-1 pb-2.5"><div class="text-[11px] font-bold text-gray-200">${x.t} <span class="text-[9px] font-normal text-amber-300/80">${x.lead}</span></div><div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${x.d}</div></div></div>`).join('');
         const chkHtml = C.chk.map(x => `<div class="bg-[#161b22] border border-[#30363d] rounded px-2.5 py-1.5"><div class="text-[10px] text-gray-200"><span class="text-[9px] px-1 rounded bg-white/5 text-gray-400 mr-1">${x.f}</span>${x.i}</div><div class="text-[9px] text-gray-500 mt-0.5">訊號:${x.s}・${x.in}</div></div>`).join('');
