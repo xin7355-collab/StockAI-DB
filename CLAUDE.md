@@ -1299,6 +1299,33 @@ http403×2442 ・ http400×1549 ・ degraded_half_window×357 ・ timeout×0
 並加一條**空過守門**(排除後仍要留著大部分內容,否則這條等於沒驗)。
 測試 `scripts/test_pbalert.mjs` 14 條(已用注入缺陷自我驗證)。
 
+### 🛰️ V74.0.1 `pro.html` 產業作戰室 PRO —— 獨立介面(⛔ 不掛在 App 內,使用者明示)
+使用者:「以散戶救星當作資料庫,新增一個介面,不顯示在散戶救星裡面,完成後給我一個網址」
++ 進階產業估值系統(防幻覺 Prompt 產生器)+ AI 產業鏈儀表板重新設計。
+網址:`https://xin7355-collab.github.io/StockAI-DB/pro.html`(⛔ index.html 一個字都沒改,也不放連結)。
+
+**資料層(全部吃既有 gh-pages 產物,零新採礦)**:
+`screener.json`(現價/官方PE/YoY/毛利/f5+t5 法人5日)・**`pe_band.json`**(⭐ 真實每日 PE 近3年
+P5/中位/P95 —— V73.3.9 的採礦產物正好是這頁的核心)・`industry_pe.json`(同業中位)・
+FinMind TaiwanStockInfo 匿名(中文名,同 App `fetchStockList`,localStorage 快取 3 天)。
+
+**⛔ 三條誠實鐵則(改文案別動)**:
+① 台股**沒有免費的分析師預估 EPS** → 一律「**年化EPS = 現價 ÷ 官方PE**」且明標「不是分析師預估」,
+   prompt 的防幻覺指令也改成對應公式(⛔ 不可照上傳模板寫「市場預估 EPS」—— 那會讓 AI 把年化講成預估)。
+② 隱含區間 = 年化EPS × 近3年 P5/中位/P95 → 一律稱「**歷史估值對照區間**」,⛔ 不是目標價(同 V71.8.2 用詞限制);
+   prompt 內建循環股警語(獲利頂峰時 PE 最低)。虧損/無 PE 帶 → 誠實顯「不適用」,⛔ 不硬給。
+③ 估值帶漸層用**藍→琥珀(冷→熱)**,⛔ 不用紅綠 —— 貴便宜不是漲跌方向(燈號鐵則)。
+
+**⚠️ 兩個同步點(改東西時要記得)**:
+- 🚨 **部署佈線 8 處**:`deploy_pages.yml` 4 處(push paths / cp 到 /tmp/deploy / cp 回 / git add)+
+  `daily_miner.yml` 4 處(checkout origin/main / cp 到 /tmp/mine / cp 回 / git add)——
+  少 git add 就是 V69.8.7 圖示那種「每天被洗掉、零錯誤訊息」。測試 ① 釘住。
+- ⚠️ **AI 鏈名單是 index.html `_AI_CHAIN` 的副本**(獨立頁不共用程式)→ **改名單要兩邊一起改**
+  (index.html `_AI_CHAIN` + pro.html `PRO.CHAIN`),陷阱 #37 的已知妥協,測試兩邊各自驗完整性。
+
+測試 `scripts/test_prohtml.mjs` 25 條(3 種注入缺陷驗過;⭐ 測資要含**負值**,
+否則「null 當 0」的壞排序也剛好把 null 排最後,注入驗證會漏)。
+
 ### 🤖 外部參考資料的評估紀錄⑬:AI 產業鏈儀表板包(2026-08-29 使用者上傳 4 檔)→ V73.9.9 落地
 使用者上傳 chain_growth.py / update_chain.yml / aistrategydashboardv3.tsx / ai_chain_data.json
 (AI 演進五級 × 台股 64 檔受惠股 + 每週 FinMind/LLM 成長引擎),要「當作未來股票成長的參考、介面用散戶救星風格」。

@@ -9,6 +9,7 @@ on:
       - 'sw.js'
       - 'manifest.json'   # V17.0 — PWA installable manifest
       - '.well-known/**'  # 📦 V73.1.1 — APK(TWA)驗證用 assetlinks.json
+      - 'pro.html'        # 🛰️ V74.0.1 — 產業作戰室 PRO(獨立頁,不掛在 App 內)
   workflow_dispatch:
 
 # V14.12 — 與 daily_miner.yml deploy job 共用 'gh-pages-push' group,
@@ -65,6 +66,7 @@ jobs:
           # 📦 V73.1.1 — APK(TWA)驗證檔:讓安卓確認「這個 APK 跟這個網站是同一人」,驗證過 APK 才會全螢幕
           [ -f .well-known/assetlinks.json ] && { mkdir -p /tmp/deploy/.well-known; cp .well-known/assetlinks.json /tmp/deploy/.well-known/; } || true
           for f in apple-touch-icon.jpg icon-192.jpg icon-512.jpg; do [ -f "$f" ] && cp "$f" /tmp/deploy/ || true; done   # ⚡ V69.8.7 P2-2 icon 外部化
+          [ -f pro.html ] && cp pro.html /tmp/deploy/ || true   # 🛰️ V74.0.1 產業作戰室 PRO
 
           # 切到現有的 gh-pages（保留所有資料，不用 --orphan）
           git fetch origin gh-pages 2>/dev/null || true
@@ -81,6 +83,7 @@ jobs:
           [ -f /tmp/deploy/manifest.json ] && cp /tmp/deploy/manifest.json . || true
           [ -f /tmp/deploy/.well-known/assetlinks.json ] && { mkdir -p .well-known; cp /tmp/deploy/.well-known/assetlinks.json .well-known/; } || true   # 📦 V73.1.1
           for f in apple-touch-icon.jpg icon-192.jpg icon-512.jpg; do [ -f "/tmp/deploy/$f" ] && cp "/tmp/deploy/$f" . || true; done
+          [ -f /tmp/deploy/pro.html ] && cp /tmp/deploy/pro.html . || true   # 🛰️ V74.0.1(⚠️ cp 完下面一定要 git add,V69.8.7 圖示漏過)
 
           # 🆕 每次部署把 Service Worker 的 CACHE_NAME 注入 commit SHA，
           #     讓 sw.js 內容隨每次部署改變 → 瀏覽器認得新 SW → 自動接管+reload，杜絕使用者卡舊版
@@ -93,6 +96,7 @@ jobs:
           for f in apple-touch-icon.jpg icon-192.jpg icon-512.jpg; do [ -f "$f" ] && git add -f "$f" || true; done
           [ -f manifest.json ] && git add manifest.json || true
           [ -f .well-known/assetlinks.json ] && git add -f .well-known/assetlinks.json || true   # 📦 V73.1.1
+          [ -f pro.html ] && git add -f pro.html || true   # 🛰️ V74.0.1 產業作戰室 PRO
           git diff --cached --quiet && echo "無變更，跳過" || {
             git commit -m "🚀 前端更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
             # V14.12 — 5 次 retry 吸收 GitHub server 瞬時 ref lock
