@@ -117,6 +117,20 @@ ok('⑤c ⚠️ 程式碼(排除註解)裡沒有其他「`.get(close) or 0` 之�
 ok('⑤d 🚧 空過守門:排除註解後仍保留大部分程式碼', len(code_only) > len(src) * 0.7,
    f'{len(code_only)}/{len(src)}')
 
+# ── ⑧ V74.2.3 寫檔前濾掉「沒有收盤價」的空殼(根治歷史中間殘留的壞列)─────
+#    ⚠️ V74.2.2 的 yfinance 校正只看**最近 10 個交易日** → 補不到歷史中間那幾根;
+#       而下游只要 `float(None)` 就整檔算不出東西(6690/3131/6187 就是這樣被 screener 略過的)。
+ok('⑧ export_json 寫檔前濾掉沒有收盤價的列',
+   re.search(r"records = \[r for r in records if isinstance\(r\.get\('close'\), \(int, float\)\) and r\['close'\] > 0\]", src) is not None)
+ok('⑧b 🚧 全部都是壞列時 ⛔ 不可寫出空檔覆蓋好資料',
+   re.search(r"if not records:\s*\n\s*continue", src) is not None)
+ok('⑧c 濾掉時要印出來(⛔ 不可靜默刪資料)',
+   re.search(r'print\(f".{0,6}\{sym\} 濾掉 \{_n0 - len\(records\)\} 根', src) is not None)
+
+scr_src = (ROOT / 'screener_miner.py').read_text(encoding='utf-8')
+ok('⑧d screener_miner 也要防禦(即使 K 線還有壞列也要算得出來)',
+   re.search(r"d = \[r for r in d if isinstance\(r\.get\('close'\), \(int, float\)\) and r\['close'\] > 0\]", scr_src) is not None)
+
 print()
 print(f"❌ {len(fails)} 條失敗" if fails else '✅ PRICEFIX_PASS(全部通過)')
 sys.exit(1 if fails else 0)

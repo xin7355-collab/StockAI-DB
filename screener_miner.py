@@ -474,6 +474,11 @@ def main():
             skipped += 1
             continue
         d = d if isinstance(d, list) else (d.get('data') or [])
+        # 🧹 V74.2.3 防禦:K 線裡若還殘留「沒有收盤價」的空殼(盤中快照留下的),
+        #    下面 `float(r['close'])` 會整檔炸掉 → 被 except 吞成「略過」,而且零錯誤訊息。
+        #    ⚠️ 實測 6690/3131/6187 就是這樣被略過的(它們最新一根是好的,壞的在歷史中間)。
+        #    ⛔ 這裡只是防禦,根治在 miner.export_json(寫檔前就濾掉)。
+        d = [r for r in d if isinstance(r.get('close'), (int, float)) and r['close'] > 0]
         # ⛔ 相對強度一律查「這一檔自己最新日」的大盤漲跌;查不到就留空(不同日相減是錯的)
         my_date = str(d[-1].get('date', '')).replace('/', '-') if d else ''
         v = build_one(d, twii_by_date.get(my_date))

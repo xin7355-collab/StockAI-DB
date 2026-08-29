@@ -2174,6 +2174,19 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
                         rec['margin_balance'] = marg_day.get('margin_balance', 0)
                         rec['short_balance']  = marg_day.get('short_balance',  0)
 
+        # 🧹 V74.2.3 濾掉「沒有收盤價」的壞列(⛔ 一根沒有收盤價的 K 線本來就不該存在)。
+        #    來源:盤中快照寫下 open/high/low/volume 但 close 還沒有;官方收盤沒回來覆蓋就留成空殼。
+        #    ⚠️ V74.2.2 的 yfinance 校正只看**最近 10 個交易日**,補不到歷史中間殘留的那幾根 →
+        #       而下游只要遇到一根 `float(None)` 就整檔算不出東西(screener_miner 就是這樣把
+        #       6690/3131/6187 三檔略過的)。這裡在寫檔前一次濾乾淨,所有下游都受益。
+        #    ⛔ 只濾「沒有收盤價」的,其餘欄位缺值不動(法人/融資本來就常態是 0)。
+        _n0 = len(records)
+        records = [r for r in records if isinstance(r.get('close'), (int, float)) and r['close'] > 0]
+        if len(records) != _n0:
+            print(f"  🧹 {sym} 濾掉 {_n0 - len(records)} 根沒有收盤價的空殼 K(盤中快照殘留)")
+        if not records:
+            continue        # 🚧 全部都是壞列 → ⛔ 不可寫出空檔覆蓋掉原本的好資料
+
         # 🔧 V71.7.9 分割/減資回溯調整(見 _backadjust_splits 的說明)。
         #    放在寫檔前的最後一步 → 全市場 2,700 檔都會過這關,而且最新那筆價格不會被動到。
         try:
