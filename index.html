@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V73.9.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V73.9.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.9.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V73.9.9 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2925,6 +2925,7 @@
                         <button onclick="app.switchRadarStrategy('potential')" id="radarTabPotential" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">潛力黑馬</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">長線/中線</span></button>
                         <button onclick="app.switchRadarStrategy('wrongkill')" id="radarTabWrongkill" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">錯殺便宜</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">大跌抗性</span></button>
                         <button onclick="app.switchRadarStrategy('theme')" id="radarTabTheme" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">題材脈動</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">新聞熱度</span></button>
+                        <button onclick="app.switchRadarStrategy('aichain')" id="radarTabAiChain" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="AI 演進五級 × 台股受惠股地圖:誰在哪一層賺錢、正在發生的技術轉折(人工整理的產業說明書,不是買進名單)"><span class="block text-[11px]">🤖 AI 鏈</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">產業地圖</span></button>
                         <button onclick="app.switchRadarStrategy('monster')" id="radarTabMonster" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">妖股雷達</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">高風險</span></button>
                         <button onclick="app.switchRadarStrategy('kbar_bear')" id="radarTabKbarBear" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">K棒轉空</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">找賣點</span></button>
                         <button onclick="app.switchRadarStrategy('attention')" id="radarTabAttention" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">處置股</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">風控</span></button>
@@ -3008,6 +3009,13 @@
                         <span class="text-[9px] text-gray-600">每交易日 00:30・06:30 自動更新</span>
                     </div>
                     <div id="themePulseBody"></div>
+                </div>
+
+                <!-- 🤖 V73.9.9 AI 產業鏈地圖 view(aichain tab 專用,預設隱藏)-->
+                <div id="radarAiChainView" class="hidden flex-grow">
+                    <div id="aiChainBody" class="space-y-2">
+                        <div class="text-[11px] text-gray-600 text-center py-4">⏳ 載入中...</div>
+                    </div>
                 </div>
 
                 <!-- 💎 V59.1 潛力黑馬 view(從底部💎 tab 併入選股池;renderPotentialTab 自帶長線/中線切換) -->
@@ -7340,8 +7348,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V73.9.8',
+    _APP_VERSION: 'V73.9.9',
     _CHANGELOG: [
+        { v:'V73.9.9', dt:'2026-08-29', d:[
+            '🤖 選股頁新增「AI 鏈・產業地圖」:AI 演進五級(聊天機器人→推理者→智能體→創新者→組織者)'
+            + '對應台股受惠股 67 檔 —— 點一級看台鏈在那一層怎麼賺錢、篩選成員名單;'
+            + '另有 10 個正在發生的技術轉折(液冷/CPO/自研晶片/機器人/記憶體漲價循環)、'
+            + '錢被誰賺走的利潤池、訊號傳導鏈與檢核清單。每檔附近20日/外資10日/營收YoY 真實數字。',
+            '📐 K線頁:AI 鏈成員的個股多一行「產業定位」—— 特別是上櫃股(官方產業分類不涵蓋)'
+            + '從此看得到自己在 AI 鏈的哪一層。⚠️ 整套是人工整理的產業說明書,不是買進名單。',
+        ]},
         { v:'V73.9.8', dt:'2026-08-28', d:[
             '📊 「會賺訊號」清單裡新增**驗證過的成績表** —— 實測過的 86 種做法、'
             + '只採用 2 種,連「哪些做法反而變差」都列出來。以前這些只在開發筆記裡,'
@@ -19904,7 +19920,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (!sigs.length) {
             // ⭐ 「K 棒沒訊號」≠「這張卡沒東西可講」—— 行情階段跟 K 棒訊號是兩件事。
             //    ⛔ 這裡直接 return 的話,那條只會在剛好有 K 棒訊號的日子出現 = 隨機出現,不是條件觸發。
-            const _rg = this._stockRegimeHtml(this.currentSymbolId);
+            const _rg = this._stockRegimeHtml(this.currentSymbolId) + this._aiChainChipHtml(this.currentSymbolId);
             if (_rg) {
                 el.classList.remove('hidden'); _kbShow(true);
                 el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>`
@@ -20020,7 +20036,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="mt-1">${rest.slice(0, 12).map(s => _card(s, false)).join('')}
                 ${rest.length > 12 ? `<div class="text-[9px] text-gray-600 text-center py-1">⋯ 另有 ${rest.length - 12} 條</div>` : ''}</div></details>` : '');
         const turnHint = hasTurn ? `<div class="text-[10px] text-amber-300/90 mt-1.5 leading-snug bg-amber-900/15 border-l-2 border-amber-500/60 pl-2 py-1 rounded-r">🔑 朱家泓鐵律「開盤定生死」:出現變盤/轉折K後,看<b>次日開盤</b>——開低=變盤確認,多單該跑;開高=化解疑慮,可續抱。</div>` : '';
-        el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>${_headline}${this._stockRegimeHtml(this.currentSymbolId)}${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
+        el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>${_headline}${this._stockRegimeHtml(this.currentSymbolId)}${this._aiChainChipHtml(this.currentSymbolId)}${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
         el.classList.remove('hidden');
         _kbShow(true);
     },
@@ -38262,6 +38278,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         divergent: { id: 'radarTabDivergent', active: 'bg-teal-600/25 text-teal-200 border-teal-500' },
         wrongkill: { id: 'radarTabWrongkill', active: 'bg-emerald-600/25 text-emerald-200 border-emerald-500' },
         theme:     { id: 'radarTabTheme',     active: 'bg-amber-600/25 text-amber-200 border-amber-500' },
+        aichain:   { id: 'radarTabAiChain',   active: 'bg-blue-600/25 text-blue-200 border-blue-500' },
         attention: { id: 'radarTabAttention', active: 'bg-orange-600/25 text-orange-300 border-orange-500' },
         kbar_bull: { id: 'radarTabKbarBull',  active: 'bg-red-600/25 text-red-300 border-red-500' },
         kbar_bear: { id: 'radarTabKbarBear',  active: 'bg-green-600/25 text-green-300 border-green-500' },
@@ -38287,6 +38304,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         attention: '🚨 處置股風控區｜TWSE 官方注意/處置名單 + 出關倒數。處置股分盤撮合流動性差,新手勿碰;出關前後常爆量,高手才玩。',
         wrongkill: '🩹 錯殺撿便宜｜今天大跌 ≥4% 但體質沒壞(原多頭+回測支撐+法人沒跑+營收成長)。先「🔎查利空」確認沒公司壞消息,再等紅K站回5日線進 — 別今天接刀。',
         theme:     '🔥 題材脈動｜Google 新聞 3 日熱度排行 + 👑 同族群 5 日最強前3。點題材名=免費 AI 查最新發展、點新聞標題=看原文、點股名=進該股總覽。',
+        aichain:   '🤖 AI 產業鏈地圖｜AI 演進五級(聊天機器人→推理者→智能體→創新者→組織者)對應台股受惠股:誰在哪一層賺錢、10 個正在發生的技術轉折(液冷/CPO/ASIC/機器人/記憶體循環)、每季該盯的檢核清單。⚠️ 名單與層級是<b>人工整理的產業說明書</b>(2026-08 版),不是官方分類、預測力未實測 → ⛔ 不是買進名單;漲跌/籌碼是每日收盤快照。',
         falcon:    '🦅 獵鷹建倉｜全市場 AI 評分 ≥ 60 的標的(紅榜 ≥75 / 橙榜 60-74),分數越高越優先,綜合動能·籌碼·技術·風險。',
         kbar_bull: '🌅 K棒轉多｜全市場掃朱家泓 K棒戰法「偏多轉折」:晨星/長紅吞噬/長紅遭遇/測撐有撐,都配合成交量。純公式,右欄顯命中訊號。→ 找進場買點,站上訊號 K 高點或 5MA 再分批進。',
         kbar_bear: '🌃 K棒轉空｜全市場掃朱家泓 K棒戰法「偏空轉折/出貨」:夜星/長黑吞噬/長黑遭遇/測壓有壓/量價背離,都配合成交量。純公式。→ 手上有貨的顧停損、空手別追高,跌破訊號 K 低點多單先走。',
@@ -38398,7 +38416,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const potView   = document.getElementById('radarPotentialView');
         const dtView    = document.getElementById('radarDaytradeView');
         const tsView    = document.getElementById('radarTodaySigView');
-        [layupView, tableWrap, attView, wkView, themeView, potView, dtView, tsView].forEach(v => v && v.classList.add('hidden'));
+        const aicView   = document.getElementById('radarAiChainView');
+        [layupView, tableWrap, attView, wkView, themeView, potView, dtView, tsView, aicView].forEach(v => v && v.classList.add('hidden'));
         if (key === 'todaysig') {
             if (tsView) tsView.classList.remove('hidden');
             this._renderTodaySignalView().catch(() => {});
@@ -38425,6 +38444,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         } else if (key === 'theme') {
             if (themeView) themeView.classList.remove('hidden');
             this._themePulseFresh();
+        } else if (key === 'aichain') {
+            if (aicView) aicView.classList.remove('hidden');
+            this._renderAiChainView();
         } else if (key === 'monster' || key === 'foreign3' || key === 'trust3') {
             // 🐲🏦🏛️ V57.6 妖股/外資連買/投信連買:資料在 radar.json(夜間採礦),共用表格容器
             if (tableWrap) tableWrap.classList.remove('hidden');
@@ -41070,6 +41092,244 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
 
     // 🚀 V69.1.23 營收動能:月營收 YoY 榜(讀 fund_yoy_gm,零採礦;濾掉低基期爆衝離群值)
+    // ═══════════ 🤖 AI 產業鏈地圖(V73.9.9)═══════════
+    // 使用者上傳「AI 策略儀表板」包(AI 演進五級 × 台股受惠股 + 每週 FinMind 成長引擎),要求以散戶救星風格納入。
+    // ⛔ 三個刻意不採用的部分(⛔ 別再接回來):
+    //   ① 它的「動能分數」= 營收YoY×60% + 法人×40%、熱度門檻 35/50/65 —— 權重與門檻全是憑空訂的(陷阱 #38)
+    //      → 這裡只顯示**原始數字**(近20日漲跌/外資10日/YoY),⛔ 不混成一個看起來很精確的假分數。
+    //   ② 它的每週 FinMind 採礦引擎 —— YoY/法人 App 本來就有(screener.json 覆蓋 65/67 檔,fund_yoy_gm 61 檔)
+    //      → 零採礦原則直接讀既有資料;新增每週 cron 也會撞 GitHub 排程配額(V73.9.0)。名單要更新 = 叫 Claude 改這份表。
+    //   ③ LLM 每週自動提案新受惠股 —— 未驗證的主張不進 App;要加股票 = 人工判斷後改 seed。
+    // ⚠️ 名單/層級/轉折全部是**人工整理的產業框架**(2026-08 版),不是官方分類、預測力未實測
+    //    → ⛔ 不計分、不下買賣指令、不進任何排序榜;它是「產業說明書」。
+    // ⭐ 它補的真缺口:證交所 33 大類只涵蓋上市(這份名單裡 17 檔上櫃股完全沒有官方分類),
+    //    而且官方分類講「行業」不講「AI 鏈的哪一層」→ K線頁的成員 chip(_aiChainChipHtml)就是給這個用的。
+    // 格式:stocks 每筆 [代號, 名稱, 段(up/mid/down), 題材, 受惠層級字串, 毛利(高中低), 主要風險]
+    _AI_CHAIN: {
+        ver: '2026-08-29',
+        lv: {
+            1: { n: '聊天機器人', en: 'Chatbots', mat: 100, st: '完全普及', d: '會對話、寫文章、做基礎整理(ChatGPT 初代那種)', tw: '帶動第一波 AI 伺服器建置潮(訓練算力)—— 台廠這輪大爆發的起點:伺服器組裝、高階晶片代工。' },
+            2: { n: '推理者', en: 'Reasoners', mat: 85, st: '當前主力階段', d: '先思考再回答,有專家級的推理與解題能力', tw: '算力從「訓練」外溢到「推論」:推論晶片、HBM/記憶體、散熱、電源、AI PC 是這一階段的主受惠。' },
+            3: { n: '智能體', en: 'Agents', mat: 40, st: '快速爆發期', d: '給目標就會自己拆步驟、開工具、把事做完', tw: '終端要能常駐跑模型:NPU/邊緣運算/AIoT;實體化就是機器人(關節傳動/減速機/AI 視覺是台廠切入點)。' },
+            4: { n: '創新者', en: 'Innovators', mat: 10, st: '研發實驗室階段', d: '自己提出科學假設、設計實驗、發現新藥新材料', tw: '超級電腦與更高頻寬互連:高階矽光子/CPO 是台廠對應。' },
+            5: { n: '組織者', en: 'Organizations', mat: 0, st: '遠期理論構想', d: '像一整家公司一樣自主協調資源營運', tw: '算力=水電:電網重電、綠能、低軌衛星這類「底層基建」對應這一層。' },
+        },
+        seg: { up: '上游・算力硬體', mid: '中游・平台整合', down: '下游・應用軟體' },
+        stocks: [
+            ['2330', '台積電', 'up', '先進製程 / CoWoS', '1234', '高', '地緣政治、資本支出高峰'],
+            ['2454', '聯發科', 'up', '邊緣 AI SoC', '23', '高', '手機景氣連動'],
+            ['3661', '世芯-KY', 'up', 'ASIC 設計服務', '123', '中', '大客戶集中(北美 CSP)'],
+            ['3443', '創意', 'up', 'ASIC / IP', '123', '中', '訂單依存母公司生態'],
+            ['3035', '智原', 'up', 'ASIC 設計服務(聯電系)', '123', '中', '訂單認列波動、同業競爭'],
+            ['5274', '信驊', 'up', 'BMC 伺服器管理晶片', '12', '高', '伺服器出貨週期'],
+            ['3711', '日月光投控', 'up', '先進封測', '12', '中', '稼動率景氣循環'],
+            ['2317', '鴻海', 'up', 'AI 伺服器 / 機櫃', '123', '低', '低毛利、基期龐大'],
+            ['2382', '廣達', 'up', 'AI 伺服器', '12', '低', '組裝低毛利、CSP 議價'],
+            ['3231', '緯創', 'up', 'AI 伺服器', '12', '低', '組裝低毛利、競爭者多'],
+            ['6669', '緯穎', 'up', '雲端資料中心', '12', '低', '客戶高度集中'],
+            ['8210', '勤誠', 'up', 'AI 伺服器機殼', '12', '中', '組裝鏈砍價壓力'],
+            ['2308', '台達電', 'up', '電源 / 液冷', '125', '中', '估值已高'],
+            ['3017', '奇鋐', 'up', '散熱模組 / 液冷', '2', '中', '液冷競爭者湧入'],
+            ['3324', '雙鴻', 'up', '水冷板', '2', '中', '液冷競爭者湧入'],
+            ['2421', '建準', 'up', '散熱風扇', '2', '中', '液冷排擠氣冷風險'],
+            ['3037', '欣興', 'up', 'ABF 載板', '12', '中', '玻璃基板替代(2027+)'],
+            ['8046', '南電', 'up', 'ABF 載板', '12', '中', '玻璃基板替代(2027+)'],
+            ['2383', '台光電', 'up', '高階 CCL', '12', '中', '高階材料競爭'],
+            ['2368', '金像電', 'up', 'AI 伺服器 PCB', '12', '中', '產能擴張執行力'],
+            ['2345', '智邦', 'up', '資料中心交換器', '123', '中', '白牌交換器競爭'],
+            ['4977', '眾達-KY', 'up', '光收發模組', '23', '中', 'CPO 長期替代可插拔'],
+            ['3363', '上詮', 'up', '矽光子 / CPO', '24', '中', '量產時程不確定'],
+            ['2408', '南亞科', 'up', '記憶體', '2', '中', '記憶體景氣循環'],
+            ['8299', '群聯', 'up', 'AI 儲存 / aiDAPTIV', '23', '中', 'NAND 價格波動'],
+            ['2379', '瑞昱', 'up', '網通 / 邊緣晶片', '3', '高', '消費性市場連動'],
+            ['3227', '原相', 'up', '感測晶片', '3', '高', '新應用放量時程'],
+            ['1513', '中興電', 'up', '重電 / 電網', '25', '中', '交期長、原物料波動'],
+            ['1519', '華城', 'up', '變壓器', '25', '中', '北美需求持續性'],
+            ['3491', '昇達科', 'up', '低軌衛星微波元件', '35', '高', '衛星客戶認證週期長'],
+            ['6285', '啟碁', 'up', '衛星地面設備 / 網通', '35', '中', '消費性網通比重高'],
+            ['2314', '台揚', 'up', '衛星通訊設備', '35', '中', '訂單波動大'],
+            ['3105', '穩懋', 'up', 'GaAs PA / 衛星射頻', '35', '中', '稼動率景氣循環'],
+            ['2049', '上銀', 'up', '滾珠螺桿 / 線性傳動', '3', '中', '工具機景氣連動'],
+            ['4576', '大銀微系統', 'up', '力矩馬達 / 機器人關節', '3', '中', '放量時程不確定'],
+            ['1597', '直得', 'up', '微型線性滑軌', '3', '中', '客戶集中'],
+            ['1536', '和大', 'up', '減速機 / 精密齒輪', '3', '中', '車用轉型陣痛'],
+            ['6188', '廣明', 'up', '協作機器人(持股達明)', '3', '中', '機器人市場競爭激烈'],
+            ['4585', '達明', 'up', '協作機器人本尊', '3', '中', '放量時程、上市未滿一年籌碼不穩'],
+            ['3131', '弘塑', 'up', '先進封裝濕製程設備', '12', '高', '訂單集中台積電'],
+            ['3583', '辛耘', 'up', '先進封裝設備 / 再生晶圓', '12', '中', '訂單認列波動'],
+            ['6187', '萬潤', 'up', 'CoWoS 點膠 / 檢測設備', '12', '中', '訂單認列波動'],
+            ['2449', '京元電子', 'up', 'AI 晶片測試', '12', '中', '單一大客戶比重高'],
+            ['2357', '華碩', 'up', 'AI PC / 品牌伺服器', '23', '中', '通路庫存波動'],
+            ['3529', '力旺', 'up', 'eNVM 矽智財 / 邊緣安全', '23', '高', '授權金認列波動'],
+            ['2344', '華邦電', 'up', '利基型 DRAM / Flash', '2', '中', '循環股:原廠擴產回歸時反轉快'],
+            ['2337', '旺宏', 'up', 'NOR Flash', '2', '中', '循環股:報價回落風險'],
+            ['3006', '晶豪科', 'up', '利基型記憶體 IC', '23', '中', '循環股:報價回落風險'],
+            ['3260', '威剛', 'up', '記憶體模組(漲價受惠)', '2', '中', '循環股:庫存利益隨價反轉'],
+            ['2327', '國巨', 'up', 'MLCC / 鉭質電容龍頭', '23', '中', '循環+結構並存,追高風險'],
+            ['2492', '華新科', 'up', 'MLCC / 晶片電阻', '2', '中', '循環股:擴產供給回歸'],
+            ['3026', '禾伸堂', 'up', '高壓 MLCC(AI 電源)', '2', '中', '循環股:報價回落風險'],
+            ['2059', '川湖', 'up', 'AI 機櫃滑軌(近寡占)', '12', '高', '單一產品線集中'],
+            ['3211', '順達', 'up', '機櫃 BBU 備援電池', '2', '中', 'BBU 競爭者增加'],
+            ['6223', '旺矽', 'up', 'AI 晶片探針卡', '12', '高', '客戶認證週期'],
+            ['6515', '穎崴', 'up', '測試介面 / 探針卡', '12', '高', '訂單集中大客戶'],
+            ['6689', '伊雲谷', 'mid', '雲端 MSP / GenAI 代理', '123', '低', '轉售毛利偏低'],
+            ['6214', '精誠', 'mid', 'AI 系統整合', '123', '中', '人力成本上升'],
+            ['2480', '敦陽科', 'mid', '系統整合', '23', '中', '內需市場天花板'],
+            ['6112', '邁達特', 'mid', '雲端代理', '12', '低', '轉售毛利偏低'],
+            ['5203', '訊連', 'mid', 'AI 影像模型 FaceMe', '12', '高', '授權放量時程'],
+            ['4953', '緯軟', 'mid', '軟體外包 / AI 導入', '23', '中', '中國業務比重'],
+            ['2359', '所羅門', 'mid', 'AI 3D 視覺軟體', '3', '中', '題材先行、獲利待驗證'],
+            ['6752', '叡揚', 'down', '企業軟體 / RAG', '123', '高', '內需市場天花板'],
+            ['6183', '關貿', 'down', '政府 / 關務資訊', '23', '中', '標案週期性'],
+            ['2471', '資通', 'down', '金融資訊系統', '23', '中', '專案認列波動'],
+            ['6865', '偉康科技', 'down', '數位金融應用', '23', '高', '客戶集中金融業'],
+        ],
+        // 💰 利潤池:整條鏈的錢被誰賺走(份額為約略估計,人工整理)
+        pool: [
+            { n: '運算晶片(GPU/ASIC+HBM)', sh: 70, gm: '60~75%', tw: '2330 代工・3711 封測・3661/3443/3035 ASIC', note: '價值與毛利雙重集中地。台股入口是「代工與設計服務抽成」,不是晶片本身。' },
+            { n: '伺服器組裝 / 機櫃', sh: 12, gm: '5~9%', tw: '2317・2382・3231・6669', note: '賺量不賺價,看營收動能與市佔,毛利率沒有想像空間。' },
+            { n: '網通交換器 / 光通訊', sh: 6, gm: '20~40%', tw: '2345・4977・3363', note: '頻寬升級(800G→1.6T)單價跳升,少數量價齊揚的環節。' },
+            { n: '散熱(液冷滲透中)', sh: 5, gm: '25~35%', tw: '3017・3324・2421', note: '氣冷→液冷讓單機櫃散熱價值翻倍。' },
+            { n: '電源(PSU/BBU/電網)', sh: 4, gm: '25~30%', tw: '2308・1513・1519', note: '機櫃功耗越高越受惠,外溢到電網重電。' },
+            { n: 'PCB / 載板 / CCL', sh: 3, gm: '20~30%', tw: '3037・2383・2368', note: '層數與材料升級撐單價,但要盯玻璃基板替代。' },
+        ],
+        // 🧭 傳導鏈:訊號從哪裡先出現(領先→確認)
+        chain: [
+            { lead: '領先 2~3 季', t: '四大 CSP 資本支出指引', d: '微軟/Google/亞馬遜/Meta 財報的 Capex 展望 = 整條台股 AI 鏈的總水龍頭。增速轉折比絕對金額重要。' },
+            { lead: '領先 1~2 季', t: '台積電月營收 + CoWoS 擴產', d: '先進封裝產能 = 全球 AI 晶片出貨天花板,分配給誰就是誰的訂單。' },
+            { lead: '領先 1 季', t: 'ODM 月營收 MoM 動能', d: '鴻海/廣達/緯穎月營收環比直接反映機櫃拉貨節奏;連 2 個月 MoM 轉負 = 降溫警訊。' },
+            { lead: '同步確認', t: '零組件出貨與報價', d: '散熱/電源/PCB/光模組跟隨機櫃出貨,是確認訊號不是領先訊號。' },
+            { lead: '風險哨兵', t: '推論成本效率衝擊', d: 'DeepSeek 式的效率突破會瞬間改寫算力需求預期 —— 整條鏈最大的系統性風險。' },
+        ],
+        // 🔄 技術轉折:誰上位、誰被替代(人工整理;win/lose 裡有代號的可點)
+        trans: [
+            { t: '氣冷 → 液冷', st: '滲透率快速上升', imp: '高', win: ['3017 奇鋐', '3324 雙鴻', '2308 台達電'], lose: ['純氣冷風扇業者'], note: '單機櫃散熱價值大幅提升,是零組件中內容成長最陡的曲線。' },
+            { t: '可插拔光模組 → CPO 矽光子', st: '2026~2028 過渡期', imp: '高', win: ['3363 上詮', '2330 台積電'], lose: ['4977 眾達(長期)'], note: '短期 800G/1.6T 可插拔仍是主流;CPO 量產後價值向矽光子封裝移轉。' },
+            { t: 'GPU → 自研 ASIC 佔比上升', st: '進行中', imp: '高', win: ['3661 世芯-KY', '3443 創意', '3035 智原', '2454 聯發科'], lose: ['純輝達單一鏈'], note: 'CSP 自研晶片佔比每升 10%,設計服務廠 NRE 與量產抽成同步放大。' },
+            { t: 'ABF 載板 → 玻璃基板', st: '2027+ 醞釀', imp: '中', win: ['轉型成功者'], lose: ['3037 欣興', '8046 南電'], note: '英特爾/三星力推玻璃基板,ABF 廠估值天花板被此風險壓住,要追轉型進度。' },
+            { t: '訓練 → 推論比重反轉', st: '進行中', imp: '中', win: ['2454 聯發科', '2379 瑞昱', '8299 群聯'], lose: [], note: '推論走向邊緣端與低成本化,AI PC/手機/端側儲存是第二波受惠者。' },
+            { t: '資料中心電力缺口', st: '結構性長多', imp: '中', win: ['1513 中興電', '1519 華城', '2308 台達電'], lose: [], note: '電力是比晶片更難擴產的瓶頸,重電交期以「年」計,訂單能見度最長。' },
+            { t: '數位 AI → 實體 AI(機器人)', st: '人形機器人放量前期', imp: '高', win: ['2049 上銀', '4576 大銀微系統', '6188 廣明', '4585 達明', '2359 所羅門'], lose: [], note: '人形機器人是 L3 智能體的實體化。關節傳動、減速機、AI 視覺是台廠最確定的切入點。' },
+            { t: '地面網路 → 低軌衛星星系', st: '第二代星系部署中', imp: '中', win: ['3491 昇達科', '6285 啟碁', '3105 穩懋'], lose: [], note: 'Agent 無所不在的連線需求 + 各國主權通訊自主,低軌衛星是 L3/L5 的通訊底層基建。' },
+            { t: 'HBM 排擠 → 傳統記憶體漲價循環', st: '漲價循環進行中', imp: '高', win: ['2408 南亞科', '2344 華邦電', '2337 旺宏', '3006 晶豪科', '3260 威剛', '8299 群聯'], lose: [], note: '原廠產能轉 HBM,成熟製程供給塌陷、台廠利基產能變稀缺。⚠️ 循環股鐵律:反轉快,盯 2027~28 擴產回歸,⛔ 別當純成長股抱。' },
+            { t: 'AI 機櫃內容價值暴增(被動元件/BBU/滑軌)', st: '結構性缺貨', imp: '高', win: ['2327 國巨', '2492 華新科', '3026 禾伸堂', '3211 順達', '2059 川湖'], lose: [], note: '單機櫃 MLCC 用量大增(業界估從數千顆到數萬顆);日韓大廠滿載外溢台廠。⚠️ 與記憶體同屬漲價循環,要跟純成長股分開對待。' },
+        ],
+        // ✅ 檢核清單:整條鏈要定期盯的事(對應 App 內已有的資料會標出來)
+        chk: [
+            { f: '每季', i: '四大 CSP Capex 指引 YoY 增速', s: '增速放緩 = 整條鏈降評風險', in: '📅 財經行事曆已收美股巨頭財報日' },
+            { f: '每月 10 日', i: '台積電 + 四大 ODM 月營收', s: '連 2 月 MoM 轉負 = 拉貨降溫', in: '🚀 營收動能榜 / 個股基本頁有 YoY' },
+            { f: '每季', i: '輝達財報 Data Center 營收 + 指引', s: '指引低於預期 = 台鏈同步修正', in: '📅 財經行事曆已收(附台股對應族群)' },
+            { f: '每月', i: '外資對 AI 權值股買賣超累計', s: '外資連續調節台積電 = 資金退潮', in: '🏦 外資連買榜 / 大盤頁外資動向' },
+            { f: '不定期', i: 'CoWoS / 先進封裝擴產新聞', s: '產能分配變動 = ODM 訂單重分配', in: '🔥 題材脈動 / 國際新聞' },
+            { f: '不定期', i: '主流模型 API 價格與開源跑分', s: '推論成本暴跌 = 硬體需求下修風險', in: '(App 無此資料,要自己盯)' },
+            { f: '每季', i: 'ABF 廠玻璃基板轉型進度', s: '轉型落後 = 載板股估值受壓', in: '(法說會/產業媒體,要自己盯)' },
+        ],
+    },
+    _aicLv: null,
+    _aicSetLv(lv) { this._aicLv = (this._aicLv === lv) ? null : lv; this._renderAiChainView(); this.vibrate(10); },
+    // K線頁一行成員 chip:這檔在 AI 鏈的哪一層 —— ⭐ 對 17 檔沒有官方產業分類的上櫃股尤其有用
+    _aiChainChipHtml(sym) {
+        const C = this._AI_CHAIN; if (!C || !sym) return '';
+        const s = C.stocks.find(x => x[0] === sym); if (!s) return '';
+        const lvs = String(s[4]).split('').map(n => `L${n} ${(C.lv[n] || {}).n || ''}`).join('・');
+        return `<div class="bg-[#0d1117] border-l-2 border-blue-700 pl-2.5 py-1.5 rounded-r mb-2">
+            <div class="text-[10px] text-gray-300 leading-snug">🤖 <b>AI 產業鏈成員</b>:${C.seg[s[2]] || s[2]}・${s[3]} <span class="text-gray-500">(受惠層級 ${lvs})</span></div>
+            <div class="text-[9px] text-gray-600 mt-0.5 leading-snug">⚠️ 風險:${s[6]}。完整地圖在 選股 → 🤖 AI 鏈(人工整理的產業定位,⛔ 不是買賣訊號)。</div>
+        </div>`;
+    },
+    async _renderAiChainView() {
+        const body = document.getElementById('aiChainBody');
+        if (!body) return;
+        const C = this._AI_CHAIN;
+        // 動態層讀 screener.json(選股頁本來就會載,零採礦);沒載到也照樣顯示靜態內容
+        if (this._scrData === undefined) { try { await this._loadScreener(); } catch (_) {} }
+        if (this.radarStrategy !== 'aichain') return;
+        const D = this._scrData;
+        const val = (sym, k) => (D && D.rows && D.rows[sym]) ? this._scrV(D.rows[sym], k) : null;
+        const pn = (x, d = 1) => (x >= 0 ? '+' : '') + (+x).toFixed(d);
+        const cl = x => x >= 0 ? 'text-red-300' : 'text-green-300';
+        const med = arr => { const a = arr.filter(Number.isFinite).sort((x, y) => x - y); return a.length ? a[Math.floor(a.length / 2)] : null; };
+        const fmtMed = m => m === null ? '' : `<span class="font-mono ${cl(m)}">${pn(m)}%</span>`;
+        const lvStocks = lv => C.stocks.filter(s => s[4].includes(String(lv)));
+
+        // ① 五級演進條(點一級 = 篩選下方個股地圖)
+        const lvRows = [1, 2, 3, 4, 5].map(n => {
+            const L = C.lv[n], on = this._aicLv === n;
+            const m = med(lvStocks(n).map(s => val(s[0], 'chg20')));
+            const bar = `<div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden mt-1"><div class="h-full ${L.mat >= 80 ? 'bg-gray-500' : L.mat >= 30 ? 'bg-amber-500' : 'bg-blue-500'}" style="width:${Math.max(L.mat, 2)}%"></div></div>`;
+            const detail = on ? `<div class="text-[10px] text-gray-400 mt-1.5 leading-relaxed">${L.d}<br><span class="text-gray-300">🇹🇼 ${L.tw}</span></div>` : '';
+            return `<div onclick="app._aicSetLv(${n})" class="cursor-pointer bg-[#161b22] border ${on ? 'border-blue-500' : 'border-[#30363d]'} rounded-lg px-2.5 py-2 transition-all">
+                <div class="flex items-center gap-2">
+                    <span class="flex-shrink-0 w-7 h-7 rounded-full ${on ? 'bg-blue-600 text-white' : 'bg-[#21262d] text-gray-400'} text-[11px] font-black flex items-center justify-center">L${n}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap"><span class="text-[12px] font-black text-gray-100">${L.n}</span><span class="text-[9px] text-gray-600">${L.en}</span><span class="text-[9px] px-1 rounded bg-white/5 text-gray-400">${L.st}</span></div>
+                        <div class="text-[9px] text-gray-600 mt-0.5">成熟度 ${L.mat}%・成員 ${lvStocks(n).length} 檔${m !== null ? `・近20日中位 ${fmtMed(m)}` : ''}</div>
+                    </div>
+                    <span class="text-[9px] text-gray-600 flex-shrink-0">${on ? '▲ 收合' : '▼ 詳情'}</span>
+                </div>${bar}${detail}
+            </div>`;
+        }).join('');
+
+        // ② 個股地圖(依段分組;層級篩選中只顯該層成員)
+        const pick = this._aicLv ? C.stocks.filter(s => s[4].includes(String(this._aicLv))) : C.stocks;
+        const segBlock = ['up', 'mid', 'down'].map(seg => {
+            const rows = pick.filter(s => s[2] === seg)
+                .map(s => ({ s, c20: val(s[0], 'chg20') }))
+                .sort((a, b) => (Number.isFinite(b.c20) ? b.c20 : -1e9) - (Number.isFinite(a.c20) ? a.c20 : -1e9));
+            if (!rows.length) return '';
+            const m = med(rows.map(r => r.c20));
+            const trs = rows.map(({ s, c20 }) => {
+                const f10 = val(s[0], 'f10'), yoy = val(s[0], 'yoy');
+                const lvChips = String(s[4]).split('').map(n => `<span class="text-[8px] px-1 rounded bg-[#21262d] text-gray-400 font-mono">L${n}</span>`).join('');
+                return `<div onclick="app.analyze('${s[0]}'); app.switchAppTab('diag'); app.vibrate(30);" class="cursor-pointer bg-[#161b22] border border-[#30363d] rounded-lg px-2.5 py-1.5 hover:bg-[#1c2129] transition-colors">
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-mono text-[10px] text-gray-500">${s[0]}</span><span class="text-[12px] font-bold text-gray-100">${s[1]}</span>${lvChips}
+                        <span class="ml-auto font-mono text-[12px] font-black ${c20 === null ? 'text-gray-600' : cl(c20)}">${c20 === null ? '—' : pn(c20) + '%'}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 mt-0.5 text-[9px] text-gray-500 flex-wrap">
+                        <span class="text-gray-400">${s[3]}</span><span>毛利${s[5]}</span>
+                        <span>外資10日 ${f10 === null ? '—' : `<span class="font-mono ${cl(f10)}">${pn(f10, 0)}張</span>`}</span>
+                        <span>YoY ${yoy === null ? '—' : `<span class="font-mono ${cl(yoy)}">${pn(yoy, 0)}%</span>`}</span>
+                        <span class="text-gray-600 basis-full">⚠️ ${s[6]}</span>
+                    </div>
+                </div>`;
+            }).join('');
+            return `<div class="mt-1"><div class="flex items-center gap-2 px-1 py-1"><span class="text-[11px] font-black text-gray-300">${C.seg[seg]}</span><span class="text-[9px] text-gray-600">${rows.length} 檔${m !== null ? `・近20日中位 ${fmtMed(m)}` : ''}</span></div><div class="space-y-1">${trs}</div></div>`;
+        }).join('');
+
+        // ③ 轉折雷達 / ④ 框架(利潤池+傳導鏈)/ ⑤ 檢核清單 —— 全部預設收合(資訊不爆炸)
+        const chip = t => { const m = String(t).match(/^(\d{4,5}[A-Z]?)\s*(.*)$/); return m ? `<span onclick="event.stopPropagation(); app.analyze('${m[1]}'); app.switchAppTab('diag'); app.vibrate(30);" class="cursor-pointer inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-[#30363d] text-[9px] text-gray-300 hover:border-blue-600"><span class="font-mono text-gray-500">${m[1]}</span>${m[2]}</span>` : `<span class="inline-flex px-1.5 py-0.5 rounded bg-white/5 text-[9px] text-gray-500">${t}</span>`; };
+        const transHtml = C.trans.map(x => `<div class="bg-[#161b22] border border-[#30363d] rounded-lg px-2.5 py-2">
+            <div class="flex items-center gap-1.5 flex-wrap"><span class="text-[11px] font-bold text-gray-100">${x.t}</span><span class="text-[9px] px-1 rounded bg-white/5 text-gray-400">${x.st}</span><span class="text-[9px] ${x.imp === '高' ? 'text-amber-300' : 'text-gray-500'}">影響${x.imp}</span></div>
+            <div class="text-[9px] text-gray-500 mt-1 leading-relaxed">${x.note}</div>
+            <div class="flex items-center gap-1 flex-wrap mt-1"><span class="text-[9px] text-gray-600">受惠:</span>${x.win.map(chip).join('')}</div>
+            ${x.lose.length ? `<div class="flex items-center gap-1 flex-wrap mt-0.5"><span class="text-[9px] text-gray-600">被替代:</span>${x.lose.map(chip).join('')}</div>` : ''}
+        </div>`).join('');
+        const poolHtml = C.pool.map(p => `<div class="bg-[#161b22] border border-[#30363d] rounded-lg px-2.5 py-2">
+            <div class="flex items-center gap-2"><span class="text-[10px] font-bold text-gray-200 flex-1">${p.n}</span><span class="font-mono text-[12px] font-black text-gray-100">${p.sh}%</span></div>
+            <div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden mt-1"><div class="h-full bg-amber-600" style="width:${p.sh}%"></div></div>
+            <div class="text-[9px] text-gray-500 mt-1 leading-snug">毛利約 ${p.gm}・台股入口:${p.tw}<br>${p.note}</div>
+        </div>`).join('');
+        const chainHtml = C.chain.map((x, i) => `<div class="flex gap-2.5"><div class="flex flex-col items-center flex-shrink-0"><div class="w-5 h-5 rounded-full ${i === 4 ? 'bg-amber-600' : 'bg-blue-600'} text-white text-[10px] font-black flex items-center justify-center">${i + 1}</div>${i < 4 ? '<div class="w-0.5 flex-1 bg-[#30363d] my-1"></div>' : ''}</div><div class="flex-1 pb-2.5"><div class="text-[11px] font-bold text-gray-200">${x.t} <span class="text-[9px] font-normal text-amber-300/80">${x.lead}</span></div><div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${x.d}</div></div></div>`).join('');
+        const chkHtml = C.chk.map(x => `<div class="bg-[#161b22] border border-[#30363d] rounded px-2.5 py-1.5"><div class="text-[10px] text-gray-200"><span class="text-[9px] px-1 rounded bg-white/5 text-gray-400 mr-1">${x.f}</span>${x.i}</div><div class="text-[9px] text-gray-500 mt-0.5">訊號:${x.s}・${x.in}</div></div>`).join('');
+
+        const dd = (D && D.data_date) ? this._dW(D.data_date, { rel: 1 }) : null;
+        body.innerHTML = `
+            <div class="flex items-center gap-2 px-1"><span class="text-[11px] text-gray-400 font-bold">🪜 AI 演進到哪了(點一級看台鏈受惠 + 篩選名單)</span><span class="ml-auto text-[9px] text-gray-600">名單 ${C.ver} 版・${dd ? `數字 ${dd}` : '數字載入中'}</span></div>
+            <div class="space-y-1.5">${lvRows}</div>
+            <details class="mt-2"><summary class="cursor-pointer list-none text-[11px] text-gray-400 font-bold py-1">▸ 🔄 技術轉折雷達(${C.trans.length} 個正在發生的「誰上位、誰被替代」)</summary><div class="space-y-1.5 mt-1">${transHtml}</div></details>
+            <details class="mt-1"><summary class="cursor-pointer list-none text-[11px] text-gray-400 font-bold py-1">▸ 💰 錢被誰賺走 + 訊號傳導鏈(看懂整條鏈的框架)</summary>
+                <div class="text-[9px] text-gray-600 px-1 mb-1">利潤池份額是產業約略估計(人工整理),看相對大小就好。</div><div class="space-y-1.5">${poolHtml}</div>
+                <div class="text-[10px] text-gray-400 font-bold px-1 mt-2 mb-1">🧭 訊號從哪裡先出現(由領先到確認)</div><div class="px-1">${chainHtml}</div>
+            </details>
+            <details class="mt-1"><summary class="cursor-pointer list-none text-[11px] text-gray-400 font-bold py-1">▸ ✅ 檢核清單(整條鏈要定期盯的 ${C.chk.length} 件事)</summary><div class="space-y-1 mt-1">${chkHtml}</div></details>
+            <div class="flex items-center gap-2 px-1 mt-2"><span class="text-[11px] text-gray-400 font-bold">🗺️ 個股地圖${this._aicLv ? `(只顯 L${this._aicLv} ${C.lv[this._aicLv].n} 成員,再點一次取消)` : `(${C.stocks.length} 檔,各段內按近20日排)`}</span></div>
+            ${segBlock}
+            <div class="bg-[#161b22] border-l-4 border-yellow-600 border-y border-r border-[#30363d] rounded-r p-2.5 mt-2">
+                <div class="text-[10px] text-gray-300 leading-relaxed">⚠️ <b>這是產業說明書,⛔ 不是買進名單</b>:名單/層級/轉折是人工整理(${C.ver} 版),不是官方分類,預測力<b>未實測</b>。近20日/外資/YoY 是每日收盤快照(原始數字,⛔ 刻意不混成綜合分數 —— 憑空權重的分數比沒有分數更誤導)。循環股(記憶體/被動元件)反轉快,⛔ 別當純成長股抱。要進場請回到個股頁看「現在怎麼做」。</div>
+            </div>`;
+    },
+
     async _renderRevenueList() {
         const body = document.getElementById('radarMatrixBody');
         const updatedEl = document.getElementById('radarMatrixUpdated');
