@@ -123,14 +123,22 @@ textarea{resize:vertical;min-height:56px;font-family:inherit;font-size:14px}
 .askbtn:active{background:rgba(167,139,250,.25)}
 pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;white-space:pre-wrap;line-height:1.65;max-height:380px;overflow:auto}
 /* ── 表格 ── */
-.tblwrap{overflow-x:auto;margin-top:10px;-webkit-overflow-scrolling:touch}
-table.grid{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
-table.grid th{color:var(--sub);font-size:11px;text-align:right;padding:8px 9px;border-bottom:1px solid var(--line2);cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel)}
-table.grid th:first-child,table.grid td:first-child{text-align:left}
+/* 📌 表格凍結:標的欄(左)+ 表頭列(上)都固定住,橫向捲動時才比對得了
+   ⚠️ 表頭 sticky top 要生效,容器**必須自己有垂直捲動**(max-height + overflow:auto)——
+      只有 overflow-x 的話 sticky top 會沒有捲動祖先可貼。 */
+.tblwrap{overflow:auto;margin-top:10px;-webkit-overflow-scrolling:touch;max-height:72vh;
+  border:1px solid var(--line);border-radius:10px}
+table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;white-space:nowrap}
+table.grid th{color:var(--sub);font-size:11px;text-align:center;padding:8px 9px;
+  border-bottom:1px solid var(--line2);cursor:pointer;user-select:none;
+  position:sticky;top:0;z-index:3;background:#111926}
+table.grid th:first-child{left:0;z-index:4;text-align:center}
 table.grid th.on{color:var(--cyan)}
-table.grid td{padding:9px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono)}
+table.grid td{padding:9px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono);background:var(--panel)}
+table.grid td:first-child{position:sticky;left:0;z-index:2;text-align:left;
+  box-shadow:1px 0 0 var(--line2);min-width:112px}
 table.grid td.txtcell{font-family:inherit;text-align:left}
-table.grid tr:active td{background:rgba(61,139,253,.09)}
+table.grid tr:active td{background:#18202e}
 .namebtn{background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;font-weight:700;border-bottom:1px dashed var(--line2)}
 /* ── AI 鏈 ── */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin-top:14px}
@@ -224,6 +232,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <div class="lvflow" id="lvFlow"></div>
     <div id="lvDetail"></div>
     <div id="frontNote"></div>
+    <div id="missNote"></div>
   </div>
   <div class="panel">
     <h2>🗺️ 個股戰情表 <span class="sub" id="mapSub"></span></h2>
@@ -379,7 +388,10 @@ const PRO = {
       for (let n = el; n && n !== document.body; n = n.parentElement) {
         if (n.tagName === 'INPUT' || n.tagName === 'TEXTAREA' || n.tagName === 'PRE') return false;
         const st = getComputedStyle(n);
+        // ⚠️ 表格容器現在**橫向與直向都會捲**(表頭凍結需要)→ 兩個方向都要排除,
+        //    否則在表格裡上下滑會誤觸發「下拉重新整理」、左右滑會誤切分頁。
         if ((st.overflowX === 'auto' || st.overflowX === 'scroll') && n.scrollWidth > n.clientWidth + 4) return false;
+        if ((st.overflowY === 'auto' || st.overflowY === 'scroll') && n.scrollHeight > n.clientHeight + 4) return false;
       }
       return true;
     };
@@ -756,6 +768,20 @@ ${M.news || '(無)'}
       ['3006', '晶豪科', 'up', '利基型記憶體 IC', '23', '中', '循環股:報價回落風險', 'B'],
       ['3260', '威剛', 'up', '記憶體模組(漲價受惠)', '2', '中', '循環股:庫存利益隨價反轉', 'B'],
       ['8299', '群聯', 'up', 'AI 儲存 / aiDAPTIV', '23', '中', 'NAND 價格波動', 'B'],
+      ['6488', '環球晶', 'up', '矽晶圓(全球第3大)', '12', '中', '⚠️ 矽晶圓近年供過於求,AI 連動不如 CoWoS 直接', 'B'],
+      ['5483', '中美晶', 'up', '矽晶圓 / 環球晶母公司', '12', '中', '太陽能事業拖累、持股評價波動', 'B'],
+      ['6182', '合晶', 'up', '矽晶圓(小尺寸為主)', '12', '中', '⚠️ 產品結構偏成熟製程,AI 受惠間接', 'B'],
+      ['3532', '台勝科', 'up', '12 吋矽晶圓', '12', '中', '報價循環、日商母公司政策', 'B'],
+      ['3680', '家登', 'up', 'EUV 光罩傳送盒(近寡占)', '12', '高', '單一客戶與單一產品線集中', 'B'],
+      ['2338', '光罩', 'up', '光罩(先進製程耗材)', '12', '中', '成熟製程比重仍高', 'B'],
+      ['3653', '健策', 'up', 'AI 晶片均熱片 IHS', '12', '高', '單價下修壓力、客戶集中', 'D'],
+      ['6409', '旭隼', 'up', 'UPS 不斷電系統(資料中心)', '125', '高', '匯率與海外市場需求波動', 'D'],
+      ['3023', '信邦', 'up', '高速線材 / 連接器', '12', '中', '產品線分散、AI 占比待放大', 'C'],
+      ['2392', '正崴', 'up', '連接器 / 線纜組件', '12', '低', '消費性比重高、毛利偏低', 'C'],
+      ['4979', '華星光', 'up', '光收發模組', '23', '中', '規格轉換期、競爭激烈', 'C'],
+      ['6690', '安碁資訊', 'up', '資安服務(AI 時代攻防)', '23', '中', '⚠️ 內需標案為主,AI 直接受惠有限', 'E'],
+      ['8033', '雷虎', 'up', '無人機 / 水下載具', '3', '中', '🚨 無人機營收占比小,題材成分高', 'E'],
+      ['2634', '漢翔', 'up', '國防航太 / 無人機整合', '3', '低', '🚨 國防標案週期長,AI 連結間接', 'E'],
       ['2317', '鴻海', 'up', 'AI 伺服器 / 機櫃', '123', '低', '低毛利、基期龐大', 'C'],
       ['2382', '廣達', 'up', 'AI 伺服器', '12', '低', '組裝低毛利、CSP 議價', 'C'],
       ['3231', '緯創', 'up', 'AI 伺服器', '12', '低', '組裝低毛利、競爭者多', 'C'],
@@ -884,6 +910,15 @@ ${M.news || '(無)'}
     document.getElementById('lvDetail').innerHTML = D
       ? `<div class="warnbox" style="border-color:var(--blue);background:rgba(61,139,253,.06);color:#c3d6f2">
          <b>L${this._lvSel} ${D.n}</b>:${D.d}<br>🇹🇼 ${D.tw}<br><span style="opacity:.7">下方戰情表已篩成這一層的成員,再點一次取消。</span></div>` : '';
+    // 🚨 誠實揭露:screener 收不到的成員(目前主要是上櫃股)→ 數字會是「—」
+    //    ⛔ 不可靜默 —— 使用者看到整排「—」會以為程式壞了(陷阱 #22:沒有資料 ≠ 條件沒過)
+    const missN = C.stocks.filter(s => !this._scrV(s[0], 'chg20') && this._scrV(s[0], 'chg20') !== 0).length;
+    document.getElementById('missNote').innerHTML = missN > 0
+        ? `<div class="warnbox">⚠️ <b>${missN} 檔的數字目前是「—」</b>(名單共 ${C.stocks.length} 檔)——
+           這些多半是<b>上櫃股</b>:資料庫最近兩個交易日沒收到它們的收盤價,所以近20日/YoY/毛利算不出來。
+           ⛔ <b>不是這幾檔沒在動,也不是程式壞掉</b> —— 它們的<b>產業定位與風險說明照樣有效</b>,點股名一樣進得去看 K 線。
+           採礦補上之後數字會自動回來。</div>`
+        : '';
     document.getElementById('frontNote').innerHTML = front
       ? `<div class="note">🎯 <b>資金主戰場 = L${front.lv} ${C.lv[front.lv].n}</b>(該層 ${front.n} 檔近 20 日中位 <span class="${this.cls(front.m)}">${this.fmt(front.m, 1, true)}%</span>,五級裡最強)。
          ⚠️ 這是「<b>最近 20 天股價打哪一層</b>」的事實描述,<b>⛔ 不是 AI 進度預測、也沒有實測過預測力</b> —— 只用來看「這檔的題材有沒有跟上現在的主流」。

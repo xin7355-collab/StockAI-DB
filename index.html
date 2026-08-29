@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.0.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7348,8 +7348,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.0.0',
+    _APP_VERSION: 'V74.0.1',
     _CHANGELOG: [
+        { v:'V74.0.1', dt:'2026-08-29', d:[
+            '🤖 AI 鏈名單 67 → 81 檔:新增矽晶圓(環球晶/中美晶/合晶/台勝科)、'
+            + 'EUV光罩盒與光罩(家登/光罩)、AI晶片均熱片(健策)、UPS(旭隼)、'
+            + '高速連接器(信邦/正崴)、光通訊(華星光)、資安(安碁)、無人機(雷虎/漢翔)。'
+            + '⚠️ 無人機與資安已標明「營收占比小/AI 連結間接」,矽晶圓標明「近年供過於求」。',
+        ]},
         { v:'V74.0.0', dt:'2026-08-29', d:[
             '🤖 AI 鏈地圖照回饋優化:①五級點開**直接列出成員**(中文名+毛利率,'
             + '公司越會賺的排越前;⚠️ 公司會賺錢≠股價會漲,別直接當買進順序)'
@@ -41128,6 +41134,20 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ['3035', '智原', 'up', 'ASIC 設計服務(聯電系)', '123', '中', '訂單認列波動、同業競爭'],
             ['5274', '信驊', 'up', 'BMC 伺服器管理晶片', '12', '高', '伺服器出貨週期'],
             ['3711', '日月光投控', 'up', '先進封測', '12', '中', '稼動率景氣循環'],
+            ['6488', '環球晶', 'up', '矽晶圓(全球第3大)', '12', '中', '⚠️ 矽晶圓近年供過於求,AI 連動不如 CoWoS 直接'],
+            ['5483', '中美晶', 'up', '矽晶圓 / 環球晶母公司', '12', '中', '太陽能事業拖累、持股評價波動'],
+            ['6182', '合晶', 'up', '矽晶圓(小尺寸為主)', '12', '中', '⚠️ 產品結構偏成熟製程,AI 受惠間接'],
+            ['3532', '台勝科', 'up', '12 吋矽晶圓', '12', '中', '報價循環、日商母公司政策'],
+            ['3680', '家登', 'up', 'EUV 光罩傳送盒(近寡占)', '12', '高', '單一客戶與單一產品線集中'],
+            ['2338', '光罩', 'up', '光罩(先進製程耗材)', '12', '中', '成熟製程比重仍高'],
+            ['3653', '健策', 'up', 'AI 晶片均熱片 IHS', '12', '高', '單價下修壓力、客戶集中'],
+            ['6409', '旭隼', 'up', 'UPS 不斷電系統(資料中心)', '125', '高', '匯率與海外市場需求波動'],
+            ['3023', '信邦', 'up', '高速線材 / 連接器', '12', '中', '產品線分散、AI 占比待放大'],
+            ['2392', '正崴', 'up', '連接器 / 線纜組件', '12', '低', '消費性比重高、毛利偏低'],
+            ['4979', '華星光', 'up', '光收發模組', '23', '中', '規格轉換期、競爭激烈'],
+            ['6690', '安碁資訊', 'up', '資安服務(AI 時代攻防)', '23', '中', '⚠️ 內需標案為主,AI 直接受惠有限'],
+            ['8033', '雷虎', 'up', '無人機 / 水下載具', '3', '中', '🚨 無人機營收占比小,題材成分高'],
+            ['2634', '漢翔', 'up', '國防航太 / 無人機整合', '3', '低', '🚨 國防標案週期長,AI 連結間接'],
             ['2317', '鴻海', 'up', 'AI 伺服器 / 機櫃', '123', '低', '低毛利、基期龐大'],
             ['2382', '廣達', 'up', 'AI 伺服器', '12', '低', '組裝低毛利、CSP 議價'],
             ['3231', '緯創', 'up', 'AI 伺服器', '12', '低', '組裝低毛利、競爭者多'],

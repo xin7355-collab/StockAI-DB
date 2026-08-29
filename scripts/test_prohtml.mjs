@@ -147,9 +147,35 @@ const R = await page.evaluate(async () => {
         lamp: /[🔴🟢]/u.test(document.body.innerHTML),
         nan: /NaN|undefined/.test(out) || /NaN|undefined/.test(prompt) || /NaN|undefined/.test(stockPrompt),
         gotoInHtml: (valHtml.match(/PRO\.gotoStock\(/g) || []).length,
+        missNote: document.getElementById('missNote').innerText,
         badLayer: PRO.CHAIN.stocks.filter(s => !['A','B','C','D','E'].includes(s[7])).length,
         layerN: PRO.CHAIN.stocks.length,
     };
+});
+// ⑲ 📌 表格凍結:⚠️ 必須用**手機寬度**才有橫向溢出(1280 寬表格塞得下 → 捲不動 → 什麼都驗不到)
+await page.setViewportSize({ width: 430, height: 900 });
+await page.evaluate(() => { PRO._layerSel = null; PRO._lvSel = null; return PRO.renderChain(); });
+const S = await page.evaluate(async () => {
+    const wrap = document.querySelector('#tabChain .tblwrap');
+    const td1 = () => document.querySelector('#chainBody tr td:first-child');
+    const td3 = () => document.querySelector('#chainBody tr td:nth-child(3)');
+    const th1 = () => document.querySelector('#chainTbl th');
+    const b1 = td1().getBoundingClientRect().left;
+    const b3 = td3().getBoundingClientRect().left;
+    const bT = th1().getBoundingClientRect().top;
+    wrap.scrollLeft = 260; wrap.scrollTop = 400;
+    await new Promise(r => requestAnimationFrame(r));
+    const r = {
+        scrolled: wrap.scrollLeft > 50 && wrap.scrollTop > 50,
+        // ⭐ 對照組:同一個「不該凍結」的欄位,捲動前後自己要移動 —— ⛔ 沒這條的話「整張表沒捲」也會假通過
+        movedOther: Math.abs(td3().getBoundingClientRect().left - b3),
+        stickyOK: Math.abs(td1().getBoundingClientRect().left - b1) <= 2,
+        headOK: Math.abs(th1().getBoundingClientRect().top - bT) <= 2,
+        // ⚠️ 要驗**整排**表頭 —— 只驗第一個會被 `th:first-child` 的規則遮掉(注入驗證時就是這樣漏掉的)
+        thAlign: [...document.querySelectorAll('#chainTbl th')].map(t => getComputedStyle(t).textAlign),
+    };
+    wrap.scrollLeft = 0; wrap.scrollTop = 0;
+    return r;
 });
 await browser.close();
 
@@ -204,7 +230,7 @@ ok('⑪e bfcache 回來也要補捲動位置', /pageshow[\s\S]{0,120}persisted[\
 ok('⑥ 畫面與 prompt 無 NaN/undefined', !R.nan);
 ok('⑧ 燈號鐵則:不可用 🔴🟢(u flag)', !R.lamp);
 // ⑦ AI 鏈
-ok('⑦ 戰情表 67 檔', R.rowsN === 67, R.rowsN);
+ok('⑦ 戰情表 81 檔(V74.2.0 新增矽晶圓/無人機/散熱/連接器/光罩等 14 檔)', R.rowsN === 81, R.rowsN);
 ok('⑦b 按 YoY 排序 → 2330(stub 999)排第一', R.firstCode === '2330', R.firstCode);
 ok('⑦c null 排最後(4585 chg20=null)', /4585/.test(R.last2), R.last2.slice(0, 60));
 ok('⑦d 利潤池有中文名而且可點', /台積電/.test(R.chainTxt) && /PRO\.gotoStock\('2330'\)/.test(R.chainHtml));
@@ -218,7 +244,16 @@ ok('⑮e 成熟度那條要說明是人工框架、不隨時間增加', /不會�
 ok('⑱ 五層篩選有作用(B 層 ' + R.bOnly + ' 檔)', R.bRows === R.bOnly && R.bOnly > 0 && R.bRows < R.allRows, [R.bRows, R.bOnly, R.allRows]);
 ok('⑱b 🚨 台廠記憶體 ⛔ 不可標成 Core(台廠沒有 HBM)',
    /台廠沒有 HBM|台廠是利基型/.test(src) && /台廠做的是\*\*利基型記憶體不是 HBM\*\*|台廠做的是.{0,10}利基型記憶體不是 HBM/.test(src));
-ok('⑱c 每檔都有合法的供應鏈層(A~E),⛔ 不可有漏標', R.badLayer === 0 && R.layerN === 67, [R.badLayer, R.layerN]);
+ok('⑱c 每檔都有合法的供應鏈層(A~E),⛔ 不可有漏標', R.badLayer === 0 && R.layerN === 81, [R.badLayer, R.layerN]);
+// ⑲ 表格凍結(使用者:「標的這欄及這列要固定住才比對得了」)
+ok('⑲ 🚧 空過守門:手機寬度下表格真的捲得動,而且沒凍結的欄位確實跟著移動', S.scrolled && S.movedOther > 50, S);
+ok('⑲b 📌 橫向捲動時「標的」欄固定不動', S.stickyOK, S);
+ok('⑲c 📌 直向捲動時表頭列固定不動', S.headOK, S);
+ok('⑲d 表頭文字**整排**置中(⛔ 不可只有第一欄)',
+   S.thAlign.length >= 8 && S.thAlign.every(a => a === 'center'), S.thAlign);
+// 🚨 缺資料要誠實說,⛔ 不可靜默顯一排「—」
+ok('⑳ 缺資料時要說出原因(上櫃/採礦未收到),⛔ 不可讓人以為程式壞了',
+   !R.missNote || (/不是這幾檔沒在動|不是程式壞掉/.test(R.missNote) && /上櫃/.test(R.missNote)), R.missNote.slice(0, 120));
 ok('⑩ 載入無 pageerror', errs.length === 0, errs.join(' | '));
 
 console.log();
