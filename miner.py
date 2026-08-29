@@ -720,6 +720,42 @@ def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) 
     return []
 
 
+# 🚨 V74.2.1 — 「這一根要不要用 yfinance 覆蓋?」抽成純函式,⛔ 因為原本內嵌的判斷式漏掉最嚴重的情況。
+#
+# 🐛 原本寫 `old_c = existing_map[ds].get('close') or 0` + `if old_c > 0 and 差幅 >= 1.5%`
+#    → **close 是 None 時 old_c 變 0,`old_c > 0` 為 False,整個跳過** ——
+#    而「close 是 None」正是盤中快照留下的空殼(open/high/low/volume 都有、就是沒有收盤價),
+#    也就是這段程式碼**本來要修的那個情況**。結果它只修得了「有值但不準」,修不了「根本沒值」。
+#
+# 📊 實測災情(2026-08-29):上櫃股 08/27・08/28 兩根 close 全是 None(TPEX 端點已對機房 IP 失效),
+#    全市場抽驗 382 檔有 **188 檔(49%)** 最後一根 close=None →
+#    `screener_miner` 算不出東西而略過 → `screener.json` 從 2,300+ 縮到 **1,301 檔**,
+#    前端選股/AI 鏈上整批上櫃股數字全空,而且 workflow 全綠、零錯誤訊息。
+def needs_price_fix(old_close, new_close, tol=0.015) -> bool:
+    """既有這根要不要用 yfinance 的收盤價覆蓋?
+
+    ⭐ 兩種都要修(⛔ 缺一不可):
+      ① 根本沒有收盤價(None / 0 / 負)—— 盤中快照空殼,最嚴重
+      ② 有值但與官方差 ≥ tol —— 殘留的盤中價
+    ⛔ new_close 本身無效時一律不覆蓋(不可拿壞值蓋掉好值)。
+    """
+    try:
+        nc = float(new_close)
+    except (TypeError, ValueError):
+        return False
+    if not (nc > 0):
+        return False
+    if old_close is None:
+        return True
+    try:
+        oc = float(old_close)
+    except (TypeError, ValueError):
+        return True
+    if not (oc > 0):
+        return True
+    return abs(nc - oc) / oc >= tol
+
+
 # ── TWSE MIS 快照補丁 (盤中防退回昨日) ──────────────────────────────────────
 def fetch_mis_closing_snapshot(sym: str) -> dict:
     """證交所 MIS 盤中/盤後快照補丁，填補歷史 API 尚未更新的真空期"""
@@ -2515,6 +2551,11 @@ def run():
                     #    差 ≥1.5%」的日子 → 判定為殘留快照,加進 new_rows 讓下方覆蓋邏輯改為最終值。TWSE 股官方有回→不受影響。
                     official_dates = {r['date'] for r in new_rows}   # 這次 TWSE/TPEX 真的有回的日子
                     stale_recent = [ds for ds in recent_10 if ds in existing_map and ds not in official_dates]
+                    # 🚨 V74.2.1 官方這次「有回」但收盤價仍是空的(TPEX 回了空殼)→ 也要進校正名單,
+                    #    ⛔ 否則 official_dates 會把它排除掉,永遠修不到。
+                    _bad = [ds for ds in recent_10
+                            if ds in existing_map and not (existing_map[ds].get('close') or 0) > 0]
+                    stale_recent = sorted(set(stale_recent) | set(_bad))
                     if missing_recent or stale_recent:
                         yf_rows = yfinance_ohlcv_fallback(sym, market_type, days_back=30)
                         if yf_rows:
@@ -2532,10 +2573,13 @@ def run():
                                 yr = yf_by_date.get(ds)
                                 if not yr or ds in existing_dates:
                                     continue
-                                old_c = existing_map[ds].get('close') or 0
-                                if old_c > 0 and abs(yr['close'] - old_c) / old_c >= 0.015:
+                                old_c = existing_map[ds].get('close')
+                                # 🚨 V74.2.1 走共用純函式:⛔ 舊寫法 `or 0` + `old_c > 0` 會把
+                                #    「close 根本是 None」(盤中快照空殼)整個跳過 —— 那才是最該修的情況。
+                                if needs_price_fix(old_c, yr['close']):
                                     new_rows.append(yr); existing_dates.add(ds); n_fix += 1
-                                    print(f"  🔧 {sym} {ds} 疑殘留盤中快照(收 {old_c}→yfinance {yr['close']}),yfinance 校正覆蓋")
+                                    print(f"  🔧 {sym} {ds} {'無收盤價' if not old_c else '疑殘留盤中快照'}"
+                                          f"(收 {old_c}→yfinance {yr['close']}),yfinance 校正覆蓋")
                             added = len(new_rows) - before_len
                             if added > 0:
                                 new_rows.sort(key=lambda x: x['date'])

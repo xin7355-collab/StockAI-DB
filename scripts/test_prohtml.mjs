@@ -148,6 +148,9 @@ const R = await page.evaluate(async () => {
         nan: /NaN|undefined/.test(out) || /NaN|undefined/.test(prompt) || /NaN|undefined/.test(stockPrompt),
         gotoInHtml: (valHtml.match(/PRO\.gotoStock\(/g) || []).length,
         missNote: document.getElementById('missNote').innerText,
+        // 🚨 陷阱 #32:提醒必須跟表格在**同一個 panel** —— 放在上一個區塊等於沒做(使用者捲到表格就看不到)
+        missInTablePanel: document.getElementById('missNote').closest('.panel')
+                          === document.getElementById('chainTbl').closest('.panel'),
         badLayer: PRO.CHAIN.stocks.filter(s => !['A','B','C','D','E'].includes(s[7])).length,
         layerN: PRO.CHAIN.stocks.length,
     };
@@ -252,6 +255,7 @@ ok('⑲c 📌 直向捲動時表頭列固定不動', S.headOK, S);
 ok('⑲d 表頭文字**整排**置中(⛔ 不可只有第一欄)',
    S.thAlign.length >= 8 && S.thAlign.every(a => a === 'center'), S.thAlign);
 // 🚨 缺資料要誠實說,⛔ 不可靜默顯一排「—」
+ok('⑳b 🚨 提醒必須跟戰情表在同一個 panel(⛔ 放在上一區塊 = 捲到表格就看不到)', R.missInTablePanel);
 ok('⑳ 缺資料時要說出原因(上櫃/採礦未收到),⛔ 不可讓人以為程式壞了',
    !R.missNote || (/不是這幾檔沒在動|不是程式壞掉/.test(R.missNote) && /上櫃/.test(R.missNote)), R.missNote.slice(0, 120));
 ok('⑩ 載入無 pageerror', errs.length === 0, errs.join(' | '));

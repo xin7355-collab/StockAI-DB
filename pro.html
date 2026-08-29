@@ -232,10 +232,10 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <div class="lvflow" id="lvFlow"></div>
     <div id="lvDetail"></div>
     <div id="frontNote"></div>
-    <div id="missNote"></div>
   </div>
   <div class="panel">
     <h2>🗺️ 個股戰情表 <span class="sub" id="mapSub"></span></h2>
+    <div id="missNote"></div>
     <div class="layerbar" id="layerBar"></div>
     <div class="tblwrap"><table class="grid" id="chainTbl"><thead><tr>
       <th data-k="nm">標的</th><th data-k="layer">供應鏈層</th><th data-k="theme">題材</th><th data-k="stage">階段位置</th>
@@ -917,7 +917,7 @@ ${M.news || '(無)'}
         ? `<div class="warnbox">⚠️ <b>${missN} 檔的數字目前是「—」</b>(名單共 ${C.stocks.length} 檔)——
            這些多半是<b>上櫃股</b>:資料庫最近兩個交易日沒收到它們的收盤價,所以近20日/YoY/毛利算不出來。
            ⛔ <b>不是這幾檔沒在動,也不是程式壞掉</b> —— 它們的<b>產業定位與風險說明照樣有效</b>,點股名一樣進得去看 K 線。
-           採礦補上之後數字會自動回來。</div>`
+           <b>採礦端已修</b>(V74.2.1),下一輪完整採礦跑完就會自動補回來。</div>`
         : '';
     document.getElementById('frontNote').innerHTML = front
       ? `<div class="note">🎯 <b>資金主戰場 = L${front.lv} ${C.lv[front.lv].n}</b>(該層 ${front.n} 檔近 20 日中位 <span class="${this.cls(front.m)}">${this.fmt(front.m, 1, true)}%</span>,五級裡最強)。
