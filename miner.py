@@ -756,6 +756,36 @@ def needs_price_fix(old_close, new_close, tol=0.015) -> bool:
     return abs(nc - oc) / oc >= tol
 
 
+# 🚨 V74.2.2 — 「這一根 K 算不算有效」。⛔ 舊版只看 `volume > 0`,**完全沒看 close**。
+#
+# 🐛 災情鏈(2026-08-29,上櫃股整批數字消失的真因,比 V74.2.1 更前面一層):
+#    盤中快照會寫下 open/high/low/**volume** 但 close 還沒有(未收盤)→ 那一根 volume 有值、close 是 None。
+#    ① `latest_valid_date` 只看 volume → 認定「今天的 K 線有了」
+#    ② `has_gap` 只看「日期在不在」→ 認定「沒有缺口」
+#    ③ 於是走進「⚡ 本日 K 線與最終籌碼已完整,安全略過證交所請求」→ **整檔跳過**,
+#       連 V74.2.1 剛修好的 yfinance 校正都沒機會執行(log 實證:6488 就是印這一行)。
+#    → 上櫃股的 close 永遠補不回來,而 workflow 全綠、零錯誤訊息。
+#
+# ⭐ 這正是 CLAUDE.md 陷阱 #10 的同型:**跳過條件要同時看「做過」與「做到的內容夠不夠好」**。
+#    ⛔ 只要「那一天有列」就當成完成,是這個專案重複踩過的坑。
+def bar_is_complete(rec) -> bool:
+    """一根 K 要「收盤價與成交量都有」才算數。rec 可以是 dict 或 sqlite Row。"""
+    if rec is None:
+        return False
+    try:
+        c = rec['close']
+        v = rec['volume']
+    except (KeyError, IndexError, TypeError):
+        try:
+            c, v = rec.get('close'), rec.get('volume')
+        except AttributeError:
+            return False
+    try:
+        return float(c) > 0 and float(v) > 0
+    except (TypeError, ValueError):
+        return False
+
+
 # ── TWSE MIS 快照補丁 (盤中防退回昨日) ──────────────────────────────────────
 def fetch_mis_closing_snapshot(sym: str) -> dict:
     """證交所 MIS 盤中/盤後快照補丁，填補歷史 API 尚未更新的真空期"""
@@ -2453,8 +2483,10 @@ def run():
                     'margin_balance': row['margin_bal']   or 0,
                     'short_balance':  row['short_bal']    or 0,
                 }
-                if row['volume'] is not None and row['volume'] > 0:
-                    latest_valid_date = fmt_date  # 記錄最新有成交量的交易日
+                # 🚨 V74.2.2 ⛔ 不可只看 volume —— 盤中快照會留下「有量但沒收盤價」的空殼,
+                #    只看量會把它當成「今天採完了」,於是整檔跳過(上櫃股數字整批消失的真因)。
+                if bar_is_complete(row):
+                    latest_valid_date = fmt_date  # 記錄最新「收盤價與量都有」的交易日
 
             # ── 🛡️ 防封鎖機制（時間感知版）：盤後才強制覆蓋 ──
             target_today_str = trading_days[-1].strftime('%Y/%m/%d')
@@ -2466,7 +2498,10 @@ def run():
 
             # 缺口偵測：若最近 10 個交易日有任一天缺資料，不允許跳過（修復 5/24 後資料斷層）
             recent_10 = {d.strftime('%Y/%m/%d') for d in trading_days[-10:]}
-            has_gap = any(d not in existing_map for d in recent_10)
+            # 🚨 V74.2.2 「有這一天」不等於「這一天是好的」→ 收盤價空殼也要算缺口,
+            #    ⛔ 否則 has_gap=False 會讓整檔走進「安全略過」分支。
+            has_gap = any((d not in existing_map) or not bar_is_complete(existing_map[d])
+                          for d in recent_10)
 
             # 資料稀疏偵測:現有 < 480 筆(約 2 年交易日)→ 補抓 24 個月,讓回測有完整 2 年歷史
             # V15.0:歷史補洞門檻 480 → 240(2 年 → 1 年),減少 yfinance 730 天強化補洞觸發率

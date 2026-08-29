@@ -67,6 +67,24 @@ for old, new, exp, desc in CASES:
 # 邊界:剛好等於門檻要修(>=)
 ok('③b 剛好等於 1.5% 門檻 → 修(用 >=)', miner.needs_price_fix(100.0, 101.5) is True)
 
+# ── ⑦ V74.2.2 `bar_is_complete`:這根 K 算不算數(⛔ 不可只看 volume)──────
+#    🚨 這是比 needs_price_fix 更前面一層的守門 —— 它被騙過的話,
+#       後面的 yfinance 校正**根本沒機會執行**(實測 log:6488 印「⚡ 本日 K 線與最終籌碼已完整」)。
+BAR_CASES = [
+    ({'close': 949.0, 'volume': 9687682}, True,  '⑦ 收盤價與量都有 → 完整'),
+    ({'close': None, 'volume': 11494305}, False, '⑦ 🚨 有量但沒收盤價(6488 真實情況)→ ⛔ 不可當成完整'),
+    ({'close': 0, 'volume': 100},         False, '⑦ 收盤 0 → 不完整'),
+    ({'close': -1, 'volume': 100},        False, '⑦ 收盤負數 → 不完整'),
+    ({'close': 949.0, 'volume': 0},       False, '⑦ 有價沒量(假日空棒)→ 不完整'),
+    ({'close': 949.0, 'volume': None},    False, '⑦ 量是 None → 不完整'),
+    ({'close': 'x', 'volume': 100},       False, '⑦ 壞值 → 不完整'),
+    (None,                                False, '⑦ 沒有這根 → 不完整'),
+    ({},                                  False, '⑦ 空 dict → 不完整'),
+]
+for rec, exp, desc in BAR_CASES:
+    got = miner.bar_is_complete(rec)
+    ok(desc, got == exp, f'bar_is_complete({rec!r}) = {got},期望 {exp}')
+
 # ── ⑤⑥ 呼叫端真的接上 ────────────────────────────────────────
 src = (ROOT / 'miner.py').read_text(encoding='utf-8')
 ok('⑥ 🚧 空過守門:needs_price_fix 有定義', 'def needs_price_fix(' in src)
@@ -75,6 +93,14 @@ ok('⑥b 🚧 空過守門:呼叫端真的用它(⛔ 防「寫了但沒接」)',
    re.findall(r'.{0,40}needs_price_fix\(.{0,40}', src))
 ok('⑤ ⛔ 舊的壞判斷式已移除(`old_c > 0 and abs(`)',
    not re.search(r"old_c > 0 and abs\(", src))
+# ⑦b 兩處守門都要接上 bar_is_complete —— ⛔ 只接一處等於沒修
+#    (latest_valid_date 決定「今天採完沒」、has_gap 決定「近 10 日有沒有洞」)
+ok('⑦b latest_valid_date 走 bar_is_complete(⛔ 不可只看 volume)',
+   re.search(r"if bar_is_complete\(row\):\s*\n\s*latest_valid_date = fmt_date", src) is not None)
+ok('⑦c has_gap 也要把「收盤價空殼」算成缺口',
+   re.search(r"has_gap = any\(\(d not in existing_map\) or not bar_is_complete", src) is not None)
+ok('⑦d ⛔ 舊的「只看 volume」判斷式已移除',
+   not re.search(r"if row\['volume'\] is not None and row\['volume'\] > 0:\s*\n\s*latest_valid_date", src))
 ok('⑤b stale 名單涵蓋「官方有回但收盤價是空的」',
    re.search(r"_bad = \[ds for ds in recent_10[\s\S]{0,200}get\('close'\) or 0\) > 0\]", src) is not None)
 
