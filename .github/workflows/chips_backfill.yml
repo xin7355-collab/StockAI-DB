@@ -34,6 +34,10 @@ on:
         description: '取前幾家券商(30≈87% / 100≈95% / 200≈98% 覆蓋)'
         required: false
         default: '200'
+      rate:
+        description: '每分鐘最多打幾次(⚠️ 與 daily_miner 共用同一把付費金鑰的 6,000/hr;要一起跑就調低)'
+        required: false
+        default: '95'
       check_depth:
         description: '只探上游歷史有多深(約 7 次呼叫,不寫檔)'
         type: boolean
@@ -92,6 +96,10 @@ jobs:
         if: ${{ !inputs.check_depth }}
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          # ⚠️ 只有 1 把付費金鑰(6,000 req/hr),而 daily_miner 的分點步驟吃同一把。
+          #    兩支同時跑就會互相擠 → 429。要並行時把這個調到 55 以下留餘裕給採礦。
+          #    ⭐ 先看回算輸出的「分類統計」有沒有 http_429,⛔ 別憑感覺調。
+          FM_PAID_RATE_MAX: ${{ inputs.rate }}
         run: |
           ARGS="--brokers ${{ inputs.brokers }}"
           if [ -n "${{ inputs.from }}" ] && [ -n "${{ inputs.to }}" ]; then
