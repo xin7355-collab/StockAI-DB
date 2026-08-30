@@ -148,6 +148,35 @@ const fake = await page.evaluate(b => {
 ok('①f 換假成績表 → 徽章與總結都跟著變(⛔ 沒有寫死的第二份)',
     /\+7\.8pp|\+7\.77?pp/.test(fake) && /123,456/.test(fake), fake.slice(0, 200));
 
+// ── ⑨ 🚨 V74.0.4「這個優勢正在衰退」──────────────────────────
+//   徽章是 3 年平均,而逐年明細顯示前 12 名裡有 8 個最差的就是 2026 年。
+//   ⛔ 不講這件事,使用者會拿「創一年新高 +3.3pp」當現在還有效。
+const decay = await page.evaluate(b => ({
+    line: app._scrDecayLine(),
+    note: app._scrEdgeNote([b[0]]),
+    D: app._SCR_EDGE.decay,
+}), meta.best);
+ok('⑨a 🚧 空過守門:衰退提示真的渲染', decay.line.length > 80, decay.line.slice(0, 100));
+ok('⑨b 🚨 總結裡一定要含衰退提示(⛔ 不可只藏在教學裡)',
+    decay.note.includes(decay.line.trim().slice(0, 40)) || /優勢正在變小/.test(decay.note),
+    decay.note.slice(-300));
+ok('⑨c 🚨 要明說徽章是「3 年平均」', /3 年平均/.test(decay.line));
+ok('⑨d 數字現算自 _SCR_EDGE.decay(⛔ 不可寫死第二份)',
+    decay.line.includes(String(decay.D.worst26)) && decay.line.includes(decay.D.yrs[2])
+    && decay.line.includes(decay.D.eg[0][0]), decay.line.slice(0, 200));
+ok('⑨e ⛔ 衰退提示不可用紅綠', !/text-(red|green)-\d/.test(decay.line));
+const fakeD = await page.evaluate(() => {
+    const bak = JSON.parse(JSON.stringify(app._SCR_EDGE.decay));
+    app._SCR_EDGE.decay = { worst26: 3, top: 7, yrs: ['a', 'b', '2099年'], eg: [['測試招式', 1, 2, -9.99], ['第二招', 0, 0, -1]] };
+    const l = app._scrDecayLine();
+    app._SCR_EDGE.decay = bak;
+    return l;
+});
+ok('⑨f 換一份假衰退資料 → 畫面跟著變',
+    /2099年/.test(fakeD) && /測試招式/.test(fakeD) && /-9\.99/.test(fakeD), fakeD.slice(0, 200));
+ok('⑨g 教學也要寫衰退(⛔ 兩處都要,別只改一邊)',
+    /正在變小/.test(help) && help.includes(decay.D.eg[0][0]), help.slice(-400));
+
 ok('⑧d 🚧 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.0.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.3 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.4 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7348,8 +7348,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.0.3',
+    _APP_VERSION: 'V74.0.4',
     _CHANGELOG: [
+        { v:'V74.0.4', dt:'2026-08-30', d:[
+            '⚠️ 選股條件的實測徽章補上一句最重要的話:這個優勢正在變小。'
+            + '逐年拆開看,領先前 12 名裡有 8 個最差的年份就是 2026 —— '
+            + '「創一年新高」+0.95→+2.01→−0.01pp、「RSI 超買」+0.40→−0.29→−2.26pp。'
+            + '徽章上的數字是 3 年平均(被前兩年拉高),不代表現在還這麼好。',
+        ] },
         { v:'V74.0.3', dt:'2026-08-30', d:[
             '🔎 選股頁每個條件都標上「實測領先/落後平常多少」:全市場 2,243 檔、37,035 個獨立事件,'
             + '每個條件成立那天買、抱 20 個交易日,扣掉同期大盤與來回成本。'
@@ -38523,6 +38529,15 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _SCR_EDGE: {
         win: ['2024-04-18', '2026-07-31'], fwd: 20, cost: 0.44,
         syms: 2243, n: 37035, base: [-2.0, 34.6],
+        // 🚨 逐年明細照出的事:**這個優勢正在衰退**,而且 2026 幾乎歸零甚至轉負。
+        //    ⛔ 徽章顯示的是 3 年平均(被 2024~2025 拉高)→ 不講這件事等於誤導。
+        //    yrs = 年份標籤;eg = [條件名, 2024, 2025, 2026] 的實測逐年 pp。
+        decay: {
+            worst26: 8, top: 12,
+            yrs: ['2024', '2025', '2026(前7月)'],
+            eg: [['創一年新高', 0.95, 2.01, -0.01], ['RSI > 70(超買)', 0.40, -0.29, -2.26],
+                 ['創 60 日新高', 0.07, -0.63, -1.54], ['位階高檔(一年 ≥ 75%)', -0.26, -0.38, -1.33]],
+        },
         c: {
         nh252: [0.858, 42.0, 5173, 0, 3.3],
         limup: [0.288, 40.8, 8824, 0, 2.73],
@@ -38671,7 +38686,20 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 ${Object.keys(E.c).length} 個測得動的條件裡,${E.fwd} 日超額扣掉來回成本 ${E.cost}% 之後還是正的只有 <b>4 個</b>,
                 六道穩健性檢定<b>全過的是 0 個</b>。這些數字是拿來<b>比較條件之間誰比較有用</b>,
                 ⛔ 不是「勾了就會賺」。<button onclick="app.showScrEdgeHelp()" class="text-gray-500 hover:text-amber-300">ⓘ 怎麼看</button></div>
+            ${this._scrDecayLine()}
         </div>`;
+    },
+    /** 🚨 「這個優勢正在衰退」—— ⛔ 徽章是 3 年平均,不講這條會讓人以為現在還這麼好 */
+    _scrDecayLine() {
+        const D = this._SCR_EDGE.decay;
+        if (!D) return '';
+        const n = x => (x >= 0 ? '+' : '') + x.toFixed(2);
+        const e = D.eg[0], f = D.eg[1];
+        return `<div class="text-[10px] text-yellow-600/90 mt-1 leading-snug">⚠️ <b>而且這個優勢正在變小</b>:
+            前 ${D.top} 名裡有 <b>${D.worst26}</b> 個最差的年份就是 <b>${D.yrs[2]}</b> ——
+            例如「${e[0]}」${n(e[1])} → ${n(e[2])} → <b>${n(e[3])}</b>pp、
+            「${f[0]}」${n(f[1])} → ${n(f[2])} → <b>${n(f[3])}</b>pp。
+            徽章上的數字是 <b>3 年平均</b>(被前兩年拉高),⛔ 不代表現在還這麼好。</div>`;
     },
     showScrEdgeHelp() {
         const E = this._SCR_EDGE, ids = Object.entries(E.c).sort((a, b) => b[1][4] - a[1][4]);
@@ -38694,7 +38722,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             + `　① ${Object.keys(E.c).length} 個條件裡,扣成本後還是正的只有 4 個,六關全過 0 個。\n`
             + `　② 單一條件領先 ≠ 組合起來會賺。條件疊起來會互相重疊,\n`
             + `　　 本站實測過「疊在現行配置上」多半沒有增量甚至變差。\n`
-            + `　③ 回測窗口整段偏多頭,空頭沒驗證過 —— 而「追強」正是空頭最受傷的做法。\n\n`
+            + `　③ 回測窗口整段偏多頭,空頭沒驗證過 —— 而「追強」正是空頭最受傷的做法。\n`
+            + `　④ 🚨 這個優勢**正在變小**:前 ${E.decay.top} 名裡有 ${E.decay.worst26} 個最差的年份就是 ${E.decay.yrs[2]}。\n`
+            + E.decay.eg.map(x => `　　 ${x[0]}:${x[1] >= 0 ? '+' : ''}${x[1].toFixed(2)} → ${x[2] >= 0 ? '+' : ''}${x[2].toFixed(2)} → ${x[3] >= 0 ? '+' : ''}${x[3].toFixed(2)}pp`).join('\n')
+            + `\n　　 徽章是 3 年平均(被前兩年拉高),⛔ 不代表現在還這麼好。\n\n`
             + `⛔ 另外 ${170 - Object.keys(E.c).length} 個條件沒有成績,是因為那些欄位沒有歷史\n`
             + `　 (本益比/殖利率/營收/集保大戶/週轉率都只有今天的快照),⛔ 不是它們沒用。`);
     },
