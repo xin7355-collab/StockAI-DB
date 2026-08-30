@@ -49,9 +49,10 @@ def main():
     for i, raw in enumerate(tokens, 1):
         # 🧹 JWT 金鑰內不該有任何空白;複製時常把頁面換行的空格一起帶進來 → 全清掉
         tok = ''.join(raw.split())
-        mask = (tok[:8] + '…' + tok[-6:]) if len(tok) > 16 else tok
+        # 🔐 repo 是 public → Actions log 也公開。⛔ 絕不可印 token 的任何片段(舊版洩漏 14 個字元)。
+        #    診斷需要的只有「第幾把 + 長度 + 錯誤訊息」,那些都不含金鑰內容。
         note = f'(原始 {len(raw)} → 清空白後 {len(tok)} 字元)' if len(tok) != len(raw) else f'(長度 {len(tok)} 字元)'
-        print(f'\n── Token #{i}  {mask}  {note} ──')
+        print(f'\n── Token #{i}  {note} ──')
         if len(tok) != len(raw):
             print(f'   🧹 偵測到金鑰內含 {len(raw) - len(tok)} 個空白字元 → 已清除(這通常就是 illegal 主因)')
         hdr = {'Authorization': f'Bearer {tok}'}

@@ -186,8 +186,9 @@ def detect_finmind_paid() -> bool:
                 break   # 這把已確認可用,不用再試其他日期;外層繼續驗下一把
             if tok_status in (402, 403) or (tok_msg and 'illegal' in tok_msg.lower()):
                 break   # 這把 token 就是不行(非付費/貼錯),不用再試其他日期
-        mask = (tok[:6] + '…' + tok[-4:]) if len(tok) > 12 else '(短)'
-        per_token.append((mask, tok_status, tok_msg))
+        # 🔐 repo 是 public → Actions log 也是公開的。⛔ 絕不可印出 token 的任何片段
+        #    (舊版印 `tok[:6]…tok[-4:]` = 洩漏 10 個字元)。只用「第幾把」定位就夠了。
+        per_token.append((f'第{ti + 1}把', tok_status, tok_msg))
         last_status, last_msg = tok_status, tok_msg
     # 🔑 V71.2.8 沒通過付費驗證的 = 免費層 token → 專門去扛「免費也能抓」的資料集,
     #   把付費那把整整 6,000 req/hr 全部留給分點(Sponsor 專屬,免費金鑰抓不到)。
@@ -3457,17 +3458,34 @@ def fetch_us_macro_cache():
 
 
 # ── 🎯 分點 Sniper:TWSE BSR 驗證碼 OCR 破解(免費抓真實當日分點)──────────
+# 📊 V74.0.5 BSR 失敗原因分類統計。
+#   ⚠️ 為什麼非有不可(2026-08-29 實跑的教訓):FinMind 4 把金鑰全部掉回免費層之後,
+#      分點只剩 BSR 這條路,而那一輪「嘗試 22 檔、更新 0 檔」——
+#      ⛔ log 裡**一行輸出都沒有**,因為每一條失敗路徑都是 `continue` / `return None`。
+#      於是完全查不出是驗證碼失敗、被擋、還是查無資料。
+#   ⭐ 這正是 V72.5.3 集保那次的教訓:**先加分類統計,再下結論**。
+#      沒有它,下一個人會照著猜測去改 timeout,永遠修不好。
+_BSR_REASON: dict = {}
+
+
+def _bsr_note(reason: str):
+    _BSR_REASON[reason] = _BSR_REASON.get(reason, 0) + 1
+
+
 def _fetch_twse_bsr(symbol: str, max_retries=4) -> dict:
     """用 ddddocr 破解證交所 BSR 驗證碼,免費抓當日券商分點主力。
     雲端裝不到 ddddocr/bs4 時回 None,靜默退回 FinMind。
     回傳 {date, tot_buy, tot_sell, buyers[], sellers[]} 或 None。
+    ⚠️ 每一條 return None / continue 都要 `_bsr_note(原因)`,⛔ 不可靜默失敗。
     """
     if _ddddocr is None or _BeautifulSoup is None:
+        _bsr_note('no_ddddocr_or_bs4')
         return None
     try:
         ocr = _ddddocr.DdddOcr(beta=True, show_ad=False)
     except Exception as e:
         print(f"  ⚠️ OCR 初始化失敗: {e}")
+        _bsr_note('ocr_init_fail')
         return None
 
     session = requests.Session()
@@ -3487,11 +3505,13 @@ def _fetch_twse_bsr(symbol: str, max_retries=4) -> dict:
             viewstate = soup.find('input', {'name': '__VIEWSTATE'})
             eventval = soup.find('input', {'name': '__EVENTVALIDATION'})
             if not viewstate or not eventval:
+                _bsr_note('no_viewstate(頁面拿不到/被擋)')
                 time.sleep(1); continue
 
             img_res = session.get("https://bsr.twse.com.tw/bshtm/CaptchaImage.aspx", timeout=10)
             captcha_text = ocr.classification(img_res.content)
             if not captcha_text or len(captcha_text) != 5:
+                _bsr_note('ocr_len_bad(驗證碼辨識長度不對)')
                 time.sleep(1); continue
 
             payload = {
@@ -3502,18 +3522,22 @@ def _fetch_twse_bsr(symbol: str, max_retries=4) -> dict:
             }
             post_res = session.post("https://bsr.twse.com.tw/bshtm/bsMenu.aspx", data=payload, timeout=10)
             if "驗證碼錯誤" in post_res.text:
+                _bsr_note('captcha_wrong(驗證碼辨識錯)')
                 time.sleep(1.5); continue
             if "查無資料" in post_res.text:
+                _bsr_note('no_data(上櫃股或今日無交易)')
                 return None  # 上櫃股或今日無交易
 
             session.get("https://bsr.twse.com.tw/bshtm/bsContent.aspx?v=t", timeout=10)
             csv_res = session.get("https://bsr.twse.com.tw/bshtm/bsCSV.aspx", timeout=10)
             if not csv_res.text.strip():
+                _bsr_note('empty_csv')
                 time.sleep(1); continue
 
             csv_text = csv_res.content.decode('big5-hkscs', errors='ignore')
             rows = list(csv.reader(io.StringIO(csv_text)))
             if len(rows) < 3:
+                _bsr_note('csv_too_short')
                 return None
             trade_date = rows[0][0].replace('年', '-').replace('月', '-').replace('日', '')
             try:
@@ -3547,9 +3571,11 @@ def _fetch_twse_bsr(symbol: str, max_retries=4) -> dict:
                 "buyers":  [{'broker_id': x['br'], 'broker_name': x['br'], 'net': x['net'], 'buy': x['buy'], 'sel': x['sell']} for x in buyers],
                 "sellers": [{'broker_id': x['br'], 'broker_name': x['br'], 'net': x['net'], 'buy': x['buy'], 'sel': x['sell']} for x in sellers],
             }
-        except Exception:
+        except Exception as _e_bsr:
+            _bsr_note(f'exception:{type(_e_bsr).__name__}')
             time.sleep(1.5)
             continue
+    _bsr_note('retries_exhausted(重試用完仍失敗)')
     return None
 
 
@@ -4618,6 +4644,13 @@ def fetch_broker_chips():
             if _ex: _fund_extra[sym] = _ex
         except Exception: pass
 
+    # 📊 V74.0.5 「更新 0 檔」時一定要說得出為什麼(⛔ 零輸出 = 下一輪還是只能用猜的)
+    if _BSR_REASON:
+        _br = " ・ ".join(f"{k}×{v}" for k, v in sorted(_BSR_REASON.items(), key=lambda kv: -kv[1]))
+        print(f"  📊 BSR(免費分點)失敗原因統計:{_br}")
+    if not updated:
+        print("  🚨 這一輪分點**更新 0 檔** —— 若 `付費=None`,10 項付費資料集都會一起停擺,"
+              "真因通常在 FinMind 帳號等級(Your level is register),⛔ 不是程式或額度。")
     print(f"  ✅ 分點籌碼完成：更新 {updated} 檔、今日已抓跳過 {_skipped_today} 檔"
           f"（全市場滾動；熱門股天天更新、冷門長尾每幾天輪一次）")
 
