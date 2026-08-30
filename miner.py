@@ -4190,6 +4190,9 @@ def fetch_broker_chips():
         _have_bulk = set()
     _bulk_idx = None
     _bulk_miss = 0
+    # ⚠️ `_bulk_idx` 這個變數**兩條路都會用到**(按券商批次 / 逐檔併發預抓)——
+    #    所以要另外記是哪一條,否則收尾那句摘要會講錯話(講成「券商裡沒出現」)。
+    _bulk_mode = None
     if paid and os.getenv('CHIPS_BULK', '1') == '1':
         try:
             _bulk_idx = _fetch_chips_bulk(_recent_finmind_dates(CHIP_DAYS * 3 // 2 + 10),
@@ -4198,6 +4201,7 @@ def fetch_broker_chips():
             print(f"  ⚠️ 分點全市場批次例外(退回逐檔):{str(_e)[:80]}")
             _bulk_idx = None
     if _bulk_idx:
+        _bulk_mode = 'broker'
         # 批次模式下時間預算沒有意義(資料都在記憶體裡了),放寬到 job timeout 之前
         _chips_budget = max(_chips_budget, int(os.getenv('CHIPS_TIME_BUDGET_BULK', '3300')))
     elif paid and os.getenv('CHIPS_PARALLEL', '1') == '1':
@@ -4229,6 +4233,8 @@ def fetch_broker_chips():
             _todo.append((_s, 11 if _hot else 3, 16 if _hot else 6))
         try:
             _bulk_idx = _prefetch_chips_parallel(_todo, budget_s=_chips_budget)
+            if _bulk_idx:
+                _bulk_mode = 'perstock'
             if _bulk_idx:
                 # 預抓已花掉大部分預算,後面只剩解析寫檔(不打網路)→ 放寬避免白抓
                 _chips_budget = max(_chips_budget, int(os.getenv('CHIPS_TIME_BUDGET_BULK', '3300')))
@@ -4756,9 +4762,11 @@ def fetch_broker_chips():
     if not updated:
         print("  🚨 這一輪分點**更新 0 檔** —— 若 `付費=None`,10 項付費資料集都會一起停擺,"
               "真因通常在 FinMind 帳號等級(Your level is register),⛔ 不是程式或額度。")
-    if _bulk_idx is not None:
-        print(f"  🔍 批次模式:{_bulk_miss} 檔在前 {os.getenv('CHIPS_BULK_BROKERS', '200')} "
+    if _bulk_mode == 'broker':
+        print(f"  🔍 按券商批次:{_bulk_miss} 檔在前 {os.getenv('CHIPS_BULK_BROKERS', '200')} "
               f"家券商裡完全沒出現(數字變大就把 CHIPS_BULK_BROKERS 調高)")
+    elif _bulk_mode == 'perstock':
+        print(f"  🔍 逐檔併發預抓:{_bulk_miss} 檔這輪沒預抓到(時間預算內沒排到,下輪續抓)")
     print(f"  ✅ 分點籌碼完成：更新 {updated} 檔、今日已抓跳過 {_skipped_today} 檔"
           f"（全市場滾動；熱門股天天更新、冷門長尾每幾天輪一次）")
 
