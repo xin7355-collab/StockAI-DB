@@ -239,7 +239,7 @@ function main(opt = {}) {
       seen.set(e.sym, e.i); kept.push(e);
     }
     const tradable = kept.filter((e) => tradableNextOpen(px, e.sym, e.i));
-    const out = { name, n: kept.length, nTradable: tradable.length };
+    const out = { name, n: kept.length, nTradable: tradable.length, _kept: kept };
     for (const f of FWD) {
       const rs = tradable.map((e) => excessReturn(px, idx, e.sym, e.i, f)).filter((x) => x != null);
       out[`m${f}`] = mean(rs); out[`d${f}`] = med(rs);
@@ -284,9 +284,54 @@ function main(opt = {}) {
     }
   }
 
-  console.log('\n⏭️ 下一步(⛔ 上面任何一格看起來不錯都還不算數):');
-  console.log('   ① 逐年拆開看方向一不一致 ② 拿掉最好的那一年還在不在');
-  console.log('   ③ 疊在 🧬 高位階+高波動 之上有沒有**增量**(V73.2.5:78% 的訊號只是把它再數一次)');
+  // ── 逐年拆解 + 去最好年(V73.2.0 / V73.2.9 各救場一次的那兩關)──────
+  //    只拆「20 日」這個主天期;年份取**事件日**的年份。
+  console.log('\n📅 逐年拆解(20 日,相對對照組同年份的 pp 差):');
+  const perYear = (r0) => {
+    const out = {};
+    for (const e of r0._kept || []) {
+      const y = e.date.slice(0, 4);
+      (out[y] = out[y] || []).push(e);
+    }
+    return out;
+  };
+  const yEdge = {};
+  const baseY = perYear(base);
+  const baseYr = {};
+  for (const [y, list] of Object.entries(baseY)) {
+    const rs = list.filter((e) => tradableNextOpen(px, e.sym, e.i))
+      .map((e) => excessReturn(px, idx, e.sym, e.i, 20)).filter((x) => x != null);
+    baseYr[y] = { m: mean(rs), n: rs.length };
+  }
+  const years = Object.keys(baseYr).sort();
+  console.log('   年份基準:' + years.map((y) => `${y} ${nf(baseYr[y].m)}%(n=${baseYr[y].n})`).join(' ・ '));
+  for (const r of rows) {
+    if (r === base || r.n < MIN_N) continue;
+    const ys = perYear(r);
+    const parts = [];
+    const edges = [];
+    for (const y of years) {
+      const list = (ys[y] || []).filter((e) => tradableNextOpen(px, e.sym, e.i));
+      const rs = list.map((e) => excessReturn(px, idx, e.sym, e.i, 20)).filter((x) => x != null);
+      if (rs.length < 100 || !baseYr[y] || baseYr[y].n < 100) { parts.push(`${y} ⏳`); continue; }
+      const ed = mean(rs) - baseYr[y].m;
+      edges.push(ed);
+      parts.push(`${y} ${ed >= 0 ? '+' : ''}${nf(ed)}`);
+    }
+    // 去最好年:把貢獻最大的那一年拿掉,剩下的平均還同向嗎
+    let strip = '';
+    if (edges.length >= 2) {
+      const best = Math.max(...edges.map((x) => Math.abs(x)));
+      const rest = edges.filter((x) => Math.abs(x) !== best);
+      const all = mean(edges), rem = mean(rest);
+      strip = ` ・去最好年 ${nf(rem)}` + ((all > 0) !== (rem > 0) && Math.abs(all) > 0.2 ? ' 🚨變號' : '');
+      yEdge[r.name] = { all, rem, sameSign: (all > 0) === (rem > 0) };
+    }
+    console.log(`   ${r.name.padEnd(30)} ${parts.join(' ・ ')}${strip}`);
+  }
+  console.log('\n⏭️ 還沒做的一關:疊在 🧬 高位階+高波動 之上的**增量**檢定');
+  console.log('   (V73.2.5:78% 的訊號只是把它再數一次)—— 要接 portfolio_backtest 才算得動,');
+  console.log('   ⛔ 上表任何一格在過那關之前都不可落地成功能。');
   return opt.returnRows ? rows : undefined;
 }
 
