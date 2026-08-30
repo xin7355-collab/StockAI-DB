@@ -69,7 +69,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-OUT_DIR = Path(os.environ.get('CHIPS_DEEP_DIR') or (ROOT / 'data' / 'chips_deep'))
+# ⛔ 刻意放**頂層** `chips_deep/` 而不是 `data/chips_deep/` ——
+#    gh-pages 部署那步是 `git add -f index.html data/`(整個 data/ 都收),
+#    放進 data/ 會讓 180 MB 的深歷史被推上 gh-pages,前端下載量爆炸。
+#    ⭐ 它推的是獨立的 orphan 分支 `chips_deep`,跟 data / gh-pages 完全不相干。
+OUT_DIR = Path(os.environ.get('CHIPS_DEEP_DIR') or (ROOT / 'chips_deep'))
 TOP_K = int(os.environ.get('CHIPS_DEEP_TOPK', '15'))     # 每側留幾家
 MIN_SYMS = int(os.environ.get('CHIPS_DEEP_MIN_SYMS', '200'))
 REASON: dict = defaultdict(int)
@@ -200,10 +204,32 @@ def main():
     ap.add_argument('--from', dest='d_from', default='')
     ap.add_argument('--to', dest='d_to', default='')
     ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--check-depth', action='store_true',
+                    help='只探「FinMind 的分點歷史有多深」(約 6 次呼叫),⛔ 不寫檔')
     ap.add_argument('--redo', action='store_true', help='已存在的日期也重抓(⛔ 預設跳過)')
     ap.add_argument('--brokers', type=int, default=200,
                     help='取前幾家券商(實測:30→86.2%% ・100→94.7%% ・200→98.0%% 覆蓋率)')
     a = ap.parse_args()
+
+    if a.check_depth:
+        # 🚨 ⛔ 別花 16 小時才發現第二年是空的 —— 先用 6 次呼叫問清楚上游有多深。
+        import miner  # noqa: E402
+        if not miner.detect_finmind_paid():
+            print('🚨 不是付費層 → 探不了'); return 1
+        print('📏 分點歷史深度探測(用台積電 2330,一個日期一次呼叫)')
+        for back in (2, 30, 180, 365, 545, 730, 1095):
+            d = (date.today() - timedelta(days=back))
+            # 往前找最近的平日(週末本來就沒資料,⛔ 不可誤判成「沒有歷史」)
+            while d.weekday() >= 5:
+                d -= timedelta(days=1)
+            ds = d.isoformat()
+            j = miner.fm_paid_get('taiwan_stock_trading_daily_report',
+                                  f'data_id=2330&date={ds}', timeout=60) or {}
+            n = len(j.get('data') or [])
+            print(f'   {back:>5} 天前({ds}):status={j.get("status")} rows={n}'
+                  f'  {"✅ 有" if n else "❌ 沒有"}')
+        print('⭐ 最深那個「✅ 有」就是可回算的上限;⛔ 別排超過那個範圍的工作。')
+        return 0
 
     if a.d_from and a.d_to:
         d0 = date.fromisoformat(a.d_from)
