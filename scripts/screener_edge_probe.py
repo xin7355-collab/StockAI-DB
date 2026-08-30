@@ -218,6 +218,14 @@ for c, st, m, h1, h2, allpos, xb, yv, by, ok in rows_out:
     print(f"{c['t'][:24]:<26}{c['s']:<6}{st.n:>9,}{m:>9.3f}{st.win / st.n * 100:>7.1f}%"
           f"{h1:>8.2f}{h2:>8.2f}{xb:>10.2f}{st.sum / st.n - b_ex:>+9.2f}  {'✅' if ok else '❌'}")
 
+# ⭐ 前 12 名一律印逐年明細 —— ⛔ 不可只印「六關全過」的那些:
+#    這次實測 96 個條件**六關全過 0 個**,只印通過的等於什麼都看不到,
+#    而「差在哪一關」正是要人工判讀的東西。
+print('\n📅 前 12 名的逐年明細(⛔ 只有 3 年,2024/2026 還是半年 → 這一關特別嚴)')
+for c, st, m, h1, h2, allpos, xb, yv, by, ok in rows_out[:12]:
+    print(f"  {c['t']:<22} " + ' '.join(f'{y}:{x:+.2f}({nn})' for y, x, nn in yv)
+          + f"   去最好年({by}) {xb:+.2f}  {'逐年同向 ✅' if allpos else '逐年 ❌'}")
+
 pas = [r for r in rows_out if r[9]]
 print(f'\n🏁 {len(rows_out)} 個可回測條件裡,**六關全過 {len(pas)} 個**')
 for c, st, m, h1, h2, allpos, xb, yv, by, ok in pas:
