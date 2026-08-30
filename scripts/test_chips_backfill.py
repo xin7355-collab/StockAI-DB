@@ -136,6 +136,31 @@ ok('⑦ 🚨 原始碼裡有「不是付費層就 return 1」的守門',
 ok('⑦ 而且要說清楚為什麼(⛔ 不可只印一個錯誤碼)',
    'Your level is register' in src)
 
+# ── ⑨ 🚨 V74.0.7 改成「按券商抓」(原本的「省略 data_id 拿全市場」實測不通)──
+ok('⑨a 主迴圈要按**券商**抓(⛔ 不是按股票)',
+   'securities_trader_id={bid}&date={d}' in src, '')
+ok('⑨b ⛔ 不可再用「省略 data_id」那條(實測回 data_id can\'t be none)',
+   "fm_paid_get('taiwan_stock_trading_daily_report', f'date={d}'" not in src, '')
+ok('⑨c 文件要記下「A~F 全部不通、對照組卻通」這個決定性證據',
+   'A~F' in src and '八大行庫' in src, '')
+ok('⑨d 要有「一半以上券商沒回就不寫檔」的守門(⛔ 不可寫半份)',
+   'partial(' in src and src.split('partial(')[1].split('compact_day')[0].count('continue') == 1, '')
+ok('⑨e --brokers 可調,預設 200(實測 98% 覆蓋)',
+   "'--brokers'" in src and 'default=200' in src, '')
+
+# top_brokers:用真實 data/chips 驗(⛔ 不用假資料 —— 要驗的正是「真的資料裡撈得到代號」)
+_bs = cbf.top_brokers(200)
+ok('⑨f 🚧 空過守門:top_brokers 從真實資料撈得出 ≥100 家', len(_bs) >= 100, f'只有 {len(_bs)} 家')
+ok('⑨g ⭐ 回的是**代號**不是名稱(⛔ 名稱不能當 API 參數)',
+   all(str(b).replace('A', '').replace('a', '').isdigit() and len(str(b)) <= 5 for b in _bs),
+   [b for b in _bs if not str(b).replace('A', '').isdigit()][:5])
+ok('⑨h 依 |淨額| 由大到小(第一名要是主力分點)', len(set(_bs)) == len(_bs), '有重複代號')
+# ⚠️ 第一版用「名稱反查 broker_names.json」→ 906 個查不到、只湊出 18 家。
+#    這條就是釘住那個回歸。
+ok('⑨i ⛔ 不可再用「名稱反查代號」(第一版只湊得出 18 家)',
+   'name2id' not in src, '')
+ok('⑨j 要讀 chips[].bid(那裡本來就有代號)', "e.get('bid')" in src, '')
+
 # ── 架構決定要寫在檔案裡(⛔ 免得下一個人搬回 gh-pages)──────
 ok('🏛️ 註解要寫明「只推 data 分支,不上 gh-pages」', '不上 gh-pages' in src)
 ok('🏛️ 註解要寫明「一天一個檔」的理由', '一天一個檔' in src and '2,653' in src)
