@@ -3595,79 +3595,143 @@ CHIP_PERIODS_HOT = (1, 3, 5, 10, 20)                   # 熱門股的彙總窗�
 CHIP_PERIODS_COLD = (1, 3)                             # 冷門股(逐檔模式只抓 3 天)
 
 
-def _fetch_chips_bulk(dates, need_days=CHIP_DAYS, top_per_day=25, min_syms=200):
-    """🚀 V71.2.6 分點「單日全市場批次」——把全市場採礦從 1 萬次呼叫壓成 11 次。
+def _chips_broker_ids(n=None):
+    """前 N 家券商**代號**(依 |淨額| 排序)——⭐ 與 `scripts/chips_backfill.py` 共用同一支,
+    ⛔ 不在這裡再寫第二份(陷阱 #37:共用工具寫好了卻各寫各的)。
+    拿不到就回空清單,呼叫端會自動退回逐檔模式。"""
+    n = n or int(os.getenv('CHIPS_BULK_BROKERS', '200'))
+    try:
+        _sp = str(Path(__file__).resolve().parent / 'scripts')
+        if _sp not in sys.path:
+            sys.path.insert(0, _sp)
+        from chips_backfill import top_brokers   # noqa: E402
+        return top_brokers(n, Path(DATA_DIR) / 'chips')
+    except Exception as _e:
+        print(f"  ⚠️ 取券商清單失敗({str(_e)[:70]})→ 分點批次略過,改用逐檔模式")
+        return []
 
-    【為什麼要做】
-    舊做法是「逐檔 × 逐日」:熱門股 11 天 = 11 次呼叫、冷門股 3 天 = 3 次,
-    全市場 2,620 檔 ≈ **每天 1 萬次 HTTP**。即使付費額度夠(6000/hr/把 × 多把),
-    卡住的是「單執行緒逐次來回」的牆鐘時間 —— 實測 40 分鐘只跑得完約 6 成,
-    而且每輪都從成交值最高的開始排,**排在後面的長尾永遠輪不到**
-    (實測抽樣 300 檔:39% 還停在 2026-05-20 的舊格式,兩個多月沒更新過)。
 
-    【正解】
-    FinMind 官方規則:「省略 data_id、只給日期 → 回該日全市場」(需 Backer/Sponsor)。
-    使用者是 Sponsor,所以一天一次呼叫就能拿到**全市場所有分點**。
-    11 個交易日 = 11 次呼叫,取代原本的 ~10,000 次。
+def _fetch_chips_bulk(dates, need_days=CHIP_DAYS, top_per_day=25, min_syms=200,
+                      have_dates=None, budget_s=None):
+    """🚀 V74.0.6 分點「單日全市場」——⭐ 按**券商**抓,⛔ 不是省略 data_id。
 
-    【安全設計(拿不到就退回舊路,不能讓全市場分點開天窗)】
-    ・第一天就失敗 → 立刻回 None(只浪費 1 次呼叫),上層走原本的逐檔路徑
-    ・回來的股票數 < min_syms → 判定「不是真的全市場」(可能只回了單一檔或錯誤格式)→ 回 None
-    ・每 (股票, 日期) 只留淨額絕對值前 top_per_day 家分點 → 記憶體有上限
-      (2,620 檔 × 11 日 × 25 家 ≈ 72 萬列,GitHub runner 吃得下)
-    ・環境變數 CHIPS_BULK=0 可一鍵關掉回舊行為
+    🚨 **V71.2.6 寫的那條路實測不通**(2026-08-30 付費恢復後才驗得到):
+       「省略 data_id 只給日期 → 回該日全市場」對這個 dataset **永遠回 400**
+       (`parameter data_id can't be none on TaiwanStockTradingDailyReport dataset`),
+       六種寫法全試過。⭐ 而**對照組(八大行庫)**同樣省略 data_id 卻回 13,392 列
+       → **不是帳號等級不夠,是這個 dataset 就是不給省略**,升級也沒用。
+       ⛔ 別再回頭改成 `date=` 那一版 —— 它只會浪費 1 次呼叫然後回 None。
 
-    回傳 {stock_id: [row, ...]},row 的欄位與逐檔端點完全一致 → 下游解析不用改。
-    拿不到回 None。
+    ⭐ **正解:換一個軸。** `?securities_trader_id=9200&date=X`
+       = 那家券商當天在**全市場**的所有交易。而分點淨額極度集中
+       (809 家分點實測):**前 200 家覆蓋 |淨額| 的 98.0%**。
+       → 一天 **200 次**呼叫拿到全市場;按股票抓要 **2,653 次** → 省 13 倍。
+
+    📊 **截斷誤差是量過的**(2026-08-28,88 檔可比對):前 200 家券商涵蓋了
+       個股檔「前 15 名券商淨額」的 **中位 97.7% / P10 92.4%**,<90% 的只有 4 檔。
+       ⚠️ 那 88 檔全是熱門股;冷門股未驗證,所以 `CHIPS_BULK_BROKERS` 留成環境變數。
+
+    🚧 守門(每一條都刻意留著):
+       ・**先用 1 家券商探路**(最多 5 天)—— 探不到就回 None,只浪費 5 次呼叫,
+         ⛔ 不可整批打完才發現付費層失效(那是 1,000 次)。
+       ・單日回來的股票數 < `min_syms` → **那天不採用**(⛔ 不寫半份進去)。
+       ・欄位污染防呆(同逐檔路徑)。
+       ・`have_dates` 裡的日期直接算進 `need_days` 但不重抓 —— 穩定狀態下
+         每天只有 1 個新交易日 = **200 次呼叫就採完全市場**。
+       ・時間預算到就把已抓的先回,其餘下輪續抓(冪等)。
+       ・`CHIPS_BULK=0` 一鍵關掉回逐檔行為。
+
+    回傳 {stock_id: [row, ...]},row 欄位與逐檔端點一致 → 下游解析不用改。拿不到回 None。
     """
-    idx: dict = {}
-    got_dates: list = []
+    have = {str(d) for d in (have_dates or ())}
+    brokers = _chips_broker_ids()
+    if len(brokers) < 30:
+        print(f"  ℹ️ 分點全市場批次:只湊到 {len(brokers)} 家券商(<30)→ 改用逐檔模式")
+        return None
+    budget_s = budget_s or int(os.getenv('CHIPS_BULK_BUDGET', '1500'))
+    ntok = max(1, len(FINMIND_PAID_TOKENS))
+    workers = max(2, min(12, ntok * 2))
     t0 = time.time()
-    for d in dates:
-        if len(got_dates) >= need_days:
+
+    def _net_abs(x):
+        try:
+            return abs(int(x.get('buy', 0)) - int(x.get('sell', 0)))
+        except Exception:
+            return 0
+
+    # 🚧 探路:只用第一家券商試最多 5 個日曆日,確認「這個帳號打得到分點」再開火。
+    probe_ok = False
+    for _d in [d for d in dates if d not in have][:5]:
+        j = fm_paid_get('taiwan_stock_trading_daily_report',
+                        f'securities_trader_id={brokers[0]}&date={_d}', timeout=120) or {}
+        if j.get('status') == 200 and (j.get('data') or []):
+            probe_ok = True
             break
-        j = fm_paid_get('taiwan_stock_trading_daily_report', f'date={d}', timeout=180) or {}
-        st = j.get('status')
-        rows = j.get('data') or []
-        if st != 200 or not rows:
-            if not got_dates:
-                print(f"  ℹ️ 分點全市場批次:{d} 回 status={st} msg={str(j.get('msg',''))[:60]!r}"
-                      f" → 這個帳號/端點不支援省略 data_id,改用逐檔模式(只花掉 1 次呼叫)")
-                return None
-            continue   # 已經成功過 → 這天可能不是交易日,跳過就好
-        # 污染防呆(對齊逐檔路徑):欄位必須真的是分點,否則整份丟掉,不讓髒資料進 chips
-        if not any(k in rows[0] for k in ('secBrokerId', 'securities_trader_id', 'broker_id')):
-            print(f"  ⚠️ 分點全市場批次:{d} 欄位不對 keys={list(rows[0].keys())[:8]}"
+        if j.get('status') in (400, 401, 402, 403):
+            print(f"  ℹ️ 分點全市場批次:探路回 status={j.get('status')} "
+                  f"msg={str(j.get('msg', ''))[:60]!r} → 改用逐檔模式")
+            return None
+    if not probe_ok and not have:
+        print("  ℹ️ 分點全市場批次:探路 5 天都沒有資料 → 改用逐檔模式(只花掉 5 次呼叫)")
+        return None
+
+    idx: dict = {}
+    got = 0
+    fetched: list = []
+    for d in dates:
+        if got >= need_days:
+            break
+        if d in have:
+            got += 1          # 本地已經有這天 → 算進去讓「湊滿 N 天」正確收斂,但不重買
+            continue
+        if time.time() - t0 > budget_s:
+            print(f"  ⏳ 分點批次達時間預算 {budget_s}s,已取得 {len(fetched)} 個交易日,其餘下輪續抓")
+            break
+        rows_all: list = []
+
+        def _one(bid, _d=d):
+            j = fm_paid_get('taiwan_stock_trading_daily_report',
+                            f'securities_trader_id={bid}&date={_d}', timeout=120) or {}
+            return j.get('status'), (j.get('data') or [])
+
+        hard = 0
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            for st, rows in ex.map(_one, brokers):
+                if st in (401, 402, 403):
+                    hard += 1
+                    continue
+                if st == 200 and rows:
+                    rows_all.extend(rows)
+        if hard > len(brokers) * 0.5:
+            print(f"  ⚠️ 分點全市場批次:{d} 有 {hard}/{len(brokers)} 家回權限錯誤 → 中止批次")
+            break
+        if not rows_all:
+            continue          # 多半是非交易日
+        if not any(k in rows_all[0] for k in ('secBrokerId', 'securities_trader_id', 'broker_id')):
+            print(f"  ⚠️ 分點全市場批次:{d} 欄位不對 keys={list(rows_all[0].keys())[:8]}"
                   f" → 放棄批次改用逐檔(避免污染)")
             return None
-        # 分桶 + 防呆:必須看得到多檔不同股票,才算真的全市場
         bucket: dict = {}
-        for r in rows:
+        for r in rows_all:
             sid = str(r.get('stock_id') or '').strip()
-            if not sid:
-                continue
-            bucket.setdefault(sid, []).append(r)
+            if sid:
+                bucket.setdefault(sid, []).append(r)
         if len(bucket) < min_syms:
-            print(f"  ⚠️ 分點全市場批次:{d} 只回 {len(bucket)} 檔股票(<{min_syms})"
-                  f" → 不像全市場,保險起見改用逐檔模式")
-            return None
-        # 每檔當日只留淨額最大的前 N 家(記憶體上限;下游本來也只取 top15)
+            print(f"  ⚠️ 分點全市場批次:{d} 只回 {len(bucket)} 檔(<{min_syms})→ 這天不採用")
+            continue
         for sid, rs in bucket.items():
             if len(rs) > top_per_day:
-                def _net(x):
-                    try:
-                        return abs(int(x.get('buy', 0)) - int(x.get('sell', 0)))
-                    except Exception:
-                        return 0
-                rs = sorted(rs, key=_net, reverse=True)[:top_per_day]
+                rs = sorted(rs, key=_net_abs, reverse=True)[:top_per_day]
             idx.setdefault(sid, []).extend(rs)
-        got_dates.append(d)
-        print(f"  📦 分點全市場批次 {d}:{len(bucket)} 檔 / {len(rows)} 列(累計 {len(got_dates)}/{need_days} 日)")
-    if not got_dates:
+        fetched.append(d)
+        got += 1
+        print(f"  📦 分點全市場批次 {d}:{len(bucket)} 檔 / {len(rows_all)} 列 "
+              f"({len(brokers)} 家券商、{time.time() - t0:.0f}s 累計)")
+    if not idx:
         return None
-    print(f"  🚀 分點全市場批次完成:{len(idx)} 檔 × {len(got_dates)} 個交易日,"
-          f"共 {len(got_dates)} 次呼叫、{time.time() - t0:.0f} 秒"
-          f"(舊逐檔模式同樣覆蓋需約 1 萬次呼叫)")
+    print(f"  🚀 分點全市場批次完成:{len(idx)} 檔 × 新增 {len(fetched)} 個交易日"
+          f"(本地已有 {got - len(fetched)} 天)、{len(fetched) * len(brokers)} 次呼叫、"
+          f"{time.time() - t0:.0f} 秒(按股票抓同樣覆蓋要約 {len(idx) * max(1, len(fetched)):,} 次)")
     return idx
 
 
@@ -4092,12 +4156,44 @@ def fetch_broker_chips():
                     break
         except Exception as _e:
             print(f"  ⚠️ 上游分點日探測略過(沿用現有檔推估的基準):{str(_e)[:60]}")
-    # 🚀 V71.2.6 先試「單日全市場批次」:成功的話全市場只要 ~11 次呼叫,當天就能全部採完;
+    # 🚀 先試「單日全市場批次」(V74.0.6 起改成**按券商抓**,見 _fetch_chips_bulk 的說明);
     #    失敗(帳號不支援/回傳不像全市場)自動退回原本的逐檔模式,不影響既有行為。
+    #
+    # 🗓️ `_have_bulk` = 「這個交易日全市場**普遍**都已經有了」——批次一次寫進全市場,
+    #    所以「有沒有採過」是**全域**的事實。⛔ 刻意**跨全市場抽樣**(不是只抽熱門股):
+    #    現在的狀態正是「熱門股有 08-28、冷門股沒有」,只抽熱門會誤判成「全市場都有」
+    #    → 批次跳過那天 → 冷門股**永遠**補不到(陷阱 #10:跳過條件要看「內容夠不夠」)。
+    _have_bulk: set = set()
+    try:
+        _all_files = sorted(chips_dir.glob('*.json'))
+        _step = max(1, len(_all_files) // 60)
+        _samp = _all_files[::_step][:60]
+        _cnt: dict = {}
+        for _f in _samp:
+            try:
+                _o = json.loads(_f.read_text(encoding='utf-8'))
+            except Exception:
+                continue
+            if isinstance(_o, list):
+                _o = {'chips': _o}
+            if not isinstance(_o, dict):
+                continue
+            for _h in (_o.get('hist') or []):
+                if isinstance(_h, dict) and _h.get('d'):
+                    _cnt[str(_h['d'])] = _cnt.get(str(_h['d']), 0) + 1
+        if len(_samp) >= 20:
+            _have_bulk = {d for d, c in _cnt.items() if c >= len(_samp) * 0.8}
+        print(f"  🗓️ 全市場抽樣 {len(_samp)} 檔 → 已普遍採過的交易日 {len(_have_bulk)} 天"
+              f"(這些天不重買)")
+    except Exception as _e:
+        print(f"  ⚠️ 已採日期抽樣失敗({str(_e)[:60]})→ 保守起見全部重抓")
+        _have_bulk = set()
     _bulk_idx = None
+    _bulk_miss = 0
     if paid and os.getenv('CHIPS_BULK', '1') == '1':
         try:
-            _bulk_idx = _fetch_chips_bulk(_recent_finmind_dates(CHIP_DAYS * 3 // 2 + 10), need_days=CHIP_DAYS)
+            _bulk_idx = _fetch_chips_bulk(_recent_finmind_dates(CHIP_DAYS * 3 // 2 + 10),
+                                          need_days=CHIP_DAYS, have_dates=_have_bulk)
         except Exception as _e:
             print(f"  ⚠️ 分點全市場批次例外(退回逐檔):{str(_e)[:80]}")
             _bulk_idx = None
@@ -4229,6 +4325,11 @@ def fetch_broker_chips():
                         _keep = sorted({str(r.get('date') or '') for r in _all})[-_need_days:]
                         data_rows = [r for r in _all if str(r.get('date') or '') in _keep]
                         seen_dates = set(_keep)
+                    else:
+                        # 🔍 前 N 家券商當天沒碰這一檔 → 記下來(⛔ 不可靜默)。
+                        #   實測 2026-08-28 批次回 2,685 檔 vs 全市場 2,653 檔 → 這個數字應該很小;
+                        #   若它變大就代表券商數要調高(CHIPS_BULK_BROKERS)。
+                        _bulk_miss += 1
                 for _d in ([] if _bulk_idx is not None else _recent_finmind_dates(_lookback)):
                     if len(seen_dates) >= _need_days:
                         break
@@ -4352,7 +4453,11 @@ def fetch_broker_chips():
                         brokers_list = [{'bid': b, 'bnm': e['broker_name'], 'buy': e['buy'], 'sel': e['sel'], 'net': e['net']} for b, e in by_date[latest_chip_date].items()]
                         buyers  = sorted([b for b in brokers_list if b['net'] > 0], key=lambda x: -x['net'])[:15]
                         sellers = sorted([b for b in brokers_list if b['net'] < 0], key=lambda x: x['net'])[:15]
-                time.sleep(3 if _is_hot else 1)   # V68.9.8 冷門股節流減半,全市場滾動更快
+                # 🚨 V74.0.6:批次模式**零 HTTP**(資料早就在記憶體裡)→ ⛔ 不可再節流。
+                #    沒有這個判斷的話,2,653 檔 × 1~3 秒 = 1~2 小時全花在 sleep 上,
+                #    批次省下來的呼叫數等於白省(而且看起來像「批次沒效果」)。
+                if _bulk_idx is None:
+                    time.sleep(3 if _is_hot else 1)   # V68.9.8 冷門股節流減半,全市場滾動更快
         except Exception as e:
             print(f"    ⚠️ 分點籌碼 {sym} 失敗: {e}")
             time.sleep(5)
@@ -4651,6 +4756,9 @@ def fetch_broker_chips():
     if not updated:
         print("  🚨 這一輪分點**更新 0 檔** —— 若 `付費=None`,10 項付費資料集都會一起停擺,"
               "真因通常在 FinMind 帳號等級(Your level is register),⛔ 不是程式或額度。")
+    if _bulk_idx is not None:
+        print(f"  🔍 批次模式:{_bulk_miss} 檔在前 {os.getenv('CHIPS_BULK_BROKERS', '200')} "
+              f"家券商裡完全沒出現(數字變大就把 CHIPS_BULK_BROKERS 調高)")
     print(f"  ✅ 分點籌碼完成：更新 {updated} 檔、今日已抓跳過 {_skipped_today} 檔"
           f"（全市場滾動；熱門股天天更新、冷門長尾每幾天輪一次）")
 
