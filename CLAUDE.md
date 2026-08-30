@@ -1273,7 +1273,29 @@ git show origin/gh-pages:data/chips/2330.json | python3 -c "import sys,json;prin
    ⭐ 正解:讀 `chips[].buyers/sellers[].bid` —— **那裡本來就有券商代號**。
    ⛔ 別再走名稱反查那條路(測試 ⑨i 釘住)。
 
-⏳ **還沒接進 workflow** —— 那要動 workflow 與 data 分支(⛔ 使用者授權清單裡的例外 ③④)。
+#### ✅ V74.0.8 已上線並開跑(使用者:「該挖礦就挖礦…要挖兩年回撤準確度才有效果」)
+**上游深度探測(7 次呼叫,⛔ 別花 16 小時才發現第二年是空的)**:
+```
+   2 天前 ✅3,681 列   365 天前 ✅3,191 列   1,095 天前 ✅4,004 列
+  30 天前 ✅11,976 列  730 天前 ✅6,304 列
+```
+→ **至少 3 年**都抓得到,2 年綽綽有餘。付費 1 把 / 免費 3 把,分點額度 6,000 req/hr。
+
+🏛️ **`chips_backfill.yml`(手動)推獨立的 orphan 分支 `chips_deep`** —— ⛔ 不碰 data 也不碰 gh-pages:
+・那兩個分支都是 daily_miner orphan force-push 重建的,這支跑 6 小時**一定互相覆蓋**
+・gh-pages 那步是 `git add -f index.html data/`(**整個 data/ 都收**)→ 放進 `data/` 會把
+  ~170 MB 深歷史推上前端。⭐ 所以檔案放**頂層 `chips_deep/`**,不是 `data/chips_deep/`。
+・⭐ **附帶好處:現有 workflow 一行都不用改。**
+🚧 兩道推送守門:① 一天都沒有就拒推 ② 天數少於分支上已有的就拒推
+  (orphan force-push 會**整個取代**,少了就是真的沒了)。
+
+📊 **試跑實測(10 天,⛔ 先驗管線再排長工作)**:
+每天 **2,691 檔**、gz 後 **~350 KB/天**、速度 **1.4 分/天**
+→ 2 年(490 交易日)≈ **11.4 小時 / 171 MB**。分 4 段跑(單 job 上限 6 小時)。
+⚠️ **一次只能排一段** —— concurrency group 只留一個 pending,多排的會互相擠掉(V73.7.9 的教訓)。
+
+格式:`{"d":日期,"n":股票數,"k":15,"nm":{代號:名稱},"s":{股號:[[代號,淨股數,均價],…]}}`
+讀法:`git show origin/chips_deep:chips_deep/2026-08-17.json.gz`(⛔ 前端不讀,只給探針/回測)。
 測試 `scripts/test_chips_backfill.py` 30 條,5 種注入缺陷驗過。
 ⚠️ 該測試「週末不排進清單」那條第一版寫成 `all(... for d in [])` —— **空迭代恆為 True = 假綠燈**,
    已改成把 dry-run 印出的日期真的解析出來逐個檢查 weekday。
