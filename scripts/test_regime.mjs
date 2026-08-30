@@ -127,8 +127,10 @@ for (const c of R.cases) {
 }
 
 // ── ⑥⑦ 接線 ───────────────────────────────────────────────────────
-ok('⑥ 已接進 K棒戰法卡(_headline 之後)',
-   /\$\{_headline\}\$\{this\._stockRegimeHtml\(this\.currentSymbolId\)\}/.test(src), '');
+// ⚠️ V74.0.2 起 `_luOddsHtml`(明天漲停/大漲機率)插在 _headline 與這條之間 →
+//    斷言改成「在 _headline 之後、rows 之前」,⛔ 不再要求緊貼(不然每加一條就假失敗)。
+ok('⑥ 已接進 K棒戰法卡(_headline 之後、K 棒訊號列之前)',
+   /\$\{_headline\}[\s\S]{0,200}\$\{this\._stockRegimeHtml\(this\.currentSymbolId\)\}[\s\S]{0,200}\$\{rows\}/.test(src), '');
 ok('⑥b ⭐ K 棒沒訊號時這條仍要顯示(⛔ 否則變成有時有有時沒有)',
    /if \(!sigs\.length\) \{[\s\S]{0,700}_stockRegimeHtml\(this\.currentSymbolId\)/.test(src), '');
 ok('⑦ screener 非同步載入要重繪 + 防無限迴圈旗標',

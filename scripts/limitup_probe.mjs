@@ -140,7 +140,7 @@ for (const s of stocks) {
 // ── 統計容器 ──────────────────────────────────────────────
 const HB = 401, HOFF = 20, HSC = 10;   // −20% ~ +20%,0.1% 一格
 const mkStat = () => ({
-    n: 0, sum: 0, luC: 0, luT: 0, lock: 0, sumO: 0, sumL: 0, hist: new Int32Array(HB),
+    n: 0, sum: 0, luC: 0, luT: 0, u5: 0, u3: 0, lock: 0, sumO: 0, sumL: 0, hist: new Int32Array(HB),
     byY: new Map(), h1n: 0, h1s: 0, h1lu: 0, h2n: 0, h2s: 0, h2lu: 0,
 });
 const FEAT = new Map();          // feature → Map(bucket → stat)
@@ -150,12 +150,12 @@ const ORDER = [];                // 維持顯示順序
  * @param exO  🚨 買 t+1 **開盤** → 賣 t+1 收盤 的超額 %(= 「t 收盤買不到」時的實際版本)
  * @param lock t 日是否**漲停鎖死**(收=最高且漲停)→ 那天收盤買不到
  */
-function rec(feat, bucket, ex, luC, luT, year, isH1, exO, lock, exL) {
+function rec(feat, bucket, ex, luC, luT, year, isH1, exO, lock, exL, up5, up3) {
     let m = FEAT.get(feat);
     if (!m) { m = new Map(); FEAT.set(feat, m); ORDER.push(feat); }
     let st = m.get(bucket);
     if (!st) { st = mkStat(); m.set(bucket, st); }
-    st.n++; st.sum += ex; st.sumO += exO; st.sumL += exL; if (luC) st.luC++; if (luT) st.luT++; if (lock) st.lock++;
+    st.n++; st.sum += ex; st.sumO += exO; st.sumL += exL; if (luC) st.luC++; if (luT) st.luT++; if (up5) st.u5++; if (up3) st.u3++; if (lock) st.lock++;
     let b = Math.round((ex + HOFF) * HSC); if (b < 0) b = 0; else if (b >= HB) b = HB - 1;
     st.hist[b]++;
     let y = st.byY.get(year); if (!y) { y = { n: 0, s: 0, lu: 0 }; st.byY.set(year, y); }
@@ -196,6 +196,9 @@ for (const s of stocks) {
         // ── 標籤(⛔ 只用 t+1)──
         const luC = (nc / cc - 1) >= LU;
         const luT = (nh / cc - 1) >= LU;
+        // 使用者要的是「漲停**或大漲**」→ 大漲用兩個門檻:收 ≥5% 與 ≥3%
+        const up5 = (nc / cc - 1) >= 0.05;
+        const up3 = (nc / cc - 1) >= 0.03;
         const ex = (nc / cc - 1) * 100 - twNext[g];  // 隔日超額 %
         // 🚨 「買得到嗎」:t 日**漲停鎖死**(收盤=最高且漲停)那天,收盤價根本買不到。
         //    → 另外算一條「隔天開盤才買、收盤賣」的實際版本(對照組用大盤同一段 開→收)。
@@ -207,7 +210,7 @@ for (const s of stocks) {
         const exL = (luT ? 9.5 : (nc / cc - 1) * 100) - twNext[g];
         const date = dates[g], year = date.slice(0, 4), isH1 = g < MID;
         EV++;
-        const R = (f, b) => rec(f, b, ex, luC, luT, year, isH1, exO, lock, exL);
+        const R = (f, b) => rec(f, b, ex, luC, luT, year, isH1, exO, lock, exL, up5, up3);
         R('對照組', '全部(隨便挑一天)');
 
         // ── K 線特徵 ───────────────────────────────────
@@ -300,6 +303,28 @@ for (const s of stocks) {
             R('⭐買得到版(排除鎖死)', 'z (對照)所有沒鎖死的日子');
         }
 
+        // ── 🎯 前端要用的那一份:7 個「純 K 線算得出來」的條件 + **同時命中幾個** ──
+        //    ⛔ 命中多個時**不可以把單一機率相乘** —— 這些條件高度相關(爆量/高波動/創新高常常一起來),
+        //       相乘會嚴重高估。所以直接量「同時命中 N 個」的實際機率。
+        const CONDS = [
+            ['A 高波動(20日振幅≥6%)', amp20 >= 6],
+            ['B 差一點漲停(漲7~9.5%)', chg >= 7 && chg < 9.5],
+            ['C 跳空開高≥3%', gap >= 3],
+            ['D 爆量大漲(量≥2倍且漲≥3%)', vr >= 2 && chg >= 3],
+            ['E 年位階≥90', pos >= 90],
+            ['F 創60日新高', dd60 >= -1],
+            ['G 漲停常客(近一年≥5次)', luCnt >= 5],
+        ];
+        let hits = 0;
+        for (const [, on] of CONDS) if (on) hits++;
+        if (!lock) {
+            for (const [nm, on] of CONDS) if (on) R('🎯前端條件·單一命中(排除鎖死)', nm);
+            R('🎯前端條件·單一命中(排除鎖死)', 'zz (對照)沒鎖死的所有日子');
+            R('🎯前端條件·同時命中幾個(排除鎖死)', hits >= 5 ? 'e 命中 5 個以上' : `${'abcde'[Math.min(hits, 4)]} 命中 ${hits} 個`);
+        } else {
+            R('🔒今天漲停鎖死(收盤買不到)', hits >= 3 ? 'b 同時命中 3 個以上' : 'a 命中 0~2 個');
+        }
+
         // ── 籌碼 ───────────────────────────────────────
         const fnr = v[i] > 0 ? fn[i] / v[i] * 100 : 0;
         const tnr = v[i] > 0 ? tn[i] / v[i] * 100 : 0;
@@ -372,21 +397,24 @@ console.log(`   隔日**盤中觸及**漲停 ${(bT * 100).toFixed(3)}%`);
 console.log(`   隔日超額報酬 平均 ${bEx.toFixed(3)}% ・中位 ${medOf(base).toFixed(2)}%`);
 
 const pct = x => (x * 100).toFixed(3);
+const NLB = FEAT.get('⭐買得到版(排除鎖死)').get('z (對照)所有沒鎖死的日子');
 for (const feat of ORDER) {
     if (feat === '對照組') continue;
     const m = FEAT.get(feat);
     console.log(`\n━━━ ${feat} ━━━`);
     // ⭐ 「買得到版」區塊的倍數分母要用**它自己的對照組**(所有沒鎖死的日子),
     //    ⛔ 不可用全母體 —— 鎖死那批的漲停率是 20%,會把分母墊高、倍數看起來變小。
-    const zb = m.get('z (對照)所有沒鎖死的日子');
+    // ⛔ 「排除鎖死」的三個區塊一律用**沒鎖死的日子**當分母;⛔ 用全母體會低估倍數
+    //    (鎖死那批的漲停率是 20%,會把分母墊高)。
+    const zb = /^[⭐🎯]/.test(feat) ? NLB : null;
     const dC = zb ? zb.luC / zb.n : bC, dT = zb ? zb.luT / zb.n : bT;
-    console.log(`  桶                              事件數   收漲停%  倍數  觸及%  倍數 │ 收盤買 扣成本  中位 │ 鎖死% 隔天開盤 掛漲停賣${zb ? '   (倍數分母=沒鎖死的日子)' : ''}`);
+    console.log(`  桶                              事件數   收漲停%  倍數  觸及%  倍數 │ ≥5%   ≥3%  │ 收盤買 扣成本 │ 鎖死% 掛漲停賣${zb ? '   (倍數分母=沒鎖死的日子)' : ''}`);
     for (const b of [...m.keys()].sort()) {
         const st = m.get(b);
         const pC = st.luC / st.n, pT = st.luT / st.n;
         const mean = st.sum / st.n, md = medOf(st), mo = st.sumO / st.n, ml = st.sumL / st.n;
         const flag = st.n < 300 ? ' ⚠️樣本不足' : '';
-        console.log(`  ${b.padEnd(30)} ${String(st.n).padStart(7)}  ${pct(pC).padStart(7)} ${(pC / dC).toFixed(2).padStart(5)}x ${pct(pT).padStart(6)} ${(pT / dT).toFixed(2).padStart(5)}x │ ${(mean - COST).toFixed(3).padStart(7)} ${md.toFixed(2).padStart(6)} │ ${pct(st.lock / st.n).padStart(6)} ${(mo - COST).toFixed(3).padStart(8)} ${(ml - COST).toFixed(3).padStart(9)}${flag}`);
+        console.log(`  ${b.padEnd(30)} ${String(st.n).padStart(7)}  ${pct(pC).padStart(7)} ${(pC / dC).toFixed(2).padStart(5)}x ${pct(pT).padStart(6)} ${(pT / dT).toFixed(2).padStart(5)}x │ ${pct(st.u5 / st.n).padStart(6)} ${pct(st.u3 / st.n).padStart(6)} │ ${(mean - COST).toFixed(3).padStart(7)} ${md.toFixed(2).padStart(6)} │ ${pct(st.lock / st.n).padStart(6)} ${(ml - COST).toFixed(3).padStart(9)}${flag}`);
     }
 }
 
@@ -422,3 +450,24 @@ for (const feat of ORDER) {
 }
 console.log(`\n候選 ${cand} 個,六關全過 ${pass} 個`);
 if (!cand) console.log('（沒有任何桶同時滿足「命中倍數 ≥1.5x」與「扣成本後為正」）');
+
+
+// ── 📤 EMIT:產出可嵌進 index.html 的 `_LU_ODDS`(⛔ 前端不可再寫第二份數字)──
+if (process.env.EMIT) {
+    const single = FEAT.get('🎯前端條件·單一命中(排除鎖死)');
+    const joint = FEAT.get('🎯前端條件·同時命中幾個(排除鎖死)');
+    const lockF = FEAT.get('🔒今天漲停鎖死(收盤買不到)');
+    const zz = single.get('zz (對照)沒鎖死的所有日子');
+    const P = st => [+(st.luC / st.n * 100).toFixed(2), +(st.u5 / st.n * 100).toFixed(2),
+    +(st.u3 / st.n * 100).toFixed(2), st.n, +(st.sum / st.n - COST).toFixed(3)];
+    const out = {
+        win: [dates[minG], dates[maxG]], syms: stocks.length, n: zz.n,
+        base: P(zz),                      // [漲停%, ≥5%, ≥3%, n, 扣成本超額%]
+        cond: {}, hits: {}, lock: {},
+    };
+    for (const [k, st] of single) if (!k.startsWith('zz')) out.cond[k.slice(0, 1)] = P(st);
+    for (const [k, st] of joint) out.hits[k.replace(/^[a-z] 命中 /, '').replace(' 個以上', '+').replace(' 個', '')] = P(st);
+    for (const [k, st] of lockF) out.lock[k.slice(0, 1)] = P(st);
+    console.log('\n===EMIT_JSON===');
+    console.log(JSON.stringify(out));
+}
