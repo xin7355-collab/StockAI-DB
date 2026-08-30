@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.4 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.5 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7348,8 +7348,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.0.4',
+    _APP_VERSION: 'V74.0.5',
     _CHANGELOG: [
+        { v:'V74.0.5', dt:'2026-08-31', d:[
+            '🔬 分點資料挖滿 2 年(全市場逐日)並全面回測:「哪家分點買」幾乎不帶方向資訊 —— 神秘分點/地緣分點/連買 3 天/隔日沖券商迴避全部實測無實用邊際;地緣分點卡已補上實測數字',
+            '⛏️ 分點採礦提速:歷史天直接從深歷史還原、免費爬蟲連續失敗自動停用,全市場一輪就能追上最新',
+        ]},
         { v:'V74.0.4', dt:'2026-08-30', d:[
             '⚠️ 選股條件的實測徽章補上一句最重要的話:這個優勢正在變小。'
             + '逐年拆開看,領先前 12 名裡有 8 個最差的年份就是 2026 —— '
@@ -24125,7 +24129,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 if (gb.adj.length) parts.push(`<span class="text-gray-400">鄰近</span>:${gb.adj.slice(0, 3).map(nm).join('、')}`);
                 insights.push({ c: 'main', h: `🗺️ <b class="text-cyan-300">地緣分點在買</b>(公司在 ${gb.city})— ${parts.join(' ・ ')}`
                     + `<br><span class="text-gray-400">他說「**關鍵分點常常就是地緣分點**」——公司所在地附近的營業點,買的常是員工、供應商、在地大戶,他們對公司狀況知道得比較早。這幾家合計佔今天買超 <b>${gb.pct.toFixed(0)}%</b>。</span>`
-                    + `<br><span class="text-[9px] text-gray-600">⚠️ 地名是從分點名稱推的,<b>會有歧義的路名(中山/中正/信義/民權等)一律不對照</b>,寧可判不出來也不判錯。這是**參考資訊**,我沒有回測過它的預測力。</span>` });
+                    + `<br><span class="text-[9px] text-gray-600">⚠️ 地名是從分點名稱推的,<b>會有歧義的路名(中山/中正/信義/民權等)一律不對照</b>,寧可判不出來也不判錯。⛔ <b>本站已用 2 年全市場分點逐日資料實測:地緣配對的買超,之後 10/20 日跟一般買超差不到 ±0.1 個百分點</b>(11 萬筆事件,排除雙北也一樣)—— 這是<b>事實描述不是買進訊號</b>,別因為「在地人在買」就加碼。</span>` });
             }
         } catch (_) {}
         // 🔀 V68.4.5 分點與股價背離:主力大買股價卻跌=誘多出貨;大賣股價卻漲=洗盤
