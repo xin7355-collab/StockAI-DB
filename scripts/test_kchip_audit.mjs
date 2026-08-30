@@ -75,10 +75,17 @@ ok('① ⭐ 改叫「值得參考的進場訊號」並註明「實測期望值�
 //   但**成績表一更新,那個前提就變了**(全市場回測後 2327 多了一個 exp>0 的訊號),
 //   測試就假失敗。⛔ 測試不可綁死會浮動的資料。
 //   ⭐ 改用 stub 控制 `_sigEdge`,**兩種情境各驗一次**。
+// 🚨 V74.0.3:`map` 支援萬用字元 `'*'`(對**每一個**訊號都回同一份成績)。
+//   ⛔ 原本寫死 `_detectMaDeviation｜負乖離過大`,但那個偵測器**今天不一定會觸發**
+//      → 資料一變,stub 等於沒作用、測試落到別的分支 = 假失敗。
+//      (CLAUDE.md V72.1.8 自己就寫過「測試⛔不可綁死會浮動的資料狀態」,這支正是再犯。)
+//   ⭐ 用 '*' 就跟「今天剛好有哪幾個訊號」無關:
+//      看多的全部拿到負期望值 → 進 dull;看空/警示的全部拿到成績 → 進 risk。
 const kbar = (expMap) => page.evaluate(a => {
     const real = app._sigEdge;
+    const ALL = (a.expMap && a.expMap.__all !== undefined) ? a.expMap.__all : undefined;
     app._sigEdge = (det, title) => {
-        const e = a.expMap[`${det}｜${title}`];
+        const e = ALL !== undefined ? ALL : a.expMap[`${det}｜${title}`];
         return e === undefined ? null : { grade: 'A', n: 500, e10: 1, w10: 42, p: 0.01, e20: 1, payoff: 1.2, exp: e };
     };
     app.currentSymbolId = '2327'; app.rawDailyData = a.rows; app.activeData = a.rows;
@@ -180,7 +187,11 @@ ok('③ ⭐ 結論要放在訊號清單**之前**(第一眼看到)',
 // ⚠️ V72.1.8:空頭時的結論句有**兩個分支**(有無正期望值訊號),各驗一次,
 //   ⛔ 別假設實際資料一定落在其中一邊。
 // ⓐ 只有風險訊號(看空/警示有成績、看多沒有)→ 走「沒進場訊號 + 有風險提醒」那條
-const hbRisk = txt(await kbar({ map: { '_detectMaDeviation｜負乖離過大': -0.8 }, tr: 'bear' }));
+const hbRisk = txt(await kbar({ map: { __all: -0.8 }, tr: 'bear' }));
+// 🚧 空過守門:先確認測資真的落在「沒有進場訊號 + 有風險提醒」那條路,
+//    ⛔ 否則下面那條斷言是在驗一個根本沒走到的分支(假綠燈/假失敗都可能)。
+ok('③ 🚧 空過守門:萬用 stub 真的產生「只有風險提醒」的情境',
+   /風險提醒/.test(hbRisk) && !/值得參考的進場訊號/.test(hbRisk), hbRisk.slice(0, 300));
 ok('③ ⭐ 空頭 + 只有風險提醒 → 要說「中期趨勢也是空頭 → 觀望或減碼」',
    /中期趨勢也是空頭/.test(hbRisk) && /觀望或減碼/.test(hbRisk), hbRisk.slice(0, 400));
 // ⓑ 完全沒有通過實測的訊號 → 措辭要精確(⛔ 不可說「今天沒有明確訊號」,摺疊區還有一堆)
@@ -269,20 +280,39 @@ ok('③ ⭐⛔ 結論句本身不可下具體買賣指令(買進/掛單/停損�
 //   `renderChuKbarVerdict` 的 recentLow(波段低點)可能是 null →
 //   原本印出「跌破前低 **--** 就撤」,使用者根本不知道要撤在哪(實測 2327)。
 {
-    const NP = await page.evaluate(a => {
-        app.currentSymbolId = '2327'; app.rawDailyData = a.rows; app.activeData = a.rows;
+    // 🚨 V74.0.3:原本寫死用 2327 —— 但要驗的是「型態偏多·**但月線壓著**」那個分支,
+    //    而 2327 現在是「型態轉弱」→ 三條斷言全部假失敗。
+    //    ⭐ 改成**在真實資料裡找出**今天落在那個分支的一檔(找不到就大聲失敗,⛔ 不靜默跳過)。
+    //    (CLAUDE.md V72.1.8:測試⛔不可綁死會浮動的資料狀態;而用真實資料仍是本專案偏好。)
+    const renderVerdict = (sym, rws, tr) => page.evaluate(a => {
+        app.currentSymbolId = a.sym; app.rawDailyData = a.rows; app.activeData = a.rows;
+        app.peaks = []; app.troughs = [];          // ⭐ 刻意留空 = 「沒有波段低點」那個情境
         const cl = a.rows.map(x => +x.close);
         const ma = k => cl.map((_, i) => i < k - 1 ? null : cl.slice(i - k + 1, i + 1).reduce((s, v) => s + v, 0) / k);
         app.indicators = { ma5: ma(5), ma20: ma(20), ma60: ma(60), k: [], d: [], dif: [], macd: [] };
-        const o = {};
-        app._ovTrend = null;
-        try { app.renderChuKbarVerdict(a.rows); } catch (e) { o.err = e.message; }
-        o.bull = (document.getElementById('chuVerdictCard') || {}).innerText || '';
-        app._ovTrend = { sym: '2327', trend: 'bear', txt: '空頭' };
-        try { app.renderChuKbarVerdict(a.rows); } catch (e) { o.err2 = e.message; }
-        o.bear = (document.getElementById('chuVerdictCard') || {}).innerText || '';
-        return o;
-    }, { rows });
+        app._ovTrend = a.tr ? { sym: a.sym, trend: a.tr, txt: '空頭' } : null;
+        try { app.renderChuKbarVerdict(a.rows); } catch (e) { return 'ERR:' + e.message; }
+        return (document.getElementById('chuVerdictCard') || {}).innerText || '';
+    }, { sym, rows: rws, tr });
+
+    const pool = fs.readdirSync(path.join(ROOT, 'data'))
+        .filter(f => /^\d{4}\.json$/.test(f) && !/^00/.test(f)).sort();
+    let hit = null;
+    for (const f of pool) {
+        let rws; try { rws = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', f), 'utf8')); } catch { continue; }
+        if (!Array.isArray(rws) || rws.length < 120) continue;
+        const t = await renderVerdict(f.replace('.json', ''), rws, null);
+        if (/型態偏多.{0,4}但月線壓著/.test(t)) { hit = { sym: f.replace('.json', ''), rows: rws }; break; }
+    }
+    // 🚧 空過守門:全市場都找不到 → ⛔ 不可靜默跳過,要說清楚是「今天沒有這種股票」還是程式壞了
+    ok('⑤ 🚧 空過守門:全市場找得到一檔落在「型態偏多·但月線壓著」', !!hit,
+       `掃了 ${pool.length} 檔都沒有 —— 若確實是市況造成,請改用合成測資,⛔ 不可直接把斷言拿掉`);
+    const NP = hit ? {
+        bull: await renderVerdict(hit.sym, hit.rows, null),
+        bear: await renderVerdict(hit.sym, hit.rows, 'bear'),
+        sym: hit.sym,
+    } : { bull: '', bear: '', sym: '-' };
+    if (hit) console.log(`   ↳ ⑤ 用來驗的是 ${NP.sym}(今天剛好落在那個分支)`);
     const NULLPX = /(跌破|站上|守住?|突破|回測|停損|目標)[^。;,]{0,10}(--|—)/;
     ok('⑤ ⭐ 這張卡真的有渲染(⛔ 否則下面空過)', NP.bull.length > 50, String(NP.bull).slice(0, 120));
     ok('⑤ ⭐⛔ 不可出現「跌破前低 --」這種缺值',
