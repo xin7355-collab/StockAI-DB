@@ -299,6 +299,48 @@ def main():
             print('      長尾冷門股會輪不到(實測抽樣有一群卡在 07-28)。')
         print('=' * 60)
 
+        # ── 🚀 V74.0.7 批次模式「還有沒有別的寫法」總掃 ─────────────────────
+        #   為什麼要有這段:「1 年全市場逐日」整個計畫的成本假設就是
+        #   **一次呼叫 = 該日全市場**(245 次 vs 65 萬次,差 2,600 倍)。
+        #   2026-08-30 實測專用端點省略 data_id 回 `parameter data_id can't be none`
+        #   → ⛔ 在確認「所有寫法都不通」之前,不可以說這條路死了,
+        #     也不可以照著 245 次的假設去排工作。
+        #   ⭐ CLAUDE.md V73.4.0 的教訓:**同一份資料可能有多個入口,層級要求還不一樣**
+        #     (權證分點就是「專用端點通、dataset 形式要付費層」)。
+        print('\n🚀 分點「全市場批次」還有沒有別的寫法(決定 1 年回算的成本)')
+        print('=' * 60)
+        _d = d_ch or (today - timedelta(days=2)).strftime('%Y-%m-%d')
+        variants = [
+            ('A 專用端點 date=(現行)', f'{BASE}/taiwan_stock_trading_daily_report?date={_d}'),
+            ('B 專用端點 date= + 空 data_id', f'{BASE}/taiwan_stock_trading_daily_report?data_id=&date={_d}'),
+            ('C dataset 形式 date=', f'{BASE}/data?dataset=TaiwanStockTradingDailyReport&date={_d}'),
+            ('D dataset 形式 start_date=', f'{BASE}/data?dataset=TaiwanStockTradingDailyReport&start_date={_d}'),
+            ('E dataset 形式 start+end', f'{BASE}/data?dataset=TaiwanStockTradingDailyReport&start_date={_d}&end_date={_d}'),
+            ('F 分點聚合 SecIdAgg', f'{BASE}/data?dataset=TaiwanStockTradingDailyReportSecIdAgg&start_date={_d}'),
+            ('G 券商聚合(單一券商全市場)', f'{BASE}/taiwan_stock_trading_daily_report?securities_trader_id=9200&date={_d}'),
+            # 對照組:已知**可以**批次的資料集 —— ⛔ 沒有它就分不出
+            #        「這個帳號不能批次」與「這個資料集不能批次」
+            ('🆚 對照·八大行庫(已知可批次)', f'{BASE}/data?dataset=TaiwanStockGovernmentBankBuySell&start_date={_d}'),
+        ]
+        best = None
+        for label, url in variants:
+            st, msg, rows = probe(url, hdr)
+            mark = '✅' if (st == 200 and rows > 50) else ('➖' if st == 200 else '❌')
+            print(f'   {mark} {label:<28} status={st} rows={rows} msg={str(msg)[:70]}')
+            if st == 200 and rows > 50 and label[0] in 'ABCDEFG' and best is None:
+                best = label
+        print()
+        if best:
+            print(f'   ⭐ **有可用的批次寫法:{best}** → 1 年回算只要約 245 次呼叫,'
+                  '把 `_fetch_chips_bulk` 改用這個寫法即可。')
+        else:
+            print('   🚨 **所有批次寫法都不通** → 1 年全市場逐日要 245×2,653 ≈ 65 萬次呼叫,')
+            print('      以 6,000 req/hr 算是 108 小時 → ⛔ 全市場不可行。')
+            print('   ⭐ 可行的替代:**熱門 220 檔 × 245 天 ≈ 5.4 萬次(約 9 小時)**,體積約 4 MB。')
+            print('   ⚠️ 若對照組(八大行庫)是 ✅ 而分點全紅 → 那是**這個資料集**不給批次,')
+            print('      ⛔ 不是帳號等級不夠,升級也沒用。')
+        print('=' * 60)
+
 
 if __name__ == '__main__':
     main()
