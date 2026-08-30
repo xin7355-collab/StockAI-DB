@@ -3466,10 +3466,19 @@ def fetch_us_macro_cache():
 #   ⭐ 這正是 V72.5.3 集保那次的教訓:**先加分類統計,再下結論**。
 #      沒有它,下一個人會照著猜測去改 timeout,永遠修不好。
 _BSR_REASON: dict = {}
+# 🔌 V74.0.9 斷路器:2026-08-31 實跑 BSR **連續失敗 694 次**(ImageProcessError,
+#    機房 IP 被驗證碼防線擋),每次 4 輪重試 ≈ 2~3 秒 → 30 分鐘全燒在必死的爬蟲上,
+#    分點迴圈被餓死在 172/2,705 檔。⛔ 連續失敗 12 次就整輪停用,成功會歸零。
+_BSR_CB = {'fail': 0, 'tripped': False}
 
 
 def _bsr_note(reason: str):
     _BSR_REASON[reason] = _BSR_REASON.get(reason, 0) + 1
+    _BSR_CB['fail'] += 1
+    if _BSR_CB['fail'] >= 12 and not _BSR_CB['tripped']:
+        _BSR_CB['tripped'] = True
+        print(f"  🔌 BSR 連續失敗 {_BSR_CB['fail']} 次 → 本輪停用免費分點爬蟲"
+              f"(每次失敗要燒 2~3 秒,694 次 = 30 分鐘;⛔ 別拿掉這個斷路器)")
 
 
 def _fetch_twse_bsr(symbol: str, max_retries=4) -> dict:
@@ -3478,6 +3487,9 @@ def _fetch_twse_bsr(symbol: str, max_retries=4) -> dict:
     回傳 {date, tot_buy, tot_sell, buyers[], sellers[]} 或 None。
     ⚠️ 每一條 return None / continue 都要 `_bsr_note(原因)`,⛔ 不可靜默失敗。
     """
+    if _BSR_CB['tripped']:
+        _BSR_REASON['circuit_open'] = _BSR_REASON.get('circuit_open', 0) + 1
+        return None
     if _ddddocr is None or _BeautifulSoup is None:
         _bsr_note('no_ddddocr_or_bs4')
         return None
@@ -3595,6 +3607,68 @@ CHIP_PERIODS_HOT = (1, 3, 5, 10, 20)                   # 熱門股的彙總窗�
 CHIP_PERIODS_COLD = (1, 3)                             # 冷門股(逐檔模式只抓 3 天)
 
 
+def _load_chips_deep_local(dates_wanted):
+    """📚 V74.0.9 從 `chips_deep` 分支還原歷史天 —— ⭐ 回算存的跟採礦要抓的是**同一份資料**。
+
+    【為什麼】2026-08-31 實跑:按券商批次每天要 200 次呼叫 × 單金鑰限速 95/分
+    = **每天固定 126 秒**,補 22 天 ≈ 46 分鐘 → 把後面的處理迴圈餓死(只做完 172 檔)。
+    而 2 年回算已經把每一天存成 `chips_deep/YYYY-MM-DD.json.gz`(壓縮後 ~350KB/天)
+    → **歷史天用讀的、API 只補缺的最新 1~2 天**(126~250 秒),一輪就能收斂全市場。
+
+    ⚠️ 過渡橋樑:等全市場個股檔的 hist 都追上之後,`_have_bulk` 抽樣會自己接手
+    (每天只抓 1 個新交易日),這條路徑就自然閒置 —— ⛔ 但別刪,斷線重來時還要靠它。
+    ⚠️ 深檔只有**淨額+均價**(沒有買賣分開)→ 還原成 buy/sell 的方式與 hist 還原
+    一致(net>0 全記 buy),下游 pv/vol 加權不受影響。
+    回 {date: rows_list};任何失敗回 {}(⛔ 不可讓它炸掉主流程)。"""
+    out: dict = {}
+    try:
+        deep_dir = Path(os.environ.get('CHIPS_DEEP_DIR') or 'chips_deep')
+        if not deep_dir.is_dir() or not any(deep_dir.glob('*.json.gz')):
+            # 分支還沒還原到工作區 → 自己抓(checkout 的 git 憑證在 job 裡仍有效)
+            import subprocess
+            subprocess.run(['git', 'fetch', 'origin', 'chips_deep', '--depth=1'],
+                           capture_output=True, timeout=120)
+            r = subprocess.run('git archive origin/chips_deep | tar -x', shell=True,
+                               capture_output=True, timeout=180)
+            if r.returncode != 0 or not deep_dir.is_dir():
+                print("  📚 chips_deep 分支還原不到(第一次跑或分支不存在)→ 歷史天全走 API")
+                return {}
+        import gzip as _gzip
+        for d in dates_wanted:
+            f = deep_dir / f'{d}.json.gz'
+            if not f.exists():
+                continue
+            try:
+                j = json.loads(_gzip.open(f, 'rt', encoding='utf-8').read())
+            except Exception:
+                continue
+            smap = j.get('s') or {}
+            nm = j.get('nm') or {}
+            if len(smap) < 200:          # 同 min_syms 精神:半份的天不要
+                continue
+            rows = []
+            for sid, arr in smap.items():
+                for x in arr:
+                    try:
+                        bid, net = str(x[0]), int(x[1])
+                        avg = float(x[2]) if len(x) > 2 and x[2] is not None else 0.0
+                    except (TypeError, ValueError, IndexError):
+                        continue
+                    rows.append({'stock_id': sid, 'securities_trader_id': bid,
+                                 'securities_trader': nm.get(bid, ''), 'date': d,
+                                 'price': avg,
+                                 'buy': net if net > 0 else 0,
+                                 'sell': -net if net < 0 else 0})
+            if rows:
+                out[d] = rows
+        if out:
+            print(f"  📚 chips_deep 分支還原 {len(out)} 個交易日(這些天零 API 呼叫)")
+    except Exception as _e:
+        print(f"  ⚠️ chips_deep 還原失敗({str(_e)[:60]})→ 歷史天全走 API")
+        return {}
+    return out
+
+
 def _chips_broker_ids(n=None):
     """前 N 家券商**代號**(依 |淨額| 排序)——⭐ 與 `scripts/chips_backfill.py` 共用同一支,
     ⛔ 不在這裡再寫第二份(陷阱 #37:共用工具寫好了卻各寫各的)。
@@ -3678,11 +3752,48 @@ def _fetch_chips_bulk(dates, need_days=CHIP_DAYS, top_per_day=25, min_syms=200,
     idx: dict = {}
     got = 0
     fetched: list = []
+    fetched_local = 0
+    # 📚 V74.0.9 歷史天優先從 chips_deep 分支還原(零 API,見 _load_chips_deep_local 的說明)
+    local_days = _load_chips_deep_local([d for d in dates if d not in have])
+
+    def _ingest(d, rows_all, src):
+        """驗證 + 分桶 + 併入 idx。回 'ok' / 'skip'(這天不採用)/ 'abort'(整批放棄)。"""
+        nonlocal got
+        if not rows_all:
+            return 'skip'
+        if not any(k in rows_all[0] for k in ('secBrokerId', 'securities_trader_id', 'broker_id')):
+            print(f"  ⚠️ 分點全市場批次:{d} 欄位不對 keys={list(rows_all[0].keys())[:8]}"
+                  f" → 放棄批次改用逐檔(避免污染)")
+            return 'abort'
+        bucket: dict = {}
+        for r in rows_all:
+            sid = str(r.get('stock_id') or '').strip()
+            if sid:
+                bucket.setdefault(sid, []).append(r)
+        if len(bucket) < min_syms:
+            print(f"  ⚠️ 分點全市場批次:{d} 只回 {len(bucket)} 檔(<{min_syms})→ 這天不採用")
+            return 'skip'
+        for sid, rs in bucket.items():
+            if len(rs) > top_per_day:
+                rs = sorted(rs, key=_net_abs, reverse=True)[:top_per_day]
+            idx.setdefault(sid, []).extend(rs)
+        got += 1
+        print(f"  📦 分點全市場批次 {d}:{len(bucket)} 檔 / {len(rows_all)} 列({src}、"
+              f"{time.time() - t0:.0f}s 累計)")
+        return 'ok'
+
     for d in dates:
         if got >= need_days:
             break
         if d in have:
             got += 1          # 本地已經有這天 → 算進去讓「湊滿 N 天」正確收斂,但不重買
+            continue
+        if d in local_days:   # 📚 分支還原的天:零 API
+            r = _ingest(d, local_days[d], '分支還原・零呼叫')
+            if r == 'abort':
+                return None
+            if r == 'ok':
+                fetched_local += 1
             continue
         if time.time() - t0 > budget_s:
             print(f"  ⏳ 分點批次達時間預算 {budget_s}s,已取得 {len(fetched)} 個交易日,其餘下輪續抓")
@@ -3705,32 +3816,15 @@ def _fetch_chips_bulk(dates, need_days=CHIP_DAYS, top_per_day=25, min_syms=200,
         if hard > len(brokers) * 0.5:
             print(f"  ⚠️ 分點全市場批次:{d} 有 {hard}/{len(brokers)} 家回權限錯誤 → 中止批次")
             break
-        if not rows_all:
-            continue          # 多半是非交易日
-        if not any(k in rows_all[0] for k in ('secBrokerId', 'securities_trader_id', 'broker_id')):
-            print(f"  ⚠️ 分點全市場批次:{d} 欄位不對 keys={list(rows_all[0].keys())[:8]}"
-                  f" → 放棄批次改用逐檔(避免污染)")
+        r = _ingest(d, rows_all, f'{len(brokers)} 家券商')
+        if r == 'abort':
             return None
-        bucket: dict = {}
-        for r in rows_all:
-            sid = str(r.get('stock_id') or '').strip()
-            if sid:
-                bucket.setdefault(sid, []).append(r)
-        if len(bucket) < min_syms:
-            print(f"  ⚠️ 分點全市場批次:{d} 只回 {len(bucket)} 檔(<{min_syms})→ 這天不採用")
-            continue
-        for sid, rs in bucket.items():
-            if len(rs) > top_per_day:
-                rs = sorted(rs, key=_net_abs, reverse=True)[:top_per_day]
-            idx.setdefault(sid, []).extend(rs)
-        fetched.append(d)
-        got += 1
-        print(f"  📦 分點全市場批次 {d}:{len(bucket)} 檔 / {len(rows_all)} 列 "
-              f"({len(brokers)} 家券商、{time.time() - t0:.0f}s 累計)")
+        if r == 'ok':
+            fetched.append(d)
     if not idx:
         return None
-    print(f"  🚀 分點全市場批次完成:{len(idx)} 檔 × 新增 {len(fetched)} 個交易日"
-          f"(本地已有 {got - len(fetched)} 天)、{len(fetched) * len(brokers)} 次呼叫、"
+    print(f"  🚀 分點全市場批次完成:{len(idx)} 檔 × API 新抓 {len(fetched)} 天 + 分支還原 {fetched_local} 天"
+          f"(本地已有 {got - len(fetched) - fetched_local} 天)、{len(fetched) * len(brokers)} 次呼叫、"
           f"{time.time() - t0:.0f} 秒(按股票抓同樣覆蓋要約 {len(idx) * max(1, len(fetched)):,} 次)")
     return idx
 
@@ -4290,6 +4384,7 @@ def fetch_broker_chips():
         try:
             sniper_data = _fetch_twse_bsr(sym)
             if sniper_data:
+                _BSR_CB['fail'] = 0          # 成功 → 斷路器歸零
                 latest_chip_date = sniper_data['date']
                 buyers = sniper_data['buyers']
                 sellers = sniper_data['sellers']

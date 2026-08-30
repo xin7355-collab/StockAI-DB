@@ -45,3 +45,4 @@ shioaji.log
 # Android(TWA 外殼)打包產物
 android/.gradle/
 android/local.properties
+chips_deep/

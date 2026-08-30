@@ -85,11 +85,22 @@ ck('③c 探路遇到 400/401/402/403 要直接回 None',
    '權限/參數錯誤沒有立刻收手')
 
 # ── ④ 單日股票數不足 → 那天不採用 ───────────────────────────────
-m = re.search(r'if len\(bucket\) < min_syms:[\s\S]{0,300}?\n\s*(continue|return|break)', BULK_CODE)
+m = re.search(r"if len\(bucket\) < min_syms:[\s\S]{0,300}?\n\s*(continue|return 'skip'|return|break)", BULK_CODE)
 ck('④ 單日股票數 < min_syms 要跳過那天(⛔ 不可寫半份進去)',
-   m is not None and m.group(1) == 'continue', f'實際是 {m.group(1) if m else "沒有守門"}')
+   m is not None and m.group(1) in ('continue', "return 'skip'"),
+   f'實際是 {m.group(1) if m else "沒有守門"}')
 ck('④b 欄位污染防呆還在',
    "'secBrokerId'" in BULK_CODE and 'return None' in BULK_CODE, '污染防呆不見了')
+
+# ── ④c 歷史天要先從 chips_deep 分支還原(V74.0.9:每天 API 固定 126 秒,
+#      22 天會把迴圈餓死;分支還原 = 零呼叫)──────────────────────
+ck('④c 批次要先呼叫 _load_chips_deep_local(歷史天零 API)',
+   '_load_chips_deep_local(' in BULK_CODE and 'def _load_chips_deep_local' in SRC,
+   '分支還原路徑不見了')
+_local_at = BULK_CODE.find('_load_chips_deep_local(')
+_api_at = BULK_CODE.find('ThreadPoolExecutor')
+ck('④d 分支還原要排在整批 API 開火之前', 0 <= _local_at < _api_at,
+   f'local={_local_at} api={_api_at}')
 
 # ── ⑤ have_dates 不重買但要算進 need_days ───────────────────────
 m5 = re.search(r'if d in have:\s*\n\s*got \+= 1\s*\n[\s\S]{0,200}?continue', BULK_CODE)
@@ -115,6 +126,10 @@ ck('⑧ 前 N 家券商完全沒碰到的股票數要有計數並印出(⛔ 不�
 
 # ── ⑨ 實跑:stub 掉網路,驗真的按券商打、且 have_dates 真的省下呼叫 ──
 os.environ.setdefault('FINMIND_TOKENS', 'x')
+# ⚠️ 測試必須隔離 chips_deep 還原 —— 不設的話 fallback 會真的 git archive
+#    把 155MB 解到工作區(踩過),而且真資料會讓 API 呼叫數的斷言失真。
+import tempfile
+os.environ['CHIPS_DEEP_DIR'] = tempfile.mkdtemp(prefix='no_deep_')
 import miner  # noqa: E402
 
 CALLS = []
