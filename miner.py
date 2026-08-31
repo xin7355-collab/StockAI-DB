@@ -4272,6 +4272,7 @@ def fetch_broker_chips():
 
     updated = 0
     _skipped_today = 0
+    _hist_fixed = 0        # 🪶 V74.3.8 只補 hist 深度(零 API)的檔數
     broker_name_map: dict = {}  # 累積 bid→中文名 供 broker_names.json
     _fund_extra: dict = {}      # V35.8 — 收集觀察清單已算好的 {sym:{rev_yoy,gross_margin}},迴圈後併入全市場快取
     _chips_start = time.time()
@@ -4441,12 +4442,34 @@ def fetch_broker_chips():
         except Exception:
             pass
         _is_current = (not _corpus_latest_dt) or (_own_dt and _own_dt >= _corpus_latest_dt)
+        # 🚨🚨 V74.3.8 這是**陷阱 #10 的第三次犯案**:跳過條件看了「今天做過沒」(V68.9.8)
+        #    與「最新那天對不對」(V71.1.5),⛔ 但**沒看 hist 累積了幾天**。
+        #    實測 #534 的 job log 說得很清楚:
+        #      「chips_deep 還原:分支上 469 天・這輪要 43 天・**取得 15 天**」← 還原成功
+        #      「分點籌碼完成:更新 64 檔、**今日已抓跳過 2,625 檔**」      ← 卡在這
+        #    那 15 天已經在 `_bulk_idx` 記憶體裡,卻因為「今天抓過」被跳過 →
+        #    一天都沒寫進 hist,全市場 hist 中位**仍然是 2 天**(分布擠在 1、2)。
+        #    ⭐ 批次模式下重組是**零 API**(不打 FinMind、下面也會跳過 Sniper)→ 補得動就該補。
+        _hist_deep_ok = True
+        _avail_days = 0
+        if _bulk_idx is not None:
+            _avail_days = len({str(r.get('date') or '') for r in (_bulk_idx.get(sym) or []) if r.get('date')})
+            if _avail_days:
+                _hist_deep_ok = len(existing_obj.get('hist') or []) >= min(CHIP_HIST_KEEP, _avail_days)
+        # 🪶 「只是要補 hist」(最新那天已經對了、只差歷史深度)→ 全程零 API:
+        #    ⛔ 不打 Sniper(免費爬蟲每檔 2~3 秒 × 2,600 檔 = 兩小時,會把時間預算吃光)
+        _hist_only = (_is_current and not _hist_deep_ok
+                      and existing_obj.get('chips_fetched_on') == today_str
+                      and bool(existing_obj.get('periods')))
         if (os.environ.get('FORCE_CHIPS_REFRESH') != '1'
                 and existing_obj.get('chips_fetched_on') == today_str
                 and existing_obj.get('periods')
-                and _is_current):
+                and _is_current
+                and _hist_deep_ok):
             _skipped_today += 1
             continue
+        if _hist_only:
+            _hist_fixed += 1
 
         # ── 分點籌碼：混合雙擎(Sniper 攻 TWSE 真分點 → FinMind 補多週期/上櫃)──
         buyers, sellers, brokers_list = [], [], []
@@ -4455,7 +4478,8 @@ def fetch_broker_chips():
         # 🎯 Sniper 優先(只在 batch 0 且裝了 ddddocr 時有效):免費抓今日真實分點
         sniper_data = None
         try:
-            sniper_data = _fetch_twse_bsr(sym)
+            # 🪶 只是補 hist 深度 → ⛔ 不打免費爬蟲(零 API 路徑,見上方 _hist_only)
+            sniper_data = None if _hist_only else _fetch_twse_bsr(sym)
             if sniper_data:
                 _BSR_CB['fail'] = 0          # 成功 → 斷路器歸零
                 latest_chip_date = sniper_data['date']
@@ -4965,6 +4989,8 @@ def fetch_broker_chips():
               f"家券商裡完全沒出現(數字變大就把 CHIPS_BULK_BROKERS 調高)")
     elif _bulk_mode == 'perstock':
         print(f"  🔍 逐檔併發預抓:{_bulk_miss} 檔這輪沒預抓到(時間預算內沒排到,下輪續抓)")
+    if _hist_fixed:
+        print(f"  🪶 hist 補深度(零 API、只重組記憶體裡的天):{_hist_fixed} 檔")
     print(f"  ✅ 分點籌碼完成：更新 {updated} 檔、今日已抓跳過 {_skipped_today} 檔"
           f"（全市場滾動；熱門股天天更新、冷門長尾每幾天輪一次）")
 
