@@ -71,8 +71,10 @@ textarea{resize:vertical;min-height:56px;font-family:inherit;font-size:14px}
 .go-btn{margin-top:14px;width:100%;padding:13px;border:0;border-radius:10px;font-size:15px;font-weight:900;color:#fff;cursor:pointer;
   background:linear-gradient(135deg,#2563eb,#0891b2);letter-spacing:2px;transition:.15s}
 .go-btn:active{filter:brightness(1.2)} .go-btn:disabled{opacity:.5;cursor:wait}
-.note{font-size:10px;color:var(--dim2);line-height:1.7;margin-top:8px}
-.warnbox{border-left:3px solid var(--amber);background:rgba(245,185,66,.06);border-radius:0 9px 9px 0;padding:9px 12px;font-size:11px;color:#e8d9b0;line-height:1.7;margin-top:12px}
+/* ⭐ V74.4.6 使用者:「版面字體太小了」→ 全頁最小字級一次拉大(⛔ 別再改回 10px 以下)。
+   手機上 10px 已經接近看不清楚,而這頁的免責/說明正是最不該被跳過的東西。 */
+.note{font-size:11.5px;color:var(--dim2);line-height:1.75;margin-top:8px}
+.warnbox{border-left:3px solid var(--amber);background:rgba(245,185,66,.06);border-radius:0 9px 9px 0;padding:9px 12px;font-size:12.5px;color:#e8d9b0;line-height:1.7;margin-top:12px}
 /* ── 估值卡 ── */
 .vgrid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
 .inrow{display:grid;grid-template-columns:1fr 2fr;gap:12px}
@@ -132,7 +134,9 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .rotday{font-family:var(--mono);font-size:11px;color:var(--sub);flex:0 0 auto}
 .rotmore{cursor:pointer;font-size:11px;color:var(--cyan);list-style:none;padding:6px 0}
 .rotmore::-webkit-details-marker{display:none}
-.rotverdict{min-height:74px}          /* ⛔ 固定高度 —— 播放時內容每格都變,不固定就會推動下面 */
+/* ⛔ 固定高度 —— 播放時內容每格都變,不固定就會推動下面。
+   ⚠️ V74.4.6 把 .note 從 10px 拉到 11.5px 之後實測 78.2px → 這裡要跟著調高(測試 ㉒d2b 會擋)。*/
+.rotverdict{min-height:86px}
 .quadwrap{position:relative;margin-top:6px;border:1px solid var(--line);border-radius:10px;
   background:linear-gradient(180deg,rgba(255,93,93,.04),rgba(61,220,132,.04));overflow:hidden}
 .quadwrap svg{display:block;width:100%;height:auto}
@@ -158,7 +162,7 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .memrow{display:flex;gap:6px;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .memhead{font-size:11px;font-weight:700;color:var(--txt);cursor:pointer;white-space:nowrap}
 .memhead.on{color:var(--cyan)}
-.memchip{font-size:10px;padding:2px 6px;border-radius:5px;background:var(--panel2);
+.memchip{font-size:11.5px;padding:3px 7px;border-radius:5px;background:var(--panel2);
   border:1px solid var(--line2);cursor:pointer;color:var(--sub);font-family:var(--mono)}
 .flowspark{vertical-align:middle}
 /* 🔎 板塊明細(點板塊 → 攤開裡面的個股) */
@@ -181,16 +185,26 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .labitem>summary{cursor:pointer;list-style:none;display:flex;gap:8px;align-items:flex-start}
 .labitem>summary::-webkit-details-marker{display:none}
 .signote{border:1px solid var(--line2);border-radius:9px;padding:10px 12px;background:var(--panel2);margin-bottom:8px}
-.sighead{font-size:12px;font-weight:800;color:var(--txt);margin-bottom:4px}
-.sigtbl th,.sigtbl td{font-size:11px;vertical-align:top}
+.sighead{font-size:13.5px;font-weight:800;color:var(--txt);margin-bottom:5px}
+.sigtbl th,.sigtbl td{font-size:12.5px;vertical-align:top;padding:9px 8px}
 .sigtbl .mono{font-family:var(--mono)}
 .sigbest td{background:rgba(245,185,66,.10)}
 .sigbase td{color:var(--dim2)}
-.sigtag{display:inline-block;font-size:9px;padding:1px 5px;border-radius:4px;border:1px solid var(--line2);color:var(--dim2);white-space:nowrap}
+/* 🏷️ 標的欄:⭐ 中文名在上、代號在下(使用者明示 V74.4.6)—— 認股票是認名字不是認號碼 */
+.signm{font-size:13.5px;font-weight:800;color:var(--txt);line-height:1.3}
+.sigcode{font-size:11px;font-family:var(--mono);color:var(--dim2);line-height:1.3}
+/* 💰 建議掛單價:整頁最該一眼看到的數字 */
+.sigbuy{font-size:15px;font-weight:800;font-family:var(--mono);color:var(--amber)}
+.sigfrom{font-size:10.5px;color:var(--dim2);font-family:var(--mono);line-height:1.4}
+.sigtag{display:inline-block;font-size:10.5px;padding:2px 6px;border-radius:4px;border:1px solid var(--line2);color:var(--dim2);white-space:nowrap}
 .sigtag.good{border-color:var(--cyan);color:var(--cyan)}
 .sigtag.warn{border-color:var(--amber);color:var(--amber)}
-.sigtag.gene{border-color:var(--amber);color:var(--amber);margin-left:4px}
-.sigwarn{font-size:9.5px;color:var(--amber);margin-top:3px;line-height:1.35}
+/* ⚠️ 🧬 徽章要**自己一行** —— 跟股名同一行會把「標的」這個 sticky 欄撐寬,
+   手機上就會把右邊的建議掛單價擠出畫面(實測 390 寬看不到停損欄)。 */
+.sigtag.gene{border-color:var(--amber);color:var(--amber);display:inline-block;margin-top:4px}
+.sigwarn{font-size:11px;color:var(--amber);margin-top:4px;line-height:1.4;white-space:normal}
+/* 🚧 標的欄封寬,⛔ 別拿掉:它是 sticky,太寬會蓋掉整個表格 */
+.sigtbl td:first-child{max-width:132px;white-space:normal}
 .labgloss{border:1px solid var(--line2);border-radius:8px;padding:8px 10px;margin-bottom:8px;background:var(--panel2)}
 .labgloss>summary{cursor:pointer;font-size:11.5px;font-weight:700;color:var(--cyan);list-style:none}
 .labgloss>summary::-webkit-details-marker{display:none}
@@ -661,6 +675,13 @@ const PRO = {
   //    這四個都是 36 個月、600 檔、每天 2 檔、每筆 15 萬、只做 🧬、跌破 5 日線出場。
   _SIG_EDGE: { months: 36, close: 2598561, closeDD: 24.7, nextopen: 1273162, nextopenDD: 31.5,
                prevlim: 124069, prevlimDD: 46.1, etf0050: 2011700 },
+  // 🚨🚨 V74.4.6 把個股 K 線補到 2021-01(klines_deep 分支)之後,窗口從 36 → **49 個月**、
+  //    往前含到 2022 那段跌勢。同一套配置(600 檔・每天 2 檔・每筆 15 萬・尾盤進・跌破 5 日線出)重跑:
+  //    ⭐ 「挑 🧬 比不挑好」**仍然成立而且差距更大**(+195.5 萬 vs +107.8 萬);
+  //    🚨 ⛔ 但「挑了就贏 0050」**在長窗口不成立** —— 兩種都輸給買 0050 放著(+260.0 萬)。
+  //    ⛔ 這條必須寫在頁面上:不寫的話使用者會拿 36 個月那組數字當成「一定贏大盤」。
+  _SIG_DEEP: { months: 49, from: '2022-08', gene: 1955061, geneDD: 32.4,
+               plain: 1078253, plainDD: 31.8, etf0050: 2600300 },
   _sigWrTag(w, n) {
     // 🎲 勝率三條鐵則:配樣本、跟基準比(36% 不是 50%)、樣本不足不給指令
     if (!(n >= 10)) return '<span class="sigtag warn">⏳ 次數太少(不到 10 次)不能當結論</span>';
@@ -717,17 +738,15 @@ const PRO = {
       <div class="sighead">🌅 今天的盤前分數:<b class="mono" style="font-size:15px">${r.s >= 0 ? '+' : ''}${r.s.toFixed(1)}</b> 分(${face})
         <span class="sigtag">用了 ${r.n} 項海外資料</span></div>
       <div class="note">
-        ${b ? `📊 <b>過去 5 年、${b.n} 個同樣是「${face}」的日子</b>:台股<b>開高的比例 ${b.gapWr}%</b>、
-              全天平均 ${b.day >= 0 ? '+' : ''}${b.day}%、<b>開盤買收盤賣 ${b.io >= 0 ? '+' : ''}${b.io}%</b>。`
-            : `📊 分數落在中間(−3 ~ +3),歷史上這種日子<b>沒有明顯方向</b> —— 就當普通的一天。`}
-        <br>🚨 <b>「開高」這件事有一大半是廢話</b>:昨晚美股漲,台股本來就會開高,那不是預測。
-        ⭐ 真正有意義的是<b>「開盤之後還會不會繼續漲」</b> —— 高分日與低分日在這一段差
-        <b>${P.ioSpread} 個百分點</b>,而且<b>${P.yearsSame} 年來每一年都同方向</b>(最差的一年也有 +${P.ioWorstYear})。
-        <br>⚠️ <b>這是「今天大盤大概什麼氣氛」,⛔ 不是叫你買什麼</b>:
-        那 ${P.ioSpread} 個百分點是<b>大盤指數</b>的差、扣掉買賣成本後剩不多;
-        而且本站實測<b>拿大盤方向去篩個股反而會少賺</b> → 正確用法是<b>調整心理預期跟部位大小</b>,
-        ⛔ 不是「分數低就整天不做」。
-        <br>⚠️ 只算得到<b>海外連動那一半</b>(外資買賣超、台指期夜盤、大盤技術分數沒有歷史可以驗證,所以不列入)。
+        ${b ? `📊 過去 5 年 <b>${b.n}</b> 個同樣「${face}」的日子:<b>開高 ${b.gapWr}%</b>、
+              全天 ${b.day >= 0 ? '+' : ''}${b.day}%、<b>開盤買收盤賣 ${b.io >= 0 ? '+' : ''}${b.io}%</b>。`
+            : `📊 分數在中間(−3~+3),歷史上<b>沒有明顯方向</b>,就當普通的一天。`}
+        <br>🚨 <b>「開高」有一大半是廢話</b> —— 昨晚美股漲、台股本來就開高,那不是預測。
+        有用的是<b>「開盤之後還會不會繼續漲」</b>:高分日比低分日多 <b>${P.ioSpread} 個百分點</b>,
+        <b>${P.yearsSame} 年每年同方向</b>(最差一年也有 +${P.ioWorstYear})。
+        <br>⚠️ 這只是<b>今天的氣氛,⛔ 不是叫你買什麼</b>:那是<b>大盤</b>的差、扣成本剩不多,
+        而且實測<b>拿大盤方向篩個股反而會少賺</b> → 用它<b>調心理預期跟部位大小</b>就好。
+        <br>⚠️ 只算得到<b>海外連動那一半</b>(外資、夜盤、技術分數沒有歷史可驗,不列入)。
       </div>
       <details style="margin-top:6px"><summary class="rotmore">今天這 ${r.n} 項各貢獻幾分</summary>
         <div class="memrow" style="margin-top:6px">${r.parts.map(x =>
@@ -751,7 +770,7 @@ const PRO = {
       return Number.isFinite(t) ? Math.round((Date.now() - t) / 864e5) : null;
     };
     // ── ⏰ 怎麼操作(整頁最重要的一段:實測出來的操作規則)──
-    const E = this._SIG_EDGE, w = v => (v / 10000).toFixed(1);
+    const E = this._SIG_EDGE, D = this._SIG_DEEP, w = v => (v / 10000).toFixed(1);
     document.getElementById('sigHow').innerHTML = this._premktHtml(mr) + `
       <div class="signote">
         <div class="sighead">⏰ 買在什麼時候,實測差很多(同一批股票、同一套打法,只改進場時機)</div>
@@ -762,19 +781,28 @@ const PRO = {
           <tr class="sigbase"><td>🆚 什麼都不做,買 0050 放著</td><td class="mono">+${w(E.etf0050)} 萬</td><td class="mono">—</td></tr>
         </tbody></table>
         <div class="note" style="margin-top:6px">
-          🚨 <b>掛「前一天收盤價」等它跌回來實測是最糟的</b>(只賺 ${w(E.prevlim)} 萬、而且中途最多賠到 −${E.prevlimDD}%,
-          比尾盤買的 −${E.closeDD}% 慘快一倍)。原因不是掛太低買不到,是<b>會成交的那些,正好是「訊號出了、隔天卻走弱」的股票</b> ——
-          真正走遠的那幾檔不會回頭讓你撿。同理「隔天開盤買」也只剩一半(+${w(E.nextopen)} 萬),<b>還輸給什麼都不做買 0050 放著</b>。<br>
-          ⭐ <b>所以規則很簡單:要嘛在訊號當天尾盤買,要嘛就不做。</b>
+          🚨 掛<b>前一天收盤價</b>等它跌回來是<b>最糟的</b>(只賺 ${w(E.prevlim)} 萬、中途最多賠 −${E.prevlimDD}%)。
+          不是掛太低買不到,是<b>會成交的那些正好是「訊號出了卻走弱」的股票</b> —— 走遠的不會回頭讓你撿。<br>
+          ⭐ <b>規則很簡單:訊號當天尾盤買,不然就不做。</b>
         </div>
-        <div class="sighead" style="margin-top:10px">📏 其他也是實測出來的配套(⛔ 缺一個結果就會差很多)</div>
+        <div class="sighead" style="margin-top:12px">📏 配套(⛔ 缺一個成績就差很多)</div>
         <div class="note">
-          <b>一天最多挑 2 檔</b>(挑 3 檔以上會拉低成績,挑 1 檔回撤反而變大)・
-          <b>每筆放本金的 15%</b>(用「單筆最多虧 1%」的算法實測少賺 112 萬,而且回撤沒有比較小)・
-          <b>停損</b>放在進場價 −5% 與當天最低價之中比較近的那個・
-          <b>出場</b>跌破 5 日均線就走、最長抱 20 天。<br>
-          ⛔ 這些是回測用的配置,<b>不是保證</b>;回測期間偏多頭,空頭沒驗證過。這頁<b>不給任何買賣價位建議</b>,
-          價位一律以散戶救星個股頁的「現在怎麼做」為準。
+          一天最多 <b>2 檔</b>・每筆放本金 <b>15%</b>・<b>停損</b>取「進場 −5%」與當天最低價較近的那個・
+          <b>出場</b>跌破 5 日線就走、最長抱 20 天。<br>
+          ⛔ 這是回測配置<b>不是保證</b>,而且回測期間偏多頭。
+          <b>這裡的價位是用昨天收盤算的估計值</b>,盤中請以散戶救星個股頁的「現在怎麼做」為準。
+        </div>
+        <div class="sighead" style="margin-top:12px">🚨 把窗口拉長到 ${D.months} 個月(含 ${D.from} 那段跌勢)會怎樣</div>
+        <table class="grid sigtbl"><thead><tr><th>做法</th><th>${D.months} 個月賺到</th><th>中途最多賠</th></tr></thead><tbody>
+          <tr class="sigbase"><td>🆚 <b>什麼都不做,買 0050 放著</b></td><td class="mono">+${w(D.etf0050)} 萬</td><td class="mono">—</td></tr>
+          <tr><td>照清單做、<b>只挑 🧬 強勢+高波動</b></td><td class="mono">+${w(D.gene)} 萬</td><td class="mono">−${D.geneDD}%</td></tr>
+          <tr><td>照清單做、<b>不挑</b></td><td class="mono">+${w(D.plain)} 萬</td><td class="mono">−${D.plainDD}%</td></tr>
+        </tbody></table>
+        <div class="note" style="margin-top:6px">
+          ⭐ <b>「挑 🧬」比「不挑」多賺 ${w(D.gene - D.plain)} 萬</b> —— 這條在長窗口一樣成立,而且差距更大。<br>
+          🚨 <b>但兩種都輸給買 0050 放著</b>。所以誠實的說法是:
+          <b>🧬 讓你少輸,⛔ 不是讓你一定贏大盤</b>;上面那組 36 個月的漂亮數字,是因為那段行情剛好特別適合這套打法。<br>
+          ⛔ <b>而且要每天盯尾盤、嚴格停損</b>;0050 買了什麼都不用做。這個取捨是你自己的,不是技術問題。
         </div>
       </div>`;
     // ── 📋 明日作戰清單 ──
@@ -795,27 +823,35 @@ const PRO = {
           ? `<div class="warnbox">⚠️ <b>這份清單是 ${pe.data_date} 的(${age} 天前)</b> ——
              觸發價是用<b>那天的收盤價</b>算的,已經不能直接拿去掛單。等下一輪採礦更新。</div>` : '') +
         `<div class="tblwrap" style="max-height:70vh"><table class="grid sigtbl"><thead><tr>
-          <th>標的</th><th>它最會賺的那一招</th><th>漲過這個價才算數</th><th>停損</th><th>勝率 ・次數</th><th>每趟平均</th></tr></thead><tbody>` +
+          <th>標的</th><th>💰 建議掛單價</th><th>🛑 停損</th><th>用哪一招</th><th>勝率 ・次數</th><th>每趟平均</th></tr></thead><tbody>` +
         picks.map(x => {
-          const bad = x.bear ? '<div class="sigwarn">⛔ 這檔目前是空頭趨勢 —— 實測空頭時做多要先過守門,建議跳過</div>' : '';
-          const loose = x.loose ? '<div class="sigwarn">⚠️ 這招不是靠「漲過某個價」觸發,要盤中重新算才知道成不成立</div>' : '';
-          const trig = x.loose || !(x.trig > 0) ? '—' : this.fmt(x.trig, 2);
+          const bad = x.bear ? '<div class="sigwarn">⛔ 空頭趨勢,建議跳過</div>' : '';
+          const loose = x.loose ? '<div class="sigwarn">⚠️ 這招不看價位,要盤中重新算</div>' : '';
+          // 💰 建議掛單價 = 觸發價(站上它這招才成立)。⛔ 一定要同時給「昨天收盤多少、要漲幾 %」,
+          //    不然使用者看不出這個價是遠是近(而且 loose 那種沒有價位,⛔ 不可硬給一個)。
+          const buy = x.loose || !(x.trig > 0)
+            ? '<span class="sigfrom">這招沒有固定價位</span>'
+            : `<span class="sigbuy">${this.fmt(x.trig, 2)}</span>
+               <div class="sigfrom">昨收 ${x.c > 0 ? this.fmt(x.c, 2) : '—'}${
+                 x.up != null ? `<br>要漲 ${x.up >= 0 ? '+' : ''}${x.up.toFixed(1)}%` : ''}</div>`;
           return `<tr>
-            <td class="txtcell"><button class="namebtn" onclick="PRO.gotoStock('${x.s}')">${x.s} ${nm(x.s)}</button>
+            <td class="txtcell"><button class="namebtn" onclick="PRO.gotoStock('${x.s}')"><span class="signm">${nm(x.s) || x.s}</span><br><span class="sigcode">${x.s}</span></button>
               ${x.hq ? '<span class="sigtag gene">🧬 強勢+高波動</span>' : ''}${bad}${loose}</td>
-            <td class="txtcell">${x.k}</td>
-            <td class="mono">${trig}</td>
+            <td>${buy}</td>
             <td class="mono">${x.stop > 0 ? this.fmt(x.stop, 2) : '—'}</td>
+            <td class="txtcell">${x.k}</td>
             <td>${(x.w ?? 0).toFixed(0)}% ・${x.n} 次<br>${this._sigWrTag(x.w || 0, x.n || 0)}</td>
             <td class="mono">${x.exp >= 0 ? '+' : ''}${(x.exp ?? 0).toFixed(2)}%</td>
           </tr>`;
         }).join('') + '</tbody></table></div>' +
         `<div class="note">
-          ⭐ <b>排序方式</b>:先看有沒有「🧬 強勢+高波動」(實測那是<b>必要條件</b>,不挑它整套會輸給買 0050),
-          再看「保守成績」= 平均成績扣掉樣本少的懲罰(⛔ 不直接排平均,不然前幾名會全是「只做過幾次、剛好很賺」的)。<br>
-          🚨 <b>勝率大約三成是正常的</b> —— 這套打法靠的是「錯的時候小賠、對的時候大賺」,
-          <b>所以停損比進場更重要</b>。⛔ 看到 30% 勝率不要覺得爛,台股隨便買一天的基準也才 36%。<br>
-          ⛔ <b>「漲過這個價」是估計值</b>(明天真正的開高低還不知道),盤中散戶救星會用即時報價重算,以那次為準。
+          💰 <b>建議掛單價怎麼用</b>:那是<b>「站上去才算數」的觸價買單</b>(不是等它跌到那裡撿)——
+          尾盤 13:00~13:28 看有沒有站上,站上了才買、沒站上就放掉。
+          ⛔ 它是用<b>昨天收盤</b>算的<b>估計值</b>,盤中散戶救星會用即時價重算,以那次為準。<br>
+          ⭐ <b>排序</b>:先看「🧬 強勢+高波動」(實測是<b>必要條件</b>,不挑它會差 ${w(D.gene - D.plain)} 萬以上),
+          再看保守成績(⛔ 不直接排平均,不然全是「只做過幾次剛好很賺」的)。<br>
+          🚨 <b>勝率三成是正常的</b> —— 靠的是「錯了小賠、對了大賺」,<b>停損比進場更重要</b>;
+          台股隨便買一天的基準也才 36%。
         </div>`;
     }
     // ── ⚡ 今天剛出現的訊號 ──
@@ -831,18 +867,16 @@ const PRO = {
         `<div class="tblwrap" style="max-height:60vh"><table class="grid sigtbl"><thead><tr>
           <th>標的</th><th>出現什麼</th><th>勝率 ・次數</th><th>每趟平均</th><th>賺賠比</th></tr></thead><tbody>` +
         rows.map(x => `<tr>
-            <td class="txtcell"><button class="namebtn" onclick="PRO.gotoStock('${x.s}')">${x.s} ${nm(x.s)}</button></td>
+            <td class="txtcell"><button class="namebtn" onclick="PRO.gotoStock('${x.s}')"><span class="signm">${nm(x.s) || x.s}</span><br><span class="sigcode">${x.s}</span></button></td>
             <td class="txtcell">${x.t}</td>
             <td>${(x.w ?? 0).toFixed(0)}% ・${(x.n ?? 0).toLocaleString()} 次<br>${this._sigWrTag(x.w || 0, x.n || 0)}</td>
             <td class="mono">${x.exp >= 0 ? '+' : ''}${(x.exp ?? 0).toFixed(2)}%</td>
             <td class="mono">${(x.po ?? 0).toFixed(2)}</td>
           </tr>`).join('') + '</tbody></table></div>' +
         `<div class="note">
-          資料日 ${ts.data_date} ・掃了 ${ts.scanned} 檔 ・今天命中 ${ts.bull_total} 筆(只收「扣完成本還會賺」的那幾種,
-          129 種訊號裡只有 9 種做得到)。<br>
-          <b>賺賠比</b>=賺的時候平均賺多少 ÷ 賠的時候平均賠多少,<b>大於 1 才划算</b>。<br>
-          ⚠️ ${ts.cost_note || ''};基準勝率是 <b>${(ts.base_win ?? 36).toFixed(0)}%</b>(⛔ 不是 50% ——
-          台股中位數的股票本來就跑輸大盤)。
+          資料日 ${ts.data_date} ・掃了 ${ts.scanned} 檔 ・命中 ${ts.bull_total} 筆(只收「扣完成本還會賺」的,129 種裡只有 9 種)。<br>
+          <b>賺賠比</b> = 賺的時候平均賺多少 ÷ 賠的時候平均賠多少,<b>大於 1 才划算</b>。<br>
+          ⚠️ ${ts.cost_note || ''};基準勝率 <b>${(ts.base_win ?? 36).toFixed(0)}%</b>(⛔ 不是 50%,台股中位數的股票本來就跑輸大盤)。
         </div>`;
     }
     // ── ⚠️ 避雷 ──
@@ -861,9 +895,9 @@ const PRO = {
       <div class="signote">
         <div class="sighead">⚠️ 噴很大又被掛「注意股」的,實測是要減碼不是加碼</div>
         <div class="note">
-          官方注意股名單 3 年、11,857 筆實測:<b>掛注意之前 5 天已經噴 ≥30%</b> 的那種,
-          後面 20 天平均<b>比大盤少 1.81 個百分點、最典型的一次是賠 7.2%</b>,勝率掉回跟隨便買一天一樣。<br>
-          ⛔ 這是<b>手上有的該減碼的提醒</b>,不是叫你去放空(放空另有風險,而且沒測過)。
+          官方名單 3 年、11,857 筆實測:<b>掛注意前 5 天已經噴 ≥30%</b> 的,後面 20 天
+          <b>比大盤少 1.81 個百分點、最典型的一次賠 7.2%</b>。<br>
+          ⛔ 這是<b>手上有的該減碼</b>,不是叫你放空(放空沒測過)。
         </div>
         ${hot.length
           ? `<div class="memrow" style="margin-top:6px">${hot.slice(0, 20).map(x =>
@@ -908,7 +942,7 @@ const PRO = {
       { r: 82, t: '🕯️ 跌停後的「第一根紅K」', n: '+3.66%(扣成本後)', d: '2,268 檔 × 3 年、進場=<b>隔天開盤</b>(⛔ 跌停那天收盤買不到)、已排除開盤鎖死、扣同期加權。全期 <b>+4.10pp</b>、勝率 53.8%(對照 37.1%),六道關卡全過(前半 +4.47 / 後半 +2.98、逐年 +3.1/+5.1/+3.3、去最好年 +3.08)。⭐ 力道越強越好:<b>紅K ≥3% → +6.15pp(扣成本 +5.71%)</b>;小紅(<3%)只有 +1.17 而且逐年不同向 ❌。✅ <b>V74.0.7 已落地散戶救星 K 線頁</b>(含「當初大盤有沒有一起跌」的自動比對 —— 不比對的話使用者會拿系統性那組的數字去接個股利空的刀)。', s: 'streak_probe.mjs・V74.4.0' },
       { r: 80, t: '🌊 跌停要不要接,看「大盤有沒有一起跌」', n: '差 4.8 倍', d: '⭐⭐ 這條回答「要注意什麼事件才會回彈」:同樣是跌停後出現紅K —— <b>當初大盤也在跌(系統性)→ +5.33pp</b>(扣成本 +4.89%,六關全過);<b>當初大盤沒跌、它自己出事(個股利空)→ 只有 +1.46pp</b>(+1.02%)。⭐ 差 <b>4.8 倍</b>。大家一起跌的那種跌完會彈;自己被爆的那種,彈也彈不動。', s: 'streak_probe.mjs・V74.4.0' },
       { r: 76, t: '🔻 跌停 × 量縮 / 已經連跌', n: '+2.40 / +1.34%', d: '跌停(全部)10 日 +1.43pp(扣成本 +0.99%)。分條件:<b>量縮 +2.84</b> > 大盤也在跌 +2.65 > 已經連跌 +1.78 > 中位階 +1.35 > 高位階 +0.87 > <b>爆量只有 +0.53</b>(而且前後半不同向 ❌)。🚨 反直覺:<b>爆量跌停(恐慌賣壓最大)後續反而最差</b>,量縮跌停最好。', s: 'streak_probe.mjs・V74.4.0' },
-      { r: 100, t: '🧬 只做「高位階 + 高波動」', n: '+289.6 萬', d: '36 個月、本金 100 萬。不挑這個條件的話整套只賺 126.1 萬,<b>輸給什麼都不做買 0050(+201.2 萬)75pp</b>。⭐ 所以它是**必要條件不是加分項**。門檻敏感度 6×4 = 24 格<b>全部</b>贏基準 → 是一片高原不是孤峰。反向檢定方向完全相反(只做低波動 −21 萬、回撤 −65.9%)。', s: 'portfolio_backtest.mjs・V73.2.3 / V73.2.9' },
+      { r: 100, t: '🧬 只做「高位階 + 高波動」', n: '+289.6 萬', d: '36 個月、本金 100 萬。不挑這個條件的話整套只賺 126.1 萬,<b>輸給什麼都不做買 0050(+201.2 萬)75pp</b>。⭐ 所以它是**必要條件不是加分項**。門檻敏感度 6×4 = 24 格<b>全部</b>贏基準 → 是一片高原不是孤峰。反向檢定方向完全相反(只做低波動 −21 萬、回撤 −65.9%)。<br>⭐⭐ <b>V74.4.6 把 K 線補到 2021-01 之後,窗口拉到 49 個月(含 2022 那段跌勢)重跑</b>:挑 🧬 <b>+195.5 萬</b>(回撤 −32.4%)vs 不挑 <b>+107.8 萬</b>(−31.8%)→ <b>「挑比不挑好」成立而且差距更大(+87.7 萬)</b>。🚨 <b>但兩種都輸給買 0050 放著(+260.0 萬)</b>,而且 🧬 的回撤優勢在長窗口消失了。→ ⭐ <b>誠實的說法是「🧬 讓你少輸」,⛔ 不是「一定贏大盤」</b>;36 個月那組漂亮數字有一部分是那段行情剛好適合。', s: 'portfolio_backtest.mjs・V73.2.3 / V73.2.9 / V74.4.6' },
       { r: 90, t: '📅 一天只挑 2 檔', n: '+171.9 萬', d: '每天 1 檔 +172.0 萬(回撤 −13.0%)、<b>2 檔 +171.9 萬(回撤 −9.3%)</b>、3 檔 +136.1 萬、6 檔 +73.6 萬。⭐ 單調,而且 2 檔是<b>27 次實驗裡唯一「沒有任何一項變差」</b>的改動。反過來也證明打法排序真的有鑑別力 —— 挑到第 3 名以後就在拉低成績。', s: 'portfolio_backtest.mjs・V73.0.0' },
       { r: 92, t: '⏰ 只在「訊號出現那天的尾盤」買', n: '+259.9 萬', d: '同一批股票、同一套打法,<b>只改「什麼時候買」</b>(36 個月、每天 2 檔、每筆 15 萬、只做 🧬):<br>⭐ <b>訊號當天尾盤買 +259.9 萬(中途最多賠 24.7%)</b><br>・隔天一開盤就買 +127.3 萬(賠到 31.5%)—— <b>輸給什麼都不做買 0050(+201.2 萬)</b><br>・開盤前掛「前一天收盤價」等它跌回來 <b>+12.4 萬(賠到 46.1%)</b> ← 最糟<br>🚨 真因不是「掛太低買不到」,是<b>會成交的那些正好是「訊號出了、隔天卻走弱」的股票</b> —— 真正走遠的不會回頭讓你撿。同理「跳空 >1% 就不追」聽起來最有紀律,實測<b>倒賠</b>。', s: 'portfolio_backtest.mjs・V72.9.0 / V74.4.5' },
       { r: 50, t: '🐢 0050 七種買法互比', n: '一次全買最多錢', d: '39 個月、總投入封頂 100 萬:<b>一次全買放著 +218.8 萬</b>(回撤 −28.5%)> 定期定額+大跌加碼 +136.0 萬 > 只等大跌才買 +128.1 萬 > 純定期定額 +122.5 萬。🚨 最貴的是<b>擇時</b>:「站上月線買、跌破全賣」只賺 74.8 萬 —— 錢一樣 100% 在市場,純粹被進出巴掉 144 萬。⚠️ 窗口沒有一年是空頭,「一直待在市場」天生佔便宜,⛔ 不可外推。', s: 'etf0050_probe.mjs・V73.x' },
@@ -959,6 +993,7 @@ const PRO = {
       { t: '📆 行事曆與大盤環境當濾網', n: '26 種全部少賺', d: '13 種行事曆(週幾/月初月底/結算日/長假)+ 13 種大盤事件(不追高/廣度極弱/地板股)。⭐ 唯二「贏」的兩個,優勢<b>全部集中在 2026-04 那一個月</b>,拿掉就由正轉負。🚨 累計測了 86 種變體,採用的只有 2 個。', s: 'V73.2.0 / V73.2.1 / V73.2.2' },
     ],
     method: [
+      { t: '🚨 基準的數字「物理上不可能」就是資料壞了,⛔ 不是策略很強', n: '0050 −10% 配大盤 +206%', d: '把 2021 起的深歷史接到既有 K 線前面之後,回測印出「<b>0050 買進持有 −10.32%</b>」配「<b>加權指數 +206.11%</b>」—— 0050 幾乎就是追大盤,這個組合<b>物理上不可能</b>,一眼就知道是基準壞了(而不是「這段行情 0050 剛好很爛」)。真因:0050 分割時<b>停牌 8 天</b>,而採礦端的分割還原有一道「隔太多天就不當成分割」的守門 → 兩段價格用了<b>不同的尺</b>,接縫處出現 ×0.25 的斷崖。<br>⭐ 正解是<b>用重疊 3 年的中位比值把尺標對齊</b>(實測 580 檔需要調),⛔ 不去動採礦機的守門;而且要加一道「<b>合併後仍有斷崖就整檔不寫</b>」(129 檔因此維持短窗口)—— ⭐ 寧可窗口短,也<b>不可以讓壞掉的價格進到回測母體</b>。<br>⭐⭐ 通用:<b>每次換資料源都要先看「已知答案的那個東西」對不對</b>(0050 vs 大盤、買進持有 vs 指數),⛔ 不要直接看策略賺多少。', s: 'merge_deep_klines.mjs・V74.4.5' },
       { t: '⚖️ 資金設定會翻轉穩健性判定', n: '同一變體、兩種答案', d: '出場換 trail8 那次:每筆 <b>10 萬</b>(資金使用率 44%,沒有排擠)→ 六關<b>全過</b>(去最好月 +30.6 萬、逐年全正);每筆 <b>15 萬</b>(正式配置,錢常用完)→ <b>去最好月轉負、兩年為負</b>。⭐ 資金會排擠 → 挑到的單子不同 → edge 整個變樣。⛔ 回測變體一律要用<b>正式配置</b>做最終判定,寬鬆配置的全過不算數。', s: 'portfolio_backtest.mjs・V74.4.4' },
       { t: '📐 偏斜的量用線性刻度畫圖', n: '97% 黏在中線', d: '板塊泡泡圖第一版兩軸都用線性 → 實測 <b>97% 的泡泡黏在中線 ±5%</b> 內(X 只用到畫布 14.6% 寬、Y 只有 7.6% 高)。真因:資金流 |中位| 只有 <b>10.3 億</b>、最大 <b>2801 億</b> → 線性下中位數只佔 0.4% 的高度。⭐ 偏斜的量要用**對數**;另一軸的尺標用**全期間第 95 百分位(去掉最極端的 5%)** 不用最大值(全期最大 38.5% 但平常那天只有 −11 ~ +2)。改完 X 52.5% / Y 58.2% / 黏中線 19%。', s: 'pro.html・V74.3.7' },
       { t: '🫥 測資規模跟真實不同 = 那條測試沒驗到', n: '兩次', d: '① 測資只有 20 個 r20 值 → <b>「第 95 百分位」退化成「最大值」</b>,「P95 vs 最大值」根本測不出來 → 改用**照真實規模生成**的測資(32 組 × 120 天)。② 測資 cols 只有 11 欄而真實 screener 有 <b>80 欄</b>,個股泡泡圖要的 amp20/amt 在測資裡不存在。⭐ 通用:寫測資前先看一眼真實產物長什麼樣(陷阱 #40)。', s: 'test_prohtml.mjs・V74.3.7 / V74.3.9' },
