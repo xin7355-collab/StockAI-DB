@@ -143,7 +143,16 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .bub text{font-size:8.5px;font-weight:700;text-anchor:middle;pointer-events:none}
 .rotlist{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .rotchip{font-size:10px;padding:3px 7px;border-radius:6px;background:var(--panel2);
-  border:1px solid var(--line2);font-family:var(--mono)}
+  border:1px solid var(--line2);font-family:var(--mono);cursor:pointer}
+.rotchip.on{background:rgba(34,211,238,.14);border-color:var(--cyan)}
+/* 🔎 板塊明細(點板塊 → 攤開裡面的個股) */
+.rotdet{margin-top:10px;border:1px solid var(--cyan);border-radius:10px;padding:10px 12px;background:rgba(34,211,238,.04)}
+.rdhead{font-size:12.5px;color:var(--txt);display:flex;align-items:center;gap:8px}
+.rdclose{margin-left:auto;font-size:10px;color:var(--cyan);cursor:pointer}
+.rdkv{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin:8px 0}
+.rdkv>div{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid var(--line)}
+.rdkv span{color:var(--dim2)}
+.rdkv b{font-family:var(--mono)}
 /* 🔬 實測總表 */
 .labbar{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
 .labbtn{font-size:11px;padding:6px 11px;border-radius:999px;border:1px solid var(--line2);
@@ -320,7 +329,8 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <!-- ⛔ 順序刻意是「控制列 → 結論條 → 動畫」,而且結論條**高度固定**:
          播放時它每一格都會重寫,若高度會變,底下的動畫就會被推得上上下下(使用者回報的問題)。 -->
     <div class="rotctl">
-      <button class="lbtn" id="rotPlay" onclick="PRO.rotPlay()">▶︎ 播放輪動</button>
+      <button class="lbtn" id="rotPlay" onclick="PRO.rotPlay()">▶︎ 播放</button>
+      <button class="lbtn" id="rotSpd" onclick="PRO.rotCycleSpeed()" title="播放速度">1x</button>
       <input type="range" id="rotSlider" min="0" max="0" value="0" oninput="PRO.rotSeek(+this.value)">
       <span class="rotday" id="rotDay">—</span>
     </div>
@@ -328,6 +338,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <div id="rotVerdict" class="rotverdict"></div>
     <div class="quadwrap" id="rotRace"></div>
     <div class="rotlist" id="rotList"></div>
+    <div id="rotDetail"></div>
     <details id="rotNoteWrap"><summary class="rotmore">📊 這張圖怎麼來的・實測數字</summary><div id="rotNote"></div></details>
   </div>
   <div class="panel">
@@ -660,7 +671,11 @@ const PRO = {
   },
   _rotK: 0, _rotTimer: null, _rotData: null, _rotBub: null,
   // 📐 圖的座標系(viewBox 固定 → 高度不會變 → ⛔ 播放時不會把畫面推上推下)
-  QW: 340, QH: 240, QPAD: 26,
+  // 📱 長版(手機直式)—— 使用者:「手機頁面要做長版,看起來才看得清楚」
+  QW: 340, QH: 460, QPAD: 30,
+  _rotSpeed: 1,                       // 播放速度(使用者:「速度可以再調整」)
+  SPEEDS: [0.25, 0.5, 1, 2],
+  _rotSel: null,                      // 點開的板塊(明細)
   async renderRot() {
     const J = await this.fetchJson('data/sector_rot.json');
     const wrap = document.getElementById('rotRace');
@@ -709,7 +724,7 @@ const PRO = {
     this._rotBub = {};
     const g = wrap.querySelector('#rotBubs');
     g.innerHTML = codes.map(c =>
-      `<g class="bub" data-k="${c}"><circle r="6"></circle><text dy="3"></text></g>`).join('');
+      `<g class="bub" data-k="${c}" style="cursor:pointer" onclick="PRO.rotOpen('${c}')"><circle r="6"></circle><text dy="3"></text></g>`).join('');
     g.querySelectorAll('.bub').forEach(el => { this._rotBub[el.dataset.k] = el; });
     const sl = document.getElementById('rotSlider');
     sl.max = String(J.days.length - 1);
@@ -763,12 +778,14 @@ const PRO = {
     }
     this._rotVerdict(list, N);
     this._rotChips(list, N);
+    this._rotDetail(k);
     this._rotFi(k);
   },
   // 圖下方的名次條 —— 一眼看完 32 個產業,⛔ 不用捲
   _rotChips(list, N) {
+    this._rotList = list;
     document.getElementById('rotList').innerHTML = list.map((x, i) =>
-      `<span class="rotchip ${this.cls(x.v)}" style="${i < 3 ? 'border-color:var(--amber)' : i >= N - 3 ? 'border-color:var(--dim2)' : ''}">${i < 3 ? '🎯' : i >= N - 3 ? '⛔' : ''}${this.IND_NAME[x.c] || x.c} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}</span>`).join('');
+      `<span class="rotchip ${this.cls(x.v)} ${this._rotSel === x.c ? 'on' : ''}" onclick="PRO.rotOpen('${x.c}')" style="${i < 3 ? 'border-color:var(--amber)' : i >= N - 3 ? 'border-color:var(--dim2)' : ''}">${i < 3 ? '🎯' : i >= N - 3 ? '⛔' : ''}${this.IND_NAME[x.c] || x.c} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}</span>`).join('');
   },
   _rotVerdict(list, N) {
     const nm = c => this.IND_NAME[c] || c;
@@ -878,6 +895,85 @@ const PRO = {
       <br>⛔ 這張表<b>只做描述,不排名、不下多空</b>,本頁也不給任何買賣價位。
       ⚠️ 只涵蓋上市;回測窗口整段偏多頭。</div>`;
   },
+  rotCycleSpeed() {
+    this.buzz(10);
+    const i = (this.SPEEDS.indexOf(this._rotSpeed) + 1) % this.SPEEDS.length;
+    this._rotSpeed = this.SPEEDS[i];
+    document.getElementById('rotSpd').textContent = this._rotSpeed + 'x';
+    if (this._rotTimer) { this.rotStop(); this.rotPlay(); }   // 播放中改速度要立刻生效
+  },
+  // 🔎 點板塊 → 攤開裡面的個股(使用者:「板塊裡面再細分,把個股做一個資金流向」)
+  rotOpen(c) {
+    this.buzz(10);
+    this._rotSel = (this._rotSel === c) ? null : c;
+    this._rotDetail(this._rotK);
+    this._rotChips(this._rotList || [], (this._rotList || []).length);
+    if (this._rotSel) {
+      const el = document.getElementById('rotDetail');
+      if (el) requestAnimationFrame(() => setTimeout(() => {
+        try { el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch { }
+      }, 50));
+    }
+  },
+  _rotDetail(k) {
+    const box = document.getElementById('rotDetail');
+    if (!box) return;
+    const c = this._rotSel, J = this._rotData;
+    if (!c || !J || !J.ind[c]) { box.innerHTML = ''; return; }
+    const nm = this.IND_NAME[c] || c, o = J.ind[c];
+    const atLatest = k === J.days.length - 1;
+    const sumN = (arr, n) => {
+      const a = (arr || []).slice(Math.max(0, k - n + 1), k + 1).filter(v => v != null);
+      return a.length ? a.reduce((s, v) => s + v, 0) : null;
+    };
+    const fl = o.flow || {};
+    const f5 = sumN(fl.f, 5), f20 = sumN(fl.f, 20), fd = sumN(fl.f, 1);
+    // 資金停留:外資連續同向幾天(⭐ 純事實描述,⛔ 不下多空)
+    let run = 0, sign = 0;
+    for (let i = k; i >= 0 && i > k - 30; i--) {
+      const v = (fl.f || [])[i]; if (v == null || v === 0) break;
+      const sgn2 = v > 0 ? 1 : -1;
+      if (!sign) sign = sgn2; else if (sgn2 !== sign) break;
+      run++;
+    }
+    // 成分股(來自 screener,只有**最新一天**的快照)
+    const scr = this._cache['data/screener.json'];
+    let rows = [];
+    if (scr && scr.ind) {
+      rows = Object.keys(scr.ind).filter(sy => scr.ind[sy] === c).map(sy => ({
+        sy, nm: (this._names || {})[sy] || sy,
+        chg: this._scrV(sy, 'chg'), f5: this._scrV(sy, 'f5'),
+        chg20: this._scrV(sy, 'chg20'), amt: this._scrV(sy, 'c'),
+      })).filter(x => Number.isFinite(x.f5) || Number.isFinite(x.chg));
+      rows.sort((a, b) => (b.f5 ?? -1e9) - (a.f5 ?? -1e9));
+    }
+    const money = v => v == null ? '—' : (v >= 0 ? '+' : '') + this.fmt(v, 1) + ' 億';
+    box.innerHTML =
+      `<div class="rotdet">
+        <div class="rdhead"><b>${nm}</b> ・${o.n} 檔
+          <span class="rdclose" onclick="PRO.rotOpen('${c}')">✕ 收起</span></div>
+        <div class="rdkv">
+          <div><span>當日外資</span><b class="${this.cls(fd)}">${money(fd)}</b></div>
+          <div><span>近 5 日</span><b class="${this.cls(f5)}">${money(f5)}</b></div>
+          <div><span>近 20 日累計</span><b class="${this.cls(f20)}">${money(f20)}</b></div>
+          <div><span>資金停留</span><b>${run ? `連續${sign > 0 ? '流入' : '流出'} ${run} 天` : '—'}</b></div>
+          <div><span>近 ${this._ROT.win} 日漲跌</span><b class="${this.cls(o.r20[k])}">${o.r20[k] == null ? '—' : (o.r20[k] >= 0 ? '+' : '') + o.r20[k].toFixed(1) + '%'}</b></div>
+        </div>
+        ${rows.length ? `<div class="tblwrap" style="max-height:44vh"><table class="grid"><thead><tr>
+          <th>個股</th><th>當日</th><th>外資5日</th><th>近20日</th></tr></thead><tbody>` +
+          rows.map(r => `<tr>
+            <td class="txtcell"><button class="namebtn" onclick="PRO.gotoStock('${r.sy}')">${r.sy} ${r.nm}</button></td>
+            <td class="${this.cls(r.chg)}">${Number.isFinite(r.chg) ? this.fmt(r.chg, 2, true) + '%' : '—'}</td>
+            <td class="${this.cls(r.f5)}">${Number.isFinite(r.f5) ? this.fmt(r.f5, 0, true) : '—'}</td>
+            <td class="${this.cls(r.chg20)}">${Number.isFinite(r.chg20) ? this.fmt(r.chg20, 1, true) + '%' : '—'}</td>
+          </tr>`).join('') + '</tbody></table></div>'
+          : '<div class="note">⏳ 這個產業的成分股數字還沒載入(screener 只涵蓋上市)。</div>'}
+        <div class="note">🚨 <b>上面那五個數字會跟著時間軸走;下面的個股表只有「最新一天」的快照</b>
+          —— 個股的逐日法人流向沒有存歷史,⛔ 不可假裝拉回過去看得到。
+          ${atLatest ? '' : `<br>⚠️ 你現在停在 <b>${J.days[k]}</b>,個股表顯示的仍是最新交易日。`}
+          <br>⛔ 這裡<b>只做描述,不下多空、不給買賣價位</b>;點股名可跳到散戶救星看完整分析。</div>
+      </div>`;
+  },
   rotPlay() {
     if (this._rotTimer) return this.rotStop();
     const J = this._rotData; if (!J) return;
@@ -886,7 +982,7 @@ const PRO = {
     this._rotTimer = setInterval(() => {
       if (this._rotK >= J.days.length - 1) return this.rotStop();
       this.rotSeek(this._rotK + 1);
-    }, 260);
+    }, Math.round(260 / this._rotSpeed));
   },
   rotStop() {
     if (this._rotTimer) { clearInterval(this._rotTimer); this._rotTimer = null; }

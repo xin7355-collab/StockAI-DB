@@ -217,6 +217,10 @@ const T = await page.evaluate(async () => {
             '99': { n: 3, r20: [null, null, null, null, null], flow: { f: [null, null, null, null, null], t: [null, null, null, null, null], dl: [null, null, null, null, null], mg: [null, null, null, null, null] } },
         },
     };
+    // 明細表要用 screener 的 ind 對照 + 名稱
+    PRO._cache['data/screener.json'].ind = Object.assign({}, PRO._cache['data/screener.json'].ind,
+        { '2382': '24', '2222': '24', '2317': '15' });
+    PRO._names = Object.assign({}, PRO._names, { '2382': '廣達', '2222': '假無帶', '2317': '鴻海' });
     PRO.switchTab('rot');
     await new Promise(r => setTimeout(r, 200));
     // 🚨 <details> 收合時 innerText **是空的** → 不先展開的話,底下所有「文案必須寫什麼」
@@ -271,6 +275,24 @@ const T = await page.evaluate(async () => {
     out.lastOnN = document.querySelectorAll('#rotFlowBar .fchk.on').length;
     PRO.toggleFlow('f'); PRO.toggleFlow('t');
     out.noteTxt = document.getElementById('rotFiNote').innerText;
+    // 📱 長版 + ⏩ 速度 + 🔎 明細
+    out.aspect = PRO.QH / PRO.QW;
+    out.spd0 = document.getElementById('rotSpd').textContent;
+    PRO.rotCycleSpeed();
+    out.spd1 = document.getElementById('rotSpd').textContent;
+    out.spdVal = PRO._rotSpeed;
+    PRO.rotSeek(4);
+    PRO.rotOpen('24');                       // 點半導體
+    await new Promise(r => setTimeout(r, 60));
+    out.detTxt = document.getElementById('rotDetail').innerText;
+    out.detRows = document.querySelectorAll('#rotDetail tbody tr').length;
+    out.detHasGoto = /PRO\.gotoStock\('2382'\)/.test(document.getElementById('rotDetail').innerHTML);
+    PRO.rotSeek(1);
+    await new Promise(r => setTimeout(r, 60));
+    out.detTxtPast = document.getElementById('rotDetail').innerText;
+    PRO.rotOpen('24');                       // 再點一次要收起
+    out.detClosed = document.getElementById('rotDetail').innerHTML === '';
+    PRO.rotSeek(4);
     PRO.rotPlay(); out.playing = !!PRO._rotTimer;
     PRO.switchTab('val');
     out.stoppedOnLeave = !PRO._rotTimer;
@@ -447,6 +469,20 @@ ok('㉓g ⭐ 跟單數字必須配「自己續買」的對照(⛔ 沒對照就�
    /自己連買/.test(T.noteTxt) && /自己續買/.test(T.noteTxt) && /\+2\.05pp/.test(T.noteTxt), T.noteTxt.slice(-700));
 ok('㉓h ⭐ 要點出「外資買了之後別人跟」幾乎沒有加成(⛔ 不可只講對自己結論有利的那半)',
    /加成只有.{0,12}沒有/.test(T.noteTxt.replace(/\s/g, '')) || /\+0\.08pp/.test(T.noteTxt), T.noteTxt.slice(-600));
+// ㉕ 📱 長版 + ⏩ 速度 + 🔎 板塊明細(使用者第三輪回饋)
+ok('㉕ 📱 手機長版:畫布要比寬還高(直式)', T.aspect > 1.2, T.aspect);
+ok('㉕b ⏩ 播放速度可調(1x → 2x)', T.spd0 === '1x' && T.spd1 === '2x' && T.spdVal === 2, [T.spd0, T.spd1, T.spdVal]);
+ok('㉕c 🔎 點板塊要攤開裡面的個股', T.detRows >= 2 && /廣達/.test(T.detTxt), [T.detRows, T.detTxt.slice(0, 80)]);
+ok('㉕d 🔎 明細要有板塊自己的資金流(當日/近5日/近20日/資金停留)',
+   /當日外資/.test(T.detTxt) && /近 5 日/.test(T.detTxt) && /近 20 日累計/.test(T.detTxt) && /資金停留/.test(T.detTxt),
+   T.detTxt.slice(0, 200));
+ok('㉕e 個股要能點去散戶救星', T.detHasGoto);
+ok('㉕f 🚨 必須誠實說「個股表只有最新一天」(⛔ 不可假裝拉回過去看得到)',
+   /只有「最新一天」的快照/.test(T.detTxt) && /沒有存歷史/.test(T.detTxt), T.detTxt.slice(-300));
+ok('㉕g 🚨 停在過去那天時要主動提醒「你現在停在 X,個股表仍是最新交易日」',
+   /你現在停在/.test(T.detTxtPast), T.detTxtPast.slice(-260));
+ok('㉕h ⛔ 明細也不可下多空/給價位', /只做描述/.test(T.detTxt) && /不給買賣價位/.test(T.detTxt), T.detTxt.slice(-200));
+ok('㉕i 再點一次要收起', T.detClosed);
 ok('㉒l ⛔ 切走分頁要停掉動畫(不可留背景 timer)', T.playing && T.stoppedOnLeave, [T.playing, T.stoppedOnLeave]);
 // ㉔ 🔬 實測總表
 ok('㉔ 五個頁籤:有用 / 沒用 / 回測的坑 / 還測不了 / 推薦下一步',
