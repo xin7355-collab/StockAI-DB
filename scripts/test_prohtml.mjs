@@ -559,6 +559,39 @@ ok('㉝e ⚠️ 要誠實說只算得到海外連動那一半', /海外連動那
 ok('㉝f 🚧 成分不足 5 項 → ⛔ 不硬給分數', /不硬給分數/.test(SIG.premktThin), SIG.premktThin.slice(0, 80));
 ok('㉝g ⛔ 資料沒到要說出來(不可靜默空白)', /盤前資料還沒到/.test(SIG.premktNone));
 
+// ㉞ 🧮 回測計算機(V74.4.7 使用者:「新增回測計算機頁面…這樣我就不要請你一直回測」)
+//   ⛔ 這頁最危險的兩件事,直接釘死:
+//     ① 讓人以為是「現場算的」→ 必須寫明是預先真的跑過的情境庫
+//     ② 讓人拿兩格數字相乘推估交叉 → 必須寫「沒列的交叉 = 沒測過」+ 混用 0/27 的實測
+const CALC = await page.evaluate(async () => {
+    const out = {};
+    PRO.switchTab('calc');
+    out.intro = document.getElementById('calcIntro').innerText;
+    out.body0 = document.getElementById('calcBody').innerText;
+    out.rows0 = document.querySelectorAll('#calcBody tbody tr').length;
+    out.dims = document.querySelectorAll('#calcBar .labbtn').length;
+    PRO.selCalc(5);                                   // 🏛️ 大盤狀態那組
+    out.bodyMkt = document.getElementById('calcBody').innerText;
+    out.rowsMkt = document.querySelectorAll('#calcBody tbody tr').length;
+    out.inWrap = !!document.querySelector('.wrap #tabCalc');
+    out.btn = (document.getElementById('tabBtnCalc') || {}).textContent || '';
+    return out;
+});
+ok('㉞ 分頁註冊 + 在 .wrap 裡 + 按鈕文字', CALC.inWrap && CALC.btn === '回測計算機');
+ok('㉞a 預設分組真的渲染出列(進場時機 5 列)', CALC.rows0 === 5, `rows=${CALC.rows0}`);
+ok('㉞b 🚨 必須寫明是「真的跑過的回測」不是現場算的', /真的跑過的回測/.test(CALC.intro));
+ok('㉞c 🚨🚨 必須寫「沒列的交叉 = 沒測過」(⛔ 不可讓人拿兩格數字相乘推估)',
+   /沒列的交叉 = 沒測過/.test(CALC.intro));
+ok('㉞c2 「交叉」分組要有「沒有一次贏過單獨用」的實測警告(27 次混用實測)',
+   /沒有一次贏過單獨用/.test(src));
+ok('㉞d 切分組真的會換內容(大盤狀態組要有三態拆解與嚴格空頭)',
+   CALC.rowsMkt >= 4 && /嚴格空頭/.test(CALC.bodyMkt) && /−0\.29%|-0\.29%/.test(CALC.bodyMkt), CALC.bodyMkt.slice(0, 80));
+ok('㉞e 🚨 沒過穩健性的格子要標出來(fragile 旗標真的會顯示)',
+   /沒過穩健性檢定/.test(CALC.bodyMkt));
+ok('㉞f 每一組都標窗口(⛔ 不標的話短窗口名次會被當永恆真理)',
+   /📅 窗口:/.test(CALC.body0) && /📅 窗口:/.test(CALC.bodyMkt));
+ok('㉞g ⭐ 窗口長度對照組要在(13/36/49 個月會翻轉結論)', /窗口長度/.test(CALC.intro + src) && /'win'/.test(src));
+
 const L = await page.evaluate(async () => {
     PRO.switchTab('lab');
     await new Promise(r => setTimeout(r, 60));

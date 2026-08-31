@@ -308,6 +308,13 @@ const twii = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', '^TWII.json'), '
 const twiiMa20 = twii.map((_, i) => i < 19 ? null
     : twii.slice(i - 19, i + 1).reduce((s2, r) => s2 + r.c, 0) / 20);
 const regimeOk = i => twiiMa20[i] != null && twii[i].c > twiiMa20[i];
+// 🐻 V74.4.7 嚴格空頭守門(FILTER=bear60):只有「收 < 60 日線 且 20 日線 < 60 日線」才停做。
+//   ⭐ 動機:月線版 regime 在含 2022 跌勢的窗口實測**兩頭輸**(少賺 68 萬、回撤還更糟)——
+//   因為「跌破月線」大多是**多頭回檔**,而那正是這套打法最賺的時刻(V73.2.2)。
+//   嚴格空頭(三態拆解:空頭段每趟淨 −0.29% vs 多頭/盤整 +0.98%)才是真的沒優勢的環境。
+const twiiMa60 = twii.map((_, i) => i < 59 ? null
+    : twii.slice(i - 59, i + 1).reduce((s2, r) => s2 + r.c, 0) / 60);
+const notBear60 = i => !(twiiMa60[i] != null && twii[i].c < twiiMa60[i] && twiiMa20[i] < twiiMa60[i]);
 const days = twii.map(r => r.d);
 // ── 📅 行事曆特徵(純日期運算,零採礦;⛔ 全部只用「當天以前就知道的事」→ 無前視偏誤)
 const dow = d => new Date(d + 'T00:00:00Z').getUTCDay();          // 0=日 1=一 … 5=五
@@ -549,6 +556,7 @@ for (let i = 0; i < days.length; i++) {
     //   排序用**這檔自己**的期望值 —— 這才是「每個個股最好的打法」。
     // 🏛️ 大盤環境濾網:大盤自己都在月線之下就整天不進場(⛔ 個股再強也不做)
     if (FILTER.includes('regime') && !regimeOk(i)) { continue; }
+    if (FILTER.includes('bear60') && !notBear60(i)) { continue; }
     // 📅 行事曆濾網:這一天不准開新倉(既有部位照原規則出場,⛔ 不受影響)
     if (CAL.length && !calOk(d, i)) { openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); continue; }
     const todays = byIn.get(d) || [];
