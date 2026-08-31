@@ -203,14 +203,12 @@ const J = await page.evaluate(async () => {
     out.backRows = document.querySelectorAll('#chainBody tr').length;
     return out;
 });
-// ㉒ 💧 板塊輪動(使用者:「做一個錢流動到哪裡的板塊輪動,還可以做個動畫」)
+// ㉒ 💧 板塊輪動:四象限泡泡(使用者回報「不好看 / 一頁式 / 上上下下」後改版)
 const T = await page.evaluate(async () => {
-    // stub:5 天 × 4 產業,最後一天 航運(15) 最強、半導體(24) 最弱且外資買最多
-    //       ⭐ 這正是要驗的「外資買最多卻最弱」那個現成例子
     PRO._cache['data/sector_rot.json'] = {
-        updated: '2026-08-31 20:00', win: 20, fiwin: 5, listed_only: true,
-        days: ['2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28', '2026-08-29'],
+        updated: '2026-08-31 20:00', win: 20, listed_only: true,
         flow_keys: { f: '外資', t: '投信', dl: '自營', mg: '融資(散戶代理)' },
+        days: ['2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28', '2026-08-29'],
         ind: {
             '15': { n: 28, r20: [-5, -2, 0, 1, 8], flow: { f: [1, 1, 1, 1, 1], t: [1, 1, 1, 1, 1], dl: [0, 0, 0, 0, 0], mg: [1, 1, 1, 1, 1] } },
             '17': { n: 32, r20: [1, 1, 1, 1, 3], flow: { f: [-10, -10, -10, -10, -10], t: [5, 5, 5, 5, 5], dl: [0, 0, 0, 0, 0], mg: [-1, -1, -1, -1, -1] } },
@@ -221,45 +219,64 @@ const T = await page.evaluate(async () => {
     };
     PRO.switchTab('rot');
     await new Promise(r => setTimeout(r, 200));
-    const rows = [...document.querySelectorAll('#rotRace .rotrow')];
-    const yOf = k => { const el = rows.find(e => e.dataset.k === k); return el ? +(/translateY\(([-\d.]+)px\)/.exec(el.style.transform) || [0, 1e9])[1] : null; };
+    // 🚨 <details> 收合時 innerText **是空的** → 不先展開的話,底下所有「文案必須寫什麼」
+    //    的斷言都拿到空字串 = 假失敗/假通過。(實測總表那頁踩過同一個坑,這是第二次。)
+    document.querySelectorAll('#tabRot details').forEach(e => { e.open = true; });
+    await new Promise(r => setTimeout(r, 30));
+    const bubs = () => [...document.querySelectorAll('#rotBubs .bub')];
+    const posOf = k => {
+        const el = bubs().find(e => e.dataset.k === k); if (!el) return null;
+        const m = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(el.style.transform);
+        return m ? { x: +m[1], y: +m[2] } : null;
+    };
     const out = {
-        nRows: rows.length,
-        // ⛔ 全空的產業不可佔一條(不留空殼)
-        hasEmpty: rows.some(e => e.dataset.k === '99'),
+        nBub: bubs().length,
+        hasEmpty: bubs().some(e => e.dataset.k === '99'),
         lastDay: document.getElementById('rotDay').textContent,
-        yTop: yOf('15'), yBot: yOf('24'),
+        p15: posOf('15'), p24: posOf('24'),
         verdict: document.getElementById('rotVerdict').innerText,
+        vH: document.getElementById('rotVerdict').getBoundingClientRect().height,
+        vMinH: getComputedStyle(document.getElementById('rotVerdict')).minHeight,
+        // 🚧 尺標壞掉的話泡泡會飛出畫布(_rotMax 若不是全期最大值就會這樣)
+        outside: bubs().filter(e => {
+            const m = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(e.style.transform);
+            return !m || +m[1] < 0 || +m[1] > PRO.QW || +m[2] < 0 || +m[2] > PRO.QH;
+        }).length,
+        svgTop: document.querySelector('#rotRace svg').getBoundingClientRect().top,
+        chips: document.getElementById('rotList').innerText,
         note: document.getElementById('rotNote').innerText,
         fiNote: document.getElementById('rotFiNote').innerText,
         fiFirst: (document.querySelector('#rotFiBody tr td') || {}).textContent,
         flowChks: [...document.querySelectorAll('#rotFlowBar .fchk')].map(e => e.textContent.trim()),
         flowOnN: document.querySelectorAll('#rotFlowBar .fchk.on').length,
         headTxt: document.getElementById('rotFiHead').innerText,
-        bar24Left: (rows.find(e => e.dataset.k === '24') || document.createElement('i')).querySelector ? rows.find(e => e.dataset.k === '24').querySelector('.rbar').style.left : '',
     };
-    // 拉回第 0 天 → 半導體那時最強,排序必須真的換位置(⛔ 不動 = 動畫是假的)
+    // 🚧 版面穩定:拉時間軸時,結論條高度與圖的位置**不可以變**(使用者回報「上上下下」)
     PRO.rotSeek(0);
     await new Promise(r => setTimeout(r, 60));
-    out.y24_day0 = yOf('24'); out.y15_day0 = yOf('15');
+    out.vH0 = document.getElementById('rotVerdict').getBoundingClientRect().height;
+    out.svgTop0 = document.querySelector('#rotRace svg').getBoundingClientRect().top;
     out.day0 = document.getElementById('rotDay').textContent;
-    // 播放後要能停,⛔ 不可留一個背景 timer
-    PRO.rotPlay(); out.playing = !!PRO._rotTimer;
-    PRO.rotStop();
-    // 打勾疊加:關掉外資 → 表頭與排序都要跟著變
-    PRO.toggleFlow('f');
+    out.p24_day0 = posOf('24'); out.p15_day0 = posOf('15');
+    // 打勾要讓泡泡的 Y 移動(Y 軸 = 勾起來那幾條的合計)
+    PRO.rotSeek(4); await new Promise(r => setTimeout(r, 60));
+    const y24 = posOf('24').y;
+    PRO.toggleFlow('f');                       // 關掉外資(半導體 +180 億)
+    await new Promise(r => setTimeout(r, 60));
+    document.querySelectorAll('#tabRot details').forEach(e => { e.open = true; });
+    out.y24_noF = posOf('24').y; out.y24_withF = y24;
     out.headNoF = document.getElementById('rotFiHead').innerText;
     out.firstNoF = (document.querySelector('#rotFiBody tr td') || {}).textContent;
-    // ⛔ 全部關掉 = 空表 → 最後一個不可以被關掉
     PRO.toggleFlow('t'); PRO.toggleFlow('mg');
     out.lastOnN = document.querySelectorAll('#rotFlowBar .fchk.on').length;
     PRO.toggleFlow('f'); PRO.toggleFlow('t');
     out.noteTxt = document.getElementById('rotFiNote').innerText;
+    PRO.rotPlay(); out.playing = !!PRO._rotTimer;
     PRO.switchTab('val');
     out.stoppedOnLeave = !PRO._rotTimer;
     return out;
 });
-// ㉔ 🔬 實測總表(使用者:「回測後有用的資訊做一個分類,還有陷阱等等,用頁籤分類」)
+// ㉔ 🔬 實測總表
 const L = await page.evaluate(async () => {
     PRO.switchTab('lab');
     await new Promise(r => setTimeout(r, 60));
@@ -280,7 +297,6 @@ const L = await page.evaluate(async () => {
     PRO.selLab('blocked'); out.blocked = grab();
     PRO.selLab('next'); out.next = grab();
     out.kpi = document.getElementById('labKpis').innerText;
-    // 每一條都要有實測來源(lsrc)
     // ⚠️ 要掃**每一欄**(第一版只掃了「有用」那欄 → 把來源刪在別欄完全抓不到,注入驗證抓到的)
     out.srcMissing = 0;
     for (const k of Object.keys(PRO.LAB)) {
@@ -288,7 +304,6 @@ const L = await page.evaluate(async () => {
         out.srcMissing += [...document.querySelectorAll('#labList .labitem')]
             .filter(e => !(e.querySelector('.lsrc') || {}).textContent.trim()).length;
     }
-    // 全部分頁合起來掃一次(驗禁句)
     let all = '';
     for (const k of Object.keys(PRO.LAB)) { PRO.selLab(k); all += grab().txt + '\n'; }
     out.all = all;
@@ -387,23 +402,39 @@ ok('㉑c 只捲過去不夠 —— 篩選也要生效(L2 成員 < 全部)', J.ro
 ok('㉑d 篩選中要有「⬆️ 回五級」的路(⛔ 手機上沒有就只能自己滑很久)', J.backBtn);
 ok('㉑e 回五級要取消篩選 + 捲回去', J.backRows === J.allRows && J.backScroll < J.after, [J.backRows, J.allRows, J.backScroll, J.after]);
 ok('㉑f ⛔ 表格不可有橡皮筋回彈(overscroll-behavior:none)', S.overscroll === 'none', S.overscroll);
-// ㉒ 💧 板塊輪動
-ok('㉒ 排名賽跑有列出來,⛔ 全空的產業不佔一條', T.nRows === 4 && !T.hasEmpty, T);
+// ㉒ 💧 板塊輪動:四象限泡泡
+ok('㉒ 泡泡有畫出來,⛔ 全空的產業不佔一顆', T.nBub === 4 && !T.hasEmpty, T.nBub);
 ok('㉒b 預設停在最新那天', T.lastDay === '2026-08-29', T.lastDay);
-ok('㉒c 最新那天 航運最強排最上、半導體最弱排最下', T.yTop === 0 && T.yBot === 66, [T.yTop, T.yBot]);
-ok('㉒d 🚧 動畫是真的:拉回第 0 天名次要對調(半導體變第一)', T.y24_day0 === 0 && T.y15_day0 > T.y24_day0, [T.y24_day0, T.y15_day0, T.day0]);
-ok('㉒e 結論要點名前 3 / 後 3(🎯⛔ 圖示,⛔ 不靠顏色)', /🎯/.test(T.verdict) && /⛔/.test(T.verdict) && /航運/.test(T.verdict) && /半導體/.test(T.verdict), T.verdict.slice(0, 120));
-ok('㉒f 🚨「幾天才有價值」必須寫出實測數字,⛔ 不可只說「20 日」', /1 日窗口/.test(T.note) && /60 日窗口/.test(T.note) && /\+1\.44pp/.test(T.note), T.note.slice(0, 200));
-ok('㉒g 🚨 必須寫「刻意沒做錢在板塊間搬家的動畫」+ 原因', /錢在板塊間搬家/.test(T.note) && /≈0 甚至是負的/.test(T.note), T.note.slice(-260));
-ok('㉒h ⭐「避開最弱比追最強更有價值」要寫出來', /避開最弱/.test(T.note) && /-0\.8pp|−0\.8pp/.test(T.note.replace('−', '-')), T.note.slice(0, 400));
+ok('㉒c 最新那天 航運(+8)在右、半導體(−9)在左', T.p15 && T.p24 && T.p15.x > T.p24.x, [T.p15, T.p24]);
+ok('㉒d 🚧 動畫是真的:拉回第 0 天左右要對調(半導體 +8 變最右)', T.p24_day0.x > T.p15_day0.x, [T.p24_day0, T.p15_day0, T.day0]);
+ok('㉒d2 🚨🚨 版面穩定:拉時間軸時結論條高度與圖的位置**不可以變**(使用者回報「上上下下」)',
+   Math.abs(T.vH - T.vH0) < 1 && Math.abs(T.svgTop - T.svgTop0) < 1, [T.vH, T.vH0, T.svgTop, T.svgTop0]);
+ok('㉒d2b 🚧 而且要靠 CSS **釘死** min-height —— ⛔ 不可只靠「剛好內容一樣長」',
+   parseFloat(T.vMinH) >= 40, T.vMinH);
+ok('㉒d3 🚧 尺標要用**全期**最大值:泡泡⛔ 不可飛出畫布(每天各自縮放就會)', T.outside === 0, T.outside);
+ok('㉒e 結論要點名最強 / 最弱(🎯⛔ 圖示,⛔ 不靠顏色)',
+   /🎯/.test(T.verdict) && /⛔/.test(T.verdict) && /航運/.test(T.verdict) && /半導體/.test(T.verdict), T.verdict.slice(0, 120));
+ok('㉒e2 圖下方的名次條要一次列完所有產業(⛔ 不用捲)',
+   /航運/.test(T.chips) && /半導體/.test(T.chips) && (T.chips.match(/[+-]\d/g) || []).length >= 4, T.chips.slice(0, 120));
+ok('㉒f 🚨「幾天才有價值」必須寫出實測數字,⛔ 不可只說「20 日」',
+   /1 日窗口/.test(T.note) && /60 日窗口/.test(T.note) && /\+1\.44pp/.test(T.note), T.note.slice(0, 200));
+ok('㉒f2 🚨 必須寫「X 軸過關、Y 軸沒過關」——⛔ 不可讓人以為兩個軸一樣有份量',
+   /份量完全不同/.test(T.note) && /X 軸.{0,20}實測唯一過關/.test(T.note)
+   && /Y 軸.{0,12}實測沒過關/.test(T.note) && /只是描述/.test(T.note), T.note.slice(0, 400));
+ok('㉒g 🚨 必須寫「刻意沒把加速/放緩做成一個軸」+ 實測數字',
+   /刻意沒有把「加速\/放緩」做成一個軸/.test(T.note) && /-0\.88/.test(T.note.replace(/−/g, '-')), T.note.slice(0, 600));
+ok('㉒h ⭐「避開最弱比追最強更有價值」要寫出來',
+   /避開最弱/.test(T.note) && /-0\.8pp/.test(T.note.replace(/−/g, '-')), T.note.slice(0, 900));
 ok('㉒i 誰在買:預設勾選那幾條加總排序 → 半導體第一', T.fiFirst === '半導體', T.fiFirst);
 ok('㉒j 🚨 外資「買最多卻最弱」的現成例子要主動點出來', /今天正好有現成的例子/.test(T.fiNote) && /半導體/.test(T.fiNote), T.fiNote.slice(0, 200));
 ok('㉒k ⛔ 那張表要明說只做描述、不排名不下多空', /只做描述/.test(T.fiNote) && /不排名/.test(T.fiNote), T.fiNote.slice(-260));
-// ㉓ 👥 三大 + 散戶疊加(使用者:「三大加上散戶,打勾各別重疊顯示」)
+// ㉓ 👥 三大 + 散戶疊加
 ok('㉓ 四個打勾:外資 / 投信 / 自營 / 融資(散戶代理)',
    T.flowChks.length === 4 && /外資/.test(T.flowChks[0]) && /投信/.test(T.flowChks[1])
    && /自營/.test(T.flowChks[2]) && /融資/.test(T.flowChks[3]), T.flowChks);
 ok('㉓b 表頭跟著勾選變(預設 3 條)', T.flowOnN === 3 && /外資/.test(T.headTxt) && /投信/.test(T.headTxt), [T.flowOnN, T.headTxt]);
+ok('㉓b2 ⭐ 打勾要讓**泡泡的 Y** 跟著動(Y 軸 = 勾起來那幾條合計,這就是「誰在買」跟動畫合體)',
+   Math.abs(T.y24_noF - T.y24_withF) > 5, [T.y24_withF, T.y24_noF]);
 ok('㉓c 取消外資 → 表頭不再有外資、排序改用剩下的(半導體投信 −77 → 不再第一)',
    !/外資/.test(T.headNoF) && T.firstNoF !== '半導體', [T.headNoF, T.firstNoF]);
 ok('㉓d ⛔ 不可全部取消(最後一個要擋住,否則變空表)', T.lastOnN >= 1, T.lastOnN);

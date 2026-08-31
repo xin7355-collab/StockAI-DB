@@ -125,6 +125,24 @@ function main() {
     ret: { n: '① 價格動能(N日報酬)', f: (k, N, ind) => { let c = 0; for (let j = k - N + 1; j <= k; j++) { const o = D[j] && D[j].per[ind]; if (!o) return null; c += o.ret; } return c; } },
     fi: { n: '② 外資淨流入金額', f: (k, N, ind) => { let c = 0; for (let j = k - N + 1; j <= k; j++) { const o = D[j] && D[j].per[ind]; if (!o) return null; c += o.fi; } return c; } },
     fiR: { n: '③ 外資買超佔成交額比', f: (k, N, ind) => { let c = 0, a = 0; for (let j = k - N + 1; j <= k; j++) { const o = D[j] && D[j].per[ind]; if (!o) return null; c += o.fi; a += o.amt; } return a > 0 ? c / a * 100 : null; } },
+    // ⑤ 加速度:近 5 日的日均 − 近 N 日的日均(>0 = 正在加速)
+    //    ⭐ 這正是 Tide 那張四象限圖的 **Y 軸**(加速流入 / 流入放緩)。
+    //    ⛔ 在把它畫成一個軸之前先測 —— 「看起來很有道理」不是理由。
+    accel: {
+      n: '⑤ 動能加速度(近5日日均 − 近N日日均)', f: (k, N, ind) => {
+        const avg = (lo, hi) => { let c = 0, n = 0; for (let j = lo; j <= hi; j++) { const o = D[j] && D[j].per[ind]; if (!o) return null; c += o.ret; n++; } return n ? c / n : null; };
+        const s5 = avg(k - 4, k), sN = avg(k - N + 1, k);
+        return (s5 == null || sN == null) ? null : s5 - sN;
+      },
+    },
+    // ⑥ 外資流入的加速度(同上,但用金額)
+    fiAccel: {
+      n: '⑥ 外資流入加速度', f: (k, N, ind) => {
+        const avg = (lo, hi) => { let c = 0, n = 0; for (let j = lo; j <= hi; j++) { const o = D[j] && D[j].per[ind]; if (!o) return null; c += o.fi; n++; } return n ? c / n : null; };
+        const s5 = avg(k - 4, k), sN = avg(k - N + 1, k);
+        return (s5 == null || sN == null) ? null : s5 - sN;
+      },
+    },
     amtS: {
       n: '④ 成交額佔比的變化(人氣搬家)', f: (k, N, ind) => {
         const sum = (lo, hi) => { let s = 0, t = 0; for (let j = lo; j <= hi; j++) { const p = D[j]; if (!p) return null; const o = p.per[ind]; if (!o) return null; s += o.amt; for (const q of Object.keys(p.per)) t += p.per[q].amt; } return t > 0 ? s / t * 100 : null; };

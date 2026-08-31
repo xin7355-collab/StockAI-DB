@@ -122,23 +122,28 @@ textarea{resize:vertical;min-height:56px;font-family:inherit;font-size:14px}
 .askbtn{border:1px solid #4c1d95;background:rgba(167,139,250,.12);color:#c4b5fd;font-size:12px;font-weight:700;padding:6px 13px;border-radius:8px;cursor:pointer;transition:.15s}
 .askbtn:active{background:rgba(167,139,250,.25)}
 pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;white-space:pre-wrap;line-height:1.65;max-height:380px;overflow:auto}
-/* ── 💧 板塊輪動:排名賽跑動畫 ──
-   ⭐ 動畫本身只是「把 20 日相對強弱的排名變化演出來」,⛔ 不是資金流向箭頭 ——
-      實測「成交額在板塊間搬家」完全沒有預測力(見 rotNote 的數字)。*/
+/* ── 💧 板塊輪動:四象限泡泡 ──
+   ⭐ 借的是「一眼看完、不用捲」的**版面形式**,⛔ 不是別人的軸:
+      X 軸 = 近 20 日相對強弱 —— 實測前3−後3 **+1.44pp**,四關全過(唯一過關的)
+      Y 軸 = 勾選的資金流合計 —— 實測**沒過關**,所以只當**描述**,文案要寫明。
+   ⛔ 高度固定 → 播放時不會把畫面推得上上下下(使用者回報過)。*/
 .rotctl{display:flex;align-items:center;gap:8px;margin:10px 0 6px}
 .rotctl input[type=range]{flex:1;accent-color:var(--cyan);min-width:0}
 .rotday{font-family:var(--mono);font-size:11px;color:var(--sub);flex:0 0 auto}
-.rotrace{position:relative;overflow:hidden}
-.rotrow{position:absolute;left:0;right:0;height:22px;display:flex;align-items:center;gap:6px;
-  transition:transform .42s cubic-bezier(.4,0,.2,1);will-change:transform}
-.rotrow .rnm{flex:0 0 76px;font-size:11px;text-align:right;color:var(--dim2);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rotrow.hi .rnm{color:var(--txt);font-weight:700}
-.rotrow .rtrack{position:relative;flex:1;height:14px;min-width:0}
-.rotrow .rtrack::before{content:'';position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line2)}
-.rotrow .rbar{position:absolute;top:0;height:14px;border-radius:3px;
-  transition:width .42s cubic-bezier(.4,0,.2,1),left .42s cubic-bezier(.4,0,.2,1)}
-.rotrow .rv{flex:0 0 52px;font-size:10px;font-family:var(--mono);text-align:right}
+.rotmore{cursor:pointer;font-size:11px;color:var(--cyan);list-style:none;padding:6px 0}
+.rotmore::-webkit-details-marker{display:none}
+.rotverdict{min-height:52px}          /* ⛔ 固定高度 —— 播放時內容每格都變,不固定就會推動下面 */
+.quadwrap{position:relative;margin-top:6px;border:1px solid var(--line);border-radius:10px;
+  background:linear-gradient(180deg,rgba(255,93,93,.04),rgba(61,220,132,.04));overflow:hidden}
+.quadwrap svg{display:block;width:100%;height:auto}
+.qlab{font-size:9px;fill:var(--dim2)}
+.qax{font-size:9.5px;fill:var(--sub)}
+.bub{transition:transform .42s cubic-bezier(.4,0,.2,1)}
+.bub circle{transition:r .42s cubic-bezier(.4,0,.2,1)}
+.bub text{font-size:8.5px;font-weight:700;text-anchor:middle;pointer-events:none}
+.rotlist{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.rotchip{font-size:10px;padding:3px 7px;border-radius:6px;background:var(--panel2);
+  border:1px solid var(--line2);font-family:var(--mono)}
 /* 🔬 實測總表 */
 .labbar{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
 .labbtn{font-size:11px;padding:6px 11px;border-radius:999px;border:1px solid var(--line2);
@@ -312,20 +317,24 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
   <div class="kpis" id="rotKpis"></div>
   <div class="panel">
     <h2>💧 錢打到哪一區 <span class="sub" id="rotSub"></span></h2>
-    <div id="rotVerdict"></div>
+    <!-- ⛔ 順序刻意是「控制列 → 結論條 → 動畫」,而且結論條**高度固定**:
+         播放時它每一格都會重寫,若高度會變,底下的動畫就會被推得上上下下(使用者回報的問題)。 -->
     <div class="rotctl">
       <button class="lbtn" id="rotPlay" onclick="PRO.rotPlay()">▶︎ 播放輪動</button>
       <input type="range" id="rotSlider" min="0" max="0" value="0" oninput="PRO.rotSeek(+this.value)">
       <span class="rotday" id="rotDay">—</span>
     </div>
-    <div class="rotrace" id="rotRace"></div>
-    <div id="rotNote"></div>
+    <div class="flowbar" id="rotFlowBar"></div>
+    <div id="rotVerdict" class="rotverdict"></div>
+    <div class="quadwrap" id="rotRace"></div>
+    <div class="rotlist" id="rotList"></div>
+    <details id="rotNoteWrap"><summary class="rotmore">📊 這張圖怎麼來的・實測數字</summary><div id="rotNote"></div></details>
   </div>
   <div class="panel">
-    <h2>👥 誰在買 <span class="sub">三大法人 + 散戶代理・打勾可各別疊加</span></h2>
-    <div class="flowbar" id="rotFlowBar"></div>
-    <div class="tblwrap" style="max-height:56vh"><table class="grid" id="rotFiTbl"><thead><tr id="rotFiHead"></tr></thead><tbody id="rotFiBody"></tbody></table></div>
-    <div id="rotFiNote"></div>
+    <details><summary class="rotmore">👥 誰在買 ・完整數字表(點開)</summary>
+      <div class="tblwrap" style="max-height:56vh"><table class="grid" id="rotFiTbl"><thead><tr id="rotFiHead"></tr></thead><tbody id="rotFiBody"></tbody></table></div>
+      <div id="rotFiNote"></div>
+    </details>
   </div>
 </div>
 
@@ -649,14 +658,16 @@ const PRO = {
     // 「幾天才有價值」的完整答案(前3−後3,未來 20 日)
     win20: [[1, 0.40], [3, 0.79], [5, 0.81], [10, 1.10], [20, 1.44], [60, 2.03]],
   },
-  _rotK: 0, _rotTimer: null, _rotRows: null, _rotData: null,
+  _rotK: 0, _rotTimer: null, _rotData: null, _rotBub: null,
+  // 📐 圖的座標系(viewBox 固定 → 高度不會變 → ⛔ 播放時不會把畫面推上推下)
+  QW: 340, QH: 240, QPAD: 26,
   async renderRot() {
     const J = await this.fetchJson('data/sector_rot.json');
-    const race = document.getElementById('rotRace');
+    const wrap = document.getElementById('rotRace');
     if (!J || !J.days || !J.days.length || !J.ind) {
       // ⛔ 不可靜默空白 —— 說清楚是「還沒產出」而不是壞掉(陷阱 #22)
-      race.innerHTML = '';
-      race.style.height = '0px';
+      wrap.innerHTML = '';
+      document.getElementById('rotList').innerHTML = '';
       document.getElementById('rotVerdict').innerHTML =
         `<div class="warnbox">⏳ <b>板塊輪動的歷史檔還沒產出</b>(<code>data/sector_rot.json</code>)——
          它由每日完整採礦產生,下一輪跑完就會出現。⛔ 不是這個功能壞掉,也不是今天沒有輪動。</div>`;
@@ -665,16 +676,41 @@ const PRO = {
     }
     this._rotData = J;
     const codes = Object.keys(J.ind).filter(k => J.ind[k].r20.some(v => v != null));
-    // 全期最大絕對值當固定尺標 —— ⛔ 每天各自縮放的話「動起來」是假的(尺一直在變)
-    let mx = 0;
-    for (const k of codes) for (const v of J.ind[k].r20) if (v != null && Math.abs(v) > mx) mx = Math.abs(v);
-    this._rotMax = Math.max(mx, 1);
-    race.innerHTML = codes.map(k =>
-      `<div class="rotrow" data-k="${k}"><div class="rnm">${this.IND_NAME[k] || k}</div>
-       <div class="rtrack"><i class="rbar"></i></div><div class="rv"></div></div>`).join('');
-    race.style.height = (codes.length * 22) + 'px';
-    this._rotRows = {};
-    race.querySelectorAll('.rotrow').forEach(el => { this._rotRows[el.dataset.k] = el; });
+    // ⛔ 尺標用**全期**最大絕對值 —— 每天各自縮放的話「動起來」是假的(尺一直在變)
+    let mx = 0, my = 0;
+    for (const c of codes) {
+      for (const v of J.ind[c].r20) if (v != null && Math.abs(v) > mx) mx = Math.abs(v);
+      const fl = J.ind[c].flow || {};
+      for (let k = 0; k < J.days.length; k++) {
+        let t = 0, any = false;
+        for (const [key] of this.FLOW) {
+          const a = fl[key]; if (!a) continue;
+          for (let q = Math.max(0, k - this._flowWin + 1); q <= k; q++) if (a[q] != null) { t += a[q]; any = true; }
+        }
+        if (any && Math.abs(t) > my) my = Math.abs(t);
+      }
+    }
+    this._rotMax = Math.max(mx, 1); this._rotMaxY = Math.max(my, 1);
+    const W = this.QW, H = this.QH, P = this.QPAD;
+    wrap.innerHTML =
+      `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+        <line x1="${W / 2}" y1="4" x2="${W / 2}" y2="${H - 4}" stroke="var(--line2)" stroke-dasharray="3 3"/>
+        <line x1="4" y1="${H / 2}" x2="${W - 4}" y2="${H / 2}" stroke="var(--line2)" stroke-dasharray="3 3"/>
+        <text class="qax" x="${W - 6}" y="${H / 2 - 5}" text-anchor="end">強 →</text>
+        <text class="qax" x="6" y="${H / 2 - 5}">← 弱</text>
+        <text class="qax" x="${W / 2 + 5}" y="12">↑ 買超</text>
+        <text class="qax" x="${W / 2 + 5}" y="${H - 5}">↓ 賣超</text>
+        <text class="qlab" x="${W - 6}" y="14" text-anchor="end">又強、又有人買</text>
+        <text class="qlab" x="6" y="14">弱但有人買</text>
+        <text class="qlab" x="${W - 6}" y="${H - 14}" text-anchor="end">強但沒人買</text>
+        <text class="qlab" x="6" y="${H - 14}">弱又沒人買</text>
+        <g id="rotBubs"></g>
+       </svg>`;
+    this._rotBub = {};
+    const g = wrap.querySelector('#rotBubs');
+    g.innerHTML = codes.map(c =>
+      `<g class="bub" data-k="${c}"><circle r="6"></circle><text dy="3"></text></g>`).join('');
+    g.querySelectorAll('.bub').forEach(el => { this._rotBub[el.dataset.k] = el; });
     const sl = document.getElementById('rotSlider');
     sl.max = String(J.days.length - 1);
     sl.value = String(J.days.length - 1);
@@ -682,53 +718,68 @@ const PRO = {
     document.getElementById('rotNote').innerHTML = this._rotNoteHtml();
     this.rotSeek(J.days.length - 1);
   },
-  // 畫某一天
+  // 某產業在第 k 天、勾選那幾條的近 N 日資金流合計(億)
+  _flowAt(c, k) {
+    const fl = (this._rotData.ind[c] || {}).flow || {};
+    let t = 0, any = false;
+    for (const [key] of this.FLOW) {
+      if (!this._flowOn[key]) continue;
+      const a = fl[key]; if (!a) continue;
+      for (let q = Math.max(0, k - this._flowWin + 1); q <= k; q++) if (a[q] != null) { t += a[q]; any = true; }
+    }
+    return any ? t : null;
+  },
   rotSeek(k) {
     const J = this._rotData; if (!J) return;
     k = Math.max(0, Math.min(k, J.days.length - 1));
     this._rotK = k;
     document.getElementById('rotSlider').value = String(k);
     document.getElementById('rotDay').textContent = J.days[k];
-    const list = Object.keys(this._rotRows)
-      .map(c => ({ c, v: J.ind[c].r20[k] }))
-      .filter(x => x.v != null)
-      .sort((a, b) => b.v - a.v);
+    const W = this.QW, H = this.QH, P = this.QPAD;
+    const list = Object.keys(this._rotBub)
+      .map(c => ({ c, v: J.ind[c].r20[k], f: this._flowAt(c, k), n: J.ind[c].n || 5 }))
+      .filter(x => x.v != null).sort((a, b) => b.v - a.v);
     const N = list.length;
-    list.forEach((x, i) => {
-      const el = this._rotRows[x.c];
-      el.style.transform = `translateY(${i * 22}px)`;
+    const rank = new Map(list.map((x, i) => [x.c, i]));
+    for (const c of Object.keys(this._rotBub)) {
+      const el = this._rotBub[c], x = list.find(z => z.c === c);
+      if (!x) { el.style.opacity = '0'; continue; }
       el.style.opacity = '1';
-      const w = Math.min(50, Math.abs(x.v) / this._rotMax * 50);
-      const bar = el.querySelector('.rbar');
-      bar.style.width = w + '%';
-      bar.style.left = x.v >= 0 ? '50%' : (50 - w) + '%';
-      bar.style.background = x.v >= 0 ? 'var(--up)' : 'var(--dn)';
-      const rv = el.querySelector('.rv');
-      rv.textContent = (x.v >= 0 ? '+' : '') + x.v.toFixed(1) + '%';
-      rv.className = 'rv ' + this.cls(x.v);
-      // 🎯 前 3 / ⛔ 後 3 —— ⛔ 用圖示不用顏色(顏色在這裡已經表示漲跌了)
-      el.classList.toggle('hi', i < 3 || i >= N - 3);
-      const nm = this.IND_NAME[x.c] || x.c;
-      el.querySelector('.rnm').textContent = (i < 3 ? '🎯 ' : i >= N - 3 ? '⛔ ' : '') + nm;
-    });
-    // 沒資料的那幾條收起來(⛔ 不留空殼)
-    for (const c of Object.keys(this._rotRows)) {
-      if (!list.some(x => x.c === c)) this._rotRows[c].style.opacity = '0';
+      const px = W / 2 + (x.v / this._rotMax) * (W / 2 - P);
+      const py = H / 2 - ((x.f || 0) / this._rotMaxY) * (H / 2 - P);
+      el.style.transform = `translate(${px.toFixed(1)}px,${py.toFixed(1)}px)`;
+      const i = rank.get(c), hot = i < 3, cold = i >= N - 3;
+      const r = 5 + Math.min(9, Math.sqrt(x.n) * 1.1);
+      const cir = el.querySelector('circle');
+      cir.setAttribute('r', r.toFixed(1));
+      cir.setAttribute('fill', x.v >= 0 ? 'rgba(255,93,93,.55)' : 'rgba(61,220,132,.5)');
+      cir.setAttribute('stroke', hot ? 'var(--amber)' : cold ? 'var(--dim2)' : 'transparent');
+      cir.setAttribute('stroke-width', hot || cold ? '1.6' : '0');
+      // 只有前 3 / 後 3 標名字 —— ⛔ 32 個全標會糊成一團
+      const t = el.querySelector('text');
+      t.textContent = (hot || cold) ? (this.IND_NAME[c] || c) : '';
+      t.setAttribute('fill', hot ? 'var(--amber)' : 'var(--dim2)');
+      t.setAttribute('dy', (r + 9).toFixed(1));
     }
     this._rotVerdict(list, N);
-    if (k === J.days.length - 1) this._rotFi(k);
+    this._rotChips(list, N);
+    this._rotFi(k);
+  },
+  // 圖下方的名次條 —— 一眼看完 32 個產業,⛔ 不用捲
+  _rotChips(list, N) {
+    document.getElementById('rotList').innerHTML = list.map((x, i) =>
+      `<span class="rotchip ${this.cls(x.v)}" style="${i < 3 ? 'border-color:var(--amber)' : i >= N - 3 ? 'border-color:var(--dim2)' : ''}">${i < 3 ? '🎯' : i >= N - 3 ? '⛔' : ''}${this.IND_NAME[x.c] || x.c} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}</span>`).join('');
   },
   _rotVerdict(list, N) {
-    const R = this._ROT, nm = c => this.IND_NAME[c] || c;
+    const nm = c => this.IND_NAME[c] || c;
     const t3 = list.slice(0, 3), b3 = list.slice(-3);
-    const f = a => a.map(x => `<b>${nm(x.c)}</b> ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}%`).join('・');
+    const f = a => a.map(x => `${nm(x.c)} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}%`).join('・');
+    // ⛔ 固定兩行 —— 內容每一格都會變,行數一變下面的圖就會被推動(使用者回報過)
     document.getElementById('rotVerdict').innerHTML =
-      `<div class="warnbox" style="border-color:var(--blue);background:rgba(61,139,253,.06);color:#c3d6f2">
-        🎯 <b>錢打在這三區</b>:${f(t3)}<br>
-        ⛔ <b>最被丟下的三區</b>:${f(b3)}<br>
-        <span style="opacity:.75">比的是「近 ${R.win} 個交易日,該產業成分股漲跌幅中位數」(${N} 個產業排名)。</span>
-      </div>`;
+      `<div class="note" style="margin-top:6px;line-height:1.7">
+        🎯 <b>最強</b>:${f(t3)}<br>⛔ <b>最弱</b>:${f(b3)}</div>`;
   },
+
   // 👥 三大法人 + 散戶代理 —— 打勾疊加
   // 🚨🚨 「散戶」用的是**融資餘額變化**(真實獨立資料),
   //    ⛔ **絕不可以**用「−(外資+投信+自營)」當散戶 —— 那是**恆等式**不是資料:
@@ -748,7 +799,7 @@ const PRO = {
     const on = Object.keys(this._flowOn).filter(x => this._flowOn[x]);
     if (this._flowOn[k] && on.length === 1) return this.toast('至少要留一個');   // ⛔ 不可全部關掉變空表
     this._flowOn[k] = !this._flowOn[k];
-    this._rotFi(this._rotK);
+    this.rotSeek(this._rotK);      // ⭐ Y 軸就是「勾起來的那幾條合計」→ 打勾要讓泡泡跟著移動
   },
   _rotFi(k) {
     const J = this._rotData; if (!J) return;
@@ -845,7 +896,14 @@ const PRO = {
   _rotNoteHtml() {
     const R = this._ROT;
     return `<div class="note">
-      📊 <b>「要看幾天」是實測出來的,⛔ 不是我訂的</b> ——
+      🚨 <b>X 軸與 Y 軸的份量完全不同,別一起看</b>:
+      <b>X 軸(強弱)是實測唯一過關的</b>(前3−後3 <b>+1.44pp</b>,四關全過);
+      <b>Y 軸(誰在買)實測沒過關</b> —— 外資淨流入金額最好只有 +0.83pp,
+      而且<b>拿掉最好的那一年只剩 +0.40pp</b>、前後半還不同向 → 它只是<b>描述</b>,⛔ 不可拿來排名。
+      <br>⛔ <b>刻意沒有把「加速/放緩」做成一個軸</b>(市面上常見的四象限資金流圖是那樣畫的)——
+      實測動能加速度在各窗口是 <b>−0.88 ~ +0.20pp</b>,5~10 日窗口甚至<b>明顯是負的</b>
+      (短線衝太快反而會回吐);外資流入加速度最好 +0.67pp 但去最好年只剩 +0.37 → 都沒過關。
+      <br><br>📊 <b>「要看幾天」是實測出來的,⛔ 不是我訂的</b> ——
       1,087 檔上市股 × 33 產業 × 775 個交易日,比「當時最強 3 個產業」與「最弱 3 個產業」
       <b>未來 20 日</b>的報酬差(已扣同期大盤):<br>
       ${R.win20.map(([n, v]) => `${n} 日窗口 <b>${v >= 0 ? '+' : ''}${v.toFixed(2)}pp</b>`).join(' ・ ')}<br>
