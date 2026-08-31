@@ -3776,7 +3776,14 @@ def _fetch_chips_bulk(dates, need_days=CHIP_DAYS, top_per_day=25, min_syms=200,
     fetched_local = 0
     deep_written: list = []      # 📚 這輪新寫進 chips_deep 的日期
     # 📚 V74.0.9 歷史天優先從 chips_deep 分支還原(零 API,見 _load_chips_deep_local 的說明)
-    local_days = _load_chips_deep_local([d for d in dates if d not in have])
+    # 🚨 V74.2.6 這裡**不可以**寫成 `[d for d in dates if d not in have]`。
+    #   `have` 只該擋掉「花錢重抓」,⛔ 不該擋掉「零 API 的分支還原」——
+    #   實跑(#530)證明:寫成排除 have 的話,那些天永遠進不了 `idx`,
+    #   於是每檔的 `data_rows` 只有**新抓到的那 1 天** → hist 每輪只長 1 天,
+    #   要 22 輪(≈1 個月)才填滿,而 V74.0.9 的目的正是「一輪就補齊」。
+    #   實測 hist 中位停在 **2 天**,而 chips_deep 分支上明明有 468 天可讀。
+    #   ⭐ 這是「外層守門讓內層的修法沒機會執行」的第二次(同 V74.2.2)。
+    local_days = _load_chips_deep_local(list(dates))
 
     def _ingest(d, rows_all, src):
         """驗證 + 分桶 + 併入 idx。回 'ok' / 'skip'(這天不採用)/ 'abort'(整批放棄)。"""
@@ -3807,15 +3814,18 @@ def _fetch_chips_bulk(dates, need_days=CHIP_DAYS, top_per_day=25, min_syms=200,
     for d in dates:
         if got >= need_days:
             break
-        if d in have:
-            got += 1          # 本地已經有這天 → 算進去讓「湊滿 N 天」正確收斂,但不重買
-            continue
-        if d in local_days:   # 📚 分支還原的天:零 API
+        # 📚 分支還原的天:零 API。⛔ 這一段**必須排在 `have` 之前** ——
+        #   排在後面的話,`have` 會先把它 continue 掉,那些天就永遠進不了 idx(V74.2.6 實跑抓到)。
+        if d in local_days:
             r = _ingest(d, local_days[d], '分支還原・零呼叫')
             if r == 'abort':
                 return None
             if r == 'ok':
                 fetched_local += 1
+                continue
+            # 還原的那天被 _ingest 判定不採用(股票數不足)→ 退回原本的處理
+        if d in have:
+            got += 1          # 本地已經有這天 → 算進去讓「湊滿 N 天」正確收斂,但不重買
             continue
         if time.time() - t0 > budget_s:
             print(f"  ⏳ 分點批次達時間預算 {budget_s}s,已取得 {len(fetched)} 個交易日,其餘下輪續抓")

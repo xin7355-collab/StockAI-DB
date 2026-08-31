@@ -174,6 +174,18 @@ ck('⑨d 實跑:have_dates 有 2 天 → 只需要再抓 1 天(探路那幾次�
 ck('⑨e 實跑:have_dates 的那兩天⛔ 完全沒有被打',
    not any('date=2026-08-28' in c or 'date=2026-08-27' in c for c in CALLS),
    '已經有的日期還是重買了')
+# 🚨 V74.2.6 但「不重買」⛔ 不等於「不要那幾天的資料」——
+#   分支還原是**零 API** 的,have 只該擋掉花錢重抓。
+#   排除掉的話那些天永遠進不了 idx → 每檔只拿得到新抓的 1 天 →
+#   hist 每輪只長 1 天,要 1 個月才填滿(#530 實跑 hist 中位卡在 2 天就是這樣)。
+_d_have = set()
+for _rs in (idx2 or {}).values():
+    for _r in _rs:
+        _d_have.add(str(_r.get('date') or ''))
+ck('⑨e2 🚨 have_dates 的那幾天仍要從 chips_deep **還原進 idx**(零 API,⛔ 不可整天丟掉)',
+   {'2026-08-28', '2026-08-27'} <= _d_have, f'idx 只有這些日期:{sorted(_d_have)}')
+ck('⑨e3 🚧 空過守門:idx 至少要拿到 need_days 天(⛔ 不可只有 1 天還算通過)',
+   len(_d_have) >= 3, f'只有 {len(_d_have)} 天')
 
 # 探路失敗要早退
 CALLS.clear()
