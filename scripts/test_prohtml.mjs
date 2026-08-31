@@ -443,6 +443,86 @@ const T = await page.evaluate(async () => {
     return out;
 });
 // ㉔ 🔬 實測總表
+// ㉜ 🎯 今日訊號頁(V74.4.5 使用者:「開一個高勝率訊號頁面併寫出勝率、還有要怎麼操作、注意什麼」)
+//   ⛔ 這一頁最危險的是「讓人以為照著買就會賺」→ 五條釘死:
+//     ① 勝率一定配次數,次數<10 要標「不能當結論」
+//     ② 必須寫「基準勝率 36% 不是 50%」
+//     ③ ⛔ 整頁不可出現「開盤買」指令(實測那樣少賺一半)
+//     ④ 空頭趨勢(bear)的標的要標出來
+//     ⑤ 檔案沒產出要說出來,⛔ 不可靜默空白
+const SIG = await page.evaluate(async () => {
+    const out = {};
+    // 測資照**真實產物格式**(⛔ 憑印象編會測不到真的問題 —— 陷阱 #40)
+    PRO._names = Object.assign({}, PRO._names, { '6949': '測試甲', '1303': '南亞', '9999': '測試乙', '8888': '測試丙' });
+    PRO._cache['data/playbook_edge.json'] = {
+        updated: 'x', data_date: new Date(Date.now() - 864e5).toISOString().slice(0, 10),
+        scanned: 2319, min_n: 8, cost: 0.44, picks_total: 3,
+        picks: [
+            { s: '9999', c: 100, k: '💪 發動棒破昨高', w: 42.4, po: 9.9, exp: 11.66, lb: 4.97, n: 33, trig: 105, loose: 0, hq: 0, bear: 0, up: 3, stop: 95 },
+            { s: '6949', c: 200, k: '🌊 威科夫吸籌', w: 50, po: 3, exp: 5, lb: 2.0, n: 40, trig: 210, loose: 0, hq: 1, bear: 0, up: 5, stop: 190 },
+            { s: '8888', c: 50, k: '🕯️ 守住長紅K', w: 60, po: 2, exp: 8, lb: 6.0, n: 5, trig: 52, loose: 1, hq: 0, bear: 1, up: 2, stop: 47 },
+        ],
+    };
+    PRO._cache['data/today_signals.json'] = {
+        updated: 'x', data_date: '2026-08-31', scanned: 2319, base_win: 36.39,
+        cost_note: '期望值未扣交易成本(來回約 0.44%,當沖 0.25%)', bull_total: 2,
+        bull: [{ s: '1303', c: 242.5, v: 1, d: '2026-08-31', t: '換手量(洗籌續攻)', g: 'A', n: 1309, w: 42.4, exp: 0.68, po: 1.56 }],
+    };
+    const scr = PRO._cache['data/screener.json'];
+    scr.data_date = '2026-08-31';
+    if (!scr.cols.includes('chg5')) scr.cols.push('chg5');
+    if (!scr.cols.includes('att')) scr.cols.push('att');
+    const Ci = {}; scr.cols.forEach((c, i) => Ci[c] = i);
+    scr.rows['1303'] = new Array(scr.cols.length).fill(0);
+    scr.rows['1303'][Ci.chg5] = 45; scr.rows['1303'][Ci.att] = 1;   // 噴 45% 又掛注意 → 要進避雷
+    scr.rows['6949'] = new Array(scr.cols.length).fill(0);
+    scr.rows['6949'][Ci.chg5] = 45; scr.rows['6949'][Ci.att] = 0;   // 噴但沒掛注意 → ⛔ 不可進避雷
+    PRO.switchTab('sig');
+    await PRO.renderSig();
+    await new Promise(r => setTimeout(r, 60));
+    out.how = document.getElementById('sigHow').innerText;
+    out.picks = document.getElementById('sigPicks').innerText;
+    out.pickRows = document.querySelectorAll('#sigPicks tbody tr').length;
+    out.firstRow = (document.querySelector('#sigPicks tbody tr') || {}).innerText || '';
+    out.today = document.getElementById('sigToday').innerText;
+    out.avoid = document.getElementById('sigAvoid').innerText;
+    out.all = document.getElementById('tabSig').innerText;
+    out.inWrap = !!document.querySelector('.wrap #tabSig');
+    out.btn = (document.getElementById('tabBtnSig') || {}).textContent || '';
+    // 過期清單要警告
+    PRO._cache['data/playbook_edge.json'].data_date = '2026-01-01';
+    await PRO.renderSig();
+    out.stale = document.getElementById('sigPicks').innerText;
+    // 檔案沒產出 → 要說出來(⛔ 不可靜默空白)
+    PRO._cache['data/playbook_edge.json'] = null;
+    PRO._cache['data/today_signals.json'] = null;
+    await PRO.renderSig();
+    out.missing = document.getElementById('sigPicks').innerText + ' ' + document.getElementById('sigToday').innerText;
+    return out;
+});
+ok('㉜ 分頁註冊 + 容器在 .wrap 裡 + 按鈕文字無 emoji(使用者要求刪過分頁圖示)',
+   SIG.inWrap && SIG.btn === '今日訊號' && /'sig', 'Sig'/.test(src), `btn=${SIG.btn} wrap=${SIG.inWrap}`);
+ok('㉜a 作戰清單真的渲染出列', SIG.pickRows === 3, `rows=${SIG.pickRows}`);
+ok('㉜b 🚨 排序:🧬 優先(6949 hq=1 要排第一,即使它的保守成績比 9999 低)',
+   /6949/.test(SIG.firstRow) && /🧬/.test(SIG.firstRow), SIG.firstRow.slice(0, 60));
+ok('㉜c 🚨 勝率一定配次數;次數 <10 要標「不能當結論」',
+   /42% ・33 次/.test(SIG.picks.replace(/\s+/g, ' ')) && /次數太少/.test(SIG.picks), '');
+ok('㉜d 🚨 必須寫「基準勝率 36%、不是 50%」(⛔ 少了會讓人覺得 30% 勝率很爛)',
+   /36%/.test(SIG.all) && /不是 50%/.test(SIG.all));
+ok('㉜e 🚨🚨 ⛔ 整頁不可出現「開盤買」這種指令 —— 實測那樣少賺一半',
+   !/開盤就買|開盤買進|明天開盤買/.test(SIG.all.replace(/隔天一開盤就買|開盤前掛/g, '')),
+   (SIG.all.match(/[^。\n]{0,12}開盤買[^。\n]{0,12}/g) || []).join(' | '));
+ok('㉜f ⭐ 必須把「掛前一日收盤價」的實測結果寫出來(使用者提的方法,實測最糟)',
+   /前一天收盤價/.test(SIG.how) && /46\.1%/.test(SIG.how) && /12\.4 萬/.test(SIG.how), SIG.how.slice(0, 120));
+ok('㉜g 空頭趨勢的標的要標出來(bear=1 → 建議跳過)', /空頭趨勢/.test(SIG.picks));
+ok('㉜h 不是靠價位觸發的招要標明(loose=1 → 盤中重算)', /盤中重新算/.test(SIG.picks));
+ok('㉜i 清單過期(>3 天)要警告不能拿去掛單', /不能直接拿去掛單/.test(SIG.stale));
+ok('㉜j ⛔ 檔案沒產出要說出來,不可靜默空白', /還沒產出/.test(SIG.missing), SIG.missing.slice(0, 80));
+ok('㉜k ⚠️ 避雷只收「噴 ≥30% 且掛注意股」的(⛔ 只噴不掛注意的不可進來)',
+   /1303/.test(SIG.avoid) && !/6949/.test(SIG.avoid), SIG.avoid.slice(0, 150));
+ok('㉜l ⛔ 整頁不可給買賣價位建議(價位一律以散戶救星為準)',
+   /不給任何買賣價位建議/.test(SIG.how));
+
 const L = await page.evaluate(async () => {
     PRO.switchTab('lab');
     await new Promise(r => setTimeout(r, 60));
@@ -743,7 +823,9 @@ ok('㉔c 頁籤數字要跟實際筆數一致(⛔ 不可寫死)',
 ok('㉔d 🚨 **每一欄**每一條都要附實測來源(⛔ 沒有數字的意見不准進來)', L.srcMissing === 0, L.srcMissing);
 ok('㉔e 🚨「有用」那欄必須引用得出實測數字', /\+1\.44pp/.test(L.ok.txt) && /\+289\.6 萬|289\.6/.test(L.ok.txt), L.ok.txt.slice(0, 200));
 ok('㉔f 🚨「沒用」那欄要留著方向相反的那幾條(⛔ 刪了下一個人會再做一次)',
-   /方向剛好相反|方向相反/.test(L.trap.txt) && /Jaccard 0%/.test(L.trap.txt), L.trap.txt.slice(0, 200));
+   // ⚠️ V74.4.5 白話化:「Jaccard」已翻成「名單重疊率」→ 斷言跟著改(⛔ 兩種寫法都收,
+   //    免得日後再翻一次又假失敗)
+   /方向剛好相反|方向相反/.test(L.trap.txt) && /(名單重疊率|Jaccard) 0%/.test(L.trap.txt), L.trap.txt.slice(0, 200));
 ok('㉔g ⭐「回測自己的坑」要含四條核心:對照組 / 兩端同號 / 同期相關 / 前視偏誤',
    /對照組/.test(L.method.txt) && /兩端同號/.test(L.method.txt)
    && /同期還是隔期/.test(L.method.txt) && /前視偏誤/.test(L.method.txt), L.method.txt.slice(0, 300));

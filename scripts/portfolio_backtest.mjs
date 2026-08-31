@@ -39,7 +39,7 @@ const WARMUP = 240;          // 暖身:前 N 個交易日只累積成績、不�
 //     ⛔ 不是全市場平均。→ 成績改成 **per-stock × per-pattern**。
 const MIN_N = +(process.env.MIN_N || 4);   // **這一檔**在**這個型態**打過幾次才准用
 const MIN_MKT_N = 20;                       // 全市場該型態的最低樣本(第二層門檻)
-const ENTRY = process.env.ENTRY || 'close';   // close | nextopen | nextclose | nextopen_lim(見 page.evaluate 內註解)
+const ENTRY = process.env.ENTRY || 'close';   // close | nextopen | nextclose | nextopen_lim | prevclose_lim(見 page.evaluate 內註解)
 // 🧪 V72.9.7 濾網實驗(使用者問「有沒有更好的策略提高勝率」)
 //   ⛔ 籌碼濾網做不了 —— 實測 foreign_net 每檔只有中位 28 天有值、trust_net 203/291 檔完全沒有、
 //      分點只有 3 天,而回測窗口是 486 天 → 加下去等於做一個無法驗證的東西。
@@ -202,9 +202,17 @@ for (const sym of syms) {
                     //   nextopen_lim = 隔天開盤買,**但跳空開高超過 GAPCAP% 就不追**(限價單)
                     const eIdx = a.entry === 'close' ? i : i + 1;
                     if (eIdx > last) { i++; continue; }
+                    //   prevclose_lim = 🆕 V74.4.5 使用者提的:**開盤前就掛「訊號日收盤價」的限價買單,
+                    //     沒成交就算了**。⛔ 這跟 nextopen(隔天開盤買)是**完全不同的東西** ——
+                    //     它只有在隔天「跌回昨收」時才會成交 = 只買回檔,不追高。
+                    //     成交規則(保守、貼近真實):開盤就低於掛價 → 成交在**開盤價**(更便宜);
+                    //     否則盤中最低有觸及掛價 → 成交在**掛價**;都沒有 → 這筆放棄(回 -1)。
                     let entry = a.entry === 'nextopen' ? (O(eIdx) > 0 ? O(eIdx) : C(eIdx))
                               : a.entry === 'nextclose' ? C(eIdx)
                               : a.entry === 'nextopen_lim' ? (O(eIdx) > 0 ? O(eIdx) : C(eIdx))
+                              : a.entry === 'prevclose_lim'
+                                  ? (O(eIdx) > 0 && O(eIdx) <= C(i) ? O(eIdx)
+                                     : (L(eIdx) > 0 && L(eIdx) <= C(i) ? C(i) : -1))
                               : C(i);
                     // ⛔ 跳空開太高就整筆放棄(= 現實中掛限價單沒成交),⛔ 不可改成「用限價成交」
                     //   那等於假設你買到一個當天沒出現的價格
