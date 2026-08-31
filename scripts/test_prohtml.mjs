@@ -178,7 +178,30 @@ const S = await page.evaluate(async () => {
         thAlign: [...document.querySelectorAll('#chainTbl th')].map(t => getComputedStyle(t).textAlign),
     };
     wrap.scrollLeft = 0; wrap.scrollTop = 0;
+    r.overscroll = getComputedStyle(wrap).overscrollBehaviorY;
     return r;
+});
+// ㉑ 點五級卡 → 要真的跳到個股戰情表(使用者:「點進去要跳到戰情表」)
+const J = await page.evaluate(async () => {
+    window.scrollTo(0, 0);
+    await new Promise(r => setTimeout(r, 30));
+    const before = window.scrollY;
+    PRO.selLv(2);
+    await new Promise(r => setTimeout(r, 700));
+    const panel = document.getElementById('mapPanel');
+    const out = {
+        before, after: window.scrollY,
+        panelTop: panel ? panel.getBoundingClientRect().top : null,
+        // 篩選有生效嗎(⛔ 只捲過去但沒篩 = 只做一半)
+        rows: document.querySelectorAll('#chainBody tr').length,
+        allRows: PRO.CHAIN.stocks.length,
+        backBtn: /backToLv\(\)/.test(document.getElementById('layerBar').innerHTML),
+    };
+    PRO.backToLv();
+    await new Promise(r => setTimeout(r, 700));
+    out.backScroll = window.scrollY;
+    out.backRows = document.querySelectorAll('#chainBody tr').length;
+    return out;
 });
 await browser.close();
 
@@ -258,6 +281,13 @@ ok('⑲d 表頭文字**整排**置中(⛔ 不可只有第一欄)',
 ok('⑳b 🚨 提醒必須跟戰情表在同一個 panel(⛔ 放在上一區塊 = 捲到表格就看不到)', R.missInTablePanel);
 ok('⑳ 缺資料時要說出原因(上櫃/採礦未收到),⛔ 不可讓人以為程式壞了',
    !R.missNote || (/不是這幾檔沒在動|不是程式壞掉/.test(R.missNote) && /上櫃/.test(R.missNote)), R.missNote.slice(0, 120));
+// ㉑ 點五級卡 → 跳戰情表 + 表格不回彈(使用者明示)
+ok('㉑ 點 L2 之後畫面真的往下捲到戰情表', J.after > J.before + 100, J);
+ok('㉑b 🚧 空過守門:捲完戰情表要接近畫面頂端(⛔ 不是隨便捲一點)', Math.abs(J.panelTop) < 220, J.panelTop);
+ok('㉑c 只捲過去不夠 —— 篩選也要生效(L2 成員 < 全部)', J.rows > 0 && J.rows < J.allRows, [J.rows, J.allRows]);
+ok('㉑d 篩選中要有「⬆️ 回五級」的路(⛔ 手機上沒有就只能自己滑很久)', J.backBtn);
+ok('㉑e 回五級要取消篩選 + 捲回去', J.backRows === J.allRows && J.backScroll < J.after, [J.backRows, J.allRows, J.backScroll, J.after]);
+ok('㉑f ⛔ 表格不可有橡皮筋回彈(overscroll-behavior:none)', S.overscroll === 'none', S.overscroll);
 ok('⑩ 載入無 pageerror', errs.length === 0, errs.join(' | '));
 
 console.log();

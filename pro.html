@@ -126,8 +126,12 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 /* 📌 表格凍結:標的欄(左)+ 表頭列(上)都固定住,橫向捲動時才比對得了
    ⚠️ 表頭 sticky top 要生效,容器**必須自己有垂直捲動**(max-height + overflow:auto)——
       只有 overflow-x 的話 sticky top 會沒有捲動祖先可貼。 */
+/* ⛔ overscroll-behavior:none —— 關掉表格自己的「橡皮筋回彈」(使用者明示體感不佳)。
+   它同時擋掉「捲到底再滑會把外層一起帶動」的 scroll chaining;
+   ⚠️ 別改回 contain 或拿掉:contain 只擋外溢,**回彈還在**。
+   ⚠️ 也別拿掉 -webkit-overflow-scrolling:touch —— 拿掉會失去慣性,滑起來變頓。 */
 .tblwrap{overflow:auto;margin-top:10px;-webkit-overflow-scrolling:touch;max-height:72vh;
-  border:1px solid var(--line);border-radius:10px}
+  overscroll-behavior:none;border:1px solid var(--line);border-radius:10px}
 table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;white-space:nowrap}
 table.grid th{color:var(--sub);font-size:11px;text-align:center;padding:8px 9px;
   border-bottom:1px solid var(--line2);cursor:pointer;user-select:none;
@@ -228,12 +232,12 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 <div id="tabChain" class="hidden">
   <div class="kpis" id="chainKpis"></div>
   <div class="panel">
-    <h2>🪜 AI 演進五級 <span class="sub">點一級 → 篩選成員・再點取消(框架對應 OpenAI 五級 AGI)</span></h2>
+    <h2>🪜 AI 演進五級 <span class="sub">點一級 → 直接跳到戰情表看那層成員(框架對應 OpenAI 五級 AGI)</span></h2>
     <div class="lvflow" id="lvFlow"></div>
     <div id="lvDetail"></div>
     <div id="frontNote"></div>
   </div>
-  <div class="panel">
+  <div class="panel" id="mapPanel">
     <h2>🗺️ 個股戰情表 <span class="sub" id="mapSub"></span></h2>
     <div id="missNote"></div>
     <div class="layerbar" id="layerBar"></div>
@@ -904,12 +908,13 @@ ${M.news || '(無)'}
         ${isFront ? '<span class="flag">🎯 資金主戰場</span>' : ''}
         <div class="lno">LEVEL ${n}・${L.en}</div><div class="lnm">${L.n}</div><div class="lst">${L.st}</div>
         <div class="lbar"><i style="width:${Math.max(L.mat, 2)}%"></i></div>
-        <div class="lm">成熟度 ${L.mat}%・${mem.length} 檔・20日中位 <span class="${this.cls(m)}">${this.fmt(m, 1, true)}%</span></div></div>`;
+        <div class="lm" title="成熟度是人工設定的框架估值,固定不動、不會隨時間自己長大;會每天變的是右邊的「20日中位」。">
+          成熟度 ${L.mat}%<span style="opacity:.5">(人工框架·固定)</span>・${mem.length} 檔・20日中位 <span class="${this.cls(m)}">${this.fmt(m, 1, true)}%</span></div></div>`;
     }).join('');
     const D = this._lvSel ? C.lv[this._lvSel] : null;
     document.getElementById('lvDetail').innerHTML = D
       ? `<div class="warnbox" style="border-color:var(--blue);background:rgba(61,139,253,.06);color:#c3d6f2">
-         <b>L${this._lvSel} ${D.n}</b>:${D.d}<br>🇹🇼 ${D.tw}<br><span style="opacity:.7">下方戰情表已篩成這一層的成員,再點一次取消。</span></div>` : '';
+         <b>L${this._lvSel} ${D.n}</b>:${D.d}<br>🇹🇼 ${D.tw}<br><span style="opacity:.7">已跳到下方戰情表並篩成這一層的成員;表格上方有「⬆️ 回五級」可以回來。</span></div>` : '';
     // 🚨 誠實揭露:screener 收不到的成員(目前主要是上櫃股)→ 數字會是「—」
     //    ⛔ 不可靜默 —— 使用者看到整排「—」會以為程式壞了(陷阱 #22:沒有資料 ≠ 條件沒過)
     const missN = C.stocks.filter(s => !this._scrV(s[0], 'chg20') && this._scrV(s[0], 'chg20') !== 0).length;
@@ -929,7 +934,9 @@ ${M.news || '(無)'}
       `<span style="font-size:10px;color:var(--dim2);align-self:center">供應鏈層:</span>` +
       Object.entries(this.LAYER).map(([k, L]) =>
         `<span class="lbtn ${this._layerSel === k ? 'on' : ''}" onclick="PRO.selLayer('${k}')" title="${L.d}">${L.n}</span>`).join('') +
-      (this._layerSel ? `<span class="lbtn" onclick="PRO.selLayer(null)">✕ 全部</span>` : '');
+      (this._layerSel ? `<span class="lbtn" onclick="PRO.selLayer(null)">✕ 全部</span>` : '') +
+      // 從五級卡跳下來之後要有路走回去,⛔ 否則手機上只能自己往上滑很久
+      (this._lvSel ? `<span class="lbtn" onclick="PRO.backToLv()">⬆️ 回五級・取消 L${this._lvSel} 篩選</span>` : '');
     // 表格
     const rows = C.stocks
       .filter(s => (!this._lvSel || s[4].includes(String(this._lvSel))) && (!this._layerSel || s[7] === this._layerSel))
@@ -986,7 +993,33 @@ ${M.news || '(無)'}
     document.getElementById('chainSteps').innerHTML = C.chain.map((x, i) => `<div class="step ${i === 4 ? 'risk' : ''}">
       <div class="no">${i + 1}</div><div class="bd"><b>${x.t}</b> <span class="lead">${x.lead}</span><br>${x.d}</div></div>`).join('');
   },
-  selLv(n) { this.buzz(10); this._lvSel = this._lvSel === n ? null : n; this.renderChain(); },
+  // 點五級卡 → 篩成那一層 **並直接跳到個股戰情表**
+  // ⛔ 不開新視窗/新卡:名單只有一份(戰情表),開第二份就是第二份真相。
+  // ⚠️ 只有「選取」才跳;取消篩選時留在原地(不然點取消畫面會亂跳)。
+  selLv(n) {
+    this.buzz(10);
+    const on = this._lvSel !== n;
+    this._lvSel = on ? n : null;
+    this.renderChain();
+    if (on) this._toMap();
+  },
+  backToLv() {
+    this.buzz(10); this._lvSel = null; this.renderChain();
+    const el = document.getElementById('lvFlow');
+    if (el) requestAnimationFrame(() => setTimeout(() => {
+      try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { el.scrollIntoView(true); }
+    }, 60));
+  },
+  // 跳到戰情表(⚠️ renderChain 是 async,要等它把列填好、高度定了再捲,否則位置會算錯)
+  _toMap() {
+    const go = () => {
+      const el = document.getElementById('mapPanel');
+      if (!el) return;
+      try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      catch { el.scrollIntoView(true); }        // 舊瀏覽器沒有 options 版
+    };
+    requestAnimationFrame(() => setTimeout(go, 60));
+  },
   selLayer(k) { this.buzz(10); this._layerSel = (k && this._layerSel !== k) ? k : null; this.renderChain(); },
 
   async init() {
