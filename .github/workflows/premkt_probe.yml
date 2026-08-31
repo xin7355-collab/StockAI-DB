@@ -10,6 +10,11 @@ on:
         description: '海外歷史長度(1y/2y/5y/10y)'
         required: false
         default: '5y'
+      strict:
+        description: '只用前端 macro_risk 也有的 8 個成分(要接進前端就選 yes)'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -44,4 +49,5 @@ jobs:
       - name: 🌅 回測盤前分數
         env:
           PREMKT_YEARS: ${{ inputs.years }}
+          PREMKT_STRICT: ${{ inputs.strict && '1' || '' }}
         run: python3 scripts/premkt_probe.py

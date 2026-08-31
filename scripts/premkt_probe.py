@@ -87,11 +87,19 @@ def prev_val(ser, day):
     return best[1] if best else None
 
 
+# 🚨🚨 STRICT 模式(V74.4.5 第二版,⛔ 這條是要接進前端的前提):
+#   前端的 `macro_risk.json` **沒有道瓊(dji)也沒有恆指(hs)** → 如果探針用 10 個成分算、
+#   前端只用 8 個成分算,那是**同名不同義**(全專案犯過最多次的錯):
+#   前端顯示「今天 4 分」配上探針「4 分那格的歷史勝率」= 拿別人的成績單貼在自己身上。
+#   → STRICT=1 時**只用前端也算得出來的 8 個成分**,兩邊完全一致才可以接。
+STRICT = os.getenv('PREMKT_STRICT', '') == '1'
+
+
 def score(day, S):
     """回傳 (分數, 用到幾項)。⛔ 缺的項目不計分也不猜。"""
     s, n = 0.0, 0
     sign = lambda v: 1 if v > 0 else -1 if v < 0 else 0
-    for k in ('dji', 'ndx', 'spx'):
+    for k in (('ndx', 'spx') if STRICT else ('dji', 'ndx', 'spx')):
         v = prev_val(S[k], day)
         if v is not None:
             s += sign(v); n += 1
@@ -105,7 +113,7 @@ def score(day, S):
     v = prev_val(S['vix'], day)
     if v is not None:
         s += (-0.5 if v > 0 else 0.5); n += 1
-    for k, w in (('nk', 1), ('ks', 1), ('hs', 0.5)):
+    for k, w in ((('nk', 1), ('ks', 1)) if STRICT else (('nk', 1), ('ks', 1), ('hs', 0.5))):
         v = prev_val(S[k], day)
         if v is not None:
             s += (0.5 if v > 0.3 else -0.5 if v < -0.3 else 0) * 2 * w   # 對齊 App 的 _asiaScore 量級
@@ -126,7 +134,7 @@ def stats(a):
 
 
 def main():
-    print(f'🌅 盤前體檢分數回測 ・海外歷史 {YEARS}')
+    print(f'🌅 盤前體檢分數回測 ・海外歷史 {YEARS} ・模式={"STRICT(只用前端也有的 8 個成分)" if STRICT else "完整(10 個成分)"}')
     S = fetch_all()
     if sum(len(v) for v in S.values()) < 1000:
         print('❌ 海外資料抓太少 → 不下結論')
@@ -139,7 +147,7 @@ def main():
         d, o, c = twii[i]
         pc = twii[i - 1][2]
         s, n = score(d, S)
-        if n < 6:            # 🚧 用到的成分太少就不算(⛔ 半套分數不可拿來下結論)
+        if n < (6 if not STRICT else 5):   # 🚧 用到的成分太少就不算(⛔ 半套分數不可拿來下結論)
             continue
         rows.append({'d': d, 's': s,
                      'gap': (o / pc - 1) * 100,      # 開盤跳空(盤前體檢真正在講的)
