@@ -332,6 +332,18 @@ const T = await page.evaluate(async () => {
     // ㉘ 🧬 個股泡泡圖:2408 高位階高振幅(命中)/ 8299 低位階低振幅(不命中)
     PRO._cache['data/screener.json'].rows['2408'] = [80, 15, -0.2, 30, 30, 20597, 100, 49.8, 30000, 90, 2.5, 5.5, 300];
     PRO._cache['data/screener.json'].rows['8299'] = [600, 12, -0.2, 20, 25, 0, 50, 31.1, 100, 20, 3.0, 1.2, 50];
+    // ㉙ ③ 資金走向 sparkline 的個股 K 線測資 ——
+    //   🚨 必須在 rotOpen 之前塞進 _cache:測試開了 --allow-file-access-from-files,
+    //   不塞的話 _fillStockFlows 會抓到 repo 裡**真實的** data/2408.json(非決定性)。
+    //   欄位格式照真實檔(陣列的 bar,foreign_net 單位=股 —— 陷阱 #40:測資格式要跟真檔一樣)
+    PRO._cache['data/2408.json'] = Array.from({ length: 30 }, (_, i) => ({
+      date: '2026/07/' + String(1 + (i % 28)).padStart(2, '0'),
+      open: 80, close: 81, high: 82, low: 79, volume: 9e6,
+      foreign_net: i % 3 === 0 ? -2000000 : 1500000 }));
+    PRO._cache['data/8299.json'] = Array.from({ length: 30 }, (_, i) => ({
+      date: '2026/07/' + String(1 + (i % 28)).padStart(2, '0'),
+      open: 600, close: 601, high: 602, low: 599, volume: 5e5,
+      foreign_net: 0 }));                     // 全 0 → 要誠實顯「—」不可畫空圖
     PRO.rotOpen('mem');
     await new Promise(r => setTimeout(r, 80));
     out.thDetTxt = document.getElementById('rotDetail').innerText;
@@ -346,6 +358,20 @@ const T = await page.evaluate(async () => {
     }
     document.querySelectorAll('#tabRot details').forEach(d => d.open = true);
     out.thNote = document.getElementById('rotNote').innerText;
+    // ㉙ ②③④ 成員總覽 + 個股資金走向 + 選中樣式(V74.4.2,趁 'mem' 明細還開著收)
+    await new Promise(r => setTimeout(r, 80));
+    await PRO._fillStockFlows();              // 保證 async 填圖跑完再量(rotOpen 那次沒 await)
+    out.flowCells = document.querySelectorAll('#rotDetail td.flowcell').length;
+    out.flowSpark = document.querySelectorAll('#rotDetail td.flowcell svg.flowspark rect').length;
+    out.flowCum = /張/.test([...document.querySelectorAll('#rotDetail td.flowcell')].map(td => td.innerText).join(''));
+    out.flowNone = [...document.querySelectorAll('#rotDetail td.flowcell')].some(td => td.textContent === '—');
+    out.flowNote = document.getElementById('rotDetail').innerText;
+    await PRO._rotMembers();
+    out.memRows = document.querySelectorAll('#rotMembers .memrow').length;
+    out.memTxt = document.getElementById('rotMembers').innerText.replace(/\s+/g, ' ');
+    out.memGoto = /PRO\.gotoStock\('2408'\)/.test(document.getElementById('rotMembers').innerHTML);
+    out.memSelOn = document.querySelectorAll('#rotMembers .memhead.on').length;   // 'mem' 開著 → 恰 1
+    out.chipOnCls = document.querySelectorAll('#rotList .rotchip.on').length;     // 名次條選中恰 1
     PRO.rotOpen('mem');
     // 題材資料不存在時要說出來,⛔ 不可靜默(themes 鍵拿掉再切一次)
     const _th = PRO._cache['data/sector_rot.json'].themes;
@@ -604,7 +630,9 @@ ok('㉕d 🔎 明細要有板塊自己的資金流(當日/近5日/近20日/資�
    T.detTxt.slice(0, 200));
 ok('㉕e 個股要能點去散戶救星', T.detHasGoto);
 ok('㉕f 🚨 必須誠實說「個股表只有最新一天」(⛔ 不可假裝拉回過去看得到)',
-   /只有「最新一天」的快照/.test(T.detTxt) && /沒有存歷史/.test(T.detTxt), T.detTxt.slice(-300));
+   // ⚠️ V74.4.2 起走向欄**有**每檔近 20 日歷史(使用者叫回來的)→ 舊句「沒有存歷史」已不成立,
+   //    改釘「表格是最新快照 + 走向欄要宣告自己的窗口(近 20 個交易日)」
+   /只有「最新一天」的快照/.test(T.detTxt) && /近 20 個交易日/.test(T.detTxt), T.detTxt.slice(-300));
 ok('㉕g 🚨 停在過去那天時要主動提醒「你現在停在 X,個股表仍是最新交易日」',
    /你現在停在/.test(T.detTxtPast), T.detTxtPast.slice(-260));
 ok('㉕h ⛔ 明細也不可下多空/給價位', /只做描述/.test(T.detTxt) && /不給買賣價位/.test(T.detTxt), T.detTxt.slice(-200));
@@ -645,6 +673,22 @@ ok('㉘e 🚨 必須寫「選股條件不是買進訊號」+ 回測還配了哪�
    /不是買進訊號/.test(T.sbTxt) && /尾盤進場/.test(T.sbTxt) && /一天只做 2 檔/.test(T.sbTxt), T.sbTxt.slice(0, 400));
 ok('㉘f ⚠️ 要誠實說波動是用「20 日振幅」代理、門檻是全市場 P60(⛔ 不可假裝跟回測用同一個量)',
    /振幅.{0,8}代理|代理.{0,20}振幅/.test(T.sbTxt) && /P60/.test(T.sbTxt), T.sbTxt.slice(-260));
+// ㉙ ②③④ 板塊輪動三修(V74.4.2,使用者:「不知道個股有誰 / 資金走向叫回來 / 按下去沒差異」)
+ok('㉙ ② 成員名單總覽:預設打開 + 至少一列 + 點個股可跳散戶救星',
+   /id="rotMemWrap" open/.test(src) && T.memRows >= 1 && T.memGoto, `rows=${T.memRows} goto=${T.memGoto}`);
+ok('㉙b ② 成員 chip 要有股名(⛔ 不可只有代號)', /2408 南亞科/.test(T.memTxt), T.memTxt.slice(0, 80));
+ok('㉙c ③ 資金走向欄:明細表每檔一格 sparkline + 累計「張」',
+   T.flowCells >= 2 && T.flowSpark > 5 && T.flowCum, `cells=${T.flowCells} rects=${T.flowSpark} cum=${T.flowCum}`);
+ok('㉙d ③ 沒有外資資料的股票要誠實顯「—」(⛔ 不可畫一張空圖)', T.flowNone);
+ok('㉙e ③ 🚨 走向欄必須帶 0.64x 免責 +「不是跟單訊號」(⛔ 少了它等於鼓勵跟單)',
+   /0\.64x/.test(T.flowNote) && /不是跟單訊號/.test(T.flowNote));
+ok('㉙f ④ 選中樣式:實心青底(⛔ 半透明底看不出按了誰)+ 成員總覽/名次條選中各恰一處',
+   /\.rotchip\.on\{background:var\(--cyan\)/.test(src) && T.memSelOn === 1 && T.chipOnCls === 1,
+   `memSel=${T.memSelOn} chip=${T.chipOnCls}`);
+ok('㉙g 🚨 成員判定全 App 只有一份 _grpMembers(⛔ 明細與總覽各寫一份遲早只改到一邊 —— 陷阱 #37)',
+   (src.match(/this\._grpMembers\(/g) || []).length >= 2 &&
+   (src.match(/Object\.keys\(scr\.ind\)\.filter/g) || []).length === 1,
+   `calls=${(src.match(/this\._grpMembers\(/g) || []).length}`);
 ok('㉖g 切回官方模式要完整復原(泡泡 = 產業數)',
    T.backBubs === 4 && /官方產業/.test(T.backBtn), [T.backBubs, T.backBtn]);
 // ㉗ 📐 版面(使用者截圖:泡泡全部擠成一團 —— 實測舊版 97% 黏在中線)
