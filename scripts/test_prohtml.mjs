@@ -431,8 +431,12 @@ ok('㉒c 最新那天 航運(+8)在右、半導體(−9)在左', T.p15 && T.p24 
 ok('㉒d 🚧 動畫是真的:拉回第 0 天左右要對調(半導體 +8 變最右)', T.p24_day0.x > T.p15_day0.x, [T.p24_day0, T.p15_day0, T.day0]);
 ok('㉒d2 🚨🚨 版面穩定:拉時間軸時結論條高度與圖的位置**不可以變**(使用者回報「上上下下」)',
    Math.abs(T.vH - T.vH0) < 1 && Math.abs(T.svgTop - T.svgTop0) < 1, [T.vH, T.vH0, T.svgTop, T.svgTop0]);
-ok('㉒d2b 🚧 而且要靠 CSS **釘死** min-height —— ⛔ 不可只靠「剛好內容一樣長」',
-   parseFloat(T.vMinH) >= 40, T.vMinH);
+// 🚧 兩件事:① 有沒有釘 ② 釘得夠不夠高。
+//    ② 是注入驗證逼出來的 —— 加了新的一行卻沒調 min-height 時,
+//    「資料還沒填進來(0 高)→ 填進來」那一刻仍然會跳一次,而 ㉒d2 抓不到
+//    (它比的是拉時間軸前後,那時內容行數本來就一樣)。
+ok('㉒d2b 🚧 而且要靠 CSS **釘死** min-height、並且**釘得夠高**撐住實際內容',
+   parseFloat(T.vMinH) >= 40 && parseFloat(T.vMinH) >= T.vH - 4, [T.vMinH, T.vH]);
 ok('㉒d3 🚧 尺標要用**全期**最大值:泡泡⛔ 不可飛出畫布(每天各自縮放就會)', T.outside === 0, T.outside);
 ok('㉒e 結論要點名最強 / 最弱(🎯⛔ 圖示,⛔ 不靠顏色)',
    /🎯/.test(T.verdict) && /⛔/.test(T.verdict) && /航運/.test(T.verdict) && /半導體/.test(T.verdict), T.verdict.slice(0, 120));
@@ -447,6 +451,11 @@ ok('㉒g 🚨 必須寫「刻意沒把加速/放緩做成一個軸」+ 實測數
    /刻意沒有把「加速\/放緩」做成一個軸/.test(T.note) && /-0\.88/.test(T.note.replace(/−/g, '-')), T.note.slice(0, 600));
 ok('㉒h ⭐「避開最弱比追最強更有價值」要寫出來',
    /避開最弱/.test(T.note) && /-0\.8pp/.test(T.note.replace(/−/g, '-')), T.note.slice(0, 900));
+// 🚨 ㉒h2:那句是整張圖最有實戰價值的一句 —— 只寫在 <details>(預設收起)裡等於使用者看不到。
+//    ⛔ 這條刻意驗 **verdict**(第一眼常顯區)而不是 note,兩條缺一不可。
+ok('㉒h2 🚨 而且要出現在**第一眼**,⛔ 不可只藏在收起來的說明區(功能有 ≠ 找得到)',
+   /避開最弱/.test(T.verdict) && /追最強/.test(T.verdict)
+   && /-0\.8pp/.test(T.verdict.replace(/−/g, '-')), T.verdict);
 ok('㉒i 誰在買:預設勾選那幾條加總排序 → 半導體第一', T.fiFirst === '半導體', T.fiFirst);
 ok('㉒j 🚨 外資「買最多卻最弱」的現成例子要主動點出來', /今天正好有現成的例子/.test(T.fiNote) && /半導體/.test(T.fiNote), T.fiNote.slice(0, 200));
 ok('㉒k ⛔ 那張表要明說只做描述、不排名不下多空', /只做描述/.test(T.fiNote) && /不排名/.test(T.fiNote), T.fiNote.slice(-260));

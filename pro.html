@@ -132,7 +132,7 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .rotday{font-family:var(--mono);font-size:11px;color:var(--sub);flex:0 0 auto}
 .rotmore{cursor:pointer;font-size:11px;color:var(--cyan);list-style:none;padding:6px 0}
 .rotmore::-webkit-details-marker{display:none}
-.rotverdict{min-height:52px}          /* ⛔ 固定高度 —— 播放時內容每格都變,不固定就會推動下面 */
+.rotverdict{min-height:74px}          /* ⛔ 固定高度 —— 播放時內容每格都變,不固定就會推動下面 */
 .quadwrap{position:relative;margin-top:6px;border:1px solid var(--line);border-radius:10px;
   background:linear-gradient(180deg,rgba(255,93,93,.04),rgba(61,220,132,.04));overflow:hidden}
 .quadwrap svg{display:block;width:100%;height:auto}
@@ -791,10 +791,15 @@ const PRO = {
     const nm = c => this.IND_NAME[c] || c;
     const t3 = list.slice(0, 3), b3 = list.slice(-3);
     const f = a => a.map(x => `${nm(x.c)} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}%`).join('・');
-    // ⛔ 固定兩行 —— 內容每一格都會變,行數一變下面的圖就會被推動(使用者回報過)
+    // ⛔ 固定三行 —— 內容每一格都會變,行數一變下面的圖就會被推動(使用者回報過)
+    // ⭐ 第三行是**固定文案**(不隨時間軸變),所以不會造成跳動;
+    //    它是整張圖最有實戰價值的一句,⛔ 不可再收進摺疊的說明區
+    //    —— 那裡預設是關起來的,等於使用者第一眼看不到(功能有 ≠ 找得到)。
     document.getElementById('rotVerdict').innerHTML =
       `<div class="note" style="margin-top:6px;line-height:1.7">
-        🎯 <b>最強</b>:${f(t3)}<br>⛔ <b>最弱</b>:${f(b3)}</div>`;
+        🎯 <b>最強</b>:${f(t3)}<br>⛔ <b>最弱</b>:${f(b3)}
+        <br>⭐ 實測<b>「避開最弱」比「追最強」更有價值</b>:最強那 3 個相對全產業平均只有
+        <b>+${this._ROT.top}pp</b>,最弱那 3 個卻是 <b>${this._ROT.bot}pp</b></div>`;
   },
 
   // 👥 三大法人 + 散戶代理 —— 打勾疊加
