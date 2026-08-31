@@ -203,6 +203,48 @@ const J = await page.evaluate(async () => {
     out.backRows = document.querySelectorAll('#chainBody tr').length;
     return out;
 });
+// ㉒ 💧 板塊輪動(使用者:「做一個錢流動到哪裡的板塊輪動,還可以做個動畫」)
+const T = await page.evaluate(async () => {
+    // stub:5 天 × 4 產業,最後一天 航運(15) 最強、半導體(24) 最弱且外資買最多
+    //       ⭐ 這正是要驗的「外資買最多卻最弱」那個現成例子
+    PRO._cache['data/sector_rot.json'] = {
+        updated: '2026-08-31 20:00', win: 20, fiwin: 5, listed_only: true,
+        days: ['2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28', '2026-08-29'],
+        ind: {
+            '15': { n: 28, r20: [-5, -2, 0, 1, 8], fi5: [1, 2, 3, 4, 5] },
+            '17': { n: 32, r20: [1, 1, 1, 1, 3], fi5: [0, 0, 0, 0, -50] },
+            '10': { n: 31, r20: [2, 2, 2, 2, -4], fi5: [0, 0, 0, 0, 10] },
+            '24': { n: 96, r20: [8, 5, 3, 0, -9], fi5: [0, 0, 0, 0, 900] },
+            '99': { n: 3, r20: [null, null, null, null, null], fi5: [null, null, null, null, null] },
+        },
+    };
+    PRO.switchTab('rot');
+    await new Promise(r => setTimeout(r, 200));
+    const rows = [...document.querySelectorAll('#rotRace .rotrow')];
+    const yOf = k => { const el = rows.find(e => e.dataset.k === k); return el ? +(/translateY\(([-\d.]+)px\)/.exec(el.style.transform) || [0, 1e9])[1] : null; };
+    const out = {
+        nRows: rows.length,
+        // ⛔ 全空的產業不可佔一條(不留空殼)
+        hasEmpty: rows.some(e => e.dataset.k === '99'),
+        lastDay: document.getElementById('rotDay').textContent,
+        yTop: yOf('15'), yBot: yOf('24'),
+        verdict: document.getElementById('rotVerdict').innerText,
+        note: document.getElementById('rotNote').innerText,
+        fiNote: document.getElementById('rotFiNote').innerText,
+        fiFirst: (document.querySelector('#rotFiBody tr td') || {}).textContent,
+        bar24Left: (rows.find(e => e.dataset.k === '24') || document.createElement('i')).querySelector ? rows.find(e => e.dataset.k === '24').querySelector('.rbar').style.left : '',
+    };
+    // 拉回第 0 天 → 半導體那時最強,排序必須真的換位置(⛔ 不動 = 動畫是假的)
+    PRO.rotSeek(0);
+    await new Promise(r => setTimeout(r, 60));
+    out.y24_day0 = yOf('24'); out.y15_day0 = yOf('15');
+    out.day0 = document.getElementById('rotDay').textContent;
+    // 播放後要能停,⛔ 不可留一個背景 timer
+    PRO.rotPlay(); out.playing = !!PRO._rotTimer;
+    PRO.switchTab('val');
+    out.stoppedOnLeave = !PRO._rotTimer;
+    return out;
+});
 await browser.close();
 
 // ③ 數學
@@ -288,6 +330,19 @@ ok('㉑c 只捲過去不夠 —— 篩選也要生效(L2 成員 < 全部)', J.ro
 ok('㉑d 篩選中要有「⬆️ 回五級」的路(⛔ 手機上沒有就只能自己滑很久)', J.backBtn);
 ok('㉑e 回五級要取消篩選 + 捲回去', J.backRows === J.allRows && J.backScroll < J.after, [J.backRows, J.allRows, J.backScroll, J.after]);
 ok('㉑f ⛔ 表格不可有橡皮筋回彈(overscroll-behavior:none)', S.overscroll === 'none', S.overscroll);
+// ㉒ 💧 板塊輪動
+ok('㉒ 排名賽跑有列出來,⛔ 全空的產業不佔一條', T.nRows === 4 && !T.hasEmpty, T);
+ok('㉒b 預設停在最新那天', T.lastDay === '2026-08-29', T.lastDay);
+ok('㉒c 最新那天 航運最強排最上、半導體最弱排最下', T.yTop === 0 && T.yBot === 66, [T.yTop, T.yBot]);
+ok('㉒d 🚧 動畫是真的:拉回第 0 天名次要對調(半導體變第一)', T.y24_day0 === 0 && T.y15_day0 > T.y24_day0, [T.y24_day0, T.y15_day0, T.day0]);
+ok('㉒e 結論要點名前 3 / 後 3(🎯⛔ 圖示,⛔ 不靠顏色)', /🎯/.test(T.verdict) && /⛔/.test(T.verdict) && /航運/.test(T.verdict) && /半導體/.test(T.verdict), T.verdict.slice(0, 120));
+ok('㉒f 🚨「幾天才有價值」必須寫出實測數字,⛔ 不可只說「20 日」', /1 日窗口/.test(T.note) && /60 日窗口/.test(T.note) && /\+1\.44pp/.test(T.note), T.note.slice(0, 200));
+ok('㉒g 🚨 必須寫「刻意沒做錢在板塊間搬家的動畫」+ 原因', /錢在板塊間搬家/.test(T.note) && /≈0 甚至是負的/.test(T.note), T.note.slice(-260));
+ok('㉒h ⭐「避開最弱比追最強更有價值」要寫出來', /避開最弱/.test(T.note) && /-0\.8pp|−0\.8pp/.test(T.note.replace('−', '-')), T.note.slice(0, 400));
+ok('㉒i 外資表按金額排 → 半導體(900億)第一', T.fiFirst === '半導體', T.fiFirst);
+ok('㉒j 🚨 外資「買最多卻最弱」的現成例子要主動點出來', /今天正好有現成的例子/.test(T.fiNote) && /半導體/.test(T.fiNote), T.fiNote.slice(0, 200));
+ok('㉒k ⛔ 外資那張要明說只做描述、沒過關', /只做描述/.test(T.fiNote) && /沒過關/.test(T.fiNote), T.fiNote.slice(-200));
+ok('㉒l ⛔ 切走分頁要停掉動畫(不可留背景 timer)', T.playing && T.stoppedOnLeave, [T.playing, T.stoppedOnLeave]);
 ok('⑩ 載入無 pageerror', errs.length === 0, errs.join(' | '));
 
 console.log();

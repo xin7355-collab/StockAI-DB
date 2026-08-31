@@ -5555,6 +5555,132 @@ def build_breadth_history():
     return limit_up
 
 
+def build_sector_rotation():
+    """💧 板塊輪動歷史 → data/sector_rot.json(零 API,只讀本地 data/*.json)。
+
+    ⭐ 為什麼是「20 日報酬」而不是「錢流」——`scripts/sector_rotation_probe.mjs` 實測
+      (1,087 檔上市股 × 33 產業 × 775 個交易日,主判準「前 3 產業 − 後 3 產業」的
+       未來報酬價差,扣同期加權):
+
+        ① 價格動能(N 日報酬)   20 日窗口 → 未來 20 日 **+1.44pp** ✅ 四關全過
+                               (前半 +1.28 / 後半 +1.58、逐年 +0.9/+1.4/+1.2/+2.2)
+        ② 外資淨流入金額       最好也只有 +0.83pp,而且**去最好年只剩 +0.40**、
+                               20 日窗口那格前後半**不同向** ❌
+        ③ 外資買超佔成交額比   ±0.2pp 內,大多數格子前後半不同向 ❌
+        ④ 成交額佔比的變化     ≈0 甚至是負的 ❌
+                               ⛔⛔ 這正是最直覺、最好做動畫的那個「錢在板塊間搬家」——
+                                  **實測完全沒有預測力**,所以⛔ 不可拿它當訊號。
+
+      ⭐ 而且邊際是**不對稱**的:20 日窗口那格,前 3 名相對全產業平均只有 **+0.63pp**,
+        後 3 名卻是 **−0.80pp** → **避開最弱的板塊比追最強的板塊更有價值**。
+
+    ⛔ 誠實限制:`industry_map.json` 只涵蓋**上市**(1,087 檔)→ 這是「上市板塊輪動」。
+       上櫃股沒有官方產業別,⛔ 不可宣稱是全市場。
+
+    輸出(滾動 120 個交易日,約 30KB):
+      {updated, days:[日期], ind:{產業碼:{n:成分股數, r20:[每日 20 日報酬中位 %],
+                                          fi5:[每日 近5日外資淨流入 億元]}}}
+    ⚠️ `fi5` 是**描述用**(讓使用者看得到「外資錢往哪流」這件事),
+       ⛔ 但實測它排不出有效順序 → 前端不可拿它排名或下多空(測試釘住)。
+    """
+    KEEP = 120          # 滾動保留的交易日
+    WIN = 20            # 動能窗口(實測最佳實用值)
+    FIWIN = 5
+    MIN_MEMB = 5        # 該產業當天至少要有這麼多檔算得出報酬(⛔ 1~2 檔就能決定 = 沒意義)
+    MIN_IND = 20        # 當天至少要有這麼多個產業算得出來才收這一天
+    try:
+        _dir = Path(DATA_DIR)
+        _map_p = _dir / 'industry_map.json'
+        if not _map_p.exists():
+            print('  ⏭️ 板塊輪動:沒有 industry_map.json,略過')
+            return
+        ind_of = json.loads(_map_p.read_text(encoding='utf-8'))
+        # 產業 → 日期 → {rets:[], fi:元}
+        agg = {}
+        n_sym = 0
+        need = KEEP + WIN + 5
+        for sym, ind in ind_of.items():
+            p = _dir / f'{sym}.json'
+            if not p.exists():
+                continue
+            try:
+                rows = json.loads(p.read_text(encoding='utf-8'))
+            except Exception:
+                continue
+            if not isinstance(rows, list) or len(rows) < 40:
+                continue
+            rows = [r for r in rows if isinstance(r, dict) and r.get('close') not in (None, '')][-need:]
+            if len(rows) < 25:
+                continue
+            n_sym += 1
+            m = agg.setdefault(ind, {})
+            prev = None
+            for r in rows:
+                try:
+                    c = float(r['close'])
+                except Exception:
+                    prev = None
+                    continue
+                d = str(r.get('date') or '').replace('/', '-')
+                if prev and prev > 0 and c > 0 and d:
+                    o = m.setdefault(d, {'rets': [], 'fi': 0.0})
+                    o['rets'].append((c / prev - 1) * 100)
+                    try:
+                        o['fi'] += float(r.get('foreign_net') or 0) * c
+                    except Exception:
+                        pass
+                prev = c
+        if not agg:
+            print('  ⏭️ 板塊輪動:一個產業都算不出來,略過')
+            return
+        # 每天每產業的中位漲跌幅
+        per = {}            # d -> {ind: (medret, fi)}
+        for ind, m in agg.items():
+            for d, o in m.items():
+                if len(o['rets']) < MIN_MEMB:
+                    continue
+                per.setdefault(d, {})[ind] = (statistics.median(o['rets']), o['fi'])
+        days = sorted(d for d, v in per.items() if len(v) >= MIN_IND)
+        if len(days) < WIN + 10:
+            print(f'  ⏭️ 板塊輪動:可用交易日只有 {len(days)} 天(需 >{WIN + 10}),略過')
+            return
+        keep = days[-(KEEP + WIN):]
+        out_days = keep[WIN:]                       # 前 WIN 天只當暖身,不輸出
+        inds = sorted({i for d in keep for i in per[d]})
+        out_ind = {}
+        for ind in inds:
+            r20, fi5 = [], []
+            for k, d in enumerate(out_days):
+                win = keep[k + 1:k + 1 + WIN]       # 到 d 為止(含)的 WIN 天
+                vals = [per[x][ind][0] for x in win if ind in per[x]]
+                r20.append(round(sum(vals), 2) if len(vals) >= WIN - 2 else None)
+                fw = keep[k + 1 + WIN - FIWIN:k + 1 + WIN]
+                fv = [per[x][ind][1] for x in fw if ind in per[x]]
+                fi5.append(round(sum(fv) / 1e8, 1) if len(fv) >= FIWIN - 1 else None)
+            # ⛔ 整段都算不出來的產業不輸出(⛔ 不留一排 null 讓前端顯示空殼)
+            if not any(v is not None for v in r20):
+                continue
+            n_memb = max((len(o['rets']) for o in agg.get(ind, {}).values()), default=0)
+            out_ind[ind] = {'n': n_memb, 'r20': r20, 'fi5': fi5}
+        if len(out_ind) < MIN_IND:
+            print(f'  ⏭️ 板塊輪動:只有 {len(out_ind)} 個產業算得出來(<{MIN_IND}),不覆寫舊檔')
+            return
+        (_dir / 'sector_rot.json').write_text(json.dumps(
+            {'updated': datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M'),
+             'win': WIN, 'fiwin': FIWIN, 'listed_only': True,
+             'days': out_days, 'ind': out_ind},
+            ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        _last = out_days[-1]
+        _rank = sorted(((v['r20'][-1], k) for k, v in out_ind.items() if v['r20'][-1] is not None),
+                       reverse=True)
+        print(f'  💧 板塊輪動 {_last}:{len(out_ind)} 個產業 × {len(out_days)} 個交易日'
+              f'(母體 {n_sym} 檔上市股)')
+        if _rank:
+            print(f'     → 最強 {_rank[0][1]} {_rank[0][0]:+.1f}% / 最弱 {_rank[-1][1]} {_rank[-1][0]:+.1f}%(近 {WIN} 日)')
+    except Exception as _e:
+        print(f'  ⚠️ 板塊輪動寫入失敗(不影響其他):{str(_e)[:120]}')
+
+
 def build_bubble_warning():
     out = {'updated': date.today().isoformat()}
 
@@ -5686,6 +5812,10 @@ def build_bubble_warning():
     #   順便統計上漲/下跌/跌停/強弱勢是零成本(不多打任何一次 API)。
     #   而且用的是**收盤價**,比前端那份 15:41 的盤中快照更準。
     limit_up = build_breadth_history()
+    # 💧 板塊輪動歷史(零 API,只讀本地 data/*.json)
+    # ⛔ 跟上面那支**各自獨立**呼叫 —— 綁在同一個 try/if 裡的話,一個失敗會拖累另一個
+    #    (V72.2.1 market_stats 的 pb 拖垮 margin 就是這樣,而且全綠零錯誤訊息)。
+    build_sector_rotation()
     out['junk_count'] = {
         'value': limit_up,
         'label': f'{limit_up} 家漲停',

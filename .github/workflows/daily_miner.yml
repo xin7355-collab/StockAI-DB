@@ -249,6 +249,7 @@ jobs:
             data/concept_stocks.json
             data/market_stats.json
             data/breadth.json
+            data/sector_rot.json
             data/miner_status.json
             data/govbank.json
             data/lending.json

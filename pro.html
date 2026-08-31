@@ -122,6 +122,23 @@ textarea{resize:vertical;min-height:56px;font-family:inherit;font-size:14px}
 .askbtn{border:1px solid #4c1d95;background:rgba(167,139,250,.12);color:#c4b5fd;font-size:12px;font-weight:700;padding:6px 13px;border-radius:8px;cursor:pointer;transition:.15s}
 .askbtn:active{background:rgba(167,139,250,.25)}
 pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;white-space:pre-wrap;line-height:1.65;max-height:380px;overflow:auto}
+/* ── 💧 板塊輪動:排名賽跑動畫 ──
+   ⭐ 動畫本身只是「把 20 日相對強弱的排名變化演出來」,⛔ 不是資金流向箭頭 ——
+      實測「成交額在板塊間搬家」完全沒有預測力(見 rotNote 的數字)。*/
+.rotctl{display:flex;align-items:center;gap:8px;margin:10px 0 6px}
+.rotctl input[type=range]{flex:1;accent-color:var(--cyan);min-width:0}
+.rotday{font-family:var(--mono);font-size:11px;color:var(--sub);flex:0 0 auto}
+.rotrace{position:relative;overflow:hidden}
+.rotrow{position:absolute;left:0;right:0;height:22px;display:flex;align-items:center;gap:6px;
+  transition:transform .42s cubic-bezier(.4,0,.2,1);will-change:transform}
+.rotrow .rnm{flex:0 0 76px;font-size:11px;text-align:right;color:var(--dim2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rotrow.hi .rnm{color:var(--txt);font-weight:700}
+.rotrow .rtrack{position:relative;flex:1;height:14px;min-width:0}
+.rotrow .rtrack::before{content:'';position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line2)}
+.rotrow .rbar{position:absolute;top:0;height:14px;border-radius:3px;
+  transition:width .42s cubic-bezier(.4,0,.2,1),left .42s cubic-bezier(.4,0,.2,1)}
+.rotrow .rv{flex:0 0 52px;font-size:10px;font-family:var(--mono);text-align:right}
 /* ── 表格 ── */
 /* 📌 表格凍結:標的欄(左)+ 表頭列(上)都固定住,橫向捲動時才比對得了
    ⚠️ 表頭 sticky top 要生效,容器**必須自己有垂直捲動**(max-height + overflow:auto)——
@@ -206,6 +223,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
   <div class="tabs">
     <button class="tab-btn on" id="tabBtnVal" onclick="PRO.switchTab('val')">📊 產業估值</button>
     <button class="tab-btn" id="tabBtnChain" onclick="PRO.switchTab('chain')">🤖 AI 產業鏈</button>
+    <button class="tab-btn" id="tabBtnRot" onclick="PRO.switchTab('rot')">💧 板塊輪動</button>
   </div>
   <div class="swipehint">👈 左右滑動可切換分頁 ・ 在最上方下拉可重新整理 ・ 點股名跳到散戶救星(返回鍵回到原位)</div>
 </div></div>
@@ -262,6 +280,28 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     </div>
   </div>
   <div class="warnbox">⚠️ <b>這一頁是產業說明書,⛔ 不是買進名單</b>:名單/層級/轉折為人工整理(2026-08 版),不是官方分類、預測力未實測;循環股(記憶體/被動元件)反轉快,⛔ 別當純成長股抱。所有數字為每日收盤快照的原始值,⛔ 刻意不混成任何「綜合分數」。</div>
+</div>
+
+<div id="tabRot" class="hidden">
+  <div class="kpis" id="rotKpis"></div>
+  <div class="panel">
+    <h2>💧 錢打到哪一區 <span class="sub" id="rotSub"></span></h2>
+    <div id="rotVerdict"></div>
+    <div class="rotctl">
+      <button class="lbtn" id="rotPlay" onclick="PRO.rotPlay()">▶︎ 播放輪動</button>
+      <input type="range" id="rotSlider" min="0" max="0" value="0" oninput="PRO.rotSeek(+this.value)">
+      <span class="rotday" id="rotDay">—</span>
+    </div>
+    <div class="rotrace" id="rotRace"></div>
+    <div id="rotNote"></div>
+  </div>
+  <div class="panel">
+    <h2>💰 外資的錢往哪流 <span class="sub">⛔ 只做描述 —— 實測它排不出有效順序</span></h2>
+    <div class="tblwrap" style="max-height:56vh"><table class="grid" id="rotFiTbl"><thead><tr>
+      <th>產業</th><th>外資近5日</th><th>近20日報酬</th><th>成分股</th>
+    </tr></thead><tbody id="rotFiBody"></tbody></table></div>
+    <div id="rotFiNote"></div>
+  </div>
 </div>
 
 <footer>
@@ -365,7 +405,7 @@ const PRO = {
       if (s.news) document.getElementById('inNews').value = s.news;
       this._lvSel = s.lv ?? null; this._layerSel = s.layer ?? null;
       if (s.sk) { this._sortK = s.sk; this._sortD = s.sd || -1; }
-      if (s.tab === 'chain') this.switchTab('chain', true);
+      if (s.tab && s.tab !== 'val') this.switchTab(s.tab, true);
       if (s.val) await this.runValuation(true);
       // 兩次 rAF:等 DOM 真的排版完再捲(⛔ 直接 scrollTo 會捲不到,因為內容還沒撐開)
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -420,8 +460,10 @@ const PRO = {
       ptr.style.height = '0px';
       if (pull >= 70) { this.buzz(30); this.hardRefresh(); pull = 0; return; }
       if (lock === 'h' && !inScroller && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 2 && dt < 600) {
-        if (dx < 0 && this._tab === 'val') { this.buzz(20); this.switchTab('chain'); }
-        else if (dx > 0 && this._tab === 'chain') { this.buzz(20); this.switchTab('val'); }
+        // 三個分頁 → 用索引前後移動(⛔ 別再寫死 val↔chain,加第三頁時一定會漏)
+        const ks = this.TABS.map(x => x[0]);
+        const i = ks.indexOf(this._tab) + (dx < 0 ? 1 : -1);
+        if (i >= 0 && i < ks.length) { this.buzz(20); this.switchTab(ks[i]); }
       }
       lock = ''; pull = 0;
     }, { passive: true });
@@ -430,18 +472,175 @@ const PRO = {
     this._cache = {};                       // ⛔ 一定要清 —— 不清的話「重新整理」等於什麼都沒做
     this.toast('🔄 重新抓取最新資料…');
     if (this._tab === 'chain') await this.renderChain();
+    if (this._tab === 'rot') await this.renderRot();
     if (this._valRows && this._valRows.length) await this.runValuation(true);
     this.toast('✅ 已更新');
   },
 
+  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot']],
   switchTab(t, silent) {
     this._tab = t;
-    document.getElementById('tabVal').classList.toggle('hidden', t !== 'val');
-    document.getElementById('tabChain').classList.toggle('hidden', t !== 'chain');
-    document.getElementById('tabBtnVal').classList.toggle('on', t === 'val');
-    document.getElementById('tabBtnChain').classList.toggle('on', t === 'chain');
+    for (const [k, C] of this.TABS) {
+      document.getElementById('tab' + C).classList.toggle('hidden', t !== k);
+      document.getElementById('tabBtn' + C).classList.toggle('on', t === k);
+    }
+    if (t !== 'rot') this.rotStop();          // ⛔ 切走要停掉動畫,不然背景一直跑
     if (t === 'chain') this.renderChain();
+    if (t === 'rot') this.renderRot();
     if (!silent) window.scrollTo(0, 0);
+  },
+
+  // ═══════════ 💧 板塊輪動 ═══════════
+  // ⭐⭐ 為什麼是「20 日相對強弱」而不是「錢流」——`scripts/sector_rotation_probe.mjs`
+  //    (1,087 檔上市股 × 33 產業 × 775 個交易日,主判準「前 3 產業 − 後 3 產業」
+  //     的未來報酬價差,扣同期加權)實測:
+  //      ① 價格動能 20 日窗口 → 未來 20 日 **+1.44pp** ✅ 四關全過
+  //      ② 外資淨流入金額     最好 +0.83pp,去最好年只剩 +0.40、前後半不同向 ❌
+  //      ③ 外資佔成交額比     ±0.2pp 內 ❌
+  //      ④ 成交額佔比的變化   ≈0 甚至負的 ❌ ← ⛔⛔ 這正是最想做成動畫的那個「錢在搬家」
+  //    ⛔ 所以動畫演的是**排名變化**,不是資金流向箭頭。
+  _ROT: {
+    win: 20, spread: 1.44, top: 0.63, bot: -0.80,
+    q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
+    fiBest: 0.83, fiExBest: 0.40, amtS: 0,
+    // 「幾天才有價值」的完整答案(前3−後3,未來 20 日)
+    win20: [[1, 0.40], [3, 0.79], [5, 0.81], [10, 1.10], [20, 1.44], [60, 2.03]],
+  },
+  _rotK: 0, _rotTimer: null, _rotRows: null, _rotData: null,
+  async renderRot() {
+    const J = await this.fetchJson('data/sector_rot.json');
+    const race = document.getElementById('rotRace');
+    if (!J || !J.days || !J.days.length || !J.ind) {
+      // ⛔ 不可靜默空白 —— 說清楚是「還沒產出」而不是壞掉(陷阱 #22)
+      race.innerHTML = '';
+      race.style.height = '0px';
+      document.getElementById('rotVerdict').innerHTML =
+        `<div class="warnbox">⏳ <b>板塊輪動的歷史檔還沒產出</b>(<code>data/sector_rot.json</code>)——
+         它由每日完整採礦產生,下一輪跑完就會出現。⛔ 不是這個功能壞掉,也不是今天沒有輪動。</div>`;
+      document.getElementById('rotSub').textContent = '';
+      return;
+    }
+    this._rotData = J;
+    const codes = Object.keys(J.ind).filter(k => J.ind[k].r20.some(v => v != null));
+    // 全期最大絕對值當固定尺標 —— ⛔ 每天各自縮放的話「動起來」是假的(尺一直在變)
+    let mx = 0;
+    for (const k of codes) for (const v of J.ind[k].r20) if (v != null && Math.abs(v) > mx) mx = Math.abs(v);
+    this._rotMax = Math.max(mx, 1);
+    race.innerHTML = codes.map(k =>
+      `<div class="rotrow" data-k="${k}"><div class="rnm">${this.IND_NAME[k] || k}</div>
+       <div class="rtrack"><i class="rbar"></i></div><div class="rv"></div></div>`).join('');
+    race.style.height = (codes.length * 22) + 'px';
+    this._rotRows = {};
+    race.querySelectorAll('.rotrow').forEach(el => { this._rotRows[el.dataset.k] = el; });
+    const sl = document.getElementById('rotSlider');
+    sl.max = String(J.days.length - 1);
+    sl.value = String(J.days.length - 1);
+    document.getElementById('rotSub').textContent = `近 ${J.days.length} 個交易日・${codes.length} 個產業・${J.updated || ''}`;
+    document.getElementById('rotNote').innerHTML = this._rotNoteHtml();
+    this.rotSeek(J.days.length - 1);
+  },
+  // 畫某一天
+  rotSeek(k) {
+    const J = this._rotData; if (!J) return;
+    k = Math.max(0, Math.min(k, J.days.length - 1));
+    this._rotK = k;
+    document.getElementById('rotSlider').value = String(k);
+    document.getElementById('rotDay').textContent = J.days[k];
+    const list = Object.keys(this._rotRows)
+      .map(c => ({ c, v: J.ind[c].r20[k] }))
+      .filter(x => x.v != null)
+      .sort((a, b) => b.v - a.v);
+    const N = list.length;
+    list.forEach((x, i) => {
+      const el = this._rotRows[x.c];
+      el.style.transform = `translateY(${i * 22}px)`;
+      el.style.opacity = '1';
+      const w = Math.min(50, Math.abs(x.v) / this._rotMax * 50);
+      const bar = el.querySelector('.rbar');
+      bar.style.width = w + '%';
+      bar.style.left = x.v >= 0 ? '50%' : (50 - w) + '%';
+      bar.style.background = x.v >= 0 ? 'var(--up)' : 'var(--dn)';
+      const rv = el.querySelector('.rv');
+      rv.textContent = (x.v >= 0 ? '+' : '') + x.v.toFixed(1) + '%';
+      rv.className = 'rv ' + this.cls(x.v);
+      // 🎯 前 3 / ⛔ 後 3 —— ⛔ 用圖示不用顏色(顏色在這裡已經表示漲跌了)
+      el.classList.toggle('hi', i < 3 || i >= N - 3);
+      const nm = this.IND_NAME[x.c] || x.c;
+      el.querySelector('.rnm').textContent = (i < 3 ? '🎯 ' : i >= N - 3 ? '⛔ ' : '') + nm;
+    });
+    // 沒資料的那幾條收起來(⛔ 不留空殼)
+    for (const c of Object.keys(this._rotRows)) {
+      if (!list.some(x => x.c === c)) this._rotRows[c].style.opacity = '0';
+    }
+    this._rotVerdict(list, N);
+    if (k === J.days.length - 1) this._rotFi(k);
+  },
+  _rotVerdict(list, N) {
+    const R = this._ROT, nm = c => this.IND_NAME[c] || c;
+    const t3 = list.slice(0, 3), b3 = list.slice(-3);
+    const f = a => a.map(x => `<b>${nm(x.c)}</b> ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}%`).join('・');
+    document.getElementById('rotVerdict').innerHTML =
+      `<div class="warnbox" style="border-color:var(--blue);background:rgba(61,139,253,.06);color:#c3d6f2">
+        🎯 <b>錢打在這三區</b>:${f(t3)}<br>
+        ⛔ <b>最被丟下的三區</b>:${f(b3)}<br>
+        <span style="opacity:.75">比的是「近 ${R.win} 個交易日,該產業成分股漲跌幅中位數」(${N} 個產業排名)。</span>
+      </div>`;
+  },
+  _rotFi(k) {
+    const J = this._rotData, nm = c => this.IND_NAME[c] || c;
+    const rows = Object.keys(J.ind).map(c => ({ c, fi: J.ind[c].fi5[k], r: J.ind[c].r20[k], n: J.ind[c].n }))
+      .filter(x => x.fi != null).sort((a, b) => b.fi - a.fi);
+    document.getElementById('rotFiBody').innerHTML = rows.map(x =>
+      `<tr><td class="txtcell">${nm(x.c)}</td>
+       <td class="${this.cls(x.fi)}">${x.fi >= 0 ? '+' : ''}${this.fmt(x.fi, 1)} 億</td>
+       <td class="${this.cls(x.r)}">${x.r == null ? '—' : (x.r >= 0 ? '+' : '') + x.r.toFixed(1) + '%'}</td>
+       <td>${x.n}</td></tr>`).join('');
+    // ⭐ 如果當天剛好出現「外資買最多、股價卻最弱」的例子,直接把它指出來 —— 比講道理有說服力
+    const topFi = rows[0];
+    const byR = rows.filter(x => x.r != null).sort((a, b) => a.r - b.r);
+    const worst3 = byR.slice(0, 3).map(x => x.c);
+    const clash = topFi && worst3.includes(topFi.c) ? topFi : null;
+    document.getElementById('rotFiNote').innerHTML =
+      `<div class="note">💰 外資近 ${J.fiwin || 5} 日淨買超金額(成分股 <code>foreign_net × 收盤</code> 加總,億元)。
+       ${clash ? `<br>🚨 <b>今天正好有現成的例子</b>:外資近 ${J.fiwin || 5} 日買最多的是
+         <b>${nm(clash.c)}(${clash.fi >= 0 ? '+' : ''}${this.fmt(clash.fi, 1)} 億)</b>,
+         但它的近 ${this._ROT.win} 日報酬是<b>倒數前三(${clash.r.toFixed(1)}%)</b> ——
+         這就是為什麼「外資錢流」⛔ 不能拿來排名。` : ''}
+       <br>⛔ <b>這張表只做描述,不排名、不下多空</b>:實測「外資淨流入金額」最好只有
+       <b>+${this._ROT.fiBest}pp</b>,而且<b>拿掉最好的那一年只剩 +${this._ROT.fiExBest}pp</b>、
+       20 日窗口那格前後半還<b>不同向</b> → 沒過關。</div>`;
+  },
+  rotPlay() {
+    if (this._rotTimer) return this.rotStop();
+    const J = this._rotData; if (!J) return;
+    if (this._rotK >= J.days.length - 1) this.rotSeek(0);
+    document.getElementById('rotPlay').textContent = '⏸ 暫停';
+    this._rotTimer = setInterval(() => {
+      if (this._rotK >= J.days.length - 1) return this.rotStop();
+      this.rotSeek(this._rotK + 1);
+    }, 260);
+  },
+  rotStop() {
+    if (this._rotTimer) { clearInterval(this._rotTimer); this._rotTimer = null; }
+    const b = document.getElementById('rotPlay');
+    if (b) b.textContent = '▶︎ 播放輪動';
+  },
+  _rotNoteHtml() {
+    const R = this._ROT;
+    return `<div class="note">
+      📊 <b>「要看幾天」是實測出來的,⛔ 不是我訂的</b> ——
+      1,087 檔上市股 × 33 產業 × 775 個交易日,比「當時最強 3 個產業」與「最弱 3 個產業」
+      <b>未來 20 日</b>的報酬差(已扣同期大盤):<br>
+      ${R.win20.map(([n, v]) => `${n} 日窗口 <b>${v >= 0 ? '+' : ''}${v.toFixed(2)}pp</b>`).join(' ・ ')}<br>
+      → <b>1~5 天的窗口吃不掉來回成本 0.44%</b>,<b>10 天以上才過關</b>,本頁用的是實用甜蜜點
+      <b>${R.win} 日(+${R.spread}pp,前半 +${R.q1} / 後半 +${R.q2}、逐年 ${R.yr}、去最好年 +${R.exBest})</b>。
+      <br>⭐ <b>而且「避開最弱」比「追最強」更有價值</b>:前 3 名相對全產業平均只有
+      <b>+${R.top}pp</b>,後 3 名卻是 <b>${R.bot}pp</b>。
+      <br>⛔ <b>刻意沒做「錢在板塊間搬家」的箭頭動畫</b> —— 那個最直覺、最好看,
+      但實測(成交額佔比的變化)邊際 <b>≈0 甚至是負的</b>,做出來只會很好看而沒有用。
+      <br>⚠️ 只涵蓋<b>上市</b>(產業別來自證交所分類,上櫃股沒有)→ 這是「上市板塊輪動」,⛔ 不是全市場。
+      ⚠️ 這是歷史統計、<b>⛔ 不是保證</b>,而且回測窗口整段偏多頭。
+      ⛔ 本頁不給任何買賣價位。</div>`;
   },
 
   // ═══════════ 📊 估值 ═══════════
