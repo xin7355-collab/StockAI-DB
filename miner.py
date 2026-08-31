@@ -5585,6 +5585,39 @@ def build_breadth_history():
     return limit_up
 
 
+def _themes_from_pro():
+    """🎯 從 pro.html 的 PRO.THEMES 讀題材表(V74.3.5)。
+
+    ⭐ 題材表**全 App 只有一份**(pro.html),這裡用 regex 讀 —— ⛔ 不在 python 再寫第二份
+      (陷阱 #37:兩份名單遲早只改到一邊)。pro.html 那段的註解有寫「改格式要同步改這支」。
+    ⛔ 為什麼不用 concept_stocks.json(megatime):實測那張表過期 ——
+      231 個群組裡沒有矽光子/CPO、沒有散熱液冷、沒有記憶體,還留著元宇宙/五倍券。
+    回傳 ({key:[syms]}, {key:題材名});讀不到 → (None, None) 並印原因,
+    呼叫端**整個 themes 鍵不寫**(⛔ 不可寫空的 —— 前端要分得出「還沒產出」跟「空」)。
+    """
+    try:
+        import re as _re
+        p = Path(__file__).resolve().parent / 'pro.html'
+        s = p.read_text(encoding='utf-8')
+        i = s.index('THEMES: [')
+        blk = s[i:s.index('],', i) + 2]
+        groups, names = {}, {}
+        for m in _re.finditer(r"\{\s*k:\s*'([a-z0-9_]+)',\s*n:\s*'([^']+)',\s*syms:\s*\[([^\]]*)\]", blk):
+            syms = _re.findall(r"'(\d{4,5})'", m.group(3))
+            if syms:
+                groups[m.group(1)] = syms
+                names[m.group(1)] = m.group(2)
+        # 🚧 空過守門:regex 跟 pro.html 格式脫鉤時要**當場看得出來**,⛔ 不可默默回空
+        n_sym = sum(len(v) for v in groups.values())
+        if len(groups) < 10 or n_sym < 50:
+            print(f'  ⚠️ 題材表只解析到 {len(groups)} 個題材 / {n_sym} 檔(門檻 10/50)→ 視同讀不到,themes 不產出')
+            return None, None
+        return groups, names
+    except Exception as _e:
+        print(f'  ⚠️ 題材表讀取失敗(themes 不產出):{str(_e)[:100]}')
+        return None, None
+
+
 def build_sector_rotation():
     """💧 板塊輪動歷史 → data/sector_rot.json(零 API,只讀本地 data/*.json)。
 
@@ -5625,11 +5658,21 @@ def build_sector_rotation():
             print('  ⏭️ 板塊輪動:沒有 industry_map.json,略過')
             return
         ind_of = json.loads(_map_p.read_text(encoding='utf-8'))
-        # 產業 → 日期 → {rets:[], fi:元}
+        # 🎯 題材板塊(V74.3.5):同一趟掃描順便算 —— 分組定義讀 pro.html(單一來源)。
+        #    一檔可屬多個題材;題材成員可含上櫃股(它們沒有官方產業別,只進題材那組)。
+        th_groups, th_names = _themes_from_pro()
+        th_of = {}
+        if th_groups:
+            for _tk, _ss in th_groups.items():
+                for _s in _ss:
+                    th_of.setdefault(_s, []).append(_tk)
+        # (kind, 分組鍵) → 日期 → {rets:[], f/t/dl/mg:元};kind = 'i' 官方產業 / 't' 題材
         agg = {}
         n_sym = 0
         need = KEEP + WIN + 5
-        for sym, ind in ind_of.items():
+        for sym in sorted(set(ind_of) | set(th_of)):
+            grp_keys = ([('i', ind_of[sym])] if sym in ind_of else []) + \
+                       [('t', _tk) for _tk in th_of.get(sym, ())]
             p = _dir / f'{sym}.json'
             if not p.exists():
                 continue
@@ -5643,7 +5686,6 @@ def build_sector_rotation():
             if len(rows) < 25:
                 continue
             n_sym += 1
-            m = agg.setdefault(ind, {})
             prev = None
             prev_mb = None
             for r in rows:
@@ -5654,12 +5696,13 @@ def build_sector_rotation():
                     continue
                 d = str(r.get('date') or '').replace('/', '-')
                 if prev and prev > 0 and c > 0 and d:
-                    o = m.setdefault(d, {'rets': [], 'f': 0.0, 't': 0.0, 'dl': 0.0, 'mg': 0.0})
-                    o['rets'].append((c / prev - 1) * 100)
+                    # ⭐ 每檔每天只算一次,再加進它所屬的每一組(官方產業 + 題材)
+                    _adds = {'f': 0.0, 't': 0.0, 'dl': 0.0, 'mg': 0.0}
+                    _ret = (c / prev - 1) * 100
                     # 👥 三大法人(股 × 收盤 = 元)
                     for _k, _fld in (('f', 'foreign_net'), ('t', 'trust_net'), ('dl', 'dealer_net')):
                         try:
-                            o[_k] += float(r.get(_fld) or 0) * c
+                            _adds[_k] += float(r.get(_fld) or 0) * c
                         except Exception:
                             pass
                     # 💳 融資餘額變化(散戶槓桿代理)—— ⚠️ margin_balance 是**張**,要 ×1000 換成股
@@ -5669,22 +5712,33 @@ def build_sector_rotation():
                     try:
                         _mb = float(r.get('margin_balance') or 0)
                         if prev_mb is not None and _mb:
-                            o['mg'] += (_mb - prev_mb) * 1000 * c
+                            _adds['mg'] += (_mb - prev_mb) * 1000 * c
                         if _mb:
                             prev_mb = _mb
                     except Exception:
                         pass
+                    for _gk in grp_keys:
+                        o = agg.setdefault(_gk, {}).setdefault(
+                            d, {'rets': [], 'f': 0.0, 't': 0.0, 'dl': 0.0, 'mg': 0.0})
+                        o['rets'].append(_ret)
+                        for _k in ('f', 't', 'dl', 'mg'):
+                            o[_k] += _adds[_k]
                 prev = c
         if not agg:
             print('  ⏭️ 板塊輪動:一個產業都算不出來,略過')
             return
-        # 每天每產業的中位漲跌幅
-        per = {}            # d -> {ind: (medret, {四條流:元})}
-        for ind, m in agg.items():
+        # 每天每組的中位漲跌幅 —— 官方產業與題材分開存
+        # ⚠️ 題材成員少(機殼 3 檔),MIN_MEMB 用 3;官方產業維持 5,⛔ 兩個別互換
+        MIN_MEMB_TH = 3
+        per = {}            # d -> {產業碼: (medret, 流)}(官方,決定 days)
+        per_th = {}         # d -> {題材鍵: (medret, 流)}
+        for (_kind, _g), m in agg.items():
+            _tgt = per if _kind == 'i' else per_th
+            _min = MIN_MEMB if _kind == 'i' else MIN_MEMB_TH
             for d, o in m.items():
-                if len(o['rets']) < MIN_MEMB:
+                if len(o['rets']) < _min:
                     continue
-                per.setdefault(d, {})[ind] = (statistics.median(o['rets']),
+                _tgt.setdefault(d, {})[_g] = (statistics.median(o['rets']),
                                               {k: o[k] for k in ('f', 't', 'dl', 'mg')})
         days = sorted(d for d, v in per.items() if len(v) >= MIN_IND)
         if len(days) < WIN + 10:
@@ -5692,38 +5746,46 @@ def build_sector_rotation():
             return
         keep = days[-(KEEP + WIN):]
         out_days = keep[WIN:]                       # 前 WIN 天只當暖身,不輸出
-        inds = sorted({i for d in keep for i in per[d]})
-        out_ind = {}
-        for ind in inds:
-            r20 = []
-            flow = {k: [] for k in ('f', 't', 'dl', 'mg')}
-            for k, d in enumerate(out_days):
-                win = keep[k + 1:k + 1 + WIN]       # 到 d 為止(含)的 WIN 天
-                vals = [per[x][ind][0] for x in win if ind in per[x]]
-                r20.append(round(sum(vals), 2) if len(vals) >= WIN - 2 else None)
-                # 👥 四條資金流:**每日**淨額(億元)—— 讓前端自己決定要疊幾天
-                _c = per.get(d, {}).get(ind)
-                for _k in flow:
-                    flow[_k].append(round(_c[1][_k] / 1e8, 2) if _c else None)
-            # ⛔ 整段都算不出來的產業不輸出(⛔ 不留一排 null 讓前端顯示空殼)
-            if not any(v is not None for v in r20):
-                continue
-            n_memb = max((len(o['rets']) for o in agg.get(ind, {}).values()), default=0)
-            out_ind[ind] = {'n': n_memb, 'r20': r20, 'flow': flow}
+        def _series(_per, _kind):
+            """同一套滾動窗口邏輯,官方產業與題材共用(⛔ 不複製第二份)。"""
+            _out = {}
+            for _g in sorted({i for d in keep for i in _per.get(d, {})}):
+                r20 = []
+                flow = {k: [] for k in ('f', 't', 'dl', 'mg')}
+                for k, d in enumerate(out_days):
+                    win = keep[k + 1:k + 1 + WIN]   # 到 d 為止(含)的 WIN 天
+                    vals = [_per[x][_g][0] for x in win if x in _per and _g in _per[x]]
+                    r20.append(round(sum(vals), 2) if len(vals) >= WIN - 2 else None)
+                    # 👥 四條資金流:**每日**淨額(億元)—— 讓前端自己決定要疊幾天
+                    _c = _per.get(d, {}).get(_g)
+                    for _k in flow:
+                        flow[_k].append(round(_c[1][_k] / 1e8, 2) if _c else None)
+                # ⛔ 整段都算不出來的組不輸出(⛔ 不留一排 null 讓前端顯示空殼)
+                if not any(v is not None for v in r20):
+                    continue
+                n_memb = max((len(o['rets']) for o in agg.get((_kind, _g), {}).values()), default=0)
+                _out[_g] = {'n': n_memb, 'r20': r20, 'flow': flow}
+            return _out
+        out_ind = _series(per, 'i')
+        out_th = _series(per_th, 't') if th_groups else {}
         if len(out_ind) < MIN_IND:
             print(f'  ⏭️ 板塊輪動:只有 {len(out_ind)} 個產業算得出來(<{MIN_IND}),不覆寫舊檔')
             return
+        _doc = {'updated': datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M'),
+                'win': WIN, 'listed_only': True,
+                'flow_keys': {'f': '外資', 't': '投信', 'dl': '自營', 'mg': '融資(散戶代理)'},
+                'days': out_days, 'ind': out_ind}
+        # 🎯 題材板塊:解析失敗/算不出來 → **整個鍵不寫**,前端顯「還沒產出」(陷阱 #22)
+        if out_th:
+            _doc['themes'] = out_th
+            _doc['theme_names'] = th_names
         (_dir / 'sector_rot.json').write_text(json.dumps(
-            {'updated': datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M'),
-             'win': WIN, 'listed_only': True,
-             'flow_keys': {'f': '外資', 't': '投信', 'dl': '自營', 'mg': '融資(散戶代理)'},
-             'days': out_days, 'ind': out_ind},
-            ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+            _doc, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
         _last = out_days[-1]
         _rank = sorted(((v['r20'][-1], k) for k, v in out_ind.items() if v['r20'][-1] is not None),
                        reverse=True)
-        print(f'  💧 板塊輪動 {_last}:{len(out_ind)} 個產業 × {len(out_days)} 個交易日'
-              f'(母體 {n_sym} 檔上市股)')
+        print(f'  💧 板塊輪動 {_last}:{len(out_ind)} 個產業 + {len(out_th)} 個題材 × {len(out_days)} 個交易日'
+              f'(母體 {n_sym} 檔)')
         if _rank:
             print(f'     → 最強 {_rank[0][1]} {_rank[0][0]:+.1f}% / 最弱 {_rank[-1][1]} {_rank[-1][0]:+.1f}%(近 {WIN} 日)')
     except Exception as _e:
