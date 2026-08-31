@@ -218,9 +218,15 @@ const T = await page.evaluate(async () => {
         },
     };
     // 明細表要用 screener 的 ind 對照 + 名稱
+    // 🚨🚨 這裡**必須用真實資料的格式**:screener.json 存的是 {股號: **中文產業名**}
+    //    (實測 '1101' → '水泥'),⛔ 不是產業代碼。
+    //    第一版測資寫成代碼('24')→ 跟正式程式一樣「比代碼」→ 兩邊一起錯、測試照樣綠,
+    //    而真實資料上成分股表**永遠是空的**。⭐ 測資格式跟真實資料不同 = 這條測試等於沒驗。
+    //    ⭐ '2801' 是**別名**案例:輪動圖 '17' 叫「金融」、screener 叫「金融保險」。
     PRO._cache['data/screener.json'].ind = Object.assign({}, PRO._cache['data/screener.json'].ind,
-        { '2382': '24', '2222': '24', '2317': '15' });
-    PRO._names = Object.assign({}, PRO._names, { '2382': '廣達', '2222': '假無帶', '2317': '鴻海' });
+        { '2382': '半導體', '2222': '半導體', '2317': '航運', '2801': '金融保險' });
+    PRO._names = Object.assign({}, PRO._names, { '2382': '廣達', '2222': '假無帶', '2317': '鴻海', '2801': '彰銀' });
+    PRO._cache['data/screener.json'].rows['2801'] = [20, 12, 0.5, 3, null, 40, 10, 1, 50, 30, 0.9];
     PRO.switchTab('rot');
     await new Promise(r => setTimeout(r, 200));
     // 🚨 <details> 收合時 innerText **是空的** → 不先展開的話,底下所有「文案必須寫什麼」
@@ -292,6 +298,17 @@ const T = await page.evaluate(async () => {
     out.detTxtPast = document.getElementById('rotDetail').innerText;
     PRO.rotOpen('24');                       // 再點一次要收起
     out.detClosed = document.getElementById('rotDetail').innerHTML === '';
+    // ⭐ 別名產業:輪動圖 '17' 叫「金融」,screener 叫「金融保險」→ 要靠 IND_ALIAS 才對得上
+    PRO.rotSeek(4); PRO.rotOpen('17');
+    await new Promise(r => setTimeout(r, 60));
+    out.aliasTxt = document.getElementById('rotDetail').innerText;
+    out.aliasRows = document.querySelectorAll('#rotDetail tbody tr').length;
+    PRO.rotOpen('17');
+    // ⛔ 真的對不上時要「說出來」,不可靜默空白('10' 鋼鐵在測資裡一檔都沒有)
+    PRO.rotOpen('10');
+    await new Promise(r => setTimeout(r, 60));
+    out.missTxt = document.getElementById('rotDetail').innerText;
+    PRO.rotOpen('10');
     PRO.rotSeek(4);
     PRO.rotPlay(); out.playing = !!PRO._rotTimer;
     PRO.switchTab('val');
@@ -492,6 +509,12 @@ ok('㉕g 🚨 停在過去那天時要主動提醒「你現在停在 X,個股表
    /你現在停在/.test(T.detTxtPast), T.detTxtPast.slice(-260));
 ok('㉕h ⛔ 明細也不可下多空/給價位', /只做描述/.test(T.detTxt) && /不給買賣價位/.test(T.detTxt), T.detTxt.slice(-200));
 ok('㉕i 再點一次要收起', T.detClosed);
+// 🚨 ㉕j/㉕k 是「測資格式跟真實資料不同 = 測試等於沒驗」抓出來的:
+//    sector_rot 存產業**代碼**、screener 存**中文名** → 直接比代碼永遠是空表。
+ok('㉕j 🚨 產業對照要用**中文名**(真實 screener 格式),而且別名(金融↔金融保險)要對得上',
+   T.aliasRows >= 1 && /彰銀/.test(T.aliasTxt), [T.aliasRows, T.aliasTxt.slice(0, 120)]);
+ok('㉕k ⛔ 真的對不上時要**說出來**,不可靜默空白(陷阱 #22)',
+   /對不上/.test(T.missTxt) && /上面那幾個數字仍然是對的/.test(T.missTxt), T.missTxt.slice(-200));
 ok('㉒l ⛔ 切走分頁要停掉動畫(不可留背景 timer)', T.playing && T.stoppedOnLeave, [T.playing, T.stoppedOnLeave]);
 // ㉔ 🔬 實測總表
 ok('㉔ 五個頁籤:有用 / 沒用 / 回測的坑 / 還測不了 / 推薦下一步',

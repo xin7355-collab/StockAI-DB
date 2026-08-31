@@ -419,6 +419,15 @@ const PRO = {
   fmtN(x) { return !Number.isFinite(x) ? '—' : Math.round(x).toLocaleString(); },
   cls(x) { return !Number.isFinite(x) ? 'flat' : x > 0 ? 'up' : x < 0 ? 'dn' : 'flat'; },
   IND_NAME: { '01':'水泥','02':'食品','03':'塑膠','04':'紡織','05':'電機機械','06':'電器電纜','08':'玻璃陶瓷','09':'造紙','10':'鋼鐵','11':'橡膠','12':'汽車','14':'建材營造','15':'航運','16':'觀光餐旅','17':'金融','18':'貿易百貨','20':'其他','21':'化學','22':'生技醫療','23':'油電燃氣','24':'半導體','25':'電腦週邊','26':'光電','27':'通信網路','28':'電子零組件','29':'電子通路','30':'資訊服務','31':'其他電子','35':'綠能環保','36':'數位雲端','37':'運動休閒','38':'居家生活' },
+  // 🚨 screener.json 的產業中文名跟 IND_NAME **不完全一樣**(實測 32 個裡有 2 個對不上):
+  //    '14' 這裡叫「建材營造」screener 叫「營建」(55 檔)、
+  //    '17' 這裡叫「金融」screener 叫「金融保險」(32 檔)。
+  //    ⛔ 別把 IND_NAME 改成 screener 那套 —— 那是**輪動圖的圖例文字**,兩者用途不同;
+  //    ⭐ 用別名表對照,新增別名時要實測那一類真的抓得到幾檔。
+  IND_ALIAS: { '14': ['營建'], '17': ['金融保險'] },
+  _indAliases(c) {
+    return new Set([this.IND_NAME[c] || c, c].concat(this.IND_ALIAS[c] || []));
+  },
   PRESETS: [
     { n: 'AI 伺服器代工', c: '2317, 2382, 3231, 6669, 8210' },
     { n: '散熱液冷', c: '3017, 3324, 2421, 2308' },
@@ -942,10 +951,19 @@ const PRO = {
       run++;
     }
     // 成分股(來自 screener,只有**最新一天**的快照)
+    // 🚨 兩邊的 ind 是**不同東西**:sector_rot 存的是證交所**產業代碼**('24'),
+    //    screener 存的是 {股號: **中文產業名**}('半導體')→ ⛔ 直接比代碼永遠比不到,
+    //    而且會安靜地變成空表(第一版就是這樣,測試用假測資所以照樣綠)。
+    //    → 一律走 `_indAliases(c)`,而且**對不上時要說出來**,⛔ 不可靜默空白(陷阱 #22)。
     const scr = this._cache['data/screener.json'];
-    let rows = [];
+    const want = this._indAliases(c);
+    let rows = [], nameMiss = false;
     if (scr && scr.ind) {
-      rows = Object.keys(scr.ind).filter(sy => scr.ind[sy] === c).map(sy => ({
+      const hit = Object.keys(scr.ind).filter(sy => want.has(scr.ind[sy]));
+      // ⭐ 判準:輪動圖說這一類有 n 檔(而且輪動圖本來就只做上市),
+      //    screener 也有分類資料,卻一檔都對不到 → 那一定是**名字對不上**,不是「沒有股票」。
+      nameMiss = hit.length === 0 && o.n > 0 && Object.keys(scr.ind).length > 0;
+      rows = hit.map(sy => ({
         sy, nm: (this._names || {})[sy] || sy,
         chg: this._scrV(sy, 'chg'), f5: this._scrV(sy, 'f5'),
         chg20: this._scrV(sy, 'chg20'), amt: this._scrV(sy, 'c'),
@@ -972,7 +990,11 @@ const PRO = {
             <td class="${this.cls(r.f5)}">${Number.isFinite(r.f5) ? this.fmt(r.f5, 0, true) : '—'}</td>
             <td class="${this.cls(r.chg20)}">${Number.isFinite(r.chg20) ? this.fmt(r.chg20, 1, true) + '%' : '—'}</td>
           </tr>`).join('') + '</tbody></table></div>'
-          : '<div class="note">⏳ 這個產業的成分股數字還沒載入(screener 只涵蓋上市)。</div>'}
+          : nameMiss
+            ? `<div class="note">⚠️ <b>「${nm}」的成分股對不上</b> —— 產業分類表兩邊用的名字不一樣
+                (輪動圖用證交所代碼、個股表用中文名),這一類的名字還沒對上。
+                ⛔ 上面那幾個數字仍然是對的,只是列不出裡面有哪些股票。</div>`
+            : '<div class="note">⏳ 這個產業的成分股數字還沒載入(screener 只涵蓋上市)。</div>'}
         <div class="note">🚨 <b>上面那五個數字會跟著時間軸走;下面的個股表只有「最新一天」的快照</b>
           —— 個股的逐日法人流向沒有存歷史,⛔ 不可假裝拉回過去看得到。
           ${atLatest ? '' : `<br>⚠️ 你現在停在 <b>${J.days[k]}</b>,個股表顯示的仍是最新交易日。`}
