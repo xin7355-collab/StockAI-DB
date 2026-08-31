@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.0.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.5 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7348,8 +7348,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.0.5',
+    _APP_VERSION: 'V74.0.6',
     _CHANGELOG: [
+        { v:'V74.0.6', dt:'2026-08-31', d:[
+            '📌 籌碼頁明日劇本新增條件觸發:「同一分點連買 3 天且股價已發動」— 2 年 × 377 萬筆交叉回測裡唯一全關通過的分點訊號(10日 +0.85%/20日 +1.36%),附完整實測數字與免責',
+            '🔬 追加驗證:連賣 3 天不構成出場警訊、外資系/官股系身分無邊際、「大漲日隔日沖佔比高」全窗口複驗方向確認(是動能標記不是警訊)但幅度貼成本線 → 不顯示',
+        ]},
         { v:'V74.0.5', dt:'2026-08-31', d:[
             '🔬 分點資料挖滿 2 年(全市場逐日)並全面回測:「哪家分點買」幾乎不帶方向資訊 —— 神秘分點/地緣分點/連買 3 天/隔日沖券商迴避全部實測無實用邊際;地緣分點卡已補上實測數字',
             '⛏️ 分點採礦提速:歷史天直接從深歷史還原、免費爬蟲連續失敗自動停用,全市場一輪就能追上最新',
@@ -23576,6 +23580,54 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
 
     // 🔮 V69.1.9/10 明日劇本(籌碼面)卡片 HTML
+    // 📌 V74.0.6 「同一分點連買 ≥3 天 且 股價已發動」—— 2 年全市場交叉回測唯一全關通過的分點訊號。
+    //   實測(scripts/broker_cross_probe.mjs,467 天 × 前 200 家券商):
+    //     10 日 +0.85pp / 20 日 +1.36pp(對照 = 同漲幅的單日買超)・前後半同向・n=34,505
+    //     鎖高位階仍在(+0.80/+1.33)・疊在 🧬 高位階+高波動內仍 +0.78/+1.44 → 不是位階/波動代理
+    //   ⭐ 關鍵前提:「已發動」(5 日 ≥ +8%)—— 連買但**還沒漲**的(隱形吃貨)實測 +0.06pp ≈ 0,
+    //     ⛔ 別把條件放寬到「連買就顯示」,那會把沒用的一起顯出來。
+    //   ⛔ 顯示層而已,不計分、不下指令(窗口偏多頭、未接組合回測 —— 卡上要照實寫)。
+    //   回 null 或 {brokers:[{nm,lots}], days, chg5}
+    _chipRunBuy(sym, hist) {
+        try {
+            if (this._fenSym !== sym || !Array.isArray(hist) || hist.length < 3) return null;
+            const data = this.rawDailyData;
+            if (!Array.isArray(data) || data.length < 10) return null;
+            const dOf = b => String((b?.date ?? b?.d) || '').replace(/\//g, '-');
+            const idx = new Map(); data.forEach((b, i) => idx.set(dOf(b), i));
+            const h3 = hist.slice(-3);
+            const ii = h3.map(h => idx.get(String(h.d || '').replace(/\//g, '-')));
+            // 三天必須是**連續交易日**(⛔ 缺席不算連買 —— broker_skill_probe 的教訓)
+            if (ii.some(x => x == null) || ii[1] !== ii[0] + 1 || ii[2] !== ii[1] + 1) return null;
+            // 「已發動」:最後那天收盤 vs 5 根前 ≥ +8%
+            const iL = ii[2];
+            if (iL < 5) return null;
+            const cL = +((data[iL].close ?? data[iL].c) || 0), c5 = +((data[iL - 5].close ?? data[iL - 5].c) || 0);
+            if (!(cL > 0 && c5 > 0)) return null;
+            const chg5 = (cL / c5 - 1) * 100;
+            if (chg5 < 8) return null;
+            // 同一分點三天都淨買 ≥ 當日量 0.5%(hist 淨額是股、rawDailyData volume 也是股 → 同單位)
+            const perDay = h3.map((h, k) => {
+                const vol = +((data[ii[k]].volume ?? data[ii[k]].v) || 0);
+                const m = new Map();
+                if (vol > 0) for (const row of (h.b || [])) {
+                    const net = +row[1] || 0;
+                    if (net > 0 && net / vol * 100 >= 0.5) m.set(String(row[0]), net);
+                }
+                return m;
+            });
+            const brokers = [];
+            for (const [nm0, n1] of perDay[0]) {
+                if (perDay[1].has(nm0) && perDay[2].has(nm0)) {
+                    brokers.push({ nm: nm0.split('(')[0], lots: Math.round((n1 + perDay[1].get(nm0) + perDay[2].get(nm0)) / 1000) });
+                }
+            }
+            if (!brokers.length) return null;
+            brokers.sort((a, b) => b.lots - a.lots);
+            return { brokers: brokers.slice(0, 3), days: 3, chg5 };
+        } catch (_) { return null; }
+    },
+
     _chipTomorrowScenario(P, curPx, hist) {
         const v = this._chipScenarioCalc(P, curPx, hist);
         if (!v) return '';
@@ -23622,6 +23674,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             ${clash5d}
             ${bear.length ? `<div class="text-[10px] text-green-300 font-bold mt-2">▼ 賣壓 / 偏空因子</div>${line(bear, 'text-green-400', '•')}` : ''}
             ${bull.length ? `<div class="text-[10px] text-red-300 font-bold mt-2">▲ 撐盤 / 偏多因子</div>${line(bull, 'text-red-400', '•')}` : ''}
+            ${(() => { const rb = this._chipRunBuy(this._fenSym, hist); if (!rb) return ''; return `<div class="mt-2 bg-[#0d1117] border-l-4 border-cyan-500 pl-2.5 py-1.5 rounded-r">
+                <div class="text-[10px] font-bold text-cyan-300 mb-0.5">📌 同一分點連買 ${rb.days} 天,而且股價已經發動(5日 +${rb.chg5.toFixed(1)}%)</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">${rb.brokers.map(x => `<b>${x.nm}</b> 3天共 ${x.lots.toLocaleString()} 張`).join('、')} 連續三個交易日都買超 ≥0.5% 成交量。<br>本站 2 年全市場實測(3.4 萬筆):這種「連買且已發動」之後 10 日比同漲幅的單日買超多 <b class="font-mono">+0.85%</b>、20 日多 <b class="font-mono">+1.36%</b>,勝率 39.5% vs 36.2%,鎖位階與高波動後仍在 —— 是分點交叉回測裡<b>唯一全關通過</b>的訊號。</div>
+                <div class="text-[8px] text-gray-600 mt-1 leading-snug">⚠️ 連買但<b>還沒漲</b>的(隱形吃貨)實測 ≈ 0,所以只有已發動才顯示。⛔ 這是實測過的背景資訊,不是進場指令;窗口偏多頭、未接組合回測,價位以總覽「現在怎麼做」為準。</div>
+            </div>`; })()}
             ${!bear.length && !bull.length ? `<div class="text-[10px] text-gray-400 mt-1.5 leading-relaxed">今日分點無明顯偏多/偏空訊號,回歸看量價與大盤方向。</div>` : ''}
             <div class="${bgCls} border-l-4 ${bCls} pl-2.5 py-1.5 rounded-r mt-2"><div class="text-[10px] text-gray-200 leading-relaxed"><b class="${tCls}">${_lagI.lag > 0 ? '📖 當時的對策(僅供回顧):' : '✅ 對策:'}</b>${sop}</div></div>
             <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 綜合:外資分點方向 + 隔日沖今買明賣賣壓 + 買超主力套牢 + 真主力吸籌接盤 + 官股/投信護盤。純公式推估非保證,搭配隔天開盤量價與大盤方向再確認。</div>
