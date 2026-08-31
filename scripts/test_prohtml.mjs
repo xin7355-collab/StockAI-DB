@@ -216,6 +216,13 @@ const T = await page.evaluate(async () => {
             '24': { n: 96, r20: [8, 5, 3, 0, -9], flow: { f: [180, 180, 180, 180, 180], t: [-77, -77, -77, -77, -77], dl: [0, 0, 0, 0, 0], mg: [-17, -17, -17, -17, -17] } },
             '99': { n: 3, r20: [null, null, null, null, null], flow: { f: [null, null, null, null, null], t: [null, null, null, null, null], dl: [null, null, null, null, null], mg: [null, null, null, null, null] } },
         },
+        // 🎯 題材(⭐ 格式照 miner 真產物 —— 陷阱 #40:測資格式必須跟真實資料一樣)
+        themes: {
+            mem: { n: 6, r20: [2, 3, 5, 7, 9.2], flow: { f: [50, 60, 40, 55, 80], t: [1, 1, 1, 1, 1], dl: [0, 0, 0, 0, 0], mg: [-2, -2, -2, -2, -2] } },
+            cool: { n: 5, r20: [12, 12, 12, 13, 13], flow: { f: [20, 20, 20, 20, 20], t: [0, 0, 0, 0, 0], dl: [0, 0, 0, 0, 0], mg: [0, 0, 0, 0, 0] } },
+            wafer: { n: 4, r20: [-20, -21, -22, -23, -23.6], flow: { f: [-9, -9, -9, -9, -9], t: [0, 0, 0, 0, 0], dl: [0, 0, 0, 0, 0], mg: [0, 0, 0, 0, 0] } },
+        },
+        theme_names: { mem: '記憶體', cool: '散熱/液冷', wafer: '矽晶圓' },
     };
     // 明細表要用 screener 的 ind 對照 + 名稱
     // 🚨🚨 這裡**必須用真實資料的格式**:screener.json 存的是 {股號: **中文產業名**}
@@ -309,6 +316,34 @@ const T = await page.evaluate(async () => {
     await new Promise(r => setTimeout(r, 60));
     out.missTxt = document.getElementById('rotDetail').innerText;
     PRO.rotOpen('10');
+    // ㉖ 🎯 題材模式(V74.3.5)
+    PRO._names = Object.assign({}, PRO._names, { '2408': '南亞科', '8299': '群聯' });
+    PRO._cache['data/screener.json'].rows['2408'] = [80, 15, -0.2, 30, 30, 20597, 100, 49.8, 30000, 90, 2.5];
+    PRO._cache['data/screener.json'].rows['8299'] = [600, 12, -0.2, 20, 25, 0, 50, 31.1, 100, 85, 3.0];
+    PRO.rotToggleMode();
+    await new Promise(r => setTimeout(r, 120));
+    out.thBtn = document.getElementById('rotMode').textContent;
+    out.thBubs = document.querySelectorAll('#rotBubs .bub').length;
+    out.thChips = document.getElementById('rotList').innerText.replace(/\s+/g, ' ');
+    out.thVerd = document.getElementById('rotVerdict').innerText;
+    PRO.rotOpen('mem');
+    await new Promise(r => setTimeout(r, 80));
+    out.thDetTxt = document.getElementById('rotDetail').innerText;
+    out.thDetRows = document.querySelectorAll('#rotDetail tbody tr').length;
+    document.querySelectorAll('#tabRot details').forEach(d => d.open = true);
+    out.thNote = document.getElementById('rotNote').innerText;
+    PRO.rotOpen('mem');
+    // 題材資料不存在時要說出來,⛔ 不可靜默(themes 鍵拿掉再切一次)
+    const _th = PRO._cache['data/sector_rot.json'].themes;
+    delete PRO._cache['data/sector_rot.json'].themes;
+    await PRO.renderRot();
+    out.thMissing = document.getElementById('rotVerdict').innerText;
+    PRO._cache['data/sector_rot.json'].themes = _th;
+    // 切回官方模式要完整復原
+    PRO.rotToggleMode();
+    await new Promise(r => setTimeout(r, 120));
+    out.backBubs = document.querySelectorAll('#rotBubs .bub').length;
+    out.backBtn = document.getElementById('rotMode').textContent;
     PRO.rotSeek(4);
     PRO.rotPlay(); out.playing = !!PRO._rotTimer;
     PRO.switchTab('val');
@@ -515,6 +550,23 @@ ok('㉕j 🚨 產業對照要用**中文名**(真實 screener 格式),而且別�
    T.aliasRows >= 1 && /彰銀/.test(T.aliasTxt), [T.aliasRows, T.aliasTxt.slice(0, 120)]);
 ok('㉕k ⛔ 真的對不上時要**說出來**,不可靜默空白(陷阱 #22)',
    /對不上/.test(T.missTxt) && /上面那幾個數字仍然是對的/.test(T.missTxt), T.missTxt.slice(-200));
+// ㉖ 🎯 題材板塊(V74.3.5,使用者:「官方 33 產業沒什麼用,要矽光子/散熱/記憶體」)
+ok('㉖ 切到題材模式:泡泡數 = 題材數、鈕文字跟著變',
+   T.thBubs === 3 && /題材/.test(T.thBtn), [T.thBubs, T.thBtn]);
+ok('㉖b 名次條顯示**題材名**(⛔ 不可顯示 key)',
+   /記憶體/.test(T.thChips) && /散熱\/液冷/.test(T.thChips) && !/\bmem\b/.test(T.thChips), T.thChips.slice(0, 150));
+ok('㉖c 題材明細:成分股直接讀 THEMES 名單(南亞科/群聯要在)+ 買超寬度',
+   T.thDetRows >= 2 && /南亞科/.test(T.thDetTxt) && /群聯/.test(T.thDetTxt) && /買超寬度/.test(T.thDetTxt),
+   [T.thDetRows, T.thDetTxt.slice(0, 200)]);
+ok('㉖d 🚨 題材模式的結論第三行**必須換句** —— ⛔ 不可拿官方 33 產業的實測數字(+0.63/−0.8pp)背書題材版',
+   /人工挑的/.test(T.thVerd) && /只驗過官方 33 產業/.test(T.thVerd)
+   && !/-0\.8pp/.test(T.thVerd.replace(/−/g, '-')), T.thVerd);
+ok('㉖e ⛔ themes 還沒產出時要說出來(⛔ 不可靜默退回官方版)',
+   /題材板塊的資料還沒產出/.test(T.thMissing) && /不是壞掉/.test(T.thMissing), T.thMissing.slice(0, 160));
+ok('㉖f 🚨 題材說明要含三條誠實限制:後見之明 / 實測不可套用 / 金額會重複計',
+   /後見之明/.test(T.thNote) && /不可套用到題材版/.test(T.thNote) && /重複計/.test(T.thNote), T.thNote.slice(0, 300));
+ok('㉖g 切回官方模式要完整復原(泡泡 = 產業數)',
+   T.backBubs === 4 && /官方產業/.test(T.backBtn), [T.backBubs, T.backBtn]);
 ok('㉒l ⛔ 切走分頁要停掉動畫(不可留背景 timer)', T.playing && T.stoppedOnLeave, [T.playing, T.stoppedOnLeave]);
 // ㉔ 🔬 實測總表
 ok('㉔ 五個頁籤:有用 / 沒用 / 回測的坑 / 還測不了 / 推薦下一步',
