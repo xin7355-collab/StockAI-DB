@@ -102,8 +102,11 @@ function tradable(px, sym, i) {
   return !(op >= pc * 1.0995 && o.high[i + 1] === o.low[i + 1]);
 }
 
-function main() {
-  console.log('🕸️ 分點「同盟集團」(Brokerage Co-movement Graph)回測\n');
+const RESID = !process.argv.includes('--raw');   // 預設去共同成分;--raw 看未去的原始版
+
+function main(TRAIN_FIRST = true) {
+  console.log('🕸️ 分點「同盟集團」(Brokerage Co-movement Graph)回測'
+    + (RESID ? '【已去掉當天共同成分】' : '【原始版・未去共同成分】') + '\n');
   const { days, nm } = loadDeep();
   console.log(`📥 深歷史 ${days.length} 天(${days[0]?.d} ~ ${days[days.length - 1]?.d})`);
   if (days.length < 240 && !SELFTEST) { console.log('⏳ 不足 240 天,不跑'); process.exit(2); }
@@ -113,12 +116,15 @@ function main() {
   const idxMap = loadIndex();
   console.log(`📈 K 線 ${px.size} 檔`);
   const MID = Math.floor(days.length / 2);
+  // ⭐ 反向驗證:TRAIN_FIRST=false 時改成「後半學、前半考」(同 broker_skill_probe)
+  const trLo = TRAIN_FIRST ? 0 : MID, trHi = TRAIN_FIRST ? MID : days.length;
+  const teLo = TRAIN_FIRST ? MID : 0, teHi = TRAIN_FIRST ? days.length : MID;
 
   // ── 前半段:挑前 TOPB 家券商 + 算兩兩 cosine similarity ─────────
   //    向量 = 每個(股·日)的「淨額佔當日成交量 %」(⛔ 不用絕對張數,
   //    否則大券商的向量長度壓過一切,相似度變成「誰都跟大券商像」)。
   const tot = new Map();
-  for (let dn = 0; dn < MID; dn++) {
+  for (let dn = trLo; dn < trHi; dn++) {
     for (const [sym, arr] of Object.entries(days[dn].s)) {
       const o = px.get(sym); if (!o) continue;
       const i = o.at.get(days[dn].d); if (i == null) continue;
@@ -138,7 +144,7 @@ function main() {
   const dot = new Float64Array(N * N);
   const norm = new Float64Array(N);
   const co = new Int32Array(N * N);
-  for (let dn = 0; dn < MID; dn++) {
+  for (let dn = trLo; dn < trHi; dn++) {
     for (const [sym, arr] of Object.entries(days[dn].s)) {
       const o = px.get(sym); if (!o) continue;
       const i = o.at.get(days[dn].d); if (i == null) continue;
@@ -148,6 +154,15 @@ function main() {
         const bi = bIdx.get(String(x[0])); if (bi == null) continue;
         const r = (+x[1] || 0) / vol * 100;
         if (r !== 0) here.push([bi, r]);
+      }
+      // 🚨 去掉「當天這一檔的共同成分」——⛔ 不減掉的話,cosine similarity 抓到的是
+      //    「兩家都很大、都跟著這檔當天的方向走」,不是「同一個主力的影子分點」。
+      //    實測未去共同成分時:元大↔富邦 0.960(共同出現 78,057 次)= 純粹規模效應。
+      //    這跟報酬要「扣同期加權」是同一個道理:先把大家共有的那一份拿掉。
+      if (RESID && here.length >= 2) {
+        let m2 = 0; for (const h2 of here) m2 += h2[1];
+        m2 /= here.length;
+        for (const h2 of here) h2[1] -= m2;
       }
       for (let a = 0; a < here.length; a++) {
         norm[here[a][0]] += here[a][1] * here[a][1];
@@ -192,7 +207,7 @@ function main() {
     // ── 後半段驗收:同天 ≥3 家大買同一檔 → 分成「同盟」與「非同盟」兩組 ──
     const ally = [], nonAlly = [];
     const lastA = new Map(), lastN = new Map();
-    for (let dn = MID; dn < days.length; dn++) {
+    for (let dn = teLo; dn < teHi; dn++) {
       for (const [sym, arr] of Object.entries(days[dn].s)) {
         const o = px.get(sym); if (!o) continue;
         const i = o.at.get(days[dn].d);
@@ -219,7 +234,15 @@ function main() {
         const pv = last.get(sym);
         if (pv != null && dn - pv < DEDUP) continue;
         last.set(sym, dn);
-        bag.push({ sym, dnum: dn, e10, e20 });
+        // 🚧 帶上股票特徵 —— 這組看起來很強,必須確認它不是「規模/位階/波動」的代理
+        let mn = Infinity, mx = -Infinity;
+        for (let k = i - 251; k <= i; k++) { const v = o.close[k]; if (v < mn) mn = v; if (v > mx) mx = v; }
+        const pos = mx > mn ? (o.close[i] - mn) / (mx - mn) * 100 : 50;
+        let sq = 0, sm = 0;
+        for (let k = i - 19; k <= i; k++) { const r2 = Math.log(o.close[k] / o.close[k - 1]); sq += r2 * r2; sm += r2; }
+        const vola = Math.sqrt(Math.max(0, sq / 20 - (sm / 20) ** 2)) * Math.sqrt(240) * 100;
+        const amt = o.close[i] * vol;      // 當日成交金額(規模代理)
+        bag.push({ sym, dnum: dn, e10, e20, pos, vola, amt });
       }
     }
     const d10 = mean(ally.map((e) => e.e10)) - mean(nonAlly.map((e) => e.e10));
@@ -235,14 +258,38 @@ function main() {
     console.log(`   同盟 ≥3 家同天大買:n=${ally.length.toLocaleString()} ・對照(非同盟 ≥3 家同買)n=${nonAlly.length.toLocaleString()}`);
     console.log(`   10日 ${sgn(d10)}${nf(d10)}pp ・20日 ${sgn(d20)}${nf(d20)}pp ・勝率 ${nf(w, 1)}%(對照 ${nf(cw, 1)}%)`);
     // 前後半(驗收段再切兩半)
-    const M2 = Math.floor((MID + days.length) / 2);
+    const M2 = Math.floor((teLo + teHi) / 2);
     const h = (lo, hi) => {
       const a2 = ally.filter((e) => e.dnum >= lo && e.dnum < hi), b2 = nonAlly.filter((e) => e.dnum >= lo && e.dnum < hi);
       return a2.length > 60 && b2.length > 60 ? mean(a2.map((e) => e.e10)) - mean(b2.map((e) => e.e10)) : NaN;
     };
-    const q1 = h(MID, M2), q2 = h(M2, days.length);
+    const q1 = h(teLo, M2), q2 = h(M2, teHi);
     console.log(`   驗收段前半 ${sgn(q1)}${nf(q1)} / 後半 ${sgn(q2)}${nf(q2)}` + ((q1 > 0) === (q2 > 0) ? '' : ' 🚨不同向'));
-    results.push({ TH, d10, d20, n: ally.length, same: (q1 > 0) === (q2 > 0) });
+
+    // 🚧 格內對照:同一個「位階×波動×成交金額」格子裡再比一次
+    //    ⛔ 相似度天然會把「規模」混進來(元大↔富邦 0.96 就是純規模)
+    //    → 若邊際只是「同盟都出現在大型股/高波動股」的代理,格內差會塌掉。
+    const cut = (arr, key, qs) => {
+      const v = arr.map((e) => e[key]).sort((a, b) => a - b);
+      return qs.map((q) => v[Math.floor(v.length * q)]);
+    };
+    const all = ally.concat(nonAlly);
+    const cP = cut(all, 'pos', [1 / 3, 2 / 3]), cV = cut(all, 'vola', [1 / 3, 2 / 3]), cA = cut(all, 'amt', [1 / 3, 2 / 3]);
+    const cell = (e) => `${e.pos > cP[1] ? 2 : e.pos > cP[0] ? 1 : 0}${e.vola > cV[1] ? 2 : e.vola > cV[0] ? 1 : 0}${e.amt > cA[1] ? 2 : e.amt > cA[0] ? 1 : 0}`;
+    const gA = new Map(), gN = new Map();
+    for (const e of ally) (gA.get(cell(e)) || gA.set(cell(e), []).get(cell(e))).push(e);
+    for (const e of nonAlly) (gN.get(cell(e)) || gN.set(cell(e), []).get(cell(e))).push(e);
+    let wsum = 0, wn = 0, cells = 0;
+    for (const [k, a2] of gA) {
+      const b2 = gN.get(k);
+      if (!b2 || a2.length < 20 || b2.length < 20) continue;   // ⛔ 樣本太少的格子不列入
+      wsum += (mean(a2.map((e) => e.e10)) - mean(b2.map((e) => e.e10))) * a2.length;
+      wn += a2.length; cells++;
+    }
+    const dCell = wn ? wsum / wn : NaN;
+    console.log(`   格內對照(位階×波動×金額 ${cells} 格 ・涵蓋 ${wn}/${ally.length} 筆):10日 ${sgn(dCell)}${nf(dCell)}pp`
+      + (isFinite(dCell) && dCell >= COST ? '' : ' 🚨 格內就塌了 → 多半是規模/位階的代理'));
+    results.push({ TH, d10, d20, dCell, n: ally.length, same: (q1 > 0) === (q2 > 0) });
   }
 
   console.log(`\n📌 判讀:每一行是「同盟 ≥3 家同買」減「**非同盟** ≥3 家同買」的 pp 差`);
@@ -310,5 +357,22 @@ if (SELFTEST) {
   if (bad.length) { console.error('\n❌ SELFTEST 失敗:'); bad.forEach((b) => console.error('   - ' + b)); process.exit(1); }
   console.log('\n✅ BROKER_ALLY_PROBE_SELFTEST_PASS(相似度找得到同盟、對照組也隔離得開)');
 } else {
-  main();
+  console.log('\n████ ① 正向:前半段學同盟、後半段驗收 ████');
+  const r1 = main(true);
+  console.log('\n\n████ ② 反向:後半段學同盟、前半段驗收(⛔ 沒過這關就是巧合)████');
+  const r2 = main(false);
+
+  // ⭐ 最決定性的一問:兩段學到的「同盟」是不是同一批人?
+  //    真的影子集團會在兩段都出現;學到不同人 = 那不是結構,是雜訊。
+  console.log('\n\n████ ③ 同盟本身穩不穩?(前半學到的 vs 後半學到的)████');
+  const key = ([, a, b]) => (a < b ? a + '|' + b : b + '|' + a);
+  for (const TH of [0.85, 0.7, 0.5]) {
+    const s1 = new Set(r1.sims.filter((x) => x[0] >= TH).map(key));
+    const s2 = new Set(r2.sims.filter((x) => x[0] >= TH).map(key));
+    let hit = 0; for (const k of s1) if (s2.has(k)) hit++;
+    const uni = s1.size + s2.size - hit;
+    console.log(`   sim ≥ ${TH}:前半 ${s1.size} 對 ・後半 ${s2.size} 對 ・兩段都出現 ${hit} 對`
+      + ` → Jaccard ${uni ? nf(hit / uni * 100, 1) : '0.0'}%`);
+  }
+  console.log('   📌 兩段重疊率接近 0 = 「同盟」不是穩定結構,是被那一半資料湊出來的。');
 }
