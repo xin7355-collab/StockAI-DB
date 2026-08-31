@@ -140,6 +140,47 @@ for (const f of files) {
     if (i >= 1 && chg[i] > 0 && dn[i - 1] >= 3) emit('🕯️ 連跌 3+ 根後第一根紅K', i);
     // ── ⑦ 漲停(對照:漲停後續)──
     if (chg[i] >= 9.2) emit('🔺 漲停', i);
+
+    // ── ⑧ 跳空缺口四類(V74.4.1,`_detectGap` 有這個分類但從沒回測過期望值)
+    //    向上跳空 = 今低 > 昨高;向下 = 今高 < 昨低。
+    //    「回補」= 之後 5 個交易日內有摸回缺口(⚠️ 那要看未來 → ⛔ 不可當進場條件,
+    //    這裡只是想知道「沒回補的那些後來走多遠」,結果只能當**觀察**不能當訊號)。
+    if (i >= 1) {
+      const gapUp = R[i].l > R[i - 1].h, gapDn = R[i].h < R[i - 1].l;
+      if (gapUp || gapDn) {
+        const gp = gapUp ? (R[i].l / R[i - 1].h - 1) * 100 : (R[i].h / R[i - 1].l - 1) * 100;
+        if (Math.abs(gp) >= 1) {
+          emit(gapUp ? '🕳️ 向上跳空 ≥1%' : '🕳️ 向下跳空 ≥1%', i);
+          // 帶量 vs 沒量(這個**當天就知道**,可以當進場條件)
+          if (gapUp) emit(vr >= 1.5 ? '🕳️ 向上跳空 × 帶量(≥1.5倍)' : '🕳️ 向上跳空 × 沒量', i);
+          // 位階(也是當天就知道)
+          if (gapUp) emit(pos >= 70 ? '🕳️ 向上跳空 × 高位階' : pos <= 30 ? '🕳️ 向上跳空 × 低位階' : '🕳️ 向上跳空 × 中位階', i);
+        }
+      }
+    }
+
+    // ── ⑨ 創 60 日新高後「回測不破」—— 最經典的「回後買上漲」型態
+    //    定義:i-5..i-1 之間創過 60 日新高,之後回檔但**沒有跌破那個高點的 95%**,
+    //    而且今天收紅站回。⚠️ 全部用**當天為止**的資訊,零前視。
+    if (i >= 66) {
+      const w60 = R.slice(i - 65, i - 5).map(x => x.c);
+      const nh = Math.max(...w60);
+      const seg = R.slice(i - 5, i);           // 最近 5 根(不含今天)
+      const madeHigh = seg.some(x => x.c >= nh);
+      const lowest = Math.min(...seg.map(x => x.l));
+      if (madeHigh && lowest >= nh * 0.95 && chg[i] > 0 && R[i].c >= nh * 0.98) {
+        emit('🏔️ 創60日高後回測不破(今天收紅)', i);
+      }
+    }
+
+    // ── ⑩ 極度量縮之後的爆量(「量先價行」的可測版本)
+    if (i >= 25) {
+      const v5 = R.slice(i - 5, i).reduce((s, x) => s + x.v, 0) / 5;
+      const v20p = R.slice(i - 25, i - 5).reduce((s, x) => s + x.v, 0) / 20;
+      if (v20p > 0 && v5 / v20p <= 0.6 && vr >= 2) {
+        emit(chg[i] > 0 ? '🔊 量縮後爆量 × 收紅' : '🔊 量縮後爆量 × 收黑', i);
+      }
+    }
   }
 }
 
@@ -190,7 +231,7 @@ const sub = (evs, f) => evs.filter(f).map(e => e[10]).filter(x => x != null);
 const baseSub = f => { const v = sub(base, f); return v.length ? avg(v) : null; };
 console.log('\n事件'.padEnd(35) + '全期    前半    後半   |逐年(24/25/26)      去最好年  扣成本');
 console.log('─'.repeat(100));
-for (const r of rows.slice(0, 18)) {
+for (const r of rows.slice(0, 26)) {
   const evs = buckets.get(r.k);
   const h1 = sub(evs, e => e._d < MID), h2 = sub(evs, e => e._d >= MID);
   const b1 = baseSub(e => e._d < MID), b2 = baseSub(e => e._d >= MID);
