@@ -100,10 +100,21 @@ RC = _strip(RESTORE)
 ck('⑥ 空過守門:_load_chips_deep_local 去註解後仍有程式碼', len(RC) > 800, f'只剩 {len(RC)}')
 ck('⑥b 要先用 ls-tree 問分支有哪幾天再取交集(⛔ 點名不存在的日期會讓 git archive 整個失敗 → 整包 156MB)',
    "'ls-tree'" in RC and 'd in have' in RC, '沒有交集過濾')
-ck('⑥c fetch 要帶 --filter=blob:none(只下載點名的那幾天)',
-   '--filter=blob:none' in RC, '沒有 partial fetch')
-ck('⑥d 解壓要 -C 對齊 CHIPS_DEEP_DIR(⛔ 解到 CWD 會「抓下來卻找不到」)',
-   '--strip-components=1' in RC and "-C '" in RC, '解壓路徑沒對齊')
+# 🚨 V74.3.1 這兩條原本釘的是「害它在 runner 上靜默失敗」的那個實作 —— 已反轉:
+#   `--filter=blob:none` 在 checkout 出來的非 partial clone 上拿不到 blob,
+#   後面 `git archive` 取不到內容,而 `capture_output=True` 又沒檢查 rc → 一聲不吭回 0 天。
+#   ⭐ 症狀在產物上看得出來:1,319 檔的 hist 剛好 2 天(上一輪 1 + 這一輪 1)。
+ck('⑥c ⛔ 不可再用 --filter=blob:none(非 partial clone 拿不到 blob,實測 runner 上回 0 天)',
+   '--filter=blob:none' not in RC, '又用回 partial fetch 了')
+ck('⑥d 改成一天一個 git show(partial/shallow 都能用,而且一天壞掉不會拖累其他天)',
+   'git' in RC and 'show' in RC and 'origin/chips_deep:chips_deep/' in RC, '沒有逐檔 git show')
+# ⚠️ 要數**兩處** —— 只驗「有沒有出現 returncode != 0」的話,拿掉 fetch 那個檢查
+#    還有 ls-tree 那個頂著,注入驗證會漏(第一版就是這樣)。
+ck('⑥e 🚨 ⛔ 不可靜默:fetch **與** ls-tree 的 rc 都要檢查,而且要印出「分支上幾天/要幾天/取得幾天」',
+   RC.count('returncode != 0') >= 2 and '取得' in RC and '這輪要' in RC,
+   f'rc 檢查只有 {RC.count("returncode != 0")} 處')
+ck('⑥f 🚨 一天都還原不到時要明說後果(hist 只會每輪長 1 天)',
+   '一天都還原不到' in RC and '每輪長 1 天' in RC, '沒說後果')
 
 # ── ⑦ 🚨 daily_miner 必須把新的一天**寫進** chips_deep(⛔ 只讀不寫 = 回測資料永遠停住)──
 ck('⑦ 批次抓到新的一天要順手存進 chips_deep',

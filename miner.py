@@ -3628,31 +3628,51 @@ def _load_chips_deep_local(dates_wanted):
             # ⭐ `--filter=blob:none` + 只點名要的那幾天 → 只下載 ~8MB,
             #    ⛔ 不是整包 155MB(467 天全下來,在採礦的時間預算裡是純浪費)。
             import subprocess
-            subprocess.run(['git', 'fetch', 'origin', 'chips_deep', '--depth=1',
-                            '--filter=blob:none'], capture_output=True, timeout=180)
-            # ⚠️ `git archive | tar -x` 解到 **CWD** 的 chips_deep/ —— 要用 `--strip 1 -C`
-            #    對齊 `CHIPS_DEEP_DIR`,⛔ 否則自訂路徑時「抓下來了卻找不到」(實測踩到)。
             deep_dir.mkdir(parents=True, exist_ok=True)
-            untar = f"tar -x --strip-components=1 -C '{deep_dir}'"
-            # ⚠️ 點名的日期只要**有一天不在分支上**,`git archive` 就整個失敗 → 退回整包
-            #    (實測:混進一個 1999-01-01 就把 467 天 156MB 全拉下來)。
-            #    → 先用 `ls-tree` 問分支上到底有哪幾天(只讀樹、不下載 blob),取交集再點名。
+            # 🚨 V74.3.1 ⛔ **不可以再用 `--filter=blob:none`**:
+            #   本機測起來完全正常,但在 runner 上還原回來 **0 天**,而且**一聲不吭** ——
+            #   #533 產物的形狀就是證據:1,319 檔的 hist 剛好是 2 天
+            #   (= 上一輪 1 天 + 這一輪 1 天),代表歷史天一天都沒進來。
+            #   真因是 checkout 出來的 repo 不是 partial clone,`--filter` 拿不到 blob,
+            #   後面 `git archive` 就取不到內容;而原本 `capture_output=True` **沒檢查 rc**
+            #   → 典型的靜默失敗(本專案自己最常記的那種)。
+            #   ⭐ 改成 **一天一個 `git show`**:partial/shallow 都能用,而且某一天壞掉
+            #      ⛔ 不會把其他天一起拖下水。
+            def _run(cmd, **kw):
+                return subprocess.run(cmd, capture_output=True, text=True, **kw)
+            fe = _run(['git', 'fetch', 'origin', 'chips_deep', '--depth=1'], timeout=600)
+            if fe.returncode != 0:
+                print(f"  📚 chips_deep fetch 失敗(rc={fe.returncode}):{(fe.stderr or '')[:160]}")
             have = set()
-            ls = subprocess.run(['git', 'ls-tree', '--name-only', 'origin/chips_deep',
-                                 'chips_deep/'], capture_output=True, text=True, timeout=60)
+            ls = _run(['git', 'ls-tree', '--name-only', 'origin/chips_deep', 'chips_deep/'], timeout=120)
+            if ls.returncode != 0:
+                print(f"  📚 chips_deep ls-tree 失敗(rc={ls.returncode}):{(ls.stderr or '')[:160]}")
             for ln in (ls.stdout or '').split('\n'):
                 ln = ln.strip()
                 if ln.endswith('.json.gz'):
                     have.add(ln.rsplit('/', 1)[-1][:-8])
             want = [d for d in dates_wanted if d in have]
-            if want:
-                paths = ' '.join(f"'chips_deep/{d}.json.gz'" for d in want)
-                subprocess.run(f'git archive origin/chips_deep -- {paths} | {untar}',
-                               shell=True, capture_output=True, timeout=300)
-            elif have:
-                print(f"  📚 chips_deep 有 {len(have)} 天,但都不是這輪要的 → 歷史天走 API")
+            okn, badn, err1 = 0, 0, ''
+            for d in want:
+                try:
+                    r = subprocess.run(['git', 'show', f'origin/chips_deep:chips_deep/{d}.json.gz'],
+                                       capture_output=True, timeout=180)
+                    if r.returncode == 0 and r.stdout:
+                        (deep_dir / f'{d}.json.gz').write_bytes(r.stdout)
+                        okn += 1
+                    else:
+                        badn += 1
+                        if not err1:
+                            err1 = (r.stderr or b'').decode('utf-8', 'replace')[:160]
+                except Exception as _e:
+                    badn += 1
+                    if not err1:
+                        err1 = str(_e)[:160]
+            # ⛔ 不可靜默 —— 講清楚分支上有幾天、要幾天、成功幾天、失敗原因
+            print(f"  📚 chips_deep 還原:分支上 {len(have)} 天 ・這輪要 {len(dates_wanted)} 天"
+                  f" ・取得 {okn} 天" + (f" ・失敗 {badn} 天({err1})" if badn else ""))
             if not any(deep_dir.glob('*.json.gz')):
-                print("  📚 chips_deep 分支還原不到(第一次跑或分支不存在)→ 歷史天全走 API")
+                print("  📚 chips_deep 一天都還原不到 → 歷史天全走 API(⚠️ hist 只會每輪長 1 天)")
                 return {}
         import gzip as _gzip
         for d in dates_wanted:
