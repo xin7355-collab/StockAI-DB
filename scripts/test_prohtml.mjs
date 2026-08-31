@@ -475,6 +475,11 @@ const L = await page.evaluate(async () => {
     out.counts = Object.fromEntries(Object.entries(PRO.LAB).map(([k, v]) => [k, v.length]));
     return out;
 });
+// ㉚ V74.4.3 使用者截圖:實測總表上方一大塊空白 —— #tabLab 被留在 .wrap 外面,
+//    吃到 .wrap 的 80px+safe-area 底部 padding。⛔ 四個分頁容器都必須在 .wrap 裡。
+const NEST = await page.evaluate(() =>
+  ['tabVal', 'tabChain', 'tabRot', 'tabLab'].every(id => !!document.querySelector('.wrap #' + id)));
+ok('㉚ 四個分頁容器都要在 .wrap 裡(⛔ 在外面會吃到 80px 底部 padding = 分頁頂端一大塊空白)', NEST);
 await browser.close();
 
 // ③ 數學
