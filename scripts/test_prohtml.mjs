@@ -75,11 +75,12 @@ const R = await page.evaluate(async () => {
     PRO._names = { '2382': '廣達', '1111': '假虧損', '2222': '假無帶' };
     PRO._cache['data/screener.json'] = {
         data_date: '2026-08-28',
-        cols: ['c', 'pe', 'chg', 'yoy', 'gm', 'f5', 't5', 'chg20', 'f10', 'pos252', 'pb'],
+        // ⚠️ amp20/amt 加在**最後** —— 既有斷言吃的是索引,插在中間會全部錯位(陷阱 #40 的鄰居)
+        cols: ['c', 'pe', 'chg', 'yoy', 'gm', 'f5', 't5', 'chg20', 'f10', 'pos252', 'pb', 'amp20', 'amt'],
         rows: {
-            '2382': [100, 10, 1.5, 20, 15, 500, 300, 5, 800, 88, 3.2],     // ⑬ 股價高位(88) + 估值低位(25) = 背離
-            '1111': [50, null, -2, -5, 3, -100, null, null, null, 12, 0.8],
-            '2222': [80, 16, 0.5, 8, 22, 0, 0, 2, 10, 45, 2.0],
+            '2382': [100, 10, 1.5, 20, 15, 500, 300, 5, 800, 88, 3.2, 5.0, 90],     // ⑬ 股價高位(88) + 估值低位(25) = 背離
+            '1111': [50, null, -2, -5, 3, -100, null, null, null, 12, 0.8, 1.0, 5],
+            '2222': [80, 16, 0.5, 8, 22, 0, 0, 2, 10, 45, 2.0, 3.5, 20],
         },
         ind: { '2382': '25' },
     };
@@ -328,10 +329,21 @@ const T = await page.evaluate(async () => {
     out.thBubs = document.querySelectorAll('#rotBubs .bub').length;
     out.thChips = document.getElementById('rotList').innerText.replace(/\s+/g, ' ');
     out.thVerd = document.getElementById('rotVerdict').innerText;
+    // ㉘ 🧬 個股泡泡圖:2408 高位階高振幅(命中)/ 8299 低位階低振幅(不命中)
+    PRO._cache['data/screener.json'].rows['2408'] = [80, 15, -0.2, 30, 30, 20597, 100, 49.8, 30000, 90, 2.5, 5.5, 300];
+    PRO._cache['data/screener.json'].rows['8299'] = [600, 12, -0.2, 20, 25, 0, 50, 31.1, 100, 20, 3.0, 1.2, 50];
     PRO.rotOpen('mem');
     await new Promise(r => setTimeout(r, 80));
     out.thDetTxt = document.getElementById('rotDetail').innerText;
     out.thDetRows = document.querySelectorAll('#rotDetail tbody tr').length;
+    {
+      const d = document.getElementById('rotDetail');
+      out.sbN = d.querySelectorAll('.sbub circle').length;
+      out.sbAmber = d.querySelectorAll('.sbub circle[stroke="var(--amber)"]').length;
+      out.sbGene = (d.innerText.match(/🧬 這一組命中 (\d+)\/(\d+)/) || []).slice(1).join('/');
+      out.sbGoto = /PRO\.gotoStock\('2408'\)/.test(d.innerHTML);
+      out.sbTxt = d.innerText;
+    }
     document.querySelectorAll('#tabRot details').forEach(d => d.open = true);
     out.thNote = document.getElementById('rotNote').innerText;
     PRO.rotOpen('mem');
@@ -619,6 +631,21 @@ ok('㉖e ⛔ themes 還沒產出時要說出來(⛔ 不可靜默退回官方版)
    /題材板塊的資料還沒產出/.test(T.thMissing) && /不是壞掉/.test(T.thMissing), T.thMissing.slice(0, 160));
 ok('㉖f 🚨 題材說明要含三條誠實限制:後見之明 / 實測不可套用 / 金額會重複計',
    /後見之明/.test(T.thNote) && /不可套用到題材版/.test(T.thNote) && /重複計/.test(T.thNote), T.thNote.slice(0, 300));
+// ㉘ 🧬 個股泡泡圖(使用者:「題材細到個股,用一樣的邏輯,還有它的股價高低」)
+ok('㉘ 題材明細要有個股泡泡圖,泡泡數 = 有資料的成分股數',
+   T.sbN === 2 && T.sbGoto, [T.sbN, T.sbGoto]);
+ok('㉘b 🧬 命中(位階≥75 且 振幅≥P60)要標出來,而且數字跟描邊數一致',
+   T.sbGene === '1/2' && T.sbAmber === 1, [T.sbGene, T.sbAmber]);
+ok('㉘c 🚨🚨 兩個軸必須是**位階 × 振幅**(個股層級實測有效的),⛔ 不可照抄板塊版的「誰在買」',
+   /pos252/.test(src.slice(src.indexOf('_stockBubHtml'), src.indexOf('_stockBubHtml') + 2600))
+   && /amp20/.test(src.slice(src.indexOf('_stockBubHtml'), src.indexOf('_stockBubHtml') + 2600))
+   && !/C\.f5|C\.t5|C\.f10/.test(src.slice(src.indexOf('_stockBubHtml'), src.indexOf('_stockBubHtml') + 2600)));
+ok('㉘d 🚨 必須寫出「個股層級的法人買超實測 0.64x」——⛔ 否則下一個人會把 Y 軸改回資金流',
+   /0\.64x/.test(T.sbTxt) && /比隨便挑一天還低/.test(T.sbTxt), T.sbTxt.slice(0, 300));
+ok('㉘e 🚨 必須寫「選股條件不是買進訊號」+ 回測還配了哪些條件(⛔ 不可讓人以為命中就會漲)',
+   /不是買進訊號/.test(T.sbTxt) && /尾盤進場/.test(T.sbTxt) && /一天只做 2 檔/.test(T.sbTxt), T.sbTxt.slice(0, 400));
+ok('㉘f ⚠️ 要誠實說波動是用「20 日振幅」代理、門檻是全市場 P60(⛔ 不可假裝跟回測用同一個量)',
+   /振幅.{0,8}代理|代理.{0,20}振幅/.test(T.sbTxt) && /P60/.test(T.sbTxt), T.sbTxt.slice(-260));
 ok('㉖g 切回官方模式要完整復原(泡泡 = 產業數)',
    T.backBubs === 4 && /官方產業/.test(T.backBtn), [T.backBubs, T.backBtn]);
 // ㉗ 📐 版面(使用者截圖:泡泡全部擠成一團 —— 實測舊版 97% 黏在中線)

@@ -153,6 +153,9 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .rotchip.on{background:rgba(34,211,238,.14);border-color:var(--cyan)}
 /* 🔎 板塊明細(點板塊 → 攤開裡面的個股) */
 .rotdet{margin-top:10px;border:1px solid var(--cyan);border-radius:10px;padding:10px 12px;background:rgba(34,211,238,.04)}
+.sbub{width:100%;background:var(--panel);border:1px solid var(--line2);border-radius:9px;margin:8px 0 6px}
+.sbub svg{width:100%;height:auto;display:block}
+.sgene{font-size:8px;fill:var(--amber);opacity:.9}
 .rdhead{font-size:12.5px;color:var(--txt);display:flex;align-items:center;gap:8px}
 .rdclose{margin-left:auto;font-size:10px;color:var(--cyan);cursor:pointer}
 .rdkv{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin:8px 0}
@@ -266,12 +269,11 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 <div class="topbar"><div class="topbar-in">
   <div class="brand"><div class="logo">🛰️</div><div><h1>產業作戰室 <span style="color:var(--cyan)">PRO</span></h1><div class="ver">估值 × 籌碼 × AI 產業鏈 <span class="datebadge" id="dataDate"></span></div></div></div>
   <div class="tabs">
-    <button class="tab-btn on" id="tabBtnVal" onclick="PRO.switchTab('val')">📊 產業估值</button>
-    <button class="tab-btn" id="tabBtnChain" onclick="PRO.switchTab('chain')">🤖 AI 產業鏈</button>
-    <button class="tab-btn" id="tabBtnRot" onclick="PRO.switchTab('rot')">💧 板塊輪動</button>
-    <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">🔬 實測總表</button>
+    <button class="tab-btn on" id="tabBtnVal" onclick="PRO.switchTab('val')">產業估值</button>
+    <button class="tab-btn" id="tabBtnChain" onclick="PRO.switchTab('chain')">AI 產業鏈</button>
+    <button class="tab-btn" id="tabBtnRot" onclick="PRO.switchTab('rot')">板塊輪動</button>
+    <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
   </div>
-  <div class="swipehint">👈 左右滑動可切換分頁 ・ 在最上方下拉可重新整理 ・ 點股名跳到散戶救星(返回鍵回到原位)</div>
 </div></div>
 
 <div class="wrap">
@@ -361,10 +363,6 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
   </div>
 </div>
 
-<footer>
-  🛰️ 產業作戰室 PRO ・ 資料庫:散戶救星(每日收盤後自動更新)・ 本頁僅整理客觀數據與人工產業框架,不構成投資建議,⛔ 不給目標價與買賣評等。<br>
-  估值方法:隱含價位 = 年化EPS(近4季) × 該股近3年真實 PE 分位 ——「<b>歷史估值對照價位</b>」,意思是「如果市場給它跟過去一樣的評價,現在的獲利值多少錢」。過去的估值<b>不保證</b>未來會回到同一區間。
-</footer>
 </div>
 <div id="tabLab" class="hidden">
   <div class="kpis" id="labKpis"></div>
@@ -930,6 +928,71 @@ const PRO = {
     this._rotDetail(k);
     this._rotFi(k);
   },
+  // 🧬 個股泡泡圖(V74.3.9,使用者:「題材細到個股,用一樣的邏輯,還有它的股價高低」)
+  //
+  // 🚨🚨 **版面一樣、兩個軸都換掉** —— 這是這張圖最重要的設計決定:
+  //   板塊版的 Y 軸是「誰在買(法人資金流)」,那在**個股層級實測是反向的**:
+  //     ・limitup_probe:外資當日買超佔量比 ≥20% → **0.64x**(比隨便挑一天還低)
+  //     ・chips_deep_probe:分點籌碼「當天的量」不帶方向資訊(買賣兩端同號)
+  //   → ⛔ 照抄板塊版的軸會做出一張很好看、但方向錯的圖。
+  //
+  // ⭐ 換成**個股層級實測有效**的兩個軸(screener 兩欄覆蓋率都是 100%):
+  //   X = pos252 一年位階   —— screener_edge_probe:位階高檔 ≥75 **+1.76pp**、低檔 −0.63pp
+  //   Y = amp20  20日振幅   —— 波動(🧬 的另一半)
+  //   右上角 = 🧬「高位階 + 高波動」= portfolio_backtest 36 個月 **+289.6 萬**、
+  //            六道關卡全過、24 格門檻敏感度全部贏基準的那組配置。
+  //   ⛔ 但它是**選股條件**不是「命中就會漲」—— 那個回測還配了尾盤進場/破5MA出場/每天2檔。
+  GENE_POS: 75, GENE_AMP: 3.2,          // ⚠️ AMP 是全市場 amp20 的 P60(實測 3.2%),⛔ 不是隨手訂的
+  _stockBubHtml(syms) {
+    const scr = this._cache['data/screener.json'];
+    if (!scr || !scr.rows) return '';
+    const C = {}; (scr.cols || []).forEach((c, i) => C[c] = i);
+    if (C.pos252 == null || C.amp20 == null) return '';
+    const pts = [];
+    for (const sy of syms) {
+      const r = scr.rows[sy]; if (!r) continue;
+      const po = r[C.pos252], ap = r[C.amp20];
+      if (!Number.isFinite(po) || !Number.isFinite(ap)) continue;
+      pts.push({ sy, po, ap, chg: r[C.chg20], amt: r[C.amt] || 0 });
+    }
+    if (pts.length < 2) return '';
+    const W = 340, H = 210, L = 26, B = 22, T = 10, R = 8;
+    const AMPMAX = Math.max(7, ...pts.map(p => p.ap)) * 1.05;
+    const px = v => L + (v / 100) * (W - L - R);
+    const py = v => H - B - (v / AMPMAX) * (H - B - T);
+    const gx = px(this.GENE_POS), gy = py(this.GENE_AMP);
+    const hit = pts.filter(p => p.po >= this.GENE_POS && p.ap >= this.GENE_AMP);
+    const bub = pts.map(p => {
+      const on = p.po >= this.GENE_POS && p.ap >= this.GENE_AMP;
+      const rr = 4 + Math.min(7, Math.sqrt(Math.max(0, p.amt)) * 0.55);
+      const col = (p.chg || 0) >= 0 ? 'rgba(255,93,93,.6)' : 'rgba(61,220,132,.55)';
+      return `<g style="cursor:pointer" onclick="PRO.gotoStock('${p.sy}')">
+        <circle cx="${px(p.po).toFixed(1)}" cy="${py(p.ap).toFixed(1)}" r="${rr.toFixed(1)}"
+          fill="${col}" stroke="${on ? 'var(--amber)' : 'transparent'}" stroke-width="${on ? 1.6 : 0}"/>
+        <text class="qtick" x="${px(p.po).toFixed(1)}" y="${(py(p.ap) - rr - 2).toFixed(1)}"
+          text-anchor="middle" style="paint-order:stroke;stroke:#0b1220;stroke-width:2.5px">${(this._names || {})[p.sy] || p.sy}</text></g>`;
+    }).join('');
+    const yt = [0, AMPMAX / 2, AMPMAX].map(v =>
+      `<text class="qtick" x="${L - 3}" y="${(py(v) + 3).toFixed(1)}" text-anchor="end">${v.toFixed(1)}%</text>`).join('');
+    return `<div class="sbub"><svg viewBox="0 0 ${W} ${H}">
+      <rect x="${gx.toFixed(1)}" y="${T}" width="${(W - R - gx).toFixed(1)}" height="${(gy - T).toFixed(1)}"
+        fill="rgba(245,185,66,.09)" stroke="var(--amber)" stroke-width=".6" stroke-dasharray="3 3"/>
+      <text class="sgene" x="${(W - R - 3).toFixed(1)}" y="${T + 11}" text-anchor="end">🧬 高位階 + 高波動</text>
+      ${yt}${bub}
+      <text class="qtick" x="${L}" y="${H - 6}">位階 0(便宜)</text>
+      <text class="qtick" x="${W - R}" y="${H - 6}" text-anchor="end">100(貴/強)</text>
+      <text class="qtick" x="2" y="${T + 8}">振幅</text>
+     </svg></div>
+     <div class="note" style="margin:-2px 0 6px">
+       🧬 這一組命中 <b style="color:var(--amber)">${hit.length}/${pts.length}</b> 檔${hit.length ? ':' + hit.map(p => (this._names || {})[p.sy] || p.sy).join('・') : ''}。
+       ⭐ <b>兩個軸都是實測有效的</b>(⛔ 刻意不用板塊版那個「誰在買」——
+       個股層級的法人買超佔量比實測是 <b>0.64x</b>,比隨便挑一天還低)。
+       X 軸位階實測高檔 <b>+1.76pp</b>、低檔 −0.63pp;右上角那區在 36 個月組合回測是
+       <b>+289.6 萬</b>(不挑這條只有 126.1 萬、輸給買 0050)。
+       ⛔ 但它是**選股條件不是買進訊號** —— 那個回測還配了尾盤進場、跌破 5 日線出場、一天只做 2 檔。
+       ⚠️ 波動用「20 日振幅」代理(回測用的是年化波動率),門檻 3.2% 是全市場 P60。
+     </div>`;
+  },
   // ⭐ 四象限計數 —— 這一天市場的樣子(⛔ 只做描述,不下多空)
   _rotQuad(list) {
     const box = document.getElementById('rotQuad');
@@ -1149,6 +1212,7 @@ const PRO = {
           <div><span>買超寬度</span><b>${rows.length ? `外資5日買超 ${rows.filter(x => (x.f5 || 0) > 0).length}/${rows.length} 檔` : '—'}</b></div>
           <div><span>近 ${this._ROT.win} 日漲跌</span><b class="${this.cls(o.r20[k])}">${o.r20[k] == null ? '—' : (o.r20[k] >= 0 ? '+' : '') + o.r20[k].toFixed(1) + '%'}</b></div>
         </div>
+        ${rows.length ? this._stockBubHtml(rows.map(r => r.sy)) : ''}
         ${rows.length ? `<div class="tblwrap" style="max-height:44vh"><table class="grid"><thead><tr>
           <th>個股</th><th>當日</th><th>外資5日</th><th>近20日</th></tr></thead><tbody>` +
           rows.map(r => `<tr>
