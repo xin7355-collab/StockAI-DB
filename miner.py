@@ -3624,13 +3624,34 @@ def _load_chips_deep_local(dates_wanted):
     try:
         deep_dir = Path(os.environ.get('CHIPS_DEEP_DIR') or 'chips_deep')
         if not deep_dir.is_dir() or not any(deep_dir.glob('*.json.gz')):
-            # 分支還沒還原到工作區 → 自己抓(checkout 的 git 憑證在 job 裡仍有效)
+            # 分支還沒還原到工作區 → 自己抓(checkout 的 git 憑證在 job 裡仍有效)。
+            # ⭐ `--filter=blob:none` + 只點名要的那幾天 → 只下載 ~8MB,
+            #    ⛔ 不是整包 155MB(467 天全下來,在採礦的時間預算裡是純浪費)。
             import subprocess
-            subprocess.run(['git', 'fetch', 'origin', 'chips_deep', '--depth=1'],
-                           capture_output=True, timeout=120)
-            r = subprocess.run('git archive origin/chips_deep | tar -x', shell=True,
-                               capture_output=True, timeout=180)
-            if r.returncode != 0 or not deep_dir.is_dir():
+            subprocess.run(['git', 'fetch', 'origin', 'chips_deep', '--depth=1',
+                            '--filter=blob:none'], capture_output=True, timeout=180)
+            # ⚠️ `git archive | tar -x` 解到 **CWD** 的 chips_deep/ —— 要用 `--strip 1 -C`
+            #    對齊 `CHIPS_DEEP_DIR`,⛔ 否則自訂路徑時「抓下來了卻找不到」(實測踩到)。
+            deep_dir.mkdir(parents=True, exist_ok=True)
+            untar = f"tar -x --strip-components=1 -C '{deep_dir}'"
+            # ⚠️ 點名的日期只要**有一天不在分支上**,`git archive` 就整個失敗 → 退回整包
+            #    (實測:混進一個 1999-01-01 就把 467 天 156MB 全拉下來)。
+            #    → 先用 `ls-tree` 問分支上到底有哪幾天(只讀樹、不下載 blob),取交集再點名。
+            have = set()
+            ls = subprocess.run(['git', 'ls-tree', '--name-only', 'origin/chips_deep',
+                                 'chips_deep/'], capture_output=True, text=True, timeout=60)
+            for ln in (ls.stdout or '').split('\n'):
+                ln = ln.strip()
+                if ln.endswith('.json.gz'):
+                    have.add(ln.rsplit('/', 1)[-1][:-8])
+            want = [d for d in dates_wanted if d in have]
+            if want:
+                paths = ' '.join(f"'chips_deep/{d}.json.gz'" for d in want)
+                subprocess.run(f'git archive origin/chips_deep -- {paths} | {untar}',
+                               shell=True, capture_output=True, timeout=300)
+            elif have:
+                print(f"  📚 chips_deep 有 {len(have)} 天,但都不是這輪要的 → 歷史天走 API")
+            if not any(deep_dir.glob('*.json.gz')):
                 print("  📚 chips_deep 分支還原不到(第一次跑或分支不存在)→ 歷史天全走 API")
                 return {}
         import gzip as _gzip

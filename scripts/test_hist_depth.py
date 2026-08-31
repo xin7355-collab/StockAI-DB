@@ -93,6 +93,18 @@ ck('⑤d 實跑:超過上限要截斷成 CHIP_HIST_KEEP 天,且保留**最新**�
    len(big) == miner.CHIP_HIST_KEEP and big[-1]['d'] == '2026-06-28',
    f'{len(big)} 天,最後 {big[-1]["d"] if big else "-"}')
 
+# ── ⑥ chips_deep 還原:只拉需要的那幾天(⛔ 不可整包 156MB)──────────
+RESTORE = SRC[SRC.index('def _load_chips_deep_local'):]
+RESTORE = RESTORE[:RESTORE.index('\ndef ', 10)]
+RC = _strip(RESTORE)
+ck('⑥ 空過守門:_load_chips_deep_local 去註解後仍有程式碼', len(RC) > 800, f'只剩 {len(RC)}')
+ck('⑥b 要先用 ls-tree 問分支有哪幾天再取交集(⛔ 點名不存在的日期會讓 git archive 整個失敗 → 整包 156MB)',
+   "'ls-tree'" in RC and 'd in have' in RC, '沒有交集過濾')
+ck('⑥c fetch 要帶 --filter=blob:none(只下載點名的那幾天)',
+   '--filter=blob:none' in RC, '沒有 partial fetch')
+ck('⑥d 解壓要 -C 對齊 CHIPS_DEEP_DIR(⛔ 解到 CWD 會「抓下來卻找不到」)',
+   '--strip-components=1' in RC and "-C '" in RC, '解壓路徑沒對齊')
+
 print()
 if FAIL:
     print(f'❌ {len(FAIL)} 條沒過:')
