@@ -99,15 +99,22 @@ def http_json(url, timeout=45):
 
 
 def roc2iso(s):
-    """115/08/29 → 2026-08-29;已是西元就原樣。"""
+    """115/08/29 或 113.03.08 → 西元 ISO(🚨 首跑實測:TWSE rwd 回的是**點分隔**民國年,
+    第一版只吃斜線 → 271 列全被丟成 0 筆而且零錯誤訊息 —— 陷阱 #40 的又一型)。"""
     s = str(s or '').strip()
-    m = re.match(r'^(\d{2,3})/(\d{1,2})/(\d{1,2})$', s)
+    m = re.match(r'^(\d{2,3})[./](\d{1,2})[./](\d{1,2})$', s)
     if m:
         return f'{int(m.group(1)) + 1911}-{int(m.group(2)):02d}-{int(m.group(3)):02d}'
-    m = re.match(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})', s)
+    m = re.match(r'^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})', s)
     if m:
         return f'{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}'
     return ''
+
+
+def is_stockish(sid):
+    """回測要的是股票/ETF:4 碼 = 個股、00 開頭 5-6 碼 = ETF。
+    ⛔ 權證(如 069954 中興電中信38購01)混在 TWSE 注意名單裡,要濾掉。"""
+    return bool(re.match(r'^\d{4}$', sid) or re.match(r'^00\d{3,4}$', sid))
 
 
 def main():
@@ -192,8 +199,8 @@ def main():
                         dt = roc2iso(row[i_dt])
                     except Exception:
                         continue
-                    if re.match(r'^\d{4,6}$', sid) and dt:
-                        by_day.setdefault(dt, []).append(sid)
+                    if is_stockish(sid) and dt and sid not in by_day.setdefault(dt, []):
+                        by_day[dt].append(sid)
                 for dt in sorted(by_day):
                     print(f'N|{dt}|{",".join(by_day[dt])}')
                     total += len(by_day[dt])
