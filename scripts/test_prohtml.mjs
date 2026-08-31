@@ -354,9 +354,16 @@ ok('⑦c null 排最後(4585 chg20=null)', /4585/.test(R.last2), R.last2.slice(0
 ok('⑦d 利潤池有中文名而且可點', /台積電/.test(R.chainTxt) && /PRO\.gotoStock\('2330'\)/.test(R.chainHtml));
 // ⑮ 階段位置 / 主戰場
 ok('⑮ 主戰場判為 L3(L3 成員被灌成最強)', R.front && R.front.lv === 3, R.front);
-ok('⑮b 🚧 樣本不足 5 檔 → ⛔ 不判定主戰場', R.frontEmpty === null, R.frontEmpty);
+ok('⑮b 🚧 樣本不足 10 檔 → ⛔ 不判定主戰場(門檻 5→10,實測後改的)', R.frontEmpty === null, R.frontEmpty);
 ok('⑮c 表格有「階段位置」欄(主戰場/落後/太早)', /🎯 主戰場|⏳ 落後|🌱 太早/.test(R.chainTxt));
-ok('⑮d 🚨 文案必須寫「不是預測、未實測」', /不是 AI 進度預測/.test(R.chainTxt) && /沒有實測過預測力/.test(R.chainTxt), R.chainTxt.slice(0, 300));
+// ⚠️ V74.2.9 起「未實測」那句已經不成立(ailevel_probe 測過了)→ 改成必須寫出**實測結果**
+ok('⑮d 🚨 文案必須寫「不是預測」+ 實測結果(⛔ 不可再寫「沒有實測過」)',
+   /不是 AI 進度預測/.test(R.chainTxt) && /實測沒有預測力/.test(R.chainTxt)
+   && !/沒有實測過預測力/.test(R.chainTxt), R.chainTxt.slice(0, 400));
+ok('⑮d2 🚨 實測數字要寫在卡上(12 格全滅 + 幅度)',
+   /12 格全部沒過關/.test(R.chainTxt) && /\+0\.72pp/.test(R.chainTxt), R.chainTxt.slice(0, 500));
+ok('⑮d3 ⚠️ 小樣本假象要點名(成員最少的層靠雜訊佔住最強)',
+   /42~47% 的時間/.test(R.chainTxt) && /10 檔/.test(R.chainTxt), R.chainTxt.slice(0, 600));
 ok('⑮e 成熟度那條要說明是人工框架、不隨時間增加', /不會隨時間自己增加/.test(R.chainTxt));
 // ⑱ 供應鏈五層
 ok('⑱ 五層篩選有作用(B 層 ' + R.bOnly + ' 檔)', R.bRows === R.bOnly && R.bOnly > 0 && R.bRows < R.allRows, [R.bRows, R.bOnly, R.allRows]);

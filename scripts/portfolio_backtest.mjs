@@ -231,17 +231,29 @@ for (const sym of syms) {
                         const endJ = Math.min(last, eIdx + a.maxD);
                         const maN = a.exit === 'ma10' ? 10 : a.exit === 'ma20' ? 20 : a.exit === 'ma5' ? 5 : 0;
                         const trailPct = /^trail(\d+)$/.test(a.exit) ? +RegExp.$1 : 0;
+                        // ⏱️ V74.2.9 時間停損:進場後 D 天內漲不到 P% 就先出場。
+                        //   ⭐ 它針對的是**資金效率**(勝率只有 33%,錯的時候越早離開越好),
+                        //   ⛔ 不是方向判斷 —— 所以它跟 ma/trail **疊加**而不是取代。
+                        const tm = /^(ma\d+|trail\d+|none)?tm(\d+)_(\d+)$/.exec(a.exit);
+                        const tmD = tm ? +tm[2] : 0, tmP = tm ? +tm[3] : 0;
+                        const tmBase = tm && tm[1] && tm[1] !== 'none' ? tm[1] : '';
+                        const maN2 = tmBase.startsWith('ma') ? +tmBase.slice(2) : maN;
+                        const trailPct2 = /^trail(\d+)$/.test(tmBase) ? +RegExp.$1 : trailPct;
                         let peak = entry;
                         for (let j = eIdx + 1; j <= endJ; j++) {
                             const c = C(j);
                             if (c > peak) peak = c;
                             if (c <= stop) { exitP = stop; exitIdx = j; break; }
-                            // 🚪 移動停利:從進場後的最高收盤回落 N% 就走(讓贏家跑,輸家照樣被 stop 砍)
-                            if (trailPct > 0 && c <= peak * (1 - trailPct / 100)) { exitP = c; exitIdx = j; break; }
-                            if (maN > 0 && j >= maN - 1) {
-                                let sum = 0; for (let q = 0; q < maN; q++) sum += C(j - q);
-                                if (c < sum / maN) { exitP = c; exitIdx = j; break; }
+                            // ⏱️ 到了第 tmD 天,若最高點還沒漲過 tmP% → 認賠時間成本先出
+                            if (tmD > 0 && j - eIdx >= tmD && peak < entry * (1 + tmP / 100)) {
+                                exitP = c; exitIdx = j; break;
                             }
+                            if (maN2 > 0 && j >= maN2 - 1) {
+                                let s2 = 0; for (let q = 0; q < maN2; q++) s2 += C(j - q);
+                                if (c < s2 / maN2) { exitP = c; exitIdx = j; break; }
+                            }
+                            if (trailPct2 > 0 && c <= peak * (1 - trailPct2 / 100)) { exitP = c; exitIdx = j; break; }
+                            // 🚪 移動停利:從進場後的最高收盤回落 N% 就走(讓贏家跑,輸家照樣被 stop 砍)
                             if (j === endJ) { exitP = c; exitIdx = j; }
                         }
                         // ⚠️ inD 一律記「**訊號日**」—— 選股是那天晚上做的決定,
