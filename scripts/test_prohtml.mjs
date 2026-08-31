@@ -210,12 +210,13 @@ const T = await page.evaluate(async () => {
     PRO._cache['data/sector_rot.json'] = {
         updated: '2026-08-31 20:00', win: 20, fiwin: 5, listed_only: true,
         days: ['2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28', '2026-08-29'],
+        flow_keys: { f: '外資', t: '投信', dl: '自營', mg: '融資(散戶代理)' },
         ind: {
-            '15': { n: 28, r20: [-5, -2, 0, 1, 8], fi5: [1, 2, 3, 4, 5] },
-            '17': { n: 32, r20: [1, 1, 1, 1, 3], fi5: [0, 0, 0, 0, -50] },
-            '10': { n: 31, r20: [2, 2, 2, 2, -4], fi5: [0, 0, 0, 0, 10] },
-            '24': { n: 96, r20: [8, 5, 3, 0, -9], fi5: [0, 0, 0, 0, 900] },
-            '99': { n: 3, r20: [null, null, null, null, null], fi5: [null, null, null, null, null] },
+            '15': { n: 28, r20: [-5, -2, 0, 1, 8], flow: { f: [1, 1, 1, 1, 1], t: [1, 1, 1, 1, 1], dl: [0, 0, 0, 0, 0], mg: [1, 1, 1, 1, 1] } },
+            '17': { n: 32, r20: [1, 1, 1, 1, 3], flow: { f: [-10, -10, -10, -10, -10], t: [5, 5, 5, 5, 5], dl: [0, 0, 0, 0, 0], mg: [-1, -1, -1, -1, -1] } },
+            '10': { n: 31, r20: [2, 2, 2, 2, -4], flow: { f: [2, 2, 2, 2, 2], t: [0, 0, 0, 0, 0], dl: [0, 0, 0, 0, 0], mg: [0, 0, 0, 0, 0] } },
+            '24': { n: 96, r20: [8, 5, 3, 0, -9], flow: { f: [180, 180, 180, 180, 180], t: [-77, -77, -77, -77, -77], dl: [0, 0, 0, 0, 0], mg: [-17, -17, -17, -17, -17] } },
+            '99': { n: 3, r20: [null, null, null, null, null], flow: { f: [null, null, null, null, null], t: [null, null, null, null, null], dl: [null, null, null, null, null], mg: [null, null, null, null, null] } },
         },
     };
     PRO.switchTab('rot');
@@ -232,6 +233,9 @@ const T = await page.evaluate(async () => {
         note: document.getElementById('rotNote').innerText,
         fiNote: document.getElementById('rotFiNote').innerText,
         fiFirst: (document.querySelector('#rotFiBody tr td') || {}).textContent,
+        flowChks: [...document.querySelectorAll('#rotFlowBar .fchk')].map(e => e.textContent.trim()),
+        flowOnN: document.querySelectorAll('#rotFlowBar .fchk.on').length,
+        headTxt: document.getElementById('rotFiHead').innerText,
         bar24Left: (rows.find(e => e.dataset.k === '24') || document.createElement('i')).querySelector ? rows.find(e => e.dataset.k === '24').querySelector('.rbar').style.left : '',
     };
     // 拉回第 0 天 → 半導體那時最強,排序必須真的換位置(⛔ 不動 = 動畫是假的)
@@ -241,6 +245,16 @@ const T = await page.evaluate(async () => {
     out.day0 = document.getElementById('rotDay').textContent;
     // 播放後要能停,⛔ 不可留一個背景 timer
     PRO.rotPlay(); out.playing = !!PRO._rotTimer;
+    PRO.rotStop();
+    // 打勾疊加:關掉外資 → 表頭與排序都要跟著變
+    PRO.toggleFlow('f');
+    out.headNoF = document.getElementById('rotFiHead').innerText;
+    out.firstNoF = (document.querySelector('#rotFiBody tr td') || {}).textContent;
+    // ⛔ 全部關掉 = 空表 → 最後一個不可以被關掉
+    PRO.toggleFlow('t'); PRO.toggleFlow('mg');
+    out.lastOnN = document.querySelectorAll('#rotFlowBar .fchk.on').length;
+    PRO.toggleFlow('f'); PRO.toggleFlow('t');
+    out.noteTxt = document.getElementById('rotFiNote').innerText;
     PRO.switchTab('val');
     out.stoppedOnLeave = !PRO._rotTimer;
     return out;
@@ -339,9 +353,26 @@ ok('㉒e 結論要點名前 3 / 後 3(🎯⛔ 圖示,⛔ 不靠顏色)', /🎯/.
 ok('㉒f 🚨「幾天才有價值」必須寫出實測數字,⛔ 不可只說「20 日」', /1 日窗口/.test(T.note) && /60 日窗口/.test(T.note) && /\+1\.44pp/.test(T.note), T.note.slice(0, 200));
 ok('㉒g 🚨 必須寫「刻意沒做錢在板塊間搬家的動畫」+ 原因', /錢在板塊間搬家/.test(T.note) && /≈0 甚至是負的/.test(T.note), T.note.slice(-260));
 ok('㉒h ⭐「避開最弱比追最強更有價值」要寫出來', /避開最弱/.test(T.note) && /-0\.8pp|−0\.8pp/.test(T.note.replace('−', '-')), T.note.slice(0, 400));
-ok('㉒i 外資表按金額排 → 半導體(900億)第一', T.fiFirst === '半導體', T.fiFirst);
+ok('㉒i 誰在買:預設勾選那幾條加總排序 → 半導體第一', T.fiFirst === '半導體', T.fiFirst);
 ok('㉒j 🚨 外資「買最多卻最弱」的現成例子要主動點出來', /今天正好有現成的例子/.test(T.fiNote) && /半導體/.test(T.fiNote), T.fiNote.slice(0, 200));
-ok('㉒k ⛔ 外資那張要明說只做描述、沒過關', /只做描述/.test(T.fiNote) && /沒過關/.test(T.fiNote), T.fiNote.slice(-200));
+ok('㉒k ⛔ 那張表要明說只做描述、不排名不下多空', /只做描述/.test(T.fiNote) && /不排名/.test(T.fiNote), T.fiNote.slice(-260));
+// ㉓ 👥 三大 + 散戶疊加(使用者:「三大加上散戶,打勾各別重疊顯示」)
+ok('㉓ 四個打勾:外資 / 投信 / 自營 / 融資(散戶代理)',
+   T.flowChks.length === 4 && /外資/.test(T.flowChks[0]) && /投信/.test(T.flowChks[1])
+   && /自營/.test(T.flowChks[2]) && /融資/.test(T.flowChks[3]), T.flowChks);
+ok('㉓b 表頭跟著勾選變(預設 3 條)', T.flowOnN === 3 && /外資/.test(T.headTxt) && /投信/.test(T.headTxt), [T.flowOnN, T.headTxt]);
+ok('㉓c 取消外資 → 表頭不再有外資、排序改用剩下的(半導體投信 −77 → 不再第一)',
+   !/外資/.test(T.headNoF) && T.firstNoF !== '半導體', [T.headNoF, T.firstNoF]);
+ok('㉓d ⛔ 不可全部取消(最後一個要擋住,否則變空表)', T.lastOnN >= 1, T.lastOnN);
+ok('㉓e 🚨🚨 必須明寫「散戶不能用總量減三大」+ 為什麼(恆等式、完美鏡像、零資訊)',
+   /不能.{0,4}用.{0,10}三大法人/.test(T.noteTxt) && /鏡像/.test(T.noteTxt) && /沒有官方的「散戶買賣超」/.test(T.noteTxt),
+   T.noteTxt.slice(0, 300));
+ok('㉓f 🚨「誰在追誰買」要誠實說沒有誰固定跟誰,⛔ 不可宣稱外資領先',
+   /沒有誰固定跟誰/.test(T.noteTxt) && /量不出來/.test(T.noteTxt), T.noteTxt.slice(0, 600));
+ok('㉓g ⭐ 跟單數字必須配「自己續買」的對照(⛔ 沒對照就是假結論)',
+   /自己連買/.test(T.noteTxt) && /自己續買/.test(T.noteTxt) && /\+2\.05pp/.test(T.noteTxt), T.noteTxt.slice(-700));
+ok('㉓h ⭐ 要點出「外資買了之後別人跟」幾乎沒有加成(⛔ 不可只講對自己結論有利的那半)',
+   /加成只有.{0,12}沒有/.test(T.noteTxt.replace(/\s/g, '')) || /\+0\.08pp/.test(T.noteTxt), T.noteTxt.slice(-600));
 ok('㉒l ⛔ 切走分頁要停掉動畫(不可留背景 timer)', T.playing && T.stoppedOnLeave, [T.playing, T.stoppedOnLeave]);
 ok('⑩ 載入無 pageerror', errs.length === 0, errs.join(' | '));
 

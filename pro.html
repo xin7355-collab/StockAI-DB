@@ -139,6 +139,16 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .rotrow .rbar{position:absolute;top:0;height:14px;border-radius:3px;
   transition:width .42s cubic-bezier(.4,0,.2,1),left .42s cubic-bezier(.4,0,.2,1)}
 .rotrow .rv{flex:0 0 52px;font-size:10px;font-family:var(--mono);text-align:right}
+/* 👥 誰在買:打勾疊加 */
+.flowbar{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px;align-items:center}
+.fchk{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:5px 9px;border-radius:999px;
+  border:1px solid var(--line2);background:var(--panel2);color:var(--dim2);cursor:pointer;user-select:none}
+.fchk.on{color:var(--txt);border-color:currentColor}
+.fchk i{width:9px;height:9px;border-radius:2px;background:currentColor;display:inline-block;opacity:.35}
+.fchk.on i{opacity:1}
+.fbars{display:flex;flex-direction:column;gap:2px;min-width:96px}
+.fbar{position:relative;height:7px;background:var(--line);border-radius:2px}
+.fbar b{position:absolute;top:0;height:7px;border-radius:2px;display:block}
 /* ── 表格 ── */
 /* 📌 表格凍結:標的欄(左)+ 表頭列(上)都固定住,橫向捲動時才比對得了
    ⚠️ 表頭 sticky top 要生效,容器**必須自己有垂直捲動**(max-height + overflow:auto)——
@@ -296,10 +306,9 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <div id="rotNote"></div>
   </div>
   <div class="panel">
-    <h2>💰 外資的錢往哪流 <span class="sub">⛔ 只做描述 —— 實測它排不出有效順序</span></h2>
-    <div class="tblwrap" style="max-height:56vh"><table class="grid" id="rotFiTbl"><thead><tr>
-      <th>產業</th><th>外資近5日</th><th>近20日報酬</th><th>成分股</th>
-    </tr></thead><tbody id="rotFiBody"></tbody></table></div>
+    <h2>👥 誰在買 <span class="sub">三大法人 + 散戶代理・打勾可各別疊加</span></h2>
+    <div class="flowbar" id="rotFlowBar"></div>
+    <div class="tblwrap" style="max-height:56vh"><table class="grid" id="rotFiTbl"><thead><tr id="rotFiHead"></tr></thead><tbody id="rotFiBody"></tbody></table></div>
     <div id="rotFiNote"></div>
   </div>
 </div>
@@ -586,29 +595,103 @@ const PRO = {
         <span style="opacity:.75">比的是「近 ${R.win} 個交易日,該產業成分股漲跌幅中位數」(${N} 個產業排名)。</span>
       </div>`;
   },
+  // 👥 三大法人 + 散戶代理 —— 打勾疊加
+  // 🚨🚨 「散戶」用的是**融資餘額變化**(真實獨立資料),
+  //    ⛔ **絕不可以**用「−(外資+投信+自營)」當散戶 —— 那是**恆等式**不是資料:
+  //    每一股都有買方與賣方 → 非三大法人的淨額必然等於三大法人的相反數,
+  //    畫出來會是完美鏡像(「法人買、散戶賣!」)但**零資訊**;
+  //    而且那個「非三大」裡還包含主力分點、公司派、ETF、造市商,根本不是散戶。
+  FLOW: [
+    ['f', '🌍 外資', '#ff5d5d'],
+    ['t', '🏦 投信', '#f5b942'],
+    ['dl', '🏛️ 自營', '#a78bfa'],
+    ['mg', '💳 融資(散戶代理)', '#22d3ee'],
+  ],
+  _flowOn: { f: true, t: true, dl: false, mg: true },
+  _flowWin: 5,
+  toggleFlow(k) {
+    this.buzz(10);
+    const on = Object.keys(this._flowOn).filter(x => this._flowOn[x]);
+    if (this._flowOn[k] && on.length === 1) return this.toast('至少要留一個');   // ⛔ 不可全部關掉變空表
+    this._flowOn[k] = !this._flowOn[k];
+    this._rotFi(this._rotK);
+  },
   _rotFi(k) {
-    const J = this._rotData, nm = c => this.IND_NAME[c] || c;
-    const rows = Object.keys(J.ind).map(c => ({ c, fi: J.ind[c].fi5[k], r: J.ind[c].r20[k], n: J.ind[c].n }))
-      .filter(x => x.fi != null).sort((a, b) => b.fi - a.fi);
-    document.getElementById('rotFiBody').innerHTML = rows.map(x =>
-      `<tr><td class="txtcell">${nm(x.c)}</td>
-       <td class="${this.cls(x.fi)}">${x.fi >= 0 ? '+' : ''}${this.fmt(x.fi, 1)} 億</td>
-       <td class="${this.cls(x.r)}">${x.r == null ? '—' : (x.r >= 0 ? '+' : '') + x.r.toFixed(1) + '%'}</td>
-       <td>${x.n}</td></tr>`).join('');
-    // ⭐ 如果當天剛好出現「外資買最多、股價卻最弱」的例子,直接把它指出來 —— 比講道理有說服力
-    const topFi = rows[0];
+    const J = this._rotData; if (!J) return;
+    const nm = c => this.IND_NAME[c] || c;
+    const W = this._flowWin;
+    const sumW = (arr) => {
+      const a = arr.slice(Math.max(0, k - W + 1), k + 1).filter(v => v != null);
+      return a.length ? a.reduce((s, v) => s + v, 0) : null;
+    };
+    const on = this.FLOW.filter(([key]) => this._flowOn[key]);
+    const rows = Object.keys(J.ind).map(c => {
+      const o = J.ind[c], fl = o.flow || {};
+      const v = {};
+      for (const [key] of this.FLOW) v[key] = fl[key] ? sumW(fl[key]) : null;
+      return { c, v, r: o.r20[k], n: o.n };
+    }).filter(x => on.some(([key]) => x.v[key] != null));
+    // 排序:依「勾起來的那幾條加總」(⛔ 不寫死用外資 —— 勾了誰就以誰為準)
+    const tot = x => on.reduce((s, [key]) => s + (x.v[key] || 0), 0);
+    rows.sort((a, b) => tot(b) - tot(a));
+    // 尺標:所有勾選序列的最大絕對值(⛔ 每列各自縮放的話長度不可比)
+    let mx = 0;
+    for (const x of rows) for (const [key] of on) mx = Math.max(mx, Math.abs(x.v[key] || 0));
+    mx = mx || 1;
+    document.getElementById('rotFlowBar').innerHTML =
+      this.FLOW.map(([key, lbl, col]) =>
+        `<span class="fchk ${this._flowOn[key] ? 'on' : ''}" style="color:${col}" onclick="PRO.toggleFlow('${key}')"><i></i>${lbl}</span>`).join('')
+      + `<span style="font-size:10px;color:var(--dim2);margin-left:4px">近 ${W} 日累計(億元)</span>`;
+    document.getElementById('rotFiHead').innerHTML =
+      `<th>產業</th><th>疊加</th>` + on.map(([, lbl]) => `<th>${lbl.replace(/\(.*\)/, '')}</th>`).join('')
+      + `<th>🤝 幾方同買</th><th>近20日</th>`;
+    document.getElementById('rotFiBody').innerHTML = rows.map(x => {
+      const bars = on.map(([key, , col]) => {
+        const v = x.v[key];
+        if (v == null) return `<div class="fbar"></div>`;
+        const w = Math.min(50, Math.abs(v) / mx * 50);
+        return `<div class="fbar"><b style="background:${col};width:${w}%;left:${v >= 0 ? 50 : 50 - w}%"></b></div>`;
+      }).join('');
+      const buyN = on.filter(([key]) => (x.v[key] || 0) > 0).length;
+      const fBuy = (x.v.f || 0) > 0;
+      return `<tr><td class="txtcell">${nm(x.c)}</td>
+        <td><div class="fbars">${bars}</div></td>`
+        + on.map(([key]) => `<td class="${this.cls(x.v[key])}">${x.v[key] == null ? '—' : (x.v[key] >= 0 ? '+' : '') + this.fmt(x.v[key], 1)}</td>`).join('')
+        + `<td>${buyN}/${on.length}${fBuy && buyN >= 2 ? ' ⭐' : ''}</td>
+        <td class="${this.cls(x.r)}">${x.r == null ? '—' : (x.r >= 0 ? '+' : '') + x.r.toFixed(1) + '%'}</td></tr>`;
+    }).join('');
+    // ⭐ 當天剛好出現「外資買最多、股價卻最弱」就直接點出來 —— 比講道理有說服力
+    const byF = rows.filter(x => x.v.f != null).sort((a, b) => b.v.f - a.v.f);
     const byR = rows.filter(x => x.r != null).sort((a, b) => a.r - b.r);
     const worst3 = byR.slice(0, 3).map(x => x.c);
-    const clash = topFi && worst3.includes(topFi.c) ? topFi : null;
-    document.getElementById('rotFiNote').innerHTML =
-      `<div class="note">💰 外資近 ${J.fiwin || 5} 日淨買超金額(成分股 <code>foreign_net × 收盤</code> 加總,億元)。
-       ${clash ? `<br>🚨 <b>今天正好有現成的例子</b>:外資近 ${J.fiwin || 5} 日買最多的是
-         <b>${nm(clash.c)}(${clash.fi >= 0 ? '+' : ''}${this.fmt(clash.fi, 1)} 億)</b>,
-         但它的近 ${this._ROT.win} 日報酬是<b>倒數前三(${clash.r.toFixed(1)}%)</b> ——
-         這就是為什麼「外資錢流」⛔ 不能拿來排名。` : ''}
-       <br>⛔ <b>這張表只做描述,不排名、不下多空</b>:實測「外資淨流入金額」最好只有
-       <b>+${this._ROT.fiBest}pp</b>,而且<b>拿掉最好的那一年只剩 +${this._ROT.fiExBest}pp</b>、
-       20 日窗口那格前後半還<b>不同向</b> → 沒過關。</div>`;
+    const clash = byF[0] && worst3.includes(byF[0].c) ? byF[0] : null;
+    document.getElementById('rotFiNote').innerHTML = this._whoBuysNote(nm, clash, W);
+  },
+  _whoBuysNote(nm, clash, W) {
+    const R = this._ROT;
+    return `<div class="note">
+      👥 近 ${W} 日各方**淨買超金額**(成分股加總,億元)。三大法人是官方每日公布的真實數字;
+      <b>💳 融資餘額變化</b>是台股慣用的<b>散戶槓桿代理</b>。
+      <br>🚨 <b>台股沒有官方的「散戶買賣超」</b>,而且⛔ <b>不能</b>用「總量 − 三大法人」去算 ——
+      每一股都有買方與賣方,那個減出來的數字<b>必然</b>是三大法人的相反數,
+      畫出來會是漂亮的完美鏡像(「法人買、散戶賣!」)但<b>一點資訊都沒有</b>;
+      而且那裡面還混著主力分點、公司派、ETF、造市商,根本不是散戶。
+      ${clash ? `<br>🚨 <b>今天正好有現成的例子</b>:外資近 ${W} 日買最多的是
+        <b>${nm(clash.c)}(+${this.fmt(clash.v.f, 1)} 億)</b>,它的近 ${R.win} 日報酬卻是
+        <b>倒數前三(${clash.r.toFixed(1)}%)</b> —— 這就是為什麼「錢流」⛔ 不能拿來排名。` : ''}
+      <br><br>🤝 <b>「誰在追誰買」實測結果</b>(2,575 檔 × 3 年,進場=隔天開盤、扣同期大盤):
+      <br>⛔ <b>沒有誰固定跟誰</b> —— 隔 1~5 天的相關全部 ≈ 0(|r| ≤ 0.02),
+      「外資領先投信」這種說法<b>量不出來</b>。
+      <br>⭐ 但「<b>隔天多一個買家</b>」是真的有差,而且要跟「<b>同一個人自己再買一天</b>」比才算數:
+      <br>　・投信買 → 隔天<b>外資也買</b> <b>+2.05pp</b>(投信自己連買 <b>−0.07pp</b>)→ 加成最大
+      <br>　・自營買 → 隔天<b>外資也買</b> +1.47pp(自己續買 +0.73)
+      <br>　・融資增 → 隔天<b>投信也買</b> +1.38pp(自己續增 +0.77)
+      <br>　・外資買 → 隔天投信跟 +1.16pp,但<b>外資自己續買就有 +1.08pp</b> → <b>加成只有 +0.08pp ≈ 沒有</b>
+      <br>⭐⭐ 一句話:<b>重點不是誰先買,是「外資有沒有在隔天出現」</b>。以上逐年同向。
+      <br>⚠️ 同一天的相關才看得到對做:外資 ↔ 融資 <b>−0.13</b>(外資買時融資減)——
+      但那是<b>同期</b>,⛔ 不能拿來預測。
+      <br>⛔ 這張表<b>只做描述,不排名、不下多空</b>,本頁也不給任何買賣價位。
+      ⚠️ 只涵蓋上市;回測窗口整段偏多頭。</div>`;
   },
   rotPlay() {
     if (this._rotTimer) return this.rotStop();

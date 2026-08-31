@@ -5625,6 +5625,7 @@ def build_sector_rotation():
             n_sym += 1
             m = agg.setdefault(ind, {})
             prev = None
+            prev_mb = None
             for r in rows:
                 try:
                     c = float(r['close'])
@@ -5633,10 +5634,24 @@ def build_sector_rotation():
                     continue
                 d = str(r.get('date') or '').replace('/', '-')
                 if prev and prev > 0 and c > 0 and d:
-                    o = m.setdefault(d, {'rets': [], 'fi': 0.0})
+                    o = m.setdefault(d, {'rets': [], 'f': 0.0, 't': 0.0, 'dl': 0.0, 'mg': 0.0})
                     o['rets'].append((c / prev - 1) * 100)
+                    # 👥 三大法人(股 × 收盤 = 元)
+                    for _k, _fld in (('f', 'foreign_net'), ('t', 'trust_net'), ('dl', 'dealer_net')):
+                        try:
+                            o[_k] += float(r.get(_fld) or 0) * c
+                        except Exception:
+                            pass
+                    # 💳 融資餘額變化(散戶槓桿代理)—— ⚠️ margin_balance 是**張**,要 ×1000 換成股
+                    #    ⛔ 這裡刻意**不用「−(三大法人)」當散戶** —— 那是恆等式不是資料
+                    #       (每一股都有買賣雙方 → 非三大法人淨額必然等於三大法人的相反數),
+                    #       畫出來會是完美鏡像、零資訊,而且那個「非三大」還包含主力/公司派/ETF。
                     try:
-                        o['fi'] += float(r.get('foreign_net') or 0) * c
+                        _mb = float(r.get('margin_balance') or 0)
+                        if prev_mb is not None and _mb:
+                            o['mg'] += (_mb - prev_mb) * 1000 * c
+                        if _mb:
+                            prev_mb = _mb
                     except Exception:
                         pass
                 prev = c
@@ -5644,12 +5659,13 @@ def build_sector_rotation():
             print('  ⏭️ 板塊輪動:一個產業都算不出來,略過')
             return
         # 每天每產業的中位漲跌幅
-        per = {}            # d -> {ind: (medret, fi)}
+        per = {}            # d -> {ind: (medret, {四條流:元})}
         for ind, m in agg.items():
             for d, o in m.items():
                 if len(o['rets']) < MIN_MEMB:
                     continue
-                per.setdefault(d, {})[ind] = (statistics.median(o['rets']), o['fi'])
+                per.setdefault(d, {})[ind] = (statistics.median(o['rets']),
+                                              {k: o[k] for k in ('f', 't', 'dl', 'mg')})
         days = sorted(d for d, v in per.items() if len(v) >= MIN_IND)
         if len(days) < WIN + 10:
             print(f'  ⏭️ 板塊輪動:可用交易日只有 {len(days)} 天(需 >{WIN + 10}),略過')
@@ -5659,25 +5675,28 @@ def build_sector_rotation():
         inds = sorted({i for d in keep for i in per[d]})
         out_ind = {}
         for ind in inds:
-            r20, fi5 = [], []
+            r20 = []
+            flow = {k: [] for k in ('f', 't', 'dl', 'mg')}
             for k, d in enumerate(out_days):
                 win = keep[k + 1:k + 1 + WIN]       # 到 d 為止(含)的 WIN 天
                 vals = [per[x][ind][0] for x in win if ind in per[x]]
                 r20.append(round(sum(vals), 2) if len(vals) >= WIN - 2 else None)
-                fw = keep[k + 1 + WIN - FIWIN:k + 1 + WIN]
-                fv = [per[x][ind][1] for x in fw if ind in per[x]]
-                fi5.append(round(sum(fv) / 1e8, 1) if len(fv) >= FIWIN - 1 else None)
+                # 👥 四條資金流:**每日**淨額(億元)—— 讓前端自己決定要疊幾天
+                _c = per.get(d, {}).get(ind)
+                for _k in flow:
+                    flow[_k].append(round(_c[1][_k] / 1e8, 2) if _c else None)
             # ⛔ 整段都算不出來的產業不輸出(⛔ 不留一排 null 讓前端顯示空殼)
             if not any(v is not None for v in r20):
                 continue
             n_memb = max((len(o['rets']) for o in agg.get(ind, {}).values()), default=0)
-            out_ind[ind] = {'n': n_memb, 'r20': r20, 'fi5': fi5}
+            out_ind[ind] = {'n': n_memb, 'r20': r20, 'flow': flow}
         if len(out_ind) < MIN_IND:
             print(f'  ⏭️ 板塊輪動:只有 {len(out_ind)} 個產業算得出來(<{MIN_IND}),不覆寫舊檔')
             return
         (_dir / 'sector_rot.json').write_text(json.dumps(
             {'updated': datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M'),
-             'win': WIN, 'fiwin': FIWIN, 'listed_only': True,
+             'win': WIN, 'listed_only': True,
+             'flow_keys': {'f': '外資', 't': '投信', 'dl': '自營', 'mg': '融資(散戶代理)'},
              'days': out_days, 'ind': out_ind},
             ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
         _last = out_days[-1]
