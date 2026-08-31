@@ -475,6 +475,22 @@ const L = await page.evaluate(async () => {
     out.counts = Object.fromEntries(Object.entries(PRO.LAB).map(([k, v]) => [k, v.length]));
     return out;
 });
+// ㉛ V74.4.4 使用者:「做一個排名,爾後加進來的自動去重新排名」——
+//    ✅實測有用 依 r 遞減**渲染時排序**(新條目帶 r 就自動插進名次);⛔ 每條 ok 都要帶 r。
+const RANK = await page.evaluate(() => {
+  PRO.switchTab('lab'); PRO.selLab('ok');
+  const items = [...document.querySelectorAll('#labList .labitem .lrank')].map(e => e.textContent.trim());
+  const rs = PRO.LAB.ok.map(x => x.r);
+  const sortedRs = PRO.LAB.ok.slice().sort((a, b) => (b.r ?? -1) - (a.r ?? -1)).map(x => x.r);
+  const firstTitle = document.querySelector('#labList .labitem .lt')?.textContent || '';
+  return { n: PRO.LAB.ok.length, badges: items.length, missR: rs.filter(r => r == null).length,
+           mono: sortedRs.every((v, i) => i === 0 || v <= sortedRs[i - 1]), firstTitle,
+           medal1: items[0] };
+});
+ok('㉛ 🏅 ok 欄要有排名徽章,且每一條都帶排序分 r(⛔ 忘了帶會排最後)',
+   RANK.badges === RANK.n && RANK.missR === 0, `badges=${RANK.badges}/${RANK.n} missR=${RANK.missR}`);
+ok('㉛b 🏅 第一名要是排序分最高的(🧬 高位階+高波動,r=100)+ 🥇 徽章',
+   /🧬/.test(RANK.firstTitle) && RANK.medal1 === '🥇', `first=${RANK.firstTitle.slice(0, 20)} m=${RANK.medal1}`);
 // ㉚ V74.4.3 使用者截圖:實測總表上方一大塊空白 —— #tabLab 被留在 .wrap 外面,
 //    吃到 .wrap 的 80px+safe-area 底部 padding。⛔ 四個分頁容器都必須在 .wrap 裡。
 const NEST = await page.evaluate(() =>

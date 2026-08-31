@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.0.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.0.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.7 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7348,8 +7348,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.0.6',
+    _APP_VERSION: 'V74.0.7',
     _CHANGELOG: [
+        { v:'V74.0.7', dt:'2026-08-31', d:['🕯️ K線頁新增「跌停後第一根紅K」判讀:全市場 3 年實測六關全過的型態(扣成本後 +3.66%,大紅版 +5.71%),而且會自動比對「當初大盤有沒有一起跌」— 系統性下跌那種彈得動(+4.89%),個股自己出事那種只有 1/4.8,別急著接。統計描述非進場指令。'] },
         { v:'V74.0.6', dt:'2026-08-31', d:[
             '📌 籌碼頁明日劇本新增條件觸發:「同一分點連買 3 天且股價已發動」— 2 年 × 377 萬筆交叉回測裡唯一全關通過的分點訊號(10日 +0.85%/20日 +1.36%),附完整實測數字與免責',
             '🔬 追加驗證:連賣 3 天不構成出場警訊、外資系/官股系身分無邊際、「大漲日隔日沖佔比高」全窗口複驗方向確認(是動能標記不是警訊)但幅度貼成本線 → 不顯示',
@@ -19196,6 +19197,60 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         else return { na: 'none', ind, me, indMed: S.imed.get(ind), ir };
         return { k, ind, me, indMed: S.imed.get(ind), ir, edge: this._REGIME_EDGE[k] };
     },
+    // 🕯️ 跌停後的「第一根紅K」(V74.4.4 落地;streak_probe V74.4.0 六關全過,LAB 待落地清單那條)
+    // ⛔ 定義必須跟探針**一字不差**(改了就要重跑回測):
+    //   跌停 = 當日收盤跌 ≤ −9.2%;訊號 = 跌停的**隔一個交易日**就收漲(⛔ 不是任意天後的第一根紅);
+    //   系統性/個股利空 = 看**跌停那天**的大盤漲跌(≤ −1% = 大盤也在跌)。
+    // 實測(2,268 檔 × 3 年、進場=紅K隔天開盤、排除鎖死、扣同期加權、扣成本 0.44%):
+    _LD_REDK: { all: 3.66, big: 5.71, sys: 4.89, idio: 1.02, wr: 53.8, base: 37.1 },
+    _ldRedKHtml(data, sym) {
+        try {
+            const n = (data || []).length;
+            if (n < 3) return '';
+            const c = i => +data[i].close;
+            if (!(c(n - 3) > 0 && c(n - 2) > 0)) return '';
+            const chgLast = (c(n - 1) / c(n - 2) - 1) * 100, chgPrev = (c(n - 2) / c(n - 3) - 1) * 100;
+            if (!(chgPrev <= -9.2 && chgLast > 0)) return '';
+            const E = this._LD_REDK, big = chgLast >= 3;
+            const ldDate = String(data[n - 2].date || '').replace(/\//g, '-');
+            this._fillLdMkt(ldDate, sym);   // ⚠️ ^TWII 非同步 → 先佔位再填,填時驗 sym 防切股殘留(陷阱 #19)
+            return `<div class="bg-[#0d1117] border-l-2 border-amber-500 pl-2.5 py-1.5 rounded-r mb-2">
+              <div class="text-[11px] font-bold text-gray-200 leading-relaxed">🕯️ <b>昨天跌停(${chgPrev.toFixed(1)}%),今天收${big ? '大紅(≥3%)' : '紅'}</b> —— 實測裡少數全關通過的型態</div>
+              <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">
+                全市場 3 年實測:「跌停後第一根紅K」之後 20 日平均比大盤多 <b class="font-mono text-red-300">+${E.all}%</b>(已扣來回成本 0.44%;勝率 ${E.wr}%,平常只有 ${E.base}%)。${big ? `今天是<b>大紅</b> —— 大紅版實測更強:<b class="font-mono text-red-300">+${E.big}%</b>。` : `⚠️ 今天只是<b>小紅(<3%)</b> —— 小紅那組實測逐年不同向,參考價值低很多。`}<br>
+                🌊 <b>關鍵要看「當初大盤有沒有一起跌」</b>:<span id="ldRedkMkt" data-sym="${sym}">⏳ 對照大盤中…</span><br>
+                <span class="text-[9px] text-gray-600">⛔ 這是統計描述不是進場指令(回測的進場點是紅K的<b>隔天開盤</b>);窗口偏多頭、空頭未驗證;具體怎麼做以總覽「現在怎麼做」為準。</span>
+              </div></div>`;
+        } catch (_) { return ''; }
+    },
+    async _fillLdMkt(ldDate, sym) {
+        try {
+            const m = await this._ensureTwiiChgMap();
+            const el = document.getElementById('ldRedkMkt');
+            if (!el || el.dataset.sym !== sym || this.currentSymbolId !== sym) return;   // 切股殘留守門
+            const v = m ? m[ldDate] : null;
+            const E = this._LD_REDK;
+            if (v == null) {
+                // ⛔ 查不到不可裝死也不可硬判 —— 把兩組差距講出來讓使用者自己查(陷阱 #22)
+                el.innerHTML = `查不到跌停那天(${ldDate})的大盤資料 → 分不出系統性還是個股利空;兩組實測差 4.8 倍(+${E.sys}% vs +${E.idio}%),請自己查那天大盤有沒有跌。`;
+                return;
+            }
+            el.innerHTML = v <= -1
+                ? `那天大盤也在跌(<b class="font-mono">${v.toFixed(1)}%</b>)= <b>系統性下跌</b> → 這一組實測 <b class="font-mono text-red-300">+${E.sys}%</b>(全表最好的一組:大家一起跌的,跌完會彈)。`
+                : `那天大盤沒什麼跌(<b class="font-mono">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</b>)= <b>個股自己出事</b>(被爆料那種)→ 這一組只有 <b class="font-mono">+${E.idio}%</b>,是系統性那組的 <b>1/4.8</b> —— 彈也彈不動,別急著接。`;
+        } catch (_) { }
+    },
+    async _ensureTwiiChgMap() {
+        if (this._twiiChgMap) return this._twiiChgMap;
+        const rows = await this._getTwiiRows();
+        const m = {};
+        for (let i = 1; i < (rows || []).length; i++) {
+            const c0 = +rows[i - 1].close, c1 = +rows[i].close;
+            if (c0 > 0 && Number.isFinite(c1)) m[String(rows[i].date || '').replace(/\//g, '-')] = (c1 / c0 - 1) * 100;
+        }
+        this._twiiChgMap = m;
+        return m;
+    },
     _stockRegimeHtml(sym) {
         const r = this._stockRegime(sym);
         if (!r) return '';                                     // 資料還沒載入 → 整條不顯示
@@ -19868,7 +19923,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (!sigs.length) {
             // ⭐ 「K 棒沒訊號」≠「這張卡沒東西可講」—— 行情階段跟 K 棒訊號是兩件事。
             //    ⛔ 這裡直接 return 的話,那條只會在剛好有 K 棒訊號的日子出現 = 隨機出現,不是條件觸發。
-            const _rg = this._luOddsHtml(data) + this._stockRegimeHtml(this.currentSymbolId) + this._aiChainChipHtml(this.currentSymbolId);
+            const _rg = this._luOddsHtml(data) + this._ldRedKHtml(data, this.currentSymbolId) + this._stockRegimeHtml(this.currentSymbolId) + this._aiChainChipHtml(this.currentSymbolId);
             if (_rg) {
                 el.classList.remove('hidden'); _kbShow(true);
                 el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>`
@@ -19984,7 +20039,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="mt-1">${rest.slice(0, 12).map(s => _card(s, false)).join('')}
                 ${rest.length > 12 ? `<div class="text-[9px] text-gray-600 text-center py-1">⋯ 另有 ${rest.length - 12} 條</div>` : ''}</div></details>` : '');
         const turnHint = hasTurn ? `<div class="text-[10px] text-amber-300/90 mt-1.5 leading-snug bg-amber-900/15 border-l-2 border-amber-500/60 pl-2 py-1 rounded-r">🔑 朱家泓鐵律「開盤定生死」:出現變盤/轉折K後,看<b>次日開盤</b>——開低=變盤確認,多單該跑;開高=化解疑慮,可續抱。</div>` : '';
-        el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>${_headline}${this._luOddsHtml(data)}${this._stockRegimeHtml(this.currentSymbolId)}${this._aiChainChipHtml(this.currentSymbolId)}${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
+        el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>${_headline}${this._luOddsHtml(data)}${this._ldRedKHtml(data, this.currentSymbolId)}${this._stockRegimeHtml(this.currentSymbolId)}${this._aiChainChipHtml(this.currentSymbolId)}${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
         el.classList.remove('hidden');
         _kbShow(true);
     },

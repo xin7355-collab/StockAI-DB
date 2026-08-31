@@ -32,7 +32,7 @@ const ok = (name, cond, extra = '') => {
 ok('⑧a 主 render path 接上 _luOddsHtml',
     /\$\{_headline\}\$\{this\._luOddsHtml\(data\)\}/.test(SRC));
 ok('⑧b 「沒有 K 棒訊號」那條路徑也接上(⛔ 只接一處 = 隨機出現)',
-    /const _rg = this\._luOddsHtml\(data\) \+ this\._stockRegimeHtml/.test(SRC));
+    /const _rg = this\._luOddsHtml\(data\) \+ this\._ldRedKHtml\(data, this\.currentSymbolId\) \+ this\._stockRegimeHtml/.test(SRC));   // V74.4.4 起中間插了跌停紅K
 ok('①a _LU_ODDS 有定義', /_LU_ODDS:\s*\{/.test(SRC));
 ok('①b _luOdds / _luOddsHtml 都有定義',
     /_luOdds\(data\)\s*\{/.test(SRC) && /_luOddsHtml\(data\)\s*\{/.test(SRC));
