@@ -45,8 +45,18 @@ for (const [f, min] of [['.github/workflows/deploy_pages.yml', 4], ['.github/wor
 ok('①c deploy_pages 的 push paths 有 pro.html(改它才會觸發部署)',
    /- 'pro\.html'/.test(fs.readFileSync(path.join(ROOT, '.github/workflows/deploy_pages.yml'), 'utf8')));
 // ② 不顯示在散戶救星裡面
-ok('② ⛔ index.html 不可出現 pro.html 連結(使用者明示不掛在 App 內)',
-   !/pro\.html/.test(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')));
+// ⚠️ V74.4.8:這條第一版直接掃整份 index.html → 被**註解裡提到 pro.html** 給擋下來
+//   (本專案第 8 次踩「說明文字本身含有被禁字串」這個坑)。
+//   ⭐ 正解:只掃**會渲染出去的東西** —— 先剝掉 // 與 /* */ 註解;
+//   並加**空過守門**(剝完不可以只剩一點點,否則這條等於沒驗)。
+{
+    const raw = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const live = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    ok('②z 🚧 空過守門:剝掉註解後仍要留著大部分內容(⛔ 否則下面那條是假通過)',
+       live.length > raw.length * 0.6, `${live.length}/${raw.length}`);
+    ok('② ⛔ index.html 不可出現 pro.html 連結(使用者明示不掛在 App 內)',
+       !/pro\.html/.test(live), (live.match(/.{0,40}pro\.html.{0,40}/) || [''])[0]);
+}
 // ⑰ ⛔ 不可用 window.open(iOS PWA 空白分頁)
 ok('⑰ ⛔ 問 AI 不可用 window.open(iOS PWA 會留空白分頁)', !/window\.open\(/.test(src));
 ok('⑰b 用 <a target="_blank"> 點擊開外部 AI', /a\.target\s*=\s*'_blank'/.test(src));

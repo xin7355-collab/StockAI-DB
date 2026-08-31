@@ -5818,6 +5818,211 @@ def build_sector_rotation():
         print(f'  ⚠️ 板塊輪動寫入失敗(不影響其他):{str(_e)[:120]}')
 
 
+def build_stock_tags():
+    """🏷️ 個股題材標籤 → data/stock_tags.json(零 API,只讀本地 data/*.json)。V74.4.8
+
+    ⭐ 為什麼要做:使用者看南亞科(2408)的標籤是
+      「#台塑 #Windows11 #美中貿易戰受惠 #蘋果供應商 #Smart TV」——
+      **一個跟記憶體有關的都沒有**。真因是 `concept_stocks.json`(megatime)
+      雖然每天抓、`updated` 是今天,但**上游的題材定義本身凍結在 2021 年左右**:
+      231 個群組裡沒有記憶體/CPO/散熱液冷/ASIC,卻還留著 Google眼鏡/iPad Pro/五倍券。
+      → 這正是 CLAUDE.md「寫死的對照表沒有更新機制就會過期」那條的現行犯。
+
+    ⭐⭐ 做法(這是本檔最重要的設計決定):
+      **題材「定義」是人工的(pro.html PRO.THEMES,17 個題材 76 檔),
+        但題材「成員」每天自動重算** —— 兩件事要分開看。
+      自動擴散的判準是 **扣掉大盤之後的殘差相關**(近 120 個交易日):
+        殘差 = 個股日報酬 − 大盤日報酬
+        題材殘差 = 該題材成員殘差的**中位數**(⛔ 算某一檔時要把它自己從中位數裡拿掉,
+                   否則種子成員會拿到灌水的自我相關)
+        相關 ≥ 門檻 → 標成「連動」
+    ⛔ 為什麼一定要扣大盤:不扣的話多頭行情裡**每一檔都跟每一個題材高度相關**,
+       標籤會變成「大家都一樣」= 零鑑別度(同 V72.5.2「活躍度不是方向」的同型錯誤)。
+
+    ⛔ 門檻用**當天分布的分位數**(P90)而不是寫死一個數字,並設 0.45 下限;
+       兩個數字都寫進輸出讓人查得到(本專案已犯過太多次「憑空訂門檻」)。
+
+    ⚠️⚠️ **誠實限制(⛔ 前端文案不可省略)**:
+      ① 這是「**這檔最近跟哪一族走得最像**」,⛔ **不是**「這檔的業務屬於這個題材」——
+         台股沒有免費的結構化「主要產品/營收比重」來源(V72 已實測:TWSE/TPEX
+         公司基本資料只有產業別,沒有業務說明欄位)。
+      ② 種子成員(人工確認)與自動連動要**分開標**,⛔ 不可長得一樣。
+      ③ **大型權值股會抓不到** —— 台積電佔大盤約四成,它的「殘差」幾乎等於
+         「大盤扣掉自己」的相反數 → 跟所有題材都是 0 或負相關(實測 2330 最佳只有 +0.05)。
+         這是方法的結構限制,⛔ 不是資料壞掉;那種股票靠種子表與產業別涵蓋。
+      ④ 相關性是**同期**的(V73 評估紀錄⑧的鐵則)→ ⛔ 只能拿來分類,不可拿來預測。
+
+    ✅ 實測(2026-08-31,2,304 檔算得出殘差):最佳相關中位 0.28、P90 0.43、P95 0.51。
+       門檻 0.45 → 約 190 檔拿得到題材標籤。前段班抽驗全部正確而且**都是種子沒收的**:
+       2630 亞航→軍工 0.90・6215 和椿→機器人 0.78・2208 台船→軍工 0.76・
+       7402 龍德造船→軍工 0.76・1514 亞力→重電 0.75・2375 智寶→被動元件 0.75・
+       3189 景碩→ABF載板 0.69・3081 聯亞→光通訊 0.72・2451 創見→記憶體 0.54。
+
+    👑 順便自動算**龍頭**(近 20 日成交值中位數最大的那一檔)——
+       ⭐ 這是為了取代 index.html 裡寫死的 `_LEADER_MAP`(那張表同樣會過期)。
+    """
+    WIN = 120           # 相關性窗口(交易日)
+    MIN_OVERLAP = 60    # 至少要有這麼多天對得起來才算
+    MIN_MEMB = 3        # 題材至少要有這麼多檔算得出殘差
+    THR_FLOOR = 0.45    # 門檻下限(⛔ 分位數再低也不放行)
+    TOP_N = 2           # 一檔最多幾個「連動」題材
+    try:
+        _dir = Path(DATA_DIR)
+        th_groups, th_names = _themes_from_pro()
+        if not th_groups:
+            print('  ⏭️ 個股題材標籤:讀不到題材表,略過(⛔ 不寫空檔)')
+            return
+
+        def _rows(sym, need):
+            p = _dir / f'{sym}.json'
+            if not p.exists():
+                return None
+            try:
+                rows = json.loads(p.read_text(encoding='utf-8'))
+            except Exception:
+                return None
+            if not isinstance(rows, list):
+                return None
+            rows = [r for r in rows if isinstance(r, dict) and r.get('close') not in (None, '')]
+            return rows[-need:] if len(rows) >= MIN_OVERLAP + 1 else None
+
+        mk = _rows('^TWII', WIN + 1)
+        if not mk:
+            print('  ⏭️ 個股題材標籤:沒有加權指數,略過')
+            return
+        mret, _md = {}, [str(r['date']).replace('/', '-')[:10] for r in mk]
+        for j in range(1, len(mk)):
+            try:
+                mret[_md[j]] = float(mk[j]['close']) / float(mk[j - 1]['close']) - 1
+            except Exception:
+                pass
+
+        # 個股母體:4 碼純數字且非 00 開頭(⛔ 排除 ETF/權證/特別股 —— 使用者明示 ETF 不加)
+        cand = sorted({f[:-5] for f in os.listdir(_dir) if f.endswith('.json')}
+                      & {f'{i}' for i in range(1000, 10000)})
+        cand = [s for s in cand if not s.startswith('00')]
+        resid, amt20, data_date = {}, {}, ''
+        for sym in cand:
+            rows = _rows(sym, WIN + 1)
+            if not rows:
+                continue
+            out, amts = {}, []
+            for j in range(1, len(rows)):
+                d = str(rows[j]['date']).replace('/', '-')[:10]
+                if d > data_date:
+                    data_date = d
+                if d not in mret:
+                    continue
+                try:
+                    c0, c1 = float(rows[j - 1]['close']), float(rows[j]['close'])
+                    r = c1 / c0 - 1
+                except Exception:
+                    continue
+                if abs(r) > 0.5:      # ⛔ 分割/減資殘留的斷崖不可當報酬(陷阱 #21)
+                    continue
+                out[d] = r - mret[d]
+                try:
+                    amts.append(c1 * float(rows[j].get('volume') or 0))
+                except Exception:
+                    pass
+            if len(out) >= MIN_OVERLAP:
+                resid[sym] = out
+                a = sorted(amts[-20:])
+                if a:
+                    amt20[sym] = a[len(a) // 2]
+
+        def _med(a):
+            a = sorted(a)
+            n = len(a)
+            return a[n // 2] if n % 2 else (a[n // 2 - 1] + a[n // 2]) / 2
+
+        def _theme_series(k, excl=None):
+            ms = [resid[x] for x in th_groups[k] if x in resid and x != excl]
+            if len(ms) < MIN_MEMB:
+                return None
+            ds = set(ms[0])
+            for m in ms[1:]:
+                ds &= set(m)
+            if len(ds) < MIN_OVERLAP:
+                return None
+            return {d: _med([m[d] for m in ms]) for d in ds}
+
+        def _corr(a, b):
+            ds = [d for d in a if d in b]
+            if len(ds) < MIN_OVERLAP:
+                return None
+            xa = [a[d] for d in ds]
+            xb = [b[d] for d in ds]
+            ma, mb = sum(xa) / len(xa), sum(xb) / len(xb)
+            num = sum((p - ma) * (q - mb) for p, q in zip(xa, xb))
+            da = math.sqrt(sum((p - ma) ** 2 for p in xa))
+            db = math.sqrt(sum((q - mb) ** 2 for q in xb))
+            return None if da * db == 0 else num / (da * db)
+
+        base = {k: _theme_series(k) for k in th_groups}
+        base = {k: v for k, v in base.items() if v}
+        if len(base) < 5:
+            print(f'  ⏭️ 個股題材標籤:只有 {len(base)} 個題材算得出序列,略過(⛔ 不寫半套)')
+            return
+        # 每檔對每個題材算相關(自己是成員時把自己從題材中位數裡拿掉)
+        allc, best = {}, []
+        for sym, r in resid.items():
+            cs = []
+            for k in base:
+                t = _theme_series(k, sym) if sym in th_groups[k] else base[k]
+                if not t:
+                    continue
+                c = _corr(r, t)
+                if c is not None:
+                    cs.append((round(c, 3), k))
+            if cs:
+                cs.sort(reverse=True)
+                allc[sym] = cs
+                best.append(cs[0][0])
+        if not best:
+            print('  ⏭️ 個股題材標籤:一檔都算不出相關,略過')
+            return
+        best.sort()
+        p90 = best[int(len(best) * 0.90)]
+        thr = round(max(THR_FLOOR, p90), 3)
+
+        by_stock, theme_memb = {}, {k: set(th_groups[k]) for k in base}
+        for sym, cs in allc.items():
+            seed = [k for k in base if sym in th_groups[k]]
+            near = [[k, c] for c, k in cs if c >= thr and k not in seed][:TOP_N]
+            for k, _c in near:
+                theme_memb[k].add(sym)
+            if seed or near:
+                by_stock[sym] = {'s': seed, 'n': near}
+        # 👑 龍頭 = 該題材**種子成員**裡近 20 日成交值中位數最大的(⭐ 自動更新,取代寫死的對照表)
+        # ⛔ 兩條不可改掉:
+        #   ① **只從種子挑**,⛔ 不可把自動連動進來的也算 —— 實測 3081 聯亞(光通訊股)
+        #      靠 0.454 勉強連動進「低軌衛星」,又剛好成交值最大 → 被封成「低軌衛星龍頭」。
+        #      龍頭是**身分**,只能由人工確認過的名單產生。
+        #   ② key 用**題材**不是股票代號 —— 一檔可能是兩個題材的第一名,
+        #      用代號當 key 會被後面那個蓋掉(實測矽光子的龍頭就這樣消失了)。
+        lead = {}
+        for k in base:
+            ranked = sorted(((amt20.get(x, 0), x) for x in th_groups[k] if x in amt20), reverse=True)
+            if ranked and ranked[0][0] > 0:
+                lead[k] = ranked[0][1]
+        doc = {
+            'updated': datetime.now(timezone(timedelta(hours=8))).isoformat(timespec='seconds'),
+            'data_date': data_date, 'win': WIN, 'thr': thr, 'p90': round(p90, 3),
+            'universe': len(resid),
+            'names': {k: th_names.get(k, k) for k in base},
+            'seed': {k: th_groups[k] for k in base},
+            'by_stock': by_stock, 'lead': lead,
+        }
+        (_dir / 'stock_tags.json').write_text(json.dumps(
+            doc, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        n_near = sum(1 for v in by_stock.values() if v['n'])
+        print(f'  🏷️ 個股題材標籤 {data_date}:母體 {len(resid)} 檔 ・門檻 {thr}(當日 P90={p90:.3f})'
+              f' → {len(by_stock)} 檔有標籤(其中 {n_near} 檔是自動連動出來的)・龍頭 {len(lead)} 檔')
+    except Exception as _e:
+        print(f'  ⚠️ 個股題材標籤寫入失敗(不影響其他):{str(_e)[:120]}')
+
+
 def build_bubble_warning():
     out = {'updated': date.today().isoformat()}
 
@@ -5953,6 +6158,8 @@ def build_bubble_warning():
     # ⛔ 跟上面那支**各自獨立**呼叫 —— 綁在同一個 try/if 裡的話,一個失敗會拖累另一個
     #    (V72.2.1 market_stats 的 pb 拖垮 margin 就是這樣,而且全綠零錯誤訊息)。
     build_sector_rotation()
+    # 🏷️ 個股題材標籤(零 API,只讀本地 data/*.json)—— ⛔ 同樣獨立呼叫,不綁在別人的 try 裡
+    build_stock_tags()
     out['junk_count'] = {
         'value': limit_up,
         'label': f'{limit_up} 家漲停',

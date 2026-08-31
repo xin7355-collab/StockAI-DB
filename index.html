@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.9 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7348,8 +7348,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.0.8',
+    _APP_VERSION: 'V74.0.9',
     _CHANGELOG: [
+        { v:'V74.0.9', dt:'2026-09-01', d:['🏷️ 個股標籤全面翻新:舊的概念股標籤來源(外部資料)其實停在 2021 年 — 南亞科顯示的是「Smart TV / Windows11 / 台塑」而不是記憶體。現在改成每天採礦重算:題材名單跟「板塊輪動」同一份(記憶體/CPO光通訊/散熱液冷/ASIC/矽晶圓/軍工…),而且會自動找出「跟這一族走得很像」的股票補進來 — 全市場 2,319 檔每天重算一次。','👑 龍頭改成自動判定(該題材裡成交值最大的那一檔),不再用寫死的表。','⏳ 過時題材(Smart TV、Windows11、元宇宙、五倍券、美中貿易戰…)一律不再顯示;仍然有效的舊標籤(電動車等)保留補位。','⚠️ 標籤分兩種:實心=人工確認它就是這個題材;虛線+數字=自動算出來「最近跟這一族走得像」,那是連動不是業務,點標籤看得到相關度。']},
         { v:'V74.0.8', dt:'2026-08-31', d:['🆕 總覽「重點判讀」新增兩個實測條件提醒:① 昨天跌停今天收紅(實測全關通過的型態,並會告訴你當初大盤有沒有一起跌 — 差 4.8 倍)② 5 天噴超過 30% 又被列官方注意股(實測之後 20 天比大盤少 1.81 個百分點 → 手上有的可考慮減碼)。兩者都只在命中時出現。'] },
         { v:'V74.0.7', dt:'2026-08-31', d:['🕯️ K線頁新增「跌停後第一根紅K」判讀:全市場 3 年實測六關全過的型態(扣成本後 +3.66%,大紅版 +5.71%),而且會自動比對「當初大盤有沒有一起跌」— 系統性下跌那種彈得動(+4.89%),個股自己出事那種只有 1/4.8,別急著接。統計描述非進場指令。'] },
         { v:'V74.0.6', dt:'2026-08-31', d:[
@@ -8938,16 +8939,67 @@ ${list}
         } catch (_) {}
         return this._conceptCache;
     },
+    // 🏷️ V74.4.8 — 載入採礦端每天重算的個股題材標籤(data/stock_tags.json)
+    //   ⭐ 這支是「持續變更」的關鍵:題材**定義**是人工的(pro.html PRO.THEMES),
+    //      但**誰屬於哪個題材**每天用「扣掉大盤之後的殘差相關」重算 → 名單自己會長。
+    //   ⛔ 讀不到就整組不顯示題材(退回舊的 megatime),⛔ 不可假裝有。
+    async _loadStockTags() {
+        if (this._tagsCache !== undefined) return this._tagsCache;
+        this._tagsCache = null;
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const url = new URL('data/stock_tags.json', ghBase).href + `?t=${Date.now()}`;
+            const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+            if (r.ok) {
+                const j = await r.json();
+                if (j && j.by_stock) this._tagsCache = j;
+            }
+        } catch (_) {}
+        return this._tagsCache;
+    },
     // 🏷️ V69.7.9 概念標籤品質過濾(使用者要求:老舊沒意義的刪掉):
     //   ① 大眾標籤黑名單(淨零碳排/ESG/MSCI成份…幾百檔都有=零鑑別度)
     //   ② 族群成員 >80 檔 = 沒鑑別度,刪 ③ 小族群(題材精準)排前面 ④ 上限 5 個
+    // 🚨 V74.4.8 使用者截圖:南亞科(2408)的標籤是「#台塑 #Windows11 #美中貿易戰受惠
+    //   #蘋果供應商 #Smart TV」—— 一個跟記憶體有關的都沒有。
+    //   真因:`concept_stocks.json`(megatime)雖然每天抓、updated 是今天,
+    //   **但上游的題材定義本身凍結在 2021 年左右** —— 231 個群組裡沒有記憶體/CPO/散熱液冷,
+    //   卻留著 Google眼鏡/iPad Pro/五倍券/Smart TV。
+    //   → ① 黑名單大幅擴充(下面 _conceptStaleRe)② 主力改讀採礦端每天重算的 stock_tags.json。
+    //   ⛔ 但 megatime **不整包丟掉** —— 它還有電動車/車用電子/軍工這些仍然有效的,
+    //      降級成「補位用」(前面的標籤不夠 5 個才補)。
     _conceptJunkRe: /淨零|碳排|ESG|MSCI|成份|成分|富櫃|台灣50|臺灣50|高股息|存股|董監|庫藏|公司治理|市值型|權值|藍籌|大型股|中型100|小型300|就業99|高薪100/,
+    // ⏳ 已經過期 / 對股價沒有影響力的題材(使用者明示「把過時的資訊及影響不大的刪除,如 Smart TV」)
+    _conceptStaleRe: /Smart\s*TV|Windows|Google\s*眼鏡|iPad|iPhone\s*\d|AppleCar|APPLE概念|蘋果供應商|蘋果概念|Intel|穿戴|元宇宙|NFT|五倍券|三倍券|防疫|口罩|疫苗|快篩|振興|美中貿易戰|中美貿易|回台掛牌|KY股票|越南設廠|中國收成|中國內需|^中國$|華為|4G|3G|WiMAX|小筆電|太陽能能源局|生技醫材展|世足|奧運|比特幣挖礦機|虛擬貨幣|工業4\.0|物聯網|大數據|^雲端$|智慧城市|智慧家庭|無線充電|觸控|LED照明|節能減碳|3D技術|3D感測|^AI人工智慧$|^5G$|^手機$|^網通$|^電子商務$/i,
+    // 🏢 megatime 有一堆「群組」其實是**集團/關係企業名**(台塑・億光・聲寶・霖園・頂新…),
+    //   那是股權關係不是題材,對股價的解釋力很低。⛔ 沒辦法一個一個列黑名單(有上百個)
+    //   → ⭐ 用資料判:**這個名字如果是某一檔股票的名字開頭,它就是公司名不是題材**。
+    //   (台塑→台塑1301 ✓ ・億光→億光2393 ✓ ・記憶體/散熱/光通訊 → 沒有同名股票 ✓)
+    _isGroupName(c) {
+        if (!c || c.length < 2) return false;
+        if (!this._grpNameSet) {
+            this._grpNameSet = new Set((this.allStockList || [])
+                .map(s => String(s.stock_name || '').trim()).filter(n => n.length >= 2));
+        }
+        for (const n of this._grpNameSet) if (n === c || n.startsWith(c)) return true;
+        return false;
+    },
     _getStockConcepts(sym) {
         sym = String(sym || '').trim();
-        const leader = this._LEADER_MAP[sym] || null;
+        const T = this._tagsCache, TB = T?.by_stock?.[sym];
         const info = (this.allStockList || []).find(s => s.stock_id === sym);
         const industry = (info?.industry_category || '').trim();
-        // 概念股:優先 megatime 採礦(_conceptCache.by_stock,daily_miner 每日更新),否則退回 curated _CONCEPT_MAP
+        // 👑 龍頭:優先用採礦端**每天自動算**的(該題材種子成員裡成交值最大的那一檔),
+        //    ⛔ 寫死的 _LEADER_MAP 退成後備 —— 那張表跟 megatime 一樣會過期。
+        let leader = null;
+        if (T?.lead) {
+            for (const [k, s2] of Object.entries(T.lead)) if (s2 === sym) { leader = (T.names?.[k] || k) + '龍頭'; break; }
+        }
+        if (!leader) leader = this._LEADER_MAP[sym] || null;
+        // 🎯 題材標籤:種子(人工確認)與自動連動**分開標**,⛔ 不可長得一樣
+        const seedT = (TB?.s || []).map(k => ({ n: T.names?.[k] || k, seed: 1 }));
+        const nearT = (TB?.n || []).map(([k, c]) => ({ n: T.names?.[k] || k, seed: 0, c }));
+        // 概念股:megatime 降級為補位(_conceptCache.by_stock),否則退回 curated _CONCEPT_MAP
         let concepts = this._conceptCache?.by_stock?.[sym];
         if (!Array.isArray(concepts) || !concepts.length) concepts = this._CONCEPT_MAP[sym] || [];
         // 族群大小對照(一次建好快取):同名取最小(細產業/概念同名時用較精準那組)
@@ -8960,29 +9012,53 @@ ${list}
             this._conceptSizeMap = m;
         }
         const sz = this._conceptSizeMap || {};
-        concepts = concepts
-            .filter(c => c && c !== industry && !this._conceptJunkRe.test(c) && (sz[c] === undefined || sz[c] <= 80))
+        // ⛔ megatime 只在**完全沒有題材標籤**時才補位,而且最多 2 個 ——
+        //   它的題材定義停在 2021 年,留太多只會把新的好標籤稀釋掉(使用者:「影響不大的刪除」)。
+        const themeNames = new Set([...seedT, ...nearT].map(x => x.n));
+        const room = (seedT.length + nearT.length) ? 0 : 2;
+        concepts = (room ? concepts : [])
+            .filter(c => c && c !== industry && !themeNames.has(c)
+                      && !this._conceptJunkRe.test(c) && !this._conceptStaleRe.test(c)
+                      && !this._isGroupName(c)
+                      && (sz[c] === undefined || sz[c] <= 80))
             .sort((a, b) => (sz[a] || 999) - (sz[b] || 999))
-            .slice(0, 5);
-        return { leader, industry, concepts };
+            .slice(0, room)
+            .map(c => ({ n: c, seed: 0, old: 1 }));
+        return { leader, industry, tags: [...seedT, ...nearT, ...concepts], concepts: concepts.map(x => x.n) };
     },
     _renderConceptRow(sym) {
         const el = document.getElementById('stockConceptRow');
         if (!el) return;
-        // 首次呼叫時非阻塞載入採礦檔,載完重繪一次
+        // 首次呼叫時非阻塞載入採礦檔,載完重繪一次(⚠️ 兩個檔各自載,⛔ 不可綁一起 —— 一個失敗會拖累另一個)
         if (this._conceptCache === undefined) {
             this._loadConceptData().then(() => { if (this.currentSymbolId === sym) this._renderConceptRow(sym); });
         }
-        const { leader, industry, concepts } = this._getStockConcepts(sym);
+        if (this._tagsCache === undefined) {
+            this._loadStockTags().then(() => { if (this.currentSymbolId === sym) this._renderConceptRow(sym); });
+        }
+        const { leader, industry, tags } = this._getStockConcepts(sym);
         const parts = [];
         if (leader)   parts.push(`<span class="text-[10px] font-black text-amber-300 bg-amber-900/30 border border-amber-700/50 rounded px-1.5 py-0.5 whitespace-nowrap">👑 ${leader}</span>`);
         if (industry) parts.push(`<span class="text-[10px] font-bold text-gray-300 bg-white/5 border border-[#30363d] rounded px-1.5 py-0.5 whitespace-nowrap">🏭 ${industry}</span>`);
-        concepts.forEach(c => parts.push(`<span onclick="app._openFreeAiConcept('${c}')" title="點我用免費 AI 查「${c}」題材與同族群主流股" class="cursor-pointer text-[10px] font-bold text-cyan-300 bg-cyan-900/20 border border-cyan-700/40 rounded px-1.5 py-0.5 whitespace-nowrap hover:bg-cyan-900/40 transition-colors">#${c}</span>`));
+        // 🎯 三種標籤**長得不一樣**(⛔ 不可統一):
+        //   種子(人工確認過它就是這個題材)= 實心青;連動(每天自動算出來「走得像」)= 虛線 + 相關數字;
+        //   舊概念(megatime,只補位)= 灰。⛔ 把「它是」跟「它跟著動」畫成一樣 = 對使用者說謊。
+        tags.forEach(t => {
+            const cls = t.seed ? 'text-cyan-300 bg-cyan-900/20 border-cyan-700/40'
+                      : t.old  ? 'text-gray-400 bg-white/5 border-[#30363d]'
+                               : 'text-cyan-400/90 bg-cyan-900/10 border-cyan-800/40 border-dashed';
+            const tip = t.seed ? `「${t.n}」題材成員(人工確認)—— 點我用免費 AI 查同族群主流股`
+                      : t.old  ? `舊版概念股標籤(來源已多年沒更新,僅供參考)—— 點我查「${t.n}」`
+                               : `近 120 個交易日,這檔扣掉大盤之後跟「${t.n}」這一族走得很像(相關 ${t.c})。⛔ 這是「跟著動」不是「業務屬於它」`;
+            parts.push(`<span onclick="app._openFreeAiConcept('${t.n}')" title="${tip}" class="cursor-pointer text-[10px] font-bold border rounded px-1.5 py-0.5 whitespace-nowrap transition-colors ${cls}">#${t.n}${t.seed || t.old ? '' : `<span class="opacity-60 font-normal ml-0.5">連動${(t.c * 100).toFixed(0)}</span>`}</span>`);
+        });
         if (!parts.length) { el.classList.add('hidden'); el.innerHTML = ''; }
         else {
             el.classList.remove('hidden');
             // 📅 V70.2.4 概念/產業標籤的採礦日(使用者要求:老舊資料要看得出來)
-            const _cu = (this._conceptCache && this._conceptCache.updated) ? `<span class="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0 self-center ml-0.5">${this._dW(this._conceptCache.updated)}</span>` : '';
+            // 📅 日期以**新的那份**(stock_tags,每天重算)為準;沒有才退回 megatime
+            const _up = this._tagsCache?.data_date || this._conceptCache?.updated;
+            const _cu = _up ? `<span class="text-[9px] text-gray-600 whitespace-nowrap flex-shrink-0 self-center ml-0.5">${this._dW(_up)}</span>` : '';
             el.innerHTML = parts.join('') + _cu;
         }
         // 🏭 V57.1 官方本業(biz_profile.json 夜間採礦):公司到底在做什麼,以官方登記為準;非同步補一行,切股守門

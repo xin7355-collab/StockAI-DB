@@ -250,6 +250,7 @@ jobs:
             data/market_stats.json
             data/breadth.json
             data/sector_rot.json
+            data/stock_tags.json
             data/miner_status.json
             data/govbank.json
             data/lending.json
