@@ -4401,7 +4401,10 @@ def fetch_broker_chips():
                 # 💰 V68.2.7 分點正解:專屬端點 taiwan_stock_trading_daily_report(單日 date + Bearer)。
                 #   逐日往回累積 ~11 個交易日(供 1/3/5/10 週期),含上櫃/冷門股如中美晶 5483。
                 # V68.9.8 分層深度:熱門 11 交易日(1/3/5/10 週期);冷門 3 交易日(1/3 週期)控管額度
-                _need_days = CHIP_DAYS if _is_hot else 3
+                # 📅 V74.0.7 冷門股的深度:**批次模式下拿滿**(⭐ 零額外 API —— 那幾天早就在
+                #   `_bulk_idx` 記憶體裡了,砍成 3 天純粹是舊逐檔時代為了省呼叫)。
+                #   ⛔ 逐檔模式維持 3 天(那裡每一天都是真的要打一次 HTTP)。
+                _need_days = CHIP_DAYS if (_is_hot or _bulk_idx is not None) else 3
                 _lookback = 16 if _is_hot else 6
                 seen_dates: set = set()
                 # 🚀 V71.2.9【增量採礦】只補「本地還沒有的日期」——這是 1 把付費金鑰下當天採完的唯一解。
@@ -4455,6 +4458,7 @@ def fetch_broker_chips():
                         data_rows.extend(rows)
                         seen_dates.add(_d)
                     time.sleep(0.12)   # 溫柔節流(付費額度高,仍防打太快)
+            _day_snaps: dict = {}     # 📅 V74.0.7 {日期: {'b':[...], 's':[...]}} —— 給 hist 補歷史天
             if data_rows:
                 by_date: dict = {}
                 # 🚀 V71.2.9 增量採礦的另一半:只抓新的一天,舊的日子從本地 hist 還原,
@@ -4509,6 +4513,28 @@ def fetch_broker_chips():
                         for bid, e in d_data.items():
                             if bid and e['broker_name'] and not str(e['broker_name']).isdigit():
                                 broker_name_map[bid] = e['broker_name']
+                    # 📅 V74.0.7 把**每一天**都壓成 hist 快照 —— ⛔ 舊版每輪只存 `data_date` 那一筆,
+                    #   所以全市場 hist 中位只有 2 天、要 22 個交易日才長滿,而 20 日週期、
+                    #   「同一分點連買」偵測、日後的深歷史回算全都靠它。
+                    #   ⭐ 這些天本來就已經在記憶體裡(批次抓的 + 從舊 hist 還原的),零額外成本。
+                    for _d2, _slot2 in by_date.items():
+                        _vals2 = []
+                        for _bid2, _e2 in _slot2.items():
+                            _nm2 = _e2.get('broker_name') or _bid2
+                            _net2 = int(_e2.get('net') or 0)
+                            if not _nm2 or str(_nm2).isdigit() or not _net2:
+                                continue
+                            _av2 = None
+                            if _e2.get('vol'):
+                                try:
+                                    _av2 = round(_e2['pv'] / _e2['vol'], 2)
+                                except Exception:
+                                    _av2 = None
+                            _vals2.append([_nm2, _net2, _av2])
+                        _b2 = sorted([x for x in _vals2 if x[1] > 0], key=lambda x: -x[1])[:15]
+                        _s2 = sorted([x for x in _vals2 if x[1] < 0], key=lambda x: x[1])[:15]
+                        if _b2 or _s2:
+                            _day_snaps[str(_d2)] = {'d': str(_d2), 'b': _b2, 's': _s2}
 
                     # 🚨 V73.3.7 使用者問「分點是到 20 天了嗎?為何有些還是只有 10 天」→ 查出真 bug:
                     #    這裡 `[-n:]` 在**天數不足時會給幾天算幾天**,而外面照樣把它標成 `20d`。
@@ -4741,14 +4767,18 @@ def fetch_broker_chips():
                 _hist = []
             _p1 = (out_periods or {}).get('1d') or {}
             _dd = output.get('data_date')
+            # 最新那天用 out_periods['1d'](Sniper 官方分點優先,比 by_date 準)
             if _dd and (_p1.get('buy') or _p1.get('sell')):
-                _snap = {'d': _dd, 'b': _compact_side(_p1.get('buy')), 's': _compact_side(_p1.get('sell'))}
-                if _hist and isinstance(_hist[-1], dict) and _hist[-1].get('d') == _dd:
-                    _hist[-1] = _snap        # 同一交易日重跑 → 覆蓋,不重複
-                else:
-                    _hist.append(_snap)
+                _day_snaps[str(_dd)] = {'d': str(_dd),
+                                        'b': _compact_side(_p1.get('buy')),
+                                        's': _compact_side(_p1.get('sell'))}
+            if _day_snaps:
+                # 📅 V74.0.7 依日期合併(新的覆蓋舊的),⛔ 不再只 append 一筆。
+                _merged = {str(h.get('d')): h for h in _hist
+                           if isinstance(h, dict) and h.get('d')}
+                _merged.update(_day_snaps)
                 # 🚀 V71.2.9 10→12;📅 V72.9.8 12→CHIP_HIST_KEEP(22):20 日週期要算得完整,得多留緩衝
-                _hist = _hist[-CHIP_HIST_KEEP:]
+                _hist = [_merged[k] for k in sorted(_merged)][-CHIP_HIST_KEEP:]
             if _hist:
                 output['hist'] = _hist
 
