@@ -201,10 +201,31 @@ function main() {
   // ═ Pass 2(全窗口):日層級紀錄 + 券商事件(帶交叉特徵)═════════
   const dayRecs = [];    // {sym,dnum,i,chg1,chg5,pos,vola,brk,concBuy,flipShare,fSign,tSign,eps,epsYoY,ex1,ex10,ex20}
   const bEvents = [];    // {b,sym,dnum,i,pos,run,cost60,ex10,ex20,isTop}
+  const sEvents = [];    // 賣方鏡像:{b,dnum,pos,runS,chg5,ex10,ex20}
   const lastEv = new Map(); const runLen = new Map();
+  const lastEvS = new Map(); const runLenS = new Map();
+  // ⭐ 擴充式翻臉率(V2):逐日累積 flipN/flipF —— 事件日只用「當天為止」的統計,
+  //    零前視 → A 可以驗**全窗口**並做前後半檢定(訓練段版本只能驗半段,是結構限制)。
+  //    昨天的買 → 今天的賣才「解決」→ 今天收盤後的訊號用得到今天的解決結果,合法。
+  const expFlip = new Map();     // b -> {n, f}
+  let pendExp = new Map(), curExp = new Map();
   const cum = new Map();   // 關鍵分點:`b|s` -> {pv, vol, days}(累積成本,⭐ 用過去的,更新在事件之後)
   for (let dn = 0; dn < days.length; dn++) {
     const day = days[dn];
+    // 擴充翻臉率:先解決昨天掛著的(swap 在前,順序同 broker_skill_probe 的教訓)
+    pendExp = curExp; curExp = new Map();
+    for (const [sym, arr] of Object.entries(day.s)) {
+      for (const x of arr) {
+        if ((+x[1] || 0) >= 0) continue;
+        const st = pendExp.get(`${x[0]}|${sym}`);
+        if (st) st.f = 1;
+      }
+    }
+    for (const [k2, st] of pendExp) {
+      const b2 = k2.slice(0, k2.indexOf('|'));
+      let a2 = expFlip.get(b2); if (!a2) expFlip.set(b2, a2 = { n: 0, f: 0 });
+      a2.n++; if (st.f) a2.f++;
+    }
     for (const [sym, arr] of Object.entries(day.s)) {
       const o = px.get(sym); if (!o) continue;
       const i = o.at.get(day.d);
@@ -226,28 +247,51 @@ function main() {
       const tSign = o.tn[i] == null ? null : (o.tn[i] > 0 ? 1 : o.tn[i] < 0 ? -1 : 0);
       const fu = fundAt(fund, sym, day.d);
       // — 分點特徵 —
-      let buySum = 0, flipBuy = 0, top5 = [];
+      let buySum = 0, flipBuy = 0, expBuy = 0, expKnown = 0, top5 = [];
       for (const x of arr) {
         const net = +x[1] || 0; if (net <= 0) continue;
         buySum += net; top5.push(net);
-        if (hiFlip.has(String(x[0]))) flipBuy += net;
+        const b2 = String(x[0]);
+        if (hiFlip.has(b2)) flipBuy += net;
+        const ef = expFlip.get(b2);
+        if (ef && ef.n >= 40) { expKnown += net; if (ef.f / ef.n >= 0.35) expBuy += net; }
       }
       top5.sort((a2, b2) => b2 - a2);
       const concBuy = top5.slice(0, 5).reduce((s2, x2) => s2 + x2, 0) / vol * 100;
       const flipShare = dn >= MID && buySum > 0 ? flipBuy / buySum * 100 : null;   // 後半才有(訓練段學的)
+      // 擴充版:買超中「已知統計 ≥40 筆」的部分要佔一半以上才算得出佔比(避免早期亂猜)
+      const expShare = (buySum > 0 && expKnown / buySum >= 0.5) ? expBuy / buySum * 100 : null;
       if (!tradable(px, sym, i)) { /* 日層級也守「買得到」 */ } else {
         const ex1 = exRet(px, idxMap, sym, i, 1), ex10 = exRet(px, idxMap, sym, i, 10), ex20 = exRet(px, idxMap, sym, i, 20);
         if (ex10 != null) {
-          dayRecs.push({ sym, dnum: dn, pos, vola, chg1, chg5, brk, concBuy, flipShare,
+          dayRecs.push({ sym, dnum: dn, pos, vola, chg1, chg5, brk, concBuy, flipShare, expShare,
                          fSign, tSign, eps: fu ? fu[1] : null, epsYoY: fu ? fu[2] : null, ex1, ex10, ex20 });
         }
       }
-      // — 券商事件(B/C/H/I 用)—
+      // — 券商事件(B/C/H/I/K 用)—
       for (const x of arr) {
         const b = String(x[0]); const net = +x[1] || 0;
         const key = `${b}|${sym}`;
         const cm = cum.get(key);
-        if (net <= 0) { runLen.delete(key); continue; }
+        if (net <= 0) {
+          runLen.delete(key);
+          // 🔻 K. 賣方鏡像:連賣天數(規則對稱於買方)
+          const ratioS = -net / vol * 100;
+          if (ratioS >= BUY_TH) {
+            const prS = runLenS.get(key);
+            const runS = (prS && prS.dn === dn - 1) ? prS.run + 1 : 1;
+            runLenS.set(key, { dn, run: runS });
+            const pvS = lastEvS.get(key);
+            const dedupS = !(pvS != null && dn - pvS < DEDUP);
+            if ((dedupS || runS === 3) && tradable(px, sym, i)) {
+              const ex10 = exRet(px, idxMap, sym, i, 10), ex20 = exRet(px, idxMap, sym, i, 20);
+              if (ex10 != null) sEvents.push({ b, dnum: dn, pos, vola, run: runS, chg5, ex10, ex20 });
+            }
+            if (dedupS) lastEvS.set(key, dn);
+          } else runLenS.delete(key);
+          continue;
+        }
+        runLenS.delete(key);
         const ratio = net / vol * 100;
         if (ratio < BUY_TH) { runLen.delete(key); continue; }
         const pr = runLen.get(key);
@@ -263,11 +307,12 @@ function main() {
         if ((dedupOk || run === 3) && tradable(px, sym, i)) {
           const ex10 = exRet(px, idxMap, sym, i, 10), ex20 = exRet(px, idxMap, sym, i, 20);
           if (ex10 != null) {
-            bEvents.push({ b, dnum: dn, pos, run, cost60, chg5, ex10, ex20,
+            bEvents.push({ b, dnum: dn, pos, vola, run, cost60, chg5, ex10, ex20,
                            isTop: dn >= MID && topSkill.has(b) });
           }
         }
         if (dedupOk) lastEv.set(key, dn);
+        curExp.set(key, { f: 0 });          // 擴充翻臉率:掛到明天解決
         // 累積成本更新(事件之後)
         const avg = +x[2] || 0;
         if (avg > 0) {
@@ -411,9 +456,56 @@ function main() {
       cell.filter((e) => e.cost60 < 30), cell.filter((e) => e.cost60 > 70));
   }
 
+  // ═ A2. 擴充式翻臉率版(全窗口 → 可做前後半檢定)═══════════════
+  console.log('\n═══ A2. 大漲日 × 隔日沖佔比【擴充式翻臉率・全窗口版】—— A 的決定性複驗 ═══');
+  const strong2 = dayRecs.filter((e) => e.chg1 >= 5 && e.expShare != null);
+  if (strong2.length >= MIN_N * 2) {
+    const hiT2 = pctOf(strong2, 'expShare', 0.7), loT2 = pctOf(strong2, 'expShare', 0.3);
+    console.log(`   (${strong2.length.toLocaleString()} 筆;佔比 P70=${nf(hiT2, 1)}% / P30=${nf(loT2, 1)}%)`);
+    line('隔日沖佔比 前30% vs 後30%・10日',
+      strong2.filter((e) => e.expShare >= hiT2), strong2.filter((e) => e.expShare <= loT2));
+    line('同上・隔1日', strong2.filter((e) => e.expShare >= hiT2), strong2.filter((e) => e.expShare <= loT2),
+      { fwd: 'ex1' });
+  } else console.log(`   ⏳ 樣本 ${strong2.length} 不足`);
+
+  // ═ J. 漲停日 × 隔日沖佔比 ═══════════════════════════════════════
+  console.log('\n═══ J. 漲停(≥9.4%)那天 × 隔日沖佔比【擴充版】═══');
+  const limitD = dayRecs.filter((e) => e.chg1 >= 9.4 && e.expShare != null);
+  if (limitD.length >= MIN_N * 2) {
+    const hj = pctOf(limitD, 'expShare', 0.7), lj = pctOf(limitD, 'expShare', 0.3);
+    line('漲停日:隔日沖佔比 前30% vs 後30%',
+      limitD.filter((e) => e.expShare >= hj), limitD.filter((e) => e.expShare <= lj));
+  } else console.log(`   ⏳ 漲停日樣本 ${limitD.length} 不足`);
+
+  // ═ K. 出場警訊:連賣 ≥3 天(對照:同跌幅的單日賣)═══════════════
+  console.log('\n═══ K. 🔻 連賣 ≥3 天 —— 出場警訊(對照組共用 chg5 腿,run=1 的賣)═══');
+  const s3 = sEvents.filter((e) => e.run >= 3), s1 = sEvents.filter((e) => e.run === 1);
+  line('連賣≥3 且 5日已跌 ≤−8%(下跌中被持續倒貨)', s3.filter((e) => e.chg5 <= -8), s1.filter((e) => e.chg5 <= -8));
+  line('連賣≥3 且 5日還沒跌(>−2%)(偷偷出貨?)', s3.filter((e) => e.chg5 > -2), s1.filter((e) => e.chg5 > -2));
+  line('連賣≥3 且 5日還在漲 ≥8%(邊漲邊倒)', s3.filter((e) => e.chg5 >= 8), s1.filter((e) => e.chg5 >= 8));
+
+  // ═ L. 券商系別 × 位階(名稱分類,零訓練 → 全窗口可驗)═══════════
+  console.log('\n═══ L. 外資系 / 官股銀行系 大買 × 位階 —— 對照組共用位階腿 ═══');
+  const FOREIGN = ['高盛', '美林', '摩根', '瑞銀', '野村', '花旗', '巴黎', '麥格理', '匯豐', '港商', '美商', '瑞士信貸', '德意志'];
+  const GOV = ['台銀', '臺銀', '土銀', '合庫', '第一金', '彰銀', '華南', '兆豐', '臺企', '台企'];
+  const isSys = (b, toks) => { const n2 = nm[b] || ''; return toks.some((t) => n2.includes(t)); };
+  for (const [nm3, toks] of [['外資系', FOREIGN], ['官股銀行系', GOV]]) {
+    for (const [nm2, lo, hi] of [['低位階(<40)', 0, 40], ['高位階(≥60)', 60, 101]]) {
+      const cell = bEvents.filter((e) => e.pos >= lo && e.pos < hi);
+      line(`${nm3}大買・${nm2} vs 同位階其他券商大買`,
+        cell.filter((e) => isSys(e.b, toks)), cell.filter((e) => !isSys(e.b, toks)));
+    }
+  }
+
+  // ═ M. C 疊在 🧬 上的增量(連買≥3且已噴 且 高位階+高波動)═════════
+  console.log('\n═══ M. C 疊在 🧬 高位階+高波動 上的增量 ═══');
+  line('連買≥3・已噴≥8%・🧬(位階≥75 且 波動≥全體P60)vs 同條件單日買',
+    r3.filter((e) => e.chg5 >= 8 && e.pos >= 75 && e.vola >= vTh),
+    r1.filter((e) => e.chg5 >= 8 && e.pos >= 75 && e.vola >= vTh));
+
   console.log(`\n📌 判讀:每一行都是「同條件下,有分點腿 − 沒分點腿」的 pp 差 —— 量的是分點**多帶**的資訊。`);
   console.log(`   成立門檻:10 日差 ≥ ${COST}pp(成本)且前後半同向且 n≥${MIN_N}。`);
-  return { dayRecs, bEvents, MID };
+  return { dayRecs, bEvents, sEvents, MID };
 }
 
 // ── 🧪 selftest:注入「分點大買**只在低位階**有效」,驗 within-cell 對照有沒有真的隔離 ──
@@ -434,6 +526,8 @@ function selftest() {
   // ⚠️ 訊號要**稀疏**(每 45 天一次)—— 第一版每 9 天一次、每次推 10 根,
   //    低位階組被自己的訊號推成高位階 → 低位階格變空(selftest 抓到)。
   const bigBuy = (s2, b) => ((b + s2 * 7) % 45 === 0);
+  const lowPosOf = (s2) => s2 % 2 === 0;
+  const sellRun = (s2, b) => { const m = (b + s2 * 13) % 45; return m >= 0 && m < 3; };   // 連賣 3 天
   const syms = [];
   for (let s2 = 0; s2 < NSYM; s2++) {
     const sym = String(4000 + s2); syms.push(sym);
@@ -442,8 +536,12 @@ function selftest() {
     for (let b = 0; b < NBAR; b++) {
       // ⭐ 訊號效果**只給低位階組**:大買後 10 根各 +0.35%
       const boost = lowPos && [...Array(10).keys()].some((k) => b - 1 - k >= 0 && bigBuy(s2, b - 1 - k));
+      // 🔻 連賣 3 天完成後 10 根各 −0.3%(K 的注入效果;只給高位階組)
+      const dumped = !lowPos && [...Array(10).keys()].some((k) => {
+        const bb = b - 1 - k; return bb >= 2 && sellRun(s2, bb) && !sellRun(s2, bb + 1);
+      });
       // 低位階組整段陰跌(訊號的 +3.5% 蓋不過 −0.1%/日 的漂移)→ pos 保持在低檔
-      const drift = lowPos ? -0.001 : 0.0012;
+      const drift = (lowPos ? -0.001 : 0.0012) + (dumped ? -0.003 : 0);
       const prevC = c;
       c *= 1 + drift + (boost ? 0.0035 : 0);
       rows.push({ date: dates[b], open: +prevC.toFixed(2), high: +(Math.max(prevC, c) * 1.005).toFixed(2),
@@ -457,7 +555,10 @@ function selftest() {
     syms.forEach((sym, s2) => {
       const arr = [];
       if (bigBuy(s2, b)) for (let k = 0; k < 5; k++) arr.push([`77${k}0`, 500_000, 100]);
+      // 🔻 K 的注入:高位階組,9990 連賣 3 天(每 45 天一輪),之後價格下修(壓在價格產生器)
+      if (!lowPosOf(s2) && sellRun(s2, b)) arr.push(['9990', -400_000, 100]);
       for (let f = 0; f < 8; f++) if ((b + f * 7 + s2 * 3) % 13 === 0) arr.push([String(5000 + f), 60_000, 100]);
+      for (let f = 0; f < 4; f++) if ((b + f * 11 + s2 * 5) % 17 === 0) arr.push([String(6000 + f), -70_000, 100]);
       if (arr.length) sMap[sym] = arr;
     });
     fs.writeFileSync(path.join(dd, `${dates[b]}.json.gz`),
@@ -469,7 +570,8 @@ function selftest() {
 
 if (SELFTEST) {
   selftest();
-  const { dayRecs } = main();
+  const _res = main();
+  const { dayRecs } = _res;
   // 直接重算 B 的兩格(⛔ 呼叫跟正式輸出同一套資料,不複製判定)
   const cellEdge = (lo, hi) => {
     const cell = dayRecs.filter((e) => e.pos >= lo && e.pos < hi);
@@ -480,10 +582,16 @@ if (SELFTEST) {
     return mean(a.map((e) => e.ex10)) - mean(b2.map((e) => e.ex10));
   };
   const loE = cellEdge(0, 25), hiE = cellEdge(75, 101);
+  // K 的自驗:直接量「連賣≥3 vs 單日賣」在合成資料的差(9990 連賣後必跌)
+  const s3t = _res.sEvents.filter((e) => e.run >= 3), s1t = _res.sEvents.filter((e) => e.run === 1);
+  const kE = (s3t.length > 80 && s1t.length > 80)
+    ? mean(s3t.map((e) => e.ex10)) - mean(s1t.map((e) => e.ex10)) : null;
+  console.log(`🧪 K 自驗:連賣≥3 n=${s3t.length} ・單日賣 n=${s1t.length} ・edge=${nf(kE)}pp`);
   console.log(`\n🧪 自驗:低位階格 edge=${nf(loE)}pp ・高位階格 edge=${nf(hiE)}pp`);
   const bad = [];
   if (!(loE > 1.5)) bad.push(`低位階格沒抓到注入的訊號(${nf(loE)})`);
   if (!(Math.abs(hiE) < 0.6)) bad.push(`高位階格出現不該有的邊際(${nf(hiE)})→ within-cell 對照壞了`);
+  if (kE == null || !(kE < -1)) bad.push(`K 賣方鏡像沒抓到注入的連賣倒貨(edge=${nf(kE)})`);
   if (bad.length) { console.error('❌ SELFTEST 失敗:'); bad.forEach((b2) => console.error('   - ' + b2)); process.exit(1); }
   console.log('✅ BROKER_CROSS_PROBE_SELFTEST_PASS(within-cell 對照真的隔離得開)');
 } else {
