@@ -239,14 +239,18 @@ for (const sym of syms) {
                         const tmBase = tm && tm[1] && tm[1] !== 'none' ? tm[1] : '';
                         const maN2 = tmBase.startsWith('ma') ? +tmBase.slice(2) : maN;
                         const trailPct2 = /^trail(\d+)$/.test(tmBase) ? +RegExp.$1 : trailPct;
-                        let peak = entry;
+                        let peak = entry, tmHit = 0;
                         for (let j = eIdx + 1; j <= endJ; j++) {
                             const c = C(j);
                             if (c > peak) peak = c;
                             if (c <= stop) { exitP = stop; exitIdx = j; break; }
                             // ⏱️ 到了第 tmD 天,若最高點還沒漲過 tmP% → 認賠時間成本先出
-                            if (tmD > 0 && j - eIdx >= tmD && peak < entry * (1 + tmP / 100)) {
-                                exitP = c; exitIdx = j; break;
+                            // 🚨 這裡必須是 `<=` 不是 `<`:`peak` 從 `entry` 起算,
+                            //    所以 tmP=0(「完全沒漲就出」)用 `<` 會變成 `entry < entry` = 永遠 false
+                            //    → 那個變體**一次都不會觸發**,而輸出跟基準一字不差、看起來只是「沒差別」。
+                            //    ⛔ 實測踩過:ma5tm5_0 跑出來跟 ma5/20 每一位數都相同。
+                            if (tmD > 0 && j - eIdx >= tmD && peak <= entry * (1 + tmP / 100)) {
+                                exitP = c; exitIdx = j; tmHit = 1; break;
                             }
                             if (maN2 > 0 && j >= maN2 - 1) {
                                 let s2 = 0; for (let q = 0; q < maN2; q++) s2 += C(j - q);
@@ -262,7 +266,7 @@ for (const sym of syms) {
                                    // 成交值(億):`volume` 是股 → ×收盤÷1e8
                                    amt: data[i].volume * data[i].close / 1e8,
                                    entry, stop,   // 💰 風險法算張數要用(⛔ 別在外面重算,基準會不一致)
-                                   ret: (exitP - entry) / entry * 100 });
+                                   ret: (exitP - entry) / entry * 100, tm: tmHit });
                         i = exitIdx + 1; continue;
                     }
                 }
@@ -670,6 +674,17 @@ console.log(`   每趟平均      ${pct(taken.reduce((a, t) => a + net(t), 0) / 
 console.log(`   累積損益      ${totalPnL >= 0 ? '+' : '−'}${nf(Math.abs(totalPnL))} 元`);
 console.log(`   對本金報酬    ${pct(totalPnL / capital * 100)}  ${yrs >= 0.5 ? `(年化約 ${pct((Math.pow(1 + totalPnL / capital, 1 / yrs) - 1) * 100)})` : ''}`);
 console.log(`   📉 最大回撤    ${mdd.toFixed(2)}%  ← 中途最難熬的時候(⚠️ 這是會不會半路砍在最低點的關鍵)`);
+// 🚧 空過守門:設了濾網/出場變體,卻**一次都沒有真的觸發** → 輸出會跟基準一字不差,
+//    而那看起來只是「這個變體沒差別」。⛔ 實測踩過(ma5tm5_0 用 `<` 永遠 false)。
+{
+    const tmM = /tm(\d+)_(\d+)/.exec(process.env.EXIT || '');
+    if (tmM) {
+        const tmN = taken.filter(t => t.tm).length;
+        console.log(tmN
+            ? `   ⏱️ 時間停損出場  ${tmN} 筆(佔 ${(tmN / taken.length * 100).toFixed(0)}%)`
+            : `   🚨 時間停損一次都沒觸發 —— 這**不是「沒差別」,是這個變體沒有生效**,請先查判斷式`);
+    }
+}
 console.log(`\n🆚 同期對照`);
 console.log(`   0050 買進持有  ${ret50 == null ? '(無資料)' : pct(ret50)}`);
 console.log(`   加權指數      ${pct(twiiRet)}`);
