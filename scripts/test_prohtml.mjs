@@ -733,7 +733,9 @@ ok('㉔ 五個頁籤:有用 / 沒用 / 回測的坑 / 還測不了 / 推薦下�
 ok('㉔a2 🚧 空過守門:展開後內文真的抓得到(⛔ <details> 收合時 innerText 不含內文 = 假通過)',
    L.all.length > 6000 && /六道關卡|來回成本/.test(L.all), L.all.length);
 ok('㉔b 每一欄都有內容,切換真的換掉列表',
-   L.ok.n > 5 && L.trap.n > 5 && L.method.n > 5 && L.blocked.n > 3 && L.next.n > 3
+   // ⚠️ next 欄的門檻刻意最低(≥1)—— 「驗證完當場歸類」的鐵則(V74.4.3)會把它越清越短,
+   //    清到快空**是好事**,⛔ 別把門檻調回去逼人塞條目
+   L.ok.n > 5 && L.trap.n > 5 && L.method.n > 5 && L.blocked.n > 3 && L.next.n >= 1
    && L.ok.txt !== L.trap.txt && L.trap.txt !== L.method.txt,
    [L.ok.n, L.trap.n, L.method.n, L.blocked.n, L.next.n]);
 ok('㉔c 頁籤數字要跟實際筆數一致(⛔ 不可寫死)',
