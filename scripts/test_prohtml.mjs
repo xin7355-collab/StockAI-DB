@@ -212,7 +212,9 @@ const T = await page.evaluate(async () => {
         ind: {
             '15': { n: 28, r20: [-5, -2, 0, 1, 8], flow: { f: [1, 1, 1, 1, 1], t: [1, 1, 1, 1, 1], dl: [0, 0, 0, 0, 0], mg: [1, 1, 1, 1, 1] } },
             '17': { n: 32, r20: [1, 1, 1, 1, 3], flow: { f: [-10, -10, -10, -10, -10], t: [5, 5, 5, 5, 5], dl: [0, 0, 0, 0, 0], mg: [-1, -1, -1, -1, -1] } },
-            '10': { n: 31, r20: [2, 2, 2, 2, -4], flow: { f: [2, 2, 2, 2, 2], t: [0, 0, 0, 0, 0], dl: [0, 0, 0, 0, 0], mg: [0, 0, 0, 0, 0] } },
+            // ⚠️ 第一天塞一個 −35 —— 真實資料的分布就是這樣(全期最大 |r20| 38.5%,
+            //    但平常那天只有 −11 ~ +2)。⛔ 沒有這個落差,「X 尺標用最大值還是 P95」根本測不出來。
+            '10': { n: 31, r20: [-35, 2, 2, 2, -4], flow: { f: [2, 2, 2, 2, 2], t: [0, 0, 0, 0, 0], dl: [0, 0, 0, 0, 0], mg: [0, 0, 0, 0, 0] } },
             '24': { n: 96, r20: [8, 5, 3, 0, -9], flow: { f: [180, 180, 180, 180, 180], t: [-77, -77, -77, -77, -77], dl: [0, 0, 0, 0, 0], mg: [-17, -17, -17, -17, -17] } },
             '99': { n: 3, r20: [null, null, null, null, null], flow: { f: [null, null, null, null, null], t: [null, null, null, null, null], dl: [null, null, null, null, null], mg: [null, null, null, null, null] } },
         },
@@ -344,6 +346,58 @@ const T = await page.evaluate(async () => {
     await new Promise(r => setTimeout(r, 120));
     out.backBubs = document.querySelectorAll('#rotBubs .bub').length;
     out.backBtn = document.getElementById('rotMode').textContent;
+    // ㉗ 📐 版面:泡泡要**真的散得開**(使用者截圖:全部擠成一團)
+    // 🚨 這一段刻意換上**照真實規模**的測資(32 組 × 120 天)——
+    //    上面那份小測資只有 20 個 r20 值,P95 會退化成最大值 → 「P95 vs 最大值」根本測不出來
+    //    (陷阱 #40:測資跟真實資料規模不同 = 那條測試等於沒驗)。
+    {
+      const big = { updated: 'x', win: 20, listed_only: true,
+        flow_keys: { f: '外資', t: '投信', dl: '自營', mg: '融資(散戶代理)' }, days: [], ind: {} };
+      for (let d = 0; d < 120; d++) big.days.push('2026-' + String(1 + (d % 12)).padStart(2, '0') + '-' + String(1 + (d % 28)).padStart(2, '0'));
+      for (let i = 0; i < 32; i++) {
+        const r20 = [], fl = { f: [], t: [], dl: [], mg: [] };
+        for (let d = 0; d < 120; d++) {
+          // 多數落在 ±8%,少數極端(真實:P95 = 5.0 而最大 38.5)
+          r20.push(i === 0 && d < 3 ? -38 + d : +(Math.sin(i * 1.7 + d / 6) * 7).toFixed(2));
+          // 資金流極度偏斜(真實:|中位| 10 億、最大 2801 億)
+          const amp = i === 3 ? 600 : i === 7 ? 120 : 8;
+          fl.f.push(+(Math.sin(i * 2.3 + d / 4) * amp).toFixed(2));
+          fl.t.push(+(Math.cos(i + d / 9) * 3).toFixed(2));
+          fl.dl.push(0); fl.mg.push(+(Math.sin(d / 3) * 2).toFixed(2));
+        }
+        big.ind['I' + i] = { n: 5 + i, r20, flow: fl };
+      }
+      PRO._cache['data/sector_rot.json'] = big;
+      PRO._rotMode = 'ind';
+      await PRO.renderRot();
+      await new Promise(r => setTimeout(r, 550));   // ⚠️ 等 .bub 的 0.42s transition 跑完
+      const bubs = () => [...document.querySelectorAll('#rotBubs .bub')].filter(e => e.style.opacity !== '0');
+      const ctr = e => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };
+      const svg = document.querySelector('#rotRace svg').getBoundingClientRect();
+      const pos = bubs().map(ctr), xs = pos.map(o => o.x), ys = pos.map(o => o.y);
+      const span = a => Math.max(...a) - Math.min(...a);
+      const midY = svg.y + svg.height / 2;
+      out.nBubs = pos.length;
+      out.spreadY = span(ys) / svg.height * 100;
+      out.nearMidPct = ys.filter(y => Math.abs(y - midY) < svg.height * 0.05).length / pos.length * 100;
+      out.nTicks = document.querySelectorAll('#rotRace text.qtick').length;
+      out.quadTxt = document.getElementById('rotQuad').innerText.replace(/\s+/g, ' ');
+      out.quadSum = [...document.getElementById('rotQuad').querySelectorAll('b')]
+        .reduce((s, b) => s + (+(b.textContent.match(/\d+/) || [0])[0]), 0);
+      out.sy10 = PRO._sy(10); out.sy1000 = PRO._sy(1000);
+      // ⭐ 對照組:X 尺標換成「全期最大值」(舊版做法)重畫 → P95 版必須散得更開
+      out.spreadP95px = span(xs);
+      const keep = PRO._rotMax;
+      let gmax = 0;
+      for (const o of Object.values(big.ind)) for (const v of o.r20) if (v != null) gmax = Math.max(gmax, Math.abs(v));
+      // ⚠️ .bub 有 0.42s 的 transition —— ⛔ 改完立刻量會拿到**動畫還沒跑完的舊位置**
+      //    (第一版就是這樣,兩種尺標量出來一模一樣 317px、看起來像「這個改動沒用」)。
+      PRO._rotMax = gmax; PRO.rotSeek(PRO._rotK);
+      await new Promise(r => setTimeout(r, 550));
+      out.spreadMaxPx = span(bubs().map(ctr).map(o => o.x));
+      PRO._rotMax = keep; PRO.rotSeek(PRO._rotK);
+      await new Promise(r => setTimeout(r, 550));
+    }
     PRO.rotSeek(4);
     PRO.rotPlay(); out.playing = !!PRO._rotTimer;
     PRO.switchTab('val');
@@ -567,6 +621,19 @@ ok('㉖f 🚨 題材說明要含三條誠實限制:後見之明 / 實測不可�
    /後見之明/.test(T.thNote) && /不可套用到題材版/.test(T.thNote) && /重複計/.test(T.thNote), T.thNote.slice(0, 300));
 ok('㉖g 切回官方模式要完整復原(泡泡 = 產業數)',
    T.backBubs === 4 && /官方產業/.test(T.backBtn), [T.backBubs, T.backBtn]);
+// ㉗ 📐 版面(使用者截圖:泡泡全部擠成一團 —— 實測舊版 97% 黏在中線)
+ok('㉗ 🚨 Y 軸必須是**對數**:資金流中位 10 億 vs 最大 2801 億,線性下一半的泡泡會黏在中線',
+   T.sy10 > 0.15 && T.sy1000 > T.sy10 * 1.4 && T.sy1000 <= 1,
+   [T.sy10, T.sy1000]);
+ok('㉗b 🚨 Y 軸(對數)要讓泡泡散得開 —— ⛔ 舊版線性只用到 7.6% 的高度',
+   T.spreadY >= 30, T.spreadY?.toFixed(1));
+ok('㉗b2 🚨 X 尺標用 P95 必須比用「全期最大值」散得開(⭐ 對照組測法,不受測資規模影響)',
+   T.spreadP95px >= T.spreadMaxPx * 1.05,
+   [T.spreadP95px?.toFixed(0), T.spreadMaxPx?.toFixed(0)]);
+ok('㉗c 🚨 黏在中線的泡泡要少(⛔ 舊版 97%)', T.nearMidPct <= 55, T.nearMidPct?.toFixed(0));
+ok('㉗d 📏 要有軸刻度標籤(⛔ 只有兩條軸線的話泡泡位置不可解讀)', T.nTicks >= 6, T.nTicks);
+ok('㉗e 四象限計數:四格加起來 = 泡泡數,而且**不可**用「漲潮/輪動/觀望/退潮」那套加速度分類',
+   T.quadSum === T.nBubs && !/漲潮|退潮|輪動|觀望/.test(T.quadTxt), [T.quadSum, T.nBubs, T.quadTxt]);
 ok('㉒l ⛔ 切走分頁要停掉動畫(不可留背景 timer)', T.playing && T.stoppedOnLeave, [T.playing, T.stoppedOnLeave]);
 // ㉔ 🔬 實測總表
 ok('㉔ 五個頁籤:有用 / 沒用 / 回測的坑 / 還測不了 / 推薦下一步',
