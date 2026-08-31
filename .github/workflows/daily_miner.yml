@@ -234,6 +234,7 @@ jobs:
           #    要註解請寫在這裡(block 之外),或用 scripts/check_workflow_paths.py 擋。
           path: |
             data/chips/
+            chips_deep/
             data/radar.json
             data/top_picks.json
             data/bubble_warning.json
@@ -618,3 +619,49 @@ jobs:
             git fetch origin data 2>/dev/null || true
           done
           echo "✅ data 分支已更新"
+
+      # 📚 V74.0.8 把今天新抓的全市場分點累加進 `chips_deep` 分支(回測深歷史)。
+      #   🚨 沒有這步的話,回測資料會**永遠停在最後一次手動回算那天** ——
+      #      採礦每天抓到的全市場分點寫進個股檔後就被 22 天上限截掉丟棄。
+      #   ⛔ 設計成「只增不減」:先把分支現有的天還原回來,再加今天的,
+      #      天數比分支上少就**拒絕推送**(orphan force-push 會整個取代,少了就是真的沒了)。
+      - name: 📚 累加 chips_deep(回測深歷史)
+        if: always()
+        continue-on-error: true      # ⛔ 這步失敗不可影響 gh-pages/data 的部署
+        run: |
+          set -e
+          if [ ! -d chips_deep ] || [ -z "$(ls chips_deep/*.json.gz 2>/dev/null)" ]; then
+            echo "ℹ️ 這輪沒有新的 chips_deep 檔(可能全部日期都已存在)→ 跳過"
+            exit 0
+          fi
+          NEW=$(ls chips_deep/*.json.gz | wc -l)
+          mkdir -p /tmp/deepnew && cp chips_deep/*.json.gz /tmp/deepnew/
+          OLD=0
+          if git fetch origin chips_deep --depth=1 2>/dev/null; then
+            OLD=$(git ls-tree -r --name-only origin/chips_deep | grep -c '\.json\.gz$' || echo 0)
+            git archive origin/chips_deep | tar -x -C . 2>/dev/null || true
+          fi
+          cp -n /tmp/deepnew/*.json.gz chips_deep/ 2>/dev/null || true
+          cp -f /tmp/deepnew/*.json.gz chips_deep/ 2>/dev/null || true
+          N=$(ls chips_deep/*.json.gz | wc -l)
+          # 🚧 只增不減(⛔ orphan force-push 會整個取代)
+          if [ "$N" -lt "$OLD" ]; then
+            echo "❌ 現在 $N 天 < 分支上已有的 $OLD 天 → 拒絕推送(會弄丟資料)"
+            exit 1
+          fi
+          if [ "$N" -eq "$OLD" ]; then
+            echo "ℹ️ $OLD 天沒有變化 → 不推送"
+            exit 0
+          fi
+          echo "📦 chips_deep $OLD → $N 天(本輪新增 $NEW 天)・$(du -sh chips_deep | cut -f1)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan _deep_daily
+          git rm -rf --cached . -q 2>/dev/null || true
+          git add -f chips_deep/
+          git commit -q -m "📚 分點深歷史 ${N} 天($(date -u '+%Y-%m-%d %H:%M UTC'))"
+          for i in 1 2 3 4 5; do
+            git push origin HEAD:chips_deep --force && { echo "✅ chips_deep 已更新"; break; }
+            [ "$i" -eq 5 ] && { echo "❌ chips_deep push 連 5 次失敗"; exit 1; }
+            sleep $((i * 5))
+          done

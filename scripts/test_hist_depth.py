@@ -105,6 +105,29 @@ ck('⑥c fetch 要帶 --filter=blob:none(只下載點名的那幾天)',
 ck('⑥d 解壓要 -C 對齊 CHIPS_DEEP_DIR(⛔ 解到 CWD 會「抓下來卻找不到」)',
    '--strip-components=1' in RC and "-C '" in RC, '解壓路徑沒對齊')
 
+# ── ⑦ 🚨 daily_miner 必須把新的一天**寫進** chips_deep(⛔ 只讀不寫 = 回測資料永遠停住)──
+ck('⑦ 批次抓到新的一天要順手存進 chips_deep',
+   'deep_written' in RC or 'deep_written' in CODE, '沒有寫入路徑 → 深歷史不會成長')
+ck('⑦b 壓縮/欄位要共用 chips_backfill 的 compact_day/write_day(⛔ 不可另寫一份)',
+   'import chips_backfill' in CODE and '_cbf.write_day(' in CODE
+   and CODE.count('def compact_day') == 0, '沒共用或 miner 自己又寫了一份')
+ck('⑦c 半份的天⛔ 不可寫進深歷史(同 min_syms 守門)',
+   re.search(r'_nsym >= min_syms', CODE) is not None, '沒有樣本守門')
+
+WF = (ROOT / '.github/workflows/daily_miner.yml').read_text(encoding='utf-8')
+ck('⑦d artifact 要收 chips_deep/(⛔ 沒收的話 deploy job 拿不到)',
+   re.search(r'path: \|\n(\s+\S+\n)*?\s+chips_deep/\n', WF) is not None,
+   'artifact path 清單沒有 chips_deep/')
+ck('⑦e deploy 要有「只增不減」守門(orphan force-push 少了就是真的沒了)',
+   '拒絕推送(會弄丟資料)' in WF and '"$N" -lt "$OLD"' in WF, '沒有守門')
+ck('⑦f 這步失敗⛔ 不可影響 gh-pages/data 部署',
+   re.search(r'累加 chips_deep[\s\S]{0,200}?continue-on-error: true', WF) is not None,
+   '沒有 continue-on-error')
+
+# ── ⑧ 券商數 ────────────────────────────────────────────────────
+ck('⑧ CHIPS_BULK_BROKERS 預設 300(使用者要求 2026-08-31)',
+   "CHIPS_BULK_BROKERS', '300'" in CODE, '沒調到 300')
+
 print()
 if FAIL:
     print(f'❌ {len(FAIL)} 條沒過:')

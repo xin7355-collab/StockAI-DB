@@ -3694,7 +3694,7 @@ def _chips_broker_ids(n=None):
     """前 N 家券商**代號**(依 |淨額| 排序)——⭐ 與 `scripts/chips_backfill.py` 共用同一支,
     ⛔ 不在這裡再寫第二份(陷阱 #37:共用工具寫好了卻各寫各的)。
     拿不到就回空清單,呼叫端會自動退回逐檔模式。"""
-    n = n or int(os.getenv('CHIPS_BULK_BROKERS', '200'))
+    n = n or int(os.getenv('CHIPS_BULK_BROKERS', '300'))
     try:
         _sp = str(Path(__file__).resolve().parent / 'scripts')
         if _sp not in sys.path:
@@ -3774,6 +3774,7 @@ def _fetch_chips_bulk(dates, need_days=CHIP_DAYS, top_per_day=25, min_syms=200,
     got = 0
     fetched: list = []
     fetched_local = 0
+    deep_written: list = []      # 📚 這輪新寫進 chips_deep 的日期
     # 📚 V74.0.9 歷史天優先從 chips_deep 分支還原(零 API,見 _load_chips_deep_local 的說明)
     local_days = _load_chips_deep_local([d for d in dates if d not in have])
 
@@ -3842,8 +3843,29 @@ def _fetch_chips_bulk(dates, need_days=CHIP_DAYS, top_per_day=25, min_syms=200,
             return None
         if r == 'ok':
             fetched.append(d)
+            # 📚 V74.0.8 順手把這一天存進 `chips_deep/` —— ⭐ 零額外 API(資料就在手上)。
+            #   🚨 沒有這段的話回測資料會**永遠停在最後一次手動回算那天**:
+            #      daily_miner 只讀 chips_deep 不寫,每天新抓的全市場分點寫進個股檔就被
+            #      CHIP_HIST_KEEP(22) 截掉丟棄 → 深歷史不再成長,而回測全靠它。
+            #   ⛔ 壓縮/欄位一律共用 `chips_backfill.py` 的 compact_day/write_day,
+            #      ⛔ 不在這裡另寫一份(同名不同義是本專案犯最多次的錯)。
+            try:
+                _sp2 = str(Path(__file__).resolve().parent / 'scripts')
+                if _sp2 not in sys.path:
+                    sys.path.insert(0, _sp2)
+                import chips_backfill as _cbf   # noqa: E402
+                _cbf.OUT_DIR = Path(os.environ.get('CHIPS_DEEP_DIR') or 'chips_deep')
+                if not _cbf.day_path(d).exists():
+                    _cpt, _nms, _nsym = _cbf.compact_day(rows_all)
+                    if _nsym >= min_syms:          # 同一道守門:半份的天⛔ 不寫
+                        _cbf.write_day(d, _cpt, _nms)
+                        deep_written.append(d)
+            except Exception as _e2:
+                print(f"  ⚠️ chips_deep 存檔失敗({str(_e2)[:70]})→ 這天的深歷史下次回算補")
     if not idx:
         return None
+    if deep_written:
+        print(f"  📚 chips_deep 新增 {len(deep_written)} 天({', '.join(deep_written)})→ 回測深歷史持續成長")
     print(f"  🚀 分點全市場批次完成:{len(idx)} 檔 × API 新抓 {len(fetched)} 天 + 分支還原 {fetched_local} 天"
           f"(本地已有 {got - len(fetched) - fetched_local} 天)、{len(fetched) * len(brokers)} 次呼叫、"
           f"{time.time() - t0:.0f} 秒(按股票抓同樣覆蓋要約 {len(idx) * max(1, len(fetched)):,} 次)")
@@ -4909,7 +4931,7 @@ def fetch_broker_chips():
         print("  🚨 這一輪分點**更新 0 檔** —— 若 `付費=None`,10 項付費資料集都會一起停擺,"
               "真因通常在 FinMind 帳號等級(Your level is register),⛔ 不是程式或額度。")
     if _bulk_mode == 'broker':
-        print(f"  🔍 按券商批次:{_bulk_miss} 檔在前 {os.getenv('CHIPS_BULK_BROKERS', '200')} "
+        print(f"  🔍 按券商批次:{_bulk_miss} 檔在前 {os.getenv('CHIPS_BULK_BROKERS', '300')} "
               f"家券商裡完全沒出現(數字變大就把 CHIPS_BULK_BROKERS 調高)")
     elif _bulk_mode == 'perstock':
         print(f"  🔍 逐檔併發預抓:{_bulk_miss} 檔這輪沒預抓到(時間預算內沒排到,下輪續抓)")
