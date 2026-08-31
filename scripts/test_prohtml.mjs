@@ -436,7 +436,6 @@ const L = await page.evaluate(async () => {
     PRO.selLab('method'); out.method = grab();
     PRO.selLab('blocked'); out.blocked = grab();
     PRO.selLab('next'); out.next = grab();
-    out.kpi = document.getElementById('labKpis').innerText;
     // ⚠️ 要掃**每一欄**(第一版只掃了「有用」那欄 → 把來源刪在別欄完全抓不到,注入驗證抓到的)
     out.srcMissing = 0;
     for (const k of Object.keys(PRO.LAB)) {
