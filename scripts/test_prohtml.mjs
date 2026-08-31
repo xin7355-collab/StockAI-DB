@@ -477,10 +477,21 @@ const SIG = await page.evaluate(async () => {
     scr.rows['1303'][Ci.chg5] = 45; scr.rows['1303'][Ci.att] = 1;   // 噴 45% 又掛注意 → 要進避雷
     scr.rows['6949'] = new Array(scr.cols.length).fill(0);
     scr.rows['6949'][Ci.chg5] = 45; scr.rows['6949'][Ci.att] = 0;   // 噴但沒掛注意 → ⛔ 不可進避雷
+    // 🌅 盤前分數:公式必須跟探針 STRICT 模式一致(⛔ 同名不同義)
+    //   這組值算出來:那指 +1 / 標普 +1 / 費半 +1.5 / 台積ADR +2 / VIX +0.5 / 日經 +1 / 韓股 +1 / 台幣 +0.5 = 8.5 分
+    PRO._cache['data/macro_risk.json'] = {
+      nasdaq_chg_pct: 1.2, sp500_chg_pct: 0.8, sox_chg_pct: 2.1, tsm_chg_pct: 1.5,
+      vix_chg_pct: -3.0, nikkei_chg_pct: 0.9, kospi_chg_pct: 1.1, usdtwd_chg_pct: -0.2,
+    };
     PRO.switchTab('sig');
     await PRO.renderSig();
     await new Promise(r => setTimeout(r, 60));
     out.how = document.getElementById('sigHow').innerText;
+    out.premktScore = PRO._premktScore(PRO._cache['data/macro_risk.json']);
+    // 成分不足 → ⛔ 不硬給分數
+    out.premktThin = PRO._premktHtml({ nasdaq_chg_pct: 1, sp500_chg_pct: 1 });
+    // 資料沒到 → 要說出來
+    out.premktNone = PRO._premktHtml(null);
     out.picks = document.getElementById('sigPicks').innerText;
     out.pickRows = document.querySelectorAll('#sigPicks tbody tr').length;
     out.firstRow = (document.querySelector('#sigPicks tbody tr') || {}).innerText || '';
@@ -522,6 +533,18 @@ ok('㉜k ⚠️ 避雷只收「噴 ≥30% 且掛注意股」的(⛔ 只噴不掛
    /1303/.test(SIG.avoid) && !/6949/.test(SIG.avoid), SIG.avoid.slice(0, 150));
 ok('㉜l ⛔ 整頁不可給買賣價位建議(價位一律以散戶救星為準)',
    /不給任何買賣價位建議/.test(SIG.how));
+// ㉝ 🌅 盤前分數(V74.4.5,使用者:「這個分數我覺得還滿準」→ 實測支持)
+ok('㉝ 分數算式跟探針 STRICT 一致(那指1+標普1+費半1.5+台積2+VIX0.5+日經1+韓股1+台幣0.5=8.5)',
+   SIG.premktScore && Math.abs(SIG.premktScore.s - 8.5) < 1e-9 && SIG.premktScore.n === 8,
+   JSON.stringify(SIG.premktScore && { s: SIG.premktScore.s, n: SIG.premktScore.n }));
+ok('㉝b 高分要對照到「≥3 分」那格的歷史數字(84.7% 開高)', /84\.7%/.test(SIG.how));
+ok('㉝c 🚨🚨 必須點出「開高有一大半是廢話」(同義反覆)+ 真正的預測力是開盤後那段',
+   /有一大半是廢話/.test(SIG.how) && /0\.574/.test(SIG.how) && /開盤之後還會不會繼續漲/.test(SIG.how));
+ok('㉝d 🚨 必須寫「⛔ 不是叫你買什麼」+「拿大盤方向篩個股反而少賺」',
+   /不是叫你買什麼/.test(SIG.how) && /篩個股反而會少賺/.test(SIG.how));
+ok('㉝e ⚠️ 要誠實說只算得到海外連動那一半', /海外連動那一半/.test(SIG.how));
+ok('㉝f 🚧 成分不足 5 項 → ⛔ 不硬給分數', /不硬給分數/.test(SIG.premktThin), SIG.premktThin.slice(0, 80));
+ok('㉝g ⛔ 資料沒到要說出來(不可靜默空白)', /盤前資料還沒到/.test(SIG.premktNone));
 
 const L = await page.evaluate(async () => {
     PRO.switchTab('lab');

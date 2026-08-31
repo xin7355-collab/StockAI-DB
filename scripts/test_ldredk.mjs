@@ -93,6 +93,21 @@ const R = await page.evaluate(async () => {
     document.getElementById('_t1').innerHTML = '<span id="ldRedkMkt" data-sym="2409">⏳</span>';
     await A._fillLdMkt('2019-01-01', '2409');
     out.missTxt = document.getElementById('ldRedkMkt').innerText;
+    // ⑦ V74.4.5 總覽提醒(使用者:「把滿足條件的加入總覽頁面提醒」)
+    A.attentionStatus = {};
+    out.ovHit = (A._ovNewEdges(mk(-9.5, 3.5), '2409') || []).map(x => x.txt).join(' ');
+    out.ovNo = (A._ovNewEdges(mk(-8, 3.5), '2409') || []).length;
+    // 噴 ≥30% + 在注意股名單 → 減碼提醒
+    {
+        const rows = [];
+        let px = 100;
+        for (let i = 0; i < 30; i++) rows.push({ date: `2026-07-${String(1 + (i % 28)).padStart(2, '0')}`, open: px, close: px, high: px, low: px, volume: 1e6 });
+        for (let i = 0; i < 5; i++) { px *= 1.07; rows.push({ date: `2026-08-2${i + 1}`, open: px, close: px, high: px, low: px, volume: 2e6 }); }
+        A.attentionStatus = { '2409': { status: '⚠️ 注意股' } };
+        out.ovAtt = (A._ovNewEdges(rows, '2409') || []).map(x => x.txt).join(' ');
+        A.attentionStatus = {};
+        out.ovAttNo = (A._ovNewEdges(rows, '2409') || []).length;   // 沒在名單 → ⛔ 不可提醒
+    }
     return out;
 });
 await browser.close();
@@ -113,6 +128,15 @@ ok('②c 查不到那天 → 誠實說 + 仍給兩組差距', /查不到/.test(R
 ok('③b ⛔ 不下操作指令(買進/加碼/停損價/目標價都不可出現)+ 要指路總覽',
     !/買進|加碼|停損價|目標價|掛單/.test(R.hit) && /現在怎麼做/.test(R.hit));
 ok('③c 要寫「不是進場指令」與回測進場點(隔天開盤)', /不是進場指令/.test(R.hit) && /隔天開盤/.test(R.hit));
+
+ok('⑦a 總覽提醒:跌停後紅K 命中要出現,且帶「大盤有沒有一起跌」的差距',
+    /昨天跌停/.test(R.ovHit) && /4\.89/.test(R.ovHit) && /1\.02/.test(R.ovHit), R.ovHit.slice(0, 100));
+ok('⑦b 總覽提醒:沒到跌停(−8%)⛔ 不可觸發', R.ovNo === 0, String(R.ovNo));
+ok('⑦c 總覽提醒:噴 ≥30% 且在官方注意股名單 → 減碼提醒(⛔ 不是放空訊號)',
+    /考慮減碼/.test(R.ovAtt) && /1\.81/.test(R.ovAtt) && /不是放空訊號/.test(R.ovAtt), R.ovAtt.slice(0, 100));
+ok('⑦d ⛔ 沒在官方注意股名單就不可以提醒(⛔ 不可自己推估誰會被列注意)', R.ovAttNo === 0, String(R.ovAttNo));
+ok('⑦e 接線:總覽的重點判讀真的有呼叫 _ovNewEdges',
+    /for \(const r of \(this\._ovNewEdges\(data, sym\) \|\| \[\]\)\) rows\.push\(r\);/.test(SRC));
 
 console.log(fails ? `❌ ${fails} 條失敗` : '✅ LDREDK_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

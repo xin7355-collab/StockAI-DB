@@ -669,11 +669,79 @@ const PRO = {
     if (w >= 36) return '<span class="sigtag">➖ 跟基準差不多</span>';
     return '<span class="sigtag warn">⚠️ 低於基準</span>';
   },
+  // 🌅 盤前分數(V74.4.5)—— 使用者:「盤前檢視的分數幫我回測,我覺得還滿準」→ 實測支持。
+  //
+  // 🚨🚨 這裡的公式**必須跟探針的 STRICT 模式一字不差**(⛔ 同名不同義是全專案犯最多次的錯):
+  //   前端的 macro_risk.json **沒有道瓊、沒有恆指** → 探針特地開了 STRICT 模式只用這 8 個成分
+  //   重跑一次,下面的歷史數字才是「這個公式自己的成績單」。
+  //   ⛔ 改這支公式(加成分/改權重)就要重跑探針更新 _PREMKT,否則數字會對不上。
+  // 📊 5 年 1,212 個交易日實測(一律用前一晚的海外收盤,零偷看):
+  _PREMKT: {
+    days: 1212, years: 5,
+    hi: { n: 522, gapWr: 84.7, day: 0.672, io: 0.281 },     // 分數 ≥3
+    lo: { n: 425, gapWr: 24.5, day: -0.600, io: -0.293 },   // 分數 ≤−3
+    ioSpread: 0.574, ioWorstYear: 0.220, yearsSame: 6,
+  },
+  _premktScore(mr) {
+    if (!mr) return null;
+    const sign = v => v > 0 ? 1 : v < 0 ? -1 : 0;
+    const num = k => { const v = +mr[k]; return Number.isFinite(v) ? v : null; };
+    let s = 0, n = 0, parts = [];
+    const add = (k, label, fn) => {
+      const v = num(k); if (v === null) return;
+      const d = fn(v); s += d; n++;
+      parts.push({ label, v, d });
+    };
+    add('nasdaq_chg_pct', '那斯達克', sign);
+    add('sp500_chg_pct', '標普500', sign);
+    add('sox_chg_pct', '費城半導體', v => sign(v) * 1.5);
+    add('tsm_chg_pct', '台積電 ADR', v => sign(v) * 2);
+    add('vix_chg_pct', 'VIX 恐慌指數', v => v > 0 ? -0.5 : 0.5);
+    add('nikkei_chg_pct', '日經', v => (v > 0.3 ? 0.5 : v < -0.3 ? -0.5 : 0) * 2);
+    add('kospi_chg_pct', '韓股', v => (v > 0.3 ? 0.5 : v < -0.3 ? -0.5 : 0) * 2);
+    add('usdtwd_chg_pct', '台幣匯率', v => v >= 0.4 ? -1 : v >= 0.15 ? -0.5 : v <= -0.4 ? 1 : v <= -0.15 ? 0.5 : 0);
+    // 🚧 用到的成分太少就不給結論(⛔ 半套分數不可拿來對照歷史勝率)
+    if (n < 5) return { na: true, n };
+    return { s, n, parts };
+  },
+  _premktHtml(mr) {
+    const P = this._PREMKT, r = this._premktScore(mr);
+    if (!r) return `<div class="warnbox">⏳ <b>今天的盤前資料還沒到</b>(<code>data/macro_risk.json</code>)——
+      它每天採礦時更新。⛔ 不是這個功能壞掉。</div>`;
+    if (r.na) return `<div class="warnbox">⚠️ <b>今天只抓到 ${r.n} 項海外資料(要 5 項以上才算得準)</b> →
+      ⛔ 不硬給分數。可能是某個資料源今天沒回應。</div>`;
+    const hi = r.s >= 3, lo = r.s <= -3;
+    const b = hi ? P.hi : lo ? P.lo : null;
+    const face = hi ? '偏多' : lo ? '偏空' : '中間';
+    return `<div class="signote">
+      <div class="sighead">🌅 今天的盤前分數:<b class="mono" style="font-size:15px">${r.s >= 0 ? '+' : ''}${r.s.toFixed(1)}</b> 分(${face})
+        <span class="sigtag">用了 ${r.n} 項海外資料</span></div>
+      <div class="note">
+        ${b ? `📊 <b>過去 5 年、${b.n} 個同樣是「${face}」的日子</b>:台股<b>開高的比例 ${b.gapWr}%</b>、
+              全天平均 ${b.day >= 0 ? '+' : ''}${b.day}%、<b>開盤買收盤賣 ${b.io >= 0 ? '+' : ''}${b.io}%</b>。`
+            : `📊 分數落在中間(−3 ~ +3),歷史上這種日子<b>沒有明顯方向</b> —— 就當普通的一天。`}
+        <br>🚨 <b>「開高」這件事有一大半是廢話</b>:昨晚美股漲,台股本來就會開高,那不是預測。
+        ⭐ 真正有意義的是<b>「開盤之後還會不會繼續漲」</b> —— 高分日與低分日在這一段差
+        <b>${P.ioSpread} 個百分點</b>,而且<b>${P.yearsSame} 年來每一年都同方向</b>(最差的一年也有 +${P.ioWorstYear})。
+        <br>⚠️ <b>這是「今天大盤大概什麼氣氛」,⛔ 不是叫你買什麼</b>:
+        那 ${P.ioSpread} 個百分點是<b>大盤指數</b>的差、扣掉買賣成本後剩不多;
+        而且本站實測<b>拿大盤方向去篩個股反而會少賺</b> → 正確用法是<b>調整心理預期跟部位大小</b>,
+        ⛔ 不是「分數低就整天不做」。
+        <br>⚠️ 只算得到<b>海外連動那一半</b>(外資買賣超、台指期夜盤、大盤技術分數沒有歷史可以驗證,所以不列入)。
+      </div>
+      <details style="margin-top:6px"><summary class="rotmore">今天這 ${r.n} 項各貢獻幾分</summary>
+        <div class="memrow" style="margin-top:6px">${r.parts.map(x =>
+          `<span class="memchip">${x.label} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(2)}% → <b>${x.d >= 0 ? '+' : ''}${x.d}</b></span>`).join('')}</div>
+      </details>
+    </div>`;
+  },
+
   async renderSig() {
-    const [pe, ts, scr] = await Promise.all([
+    const [pe, ts, scr, mr] = await Promise.all([
       this.fetchJson('data/playbook_edge.json'),
       this.fetchJson('data/today_signals.json'),
       this.fetchJson('data/screener.json'),
+      this.fetchJson('data/macro_risk.json'),
     ]);
     await this.loadNames();
     const nm = sy => (this._names || {})[sy] || '';
@@ -684,7 +752,7 @@ const PRO = {
     };
     // ── ⏰ 怎麼操作(整頁最重要的一段:實測出來的操作規則)──
     const E = this._SIG_EDGE, w = v => (v / 10000).toFixed(1);
-    document.getElementById('sigHow').innerHTML = `
+    document.getElementById('sigHow').innerHTML = this._premktHtml(mr) + `
       <div class="signote">
         <div class="sighead">⏰ 買在什麼時候,實測差很多(同一批股票、同一套打法,只改進場時機)</div>
         <table class="grid sigtbl"><thead><tr><th>什麼時候買</th><th>${E.months} 個月賺到</th><th>中途最多賠</th></tr></thead><tbody>

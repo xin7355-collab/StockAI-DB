@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.0.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.7 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.0.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7348,8 +7348,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.0.7',
+    _APP_VERSION: 'V74.0.8',
     _CHANGELOG: [
+        { v:'V74.0.8', dt:'2026-08-31', d:['🆕 總覽「重點判讀」新增兩個實測條件提醒:① 昨天跌停今天收紅(實測全關通過的型態,並會告訴你當初大盤有沒有一起跌 — 差 4.8 倍)② 5 天噴超過 30% 又被列官方注意股(實測之後 20 天比大盤少 1.81 個百分點 → 手上有的可考慮減碼)。兩者都只在命中時出現。'] },
         { v:'V74.0.7', dt:'2026-08-31', d:['🕯️ K線頁新增「跌停後第一根紅K」判讀:全市場 3 年實測六關全過的型態(扣成本後 +3.66%,大紅版 +5.71%),而且會自動比對「當初大盤有沒有一起跌」— 系統性下跌那種彈得動(+4.89%),個股自己出事那種只有 1/4.8,別急著接。統計描述非進場指令。'] },
         { v:'V74.0.6', dt:'2026-08-31', d:[
             '📌 籌碼頁明日劇本新增條件觸發:「同一分點連買 3 天且股價已發動」— 2 年 × 377 萬筆交叉回測裡唯一全關通過的分點訊號(10日 +0.85%/20日 +1.36%),附完整實測數字與免責',
@@ -29253,6 +29254,38 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         } catch (_) { return ''; }
     },
 
+    // 🆕 V74.4.5 新實測結論的總覽提醒(⛔ 條件觸發、⛔ 不新增卡片、⛔ 不給買賣價位)
+    //   ① 🕯️ 跌停後第一根紅K —— 六關全過(扣成本 +3.66%,大紅版 +5.71%)
+    //   ② ⚠️ 噴很大又被掛注意股 —— 實測後 20 日比大盤少 1.81 個百分點(這是**減碼提醒**)
+    //   ⛔ 定義必須跟探針一字不差(改了就要重跑回測)
+    _ovNewEdges(data, sym) {
+        const out = [];
+        try {
+            const n = (data || []).length;
+            if (n < 3) return out;
+            const c = i => +data[i].close;
+            // ① 跌停(≤−9.2%)的**隔一個交易日**收紅
+            if (c(n - 3) > 0 && c(n - 2) > 0) {
+                const chgLast = (c(n - 1) / c(n - 2) - 1) * 100, chgPrev = (c(n - 2) / c(n - 3) - 1) * 100;
+                if (chgPrev <= -9.2 && chgLast > 0) {
+                    const E = this._LD_REDK, big = chgLast >= 3;
+                    out.push({ ic: '🕯️', cls: 'text-amber-300',
+                        txt: `<b>昨天跌停、今天收${big ? '大紅' : '紅'}</b> —— 實測少數全關通過的型態(3 年全市場,之後 20 天平均比大盤多 <b>+${big ? E.big : E.all}%</b>,已扣成本)。`
+                           + `⚠️ <b>但要先看當初大盤有沒有一起跌</b>:大家一起跌的那種彈得動(+${E.sys}%),它自己出事的只有 +${E.idio}%。詳見 K線頁` });
+                }
+            }
+            // ② 噴 ≥30% 又在官方注意股名單 → 減碼提醒(⛔ 不是放空訊號)
+            const att = (this.attentionStatus || {})[sym];
+            if (att && n >= 6 && c(n - 6) > 0) {
+                const chg5 = (c(n - 1) / c(n - 6) - 1) * 100;
+                if (chg5 >= 30) out.push({ ic: '⚠️', cls: 'text-amber-300',
+                    txt: `<b>5 天漲了 ${chg5.toFixed(0)}%,而且已經被列為${String(att.status || '注意股').replace(/[⚠️🚨]/g, '')}</b> —— `
+                       + `官方名單 3 年實測:這種「噴很大才被掛注意」的,之後 20 天平均<b>比大盤少 1.81 個百分點</b>、最典型的一次賠 7.2%。`
+                       + `💡 <b>手上有的可以考慮減碼</b>;⛔ 這不是放空訊號(放空另有風險,沒測過)` });
+            }
+        } catch (_) { }
+        return out;
+    },
     _ovTopEdge(data, sym) {
         try {
             const pick = this._ovEdgePick(data, sym);
@@ -29291,6 +29324,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const rows = [];
             // 🎯 V72.1.0 實測有效的訊號**置頂**(這是使用者要的「勝率最高的資料」)
             const _topEdge = this._ovTopEdge(data, sym);
+            // 🆕 V74.4.5 使用者:「實測方式把滿足條件的加入總覽頁面提醒」——
+            //   把這一輪新測出來、而且**六關全過**的兩條接進常顯區(⛔ 條件觸發,沒命中完全不顯示)
+            for (const r of (this._ovNewEdges(data, sym) || [])) rows.push(r);
             // 🔮 明日劇本(技術 + 籌碼)強訊號
             const tech = this._tomorrowTechScore(data);
             if (tech) {
