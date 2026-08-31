@@ -259,6 +259,42 @@ const T = await page.evaluate(async () => {
     out.stoppedOnLeave = !PRO._rotTimer;
     return out;
 });
+// ㉔ 🔬 實測總表(使用者:「回測後有用的資訊做一個分類,還有陷阱等等,用頁籤分類」)
+const L = await page.evaluate(async () => {
+    PRO.switchTab('lab');
+    await new Promise(r => setTimeout(r, 60));
+    // 🚨 <details> 收合時 innerText **不含內文** → 不先展開的話,
+    //    底下所有「內文必須寫什麼 / 不可寫什麼」的斷言都只掃到標題 = 假通過。
+    const grab = () => {
+        document.querySelectorAll('#labList .labitem').forEach(e => { e.open = true; });
+        return {
+            n: document.querySelectorAll('#labList .labitem').length,
+            txt: document.getElementById('labList').innerText,
+            intro: document.getElementById('labIntro').innerText,
+        };
+    };
+    const out = { tabs: [...document.querySelectorAll('#labBar .labbtn')].map(e => e.textContent.trim()) };
+    out.ok = grab();
+    PRO.selLab('trap'); out.trap = grab();
+    PRO.selLab('method'); out.method = grab();
+    PRO.selLab('blocked'); out.blocked = grab();
+    PRO.selLab('next'); out.next = grab();
+    out.kpi = document.getElementById('labKpis').innerText;
+    // 每一條都要有實測來源(lsrc)
+    // ⚠️ 要掃**每一欄**(第一版只掃了「有用」那欄 → 把來源刪在別欄完全抓不到,注入驗證抓到的)
+    out.srcMissing = 0;
+    for (const k of Object.keys(PRO.LAB)) {
+        PRO.selLab(k); grab();
+        out.srcMissing += [...document.querySelectorAll('#labList .labitem')]
+            .filter(e => !(e.querySelector('.lsrc') || {}).textContent.trim()).length;
+    }
+    // 全部分頁合起來掃一次(驗禁句)
+    let all = '';
+    for (const k of Object.keys(PRO.LAB)) { PRO.selLab(k); all += grab().txt + '\n'; }
+    out.all = all;
+    out.counts = Object.fromEntries(Object.entries(PRO.LAB).map(([k, v]) => [k, v.length]));
+    return out;
+});
 await browser.close();
 
 // ③ 數學
@@ -374,6 +410,31 @@ ok('㉓g ⭐ 跟單數字必須配「自己續買」的對照(⛔ 沒對照就�
 ok('㉓h ⭐ 要點出「外資買了之後別人跟」幾乎沒有加成(⛔ 不可只講對自己結論有利的那半)',
    /加成只有.{0,12}沒有/.test(T.noteTxt.replace(/\s/g, '')) || /\+0\.08pp/.test(T.noteTxt), T.noteTxt.slice(-600));
 ok('㉒l ⛔ 切走分頁要停掉動畫(不可留背景 timer)', T.playing && T.stoppedOnLeave, [T.playing, T.stoppedOnLeave]);
+// ㉔ 🔬 實測總表
+ok('㉔ 五個頁籤:有用 / 沒用 / 回測的坑 / 還測不了 / 推薦下一步',
+   L.tabs.length === 5 && /實測有用/.test(L.tabs[0]) && /實測沒用/.test(L.tabs[1])
+   && /回測自己的坑/.test(L.tabs[2]) && /還測不了/.test(L.tabs[3]) && /推薦下一步/.test(L.tabs[4]), L.tabs);
+ok('㉔a2 🚧 空過守門:展開後內文真的抓得到(⛔ <details> 收合時 innerText 不含內文 = 假通過)',
+   L.all.length > 6000 && /六道關卡|來回成本/.test(L.all), L.all.length);
+ok('㉔b 每一欄都有內容,切換真的換掉列表',
+   L.ok.n > 5 && L.trap.n > 5 && L.method.n > 5 && L.blocked.n > 3 && L.next.n > 3
+   && L.ok.txt !== L.trap.txt && L.trap.txt !== L.method.txt,
+   [L.ok.n, L.trap.n, L.method.n, L.blocked.n, L.next.n]);
+ok('㉔c 頁籤數字要跟實際筆數一致(⛔ 不可寫死)',
+   L.tabs.every((t, i) => t.includes('(' + L.counts[['ok', 'trap', 'method', 'blocked', 'next'][i]] + ')')), L.tabs);
+ok('㉔d 🚨 **每一欄**每一條都要附實測來源(⛔ 沒有數字的意見不准進來)', L.srcMissing === 0, L.srcMissing);
+ok('㉔e 🚨「有用」那欄必須引用得出實測數字', /\+1\.44pp/.test(L.ok.txt) && /\+289\.6 萬|289\.6/.test(L.ok.txt), L.ok.txt.slice(0, 200));
+ok('㉔f 🚨「沒用」那欄要留著方向相反的那幾條(⛔ 刪了下一個人會再做一次)',
+   /方向剛好相反|方向相反/.test(L.trap.txt) && /Jaccard 0%/.test(L.trap.txt), L.trap.txt.slice(0, 200));
+ok('㉔g ⭐「回測自己的坑」要含四條核心:對照組 / 兩端同號 / 同期相關 / 前視偏誤',
+   /對照組/.test(L.method.txt) && /兩端同號/.test(L.method.txt)
+   && /同期還是隔期/.test(L.method.txt) && /前視偏誤/.test(L.method.txt), L.method.txt.slice(0, 300));
+ok('㉔h ⏳「還測不了」要說出「現在不存以後永遠沒有」那一類',
+   /現在不開始存|現在不存/.test(L.blocked.txt), L.blocked.txt.slice(0, 300));
+ok('㉔i 🔬「推薦」第一條要是補深歷史(它一次解鎖十幾支探針)',
+   /補深到 2021|2022 空頭/.test(L.next.txt), L.next.txt.slice(0, 200));
+ok('㉔j ⛔ 整頁不可下買賣指令、不可給買賣價位(這是研究紀錄不是訊號頁)',
+   !/(建議買進|可以買進|買在|掛單價|停損價[:：]|目標價[:：]\s*\d)/.test(L.all), (L.all.match(/建議買進|可以買進|掛單價/) || [])[0]);
 ok('⑩ 載入無 pageerror', errs.length === 0, errs.join(' | '));
 
 console.log();
