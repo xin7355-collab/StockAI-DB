@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.2.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.2.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.4 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.5 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2006,6 +2006,11 @@
                 </div>
                 <!-- ⚡ V69.0.8 加速改全自動(取消按鈕):盤中進當沖頁自動加速刷價,盤後自動關;此列只是狀態燈 -->
                 <div id="dtAccelBar" class="hidden text-[10px] text-amber-300 bg-amber-900/20 border border-amber-700/40 rounded px-2 py-1 flex items-center justify-between"><span>⚡ 即時加速中(自動)</span><span id="dtAccelTick" class="text-gray-500 font-mono">—</span></div>
+                <!-- 🎯 V68.7.9 作戰指令(hero)等 cards 移到最上(使用者要求:先看今天怎麼做)
+                     🧭 V74.2.5 總覽邏輯:**這檔的結論排第一眼** —— 原本「當沖候選掃描」(掃的是**別檔**)
+                     排在它上面,一開頁先看到的是別人的清單而不是這檔怎麼做 → 已搬到下方。
+                     ⚠️ 掃描的自動觸發(09:15~09:45)與推播都不受位置影響,⛔ 只是版面順序。 -->
+                <div id="dayTradeBody" class="flex flex-col gap-3"></div>
                 <!-- 🎯 V69.5.3 當沖候選掃描:掃自選/庫存,列出現在符合進場檢查的做多/做空股 -->
                 <div id="dtScanCard" class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-2.5">
                     <div class="flex items-center justify-between gap-2">
@@ -2014,8 +2019,6 @@
                     </div>
                     <div id="dtScanResult" class="mt-1.5 text-[10px] text-gray-500 leading-snug">點「🔍 掃描」→ 逐檔算 VWAP/內外盤/開盤條件,列出現在符合做多/做空的(盤中 09:00–13:30 才有資料)。</div>
                 </div>
-                <!-- 🎯 V68.7.9 作戰指令(hero)等 cards 移到最上(使用者要求:先看今天怎麼做) -->
-                <div id="dayTradeBody" class="flex flex-col gap-3"></div>
                 <!-- 🎯 V69.1.26 這檔當沖情境(全市場當沖雷達已移到「選股→策略→當沖雷達」;今日當沖候選升級成全市場勝率榜在那) -->
                 <div class="bg-[#161b22] border-2 border-cyan-700/50 rounded-lg mb-1 p-2.5 flex flex-col gap-2 shadow-lg shadow-cyan-900/10">
                     <div class="flex items-center justify-between gap-2">
@@ -7446,8 +7449,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.2.4',
+    _APP_VERSION: 'V74.2.5',
     _CHANGELOG: [
+        { v: 'V74.2.5', dt: '2026-09-01', d: ['當沖頁也改成總覽的版面邏輯:第一眼只留「今日當沖作戰指令 + 成本關卡」和有實測數字的訊號,隔日沖 T+1 預判/買盤竭盡/損益試算機收進「📖 更多解讀」(一張卡、一個字都沒刪)', '實測第一眼要讀的字數從 2,015 降到 387', '順手修版面順序:「當沖候選掃描」(掃的是別檔)原本排在這檔的結論上面 → 已搬到下方,一開頁先看到這檔今天怎麼做', '個股五頁(總覽・K線・籌碼・即時・當沖)現在同一套版面邏輯'] },
         { v: 'V74.2.4', dt: '2026-09-01', d: ['即時頁也改成總覽的版面邏輯:第一眼只留「盤中當沖總結燈的結論 + 一句操作」和分時圖,完整的進場檢查表與盤中作戰室收進「📖 更多解讀」(一張卡、一個字都沒刪)', '🚨「別追多警訊」的內容直接寫在頁首,不會因為收合而漏看', '盤後/沒金鑰沒東西可看時,連那條「更多解讀」橫條都不出現;換股票也會一起清乾淨', '總覽・K線・籌碼・即時 四頁現在同一套版面邏輯'] },
         { v: 'V74.2.3', dt: '2026-09-01', d: ['籌碼頁也改成總覽的版面邏輯:第一眼只留「大戶結論 + 綜合評分 + 一句操作 + 其他籌碼指標怎麼說」,法人明細/實測成績/明日劇本/乾淨度收進「📖 更多解讀」(一張卡、一個字都沒刪)', '實測第一眼要讀的字數從 2,538 降到 864(這頁本來是全 App 最重的)', '🚨 融資追繳風險改露在頁首:它原本埋在「籌碼進出」分頁的兩層收合裡,等於看不到 —— 風險類永遠不收'] },
         { v: 'V74.2.2', dt: '2026-09-01', d: ['K線頁改用總覽的版面邏輯:第一眼只留「一句話結論 + K線圖」,朱老師總評/六脈共振/K棒戰法收進「📖 更多解讀」摺疊(一張卡、一個字都沒刪,點開就有)', '風險提醒不因摺疊而消失:頁首會直接列出風險的標題;六脈亮「強共振」(唯一實測六關全過的複合訊號)時頁首也會露一行', '權值股超跌告警維持在摺疊外(告警類永遠不收)'] },
@@ -44742,12 +44746,18 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const dtListReady = !!(dtMeta && dtMeta.hits > 0);
         const dtEligible = dtListReady && (dtStatsMap[sym] != null);
 
+        // 🧭 V74.2.5 當沖頁改用「總覽邏輯」(使用者:「接下來當沖頁」)——
+        //   `cards` = **第一眼**(作戰指令 hero + 有實測背書的條件觸發訊號);
+        //   `dtMore` = 收進「📖 更多解讀」的(隔日沖 T+1 預判、買盤竭盡、損益試算機)。
+        //   ⛔ 一張卡、一個字都沒刪;⛔ 有實測數字的訊號**不可**收(那正是使用者要第一眼看到的)。
         const cards = [];
+        const dtMore = [];
         // ⚡ V72.0.1 漲停隔日動能 / 換手過熱 —— 置頂(條件觸發,沒命中完全不顯,不佔版面)
-        //   ⭐ 使用者要「一看就知道怎麼操作勝率才會高」→ 有實測數字的訊號放最前面。
+        //   ⭐ 使用者要「一看就知道怎麼操作勝率才會高」→ **有實測數字**的訊號放最前面,⛔ 不收進摺疊。
         try { const _lu = this._limitUpMomentumHtml(sym, baseRaw); if (_lu) cards.push(_lu); } catch (_) {}
         // 🫗 V72.0.2 買盤竭盡(籌碼版)—— 只在有真實逐筆資料時顯,且明標「未驗證」
-        try { const _bx = this._buyExhaustHtml(sym); if (_bx) cards.push(_bx); } catch (_) {}
+        //   → **未驗證的收進摺疊**(同 `_SIGNAL_EDGE` 對沒背書訊號的處置:照顯示但不佔第一眼)
+        try { const _bx = this._buyExhaustHtml(sym); if (_bx) dtMore.push(_bx); } catch (_) {}
         const detail = [];   // ⚡ V55.3 折疊「進階分析」卡
         // 🧩 V71.0.6 U-16/U-17 合併卡(使用者鐵則「合併卡片,不要加新卡、資訊不爆炸」):
         //   原本 5 張各自獨立的小卡 → 收成 2 組共用外框,標題只出現一次,內部用分隔線分列。
@@ -45012,7 +45022,8 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const preLots = this._dtCalcState ? this._dtCalcState.lots : '1';
         const preDisc = this._dtCalcState ? this._dtCalcState.disc : String(this.settings?.feeDiscount ?? 0.28);   // 💰 V55.7 預設吃設定中心折數
         this._dtLastCur = price > 0 ? this._roundTick(price) : null;
-        cards.push(`
+        // 🧭 V74.2.5 試算機是**工具**不是結論 → 收進「更多解讀」(要算的時候才點開)
+        dtMore.push(`
         <div class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-3 shadow-lg">
             <div class="text-[12px] font-black text-cyan-200 mb-1">🧮 當沖損益試算機 <span class="text-[9px] text-gray-500 font-normal">證交稅減半 0.15%</span></div>
             <div class="text-[10px] text-gray-500 mb-2">輸入買/賣價 + 張數,算出扣完手續費+證交稅的「淨賺多少元」</div>
@@ -45170,7 +45181,9 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         // ⚡ V69.1.1 隔日沖 T+1 攻防預判卡:插在作戰指令(hero)正下方,當沖頁最上方顯眼處
         let _ovnHtml = '';
         try { _ovnHtml = this._overnightT1Card(sym, q, baseRaw, price, prevClose, chgPct) || ''; } catch (_) {}
-        if (_ovnHtml) cards.splice(cards.length && cards[0].includes('今日當沖作戰指令') ? 1 : 0, 0, _ovnHtml);
+        // 🧭 V74.2.5 隔日沖 T+1 攻防預判講的是「**明天**開盤怎麼看」,不是今天的作戰指令
+        //   → 收進「更多解讀」(⛔ 沒刪;今天的結論以 hero 為準,單一劇本原則)
+        if (_ovnHtml) dtMore.unshift(_ovnHtml);
 
         if (this.currentSymbolId !== sym) return;
         // 🎯 V62.9 當沖作戰室(大盤風向+昨漲停隔日沖+撐壓+個股期貨夜盤 hook)插在作戰指令下方
@@ -45210,7 +45223,19 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             _dtGroup('📉', '盤中量價體檢', '有沒有量、站不站得住均價', dVolPx),
         );
         this._dtAdvancedHtml = detail.filter(Boolean).length ? `<div class="flex flex-col gap-2">${detail.filter(Boolean).join('')}</div>` : '';
-        box.innerHTML = cards.join('');
+        // 🧭 V74.2.5 總覽邏輯:第一眼 = 作戰指令 + 有實測背書的訊號;其餘收「📖 更多解讀」。
+        //   ⛔ 沒東西可收時整個摺疊不顯示(不留一條點開什麼都沒有的橫條,同 V74.2.4 即時頁的教訓)。
+        //   ⚠️ 損益試算機在裡面 → 它的 input 是**收起也存在**的(details 只是不渲染,DOM 還在),
+        //      所以底下 `_calcDayTradePnl()` 照樣抓得到,⛔ 別因為看不到就以為要改。
+        const _dtMoreHtml = dtMore.filter(Boolean).length ? `
+            <details id="dtMoreWrap" class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
+                <summary class="cursor-pointer select-none px-3 py-2.5 text-[12px] font-bold text-gray-300 flex items-center justify-between">
+                    <span>📖 更多解讀 <span class="text-[9px] text-gray-500 font-normal">隔日沖 T+1・買盤竭盡・損益試算機</span></span>
+                    <span class="text-[9px] text-gray-500 font-normal">今天怎麼做以上面那張為準 ▾</span>
+                </summary>
+                <div class="flex flex-col gap-3 px-2 pb-2">${dtMore.filter(Boolean).join('')}</div>
+            </details>` : '';
+        box.innerHTML = cards.join('') + _dtMoreHtml;
         box.dataset.rendered = '1';
         try { clearTimeout(this._dtLoadWatchdog); this._dtLoadWatchdog = null; } catch (_) {}   // 🐛 V69.1.2 渲染成功→取消看門狗
         // 📌 V56.4 還原捲動位置(下一影格,等瀏覽器排版完)
