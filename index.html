@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.2.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.2.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.3 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.4 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1839,10 +1839,24 @@
             </div>
 
 <div id="subContentLive" class="hidden flex-col gap-2 mt-2 px-2 md:px-4 min-h-[50vh]">
+                <!-- 🧭 V74.2.4 即時頁改用「總覽邏輯」(使用者:「即時頁面也依照邏輯做」):
+                     第一眼只留 ① 一句話結論(#liveLead,由 renderDayTradeLight 同步渲染 = 同一份
+                     `_dayTradeVerdict`,⛔ 不產生第二份真相)② 分時圖(主內容,盤中要盯的就是它);
+                     當沖總結燈完整卡 + 盤中作戰室收進「📖 更多解讀」—— ⛔ 一張卡、一個字都沒刪。
+                     🚨 「別追多警訊」是風險 → **標題必須露在頁首**(多空不對稱:漏看的代價比多看一眼大)。 -->
+                <div id="liveLead" class="hidden"></div>
                 <!-- ⚠️ V45.7 — 假漲/假跌判讀卡搬到最上面(使用者要求:先看誘多risk 再看K) -->
                 <!-- 🎯 V68.1.0 — 盤中作戰室(VWAP生命線+斜率+乖離/量價背離/缺口回補/大單/主力成本) -->
-                <div id="dayTradeLight" class="hidden"></div>
-                <div id="intradayWarRoom" class="hidden"></div>
+                <details id="liveMoreWrap" class="hidden w-full bg-[#161b22] border border-[#30363d] rounded-lg">
+                    <summary class="cursor-pointer select-none px-3 py-2.5 text-[12px] font-bold text-gray-300 flex items-center justify-between">
+                        <span>📖 更多解讀 <span class="text-[9px] text-gray-500 font-normal">當沖總結燈・進場檢查・盤中作戰室</span></span>
+                        <span class="text-[9px] text-gray-500 font-normal">結論以上面那張為準 ▾</span>
+                    </summary>
+                    <div class="flex flex-col gap-2 px-2 pb-2">
+                        <div id="dayTradeLight" class="hidden"></div>
+                        <div id="intradayWarRoom" class="hidden"></div>
+                    </div>
+                </details>
                 <!-- ⚡ V69.0.9 — 盤中即時分鐘K(精簡)+ 五檔/分時/量價 分頁(Fugle 免費即時) -->
                 <div id="intradayPanel" class="bg-[#161b22] border border-cyan-700/40 rounded-lg p-2 shadow-lg">
                     <!-- ⚡ V71.7.4 現價更新速度控制(與當沖頁共用 _renderSpeedBar) -->
@@ -7432,8 +7446,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.2.3',
+    _APP_VERSION: 'V74.2.4',
     _CHANGELOG: [
+        { v: 'V74.2.4', dt: '2026-09-01', d: ['即時頁也改成總覽的版面邏輯:第一眼只留「盤中當沖總結燈的結論 + 一句操作」和分時圖,完整的進場檢查表與盤中作戰室收進「📖 更多解讀」(一張卡、一個字都沒刪)', '🚨「別追多警訊」的內容直接寫在頁首,不會因為收合而漏看', '盤後/沒金鑰沒東西可看時,連那條「更多解讀」橫條都不出現;換股票也會一起清乾淨', '總覽・K線・籌碼・即時 四頁現在同一套版面邏輯'] },
         { v: 'V74.2.3', dt: '2026-09-01', d: ['籌碼頁也改成總覽的版面邏輯:第一眼只留「大戶結論 + 綜合評分 + 一句操作 + 其他籌碼指標怎麼說」,法人明細/實測成績/明日劇本/乾淨度收進「📖 更多解讀」(一張卡、一個字都沒刪)', '實測第一眼要讀的字數從 2,538 降到 864(這頁本來是全 App 最重的)', '🚨 融資追繳風險改露在頁首:它原本埋在「籌碼進出」分頁的兩層收合裡,等於看不到 —— 風險類永遠不收'] },
         { v: 'V74.2.2', dt: '2026-09-01', d: ['K線頁改用總覽的版面邏輯:第一眼只留「一句話結論 + K線圖」,朱老師總評/六脈共振/K棒戰法收進「📖 更多解讀」摺疊(一張卡、一個字都沒刪,點開就有)', '風險提醒不因摺疊而消失:頁首會直接列出風險的標題;六脈亮「強共振」(唯一實測六關全過的複合訊號)時頁首也會露一行', '權值股超跌告警維持在摺疊外(告警類永遠不收)'] },
         { v: 'V74.2.1', dt: '2026-09-01', d: ['刪除的收尾:功能總覽不再列出已刪的「盤中連量偵測」、已刪卡片的教學條目一併移除(⛔ 說明書不可介紹一個不存在的功能)'] },
@@ -31644,8 +31659,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             }
         } catch (_) {}
         // 這幾張都吃分鐘K / 逐筆,換股沒清就會顯示上一檔的判讀
-        ['intradaySixCard', 'whaleFlowCard', 'intradayVolBar', 'intradaySummary', 'intradayDepthBox']
+        // 🧭 V74.2.4 頁首結論(liveLead)與當沖燈/作戰室一起清 —— ⛔ 少了它會殘留上一檔的「操作」那句
+        ['intradaySixCard', 'whaleFlowCard', 'intradayVolBar', 'intradaySummary', 'intradayDepthBox',
+         'liveLead', 'dayTradeLight', 'intradayWarRoom']
             .forEach(id => { const e = document.getElementById(id); if (e) { e.innerHTML = ''; e.classList.add('hidden'); } });
+        try { this._syncLiveMore(); } catch (_) {}
         // 六脈相關快取也要作廢,否則分時圖的共振帶/箭頭會沿用上一檔
         this._isixShade = null; this._isixDims = null;
         this._isixAlertKey = null; this._isixEndKey = null;
@@ -32286,11 +32304,47 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         this._fireAlert(`🎯 09:15 當沖候選｜多 ${longs.length}・空 ${shorts.length}`, body, out[0].sym);
     },
 
+    // 🧭 V74.2.4 即時頁「更多解讀」外殼同步 —— 兩張卡都沒內容時整條收起(⛔ 不留空殼摺疊)。
+    //   ⚠️ 盤後/沒金鑰時這兩張本來就是 hidden,少了這支就會留一條點開什麼都沒有的橫條。
+    _syncLiveMore() {
+        const w = document.getElementById('liveMoreWrap');
+        if (!w) return;
+        const live = ['dayTradeLight', 'intradayWarRoom'].some(id => {
+            const e = document.getElementById(id);
+            return !!e && !e.classList.contains('hidden') && e.innerHTML.trim().length > 40;
+        });
+        w.classList.toggle('hidden', !live);
+    },
+
+    // 🧭 V74.2.4 即時頁頁首結論(總覽邏輯)—— ⛔ 只轉述 `_dayTradeVerdict` 算好的東西,
+    //   ⛔ 不重算(不產生第二份真相);🚨 警訊標題必須露出來(風險不可只藏在摺疊裡)。
+    _renderLiveLead(v) {
+        const el = document.getElementById('liveLead');
+        if (!el) return;
+        if (!v) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        const tmap = { red: ['border-red-500', 'text-red-300'], green: ['border-green-500', 'text-green-300'], yellow: ['border-yellow-500', 'text-yellow-300'] };
+        const [bcls, tcls] = tmap[v.tone] || tmap.yellow;
+        const warns = Array.isArray(v.warns) ? v.warns : [];
+        el.className = 'bg-[#161b22] border-l-4 ' + bcls + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg';
+        el.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+                <div class="text-[12px] font-black text-gray-100">🎯 盤中當沖總結燈 <span class="text-[9px] text-gray-500 font-normal">VWAP×內外盤×大單×開盤</span></div>
+                <span class="text-[9px] text-gray-500">${v.hasReal ? '真實內外盤' : '估算'}</span>
+            </div>
+            <div class="text-lg font-black ${tcls} leading-tight mt-1">${v.verdict}</div>
+            <div class="bg-[#0d1117] border-l-4 ${bcls} pl-2.5 py-1.5 rounded-r mt-2"><div class="text-[11px] text-gray-200 leading-relaxed"><b class="${tcls}">✅ 操作:</b>${v.sop}</div></div>
+            ${warns.length ? `<div class="mt-1.5 text-[11px] text-green-300 leading-snug">⚠️ <b>別追多警訊 ${warns.length} 條:</b>${warns.slice(0, 2).join('・')}${warns.length > 2 ? ` …等 ${warns.length} 條` : ''} <span class="text-gray-500">(細節在下面「更多解讀」)</span></div>` : ''}
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📋 進場檢查 <b class="text-gray-500">${v.chkOk}/${v.chkApplic} 成立</b>、逐條明細與盤中作戰室在下面「📖 更多解讀」。⚠️ 當沖扣掉來回成本約 0.25% 後難有正期望,燈號只幫你判氣氛、<b class="text-gray-500">不是必賺</b>;做多也一律守均價/停損。</div>`;
+        el.classList.remove('hidden');
+    },
+
     renderDayTradeLight(bars, q) {
         const el = document.getElementById('dayTradeLight');
         if (!el) return;
         let v = null; try { v = this._dayTradeVerdict(bars, q); } catch (_) {}
-        if (!v) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        // 🧭 V74.2.4 頁首跟卡片同生共死(⛔ 不殘留上一檔的結論)
+        try { this._renderLiveLead(v); } catch (_) {}
+        if (!v) { el.classList.add('hidden'); el.innerHTML = ''; try { this._syncLiveMore(); } catch (_) {} return; }
         // 前瞻記錄:盤中 + 有明確方向才記,barDate=今天(台北),隔 1 交易日對答案
         try { if (v.dir !== 'none' && this.isMarketOpen && this.isMarketOpen()) { const bd = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); this._logPrediction('daytrade', this.currentSymbolId, v.dir, +q.price, bd); } } catch (_) {}
         const tmap = { red: ['border-red-500', 'text-red-300'], green: ['border-green-500', 'text-green-300'], yellow: ['border-yellow-500', 'text-yellow-300'] };
@@ -32316,15 +32370,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </div>
             <div class="text-[8px] text-gray-600 mt-2 leading-snug">🧮 純公式:現價vs均價(VWAP)+斜率 + 真實內外盤/大單(熱門股) + 開盤缺口/區間 + 昨收。⚠️ 當沖扣來回成本~0.25%後難有正期望,燈號僅助判氣氛、非必賺;做多也一律守均價/停損。此判斷已進「回測 → 🎯 我的判斷準確率」追蹤勝率。</div>`;
         el.classList.remove('hidden');
+        try { this._syncLiveMore(); } catch (_) {}   // 🧭 V74.2.4 有內容了 → 摺疊外殼顯示出來
     },
 
     _renderIntradayWarRoom(candles, q) {
         try { this.renderDayTradeLight(candles, q); } catch (_) {}   // 🎯 V69.5.0 盤中當沖總結燈(置頂)
         const box = document.getElementById('intradayWarRoom');
-        if (!box) return;
+        if (!box) { try { this._syncLiveMore(); } catch (_) {} return; }
         const bars = Array.isArray(candles) ? candles.filter(c => +c.close > 0) : [];
         const n = bars.length;
-        if (n < 5 || !q || !(+q.price > 0)) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        if (n < 5 || !q || !(+q.price > 0)) { box.classList.add('hidden'); box.innerHTML = ''; try { this._syncLiveMore(); } catch (_) {} return; }
         const px = +q.price, prev = +q.prevClose || 0, last = bars[n - 1];
         const vwap = +last.average || +last.close;
         const above = px >= vwap;
@@ -32422,6 +32477,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <details class="mt-1.5"><summary class="text-[10px] text-gray-500 cursor-pointer select-none">🔍 完整明細(均價/缺口/均張/五檔/主力成本)</summary><div class="mt-1 bg-[#0d1117] rounded p-2">${details.join('')}</div></details>
             <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">⚠️ 盤中估算參考,主力會騙線;確認以收盤K+隔日分點為準。</div>`;
         box.classList.remove('hidden');
+        try { this._syncLiveMore(); } catch (_) {}   // 🧭 V74.2.4 摺疊外殼跟著內容開關
     },
 
     // 🧱 V68.1.0 — 五檔委買委賣「壓力盤」黑科技(讀已有五檔掛單,零額外 API):
