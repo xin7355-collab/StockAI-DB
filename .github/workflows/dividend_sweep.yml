@@ -1,0 +1,99 @@
+name: 💰 除權息週採礦 (dividend_sweep)
+
+# 💰 V74.3.8:每週抓全市場除權息結果 + 未來除息日(FinMind 付費層,逐檔 2 次呼叫 ≈ 5,400 次 ≈ 55 分)。
+# ⛔ 一週一次就夠(配息一年只有 1~4 次);⛔ 別改成每天 —— 撞 GitHub 排程配額(V73.9.0)又吃 FinMind 額度。
+# 🧪 資料源已由 scripts/div_probe.py 在 Actions 實跑驗過(2026-09-01)。
+on:
+  schedule:
+    - cron: '30 21 * * 6'   # 21:30 UTC 週六 = 台北週日 05:30(避開所有平日採礦)
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: '只抓前 N 檔(試跑用,0 = 全部)'
+        required: false
+        default: '0'
+
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  dividend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ⚠️ 兩件事:① 股票清單來自 data/*.json(從 data 分支還原整包 K 線目錄)
+      #          ② 舊的 dividends_hist.json 要先還原 —— 這輪抓失敗的股票靠它保留(守門 ③)
+      - name: ↩️ 還原 data/*.json 與舊除權息檔
+        run: |
+          git fetch origin "+refs/heads/data:refs/remotes/origin/data" 2>/dev/null || true
+          mkdir -p data
+          git archive origin/data data 2>/dev/null | tar -x 2>/dev/null || echo "⚠️ data 分支還原失敗(股票清單會是空的)"
+          echo "📂 K 線檔 $(ls data/*.json 2>/dev/null | grep -cE '/[0-9]{4,6}\.json$') 檔"
+          [ -s data/dividends_hist.json ] && echo "↩️ 舊除權息深檔 $(du -k data/dividends_hist.json | cut -f1) KB" || echo "ℹ️ 無舊檔(首次跑)"
+
+      - name: 💰 抓除權息(FinMind)
+        id: sweep
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: |
+          set +e
+          if [ "${{ github.event.inputs.limit }}" != "" ] && [ "${{ github.event.inputs.limit }}" != "0" ]; then
+            python3 -u dividend_miner.py --limit "${{ github.event.inputs.limit }}"
+          else
+            python3 -u dividend_miner.py
+          fi
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          [ -f data/dividends.json ] && echo "📦 $(du -k data/dividends.json | cut -f1) KB" || echo "⚠️ 無產出"
+          exit 0
+
+      - name: 🚀 部署到 gh-pages(精簡檔)+ data(精簡 + 深檔)
+        run: |
+          set -e
+          if [ "${{ steps.sweep.outputs.rc }}" != "0" ]; then echo "⚠️ 採礦非零退出(自我保護不覆寫)→ 跳過部署"; exit 0; fi
+          [ -s data/dividends.json ] || { echo "❌ 無產出檔,跳過部署"; exit 0; }
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p /tmp/div && cp data/dividends.json /tmp/div/ && cp data/dividends_hist.json /tmp/div/ 2>/dev/null || true
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdq 2>/dev/null || true
+            git fetch origin "+refs/heads/$BR:refs/remotes/origin/$BR" 2>/dev/null || true
+            git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
+            mkdir -p data
+            local PATHS="data/dividends.json"
+            [ "$BR" = "data" ] && [ -s /tmp/div/dividends_hist.json ] && PATHS="$PATHS data/dividends_hist.json"
+            stage () {
+              cp /tmp/div/dividends.json data/dividends.json
+              [ "$BR" = "data" ] && [ -s /tmp/div/dividends_hist.json ] && cp /tmp/div/dividends_hist.json data/dividends_hist.json
+              git add -f $PATHS
+            }
+            stage
+            if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
+            git commit -q -m "💰 除權息週更 $(date -u '+%Y-%m-%d %H:%M UTC')" -- $PATHS
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              sleep $((i*5)); git fetch origin "+refs/heads/$BR:refs/remotes/origin/$BR" 2>/dev/null || true; git reset --hard -q "origin/$BR" 2>/dev/null || true
+              stage
+              git commit -q -m "💰 除權息週更 $(date -u '+%Y-%m-%d %H:%M UTC')" -- $PATHS 2>/dev/null || true
+            done
+          }
+          deploy_branch gh-pages
+          deploy_branch data
+          echo "✅ 除權息部署完成"
