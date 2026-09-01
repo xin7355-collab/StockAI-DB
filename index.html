@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.1.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.1.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.1.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.1.9 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3889,7 +3889,9 @@ const app = {
     //      這些卡的 render 會自己 classList.remove('hidden') 把卡打開,class 壓不住。
     _TIDY: [
         ['etfFollowCard', '🚦 ETF 跟車狀態', '跟著主動 ETF 買有沒有用**還沒驗證過** —— 持股變動的歷史 2026-08 才開始存,至少要累積 3 個月才測得動'],
-        ['sixMeridianCard', '⚔️ 新六脈・共振計分', '這個複合訊號**沒回測過**,⛔ 未驗證的卡不該給「試單/加碼」指令;實測過的訊號在下面「K棒戰法」那張'],
+        // ⚔️ sixMeridianCard 第一波曾收起(理由:沒回測過)→ V74.1.9 全市場實測後**加回來**:
+        //    🔴 強共振那級六關全過(+0.80pp、扣成本 +0.36、n=56,435)—— 這正是「驗到有用就加回來」
+        //    的第一個實例。⚠️ 但 🟡 試單級實測 ≈ 0 → 卡上的試單指令已改口(見 _sixMeridianCalc)。
         ['bullBearCategoryCards', '📋 29 條規則逐項明細', '結論已在上面的計分條 —— 想逐條核對再點開'],
         ['predictionAuditCard', '📊 5日訊號準確度排行', '它只用你的自選做小樣本回測 —— 已被 K線頁「全市場 129 訊號實測成績」取代'],
         // ── 第二波(V74.1.8)──
@@ -7408,8 +7410,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.1.8',
+    _APP_VERSION: 'V74.1.9',
     _CHANGELOG: [
+        { v: 'V74.1.9', dt: '2026-09-01', d: ['六脈共振卡驗完**加回來了**(驗到有用就加回來的第一個實例):全市場 5.6 萬次實測,「強共振」那級之後 20 日贏隨便挑一天 +0.80 個百分點、六道關卡全過', '但只有紅燈那級有用 —— 黃燈「試單」級實測 ≈ 0,卡上已改口不再叫人試單', '實測成績直接寫在卡上'] },
         { v: 'V74.1.8', dt: '2026-09-01', d: ['雜訊清洗第二波:再收 2 張 —— 當沖作戰室的隔日沖段(每檔只有十幾次樣本、最強只贏基準 2pp)、法人推估成本(實測站上 +0.20pp / 跌破 −0.24pp,全在雜訊內)', '收起之前先實測:法人成本這張是量完 7.9 萬筆才收的,數字寫在提示列上', '卡片自己沒資料而藏起來時,「已收起」提示列也會跟著藏(不多佔一行)', '待驗證的(ETF 跟車、隔日沖全市場重驗)已加進產業作戰室的實測總表「推薦下一步」欄'] },
         { v: 'V74.1.7', dt: '2026-09-01', d: ['開始清雜訊:4 張「實測無背書」的卡預設收起(ETF跟車/六脈共振/29條明細/自選小樣本回測),原地留一行說明為什麼收、點一下就能打開', '收起不是刪除 —— 之後驗證出有用隨時加回來', '風險提醒類的卡一律不收(寧可多提醒)'] },
         { v: 'V74.1.6', dt: '2026-09-01', d: ['個股泡泡圖現在每一格都有實測數字:圖下方多一條「位階四段的期望值」,左下角標出實測最弱的區域', '實測結論:越貴越強的那一邊反而比較好,「高檔過熱要賣」量出來是相反的', '刻意不畫「買進區/加碼區/賣出區」—— 實測那三個在這張圖上量不出來,卡片裡有寫為什麼'] },
@@ -20838,8 +20841,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             // 🐛 V71.8.3 分母改用 applicable(算得出來的條件數),原本寫死 5 →
             //   指數沒有量能也沒有分點,等於先扣兩分才開始比,永遠不可能達標。
             const _N = applicable || 5;
-            if (okN >= Math.max(3, _N - 1) && !ranging && diUp !== false) { tone = 'red'; verdict = `🔴 ${okN}/${_N} 強共振・買點`; sop = '多數條件同向偏多、且有趨勢 → 右側加碼區:突破帶量可追、回檔量縮可承接;一律守 5 日線。'; }
-            else if (okN >= Math.max(2, Math.ceil(_N * 0.6))) { tone = 'red'; verdict = `🟡 ${okN}/${_N} 右側第1點・試單`; sop = '三脈翻多=右側起漲第一段,先試單(半量);等其餘條件(RSI/量/籌碼)補齊全面共振再加碼。' + (ranging ? ' ⚠️ ADX<20 盤整中,金叉易騙,更要嚴設停損。' : ''); }
+            // 📊 V74.1.9 全市場實測(sixmeridian_probe:2,240 檔、對照組 70 萬個股·日、扣同期大盤):
+            //   🔴 強共振 +0.80pp、逐年全正、扣成本 +0.36 → 六關全過 ✅(全 App 少數過六關的複合訊號)
+            //   🟡 試單級 +0.02pp ≈ 0 ❌ → ⛔ 不可再叫人「先試單」(沒贏基準不給操作指令的鐵則)
+            //   ⚡ 點火 +0.24、扣成本 −0.20 ❌(60 檔試跑曾 +1.31 六關全過 —— 小樣本會騙人的又一例)
+            if (okN >= Math.max(3, _N - 1) && !ranging && diUp !== false) { tone = 'red'; verdict = `🔴 ${okN}/${_N} 強共振・買點`; sop = '多數條件同向偏多、且有趨勢 → 右側加碼區:突破帶量可追、回檔量縮可承接;一律守 5 日線。📊 全市場實測:這一級之後 20 日贏「隨便挑一天」+0.80 個百分點(5.6 萬次、扣成本後 +0.36、六道關卡全過)。'; }
+            else if (okN >= Math.max(2, Math.ceil(_N * 0.6))) { tone = 'red'; verdict = `🟡 ${okN}/${_N} 右側第1點・觀察`; sop = '三脈翻多=右側起漲第一段 —— ⚠️ 但全市場實測這一級**沒有邊際**(之後 20 日只 +0.02 個百分點,7.6 萬次),⛔ 別單憑這個進場;等補齊到 🔴 強共振(那一級實測 +0.80)再說。' + (ranging ? ' ⚠️ ADX<20 盤整中,金叉易騙。' : ''); }
             else if (okN <= 1) { tone = 'green'; verdict = `🟢 ${okN}/${_N} 訊號不足・觀望`; sop = '多方條件太少 → 別進場,等站上月線 + MACD 翻紅再看。'; }
             else { tone = 'yellow'; verdict = `⚖️ ${okN}/${_N} 多空未定`; sop = '條件半數 → 方向未明,等再多一脈翻多(尤其量能 + 籌碼)再動。'; }
             // ── 早出場(寧早勿晚)──

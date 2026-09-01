@@ -63,7 +63,8 @@ const R = await page.evaluate(async () => {
     o.n = app._TIDY.length;
     // ① 每一張:預設收起 + 原地有提示列
     o.cards = {};
-    for (const [tab, pane, id] of [['strategy', 'now', 'etfFollowCard'], ['chart', null, 'sixMeridianCard'],
+    // ⚠️ V74.1.9 sixMeridianCard 已**加回**(全市場實測 🔴 強共振六關全過)→ 不在清單裡
+    for (const [tab, pane, id] of [['strategy', 'now', 'etfFollowCard'],
                                    ['bullbear', null, 'bullBearCategoryCards'], ['backtest', null, 'predictionAuditCard']]) {
         try { app.switchSubTab(tab); } catch (_) { }
         if (pane) { try { app.switchOvTab(pane); } catch (_) { } }
@@ -97,12 +98,19 @@ const R = await page.evaluate(async () => {
         el.classList.add('hidden');
     }
     // ② 點開/收回(render 已經跑過、classList 已被它動過 → 這裡驗的是「壓得住」)
-    app._tidyToggle('sixMeridianCard'); o.open = seen('sixMeridianCard');
+    try { app.switchSubTab('bullbear'); } catch (_) { }
+    await new Promise(r => setTimeout(r, 400));
+    app._tidyToggle('bullBearCategoryCards'); o.open = seen('bullBearCategoryCards');
     // ⚠️ 防禦性讀取 —— 注入「提示列沒插進去」時要讓斷言乾淨地紅,⛔ 不是整包炸掉
-    o.btnOpen = (document.querySelector('.tidyrow[data-tidyfor="sixMeridianCard"] button') || { textContent: '(沒有提示列)' }).textContent;
-    app._tidyToggle('sixMeridianCard'); o.close = seen('sixMeridianCard');
+    o.btnOpen = (document.querySelector('.tidyrow[data-tidyfor="bullBearCategoryCards"] button') || { textContent: '(沒有提示列)' }).textContent;
+    app._tidyToggle('bullBearCategoryCards'); o.close = seen('bullBearCategoryCards');
     // ③ 收起 ≠ 刪除:卡還在 DOM、render 照跑(有內容)
-    o.domLen = (document.getElementById('sixMeridianCard') || { innerHTML: '' }).innerHTML.length;
+    o.domLen = (document.getElementById('bullBearCategoryCards') || { innerHTML: '' }).innerHTML.length;
+    // ⚔️ V74.1.9 六脈已加回(驗到有用就加回來的第一個實例)
+    try { app.switchSubTab('chart'); } catch (_) { }
+    await new Promise(r => setTimeout(r, 900));
+    o.sixBack = seen('sixMeridianCard');
+    o.sixInTidy = app._TIDY.some(([id]) => id === 'sixMeridianCard');
     return o;
 });
 await browser.close();
@@ -116,7 +124,7 @@ for (const [id, c] of Object.entries(R.cards)) {
         c.rowTxt.slice(0, 80));
 }
 ok('①c 提示列要講「為什麼」的依據(未驗證/取代/明細),⛔ 不可只寫「已收起」',
-    /驗證/.test(R.cards.etfFollowCard.rowTxt) && /沒回測過/.test(R.cards.sixMeridianCard.rowTxt)
+    /驗證/.test(R.cards.etfFollowCard.rowTxt)
     && /計分條/.test(R.cards.bullBearCategoryCards.rowTxt) && /取代/.test(R.cards.predictionAuditCard.rowTxt));
 ok('② 點開要真的顯示、再點要收回(⛔ render 的 classList 不可壓過它)',
     R.open === true && R.close === false && R.btnOpen === '收起', [R.open, R.close, R.btnOpen]);
@@ -128,6 +136,12 @@ ok('⑤b 法人成本卡的提示列要引用實測數字(⛔ 收起要有依據
     /\+0\.20pp/.test(SRC) && /instcost_probe/.test(SRC));
 ok('⑥ 🚨 卡自己藏起來時(沒金鑰/沒資料),提示列也要跟著藏(⛔ 否則是幫看不到的卡道歉)',
     R.crHiddenRow === 'none' && R.crShownRow !== 'none', [R.crHiddenRow, R.crShownRow]);
+// ⚔️ V74.1.9 六脈全市場實測後**加回來**(🔴 強共振六關全過)—— 「驗到有用就加回來」的第一個實例
+ok('⑦ 六脈卡已加回(⛔ 不在 _TIDY、K線頁看得到)', R.sixBack === true && R.sixInTidy === false,
+    `back=${R.sixBack} inTidy=${R.sixInTidy}`);
+ok('⑦b 卡上要有實測成績:🔴 級 +0.80pp/六關全過;🟡 級⛔ 不可再叫人「先試單」(實測 ≈ 0)',
+    // ⚠️ 括號要用**全形**(跟原文一樣)—— 半形括號在 regex 是捕獲組,那條否定等於沒驗
+    /\+0\.80 個百分點/.test(SRC) && /沒有邊際/.test(SRC) && !SRC.includes('先試單(半量)'));
 
 console.log(fails ? `❌ ${fails} 條失敗` : '✅ TIDY_PASS(全部通過)');
 process.exit(fails ? 1 : 0);
