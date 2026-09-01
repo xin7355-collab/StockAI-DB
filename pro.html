@@ -224,6 +224,10 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .sgene{font-size:8px;fill:var(--amber);opacity:.9}
 /* 🫧 V74.1.3 個股泡泡跟著時間軸移動 —— ⛔ 沒有 transition 就只是瞬間跳,看不出「在走」 */
 .sb{transition:transform .3s ease, opacity .25s}
+/* 🧲 成員各走各的板塊 —— 淡化 + 虛線邊,⛔ 不用紅綠(那是漲跌方向,不是好壞) */
+.rotchip.lowcoh{opacity:.62;border-style:dashed}
+.sortth{cursor:pointer;user-select:none}
+.sortth.on{color:var(--cyan)}
 .sbnote{margin:2px 0 6px}
 .rdhead{font-size:12.5px;color:var(--txt);display:flex;align-items:center;gap:8px}
 .rdclose{margin-left:auto;font-size:10px;color:var(--cyan);cursor:pointer}
@@ -1382,7 +1386,17 @@ const PRO = {
     // ⚠️ 0.63 − (−0.8) 在 JS 是 1.4300000000000002 → ⛔ 一定要 toFixed
     //   (顯示給使用者的數字要自洽,這個專案踩過好幾次)
     const SPREAD = (R.top - R.bot).toFixed(2);
+    // 🧭 V74.1.4:這頁是五張卡疊起來的長文 → 最前面先給一句「這頁在講什麼」+ 目錄,
+    //    ⛔ 不然使用者不知道要往下捲多久、也不知道自己想找的東西在不在這裡。
     return `
+      <div class="signote"><div class="sighead">📖 這一頁在講什麼</div>
+        <div class="note" style="margin-top:0">
+          把其他三頁的<b>長篇說明、警語、實測數字</b>集中在這裡,所以那三頁第一眼只剩圖跟數字。
+          <br>往下依序是:<b>①兩個軸怎麼決定的 ・②唯一有實證的績效 ・③已測「沒用」的三種錢流
+          ・④成員同步程度 ・⑤這頁的限制</b>。
+          <br>⭐ 只想知道結論的話看 ② 就好;<b>想知道「為什麼不做某個功能」看 ③</b>。
+        </div>
+      </div>
       <div class="signote"><div class="sighead">📊 這張圖的兩個軸是怎麼決定的</div>
         <div class="note" style="margin-top:0">
           <b>橫軸(相對強弱)= 近 ${R.win} 日報酬中位數</b>。窗口不是隨便挑的 ——
@@ -1658,7 +1672,6 @@ const PRO = {
       chg: this._scrV(sy, 'chg'), f5: this._scrV(sy, 'f5'),
       chg20: this._scrV(sy, 'chg20'),
     })).filter(x => Number.isFinite(x.f5) || Number.isFinite(x.chg));
-    rows2.sort((a3, b3) => (b3.f5 ?? -1e9) - (a3.f5 ?? -1e9));
     const money = v => v == null ? '—' : (v >= 0 ? '+' : '') + this.fmt(v, 1) + ' 億';
     // ⚠️ 「你現在停在 X」會隨時間軸變 → 必須放在**每拍重畫**的 top 區,
     //    ⛔ 不可留在只建一次的表格裡(那樣它永遠停在剛打開的那一天)
@@ -1671,9 +1684,17 @@ const PRO = {
         <div><span>買超寬度</span><b>${rows2.length ? `外資5日買超 ${rows2.filter(x => (x.f5 || 0) > 0).length}/${rows2.length} 檔` : '—'}</b></div>
       </div>`;
     const atLatest = k === J.days.length - 1;
-    const tbl = rows2.length ? `<details class="sbnote"><summary class="rotmore">📋 成分股數字表(${rows2.length} 檔)</summary>
+    const SK = this._rotOneSortK || 'f5';
+    // ⭐ 排序鍵一改就整張表重建 → 走向欄的 data-done 也跟著消失,`_fillStockFlows` 會重填
+    const cmp = { f5: (a3, b3) => (b3.f5 ?? -1e9) - (a3.f5 ?? -1e9),
+                  chg: (a3, b3) => (b3.chg ?? -1e9) - (a3.chg ?? -1e9),
+                  chg20: (a3, b3) => (b3.chg20 ?? -1e9) - (a3.chg20 ?? -1e9),
+                  sy: (a3, b3) => a3.sy.localeCompare(b3.sy) };
+    rows2.sort(cmp[SK] || cmp.f5);
+    const th = (k2, lbl) => `<th class="sortth${SK === k2 ? ' on' : ''}" onclick="PRO.rotOneSort('${k2}')">${lbl}${SK === k2 ? ' ▾' : ''}</th>`;
+    const tbl = rows2.length ? `<details class="sbnote"><summary class="rotmore">📋 成分股數字表(${rows2.length} 檔・點欄位可排序)</summary>
       <div class="tblwrap" style="max-height:44vh"><table class="grid"><thead><tr>
-        <th>個股</th><th>當日</th><th>外資5日</th><th>近20日</th><th>💸 外資走向20日</th></tr></thead><tbody>` +
+        ${th('sy', '個股')}${th('chg', '當日')}${th('f5', '外資5日')}${th('chg20', '近20日')}<th>💸 外資走向20日</th></tr></thead><tbody>` +
       rows2.map((r, ri) => `<tr>
         <td class="txtcell"><button class="namebtn" onclick="PRO.gotoStock('${r.sy}')">${r.sy} ${r.nm}</button></td>
         <td class="${this.cls(r.chg)}">${Number.isFinite(r.chg) ? this.fmt(r.chg, 2, true) + '%' : '—'}</td>
@@ -1736,6 +1757,14 @@ const PRO = {
     </div>`;
   },
   // 🔁 同一個板塊、只是換了一天 → 只重畫會變的那一段(⛔ 不動泡泡,否則動畫被重置)
+  // 📋 成分股表換排序 —— ⛔ 一定要 `_oneHtmlFor = null` 逼它重建,
+  //    不然 renderRot 會判定「板塊沒換」只走 _oneReflow(那支不重畫表格)
+  rotOneSort(k) {
+    this.buzz(8);
+    this._rotOneSortK = k;
+    this._oneHtmlFor = null;
+    this.rotSeek(this._rotK);
+  },
   _oneReflow(c) {
     const box = document.getElementById('rotOneTop');
     if (!box) return;
@@ -1877,7 +1906,9 @@ const PRO = {
       const q = this._rotQ || '';
       const shown = q ? list.filter(x => G.nm(x.c).toLowerCase().includes(q.toLowerCase())) : list;
       ob.innerHTML = shown.map(x =>
-        `<span class="rotchip ${this.cls(x.v)} ${this._rotOneSel === x.c ? 'on' : ''}" onclick="PRO.rotOne('${x.c}')">${G.nm(x.c)} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}</span>`).join('')
+        `<span class="rotchip ${this.cls(x.v)} ${this._rotOneSel === x.c ? 'on' : ''}${this._lowCoh(x.c) ? ' lowcoh' : ''}"
+          title="${this._lowCoh(x.c) ? '成員各走各的(同步程度 ' + this._lowCoh(x.c) + ')→ 這一組的「平均值」參考價值低' : ''}"
+          onclick="PRO.rotOne('${x.c}')">${this._lowCoh(x.c) ? '🧲 ' : ''}${G.nm(x.c)} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}</span>`).join('')
         || `<span class="rotchip">找不到「${q}」</span>`;
       const dn = document.getElementById('rotDetN');
       if (dn) dn.textContent = q ? `${shown.length}/${list.length}` : `${list.length} 個`;
@@ -1977,13 +2008,21 @@ const PRO = {
       else { const v = scr.rows[sy][C.amp20]; if (Number.isFinite(v) && v > ampMax) ampMax = v; }
     }
     ampMax *= 1.05;
-    const W = 340, H = 210, L = 26, B = 22, T = 10, R = 8;
+    // 📐 V74.1.4 使用者:「起泡版面那面小,請修改」——
+    //   `.sbub svg{width:100%;height:auto}` → **畫布比例決定它在手機上多高**。
+    //   340×210(寬 1.62 倍)在 390 寬的手機上只有約 216px 高,泡泡跟名字全擠在一起。
+    //   ⭐ 改成直式 340×430(同板塊版 340×460 的做法)→ 高度加倍、名字才排得開。
+    const W = 340, H = 430, L = 30, B = 24, T = 14, R = 10;
     this._sbGeo = { W, H, L, B, T, R, ampMax };
     const px = v => L + (v / 100) * (W - L - R);
     const py = v => H - B - (v / ampMax) * (H - B - T);
     const gx = px(this.GENE_POS), gy = py(this.GENE_AMP);
-    const yt = [0, ampMax / 2, ampMax].map(v =>
-      `<text class="qtick" x="${L - 3}" y="${(py(v) + 3).toFixed(1)}" text-anchor="end">${v.toFixed(1)}%</text>`).join('');
+    // 📏 高度變兩倍 → 刻度也要變密,⛔ 否則中間一大片沒有參考線,位置一樣不可解讀
+    const yt = [0, .25, .5, .75, 1].map(f => f * ampMax).map(v =>
+      `<line x1="${L}" y1="${py(v).toFixed(1)}" x2="${W - R}" y2="${py(v).toFixed(1)}" stroke="var(--line2)" stroke-width=".4" opacity=".5"/>
+       <text class="qtick" x="${L - 3}" y="${(py(v) + 3).toFixed(1)}" text-anchor="end">${v.toFixed(1)}%</text>`).join('');
+    const xt = [0, 25, 50, 75, 100].map(v =>
+      `<text class="qtick" x="${px(v).toFixed(1)}" y="${H - B + 11}" text-anchor="middle">${v}</text>`).join('');
     // ⛔ 結構只建一次、之後只改 transform —— 每一拍重建 innerHTML 會把 CSS transition 洗掉
     //    (這是本專案第三次踩到同一個坑:rotQuad、法人籌碼長條、現在是這裡)
     const bub = use.map(sy =>
@@ -1995,10 +2034,10 @@ const PRO = {
       <rect x="${gx.toFixed(1)}" y="${T}" width="${(W - R - gx).toFixed(1)}" height="${(gy - T).toFixed(1)}"
         fill="rgba(245,185,66,.09)" stroke="var(--amber)" stroke-width=".6" stroke-dasharray="3 3"/>
       <text class="sgene" x="${(W - R - 3).toFixed(1)}" y="${T + 11}" text-anchor="end">🧬 高位階 + 高波動</text>
-      ${yt}<g id="sbBubs">${bub}</g>
-      <text class="qtick" x="${L}" y="${H - 6}">位階 0(便宜)</text>
-      <text class="qtick" x="${W - R}" y="${H - 6}" text-anchor="end">100(貴/強)</text>
-      <text class="qtick" x="2" y="${T + 8}">振幅</text>
+      ${yt}${xt}<g id="sbBubs">${bub}</g>
+      <text class="qtick" x="${L}" y="${H - 4}">← 位階(便宜)</text>
+      <text class="qtick" x="${W - R}" y="${H - 4}" text-anchor="end">(貴/強)→</text>
+      <text class="qtick" x="2" y="${T + 6}">振幅</text>
      </svg></div>
      <div class="note" style="margin:-2px 0 2px;color:var(--dim2)">
        <span style="color:var(--up)">紅</span> = 近 ${this._ROT.win} 日上漲 ・<span style="color:var(--dn)">綠</span> = 下跌
@@ -2026,6 +2065,7 @@ const PRO = {
     const px = v => L + (v / 100) * (W - L - R);
     const py = v => H - B - (v / ampMax) * (H - B - T);
     let hit = [], tot = 0, live = 0;
+    const placed = [];
     g.querySelectorAll('.sb').forEach(el => {
       const sy = el.dataset.sy;
       const m = (this._msCache || {})[sy];
@@ -2053,7 +2093,25 @@ const PRO = {
       ci.setAttribute('stroke', on ? 'var(--amber)' : 'transparent');
       ci.setAttribute('stroke-width', on ? 1.6 : 0);
       tx.setAttribute('y', (-rr - 2).toFixed(1));
+      placed.push({ x, y, rr, tx, el });
     });
+    // 🏷️ 名字疊在一起就看不出誰是誰(使用者截圖:「台達化」「夏」糊成一團)。
+    //    ⛔ 不動泡泡本身的座標(那是資料,動了圖就是假的)—— 只把**名字**上下錯開。
+    //    做法:x 靠近的視為同一群,群內依 y 排序,交替往上/往下推。
+    placed.sort((a, b) => a.x - b.x || a.y - b.y);
+    const CX = 40, CY = 12;                       // 名字大約多寬/多高才算撞在一起
+    const clash = (i, dy) => placed.some((q, j) => j < i
+      && Math.abs(q.x - placed[i].x) < CX && Math.abs((q.y + q.dy0) - (placed[i].y + dy)) < CY);
+    for (let i = 0; i < placed.length; i++) {
+      placed[i].dy0 = 0;
+      // ⭐ 交替往上/往下試,⛔ 只往一邊推的話一整排會全部黏成新的一條線;
+      //    ⚠️ 每試一次都要**重新檢查**(只數「撞到幾個」不重檢,推完可能又撞到別人)
+      for (const dy of [0, -12, 12, -24, 24, -36, 36, -48, 48]) {
+        if (!clash(i, dy)) { placed[i].dy0 = dy; break; }
+        placed[i].dy0 = dy;                       // 都撞就用推最遠的那個
+      }
+      placed[i].tx.setAttribute('y', (-placed[i].rr - 2 + placed[i].dy0).toFixed(1));
+    }
     const hb = document.getElementById('sbHit');
     // ⚠️ 「🧬 這一組命中 N/M」是**釘住的字串**(測試 ㉘b),日期放後面 ⛔ 不可插進中間
     if (hb) hb.innerHTML = `🧬 這一組命中 <b style="color:var(--amber)">${hit.length}/${tot}</b> 檔`
@@ -2093,10 +2151,18 @@ const PRO = {
     this._quadPrev = cells.map(x => x[1]);
   },
   // 圖下方的名次條 —— 一眼看完 32 個產業,⛔ 不用捲
+  // 🧲 成員同步程度太低 → 那一組的「中位數」其實是雜訊(實測:晶圓代工 0.07・網通 0.07・電源 0.13)
+  //    ⛔ 不隱藏(隱藏了使用者會以為壞掉),只標出來 + 說明為什麼。
+  //    ⚠️ 門檻 0.20 跟採礦端的 `COH_MIN` 是同一個數字 —— 改一邊要改兩邊。
+  COH_LOW: 0.20,
+  _lowCoh(c) {
+    const v = (this._tagCoh || {})[c];
+    return (v != null && v < this.COH_LOW) ? v.toFixed(2) : null;
+  },
   _rotChips(list, N) {
     this._rotList = list;
     document.getElementById('rotList').innerHTML = list.map((x, i) =>
-      `<span class="rotchip ${this.cls(x.v)} ${this._rotSel === x.c ? 'on' : ''}" onclick="PRO.rotOpen('${x.c}')" style="${i < 3 ? 'border-color:var(--amber)' : i >= N - 3 ? 'border-color:var(--dim2)' : ''}">${i < 3 ? '🎯' : i >= N - 3 ? '⛔' : ''}${this._rotSet().nm(x.c)} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}</span>`).join('');
+      `<span class="rotchip ${this.cls(x.v)} ${this._rotSel === x.c ? 'on' : ''}${this._lowCoh(x.c) ? ' lowcoh' : ''}" onclick="PRO.rotOpen('${x.c}')" style="${i < 3 ? 'border-color:var(--amber)' : i >= N - 3 ? 'border-color:var(--dim2)' : ''}">${i < 3 ? '🎯' : i >= N - 3 ? '⛔' : ''}${this._lowCoh(x.c) ? '🧲' : ''}${this._rotSet().nm(x.c)} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}</span>`).join('');
   },
   _rotVerdict(list, N) {
     const G = this._rotSet(), nm = c => G.nm(c);
@@ -2217,16 +2283,23 @@ const PRO = {
   },
   _whoBuysNote(nm, clash, W) {
     const R = this._ROT;
-    return `<div class="note">
+    // 🧹 V74.1.4:這一頁原本是 1,400 字的文字牆 → 第一眼只留**一句話結論**,
+    //    其餘收進摺疊區。⛔ 不是刪掉(那些限制與實測數字是必要的),是預設不佔版面。
+    return `<div class="note" style="margin-bottom:4px">
+      ⭐ <b>這張表只回答一件事:近 ${W} 日誰在買這個板塊。</b>
+      ⛔ 它<b>排不出有效順序</b>(實測去最好年只剩 +0.40pp、前後半不同向)→ 當背景資訊看,
+      <b>不是跟單訊號</b>、也不給買賣價位。
+      ${clash ? `<br>🚨 今天就有現成的反例:外資近 ${W} 日買最多的是
+        <b>${nm(clash.c)}(+${this.fmt(clash.v.f, 1)} 億)</b>,近 ${R.win} 日報酬卻是
+        <b>倒數前三(${clash.r.toFixed(1)}%)</b>。` : ''}</div>
+    <details class="sbnote"><summary class="rotmore">為什麼沒有「散戶買賣超」?誰在追誰買?(實測)</summary>
+    <div class="note">
       👥 近 ${W} 日各方**淨買超金額**(成分股加總,億元)。三大法人是官方每日公布的真實數字;
       <b>💳 融資餘額變化</b>是台股慣用的<b>散戶槓桿代理</b>。
       <br>🚨 <b>台股沒有官方的「散戶買賣超」</b>,而且⛔ <b>不能</b>用「總量 − 三大法人」去算 ——
       每一股都有買方與賣方,那個減出來的數字<b>必然</b>是三大法人的相反數,
       畫出來會是漂亮的完美鏡像(「法人買、散戶賣!」)但<b>一點資訊都沒有</b>;
       而且那裡面還混著主力分點、公司派、ETF、造市商,根本不是散戶。
-      ${clash ? `<br>🚨 <b>今天正好有現成的例子</b>:外資近 ${W} 日買最多的是
-        <b>${nm(clash.c)}(+${this.fmt(clash.v.f, 1)} 億)</b>,它的近 ${R.win} 日報酬卻是
-        <b>倒數前三(${clash.r.toFixed(1)}%)</b> —— 這就是為什麼「錢流」⛔ 不能拿來排名。` : ''}
       <br><br>🤝 <b>「誰在追誰買」實測結果</b>(2,575 檔 × 3 年,進場=隔天開盤、扣同期大盤):
       <br>⛔ <b>沒有誰固定跟誰</b> —— 隔 1~5 天的相關全部 ≈ 0(|r| ≤ 0.02),
       「外資領先投信」這種說法<b>量不出來</b>。
@@ -2239,7 +2312,7 @@ const PRO = {
       <br>⚠️ 同一天的相關才看得到對做:外資 ↔ 融資 <b>−0.13</b>(外資買時融資減)——
       但那是<b>同期</b>,⛔ 不能拿來預測。
       <br>⛔ 這張表<b>只做描述,不排名、不下多空</b>,本頁也不給任何買賣價位。
-      ⚠️ 只涵蓋上市;回測窗口整段偏多頭。</div>`;
+      ⚠️ 只涵蓋上市;回測窗口整段偏多頭。</div></details>`;
   },
   rotCycleSpeed() {
     this.buzz(10);

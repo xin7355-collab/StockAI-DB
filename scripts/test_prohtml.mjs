@@ -398,6 +398,53 @@ const T = await page.evaluate(async () => {
       out.sbMoved = !!t0 && t0 !== t1;
       PRO._stockBubSeek(PRO._rotK);
     }
+    // 📐 V74.1.4 使用者:「起泡版面那面小,請修改」+ 名字疊在一起(趁 'mem' 明細還開著量)
+    {
+      // 🚨 泡泡只畫「screener 有位階/振幅」的 → 多補 4 檔測資,否則只有 2 顆量不出重疊
+      //    ⚠️ 位階/振幅要**互相靠近**,不然它們本來就不會撞在一起 = 這條等於沒驗
+      //    🚨 而且 K 線也要一起塞 —— 有歷史時泡泡讀的是 `_msCache` 不是快照,
+      //       只塞 screener 的話會去抓 repo 裡**真實的** data/2344.json,位置就分開了
+      //       → 名字自然不會撞 → 這條測試等於沒驗(陷阱 #40 的又一次)。
+      ['2344', '2337', '3006', '3260'].forEach((sy, q) => {
+        PRO._cache['data/screener.json'].rows[sy] = [70, 12, 0.1, 10, 10, 100, 40, 20, 500, 88, 2.0, 5.2, 40];
+        PRO._names[sy] = '測試' + sy;
+        // 跟 2408 幾乎一樣的走勢 → 位階/振幅一樣 → 泡泡疊在同一個點上(最嚴苛的情況)
+        PRO._cache['data/' + sy + '.json'] = Array.from({ length: 40 }, (_, i) => ({
+          date: _dt(i), open: 60 + i, close: 60 + i, high: (60 + i) * 1.02, low: (60 + i) * 0.98,
+          volume: 9e6, foreign_net: 1000 * (q + 1) }));
+      });
+      PRO._msCache = {}; PRO._msPend = {};
+      PRO._oneHtmlFor = null; PRO.rotOne('mem'); await new Promise(r => setTimeout(r, 150));
+      await PRO._memSeries(PRO._grpMembers('mem').syms);
+      PRO._stockBubSeek(PRO._rotK); await new Promise(r => setTimeout(r, 420));
+      const sv = document.querySelector('#rotOne .sbub svg');
+      const bb = sv ? sv.getBoundingClientRect() : null;
+      out.sbAspect = bb ? bb.height / bb.width : 0;
+      const ts = [...document.querySelectorAll('#rotOne .sb')]
+        .filter(e => e.style.opacity !== '0').map(e => e.querySelector('text').getBoundingClientRect());
+      let ov = 0;
+      for (let i2 = 0; i2 < ts.length; i2++) for (let j2 = i2 + 1; j2 < ts.length; j2++) {
+        const a2 = ts[i2], c2 = ts[j2];
+        if (a2.left < c2.right && c2.left < a2.right && a2.top < c2.bottom && c2.top < a2.bottom) ov++;
+      }
+      out.sbLabelOv = ov; out.sbLabelN = ts.length;
+      // 📋 成分股表可排序
+      const nmz = () => [...document.querySelectorAll('#rotOne tbody tr td:first-child')].map(td => td.textContent.trim());
+      out.sortBefore = nmz();
+      PRO.rotOneSort('sy'); await new Promise(r => setTimeout(r, 150));
+      out.sortAfter = nmz();
+      out.sortThOn = document.querySelectorAll('#rotOne th.sortth.on').length;
+      PRO.rotOneSort('f5'); await new Promise(r => setTimeout(r, 120));
+      // 🧲 內聚度太低的板塊要標出來(⛔ 不可隱藏)
+      PRO._tagCoh = { mem: 0.05, pcb: 0.61 };
+      PRO.rotOne(null); await PRO.renderRot(); await new Promise(r => setTimeout(r, 150));
+      const chz = [...document.querySelectorAll('#rotOneBar .rotchip')];
+      out.cohLow = chz.filter(e => e.classList.contains('lowcoh')).length;
+      out.cohShown = chz.length;
+      out.cohTitle = (chz.find(e => e.classList.contains('lowcoh')) || {}).title || '';
+      PRO._tagCoh = null;
+      PRO.rotOne('mem'); await new Promise(r => setTimeout(r, 120));
+    }
     document.querySelectorAll('#tabRot details').forEach(d => d.open = true);
     out.thNote = document.getElementById('rotNote').innerText;
     // ㉙ ②③④ 成員總覽 + 個股資金走向 + 選中樣式(V74.4.2,趁 'mem' 明細還開著收)
@@ -898,6 +945,21 @@ ok('㊲j 🎨 泡泡圖要有圖例:顏色 / 大小 / 右上角那框各代表�
    /泡泡越大 = 成交金額越大/.test(src) && /高位階 \+ 高波動/.test(src));
 ok('㊲k ⏭ 拉去看過去之後要有「回到最新」鈕(⛔ 手機上滑桿很難拖回最右邊)',
    /id="rotNow"/.test(src) && /PRO\.rotSeek\(1e9\)/.test(src));
+// 📐 V74.1.4 使用者:「起泡版面那面小,請修改」
+ok('㊲l 📐 泡泡圖畫布要**直式**(⛔ 340×210 在手機上只有 ~216px 高,泡泡跟名字全擠在一起)',
+   T.sbAspect >= 1.05, T.sbAspect?.toFixed(2));
+ok('㊲m 🏷️ 泡泡的名字⛔ 不可疊在一起(使用者截圖:台達化/夏 糊成一團)',
+   T.sbLabelOv === 0 && T.sbLabelN >= 3, `重疊 ${T.sbLabelOv} / 共 ${T.sbLabelN} 個`);
+ok('㊲n 📋 成分股表點欄位可以換排序',
+   T.sortBefore.join() !== T.sortAfter.join() && T.sortThOn === 1,
+   `${T.sortBefore} → ${T.sortAfter} (on=${T.sortThOn})`);
+ok('㊲o 🧲 成員各走各的板塊要標出來,⛔ 但不可藏起來(藏了使用者會以為壞掉)',
+   T.cohLow === 1 && T.cohShown >= 2 && /參考價值低/.test(T.cohTitle),
+   `low=${T.cohLow}/${T.cohShown} title=${T.cohTitle}`);
+ok('㊲p 🧭 「策略與回測」那頁最前面要有一段目錄(⛔ 五張卡疊起來不知道要捲多久)',
+   /這一頁在講什麼/.test(src) && /想知道「為什麼不做某個功能」/.test(src));
+ok('㊲q 🧹 法人籌碼頁第一眼只留一句話結論,長說明收摺疊(⛔ 原本 1,398 字的文字牆)',
+   ROT2.paneLen.flow <= 1000, ROT2.paneLen.flow);
 
 
 await browser.close();
@@ -1027,7 +1089,10 @@ ok('㉒h2 🚨 而且要出現在**第一眼**,⛔ 不可只藏在收起來的�
    /避開最弱/.test(T.verdict) && /追最強/.test(T.verdict)
    && /-0\.8pp/.test(T.verdict.replace(/−/g, '-')), T.verdict);
 ok('㉒i 誰在買:預設勾選那幾條加總排序 → 半導體第一', T.fiFirst === '半導體', T.fiFirst);
-ok('㉒j 🚨 外資「買最多卻最弱」的現成例子要主動點出來', /今天正好有現成的例子/.test(T.fiNote) && /半導體/.test(T.fiNote), T.fiNote.slice(0, 200));
+// ⚠️ V74.1.4 這句從摺疊區搬到**第一眼**那句結論裡(文案改了,用意沒變:要主動點出反例)
+ok('㉒j 🚨 外資「買最多卻最弱」的現成例子要主動點出來,而且要在**第一眼**(⛔ 不可藏進摺疊區)',
+   /現成的反例/.test(T.fiNote) && /半導體/.test(T.fiNote)
+   && T.fiNote.indexOf('現成的反例') < T.fiNote.indexOf('為什麼沒有'), T.fiNote.slice(0, 240));
 ok('㉒k ⛔ 那張表要明說只做描述、不排名不下多空', /只做描述/.test(T.fiNote) && /不排名/.test(T.fiNote), T.fiNote.slice(-260));
 // ㉓ 👥 三大 + 散戶疊加
 ok('㉓ 四個打勾:外資 / 投信 / 自營 / 融資(散戶代理)',
