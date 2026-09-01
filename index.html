@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.2.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.2.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3443,7 +3443,7 @@ const app = {
     jargonDict: {
         '深度診斷': '這張卡把「這檔的資料 + 籌碼 + 大盤總經」湊在一起,回答三件事:現在該用什麼方式操作、大戶有沒有在出貨的跡象、接下來要盯什麼。\n\n【最重要的一點】上半部那些結論是**程式算出來的**,不是 AI 講的。AI 只負責最下面那段「白話解讀」,而且它拿到的每一個數字都是程式先算好再交給它的 —— 因為語言模型不會算數學,讓它自己算均線、算報酬率一定會出錯(這是本 App 的鐵律)。\n\n【操作方式怎麼判的】\n・低檔布局 = 位階在一年裡的低段(≤30%)、而且還沒跌破季線太遠 → 適合分批慢慢接\n・區間操作 = 近 60 天在一個不寬的箱子裡來回(區間 ≤22%、月線上下穿 ≥4 次)→ 靠下緣接、靠上緣減\n・順勢做多 = 站上月線、月線又在季線之上 → 回檔找點,別追高\n・先不做 = 中期趨勢還是空頭 → 位階再低也先不進,反彈是減碼機會\n\n【大戶出貨徵兆】8 條檢查表:量價背離、高檔爆量收黑、外資轉賣、分點主力賣超、集保大戶減散戶增、融資大增、貼近上方套牢區、乖離年線過熱。\n⚠️ 這是**徵兆不是預測** —— 沒有人算得出大戶哪一天出貨。亮的條數只代表「該多留意的程度」,⛔ 不是「幾條以上就會跌」。有些條目需要分點或集保資料,冷門股可能顯示「無資料」,那不是壞掉。\n\n【AI 那段刻意不給買賣價位】進場價、停損價、目標價都由下方各張卡片精算(扣過手續費),讓 AI 另外講一組會跟它們打架。',
 
-        '法人成本連買': '這張卡在算「三大法人最近 20 天買的股票,平均買在多少錢」。\n\n成本算法:只看法人「淨買超」的日子,用當天收盤價加權平均 —— 是推估值,不是官方公布(官方不公布法人成本)。\n\n右邊的 % = 現價比法人成本高或低:現價還在法人成本之下,代表法人這批平均還沒賺錢,通常比較不會急著賣。\n\n下半的「連續 N 日買超/賣超」= 法人連續同方向幾天(連 2 天以上才顯示)。連買天數越多代表越有耐心的佈局,連賣則相反。\n\n⚠️ 資料用你自己填的 FinMind 金鑰即時抓;沒填金鑰或該股近 20 日法人都沒淨買超時,這張卡整張隱藏(不是壞掉)。',
+        // 🗑️ V74.2.0 「法人成本連買」教學條目已隨 chipRadarPanel 刪除(instcost_probe 實測無優勢)
         '板塊輪動訊號': '美股昨夜先收、台股今天接著走。鐵則:「跟漲」只有在美股真的上漲時才算數(美股沒漲就沒得跟):\n\n• 強烈跟漲(紅閃):美股大漲、台股也漲只是落後很多 → 補漲動能最強。\n• 跟漲機會(紅):美股漲、台股漲幅落後 → 有補漲空間。\n• 委屈待補(黃):美股漲、台股卻收黑(跌<3%)→ 相對弱勢,可能補漲也可能有隱憂,先觀望別追。\n• 台股獨弱(橙):台股自己大跌≥3% → 台股自身利空,別跟美股做多。\n• 補跌風險(綠):美股跌、台股跌更多 → 跟跌/超跌。\n• 逆勢抗跌(紅):台股比美股強(美股跌台股守住,或台股漲更多)→ 相對強勢。\n• 同步(灰):兩市齊步,無明顯落差。\n\n色彩:紅=偏強(跟漲/抗跌)、黃=委屈觀望、綠=偏弱(補跌)、橙=台股獨弱。',
         '大盤天氣趨勢': '用加權指數的均線排列,把大盤分「短期(日)/ 中期(週)/ 長期(月)」三個時間判斷方向(全部由程式算,不靠 AI):\n\n• ☀️ 偏多:收盤 > 短均 > 長均(多頭排列),順勢做多較有利。\n• ☁️ 震盪:均線糾結或交叉,方向不明,別重押、等表態。\n• 🌧️ 偏空:收盤 < 短均 < 長均(空頭排列),反彈偏空、控好部位。\n\n短期=日K MA5/MA20、中期=週K MA5/MA20、長期=月K MA3/MA12;乖離=收盤離長均的百分比。三個天期同方向(如全 ☀️)趨勢最明確;打架(☀️☁️🌧️ 混)代表轉折或盤整,操作要更保守。',
         '主升段': '多頭的第二波主要上漲，漲幅通常最大、賺最多錢的一段。就像火箭加速衝刺的階段，遇到務必抱緊處理！',
@@ -7404,8 +7404,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.2.0',
+    _APP_VERSION: 'V74.2.1',
     _CHANGELOG: [
+        { v: 'V74.2.1', dt: '2026-09-01', d: ['刪除的收尾:功能總覽不再列出已刪的「盤中連量偵測」、已刪卡片的教學條目一併移除(⛔ 說明書不可介紹一個不存在的功能)'] },
         { v: 'V74.2.0', dt: '2026-09-01', d: ['雜訊清洗收尾:沒用的直接刪除 —— 4 個實測沒用的功能整段移除(隔日沖勝率回測、法人推估成本卡、5日訊號準確度排行、盤中連量偵測)', '刪之前把最後一個懸念驗掉:隔日沖全市場重驗(2,329 檔)——「隔天盤中碰到 +1.5%」機率 58~72% 是真的,但照做得到的方式出場、扣掉當沖成本後三種型態全部是負的 → 碰得到不等於賺得到', '當沖作戰室解除收起:剩下的內容(期貨夜盤、正逆價差、隔日沖風險判讀)是誠實描述,留著', '每一筆刪除的依據都記在產業作戰室的實測總表'] },
         { v: 'V74.1.9', dt: '2026-09-01', d: ['六脈共振卡驗完**加回來了**(驗到有用就加回來的第一個實例):全市場 5.6 萬次實測,「強共振」那級之後 20 日贏隨便挑一天 +0.80 個百分點、六道關卡全過', '但只有紅燈那級有用 —— 黃燈「試單」級實測 ≈ 0,卡上已改口不再叫人試單', '實測成績直接寫在卡上'] },
         { v: 'V74.1.8', dt: '2026-09-01', d: ['雜訊清洗第二波:再收 2 張 —— 當沖作戰室的隔日沖段(每檔只有十幾次樣本、最強只贏基準 2pp)、法人推估成本(實測站上 +0.20pp / 跌破 −0.24pp,全在雜訊內)', '收起之前先實測:法人成本這張是量完 7.9 萬筆才收的,數字寫在提示列上', '卡片自己沒資料而藏起來時,「已收起」提示列也會跟著藏(不多佔一行)', '待驗證的(ETF 跟車、隔日沖全市場重驗)已加進產業作戰室的實測總表「推薦下一步」欄'] },
@@ -7634,7 +7635,7 @@ ${list}
             ['border-yellow-500', 'text-yellow-300', '🐘 籌碼全面追蹤', '三大法人淨買賣、融資融券、主力分點買賣超 Top10、大戶籌碼總結(純公式)。'],
             ['border-orange-500', 'text-orange-300', '🚨 處置股官方風控', '官方注意/處置名單(TWSE+TPEx)、越關越大尾 5 因子、庫存感知對策、被關前出貨日提醒。'],
             ['border-blue-500', 'text-blue-300', '🛡️ 風控三神器', 'ATR 部位管理(該買幾張+吊燈停損)、交易日誌算你真實勝率/賺賠比、負期望訊號自動變灰。'],
-            ['border-green-500', 'text-green-300', '🎯 選股與盤中雷達', '長線潛力/中線黑馬、當沖強勢榜、盤中爆量雷達、盤中連量偵測、RS 相對強弱排名、市場廣度儀表板。'],
+            ['border-green-500', 'text-green-300', '🎯 選股與盤中雷達', '長線潛力/中線黑馬、當沖強勢榜、盤中爆量雷達、RS 相對強弱排名、市場廣度儀表板。'],
             ['border-cyan-500', 'text-cyan-300', '🧮 基本面 X 光 + 🧠 AI 輔助', 'PE/殖利率/YoY/毛利/PEG/PBR 純公式體質評分;AI 首席全盤/籌碼解析;🔎 免費查(外部 AI 深連結,不耗額度)。'],
             ['border-purple-500', 'text-purple-300', '📲 即時 + 推播', 'Fugle 即時報價、全市場快照、PWA 手機推播(朱老師 5MA 停利/處置風險每日掃描)、鈴鐺歷史。'],
         ];
@@ -44584,8 +44585,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         // 🧩 V71.0.6 U-16/U-17 合併卡(使用者鐵則「合併卡片,不要加新卡、資訊不爆炸」):
         //   原本 5 張各自獨立的小卡 → 收成 2 組共用外框,標題只出現一次,內部用分隔線分列。
         //   內容一字未改,純版面收納。
-        //   ⛔ 刻意不併入「🔴 盤中連量偵測」:它在常顯區(cards)且是條件觸發的即時警訊,
-        //      搬進這個摺疊區等於把即時訊號藏起來 —— 那是退步不是進步。
+        //   (原「刻意不併入盤中連量偵測」的註解已過期 —— 那張卡 V74.2.0 整張刪除了)
         const dFrame = [];   // U-17 今天的框:必守價位 / 開盤區間 / 波動夠不夠
         const dVolPx = [];   // U-16 盤中量價體檢:分時均價線 / 量能達標度
         const _f2 = n => (n == null || !Number.isFinite(+n)) ? '—' : (+n).toFixed(2);
