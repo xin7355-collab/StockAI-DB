@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.9 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.3.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7457,8 +7457,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.2.9',
+    _APP_VERSION: 'V74.3.0',
     _CHANGELOG: [
+        { v: 'V74.3.0', dt: '2026-09-01', d: ['📰 你給的那份「用新聞預測航運股漲跌」的專案,我逐行讀完並<b>拿它自己的逐日結果重算了一次</b>:準確率 58.75%,但<b>基準是 52% 不是 50%</b>(它報告裡沒講)→ 真正贏的是 6.7 個百分點。', '🚨 而且它有<b>前視偏誤</b> —— 它先用「全部資料(含未來月份)的答案」挑出 500 個關鍵詞,之後才切訓練/測試,所以連它的移動回測數字也是灌水的。⭐ 佐證就在它自己的報告裡:隨機切分 80~90%、移動回測只有 58.75%,差那麼多本身就是洩漏的訊號。', '⛔ 它<b>沒有附新聞資料集</b>(被 .gitignore 擋掉),所以拿不到現成的歷史新聞;不過它的<b>移動回測骨架</b>(3 個月訓練 → 預測第 4 個月)是對的 —— 已定為本站消息面歷史累積夠了之後要用的做法。', '🔎 結論都收進產業作戰室的「實測總表」(⛔ 實測沒用 / 🧭 回測自己的坑 兩欄),散戶救星的判斷邏輯一行都沒改。'] },
         { v: 'V74.2.9', dt: '2026-09-01', d: ['🔎 <b>選股頁 127 個條件的成績表也用 2022 空頭重算了一遍</b>(事件數從 37,035 增加到 <b>69,890</b>)。⭐ 好消息:<b>「追強比抄底好」的排序完全沒變</b> —— 創一年新高仍然是第一名(+2.84pp)。', '⛔ 但每個條件的幅度都縮水了,而且六關全過仍然是 0 個 —— 那張表是拿來<b>比較哪個條件比較有用</b>,⛔ 不是「勾了就會賺」。', '🚨 逐年拆開最反直覺的一點:<b>2022 那個空頭年反而是「創一年新高」最有效的一年</b>;真正的衰退是從 <b>2024</b> 才開始。所以「優勢正在變小」跟「空頭會受傷」是兩件不同的事。', '✅ 順便確認<b>板塊 20 日動能、六脈共振最強那一級、地板股家數、0050 一次全買</b>加上空頭之後<b>維持成立</b> —— ⛔ 不是全部被推翻。'] },
         { v: 'V74.2.8', dt: '2026-09-01', d: ['🚨 用 2022 那次空頭把「等空頭再說」的回測全部重跑了一遍 —— 結果<b>四條原本「每一關都通過」的做法當場不成立</b>:①「跌停後第一根紅K」整體版(2023 那年是負的)②「跌停就接、不等紅K」整組 ③「做夢行情」(族群沒動只有它獨走)④「板塊選對之後再挑板塊裡最強的」。', '⭐ 還站得住的三條有個共同點:<b>都要求「已經確認」</b> —— 跌停後收<b>大紅</b>(力道確認)、當初<b>大盤也在跌</b>(原因確認)、創高後<b>回測不破</b>(支撐確認)。陣亡的那四條則都是「還沒確認就進場」。', 'K線頁的跌停紅K、族群狀態,當沖頁的「今天顛不顛」,數字全部換成含空頭的版本,文案也一起改口(不再說整體版「連空頭都通過」)。', '🗞️ 開始存<b>消息面歷史</b>(每天每檔的新聞標題 + 利多利空 + 分類)—— 這種資料現在不存,一年後還是測不了。累積約三個月後就能回答「利空出現後這檔通常跌多少」。'] },
         { v: 'V74.2.7', dt: '2026-09-01', d: ['選股頁的「明日作戰清單」也改成總覽的版面邏輯:第一眼只留「怎麼做」那一句(一天最多做前 2 檔 ・不是開盤買 —— 要漲過觸發價,而且尾盤 13:00~13:25 還站得住才進場),支撐它的實測數字(每天做 2 檔 / 3 檔 / 6 檔各賺多少)跟 🧬 強勢高波動的排序依據收進下面的「📊 上面那兩句的實測根據」', '⛔ 一個警告都沒收:不是開盤買、尾盤時窗、今天大盤風險、買點提醒開關全都留在第一眼', '實測前言從 593 字縮到 373 字 —— 也就是看到第一檔股票之前少讀了 220 字'] },
