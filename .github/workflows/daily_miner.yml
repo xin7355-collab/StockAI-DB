@@ -442,6 +442,17 @@ jobs:
         run: |
           python3 momentum_miner.py || echo "⚠️ momentum_miner 失敗(不擋部署)"
 
+      # 🕸️ V74.3.4 關聯星圖:全市場「誰跟誰一起動」(產業作戰室的分頁在讀)
+      #   ⚠️ 必須排在**所有 OHLCV 合併完之後**(前面 20 個平行節點各採一部分)——
+      #      跟 potential_miner / momentum_miner 同一個位置、同一個理由。
+      #   ⭐ 產物 data/top_correlations.json 會被下面部署步驟的 `git add -f data/`
+      #      自動收進 gh-pages 與 data 分支 → ⛔ 不用另外接 artifact 清單。
+      #   實測:2,513 檔 / 5.8 秒 / 峰值 211MB / 產出約 48KB。
+      #   ⛔ 失敗一律不擋部署;而且腳本自己有空過守門(有鄰居的檔數 < 200 就拒絕覆寫舊檔)。
+      - name: 🕸️ generate_correlations:全市場關聯星圖
+        run: |
+          python3 generate_correlations.py || echo "⚠️ generate_correlations 失敗(不擋部署)"
+
       # 🎯 V72.2.0 今日實測訊號:全市場掃「今天出現了哪些期望值為正的訊號」
       #   ⚠️ 必須排在**所有 OHLCV 合併完之後**(前面 20 個平行節點各採一部分),
       #      而且要用 **main 最新版的 index.html**(偵測器 + _SIGNAL_EDGE 都在裡面)

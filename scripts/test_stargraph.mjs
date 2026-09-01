@@ -107,14 +107,20 @@ const dm = fs.readFileSync(path.join(ROOT, '.github/workflows/daily_miner.yml'),
 // ⏳ 改 GitHub Actions 屬於「要先問使用者」的例外(CLAUDE.md 授權清單 ③)→ 接線前印 ⏳ 不印 ❌。
 //    ⛔ 但**不可以就這樣算了** —— 沒接線的話這個功能永遠沒有資料(陷阱 #9:功能安靜地沒作用)。
 //    使用者點頭接上之後,這兩條會自動轉成真的斷言。
-if (!/generate_correlations\.py/.test(dm)) {
-  console.log('⏳ ⑩ daily_miner 還沒接 generate_correlations.py —— 接上之前前端會顯示「資料還沒產出」');
-  console.log('⏳ ⑩b(同上)產物也還沒進 artifact 清單');
-} else {
-  ok('⑩ daily_miner 有跑 generate_correlations.py', true);
-  ok('⑩b 產物有被 artifact 收走(⛔ 沒收 = workflow 全綠但檔案不見,陷阱 #11)',
-     /top_correlations\.json/.test(dm));
-}
+// ⑩ 這一步是使用者點頭之後才接的(改 GitHub Actions 屬於 CLAUDE.md 授權清單的例外 ③)。
+// 🚨 ⑩b ⛔ 不可只比對字串 'top_correlations.json' —— 光是**註解**裡寫到就會通過 = 假綠燈。
+//    真正要驗的是兩件事:① 那一步真的會被執行(run: 底下有這行)
+//                        ② 產物真的收得進 gh-pages(部署步驟是 `git add -f data/` 整包收)。
+const runsCorr = /run:[\s\S]{0,200}?python3 generate_correlations\.py/.test(dm);
+ok('⑩ daily_miner 真的會執行 generate_correlations.py(⛔ 不是只寫在註解裡)', runsCorr,
+   (dm.match(/.{0,80}generate_correlations\.py.{0,40}/) || [])[0] || '沒找到');
+ok('⑩b 產物收得進 gh-pages —— 部署步驟是 `git add -f data/` 整包收(陷阱 #11)',
+   /git add -f index\.html data\//.test(dm) && /git add -f data\//.test(dm));
+ok('⑩c 排在 potential/momentum_miner 之後、部署之前(要等 20 個平行節點的 OHLCV 全合併)',
+   dm.indexOf('momentum_miner.py') < dm.indexOf('python3 generate_correlations.py') &&
+   dm.indexOf('python3 generate_correlations.py') < dm.indexOf('git add -f index.html data/'));
+ok('⑩d 失敗⛔ 不擋部署(它是加值資料,讀不到就整條不顯示)',
+   /python3 generate_correlations\.py \|\| echo/.test(dm));
 
 // ═══ 採礦端本身 ═══
 ok('🐍 成交量有做 股→張 換算(⛔ 直接拿股數比 1000 的話濾網等於沒有,陷阱 #17)',
