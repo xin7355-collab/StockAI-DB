@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.1.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.1.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.1.5 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.1.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7348,8 +7348,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.1.5',
+    _APP_VERSION: 'V74.1.6',
     _CHANGELOG: [
+        { v: 'V74.1.6', dt: '2026-09-01', d: ['個股泡泡圖現在每一格都有實測數字:圖下方多一條「位階四段的期望值」,左下角標出實測最弱的區域', '實測結論:越貴越強的那一邊反而比較好,「高檔過熱要賣」量出來是相反的', '刻意不畫「買進區/加碼區/賣出區」—— 實測那三個在這張圖上量不出來,卡片裡有寫為什麼'] },
         { v: 'V74.1.5', dt: '2026-09-01', d: ['產業作戰室現在會顯示版本號,跟這裡一樣就代表兩邊都是最新的', '板塊輪動:走勢圖與個股泡泡圖改成切換頁籤、兩張一樣大,播放列移到圖卡正上方', '新增「平滑」鈕(5日/10日),把時間軸的跳動抹平;只影響看起來的樣子,不改資料', '新增日期區間快選與自訂,選完會列出那段期間最強與最弱的 3 個板塊'] },
         { v: 'V74.1.4', dt: '2026-09-01', d: ['產業作戰室「板塊輪動」:個股泡泡圖版面放大一倍(手機上原本只有 216 像素高),股名不再疊在一起', '成分股表點欄位可以換排序', '成員各走各的板塊(同步程度低)會標出來,那種板塊的「平均值」參考價值低', '法人籌碼頁只留一句話結論,長說明收起來;策略頁最前面加目錄'] },
         { v: 'V74.1.3', dt: '2026-09-01', d: ['產業作戰室「板塊輪動」:題材裡面的個股泡泡圖現在會**跟著時間軸一起動**(以前只有上面的文字在動)', '同一個板塊本來有兩張長得很像的明細卡,合併成一張', '大段說明預設收起來,看圖的三頁不再是一面文字牆'] },

@@ -405,6 +405,22 @@ const T = await page.evaluate(async () => {
       out.sbGoto = /PRO\.gotoStock\('2408'\)/.test(d.innerHTML);
       out.sbTxt = d.innerText;
       out.sbHitTxt = (document.getElementById('sbHit') || {}).innerText || '';
+      // 🧬 ㊷ 分區:左下「實測最弱」框 + X 軸下方四段實測條
+      out.sbWeakRect = d.querySelectorAll('.sbub svg rect[stroke="var(--dim2)"]').length;
+      out.sbSegN = [...d.querySelectorAll('.sbub svg rect')].filter(r => r.getAttribute('height') === '13').length;
+      out.sbSegReal = [...d.querySelectorAll('.sbub svg text.qtick')].map(t => t.textContent)
+        .filter(t => /^[+-]\d\.\d\d$/.test(t)).join(',');
+      {   // ⛔ 換一張假表 → 畫面上的數字必須跟著變(證明不是寫死的)
+        const keep = JSON.parse(JSON.stringify(PRO._GZ));
+        for (const k in PRO._GZ.c) PRO._GZ.c[k] = [1000, 9.99, 0, 50, 9];
+        PRO._oneHtmlFor = null; PRO.rotOne('mem'); PRO.rotChartTab('bub');
+        await new Promise(r => setTimeout(r, 120));
+        out.sbSegFake = [...document.querySelectorAll('#rotOne .sbub svg text.qtick')].map(t => t.textContent)
+          .filter(t => /^[+-]\d\.\d\d$/.test(t)).join(',');
+        PRO._GZ = keep;
+        PRO._oneHtmlFor = null; PRO.rotOne('mem'); PRO.rotChartTab('bub');
+        await new Promise(r => setTimeout(r, 120));
+      }
       // 🫧 ㉘b2 泡泡要**跟著時間軸走**:換一天,座標必須不一樣
       const tf = () => [...d.querySelectorAll('.sb')].map(e => e.style.transform).join('|');
       PRO._stockBubSeek(0); const t0 = tf();
@@ -1068,6 +1084,23 @@ ok('㊶d 🎛️ 播放列要在圖卡上方(使用者:「播放輪動的那一�
    && src.indexOf('class="chartbar"') < src.indexOf('id="rotChart-trend"'));
 ok('㊶e 🎛️ 兩條滑桿要同步(⛔ 拉一條另一條不動 = 使用者會以為壞掉)',
    /const s2 = document\.getElementById\('rotSlider2'\);[\s\S]{0,160}?s2\.value = String\(k\)/.test(src));
+// 🧬 ㊷ V74.1.6 泡泡圖分區實測(使用者:「能不能加其它半透明圖示?買進/加碼/過熱要賣」)
+ok('㊷ 🧬 圖上要多一個「⛔ 實測最弱」區(位階<25 × 低振幅),⛔ 而且不可用紅綠',
+   T.sbWeakRect === 1 && /⛔ 實測最弱/.test(T.sbTxt)
+   && !/fill="rgba\(255,93,93[^"]*"\s+stroke="var\(--dim2\)/.test(src), `rect=${T.sbWeakRect}`);
+ok('㊷b 📏 X 軸下方要有「位階四段的實測期望值」條(⭐ 每一格都要有數字)',
+   T.sbSegN === 4 && /這一段的實測期望值/.test(T.sbTxt), `segs=${T.sbSegN}`);
+ok('㊷c 🚨 分段數字必須**現算自 `_GZ`**(⛔ 不可寫死第二份 —— 換一張假表畫面要跟著變)',
+   T.sbSegFake !== T.sbSegReal, `${T.sbSegReal} → ${T.sbSegFake}`);
+ok('㊷d 🚨 必須寫明「為什麼不畫買進/加碼/過熱賣出區」+「過熱要賣方向是相反的」',
+   /為什麼不畫/.test(T.sbTxt) && /方向是相反的/.test(T.sbTxt) && /沒有單調/.test(T.sbTxt),
+   T.sbTxt.slice(-500));
+ok('㊷e 🚨 高位階低振幅比 🧬 好這件事要講,⛔ 但同時要說「不推翻 🧬」(兩者問的不是同一件事)',
+   /不推翻 🧬/u.test(T.sbTxt) && /賠率型/.test(T.sbTxt) && /勝率型/.test(T.sbTxt), T.sbTxt.slice(-900));
+ok('㊷f ⛔ 對照組不是 0 也不是 50% —— 要把它寫出來',
+   /基準不是 0 也不是 50%/.test(T.sbTxt) && /-1\.08/.test(T.sbTxt.replace(/−/g, '-')), T.sbTxt.slice(0, 600));
+ok('㊷g ⚠️ 要誠實說「八格沒有一格通過逐年同向」(⛔ 不可只講對自己有利的那半)',
+   /沒有一格.{0,12}逐年同向/.test(T.sbTxt) && /比較用/.test(T.sbTxt), T.sbTxt.slice(-320));
 
 
 await browser.close();
