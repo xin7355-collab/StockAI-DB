@@ -10,6 +10,7 @@ on:
       - 'manifest.json'   # V17.0 — PWA installable manifest
       - '.well-known/**'  # 📦 V73.1.1 — APK(TWA)驗證用 assetlinks.json
       - 'pro.html'        # 🛰️ V74.0.1 — 產業作戰室 PRO(獨立頁,不掛在 App 內)
+      - 'data/scr_edge.json'   # 🏅 V74.3.6 — 選股條件實測成績(釣魚池在讀;index.html 匯出的產物)
   workflow_dispatch:
 
 # V14.12 — 與 daily_miner.yml deploy job 共用 'gh-pages-push' group,
@@ -67,6 +68,7 @@ jobs:
           [ -f .well-known/assetlinks.json ] && { mkdir -p /tmp/deploy/.well-known; cp .well-known/assetlinks.json /tmp/deploy/.well-known/; } || true
           for f in apple-touch-icon.jpg icon-192.jpg icon-512.jpg; do [ -f "$f" ] && cp "$f" /tmp/deploy/ || true; done   # ⚡ V69.8.7 P2-2 icon 外部化
           [ -f pro.html ] && cp pro.html /tmp/deploy/ || true   # 🛰️ V74.0.1 產業作戰室 PRO
+          [ -f data/scr_edge.json ] && cp data/scr_edge.json /tmp/deploy/ || true   # 🏅 V74.3.6(⚠️ 下面一定要 cp 回 + git add)
 
           # 切到現有的 gh-pages（保留所有資料，不用 --orphan）
           git fetch origin gh-pages 2>/dev/null || true
@@ -84,6 +86,7 @@ jobs:
           [ -f /tmp/deploy/.well-known/assetlinks.json ] && { mkdir -p .well-known; cp /tmp/deploy/.well-known/assetlinks.json .well-known/; } || true   # 📦 V73.1.1
           for f in apple-touch-icon.jpg icon-192.jpg icon-512.jpg; do [ -f "/tmp/deploy/$f" ] && cp "/tmp/deploy/$f" . || true; done
           [ -f /tmp/deploy/pro.html ] && cp /tmp/deploy/pro.html . || true   # 🛰️ V74.0.1(⚠️ cp 完下面一定要 git add,V69.8.7 圖示漏過)
+          [ -f /tmp/deploy/scr_edge.json ] && mkdir -p data && cp /tmp/deploy/scr_edge.json data/scr_edge.json || true   # 🏅 V74.3.6
 
           # 🆕 每次部署把 Service Worker 的 CACHE_NAME 注入 commit SHA，
           #     讓 sw.js 內容隨每次部署改變 → 瀏覽器認得新 SW → 自動接管+reload，杜絕使用者卡舊版
@@ -97,6 +100,7 @@ jobs:
           [ -f manifest.json ] && git add manifest.json || true
           [ -f .well-known/assetlinks.json ] && git add -f .well-known/assetlinks.json || true   # 📦 V73.1.1
           [ -f pro.html ] && git add -f pro.html || true   # 🛰️ V74.0.1 產業作戰室 PRO
+          [ -f data/scr_edge.json ] && git add -f data/scr_edge.json || true   # 🏅 V74.3.6(漏這行 = 每天被洗掉、零錯誤訊息)
           git diff --cached --quiet && echo "無變更，跳過" || {
             git commit -m "🚀 前端更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
             # V14.12 — 5 次 retry 吸收 GitHub server 瞬時 ref lock
