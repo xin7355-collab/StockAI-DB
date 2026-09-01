@@ -208,7 +208,8 @@ function row(key, label) {
     if (yv.length >= 2) {
         const bestY = Object.keys(yr).filter(y => yr[y] != null).sort((x, y2) => yr[y2] - yr[x])[0];
         const rest = [], restBase = [];
-        for (const y of yrKeys) if (y !== bestY && (m.yr[y] || []).length) { rest.push(...m.yr[y]); restBase.push(...allYr[y]); }
+        // ⛔ push(...大陣列) 會爆呼叫堆疊 —— 一律逐筆
+        for (const y of yrKeys) if (y !== bestY && (m.yr[y] || []).length) { for (const v of m.yr[y]) rest.push(v); for (const v of allYr[y]) restBase.push(v); }
         if (rest.length >= 100) exBest = mean(rest) - mean(restBase);
     }
     const sameHalf = half[0] != null && half[1] != null && Math.sign(half[0]) === Math.sign(half[1]);

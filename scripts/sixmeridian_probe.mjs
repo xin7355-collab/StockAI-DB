@@ -157,7 +157,8 @@ for (const t of ['strong', 'trial', 'ignite', 'mixed', 'weak']) {
     if (yv.length >= 2) {
         const bestY = yrKeys.filter(y => (yr[y] || []).length >= 30).sort((x, y2) => (mean(yr[y2]) - mean(baseYr[y2])) - (mean(yr[x]) - mean(baseYr[x])))[0];
         const rest = [], restB = [];
-        for (const y of yrKeys) if (y !== bestY && (yr[y] || []).length) { rest.push(...yr[y]); restB.push(...baseYr[y]); }
+        // ⛔ push(...大陣列) 會爆呼叫堆疊(CLAUDE.md 記過兩次、這是第三次踩)—— 一律逐筆
+        for (const y of yrKeys) if (y !== bestY && (yr[y] || []).length) { for (const v of yr[y]) rest.push(v); for (const v of baseYr[y]) restB.push(v); }
         if (rest.length >= 100) exBest = mean(rest) - mean(restB);
     }
     const sameHalf = h[0] != null && h[1] != null && Math.sign(h[0]) === Math.sign(h[1]);
