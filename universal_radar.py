@@ -19,7 +19,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import feedparser
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # V58.0 — 恢復採礦端 Groq AI(使用者要求:翻譯+判讀都後端做好,前端零額度)。
 #         額度帳:每 run 最多 NEWS_AI_CAP(25) 次 8b-instant 小呼叫,3 支 workflow 一天約 200 次
@@ -762,6 +762,7 @@ def build_stock_news(news_items):
                 'url': it.get('url') or it.get('link') or '#',
                 'date': (it.get('published') or '')[:16],
                 'tone': tone,
+                'cat': (it.get('cat') or '')[:8],      # 🗂️ V74.2.8 歷史要存分類(前端徽章本來就用這欄)
                 'reason': (it.get('reason') or '')[:40],
             }
             for nm in hits:
@@ -836,8 +837,86 @@ def build_stock_news(news_items):
         (DATA_DIR / 'stock_news.json').write_text(
             json.dumps(out, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
         print(f"  ✅ 個股消息面:{len(out_stocks)} 檔有新聞 → data/stock_news.json")
+        return out_stocks          # ⭐ V74.2.8 給 build_news_history 用(⛔ 被守門擋掉的一律回 None)
     except Exception as e:
         print(f"  ⚠️ build_stock_news 失敗(不影響 radar_news):{type(e).__name__}: {e}")
+    return None
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🗞️ V74.2.8 消息面**歷史**累積(使用者:「消息面歷史也一樣,我就是要看到」)
+#
+# ⭐ 為什麼一定要現在開始存:`stock_news.json` 是**當前快照**,每輪覆蓋。
+#    本專案已經因此三次寫下「消息面無法回測」(漲停預測 / 跌停回彈 / 事件研究)——
+#    ⛔ 那不是「做不到」,是**沒有人開始存**。這一類的特性是:
+#    **現在不存,一年後還是測不了**(K 線可以回補,新聞不行)。
+#
+# ⛔ 四個刻意的設計(⛔ 別「優化」掉):
+#   ① **不存股價** —— 事件日期 + 代號有了,價格從 `data/{sym}.json` 回推就好(K 線是完整歷史)。
+#      存價格只會讓檔案變大,而且會多一份可能對不上的真相(同名不同義)。
+#   ② **只存守門通過的那幾輪** —— `build_stock_news` 被守門擋下時回 None,
+#      那種輪次的資料是壞的,⛔ 不可混進歷史(混進去之後永遠分不出來)。
+#   ③ **同一天同一檔同一標題只留一次** —— 一天跑 6~10 輪,不去重會把同一則新聞算很多次。
+#   ④ 🚧 **只增不減**:天數比現有檔少就**不覆蓋**(同 chips_deep 的守門)——
+#      累積型檔案最容易死在「還原失敗 → 從零重寫 → 歷史全沒了」,而且完全不會報錯。
+NEWS_HIST_FILE  = DATA_DIR / "news_hist.json"
+NEWS_HIST_DAYS  = 500          # 保留幾個日曆天(約兩年;⛔ 不是交易日)
+NEWS_HIST_PERSY = 8            # 每檔每天最多留幾則(⛔ 防單一檔洗版)
+
+
+def build_news_history(out_stocks):
+    """把今天命中的個股新聞併進 data/news_hist.json(滾動 NEWS_HIST_DAYS 天)。
+    格式:{"updated":..,"days":{"YYYY-MM-DD":{"2330":[[標題,情緒,分類],..]}}}
+    ⛔ 純加值:失敗只印警告,不影響任何既有輸出。"""
+    if not out_stocks:
+        print("  ⏭️ 消息面歷史:這一輪個股消息面沒通過守門 → ⛔ 不併入歷史(壞資料混進去就分不出來了)")
+        return
+    try:
+        # 台北日期(⛔ 不可用 utcnow().date() —— 台北晚上會差一天)
+        today = (datetime.utcnow() + timedelta(hours=8)).strftime('%Y-%m-%d')
+        hist, old_days = {}, set()
+        try:
+            _o = json.loads(NEWS_HIST_FILE.read_text(encoding='utf-8'))
+            hist = _o.get('days') or {}
+            old_days = set(hist)
+        except Exception:
+            pass
+        day = hist.setdefault(today, {})
+        n_add = 0
+        for code, obj in (out_stocks or {}).items():
+            arr = day.setdefault(code, [])
+            seen = {x[0] for x in arr if isinstance(x, list) and x}
+            for it in (obj.get('items') or []):
+                t = (it.get('title') or '')[:48]
+                if not t or t in seen:
+                    continue
+                if len(arr) >= NEWS_HIST_PERSY:
+                    break
+                arr.append([t, it.get('tone') or 'neu', it.get('cat') or ''])
+                seen.add(t); n_add += 1
+            if not arr:
+                day.pop(code, None)
+        # 滾動保留
+        cut = (datetime.utcnow() + timedelta(hours=8) - timedelta(days=NEWS_HIST_DAYS)).strftime('%Y-%m-%d')
+        for d in [d for d in hist if d < cut]:
+            hist.pop(d, None)
+        # 🚧 只增不減 —— ⭐ 但要扣掉「被保留窗口正當裁掉」的那幾天,⛔ 不可直接比總天數。
+        #    🚨 直接比總天數的話,**窗口滿了之後就永遠拒絕覆蓋**:同一天跑第二輪時
+        #    今天不是新的一天,卻又裁掉一天最舊的 → 總數變少 → 每次都被自己擋下來,
+        #    而且畫面上只會看到「拒絕覆蓋」,看起來像守門在工作(其實是整個停止累積)。
+        #    → 基準改成「舊檔裡**還在窗口內**的天數」。
+        n_base = len([d for d in old_days if d >= cut])
+        if n_base and len(hist) < n_base:
+            print(f"  ⛔ 消息面歷史:算出來只有 {len(hist)} 天、少於舊檔在窗口內的 {n_base} 天 → 拒絕覆蓋(疑似還原失敗)")
+            return
+        out = {'updated': datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
+               'days_kept': NEWS_HIST_DAYS, 'days': hist}
+        NEWS_HIST_FILE.write_text(json.dumps(out, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        _n_ev = sum(len(v) for dd in hist.values() for v in dd.values())
+        print(f"  ✅ 消息面歷史:{today} 新增 {n_add} 則 ・累積 {len(hist)} 天 / {_n_ev} 則 → data/news_hist.json")
+    except Exception as e:
+        print(f"  ⚠️ build_news_history 失敗(不影響其他輸出):{type(e).__name__}: {e}")
 
 
 def main():
@@ -901,7 +980,8 @@ def main():
     print(f"\n✅ 已輸出 {len(keep)} 篇 → {OUTPUT_FILE}")
 
     # 📰 V69.5.1 個股消息面:用「全部已判讀新聞」比對股名 → data/stock_news.json(涵蓋較廣,非只重點 15 篇)
-    build_stock_news(results)
+    _sn = build_stock_news(results)
+    build_news_history(_sn)      # 🗞️ V74.2.8 消息面歷史(⛔ 現在不存,一年後還是測不了)
 
     # 🛡️ 兩者輸出各自獨立的 JSON(global_news / tech_giants_news)→ 隔離,
     #    前者失敗不該讓後者也不產出(否則前端盤前戰情少一整段)。

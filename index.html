@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.2.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.2.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.7 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7457,8 +7457,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.2.7',
+    _APP_VERSION: 'V74.2.8',
     _CHANGELOG: [
+        { v: 'V74.2.8', dt: '2026-09-01', d: ['🚨 用 2022 那次空頭把「等空頭再說」的回測全部重跑了一遍 —— 結果<b>四條原本「每一關都通過」的做法當場不成立</b>:①「跌停後第一根紅K」整體版(2023 那年是負的)②「跌停就接、不等紅K」整組 ③「做夢行情」(族群沒動只有它獨走)④「板塊選對之後再挑板塊裡最強的」。', '⭐ 還站得住的三條有個共同點:<b>都要求「已經確認」</b> —— 跌停後收<b>大紅</b>(力道確認)、當初<b>大盤也在跌</b>(原因確認)、創高後<b>回測不破</b>(支撐確認)。陣亡的那四條則都是「還沒確認就進場」。', 'K線頁的跌停紅K、族群狀態,當沖頁的「今天顛不顛」,數字全部換成含空頭的版本,文案也一起改口(不再說整體版「連空頭都通過」)。', '🗞️ 開始存<b>消息面歷史</b>(每天每檔的新聞標題 + 利多利空 + 分類)—— 這種資料現在不存,一年後還是測不了。累積約三個月後就能回答「利空出現後這檔通常跌多少」。'] },
         { v: 'V74.2.7', dt: '2026-09-01', d: ['選股頁的「明日作戰清單」也改成總覽的版面邏輯:第一眼只留「怎麼做」那一句(一天最多做前 2 檔 ・不是開盤買 —— 要漲過觸發價,而且尾盤 13:00~13:25 還站得住才進場),支撐它的實測數字(每天做 2 檔 / 3 檔 / 6 檔各賺多少)跟 🧬 強勢高波動的排序依據收進下面的「📊 上面那兩句的實測根據」', '⛔ 一個警告都沒收:不是開盤買、尾盤時窗、今天大盤風險、買點提醒開關全都留在第一眼', '實測前言從 593 字縮到 373 字 —— 也就是看到第一檔股票之前少讀了 220 字'] },
         { v: 'V74.2.6', dt: '2026-09-01', d: ['基本面頁也改成總覽的版面邏輯:第一眼只留「這家公司體質好不好」一句話 + 🧬 體質總評 + 產業鏈定位,完整 12 項數據(投資屬性/獲利/成長/估值/財務/現金流/股利)收進「🔬 看完整基本面數據」——它本來就有這個摺疊,但預設是打開的,等於沒摺', '打開時圖表會自動重算寬度(收起狀態下算出來會是空的)', '⭐ 財報資料還在整備中時會自動幫你展開 —— 因為那段說明本來就寫著「下方已顯示目前拿得到的訊號」,收起來就變成說謊', '你自己點開/收起之後,程式不會再自動改它'] },
         { v: 'V74.2.5', dt: '2026-09-01', d: ['當沖頁也改成總覽的版面邏輯:第一眼只留「今日當沖作戰指令 + 成本關卡」和有實測數字的訊號,隔日沖 T+1 預判/買盤竭盡/損益試算機收進「📖 更多解讀」(一張卡、一個字都沒刪)', '實測第一眼要讀的字數從 2,015 降到 387', '順手修版面順序:「當沖候選掃描」(掃的是別檔)原本排在這檔的結論上面 → 已搬到下方,一開頁先看到這檔今天怎麼做', '個股五頁(總覽・K線・籌碼・即時・當沖)現在同一套版面邏輯'] },
@@ -19126,11 +19127,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     // 📅 V73.7.3 「今天這種日子顛不顛」—— ⭐⭐ 只講**波動**,⛔ 絕不講方向。
     //
     // 使用者問「財經行事曆各種日子的漲跌機率與幅度」→ `scripts/calendar_stock_probe.mjs`
-    // 全市場 2,055 檔 × 757 個交易日 × 155 萬個(股·日)實測 37 種行事曆切法。結論兩句話:
+    // 🚨 V74.2.8 **含 2022 空頭重跑**:1,773 檔 × 1,212 個交易日 × 208 萬個(股·日)、37 種切法。結論兩句話:
     //   ❌ **方向:零個可用。** 唯一通過穩健性檢定的「結算日後一交易日」(+0.334pp)
     //      扣掉來回成本 0.44% 後是 **−0.106pp**,而且拿沒用過的期外資料再測**方向相反**。
     //   ⭐ **波動:確實有,而且機制單一。** 休市越久,開市第一天越顛(單調):
-    //      隔天 1.00x → 週末 **1.09x** → 長假 **1.43x**;月初 1-10 日(月營收密集公布)**1.13x**。
+    //      隔天 1.00x → 週末 **1.11x** → 連假 **1.32x**;月營收公布日前後(9~11 日)**1.12x**。
+    //      ⛔ 舊版寫的「月初 1-10 日 1.13x」重跑後降到 1.09x 且統計上不顯著 → 已收窄成那三天。
     //
     // ⛔ 三條不可以改掉的設計:
     //   ① **不給方向、不計分、不用紅綠** —— 波動大 ≠ 會漲也 ≠ 會跌(燈號鐵則)。
@@ -19156,9 +19158,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (!(gap >= 1 && gap <= 12)) return null;   // 再保險一層(資料本身有跳號時)
             const dom = +to.slice(8, 10);
             const tags = [];
-            if (gap >= 4) tags.push({ t: `休市 ${gap} 天後的第一個交易日`, mult: 1.43, n: 21, why: '連假期間累積的消息,開市第一天一次反映完' });
-            else if (gap >= 2) tags.push({ t: `休市 ${gap} 天後的第一個交易日`, mult: 1.09, n: 152, why: '週末累積的消息,開市第一天一次反映完' });
-            if (dom <= 10) tags.push({ t: '每月 1-10 日(月營收密集公布)', mult: 1.13, n: 238, why: '上市櫃每月 10 日前公布上月營收,消息密集' });
+            // 🚨 V74.2.8 數字**含 2022 空頭重跑過**(1,773 檔 × 1,212 個交易日 / 2021-09 ~ 2026-08):
+            //    休市間隔仍然單調(1.00x → 1.11x → 1.32x),⭐ 那個機制成立。
+            //    ⛔ 但「每月 1-10 日」那條**降級了** —— 上旬整段只有 1.09x 且統計上跟其他日差不多;
+            //    真正顛的是**營收公布日當天前後(每月 9~11 日)1.12x** → 條件收窄,⛔ 不再用整個上旬。
+            if (gap >= 4) tags.push({ t: `休市 ${gap} 天後的第一個交易日`, mult: 1.32, n: 36, why: '連假期間累積的消息,開市第一天一次反映完' });
+            else if (gap >= 2) tags.push({ t: `休市 ${gap} 天後的第一個交易日`, mult: 1.11, n: 233, why: '週末累積的消息,開市第一天一次反映完' });
+            if (dom >= 9 && dom <= 11) tags.push({ t: '月營收公布日前後(每月 9~11 日)', mult: 1.12, n: 180, why: '上市櫃每月 10 日前公布上月營收,消息最密集的那三天' });
             if (!tags.length) return null;
             tags.sort((a, b) => b.mult - a.mult);
             return { gap, dom, tags, top: tags[0], date: to };
@@ -19172,7 +19178,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <div class="text-[11px] text-gray-200 font-bold leading-relaxed">📅 今天是<b>${t.t}</b> —— 實測全市場波動比平常大 <b class="font-mono">${up}%</b>(${t.mult.toFixed(2)}x)</div>
             <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${t.why}。<b>波動大不等於會漲、也不等於會跌</b> —— 只代表比較顛:停損容易被掃到,<b>部位放小一點</b>、停損拉遠一點。</div>
             ${v.tags.length > 1 ? `<div class="text-[9px] text-gray-500 mt-0.5">今天同時也是「${v.tags[1].t}」(${v.tags[1].mult.toFixed(2)}x)</div>` : ''}
-            <div class="text-[9px] text-gray-600 mt-1 leading-snug">📊 樣本 ${t.n} 天(2,055 檔 × 757 個交易日)。⚠️ <b>方向沒有邊際</b> —— 37 種行事曆日全測過,沒有一種的漲跌差大到能扣掉來回成本 0.44%,所以這裡<b>只講顛不顛,不講多空</b>。</div>
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">📊 樣本 ${t.n} 天(1,773 檔 × 1,212 個交易日,<b>含 2022 那次空頭</b>)。⚠️ <b>方向沒有邊際</b> —— 37 種行事曆日全測過,沒有一種的漲跌差大到能扣掉來回成本 0.44%,所以這裡<b>只講顛不顛,不講多空</b>。</div>
         </div>`;
     },
 
@@ -19200,11 +19206,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //    ⚠️ 上櫃股沒有官方產業分類 → **誠實說判斷不了**,⛔ 不可靜默不顯示(不然使用者會以為壞了)。
     _REGIME_EDGE: {
         // [事件數, 20日平均超額pp, 拿掉最好年份的保守值pp, 20日勝率%, 是否全關通過]
-        ind_up_follow: [13027, 0.39, 0.16, 36.0, false],
-        ind_up_lag:    [7809, 0.12, -0.05, 34.4, false],
-        solo:          [8999, 0.89, 0.67, 37.7, true],
-        ind_dn_follow: [12466, -0.25, -0.74, 34.0, false],
-        ind_dn_strong: [7230, -0.13, -0.23, 34.9, false],
+        // 🚨 V74.2.8 **含 2022 空頭重跑**(2021-10 ~ 2026-08、98,392 個事件):
+        //    ⛔ 原本唯一通過的「🎯 只有它獨走(做夢行情)」**不再通過** —— 2022 那年是 −0.34pp
+        //    (逐年不同向)。它全期仍是五種裡最好的(+0.64pp),但那個優勢**不存在於空頭**。
+        //    ⭐ 這正是補深歷史的目的:多頭窗口會把「只在多頭有效」的東西誤判成通用規則。
+        ind_up_follow: [18672, 0.26, 0.15, 39.6, false],
+        ind_up_lag:    [11143, 0.04, 0.04, 39.4, false],
+        solo:          [13717, 0.64, 0.58, 40.6, false],
+        ind_dn_follow: [17692, -0.46, -0.76, 38.4, false],
+        ind_dn_strong: [10140, -0.48, -0.52, 37.7, false],
     },
     _regimeStats() {
         // 全市場橫斷面(每次 screener 換資料才重算一次)
@@ -19371,7 +19381,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   跌停 = 當日收盤跌 ≤ −9.2%;訊號 = 跌停的**隔一個交易日**就收漲(⛔ 不是任意天後的第一根紅);
     //   系統性/個股利空 = 看**跌停那天**的大盤漲跌(≤ −1% = 大盤也在跌)。
     // 實測(2,268 檔 × 3 年、進場=紅K隔天開盤、排除鎖死、扣同期加權、扣成本 0.44%):
-    _LD_REDK: { all: 3.66, big: 5.71, sys: 4.89, idio: 1.02, wr: 53.8, base: 37.1 },
+    // 🚨 V74.2.8 **加上 2022 空頭重跑之後,這張表被改寫了**(K 線補深到 2021、逐年檢定改成
+    //    2022~2026 五年;⛔ 舊版的逐年清單寫死 2024/25/26,那三年根本沒檢查到空頭)。
+    //    ⭐ 只剩兩組六關全過:**大紅(≥3%)** 與 **當初大盤也在跌(系統性)**。
+    //    ⛔ 「跌停後第一根紅K」整體(+2.33%)**不再全過** —— 2023 那年是 −0.6pp(逐年不同向);
+    //    ⛔ 「個股自己出事」那組(+0.20%)也掉出去了 → 文案一律改口,不可再說它「彈得動」。
+    _LD_REDK: { all: 2.33, allPass: false, big: 4.33, sys: 3.78, idio: 0.20,
+                wrAll: 50.9, wrBig: 58.6, wrSys: 57.5, wrIdio: 40.6, base: 41.1, yrs: '2022~2026' },
     _ldRedKHtml(data, sym) {
         try {
             const n = (data || []).length;
@@ -19386,7 +19402,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return `<div class="bg-[#0d1117] border-l-2 border-amber-500 pl-2.5 py-1.5 rounded-r mb-2">
               <div class="text-[11px] font-bold text-gray-200 leading-relaxed">🕯️ <b>昨天跌停(${chgPrev.toFixed(1)}%),今天收${big ? '大紅(≥3%)' : '紅'}</b> —— 實測裡少數全關通過的型態</div>
               <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">
-                全市場 3 年實測:「跌停後第一根紅K」之後 20 日平均比大盤多 <b class="font-mono text-red-300">+${E.all}%</b>(已扣來回成本 0.44%;勝率 ${E.wr}%,平常只有 ${E.base}%)。${big ? `今天是<b>大紅</b> —— 大紅版實測更強:<b class="font-mono text-red-300">+${E.big}%</b>。` : `⚠️ 今天只是<b>小紅(<3%)</b> —— 小紅那組實測逐年不同向,參考價值低很多。`}<br>
+                ${big
+                  ? `全市場 ${E.yrs}(含 2022 那次空頭)實測:今天是<b>大紅(≥3%)</b> —— 這一組之後 20 日平均比大盤多 <b class="font-mono text-red-300">+${E.big}%</b>(已扣來回成本 0.44%;勝率 ${E.wrBig}%,平常只有 ${E.base}%),而且<b>每一年都是正的</b>。`
+                  : `⚠️ 今天只是<b>小紅(&lt;3%)</b> —— 小紅那組實測逐年不同向,<b>參考價值低很多</b>。<span class="text-gray-500">(整體「跌停後第一根紅K」是 +${E.all}%、勝率 ${E.wrAll}%,但把 2022 空頭算進來之後 2023 那年是負的 → ⛔ 整體版已經不算「全關通過」。)</span>`}<br>
                 🌊 <b>關鍵要看「當初大盤有沒有一起跌」</b>:<span id="ldRedkMkt" data-sym="${sym}">⏳ 對照大盤中…</span><br>
                 <span class="text-[9px] text-gray-600">⛔ 這是統計描述不是進場指令(回測的進場點是紅K的<b>隔天開盤</b>);窗口偏多頭、空頭未驗證;具體怎麼做以總覽「現在怎麼做」為準。</span>
               </div></div>`;
@@ -19401,12 +19419,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const E = this._LD_REDK;
             if (v == null) {
                 // ⛔ 查不到不可裝死也不可硬判 —— 把兩組差距講出來讓使用者自己查(陷阱 #22)
-                el.innerHTML = `查不到跌停那天(${ldDate})的大盤資料 → 分不出系統性還是個股利空;兩組實測差 4.8 倍(+${E.sys}% vs +${E.idio}%),請自己查那天大盤有沒有跌。`;
+                el.innerHTML = `查不到跌停那天(${ldDate})的大盤資料 → 分不出系統性還是個股利空;而這兩組差很多(+${E.sys}% vs +${E.idio}%),請自己查那天大盤有沒有跌。`;
                 return;
             }
             el.innerHTML = v <= -1
-                ? `那天大盤也在跌(<b class="font-mono">${v.toFixed(1)}%</b>)= <b>系統性下跌</b> → 這一組實測 <b class="font-mono text-red-300">+${E.sys}%</b>(全表最好的一組:大家一起跌的,跌完會彈)。`
-                : `那天大盤沒什麼跌(<b class="font-mono">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</b>)= <b>個股自己出事</b>(被爆料那種)→ 這一組只有 <b class="font-mono">+${E.idio}%</b>,是系統性那組的 <b>1/4.8</b> —— 彈也彈不動,別急著接。`;
+                ? `那天大盤也在跌(<b class="font-mono">${v.toFixed(1)}%</b>)= <b>系統性下跌</b> → 這一組實測 <b class="font-mono text-red-300">+${E.sys}%</b>(勝率 ${E.wrSys}%,平常 ${E.base}%)—— <b>含 2022 空頭在內每一年都是正的</b>,大家一起跌的跌完會彈。`
+                : `那天大盤沒什麼跌(<b class="font-mono">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</b>)= <b>個股自己出事</b>(被爆料那種)→ 這一組只有 <b class="font-mono">+${E.idio}%</b>、勝率 ${E.wrIdio}%(比平常的 ${E.base}% 還低),而且<b>把 2022 空頭算進來之後就不成立了</b> —— ⛔ 彈不動,別急著接。`;
         } catch (_) { }
     },
     async _ensureTwiiChgMap() {
@@ -19426,7 +19444,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const wrap = (b, t) => `<div class="bg-[#0d1117] border-l-2 border-[#8b949e] pl-2.5 py-1.5 rounded-r mb-2">
             <div class="text-[11px] font-bold text-gray-200 leading-relaxed">${b}</div>
             ${t ? `<div class="text-[10px] text-gray-400 mt-0.5 leading-snug">${t}</div>` : ''}
-            <div class="text-[9px] text-gray-600 mt-1 leading-snug">🏭 「這波是誰在漲」= 拿這檔近 20 日漲跌 跟<b>同產業其他股票</b>比(全市場 2 年、68,082 個事件實測)。⛔ 七種狀態裡只有「只有它獨走」扣完成本還有剩,其餘<b>只能當描述,不是進出場訊號</b>。</div>
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">🏭 「這波是誰在漲」= 拿這檔近 20 日漲跌 跟<b>同產業其他股票</b>比(全市場 <b>5 年、含 2022 那次空頭</b>、98,392 個事件實測)。🚨 <b>加上空頭重跑之後,七種狀態一個都沒過</b> —— 原本唯一通過的「只有它獨走」在 2022 那年是負的。⛔ 這一行<b>只能當「現在是什麼盤」的描述,不是進出場訊號</b>。</div>
         </div>`;
         // ⚠️ 「沒有資料」與「條件沒過」是兩件事,⛔ 不可都靜默不顯示
         if (r.na === 'noind') return wrap('🏭 這波是誰在漲:<b>這檔判斷不了</b>', '證交所的官方產業分類<b>只涵蓋上市股</b>,上櫃股沒有 → 沒辦法跟「同產業其他股票」比。⛔ 不是程式壞掉,是資料源就沒有。');
@@ -19442,17 +19460,19 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             ind_up_lag: ['🐌 <b>族群在漲,它還沒動</b>',
                 '常被講成「補漲候選」。⚠️ 但實測<b>沒有邊際</b> —— 落後有可能是還沒輪到,也可能是它本來就比較弱,兩種混在一起。'],
             solo: ['🎯 <b>族群沒動,只有它自己在漲</b>',
-                '這就是「<b>做夢行情</b>」—— 個別題材,沒有整個產業的基本面撐著。'],
+                '這就是「<b>做夢行情</b>」—— 個別題材,沒有整個產業的基本面撐著。'
+                + '<br>🚨 <b>這一格原本是七種裡唯一通過檢定的,但補上 2022 空頭重跑之後不成立了</b>(那一年是 −0.34pp)—— 它的優勢只存在於多頭。'
+                + '<br>🚨 而且它是<b>「賠率型」不是「勝率型」</b>:中位數跟平常一樣(−2.2% vs −2.0%),賺的錢<b>全部來自少數大賺</b> —— 最好的 10% 賺 +14.5%(平常 +10.4%),但最差的 10% 也賠 −14.5%(平常 −12.5%)。💡 意思是這種盤<b>不能重壓</b>。'],
             ind_dn_follow: ['📉 <b>整條族群一起跌,它也跟著跌</b>',
                 '這是「<b>供貨/產能開出、砍單</b>」在盤面上的樣子 —— 整條供應鏈一起被殺。'],
             ind_dn_strong: ['💪 <b>族群在跌,它還撐著</b>',
                 '⚠️ 直覺會覺得是「抗跌強勢股」,但實測之後<b>反而略差</b> —— 多半是<b>還沒補跌</b>。'],
         }[r.k];
         const edgeTxt = pass
-            ? `⭐ <b>七種狀態裡唯一全部檢定都通過的</b>:之後 20 日平均比同期大盤多 <b class="font-mono">${pn(avg, 2)}%</b>(拿掉最好的那一年仍有 <b class="font-mono">${pn(cons, 2)}%</b>,扣掉來回成本 0.44% 後 <b class="font-mono">${pn(cons - 0.44, 2)}%</b>)・勝率 ${wr}%(平常 34.7%)・${n.toLocaleString()} 次。<br>`
+            ? `⭐ <b>這一格全部檢定都通過</b>:之後 20 日平均比同期大盤多 <b class="font-mono">${pn(avg, 2)}%</b>(拿掉最好的那一年仍有 <b class="font-mono">${pn(cons, 2)}%</b>,扣掉來回成本 0.44% 後 <b class="font-mono">${pn(cons - 0.44, 2)}%</b>)・勝率 ${wr}%(平常 39.4%)・${n.toLocaleString()} 次。<br>`
               + `🚨 <b>但它是「賠率型」不是「勝率型」</b>:中位數跟平常一樣(−3.2%),賺的錢<b>全部來自少數大賺</b> —— 最好的 10% 賺 +15.2%(平常 +9.9%),但最差的 10% 也賠 −15.8%(平常 −13.7%)。<br>`
               + `💡 意思是:這種盤<b>不能重壓</b>,要能承受「多數被打回原形、少數大賺」。`
-            : `⛔ <b>實測沒有可用的邊際</b>:之後 20 日平均比大盤 <b class="font-mono">${pn(avg, 2)}%</b>,拿掉最好的那一年只剩 <b class="font-mono">${pn(cons, 2)}%</b> —— 扣掉來回成本 0.44% 後是 <b class="font-mono">${pn(cons - 0.44, 2)}%</b>。勝率 ${wr}%(平常 34.7%)・${n.toLocaleString()} 次。<br>💡 所以這一行只是<b>告訴你現在是什麼盤</b>,⛔ 不是叫你買或賣。`;
+            : `⛔ <b>實測沒有可用的邊際</b>:之後 20 日平均比大盤 <b class="font-mono">${pn(avg, 2)}%</b>,拿掉最好的那一年只剩 <b class="font-mono">${pn(cons, 2)}%</b> —— 扣掉來回成本 0.44% 後是 <b class="font-mono">${pn(cons - 0.44, 2)}%</b>。勝率 ${wr}%(平常 39.4%)・${n.toLocaleString()} 次。<br>💡 所以這一行只是<b>告訴你現在是什麼盤</b>,⛔ 不是叫你買或賣。`;
         return wrap(`🏭 這波是誰在漲:${M[0]} ${num}`, `${M[1]}<br>${edgeTxt}`);
     },
 
@@ -29467,8 +29487,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 if (chgPrev <= -9.2 && chgLast > 0) {
                     const E = this._LD_REDK, big = chgLast >= 3;
                     out.push({ ic: '🕯️', cls: 'text-amber-300',
-                        txt: `<b>昨天跌停、今天收${big ? '大紅' : '紅'}</b> —— 實測少數全關通過的型態(3 年全市場,之後 20 天平均比大盤多 <b>+${big ? E.big : E.all}%</b>,已扣成本)。`
-                           + `⚠️ <b>但要先看當初大盤有沒有一起跌</b>:大家一起跌的那種彈得動(+${E.sys}%),它自己出事的只有 +${E.idio}%。詳見 K線頁` });
+                        txt: `<b>昨天跌停、今天收${big ? '大紅' : '紅'}</b> —— ${big
+                                ? `<b>大紅(≥3%)</b>這一組是 ${E.yrs} 全市場實測裡少數<b>連 2022 空頭都通過</b>的型態(之後 20 天平均比大盤多 <b>+${E.big}%</b>,已扣成本)。`
+                                : `小紅那組實測<b>逐年不同向</b>,參考價值低(整體版 +${E.all}%,但 2023 那年是負的)。`}`
+                           + `⚠️ <b>要先看當初大盤有沒有一起跌</b>:大家一起跌的那種彈得動(+${E.sys}%),它自己出事的只有 +${E.idio}%(含空頭後已不成立)。詳見 K線頁` });
                 }
             }
             // ② 噴 ≥30% 又在官方注意股名單 → 減碼提醒(⛔ 不是放空訊號)

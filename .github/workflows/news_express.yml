@@ -53,6 +53,21 @@ jobs:
       - name: 📦 安裝相依套件
         run: pip install requests feedparser --quiet
 
+      # 🗞️ V74.2.8 消息面**歷史**是累積型檔案 → ⛔ 一定要先還原,否則每輪從零重寫、
+      #    歷史永遠只有今天(而且完全不會報錯)。同 chips_deep / tick_hist / mgr_hist 的做法。
+      #    ⚠️ 還原不到就從空的開始(第一次跑本來就沒有);腳本自己有「天數變少就拒絕覆蓋」的守門。
+      - name: 🗞️ 還原消息面歷史(累積型檔案)
+        continue-on-error: true
+        run: |
+          mkdir -p data
+          git fetch origin gh-pages --depth=1 2>/dev/null || true
+          if git show origin/gh-pages:data/news_hist.json > data/news_hist.json 2>/dev/null && [ -s data/news_hist.json ]; then
+            python -c "import json;d=json.load(open('data/news_hist.json'));print('  ↩️ 還原消息面歷史:%d 天' % len(d.get('days') or {}))"
+          else
+            rm -f data/news_hist.json
+            echo "  ℹ️ gh-pages 上還沒有 news_hist.json(第一次跑)→ 從空的開始"
+          fi
+
       - name: 📰 執行 universal_radar.py 抓 RSS + AI 翻譯
         env:
           GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
@@ -66,6 +81,12 @@ jobs:
           cp data/global_news.json      /tmp/news/ 2>/dev/null || true
           cp data/tech_giants_news.json /tmp/news/ 2>/dev/null || true
           cp data/stock_news.json       /tmp/news/ 2>/dev/null || true
+          cp data/news_hist.json        /tmp/news/ 2>/dev/null || true   # 🗞️ V74.2.8 消息面歷史(累積型)
+          # 🚨 下一步會 `git checkout gh-pages` —— **那個分支上沒有 scripts/**
+          #    (它只放 index.html / pro.html / data/)→ 守門腳本一定要先複製出來,
+          #    ⛔ 否則那行會靜默失敗、守門等於不存在(CLAUDE.md 記過的同型陷阱)。
+          cp scripts/news_hist_guard.py /tmp/news/ 2>/dev/null || echo "⚠️ 守門腳本沒複製到"
+
 
       - name: 🌐 更新 gh-pages(只覆蓋 3 個新聞 JSON,保留股票資料)
         run: |
@@ -84,8 +105,17 @@ jobs:
           cp /tmp/news/global_news.json      data/ 2>/dev/null || true
           cp /tmp/news/tech_giants_news.json data/ 2>/dev/null || true
           cp /tmp/news/stock_news.json       data/ 2>/dev/null || true
+          # 🗞️ V74.2.8 🚧 **只增不減守門(這條才擋得住「還原失敗」)** ——
+          #    腳本自己的守門只看得到本機那份;還原那步若失敗,它會以為「本來就沒有歷史」
+          #    而寫出只有今天的一份 → 推上去就把幾百天洗掉了,而且完全不會報錯。
+          if [ -s /tmp/news/news_hist.json ]; then
+            git show HEAD:data/news_hist.json > /tmp/news/news_hist_prev.json 2>/dev/null || true
+            python3 /tmp/news/news_hist_guard.py /tmp/news/news_hist.json /tmp/news/news_hist_prev.json || true
+          fi
+          cp /tmp/news/news_hist.json        data/ 2>/dev/null || true
 
-          git add data/radar_news.json data/global_news.json data/tech_giants_news.json data/stock_news.json 2>/dev/null || true
+          # ⚠️ 漏 git add = 「複製回去了但沒 commit」→ 每天被洗掉且零錯誤訊息(V73.1.3 的教訓)
+          git add data/radar_news.json data/global_news.json data/tech_giants_news.json data/stock_news.json data/news_hist.json 2>/dev/null || true
           git diff --cached --quiet && echo "📭 新聞無變化,跳過 commit" || {
             git commit -m "📰 即時新聞更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
             git push origin gh-pages

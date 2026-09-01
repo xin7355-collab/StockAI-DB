@@ -56,7 +56,7 @@ const R = await page.evaluate(() => {
         empty: app._calDayVol([]),
         bad: app._calDayVol(null),
         // 月初 vs 月中(固定日期,⛔ 不依賴今天是幾號)
-        dom5: app._calDayVol(mk(['2026-03-04', '2026-03-05'])),
+        dom5: app._calDayVol(mk(['2026-03-09', '2026-03-10'])),   // ⚠️ V74.2.8 條件收窄成 9~11 日
         dom20: app._calDayVol(mk(['2026-03-19', '2026-03-20'])),
         // 🚨 週一放假 → 第一個交易日是「週二」,gap 仍是 4 天(⛔ 不可因為不是星期一就漏掉)
         tueAfterHol: app._calDayVol(mk(['2026-03-19', '2026-03-24'])),
@@ -70,12 +70,16 @@ const R = await page.evaluate(() => {
 
 ok('② 隔天(gap=1)+ 非月初 → ⛔ 不命中「休市」',
    !R.gap1 || !(R.gap1.tags || []).some(t => /休市/.test(t.t)), JSON.stringify(R.gap1));
-ok('②b 休市 3 天 → 命中,倍數 1.09x', !!R.gap3 && R.gap3.gap === 3 && R.gap3.tags.some(t => t.mult === 1.09), JSON.stringify(R.gap3 && R.gap3.tags));
-ok('②c 休市 6 天(長假)→ 倍數 1.43x(⛔ 比週末大)', !!R.gap6 && R.gap6.tags[0].mult === 1.43, JSON.stringify(R.gap6 && R.gap6.tags));
+// ⚠️ V74.2.8 起⛔ 不寫死倍數(含 2022 空頭重跑之後數字會變)——
+//    改釘**單調關係**:週末 > 隔天(1.0)、連假 > 週末。那才是真正要守的結論。
+ok('②b 休市 3 天 → 命中,而且比「隔天」顛(>1.0)',
+   !!R.gap3 && R.gap3.gap === 3 && R.gap3.tags.some(t => t.mult > 1.0), JSON.stringify(R.gap3 && R.gap3.tags));
+ok('②c 休市 6 天(長假)→ ⛔ 必須比週末那組大(單調)',
+   !!R.gap6 && !!R.gap3 && R.gap6.tags[0].mult > R.gap3.tags[0].mult, JSON.stringify([R.gap6 && R.gap6.tags[0].mult, R.gap3 && R.gap3.tags[0].mult]));
 ok('②d 🚨 最後一根已經是今天時,要用「最後兩根」算間隔', !!R.gap3in && R.gap3in.gap === 3, JSON.stringify(R.gap3in));
 ok('②e 🚨 週一放假 → 週二才開市,gap=5 仍要命中(⛔ 不可綁死星期一)',
-   !!R.tueAfterHol && R.tueAfterHol.gap >= 4 && R.tueAfterHol.tags[0].mult === 1.43, JSON.stringify(R.tueAfterHol));
-ok('②f 月初 1-10 日要命中', !!R.dom5 && R.dom5.tags.some(t => /1-10/.test(t.t)), JSON.stringify(R.dom5 && R.dom5.tags));
+   !!R.tueAfterHol && R.tueAfterHol.gap >= 4 && R.tueAfterHol.tags[0].mult > 1.2, JSON.stringify(R.tueAfterHol));
+ok('②f 月營收公布日前後(9~11 日)要命中', !!R.dom5 && R.dom5.tags.some(t => /營收/.test(t.t)), JSON.stringify(R.dom5 && R.dom5.tags));
 ok('②g 月中(20 日)+ 隔天 → ⛔ 完全不命中', R.dom20 === null, JSON.stringify(R.dom20));
 ok('②h 🚨 資料過期(最後一根是幾個月前)→ ⛔ 不可算成「休市 N 百天」,改描述資料裡的最後一天',
    R.stale === null, JSON.stringify(R.stale));

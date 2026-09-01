@@ -108,29 +108,44 @@ const R = await page.evaluate(async () => {
         A.attentionStatus = {};
         out.ovAttNo = (A._ovNewEdges(rows, '2409') || []).length;   // 沒在名單 → ⛔ 不可提醒
     }
+    out.E = A._LD_REDK;      // ⭐ 數字一律從常數帶(⛔ 測試不寫死)
     return out;
 });
 await browser.close();
+const E = R.E || {};
 
+ok('🚧 空過守門:抓得到 _LD_REDK 常數', !!E && E.big > 0 && E.sys > 0, JSON.stringify(E));
+// 🚨 ⛔ 渲染端不可自己寫死百分比(那樣重跑回測改了常數,畫面還是舊數字)——
+//    測試自己也從常數讀,所以一定要另外釘這條,否則兩邊一起錯也會通過。
+{
+    const i = SRC.indexOf('_ldRedKHtml(data, sym)');
+    const seg = SRC.slice(i, SRC.indexOf('\n    async _fillLdMkt', i));
+    ok('④c ⛔ 渲染端不可寫死百分比(一律讀 _LD_REDK)',
+        seg.length > 500 && !/\+\$\{?\d\.\d{2}%/.test(seg) && !/多 <b[^>]*>\+\d/.test(seg), seg.length);
+}
 ok('①a 🚧 空過守門:跌停(−9.5%)+紅K 真的觸發', R.hit.length > 300, `len=${R.hit.length}`);
 ok('①b −8%(沒到跌停)/ 收黑 / 隔了一根才紅 → 都不觸發(⛔ 定義要跟探針一字不差)',
     R.no1 === '' && R.no2 === '' && R.no3 === '', `${R.no1.length}/${R.no2.length}/${R.no3.length}`);
-ok('④b 大紅顯 +5.71%、整體 +3.66%(讀 _LD_REDK,勝率也要在)',
-    /\+5\.71%/.test(R.hit) && /\+3\.66%/.test(R.hit) && /53\.8%/.test(R.hit));
+// ⚠️ V74.2.8 起數字一律**從 `_LD_REDK` 帶入**,⛔ 測試不可寫死
+//    (含 2022 空頭重跑之後整張表都變了;寫死等於每次重跑都要改測試,而且會誤以為程式壞了)。
+ok('④b 大紅那組的數字與勝率都要顯示(讀 _LD_REDK,⛔ 不寫死)',
+    R.hit.includes(`+${E.big}%`) && R.hit.includes(`${E.wrBig}%`) && R.hit.includes(`${E.base}%`),
+    R.hit.slice(0, 120));
 ok('③a 小紅要講「參考價值低很多」而且⛔不可顯大紅那組數字',
-    /參考價值低/.test(R.small) && !/\+5\.71%/.test(R.small));
-ok('②a 系統性分支:那天大盤 −2.1% → 顯 +4.89% 與「系統性」',
-    /系統性/.test(R.sysTxt) && /\+4\.89%/.test(R.sysTxt), R.sysTxt.slice(0, 60));
-ok('②b 個股利空分支:顯 +1.02% 與「別急著接」(⛔ 不講的話使用者會拿好的那組數字去接刀)',
-    /個股自己出事/.test(R.idioTxt) && /\+1\.02%/.test(R.idioTxt) && /別急著接/.test(R.idioTxt), R.idioTxt.slice(0, 60));
+    /參考價值低/.test(R.small) && !R.small.includes(`+${E.big}%`));
+ok('②a 系統性分支:那天大盤 −2.1% → 顯「系統性」與那組的實測數字',
+    /系統性/.test(R.sysTxt) && R.sysTxt.includes(`+${E.sys}%`), R.sysTxt.slice(0, 60));
+ok('②b 個股利空分支:顯那組數字 +「別急著接」(⛔ 不講的話使用者會拿好的那組數字去接刀)',
+    /個股自己出事/.test(R.idioTxt) && R.idioTxt.includes(`+${E.idio}%`) && /別急著接/.test(R.idioTxt), R.idioTxt.slice(0, 60));
 ok('⑤ 切股殘留守門:sym 對不上不可以填(還是 ⏳)', R.staleTxt === '⏳', R.staleTxt);
-ok('②c 查不到那天 → 誠實說 + 仍給兩組差距', /查不到/.test(R.missTxt) && /4\.8 倍/.test(R.missTxt), R.missTxt.slice(0, 60));
+ok('②c 查不到那天 → 誠實說 + 仍給兩組差距',
+    /查不到/.test(R.missTxt) && R.missTxt.includes(`+${E.sys}%`) && R.missTxt.includes(`+${E.idio}%`), R.missTxt.slice(0, 60));
 ok('③b ⛔ 不下操作指令(買進/加碼/停損價/目標價都不可出現)+ 要指路總覽',
     !/買進|加碼|停損價|目標價|掛單/.test(R.hit) && /現在怎麼做/.test(R.hit));
 ok('③c 要寫「不是進場指令」與回測進場點(隔天開盤)', /不是進場指令/.test(R.hit) && /隔天開盤/.test(R.hit));
 
 ok('⑦a 總覽提醒:跌停後紅K 命中要出現,且帶「大盤有沒有一起跌」的差距',
-    /昨天跌停/.test(R.ovHit) && /4\.89/.test(R.ovHit) && /1\.02/.test(R.ovHit), R.ovHit.slice(0, 100));
+    /昨天跌停/.test(R.ovHit) && R.ovHit.includes(String(E.sys)) && R.ovHit.includes(String(E.idio)), R.ovHit.slice(0, 100));
 ok('⑦b 總覽提醒:沒到跌停(−8%)⛔ 不可觸發', R.ovNo === 0, String(R.ovNo));
 ok('⑦c 總覽提醒:噴 ≥30% 且在官方注意股名單 → 減碼提醒(⛔ 不是放空訊號)',
     /考慮減碼/.test(R.ovAtt) && /1\.81/.test(R.ovAtt) && /不是放空訊號/.test(R.ovAtt), R.ovAtt.slice(0, 100));

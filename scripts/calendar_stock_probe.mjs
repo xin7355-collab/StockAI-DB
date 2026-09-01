@@ -15,7 +15,8 @@
  *      法說會・庫藏股公告・MSCI 正式換股名單・除權息日・FOMC/美國經濟數據・選舉。
  *      「財報公布截止日」只是法說會的**近似**,⛔ 不是法說會。
  *   ② **倖存者偏誤** —— `data/` 只有還活著的股票,已下市的不在裡面。
- *   ③ **窗口約 3 年且整段偏多頭** → 月份/年假類每個桶只有 3 個樣本,⛔ 不可下結論。
+ *   ③ 🚨 V74.2.8 起窗口起點**改成從資料推**(K 線補深到 2021 → 已含 2022 空頭);
+ *      但月份類每個桶仍只有幾個樣本,⛔ 不可下結論。
  *   ④ **一次測 20+ 種切法 ⇒ 多重比較**,必然有一兩格看起來很漂亮。
  *      判準是「**前後半段同向 + 逐年一致 + 天數夠**」,⛔ 不是「哪格最好看」。
  *   ⑤ **當日報酬不可直接操作** —— 「星期五平均 +0.1%」要在星期四收盤前買才吃得到。
@@ -46,7 +47,27 @@ import { fileURLToPath } from 'url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = path.join(ROOT, 'data');
 const OUT = process.argv[2] || '';
-const WIN_FROM = '2023-06-15';   // ⭐ 共同窗口起點(實測起始日 中位 2023-06-09、p75 2023-06-12 → 取 06-15 涵蓋約 75% 檔數)
+// ⭐ 共同窗口起點 —— V74.2.8 改成**執行時從實際檔案推**(⛔ 不再寫死)。
+//   🚨 原本寫死 `'2023-06-15'`(當時 data/ 就是從那天開始)。K 線補深到 2021 之後,
+//      那一行會把**多出來的兩年半(含 2022 空頭)整段丟掉**,而且畫面上看不出來 ——
+//      報告只會印一個看起來很正常的窗口。⭐ 通用:任何「窗口起點」都要從資料推,
+//      ⛔ 不可寫死;寫死的那一刻它就開始過期了。
+//   規則不變:取各檔起始日的 p75(涵蓋約 75% 檔數),再往後 3 天緩衝。
+const WIN_FROM = (() => {
+  const env = process.env.WIN_FROM; if (env) return env;
+  const firsts = [];
+  for (const fn of fs.readdirSync(DATA).filter(x => /^\d{4}\.json$/.test(x) && !x.startsWith('00'))) {
+    try {
+      const a = JSON.parse(fs.readFileSync(path.join(DATA, fn), 'utf8'));
+      if (Array.isArray(a) && a.length >= 500) firsts.push(String(a[0].date || '').replace(/\//g, '-').slice(0, 10));
+    } catch (_) { }
+  }
+  firsts.sort();
+  if (firsts.length < 200) return '2023-06-15';        // 🚧 空過守門:推不出來就退回舊值
+  const p75 = firsts[Math.floor(firsts.length * 0.75)];
+  const t = new Date(p75 + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + 3);
+  return t.toISOString().slice(0, 10);
+})();
 const MIN_BARS = 500;            // 太新的股票不收(不然季節桶只涵蓋部分窗口)
 const MIN_STOCKS = 500;          // 空過守門
 const MIN_ROWS = 200000;         // 空過守門
@@ -604,7 +625,7 @@ console.log('⛔ 讀這份報告的四條規則');
 console.log(`  ① 「上漲%」跟對照組 ${P0.toFixed(1)}% 比,⛔ 不是跟 50% 比。`);
 console.log('  ② 只信【D】判定「⭐ 通過」的(天數夠 + p≤0.05 + 前後半段同向 + 每年同向)。');
 console.log('  ③ 【E】判定「➖ 跟對照沒差」= 「這檔喜歡星期幾」**看得到但學不到**,⛔ 不可做成個股標籤。');
-console.log('  ④ 未扣交易成本(來回約 0.44%);窗口約 3 年且整段偏多頭;倖存者偏誤(已下市的不在裡面)。');
+console.log(`  ④ 未扣交易成本(來回約 0.44%);窗口 ${days[0]} ~ ${days[days.length - 1]};倖存者偏誤(已下市的不在裡面)。`);
 
 if (OUT) {
     fs.writeFileSync(OUT, JSON.stringify({

@@ -229,7 +229,13 @@ console.log('\n\n████ 🚧 穩健性檢定(只看 10 日;⭐ 邊際要 >
 console.log(`   樣本期間 ${allD[0]} ~ ${allD[allD.length - 1]} ・中點 ${MID}`);
 const sub = (evs, f) => evs.filter(f).map(e => e[10]).filter(x => x != null);
 const baseSub = f => { const v = sub(base, f); return v.length ? avg(v) : null; };
-console.log('\n事件'.padEnd(35) + '全期    前半    後半   |逐年(24/25/26)      去最好年  扣成本');
+// 🚨 V74.2.8 逐年清單原本**寫死 2024/2025/2026** —— K 線補深到 2021 之後,
+//    2022(空頭)與 2023 就**完全沒有被那道關卡檢查到**,而且畫面上看不出來(display 也只印 3 欄)。
+//    ⭐ 通用:任何「逐年」檢定都要從**實際樣本**推年份,⛔ 不可寫死
+//    (同 V74.0.2 limitup / trustvol「中點用整條日期軸」的同型錯誤)。
+const YRS = [...new Set(allD.map(d => d.slice(0, 4)))].sort();
+console.log(`   逐年檢定涵蓋:${YRS.join(' / ')}`);
+console.log('\n事件'.padEnd(35) + '全期    前半    後半   |逐年(' + YRS.map(y => y.slice(2)).join('/') + ')' + ' '.repeat(Math.max(1, 12 - YRS.length * 3)) + '去最好年  扣成本');
 console.log('─'.repeat(100));
 for (const r of rows.slice(0, 26)) {
   const evs = buckets.get(r.k);
@@ -237,7 +243,7 @@ for (const r of rows.slice(0, 26)) {
   const b1 = baseSub(e => e._d < MID), b2 = baseSub(e => e._d >= MID);
   const e1 = h1.length >= 60 ? avg(h1) - b1 : null, e2 = h2.length >= 60 ? avg(h2) - b2 : null;
   const yr = {}, yb = {};
-  for (const y of ['2024', '2025', '2026']) {
+  for (const y of YRS) {
     const v = sub(evs, e => e._d.startsWith(y)), bv = baseSub(e => e._d.startsWith(y));
     yr[y] = v.length >= 60 && bv != null ? avg(v) - bv : null; yb[y] = bv;
   }
@@ -254,7 +260,7 @@ for (const r of rows.slice(0, 26)) {
   const net = (r.e10 ?? 0) - COST;
   console.log(pad(r.k, 35)
     + num(r.e10).padStart(6) + num(e1).padStart(8) + num(e2).padStart(8) + (same ? ' ✅' : ' ❌')
-    + ' |' + ['2024', '2025', '2026'].map(y => num(yr[y], 1).padStart(6)).join('') + (ySame ? ' ✅' : ' ❌')
+    + ' |' + YRS.map(y => num(yr[y], 1).padStart(6)).join('') + (ySame ? ' ✅' : ' ❌')
     + num(exBest).padStart(9) + num(net).padStart(8) + ((net > 0 && same && ySame && (exBest ?? -9) > 0) ? ' ⭐全過' : ''));
 }
 console.log('\n(數字 = 相對「隨便挑一天」的超額報酬 pp;進場 = 隔天開盤,已排除開盤鎖死)');

@@ -77,7 +77,19 @@ const buckets = new Map();
 const add = (k, v) => { if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(v); };
 const lastSeen = new Map();  // `${key}|${sym}` -> 上次 index(去重)
 
-const days = mdays.filter(d => d >= '2023-09-01');   // 個股資料 2023-06 起 + WIN 暖身
+// 🚨 V74.2.8 這行原本寫死 `'2023-09-01'`(當時個股資料就是 2023-06 起 + 暖身)。
+//    K 線補深到 2021 之後,寫死會把**多出來的兩年半(含 2022 空頭)整段丟掉**,
+//    而且報告只會印一個看起來很正常的窗口 → 改成從**實際檔案**推起點。
+const PICK_FROM = (() => {
+  const firsts = [];
+  for (const [, o] of S) if (o && o.d.length >= 400) firsts.push(o.d[0]);
+  firsts.sort();
+  if (firsts.length < 100) return '2023-09-01';        // 🚧 空過守門:推不出來就退回舊值
+  const p75 = firsts[Math.floor(firsts.length * 0.75)];
+  const t = new Date(p75 + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + 90);   // + WIN 暖身
+  return t.toISOString().slice(0, 10);
+})();
+const days = mdays.filter(d => d >= PICK_FROM);
 let nDay = 0, nPick = 0;
 
 for (let di = 0; di < days.length - 21; di++) {
@@ -167,6 +179,8 @@ console.log(`   對照組平均超額:` + HOR.map(n => `${n}日 ${bAvg[n].toFixe
 
 const allD = base.map(e => e._d).sort();
 const MID = allD[Math.floor(allD.length / 2)];
+// ⭐ 逐年清單從**實際樣本**推(⛔ 不可寫死 —— 補深之後 2021/2022 會整段不被檢查)
+const YRS_SP = [...new Set(allD.map(d => d.slice(0, 4)))].sort();
 const sub = (evs, f, n = 10) => evs.filter(f).map(e => e[n]).filter(x => x != null);
 const bSub = (f, n = 10) => { const v = sub(base, f, n); return v.length ? avg(v) : null; };
 
@@ -183,7 +197,7 @@ for (const [k, evs] of buckets) {
   r.h1 = h1.length >= 50 ? avg(h1) - bSub(e => e._d < MID) : null;
   r.h2 = h2.length >= 50 ? avg(h2) - bSub(e => e._d >= MID) : null;
   const yr = {};
-  for (const y of ['2023', '2024', '2025', '2026']) {
+  for (const y of YRS_SP) {
     const v = sub(evs, e => e._d.startsWith(y)), bv = bSub(e => e._d.startsWith(y));
     if (v.length >= 50 && bv != null) yr[y] = avg(v) - bv;
   }
@@ -210,7 +224,7 @@ for (const r of rows) {
   console.log(pad(r.k, 32) + String(r.n).padStart(6) + ' '
     + [5, 10, 20].map(n => num(r[`e${n}`]).padStart(6)).join(' ') + ' |'
     + num(r.h1).padStart(6) + num(r.h2).padStart(7) + (same ? '✅' : '❌')
-    + ' ' + ['2023', '2024', '2025', '2026'].map(y => num(r.yr[y], 1).padStart(5)).join('') + (r.ySame ? '✅' : '❌')
+    + ' ' + YRS_SP.map(y => num(r.yr[y], 1).padStart(5)).join('') + (r.ySame ? '✅' : '❌')
     + num(r.exBest).padStart(8) + num(net).padStart(8) + (pass ? ' ⭐全過' : ''));
 }
 console.log('\n(數字 = 相對「強勢板塊裡隨便挑一檔」的超額 pp ・進場=隔天開盤 ・扣同期加權)');
