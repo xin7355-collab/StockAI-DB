@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.2.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.2.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.5 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2071,8 +2071,16 @@
                 <!-- 🔗 V69.7.8 產業鏈定位(官方對照;有資料才顯,無則整塊隱藏) -->
                 <div id="chainRow" class="hidden mb-2"></div>
 
-                <details class="bg-[#0d1117] border border-[#30363d] rounded-lg" open>
-                    <summary class="px-3 py-2.5 cursor-pointer select-none text-[12px] font-bold text-gray-300 list-none flex items-center justify-between">
+                <!-- 🧭 V74.2.6 基本面頁改用「總覽邏輯」(使用者:「基本面」):
+                     第一眼 = 頁首一句話(pageLeadCorp)+ 🧬 體質總評(xrayVerdict)+ 產業鏈定位;
+                     完整 12 項數據收進這個摺疊 —— ⛔ 原本掛著 `open`(= 摺了等於沒摺)。
+                     ⚠️ 兩件**這頁特有**的事,⛔ 別拿掉:
+                       ① 裡面有 ECharts 圖(EPS/月營收/毛利率火花圖):收起時容器寬 0,
+                          打開要 resize,否則圖是空的(`_onCorpMoreToggle`)。
+                       ② 體質總評算不出來(⏳ 財報資料整備中)時要**自動展開** ——
+                          那段 act 文案自己就寫著「下方已顯示目前拿得到的訊號」,收起來會變成文案說謊。 -->
+                <details id="corpMoreWrap" class="bg-[#0d1117] border border-[#30363d] rounded-lg" ontoggle="app._onCorpMoreToggle(this)">
+                    <summary onclick="app._corpMoreUser()" class="px-3 py-2.5 cursor-pointer select-none text-[12px] font-bold text-gray-300 list-none flex items-center justify-between">
                         <span>🔬 看完整基本面數據 <span class="text-[9px] text-gray-500 font-normal">投資屬性・盈利力・估值・配息・EPS・月營收</span></span>
                         <span class="text-gray-500 text-[10px]">▾ 點開</span>
                     </summary>
@@ -2111,7 +2119,7 @@
                                 <div id="xrayInvBest" class="text-[10px] text-gray-400 mt-0.5 leading-snug">--</div>
                             </div>
                         </div>
-                        <details class="mt-1.5" open>
+                        <details class="mt-1.5">
                             <summary class="cursor-pointer text-[10px] text-gray-500 hover:text-purple-300">💡 評分構成因子(點開)</summary>
                             <div id="xrayInvFactors" class="text-[9px] text-gray-500 mt-1 leading-relaxed pl-1"></div>
                         </details>
@@ -2208,7 +2216,7 @@
                             <span id="xrayFillDays" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                     </div>
-                    <details id="xrayFillHistDetails" class="bg-[#0d1117] rounded mb-3 hidden" open>
+                    <details id="xrayFillHistDetails" class="bg-[#0d1117] rounded mb-3 hidden">
                         <summary class="cursor-pointer px-2 py-1.5 text-[10px] text-amber-300 font-bold">📜 近 5 次除息紀錄(歷史·點開)</summary>
                         <div id="xrayFillHistTable" class="px-2 pb-2 text-[10px]"></div>
                     </details>
@@ -7449,8 +7457,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.2.5',
+    _APP_VERSION: 'V74.2.6',
     _CHANGELOG: [
+        { v: 'V74.2.6', dt: '2026-09-01', d: ['基本面頁也改成總覽的版面邏輯:第一眼只留「這家公司體質好不好」一句話 + 🧬 體質總評 + 產業鏈定位,完整 12 項數據(投資屬性/獲利/成長/估值/財務/現金流/股利)收進「🔬 看完整基本面數據」——它本來就有這個摺疊,但預設是打開的,等於沒摺', '打開時圖表會自動重算寬度(收起狀態下算出來會是空的)', '⭐ 財報資料還在整備中時會自動幫你展開 —— 因為那段說明本來就寫著「下方已顯示目前拿得到的訊號」,收起來就變成說謊', '你自己點開/收起之後,程式不會再自動改它'] },
         { v: 'V74.2.5', dt: '2026-09-01', d: ['當沖頁也改成總覽的版面邏輯:第一眼只留「今日當沖作戰指令 + 成本關卡」和有實測數字的訊號,隔日沖 T+1 預判/買盤竭盡/損益試算機收進「📖 更多解讀」(一張卡、一個字都沒刪)', '實測第一眼要讀的字數從 2,015 降到 387', '順手修版面順序:「當沖候選掃描」(掃的是別檔)原本排在這檔的結論上面 → 已搬到下方,一開頁先看到這檔今天怎麼做', '個股五頁(總覽・K線・籌碼・即時・當沖)現在同一套版面邏輯'] },
         { v: 'V74.2.4', dt: '2026-09-01', d: ['即時頁也改成總覽的版面邏輯:第一眼只留「盤中當沖總結燈的結論 + 一句操作」和分時圖,完整的進場檢查表與盤中作戰室收進「📖 更多解讀」(一張卡、一個字都沒刪)', '🚨「別追多警訊」的內容直接寫在頁首,不會因為收合而漏看', '盤後/沒金鑰沒東西可看時,連那條「更多解讀」橫條都不出現;換股票也會一起清乾淨', '總覽・K線・籌碼・即時 四頁現在同一套版面邏輯'] },
         { v: 'V74.2.3', dt: '2026-09-01', d: ['籌碼頁也改成總覽的版面邏輯:第一眼只留「大戶結論 + 綜合評分 + 一句操作 + 其他籌碼指標怎麼說」,法人明細/實測成績/明日劇本/乾淨度收進「📖 更多解讀」(一張卡、一個字都沒刪)', '實測第一眼要讀的字數從 2,538 降到 864(這頁本來是全 App 最重的)', '🚨 融資追繳風險改露在頁首:它原本埋在「籌碼進出」分頁的兩層收合裡,等於看不到 —— 風險類永遠不收'] },
@@ -30175,6 +30184,41 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
     // 🧮 純公式體質總評(取代 AI 自動解讀):讀 this._xrayMetrics 已算好的數字 → 規則產生結論,零 API、零幻覺、秒出
     //   台股色慣例:利多 chip 紅、利空 chip 綠;結論邊框用非漲跌色(琥珀/橙/灰)避免紅綠誤讀
+    // 🧭 V74.2.6 基本面頁「完整數據」摺疊的兩件事(⛔ 都不可拿掉,理由見 HTML 註解):
+    //   ① 打開時要 resize 裡面的 ECharts —— 收起狀態容器寬 0,圖會畫成空的。
+    //      ⚠️ 沙箱連不到 CDN(echarts undefined)→ 這條**只能用 stub 驗**,實機才看得到真效果。
+    //   ② 記住「使用者自己動過」→ 之後 `_syncCorpMore` 就不再自動改它(⛔ 別跟使用者搶)。
+    // 🚨 V74.2.6 實測發現:`<details>` 的 **toggle 事件會被合併(coalesced)** ——
+    //   連續改 `open`(程式先開後關、使用者再開)瀏覽器只發**一次** toggle,而且帶的是最終狀態。
+    //   ⛔ 所以「在 toggle 裡分辨這次是程式改的還是使用者點的」天生不可靠(第一版就是這樣寫,測試抓到)。
+    //   ⭐ 正解:**使用者動過**改由 `<summary>` 的**實際點擊**紀錄(`_corpMoreUser`);
+    //      toggle 只留下它真正需要做的事 —— resize 圖表。
+    _corpMoreUser() { const el = document.getElementById('corpMoreWrap'); if (el) el.dataset.userToggled = '1'; },
+    _onCorpMoreToggle(el) {
+        if (!el || !el.open) return;
+        // 打開 → 下一影格再 resize(等瀏覽器把容器排版出來,⛔ 立刻量會拿到 0)
+        requestAnimationFrame(() => {
+            try {
+                el.querySelectorAll('[_echarts_instance_]').forEach(c => {
+                    try { echarts.getInstanceByDom(c)?.resize(); } catch (_) {}
+                });
+            } catch (_) {}
+        });
+    },
+    // 🧭 V74.2.6 體質總評算不出來(⏳ 財報資料整備中)→ **自動展開**完整數據。
+    //   ⛔ 理由不是版面好看,是**文案不可說謊**:那段 act 自己寫著「下方已顯示目前拿得到的訊號」。
+    //   ⚠️ 使用者手動動過就不再自動改;換股票時重置(不同檔的資料齊全度不一樣)。
+    _syncCorpMore() {
+        const el = document.getElementById('corpMoreWrap');
+        if (!el) return;
+        const x = this._lastXrayVerdict || {};
+        const sym = String(x.sym || '');
+        if (el.dataset.sym !== sym) { el.dataset.sym = sym; el.dataset.userToggled = ''; }
+        if (el.dataset.userToggled === '1') return;
+        const noVerdict = !x.verdict || /整備中|計算中/.test(String(x.verdict));
+        if (el.open !== noVerdict) el.open = noVerdict;
+    },
+
     _renderXrayVerdict() {
         const box = document.getElementById('xrayVerdict');
         if (!box) return;
@@ -30249,6 +30293,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         this._lastXrayScore = { sym: (this._xrayMetrics || {}).sym, score: (pct != null && hasProfit && pillars >= 2) ? Math.round(pct * 100) : null };
         this._lastXrayVerdict = { sym: (this._xrayMetrics || {}).sym, verdict, tone, act };   // 🧭 V72.6.0 供「每頁一句話」用
         try { this._renderPageLead?.('corp'); } catch (_) {}
+        try { this._syncCorpMore(); } catch (_) {}   // 🧭 V74.2.6 算不出結論 → 自動展開完整數據(文案不可說謊)
         const col = { bull: 'red', good: 'amber', warn: 'yellow', bear: 'orange', flat: 'gray' }[tone];
         const chips = (arr, c) => arr.slice(0, 4).map(t => `<span class="text-[10px] px-1.5 py-0.5 rounded bg-${c}-900/25 text-${c}-300 border border-${c}-800/40 whitespace-nowrap">${t}</span>`).join(' ');
         // 🎯 V68.3.6 五維一眼儀表板 —— 燈號用「不吃台股紅綠慣例」的符號(✅好 🟡普 ⚠️弱 —缺),
