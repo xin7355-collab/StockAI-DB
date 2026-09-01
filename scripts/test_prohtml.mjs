@@ -34,6 +34,17 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const fails = [];
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : `  ${String(e).slice(0, 260)}`}`); if (!c) fails.push(n); };
 const src = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
+// 🫧 個股泡泡圖的原始碼區段(`_stockBubHtml` 建結構 + `_stockBubSeek` 算座標)——
+//    ⛔ 兩支要一起掃,只掃其中一支會漏(V74.1.3 把座標計算搬去 Seek 那支)
+const SBSRC = (() => {
+    const a = src.indexOf('_stockBubHtml'), b = src.indexOf('_rotQuad(list) {', a);
+    return a < 0 || b < 0 ? '' : src.slice(a, b);
+})();
+// 含 `_memSeries`(把成員 K 線抓下來算每一天的位階/振幅)的整段
+const SBSRC0 = (() => {
+    const a = src.indexOf('async _memSeries('), b = src.indexOf('_rotQuad(list) {', a);
+    return a < 0 || b < 0 ? '' : src.slice(a, b);
+})();
 
 // ① 部署佈線(兩條路徑各 4 處)
 for (const [f, min] of [['.github/workflows/deploy_pages.yml', 4], ['.github/workflows/daily_miner.yml', 4]]) {
@@ -308,27 +319,34 @@ const T = await page.evaluate(async () => {
     out.spd1 = document.getElementById('rotSpd').textContent;
     out.spdVal = PRO._rotSpeed;
     PRO.rotSeek(4);
+    // 🚧 明細卡的說明與成分股表收進 <details> 了 → 讀 innerText 前先展開,
+    //    ⛔ 否則收合狀態的 innerText 不含內文 = 假通過(CLAUDE.md 記過這條)。
+    const openOne = () => { document.querySelectorAll('#rotOne details').forEach(d => d.open = true);
+                            return document.getElementById('rotOne'); };
+    // ⚠️ V74.1.3 `rotOpen` 現在**跳到「板塊明細」那一頁**,明細卡渲染在 #rotOne
+    //   (⛔ 舊的 #rotDetail 已退役 —— 同一個板塊不可有兩張卡)。
+    //   ⭐ 這些斷言的**用意**沒變:成分股要列得出來、要能點、要誠實說「表只有最新一天」。
     PRO.rotOpen('24');                       // 點半導體
     await new Promise(r => setTimeout(r, 60));
-    out.detTxt = document.getElementById('rotDetail').innerText;
-    out.detRows = document.querySelectorAll('#rotDetail tbody tr').length;
-    out.detHasGoto = /PRO\.gotoStock\('2382'\)/.test(document.getElementById('rotDetail').innerHTML);
+    out.detTxt = openOne().innerText;
+    out.detRows = document.querySelectorAll('#rotOne tbody tr').length;
+    out.detHasGoto = /PRO\.gotoStock\('2382'\)/.test(openOne().innerHTML);
     PRO.rotSeek(1);
     await new Promise(r => setTimeout(r, 60));
-    out.detTxtPast = document.getElementById('rotDetail').innerText;
-    PRO.rotOpen('24');                       // 再點一次要收起
-    out.detClosed = document.getElementById('rotDetail').innerHTML === '';
+    out.detTxtPast = openOne().innerText;
+    PRO.rotOne(null);                        // 返回 → 明細要收起
+    out.detClosed = !/rotdet/.test(openOne().innerHTML);
     // ⭐ 別名產業:輪動圖 '17' 叫「金融」,screener 叫「金融保險」→ 要靠 IND_ALIAS 才對得上
     PRO.rotSeek(4); PRO.rotOpen('17');
     await new Promise(r => setTimeout(r, 60));
-    out.aliasTxt = document.getElementById('rotDetail').innerText;
-    out.aliasRows = document.querySelectorAll('#rotDetail tbody tr').length;
-    PRO.rotOpen('17');
+    out.aliasTxt = openOne().innerText;
+    out.aliasRows = document.querySelectorAll('#rotOne tbody tr').length;
+    PRO.rotOne(null);
     // ⛔ 真的對不上時要「說出來」,不可靜默空白('10' 鋼鐵在測資裡一檔都沒有)
     PRO.rotOpen('10');
     await new Promise(r => setTimeout(r, 60));
-    out.missTxt = document.getElementById('rotDetail').innerText;
-    PRO.rotOpen('10');
+    out.missTxt = openOne().innerText;
+    PRO.rotOne(null);
     // ㉖ 🎯 題材模式(V74.3.5)
     PRO._names = Object.assign({}, PRO._names, { '2408': '南亞科', '8299': '群聯' });
     PRO._cache['data/screener.json'].rows['2408'] = [80, 15, -0.2, 30, 30, 20597, 100, 49.8, 30000, 90, 2.5];
@@ -346,36 +364,50 @@ const T = await page.evaluate(async () => {
     //   🚨 必須在 rotOpen 之前塞進 _cache:測試開了 --allow-file-access-from-files,
     //   不塞的話 _fillStockFlows 會抓到 repo 裡**真實的** data/2408.json(非決定性)。
     //   欄位格式照真實檔(陣列的 bar,foreign_net 單位=股 —— 陷阱 #40:測資格式要跟真檔一樣)
-    PRO._cache['data/2408.json'] = Array.from({ length: 30 }, (_, i) => ({
-      date: '2026/07/' + String(1 + (i % 28)).padStart(2, '0'),
-      open: 80, close: 81, high: 82, low: 79, volume: 9e6,
-      foreign_net: i % 3 === 0 ? -2000000 : 1500000 }));
-    PRO._cache['data/8299.json'] = Array.from({ length: 30 }, (_, i) => ({
-      date: '2026/07/' + String(1 + (i % 28)).padStart(2, '0'),
-      open: 600, close: 601, high: 602, low: 599, volume: 5e5,
-      foreign_net: 0 }));                     // 全 0 → 要誠實顯「—」不可畫空圖
+    // 🚨 日期必須**真的涵蓋 sector_rot 的 days**(2026-08-25~29),否則泡泡查不到那一天
+    //    → 退回快照 = 動畫那條路等於沒驗(陷阱 #40)。40 根:2026-07-21 ~ 2026-08-29。
+    const _dt = i => { const d = new Date(2026, 6, 21 + i);
+      return `2026/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`; };
+    // 2408:一路漲(位階 100)+ 寬幅(振幅 ~4%)→ 🧬 命中
+    PRO._cache['data/2408.json'] = Array.from({ length: 40 }, (_, i) => ({
+      date: _dt(i), open: 60 + i, close: 60 + i, high: (60 + i) * 1.02, low: (60 + i) * 0.98,
+      volume: 9e6, foreign_net: i % 3 === 0 ? -2000000 : 1500000 }));
+    // 8299:一路跌(位階低)+ 窄幅(振幅 ~0.4%)→ ⛔ 不命中;foreign_net 全 0 → 誠實顯「—」
+    PRO._cache['data/8299.json'] = Array.from({ length: 40 }, (_, i) => ({
+      date: _dt(i), open: 640 - i, close: 640 - i, high: (640 - i) * 1.002, low: (640 - i) * 0.998,
+      volume: 5e5, foreign_net: 0 }));
     PRO.rotOpen('mem');
     await new Promise(r => setTimeout(r, 80));
-    out.thDetTxt = document.getElementById('rotDetail').innerText;
-    out.thDetRows = document.querySelectorAll('#rotDetail tbody tr').length;
+    // 🫧 泡泡的歷史是**非同步**抓的 → 不等它就只量得到「退回快照」那條路
+    await PRO._memSeries(PRO._grpMembers('mem').syms);
+    PRO._stockBubSeek(PRO._rotK);
+    out.thDetTxt = openOne().innerText;
+    out.thDetRows = document.querySelectorAll('#rotOne tbody tr').length;
     {
-      const d = document.getElementById('rotDetail');
+      const d = document.getElementById('rotOne');
       out.sbN = d.querySelectorAll('.sbub circle').length;
       out.sbAmber = d.querySelectorAll('.sbub circle[stroke="var(--amber)"]').length;
       out.sbGene = (d.innerText.match(/🧬 這一組命中 (\d+)\/(\d+)/) || []).slice(1).join('/');
       out.sbGoto = /PRO\.gotoStock\('2408'\)/.test(d.innerHTML);
       out.sbTxt = d.innerText;
+      out.sbHitTxt = (document.getElementById('sbHit') || {}).innerText || '';
+      // 🫧 ㉘b2 泡泡要**跟著時間軸走**:換一天,座標必須不一樣
+      const tf = () => [...d.querySelectorAll('.sb')].map(e => e.style.transform).join('|');
+      PRO._stockBubSeek(0); const t0 = tf();
+      PRO._stockBubSeek(PRO._rotData.days.length - 1); const t1 = tf();
+      out.sbMoved = !!t0 && t0 !== t1;
+      PRO._stockBubSeek(PRO._rotK);
     }
     document.querySelectorAll('#tabRot details').forEach(d => d.open = true);
     out.thNote = document.getElementById('rotNote').innerText;
     // ㉙ ②③④ 成員總覽 + 個股資金走向 + 選中樣式(V74.4.2,趁 'mem' 明細還開著收)
     await new Promise(r => setTimeout(r, 80));
     await PRO._fillStockFlows();              // 保證 async 填圖跑完再量(rotOpen 那次沒 await)
-    out.flowCells = document.querySelectorAll('#rotDetail td.flowcell').length;
-    out.flowSpark = document.querySelectorAll('#rotDetail td.flowcell svg.flowspark rect').length;
-    out.flowCum = /張/.test([...document.querySelectorAll('#rotDetail td.flowcell')].map(td => td.innerText).join(''));
-    out.flowNone = [...document.querySelectorAll('#rotDetail td.flowcell')].some(td => td.textContent === '—');
-    out.flowNote = document.getElementById('rotDetail').innerText;
+    out.flowCells = document.querySelectorAll('#rotOne td.flowcell').length;
+    out.flowSpark = document.querySelectorAll('#rotOne td.flowcell svg.flowspark rect').length;
+    out.flowCum = /張/.test([...document.querySelectorAll('#rotOne td.flowcell')].map(td => td.innerText).join(''));
+    out.flowNone = [...document.querySelectorAll('#rotOne td.flowcell')].some(td => td.textContent === '—');
+    out.flowNote = openOne().innerText;
     await PRO._rotMembers();
     out.memRows = document.querySelectorAll('#rotMembers .memrow').length;
     out.memTxt = document.getElementById('rotMembers').innerText.replace(/\s+/g, ' ');
@@ -417,6 +449,10 @@ const T = await page.evaluate(async () => {
       }
       PRO._cache['data/sector_rot.json'] = big;
       PRO._rotMode = 'ind';
+      // 🚧 上面點過板塊 → 子頁籤停在「板塊明細」,總覽那頁是 display:none
+      //    → 量泡泡座標會全部拿到 0(spreadY 變 NaN)。⛔ 量之前一定要切回總覽。
+      PRO._rotOneSel = null; PRO._rotPick = null;
+      PRO.rotSwitchSub('map');
       await PRO.renderRot();
       await new Promise(r => setTimeout(r, 550));   // ⚠️ 等 .bub 的 0.42s transition 跑完
       const bubs = () => [...document.querySelectorAll('#rotBubs .bub')].filter(e => e.style.opacity !== '0');
@@ -666,6 +702,9 @@ ok('㉚ 四個分頁容器都要在 .wrap 裡(⛔ 在外面會吃到 80px 底部
 //     ⑥ 🚨 時間軸預設要停在**最新**那一天(_rotK 預設 0 會停在 120 天前,而且畫面看起來很正常)
 const ROT2 = await page.evaluate(async () => {
     const o = {};
+    // 🚧 同上:明細卡的說明收進 <details> → 讀 innerText 前先展開(⛔ 收合時讀不到 = 假通過)
+    const openOne = () => { document.querySelectorAll('#rotOne details').forEach(d => d.open = true);
+                            return document.getElementById('rotOne'); };
     // ⚠️ 前面的 ㉒ 區塊已經拉過時間軸 → `_rotK` 會殘留。
     //   要驗「**第一次載入**停在最新那一天」就必須先還原成剛進站的狀態(null)。
     PRO._rotK = null;
@@ -696,14 +735,14 @@ const ROT2 = await page.evaluate(async () => {
     // ⑤ 單一板塊
     PRO.rotSwitchSub('det'); await new Promise(r => setTimeout(r, 150));
     o.leadOne = document.getElementById('rotLead').innerText;
-    o.oneEmpty = document.getElementById('rotOne').innerText;
+    o.oneEmpty = openOne().innerText;
     const first = (document.querySelector('#rotOneBar .rotchip') || {});
     PRO.rotOne(Object.keys(PRO._rotSet().grp)[0]); await new Promise(r => setTimeout(r, 150));
     o.onePaths = document.querySelectorAll('#rotOne .onechart path').length;
-    o.oneTxt = document.getElementById('rotOne').innerText;
+    o.oneTxt = openOne().innerText;
     // 拉時間軸 → 走勢卡的「停在」要跟著變
     PRO.rotSeek(3); await new Promise(r => setTimeout(r, 150));
-    o.oneAt3 = document.getElementById('rotOne').innerText.includes(PRO._rotData.days[3]);
+    o.oneAt3 = openOne().innerText.includes(PRO._rotData.days[3]);
     PRO.rotSeek(PRO._rotData.days.length - 1);
     // 📖 策略與回測 + 🔎 搜尋 + 動態
     PRO.rotSwitchSub('doc'); await new Promise(r => setTimeout(r, 120));
@@ -752,6 +791,15 @@ const ROT2 = await page.evaluate(async () => {
     PRO.rotStop();
     o.stopSync = [document.getElementById('rotPlay').textContent,
                   document.querySelector('[data-rotplay]').textContent];
+    // 🧹 V74.1.3 使用者:「我不要無效文字,把它折疊起來或者刪減文字」
+    //    量的是**攤開前**(使用者第一眼)的字數 —— 大段說明要收進 <details> 或搬去「策略與回測」頁。
+    //    ⚠️ 收合的 <details> innerText 本來就不含內文 → 這裡**刻意不展開**(那正是要量的東西)。
+    o.paneLen = {};
+    for (const k of ['map', 'det', 'flow', 'doc']) {
+      PRO.rotSwitchSub(k); await new Promise(r => setTimeout(r, 80));
+      o.paneLen[k] = document.getElementById('rotPane-' + k).innerText.replace(/\s/g, '').length;
+    }
+    PRO.rotSwitchSub('det'); await new Promise(r => setTimeout(r, 80));
     // ◀▶ 翻頁
     const before = PRO._rotOneSel; PRO.rotStep(1);
     o.stepped = PRO._rotOneSel !== before && !!PRO._rotOneSel;
@@ -834,6 +882,17 @@ ok('㊲e 📌 返回/播放那一列也要 sticky,⛔ 不可捲走(不然又變�
    `backUnderCtl=${ROT2.backUnderCtl}`);
 ok('㊲f ◀▶ 可以直接翻到下一個板塊(⛔ 不用回清單再點一次)', ROT2.stepped);
 ok('㊲g ← 全部板塊 要回得去清單頁', ROT2.backToList);
+// 🧹 V74.1.3 使用者:「使用上設計還是不好用,我不要無效文字,把它折疊起來或者刪減文字」
+//    ⛔ 判準是「**第一眼**看到多少字」,⛔ 不是全部刪掉 —— 長說明搬去「📖 策略與回測」那一頁,
+//    在那裡它是主角(所以那一頁**不設上限**,只要求它真的接得住)。
+ok('㊲h 🧹 看圖的三頁第一眼不可是一面文字牆(總覽/明細/籌碼 各 ≤1600 字)',
+   ROT2.paneLen.map <= 700 && ROT2.paneLen.det <= 700 && ROT2.paneLen.flow <= 1600,
+   JSON.stringify(ROT2.paneLen));
+ok('㊲h2 🧹 長說明一律**預設收起**(⛔ 加了 open 等於沒折疊 —— 只靠字數上限抓不到)',
+   /<details class="sbnote">/.test(src) && !/<details class="sbnote" open/.test(src)
+   && (src.match(/<details class="sbnote"/g) || []).length >= 1);
+ok('㊲i 🧹 長說明要**真的搬到**「策略與回測」那一頁(⛔ 不是刪掉 = 使用者查不到為什麼)',
+   ROT2.paneLen.doc >= 800, ROT2.paneLen.doc);
 
 
 await browser.close();
@@ -1024,10 +1083,23 @@ ok('㉘ 題材明細要有個股泡泡圖,泡泡數 = 有資料的成分股數',
    T.sbN === 2 && T.sbGoto, [T.sbN, T.sbGoto]);
 ok('㉘b 🧬 命中(位階≥75 且 振幅≥P60)要標出來,而且數字跟描邊數一致',
    T.sbGene === '1/2' && T.sbAmber === 1, [T.sbGene, T.sbAmber]);
+ok('㉘b2 🫧 V74.1.3 泡泡要**跟著時間軸移動**(⛔ 舊版讀最新快照 → 只有文字在動)',
+   T.sbMoved && !/歷史載入中/.test(T.sbHitTxt), `moved=${T.sbMoved} hit=${T.sbHitTxt}`);
+// 🚨 實跑抓到的:renderRot 會先射一次 `_memSeries`,它一開頭就把 `_msCache[sy]=null` 佔位
+//    → 第二個呼叫者看到「key 已存在」就直接回,還沒載完就去畫圖 → 永遠停在「先顯示最新一天」。
+//    ⛔ 一定要讓第二個呼叫者**等同一個 promise**(`_msPend`)。
+ok('㉘b3 🚧 同一檔在載入中時,第二個呼叫者要等同一個 promise(⛔ 不可看到 key 就回)',
+   // ⛔ 兩處都要釘:① `want` 過濾要放行「還在載入中」的 ② 真的共用同一個 promise。
+   //    只釘②的話,把①的 `|| this._msPend[sy]` 拿掉照樣綠(注入驗證當場抓到)。
+   /!\(sy in this\._msCache\) \|\| this\._msPend\[sy\]/.test(SBSRC0)
+   && /this\._msPend\[sy\] \|\| \(this\._msPend\[sy\] =/.test(SBSRC0));
+ok('㉘b4 🚧 每一拍都要呼叫 `_stockBubSeek`(⛔ 少了它泡泡就不會跟著時間軸走)',
+   /if \(sel\) this\._stockBubSeek\(k\);/.test(src));
 ok('㉘c 🚨🚨 兩個軸必須是**位階 × 振幅**(個股層級實測有效的),⛔ 不可照抄板塊版的「誰在買」',
-   /pos252/.test(src.slice(src.indexOf('_stockBubHtml'), src.indexOf('_stockBubHtml') + 2600))
-   && /amp20/.test(src.slice(src.indexOf('_stockBubHtml'), src.indexOf('_stockBubHtml') + 2600))
-   && !/C\.f5|C\.t5|C\.f10/.test(src.slice(src.indexOf('_stockBubHtml'), src.indexOf('_stockBubHtml') + 2600)));
+   // ⚠️ V74.1.3 起軸的計算搬進 `_stockBubSeek`(結構只建一次、之後只改 transform)
+   //    → 這條要掃「_stockBubHtml ~ _stockBubSeek 結束」整段,⛔ 不可只切前 2600 字(會漏)
+   SBSRC.includes('pos252') && SBSRC.includes('amp20') && !/C\.f5|C\.t5|C\.f10/.test(SBSRC),
+   SBSRC.length);
 ok('㉘d 🚨 必須寫出「個股層級的法人買超實測 0.64x」——⛔ 否則下一個人會把 Y 軸改回資金流',
    /0\.64x/.test(T.sbTxt) && /比隨便挑一天還低/.test(T.sbTxt), T.sbTxt.slice(0, 300));
 ok('㉘e 🚨 必須寫「選股條件不是買進訊號」+ 回測還配了哪些條件(⛔ 不可讓人以為命中就會漲)',
