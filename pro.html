@@ -137,6 +137,15 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 /* ⛔ 固定高度 —— 播放時內容每格都變,不固定就會推動下面。
    ⚠️ V74.4.6 把 .note 從 10px 拉到 11.5px 之後實測 78.2px → 這裡要跟著調高(測試 ㉒d2b 會擋)。*/
 .rotverdict{min-height:86px}
+/* 📌 V74.4.9 控制列 sticky:四個子頁籤共用同一條時間軸,捲到哪裡都看得到
+   (使用者:「下面那個沒有播放條」)。⛔ 背景要不透明,否則捲過去會透出下面的字。 */
+.rotsticky{position:sticky;top:0;z-index:6;background:var(--panel);
+  padding:8px 0 6px;border-bottom:1px solid var(--line);margin-bottom:2px}
+/* 📈 單一板塊走勢圖 */
+.onechart{width:100%;background:var(--panel2);border:1px solid var(--line2);border-radius:9px;margin:8px 0 4px}
+.onechart svg{width:100%;height:auto;display:block}
+.onelab{font-size:9.5px;fill:var(--dim2)}
+.onenow{font-size:10px;fill:#fff}
 .quadwrap{position:relative;margin-top:6px;border:1px solid var(--line);border-radius:10px;
   background:linear-gradient(180deg,rgba(255,93,93,.04),rgba(61,220,132,.04));overflow:hidden}
 .quadwrap svg{display:block;width:100%;height:auto}
@@ -377,35 +386,54 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
   <div class="kpis" id="rotKpis"></div>
   <div class="panel">
     <h2>💧 錢打到哪一區 <span class="sub" id="rotSub"></span></h2>
-    <!-- ⛔ 順序刻意是「控制列 → 結論條 → 動畫」,而且結論條**高度固定**:
-         播放時它每一格都會重寫,若高度會變,底下的動畫就會被推得上上下下(使用者回報的問題)。 -->
-    <div class="rotctl">
+    <!-- 🧭 V74.4.9 使用者:「做得很亂…我沒有辦法知道目前看了這些數據能做什麼事情,
+         你全部資料都塞在這一頁」→ ① 頁首一句話講清楚這頁在回答什麼
+         ② 拆四個子頁籤 ③ 可勾選只看想看的板塊 ④ 控制列做成 sticky(每個子頁籤都看得到) -->
+    <div id="rotLead" class="signote"></div>
+    <!-- ⛔ 控制列**必須 sticky** —— 使用者回報「下面那個沒有播放條」:
+         舊版只有泡泡圖上方那一條,捲到成員名單/誰在買就看不到時間軸了。
+         現在四個子頁籤共用同一條,捲到哪裡都在。 -->
+    <div class="rotctl rotsticky">
       <button class="lbtn" id="rotMode" onclick="PRO.rotToggleMode()" title="官方 33 產業或人工題材板塊">🏛️ 官方產業</button>
       <button class="lbtn" id="rotPlay" onclick="PRO.rotPlay()">▶︎ 播放</button>
       <button class="lbtn" id="rotSpd" onclick="PRO.rotCycleSpeed()" title="播放速度">1x</button>
       <input type="range" id="rotSlider" min="0" max="0" value="0" oninput="PRO.rotSeek(+this.value)">
       <span class="rotday" id="rotDay">—</span>
     </div>
-    <div class="flowbar" id="rotFlowBar"></div>
-    <!-- ⭐ 四象限計數:一眼看出「今天市場長什麼樣」。
-         ⛔ 刻意**不用**別家那種「漲潮/輪動/觀望/退潮」(那是用資金流**加速度**分的)——
-            本站實測加速度在各窗口是 −0.88 ~ +0.20pp、5~10 日窗口明顯為負 → 沒有預測力。
-         這裡分的是**實測唯一過關的 X 軸(相對強弱)× 描述性的 Y 軸(誰在買)**。 -->
-    <div class="rotquad" id="rotQuad"></div>
-    <div id="rotVerdict" class="rotverdict"></div>
-    <div class="quadwrap" id="rotRace"></div>
-    <div class="rotlist" id="rotList"></div>
-    <div id="rotDetail"></div>
-    <!-- 📇 ② 成員名單總覽:⛔ 預設打開 —— 使用者明示「不知道裡面內容是什麼、個股有誰」,
-         收起來等於沒做(陷阱 #32:功能有 ≠ 找得到) -->
-    <details id="rotMemWrap" open><summary class="rotmore">📇 板塊裡有誰(成員名單)</summary><div id="rotMembers"></div></details>
-    <details id="rotNoteWrap"><summary class="rotmore">📊 這張圖怎麼來的・實測數字</summary><div id="rotNote"></div></details>
-  </div>
-  <div class="panel">
-    <details><summary class="rotmore">👥 誰在買 ・完整數字表(點開)</summary>
+    <div class="labbar" id="rotSubBar"></div>
+    <!-- ☑️ 勾選:使用者「我想勾選的方式勾出我想看的東西就好,其他不要顯示」。
+         ⛔ 全部取消要擋下來(空畫面不是「篩選」是壞掉);⛔ 也要有「全選/只看前 8」的快捷。 -->
+    <details id="rotPickWrap"><summary class="rotmore">☑️ 只看我想看的板塊(<span id="rotPickN">全部</span>)</summary>
+      <div class="rotctl" style="margin-top:6px">
+        <button class="lbtn" onclick="PRO.rotPickAll(1)">全選</button>
+        <button class="lbtn" onclick="PRO.rotPickTop()">只留最強 8 個</button>
+        <button class="lbtn" onclick="PRO.rotPickAll(0)">全部取消</button>
+      </div>
+      <div class="rotlist" id="rotPick"></div>
+    </details>
+
+    <!-- ① 🗺️ 全景 -->
+    <div id="rotPane-map">
+      <div class="rotquad" id="rotQuad"></div>
+      <div id="rotVerdict" class="rotverdict"></div>
+      <div class="quadwrap" id="rotRace"></div>
+      <div class="rotlist" id="rotList"></div>
+      <details id="rotNoteWrap"><summary class="rotmore">📊 這張圖怎麼來的・實測數字</summary><div id="rotNote"></div></details>
+    </div>
+    <!-- ② 📈 單一板塊怎麼動(使用者:「我也想看單一個題材的時候他是怎麼作動的」) -->
+    <div id="rotPane-one" class="hidden">
+      <div class="rotlist" id="rotOneBar"></div>
+      <div id="rotOne"></div>
+    </div>
+    <!-- ③ 📇 成分股 -->
+    <div id="rotPane-mem" class="hidden"><div id="rotMembers"></div></div>
+    <!-- ④ 👥 誰在買 -->
+    <div id="rotPane-flow" class="hidden">
+      <div class="flowbar" id="rotFlowBar"></div>
       <div class="tblwrap" style="max-height:56vh"><table class="grid" id="rotFiTbl"><thead><tr id="rotFiHead"></tr></thead><tbody id="rotFiBody"></tbody></table></div>
       <div id="rotFiNote"></div>
-    </details>
+    </div>
+    <div id="rotDetail"></div>
   </div>
 </div>
 
@@ -532,7 +560,13 @@ const PRO = {
     { k: 'sipho', n: '矽光子 CPO/光通訊', syms: ['3363', '4979', '4977', '3450', '4908'] },
     { k: 'srv', n: 'AI 伺服器組裝', syms: ['2317', '2382', '3231', '6669', '2357'] },
     { k: 'mech', n: '機殼/滑軌', syms: ['8210', '2059', '3013'] },
-    { k: 'pwr', n: '電源/BBU/UPS', syms: ['2308', '6409', '3211', '2301'] },
+    { k: 'pwr', n: '電源/UPS', syms: ['2308', '6409', '2301', '1519'] },
+    // 🔋 V74.4.9 使用者要求把 BBU 從「電源/BBU/UPS」拆出來單獨一組 ——
+    //   BBU(AI 伺服器機櫃的備援電池模組)的當事人是**電池模組廠**,
+    //   跟 UPS/電源供應器是不同一批公司,混在一起會讓「這一族在動」讀不出來。
+    { k: 'bbu', n: 'BBU 備援電池', syms: ['3211', '6121', '3323', '4931'] },
+    // 🪟 玻纖布/玻纖紗 —— CCL(銅箔基板)的上游,AI 板材(低介電玻纖布)缺料時整條會動
+    { k: 'glass', n: '玻纖布/玻纖紗', syms: ['1815', '5340', '1802'] },
     { k: 'grid', n: '重電/電網', syms: ['1513', '1519', '1503', '1504'] },
     { k: 'mlcc', n: '被動元件', syms: ['2327', '2492', '3026'] },
     { k: 'robot', n: '機器人', syms: ['2049', '4576', '1597', '1536', '6188', '4585', '2359'] },
@@ -1216,7 +1250,11 @@ const PRO = {
     // 「幾天才有價值」的完整答案(前3−後3,未來 20 日)
     win20: [[1, 0.40], [3, 0.79], [5, 0.81], [10, 1.10], [20, 1.44], [60, 2.03]],
   },
-  _rotK: 0, _rotTimer: null, _rotData: null, _rotBub: null,
+  // ⚠️ `_rotK` 預設是 **null 不是 0** —— 0 代表「停在 120 天前的第一天」。
+  //   V74.4.9 拆子頁籤時踩過:renderRot 先呼叫 rotSwitchSub(它會 rotSeek(_rotK)),
+  //   而 `0 != null && 0 <= 119` 為真 → 時間軸每次都停在最舊那一天,而且**畫面看起來很正常**
+  //   (有圖、有資料,只是全都是 3 月的)。⛔ 別改回 0。
+  _rotK: null, _rotTimer: null, _rotData: null, _rotBub: null,
   // 📐 圖的座標系(viewBox 固定 → 高度不會變 → ⛔ 播放時不會把畫面推上推下)
   // 📱 長版(手機直式)—— 使用者:「手機頁面要做長版,看起來才看得清楚」
   QW: 340, QH: 460, QPAD: 30,
@@ -1227,6 +1265,67 @@ const PRO = {
   //    使用者:「官方這種板塊沒什麼用」→ 題材才是市場實際在炒的單位;⛔ 但官方版不可拿掉
   //    (+1.44pp 的動能實測**只在官方 33 產業上驗過**,題材版名單是人工挑的)。
   _rotMode: 'ind',
+  // 🧭 V74.4.9 子頁籤 —— 使用者:「全部資料都塞在這一頁,很難搞得清楚在做什麼」
+  //   ⛔ 每一個都要有**一句話說明「這一頁在回答什麼 + 看了能做什麼」**,
+  //     否則拆頁籤只是把亂的東西分成四堆亂的。
+  ROT_SUB: [
+    ['map', '🗺️ 全景', '這一頁回答:<b>錢現在在哪一區</b>。橫軸=近 20 日相對強弱(實測唯一過關的排序)、縱軸=你勾的那幾種買盤。<b>看了能做什麼</b>:先決定「要在哪一區找股票」,再去下面的分頁看那一區裡有誰。'],
+    ['one', '📈 單一板塊', '這一頁回答:<b>這一個板塊這 120 天是怎麼動的</b>(相對強弱走勢 + 外資買賣超)。<b>看了能做什麼</b>:分辨「剛發動」跟「已經漲很久」——⛔ 兩者的風險完全不同。'],
+    ['mem', '📇 成分股', '這一頁回答:<b>每個板塊裡面到底有誰</b>。紅=近 20 日漲、綠=跌,依成交額排。<b>看了能做什麼</b>:選定板塊後挑標的 —— 實測「板塊內最強」六關全過(+0.90%),⛔ 補漲股逐年都是負的。'],
+    ['flow', '👥 誰在買', '這一頁回答:<b>外資/投信/自營/融資各自往哪流</b>。<b>看了能做什麼</b>:當背景資訊看。⛔ 實測資金流<b>排不出有效順序</b>(去最好年只剩 +0.40pp、前後半不同向),所以它只描述、不排名、不下多空。'],
+  ],
+  _rotSub: 'map',
+  rotSwitchSub(t) {
+    this._rotSub = t;
+    for (const [k] of this.ROT_SUB) document.getElementById('rotPane-' + k).classList.toggle('hidden', k !== t);
+    document.getElementById('rotSubBar').innerHTML = this.ROT_SUB.map(([k, n]) =>
+      `<button class="labbtn${k === t ? ' on' : ''}" onclick="PRO.rotSwitchSub('${k}')">${n}</button>`).join('');
+    const lead = (this.ROT_SUB.find(x => x[0] === t) || [])[2] || '';
+    document.getElementById('rotLead').innerHTML = `<div class="note" style="margin-top:0">${lead}</div>`;
+    if (this._rotData) this.rotSeek(this._rotK);      // 換頁要把那一頁的內容補上
+    if (t === 'mem') this._rotMembers();
+  },
+  // ☑️ 勾選過濾 —— 使用者:「我想勾選的方式勾出我想看的東西就好,其他不要顯示」
+  //   `_rotPick` = null 代表「全部」(⛔ 不要一開始就塞 32 個 key 進去,模式一切換就對不上)
+  _rotPick: null,
+  _rotVisible(codes) {
+    if (!this._rotPick) return codes;
+    const s = this._rotPick;
+    const v = codes.filter(c => s.has(c));
+    return v.length ? v : codes;         // ⛔ 全部取消 → 退回全部(空畫面不是篩選,是壞掉)
+  },
+  rotTogglePick(c) {
+    const G = this._rotSet();
+    if (!this._rotPick) this._rotPick = new Set(Object.keys(G.grp));
+    if (this._rotPick.has(c)) this._rotPick.delete(c); else this._rotPick.add(c);
+    if (this._rotPick.size === Object.keys(G.grp).length) this._rotPick = null;   // 全選 = 沒有篩選
+    this.buzz(10);
+    this.renderRot();
+  },
+  rotPickAll(on) {
+    this._rotPick = on ? null : new Set();
+    if (!on) this.toast('全部取消 = 顯示全部(空畫面不是篩選)');
+    this.renderRot();
+  },
+  rotPickTop() {
+    const G = this._rotSet(), J = this._rotData; if (!J) return;
+    const k = J.days.length - 1;
+    const rank = Object.keys(G.grp).map(c => ({ c, v: (G.grp[c].r20 || [])[k] }))
+      .filter(x => x.v != null).sort((a, b) => b.v - a.v).slice(0, 8).map(x => x.c);
+    this._rotPick = new Set(rank);
+    this.renderRot();
+  },
+  _rotPickBar() {
+    const G = this._rotSet(), J = this._rotData; if (!J) return;
+    const k = J.days.length - 1;
+    const all = Object.keys(G.grp).map(c => ({ c, v: (G.grp[c].r20 || [])[k] }))
+      .filter(x => x.v != null).sort((a, b) => b.v - a.v);
+    const on = c => !this._rotPick || this._rotPick.has(c);
+    document.getElementById('rotPick').innerHTML = all.map(x =>
+      `<span class="rotchip ${on(x.c) ? 'on' : ''}" onclick="PRO.rotTogglePick('${x.c}')">${on(x.c) ? '☑︎ ' : '☐ '}${G.nm(x.c)}</span>`).join('');
+    document.getElementById('rotPickN').textContent =
+      this._rotPick ? `只看 ${this._rotVisible(all.map(x => x.c)).length} / ${all.length} 個` : '全部';
+  },
   _rotSet() {
     const J = this._rotData || {};
     if (this._rotMode === 'th' && J.themes) {
@@ -1254,6 +1353,14 @@ const PRO = {
       return;
     }
     this._rotData = J;
+    // 🧲 成員同步程度(採礦端每天算的)—— 讓使用者看得出「這個板塊的平均值有多可信」
+    //   ⛔ 讀不到就不顯示那一列,⛔ 不可假裝有(題材模式才有,官方產業沒算)
+    if (this._tagCoh === undefined) {
+        this._tagCoh = null;
+        this.fetchJson('data/stock_tags.json').then(t => {
+            if (t && t.coh) { this._tagCoh = t.coh; if (this._tab === 'rot') this.rotSeek(this._rotK); }
+        }).catch(() => {});
+    }
     const mbtn = document.getElementById('rotMode');
     if (mbtn) mbtn.textContent = this._rotMode === 'th' ? '🎯 題材板塊' : '🏛️ 官方產業';
     if (this._rotMode === 'th' && !J.themes) {
@@ -1268,10 +1375,13 @@ const PRO = {
       return;
     }
     const G = this._rotSet();
-    const codes = Object.keys(G.grp).filter(k => G.grp[k].r20.some(v => v != null));
+    // ☑️ 勾選過濾:只畫勾起來的(⛔ 尺標仍用**全部**算 —— 尺一變動畫就是假的)
+    const codes = this._rotVisible(Object.keys(G.grp).filter(k => G.grp[k].r20.some(v => v != null)));
     // ⛔ 尺標用**全期**最大絕對值 —— 每天各自縮放的話「動起來」是假的(尺一直在變)
     let mx = 0, my = 0; const mxs = [];
-    for (const c of codes) {
+    // ⚠️ 尺標刻意用**全部板塊**算,⛔ 不隨勾選變 —— 勾一勾尺就變的話,
+    //    同一個泡泡在不同勾選下位置不同,那張圖就不可比了。
+    for (const c of Object.keys(G.grp).filter(k => G.grp[k].r20.some(v => v != null))) {
       for (const v of G.grp[c].r20) if (v != null) { const a = Math.abs(v); mxs.push(a); if (a > mx) mx = a; }
       const fl = G.grp[c].flow || {};
       for (let k = 0; k < J.days.length; k++) {
@@ -1335,8 +1445,93 @@ const PRO = {
     document.getElementById('rotSub').textContent =
       `近 ${J.days.length} 個交易日・${codes.length} 個${G.th ? '題材' : '產業'}・${J.updated || ''}`;
     document.getElementById('rotNote').innerHTML = this._rotNoteHtml();
-    this.rotSeek(J.days.length - 1);
+    this._rotPickBar();
+    // ⛔ 先把 k 定好再切子頁籤 —— rotSwitchSub 內部會 rotSeek(_rotK),
+    //    順序反過來的話第一次載入會停在最舊那一天(見 _rotK 的註解)。
+    if (this._rotK == null || !(this._rotK <= J.days.length - 1)) this._rotK = J.days.length - 1;
+    this.rotSwitchSub(this._rotSub);
+    this.rotSeek(this._rotK);
     this._rotMembers();
+  },
+  // 📈 V74.4.9 單一板塊怎麼動(使用者:「我也想看單一個題材的時候他是怎麼作動的」)
+  //   ⛔ 三條:① 走勢是**整段 120 日**(⛔ 不隨時間軸裁掉 —— 要看得出「現在在這段的哪裡」)
+  //           ② 兩條線**各自縮放**且都標最大最小值(相對強弱是 %、資金流是億,⛔ 不可共用一把尺)
+  //           ③ 時間軸游標要畫出來 —— 那才是「這一天」跟整段的關係
+  _rotOneHtml(c) {
+    const J = this._rotData, G = this._rotSet(), o = G.grp[c];
+    if (!o) return '<div class="note">⏳ 選一個板塊。</div>';
+    const k = this._rotK ?? (J.days.length - 1);
+    const W = 320, H = 150, PL = 32, PR = 34, PT = 10, PB = 16;
+    const N = J.days.length;
+    const line = (arr, col, right) => {
+      const vs = arr.map(v => (v == null ? null : v));
+      const ok = vs.filter(v => v != null);
+      if (ok.length < 5) return { path: '', lo: null, hi: null, col, right };
+      let lo = Math.min(...ok), hi = Math.max(...ok);
+      if (hi === lo) { hi += 1; lo -= 1; }
+      const x = i => PL + i / (N - 1) * (W - PL - PR);
+      const y = v => PT + (1 - (v - lo) / (hi - lo)) * (H - PT - PB);
+      let d = '', pen = false;
+      vs.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1) + ' '; pen = true; });
+      return { path: d, lo, hi, col, right, y, x };
+    };
+    // 資金流:近 5 日外資累計(跟卡片其他地方同一個定義)
+    const f5 = J.days.map((_, i) => {
+      const a = (o.flow || {}).f; if (!a) return null;
+      let t = 0, any = false;
+      for (let q = Math.max(0, i - 4); q <= i; q++) if (a[q] != null) { t += a[q]; any = true; }
+      return any ? t : null;
+    });
+    const L1 = line(o.r20, 'var(--amber)', false);
+    const L2 = line(f5, 'var(--cyan)', true);
+    const cx = PL + k / (N - 1) * (W - PL - PR);
+    const f2 = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(1);
+    const nowR = o.r20[k], nowF = f5[k];
+    const mem = this._grpMembers(c);
+    const coh = (this._tagCoh || {})[c];
+    return `<div class="rotdet">
+      <div class="rdhead"><b>${G.nm(c)}</b> ・${o.n} 檔 ・停在 <b>${J.days[k]}</b>
+        <span class="rdclose" onclick="PRO.rotOne(null)">✕ 換一個</span></div>
+      <div class="onechart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        ${(L1.y && L1.lo < 0 && L1.hi > 0) ? `<line x1="${PL}" y1="${L1.y(0).toFixed(1)}" x2="${W - PR}" y2="${L1.y(0).toFixed(1)}" stroke="var(--line2)" stroke-width=".6" stroke-dasharray="2 3"/>
+          <text class="onelab" x="2" y="${(L1.y(0) + 3).toFixed(1)}">0%</text>` : ''}
+        <line x1="${cx.toFixed(1)}" y1="${PT}" x2="${cx.toFixed(1)}" y2="${H - PB}" stroke="#fff" stroke-width=".8" opacity=".55" stroke-dasharray="3 3"/>
+        ${L1.path ? `<path d="${L1.path}" fill="none" stroke="${L1.col}" stroke-width="1.6"/>` : ''}
+        ${L2.path ? `<path d="${L2.path}" fill="none" stroke="${L2.col}" stroke-width="1.2" opacity=".8"/>` : ''}
+        ${L1.path ? `<circle cx="${cx.toFixed(1)}" cy="${L1.y(nowR ?? L1.lo).toFixed(1)}" r="3" fill="${L1.col}"/>` : ''}
+        <text class="onelab" x="2" y="${PT + 8}" fill="var(--amber)">${f2(L1.hi)}%</text>
+        <text class="onelab" x="2" y="${H - PB}" fill="var(--amber)">${f2(L1.lo)}%</text>
+        <text class="onelab" x="${W - 2}" y="${PT + 8}" text-anchor="end" fill="var(--cyan)">${f2(L2.hi)}億</text>
+        <text class="onelab" x="${W - 2}" y="${H - PB}" text-anchor="end" fill="var(--cyan)">${f2(L2.lo)}億</text>
+        <text class="onelab" x="${PL}" y="${H - 3}">${J.days[0]}</text>
+        <text class="onelab" x="${W - PR}" y="${H - 3}" text-anchor="end">${J.days[N - 1]}</text>
+      </svg></div>
+      <div class="note" style="margin-top:0">
+        <b style="color:var(--amber)">━ 近 ${this._ROT.win} 日相對強弱(左軸,%)</b> ・
+        <b style="color:var(--cyan)">━ 外資近 5 日買賣超(右軸,億)</b> ・虛線 = 你現在停的那一天
+      </div>
+      <div class="rdkv">
+        <div><span>這一天的強弱</span><b class="${this.cls(nowR)}">${f2(nowR)}%</b></div>
+        <div><span>這一天外資 5 日</span><b class="${this.cls(nowF)}">${f2(nowF)} 億</b></div>
+        <div><span>整段最強 / 最弱</span><b>${f2(L1.hi)}% / ${f2(L1.lo)}%</b></div>
+        <div><span>現在在整段的位置</span><b>${(L1.hi != null && nowR != null) ? ((nowR - L1.lo) / (L1.hi - L1.lo) * 100).toFixed(0) + '%' : '—'}</b></div>
+        ${coh != null ? `<div><span>成員同步程度</span><b>${coh.toFixed(2)}</b></div>` : ''}
+        <div><span>成分股</span><b>${mem.syms.length} 檔</b></div>
+      </div>
+      <div class="note">⭐ <b>怎麼用這張圖</b>:線在<b>低檔剛翹起來</b> = 剛發動;
+        線<b>已經在整段高位</b> = 追的是尾巴(上面「現在在整段的位置」就是這個意思)。
+        ⛔ 資金流那條<b>只是描述</b> —— 實測它排不出有效順序,⛔ 別拿它當進出場理由。
+        ${coh != null ? `<br>🧲 <b>成員同步程度 ${coh.toFixed(2)}</b>:越高代表這一族真的一起動、板塊判讀越有意義;
+          低於 0.2 的(如晶圓代工、網通)成員各走各的,⛔ 那種板塊的平均值參考價值很低。` : ''}
+      </div>
+      ${mem.syms.length ? `<div class="memrow" style="border:0">${mem.syms.slice(0, 40).map(sy =>
+        `<span class="memchip ${this.cls(this._scrV(sy, 'chg20'))}" onclick="PRO.gotoStock('${sy}')">${sy} ${(this._names || {})[sy] || ''}</span>`).join('')}</div>` : ''}
+    </div>`;
+  },
+  rotOne(c) {
+    this._rotOneSel = c;
+    this.rotSeek(this._rotK);
+    this.buzz(10);
   },
   // 📐 座標映射(⛔ 兩個軸的處理刻意不同,別統一)
   //   X = 相對強弱(%):線性,但**裁切**在 P95 —— 分布不偏斜,線性讀起來最直覺。
@@ -1424,6 +1619,16 @@ const PRO = {
     this._rotChips(list, N);
     this._rotDetail(k);
     this._rotFi(k);
+    // 📈 單一板塊分頁:選擇條 + 走勢(⛔ 每一拍都要重畫,游標才跟得上時間軸)
+    const ob = document.getElementById('rotOneBar');
+    if (ob) {
+      ob.innerHTML = list.map(x =>
+        `<span class="rotchip ${this.cls(x.v)} ${this._rotOneSel === x.c ? 'on' : ''}" onclick="PRO.rotOne('${x.c}')">${G.nm(x.c)} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}</span>`).join('');
+      const sel = this._rotOneSel && G.grp[this._rotOneSel] ? this._rotOneSel : null;
+      document.getElementById('rotOne').innerHTML = sel ? this._rotOneHtml(sel)
+        : `<div class="note">👆 <b>上面點一個板塊</b>,就會畫出它這 ${J.days.length} 個交易日的走勢
+           —— 看得出它是<b>剛發動</b>還是<b>已經漲很久</b>。</div>`;
+    }
   },
   // 🧬 個股泡泡圖(V74.3.9,使用者:「題材細到個股,用一樣的邏輯,還有它的股價高低」)
   //
@@ -1682,7 +1887,8 @@ const PRO = {
     if (!scr || !scr.rows) { box.innerHTML = '<div class="note">⏳ 個股清單還沒載入(screener.json)。</div>'; return; }
     const k = J.days.length - 1;
     const CAP = G.th ? 99 : 10;
-    const groups = Object.keys(G.grp).map(c => ({ c, v: (G.grp[c].r20 || [])[k] }))
+    // ☑️ 成分股頁也吃勾選(使用者:「勾出我想看的就好,其他不要顯示」)
+    const groups = this._rotVisible(Object.keys(G.grp)).map(c => ({ c, v: (G.grp[c].r20 || [])[k] }))
       .filter(x => x.v != null).sort((a, b) => b.v - a.v);
     box.innerHTML = groups.map(x => {
       let rows = this._grpMembers(x.c).syms.map(sy =>

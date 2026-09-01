@@ -5961,6 +5961,24 @@ def build_stock_tags():
 
         base = {k: _theme_series(k) for k in th_groups}
         base = {k: v for k, v in base.items() if v}
+        # 🧲 題材「內聚度」= 種子成員**兩兩之間**的平均相關。
+        #   ⭐ 這是擴散的前提:成員自己都不一起動的話,那個中位數就是雜訊,
+        #     任何「跟它很像」的比對都是假的 → 內聚度太低就**只留種子、不擴散**。
+        #   實測(2026-08-31):軍工 0.67 / 玻纖布 0.65 / 矽晶圓 0.62 / 被動元件 0.61 …
+        #     但 **晶圓代工 0.07 ・網通 0.07 ・電源 0.13** —— 那幾組本來就不同步
+        #     (晶圓代工那組有台積電,而它幾乎等於大盤本身 → 殘差近 0)。
+        #   ⛔ 內聚度要**寫進輸出**讓前端顯示,不可只在後台判斷(使用者才知道這個標籤有多可信)。
+        COH_MIN = 0.20
+        coh = {}
+        for k in base:
+            ms = [x for x in th_groups[k] if x in resid]
+            cs = []
+            for i in range(len(ms)):
+                for j in range(i + 1, len(ms)):
+                    c = _corr(resid[ms[i]], resid[ms[j]])
+                    if c is not None:
+                        cs.append(c)
+            coh[k] = round(sum(cs) / len(cs), 3) if cs else None
         if len(base) < 5:
             print(f'  ⏭️ 個股題材標籤:只有 {len(base)} 個題材算得出序列,略過(⛔ 不寫半套)')
             return
@@ -5989,7 +6007,8 @@ def build_stock_tags():
         by_stock, theme_memb = {}, {k: set(th_groups[k]) for k in base}
         for sym, cs in allc.items():
             seed = [k for k in base if sym in th_groups[k]]
-            near = [[k, c] for c, k in cs if c >= thr and k not in seed][:TOP_N]
+            near = [[k, c] for c, k in cs
+                    if c >= thr and k not in seed and (coh.get(k) or 0) >= COH_MIN][:TOP_N]
             for k, _c in near:
                 theme_memb[k].add(sym)
             if seed or near:
@@ -6012,13 +6031,17 @@ def build_stock_tags():
             'universe': len(resid),
             'names': {k: th_names.get(k, k) for k in base},
             'seed': {k: th_groups[k] for k in base},
+            'coh': coh, 'coh_min': COH_MIN,
             'by_stock': by_stock, 'lead': lead,
         }
         (_dir / 'stock_tags.json').write_text(json.dumps(
             doc, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
         n_near = sum(1 for v in by_stock.values() if v['n'])
+        _noexp = [th_names.get(k, k) for k in base if (coh.get(k) or 0) < COH_MIN]
         print(f'  🏷️ 個股題材標籤 {data_date}:母體 {len(resid)} 檔 ・門檻 {thr}(當日 P90={p90:.3f})'
               f' → {len(by_stock)} 檔有標籤(其中 {n_near} 檔是自動連動出來的)・龍頭 {len(lead)} 檔')
+        if _noexp:
+            print(f'     ⚠️ 內聚度 <{COH_MIN} 只留種子不擴散:{"・".join(_noexp)}(成員自己就不同步,擴散出來的會是雜訊)')
     except Exception as _e:
         print(f'  ⚠️ 個股題材標籤寫入失敗(不影響其他):{str(_e)[:120]}')
 

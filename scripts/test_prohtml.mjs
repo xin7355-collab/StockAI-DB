@@ -655,6 +655,85 @@ ok('㉛b 🏅 第一名要是排序分最高的(🧬 高位階+高波動,r=100)+
 const NEST = await page.evaluate(() =>
   ['tabVal', 'tabChain', 'tabRot', 'tabLab'].every(id => !!document.querySelector('.wrap #' + id)));
 ok('㉚ 四個分頁容器都要在 .wrap 裡(⛔ 在外面會吃到 80px 底部 padding = 分頁頂端一大塊空白)', NEST);
+// ㉟ 💧 板塊輪動重新設計(V74.4.9 使用者:「做得很亂…全部資料都塞在這一頁,
+//   我沒有辦法知道目前看了這些數據能做什麼事情」)
+//   ⛔ 六條釘死:
+//     ① 四個子頁籤,每一個都要有「這頁在回答什麼 + 看了能做什麼」
+//     ② 🚨 控制列必須 sticky —— 使用者原話「下面那個沒有播放條」
+//     ③ 勾選要真的過濾(泡泡數要變少),但**全部取消要退回全部**(空畫面不是篩選)
+//     ④ 尺標⛔ 不可隨勾選變(變了同一個泡泡在不同勾選下位置不同 = 圖不可比)
+//     ⑤ 單一板塊要畫得出走勢(兩條線)+ 講得出「現在在整段的位置」
+//     ⑥ 🚨 時間軸預設要停在**最新**那一天(_rotK 預設 0 會停在 120 天前,而且畫面看起來很正常)
+const ROT2 = await page.evaluate(async () => {
+    const o = {};
+    // ⚠️ 前面的 ㉒ 區塊已經拉過時間軸 → `_rotK` 會殘留。
+    //   要驗「**第一次載入**停在最新那一天」就必須先還原成剛進站的狀態(null)。
+    PRO._rotK = null;
+    PRO.switchTab('rot');
+    await PRO.renderRot();
+    await new Promise(r => setTimeout(r, 250));
+    o.subs = [...document.querySelectorAll('#rotSubBar .labbtn')].map(x => x.textContent.trim());
+    o.leadMap = document.getElementById('rotLead').innerText;
+    o.k0 = PRO._rotK; o.nDays = PRO._rotData.days.length;
+    o.day0 = document.getElementById('rotDay').textContent;
+    o.sticky = getComputedStyle(document.querySelector('.rotsticky')).position;
+    o.bubsAll = document.querySelectorAll('#rotBubs .bub').length;
+    o.scaleAll = PRO._rotMax;
+    // ③④ 勾選
+    PRO.rotPickTop(); await new Promise(r => setTimeout(r, 250));
+    o.bubsTop = document.querySelectorAll('#rotBubs .bub').length;
+    o.scaleTop = PRO._rotMax;
+    o.pickN = document.getElementById('rotPickN').textContent;
+    o.memTop = document.querySelectorAll('#rotMembers .memrow').length;
+    PRO.rotPickAll(0); await new Promise(r => setTimeout(r, 250));
+    o.bubsNone = document.querySelectorAll('#rotBubs .bub').length;   // ⛔ 全取消 → 要退回全部
+    PRO.rotPickAll(1); await new Promise(r => setTimeout(r, 250));
+    // ⑤ 單一板塊
+    PRO.rotSwitchSub('one'); await new Promise(r => setTimeout(r, 150));
+    o.leadOne = document.getElementById('rotLead').innerText;
+    o.oneEmpty = document.getElementById('rotOne').innerText;
+    const first = (document.querySelector('#rotOneBar .rotchip') || {});
+    PRO.rotOne(Object.keys(PRO._rotSet().grp)[0]); await new Promise(r => setTimeout(r, 150));
+    o.onePaths = document.querySelectorAll('#rotOne .onechart path').length;
+    o.oneTxt = document.getElementById('rotOne').innerText;
+    // 拉時間軸 → 走勢卡的「停在」要跟著變
+    PRO.rotSeek(3); await new Promise(r => setTimeout(r, 150));
+    o.oneAt3 = document.getElementById('rotOne').innerText.includes(PRO._rotData.days[3]);
+    PRO.rotSeek(PRO._rotData.days.length - 1);
+    o.panes = ['map', 'one', 'mem', 'flow'].map(k => !!document.getElementById('rotPane-' + k));
+    return o;
+});
+ok('㉟ 四個子頁籤都在(全景/單一板塊/成分股/誰在買)+ 容器都建好',
+   ROT2.subs.length === 4 && ROT2.panes.every(Boolean), ROT2.subs.join(' '));
+ok('㉟a 每個子頁籤都要說「這頁在回答什麼 + 看了能做什麼」(⛔ 只拆頁籤不解釋 = 分成四堆亂的)',
+   /這一頁回答/.test(ROT2.leadMap) && /看了能做什麼/.test(ROT2.leadMap)
+   && /這一頁回答/.test(ROT2.leadOne) && ROT2.leadOne !== ROT2.leadMap);
+ok('㉟b 🚨 控制列必須 sticky(使用者原話:下面那個沒有播放條)', ROT2.sticky === 'sticky', ROT2.sticky);
+ok('㉟c 🚨 第一次載入時間軸要停在**最新**那一天(⛔ 停在 120 天前而畫面看起來很正常)',
+   ROT2.k0 === ROT2.nDays - 1, `k=${ROT2.k0}/${ROT2.nDays - 1} day=${ROT2.day0}`);
+ok('㉟c2 🚨 `_rotK` 宣告的預設值必須是 null 不是 0 —— 0 代表「停在最舊那一天」',
+   /_rotK: null,/.test(src) && !/_rotK: 0,/.test(src));
+ok('㉟d ☑️ 勾選要真的過濾(只留 8 個 → 泡泡與成分股都要變少)',
+   ROT2.bubsTop === 8 && ROT2.bubsTop < ROT2.bubsAll && ROT2.memTop === 8 && /只看 8/.test(ROT2.pickN),
+   `bubs ${ROT2.bubsAll}→${ROT2.bubsTop} mem=${ROT2.memTop} ${ROT2.pickN}`);
+ok('㉟e ⛔ 尺標不可隨勾選變(否則同一個泡泡在不同勾選下位置不同 = 圖不可比)',
+   Math.abs(ROT2.scaleAll - ROT2.scaleTop) < 1e-9, `${ROT2.scaleAll} vs ${ROT2.scaleTop}`);
+// ⚠️ 上面那條在**測資**上抓不到(stub 的 r20 分布太均勻,篩不篩 P95 一樣)——
+//   真實資料實測 10.57 → 16.71、泡泡從 223.5px 移到 208.6px。
+//   ⭐ 所以再加一條**靜態**的:算尺標的迴圈必須走「全部板塊」而不是篩選後的 `codes`。
+ok('㉟e2 ⛔ 算尺標的迴圈要走全部板塊,⛔ 不可走篩選後的 codes(⭐ 這條才擋得住)',
+   /const mxs = \[\];[\s\S]{0,400}?for \(const c of Object\.keys\(G\.grp\)\.filter\(k => G\.grp\[k\]\.r20\.some/.test(src));
+ok('㉟f ⛔ 全部取消 → 退回全部(空畫面不是篩選,是壞掉)',
+   ROT2.bubsNone === ROT2.bubsAll, `${ROT2.bubsNone}/${ROT2.bubsAll}`);
+ok('㉟g 📈 單一板塊:沒選時要指路,選了要畫出兩條線 + 講「現在在整段的位置」',
+   /上面點一個板塊/.test(ROT2.oneEmpty) && ROT2.onePaths === 2 && /現在在整段的位置/.test(ROT2.oneTxt),
+   `paths=${ROT2.onePaths}`);
+ok('㉟h 📈 拉時間軸,走勢卡的「停在」要跟著走(⛔ 不跟 = 游標是假的)', ROT2.oneAt3);
+ok('㉟i ⛔ 單一板塊只描述不下指令(資金流那條要標明排不出順序)',
+   !/買進|進場|停損|目標價/.test(ROT2.oneTxt) && /只是描述/.test(ROT2.oneTxt),
+   (ROT2.oneTxt.match(/[^。\n]{0,10}(買進|進場|停損|目標價)[^。\n]{0,10}/g) || []).join('|'));
+
+
 await browser.close();
 
 // ③ 數學
@@ -854,8 +933,13 @@ ok('㉘e 🚨 必須寫「選股條件不是買進訊號」+ 回測還配了哪�
 ok('㉘f ⚠️ 要誠實說波動是用「20 日振幅」代理、門檻是全市場 P60(⛔ 不可假裝跟回測用同一個量)',
    /振幅.{0,8}代理|代理.{0,20}振幅/.test(T.sbTxt) && /P60/.test(T.sbTxt), T.sbTxt.slice(-260));
 // ㉙ ②③④ 板塊輪動三修(V74.4.2,使用者:「不知道個股有誰 / 資金走向叫回來 / 按下去沒差異」)
-ok('㉙ ② 成員名單總覽:預設打開 + 至少一列 + 點個股可跳散戶救星',
-   /id="rotMemWrap" open/.test(src) && T.memRows >= 1 && T.memGoto, `rows=${T.memRows} goto=${T.memGoto}`);
+// ⚠️ V74.4.9 成員名單從「預設打開的 <details>」升級成**獨立子頁籤**(rotPane-mem)——
+//   原本釘的是 `id="rotMemWrap" open`,那條的**用意**是「⛔ 不可收起來(收起來等於沒做)」;
+//   現在它自己就是一頁,更符合那個用意。⛔ 但不可放進 <details> 收合。
+ok('㉙ ② 成員名單:獨立子頁籤(⛔ 不可收合)+ 至少一列 + 點個股可跳散戶救星',
+   /<div id="rotPane-mem"[^>]*><div id="rotMembers">/.test(src)
+   && !/<details[^>]*>\s*<summary[^>]*>[^<]*<\/summary><div id="rotMembers">/.test(src)
+   && T.memRows >= 1 && T.memGoto, `rows=${T.memRows} goto=${T.memGoto}`);
 ok('㉙b ② 成員 chip 要有股名(⛔ 不可只有代號)', /2408 南亞科/.test(T.memTxt), T.memTxt.slice(0, 80));
 ok('㉙c ③ 資金走向欄:明細表每檔一格 sparkline + 累計「張」',
    T.flowCells >= 2 && T.flowSpark > 5 && T.flowCum, `cells=${T.flowCells} rects=${T.flowSpark} cum=${T.flowCum}`);
@@ -917,5 +1001,6 @@ ok('㉔j ⛔ 整頁不可下買賣指令、不可給買賣價位(這是研究紀
 ok('⑩ 載入無 pageerror', errs.length === 0, errs.join(' | '));
 
 console.log();
+
 console.log(fails.length ? `❌ ${fails.length} 條失敗` : '✅ PROHTML_PASS(全部通過)');
 process.exit(fails.length ? 1 : 0);
