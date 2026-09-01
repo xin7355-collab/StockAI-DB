@@ -137,10 +137,28 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 /* ⛔ 固定高度 —— 播放時內容每格都變,不固定就會推動下面。
    ⚠️ V74.4.6 把 .note 從 10px 拉到 11.5px 之後實測 78.2px → 這裡要跟著調高(測試 ㉒d2b 會擋)。*/
 .rotverdict{min-height:86px}
-/* 📌 V74.4.9 控制列 sticky:四個子頁籤共用同一條時間軸,捲到哪裡都看得到
-   (使用者:「下面那個沒有播放條」)。⛔ 背景要不透明,否則捲過去會透出下面的字。 */
-.rotsticky{position:sticky;top:0;z-index:6;background:var(--panel);
+/* 📌 控制列 sticky:四個子頁籤共用同一條時間軸,捲到哪裡都看得到。
+   🚨🚨 V74.1.2 使用者:「為何沒有 ▶︎ 播放輪動」—— 真因是 **top:0 讓它黏到 header 底下**:
+   `.topbar` 也是 sticky、`top:0`、`z-index:50`,實測它的下緣在 **166px**,
+   而控制列黏在 **0px** → 整條藏在 header 後面,捲下去就永遠看不到播放鈕。
+   ⛔ **sticky 元素的 top 一定要扣掉上面那層 sticky 的高度**;高度會隨安全區/換行變,
+   所以用 JS 量出來寫進 `--hdr`(見 `_syncHdrVar`),⛔ 不可寫死一個 px。 */
+.rotsticky{position:sticky;top:var(--hdr,0px);z-index:6;background:var(--panel);
   padding:8px 0 6px;border-bottom:1px solid var(--line);margin-bottom:2px}
+/* 📄 V74.1.2 板塊明細改成**兩段式**(使用者:「頁面都卡在同一頁,我要用分頁方式呈現獨立題材板塊」):
+   沒選 = 清單頁;選了 = 那一個板塊自己的頁(清單收起來 + 返回鈕 + 它自己的播放鈕)。 */
+/* 📌 返回/翻頁/播放 也要 sticky —— 捲到走勢圖下面時還看得到「← 全部板塊」與播放鈕
+   (⛔ 不然又變成「找不到播放鈕」的老問題)。top = header + 控制列,兩個都是量出來的。 */
+.detbar{display:flex;align-items:center;gap:8px;margin:0 0 4px;flex-wrap:wrap;
+  position:sticky;top:calc(var(--hdr,0px) + var(--ctlh,56px));z-index:5;
+  background:var(--panel);padding:6px 0}
+.detbar .nm{font-size:15px;font-weight:900;color:var(--txt);flex:1;min-width:0}
+.backbtn{border:1px solid var(--cyan);background:rgba(34,211,238,.10);color:var(--cyan);
+  font-size:12px;font-weight:700;padding:0 12px;border-radius:99px;cursor:pointer;
+  min-height:44px;display:inline-flex;align-items:center;white-space:nowrap}
+.stepbtn{border:1px solid var(--line2);background:var(--panel2);color:var(--sub);
+  font-size:14px;padding:0 12px;border-radius:99px;cursor:pointer;
+  min-height:44px;display:inline-flex;align-items:center}
 /* 📈 單一板塊走勢圖 */
 .onechart{width:100%;background:var(--panel2);border:1px solid var(--line2);border-radius:9px;margin:8px 0 4px}
 .onechart svg{width:100%;height:auto;display:block}
@@ -449,13 +467,26 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <!-- ② 📋 板塊明細:選一個 → 走勢圖 + 數字 + 成分股表(⭐ 舊版是「單一板塊」與「成分股」
          兩頁,使用者版面圖把它們合成一頁 —— 選了之後本來就要一起看,分兩頁反而要來回切) -->
     <div id="rotPane-det" class="hidden">
-      <div class="rotsel">
-        <input id="rotFind" class="rotfind" type="search" placeholder="🔎 找板塊(打字過濾)" oninput="PRO.rotFind(this.value)">
-        <span class="rotday" id="rotDetN"></span>
+      <!-- 📄 清單頁(沒選板塊時) -->
+      <div id="rotDetList">
+        <div class="rotsel">
+          <input id="rotFind" class="rotfind" type="search" placeholder="🔎 找板塊(打字過濾)" oninput="PRO.rotFind(this.value)">
+          <span class="rotday" id="rotDetN"></span>
+        </div>
+        <div class="rotlist noscb" id="rotOneBar"></div>
+        <details id="rotMemWrap2"><summary class="rotmore">📇 所有板塊的成分股一覽</summary><div id="rotMembers"></div></details>
       </div>
-      <div class="rotlist noscb" id="rotOneBar"></div>
-      <div id="rotOne"></div>
-      <details id="rotMemWrap2"><summary class="rotmore">📇 所有板塊的成分股一覽</summary><div id="rotMembers"></div></details>
+      <!-- 📄 單一板塊自己的頁(選了板塊時)—— ⭐ 它有**自己的播放鈕**,
+           使用者:「為何沒有題材板塊獨立的 ▶︎ 播放輪動」 -->
+      <div id="rotDetOne" class="hidden">
+        <div class="detbar">
+          <button class="backbtn" onclick="PRO.rotOne(null)">← 全部板塊</button>
+          <button class="stepbtn" onclick="PRO.rotStep(-1)" title="上一個板塊">◀</button>
+          <button class="stepbtn" onclick="PRO.rotStep(1)" title="下一個板塊">▶</button>
+          <button class="lbtn" data-rotplay onclick="PRO.rotPlay()">▶︎ 播放這個板塊</button>
+        </div>
+        <div id="rotOne"></div>
+      </div>
     </div>
     <!-- ③ 💰 法人籌碼 -->
     <div id="rotPane-flow" class="hidden">
@@ -724,6 +755,7 @@ const PRO = {
 
   TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['sig', 'Sig'], ['calc', 'Calc'], ['lab', 'Lab']],
   switchTab(t, silent) {
+    this._syncHdrVar();          // 分頁列會換行 → header 高度會變 → sticky 的 top 要跟著改
     this._tab = t;
     for (const [k, C] of this.TABS) {
       document.getElementById('tab' + C).classList.toggle('hidden', t !== k);
@@ -1642,8 +1674,41 @@ const PRO = {
   },
   rotOne(c) {
     this._rotOneSel = c;
+    // 📄 兩段式:選了 → 進那個板塊自己的頁;按返回 → 回清單頁
+    const L = document.getElementById('rotDetList'), O = document.getElementById('rotDetOne');
+    if (L && O) { L.classList.toggle('hidden', !!c); O.classList.toggle('hidden', !c); }
+    if (c) { window.scrollTo({ top: 0, behavior: 'instant' }); this._syncHdrVar(); }   // ⛔ 進新頁要回頂端,不然停在半路
     this.rotSeek(this._rotK);
     this.buzz(10);
+  },
+  // ◀▶ 在板塊之間翻頁(⭐ 不用回清單再點一次)—— 依「目前排名」的順序走
+  rotStep(d) {
+    const list = this._rotList || [];
+    if (!list.length) return;
+    const i = list.findIndex(x => x.c === this._rotOneSel);
+    const n = list.length;
+    this.rotOne(list[((i < 0 ? 0 : i + d) % n + n) % n].c);
+  },
+  // 🚨 V74.1.2 sticky 的 top 必須扣掉 header 高度,否則整條藏在 header 後面
+  //   (使用者:「為何沒有 ▶︎ 播放輪動」)。⛔ 不可寫死 px —— 安全區/換行都會改變它。
+  _syncHdrVar() {
+    const h = document.querySelector('.topbar');
+    if (h) {
+      const px = Math.round(h.getBoundingClientRect().height);
+      if (px && px !== this._hdrPx) {
+        this._hdrPx = px;
+        document.documentElement.style.setProperty('--hdr', px + 'px');
+      }
+    }
+    // 控制列自己的高度 → 給第二層 sticky(板塊頁的返回/播放列)當偏移
+    const c = document.querySelector('.rotsticky');
+    if (c && !c.classList.contains('hidden')) {
+      const px2 = Math.round(c.getBoundingClientRect().height);
+      if (px2 && px2 !== this._ctlPx) {
+        this._ctlPx = px2;
+        document.documentElement.style.setProperty('--ctlh', px2 + 'px');
+      }
+    }
   },
   // 📐 座標映射(⛔ 兩個軸的處理刻意不同,別統一)
   //   X = 相對強弱(%):線性,但**裁切**在 P95 —— 分布不偏斜,線性讀起來最直覺。
@@ -2171,11 +2236,20 @@ const PRO = {
       </div>`;
     this._fillStockFlows();
   },
+  // ⚠️ 播放鈕現在有**兩顆**(頂端控制列 + 單一板塊頁自己那顆)——
+  //   ⛔ 兩顆共用同一個 timer,標籤一定要一起更新,否則會出現「一顆寫播放一顆寫暫停」。
+  _rotPlayLbl(on) {
+    const b = document.getElementById('rotPlay');
+    if (b) b.textContent = on ? '⏸ 暫停' : '▶︎ 播放輪動';
+    document.querySelectorAll('[data-rotplay]').forEach(e => {
+      e.textContent = on ? '⏸ 暫停' : '▶︎ 播放這個板塊';
+    });
+  },
   rotPlay() {
     if (this._rotTimer) return this.rotStop();
     const J = this._rotData; if (!J) return;
     if (this._rotK >= J.days.length - 1) this.rotSeek(0);
-    document.getElementById('rotPlay').textContent = '⏸ 暫停';
+    this._rotPlayLbl(true);
     this._rotTimer = setInterval(() => {
       if (this._rotK >= J.days.length - 1) return this.rotStop();
       this.rotSeek(this._rotK + 1);
@@ -2183,8 +2257,7 @@ const PRO = {
   },
   rotStop() {
     if (this._rotTimer) { clearInterval(this._rotTimer); this._rotTimer = null; }
-    const b = document.getElementById('rotPlay');
-    if (b) b.textContent = '▶︎ 播放輪動';
+    this._rotPlayLbl(false);
   },
   _rotNoteHtml() {
     const R = this._ROT;
@@ -2819,6 +2892,10 @@ ${M.news || '(無)'}
       '<span style="font-size:10px;color:var(--dim2);align-self:center">快選:</span>' +
       this.PRESETS.map((p, i) => `<span class="preset" onclick="PRO.usePreset(${i})">${p.n}</span>`).join('');
     this._initGestures();
+    // 🚨 sticky 控制列的 top 要扣掉 header 高度 —— 轉向/換行都會改變它,所以綁 resize
+    this._syncHdrVar();
+    addEventListener('resize', () => this._syncHdrVar());
+    addEventListener('orientationchange', () => setTimeout(() => this._syncHdrVar(), 250));
     this.loadNames().catch(() => {});
     await this._restoreNav();
   },

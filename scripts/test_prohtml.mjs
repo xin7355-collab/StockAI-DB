@@ -726,6 +726,39 @@ const ROT2 = await page.evaluate(async () => {
     // 44px 觸控目標
     const btn = document.querySelector('#rotSubBar .labbtn');
     o.tapH = btn ? btn.getBoundingClientRect().height : 0;
+    // ㊲ V74.1.2 板塊明細兩段式 + sticky 偏移(使用者:「為何沒有 ▶︎ 播放輪動」「卡在同一頁」)
+    PRO.rotSwitchSub('det');
+    PRO.rotOne(null);            // ⚠️ 前面的 ㉟ 已經選過板塊 → 先回到「沒選」的起始狀態
+    await new Promise(r => setTimeout(r, 120));
+    o.listShown0 = !document.getElementById('rotDetList').classList.contains('hidden');
+    o.oneShown0 = !document.getElementById('rotDetOne').classList.contains('hidden');
+    PRO.rotOne(Object.keys(PRO._rotSet().grp)[0]); await new Promise(r => setTimeout(r, 150));
+    o.listShown1 = !document.getElementById('rotDetList').classList.contains('hidden');
+    o.oneShown1 = !document.getElementById('rotDetOne').classList.contains('hidden');
+    o.ownPlay = (document.querySelector('[data-rotplay]') || {}).textContent || '';
+    // 🚨 sticky 偏移:控制列與返回列都不可被 header 蓋住
+    window.scrollTo(0, 600); await new Promise(r => setTimeout(r, 200));
+    const hb = document.querySelector('.topbar').getBoundingClientRect().bottom;
+    const cb = document.querySelector('.rotsticky').getBoundingClientRect();
+    const bb = document.querySelector('.backbtn').getBoundingClientRect();
+    o.ctlUnderHdr = cb.top < hb - 1;
+    o.backUnderCtl = bb.top < cb.bottom - 1;
+    o.hdrVar = getComputedStyle(document.documentElement).getPropertyValue('--hdr');
+    window.scrollTo(0, 0);
+    // 兩顆播放鈕標籤要同步
+    PRO.rotPlay();
+    o.playSync = [document.getElementById('rotPlay').textContent,
+                  document.querySelector('[data-rotplay]').textContent];
+    PRO.rotStop();
+    o.stopSync = [document.getElementById('rotPlay').textContent,
+                  document.querySelector('[data-rotplay]').textContent];
+    // ◀▶ 翻頁
+    const before = PRO._rotOneSel; PRO.rotStep(1);
+    o.stepped = PRO._rotOneSel !== before && !!PRO._rotOneSel;
+    PRO.rotOne(null); await new Promise(r => setTimeout(r, 120));
+    o.backToList = !document.getElementById('rotDetList').classList.contains('hidden')
+                && document.getElementById('rotDetOne').classList.contains('hidden');
+    PRO.rotSwitchSub('map'); await new Promise(r => setTimeout(r, 120));
     o.panes = ['map', 'det', 'flow', 'doc'].map(k => !!document.getElementById('rotPane-' + k));
     return o;
 });
@@ -781,6 +814,26 @@ ok('㊱g 🙈 橫向捲動容器要藏捲軸(仍可捲,只是不佔版面)',
    /\.noscb::-webkit-scrollbar\{display:none\}/.test(src) && /class="rotlist noscb"/.test(src));
 ok('㊱h ⭐ 法人籌碼的條要有 transition(⛔ 沒有的話「資金移動」看不出來)',
    /\.fbar b\{[^}]*transition:width/.test(src));
+// ㊲ V74.1.2 使用者:「為何沒有題材板塊獨立的 ▶︎ 播放輪動」「頁面都卡在同一頁,
+//   我要用分頁方式呈現獨立題材板塊」
+ok('㊲ 🚨🚨 sticky 控制列⛔ 不可被 header 蓋住 —— 這就是「找不到播放鈕」的真因',
+   ROT2.ctlUnderHdr === false && /^\d+px$/.test(ROT2.hdrVar.trim()),
+   `ctlUnderHdr=${ROT2.ctlUnderHdr} --hdr=${ROT2.hdrVar}`);
+ok('㊲a 🚨 sticky 的 top ⛔ 不可寫死 px —— 要用量出來的 --hdr(安全區/換行都會改變它)',
+   /\.rotsticky\{position:sticky;top:var\(--hdr/.test(src) && /_syncHdrVar\(\)/.test(src));
+ok('㊲b 📄 兩段式:沒選 = 清單頁、選了 = 那個板塊自己的頁(⛔ 不是塞在同一頁往下長)',
+   ROT2.listShown0 && !ROT2.oneShown0 && !ROT2.listShown1 && ROT2.oneShown1,
+   `list ${ROT2.listShown0}→${ROT2.listShown1} / one ${ROT2.oneShown0}→${ROT2.oneShown1}`);
+ok('㊲c ▶︎ 板塊自己那一頁要有**自己的播放鈕**', /播放這個板塊/.test(ROT2.ownPlay), ROT2.ownPlay);
+ok('㊲d ⛔ 兩顆播放鈕共用同一個 timer → 標籤必須一起變(不可一顆播放一顆暫停)',
+   ROT2.playSync[0] === '⏸ 暫停' && ROT2.playSync[1] === '⏸ 暫停'
+   && /播放/.test(ROT2.stopSync[0]) && /播放/.test(ROT2.stopSync[1]),
+   JSON.stringify([ROT2.playSync, ROT2.stopSync]));
+ok('㊲e 📌 返回/播放那一列也要 sticky,⛔ 不可捲走(不然又變成找不到播放鈕)',
+   ROT2.backUnderCtl === false && /\.detbar\{[^}]*position:sticky/.test(src),
+   `backUnderCtl=${ROT2.backUnderCtl}`);
+ok('㊲f ◀▶ 可以直接翻到下一個板塊(⛔ 不用回清單再點一次)', ROT2.stepped);
+ok('㊲g ← 全部板塊 要回得去清單頁', ROT2.backToList);
 
 
 await browser.close();
