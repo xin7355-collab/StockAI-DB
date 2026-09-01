@@ -893,6 +893,11 @@ ok('㊲h2 🧹 長說明一律**預設收起**(⛔ 加了 open 等於沒折疊 �
    && (src.match(/<details class="sbnote"/g) || []).length >= 1);
 ok('㊲i 🧹 長說明要**真的搬到**「策略與回測」那一頁(⛔ 不是刪掉 = 使用者查不到為什麼)',
    ROT2.paneLen.doc >= 800, ROT2.paneLen.doc);
+// 📐 V74.1.3 設計補強(同 V74.3.7 的教訓:只有兩條軸線的話,泡泡的位置根本不可解讀)
+ok('㊲j 🎨 泡泡圖要有圖例:顏色 / 大小 / 右上角那框各代表什麼',
+   /泡泡越大 = 成交金額越大/.test(src) && /高位階 \+ 高波動/.test(src));
+ok('㊲k ⏭ 拉去看過去之後要有「回到最新」鈕(⛔ 手機上滑桿很難拖回最右邊)',
+   /id="rotNow"/.test(src) && /PRO\.rotSeek\(1e9\)/.test(src));
 
 
 await browser.close();
@@ -989,7 +994,9 @@ ok('㉑e 回五級要取消篩選 + 捲回去', J.backRows === J.allRows && J.ba
 ok('㉑f ⛔ 表格不可有橡皮筋回彈(overscroll-behavior:none)', S.overscroll === 'none', S.overscroll);
 // ㉒ 💧 板塊輪動:四象限泡泡
 ok('㉒ 泡泡有畫出來,⛔ 全空的產業不佔一顆', T.nBub === 4 && !T.hasEmpty, T.nBub);
-ok('㉒b 預設停在最新那天', T.lastDay === '2026-08-29', T.lastDay);
+// ⭐ V74.1.3 起停在最新那天會加註「(最新)」—— 拉去看過去時才分得出來
+ok('㉒b 預設停在最新那天,而且要標出來(⛔ 只有日期的話看不出自己是不是在最新)',
+   T.lastDay === '2026-08-29(最新)', T.lastDay);
 ok('㉒c 最新那天 航運(+8)在右、半導體(−9)在左', T.p15 && T.p24 && T.p15.x > T.p24.x, [T.p15, T.p24]);
 ok('㉒d 🚧 動畫是真的:拉回第 0 天左右要對調(半導體 +8 變最右)', T.p24_day0.x > T.p15_day0.x, [T.p24_day0, T.p15_day0, T.day0]);
 ok('㉒d2 🚨🚨 版面穩定:拉時間軸時結論條高度與圖的位置**不可以變**(使用者回報「上上下下」)',

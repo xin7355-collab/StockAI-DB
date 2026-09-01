@@ -449,6 +449,8 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
       <button class="lbtn" id="rotSpd" onclick="PRO.rotCycleSpeed()" title="播放速度">1x</button>
       <input type="range" id="rotSlider" min="0" max="0" value="0" oninput="PRO.rotSeek(+this.value)">
       <span class="rotday" id="rotDay">—</span>
+      <!-- ⏭ 拉去看過去之後,⛔ 不該要求使用者把滑桿再拖回最右邊(手機上很難拖準) -->
+      <button class="lbtn" id="rotNow" onclick="PRO.rotSeek(1e9)" style="display:none">⏭ 回到最新</button>
     </div>
     <div class="labbar" id="rotSubBar"></div>
     <!-- ☑️ 勾選:使用者「我想勾選的方式勾出我想看的東西就好,其他不要顯示」。
@@ -1829,7 +1831,10 @@ const PRO = {
     k = Math.max(0, Math.min(k, J.days.length - 1));
     this._rotK = k;
     document.getElementById('rotSlider').value = String(k);
-    document.getElementById('rotDay').textContent = J.days[k];
+    const atNew = k === J.days.length - 1;
+    document.getElementById('rotDay').textContent = J.days[k] + (atNew ? '(最新)' : '');
+    const nb = document.getElementById('rotNow');
+    if (nb) nb.style.display = atNew ? 'none' : '';
     const W = this.QW, H = this.QH, P = this.QPAD;
     const G = this._rotSet();
     const list = Object.keys(this._rotBub)
@@ -1995,7 +2000,11 @@ const PRO = {
       <text class="qtick" x="${W - R}" y="${H - 6}" text-anchor="end">100(貴/強)</text>
       <text class="qtick" x="2" y="${T + 8}">振幅</text>
      </svg></div>
-     <div class="note" id="sbHit" style="margin:-2px 0 4px"></div>
+     <div class="note" style="margin:-2px 0 2px;color:var(--dim2)">
+       <span style="color:var(--up)">紅</span> = 近 ${this._ROT.win} 日上漲 ・<span style="color:var(--dn)">綠</span> = 下跌
+       ・<b>泡泡越大 = 成交金額越大</b>
+       ・右上角虛線框 = 🧬 高位階 + 高波動 ・點泡泡跳散戶救星</div>
+     <div class="note" id="sbHit" style="margin:0 0 4px"></div>
      <details class="sbnote"><summary class="rotmore">這兩個軸憑什麼?(實測數字)</summary>
        <div class="note" style="margin-top:4px">
        ⭐ <b>兩個軸都是實測有效的</b>(⛔ 刻意不用板塊版那個「誰在買」——
