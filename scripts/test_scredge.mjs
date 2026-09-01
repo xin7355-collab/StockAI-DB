@@ -160,9 +160,18 @@ ok('⑨a 🚧 空過守門:衰退提示真的渲染', decay.line.length > 80, de
 ok('⑨b 🚨 總結裡一定要含衰退提示(⛔ 不可只藏在教學裡)',
     decay.note.includes(decay.line.trim().slice(0, 40)) || /優勢正在變小/.test(decay.note),
     decay.note.slice(-300));
-ok('⑨c 🚨 要明說徽章是「3 年平均」', /3 年平均/.test(decay.line));
+// ⚠️ V74.2.8:窗口補深到 2021 之後是**五年** → ⛔ 不可寫死「3 年」;
+//    斷言改成釘「有講平均幾年」而且**年數要跟 decay.yrs 的長度一致**(⛔ 兩邊對不上比沒寫更糟)。
+ok('⑨c 🚨 要明說徽章是「N 年平均」,而且 N 要跟逐年明細的年數一致',
+   new RegExp(`${(decay.D.yrs || []).length} 年平均`).test(decay.line), `yrs=${(decay.D.yrs || []).length} / ${decay.line.slice(0, 120)}`);
+// 🚨 ⑨c 那條是「兩邊都從 D.yrs.length 推」→ 天然是套套邏輯(注入驗證當場抓到:
+//    把 yrs 砍成三年照樣綠)。真正要釘的是**年份標籤數 == 逐年數字的個數** ——
+//    對不上就代表重跑之後只改了一半(⛔ 那會讓畫面少印或多印一年,而且不會報錯)。
+ok('⑨c2 🚨 yrs 的年數要等於 eg 每一列的數字個數(⛔ 只改一半會靜默出錯)',
+   (decay.D.eg || []).every(e => e.length - 1 === (decay.D.yrs || []).length),
+   JSON.stringify({ yrs: (decay.D.yrs || []).length, eg: (decay.D.eg || []).map(e => e.length - 1) }));
 ok('⑨d 數字現算自 _SCR_EDGE.decay(⛔ 不可寫死第二份)',
-    decay.line.includes(String(decay.D.worst26)) && decay.line.includes(decay.D.yrs[2])
+    decay.line.includes(String(decay.D.worst26)) && decay.line.includes(decay.D.yrs[decay.D.yrs.length - 1])
     && decay.line.includes(decay.D.eg[0][0]), decay.line.slice(0, 200));
 ok('⑨e ⛔ 衰退提示不可用紅綠', !/text-(red|green)-\d/.test(decay.line));
 const fakeD = await page.evaluate(() => {
