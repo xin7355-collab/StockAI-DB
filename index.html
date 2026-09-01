@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.2.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.2.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.2 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.3 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1728,12 +1728,26 @@
             <!-- 籌碼全面追蹤（三大法人 + 主力分點合併）-->
             <div id="subContentChip" class="hidden flex-col gap-3 mt-2 px-2 md:px-4">
 
-                <!-- 🐘 V69.4.1 籌碼綜合評分卡 hoist 到最上方(always visible,不再埋在「籌碼進出」分頁)→ 一開籌碼頁先看一個總結分,再往下看細節 -->
-                <div id="chipVerdictCard" class="hidden"></div>
-                <!-- 🔮 V69.8.2 明日劇本(籌碼面)移到主籌碼頁(使用者要求:大戶籌碼總結下方);由分點資料載入後填入 -->
-                <div id="chipScenarioSlot" class="hidden mt-2"></div>
-                <!-- 🧹 V69.5.9 籌碼乾淨度(量條看「亂不亂」;與上方方向卡不同軸,純公式勝率加分項)-->
-                <div id="chipCleanCard" class="hidden"></div>
+                <!-- 🧭 V74.2.3 籌碼頁改用「總覽邏輯」(使用者:「依照之前邏輯做籌碼頁面」):
+                     實測(card_inventory)這頁攤開 **2,538 字**,是全 App 最重的一頁 ——
+                     光主結論卡就 1,489 字、明日劇本 613 字。⭐ 第一眼只留「結論 + 評分 + 一句操作 +
+                     其他指標怎麼說 + 風險」,完整卡片收進「📖 更多解讀」(⛔ 一張卡、一個字都沒刪)。
+                     ⚠️ 頁首由 `renderChipVerdict` **同步**渲染(同一批變數 → ⛔ 不產生第二份真相)。 -->
+                <div id="chipLead" class="hidden"></div>
+                <details id="chipMoreWrap" class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
+                    <summary class="cursor-pointer select-none px-3 py-2.5 text-[12px] font-bold text-gray-300 flex items-center justify-between">
+                        <span>📖 更多解讀 <span class="text-[9px] text-gray-500 font-normal">法人明細・實測成績・明日劇本・乾淨度</span></span>
+                        <span class="text-[9px] text-gray-500 font-normal">結論以上面那張為準 ▾</span>
+                    </summary>
+                    <div class="flex flex-col gap-2 px-2 pb-2">
+                        <!-- 🐘 V69.4.1 籌碼綜合評分卡(V74.2.3 移進摺疊;頁首已有它的結論摘要) -->
+                        <div id="chipVerdictCard" class="hidden"></div>
+                        <!-- 🔮 V69.8.2 明日劇本(籌碼面);方向已收斂進頁首的「其他籌碼指標怎麼說」 -->
+                        <div id="chipScenarioSlot" class="hidden mt-2"></div>
+                        <!-- 🧹 V69.5.9 籌碼乾淨度(量條看「亂不亂」;與上方方向卡不同軸,純公式勝率加分項)-->
+                        <div id="chipCleanCard" class="hidden"></div>
+                    </div>
+                </details>
 
                 <!-- 🕵️ V68.2.9 籌碼頁三分頁:券商分點 / 籌碼進出 / 籌碼分佈 -->
                 <div class="flex gap-1.5 sticky top-0 z-20 bg-[#0d1117]/95 backdrop-blur py-1.5">
@@ -7418,8 +7432,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.2.2',
+    _APP_VERSION: 'V74.2.3',
     _CHANGELOG: [
+        { v: 'V74.2.3', dt: '2026-09-01', d: ['籌碼頁也改成總覽的版面邏輯:第一眼只留「大戶結論 + 綜合評分 + 一句操作 + 其他籌碼指標怎麼說」,法人明細/實測成績/明日劇本/乾淨度收進「📖 更多解讀」(一張卡、一個字都沒刪)', '實測第一眼要讀的字數從 2,538 降到 864(這頁本來是全 App 最重的)', '🚨 融資追繳風險改露在頁首:它原本埋在「籌碼進出」分頁的兩層收合裡,等於看不到 —— 風險類永遠不收'] },
         { v: 'V74.2.2', dt: '2026-09-01', d: ['K線頁改用總覽的版面邏輯:第一眼只留「一句話結論 + K線圖」,朱老師總評/六脈共振/K棒戰法收進「📖 更多解讀」摺疊(一張卡、一個字都沒刪,點開就有)', '風險提醒不因摺疊而消失:頁首會直接列出風險的標題;六脈亮「強共振」(唯一實測六關全過的複合訊號)時頁首也會露一行', '權值股超跌告警維持在摺疊外(告警類永遠不收)'] },
         { v: 'V74.2.1', dt: '2026-09-01', d: ['刪除的收尾:功能總覽不再列出已刪的「盤中連量偵測」、已刪卡片的教學條目一併移除(⛔ 說明書不可介紹一個不存在的功能)'] },
         { v: 'V74.2.0', dt: '2026-09-01', d: ['雜訊清洗收尾:沒用的直接刪除 —— 4 個實測沒用的功能整段移除(隔日沖勝率回測、法人推估成本卡、5日訊號準確度排行、盤中連量偵測)', '刪之前把最後一個懸念驗掉:隔日沖全市場重驗(2,329 檔)——「隔天盤中碰到 +1.5%」機率 58~72% 是真的,但照做得到的方式出場、扣掉當沖成本後三種型態全部是負的 → 碰得到不等於賺得到', '當沖作戰室解除收起:剩下的內容(期貨夜盤、正逆價差、隔日沖風險判讀)是誠實描述,留著', '每一筆刪除的依據都記在產業作戰室的實測總表'] },
@@ -12826,11 +12841,13 @@ const marginByDate = {};
         const box = document.getElementById('chipVerdictCard');
         if (!box) return;
         const arr = this.rawDailyData || [];
-        if (!sym || !Array.isArray(arr) || arr.length < 5) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        // 🧭 V74.2.3 卡片收掉時頁首也要收(⛔ 不可殘留上一檔的結論)
+        const _leadOff = () => { const l = document.getElementById('chipLead'); if (l) { l.classList.add('hidden'); l.innerHTML = ''; } };
+        if (!sym || !Array.isArray(arr) || arr.length < 5) { box.classList.add('hidden'); box.innerHTML = ''; _leadOff(); return; }
         try {
             const ps = {}; [1, 3, 5, 10].forEach(n => ps[n] = this._chipPeriodSums(arr, n));
             // 🆓 V66.0 免費資料實況:法人(rawDailyData)是核心錨,撈不到就整卡隱藏(不顯「無資料」噪音);融資券/分點缺就略過那一維,不判斷
-            if (!ps[10].hasInst) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            if (!ps[10].hasInst) { box.classList.add('hidden'); box.innerHTML = ''; _leadOff(); return; }
             const sgn = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
             // 連續方向(從每日 foreign_net / trust_net 反推,0 值當中斷但不算反向)
             const streak = (getter) => {
@@ -13008,11 +13025,65 @@ const marginByDate = {};
                 <div class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[12px] text-gray-100 leading-relaxed"><b class="${bigCls}">💡 操作:</b>${act}</div>
                 <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📊 純公式綜合:外資/投信/自營買賣超 + 連續方向 + 融資券 + 主力分點 + 法人反轉 + 投信做帳 + 借券空方,零 AI 零額度;籌碼為輔,進出以 K 線為主。</div>`;
             box.classList.remove('hidden');
-        } catch (e) { console.warn('[chipVerdict]', e); box.classList.add('hidden'); }
+            // 🧭 V74.2.3 籌碼頁「總覽邏輯」頁首(#chipLead):用**同一批變數**組(⛔ 不重算 = 不產生第二份真相)。
+            //   第一眼只給:大字結論 + 評分 + 一句操作 + 其他指標怎麼說 + 風險;明細留在下面摺疊裡。
+            try { this._renderChipLead(sym, { big, bigCls, bcls, score100, scoreCls, scoreLbl, act, sc, dateRaw: arr[arr.length - 1]?.date, data: arr }); } catch (_) {}
+        } catch (e) { console.warn('[chipVerdict]', e); box.classList.add('hidden');
+            try { const _l = document.getElementById('chipLead'); if (_l) { _l.classList.add('hidden'); _l.innerHTML = ''; } } catch (_) {} }
         // 🧹 V69.6.8 乾淨度併入本卡(chipCleanSlot):重繪本卡會清掉 slot → 立即補渲染,確保合併卡完整
         try { this.renderChipCleanliness(sym); } catch (_) {}
         try { this._renderOvernightFootprint(sym); } catch (_) {}   // 🌙 V71.0.9 隔夜資金足跡(同 slot 模式併入本卡)
         try { this._updateChipResoViews(); } catch (_) {}   // 💼 V69.6.5 方向分算完 → 同步刷新總覽/K線的籌碼一句話
+    },
+
+    // 🧭 V74.2.3 籌碼頁頁首結論區(總覽邏輯;使用者:「依照之前邏輯做籌碼頁面」)
+    //   ⛔ 四條不可改掉的設計:
+    //     ① **只轉述,不重算** —— 大字/評分/操作那句全部由 `renderChipVerdict` 傳進來
+    //        (同一批變數 → ⛔ 不產生第二份真相,同 V72.6.0 頁首條鐵則②)。
+    //     ② 🚨 **融資追繳風險要露在頁首** —— 它原本埋在「籌碼進出」分頁 →「📊 看原始數據」摺疊 →
+    //        融資券卡裡面(**兩層收合 + 非預設分頁**),等於使用者永遠看不到(陷阱 #32)。
+    //        風險/告警類⛔ 不可只放在收合裡(多空不對稱:漏看的代價遠大於多看一眼)。
+    //     ③ 「其他籌碼指標怎麼說」(含方向分歧提醒)要在頁首 —— 那正是「不用自己比對三張卡」的重點。
+    //     ④ ⛔ 不給買賣價位、要指路總覽(單一劇本原則);細節指路下面的「📖 更多解讀」。
+    _renderChipLead(sym, o) {
+        const el = document.getElementById('chipLead');
+        if (!el) return;
+        if (!o || !o.big) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+        // 🚨 融資追繳/斷頭距離(條件觸發:安全或算不出來就整段不顯)
+        let riskHtml = '';
+        try {
+            const st = this._marginCallState?.(o.data, sym);
+            if (st && st.level !== 'safe') {
+                const M = { broken: ['⛔', 'text-red-300', '已進入融資賣壓區'],
+                            near: ['🚨', 'text-orange-300', '逼近融資追繳區'],
+                            watch: ['⚠️', 'text-yellow-300', '融資壓力區在下方不遠'] }[st.level];
+                riskHtml = `<div class="mt-1.5 text-[11px] ${M[1]} leading-snug">${M[0]} <b>${M[2]}</b>
+                    —— 推估追繳線 <b class="font-mono">${st.callLine.toFixed(2)}</b>,現價距它
+                    <b class="font-mono">${st.distPct >= 0 ? '' : ''}${st.distPct.toFixed(1)}%</b>(一張約 ${Math.round(st.perLot).toLocaleString()} 元)。
+                    <span class="text-gray-500">推估值非官方;細節在下面「更多解讀 → 看原始數據」。</span></div>`;
+            }
+        } catch (_) {}
+        const cons = (() => { try { return this._chipConsensusLine(sym, o.sc); } catch (_) { return ''; } })();
+        el.className = 'bg-[#161b22] border-l-4 ' + o.bcls + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg';
+        el.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <span class="text-[12px] font-black text-gray-100">🐘 大戶籌碼總結</span>
+                    <div class="mt-0.5">${this._dChip(o.dateRaw, '法人資料日')}</div>
+                    <div class="text-2xl font-black ${o.bigCls} leading-tight mt-1">${o.big}</div>
+                </div>
+                <div class="flex flex-col items-center flex-shrink-0 bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-1.5">
+                    <div class="text-[8px] text-gray-500 leading-none mb-0.5">籌碼綜合評分</div>
+                    <div class="font-mono font-black text-3xl ${o.scoreCls} leading-none">${o.score100}</div>
+                    <div class="text-[8px] text-gray-500 leading-none mt-0.5">/100</div>
+                    <div class="text-[10px] font-black ${o.scoreCls} mt-0.5">${o.scoreLbl}</div>
+                </div>
+            </div>
+            <div class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[12px] text-gray-100 leading-relaxed"><b class="${o.bigCls}">💡 操作:</b>${o.act}</div>
+            ${riskHtml}
+            ${cons}
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📊 純公式、零 AI。法人明細/實測成績/明日劇本/乾淨度在下面「📖 更多解讀」;<b class="text-gray-500">要買要賣的價位以總覽「現在怎麼做」為準</b>(籌碼為輔,進出以 K 線為主)。</div>`;
+        el.classList.remove('hidden');
     },
 
     // 🧭 V72.1.5 籌碼頁「其他指標怎麼說」—— 使用者:「多張卡自己講自己的,不知道看哪張」。
