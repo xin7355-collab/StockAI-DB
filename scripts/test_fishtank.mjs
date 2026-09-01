@@ -24,6 +24,9 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 const src = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 const SCR = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/fixtures/screener.sample.json'), 'utf8'));
 const COR = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/fixtures/top_correlations.sample.json'), 'utf8'));
+// 🏅 實測成績表:直接用真的產物(它本來就是從 index.html 匯出的資料,不是測資)
+const EDGE = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/scr_edge.json'), 'utf8'));
+import { execFileSync } from 'child_process';
 
 const noCmt = t => t.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
                     .split('\n').filter(l => !/^\s*(\/\/|\*)/.test(l)).join('\n');
@@ -32,7 +35,8 @@ const seg = name => {
   if (i < 0) return ''; const j = src.indexOf('\n  },', i); return j < 0 ? '' : src.slice(i, j);
 };
 const FISHJS = ['_fishData', '_fishPoolRows', '_fishSchools', 'renderFish', 'fishMode', '_fishRebuild', '_fishListHtml',
-                '_fishSetup', '_fishLegend', '_fishStart', 'fishStop', '_fishTick', '_fishPick', '_fishNote'].map(seg).join('\n');
+                '_fishSetup', '_fishLegend', '_fishStart', 'fishStop', '_fishTick', '_fishPick', '_fishNote',
+                '_scrEval', '_fishScore', '_fishScoreHtml', '_catchLoad', '_catchSave', '_fishCatch', '_fishRelease', '_fishBasketRender'].map(seg).join('\n');
 ok('⓪ 魚池 14 支函式都抓得到', FISHJS.length > 5000 && seg('_fishTick').length > 300 && seg('_fishPick').length > 300, FISHJS.length);
 
 const NC = noCmt(src);
@@ -56,6 +60,19 @@ ok('⑧ 魚的顏色只表今日漲跌(紅漲綠跌)、狀態用 🚀🔥(⛔ �
    /f\.chg > 0 \? '#ff6b6b' : f\.chg < 0 \? '#4ade80'/.test(seg('_fishTick')) && !/[🔴🟢]/u.test(FISHJS));
 ok('⑨ 位階參考線 25/50/75 有畫(⛔ 沒參考線位置不可解讀)', /\[75, 50, 25\]/.test(seg('_fishTick')));
 ok('⑩ 魚數上限 100(每條都畫名字,手機的上限)', /FISH_MAX: 100/.test(src));
+// ═══ 🏅 實測體質 ═══
+let syncOk = true; try { execFileSync('node', [path.join(ROOT, 'scripts/export_scr_edge.mjs'), '--check'], { stdio: 'pipe' }); } catch (_) { syncOk = false; }
+ok('🏅 data/scr_edge.json 與 index.html 的 _SCR_EDGE/_SCR_CONDS 一致(⛔ 唯一真相在 index.html,JSON 只是產物)', syncOk);
+ok('🏅b pro.html 讀 data/scr_edge.json,⛔ 不在頁面裡寫第二份成績或條件', /fetchJson\('data\/scr_edge\.json'\)/.test(seg('_fishData')) && !/nh252:|limup:|poshi:/.test(NC));
+ok('🏅c 分數只用「測過的」條件(沒成績的不計)', /if \(!e\) continue/.test(seg('_fishScore')));
+ok('🏅d 門檻跟 index.html 的 _scrEdgeTag 同一組(±0.3pp)', /pp >= 0\.3/.test(seg('_fishScore')) && /pp <= -0\.3/.test(seg('_fishScore')));
+ok('🏅e 文案必寫「不是勝率」「加總會高估,只拿來排序」+ 對照組數字', /不是勝率/.test(seg('_fishScoreHtml')) && /加總會高估/.test(seg('_fishScoreHtml')) && /隨便挑一天本身是/.test(seg('_fishScoreHtml')));
+ok('🏅f 說明明寫「不是憑空加權的綜合評分」', /不是憑空加權/.test(seg('_fishNote')));
+ok('🏅g 沒有人訂的係數(⛔ 不可出現 ×0.6 / *0.4 那種權重)', !/\*\s*0\.[0-9]\s*\+|× ?0\.[0-9]/.test(noCmt(seg('_fishScore'))));
+// ═══ 🧺 漁獲籃 ═══
+ok('🧺 localStorage 讀取有 try/catch 且壞值會清掉(陷阱 #18)', /catch \(_\) \{ try \{ localStorage\.removeItem\('proWar_catch'\)/.test(seg('_catchLoad')));
+ok('🧺b 一張損益明寫「毛損益、還沒扣手續費與證交稅」', /毛損益/.test(seg('_fishBasketRender')) && /手續費/.test(seg('_fishBasketRender')));
+ok('🧺c 籃子明寫「不是本站推薦」', /不是本站推薦/.test(seg('_fishBasketRender')));
 
 // ═══ 實跑 ═══
 const benign = t => /Cache|ServiceWorker|Failed to fetch|ERR_|net::/i.test(t);
@@ -67,13 +84,15 @@ page.on('pageerror', e => { const t = (e && e.message) ? e.message : String(e); 
 await page.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof PRO !== 'undefined' && PRO.FISH_POOLS, null, { timeout: 15000 });
 
-const R = await page.evaluate(async ({ SCR, COR }) => {
+const R = await page.evaluate(async ({ SCR, COR, EDGE }) => {
   const out = {};
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   // 測資:真實格式 + 手動加一列 pos252 為 null 的(screener 遇到算不出來就寫 null,這是合法格式)
   SCR.rows['9999'] = SCR.rows['2330'].slice(); SCR.rows['9999'][SCR.cols.indexOf('pos252')] = null;
   PRO._cache['data/screener.json'] = SCR;
+  PRO._cache['data/scr_edge.json'] = EDGE;
   PRO._starData = COR;
+  try { localStorage.removeItem('proWar_catch'); } catch (_) {}
   PRO._names = { '2330': '台積電', '2317': '鴻海', '2408': '南亞科', '2344': '華邦電', '8299': '群聯' };
   const rafCalls = { n: 0 }; const _raf = window.requestAnimationFrame;
   window.requestAnimationFrame = cb => { rafCalls.n++; return _raf(cb); };
@@ -117,10 +136,42 @@ const R = await page.evaluate(async ({ SCR, COR }) => {
   out.stOk = PRO._fish.length > 0 && PRO._fish.every(f => f.st > 0);
   PRO.fishPool('amt'); await sleep(300);
 
+  // 🏅 分數
+  out.scored = PRO._fishD.rows.filter(r => r.sc).length; out.rowsN = PRO._fishD.rows.length;
+  const any = PRO._fishD.rows.find(r => r.sc && r.sc.plus.length);
+  out.anyPlus = any ? any.sc.plus[0] : null;
+  // 手算一條對照:創一年新高(nh ≥ 252)這條的 pp 必須等於成績表的第 5 欄
+  const nhC = EDGE.conds.find(c => c.id === 'nh252'); const iNh = SCR.cols.indexOf(nhC.k);
+  const hit = Object.entries(SCR.rows).find(([s, r]) => r[iNh] !== null && r[iNh] >= nhC.v && !/^00/.test(s));
+  out.nhCheck = hit ? { sym: hit[0], has: (PRO._fishD.rows.find(r => r.sym === hit[0]) || { sc: { plus: [] } }).sc.plus.some(x => x.t === nhC.t && x.pp === EDGE.c.nh252[4]) } : 'no-sample';
+  PRO.fishPool('edge'); await sleep(300);
+  out.edgeN = PRO._fish.length;
+  out.edgeSorted = PRO._fish.every((f, i, a) => i === 0 || (a[i - 1].sc.sum >= f.sc.sum));
+  out.edgeAllPlus = PRO._fish.every(f => f.sc.plus.length >= 2);
+  PRO.fishPool('avoid'); await sleep(300);
+  out.avoidOk = PRO._fish.every(f => f.sc.minus.length >= 2 && f.sc.sum < -1);
+  PRO.fishPool('amt'); await sleep(300);
+
   // 🎣 釣魚
   PRO._fishPick('2408'); await sleep(100);
   out.card = document.getElementById('fishCard').innerText;
   out.cardHtml = document.getElementById('fishCard').innerHTML;
+  // 🧺 釣起 → 籃子 → 損益 → 放生 → 持久化
+  PRO._fishCatch('2408'); await sleep(100);
+  out.basket1 = document.getElementById('fishBasket').innerText;
+  out.stored = JSON.parse(localStorage.getItem('proWar_catch') || '[]');
+  out.cardAfterCatch = document.getElementById('fishCard').innerText;
+  // 假裝隔了幾天、價格變了 → 損益要跟著算
+  const r2408 = PRO._fishD.rows.find(r => r.sym === '2408'); const px0 = r2408.c; r2408.c = +(px0 * 1.1).toFixed(2); PRO._fishD.date = '2026-09-11';
+  PRO._fishBasketRender(); await sleep(50);
+  out.basket2 = document.getElementById('fishBasket').innerText;
+  out.expectLot = Math.round((r2408.c - px0) * 1000);
+  r2408.c = px0; PRO._fishD.date = SCR.data_date;
+  PRO._fishRelease('2408'); await sleep(50);
+  out.basketEmpty = document.getElementById('fishBasket').innerText;
+  out.storedAfter = JSON.parse(localStorage.getItem('proWar_catch') || '[]');
+  // 壞值守門
+  localStorage.setItem('proWar_catch', '{"a":1,"b":[1,2'); out.badLoad = PRO._catchLoad(); out.badCleared = localStorage.getItem('proWar_catch') === null;
 
   // ⑤ 切走要停
   PRO.switchTab('val'); await sleep(50);
@@ -142,7 +193,7 @@ const R = await page.evaluate(async ({ SCR, COR }) => {
   window.scrollTo(0, 0);
   window.requestAnimationFrame = _raf;
   return out;
-}, { SCR, COR });
+}, { SCR, COR, EDGE });
 
 ok('⑪ 分頁切得過去', R.tabVisible);
 ok('⑪b 標題旁有資料日與檔數', /資料日 \d{4}-\d{2}-\d{2}/.test(R.sub) && /檔可下水/.test(R.sub), R.sub);
@@ -165,6 +216,16 @@ ok('⑬b 🚀🔥 池子全部有狀態', R.stOk);
 ok('⑭ 釣到魚:卡片有名字/現價/位階/同族/兩顆按鈕', /南亞科/.test(R.card) && /現價/.test(R.card) && /一年位階/.test(R.card)
    && /華邦電/.test(R.card) && /看它的星圖/.test(R.card) && /PRO\.gotoStock\('2408'\)/.test(R.cardHtml), R.card.slice(0, 150));
 ok('⑭b 卡片明寫「不是進場建議」', /不是進場建議/.test(R.card));
+ok('🏅⑮ 每一條魚都算了實測體質', R.scored === R.rowsN && R.rowsN > 0, `${R.scored}/${R.rowsN}`);
+ok('🏅⑮b 手算對照:符合「創一年新高」的魚,分數裡那條的 pp 要等於成績表第 5 欄', R.nhCheck === 'no-sample' || R.nhCheck.has === true, JSON.stringify(R.nhCheck));
+ok('🏅⑮c 🏅 池子:全部 ≥2 條領先、依加總排序', R.edgeN > 0 && R.edgeSorted && R.edgeAllPlus, `n=${R.edgeN}`);
+ok('🏅⑮d ⚠️ 避雷池過濾正確', R.avoidOk);
+ok('🏅⑮e 卡片顯示實測體質 + 每條 pp + 免責', /實測體質/.test(R.card) && /pp/.test(R.card) && /不是勝率/.test(R.card), R.card.slice(0, 200));
+ok('🧺⑯ 釣起 → 籃子有這條、寫進 localStorage', /南亞科/.test(R.basket1) && R.stored.length === 1 && R.stored[0].sym === '2408', R.basket1.slice(0, 120));
+ok('🧺⑯b 釣起後卡片按鈕變「放生」', /放生/.test(R.cardAfterCatch));
+ok('🧺⑯c 價格變 +10% 後籃子算出正確的一張損益(元)與天數', new RegExp(`\\+${R.expectLot.toLocaleString()}`).test(R.basket2) && /\+10\.00%/.test(R.basket2) && /\b10\b/.test(R.basket2), R.basket2.slice(0, 200));
+ok('🧺⑯d 放生 → 籃子空、localStorage 也清掉', /漁獲籃是空的/.test(R.basketEmpty) && R.storedAfter.length === 0);
+ok('🧺⑯e 半截 JSON 不會炸,而且壞值被清掉(陷阱 #18)', Array.isArray(R.badLoad) && R.badLoad.length === 0 && R.badCleared);
 ok('⑤ 切走分頁 rAF 停,而且之後不再排新的一格', R.stoppedOnLeave && R.noRafAfterLeave);
 ok('⑦ 停在很久以前的資料 → ⚠️ 資料未更新', /資料未更新/.test(R.stale3) && /天前/.test(R.stale3), R.stale3);
 ok('⑦b 2 天前的資料不誤報(週末守門)', R.fresh === '', R.fresh);

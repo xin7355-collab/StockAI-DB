@@ -632,6 +632,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
       <div id="fishLegend" class="fishlegend"></div>
     </div>
     <div id="fishCard"></div>
+    <div id="fishBasket"></div>
     <div id="fishList"></div>
     <div id="fishNote"></div>
   </div>
@@ -1172,6 +1173,12 @@ const PRO = {
       f: (r, S) => (S[r.sym] || 0) > 0, sort: 'amt' },
     { k: 'top',  n: '📈 近 20 日最強', d: '近 20 日漲最多的 100 檔(⛔ 追強有實測邊際、但衰退中)',
       f: (r, S) => r.chg20 > 0, sort: 'chg20' },
+    // 🏅 實測體質:⛔ 不是憑空加權的「綜合評分」—— 分數 = 這檔目前符合的選股條件,各自在
+    //    全市場回測裡「相對隨便挑一天」的 20 日邊際(pp)加總。權重就是實測數字本身,沒有人訂的係數。
+    { k: 'edge', n: '🏅 實測體質最強', d: '同時符合最多「實測領先」條件的 100 檔(權重 = 實測 pp,不是人訂的)',
+      f: (r, S) => r.sc && r.sc.plus.length >= 2 && r.sc.sum > 0, sort: 'score' },
+    { k: 'avoid', n: '⚠️ 避雷池', d: '符合「實測落後」條件比較多的(⛔ 不是放空訊號,是別在這裡挑)',
+      f: (r, S) => r.sc && r.sc.minus.length >= 2 && r.sc.sum < -1, sort: 'amt' },
   ],
   FISH_MAX: 100,          // ⛔ 別調大:每條魚每一格都要畫名字,手機 100 條就是上限
   _fishPoolK: 'amt', _fishModeV: 'tank', _fish: [], _fishRaf: 0, _fishPick0: null,
@@ -1179,7 +1186,7 @@ const PRO = {
   // 📡 資料:screener 走共用 fetchJson(跟其他分頁**同一份**,⛔ 不另做 IndexedDB —— 兩份會不同步);
   //    關聯狀態走 starFetch(SW 已有 12 小時快取)。
   async _fishData() {
-    const [scr, J] = await Promise.all([this.fetchJson('data/screener.json'), this.starFetch(), this.loadNames()]);
+    const [scr, J, E] = await Promise.all([this.fetchJson('data/screener.json'), this.starFetch(), this.fetchJson('data/scr_edge.json'), this.loadNames()]);
     if (!scr || !scr.rows || !scr.cols) return null;
     const C = scr.cols, ix = k => C.indexOf(k);
     const iC = ix('c'), iChg = ix('chg'), i20 = ix('chg20'), iAmt = ix('amt'), iPos = ix('pos252'),
@@ -1196,9 +1203,10 @@ const PRO = {
       if (![c, chg, amt, pos].every(Number.isFinite)) continue;    // null 一律不通過(⛔ 不補 0)
       if (!S[sym] && Number.isFinite(r[iB20]) && r[iB20] > 15) S[sym] = 2;
       rows.push({ sym, nm: this.nameOf(sym) || sym, c, chg, chg20: Number.isFinite(chg20) ? chg20 : 0,
-                  amt, pos252: pos, amp20: Number.isFinite(amp) ? amp : 0, att: r[iAtt] === 1, st: S[sym] || 0 });
+                  amt, pos252: pos, amp20: Number.isFinite(amp) ? amp : 0, att: r[iAtt] === 1, st: S[sym] || 0,
+                  sc: this._fishScore(r, C, E) });
     }
-    return { rows, S, J, date: scr.data_date || '', updated: scr.updated || '' };
+    return { rows, S, J, E, date: scr.data_date || '', updated: scr.updated || '' };
   },
 
   _fishPoolRows(D) {
@@ -1210,7 +1218,8 @@ const PRO = {
     } else {
       rows = D.rows.filter(r => P.f(r, D.S));
     }
-    rows.sort((a, b) => (b[P.sort] || 0) - (a[P.sort] || 0));
+    if (P.sort === 'score') rows.sort((a, b) => ((b.sc && b.sc.sum) || 0) - ((a.sc && a.sc.sum) || 0) || b.amt - a.amt);
+    else rows.sort((a, b) => (b[P.sort] || 0) - (a[P.sort] || 0));
     return rows.slice(0, this.FISH_MAX);
   },
 
@@ -1243,6 +1252,7 @@ const PRO = {
     document.getElementById('fishPool').innerHTML = pools.map(p =>
       `<button class="rotchip fishpool${p.k === this._fishPoolK ? ' on' : ''}" title="${p.d}" onclick="PRO.fishPool('${p.k}')">${p.n}</button>`).join('');
     this._fishNote(D);
+    this._fishBasketRender();
     this._fishRebuild();
   },
   fishPool(k) { this._fishPoolK = k; this.buzz(15); this.renderFish(); },
@@ -1260,7 +1270,10 @@ const PRO = {
     document.getElementById('fishCard').innerHTML = '';
     const wrap = document.getElementById('fishTankWrap');
     if (!rows.length) {
-      document.getElementById('fishMsg').innerHTML = `<div class="note">🫧 這個池子今天沒有魚(條件沒有任何一檔符合)。換一個池子看看。</div>`;
+      const noE = (this._fishPoolK === 'edge' || this._fishPoolK === 'avoid') && !(D.E && D.E.c);
+      document.getElementById('fishMsg').innerHTML = noE
+        ? `<div class="warnbox">⏳ <b>實測成績表還沒上線</b>(<code>data/scr_edge.json</code>,下一輪採礦部署後就有)。⛔ 不是壞掉。</div>`
+        : `<div class="note">🫧 這個池子今天沒有魚(條件沒有任何一檔符合)。換一個池子看看。</div>`;
       wrap.classList.add('list'); document.getElementById('fishList').innerHTML = ''; this.fishStop(); return;
     }
     document.getElementById('fishMsg').innerHTML = '';
@@ -1279,7 +1292,7 @@ const PRO = {
   _fishListHtml(rows) {
     const E = this.STAR_STATUS;
     return `<div style="overflow-x:auto"><table class="startbl">
-      <tr><th style="text-align:left">股票</th><th>現價</th><th>今日</th><th>近20日</th><th>位階</th><th>成交額(億)</th><th>狀態</th></tr>
+      <tr><th style="text-align:left">股票</th><th>現價</th><th>今日</th><th>近20日</th><th>位階</th><th>成交額(億)</th><th>狀態</th><th title="實測體質:符合的實測條件 pp 加總,只拿來排序">🏅</th></tr>
       ${rows.map(r => `<tr>
         <td class="l"><span class="starnm" onclick="PRO._fishPick('${r.sym}')">${r.nm}</span> <span class="starcode">${r.sym}</span>${r.att ? ' <span class="sigtag warn">注意股</span>' : ''}</td>
         <td class="mono">${r.c}</td>
@@ -1287,7 +1300,8 @@ const PRO = {
         <td class="mono ${this.cls(r.chg20)}">${this.fmt(r.chg20, 1, true)}%</td>
         <td class="mono">${Math.round(r.pos252)}</td>
         <td class="mono">${this.fmt(r.amt, 1)}</td>
-        <td>${r.st ? E[r.st].e + ' ' + E[r.st].t : '—'}</td></tr>`).join('')}
+        <td>${r.st ? E[r.st].e + ' ' + E[r.st].t : '—'}</td>
+        <td class="mono">${r.sc ? (r.sc.sum >= 0 ? '+' : '') + r.sc.sum.toFixed(1) : '—'}</td></tr>`).join('')}
     </table></div>`;
   },
 
@@ -1336,7 +1350,7 @@ const PRO = {
     document.getElementById('fishLegend').innerHTML =
       `↕ 上下=一年位階(上=高;實測位階≥75 <b>+1.52pp</b>、≤25 −0.63pp) ・ → 游向/游速=近20日動能(右=漲;板塊層級 <b>+1.44pp</b> 六關全過)
        ・ 大小=成交額 ・ 顏色=<span style="color:#ff6b6b">今日漲</span>/<span style="color:#4ade80">跌</span>(只表方向) ・ 一群一起游=關聯星圖同族
-       ・ 🚀 剛突破 ${n[1]} 條 / 🔥 過熱 ${n[2]} 條。<b>⛔ 魚游得快 ≠ 會漲,沒有一條魚是買進訊號</b>,點魚看細節。`;
+       ・ 🚀 剛突破 ${n[1]} 條 / 🔥 過熱 ${n[2]} 條。<b>⛔ 魚游得快 ≠ 會漲,沒有一條魚是買進訊號</b>,點魚看細節;金圈 = 你釣過的。`;
   },
   _fishStart() {
     this.fishStop();
@@ -1371,8 +1385,10 @@ const PRO = {
     for (const p of [75, 50, 25]) { const y = 28 + (1 - p / 100) * (H - 86); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.fillText(`位階 ${p}`, 6, y - 3); }
     // 小魚先畫、大魚後畫(大的蓋小的,名字才看得到)
     const order = F.slice().sort((a, b) => a.r - b.r);
+    const caught = new Set(this._catchLoad().map(x => x.sym));     // 🧺 釣過的魚畫金圈
     for (const f of order) {
       const dir = f.vx >= 0 ? 1 : -1, col = f.chg > 0 ? '#ff6b6b' : f.chg < 0 ? '#4ade80' : '#8fa3bb';
+      if (caught.has(f.sym)) { ctx.strokeStyle = '#f5b942'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r + 4, f.r * 0.55 + 4, 0, 0, Math.PI * 2); ctx.stroke(); }
       ctx.fillStyle = col; ctx.globalAlpha = f.grp >= 0 ? 0.95 : 0.72;
       ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.moveTo(f.x - dir * f.r * 0.9, f.y);
@@ -1382,6 +1398,107 @@ const PRO = {
       ctx.fillStyle = '#dce8f5'; ctx.font = `${f.r >= 14 ? 11 : 10}px system-ui`; ctx.textAlign = 'center';
       ctx.fillText((f.st ? this.STAR_STATUS[f.st].e : '') + f.nm, f.x, f.y + f.r * 0.55 + 11);
     }
+  },
+
+  // ── 🏅 實測體質 ─────────────────────────────────────────────────────────
+  // ⛔ 這不是「綜合評分」:本專案最反對憑空加權(陷阱 #38、評估紀錄⑭ 那個八維加權)。
+  //    這裡的每一分都是 screener_edge_probe 量出來的「相對隨便挑一天」20 日邊際,
+  //    條件定義與成績都從 data/scr_edge.json 讀(index.html 匯出的,⛔ 不在這裡重寫第二份)。
+  // ⚠️ 三條誠實限制(卡上要寫):① 條件之間高度重疊(創新高 / 位階 / RSI 都在講「強」),
+  //    加總會高估 → 只拿來**排序**,⛔ 不是機率也不是期望值;② 對照組本身是負的
+  //    (−0.93% / 勝率 39.3%),而且 96 條裡六關全過的是 0 條;③ 追強那一族的優勢 2024 起逐年遞減。
+  _scrEval(row, cols, c) {
+    const i = cols.indexOf(c.k); if (i < 0) return false;
+    const x = row[i]; if (x === null || x === undefined || !Number.isFinite(+x)) return false;   // null 一律不通過
+    switch (c.op) { case 'eq': return +x === c.v; case 'gt': return x > c.v; case 'gte': return x >= c.v;
+                    case 'lt': return x < c.v; case 'lte': return x <= c.v; }
+    return false;
+  },
+  _fishScore(row, cols, E) {
+    if (!E || !E.c || !E.conds) return null;
+    const plus = [], minus = [];
+    for (const c of E.conds) {
+      const e = E.c[c.id]; if (!e) continue;                 // 沒測過的條件不計分(⛔ 不可假裝有成績)
+      if (!this._scrEval(row, cols, c)) continue;
+      const pp = e[4];
+      if (pp >= 0.3) plus.push({ t: c.t, pp, n: e[2] }); else if (pp <= -0.3) minus.push({ t: c.t, pp, n: e[2] });
+    }
+    plus.sort((a, b) => b.pp - a.pp); minus.sort((a, b) => a.pp - b.pp);
+    const sum = plus.reduce((a, x) => a + x.pp, 0) + minus.reduce((a, x) => a + x.pp, 0);
+    return { plus, minus, sum: Math.round(sum * 10) / 10 };
+  },
+  _fishScoreHtml(sc, E) {
+    if (!sc) return '';
+    const tag = x => `<span class="sigtag${x.pp > 0 ? ' good' : ' warn'}" title="${x.n.toLocaleString()} 次獨立事件">${x.t} ${x.pp > 0 ? '+' : ''}${x.pp.toFixed(1)}pp</span>`;
+    const base = E && E.meta && E.meta.base ? E.meta.base : null;
+    return `<div class="note" style="margin:6px 0 0">🏅 <b>實測體質</b>:領先 ${sc.plus.length} 條 / 落後 ${sc.minus.length} 條,加總 <b class="mono">${sc.sum >= 0 ? '+' : ''}${sc.sum.toFixed(1)}pp</b>
+      ${sc.plus.length || sc.minus.length ? '<br>' + sc.plus.concat(sc.minus).map(tag).join(' ') : '(目前沒有符合任何一條測過的條件)'}
+      <br><span style="color:var(--dim2)">每條數字 = 全市場回測裡「符合這條 vs 隨便挑一天」的 20 日差距${base ? `(隨便挑一天本身是 ${base[0]}% / 勝率 ${base[1]}%)` : ''}。
+      條件之間重疊(創新高、位階、RSI 都在講「強」),<b>加總會高估,只拿來排序;⛔ 不是勝率、不是機率</b>;96 條裡沒有一條六關全過,追強那族的優勢 2024 起逐年變小。</span></div>`;
+  },
+
+  // ── 🧺 漁獲籃(釣起來的魚)─────────────────────────────────────────────
+  // 使用者:「釣魚池少了釣起來的魚」。釣起 = 記下「哪一檔、哪一天、什麼價」,之後每次開池子
+  // 都算得出「釣起到現在」的損益。⛔ 這是**你自己的紀錄**,不是本站推薦;⛔ 不下多空、不給價位。
+  // ⚠️ localStorage 一律走 try/catch + 壞值就清掉(陷阱 #18:半截 JSON 每次開 App 都會炸)。
+  _catchLoad() {
+    try { const v = JSON.parse(localStorage.getItem('proWar_catch') || '[]'); return Array.isArray(v) ? v.filter(x => x && x.sym) : []; }
+    catch (_) { try { localStorage.removeItem('proWar_catch'); } catch (_) {} return []; }
+  },
+  _catchSave(list) { try { localStorage.setItem('proWar_catch', JSON.stringify(list.slice(0, 60))); } catch (_) {} },
+  _fishCatch(sym) {
+    const D = this._fishD; const r = D && D.rows.find(x => x.sym === sym); if (!r) return;
+    const list = this._catchLoad();
+    if (list.some(x => x.sym === sym)) { this.toast('🧺 這條已經在漁獲籃裡了'); return; }
+    list.unshift({ sym, nm: r.nm, px: r.c, d: D.date || '' });
+    this._catchSave(list); this.buzz(30); this.toast(`🎣 釣起 ${r.nm}(${r.c})`);
+    this._fishBasketRender(); this._fishPick(sym);
+  },
+  _fishRelease(sym) {
+    this._catchSave(this._catchLoad().filter(x => x.sym !== sym)); this.buzz(15);
+    this._fishBasketRender(); if (this._fishD) this._fishPick(sym);
+  },
+  _fishClearCatch() {
+    if (!confirm('把漁獲籃清空?(只清這台裝置的紀錄)')) return;
+    this._catchSave([]); this._fishBasketRender();
+  },
+  _fishBasketRender() {
+    const el = document.getElementById('fishBasket'); if (!el) return;
+    const list = this._catchLoad(), D = this._fishD;
+    if (!list.length) { el.innerHTML = `<div class="note" style="margin:0 0 8px">🧺 漁獲籃是空的 —— 點魚 → 「🎣 收進漁獲籃」,之後每次開池子都會算出從釣起到現在賺賠多少。</div>`; return; }
+    const rows = list.map(x => {
+      const r = D && D.rows.find(y => y.sym === x.sym), c = r ? r.c : null;
+      const pct = c !== null && x.px > 0 ? (c / x.px - 1) * 100 : null;
+      const lot = c !== null ? (c - x.px) * 1000 : null;                    // 一張毛損益(元)
+      const days = x.d && D && D.date ? this._daysBetween(x.d, D.date) : null;
+      return { ...x, c, pct, lot, days };
+    });
+    const tot = rows.reduce((a, r) => a + (Number.isFinite(r.lot) ? r.lot : 0), 0);
+    const win = rows.filter(r => r.pct > 0).length, n = rows.filter(r => Number.isFinite(r.pct)).length;
+    el.innerHTML = `<div class="fishcard" style="border-color:var(--amber);background:rgba(245,185,66,.05)">
+      <div class="big">🧺 漁獲籃 <span class="sigtag">${list.length} 條</span>
+        <span class="sigtag">${n ? `${win}/${n} 條在賺` : '—'}</span>
+        <span class="sigtag mono ${tot > 0 ? 'good' : tot < 0 ? 'warn' : ''}">一張合計 ${tot >= 0 ? '+' : ''}${Math.round(tot).toLocaleString()} 元</span>
+        <button class="lbtn" style="margin-left:auto" onclick="PRO._fishClearCatch()">🗑 清空</button></div>
+      <div style="overflow-x:auto"><table class="startbl">
+        <tr><th style="text-align:left">股票</th><th>釣起日</th><th>釣起價</th><th>現價</th><th>賺賠</th><th>一張(元)</th><th>天數</th><th></th></tr>
+        ${rows.map(r => `<tr>
+          <td class="l"><span class="starnm" onclick="PRO._fishPick('${r.sym}')">${r.nm}</span> <span class="starcode">${r.sym}</span></td>
+          <td class="mono">${(r.d || '').slice(5)}</td><td class="mono">${r.px}</td>
+          <td class="mono">${r.c === null ? '<span title="今天的選股快照裡沒有這檔">—</span>' : r.c}</td>
+          <td class="mono ${this.cls(r.pct)}">${r.pct === null ? '—' : this.fmt(r.pct, 2, true) + '%'}</td>
+          <td class="mono ${this.cls(r.lot)}">${r.lot === null ? '—' : (r.lot >= 0 ? '+' : '') + Math.round(r.lot).toLocaleString()}</td>
+          <td class="mono">${r.days === null ? '—' : r.days}</td>
+          <td><button class="lbtn" onclick="PRO._fishRelease('${r.sym}')" title="放生(從籃子移除)">🐟↩</button></td></tr>`).join('')}
+      </table></div>
+      <div class="note" style="margin-top:6px">「一張(元)」= (現價 − 釣起價)× 1,000,<b>毛損益、還沒扣手續費與證交稅</b>(來回約 0.44%)。
+        釣起價是那天的收盤,不是你真的成交的價;這是你自己的紀錄,⛔ 不是本站推薦、也不是進出場指令。
+        現價更新到 ${D && D.date ? D.date : '—'} 的收盤。只存在這台裝置(換手機不會跟著走)。</div>
+    </div>`;
+  },
+  _daysBetween(a, b) {
+    const t1 = Date.parse(String(a).replace(/\//g, '-')), t2 = Date.parse(String(b).replace(/\//g, '-'));
+    return Number.isFinite(t1) && Number.isFinite(t2) ? Math.round((t2 - t1) / 864e5) : null;
   },
 
   _fishPick(sym) {
@@ -1401,9 +1518,13 @@ const PRO = {
         <div><b>成交額</b><span class="mono">${this.fmt(r.amt, 1)} 億</span></div>
       </div>
       ${fam.length ? `<div class="note" style="margin:0 0 6px">🕸️ 跟它一起游的:${fam.map(([c, rv]) => `<span class="sigtag" style="cursor:pointer" onclick="PRO._fishPick('${c}')">${this.nameOf(c) || c} ${rv.toFixed(2)}</span>`).join(' ')}</div>` : ''}
-      <div class="labbar" style="margin:4px 0 0">
+      ${this._fishScoreHtml(r.sc, D.E)}
+      <div class="labbar" style="margin:8px 0 0">
+        ${this._catchLoad().some(x => x.sym === sym)
+          ? `<button class="lbtn" onclick="PRO._fishRelease('${sym}')">🐟↩ 放生(從漁獲籃移除)</button>`
+          : `<button class="lbtn on" onclick="PRO._fishCatch('${sym}')">🎣 收進漁獲籃</button>`}
         <button class="lbtn" onclick="PRO._starSym='${sym}';PRO.switchTab('star')">🕸️ 看它的星圖</button>
-        <button class="lbtn on" onclick="PRO.gotoStock('${sym}')">→ 散戶救星看細節</button>
+        <button class="lbtn" onclick="PRO.gotoStock('${sym}')">→ 散戶救星看細節</button>
       </div>
       <div class="note" style="margin-top:6px">這張卡只是把數字攤開,⛔ 不是進場建議 —— 買賣一律以散戶救星的「現在怎麼做」為準。</div>
     </div>`;
@@ -1417,6 +1538,11 @@ const PRO = {
       <b>怎麼用:</b>① 手上那檔在哪一層、旁邊那群是誰 ② 想加碼時看看是不是整群都已經 🔥 ③ 點魚 → 釣起來看數字 → 再去散戶救星。<br>
       🚨 <b>魚游得快 ≠ 會漲</b>:游得快、浮得高都只是「事實的位置」,<b>⛔ 不是買進訊號</b>;顏色只表示今天漲跌方向。
       這頁不下多空、不計分、不給任何買賣價位。<b>「📊 列表」是同一批魚的數字版</b>,認真看數字時切過去。<br>
+      <b>🏅 實測體質怎麼算:</b>⛔ 不是憑空加權的綜合評分 —— 這檔目前符合哪些選股條件,每條在全市場回測裡
+      「相對隨便挑一天」的 20 日邊際(pp)加總;權重就是實測數字本身,沒有人訂的係數。條件重疊會高估,只拿來排序。
+      實測最有用的一族是「追強」(創一年新高 +2.84pp・漲停 +2.09・位階≥75 +1.52),最沒用的是坊間最愛的
+      黃金交叉 / KD 金叉 / MACD 金叉(都在 +0.3pp 以內 = 跟平常一樣)。<br>
+      <b>🧺 漁獲籃:</b>點魚 → 釣起 → 記下那天收盤價,之後每次開池子都算「一張賺賠幾元」。是你的紀錄,不是推薦。<br>
       <b>誰不在池子裡:</b>ETF(跟星圖同一理由)、資料不全的(null 一律不下水,⛔ 不補 0)。
       資料來自每個交易日收盤後的選股快照(${D.updated || D.date || '—'}),🚀🔥 來自關聯星圖(需要前一天資料才判得出「突破」,星圖沒涵蓋的只補 🔥)。</div>`;
   },
@@ -1990,7 +2116,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.3.5',
+  VER: 'V74.3.6',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

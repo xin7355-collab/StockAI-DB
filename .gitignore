@@ -8,6 +8,9 @@ data/chips/
 inst_cache_stock.json
 # 但人工編輯的一次性事件清單必須進 git(macro_miner.py 會讀取它合併進 upcoming_macro_events)
 !data/manual_events.json
+# 🏅 V74.3.6 選股條件實測成績(scripts/export_scr_edge.mjs 產物,pro.html 釣魚池在讀;
+#    跟 signal_edge.json 一樣靠 daily_miner 的 git add -f data/ 上 gh-pages)
+!data/scr_edge.json
 
 # Python 相關
 __pycache__/

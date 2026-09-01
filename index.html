@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.3.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.3.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.3.5 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.3.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7457,8 +7457,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.3.5',
+    _APP_VERSION: 'V74.3.6',
     _CHANGELOG: [
+        { v: 'V74.3.6', dt: '2026-09-01', d: ['🧺 釣魚池新增<b>「漁獲籃」</b>:點魚 → 🎣 收進漁獲籃,記下那天的收盤價;之後每次開池子都算出<b>從釣起到現在賺賠幾 %、一張賺賠幾元</b>(毛損益,未扣手續費與稅)。是你自己的紀錄,不是推薦。魚池裡釣過的魚會畫金圈。','🏅 釣魚池新增<b>「實測體質」</b>:⛔ 不是憑空加權的綜合評分 —— 每一條魚目前符合哪些選股條件,把各條在全市場回測裡「相對隨便挑一天」的 20 日邊際(pp)加總,權重就是實測數字本身。新增兩個池子:🏅 實測體質最強 / ⚠️ 避雷池。條件之間重疊會高估,只拿來排序,⛔ 不是勝率。','📌 順便講清楚:坊間最愛的黃金交叉 / KD 金叉 / MACD 金叉,本站實測全在 +0.3pp 以內 = 跟平常一樣;真正領先的是「追強」那一族(創一年新高 +2.84pp・漲停 +2.09・位階≥75 +1.52),而且 2024 起逐年變小。'] },
         { v: 'V74.3.5', dt: '2026-09-01', d: ['🎣 產業作戰室新增<b>「釣魚池」</b>分頁:把今天最值得看的一批股票畫成會游的魚 —— <b>上下 = 一年位階、游向 = 近 20 日動能、大小 = 成交額、顏色 = 今日漲跌、關聯星圖的同族會靠在一起游</b>。四個池子可切(成交額前 100 / 🧬 高位階+高波動 / 🚀🔥 有狀態 / 近 20 日最強),點魚「釣起來」看數字,一鍵切「📊 列表」看同一批魚的數字版。','⚠️ 每一條魚的每個視覺屬性都綁著<b>實測有效的維度</b>(圖例上寫著數字),⛔ 沒有純裝飾;<b>魚游得快 ≠ 會漲</b>,這頁不下多空、不給買賣價位。','📅 關聯星圖 / 釣魚池的資料若停在 4 天以上,標題旁會掛「⚠️ 資料未更新」浮水印,不會讓你把舊資料當成今天的。','🚀 關聯星圖的「突破」狀態補上「今收 > 昨收」(帶量紅K保護)。'] },
         { v: 'V74.3.4', dt: '2026-09-01', d: ['🕸️ 產業作戰室新增<b>「關聯星圖」</b>分頁:輸入一檔股票,看出<b>「它在動的時候,還有哪幾檔會跟著動」</b>——用近 120 個交易日的每日漲跌幅比對全市場,列出走勢最像的前 5 檔,並標出每一檔現在是 🚀剛突破 / 🔥已過熱 / ➖盤整。實測記憶體族群(2408 南亞科 → 華邦電・群聯・晶豪科・旺宏)、金控、航運都是 5 選 5 全中。','⚠️ <b>這頁刻意不下多空、不給買賣價位</b>:相關係數講的是「同一天一起動」,本站實測過<b>同期相關再高都不能拿來預測隔天</b>。它的用途是「看我是不是重壓在同一族」,不是選股。','🔎 ETF 全部不列入 —— 0050 有四成本來就是台積電,說它們「一起動」是廢話,而且會把真正同族的個股名額吃光(實測不排除的話 2330 的前 5 名全是 ETF)。'] },
         { v: 'V74.3.3', dt: '2026-09-01', d: ['🧾 產業作戰室的 🔬 實測總表大修:① 手機上<b>標題被壓成一個字一行</b>的版面問題修好了 ② 每一條都加上<b>做多 / 做空 / 避雷 / 配置</b>的標籤 ③ 每一條都補上<b>「📌 怎麼操作」</b>—— 什麼時候買、什麼時候賣,講清楚。', '🌅 盤前分數新增<b>「開低 / 開平 / 開高 的機率表」</b>(1,211 個交易日):⭐ 有用的不是「會不會開高」,是<b>開低的機率</b> —— 分數偏多那天開低機率只有 <b>4.2%</b>(平常 18.5%),分數偏空那天是 <b>40.4%</b>。而「中性 50 分」實測就是真的中性,那天照常做就好。', '🧺 新增 <b>32 檔 ETF 的年化與逐年成績</b>。⭐ 最有參考價值的是 2022 那一欄:0050 −24% ・0056 −24% ・00878 −16% ・元大S&P500 −10%(最抗跌);半導體那一族 −37~−43% 跌最兇。⛔ 這張表不含配息,高股息那族會被低估。', '🚨 順手抓到兩檔<b>資料是壞的</b>:0052 富邦科技(2025-11 分割後舊價位沒跟著調整)與 00631L 正2 —— 這兩檔的 K 線目前顯示不正確,已記下待修。'] },
