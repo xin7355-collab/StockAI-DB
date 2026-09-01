@@ -36,6 +36,17 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 const src = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 // 🫧 個股泡泡圖的原始碼區段(`_stockBubHtml` 建結構 + `_stockBubSeek` 算座標)——
 //    ⛔ 兩支要一起掃,只掃其中一支會漏(V74.1.3 把座標計算搬去 Seek 那支)
+// 🔢 ㊳ 版本號要跟散戶救星一致 —— 使用者:「這樣才知道有沒有更新」
+//    ⛔ 兩個獨立檔案沒辦法互相 import → 各存一份,靠這條擋住「只改了一邊」。
+{
+    const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const a = (idx.match(/_APP_VERSION: ?['"](V[0-9.]+)/) || [])[1];
+    const b = (src.match(/VER: ?['"](V[0-9.]+)/) || [])[1];
+    ok('㊳ 🔢 pro.html 的版本號要等於散戶救星的 _APP_VERSION(⛔ 只改一邊 = 比沒有更糟)',
+       !!a && a === b, `index=${a} pro=${b}`);
+    ok('㊳b 🔢 而且要真的顯示在畫面上(⛔ 只有常數沒有顯示等於沒做)',
+       /id="proVer"/.test(src) && /_renderVer\(\)/.test(src));
+}
 const SBSRC = (() => {
     const a = src.indexOf('_stockBubHtml'), b = src.indexOf('_rotQuad(list) {', a);
     return a < 0 || b < 0 ? '' : src.slice(a, b);
@@ -321,8 +332,11 @@ const T = await page.evaluate(async () => {
     PRO.rotSeek(4);
     // 🚧 明細卡的說明與成分股表收進 <details> 了 → 讀 innerText 前先展開,
     //    ⛔ 否則收合狀態的 innerText 不含內文 = 假通過(CLAUDE.md 記過這條)。
+    // ⚠️ V74.1.5 起圖卡分成「📈 板塊走勢 / 🫧 個股泡泡」兩個頁籤 → 量泡泡前要先切過去,
+    //    ⛔ 否則量到的是 display:none(高度 0、innerText 不含它)= 假失敗。
     const openOne = () => { document.querySelectorAll('#rotOne details').forEach(d => d.open = true);
                             return document.getElementById('rotOne'); };
+    const openBub = () => { PRO.rotChartTab('bub'); return openOne(); };
     // ⚠️ V74.1.3 `rotOpen` 現在**跳到「板塊明細」那一頁**,明細卡渲染在 #rotOne
     //   (⛔ 舊的 #rotDetail 已退役 —— 同一個板塊不可有兩張卡)。
     //   ⭐ 這些斷言的**用意**沒變:成分股要列得出來、要能點、要誠實說「表只有最新一天」。
@@ -384,7 +398,7 @@ const T = await page.evaluate(async () => {
     out.thDetTxt = openOne().innerText;
     out.thDetRows = document.querySelectorAll('#rotOne tbody tr').length;
     {
-      const d = document.getElementById('rotOne');
+      const d = openBub();
       out.sbN = d.querySelectorAll('.sbub circle').length;
       out.sbAmber = d.querySelectorAll('.sbub circle[stroke="var(--amber)"]').length;
       out.sbGene = (d.innerText.match(/🧬 這一組命中 (\d+)\/(\d+)/) || []).slice(1).join('/');
@@ -415,6 +429,7 @@ const T = await page.evaluate(async () => {
       });
       PRO._msCache = {}; PRO._msPend = {};
       PRO._oneHtmlFor = null; PRO.rotOne('mem'); await new Promise(r => setTimeout(r, 150));
+      PRO.rotChartTab('bub');
       await PRO._memSeries(PRO._grpMembers('mem').syms);
       PRO._stockBubSeek(PRO._rotK); await new Promise(r => setTimeout(r, 420));
       const sv = document.querySelector('#rotOne .sbub svg');
@@ -428,6 +443,18 @@ const T = await page.evaluate(async () => {
         if (a2.left < c2.right && c2.left < a2.right && a2.top < c2.bottom && c2.top < a2.bottom) ov++;
       }
       out.sbLabelOv = ov; out.sbLabelN = ts.length;
+      // 📊 ㊶ 兩張圖切換頁籤:在**藏起來**的時候拉時間軸,切回來要對到當天
+      //    (⛔ 少了 rotChartTab 裡那次 _stockBubSeek 就會停在切走前那一天,而且畫面看起來很正常)
+      const tfs = () => [...document.querySelectorAll('#rotOne .sb')].map(e => e.style.transform).join('|');
+      PRO.rotChartTab('bub'); await new Promise(r => setTimeout(r, 60));
+      out.ctBub0 = tfs();
+      PRO.rotChartTab('trend');
+      PRO.rotSeek(0); await new Promise(r => setTimeout(r, 60));
+      PRO.rotChartTab('bub'); await new Promise(r => setTimeout(r, 60));
+      out.ctBub1 = tfs();
+      out.ctTrendHidden = document.getElementById('rotChart-trend').classList.contains('hidden');
+      out.ctBtnOn = [...document.querySelectorAll('.chartbar .cbtn')].map(b => b.classList.contains('on'));
+      PRO.rotSeek(PRO._rotData.days.length - 1); await new Promise(r => setTimeout(r, 60));
       // 📋 成分股表可排序
       const nmz = () => [...document.querySelectorAll('#rotOne tbody tr td:first-child')].map(td => td.textContent.trim());
       out.sortBefore = nmz();
@@ -750,8 +777,11 @@ ok('㉚ 四個分頁容器都要在 .wrap 裡(⛔ 在外面會吃到 80px 底部
 const ROT2 = await page.evaluate(async () => {
     const o = {};
     // 🚧 同上:明細卡的說明收進 <details> → 讀 innerText 前先展開(⛔ 收合時讀不到 = 假通過)
+    // ⚠️ V74.1.5 起圖卡分成「📈 板塊走勢 / 🫧 個股泡泡」兩個頁籤 → 量泡泡前要先切過去,
+    //    ⛔ 否則量到的是 display:none(高度 0、innerText 不含它)= 假失敗。
     const openOne = () => { document.querySelectorAll('#rotOne details').forEach(d => d.open = true);
                             return document.getElementById('rotOne'); };
+    const openBub = () => { PRO.rotChartTab('bub'); return openOne(); };
     // ⚠️ 前面的 ㉒ 區塊已經拉過時間軸 → `_rotK` 會殘留。
     //   要驗「**第一次載入**停在最新那一天」就必須先還原成剛進站的狀態(null)。
     PRO._rotK = null;
@@ -785,6 +815,8 @@ const ROT2 = await page.evaluate(async () => {
     o.oneEmpty = openOne().innerText;
     const first = (document.querySelector('#rotOneBar .rotchip') || {});
     PRO.rotOne(Object.keys(PRO._rotSet().grp)[0]); await new Promise(r => setTimeout(r, 150));
+    // ⚠️ `_rotChartTab` 是跨區塊殘留的狀態(前面的 ㉘ 切去泡泡了)→ 量走勢前先切回來
+    PRO.rotChartTab('trend');
     o.onePaths = document.querySelectorAll('#rotOne .onechart path').length;
     o.oneTxt = openOne().innerText;
     // 拉時間軸 → 走勢卡的「停在」要跟著變
@@ -838,6 +870,44 @@ const ROT2 = await page.evaluate(async () => {
     PRO.rotStop();
     o.stopSync = [document.getElementById('rotPlay').textContent,
                   document.querySelector('[data-rotplay]').textContent];
+    // 🌊 V74.1.5 ① 平滑 + 📅 ④ 日期區間(使用者:「資料跳的很快」「自訂日期區間 + 快選 + 前3名」)
+    {
+      PRO.rotSwitchSub('map'); PRO.rotOne(null); await new Promise(r => setTimeout(r, 120));
+      // 🌊 平滑:同一天、開了平滑之後 X 座標要不一樣(⛔ 一樣代表根本沒接上)
+      // ⚠️ 這個區塊用的是 32 組的大測資(key 是 I0..I31)→ ⛔ 不可寫死 '24'
+      const BK = Object.keys(PRO._rotSet().grp)[0];
+      const xOf = () => { const e = [...document.querySelectorAll('#rotBubs .bub')].find(z => z.dataset.k === BK);
+        return e ? /translate\(([-\d.]+)px/.exec(e.style.transform)?.[1] : null; };
+      PRO._rotSmooth = 0; PRO.rotSeek(3); await new Promise(r => setTimeout(r, 460));
+      o.smOff = xOf();
+      PRO._rotSmooth = 5; PRO.rotSeek(3); await new Promise(r => setTimeout(r, 460));
+      o.smOn = xOf();
+      o.smLbl0 = (PRO._rotSmooth = 0, PRO.rotCycleSmooth(), document.getElementById('rotSm').textContent);
+      PRO._rotSmooth = 0; PRO.rotSeek(PRO._rotData.days.length - 1);
+      // 📅 區間快選 + 前 3 名
+      o.rangeBtns = [...document.querySelectorAll('#rotRangeBar .lbtn')].map(e => e.textContent.trim());
+      PRO.rotRangeQuick(3); await new Promise(r => setTimeout(r, 120));
+      o.slMin = document.getElementById('rotSlider').min;
+      o.slMax = document.getElementById('rotSlider').max;
+      o.rangeN = document.getElementById('rotRangeN').textContent;
+      o.rangeTop = document.getElementById('rotRangeTop').innerText;
+      o.rangeChips = document.querySelectorAll('#rotRangeTop .rotchip').length;
+      // 自訂區間(⛔ 使用者挑的日子不一定是交易日)
+      document.getElementById('rotFrom').value = '2026-08-24';
+      document.getElementById('rotTo').value = '2026-08-27';
+      PRO.rotRangeCustom(); await new Promise(r => setTimeout(r, 120));
+      o.custN = document.getElementById('rotRangeN').textContent;
+      // 完全沒有交易日的區間要說出來(⛔ 不可靜默)
+      document.getElementById('rotFrom').value = '2020-01-01';
+      document.getElementById('rotTo').value = '2020-01-05';
+      PRO.rotRangeCustom(); await new Promise(r => setTimeout(r, 80));
+      o.custNone = document.getElementById('rotRangeTop').innerText;
+      PRO.rotRangeQuick(0); await new Promise(r => setTimeout(r, 120));
+      o.rangeAllN = document.getElementById('rotRangeN').textContent;
+      // ⚠️ 還原成「有選一個板塊」的狀態 —— 下面那段量的是板塊明細頁的字數
+      PRO.rotSwitchSub('det'); PRO.rotOne(Object.keys(PRO._rotSet().grp)[0]);
+      await new Promise(r => setTimeout(r, 150));
+    }
     // 🧹 V74.1.3 使用者:「我不要無效文字,把它折疊起來或者刪減文字」
     //    量的是**攤開前**(使用者第一眼)的字數 —— 大段說明要收進 <details> 或搬去「策略與回測」頁。
     //    ⚠️ 收合的 <details> innerText 本來就不含內文 → 這裡**刻意不展開**(那正是要量的東西)。
@@ -943,8 +1013,11 @@ ok('㊲i 🧹 長說明要**真的搬到**「策略與回測」那一頁(⛔ 不
 // 📐 V74.1.3 設計補強(同 V74.3.7 的教訓:只有兩條軸線的話,泡泡的位置根本不可解讀)
 ok('㊲j 🎨 泡泡圖要有圖例:顏色 / 大小 / 右上角那框各代表什麼',
    /泡泡越大 = 成交金額越大/.test(src) && /高位階 \+ 高波動/.test(src));
-ok('㊲k ⏭ 拉去看過去之後要有「回到最新」鈕(⛔ 手機上滑桿很難拖回最右邊)',
-   /id="rotNow"/.test(src) && /PRO\.rotSeek\(1e9\)/.test(src));
+// 🚨 V74.1.5 改成「日期本身可以點」—— 多一顆鈕會讓控制列在「不是最新」時換行,
+//    圖整個被往下推 11px(㉒d2 抓到的,正是使用者最早抱怨的「上上下下」)。
+ok('㊲k ⏭ 拉去看過去之後要回得到最新,⛔ 但不可為此多一顆會讓版面換行的鈕',
+   /id="rotDay" onclick="PRO\.rotSeek\(1e9\)"/.test(src) && !/id="rotNow"/.test(src)
+   && /⏭回最新/.test(src));
 // 📐 V74.1.4 使用者:「起泡版面那面小,請修改」
 ok('㊲l 📐 泡泡圖畫布要**直式**(⛔ 340×210 在手機上只有 ~216px 高,泡泡跟名字全擠在一起)',
    T.sbAspect >= 1.05, T.sbAspect?.toFixed(2));
@@ -960,6 +1033,41 @@ ok('㊲p 🧭 「策略與回測」那頁最前面要有一段目錄(⛔ 五張�
    /這一頁在講什麼/.test(src) && /想知道「為什麼不做某個功能」/.test(src));
 ok('㊲q 🧹 法人籌碼頁第一眼只留一句話結論,長說明收摺疊(⛔ 原本 1,398 字的文字牆)',
    ROT2.paneLen.flow <= 1000, ROT2.paneLen.flow);
+// 🌊📅 V74.1.5 ① 平滑 + ④ 日期區間
+ok('㊴ 🌊 平滑真的有接上(同一天、開了平滑之後泡泡位置要不一樣)',
+   ROT2.smOff != null && ROT2.smOn != null && ROT2.smOff !== ROT2.smOn, `${ROT2.smOff} → ${ROT2.smOn}`);
+ok('㊴b 🌊 鈕上要看得出現在是幾日平滑', /平滑\s*5日/.test(ROT2.smLbl0), ROT2.smLbl0);
+ok('㊴c 🚨 平滑⛔ 只可以影響顯示 —— 文案要寫明「不是改成 5 日報酬」(那是另一個指標)',
+   /只影響顯示/.test(src) && /不.{0,3}是.{0,4}改成 5 日報酬|不\*\*是\*\*改成 5 日報酬/.test(src));
+ok('㊵ 📅 日期快選四顆(近5/近20/近60/全部)', ROT2.rangeBtns.length === 4
+   && /近 5 日/.test(ROT2.rangeBtns[0]) && /全部/.test(ROT2.rangeBtns[3]), ROT2.rangeBtns);
+ok('㊵b 📅 選了區間 → 滑桿範圍要跟著縮(⛔ 不縮的話「區間」只是裝飾)',
+   +ROT2.slMin > 0 && +ROT2.slMax >= +ROT2.slMin && /3 天/.test(ROT2.rangeN),
+   `${ROT2.slMin}~${ROT2.slMax} / ${ROT2.rangeN}`);
+ok('㊵c 🏆 點完區間要顯示這個區間的前 3 名 + 同期最弱 3 個',
+   ROT2.rangeChips === 6 && /最強 3 個/.test(ROT2.rangeTop) && /最弱 3 個/.test(ROT2.rangeTop),
+   `${ROT2.rangeChips} chips`);
+ok('㊵d 🚨 必須寫明「這是誰比較強,⛔ 不是照這套做會賺多少」(⛔ 否則會被當成回測績效)',
+   /不是「照這套做會賺多少」/.test(ROT2.rangeTop) && /每天/.test(ROT2.rangeTop), ROT2.rangeTop.slice(-200));
+ok('㊵e 📅 自訂日期:使用者挑的不一定是交易日 → 取範圍內真的有的那幾天',
+   /天$/.test(ROT2.custN.trim()) && !/~\s*$/.test(ROT2.custN), ROT2.custN);
+ok('㊵f 📅 完全沒有交易日的區間要說出來(⛔ 不可靜默 —— 陷阱 #22)',
+   /沒有交易日/.test(ROT2.custNone), ROT2.custNone.slice(0, 120));
+ok('㊵g 📅 切回「全部」要復原', ROT2.rangeAllN === '全部', ROT2.rangeAllN);
+// 📊 ㊶ V74.1.5 兩張圖切成頁籤(使用者:「這 2 張圖做一個切換頁籤」)
+ok('㊶ 📊 圖卡有「板塊走勢 / 個股泡泡」兩個頁籤,切了只有一個顯示',
+   /rotChartTab\('trend'\)/.test(src) && /rotChartTab\('bub'\)/.test(src)
+   && T.ctTrendHidden === true && String(T.ctBtnOn) === 'false,true', [T.ctTrendHidden, T.ctBtnOn]);
+ok('㊶b 🚨 泡泡藏著的時候拉時間軸,切回來要對到當天(⛔ 否則停在切走前那一天,畫面還很正常)',
+   !!T.ctBub0 && T.ctBub0 !== T.ctBub1, `${String(T.ctBub0).slice(0, 40)} → ${String(T.ctBub1).slice(0, 40)}`);
+ok('㊶c ⛔ 切頁籤只可以改 display,不可重建(重建會把泡泡的動畫洗掉 —— 第四次踩同一個坑)',
+   /rotChartTab\(t\) \{[\s\S]{0,420}?classList\.toggle\('hidden'/.test(src)
+   && !/rotChartTab\(t\) \{[\s\S]{0,420}?innerHTML/.test(src));
+ok('㊶d 🎛️ 播放列要在圖卡上方(使用者:「播放輪動的那一條放在泡泡卡片上方」)',
+   /class="rotctl cardctl"[\s\S]{0,200}?rotSlider2/.test(src)
+   && src.indexOf('class="chartbar"') < src.indexOf('id="rotChart-trend"'));
+ok('㊶e 🎛️ 兩條滑桿要同步(⛔ 拉一條另一條不動 = 使用者會以為壞掉)',
+   /const s2 = document\.getElementById\('rotSlider2'\);[\s\S]{0,160}?s2\.value = String\(k\)/.test(src));
 
 
 await browser.close();

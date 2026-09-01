@@ -226,6 +226,16 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .sb{transition:transform .3s ease, opacity .25s}
 /* 🧲 成員各走各的板塊 —— 淡化 + 虛線邊,⛔ 不用紅綠(那是漲跌方向,不是好壞) */
 .rotchip.lowcoh{opacity:.62;border-style:dashed}
+/* 📊 圖表切換頁籤 + 圖卡自己的播放列(使用者:「播放輪動的那一條放在泡泡卡片上方」) */
+.rotday.clickable{cursor:pointer;color:var(--cyan);text-decoration:underline dotted}
+.dtin{background:var(--panel2);border:1px solid var(--line2);color:var(--txt);border-radius:7px;
+  padding:6px 8px;font-size:12px;min-height:40px;flex:1;min-width:0}
+.chartbar{display:flex;gap:6px;margin:6px 0 4px}
+.cbtn{flex:1;min-height:40px;background:var(--panel2);border:1px solid var(--line2);color:var(--dim);
+  border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer}
+.cbtn.on{background:var(--cyan);border-color:var(--cyan);color:#04121c}
+.cardctl{margin:0 0 6px}
+.verno{color:var(--cyan);font-weight:800;font-family:ui-monospace,monospace;letter-spacing:.3px}
 .sortth{cursor:pointer;user-select:none}
 .sortth.on{color:var(--cyan)}
 .sbnote{margin:2px 0 6px}
@@ -371,7 +381,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 <body>
 <div id="ptr"></div>
 <div class="topbar"><div class="topbar-in">
-  <div class="brand"><div class="logo">🛰️</div><div><h1>產業作戰室 <span style="color:var(--cyan)">PRO</span></h1><div class="ver">估值 × 籌碼 × AI 產業鏈 <span class="datebadge" id="dataDate"></span></div></div></div>
+  <div class="brand"><div class="logo">🛰️</div><div><h1>產業作戰室 <span style="color:var(--cyan)">PRO</span></h1><div class="ver"><span class="verno" id="proVer">—</span> 估值 × 籌碼 × AI 產業鏈 <span class="datebadge" id="dataDate"></span></div></div></div>
   <div class="tabs">
     <button class="tab-btn on" id="tabBtnVal" onclick="PRO.switchTab('val')">產業估值</button>
     <button class="tab-btn" id="tabBtnChain" onclick="PRO.switchTab('chain')">AI 產業鏈</button>
@@ -451,14 +461,26 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
       <button class="lbtn" id="rotMode" onclick="PRO.rotToggleMode()" title="官方 33 產業或人工題材板塊">🏛️ 官方產業</button>
       <button class="lbtn" id="rotPlay" onclick="PRO.rotPlay()">▶︎ 播放</button>
       <button class="lbtn" id="rotSpd" onclick="PRO.rotCycleSpeed()" title="播放速度">1x</button>
+      <button class="lbtn" id="rotSm" onclick="PRO.rotCycleSmooth()" title="把跳動抹平(移動平均),⛔ 只影響顯示不改資料">平滑 關</button>
       <input type="range" id="rotSlider" min="0" max="0" value="0" oninput="PRO.rotSeek(+this.value)">
-      <span class="rotday" id="rotDay">—</span>
-      <!-- ⏭ 拉去看過去之後,⛔ 不該要求使用者把滑桿再拖回最右邊(手機上很難拖準) -->
-      <button class="lbtn" id="rotNow" onclick="PRO.rotSeek(1e9)" style="display:none">⏭ 回到最新</button>
+      <!-- ⏭ 回到最新:⛔ 刻意做成「日期本身可以點」而**不是多一顆鈕** ——
+           多一顆鈕會讓控制列在「不是最新」時換行 → 底下的圖整個往下推 11px,
+           那正是使用者最早抱怨的「上上下下」(測試 ㉒d2 抓到的)。 -->
+      <span class="rotday" id="rotDay" onclick="PRO.rotSeek(1e9)">—</span>
     </div>
     <div class="labbar" id="rotSubBar"></div>
     <!-- ☑️ 勾選:使用者「我想勾選的方式勾出我想看的東西就好,其他不要顯示」。
          ⛔ 全部取消要擋下來(空畫面不是「篩選」是壞掉);⛔ 也要有「全選/只看前 8」的快捷。 -->
+    <!-- 📅 V74.1.5 使用者:「自訂日期區間,還有日期快選,點完區間後顯示這個區間的前 3 名」 -->
+    <details id="rotRangeWrap"><summary class="rotmore">📅 日期區間(<span id="rotRangeN">全部</span>)</summary>
+      <div class="rotctl" style="margin-top:6px" id="rotRangeBar"></div>
+      <div class="rotctl" style="margin-top:4px">
+        <input type="date" id="rotFrom" class="dtin" onchange="PRO.rotRangeCustom()">
+        <span style="color:var(--dim2);font-size:11px">～</span>
+        <input type="date" id="rotTo" class="dtin" onchange="PRO.rotRangeCustom()">
+      </div>
+      <div id="rotRangeTop"></div>
+    </details>
     <details id="rotPickWrap"><summary class="rotmore">☑️ 只看我想看的板塊(<span id="rotPickN">全部</span>)</summary>
       <div class="rotctl" style="margin-top:6px">
         <button class="lbtn" onclick="PRO.rotPickAll(1)">全選</button>
@@ -494,7 +516,6 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
           <button class="backbtn" onclick="PRO.rotOne(null)">← 全部板塊</button>
           <button class="stepbtn" onclick="PRO.rotStep(-1)" title="上一個板塊">◀</button>
           <button class="stepbtn" onclick="PRO.rotStep(1)" title="下一個板塊">▶</button>
-          <button class="lbtn" data-rotplay onclick="PRO.rotPlay()">▶︎ 播放這個板塊</button>
         </div>
         <div id="rotOne"></div>
       </div>
@@ -1319,6 +1340,11 @@ const PRO = {
   //      ③ 外資佔成交額比     ±0.2pp 內 ❌
   //      ④ 成交額佔比的變化   ≈0 甚至負的 ❌ ← ⛔⛔ 這正是最想做成動畫的那個「錢在搬家」
   //    ⛔ 所以動畫演的是**排名變化**,不是資金流向箭頭。
+  // 🔢 版本號 —— 使用者:「產業作戰室與散戶救星版本用一樣,這樣才知道有沒有更新」
+  //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
+  //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
+  //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
+  VER: 'V74.1.5',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -1613,6 +1639,7 @@ const PRO = {
     // ⛔ 先把 k 定好再切子頁籤 —— rotSwitchSub 內部會 rotSeek(_rotK),
     //    順序反過來的話第一次載入會停在最舊那一天(見 _rotK 的註解)。
     if (this._rotK == null || !(this._rotK <= J.days.length - 1)) this._rotK = J.days.length - 1;
+    this._applyRange();               // 📅 快選鈕 + 滑桿範圍 + 區間前 3 名
     this.rotSwitchSub(this._rotSub);
     this.rotSeek(this._rotK);
     this._rotMembers();
@@ -1625,7 +1652,8 @@ const PRO = {
     const J = this._rotData, G = this._rotSet(), o = G.grp[c];
     if (!o) return '<div class="note">⏳ 選一個板塊。</div>';
     const k = this._rotK ?? (J.days.length - 1);
-    const W = 320, H = 150, PL = 32, PR = 34, PT = 10, PB = 16;
+    // 📐 V74.1.5 使用者:「圖卡要與輪動總覽起泡圖一樣大」→ 跟 `_stockBubHtml` 同尺寸
+    const W = 340, H = 430, PL = 38, PR = 40, PT = 14, PB = 22;
     const N = J.days.length;
     const line = (arr, col, right) => {
       const vs = arr.map(v => (v == null ? null : v));
@@ -1710,10 +1738,27 @@ const PRO = {
       </details>` : '';
     // ⛔ 兩段:`rotOneTop` 每一拍重畫(數字/游標會變);泡泡與表**只建一次**
     //    —— 重建會把泡泡的 CSS transition 洗掉,動畫就沒了(第三次踩同一個坑)。
+    // 📊 V74.1.5 使用者:「這 2 張圖做一個切換頁籤」+「播放輪動的那一條放在泡泡卡片上方」
+    //   ⛔ 頁籤列與播放列必須在**靜態區**(只建一次)——
+    //     放進 `rotOneTop` 的話每一拍重建,泡泡的 CSS transition 會被洗掉(第四次踩同一個坑),
+    //     而且播放鈕的文字會在播放中被還原成「▶︎ 播放」。
+    const CT = this._rotChartTab || 'trend';
     return `<div class="rotdet">
-      <div id="rotOneTop">
-      <div class="rdhead"><b>${G.nm(c)}</b> ・${o.n} 檔 ・停在 <b>${J.days[k]}</b>
+      <div class="rdhead"><b>${G.nm(c)}</b> ・${o.n} 檔 ・停在 <b id="rotOneDay">${J.days[k]}</b>
         <span class="rdclose" onclick="PRO.rotOne(null)">✕ 換一個</span></div>
+      ${mem.nameMiss ? `<div class="note">⚠️ <b>「${G.nm(c)}」的成分股對不上</b> —— 產業分類表兩邊用的名字不一樣
+        (輪動圖用證交所代碼、個股表用中文名),這一類的名字還沒對上。
+        ⛔ 上面那幾個數字仍然是對的,只是列不出裡面有哪些股票。</div>` : ''}
+      <div class="chartbar">
+        <button class="cbtn${CT === 'trend' ? ' on' : ''}" onclick="PRO.rotChartTab('trend')">📈 板塊走勢</button>
+        <button class="cbtn${CT === 'bub' ? ' on' : ''}" onclick="PRO.rotChartTab('bub')">🫧 個股泡泡</button>
+      </div>
+      <div class="rotctl cardctl">
+        <button class="lbtn" data-rotplay onclick="PRO.rotPlay()">▶︎ 播放這個板塊</button>
+        <input type="range" id="rotSlider2" min="0" max="${N - 1}" value="${k}" oninput="PRO.rotSeek(+this.value)">
+      </div>
+      <div id="rotChart-trend"${CT === 'trend' ? '' : ' class="hidden"'}>
+      <div id="rotOneTop">
       <div class="onechart"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
         ${(L1.y && L1.lo < 0 && L1.hi > 0) ? `<line x1="${PL}" y1="${L1.y(0).toFixed(1)}" x2="${W - PR}" y2="${L1.y(0).toFixed(1)}" stroke="var(--line2)" stroke-width=".6" stroke-dasharray="2 3"/>
           <text class="onelab" x="2" y="${(L1.y(0) + 3).toFixed(1)}">0%</text>` : ''}
@@ -1748,17 +1793,31 @@ const PRO = {
           低於 0.2 的(如晶圓代工、網通)成員各走各的,⛔ 那種板塊的平均值參考價值很低。` : ''}
         </div></details>
       ${fi}${staleNote}
+      </div></div>
+      <div id="rotChart-bub"${CT === 'bub' ? '' : ' class="hidden"'}>
+        ${this._stockBubHtml(mem.syms)}
       </div>
-      ${mem.nameMiss ? `<div class="note">⚠️ <b>「${G.nm(c)}」的成分股對不上</b> —— 產業分類表兩邊用的名字不一樣
-        (輪動圖用證交所代碼、個股表用中文名),這一類的名字還沒對上。
-        ⛔ 上面那幾個數字仍然是對的,只是列不出裡面有哪些股票。</div>` : ''}
-      ${this._stockBubHtml(mem.syms)}
       ${tbl}
     </div>`;
   },
   // 🔁 同一個板塊、只是換了一天 → 只重畫會變的那一段(⛔ 不動泡泡,否則動畫被重置)
   // 📋 成分股表換排序 —— ⛔ 一定要 `_oneHtmlFor = null` 逼它重建,
   //    不然 renderRot 會判定「板塊沒換」只走 _oneReflow(那支不重畫表格)
+  // 📊 兩張圖切換 —— ⛔ 只切 display,**不重建**(重建會把泡泡動畫洗掉)
+  rotChartTab(t) {
+    this.buzz(8);
+    this._rotChartTab = t;
+    for (const k of ['trend', 'bub']) {
+      const e = document.getElementById('rotChart-' + k);
+      if (e) e.classList.toggle('hidden', k !== t);
+    }
+    document.querySelectorAll('.chartbar .cbtn').forEach((b, i) =>
+      b.classList.toggle('on', (i === 0) === (t === 'trend')));
+    // 剛顯示出來要對到當天。⚠️ 這是**保險**不是主路徑 —— `rotSeek` 本來就會呼叫
+    //    `_stockBubSeek`(藏著也照跑),所以拿掉這行測試抓不到。⛔ 但別因此刪掉:
+    //    日後若把「藏起來就不更新」當成效能優化,這行就是唯一的補救。
+    if (t === 'bub') this._stockBubSeek(this._rotK);
+  },
   rotOneSort(k) {
     this.buzz(8);
     this._rotOneSortK = k;
@@ -1845,6 +1904,100 @@ const PRO = {
     return out;
   },
   // 某產業在第 k 天、勾選那幾條的近 N 日資金流合計(億)
+  // 🌊 V74.1.5 平滑(使用者:「資料跳的很快,用 5 日、10 日是不是比較平滑」)
+  //
+  // ⚠️⚠️ 先講清楚一件事,免得下一個人以為軸上的值是「單日」:
+  //   橫軸本來就是「**近 20 日**報酬中位數」、泡泡的振幅也是 20 日 —— 已經是平滑過的量了。
+  //   真正在跳的是**時間軸每一格 = 一個交易日**,而 20 日窗口相鄰兩天會共用 19 天資料、
+  //   只換掉頭尾各一天 → 換到的那一天如果是大漲大跌,整條就會抖一下。
+  // ⭐ 所以做法是對「已經算好的序列」再取一次移動平均,⛔ **不是**改成 5 日報酬
+  //   (那會變成另一個指標,+1.44pp 那組實測數字就不能用了 —— 實測 5 日窗口只有 +0.81pp)。
+  // ⛔ 而且它**只影響顯示**:排名、前 3 名、實測數字全部照原始序列算。
+  SMOOTH: [0, 5, 10],
+  _rotSmooth: 0,
+  _sm(arr, k) {                       // 取到第 k 天為止的 N 日移動平均
+    const n = this._rotSmooth;
+    if (!arr) return null;
+    if (!n) return arr[k] ?? null;
+    let t = 0, c = 0;
+    for (let i = Math.max(0, k - n + 1); i <= k; i++) if (arr[i] != null) { t += arr[i]; c++; }
+    return c ? t / c : null;
+  },
+  rotCycleSmooth() {
+    this.buzz(10);
+    const i = (this.SMOOTH.indexOf(this._rotSmooth) + 1) % this.SMOOTH.length;
+    this._rotSmooth = this.SMOOTH[i];
+    document.getElementById('rotSm').textContent = this._rotSmooth ? `平滑 ${this._rotSmooth}日` : '平滑 關';
+    this._oneHtmlFor = null;          // 走勢線也要跟著重畫
+    this.rotSeek(this._rotK);
+  },
+  // 📅 日期區間 —— `_rotRange = null`(全部)或 {a, b} 兩個索引
+  RANGES: [[5, '近 5 日'], [20, '近 20 日'], [60, '近 60 日'], [0, '全部']],
+  _rotRange: null,
+  _rangeAB() {
+    const J = this._rotData, N = (J.days || []).length;
+    if (!N) return null;
+    const r = this._rotRange;
+    return r ? { a: Math.max(0, r.a), b: Math.min(N - 1, r.b) } : { a: 0, b: N - 1 };
+  },
+  rotRangeQuick(days) {
+    this.buzz(10);
+    const J = this._rotData; if (!J) return;
+    const N = J.days.length;
+    this._rotRange = days ? { a: Math.max(0, N - days), b: N - 1 } : null;
+    this._applyRange();
+  },
+  rotRangeCustom() {
+    const J = this._rotData; if (!J) return;
+    const f = document.getElementById('rotFrom').value, t = document.getElementById('rotTo').value;
+    if (!f || !t) return;
+    // ⛔ 使用者選的日子不一定是交易日 → 取「範圍內真的有的那幾天」,⛔ 不硬對 index
+    const idx = J.days.map((d, i) => [d, i]).filter(([d]) => d >= f && d <= t).map(([, i]) => i);
+    if (!idx.length) {
+      document.getElementById('rotRangeTop').innerHTML =
+        `<div class="note">⚠️ <b>那個區間裡沒有交易日</b>(目前資料只涵蓋 ${J.days[0]} ~ ${J.days[J.days.length - 1]})。</div>`;
+      return;
+    }
+    this._rotRange = { a: idx[0], b: idx[idx.length - 1] };
+    this._applyRange();
+  },
+  _applyRange() {
+    const J = this._rotData, ab = this._rangeAB(); if (!ab) return;
+    const sl = document.getElementById('rotSlider'), s2 = document.getElementById('rotSlider2');
+    for (const e of [sl, s2]) if (e) { e.min = String(ab.a); e.max = String(ab.b); }
+    document.getElementById('rotFrom').value = J.days[ab.a];
+    document.getElementById('rotTo').value = J.days[ab.b];
+    document.getElementById('rotRangeN').textContent =
+      this._rotRange ? `${J.days[ab.a]} ~ ${J.days[ab.b]} ・${ab.b - ab.a + 1} 天` : '全部';
+    document.getElementById('rotRangeBar').innerHTML = this.RANGES.map(([d, n]) =>
+      `<button class="lbtn${(d ? (this._rotRange && ab.b - ab.a + 1 === Math.min(d, J.days.length)) : !this._rotRange) ? ' on' : ''}"
+        onclick="PRO.rotRangeQuick(${d})">${n}</button>`).join('');
+    this.rotSeek(Math.max(ab.a, Math.min(this._rotK ?? ab.b, ab.b)));
+    this._rangeTop();
+  },
+  // 🏆 這個區間的前 3 名 —— 用**區間內平均相對強弱**排
+  //    ⛔ 這不是「那段期間照這套做會賺多少」,只是「那段期間誰比較強」。
+  _rangeTop() {
+    const box = document.getElementById('rotRangeTop'); if (!box) return;
+    const J = this._rotData, G = this._rotSet(), ab = this._rangeAB();
+    if (!J || !ab) { box.innerHTML = ''; return; }
+    const rows = Object.keys(G.grp).map(c => {
+      const a = (G.grp[c].r20 || []).slice(ab.a, ab.b + 1).filter(v => v != null);
+      return { c, v: a.length ? a.reduce((s2, v) => s2 + v, 0) / a.length : null, n: a.length };
+    }).filter(x => x.v != null && x.n >= 3).sort((a, b) => b.v - a.v);
+    if (rows.length < 4) { box.innerHTML = '<div class="note">⏳ 這個區間的資料太少,排不出名次。</div>'; return; }
+    const chip = x => `<span class="rotchip ${this.cls(x.v)}${this._lowCoh(x.c) ? ' lowcoh' : ''}" onclick="PRO.rotOne('${x.c}')">${this._lowCoh(x.c) ? '🧲' : ''}${G.nm(x.c)} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}</span>`;
+    const t3 = rows.slice(0, 3), b3 = rows.slice(-3);
+    box.innerHTML =
+      `<div class="note" style="margin-top:6px"><b>🎯 ${J.days[ab.a]} ~ ${J.days[ab.b]} 最強 3 個</b>
+        (區間內平均相對強弱)</div><div class="rotlist">${t3.map(chip).join('')}</div>
+       <div class="note" style="margin-top:4px"><b>⛔ 同期最弱 3 個</b>
+        —— ⭐ 實測<b>避開最弱比追最強更有價值</b>(最強 +${this._ROT.top}pp / 最弱 ${this._ROT.bot}pp)</div>
+       <div class="rotlist">${b3.map(chip).join('')}</div>
+       <div class="note">⚠️ 這是「那段期間<b>誰比較強</b>」,⛔ <b>不是「照這套做會賺多少」</b> ——
+         實測的 +${this._ROT.spread}pp 是「<b>每天</b>買前 3 名、看未來 20 日」量出來的,
+         ⛔ 不能拿一段固定區間的排名去代替。點名字可以直接看那個板塊。</div>`;
+  },
   _flowAt(c, k) {
     const fl = (this._rotSet().grp[c] || {}).flow || {};
     let t = 0, any = false;
@@ -1853,7 +2006,20 @@ const PRO = {
       const a = fl[key]; if (!a) continue;
       for (let q = Math.max(0, k - this._flowWin + 1); q <= k; q++) if (a[q] != null) { t += a[q]; any = true; }
     }
-    return any ? t : null;
+    if (!any) return null;
+    // 🌊 平滑:再對「近 W 日累計」取一次移動平均(⛔ 只影響顯示)
+    if (!this._rotSmooth) return t;
+    let acc = 0, cnt = 0;
+    for (let j = Math.max(0, k - this._rotSmooth + 1); j <= k; j++) {
+      let tt = 0, ok2 = false;
+      for (const [key] of this.FLOW) {
+        if (!this._flowOn[key]) continue;
+        const a = fl[key]; if (!a) continue;
+        for (let q = Math.max(0, j - this._flowWin + 1); q <= j; q++) if (a[q] != null) { tt += a[q]; ok2 = true; }
+      }
+      if (ok2) { acc += tt; cnt++; }
+    }
+    return cnt ? acc / cnt : t;
   },
   rotSeek(k) {
     const J = this._rotData; if (!J) return;
@@ -1861,13 +2027,20 @@ const PRO = {
     this._rotK = k;
     document.getElementById('rotSlider').value = String(k);
     const atNew = k === J.days.length - 1;
-    document.getElementById('rotDay').textContent = J.days[k] + (atNew ? '(最新)' : '');
-    const nb = document.getElementById('rotNow');
-    if (nb) nb.style.display = atNew ? 'none' : '';
+    // ⭐ 同一個元素、字數接近 → ⛔ 不會因為換行把圖推上推下
+    const dd = document.getElementById('rotDay');
+    dd.textContent = J.days[k] + (atNew ? '(最新)' : ' ⏭回最新');
+    dd.classList.toggle('clickable', !atNew);
+    // 🎛️ 圖卡上方那條是**第二組**控制項 —— ⛔ 兩條滑桿必須同步,否則拉一條另一條不動
+    const s2 = document.getElementById('rotSlider2');
+    if (s2) { s2.max = String(J.days.length - 1); s2.value = String(k); }
+    const d2 = document.getElementById('rotOneDay');
+    if (d2) d2.textContent = J.days[k];
+
     const W = this.QW, H = this.QH, P = this.QPAD;
     const G = this._rotSet();
     const list = Object.keys(this._rotBub)
-      .map(c => ({ c, v: (G.grp[c] || {}).r20?.[k], f: this._flowAt(c, k), n: (G.grp[c] || {}).n || 5 }))
+      .map(c => ({ c, v: this._sm((G.grp[c] || {}).r20, k), f: this._flowAt(c, k), n: (G.grp[c] || {}).n || 5 }))
       .filter(x => x.v != null).sort((a, b) => b.v - a.v);
     const N = list.length;
     const rank = new Map(list.map((x, i) => [x.c, i]));
@@ -2155,6 +2328,10 @@ const PRO = {
   //    ⛔ 不隱藏(隱藏了使用者會以為壞掉),只標出來 + 說明為什麼。
   //    ⚠️ 門檻 0.20 跟採礦端的 `COH_MIN` 是同一個數字 —— 改一邊要改兩邊。
   COH_LOW: 0.20,
+  _renderVer() {
+    const e = document.getElementById('proVer');
+    if (e) e.textContent = this.VER;
+  },
   _lowCoh(c) {
     const v = (this._tagCoh || {})[c];
     return (v != null && v < this.COH_LOW) ? v.toFixed(2) : null;
@@ -3071,6 +3248,7 @@ ${M.news || '(無)'}
   selLayer(k) { this.buzz(10); this._layerSel = (k && this._layerSel !== k) ? k : null; this.renderChain(); },
 
   async init() {
+    this._renderVer();
     document.getElementById('presetBar').innerHTML =
       '<span style="font-size:10px;color:var(--dim2);align-self:center">快選:</span>' +
       this.PRESETS.map((p, i) => `<span class="preset" onclick="PRO.usePreset(${i})">${p.n}</span>`).join('');
