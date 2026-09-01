@@ -75,6 +75,27 @@ const R = await page.evaluate(async () => {
             rowTxt: row ? row.innerText.replace(/\s+/g, ' ') : '',
         };
     }
+    // 🗂️ 第二波:當沖作戰室(dtHubBody 一直有內容 → 提示列要顯示、卡要收起)
+    try { app.switchSubTab('daytrade'); } catch (_) { }
+    await new Promise(r => setTimeout(r, 1100));
+    {
+        const row = document.querySelector('.tidyrow[data-tidyfor="dtHubBody"]');
+        o.dt = { hidden: !seen('dtHubBody'), row: !!row && getComputedStyle(row).display !== 'none',
+                 rowTxt: row ? row.innerText.replace(/\s+/g, ' ') : '' };
+    }
+    // ⚠️ 法人成本卡平常**自己就是 hidden**(沒金鑰/沒資料)→ 提示列也要跟著藏,
+    //    ⛔ 否則等於幫一張本來就看不到的卡道歉 = 新的雜訊
+    {
+        const el = document.getElementById('chipRadarPanel');
+        const row = document.querySelector('.tidyrow[data-tidyfor="chipRadarPanel"]');
+        el.classList.add('hidden');
+        await new Promise(r => setTimeout(r, 120));
+        o.crHiddenRow = getComputedStyle(row).display;          // 該是 none
+        el.classList.remove('hidden'); el.innerHTML = '<div>' + 'x'.repeat(80) + '</div>';
+        await new Promise(r => setTimeout(r, 120));
+        o.crShownRow = getComputedStyle(row).display;           // 該是 ''(顯示)
+        el.classList.add('hidden');
+    }
     // ② 點開/收回(render 已經跑過、classList 已被它動過 → 這裡驗的是「壓得住」)
     app._tidyToggle('sixMeridianCard'); o.open = seen('sixMeridianCard');
     // ⚠️ 防禦性讀取 —— 注入「提示列沒插進去」時要讓斷言乾淨地紅,⛔ 不是整包炸掉
@@ -100,6 +121,13 @@ ok('①c 提示列要講「為什麼」的依據(未驗證/取代/明細),⛔ �
 ok('② 點開要真的顯示、再點要收回(⛔ render 的 classList 不可壓過它)',
     R.open === true && R.close === false && R.btnOpen === '收起', [R.open, R.close, R.btnOpen]);
 ok('③ ⛔ 收起 ≠ 刪除:卡還在 DOM、render 照跑(未來一行就能加回來)', R.domLen > 50, R.domLen);
+// ── 第二波(V74.1.8)──
+ok('⑤ 當沖作戰室(dtHubBody)預設收起 + 提示列講「樣本十幾次、只贏基準 2pp」',
+    R.dt.hidden && R.dt.row && /雜訊內/.test(R.dt.rowTxt) && /2pp/.test(R.dt.rowTxt), R.dt.rowTxt.slice(0, 90));
+ok('⑤b 法人成本卡的提示列要引用實測數字(⛔ 收起要有依據)',
+    /\+0\.20pp/.test(SRC) && /instcost_probe/.test(SRC));
+ok('⑥ 🚨 卡自己藏起來時(沒金鑰/沒資料),提示列也要跟著藏(⛔ 否則是幫看不到的卡道歉)',
+    R.crHiddenRow === 'none' && R.crShownRow !== 'none', [R.crHiddenRow, R.crShownRow]);
 
 console.log(fails ? `❌ ${fails} 條失敗` : '✅ TIDY_PASS(全部通過)');
 process.exit(fails ? 1 : 0);
