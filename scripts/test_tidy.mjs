@@ -28,12 +28,20 @@ ok('⓪ CSS 用屬性 + !important(⛔ class 壓不住 render 的 classList.remo
 {
     const seg = SRC.slice(SRC.indexOf('_TIDY: ['), SRC.indexOf('_initTidy('));
     const entries = [...seg.matchAll(/\['([A-Za-z]+)', '([^']+)', '([^']+)'\]/g)];
+    // ⚠️ V74.2.0 使用者「沒用的就刪除」→ 三張從收起改成直接刪 → 清單只剩 2 張
     ok('⓪b 清單每一行都要有名稱與「為什麼」(⛔ 不寫依據的收起跟亂砍沒兩樣)',
-        entries.length >= 4 && entries.every(m => m[2].length >= 4 && m[3].length >= 10), entries.length);
+        entries.length >= 2 && entries.every(m => m[2].length >= 4 && m[3].length >= 10), entries.length);
     // 🚨 風險提醒類⛔ 不可入清單 —— 忽略風險的代價遠大於多看一眼(多空不對稱那條鐵則)
     ok('⓪c ⛔ 風險提醒/官方處置類的卡不可被收起',
         !/attentionDetailCard|marginCallCard|disposition|riskAlert/i.test(seg));
+    // 🗑️ V74.2.0 已刪除的三張⛔ 不可再回到清單(它們的 DOM 已不存在,收一張不存在的卡 = 靜默沒作用)
+    ok('⓪d 🗑️ 已刪除的卡(predictionAuditCard/chipRadarPanel/dtHubBody)不可再入 _TIDY 清單',
+        !entries.some(m => /predictionAuditCard|chipRadarPanel|dtHubBody/.test(m[1])),
+        entries.map(m => m[1]).join(','));
 }
+// 🗑️ V74.2.0 刪除要刪乾淨:DOM 裡不可再有這兩個 id(⛔ 半刪 = 空殼)
+ok('⓪e 🗑️ chipRadarPanel / predictionAuditCard 的 DOM 已移除',
+    !/id="chipRadarPanel"/.test(SRC) && !/id="predictionAuditCard"/.test(SRC));
 
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -64,8 +72,9 @@ const R = await page.evaluate(async () => {
     // ① 每一張:預設收起 + 原地有提示列
     o.cards = {};
     // ⚠️ V74.1.9 sixMeridianCard 已**加回**(全市場實測 🔴 強共振六關全過)→ 不在清單裡
+    // 🗑️ V74.2.0 predictionAuditCard 已整張刪除 → 從這份驗收清單移除
     for (const [tab, pane, id] of [['strategy', 'now', 'etfFollowCard'],
-                                   ['bullbear', null, 'bullBearCategoryCards'], ['backtest', null, 'predictionAuditCard']]) {
+                                   ['bullbear', null, 'bullBearCategoryCards']]) {
         try { app.switchSubTab(tab); } catch (_) { }
         if (pane) { try { app.switchOvTab(pane); } catch (_) { } }
         await new Promise(r => setTimeout(r, 1100));
@@ -76,26 +85,30 @@ const R = await page.evaluate(async () => {
             rowTxt: row ? row.innerText.replace(/\s+/g, ' ') : '',
         };
     }
-    // 🗂️ 第二波:當沖作戰室(dtHubBody 一直有內容 → 提示列要顯示、卡要收起)
+    // 🗑️ V74.2.0:dtHubBody **解除收起**(裡面沒背書的「隔日沖勝率回測」段已整段刪除,
+    //    剩下的期貨夜盤守門/正逆價差/隔日沖風險判讀是誠實描述)→ 驗它不再被 tidy、也沒有提示列
     try { app.switchSubTab('daytrade'); } catch (_) { }
     await new Promise(r => setTimeout(r, 1100));
     {
-        const row = document.querySelector('.tidyrow[data-tidyfor="dtHubBody"]');
-        o.dt = { hidden: !seen('dtHubBody'), row: !!row && getComputedStyle(row).display !== 'none',
-                 rowTxt: row ? row.innerText.replace(/\s+/g, ' ') : '' };
+        const el = document.getElementById('dtHubBody');
+        o.dt = {
+            unTidied: !!el && el.dataset.tidy == null,
+            noRow: !document.querySelector('.tidyrow[data-tidyfor="dtHubBody"]'),
+            // 刪乾淨:渲染函式再也不可能吐出那張卡的標題
+            noBt: !/🎯 隔日沖勝率回測/.test((app._dtWinRateBacktest || function () {}).toString()),
+        };
     }
-    // ⚠️ 法人成本卡平常**自己就是 hidden**(沒金鑰/沒資料)→ 提示列也要跟著藏,
-    //    ⛔ 否則等於幫一張本來就看不到的卡道歉 = 新的雜訊
+    // ⚠️ 有些卡平常會**自己藏起來** → 提示列也要跟著藏(⛔ 否則是幫看不到的卡道歉)。
+    //    🗑️ V74.2.0 原本用法人成本卡驗這條 —— 它整張刪了 → 換 etfFollowCard(仍在清單、機制相同)
     {
-        const el = document.getElementById('chipRadarPanel');
-        const row = document.querySelector('.tidyrow[data-tidyfor="chipRadarPanel"]');
+        const el = document.getElementById('etfFollowCard');
+        const row = document.querySelector('.tidyrow[data-tidyfor="etfFollowCard"]');
         el.classList.add('hidden');
         await new Promise(r => setTimeout(r, 120));
         o.crHiddenRow = getComputedStyle(row).display;          // 該是 none
         el.classList.remove('hidden'); el.innerHTML = '<div>' + 'x'.repeat(80) + '</div>';
         await new Promise(r => setTimeout(r, 120));
         o.crShownRow = getComputedStyle(row).display;           // 該是 ''(顯示)
-        el.classList.add('hidden');
     }
     // ② 點開/收回(render 已經跑過、classList 已被它動過 → 這裡驗的是「壓得住」)
     try { app.switchSubTab('bullbear'); } catch (_) { }
@@ -117,24 +130,24 @@ await browser.close();
 if (R.err) { console.log(`❌ analyze 失敗:${R.err}`); process.exit(1); }
 
 ok('④ 清單裡的 id 全部真的存在(⛔ 打錯字 = 那張卡靜默沒收)', R.missing.length === 0, R.missing);
-ok('🚧 空過守門:清單至少 4 張(⛔ 清單被清空這些測試就全是假通過)', R.n >= 4, R.n);
+ok('🚧 空過守門:清單至少 2 張(⛔ 清單被清空這些測試就全是假通過)', R.n >= 2, R.n);
 for (const [id, c] of Object.entries(R.cards)) {
     ok(`① ${id} 預設收起`, c.hidden);
     ok(`①b ${id} 原地要有一行「收了什麼、為什麼」`, c.row && /已收起/.test(c.rowTxt) && /——/.test(c.rowTxt),
         c.rowTxt.slice(0, 80));
 }
-ok('①c 提示列要講「為什麼」的依據(未驗證/取代/明細),⛔ 不可只寫「已收起」',
+ok('①c 提示列要講「為什麼」的依據(未驗證/明細),⛔ 不可只寫「已收起」',
     /驗證/.test(R.cards.etfFollowCard.rowTxt)
-    && /計分條/.test(R.cards.bullBearCategoryCards.rowTxt) && /取代/.test(R.cards.predictionAuditCard.rowTxt));
+    && /計分條/.test(R.cards.bullBearCategoryCards.rowTxt));
 ok('② 點開要真的顯示、再點要收回(⛔ render 的 classList 不可壓過它)',
     R.open === true && R.close === false && R.btnOpen === '收起', [R.open, R.close, R.btnOpen]);
 ok('③ ⛔ 收起 ≠ 刪除:卡還在 DOM、render 照跑(未來一行就能加回來)', R.domLen > 50, R.domLen);
-// ── 第二波(V74.1.8)──
-ok('⑤ 當沖作戰室(dtHubBody)預設收起 + 提示列講「樣本十幾次、只贏基準 2pp」',
-    R.dt.hidden && R.dt.row && /雜訊內/.test(R.dt.rowTxt) && /2pp/.test(R.dt.rowTxt), R.dt.rowTxt.slice(0, 90));
-ok('⑤b 法人成本卡的提示列要引用實測數字(⛔ 收起要有依據)',
-    /\+0\.20pp/.test(SRC) && /instcost_probe/.test(SRC));
-ok('⑥ 🚨 卡自己藏起來時(沒金鑰/沒資料),提示列也要跟著藏(⛔ 否則是幫看不到的卡道歉)',
+// ── 🗑️ 第三波(V74.2.0)使用者「沒用的就刪除」──
+ok('⑤ 🗑️ dtHubBody 解除收起(不再 tidy、沒有提示列),且「隔日沖勝率回測」渲染已死',
+    R.dt.unTidied && R.dt.noRow && R.dt.noBt, JSON.stringify(R.dt));
+ok('⑤b 🗑️ 刪除要留依據:墓碑要引用 instcost_probe / dtflip_probe 的實測數字',
+    /\+0\.20pp/.test(SRC) && /instcost_probe/.test(SRC) && /dtflip_probe/.test(SRC));
+ok('⑥ 🚨 卡自己藏起來時,提示列也要跟著藏(⛔ 否則是幫看不到的卡道歉)',
     R.crHiddenRow === 'none' && R.crShownRow !== 'none', [R.crHiddenRow, R.crShownRow]);
 // ⚔️ V74.1.9 六脈全市場實測後**加回來**(🔴 強共振六關全過)—— 「驗到有用就加回來」的第一個實例
 ok('⑦ 六脈卡已加回(⛔ 不在 _TIDY、K線頁看得到)', R.sixBack === true && R.sixInTidy === false,

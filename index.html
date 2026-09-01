@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.1.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.2.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.1.9 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1603,19 +1603,10 @@
                         <span id="costInputLabel" class="text-[9px] text-gray-500">空手</span>
                     </div>
                     <input type="hidden" id="chipCostInput" oninput="app.refreshStrategy()">
-                    <!-- 🏦 V72.3.1 法人成本/連買連賣小卡:補上標題外框(原本兩個裸 table 浮在總覽,
-                         使用者看到六行「無淨買超/無連續方向」完全不知道是什麼功能)。
-                         資料:前端用使用者自己的 FinMind key 抓近 20 日法人買賣超,
-                         成本 = 淨買超日的加權均價(推估,不是官方值)。⛔ 沒資料的列不渲染、全空整卡隱藏。 -->
-                    <div id="chipRadarPanel" class="hidden bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 mx-2 mb-2">
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="text-[11px] font-bold text-gray-300">🏦 法人近20日 推估成本・連買連賣</span>
-                            <button onclick="app.showJargon('法人成本連買');event.stopPropagation();" class="text-[10px] text-gray-600 hover:text-blue-300">ⓘ</button>
-                        </div>
-                        <div id="chipInstTable" class="space-y-0.5"></div>
-                        <div id="chipBrokerTable" class="space-y-0.5 mt-1"></div>
-                    </div>
-                    
+                    <!-- 🗑️ V74.2.0 「法人近20日推估成本」卡(chipRadarPanel)已刪除(使用者:「沒用的就刪除」)。
+                         實測無優勢(instcost_probe:站上成本後 20 日 +0.20pp、跌破 −0.24pp,扣成本全負、六關 0 過)。
+                         `_renderChipPanel` 留作 no-op;`fetchChipCost` 照跑(它同時餵 chipCostInput 的主力成本,那半是活的)。 -->
+
                     <!-- V32.6 — 移除筆電 lg:grid 7:5 兩欄:左戰區「大字訊息」內容早已上移到
                          首席 AI 區塊,只剩持倉時的 costPnlBar,未持倉股票左欄全空 → 筆電上撐出
                          一大塊空黑、右側內容被擠成 5/12。改回單欄(滿寬,與頁面其他卡一致),
@@ -1955,7 +1946,9 @@
                     <button id="playbookBtn" onclick="app.analyzeStockPlaybook(); app.vibrate(30);" class="hidden w-full bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 text-white py-2.5 rounded-lg text-sm font-black shadow-lg flex justify-center items-center gap-2 transition-all">🎯 分析這檔的最佳打法</button>
                     <div class="text-center text-[9px] text-gray-500 mt-1">進頁自動分析 ・ 當日快取</div>
                 </div>
-                <div id="predictionAuditCard" class="hidden"></div>
+                <!-- 🗑️ V74.2.0 「5日訊號準確度排行」卡(predictionAuditCard)已刪除(使用者:「沒用的就刪除」)。
+                     它只用自選/庫存 ≤30 檔做小樣本回測,已被 K線頁「全市場 129 訊號實測成績」(_SIGNAL_EDGE,2,227 檔)完全取代。
+                     renderPredictionAudit / _backtest5DaySignals 留作死碼(entry 找不到 DOM 即 return,V70.3.1 刪除模式)。 -->
             </div>
 
             <!-- 🚨 V20.5 — 處置股 tab(從籌碼 tab 搬過來 + 加實戰操作秘訣) -->
@@ -3893,10 +3886,11 @@ const app = {
         //    🔴 強共振那級六關全過(+0.80pp、扣成本 +0.36、n=56,435)—— 這正是「驗到有用就加回來」
         //    的第一個實例。⚠️ 但 🟡 試單級實測 ≈ 0 → 卡上的試單指令已改口(見 _sixMeridianCalc)。
         ['bullBearCategoryCards', '📋 29 條規則逐項明細', '結論已在上面的計分條 —— 想逐條核對再點開'],
-        ['predictionAuditCard', '📊 5日訊號準確度排行', '它只用你的自選做小樣本回測 —— 已被 K線頁「全市場 129 訊號實測成績」取代'],
-        // ── 第二波(V74.1.8)──
-        ['dtHubBody', '🎯 當沖作戰室(隔日沖勝率)', '這檔專屬的隔日沖勝率每檔只有十幾次樣本、最強也只贏基準 2pp —— **在雜訊內**;有實測背書的當沖判讀在上面「今日當沖作戰指令」那張'],
-        ['chipRadarPanel', '🏦 法人近20日推估成本', '**實測無優勢**:站上法人成本後 20 日只 +0.20pp、跌破只 −0.24pp(2,305 檔、7.9 萬筆),扣成本後全負、六關 0 過(instcost_probe)'],
+        // 🗑️ V74.2.0 使用者:「沒用的就刪除」—— 下列三張從「收起」改成**直接刪除**(⛔ 別再加回這份清單):
+        //   ・predictionAuditCard(5日訊號準確度)→ DOM 已刪,被全市場 _SIGNAL_EDGE 取代
+        //   ・chipRadarPanel(法人推估成本)→ DOM 已刪,instcost_probe 實測六關 0 過
+        //   ・dtHubBody 裡的「隔日沖勝率回測」段 → dtflip_probe 實測「碰得到 ≠ 賺得到」(務實損益全負)。
+        //     ⚠️ dtHubBody 本體**解除收起**:剩下的內容(期貨夜盤新鮮度守門、正逆價差、隔日沖風險判讀)是誠實描述,留著。
     ],
     _initTidy() {
         for (const [id, name, why] of this._TIDY) {
@@ -7410,8 +7404,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.1.9',
+    _APP_VERSION: 'V74.2.0',
     _CHANGELOG: [
+        { v: 'V74.2.0', dt: '2026-09-01', d: ['雜訊清洗收尾:沒用的直接刪除 —— 4 個實測沒用的功能整段移除(隔日沖勝率回測、法人推估成本卡、5日訊號準確度排行、盤中連量偵測)', '刪之前把最後一個懸念驗掉:隔日沖全市場重驗(2,329 檔)——「隔天盤中碰到 +1.5%」機率 58~72% 是真的,但照做得到的方式出場、扣掉當沖成本後三種型態全部是負的 → 碰得到不等於賺得到', '當沖作戰室解除收起:剩下的內容(期貨夜盤、正逆價差、隔日沖風險判讀)是誠實描述,留著', '每一筆刪除的依據都記在產業作戰室的實測總表'] },
         { v: 'V74.1.9', dt: '2026-09-01', d: ['六脈共振卡驗完**加回來了**(驗到有用就加回來的第一個實例):全市場 5.6 萬次實測,「強共振」那級之後 20 日贏隨便挑一天 +0.80 個百分點、六道關卡全過', '但只有紅燈那級有用 —— 黃燈「試單」級實測 ≈ 0,卡上已改口不再叫人試單', '實測成績直接寫在卡上'] },
         { v: 'V74.1.8', dt: '2026-09-01', d: ['雜訊清洗第二波:再收 2 張 —— 當沖作戰室的隔日沖段(每檔只有十幾次樣本、最強只贏基準 2pp)、法人推估成本(實測站上 +0.20pp / 跌破 −0.24pp,全在雜訊內)', '收起之前先實測:法人成本這張是量完 7.9 萬筆才收的,數字寫在提示列上', '卡片自己沒資料而藏起來時,「已收起」提示列也會跟著藏(不多佔一行)', '待驗證的(ETF 跟車、隔日沖全市場重驗)已加進產業作戰室的實測總表「推薦下一步」欄'] },
         { v: 'V74.1.7', dt: '2026-09-01', d: ['開始清雜訊:4 張「實測無背書」的卡預設收起(ETF跟車/六脈共振/29條明細/自選小樣本回測),原地留一行說明為什麼收、點一下就能打開', '收起不是刪除 —— 之後驗證出有用隨時加回來', '風險提醒類的卡一律不收(寧可多提醒)'] },
@@ -11152,50 +11147,13 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
     },
 
     _renderChipPanel(instCosts, brokerList, marketVwap, instStreak = {}) {
-        const pC = this.rawDailyData?.length > 0 ? this.rawDailyData[this.rawDailyData.length-1].close : 0;
-        const panel = document.getElementById('chipRadarPanel');
-        const instEl = document.getElementById('chipInstTable');
-        const brokerEl = document.getElementById('chipBrokerTable');
-        if (!instEl || !brokerEl) return;
-
-        // 🧹 V72.3.1 使用者截圖:總覽出現六行「外資 無淨買超 / 外資 無連續方向…」——
-        //   ① 沒資料的列**不渲染**(「沒事完全隱藏,不留空格」鐵則;六行「無」是純噪音)
-        //   ② 全空時整卡 `hidden` + 清空 —— 原本這裡**只會 remove hidden、從不加回去**,
-        //      切到沒法人資料的股票就殘留上一檔的顯示狀態(陷阱 #19 的親戚)
-        const instNames = { '外資及陸資': '外資', '投信': '投信', '自營': '自營' };
-        const instRows = Object.entries(instCosts).map(([key, val]) => {
-            const cost = val.buyVol > 0 ? (val.buyAmt / val.buyVol) : 0;
-            if (cost === 0) return '';
-            const diff = pC > 0 ? ((pC - cost) / cost * 100) : 0;
-            const col = diff > 0 ? 'text-[#f87171]' : 'text-[#4ade80]';
-            return `<div class="flex justify-between items-center px-2 py-0.5 bg-gray-900/50 rounded text-[10px]">
-                <span class="text-gray-400 font-bold">${instNames[key]}買超成本</span>
-                <span class="font-mono font-black text-orange-300">${cost.toFixed(2)}</span>
-                <span class="font-mono font-bold ${col}" title="現價相對法人推估成本">${diff > 0 ? '+' : ''}${diff.toFixed(1)}%</span>
-            </div>`;
-        }).filter(Boolean);
-
-        const streakRows = Object.entries(instNames).map(([key, label]) => {
-            const s = instStreak[key] || { days: 0, total: 0, direction: 0 };
-            // ⛔ 連 1 日也不顯(「連續 1 日」= 就只是今天,沒有資訊量)
-            if (s.days < 2) return '';
-            const isBuy = s.direction > 0;
-            const col = isBuy ? 'text-[#f87171]' : 'text-[#4ade80]';
-            return `<div class="flex justify-between items-center px-2 py-0.5 bg-gray-900/50 rounded text-[10px]">
-                <span class="text-gray-400 font-bold">${label}</span>
-                <span class="font-mono font-bold ${col}">${isBuy ? '▲' : '▼'} 連續 ${s.days} 日${isBuy ? '買超' : '賣超'}</span>
-                <span class="font-mono text-gray-500">累計 ${Math.round(Math.abs(s.total) / 1000).toLocaleString()} 張</span>
-            </div>`;
-        }).filter(Boolean);
-
-        if (!instRows.length && !streakRows.length) {
-            if (panel) panel.classList.add('hidden');
-            instEl.innerHTML = ''; brokerEl.innerHTML = '';
-            return;
-        }
-        if (panel) panel.classList.remove('hidden');
-        instEl.innerHTML = instRows.join('');
-        brokerEl.innerHTML = streakRows.join('');
+        // 🗑️ V74.2.0 已刪除(使用者:「沒用的就刪除」)—— 「法人近20日推估成本・連買連賣」卡。
+        //   實測無優勢(`scripts/instcost_probe.mjs`,2,305 檔 / 對照組 7.9 萬筆):
+        //   站上法人成本後 20 日只 +0.20pp、跌破只 −0.24pp、剛站上/剛跌破 ±0.1pp,
+        //   扣成本 0.44% 後全負、六道關卡 0 過 → 這個數字沒有判讀價值,顯示它只會誤導。
+        //   DOM(chipRadarPanel/chipInstTable/chipBrokerTable)已移除;本函式留作 no-op(V70.3.1 刪除模式),
+        //   ⛔ 要復活先重跑 instcost_probe 且六關要過。上游 fetchChipCost 照跑(chipCostInput 主力成本那半是活的)。
+        return;
     },
 
     async fetchChipTimeline(sym, forceRefresh) {
@@ -19570,7 +19528,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //      (裡面有進場明細、四關卡、位階溫度計…),掃了會把整段藏掉。加進來前一定要先量字數。
     _EMPTY_SHELLS: [
         'chuMergedCard',      // K線:朱老師總評 + 六脈的外殼,兩張都沒訊號時整塊空白
-        'chipRadarPanel',     // 籌碼:雷達面板,無資料時空
+        // 🗑️ chipRadarPanel 已於 V74.2.0 刪除(instcost_probe 實測無優勢)
         'brokerWarRoom',      // 籌碼:分點作戰室
         'chipScenarioSlot',   // 籌碼:情境卡插槽
         'ovBodyPlan',         // 總覽:分批計畫摺疊區
@@ -26453,7 +26411,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 'instLeaderBox',                          // 法人排行
                 'aiGodNewsBox',                           // 首席 AI 新聞
                 'marginCallBox',                          // 融資追繳壓力區(V71.7.1)
-                'chipRadarPanel',                         // 法人成本/連買連賣(V72.3.1,async 抓 FinMind 才填)
+                // 🗑️ chipRadarPanel 已於 V74.2.0 刪除(instcost_probe 實測無優勢)
                 'deepBriefCard', 'deepBriefAi',           // 🧠 深度診斷(V72.4.0;AI 段是 async,不清會顯上一檔的解讀)
             ].forEach(id => {
                 const el = document.getElementById(id);
@@ -36649,7 +36607,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             return this._sig5;
         } finally { this._sig5Running = false; }
     },
-    // 回測頁:5日漲幅訊號準確度排行(歷史回測) + 當沖前瞻
+    // 🗑️ V74.2.0 已刪除(使用者:「沒用的就刪除」)—— predictionAuditCard 的 DOM 已移除,
+    //   本函式 entry 找不到元素即 return = 永遠 no-op(V70.3.1 刪除模式,連帶 _backtest5DaySignals 不再被觸發)。
+    //   理由:它只用自選 ≤30 檔做小樣本回測,已被全市場 129 訊號實測成績(_SIGNAL_EDGE)取代。⛔ 看到它別以為壞了。
     renderPredictionAudit() {
         const el = document.getElementById('predictionAuditCard');
         if (!el) return;
@@ -43876,68 +43836,14 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         </div>`;
     },
 
-    // ⚡ V68.7.4 隔日沖選股勝率回測(純日K):對「漲停/爆量長紅/爆量突破」三型態,回測隔天「開盤進·盤中高點出」能否賺≥1.5% → 這檔最高勝率的當沖法
+    // 🗑️ V74.2.0 已刪除(使用者:「沒用的就刪除」)—— 隔日沖選股勝率回測(原 V68.7.4)。
+    //   死因(`scripts/dtflip_probe.mjs` pooled 全市場,2,329 檔):「碰到 +1.5%」機率 53~72% 是真的,
+    //   但務實損益(碰 1.5% 停利否則收盤出、扣成本 0.25%)三型態**全負** —— 碰得到 ≠ 賺得到。
+    //   逐檔版樣本又只有 12~19 次 → 顯示出來的勝率既誘人又不可靠。函式留作 no-op 墓碑(V70.3.1 模式),
+    //   完整實作在 git 歷史(V74.1.9 前)與 dtflip_probe 裡;⛔ 要復活先讓 dtflip_probe 的務實損益轉正。
     _dtWinRateBacktest(baseRaw) {
-        if (!Array.isArray(baseRaw) || baseRaw.length < 80) return '';
-        const arr = baseRaw;
-        const O = b => +b.open || 0, H = b => +b.high || 0, L = b => +b.low || 0, C = b => +b.close || 0, V = b => +b.volume || +b.Trading_Volume || +b.vol || 0;
-        const avg5 = i => { if (i < 6) return 0; let s = 0; for (let j = i - 5; j < i; j++) s += V(arr[j]); return s / 5; };
-        const chgOf = i => C(arr[i - 1]) > 0 ? (C(arr[i]) - C(arr[i - 1])) / C(arr[i - 1]) * 100 : 0;
-        const pats = [
-            { key: '漲停後沖', test: i => chgOf(i) >= 9.4 },
-            { key: '爆量長紅', test: i => { const rng = H(arr[i]) - L(arr[i]); const upper = rng > 0 ? (C(arr[i]) - L(arr[i])) / rng : 0; const av = avg5(i); return chgOf(i) >= 4 && av > 0 && V(arr[i]) >= 1.8 * av && upper >= 0.6; } },
-            { key: '爆量突破', test: i => { const av = avg5(i); if (!(av > 0 && V(arr[i]) >= 2 * av && chgOf(i) >= 2)) return false; let mx = 0; for (let j = Math.max(0, i - 20); j < i; j++) mx = Math.max(mx, H(arr[j])); return mx > 0 && C(arr[i]) >= mx; } },
-        ];
-        const results = pats.map(p => {
-            let n = 0, win = 0, gainSum = 0, ddSum = 0, openHi = 0;
-            for (let i = 6; i < arr.length - 1; i++) {
-                if (C(arr[i - 1]) <= 0 || !p.test(i)) continue;
-                const nb = arr[i + 1], on = O(nb), hn = H(nb), ln = L(nb);
-                if (on <= 0) continue;
-                n++;
-                const maxGain = (hn - on) / on * 100, maxDD = (ln - on) / on * 100;
-                gainSum += maxGain; ddSum += maxDD;
-                if (maxGain >= 1.5) win++;
-                if (on > C(arr[i])) openHi++;
-            }
-            return { key: p.key, n, wr: n ? Math.round(win / n * 100) : 0, avgGain: n ? gainSum / n : 0, avgDD: n ? ddSum / n : 0, openHiR: n ? Math.round(openHi / n * 100) : 0 };
-        }).filter(r => r.n >= 5);
-        if (!results.length) return '';
-        // ⭐ V72.2.2 **乾淨對照組**(CLAUDE.md 鐵則:不能只跟 0 比,要跟「隨便挑一天」比)。
-        //   同一條勝負定義(隔天開盤買、盤中最高賣能不能賺 ≥1.5%)套用在**每一天**上 →
-        //   這檔本身波動大的話,基準本來就很高;波動小的基準接近 0。
-        //   ⛔ 沒有這條,就會出現實測抓到的荒謬畫面:0050「🏆 這檔最高勝率:爆量突破 **0%**」
-        //      配上「成功率最高的做法(**鐵律**)」—— 0% 不是最高勝率,是「這招在這檔不能用」。
-        let bn = 0, bw = 0;
-        for (let i = 6; i < arr.length - 1; i++) {
-            const nb = arr[i + 1], on = O(nb);
-            if (on <= 0) continue;
-            bn++; if ((H(nb) - on) / on * 100 >= 1.5) bw++;
-        }
-        const baseWr = bn ? Math.round(bw / bn * 100) : 0;
-        const best = results.slice().sort((a, b) => b.wr - a.wr || b.avgGain - a.avgGain)[0];
-        // 敢不敢下「鐵律」等級的操作指令:樣本要夠(統一門檻)+ **要贏過基準**
-        const bestOk = this._wrEnough(best.n) && best.wr > baseWr;
-        // 🎨 V72.2.2 顏色也改「相對基準」——⛔ 寫死 60/45 會把 2317「47% vs 基準 29%」染成綠色(看起來很差),
-        //    但它其實明顯贏過基準。同 V71.1.6 外資期貨「絕對門檻失真 → 改看相對自己」那條教訓。
-        const wrCls = w => w >= baseWr + 15 ? 'text-red-300' : w > baseWr ? 'text-yellow-300' : 'text-green-300';
-        const rows = results.map(r => `<div class="grid grid-cols-[64px_1fr_auto] gap-1.5 items-center py-1 border-b border-[#21262d] last:border-0 ${(bestOk && r.key === best.key) ? 'bg-red-900/10' : ''}">
-            <span class="text-[11px] font-bold text-gray-200">${(bestOk && r.key === best.key) ? '🏆' : ''}${r.key}</span>
-            <span class="text-[9px] text-gray-500 font-mono">${r.n}次·衝高+${r.avgGain.toFixed(1)}%·開高${r.openHiR}%${r.wr > baseWr ? '' : '·<span class="text-gray-600">沒贏基準</span>'}</span>
-            <span class="text-[13px] font-mono font-black ${wrCls(r.wr)} text-right">${r.wr}%${this._wrTag(r.wr, r.n, baseWr / 100)}</span>
-        </div>`).join('');
-        // ⛔ 沒贏基準 / 樣本不夠 → **不給操作指令**,誠實說「這檔沒有可用的隔日沖做法」。
-        //   (同「寧可不給方向」原則;⛔ 別為了讓卡片好看而硬推一個 0% 的型態。)
-        const verdict = bestOk
-            ? `🏆 <b class="text-red-300">這檔最高勝率:${best.key} ${best.wr}%</b>(${best.n}次,平均衝高 +${best.avgGain.toFixed(1)}%,開高率 ${best.openHiR}%)—— <b>贏過基準 ${baseWr}%</b>。<br><b class="text-cyan-300">成功率最高的做法(鐵律):</b><br>① 只做「${best.key}」型態,別看到紅就追。<br>② 隔天「<b>開高且不破開盤價</b>」才進;開高走低立刻閃。<br>③ 盤中衝高<b>分批停利</b>(這檔平均衝 +${best.avgGain.toFixed(1)}%),別貪到收盤被倒。<br>④ 停損=開盤價下方,單筆虧損≤本金 1%。<br>⑤ 開低多半已被倒,等止穩量縮再看,別接刀。`
-            : `⛔ <b class="text-gray-200">這檔目前沒有值得做的隔日沖型態。</b><br>最好的「${best.key}」只有 <b>${best.wr}%</b>,而這檔<b>隨便挑一天</b>做同一套(開盤買、盤中高點賣賺 ≥1.5%)就有 <b>${baseWr}%</b>${this._wrEnough(best.n) ? '' : `,而且只出現過 <b>${best.n} 次</b>、樣本還不夠`} → <b>等於沒有優勢</b>,做了只是多付手續費。<br><span class="text-gray-400">💡 換一檔波動大、型態明確的股票,或改用波段做法(上方「K線」頁有實測期望值為正的訊號)。</span>`;
-        return `<div class="bg-[#161b22] border-l-4 ${bestOk ? 'border-cyan-500' : 'border-gray-600'} border-y border-r border-[#30363d] rounded-r p-2">
-            <div class="text-[11px] font-bold text-cyan-300 mb-1">🎯 隔日沖勝率回測 <span class="text-[9px] text-gray-500 font-normal">這檔近5年·開盤進盤中高點出</span></div>
-            ${rows}
-            <div class="text-[9px] text-gray-500 font-mono mt-1 pt-1 border-t border-[#21262d]">📏 基準(隨便挑一天做同一套):<b class="text-gray-300">${baseWr}%</b> ・ ${bn} 天 —— <span class="text-gray-600">要贏過它才叫有優勢</span></div>
-            <div class="text-[10px] text-gray-300 leading-snug mt-1.5 bg-[#0d1117] rounded p-2">${verdict}</div>
-            <div class="text-[8px] text-gray-600 mt-1 leading-snug">※ 勝率=隔天開盤買、盤中最高賣能賺≥1.5% 的歷史比例(純日K回測近似,未計手續費/滑價,僅供參考非保證)。</div>
-        </div>`;
+        // 🗑️ V74.2.0 已刪(dtflip_probe:碰得到 ≠ 賺得到,務實損益全負)→ 永遠回空;要復活先讓務實損益轉正
+        return '';
     },
 
     // ⚡ V69.1.1 隔日沖 T+1 攻防預判(閉環:盤前靜態劇本 → 盤中即時驗證 → 劇本成真度%)
@@ -44169,8 +44075,11 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 ${basisHtml}
             </div>`);
         }
-        // 🎯 V68.7.7 隔日沖勝率回測改直接顯(使用者要求);族群連動留收合區
-        try { const bt = this._dtWinRateBacktest(baseRaw); if (bt) parts.push(bt); } catch (_) {}
+        // 🗑️ V74.2.0 「隔日沖勝率回測」段已刪除(使用者:「沒用的就刪除」)。
+        //   pooled 全市場重驗(`scripts/dtflip_probe.mjs`,2,329 檔 / 對照組 270.9 萬個(股·日)):
+        //   「隔天盤中碰到 +1.5%」的機率確實高(爆量長紅 58.5%・爆量突破 53.5%・漲停後沖 71.6% vs 基準 31.1%),
+        //   ⛔ 但**務實損益**(碰 1.5% 停利否則收盤出、扣當沖成本 0.25%)三型態全負(−0.46/−0.48/−0.30% vs 基準 −0.395%)
+        //   → 「碰得到 ≠ 賺得到」,顯示 50~70% 勝率只會誘人做一件期望值為負的事。_dtWinRateBacktest 留作 no-op。
         const bgParts = [];
         try { const gl = this._dtGroupLink(sym); if (gl) bgParts.push(gl); } catch (_) {}
         if (!parts.length && !bgParts.length) return '';
@@ -44922,29 +44831,10 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             ${volInner}
         </div>`);
 
-        // ── 卡:🔴 盤中連量偵測(V68.0 近似 CMoney 連量;零逐筆 tick)──────
-        if (volStreak) {
-            // 🚨 V73.6.0 使用者要求「把沒有用的刪掉,不要無限疊加」→ 這張**降級收進摺疊**。
-            //   ⛔ 不是刪掉(刪了使用者會以為沒這回事、跑去別處學),而是照 `_SIGNAL_EDGE` 對 C 級的處置:
-            //      照顯示,但誠實標「本站實測不成立」。
-            //   📊 本專案已經**測過兩次都不成立**(CLAUDE.md V71.9.8):
-            //      日線版 `volstall_probe`:爆量漲不動 vs 對照組 **+0.14pp**(方向還跟坊間說法相反)
-            //      分K版 `volseq_probe`(101 天真 1 分 K,扣成本 0.25%):8 個桶勝率全在 **18~32%**,
-            //      而對照組(量價同向)是 **49~52%** → 不只沒邊際,是明顯比對照組差。
-            //   ⛔ 所以它**不可以再放在常顯區、不可以再用紅綠下方向**。
-            detail.push(`
-            <div class="p-3">
-                <div class="text-[12px] font-black text-gray-300 mb-1">🔴 盤中連量偵測 <span class="text-[9px] text-orange-300 font-normal">⛔ 本站實測不成立</span></div>
-                <div class="bg-[#0d1117] border-l-4 border-gray-600 pl-3 py-2 rounded-r">
-                    <div class="text-[11px] font-bold text-gray-300 mb-0.5">${volStreak.title}</div>
-                    <div class="text-[10px] text-gray-400 leading-relaxed">${volStreak.msg}</div>
-                </div>
-                <div class="text-[9px] text-gray-500 mt-1.5 leading-relaxed">📊 <b class="text-gray-400">為什麼降級:</b>「爆量漲不動就空、爆量跌不動就買」這套我實測過兩次都不成立 ——
-                日線版(6.5 萬個爆量日)跟對照組只差 <b>+0.14pp</b> 而且<b>方向相反</b>;分 K 版(101 天真 1 分 K、扣掉來回成本 0.25%)
-                八個情境勝率全在 <b>18~32%</b>,而對照組(量價同向)是 <b>49~52%</b>。
-                ⛔ 所以這裡只當「現在量很集中」的事實描述,<b>不下多空方向</b>。</div>
-            </div>`);
-        }
+        // 🗑️ V74.2.0 「🔴 盤中連量偵測」卡已刪除(使用者:「沒用的就刪除」)。
+        //   V73.6.0 先降級進摺疊(標「本站實測不成立」),這次直接移除 —— 兩次實測都不成立而且方向相反
+        //   (日線版 volstall_probe +0.14pp;分K版 volseq_probe 8 桶勝率 18~32% vs 對照組 49~52%)。
+        //   `_detectVolStreak` **保留**(signal_backtest 的偵測器母體要用),只拆顯示;`_dtLastVolStreak` 快取照算(零成本)。
 
         // ── 卡5:🧮 當沖損益試算機(純公式,恆顯)──────────────
         //   ⚡ V54.6 保留使用者已輸入值(加速刷價/切 tab 重繪不洗掉);換股才用現價重填

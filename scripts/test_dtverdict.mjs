@@ -112,7 +112,9 @@ ok('⑥ ⭐「不值得當沖」用中性 ➖ 不用顏色燈', /➖ 這檔今�
 const negCls = /扣成本後每趟\s*<b class="([^"]+)">-/.exec(hB.replace(/\s+/g, ' '));
 ok('⑦ 負期望值用灰字', !!negCls && /text-gray-500/.test(negCls[1]), negCls ? negCls[1] : '沒抓到');
 
-// ── ⑧ 判準要跟同一頁的 `_dtWinRateBacktest` 一致(⛔ 同一頁不可兩套標準)────
+// ── ⑧ 判準要用全 App 共用那套(_wrEnough/_wrTag/_bearGate,⛔ 同一頁不可兩套標準)──
+//    ⚠️ 原本的對照對象 `_dtWinRateBacktest` 已於 V74.2.0 刪除(dtflip_probe 實測賺不到),
+//       但「共用門檻」的要求不因它刪除而消失 → 斷言照舊釘 `_dtVerdictInner` 自己。
 const src = await page.evaluate(() => app._dtVerdictInner.toString());
 ok('⑧ 有用共用樣本門檻 `_wrEnough`', /_wrEnough\(/.test(src), '');
 ok('⑧ 有配共用樣本徽章 `_wrTag`', /_wrTag\(/.test(src), '');

@@ -79,42 +79,21 @@ ok('① 基準不是 50% 時,文案要講出基準數字(⛔ 別再寫「純靠�
 ok('① 基準是 50% 時,文案維持「純靠運氣」(⛔ 別改壞既有那 1 處呼叫端)',
    /純靠運氣/.test(A.c12_old.txt), A.c12_old.txt);
 
-// ══ ② 當沖隔日沖回測:必須有乾淨對照組 ══════════════════════
-//   ⚠️ 用**真實 data/*.json**,⛔ 別用合成資料 —— 基準勝率本來就是「這檔自己的波動率」,
-//      合成的等差 K 線基準會是 0,那等於什麼都沒驗到(本 session 已踩過「空過」兩次)。
-const dt = {};
-for (const s of ['0050', '2317', '3231']) {
-    const p = path.join(ROOT, 'data', `${s}.json`);
-    if (!fs.existsSync(p)) { console.log(`   ⏭️ 沒有 data/${s}.json,略過`); continue; }
-    dt[s] = await page.evaluate(r => app._dtWinRateBacktest(r), JSON.parse(fs.readFileSync(p, 'utf8')));
+// ══ ② 當沖隔日沖回測 —— 🗑️ V74.2.0 已刪除,這裡改釘「真的刪乾淨 + 依據還在」══
+//   dtflip_probe 全市場 pooled(2,329 檔 / 270.9 萬個(股·日)):「碰到 +1.5%」機率 53~72% 是真的,
+//   但務實損益(碰 1.5% 停利否則收盤出、扣成本 0.25%)三型態**全負** → 碰得到 ≠ 賺得到。
+//   ⚠️ 原本這一段驗「對照組/不給 0% 掛冠軍」—— 功能刪了,那些行為自然不存在;
+//      改驗:① 函式永遠回空(⛔ 不可有人偷偷把它接回畫面)② 墓碑要引用 dtflip_probe(復活門檻)。
+{
+    const p = path.join(ROOT, 'data', '2330.json');
+    if (fs.existsSync(p)) {
+        const out = await page.evaluate(r => app._dtWinRateBacktest(r), JSON.parse(fs.readFileSync(p, 'utf8')));
+        ok('② 🗑️ _dtWinRateBacktest 已刪除 → 餵真實資料也永遠回空字串', out === '', JSON.stringify(out).slice(0, 120));
+    }
+    const src = await page.evaluate(() => app._dtWinRateBacktest.toString());
+    ok('② 🗑️ 墓碑要引用 dtflip_probe + 「碰得到 ≠ 賺得到」(⛔ 要復活先讓務實損益轉正)',
+       /dtflip_probe/.test(src) && /碰得到/.test(src), src.slice(0, 200));
 }
-if (dt['0050']) {
-    const t = txt(dt['0050']);
-    console.log(`   ↳ 0050:${t.slice(0, 150)}`);
-    ok('② ⭐ 一定要顯示基準(隨便挑一天做同一套是幾%)', /基準\(隨便挑一天做同一套\):\s*\d+%/.test(t), t.slice(0, 200));
-    ok('② ⭐⛔ 0% 勝率絕不可掛 🏆「這檔最高勝率」', !/🏆 這檔最高勝率/.test(t), t.slice(0, 260));
-    ok('② ⭐⛔ 沒贏基準時不可給「成功率最高的做法(鐵律)」', !/成功率最高的做法/.test(t), t.slice(0, 260));
-    ok('② ⭐ 要誠實說「沒有值得做的隔日沖型態」+ 給替代方向',
-       /沒有值得做的隔日沖型態/.test(t) && /換一檔|波段做法/.test(t), t.slice(-260));
-}
-if (dt['3231']) {
-    const t = txt(dt['3231']);
-    console.log(`   ↳ 3231:${t.slice(0, 130)}`);
-    ok('② ⭐ 真的贏過基準時,🏆 與操作指令要照給(⛔ 別矯枉過正變成全部不給)',
-       /🏆 這檔最高勝率/.test(t) && /成功率最高的做法/.test(t) && /贏過基準 \d+%/.test(t), t.slice(0, 300));
-}
-if (dt['2317']) {
-    const t = txt(dt['2317']);
-    ok('② ⭐ 沒贏基準的那幾列要標出來(使用者才知道為什麼沒被選)', /沒贏基準/.test(t), t.slice(0, 300));
-    ok('② ⭐ 勝率 47%(基準 29%)⛔ 不可被標成「跟丟銅板差不多」',
-       !/47% ⛔/.test(t), (t.match(/47%[^ ]* ./) || [''])[0]);
-}
-// 顏色門檻必須相對基準(⛔ 寫死 60/45 會把「47% vs 基準 29%」染成綠色)
-const src = await page.evaluate(() => app._dtWinRateBacktest.toString());
-ok('② ⭐⛔ 勝率顏色門檻不可寫死,要相對 baseWr',
-   /wrCls = w => w >= baseWr \+ \d+ \? .* : w > baseWr \?/.test(src), (src.match(/const wrCls = [^\n]*/) || [''])[0]);
-ok('② ⭐ 基準是用**同一條勝負定義**掃全部交易日算的(⛔ 不可寫死一個數字)',
-   /for \(let i = 6; i < arr\.length - 1; i\+\+\)[\s\S]{0,220}bn\+\+/.test(src), '');
 
 // ══ ③ 打法適配儀:樣本 + 空頭 兩道守門 ══════════════════════
 const play = (count, trend) => page.evaluate(async a => {
