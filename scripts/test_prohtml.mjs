@@ -674,6 +674,9 @@ const ROT2 = await page.evaluate(async () => {
     await new Promise(r => setTimeout(r, 250));
     o.subs = [...document.querySelectorAll('#rotSubBar .labbtn')].map(x => x.textContent.trim());
     o.leadMap = document.getElementById('rotLead').innerText;
+    o.leads = [];
+    for (const [k] of PRO.ROT_SUB) { PRO.rotSwitchSub(k); o.leads.push(document.getElementById('rotLead').innerText); }
+    PRO.rotSwitchSub('map'); await new Promise(r => setTimeout(r, 120));
     o.k0 = PRO._rotK; o.nDays = PRO._rotData.days.length;
     o.day0 = document.getElementById('rotDay').textContent;
     o.sticky = getComputedStyle(document.querySelector('.rotsticky')).position;
@@ -684,12 +687,14 @@ const ROT2 = await page.evaluate(async () => {
     o.bubsTop = document.querySelectorAll('#rotBubs .bub').length;
     o.scaleTop = PRO._rotMax;
     o.pickN = document.getElementById('rotPickN').textContent;
+    PRO.rotSwitchSub('det'); await PRO._rotMembers();
     o.memTop = document.querySelectorAll('#rotMembers .memrow').length;
+    PRO.rotSwitchSub('map');
     PRO.rotPickAll(0); await new Promise(r => setTimeout(r, 250));
     o.bubsNone = document.querySelectorAll('#rotBubs .bub').length;   // ⛔ 全取消 → 要退回全部
     PRO.rotPickAll(1); await new Promise(r => setTimeout(r, 250));
     // ⑤ 單一板塊
-    PRO.rotSwitchSub('one'); await new Promise(r => setTimeout(r, 150));
+    PRO.rotSwitchSub('det'); await new Promise(r => setTimeout(r, 150));
     o.leadOne = document.getElementById('rotLead').innerText;
     o.oneEmpty = document.getElementById('rotOne').innerText;
     const first = (document.querySelector('#rotOneBar .rotchip') || {});
@@ -700,14 +705,38 @@ const ROT2 = await page.evaluate(async () => {
     PRO.rotSeek(3); await new Promise(r => setTimeout(r, 150));
     o.oneAt3 = document.getElementById('rotOne').innerText.includes(PRO._rotData.days[3]);
     PRO.rotSeek(PRO._rotData.days.length - 1);
-    o.panes = ['map', 'one', 'mem', 'flow'].map(k => !!document.getElementById('rotPane-' + k));
+    // 📖 策略與回測 + 🔎 搜尋 + 動態
+    PRO.rotSwitchSub('doc'); await new Promise(r => setTimeout(r, 120));
+    o.doc = document.getElementById('rotDoc').innerText;
+    o.docCtlHidden = document.querySelector('.rotsticky').classList.contains('hidden');
+    PRO.rotSwitchSub('det'); await new Promise(r => setTimeout(r, 120));
+    o.detCtlHidden = document.querySelector('.rotsticky').classList.contains('hidden');
+    const allChips = document.querySelectorAll('#rotOneBar .rotchip').length;
+    PRO.rotFind(PRO._rotSet().nm(Object.keys(PRO._rotSet().grp)[0]).slice(0, 2));
+    await new Promise(r => setTimeout(r, 120));
+    o.findFrom = allChips; o.findTo = document.querySelectorAll('#rotOneBar .rotchip').length;
+    PRO.rotFind('');
+    PRO.rotSwitchSub('map'); await new Promise(r => setTimeout(r, 120));
+    // 2x2 KPI + 動態(只改文字不重建 → 節點要是同一個)
+    o.quadCols = getComputedStyle(document.getElementById('rotQuad')).gridTemplateColumns.split(' ').length;
+    const b0 = document.querySelector('#rotQuad b');
+    PRO.rotSeek(10); await new Promise(r => setTimeout(r, 60));
+    o.quadSameNode = document.querySelector('#rotQuad b') === b0;
+    PRO.rotSeek(PRO._rotData.days.length - 1);
+    // 44px 觸控目標
+    const btn = document.querySelector('#rotSubBar .labbtn');
+    o.tapH = btn ? btn.getBoundingClientRect().height : 0;
+    o.panes = ['map', 'det', 'flow', 'doc'].map(k => !!document.getElementById('rotPane-' + k));
     return o;
 });
-ok('㉟ 四個子頁籤都在(全景/單一板塊/成分股/誰在買)+ 容器都建好',
+ok('㉟ 四個子頁籤都在(輪動總覽/板塊明細/法人籌碼/策略與回測)+ 容器都建好',
    ROT2.subs.length === 4 && ROT2.panes.every(Boolean), ROT2.subs.join(' '));
-ok('㉟a 每個子頁籤都要說「這頁在回答什麼 + 看了能做什麼」(⛔ 只拆頁籤不解釋 = 分成四堆亂的)',
-   /這一頁回答/.test(ROT2.leadMap) && /看了能做什麼/.test(ROT2.leadMap)
-   && /這一頁回答/.test(ROT2.leadOne) && ROT2.leadOne !== ROT2.leadMap);
+// ⭐ 四個都要有,而且**每一個都不一樣**(⛔ 複製貼上同一句 = 等於沒解釋)
+ok('㉟a 每個子頁籤都要說「這頁在回答什麼 + 能做什麼」(⛔ 只拆頁籤不解釋 = 分成四堆亂的)',
+   ROT2.leads.length === 4
+   && ROT2.leads.every(x => /(這一頁回答|這一頁是)/.test(x) && /能做什麼/.test(x))
+   && new Set(ROT2.leads).size === 4,
+   ROT2.leads.map(x => x.slice(0, 18)).join(' | '));
 ok('㉟b 🚨 控制列必須 sticky(使用者原話:下面那個沒有播放條)', ROT2.sticky === 'sticky', ROT2.sticky);
 ok('㉟c 🚨 第一次載入時間軸要停在**最新**那一天(⛔ 停在 120 天前而畫面看起來很正常)',
    ROT2.k0 === ROT2.nDays - 1, `k=${ROT2.k0}/${ROT2.nDays - 1} day=${ROT2.day0}`);
@@ -732,6 +761,26 @@ ok('㉟h 📈 拉時間軸,走勢卡的「停在」要跟著走(⛔ 不跟 = 游
 ok('㉟i ⛔ 單一板塊只描述不下指令(資金流那條要標明排不出順序)',
    !/買進|進場|停損|目標價/.test(ROT2.oneTxt) && /只是描述/.test(ROT2.oneTxt),
    (ROT2.oneTxt.match(/[^。\n]{0,10}(買進|進場|停損|目標價)[^。\n]{0,10}/g) || []).join('|'));
+// ㊱ V74.1.1 依使用者版面藍圖的四項:說明書分頁 / 2×2 KPI / 44px 觸控 / 動態
+ok('㊱a2 🚨 說明書頁不可出現浮點尾巴(0.63−(−0.8) 在 JS 是 1.4300000000000002)',
+   !/\d\.\d{5,}/.test(ROT2.doc), (ROT2.doc.match(/\d\.\d{5,}/g) || []).join(' '));
+ok('㊱ 📖 策略與回測頁要有實測數字與限制(⛔ 不可只是把字搬過去卻少了數字)',
+   /\+0\.90%/.test(ROT2.doc) && /0\.64x/.test(ROT2.doc) && /只涵蓋上市/.test(ROT2.doc)
+   && /人工挑的/.test(ROT2.doc), ROT2.doc.slice(0, 120));
+ok('㊱b 🚨 說明書那頁沒有時間軸可言 → 控制列要收起來(⛔ 留著會讓人以為那頁也會動)',
+   ROT2.docCtlHidden === true && ROT2.detCtlHidden === false,
+   `doc=${ROT2.docCtlHidden} det=${ROT2.detCtlHidden}`);
+ok('㊱c 🔎 板塊明細打字要真的過濾', ROT2.findTo > 0 && ROT2.findTo < ROT2.findFrom,
+   `${ROT2.findFrom}→${ROT2.findTo}`);
+ok('㊱d 📊 四象限改 2×2(⛔ 4 欄在手機上每格只剩 80px)', ROT2.quadCols === 2, String(ROT2.quadCols));
+ok('㊱e ⭐ 動態:換一拍時 KPI **只改文字不重建節點**(重建會把 CSS transition 洗掉 = 看不到動畫)',
+   ROT2.quadSameNode === true);
+ok('㊱f 🖐️ 子頁籤觸控高度 ≥44px(Apple HIG / Material 的最小值)',
+   ROT2.tapH >= 44, `${ROT2.tapH}px`);
+ok('㊱g 🙈 橫向捲動容器要藏捲軸(仍可捲,只是不佔版面)',
+   /\.noscb::-webkit-scrollbar\{display:none\}/.test(src) && /class="rotlist noscb"/.test(src));
+ok('㊱h ⭐ 法人籌碼的條要有 transition(⛔ 沒有的話「資金移動」看不出來)',
+   /\.fbar b\{[^}]*transition:width/.test(src));
 
 
 await browser.close();
@@ -936,9 +985,11 @@ ok('㉘f ⚠️ 要誠實說波動是用「20 日振幅」代理、門檻是全�
 // ⚠️ V74.4.9 成員名單從「預設打開的 <details>」升級成**獨立子頁籤**(rotPane-mem)——
 //   原本釘的是 `id="rotMemWrap" open`,那條的**用意**是「⛔ 不可收起來(收起來等於沒做)」;
 //   現在它自己就是一頁,更符合那個用意。⛔ 但不可放進 <details> 收合。
-ok('㉙ ② 成員名單:獨立子頁籤(⛔ 不可收合)+ 至少一列 + 點個股可跳散戶救星',
-   /<div id="rotPane-mem"[^>]*><div id="rotMembers">/.test(src)
-   && !/<details[^>]*>\s*<summary[^>]*>[^<]*<\/summary><div id="rotMembers">/.test(src)
+// ⚠️ V74.1.1 依使用者版面藍圖,「單一板塊」與「成分股」合併成 📋 板塊明細 一頁
+//   (選了板塊本來就要一起看走勢與成分股,分兩頁反而要來回切)。
+//   ⭐ 這條的**用意**沒變:成分股要看得到、點得到 —— 只是現在它在板塊明細頁裡。
+ok('㉙ ② 成分股:在板塊明細頁裡、至少一列、點個股可跳散戶救星',
+   /<div id="rotPane-det"/.test(src) && /id="rotMembers"/.test(src)
    && T.memRows >= 1 && T.memGoto, `rows=${T.memRows} goto=${T.memGoto}`);
 ok('㉙b ② 成員 chip 要有股名(⛔ 不可只有代號)', /2408 南亞科/.test(T.memTxt), T.memTxt.slice(0, 80));
 ok('㉙c ③ 資金走向欄:明細表每檔一格 sparkline + 累計「張」',

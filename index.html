@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.1.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.1.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -679,7 +679,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.1.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.1.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7348,8 +7348,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.1.0',
+    _APP_VERSION: 'V74.1.1',
     _CHANGELOG: [
+        { v:'V74.1.1', dt:'2026-09-01', d:['🧭 產業作戰室的「板塊輪動」整頁重做:拆成 📊 輪動總覽 / 📋 板塊明細 / 💰 法人籌碼 / 📖 策略與回測 四個分頁,不用再一直往下滑。','📖 所有長篇說明、警語、回測數字集中到「策略與回測」那頁 — 主畫面只留一行關鍵免責。','⭐ 每一頁都會動:播放時間軸時四格統計會閃、法人籌碼的長條會滑過去、板塊走勢圖的游標跟著跑。','📋 板塊明細可以打字找板塊;選了之後走勢圖與成分股在同一頁看得完。','🖐️ 按鈕都放大到手機好按的尺寸,分頁列改成一行左右滑。']},
         { v:'V74.1.0', dt:'2026-09-01', d:['🏷️ 個股標籤新增兩個題材:BBU 備援電池(從「電源/BBU/UPS」拆出來獨立一組)、玻纖布/玻纖紗 — 一樣是每天自動找出跟著這一族動的股票。','🧲 新增「成員同步程度」:這個題材的成員彼此走得像不像。太低的(例如晶圓代工、網通)代表成員各走各的,那種板塊的平均值參考價值很低 — 這種題材就只留人工確認的名單、不自動擴散。']},
         { v:'V74.0.9', dt:'2026-09-01', d:['🏷️ 個股標籤全面翻新:舊的概念股標籤來源(外部資料)其實停在 2021 年 — 南亞科顯示的是「Smart TV / Windows11 / 台塑」而不是記憶體。現在改成每天採礦重算:題材名單跟「板塊輪動」同一份(記憶體/CPO光通訊/散熱液冷/ASIC/矽晶圓/軍工…),而且會自動找出「跟這一族走得很像」的股票補進來 — 全市場 2,319 檔每天重算一次。','👑 龍頭改成自動判定(該題材裡成交值最大的那一檔),不再用寫死的表。','⏳ 過時題材(Smart TV、Windows11、元宇宙、五倍券、美中貿易戰…)一律不再顯示;仍然有效的舊標籤(電動車等)保留補位。','⚠️ 標籤分兩種:實心=人工確認它就是這個題材;虛線+數字=自動算出來「最近跟這一族走得像」,那是連動不是業務,點標籤看得到相關度。']},
         { v:'V74.0.8', dt:'2026-08-31', d:['🆕 總覽「重點判讀」新增兩個實測條件提醒:① 昨天跌停今天收紅(實測全關通過的型態,並會告訴你當初大盤有沒有一起跌 — 差 4.8 倍)② 5 天噴超過 30% 又被列官方注意股(實測之後 20 天比大盤少 1.81 個百分點 → 手上有的可考慮減碼)。兩者都只在命中時出現。'] },

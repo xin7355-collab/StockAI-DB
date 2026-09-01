@@ -152,10 +152,33 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .qlab{font-size:9px;fill:var(--dim2)}
 .qtick{font-size:8px;fill:var(--dim2);opacity:.75}
 .bub text{paint-order:stroke;stroke:#0b1220;stroke-width:2.5px;stroke-linejoin:round}  /* 擠在一起時字才讀得到 */
-.rotquad{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0 2px}
-.rotquad>div{background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:6px 4px;text-align:center}
-.rotquad b{display:block;font-size:17px;font-weight:800;line-height:1.15}
-.rotquad span{display:block;font-size:8.5px;color:var(--dim2);line-height:1.25;margin-top:2px}
+/* 📊 四象限計數:V74.1.1 改 **2×2**(4 欄在手機上每格只剩 80px,字被壓成兩三行)。
+   ⭐ 數字有 transition —— 播放時間軸時看得出「哪一格在長大」(使用者:「每個都要有動態顯示」)。*/
+.rotquad{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 2px}
+.rotquad>div{background:var(--panel2);border:1px solid var(--line2);border-radius:10px;
+  padding:10px 8px;text-align:left;display:flex;align-items:baseline;gap:8px;min-height:52px}
+.rotquad b{font-size:22px;font-weight:800;line-height:1.1;font-family:var(--mono);
+  transition:color .25s, transform .25s}
+.rotquad>div.bump b{transform:scale(1.18)}
+.rotquad span{font-size:11px;color:var(--dim2);line-height:1.3}
+/* 🔎 板塊明細的選擇器 */
+.rotsel{display:flex;align-items:center;gap:8px;margin:8px 0 2px}
+.rotfind{flex:1;min-width:0;background:#0a101a;border:1px solid var(--line2);border-radius:9px;
+  padding:10px 12px;color:var(--txt);font-size:15px;outline:none;min-height:44px}
+/* 🖐️ 手機觸控目標最小 44px(Apple HIG / Material 都是這個數字)—— ⛔ 別改小 */
+.labbtn,.lbtn{min-height:44px;display:inline-flex;align-items:center}
+.rotchip{min-height:36px;display:inline-flex;align-items:center}
+/* 🙈 橫向捲動容器藏掉捲軸(⛔ 仍然可以捲,只是不佔版面) */
+.noscb{-ms-overflow-style:none;scrollbar-width:none}
+.noscb::-webkit-scrollbar{display:none}
+/* 💊 子頁籤:**一行橫捲**不換行 —— 4 顆在 390px 會擠成兩行,白白吃掉一整列版面 */
+#rotSubBar{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  -ms-overflow-style:none;scrollbar-width:none}
+#rotSubBar::-webkit-scrollbar{display:none}
+#rotSubBar .labbtn{flex:0 0 auto;white-space:nowrap}
+/* 📋 板塊明細的選擇條:封高度 + 自己捲 —— ⛔ 32 個產業全攤開會把走勢圖推到看不見
+   (使用者原話:「無限往下滑」) */
+#rotOneBar{max-height:118px;overflow-y:auto}
 .qax{font-size:9.5px;fill:var(--sub)}
 .bub{transition:transform .42s cubic-bezier(.4,0,.2,1)}
 .bub circle{transition:r .42s cubic-bezier(.4,0,.2,1)}
@@ -236,7 +259,11 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .fchk.on i{opacity:1}
 .fbars{display:flex;flex-direction:column;gap:2px;min-width:96px}
 .fbar{position:relative;height:7px;background:var(--line);border-radius:2px}
-.fbar b{position:absolute;top:0;height:7px;border-radius:2px;display:block}
+/* ⭐ V74.1.1 條的寬度/位置加 transition —— 播放時間軸時看得出資金在移動
+   (使用者:「每個都有動態顯示」)。⚠️ 每一拍都重建 innerHTML 會重置 transition,
+   所以 `_rotFi` 改成「結構只建一次、之後只改 style」。 */
+.fbar b{position:absolute;top:0;height:7px;border-radius:2px;display:block;
+  transition:width .28s ease, left .28s ease}
 /* ── 表格 ── */
 /* 📌 表格凍結:標的欄(左)+ 表頭列(上)都固定住,橫向捲動時才比對得了
    ⚠️ 表頭 sticky top 要生效,容器**必須自己有垂直捲動**(max-height + overflow:auto)——
@@ -412,27 +439,34 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
       <div class="rotlist" id="rotPick"></div>
     </details>
 
-    <!-- ① 🗺️ 全景 -->
+    <!-- ① 📊 輪動總覽 -->
     <div id="rotPane-map">
       <div class="rotquad" id="rotQuad"></div>
       <div id="rotVerdict" class="rotverdict"></div>
       <div class="quadwrap" id="rotRace"></div>
       <div class="rotlist" id="rotList"></div>
-      <details id="rotNoteWrap"><summary class="rotmore">📊 這張圖怎麼來的・實測數字</summary><div id="rotNote"></div></details>
     </div>
-    <!-- ② 📈 單一板塊怎麼動(使用者:「我也想看單一個題材的時候他是怎麼作動的」) -->
-    <div id="rotPane-one" class="hidden">
-      <div class="rotlist" id="rotOneBar"></div>
+    <!-- ② 📋 板塊明細:選一個 → 走勢圖 + 數字 + 成分股表(⭐ 舊版是「單一板塊」與「成分股」
+         兩頁,使用者版面圖把它們合成一頁 —— 選了之後本來就要一起看,分兩頁反而要來回切) -->
+    <div id="rotPane-det" class="hidden">
+      <div class="rotsel">
+        <input id="rotFind" class="rotfind" type="search" placeholder="🔎 找板塊(打字過濾)" oninput="PRO.rotFind(this.value)">
+        <span class="rotday" id="rotDetN"></span>
+      </div>
+      <div class="rotlist noscb" id="rotOneBar"></div>
       <div id="rotOne"></div>
+      <details id="rotMemWrap2"><summary class="rotmore">📇 所有板塊的成分股一覽</summary><div id="rotMembers"></div></details>
     </div>
-    <!-- ③ 📇 成分股 -->
-    <div id="rotPane-mem" class="hidden"><div id="rotMembers"></div></div>
-    <!-- ④ 👥 誰在買 -->
+    <!-- ③ 💰 法人籌碼 -->
     <div id="rotPane-flow" class="hidden">
       <div class="flowbar" id="rotFlowBar"></div>
       <div class="tblwrap" style="max-height:56vh"><table class="grid" id="rotFiTbl"><thead><tr id="rotFiHead"></tr></thead><tbody id="rotFiBody"></tbody></table></div>
       <div id="rotFiNote"></div>
     </div>
+    <!-- ④ 📖 策略與回測:把其他三頁的長篇說明、警語、實測數字全部集中到這裡。
+         ⛔ 但**不是全部搬走** —— 會影響判讀的一行免責(如資金流的 0.64x)必須留在原地,
+            搬到別的分頁等於使用者看不到(陷阱 #32)。這裡放的是**長篇**版本。 -->
+    <div id="rotPane-doc" class="hidden"><div id="rotDoc"></div><div id="rotNote"></div></div>
     <div id="rotDetail"></div>
   </div>
 </div>
@@ -1268,11 +1302,16 @@ const PRO = {
   // 🧭 V74.4.9 子頁籤 —— 使用者:「全部資料都塞在這一頁,很難搞得清楚在做什麼」
   //   ⛔ 每一個都要有**一句話說明「這一頁在回答什麼 + 看了能做什麼」**,
   //     否則拆頁籤只是把亂的東西分成四堆亂的。
+  // 🧭 V74.1.1 四個子頁籤(依使用者的版面藍圖)。
+  //   ⭐ 每一個的第三欄是**一句話**「這頁在回答什麼 + 看了能做什麼」——
+  //     ⛔ 只拆頁籤不解釋 = 把亂的東西分成四堆亂的。
+  //   ⚠️ 長篇說明/警語/回測數字集中到 `doc` 那頁,但**會影響判讀的一行免責留在原地**
+  //     (例如資金流的 0.64x)—— 搬走等於使用者看不到(陷阱 #32)。
   ROT_SUB: [
-    ['map', '🗺️ 全景', '這一頁回答:<b>錢現在在哪一區</b>。橫軸=近 20 日相對強弱(實測唯一過關的排序)、縱軸=你勾的那幾種買盤。<b>看了能做什麼</b>:先決定「要在哪一區找股票」,再去下面的分頁看那一區裡有誰。'],
-    ['one', '📈 單一板塊', '這一頁回答:<b>這一個板塊這 120 天是怎麼動的</b>(相對強弱走勢 + 外資買賣超)。<b>看了能做什麼</b>:分辨「剛發動」跟「已經漲很久」——⛔ 兩者的風險完全不同。'],
-    ['mem', '📇 成分股', '這一頁回答:<b>每個板塊裡面到底有誰</b>。紅=近 20 日漲、綠=跌,依成交額排。<b>看了能做什麼</b>:選定板塊後挑標的 —— 實測「板塊內最強」六關全過(+0.90%),⛔ 補漲股逐年都是負的。'],
-    ['flow', '👥 誰在買', '這一頁回答:<b>外資/投信/自營/融資各自往哪流</b>。<b>看了能做什麼</b>:當背景資訊看。⛔ 實測資金流<b>排不出有效順序</b>(去最好年只剩 +0.40pp、前後半不同向),所以它只描述、不排名、不下多空。'],
+    ['map', '📊 輪動總覽', '這一頁回答:<b>錢現在在哪一區</b>。橫軸=近 20 日相對強弱、縱軸=你勾的那幾種買盤。<b>能做什麼</b>:先決定「要在哪一區找股票」,再去「板塊明細」看那一區裡有誰。'],
+    ['det', '📋 板塊明細', '這一頁回答:<b>這一個板塊怎麼動、裡面有誰</b>。<b>能做什麼</b>:分辨「剛發動」跟「已經漲很久」(看「現在在整段的位置」),再從成分股挑標的。'],
+    ['flow', '💰 法人籌碼', '這一頁回答:<b>外資/投信/自營/融資各自往哪流</b>。<b>能做什麼</b>:當背景資訊看 —— ⛔ 實測資金流<b>排不出有效順序</b>,所以只描述、不排名、不下多空。'],
+    ['doc', '📖 策略與回測', '這一頁是<b>說明書</b>:上面三頁用到的每一個判準、實測數字、限制都放在這裡。<b>能做什麼</b>:想知道「這個數字憑什麼」就翻這頁。'],
   ],
   _rotSub: 'map',
   rotSwitchSub(t) {
@@ -1282,8 +1321,81 @@ const PRO = {
       `<button class="labbtn${k === t ? ' on' : ''}" onclick="PRO.rotSwitchSub('${k}')">${n}</button>`).join('');
     const lead = (this.ROT_SUB.find(x => x[0] === t) || [])[2] || '';
     document.getElementById('rotLead').innerHTML = `<div class="note" style="margin-top:0">${lead}</div>`;
+    // 🎛️ 說明書那頁沒有時間軸可言 → 控制列收起來(⛔ 留著只會讓人以為那頁也會動)
+    const ctl = document.querySelector('.rotsticky'), pk = document.getElementById('rotPickWrap');
+    if (ctl) ctl.classList.toggle('hidden', t === 'doc');
+    if (pk) pk.classList.toggle('hidden', t === 'doc' || t === 'flow');
     if (this._rotData) this.rotSeek(this._rotK);      // 換頁要把那一頁的內容補上
-    if (t === 'mem') this._rotMembers();
+    if (t === 'det') this._rotMembers();
+    if (t === 'doc') document.getElementById('rotDoc').innerHTML = this._rotDocHtml();
+  },
+  // 🔎 板塊明細的打字過濾(⛔ 不做成 <select> —— 32 個產業用下拉在手機上要滑很久,
+  //    而且看不到「誰現在最強」;chips + 打字過濾兩者都有)
+  rotFind(q) {
+    this._rotQ = String(q || '').trim();
+    this.rotSeek(this._rotK);
+  },
+  // 📖 策略與回測(說明書)—— ⭐ 把三頁的長篇文字集中在這裡,主畫面才看得下去。
+  //   ⛔ 數字一律引用既有常數 `_ROT`,⛔ 不可在這裡寫死第二份(改了會對不上)。
+  _rotDocHtml() {
+    const R = this._ROT, J = this._rotData || {};
+    const G = this._rotSet();
+    const nOK = Object.keys(G.grp || {}).length;
+    // ⚠️ 0.63 − (−0.8) 在 JS 是 1.4300000000000002 → ⛔ 一定要 toFixed
+    //   (顯示給使用者的數字要自洽,這個專案踩過好幾次)
+    const SPREAD = (R.top - R.bot).toFixed(2);
+    return `
+      <div class="signote"><div class="sighead">📊 這張圖的兩個軸是怎麼決定的</div>
+        <div class="note" style="margin-top:0">
+          <b>橫軸(相對強弱)= 近 ${R.win} 日報酬中位數</b>。窗口不是隨便挑的 ——
+          1/3/5/10/20/60 日全測過:<b>1~5 天的窗口吃不掉來回成本 0.44%,10 天以上才過關</b>
+          (未來 20 日的「前 3 名 − 後 3 名」:+0.40 / +0.79 / +0.81 / +1.10 / <b>+${SPREAD}</b> / +2.03pp)。<br>
+          <b>縱軸(誰在買)= 你勾選的那幾種買盤近 5 日合計</b> —— ⚠️ 它<b>只是描述</b>,
+          實測排不出有效順序(去最好年只剩 +0.40pp、20 日窗口前後半不同向)。
+        </div>
+      </div>
+      <div class="signote"><div class="sighead">✅ 實測績效(這一頁唯一有實證的東西)</div>
+        <div class="note" style="margin-top:0">
+          官方 33 產業、775 個交易日:<b>最強 3 個 − 最弱 3 個 = +${SPREAD}pp</b>(未來 20 日,扣同期加權)。
+          四道關卡全過(前半 +1.28 / 後半 +1.58、逐年 +0.9/+1.4/+1.2/+2.2)。<br>
+          ⭐⭐ <b>而且邊際是不對稱的:避開最弱比追最強更有價值</b> ——
+          最強那 3 個相對全產業平均只有 <b>+${R.top}pp</b>,最弱那 3 個卻是 <b>${R.bot}pp</b>。<br>
+          🏭 <b>選定板塊之後怎麼挑股票</b>:7 種挑法只有「<b>板塊內近 20 日漲最多</b>」六關全過
+          (扣成本 <b>+0.90%</b>);🚨 江湖最愛的<b>補漲股逐年都是負的</b>(−0.40pp),
+          便宜的 −0.15、波動最大的 −0.27、只挑龍頭去最好年 −1.41。
+        </div>
+      </div>
+      <div class="signote"><div class="sighead">⛔ 已經實測「沒用」的三種錢流定義</div>
+        <div class="note" style="margin-top:0">
+          ① <b>外資淨流入金額</b>:最好 +0.83pp,但去最好年只剩 +0.40、前後半不同向 ❌<br>
+          ② <b>外資買超佔成交額比</b>:±0.2pp 內,多數格子前後半不同向 ❌<br>
+          ③ 🚨 <b>成交額佔比的變化(= 「錢在板塊間搬家」)</b>:≈0 甚至是負的 ❌ ——
+          ⛔ 這正是最直覺、最適合做成箭頭動畫的那一個,<b>實測完全沒有預測力</b>,所以這頁不做那種圖。<br>
+          ④ <b>加速度</b>(近期動能 − 前期動能):最好一格 ±0.4pp、前後半不同向 ❌ ——
+          所以四象限<b>刻意不用</b>別家那套「漲潮/輪動/觀望/退潮」。
+        </div>
+      </div>
+      <div class="signote"><div class="sighead">🧲 題材的「成員同步程度」怎麼看</div>
+        <div class="note" style="margin-top:0">
+          = 這個題材的成員<b>兩兩之間的平均相關</b>(扣掉大盤之後)。越高代表這一族真的一起動、
+          「板塊平均值」才有意義。實測:軍工 0.67 / 玻纖布 0.65 / 矽晶圓 0.62 / 記憶體 0.55…
+          🚨 但 <b>晶圓代工 0.07・網通 0.07・電源 0.13</b> —— 那幾組成員各走各的
+          (晶圓代工那組有台積電,而它幾乎等於大盤本身)。
+          <b>低於 0.20 的題材只留人工確認的名單、⛔ 不自動擴散</b>。
+        </div>
+      </div>
+      <div class="signote"><div class="sighead">⚠️ 這一頁的限制(⛔ 不可略過)</div>
+        <div class="note" style="margin-top:0">
+          ・<b>官方產業只涵蓋上市</b>(1,087 檔)→ 這是「上市板塊輪動」,⛔ 不是全市場。<br>
+          ・<b>題材名單是人工挑的</b>(市場在炒什麼就收什麼)→ 成員有後見之明,
+            ⛔ <b>那組 +${SPREAD}pp 的實測數字只驗過官方 33 產業,不可套用在題材版上</b>。<br>
+          ・回測窗口<b>整段偏多頭</b>,空頭沒驗證過。<br>
+          ・⛔ 本頁<b>不給任何買賣價位</b>;價位一律以散戶救星個股頁的「現在怎麼做」為準。<br>
+          ・個股層級「外資大買」實測是 <b>0.64x</b>(比隨便挑一天還低)→ 資金流<b>不是跟單訊號</b>。
+        </div>
+      </div>
+      <div class="note">📅 目前資料:近 ${(J.days || []).length} 個交易日 ・${nOK} 個${G.th ? '題材' : '產業'}
+        ・更新 ${J.updated || '—'}。探針:<code>sector_rotation_probe.mjs</code>・<code>sector_pick_probe.mjs</code>。</div>`;
   },
   // ☑️ 勾選過濾 —— 使用者:「我想勾選的方式勾出我想看的東西就好,其他不要顯示」
   //   `_rotPick` = null 代表「全部」(⛔ 不要一開始就塞 32 個 key 進去,模式一切換就對不上)
@@ -1619,15 +1731,20 @@ const PRO = {
     this._rotChips(list, N);
     this._rotDetail(k);
     this._rotFi(k);
-    // 📈 單一板塊分頁:選擇條 + 走勢(⛔ 每一拍都要重畫,游標才跟得上時間軸)
+    // 📋 板塊明細:選擇條(可打字過濾) + 走勢(⛔ 每一拍都要重畫,游標才跟得上時間軸)
     const ob = document.getElementById('rotOneBar');
     if (ob) {
-      ob.innerHTML = list.map(x =>
-        `<span class="rotchip ${this.cls(x.v)} ${this._rotOneSel === x.c ? 'on' : ''}" onclick="PRO.rotOne('${x.c}')">${G.nm(x.c)} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}</span>`).join('');
+      const q = this._rotQ || '';
+      const shown = q ? list.filter(x => G.nm(x.c).toLowerCase().includes(q.toLowerCase())) : list;
+      ob.innerHTML = shown.map(x =>
+        `<span class="rotchip ${this.cls(x.v)} ${this._rotOneSel === x.c ? 'on' : ''}" onclick="PRO.rotOne('${x.c}')">${G.nm(x.c)} ${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}</span>`).join('')
+        || `<span class="rotchip">找不到「${q}」</span>`;
+      const dn = document.getElementById('rotDetN');
+      if (dn) dn.textContent = q ? `${shown.length}/${list.length}` : `${list.length} 個`;
       const sel = this._rotOneSel && G.grp[this._rotOneSel] ? this._rotOneSel : null;
       document.getElementById('rotOne').innerHTML = sel ? this._rotOneHtml(sel)
         : `<div class="note">👆 <b>上面點一個板塊</b>,就會畫出它這 ${J.days.length} 個交易日的走勢
-           —— 看得出它是<b>剛發動</b>還是<b>已經漲很久</b>。</div>`;
+           —— 看得出它是<b>剛發動</b>還是<b>已經漲很久</b>,下面直接列成分股。</div>`;
     }
   },
   // 🧬 個股泡泡圖(V74.3.9,使用者:「題材細到個股,用一樣的邏輯,還有它的股價高低」)
@@ -1704,13 +1821,28 @@ const PRO = {
       const st = (x.v || 0) >= 0, bu = (x.f || 0) > 0;
       if (st && bu) a++; else if (st) b++; else if (bu) c2++; else d++;
     }
-    box.innerHTML = [
-      ['🎯', a, 'var(--up)', '強<br>又有人買'],
+    const cells = [
+      ['🎯', a, 'var(--up)', '又強<br>又有人買'],
       ['📈', b, 'var(--amber)', '強<br>但沒人買'],
       ['💧', c2, 'var(--cyan)', '弱<br>但有人買'],
       ['⛔', d, 'var(--dn)', '弱<br>又沒人買'],
-    ].map(([ic, n, col, lbl]) =>
-      `<div><b style="color:${col}">${ic} ${n}</b><span>${lbl}</span></div>`).join('');
+    ];
+    // ⭐ 動態:數字變了才重寫 + 閃一下(播放時間軸時看得出「哪一格在長大」)。
+    //   ⛔ 每一拍都重建 innerHTML 的話 CSS transition 會被重置 = 看不到動畫,
+    //      所以第一次才建結構,之後**只改文字**。
+    if (box.children.length !== 4) {
+      box.innerHTML = cells.map(([ic, , col, lbl]) =>
+        `<div><b style="color:${col}"></b><span>${lbl}</span></div>`).join('');
+      this._quadPrev = null;
+    }
+    cells.forEach(([ic, n], i) => {
+      const el = box.children[i], bEl = el.querySelector('b');
+      const prev = (this._quadPrev || [])[i];
+      if (prev === n) return;
+      bEl.textContent = `${ic} ${n}`;
+      if (prev != null) { el.classList.add('bump'); setTimeout(() => el.classList.remove('bump'), 260); }
+    });
+    this._quadPrev = cells.map(x => x[1]);
   },
   // 圖下方的名次條 —— 一眼看完 32 個產業,⛔ 不用捲
   _rotChips(list, N) {
@@ -1789,21 +1921,40 @@ const PRO = {
     document.getElementById('rotFiHead').innerHTML =
       `<th>${G.th ? '題材' : '產業'}</th><th>疊加</th>` + on.map(([, lbl]) => `<th>${lbl.replace(/\(.*\)/, '')}</th>`).join('')
       + `<th>🤝 幾方同買</th><th>近20日</th>`;
-    document.getElementById('rotFiBody').innerHTML = rows.map(x => {
-      const bars = on.map(([key, , col]) => {
-        const v = x.v[key];
-        if (v == null) return `<div class="fbar"></div>`;
-        const w = Math.min(50, Math.abs(v) / mx * 50);
-        return `<div class="fbar"><b style="background:${col};width:${w}%;left:${v >= 0 ? 50 : 50 - w}%"></b></div>`;
-      }).join('');
+    // ⭐ V74.1.1 動態:條的長度要**滑過去**而不是瞬間跳。
+    //   ⛔ 每一拍都重建 innerHTML 會把 CSS transition 重置掉(看起來就沒有動畫)
+    //      → 結構(列數/勾選組合)沒變時**只改 style 與文字**。
+    const sig = rows.map(x => x.c).join(',') + '|' + on.map(([k]) => k).join(',');
+    const body = document.getElementById('rotFiBody');
+    if (this._fiSig !== sig) {
+      body.innerHTML = rows.map(x =>
+        `<tr data-c="${x.c}"><td class="txtcell">${nm(x.c)}</td>
+          <td><div class="fbars">${on.map(([, , col]) =>
+            `<div class="fbar"><b style="background:${col}"></b></div>`).join('')}</div></td>`
+        + on.map(() => '<td></td>').join('') + '<td></td><td></td></tr>').join('');
+      this._fiSig = sig;
+    }
+    rows.forEach((x, ri) => {
+      const tr = body.children[ri]; if (!tr) return;
+      const bs = tr.querySelectorAll('.fbar b');
+      on.forEach(([key], i) => {
+        const v = x.v[key], el = bs[i]; if (!el) return;
+        const w = v == null ? 0 : Math.min(50, Math.abs(v) / mx * 50);
+        el.style.width = w + '%';
+        el.style.left = (v == null ? 50 : v >= 0 ? 50 : 50 - w) + '%';
+      });
+      const tds = tr.querySelectorAll('td');
+      on.forEach(([key], i) => {
+        const td = tds[2 + i]; if (!td) return;
+        td.className = this.cls(x.v[key]);
+        td.textContent = x.v[key] == null ? '—' : (x.v[key] >= 0 ? '+' : '') + this.fmt(x.v[key], 1);
+      });
       const buyN = on.filter(([key]) => (x.v[key] || 0) > 0).length;
       const fBuy = (x.v.f || 0) > 0;
-      return `<tr><td class="txtcell">${nm(x.c)}</td>
-        <td><div class="fbars">${bars}</div></td>`
-        + on.map(([key]) => `<td class="${this.cls(x.v[key])}">${x.v[key] == null ? '—' : (x.v[key] >= 0 ? '+' : '') + this.fmt(x.v[key], 1)}</td>`).join('')
-        + `<td>${buyN}/${on.length}${fBuy && buyN >= 2 ? ' ⭐' : ''}</td>
-        <td class="${this.cls(x.r)}">${x.r == null ? '—' : (x.r >= 0 ? '+' : '') + x.r.toFixed(1) + '%'}</td></tr>`;
-    }).join('');
+      const t1 = tds[2 + on.length], t2 = tds[3 + on.length];
+      if (t1) t1.textContent = `${buyN}/${on.length}${fBuy && buyN >= 2 ? ' ⭐' : ''}`;
+      if (t2) { t2.className = this.cls(x.r); t2.textContent = x.r == null ? '—' : (x.r >= 0 ? '+' : '') + x.r.toFixed(1) + '%'; }
+    });
     // ⭐ 當天剛好出現「外資買最多、股價卻最弱」就直接點出來 —— 比講道理有說服力
     const byF = rows.filter(x => x.v.f != null).sort((a, b) => b.v.f - a.v.f);
     const byR = rows.filter(x => x.r != null).sort((a, b) => a.r - b.r);
