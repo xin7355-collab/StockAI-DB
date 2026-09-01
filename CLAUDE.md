@@ -6030,6 +6030,50 @@ workflow 必須**先從 data 分支還原**再跑(`git show` + `[ -s ]` 驗非�
 
 **⑤ 🧬 徽章移到清單最右欄**(標的欄只留名字+代號+警示,sticky 欄不再被撐寬)。
 
+### 💰 V74.3.8 除權息第一次進本站 + 🕸️ 關聯星圖雲端首跑撞陷阱 #14 + 🏅 scr_edge 佈線再犯一次
+使用者:「今天就想有資料 … 需要挖礦就挖礦、需要驗證就驗證」。三件事一起收尾,寫下來免得重做。
+
+#### 💰 除權息(`dividend_miner.py` + `dividend_sweep.yml`,每週六 21:30 UTC 一次)
+- 資料源先用 `scripts/div_probe.py` 在 Actions 實跑過才寫 miner(⛔ 不憑印象寫欄位):
+  FinMind `TaiwanStockDividendResult`(除息日/前後價/股利)+ `TaiwanStockDividend`(含**未來**除息日),
+  逐檔可抓、2020 起有、**要付費層**(4 把只有第 1 把通);省略 `data_id` 的全市場寫法回 0(跟分點一樣);
+  TWSE OpenAPI `t187ap45_L` 只有股利分派決議、**沒有除息日**。
+- 產物兩份:`data/dividends.json`(每檔最近 12 筆 + 未來除息日,gh-pages + data)/
+  `data/dividends_hist.json`(2021 起全部,⛔ 只推 data 分支,回測用)。格式
+  `{sym:{h:[[除息日,現金股利,類型,除息前價,參考價]…], up:[[未來除息日,股利]…]}}`,含 ETF。
+- ⛔ 六個守門:2330 探路(不是付費層 → exit 1)/ 有紀錄 <500 檔不覆寫 / 合併舊檔(這輪失敗的保留舊值)/
+  每 200 檔 checkpoint / 🔐 只印第幾把 / 收尾分類統計。⛔ **別改成每天跑** —— 配息一年只有 1~4 次,
+  逐檔 2 次呼叫 ≈ 5,400 次 ≈ 55 分,每天跑是撞排程配額 + 白吃額度。
+- 前端(`pro.html`)⛔ **只描述**:今日訊號頁「📅 未來 30 天除權息」表 + 釣魚池魚卡「近 12 個月配息 ÷ 現價」。
+  **填不填息本站還沒回測** → 不下多空、不寫「除息前買」。免責句本身含「除息前買」→
+  測試要先剝掉否定形再驗(本專案第 9 次踩這個坑)。測資日期一律相對今天平移(⛔ 寫死 30 天後變假失敗)。
+- ⏭️ 真正的價值在**下一步**:`dividends_hist.json` 有了 → 0050 / 2330 / 高股息 ETF 的**含息**回測終於做得動
+  (現在所有「買了放著」都是不含息的,0056/00878 被系統性低估)。⛔ 要用「除息日參考價 + 股利再投入」算,
+  別把股利直接加在最後一天。
+- ⚠️ `dividend_sweep` 與 `daily_miner` **共用同一把付費金鑰**(6,000/hr):兩支同時跑會互相 429。
+  這次 push `daily_miner.yml` 觸發的那輪被我手動取消、等 sweep 跑完再重新 dispatch。
+- 🚨🚨 **首跑就把整站的部署卡死一小時**:第一版把 `concurrency: gh-pages-push` 寫在 **workflow 層級**,
+  而它要跑 55 分鐘 → 整段時間佔著共用 group,期間新排進來的 `deploy_pages`(push 觸發 + 手動 dispatch **兩筆**)
+  都被當成「pending 被取代」直接 cancelled,V74.3.8 上不了線、Actions 頁面只看得到灰色的 cancelled。
+  → 改成自己的 group `gh-pages-dividend`,防撞交給 deploy step 既有的 5 次 retry + rebase。
+  ⭐ **V73.7.9 那條鐵則的第三次犯案:執行時間長的 workflow ⛔ 不可跟別人共用 concurrency group。**
+  ⚠️ `fund_sweep`(~25 分)與 `tdcc_sweep` 也還掛在共用 group 上,只是它們排在深夜沒撞到人 —— 下次動到它們時一併搬出來。
+
+#### 🕸️ 關聯星圖採礦:本機 582 檔、雲端 **2 檔**(陷阱 #14 的教科書案例)
+`generate_correlations.py` 本機跑 582 檔全對;推上 `daily_miner` 第一輪 log 只有一行
+「宇宙 2 檔・鄰居 0 檔」→ 空過守門(MIN_OK=200)擋下不寫檔,前端顯「還沒產出」。
+真因:gh-pages 2,789 檔裡 **6 檔已寫進 2026/09/02 的列**(盤中快照/時區),程式用 `close.index[-1]`
+當最新交易日 → 那天只有那 6 檔有收盤價 → Filter A 過關 2 檔。
+→ 改取「有收盤價的檔數 ≥ 全窗口最大檔數一半」的最大日期,砍掉的日期**印出來**;
+  selftest 注入兩檔未來列釘住(⛔ 本機資料剛好沒有未來列,所以只有注入才驗得到)。
+⭐ 通用:**跟「資料當天狀態」有關的守門,本機綠燈不算數,要把那個狀態注入測資。**
+
+#### 🏅 `data/scr_edge.json` 被夜間部署洗掉(V74.0.1「部署佈線 8 處」再犯)
+V74.3.6 只接了 `deploy_pages.yml` 四處 → 當晚 `daily_miner` orphan force-push 之後 gh-pages 上
+`scr_edge=no`,釣魚池的實測體質整個空掉、零錯誤訊息。→ `daily_miner.yml` 補四處(checkout / cp / cp 回 / git add)。
+⛔ **任何要上 gh-pages 的非採礦產物,兩條部署路徑各四處,一處都不能少**;查法就是 CLAUDE.md 那條版本號指令
+加一行 `git ls-tree origin/gh-pages data/<file>`。
+
 ### 🏷️ V74.4.8 個股題材標籤重做 —— 「每天抓」不等於「資料是新的」
 使用者截圖:南亞科(2408)的標籤是「**#台塑 #Windows11 #美中貿易戰受惠 #蘋果供應商 #Smart TV**」
 —— 一個跟記憶體有關的都沒有,問「Smart TV 這個有用嗎?」

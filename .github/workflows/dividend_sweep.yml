@@ -13,8 +13,13 @@ on:
         required: false
         default: '0'
 
+# 🚨 V74.3.8 實跑抓到:這支要跑 55 分鐘,原本掛在共用的 `gh-pages-push` group(workflow 層級)→
+#    整整一小時佔著那個 group,期間每一個新排進來的 deploy_pages / 其他採礦都被當成「pending 被取代」
+#    直接 cancelled(2026-09-01 22:20 push 觸發的 + 22:24 手動 dispatch 的 deploy_pages **兩筆都被砍**,
+#    V74.3.8 一直上不了線)。⭐ 這正是 V73.7.9 的教訓再一次:**執行時間長的 workflow ⛔ 不可跟別人共用 group**。
+#    → 自己一個 group;跟別人同時 push 的防撞交給下面 deploy step 既有的「5 次 retry + fetch/pull --rebase」。
 concurrency:
-  group: gh-pages-push
+  group: gh-pages-dividend
   cancel-in-progress: false
 
 permissions:
