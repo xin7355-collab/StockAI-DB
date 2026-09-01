@@ -52,7 +52,7 @@ a{color:var(--cyan)}
 .brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#123,#154);border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;font-size:18px}
 .brand h1{font-size:17px;font-weight:900;letter-spacing:.5px}
 .brand .ver{font-size:10px;color:var(--dim2);font-weight:400}
-.tabs{display:flex;gap:6px;margin-left:auto}
+.tabs{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;max-width:100%}   /* 📐 V74.3.5:8 顆分頁鈕在 390 寬會爆 12px → 換行(header 變高由 _syncHdrVar 接手) */
 .tab-btn{border:1px solid var(--line2);background:var(--panel);color:var(--sub);padding:7px 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
 .tab-btn.on{background:linear-gradient(135deg,rgba(61,139,253,.22),rgba(34,211,238,.12));color:#cfe3ff;border-color:#2f5f9e}
 .datebadge{font-size:10px;color:var(--dim2);font-family:var(--mono)}
@@ -266,6 +266,18 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .starcode{font-size:10.5px;color:var(--dim2);font-family:var(--mono)}
 .starbar2{height:6px;border-radius:99px;background:var(--line2);overflow:hidden;min-width:54px}
 .starbar2 i{display:block;height:100%;background:linear-gradient(90deg,#3d8bfd,#22d3ee)}
+/* 🎣 釣魚池 —— ⛔ 高度寫死:畫布不是文字,內容變動不可推動下面的清單(V74.3.0 教訓) */
+.fishwrap{position:relative;width:100%;height:440px;margin:6px 0 10px;border-radius:11px;overflow:hidden;
+  border:1px solid var(--line2);background:linear-gradient(180deg,#0c2b46 0%,#08203a 55%,#051424 100%)}
+.fishwrap canvas{width:100%;height:100%;display:block;touch-action:manipulation;cursor:pointer}
+.fishlegend{position:absolute;left:8px;bottom:6px;right:8px;font-size:10px;color:#a9bfd4;line-height:1.55;
+  background:rgba(5,20,36,.72);padding:5px 8px;border-radius:6px;pointer-events:none}
+.fishwrap.list{display:none}
+.fishcard{border:1px solid var(--cyan);border-radius:11px;padding:10px 12px;margin:0 0 10px;background:rgba(34,211,238,.06)}
+.fishcard .big{font-size:16px;font-weight:900}
+.fishcard .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px 10px;margin:8px 0;font-size:12px}
+.fishcard .kv b{display:block;font-size:10px;color:var(--dim2);font-weight:700}
+.fishpool.on{background:var(--cyan);border-color:var(--cyan);color:#06222b !important}
 .labbtn{font-size:11px;padding:6px 11px;border-radius:999px;border:1px solid var(--line2);
   background:var(--panel2);color:var(--dim2);cursor:pointer;user-select:none;white-space:nowrap}
 .labbtn.on{color:var(--txt);border-color:var(--cyan);background:rgba(34,211,238,.09)}
@@ -419,6 +431,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <button class="tab-btn" id="tabBtnChain" onclick="PRO.switchTab('chain')">AI 產業鏈</button>
     <button class="tab-btn" id="tabBtnRot" onclick="PRO.switchTab('rot')">板塊輪動</button>
     <button class="tab-btn" id="tabBtnStar" onclick="PRO.switchTab('star')">關聯星圖</button>
+    <button class="tab-btn" id="tabBtnFish" onclick="PRO.switchTab('fish')">釣魚池</button>
     <button class="tab-btn" id="tabBtnSig" onclick="PRO.switchTab('sig')">今日訊號</button>
     <button class="tab-btn" id="tabBtnCalc" onclick="PRO.switchTab('calc')">回測計算機</button>
     <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
@@ -590,6 +603,37 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <div id="starChart" class="starchart"></div>
     <div id="starList"></div>
     <div id="starNote"></div>
+  </div>
+</div>
+<!-- ═══ 🎣 釣魚池(V74.3.5)═══
+     使用者上傳「股王釣魚系統」規格(魚群動態 Canvas)。⛔ 規格裡的 Vite+Vue / IndexedDB /
+     fetch_daily.py / daily_stocks.json **全部不採用**:pro.html 是零建置的單檔、資料早就有
+     (screener.json 2,476 檔)、快取走既有 SW + 共用 _cache。採用的是它的**觀念**:
+     「資料與渲染解耦、前端零運算、遊戲模式 ↔ 列表模式一鍵切換」。
+     ⭐ 每一條魚的每一個視覺屬性都綁一個**實測有效**的維度(圖例上寫著數字),⛔ 沒有純裝飾:
+        上下 = 一年位階 ・ 游向/游速 = 近 20 日動能 ・ 大小 = 成交額 ・ 顏色 = 今日漲跌(方向)
+        ・ 🚀🔥 = 關聯星圖的狀態 ・ 一群一起游 = 關聯星圖裡的同族。
+     ⛔ 這頁不下多空、不計分、不給買賣價位。魚游得快 ≠ 會漲。 -->
+<div id="tabFish" class="hidden">
+  <div class="panel">
+    <h2>🎣 釣魚池 <span class="sub">整個市場一眼看完:魚在哪一層、往哪游、誰跟誰一群</span>
+      <span class="sub" id="fishSub"></span></h2>
+    <div class="labbar" id="fishPool"></div>
+    <div class="starbar" style="justify-content:space-between;margin-top:0">
+      <div class="labbar" style="margin:0">
+        <button class="lbtn on" id="fishModeTank" onclick="PRO.fishMode('tank')">🐟 魚池</button>
+        <button class="lbtn" id="fishModeList" onclick="PRO.fishMode('list')">📊 列表</button>
+      </div>
+      <span class="sigtag" id="fishCount"></span>
+    </div>
+    <div id="fishMsg"></div>
+    <div id="fishTankWrap" class="fishwrap">
+      <canvas id="fishCanvas"></canvas>
+      <div id="fishLegend" class="fishlegend"></div>
+    </div>
+    <div id="fishCard"></div>
+    <div id="fishList"></div>
+    <div id="fishNote"></div>
   </div>
 </div>
 <div id="tabSig" class="hidden">
@@ -837,11 +881,12 @@ const PRO = {
     if (this._tab === 'chain') await this.renderChain();
     if (this._tab === 'rot') await this.renderRot();
     if (this._tab === 'star') { this._starData = undefined; await this.renderStar(); }
+    if (this._tab === 'fish') { this._starData = undefined; await this.renderFish(); }
     if (this._valRows && this._valRows.length) await this.runValuation(true);
     this.toast('✅ 已更新');
   },
 
-  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['sig', 'Sig'], ['calc', 'Calc'], ['lab', 'Lab']],
+  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['sig', 'Sig'], ['calc', 'Calc'], ['lab', 'Lab']],
   switchTab(t, silent) {
     this._syncHdrVar();          // 分頁列會換行 → header 高度會變 → sticky 的 top 要跟著改
     this._tab = t;
@@ -850,9 +895,11 @@ const PRO = {
       document.getElementById('tabBtn' + C).classList.toggle('on', t === k);
     }
     if (t !== 'rot') this.rotStop();          // ⛔ 切走要停掉動畫,不然背景一直跑
+    if (t !== 'fish') this.fishStop();        // 🎣 同理:魚池的 rAF 迴圈切走就停
     if (t === 'chain') this.renderChain();
     if (t === 'rot') this.renderRot();
     if (t === 'star') this.renderStar();
+    if (t === 'fish') this.renderFish();
     if (t === 'sig') this.renderSig();
     if (t === 'calc') this.renderCalc();
     if (t === 'lab') this.renderLab();
@@ -920,6 +967,23 @@ const PRO = {
     return this._starEc === 'ok';
   },
 
+  // 📅 資料過期浮水印 —— 規格的「單點故障」批判是對的一半:
+  //    採礦端**早就**不會用空檔蓋掉昨天的(空過守門 + 部署前 git archive origin/data 還原),
+  //    所以「保留昨日 JSON 當備援」不用另做;缺的只是**前端要說出「這是幾天前的」**。
+  //    ⚠️ 門檻用日曆天 4 天(跟 V73.8.6 個股期貨同一個理由):週末+一天假不誤報,真停產一定擋得住。
+  _staleDays(d) {
+    if (!d) return null;
+    const t = Date.parse(String(d).replace(/\//g, '-') + 'T00:00:00+08:00');
+    if (!Number.isFinite(t)) return null;
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+    return Math.floor((now - t) / 864e5);
+  },
+  _staleChip(d, what) {
+    const n = this._staleDays(d);
+    if (n === null || n <= 4) return '';
+    return `<span class="sigtag warn">⚠️ ${what}資料未更新:停在 ${d}(${n} 天前)—— 採礦可能沒跑到,⛔ 別當成今天的</span>`;
+  },
+
   _starSym: '',
   // 🚨 每次查詢配一個流水號 —— starFetch / ECharts 都是 async,而 ECharts 那條最久要等 12 秒。
   //    ⛔ 沒有這個守門的話:查 A → 馬上查 B → 12 秒後 A 的結果回來把 B 的畫面整個蓋掉
@@ -935,7 +999,7 @@ const PRO = {
         它由採礦機每天算一次;第一次上線要等下一輪採礦跑完。⛔ 這不是這個功能壞掉。</div>`;
       return;
     }
-    if (sub) sub.textContent = `資料日 ${J.data_date || '—'} ・${J.universe || 0} 檔 ・近 ${J.window || 0} 個交易日`;
+    if (sub) sub.innerHTML = `資料日 ${J.data_date || '—'} ・${J.universe || 0} 檔 ・近 ${J.window || 0} 個交易日 ${this._staleChip(J.data_date, '關聯')}`;
     await this.loadNames();
     this._starIntro(J);
     if (!document.getElementById('starHot').innerHTML) this._starHot(J);
@@ -1082,6 +1146,279 @@ const PRO = {
     // 點節點 = 換成以它為中心重畫(星圖最自然的操作)
     inst.off('click');
     inst.on('click', p => { if (p.dataType === 'node' && p.data.value !== sym) this.starGo(p.data.value); });
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎣 釣魚池 —— 「整個市場一眼看完:魚在哪一層、往哪游、誰跟誰一群」
+  //
+  // ⛔ 六條鐵則(測試 scripts/test_fishtank.mjs 釘住):
+  //  ① **零新採礦、零新資料檔** —— 讀既有的 screener.json(2,476 檔)+ top_correlations.json。
+  //     規格裡的 fetch_daily.py / daily_stocks.json 是重複造輪子,⛔ 不做。
+  //  ② **每個視覺屬性都綁實測有效的維度,圖例寫數字** —— 沒有純裝飾的魚。
+  //  ③ **只描述、⛔ 不下多空、不給買賣價位**。魚游得快 ≠ 會漲,卡上要寫。
+  //  ④ **🐟 ↔ 📊 一鍵切換**(規格自己的批判是對的:炫的畫面會干擾看數字)。列表 = 同一批魚。
+  //  ⑤ **切走分頁 / 頁面隱藏 → 迴圈必停**(⛔ 背景一直跑會耗電,同 rotStop);
+  //     prefers-reduced-motion → 只畫一張靜態的。
+  //  ⑥ **資料缺就退回列表 + 說原因**,⛔ 不可整頁空白或 Canvas 報錯(規格的「防壞軌」)。
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // 🧬 門檻跟泡泡圖(V74.3.9)**同一組數字**:位階 ≥75、20 日振幅 ≥3.2%(全市場 P60)。⛔ 改要兩邊一起改。
+  FISH_POOLS: [
+    { k: 'amt',  n: '💧 成交額前 100', d: '今天錢最多的 100 檔(⛔ 不含 ETF)',
+      f: (r, S) => true, sort: 'amt' },
+    { k: 'gene', n: '🧬 高位階+高波動', d: '一年位階 ≥75 且 20 日振幅 ≥3.2%(36 個月組合回測 +289.6 萬的那組條件)',
+      f: (r, S) => r.pos252 >= 75 && r.amp20 >= 3.2, sort: 'amt' },
+    { k: 'st',   n: '🚀🔥 有狀態的', d: '關聯星圖標成「剛突破」或「過熱」的',
+      f: (r, S) => (S[r.sym] || 0) > 0, sort: 'amt' },
+    { k: 'top',  n: '📈 近 20 日最強', d: '近 20 日漲最多的 100 檔(⛔ 追強有實測邊際、但衰退中)',
+      f: (r, S) => r.chg20 > 0, sort: 'chg20' },
+  ],
+  FISH_MAX: 100,          // ⛔ 別調大:每條魚每一格都要畫名字,手機 100 條就是上限
+  _fishPoolK: 'amt', _fishModeV: 'tank', _fish: [], _fishRaf: 0, _fishPick0: null,
+
+  // 📡 資料:screener 走共用 fetchJson(跟其他分頁**同一份**,⛔ 不另做 IndexedDB —— 兩份會不同步);
+  //    關聯狀態走 starFetch(SW 已有 12 小時快取)。
+  async _fishData() {
+    const [scr, J] = await Promise.all([this.fetchJson('data/screener.json'), this.starFetch(), this.loadNames()]);
+    if (!scr || !scr.rows || !scr.cols) return null;
+    const C = scr.cols, ix = k => C.indexOf(k);
+    const iC = ix('c'), iChg = ix('chg'), i20 = ix('chg20'), iAmt = ix('amt'), iPos = ix('pos252'),
+          iAmp = ix('amp20'), iB20 = ix('b20'), iEtf = ix('etf'), iAtt = ix('att');
+    // 狀態:關聯星圖算好的為準(它有昨天的資料才判得出「突破」);
+    //       沒被涵蓋的只補「🔥 過熱」—— 定義完全相同(收盤 > 20MA×1.15 ⟺ 乖離月線 b20 > 15),
+    //       ⛔ 突破需要昨收/昨量,screener 是單日快照,不硬猜。
+    const S = {};
+    if (J && J.r) for (const v of Object.values(J.r)) for (const [c, , st] of v) if (st) S[c] = st;
+    const rows = [];
+    for (const [sym, r] of Object.entries(scr.rows)) {
+      if (!Array.isArray(r) || r[iEtf] === 1) continue;             // ⛔ ETF 不下水(跟星圖同一理由)
+      const c = r[iC], chg = r[iChg], chg20 = r[i20], amt = r[iAmt], pos = r[iPos], amp = r[iAmp];
+      if (![c, chg, amt, pos].every(Number.isFinite)) continue;    // null 一律不通過(⛔ 不補 0)
+      if (!S[sym] && Number.isFinite(r[iB20]) && r[iB20] > 15) S[sym] = 2;
+      rows.push({ sym, nm: this.nameOf(sym) || sym, c, chg, chg20: Number.isFinite(chg20) ? chg20 : 0,
+                  amt, pos252: pos, amp20: Number.isFinite(amp) ? amp : 0, att: r[iAtt] === 1, st: S[sym] || 0 });
+    }
+    return { rows, S, J, date: scr.data_date || '', updated: scr.updated || '' };
+  },
+
+  _fishPoolRows(D) {
+    const P = this.FISH_POOLS.find(p => p.k === this._fishPoolK) || this.FISH_POOLS[0];
+    let rows;
+    if (this._fishPoolK === 'fam' && this._starSym && D.J && D.J.r[this._starSym]) {
+      const fam = new Set([this._starSym, ...D.J.r[this._starSym].map(x => x[0])]);
+      rows = D.rows.filter(r => fam.has(r.sym));
+    } else {
+      rows = D.rows.filter(r => P.f(r, D.S));
+    }
+    rows.sort((a, b) => (b[P.sort] || 0) - (a[P.sort] || 0));
+    return rows.slice(0, this.FISH_MAX);
+  },
+
+  // 🐟 同一群 = 關聯星圖裡連得起來的(union-find,只看池子裡的魚)
+  _fishSchools(rows, J) {
+    const idx = new Map(rows.map((r, i) => [r.sym, i]));
+    const par = rows.map((_, i) => i);
+    const find = i => par[i] === i ? i : (par[i] = find(par[i]));
+    if (J && J.r) for (const r of rows) for (const [c] of (J.r[r.sym] || [])) {
+      const j = idx.get(c); if (j !== undefined) par[find(idx.get(r.sym))] = find(j);
+    }
+    const size = {}; rows.forEach((_, i) => { const g = find(i); size[g] = (size[g] || 0) + 1; });
+    return rows.map((_, i) => { const g = find(i); return size[g] > 1 ? g : -1; });   // 孤魚 = -1
+  },
+
+  async renderFish() {
+    const msg = document.getElementById('fishMsg'), sub = document.getElementById('fishSub');
+    const D = await this._fishData();
+    this._fishD = D;
+    if (!D) {
+      msg.innerHTML = `<div class="warnbox">⏳ <b>選股快照還沒產出</b>(<code>data/screener.json</code>)——
+        它每個交易日收盤後由採礦機更新。⛔ 這不是這個功能壞掉。</div>`;
+      this.fishStop(); return;
+    }
+    if (sub) sub.innerHTML = `資料日 ${D.date || '—'} ・${D.rows.length} 檔可下水 ${this._staleChip(D.date, '選股')}`;
+    // 池子 chips(⭐ 查過星圖的話多一個「同族」池)
+    const pools = this.FISH_POOLS.slice();
+    if (this._starSym && D.J && D.J.r[this._starSym]) pools.push({ k: 'fam', n: `🕸️ 和 ${this.nameOf(this._starSym) || this._starSym} 同族`, d: '關聯星圖那一族' });
+    if (!pools.some(p => p.k === this._fishPoolK)) this._fishPoolK = 'amt';
+    document.getElementById('fishPool').innerHTML = pools.map(p =>
+      `<button class="rotchip fishpool${p.k === this._fishPoolK ? ' on' : ''}" title="${p.d}" onclick="PRO.fishPool('${p.k}')">${p.n}</button>`).join('');
+    this._fishNote(D);
+    this._fishRebuild();
+  },
+  fishPool(k) { this._fishPoolK = k; this.buzz(15); this.renderFish(); },
+  fishMode(m) {
+    this._fishModeV = m; this.buzz(15);
+    document.getElementById('fishModeTank').classList.toggle('on', m === 'tank');
+    document.getElementById('fishModeList').classList.toggle('on', m === 'list');
+    this._fishRebuild();
+  },
+
+  _fishRebuild() {
+    const D = this._fishD; if (!D) return;
+    const rows = this._fishPoolRows(D);
+    document.getElementById('fishCount').textContent = `${rows.length} 條魚`;
+    document.getElementById('fishCard').innerHTML = '';
+    const wrap = document.getElementById('fishTankWrap');
+    if (!rows.length) {
+      document.getElementById('fishMsg').innerHTML = `<div class="note">🫧 這個池子今天沒有魚(條件沒有任何一檔符合)。換一個池子看看。</div>`;
+      wrap.classList.add('list'); document.getElementById('fishList').innerHTML = ''; this.fishStop(); return;
+    }
+    document.getElementById('fishMsg').innerHTML = '';
+    // ⑥ Canvas 不能用(極舊瀏覽器)→ 自動退回列表並說原因
+    const cv = document.getElementById('fishCanvas');
+    const canDraw = !!(cv && cv.getContext && cv.getContext('2d'));
+    const list = this._fishModeV === 'list' || !canDraw;
+    if (!canDraw && this._fishModeV === 'tank')
+      document.getElementById('fishMsg').innerHTML = `<div class="note">🖼️ 這個瀏覽器畫不了魚池,改用列表(資料一筆都沒少)。</div>`;
+    wrap.classList.toggle('list', list);
+    document.getElementById('fishList').innerHTML = list ? this._fishListHtml(rows) : '';
+    if (list) { this.fishStop(); return; }
+    this._fishSetup(rows, D.J);
+  },
+
+  _fishListHtml(rows) {
+    const E = this.STAR_STATUS;
+    return `<div style="overflow-x:auto"><table class="startbl">
+      <tr><th style="text-align:left">股票</th><th>現價</th><th>今日</th><th>近20日</th><th>位階</th><th>成交額(億)</th><th>狀態</th></tr>
+      ${rows.map(r => `<tr>
+        <td class="l"><span class="starnm" onclick="PRO._fishPick('${r.sym}')">${r.nm}</span> <span class="starcode">${r.sym}</span>${r.att ? ' <span class="sigtag warn">注意股</span>' : ''}</td>
+        <td class="mono">${r.c}</td>
+        <td class="mono ${this.cls(r.chg)}">${this.fmt(r.chg, 2, true)}%</td>
+        <td class="mono ${this.cls(r.chg20)}">${this.fmt(r.chg20, 1, true)}%</td>
+        <td class="mono">${Math.round(r.pos252)}</td>
+        <td class="mono">${this.fmt(r.amt, 1)}</td>
+        <td>${r.st ? E[r.st].e + ' ' + E[r.st].t : '—'}</td></tr>`).join('')}
+    </table></div>`;
+  },
+
+  // ── 🐟 魚池本體 ─────────────────────────────────────────────────────────
+  _fishSetup(rows, J) {
+    const cv = document.getElementById('fishCanvas'), wrap = document.getElementById('fishTankWrap');
+    const W = wrap.clientWidth || 340, H = wrap.clientHeight || 440;
+    const grp = this._fishSchools(rows, J);
+    const amts = rows.map(r => Math.log10(Math.max(0.1, r.amt)));
+    const aMin = Math.min(...amts), aMax = Math.max(...amts), aRng = Math.max(1e-6, aMax - aMin);
+    const old = new Map((this._fish || []).map(f => [f.sym, f]));   // 換池子時舊魚留在原位,不要全部重生
+    this._fish = rows.map((r, i) => {
+      const o = old.get(r.sym);
+      const v = Math.max(-1, Math.min(1, r.chg20 / 20));             // 近 20 日 ±20% → 滿速
+      return { ...r, grp: grp[i],
+        r: 7 + ((amts[i] - aMin) / aRng) * 13,                        // 半徑 7~20px = 成交額(對數)
+        x: o ? o.x : Math.random() * W,
+        yBase: 28 + (1 - Math.max(0, Math.min(100, r.pos252)) / 100) * (H - 86),   // 上 = 高位階
+        y: 0, ph: o ? o.ph : Math.random() * Math.PI * 2,
+        vx: v * 0.55 + (v >= 0 ? 0.06 : -0.06) };                    // 右 = 上漲動能;至少慢慢游
+    });
+    this._fishW = W; this._fishH = H;
+    // DPR:手機上不放大會糊
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cv.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+    this._fishLegend(rows);
+    if (!this._fishBound) {
+      this._fishBound = true;
+      cv.addEventListener('pointerdown', e => {
+        const b = cv.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+        let best = null, bd = 1e9;
+        for (const f of this._fish) { const d = Math.hypot(f.x - x, f.y - y); if (d < f.r + 14 && d < bd) { bd = d; best = f; } }
+        if (best) this._fishPick(best.sym);
+      });
+      document.addEventListener('visibilitychange', () => { if (document.hidden) this.fishStop(); else if (this._tab === 'fish' && this._fishModeV === 'tank' && this._fish.length) this._fishStart(); });
+      if (!this._fishResize) {
+        this._fishResize = () => { if (this._tab === 'fish' && this._fish.length && this._fishModeV === 'tank') this._fishSetup(this._fishPoolRows(this._fishD), this._fishD.J); };
+        window.addEventListener('resize', this._fishResize);
+      }
+    }
+    this._fishStart();
+  },
+  _fishLegend(rows) {
+    const n = { 1: 0, 2: 0 }; rows.forEach(r => { if (r.st) n[r.st]++; });
+    document.getElementById('fishLegend').innerHTML =
+      `↕ 上下=一年位階(上=高;實測位階≥75 <b>+1.52pp</b>、≤25 −0.63pp) ・ → 游向/游速=近20日動能(右=漲;板塊層級 <b>+1.44pp</b> 六關全過)
+       ・ 大小=成交額 ・ 顏色=<span style="color:#ff6b6b">今日漲</span>/<span style="color:#4ade80">跌</span>(只表方向) ・ 一群一起游=關聯星圖同族
+       ・ 🚀 剛突破 ${n[1]} 條 / 🔥 過熱 ${n[2]} 條。<b>⛔ 魚游得快 ≠ 會漲,沒有一條魚是買進訊號</b>,點魚看細節。`;
+  },
+  _fishStart() {
+    this.fishStop();
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let t = 0;
+    const step = () => {
+      t++;
+      this._fishTick(t, !reduce);
+      if (!reduce) this._fishRaf = requestAnimationFrame(step);
+    };
+    step();
+  },
+  fishStop() { if (this._fishRaf) cancelAnimationFrame(this._fishRaf); this._fishRaf = 0; },
+  _fishTick(t, move) {
+    const cv = document.getElementById('fishCanvas'); if (!cv) return;
+    const ctx = cv.getContext('2d'), W = this._fishW, H = this._fishH, F = this._fish;
+    // 同群的平均 x(讓同族靠攏,而不是各游各的)
+    const gx = {}, gn = {};
+    for (const f of F) if (f.grp >= 0) { gx[f.grp] = (gx[f.grp] || 0) + f.x; gn[f.grp] = (gn[f.grp] || 0) + 1; }
+    for (const f of F) {
+      if (move) {
+        let ax = 0;
+        if (f.grp >= 0) { const cx = gx[f.grp] / gn[f.grp]; let d = cx - f.x; if (Math.abs(d) > W / 2) d -= Math.sign(d) * W; ax = d * 0.0012; }
+        f.x += f.vx + ax + Math.sin(t / 37 + f.ph) * 0.15;
+        if (f.x < -30) f.x += W + 60; if (f.x > W + 30) f.x -= W + 60;
+      }
+      f.y = f.yBase + Math.sin(t / 45 + f.ph) * 4;
+    }
+    ctx.clearRect(0, 0, W, H);
+    // 位階分界線(25/50/75)—— ⛔ 沒有參考線的話位置不可解讀(V74.3.7 教訓)
+    ctx.strokeStyle = 'rgba(160,190,220,.14)'; ctx.fillStyle = 'rgba(160,190,220,.45)'; ctx.font = '10px system-ui'; ctx.textAlign = 'left';
+    for (const p of [75, 50, 25]) { const y = 28 + (1 - p / 100) * (H - 86); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.fillText(`位階 ${p}`, 6, y - 3); }
+    // 小魚先畫、大魚後畫(大的蓋小的,名字才看得到)
+    const order = F.slice().sort((a, b) => a.r - b.r);
+    for (const f of order) {
+      const dir = f.vx >= 0 ? 1 : -1, col = f.chg > 0 ? '#ff6b6b' : f.chg < 0 ? '#4ade80' : '#8fa3bb';
+      ctx.fillStyle = col; ctx.globalAlpha = f.grp >= 0 ? 0.95 : 0.72;
+      ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(f.x - dir * f.r * 0.9, f.y);
+      ctx.lineTo(f.x - dir * f.r * 1.55, f.y - f.r * 0.5); ctx.lineTo(f.x - dir * f.r * 1.55, f.y + f.r * 0.5); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1; ctx.fillStyle = '#061626';
+      ctx.beginPath(); ctx.arc(f.x + dir * f.r * 0.5, f.y - f.r * 0.15, Math.max(1.2, f.r * 0.12), 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#dce8f5'; ctx.font = `${f.r >= 14 ? 11 : 10}px system-ui`; ctx.textAlign = 'center';
+      ctx.fillText((f.st ? this.STAR_STATUS[f.st].e : '') + f.nm, f.x, f.y + f.r * 0.55 + 11);
+    }
+  },
+
+  _fishPick(sym) {
+    const D = this._fishD; if (!D) return;
+    const r = D.rows.find(x => x.sym === sym); if (!r) return;
+    this.buzz(20);
+    const E = this.STAR_STATUS, fam = (D.J && D.J.r[sym]) || [];
+    document.getElementById('fishCard').innerHTML = `<div class="fishcard">
+      <div class="big">🎣 釣到:${r.nm} <span class="starcode">${sym}</span>
+        ${r.st ? `<span class="sigtag" title="${E[r.st].d}">${E[r.st].e} ${E[r.st].t}</span>` : ''}${r.att ? ' <span class="sigtag warn">⚠️ 官方注意股</span>' : ''}</div>
+      <div class="kv">
+        <div><b>現價</b><span class="mono">${r.c}</span></div>
+        <div><b>今日</b><span class="mono ${this.cls(r.chg)}">${this.fmt(r.chg, 2, true)}%</span></div>
+        <div><b>近 20 日</b><span class="mono ${this.cls(r.chg20)}">${this.fmt(r.chg20, 1, true)}%</span></div>
+        <div><b>一年位階</b><span class="mono">${Math.round(r.pos252)} / 100</span></div>
+        <div><b>20 日振幅</b><span class="mono">${this.fmt(r.amp20, 1)}%</span></div>
+        <div><b>成交額</b><span class="mono">${this.fmt(r.amt, 1)} 億</span></div>
+      </div>
+      ${fam.length ? `<div class="note" style="margin:0 0 6px">🕸️ 跟它一起游的:${fam.map(([c, rv]) => `<span class="sigtag" style="cursor:pointer" onclick="PRO._fishPick('${c}')">${this.nameOf(c) || c} ${rv.toFixed(2)}</span>`).join(' ')}</div>` : ''}
+      <div class="labbar" style="margin:4px 0 0">
+        <button class="lbtn" onclick="PRO._starSym='${sym}';PRO.switchTab('star')">🕸️ 看它的星圖</button>
+        <button class="lbtn on" onclick="PRO.gotoStock('${sym}')">→ 散戶救星看細節</button>
+      </div>
+      <div class="note" style="margin-top:6px">這張卡只是把數字攤開,⛔ 不是進場建議 —— 買賣一律以散戶救星的「現在怎麼做」為準。</div>
+    </div>`;
+    document.getElementById('fishCard').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  },
+
+  _fishNote(D) {
+    document.getElementById('fishNote').innerHTML = `<div class="note">
+      <b>這個池子在講什麼:</b>把選股快照裡「今天最值得看的一批」畫成魚,一眼看出整體是浮在上層(高位階)還是沉在底部、
+      往右游(近 20 日在漲)的多還是往左的多、誰跟誰是一群(關聯星圖同族會靠在一起游)。<br>
+      <b>怎麼用:</b>① 手上那檔在哪一層、旁邊那群是誰 ② 想加碼時看看是不是整群都已經 🔥 ③ 點魚 → 釣起來看數字 → 再去散戶救星。<br>
+      🚨 <b>魚游得快 ≠ 會漲</b>:游得快、浮得高都只是「事實的位置」,<b>⛔ 不是買進訊號</b>;顏色只表示今天漲跌方向。
+      這頁不下多空、不計分、不給任何買賣價位。<b>「📊 列表」是同一批魚的數字版</b>,認真看數字時切過去。<br>
+      <b>誰不在池子裡:</b>ETF(跟星圖同一理由)、資料不全的(null 一律不下水,⛔ 不補 0)。
+      資料來自每個交易日收盤後的選股快照(${D.updated || D.date || '—'}),🚀🔥 來自關聯星圖(需要前一天資料才判得出「突破」,星圖沒涵蓋的只補 🔥)。</div>`;
   },
 
   // ═══════════ 🎯 今日訊號 ═══════════
@@ -1653,7 +1990,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.3.4',
+  VER: 'V74.3.5',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

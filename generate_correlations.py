@@ -132,7 +132,10 @@ def screen_and_status(close: pd.DataFrame, lots: pd.DataFrame):
     keep = traded & (liquid.fillna(False) | surge.fillna(False))
 
     # ── 狀態評級(NaN → Enum 0,⛔ 不 crash 也不猜)──
-    breakout = (c_y <= ma20_y) & (c_t > ma20) & (v_t > v_y)
+    # 🚀 突破:昨收 ≤ 昨 20MA、今收 > 今 20MA、今量 > 昨量、**今收 > 昨收**(帶量紅K保護)。
+    #    ⚠️ 最後那條幾乎被前兩條蘊含(20MA 一天只動 1/20),但「幾乎」不是「一定」——
+    #       跌破後 MA 下彎時可能出現「收黑卻剛好站上 MA」的怪例,明寫掉它零成本。
+    breakout = (c_y <= ma20_y) & (c_t > ma20) & (v_t > v_y) & (c_t > c_y)
     hot = c_t > ma20 * OVERHEAT
     status = pd.Series(ST_FLAT, index=close.columns, dtype='int8')
     status[breakout.fillna(False)] = ST_BREAK
@@ -264,8 +267,26 @@ def selftest():
         w('3001', base + rng.normal(0, 0.004, n), 100_000)
         # ETF(00 開頭)跟同族完全同步 → 不排除的話必定佔滿名額
         w('0050', base + rng.normal(0, 0.001, n), 50_000_000)
+        # 🚀 突破樣本:前 159 天平盤、最後一天 +6% 帶量 → 昨收 ≤ MA、今收 > MA、量 > 昨量、紅K
+        brk = np.zeros(n); brk[-1] = 0.06
+        w('4001', brk, 5_000_000)
+        w('4002', brk + rng.normal(0, 0.002, n), 5_000_000)   # 4001 的同伴,讓 4001 出現在鄰居欄
+        rows = json.loads((d / '4001.json').read_text()); rows[-1]['volume'] = 20_000_000
+        (d / '4001.json').write_text(json.dumps(rows))
+        # 🌱 只上市 35 天的新股:通得過 Filter A(有 20 日均量),但湊不滿 120 天的窗口
+        #    → 必須被「缺口剔除」安靜地排除、⛔ 不可 crash,也不可用半截資料硬算相關。
+        #    (真正 20MA=NaN 的 <15 天新股,連 30 根的讀檔門檻都過不了,更早就擋掉了。)
+        (d / '5001.json').write_text(json.dumps([{'date': dates[i], 'close': 50 + i * 0.1, 'volume': 9_000_000}
+                                                 for i in range(n - 35, n)]))
         payload, stat = build(d)
         assert payload, '❌ selftest:build 回 None'
+        st_of = {}
+        for k, v in payload['r'].items():
+            for c, r_, st in v: st_of[c] = st
+        assert st_of.get('4001') == ST_BREAK, f'❌ 帶量紅K站上 20MA 沒被標成突破:{st_of.get("4001")}'
+        assert '5001' not in payload['r'] and all('5001' not in [x[0] for x in v] for v in payload['r'].values()), \
+            '❌ 湊不滿窗口的新股混進來了'
+        assert stat['dropped_holes'] >= 1, f'❌ 新股應該被記在 dropped_holes:{stat}'
         r = payload['r']
         assert '3001' not in r, '❌ 沒量的股票沒有被 Filter A 濾掉'
         assert '0050' not in r and all('0050' not in [x[0] for x in v] for v in r.values()), \
