@@ -205,6 +205,25 @@ def build(data_dir: Path):
         print(f'❌ 只有 {len(close)} 個交易日,不夠算相關')
         return None, stat
 
+    # 🚨 陷阱 #14(V74.3.8 雲端實跑抓到):「最新交易日」⛔ 不可用 index[-1]。
+    #    只要少數幾檔(盤中快照、時區跑掉)已經寫進「明天」的列,index[-1] 就變成那一天,
+    #    當天有收盤的只有那幾檔 → Filter A 過關 2 檔 → 全部退場。
+    #    實跑 2026-09-01 22:07 UTC:「宇宙 2 檔 ・有鄰居 0 檔」,而本機同一份程式是 582 檔。
+    #    → 改取「通得過樣本門檻的最大日期」:該日有收盤的檔數 ≥ 全窗口最大檔數的一半,
+    #      後面的日子整列砍掉,並印出砍了哪幾天(⛔ 不靜默)。
+    cnt = close.notna().sum(axis=1)
+    good = cnt[cnt >= max(2, cnt.max() * 0.5)]
+    if good.empty:
+        print(f'❌ 沒有任何一天的樣本數過門檻 — {stat}')
+        return None, stat
+    last_ok = good.index[-1]
+    skipped = [f'{d}({int(cnt[d])}檔)' for d in close.index if d > last_ok]
+    if skipped:
+        print(f'⚠️ 最新 {len(skipped)} 個日期樣本不足,改用 {last_ok} 當最新交易日:{", ".join(skipped[:5])}')
+        close = close.loc[:last_ok]
+        vol = vol.loc[:last_ok]
+    stat['skipped_dates'] = len(skipped)
+
     lots = vol / 1000.0        # 🚨 股 → 張(檔頭坑 ①)
 
     keep, status, sstat = screen_and_status(close, lots)
@@ -278,8 +297,17 @@ def selftest():
         #    (真正 20MA=NaN 的 <15 天新股,連 30 根的讀檔門檻都過不了,更早就擋掉了。)
         (d / '5001.json').write_text(json.dumps([{'date': dates[i], 'close': 50 + i * 0.1, 'volume': 9_000_000}
                                                  for i in range(n - 35, n)]))
+        # 🚨 陷阱 #14:兩檔多了一根「明天」的列(盤中快照 / 時區跑掉會發生)→
+        #    ⛔ 不可讓那一天變成「最新交易日」(那樣宇宙只剩 2 檔、其他全部退場)。
+        nxt = pd.bdate_range(dates[-1].replace('/', '-'), periods=2)[-1].strftime('%Y/%m/%d')
+        for s in ('2001', '2002'):
+            rows = json.loads((d / f'{s}.json').read_text())
+            rows.append({'date': nxt, 'close': rows[-1]['close'], 'volume': 5_000_000})
+            (d / f'{s}.json').write_text(json.dumps(rows))
         payload, stat = build(d)
         assert payload, '❌ selftest:build 回 None'
+        assert payload['data_date'] == dates[-1].replace('/', '-'), f'❌ 最新交易日被兩檔未來列帶走:{payload["data_date"]}'
+        assert stat.get('skipped_dates') == 1, f'❌ 沒有把樣本不足的日期砍掉:{stat}'
         st_of = {}
         for k, v in payload['r'].items():
             for c, r_, st in v: st_of[c] = st

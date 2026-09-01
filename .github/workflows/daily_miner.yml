@@ -486,6 +486,7 @@ jobs:
           git checkout origin/main -- apple-touch-icon.jpg icon-192.jpg icon-512.jpg 2>/dev/null || true   # ⚡ V69.8.7 P2-2
           git checkout origin/main -- .well-known/assetlinks.json 2>/dev/null || true   # 📦 V73.1.1 APK(TWA)驗證檔
           git checkout origin/main -- pro.html 2>/dev/null || true   # 🛰️ V74.0.1 產業作戰室 PRO
+          git checkout origin/main -- data/scr_edge.json 2>/dev/null || true   # 🏅 V74.3.8 選股條件實測成績(釣魚池讀;⚠️ 這裡是 orphan force-push,不接就每天被洗掉)
 
           # 備份合併後的完整資料
           mkdir -p /tmp/mine/data/chips
@@ -502,6 +503,7 @@ jobs:
           cp apple-touch-icon.jpg icon-192.jpg icon-512.jpg /tmp/mine/ 2>/dev/null || true   # ⚡ V69.8.7
           mkdir -p /tmp/mine/.well-known && cp .well-known/assetlinks.json /tmp/mine/.well-known/ 2>/dev/null || true   # 📦 V73.1.1
           cp pro.html /tmp/mine/ 2>/dev/null || true   # 🛰️ V74.0.1
+          cp data/scr_edge.json /tmp/mine/scr_edge.json 2>/dev/null || true   # 🏅 V74.3.8
 
           # 切換到發布分支
           git checkout main 2>/dev/null || true
@@ -520,6 +522,7 @@ jobs:
           mkdir -p .well-known && cp /tmp/mine/.well-known/assetlinks.json .well-known/ 2>/dev/null || true   # 📦 V73.1.1
           cp /tmp/mine/apple-touch-icon.jpg /tmp/mine/icon-192.jpg /tmp/mine/icon-512.jpg . 2>/dev/null || true   # ⚡ V69.8.7
           cp /tmp/mine/pro.html . 2>/dev/null || true   # 🛰️ V74.0.1(⚠️ 下面一定要 git add)
+          [ -f /tmp/mine/scr_edge.json ] && mkdir -p data && cp /tmp/mine/scr_edge.json data/scr_edge.json 2>/dev/null || true   # 🏅 V74.3.8(⚠️ 下面 git add -f data/ 會收)
           cp /tmp/mine/broker_names.json    .               2>/dev/null || true
           cp /tmp/mine/margin_cache_stock.json . 2>/dev/null || true
           # 🧹 V69.9.6 P3-7:inst_cache_stock 不再上 gh-pages(18.5MB 純採礦中介、前端 0 引用)→ 改隨 data 分支保存
@@ -563,6 +566,7 @@ jobs:
           #    → 檔案「放回去了卻沒 commit」,gh-pages 上永遠沒有 → PWA 主畫面圖示 404(零錯誤訊息)
           for f in apple-touch-icon.jpg icon-192.jpg icon-512.jpg; do [ -f "$f" ] && git add -f "$f" || true; done
           [ -f pro.html ] && git add -f pro.html || true   # 🛰️ V74.0.1 產業作戰室 PRO
+          [ -f data/scr_edge.json ] && git add -f data/scr_edge.json || true   # 🏅 V74.3.8(data/ 已整包 add,這行只是明示)
           [ -f broker_names.json ]       && git add -f broker_names.json       || true
           [ -f futures_cache.json ]      && git add -f futures_cache.json      || true
           [ -f macro_cache.json ]        && git add -f macro_cache.json        || true

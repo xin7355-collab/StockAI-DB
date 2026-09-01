@@ -26,6 +26,15 @@ const SCR = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/fixtures/screene
 const COR = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/fixtures/top_correlations.sample.json'), 'utf8'));
 // 🏅 實測成績表:直接用真的產物(它本來就是從 index.html 匯出的資料,不是測資)
 const EDGE = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/scr_edge.json'), 'utf8'));
+// 💰 除權息測資(格式照 div_probe 實跑印出的欄位);⚠️ 日期一律相對「今天」平移,
+//    ⛔ 不可寫死 —— 「未來 30 天」那張表 30 天後就會變成假失敗(V72.1.8:測試不可綁會浮動的資料狀態)
+const DIV = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/fixtures/dividends.sample.json'), 'utf8'));
+{
+  const off = Math.floor((Date.now() - Date.UTC(2026, 8, 1)) / 864e5);
+  const sh = d => new Date(Date.parse(d + 'T00:00:00Z') + off * 864e5).toISOString().slice(0, 10);
+  for (const v of Object.values(DIV.d)) { v.h = v.h.map(x => [sh(x[0]), ...x.slice(1)]); v.up = v.up.map(x => [sh(x[0]), x[1]]); }
+  DIV.d['2317'] = { h: [], up: [[sh('2026-10-20'), 5.8]] };   // 49 天後 → ⛔ 不該進「未來 30 天」
+}
 import { execFileSync } from 'child_process';
 
 const noCmt = t => t.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
@@ -88,7 +97,7 @@ page.on('pageerror', e => { const t = (e && e.message) ? e.message : String(e); 
 await page.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof PRO !== 'undefined' && PRO.FISH_POOLS, null, { timeout: 15000 });
 
-const R = await page.evaluate(async ({ SCR, COR, EDGE }) => {
+const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV }) => {
   const out = {};
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   // 測資:真實格式 + 手動加一列 pos252 為 null 的(screener 遇到算不出來就寫 null,這是合法格式)
@@ -96,6 +105,7 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE }) => {
   PRO._cache['data/screener.json'] = SCR;
   PRO._cache['data/scr_edge.json'] = EDGE;
   PRO._starData = COR;
+  PRO._cache['data/dividends.json'] = DIV;
   try { localStorage.removeItem('proWar_catch'); } catch (_) {}
   PRO._names = { '2330': '台積電', '2317': '鴻海', '2408': '南亞科', '2344': '華邦電', '8299': '群聯' };
   const rafCalls = { n: 0 }; const _raf = window.requestAnimationFrame;
@@ -157,8 +167,22 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE }) => {
   PRO.fishPool('amt'); await sleep(300);
 
   // 🎣 釣魚
-  PRO._fishPick('2408'); await sleep(100);
+  PRO._fishPick('2408'); await sleep(150);
   out.card = document.getElementById('fishCard').innerText;
+  out.fishDiv = (document.getElementById('fishDiv') || { innerText: '' }).innerText;
+  // 陷阱 #19:配息那行是非同步補的 → 切到別檔之後回來的 promise ⛔ 不可寫進新卡
+  PRO._fishPick('2330'); await sleep(150);
+  out.fishDiv2330 = (document.getElementById('fishDiv') || { innerText: '' }).innerText;
+  PRO._fishPick('8299'); await sleep(150);
+  out.fishDivNone = (document.getElementById('fishDiv') || { innerText: '' }).innerText;
+  PRO._fishPick('2408'); await sleep(150);
+  // 💰 未來 30 天除權息(sig 分頁那張)
+  await PRO._renderDivCal(); await sleep(50);
+  out.divCal = document.getElementById('sigDiv').innerText;
+  out.divCalRows = [...document.querySelectorAll('#sigDiv table tr')].slice(1).map(tr => tr.innerText.replace(/\s+/g, ' '));
+  PRO._cache['data/dividends.json'] = null; await PRO._renderDivCal(); await sleep(50);
+  out.divCalNoData = document.getElementById('sigDiv').innerText;
+  PRO._cache['data/dividends.json'] = DIV;
   out.cardHtml = document.getElementById('fishCard').innerHTML;
   // 🧺 釣起 → 籃子 → 損益 → 放生 → 持久化
   PRO._fishCatch('2408'); await sleep(100);
@@ -211,7 +235,7 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE }) => {
   window.scrollTo(0, 0);
   window.requestAnimationFrame = _raf;
   return out;
-}, { SCR, COR, EDGE });
+}, { SCR, COR, EDGE, DIV });
 
 ok('⑪ 分頁切得過去', R.tabVisible);
 ok('⑪b 標題旁有資料日與檔數', /資料日 \d{4}-\d{2}-\d{2}/.test(R.sub) && /檔可下水/.test(R.sub), R.sub);
@@ -254,6 +278,20 @@ ok('🗺️b 磚面積跟成交額同向(大的不可比小的小)', R.treeMono,
 ok('🗺️c 點磚 → 板塊明細(rotOpen)', R.treeClick);
 ok('🗺️d 文案:今天錢在哪 + 「不是輪動訊號」+ 只含上市', /今天錢在哪/.test(R.treeTxt) && /不是.{0,3}輪動訊號/.test(R.treeTxt) && /上市/.test(R.treeTxt), R.treeTxt.slice(0, 120));
 ok('🗺️e ⛔ 不用 🔴🟢 emoji(顏色只在磚上,文字色紅漲綠跌)', R.treeNoLamp);
+// ═══ 💰 除權息(V74.3.8)═══
+ok('💰① 釣起的魚卡片有配息:近 12 個月合計 21.00 元 + 殖利率 + 下次除息', /最近 12 個月現金股利合計/.test(R.fishDiv) && /殖利率/.test(R.fishDiv) && /下次除息/.test(R.fishDiv), R.fishDiv.slice(0, 160));
+ok('💰①b 2330 那張的合計要等於測資四筆相加(21.00)', /21\.00/.test(R.fishDiv2330) && /下次除息/.test(R.fishDiv2330), R.fishDiv2330.slice(0, 160));
+ok('💰①c 測資裡沒有的魚(8299)誠實寫「沒有除權息紀錄」', /沒有除權息紀錄/.test(R.fishDivNone) && !/殖利率/.test(R.fishDivNone), R.fishDivNone);
+ok('💰①d 配息那行明寫「不是承諾」+「還沒回測」+「不當進出場理由」', /不是承諾/.test(R.fishDiv2330) && /還沒回測/.test(R.fishDiv2330) && /不當進出場理由/.test(R.fishDiv2330));
+ok('💰② 未來 30 天除權息表:30 天內的兩檔都在、49 天後的不在、依日期排序', R.divCalRows.length === 2 && /2330|台積電/.test(R.divCalRows[0]) && /2408|南亞科/.test(R.divCalRows[1]) && !/2317|鴻海/.test(R.divCal), JSON.stringify(R.divCalRows));
+ok('💰②b 表格明寫「填不填息還沒回測」', /填不填息/.test(R.divCal) && /回測/.test(R.divCal), R.divCal.slice(0, 160));
+ok('💰②c 資料不在 → 「還沒產出」+「不是壞掉」(陷阱 #22)', /還沒產出/.test(R.divCalNoData) && /不是壞掉/.test(R.divCalNoData), R.divCalNoData);
+// ⚠️ 免責句本身就含「除息前買」(「⛔ 不是「除息前買」的建議」)→ 先把否定形剝掉再比對(CLAUDE.md 記過 8 次的坑)
+const divTxt = noCmt(seg('_divCardHtml') + seg('_renderDivCal')).replace(/不是「[^」]*」/g, '').replace(/不[寫當]「[^」]*」/g, '');
+ok('💰③ 配息只描述:⛔ 不下多空、不寫「除息前買」(否定形已剝掉)', !/除息前買|除息後買|偏多|偏空|看多|看空|該買|可買/.test(divTxt));
+ok('💰③a 空過守門:免責句真的在(剝掉前找得到、剝掉後找不到)', /不是「除息前買」/.test(seg('_renderDivCal')) && !/除息前買/.test(divTxt));
+ok('💰③b 非同步回來要驗還是同一檔(陷阱 #19)', /_fishPickSym === sym/.test(seg('_fishPick')));
+ok('💰③c 殖利率分母是現價、分子只算現金(排除「權」)', /x\[2\] !== '權'/.test(seg('_divInfo')) && /y12 \/ px/.test(seg('_divInfo')));
 ok('💥 沒有未攔截的 JS 錯誤', errs.length === 0, errs.join(' | '));
 
 await browser.close();

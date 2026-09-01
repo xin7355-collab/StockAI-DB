@@ -663,6 +663,11 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <h2>⚠️ 今天要避開什麼</h2>
     <div id="sigAvoid"></div>
   </div>
+  <!-- 💰 V74.3.8 除權息行事曆:資料來自 dividend_sweep(每週),⛔ 只描述、不下多空 -->
+  <div class="panel">
+    <h2>📅 未來 30 天除權息 <span class="sub">公司已公告的除息日 ・ 只描述,填不填息沒人保證</span></h2>
+    <div id="sigDiv"></div>
+  </div>
 </div>
 <div id="tabCalc" class="hidden">
   <div class="panel">
@@ -1520,9 +1525,60 @@ const PRO = {
     return Number.isFinite(t1) && Number.isFinite(t2) ? Math.round((t2 - t1) / 864e5) : null;
   },
 
+  // ── 💰 除權息(V74.3.8,資料 data/dividends.json,dividend_sweep 每週產)────────────
+  // ⛔ 只描述:除息日、股利、用最近 12 個月配息 ÷ 現價算的殖利率。填不填息本站**還沒回測**(要等
+  //    dividends_hist 累積 + 回測),所以⛔ 不下多空、不寫「除息前買/後買」這種指令。
+  async _divFetch() { return this.fetchJson('data/dividends.json'); },
+  _divInfo(D, sym, px) {
+    const v = D && D.d && D.d[sym]; if (!v) return null;
+    const h = v.h || [], up = v.up || [];
+    const cut = new Date(Date.now() - 366 * 864e5).toISOString().slice(0, 10);
+    const y12 = h.filter(x => x[0] >= cut && x[2] !== '權').reduce((a, x) => a + (+x[1] || 0), 0);
+    const yld = px > 0 && y12 > 0 ? y12 / px * 100 : null;
+    return { last: h[h.length - 1] || null, n: h.length, y12, yld, up: up[0] || null, upN: up.length };
+  },
+  _divCardHtml(D, sym, px) {
+    if (!D) return '';                                   // 資料還沒產出 → 這一行整個不顯(⛔ 不留空殼)
+    const i = this._divInfo(D, sym, px);
+    if (!i) return `<div class="note" style="margin:6px 0 0">💰 配息:近 ${D.from ? D.from.slice(0, 4) : ''} 年起沒有除權息紀錄。</div>`;
+    return `<div class="note" style="margin:6px 0 0">💰 <b>配息</b>:最近 12 個月現金股利合計 <b class="mono">${i.y12.toFixed(2)}</b> 元${i.yld !== null ? `(÷ 現價 = 殖利率 <b class="mono">${i.yld.toFixed(2)}%</b>)` : ''}
+      ${i.last ? `・最近一次除${i.last[2] || '息'} ${i.last[0]}(${i.last[1]} 元)` : ''}${i.up ? ` ・<b>下次除息 ${i.up[0]}</b>(公告 ${i.up[1]} 元)` : ''}
+      <span style="color:var(--dim2)">殖利率是「過去一年配的 ÷ 今天的價」,⛔ 不是承諾;填不填息本站還沒回測,⛔ 不當進出場理由。</span></div>`;
+  },
+  async _renderDivCal() {
+    const el = document.getElementById('sigDiv'); if (!el) return;
+    const [D, scr] = await Promise.all([this._divFetch(), this.fetchJson('data/screener.json'), this.loadNames()]);
+    if (!D || !D.d) {
+      el.innerHTML = `<div class="warnbox">⏳ <b>除權息資料還沒產出</b>(<code>data/dividends.json</code>,每週採一次)。⛔ 不是壞掉。</div>`;
+      return;
+    }
+    const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+    const t0 = today.toISOString().slice(0, 10), t1 = new Date(today.getTime() + 30 * 864e5).toISOString().slice(0, 10);
+    const iC = scr && scr.cols ? scr.cols.indexOf('c') : -1, iAmt = scr && scr.cols ? scr.cols.indexOf('amt') : -1;
+    const rows = [];
+    for (const [sym, v] of Object.entries(D.d)) for (const [d, cash] of (v.up || [])) {
+      if (d < t0 || d > t1) continue;
+      const r = scr && scr.rows && scr.rows[sym]; const px = r && iC >= 0 ? r[iC] : null, amt = r && iAmt >= 0 ? r[iAmt] : null;
+      rows.push({ sym, nm: this.nameOf(sym) || sym, d, cash, px, amt, y: px > 0 ? cash / px * 100 : null });
+    }
+    rows.sort((a, b) => a.d.localeCompare(b.d) || (b.amt || 0) - (a.amt || 0));
+    const stale = this._staleChip(D.data_date, '除權息');
+    if (!rows.length) { el.innerHTML = `<div class="note">未來 30 天沒有已公告的除息日(資料日 ${D.data_date || '—'})。${stale}</div>`; return; }
+    el.innerHTML = `<div class="note" style="margin:0 0 6px">${rows.length} 檔(資料日 ${D.data_date || '—'},含 ETF)${stale}</div>
+      <div style="overflow-x:auto"><table class="startbl">
+        <tr><th style="text-align:left">股票</th><th>除息日</th><th>現金股利</th><th>現價</th><th>單次殖利率</th></tr>
+        ${rows.slice(0, 80).map(r => `<tr>
+          <td class="l"><span class="starnm" onclick="PRO.gotoStock('${r.sym}')">${r.nm}</span> <span class="starcode">${r.sym}</span></td>
+          <td class="mono">${r.d.slice(5)}</td><td class="mono">${r.cash}</td>
+          <td class="mono">${r.px ?? '—'}</td><td class="mono">${r.y !== null ? r.y.toFixed(2) + '%' : '—'}</td></tr>`).join('')}
+      </table></div>
+      <div class="note">除息日那天股價會直接扣掉股利(參考價),之後<b>填不填息</b>本站還沒回測 —— 這張表只告訴你「誰、哪天、配多少」,⛔ 不是「除息前買」或「參加除息」的建議。${rows.length > 80 ? `(只列前 80 檔)` : ''}</div>`;
+  },
+
   _fishPick(sym) {
     const D = this._fishD; if (!D) return;
     const r = D.rows.find(x => x.sym === sym); if (!r) return;
+    this._fishPickSym = sym;
     this.buzz(20);
     const E = this.STAR_STATUS, fam = (D.J && D.J.r[sym]) || [];
     document.getElementById('fishCard').innerHTML = `<div class="fishcard">
@@ -1538,6 +1594,7 @@ const PRO = {
       </div>
       ${fam.length ? `<div class="note" style="margin:0 0 6px">🕸️ 跟它一起游的:${fam.map(([c, rv]) => `<span class="sigtag" style="cursor:pointer" onclick="PRO._fishPick('${c}')">${this.nameOf(c) || c} ${rv.toFixed(2)}</span>`).join(' ')}</div>` : ''}
       ${this._fishScoreHtml(r.sc, D.E)}
+      <div id="fishDiv"></div>
       <div class="labbar" style="margin:8px 0 0">
         ${this._catchLoad().some(x => x.sym === sym)
           ? `<button class="lbtn" onclick="PRO._fishRelease('${sym}')">🐟↩ 放生(從漁獲籃移除)</button>`
@@ -1548,6 +1605,8 @@ const PRO = {
       <div class="note" style="margin-top:6px">這張卡只是把數字攤開,⛔ 不是進場建議 —— 買賣一律以散戶救星的「現在怎麼做」為準。</div>
     </div>`;
     document.getElementById('fishCard').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    // 💰 配息那行非同步補上(⚠️ 回來要確認卡片還是這一檔,陷阱 #19)
+    this._divFetch().then(Dv => { const box = document.getElementById('fishDiv'); if (box && this._fishPickSym === sym) box.innerHTML = this._divCardHtml(Dv, sym, r.c); });
   },
 
   _fishNote(D) {
@@ -1667,6 +1726,7 @@ const PRO = {
   },
 
   async renderSig() {
+    this._renderDivCal();     // 💰 獨立資料檔,⛔ 不等其他四個(它們沒產出時這張仍要有)
     const [pe, ts, scr, mr] = await Promise.all([
       this.fetchJson('data/playbook_edge.json'),
       this.fetchJson('data/today_signals.json'),
@@ -2024,6 +2084,7 @@ const PRO = {
       { t: '📆 行事曆與大盤環境當濾網', n: '26 種全部少賺', d: '13 種行事曆(週幾/月初月底/結算日/長假)+ 13 種大盤事件(不追高/廣度極弱/地板股)。⭐ 唯二「贏」的兩個,優勢<b>全部集中在 2026-04 那一個月</b>,拿掉就由正轉負。🚨 累計測了 86 種變體,採用的只有 2 個。', s: 'V73.2.0 / V73.2.1 / V73.2.2' },
     ],
     method: [
+      { t: '🌐 採礦腳本「本機 582 檔、雲端 2 檔」—— 最新交易日被少數幾檔的「明天」帶走', n: '雲端首跑:宇宙 2 檔・鄰居 0', d: '關聯星圖採礦(generate_correlations)本機跑 582 檔全對,推上雲端第一輪只剩 <b>2 檔</b>、零錯誤訊息(有空過守門才擋下來)。真因:全市場 2,789 檔裡有 <b>6 檔</b>已經寫進「明天」的列(盤中快照/時區),程式用 <code>index[-1]</code> 當最新交易日 → 那天只有那幾檔有收盤價。⭐ 這是陷阱 #14 的第 N 次:<b>「最新一天」一律取「樣本數過門檻的最大日期」</b>,並把砍掉的日期印出來。⚠️ 本機測不到是因為本機那份資料剛好沒有未來列 —— 跟資料狀態有關的守門要在測資裡<b>注入</b>那個狀態(selftest 已加兩檔未來列)。', s: 'generate_correlations.py・V74.3.8' },
       { t: '🧪 兩個外部專案怎麼評(XQ 選股腳本集 4,748 支 / twstock-research 研究儀表板)', n: '借 2 個方法、0 個分數', d: '使用者 2026-09-01 上傳兩個 zip,問「選股策略有沒有優化、把優點加進來」。先掃結構再讀:<br><b>① XQStrategy</b>:4,748 支 .xs 全是同一種殼 —— <code>if GetField("欄位") &gt; X then ret=1</code>,是 XQ 付費軟體的<b>欄位目錄</b>,零回測、零策略。它列的欄位(借券、當沖張數、內外盤大單、分公司家數、關鍵券商、籌碼鎖定率…)多數本站<b>沒有免費資料源</b>;有的(投信連買、主力 N 日合計、振幅連續 N 天)本站 170 條選股條件已涵蓋(fdays/tdays/streak)。<b>結論:沒有可直接優化的東西</b>,⛔ 別為了「補齊欄位」去接付費源。<br><b>② twstock-research</b>(FastAPI + Next.js + SQLite,跟散戶救星很像):多因子短/中/長評分、8 個雷達策略、ATR/Chandelier 出場、除權息回測、FIFO 損益、資料品質。⛔ <b>不借的</b>:它的權重 0.20/0.60/0.20 與門檻 65/50 是人訂的(它自己的 reviewer 也警告不可再推),雷達策略是分數門檻 = 陷阱 #38 同族;它自己誠實寫「回測 2 年來多數股票 Alpha 為負」。✅ <b>借的</b>:(a) 對自己的分數做 forward-return <b>rank IC + Newey-West CI</b> —— 拿來驗釣魚池分數,當場把「加總排序」打掉(見「實測沒用」欄);(b) 產業 treemap 熱力圖版面(磚=成交額、色=漲跌),做進板塊輪動總覽,⛔ 只當事實描述。<br>⏳ <b>它有、本站沒有的資料</b>:除權息紀錄(它拿 FinMind 配息 + yfinance 還原價)→ 已寫探針 div_probe 去問資料源,見「還測不了」欄。⏳ Chandelier 3×ATR 出場正在用正式配置對比(ma5 / chand3 / chand2)。<br>⭐ 通則(第 18 次外部評估):<b>先問「它有沒有我沒有的資料」,再問「它的方法有沒有我沒做的檢定」,最後才看它的分數</b> —— 分數幾乎一定是人訂的,方法與資料才可能是真的收穫。', s: 'scripts/fish_score_ic_probe.py' },
       { t: '📏 比「長期投資」策略時,一定要印「錢在市場的比例」', n: '低回撤有一半是沒進場', d: '這一輪踩到三件事,每一件都會讓結論變好看:<br>① 🚨 <b>「中途賠得少」要先問「錢在不在市場」</b> —— 跌破月線就賣的版本回撤從 −45.7% 降到 −30.1%,但它<b>只有 58% 的時間有部位</b>。把錢放定存回撤是 0,那不是本事。→ 探針每一列都印「在市場」,而且是用<b>持股市值 ÷ 總資產</b>算的,⛔ 不是「有沒有持股的天數」(定期定額幾乎天天有持股,但錢是慢慢餵進去的,只數天數會被算成 100%)。<br>② 🚨 <b>「等它回落 30% 才一次全押」看起來是全表最好的</b>(台積電 <b>405 萬</b> > 買了放著 348 萬;0050 <b>303 萬</b> > 241 萬)—— ⛔ 但它在 5.5 年裡<b>只觸發過一次</b>(2022 那次大跌)。<b>樣本 = 1</b> 等於「事後知道那年會跌」,⛔ 不是策略。同一族的「等站上年線才進場」反而<b>比較差</b>(297 萬 < 348 萬)。<br>③ 🐛 <b>探針自己的 bug</b>:定期定額那條第一版<b>沒有把現金扣掉</b> → 權益變成「本金 + 持股市值」,淨賺整整灌水 100 萬(337 萬 → 實際只有 <b>238 萬</b>),而且數字<b>看起來完全合理</b>。⭐ 通用:改「錢怎麼流動」的模式時,一定要檢查<b>花錢那一端有沒有跟著減少</b>(同 0050 七種買法那次的「只改了記帳、沒改到行為」)。', s: 'hold_switch_probe.mjs・V74.3.2' },
       { t: '🚨 基準的數字「物理上不可能」就是資料壞了,⛔ 不是策略很強', n: '0050 −10% 配大盤 +206%', d: '把 2021 起的深歷史接到既有 K 線前面之後,回測印出「<b>0050 買進持有 −10.32%</b>」配「<b>加權指數 +206.11%</b>」—— 0050 幾乎就是追大盤,這個組合<b>物理上不可能</b>,一眼就知道是基準壞了(而不是「這段行情 0050 剛好很爛」)。真因:0050 分割時<b>停牌 8 天</b>,而採礦端的分割還原有一道「隔太多天就不當成分割」的守門 → 兩段價格用了<b>不同的尺</b>,接縫處出現 ×0.25 的斷崖。<br>⭐ 正解是<b>用重疊 3 年的中位比值把尺標對齊</b>(實測 580 檔需要調),⛔ 不去動採礦機的守門;而且要加一道「<b>合併後仍有斷崖就整檔不寫</b>」(129 檔因此維持短窗口)—— ⭐ 寧可窗口短,也<b>不可以讓壞掉的價格進到回測母體</b>。<br>⭐⭐ 通用:<b>每次換資料源都要先看「已知答案的那個東西」對不對</b>(0050 vs 大盤、買進持有 vs 指數),⛔ 不要直接看策略賺多少。', s: 'merge_deep_klines.mjs・V74.4.5' },
@@ -2070,6 +2131,7 @@ const PRO = {
       { t: '🌡️ 台指 VIX(選擇權隱含波動率)', n: '帳號等級', d: '4 把金鑰在 FinMind 全部回「Your level is register」= 帳號在免費層。⭐ 已改走期交所官方(免費)為主。⚠️ 在那之前用 <b>實現波動率</b>(近 20 日年化 + 一年位階)當替代 —— <b>名字必須不同</b>(一個看未來、一個看過去)。', s: 'V71.5.7 / V71.8.1' },
     ],
     next: [
+      { t: '🐢 0050 / 台積電 / 高股息 ETF 的<b>含息</b>回測', n: '資料 V74.3.8 起有(2021 起・每週採)', d: '本站所有「買了放著」的成績都是<b>不含配息</b>的(0050 只用年化 3% 估、0056/00878 被系統性低估)。V74.3.8 起 <code>dividends_hist.json</code>(data 分支)有 2021 起的除息日與現金股利,<b>現在可以把配息真的加回去重跑</b> hold_switch / etf0050 那兩支探針。⚠️ 要用「除息日參考價 + 股利再投入」的做法算,⛔ 別直接把股利加進最後一天(那會少算複利,也對不上真實含息指數)。填不填息本身也可以順便測(除息後 N 日回到除息前價的比例),⛔ 測完才准在除權息行事曆上寫任何方向。', s: 'dividend_miner.py・V74.3.8' },
       { t: '🚦 ETF 跟車(跟著主動 ETF 買股)到底有沒有用', n: '等資料:約 2026-12 可測', d: '散戶救星那張「ETF 跟車狀態」已收進精簡檢視 —— 理由是<b>現在驗不了</b>:主動 ETF 的持股變動歷史(mgr_hist)2026-08 底才開始每天存,要累積約 3 個月(60 個交易日)才有樣本。⭐ 到時要驗的是:「主動 ETF 新買進/加碼的股票,之後 20 日有沒有超額」+ 對照組用同板塊同市值的股票。驗出有用就把卡加回來(刪 _TIDY 一行)。', s: '等 mgr_hist 累積・V74.1.8' },
       { t: '💾 立刻開始存「以後才測得動」的東西', n: '剩三項(消息面已完成)', d: '這幾項<b>現在不存、一年後還是測不了</b>(K 線可以回補,這些不行)—— 照 <code>news_hist</code> 同一個模式做即可(還原 → 併入 → 只增不減守門):<br><b>①鉅額交易</b>(已經有每天的快照,只差開始累積)<br><b>②融資限額</b>(零額外資料請求,證交所同一份回應裡就有,拿來算「融資使用率」)<br><b>③借券賣出餘額</b>(要付費層資料集,而且從來沒存過)<br>✅ <b>消息面歷史已經開工了</b>(V74.2.8)—— 結論見「⛔ 實測沒用」欄的『新聞出來之後會漲嗎』,以及「還測不了」欄的『自己的消息面歷史』。', s: 'V74.2.8 已完成①・成本極低' },
     ],
@@ -2139,7 +2201,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.3.7',
+  VER: 'V74.3.8',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

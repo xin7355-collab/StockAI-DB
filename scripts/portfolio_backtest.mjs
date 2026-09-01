@@ -242,7 +242,7 @@ for (const sym of syms) {
                         // 🕯️ V74.3.7 Chandelier 出場(twstock-research 的做法):進場後最高收盤 − K×ATR(14)。
                         //   跟 trailN 同族但用「該股自己的波動」當回落幅度,⛔ 不是固定 %。K 用 3(它的預設)。
                         //   ATR 只用進場日之前的資料算一次(零前視;動態逐日更新 ATR 的版本另測)。
-                        const chandK = /^chand(\d+)$/.test(a.exit) ? +RegExp.$1 : 0;
+                        const chandK = /^chand(\d+(?:\.\d+)?)$/.test(a.exit) ? +RegExp.$1 : 0;   // 允許小數(chand1.5 / chand2.5 做敏感度網格)
                         let chandATR = 0;
                         if (chandK > 0) {
                             let tr = 0, k = 0;
