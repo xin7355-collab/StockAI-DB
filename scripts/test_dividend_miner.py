@@ -72,6 +72,27 @@ with tempfile.TemporaryDirectory() as d:
     rc = DM.main([])
     ok('④ 有紀錄的檔數 < MIN_OK → exit 1 且舊檔原封不動', rc == 1 and DM.OUT.read_text() == before)
 
+    # ⑥ ⏱️ 時間預算(V74.3.8 首跑實測 94 分撞 90 分逾時、89 分白抓)
+    #    順序:舊檔裡沒有的先、再來最後一筆除息日最舊的 —— ⛔ 不可按代號(後段代號永遠輪不到)
+    old2 = {'updated': 'x', 'd': {'2330': {'h': [['2026-06-11', 6.0, '息', 2255.0, 2249.0]], 'up': []},
+                                  '9999': {'h': [['2024-01-01', 1.0, '息', 10.0, 9.0]], 'up': []}}}
+    order = DM.order_syms(['9999', '2330', '2317', '0050'], old2['d'])
+    ok('⑦ 抓取順序:沒抓過的(0050/2317)先,再來最舊的(9999),最新的(2330)最後', order == ['0050', '2317', '9999', '2330'], order)
+    DM.OUT_HIST.write_text(json.dumps(old2)); DM.OUT.unlink(missing_ok=True)
+    calls.clear(); DM._paid_k = None; DM.MIN_OK = 2; DM.BUDGET_MIN = 0
+    for k in ('ok', 'empty', 'fail', 'kept_old'): DM.STAT[k] = 0
+    import io, contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf): rc = DM.main([])
+    outp = buf.getvalue()
+    hist2 = json.loads(DM.OUT_HIST.read_text())
+    ok('⑦b 預算用完 → 一檔都不抓(只有探路那 1 次呼叫)、印出剩幾檔、⛔ 但仍 exit 0 並把舊資料寫出去',
+       rc == 0 and len([u for u in calls if 'token=BBBB' in u]) == 1 and '時間預算' in outp and __import__('re').search(r'剩 \d+ 檔', outp) and set(hist2['d']) == {'2330', '9999'}, (rc, outp[-200:]))
+    DM.BUDGET_MIN = 100
+    wf = (ROOT / '.github/workflows/dividend_sweep.yml').read_text()
+    ok('⑦c workflow 有給 DIV_BUDGET_MIN,且 job timeout 大於預算(逾時只當最後保險)',
+       "DIV_BUDGET_MIN: '100'" in wf and __import__('re').search(r'timeout-minutes: (\d+)', wf) and int(__import__('re').search(r'timeout-minutes: (\d+)', wf).group(1)) > 100)
+
 # ⑤ 🔐 不印金鑰
 src = (ROOT / 'dividend_miner.py').read_text(encoding='utf-8')
 ok('⑤ 🔐 只印「第幾把」,⛔ 不印金鑰片段', 'tok[:' not in src and 'TOKENS[k][' not in src and '第 {k+1} 把' in src)

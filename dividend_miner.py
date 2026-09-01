@@ -42,6 +42,10 @@ SINCE = os.getenv('DIV_SINCE') or '2021-01-01'
 MIN_OK = int(os.getenv('DIV_MIN_OK') or 500)
 KEEP = 12                      # 前端檔每檔最多留幾筆歷史
 SLEEP = float(os.getenv('DIV_SLEEP') or 0.65)   # FinMind 100 req/min → ~92/min
+# ⏱️ V74.3.8 首跑實測:2,514 檔 × 2 次呼叫 ≈ **94 分**(每檔 2.26 秒,不是估的 55 分)→ 撞 job 90 分逾時,
+#    deploy 步驟被 skipped,**89 分鐘的抓取整批丟掉**。→ 自己控時間預算:超過就停、把手上的寫出去(exit 0),
+#    剩下的下一輪接續(順序見 order_syms:沒抓過的先、再來最舊的);job timeout 只當最後保險。
+BUDGET_MIN = float(os.getenv('DIV_BUDGET_MIN') or 100)
 TW = timezone(timedelta(hours=8))
 TOKENS = [''.join(t.split()) for t in (os.getenv('FINMIND_TOKENS') or '').split(',') if t.strip()]
 STAT = {'ok': 0, 'empty': 0, 'fail': 0, 'kept_old': 0, 'reasons': {}}
@@ -157,6 +161,18 @@ def write(d_full, today, syms_n):
     OUT.write_text(json.dumps(lite, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
 
 
+def order_syms(syms, old):
+    """抓取順序:① 舊檔裡沒有的先(從來沒抓過)② 再來依「最後一筆除息日」由舊到新(最久沒更新的先)。
+       ⛔ 不可用代號排序 —— 時間預算用完時後段代號(6xxx~9xxx)會永遠輪不到(陷阱:按代號取前 N = 按產業取樣)。"""
+    def key(s):
+        v = old.get(s)
+        if not v:
+            return (0, '', s)
+        h = v.get('h') or []
+        return (1, h[-1][0] if h else '', s)
+    return sorted(syms, key=key)
+
+
 def main(argv=None):
     argv = argv or sys.argv[1:]
     limit = int(argv[argv.index('--limit') + 1]) if '--limit' in argv else 0
@@ -171,8 +187,13 @@ def main(argv=None):
         print(f'❌ 探路失敗(2330 除權息拿不到:{note})→ 需要付費層金鑰,⛔ 不覆寫舊檔。原因統計:{STAT["reasons"]}')
         return 1
     old = load_old(OUT_HIST)
-    new, t0 = {}, time.time()
+    syms = order_syms(syms, old)
+    new, t0, left = {}, time.time(), 0
     for i, s in enumerate(syms):
+        if (time.time() - t0) > BUDGET_MIN * 60:
+            left = len(syms) - i
+            print(f'⏱️ 時間預算 {BUDGET_MIN:.0f} 分用完:抓了 {i} 檔、剩 {left} 檔下一輪接續(沒抓過的排最前面),先把手上的寫出去', flush=True)
+            break
         res, n1 = fm('TaiwanStockDividendResult', s, SINCE); time.sleep(SLEEP)
         pol, n2 = fm('TaiwanStockDividend', s, SINCE); time.sleep(SLEEP)
         if res is None and pol is None:

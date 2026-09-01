@@ -28,7 +28,7 @@ permissions:
 jobs:
   dividend:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 150   # ⏱️ 只當最後保險;真正的停手點是 miner 自己的 DIV_BUDGET_MIN(實測全市場 ≈ 94 分)
     steps:
       - name: 📥 下載程式碼 (main)
         uses: actions/checkout@v4
@@ -54,6 +54,7 @@ jobs:
         id: sweep
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          DIV_BUDGET_MIN: '100'   # ⏱️ 實測全市場 ≈ 94 分;超過就停、寫出手上的,剩下的下一輪接續(沒抓過的先)
         run: |
           set +e
           if [ "${{ github.event.inputs.limit }}" != "" ] && [ "${{ github.event.inputs.limit }}" != "0" ]; then

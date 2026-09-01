@@ -6058,6 +6058,13 @@ workflow 必須**先從 data 分支還原**再跑(`git show` + `[ -s ]` 驗非�
   → 改成自己的 group `gh-pages-dividend`,防撞交給 deploy step 既有的 5 次 retry + rebase。
   ⭐ **V73.7.9 那條鐵則的第三次犯案:執行時間長的 workflow ⛔ 不可跟別人共用 concurrency group。**
   ⚠️ `fund_sweep`(~25 分)與 `tdcc_sweep` 也還掛在共用 group 上,只是它們排在深夜沒撞到人 —— 下次動到它們時一併搬出來。
+- 🚨 **同一輪還撞了 job 逾時**:我估「55 分」是錯的,實測 **200 檔 / 7.5 分 → 2,514 檔 ≈ 94 分**(每檔 2.26 秒,
+  FinMind 每次回應本身就要 ~0.5 秒,不只 sleep)→ 撞 `timeout-minutes: 90`,deploy 步驟 **skipped**,
+  **89 分鐘抓到的 1,800+ 檔整批丟掉**(checkpoint 寫在 runner 本機,沒部署等於沒有)。
+  → `DIV_BUDGET_MIN`(預設 100 分):超過就停、把手上的**寫出去並 exit 0**,job timeout 150 只當最後保險;
+    抓取順序改 `order_syms`:**沒抓過的先、再來最後一筆除息日最舊的**(⛔ 不可按代號 —— 預算用完時 6xxx~9xxx 永遠輪不到)。
+  ⭐ 通用:**任何會跑超過半小時的採礦,都要自己控時間預算 + 半途產物要能部署**,⛔ 不可把停手交給 job timeout(它會把 deploy 一起砍掉)。
+  測試 `scripts/test_dividend_miner.py` ⑦(注入「拿掉預算守門」驗過)。
 
 #### 🕸️ 關聯星圖採礦:本機 582 檔、雲端 **2 檔**(陷阱 #14 的教科書案例)
 `generate_correlations.py` 本機跑 582 檔全對;推上 `daily_miner` 第一輪 log 只有一行
