@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.1.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.1.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -471,6 +471,14 @@
             body.diag-fullscreen .header-fixed { display: flex !important; }
             body.diag-fullscreen .nav-fixed { display: block !important; }
         }
+    /* 🗂️ V74.1.7 精簡檢視:實測無背書的卡預設收起(⛔ 屬性選擇器 + !important ——
+       render 函式常用 classList.remove('hidden') 自己把卡打開,class 壓不住它) */
+    [data-tidy="1"]{display:none !important}
+    .tidyrow{background:#161b22;border:1px dashed #30363d;border-radius:8px;padding:7px 10px;
+      font-size:11px;color:#8b949e;line-height:1.55;display:flex;gap:8px;align-items:center;margin:4px 0}
+    .tidyrow b{color:#c9d1d9}
+    .tidyrow button{margin-left:auto;flex-shrink:0;background:#21262d;border:1px solid #30363d;color:#58a6ff;
+      border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;min-height:32px}
     </style>
 </head>
 <body class="flex flex-col">
@@ -679,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.1.6 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.1.7 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3868,7 +3876,48 @@ const app = {
         },
     },
 
+    // 🗂️ V74.1.7 精簡檢視 —— 使用者:「資料呈現太多,看的人不知道到底要看誰,
+    //   把沒有用的雜訊清洗,先用折疊或隱藏不是刪除,未來驗到有用再加回來」。
+    //
+    // ⛔ 三條鐵則:
+    //   ① **收起 ≠ 刪除**:卡還在 DOM、render 照跑,點「點開」隨時看得到;
+    //      要永久加回來只要把下面清單刪一行(可逆,正是使用者要的)。
+    //   ② **只收「實測無背書」或「純明細」的卡** —— 依據寫在每一行(對應實測總表);
+    //      🚨 風險提醒類⛔ 一律不收(忽略風險的代價遠大於多看一眼)。
+    //   ③ 收起的那一行要**說清楚收了什麼、為什麼** —— 靜默消失使用者會以為壞掉(陷阱 #22)。
+    //   ⚠️ 用 data-tidy 屬性 + CSS !important,⛔ 不用 classList ——
+    //      這些卡的 render 會自己 classList.remove('hidden') 把卡打開,class 壓不住。
+    _TIDY: [
+        ['etfFollowCard', '🚦 ETF 跟車狀態', '跟著主動 ETF 買有沒有用**還沒驗證過** —— 持股變動的歷史 2026-08 才開始存,至少要累積 3 個月才測得動'],
+        ['sixMeridianCard', '⚔️ 新六脈・共振計分', '這個複合訊號**沒回測過**,⛔ 未驗證的卡不該給「試單/加碼」指令;實測過的訊號在下面「K棒戰法」那張'],
+        ['bullBearCategoryCards', '📋 29 條規則逐項明細', '結論已在上面的計分條 —— 想逐條核對再點開'],
+        ['predictionAuditCard', '📊 5日訊號準確度排行', '它只用你的自選做小樣本回測 —— 已被 K線頁「全市場 129 訊號實測成績」取代'],
+    ],
+    _initTidy() {
+        for (const [id, name, why] of this._TIDY) {
+            const el = document.getElementById(id);
+            if (!el || el.dataset.tidy != null) continue;
+            el.dataset.tidy = '1';
+            const row = document.createElement('div');
+            row.className = 'tidyrow';
+            row.dataset.tidyfor = id;
+            row.innerHTML = `<span>🗂️ 已收起「<b>${name}</b>」—— ${why.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</span>
+                <button onclick="app._tidyToggle('${id}')">點開</button>`;
+            el.parentNode.insertBefore(row, el);
+        }
+    },
+    _tidyToggle(id) {
+        this.vibrate && this.vibrate(10);
+        const el = document.getElementById(id);
+        if (!el) return;
+        const show = el.dataset.tidy === '1';
+        el.dataset.tidy = show ? '0' : '1';
+        const btn = document.querySelector(`.tidyrow[data-tidyfor="${id}"] button`);
+        if (btn) btn.textContent = show ? '收起' : '點開';
+    },
+
     async init() {
+        this._initTidy();
         // 📱 動態設定真實視窗高度(解決 iOS Safari URL bar 顯示/隱藏時版面跳動)
         // 🐛 V71.3.5 修「畫面下半變全黑」——使用者回報「有時螢幕會變成一半黑的」。
         //   根因:body 是 `height: calc(var(--real-vh) * 100)` + `overflow:hidden`,
@@ -7348,8 +7397,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.1.6',
+    _APP_VERSION: 'V74.1.7',
     _CHANGELOG: [
+        { v: 'V74.1.7', dt: '2026-09-01', d: ['開始清雜訊:4 張「實測無背書」的卡預設收起(ETF跟車/六脈共振/29條明細/自選小樣本回測),原地留一行說明為什麼收、點一下就能打開', '收起不是刪除 —— 之後驗證出有用隨時加回來', '風險提醒類的卡一律不收(寧可多提醒)'] },
         { v: 'V74.1.6', dt: '2026-09-01', d: ['個股泡泡圖現在每一格都有實測數字:圖下方多一條「位階四段的期望值」,左下角標出實測最弱的區域', '實測結論:越貴越強的那一邊反而比較好,「高檔過熱要賣」量出來是相反的', '刻意不畫「買進區/加碼區/賣出區」—— 實測那三個在這張圖上量不出來,卡片裡有寫為什麼'] },
         { v: 'V74.1.5', dt: '2026-09-01', d: ['產業作戰室現在會顯示版本號,跟這裡一樣就代表兩邊都是最新的', '板塊輪動:走勢圖與個股泡泡圖改成切換頁籤、兩張一樣大,播放列移到圖卡正上方', '新增「平滑」鈕(5日/10日),把時間軸的跳動抹平;只影響看起來的樣子,不改資料', '新增日期區間快選與自訂,選完會列出那段期間最強與最弱的 3 個板塊'] },
         { v: 'V74.1.4', dt: '2026-09-01', d: ['產業作戰室「板塊輪動」:個股泡泡圖版面放大一倍(手機上原本只有 216 像素高),股名不再疊在一起', '成分股表點欄位可以換排序', '成員各走各的板塊(同步程度低)會標出來,那種板塊的「平均值」參考價值低', '法人籌碼頁只留一句話結論,長說明收起來;策略頁最前面加目錄'] },

@@ -177,5 +177,10 @@ for (const r of [...rows].sort((a, b) => b.open - a.open).slice(0, 20)) {
 const risky = rows.filter(r => r.cmd && !r.edge).sort((a, b) => b.open - a.open);
 console.log(`\n⚠️ 有下操作指令、但沒引用實測數字的卡:${risky.length} 張\n${'─'.repeat(92)}`);
 for (const r of risky.slice(0, 25)) console.log(`  ${P(r.open, 7)}字  ${r.page} / ${r.id}`);
+if (process.env.EMIT) {
+    const fs2 = await import('fs');
+    fs2.writeFileSync(process.env.EMIT, JSON.stringify(rows, null, 1));
+    console.log(`\n💾 完整清單 → ${process.env.EMIT}`);
+}
 console.log(`\n⛔ 這只是**盤點**,不是判決 —— 有些卡本來就不該有勝率(K線圖、法人買賣超、集保分佈`);
 console.log(`   都是「事實」不是「預測」)。要砍之前一律人工看過那張卡在回答什麼問題。`);
