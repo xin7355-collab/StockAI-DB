@@ -247,6 +247,25 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .rdkv b{font-family:var(--mono)}
 /* 🔬 實測總表 */
 .labbar{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+/* 🕸️ 關聯星圖 */
+.starbar{display:flex;gap:8px;align-items:center;margin:8px 0 10px;flex-wrap:wrap}
+.starinput{flex:1 1 160px;min-width:0;min-height:40px;background:var(--panel2);border:1px solid var(--line2);
+  border-radius:9px;color:var(--fg);font-size:14px;padding:8px 12px;font-family:var(--mono)}
+.starinput:focus{outline:none;border-color:var(--cyan)}
+.starbar .lbtn{min-height:40px;padding:6px 16px;font-size:12.5px}
+/* ⛔ 高度寫死是刻意的:圖是「畫布」不是文字,內容變高會把底下的清單推上推下(V74.3.0 的教訓) */
+.starchart{width:100%;height:380px;margin:4px 0 10px;border-radius:11px;background:var(--panel2);
+  border:1px solid var(--line2);display:none}
+.starchart.on{display:block}
+.startbl{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
+.startbl th{font-size:10.5px;color:var(--dim2);font-weight:700;text-align:center;padding:6px 6px;
+  border-bottom:1px solid var(--line2);white-space:nowrap}
+.startbl td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle}
+.startbl td.l{text-align:left}
+.starnm{font-weight:800;font-size:13px;cursor:pointer}
+.starcode{font-size:10.5px;color:var(--dim2);font-family:var(--mono)}
+.starbar2{height:6px;border-radius:99px;background:var(--line2);overflow:hidden;min-width:54px}
+.starbar2 i{display:block;height:100%;background:linear-gradient(90deg,#3d8bfd,#22d3ee)}
 .labbtn{font-size:11px;padding:6px 11px;border-radius:999px;border:1px solid var(--line2);
   background:var(--panel2);color:var(--dim2);cursor:pointer;user-select:none;white-space:nowrap}
 .labbtn.on{color:var(--txt);border-color:var(--cyan);background:rgba(34,211,238,.09)}
@@ -399,6 +418,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <button class="tab-btn on" id="tabBtnVal" onclick="PRO.switchTab('val')">產業估值</button>
     <button class="tab-btn" id="tabBtnChain" onclick="PRO.switchTab('chain')">AI 產業鏈</button>
     <button class="tab-btn" id="tabBtnRot" onclick="PRO.switchTab('rot')">板塊輪動</button>
+    <button class="tab-btn" id="tabBtnStar" onclick="PRO.switchTab('star')">關聯星圖</button>
     <button class="tab-btn" id="tabBtnSig" onclick="PRO.switchTab('sig')">今日訊號</button>
     <button class="tab-btn" id="tabBtnCalc" onclick="PRO.switchTab('calc')">回測計算機</button>
     <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
@@ -549,6 +569,29 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 <!-- 🚨 V74.4.3 使用者截圖:實測總表上方一大塊空白。真因:#tabLab 被留在 .wrap **外面**,
      而 .wrap 的 padding-bottom 是 80px+safe-area → 那段 padding 變成 lab 分頁上方的空白。
      ⛔ #tabLab 必須跟其他三個分頁一樣在 .wrap 裡面(也才吃得到版心寬度)。 -->
+<!-- ═══ 🕸️ 關聯星圖(V74.3.4)═══
+     ❓ 這頁在回答:「我看的這一檔在動的時候,還有哪幾檔會跟著動?」
+     ⛔ 它**不是**預測 —— 相關係數是同期的(同一天一起漲)。CLAUDE.md 評估紀錄⑧ 已實測:
+        同期相關再高都不能拿來預測(外資買超 vs 當天 +0.298、vs 隔天只剩 +0.028)。
+        所以這頁**只描述、不下多空、不計分**,而且⛔ 不給任何買賣價位。
+     ⭐ 重活全部在採礦端(generate_correlations.py)—— 前端只讀一個算好的壓縮 JSON,
+        ⛔ 手機不做任何 Pearson 運算(2,500 檔有 300 萬對,算下去會直接當掉)。 -->
+<div id="tabStar" class="hidden">
+  <div class="panel">
+    <h2>🕸️ 關聯星圖 <span class="sub">這一檔在動的時候,還有哪幾檔會跟著動</span>
+      <span class="sub" id="starSub"></span></h2>
+    <div class="starbar">
+      <input id="starIn" class="starinput" type="search" inputmode="numeric" placeholder="輸入股票代號,例如 2330"
+             autocomplete="off" onkeydown="if(event.key==='Enter')PRO.starGo()">
+      <button class="lbtn on" onclick="PRO.starGo()">查詢</button>
+    </div>
+    <div class="labbar" id="starHot"></div>
+    <div id="starMsg"></div>
+    <div id="starChart" class="starchart"></div>
+    <div id="starList"></div>
+    <div id="starNote"></div>
+  </div>
+</div>
 <div id="tabSig" class="hidden">
   <div class="panel">
     <h2>🎯 今天可以做什麼 <span class="sub" id="sigSub"></span></h2>
@@ -793,11 +836,12 @@ const PRO = {
     this.toast('🔄 重新抓取最新資料…');
     if (this._tab === 'chain') await this.renderChain();
     if (this._tab === 'rot') await this.renderRot();
+    if (this._tab === 'star') { this._starData = undefined; await this.renderStar(); }
     if (this._valRows && this._valRows.length) await this.runValuation(true);
     this.toast('✅ 已更新');
   },
 
-  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['sig', 'Sig'], ['calc', 'Calc'], ['lab', 'Lab']],
+  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['sig', 'Sig'], ['calc', 'Calc'], ['lab', 'Lab']],
   switchTab(t, silent) {
     this._syncHdrVar();          // 分頁列會換行 → header 高度會變 → sticky 的 top 要跟著改
     this._tab = t;
@@ -808,10 +852,236 @@ const PRO = {
     if (t !== 'rot') this.rotStop();          // ⛔ 切走要停掉動畫,不然背景一直跑
     if (t === 'chain') this.renderChain();
     if (t === 'rot') this.renderRot();
+    if (t === 'star') this.renderStar();
     if (t === 'sig') this.renderSig();
     if (t === 'calc') this.renderCalc();
     if (t === 'lab') this.renderLab();
     if (!silent) window.scrollTo(0, 0);
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🕸️ 關聯星圖 —— 「這一檔在動的時候,還有哪幾檔會跟著動」
+  //
+  // ⛔ 四條鐵則(測試 scripts/test_stargraph.mjs 釘住):
+  //  ① **前端零運算** —— 只讀採礦端算好的 data/top_correlations.json。
+  //     ⛔ 別為了「即時一點」把 Pearson 搬回前端:2,500 檔有 300 萬對,手機會當掉。
+  //  ② **只描述、⛔ 不下多空、不給買賣價位**。相關係數是**同期**的(同一天一起動),
+  //     本站實測同期相關再高都不能拿來預測(CLAUDE.md 評估紀錄⑧)。
+  //  ③ **查不到的代號要好好講話** —— 誠實說出「為什麼查不到」(不在流動性名單 / ETF 不列入 /
+  //     沒有夠強的同伴),⛔ 不可跳紅色錯誤,也⛔ 不可靜默空白(陷阱 #22)。
+  //  ④ **ECharts 是加分不是必要** —— 它從 CDN 延遲載入(⛔ 不在開頁時載,那要 1MB);
+  //     載不到就只顯示清單,資料一個字都不少。
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ⚠️ 狀態列舉必須跟 generate_correlations.py 的 ST_FLAT/ST_BREAK/ST_HOT 一致
+  //    (同名不同義是本專案犯最多次的錯)。
+  // 🚨 Enum 0(盤整)刻意用 ➖ **不用 🟢** —— 燈號鐵則:🔴🟢 只准表示漲跌方向,
+  //    🟢 放在這裡會被讀成「偏空/下跌」,但它其實是「沒特別狀況」。
+  STAR_STATUS: {
+    0: { e: '➖', t: '盤整', d: '沒站上月線也沒過熱,就是普通狀態' },
+    1: { e: '🚀', t: '突破', d: '昨天還在 20 日均線下面,今天站上去了而且量比昨天大' },
+    2: { e: '🔥', t: '過熱', d: '收盤比 20 日均線高出 15% 以上,追進去容易買在轉折' },
+  },
+  _starSt(n) { return this.STAR_STATUS[n] || this.STAR_STATUS[0]; },
+
+  // ── 📡 資料載入器 ────────────────────────────────────────────────────────
+  // 🚨 ⛔ 這裡**刻意不走 fetchJson** —— 那支會加 `?t=Date.now()` 破快取,
+  //    每次 URL 都不同 → Service Worker 的 12 小時快取**永遠命中不了**。
+  //    這一檔一天只變一次,固定網址才快取得起來(SW 那邊有 12 小時 TTL 會自己抓新版)。
+  _starData: undefined,          // undefined = 還沒抓過;null = 抓過但失敗/沒有這個檔
+  async starFetch() {
+    if (this._starData !== undefined) return this._starData;
+    this._starData = null;
+    try {
+      const r = await fetch(new URL('data/top_correlations.json', location.href).href,
+                            { signal: AbortSignal.timeout(15000) });
+      if (r.ok) {
+        const j = await r.json();
+        if (j && j.r && typeof j.r === 'object') this._starData = j;
+      }
+    } catch (_) { /* 網路/解析失敗一律走下面的誠實空狀態,⛔ 不讓它變成紅框 */ }
+    return this._starData;
+  },
+
+  // ── 🎨 ECharts 延遲載入(只有第一次進這頁才載;載不到就退回清單)──────────
+  _starEc: null,                 // null=沒試過 / 'ok' / 'fail'
+  async _starEcharts() {
+    if (this._starEc === 'ok') return true;
+    if (this._starEc === 'fail') return false;
+    if (typeof echarts !== 'undefined') { this._starEc = 'ok'; return true; }
+    this._starEc = await new Promise(res => {
+      const sc = document.createElement('script');
+      sc.src = 'https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js';
+      sc.onload = () => res(typeof echarts !== 'undefined' ? 'ok' : 'fail');
+      sc.onerror = () => res('fail');
+      setTimeout(() => res(typeof echarts !== 'undefined' ? 'ok' : 'fail'), 12000);
+      document.head.appendChild(sc);
+    });
+    return this._starEc === 'ok';
+  },
+
+  _starSym: '',
+  // 🚨 每次查詢配一個流水號 —— starFetch / ECharts 都是 async,而 ECharts 那條最久要等 12 秒。
+  //    ⛔ 沒有這個守門的話:查 A → 馬上查 B → 12 秒後 A 的結果回來把 B 的畫面整個蓋掉
+  //    (陷阱 #19:await 回來要確認還是不是原來那一檔)。
+  _starSeq: 0,
+  async renderStar() {
+    const sub = document.getElementById('starSub');
+    const J = await this.starFetch();
+    if (!J) {
+      // ⛔ 靜默空白是最糟的(陷阱 #22)—— 要說得出「這是什麼狀況、不是壞掉」
+      document.getElementById('starMsg').innerHTML = `<div class="warnbox">
+        ⏳ <b>關聯資料還沒產出</b>(<code>data/top_correlations.json</code>)。<br>
+        它由採礦機每天算一次;第一次上線要等下一輪採礦跑完。⛔ 這不是這個功能壞掉。</div>`;
+      return;
+    }
+    if (sub) sub.textContent = `資料日 ${J.data_date || '—'} ・${J.universe || 0} 檔 ・近 ${J.window || 0} 個交易日`;
+    await this.loadNames();
+    this._starIntro(J);
+    if (!document.getElementById('starHot').innerHTML) this._starHot(J);
+    // 從散戶救星帶代號過來(?sym=2330)或使用者已經查過 → 直接畫
+    const q = this._starSym || new URLSearchParams(location.search).get('sym') || '';
+    if (q) { document.getElementById('starIn').value = q; this.starGo(); }
+  },
+
+  _starIntro(J) {
+    const S = this.STAR_STATUS;
+    document.getElementById('starNote').innerHTML = `<div class="note">
+      <b>這張圖在講什麼:</b>把每一檔「近 ${J.window} 個交易日的<b>每日漲跌幅</b>」拿去跟其他股票比對,
+      找出走勢最像的前 ${J.top_n} 檔(相關係數要大於 ${J.r_min})。<br>
+      🚨 <b>相關係數是「同期」的 —— 它講的是「同一天一起動」,⛔ 不是「它先動、這檔後動」。</b>
+      本站實測過:同期相關再高都不能拿來預測隔天(外資買超 vs 當天漲跌 +0.298,vs 隔天只剩 +0.028,
+      51 檔沒有一檔超過 0.3)。<b>所以這頁不下多空、不計分、也不給任何買賣價位</b>——
+      買賣一律以散戶救星的「現在怎麼做」為準。<br>
+      <b>可以拿來做什麼:</b>① 看手上這檔是「整族一起漲」還是「只有它自己在動」
+      ② 想加碼時看看清單裡是不是都同一族(那樣等於重壓同一個風險)
+      ③ 這一族裡誰已經 ${S[2].e}過熱、誰剛 ${S[1].e}突破。<br>
+      <b>誰不在名單裡:</b>20 日均量不到 1,000 張又沒爆量的冷門股(相關係數在沒量的股票上是雜訊);
+      ${J.excl_etf ? '還有 <b>ETF 全部不列入</b> —— 0050 有四成本來就是台積電,說它們「一起動」是廢話,而且會把真正同族的個股名額吃光。' : ''}</div>`;
+  },
+
+  // 熱門捷徑:直接給幾檔一定查得到的,⛔ 別讓使用者面對一個空輸入框不知道要打什麼
+  _starHot(J) {
+    const pick = ['2330', '2317', '2454', '2408', '2603', '2882', '3231', '1301']
+      .filter(c => J.r[c]);
+    document.getElementById('starHot').innerHTML = pick.map(c =>
+      `<button class="lbtn" onclick="PRO.starGo('${c}')">${c} ${this.nameOf(c) || ''}</button>`).join('');
+  },
+
+  async starGo(code) {
+    const inp = document.getElementById('starIn');
+    const sym = String(code || (inp && inp.value) || '').trim().toUpperCase();
+    if (inp) inp.value = sym;
+    const seq = ++this._starSeq;
+    const J = await this.starFetch();
+    if (seq !== this._starSeq) return;                 // 使用者已經查別檔了 → 這次的結果作廢
+    const msg = document.getElementById('starMsg'), chart = document.getElementById('starChart');
+    const list = document.getElementById('starList');
+    chart.classList.remove('on'); list.innerHTML = '';
+    if (!J) return this.renderStar();
+    if (!sym) { msg.innerHTML = `<div class="note">👆 上面輸入股票代號,或直接點下面的捷徑。</div>`; return; }
+    this._starSym = sym;
+    this.buzz(15);
+
+    const rows = J.r[sym];
+    if (!rows || !rows.length) {
+      // ③ 查不到要說得出為什麼 —— ⛔ 不可跳紅色錯誤,也⛔ 不可只寫「查無資料」
+      const why = /^00/.test(sym) ? 'ETF 不列入這張圖(它本來就裝著那些成分股,相關高是必然)。'
+        : !/^\d{4,6}$/.test(sym) ? '這個代號看起來不是台股代號(要 4~6 位數字)。'
+        : '可能是:① 20 日均量不到 1,000 張(冷門股的相關係數是雜訊,本站刻意不算)'
+          + `② 最新交易日沒有成交 ③ 算得出來但沒有任何一檔的相關係數超過 ${J.r_min}(它自己走自己的)。`;
+      msg.innerHTML = `<div class="warnbox">🔍 <b>${sym}</b> 沒有在這張圖裡。<br>${why}<br>
+        <span class="note">目前收錄 ${Object.keys(J.r).length} 檔(資料日 ${J.data_date})。</span></div>`;
+      return;
+    }
+    msg.innerHTML = '';
+    this._starTable(sym, rows, J);
+    this._starDraw(sym, rows, seq);
+  },
+
+  _starTable(sym, rows, J) {
+    const S = this.STAR_STATUS;
+    const nm = c => this.nameOf(c) || c;
+    const cnt = { 0: 0, 1: 0, 2: 0 };
+    rows.forEach(r => { cnt[r[2]] = (cnt[r[2]] || 0) + 1; });
+    const head = `<div class="note" style="margin:2px 0 8px">
+      <b>${nm(sym)}(${sym})</b> 走勢最像的 ${rows.length} 檔 ——
+      ${cnt[1] ? `${S[1].e} 剛突破 ${cnt[1]} 檔 ・` : ''}${cnt[2] ? `${S[2].e} 已過熱 ${cnt[2]} 檔 ・` : ''}${S[0].e} 盤整 ${cnt[0]} 檔。
+      ${cnt[2] >= 3 ? '⚠️ 這一族大半都過熱了,現在進場等於買在整族的高點。' : ''}</div>`;
+    const body = rows.map(([c, r, st]) => {
+      const s = this._starSt(st), pct = Math.round(Math.max(0, Math.min(1, (r - 0.4) / 0.6)) * 100);
+      return `<tr>
+        <td class="l"><span class="starnm" onclick="PRO.gotoStock('${c}')">${nm(c)}</span>
+          <span class="starcode">${c}</span></td>
+        <td class="mono" style="font-weight:800">${r.toFixed(2)}</td>
+        <td><div class="starbar2"><i style="width:${pct}%"></i></div></td>
+        <td title="${s.d}">${s.e} ${s.t}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('starList').innerHTML = head +
+      `<div style="overflow-x:auto"><table class="startbl">
+        <tr><th style="text-align:left">跟著動的股票</th><th>像不像</th><th>強度</th><th>它現在的狀態</th></tr>
+        ${body}</table></div>
+      <div class="note">「像不像」= 相關係數,1.00 是每天完全同步、${J.r_min} 是本站收錄的最低門檻。
+      點股名可以跳到散戶救星看那一檔。</div>`;
+  },
+
+  // ── ECharts 力導向星圖(中心 = 你查的那檔,周圍 = 跟著動的)────────────────
+  async _starDraw(sym, rows, seq) {
+    const el = document.getElementById('starChart');
+    const ecOk = await this._starEcharts();            // ⚠️ 這裡最久會等 12 秒
+    if (seq !== undefined && seq !== this._starSeq) return;   // 🚨 等的期間使用者換股了 → ⛔ 什麼都不准寫
+    if (!ecOk) {
+      // ④ 載不到就算了 —— 清單已經把資料完整顯示過,⛔ 不可因此讓整頁看起來壞掉
+      el.classList.remove('on');
+      document.getElementById('starMsg').innerHTML =
+        `<div class="note">🖼️ 圖表元件載入失敗(可能是網路或擋廣告的設定)—— 資料在下面的表格裡,一筆都沒少。</div>`;
+      return;
+    }
+    el.classList.add('on');
+    const inst = echarts.getInstanceByDom(el) || echarts.init(el, 'dark');
+    const nm = c => this.nameOf(c) || c;
+    const lab = (c, st) => `${nm(c)}\n${this._starSt(st).e}`;
+    const nodes = [{ name: lab(sym, null), value: sym, symbolSize: 56, fixed: true,
+                     x: el.clientWidth / 2, y: el.clientHeight / 2,
+                     itemStyle: { color: '#22d3ee' },
+                     label: { fontSize: 13, fontWeight: 900, color: '#eaf6ff' } }];
+    const links = [];
+    rows.forEach(([c, r, st]) => {
+      nodes.push({ name: lab(c, st), value: c,
+                   symbolSize: 22 + (r - 0.4) * 48,
+                   itemStyle: { color: st === 2 ? '#f5b942' : st === 1 ? '#3d8bfd' : '#5b6b7f' } });
+      links.push({ source: lab(sym, null), target: lab(c, st), value: r,
+                   lineStyle: { width: 1 + (r - 0.4) * 7, opacity: .55, color: '#3d8bfd', curveness: .06 },
+                   label: { show: true, formatter: r.toFixed(2), fontSize: 10, color: '#8fa3bb' } });
+    });
+    inst.setOption({
+      backgroundColor: 'transparent',
+      tooltip: { formatter: p => p.dataType === 'edge'
+        ? `相關係數 ${(+p.value).toFixed(2)}` : `${p.data.value} ${nm(p.data.value)}` },
+      series: [{
+        type: 'graph', layout: 'force', roam: true, draggable: true,
+        force: { repulsion: 480, edgeLength: [80, 150], gravity: .08 },
+        edgeLabel: { show: true },
+        label: { show: true, position: 'bottom', distance: 6, fontSize: 11, color: '#c9d6e6', lineHeight: 14 },
+        emphasis: { focus: 'adjacency', scale: 1.08 },
+        data: nodes, links,
+      }],
+    }, true);
+    // 📐 轉向/改變寬度要跟著 resize —— ⛔ ECharts 是 canvas,不像本頁其他圖是 SVG 會自己縮
+    //    (少了這段,手機轉個方向圖就固定在舊尺寸)。⚠️ 只掛一次,⛔ 別每次畫圖都疊一個。
+    if (!this._starResize) {
+      this._starResize = () => {
+        const e2 = document.getElementById('starChart');
+        if (!e2 || !e2.classList.contains('on') || typeof echarts === 'undefined') return;
+        const i2 = echarts.getInstanceByDom(e2); if (i2) { try { i2.resize(); } catch (_) {} }
+      };
+      window.addEventListener('resize', this._starResize);
+      window.addEventListener('orientationchange', () => setTimeout(this._starResize, 250));
+    }
+    // 點節點 = 換成以它為中心重畫(星圖最自然的操作)
+    inst.off('click');
+    inst.on('click', p => { if (p.dataType === 'node' && p.data.value !== sym) this.starGo(p.data.value); });
   },
 
   // ═══════════ 🎯 今日訊號 ═══════════
@@ -1383,7 +1653,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.3.3',
+  VER: 'V74.3.4',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

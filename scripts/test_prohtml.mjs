@@ -177,7 +177,23 @@ const R = await page.evaluate(async () => {
         ranks, savedKeys: Object.keys(saved), savedY: 'y' in saved, savedTab: saved.tab,
         front, frontEmpty, bRows, bOnly, allRows,
         rowsN: rows1.length, firstCode, last2,
-        lamp: /[🔴🟢]/u.test(document.body.innerHTML),
+        // 🚨 ⛔ 不可直接掃 document.body.innerHTML —— `<script>` 也在 body 裡,
+        //    於是「解釋為什麼不用 🟢」的那行**註解**會把這條擋下來
+        //    (本專案第 9 次踩同一個坑:說明 bug 的註解裡就寫著壞寫法本身)。
+        // ⭐ 燈號鐵則管的是「**使用者看得到的東西**」→ 先把 script/style 與 HTML 註解拿掉再掃。
+        //    ⚠️ 仍然掃 innerHTML(不是 innerText):emoji 也可能藏在 title/alt 屬性裡。
+        //    ⚠️ regex 一定要加 u flag(不加會拆成 surrogate 半碼,🔄 被誤判成 🔴)。
+        lampScope: (() => {
+          const b = document.body.cloneNode(true);
+          b.querySelectorAll('script,style').forEach(n => n.remove());
+          return b.innerHTML.replace(/<!--[\s\S]*?-->/g, '').length;
+        })(),
+        lamp: (() => {
+          const b = document.body.cloneNode(true);
+          b.querySelectorAll('script,style').forEach(n => n.remove());
+          const h = b.innerHTML.replace(/<!--[\s\S]*?-->/g, '');
+          return /[🔴🟢]/u.test(h) ? (h.match(/.{0,60}[🔴🟢].{0,40}/u) || [''])[0] : '';
+        })(),
         nan: /NaN|undefined/.test(out) || /NaN|undefined/.test(prompt) || /NaN|undefined/.test(stockPrompt),
         gotoInHtml: (valHtml.match(/PRO\.gotoStock\(/g) || []).length,
         missNote: document.getElementById('missNote').innerText,
@@ -1191,7 +1207,9 @@ ok('⑪d 還原有時效(逾時不還原,⛔ 免得看到過期畫面)', /30 \* 
 ok('⑪e bfcache 回來也要補捲動位置', /pageshow[\s\S]{0,120}persisted[\s\S]{0,80}_restoreNav/.test(src));
 // ⑥⑧
 ok('⑥ 畫面與 prompt 無 NaN/undefined', !R.nan);
-ok('⑧ 燈號鐵則:不可用 🔴🟢(u flag)', !R.lamp);
+ok('⑧⓪ 剝掉 script/註解後仍有大量畫面內容(⛔ 剝過頭 = 下面那條是假綠燈)',
+   R.lampScope > 20000, R.lampScope);
+ok('⑧ 燈號鐵則:使用者看得到的地方不可用 🔴🟢(u flag)', !R.lamp, R.lamp);
 // ⑦ AI 鏈
 ok('⑦ 戰情表 81 檔(V74.2.0 新增矽晶圓/無人機/散熱/連接器/光罩等 14 檔)', R.rowsN === 81, R.rowsN);
 ok('⑦b 按 YoY 排序 → 2330(stub 999)排第一', R.firstCode === '2330', R.firstCode);

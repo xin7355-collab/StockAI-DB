@@ -71,6 +71,41 @@ self.addEventListener('fetch', e => {
     // 杜絕手機 PWA 吃到舊的採礦結果。斷網時才退而求其次拿舊快取。
     // V18.2 — fetch 加 18 秒 hard timeout(防 iOS PWA 網路堆疊偶爾 hang 不返,
     //         頁面 AbortSignal 在 SW 範圍內救不到 → 整個 e.respondWith 卡死 → 卡 loading)
+    // 🕸️ V74.3.4 關聯星圖 —— **全站唯一**走「快取優先 + 12 小時 TTL」的資料檔。
+    //  ⭐ 為什麼給它開特例:`top_correlations.json` 是採礦端**一天算一次**的成果,
+    //     盤中不會變;而它是一整份全市場關聯表,每次開分頁都重抓等於白花流量。
+    //  ⛔ **只給這一個檔** —— 下面那條「動態資料一律純網路」是刻意的(杜絕手機 PWA
+    //     吃到舊的採礦結果),⛔ 別把這個特例擴大到其他 data/*.json。
+    //  ⚠️ Cache API 存不了 metadata → 時間戳寫進自訂 header `sw-cached-at` 再存,
+    //     ⛔ 不可靠 `date` header(CDN 會蓋掉,而且它講的是伺服器時間不是我們存的時間)。
+    //  🚧 過期後抓不到(離線/斷網)→ 仍然吐舊的那份,⛔ 不可讓使用者看到空白。
+    if (reqUrl.pathname.endsWith('/top_correlations.json')) {
+        const TTL = 12 * 60 * 60 * 1000;
+        e.respondWith((async () => {
+            let cache = null, hit = null;
+            try { cache = await caches.open(CACHE_NAME); hit = await cache.match(e.request); } catch (_) {}
+            if (hit) {
+                const at = +(hit.headers.get('sw-cached-at') || 0);
+                if (at && Date.now() - at < TTL) return hit;      // 還在 12 小時內 → 零網路直接吐
+            }
+            try {
+                const res = await Promise.race([
+                    fetch(e.request),
+                    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000)),
+                ]);
+                if (res && res.ok && cache) {
+                    const body = await res.clone().arrayBuffer();
+                    const h = new Headers(res.headers);
+                    h.set('sw-cached-at', String(Date.now()));
+                    cache.put(e.request, new Response(body, { status: 200, headers: h })).catch(() => {});
+                }
+                if (res && res.ok) return res;
+            } catch (_) {}
+            return hit || new Response('{}', { status: 504, headers: { 'Content-Type': 'application/json' } });
+        })());
+        return;
+    }
+
     if (reqUrl.pathname.includes('/data/') || reqUrl.pathname.endsWith('.json')) {
         const fetchWithTimeout = Promise.race([
             fetch(e.request),
