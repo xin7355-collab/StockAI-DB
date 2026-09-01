@@ -239,6 +239,19 @@ for (const sym of syms) {
                         const endJ = Math.min(last, eIdx + a.maxD);
                         const maN = a.exit === 'ma10' ? 10 : a.exit === 'ma20' ? 20 : a.exit === 'ma5' ? 5 : 0;
                         const trailPct = /^trail(\d+)$/.test(a.exit) ? +RegExp.$1 : 0;
+                        // 🕯️ V74.3.7 Chandelier 出場(twstock-research 的做法):進場後最高收盤 − K×ATR(14)。
+                        //   跟 trailN 同族但用「該股自己的波動」當回落幅度,⛔ 不是固定 %。K 用 3(它的預設)。
+                        //   ATR 只用進場日之前的資料算一次(零前視;動態逐日更新 ATR 的版本另測)。
+                        const chandK = /^chand(\d+)$/.test(a.exit) ? +RegExp.$1 : 0;
+                        let chandATR = 0;
+                        if (chandK > 0) {
+                            let tr = 0, k = 0;
+                            for (let q = Math.max(1, eIdx - 13); q <= eIdx; q++) {
+                                const h = data[q].high, l = data[q].low, pc = C(q - 1);
+                                tr += Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)); k++;
+                            }
+                            chandATR = k ? tr / k : 0;
+                        }
                         // ⏱️ V74.2.9 時間停損:進場後 D 天內漲不到 P% 就先出場。
                         //   ⭐ 它針對的是**資金效率**(勝率只有 33%,錯的時候越早離開越好),
                         //   ⛔ 不是方向判斷 —— 所以它跟 ma/trail **疊加**而不是取代。
@@ -265,6 +278,7 @@ for (const sym of syms) {
                                 if (c < s2 / maN2) { exitP = c; exitIdx = j; break; }
                             }
                             if (trailPct2 > 0 && c <= peak * (1 - trailPct2 / 100)) { exitP = c; exitIdx = j; break; }
+                            if (chandK > 0 && chandATR > 0 && c <= peak - chandK * chandATR) { exitP = c; exitIdx = j; break; }
                             // 🚪 移動停利:從進場後的最高收盤回落 N% 就走(讓贏家跑,輸家照樣被 stop 砍)
                             if (j === endJ) { exitP = c; exitIdx = j; }
                         }

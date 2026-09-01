@@ -173,6 +173,11 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 /* 📊 四象限計數:V74.1.1 改 **2×2**(4 欄在手機上每格只剩 80px,字被壓成兩三行)。
    ⭐ 數字有 transition —— 播放時間軸時看得出「哪一格在長大」(使用者:「每個都要有動態顯示」)。*/
 .rotquad{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 2px}
+.rottree{margin:6px 0 4px}
+.rottree svg{width:100%;height:auto;display:block;border-radius:10px;background:var(--panel2)}
+.rottree .cell{cursor:pointer}
+.rottree .cell:hover rect{stroke:#fff;stroke-width:1.5}
+.rottree text{pointer-events:none;font-family:system-ui,sans-serif}
 .rotquad>div{background:var(--panel2);border:1px solid var(--line2);border-radius:10px;
   padding:10px 8px;text-align:left;display:flex;align-items:baseline;gap:8px;min-height:52px}
 .rotquad b{font-size:22px;font-weight:800;line-height:1.1;font-family:var(--mono);
@@ -538,6 +543,10 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 
     <!-- ① 📊 輪動總覽 -->
     <div id="rotPane-map">
+      <!-- 🗺️ V74.3.7 產業熱力圖(treemap):磚面積 = 今日成交額、顏色 = 成交額加權漲跌。
+           借自 twstock-research 的「族群輪動 treemap」版面;資料用既有 screener.json(零新採礦)。
+           ⛔ 只是「今天錢在哪、誰在漲」的事實描述 —— 排序仍以下面實測有效的 20 日動能為準。 -->
+      <div id="rotTree" class="rottree"></div>
       <div class="rotquad" id="rotQuad"></div>
       <div id="rotVerdict" class="rotverdict"></div>
       <div class="quadwrap" id="rotRace"></div>
@@ -1175,7 +1184,7 @@ const PRO = {
       f: (r, S) => r.chg20 > 0, sort: 'chg20' },
     // 🏅 實測體質:⛔ 不是憑空加權的「綜合評分」—— 分數 = 這檔目前符合的選股條件,各自在
     //    全市場回測裡「相對隨便挑一天」的 20 日邊際(pp)加總。權重就是實測數字本身,沒有人訂的係數。
-    { k: 'edge', n: '🏅 實測體質最強', d: '同時符合最多「實測領先」條件的 100 檔(權重 = 實測 pp,不是人訂的)',
+    { k: 'edge', n: '🏅 符合最多實測條件', d: '同時符合最多「實測領先」條件的 100 檔。⚠️ 加總本身實測排不出順序(IC≈0),當清單看、⛔ 別當排名',
       f: (r, S) => r.sc && r.sc.plus.length >= 2 && r.sc.sum > 0, sort: 'score' },
     { k: 'avoid', n: '⚠️ 避雷池', d: '符合「實測落後」條件比較多的(⛔ 不是放空訊號,是別在這裡挑)',
       f: (r, S) => r.sc && r.sc.minus.length >= 2 && r.sc.sum < -1, sort: 'amt' },
@@ -1407,6 +1416,13 @@ const PRO = {
   // ⚠️ 三條誠實限制(卡上要寫):① 條件之間高度重疊(創新高 / 位階 / RSI 都在講「強」),
   //    加總會高估 → 只拿來**排序**,⛔ 不是機率也不是期望值;② 對照組本身是負的
   //    (−0.93% / 勝率 39.3%),而且 96 條裡六關全過的是 0 條;③ 追強那一族的優勢 2024 起逐年遞減。
+  // 📊 V74.3.7 這條分數自己的 IC 檢定(scripts/fish_score_ic_probe.py,554 個交易日・平均每天 329 檔):
+  //   🚨 加總的**排序力 ≈ 0**(IC +0.0004,95% CI −0.041~+0.042 含 0),而且**沒有贏過**位階單獨(+0.015)
+  //   或創一年新高單獨(+0.019)。最高 20% vs 最低 20% 的 20 日超額差 +3.56pp,但位階單獨就有 +3.60pp
+  //   → 分數的區分度**幾乎全部來自位階**,其他條件加進來只是把同一件事再數一次。
+  //   ⛔ 所以這分數只准當「符合幾條」的清單看,⛔ 不可當排序依據 —— 卡上要寫、池子名稱要改。
+  _FISH_IC: { days: 554, perDay: 329, ic: 0.0004, lo: -0.0406, hi: 0.0415, q51: 3.56, posIc: 0.0152, posQ51: 3.60, nhIc: 0.0185,
+              byYear: [['2024', -0.057], ['2025', 0.017], ['2026', 0.028]], src: 'scripts/fish_score_ic_probe.py' },
   _scrEval(row, cols, c) {
     const i = cols.indexOf(c.k); if (i < 0) return false;
     const x = row[i]; if (x === null || x === undefined || !Number.isFinite(+x)) return false;   // null 一律不通過
@@ -1434,7 +1450,10 @@ const PRO = {
     return `<div class="note" style="margin:6px 0 0">🏅 <b>實測體質</b>:領先 ${sc.plus.length} 條 / 落後 ${sc.minus.length} 條,加總 <b class="mono">${sc.sum >= 0 ? '+' : ''}${sc.sum.toFixed(1)}pp</b>
       ${sc.plus.length || sc.minus.length ? '<br>' + sc.plus.concat(sc.minus).map(tag).join(' ') : '(目前沒有符合任何一條測過的條件)'}
       <br><span style="color:var(--dim2)">每條數字 = 全市場回測裡「符合這條 vs 隨便挑一天」的 20 日差距${base ? `(隨便挑一天本身是 ${base[0]}% / 勝率 ${base[1]}%)` : ''}。
-      條件之間重疊(創新高、位階、RSI 都在講「強」),<b>加總會高估,只拿來排序;⛔ 不是勝率、不是機率</b>;96 條裡沒有一條六關全過,追強那族的優勢 2024 起逐年變小。</span></div>`;
+      ⛔ <b>不是勝率、不是機率</b>;96 條裡沒有一條六關全過,追強那族的優勢 2024 起逐年變小。</span>
+      <br><span style="color:var(--amber)">🚨 <b>加總本身實測排不出順序</b>:對 ${this._FISH_IC.days} 個交易日做排序相關(IC)= <b>${this._FISH_IC.ic >= 0 ? '+' : ''}${this._FISH_IC.ic.toFixed(4)}</b>(信賴區間含 0),
+      而且沒贏過「只看位階」(${this._FISH_IC.posIc >= 0 ? '+' : ''}${this._FISH_IC.posIc.toFixed(3)});最高 20% 比最低 20% 好 ${this._FISH_IC.q51 >= 0 ? '+' : ''}${this._FISH_IC.q51.toFixed(2)}pp,但位階單獨就有 ${this._FISH_IC.posQ51 >= 0 ? '+' : ''}${this._FISH_IC.posQ51.toFixed(2)}pp
+      → 分數的區分度幾乎全來自位階。<b>把它當「符合幾條」的清單看,⛔ 別當排名。</b></span></div>`;
   },
 
   // ── 🧺 漁獲籃(釣起來的魚)─────────────────────────────────────────────
@@ -1541,7 +1560,9 @@ const PRO = {
       <b>🏅 實測體質怎麼算:</b>⛔ 不是憑空加權的綜合評分 —— 這檔目前符合哪些選股條件,每條在全市場回測裡
       「相對隨便挑一天」的 20 日邊際(pp)加總;權重就是實測數字本身,沒有人訂的係數。條件重疊會高估,只拿來排序。
       實測最有用的一族是「追強」(創一年新高 +2.84pp・漲停 +2.09・位階≥75 +1.52),最沒用的是坊間最愛的
-      黃金交叉 / KD 金叉 / MACD 金叉(都在 +0.3pp 以內 = 跟平常一樣)。<br>
+      黃金交叉 / KD 金叉 / MACD 金叉(都在 +0.3pp 以內 = 跟平常一樣)。
+      🚨 <b>但加總之後實測排不出順序</b>(554 個交易日的排序相關 IC +0.0004,沒贏過只看位階)—— 每個零件都測過 ≠ 組合起來有用。
+      所以它只當「這檔符合哪幾條」的清單,⛔ 不當排名;真的要排,<b>看位階</b>(那是這分數裡唯一有區分度的成分)。<br>
       <b>🧺 漁獲籃:</b>點魚 → 釣起 → 記下那天收盤價,之後每次開池子都算「一張賺賠幾元」。是你的紀錄,不是推薦。<br>
       <b>誰不在池子裡:</b>ETF(跟星圖同一理由)、資料不全的(null 一律不下水,⛔ 不補 0)。
       資料來自每個交易日收盤後的選股快照(${D.updated || D.date || '—'}),🚀🔥 來自關聯星圖(需要前一天資料才判得出「突破」,星圖沒涵蓋的只補 🔥)。</div>`;
@@ -1956,6 +1977,7 @@ const PRO = {
       { r: 34, t: '📅 休市越久隔天越顛(波動,不是方向)', w: '只描述(調停損)', how: '長假 / 週末之後那一天<b>波動會放大</b>(長假 1.32 倍)→ <b>停損放寬一點或部位放小</b>,免得被雜訊掃出場。⛔ 它不講方向,⛔ 不可拿來決定要做多還是做空。', n: '長假 1.43x', d: '休市 1 天 1.639% → 2~3 天(週末)1.09x → 4~5 天 <b>1.43x</b>,<b>單調遞增</b>。⭐ 所以「週一比較顛」與「長假後比較顛」是<b>同一件事</b>,⛔ 不可當成兩個發現。⛔ 只講顛不顛,方向測不出來(見隔壁欄)。', s: 'calendar_stock_probe.mjs・V73.7.3' },
     ],
     trap: [
+      { t: '🏅 「實測條件 pp 加總」當排序分數 —— 每個零件都測過,組合起來排不出順序', n: 'IC +0.0004(CI 含 0)・沒贏過只看位階 +0.015', d: '釣魚池 V74.3.6 的「實測體質」= 這檔符合的選股條件,各自的實測 20 日邊際(pp)加總。每一條 pp 都是量過的,所以我以為加總至少能<b>排序</b>。<br>🧪 借 twstock-research 的方法驗它:554 個交易日(2024-04~2026-08)、平均每天 329 檔,每天算「分數 vs 未來 20 日超額報酬」的排序相關(Spearman IC),再用 Newey-West 修正前瞻窗口重疊的信賴區間。<br>🚨 <b>IC +0.0004,95% CI −0.041~+0.042,含 0</b>;逐年 2024 −0.057 / 2025 +0.017 / 2026 +0.028,方向都不穩。<b>而且沒贏過最簡單的對照</b>:只看位階 IC +0.015、只看創一年新高 +0.019。最高 20% 比最低 20% 好 +3.56pp 看起來有東西,但<b>位階單獨就有 +3.60pp</b> → 分數的區分度幾乎全來自位階,其他條件疊上去只是把同一件事再數一次(條件重疊)。<br>⭐ 通則:<b>「每個零件都測過」≠「組合起來有用」</b>(同 V73.0.0 停損 −3% 單獨有效、跟「2 檔」合起來翻盤)。⛔ 任何「把多個有效條件加總」的分數,上線前要另外測加總本身。<br>📍 處置:分數照顯示但改口為「符合幾條的清單」,池子改名「符合最多實測條件」,卡上寫 IC;⛔ 不當排名。', s: 'scripts/fish_score_ic_probe.py' },
       { t: '🚪 空頭「止損換現金」實測是<b>少賺</b>的,而且賣得越勤快越慘', n: '台積電 348 萬 → 月線版只剩 90 萬', d: '使用者問「遇到空頭是不是該止損換現金」。同一檔、同一段窗口(5.5 年)、同一筆本金,<b>只改「什麼時候賣」</b>:<br><b>台積電</b>:買了放著 <b>348 萬</b> → 跌破年線才賣 278 萬(整段換手 <b>15 次</b>)→ 跌破季線 137 萬(85 次)→ <b>跌破月線只剩 90 萬</b>(153 次)<br><b>0050</b>:放著 241 萬 → 年線 182 萬 → 季線 124 萬 → <b>月線 81 萬</b><br>⭐⭐ <b>單調:賣得越勤快、賺得越少</b> —— 換手 15 → 85 → 153 次,獲利一路砍半。跟 0050 七種買法那次的結論一致(擇時是最貴的錯誤)。<br>⚠️ 它<b>唯一</b>的好處是中途賠得少(台積電 −45.7% → −30.1%),🚨 但那有一大半是<b>錢根本不在市場</b> —— 月線版整段只有 <b>58%</b> 的時間有部位。⛔ 「少賠」與「沒進場」是兩回事。<br>⚠️ 誠實限制:這段窗口的空頭(2022)是<b>V 型反彈</b>,均線策略最吃虧;真的走出長空結論可能不同 —— ⛔ 但那不在資料裡,不可以假裝測過。', s: 'hold_switch_probe.mjs・V74.3.2' },
       { t: '🏦 法人推估成本(站上/跌破)—— 方向「對」但全在雜訊內', n: '站上 +0.20pp / 跌破 −0.24pp', d: '散戶救星總覽那張「法人近20日推估成本」隱含的主張是「站上法人成本比較強、跌破比較弱」。實測(2,305 檔有外資資料、對照組 79,333 個「股·日」、扣同期大盤、同檔 20 日去重):站上之後 20 日 <b>+0.20pp</b>、跌破 <b>−0.24pp</b>、剛站上 +0.10、剛跌破 −0.15 —— 方向都「對」,但<b>全部小於來回成本 0.44%</b>,扣成本後四個事件全負、六關 0 過。它是描述不是訊號 → V74.1.8 先收進精簡檢視,<b>V74.2.0 依指示整卡刪除</b>。', s: 'instcost_probe.mjs・V74.1.8→V74.2.0 刪除' },
       { t: '🎯 隔日沖「開盤買、盤中高點賣」—— 碰得到高點,賺不到錢', n: '碰 +1.5% 機率 58~72%,務實損益全負', d: '全市場一起驗(2,329 檔、對照組 270.9 萬個「股·日」,同一條定義套在每一天當基準):訊號日隔天「盤中碰到開盤價 +1.5%」的機率確實遠高於基準 <b>31.1%</b> —— 爆量長紅 <b>58.5%</b>・爆量突破 <b>53.5%</b>・漲停後沖 <b>71.6%</b>。🚨 但<b>碰得到 ≠ 賣得到</b>:改用做得到的出法(碰 +1.5% 停利、碰不到就收盤出,扣當沖來回成本 0.25%)之後<b>三型態全負</b>(−0.46% / −0.48% / −0.30%,基準 −0.395%);唯一贏基準的「漲停後沖」也只 +0.10pp,遠小於成本。→ 顯示 50~70% 的「勝率」只會誘人做一件期望值為負的事 → 散戶救星那段「隔日沖勝率回測」<b>V74.2.0 整段刪除</b>。', s: 'dtflip_probe.mjs・V74.2.0' },
@@ -2002,6 +2024,7 @@ const PRO = {
       { t: '📆 行事曆與大盤環境當濾網', n: '26 種全部少賺', d: '13 種行事曆(週幾/月初月底/結算日/長假)+ 13 種大盤事件(不追高/廣度極弱/地板股)。⭐ 唯二「贏」的兩個,優勢<b>全部集中在 2026-04 那一個月</b>,拿掉就由正轉負。🚨 累計測了 86 種變體,採用的只有 2 個。', s: 'V73.2.0 / V73.2.1 / V73.2.2' },
     ],
     method: [
+      { t: '🧪 兩個外部專案怎麼評(XQ 選股腳本集 4,748 支 / twstock-research 研究儀表板)', n: '借 2 個方法、0 個分數', d: '使用者 2026-09-01 上傳兩個 zip,問「選股策略有沒有優化、把優點加進來」。先掃結構再讀:<br><b>① XQStrategy</b>:4,748 支 .xs 全是同一種殼 —— <code>if GetField("欄位") &gt; X then ret=1</code>,是 XQ 付費軟體的<b>欄位目錄</b>,零回測、零策略。它列的欄位(借券、當沖張數、內外盤大單、分公司家數、關鍵券商、籌碼鎖定率…)多數本站<b>沒有免費資料源</b>;有的(投信連買、主力 N 日合計、振幅連續 N 天)本站 170 條選股條件已涵蓋(fdays/tdays/streak)。<b>結論:沒有可直接優化的東西</b>,⛔ 別為了「補齊欄位」去接付費源。<br><b>② twstock-research</b>(FastAPI + Next.js + SQLite,跟散戶救星很像):多因子短/中/長評分、8 個雷達策略、ATR/Chandelier 出場、除權息回測、FIFO 損益、資料品質。⛔ <b>不借的</b>:它的權重 0.20/0.60/0.20 與門檻 65/50 是人訂的(它自己的 reviewer 也警告不可再推),雷達策略是分數門檻 = 陷阱 #38 同族;它自己誠實寫「回測 2 年來多數股票 Alpha 為負」。✅ <b>借的</b>:(a) 對自己的分數做 forward-return <b>rank IC + Newey-West CI</b> —— 拿來驗釣魚池分數,當場把「加總排序」打掉(見「實測沒用」欄);(b) 產業 treemap 熱力圖版面(磚=成交額、色=漲跌),做進板塊輪動總覽,⛔ 只當事實描述。<br>⏳ <b>它有、本站沒有的資料</b>:除權息紀錄(它拿 FinMind 配息 + yfinance 還原價)→ 已寫探針 div_probe 去問資料源,見「還測不了」欄。⏳ Chandelier 3×ATR 出場正在用正式配置對比(ma5 / chand3 / chand2)。<br>⭐ 通則(第 18 次外部評估):<b>先問「它有沒有我沒有的資料」,再問「它的方法有沒有我沒做的檢定」,最後才看它的分數</b> —— 分數幾乎一定是人訂的,方法與資料才可能是真的收穫。', s: 'scripts/fish_score_ic_probe.py' },
       { t: '📏 比「長期投資」策略時,一定要印「錢在市場的比例」', n: '低回撤有一半是沒進場', d: '這一輪踩到三件事,每一件都會讓結論變好看:<br>① 🚨 <b>「中途賠得少」要先問「錢在不在市場」</b> —— 跌破月線就賣的版本回撤從 −45.7% 降到 −30.1%,但它<b>只有 58% 的時間有部位</b>。把錢放定存回撤是 0,那不是本事。→ 探針每一列都印「在市場」,而且是用<b>持股市值 ÷ 總資產</b>算的,⛔ 不是「有沒有持股的天數」(定期定額幾乎天天有持股,但錢是慢慢餵進去的,只數天數會被算成 100%)。<br>② 🚨 <b>「等它回落 30% 才一次全押」看起來是全表最好的</b>(台積電 <b>405 萬</b> > 買了放著 348 萬;0050 <b>303 萬</b> > 241 萬)—— ⛔ 但它在 5.5 年裡<b>只觸發過一次</b>(2022 那次大跌)。<b>樣本 = 1</b> 等於「事後知道那年會跌」,⛔ 不是策略。同一族的「等站上年線才進場」反而<b>比較差</b>(297 萬 < 348 萬)。<br>③ 🐛 <b>探針自己的 bug</b>:定期定額那條第一版<b>沒有把現金扣掉</b> → 權益變成「本金 + 持股市值」,淨賺整整灌水 100 萬(337 萬 → 實際只有 <b>238 萬</b>),而且數字<b>看起來完全合理</b>。⭐ 通用:改「錢怎麼流動」的模式時,一定要檢查<b>花錢那一端有沒有跟著減少</b>(同 0050 七種買法那次的「只改了記帳、沒改到行為」)。', s: 'hold_switch_probe.mjs・V74.3.2' },
       { t: '🚨 基準的數字「物理上不可能」就是資料壞了,⛔ 不是策略很強', n: '0050 −10% 配大盤 +206%', d: '把 2021 起的深歷史接到既有 K 線前面之後,回測印出「<b>0050 買進持有 −10.32%</b>」配「<b>加權指數 +206.11%</b>」—— 0050 幾乎就是追大盤,這個組合<b>物理上不可能</b>,一眼就知道是基準壞了(而不是「這段行情 0050 剛好很爛」)。真因:0050 分割時<b>停牌 8 天</b>,而採礦端的分割還原有一道「隔太多天就不當成分割」的守門 → 兩段價格用了<b>不同的尺</b>,接縫處出現 ×0.25 的斷崖。<br>⭐ 正解是<b>用重疊 3 年的中位比值把尺標對齊</b>(實測 580 檔需要調),⛔ 不去動採礦機的守門;而且要加一道「<b>合併後仍有斷崖就整檔不寫</b>」(129 檔因此維持短窗口)—— ⭐ 寧可窗口短,也<b>不可以讓壞掉的價格進到回測母體</b>。<br>⭐⭐ 通用:<b>每次換資料源都要先看「已知答案的那個東西」對不對</b>(0050 vs 大盤、買進持有 vs 指數),⛔ 不要直接看策略賺多少。', s: 'merge_deep_klines.mjs・V74.4.5' },
       { t: '⚖️ 資金設定會翻轉穩健性判定', n: '同一變體、兩種答案', d: '出場換 trail8 那次:每筆 <b>10 萬</b>(資金使用率 44%,沒有排擠)→ 六關<b>全過</b>(去最好月 +30.6 萬、逐年全正);每筆 <b>15 萬</b>(正式配置,錢常用完)→ <b>去最好月轉負、兩年為負</b>。⭐ 資金會排擠 → 挑到的單子不同 → edge 整個變樣。⛔ 回測變體一律要用<b>正式配置</b>做最終判定,寬鬆配置的全過不算數。', s: 'portfolio_backtest.mjs・V74.4.4' },
@@ -2116,7 +2139,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.3.6',
+  VER: 'V74.3.7',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -2302,6 +2325,7 @@ const PRO = {
     this.renderRot();
   },
   async renderRot() {
+    this._rotTreemap();           // 🗺️ 只靠 screener.json;⛔ 不等 sector_rot(它沒產出時這張仍要有)
     const J = await this.fetchJson('data/sector_rot.json');
     const wrap = document.getElementById('rotRace');
     if (!J || !J.days || !J.days.length || !J.ind) {
@@ -3130,6 +3154,61 @@ const PRO = {
       + (live ? '' : ' <span style="color:var(--amber)">⏳ 歷史載入中(先顯示最新一天)</span>');
   },
   // ⭐ 四象限計數 —— 這一天市場的樣子(⛔ 只做描述,不下多空)
+  // ── 🗺️ 產業熱力圖(squarified treemap,手刻 ~60 行,⛔ 不為這個載 d3)──────
+  // 磚面積 = 該產業「今天」成交額合計(億);顏色 = 成交額加權今日漲跌(紅漲綠跌 = 方向,燈號鐵則 OK)。
+  // ⚠️ 母體 = screener 有官方產業別的**上市**股(約 1,088 檔;證交所 33 大類不涵蓋上櫃),卡上要寫。
+  // ⛔ 它是事實描述(錢在哪、誰在漲),⛔ 不是輪動訊號 —— 實測有邊際的是 20 日動能,不是「今天誰成交多」。
+  async _rotTreemap() {
+    const box = document.getElementById('rotTree'); if (!box) return;
+    const scr = await this.fetchJson('data/screener.json');
+    if (!scr || !scr.rows || !scr.cols || !scr.ind) { box.innerHTML = ''; return; }
+    const iAmt = scr.cols.indexOf('amt'), iChg = scr.cols.indexOf('chg'), iEtf = scr.cols.indexOf('etf');
+    const agg = {};
+    for (const [sym, r] of Object.entries(scr.rows)) {
+      const ind = scr.ind[sym]; if (!ind || !Array.isArray(r) || r[iEtf] === 1) continue;
+      const amt = r[iAmt], chg = r[iChg]; if (!Number.isFinite(amt) || !Number.isFinite(chg) || amt <= 0) continue;
+      const g = agg[ind] || (agg[ind] = { n: ind, amt: 0, w: 0, k: 0 });
+      g.amt += amt; g.w += chg * amt; g.k++;
+    }
+    const items = Object.values(agg).filter(g => g.amt > 0).map(g => ({ ...g, chg: g.w / g.amt })).sort((a, b) => b.amt - a.amt);
+    if (items.length < 5) { box.innerHTML = ''; return; }
+    const W = 340, H = 300, total = items.reduce((a, g) => a + g.amt, 0);
+    // squarified(Bruls et al.):每一列放到「長寬比最接近 1」為止
+    const rects = []; let x = 0, y = 0, w = W, h = H, row = [], rowSum = 0;
+    const worst = (row, sum, side) => { const s2 = side * side, sum2 = sum * sum; let mx = 0, mn = Infinity; for (const a of row) { mx = Math.max(mx, a); mn = Math.min(mn, a); } return Math.max(s2 * mx / sum2, sum2 / (s2 * mn)); };
+    const layout = (row, sum) => {
+      // 🐛 第一版寫反(w<h 時沿 y 排、長度卻用 w 算)→ 磚排不滿、最後幾磚被壓成 0(測試 🗺️b 抓到)。
+      //    正解:區域「比較寬」就切一條**直的**(磚沿 y 疊,總長 = h、厚度 = sum/h),反之切橫的。
+      const vert = w > h;
+      const side = vert ? h : w, thick = sum / side;
+      let off = 0;
+      for (const it of row) { const len = it.a / thick; rects.push(vert ? { it, x, y: y + off, w: thick, h: len } : { it, x: x + off, y, w: len, h: thick }); off += len; }
+      if (vert) { x += thick; w -= thick; } else { y += thick; h -= thick; }
+    };
+    const areas = items.map(g => ({ ...g, a: g.amt / total * W * H }));
+    for (const it of areas) {
+      const side = Math.min(w, h);
+      if (row.length && worst(row.map(r => r.a).concat(it.a), rowSum + it.a, side) > worst(row.map(r => r.a), rowSum, side)) { layout(row, rowSum); row = []; rowSum = 0; }
+      row.push(it); rowSum += it.a;
+    }
+    if (row.length) layout(row, rowSum);
+    const col = c => { const t = Math.min(1, Math.abs(c) / 3); return c > 0 ? `rgba(255,107,107,${0.18 + 0.6 * t})` : c < 0 ? `rgba(74,222,128,${0.18 + 0.6 * t})` : 'rgba(143,163,187,.25)'; };
+    const codeOf = {}; for (const [c, n] of Object.entries(this.IND_NAME)) { codeOf[n] = c; for (const a of (this.IND_ALIAS[c] || [])) codeOf[a] = c; }
+    const esc = t => String(t).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+    const cells = rects.map(r => {
+      const big = r.w > 46 && r.h > 26, mid = r.w > 30 && r.h > 16, code = codeOf[r.it.n] || '';
+      return `<g class="cell" onclick="${code ? `PRO.rotOpen('${code}')` : ''}">
+        <rect x="${r.x.toFixed(1)}" y="${r.y.toFixed(1)}" width="${Math.max(0, r.w - 1).toFixed(1)}" height="${Math.max(0, r.h - 1).toFixed(1)}" rx="3" fill="${col(r.it.chg)}" stroke="#0b1622" stroke-width="1"><title>${esc(r.it.n)}:成交額 ${r.it.amt.toFixed(0)} 億(${(r.it.amt / total * 100).toFixed(1)}%)・加權漲跌 ${r.it.chg >= 0 ? '+' : ''}${r.it.chg.toFixed(2)}%・${r.it.k} 檔</title></rect>
+        ${mid ? `<text x="${(r.x + r.w / 2).toFixed(1)}" y="${(r.y + r.h / 2 + (big ? -2 : 4)).toFixed(1)}" text-anchor="middle" font-size="${big ? 11 : 9}" font-weight="700" fill="#eaf2fb">${esc(r.it.n)}</text>` : ''}
+        ${big ? `<text x="${(r.x + r.w / 2).toFixed(1)}" y="${(r.y + r.h / 2 + 11).toFixed(1)}" text-anchor="middle" font-size="10" fill="#dbe7f3">${r.it.chg >= 0 ? '+' : ''}${r.it.chg.toFixed(1)}%</text>` : ''}
+      </g>`;
+    }).join('');
+    const up = items.filter(g => g.chg > 0).length;
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="產業熱力圖">${cells}</svg>
+      <div class="note" style="margin:4px 0 0">🗺️ <b>今天錢在哪</b>:磚面積 = 該產業今日成交額(合計 ${total.toFixed(0)} 億)、顏色 = 成交額加權漲跌(<span style="color:#ff6b6b">紅漲</span>/<span style="color:#4ade80">綠跌</span>,只表方向);${up}/${items.length} 個產業收紅。點磚 → 板塊明細。
+      ⚠️ 母體是 screener 有官方產業別的<b>上市</b>股(證交所 33 大類不含上櫃);⛔ 「今天誰成交多」<b>不是</b>輪動訊號 —— 實測有邊際的是下面的 20 日動能,這張只是事實描述。資料日 ${scr.data_date || '—'}。</div>`;
+  },
+
   _rotQuad(list) {
     const box = document.getElementById('rotQuad');
     if (!box) return;

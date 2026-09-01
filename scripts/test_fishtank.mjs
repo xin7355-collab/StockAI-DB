@@ -66,7 +66,11 @@ ok('🏅 data/scr_edge.json 與 index.html 的 _SCR_EDGE/_SCR_CONDS 一致(⛔ �
 ok('🏅b pro.html 讀 data/scr_edge.json,⛔ 不在頁面裡寫第二份成績或條件', /fetchJson\('data\/scr_edge\.json'\)/.test(seg('_fishData')) && !/nh252:|limup:|poshi:/.test(NC));
 ok('🏅c 分數只用「測過的」條件(沒成績的不計)', /if \(!e\) continue/.test(seg('_fishScore')));
 ok('🏅d 門檻跟 index.html 的 _scrEdgeTag 同一組(±0.3pp)', /pp >= 0\.3/.test(seg('_fishScore')) && /pp <= -0\.3/.test(seg('_fishScore')));
-ok('🏅e 文案必寫「不是勝率」「加總會高估,只拿來排序」+ 對照組數字', /不是勝率/.test(seg('_fishScoreHtml')) && /加總會高估/.test(seg('_fishScoreHtml')) && /隨便挑一天本身是/.test(seg('_fishScoreHtml')));
+// 🚨 V74.3.7 IC 探針之後改口:加總實測排不出順序 → 卡上必須寫 IC 數字 + 「別當排名」,⛔ 不可再寫「只拿來排序」
+ok('🏅e 文案必寫「不是勝率」+ IC 實測「排不出順序」+「別當排名」+ 對照組數字',
+   /不是勝率/.test(seg('_fishScoreHtml')) && /排不出順序/.test(seg('_fishScoreHtml')) && /別當排名/.test(seg('_fishScoreHtml')) && /隨便挑一天本身是/.test(seg('_fishScoreHtml')) && !/只拿來排序/.test(seg('_fishScoreHtml')));
+ok('🏅e2 IC 數字從 _FISH_IC 常數讀(⛔ 不可在文案裡寫死)', /_FISH_IC\.ic/.test(seg('_fishScoreHtml')) && /_FISH_IC: \{/.test(src) && /src: 'scripts\/fish_score_ic_probe\.py'/.test(src));
+ok('🏅e3 池子名稱不可再叫「最強」(它排不出順序)', !/n: '🏅 實測體質最強'/.test(src) && /符合最多實測條件/.test(src));
 ok('🏅f 說明明寫「不是憑空加權的綜合評分」', /不是憑空加權/.test(seg('_fishNote')));
 ok('🏅g 沒有人訂的係數(⛔ 不可出現 ×0.6 / *0.4 那種權重)', !/\*\s*0\.[0-9]\s*\+|× ?0\.[0-9]/.test(noCmt(seg('_fishScore'))));
 // ═══ 🧺 漁獲籃 ═══
@@ -187,6 +191,20 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE }) => {
   PRO._cache['data/screener.json'] = null; PRO._fishD = null;
   await PRO.renderFish(); await sleep(100);
   out.noData = document.getElementById('fishMsg').innerText;
+  // 🗺️ 產業熱力圖(V74.3.7):只靠 screener;面積要照成交額、顏色只表方向、點磚能開板塊明細
+  PRO._cache['data/screener.json'] = SCR;     // ⚠️ 上一段為了驗「資料不在」把它清掉了 → 這裡要放回
+  await PRO._rotTreemap(); await sleep(50);
+  const tb = document.getElementById('rotTree');
+  const rects = [...tb.querySelectorAll('rect')].map(r => ({ w: +r.getAttribute('width'), h: +r.getAttribute('height'), t: r.querySelector('title').textContent }));
+  out.treeN = rects.length;
+  out.treeArea = rects.reduce((a, r) => a + (r.w + 1) * (r.h + 1), 0) / (340 * 300);
+  const byAmt = rects.map(r => ({ area: (r.w + 1) * (r.h + 1), amt: +(r.t.match(/成交額 (\d+)/) || [0, 0])[1] })).sort((a, b) => b.amt - a.amt);
+  // 只比成交額前 10 名(小磚只有幾 px,四捨五入的相對誤差會超過任何合理容忍)
+  out.treeMono = byAmt.slice(0, 10).every((r, i, a) => i === 0 || a[i - 1].area >= r.area * 0.95);
+  out.treeDbg = byAmt.slice(0, 6).map(r => [r.amt, Math.round(r.area)]);
+  out.treeClick = !!tb.querySelector('g[onclick*="rotOpen"]');
+  out.treeTxt = tb.innerText;
+  out.treeNoLamp = !/[🔴🟢]/u.test(tb.innerHTML);
   // 📐 橫版鐵則(CLAUDE.md):8 顆分頁鈕在 390 寬曾爆 12px 橫向溢出(V74.3.5 抓到)→ 每個分頁都量
   out.overflow = {};
   for (const [k] of PRO.TABS) { PRO.switchTab(k); window.scrollTo(80, 0); out.overflow[k] = window.scrollX; }
@@ -231,6 +249,11 @@ ok('⑦ 停在很久以前的資料 → ⚠️ 資料未更新', /資料未更�
 ok('⑦b 2 天前的資料不誤報(週末守門)', R.fresh === '', R.fresh);
 ok('⑥c 資料不在 → 誠實說「還沒產出」+「不是壞掉」', /還沒產出/.test(R.noData) && /不是這個功能壞掉/.test(R.noData), R.noData);
 ok('📐 390 寬 8 個分頁都無橫向溢出(scrollX ≤ 2)', Object.values(R.overflow).every(v => v <= 2), JSON.stringify(R.overflow));
+ok('🗺️ 熱力圖:磚數 ≥5、鋪滿畫布(≥85%)', R.treeN >= 5 && R.treeArea >= 0.85, `n=${R.treeN} area=${R.treeArea.toFixed(2)}`);
+ok('🗺️b 磚面積跟成交額同向(大的不可比小的小)', R.treeMono, JSON.stringify(R.treeDbg));
+ok('🗺️c 點磚 → 板塊明細(rotOpen)', R.treeClick);
+ok('🗺️d 文案:今天錢在哪 + 「不是輪動訊號」+ 只含上市', /今天錢在哪/.test(R.treeTxt) && /不是.{0,3}輪動訊號/.test(R.treeTxt) && /上市/.test(R.treeTxt), R.treeTxt.slice(0, 120));
+ok('🗺️e ⛔ 不用 🔴🟢 emoji(顏色只在磚上,文字色紅漲綠跌)', R.treeNoLamp);
 ok('💥 沒有未攔截的 JS 錯誤', errs.length === 0, errs.join(' | '));
 
 await browser.close();
