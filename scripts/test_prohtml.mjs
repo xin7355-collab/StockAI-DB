@@ -1102,6 +1102,43 @@ ok('㊷f ⛔ 對照組不是 0 也不是 50% —— 要把它寫出來',
 ok('㊷g ⚠️ 要誠實說「八格沒有一格通過逐年同向」(⛔ 不可只講對自己有利的那半)',
    /沒有一格.{0,12}逐年同向/.test(T.sbTxt) && /比較用/.test(T.sbTxt), T.sbTxt.slice(-320));
 
+// ═══ ㊸ V74.3.3 使用者截圖:實測總表在手機上「標題被壓成一個字一行」 ═══
+//   真因:.ln(右邊那串數字)原本 flex:0 0 auto = 永遠不縮 → 把寬度吃光。
+//   ⛔ 這條一定要在**手機寬度**量(430 寬塞得下 → 三條斷言全部假通過,陷阱 #40)。
+await page.setViewportSize({ width: 360, height: 900 });
+const LAY = await page.evaluate(() => {
+  PRO.switchTab('lab'); PRO.selLab('ok');
+  const rows = [...document.querySelectorAll('#labList .labitem')].map(e => {
+    const lt = e.querySelector('.lt');
+    const lh = parseFloat(getComputedStyle(lt).lineHeight) || 18;
+    return { w: lt.getBoundingClientRect().width,
+             lines: Math.round(lt.getBoundingClientRect().height / lh) };
+  });
+  // 📌 「怎麼操作」與方向標籤(使用者:「區分做多及做空」「操作買賣都要講清楚」)
+  document.querySelectorAll('#labList .labitem').forEach(e => { e.open = true; });
+  const n = PRO.LAB.ok.length;
+  return { minW: Math.min(...rows.map(r => r.w)), maxLines: Math.max(...rows.map(r => r.lines)),
+           noW: PRO.LAB.ok.filter(x => !x.w).length,
+           noHow: PRO.LAB.ok.filter(x => !x.how).length, n,
+           badges: document.querySelectorAll('#labList .labitem .lw').length,
+           hows: document.querySelectorAll('#labList .labitem .lhow').length,
+           txt: document.getElementById('labList').innerText,
+           // ⛔ 「避雷」不可被畫成「做空」(兩件事完全不同)
+           avoidCls: PRO._wCls('避雷(先決條件)'), longCls: PRO._wCls('做多(佐證)'),
+           neuCls: PRO._wCls('長期配置') };
+});
+await page.setViewportSize({ width: 430, height: 900 });
+ok('㊸ 📱 手機寬度下標題不可被擠成一條窄柱(⛔ 這是使用者截圖回報的)',
+   LAY.minW >= 150 && LAY.maxLines <= 3, `minW=${Math.round(LAY.minW)} maxLines=${LAY.maxLines}`);
+ok('㊸b 🏷️ 每一條「實測有用」都要標**做多/做空/避雷/配置**(使用者:「區分做多及做空」)',
+   LAY.noW === 0 && LAY.badges === LAY.n, `noW=${LAY.noW} badges=${LAY.badges}/${LAY.n}`);
+ok('㊸c 📌 每一條都要有「怎麼操作」(使用者:「實測有用的操作買賣都要講清楚」)',
+   LAY.noHow === 0 && LAY.hows === LAY.n, `noHow=${LAY.noHow} hows=${LAY.hows}/${LAY.n}`);
+ok('㊸d ⛔ 「避雷」不可被當成「做空」上色(避雷=減碼/不做,兩件事完全不同)',
+   LAY.avoidCls === 'avoid' && LAY.longCls === 'long' && LAY.neuCls === 'neu',
+   [LAY.avoidCls, LAY.longCls, LAY.neuCls]);
+ok('㊸e 🚨 「避雷」那幾條的操作說明必須寫明「不是放空訊號」',
+   (LAY.txt.match(/不是放空訊號/g) || []).length >= 2, LAY.txt.length);
 
 await browser.close();
 
