@@ -42,6 +42,11 @@ const errs = [];
 page.on('pageerror', e => { const t = (e && e.message) ? e.message : String(e); if (!benign(t)) errs.push(t); });
 await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof app !== 'undefined' && !!app.renderKbarTactics, null, { timeout: 20000 });
+// 🧭 V74.2.2 K線頁改總覽邏輯:卡片收進 <details id="chartMoreWrap">(**原生**隱藏,不靠 CSS)。
+//   ⚠️ 收起狀態下 `innerText` 退化成 textContent(元素沒被渲染)→ ⑤ 的片語比對會失準,
+//   全市場掃描從「掃幾檔就命中」變成掃完 2,600 檔 = 超時。這裡先把摺疊打開,
+//   還原「讀渲染後文字」的語意(⛔ 這是測試環境的還原,不代表正式環境預設打開)。
+await page.evaluate(() => { const d = document.getElementById('chartMoreWrap'); if (d) d.open = true; });
 
 const rows = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/2327.json'), 'utf8'));
 

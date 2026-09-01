@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.2.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.2.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.2.2 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1862,32 +1862,46 @@
 
 <div id="subContentChart" class="hidden flex-col gap-2 mt-2 px-2 md:px-4 min-h-[65vh]">
 
-                <!-- 📈 K線怎麼看：V43.7 折疊(details,預設收合) -->
-                <details id="onboard_kline" class="onboard-panel bg-amber-900/15 border border-amber-700/40 rounded-lg text-[11px] leading-relaxed text-gray-300">
-                    <summary class="font-black text-amber-200 p-3 cursor-pointer select-none list-none flex items-center justify-between">
-                        <span>📈 K 線怎麼看（朱家泓／林穎 4 要素順序）</span>
-                        <span class="text-[9px] text-gray-500 font-normal">▾ 點開教學</span>
+                <!-- 🧭 V74.2.2 K線頁改用「總覽邏輯」(使用者:「K線頁面我也要用總覽邏輯做」):
+                     第一眼只留 ① 一句話結論(klineLead,由 renderKbarTactics 同步渲染,跟卡片同一份資料
+                     = 不產生第二份真相)② 條件觸發的風險/告警 ③ K線圖本體;
+                     朱老師總評/六脈/K棒戰法全部收進「更多解讀」摺疊 —— ⛔ 一張卡、一個字都沒刪
+                     (同 V72.4.7 總覽對五張卡的處置)。 -->
+                <div id="klineLead" class="hidden w-full"></div>
+                <!-- 🏋️ V44.1 — 權值股超跌反彈告警(只在權值股跌≥25%才顯)。
+                     🚨 刻意留在摺疊外 —— 風險/告警類⛔ 不可收(多空不對稱鐵則:漏看的代價比多看一眼大)。 -->
+                <div id="heavyReboundCard" class="hidden"></div>
+                <details id="chartMoreWrap" class="w-full bg-[#161b22] border border-[#30363d] rounded-lg">
+                    <summary class="cursor-pointer select-none px-3 py-2.5 text-[12px] font-bold text-gray-300 flex items-center justify-between">
+                        <span>📖 更多解讀 <span class="text-[9px] text-gray-500 font-normal">朱老師總評・六脈共振・K棒戰法・教學</span></span>
+                        <span class="text-[9px] text-gray-500 font-normal">結論以上面那行為準 ▾</span>
                     </summary>
-                    <div class="flex flex-col gap-1 px-3 pb-3">
-                        <div><b class="text-white">①趨勢</b>：頭頭高+底底高=多頭、頭頭低+底底低=空頭、其餘=盤整。先定方向再進場。</div>
-                        <div><b class="text-white">②均線</b>：🟡5MA(短) 🟢10MA(中) 🟧20MA(月線・多空分水嶺,站上多/跌破空) 🔵60MA(季線・大波段命脈)。</div>
-                        <div><b class="text-white">③K線</b>：紅柱=收漲、綠柱=收跌；長紅長黑看力道、變盤線(十字/紡錘)看轉折、夜星/晨星/吞噬看反轉。</div>
-                        <div><b class="text-white">④量</b>：量增配長紅才有效突破；爆量隔天黑K留意假突破出貨。</div>
-                        <div class="text-gray-500 mt-0.5">👉 上方「🗣️ 朱老師這樣看」就是用這套朱／林角度,純公式偵測好型態後自動幫你判讀。</div>
+                    <div class="flex flex-col gap-2 px-2 pb-2">
+                        <!-- 🗣️ V62.3 朱老師這樣看 + 主升段體檢 合併為一張卡(scroll-snap 目標,滑動會卡住) -->
+                        <div id="chuMergedCard" class="flex flex-col gap-1 kline-snap">
+                            <div id="chuVerdictCard" class="hidden"></div>
+                            <div id="sixMeridianCard" class="hidden"></div>
+                            <!-- 📐 V72.5.6 K棒戰法(型態訊號 + `_SIGNAL_EDGE` 實測勝率)從 總覽→出場→摺疊區 搬回這裡。
+                                 ⭐ 這才是它該在的地方:它解讀的就是上面那張 K 線圖,卡片自己的結論句也寫「這頁只負責解讀 K 線」。 -->
+                            <div id="kbarTacticsHead" class="hidden items-center justify-between px-1 pt-1"><span class="text-[11px] font-bold text-gray-300 flex-shrink-0">📐 K棒戰法 <span class="text-[9px] text-gray-600 font-normal">型態訊號・實測勝率</span></span><span id="lightKbar" class="text-[11px] font-bold text-gray-500 truncate">—</span></div>
+                            <div id="kbarHalfTactics" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3"></div>
+                        </div>
+                        <!-- 📈 K線怎麼看：V43.7 折疊(V74.2.2 移進「更多解讀」,教學排最後) -->
+                        <details id="onboard_kline" class="onboard-panel bg-amber-900/15 border border-amber-700/40 rounded-lg text-[11px] leading-relaxed text-gray-300">
+                            <summary class="font-black text-amber-200 p-3 cursor-pointer select-none list-none flex items-center justify-between">
+                                <span>📈 K 線怎麼看（朱家泓／林穎 4 要素順序）</span>
+                                <span class="text-[9px] text-gray-500 font-normal">▾ 點開教學</span>
+                            </summary>
+                            <div class="flex flex-col gap-1 px-3 pb-3">
+                                <div><b class="text-white">①趨勢</b>：頭頭高+底底高=多頭、頭頭低+底底低=空頭、其餘=盤整。先定方向再進場。</div>
+                                <div><b class="text-white">②均線</b>：🟡5MA(短) 🟢10MA(中) 🟧20MA(月線・多空分水嶺,站上多/跌破空) 🔵60MA(季線・大波段命脈)。</div>
+                                <div><b class="text-white">③K線</b>：紅柱=收漲、綠柱=收跌；長紅長黑看力道、變盤線(十字/紡錘)看轉折、夜星/晨星/吞噬看反轉。</div>
+                                <div><b class="text-white">④量</b>：量增配長紅才有效突破；爆量隔天黑K留意假突破出貨。</div>
+                                <div class="text-gray-500 mt-0.5">👉 上方「🗣️ 朱老師這樣看」就是用這套朱／林角度,純公式偵測好型態後自動幫你判讀。</div>
+                            </div>
+                        </details>
                     </div>
                 </details>
-
-                <!-- 🏋️ V44.1 — 權值股超跌反彈告警(只在權值股跌≥25%才顯) -->
-                <div id="heavyReboundCard" class="hidden"></div>
-                <!-- 🗣️ V62.3 朱老師這樣看 + 主升段體檢 合併為一張卡(scroll-snap 目標,滑動會卡住) -->
-                <div id="chuMergedCard" class="flex flex-col gap-1 kline-snap">
-                    <div id="chuVerdictCard" class="hidden"></div>
-                    <div id="sixMeridianCard" class="hidden"></div>
-                    <!-- 📐 V72.5.6 K棒戰法(型態訊號 + `_SIGNAL_EDGE` 實測勝率)從 總覽→出場→摺疊區 搬回這裡。
-                         ⭐ 這才是它該在的地方:它解讀的就是上面那張 K 線圖,卡片自己的結論句也寫「這頁只負責解讀 K 線」。 -->
-                    <div id="kbarTacticsHead" class="hidden items-center justify-between px-1 pt-1"><span class="text-[11px] font-bold text-gray-300 flex-shrink-0">📐 K棒戰法 <span class="text-[9px] text-gray-600 font-normal">型態訊號・實測勝率</span></span><span id="lightKbar" class="text-[11px] font-bold text-gray-500 truncate">—</span></div>
-                    <div id="kbarHalfTactics" class="hidden w-full bg-[#0d1117] border border-[#30363d] rounded-lg p-3"></div>
-                </div>
                 <!-- 🎛️ V61.9 K線圖表卡 sticky 圖釘 + V62.3 scroll-snap 吸附點(滑到這會卡住/回彈) -->
                 <!-- 🎛️ V68.0.8 K線圖表卡:移除外框/內距、-mx 抵消父層 px 讓圖表「邊到邊」變大(對標籌碼K線);sticky 圖釘保留 -->
                 <div class="panel w-full flex flex-col bg-[#000000] overflow-hidden sticky top-0 z-20 kline-snap -mx-2 md:-mx-4">
@@ -7404,8 +7418,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.2.1',
+    _APP_VERSION: 'V74.2.2',
     _CHANGELOG: [
+        { v: 'V74.2.2', dt: '2026-09-01', d: ['K線頁改用總覽的版面邏輯:第一眼只留「一句話結論 + K線圖」,朱老師總評/六脈共振/K棒戰法收進「📖 更多解讀」摺疊(一張卡、一個字都沒刪,點開就有)', '風險提醒不因摺疊而消失:頁首會直接列出風險的標題;六脈亮「強共振」(唯一實測六關全過的複合訊號)時頁首也會露一行', '權值股超跌告警維持在摺疊外(告警類永遠不收)'] },
         { v: 'V74.2.1', dt: '2026-09-01', d: ['刪除的收尾:功能總覽不再列出已刪的「盤中連量偵測」、已刪卡片的教學條目一併移除(⛔ 說明書不可介紹一個不存在的功能)'] },
         { v: 'V74.2.0', dt: '2026-09-01', d: ['雜訊清洗收尾:沒用的直接刪除 —— 4 個實測沒用的功能整段移除(隔日沖勝率回測、法人推估成本卡、5日訊號準確度排行、盤中連量偵測)', '刪之前把最後一個懸念驗掉:隔日沖全市場重驗(2,329 檔)——「隔天盤中碰到 +1.5%」機率 58~72% 是真的,但照做得到的方式出場、扣掉當沖成本後三種型態全部是負的 → 碰得到不等於賺得到', '當沖作戰室解除收起:剩下的內容(期貨夜盤、正逆價差、隔日沖風險判讀)是誠實描述,留著', '每一筆刪除的依據都記在產業作戰室的實測總表'] },
         { v: 'V74.1.9', dt: '2026-09-01', d: ['六脈共振卡驗完**加回來了**(驗到有用就加回來的第一個實例):全市場 5.6 萬次實測,「強共振」那級之後 20 日贏隨便挑一天 +0.80 個百分點、六道關卡全過', '但只有紅燈那級有用 —— 黃燈「試單」級實測 ≈ 0,卡上已改口不再叫人試單', '實測成績直接寫在卡上'] },
@@ -19942,7 +19957,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 📐 V72.5.6 標題列(#kbarTacticsHead)要跟卡片同步開關 —— 卡片沒訊號時整組收起,⛔ 不留孤兒標題
         const _kbHead = document.getElementById('kbarTacticsHead');
         const _kbShow = on => { if (!_kbHead) return; _kbHead.classList.toggle('hidden', !on); _kbHead.classList.toggle('flex', !!on); };
-        if (!Array.isArray(data) || data.length < 6) { el.classList.add('hidden'); _kbShow(false); return; }
+        // 🧭 V74.2.2 K線頁「總覽邏輯」:頁首一句話結論(#klineLead)由**本函式**同步渲染 ——
+        //   跟 K棒戰法卡吃同一份 sigs/good/risk(⛔ 不產生第二份真相,V72.6.0 頁首條鐵則②)。
+        //   完整卡片收在「更多解讀」摺疊裡,這條就是使用者第一眼看到的答案。
+        const _leadEl = document.getElementById('klineLead');
+        const _leadSet = html => { if (!_leadEl) return; if (!html) { _leadEl.classList.add('hidden'); _leadEl.innerHTML = ''; } else { _leadEl.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">${html}</div>`; _leadEl.classList.remove('hidden'); } };
+        if (!Array.isArray(data) || data.length < 6) { el.classList.add('hidden'); _kbShow(false); _leadSet(''); return; }
         const last = data.length - 1;
         const O = b => +((b?.open ?? b?.o) || 0), C = b => +((b?.close ?? b?.c) || 0),
               H = b => +((b?.high ?? b?.h) || 0), L = b => +((b?.low ?? b?.l) || 0), V = b => +((b?.volume ?? 0) || 0);
@@ -20038,6 +20058,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     + `<div class="bg-[#0d1117] border-l-2 border-[#8b949e] pl-2.5 py-1.5 rounded-r mb-2"><div class="text-[11px] text-gray-300 leading-relaxed">➖ K 棒這邊<b>今天一個型態訊號都沒偵測到</b> —— 沒有訊號就是「不做」,等它表態。</div></div>`
                     + _rg;
             } else { el.classList.add('hidden'); el.innerHTML = ''; _kbShow(false); }
+            // 🧭 沒訊號時頁首照樣給一句話 —— 「沒有訊號」本身就是這頁的結論,⛔ 不可留白讓人以為壞掉
+            _leadSet(`<div class="text-[9px] text-gray-500 font-bold mb-0.5">🧭 一句話結論</div>
+                <div class="text-[11px] text-gray-300 leading-relaxed">➖ K 棒今天<b>一個型態訊號都沒偵測到</b> —— 沒有訊號就是「不做」,等它表態。</div>
+                <div class="text-[9px] text-gray-600 mt-0.5">要買要賣的具體價位,以<b class="text-gray-500">總覽 →「現在怎麼做」</b>為準;細節在下面「📖 更多解讀」。</div>`);
             try { this._setLight('lightKbar', '無訊號'); } catch (_) {}
             return;
         }
@@ -20132,6 +20156,22 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="text-[9px] text-gray-600 mt-0.5">要買要賣的具體價位,以<b class="text-gray-500">總覽 →「現在怎麼做」</b>那張為準(這頁只負責解讀 K 線)。</div>
             </div>`;
         })();
+        // 🧭 V74.2.2 頁首一句話(總覽邏輯):同一份 _headline + 兩條**條件觸發**的補充。
+        //   ⚠️ 風險提醒收進摺疊會違反「多空不對稱」鐵則 → 頁首必須把風險**標題**列出來
+        //      (提醒已送達;細節點開摺疊看)——⛔ 只寫「有 N 條」不寫是什麼,等於沒提醒。
+        {
+            const _leadRisk = risk.length
+                ? `<div class="text-[10px] text-yellow-300 leading-snug mb-1">⚠️ 風險提醒 ${risk.length} 條:<b>${risk.slice(0, 3).map(s => String(s.title || '')).join('・')}</b>${risk.length > 3 ? ` …等 ${risk.length} 條` : ''} <span class="text-gray-500">(細節在「更多解讀」)</span></div>` : '';
+            // ⚔️ 六脈「強共振」是唯一六關全過的複合訊號(V74.1.9)—— 收進摺疊後,亮的時候要在頁首露一行
+            //   (條件觸發原則);⛔ 空頭時不露(_bearGate,講反話鐵則),⛔ 不下指令、只給實測數字。
+            let _leadSix = '';
+            try {
+                const v6 = this._sixMeridianCalc(data);
+                if (v6 && String(v6.verdict || '').startsWith('🔴') && !this._bearGate(this.currentSymbolId))
+                    _leadSix = `<div class="text-[10px] text-red-300 leading-snug mb-1">⚔️ 六脈共振亮「<b>強共振</b>」—— 全市場實測這一級之後 20 日贏「隨便挑一天」+0.80 個百分點(六關全過);細節在「更多解讀」。</div>`;
+            } catch (_) {}
+            _leadSet(_headline + _leadRisk + _leadSix);
+        }
         const _help = `<button onclick="event.stopPropagation();app._showEdgeHelp()" class="text-gray-600 hover:text-blue-300 text-[9px]">ⓘ 怎麼看</button>`;
         const rows = (good.length
             ? `<div class="text-[10px] text-red-300 font-bold mb-1 flex items-center gap-1">🎯 值得參考的進場訊號(${good.length})<span class="text-[9px] text-gray-500 font-normal">實測期望值為正</span>${_help}</div>`
