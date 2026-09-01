@@ -210,6 +210,35 @@ def main():
             worst = min(yrs.values())
             print(f"     逐年最差 {worst:+.3f}pp {'(全部同向 ✅)' if min(yrs.values()) > 0 else '(有年份反向 ❌)'}")
 
+    # ③ V74.3.3 使用者:「幫我回測開低、開平、開高的機率,與分數的比對」
+    #    ⭐ 桶用 **App 上顯示的 0~100 分**(sPct = 50 + s×5),⛔ 不用內部的 ±10 分 ——
+    #       使用者看到的是 50/100,拿內部分數報表他對不起來。
+    #    ⚠️ 「開平」的界線是**我訂的**(±0.3%),⛔ 不是市場定義 → 一併印 ±0.5% 版本讓它可被檢查。
+    print('\n═══ ③ 分數 vs 開低 / 開平 / 開高(⭐ 桶用 App 顯示的 0~100 分)═══')
+    PB = [('偏多 ≥65 分', lambda v: v >= 65), ('55 ~ 65', lambda v: 55 <= v < 65),
+          ('中性 45 ~ 55', lambda v: 45 <= v < 55), ('35 ~ 45', lambda v: 35 <= v < 45),
+          ('偏空 ≤35 分', lambda v: v < 35)]
+    for band in (0.3, 0.5):
+        print(f'  ── 開平的界線 = 跳空在 ±{band}% 以內 ──')
+        for name, f in PB:
+            sub = [r for r in rows if f(50 + r['s'] * 5)]
+            if len(sub) < 30:
+                print(f'    {name}: n={len(sub)} ⏳ 樣本不足')
+                continue
+            hi = sum(1 for r in sub if r['gap'] > band)
+            lo = sum(1 for r in sub if r['gap'] < -band)
+            fl = len(sub) - hi - lo
+            n = len(sub)
+            io = stats([r['io'] for r in sub])
+            print(f"    {name}: n={n:4d} ・開高 {hi/n*100:5.1f}% ・開平 {fl/n*100:5.1f}% ・開低 {lo/n*100:5.1f}%"
+                  f"  ⭐ 開盤買收盤賣 {io['avg']:+.3f}%")
+    # ⭐ 對照組:不看分數,單純「隨便挑一天」的開低開平開高比例 —— ⛔ 沒有它就不知道上面那些算不算高
+    for band in (0.3, 0.5):
+        hi = sum(1 for r in rows if r['gap'] > band)
+        lo = sum(1 for r in rows if r['gap'] < -band)
+        n = len(rows)
+        print(f"  (對照組・±{band}%)所有交易日:開高 {hi/n*100:.1f}% ・開平 {(n-hi-lo)/n*100:.1f}% ・開低 {lo/n*100:.1f}%")
+
     print('\n⚠️ 誠實限制(⛔ 不可省略):')
     print('   ① 這只是盤前體檢的**海外連動部分**(約一半權重)——'
           '外資期貨/現貨(~4分)、台指期夜盤(1.5)、大盤技術分數(2)、恐懼貪婪(0.5)**沒有歷史**,無法計分。')
@@ -217,6 +246,7 @@ def main():
     print('   ③ 一律用 T−1 的海外收盤預測 T 日台股(零前視);假日用最近一個有資料的日子。')
     print('   ④ ⛔ 分數高 ≠ 該買:這裡量的是「大盤開高/收紅的機率」,'
           '⛔ 不含任何個股選擇,也沒有扣交易成本。')
+    print('   ⑥ 「開平」的界線(±0.3% / ±0.5%)是**我訂的**,⛔ 不是市場定義 —— 換一個界線比例會變。')
     print('   ⑤ ⭐⭐ 「跳空」那欄有一大半是**同義反覆**(昨晚美股漲 → 台股本來就會開高)——'
           '真正的預測力要看「開盤買收盤賣」那一欄。')
     print('done', datetime.utcnow().isoformat() + 'Z')

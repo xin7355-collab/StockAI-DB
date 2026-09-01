@@ -45,13 +45,26 @@ const load = sym => {
 };
 
 // 🚧 斷崖守門(⛔ 沒有這條會跑出垃圾數字)
+// 🚨 V74.3.3 修:第一版**只看價格比值**,把「資料有大洞」誤判成斷崖 ——
+//    實測 006208 / 0051 / 0052 / 00692 在 `data/` 裡都留著一段 **2017 年的孤兒資料**,
+//    然後直接跳到 2023-06(中間 5.5 年沒有)→ 相鄰兩根差 1.5~2.2 倍是**正常的**(隔了 5 年半)。
+//    ⛔ 照第一版會把 006208(富邦台50,很多人買)這種好資料整檔排除掉。
+//    → 只有「相鄰兩根**在 10 個日曆天以內**」才算真的斷崖。
+const dayGap = (a2, b2) => Math.round((Date.parse(b2) - Date.parse(a2)) / 86400000);
 const cliffs = R => {
   const out = [];
   for (let i = 1; i < R.length; i++) {
     const r = R[i].c / R[i - 1].c;
-    if (r > 1.4 || r < 0.6) out.push(`${R[i].d}×${r.toFixed(2)}`);
+    if ((r > 1.4 || r < 0.6) && dayGap(R[i - 1].d, R[i].d) <= 10) out.push(`${R[i].d}×${r.toFixed(2)}`);
   }
   return out;
+};
+// ✂️ 只留「最後一段連續的資料」—— 中間有 >180 天的洞就從洞之後重新起算,
+//    ⛔ 否則年數會被那段孤兒資料灌水(006208 會被算成 9 年,實際可用只有 3.2 年)。
+const tail = R => {
+  let st = 0;
+  for (let i = 1; i < R.length; i++) if (dayGap(R[i - 1].d, R[i].d) > 180) st = i;
+  return { R: R.slice(st), cut: st > 0 ? R[st].d : null };
 };
 
 const UNIV = [
@@ -219,6 +232,69 @@ console.log('\n③ 核心衛星(混合)—— 把本金拆成兩份,各自跑再
     ['70% 0050 + 30% 合成正2 ⚠️', mix(core, satL, 0.7)],
     ['100% 台積電', sat],
   ]);
+}
+
+// ═══════════ ④ V74.3.3 ETF 全掃(使用者:「etf 幫我測」)═══════════
+// 🚨 ⛔ **不可**把這些併進上面的共同窗口 —— 多數 ETF 是 2022~2024 才上市,
+//    併進去會把「共同窗口」整段砍短,連台積電/0050 的結論都一起變樣。
+//    → 每一檔跑**它自己的最長歷史**,只比 **年化** 與 **逐年**,⛔ 不比總報酬。
+const ETF_NAMES = {
+  '0050': '台灣50', '0051': '中型100', '0052': '富邦科技', '0056': '高股息', '0057': '富邦摩台',
+  '006203': '元大MSCI台灣', '006208': '富邦台50', '00646': '元大S&P500', '00662': '富邦NASDAQ',
+  '00692': '富邦公司治理', '00713': '元大高息低波', '00728': '第一金工業30', '00757': '統一FANG+',
+  '00850': '元大臺灣ESG', '00878': '國泰永續高股息', '00881': '國泰台灣5G+', '00891': '中信關鍵半導體',
+  '00892': '富邦台灣半導體', '00895': '富邦未來車', '00900': '富邦特選高股息30', '00904': '新光臺灣半導體30',
+  '00909': '國泰數位支付', '00912': '中信臺灣智慧50', '00915': '凱基優選高股息30', '00919': '群益台灣精選高息',
+  '00922': '國泰台灣領袖50', '00923': '群益台ESG低碳50', '00929': '復華台灣科技優息',
+  '00935': '野村臺灣新科技50', '00939': '統一台灣高息動能', '00940': '元大台灣價值高息',
+  '00941': '中信上游半導體', '00946': '群益科技高息成長',
+};
+{
+  const rows = [];
+  const skipped = [], gapped = [];
+  for (const [sym, nm] of Object.entries(ETF_NAMES)) {
+    const R0 = load(sym);
+    if (!R0) { skipped.push(`${sym}(沒有資料)`); continue; }
+    const t = tail(R0), R = t.R;
+    if (R.length < 400) { skipped.push(`${sym}(只有 ${R.length} 天)`); continue; }
+    const cf = cliffs(R);
+    if (cf.length) { skipped.push(`${sym}(價格有斷崖 ${cf[0]})`); continue; }
+    if (t.cut) gapped.push(`${sym} 從 ${t.cut} 起算`);
+    // 🚧 每檔用自己的資料跑買進持有 —— 直接算,⛔ 不走 run()(那支綁共同窗口的 YRS)
+    const buyCost = 1 + FEE, sellCost = 1 - FEE - TAX_ETF;
+    const sh = CAP / (R[0].c * buyCost);
+    const eq = R.map(x => sh * x.c);
+    const finalV = eq[eq.length - 1] * sellCost / 1;      // 最後賣出扣一次稅費(跟上面口徑一致)
+    let peak = 0, mdd = 0;
+    for (const v of eq) { if (v > peak) peak = v; const dd = v / peak - 1; if (dd < mdd) mdd = dd; }
+    const yrs = R.length / 252;
+    const cagr = (Math.pow(finalV / CAP, 1 / yrs) - 1) * 100;
+    const yr = {};
+    for (const y of [...new Set(R.map(x => x.d.slice(0, 4)))]) {
+      const ii = []; for (let i = 0; i < R.length; i++) if (R[i].d.slice(0, 4) === y) ii.push(i);
+      if (ii.length < 20) continue;
+      const a2 = ii[0] === 0 ? CAP : eq[ii[0] - 1];
+      yr[y] = (eq[ii[ii.length - 1]] / a2 - 1) * 100;
+    }
+    rows.push({ sym, nm, from: R[0].d, yrs, cagr, mdd: mdd * 100, pnl: finalV - CAP, yr });
+  }
+  rows.sort((a2, b2) => b2.cagr - a2.cagr);
+  const ALLY = [...new Set(rows.flatMap(r => Object.keys(r.yr)))].sort();
+  console.log(`\n④ ETF 全掃(⚠️ 每一檔用**自己**的最長歷史 → ⛔ 只比年化與逐年,不比總報酬)`);
+  console.log(pad('代號 名稱', 24) + '  起算日' + '   年數' + '    年化' + '  最大回撤  '
+    + ALLY.map(y => y.slice(2).padStart(7)).join(''));
+  console.log('─'.repeat(24 + 34 + ALLY.length * 7));
+  for (const r of rows) {
+    console.log(pad(`${r.sym} ${r.nm}`, 24) + `  ${r.from}` + `  ${r.yrs.toFixed(1)}`.padStart(6)
+      + `  ${pc(r.cagr)}%`.padStart(9) + `  ${pc(r.mdd)}%`.padStart(10) + '  '
+      + ALLY.map(y => (r.yr[y] == null ? '    --' : pc(r.yr[y], 0)).padStart(7)).join(''));
+  }
+  if (skipped.length) console.log(`   🚧 排除:${skipped.join(' ・ ')}`);
+  if (gapped.length) console.log(`   ⚠️ 資料中間有大洞(留著一段很舊的孤兒資料)→ 只用洞之後那一段:${gapped.join(' ・ ')}`);
+  console.log('   ⚠️ ⛔ 這張表**不含配息**,而高股息 ETF 一年配 5~8% —— 0056/00878/00919/00929/00939/00940');
+  console.log('      那一族的真實報酬要**再加回配息**,⛔ 不可照這張表判定它們比較差。');
+  console.log('   ⚠️ 起算日不同 = **經歷的行情不同**:2023 後才上市的沒碰過 2022 那次空頭,');
+  console.log('      年化看起來高很正常,⛔ 不可跟 0050/0056 直接比。');
 }
 
 console.log('\n⚠️ 讀這份報告的規則');
