@@ -1,6 +1,7 @@
 name: 💰 除權息週採礦 (dividend_sweep)
 
-# 💰 V74.3.8:每週抓全市場除權息結果 + 未來除息日(FinMind 付費層,逐檔 2 次呼叫 ≈ 5,400 次 ≈ 55 分)。
+# 💰 V74.3.8:每週抓全市場除權息結果 + 未來除息日(FinMind 付費層,逐檔 2 次呼叫 ≈ 5,000 次)。
+# ⏱️ V74.4.1 實跑:2,514 檔 **97.0 分**(成功 1,912 ・沒有配息紀錄 602 ・失敗 0)。
 # ⛔ 一週一次就夠(配息一年只有 1~4 次);⛔ 別改成每天 —— 撞 GitHub 排程配額(V73.9.0)又吃 FinMind 額度。
 # 🧪 資料源已由 scripts/div_probe.py 在 Actions 實跑驗過(2026-09-01)。
 on:
@@ -13,7 +14,7 @@ on:
         required: false
         default: '0'
 
-# 🚨 V74.3.8 實跑抓到:這支要跑 55 分鐘,原本掛在共用的 `gh-pages-push` group(workflow 層級)→
+# 🚨 V74.3.8 實跑抓到:這支要跑 **97 分鐘**,原本掛在共用的 `gh-pages-push` group(workflow 層級)→
 #    整整一小時佔著那個 group,期間每一個新排進來的 deploy_pages / 其他採礦都被當成「pending 被取代」
 #    直接 cancelled(2026-09-01 22:20 push 觸發的 + 22:24 手動 dispatch 的 deploy_pages **兩筆都被砍**,
 #    V74.3.8 一直上不了線)。⭐ 這正是 V73.7.9 的教訓再一次:**執行時間長的 workflow ⛔ 不可跟別人共用 group**。
@@ -28,7 +29,7 @@ permissions:
 jobs:
   dividend:
     runs-on: ubuntu-latest
-    timeout-minutes: 150   # ⏱️ 只當最後保險;真正的停手點是 miner 自己的 DIV_BUDGET_MIN(實測全市場 ≈ 94 分)
+    timeout-minutes: 150   # ⏱️ 只當最後保險;真正的停手點是 miner 自己的 DIV_BUDGET_MIN(實測全市場 97.0 分)
     steps:
       - name: 📥 下載程式碼 (main)
         uses: actions/checkout@v4
@@ -54,7 +55,10 @@ jobs:
         id: sweep
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
-          DIV_BUDGET_MIN: '100'   # ⏱️ 實測全市場 ≈ 94 分;超過就停、寫出手上的,剩下的下一輪接續(沒抓過的先)
+          # ⏱️ 實測全市場 **97.0 分**(2,514 檔)。⚠️ 原本設 100 分只剩 3 分鐘餘裕 —— 下週 FinMind 稍慢
+          #    或多幾檔就會被切成兩輪(功能上沒錯、會接續,但要等一週才完整)。
+          #    ⭐ job timeout 150 分,deploy 只要幾秒 → 拉到 130 仍有 20 分鐘餘裕,⛔ 不會回到「白跑」那個狀態。
+          DIV_BUDGET_MIN: '130'
         run: |
           set +e
           if [ "${{ github.event.inputs.limit }}" != "" ] && [ "${{ github.event.inputs.limit }}" != "0" ]; then

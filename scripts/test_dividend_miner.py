@@ -91,7 +91,9 @@ with tempfile.TemporaryDirectory() as d:
     DM.BUDGET_MIN = 100
     wf = (ROOT / '.github/workflows/dividend_sweep.yml').read_text()
     ok('⑦c workflow 有給 DIV_BUDGET_MIN,且 job timeout 大於預算(逾時只當最後保險)',
-       "DIV_BUDGET_MIN: '100'" in wf and __import__('re').search(r'timeout-minutes: (\d+)', wf) and int(__import__('re').search(r'timeout-minutes: (\d+)', wf).group(1)) > 100)
+       __import__('re').search(r"DIV_BUDGET_MIN: '(\d+)'", wf)
+       and int(__import__('re').search(r'timeout-minutes: (\d+)', wf).group(1))
+           > int(__import__('re').search(r"DIV_BUDGET_MIN: '(\d+)'", wf).group(1)))
 
 # ⑤ 🔐 不印金鑰
 src = (ROOT / 'dividend_miner.py').read_text(encoding='utf-8')

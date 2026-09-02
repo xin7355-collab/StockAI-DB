@@ -43,9 +43,10 @@ MIN_OK = int(os.getenv('DIV_MIN_OK') or 500)
 KEEP = 12                      # 前端檔每檔最多留幾筆歷史
 SLEEP = float(os.getenv('DIV_SLEEP') or 0.65)   # FinMind 100 req/min → ~92/min
 # ⏱️ V74.3.8 首跑實測:2,514 檔 × 2 次呼叫 ≈ **94 分**(每檔 2.26 秒,不是估的 55 分)→ 撞 job 90 分逾時,
+#    ⭐ V74.4.1 完整跑完一次:**97.0 分**(成功 1,912 ・沒有配息紀錄 602 ・**失敗 0**)→ 預算 100 只剩 3 分餘裕 → 調 130。
 #    deploy 步驟被 skipped,**89 分鐘的抓取整批丟掉**。→ 自己控時間預算:超過就停、把手上的寫出去(exit 0),
 #    剩下的下一輪接續(順序見 order_syms:沒抓過的先、再來最舊的);job timeout 只當最後保險。
-BUDGET_MIN = float(os.getenv('DIV_BUDGET_MIN') or 100)
+BUDGET_MIN = float(os.getenv('DIV_BUDGET_MIN') or 130)
 TW = timezone(timedelta(hours=8))
 TOKENS = [''.join(t.split()) for t in (os.getenv('FINMIND_TOKENS') or '').split(',') if t.strip()]
 STAT = {'ok': 0, 'empty': 0, 'fail': 0, 'kept_old': 0, 'reasons': {}}
