@@ -29,6 +29,13 @@ const EDGE = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/scr_edge.json'), '
 // 💰 除權息測資(格式照 div_probe 實跑印出的欄位);⚠️ 日期一律相對「今天」平移,
 //    ⛔ 不可寫死 —— 「未來 30 天」那張表 30 天後就會變成假失敗(V72.1.8:測試不可綁會浮動的資料狀態)
 const DIV = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/fixtures/dividends.sample.json'), 'utf8'));
+// 🏆 明日作戰清單測資 —— ⚠️ 欄位照真產物(git show origin/gh-pages:data/playbook_edge.json)
+//    s 代號 / k 招式 / w 勝率 / n 次數 / exp 每趟 / lb 保守下界 / trig 觸發價 / stop 停損 / c 昨收 / up 要漲% / hq 🧬 / bear 空頭 / loose 不看價位
+const PBE = { data_date: '2026-09-01', scanned: 2319, picks: [
+  { s: '2330', k: '爆量長紅', w: 55, n: 20, exp: 2.1, lb: 0.9, trig: 1200, stop: 1140, c: 1180, up: 1.7, hq: 1 },
+  { s: '2408', k: '突破頸線', w: 48, n: 14, exp: 3.4, lb: 1.8, trig: 120, stop: 114, c: 118, up: 1.7, hq: 1 },
+  { s: '8299', k: '回後買上漲', w: 41, n: 9,  exp: 5.0, lb: 0.2, trig: 0, stop: 0, c: 500, hq: 0, loose: 1, bear: 1 },
+] };
 {
   const off = Math.floor((Date.now() - Date.UTC(2026, 8, 1)) / 864e5);
   const sh = d => new Date(Date.parse(d + 'T00:00:00Z') + off * 864e5).toISOString().slice(0, 10);
@@ -108,13 +115,14 @@ page.on('pageerror', e => { const t = (e && e.message) ? e.message : String(e); 
 await page.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof PRO !== 'undefined' && PRO.FISH_POOLS, null, { timeout: 15000 });
 
-const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV }) => {
+const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV, PBE }) => {
   const out = {};
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   // 測資:真實格式 + 手動加一列 pos252 為 null 的(screener 遇到算不出來就寫 null,這是合法格式)
   SCR.rows['9999'] = SCR.rows['2330'].slice(); SCR.rows['9999'][SCR.cols.indexOf('pos252')] = null;
   PRO._cache['data/screener.json'] = SCR;
   PRO._cache['data/scr_edge.json'] = EDGE;
+  PRO._cache['data/playbook_edge.json'] = PBE;
   PRO._starData = COR;
   PRO._cache['data/dividends.json'] = DIV;
   try { localStorage.removeItem('proWar_catch'); } catch (_) {}
@@ -261,6 +269,17 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV }) => {
   out.fishDiv2330 = (document.getElementById('fishDiv') || { innerText: '' }).innerText;
   PRO._fishPick('8299'); await sleep(150);
   out.fishDivNone = (document.getElementById('fishDiv') || { innerText: '' }).innerText;
+  // 🏆 最強招式池(V74.4.6 使用者:「把最厲害的招式加到釣魚區裡面」)
+  PRO.fishPool('pb'); await sleep(300);
+  out.pbSyms = PRO._fish.map(f => f.sym);
+  out.pbChip = document.getElementById('fishPool').innerText;
+  PRO._fishPick('2408'); await sleep(200);
+  out.pbCard = document.getElementById('fishCard').innerText;
+  // ⏳ 清單還沒產出 → 要誠實說,⛔ 不可只寫「這個池子沒有魚」
+  { const keep = PRO._pbJ; PRO._pbJ = null; PRO._pbMap = {}; PRO._fishRebuild(); await sleep(80);
+    out.pbNone = document.getElementById('fishMsg').innerText;
+    PRO._pbJ = keep; for (const x of keep.picks) PRO._pbMap[x.s] = x; }
+  PRO.fishPool('amt'); await sleep(300);
   // 🚪 出場價位要抓那一檔的 K 線 —— headless 的 file:// 抓不到 → 塞進共用 _cache(⛔ 不繞過 fetchJson)。
   //    ⭐ 收盤 100..111、低點 = 收盤 −2 → 5 日線 = 109.00、近 10 日最低 = 100、
   //      停損取「111×0.95 = 105.45」與「100」較近者 = **105.45**(算得出來才敢斷言數字)
@@ -344,7 +363,7 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV }) => {
   window.scrollTo(0, 0);
   window.requestAnimationFrame = _raf;
   return out;
-}, { SCR, COR, EDGE, DIV });
+}, { SCR, COR, EDGE, DIV, PBE });
 
 ok('⑪ 分頁切得過去', R.tabVisible);
 ok('⑪b 標題旁有資料日與檔數', /資料日 \d{4}-\d{2}-\d{2}/.test(R.sub) && /檔可下水/.test(R.sub), R.sub);
@@ -378,6 +397,25 @@ ok('⑭a2 四顆都在:收進漁獲籃 / 📋 複製名稱 / 星圖(真的連到
    /收進漁獲籃|放生/.test(R.actsTxt) && /複製名稱/.test(R.actsTxt) && /星圖/.test(R.actsTxt) && /散戶救星/.test(R.actsTxt)
    && /PRO\.starGo\('2408'\)/.test(R.cardHtml) && /PRO\.gotoStock\('2408'\)/.test(R.cardHtml), R.actsTxt);
 ok('⑭b 卡片明寫「不是進場建議」', /不是進場建議/.test(R.card));
+// 🏆 V74.4.6 使用者:「把最厲害的招式加到釣魚區裡面」——
+//    ⭐ 最強的**不是**拋竿漏斗(它合起來是負的),是「每檔自己最會賺的招」那份清單。
+// ⚠️ 測資三檔都在 screener 裡 → 三條都該進池子(⭐ 預期值是**算出來的**不是猜的:
+//    hq=1 的先排,其中 lb 1.8(2408) > 0.9(2330);hq=0 的 8299 最後)
+ok('🏆⑰ 最強招式池只留作戰清單裡的,而且照共用排序(🧬 優先 → 保守下界)',
+   R.pbSyms.length === 3 && R.pbSyms[0] === '2408' && R.pbSyms[1] === '2330' && R.pbSyms[2] === '8299',
+   JSON.stringify(R.pbSyms));
+ok('🏆⑰b 池子選項看得到', /最強招式/.test(R.pbChip), R.pbChip.slice(0, 80));
+ok('🏆⑰c 卡片攤開那一招:招式名 / 觸發價 / 停損 / 勝率+次數 / 每趟平均',
+   /突破頸線/.test(R.pbCard) && /120\.00/.test(R.pbCard) && /114\.00/.test(R.pbCard)
+   && /48% ・14 次/.test(R.pbCard) && /\+3\.40%/.test(R.pbCard), (R.pbCard.match(/🏆[\s\S]{0,160}/) || [''])[0]);
+ok('🏆⑰d 🚨 必寫「不是開盤買」+「基準 36% 不是 50%」+「仍輸 0050」',
+   /不是明天一開盤就買|⛔ <b>不是明天一開盤/.test(R.pbCard) && /36%/.test(R.pbCard)
+   && /輸給買 0050/.test(R.pbCard), (R.pbCard.match(/⏰[\s\S]{0,200}/) || [''])[0]);
+ok('🏆⑰e ⛔ 排序只准有一份(renderSig 與魚池都吃 _pbSort)',
+   /_pbSort/.test(seg('renderSig')) && /_pbSort/.test(seg('_fishPoolRows'))
+   && !/hq \|\| 0\) - \(a\.hq/.test(seg('renderSig')) && !/hq \|\| 0\) - \(a\.hq/.test(seg('_fishPoolRows')));
+ok('🏆⑰f ⏳ 清單還沒產出要誠實說(⛔ 不可只寫「這個池子沒有魚」)',
+   /作戰清單還沒產出/.test(R.pbNone) && /不是這個功能壞掉/.test(R.pbNone), R.pbNone.slice(0, 90));
 ok('③g 🚪 出場那段要**真的算出價位**(⛔ 只寫規則沒有數字等於沒說)',
    /停損價/.test(R.cardExit) && /出場線/.test(R.cardExit) && /\d+\.\d\d/.test(R.cardExit) && /移動停利/.test(R.cardExit),
    JSON.stringify({ ex: R.exDbg, snip: (R.cardExit.match(/🚪[\s\S]{0,200}/) || [''])[0].replace(/\n/g, '⏎') }));
