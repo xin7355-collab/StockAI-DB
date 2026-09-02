@@ -112,8 +112,19 @@ def fetch_picks():
     url = GH_BASE.rstrip('/') + f'/data/playbook_edge.json?t={int(time.time())}'
     with urllib.request.urlopen(url, timeout=20) as r:
         j = json.loads(r.read().decode('utf-8'))
-    picks = j.get('picks') or []
-    log(f"📋 明日作戰清單:{j.get('picks_total')} 筆 / {j.get('picks_syms')} 檔"
+    raw = j.get('picks') or []
+    # 🚨 同一檔可能出現**多次**(不同招;實測 206 筆裡 6949 就出現兩次)。
+    #    ⛔ 不先去重的話,picks[:MAX_PICKS] 的名額會被同一檔吃掉 →
+    #    「一天最多 2 檔」實際上變成 1 檔(而 2 檔正是實測最好的那個設定)。
+    #    ⭐ 清單已經照「🧬 優先 → 保守下界」排好 → 保留**第一筆(最好的那一招)**。
+    picks, seen = [], set()
+    for p in raw:
+        sy = str(p.get('s') or '')
+        if not sy or sy in seen:
+            continue
+        seen.add(sy)
+        picks.append(p)
+    log(f"📋 明日作戰清單:{len(raw)} 筆 / 去重後 {len(picks)} 檔"
         f"(資料日 {j.get('data_date')});本機取前 {MAX_PICKS} 檔")
     return j, picks
 

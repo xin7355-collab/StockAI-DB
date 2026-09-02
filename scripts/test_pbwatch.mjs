@@ -243,6 +243,25 @@ ok('⑨f 沒有實盤紀錄 → 整塊不顯示(不留空殼)', /_pbScoreHtml\(\
 // 🔐 最重要的一條:下單程式絕不可進 CI
 const at = fs.existsSync(path.join(ROOT, 'auto_trade.py')) ? fs.readFileSync(path.join(ROOT, 'auto_trade.py'), 'utf8') : '';
 ok('⑨g auto_trade.py 存在', at.length > 2000);
+// 🚨 V74.4.7:同一檔可能出現多次(不同招)→ ⛔ 不去重的話 picks[:MAX_PICKS] 的名額
+//    會被同一檔吃掉,「一天最多 2 檔」實際變成 1 檔(而 2 檔正是實測最好的設定)。
+ok('⑨g2 auto_trade.py 取清單前要**依代號去重**(⛔ 否則一天 2 檔會變 1 檔)',
+   /seen\b[^\n]*set\(\)/.test(at) && /sy in seen/.test(at) && /seen\.add\(sy\)/.test(at));
+ok('⑨g3 去重要留**第一筆**(清單已排好序 = 最好的那一招)',
+   /picks\.append\(p\)/.test(at) && !/picks\[sy\]\s*=\s*p/.test(at));
+// 📘 上手指南要跟程式對得上(⛔ 文件寫錯比沒有更糟 —— 它是給人照著操作真錢的)
+{ const md = fs.existsSync(path.join(ROOT, 'docs/AUTO_TRADE_SETUP.md'))
+    ? fs.readFileSync(path.join(ROOT, 'docs/AUTO_TRADE_SETUP.md'), 'utf8') : '';
+  ok('⑨g4 上手指南存在,而且列出每一個真的存在的環境變數',
+     md.length > 3000 && ['LIVE', 'DRY_RUN', 'ACCOUNT_SIZE', 'POS_PCT', 'MAX_PICKS',
+       'MAX_LOTS_PER_TRADE', 'MAX_AMT_PER_TRADE', 'EOD_FROM', 'POLL_SEC', 'STATE_PATH']
+       .every(k => md.includes(k) && at.includes(k)));
+  ok('⑨g5 🚨 指南必須先講「長窗口仍輸 0050」與「勝率 33%」(⛔ 不可只寫漂亮數字)',
+     /輸給.{0,6}0050|輸給「買 0050/.test(md) && /33%/.test(md) && /空頭沒有驗證過|空頭沒有驗證/.test(md));
+  ok('⑨g6 🔐 指南必須寫「下單只能在自己的電腦」', /只能你自己的電腦|只能.{0,4}自己的電腦/.test(md));
+  ok('⑨g7 ⛔ 指南不可出現「開盤買」這種指令(實測會把賺頭吃掉一半)',
+     !/(?<!不是明天一)開盤就買/.test(md.replace(/⛔ \*\*不是明天一開盤就買\*\*/g, '')));
+  ok('⑨g8 指南要寫明「它只管買,不管賣」(出場仍要自己執行)', /只管買,不管賣/.test(md)); }
 ok('⑨h ⛔ 預設是模擬模式(要真下單必須明確設 LIVE=1)', /LIVE = os\.getenv\('LIVE'\) == '1'/.test(at) && /simulation=not LIVE/.test(at));
 ok('⑨i 憑證只走環境變數(⛔ 不可寫進檔案)', /os\.getenv\('SJ_CA_PATH'\)/.test(at) && !/\.pfx['"]\s*$/m.test(at));
 ok('⑨j 有單筆張數與金額硬上限', /MAX_LOTS_PER_TRADE/.test(at) && /MAX_AMT_PER_TRADE/.test(at));

@@ -35,6 +35,8 @@ const PBE = { data_date: '2026-09-01', scanned: 2319, picks: [
   { s: '2330', k: '爆量長紅', w: 55, n: 20, exp: 2.1, lb: 0.9, trig: 1200, stop: 1140, c: 1180, up: 1.7, hq: 1 },
   { s: '2408', k: '突破頸線', w: 48, n: 14, exp: 3.4, lb: 1.8, trig: 120, stop: 114, c: 118, up: 1.7, hq: 1 },
   { s: '8299', k: '回後買上漲', w: 41, n: 9,  exp: 5.0, lb: 0.2, trig: 0, stop: 0, c: 500, hq: 0, loose: 1, bear: 1 },
+  // 🚨 同一檔出現第二次(不同招、排名較後)—— 真產物就長這樣(206 筆裡 6949 出現兩次)
+  { s: '2408', k: '⛔ 比較差的那一招', w: 30, n: 11, exp: 1.0, lb: 0.1, trig: 999, stop: 900, c: 118, up: 1.0, hq: 1 },
 ] };
 {
   const off = Math.floor((Date.now() - Date.UTC(2026, 8, 1)) / 864e5);
@@ -404,6 +406,9 @@ ok('⑭b 卡片明寫「不是進場建議」', /不是進場建議/.test(R.card
 ok('🏆⑰ 最強招式池只留作戰清單裡的,而且照共用排序(🧬 優先 → 保守下界)',
    R.pbSyms.length === 3 && R.pbSyms[0] === '2408' && R.pbSyms[1] === '2330' && R.pbSyms[2] === '8299',
    JSON.stringify(R.pbSyms));
+ok('🏆⑰a 🚨 同一檔出現多次時,要留**排名最前面(最好)**的那一招',
+   /突破頸線/.test(R.pbCard) && !/比較差的那一招/.test(R.pbCard) && R.pbSyms.length === 3,
+   (R.pbCard.match(/🏆[\s\S]{0,40}/) || [''])[0]);
 ok('🏆⑰b 池子選項看得到', /最強招式/.test(R.pbChip), R.pbChip.slice(0, 80));
 ok('🏆⑰c 卡片攤開那一招:招式名 / 觸發價 / 停損 / 勝率+次數 / 每趟平均',
    /突破頸線/.test(R.pbCard) && /120\.00/.test(R.pbCard) && /114\.00/.test(R.pbCard)
