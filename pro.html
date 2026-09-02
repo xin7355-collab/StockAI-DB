@@ -441,6 +441,17 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 #stkSheet .shkv b{color:var(--txt);font-family:ui-monospace,monospace}
 #stkSheet .shbtns{display:flex;gap:7px;flex-wrap:wrap}
 #stkSheet .shbtns .lbtn{min-height:42px}
+/* 📖 懸浮視窗(V74.4.3 使用者:「這些內容用懸浮視窗方式呈現」)—— 通用,⛔ 不為單一卡片寫一份 */
+#proModal{position:fixed;inset:0;z-index:98;display:flex;align-items:flex-end;justify-content:center;
+  background:rgba(4,8,14,.72);backdrop-filter:blur(2px);padding:0}
+#proModal.hidden{display:none}
+#proModal .mbox{width:100%;max-width:720px;max-height:86vh;overflow:auto;-webkit-overflow-scrolling:touch;
+  background:rgba(10,16,26,.99);border:1px solid var(--line);border-radius:14px 14px 0 0;
+  padding:12px 12px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.5)}
+#proModal .mh{display:flex;align-items:center;gap:8px;position:sticky;top:-12px;margin:-12px -12px 8px;
+  padding:12px;background:rgba(10,16,26,.99);border-bottom:1px solid var(--line);font-weight:900;font-size:13.5px}
+#proModal .mx{margin-left:auto;cursor:pointer;color:var(--dim2);font-size:20px;line-height:1;padding:2px 8px;min-height:36px}
+@media(min-width:700px){#proModal{align-items:center}#proModal .mbox{border-radius:14px}}
 #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(14,20,31,.96);border:1px solid var(--line2);border-radius:10px;padding:9px 16px;font-size:12px;color:var(--txt);z-index:90;opacity:0;pointer-events:none;transition:opacity .2s}
 #toast.on{opacity:1}
 </style>
@@ -673,7 +684,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
   <div class="panel hidden" id="fishPickPane">
     <div class="starbar" style="margin:0 0 8px">
       <button class="lbtn" onclick="PRO.fishBack()">← 回魚池</button>
-      <span class="note" style="margin:0">這是你點到的那一條的細節</span>
+      <button class="lbtn" id="fishWhyBtn" onclick="PRO._castWhyOpen()">📖 這一條的細節</button>
     </div>
     <div id="fishCard"></div>
   </div>
@@ -721,6 +732,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 </div>
 
 <div id="stkSheet" role="dialog" aria-label="個股快捷"></div>
+<div id="proModal" class="hidden" role="dialog" aria-label="說明" onclick="if(event.target===this)PRO.closeModal()"></div>
 <div id="toast"></div>
 
 <script>
@@ -936,6 +948,21 @@ const PRO = {
   },
   closeStock() { const el = document.getElementById('stkSheet'); if (el) el.classList.remove('on'); this._stk = null; },
 
+  // 📖 通用懸浮視窗(V74.4.3)—— ⛔ 只放「說明/理由」這類讀完就關的內容,
+  //    ⛔ 不可把「必須第一眼看到的免責」搬進來(收起來等於沒說,測試 🎣⑧c 釘住)。
+  openModal(title, html) {
+    const el = document.getElementById('proModal'); if (!el) return;
+    el.innerHTML = `<div class="mbox"><div class="mh">${title}<span class="mx" onclick="PRO.closeModal()">✕</span></div>${html}</div>`;
+    el.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';        // ⛔ 開著時背景不可跟著捲
+    this.buzz(15);
+  },
+  closeModal() {
+    const el = document.getElementById('proModal'); if (!el) return;
+    el.classList.add('hidden'); el.innerHTML = '';
+    document.body.style.overflow = '';
+  },
+
   gotoStock(code) {
     if (!code) return;
     this.buzz(25);
@@ -1005,6 +1032,7 @@ const PRO = {
   TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['sig', 'Sig'], ['calc', 'Calc'], ['lab', 'Lab']],
   switchTab(t, silent) {
     this.closeStock();                    // 🔗 切頁一律收起快捷面板(⛔ 不可蓋在別頁上面)
+    this.closeModal();                    // 📖 懸浮視窗同理
     this._syncHdrVar();          // 分頁列會換行 → header 高度會變 → sticky 的 top 要跟著改
     this._tab = t;
     for (const [k, C] of this.TABS) {
@@ -1387,10 +1415,28 @@ const PRO = {
     document.getElementById('fishCard').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   },
 
-  // 🎣 「為什麼是這條」—— ⛔ 每一層都要寫出實測數字,不可只寫結論
+  // 🎣 「為什麼是這條」—— V74.4.3 使用者:「這些內容用懸浮視窗方式呈現」
+  //    ⭐ 拆成兩支:卡上留**一行摘要**(⛔ 必須含那兩個負數 —— 收起來等於沒說),
+  //    細節進懸浮視窗。⛔ 摘要不可包進 details/modal(測試 🎣⑧c 釘住)。
   _castWhyHtml(sym) {
     const R = this._cast; if (!R) return '';
     const p = (R.picked || []).find(x => x.sym === sym); if (!p) return '';
+    return `<div class="warnbox" style="margin:0 0 8px">🎣 <b>這條是拋竿挑出來的</b>${p.tier === 2 ? '(🥈 少過了一關)' : ''}
+      <div class="note" style="margin-top:4px">🚨 <b>這套漏斗「合起來」回測量不出優勢 —— 一定要知道</b>:
+      492 個交易日、186 次,相對「強勢板塊裡隨便挑一檔」10 日 <b>−0.52pp</b>、
+      相對「只用 🧬 篩」10 日 <b>−1.44pp</b>(兩個都是<b>負的</b>)。
+      ⛔ 請把它當一份<b>有條件的候選清單</b>,<b>⛔ 不是一個回測過的策略</b>,更不是買進訊號。
+      <span style="color:var(--dim2)">來源:scripts/cast_probe.mjs</span></div>
+      <button class="lbtn" style="margin-top:7px" onclick="PRO._castWhyOpen()">📖 為什麼釣到它 / 完整回測數字</button></div>`;
+  },
+
+  // 📖 懸浮視窗裡的完整內容 —— ⛔ 每一層都要寫出實測數字,不可只寫結論
+  _castWhyFull(sym) {
+    const R = this._cast;
+    const p = R && (R.picked || []).find(x => x.sym === sym);
+    if (!p) return `<div class="note">這一條是你<b>自己從池子裡點的</b>,⛔ 不是拋竿挑的 —— 所以沒有「為什麼釣到它」那份理由。
+      想讓程式幫你挑,回魚池按 <b>🎣 拋竿</b>。<br>⛔ 不論哪一種,魚池都<b>不下多空、不給買賣價位</b>:
+      要不要買、買幾張、停損在哪,一律以散戶救星的「現在怎麼做」為準。</div>`;
     const t3 = (R.top3 || []).map(x => `${x.k} ${x.m >= 0 ? '+' : ''}${x.m.toFixed(1)}%`).join(' ・');
     return `<div class="warnbox" style="margin:0 0 8px">
       🎣 <b>為什麼釣到它</b>${p.tier === 2 ? '(🥈 少過了一關,見下)' : ''}
@@ -1414,7 +1460,7 @@ const PRO = {
       <div class="warnbox" style="margin:8px 0 0">🚨 <b>這套漏斗「合起來」回測量不出優勢 —— 一定要知道</b>
         <div class="note" style="margin-top:4px">上面每一層<b>單獨</b>都有實測邊際,⛔ <b>但把它們串起來之後沒有加分</b>:
         492 個交易日、186 次(一天最多 2 條 + 20 日去重),相對
-        <b>「強勢板塊裡隨便挑一檔」10 日 −0.52pp</b>、相對 <b>「只用 🧬 篩」10 日 −1.44pp</b>(兩個都是**負的**)。
+        <b>「強勢板塊裡隨便挑一檔」10 日 −0.52pp</b>、相對 <b>「只用 🧬 篩」10 日 −1.44pp</b>(兩個都是<b>負的</b>)。
         <br>⭐ 真因很可能是<b>條件重疊</b>:🧬(高位階+高波動)跟「板塊內近 20 日最強」講的其實是同一件事,
         疊起來只是把樣本切到最極端的那幾檔。這跟 🏅 實測體質「每個零件都測過、加總卻排不出順序」是<b>同一種錯</b>。
         <br>⛔ 所以請把它當成<b>一份有條件的候選清單</b>(流動性夠、位階高、波動夠、在強勢族群、避開了實測會賠的組合),
@@ -1422,6 +1468,25 @@ const PRO = {
       <div class="note" style="margin-top:6px">⛔ <b>這是「候選」不是買進訊號</b>:上面每個數字都是<b>過去</b>的統計,
       而且回測窗口整段偏多頭、追強那族的優勢 2024 起逐年變小。要不要買、買幾張、停損在哪,
       一律以散戶救星的「現在怎麼做」為準。</div></div>`;
+  },
+  _castWhyOpen() {
+    const sym = this._fishPickSym;
+    this.openModal(`📖 ${sym ? this._nmFull(sym) : '這一條'} 的細節`, this._castWhyFull(sym));
+  },
+
+  // 🎣 拋竿上鉤的每一條都要列出來 —— V74.4.3 使用者:「每次點開都是鼎元,是代表它比較強嗎?」
+  //    ⛔ **不是**。picked 只是照「近 20 日漲幅」排的,而 cast_probe 的結論正是
+  //    「這套漏斗連排序都沒有優勢」(相對只用 🧬 −1.44pp)→ 先顯示的那一條 ⛔ 不代表比較強。
+  //    ⭐ 只顯示先挑到的那一條,等於用版面暗示一個不存在的強弱 → 一律把兩條都列出來 + 明說沒有順序。
+  _castPicksBarHtml(sym) {
+    const R = this._cast, ps = (R && R.picked) || [];
+    if (ps.length < 2 || !ps.some(x => x.sym === sym)) return '';
+    return `<div class="note" style="margin:0 0 8px">🎣 今天拋竿上鉤 <b>${ps.length}</b> 條(點下面切換):
+      ${ps.map(x => `<span class="sigtag" style="cursor:pointer${x.sym === sym ? ';border-color:var(--amber);color:var(--amber)' : ''}"
+          onclick="PRO._fishPick('${x.sym}')">${this._nmTxt(x.sym)}${x.tier === 2 ? ' 🥈' : ''}</span>`).join(' ')}
+      <br>⛔ <b>它們之間沒有強弱之分</b> —— 這個順序只是照「近 20 日漲幅」排的,
+      而回測證明<b>這套漏斗連排序都沒有優勢</b>(相對只用 🧬 −1.44pp)。
+      <b>先出現的那一條 ⛔ 不代表比較強</b>,兩條都只是候選。</div>`;
   },
 
   _fishPoolK: 'amt', _fishModeV: 'tank', _fish: [], _fishRaf: 0, _fishPick0: null,
@@ -1543,16 +1608,26 @@ const PRO = {
   _keyWarnHtml() {
     if (this._keysHere()) return '';
     const pwa = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-    return `<div class="warnbox" style="margin:0 0 8px">🔑 <b>這個視窗沒有你的金鑰</b>
-      —— 所以從這裡跳到散戶救星,即時報價與 AI 都會是空的。
-      <div class="note" style="margin-top:4px">⭐ <b>不是連結壞掉</b>:金鑰只存在你當初輸入的那個地方。
-      iOS 會把<b>主畫面上的 App</b> 和 <b>Safari / 別的 App 裡開的瀏覽器</b>當成兩個<b>各自獨立</b>的儲存空間,
-      互相看不到對方存的東西${pwa ? '' : '(你現在是在瀏覽器裡開的)'}。
-      <br>兩個做法(擇一):<br>
-      ① ⭐ <b>從主畫面的散戶救星圖示進去</b>,再從那裡開產業作戰室 —— 金鑰就在那一邊。<br>
-      ② 在<b>有金鑰</b>的那一邊開散戶救星 → ⚙️ 設定中心 → <b>「🔑 只備份 API 金鑰」</b>,
-      把代碼複製過來、在這一邊用「📥 還原備份」貼上。<br>
-      ⛔ 程式沒辦法自動幫你搬(那是瀏覽器刻意的隔離);⛔ 也不會把金鑰放進網址傳過去(那會留在紀錄裡)。</div></div>`;
+    // ⭐ V74.4.3 使用者:「改用點擊按鈕後變成複製個股中文,我自己轉貼過去查詢就好」
+    //    → 主線改成指路那顆「📋 複製名稱」(一步就能用),根治那兩招收進摺疊。
+    return `<div class="warnbox" style="margin:0 0 8px">🔑 <b>這個視窗沒有你的金鑰</b> —— 跳到散戶救星,即時報價與 AI 會是空的。
+      <b>用上面那顆「📋 複製名稱」把中文名複製起來,在有金鑰的那一邊自己貼上搜尋就好。</b>
+      <details class="fishmore"><summary>想根治(讓這一邊也有金鑰)</summary>
+        <div class="note">⭐ <b>不是連結壞掉</b>:金鑰只存在你當初輸入的那個地方。
+        iOS 會把<b>主畫面上的 App</b> 和 <b>Safari / 別的 App 裡開的瀏覽器</b>當成兩個<b>各自獨立</b>的儲存空間,
+        互相看不到對方存的東西${pwa ? '' : '(你現在是在瀏覽器裡開的)'}。兩個做法擇一:<br>
+        ① ⭐ <b>從主畫面的散戶救星圖示進去</b>,再從那裡開產業作戰室 —— 金鑰就在那一邊。<br>
+        ② 在<b>有金鑰</b>的那一邊開散戶救星 → ⚙️ 設定中心 → <b>「🔑 只備份 API 金鑰」</b>,
+        把代碼複製過來、在這一邊用「📥 還原備份」貼上。<br>
+        ⛔ 程式沒辦法自動幫你搬(那是瀏覽器刻意的隔離);⛔ 也不會把金鑰放進網址傳過去(那會留在紀錄裡)。</div>
+      </details></div>`;
+  },
+  // 📋 複製中文名(V74.4.3)—— 金鑰帶不過去時最省事的一條路:自己貼到散戶救星的搜尋框。
+  //    ⛔ 不傳金鑰、不帶參數,只複製一個名字。
+  _fishCopyName(sym) {
+    const n = this._nmTxt(sym);
+    this._copy(n);
+    this.toast(`📋 已複製「${n}」—— 貼到散戶救星的搜尋框就查得到`, 2400);
   },
   fishMode(m) {
     this._fishModeV = m; this.buzz(15);
@@ -1927,11 +2002,12 @@ const PRO = {
         ${caughtNow
           ? `<button class="lbtn" onclick="PRO._fishRelease('${sym}')">🐟↩ 放生</button>`
           : `<button class="lbtn on" onclick="PRO._fishCatch('${sym}')">🎣 收進漁獲籃</button>`}
+        <button class="lbtn" onclick="PRO._fishCopyName('${sym}')" title="複製中文名,自己貼到散戶救星的搜尋框(金鑰帶不過去時用這個)">📋 複製名稱</button>
         <button class="lbtn" onclick="PRO._starSym='${sym}';PRO.switchTab('star');PRO.starGo('${sym}')">🕸️ 星圖</button>
         <button class="lbtn" onclick="PRO.gotoStock('${sym}')">→ 散戶救星</button>
       </span>`;
     document.getElementById('fishCard').innerHTML = `<div class="fishcard">
-      ${this._castWhyHtml(sym)}
+      ${this._castPicksBarHtml(sym)}${this._castWhyHtml(sym)}
       <div class="big fishbig">🎣 釣到:${this._nmc(sym)}
         ${r.st ? `<span class="sigtag" title="${E[r.st].d}">${E[r.st].e} ${E[r.st].t}</span>` : ''}${r.att ? ' <span class="sigtag warn">⚠️ 官方注意股</span>' : ''}${acts}</div>
       ${this._keyWarnHtml()}
@@ -2437,6 +2513,7 @@ const PRO = {
     method: [
       { t: '📅 年數要用「實際第一根 K 棒」,⛔ 不可用窗口起點', n: '006208 年化 +23.7% → +45.3%', d: '含息回測第一次跑,006208 的年數印出 <b>5.7 年</b>而其他每一檔都是 3.2 年 —— 那個不一致就是線索。真因:它的 K 線 2017 之後<b>跳到 2023-06</b>(中間 5.5 年是洞),而我用「窗口起點」算年數 → 年化被除以一個幾乎兩倍的年數,<b>+45.3% 被算成 +23.7%</b>。⚠️ 那個數字<b>看起來完全合理</b>(高股息 ETF 年化 20 幾%),單看它一列永遠發現不了。⭐ 修法:年數一律用 <b>bars[0]</b> 而不是 from;並且<b>把中間最大的洞印出來</b>(>40 天就標)。⭐⭐ 而真正確認修對了的是<b>內部檢核</b>:0050 與 006208 追同一個指數,修完之後兩檔自動對上(+45.7 vs +45.3),⛔ 修之前差了 22pp。', s: 'scripts/total_return_probe.mjs・V74.4.1' },
       { t: '🎣 「幫我挑」的規則必須層層有實測背書 —— 而真實資料第一次跑就挑到買不到的東西', n: '6225:+154% / 成交額 0.1 億', d: '使用者要「放下釣竿真的有魚上鉤,誰上鉤你幫我判斷」。⛔ <b>不可以用 🏅 實測體質加總來挑</b> —— 那個加總的 IC 只有 +0.0004(信賴區間含 0),拿一個自己已經否定的東西當賣點是最糟的。→ 改用三層都<b>六關全過</b>的漏斗:🧬 位階+波動(必要條件)→ 近 20 日最強前 3 板塊(+1.44pp)→ 板塊內最強(+0.90%)。<br>🚨 <b>但真實資料第一次跑就挑到 6225:近 20 日 +154%、成交額只有 0.1 億</b> —— 正式配置每筆 15 萬進去就推動價格,回測的成交價在真實世界拿不到(同「測得到、賺不到」那一族)。→ 加<b>可交易性守門</b>,而且門檻<b>從部位大小推導</b>(15 萬 ÷ 1 億 = 0.15%),⛔ 不是憑空訂;實測全市場非 ETF 的成交額<b>中位數只有 0.06 億</b>。<br>🚨 第二輪又挑到 <b>3406(官方注意股 + 前 5 日噴 45%)</b> —— 而本站<b>另一條六關全過的實測</b>說那個組合後 20 日 −1.81pp、中位 −7.21%。⛔ 一邊追強一邊無視自己的避雷結論 = 邏輯打架 → 加避雷守門並在卡上說出擋掉了誰。<br>⭐ 通用:<b>「幫使用者挑」的功能,每一層都要能指名是哪一條實測撐著;而且要用真實資料跑一次看它到底挑出什麼</b> —— 測資規模小,這兩個問題都不會浮出來(陷阱 #40)。', s: 'pro.html castRod・V74.4.0' },
+      { t: '🖼️ 「只顯示第一名」等於用版面暗示一個不存在的強弱', n: '拋竿 2 條 / 排序 IC 無優勢', d: '使用者問「釣魚今天釣到鼎元與南亞,<b>每次點開都是鼎元,是代表它比較強嗎?</b>」—— ⛔ <b>不是</b>。picked[0] 只是照「近 20 日漲幅」排的,而 cast_probe 的結論正是「這套漏斗<b>連排序都沒有優勢</b>」(相對只用 🧬 −1.44pp)。<br>⭐ 通用:<b>當一個排序本身沒有實測背書時,「先顯示誰」就是在說謊</b> —— 使用者會把版面順序讀成強弱。→ 兩條都列出來、可直接點著切換,並在卡上明寫「⛔ 它們之間沒有強弱之分、先出現的不代表比較強」。⛔ 那段不可收進摺疊。', s: 'pro.html _castPicksBarHtml・V74.4.3' },
       { t: '🧪 真實資料實跑才看得到的:名字載不到時「2882 2882」', n: '8 個顯示點', d: '關聯星圖/釣魚池上線後用<b>真實 gh-pages 產物</b>(而不是測資)實跑一次 —— 測資裡我手動塞了名字所以永遠是對的,真實情況是 <code>_names</code> 要去外部服務拿、拿不到就空的,而每個呼叫端都寫 <code>nameOf(x) || x</code> 當保底 → 名字欄與代號欄變成同一個數字。⭐ 最難察覺的是 <b>AI 鏈那 81 檔有內建名字</b> → 只有一部分列會重複,看起來像資料怪而不是程式錯。→ 抽成 <code>_nmc / _nmTxt / _nmFull</code> 三支唯一顯示點。⚠️ 連測試都踩同一個坑:第一版拿 <b>2408(在 AI 鏈裡)</b>驗標題 → 注入缺陷照樣綠,改用 <b>2882(不在名單裡)</b>才驗得到。', s: 'scripts/test_stargraph.mjs 🏷️・V74.3.9' },
       { t: '💸 資金設定會翻轉判定 —— 第二例:正式配置下 K=1.5 / K=3 輸 5 日線,寬鬆配置下四個 K 單調全贏', n: '同一個出場,總獲利 −37.6 萬 ~ +164.6 萬', d: 'Chandelier 出場網格(K=1.5/2/2.5/3)在<b>每筆 15 萬</b>下是「兩點高峰、兩側懸崖」(−37.6 / +147.9 / +164.6 / −15.5 萬),在<b>每筆 3 萬(錢用不完)</b>下卻是乾淨的單調上升(+22 / +40 / +45 / +60 萬)。⭐ 分辨法:<b>錯過的訊號數</b> —— 正式配置錯過 1,488 次,寬鬆 0 次;錯過的不同,買到的股票就不同,總獲利就被資金路徑決定。⛔ 兩個結論:① 看到「網格不是高原」先問「是不是錢用完了」,別急著判過度配適;② 但也⛔ 不可拿寬鬆配置的數字去改預設(使用者實際就是 15 萬/筆)。要真的改預設,得先把「資金卡住」的問題另外解(例如出場放寬時同步縮小每筆金額),那是另一個變體,還沒測。', s: 'scripts/portfolio_backtest.mjs・V74.3.8' },
       { t: '🌐 採礦腳本「本機 582 檔、雲端 2 檔」—— 最新交易日被少數幾檔的「明天」帶走', n: '雲端首跑:宇宙 2 檔・鄰居 0', d: '關聯星圖採礦(generate_correlations)本機跑 582 檔全對,推上雲端第一輪只剩 <b>2 檔</b>、零錯誤訊息(有空過守門才擋下來)。真因:全市場 2,789 檔裡有 <b>6 檔</b>已經寫進「明天」的列(盤中快照/時區),程式用 <code>index[-1]</code> 當最新交易日 → 那天只有那幾檔有收盤價。⭐ 這是陷阱 #14 的第 N 次:<b>「最新一天」一律取「樣本數過門檻的最大日期」</b>,並把砍掉的日期印出來。⚠️ 本機測不到是因為本機那份資料剛好沒有未來列 —— 跟資料狀態有關的守門要在測資裡<b>注入</b>那個狀態(selftest 已加兩檔未來列)。', s: 'generate_correlations.py・V74.3.8' },
@@ -2555,7 +2632,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.4.2',
+  VER: 'V74.4.3',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

@@ -197,6 +197,22 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV }) => {
       inds: R2.picked.map(x => x.ind), avoided: R2.avoided, thin: R2.thin,
       top3: R2.top3.map(x => x.k),
     };
+    // 🎣 V74.4.3 使用者:「每次點開都是鼎元,是代表它比較強嗎?」→ ⛔ 不是,所以兩條都要列出來
+    PRO._cast = R2; PRO._fishPick(R2.picked[0].sym); await sleep(50);
+    out.picksBar = document.getElementById('fishCard').innerText;
+    out.picksBarChips = [...document.querySelectorAll('#fishCard .sigtag')].map(x => x.innerText.trim());
+    // 📖 懸浮視窗:點「這一條的細節」→ 內容在視窗裡,關掉要真的關掉
+    PRO._castWhyOpen(); await sleep(20);
+    const _md = document.getElementById('proModal');
+    out.modalOpen = !_md.classList.contains('hidden');
+    out.modalTxt = _md.innerText;
+    out.modalBodyLock = document.body.style.overflow === 'hidden';
+    PRO.closeModal();
+    out.modalClosed = _md.classList.contains('hidden') && _md.innerHTML === '' && document.body.style.overflow !== 'hidden';
+    // 自己點的(不是拋竿挑的)→ 視窗要誠實說沒有那份理由
+    PRO._cast = null; PRO._fishPickSym = 'AAAA'; PRO._castWhyOpen(); await sleep(20);
+    out.modalManual = _md.innerText; PRO.closeModal();
+    PRO._cast = R2;
     // 沒有魚上鉤時要誠實說,⛔ 不放寬條件硬給
     PRO._fishD = { ...D0, rows: [mk('ZZZZ', { pos252: 10, amp20: 0.5 })] };
     PRO._cast = PRO._castPick(PRO._fishD);
@@ -208,6 +224,13 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV }) => {
   // 🎣 釣魚
   PRO._fishPick('2408'); await sleep(150);
   out.card = document.getElementById('fishCard').innerText;
+  // 📋 V74.4.3:金鑰帶不過去 → 複製中文名自己貼過去(⛔ 不傳金鑰、不帶參數)
+  { let _cp = null;
+    const _oc = PRO._copy; PRO._copy = t => { _cp = t; };
+    PRO._fishCopyName('2408');
+    PRO._copy = _oc;
+    out.copied = _cp;
+    out.keyWarnHtml = (document.getElementById('fishCard').innerHTML.match(/🔑[\s\S]{0,900}/) || [''])[0]; }
   {const _acts = document.querySelector('#fishCard .fishacts'), _big = document.querySelector('#fishCard .fishbig');
    out.actsInBig = !!(_acts && _big && _big.contains(_acts));
    out.actsTxt = _acts ? _acts.innerText.replace(/\s+/g, ' ') : '';
@@ -317,8 +340,8 @@ ok('⑭ 釣到魚:卡片有名字/現價/位階/同族', /南亞科/.test(R.card
 // 🔘 V74.4.2 使用者要求:三顆按鈕移到「🎣 釣到:XXX」那一列**最右側**(⛔ 不再自己佔一整列)
 ok('⑭a 三顆按鈕在標題那一列(.fishacts)而且靠右',
    R.actsInBig && R.actsRight, `inBig=${R.actsInBig} right=${R.actsRight}`);
-ok('⑭a2 三顆都在:收進漁獲籃 / 星圖(真的連到 starGo)/ 散戶救星',
-   /收進漁獲籃|放生/.test(R.actsTxt) && /星圖/.test(R.actsTxt) && /散戶救星/.test(R.actsTxt)
+ok('⑭a2 四顆都在:收進漁獲籃 / 📋 複製名稱 / 星圖(真的連到 starGo)/ 散戶救星',
+   /收進漁獲籃|放生/.test(R.actsTxt) && /複製名稱/.test(R.actsTxt) && /星圖/.test(R.actsTxt) && /散戶救星/.test(R.actsTxt)
    && /PRO\.starGo\('2408'\)/.test(R.cardHtml) && /PRO\.gotoStock\('2408'\)/.test(R.cardHtml), R.actsTxt);
 ok('⑭b 卡片明寫「不是進場建議」', /不是進場建議/.test(R.card));
 ok('🏅⑮ 每一條魚都算了實測體質', R.scored === R.rowsN && R.rowsN > 0, `${R.scored}/${R.rowsN}`);
@@ -376,9 +399,34 @@ ok('🎣⑧b 卡片必須寫出「合起來回測量不出優勢」與那兩個�
    && /不是一個回測過的策略/.test(seg('_castWhyHtml')) && /cast_probe/.test(seg('_castWhyHtml')));
 ok('🎣⑧c 那段免責⛔ 不可包在 details 裡(收起來等於沒說)',
    !/<details[^>]*>[\s\S]{0,400}合起來/.test(seg('_castWhyHtml')));
-ok('🎣⑨ 「為什麼釣到它」要寫出每一層的實測數字 + ⛔ 不是買進訊號',
-   /\+289\.6/.test(seg('_castWhyHtml')) && /\+1\.44pp/.test(seg('_castWhyHtml')) && /\+0\.90/.test(seg('_castWhyHtml'))
-   && /不是買進訊號/.test(seg('_castWhyHtml')) && /散戶救星/.test(seg('_castWhyHtml')));
+ok('🎣⑨ 「為什麼釣到它」(懸浮視窗裡)要寫出每一層的實測數字 + ⛔ 不是買進訊號',
+   /\+289\.6/.test(seg('_castWhyFull')) && /\+1\.44pp/.test(seg('_castWhyFull')) && /\+0\.90/.test(seg('_castWhyFull'))
+   && /不是買進訊號/.test(seg('_castWhyFull')) && /散戶救星/.test(seg('_castWhyFull')));
+// 📖 V74.4.3 使用者:「這是你點到的那一條的細節這個變成按鈕…用懸浮視窗方式呈現」
+ok('🎣⑩ 標題列那個「細節」已經是按鈕,而且真的接到 _castWhyOpen',
+   /<button[^>]*id="fishWhyBtn"[^>]*PRO\._castWhyOpen\(\)/.test(src) && !/>這是你點到的那一條的細節</.test(src));
+ok('🎣⑩b 懸浮視窗打得開,而且完整理由(每一層的數字)真的在視窗裡',
+   R.modalOpen && /為什麼釣到它/.test(R.modalTxt) && /\+289\.6/.test(R.modalTxt) && /\+1\.44pp/.test(R.modalTxt),
+   (R.modalTxt || '').slice(0, 120));
+ok('🎣⑩c 關掉要真的關掉(內容清空 + 背景可以捲回來)', R.modalClosed);
+ok('🎣⑩d 開著時背景⛔ 不可跟著捲', R.modalBodyLock);
+ok('🎣⑩e 自己點的(不是拋竿挑的)→ 視窗要誠實說沒有那份理由,⛔ 不可空白',
+   /不是拋竿挑的/.test(R.modalManual) && R.modalManual.length > 30, (R.modalManual || '').slice(0, 80));
+// 🎣 V74.4.3 使用者:「每次點開都是鼎元,是代表它比較強嗎?」→ ⛔ 不是:排序只是照 20 日漲幅,而漏斗連排序都沒有優勢
+ok('🎣⑪ 拋竿上鉤的每一條都要列出來(⛔ 只顯示一條 = 用版面暗示不存在的強弱)',
+   R.picksBarChips.some(t => /AAAA/.test(t)) && R.picksBarChips.some(t => /CCCC/.test(t)), JSON.stringify(R.picksBarChips.slice(0, 6)));
+ok('🎣⑪b 必須明寫「沒有強弱之分 / 先出現的不代表比較強」,並給出那個負數',
+   /沒有強弱之分/.test(R.picksBar) && /不代表比較強/.test(R.picksBar) && /−1\.44pp/.test(R.picksBar),
+   (R.picksBar || '').slice(0, 160));
+ok('🎣⑪c 那段⛔ 不可收進摺疊(收起來等於沒說)',
+   !/<details[^>]*>[\s\S]{0,300}沒有強弱之分/.test(seg('_castPicksBarHtml')));
+// 📋 V74.4.3 使用者:「改用點擊按鈕後變成複製個股中文,我自己轉貼過去查詢就好」
+ok('📋⑫ 複製的是「中文名」,⛔ 不是代號、⛔ 不含金鑰或網址', R.copied === '南亞科', R.copied);
+// ⚠️ 空過守門:headless 沒有金鑰 → 這段一定要渲染出來,⛔ 不可用「剛好是空的」矇混過去
+ok('📋⑫b 金鑰提示改成指路那顆按鈕(⛔ 長篇搬進摺疊,但不可消失)',
+   R.keyWarnHtml.length > 50 && /複製名稱/.test(R.keyWarnHtml) && /<details/.test(R.keyWarnHtml),
+   (R.keyWarnHtml || '(沒渲染出來)').slice(0, 100));
+ok('📋⑫c 🔐 ⛔ 絕不可把金鑰放進網址帶過去', !/gotoStock[\s\S]{0,200}(key|Key)=/.test(src));
 ok('💥 沒有未攔截的 JS 錯誤', errs.length === 0, errs.join(' | '));
 
 await browser.close();
