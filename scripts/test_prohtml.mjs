@@ -283,6 +283,19 @@ const T = await page.evaluate(async () => {
     //    ⭐ '2801' 是**別名**案例:輪動圖 '17' 叫「金融」、screener 叫「金融保險」。
     PRO._cache['data/screener.json'].ind = Object.assign({}, PRO._cache['data/screener.json'].ind,
         { '2382': '半導體', '2222': '半導體', '2317': '航運', '2801': '金融保險' });
+    // 🗺️ V74.4.4 熱力圖至少要 5 個產業才畫得出來(真實 screener 有 ~2,300 檔 × 32 個產業)。
+    //    ⛔ 只給 3 檔的話那張圖整個不渲染 → 相關測試會變成「n=0 假失敗」(陷阱 #40:
+    //    測資規模跟真實差太多 = 那條根本沒驗到)。⭐ 產業名要用 screener 的中文名(含別名)。
+    {
+      const S = PRO._cache['data/screener.json'];
+      const seed = [['9001', '航運', 30], ['9002', '金融保險', 25], ['9003', '紡織', 22]  /* ⛔ 不可用「鋼鐵」——㉕k 靠它當「一檔都沒有」的案例 */,
+                    ['9004', '半導體', 60], ['9005', '電腦週邊', 18], ['9006', '光電', 15],
+                    ['9007', '塑膠', 12], ['9008', '食品', 9]];
+      for (const [code, ind, amt] of seed) {
+        S.rows[code] = [50, 12, 1.0, 5, 20, 0, 0, 3, 0, 60, 1.5, 3.0, amt];
+        S.ind[code] = ind;
+      }
+    }
     PRO._names = Object.assign({}, PRO._names, { '2382': '廣達', '2222': '假無帶', '2317': '鴻海', '2801': '彰銀' });
     PRO._cache['data/screener.json'].rows['2801'] = [20, 12, 0.5, 3, null, 40, 10, 1, 50, 30, 0.9];
     PRO.switchTab('rot');
@@ -339,6 +352,18 @@ const T = await page.evaluate(async () => {
     out.lastOnN = document.querySelectorAll('#rotFlowBar .fchk.on').length;
     PRO.toggleFlow('f'); PRO.toggleFlow('t');
     out.noteTxt = document.getElementById('rotFiNote').innerText;
+    // 🎞️ V74.4.4 使用者:「輪動總覽那張沒有播放動態」
+    //    ⭐ 熱力圖的**顏色**要跟著時間軸動(面積沒有歷史 → 固定,那件事必須寫在卡上);
+    //    ⭐ 而且會動的那張圖要排在熱力圖**上面**(⛔ 否則按了播放,第一眼看到的是不會動的)。
+    { PRO.rotSwitchSub('map'); await new Promise(r => setTimeout(r, 60));
+      const fills = () => [...document.querySelectorAll('#rotTree .cell rect')].map(r => r.getAttribute('fill'));
+      PRO.rotSeek(0); await new Promise(r => setTimeout(r, 40)); const f0 = fills();
+      PRO.rotSeek(4); await new Promise(r => setTimeout(r, 40)); const f4 = fills();
+      const rc = document.querySelector('#rotRace svg'), tr = document.querySelector('#rotTree svg');
+      out.tree = { n: f0.length, moved: f0.length > 0 && f0.some((v, i) => v !== f4[i]),
+                   note: (document.getElementById('rotTreeNote') || { innerText: '' }).innerText,
+                   raceTop: rc ? rc.getBoundingClientRect().top : null,
+                   treeTop: tr ? tr.getBoundingClientRect().top : null }; }
     // 📱 長版 + ⏩ 速度 + 🔎 明細
     out.aspect = PRO.QH / PRO.QW;
     out.spd0 = document.getElementById('rotSpd').textContent;
@@ -1275,6 +1300,18 @@ ok('㉒d2 🚨🚨 版面穩定:拉時間軸時結論條高度與圖的位置**�
 //    (它比的是拉時間軸前後,那時內容行數本來就一樣)。
 ok('㉒d2b 🚧 而且要靠 CSS **釘死** min-height、並且**釘得夠高**撐住實際內容',
    parseFloat(T.vMinH) >= 40 && parseFloat(T.vMinH) >= T.vH - 4, [T.vMinH, T.vH]);
+// 🎞️ V74.4.4 使用者:「輪動總覽那張沒有播放動態」—— 真因跟 V74.1.3 泡泡圖同一種:
+//    熱力圖讀的 screener.json 只有一天。面積沒有歷史(固定),⭐ 但顏色可以動。
+ok('🎞️① 熱力圖的顏色要跟著時間軸動(⛔ 不可整張定住)',
+   T.tree.n >= 5 && T.tree.moved, `n=${T.tree.n} moved=${T.tree.moved}`);
+ok('🎞️①b 🚨 「面積是最新一天、不會回放」必須寫在卡上(⛔ 不可讓人以為整張都在回放)',
+   /面積.{0,30}(不會|⛔ 不會).{0,10}跟著時間軸/.test(T.tree.note.replace(/\s/g, '')) || /不會跟著時間軸回放/.test(T.tree.note),
+   T.tree.note.slice(0, 160));
+ok('🎞️①c 顏色講的是「那一天的 20 日相對強弱」,而且要標出停在哪一天',
+   /20 日相對強弱/.test(T.tree.note) && /2026-08-\d\d/.test(T.tree.note), T.tree.note.slice(0, 120));
+ok('🎞️①d 🚨 會動的那張圖要排在熱力圖**上面**(⛔ 否則按播放第一眼看到的是不會動的)',
+   T.tree.raceTop !== null && T.tree.treeTop !== null && T.tree.raceTop < T.tree.treeTop,
+   `race=${T.tree.raceTop} tree=${T.tree.treeTop}`);
 ok('㉒d3 🚧 尺標要用**全期**最大值:泡泡⛔ 不可飛出畫布(每天各自縮放就會)', T.outside === 0, T.outside);
 ok('㉒e 結論要點名最強 / 最弱(🎯⛔ 圖示,⛔ 不靠顏色)',
    /🎯/.test(T.verdict) && /⛔/.test(T.verdict) && /航運/.test(T.verdict) && /半導體/.test(T.verdict), T.verdict.slice(0, 120));

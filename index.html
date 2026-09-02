@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.4.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.4.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.4.3 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.4.4 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7457,8 +7457,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.4.3',
+    _APP_VERSION: 'V74.4.4',
     _CHANGELOG: [
+        { v: 'V74.4.4', dt: '2026-09-02', d: ['🎞️ <b>產業作戰室「輪動總覽」的熱力圖現在會跟著播放動了</b> —— 顏色 = 那一天的「近 20 日相對強弱」。⚠️ 磚<b>面積</b>是最新交易日的成交額、<b>不會</b>跟著時間軸回放(每日成交額沒有存歷史),這件事寫在圖下面。','📊 會動的那張圖(排名賽跑)<b>移到熱力圖上面</b> —— 之前按了播放,手機上第一眼看到的是不會動的那張。','📖 釣到的魚:「為什麼釣到它」與完整回測數字<b>整塊移進懸浮視窗</b>,卡片乾淨很多;開視窗那顆按鈕改成琥珀色並帶 🚨,免得那個「合起來是負的」被忽略。'] },
         { v: 'V74.4.3', dt: '2026-09-02', d: ['📋 <b>產業作戰室釣到的魚多了「複製名稱」</b> —— 金鑰帶不過去時,一鍵複製中文股名,自己貼到散戶救星的搜尋框就查得到(⛔ 不會把金鑰放進網址)。長篇的「怎麼根治」收進摺疊。','📖 「這一條的細節」<b>改成按鈕 + 懸浮視窗</b>:「為什麼釣到它」與完整回測數字移進視窗,卡片上只留一行摘要(那兩個負數仍在第一眼,⛔ 不收起來)。','🎣 <b>拋竿上鉤的每一條都列出來了</b> —— 先出現的那一條<b>⛔ 不代表比較強</b>:那個順序只是照近 20 日漲幅排的,而回測證明這套漏斗連排序都沒有優勢。現在可以直接點著切換,卡上也明寫「沒有強弱之分」。'] },
         { v: 'V74.4.2', dt: '2026-09-02', d: ['🎣 <b>拋竿做了回測 —— 結果是「合起來沒有加分」,直接寫在卡片上</b>。每一層(位階+波動、前3強板塊、板塊內最強)單獨都通過六道關卡,但串起來之後相對「強勢板塊裡隨便挑一檔」是 −0.52pp、相對「只用位階+波動篩」是 −1.44pp。功能保留,但定位改成<b>有條件的候選清單</b>,⛔ 不是回測過的策略。','🐟 點魚之後<b>切到獨立的「釣到」頁</b>(⛔ 不再跟魚池疊在同一頁,頁面不會再拉很長);三顆按鈕(收進漁獲籃 / 星圖 / 散戶救星)移到標題那一列最右側;漁獲籃兩個畫面下方都看得到。','🧺 漁獲籃新增<b>「大盤」與「贏大盤」兩欄</b> —— 個股漲 5% 而大盤漲 8% 其實是輸,這一欄才是「這條魚有沒有用」;樣本不足 10 筆會明寫不能當結論。','🧾 圖例與說明的長文字<b>改成摺疊</b>(一個字都沒刪),第一眼只留免責與結論。','🔑 從產業作戰室跳散戶救星<b>抓不到金鑰</b>的原因寫清楚了:iOS 把「主畫面上的 App」和「瀏覽器」當成兩個各自獨立的儲存空間,金鑰只存在你當初輸入的那一邊。頁面會偵測並告訴你兩個做法(從主畫面進去、或用設定中心的「只備份 API 金鑰」搬過來)。'] },
         { v: 'V74.4.1', dt: '2026-09-02', d: ['💰 本站第一次把<b>配息真的加回去</b>算「買了放著」的成績(1,912 檔・2021 起・除息日當天再投入)。3.2 年年化:<b>0056 從 +18.5% 變 +31.7%</b>、00919 +16.3%→+30.4%、00878 +19.6%→+30.4% —— 高股息那族以前被低估 12~14 個百分點。<b>但 0050 含息是 +49.5%,還是贏</b>:高配息 ≠ 總報酬高。⛔ 這是事實不是推薦,而且沒扣二代健保與稅、窗口整段偏多頭。'] },

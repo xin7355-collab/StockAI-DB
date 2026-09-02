@@ -202,6 +202,9 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV }) => {
     out.picksBar = document.getElementById('fishCard').innerText;
     out.picksBarChips = [...document.querySelectorAll('#fishCard .sigtag')].map(x => x.innerText.trim());
     // 📖 懸浮視窗:點「這一條的細節」→ 內容在視窗裡,關掉要真的關掉
+    { const _b = document.getElementById('fishWhyBtn');
+      out.whyBtn = { on: !!(_b && _b.offsetParent !== null), txt: _b ? _b.innerText : '',
+                     inFold: !!(_b && _b.closest('details')) }; }
     PRO._castWhyOpen(); await sleep(20);
     const _md = document.getElementById('proModal');
     out.modalOpen = !_md.classList.contains('hidden');
@@ -303,6 +306,7 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV }) => {
   out.treeDbg = byAmt.slice(0, 6).map(r => [r.amt, Math.round(r.area)]);
   out.treeClick = !!tb.querySelector('g[onclick*="rotOpen"]');
   out.treeTxt = tb.innerText;
+  out.treeColored = [...tb.querySelectorAll('.cell rect')].filter(r => !/143,163,187/.test(r.getAttribute('fill') || '')).length;
   out.treeNoLamp = !/[🔴🟢]/u.test(tb.innerHTML);
   // 📐 橫版鐵則(CLAUDE.md):8 顆分頁鈕在 390 寬曾爆 12px 橫向溢出(V74.3.5 抓到)→ 每個分頁都量
   out.overflow = {};
@@ -365,7 +369,10 @@ ok('📐 390 寬 8 個分頁都無橫向溢出(scrollX ≤ 2)', Object.values(R.
 ok('🗺️ 熱力圖:磚數 ≥5、鋪滿畫布(≥85%)', R.treeN >= 5 && R.treeArea >= 0.85, `n=${R.treeN} area=${R.treeArea.toFixed(2)}`);
 ok('🗺️b 磚面積跟成交額同向(大的不可比小的小)', R.treeMono, JSON.stringify(R.treeDbg));
 ok('🗺️c 點磚 → 板塊明細(rotOpen)', R.treeClick);
-ok('🗺️d 文案:今天錢在哪 + 「不是輪動訊號」+ 只含上市', /今天錢在哪/.test(R.treeTxt) && /不是.{0,3}輪動訊號/.test(R.treeTxt) && /上市/.test(R.treeTxt), R.treeTxt.slice(0, 120));
+ok('🗺️d 文案:錢在哪一區 + 「不是輪動訊號」+ 只含上市', /錢在哪一區/.test(R.treeTxt) && /不是.{0,3}輪動訊號/.test(R.treeTxt) && /上市/.test(R.treeTxt), R.treeTxt.slice(0, 120));
+// 🎞️ V74.4.4:沒有輪動歷史時⛔ 不可整張變灰 —— 要退回原本的「最新交易日加權漲跌」
+ok('🗺️f ⛔ 沒有輪動歷史時仍要有顏色(退回今日漲跌),並說出自己用的是哪一種',
+   R.treeColored >= 3 && /最新交易日的加權漲跌/.test(R.treeTxt), `coloured=${R.treeColored}`);
 ok('🗺️e ⛔ 不用 🔴🟢 emoji(顏色只在磚上,文字色紅漲綠跌)', R.treeNoLamp);
 // ═══ 💰 除權息(V74.3.8)═══
 ok('💰① 釣起的魚卡片有配息:近 12 個月合計 21.00 元 + 殖利率 + 下次除息', /最近 12 個月現金股利合計/.test(R.fishDiv) && /殖利率/.test(R.fishDiv) && /下次除息/.test(R.fishDiv), R.fishDiv.slice(0, 160));
@@ -394,11 +401,13 @@ ok('🎣⑦ 沒有魚上鉤時誠實說,而且明寫⛔ 不放寬條件硬給', 
 ok('🎣⑧ ⛔ 挑選規則不可用 🏅 加總排序(它的 IC≈0,已被自己的檢定否定)',
    !/sc\.sum/.test(seg('_castPick')) && !/sort\s*===\s*'score'/.test(seg('_castPick')));
 // 🚨 V74.4.2:組合回測跑完是**負的** → 這條免責是這張卡最重要的東西,⛔ 不可拿掉也不可收進摺疊
-ok('🎣⑧b 卡片必須寫出「合起來回測量不出優勢」與那兩個負數',
-   /合起來/.test(seg('_castWhyHtml')) && /−0\.52pp/.test(seg('_castWhyHtml')) && /−1\.44pp/.test(seg('_castWhyHtml'))
-   && /不是一個回測過的策略/.test(seg('_castWhyHtml')) && /cast_probe/.test(seg('_castWhyHtml')));
-ok('🎣⑧c 那段免責⛔ 不可包在 details 裡(收起來等於沒說)',
-   !/<details[^>]*>[\s\S]{0,400}合起來/.test(seg('_castWhyHtml')));
+// ⚠️ V74.4.4 使用者明示把這段搬進懸浮視窗 → 交換條件是「開視窗那顆按鈕必須帶 🚨 且永遠看得到」
+ok('🎣⑧b 「合起來回測量不出優勢」與那兩個負數必須在視窗裡',
+   /合起來/.test(seg('_castWhyFull')) && /−0\.52pp/.test(seg('_castWhyFull')) && /−1\.44pp/.test(seg('_castWhyFull'))
+   && /不是一個回測過的策略/.test(seg('_castWhyFull')) && /cast_probe/.test(seg('_castWhyFull'))
+   && /−0\.52pp/.test(R.modalTxt) && /−1\.44pp/.test(R.modalTxt));
+ok('🎣⑧c 🚨 開視窗那顆按鈕要帶警示、⛔ 不可收進摺疊(否則那個負數等於消失了)',
+   R.whyBtn.on && /🚨/.test(R.whyBtn.txt) && !R.whyBtn.inFold, JSON.stringify(R.whyBtn));
 ok('🎣⑨ 「為什麼釣到它」(懸浮視窗裡)要寫出每一層的實測數字 + ⛔ 不是買進訊號',
    /\+289\.6/.test(seg('_castWhyFull')) && /\+1\.44pp/.test(seg('_castWhyFull')) && /\+0\.90/.test(seg('_castWhyFull'))
    && /不是買進訊號/.test(seg('_castWhyFull')) && /散戶救星/.test(seg('_castWhyFull')));
