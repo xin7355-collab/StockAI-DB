@@ -29,6 +29,8 @@ import fs from 'fs';
 import path from 'path';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// 📂 V74.4.8:深歷史(klines_deep 合併後,2021 起)放在 repo 外 → 用 DATA_DIR 指過去,⛔ 不動 repo 的 data/
+const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
 const MAX_SYMS = +(process.argv[2] || 600);
 const PICKS_PER_DAY = +(process.argv[3] || 3);
 const WARMUP = 240;          // 暖身:前 N 個交易日只累積成績、不下單
@@ -116,7 +118,7 @@ const LOT = +(process.env.LOT || 100000);        // 每筆投入(等權)
 const CAPITAL = +(process.env.CAPITAL || 1000000); // 💰 你手上的總本金 —— 錢用完就買不了(這才貼近現實)
 
 // ── 分層抽樣:每個代號開頭各取,⛔ 不可只取前 N(那等於只測傳產金融)──────
-const files = fs.readdirSync(path.join(ROOT, 'data'))
+const files = fs.readdirSync(DATA)
     .filter(f => /^\d{4}\.json$/.test(f)).map(f => f.slice(0, 4)).sort();
 const byHead = {};
 for (const s of files) (byHead[s[0]] ||= []).push(s);
@@ -175,7 +177,7 @@ let done = 0;
 for (const sym of syms) {
     let rows;
     try {
-        rows = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', `${sym}.json`), 'utf8'));
+        rows = JSON.parse(fs.readFileSync(path.join(DATA, `${sym}.json`), 'utf8'));
     } catch (_) { continue; }
     if (!Array.isArray(rows) || rows.length < 120) continue;
     const tr = await page.evaluate(a => {
@@ -237,7 +239,9 @@ for (const sym of syms) {
                         if (!(stop > 0) || stop >= entry) stop = entry * 0.95;   // 守門:算壞就退回現行
                         let exitP = C(last), exitIdx = last;
                         const endJ = Math.min(last, eIdx + a.maxD);
-                        const maN = a.exit === 'ma10' ? 10 : a.exit === 'ma20' ? 20 : a.exit === 'ma5' ? 5 : 0;
+                        // 🚪 V74.4.8:出場規則可以**疊加**在 maN 上(ma5be5 / ma5tp15 / ma5rr2 / ma5half10)
+                        //   → 底層均線改用前綴解析,⛔ 不再只認 'ma5'/'ma10'/'ma20' 三個字串
+                        const maN = /^ma(\d+)/.test(a.exit) ? +RegExp.$1 : 0;
                         const trailPct = /^trail(\d+)$/.test(a.exit) ? +RegExp.$1 : 0;
                         // 🕯️ V74.3.7 Chandelier 出場(twstock-research 的做法):進場後最高收盤 − K×ATR(14)。
                         //   跟 trailN 同族但用「該股自己的波動」當回落幅度,⛔ 不是固定 %。K 用 3(它的預設)。
@@ -260,11 +264,70 @@ for (const sym of syms) {
                         const tmBase = tm && tm[1] && tm[1] !== 'none' ? tm[1] : '';
                         const maN2 = tmBase.startsWith('ma') ? +tmBase.slice(2) : maN;
                         const trailPct2 = /^trail(\d+)$/.test(tmBase) ? +RegExp.$1 : trailPct;
+                        // ═══ 🚪 V74.4.8 「外面大戶/華爾街在用的出場」全部做成可疊加的規則 ═══
+                        //   be{P}   保本停損:漲過 +P% 之後,停損上移到進場價(Van Tharp / 多數 CTA 的標配)
+                        //   tp{P}   固定停利:漲到 +P% 就走(散戶最愛,⛔ 但會把贏家砍掉 —— 要實測)
+                        //   rr{K}   風報比停利:漲到「K 倍初始風險」就走(Tharp 的 R-multiple)
+                        //   half{P} 分批:漲到 +P% 先出一半,剩下照底層規則走(機構常用的 scale-out)
+                        //   don{N}  唐奇安/海龜出場:收盤跌破前 N 日最低(Dennis 海龜系統 1 用 10 日)
+                        //   plow    跌破昨日最低就走(最激進的 1 根 K 移動停損)
+                        //   sar     拋物線 SAR(Wilder;af 0.02 步進、上限 0.2)
+                        //   x5_20   5 日線下穿 20 日線才走(比 ma5 慢很多的死亡交叉)
+                        //   chandd{K} 動態 Chandelier:ATR 逐日更新(原 chandK 只在進場日算一次)
+                        //   atrt{K} ATR 移動停損:停損 = max(舊停損, 收盤 − K×ATR),只升不降
+                        //   ⛔ 全部只用「當天為止」的資料(零前視);⛔ 不改 stop 的初始算法
+                        const beP = /be(\d+)/.test(a.exit) ? +RegExp.$1 : 0;
+                        const tpP = /tp(\d+)/.test(a.exit) ? +RegExp.$1 : 0;
+                        const rrK = /rr(\d+(?:\.\d+)?)/.test(a.exit) ? +RegExp.$1 : 0;
+                        const halfP = /half(\d+)/.test(a.exit) ? +RegExp.$1 : 0;
+                        const donN = /^don(\d+)$/.test(a.exit) ? +RegExp.$1 : 0;
+                        const plow = a.exit === 'plow', sar = a.exit === 'sar', x520 = a.exit === 'x5_20';
+                        const chanddK = /^chandd(\d+(?:\.\d+)?)$/.test(a.exit) ? +RegExp.$1 : 0;
+                        const atrtK = /^atrt(\d+(?:\.\d+)?)$/.test(a.exit) ? +RegExp.$1 : 0;
+                        const stop0 = stop;                       // 初始風險(rr 用)
+                        const atrAt = j => {                      // ATR(14) 到第 j 天為止
+                            let tr = 0, k = 0;
+                            for (let q = Math.max(1, j - 13); q <= j; q++) {
+                                const h = data[q].high, l = data[q].low, pc = C(q - 1);
+                                tr += Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)); k++;
+                            }
+                            return k ? tr / k : 0;
+                        };
+                        // SAR 初始:從進場日的最低起算,EP = 進場日最高
+                        let sarV = data[eIdx].low, sarEP = data[eIdx].high, sarAF = 0.02;
+                        let halfDone = 0, halfRet = 0, dynStop = stop;
                         let peak = entry, tmHit = 0;
                         for (let j = eIdx + 1; j <= endJ; j++) {
                             const c = C(j);
                             if (c > peak) peak = c;
+                            // 🛡️ 保本:漲過 +beP% 之後,停損上移到進場價(只升不降)
+                            if (beP > 0 && peak >= entry * (1 + beP / 100) && stop < entry) stop = entry;
+                            // 📐 ATR 移動停損(只升不降)
+                            if (atrtK > 0) { const s2 = c - atrtK * atrAt(j); if (s2 > dynStop) dynStop = s2; if (c <= dynStop) { exitP = c; exitIdx = j; break; } }
                             if (c <= stop) { exitP = stop; exitIdx = j; break; }
+                            // 🎯 固定停利 / 風報比停利:達標就走(⚠️ 用收盤價,不假設剛好碰到目標價)
+                            if (tpP > 0 && c >= entry * (1 + tpP / 100)) { exitP = c; exitIdx = j; break; }
+                            if (rrK > 0 && c >= entry + rrK * (entry - stop0)) { exitP = c; exitIdx = j; break; }
+                            // ✂️ 分批:先出一半,剩下照底層規則走
+                            if (halfP > 0 && !halfDone && c >= entry * (1 + halfP / 100)) { halfDone = 1; halfRet = (c - entry) / entry * 100; }
+                            // 🐢 唐奇安:收盤跌破前 N 日最低(⛔ 不含今天)
+                            if (donN > 0 && j - donN >= eIdx) {
+                                let lo = Infinity; for (let q = j - donN; q < j; q++) lo = Math.min(lo, data[q].low);
+                                if (c < lo) { exitP = c; exitIdx = j; break; }
+                            }
+                            if (plow && c < data[j - 1].low) { exitP = c; exitIdx = j; break; }
+                            // 🪂 拋物線 SAR(做多):先算今天的 SAR,再比
+                            if (sar) {
+                                sarV = sarV + sarAF * (sarEP - sarV);
+                                sarV = Math.min(sarV, data[j - 1].low, j - 2 >= eIdx ? data[j - 2].low : data[j - 1].low);
+                                if (data[j].high > sarEP) { sarEP = data[j].high; sarAF = Math.min(0.2, sarAF + 0.02); }
+                                if (c < sarV) { exitP = c; exitIdx = j; break; }
+                            }
+                            if (x520 && j >= 19) {
+                                let s5 = 0, s20 = 0; for (let q = 0; q < 20; q++) { s20 += C(j - q); if (q < 5) s5 += C(j - q); }
+                                if (s5 / 5 < s20 / 20) { exitP = c; exitIdx = j; break; }
+                            }
+                            if (chanddK > 0) { const at = atrAt(j); if (at > 0 && c <= peak - chanddK * at) { exitP = c; exitIdx = j; break; } }
                             // ⏱️ 到了第 tmD 天,若最高點還沒漲過 tmP% → 認賠時間成本先出
                             // 🚨 這裡必須是 `<=` 不是 `<`:`peak` 從 `entry` 起算,
                             //    所以 tmP=0(「完全沒漲就出」)用 `<` 會變成 `entry < entry` = 永遠 false
@@ -284,11 +347,15 @@ for (const sym of syms) {
                         }
                         // ⚠️ inD 一律記「**訊號日**」—— 選股是那天晚上做的決定,
                         //   實際成交日在 eIdx。⛔ 若記成 eIdx,walk-forward 的時間軸會偏一天。
+                        // ✂️ 分批出場:一半在 +halfP% 那天出、一半照底層規則出 → 報酬取平均
+                        //    ⚠️ 資金釋放仍以最後出場日計(保守:分批那半的錢其實早一點回來)
+                        const retRest = (exitP - entry) / entry * 100;
+                        const retAll = halfDone ? 0.5 * halfRet + 0.5 * retRest : retRest;
                         out.push({ key: p.key, inD: data[i].date, outD: data[exitIdx].date,
                                    // 成交值(億):`volume` 是股 → ×收盤÷1e8
                                    amt: data[i].volume * data[i].close / 1e8,
-                                   entry, stop,   // 💰 風險法算張數要用(⛔ 別在外面重算,基準會不一致)
-                                   ret: (exitP - entry) / entry * 100, tm: tmHit });
+                                   entry, stop: stop0,   // 💰 風險法算張數要用(⛔ 別在外面重算,基準會不一致)
+                                   ret: retAll, tm: tmHit, hf: halfDone });
                         i = exitIdx + 1; continue;
                     }
                 }
@@ -315,7 +382,7 @@ await browser.close();
 if (!allTrades.length) { console.log('❌ 一筆交易都沒有 → 回測無效'); process.exit(1); }
 
 // ── ② 時間軸:用加權指數的交易日 ────────────────────────────────────────
-const twii = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', '^TWII.json'), 'utf8'))
+const twii = JSON.parse(fs.readFileSync(path.join(DATA, '^TWII.json'), 'utf8'))
     .map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close }))
     .filter(r => r.d && r.c > 0);
 // 🏛️ 大盤月線(20MA):第 i 天只用 0..i 的資料 → ⛔ 零前視偏誤
@@ -381,7 +448,7 @@ const finNear = new Set();
 //       今天的漲跌家數/地板股家數還沒結算 → 用今天的等於前視偏誤。
 const bh = (() => {
     try {
-        const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'breadth.json'), 'utf8'));
+        const j = JSON.parse(fs.readFileSync(path.join(DATA, 'breadth.json'), 'utf8'));
         const m = new Map();
         for (const r of (j.history || [])) m.set(String(r.d || '').replace(/\//g, '-').slice(0, 10), r);
         return m;
@@ -457,7 +524,7 @@ const selfFeat = new Map();
 if (SELF.length) {
     for (const sym of syms) {
         let rows;
-        try { rows = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', `${sym}.json`), 'utf8')); } catch (_) { continue; }
+        try { rows = JSON.parse(fs.readFileSync(path.join(DATA, `${sym}.json`), 'utf8')); } catch (_) { continue; }
         const dd = rows.map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close, v: +r.volume || 0 }))
                        .filter(r => r.d && r.c > 0);
         const m = new Map();
@@ -672,7 +739,7 @@ const _tk = taken.map(t => t._d || t.inD).filter(Boolean).sort();
 const from = _tk[0] || days[WARMUP], to = days[days.length - 1];
 const i0 = dIdx.get(from), i1 = days.length - 1;
 // 0050 買進持有(同一段期間)
-const f50 = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', '0050.json'), 'utf8'))
+const f50 = JSON.parse(fs.readFileSync(path.join(DATA, '0050.json'), 'utf8'))
     .map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close })).filter(r => r.c > 0);
 const px50 = d => { let hit = null; for (const r of f50) { if (r.d <= d) hit = r.c; else break; } return hit; };
 const b50 = px50(from), e50 = px50(to);
@@ -707,6 +774,11 @@ console.log(`   📉 最大回撤    ${mdd.toFixed(2)}%  ← 中途最難熬的�
 // 🚧 空過守門:設了濾網/出場變體,卻**一次都沒有真的觸發** → 輸出會跟基準一字不差,
 //    而那看起來只是「這個變體沒差別」。⛔ 實測踩過(ma5tm5_0 用 `<` 永遠 false)。
 {
+    if (/half\d+/.test(process.env.EXIT || '')) {
+        const hn = taken.filter(t => t.hf).length;
+        console.log(hn ? `   ✂️ 分批(先出一半)觸發  ${hn} 筆(佔 ${(hn / taken.length * 100).toFixed(0)}%)`
+                       : `   🚨 分批一次都沒觸發 —— 這個變體沒有生效,請先查判斷式`);
+    }
     const tmM = /tm(\d+)_(\d+)/.exec(process.env.EXIT || '');
     if (tmM) {
         const tmN = taken.filter(t => t.tm).length;
