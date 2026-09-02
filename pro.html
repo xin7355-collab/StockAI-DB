@@ -423,6 +423,14 @@ table.grid tr:active td{background:#18202e}
 @keyframes sp{to{transform:rotate(360deg)}}
 .hidden{display:none!important}
 footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+.fishmore{margin-top:5px}
+.fishmore>summary{cursor:pointer;color:var(--cyan);font-size:11px;list-style:none}
+.fishmore>summary::-webkit-details-marker{display:none}
+.fishmore>summary::before{content:'▸ ';}
+.fishmore[open]>summary::before{content:'▾ ';}
+.fishbig{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.fishacts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.fishacts .lbtn{font-size:11px;padding:5px 9px;min-height:34px}
 #stkSheet{position:fixed;left:0;right:0;bottom:0;z-index:95;background:rgba(10,16,26,.985);
   border-top:1px solid var(--cyan);border-radius:14px 14px 0 0;padding:12px 14px calc(14px + env(safe-area-inset-bottom));
   box-shadow:0 -10px 30px rgba(0,0,0,.55);transform:translateY(110%);transition:transform .22s ease;max-height:76vh;overflow:auto}
@@ -634,12 +642,16 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
         ・ 🚀🔥 = 關聯星圖的狀態 ・ 一群一起游 = 關聯星圖裡的同族。
      ⛔ 這頁不下多空、不計分、不給買賣價位。魚游得快 ≠ 會漲。 -->
 <div id="tabFish" class="hidden">
-  <div class="panel">
+  <!-- 🎣 兩個畫面:魚池(挑) ↔ 釣到(看)。⛔ 不可疊在同一頁 —— 使用者實測「頁面拉太長」。
+       ⭐ 漁獲籃在兩個畫面下方都要出現(它是你自己的紀錄,兩邊都要看得到)。 -->
+  <div class="panel" id="fishPoolPane">
     <h2>🎣 釣魚池 <span class="sub">整個市場一眼看完:魚在哪一層、往哪游、誰跟誰一群</span>
       <span class="sub" id="fishSub"></span></h2>
+    <div id="fishKeyWarn"></div>
     <div class="starbar" style="margin-top:0">
       <button class="lbtn on" id="castBtn" onclick="PRO.castRod()" style="font-weight:900">🎣 拋竿</button>
-      <span class="note" style="margin:0">幫你挑 —— 照本站實測最強的那套規則(🧬 位階+波動 → 前 3 強板塊 → 板塊內最強,一天最多 2 條)</span>
+      <span class="note" style="margin:0">幫你挑 —— 每一層都是實測有邊際的條件(🧬 位階+波動 → 前 3 強板塊 → 板塊內最強,一天最多 2 條)。
+        <b>⚠️ 但「合起來」回測量不出優勢</b>,見卡片上的數字。</span>
     </div>
     <div class="labbar" id="fishPool"></div>
     <div class="starbar" style="justify-content:space-between;margin-top:0">
@@ -654,11 +666,18 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
       <canvas id="fishCanvas"></canvas>
       <div id="fishLegend" class="fishlegend"></div>
     </div>
-    <div id="fishCard"></div>
-    <div id="fishBasket"></div>
     <div id="fishList"></div>
     <div id="fishNote"></div>
   </div>
+  <!-- 🐟 釣到:點魚之後切到這一頁(⛔ 不跟魚池疊在一起) -->
+  <div class="panel hidden" id="fishPickPane">
+    <div class="starbar" style="margin:0 0 8px">
+      <button class="lbtn" onclick="PRO.fishBack()">← 回魚池</button>
+      <span class="note" style="margin:0">這是你點到的那一條的細節</span>
+    </div>
+    <div id="fishCard"></div>
+  </div>
+  <div class="panel" id="fishBasketPane"><div id="fishBasket"></div></div>
 </div>
 <div id="tabSig" class="hidden">
   <div class="panel">
@@ -1392,6 +1411,14 @@ const PRO = {
       ${(R.avoided || []).length ? `<div class="note" style="margin-top:6px">⚠️ 這次<b>擋掉 ${R.avoided.length} 檔</b>(${R.avoided.slice(0, 4).map(c => this._nmTxt(c)).join('、')}${R.avoided.length > 4 ? '…' : ''}):
         它們 🧬 有過關,但<b>前 5 日噴 ≥30% 又被掛官方注意股</b> —— 本站實測那個組合後 20 日
         <b>−1.81pp ・中位 −7.21%</b>(六關全過的避雷訊號),⛔ 不能一邊追強一邊無視它。</div>` : ''}
+      <div class="warnbox" style="margin:8px 0 0">🚨 <b>這套漏斗「合起來」回測量不出優勢 —— 一定要知道</b>
+        <div class="note" style="margin-top:4px">上面每一層<b>單獨</b>都有實測邊際,⛔ <b>但把它們串起來之後沒有加分</b>:
+        492 個交易日、186 次(一天最多 2 條 + 20 日去重),相對
+        <b>「強勢板塊裡隨便挑一檔」10 日 −0.52pp</b>、相對 <b>「只用 🧬 篩」10 日 −1.44pp</b>(兩個都是**負的**)。
+        <br>⭐ 真因很可能是<b>條件重疊</b>:🧬(高位階+高波動)跟「板塊內近 20 日最強」講的其實是同一件事,
+        疊起來只是把樣本切到最極端的那幾檔。這跟 🏅 實測體質「每個零件都測過、加總卻排不出順序」是<b>同一種錯</b>。
+        <br>⛔ 所以請把它當成<b>一份有條件的候選清單</b>(流動性夠、位階高、波動夠、在強勢族群、避開了實測會賠的組合),
+        <b>⛔ 不是一個回測過的策略</b>。<span style="color:var(--dim2)">來源:scripts/cast_probe.mjs ・⚠️ 避雷那一關沒進回測(沒有注意股歷史)→ 這是保守下界</span></div></div>
       <div class="note" style="margin-top:6px">⛔ <b>這是「候選」不是買進訊號</b>:上面每個數字都是<b>過去</b>的統計,
       而且回測窗口整段偏多頭、追強那族的優勢 2024 起逐年變小。要不要買、買幾張、停損在哪,
       一律以散戶救星的「現在怎麼做」為準。</div></div>`;
@@ -1483,7 +1510,50 @@ const PRO = {
     this._fishBasketRender();
     this._fishRebuild();
   },
-  fishPool(k) { this._fishPoolK = k; this.buzz(15); this.renderFish(); },
+  fishPool(k) { this._fishPoolK = k; this.buzz(15); this.fishBack(true); this.renderFish(); },
+  // 🐟 兩個畫面切換(⛔ 不可疊在同一頁:使用者實測「頁面拉太長」)
+  _fishShow(v) {
+    this._fishView = v;
+    const pool = document.getElementById('fishPoolPane'), pick = document.getElementById('fishPickPane');
+    if (!pool || !pick) return;
+    pool.classList.toggle('hidden', v === 'pick');
+    pick.classList.toggle('hidden', v !== 'pick');
+    // ⛔ 切到釣到頁要捲到頂,否則會停在魚池捲到一半的位置
+    if (v === 'pick') window.scrollTo({ top: 0, behavior: 'smooth' });
+  },
+  fishBack(silent) {
+    if (!silent) this.buzz(15);
+    this._fishShow('pool');
+    // ⚠️ 回到魚池要把動畫接回去(切走時 rAF 被停掉了)
+    if (this._fishModeV !== 'list' && this._fishD) this._fishStart();
+  },
+
+  // 🔑 這個視窗到底有沒有你的金鑰(V74.4.2 使用者:「連到散戶救星每次都沒抓到我的 key」)
+  //    ⭐ 真因**不是連結**:pro.html 與 index.html 同一個網域 = 同一個儲存空間,金鑰在就讀得到。
+  //    是使用者開的**這個視窗本身**是另一個儲存空間 —— iOS 把「主畫面上的 App」跟
+  //    「Safari / 別的 App 裡的內建瀏覽器」分成兩個獨立的儲存區,金鑰只存在你當初輸入的那一邊。
+  //    ⛔ 程式沒辦法把金鑰搬過去(那正是瀏覽器的隔離設計),能做的是**講清楚 + 指路**。
+  //    ⛔ 絕不可把金鑰放進網址傳過去(會留在歷史紀錄/轉址來源,這個 repo 是公開的)。
+  _keysHere() {
+    let st = null; try { st = JSON.parse(localStorage.getItem('proTerminalSettings') || 'null'); } catch (_) { st = null; }
+    if (!st) return false;
+    return ['fugleKey', 'finmindKey', 'groqKey', 'groqKeys', 'geminiKey', 'openrouterKey', 'massiveKey']
+      .some(k => { const v = st[k]; return typeof v === 'string' ? v.trim().length > 8 : Array.isArray(v) && v.length > 0; });
+  },
+  _keyWarnHtml() {
+    if (this._keysHere()) return '';
+    const pwa = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    return `<div class="warnbox" style="margin:0 0 8px">🔑 <b>這個視窗沒有你的金鑰</b>
+      —— 所以從這裡跳到散戶救星,即時報價與 AI 都會是空的。
+      <div class="note" style="margin-top:4px">⭐ <b>不是連結壞掉</b>:金鑰只存在你當初輸入的那個地方。
+      iOS 會把<b>主畫面上的 App</b> 和 <b>Safari / 別的 App 裡開的瀏覽器</b>當成兩個<b>各自獨立</b>的儲存空間,
+      互相看不到對方存的東西${pwa ? '' : '(你現在是在瀏覽器裡開的)'}。
+      <br>兩個做法(擇一):<br>
+      ① ⭐ <b>從主畫面的散戶救星圖示進去</b>,再從那裡開產業作戰室 —— 金鑰就在那一邊。<br>
+      ② 在<b>有金鑰</b>的那一邊開散戶救星 → ⚙️ 設定中心 → <b>「🔑 只備份 API 金鑰」</b>,
+      把代碼複製過來、在這一邊用「📥 還原備份」貼上。<br>
+      ⛔ 程式沒辦法自動幫你搬(那是瀏覽器刻意的隔離);⛔ 也不會把金鑰放進網址傳過去(那會留在紀錄裡)。</div></div>`;
+  },
   fishMode(m) {
     this._fishModeV = m; this.buzz(15);
     document.getElementById('fishModeTank').classList.toggle('on', m === 'tank');
@@ -1575,10 +1645,16 @@ const PRO = {
   },
   _fishLegend(rows) {
     const n = { 1: 0, 2: 0 }; rows.forEach(r => { if (r.st) n[r.st]++; });
+    // 🧾 V74.4.2 使用者:「文字雜請用折疊的方式」→ 第一眼只留**看圖必須知道的那一句**,
+    //    其餘(每個視覺屬性對應哪個實測數字)收進摺疊。⛔ 那句「不是買進訊號」不可收(它是免責)。
     document.getElementById('fishLegend').innerHTML =
-      `↕ 上下=一年位階(上=高;實測位階≥75 <b>+1.52pp</b>、≤25 −0.63pp) ・ → 游向/游速=近20日動能(右=漲;板塊層級 <b>+1.44pp</b> 六關全過)
-       ・ 大小=成交額 ・ 顏色=<span style="color:#ff6b6b">今日漲</span>/<span style="color:#4ade80">跌</span>(只表方向) ・ 一群一起游=關聯星圖同族
-       ・ 🚀 剛突破 ${n[1]} 條 / 🔥 過熱 ${n[2]} 條。<b>⛔ 魚游得快 ≠ 會漲,沒有一條魚是買進訊號</b>,點魚看細節;金圈 = 你釣過的。`;
+      `🚀 剛突破 ${n[1]} 條 / 🔥 過熱 ${n[2]} 條 ・<b>⛔ 魚游得快 ≠ 會漲,沒有一條魚是買進訊號</b>,點魚看細節。
+       <details class="fishmore"><summary>圖上每個東西代表什麼(上下 / 游向 / 大小 / 顏色)</summary>
+         ↕ 上下=一年位階(上=高;實測位階≥75 <b>+1.52pp</b>、≤25 −0.63pp)<br>
+         → 游向/游速=近20日動能(右=漲;板塊層級 <b>+1.44pp</b> 六關全過)<br>
+         ⬤ 大小=成交額 ・ 顏色=<span style="color:#ff6b6b">今日漲</span>/<span style="color:#4ade80">跌</span>(只表方向)<br>
+         一群一起游=關聯星圖同族 ・ 金圈 = 你釣過的
+       </details>`;
   },
   _fishStart() {
     this.fishStop();
@@ -1710,8 +1786,34 @@ const PRO = {
     if (!confirm('把漁獲籃清空?(只清這台裝置的紀錄)')) return;
     this._catchSave([]); this._fishBasketRender();
   },
+  // 🆚 大盤基準(V74.4.2 使用者:「釣起來的時候價格,及後面驗證的價格」)——
+  //    ⭐ 只給「現在賺賠多少」是不夠的:個股漲 5% 而大盤漲 8%,那其實是**輸**。
+  //    本站所有回測一律扣同期加權,漁獲籃這份「你自己的紀錄」也要用同一把尺,⛔ 否則兩邊標準不一致。
+  async _twiiLoad() {
+    if (this._twii !== undefined) return this._twii;
+    this._twii = null;
+    try {
+      const rows = await this.fetchJson('data/' + encodeURIComponent('^TWII') + '.json');
+      if (Array.isArray(rows)) {
+        const m = new Map();
+        for (const r of rows) { const c = +r.close; if (c > 0) m.set(String(r.date || '').replace(/\//g, '-').slice(0, 10), c); }
+        if (m.size > 100) this._twii = { m, days: [...m.keys()].sort() };
+      }
+    } catch (_) {}
+    return this._twii;
+  },
+  // 取「那一天(或它之前最近一個交易日)」的指數收盤;⛔ 找不到就回 null,不猜
+  _twiiAt(d) {
+    const T = this._twii; if (!T || !d) return null;
+    if (T.m.has(d)) return T.m.get(d);
+    let lo = 0, hi = T.days.length - 1, best = null;
+    while (lo <= hi) { const mid = (lo + hi) >> 1; if (T.days[mid] <= d) { best = T.days[mid]; lo = mid + 1; } else hi = mid - 1; }
+    return best ? T.m.get(best) : null;
+  },
+
   _fishBasketRender() {
     const el = document.getElementById('fishBasket'); if (!el) return;
+    if (this._twii === undefined) { this._twiiLoad().then(() => this._fishBasketRender()); }   // ⚠️ 載完重畫一次
     const list = this._catchLoad(), D = this._fishD;
     if (!list.length) { el.innerHTML = `<div class="note" style="margin:0 0 8px">🧺 漁獲籃是空的 —— 點魚 → 「🎣 收進漁獲籃」,之後每次開池子都會算出從釣起到現在賺賠多少。</div>`; return; }
     const rows = list.map(x => {
@@ -1719,29 +1821,43 @@ const PRO = {
       const pct = c !== null && x.px > 0 ? (c / x.px - 1) * 100 : null;
       const lot = c !== null ? (c - x.px) * 1000 : null;                    // 一張毛損益(元)
       const days = x.d && D && D.date ? this._daysBetween(x.d, D.date) : null;
-      return { ...x, c, pct, lot, days };
+      // 🆚 同期大盤:釣起那天 → 現在(⛔ 指數資料還沒載到就給 null,不硬算)
+      const b0 = this._twiiAt(x.d), b1 = D && D.date ? this._twiiAt(D.date) : null;
+      const bench = b0 > 0 && b1 > 0 ? (b1 / b0 - 1) * 100 : null;
+      const ex = pct !== null && bench !== null ? pct - bench : null;
+      return { ...x, c, pct, lot, days, bench, ex };
     });
     const tot = rows.reduce((a, r) => a + (Number.isFinite(r.lot) ? r.lot : 0), 0);
     const win = rows.filter(r => r.pct > 0).length, n = rows.filter(r => Number.isFinite(r.pct)).length;
+    // 🆚 贏大盤幾條 + 超額中位數(⚠️ 樣本 <10 一律不下結論,跟全站同一條規則 _wrEnough)
+    const exs = rows.map(r => r.ex).filter(Number.isFinite).sort((a, b) => a - b);
+    const exMed = exs.length ? (exs.length % 2 ? exs[(exs.length - 1) / 2] : (exs[exs.length / 2 - 1] + exs[exs.length / 2]) / 2) : null;
+    const exWin = rows.filter(r => r.ex > 0).length;
     el.innerHTML = `<div class="fishcard" style="border-color:var(--amber);background:rgba(245,185,66,.05)">
       <div class="big">🧺 漁獲籃 <span class="sigtag">${list.length} 條</span>
         <span class="sigtag">${n ? `${win}/${n} 條在賺` : '—'}</span>
         <span class="sigtag mono ${tot > 0 ? 'good' : tot < 0 ? 'warn' : ''}">一張合計 ${tot >= 0 ? '+' : ''}${Math.round(tot).toLocaleString()} 元</span>
+        ${exs.length ? `<span class="sigtag mono">贏大盤 ${exWin}/${exs.length} ・超額中位 ${exMed >= 0 ? '+' : ''}${exMed.toFixed(1)}pp</span>` : ''}
         <button class="lbtn" style="margin-left:auto" onclick="PRO._fishClearCatch()">🗑 清空</button></div>
       <div style="overflow-x:auto"><table class="startbl">
-        <tr><th style="text-align:left">股票</th><th>釣起日</th><th>釣起價</th><th>現價</th><th>賺賠</th><th>一張(元)</th><th>天數</th><th></th></tr>
+        <tr><th style="text-align:left">股票</th><th>釣起日</th><th>釣起價</th><th>現價</th><th>賺賠</th><th title="同期加權指數的漲跌">大盤</th><th title="賺賠 − 大盤:這才是「這條魚有沒有用」">贏大盤</th><th>一張(元)</th><th>天數</th><th></th></tr>
         ${rows.map(r => `<tr>
           <td class="l">${this._nmc(r.sym, `PRO._fishPick('${r.sym}')`)}</td>
           <td class="mono">${(r.d || '').slice(5)}</td><td class="mono">${r.px}</td>
           <td class="mono">${r.c === null ? '<span title="今天的選股快照裡沒有這檔">—</span>' : r.c}</td>
           <td class="mono ${this.cls(r.pct)}">${r.pct === null ? '—' : this.fmt(r.pct, 2, true) + '%'}</td>
+          <td class="mono ${this.cls(r.bench)}">${r.bench === null ? '—' : this.fmt(r.bench, 2, true) + '%'}</td>
+          <td class="mono ${this.cls(r.ex)}"><b>${r.ex === null ? '—' : this.fmt(r.ex, 2, true) + 'pp'}</b></td>
           <td class="mono ${this.cls(r.lot)}">${r.lot === null ? '—' : (r.lot >= 0 ? '+' : '') + Math.round(r.lot).toLocaleString()}</td>
           <td class="mono">${r.days === null ? '—' : r.days}</td>
           <td><button class="lbtn" onclick="PRO._fishRelease('${r.sym}')" title="放生(從籃子移除)">🐟↩</button></td></tr>`).join('')}
       </table></div>
       <div class="note" style="margin-top:6px">「一張(元)」= (現價 − 釣起價)× 1,000,<b>毛損益、還沒扣手續費與證交稅</b>(來回約 0.44%)。
         釣起價是那天的收盤,不是你真的成交的價;這是你自己的紀錄,⛔ 不是本站推薦、也不是進出場指令。
-        現價更新到 ${D && D.date ? D.date : '—'} 的收盤。只存在這台裝置(換手機不會跟著走)。</div>
+        現價更新到 ${D && D.date ? D.date : '—'} 的收盤。只存在這台裝置(換手機不會跟著走)。<br>
+        🆚 <b>「贏大盤」= 賺賠 − 同期加權指數</b> —— ⭐ 這一欄才是「這條魚到底有沒有用」:
+        個股漲 5% 而大盤漲 8%,那其實是輸。本站所有回測都是這樣扣的,這裡用同一把尺。
+        ${exs.length && exs.length < 10 ? `<br>⚠️ <b>目前只有 ${exs.length} 筆,⛔ 不能當結論</b>(全站規則:樣本 <10 筆不下判斷)。` : ''}</div>
     </div>`;
   },
   _daysBetween(a, b) {
@@ -1805,10 +1921,20 @@ const PRO = {
     this._fishPickSym = sym;
     this.buzz(20);
     const E = this.STAR_STATUS, fam = (D.J && D.J.r[sym]) || [];
+    const caughtNow = this._catchLoad().some(x => x.sym === sym);
+    // 🔘 V74.4.2 使用者要求:三顆按鈕移到「🎣 釣到:XXX」那一列**最右側**(⛔ 不再自己佔一整列)
+    const acts = `<span class="fishacts">
+        ${caughtNow
+          ? `<button class="lbtn" onclick="PRO._fishRelease('${sym}')">🐟↩ 放生</button>`
+          : `<button class="lbtn on" onclick="PRO._fishCatch('${sym}')">🎣 收進漁獲籃</button>`}
+        <button class="lbtn" onclick="PRO._starSym='${sym}';PRO.switchTab('star');PRO.starGo('${sym}')">🕸️ 星圖</button>
+        <button class="lbtn" onclick="PRO.gotoStock('${sym}')">→ 散戶救星</button>
+      </span>`;
     document.getElementById('fishCard').innerHTML = `<div class="fishcard">
       ${this._castWhyHtml(sym)}
-      <div class="big">🎣 釣到:${this._nmc(sym)}
-        ${r.st ? `<span class="sigtag" title="${E[r.st].d}">${E[r.st].e} ${E[r.st].t}</span>` : ''}${r.att ? ' <span class="sigtag warn">⚠️ 官方注意股</span>' : ''}</div>
+      <div class="big fishbig">🎣 釣到:${this._nmc(sym)}
+        ${r.st ? `<span class="sigtag" title="${E[r.st].d}">${E[r.st].e} ${E[r.st].t}</span>` : ''}${r.att ? ' <span class="sigtag warn">⚠️ 官方注意股</span>' : ''}${acts}</div>
+      ${this._keyWarnHtml()}
       <div class="kv">
         <div><b>現價</b><span class="mono">${r.c}</span></div>
         <div><b>今日</b><span class="mono ${this.cls(r.chg)}">${this.fmt(r.chg, 2, true)}%</span></div>
@@ -1820,36 +1946,33 @@ const PRO = {
       ${fam.length ? `<div class="note" style="margin:0 0 6px">🕸️ 跟它一起游的:${fam.map(([c, rv]) => `<span class="sigtag" style="cursor:pointer" onclick="PRO._fishPick('${c}')">${this._nmTxt(c)} ${rv.toFixed(2)}</span>`).join(' ')}</div>` : ''}
       ${this._fishScoreHtml(r.sc, D.E)}
       <div id="fishDiv"></div>
-      <div class="labbar" style="margin:8px 0 0">
-        ${this._catchLoad().some(x => x.sym === sym)
-          ? `<button class="lbtn" onclick="PRO._fishRelease('${sym}')">🐟↩ 放生(從漁獲籃移除)</button>`
-          : `<button class="lbtn on" onclick="PRO._fishCatch('${sym}')">🎣 收進漁獲籃</button>`}
-        <button class="lbtn" onclick="PRO._starSym='${sym}';PRO.switchTab('star');PRO.starGo('${sym}')">🕸️ 看它的星圖</button>
-        <button class="lbtn" onclick="PRO.gotoStock('${sym}')">→ 散戶救星看細節</button>
-      </div>
       <div class="note" style="margin-top:6px">這張卡只是把數字攤開,⛔ 不是進場建議 —— 買賣一律以散戶救星的「現在怎麼做」為準。</div>
     </div>`;
-    document.getElementById('fishCard').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    this._fishShow('pick');            // 🐟 切到「釣到」那一頁(⛔ 不跟魚池疊在同一頁)
+    this.fishStop();                   // ⛔ 看不到魚池就別再燒 rAF
     // 💰 配息那行非同步補上(⚠️ 回來要確認卡片還是這一檔,陷阱 #19)
     this._divFetch().then(Dv => { const box = document.getElementById('fishDiv'); if (box && this._fishPickSym === sym) box.innerHTML = this._divCardHtml(Dv, sym, r.c); });
   },
 
   _fishNote(D) {
+    // 🧾 V74.4.2 使用者:「文字雜請用折疊的方式」→ 第一眼只留兩句(這頁在幹嘛 + 免責),
+    //    其餘全部收進摺疊。⛔ 一個字都沒刪 —— 只是預設收起(同散戶救星的做法)。
     document.getElementById('fishNote').innerHTML = `<div class="note">
-      <b>這個池子在講什麼:</b>把選股快照裡「今天最值得看的一批」畫成魚,一眼看出整體是浮在上層(高位階)還是沉在底部、
-      往右游(近 20 日在漲)的多還是往左的多、誰跟誰是一群(關聯星圖同族會靠在一起游)。<br>
-      <b>怎麼用:</b>① 手上那檔在哪一層、旁邊那群是誰 ② 想加碼時看看是不是整群都已經 🔥 ③ 點魚 → 釣起來看數字 → 再去散戶救星。<br>
-      🚨 <b>魚游得快 ≠ 會漲</b>:游得快、浮得高都只是「事實的位置」,<b>⛔ 不是買進訊號</b>;顏色只表示今天漲跌方向。
-      這頁不下多空、不計分、不給任何買賣價位。<b>「📊 列表」是同一批魚的數字版</b>,認真看數字時切過去。<br>
-      <b>🏅 實測體質怎麼算:</b>⛔ 不是憑空加權的綜合評分 —— 這檔目前符合哪些選股條件,每條在全市場回測裡
-      「相對隨便挑一天」的 20 日邊際(pp)加總;權重就是實測數字本身,沒有人訂的係數。條件重疊會高估,只拿來排序。
-      實測最有用的一族是「追強」(創一年新高 +2.84pp・漲停 +2.09・位階≥75 +1.52),最沒用的是坊間最愛的
-      黃金交叉 / KD 金叉 / MACD 金叉(都在 +0.3pp 以內 = 跟平常一樣)。
-      🚨 <b>但加總之後實測排不出順序</b>(554 個交易日的排序相關 IC +0.0004,沒贏過只看位階)—— 每個零件都測過 ≠ 組合起來有用。
-      所以它只當「這檔符合哪幾條」的清單,⛔ 不當排名;真的要排,<b>看位階</b>(那是這分數裡唯一有區分度的成分)。<br>
-      <b>🧺 漁獲籃:</b>點魚 → 釣起 → 記下那天收盤價,之後每次開池子都算「一張賺賠幾元」。是你的紀錄,不是推薦。<br>
-      <b>誰不在池子裡:</b>ETF(跟星圖同一理由)、資料不全的(null 一律不下水,⛔ 不補 0)。
-      資料來自每個交易日收盤後的選股快照(${D.updated || D.date || '—'}),🚀🔥 來自關聯星圖(需要前一天資料才判得出「突破」,星圖沒涵蓋的只補 🔥)。</div>`;
+      <b>這個池子在講什麼:</b>把「今天最值得看的一批」畫成魚 —— 上下=位階、游向=近 20 日動能、大小=成交額、一群=同族。
+      🚨 <b>魚游得快 ≠ 會漲</b>,<b>⛔ 不是買進訊號</b> —— 這頁不下多空、不計分、不給買賣價位。
+      <details class="fishmore"><summary>更多說明(怎麼用 / 🏅 實測體質怎麼算 / 誰不在池子裡)</summary>
+        <b>怎麼用:</b>① 手上那檔在哪一層、旁邊那群是誰 ② 想加碼時看看是不是整群都已經 🔥 ③ 點魚 → 釣起來看數字 → 再去散戶救星。
+        <b>「📊 列表」是同一批魚的數字版</b>,認真看數字時切過去。<br>
+        <b>🏅 實測體質怎麼算:</b>⛔ 不是憑空加權的綜合評分 —— 這檔目前符合哪些選股條件,每條在全市場回測裡
+        「相對隨便挑一天」的 20 日邊際(pp)加總;權重就是實測數字本身,沒有人訂的係數。條件重疊會高估,只拿來排序。
+        實測最有用的一族是「追強」(創一年新高 +2.84pp・漲停 +2.09・位階≥75 +1.52),最沒用的是坊間最愛的
+        黃金交叉 / KD 金叉 / MACD 金叉(都在 +0.3pp 以內 = 跟平常一樣)。
+        🚨 <b>但加總之後實測排不出順序</b>(554 個交易日的排序相關 IC +0.0004,沒贏過只看位階)—— 每個零件都測過 ≠ 組合起來有用。
+        所以它只當「這檔符合哪幾條」的清單,⛔ 不當排名;真的要排,<b>看位階</b>(那是這分數裡唯一有區分度的成分)。<br>
+        <b>🧺 漁獲籃:</b>點魚 → 釣起 → 記下那天收盤價,之後每次開池子都算「一張賺賠幾元」與<b>跟大盤比</b>。是你的紀錄,不是推薦。<br>
+        <b>誰不在池子裡:</b>ETF(跟星圖同一理由)、資料不全的(null 一律不下水,⛔ 不補 0)。<br>
+        資料來自每個交易日收盤後的選股快照(${D.updated || D.date || '—'}),🚀🔥 來自關聯星圖(需要前一天資料才判得出「突破」,星圖沒涵蓋的只補 🔥)。
+      </details></div>`;
   },
 
   // ═══════════ 🎯 今日訊號 ═══════════
@@ -2264,6 +2387,7 @@ const PRO = {
       { r: 34, t: '📅 休市越久隔天越顛(波動,不是方向)', w: '只描述(調停損)', how: '長假 / 週末之後那一天<b>波動會放大</b>(長假 1.32 倍)→ <b>停損放寬一點或部位放小</b>,免得被雜訊掃出場。⛔ 它不講方向,⛔ 不可拿來決定要做多還是做空。', n: '長假 1.43x', d: '休市 1 天 1.639% → 2~3 天(週末)1.09x → 4~5 天 <b>1.43x</b>,<b>單調遞增</b>。⭐ 所以「週一比較顛」與「長假後比較顛」是<b>同一件事</b>,⛔ 不可當成兩個發現。⛔ 只講顛不顛,方向測不出來(見隔壁欄)。', s: 'calendar_stock_probe.mjs・V73.7.3' },
     ],
     trap: [
+      { t: '🎣 拋竿:每一層都六關全過,「合起來」卻量不出優勢', w: '', n: '相對強勢板塊內隨便挑 −0.52pp・相對只用 🧬 −1.44pp', d: '拋竿的三層漏斗(🧬 位階+波動 → 前 3 強板塊 → 板塊內近 20 日最強,一天最多 2 條、同板塊只挑 1 條)<b>每一層單獨都有六關全過的實測背書</b>,所以我原本以為串起來只會更好。<br>🚨 <b>實測相反</b>(492 個交易日・186 次・進場=隔天開盤・扣同期加權):相對「強勢板塊裡隨便挑一檔」10 日 <b>−0.52pp</b>、相對「只用 🧬 篩」10 日 <b>−1.44pp</b>,兩個對照組都是負的,六關一關沒過。拆解也一致:<b>少了板塊那兩關反而比較好</b>(+1.11pp)。<br>⭐ 真因很可能是<b>條件重疊</b>:🧬(高位階+高波動)與「板塊內近 20 日最強」講的其實是同一件事,疊起來只是把樣本切到最極端的那幾檔(同 V73.2.5 乖離、V74.1.6 🧬 那兩次)。<br>⭐⭐ 這是<b>「每個零件都測過 ≠ 組合起來有用」的第二個實例</b>(第一個是 🏅 實測體質加總 IC≈0)。→ 功能<b>保留</b>但卡片上直接寫出這兩個負數,定位改成「有條件的候選清單」,⛔ 不是回測過的策略。⚠️ n=186 樣本薄(一天最多 2 條 + 去重),而且避雷那一關沒進回測(沒有注意股歷史)→ 這是保守下界。', s: 'scripts/cast_probe.mjs・V74.4.2' },
       { t: '🏅 「實測條件 pp 加總」當排序分數 —— 每個零件都測過,組合起來排不出順序', n: 'IC +0.0004(CI 含 0)・沒贏過只看位階 +0.015', d: '釣魚池 V74.3.6 的「實測體質」= 這檔符合的選股條件,各自的實測 20 日邊際(pp)加總。每一條 pp 都是量過的,所以我以為加總至少能<b>排序</b>。<br>🧪 借 twstock-research 的方法驗它:554 個交易日(2024-04~2026-08)、平均每天 329 檔,每天算「分數 vs 未來 20 日超額報酬」的排序相關(Spearman IC),再用 Newey-West 修正前瞻窗口重疊的信賴區間。<br>🚨 <b>IC +0.0004,95% CI −0.041~+0.042,含 0</b>;逐年 2024 −0.057 / 2025 +0.017 / 2026 +0.028,方向都不穩。<b>而且沒贏過最簡單的對照</b>:只看位階 IC +0.015、只看創一年新高 +0.019。最高 20% 比最低 20% 好 +3.56pp 看起來有東西,但<b>位階單獨就有 +3.60pp</b> → 分數的區分度幾乎全來自位階,其他條件疊上去只是把同一件事再數一次(條件重疊)。<br>⭐ 通則:<b>「每個零件都測過」≠「組合起來有用」</b>(同 V73.0.0 停損 −3% 單獨有效、跟「2 檔」合起來翻盤)。⛔ 任何「把多個有效條件加總」的分數,上線前要另外測加總本身。<br>📍 處置:分數照顯示但改口為「符合幾條的清單」,池子改名「符合最多實測條件」,卡上寫 IC;⛔ 不當排名。', s: 'scripts/fish_score_ic_probe.py' },
       { t: '🚪 空頭「止損換現金」實測是<b>少賺</b>的,而且賣得越勤快越慘', n: '台積電 348 萬 → 月線版只剩 90 萬', d: '使用者問「遇到空頭是不是該止損換現金」。同一檔、同一段窗口(5.5 年)、同一筆本金,<b>只改「什麼時候賣」</b>:<br><b>台積電</b>:買了放著 <b>348 萬</b> → 跌破年線才賣 278 萬(整段換手 <b>15 次</b>)→ 跌破季線 137 萬(85 次)→ <b>跌破月線只剩 90 萬</b>(153 次)<br><b>0050</b>:放著 241 萬 → 年線 182 萬 → 季線 124 萬 → <b>月線 81 萬</b><br>⭐⭐ <b>單調:賣得越勤快、賺得越少</b> —— 換手 15 → 85 → 153 次,獲利一路砍半。跟 0050 七種買法那次的結論一致(擇時是最貴的錯誤)。<br>⚠️ 它<b>唯一</b>的好處是中途賠得少(台積電 −45.7% → −30.1%),🚨 但那有一大半是<b>錢根本不在市場</b> —— 月線版整段只有 <b>58%</b> 的時間有部位。⛔ 「少賠」與「沒進場」是兩回事。<br>⚠️ 誠實限制:這段窗口的空頭(2022)是<b>V 型反彈</b>,均線策略最吃虧;真的走出長空結論可能不同 —— ⛔ 但那不在資料裡,不可以假裝測過。', s: 'hold_switch_probe.mjs・V74.3.2' },
       { t: '🏦 法人推估成本(站上/跌破)—— 方向「對」但全在雜訊內', n: '站上 +0.20pp / 跌破 −0.24pp', d: '散戶救星總覽那張「法人近20日推估成本」隱含的主張是「站上法人成本比較強、跌破比較弱」。實測(2,305 檔有外資資料、對照組 79,333 個「股·日」、扣同期大盤、同檔 20 日去重):站上之後 20 日 <b>+0.20pp</b>、跌破 <b>−0.24pp</b>、剛站上 +0.10、剛跌破 −0.15 —— 方向都「對」,但<b>全部小於來回成本 0.44%</b>,扣成本後四個事件全負、六關 0 過。它是描述不是訊號 → V74.1.8 先收進精簡檢視,<b>V74.2.0 依指示整卡刪除</b>。', s: 'instcost_probe.mjs・V74.1.8→V74.2.0 刪除' },
@@ -2431,7 +2555,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.4.1',
+  VER: 'V74.4.2',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

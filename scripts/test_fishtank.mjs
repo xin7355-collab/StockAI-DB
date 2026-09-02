@@ -119,8 +119,14 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV }) => {
   out.hasEtf = PRO._fish.some(f => /^00/.test(f.sym));
   out.hasNull = PRO._fish.some(f => f.sym === '9999');
   out.pools = document.getElementById('fishPool').innerText;
+  // 🧾 V74.4.2 收進摺疊之後要分兩種讀法:innerText = 使用者**第一眼看得到的**、
+  //    textContent = 含摺疊內容的全部。⭐ 免責必須在第一眼,細節可以收但⛔ 不可消失。
   out.legend = document.getElementById('fishLegend').innerText;
+  out.legendAll = document.getElementById('fishLegend').textContent;
   out.note = document.getElementById('fishNote').innerText;
+  out.noteAll = document.getElementById('fishNote').textContent;
+  out.foldN = document.querySelectorAll('#tabFish details.fishmore').length;
+  out.foldOpen = [...document.querySelectorAll('#tabFish details.fishmore')].filter(d => d.open).length;
   const cv = document.getElementById('fishCanvas');
   out.cvW = cv.width; out.cvH = cv.height; out.wrapH = document.getElementById('fishTankWrap').clientHeight;
   out.rafRunning = PRO._fishRaf !== 0; out.rafN0 = rafCalls.n;
@@ -202,6 +208,16 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV }) => {
   // 🎣 釣魚
   PRO._fishPick('2408'); await sleep(150);
   out.card = document.getElementById('fishCard').innerText;
+  {const _acts = document.querySelector('#fishCard .fishacts'), _big = document.querySelector('#fishCard .fishbig');
+   out.actsInBig = !!(_acts && _big && _big.contains(_acts));
+   out.actsTxt = _acts ? _acts.innerText.replace(/\s+/g, ' ') : '';
+   // ⭐ 「靠右」用實際座標驗(⛔ 不看 CSS 字串 —— margin-left:auto 寫了也可能被別的規則蓋掉)
+   out.actsRight = !!(_acts && _big && (_acts.getBoundingClientRect().right >= _big.getBoundingClientRect().right - 2));
+   const el=document.getElementById('fishCard');
+   out.cardDbg = { len: el.innerHTML.length, view: PRO._fishView, tc: el.textContent.length,
+     tabHidden: document.getElementById('tabFish').classList.contains('hidden'),
+     pickHidden: document.getElementById('fishPickPane').classList.contains('hidden'),
+     disp: getComputedStyle(el).display, rect: JSON.stringify(el.getBoundingClientRect().toJSON()).slice(0,90), it2: el.innerText.length, ftxt: el.firstElementChild.innerText.length, vis: getComputedStyle(el).visibility, kids: [...el.firstElementChild.children].map(c=>c.className+':'+getComputedStyle(c).display).slice(0,6) };}
   out.fishDiv = (document.getElementById('fishDiv') || { innerText: '' }).innerText;
   // 陷阱 #19:配息那行是非同步補的 → 切到別檔之後回來的 promise ⛔ 不可寫進新卡
   PRO._fishPick('2330'); await sleep(150);
@@ -223,6 +239,9 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV }) => {
   out.stored = JSON.parse(localStorage.getItem('proWar_catch') || '[]');
   out.cardAfterCatch = document.getElementById('fishCard').innerText;
   // 假裝隔了幾天、價格變了 → 損益要跟著算
+  // 🆚 V74.4.2 同期大盤基準(⛔ 只給「賺賠」不夠:個股 +5% 而大盤 +8% 其實是輸)
+  //    ⚠️ 沙箱抓不到 ^TWII → 直接塞一份小的,才驗得到「贏大盤」那兩欄(陷阱 #40)
+  PRO._twii = { m: new Map([['2026-09-01', 1000], ['2026-09-11', 1040]]), days: ['2026-09-01', '2026-09-11'] };
   const r2408 = PRO._fishD.rows.find(r => r.sym === '2408'); const px0 = r2408.c; r2408.c = +(px0 * 1.1).toFixed(2); PRO._fishD.date = '2026-09-11';
   PRO._fishBasketRender(); await sleep(50);
   out.basket2 = document.getElementById('fishBasket').innerText;
@@ -276,8 +295,13 @@ ok('⑪c 預設池 = 成交額前 100,魚數 ≤ 100 且 > 50', R.nFish > 50 && 
 ok('⑥ ETF 不在池子裡(測資有 7 檔 ETF,成交額都很大)', !R.hasEtf);
 ok('⑥b null 的那列不在池子裡', !R.hasNull);
 ok('⑪d 四個池子 chips 都在', /成交額前 100/.test(R.pools) && /高位階/.test(R.pools) && /有狀態/.test(R.pools) && /最強/.test(R.pools), R.pools);
-ok('② 圖例真的渲染出實測數字 + 免責', /1\.52pp/.test(R.legend) && /1\.44pp/.test(R.legend) && /(不是|沒有一條魚是)買進訊號/.test(R.legend), R.legend.slice(0, 120));
-ok('③ 說明寫著「不是買進訊號」與「不下多空」', /不是買進訊號/.test(R.note) && /不下多空/.test(R.note));
+// 🧾 V74.4.2 使用者:「文字雜請用折疊的方式」→ 細節收進 details,⛔ 但免責不可跟著被收起來
+ok('② 圖例:實測數字還在(可以收在摺疊裡,⛔ 但不可消失)', /1\.52pp/.test(R.legendAll) && /1\.44pp/.test(R.legendAll), R.legendAll.slice(0, 120));
+ok('②b 🚨 免責必須在第一眼看得到(⛔ 不可收進摺疊)', /(不是|沒有一條魚是)買進訊號/.test(R.legend) && /魚游得快/.test(R.legend), R.legend.slice(0, 120));
+ok('③ 說明:「不是買進訊號」與「不下多空」都要在第一眼', /不是買進訊號/.test(R.note) && /不下多空/.test(R.note), R.note.slice(0, 120));
+ok('③c 長說明真的有收起來(⛔ 掛 open 等於沒摺)', R.foldN >= 2 && R.foldOpen === 0, `n=${R.foldN} open=${R.foldOpen}`);
+ok('③d 收起來的內容一個字都沒少(🏅 怎麼算 / 誰不在池子裡 都還在)',
+   /實測體質怎麼算/.test(R.noteAll) && /誰不在池子裡/.test(R.noteAll) && /IC \+0\.0004/.test(R.noteAll));
 // ⚠️ clientHeight 不含 1px 邊框 → 440 的容器量到 438;釘「固定在 430~440」而不是精確值
 ok('⑫ Canvas 有尺寸(DPR 放大)且容器高度固定(430~440,⛔ 內容不可撐開它)', R.cvW > 300 && R.cvH > 400 && R.wrapH >= 430 && R.wrapH <= 440, `${R.cvW}x${R.cvH} wrap=${R.wrapH}`);
 ok('⑫b rAF 迴圈在跑、魚真的在動', R.rafRunning && R.rafN1 > R.rafN0 && R.moved, `raf ${R.rafN0}→${R.rafN1} moved=${R.moved}`);
@@ -288,8 +312,14 @@ ok('④b 列表模式:魚池收起、rAF 停', R.wrapHiddenInList && R.rafStoppe
 ok('④c 列表有中文名 + 狀態欄', /台積電/.test(R.listTxt) && /狀態/.test(R.listTxt));
 ok('⑬ 🧬 池子過濾正確(75 / 3.2)', R.geneOk && R.geneN > 0, `n=${R.geneN}`);
 ok('⑬b 🚀🔥 池子全部有狀態', R.stOk);
-ok('⑭ 釣到魚:卡片有名字/現價/位階/同族/兩顆按鈕', /南亞科/.test(R.card) && /現價/.test(R.card) && /一年位階/.test(R.card)
-   && /華邦電/.test(R.card) && /看它的星圖/.test(R.card) && /PRO\.gotoStock\('2408'\)/.test(R.cardHtml), R.card.slice(0, 150));
+ok('⑭ 釣到魚:卡片有名字/現價/位階/同族', /南亞科/.test(R.card) && /現價/.test(R.card) && /一年位階/.test(R.card)
+   && /華邦電/.test(R.card), R.card.slice(0, 150));
+// 🔘 V74.4.2 使用者要求:三顆按鈕移到「🎣 釣到:XXX」那一列**最右側**(⛔ 不再自己佔一整列)
+ok('⑭a 三顆按鈕在標題那一列(.fishacts)而且靠右',
+   R.actsInBig && R.actsRight, `inBig=${R.actsInBig} right=${R.actsRight}`);
+ok('⑭a2 三顆都在:收進漁獲籃 / 星圖(真的連到 starGo)/ 散戶救星',
+   /收進漁獲籃|放生/.test(R.actsTxt) && /星圖/.test(R.actsTxt) && /散戶救星/.test(R.actsTxt)
+   && /PRO\.starGo\('2408'\)/.test(R.cardHtml) && /PRO\.gotoStock\('2408'\)/.test(R.cardHtml), R.actsTxt);
 ok('⑭b 卡片明寫「不是進場建議」', /不是進場建議/.test(R.card));
 ok('🏅⑮ 每一條魚都算了實測體質', R.scored === R.rowsN && R.rowsN > 0, `${R.scored}/${R.rowsN}`);
 ok('🏅⑮b 手算對照:符合「創一年新高」的魚,分數裡那條的 pp 要等於成績表第 5 欄', R.nhCheck === 'no-sample' || R.nhCheck.has === true, JSON.stringify(R.nhCheck));
@@ -299,6 +329,9 @@ ok('🏅⑮e 卡片顯示實測體質 + 每條 pp + 免責', /實測體質/.test
 ok('🧺⑯ 釣起 → 籃子有這條、寫進 localStorage', /南亞科/.test(R.basket1) && R.stored.length === 1 && R.stored[0].sym === '2408', R.basket1.slice(0, 120));
 ok('🧺⑯b 釣起後卡片按鈕變「放生」', /放生/.test(R.cardAfterCatch));
 ok('🧺⑯c 價格變 +10% 後籃子算出正確的一張損益(元)與天數', new RegExp(`\\+${R.expectLot.toLocaleString()}`).test(R.basket2) && /\+10\.00%/.test(R.basket2) && /\b10\b/.test(R.basket2), R.basket2.slice(0, 200));
+// 🆚 V74.4.2:漲 10% 但大盤同期漲 4% → 贏大盤只有 +6pp(⭐ 這一欄才是「有沒有用」)
+ok('🧺⑯c2 有「大盤」與「贏大盤」兩欄,而且是「賺賠 − 大盤」', /\+4\.00%/.test(R.basket2) && /\+6\.00pp/.test(R.basket2), R.basket2.slice(0, 260));
+ok('🧺⑯c3 樣本不足 10 筆要明寫⛔ 不能當結論(跟全站同一條規則)', /不能當結論/.test(R.basket2));
 ok('🧺⑯d 放生 → 籃子空、localStorage 也清掉', /漁獲籃是空的/.test(R.basketEmpty) && R.storedAfter.length === 0);
 ok('🧺⑯e 半截 JSON 不會炸,而且壞值被清掉(陷阱 #18)', Array.isArray(R.badLoad) && R.badLoad.length === 0 && R.badCleared);
 ok('⑤ 切走分頁 rAF 停,而且之後不再排新的一格', R.stoppedOnLeave && R.noRafAfterLeave);
@@ -337,6 +370,12 @@ ok('🎣⑥ 挑的是「強勢板塊裡近 20 日最強」那一檔(⛔ 不是�
 ok('🎣⑦ 沒有魚上鉤時誠實說,而且明寫⛔ 不放寬條件硬給', /今天沒有魚上鉤/.test(R.castNone) && /不放寬條件/.test(R.castNone), R.castNone.slice(0, 120));
 ok('🎣⑧ ⛔ 挑選規則不可用 🏅 加總排序(它的 IC≈0,已被自己的檢定否定)',
    !/sc\.sum/.test(seg('_castPick')) && !/sort\s*===\s*'score'/.test(seg('_castPick')));
+// 🚨 V74.4.2:組合回測跑完是**負的** → 這條免責是這張卡最重要的東西,⛔ 不可拿掉也不可收進摺疊
+ok('🎣⑧b 卡片必須寫出「合起來回測量不出優勢」與那兩個負數',
+   /合起來/.test(seg('_castWhyHtml')) && /−0\.52pp/.test(seg('_castWhyHtml')) && /−1\.44pp/.test(seg('_castWhyHtml'))
+   && /不是一個回測過的策略/.test(seg('_castWhyHtml')) && /cast_probe/.test(seg('_castWhyHtml')));
+ok('🎣⑧c 那段免責⛔ 不可包在 details 裡(收起來等於沒說)',
+   !/<details[^>]*>[\s\S]{0,400}合起來/.test(seg('_castWhyHtml')));
 ok('🎣⑨ 「為什麼釣到它」要寫出每一層的實測數字 + ⛔ 不是買進訊號',
    /\+289\.6/.test(seg('_castWhyHtml')) && /\+1\.44pp/.test(seg('_castWhyHtml')) && /\+0\.90/.test(seg('_castWhyHtml'))
    && /不是買進訊號/.test(seg('_castWhyHtml')) && /散戶救星/.test(seg('_castWhyHtml')));
