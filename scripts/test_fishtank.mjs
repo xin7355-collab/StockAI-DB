@@ -55,8 +55,19 @@ ok('①b 資料走共用 fetchJson(跟其他分頁同一份 screener,⛔ 不可�
    /fetchJson\('data\/screener\.json'\)/.test(seg('_fishData')) && /starFetch\(\)/.test(seg('_fishData')));
 ok('② 圖例寫著實測數字(位階 +1.52pp / 動能 +1.44pp)', /1\.52pp/.test(seg('_fishLegend')) && /1\.44pp/.test(seg('_fishLegend')));
 ok('②b 🧬 池子門檻跟泡泡圖同一組(75 / 3.2)', /pos252 >= 75 && r\.amp20 >= 3\.2/.test(src));
-ok('③ ⛔ 魚池區塊不出現買賣指令', !/(進場價|停損|掛單|買點|該買|可以買|建議買|目標價|可加碼|放心做多)/.test(noCmt(FISHJS)),
-   (noCmt(FISHJS).match(/.{0,50}(進場價|停損|掛單|買點|目標價)/) || [])[0] || '');
+// ⚠️ V74.4.5 使用者:「釣到之後是都依紀律出場嗎?獲利之後要怎麼出場?」
+//    → 魚池現在**要**給出場紀律(停損/出場線),⛔ 但仍然不給**進場**指令。
+//    ⛔ 所以禁的是「叫你買」的字,⛔ 不是「停損」——那正是使用者要的東西。
+ok('③ ⛔ 魚池區塊不出現**進場**指令(⛔ 出場紀律不在此限)',
+   !/(進場價|掛單|買點|該買|可以買|建議買|目標價|可加碼|放心做多)/.test(noCmt(FISHJS)),
+   (noCmt(FISHJS).match(/(進場價|掛單|買點|該買|可以買|建議買|目標價|可加碼|放心做多)/) || [''])[0]);
+ok('③e 🚪 出場那段:要有停損 + 5 日線 + 「借過來的」誠實話,⛔ 而且不可混進進場指令',
+   /停損/.test(seg('_exitBody')) && /5 日線/.test(seg('_exitBody'))
+   && /借過來/.test(seg('_castExitHtml')) && /沒有替它單獨驗過/.test(seg('_castExitHtml'))
+   && !/(進場價|買點|目標價|該買)/.test(seg('_exitBody') + seg('_castExitHtml')));
+ok('③f 🚪 出場數字要讀 BT 情境庫(⛔ 不可在文案裡寫死第二份)',
+   /_exitRow\('跌破 5 日線\(現行\)'\)/.test(seg('_castExitHtml')) && /_exitRow\('移動停利 8%'\)/.test(seg('_castExitHtml'))
+   && /k === 'exit'/.test(seg('_exitRow')));
 ok('③b 文案必寫「不是買進訊號」與「魚游得快 ≠ 會漲」',
    /(不是|沒有一條魚是)買進訊號/.test(seg('_fishLegend')) && /魚游得快 ≠ 會漲/.test(seg('_fishLegend')) &&
    /魚游得快 ≠ 會漲/.test(seg('_fishNote')) && /不是買進訊號/.test(seg('_fishNote')));
@@ -250,7 +261,26 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV }) => {
   out.fishDiv2330 = (document.getElementById('fishDiv') || { innerText: '' }).innerText;
   PRO._fishPick('8299'); await sleep(150);
   out.fishDivNone = (document.getElementById('fishDiv') || { innerText: '' }).innerText;
-  PRO._fishPick('2408'); await sleep(150);
+  // 🚪 出場價位要抓那一檔的 K 線 —— headless 的 file:// 抓不到 → 塞進共用 _cache(⛔ 不繞過 fetchJson)。
+  //    ⭐ 收盤 100..111、低點 = 收盤 −2 → 5 日線 = 109.00、近 10 日最低 = 100、
+  //      停損取「111×0.95 = 105.45」與「100」較近者 = **105.45**(算得出來才敢斷言數字)
+  PRO._cache['data/2408.json'] = Array.from({ length: 12 }, (_, i) => ({
+    date: `2026-08-${String(10 + i).padStart(2, '0')}`, close: 100 + i, high: 100 + i + 1, low: 100 + i - 2, volume: 1000,
+  }));
+  PRO._exCache = {};
+  PRO._fishPick('2408'); await sleep(400);
+  // 🚪 出場價位是**非同步**補的(要抓那一檔的 K 線)→ ⛔ 不可跟 out.card 一起在 150ms 就量
+  out.cardExit = document.getElementById('fishCard').innerText;
+  out.exDbg = { cache: JSON.stringify((PRO._exCache||{})['2408']||null), box: !!document.getElementById('fishExit') };
+  // 陷阱 #19:出場價位是非同步補的 → 切到別檔之後,舊的 promise 回來⛔ 不可寫進新卡
+  { PRO._exCache = {};
+    PRO._cache['data/8299.json'] = Array.from({ length: 12 }, (_, i) => ({
+      date: `2026-08-${String(10 + i).padStart(2, '0')}`, close: 500 + i, high: 501 + i, low: 498 + i, volume: 100 }));
+    PRO._fishPick('2408');            // 先射出 2408 的 promise
+    PRO._fishPick('8299');            // 立刻切走
+    await sleep(400);
+    out.exRace = document.getElementById('fishCard').innerText; }
+  PRO._fishPick('2408'); await sleep(400);
   // 💰 未來 30 天除權息(sig 分頁那張)
   await PRO._renderDivCal(); await sleep(50);
   out.divCal = document.getElementById('sigDiv').innerText;
@@ -348,6 +378,15 @@ ok('⑭a2 四顆都在:收進漁獲籃 / 📋 複製名稱 / 星圖(真的連到
    /收進漁獲籃|放生/.test(R.actsTxt) && /複製名稱/.test(R.actsTxt) && /星圖/.test(R.actsTxt) && /散戶救星/.test(R.actsTxt)
    && /PRO\.starGo\('2408'\)/.test(R.cardHtml) && /PRO\.gotoStock\('2408'\)/.test(R.cardHtml), R.actsTxt);
 ok('⑭b 卡片明寫「不是進場建議」', /不是進場建議/.test(R.card));
+ok('③g 🚪 出場那段要**真的算出價位**(⛔ 只寫規則沒有數字等於沒說)',
+   /停損價/.test(R.cardExit) && /出場線/.test(R.cardExit) && /\d+\.\d\d/.test(R.cardExit) && /移動停利/.test(R.cardExit),
+   JSON.stringify({ ex: R.exDbg, snip: (R.cardExit.match(/🚪[\s\S]{0,200}/) || [''])[0].replace(/\n/g, '⏎') }));
+ok('③h 🚪 停損取「進場 −5%」與「近 10 日最低」**較近**的那個(測資算得出來:105.45 / 5日線 109.00)',
+   /105\.45/.test(R.cardExit) && /109\.00/.test(R.cardExit) && /進場 −5%/.test(R.cardExit),
+   (R.cardExit.match(/停損價[\s\S]{0,80}/) || [''])[0].replace(/\n/g, ' '));
+ok('③i 陷阱 #19:切到別檔之後,舊那檔的出場價位⛔ 不可寫進新卡',
+   /500\.00/.test(R.exRace) && /509\.00/.test(R.exRace) && !/105\.45/.test(R.exRace) && !/109\.00/.test(R.exRace),
+   (R.exRace.match(/停損價[\s\S]{0,60}/) || [''])[0].replace(/\n/g, ' '));
 ok('🏅⑮ 每一條魚都算了實測體質', R.scored === R.rowsN && R.rowsN > 0, `${R.scored}/${R.rowsN}`);
 ok('🏅⑮b 手算對照:符合「創一年新高」的魚,分數裡那條的 pp 要等於成績表第 5 欄', R.nhCheck === 'no-sample' || R.nhCheck.has === true, JSON.stringify(R.nhCheck));
 ok('🏅⑮c 🏅 池子:全部 ≥2 條領先、依加總排序', R.edgeN > 0 && R.edgeSorted && R.edgeAllPlus, `n=${R.edgeN}`);
