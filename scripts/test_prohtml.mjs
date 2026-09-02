@@ -751,8 +751,14 @@ ok('㉝g ⛔ 資料沒到要說出來(不可靜默空白)', /盤前資料還沒�
 //     ② 讓人拿兩格數字相乘推估交叉 → 必須寫「沒列的交叉 = 沒測過」+ 混用 0/27 的實測
 const CALC = await page.evaluate(async () => {
     const out = {};
+    // 📊 V74.5.0「回測計算機」已併進實測總表 → 走 lab 分頁的第一欄;
+    //   ⚠️ 舊入口 switchTab('calc') 仍要能用(舊書籤),所以這裡刻意用它進來驗相容。
     PRO.switchTab('calc');
-    out.intro = document.getElementById('calcIntro').innerText;
+    out.onLab = !document.getElementById('tabLab').classList.contains('hidden') && PRO._labSel === 'bt';
+    out.noCalcTab = !document.getElementById('tabCalc') && !document.getElementById('tabBtnCalc');
+    out.introVisible = document.getElementById('calcIntro').innerText;
+    document.querySelectorAll('#calcIntro details').forEach(e => { e.open = true; });
+    out.intro = document.getElementById('calcIntro').innerText + '\n' + document.getElementById('labIntro').innerText;
     out.body0 = document.getElementById('calcBody').innerText;
     out.rows0 = document.querySelectorAll('#calcBody tbody tr').length;
     out.dims = document.querySelectorAll('#calcBar .labbtn').length;
@@ -780,20 +786,35 @@ const CALC = await page.evaluate(async () => {
     }
     return out;
 });
-ok('㉞ 分頁註冊 + 在 .wrap 裡 + 按鈕文字', CALC.inWrap && CALC.btn === '回測計算機');
+ok('㉞ V74.5.0 已併進實測總表:⛔ 不再有獨立分頁,舊入口 switchTab(\'calc\') 仍導得到「📊 回測數字」欄',
+   CALC.onLab && CALC.noCalcTab, `onLab=${CALC.onLab} noCalcTab=${CALC.noCalcTab}`);
 ok('㉞a 預設分組真的渲染出列(進場時機 5 列)', CALC.rows0 === 5, `rows=${CALC.rows0}`);
 ok('㉞b 🚨 必須寫明是「真的跑過的回測」不是現場算的', /真的跑過的回測/.test(CALC.intro));
-ok('㉞c 🚨🚨 必須寫「沒列的交叉 = 沒測過」(⛔ 不可讓人拿兩格數字相乘推估)',
-   /沒列的交叉 = 沒測過/.test(CALC.intro));
+ok('㉞c 🚨🚨 必須寫「沒列的組合 = 沒測過」(⛔ 不可讓人拿兩格數字相乘推估)',
+   /沒列的(交叉|組合) = 沒測過/.test(CALC.intro));
 ok('㉞c2 「交叉」分組要有「沒有一次贏過單獨用」的實測警告(27 次混用實測)',
    /沒有一次贏過單獨用/.test(src));
 ok('㉞d 切分組真的會換內容(大盤狀態組要有三態拆解與嚴格空頭)',
    CALC.rowsMkt >= 4 && /嚴格空頭/.test(CALC.bodyMkt) && /−0\.29%|-0\.29%/.test(CALC.bodyMkt), CALC.bodyMkt.slice(0, 80));
 ok('㉞e 🚨 沒過穩健性的格子要標出來(fragile 旗標真的會顯示)',
    /沒過穩健性檢定/.test(CALC.bodyMkt));
-ok('㉞f 每一組都標窗口(⛔ 不標的話短窗口名次會被當永恆真理)',
-   /📅 窗口:/.test(CALC.body0) && /📅 窗口:/.test(CALC.bodyMkt));
+ok('㉞f 每一組都標窗口 + 說出「有沒有經過空頭」(⛔ 不標的話短窗口名次會被當永恆真理)',
+   /📅 這一組是拿 .+ 的資料跑的/.test(CALC.body0) && /📅 這一組是拿/.test(CALC.bodyMkt)
+   && /含 2022 年那一段大跌/.test(CALC.bodyMkt) && /沒有經過空頭/.test(CALC.body0), CALC.body0.slice(0, 90));
 ok('㉞g ⭐ 窗口長度對照組要在(13/36/49 個月會翻轉結論)', /窗口長度/.test(CALC.intro + src) && /'win'/.test(src));
+// 📖 V74.5.0 使用者:「用語重新調整讓一般散戶看得懂;要說明本金 100 萬、複利、獲利幾%、
+//    成本扣了沒、36 個月含不含空頭、每年平均、還有你是怎麼算的」
+ok('㉞i 💰 必須說明本金 100 萬 + 複利,而且**不可以收在摺疊裡**(收起來等於沒說)',
+   /本金 100 萬/.test(CALC.introVisible) && /複利|滾回去/.test(CALC.introVisible), CALC.introVisible.slice(0, 100));
+ok('㉞i2 💸 必須說明「成本已經扣掉了」+ 扣多少(⛔ 不可讓人以為是毛利),同樣不可收摺疊',
+   /已經扣掉|已扣/.test(CALC.introVisible) && /0\.44%/.test(CALC.introVisible) && /不是毛利/.test(CALC.introVisible));
+ok('㉞i3 📈 表格要同時給「等於幾%」與「年化」,而且要說年化不是每年都賺這麼多',
+   /等於幾%/.test(CALC.body0) && /年化/.test(CALC.body0) && /\/年/.test(CALC.body0)
+   && /不是每年都賺這麼多/.test(CALC.introVisible), CALC.body0.slice(0, 120));
+ok('㉞i4 📉 要把「中途最多賠」跟專業說法「最大回撤」對起來(使用者看不懂那個詞)',
+   /最大回撤/.test(CALC.introVisible) && /中途最多賠/.test(CALC.body0));
+ok('㉞i5 🧾 要寫清楚「怎麼買的」(一天 2 檔 / 每筆 15% / 尾盤買 / 破 5 日線賣)',
+   /一天最多做 2 檔|每天最多 2 檔/.test(CALC.intro) && /尾盤/.test(CALC.intro) && /5 日線/.test(CALC.intro));
 // ㉞h V74.4.8 使用者:「用不一樣停損、停利、5 日線…把華爾街在用的出場策略加進來混搭,賺錢會提高嗎?」
 //   ⛔ 這組最危險的是「總獲利被資金路徑帶著跑」—— 36 個月那組 trail8 還輸 5 日線、49 個月卻贏 283 萬,
 //   所以分組說明必須寫出「錯過 / 路徑」與寬鬆配置的每趟數字,⛔ 不可只列一排漂亮的總獲利。
@@ -822,6 +843,8 @@ const L = await page.evaluate(async () => {
         };
     };
     const out = { tabs: [...document.querySelectorAll('#labBar .labbtn')].map(e => e.textContent.trim()) };
+    // ⚠️ V74.5.0 起第一欄是「📊 回測數字」(原回測計算機併進來)→ ⛔ 不可假設預設停在「實測有用」
+    PRO.selLab('ok');
     out.ok = grab();
     PRO.selLab('trap'); out.trap = grab();
     PRO.selLab('method'); out.method = grab();
@@ -830,14 +853,17 @@ const L = await page.evaluate(async () => {
     // ⚠️ 要掃**每一欄**(第一版只掃了「有用」那欄 → 把來源刪在別欄完全抓不到,注入驗證抓到的)
     out.srcMissing = 0;
     for (const k of Object.keys(PRO.LAB)) {
+        if (k === 'bt') continue;                     // 📊 回測數字那欄是表格不是條目清單
         PRO.selLab(k); grab();
         out.srcMissing += [...document.querySelectorAll('#labList .labitem')]
             .filter(e => !(e.querySelector('.lsrc') || {}).textContent.trim()).length;
+        out.srcTxt = (out.srcTxt || '') + [...document.querySelectorAll('#labList .lsrc')].map(e => e.textContent).join(' ');
     }
     let all = '';
-    for (const k of Object.keys(PRO.LAB)) { PRO.selLab(k); all += grab().txt + '\n'; }
+    for (const k of Object.keys(PRO.LAB)) { if (k === 'bt') continue; PRO.selLab(k); all += grab().txt + '\n'; }
     out.all = all;
     out.counts = Object.fromEntries(Object.entries(PRO.LAB).map(([k, v]) => [k, v.length]));
+    out.btDims = PRO.BT.dims.length;
     return out;
 });
 // ㉛ V74.4.4 使用者:「做一個排名,爾後加進來的自動去重新排名」——
@@ -1498,9 +1524,9 @@ ok('㉗e 四象限計數:四格加起來 = 泡泡數,而且**不可**用「漲�
    T.quadSum === T.nBubs && !/漲潮|退潮|輪動|觀望/.test(T.quadTxt), [T.quadSum, T.nBubs, T.quadTxt]);
 ok('㉒l ⛔ 切走分頁要停掉動畫(不可留背景 timer)', T.playing && T.stoppedOnLeave, [T.playing, T.stoppedOnLeave]);
 // ㉔ 🔬 實測總表
-ok('㉔ 五個頁籤:有用 / 沒用 / 回測的坑 / 還測不了 / 推薦下一步',
-   L.tabs.length === 5 && /實測有用/.test(L.tabs[0]) && /實測沒用/.test(L.tabs[1])
-   && /回測自己的坑/.test(L.tabs[2]) && /還測不了/.test(L.tabs[3]) && /推薦下一步/.test(L.tabs[4]), L.tabs);
+ok('㉔ 六個頁籤:回測數字(V74.5.0 併進來)/ 有用 / 沒用 / 回測的坑 / 還測不了 / 推薦下一步',
+   L.tabs.length === 6 && /回測數字/.test(L.tabs[0]) && /實測有用/.test(L.tabs[1]) && /實測沒用/.test(L.tabs[2])
+   && /回測自己的坑/.test(L.tabs[3]) && /還測不了/.test(L.tabs[4]) && /推薦下一步/.test(L.tabs[5]), L.tabs);
 ok('㉔a2 🚧 空過守門:展開後內文真的抓得到(⛔ <details> 收合時 innerText 不含內文 = 假通過)',
    L.all.length > 6000 && /六道關卡|來回成本/.test(L.all), L.all.length);
 ok('㉔b 每一欄都有內容,切換真的換掉列表',
@@ -1510,8 +1536,13 @@ ok('㉔b 每一欄都有內容,切換真的換掉列表',
    && L.ok.txt !== L.trap.txt && L.trap.txt !== L.method.txt,
    [L.ok.n, L.trap.n, L.method.n, L.blocked.n, L.next.n]);
 ok('㉔c 頁籤數字要跟實際筆數一致(⛔ 不可寫死)',
-   L.tabs.every((t, i) => t.includes('(' + L.counts[['ok', 'trap', 'method', 'blocked', 'next'][i]] + ')')), L.tabs);
+   L.tabs.slice(1).every((t, i) => t.includes('(' + L.counts[['ok', 'trap', 'method', 'blocked', 'next'][i]] + ')'))
+   && L.tabs[0].includes('(' + L.btDims + ')'), L.tabs);
 ok('㉔d 🚨 **每一欄**每一條都要附實測來源(⛔ 沒有數字的意見不准進來)', L.srcMissing === 0, L.srcMissing);
+// 📌 V74.5.0 使用者:「把 portfolio_backtest.mjs 等等這種資訊隱藏,不需要呈現」
+//   ⛔ 但資料裡的 `s:` 一個字都不刪(那是決策紀錄)→ 只是**顯示層**不給看檔名。
+ok('㉔d2 📌 來源行⛔ 不可把腳本檔名秀給使用者(只留「實測紀錄 + 版本」)',
+   L.srcTxt.length > 50 && !/scripts\/|\.mjs|\.py/.test(L.srcTxt) && /實測紀錄/.test(L.srcTxt), L.srcTxt.slice(0, 120));
 ok('㉔e 🚨「有用」那欄必須引用得出實測數字', /\+1\.44pp/.test(L.ok.txt) && /\+289\.6 萬|289\.6/.test(L.ok.txt), L.ok.txt.slice(0, 200));
 ok('㉔f 🚨「沒用」那欄要留著方向相反的那幾條(⛔ 刪了下一個人會再做一次)',
    // ⚠️ V74.4.5 白話化:「Jaccard」已翻成「名單重疊率」→ 斷言跟著改(⛔ 兩種寫法都收,

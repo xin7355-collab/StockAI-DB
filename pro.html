@@ -468,7 +468,6 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <button class="tab-btn" id="tabBtnStar" onclick="PRO.switchTab('star')">關聯星圖</button>
     <button class="tab-btn" id="tabBtnFish" onclick="PRO.switchTab('fish')">釣魚池</button>
     <button class="tab-btn" id="tabBtnSig" onclick="PRO.switchTab('sig')">今日訊號</button>
-    <button class="tab-btn" id="tabBtnCalc" onclick="PRO.switchTab('calc')">回測計算機</button>
     <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
   </div>
 </div></div>
@@ -717,19 +716,15 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <div id="sigDiv"></div>
   </div>
 </div>
-<div id="tabCalc" class="hidden">
-  <div class="panel">
-    <h2>🧮 回測計算機 <span class="sub">每一個情境都是真的跑過的,不是現場算的</span></h2>
-    <div id="calcIntro"></div>
-    <div class="labbar" id="calcBar"></div>
-    <div id="calcBody"></div>
-  </div>
-</div>
 <div id="tabLab" class="hidden">
   <div class="panel">
     <h2>🔬 實測總表 <span class="sub">回測過的東西,按「能不能用」分類</span></h2>
     <div class="labbar" id="labBar"></div>
     <div id="labIntro"></div>
+    <!-- 📊 V74.5.0 回測數字(原「回測計算機」分頁)已併進這裡 —— 使用者:「實測總表與回測計算機很像,合併」 -->
+    <div class="labbar" id="calcBar" style="display:none"></div>
+    <div id="calcIntro"></div>
+    <div id="calcBody"></div>
     <div id="labList"></div>
   </div>
 </div>
@@ -1033,7 +1028,7 @@ const PRO = {
     this.toast('✅ 已更新');
   },
 
-  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['sig', 'Sig'], ['calc', 'Calc'], ['lab', 'Lab']],
+  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['sig', 'Sig'], ['lab', 'Lab']],
   switchTab(t, silent) {
     this.closeStock();                    // 🔗 切頁一律收起快捷面板(⛔ 不可蓋在別頁上面)
     this.closeModal();                    // 📖 懸浮視窗同理
@@ -1050,8 +1045,9 @@ const PRO = {
     if (t === 'star') this.renderStar();
     if (t === 'fish') this.renderFish();
     if (t === 'sig') this.renderSig();
-    if (t === 'calc') this.renderCalc();
-    if (t === 'lab') this.renderLab();
+    // 📊 'calc' 已併進實測總表(V74.5.0)—— 舊書籤/舊連結進來時自動導到那一欄,⛔ 不可整個失效
+    if (t === 'calc') { this._tab = 'lab'; this._labSel = 'bt'; document.getElementById('tabLab').classList.remove('hidden'); document.getElementById('tabBtnLab').classList.add('on'); }
+    if (this._tab === 'lab') this.renderLab();
     if (!silent) window.scrollTo(0, 0);
   },
 
@@ -2451,25 +2447,25 @@ const PRO = {
   //   ③ 情境越多、越容易有幾格**純靠運氣**看起來很棒(90 幾種變體裡本來就會有)
   //      → 每一格都帶判定旗標,🚨 = 沒過穩健性檢定(去最好月轉負 / 前後半不同向)。
   // ⚠️ 新增一格的流程:真的跑過 portfolio_backtest → 把數字抄進來 → 標窗口與判定。⛔ 不准放沒跑過的。
-  _BT_V: { use: '⭐ 採用中', ok: '✅ 可用', trade: '➖ 取捨(自己選)', bad: '❌ 比較差',
-           lose: '⛔ 倒賠/最糟', fragile: '🚨 沒過穩健性檢定', base: '🆚 基準' },
+  _BT_V: { use: '⭐ App 現在用這個', ok: '✅ 實測更好', trade: '➖ 有得有失,自己選', bad: '❌ 實測比較差',
+           lose: '⛔ 最糟(會倒賠)', fragile: '🚨 數字好看但<b>沒過穩健性檢定</b>(換一段期間就翻盤)', base: '🆚 拿來比較的基準' },
   BT: {
-    note: '除非另外標註,配置都是:600 檔・每天最多 2 檔・每筆 15 萬・訊號日尾盤進場・停損取「進場 −5%」與當日低點較近者・跌破 5 日線出場(最長 20 天)・扣來回成本 0.44%・本金 100 萬。「賺到」單位:萬元。',
+    note: '⚙️ 除非那一列另外標註,<b>其他條件全部一樣、只換一件事</b>(這樣才知道差別是誰造成的):本金 100 萬・600 檔候選・一天最多做 2 檔・每筆投入 15 萬・訊號當天尾盤買・跌破 5 日線賣(最長抱 20 個交易日)・<b>已扣來回成本 0.44%</b>。',
     dims: [
-      { k: 'entry', t: '⏰ 進場時機', w: '36 個月', n: '同一批股票、同一套打法,只改什麼時候買。🚨 差距比任何選股條件都大。', rows: [
+      { k: 'entry', t: '⏰ 進場時機', w: '36 個月', mo: 36, n: '同一批股票、同一套打法,只改什麼時候買。🚨 差距比任何選股條件都大。', rows: [
         { t: '訊號出現那天的尾盤(13:00~13:28)', p: 259.9, dd: 24.7, v: 'use' },
         { t: '隔天一開盤就買', p: 127.3, dd: 31.5, v: 'bad', n: '輸給買 0050 放著(+201.2 萬)' },
         { t: '開盤前掛「前一天收盤價」等它跌回來', p: 12.4, dd: 46.1, v: 'lose', n: '會成交的正是走弱的那批' },
         { t: '隔天開盤買、跳空 >1% 不追', p: -14.8, dd: 36.4, v: 'lose', n: '13 個月窗口;聽起來最有紀律,實測倒賠' },
         { t: '什麼都不做,買 0050 放著', p: 201.2, dd: null, v: 'base' } ] },
-      { k: 'exit', t: '🚪 出場規則', w: '36 個月', n: '時間停損 4 種全滅;移動停利是「怕回撤的人」的取捨,⛔ 不是升級(窗口 13→36 個月它從墊底變第一 —— 窗口不夠長的結論不可信)。', rows: [
+      { k: 'exit', t: '🚪 出場規則', w: '36 個月', mo: 36, n: '時間停損 4 種全滅;移動停利是「怕回撤的人」的取捨,⛔ 不是升級(窗口 13→36 個月它從墊底變第一 —— 窗口不夠長的結論不可信)。', rows: [
         { t: '跌破 5 日線(現行)', p: 292.8, dd: 24.5, v: 'use' },
         { t: '跌破 5 日線・最長改抱 40 天', p: 292.7, dd: 22.1, v: 'ok', n: '賺一樣、回撤略小' },
         { t: '跌破 20 日線・40 天', p: 284.8, dd: 23.3, v: 'ok' },
         { t: '移動停利 8%', p: 251.7, dd: 17.7, v: 'trade', n: '少賺 41 萬換回撤 −7pp' },
         { t: '跌破 20 日線 + 10 天沒漲 3% 就走', p: 274.4, dd: 26.1, v: 'bad', n: '時間停損疊上去更差' },
         { t: '跌破 10 日線・20 天', p: 174.2, dd: 28.8, v: 'bad' } ] },
-      { k: 'exit49', t: '🚪 出場規則・28 種全測(49 個月・含 2022 跌勢)', w: '49 個月(2022-08 ~ 2026-09)', n: '⭐⭐ 使用者問「混搭華爾街的出場法賺錢會提高嗎」→ <b>會,而且是整套回測以來最大的一次改善</b>:現行「跌破 5 日線」砍得太早,把少數會走遠的贏家洗掉。凡是「<b>放寬的移動出場</b>」(唐奇安 5~20 日低點 / ATR 追蹤 K=2~2.5 / 移動停利 8%)全部贏 2.5~3.7 倍、回撤還更小,是一片<b>高原不是孤峰</b>。🚨 相反地,<b>固定停利 / 分批停利 / 風報比 / 損益兩平 / ATR 收緊停損 / 拋物線 SAR</b> 全部更差 —— 這套勝率只有三成,獲利靠少數大賺,任何「早點把獲利鎖住」的做法都在砍贏家。⚠️ 「錯過」一欄 700~5,000 次差 7 倍:總獲利被<b>資金路徑</b>帶著跑(36 個月那組移動停利 8% 還輸 5 日線,這裡贏 283 萬)→ 錢永遠夠的寬鬆配置(每筆 3 萬、錯過 0 次)重跑,每趟仍是 5 日線 +0.72% → 移動停利 8% +2.14% → ATR K=2 +2.43% → 唐奇安 10 日 +3.43%,四個都六關全過 —— <b>每趟邊際是真的,總獲利那個位數 ⛔ 別當真</b>。⛔ 散戶救星預設出場<b>還沒改</b>(牽動推播/自動下單/釣魚出場卡,要先確認)。', rows: [
+      { k: 'exit49', t: '🚪 出場規則・28 種全測(49 個月・含 2022 跌勢)', w: '49 個月(2022-08 ~ 2026-09)', mo: 49, n: '⭐⭐ 使用者問「混搭華爾街的出場法賺錢會提高嗎」→ <b>會,而且是整套回測以來最大的一次改善</b>:現行「跌破 5 日線」砍得太早,把少數會走遠的贏家洗掉。凡是「<b>放寬的移動出場</b>」(唐奇安 5~20 日低點 / ATR 追蹤 K=2~2.5 / 移動停利 8%)全部贏 2.5~3.7 倍、回撤還更小,是一片<b>高原不是孤峰</b>。🚨 相反地,<b>固定停利 / 分批停利 / 風報比 / 損益兩平 / ATR 收緊停損 / 拋物線 SAR</b> 全部更差 —— 這套勝率只有三成,獲利靠少數大賺,任何「早點把獲利鎖住」的做法都在砍贏家。⚠️ 「錯過」一欄 700~5,000 次差 7 倍:總獲利被<b>資金路徑</b>帶著跑(36 個月那組移動停利 8% 還輸 5 日線,這裡贏 283 萬)→ 錢永遠夠的寬鬆配置(每筆 3 萬、錯過 0 次)重跑,每趟仍是 5 日線 +0.72% → 移動停利 8% +2.14% → ATR K=2 +2.43% → 唐奇安 10 日 +3.43%,四個都六關全過 —— <b>每趟邊際是真的,總獲利那個位數 ⛔ 別當真</b>。⛔ 散戶救星預設出場<b>還沒改</b>(牽動推播/自動下單/釣魚出場卡,要先確認)。', rows: [
         { t: '唐奇安 10 日低點・進場後 10 天才開始看・最長 40 天', p: 750.8, dd: 25.2, v: 'ok', n: '✅ 六關全過・每趟 +5.27%・錯過 2,269 次' },
         { t: '唐奇安 10 日低點・進場後 10 天才開始看(前 10 天只靠停損)', p: 708.1, dd: 24.5, v: 'ok', n: '✅ 六關全過・每趟 +3.67%;⚠️ 第一版寫錯才生出來的規則,反而最好' },
         { t: '唐奇安 10 日低點 + 賺 5% 後停損提到成本', p: 694.5, dd: 32.3, v: 'fragile', n: '2022 −15 萬 → 疊損益兩平沒有比較穩' },
@@ -2500,16 +2496,16 @@ const PRO = {
         { t: '5 日線 + 賺 15% 先賣一半', p: 101.0, dd: 37.6, v: 'bad', n: '分批停利 −92 萬' },
         { t: '5 日線 + 賺 10% 先賣一半', p: 68.9, dd: 47.4, v: 'lose', n: '全表最慘:−124.5 萬、回撤 −47%' },
         { t: '什麼都不做,買 0050 放著(同窗口)', p: 264.1, dd: null, v: 'base', n: '5 日線輸它 70.7 萬;唐奇安/ATR 追蹤那一族全部贏它' } ] },
-      { k: 'picks', t: '📅 每天挑幾檔', w: '13 個月', n: '單調:越集中越好,但 1 檔失去分散、回撤反而變大 → 2 檔是甜蜜點。反過來證明排序有鑑別力。', rows: [
+      { k: 'picks', t: '📅 每天挑幾檔', w: '13 個月', mo: 13, n: '單調:越集中越好,但 1 檔失去分散、回撤反而變大 → 2 檔是甜蜜點。反過來證明排序有鑑別力。', rows: [
         { t: '每天 2 檔 × 15 萬', p: 171.9, dd: 9.3, v: 'use' },
         { t: '每天 1 檔 × 30 萬', p: 172.0, dd: 13.0, v: 'trade', n: '賺一樣但回撤大' },
         { t: '每天 3 檔 × 10 萬', p: 136.1, dd: 9.4, v: 'bad' },
         { t: '每天 6 檔 × 5 萬(為了分散)', p: 73.6, dd: 18.4, v: 'bad', n: '挑到第 4~6 名就在拉低成績' } ] },
-      { k: 'sizing', t: '💰 每筆投入多少', w: '13 個月', n: '風險法少賺 112 萬**而且回撤沒有比較小** = 不是取捨,是單純比較差(錢長期只用到 59%)。', rows: [
+      { k: 'sizing', t: '💰 每筆投入多少', w: '13 個月', mo: 13, n: '風險法少賺 112 萬**而且回撤沒有比較小** = 不是取捨,是單純比較差(錢長期只用到 59%)。', rows: [
         { t: '等權:每筆固定本金 15%(現行)', p: 171.9, dd: 9.3, v: 'use' },
         { t: '風險法:單筆最多虧本金 1%', p: 59.3, dd: 9.2, v: 'bad' },
         { t: '風險法:單筆最多虧本金 2%', p: 51.7, dd: 13.5, v: 'bad' } ] },
-      { k: 'self', t: '🧬 個股條件', w: '13 個月', n: '全系列最重要的一格:🧬 = 一年位階 ≥75 且波動 ≥60。門檻 24 格網格全贏 = 高原不是孤峰。', rows: [
+      { k: 'self', t: '🧬 個股條件', w: '13 個月', mo: 13, n: '全系列最重要的一格:🧬 = 一年位階 ≥75 且波動 ≥60。門檻 24 格網格全贏 = 高原不是孤峰。', rows: [
         { t: '只做 高位階+高波動(🧬)', p: 213.6, dd: 9.4, v: 'use' },
         { t: '只做 高波動', p: 191.7, dd: 8.5, v: 'ok' },
         { t: '只做 高位階', p: 163.8, dd: 8.6, v: 'ok' },
@@ -2518,13 +2514,13 @@ const PRO = {
         { t: '至少 2 招共振才做', p: 85.9, dd: 15.9, v: 'bad' },
         { t: '只做 低位階(撿便宜)', p: -2.7, dd: 35.7, v: 'lose' },
         { t: '只做 低波動(牛皮股)', p: -21.1, dd: 65.9, v: 'lose', n: '全表最慘' } ] },
-      { k: 'mkt', t: '🏛️ 大盤狀態(多頭/盤整/空頭)', w: '49 個月(含 2022 跌勢)', n: '⭐ 三態拆解(1,703 筆實際成交):多頭每趟淨 +0.98%・盤整 +0.97%・**嚴格空頭 −0.29%** → 空頭時這套打法確實沒優勢。🚨 但「跌破月線就停」會把**多頭回檔**(最賺的時刻)一起擋掉 → 兩頭輸。空頭時該拿的是**現金**:嚴格空頭那 169 天加權合計 −13.8%,改抱 0050 = 跟著吃這一段。', rows: [
+      { k: 'mkt', t: '🏛️ 大盤狀態(多頭/盤整/空頭)', w: '49 個月(含 2022 跌勢)', mo: 49, n: '⭐ 三態拆解(1,703 筆實際成交):多頭每趟淨 +0.98%・盤整 +0.97%・**嚴格空頭 −0.29%** → 空頭時這套打法確實沒優勢。🚨 但「跌破月線就停」會把**多頭回檔**(最賺的時刻)一起擋掉 → 兩頭輸。空頭時該拿的是**現金**:嚴格空頭那 169 天加權合計 −13.8%,改抱 0050 = 跟著吃這一段。', rows: [
         { t: '照常做(基準)', p: 195.5, dd: 32.4, v: 'base' },
         { t: '嚴格空頭不做(收<60日線 且 20日線<60日線)', p: 205.9, dd: 30.6, v: 'fragile', n: '賺回撤都略好,但去最好月轉負、逐年不同向 → 當「少曝險」的選項可以,⛔ 別當成會多賺' },
         { t: '大盤月線之上才做', p: 127.9, dd: 36.7, v: 'bad', n: '🚨 兩頭輸 —— 跌破月線大多是多頭回檔,正是最賺的時刻' },
         { t: '大盤月線之上才做(13 個月牛市窗口)', p: 124.1, dd: 6.6, v: 'trade', n: '牛市窗口看起來像取捨,長窗口就露餡' },
         { t: '只在昨天大跌 >1.5% 後做', p: 51.1, dd: 2.3, v: 'bad', n: '13 個月;每趟最高但單子太少' } ] },
-      { k: 'cal', t: '📆 行事曆(哪天不做)', w: '13 個月', n: '13 種全測。唯一「贏」的兩種,優勢全部集中在 2026-04 同一個月,拿掉就轉負。', rows: [
+      { k: 'cal', t: '📆 行事曆(哪天不做)', w: '13 個月', mo: 13, n: '13 種全測。唯一「贏」的兩種,優勢全部集中在 2026-04 同一個月,拿掉就轉負。', rows: [
         { t: '結算日不做', p: 125.8, dd: 15.3, v: 'fragile' },
         { t: '下旬(21日後)不做', p: 122.2, dd: 14.0, v: 'fragile' },
         { t: '週五不做', p: 113.9, dd: 18.2, v: 'bad', n: '回撤反而惡化 3.8pp' },
@@ -2546,34 +2542,65 @@ const PRO = {
         { t: '行事曆三種混用(下旬+財報+長假)', p: 96.4, dd: 10.8, v: 'bad' } ] },
     ],
   },
+  // 📊 V74.5.0 回測數字(原「回測計算機」分頁,已併進實測總表)
+  //   使用者:「用語請重新調整,讓一般散戶也看得懂;要說明本金 100 萬、複利、獲利幾 %、
+  //           成本是扣掉還是沒扣、36 個月含不含空頭那年、每年平均、還有你是怎麼算的」
+  // ⛔ 三條鐵則(測試 ㉞ 系列釘住):
+  //   ① 必須寫明是「**真的跑過的**」不是現場算的 ② 必須寫「沒列的組合 = 沒測過」
+  //   ③ 每一組都要標窗口,而且沒過穩健性檢定的格子要標出來
+  _btYr(p, mo) {                      // 年化:把總報酬平均攤到每年(⛔ 不是每年都賺這麼多)
+    if (p == null || !mo) return null;
+    const tot = 1 + p / 100;          // 本金 100 萬 → 賺 p 萬 = 總報酬 p%
+    if (tot <= 0) return null;
+    return (Math.pow(tot, 12 / mo) - 1) * 100;
+  },
   renderCalc() {
-    const V = this._BT_V;
+    const V = this._BT_V, B = this.BT;
     document.getElementById('calcIntro').innerHTML = `
-      <div class="note" style="margin-top:0">
-        🧮 這裡的每一格都是<b>真的跑過的回測</b>(不是現場算的 —— 手機跑不動 2,700 檔 × 5 年的資料,
-        而且「現場算」會讓人一直調參數調到好看為止)。累計已測 <b>90+ 種變體、採用 2 種</b> ——
-        這個比例本身就是最重要的資訊:<b>大多數「改一下」都是少賺</b>。<br>
-        🚨 <b>沒列的交叉 = 沒測過</b>,⛔ 不可拿兩格數字相乘去猜(見「交叉」分組);
-        想測新情境 → 跟 Claude 說一聲,簡單的十幾分鐘就有答案。<br>
-        ⚠️ 窗口標在各分組;窗口長度會翻轉結論(見「窗口長度」分組),⛔ 別把短窗口的名次當永恆真理。
-      </div>`;
-    const bar = this.BT.dims.map((d, i) =>
+      <details class="labgloss"><summary>📖 這些數字是怎麼算出來的?(第一次看先點這裡)</summary>
+        <div class="note" style="margin-top:6px">
+          <b>本金 100 萬</b>,從第一天放到最後一天,<b>賺到的錢會滾回去繼續買</b>(複利)。
+          表格裡的「賺到多少」就是<b>最後總共多出來幾萬元</b> —— 例如「+590 萬」= 100 萬變成 690 萬。<br>
+          <b>已經扣掉成本了</b>:每買賣一趟扣 <b>0.44%</b>(手續費 6 折 + 賣出證交稅),⛔ 不是毛利。<br>
+          <b>怎麼買</b>:每天盤後挑出訊號 → 一天最多做 2 檔 → 每筆投入本金的 15% →
+          <b>訊號當天尾盤買</b>(13:00~13:28)→ 跌破 5 日線就賣,最長抱 20 個交易日。<br>
+          <b>「中途最多賠」</b>就是專業說法的「最大回撤」:從帳戶最高點算起,中間<b>最慘的時候縮水幾 %</b>。
+          ⚠️ 這格越小越好 —— 因為那正是大多數人受不了、在最低點放棄的時刻。<br>
+          <b>「等於幾 %」</b>= 賺到的錢 ÷ 100 萬。<b>「年化」</b>= 把總報酬<b>平均攤到每一年</b>,
+          方便跟定存、0050 比 —— ⛔ <b>不是每年都賺這麼多</b>(實際上獲利集中在少數幾個月)。<br>
+          <b>窗口(幾個月)</b>很重要:49 個月那幾組<b>含 2022 年那一段大跌</b>,13 / 36 個月那幾組<b>沒有</b>
+          —— 🚨 沒經過空頭的成績會偏好看,同一件事換窗口就翻過盤(見「窗口長度」那一組)。<br>
+          <b>怎麼驗的</b>:每一種做法都要通過六道關卡才算數 ——
+          整段期間要正、前半段後半段方向一致、每一年方向一致、<b>拿掉表現最好的那一年還是正的</b>、
+          扣掉成本還是正的、加在現有做法上還有多的貢獻。標 🚨 的就是沒過關的。
+        </div></details>
+      <div class="note" style="border-left:3px solid var(--cyan);padding-left:8px">
+        💰 <b>本金 100 萬</b>,賺到的錢<b>滾回去繼續買(複利)</b> —— 「+590 萬」= 100 萬變成 690 萬。<br>
+        💸 <b>已經扣掉買賣成本 0.44%</b>(手續費 6 折 + 賣出證交稅),⛔ <b>不是毛利</b>。<br>
+        📉 <b>「中途最多賠」= 專業說法的「最大回撤」</b>:中間最慘的時候帳戶縮水幾%(越小越好)。<br>
+        📈 <b>「年化」= 把總報酬平均攤到每一年</b>,⛔ <b>不是每年都賺這麼多</b>(獲利集中在少數幾個月)。
+      </div>
+      <div class="note">${B.note}</div>`;
+    document.getElementById('calcBar').innerHTML = B.dims.map((d, i) =>
       `<button class="labbtn${(this._calcDim ?? 0) === i ? ' on' : ''}" onclick="PRO.selCalc(${i})">${d.t}</button>`).join('');
-    document.getElementById('calcBar').innerHTML = bar;
-    const d = this.BT.dims[this._calcDim ?? 0];
+    const d = B.dims[this._calcDim ?? 0];
+    const yr = p => { const v = this._btYr(p, d.mo); return v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(0) + '%'; };
     document.getElementById('calcBody').innerHTML = `
-      <div class="note"><b>📅 窗口:${d.w}</b> ・${this.BT.note}</div>
+      <div class="note"><b>📅 這一組是拿 ${d.w} 的資料跑的</b>${d.mo ? `(${(d.mo / 12).toFixed(1)} 年${d.mo >= 49 ? ',<b>含 2022 年那一段大跌</b>' : ',⚠️ <b>沒有經過空頭</b>'})` : ''}</div>
       <div class="note">${d.n}</div>
       <div class="tblwrap"><table class="grid sigtbl"><thead><tr>
-        <th>做法</th><th>賺到(萬)</th><th>中途最多賠</th><th>判定</th></tr></thead><tbody>` +
+        <th>做法</th><th>賺到多少<br><span style="font-weight:400;opacity:.7">本金 100 萬</span></th>
+        <th>等於幾%<br><span style="font-weight:400;opacity:.7">年化</span></th>
+        <th>中途最多賠<br><span style="font-weight:400;opacity:.7">最大回撤</span></th><th>判定</th></tr></thead><tbody>` +
       d.rows.map(r => `<tr${r.v === 'base' ? ' class="sigbase"' : r.v === 'use' ? ' class="sigbest"' : ''}>
         <td class="txtcell" style="white-space:normal">${r.t}${r.n ? `<div class="sigfrom" style="white-space:normal">${r.n}</div>` : ''}</td>
-        <td class="mono">${r.p == null ? '—' : (r.p >= 0 ? '+' : '') + r.p.toFixed(1)}</td>
+        <td class="mono">${r.p == null ? '—' : (r.p >= 0 ? '+' : '−') + Math.abs(r.p).toFixed(1) + ' 萬'}</td>
+        <td class="mono">${r.p == null ? '—' : (r.p >= 0 ? '+' : '−') + Math.abs(r.p).toFixed(0) + '%'}<div class="sigfrom">${yr(r.p)}/年</div></td>
         <td class="mono">${r.dd == null ? '—' : '−' + r.dd.toFixed(1) + '%'}</td>
         <td class="txtcell">${V[r.v] || r.v}</td></tr>`).join('') +
       '</tbody></table></div>';
   },
-  selCalc(i) { this._calcDim = i; this.renderCalc(); },
+  selCalc(i) { this._calcDim = i; this._labSel = 'bt'; this.renderLab(); },
 
   // ═══════════ 🔬 實測總表 ═══════════
   // ⭐ 這一頁是**決策紀錄**,不是功能:把本專案回測過的東西攤開,按「能不能用」分類。
@@ -2582,6 +2609,7 @@ const PRO = {
   //   ② 「不成立」的⛔ 不可以刪掉 —— 刪了下一個人會再做一次(同 _SIGNAL_EDGE 對 C 級的處置)
   //   ③ ⛔ 不下任何買賣指令、不給價位(這是研究紀錄,不是訊號頁)
   LAB_TABS: [
+    ['bt', '📊 回測數字', '🧮 這裡的每一格都是<b>真的跑過的回測</b>(⛔ 不是現場算的 —— 手機跑不動 2,700 檔 × 5 年的資料,而且「現場算」會讓人一直調參數調到好看為止)。累計已測 <b>120 種變體、採用 2 種</b> —— 這個比例本身就是最重要的資訊:<b>大多數「改一下」都是少賺</b>。<br>🚨 <b>沒列的組合 = 沒測過</b>,⛔ 不可以拿兩格數字相乘去猜(見「混用」那一組);想測新情境跟 Claude 說一聲,簡單的十幾分鐘就有答案。'],
     ['ok', '✅ 實測有用', '通過六道關卡(全期正・前後半同向・逐年同向・去最好年・扣成本 0.44%・疊在現有配置上仍有增量)的,才會在這裡。🏅 <b>已依「實戰量級」排名</b>:配置類(差多少錢)> 事件訊號(扣成本後邊際)> 避雷 > 描述型;樣本薄的會降名次(如偷布局只有 15 個事件)。新測完的會自動插進名次。'],
     ['trap', '⛔ 實測沒用', '⚠️ 這些多半**聽起來很有道理**,而且有幾條的實測方向跟江湖說法**剛好相反**。⛔ 留著是為了讓人不要再做一次。'],
     ['method', '🧭 回測自己的坑', '⭐ 這一欄比上面兩欄更值錢 —— 它們是「會讓你得到一個很漂亮但錯的結論」的做法,每一條都是本專案真的踩過的。'],
@@ -2740,8 +2768,19 @@ const PRO = {
   },
   renderLab() {
     document.getElementById('labBar').innerHTML = this.LAB_TABS.map(([k, lbl]) =>
-      `<span class="labbtn ${this._labSel === k ? 'on' : ''}" onclick="PRO.selLab('${k}')">${lbl}(${this.LAB[k].length})</span>`).join('');
+      `<span class="labbtn ${this._labSel === k ? 'on' : ''}" onclick="PRO.selLab('${k}')">${lbl}(${k === 'bt' ? this.BT.dims.length : this.LAB[k].length})</span>`).join('');
     const meta = this.LAB_TABS.find(x => x[0] === this._labSel);
+    // 📊 V74.5.0「回測數字」欄(原回測計算機)—— 兩塊內容互斥顯示,⛔ 不可同時出現(那又變成兩張很像的表)
+    const isBt = this._labSel === 'bt';
+    document.getElementById('calcBar').style.display = isBt ? '' : 'none';
+    document.getElementById('calcIntro').innerHTML = '';
+    document.getElementById('calcBody').innerHTML = '';
+    document.getElementById('labList').style.display = isBt ? 'none' : '';
+    if (isBt) {
+      document.getElementById('labIntro').innerHTML = `<div class="note">${meta ? meta[2] : ''}</div>`;
+      this.renderCalc();
+      return;
+    }
     // 📖 名詞速查(V74.4.5 使用者:「文字敘述請用一般散戶看得懂的方式」)——
     //    ⛔ 不可把這些字從內文裡全部拿掉(那會讓每一條變得又臭又長),
     //    ⭐ 改成「頂部解釋一次 + 內文照用」;新增條目若用了新術語,要補進這裡。
@@ -2756,6 +2795,10 @@ const PRO = {
           所以看到「−2%」不等於這招爛,要比對照組。<br>
           <b>扣成本 0.44%</b>=買賣一趟的手續費+交易稅。<b>贏不過這個數字就等於白做</b>。<br>
           <b>位階</b>=現在的股價站在最近一年區間的哪個位置(100 = 一年最高、0 = 一年最低)。<br>
+          <b>本金 100 萬 / 複利</b>=回測一律從 100 萬開始,賺到的錢<b>滾回去繼續買</b>;「賺到 590 萬」= 100 萬變成 690 萬。<br>
+          <b>中途最多賠(最大回撤)</b>=從帳戶最高點算起,中間最慘縮水幾% —— <b>那正是大多數人放棄的時刻</b>,越小越好。<br>
+          <b>年化</b>=把總報酬平均攤到每一年(方便跟定存 / 0050 比)—— ⛔ <b>不是每年都賺這麼多</b>。<br>
+          <b>已扣成本</b>=買賣一趟 0.44%(手續費 6 折 + 賣出證交稅)已經扣掉了,⛔ 不是毛利。<br>
           <b>六道關卡</b>=① 整段期間要正 ② 前半段後半段方向一致 ③ 每一年都一致
           ④ 拿掉表現最好的那一年還是正的 ⑤ 扣掉成本還是正的 ⑥ 加在現有做法上還有多的貢獻。
         </div></details>
@@ -2775,7 +2818,7 @@ const PRO = {
          ${this._labSel === 'ok' ? `<span class="lrank">${x.r != null ? medal(i) : '未評分'}</span>` : ''}
          <span class="lt">${x.t}</span>${x.w ? `<span class="lw ${this._wCls(x.w)}">${x.w}</span>` : ''}${x.n ? `<span class="ln">${x.n}</span>` : ''}</summary>
          ${x.how ? `<div class="lhow"><b>📌 怎麼操作(${x.w})</b><br>${x.how}</div>` : ''}
-         <div class="ld">${x.d}</div><div class="lsrc">${x.s}</div></details>`).join('');
+         <div class="ld">${x.d}</div><div class="lsrc">${this._srcTxt(x.s)}</div></details>`).join('');
     // 🧹 V74.4.0 上方那三張 KPI 卡已移除(使用者:「跟下面的頁籤重複了」)——
     //    頁籤本身就帶括號數字(實測有用(14)/沒用(19)/…),⛔ 不需要再放一排大字重講一次。
   },
@@ -2789,6 +2832,14 @@ const PRO = {
     return 'neu';
   },
   selLab(k) { this.buzz(10); this._labSel = k; this.renderLab(); },
+  // 📌 V74.5.0 來源行白話化 —— 使用者:「把 portfolio_backtest.mjs 這種資訊隱藏,不需要呈現」
+  //   ⛔ 但**資料裡的 `s:` 一個字都不刪**(那是決策紀錄,日後要重跑才找得到是哪一支探針);
+  //     這裡只負責「不要顯示給使用者看」。⚠️ 也不可以整行拿掉 —— 每一條都必須看得出
+  //     「這是實測出來的、哪一版量的」,否則就變成沒有根據的意見(㉔d 釘住)。
+  _srcTxt(s) {
+    const v = (String(s || '').match(/V\d+(?:\.\d+)+/) || [])[0];
+    return `📌 實測紀錄${v ? ` ・ ${v} 版量的` : ''}`;
+  },
 
   // ═══════════ 💧 板塊輪動 ═══════════
   // ⭐⭐ 為什麼是「20 日相對強弱」而不是「錢流」——`scripts/sector_rotation_probe.mjs`
@@ -2803,7 +2854,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.4.9',
+  VER: 'V74.5.0',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
