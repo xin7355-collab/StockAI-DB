@@ -41,7 +41,7 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
     const fnStart = SRC.indexOf('renderKbarTactics(data) {');
     const fnSeg = SRC.slice(fnStart, fnStart + 26000);
     ok('③ 頁首條由 renderKbarTactics 同步渲染(同一份資料,不產生第二份真相)',
-        /klineLead/.test(fnSeg) && /_leadSet\(_headline \+ _leadRisk \+ _leadSix\)/.test(fnSeg));
+        /klineLead/.test(fnSeg) && /_leadSet\(_headline \+ _leadRisk \+ _leadSix/.test(fnSeg));
     ok('⑤ 沒訊號的分支也要給頁首一句話(➖ 不做等表態)',
         /_leadSet\(`[^`]*一個型態訊號都沒偵測到/.test(fnSeg));
     ok('⑦ 六脈頁首那行要過 _bearGate(空頭不露)且附實測數字、⛔ 不下指令',

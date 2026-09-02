@@ -29,7 +29,7 @@ const ok = (name, cond, extra = '') => {
 ok('⑥a 主 render path 接上 _ldRedKHtml',
     /\$\{this\._luOddsHtml\(data\)\}\$\{this\._ldRedKHtml\(data, this\.currentSymbolId\)\}/.test(SRC));
 ok('⑥b 「沒有 K 棒訊號」那條路徑也接上',
-    /const _rg = this\._luOddsHtml\(data\) \+ this\._ldRedKHtml\(data, this\.currentSymbolId\)/.test(SRC));
+    /const _rg = [\s\S]{0,120}?this\._ldRedKHtml\(data, this\.currentSymbolId\)/.test(SRC));
 ok('④a _LD_REDK 常數存在且四組數字齊(all/big/sys/idio)',
     /_LD_REDK:\s*\{\s*all:.*big:.*sys:.*idio:/.test(SRC));
 

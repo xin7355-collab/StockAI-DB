@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.4.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.4.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -617,6 +617,8 @@
                     <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleInvCost" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">庫存成本</span><span class="w-4 h-0.5 rounded" style="background:#fbbf24"></span></label>
                     <label class="flex items-center gap-2 cursor-pointer" title="券商分點買超王的區間均價;現價在線上=主力獲利、線下=主力套牢(常護盤)"><input type="checkbox" id="toggleMainCost" checked onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">主力成本</span><span class="w-4 h-0.5 rounded" style="background:#fb7185"></span></label>
                     <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleBB" checked onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">布林軌道</span><span class="w-4 h-0.5 rounded" style="background:#c084fc"></span></label>
+                    <label class="flex items-center gap-2 cursor-pointer" title="唐奇安 20 日低點:收盤跌破「前 20 天的最低價」才出場。實測比跌破 5 日線好很多(K線頁「出場防守價」有數字)"><input type="checkbox" id="toggleDon" checked onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">唐奇安軌道</span><span class="w-4 h-0.5 rounded" style="background:#38bdf8"></span></label>
+                    <label class="flex items-center gap-2 cursor-pointer" title="ATR 追蹤停利:近 20 日最高收盤 − 2×ATR(這檔一天通常晃多少)。波動大的自動給寬一點的空間"><input type="checkbox" id="toggleAtrTrail" checked onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">ATR 追蹤停利</span><span class="w-4 h-0.5 rounded" style="background:#f59e0b"></span></label>
                     <label class="flex items-center gap-2 cursor-pointer" title="日分價量:把每日成交量分配到當日高低價區間,疊出「哪個價位套牢/成本最密集」;黃色最長那條=套牢最重的關卡價(POC)"><input type="checkbox" id="toggleVolProfile" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">日分價量</span><span class="text-[9px] text-gray-500">套牢分佈</span></label>
                 </div>
                 <div class="text-[10px] text-gray-500 mb-1">日分價量=成本套牢區(左側橫條,黃=套牢最重關卡)。主力成本(分點,僅觀察清單)、融資成本暫無全市場資料源。</div>
@@ -687,7 +689,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.4.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.4.9 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7457,8 +7459,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.4.8',
+    _APP_VERSION: 'V74.4.9',
     _CHANGELOG: [
+        { v: 'V74.4.9', dt: '2026-09-02', d: ['🚪 <b>出場防守價自動幫你算好了</b>(K線頁):唐奇安 20 日低點、ATR 追蹤停利、移動停利 8%、5 日線 —— 四條同時列出來,每條都標「離現價幾 %」;<b>有填庫存的話直接告訴你賣在那裡是賺是賠幾元</b>。','📈 <b>K 線圖多了兩條線</b>:唐奇安軌道(藍虛線)與 ATR 追蹤停利(橘虛線),預設打開,可在 ⚙️ 設定 → K線設定關掉。','📊 每條線旁邊都附<b>實測成績</b>(同一套打法、同一段 49 個月、只換出場):跌破 5 日線賺 193 萬、唐奇安 590 萬、ATR 追蹤 531 萬。⛔ 自動出場提醒目前<b>仍用 5 日線</b>,要換再跟我說。'] },
         { v: 'V74.4.8', dt: '2026-09-02', d: ['🚪 <b>出場規則 28 種全測(49 個月・含 2022 跌勢)</b>:把華爾街常用的出場法(唐奇安通道、ATR 追蹤、移動停利、拋物線 SAR、固定停利、分批停利、風報比、損益兩平…)全部套在現行打法上比一次。結論:<b>放寬的移動出場</b>(唐奇安 20 日低點 / ATR 追蹤 K=2 / 移動停利 8%)每一條都賺 2.5~3.7 倍、回撤還更小;<b>任何「早點鎖獲利」的做法</b>(固定停利 / 分批 / 風報比)全部更差。','📊 結果寫進產業作戰室的<b>回測計算機</b>(新分組「出場規則・28 種全測」)與<b>實測總表</b>(有用 / 沒用 / 方法各一條)。','⛔ 散戶救星的<b>預設出場沒有改</b>(還是跌破 5 日線)—— 換掉會牽動買點推播、自動下單與釣魚出場卡,要先跟你確認。'] },
         { v: 'V74.4.7', dt: '2026-09-02', d: ['🐛 <b>修好一個會讓你看到「錯的招」的問題</b>:同一檔股票可能同時中好幾招,原本會留到<b>排名較後面</b>的那一招 —— 現在一律留<b>最強</b>的那一招。','📘 <b>自動下單上手指南整份重寫</b>(<code>docs/AUTO_TRADE_SETUP.md</code>):改成八個步驟的清單,每一步都寫「做什麼 / 怎麼確認做對了 / <b>什麼情況要停</b>」。開頭先講三件必須接受的事(長窗口仍輸買 0050 放著、勝率只有 33%、空頭沒驗證過)。','🐛 順手修掉自動下單程式的一個真問題:同一檔的重複會吃掉「一天最多 2 檔」的名額,讓它實際只做 1 檔。'] },
         { v: 'V74.4.6', dt: '2026-09-02', d: ['🏆 <b>產業作戰室的釣魚池新增「最強招式」池</b> —— 裡面是「每一檔自己歷史上最會賺的那一招」明天會觸發的清單(本站實測最強的做法)。點開會直接看到:用哪一招、觸發價、停損、勝率+次數、每趟平均。','⏰ 那個價是<b>「站上去才算數」的觸價買單</b>,尾盤 13:00~13:28 看有沒有站上 —— <b>⛔ 不是明天一開盤就買</b>(實測開盤買會把賺頭吃掉一半以上)。卡上也寫明基準勝率是 36% 不是 50%,而且這套做法在長窗口<b>仍然輸給買 0050 放著</b>。'] },
@@ -19308,6 +19311,188 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const key = Math.min(list.length, 5);
         return { hits: list.length, list, lock, row: this._LU_ODDS.hits[key], date: d[i].date };
     },
+    // ═══════ 🚪 V74.4.9 出場防守線(唐奇安 / ATR 追蹤 / 移動停利)—— 全 App 唯一一份 ═══════
+    // ⭐ 為什麼是這三條:`scripts/portfolio_backtest.mjs` 把 28 種出場規則套在同一套打法上
+    //    跑 49 個月(含 2022 那段大跌),⛔ 只換出場、其餘完全不動 —— 結果**放寬的移動出場**
+    //    每一條都贏「跌破 5 日線」2.5~3.7 倍而且中途賠得更少(數字全在 `_EXIT_EDGE`,⛔ 別寫死第二份)。
+    // ⛔ 四條鐵則:
+    //   ① **公式必須跟回測一字不差**(改了就要重跑回測,否則卡上的成績對不上):
+    //      ・唐奇安 = 收盤跌破「前 N 個交易日最低」(⛔ **不含今天**)
+    //      ・ATR 追蹤 = 進場後最高**收盤** − K×ATR,ATR 是**進場那天**算一次的
+    //        「近 14 日 TR 簡單平均」—— 🚨 ⛔ 不是 `indicators.atr`(那是 Wilder 平滑版,
+    //        同名不同義:同一天兩者可以差 5~10%,拿它算會讓卡上的價位跟回測不是同一條線)
+    //      ・移動停利 = 進場後最高收盤 ×(1−P%)
+    //   ② 不知道你哪天買的(沒填庫存買進日)→ 用「近 20 日最高收盤」當代理,而且**文案要說出來**
+    //   ③ ⛔ 這裡**只講出場**,不下進場指令(單一劇本原則:買賣價位以總覽「現在怎麼做」為準)
+    //   ④ ⛔ 不可用紅綠標「哪條比較好」—— 紅綠在本 App 只准表示漲跌方向(燈號鐵則),用琥珀/青色
+    _EXIT_EDGE: {
+        n: 28,
+        win: '2022-08 ~ 2026-09(49 個月,含 2022 那一段大跌)',
+        cfg: '600 檔・每天最多 2 檔・每筆本金 15%・訊號日尾盤進場・停損取「進場 −5%」與當日低點較近的・最長抱 20 個交易日・<b>已扣來回成本 0.44%</b>・本金 100 萬',
+        b0050: 264.1,
+        base: { k: 'ma5', t: '跌破 5 日線', p: 193.4, dd: 32.3, per: 0.76 },
+        rows: [
+            { k: 'don',    t: '跌破近 20 日最低(唐奇安)',  p: 589.8, dd: 25.2, per: 3.32 },
+            { k: 'atr2',   t: '最高收盤 − 2×ATR(ATR 追蹤)', p: 530.5, dd: 20.0, per: 2.77 },
+            { k: 'trail8', t: '從最高收盤回落 8%',           p: 476.4, dd: 25.4, per: 2.25 },
+        ],
+    },
+    // 📐 近 14 日 TR 簡單平均(⛔ 回測同款,不是 Wilder;兩者同名不同義,別互相取代)
+    _atrTR14(data, i) {
+        try {
+            const H = k => +((data[k].high ?? data[k].h) || 0), L = k => +((data[k].low ?? data[k].l) || 0), C = k => +((data[k].close ?? data[k].c) || 0);
+            let s = 0, n = 0;
+            for (let q = Math.max(1, i - 13); q <= i; q++) {
+                const pc = C(q - 1); if (!(pc > 0)) continue;
+                s += Math.max(H(q) - L(q), Math.abs(H(q) - pc), Math.abs(L(q) - pc)); n++;
+            }
+            return n ? s / n : 0;
+        } catch (_) { return 0; }
+    },
+    // 📈 K 線圖疊圖用的整條序列(⚠️ 圖上的 ATR 線是**代理版**:用「近 20 日最高收盤」當高點,
+    //    因為圖上每一根 K 都要有值、不可能知道你哪天買的 —— 文字卡有庫存時才會用你真正的買進日)
+    _exitLineSeries(data) {
+        try {
+            const n = (data || []).length; if (n < 25) return null;
+            const L = k => +((data[k].low ?? data[k].l) || 0), C = k => +((data[k].close ?? data[k].c) || 0);
+            const don = new Array(n).fill(null), atrTrail = new Array(n).fill(null);
+            for (let i = 20; i < n; i++) { let lo = Infinity; for (let q = i - 20; q < i; q++) lo = Math.min(lo, L(q) || Infinity); if (isFinite(lo) && lo > 0) don[i] = Number(lo.toFixed(2)); }
+            for (let i = 19; i < n; i++) {
+                const a = this._atrTR14(data, i); if (!(a > 0)) continue;
+                let pk = 0; for (let q = i - 19; q <= i; q++) pk = Math.max(pk, C(q));
+                if (pk > 0) atrTrail[i] = Number((pk - 2 * a).toFixed(2));
+            }
+            return { don, atrTrail };
+        } catch (_) { return null; }
+    },
+    // 🚪 今天這一檔的三個出場價(有填庫存買進日 → 用你真正的進場點算,跟回測完全一致)
+    _exitLines(data, sym) {
+        try {
+            if (!Array.isArray(data) || data.length < 30) return null;
+            const n = data.length - 1;
+            const C = i => +((data[i].close ?? data[i].c) || 0), L = i => +((data[i].low ?? data[i].l) || 0);
+            const pC = C(n); if (!(pC > 0)) return null;
+            let cost = null, shares = 0, eIdx = null, buyDate = null;
+            try {
+                const inv = (typeof this._getInventory === 'function') ? this._getInventory() : (this.inventory || []);
+                const p = (inv || []).find(i => String(i.symbol) === String(sym) && +i.cost > 0);
+                if (p) {
+                    cost = +p.cost; shares = +p.shares || 0; buyDate = p.buyDate || null;
+                    if (buyDate) {
+                        const bd = String(buyDate).replace(/\//g, '-').slice(0, 10);
+                        for (let i = 0; i <= n; i++) {
+                            const d = String(data[i].date || '').replace(/\//g, '-').slice(0, 10);
+                            if (d && d >= bd) { eIdx = i; break; }
+                        }
+                        if (eIdx === n) eIdx = null;   // 今天才買 → 還沒有「進場後最高收盤」可算,退回代理版
+                    }
+                }
+            } catch (_) {}
+            const proxy = (eIdx == null);
+            const from = proxy ? Math.max(0, n - 19) : eIdx;
+            let peak = 0; for (let i = from; i <= n; i++) peak = Math.max(peak, C(i));
+            const atr = this._atrTR14(data, proxy ? n : eIdx);
+            let don = Infinity; for (let i = Math.max(0, n - 20); i < n; i++) { const l = L(i); if (l > 0) don = Math.min(don, l); }
+            const r2 = v => (v == null || !isFinite(v) || v <= 0) ? null : Number(v.toFixed(2));
+            const ma5 = (this.indicators && this.indicators.ma5 && this.indicators.ma5[n] > 0) ? this.indicators.ma5[n] : null;
+            return {
+                pC, proxy, cost, shares, buyDate,
+                days: proxy ? 20 : (n - eIdx + 1),
+                peak: r2(peak), atr: r2(atr),
+                don: r2(isFinite(don) ? don : null),
+                atr2: r2(atr > 0 && peak > 0 ? peak - 2 * atr : null),
+                trail8: r2(peak > 0 ? peak * 0.92 : null),
+                ma5: r2(ma5),
+            };
+        } catch (_) { return null; }
+    },
+    // 🚪 顯示(compact = 頁首那一行;完整版在 K棒戰法卡裡)—— ⛔ 同一支函式兩種模式,不產生第二份真相
+    _exitLinesHtml(data, sym, compact) {
+        const x = this._exitLines(data, sym); if (!x) return '';
+        const E = this._EXIT_EDGE, pC = x.pC;
+        const pct = v => v == null ? null : (v - pC) / pC * 100;
+        const f2 = v => v == null ? '—' : v.toFixed(2);
+        const fp = v => v == null ? '' : `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}%`;
+        const ed = k => (E.rows.find(r => r.k === k) || (k === 'ma5' ? E.base : null));
+        const items = [
+            { k: 'don',    lbl: '唐奇安 20 日低點', v: x.don,    why: '收盤跌破「前 20 天的最低價」才走' },
+            { k: 'atr2',   lbl: 'ATR 追蹤停利',     v: x.atr2,   why: `最高點往下讓它跌 2 倍日常波動(這檔 1 倍 = ${f2(x.atr)} 元)` },
+            { k: 'trail8', lbl: '移動停利 8%',      v: x.trail8, why: '從最高收盤回落 8% 就走' },
+            { k: 'ma5',    lbl: '跌破 5 日線',      v: x.ma5,    why: 'App 現在的自動提醒用的就是這條' },
+        ].filter(i => i.v != null);
+        if (!items.length) return '';
+        if (compact) {
+            const one = items.filter(i => i.k !== 'ma5').slice(0, 2).concat(items.filter(i => i.k === 'ma5'))
+                .map(i => `${i.lbl.replace(' 20 日低點', '').replace(' 追蹤停利', '')} <b class="font-mono">${f2(i.v)}</b><span class="text-gray-500">(${fp(pct(i.v))})</span>`).join(' ・ ');
+            return `<div class="text-[10px] text-cyan-300/90 leading-snug mb-1">🚪 出場防守價:${one}
+                <span class="text-gray-500">— 實測「跌破 5 日線」砍太早,細節在下面 K棒戰法卡</span></div>`;
+        }
+        // 有庫存 → 直接把「賣在這裡是賺是賠」算成錢(使用者鐵則:% 一定要配元)
+        const money = v => {
+            if (!(x.cost > 0) || !(x.shares > 0) || v == null) return '';
+            const pl = this._netPL(x.cost, v, x.shares);
+            if (pl == null) return '';
+            return `<div class="text-[9px] ${pl >= 0 ? 'text-red-300' : 'text-green-300'} mt-0.5">賣在這裡 ${pl >= 0 ? '+' : '−'}${Math.abs(pl).toLocaleString()} 元(${pl >= 0 ? '獲利' : '虧損'},已扣手續費與稅)</div>`;
+        };
+        const row = i => {
+            const e = ed(i.k), best = i.k !== 'ma5';
+            return `<div class="flex items-start justify-between gap-2 py-1 border-b border-[#21262d] last:border-0">
+                <div class="min-w-0 flex-1">
+                    <div class="text-[11px] ${best ? 'text-amber-200' : 'text-gray-300'} font-bold">${best ? '⭐ ' : ''}${i.lbl}</div>
+                    <div class="text-[9px] text-gray-500 leading-snug">${i.why}</div>
+                    ${money(i.v)}
+                </div>
+                <div class="text-right flex-shrink-0">
+                    <div class="text-base font-black font-mono text-gray-100">${f2(i.v)}</div>
+                    <div class="text-[9px] text-gray-500 font-mono">離現價 ${fp(pct(i.v))}</div>
+                    ${e ? `<div class="text-[9px] ${best ? 'text-amber-300/80' : 'text-gray-600'}">實測賺 ${e.p.toFixed(0)} 萬</div>` : ''}
+                </div>
+            </div>`;
+        };
+        const src = x.proxy
+            ? `⚠️ 你<b>沒有填這檔的庫存買進日</b> → 上面用「<b>近 20 天最高收盤 ${f2(x.peak)}</b>」當起算點。填了庫存(含買進日)之後,會改用<b>你真正的進場日</b>重算,那才跟回測一模一樣。`
+            : `✅ 用你的買進日 <b>${String(x.buyDate).slice(0, 10)}</b> 起算(到今天 ${x.days} 根 K 棒),進場後最高收盤 <b>${f2(x.peak)}</b> —— 跟回測算法完全一致。`;
+        return `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 mb-2">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-[12px] font-black text-cyan-200">🚪 這檔今天的出場防守價</span>
+                <button onclick="event.stopPropagation();app._showExitHelp()" class="text-[9px] text-gray-500 hover:text-cyan-300">📖 這三條是什麼</button>
+            </div>
+            <div class="text-[10px] text-gray-400 leading-snug mb-1.5">跌破哪一條就走 —— 三條都自動幫你算好了,<b class="text-gray-300">數字越大代表越早出場</b>。</div>
+            ${items.map(row).join('')}
+            <div class="text-[9px] text-gray-500 leading-snug mt-1.5">${src}</div>
+            <div class="text-[10px] text-amber-200/90 leading-snug mt-1.5 bg-amber-900/15 border-l-2 border-amber-500/60 pl-2 py-1 rounded-r">
+                📊 <b>為什麼標 ⭐</b>:同一套打法、同一段 ${E.win}、⛔ 只換出場規則跑 ${E.n} 種 ——
+                「跌破 5 日線」賺 <b>${E.base.p.toFixed(0)} 萬</b>,而唐奇安 20 日 <b>${E.rows[0].p.toFixed(0)} 萬</b>、
+                ATR 追蹤 <b>${E.rows[1].p.toFixed(0)} 萬</b>(中途最多賠也從 ${E.base.dd.toFixed(0)}% 縮到 ${E.rows[1].dd.toFixed(0)}%)。
+                真正的原因是 <b>5 日線砍太早</b>:這套打法十次有七次是小賠,全靠少數幾次大賺 —— 一個小回檔就把還會走遠的那幾檔洗掉了。
+            </div>
+            <div class="text-[9px] text-gray-500 leading-snug mt-1">⛔ App 的<b>自動出場提醒目前仍用「跌破 5 日線」</b>(改預設會連動買點推播與自動下單,要先跟你確認)。
+                買賣的具體價位以<b class="text-gray-400">總覽 →「現在怎麼做」</b>為準,這裡是給你參考的防守線。</div>
+        </div>`;
+    },
+    _showExitHelp() {
+        const E = this._EXIT_EDGE;
+        const line = r => `・${r.t}:賺 ${r.p.toFixed(0)} 萬,中途最多賠 ${r.dd.toFixed(1)}%,平均每趟 +${r.per.toFixed(2)}%`;
+        alert('【出場防守價:這三條是什麼?】\n\n'
+            + '① 唐奇安 20 日低點(Donchian)\n'
+            + '  「前 20 個交易日的最低價」。收盤跌破它才出場 —— 只要它還在那條線上面,不管中間怎麼晃都抱著。\n'
+            + '  ⚠️ 算的是「前 20 天」不含今天。\n\n'
+            + '② ATR 追蹤停利(Chandelier)\n'
+            + '  ATR = 這檔「一天通常會晃多少錢」。出場線 = 進場後的最高收盤 − 2 倍 ATR。\n'
+            + '  好處是波動大的股票自動給比較寬的空間、牛皮股給比較窄 —— 不像固定 5% 那樣一視同仁。\n\n'
+            + '③ 移動停利 8%\n'
+            + '  最單純:從最高收盤回落 8% 就走。\n\n'
+            + '【實測成績(' + E.win + ')】\n'
+            + E.cfg.replace(/<[^>]+>/g, '') + '\n'
+            + '・' + E.base.t + '(App 現行):賺 ' + E.base.p.toFixed(0) + ' 萬,中途最多賠 ' + E.base.dd.toFixed(1) + '%,平均每趟 +' + E.base.per.toFixed(2) + '%\n'
+            + E.rows.map(line).join('\n') + '\n'
+            + '・同一段期間「買 0050 放著」= ' + E.b0050.toFixed(0) + ' 萬\n\n'
+            + '⛔ 三件必須知道的事:\n'
+            + '1. 這是「同一套選股 + 只換出場」量出來的,不是保證。窗口只含 2022 一次空頭。\n'
+            + '2. ⛔ 不要疊加固定停利、賺 10% 先賣一半、風報比到就走 —— 這幾種實測全部更差(賣一半那種最慘)。\n'
+            + '3. 三條選一條用到底,⛔ 不要今天用這條明天用那條(那等於沒有紀律)。');
+    },
+
     _luOddsHtml(data) {
         const r = this._luOdds(data);
         if (!r) return '';
@@ -20116,7 +20301,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (!sigs.length) {
             // ⭐ 「K 棒沒訊號」≠「這張卡沒東西可講」—— 行情階段跟 K 棒訊號是兩件事。
             //    ⛔ 這裡直接 return 的話,那條只會在剛好有 K 棒訊號的日子出現 = 隨機出現,不是條件觸發。
-            const _rg = this._luOddsHtml(data) + this._ldRedKHtml(data, this.currentSymbolId) + this._stockRegimeHtml(this.currentSymbolId) + this._aiChainChipHtml(this.currentSymbolId);
+            // 🚪 V74.4.9 出場防守價:⛔ 兩條 render path 都要接(只接一處 = 只有剛好有 K 棒訊號的日子才出現)
+            const _exH = this._exitLinesHtml(data, this.currentSymbolId);
+            const _rg = _exH + this._luOddsHtml(data) + this._ldRedKHtml(data, this.currentSymbolId) + this._stockRegimeHtml(this.currentSymbolId) + this._aiChainChipHtml(this.currentSymbolId);
             if (_rg) {
                 el.classList.remove('hidden'); _kbShow(true);
                 el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>`
@@ -20125,7 +20312,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             } else { el.classList.add('hidden'); el.innerHTML = ''; _kbShow(false); }
             // 🧭 沒訊號時頁首照樣給一句話 —— 「沒有訊號」本身就是這頁的結論,⛔ 不可留白讓人以為壞掉
             _leadSet(`<div class="text-[9px] text-gray-500 font-bold mb-0.5">🧭 一句話結論</div>
-                <div class="text-[11px] text-gray-300 leading-relaxed">➖ K 棒今天<b>一個型態訊號都沒偵測到</b> —— 沒有訊號就是「不做」,等它表態。</div>
+                <div class="text-[11px] text-gray-300 leading-relaxed">➖ K 棒今天<b>一個型態訊號都沒偵測到</b> —— 沒有訊號就是「不做」,等它表態。</div>`
+                + this._exitLinesHtml(data, this.currentSymbolId, true) + `
                 <div class="text-[9px] text-gray-600 mt-0.5">要買要賣的具體價位,以<b class="text-gray-500">總覽 →「現在怎麼做」</b>為準;細節在下面「📖 更多解讀」。</div>`);
             try { this._setLight('lightKbar', '無訊號'); } catch (_) {}
             return;
@@ -20235,7 +20423,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 if (v6 && String(v6.verdict || '').startsWith('🔴') && !this._bearGate(this.currentSymbolId))
                     _leadSix = `<div class="text-[10px] text-red-300 leading-snug mb-1">⚔️ 六脈共振亮「<b>強共振</b>」—— 全市場實測這一級之後 20 日贏「隨便挑一天」+0.80 個百分點(六關全過);細節在「更多解讀」。</div>`;
             } catch (_) {}
-            _leadSet(_headline + _leadRisk + _leadSix);
+            // 🚪 V74.4.9 出場防守價一行(手上有貨的人第一眼要看到的就是這個)
+            const _leadExit = this._exitLinesHtml(data, this.currentSymbolId, true);
+            _leadSet(_headline + _leadRisk + _leadSix + _leadExit);
         }
         const _help = `<button onclick="event.stopPropagation();app._showEdgeHelp()" class="text-gray-600 hover:text-blue-300 text-[9px]">ⓘ 怎麼看</button>`;
         const rows = (good.length
@@ -20252,7 +20442,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="mt-1">${rest.slice(0, 12).map(s => _card(s, false)).join('')}
                 ${rest.length > 12 ? `<div class="text-[9px] text-gray-600 text-center py-1">⋯ 另有 ${rest.length - 12} 條</div>` : ''}</div></details>` : '');
         const turnHint = hasTurn ? `<div class="text-[10px] text-amber-300/90 mt-1.5 leading-snug bg-amber-900/15 border-l-2 border-amber-500/60 pl-2 py-1 rounded-r">🔑 朱家泓鐵律「開盤定生死」:出現變盤/轉折K後,看<b>次日開盤</b>——開低=變盤確認,多單該跑;開高=化解疑慮,可續抱。</div>` : '';
-        el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>${_headline}${this._luOddsHtml(data)}${this._ldRedKHtml(data, this.currentSymbolId)}${this._stockRegimeHtml(this.currentSymbolId)}${this._aiChainChipHtml(this.currentSymbolId)}${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
+        el.innerHTML = `<div class="flex items-center justify-between mb-1.5"><div class="flex items-center gap-1.5"><span class="text-base">📐</span><span class="text-[12px] font-black text-gray-100">K棒戰法</span><span class="text-[9px] text-gray-500">朱家泓・½價+三星轉折・純公式</span></div><button onclick="app.showKbarTacticsHelp()" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 教學</button></div>${_headline}${this._luOddsHtml(data)}${this._ldRedKHtml(data, this.currentSymbolId)}${this._stockRegimeHtml(this.currentSymbolId)}${this._exitLinesHtml(data, this.currentSymbolId)}${this._aiChainChipHtml(this.currentSymbolId)}${rows}${turnHint}<div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 夜星=高檔轉下/晨星=低檔轉上・½價=(高+低)/2平均成本・測壓/測撐=最高/最低價試前波・量價背離=漲沒量易假突破・缺口不補繼續走・KD/MACD背離=動能衰竭・扣抵=明日均線揚抑・紅偏多綠偏空(台股色)・全公式非 AI・僅供參考</div>`;
         el.classList.remove('hidden');
         _kbShow(true);
     },
@@ -35546,6 +35736,15 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // V29.3:補 開/高/低(對齊專業 App 浮動 OHLC 框)
         if (d.open != null && d.high != null && d.low != null) html += `<span class="text-gray-400">開${d.open.toFixed(2)}</span><span class="text-[#f87171]">高${d.high.toFixed(2)}</span><span class="text-[#4ade80]">低${d.low.toFixed(2)}</span>`;
         if (document.getElementById('toggleBB')?.checked && ind.upperBB && ind.upperBB[index]) html += `<span class="text-[#c084fc]">布林上軌 ${ind.upperBB[index].toFixed(2)}</span>`;
+        try {   // 🚪 V74.4.9 出場防守線讀數(⛔ 同一份 `_exitLineSeries`,不在 HUD 再算一次)
+            if (document.getElementById('toggleDon')?.checked || document.getElementById('toggleAtrTrail')?.checked) {
+                if (!this._exSeriesCache || this._exSeriesCache.sym !== String(this.currentSymbolId) || this._exSeriesCache.n !== (this.activeData || []).length)
+                    this._exSeriesCache = { sym: String(this.currentSymbolId), n: (this.activeData || []).length, v: this._exitLineSeries(this.activeData || []) };
+                const _s = this._exSeriesCache.v;
+                if (_s && document.getElementById('toggleDon')?.checked && _s.don[index] != null) html += `<span class="text-[#38bdf8]">唐奇安 ${_s.don[index].toFixed(2)}</span>`;
+                if (_s && document.getElementById('toggleAtrTrail')?.checked && _s.atrTrail[index] != null) html += `<span class="text-[#f59e0b]">ATR停利 ${_s.atrTrail[index].toFixed(2)}</span>`;
+            }
+        } catch (_) {}
         // 🎛️ V61.10 HUD 顯標準 5/10/20 MA(策略引擎用的固定週期);對應 slot 有開才顯
         const _slotOn = p => (this.maSlots || []).some(s => s.on && s.p === p);
         if (_slotOn(5) && ind.ma5 && ind.ma5[index]) html += `<span class="text-[#ffffff]">5MA ${ind.ma5[index].toFixed(2)}</span>`;
@@ -35741,6 +35940,20 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             option.series.push({ name: 'UpperBB', type: 'line', data: ind.upperBB, smooth: true, showSymbol: false, lineStyle: { width: 1, color: '#c084fc', type: 'dashed' }, xAxisIndex: 0, yAxisIndex: 0 });
             option.series.push({ name: 'LowerBB', type: 'line', data: ind.lowerBB, smooth: true, showSymbol: false, lineStyle: { width: 1, color: '#c084fc', type: 'dashed' }, xAxisIndex: 0, yAxisIndex: 0 });
         }
+
+        // 🚪 V74.4.9 出場防守線疊圖(唐奇安 20 日低點 / ATR 追蹤停利)—— 使用者:「唐奇安軌道加到 K線頁面,ATR 都自動幫我算好」
+        //   ⚠️ 圖上這兩條是**代理版**(每一根 K 都要有值 → ATR 那條用「近 20 日最高收盤」當起算點);
+        //      K棒戰法卡的「出場防守價」有填庫存買進日時會改用**你真正的進場日**,跟回測完全一致。
+        //   ⛔ 公式一律走 `_exitLineSeries`(全 App 唯一一份),⛔ 不在這裡再寫一次。
+        try {
+            const _exS = this._exitLineSeries(data);
+            if (_exS) {
+                if (document.getElementById('toggleDon')?.checked)
+                    option.series.push({ name: '唐奇安20低', type: 'line', data: _exS.don, showSymbol: false, smooth: false, connectNulls: true, lineStyle: { width: 1.5, color: '#38bdf8', type: 'dashed' }, xAxisIndex: 0, yAxisIndex: 0, z: 2 });
+                if (document.getElementById('toggleAtrTrail')?.checked)
+                    option.series.push({ name: 'ATR追蹤停利', type: 'line', data: _exS.atrTrail, showSymbol: false, smooth: false, connectNulls: true, lineStyle: { width: 1.5, color: '#f59e0b', type: 'dashed' }, xAxisIndex: 0, yAxisIndex: 0, z: 2 });
+            }
+        } catch (_) {}
 
         // 💰 成本線(外資/投信)仍讀設定 modal 的 checkbox；MA/EMA 已改上方 slot 動態產生
         const _pushLine = (id, name, arr, color, width, dash) => {
@@ -36013,7 +36226,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // ↺ V62.1 還原全部:均線 + 其他指標/型態旗標 checkbox 回出廠(修使用者誤拖後想一鍵歸零)
     _resetAllKchart() {
         this.maSlots = this._MA_DEFAULT(); this.emaSlots = this._EMA_DEFAULT(); this._saveMaSlots();
-        const DEF = { toggleFCost: false, toggleTCost: false, toggleInvCost: false, toggleBB: true, togglePeaks: true, togglePatterns: true, toggleExDiv: true, toggleFinRpt: false, toggleRev: false };
+        const DEF = { toggleFCost: false, toggleTCost: false, toggleInvCost: false, toggleBB: true, toggleDon: true, toggleAtrTrail: true, togglePeaks: true, togglePatterns: true, toggleExDiv: true, toggleFinRpt: false, toggleRev: false };
         Object.entries(DEF).forEach(([id, on]) => { const el = document.getElementById(id); if (el) el.checked = on; });
         this.showPeaks = true; this.showPatterns = true;
         this._renderKchartMaRows();
