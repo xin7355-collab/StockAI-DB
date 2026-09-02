@@ -756,11 +756,28 @@ const CALC = await page.evaluate(async () => {
     out.body0 = document.getElementById('calcBody').innerText;
     out.rows0 = document.querySelectorAll('#calcBody tbody tr').length;
     out.dims = document.querySelectorAll('#calcBar .labbtn').length;
-    PRO.selCalc(5);                                   // 🏛️ 大盤狀態那組
+    PRO.selCalc(PRO.BT.dims.findIndex(d => d.k === 'mkt'));   // 🏛️ 大盤狀態那組(⛔ 不寫死索引,新增分組會位移)
     out.bodyMkt = document.getElementById('calcBody').innerText;
     out.rowsMkt = document.querySelectorAll('#calcBody tbody tr').length;
     out.inWrap = !!document.querySelector('.wrap #tabCalc');
     out.btn = (document.getElementById('tabBtnCalc') || {}).textContent || '';
+    // ㉞h V74.4.8 出場規則 28 種(49 個月)那一組
+    const xi = PRO.BT.dims.findIndex(d => d.k === 'exit49');
+    out.xi = xi;
+    if (xi >= 0) {
+        const g = PRO.BT.dims[xi];
+        PRO.selCalc(xi);
+        out.xBody = document.getElementById('calcBody').innerText;
+        out.xRows = document.querySelectorAll('#calcBody tbody tr').length;
+        out.xN = g.rows.length;
+        out.xW = g.w || '';
+        out.xNote = g.n || '';
+        const f = t => g.rows.find(r => r.t.includes(t)) || {};
+        out.ma5 = f('跌破 5 日線(現行)').v; out.don20 = f('唐奇安 20 日低點(收盤').v; out.chand2 = f('ATR 追蹤停利 K=2(').v;
+        out.tp10 = f('固定停利 +10%').v; out.half10 = f('賺 10% 先賣一半').v; out.base = f('買 0050 放著').v;
+        out.winRows = g.rows.filter(r => ['ok'].includes(r.v)).length;
+        out.badRows = g.rows.filter(r => ['bad', 'lose'].includes(r.v)).length;
+    }
     return out;
 });
 ok('㉞ 分頁註冊 + 在 .wrap 裡 + 按鈕文字', CALC.inWrap && CALC.btn === '回測計算機');
@@ -777,6 +794,19 @@ ok('㉞e 🚨 沒過穩健性的格子要標出來(fragile 旗標真的會顯示
 ok('㉞f 每一組都標窗口(⛔ 不標的話短窗口名次會被當永恆真理)',
    /📅 窗口:/.test(CALC.body0) && /📅 窗口:/.test(CALC.bodyMkt));
 ok('㉞g ⭐ 窗口長度對照組要在(13/36/49 個月會翻轉結論)', /窗口長度/.test(CALC.intro + src) && /'win'/.test(src));
+// ㉞h V74.4.8 使用者:「用不一樣停損、停利、5 日線…把華爾街在用的出場策略加進來混搭,賺錢會提高嗎?」
+//   ⛔ 這組最危險的是「總獲利被資金路徑帶著跑」—— 36 個月那組 trail8 還輸 5 日線、49 個月卻贏 283 萬,
+//   所以分組說明必須寫出「錯過 / 路徑」與寬鬆配置的每趟數字,⛔ 不可只列一排漂亮的總獲利。
+ok('㉞h 🚪 出場規則 49 個月那一組要在,且真的渲染出 ≥25 列(28 種出場 + 基準)',
+   CALC.xi >= 0 && CALC.xRows >= 25 && CALC.xRows === CALC.xN, `xi=${CALC.xi} rows=${CALC.xRows}/${CALC.xN}`);
+ok('㉞h2 現行 5 日線仍標「現行」(⛔ 預設出場沒有換,不可讓計算機暗示已經換了)', CALC.ma5 === 'use', `ma5=${CALC.ma5}`);
+ok('㉞h3 唐奇安 20 日 / ATR 追蹤 K=2 標「實測有用」、固定停利 / 賣一半標「更差」、0050 標基準',
+   CALC.don20 === 'ok' && CALC.chand2 === 'ok' && CALC.tp10 === 'bad' && CALC.half10 === 'lose' && CALC.base === 'base',
+   `don20=${CALC.don20} chand2=${CALC.chand2} tp10=${CALC.tp10} half10=${CALC.half10} base=${CALC.base}`);
+ok('㉞h4 🚨 分組說明必須寫出「總獲利被資金路徑帶著跑」+ 寬鬆配置的每趟數字(⛔ 只列總獲利會讓人把 +590 萬當真)',
+   /路徑/.test(CALC.xNote) && /錯過/.test(CALC.xNote) && /每趟/.test(CALC.xNote) && /\+3\.43%/.test(CALC.xNote) && /高原/.test(CALC.xNote), CALC.xNote.slice(0, 80));
+ok('㉞h5 窗口要標 49 個月 + 含 2022,而且贏家 ≥5 條、輸家 ≥6 條都要列出(⛔ 不可只列贏的)',
+   /49 個月/.test(CALC.xW) && /2022/.test(CALC.xNote + CALC.xW) && CALC.winRows >= 5 && CALC.badRows >= 6, `w=${CALC.xW} win=${CALC.winRows} bad=${CALC.badRows}`);
 
 const L = await page.evaluate(async () => {
     PRO.switchTab('lab');

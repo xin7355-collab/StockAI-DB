@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.4.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.4.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.4.7 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.4.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7457,8 +7457,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.4.7',
+    _APP_VERSION: 'V74.4.8',
     _CHANGELOG: [
+        { v: 'V74.4.8', dt: '2026-09-02', d: ['🚪 <b>出場規則 28 種全測(49 個月・含 2022 跌勢)</b>:把華爾街常用的出場法(唐奇安通道、ATR 追蹤、移動停利、拋物線 SAR、固定停利、分批停利、風報比、損益兩平…)全部套在現行打法上比一次。結論:<b>放寬的移動出場</b>(唐奇安 20 日低點 / ATR 追蹤 K=2 / 移動停利 8%)每一條都賺 2.5~3.7 倍、回撤還更小;<b>任何「早點鎖獲利」的做法</b>(固定停利 / 分批 / 風報比)全部更差。','📊 結果寫進產業作戰室的<b>回測計算機</b>(新分組「出場規則・28 種全測」)與<b>實測總表</b>(有用 / 沒用 / 方法各一條)。','⛔ 散戶救星的<b>預設出場沒有改</b>(還是跌破 5 日線)—— 換掉會牽動買點推播、自動下單與釣魚出場卡,要先跟你確認。'] },
         { v: 'V74.4.7', dt: '2026-09-02', d: ['🐛 <b>修好一個會讓你看到「錯的招」的問題</b>:同一檔股票可能同時中好幾招,原本會留到<b>排名較後面</b>的那一招 —— 現在一律留<b>最強</b>的那一招。','📘 <b>自動下單上手指南整份重寫</b>(<code>docs/AUTO_TRADE_SETUP.md</code>):改成八個步驟的清單,每一步都寫「做什麼 / 怎麼確認做對了 / <b>什麼情況要停</b>」。開頭先講三件必須接受的事(長窗口仍輸買 0050 放著、勝率只有 33%、空頭沒驗證過)。','🐛 順手修掉自動下單程式的一個真問題:同一檔的重複會吃掉「一天最多 2 檔」的名額,讓它實際只做 1 檔。'] },
         { v: 'V74.4.6', dt: '2026-09-02', d: ['🏆 <b>產業作戰室的釣魚池新增「最強招式」池</b> —— 裡面是「每一檔自己歷史上最會賺的那一招」明天會觸發的清單(本站實測最強的做法)。點開會直接看到:用哪一招、觸發價、停損、勝率+次數、每趟平均。','⏰ 那個價是<b>「站上去才算數」的觸價買單</b>,尾盤 13:00~13:28 看有沒有站上 —— <b>⛔ 不是明天一開盤就買</b>(實測開盤買會把賺頭吃掉一半以上)。卡上也寫明基準勝率是 36% 不是 50%,而且這套做法在長窗口<b>仍然輸給買 0050 放著</b>。'] },
         { v: 'V74.4.5', dt: '2026-09-02', d: ['🚪 <b>產業作戰室的釣魚池補上「釣到之後怎麼出場」</b> —— 之前只告訴你可以看哪幾檔,卻沒說進去之後照什麼規則走。現在會算出這一檔的<b>停損價</b>(進場 −5% 與近 10 日最低較近的那個,附一張賠多少元)與<b>出場線</b>(跌破 5 日線就走,最長抱 20 天),並寫明勝率三成是正常的、整套會賺靠的是「錯的時候小賠」。','🔥 回測了「<b>曾經是飆股的,跌下來會不會漲回去</b>」:⛔ <b>不會</b>——跌深之後「以前飆過」跟「沒飆過」只差 0.1~0.2 個百分點(小於手續費)。真正有差的是<b>它現在還熱不熱</b>:還在高檔 +1.61pp、冷超過半年 −0.80pp,完全單調。','💰 <b>價值選股第一次驗得動一半</b>(靠新的除權息歷史):高殖利率<b>單獨沒用</b>(扣成本 −0.22%),「便宜又高息」是全表最差的一格;唯一穩定的用法是<b>避雷</b>——近一年完全沒配息的最差。本益比/股價淨值比仍然驗不了(財報資料只有 8 季)。'] },
