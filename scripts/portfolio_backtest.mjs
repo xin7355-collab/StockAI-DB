@@ -280,7 +280,12 @@ for (const sym of syms) {
                         const tpP = /tp(\d+)/.test(a.exit) ? +RegExp.$1 : 0;
                         const rrK = /rr(\d+(?:\.\d+)?)/.test(a.exit) ? +RegExp.$1 : 0;
                         const halfP = /half(\d+)/.test(a.exit) ? +RegExp.$1 : 0;
-                        const donN = /^don(\d+)$/.test(a.exit) ? +RegExp.$1 : 0;
+                        // 🐢 don{N} = 標準唐奇安(前 N 日最低,**含進場前的 K 棒**,進場隔天就開始看)
+                        //    don{N}w = 第一版誤寫的變體:進場後**前 N 天只看停損**、之後才看前 N 日低。
+                        //    ⚠️ 兩個都留,因為第一批實跑 don10w 是全表第一 —— 要分得出贏的是
+                        //      「唐奇安」還是「別太早砍」(⛔ 不可靜默改掉讓人以為是同一個東西)。
+                        const donN = /^don(\d+)w?$/.test(a.exit) ? +RegExp.$1 : 0;
+                        const donWait = /^don\d+w$/.test(a.exit);
                         const plow = a.exit === 'plow', sar = a.exit === 'sar', x520 = a.exit === 'x5_20';
                         const chanddK = /^chandd(\d+(?:\.\d+)?)$/.test(a.exit) ? +RegExp.$1 : 0;
                         const atrtK = /^atrt(\d+(?:\.\d+)?)$/.test(a.exit) ? +RegExp.$1 : 0;
@@ -311,7 +316,7 @@ for (const sym of syms) {
                             // ✂️ 分批:先出一半,剩下照底層規則走
                             if (halfP > 0 && !halfDone && c >= entry * (1 + halfP / 100)) { halfDone = 1; halfRet = (c - entry) / entry * 100; }
                             // 🐢 唐奇安:收盤跌破前 N 日最低(⛔ 不含今天)
-                            if (donN > 0 && j - donN >= eIdx) {
+                            if (donN > 0 && (!donWait || j - donN >= eIdx)) {
                                 let lo = Infinity; for (let q = j - donN; q < j; q++) lo = Math.min(lo, data[q].low);
                                 if (c < lo) { exitP = c; exitIdx = j; break; }
                             }
