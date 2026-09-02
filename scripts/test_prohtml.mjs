@@ -774,7 +774,7 @@ const CALC = await page.evaluate(async () => {
         const g = PRO.BT.dims[xi];
         PRO.selCalc(xi);
         out.xBody = document.getElementById('calcBody').innerText;
-        out.xRows = document.querySelectorAll('#calcBody tbody tr').length;
+        out.xRows = document.querySelectorAll('#calcBody table')[0].querySelectorAll('tbody tr').length;
         out.xN = g.rows.length;
         out.xW = g.w || '';
         out.xNote = g.n || '';
@@ -826,6 +826,12 @@ ok('㉞h3 唐奇安 20 日 / ATR 追蹤 K=2 標「實測有用」、固定停利
    `don20=${CALC.don20} chand2=${CALC.chand2} tp10=${CALC.tp10} half10=${CALC.half10} base=${CALC.base}`);
 ok('㉞h4 🚨 分組說明必須寫出「總獲利被資金路徑帶著跑」+ 寬鬆配置的每趟數字(⛔ 只列總獲利會讓人把 +590 萬當真)',
    /路徑/.test(CALC.xNote) && /錯過/.test(CALC.xNote) && /每趟/.test(CALC.xNote) && /\+3\.43%/.test(CALC.xNote) && /高原/.test(CALC.xNote), CALC.xNote.slice(0, 80));
+// 📅 V74.5.2 使用者:「是否把空頭那年、還有每年平均獲利等等列出來」
+ok('㉞h6 📅 出場那組要有「每年實際賺多少」小表,而且 2022(空頭)那一欄四種**都是賠的**',
+   /每年實際賺多少/.test(CALC.xBody) && /2022/.test(CALC.xBody) && /−14 萬/.test(CALC.xBody)
+   && /四種出場全部是賠的|全部是賠的/.test(CALC.xBody), CALC.xBody.slice(-260));
+ok('㉞h7 🚨 要講清楚「2022/2026 不是完整年度 + 複利讓後面金額天生比較大」(⛔ 不然會被讀成 2026 特別神)',
+   /不是完整年度/.test(CALC.xBody) && /複利/.test(CALC.xBody) && /只有 4 個月/.test(CALC.xBody));
 ok('㉞h5 窗口要標 49 個月 + 含 2022,而且贏家 ≥5 條、輸家 ≥6 條都要列出(⛔ 不可只列贏的)',
    /49 個月/.test(CALC.xW) && /2022/.test(CALC.xNote + CALC.xW) && CALC.winRows >= 5 && CALC.badRows >= 6, `w=${CALC.xW} win=${CALC.winRows} bad=${CALC.badRows}`);
 
