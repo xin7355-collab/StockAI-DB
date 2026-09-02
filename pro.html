@@ -423,6 +423,16 @@ table.grid tr:active td{background:#18202e}
 @keyframes sp{to{transform:rotate(360deg)}}
 .hidden{display:none!important}
 footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+#stkSheet{position:fixed;left:0;right:0;bottom:0;z-index:95;background:rgba(10,16,26,.985);
+  border-top:1px solid var(--cyan);border-radius:14px 14px 0 0;padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+  box-shadow:0 -10px 30px rgba(0,0,0,.55);transform:translateY(110%);transition:transform .22s ease;max-height:76vh;overflow:auto}
+#stkSheet.on{transform:translateY(0)}
+#stkSheet .sh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+#stkSheet .shx{margin-left:auto;cursor:pointer;color:var(--dim2);font-size:20px;line-height:1;padding:2px 6px}
+#stkSheet .shkv{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--dim);margin-bottom:9px}
+#stkSheet .shkv b{color:var(--txt);font-family:ui-monospace,monospace}
+#stkSheet .shbtns{display:flex;gap:7px;flex-wrap:wrap}
+#stkSheet .shbtns .lbtn{min-height:42px}
 #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(14,20,31,.96);border:1px solid var(--line2);border-radius:10px;padding:9px 16px;font-size:12px;color:var(--txt);z-index:90;opacity:0;pointer-events:none;transition:opacity .2s}
 #toast.on{opacity:1}
 </style>
@@ -627,6 +637,10 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
   <div class="panel">
     <h2>🎣 釣魚池 <span class="sub">整個市場一眼看完:魚在哪一層、往哪游、誰跟誰一群</span>
       <span class="sub" id="fishSub"></span></h2>
+    <div class="starbar" style="margin-top:0">
+      <button class="lbtn on" id="castBtn" onclick="PRO.castRod()" style="font-weight:900">🎣 拋竿</button>
+      <span class="note" style="margin:0">幫你挑 —— 照本站實測最強的那套規則(🧬 位階+波動 → 前 3 強板塊 → 板塊內最強,一天最多 2 條)</span>
+    </div>
     <div class="labbar" id="fishPool"></div>
     <div class="starbar" style="justify-content:space-between;margin-top:0">
       <div class="labbar" style="margin:0">
@@ -687,6 +701,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 </div>
 </div>
 
+<div id="stkSheet" role="dialog" aria-label="個股快捷"></div>
 <div id="toast"></div>
 
 <script>
@@ -849,6 +864,51 @@ const PRO = {
       return true;
     } catch (_) { return false; }
   },
+  // ══ 🔗 個股快捷面板(V74.4.0)——「連動」的唯一實作 ═══════════════════════════
+  // 🚨 為什麼要做:實測 8 個分頁裡有 6 個,點股票**只會把你丟出網站**(全部走 gotoStock →
+  //    散戶救星),只有釣魚卡有一顆「看它的星圖」。使用者在作戰室裡看到一檔有興趣的,
+  //    想順手看「誰跟它一起動 / 它屬於哪個板塊 / 它在 AI 鏈的哪一段」都要自己切分頁再打代號。
+  // ⭐ 一份實作、全頁受益(陷阱 #37 的正面用法):所有清單的股名一律呼叫 openStock(),
+  //    ⛔ 不要在各頁自己接 onclick。明示按鈕(「→ 散戶救星看細節」)維持直接跳轉,⛔ 不改。
+  // ⛔ 這個面板**只做導覽**:顯示的都是既有數字,不下任何多空判斷、不給買賣價位。
+  openStock(code) {
+    if (!code) return;
+    this.buzz(15);
+    this._stk = code;
+    const el = document.getElementById('stkSheet'); if (!el) return;
+    const v = k => this._scrV(code, k);
+    const c = v('c'), chg = v('chg'), chg20 = v('chg20'), pos = v('pos252'), amt = v('amt');
+    const ind = ((this._cache['data/screener.json'] || {}).ind || {})[code] || '';
+    const J = this._starData, fam = (J && J.r && J.r[code]) || [];
+    const inChain = (this.CHAIN.stocks || []).find(x => x[0] === code);
+    const D = this._cache['data/dividends.json'];
+    const di = D ? this._divInfo(D, code, c) : null;
+    const kv = [];
+    if (Number.isFinite(c)) kv.push(`現價 <b>${c}</b>`);
+    if (Number.isFinite(chg)) kv.push(`今日 <b class="${this.cls(chg)}">${this.fmt(chg, 2, true)}%</b>`);
+    if (Number.isFinite(chg20)) kv.push(`近20日 <b class="${this.cls(chg20)}">${this.fmt(chg20, 1, true)}%</b>`);
+    if (Number.isFinite(pos)) kv.push(`一年位階 <b>${Math.round(pos)}</b>`);
+    if (Number.isFinite(amt)) kv.push(`成交額 <b>${this.fmt(amt, 1)}</b> 億`);
+    if (di && di.yld !== null) kv.push(`近12月殖利率 <b>${di.yld.toFixed(2)}%</b>`);
+    el.innerHTML = `<div class="sh"><b style="font-size:15px">${this._nmFull(code)}</b>
+        ${ind ? `<span class="sigtag">${ind}</span>` : ''}
+        ${inChain ? `<span class="sigtag">🤖 AI 鏈</span>` : ''}
+        <span class="shx" onclick="PRO.closeStock()">✕</span></div>
+      ${kv.length ? `<div class="shkv">${kv.join('・')}</div>` : `<div class="shkv">今天的選股快照裡沒有這一檔的數字</div>`}
+      <div class="shbtns">
+        <button class="lbtn on" onclick="PRO.closeStock();PRO.gotoStock('${code}')">→ 散戶救星看細節</button>
+        <button class="lbtn" onclick="PRO.closeStock();PRO._starSym='${code}';PRO.switchTab('star');PRO.starGo('${code}')">🕸️ 誰跟它一起動${fam.length ? `(${fam.length})` : ''}</button>
+        ${fam.length ? `<button class="lbtn" onclick="PRO.closeStock();PRO._starSym='${code}';PRO._fishPoolK='fam';PRO.switchTab('fish')">🎣 把這一族放下水</button>` : ''}
+        ${ind ? `<button class="lbtn" onclick="PRO.closeStock();PRO.switchTab('rot');PRO.rotOpen('${ind}')">💧 它的板塊</button>` : ''}
+        ${inChain ? `<button class="lbtn" onclick="PRO.closeStock();PRO.switchTab('chain')">🤖 AI 鏈定位</button>` : ''}
+      </div>
+      ${fam.length ? `<div class="note" style="margin-top:8px">🕸️ 跟它一起動的:${fam.slice(0, 5).map(([cc, rv]) => `<span class="sigtag" style="cursor:pointer" onclick="PRO.openStock('${cc}')">${this._nmTxt(cc)} ${rv.toFixed(2)}</span>`).join(' ')}
+        <br><span style="color:var(--dim2)">相關係數是「同一天一起動」,⛔ 不是預測。</span></div>` : ''}
+      <div class="note" style="margin-top:6px;color:var(--dim2)">這裡只是帶你去看,⛔ 不下多空、不給買賣價位。</div>`;
+    el.classList.add('on');
+  },
+  closeStock() { const el = document.getElementById('stkSheet'); if (el) el.classList.remove('on'); this._stk = null; },
+
   gotoStock(code) {
     if (!code) return;
     this.buzz(25);
@@ -917,6 +977,7 @@ const PRO = {
 
   TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['sig', 'Sig'], ['calc', 'Calc'], ['lab', 'Lab']],
   switchTab(t, silent) {
+    this.closeStock();                    // 🔗 切頁一律收起快捷面板(⛔ 不可蓋在別頁上面)
     this._syncHdrVar();          // 分頁列會換行 → header 高度會變 → sticky 的 top 要跟著改
     this._tab = t;
     for (const [k, C] of this.TABS) {
@@ -1104,7 +1165,7 @@ const PRO = {
     const body = rows.map(([c, r, st]) => {
       const s = this._starSt(st), pct = Math.round(Math.max(0, Math.min(1, (r - 0.4) / 0.6)) * 100);
       return `<tr>
-        <td class="l">${this._nmc(c, `PRO.gotoStock('${c}')`)}</td>
+        <td class="l">${this._nmc(c, `PRO.openStock('${c}')`)}</td>
         <td class="mono" style="font-weight:800">${r.toFixed(2)}</td>
         <td><div class="starbar2"><i style="width:${pct}%"></i></div></td>
         <td title="${s.d}">${s.e} ${s.t}</td>
@@ -1208,6 +1269,126 @@ const PRO = {
       f: (r, S) => r.sc && r.sc.minus.length >= 2 && r.sc.sum < -1, sort: 'amt' },
   ],
   FISH_MAX: 100,          // ⛔ 別調大:每條魚每一格都要畫名字,手機 100 條就是上限
+
+  // ══ 🎣 拋竿:由程式挑魚(使用者:「我要放下釣竿真的有魚上鉤,誰上鉤你幫我判斷」)══
+  // ⛔⛔ 挑選規則的每一層都必須有「六關全過」的實測背書 —— 這是這個功能唯一站得住腳的理由。
+  //    ⛔ 特別是**不可以用 🏅 實測體質加總來排名**:那個加總的 IC 只有 +0.0004(信賴區間含 0)、
+  //    而且沒贏過「只看位階」→ 拿它挑魚等於用一個已經被自己否定的東西當賣點。
+  // ⭐ 三層漏斗(每層的數字都寫在卡片上,⛔ 不可只寫結論):
+  //    ① 🧬 一年位階 ≥75 且 20 日振幅 ≥3.2%(V73.2.3 六關全過;36 個月組合回測 +289.6 萬 vs 不挑 +126.1 萬,
+  //       49 個月長窗口 +195.5 萬 vs +107.8 萬)—— ⭐ 它是**必要條件不是加分項**。
+  //    ② 💧 近 20 日最強的前 3 個板塊(V74.2.5 前3−後3 +1.44pp 六關全過;⚠️ 1~5 天的窗口吃不掉成本)
+  //    ③ 🏭 那個板塊裡近 20 日漲最多的(V74.4.1 +0.90% 扣成本後仍正、六關全過;
+  //       ⛔ 江湖最愛的「補漲」實測逐年全負 −0.84%)
+  //    ④ 🎣 最多 2 條(V73.0.0:27 種變體裡唯一「沒有任何一項變差」的)
+  // ⚠️ 上櫃股沒有官方產業別(industry_map 只涵蓋上市)→ 第 ② 層天生把它們篩掉;
+  //    ⛔ 不可為了湊數把那層拿掉,改成標「🥈 少過了板塊那關」誠實分級。
+  CAST_MAX: 2,
+  // 🚧 可交易性守門(億)—— ⭐ **這一關不是為了提高報酬,是為了「買得到」**。
+  //    ⚠️ 真實資料第一次跑就挑到 6225:近 20 日 +154%、但**成交額只有 0.1 億** —— 那種東西
+  //    正式配置每筆 15 萬進去就會推動價格,回測裡的成交價在真實世界拿不到(同 V74.0.2 漲停
+  //    「測得到、賺不到」那一族:碰得到 ≠ 買得到)。
+  //    ⭐ 門檻**從部位大小推導**,⛔ 不是憑空訂:每筆 15 萬 ÷ 1 億 = 當日成交額的 **0.15%**。
+  //    實測全市場非 ETF 2,324 檔的成交額中位數只有 **0.06 億**(一半的股票根本沒有流動性),
+  //    設 1 億會留下 472 檔、其中 🧬 過關的 130 檔 —— 夠挑,⛔ 不會沒東西可選。
+  CAST_MIN_AMT: 1,
+
+  _castPick(D) {
+    const rows = D.rows || [];
+    const geneAll = rows.filter(r => r.pos252 >= 75 && r.amp20 >= 3.2);
+    const liquid = geneAll.filter(r => r.amt >= this.CAST_MIN_AMT);    // 🚧 買得到才算數(理由見 CAST_MIN_AMT)
+    const thin = geneAll.length - liquid.length;
+    // ⚠️ 避雷守門:🚨 **本站另一條六關全過的實測直接跟「追強」打架,必須讓它贏** ——
+    //    「前 5 日噴 ≥30% 才被掛官方注意股」實測後 20 日 **−1.81pp ・中位 −7.21% ・勝率掉回 34.5%**
+    //    (前後半同向、去最好年仍 −2.90;V74.4.2 dispo_backtest)。
+    //    ⛔ 不擋掉的話,拋竿會把一檔「另一條實測明說要減碼」的股票當候選遞給使用者 = 邏輯打架。
+    //    ⚠️ 這是**排除**不是放空訊號(放空容易被軋),而且⛔ 只擋這個組合,不是所有注意股。
+    const gene = liquid.filter(r => !(r.att && r.chg5 >= 30));
+    const avoided = liquid.filter(r => r.att && r.chg5 >= 30).map(r => r.sym);
+    // ② 板塊 20 日報酬中位數 → 前 3 強(母體 = 有官方產業別的上市股,跟回測同一個母體)
+    const byInd = {};
+    for (const r of rows) if (r.ind) (byInd[r.ind] = byInd[r.ind] || []).push(r.chg20);
+    const med = a => { const x = a.slice().sort((p, q) => p - q); return x.length ? (x.length % 2 ? x[(x.length - 1) / 2] : (x[x.length / 2 - 1] + x[x.length / 2]) / 2) : null; };
+    const inds = Object.entries(byInd).filter(([, v]) => v.length >= 5)
+      .map(([k, v]) => ({ k, m: med(v), n: v.length })).sort((a, b) => b.m - a.m);
+    const top3 = inds.slice(0, 3);
+    const top3k = new Set(top3.map(x => x.k));
+    // ③ 前 3 強板塊裡、🧬 過關的,依近 20 日由強到弱;⭐ 同一個板塊最多挑 1 條(⛔ 不可兩條都押同一族)
+    const picked = [], usedInd = new Set();
+    for (const r of gene.filter(r => top3k.has(r.ind)).sort((a, b) => b.chg20 - a.chg20)) {
+      if (usedInd.has(r.ind)) continue;
+      picked.push({ ...r, tier: 1, why: top3.find(x => x.k === r.ind) });
+      usedInd.add(r.ind);
+      if (picked.length >= this.CAST_MAX) break;
+    }
+    // 🥈 不足時補「🧬 過關但不在前 3 強板塊(或沒有產業別)」—— ⛔ 標明少過了哪一關,不混為一談
+    if (picked.length < this.CAST_MAX) {
+      const have = new Set(picked.map(x => x.sym));
+      for (const r of gene.filter(r => !have.has(r.sym)).sort((a, b) => b.chg20 - a.chg20)) {
+        picked.push({ ...r, tier: 2, why: null });
+        if (picked.length >= this.CAST_MAX) break;
+      }
+    }
+    return { picked, top3, geneN: gene.length, geneAllN: geneAll.length, thin, avoided, indN: inds.length };
+  },
+
+  async castRod() {
+    const btn = document.getElementById('castBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '🎣 拋竿中…'; }
+    this.buzz(30);
+    if (!this._fishD) await this.renderFish();
+    const D = this._fishD;
+    if (!D) { if (btn) { btn.disabled = false; btn.textContent = '🎣 拋竿'; } return; }
+    const R = this._castPick(D);
+    this._cast = R;
+    await new Promise(r => setTimeout(r, 420));            // 浮標沉下去的那一下(⛔ 只是體驗,不影響結果)
+    if (btn) { btn.disabled = false; btn.textContent = '🎣 再拋一次'; }
+    if (!R.picked.length) { this._castNone(R); return; }
+    this._fishPoolK = 'cast';
+    await this.renderFish();
+    this.buzz(60);
+    this._fishPick(R.picked[0].sym);
+  },
+
+  _castNone(R) {
+    document.getElementById('fishCard').innerHTML = `<div class="fishcard">
+      <div class="big">🎣 今天沒有魚上鉤</div>
+      <div class="note" style="margin-top:6px">全市場 <b>${(this._fishD.rows || []).length}</b> 檔裡,通過 🧬(一年位階 ≥75 且 20 日振幅 ≥3.2%)的有 <b>${R.geneAllN}</b> 檔,
+      其中 <b>${R.geneN}</b> 檔成交額 ≥1 億(買得到;被流動性擋掉 ${R.thin} 檔),
+      但沒有一檔落在近 20 日最強的前 3 個板塊裡。<br>
+      ⛔ <b>不放寬條件硬給你一條</b> —— 那樣挑出來的東西沒有實測根據。今天就空手,是這套規則本來的樣子。</div></div>`;
+    document.getElementById('fishCard').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  },
+
+  // 🎣 「為什麼是這條」—— ⛔ 每一層都要寫出實測數字,不可只寫結論
+  _castWhyHtml(sym) {
+    const R = this._cast; if (!R) return '';
+    const p = (R.picked || []).find(x => x.sym === sym); if (!p) return '';
+    const t3 = (R.top3 || []).map(x => `${x.k} ${x.m >= 0 ? '+' : ''}${x.m.toFixed(1)}%`).join(' ・');
+    return `<div class="warnbox" style="margin:0 0 8px">
+      🎣 <b>為什麼釣到它</b>${p.tier === 2 ? '(🥈 少過了一關,見下)' : ''}
+      <div class="note" style="margin-top:4px">
+        ⓪ 🚧 <b>成交額 ${p.amt.toFixed(1)} 億</b> —— 過了「買得到」那一關(每筆 15 萬 ÷ 1 億 = 當日成交額的 0.15%,不會推動價格)。
+        ⭐ 這一關<b>不是為了提高報酬,是為了買得到</b>:全市場一半的股票成交額不到 0.06 億,
+        回測裡的成交價在那種標的上拿不到。<br>
+        ① 🧬 <b>一年位階 ${Math.round(p.pos252)} ・20 日振幅 ${p.amp20.toFixed(1)}%</b> —— 過了「位階 ≥75 且振幅 ≥3.2%」。
+        這一關是<b>必要條件不是加分</b>:36 個月組合回測 <b>只做 🧬 +289.6 萬</b>、不挑只有 +126.1 萬;
+        49 個月長窗口 +195.5 萬 vs +107.8 萬。<br>
+        ${p.tier === 1
+          ? `② 💧 它在<b>近 20 日最強的前 3 個板塊</b>裡(${t3})—— 前3強減後3弱實測 <b>+1.44pp</b>(六關全過)。<br>
+             ③ 🏭 它是<b>「${p.ind}」裡近 20 日漲最多</b>的(${p.chg20 >= 0 ? '+' : ''}${p.chg20.toFixed(1)}%)——
+             「板塊選最強、板塊裡再選最強」扣成本後 <b>+0.90%</b>(六關全過);⛔ 江湖最愛的「補漲」實測逐年全負。`
+          : `②③ ⚠️ <b>它沒有過板塊那兩關</b>(${p.ind ? `「${p.ind}」不在前 3 強` : '上櫃股沒有官方產業別,判斷不了'})——
+             這是 🧬 過關、近 20 日又最強的遞補,<b>證據比上面那種弱一級</b>。`}
+      </div>
+      ${(R.avoided || []).length ? `<div class="note" style="margin-top:6px">⚠️ 這次<b>擋掉 ${R.avoided.length} 檔</b>(${R.avoided.slice(0, 4).map(c => this._nmTxt(c)).join('、')}${R.avoided.length > 4 ? '…' : ''}):
+        它們 🧬 有過關,但<b>前 5 日噴 ≥30% 又被掛官方注意股</b> —— 本站實測那個組合後 20 日
+        <b>−1.81pp ・中位 −7.21%</b>(六關全過的避雷訊號),⛔ 不能一邊追強一邊無視它。</div>` : ''}
+      <div class="note" style="margin-top:6px">⛔ <b>這是「候選」不是買進訊號</b>:上面每個數字都是<b>過去</b>的統計,
+      而且回測窗口整段偏多頭、追強那族的優勢 2024 起逐年變小。要不要買、買幾張、停損在哪,
+      一律以散戶救星的「現在怎麼做」為準。</div></div>`;
+  },
+
   _fishPoolK: 'amt', _fishModeV: 'tank', _fish: [], _fishRaf: 0, _fishPick0: null,
 
   // 📡 資料:screener 走共用 fetchJson(跟其他分頁**同一份**,⛔ 不另做 IndexedDB —— 兩份會不同步);
@@ -1217,7 +1398,7 @@ const PRO = {
     if (!scr || !scr.rows || !scr.cols) return null;
     const C = scr.cols, ix = k => C.indexOf(k);
     const iC = ix('c'), iChg = ix('chg'), i20 = ix('chg20'), iAmt = ix('amt'), iPos = ix('pos252'),
-          iAmp = ix('amp20'), iB20 = ix('b20'), iEtf = ix('etf'), iAtt = ix('att');
+          iAmp = ix('amp20'), iB20 = ix('b20'), iEtf = ix('etf'), iAtt = ix('att'), i5 = ix('chg5');
     // 狀態:關聯星圖算好的為準(它有昨天的資料才判得出「突破」);
     //       沒被涵蓋的只補「🔥 過熱」—— 定義完全相同(收盤 > 20MA×1.15 ⟺ 乖離月線 b20 > 15),
     //       ⛔ 突破需要昨收/昨量,screener 是單日快照,不硬猜。
@@ -1231,6 +1412,8 @@ const PRO = {
       if (!S[sym] && Number.isFinite(r[iB20]) && r[iB20] > 15) S[sym] = 2;
       rows.push({ sym, nm: this.nameOf(sym) || sym, c, chg, chg20: Number.isFinite(chg20) ? chg20 : 0,
                   amt, pos252: pos, amp20: Number.isFinite(amp) ? amp : 0, att: r[iAtt] === 1, st: S[sym] || 0,
+                  ind: (scr.ind || {})[sym] || '',                  // 🎣 拋竿的板塊那一層要用(⚠️ 只涵蓋上市)
+                  chg5: Number.isFinite(r[i5]) ? r[i5] : 0,          // ⚠️ 拋竿的避雷守門要用(噴 ≥30% 又被掛注意股)
                   sc: this._fishScore(r, C, E) });
     }
     return { rows, S, J, E, date: scr.data_date || '', updated: scr.updated || '' };
@@ -1239,6 +1422,15 @@ const PRO = {
   _fishPoolRows(D) {
     const P = this.FISH_POOLS.find(p => p.k === this._fishPoolK) || this.FISH_POOLS[0];
     let rows;
+    if (this._fishPoolK === 'cast') {
+      // 🎣 拋竿池:上鉤的那幾條 + 它們的同族當背景(⛔ 空池子看不出「從哪裡挑出來的」)
+      const P2 = this._cast && this._cast.picked || [];
+      const keep = new Set(P2.map(x => x.sym));
+      for (const x of P2) for (const [c] of ((D.J && D.J.r[x.sym]) || [])) keep.add(c);
+      const rows2 = D.rows.filter(r => keep.has(r.sym));
+      rows2.sort((a, b) => (keep.has(a.sym) && P2.some(p => p.sym === a.sym) ? -1 : 0) - (P2.some(p => p.sym === b.sym) ? -1 : 0) || b.amt - a.amt);
+      return rows2.slice(0, this.FISH_MAX);
+    }
     if (this._fishPoolK === 'fam' && this._starSym && D.J && D.J.r[this._starSym]) {
       const fam = new Set([this._starSym, ...D.J.r[this._starSym].map(x => x[0])]);
       rows = D.rows.filter(r => fam.has(r.sym));
@@ -1274,7 +1466,8 @@ const PRO = {
     if (sub) sub.innerHTML = `資料日 ${D.date || '—'} ・${D.rows.length} 檔可下水 ${this._staleChip(D.date, '選股')}`;
     // 池子 chips(⭐ 查過星圖的話多一個「同族」池)
     const pools = this.FISH_POOLS.slice();
-    if (this._starSym && D.J && D.J.r[this._starSym]) pools.push({ k: 'fam', n: `🕸️ 和 ${this.nameOf(this._starSym) || this._starSym} 同族`, d: '關聯星圖那一族' });
+    if (this._starSym && D.J && D.J.r[this._starSym]) pools.push({ k: 'fam', n: `🕸️ 和 ${this._nmTxt(this._starSym)} 同族`, d: '關聯星圖那一族' });
+    if (this._cast && (this._cast.picked || []).length) pools.push({ k: 'cast', n: `🎣 拋竿釣到的 ${this._cast.picked.length} 條`, d: '按「拋竿」由程式依實測規則挑出來的(⛔ 不是買進訊號)' });
     if (!pools.some(p => p.k === this._fishPoolK)) this._fishPoolK = 'amt';
     document.getElementById('fishPool').innerHTML = pools.map(p =>
       `<button class="rotchip fishpool${p.k === this._fishPoolK ? ' on' : ''}" title="${p.d}" onclick="PRO.fishPool('${p.k}')">${p.n}</button>`).join('');
@@ -1413,9 +1606,19 @@ const PRO = {
     // 小魚先畫、大魚後畫(大的蓋小的,名字才看得到)
     const order = F.slice().sort((a, b) => a.r - b.r);
     const caught = new Set(this._catchLoad().map(x => x.sym));     // 🧺 釣過的魚畫金圈
+    const hooked = new Set(((this._cast && this._cast.picked) || []).map(x => x.sym));   // 🎣 這次拋竿上鉤的
     for (const f of order) {
       const dir = f.vx >= 0 ? 1 : -1, col = f.chg > 0 ? '#ff6b6b' : f.chg < 0 ? '#4ade80' : '#8fa3bb';
       if (caught.has(f.sym)) { ctx.strokeStyle = '#f5b942'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r + 4, f.r * 0.55 + 4, 0, 0, Math.PI * 2); ctx.stroke(); }
+      // 🎣 上鉤的:從上方垂一條線下來 + 青色光暈(⛔ 只是看得出來是哪幾條,不是「它比較好」)
+      if (hooked.has(f.sym)) {
+        ctx.strokeStyle = 'rgba(34,211,238,.55)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(f.x, 0); ctx.lineTo(f.x, f.y - f.r * 0.55 - 2); ctx.stroke();
+        ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r + 7, f.r * 0.55 + 7, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = '#22d3ee'; ctx.font = '12px system-ui'; ctx.textAlign = 'center';
+        ctx.fillText('🎣', f.x, f.y - f.r * 0.55 - 6);
+      }
       ctx.fillStyle = col; ctx.globalAlpha = f.grp >= 0 ? 0.95 : 0.72;
       ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r, f.r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.moveTo(f.x - dir * f.r * 0.9, f.y);
@@ -1581,7 +1784,7 @@ const PRO = {
       <div style="overflow-x:auto"><table class="startbl">
         <tr><th style="text-align:left">股票</th><th>除息日</th><th>現金股利</th><th>現價</th><th>單次殖利率</th></tr>
         ${rows.slice(0, 80).map(r => `<tr>
-          <td class="l">${this._nmc(r.sym, `PRO.gotoStock('${r.sym}')`)}</td>
+          <td class="l">${this._nmc(r.sym, `PRO.openStock('${r.sym}')`)}</td>
           <td class="mono">${r.d.slice(5)}</td><td class="mono">${r.cash}</td>
           <td class="mono">${r.px ?? '—'}</td><td class="mono">${r.y !== null ? r.y.toFixed(2) + '%' : '—'}</td></tr>`).join('')}
       </table></div>
@@ -1595,6 +1798,7 @@ const PRO = {
     this.buzz(20);
     const E = this.STAR_STATUS, fam = (D.J && D.J.r[sym]) || [];
     document.getElementById('fishCard').innerHTML = `<div class="fishcard">
+      ${this._castWhyHtml(sym)}
       <div class="big">🎣 釣到:${this._nmc(sym)}
         ${r.st ? `<span class="sigtag" title="${E[r.st].d}">${E[r.st].e} ${E[r.st].t}</span>` : ''}${r.att ? ' <span class="sigtag warn">⚠️ 官方注意股</span>' : ''}</div>
       <div class="kv">
@@ -1612,7 +1816,7 @@ const PRO = {
         ${this._catchLoad().some(x => x.sym === sym)
           ? `<button class="lbtn" onclick="PRO._fishRelease('${sym}')">🐟↩ 放生(從漁獲籃移除)</button>`
           : `<button class="lbtn on" onclick="PRO._fishCatch('${sym}')">🎣 收進漁獲籃</button>`}
-        <button class="lbtn" onclick="PRO._starSym='${sym}';PRO.switchTab('star')">🕸️ 看它的星圖</button>
+        <button class="lbtn" onclick="PRO._starSym='${sym}';PRO.switchTab('star');PRO.starGo('${sym}')">🕸️ 看它的星圖</button>
         <button class="lbtn" onclick="PRO.gotoStock('${sym}')">→ 散戶救星看細節</button>
       </div>
       <div class="note" style="margin-top:6px">這張卡只是把數字攤開,⛔ 不是進場建議 —— 買賣一律以散戶救星的「現在怎麼做」為準。</div>
@@ -1821,7 +2025,7 @@ const PRO = {
           // ⭐ V74.4.7 使用者:「🧬 標註移到清單右側,下面版面才不會佔這麼大的空間」
           //   → 徽章改成表格**最右一欄**;標的欄只留 名字+代號+警示。
           return `<tr>
-            <td class="txtcell"><button class="namebtn" onclick="PRO.gotoStock('${x.s}')"><span class="signm">${nm(x.s) || x.s}</span><br><span class="sigcode">${x.s}</span></button>${bad}${loose}</td>
+            <td class="txtcell"><button class="namebtn" onclick="PRO.openStock('${x.s}')"><span class="signm">${nm(x.s) || x.s}</span><br><span class="sigcode">${x.s}</span></button>${bad}${loose}</td>
             <td>${buy}</td>
             <td class="mono">${x.stop > 0 ? this.fmt(x.stop, 2) : '—'}</td>
             <td class="txtcell">${x.k}</td>
@@ -1853,7 +2057,7 @@ const PRO = {
         `<div class="tblwrap" style="max-height:60vh"><table class="grid sigtbl"><thead><tr>
           <th>標的</th><th>出現什麼</th><th>勝率 ・次數</th><th>每趟平均</th><th>賺賠比</th></tr></thead><tbody>` +
         rows.map(x => `<tr>
-            <td class="txtcell"><button class="namebtn" onclick="PRO.gotoStock('${x.s}')"><span class="signm">${nm(x.s) || x.s}</span><br><span class="sigcode">${x.s}</span></button></td>
+            <td class="txtcell"><button class="namebtn" onclick="PRO.openStock('${x.s}')"><span class="signm">${nm(x.s) || x.s}</span><br><span class="sigcode">${x.s}</span></button></td>
             <td class="txtcell">${x.t}</td>
             <td>${(x.w ?? 0).toFixed(0)}% ・${(x.n ?? 0).toLocaleString()} 次<br>${this._sigWrTag(x.w || 0, x.n || 0)}</td>
             <td class="mono">${x.exp >= 0 ? '+' : ''}${(x.exp ?? 0).toFixed(2)}%</td>
@@ -1887,7 +2091,7 @@ const PRO = {
         </div>
         ${hot.length
           ? `<div class="memrow" style="margin-top:6px">${hot.slice(0, 20).map(x =>
-              `<span class="memchip" onclick="PRO.gotoStock('${x.sy}')">${x.sy} ${nm(x.sy)} <b>+${x.chg5.toFixed(0)}%</b></span>`).join('')}</div>
+              `<span class="memchip" onclick="PRO.openStock('${x.sy}')">${x.sy} ${nm(x.sy)} <b>+${x.chg5.toFixed(0)}%</b></span>`).join('')}</div>
              <div class="note">↑ 今天符合的有 ${hot.length} 檔(資料日 ${scr.data_date})。</div>`
           : `<div class="note">✅ 今天沒有符合這個條件的股票${scr ? `(資料日 ${scr.data_date})` : ''}。</div>`}
         <div class="sighead" style="margin-top:10px">⛔ 已經實測「沒用」、⛔ 不要再用的做法</div>
@@ -2098,6 +2302,7 @@ const PRO = {
       { t: '📆 行事曆與大盤環境當濾網', n: '26 種全部少賺', d: '13 種行事曆(週幾/月初月底/結算日/長假)+ 13 種大盤事件(不追高/廣度極弱/地板股)。⭐ 唯二「贏」的兩個,優勢<b>全部集中在 2026-04 那一個月</b>,拿掉就由正轉負。🚨 累計測了 86 種變體,採用的只有 2 個。', s: 'V73.2.0 / V73.2.1 / V73.2.2' },
     ],
     method: [
+      { t: '🎣 「幫我挑」的規則必須層層有實測背書 —— 而真實資料第一次跑就挑到買不到的東西', n: '6225:+154% / 成交額 0.1 億', d: '使用者要「放下釣竿真的有魚上鉤,誰上鉤你幫我判斷」。⛔ <b>不可以用 🏅 實測體質加總來挑</b> —— 那個加總的 IC 只有 +0.0004(信賴區間含 0),拿一個自己已經否定的東西當賣點是最糟的。→ 改用三層都<b>六關全過</b>的漏斗:🧬 位階+波動(必要條件)→ 近 20 日最強前 3 板塊(+1.44pp)→ 板塊內最強(+0.90%)。<br>🚨 <b>但真實資料第一次跑就挑到 6225:近 20 日 +154%、成交額只有 0.1 億</b> —— 正式配置每筆 15 萬進去就推動價格,回測的成交價在真實世界拿不到(同「測得到、賺不到」那一族)。→ 加<b>可交易性守門</b>,而且門檻<b>從部位大小推導</b>(15 萬 ÷ 1 億 = 0.15%),⛔ 不是憑空訂;實測全市場非 ETF 的成交額<b>中位數只有 0.06 億</b>。<br>🚨 第二輪又挑到 <b>3406(官方注意股 + 前 5 日噴 45%)</b> —— 而本站<b>另一條六關全過的實測</b>說那個組合後 20 日 −1.81pp、中位 −7.21%。⛔ 一邊追強一邊無視自己的避雷結論 = 邏輯打架 → 加避雷守門並在卡上說出擋掉了誰。<br>⭐ 通用:<b>「幫使用者挑」的功能,每一層都要能指名是哪一條實測撐著;而且要用真實資料跑一次看它到底挑出什麼</b> —— 測資規模小,這兩個問題都不會浮出來(陷阱 #40)。', s: 'pro.html castRod・V74.4.0' },
       { t: '🧪 真實資料實跑才看得到的:名字載不到時「2882 2882」', n: '8 個顯示點', d: '關聯星圖/釣魚池上線後用<b>真實 gh-pages 產物</b>(而不是測資)實跑一次 —— 測資裡我手動塞了名字所以永遠是對的,真實情況是 <code>_names</code> 要去外部服務拿、拿不到就空的,而每個呼叫端都寫 <code>nameOf(x) || x</code> 當保底 → 名字欄與代號欄變成同一個數字。⭐ 最難察覺的是 <b>AI 鏈那 81 檔有內建名字</b> → 只有一部分列會重複,看起來像資料怪而不是程式錯。→ 抽成 <code>_nmc / _nmTxt / _nmFull</code> 三支唯一顯示點。⚠️ 連測試都踩同一個坑:第一版拿 <b>2408(在 AI 鏈裡)</b>驗標題 → 注入缺陷照樣綠,改用 <b>2882(不在名單裡)</b>才驗得到。', s: 'scripts/test_stargraph.mjs 🏷️・V74.3.9' },
       { t: '💸 資金設定會翻轉判定 —— 第二例:正式配置下 K=1.5 / K=3 輸 5 日線,寬鬆配置下四個 K 單調全贏', n: '同一個出場,總獲利 −37.6 萬 ~ +164.6 萬', d: 'Chandelier 出場網格(K=1.5/2/2.5/3)在<b>每筆 15 萬</b>下是「兩點高峰、兩側懸崖」(−37.6 / +147.9 / +164.6 / −15.5 萬),在<b>每筆 3 萬(錢用不完)</b>下卻是乾淨的單調上升(+22 / +40 / +45 / +60 萬)。⭐ 分辨法:<b>錯過的訊號數</b> —— 正式配置錯過 1,488 次,寬鬆 0 次;錯過的不同,買到的股票就不同,總獲利就被資金路徑決定。⛔ 兩個結論:① 看到「網格不是高原」先問「是不是錢用完了」,別急著判過度配適;② 但也⛔ 不可拿寬鬆配置的數字去改預設(使用者實際就是 15 萬/筆)。要真的改預設,得先把「資金卡住」的問題另外解(例如出場放寬時同步縮小每筆金額),那是另一個變體,還沒測。', s: 'scripts/portfolio_backtest.mjs・V74.3.8' },
       { t: '🌐 採礦腳本「本機 582 檔、雲端 2 檔」—— 最新交易日被少數幾檔的「明天」帶走', n: '雲端首跑:宇宙 2 檔・鄰居 0', d: '關聯星圖採礦(generate_correlations)本機跑 582 檔全對,推上雲端第一輪只剩 <b>2 檔</b>、零錯誤訊息(有空過守門才擋下來)。真因:全市場 2,789 檔裡有 <b>6 檔</b>已經寫進「明天」的列(盤中快照/時區),程式用 <code>index[-1]</code> 當最新交易日 → 那天只有那幾檔有收盤價。⭐ 這是陷阱 #14 的第 N 次:<b>「最新一天」一律取「樣本數過門檻的最大日期」</b>,並把砍掉的日期印出來。⚠️ 本機測不到是因為本機那份資料剛好沒有未來列 —— 跟資料狀態有關的守門要在測資裡<b>注入</b>那個狀態(selftest 已加兩檔未來列)。', s: 'generate_correlations.py・V74.3.8' },
@@ -2217,7 +2422,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.3.9',
+  VER: 'V74.4.0',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -2598,7 +2803,7 @@ const PRO = {
       <div class="tblwrap" style="max-height:44vh"><table class="grid"><thead><tr>
         ${th('sy', '個股')}${th('chg', '當日')}${th('f5', '外資5日')}${th('chg20', '近20日')}<th>💸 外資走向20日</th></tr></thead><tbody>` +
       rows2.map((r, ri) => `<tr>
-        <td class="txtcell"><button class="namebtn" onclick="PRO.gotoStock('${r.sy}')">${r.sy}${this.nameOf(r.sy) && this.nameOf(r.sy) !== r.sy ? ' ' + this.nameOf(r.sy) : ''}</button></td>
+        <td class="txtcell"><button class="namebtn" onclick="PRO.openStock('${r.sy}')">${r.sy}${this.nameOf(r.sy) && this.nameOf(r.sy) !== r.sy ? ' ' + this.nameOf(r.sy) : ''}</button></td>
         <td class="${this.cls(r.chg)}">${Number.isFinite(r.chg) ? this.fmt(r.chg, 2, true) + '%' : '—'}</td>
         <td class="${this.cls(r.f5)}">${Number.isFinite(r.f5) ? this.fmt(r.f5, 0, true) : '—'}</td>
         <td class="${this.cls(r.chg20)}">${Number.isFinite(r.chg20) ? this.fmt(r.chg20, 1, true) + '%' : '—'}</td>
@@ -3095,7 +3300,7 @@ const PRO = {
     // ⛔ 結構只建一次、之後只改 transform —— 每一拍重建 innerHTML 會把 CSS transition 洗掉
     //    (這是本專案第三次踩到同一個坑:rotQuad、法人籌碼長條、現在是這裡)
     const bub = use.map(sy =>
-      `<g class="sb" data-sy="${sy}" style="cursor:pointer" onclick="PRO.gotoStock('${sy}')">
+      `<g class="sb" data-sy="${sy}" style="cursor:pointer" onclick="PRO.openStock('${sy}')">
         <circle r="5"></circle>
         <text class="qtick" text-anchor="middle" style="paint-order:stroke;stroke:#0b1220;stroke-width:2.5px">${(this._names || {})[sy] || sy}</text>
       </g>`).join('');
@@ -3545,7 +3750,7 @@ const PRO = {
       rows = rows.slice(0, CAP);
       const sel = this._rotSel === x.c;
       const chips = rows.map(r =>
-        `<span class="memchip ${this.cls(r.chg20)}" onclick="PRO.gotoStock('${r.sy}')">${r.sy} ${(this._names || {})[r.sy] || ''}</span>`).join('');
+        `<span class="memchip ${this.cls(r.chg20)}" onclick="PRO.openStock('${r.sy}')">${r.sy} ${(this._names || {})[r.sy] || ''}</span>`).join('');
       return `<div class="memrow">
         <span class="memhead ${sel ? 'on' : ''}" onclick="PRO.rotOpen('${x.c}')">${sel ? '▶ ' : ''}${G.nm(x.c)} <span class="${this.cls(x.v)}">${x.v >= 0 ? '+' : ''}${x.v.toFixed(1)}%</span></span>
         ${chips || '<span class="memchip">(個股清單對不上/未涵蓋)</span>'}
@@ -3743,7 +3948,7 @@ const PRO = {
     const cards = rows.map((r, i) => {
       const pb = this.baseTag(r.pos), vb = this.baseTag(r.rank);
       const head = `<div class="vhead">
-        <button class="nmbtn" onclick="PRO.gotoStock('${r.code}')" title="點我跳到散戶救星看這檔的完整分析(返回鍵可回到這裡)">
+        <button class="nmbtn" onclick="PRO.openStock('${r.code}')" title="點股名開快捷選單(星圖 / 板塊 / AI 鏈 / 跳散戶救星);想直接跳請按右邊的「📈 看個股」">
           <span class="code">${r.code}</span><span class="nm">${r.nm}</span></button>
         <span class="px">${this.fmt(r.px, 1)}</span><span class="chg ${this.cls(r.chg)}">${this.fmt(r.chg, 2, true)}%</span>
         <span class="vtools">
@@ -4185,7 +4390,7 @@ ${M.news || '(無)'}
       const bt = this.baseTag(r.pos252);
       return `<tr title="⚠️ ${r.risk}">
       <td class="txtcell"><span class="mono" style="color:var(--dim2);font-size:10px">${r.code}</span>
-        <button class="namebtn" onclick="PRO.gotoStock('${r.code}')">${r.nm}</button></td>
+        <button class="namebtn" onclick="PRO.openStock('${r.code}')">${r.nm}</button></td>
       <td class="txtcell" style="font-size:10px;color:${this.LAYER[r.layer].c}">${r.layer} ${this.LAYER[r.layer].tag}</td>
       <td class="txtcell" style="font-size:11px;color:var(--sub);max-width:170px;overflow:hidden;text-overflow:ellipsis">${r.theme}</td>
       <td class="txtcell" style="font-size:10px" title="${r.stage.d}">${r.stage.t}</td>
@@ -4197,7 +4402,7 @@ ${M.news || '(無)'}
     }).join('');
     // 轉折 / 利潤池 / 傳導鏈
     const chip = t => { const m = String(t).match(/^(\d{4,5}[A-Z]?)\s*(.*)$/);
-      return m ? `<span class="chip" onclick="PRO.gotoStock('${m[1]}')"><span class="c">${m[1]}</span>${m[2]}</span>`
+      return m ? `<span class="chip" onclick="PRO.openStock('${m[1]}')"><span class="c">${m[1]}</span>${m[2]}</span>`
                : `<span class="chip dead">${t}</span>`; };
     document.getElementById('transGrid').innerHTML = C.trans.map(x => `<div class="tcard">
       <div class="tt">${x.t}<span class="tag">${x.st}</span><span class="tag ${x.imp === '高' ? 'imp' : ''}">影響${x.imp}</span></div>
@@ -4205,7 +4410,7 @@ ${M.news || '(無)'}
       ${x.lose.length ? `<div class="chips"><span style="font-size:9px;color:var(--dim2);align-self:center">被替代</span>${x.lose.map(chip).join('')}</div>` : ''}</div>`).join('');
     document.getElementById('poolBox').innerHTML = C.pool.map(p => {
       const tws = p.tw.map(e => { const [c, ...role] = String(e).split(' '); const nm = this.nameOf(c);
-        return `<span class="chip" onclick="PRO.gotoStock('${c}')"><span class="c">${c}</span>${nm}${role.length ? ' ' + role.join(' ') : ''}</span>`; }).join('');
+        return `<span class="chip" onclick="PRO.openStock('${c}')"><span class="c">${c}</span>${nm}${role.length ? ' ' + role.join(' ') : ''}</span>`; }).join('');
       return `<div class="poolrow"><div class="ph"><span>${p.n}</span><span class="mono">${p.sh}%</span></div>
         <div class="pb"><i style="width:${p.sh}%"></i></div>
         <div class="ps">毛利約 ${p.gm}<div class="chips">${tws}</div>${p.note}</div></div>`;

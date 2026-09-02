@@ -166,6 +166,39 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV }) => {
   out.avoidOk = PRO._fish.every(f => f.sc.minus.length >= 2 && f.sc.sum < -1);
   PRO.fishPool('amt'); await sleep(300);
 
+  // ══ 🎣 拋竿(V74.4.0:使用者「我要放下釣竿真的有魚上鉤,誰上鉤你幫我判斷」)══
+  //    ⚠️ 測資規模小 → 這裡驗的是**規則本身**(漏斗有沒有照順序過、守門有沒有作用),
+  //    ⛔ 不驗「挑到哪一檔」(那會隨資料變成假失敗)。
+  {
+    const D0 = PRO._fishD;
+    const mk = (sym, o) => ({ sym, nm: sym, c: 100, chg: 0, chg20: 0, amt: 50, pos252: 90, amp20: 5,
+                              att: false, st: 0, ind: '半導體', chg5: 0, sc: { plus: [], minus: [], sum: 0 }, ...o });
+    PRO._fishD = { ...D0, rows: [
+      mk('AAAA', { chg20: 50 }),                                  // 強勢板塊裡最強 → 應該上鉤
+      mk('BBBB', { chg20: 40 }),                                  // 同板塊次強 → ⛔ 同板塊只能挑 1 條
+      mk('CCCC', { chg20: 30, ind: '航運' }),                      // 另一個板塊 → 第 2 條
+      mk('DDDD', { chg20: 99, amt: 0.2 }),                        // 🚧 成交額 0.2 億 → 買不到,要擋掉
+      mk('EEEE', { chg20: 98, att: true, chg5: 45 }),              // ⚠️ 噴 45% 又掛注意股 → 避雷擋掉
+      mk('FFFF', { chg20: 80, pos252: 40 }),                       // 🧬 位階不過 → 擋掉
+      mk('GGGG', { chg20: 70, amp20: 1.0 }),                       // 🧬 振幅不過 → 擋掉
+      ...Array.from({ length: 6 }, (_, i) => mk('H' + i, { ind: '半導體', chg20: 5 })),
+      ...Array.from({ length: 6 }, (_, i) => mk('I' + i, { ind: '航運', chg20: 4 })),
+      ...Array.from({ length: 6 }, (_, i) => mk('J' + i, { ind: '食品', chg20: -9 })),
+    ] };
+    const R2 = PRO._castPick(PRO._fishD);
+    out.cast = {
+      picked: R2.picked.map(x => x.sym), tiers: R2.picked.map(x => x.tier),
+      inds: R2.picked.map(x => x.ind), avoided: R2.avoided, thin: R2.thin,
+      top3: R2.top3.map(x => x.k),
+    };
+    // 沒有魚上鉤時要誠實說,⛔ 不放寬條件硬給
+    PRO._fishD = { ...D0, rows: [mk('ZZZZ', { pos252: 10, amp20: 0.5 })] };
+    PRO._cast = PRO._castPick(PRO._fishD);
+    PRO._castNone(PRO._cast);
+    out.castNone = document.getElementById('fishCard').innerText;
+    PRO._fishD = D0; PRO._cast = null;
+  }
+
   // 🎣 釣魚
   PRO._fishPick('2408'); await sleep(150);
   out.card = document.getElementById('fishCard').innerText;
@@ -292,6 +325,21 @@ ok('💰③ 配息只描述:⛔ 不下多空、不寫「除息前買」(否定�
 ok('💰③a 空過守門:免責句真的在(剝掉前找得到、剝掉後找不到)', /不是「除息前買」/.test(seg('_renderDivCal')) && !/除息前買/.test(divTxt));
 ok('💰③b 非同步回來要驗還是同一檔(陷阱 #19)', /_fishPickSym === sym/.test(seg('_fishPick')));
 ok('💰③c 殖利率分母是現價、分子只算現金(排除「權」)', /x\[2\] !== '權'/.test(seg('_divInfo')) && /y12 \/ px/.test(seg('_divInfo')));
+// ═══ 🎣 拋竿(V74.4.0)═══
+ok('🎣① 一天最多 2 條(V73.0.0:27 種變體裡唯一沒有任何一項變差的)', R.cast.picked.length === 2, JSON.stringify(R.cast));
+ok('🎣② 同一個板塊只挑 1 條(⛔ 不可兩條都押同一族)', new Set(R.cast.inds).size === R.cast.inds.length, JSON.stringify(R.cast.inds));
+ok('🎣③ 🚧 買不到的要擋掉(成交額 0.2 億)', !R.cast.picked.includes('DDDD') && R.cast.thin >= 1, `thin=${R.cast.thin}`);
+ok('🎣④ ⚠️ 避雷守門:噴 ≥30% 又掛官方注意股的要擋掉(另一條六關全過的實測 −1.81pp)',
+   !R.cast.picked.includes('EEEE') && R.cast.avoided.includes('EEEE'), JSON.stringify(R.cast.avoided));
+ok('🎣⑤ 🧬 位階/振幅不過的不上鉤(它是必要條件不是加分)',
+   !R.cast.picked.includes('FFFF') && !R.cast.picked.includes('GGGG'));
+ok('🎣⑥ 挑的是「強勢板塊裡近 20 日最強」那一檔(⛔ 不是補漲:實測逐年全負)', R.cast.picked[0] === 'AAAA', JSON.stringify(R.cast.picked));
+ok('🎣⑦ 沒有魚上鉤時誠實說,而且明寫⛔ 不放寬條件硬給', /今天沒有魚上鉤/.test(R.castNone) && /不放寬條件/.test(R.castNone), R.castNone.slice(0, 120));
+ok('🎣⑧ ⛔ 挑選規則不可用 🏅 加總排序(它的 IC≈0,已被自己的檢定否定)',
+   !/sc\.sum/.test(seg('_castPick')) && !/sort\s*===\s*'score'/.test(seg('_castPick')));
+ok('🎣⑨ 「為什麼釣到它」要寫出每一層的實測數字 + ⛔ 不是買進訊號',
+   /\+289\.6/.test(seg('_castWhyHtml')) && /\+1\.44pp/.test(seg('_castWhyHtml')) && /\+0\.90/.test(seg('_castWhyHtml'))
+   && /不是買進訊號/.test(seg('_castWhyHtml')) && /散戶救星/.test(seg('_castWhyHtml')));
 ok('💥 沒有未攔截的 JS 錯誤', errs.length === 0, errs.join(' | '));
 
 await browser.close();

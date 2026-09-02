@@ -360,7 +360,16 @@ const T = await page.evaluate(async () => {
     await new Promise(r => setTimeout(r, 60));
     out.detTxt = openOne().innerText;
     out.detRows = document.querySelectorAll('#rotOne tbody tr').length;
-    out.detHasGoto = /PRO\.gotoStock\('2382'\)/.test(openOne().innerHTML);
+    out.detHasGoto = /PRO\.openStock\('2382'\)/.test(openOne().innerHTML);
+    // 🔗 V74.4.0:點股名改開「個股快捷面板」→ 用意沒變(還是到得了散戶救星),只是多一層
+    PRO.openStock('2382');
+    const _sh = document.getElementById('stkSheet');
+    out.sheetOn = _sh.classList.contains('on');
+    out.sheetHtml = _sh.innerHTML;
+    out.sheetGoto = /PRO\.gotoStock\('2382'\)/.test(_sh.innerHTML);
+    out.sheetStar = /PRO\.starGo\('2382'\)/.test(_sh.innerHTML);
+    PRO.switchTab('rot');                         // 切頁要自動收起來
+    out.sheetClosedOnTab = !_sh.classList.contains('on');
     PRO.rotSeek(1);
     await new Promise(r => setTimeout(r, 60));
     out.detTxtPast = openOne().innerText;
@@ -418,7 +427,7 @@ const T = await page.evaluate(async () => {
       out.sbN = d.querySelectorAll('.sbub circle').length;
       out.sbAmber = d.querySelectorAll('.sbub circle[stroke="var(--amber)"]').length;
       out.sbGene = (d.innerText.match(/🧬 這一組命中 (\d+)\/(\d+)/) || []).slice(1).join('/');
-      out.sbGoto = /PRO\.gotoStock\('2408'\)/.test(d.innerHTML);
+      out.sbGoto = /PRO\.openStock\('2408'\)/.test(d.innerHTML);
       out.sbTxt = d.innerText;
       out.sbHitTxt = (document.getElementById('sbHit') || {}).innerText || '';
       // 🧬 ㊷ 分區:左下「實測最弱」框 + X 軸下方四段實測條
@@ -517,7 +526,7 @@ const T = await page.evaluate(async () => {
     await PRO._rotMembers();
     out.memRows = document.querySelectorAll('#rotMembers .memrow').length;
     out.memTxt = document.getElementById('rotMembers').innerText.replace(/\s+/g, ' ');
-    out.memGoto = /PRO\.gotoStock\('2408'\)/.test(document.getElementById('rotMembers').innerHTML);
+    out.memGoto = /PRO\.openStock\('2408'\)/.test(document.getElementById('rotMembers').innerHTML);
     out.memSelOn = document.querySelectorAll('#rotMembers .memhead.on').length;   // 'mem' 開著 → 恰 1
     out.chipOnCls = document.querySelectorAll('#rotList .rotchip.on').length;     // 名次條選中恰 1
     PRO.rotOpen('mem');
@@ -1214,7 +1223,8 @@ ok('⑧ 燈號鐵則:使用者看得到的地方不可用 🔴🟢(u flag)', !R.
 ok('⑦ 戰情表 81 檔(V74.2.0 新增矽晶圓/無人機/散熱/連接器/光罩等 14 檔)', R.rowsN === 81, R.rowsN);
 ok('⑦b 按 YoY 排序 → 2330(stub 999)排第一', R.firstCode === '2330', R.firstCode);
 ok('⑦c null 排最後(4585 chg20=null)', /4585/.test(R.last2), R.last2.slice(0, 60));
-ok('⑦d 利潤池有中文名而且可點', /台積電/.test(R.chainTxt) && /PRO\.gotoStock\('2330'\)/.test(R.chainHtml));
+ok('⑦d 利潤池有中文名而且可點(V74.4.0 起點名字開快捷面板,⛔ 不再直接把人丟出網站)',
+   /台積電/.test(R.chainTxt) && /PRO\.openStock\('2330'\)/.test(R.chainHtml));
 // ⑮ 階段位置 / 主戰場
 ok('⑮ 主戰場判為 L3(L3 成員被灌成最強)', R.front && R.front.lv === 3, R.front);
 ok('⑮b 🚧 樣本不足 10 檔 → ⛔ 不判定主戰場(門檻 5→10,實測後改的)', R.frontEmpty === null, R.frontEmpty);
@@ -1316,7 +1326,14 @@ ok('㉕c 🔎 點板塊要攤開裡面的個股', T.detRows >= 2 && /廣達/.tes
 ok('㉕d 🔎 明細要有板塊自己的資金流(當日/近5日/近20日/資金停留)',
    /當日外資/.test(T.detTxt) && /近 5 日/.test(T.detTxt) && /近 20 日累計/.test(T.detTxt) && /資金停留/.test(T.detTxt),
    T.detTxt.slice(0, 200));
-ok('㉕e 個股要能點去散戶救星', T.detHasGoto);
+ok('㉕e 個股要能點(V74.4.0:開快捷面板)', T.detHasGoto);
+// 🔗 V74.4.0 連動:⭐ 這幾條釘的是「**用意**沒變」—— 點股名之後**還是到得了**散戶救星,
+//    只是先給你星圖/板塊/AI鏈的入口(⛔ 以前 8 頁裡有 6 頁點下去就離站)。
+ok('🔗 點股名會開快捷面板,而且面板裡一定有「→ 散戶救星」那顆(⛔ 不可把出口拿掉)',
+   T.sheetOn && T.sheetGoto, `on=${T.sheetOn} goto=${T.sheetGoto}`);
+ok('🔗b 面板要能直接查它的星圖(⛔ 不可只切分頁不查,那等於還要自己打一次代號)', T.sheetStar);
+ok('🔗c 面板只導覽:⛔ 不出現買賣價位/多空字眼', !/買進訊號|該買|停損|目標價|偏多|偏空/.test(T.sheetHtml.replace(/⛔ 不下多空[^<]*/g, '')));
+ok('🔗d 切分頁要自動收起面板(⛔ 不可蓋在別頁上面)', T.sheetClosedOnTab);
 ok('㉕f 🚨 必須誠實說「個股表只有最新一天」(⛔ 不可假裝拉回過去看得到)',
    // ⚠️ V74.4.2 起走向欄**有**每檔近 20 日歷史(使用者叫回來的)→ 舊句「沒有存歷史」已不成立,
    //    改釘「表格是最新快照 + 走向欄要宣告自己的窗口(近 20 個交易日)」
@@ -1381,7 +1398,7 @@ ok('㉘f ⚠️ 要誠實說波動是用「20 日振幅」代理、門檻是全�
 // ⚠️ V74.1.1 依使用者版面藍圖,「單一板塊」與「成分股」合併成 📋 板塊明細 一頁
 //   (選了板塊本來就要一起看走勢與成分股,分兩頁反而要來回切)。
 //   ⭐ 這條的**用意**沒變:成分股要看得到、點得到 —— 只是現在它在板塊明細頁裡。
-ok('㉙ ② 成分股:在板塊明細頁裡、至少一列、點個股可跳散戶救星',
+ok('㉙ ② 成分股:在板塊明細頁裡、至少一列、點個股會開快捷面板(V74.4.0)',
    /<div id="rotPane-det"/.test(src) && /id="rotMembers"/.test(src)
    && T.memRows >= 1 && T.memGoto, `rows=${T.memRows} goto=${T.memGoto}`);
 ok('㉙b ② 成員 chip 要有股名(⛔ 不可只有代號)', /2408 南亞科/.test(T.memTxt), T.memTxt.slice(0, 80));

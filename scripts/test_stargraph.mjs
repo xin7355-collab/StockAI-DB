@@ -205,7 +205,7 @@ ok('⑫c 相關係數有顯示', /0\.8[0-9]/.test(R.listTxt), R.listTxt.slice(0,
 ok('⑫d 每一列都有狀態圖示(➖/🚀/🔥)', (R.listTxt.match(/[➖🚀🔥]/gu) || []).length >= R.rows,
    (R.listTxt.match(/[➖🚀🔥]/gu) || []).join(''));
 ok('⑫e ⛔ 清單裡不出現 🔴🟢', !/[🔴🟢]/u.test(R.listTxt));
-ok('⑫f 股名可點 → 跳散戶救星', /PRO\.gotoStock\('2344'\)/.test(R.listHtml));
+ok('⑫f 股名可點 → 開個股快捷面板(V74.4.0;⛔ 以前是直接把人丟出網站)', /PRO\.openStock\('2344'\)/.test(R.listHtml));
 
 // ⑨ 沙箱連不到 CDN → 這條是**真的**在驗 ECharts 掛掉時的降級路徑
 ok('⑨ ECharts 載不到時仍看得到完整資料,而且明說原因(⛔ 不可讓整頁像壞掉)',
