@@ -194,9 +194,18 @@ const R = await page.evaluate(async (FIX) => {
   PRO.openStock('2344');
   out.sheet1 = document.getElementById('stkSheet').innerText.replace(/\s+/g, ' ');
   out.sheetOn = document.getElementById('stkSheet').classList.contains('on');
-  PRO._cache['data/screener.json'] = { cols: ['c', 'chg', 'chg20', 'pos252', 'amt'], rows: { '2344': [176, -3.5, 12.1, 77, 182] }, ind: { '2344': '半導體' } };
-  PRO._drawStock('2344');
+  // 🚨 ⛔ 不可自己塞快取再手動呼叫 _drawStock —— 那樣「自動補抓」那條路根本沒被走到
+  //    (第一版就是這樣寫,把補抓整行刪掉測試照樣綠 → 注入驗證當場抓到)。
+  //    ⭐ 正解:stub fetchJson,讓 openStock **自己**去抓,然後等它回來看畫面有沒有變。
+  const FAKE = { cols: ['c', 'chg', 'chg20', 'pos252', 'amt'], rows: { '2344': [176, -3.5, 12.1, 77, 182] }, ind: { '2344': '半導體' } };
+  const _fj = PRO.fetchJson; let fetched = 0;
+  PRO.fetchJson = async (u) => { if (u === 'data/screener.json') { fetched++; PRO._cache[u] = FAKE; return FAKE; } return _fj.call(PRO, u); };
+  delete PRO._cache['data/screener.json'];
+  PRO.openStock('2344');
+  await new Promise(r => setTimeout(r, 200));
   out.sheet2 = document.getElementById('stkSheet').innerText.replace(/\s+/g, ' ');
+  out.sheetFetched = fetched;
+  PRO.fetchJson = _fj;
   return out;
 }, FIX);
 
@@ -243,8 +252,9 @@ ok('🏷️c 只有一份實作:名字+代號一律走 _nmc / _nmTxt / _nmFull(�
 ok('🔗 點星圖的股名 → 面板打開,而且有「→ 散戶救星」出口與「誰跟它一起動」',
    R.sheetOn && /散戶救星/.test(R.sheet1) && /一起動/.test(R.sheet1), R.sheet1.slice(0, 140));
 ok('🔗b 沒有選股快照時要誠實說,⛔ 不可整排空白', /沒有這一檔的數字/.test(R.sheet1), R.sheet1.slice(0, 140));
-ok('🔗c 快照補到之後要顯示得出數字(⛔ 否則那句「沒有數字」會永遠掛著)',
-   /現價/.test(R.sheet2) && /176/.test(R.sheet2) && /一年位階/.test(R.sheet2), R.sheet2.slice(0, 160));
+ok('🔗c 面板要**自己**去補抓快照並重畫(⛔ 否則那句「沒有數字」會永遠掛著)',
+   R.sheetFetched === 1 && /現價/.test(R.sheet2) && /176/.test(R.sheet2) && /一年位階/.test(R.sheet2),
+   `fetched=${R.sheetFetched} ${R.sheet2.slice(0, 140)}`);
 ok('💥 沒有未攔截的 JS 錯誤', errs.length === 0, errs.join(' | '));
 
 await browser.close();
