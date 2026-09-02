@@ -189,6 +189,14 @@ const R = await page.evaluate(async (FIX) => {
   await new Promise(r => setTimeout(r, 300));
   out.noNameHead2 = document.querySelector('#starList .note b').innerText.trim();
   PRO._names = _sv;
+  // 🔗 V74.4.0:從星圖點股名 → 快捷面板;⚠️ 這頁沒載過選股快照 → 要自己補抓,⛔ 不可整排空白
+  delete PRO._cache['data/screener.json'];
+  PRO.openStock('2344');
+  out.sheet1 = document.getElementById('stkSheet').innerText.replace(/\s+/g, ' ');
+  out.sheetOn = document.getElementById('stkSheet').classList.contains('on');
+  PRO._cache['data/screener.json'] = { cols: ['c', 'chg', 'chg20', 'pos252', 'amt'], rows: { '2344': [176, -3.5, 12.1, 77, 182] }, ind: { '2344': '半導體' } };
+  PRO._drawStock('2344');
+  out.sheet2 = document.getElementById('stkSheet').innerText.replace(/\s+/g, ' ');
   return out;
 }, FIX);
 
@@ -231,6 +239,12 @@ ok('🏷️c 只有一份實作:名字+代號一律走 _nmc / _nmTxt / _nmFull(�
    /_nmc\(code, click\)/.test(src) && (src.match(/this\._nmc\(/g) || []).length >= 4
    && !/<span class="starnm"[^>]*>\$\{r\.nm\}<\/span>\s*<span class="starcode">/.test(src));
 
+// ═══ 🔗 V74.4.0 個股快捷面板(從星圖點進來)═══
+ok('🔗 點星圖的股名 → 面板打開,而且有「→ 散戶救星」出口與「誰跟它一起動」',
+   R.sheetOn && /散戶救星/.test(R.sheet1) && /一起動/.test(R.sheet1), R.sheet1.slice(0, 140));
+ok('🔗b 沒有選股快照時要誠實說,⛔ 不可整排空白', /沒有這一檔的數字/.test(R.sheet1), R.sheet1.slice(0, 140));
+ok('🔗c 快照補到之後要顯示得出數字(⛔ 否則那句「沒有數字」會永遠掛著)',
+   /現價/.test(R.sheet2) && /176/.test(R.sheet2) && /一年位階/.test(R.sheet2), R.sheet2.slice(0, 160));
 ok('💥 沒有未攔截的 JS 錯誤', errs.length === 0, errs.join(' | '));
 
 await browser.close();

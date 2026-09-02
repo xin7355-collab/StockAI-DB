@@ -875,6 +875,14 @@ const PRO = {
     if (!code) return;
     this.buzz(15);
     this._stk = code;
+    this._drawStock(code);
+    // ⚠️ 從「關聯星圖」點進來時那頁沒載過選股快照 → 面板會整排沒有數字。
+    //    ⭐ 補抓一次再重畫(⛔ 不可讓它靜默空白);回來要確認使用者還停在同一檔(陷阱 #19)。
+    if (!this._cache['data/screener.json']) {
+      this.fetchJson('data/screener.json').then(() => { if (this._stk === code) this._drawStock(code); });
+    }
+  },
+  _drawStock(code) {
     const el = document.getElementById('stkSheet'); if (!el) return;
     const v = k => this._scrV(code, k);
     const c = v('c'), chg = v('chg'), chg20 = v('chg20'), pos = v('pos252'), amt = v('amt');
