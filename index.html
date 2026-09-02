@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.5.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.5.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -689,7 +689,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.5.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.5.1 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7459,8 +7459,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.5.0',
+    _APP_VERSION: 'V74.5.1',
     _CHANGELOG: [
+        { v: 'V74.5.1', dt: '2026-09-02', d: ['🧹 <b>新增「雜訊清單」</b>(⚙️ 設定中心右上角):把「<b>實測過、但沒有用</b>」的東西集中列出來 —— 哪些已經刪掉了、哪些刻意留著但標註起來、為什麼留著。','📊 裡面的數字是<b>現算的</b>:129 個 K 棒訊號裡有幾個站得住腳、幾個跟隨機沒差、幾個「常常對但其實不賺」,還有目前被收起來的卡片清單。','⛔ 留著不是捨不得:<b>刪掉會讓人以為「沒有這回事」</b>,跑去別的地方學了再回來問。標註起來,以後要刪也清楚。'] },
         { v: 'V74.5.0', dt: '2026-09-02', d: ['🔬 <b>「回測計算機」併進「實測總表」</b>(產業作戰室):本來兩頁很像,現在合成一頁、第一欄就是「📊 回測數字」。','📖 <b>用語整個改成白話</b>:每張表上面直接寫清楚 —— 本金 100 萬、<b>賺的錢滾回去繼續買(複利)</b>、<b>成本 0.44% 已經扣掉了(不是毛利)</b>、「中途最多賠」就是專業說法的「最大回撤」。','📈 每一列多了 <b>「等於幾 %」與「年化」</b>,而且每一組都標<b>那段期間有沒有經過空頭</b>(49 個月那幾組含 2022 年大跌、13/36 個月那幾組沒有)。','📌 實測總表不再顯示程式檔名,改成「實測紀錄 ・ 哪一版量的」。'] },
         { v: 'V74.4.9', dt: '2026-09-02', d: ['🚪 <b>出場防守價自動幫你算好了</b>(K線頁):唐奇安 20 日低點、ATR 追蹤停利、移動停利 8%、5 日線 —— 四條同時列出來,每條都標「離現價幾 %」;<b>有填庫存的話直接告訴你賣在那裡是賺是賠幾元</b>。','📈 <b>K 線圖多了兩條線</b>:唐奇安軌道(藍虛線)與 ATR 追蹤停利(橘虛線),預設打開,可在 ⚙️ 設定 → K線設定關掉。','📊 每條線旁邊都附<b>實測成績</b>(同一套打法、同一段 49 個月、只換出場):跌破 5 日線賺 193 萬、唐奇安 590 萬、ATR 追蹤 531 萬。⛔ 自動出場提醒目前<b>仍用 5 日線</b>,要換再跟我說。'] },
         { v: 'V74.4.8', dt: '2026-09-02', d: ['🚪 <b>出場規則 28 種全測(49 個月・含 2022 跌勢)</b>:把華爾街常用的出場法(唐奇安通道、ATR 追蹤、移動停利、拋物線 SAR、固定停利、分批停利、風報比、損益兩平…)全部套在現行打法上比一次。結論:<b>放寬的移動出場</b>(唐奇安 20 日低點 / ATR 追蹤 K=2 / 移動停利 8%)每一條都賺 2.5~3.7 倍、回撤還更小;<b>任何「早點鎖獲利」的做法</b>(固定停利 / 分批 / 風報比)全部更差。','📊 結果寫進產業作戰室的<b>回測計算機</b>(新分組「出場規則・28 種全測」)與<b>實測總表</b>(有用 / 沒用 / 方法各一條)。','⛔ 散戶救星的<b>預設出場沒有改</b>(還是跌破 5 日線)—— 換掉會牽動買點推播、自動下單與釣魚出場卡,要先跟你確認。'] },
@@ -7656,6 +7657,77 @@ ${list}
             <div class="text-[10px] text-gray-500 leading-relaxed mt-1">💡 資料全走免費來源、邏輯透明可查;逐筆大單(連次)類需付費 tick,免費做不到。</div>
         </div>`;
     },
+    // ═══════ 🧹 V74.5.1 雜訊清單(實測沒用 / 還沒驗證的東西,集中列管)═══════
+    // 使用者:「把雜訊或者驗證後沒有用的訊號加註起來,後面如果要刪除也比較清楚」。
+    // ⛔ 四條鐵則:
+    //   ① **不是刪除鍵** —— 這頁只負責「講清楚哪些東西是實測沒用的、為什麼還留著」。
+    //      留著的理由通常是:刪了使用者會以為沒這回事,跑去別的地方學了再回來問(同 _SIGNAL_EDGE 對 C 級的處置)。
+    //   ② 能現算的**一律現算**(K 棒訊號分級數從 `_SIGNAL_EDGE`、已收起的卡從 `_TIDY`)——
+    //      ⛔ 寫死第二份的話,重跑回測之後這頁就開始說謊。
+    //   ③ 每一條都要有**實測數字**與**在哪一頁**,否則使用者無從判斷該不該刪。
+    //   ④ ⛔ 不用紅綠(講的是「有沒有用」不是漲跌方向,燈號鐵則)。
+    _NOISE_GONE: [
+        ['📊 5 日訊號準確度排行', 'V74.2.0 刪除', '只拿自選 ≤30 檔做小樣本回測,已被全市場 129 個訊號的實測表取代'],
+        ['🏦 法人近 20 日推估成本', 'V74.2.0 刪除', '站上/跌破它的後續報酬只差 ±0.2pp,六道關卡 0 過 = 沒有鑑別力'],
+        ['🎯 隔日沖勝率回測', 'V74.2.0 刪除', '「盤中最高碰得到 +1.5%」的機率有 53~72%,但用做得到的方式出場、扣掉成本之後**每一種都是負的** —— 碰得到 ≠ 賺得到'],
+        ['⚡ 盤中連量偵測', 'V74.2.0 刪除', '日線版與真分 K 版各測一次都不成立,而且方向跟坊間說法相反(分 K 版八種情境勝率 18~32%,對照組 49~52%)'],
+        ['🎙️ 分析師焦點', 'V72.8.0 整組移除', '機房 IP 拿不到逐字稿與新聞正文,只抓得到標題 —— 而標題對操作沒有用'],
+        ['🚨 處置股 8 款推估', 'V70.3.1 下架', '第 8 款(權證溢價)永遠沒有資料源,8 款推估撐不起來;官方名單那部分留著'],
+    ],
+    _NOISE_KEEP: [
+        ['🧊 低檔布局(便宜就買)', '總覽・現在怎麼做', '10/20/60 日**三個天期全是負的**(−0.15 / −0.25 / −0.58pp,樣本 16,358 筆)', '照顯示但卡上直接標「實測沒有優勢」—— 刪掉的話使用者會以為「沒有這種情況」'],
+        ['👩 投信買超佔成交量比', '籌碼頁', '七個級距的優勢**只存在 2026 這一段**,六道關卡一關都沒過;而且投信「賣超」那端也是正的 = 活躍度不是方向', '只做單位換算、⛔ 不下多空、不計分'],
+        ['🗺️ 地緣分點(券商跟公司同縣市)', '籌碼頁', '+0.01pp(11 萬筆),排除雙北 −0.07pp,前後半段還不同向', '只做事實描述,卡上附實測數字'],
+        ['🎣 拋竿(產業作戰室)', '產業作戰室・釣魚池', '每一層單獨都六關全過,但**串起來**相對「強勢板塊裡隨便挑」是 −0.52pp', '保留成「候選清單」,卡上直接寫出那兩個負數'],
+        ['📐 布林壓縮 / 夾娃娃', '(沒有做)', '壓縮那一格是全表最差(−0.89pp),「壓縮後擴張」也是負的 —— 方向跟坊間說法相反', '⛔ 不做;寫在這裡是因為很多人會問'],
+    ],
+    _noiseHtml() {
+        // ① K 棒訊號:分級與期望值都從 `_SIGNAL_EDGE` **現算**(⛔ 不寫死)
+        let a = 0, b = 0, c = 0, neg = 0, tot = 0;
+        try {
+            const E = this._SIGNAL_EDGE || {};
+            Object.values(E).forEach(v => {
+                if (!Array.isArray(v)) return;
+                tot++;
+                const g = v[0], exp = v[7];
+                if (g === 'A') a++; else if (g === 'B') b++; else c++;
+                if (typeof exp === 'number' && exp <= 0) neg++;
+            });
+        } catch (_) {}
+        const tidy = (this._TIDY || []).map(([id, name, why]) =>
+            `<li class="text-[11px] text-gray-300 leading-relaxed">・<b>${name}</b> —— ${String(why).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</li>`).join('');
+        const sec = (title, sub, body) => `<div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 mb-2.5">
+            <div class="text-[12px] font-black text-gray-100 mb-0.5">${title}</div>
+            <div class="text-[10px] text-gray-500 mb-1.5 leading-snug">${sub}</div>${body}</div>`;
+        const row = (t, where, num, act) => `<li class="text-[11px] text-gray-300 leading-relaxed mb-1.5">
+            ・<b>${t}</b> <span class="text-[9px] text-gray-500">${where}</span><br>
+            <span class="text-[10px] text-gray-400">📊 實測:${num}</span><br>
+            <span class="text-[10px] text-amber-200/90">👉 處置:${act}</span></li>`;
+        return `<div class="text-[11px] text-gray-300 leading-relaxed mb-2.5 bg-[#161b22] border-l-2 border-cyan-500 pl-2.5 py-1.5 rounded-r">
+                這頁把「<b>實測過、但沒有用</b>」的東西集中列出來 —— 有些已經刪掉了,有些<b>刻意留著但標註起來</b>。<br>
+                ⛔ 留著的理由不是捨不得:<b>刪掉會讓人以為「沒有這回事」</b>,跑去別的地方學了再回來問。標註起來,以後要刪也清楚。
+            </div>`
+            + sec('🧾 K 棒型態訊號', `全市場 2,227 檔 × 2 年實測(報酬已扣掉同期大盤),共 ${tot} 個訊號`,
+                `<ul class="space-y-1">
+                    <li class="text-[11px] text-gray-300">・<b>${a}</b> 個統計上站得住腳(A 級)、<b>${b}</b> 個證據偏弱(B 級)、<b class="text-gray-400">${c}</b> 個<b>跟隨機沒差</b></li>
+                    <li class="text-[11px] text-gray-300">・其中 <b class="text-gray-400">${neg}</b> 個「常常對、但賺的時候賺得少」→ <b>期望值是負的</b>(常對 ≠ 會賺)</li>
+                    <li class="text-[10px] text-amber-200/90">👉 處置:K線頁只把<b>期望值為正</b>的放在上面,其餘收進「其餘 N 條」摺疊並標「觀察用,別當進場理由」。⛔ 風險提醒那一類不打折、不收合。</li>
+                </ul>`)
+            + sec('🗂️ 已收起的卡片(還在,只是預設不展開)', `共 ${(this._TIDY || []).length} 張;每一張原地都留了一行說明 + 「點開」鈕`, `<ul class="space-y-1">${tidy || '<li class="text-[11px] text-gray-500">(目前沒有)</li>'}</ul>`)
+            + sec('⚠️ 實測沒用、但刻意留著顯示的', '⛔ 這幾條**不會**幫你賺錢,留著是為了「不要再被同一套說法騙一次」', `<ul>${this._NOISE_KEEP.map(x => row(x[0], x[1], x[2], x[3])).join('')}</ul>`)
+            + sec('🗑️ 已經刪掉的', '寫在這裡是決策紀錄 —— 免得日後有人再做一次', `<ul class="space-y-1">${this._NOISE_GONE.map(x =>
+                `<li class="text-[11px] text-gray-300 leading-relaxed">・<b>${x[0]}</b> <span class="text-[9px] text-gray-500">${x[1]}</span><br><span class="text-[10px] text-gray-400">${x[2]}</span></li>`).join('')}</ul>`)
+            + `<div class="text-[10px] text-gray-500 leading-relaxed mt-1">💡 想看完整的「哪些做法實測有用 / 沒用 / 還測不了」,到<b class="text-gray-400">產業作戰室 → 實測總表</b>(那裡每一條都附數字)。</div>`;
+    },
+    _showNoiseList() {
+        const modal = document.getElementById('updateLogModal'), body = document.getElementById('updateLogBody'), title = document.getElementById('updateLogTitle');
+        if (!modal || !body) return;
+        if (title) title.textContent = '🧹 雜訊清單(實測沒用的東西)';
+        body.innerHTML = this._noiseHtml();
+        modal.classList.remove('hidden'); modal.style.display = '';
+        body.scrollTop = 0;
+    },
+
     // 統一「更新內容」:sinceVer 有值=自動跳窗只顯比它新的版本;無值=點版本號完整檢視(含功能總覽)
     _showUpdateLog(sinceVer) {
         const modal = document.getElementById('updateLogModal'), body = document.getElementById('updateLogBody'), title = document.getElementById('updateLogTitle');
