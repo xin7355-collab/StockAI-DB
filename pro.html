@@ -731,6 +731,20 @@ const PRO = {
     const s = this.CHAIN.stocks.find(x => x[0] === code);
     return (s && s[1]) || (this._names && this._names[code]) || '';
   },
+  // 🏷️ V74.3.9「名字 + 代號」的唯一顯示點(⛔ 別在各處自己拼 `${nm} ${code}`)——
+  //    ⚠️ nameOf 名字沒載到時各呼叫端都寫 `|| code` 當保底 → 直接拼會變成「2882 2882」。
+  //    這不是假想:沙箱(或使用者手機連不到 FinMind TaiwanStockInfo)實跑就長這樣,
+  //    而 CHAIN 那 81 檔剛好有名字 → **只有一部分列會重複**,更難察覺。CLAUDE.md V72.2.0 已記過一次。
+  _nmc(code, click) {
+    const n = this.nameOf(code), on = click ? ` onclick="${click}"` : '';
+    return n && n !== code
+      ? `<span class="starnm"${on}>${n}</span> <span class="starcode">${code}</span>`
+      : `<span class="starnm"${on}>${code}</span>`;
+  },
+  // 純文字版(給大字標題/畫布用):名字拿不到就只回代號,⛔ 不回「代號 代號」
+  _nmTxt(code) { const n = this.nameOf(code); return n && n !== code ? n : code; },
+  // 「名稱(代號)」;名字拿不到就只回代號,⛔ 不回「2882(2882)」
+  _nmFull(code) { const n = this.nameOf(code); return n && n !== code ? `${n}(${code})` : code; },
   _scrV(sym, key) {
     const D = this._cache['data/screener.json'];
     if (!D || !D.rows || !D.rows[sym] || !D.cols) return null;
@@ -1084,14 +1098,13 @@ const PRO = {
     const cnt = { 0: 0, 1: 0, 2: 0 };
     rows.forEach(r => { cnt[r[2]] = (cnt[r[2]] || 0) + 1; });
     const head = `<div class="note" style="margin:2px 0 8px">
-      <b>${nm(sym)}(${sym})</b> 走勢最像的 ${rows.length} 檔 ——
+      <b>${this._nmFull(sym)}</b> 走勢最像的 ${rows.length} 檔 ——
       ${cnt[1] ? `${S[1].e} 剛突破 ${cnt[1]} 檔 ・` : ''}${cnt[2] ? `${S[2].e} 已過熱 ${cnt[2]} 檔 ・` : ''}${S[0].e} 盤整 ${cnt[0]} 檔。
       ${cnt[2] >= 3 ? '⚠️ 這一族大半都過熱了,現在進場等於買在整族的高點。' : ''}</div>`;
     const body = rows.map(([c, r, st]) => {
       const s = this._starSt(st), pct = Math.round(Math.max(0, Math.min(1, (r - 0.4) / 0.6)) * 100);
       return `<tr>
-        <td class="l"><span class="starnm" onclick="PRO.gotoStock('${c}')">${nm(c)}</span>
-          <span class="starcode">${c}</span></td>
+        <td class="l">${this._nmc(c, `PRO.gotoStock('${c}')`)}</td>
         <td class="mono" style="font-weight:800">${r.toFixed(2)}</td>
         <td><div class="starbar2"><i style="width:${pct}%"></i></div></td>
         <td title="${s.d}">${s.e} ${s.t}</td>
@@ -1308,7 +1321,7 @@ const PRO = {
     return `<div style="overflow-x:auto"><table class="startbl">
       <tr><th style="text-align:left">股票</th><th>現價</th><th>今日</th><th>近20日</th><th>位階</th><th>成交額(億)</th><th>狀態</th><th title="實測體質:符合的實測條件 pp 加總,只拿來排序">🏅</th></tr>
       ${rows.map(r => `<tr>
-        <td class="l"><span class="starnm" onclick="PRO._fishPick('${r.sym}')">${r.nm}</span> <span class="starcode">${r.sym}</span>${r.att ? ' <span class="sigtag warn">注意股</span>' : ''}</td>
+        <td class="l">${this._nmc(r.sym, `PRO._fishPick('${r.sym}')`)}${r.att ? ' <span class="sigtag warn">注意股</span>' : ''}</td>
         <td class="mono">${r.c}</td>
         <td class="mono ${this.cls(r.chg)}">${this.fmt(r.chg, 2, true)}%</td>
         <td class="mono ${this.cls(r.chg20)}">${this.fmt(r.chg20, 1, true)}%</td>
@@ -1507,7 +1520,7 @@ const PRO = {
       <div style="overflow-x:auto"><table class="startbl">
         <tr><th style="text-align:left">股票</th><th>釣起日</th><th>釣起價</th><th>現價</th><th>賺賠</th><th>一張(元)</th><th>天數</th><th></th></tr>
         ${rows.map(r => `<tr>
-          <td class="l"><span class="starnm" onclick="PRO._fishPick('${r.sym}')">${r.nm}</span> <span class="starcode">${r.sym}</span></td>
+          <td class="l">${this._nmc(r.sym, `PRO._fishPick('${r.sym}')`)}</td>
           <td class="mono">${(r.d || '').slice(5)}</td><td class="mono">${r.px}</td>
           <td class="mono">${r.c === null ? '<span title="今天的選股快照裡沒有這檔">—</span>' : r.c}</td>
           <td class="mono ${this.cls(r.pct)}">${r.pct === null ? '—' : this.fmt(r.pct, 2, true) + '%'}</td>
@@ -1568,7 +1581,7 @@ const PRO = {
       <div style="overflow-x:auto"><table class="startbl">
         <tr><th style="text-align:left">股票</th><th>除息日</th><th>現金股利</th><th>現價</th><th>單次殖利率</th></tr>
         ${rows.slice(0, 80).map(r => `<tr>
-          <td class="l"><span class="starnm" onclick="PRO.gotoStock('${r.sym}')">${r.nm}</span> <span class="starcode">${r.sym}</span></td>
+          <td class="l">${this._nmc(r.sym, `PRO.gotoStock('${r.sym}')`)}</td>
           <td class="mono">${r.d.slice(5)}</td><td class="mono">${r.cash}</td>
           <td class="mono">${r.px ?? '—'}</td><td class="mono">${r.y !== null ? r.y.toFixed(2) + '%' : '—'}</td></tr>`).join('')}
       </table></div>
@@ -1582,7 +1595,7 @@ const PRO = {
     this.buzz(20);
     const E = this.STAR_STATUS, fam = (D.J && D.J.r[sym]) || [];
     document.getElementById('fishCard').innerHTML = `<div class="fishcard">
-      <div class="big">🎣 釣到:${r.nm} <span class="starcode">${sym}</span>
+      <div class="big">🎣 釣到:${this._nmc(sym)}
         ${r.st ? `<span class="sigtag" title="${E[r.st].d}">${E[r.st].e} ${E[r.st].t}</span>` : ''}${r.att ? ' <span class="sigtag warn">⚠️ 官方注意股</span>' : ''}</div>
       <div class="kv">
         <div><b>現價</b><span class="mono">${r.c}</span></div>
@@ -1592,7 +1605,7 @@ const PRO = {
         <div><b>20 日振幅</b><span class="mono">${this.fmt(r.amp20, 1)}%</span></div>
         <div><b>成交額</b><span class="mono">${this.fmt(r.amt, 1)} 億</span></div>
       </div>
-      ${fam.length ? `<div class="note" style="margin:0 0 6px">🕸️ 跟它一起游的:${fam.map(([c, rv]) => `<span class="sigtag" style="cursor:pointer" onclick="PRO._fishPick('${c}')">${this.nameOf(c) || c} ${rv.toFixed(2)}</span>`).join(' ')}</div>` : ''}
+      ${fam.length ? `<div class="note" style="margin:0 0 6px">🕸️ 跟它一起游的:${fam.map(([c, rv]) => `<span class="sigtag" style="cursor:pointer" onclick="PRO._fishPick('${c}')">${this._nmTxt(c)} ${rv.toFixed(2)}</span>`).join(' ')}</div>` : ''}
       ${this._fishScoreHtml(r.sc, D.E)}
       <div id="fishDiv"></div>
       <div class="labbar" style="margin:8px 0 0">
@@ -2085,6 +2098,7 @@ const PRO = {
       { t: '📆 行事曆與大盤環境當濾網', n: '26 種全部少賺', d: '13 種行事曆(週幾/月初月底/結算日/長假)+ 13 種大盤事件(不追高/廣度極弱/地板股)。⭐ 唯二「贏」的兩個,優勢<b>全部集中在 2026-04 那一個月</b>,拿掉就由正轉負。🚨 累計測了 86 種變體,採用的只有 2 個。', s: 'V73.2.0 / V73.2.1 / V73.2.2' },
     ],
     method: [
+      { t: '🧪 真實資料實跑才看得到的:名字載不到時「2882 2882」', n: '8 個顯示點', d: '關聯星圖/釣魚池上線後用<b>真實 gh-pages 產物</b>(而不是測資)實跑一次 —— 測資裡我手動塞了名字所以永遠是對的,真實情況是 <code>_names</code> 要去外部服務拿、拿不到就空的,而每個呼叫端都寫 <code>nameOf(x) || x</code> 當保底 → 名字欄與代號欄變成同一個數字。⭐ 最難察覺的是 <b>AI 鏈那 81 檔有內建名字</b> → 只有一部分列會重複,看起來像資料怪而不是程式錯。→ 抽成 <code>_nmc / _nmTxt / _nmFull</code> 三支唯一顯示點。⚠️ 連測試都踩同一個坑:第一版拿 <b>2408(在 AI 鏈裡)</b>驗標題 → 注入缺陷照樣綠,改用 <b>2882(不在名單裡)</b>才驗得到。', s: 'scripts/test_stargraph.mjs 🏷️・V74.3.9' },
       { t: '💸 資金設定會翻轉判定 —— 第二例:正式配置下 K=1.5 / K=3 輸 5 日線,寬鬆配置下四個 K 單調全贏', n: '同一個出場,總獲利 −37.6 萬 ~ +164.6 萬', d: 'Chandelier 出場網格(K=1.5/2/2.5/3)在<b>每筆 15 萬</b>下是「兩點高峰、兩側懸崖」(−37.6 / +147.9 / +164.6 / −15.5 萬),在<b>每筆 3 萬(錢用不完)</b>下卻是乾淨的單調上升(+22 / +40 / +45 / +60 萬)。⭐ 分辨法:<b>錯過的訊號數</b> —— 正式配置錯過 1,488 次,寬鬆 0 次;錯過的不同,買到的股票就不同,總獲利就被資金路徑決定。⛔ 兩個結論:① 看到「網格不是高原」先問「是不是錢用完了」,別急著判過度配適;② 但也⛔ 不可拿寬鬆配置的數字去改預設(使用者實際就是 15 萬/筆)。要真的改預設,得先把「資金卡住」的問題另外解(例如出場放寬時同步縮小每筆金額),那是另一個變體,還沒測。', s: 'scripts/portfolio_backtest.mjs・V74.3.8' },
       { t: '🌐 採礦腳本「本機 582 檔、雲端 2 檔」—— 最新交易日被少數幾檔的「明天」帶走', n: '雲端首跑:宇宙 2 檔・鄰居 0', d: '關聯星圖採礦(generate_correlations)本機跑 582 檔全對,推上雲端第一輪只剩 <b>2 檔</b>、零錯誤訊息(有空過守門才擋下來)。真因:全市場 2,789 檔裡有 <b>6 檔</b>已經寫進「明天」的列(盤中快照/時區),程式用 <code>index[-1]</code> 當最新交易日 → 那天只有那幾檔有收盤價。⭐ 這是陷阱 #14 的第 N 次:<b>「最新一天」一律取「樣本數過門檻的最大日期」</b>,並把砍掉的日期印出來。⚠️ 本機測不到是因為本機那份資料剛好沒有未來列 —— 跟資料狀態有關的守門要在測資裡<b>注入</b>那個狀態(selftest 已加兩檔未來列)。', s: 'generate_correlations.py・V74.3.8' },
       { t: '🧪 兩個外部專案怎麼評(XQ 選股腳本集 4,748 支 / twstock-research 研究儀表板)', n: '借 2 個方法、0 個分數', d: '使用者 2026-09-01 上傳兩個 zip,問「選股策略有沒有優化、把優點加進來」。先掃結構再讀:<br><b>① XQStrategy</b>:4,748 支 .xs 全是同一種殼 —— <code>if GetField("欄位") &gt; X then ret=1</code>,是 XQ 付費軟體的<b>欄位目錄</b>,零回測、零策略。它列的欄位(借券、當沖張數、內外盤大單、分公司家數、關鍵券商、籌碼鎖定率…)多數本站<b>沒有免費資料源</b>;有的(投信連買、主力 N 日合計、振幅連續 N 天)本站 170 條選股條件已涵蓋(fdays/tdays/streak)。<b>結論:沒有可直接優化的東西</b>,⛔ 別為了「補齊欄位」去接付費源。<br><b>② twstock-research</b>(FastAPI + Next.js + SQLite,跟散戶救星很像):多因子短/中/長評分、8 個雷達策略、ATR/Chandelier 出場、除權息回測、FIFO 損益、資料品質。⛔ <b>不借的</b>:它的權重 0.20/0.60/0.20 與門檻 65/50 是人訂的(它自己的 reviewer 也警告不可再推),雷達策略是分數門檻 = 陷阱 #38 同族;它自己誠實寫「回測 2 年來多數股票 Alpha 為負」。✅ <b>借的</b>:(a) 對自己的分數做 forward-return <b>rank IC + Newey-West CI</b> —— 拿來驗釣魚池分數,當場把「加總排序」打掉(見「實測沒用」欄);(b) 產業 treemap 熱力圖版面(磚=成交額、色=漲跌),做進板塊輪動總覽,⛔ 只當事實描述。<br>⏳ <b>它有、本站沒有的資料</b>:除權息紀錄(它拿 FinMind 配息 + yfinance 還原價)→ 已寫探針 div_probe 去問資料源,見「還測不了」欄。⏳ Chandelier 3×ATR 出場正在用正式配置對比(ma5 / chand3 / chand2)。<br>⭐ 通則(第 18 次外部評估):<b>先問「它有沒有我沒有的資料」,再問「它的方法有沒有我沒做的檢定」,最後才看它的分數</b> —— 分數幾乎一定是人訂的,方法與資料才可能是真的收穫。', s: 'scripts/fish_score_ic_probe.py' },
@@ -2203,7 +2217,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.3.8',
+  VER: 'V74.3.9',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -2584,7 +2598,7 @@ const PRO = {
       <div class="tblwrap" style="max-height:44vh"><table class="grid"><thead><tr>
         ${th('sy', '個股')}${th('chg', '當日')}${th('f5', '外資5日')}${th('chg20', '近20日')}<th>💸 外資走向20日</th></tr></thead><tbody>` +
       rows2.map((r, ri) => `<tr>
-        <td class="txtcell"><button class="namebtn" onclick="PRO.gotoStock('${r.sy}')">${r.sy} ${r.nm}</button></td>
+        <td class="txtcell"><button class="namebtn" onclick="PRO.gotoStock('${r.sy}')">${r.sy}${this.nameOf(r.sy) && this.nameOf(r.sy) !== r.sy ? ' ' + this.nameOf(r.sy) : ''}</button></td>
         <td class="${this.cls(r.chg)}">${Number.isFinite(r.chg) ? this.fmt(r.chg, 2, true) + '%' : '—'}</td>
         <td class="${this.cls(r.f5)}">${Number.isFinite(r.f5) ? this.fmt(r.f5, 0, true) : '—'}</td>
         <td class="${this.cls(r.chg20)}">${Number.isFinite(r.chg20) ? this.fmt(r.chg20, 1, true) + '%' : '—'}</td>

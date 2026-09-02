@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.3.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.3.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.3.8 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.3.9 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7457,8 +7457,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.3.8',
+    _APP_VERSION: 'V74.3.9',
     _CHANGELOG: [
+        { v: 'V74.3.9', dt: '2026-09-02', d: ['🏷️ 產業作戰室:股票<b>名字載不到</b>時(手機連不到那個查名字的服務),表格會把「名字欄」跟「代號欄」印成同一個數字(像「2882 2882」)。已改成名字沒有就只顯示一次代號,不再重複。'] },
         { v: 'V74.3.8', dt: '2026-09-02', d: ['💰 本站第一次有<b>除權息紀錄</b>(每週採一次,2021 起):產業作戰室「今日訊號」頁新增<b>「未來 30 天除權息」</b>行事曆(誰、哪天、配多少、單次殖利率);釣魚池釣起的魚卡片多一行「最近 12 個月配息合計 ÷ 現價 = 殖利率、下次除息日」。⛔ 只描述:填不填息本站還沒回測,不當進出場理由。','🕸️ 關聯星圖採礦第一次在雲端跑就撞到「少數幾檔已寫進明天的列 → 最新交易日被帶走 → 全市場只剩 2 檔」(陷阱 #14),已改成取「樣本數過門檻的最大日期」;釣魚池讀的選股成績檔也補進每日部署,不再被夜間部署洗掉。'] },
         { v: 'V74.3.7', dt: '2026-09-01', d: ['🗺️ 產業作戰室「板塊輪動 → 輪動總覽」最上方新增<b>產業熱力圖</b>:磚面積 = 該產業今天成交額、顏色 = 加權漲跌,一眼看出「今天錢在哪、誰在漲」;點磚直接進板塊明細。⛔ 它是事實描述,不是輪動訊號(實測有邊際的仍是 20 日動能)。','🏅 釣魚池的「實測體質」分數做了 IC 檢定(它到底排不排得出順序)—— 結果寫在實測總表與卡片上。','🧪 兩個外部專案(XQ 選股腳本集 4,748 支、twstock-research 研究儀表板)逐項評估,結論記在實測總表:借了它的 IC 方法與熱力圖版面,⛔ 沒有借它的人訂權重評分。'] },
         { v: 'V74.3.6', dt: '2026-09-01', d: ['🧺 釣魚池新增<b>「漁獲籃」</b>:點魚 → 🎣 收進漁獲籃,記下那天的收盤價;之後每次開池子都算出<b>從釣起到現在賺賠幾 %、一張賺賠幾元</b>(毛損益,未扣手續費與稅)。是你自己的紀錄,不是推薦。魚池裡釣過的魚會畫金圈。','🏅 釣魚池新增<b>「實測體質」</b>:⛔ 不是憑空加權的綜合評分 —— 每一條魚目前符合哪些選股條件,把各條在全市場回測裡「相對隨便挑一天」的 20 日邊際(pp)加總,權重就是實測數字本身。新增兩個池子:🏅 實測體質最強 / ⚠️ 避雷池。條件之間重疊會高估,只拿來排序,⛔ 不是勝率。','📌 順便講清楚:坊間最愛的黃金交叉 / KD 金叉 / MACD 金叉,本站實測全在 +0.3pp 以內 = 跟平常一樣;真正領先的是「追強」那一族(創一年新高 +2.84pp・漲停 +2.09・位階≥75 +1.52),而且 2024 起逐年變小。'] },

@@ -176,6 +176,19 @@ const R = await page.evaluate(async (FIX) => {
   document.getElementById('starMsg').innerHTML = '';
   await PRO.renderStar(); await new Promise(r => setTimeout(r, 120));
   out.noData = document.getElementById('starMsg').innerText;
+  // 🏷️ 名字全部拿掉再畫一次(模擬連不到 FinMind)
+  const _sv = PRO._names; PRO._names = {};
+  PRO._starData = FIX;   // ⚠️ 上一段為了驗「還沒產出」把它清掉了 → 這裡要放回
+  await PRO.starGo('2408');
+  await new Promise(r => setTimeout(r, 300));
+  out.noName = { head: document.querySelector('#starList .note b').innerText.trim(),
+                 rows: [...document.querySelectorAll('#starList table tr')].slice(1).map(tr => tr.children[0].innerText.replace(/\s+/g, ' ').trim()) };
+  // 🚨 2408 在 PRO.CHAIN 裡**有內建名字** → 用它驗標題等於沒驗到(注入驗證當場抓到)。
+  //    ⭐ 標題那條一定要用「CHAIN 裡也沒有」的代號(2882 金控),否則永遠是綠的。
+  await PRO.starGo('2882');
+  await new Promise(r => setTimeout(r, 300));
+  out.noNameHead2 = document.querySelector('#starList .note b').innerText.trim();
+  PRO._names = _sv;
   return out;
 }, FIX);
 
@@ -205,6 +218,19 @@ ok('⑥c ETF 要給 ETF 專屬的說法', /ETF 不列入/.test(R.missEtf), R.mis
 ok('⑥d 不是台股代號要給不同的說法', /不是台股代號/.test(R.missBad), R.missBad.slice(0, 160));
 ok('🚧 資料檔還沒產出時要說「還沒產出」+「不是壞掉」(⛔ 靜默空白最糟)',
    /還沒產出/.test(R.noData) && /不是這個功能壞掉/.test(R.noData), R.noData.slice(0, 160));
+// ═══ 🏷️ V74.3.9 名字沒載到時⛔ 不可變成「2882 2882」(CLAUDE.md V72.2.0 記過一次,pro.html 又犯)═══
+//    ⚠️ 這條是**真實資料實跑**才浮出來的:沙箱/手機連不到 FinMind TaiwanStockInfo 時 `_names` 是空的,
+//    而 nameOf 的呼叫端全都寫 `|| code` 當保底 → 名字欄跟代號欄變成同一個數字。
+//    ⭐ 更難察覺的是 CHAIN 那 81 檔**有**內建名字 → 只有一部分列會重複。
+ok('🏷️ 名字載不到時:列上只出現一次代號(⛔ 不可「2408 2408」),標題也只有代號',
+   R.noName.rows.every(t => !/^(\d{4,6})\s+\1\b/.test(t)) && !/^(\d{4,6})\(\1\)/.test(R.noNameHead2) && /^2882$/.test(R.noNameHead2),
+   JSON.stringify({ rows: R.noName.rows, head2: R.noNameHead2 }).slice(0, 240));
+ok('🏷️b 空過守門:同一批資料在名字載得到時,名字與代號**都要**出現(⛔ 否則上一條可能只是沒渲染)',
+   /華邦電/.test(R.listTxt) && /2344/.test(R.listTxt));
+ok('🏷️c 只有一份實作:名字+代號一律走 _nmc / _nmTxt / _nmFull(⛔ 不可在各處自己拼)',
+   /_nmc\(code, click\)/.test(src) && (src.match(/this\._nmc\(/g) || []).length >= 4
+   && !/<span class="starnm"[^>]*>\$\{r\.nm\}<\/span>\s*<span class="starcode">/.test(src));
+
 ok('💥 沒有未攔截的 JS 錯誤', errs.length === 0, errs.join(' | '));
 
 await browser.close();
