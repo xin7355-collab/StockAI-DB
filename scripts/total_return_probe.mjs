@@ -57,9 +57,20 @@ function scaleFor(before, closeOnDate) {
 }
 
 function run(px, divs, opt = {}) {
-  const from = opt.from || px[0].d, to = opt.to || px[px.length - 1].d;
-  const bars = px.filter(b => b.d >= from && b.d <= to);
+  const f0 = opt.from || px[0].d, t0 = opt.to || px[px.length - 1].d;
+  const bars = px.filter(b => b.d >= f0 && b.d <= t0);
   if (bars.length < 60) return null;
+  // 🚨 年數一律用「**實際第一根 K 棒**」算,⛔ 不可用窗口起點 —— 實跑抓到:006208 的 K 線
+  //    2017 之後跳到 2023-06(中間 5.5 年是洞),窗口起點 2021-01 → 年數被算成 5.7 年、
+  //    年化 +23.7%(真值 3.2 年 / +45% 上下)。⚠️ 那個數字**看起來完全合理**,只有跟其他
+  //    檔一起看(別人都 3.2 年、只有它 5.7)才會發現。
+  const from = bars[0].d, to = bars[bars.length - 1].d;
+  // 🕳️ 資料有洞的要說出來(⛔ 不可靜默用一個橫跨大洞的區間算年化)
+  let maxGap = 0, gapAt = '';
+  for (let i = 1; i < bars.length; i++) {
+    const g = (Date.parse(bars[i].d) - Date.parse(bars[i - 1].d)) / 864e5;
+    if (g > maxGap) { maxGap = g; gapAt = bars[i - 1].d + '→' + bars[i].d; }
+  }
   const idx = new Map(bars.map((b, i) => [b.d, i]));
   const p0 = bars[0].c, pN = bars[bars.length - 1].c;
   let sh = 1, applied = 0, cash = 0, skipped = [];
@@ -79,7 +90,7 @@ function run(px, divs, opt = {}) {
   const yrs = (Date.parse(to) - Date.parse(from)) / (365.25 * 864e5);
   const prOnly = pN / p0 - 1, total = (sh * pN) / p0 - 1;
   const ann = r => yrs > 0 ? Math.pow(1 + r, 1 / yrs) - 1 : null;
-  return { from, to, yrs, bars: bars.length, prOnly, total, annPr: ann(prOnly), annTr: ann(total), applied, skipped };
+  return { from, to, yrs, bars: bars.length, prOnly, total, annPr: ann(prOnly), annTr: ann(total), applied, skipped, maxGap, gapAt };
 }
 
 function fmtPct(x) { return x === null ? '—' : (x >= 0 ? '+' : '') + (x * 100).toFixed(1) + '%'; }
@@ -115,6 +126,7 @@ function main(argv) {
     if (r.err) { console.log(`${W(r.s, 8)}${r.err}`); continue; }
     const gap = (r.total - r.prOnly) * 100;
     console.log(`${W(r.s, 8)}${r.yrs.toFixed(1).padStart(4)}  ${String(r.applied).padStart(4)}/${String(r.nDiv).padStart(2)}   ${fmtPct(r.prOnly).padStart(9)}  ${fmtPct(r.total).padStart(9)}  ${gap.toFixed(1).padStart(7)}  ${fmtPct(r.annPr)} → ${fmtPct(r.annTr)}`);
+    if (r.maxGap > 40) console.log(`         🕳️ K 線中間有 ${Math.round(r.maxGap)} 天的洞(${r.gapAt})→ 這一列的年化只能當參考`);
     if (r.skipped.length) console.log(`         ⚠️ 排除 ${r.skipped.length} 筆:${r.skipped.slice(0, 3).join(' / ')}`);
   }
   console.log('\n⚠️ 限制:① 股利以**除息日收盤價**再投入(實務上要等入帳,會有幾天落差)');
@@ -159,6 +171,10 @@ function selftest() {
   // ⑤ 窗口外的除息不算
   const divE = [['2020-07-15', 5, '息', 100, 95]];
   if (run(px, divE).applied !== 0) throw new Error('❌ selftest:窗口外的除息被算進去了');
+  // ⑥ 🚨 窗口起點比第一根 K 棒早(資料有洞)→ 年數要用**實際第一根**,⛔ 不可用窗口起點
+  const f = run(px, [], { from: '2015-01-01' });
+  if (f.from !== px[0].d) throw new Error(`❌ selftest:年數用了窗口起點而不是第一根 K 棒(${f.from})`);
+  if (Math.abs(f.yrs - a.yrs) > 0.02) throw new Error(`❌ selftest:年數被窗口起點灌水 ${f.yrs} vs ${a.yrs}`);
   console.log(`✅ selftest 通過 — 不含息 ${fmtPct(a.prOnly)} → 含息 ${fmtPct(a.total)}(4 次再投入)・分割尺標自動對齊 ・離譜值排除 ・配股不計`);
   return 0;
 }

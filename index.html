@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.4.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.4.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -687,7 +687,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.4.0 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.4.1 ›</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7457,8 +7457,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.4.0',
+    _APP_VERSION: 'V74.4.1',
     _CHANGELOG: [
+        { v: 'V74.4.1', dt: '2026-09-02', d: ['💰 本站第一次把<b>配息真的加回去</b>算「買了放著」的成績(1,912 檔・2021 起・除息日當天再投入)。3.2 年年化:<b>0056 從 +18.5% 變 +31.7%</b>、00919 +16.3%→+30.4%、00878 +19.6%→+30.4% —— 高股息那族以前被低估 12~14 個百分點。<b>但 0050 含息是 +49.5%,還是贏</b>:高配息 ≠ 總報酬高。⛔ 這是事實不是推薦,而且沒扣二代健保與稅、窗口整段偏多頭。'] },
         { v: 'V74.4.0', dt: '2026-09-02', d: ['🎣 產業作戰室釣魚池新增<b>「拋竿」</b>:不用自己點魚,按一下由程式幫你挑 —— 規則是本站<b>實測最強的那一套</b>(🧬 位階+波動 → 近 20 日最強的前 3 個板塊 → 板塊內最強),一天最多 2 條,卡片上會寫「為什麼是這條」與每一層的實測數字。⛔ 挑出來的是<b>候選不是買進訊號</b>,買賣一律以散戶救星的「現在怎麼做」為準。','🚧 拋竿內建兩道守門:<b>買不到的不挑</b>(成交額 <1 億,全市場一半的股票成交額不到 0.06 億)、<b>噴 ≥30% 又被掛官方注意股的不挑</b>(本站實測那個組合後 20 日 −1.81pp)。今天沒有符合的就<b>誠實說沒有</b>,不放寬條件硬給。','🔗 產業作戰室<b>全站打通</b>:以前 8 個分頁裡有 6 個,點股票只會把你丟出網站;現在點任何一檔股名都會跳出<b>快捷面板</b> —— 誰跟它一起動(星圖)、把這一族放下水(釣魚池)、它的板塊、AI 鏈定位、跳散戶救星,都在同一個地方。'] },
         { v: 'V74.3.9', dt: '2026-09-02', d: ['🏷️ 產業作戰室:股票<b>名字載不到</b>時(手機連不到那個查名字的服務),表格會把「名字欄」跟「代號欄」印成同一個數字(像「2882 2882」)。已改成名字沒有就只顯示一次代號,不再重複。'] },
         { v: 'V74.3.8', dt: '2026-09-02', d: ['💰 本站第一次有<b>除權息紀錄</b>(每週採一次,2021 起):產業作戰室「今日訊號」頁新增<b>「未來 30 天除權息」</b>行事曆(誰、哪天、配多少、單次殖利率);釣魚池釣起的魚卡片多一行「最近 12 個月配息合計 ÷ 現價 = 殖利率、下次除息日」。⛔ 只描述:填不填息本站還沒回測,不當進出場理由。','🕸️ 關聯星圖採礦第一次在雲端跑就撞到「少數幾檔已寫進明天的列 → 最新交易日被帶走 → 全市場只剩 2 檔」(陷阱 #14),已改成取「樣本數過門檻的最大日期」;釣魚池讀的選股成績檔也補進每日部署,不再被夜間部署洗掉。'] },
