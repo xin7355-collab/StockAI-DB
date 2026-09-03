@@ -1,0 +1,63 @@
+name: 🔬 當沖指標分K探針
+
+# 📕 使用者上傳的當沖 PDF 裡那幾個指標(VWAP / ORB / RVOL / TTM Squeeze / 三大核心組合 / 終極訊號)
+#    的**分 K 版**實測。V74.6.3 已用日線版測過(六關 0 過),但附件講的是分 K → 這一支照它的原始定義重測。
+#
+# ⚠️ 只能在這裡跑:沙箱連不到 Shioaji。Actions → 本 workflow → Run workflow。
+# ⛔ 純驗證:只讀 kbars、不碰 gh-pages / data 分支,零部署風險。結果印在 log + 存成 artifact。
+on:
+  workflow_dispatch:
+    inputs:
+      syms:
+        description: "要測哪幾檔(逗號分隔;留空 = 內建 20 檔涵蓋高中低波動)"
+        required: false
+        default: ""
+      days:
+        description: "回溯幾個日曆天(kbars 上限約 120)"
+        required: false
+        default: "120"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: 🔬 分K 當沖指標探針
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: 📦 安裝相依套件(Shioaji)
+        # 📌 釘 1.6.x:1.7.0 移除了 login(fetch_contract=),同 live_snapshot / tick_flow / orb_probe
+        run: pip install "shioaji<1.7" --quiet
+
+      - name: 📂 建 data 目錄
+        run: mkdir -p data
+
+      - name: 🧪 自我驗證 → 🔬 執行分K 當沖指標回測
+        # ⭐ 自我驗證跟正式跑**放在同一步**(⛔ 不可拆成兩步):
+        #    拆開的話「同一支腳本一邊給機密、一邊漏」會被 check_workflow_paths 擋下,
+        #    而那條守門是對的(陷阱 #12)—— 併在一起既通過守門,也省一次環境啟動。
+        # ⛔ selftest 沒過就用 && 直接停:那時候「所有訊號都貼近對照組」
+        #    分不出是「真的沒用」還是「程式根本沒觸發」。
+        env:
+          SHIOAJI_API_KEY: ${{ secrets.SHIOAJI_API_KEY }}
+          SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
+          PROBE_SYMS: ${{ github.event.inputs.syms }}
+          PROBE_DAYS: ${{ github.event.inputs.days }}
+        run: python intraday_probe.py --selftest && python intraday_probe.py
+
+      - name: 📤 上傳結果 artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: intraday-probe-result
+          path: data/intraday_probe_result.json
+          if-no-files-found: warn
