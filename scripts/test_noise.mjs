@@ -20,7 +20,13 @@ const SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 let fails = 0;
 const ok = (name, cond, extra = '') => { console.log(`${cond ? '✅' : '❌'} ${name}${cond ? '' : `  ${extra}`}`); if (!cond) fails++; };
 
-ok('⓪ 設定中心有入口(⛔ 沒有入口 = 這份清單等於不存在)', /app\._showNoiseList\(\)/.test(SRC) && /🧹 雜訊清單/.test(SRC));
+// 🧹 V74.6.2 使用者明示把「雜訊清單 + 更新紀錄」搬到產業作戰室 → ⓪ 的斷言跟著改成釘**新規則**。
+//   🚨 而且「搬移」必須是**真的搬走**:V74.0.1 那條「產業作戰室不顯示在散戶救星裡面、
+//      也不放連結」還在(test_prohtml ② 釘住)→ 所以設定中心⛔ 不可留連結,只留純文字版本號。
+ok('⓪ 設定中心⛔ 不再有雜訊清單入口(已搬走)',
+    !/_showNoiseList\(\); app\.vibrate/.test(SRC) && !/🧹 雜訊清單<\/button>/.test(SRC));
+ok('⓪c ⛔ 也不可留 pro.html 連結(V74.0.1);⭐ 但版本號要看得到(純文字)',
+    !/pro\.html\?/.test(SRC) && /class="[^"]*"[^>]*>V\d+\.\d+\.\d+<\/span>/.test(SRC));
 
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -84,24 +90,61 @@ const tabs = (PRO_SRC.match(/<div class="tabs">[\s\S]*?<\/div>/) || [''])[0];
 ok('⑥ 產業作戰室的分頁列有「🧹 雜訊清單」入口', /🧹 雜訊清單/.test(tabs), tabs.slice(0, 200));
 ok('⑥b ⭐ 而且排在「實測總表」**右邊**',
     tabs.indexOf('實測總表') > 0 && tabs.indexOf('🧹 雜訊清單') > tabs.indexOf('實測總表'));
-ok('⑥c 它是**跳回散戶救星**的深連結(⛔ 不可把清單複製一份到 pro.html —— 那些數字是現算的)',
-    /gotoNoise\(\)/.test(tabs) && /location\.href = 'index\.html\?noise=1'/.test(PRO_SRC)
-    && !/_NOISE_KEEP|_NOISE_GONE/.test(PRO_SRC));
-ok('⑥d ↗ 要標出「會跳走」(⛔ 它不是一個分頁,別讓人以為點了會留在原地)', /🧹 雜訊清單 ↗/.test(tabs));
-const R2 = await page.evaluate(async () => {
-    const A = window.app || app;
-    const m = document.getElementById('updateLogModal');
-    m.classList.add('hidden');                      // 先關掉,才驗得出是不是深連結打開的
-    history.replaceState(null, '', location.pathname + '?noise=1');
-    // 重跑 init 太重 → 直接跑那段深連結判斷(⛔ 不複製邏輯:用同一個參數名 + 同一支函式)
-    const hit = new URLSearchParams(location.search).get('noise') === '1';
-    if (hit) A._showNoiseList();
-    return { hit, opened: !m.classList.contains('hidden') };
-});
-ok('⑥e `?noise=1` 進來會自動打開清單', R2.hit && R2.opened, JSON.stringify(R2));
-ok('⑥f 🚧 空過守門:index.html 真的有接這個參數(⛔ 上面那條只驗了函式,沒驗接線)',
-    /get\('noise'\) === '1'/.test(SRC) && /_showNoiseList\(\)/.test(SRC));
-
+// 🚨 V74.6.2 ⑥c/⑥d 是**刻意推翻** V74.5.6 的(使用者要求它變成真的分頁)。
+//   ⛔ 但「不可以有第二份數據」那條鐵則沒有被推翻 —— 改成釘更強的東西:
+//      pro.html 必須是「fetch index.html 再解析」,⛔ 不可把那些文字抄過來。
+ok('⑥c 它是真的分頁(⛔ 不再是跳走的鈕)', /PRO\.switchTab\('noise'\)/.test(tabs) && !/↗/.test(tabs));
+ok('⑥c2 🚨 pro.html ⛔ 不可抄一份資料過去 —— 必須 fetch index.html 現場解析',
+    /fetch\('index\.html\?t='/.test(PRO_SRC) && /_cutLiteral\(src, name\)/.test(PRO_SRC)
+    // ⛔ 只准出現在「解析用的名字字串」裡,不可出現成 pro.html 自己的資料定義
+    && !/_NOISE_KEEP:\s*\[/.test(PRO_SRC) && !/_NOISE_GONE:\s*\[/.test(PRO_SRC)
+    && !/_CHANGELOG:\s*\[/.test(PRO_SRC) && !/_TIDY:\s*\[/.test(PRO_SRC));
+ok('⑥c3 🚨 讀不到要誠實說出來 + 留一條路(⛔ 不可靜默空白)',
+    /_idxErr/.test(PRO_SRC) && /讀不到散戶救星的資料/.test(PRO_SRC) && /index\.html\?noise=1/.test(PRO_SRC));
+ok('⑥d ⭐ 延遲載入(index.html 有 2.8MB,⛔ 不可開頁就抓)',
+    /if \(this\._idxData \|\| this\._idxLoading\) return;/.test(PRO_SRC)
+    && /if \(t === 'noise'\) this\.renderNoise\(\);/.test(PRO_SRC));
+ok('⑥d2 分頁容器要在 .wrap 裡面(⛔ V74.4.3 那次 #tabLab 被留在外面 → 一大塊空白)',
+    (() => { const i = PRO_SRC.indexOf('<div id="tabNoise"'); const w = PRO_SRC.indexOf('<div class="wrap">');
+             const e = PRO_SRC.indexOf('<div id="stkSheet"'); return i > w && i < e; })());
 await browser.close();
+
+// ⑦ ⭐ 決定性的一關:pro.html **實跑**把資料解析出來並渲染
+//   ⚠️ file:// 下 fetch('index.html') 需要 --allow-file-access-from-files(已給)
+const p2 = await (await chromium.launch({
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
+})).newPage();
+p2.on('pageerror', () => {});
+await p2.goto('file://' + path.join(ROOT, 'pro.html') + '?noise=1', { waitUntil: 'domcontentloaded' });
+await p2.waitForFunction(() => typeof PRO !== 'undefined', null, { timeout: 20000 });
+const R3 = await p2.evaluate(async () => {
+    PRO._noiseSub = 'noise'; await PRO.renderNoise(); await PRO.renderNoise();
+    const nb = document.getElementById('noiseBody');
+    const noise = { txt: nb.innerText, html: nb.innerHTML, err: PRO._idxErr,
+                    ver: PRO._idxData && PRO._idxData.ver,
+                    nEdge: PRO._idxData ? Object.keys(PRO._idxData.SIGNAL_EDGE || {}).length : 0,
+                    nTidy: PRO._idxData ? (PRO._idxData.TIDY || []).length : 0,
+                    nLog: PRO._idxData ? (PRO._idxData.CHANGELOG || []).length : 0 };
+    PRO._noiseSub = 'log'; await PRO.renderNoise();
+    noise.logTxt = document.getElementById('noiseBody').innerText;
+    // 🚨 換一份假表 → 畫面數字必須跟著變(⛔ 證明它不是寫死的)
+    PRO._idxData.SIGNAL_EDGE = { x: ['A', 9, 0, 0, 0, 0, 0, 1], y: ['C', 9, 0, 0, 0, 0, 0, -1] };
+    PRO._idxData.TIDY = [['zz', '假卡片名稱', '假理由']];
+    PRO._noiseSub = 'noise'; await PRO.renderNoise();
+    noise.fakeTxt = document.getElementById('noiseBody').innerText;
+    return noise;
+});
+ok('⑦ pro.html 真的解析成功(⛔ 解析壞掉 = 這一頁等於沒有)',
+    !R3.err && R3.nEdge > 100 && R3.nLog > 10, JSON.stringify({ err: R3.err, nEdge: R3.nEdge, nLog: R3.nLog }));
+ok('⑦b 🚨 數字是**現算**的:換一份假表,畫面要跟著變',
+    /1 個統計上站得住腳/.test(R3.fakeTxt) && /假卡片名稱/.test(R3.fakeTxt)
+    && !/假卡片名稱/.test(R3.txt), R3.fakeTxt.slice(0, 160));
+ok('⑦c 內容要真的搬過來(留著的 / 已刪的 / 收起的卡 三段都要有)',
+    /實測沒用、但刻意留著/.test(R3.txt) && /已經刪掉的/.test(R3.txt) && /已收起的卡片/.test(R3.txt));
+ok('⑦d 更新紀錄那一欄要顯示散戶救星**現在的**版本號(⛔ 兩邊不可各寫一份)',
+    !!R3.ver && R3.logTxt.includes(R3.ver), JSON.stringify({ ver: R3.ver }));
+ok('⑦e ⛔ 這一頁不可用紅綠 emoji', !/[🔴🟢]/u.test(R3.html));
+
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ NOISE_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

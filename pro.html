@@ -284,6 +284,20 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .fishcard .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px 10px;margin:8px 0;font-size:12px}
 .fishcard .kv b{display:block;font-size:10px;color:var(--dim2);font-weight:700}
 .fishpool.on{background:var(--cyan);border-color:var(--cyan);color:#06222b !important}
+/* 🧹 V74.6.2 雜訊清單 / 更新紀錄 —— ⛔ 刻意不用紅綠(講的是「有沒有用」不是漲跌方向) */
+.nsec{background:var(--bg1);border:1px solid var(--line2);border-radius:10px;padding:11px 13px;margin-top:10px}
+.nsec.new{border-color:rgba(56,189,248,.5)}
+.nst{font-size:13px;font-weight:800;color:var(--fg1);line-height:1.5}
+.nss{font-size:11px;color:var(--fg3);margin:2px 0 7px;line-height:1.6}
+.nul{list-style:none;padding:0;margin:0}
+.nul>li{font-size:12.5px;color:var(--fg2);line-height:1.75;margin-bottom:6px}
+.nwh{font-size:10.5px;color:var(--fg3)}
+.nnum{font-size:11.5px;color:var(--fg2)}
+.nact{font-size:11.5px;color:#e8d9b0}
+.nvh{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.nver{font-family:var(--mono);font-size:13px;font-weight:800;color:var(--cyan)}
+.nnew{font-size:9.5px;font-weight:800;color:#04121c;background:var(--cyan);border-radius:4px;padding:1px 6px}
+.ndt{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--fg3)}
 .labbtn{font-size:11px;padding:6px 11px;border-radius:999px;border:1px solid var(--line2);
   background:var(--panel2);color:var(--dim2);cursor:pointer;user-select:none;white-space:nowrap}
 .labbtn.on{color:var(--txt);border-color:var(--cyan);background:rgba(34,211,238,.09)}
@@ -490,11 +504,13 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <button class="tab-btn" id="tabBtnFish" onclick="PRO.switchTab('fish')">釣魚池</button>
     <button class="tab-btn" id="tabBtnSig" onclick="PRO.switchTab('sig')">今日訊號</button>
     <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
-    <!-- 🧹 V74.5.6 使用者:「雜訊清單移到實測總表右手邊」。
-         ⛔ 刻意**不是**分頁,而是一顆會跳走的鈕(所以帶 ↗):那份清單的數字
-         (129 個 K 棒訊號的分級、目前收起來的卡)是從散戶救星的 `_SIGNAL_EDGE` / `_TIDY`
-         **現算**的 —— 複製過來就變成第二份、而且下次重跑回測就開始說謊。 -->
-    <button class="tab-btn" id="tabBtnNoise" onclick="PRO.gotoNoise()" title="哪些訊號實測沒用、哪些已經刪掉了(會跳到散戶救星打開)">🧹 雜訊清單 ↗</button>
+    <!-- 🧹 V74.6.2 使用者:「把散戶救星裡面的 V74.6.1 及 🧹 雜訊清單搬移到產業作戰室裡面」
+         ⭐ 這**推翻了 V74.5.6** 的做法(當時只做一顆會跳走的鈕)。
+         ⛔ 但「不可以複製第二份數據」那條鐵則沒有被推翻 —— 解法是
+            **pro.html 去 fetch index.html,把 `_SIGNAL_EDGE`/`_TIDY`/`_NOISE_*`/`_CHANGELOG`
+            原地解析出來再自己渲染**(同 `miner._themes_from_pro()` 讀 pro.html 那招)。
+            → 資料只有一份(住在它描述的那個檔案裡),渲染在這裡。 -->
+    <button class="tab-btn" id="tabBtnNoise" onclick="PRO.switchTab('noise')" title="哪些訊號實測沒用、哪些已經刪掉了 + 更新紀錄">🧹 雜訊清單</button>
   </div>
 </div></div>
 
@@ -754,6 +770,15 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <div id="labList"></div>
   </div>
 </div>
+
+<div id="tabNoise" class="hidden">
+  <div class="panel">
+    <h2>🧹 雜訊清單 / 🆕 更新紀錄 <span class="sub">哪些實測沒用、哪些刪掉了、這一版改了什麼</span></h2>
+    <div class="labbar" id="noiseBar"></div>
+    <div id="noiseBody"></div>
+  </div>
+</div>
+
 </div>
 
 <div id="stkSheet" role="dialog" aria-label="個股快捷"></div>
@@ -988,11 +1013,145 @@ const PRO = {
     document.body.style.overflow = '';
   },
 
-  // 🧹 雜訊清單:內容住在散戶救星(現算),這裡只負責把人帶過去並自動打開
-  gotoNoise() {
-    this.buzz(25);
-    this._saveNav();
-    location.href = 'index.html?noise=1';
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🧹 V74.6.2 雜訊清單 + 🆕 更新紀錄(使用者:「搬移到產業作戰室裡面」)
+  //
+  // ⭐⭐ 這裡最重要的設計決定:**資料不搬,只搬渲染。**
+  //   那些數字(129 個 K 棒訊號的分級、目前收起來的卡、更新紀錄)描述的是
+  //   **散戶救星自己**,所以資料留在 index.html;pro.html 去 fetch 它、
+  //   原地解析出來再自己渲染 —— 同 `miner._themes_from_pro()` 讀 pro.html 那招。
+  //   ⛔ 複製一份到這裡的話,下次重跑回測 / 改 _TIDY,這一頁就開始說謊。
+  //   (V74.5.6 當時的解法是「跳回散戶救星」,使用者明示推翻 → 改成這樣,
+  //    但「不可以有第二份數據」那條鐵則沒有被推翻。)
+  //
+  // ⛔ 四條不可改掉的設計(測試 scripts/test_noise.mjs 釘住):
+  //   ① 一律 **fetch + 解析 index.html**,⛔ 不可把 _NOISE_KEEP/_NOISE_GONE 的文字抄過來
+  //   ② **延遲載入**(index.html 有 2.8MB)—— 只有點進這一頁才抓,而且抓過就快取在記憶體
+  //   ③ 抓不到 / 解析失敗要**誠實說出來 + 留一條跳回散戶救星的路**,⛔ 不可靜默空白(陷阱 #22)
+  //   ④ ⛔ 不用紅綠 emoji(講的是「有沒有用」不是漲跌方向)
+  // ═══════════════════════════════════════════════════════════════════════
+  _noiseSub: 'noise',
+  _idxData: null,          // { SIGNAL_EDGE, TIDY, NOISE_GONE, NOISE_KEEP, CHANGELOG, ver }
+  _idxErr: null,
+  _idxLoading: false,
+
+  // 📐 從原始碼摳出一個 JS 常數字面值:從 `名稱: [` 開始數括號到配對為止。
+  //   ⛔ 不可用「抓到下一個 `],`」那種土法 —— 內容裡本來就有中括號(HTML/文案)。
+  _cutLiteral(src, name) {
+    const m = new RegExp('\\n\\s*' + name + ':\\s*([\\[{])').exec(src);
+    if (!m) return null;
+    const openCh = m[1], closeCh = openCh === '[' ? ']' : '}';
+    let i = m.index + m[0].length - 1, depth = 0, inStr = null, esc = false;
+    for (; i < src.length; i++) {
+      const c = src[i];
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (inStr) { if (c === inStr) inStr = null; continue; }
+      if (c === '"' || c === "'" || c === '`') { inStr = c; continue; }
+      if (c === openCh) depth++;
+      else if (c === closeCh) { depth--; if (depth === 0) return src.slice(m.index + m[0].length - 1, i + 1); }
+    }
+    return null;
+  },
+
+  async loadIdx() {
+    if (this._idxData || this._idxLoading) return;
+    this._idxLoading = true;
+    try {
+      const r = await fetch('index.html?t=' + Date.now());
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const src = await r.text();
+      const pick = n => {
+        const lit = this._cutLiteral(src, n);
+        if (!lit) throw new Error('解析不到 ' + n);
+        // eslint-disable-next-line no-new-func
+        return new Function('return (' + lit + ')')();
+      };
+      const ver = (/_APP_VERSION:\s*['"](V[\d.]+)/.exec(src) || [])[1] || '';
+      this._idxData = {
+        SIGNAL_EDGE: pick('_SIGNAL_EDGE'), TIDY: pick('_TIDY'),
+        NOISE_GONE: pick('_NOISE_GONE'), NOISE_KEEP: pick('_NOISE_KEEP'),
+        CHANGELOG: pick('_CHANGELOG'), ver,
+      };
+      this._idxErr = null;
+    } catch (e) {
+      this._idxErr = String(e && e.message || e);
+    }
+    this._idxLoading = false;
+  },
+
+  async renderNoise() {
+    const bar = document.getElementById('noiseBar'), body = document.getElementById('noiseBody');
+    if (!bar || !body) return;
+    const TB = [['noise', '🧹 雜訊清單'], ['log', '🆕 更新紀錄']];
+    bar.innerHTML = TB.map(([k, l]) =>
+      `<span class="labbtn ${this._noiseSub === k ? 'on' : ''}" onclick="PRO.selNoise('${k}')">${l}</span>`).join('');
+    if (!this._idxData && !this._idxErr) {
+      body.innerHTML = `<div class="note">⏳ 正在讀散戶救星的資料…(這幾個數字是它自己現算的,⛔ 這裡不另存一份)</div>`;
+      await this.loadIdx();
+    }
+    if (this._idxErr) {
+      // 🚨 抓不到就誠實說,並留一條路過去(⛔ 不可靜默空白)
+      body.innerHTML = `<div class="warnbox">⚠️ 讀不到散戶救星的資料(${this._esc(this._idxErr)})。<br>
+        這一頁的數字是從散戶救星<b>現算</b>的 —— 這裡刻意不另存一份,所以讀不到就真的沒有。<br>
+        <button class="lbtn" style="margin-top:8px" onclick="location.href='index.html?noise=1'">→ 直接到散戶救星看</button></div>`;
+      return;
+    }
+    body.innerHTML = this._noiseSub === 'log' ? this._logHtml() : this._noiseHtml();
+  },
+  selNoise(k) { this.buzz(10); this._noiseSub = k; this.renderNoise(); },
+  _esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); },
+
+  // 🧹 雜訊清單 —— 分級數字**現算自 _SIGNAL_EDGE**、收起的卡**現算自 _TIDY**(⛔ 不寫死)
+  _noiseHtml() {
+    const D = this._idxData;
+    let a = 0, b = 0, c = 0, neg = 0, tot = 0;
+    Object.values(D.SIGNAL_EDGE || {}).forEach(v => {
+      if (!Array.isArray(v)) return;
+      tot++;
+      const g = v[0], exp = v[7];
+      if (g === 'A') a++; else if (g === 'B') b++; else c++;
+      if (typeof exp === 'number' && exp <= 0) neg++;
+    });
+    const bold = t => String(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    const tidy = (D.TIDY || []).map(([id, name, why]) =>
+      `<li>・<b>${name}</b> —— ${bold(why)}</li>`).join('');
+    const sec = (title, sub, inner) => `<div class="nsec"><div class="nst">${title}</div><div class="nss">${sub}</div>${inner}</div>`;
+    const row = (t, where, num, act) => `<li>・<b>${t}</b> <span class="nwh">${where}</span><br>
+      <span class="nnum">📊 實測:${bold(num)}</span><br><span class="nact">👉 處置:${bold(act)}</span></li>`;
+    return `<div class="note">這頁把「<b>實測過、但沒有用</b>」的東西集中列出來 —— 有些已經刪掉了,有些<b>刻意留著但標註起來</b>。<br>
+        ⛔ 留著的理由不是捨不得:<b>刪掉會讓人以為「沒有這回事」</b>,跑去別的地方學了再回來問。標註起來,以後要刪也清楚。<br>
+        ⭐ 下面的數字是從<b>散戶救星現算</b>的(⛔ 這一頁不另存一份,所以不會過期)。</div>`
+      + sec('🧾 K 棒型態訊號', `全市場實測(報酬已扣掉同期大盤),共 ${tot} 個訊號`,
+          `<ul class="nul">
+            <li>・<b>${a}</b> 個統計上站得住腳(A 級)、<b>${b}</b> 個證據偏弱(B 級)、<b>${c}</b> 個<b>跟隨機沒差</b></li>
+            <li>・其中 <b>${neg}</b> 個「常常對、但賺的時候賺得少」→ <b>期望值是負的</b>(常對 ≠ 會賺)</li>
+            <li class="nact">👉 處置:K線頁只把<b>期望值為正</b>的放在上面,其餘收進摺疊並標「觀察用,別當進場理由」。⛔ 風險提醒那一類不打折、不收合。</li>
+          </ul>`)
+      + sec('🗂️ 已收起的卡片(還在,只是預設不展開)', `共 ${(D.TIDY || []).length} 張;每一張原地都留了一行說明 + 「點開」鈕`,
+          `<ul class="nul">${tidy || '<li>(目前沒有)</li>'}</ul>`)
+      + sec('⚠️ 實測沒用、但刻意留著顯示的', '⛔ 這幾條<b>不會</b>幫你賺錢,留著是為了「不要再被同一套說法騙一次」',
+          `<ul class="nul">${(D.NOISE_KEEP || []).map(x => row(x[0], x[1], x[2], x[3])).join('')}</ul>`)
+      + sec('🗑️ 已經刪掉的', '寫在這裡是決策紀錄 —— 免得日後有人再做一次',
+          `<ul class="nul">${(D.NOISE_GONE || []).map(x =>
+            `<li>・<b>${x[0]}</b> <span class="nwh">${x[1]}</span><br><span class="nnum">${bold(x[2])}</span></li>`).join('')}</ul>`)
+      + `<div class="note">💡 完整的「哪些做法實測有用 / 沒用 / 還測不了」在<b>🔬 實測總表</b>那一頁(每一條都附數字)。</div>`;
+  },
+
+  // 🆕 更新紀錄 —— ⛔ 內容一律讀 index.html 的 _CHANGELOG,這裡不抄
+  //   ⚠️ 發佈當天的「自動跳窗」仍然留在散戶救星(那是通知機制,不是瀏覽入口)。
+  _logHtml() {
+    const D = this._idxData, list = D.CHANGELOG || [];
+    if (!list.length) return `<div class="warnbox">⚠️ 讀不到更新紀錄。</div>`;
+    const cards = list.map((e, i) => `<div class="nsec${i === 0 ? ' new' : ''}">
+        <div class="nvh"><span class="nver">${this._esc(e.v)}</span>${i === 0 ? '<span class="nnew">最新</span>' : ''}
+          <span class="ndt">${this._esc(e.dt || '')}</span></div>
+        ${e.t ? `<div class="nst">${this._esc(e.t)}</div>` : ''}
+        <ul class="nul">${(e.d || []).map(x => `<li>• ${this._esc(x).replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>')}</li>`).join('')}</ul>
+      </div>`).join('');
+    return `<div class="note">散戶救星目前的版本是 <b>${this._esc(D.ver || '—')}</b>,下面是最近 <b>${list.length}</b> 個版本改了什麼。<br>
+        📚 更早的完整紀錄在雲端紀錄檔(<span class="mono">CHANGELOG.md</span>,一個字都沒刪)。<br>
+        ⭐ 內容是從散戶救星讀出來的,⛔ 這一頁不另存一份 → 不會出現「兩邊版本號不一樣」。</div>${cards}`;
   },
 
   gotoStock(code) {
@@ -1061,7 +1220,7 @@ const PRO = {
     this.toast('✅ 已更新');
   },
 
-  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['sig', 'Sig'], ['lab', 'Lab']],
+  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['sig', 'Sig'], ['lab', 'Lab'], ['noise', 'Noise']],
   switchTab(t, silent) {
     this.closeStock();                    // 🔗 切頁一律收起快捷面板(⛔ 不可蓋在別頁上面)
     this.closeModal();                    // 📖 懸浮視窗同理
@@ -1078,6 +1237,7 @@ const PRO = {
     if (t === 'star') this.renderStar();
     if (t === 'fish') this.renderFish();
     if (t === 'sig') this.renderSig();
+    if (t === 'noise') this.renderNoise();
     // 📊 'calc' 已併進實測總表(V74.5.0)—— 舊書籤/舊連結進來時自動導到那一欄,⛔ 不可整個失效
     if (t === 'calc') { this._tab = 'lab'; this._labSel = 'bt'; document.getElementById('tabLab').classList.remove('hidden'); document.getElementById('tabBtnLab').classList.add('on'); }
     if (this._tab === 'lab') this.renderLab();
@@ -3093,7 +3253,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.6.1',
+  VER: 'V74.6.2',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -5178,6 +5338,15 @@ ${M.news || '(無)'}
     addEventListener('orientationchange', () => setTimeout(() => this._syncHdrVar(), 250));
     this.loadNames().catch(() => {});
     await this._restoreNav();
+    // 🧹 V74.6.2 深連結:散戶救星設定中心那兩顆鈕帶 ?noise=1 / ?log=1 過來
+    //   ⛔ 要排在 _restoreNav 之後(否則會被「回到上次那一頁」蓋掉)
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.get('noise') === '1' || q.get('log') === '1') {
+        this._noiseSub = q.get('log') === '1' ? 'log' : 'noise';
+        this.switchTab('noise');
+      }
+    } catch (_) {}
   },
   usePreset(i) {
     const p = this.PRESETS[i];
