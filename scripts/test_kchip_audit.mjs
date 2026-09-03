@@ -229,7 +229,14 @@ ok('③ ⭐⛔ 結論句本身不可下具體買賣指令(買進/掛單/停損�
         app.currentSymbolId = '2327'; app.rawDailyData = a.rows; app.activeData = a.rows;
         app._fenSym = '2327'; app._fenPeriods = a.chips.periods; app._fenHist = a.chips.hist || null;
         app._lastChipClean = { sym: '2327', clean: 38, driver: '大戶倒貨給散戶' };
+        // ⚠️ 真實 chips 資料會隨每天採礦漂移 —— 曾經是「分歧」的那一檔後來變成兩項都偏空,
+        //   於是下面幾條「分歧時要講什麼」的斷言全部**假失敗**。
+        //   ⭐ 分歧情境改用**合成**資料(今日大買 vs 近5日大賣)釘死,⛔ 不靠當天的真實資料。
+        const _realFen = app._fenPeriods;
+        app._fenPeriods = { '1d': { buy: [{ name: 'A', net: 9e6, avg: 550 }], sell: [] },
+                            '5d': { buy: [], sell: [{ name: 'B', net: 9e6, avg: 560 }] } };
         const o = { clash: app._chipConsensusLine('2327', -2) };
+        app._fenPeriods = _realFen;
         app._lastChipClean = { sym: '2327', clean: 80 };
         o.clean = app._chipConsensusLine('2327', -2);
         // 全同向(合成:今日大買 + 近5日大買 + 法人偏多)

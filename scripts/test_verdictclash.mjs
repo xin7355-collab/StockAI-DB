@@ -91,12 +91,18 @@ ok('④ 短線偏空時結論不變(仍是偏空格局)', R.bear.includes('偏�
     ok('⑥ ⭐ 開高要改講「反彈減碼」', /反彈減碼/.test(strip2(R2.bear)), strip2(R2.bear).slice(0, 300));
     ok('⑥ ⭐ 要點出「別因為一根紅K就改看多」', /別因為一根紅K就改看多/.test(strip2(R2.bear)), '');
     ok('⑥ 要給「中期轉折的第一個條件」= 站回月線', /站回月線/.test(strip2(R2.bear)) && /中期轉折/.test(strip2(R2.bear)), '');
+// NOTE V74.5.4: V73.2.9 起「大盤過熱/轉弱/盤整」時,那句刻意從「可順勢做多/抱單」
+//   改成「有貨的可以續抱 … 空手的先不要追」→ 舊斷言釘死那個字串會**假失敗**。
+//   改釘用意:非空頭情境不可套用空頭措辭,而且要留得住正向動詞。
+    const _pos = t => /可順勢做多|可以續抱|續抱/.test(t);
+    // NOTE: the 開低 line contains 別搶反彈 in BOTH branches -> only 中期是空頭 marks the bear branch.
+    const _bearWords = t => /中期是空頭/.test(t);
     ok('⑦ ⭐ 主結論多頭時維持舊行為(⛔ 別把正常情境弄壞)',
-       /可順勢做多/.test(strip2(R2.bull)), strip2(R2.bull).slice(0, 250));
+       _pos(strip2(R2.bull)) && !_bearWords(strip2(R2.bull)), strip2(R2.bull).slice(0, 250));
     ok('⑧ ⭐ 主結論是**別檔**的 → 不可套用(切股殘留守門)',
-       /可順勢做多/.test(strip2(R2.other)), strip2(R2.other).slice(0, 250));
+       _pos(strip2(R2.other)) && !_bearWords(strip2(R2.other)), strip2(R2.other).slice(0, 250));
     ok('⑨ 主結論還沒算出來 → 維持舊行為,不可 throw',
-       typeof R2.none === 'string' && /可順勢做多/.test(strip2(R2.none)), String(R2.none).slice(0, 200));
+       typeof R2.none === 'string' && _pos(strip2(R2.none)) && !_bearWords(strip2(R2.none)), String(R2.none).slice(0, 200));
     await b2.close();
 }
 
