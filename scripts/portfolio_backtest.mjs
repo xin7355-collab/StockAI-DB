@@ -438,6 +438,34 @@ const regimeOk = i => twiiMa20[i] != null && twii[i].c > twiiMa20[i];
 const twiiMa60 = twii.map((_, i) => i < 59 ? null
     : twii.slice(i - 59, i + 1).reduce((s2, r) => s2 + r.c, 0) / 60);
 const notBear60 = i => !(twiiMa60[i] != null && twii[i].c < twiiMa60[i] && twiiMa20[i] < twiiMa60[i]);
+// 🏪 V74.6.3 **櫃買指數**環境(FILTER=otcflat / otcbull)—— 使用者:「加上其它指數當變因」
+//   ⭐ 動機(regime_multi_probe 實測):加權是**市值加權**(台積電主導),而這套打法做的是
+//   **中小型股**(位階高+波動高)→ 用加權判斷「有沒有行情」是看錯指數。
+//   實測 45 萬筆候選交易分格:加權三態最大差只有 0.19pp,**櫃買**差 0.42pp;
+//   而「櫃買盤整」那一格 −0.59%(全部 −0.25%)且**五年逐年全負 + 前後半同向** ——
+//   ⛔ 那是唯一通過關卡的格子,而且是**負的** → 這是避雷用的,不是選股用的。
+//   ⚠️ 櫃買資料只到 2026-07-17 → 之後的日子一律**放行**(⛔ 不可當成「盤整」擋掉)。
+let otcReg = null;
+try {
+    const _op = process.env.TWOII || '/tmp/twoii.json';
+    if (fs.existsSync(_op)) {
+        const _o = JSON.parse(fs.readFileSync(_op, 'utf-8'))
+            .map(r => ({ d: String(r.date).replace(/\//g, '-').slice(0, 10), c: +r.close }))
+            .filter(x => x.c > 0);
+        otcReg = new Map();
+        for (let i = 59; i < _o.length; i++) {
+            let a = 0, b = 0;
+            for (let k = i - 19; k <= i; k++) a += _o[k].c;
+            for (let k = i - 59; k <= i; k++) b += _o[k].c;
+            const m20 = a / 20, m60 = b / 60;
+            otcReg.set(_o[i].d, _o[i].c > m60 && m20 > m60 ? 'bull' : _o[i].c < m60 && m20 < m60 ? 'bear' : 'flat');
+        }
+    }
+} catch (_) { otcReg = null; }
+if (FILTER.some(f => f.startsWith('otc')) && !otcReg) {
+    console.error('🚨 FILTER 要用櫃買環境,但讀不到櫃買指數檔 → ⛔ 不靜默放行,直接停');
+    process.exit(1);
+}
 const days = twii.map(r => r.d);
 // ── 📅 行事曆特徵(純日期運算,零採礦;⛔ 全部只用「當天以前就知道的事」→ 無前視偏誤)
 const dow = d => new Date(d + 'T00:00:00Z').getUTCDay();          // 0=日 1=一 … 5=五
@@ -681,6 +709,15 @@ for (let i = 0; i < days.length; i++) {
     // 🏛️ 大盤環境濾網:大盤自己都在月線之下就整天不進場(⛔ 個股再強也不做)
     if (FILTER.includes('regime') && !regimeOk(i)) { continue; }
     if (FILTER.includes('bear60') && !notBear60(i)) { continue; }
+    // 🏪 otcflat = 櫃買盤整那天不進場(避雷)・otcbull = 只在櫃買多頭進場
+    //   ⚠️ 沒有櫃買資料的日子(2026-07-17 之後)一律放行 —— ⛔ 缺資料不可當成條件成立
+    if (otcReg) {
+        const _r = otcReg.get(days[i]);
+        if (_r) {
+            if (FILTER.includes('otcflat') && _r === 'flat') { continue; }
+            if (FILTER.includes('otcbull') && _r !== 'bull') { continue; }
+        }
+    }
     // 📅 行事曆濾網:這一天不准開新倉(既有部位照原規則出場,⛔ 不受影響)
     if (CAL.length && !calOk(d, i)) { openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); continue; }
     const todays = byIn.get(d) || [];
