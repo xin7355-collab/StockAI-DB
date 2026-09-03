@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.5.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.6.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -698,7 +698,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.5.9 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.6.0 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7520,8 +7520,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.5.9',
+    _APP_VERSION: 'V74.6.0',
     _CHANGELOG: [
+        { v: 'V74.6.0', dt: '2026-09-03', d: ['🏔️🕳️ <b>補上兩個「實測有效、卻一直沒通知你」的型態</b>(總覽 → ⭐ 重點判讀,當天發生才跳):①<b>創 60 日新高之後回檔沒破、今天收紅站回</b> —— 五年逐年都是正的,是全部回測裡<b>最穩的一條</b>;②<b>向上跳空 ×(股價在一年高檔)</b> —— 🚨 要配高位階才算數,跳空本身沒用、配低位階反而是負的。兩個都會直接告訴你<b>之後 10 天的實測成績、上漲比例、跟基準差多少</b>。','🚨 <b>而且勝率一定配基準看</b>:台股個股隨便挑一天的上漲比例本來就只有 <b>41%</b>(不是 50%)—— 所以看到「45%」不是差,它比基準高 4 個百分點。','❓ 你問「這麼多指標可不可以都加進去、發生就跳出來」—— <b>⛔ 那 48 個經典指標不能加</b>,它們六道關卡一個都沒過,加進去只會<b>每天跳一堆沒用的通知、把真訊號淹掉</b>。完整說明寫在<b>產業作戰室 → 實測總表 → 📚 指標分類表</b>頂端。','📐 <b>指標分類表在手機上爆版已修</b>(原本 4 欄表格,右邊整排被切出畫面)→ 改成一列一塊的直式版面。'] },
         { v: 'V74.5.9', dt: '2026-09-03', d: ['🧬 <b>試了一個很合理、但實測不成立的方向:「每一檔挑它自己最適合的<u>指標</u>」</b>。App 的明日作戰清單本來就是這個邏輯(這一檔自己最會賺的那一招),所以把它套到 48 個技術指標上再測一次 —— <b>結果挑得不比隨機準</b>:前半段挑到的指標,後半段還是同一個的只有 <b>2.7%</b>(隨機就有 2.1%)。⭐ 真因不是挑法爛,是<b>池子裡本來就沒有好東西</b> —— 那 48 個指標沒有一個扣掉成本還站得住。','📚 <b>產業作戰室 → 實測總表新增「指標分類表」</b>:把全部量過的技術指標照分類(趨勢 / 動能 / 波動 / 成交量 / 支撐壓力 / 型態 / 經典理論 / 市場寬度 / 機構專屬)排成一張表,每一格只有四種狀態 —— <b>⭐實測有用(有排名)/ ⛔實測沒用 / ➖只描述 / ⏳測不了(一定寫原因)</b>。🚨 整張表最重要的一句:<b>扣掉成本之後還站得住的,全部集中在「位階 / 振幅 / 量能 / 型態」那幾格,而不是任何一個經典指標</b>。','⛔ 散戶救星的判斷邏輯<b>一行都沒改</b>(這是回答問題,不是加功能)。'] },
         { v: 'V74.5.8', dt: '2026-09-03', d: ['🧪 <b>一次掃完 48 個經典技術指標 —— 六道關卡「一個都沒有」通過</b>。ADX・Supertrend・一目均衡表・CCI・威廉指標・StochRSI・MFI・KDJ・OBV・VWAP・CMF・樞紐點・SMC 缺口・赫斯特指數・卡爾曼濾波… 全部的優勢都落在 −0.38 ~ +0.35pp,<b>最強的還不到來回成本 0.44%</b>。','⭐ <b>但掃出一個橫跨所有指標族群的一致型態:「超賣買點」全是負的、「過熱/強勢」全是正的</b> —— MFI 超賣買點 −0.35 vs 過熱 +0.21;CCI 由 −100 翻上 −0.33 vs 上穿 +100 +0.10;威廉指標由 −80 翻上 −0.38(全表最差之一)。<b>又一次:追強 &gt; 抄底</b>。','📋 完整 48 個的成績、以及「哪些是台股結構上做不到的(暗池 / VPIN / 另類數據)」都收進<b>產業作戰室 → 實測總表</b>。⛔ 散戶救星的判斷邏輯<b>一行都沒改</b>。'] },
         { v: 'V74.5.7', dt: '2026-09-03', d: ['📐 <b>TD 序列(DeMark)實測完了 —— 它說「買」的之後跌、說「賣」的之後漲</b>。它最有名的「買進 Setup 9」比隨便挑一天還差(勝率 39.9% vs 對照 41.1%),號稱教科書最強買點的「Countdown 13」更差。⭐ 反過來它的<b>賣出</b>訊號之後是漲的 —— 真因跟本站一貫結論一致:<b>追強 &gt; 抄底</b>。','💎 <b>「商業聖杯指標」(MarketCipher / LuxAlgo 那類)實測:越疊越差</b>。它最招牌的超賣綠點<b>實測是零</b>;把 WaveTrend + RSI + 200EMA 疊三層反而只剩 +0.24pp(還沒過關),而<b>單一條件</b>是 +1.97pp。⭐ 那類商品賣的不是更好的訊號,是更好看的介面。','📋 兩份結論都收進<b>產業作戰室 → 實測總表</b>(❌ 實測沒用 / 🧭 回測自己的坑)。⛔ 散戶救星的判斷邏輯<b>一行都沒改</b> —— 它們疊在現行配置之上沒有增量。'] },
@@ -19834,6 +19835,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //    ⛔ 「個股自己出事」那組(+0.20%)也掉出去了 → 文案一律改口,不可再說它「彈得動」。
     _LD_REDK: { all: 2.33, allPass: false, big: 4.33, sys: 3.78, idio: 0.20,
                 wrAll: 50.9, wrBig: 58.6, wrSys: 57.5, wrIdio: 40.6, base: 41.1, yrs: '2022~2026' },
+    // 🏔️🕳️ V74.6.0 兩個「六關全過、但一直沒接上通知」的事件(streak_probe.mjs,含 2022 空頭重跑)
+    //   ⛔ 數字一律讀這裡,⛔ 不可寫死在文案(重跑探針之後畫面要自己跟著變,測試會換一份假表驗)。
+    //   ⚠️ 定義必須跟探針**一字不差**(改了就要重跑回測):
+    //     ・回測不破 = 前 5 根(不含今天)碰過「更早 60 根的最高收盤」、期間最低價沒破那個高點的 95%、
+    //                 今天收紅且收盤 ≥ 高點的 98%
+    //     ・跳空×高位階 = 今低 > 昨高 且 缺口 ≥1% 且 一年位階(252 根收盤)≥70
+    _STREAK_EDGE: {
+        base: 41.1, cost: 0.44, yrs: '2022~2026',
+        retest: { n: 27129, e10: 0.73, wr: 45.0, worst: 0.76, net: 0.29, yr: '+1.0/+0.6/+0.5/+0.8/+0.7' },
+        gapHi:  { n: 10527, e10: 0.63, wr: 42.4, worst: 0.36, net: 0.19, yr: '+0.2/+0.6/+0.4/+1.7/+1.2' },
+    },
     _ldRedKHtml(data, sym) {
         try {
             const n = (data || []).length;
@@ -30212,6 +30224,44 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     txt: `<b>5 天漲了 ${chg5.toFixed(0)}%,而且已經被列為${String(att.status || '注意股').replace(/[⚠️🚨]/g, '')}</b> —— `
                        + `官方名單 3 年實測:這種「噴很大才被掛注意」的,之後 20 天平均<b>比大盤少 1.81 個百分點</b>、最典型的一次賠 7.2%。`
                        + `💡 <b>手上有的可以考慮減碼</b>;⛔ 這不是放空訊號(放空另有風險,沒測過)` });
+            }
+            // ③④ V74.6.0 兩個六關全過的型態 —— ⛔ 空頭時不顯示(講的是偏多的事,`_bearGate` 鐵則)
+            if (!this._bearGate(sym)) {
+                const E = this._STREAK_EDGE, i = n - 1;
+                const hi_ = j => +data[j].high, lo_ = j => +data[j].low;
+                // 🏔️ 創 60 日高後回測不破(今天收紅)—— 定義與 streak_probe 一字不差
+                if (n >= 67 && c(i) > 0 && c(i - 1) > 0) {
+                    let nh = 0;
+                    for (let q = i - 65; q < i - 5; q++) if (c(q) > nh) nh = c(q);
+                    let made = false, low = Infinity;
+                    for (let q = i - 5; q < i; q++) { if (c(q) >= nh) made = true; if (lo_(q) < low) low = lo_(q); }
+                    if (nh > 0 && made && low >= nh * 0.95 && c(i) > c(i - 1) && c(i) >= nh * 0.98) {
+                        const R = E.retest;
+                        out.push({ ic: '🏔️', cls: 'text-amber-300',
+                            txt: `<b>創 60 日新高之後回檔沒破、今天收紅站回</b> —— ${E.yrs} 全市場 ${R.n.toLocaleString()} 次實測,`
+                               + `之後 10 天平均比大盤多 <b>+${R.e10}個百分點</b>、上漲比例 <b>${R.wr}%</b>`
+                               + `(⚠️ 隨便挑一天的基準是 <b>${E.base}%</b>,⛔ 不是 50%),而且<b>五年逐年都是正的</b>(${R.yr})。`
+                               + `⚠️ 扣掉買賣成本 ${E.cost}% 之後只剩 <b>+${R.net}%</b> —— 這是「偏強的佐證」,⛔ 不是叫你重壓。買賣價位以總覽「現在怎麼做」為準` });
+                    }
+                }
+                // 🕳️ 向上跳空 × 高位階
+                if (n >= 253 && c(i) > 0 && hi_(i - 1) > 0 && lo_(i) > hi_(i - 1)) {
+                    const gp = (lo_(i) / hi_(i - 1) - 1) * 100;
+                    if (gp >= 1) {
+                        let hh = -Infinity, ll = Infinity;
+                        for (let q = i - 251; q <= i; q++) { if (c(q) > hh) hh = c(q); if (c(q) < ll) ll = c(q); }
+                        const pos = hh > ll ? (c(i) - ll) / (hh - ll) * 100 : 50;
+                        if (pos >= 70) {
+                            const G = E.gapHi;
+                            out.push({ ic: '🕳️', cls: 'text-amber-300',
+                                txt: `<b>今天向上跳空 ${gp.toFixed(1)}%,而且股價在一年的高檔(位階 ${pos.toFixed(0)})</b> —— `
+                                   + `${E.yrs} 全市場 ${G.n.toLocaleString()} 次實測,之後 10 天平均比大盤多 <b>+${G.e10}個百分點</b>、`
+                                   + `上漲比例 ${G.wr}%(基準 ${E.base}%),五年逐年都是正的。`
+                                   + `🚨 <b>要配高位階才算數</b>:跳空本身沒用(+0.04)、配<b>低</b>位階是負的(−0.15)。`
+                                   + `⚠️ 扣成本後只剩 <b>+${G.net}%</b>,很薄 —— ⛔ 不是進場指令` });
+                        }
+                    }
+                }
             }
         } catch (_) { }
         return out;

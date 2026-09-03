@@ -1254,11 +1254,14 @@ ok('㊸e 🚨 「避雷」那幾條的操作說明必須寫明「不是放空訊
    (LAY.txt.match(/不是放空訊號/g) || []).length >= 2, LAY.txt.length);
 
 // ═══ 📚 V74.5.9 指標分類表(使用者:「把驗證過的用分類起來,有用的還是要註記排名」)═══
+// 🚨 V74.6.0 使用者截圖「卡片位置爆了」—— 4 欄 table 在 390px 一定溢出。
+//   ⭐ 版面類的斷言**一定要在手機寬度量**(430 寬塞得下 → 三條斷言全部假通過,V74.2.0 踩過)。
+await page.setViewportSize({ width: 390, height: 844 });
 const ZO = await page.evaluate(async () => {
   PRO.switchTab('lab'); PRO.selLab('zoo');
   await new Promise(r => setTimeout(r, 60));
   document.querySelectorAll('#labList .labitem').forEach(e => { e.open = true; });
-  const rows = [...document.querySelectorAll('#labList .zootbl tr')];
+  const rows = [...document.querySelectorAll('#labList .zoorow')];
   const st = k => rows.filter(r => r.classList.contains('z-' + k)).length;
   return {
     cats: document.querySelectorAll('#labList .labitem').length,
@@ -1277,6 +1280,32 @@ const ZO = await page.evaluate(async () => {
                    return a !== b && /zootbl/.test(b) && !/zootbl/.test(a); })(),
     // 🧬 逐檔挑指標那一條:只抓**內文**(.ld),⛔ 不含 summary ——
     //    注入驗證抓到的:數字同時寫在 summary 的 n 欄,只掃整欄的話把內文刪光照樣綠。
+    // 🚨 爆版守門:整頁不可橫向捲動,而且每一列都要塞得進畫面
+    // 🚨🚨 爆版守門踩過**兩個**假綠燈,兩個都是「量到的東西是 0,而 0 永遠通過」:
+    //   ① 第一版量 `.zoorow` 的 scrollWidth —— 注入「改回 table」時它是 table-row,
+    //      scrollWidth/clientWidth 都是 0。
+    //   ② 第二版改量右緣,但 `rows` 是在 `back:` **重繪列表之前**抓的 → 量的是已經被換掉的
+    //      舊 DOM,getBoundingClientRect() 全部回 0、computedStyle 回空字串。
+    //   ⭐⭐ 通用:**重繪過的頁面要重新選一次 DOM 才量**;而且爆版要量
+    //      「內容有沒有比它的框寬」(容器 scrollWidth > clientWidth),⛔ 光看整頁橫不橫捲不夠
+    //      —— 外層只要有一個 overflow 就把它剪掉了(使用者看到的正是被剪掉的樣子)。
+    ovf: (() => {
+      PRO.selLab('zoo');
+      document.querySelectorAll('#labList .labitem').forEach(e => { e.open = true; });
+      const rs = [...document.querySelectorAll('#labList .zoorow')];
+      const boxes = [...document.querySelectorAll('#labList .zootbl')];
+      const wide = el => el && el.scrollWidth > el.clientWidth + 2;
+      return {
+        page: document.documentElement.scrollWidth > window.innerWidth + 2,
+        // 容器與它的外框(.ld)都不可被內容撐開
+        box: boxes.filter(b => wide(b) || wide(b.parentElement)).length,
+        row: rs.filter(r => r.getBoundingClientRect().right > window.innerWidth + 2).length,
+        n: rs.length,
+      };
+    })(),
+    // 分類標題那一行(標題 + 右邊計數)⛔ 不可被擠成兩行
+    sumTall: [...document.querySelectorAll('#labList .labitem.zoo > summary')]
+      .filter(e => e.getBoundingClientRect().height > 30).length,
     perStock: (() => {
       PRO.selLab('trap');
       document.querySelectorAll('#labList .labitem').forEach(e => { e.open = true; });
@@ -1620,6 +1649,11 @@ ok('㊹f ⭐「測不了」的每一種都要寫原因(前視偏誤 / 主觀 / �
 ok('㊹g ⭐ 有用的那幾格要指得出排名或實測數字(⛔ 只寫「有用」等於沒說)',
    /實測有用/.test(ZO.txt) && /(見「✅ 實測有用」|pp|%)/.test(ZO.txt));
 ok('㊹h 切走再切回來⛔ 不可殘留上一欄的內容', ZO.back);
+// 🚨 V74.6.0 使用者截圖:第一版 4 欄 table 在手機上整排被切出畫面 → 改成直式區塊
+ok('㊹k 🚨 手機寬度(390)下⛔ 不可爆版:整頁不橫捲、容器不被內容撐開、每一列右緣不超出畫面',
+   ZO.ovf.n > 50 && !ZO.ovf.page && ZO.ovf.box === 0 && ZO.ovf.row === 0,
+   [ZO.ovf.n, ZO.ovf.page, ZO.ovf.box, ZO.ovf.row]);   // 🚧 空過守門:n>50 確認真的量到列了
+ok('㊹l 📐 分類標題那一行(標題+計數)⛔ 不可被擠成兩行', ZO.sumTall === 0, ZO.sumTall);
 // 🧬 V74.5.9 逐檔挑指標的結論要進「實測沒用」欄(⛔ 測完了沒記 = 白做)
 // 🚨 這條要釘的是「**先報名單穩定度、再談報酬**」那條鐵則(評估紀錄⑮ 同盟集團)——
 //   ⚠️ 第一版只掃整欄 innerText,而數字在 summary 的 n 欄也有一份 → 把內文那段刪光照樣綠
