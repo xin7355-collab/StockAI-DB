@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.6.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.6.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -698,7 +698,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.6.0 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.6.1 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7520,8 +7520,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.6.0',
+    _APP_VERSION: 'V74.6.1',
     _CHANGELOG: [
+        { v: 'V74.6.1', dt: '2026-09-03', d: ['📈 <b>「加碼」原本其實沒有做 —— 已經修好,但刻意只告訴你事實、不叫你加碼</b>。查證後發現:程式裡「符合加碼」那個判斷<b>只在你「沒有庫存」的時候才成立</b> —— 也就是<b>有部位的人永遠看不到</b>,那五個字從上線到現在一次都沒出現過。','⭐ 現在:<b>有庫存、而且這一檔又符合當初的進場條件時,總覽會直接告訴你</b>(🧬 位階+波動 + 幾個期望值為正的訊號)。⚠️ <b>但它不會叫你加碼</b> —— 回測顯示「有部位再往上加一筆」<b>看起來有效卻沒過全部關卡</b>:每趟 0.72% → <b>1.00%</b>、本金 100 萬那組 193 萬 → <b>263 萬</b>、中途最多賠還從 32.3% 縮到 30.0%,但 <b>2022 空頭那年是負的</b>,而且邊際幾乎集中在後半段。→ 事實給你,要不要加你自己決定。','🚪 <b>「每一檔挑它自己適合的出場」實測完了:⛔ 不成立,挑了比不挑還差</b>。2,513 檔 ・21 萬個進場點實測,逐檔挑比現行的「跌破 5 日線」<b>還差 0.30 個百分點</b>,而且反過來做方向相反。🚨 表面上「兩段挑到同一種」有 48.6%(隨機 25%)看起來很穩 —— <b>但那是假象</b>:83% 的股票都挑同一種(跌破 5 日線)= 大家都選同一個,不是每一檔有自己的個性。→ <b>現行「全 App 統一一條出場」是對的</b>。'] },
         { v: 'V74.6.0', dt: '2026-09-03', d: ['🏔️🕳️ <b>補上兩個「實測有效、卻一直沒通知你」的型態</b>(總覽 → ⭐ 重點判讀,當天發生才跳):①<b>創 60 日新高之後回檔沒破、今天收紅站回</b> —— 五年逐年都是正的,是全部回測裡<b>最穩的一條</b>;②<b>向上跳空 ×(股價在一年高檔)</b> —— 🚨 要配高位階才算數,跳空本身沒用、配低位階反而是負的。兩個都會直接告訴你<b>之後 10 天的實測成績、上漲比例、跟基準差多少</b>。','🚨 <b>而且勝率一定配基準看</b>:台股個股隨便挑一天的上漲比例本來就只有 <b>41%</b>(不是 50%)—— 所以看到「45%」不是差,它比基準高 4 個百分點。','❓ 你問「這麼多指標可不可以都加進去、發生就跳出來」—— <b>⛔ 那 48 個經典指標不能加</b>,它們六道關卡一個都沒過,加進去只會<b>每天跳一堆沒用的通知、把真訊號淹掉</b>。完整說明寫在<b>產業作戰室 → 實測總表 → 📚 指標分類表</b>頂端。','📐 <b>指標分類表在手機上爆版已修</b>(原本 4 欄表格,右邊整排被切出畫面)→ 改成一列一塊的直式版面。'] },
         { v: 'V74.5.9', dt: '2026-09-03', d: ['🧬 <b>試了一個很合理、但實測不成立的方向:「每一檔挑它自己最適合的<u>指標</u>」</b>。App 的明日作戰清單本來就是這個邏輯(這一檔自己最會賺的那一招),所以把它套到 48 個技術指標上再測一次 —— <b>結果挑得不比隨機準</b>:前半段挑到的指標,後半段還是同一個的只有 <b>2.7%</b>(隨機就有 2.1%)。⭐ 真因不是挑法爛,是<b>池子裡本來就沒有好東西</b> —— 那 48 個指標沒有一個扣掉成本還站得住。','📚 <b>產業作戰室 → 實測總表新增「指標分類表」</b>:把全部量過的技術指標照分類(趨勢 / 動能 / 波動 / 成交量 / 支撐壓力 / 型態 / 經典理論 / 市場寬度 / 機構專屬)排成一張表,每一格只有四種狀態 —— <b>⭐實測有用(有排名)/ ⛔實測沒用 / ➖只描述 / ⏳測不了(一定寫原因)</b>。🚨 整張表最重要的一句:<b>扣掉成本之後還站得住的,全部集中在「位階 / 振幅 / 量能 / 型態」那幾格,而不是任何一個經典指標</b>。','⛔ 散戶救星的判斷邏輯<b>一行都沒改</b>(這是回答問題,不是加功能)。'] },
         { v: 'V74.5.8', dt: '2026-09-03', d: ['🧪 <b>一次掃完 48 個經典技術指標 —— 六道關卡「一個都沒有」通過</b>。ADX・Supertrend・一目均衡表・CCI・威廉指標・StochRSI・MFI・KDJ・OBV・VWAP・CMF・樞紐點・SMC 缺口・赫斯特指數・卡爾曼濾波… 全部的優勢都落在 −0.38 ~ +0.35pp,<b>最強的還不到來回成本 0.44%</b>。','⭐ <b>但掃出一個橫跨所有指標族群的一致型態:「超賣買點」全是負的、「過熱/強勢」全是正的</b> —— MFI 超賣買點 −0.35 vs 過熱 +0.21;CCI 由 −100 翻上 −0.33 vs 上穿 +100 +0.10;威廉指標由 −80 翻上 −0.38(全表最差之一)。<b>又一次:追強 &gt; 抄底</b>。','📋 完整 48 個的成績、以及「哪些是台股結構上做不到的(暗池 / VPIN / 另類數據)」都收進<b>產業作戰室 → 實測總表</b>。⛔ 散戶救星的判斷邏輯<b>一行都沒改</b>。'] },
@@ -19841,6 +19842,14 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //     ・回測不破 = 前 5 根(不含今天)碰過「更早 60 根的最高收盤」、期間最低價沒破那個高點的 95%、
     //                 今天收紅且收盤 ≥ 高點的 98%
     //     ・跳空×高位階 = 今低 > 昨高 且 缺口 ≥1% 且 一年位階(252 根收盤)≥70
+    // 📈 V74.6.1 「加碼」的實測狀態(⛔ 數字寫在這裡,不寫死在文案)
+    //   ⚠️ 五道關卡過四道:每趟邊際明顯(而且 2~5% 是一片高原不是孤峰)、
+    //     前後半同向、去最好月仍正、只往上加優於不看價格;⛔ 但**逐年那一關沒過**(2025 是負的),
+    //     而且目前只在「唐奇安 20 日」出場下量過(現行的 5 日線複驗還沒跑完)。
+    //   → 所以 App **不下加碼指令**,只在 `case 'hold'` 誠實講事實。
+    _ADD_EDGE: { base: 0.72, best: 1.00, up: 3, verdict: '看起來有效、但還沒過全部關卡',
+                 failYear: '2022', amtOff: '193', amtAdd: '263', ddOff: '32.3', ddAdd: '30.0',
+                 exit: '現行的跌破 5 日線', yrs: '2022~2026' },
     _STREAK_EDGE: {
         base: 41.1, cost: 0.44, yrs: '2022~2026',
         retest: { n: 27129, e10: 0.73, wr: 45.0, worst: 0.76, net: 0.29, yr: '+1.0/+0.6/+0.5/+0.8/+0.7' },
@@ -29218,9 +29227,31 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 case 'hold':
                     badge = '🛡️ 持股續抱'; cls = 'border-cyan-500 text-cyan-200 bg-cyan-900/20';
                     why = lines.length ? `還沒跌破任何一條實測有效的出場線 —— <b>守住 ${lines[0].v.toFixed(2)}</b>,沒破就抱著。` : '還沒觸發出場條件。';
+                    // 📈 V74.6.1 使用者問「加碼有做嗎」→ 查證後**沒有**(上面那段是死碼)。
+                    //   ⛔ 但也不可以就這樣接上一條加碼規則 —— 回測顯示加碼「看起來有效卻沒過全部關卡」。
+                    //   ⭐ 折衷:**只講事實**(這一檔現在又符合當初的進場條件了),⛔ 不下加碼指令,
+                    //     並把實測狀態誠實寫出來。這是「資料照顯示、沒驗證過的不下指令」原則。
+                    //   ⚠️ `!bear` 是**冗餘保險** —— 空頭時 state 早就走 reduce、根本到不了這裡
+                    //     (注入驗證抓到:拿掉它測試照樣綠 → 測試 ⑤b 改成釘 state 那條真正的守門)。
+                    if (gene && gene.ok && provenBull.length && !bear) {
+                        const E = this._ADD_EDGE;
+                        why += `<br><span class="text-amber-300 font-bold">📈 它現在又符合當初的進場條件了</span>`
+                             + `(🧬 位階 ${gene.pos.toFixed(0)}、振幅 ${gene.amp.toFixed(1)}% + ${provenBull.length} 個期望值為正的訊號)。`
+                             + `⚠️ <b>但這不是叫你加碼</b> —— 「已經有部位、價格又往上走了再加一筆」本站實測是<b>${E.verdict}</b>:`
+                             + `用${E.exit}、每趟從 ${E.base}% 變成 <b>${E.best}%</b>(只在比原本成本高 ${E.up}% 以上才加),`
+                             + `本金 100 萬那組 ${E.amtOff} 萬 → <b>${E.amtAdd} 萬</b>、中途最多賠還從 ${E.ddOff}% 縮到 ${E.ddAdd}%;`
+                             + `前後半同向、去最好月仍正。`
+                             + `⛔ <b>但 ${E.failYear} 年(空頭那年)是負的</b> —— 逐年那一關沒過,而且邊際幾乎都集中在後半段。`
+                             + `→ <b>這裡只告訴你事實,要不要加是你自己決定</b>。`;
+                    }
                     break;
                 case 'add':
-                    badge = held ? '📈 符合加碼' : '📈 符合進場'; cls = 'border-red-500 text-red-200 bg-red-900/25';
+                    // 🚨 V74.6.1 這裡原本寫 `held ? '📈 符合加碼' : '📈 符合進場'` —— ⛔ 那是**死碼**:
+                    //   'add' 只在 `!held` 分支才判得出來 → 這裡的 `held` 永遠是 false,
+                    //   「符合加碼」那五個字從上線到現在一次都沒顯示過。
+                    //   ⭐ 有庫存時該講什麼,改由下面 `case 'hold'` 的 `addFact` 誠實處理
+                    //     (⛔ 不下加碼指令 —— 加碼本身實測還沒過關,見 `_ADD_EDGE`)。
+                    badge = '📈 符合進場'; cls = 'border-red-500 text-red-200 bg-red-900/25';
                     why = `同時符合 <b>🧬 高位階+高波動</b>(位階 ${gene.pos.toFixed(0)}、振幅 ${gene.amp.toFixed(1)}%)`
                         + `與 <b>${provenBull.length}</b> 個期望值為正的訊號 —— 這是實測唯一站得住腳的進場條件組合。`;
                     break;
