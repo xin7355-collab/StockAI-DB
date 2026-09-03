@@ -143,6 +143,14 @@ for (const f of files) {
 
     emit('對照組(所有交易日)', i, gene);
 
+    // 🔬 V74.5.8 決定性對照:WT<−80 的 95% 落在低位階、66% 是剛暴跌 ——
+    //    ⭐ 所以要問的是「**同樣剛暴跌**的日子裡,有沒有 WT<−80 差在哪」,
+    //       ⛔ 拿全市場當對照量到的是「跌深」不是「WaveTrend」(共用那條腿的鐵則)。
+    let dd10 = 0;
+    { let h10 = -Infinity; for (let q = i - 9; q <= i; q++) if (R[q].c > h10) h10 = R[q].c;
+      dd10 = (R[i].c / h10 - 1) * 100; }
+    if (dd10 <= -12) emit('🆚 共用腿對照:剛暴跌(近10日 ≤−12%)全部', i, gene);
+
     // ═══ ① TD Sequential ═══
     if (bSet[i] === 9) {
       emit('📐 TD 買進 Setup 9(連9根收低於4根前)', i, gene);
@@ -168,7 +176,18 @@ for (const f of files) {
       if (up) {
         emit('🌊 WaveTrend 金叉(不分區)', i, gene);
         if (wt1[i] < -53) emit('🌊 WT 金叉 × 超賣區(<−53,綠點)', i, gene);
-        if (wt1[i] < -80) emit('🌊 WT 金叉 × 極度超賣(<−80)', i, gene);
+        if (wt1[i] < -80) {
+          emit('🌊 WT 金叉 × 極度超賣(<−80)', i, gene);
+          // 🔬 V74.5.8 深挖:它到底是「WaveTrend 有料」還是只是**跌深反彈**?
+          //    ⭐ 這兩者要分開 —— 本站已知「跌停後第一根紅K」六關全過,
+          //       如果 <−80 大多落在剛暴跌的股票上,那它只是那條的換皮。
+          emit(pos >= 60 ? '🔬 WT<−80 × 高位階' : pos <= 30 ? '🔬 WT<−80 × 低位階' : '🔬 WT<−80 × 中位階', i, gene);
+          let dd = 0;                                  // 近 10 日最大跌幅(距 10 日高)
+          { let h10 = -Infinity; for (let q = i - 9; q <= i; q++) if (R[q].c > h10) h10 = R[q].c;
+            dd = (R[i].c / h10 - 1) * 100; }
+          emit(dd <= -12 ? '🔬 WT<−80 × 剛暴跌(近10日 ≤−12%)' : '🔬 WT<−80 × 沒暴跌', i, gene);
+          emit(amp >= 3.2 ? '🔬 WT<−80 × 高波動' : '🔬 WT<−80 × 低波動', i, gene);
+        }
       }
       if (dn) {
         emit('🌊 WaveTrend 死叉(不分區)', i, gene);
@@ -256,6 +275,22 @@ for (const r of rows) {
     + ' |' + YRS.map(y => num(yr[y], 1).padStart(6)).join('') + (ySame ? ' ✅' : ' ❌')
     + num(exBest).padStart(9) + num(net).padStart(8)
     + ((net > 0 && same && ySame && (exBest ?? -9) > 0) ? ' ⭐全過' : ''));
+}
+// 🔬 診斷:重點桶的逐年樣本分布(⛔ 「—」可能是「沒過關」也可能是「n 不夠」,要分得出來)
+if (process.env.DIAG) {
+  console.log('\n\n████ 🔬 逐年樣本數診斷 ████');
+  for (const k of (process.env.DIAG || '').split('|')) {
+    const evs = buckets.get(k); if (!evs) { console.log(`(找不到 ${k})`); continue; }
+    const per = {};
+    for (const e of evs) { const y = e._d.slice(0, 4); per[y] = (per[y] || 0) + 1; }
+    const yv = {};
+    for (const y of YRS) {
+      const v = sub(evs, e => e._d.startsWith(y)), bv = baseSub(e => e._d.startsWith(y));
+      yv[y] = v.length ? (avg(v) - bv) : null;
+    }
+    console.log(pad(k, 40) + ' 總 ' + String(evs.length).padStart(6) + ' | '
+      + YRS.map(y => `${y.slice(2)}:n=${String(per[y] || 0).padStart(4)} ${num(yv[y], 1)}`).join('  '));
+  }
 }
 console.log('\n(數字 = 相對「隨便挑一天」的超額 pp;進場 = 隔天開盤,已排除開盤鎖死)');
 console.log('(⭐ 扣掉來回成本 0.44% 之後還是正的才有意義;賣出訊號要看**負**的才算「它說對了」)\n');
