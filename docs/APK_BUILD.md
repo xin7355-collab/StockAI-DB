@@ -104,3 +104,5 @@ android/
 ⚠️ **改到就要一起改的地方**:
 `app/build.gradle` 的 `applicationId` ・ `.well-known/assetlinks.json` 的 `package_name`
 —— 兩邊**必須一模一樣**,不一樣就會出現網址列。
+
+目前是 **`io.github.xin7355collab.stockai`**(⛔ 改了要兩邊一起改;`scripts/test_envdetect.mjs` ②b 會比對這份文件與 assetlinks 是否一致)。

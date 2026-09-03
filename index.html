@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.5.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.5.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -466,6 +466,15 @@
             .nav-fixed > nav { border-bottom: 1px solid #30363d; }
             #appMainArea { order: 3; padding-bottom: 1rem; }
 
+            /* 📐 V74.5.5 桌機字級收斂(使用者:「桌機 Icon 與字體應適度縮小」)——
+               ⛔ 只動**導覽層**(分頁列、跑馬燈、底部導覽圖示),⛔ 不動內容區:
+               內容的字級由「⚙️ 介面字體大小」控制,在這裡再縮一次會跟那個設定打架。 */
+            .nav-fixed > nav button { font-size: 0.8125rem; }
+            .nav-fixed > nav button span,
+            .nav-fixed > nav button svg { transform: scale(0.92); }
+            .marquee-track { font-size: 0.75rem; }
+            .sub-tab-btn { font-size: 0.8125rem; }
+
             /* 🖥️ V69.5.0 桌機:個股頁不進「全螢幕沉浸」(手機才隱藏 header/nav 求沉浸;桌機有空間 →
                頂部導覽持續顯示,不會一進個股就整條消失、要靠頁內返回鍵) */
             body.diag-fullscreen .header-fixed { display: flex !important; }
@@ -687,9 +696,9 @@
 
     <div id="settingsModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';">
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
-        <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
+        <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.5.4 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.5.5 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -729,10 +738,10 @@
                 <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
                     <label class="text-sm font-bold text-blue-400">📦 資料保險箱 (備份還原)</label>
                     <p class="text-[10px] text-gray-500 leading-tight">🔐 備份檔已加密(<b>.txt</b> 單一檔),一般人用文字編輯器打開是亂碼、看不到你的持股/金鑰;手機按備份會跳「分享」→ 可<b class="text-green-300">直接傳 LINE / AirDrop</b>;還原可「選檔案」或貼代碼。</p>
-                    <div class="grid grid-cols-3 gap-2 mb-1">
+                    <div class="grid grid-cols-2 gap-2 mb-1">
                         <button onclick="app.exportData('all'); app.vibrate(50);" class="bg-gray-700 hover:bg-gray-600 text-white text-xs py-2 rounded font-bold transition leading-tight">📤<br>一鍵備份<br><span class="text-[8px] text-gray-400 font-normal">(全部)</span></button>
                         <button onclick="app.openImportPanel(); app.vibrate(50);" class="bg-blue-700 hover:bg-blue-600 text-white text-xs py-2 rounded font-bold transition leading-tight">📥<br>還原備份</button>
-                        <button onclick="app.clearAllLocalData(); app.vibrate(80);" class="bg-red-900/70 hover:bg-red-800 text-white text-xs py-2 rounded font-bold transition leading-tight border border-red-700">🗑️<br>一鍵刪除</button>
+                        <button onclick="app.clearAllLocalData(); app.vibrate(80);" class="col-span-2 bg-red-900/70 hover:bg-red-800 text-white text-xs py-2 rounded font-bold transition leading-tight border border-red-700">🗑️<br>一鍵刪除</button>
                     </div>
                     <!-- 🔑 V69.6.0 使用者要求:API 金鑰與持股「分開備份」→ 各存一個獨立 .sjbak,還原時只覆蓋自己那一份、不動另一份 -->
                     <div class="grid grid-cols-2 gap-2 mb-1">
@@ -2480,7 +2489,7 @@
                 <div class="flex items-center gap-1.5"><span class="text-sm">🌍</span><span class="text-sm font-black text-gray-100 tracking-wide">全球巨頭脈動</span><span id="bigPlayerSource" class="ml-auto text-[8px] text-gray-600 opacity-60">(範例)</span></div>
                 <div class="text-[10px] text-gray-500 mb-2 mt-0.5">📊 黃金 / 原油 / 美元 / BTC / VIX / 亞股 / 美股 — 國際資金真實流向(台股 80% 看美股臉色)</div>
                 <div class="grid grid-cols-2 gap-2">
-                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col h-28">
+                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col min-h-[7rem]">
                         <button onclick="app.showJargon('黃金'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300 z-10">ℹ️</button>
                         <div class="text-[10px] text-gray-400 font-bold flex-shrink-0">🪙 黃金 USD/oz</div>
                         <div class="flex-1 flex items-end justify-between gap-1 mt-0.5 min-w-0">
@@ -2489,7 +2498,7 @@
                         </div>
                         <div id="bpGoldMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug flex-shrink-0 truncate">--</div>
                     </div>
-                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col h-28">
+                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col min-h-[7rem]">
                         <button onclick="app.showJargon('WTI原油'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300 z-10">ℹ️</button>
                         <div class="text-[10px] text-gray-400 font-bold flex-shrink-0">🛢️ WTI 原油</div>
                         <div class="flex-1 flex items-end justify-between gap-1 mt-0.5 min-w-0">
@@ -2498,7 +2507,7 @@
                         </div>
                         <div id="bpWtiMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug flex-shrink-0 truncate">--</div>
                     </div>
-                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col h-28">
+                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col min-h-[7rem]">
                         <button onclick="app.showJargon('美元指數'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300 z-10">ℹ️</button>
                         <div class="text-[10px] text-gray-400 font-bold flex-shrink-0">💵 美元指數 DXY</div>
                         <div class="flex-1 flex items-end justify-between gap-1 mt-0.5 min-w-0">
@@ -2507,7 +2516,7 @@
                         </div>
                         <div id="bpDxyMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug flex-shrink-0 truncate">--</div>
                     </div>
-                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col h-28">
+                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col min-h-[7rem]">
                         <button onclick="app.showJargon('比特幣'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300 z-10">ℹ️</button>
                         <div class="text-[10px] text-gray-400 font-bold flex-shrink-0">₿ 比特幣 BTC</div>
                         <div class="flex-1 flex items-end justify-between gap-1 mt-0.5 min-w-0">
@@ -2516,7 +2525,7 @@
                         </div>
                         <div id="bpBtcMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug flex-shrink-0 truncate">--</div>
                     </div>
-                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col h-28">
+                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col min-h-[7rem]">
                         <button onclick="app.showJargon('VIX恐慌指數'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300 z-10">ℹ️</button>
                         <div class="text-[10px] text-gray-400 font-bold flex-shrink-0">😱 VIX 恐慌指數</div>
                         <div class="flex-1 flex items-end justify-between gap-1 mt-0.5 min-w-0">
@@ -2525,7 +2534,7 @@
                         </div>
                         <div id="bpVixMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug flex-shrink-0 truncate">--</div>
                     </div>
-                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col h-28">
+                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col min-h-[7rem]">
                         <button onclick="app.showJargon('日經指數'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300 z-10">ℹ️</button>
                         <div class="text-[10px] text-gray-400 font-bold flex-shrink-0">🇯🇵 日經 225</div>
                         <div class="flex-1 flex items-end justify-between gap-1 mt-0.5 min-w-0">
@@ -2534,7 +2543,7 @@
                         </div>
                         <div id="bpNikkeiMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug flex-shrink-0 truncate">--</div>
                     </div>
-                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col h-28">
+                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col min-h-[7rem]">
                         <button onclick="app.showJargon('恆生指數'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300 z-10">ℹ️</button>
                         <div class="text-[10px] text-gray-400 font-bold flex-shrink-0">🇭🇰 恆生指數</div>
                         <div class="flex-1 flex items-end justify-between gap-1 mt-0.5 min-w-0">
@@ -2543,7 +2552,7 @@
                         </div>
                         <div id="bpHsiMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug flex-shrink-0 truncate">--</div>
                     </div>
-                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col h-28">
+                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col min-h-[7rem]">
                         <button onclick="app.showJargon('韓股KOSPI'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300 z-10">ℹ️</button>
                         <div class="text-[10px] text-gray-400 font-bold flex-shrink-0">🇰🇷 韓股 KOSPI</div>
                         <div class="flex-1 flex items-end justify-between gap-1 mt-0.5 min-w-0">
@@ -2553,7 +2562,7 @@
                         <div id="bpKospiMeaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug flex-shrink-0 truncate">--</div>
                     </div>
                     <!-- V21:美股大盤(SP500 + NASDAQ),台股最主要連動指標 -->
-                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col h-28">
+                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col min-h-[7rem]">
                         <button onclick="app.showJargon('標普500'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300 z-10">ℹ️</button>
                         <div class="text-[10px] text-gray-400 font-bold flex-shrink-0">🇺🇸 標普 500</div>
                         <div class="flex-1 flex items-end justify-between gap-1 mt-0.5 min-w-0">
@@ -2562,7 +2571,7 @@
                         </div>
                         <div id="bpSp500Meaning" class="text-[9px] mt-1 px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 leading-snug flex-shrink-0 truncate">--</div>
                     </div>
-                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col h-28">
+                    <div class="bg-[#0d1117] rounded-lg p-2.5 border border-[#30363d] relative flex flex-col min-h-[7rem]">
                         <button onclick="app.showJargon('那斯達克'); event.stopPropagation();" class="absolute top-1 right-1.5 text-[10px] text-gray-600 hover:text-blue-300 z-10">ℹ️</button>
                         <div class="text-[10px] text-gray-400 font-bold flex-shrink-0">💻 那斯達克</div>
                         <div class="flex-1 flex items-end justify-between gap-1 mt-0.5 min-w-0">
@@ -5835,6 +5844,15 @@ ${list}
         const mr = this._macroRiskCache || {};
         const _fs = v => (v == null || isNaN(v)) ? '?' : (+v >= 0 ? `+${(+v).toFixed(1)}%` : `${(+v).toFixed(1)}%`);
         const segs = [];
+        // 🚪 V74.5.5 手上的部位已經跌破出場線 —— ⭐ 排最前面(這比大盤風險分數更切身)
+        //   ⛔ 只顯示不推播(推播已有兩套,再加一套會吵到使用者關通知)
+        try {
+            const _fl = this._invExitFlags || [];
+            if (_fl.length) segs.push(`🚪 你手上有 ${_fl.length} 檔已跌破出場線(${this._exitRuleName()}):`
+                + _fl.slice(0, 4).map(f => `${f.name} ${f.px.toFixed(2)}／${f.v.toFixed(2)}`).join('、')
+                + (_fl.length > 4 ? ` …等 ${_fl.length} 檔` : '') + ' · 到個股頁看「現在該做什麼」');
+            this._invExitScan();   // 背景更新(節流 5 分鐘),下一次重畫就會用到
+        } catch (_) {}
         segs.push(score >= 80 ? `🚨 極度恐慌 · 風險指數 ${score}/100 · 嚴控倉位、別接刀`
                 : score >= 60 ? `⛔ 高度風險 · 風險指數 ${score}/100 · 市場壓力明顯,謹慎操作、收緊停利`
                 : score >= 40 ? `⚠️ 警戒 · 風險指數 ${score}/100 · 別追高、嚴設停損`
@@ -7494,8 +7512,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.5.4',
+    _APP_VERSION: 'V74.5.5',
     _CHANGELOG: [
+        { v: 'V74.5.5', dt: '2026-09-03', d: ['🚪 <b>跑馬燈會提醒你手上的庫存跌破出場線了</b>:原本只有「照作戰清單買的那幾筆」有出場提醒,<b>你自己填的庫存完全沒有</b> —— 而那才是大多數人真正持有的部位。現在跌破你設定的出場線會直接列在跑馬燈最前面(只提醒不推播,免得吵)。','🖥️ <b>電腦版版面收斂</b>:分頁列、跑馬燈、子頁籤的字與圖示適度縮小,同一個畫面看得到更多東西。⛔ 內容區的字不動 —— 那是「⚙️ 介面字體大小」在管的,兩邊都縮會打架。','📐 <b>修掉幾個字會溢出方塊的地方</b>:全球巨頭脈動那十張小卡改成會自動長高(把字體調大時不再被切掉);設定中心彈窗手機維持窄版、電腦變寬;備份/還原/刪除三顆鈕重排成兩欄,刪除獨立一列(免得誤按)。'] },
         { v: 'V74.5.4', dt: '2026-09-03', d: ['🚪 <b>預設出場規則換成「ATR 追蹤停利」</b>(原本是跌破 5 日線):同一套打法、49 個月(含 2022 大跌)只換這一條 —— 賺 <b>531 萬</b>(5 日線 193 萬),而且<b>中途最多賠從 −32% 降到 −20%</b>(全表最小)。','⚙️ 可以自己換:⚙️ 設定中心 →「🚪 出場規則」四選一(ATR 追蹤 / 唐奇安 20 日 / 移動停利 8% / 跌破 5 日線),旁邊直接寫實測賺多少。<b>出場提醒、行動指令中心、產業作戰室釣魚池、自動下單全部跟著這個設定走</b>。','🤖 <b>自動下單程式現在也會賣了</b>:停損 / 跌破你設定的出場線 / 抱滿 20 個交易日 → 自動送賣單。⛔ <b>只賣它自己買的部位</b>,不會碰你手動買的庫存。','💹 總覽的行動徽章旁邊補上<b>大字現價與今日漲跌</b>(跟徽章同一行,不多佔版面)。'] },
         { v: 'V74.5.3', dt: '2026-09-03', d: ['🧭 <b>總覽頁改成「行動指令中心」</b>:一進來就四段 —— <b>①行動徽章</b>(🚨強烈建議出場 / 📉建議減碼 / 🛡️持股續抱 / 📈符合加碼 / ➖觀望)+ 你的成本報酬率 → <b>②要注意的事</b>(只列負面與重大事件,沒有就寫「✅ 目前無重大風險訊號」)→ <b>③現在該做什麼</b>(直接給價位)→ <b>④系統怎麼判的</b>。','🔒 <b>決策只採用「實測有效」的規則</b>:出場價來自 28 種出場全測(唐奇安 / ATR 追蹤 / 現行 5 日線,每條都標實測賺多少);加碼要同時符合 🧬 高位階+高波動<b>而且</b>有期望值為正的訊號。<b>實測沒用的(低檔布局、補漲、布林壓縮…)即使今天觸發也不會出現</b>。','❓ 找不到實測有效的訊號時,直接寫「目前無明確實測有效之進出場訊號,請依原定紀律操作或觀望」—— ⛔ 不硬給點位。','📂 原本的「現在怎麼做 / 加碼 / 出場」三個頁籤與所有明細卡<b>收進一個摺疊</b>(⛔ 沒有刪除,點一下就看得到);技術面請看 <b>K線</b> 分頁、籌碼看 <b>籌碼</b> 分頁。'] },
         { v: 'V74.5.2', dt: '2026-09-02', d: ['📅 <b>回測表加上「每年實際賺多少」</b>(產業作戰室 → 實測總表 → 回測數字 → 出場規則):四種出場法逐年攤開,<b>這是真的跑出來的每月損益加總</b>,不是把總報酬平均攤開。','🚨 最該看的是 <b>2022 那一欄(空頭)</b>:四種出場<b>全部都是賠的</b>,差別只在賠多少 —— 這套打法<b>不會</b>在空頭幫你賺錢,它的價值是「多頭多賺、空頭少賠」。','⚠️ 同時標明 2022 只有 4 個月、2026 只有 8 個月(不是完整年度),而且複利之下後面幾年本金已經滾大 → 金額天生比前面大。'] },
@@ -19449,6 +19468,34 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             { k: 'trail8', t: '從最高收盤回落 8%',           p: 476.4, dd: 25.4, per: 2.25 },
         ],
     },
+    // 🚪 V74.5.5 手上的庫存有沒有跌破出場線 —— 掃一次存起來,跑馬燈與行動中心讀它
+    //   ⭐ 為什麼要有這支:`_pbExitSweep` 只盯「照作戰清單買的那幾筆」,
+    //     **手動填的庫存完全沒有出場提醒** —— 而那才是多數人真正持有的部位。
+    //   ⛔ 三條:① 只做**顯示**不主動推播(推播已有兩套,再加會吵到使用者關通知)
+    //          ② 5 分鐘節流 + 用 IndexedDB 既有 K 線(⛔ 不為了這個多打 API)
+    //          ③ 算不出來就跳過那一檔(⛔ 不猜、不硬給)
+    async _invExitScan() {
+        try {
+            const now = Date.now();
+            if (this._invExitAt && (now - this._invExitAt) < 300000) return this._invExitFlags || [];
+            this._invExitAt = now;
+            const inv = (this._getInventory() || []).filter(i => i && i.symbol && +i.cost > 0).slice(0, 30);
+            const out = [];
+            for (const it of inv) {
+                const sym = String(it.symbol);
+                let rows = null;
+                try { rows = (await this.idb.get(`proTerm_kline_${sym}`))?.data; } catch (_) {}
+                if (!Array.isArray(rows) || rows.length < 30) continue;
+                const ep = this._exitPrimary(rows, sym);
+                const pC = +((rows[rows.length - 1].close ?? rows[rows.length - 1].c) || 0);
+                if (!ep || !(pC > 0)) continue;
+                if (pC < ep.v) out.push({ sym, name: this.getStockName(sym) || sym, v: ep.v, px: pC, rule: ep.name });
+            }
+            this._invExitFlags = out;
+            return out;
+        } catch (_) { return this._invExitFlags || []; }
+    },
+
     // ═══ 🚪 V74.5.4 出場規則:全 App 唯一的「現在用哪一條」判斷點 ═══
     //   使用者:「把預設出場換成唐奇安/ATR,推播、自動下單、釣魚池出場卡整套換」。
     //   ⭐ 預設改成 **ATR 追蹤 K=2**(`chand2`)—— 49 個月 28 種全測裡:
