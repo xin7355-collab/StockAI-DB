@@ -869,6 +869,7 @@ const L = await page.evaluate(async () => {
     for (const k of Object.keys(PRO.LAB)) { if (k === 'bt') continue; PRO.selLab(k); all += grab().txt + '\n'; }
     out.all = all;
     out.counts = Object.fromEntries(Object.entries(PRO.LAB).map(([k, v]) => [k, v.length]));
+    out.counts.zoo = PRO.ZOO.reduce((a, g) => a + g.k.length, 0);   // 📚 zoo 數的是指標總數不是分類數
     out.btDims = PRO.BT.dims.length;
     return out;
 });
@@ -1252,6 +1253,40 @@ ok('㊸d ⛔ 「避雷」不可被當成「做空」上色(避雷=減碼/不做,
 ok('㊸e 🚨 「避雷」那幾條的操作說明必須寫明「不是放空訊號」',
    (LAY.txt.match(/不是放空訊號/g) || []).length >= 2, LAY.txt.length);
 
+// ═══ 📚 V74.5.9 指標分類表(使用者:「把驗證過的用分類起來,有用的還是要註記排名」)═══
+const ZO = await page.evaluate(async () => {
+  PRO.switchTab('lab'); PRO.selLab('zoo');
+  await new Promise(r => setTimeout(r, 60));
+  document.querySelectorAll('#labList .labitem').forEach(e => { e.open = true; });
+  const rows = [...document.querySelectorAll('#labList .zootbl tr')];
+  const st = k => rows.filter(r => r.classList.contains('z-' + k)).length;
+  return {
+    cats: document.querySelectorAll('#labList .labitem').length,
+    rows: rows.length,
+    ok: st('ok'), no: st('no'), desc: st('desc'), na: st('na'),
+    txt: document.getElementById('labList').innerText,
+    intro: document.getElementById('labIntro').innerText,
+    // ⛔ 燈號鐵則:狀態欄講的是「有沒有用」不是漲跌 → 不可出現紅綠燈
+    lamp: /[\u{1F534}\u{1F7E2}]/u.test(document.getElementById('labList').innerHTML),
+    // 每一列都要有「數字」欄與「來源」欄(⛔ 沒有數字的意見不准進來,同 ㉔d)
+    noNum: rows.filter(r => !(r.querySelector('.zv') || {}).textContent.trim()).length,
+    noSrc: rows.filter(r => !(r.querySelector('.zsrc') || {}).textContent.trim()).length,
+    // 切走再切回來,⛔ 不可殘留上一欄的內容
+    back: (() => { PRO.selLab('ok'); const a = document.getElementById('labList').innerHTML;
+                   PRO.selLab('zoo'); const b = document.getElementById('labList').innerHTML;
+                   return a !== b && /zootbl/.test(b) && !/zootbl/.test(a); })(),
+    // 🧬 逐檔挑指標那一條:只抓**內文**(.ld),⛔ 不含 summary ——
+    //    注入驗證抓到的:數字同時寫在 summary 的 n 欄,只掃整欄的話把內文刪光照樣綠。
+    perStock: (() => {
+      PRO.selLab('trap');
+      document.querySelectorAll('#labList .labitem').forEach(e => { e.open = true; });
+      const it = [...document.querySelectorAll('#labList .labitem')]
+        .find(e => /挑它自己最適合的指標/.test(e.querySelector('.lt').textContent));
+      return it ? it.querySelector('.ld').innerText : '';
+    })(),
+  };
+});
+
 await browser.close();
 
 // ③ 數學
@@ -1531,8 +1566,9 @@ ok('㉗e 四象限計數:四格加起來 = 泡泡數,而且**不可**用「漲�
 ok('㉒l ⛔ 切走分頁要停掉動畫(不可留背景 timer)', T.playing && T.stoppedOnLeave, [T.playing, T.stoppedOnLeave]);
 // ㉔ 🔬 實測總表
 ok('㉔ 六個頁籤:回測數字(V74.5.0 併進來)/ 有用 / 沒用 / 回測的坑 / 還測不了 / 推薦下一步',
-   L.tabs.length === 6 && /回測數字/.test(L.tabs[0]) && /實測有用/.test(L.tabs[1]) && /實測沒用/.test(L.tabs[2])
-   && /回測自己的坑/.test(L.tabs[3]) && /還測不了/.test(L.tabs[4]) && /推薦下一步/.test(L.tabs[5]), L.tabs);
+   L.tabs.length === 7 && /回測數字/.test(L.tabs[0]) && /實測有用/.test(L.tabs[1]) && /實測沒用/.test(L.tabs[2])
+   && /回測自己的坑/.test(L.tabs[3]) && /還測不了/.test(L.tabs[4]) && /推薦下一步/.test(L.tabs[5])
+   && /指標分類表/.test(L.tabs[6]), L.tabs);
 ok('㉔a2 🚧 空過守門:展開後內文真的抓得到(⛔ <details> 收合時 innerText 不含內文 = 假通過)',
    L.all.length > 6000 && /六道關卡|來回成本/.test(L.all), L.all.length);
 ok('㉔b 每一欄都有內容,切換真的換掉列表',
@@ -1542,7 +1578,7 @@ ok('㉔b 每一欄都有內容,切換真的換掉列表',
    && L.ok.txt !== L.trap.txt && L.trap.txt !== L.method.txt,
    [L.ok.n, L.trap.n, L.method.n, L.blocked.n, L.next.n]);
 ok('㉔c 頁籤數字要跟實際筆數一致(⛔ 不可寫死)',
-   L.tabs.slice(1).every((t, i) => t.includes('(' + L.counts[['ok', 'trap', 'method', 'blocked', 'next'][i]] + ')'))
+   L.tabs.slice(1).every((t, i) => t.includes('(' + L.counts[['ok', 'trap', 'method', 'blocked', 'next', 'zoo'][i]] + ')'))
    && L.tabs[0].includes('(' + L.btDims + ')'), L.tabs);
 ok('㉔d 🚨 **每一欄**每一條都要附實測來源(⛔ 沒有數字的意見不准進來)', L.srcMissing === 0, L.srcMissing);
 // 📌 V74.5.0 使用者:「把 portfolio_backtest.mjs 等等這種資訊隱藏,不需要呈現」
@@ -1568,6 +1604,33 @@ ok('㉔i2 ⭐ 而那兩件事的**結論**要進到別的欄位(⛔ 做完了卻
    /2022 空頭重跑後被推翻/.test(L.all) && /窗口長度會翻轉結論/.test(L.all));
 ok('㉔j ⛔ 整頁不可下買賣指令、不可給買賣價位(這是研究紀錄不是訊號頁)',
    !/(建議買進|可以買進|買在|掛單價|停損價[:：]|目標價[:：]\s*\d)/.test(L.all), (L.all.match(/建議買進|可以買進|掛單價/) || [])[0]);
+
+ok('㊹ 📚 指標分類表要渲染得出來(⛔ 分類 ≥8 組、指標 ≥50 個)',
+   ZO.cats >= 8 && ZO.rows >= 50, [ZO.cats, ZO.rows]);
+ok('㊹b ⭐ 四種狀態都要有,而且「測不了」的一定要列出來(⛔ 靜默省略 = 使用者以為沒這回事)',
+   ZO.ok >= 5 && ZO.no >= 20 && ZO.desc >= 1 && ZO.na >= 5, [ZO.ok, ZO.no, ZO.desc, ZO.na]);
+ok('㊹c 🚨 每一列都要有實測數字與來源(⛔ 沒有數字的意見不准進來)',
+   ZO.noNum === 0 && ZO.noSrc === 0, [ZO.noNum, ZO.noSrc]);
+ok('㊹d ⛔ 燈號鐵則:狀態欄不可用紅綠燈(它講的是「有沒有用」不是漲跌方向)',
+   !ZO.lamp);
+ok('㊹e 🚨 頁首那句「贏不過成本的集中在位階/振幅/量能/型態」必須在(⛔ 沒有這句就變成一張指標型錄)',
+   /位階/.test(ZO.intro) && /振幅/.test(ZO.intro) && /0\.44/.test(ZO.intro), ZO.intro.slice(0, 160));
+ok('㊹f ⭐「測不了」的每一種都要寫原因(前視偏誤 / 主觀 / 台股沒有這種資料)',
+   /前視偏誤/.test(ZO.txt) && /主觀/.test(ZO.txt) && /(台股結構上沒有|不公開逐筆委託簿)/.test(ZO.txt));
+ok('㊹g ⭐ 有用的那幾格要指得出排名或實測數字(⛔ 只寫「有用」等於沒說)',
+   /實測有用/.test(ZO.txt) && /(見「✅ 實測有用」|pp|%)/.test(ZO.txt));
+ok('㊹h 切走再切回來⛔ 不可殘留上一欄的內容', ZO.back);
+// 🧬 V74.5.9 逐檔挑指標的結論要進「實測沒用」欄(⛔ 測完了沒記 = 白做)
+// 🚨 這條要釘的是「**先報名單穩定度、再談報酬**」那條鐵則(評估紀錄⑮ 同盟集團)——
+//   ⚠️ 第一版只掃整欄 innerText,而數字在 summary 的 n 欄也有一份 → 把內文那段刪光照樣綠
+//   (注入驗證抓到的)。改成只掃**那一條的內文**,而且要求穩定度出現在報酬數字**之前**。
+ok('㊹i 🧬 逐檔挑指標的結論要記在「實測沒用」欄,而且穩定度那段要排在報酬前面',
+   /2\.7%/.test(ZO.perStock) && /隨機期望 2\.1%|隨機 2\.1%/.test(ZO.perStock)
+   && ZO.perStock.indexOf('2.7%') > 0
+   && ZO.perStock.indexOf('2.7%') < ZO.perStock.indexOf('1.36'), ZO.perStock.slice(0, 160));
+ok('㊹j ⭐ 而且要說清楚它⛔ 不推翻 App 現行的「挑打法」(不同母體)',
+   /不推翻/.test(ZO.perStock) && /(池子裡有沒有好東西|不同的母體)/.test(ZO.perStock));
+
 ok('⑩ 載入無 pageerror', errs.length === 0, errs.join(' | '));
 
 console.log();
