@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.5.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.5.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -698,7 +698,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.5.5 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.5.6 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2925,7 +2925,7 @@
             <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col overflow-hidden">
                 <div class="flex justify-between items-center px-4 py-3 border-b border-[#30363d] bg-[#161b22] shadow-sm">
                     <!-- 💼 V45.12 改名「庫存股」+ 點標題彈出說明(移除常駐說明banner) -->
-                    <h2 onclick="alert('💼 庫存股怎麼用\n\n這是你「實際持有」的股票。\n\n・輸入買入價 → 每天自動算盈虧\n・獲利 > 15% → 建議上移停利\n・虧損 > 10% → 提醒評估停損\n・點代號旁 ⋯ → 結算平倉(記入交易日誌算勝率)/ 改成本 / 刪除')" class="text-base md:text-lg font-bold text-white flex items-center gap-1.5 tracking-wide cursor-pointer"><span class="bg-orange-600 text-white text-sm px-2 py-0.5 rounded font-black shadow-inner">庫</span> 庫存股 <span class="text-[10px] text-gray-500 font-normal ml-0.5">📖 點看說明</span></h2>
+                    <h2 onclick="alert('💼 庫存股怎麼用\n\n這是你「實際持有」的股票。\n\n・輸入買入價 → 每天自動算盈虧\n・獲利 > 15% → 建議上移停利\n・虧損 > 10% → 提醒評估停損\n・點代號旁 ⋯ → 結算平倉(記入交易日誌算勝率)/ 改成本 / 刪除')" class="text-base md:text-lg font-bold text-white flex items-center gap-1.5 tracking-wide cursor-pointer"><span class="bg-orange-600 text-white text-sm px-2 py-0.5 rounded font-black shadow-inner">庫</span> 庫存股 <span class="text-[10px] text-gray-500 font-normal ml-0.5">📖 點看說明</span> <span id="tradeMirrorBtnSlot" class="ml-1"></span></h2>
                     <div class="flex gap-1.5">
                         <!-- V17.12 — 簡化為單一「編輯」按鈕,建倉/刷新整合進編輯頁 -->
                         <button onclick="app.openInventoryEditPage(); app.vibrate(30);" class="bg-blue-700 hover:bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold shadow-sm transition-colors">✏️ 編輯庫存</button>
@@ -2969,8 +2969,8 @@
                             </div>
                             <div id="inventoryCardContainer" class="flex flex-col pb-4"></div>
                         </div>
-                        <!-- 📓 V67.0 交易日誌 + 你的真實勝率鏡子(讀 proTerminalTradeLog,自我檢討閉環) -->
-                        <div id="tradeJournalCard" class="hidden mx-2 mt-2"></div>
+                        <!-- 📓 V67.0 交易日誌 + 你的真實勝率鏡子 —— 🪞 V74.5.6 移到庫存股標題列右邊那顆鈕(懸浮視窗),
+                             ⛔ 這裡不再放整張卡(持股一多就要捲很久,等於看不到)。 -->
                     </div>
                 </div>
             </div>
@@ -4076,6 +4076,14 @@ const app = {
             const qSym = new URLSearchParams(window.location.search).get('sym');
             if (qSym && /^[0-9A-Z]{4,8}$/.test(qSym.toUpperCase())) {
                 this._deepLinkSym = qSym.toUpperCase();
+            }
+        } catch (_) {}
+        // 🧹 V74.5.6 深連結 `?noise=1` → 直接打開雜訊清單(產業作戰室「實測總表」右邊那顆鈕會帶這個參數過來)
+        //   ⛔ 刻意**不把清單複製到 pro.html** —— 它的數字(K 棒訊號分級、已收起的卡)是從
+        //      這邊的 `_SIGNAL_EDGE` / `_TIDY` **現算**的,搬過去就會變成第二份、而且會過期。
+        try {
+            if (new URLSearchParams(window.location.search).get('noise') === '1') {
+                setTimeout(() => { try { this._showNoiseList(); } catch (_) {} }, 800);
             }
         } catch (_) {}
         // V14.4:K 線「底高」開關 — 從 localStorage 復原 + 同步 checkbox 視覺狀態
@@ -7512,8 +7520,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.5.5',
+    _APP_VERSION: 'V74.5.6',
     _CHANGELOG: [
+        { v: 'V74.5.6', dt: '2026-09-03', d: ['🚨 <b>盤前體檢修好了</b>:它其實不是「壞掉」,是<b>總經資料整整停了 4 天</b>(停在 08/30)而畫面照樣把它當成「今日開盤預判」。真因是採礦程式每天都崩在同一行、但對外顯示綠燈 —— 已修。⭐ 同時加了守門:<b>資料太舊會直接在卡片上跳橘色警告</b>並改口成「⚠️ 那天的開盤預判(不是今天)」,⛔ 以後不會再默默給你看舊數字。','🧹 <b>籌碼頁那兩張長得很像的卡合併了</b>:摺疊裡那張不再重複「大戶籌碼總結 / 評分 / 💡操作」(跟上面那張一模一樣),改成只放<b>法人明細</b>。結論只有一個地方講。','🪞 <b>勝率鏡子搬到庫存股標題列</b>(「📖 點看說明」右邊那顆鈕),點了跳懸浮視窗 —— 原本它在整份庫存清單的<b>最下面</b>,持股一多就要捲很久。鈕上直接標「N 筆 · 勝率 X%」。','🧹 <b>雜訊清單搬到產業作戰室</b>「實測總表」右邊(🧹 雜訊清單 ↗)。','🎣 <b>拋竿⛔ 不會再挑到「處置中」的股票</b>(你抓到的玉晶光)。真因是程式把「處置中」讀成了「沒事」。處置股是 5/20 分鐘分盤撮合,<b>那個回測用的尾盤價你根本買不到</b>;而且本站實測進處置後 20 日<b>中位 −4.81%</b>。被排除的會列在「📖 這一條的細節」裡,⛔ 不是偷偷丟掉。'] },
         { v: 'V74.5.5', dt: '2026-09-03', d: ['🚪 <b>跑馬燈會提醒你手上的庫存跌破出場線了</b>:原本只有「照作戰清單買的那幾筆」有出場提醒,<b>你自己填的庫存完全沒有</b> —— 而那才是大多數人真正持有的部位。現在跌破你設定的出場線會直接列在跑馬燈最前面(只提醒不推播,免得吵)。','🖥️ <b>電腦版版面收斂</b>:分頁列、跑馬燈、子頁籤的字與圖示適度縮小,同一個畫面看得到更多東西。⛔ 內容區的字不動 —— 那是「⚙️ 介面字體大小」在管的,兩邊都縮會打架。','📐 <b>修掉幾個字會溢出方塊的地方</b>:全球巨頭脈動那十張小卡改成會自動長高(把字體調大時不再被切掉);設定中心彈窗手機維持窄版、電腦變寬;備份/還原/刪除三顆鈕重排成兩欄,刪除獨立一列(免得誤按)。'] },
         { v: 'V74.5.4', dt: '2026-09-03', d: ['🚪 <b>預設出場規則換成「ATR 追蹤停利」</b>(原本是跌破 5 日線):同一套打法、49 個月(含 2022 大跌)只換這一條 —— 賺 <b>531 萬</b>(5 日線 193 萬),而且<b>中途最多賠從 −32% 降到 −20%</b>(全表最小)。','⚙️ 可以自己換:⚙️ 設定中心 →「🚪 出場規則」四選一(ATR 追蹤 / 唐奇安 20 日 / 移動停利 8% / 跌破 5 日線),旁邊直接寫實測賺多少。<b>出場提醒、行動指令中心、產業作戰室釣魚池、自動下單全部跟著這個設定走</b>。','🤖 <b>自動下單程式現在也會賣了</b>:停損 / 跌破你設定的出場線 / 抱滿 20 個交易日 → 自動送賣單。⛔ <b>只賣它自己買的部位</b>,不會碰你手動買的庫存。','💹 總覽的行動徽章旁邊補上<b>大字現價與今日漲跌</b>(跟徽章同一行,不多佔版面)。'] },
         { v: 'V74.5.3', dt: '2026-09-03', d: ['🧭 <b>總覽頁改成「行動指令中心」</b>:一進來就四段 —— <b>①行動徽章</b>(🚨強烈建議出場 / 📉建議減碼 / 🛡️持股續抱 / 📈符合加碼 / ➖觀望)+ 你的成本報酬率 → <b>②要注意的事</b>(只列負面與重大事件,沒有就寫「✅ 目前無重大風險訊號」)→ <b>③現在該做什麼</b>(直接給價位)→ <b>④系統怎麼判的</b>。','🔒 <b>決策只採用「實測有效」的規則</b>:出場價來自 28 種出場全測(唐奇安 / ATR 追蹤 / 現行 5 日線,每條都標實測賺多少);加碼要同時符合 🧬 高位階+高波動<b>而且</b>有期望值為正的訊號。<b>實測沒用的(低檔布局、補漲、布林壓縮…)即使今天觸發也不會出現</b>。','❓ 找不到實測有效的訊號時,直接寫「目前無明確實測有效之進出場訊號,請依原定紀律操作或觀望」—— ⛔ 不硬給點位。','📂 原本的「現在怎麼做 / 加碼 / 出場」三個頁籤與所有明細卡<b>收進一個摺疊</b>(⛔ 沒有刪除,點一下就看得到);技術面請看 <b>K線</b> 分頁、籌碼看 <b>籌碼</b> 分頁。'] },
@@ -13108,30 +13117,27 @@ const marginByDate = {};
                     : '大戶站買方 → 籌碼面偏多,順著做、別跟大戶對作;搭配「總覽」的價位進出。')
                 : sc > -1 ? '大戶多空不明 → 籌碼沒方向,別只靠籌碼進場,看「總覽」K線訊號為主。'
                 : '大戶站賣方 → 籌碼面偏空,別接刀;持股跌破停損就走,空手等大戶回頭再看。';
+            // 🧹 V74.5.6 使用者:「籌碼面裡面 2 個卡片很像」—— **他是對的,而且是我自己造成的**。
+            //   V74.2.3 加了頁首 `#chipLead`(大字結論 + 評分 + 一句操作 + 其他指標怎麼說),
+            //   ⛔ 但**這張明細卡的表頭沒有跟著拆掉** → 同一頁出現兩個「🐘 大戶籌碼總結 / 24 分 /
+            //   🟢 大戶大力出貨 / 💡 操作」,連數字都一模一樣(使用者截圖)。
+            //   ⭐ 這張卡在摺疊裡的定位本來就只有**明細**(頁首自己的結尾也是這樣寫的:
+            //      「法人明細/實測成績/明日劇本/乾淨度在下面」)→ 表頭、大字、評分、操作、
+            //      「其他指標怎麼說」**全部只留頁首那一份**。
+            //   ⛔ 標題不可再叫「大戶籌碼總結」(那是頁首那張的名字,同名不同義)。
             box.className = 'bg-[#161b22] border-l-4 ' + bcls + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg';
             box.innerHTML = `
-                <div class="flex items-start justify-between gap-2 mb-1.5">
-                    <div class="min-w-0">
-                        <span class="text-[12px] font-black text-gray-100">🐘 大戶籌碼總結 <button onclick="alert('🔬 籌碼綜合評分怎麼算\\n\\n把所有籌碼因子加權成一個分數(50=中性、越高越偏多):\\n・外資 1/3/5/10 日買賣超 + 連續方向(權重最高)\\n・投信＋自營\\n・融資券(散戶指標)\\n・主力分點集中度\\n・法人反轉(賣轉買/買轉賣)\\n・投信季底做帳\\n・借券空方壓力\\n\\n純公式、零 AI。籌碼為輔,進出仍以 K 線為主。'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300 align-middle">ⓘ</button></span>
-                        <div class="mt-0.5">${this._dChip(arr[arr.length - 1]?.date, '法人資料日')}</div>
-                        <div class="text-2xl font-black ${bigCls} leading-tight mt-1">${big}</div>
-                    </div>
-                    <div class="flex flex-col items-center flex-shrink-0 bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-1.5">
-                        <div class="text-[8px] text-gray-500 leading-none mb-0.5">籌碼綜合評分</div>
-                        <div class="font-mono font-black text-3xl ${scoreCls} leading-none">${score100}</div>
-                        <div class="text-[8px] text-gray-500 leading-none mt-0.5">/100</div>
-                        <div class="text-[10px] font-black ${scoreCls} mt-0.5">${scoreLbl}</div>
-                        ${sparkScore}
-                    </div>
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <span class="text-[12px] font-black text-gray-100">🏛️ 法人明細 <button onclick="alert('🔬 籌碼綜合評分怎麼算\\n\\n把所有籌碼因子加權成一個分數(50=中性、越高越偏多):\\n・外資 1/3/5/10 日買賣超 + 連續方向(權重最高)\\n・投信＋自營\\n・融資券(散戶指標)\\n・主力分點集中度\\n・法人反轉(賣轉買/買轉賣)\\n・投信季底做帳\\n・借券空方壓力\\n\\n純公式、零 AI。籌碼為輔,進出仍以 K 線為主。'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300 align-middle">ⓘ</button>
+                        <span class="text-[9px] text-gray-600 font-normal ml-1">結論在上面那張,這裡是明細</span></span>
+                    <span class="flex items-center gap-1.5 flex-shrink-0">${this._dChip(arr[arr.length - 1]?.date, '法人資料日')}${sparkScore}</span>
                 </div>
                 <div class="flex flex-col gap-1 text-[12px] text-gray-200 leading-relaxed">
                     ${lines.map(l => `<div>${l}</div>`).join('')}
                 </div>
-                ${(() => { try { return this._chipConsensusLine(sym, sc); } catch (_) { return ''; } })()}
                 ${(() => { try { return this._chipEdgeHtml(sym); } catch (_) { return ''; } })()}
                 <div id="chipCleanSlot" class="mt-2"></div>
                 <div id="chipOvernightSlot" class="mt-2"></div>
-                <div class="mt-2 bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[12px] text-gray-100 leading-relaxed"><b class="${bigCls}">💡 操作:</b>${act}</div>
                 <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📊 純公式綜合:外資/投信/自營買賣超 + 連續方向 + 融資券 + 主力分點 + 法人反轉 + 投信做帳 + 借券空方,零 AI 零額度;籌碼為輔,進出以 K 線為主。</div>`;
             box.classList.remove('hidden');
             // 🧭 V74.2.3 籌碼頁「總覽邏輯」頁首(#chipLead):用**同一批變數**組(⛔ 不重算 = 不產生第二份真相)。
@@ -14722,6 +14728,35 @@ const marginByDate = {};
     //   改成看「相對自己」:近 20 日區間位階 + 5 日增減。市場規模再變也不會失效。
     //   回傳 {net, chg5, pct, level, label, color};沒有歷史可比時 level='unknown',
     //   寧可誠實說「基準累積中」也不要拿過時門檻亂判。
+    // 🌅 V74.5.6 盤前體檢「這份資料是不是今天的」—— ⛔ 全 App 唯一判斷點
+    //   🚨 為什麼要有:2026-09-02 實測 `macro_risk.json` 停在 **08-30**(4 天),
+    //      而畫面照樣把它當「今日開盤預判」渲染成一個 50/100 的分數。
+    //      真因在採礦端(`apply_business_signal` 對 None 呼叫 .get → 整支 macro_miner
+    //      每天崩在同一行、rc=0 綠燈,見 macro_miner 那支的註解),但**前端不該裸奔** ——
+    //      這正是陷阱 #34:顯示一個不該相信的數字,比空白更危險。
+    //   ⛔ 門檻用「**平日**天數」不用小時,也不用日曆天:
+    //      ・採礦是平日 16:30 那輪 → 週一早上最新的本來就是上週五(日曆 3 天)= 正常
+    //      ・用小時會**每個週一都誤報**,而誤報會讓人養成忽略警告的習慣
+    //      ・放到 3 個平日 → 連假(1 天國定假日)也不會誤報,而真的停產(4 天)一定擋得住
+    //   ⚠️ `todayISO` 只給測試用 —— ⛔ 不可用「今天剛好是星期幾」驗週末那條規則,
+    //      那會變成「一週只有星期一才驗得到」= 其餘六天是假綠燈(注入驗證當場抓到)。
+    _macroFresh(todayISO) {
+        try {
+            const raw = String((this._macroRiskCache || {}).updated || '');
+            const d = raw.slice(0, 10);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return { ok: true, wd: 0, date: '' };   // 沒有日期就不判(⛔ 不硬報錯)
+            const today = todayISO || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
+            let wd = 0;
+            const cur = new Date(d + 'T00:00:00Z'), end = new Date(today + 'T00:00:00Z');
+            while (cur < end && wd < 60) {
+                cur.setUTCDate(cur.getUTCDate() + 1);
+                const w = cur.getUTCDay();
+                if (w >= 1 && w <= 5) wd++;
+            }
+            return { ok: wd < 3, wd, date: d };
+        } catch (_) { return { ok: true, wd: 0, date: '' }; }
+    },
+
     // 📅 V71.2.0 加權指數資料落後偵測(使用者抓到:盤前體檢寫「台股 07/27 收盤」,但個股 K 線已有 07/28)
     //   根因:^TWII.json 由 yfinance + TWSE 官方雙源合成,實測會落後個股 1 天、甚至整天缺(07/24 就沒有)。
     //   ⚠️ 標籤本身是誠實的(它有寫日期),問題是**沒有人提醒你這是落後的** —— 於是
@@ -15781,6 +15816,14 @@ const marginByDate = {};
         // 🐛 V71.2.1 破圖修:V71.2.0 把這句警告接在 _basis 後面,而它所在的容器是 flex-shrink-0
         //   → 文字一長就撐爆,左邊「盤前體檢」被壓成一字一行、右側被裁掉(CLAUDE.md 記載的 flex 子項陷阱)。
         //   改成獨立整行放在標題列下方,不參與那個 flex 的寬度競爭。
+        // 🚨 V74.5.6 整份總經資料過期(採礦端掛掉)→ ⛔ 不可繼續把它當「今日」渲染
+        const _mFresh = this._macroFresh();
+        const _staleWarn = _mFresh.ok ? '' :
+            `<div class="mt-1 text-[11px] text-orange-200 bg-orange-900/25 border-l-2 border-orange-500 pl-2 py-1.5 rounded-r leading-snug">
+                🚨 <b>這份總經資料停在 ${this._dW(_mFresh.date, { rel: 1 })}</b>(已經過了 ${_mFresh.wd} 個交易日沒更新)——
+                下面的美股/VIX/外資期貨/開盤預判<b>都是那一天的</b>,⛔ 不是今天的。
+                <span class="text-orange-300/80">這是採礦端沒跑成功,不是你的設定問題;⛔ 今天先別照這張卡調部位。</span>
+            </div>`;
         const _lagWarn = _lagI2.lag > 0
             ? `<div class="mt-1 text-[10px] text-amber-300 bg-amber-900/15 border-l-2 border-amber-500 pl-2 py-1 rounded-r leading-snug">⚠️ 加權指數資料落後 ${_lagI2.lag} 天(最新交易日 ${this._dW(_lagI2.mktD)})— 下方點位與解讀用的是 ${this._dW(_lagI2.twiiD)} 收盤</div>`
             : '';
@@ -15847,6 +15890,7 @@ const marginByDate = {};
                         ${_twiiDate ? `<div class="text-gray-600">(台股 ${_twiiDate} 收盤)</div>` : ''}
                     </div>
                 </div>
+                ${_staleWarn}
                 ${_lagWarn}
                 ${(() => {   // 🔗 V71.2.1 中期視角:引用反攻條件雷達的結論,短中期一起看
                     const rv = this._reboundVerdict;
@@ -15864,7 +15908,7 @@ const marginByDate = {};
                 <div class="flex items-center gap-3">
                     <div class="text-4xl leading-none flex-shrink-0">${light}</div>
                     <div class="flex-1 min-w-0">
-                        <div class="text-[9px] text-gray-500 font-bold tracking-widest mb-0.5">今日開盤預判${_usClosed ? ' <span class="text-yellow-500/80">🌙美股休市</span>' : ''}</div>
+                        <div class="text-[9px] ${_mFresh.ok ? 'text-gray-500' : 'text-orange-300'} font-bold tracking-widest mb-0.5">${_mFresh.ok ? '今日開盤預判' : `⚠️ ${this._dW(_mFresh.date)} 那天的開盤預判(不是今天)`}${_usClosed ? ' <span class="text-yellow-500/80">🌙美股休市</span>' : ''}</div>
                         <div class="text-xl font-black ${sc} leading-none">${verdict}</div>
                         <div class="text-[11px] font-black ${patCls} mt-1">📈 盤中型態:${pattern}</div>
                     </div>
@@ -39259,16 +39303,22 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
 
     // 📓 V67.0 — 交易日誌 + 你的真實勝率鏡子(讀 proTerminalTradeLog,把每筆平倉變成自我檢討)
-    renderTradeJournal() {
-        const box = document.getElementById('tradeJournalCard');
-        if (!box) return;
+    //   🪞 V74.5.6 使用者:「勝率鏡子移到庫存股 📖 點看說明右手邊,變成點擊按鈕後才會跳出來的懸浮視窗」。
+    //     ⭐ 它本來就在庫存頁,但**在整份庫存清單的最下面** —— 持股一多就要捲很久,等於看不到。
+    //     → 改成庫存股標題列右邊一顆鈕(標題列本來就有「📖 點看說明」),點了開懸浮視窗。
+    //     ⛔ 三條:① 內容一個字都沒改(只是換個地方顯示)② 鈕上直接標「N 筆 · 勝率 X%」,
+    //        ⛔ 不可只寫「勝率鏡子」—— 那樣使用者不知道有沒有東西可看、也就不會點
+    //        ③ 一筆都沒有時鈕照顯示(標「還沒紀錄」)—— 那正是要教他去結算平倉的時候。
+    //   ⚠️ 舊的 `#tradeJournalCard` 容器已從庫存頁移除 → 這支現在只負責產 HTML。
+    _tradeJournalHtml() {
+        const box = { className: '', innerHTML: '', classList: { remove() {}, add() {} } };
         let log = [];
         try { log = JSON.parse(localStorage.getItem('proTerminalTradeLog') || '[]'); } catch (_) { log = []; }
         if (!Array.isArray(log) || log.length === 0) {
             box.className = 'mx-2 mt-2 bg-[#161b22] border border-[#30363d] rounded-lg p-3';
             box.innerHTML = `<div class="text-[12px] font-black text-gray-100 mb-1">📓 交易日誌 · 你的真實勝率</div>
                 <div class="text-[11px] text-gray-400 leading-relaxed">還沒有平倉紀錄。點庫存股代號旁的 <b class="text-gray-200">⋯</b> → 選「🎯 結算平倉」,系統會自動記一筆,幫你算出<b>你本人</b>的勝率、平均賺賠、賺短賠長等——這是唯一能讓你進步的鏡子。</div>`;
-            box.classList.remove('hidden'); return;
+            return box.innerHTML;      // ⛔ 不可回 undefined —— 這條是「還沒有平倉紀錄」的教學文字,正是最該顯示的時候
         }
         const n = log.length;
         const pnls = log.map(t => +t.pnlNTD || 0);
@@ -39322,12 +39372,43 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ${insight ? `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[11px] ${insightCls} leading-relaxed mb-1.5">${insight}</div>` : ''}
             <details><summary class="text-[10px] text-gray-500 cursor-pointer list-none">📜 最近 5 筆 · 獲利因子 ${profitFactor >= 99 ? '∞' : profitFactor.toFixed(2)} · 最大單筆虧損 ${_nf(maxLoss)}</summary><div class="mt-1">${recent}</div></details>
             <div class="text-[9px] text-gray-600 mt-1.5">💡 只算「結算平倉」的單。純刪除不計入。這面鏡子照的是你自己——比任何訊號都重要。</div>`;
-        box.classList.remove('hidden');
+        return box.innerHTML;
+    },
+    // 🪞 庫存股標題列那顆鈕:算出「N 筆 · 勝率 X%」讓使用者一眼知道有沒有東西可看
+    _tradeMirrorBtnHtml() {
+        let log = [];
+        try { log = JSON.parse(localStorage.getItem('proTerminalTradeLog') || '[]'); } catch (_) { log = []; }
+        if (!Array.isArray(log)) log = [];
+        const n = log.length;
+        let label = '還沒紀錄', cls = 'text-gray-400 border-[#30363d] bg-white/5';
+        if (n) {
+            const w = log.filter(t => (+t.pnlNTD || 0) > 0).length;
+            const wr = Math.round(w / n * 100);
+            label = `${n} 筆 · 勝率 ${wr}%`;
+            cls = wr >= 50 ? 'text-red-300 border-red-500/40 bg-red-500/10' : 'text-yellow-300 border-yellow-500/40 bg-yellow-500/10';
+        }
+        return `<button onclick="app._showTradeMirror(); app.vibrate(20); event.stopPropagation();" title="你自己的真實勝率、賺賠比、賺短賠長診斷" class="text-[10px] font-bold ${cls} border px-1.5 py-0.5 rounded leading-none flex-shrink-0 cursor-pointer transition-colors">🪞 勝率鏡子 <span class="font-mono">${label}</span></button>`;
+    },
+    _showTradeMirror() {
+        const modal = document.getElementById('updateLogModal'), body = document.getElementById('updateLogBody'), title = document.getElementById('updateLogTitle');
+        if (!modal || !body) return;
+        if (title) title.textContent = '🪞 你的真實勝率鏡子';
+        body.innerHTML = this._tradeJournalHtml();
+        modal.classList.remove('hidden'); modal.style.display = '';
+        body.scrollTop = 0;
+    },
+    // 🔁 相容既有呼叫點(結算平倉後會呼叫它)→ 只需要把標題列那顆鈕的數字刷新
+    renderTradeJournal() {
+        try {
+            const b = document.getElementById('tradeMirrorBtnSlot');
+            if (b) b.innerHTML = this._tradeMirrorBtnHtml();
+        } catch (_) {}
     },
     _clearTradeLog() {
         this.showConfirm('清空所有交易日誌紀錄?(不影響庫存)', () => {
             try { localStorage.removeItem('proTerminalTradeLog'); } catch (_) {}
             this.renderTradeJournal();
+            try { const b = document.getElementById('updateLogBody'); if (b) b.innerHTML = this._tradeJournalHtml(); } catch (_) {}
         });
     },
 

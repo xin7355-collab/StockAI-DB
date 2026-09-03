@@ -1891,6 +1891,60 @@ def fetch_sector_etfs():
     return out
 
 
+def apply_business_signal(out, bsi_light, bsi_score, bsi_month, bsi_err, prev_path=None):
+    """寫入 out["business_signal"]。抽成純函式是為了測得動(⛔ 不要再 inline 回 main())。
+
+    🚨🚨 V74.5.6 這裡曾經讓 **整支 macro_miner 每天都在同一行崩掉**,而且 workflow 全綠:
+      舊版守門寫 `if "business_signal" not in out:` —— ⛔ 但 `out` 一開始就有
+      `"business_signal": None`(初始化那一大包),所以那個 if **永遠是 False**
+      → 抓到燈號時不會被填進去 → 下一行 `out["business_signal"].get("stale")`
+      對 None 呼叫 .get → `'NoneType' object has no attribute 'get'` → 頂層 except
+      印一行就 `sys.exit(0)` → rc=0 → daily_miner 印 `✅ macro_miner.py`。
+      ⭐ 觸發時間點:V73.3.9 加了 FinMind 備援之後,燈號**第一次抓得到**
+      (在那之前永遠是 None,走 elif 分支所以碰不到那行)→ 修好一個東西反而引爆另一個。
+    ⭐⭐ 通用鐵則:**`x in dict` 與「x 有沒有值」是兩件事** —— 只要那個 key 被預先
+      初始化成 None,`not in` 就永遠擋不住。要判「有沒有值」一律用 `not out.get(k)`。
+    ⚠️ 而且崩在這裡 = 後面的 ^TWII 位階 / 板塊 ETF / 台指期 / risk_history / 寫檔
+      **全部沒跑** → macro_risk.json 整份停在最後一次成功的日期(實測停了 4 天)。
+    """
+    if not bsi_light:
+        # V23.2 — 失敗時 stale fallback:讀上次 macro_risk.json 保留 light,加 stale=True 標示
+        try:
+            pp = Path(prev_path) if prev_path else (DATA_DIR / 'macro_risk.json')
+            if pp.exists():
+                prev = json.loads(pp.read_text(encoding='utf-8')) or {}
+                prev_bsi = (prev.get('business_signal') or {})
+                if prev_bsi.get('light'):
+                    out["business_signal"] = {
+                        "light":  prev_bsi['light'],
+                        "score":  prev_bsi.get('score'),
+                        "month":  prev_bsi.get('month'),
+                        "source": "ndc-stale",
+                        "stale":  True,
+                        "last_error": bsi_err,
+                    }
+                    print(f"   ⚠️ 景氣燈號抓取失敗({bsi_err}),保留上次 {prev_bsi.get('month')}: {prev_bsi['light']}")
+                    return out["business_signal"]
+        except Exception as e:
+            print(f"   ⚠️ stale fallback 讀檔失敗:{e}")
+        out["business_signal"] = {
+            "light": None, "score": None, "month": None,
+            "source": "ndc", "error": bsi_err,
+        }
+        print(f"   → 失敗(前端 fallback 手動下拉):{bsi_err}")
+        return out["business_signal"]
+
+    out["business_signal"] = {
+        "light":  bsi_light,
+        "score":  bsi_score,
+        "month":  bsi_month,
+        "source": "ndc",
+        "error":  bsi_err,
+    }
+    print(f"   → {bsi_month}: {bsi_light} ({bsi_score} 分)")
+    return out["business_signal"]
+
+
 def fetch_business_signal():
     """🌡️ 國發會景氣對策信號自動抓取。每月 27 號發布上個月燈號(略有延遲)。
 
@@ -2875,40 +2929,7 @@ def main():
     print("─" * 50)
     print("🌡️ 抓取國發會景氣對策信號(每月 27 號發布上月燈號)…")
     bsi_light, bsi_score, bsi_month, bsi_err = fetch_business_signal()
-    # V23.2 — 失敗時 stale fallback:讀上次 macro_risk.json 保留 light,加 stale=True 標示
-    if not bsi_light:
-        try:
-            prev_path = Path('data/macro_risk.json')
-            if prev_path.exists():
-                prev = json.loads(prev_path.read_text(encoding='utf-8'))
-                prev_bsi = (prev.get('business_signal') or {})
-                if prev_bsi.get('light'):
-                    bsi_light  = prev_bsi['light']
-                    bsi_score  = prev_bsi.get('score')
-                    bsi_month  = prev_bsi.get('month')
-                    out["business_signal"] = {
-                        "light":  bsi_light,
-                        "score":  bsi_score,
-                        "month":  bsi_month,
-                        "source": "ndc-stale",
-                        "stale":  True,
-                        "last_error": bsi_err,
-                    }
-                    print(f"   ⚠️ NDC 抓取失敗({bsi_err}),保留上次 {bsi_month}: {bsi_light} ({bsi_score} 分)")
-        except Exception as e:
-            print(f"   ⚠️ stale fallback 讀檔失敗:{e}")
-    if "business_signal" not in out:
-        out["business_signal"] = {
-            "light":  bsi_light,
-            "score":  bsi_score,
-            "month":  bsi_month,
-            "source": "ndc",
-            "error":  bsi_err,
-        }
-    if bsi_light and not out["business_signal"].get("stale"):
-        print(f"   → {bsi_month}: {bsi_light} ({bsi_score} 分)")
-    elif not bsi_light:
-        print(f"   → 失敗(前端 fallback 手動下拉):{bsi_err}")
+    apply_business_signal(out, bsi_light, bsi_score, bsi_month, bsi_err)
 
     # V25.4 — ^TWII 60 日百分位(給主力護盤判讀真低/高檔用)
     print("📊 採集 ^TWII 60 日位置百分位…")

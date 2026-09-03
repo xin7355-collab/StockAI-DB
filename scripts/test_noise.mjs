@@ -78,6 +78,30 @@ ok('⑤ ⛔ 不可用紅綠 emoji(講的是有沒有用,不是漲跌)', !/[🔴�
 ok('⑤b ⛔ 不可出現操作指令(這頁是列管清單不是訊號)',
     !/(可以買|建議買進|進場價|買點推播|停損價)/.test(R.txt), R.txt.slice(0, 150));
 
+// ⑥ 🧹 V74.5.6 使用者:「雜訊清單移到實測總表右手邊」
+const PRO_SRC = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
+const tabs = (PRO_SRC.match(/<div class="tabs">[\s\S]*?<\/div>/) || [''])[0];
+ok('⑥ 產業作戰室的分頁列有「🧹 雜訊清單」入口', /🧹 雜訊清單/.test(tabs), tabs.slice(0, 200));
+ok('⑥b ⭐ 而且排在「實測總表」**右邊**',
+    tabs.indexOf('實測總表') > 0 && tabs.indexOf('🧹 雜訊清單') > tabs.indexOf('實測總表'));
+ok('⑥c 它是**跳回散戶救星**的深連結(⛔ 不可把清單複製一份到 pro.html —— 那些數字是現算的)',
+    /gotoNoise\(\)/.test(tabs) && /location\.href = 'index\.html\?noise=1'/.test(PRO_SRC)
+    && !/_NOISE_KEEP|_NOISE_GONE/.test(PRO_SRC));
+ok('⑥d ↗ 要標出「會跳走」(⛔ 它不是一個分頁,別讓人以為點了會留在原地)', /🧹 雜訊清單 ↗/.test(tabs));
+const R2 = await page.evaluate(async () => {
+    const A = window.app || app;
+    const m = document.getElementById('updateLogModal');
+    m.classList.add('hidden');                      // 先關掉,才驗得出是不是深連結打開的
+    history.replaceState(null, '', location.pathname + '?noise=1');
+    // 重跑 init 太重 → 直接跑那段深連結判斷(⛔ 不複製邏輯:用同一個參數名 + 同一支函式)
+    const hit = new URLSearchParams(location.search).get('noise') === '1';
+    if (hit) A._showNoiseList();
+    return { hit, opened: !m.classList.contains('hidden') };
+});
+ok('⑥e `?noise=1` 進來會自動打開清單', R2.hit && R2.opened, JSON.stringify(R2));
+ok('⑥f 🚧 空過守門:index.html 真的有接這個參數(⛔ 上面那條只驗了函式,沒驗接線)',
+    /get\('noise'\) === '1'/.test(SRC) && /_showNoiseList\(\)/.test(SRC));
+
 await browser.close();
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ NOISE_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

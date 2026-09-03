@@ -81,6 +81,17 @@ const R = await page.evaluate(async () => {
     o.cardInside = !!wrap && !!wrap.querySelector('#chipVerdictCard');
     // ⛔ 收起 ≠ 刪除:完整卡片內容還在(未來要加回來只是把它搬出去)
     o.cardLen = (document.getElementById('chipVerdictCard') || { innerHTML: '' }).innerHTML.length;
+    // 🧹 V74.5.6 使用者:「籌碼面裡面 2 個卡片很像」→ 明細卡⛔ 不可再重複頁首的表頭/結論
+    // ⚠️ 這張卡在**收起的 <details>** 裡 → `innerText` 在這個 Chromium 會回空字串
+    //    → 用它做「不可出現」的斷言會變成假綠燈。一律改剝 innerHTML 的標籤(同 cardLen)。
+    const dv = ((document.getElementById('chipVerdictCard') || { innerHTML: '' }).innerHTML)
+        .replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+    o.dupTitle = /大戶籌碼總結/.test(dv);
+    o.dupVerdict = /大戶(大力收貨|偏買|沒明顯動作|偏賣|大力出貨)/.test(dv);
+    o.dupScore = /籌碼綜合評分/.test(dv);
+    o.dupAct = /💡 操作/.test(dv);
+    o.detailHas = /法人明細/.test(dv) && dv.length > 200;   // 🚧 空過守門:它還是要有明細
+    o.leadHasAll = /大戶籌碼總結/.test(o.txt) && /💡 操作/.test(o.txt);
 
     // ⑤ 融資追繳風險:stub 一個 near → 頁首必須露(⛔ 不 stub 的話這條會依當天資料時有時無 = 空過)
     const realMc = app._marginCallState;
@@ -131,6 +142,12 @@ ok('⑦ ⛔ 頁首不給買賣價位、要指路總覽(單一劇本原則)',
     !/進場價|掛單|停損 \d|目標價 \d/.test(R.txt) && /總覽/.test(R.txt), R.txt.slice(-160));
 ok('④ 沒有資料時頁首收掉(⛔ 不殘留上一檔)', R.goneNoData === true, '');
 ok('④b 🚧 空過守門:資料回來要能再顯示(⛔ 否則「收掉」可能只是它壞了)', R.backAgain === true, '');
+ok('⑧ 🧹 明細卡⛔ 不可再重複頁首的「大戶籌碼總結」標題(同名不同義)', R.dupTitle === false, '');
+ok('⑧b ⛔ 不可重複大字結論', R.dupVerdict === false, '');
+ok('⑧c ⛔ 不可重複籌碼綜合評分', R.dupScore === false, '');
+ok('⑧d ⛔ 不可重複「💡 操作」那句(單一劇本:只有頁首那張下指令)', R.dupAct === false, '');
+ok('⑧e 🚧 空過守門:明細卡還是要有法人明細(⛔ 不是把它清空)', R.detailHas === true, '');
+ok('⑧f 🚧 空過守門:結論仍完整留在頁首(⛔ 不可兩邊都拿掉)', R.leadHasAll === true, '');
 
 console.log(fails ? `❌ ${fails} 條失敗` : '✅ CHIPLEAD_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

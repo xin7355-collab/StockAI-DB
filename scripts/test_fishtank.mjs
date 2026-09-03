@@ -199,13 +199,18 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV, PBE }) => {
   {
     const D0 = PRO._fishD;
     const mk = (sym, o) => ({ sym, nm: sym, c: 100, chg: 0, chg20: 0, amt: 50, pos252: 90, amp20: 5,
-                              att: false, st: 0, ind: '半導體', chg5: 0, sc: { plus: [], minus: [], sum: 0 }, ...o });
+                              // ⚠️ V74.5.6 `att` 是**數字** 0 無 / 1 注意股 / 2 處置中(跟 screener_miner 同一個形狀)——
+                              //    ⛔ 舊測資寫 true/false 的話「處置中」那條路根本測不到(陷阱 #40)
+                              att: 0, st: 0, ind: '半導體', chg5: 0, sc: { plus: [], minus: [], sum: 0 }, ...o });
     PRO._fishD = { ...D0, rows: [
       mk('AAAA', { chg20: 50 }),                                  // 強勢板塊裡最強 → 應該上鉤
       mk('BBBB', { chg20: 40 }),                                  // 同板塊次強 → ⛔ 同板塊只能挑 1 條
       mk('CCCC', { chg20: 30, ind: '航運' }),                      // 另一個板塊 → 第 2 條
       mk('DDDD', { chg20: 99, amt: 0.2 }),                        // 🚧 成交額 0.2 億 → 買不到,要擋掉
-      mk('EEEE', { chg20: 98, att: true, chg5: 45 }),              // ⚠️ 噴 45% 又掛注意股 → 避雷擋掉
+      mk('EEEE', { chg20: 98, att: 1, chg5: 45 }),                 // ⚠️ 噴 45% 又掛注意股 → 避雷擋掉
+      // 🚨 V74.5.6 使用者截圖:拋竿推薦了**處置中**的玉晶光。KKKK 是同型測資 ——
+      //    位階/振幅/成交額/最強板塊每一關都過、chg5 也不到 30 → ⛔ 只有「處置中」擋得住它。
+      mk('KKKK', { chg20: 97, att: 2, chg5: 5 }),
       mk('FFFF', { chg20: 80, pos252: 40 }),                       // 🧬 位階不過 → 擋掉
       mk('GGGG', { chg20: 70, amp20: 1.0 }),                       // 🧬 振幅不過 → 擋掉
       ...Array.from({ length: 6 }, (_, i) => mk('H' + i, { ind: '半導體', chg20: 5 })),
@@ -216,8 +221,11 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV, PBE }) => {
     out.cast = {
       picked: R2.picked.map(x => x.sym), tiers: R2.picked.map(x => x.tier),
       inds: R2.picked.map(x => x.ind), avoided: R2.avoided, thin: R2.thin,
-      top3: R2.top3.map(x => x.k),
+      disposed: R2.disposed, top3: R2.top3.map(x => x.k),
     };
+    // 🚨 處置中被擋掉之後要**說出來**(⛔ 不可靜默 —— 陷阱 #22)。
+    //    ⚠️ 它跟「避雷擋掉幾檔」一樣屬於**證據**(V74.4.3 那條分界線:拿掉不會害人)
+    //    → 住在「📖 這一條的細節」懸浮視窗裡,所以斷言要看 modalTxt ⛔ 不是卡片。
     // 🎣 V74.4.3 使用者:「每次點開都是鼎元,是代表它比較強嗎?」→ ⛔ 不是,所以兩條都要列出來
     PRO._cast = R2; PRO._fishPick(R2.picked[0].sym); await sleep(50);
     out.picksBar = document.getElementById('fishCard').innerText;
@@ -480,6 +488,17 @@ ok('🎣④ ⚠️ 避雷守門:噴 ≥30% 又掛官方注意股的要擋掉(另
 ok('🎣⑤ 🧬 位階/振幅不過的不上鉤(它是必要條件不是加分)',
    !R.cast.picked.includes('FFFF') && !R.cast.picked.includes('GGGG'));
 ok('🎣⑥ 挑的是「強勢板塊裡近 20 日最強」那一檔(⛔ 不是補漲:實測逐年全負)', R.cast.picked[0] === 'AAAA', JSON.stringify(R.cast.picked));
+ok('🚨🎣⑨ 處置中的股票⛔ 不可被拋竿挑出來(使用者截圖:玉晶光處置中卻被推薦)',
+   !R.cast.picked.includes('KKKK'), JSON.stringify(R.cast.picked));
+ok('🚨🎣⑨b 它要被列進 disposed(⛔ 不是靜默丟掉)', (R.cast.disposed || []).includes('KKKK'), JSON.stringify(R.cast.disposed));
+ok('🚨🎣⑨c 卡上要說出「排除幾檔處置中」+ 為什麼(分盤撮合買不到 + 中位是負的)',
+   /排除 1 檔/.test(R.modalTxt.replace(/\s+/g, ' ')) && /分盤撮合/.test(R.modalTxt) && /4\.81/.test(R.modalTxt),
+   R.modalTxt.replace(/\s+/g, ' ').slice(0, 260));
+ok('🚨🎣⑨d ⛔ 那段要寫明「這是排除不是放空訊號」', /不是放空訊號/.test(R.modalTxt));
+ok('🚨🎣⑨e 🚧 空過守門:注意股那條避雷仍然有效(⛔ 別把它一起弄壞)',
+   (R.cast.avoided || []).includes('EEEE'), JSON.stringify(R.cast.avoided));
+ok('🚨🎣⑨f ⛔ `att` 不可再用 `=== 1` 讀(那會把處置中讀成 false)',
+   !/att:\s*r\[iAtt\]\s*===\s*1/.test(src) && /att:\s*\(r\[iAtt\]\s*\|\|\s*0\)/.test(src));
 ok('🎣⑦ 沒有魚上鉤時誠實說,而且明寫⛔ 不放寬條件硬給', /今天沒有魚上鉤/.test(R.castNone) && /不放寬條件/.test(R.castNone), R.castNone.slice(0, 120));
 ok('🎣⑧ ⛔ 挑選規則不可用 🏅 加總排序(它的 IC≈0,已被自己的檢定否定)',
    !/sc\.sum/.test(seg('_castPick')) && !/sort\s*===\s*'score'/.test(seg('_castPick')));

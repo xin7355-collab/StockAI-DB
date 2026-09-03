@@ -246,7 +246,11 @@ ok('③ ⭐⛔ 結論句本身不可下具體買賣指令(買進/掛單/停損�
         app._fenPeriods = null;
         o.noFen = app._chipConsensusLine('2327', 2);
         o.src = app._chipConsensusLine.toString();
-        o.wired = /_chipConsensusLine\(sym, sc\)/.test(app.renderChipVerdict.toString());
+        // ⚠️ V74.5.6 使用者:「籌碼面 2 個卡片很像」→ 明細卡的表頭/結論整段拆掉,
+        //    「其他籌碼指標怎麼說」只留頁首 `#chipLead` 那一份。
+        //    ⭐ 這條的**用意**沒變(它要接在主結論卡上、⛔ 不可另開一張卡)→ 改釘那個用意。
+        o.wired = /_chipConsensusLine\(sym, o\.sc\)/.test(app._renderChipLead.toString())
+            && /_renderChipLead\(sym, \{/.test(app.renderChipVerdict.toString());
         return o;
     }, { rows, chips: chipsRaw || synth });
     const cl = txt(CN.clash);

@@ -469,6 +469,11 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <button class="tab-btn" id="tabBtnFish" onclick="PRO.switchTab('fish')">釣魚池</button>
     <button class="tab-btn" id="tabBtnSig" onclick="PRO.switchTab('sig')">今日訊號</button>
     <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
+    <!-- 🧹 V74.5.6 使用者:「雜訊清單移到實測總表右手邊」。
+         ⛔ 刻意**不是**分頁,而是一顆會跳走的鈕(所以帶 ↗):那份清單的數字
+         (129 個 K 棒訊號的分級、目前收起來的卡)是從散戶救星的 `_SIGNAL_EDGE` / `_TIDY`
+         **現算**的 —— 複製過來就變成第二份、而且下次重跑回測就開始說謊。 -->
+    <button class="tab-btn" id="tabBtnNoise" onclick="PRO.gotoNoise()" title="哪些訊號實測沒用、哪些已經刪掉了(會跳到散戶救星打開)">🧹 雜訊清單 ↗</button>
   </div>
 </div></div>
 
@@ -962,6 +967,13 @@ const PRO = {
     document.body.style.overflow = '';
   },
 
+  // 🧹 雜訊清單:內容住在散戶救星(現算),這裡只負責把人帶過去並自動打開
+  gotoNoise() {
+    this.buzz(25);
+    this._saveNav();
+    location.href = 'index.html?noise=1';
+  },
+
   gotoStock(code) {
     if (!code) return;
     this.buzz(25);
@@ -1358,13 +1370,22 @@ const PRO = {
     const geneAll = rows.filter(r => r.pos252 >= 75 && r.amp20 >= 3.2);
     const liquid = geneAll.filter(r => r.amt >= this.CAST_MIN_AMT);    // 🚧 買得到才算數(理由見 CAST_MIN_AMT)
     const thin = geneAll.length - liquid.length;
+    // 🚨 V74.5.6 **處置中一律排除**(使用者:「釣魚裡面有推薦玉晶光,是處置中這樣子對嘛」→ ⛔ 不對)。
+    //    ⭐ 三個理由,每一個單獨都足以排除:
+    //      ① **買不到那個價** —— 處置股是 5 或 20 分鐘**分盤撮合**,而這套回測的進場是
+    //         「尾盤 13:00~13:28 觸價買」,那個方式在分盤下根本不成立(同「漲停鎖死買不到」那一類)。
+    //      ② **實測本身就不支持** —— dispo_backtest(1,441 個進處置事件):20 日平均 +1.62pp
+    //         看起來是正的,但**中位 −4.81%**、勝率 40.4%、逐年不同向 = **賠率型**
+    //         (少數妖股大噴拉高平均,大多數繼續跌)→ ⛔ 明文記為「不能當進場訊號」。
+    //      ③ 流動性差 → 實際滑價比回測更糟。
+    //    ⚠️ 這是**排除**不是放空訊號;而且⛔ 不可靜默 —— 卡上要說出擋掉了誰(陷阱 #22)。
+    const disposed = liquid.filter(r => r.att === 2).map(r => r.sym);
+    const notDisp = liquid.filter(r => r.att !== 2);
     // ⚠️ 避雷守門:🚨 **本站另一條六關全過的實測直接跟「追強」打架,必須讓它贏** ——
     //    「前 5 日噴 ≥30% 才被掛官方注意股」實測後 20 日 **−1.81pp ・中位 −7.21% ・勝率掉回 34.5%**
     //    (前後半同向、去最好年仍 −2.90;V74.4.2 dispo_backtest)。
-    //    ⛔ 不擋掉的話,拋竿會把一檔「另一條實測明說要減碼」的股票當候選遞給使用者 = 邏輯打架。
-    //    ⚠️ 這是**排除**不是放空訊號(放空容易被軋),而且⛔ 只擋這個組合,不是所有注意股。
-    const gene = liquid.filter(r => !(r.att && r.chg5 >= 30));
-    const avoided = liquid.filter(r => r.att && r.chg5 >= 30).map(r => r.sym);
+    const gene = notDisp.filter(r => !(r.att >= 1 && r.chg5 >= 30));
+    const avoided = notDisp.filter(r => r.att >= 1 && r.chg5 >= 30).map(r => r.sym);
     // ② 板塊 20 日報酬中位數 → 前 3 強(母體 = 有官方產業別的上市股,跟回測同一個母體)
     const byInd = {};
     for (const r of rows) if (r.ind) (byInd[r.ind] = byInd[r.ind] || []).push(r.chg20);
@@ -1389,7 +1410,7 @@ const PRO = {
         if (picked.length >= this.CAST_MAX) break;
       }
     }
-    return { picked, top3, geneN: gene.length, geneAllN: geneAll.length, thin, avoided, indN: inds.length };
+    return { picked, top3, geneN: gene.length, geneAllN: geneAll.length, thin, avoided, disposed, indN: inds.length };
   },
 
   async castRod() {
@@ -1455,6 +1476,11 @@ const PRO = {
           : `②③ ⚠️ <b>它沒有過板塊那兩關</b>(${p.ind ? `「${p.ind}」不在前 3 強` : '上櫃股沒有官方產業別,判斷不了'})——
              這是 🧬 過關、近 20 日又最強的遞補,<b>證據比上面那種弱一級</b>。`}
       </div>
+      ${(R.disposed || []).length ? `<div class="note" style="margin-top:6px">🚨 這次<b>排除 ${R.disposed.length} 檔「官方處置中」</b>(${R.disposed.slice(0, 4).map(c => this._nmTxt(c)).join('、')}${R.disposed.length > 4 ? '…' : ''}):
+        處置股是 <b>5 或 20 分鐘分盤撮合</b>,而這套回測的進場方式是「尾盤 13:00~13:28 觸價買」——
+        <b>那個價你買不到</b>。而且本站實測「進處置」之後 20 日<b>中位 −4.81%</b>、勝率 40.4%、逐年不同向
+        (平均是正的但那是少數妖股大噴拉上去的)→ ⛔ 不能當進場訊號。
+        <span style="color:var(--dim2)">來源:dispo_backtest.mjs ・ 這是排除,⛔ 不是放空訊號</span></div>` : ''}
       ${(R.avoided || []).length ? `<div class="note" style="margin-top:6px">⚠️ 這次<b>擋掉 ${R.avoided.length} 檔</b>(${R.avoided.slice(0, 4).map(c => this._nmTxt(c)).join('、')}${R.avoided.length > 4 ? '…' : ''}):
         它們 🧬 有過關,但<b>前 5 日噴 ≥30% 又被掛官方注意股</b> —— 本站實測那個組合後 20 日
         <b>−1.81pp ・中位 −7.21%</b>(六關全過的避雷訊號),⛔ 不能一邊追強一邊無視它。</div>` : ''}
@@ -1612,7 +1638,10 @@ const PRO = {
       if (![c, chg, amt, pos].every(Number.isFinite)) continue;    // null 一律不通過(⛔ 不補 0)
       if (!S[sym] && Number.isFinite(r[iB20]) && r[iB20] > 15) S[sym] = 2;
       rows.push({ sym, nm: this.nameOf(sym) || sym, c, chg, chg20: Number.isFinite(chg20) ? chg20 : 0,
-                  amt, pos252: pos, amp20: Number.isFinite(amp) ? amp : 0, att: r[iAtt] === 1, st: S[sym] || 0,
+                  // 🚨 V74.5.6 `att` 是 **0 無 / 1 注意股 / 2 處置中**(screener_miner CI['att']),
+                  //    舊版寫 `=== 1` → **處置中(2)被讀成 false** → 避雷守門對處置股完全失效,
+                  //    拋竿就把「處置中」的玉晶光挑出來遞給使用者(使用者截圖抓到)。
+                  amt, pos252: pos, amp20: Number.isFinite(amp) ? amp : 0, att: (r[iAtt] || 0), st: S[sym] || 0,
                   ind: (scr.ind || {})[sym] || '',                  // 🎣 拋竿的板塊那一層要用(⚠️ 只涵蓋上市)
                   chg5: Number.isFinite(r[i5]) ? r[i5] : 0,          // ⚠️ 拋竿的避雷守門要用(噴 ≥30% 又被掛注意股)
                   sc: this._fishScore(r, C, E) });
@@ -1778,7 +1807,7 @@ const PRO = {
     return `<div style="overflow-x:auto"><table class="startbl">
       <tr><th style="text-align:left">股票</th><th>現價</th><th>今日</th><th>近20日</th><th>位階</th><th>成交額(億)</th><th>狀態</th><th title="實測體質:符合的實測條件 pp 加總,只拿來排序">🏅</th></tr>
       ${rows.map(r => `<tr>
-        <td class="l">${this._nmc(r.sym, `PRO._fishPick('${r.sym}')`)}${r.att ? ' <span class="sigtag warn">注意股</span>' : ''}</td>
+        <td class="l">${this._nmc(r.sym, `PRO._fishPick('${r.sym}')`)}${r.att === 2 ? ' <span class="sigtag warn">🚨 處置中</span>' : r.att === 1 ? ' <span class="sigtag warn">注意股</span>' : ''}</td>
         <td class="mono">${r.c}</td>
         <td class="mono ${this.cls(r.chg)}">${this.fmt(r.chg, 2, true)}%</td>
         <td class="mono ${this.cls(r.chg20)}">${this.fmt(r.chg20, 1, true)}%</td>
@@ -2120,7 +2149,7 @@ const PRO = {
     document.getElementById('fishCard').innerHTML = `<div class="fishcard">
       ${this._castPicksBarHtml(sym)}
       <div class="big fishbig">🎣 釣到:${this._nmc(sym)}
-        ${r.st ? `<span class="sigtag" title="${E[r.st].d}">${E[r.st].e} ${E[r.st].t}</span>` : ''}${r.att ? ' <span class="sigtag warn">⚠️ 官方注意股</span>' : ''}${acts}</div>
+        ${r.st ? `<span class="sigtag" title="${E[r.st].d}">${E[r.st].e} ${E[r.st].t}</span>` : ''}${r.att === 2 ? ' <span class="sigtag warn">🚨 官方處置中(分盤撮合)</span>' : r.att === 1 ? ' <span class="sigtag warn">⚠️ 官方注意股</span>' : ''}${acts}</div>
       ${this._keyWarnHtml()}
       <div class="kv">
         <div><b>現價</b><span class="mono">${r.c}</span></div>
@@ -2904,7 +2933,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.5.5',
+  VER: 'V74.5.6',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

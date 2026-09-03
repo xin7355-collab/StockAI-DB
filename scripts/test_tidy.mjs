@@ -77,6 +77,18 @@ const R = await page.evaluate(async () => {
                                    ['bullbear', null, 'bullBearCategoryCards']]) {
         try { app.switchSubTab(tab); } catch (_) { }
         if (pane) { try { app.switchOvTab(pane); } catch (_) { } }
+        // ⚠️ V74.5.3 起總覽那幾個 pane 住在**收起的 `#ovMoreWrap`** 裡 → 收起狀態量不到 display
+        //    → 這不是「提示列不見了」,是斷言的取樣位置過期(⛔ 別因此把守門放寬)。
+        try { const w = document.getElementById('ovMoreWrap'); if (w) w.open = true; } catch (_) { }
+        // 🚨 V74.1.8 的設計:**卡自己藏起來時提示列也要跟著藏**(⛔ 不幫看不到的卡道歉)。
+        //    沙箱沒有 ETF 跟車資料 → 那張卡永遠是 hidden → 提示列當然也看不到。
+        //    ⭐ 這條要驗的是「有卡的時候原地有沒有那行說明」→ 先把卡打開再量
+        //    (⛔ 不可因此把守門放寬;「卡藏起來提示列要跟著藏」由 ⑥ 另外驗)。
+        //    ⚠️ 守門看兩件事:class 有沒有 hidden **以及內容長不長**(<40 字也算沒東西)
+        //       → 兩個都要餵,只拿掉 class 仍然量不到(實測)。
+        try { const c = document.getElementById(id);
+              if (c) { c.classList.remove('hidden');
+                       if (c.innerHTML.trim().length < 40) c.innerHTML = '<div>測試用內容,長度要超過守門的 40 字才算這張卡有東西可看。</div>'; } } catch (_) { }
         await new Promise(r => setTimeout(r, 1100));
         const row = document.querySelector(`.tidyrow[data-tidyfor="${id}"]`);
         o.cards[id] = {
