@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.5.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.5.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -689,7 +689,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.5.2 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.5.3 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1521,6 +1521,20 @@
             <div id="subContentStrategy" class="flex flex-col gap-2 mt-3 px-2 md:px-4 pb-10">
                 <!-- 🚨 V70.3.1 官方處置/注意明細(原「處置」分頁已移除;只有官方名單有這檔才顯,零推估) -->
                 <div id="attentionDetailCard" class="hidden"></div>
+                <!-- 🧭 V74.5.3 行動指令中心(使用者:「總覽要變成高度自動化的行動指令中心」)——
+                     A 狀態+行動徽章 / B 預警 / C 行動計畫 / D 判讀,四個 Block 由 `_renderOvCommand` 動態渲染。
+                     ⛔ 決策一律走 `_ovDecide`(實測白名單),⛔ 不在渲染層另外判斷。 -->
+                <div id="ovCommandCenter" class="w-full flex flex-col gap-2"></div>
+                <!-- 📂 原本的「現在怎麼做 / 加碼 / 出場」三個頁籤與所有明細卡 → 收進這裡(預設收起)。
+                     ⛔ 刻意「收起」不是「刪除」:那些卡是**操作面**(進場劇本、四關卡、防守尺),
+                        搬去 K線/籌碼頁只是把資訊過載換一頁;而且刪掉會連帶弄壞十幾支既有測試與功能。
+                     ⚠️ 卡片照常渲染(JS 不受影響)→ `_ovDecide` 讀得到 `_ovTrend`/`_exitMode` 等結論。 -->
+                <div id="ovMoreBar" class="w-full">
+                    <button onclick="app._toggleOvMore(); app.vibrate(15);" id="ovMoreBtn"
+                        class="w-full text-left text-[11px] font-bold text-gray-400 bg-[#161b22] border border-[#30363d] rounded-lg px-3 py-2 hover:text-gray-200">
+                        📂 完整明細(原本的 現在怎麼做 / 加碼 / 出場)</button>
+                </div>
+                <div id="ovMoreWrap" class="hidden w-full flex flex-col gap-2"></div>
                 <!-- 🗂️ V65.7 總覽四頁籤(使用者規格):現在怎麼做/庫存/進場/出場;預設落在「現在怎麼做」(答案已自動依身分切換),
                      緊急時對應頁籤亮紅點;持有時「進場」自動改名「加碼」(進場引擎當加碼評估用) -->
                 <div id="ovTabBar" class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5 sticky top-0 z-30 bg-[#0d1117]/95 backdrop-blur pt-1">
@@ -7329,6 +7343,10 @@ ${list}
             if (btn) btn.classList.toggle('active', t.toLowerCase() === tab);
         });
         try { this._renderPageLead?.(tab); } catch (_) {}   // 🧭 V72.6.0 每頁一句話(各頁渲染完會再補一次)
+        // 🧭 V74.5.3 保險呼叫點:切回總覽時重畫一次行動指令中心。
+        //   ⚠️ 主呼叫點在 refreshStrategy(`_renderTrendCommand` 之後),但那支若中途丟例外就跑不到
+        //      → 這裡補一次(⛔ 不可只接一處,那會變成「有時有、有時沒有」)。
+        if (tab === 'strategy') { try { this._initOvFold(); this._renderOvCommand(this.activeData); } catch (_) {} }
         if (tab === 'chart' && this.chartInstance) setTimeout(() => this.chartInstance.resize(), 100);
         // 🧹 V71.8.8 切到 K線/籌碼時,那兩頁的卡才剛渲染 → 稍後掃一次空殼
         if (tab === 'chart' || tab === 'chip') setTimeout(() => { try { this._sweepEmptyShells?.(); } catch (_) {} }, 800);
@@ -7459,8 +7477,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.5.2',
+    _APP_VERSION: 'V74.5.3',
     _CHANGELOG: [
+        { v: 'V74.5.3', dt: '2026-09-03', d: ['🧭 <b>總覽頁改成「行動指令中心」</b>:一進來就四段 —— <b>①行動徽章</b>(🚨強烈建議出場 / 📉建議減碼 / 🛡️持股續抱 / 📈符合加碼 / ➖觀望)+ 你的成本報酬率 → <b>②要注意的事</b>(只列負面與重大事件,沒有就寫「✅ 目前無重大風險訊號」)→ <b>③現在該做什麼</b>(直接給價位)→ <b>④系統怎麼判的</b>。','🔒 <b>決策只採用「實測有效」的規則</b>:出場價來自 28 種出場全測(唐奇安 / ATR 追蹤 / 現行 5 日線,每條都標實測賺多少);加碼要同時符合 🧬 高位階+高波動<b>而且</b>有期望值為正的訊號。<b>實測沒用的(低檔布局、補漲、布林壓縮…)即使今天觸發也不會出現</b>。','❓ 找不到實測有效的訊號時,直接寫「目前無明確實測有效之進出場訊號,請依原定紀律操作或觀望」—— ⛔ 不硬給點位。','📂 原本的「現在怎麼做 / 加碼 / 出場」三個頁籤與所有明細卡<b>收進一個摺疊</b>(⛔ 沒有刪除,點一下就看得到);技術面請看 <b>K線</b> 分頁、籌碼看 <b>籌碼</b> 分頁。'] },
         { v: 'V74.5.2', dt: '2026-09-02', d: ['📅 <b>回測表加上「每年實際賺多少」</b>(產業作戰室 → 實測總表 → 回測數字 → 出場規則):四種出場法逐年攤開,<b>這是真的跑出來的每月損益加總</b>,不是把總報酬平均攤開。','🚨 最該看的是 <b>2022 那一欄(空頭)</b>:四種出場<b>全部都是賠的</b>,差別只在賠多少 —— 這套打法<b>不會</b>在空頭幫你賺錢,它的價值是「多頭多賺、空頭少賠」。','⚠️ 同時標明 2022 只有 4 個月、2026 只有 8 個月(不是完整年度),而且複利之下後面幾年本金已經滾大 → 金額天生比前面大。'] },
         { v: 'V74.5.1', dt: '2026-09-02', d: ['🧹 <b>新增「雜訊清單」</b>(⚙️ 設定中心右上角):把「<b>實測過、但沒有用</b>」的東西集中列出來 —— 哪些已經刪掉了、哪些刻意留著但標註起來、為什麼留著。','📊 裡面的數字是<b>現算的</b>:129 個 K 棒訊號裡有幾個站得住腳、幾個跟隨機沒差、幾個「常常對但其實不賺」,還有目前被收起來的卡片清單。','⛔ 留著不是捨不得:<b>刪掉會讓人以為「沒有這回事」</b>,跑去別的地方學了再回來問。標註起來,以後要刪也清楚。'] },
         { v: 'V74.5.0', dt: '2026-09-02', d: ['🔬 <b>「回測計算機」併進「實測總表」</b>(產業作戰室):本來兩頁很像,現在合成一頁、第一欄就是「📊 回測數字」。','📖 <b>用語整個改成白話</b>:每張表上面直接寫清楚 —— 本金 100 萬、<b>賺的錢滾回去繼續買(複利)</b>、<b>成本 0.44% 已經扣掉了(不是毛利)</b>、「中途最多賠」就是專業說法的「最大回撤」。','📈 每一列多了 <b>「等於幾 %」與「年化」</b>,而且每一組都標<b>那段期間有沒有經過空頭</b>(49 個月那幾組含 2022 年大跌、13/36 個月那幾組沒有)。','📌 實測總表不再顯示程式檔名,改成「實測紀錄 ・ 哪一版量的」。'] },
@@ -19468,7 +19487,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const atr = this._atrTR14(data, proxy ? n : eIdx);
             let don = Infinity; for (let i = Math.max(0, n - 20); i < n; i++) { const l = L(i); if (l > 0) don = Math.min(don, l); }
             const r2 = v => (v == null || !isFinite(v) || v <= 0) ? null : Number(v.toFixed(2));
-            const ma5 = (this.indicators && this.indicators.ma5 && this.indicators.ma5[n] > 0) ? this.indicators.ma5[n] : null;
+            let ma5 = (this.indicators && this.indicators.ma5 && this.indicators.ma5[n] > 0) ? this.indicators.ma5[n] : null;
+            if (ma5 == null && n >= 4) { let sm = 0; for (let i = n - 4; i <= n; i++) sm += C(i); ma5 = sm / 5; }
             return {
                 pC, proxy, cost, shares, buyDate,
                 days: proxy ? 20 : (n - eIdx + 1),
@@ -28888,6 +28908,246 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         return true;
     },
 
+    // ═══════ 🧭 V74.5.3 總覽「行動指令中心」—— A 狀態 / B 預警 / C 行動計畫 / D 判讀 ═══════
+    // 使用者:「總覽要變成高度自動化的行動指令中心;決策標準全面改用『實測總表』當唯一依據,
+    //         白名單才准生成建議,黑名單即使觸發也要靜默過濾」。
+    //
+    // ⛔⛔ 三個**先講清楚的技術現實**(⛔ 照字面實作會做出錯的東西):
+    //   ① 「實測總表」那一頁在 **pro.html**,而 pro.html 與 index.html 是**兩個獨立檔案、不能互相 import**
+    //      (`test_prohtml` ㊳ 連版本號都得靠比對檔案才擋得住)。
+    //      ⭐ 但**同一批實測結果 index.html 本來就有,而且更細(訊號層級)**:
+    //        `_SIGNAL_EDGE`(129 個 K 棒訊號的期望值/分級)・`_EXIT_EDGE`(28 種出場)・
+    //        `_GZ`(位階×振幅八格)・`_REGIME_EDGE`・`_SCR_EDGE`・`_PLAYBOOK_EDGE`。
+    //      → 白名單就讀這幾份。⛔ 不去跨檔案抓 pro.html 的表(抓不到,而且會變成第二份真相)。
+    //   ② 實測總表的「出場規則 28 種」是**做法**不是**事件** —— 它永遠有一個價位(跌破就走),
+    //      所以對接方式是 `_exitLines()` 算出今天的價位,⛔ 不是「有沒有觸發某個訊號」。
+    //   ③ 實測總表的「進場時機」那一組量的是**尾盤買 vs 隔天開盤買**(時機比較),
+    //      ⛔ **不能**拿來當「這一檔可不可以加碼」。加碼的白名單是 🧬(位階≥75 且振幅≥3.2%,
+    //      唯一六關全過的個股條件,36 個月 +289.6 萬 vs 不挑 +126.1 萬)+ **期望值為正**的 K 棒訊號。
+    _EDGE_RULES: {
+        // ✅ 出場白名單(⛔ 數字不在這裡寫死,渲染時去讀 `_EXIT_EDGE` —— 重跑回測才不會對不上)
+        exit: [
+            { k: 'don',  lbl: '跌破近 20 日最低(唐奇安)' },
+            { k: 'atr2', lbl: '跌破 ATR 追蹤停利' },
+            { k: 'ma5',  lbl: '跌破 5 日線', cur: 1 },
+        ],
+        // ✅ 進場/加碼白名單:🧬 高位階 + 高波動
+        gene: { pos: 75, amp: 3.2 },
+        // ⛔ 黑名單:實測沒用 / 方向跟江湖說法相反的 —— 即使今天觸發也**靜默過濾**,不進行動計畫
+        blocked: [/低檔布局/, /撿便宜/, /補漲/, /布林(壓縮|收斂)/, /夾娃娃/, /連量/, /地緣分點/,
+                  /推估成本/, /投量比/, /跌破月線就(停|賣|出)/, /隔日沖勝率/],
+    },
+    _ovBlocked(txt) { try { return this._EDGE_RULES.blocked.some(re => re.test(String(txt || ''))); } catch (_) { return false; } },
+    _exitEdgeOf(k) {
+        try {
+            const E = this._EXIT_EDGE;
+            if (k === 'ma5') return E.base;
+            return E.rows.find(r => r.k === k) || null;
+        } catch (_) { return null; }
+    },
+    // 🧠 決策核心(switch/case 框架 —— 之後要接自己的條件就加在對應的 case 裡)
+    //   回 { badge, cls, why, held, cost, shares, pnlPct, pnlAmt, alerts[], plan[], summary, unknown }
+    _ovDecide(data, sym) {
+        try {
+            if (!Array.isArray(data) || data.length < 30) return null;
+            const R = this._EDGE_RULES, n = data.length - 1;
+            const pC = +((data[n].close ?? data[n].c) || 0);
+            if (!(pC > 0)) return null;
+            // ── 庫存 ──
+            let cost = null, shares = 0;
+            try {
+                const p = (this._getInventory() || []).find(i => String(i.symbol) === String(sym) && +i.cost > 0);
+                if (p) { cost = +p.cost; shares = +p.shares || 0; }
+            } catch (_) {}
+            const held = !!(cost > 0);
+            const pnlPct = held ? (pC - cost) / cost * 100 : null;
+            const pnlAmt = (held && shares > 0) ? this._netPL(cost, pC, shares * 1000) : null;
+            // ── 出場線(⛔ 只讀 `_exitLines` 算好的那一份,不現場另算一套)──
+            const ex = this._exitLines(data, sym) || {};
+            const lines = R.exit.map(r => ({ ...r, v: ex[r.k], edge: this._exitEdgeOf(r.k) })).filter(x => x.v > 0);
+            const broken = lines.filter(x => pC < x.v);
+            // ── 主結論(⛔ 讀 `_renderTrendCommand` already 算好的,不重算)──
+            const bear = this._bearGate(sym);
+            const trend = (this._ovTrend && this._ovTrend.sym === String(sym)) ? this._ovTrend.trend : null;
+            const inExit = this._inExitMode(sym);
+            const bigTxt = (this._exitMode && this._exitMode.sym === String(sym)) ? (this._exitMode.big || '') : '';
+            // ── 🧬(白名單裡唯一的加碼條件)──
+            let gene = null;
+            try {
+                const row = (this._scrData && this._scrData.rows) ? this._scrData.rows[String(sym)] : null;
+                if (row) {
+                    const p = this._scrV(row, 'pos252'), a = this._scrV(row, 'amp20');
+                    if (p != null && a != null) gene = { pos: p, amp: a, ok: p >= R.gene.pos && a >= R.gene.amp };
+                }
+            } catch (_) {}
+            // ── 進場體檢(30 秒快取,⛔ 不重跑 40 個偵測器)──
+            let ck = null;
+            try {
+                const now = Date.now();
+                if (!(this._ecCache && this._ecCache.sym === String(sym) && (now - this._ecCache.at) < 30000))
+                    this._ecCache = { sym: String(sym), at: now, r: this._entryCheckup(data) };
+                ck = this._ecCache.r;
+            } catch (_) {}
+            // 期望值為正、而且不在黑名單的看多訊號(⛔ 「常對但不賺」不算數)
+            const provenBull = (((ck && ck.proven) || [])
+                .filter(x => x && x.tone === 'bull' && x._e && x._e.exp > 0 && !this._ovBlocked(x.title)));
+            // ── ⚠️ Block B:預警(只收負面 / 重大事件)──
+            const alerts = [];
+            broken.forEach(x => alerts.push({ ic: '🚨', t: `已經${x.lbl}(${x.v.toFixed(2)})`, sub: x.cur ? 'App 的自動出場提醒用的就是這條' : '這是實測比 5 日線更好的出場線' }));
+            (((ck && ck.bullets) || []).filter(b => b && b.good === false && !this._ovBlocked(b.txt)))
+                .slice(0, 4).forEach(b => alerts.push({ ic: '⚠️', t: String(b.txt) }));
+            if (bear) alerts.push({ ic: '⚠️', t: '中期趨勢是空頭', sub: '反彈是給你出場用的,⛔ 不是進場理由' });
+            try {   // 官方注意/處置(⛔ 事實,不是推估 —— 讀啟動時載入的全域名單)
+                const a = (this.attentionStatus || {})[String(sym).trim()];
+                const st = a && String(a.status || '');
+                if (st && st.startsWith('🚨')) alerts.push({ ic: '🚨', t: `官方處置股(${a.interval || '?'} 分盤撮合)`, sub: '流動性會變差 → 部位放小,別用市價單' });
+                else if (st && st.includes('注意')) alerts.push({ ic: '⚠️', t: '官方注意股', sub: '前 5 日已噴 ≥30% 又被掛注意 → 實測後 20 日中位 −7.2%' });
+            } catch (_) {}
+            try {   // 📅 法說會/重大事件(⛔ 只讀既有的財經行事曆快取,不另外抓)
+                const evs = (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || this._upcomingMacroEvents || [];
+                const nm = String(this.getStockName(sym) || '').replace(/-KY|\*|　/g, '').trim();
+                if (nm && Array.isArray(evs)) {
+                    const hit = evs.find(e => String(e.title || e.event || '').includes(nm));
+                    if (hit) alerts.push({ ic: '📅', t: `近期有事件:${String(hit.title || hit.event).slice(0, 24)}`, sub: '事件前後波動會放大,停損容易被掃到' });
+                }
+            } catch (_) {}
+            // ── 🎯 Block A:行動徽章(switch/case 框架:要加自己的條件就插在對應 case)──
+            let badge, cls, why;
+            const state = held ? (broken.length ? 'exit' : (inExit || bear) ? 'reduce' : 'hold')
+                               : ((gene && gene.ok && provenBull.length && !bear) ? 'add' : 'wait');
+            switch (state) {
+                case 'exit':
+                    badge = '🚨 強烈建議出場'; cls = 'border-red-500 text-red-200 bg-red-900/25';
+                    why = `已經${broken[0].lbl}(${broken[0].v.toFixed(2)})—— 這是實測有效的出場規則,<b>紀律就是照做</b>。`;
+                    break;
+                case 'reduce':
+                    badge = '📉 建議減碼'; cls = 'border-orange-500 text-orange-200 bg-orange-900/25';
+                    why = bigTxt ? `主結論:<b>${String(bigTxt).replace(/<[^>]+>/g, '')}</b> —— 反彈到壓力先出一部分,別等破線才全砍。`
+                                 : '中期轉弱 —— 反彈到壓力先出一部分,別等破線才全砍。';
+                    break;
+                case 'hold':
+                    badge = '🛡️ 持股續抱'; cls = 'border-cyan-500 text-cyan-200 bg-cyan-900/20';
+                    why = lines.length ? `還沒跌破任何一條實測有效的出場線 —— <b>守住 ${lines[0].v.toFixed(2)}</b>,沒破就抱著。` : '還沒觸發出場條件。';
+                    break;
+                case 'add':
+                    badge = held ? '📈 符合加碼' : '📈 符合進場'; cls = 'border-red-500 text-red-200 bg-red-900/25';
+                    why = `同時符合 <b>🧬 高位階+高波動</b>(位階 ${gene.pos.toFixed(0)}、振幅 ${gene.amp.toFixed(1)}%)`
+                        + `與 <b>${provenBull.length}</b> 個期望值為正的訊號 —— 這是實測唯一站得住腳的進場條件組合。`;
+                    break;
+                default:
+                    badge = '➖ 觀望'; cls = 'border-gray-600 text-gray-300 bg-[#161b22]';
+                    why = held ? '沒有觸發出場,也沒有加碼條件 —— 按原定紀律抱著就好。'
+                               : (gene && !gene.ok) ? `不符合 🧬(位階 ${gene.pos.toFixed(0)}、振幅 ${gene.amp.toFixed(1)}%,要 ≥${R.gene.pos} 且 ≥${R.gene.amp}%)—— 實測「不挑 🧬」整套會少賺一半以上。`
+                               : '目前沒有實測有效的進場條件。';
+            }
+            // ── 📍 Block C:行動計畫(只放白名單生成的具體點位)──
+            const plan = [];
+            if (held) {
+                // ⚠️ 一定要含「現行 5 日線」那條 —— App 的自動出場提醒用的就是它,
+                //   ⛔ 只列實測更好的兩條會變成「推播叫你走、總覽沒提」= 邏輯打架。
+                const _cur = lines.find(x => x.cur);
+                const _show = lines.filter(x => !x.cur).slice(0, 2).concat(_cur ? [_cur] : []);
+                _show.forEach(x => plan.push({
+                    t: `${x.lbl.replace('跌破', '跌破 ')} <b class="font-mono">${x.v.toFixed(2)}</b> → 全部出場`,
+                    sub: x.cur
+                        ? `⚙️ 這是 App <b>現在的自動出場提醒</b>用的那條(實測 49 個月賺 ${this._EXIT_EDGE.base.p.toFixed(0)} 萬 —— 三條裡最少的,因為它砍太早)`
+                        : (x.edge ? `📊 同一套打法<b>只換這條出場</b>,49 個月賺 ${x.edge.p.toFixed(0)} 萬(現行 5 日線 ${this._EXIT_EDGE.base.p.toFixed(0)} 萬)` : ''),
+                    money: (shares > 0) ? this._netPL(cost, x.v, shares * 1000) : null,
+                }));
+                try {   // 反彈到哪裡先出一半(⛔ 只讀 `_upsideRoom` 統一算好的那一份)
+                    const u = this._upsideStash;
+                    if (u && u.list && u.list.length && Math.abs((u.pC || pC) - pC) < 0.01) {
+                        const t0 = u.list[0];
+                        if (t0 && t0.v > pC) plan.push({
+                            t: `反彈到 <b class="font-mono">${t0.v.toFixed(2)}</b>(${t0.n || '上方壓力'})→ 先出一半`,
+                            sub: '⛔ 不是目標價,是「壓力在這裡」的事實',
+                            money: (shares > 0) ? this._netPL(cost, t0.v, Math.max(1, Math.floor(shares / 2)) * 1000) : null,
+                        });
+                    }
+                } catch (_) {}
+            } else if (state === 'add') {
+                const stop = Math.min(...data.slice(-6, -1).map(b => +((b.low ?? b.l) || 9e9)).filter(v => v < 9e9));
+                plan.push({ t: `<b>訊號日尾盤(13:00~13:28)</b>進場 —— ⛔ 不是隔天開盤買`, sub: '實測:尾盤買 +136 萬、隔天開盤買只剩 +82 萬(還輸 0050)' });
+                if (isFinite(stop) && stop > 0) plan.push({
+                    t: `停損放 <b class="font-mono">${Math.max(stop, pC * 0.95).toFixed(2)}</b>(前低與 −5% 取較近的)`,
+                    sub: '這是回測用的同一條停損,⛔ 別自己放寬',
+                });
+            }
+            const unknown = plan.length === 0;
+            // ── 🧠 Block D:判讀(轉述既有結論,⛔ 不產生第二份真相)──
+            const parts = [];
+            if (trend) parts.push(`中期趨勢<b>${trend === 'bull' ? '多頭' : trend === 'bear' ? '空頭' : '盤整'}</b>`);
+            if (ck && ck.verdict) parts.push(`進場體檢 <b>${ck.verdict}</b>(${ck.score} 分)`);
+            if (gene) parts.push(gene.ok ? '符合 🧬 高位階+高波動' : '不符合 🧬');
+            const summary = parts.join(' ・ ');
+            return { badge, cls, why, held, cost, shares, pnlPct, pnlAmt, pC, alerts, plan, summary, unknown, state, lines, gene };
+        } catch (_) { return null; }
+    },
+    _renderOvCommand(data) {
+        const el = document.getElementById('ovCommandCenter');
+        if (!el) return;
+        const sym = String(this.currentSymbolId || '');
+        // 🏛️ 指數沒有「買幾張/停損」可言(V71.8.2 的決定)→ 整區不顯示
+        if (!sym || (this._isIndexSym && this._isIndexSym())) { el.innerHTML = ''; el.classList.add('hidden'); return; }
+        const d = this._ovDecide(data, sym);
+        if (!d) { el.innerHTML = ''; el.classList.add('hidden'); return; }
+        const nf = v => Math.abs(Math.round(v)).toLocaleString();
+        const money = v => v == null ? '' : `<span class="${v >= 0 ? 'text-red-300' : 'text-green-300'}">${v >= 0 ? '+' : '−'}${nf(v)} 元</span>`;
+        // ── A 狀態 + 行動徽章 ──
+        const inv = d.held
+            ? `<div class="grid grid-cols-3 gap-1.5 mt-2">
+                 <div class="bg-[#0d1117] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-500">你的成本</div><div class="text-sm font-black font-mono text-gray-100">${d.cost.toFixed(2)}</div></div>
+                 <div class="bg-[#0d1117] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-500">報酬率</div><div class="text-sm font-black font-mono ${d.pnlPct >= 0 ? 'text-red-400' : 'text-green-400'}">${d.pnlPct >= 0 ? '+' : ''}${d.pnlPct.toFixed(2)}%</div></div>
+                 <div class="bg-[#0d1117] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-500">損益(已扣費)</div><div class="text-sm font-black font-mono ${(d.pnlAmt ?? 0) >= 0 ? 'text-red-400' : 'text-green-400'}">${d.pnlAmt == null ? '—' : (d.pnlAmt >= 0 ? '+' : '−') + nf(d.pnlAmt)}</div></div>
+               </div>`
+            : `<div class="text-[10px] text-gray-500 mt-1.5">你目前<b class="text-gray-400">空手</b>(填了庫存之後,這裡會直接幫你算報酬率與可出場的損益金額)</div>`;
+        const A = `<div class="border-l-4 ${d.cls} border rounded-lg p-3">
+            <div class="text-[15px] font-black leading-tight">${d.badge}</div>
+            <div class="text-[11px] text-gray-200 leading-relaxed mt-1">${d.why}</div>${inv}</div>`;
+        // ── B 預警 ──
+        const B = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
+            <div class="text-[11px] font-black text-gray-200 mb-1">⚠️ 要注意的事</div>`
+            + (d.alerts.length
+                ? `<ul class="space-y-1">${d.alerts.slice(0, 6).map(a => `<li class="text-[11px] leading-snug ${a.ic === '🚨' ? 'text-red-200' : 'text-yellow-200'}">${a.ic} ${a.t}${a.sub ? `<span class="block text-[9px] text-gray-500 ml-4">${a.sub}</span>` : ''}</li>`).join('')}</ul>`
+                : `<div class="text-[11px] text-gray-300">✅ 目前無重大風險訊號</div>`)
+            + `</div>`;
+        // ── C 行動計畫 ──
+        const C = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
+            <div class="text-[11px] font-black text-gray-200 mb-1">📍 現在該做什麼</div>`
+            + (d.unknown
+                ? `<div class="text-[11px] text-gray-300 leading-relaxed">目前<b>無明確實測有效之進出場訊號</b>,請依原定紀律操作或觀望。
+                     <span class="block text-[9px] text-gray-500 mt-1">⛔ 這裡刻意不給點位 —— 沒被實測驗證過的進出場價位,給了就是誤導。</span></div>`
+                : `<ul class="space-y-1.5">${d.plan.map(p => `<li class="text-[11px] text-gray-100 leading-snug">📍 ${p.t}
+                     ${p.money != null ? `<span class="block text-[10px] ml-4">賣在這裡 ${money(p.money)}</span>` : ''}
+                     ${p.sub ? `<span class="block text-[9px] text-gray-500 ml-4">${p.sub}</span>` : ''}</li>`).join('')}</ul>`)
+            + `<div class="text-[9px] text-gray-600 mt-1.5 leading-snug">🔒 只採用<b>實測有效</b>的規則;實測沒用的(低檔布局、補漲、布林壓縮…)即使今天觸發也<b>不會</b>出現在這裡。</div></div>`;
+        // ── D 判讀 ──
+        const D = d.summary ? `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
+            <div class="text-[11px] font-black text-gray-200 mb-1">🧠 系統怎麼判的</div>
+            <div class="text-[11px] text-gray-300 leading-relaxed">${d.summary}</div>
+            <div class="text-[9px] text-gray-600 mt-1">詳細數字在「📂 完整明細」;技術面看 <b>K線</b> 分頁、籌碼看 <b>籌碼</b> 分頁。</div></div>` : '';
+        el.innerHTML = A + B + C + D;
+        el.classList.remove('hidden');
+    },
+    // 📂 把原本的三個頁籤與明細卡收進摺疊容器(⛔ 移動 DOM 不是刪除 —— 卡照常渲染,函式與測試不受影響)
+    _initOvFold() {
+        try {
+            const wrap = document.getElementById('ovMoreWrap');
+            if (!wrap || wrap.dataset.folded === '1') return;
+            const bar = document.getElementById('ovTabBar');
+            const now = document.querySelector('[data-ovpane="now"]');
+            const box = document.getElementById('strategyMainBox');
+            [bar, now, box].forEach(el => { if (el) wrap.appendChild(el); });
+            wrap.dataset.folded = '1';
+        } catch (_) {}
+    },
+    _toggleOvMore() {
+        const w = document.getElementById('ovMoreWrap'), b = document.getElementById('ovMoreBtn');
+        if (!w) return;
+        const open = w.classList.toggle('hidden') === false;
+        if (b) b.textContent = open ? '📂 收起完整明細' : '📂 完整明細(原本的 現在怎麼做 / 加碼 / 出場)';
+    },
+
     _renderTrendCommand(data, ind, last) {
         const box = document.getElementById('trendCommandCard');
         if (!box) return;
@@ -31446,6 +31706,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _chuRenderAll(data, ind, last) {
         this._renderChuFourGates(data, ind, last);
         this._renderTrendCommand(data, ind, last);      // 📈 V58.1 趨勢照表操課主卡(總覽置頂)
+        // 🧭 V74.5.3 行動指令中心 —— ⚠️ 必須排在 `_renderTrendCommand` **之後**
+        //   (它要讀那支寫好的 `_ovTrend` / `_exitMode`,⛔ 排前面會拿到上一檔的結論)
+        try { this._initOvFold(); this._renderOvCommand(data); } catch (_) {}
         try { this._renderDailyRecap(data); } catch (_) {}   // 📖 V69.8.3 今日盤勢解讀(盤後雙視角敘事)
         this._renderChuPositionPlan(data, ind, last);   // V14.11 分批進場計畫器
         this._renderChuExitSop(data, ind, last);
