@@ -112,7 +112,17 @@ const STOP = process.env.STOP || 'lo5';
 const SIZING = process.env.SIZING || 'equal';
 const RISK_PCT = +(process.env.RISK_PCT || 1);
 const POS_CAP_PCT = +(process.env.POS_CAP_PCT || 25);   // 單檔上限:帳戶的幾 %(跟 App 一致)
-const GAPCAP = +(process.env.GAPCAP || 1);   // nextopen_lim:跳空開高超過幾 % 就不追
+const GAPCAP = +(process.env.GAPCAP || 1);
+// 📈 V74.6.1 **加碼**(使用者問「每個個股的進場、加碼、退場都有做了嗎」)——
+//   現況:`_ovDecide` 的 'add' 只在**沒有庫存**時才判得出來 → 有部位的人永遠不會被告知「可以加碼」,
+//   而且「加碼」這件事**從來沒有被回測過**。⛔ 不可憑空發明一條加碼規則 → 先測。
+//   ADD=off  現況(同一檔不重複開倉)
+//   ADD=pyr  金字塔加碼:同一檔已持有,新訊號的進場價 **高於**既有那筆 ×(1+ADD_UP%) 才准加
+//   ADD=any  同一檔已持有就可以再加(⛔ 不看價格 —— 當對照組用,證明「往上加」有沒有比較好)
+//   ⚠️ 加碼那筆一樣吃資金、一樣受 `cash < amt` 擋 → **會排擠其他訊號**,那正是要量的取捨。
+const ADD = process.env.ADD || 'off';
+const ADD_UP = +(process.env.ADD_UP || 3);    // pyr:要比原本那筆高幾 % 才算「往上加」
+const ADD_MAX = +(process.env.ADD_MAX || 2);  // 同一檔最多幾筆(含第一筆)   // nextopen_lim:跳空開高超過幾 % 就不追
 const COST = 0.44;           // 來回交易成本 %(手續費 0.1425%×2 + 證交稅 0.3%,未打折)
 const LOT = +(process.env.LOT || 100000);        // 每筆投入(等權)
 const CAPITAL = +(process.env.CAPITAL || 1000000); // 💰 你手上的總本金 —— 錢用完就買不了(這才貼近現實)
@@ -613,6 +623,7 @@ const mkt = {};              // key → {n, sum}(全市場該型態,當第二層
 const taken = [];            // 實際成交的交易
 const openCnt = [];          // 每天同時持有幾筆
 let live = [];               // 目前持有
+let addCnt = 0;              // 📈 加碼成交筆數(⛔ 一定要報 —— 0 筆代表這個變體根本沒生效)
 let skipped = 0;             // 💰 因為錢不夠而錯過的次數(⛔ 一定要報 —— 不然等於假設無限資金)
 let cash = CAPITAL;          // 現金
 let realized = 0;            // 已實現損益
@@ -661,7 +672,19 @@ for (let i = 0; i < days.length; i++) {
     let picked = 0;
     for (const { t } of cand) {
         if (picked >= PICKS_PER_DAY) break;
-        if (seen.has(t.sym)) continue;      // 同一檔不重複開倉
+        // 📈 加碼:ADD=off 時維持原本「同一檔不重複開倉」
+        if (seen.has(t.sym)) {
+            if (ADD === 'off') continue;
+            const mine = live.filter(x => x.sym === t.sym);
+            if (mine.length >= ADD_MAX) continue;
+            if (mine.some(x => x._d === d)) continue;          // ⛔ 同一天不重複加(那是共振不是加碼)
+            if (ADD === 'pyr') {
+                // 金字塔:只往上加 —— 新訊號的進場價要高過**既有最高那筆**的成本 ×(1+ADD_UP%)
+                const hi = Math.max(...mine.map(x => +x.entry || 0));
+                if (!(hi > 0) || !(+t.entry > hi * (1 + ADD_UP / 100))) continue;
+            }
+            addCnt++;
+        }
         // 💰 這一筆要投入多少?
         //   equal = 固定 LOT(前面所有結果都是這個)
         //   risk  = **App 實際給使用者的算法**:單筆最多虧帳戶 RISK_PCT%,
@@ -702,6 +725,7 @@ if (!taken.length) { console.log('❌ 暖身後一筆都沒進場(門檻太嚴�
 
 // 📤 把實際成交的交易(含當天市場環境)倒出來 —— 用來算「哪一種盤這套打法比較行」
 //    ⛔ 這是**事實統計**不是預測;要當成訊號用之前一定要過穩健性檢定。
+if (ADD !== 'off') console.log(`📈 加碼模式 ${ADD}(往上 ${ADD_UP}% ・同檔上限 ${ADD_MAX} 筆):實際加碼 ${addCnt} 筆` + (addCnt === 0 ? '  🚨 0 筆 = 這個變體根本沒生效,⛔ 別把它的結果當成「沒差別」' : ''));
 if (process.env.TAKEN_OUT) {
     const rows = taken.map(t => {
         const i = t._i, d = t._d, b2 = yBr(i);
