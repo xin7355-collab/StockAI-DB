@@ -219,7 +219,8 @@ ok('⑧b 只有標記 took===true 才盯停損', /x\.t\.took === true/.test(trk)
 ok('⑧c 停損提醒⛔ 不是一天一次(用時間分桶才能重複提醒)',
    /Math\.floor\(Date\.now\(\) \/ 1800000\)/.test(trk));
 ok('⑧d 出場守望⛔ 不受 13:00 時窗限制', /不受 13:00 時窗限制/.test(src));
-ok('⑧e 停利用的是回測同一條規則(跌破 5MA)', /跌破 5 日線/.test(trk) && /ma5/.test(trk));
+ok('⑧e 停利走**唯一判斷點** `_exitPrimary`(V74.5.4 起可切換,⛔ 不可在提醒裡另寫一套)',
+   /_exitPrimary\(_rows, t\.s\)/.test(trk) && /你設定的出場規則/.test(trk));
 ok('⑧f 金額走共用 _netPL(⛔ 別 inline 再寫一份損益公式)',
    /this\._netPL\(t\.e, px, 1000\)/.test(trk));
 ok('⑧g localStorage 寫入有包 try(空間不足會 throw,陷阱 #18)',
@@ -261,7 +262,9 @@ ok('⑨g3 去重要留**第一筆**(清單已排好序 = 最好的那一招)',
   ok('⑨g6 🔐 指南必須寫「下單只能在自己的電腦」', /只能你自己的電腦|只能.{0,4}自己的電腦/.test(md));
   ok('⑨g7 ⛔ 指南不可出現「開盤買」這種指令(實測會把賺頭吃掉一半)',
      !/(?<!不是明天一)開盤就買/.test(md.replace(/⛔ \*\*不是明天一開盤就買\*\*/g, '')));
-  ok('⑨g8 指南要寫明「它只管買,不管賣」(出場仍要自己執行)', /只管買,不管賣/.test(md)); }
+  ok('⑨g8 🚨 指南要寫明賣出的**兩個限制**:只賣自己買的 + 規則要跟 App 設成同一條',
+     /只賣.{0,12}自己買/.test(md) && /不碰你手動買的庫存|不會碰你手動買的庫存/.test(md)
+     && /設成同一/.test(md)); }
 ok('⑨h ⛔ 預設是模擬模式(要真下單必須明確設 LIVE=1)', /LIVE = os\.getenv\('LIVE'\) == '1'/.test(at) && /simulation=not LIVE/.test(at));
 ok('⑨i 憑證只走環境變數(⛔ 不可寫進檔案)', /os\.getenv\('SJ_CA_PATH'\)/.test(at) && !/\.pfx['"]\s*$/m.test(at));
 ok('⑨j 有單筆張數與金額硬上限', /MAX_LOTS_PER_TRADE/.test(at) && /MAX_AMT_PER_TRADE/.test(at));

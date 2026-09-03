@@ -424,11 +424,12 @@ ok('🏆⑰f ⏳ 清單還沒產出要誠實說(⛔ 不可只寫「這個池子�
 ok('③g 🚪 出場那段要**真的算出價位**(⛔ 只寫規則沒有數字等於沒說)',
    /停損價/.test(R.cardExit) && /出場線/.test(R.cardExit) && /\d+\.\d\d/.test(R.cardExit) && /移動停利/.test(R.cardExit),
    JSON.stringify({ ex: R.exDbg, snip: (R.cardExit.match(/🚪[\s\S]{0,200}/) || [''])[0].replace(/\n/g, '⏎') }));
-ok('③h 🚪 停損取「進場 −5%」與「近 10 日最低」**較近**的那個(測資算得出來:105.45 / 5日線 109.00)',
-   /105\.45/.test(R.cardExit) && /109\.00/.test(R.cardExit) && /進場 −5%/.test(R.cardExit),
+ok('③h 🚪 停損取「進場 −5%」與「近 10 日最低」**較近**的那個(測資算得出來:105.45)',
+   /105\.45/.test(R.cardExit) && /進場 −5%/.test(R.cardExit)
+   && /出場線\((ATR 追蹤停利|唐奇安 20 日低點|移動停利 8%|跌破 5 日線)\)/.test(R.cardExit),
    (R.cardExit.match(/停損價[\s\S]{0,80}/) || [''])[0].replace(/\n/g, ' '));
 ok('③i 陷阱 #19:切到別檔之後,舊那檔的出場價位⛔ 不可寫進新卡',
-   /500\.00/.test(R.exRace) && /509\.00/.test(R.exRace) && !/105\.45/.test(R.exRace) && !/109\.00/.test(R.exRace),
+   /500\.00/.test(R.exRace) && !/105\.45/.test(R.exRace) && !/109\.00/.test(R.exRace),
    (R.exRace.match(/停損價[\s\S]{0,60}/) || [''])[0].replace(/\n/g, ' '));
 ok('🏅⑮ 每一條魚都算了實測體質', R.scored === R.rowsN && R.rowsN > 0, `${R.scored}/${R.rowsN}`);
 ok('🏅⑮b 手算對照:符合「創一年新高」的魚,分數裡那條的 pp 要等於成績表第 5 欄', R.nhCheck === 'no-sample' || R.nhCheck.has === true, JSON.stringify(R.nhCheck));

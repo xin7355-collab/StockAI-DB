@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.5.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.5.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -689,7 +689,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.5.3 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.5.4 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -706,6 +706,23 @@
                         <button onclick="app.setFontSize('large')" id="btn_font_large" class="px-2.5 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">大</button>
                         <button onclick="app.setFontSize('xl')" id="btn_font_xl" class="px-2.5 py-1.5 text-xs font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors text-gray-300">特大</button>
                     </div>
+                </div>
+
+                <!-- 🚪 V74.5.4 出場規則(使用者:「把預設出場換成唐奇安/ATR」)——
+                     ⛔ 這是全 App 唯一的設定點:出場提醒、行動指令中心、釣魚池、自動下單都讀 `_exitRuleKey()`。 -->
+                <div class="flex flex-col gap-2 pt-1 border-b border-gray-700 pb-4">
+                    <label class="text-xs font-bold text-cyan-400">🚪 出場規則(停利)</label>
+                    <p class="text-[10px] text-gray-500 leading-snug">同一套打法、同一段 49 個月(含 2022 大跌)<b>只換這一條</b>的實測:
+                        ATR 追蹤 <b class="text-gray-300">531 萬</b>・唐奇安 <b class="text-gray-300">590 萬</b>・移動停利 <b class="text-gray-300">476 萬</b>・
+                        5 日線 <b class="text-gray-300">193 萬</b>(本金 100 萬,已扣成本)。
+                        <b class="text-gray-400">預設選 ATR 是因為它中途最多賠只有 −20%</b>(5 日線是 −32%)。</p>
+                    <div class="grid grid-cols-1 gap-1.5" id="exitRuleBtns">
+                        <button onclick="app.setExitRule('atr2')" id="btn_exit_atr2" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">🕯️ ATR 追蹤停利(預設)<span class="block text-[9px] font-normal text-gray-500">進場後最高收盤 − 2×ATR;波動大的股票自動給比較寬的空間</span></button>
+                        <button onclick="app.setExitRule('don')" id="btn_exit_don" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">🐢 唐奇安 20 日低點<span class="block text-[9px] font-normal text-gray-500">收盤跌破「前 20 天最低價」才走 —— 三條裡賺最多</span></button>
+                        <button onclick="app.setExitRule('trail8')" id="btn_exit_trail8" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">📉 移動停利 8%<span class="block text-[9px] font-normal text-gray-500">從最高收盤回落 8% 就走 —— 最單純</span></button>
+                        <button onclick="app.setExitRule('ma5')" id="btn_exit_ma5" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">📏 跌破 5 日線(舊版)<span class="block text-[9px] font-normal text-gray-500">出得最早、賺最少;想早點離場的人才選</span></button>
+                    </div>
+                    <p class="text-[9px] text-gray-600 leading-snug">⚠️ <b>停損</b>(進場 −5% 與前低較近者)與<b>最長抱 20 個交易日</b>不受這個設定影響 —— 那兩條回測沒有動過。</p>
                 </div>
 
                 <!-- 📦 V48.4 — 資料保險箱移到最上面(使用者要求);備份加密單一檔、可選檔還原 -->
@@ -7477,8 +7494,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.5.3',
+    _APP_VERSION: 'V74.5.4',
     _CHANGELOG: [
+        { v: 'V74.5.4', dt: '2026-09-03', d: ['🚪 <b>預設出場規則換成「ATR 追蹤停利」</b>(原本是跌破 5 日線):同一套打法、49 個月(含 2022 大跌)只換這一條 —— 賺 <b>531 萬</b>(5 日線 193 萬),而且<b>中途最多賠從 −32% 降到 −20%</b>(全表最小)。','⚙️ 可以自己換:⚙️ 設定中心 →「🚪 出場規則」四選一(ATR 追蹤 / 唐奇安 20 日 / 移動停利 8% / 跌破 5 日線),旁邊直接寫實測賺多少。<b>出場提醒、行動指令中心、產業作戰室釣魚池、自動下單全部跟著這個設定走</b>。','🤖 <b>自動下單程式現在也會賣了</b>:停損 / 跌破你設定的出場線 / 抱滿 20 個交易日 → 自動送賣單。⛔ <b>只賣它自己買的部位</b>,不會碰你手動買的庫存。','💹 總覽的行動徽章旁邊補上<b>大字現價與今日漲跌</b>(跟徽章同一行,不多佔版面)。'] },
         { v: 'V74.5.3', dt: '2026-09-03', d: ['🧭 <b>總覽頁改成「行動指令中心」</b>:一進來就四段 —— <b>①行動徽章</b>(🚨強烈建議出場 / 📉建議減碼 / 🛡️持股續抱 / 📈符合加碼 / ➖觀望)+ 你的成本報酬率 → <b>②要注意的事</b>(只列負面與重大事件,沒有就寫「✅ 目前無重大風險訊號」)→ <b>③現在該做什麼</b>(直接給價位)→ <b>④系統怎麼判的</b>。','🔒 <b>決策只採用「實測有效」的規則</b>:出場價來自 28 種出場全測(唐奇安 / ATR 追蹤 / 現行 5 日線,每條都標實測賺多少);加碼要同時符合 🧬 高位階+高波動<b>而且</b>有期望值為正的訊號。<b>實測沒用的(低檔布局、補漲、布林壓縮…)即使今天觸發也不會出現</b>。','❓ 找不到實測有效的訊號時,直接寫「目前無明確實測有效之進出場訊號,請依原定紀律操作或觀望」—— ⛔ 不硬給點位。','📂 原本的「現在怎麼做 / 加碼 / 出場」三個頁籤與所有明細卡<b>收進一個摺疊</b>(⛔ 沒有刪除,點一下就看得到);技術面請看 <b>K線</b> 分頁、籌碼看 <b>籌碼</b> 分頁。'] },
         { v: 'V74.5.2', dt: '2026-09-02', d: ['📅 <b>回測表加上「每年實際賺多少」</b>(產業作戰室 → 實測總表 → 回測數字 → 出場規則):四種出場法逐年攤開,<b>這是真的跑出來的每月損益加總</b>,不是把總報酬平均攤開。','🚨 最該看的是 <b>2022 那一欄(空頭)</b>:四種出場<b>全部都是賠的</b>,差別只在賠多少 —— 這套打法<b>不會</b>在空頭幫你賺錢,它的價值是「多頭多賺、空頭少賠」。','⚠️ 同時標明 2022 只有 4 個月、2026 只有 8 個月(不是完整年度),而且複利之下後面幾年本金已經滾大 → 金額天生比前面大。'] },
         { v: 'V74.5.1', dt: '2026-09-02', d: ['🧹 <b>新增「雜訊清單」</b>(⚙️ 設定中心右上角):把「<b>實測過、但沒有用</b>」的東西集中列出來 —— 哪些已經刪掉了、哪些刻意留著但標註起來、為什麼留著。','📊 裡面的數字是<b>現算的</b>:129 個 K 棒訊號裡有幾個站得住腳、幾個跟隨機沒差、幾個「常常對但其實不賺」,還有目前被收起來的卡片清單。','⛔ 留著不是捨不得:<b>刪掉會讓人以為「沒有這回事」</b>,跑去別的地方學了再回來問。標註起來,以後要刪也清楚。'] },
@@ -7829,6 +7847,7 @@ ${list}
         if (wlEl) wlEl.checked = this.settings.watchlistAlert || false;
         // V41.2 — autoRunChiefAI 已停用(首席 AI 純手動),設定頁 checkbox 已移除
         this._applyFontSizeUI(this.settings.fontSize || 'medium');
+        try { this._applyExitRuleUI(); } catch (_) {}   // 🚪 V74.5.4 出場規則選單反白
         document.getElementById('exportAreaContainer').classList.add('hidden');
         // 📊 渲染今日 AI key 使用統計(Q4:回答「哪把 key 撞 429」)
         this._renderAIKeyStats();
@@ -19430,6 +19449,57 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             { k: 'trail8', t: '從最高收盤回落 8%',           p: 476.4, dd: 25.4, per: 2.25 },
         ],
     },
+    // ═══ 🚪 V74.5.4 出場規則:全 App 唯一的「現在用哪一條」判斷點 ═══
+    //   使用者:「把預設出場換成唐奇安/ATR,推播、自動下單、釣魚池出場卡整套換」。
+    //   ⭐ 預設改成 **ATR 追蹤 K=2**(`chand2`)—— 49 個月 28 種全測裡:
+    //     賺 531 萬(5 日線 193 萬)、**中途最多賠從 −32.3% 降到 −20.0%(全表最小)**、六關全過。
+    //   ⛔ 三條鐵則:
+    //     ① 這支是**唯一判斷點** —— 出場提醒、行動指令中心、釣魚池、自動下單都讀它,
+    //        ⛔ 誰都不准自己另外寫一套(那就是「同一套規則寫兩份」,遲早只改到一邊)。
+    //     ② 使用者可以自己換回 5 日線(設定中心)—— ⛔ 不可把選項拿掉,
+    //        因為 5 日線出得早、回撤小的人可能比較習慣;實測差距寫在選單旁邊讓他自己決定。
+    //     ③ 停損(進場 −5% 與前低較近者)與最長 20 個交易日 **不隨這個設定變** —— 那兩條回測沒動過。
+    _EXIT_RULE_OPTS: [
+        { k: 'atr2',   t: 'ATR 追蹤停利(預設)', d: '進場後最高收盤 − 2×ATR;波動大的股票自動給比較寬的空間' },
+        { k: 'don',    t: '唐奇安 20 日低點',    d: '收盤跌破「前 20 天最低價」才走 —— 三條裡賺最多' },
+        { k: 'trail8', t: '移動停利 8%',         d: '從最高收盤回落 8% 就走 —— 最單純' },
+        { k: 'ma5',    t: '跌破 5 日線(舊版)',  d: '出得最早、賺最少;想要更早離場的人才選' },
+    ],
+    _exitRuleKey() {
+        const k = String((this.settings && this.settings.exitRule) || 'atr2');
+        return this._EXIT_RULE_OPTS.some(o => o.k === k) ? k : 'atr2';
+    },
+    _exitRuleName(k) {
+        const o = this._EXIT_RULE_OPTS.find(x => x.k === (k || this._exitRuleKey()));
+        return o ? o.t.replace('(預設)', '').replace('(舊版)', '') : 'ATR 追蹤停利';
+    },
+    // 🚪 今天這一檔「主要出場價」= 使用者選的那一條(⛔ 其他地方不要自己挑)
+    _exitPrimary(data, sym) {
+        const x = this._exitLines(data, sym);
+        if (!x) return null;
+        const k = this._exitRuleKey();
+        const v = x[k];
+        return (v > 0) ? { k, v, name: this._exitRuleName(k), all: x } : null;
+    },
+    setExitRule(k) {
+        if (!this._EXIT_RULE_OPTS.some(o => o.k === k)) return;
+        this.settings.exitRule = k;
+        try { localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings)); } catch (_) {}
+        this._applyExitRuleUI();
+        try { this.showToast?.(`✅ 出場規則已改成「${this._exitRuleName(k)}」`, 'info'); } catch (_) {}
+        try { if (this.activeData) { this._renderOvCommand(this.activeData); this.renderKbarTactics(this.activeData); } } catch (_) {}
+    },
+    _applyExitRuleUI() {
+        const cur = this._exitRuleKey();
+        this._EXIT_RULE_OPTS.forEach(o => {
+            const b = document.getElementById(`btn_exit_${o.k}`);
+            if (!b) return;
+            b.className = o.k === cur
+                ? 'text-left px-2.5 py-2 text-[11px] font-bold rounded border border-cyan-600 bg-cyan-900/40 text-cyan-200 transition-colors'
+                : 'text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors';
+        });
+    },
+
     // 📐 近 14 日 TR 簡單平均(⛔ 回測同款,不是 Wilder;兩者同名不同義,別互相取代)
     _atrTR14(data, i) {
         try {
@@ -19508,12 +19578,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const f2 = v => v == null ? '—' : v.toFixed(2);
         const fp = v => v == null ? '' : `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(1)}%`;
         const ed = k => (E.rows.find(r => r.k === k) || (k === 'ma5' ? E.base : null));
+        const _cur = this._exitRuleKey();      // 🚪 V74.5.4 你現在用的那一條(設定中心可換)
         const items = [
             { k: 'don',    lbl: '唐奇安 20 日低點', v: x.don,    why: '收盤跌破「前 20 天的最低價」才走' },
             { k: 'atr2',   lbl: 'ATR 追蹤停利',     v: x.atr2,   why: `最高點往下讓它跌 2 倍日常波動(這檔 1 倍 = ${f2(x.atr)} 元)` },
             { k: 'trail8', lbl: '移動停利 8%',      v: x.trail8, why: '從最高收盤回落 8% 就走' },
-            { k: 'ma5',    lbl: '跌破 5 日線',      v: x.ma5,    why: 'App 現在的自動提醒用的就是這條' },
-        ].filter(i => i.v != null);
+            { k: 'ma5',    lbl: '跌破 5 日線',      v: x.ma5,    why: '出得最早、實測賺最少(舊版預設)' },
+        ].filter(i => i.v != null)
+          .map(i => ({ ...i, use: i.k === _cur }))
+          .sort((a, b) => (b.use ? 1 : 0) - (a.use ? 1 : 0));   // ⭐ 你在用的那條排第一
         if (!items.length) return '';
         if (compact) {
             const one = items.filter(i => i.k !== 'ma5').slice(0, 2).concat(items.filter(i => i.k === 'ma5'))
@@ -19529,10 +19602,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return `<div class="text-[9px] ${pl >= 0 ? 'text-red-300' : 'text-green-300'} mt-0.5">賣在這裡 ${pl >= 0 ? '+' : '−'}${Math.abs(pl).toLocaleString()} 元(${pl >= 0 ? '獲利' : '虧損'},已扣手續費與稅)</div>`;
         };
         const row = i => {
-            const e = ed(i.k), best = i.k !== 'ma5';
+            const e = ed(i.k), best = i.use;
             return `<div class="flex items-start justify-between gap-2 py-1 border-b border-[#21262d] last:border-0">
                 <div class="min-w-0 flex-1">
-                    <div class="text-[11px] ${best ? 'text-amber-200' : 'text-gray-300'} font-bold">${best ? '⭐ ' : ''}${i.lbl}</div>
+                    <div class="text-[11px] ${best ? 'text-cyan-200' : 'text-gray-300'} font-bold">${best ? '⭐ 你在用的 ・ ' : ''}${i.lbl}</div>
                     <div class="text-[9px] text-gray-500 leading-snug">${i.why}</div>
                     ${money(i.v)}
                 </div>
@@ -19560,8 +19633,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 ATR 追蹤 <b>${E.rows[1].p.toFixed(0)} 萬</b>(中途最多賠也從 ${E.base.dd.toFixed(0)}% 縮到 ${E.rows[1].dd.toFixed(0)}%)。
                 真正的原因是 <b>5 日線砍太早</b>:這套打法十次有七次是小賠,全靠少數幾次大賺 —— 一個小回檔就把還會走遠的那幾檔洗掉了。
             </div>
-            <div class="text-[9px] text-gray-500 leading-snug mt-1">⛔ App 的<b>自動出場提醒目前仍用「跌破 5 日線」</b>(改預設會連動買點推播與自動下單,要先跟你確認)。
-                買賣的具體價位以<b class="text-gray-400">總覽 →「現在怎麼做」</b>為準,這裡是給你參考的防守線。</div>
+            <div class="text-[9px] text-gray-500 leading-snug mt-1">⚙️ 你目前設定的出場規則是「<b class="text-cyan-300">${this._exitRuleName(_cur)}</b>」——
+                <b>出場提醒、自動下單都用這一條</b>(想換到 ⚙️ 設定中心 →「🚪 出場規則」)。
+                另外兩條列在下面只是讓你比較,⛔ 別今天用這條、明天用那條。</div>
         </div>`;
     },
     _showExitHelp() {
@@ -28926,10 +29000,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     //      唯一六關全過的個股條件,36 個月 +289.6 萬 vs 不挑 +126.1 萬)+ **期望值為正**的 K 棒訊號。
     _EDGE_RULES: {
         // ✅ 出場白名單(⛔ 數字不在這裡寫死,渲染時去讀 `_EXIT_EDGE` —— 重跑回測才不會對不上)
+        // ⚠️ V74.5.4 起「哪一條是現在用的」由 `_exitRuleKey()` 決定(設定中心可換)
+        //   ⛔ 不再寫死在這裡 —— 寫死的話換了設定,總覽還是照舊那條 = 邏輯打架。
         exit: [
-            { k: 'don',  lbl: '跌破近 20 日最低(唐奇安)' },
             { k: 'atr2', lbl: '跌破 ATR 追蹤停利' },
-            { k: 'ma5',  lbl: '跌破 5 日線', cur: 1 },
+            { k: 'don',  lbl: '跌破近 20 日最低(唐奇安)' },
+            { k: 'trail8', lbl: '從最高收盤回落 8%' },
+            { k: 'ma5',  lbl: '跌破 5 日線' },
         ],
         // ✅ 進場/加碼白名單:🧬 高位階 + 高波動
         gene: { pos: 75, amp: 3.2 },
@@ -28964,8 +29041,14 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             const pnlAmt = (held && shares > 0) ? this._netPL(cost, pC, shares * 1000) : null;
             // ── 出場線(⛔ 只讀 `_exitLines` 算好的那一份,不現場另算一套)──
             const ex = this._exitLines(data, sym) || {};
-            const lines = R.exit.map(r => ({ ...r, v: ex[r.k], edge: this._exitEdgeOf(r.k) })).filter(x => x.v > 0);
-            const broken = lines.filter(x => pC < x.v);
+            const _curK = this._exitRuleKey();
+            // ⭐ 你設定的那一條排第一並標 cur;⛔ 只有**那一條**被跌破才算「該出場」,
+            //   其他條被跌破只當參考提醒(⛔ 否則設定等於沒作用,而且會亂喊出場)。
+            const lines = R.exit.map(r => ({ ...r, v: ex[r.k], edge: this._exitEdgeOf(r.k), cur: r.k === _curK }))
+                                .filter(x => x.v > 0)
+                                .sort((a, b) => (b.cur ? 1 : 0) - (a.cur ? 1 : 0));
+            const broken = lines.filter(x => x.cur && pC < x.v);
+            const brokenOther = lines.filter(x => !x.cur && pC < x.v);
             // ── 主結論(⛔ 讀 `_renderTrendCommand` already 算好的,不重算)──
             const bear = this._bearGate(sym);
             const trend = (this._ovTrend && this._ovTrend.sym === String(sym)) ? this._ovTrend.trend : null;
@@ -28993,7 +29076,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 .filter(x => x && x.tone === 'bull' && x._e && x._e.exp > 0 && !this._ovBlocked(x.title)));
             // ── ⚠️ Block B:預警(只收負面 / 重大事件)──
             const alerts = [];
-            broken.forEach(x => alerts.push({ ic: '🚨', t: `已經${x.lbl}(${x.v.toFixed(2)})`, sub: x.cur ? 'App 的自動出場提醒用的就是這條' : '這是實測比 5 日線更好的出場線' }));
+            broken.forEach(x => alerts.push({ ic: '🚨', t: `已經${x.lbl}(${x.v.toFixed(2)})`, sub: '這是你設定的出場規則 —— 出場提醒與自動下單也用這一條' }));
+            brokenOther.slice(0, 2).forEach(x => alerts.push({ ic: '⚠️', t: `另一條出場線也破了:${x.lbl}(${x.v.toFixed(2)})`, sub: '⛔ 不是你設定的那條,列出來只是讓你知道' }));
             (((ck && ck.bullets) || []).filter(b => b && b.good === false && !this._ovBlocked(b.txt)))
                 .slice(0, 4).forEach(b => alerts.push({ ic: '⚠️', t: String(b.txt) }));
             if (bear) alerts.push({ ic: '⚠️', t: '中期趨勢是空頭', sub: '反彈是給你出場用的,⛔ 不是進場理由' });
@@ -29043,15 +29127,14 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             // ── 📍 Block C:行動計畫(只放白名單生成的具體點位)──
             const plan = [];
             if (held) {
-                // ⚠️ 一定要含「現行 5 日線」那條 —— App 的自動出場提醒用的就是它,
-                //   ⛔ 只列實測更好的兩條會變成「推播叫你走、總覽沒提」= 邏輯打架。
+                // ⚠️ 第一條一定是「你設定的那一條」(出場提醒/自動下單用的就是它),
+                //   ⛔ 少了它會變成「推播叫你走、總覽沒提」= 邏輯打架;另外兩條當參考。
                 const _cur = lines.find(x => x.cur);
-                const _show = lines.filter(x => !x.cur).slice(0, 2).concat(_cur ? [_cur] : []);
+                const _show = (_cur ? [_cur] : []).concat(lines.filter(x => !x.cur).slice(0, 2));
                 _show.forEach(x => plan.push({
                     t: `${x.lbl.replace('跌破', '跌破 ')} <b class="font-mono">${x.v.toFixed(2)}</b> → 全部出場`,
-                    sub: x.cur
-                        ? `⚙️ 這是 App <b>現在的自動出場提醒</b>用的那條(實測 49 個月賺 ${this._EXIT_EDGE.base.p.toFixed(0)} 萬 —— 三條裡最少的,因為它砍太早)`
-                        : (x.edge ? `📊 同一套打法<b>只換這條出場</b>,49 個月賺 ${x.edge.p.toFixed(0)} 萬(現行 5 日線 ${this._EXIT_EDGE.base.p.toFixed(0)} 萬)` : ''),
+                    sub: (x.cur ? '⚙️ <b>你設定的出場規則</b>(出場提醒與自動下單也用這一條)・' : '參考 ・')
+                        + (x.edge ? `同一套打法只換這條出場,49 個月賺 <b>${x.edge.p.toFixed(0)} 萬</b>(舊版 5 日線 ${this._EXIT_EDGE.base.p.toFixed(0)} 萬)` : ''),
                     money: (shares > 0) ? this._netPL(cost, x.v, shares * 1000) : null,
                 }));
                 try {   // 反彈到哪裡先出一半(⛔ 只讀 `_upsideRoom` 統一算好的那一份)
@@ -29101,8 +29184,19 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                  <div class="bg-[#0d1117] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-500">損益(已扣費)</div><div class="text-sm font-black font-mono ${(d.pnlAmt ?? 0) >= 0 ? 'text-red-400' : 'text-green-400'}">${d.pnlAmt == null ? '—' : (d.pnlAmt >= 0 ? '+' : '−') + nf(d.pnlAmt)}</div></div>
                </div>`
             : `<div class="text-[10px] text-gray-500 mt-1.5">你目前<b class="text-gray-400">空手</b>(填了庫存之後,這裡會直接幫你算報酬率與可出場的損益金額)</div>`;
+        // 💹 現價 + 今日漲跌(⛔ 跟徽章同一行,不另外佔一整排 —— 頂部固定列已經有一份)
+        const _px = d.pC, _prev = (() => { try { const r = data[data.length - 2]; return +((r.close ?? r.c) || 0); } catch (_) { return 0; } })();
+        const _chg = (_prev > 0) ? (_px - _prev) / _prev * 100 : null;
+        const _chgCls = _chg == null ? 'text-gray-400' : _chg >= 0 ? 'text-red-400' : 'text-green-400';
+        const _priceHtml = `<div class="text-right flex-shrink-0 leading-none">
+            <div class="text-2xl font-black font-mono ${_chgCls}">${_px.toFixed(2)}</div>
+            <div class="text-[10px] font-mono ${_chgCls}">${_chg == null ? '—' : `${_chg >= 0 ? '▲ +' : '▼ '}${_chg.toFixed(2)}%`}</div>
+        </div>`;
         const A = `<div class="border-l-4 ${d.cls} border rounded-lg p-3">
-            <div class="text-[15px] font-black leading-tight">${d.badge}</div>
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1"><div class="text-[15px] font-black leading-tight">${d.badge}</div></div>
+              ${_priceHtml}
+            </div>
             <div class="text-[11px] text-gray-200 leading-relaxed mt-1">${d.why}</div>${inv}</div>`;
         // ── B 預警 ──
         const B = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
@@ -41280,20 +41374,23 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 }
                 continue;
             }
-            // ② 停利:跌破 5MA(= 回測用的出場規則,⛔ 別另立一套)
+            // ② 停利:讀**使用者選的出場規則**(V74.5.4 起預設 ATR 追蹤,⛔ 不再寫死 5MA;
+            //    唯一判斷點是 `_exitPrimary` —— ⛔ 別在這裡另立一套)
             try {
                 const c = await this.idb.get(`proTerm_kline_${t.s}`);
                 const rows = c?.data;
                 if (Array.isArray(rows) && rows.length >= 5) {
-                    const cl = rows.slice(-4).map(r => +(r.close || 0)).filter(v => v > 0);
-                    if (cl.length === 4) {
-                        const ma5 = (cl.reduce((a, b) => a + b, 0) + px) / 5;
-                        if (px < ma5) {
+                    // ⚠️ 把「現在這個價」當成今天的收盤接上歷史,才跟回測的「收盤跌破」同一個定義
+                    const _rows = rows.slice(0, -1).concat([{ ...rows[rows.length - 1], close: px }]);
+                    const _ep = this._exitPrimary(_rows, t.s);
+                    {
+                        const ma5 = _ep ? _ep.v : null;
+                        if (ma5 != null && px < ma5) {
                             const k = `pbtp_${t.s}_${this._tpeMinutes().ymd}`;
                             if (!this._kbarFiredToday(k)) {
                                 const pl = this._netPL ? this._netPL(t.e, px, 1000) : Math.round((px - t.e) * 1000);
                                 this._fireAlert(`💰 停利條件到了｜${name}`,
-                                    `${name}(${t.s}) 現價 ${px} 跌破 5 日線 ${ma5.toFixed(2)} —— 這就是當初回測用的出場規則。\n` +
+                                    `${name}(${t.s}) 現價 ${px} 跌破${_ep.name} ${ma5.toFixed(2)} —— 這就是你設定的出場規則(回測驗過的那一條)。\n` +
                                     `一張約 ${pl >= 0 ? '+' : ''}${Math.round(pl).toLocaleString()} 元(已扣手續費證交稅)。\n` +
                                     `⚠️ 不是叫你一定要走,但當初賺的那些就是這樣出的。`, t.s);
                             }

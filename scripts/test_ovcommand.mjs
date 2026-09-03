@@ -126,7 +126,9 @@ ok('④ 🚨 沒有實測有效訊號 → 指定的預設文字,⛔ 不給點位
    has(R.none, '無明確實測有效之進出場訊號') && has(R.none, '依原定紀律操作或觀望'), R.none.slice(-200));
 ok('⑤ 出場數字讀 `_EXIT_EDGE`(卡上要出現 590 / 531 / 193 萬)',
    has(R.hold, '590 萬') && has(R.hold, '531 萬') && has(R.hold, '193 萬'), R.hold.slice(-300));
-ok('⑥ 🚨 一定要含「App 現行的 5 日線」那條', has(R.hold, '跌破 5 日線') && has(R.hold, '現在的自動出場提醒'));
+ok('⑥ 🚨 行動計畫第一條必須是「你設定的那一條」,而且要說出它就是出場提醒/自動下單用的',
+   R.dHold && R.dHold.plan.length > 0 && /你設定的出場規則/.test(R.dHold.plan[0].sub || '')
+   && has(R.hold, '出場提醒與自動下單也用這一條'), (R.dHold && R.dHold.plan[0] && R.dHold.plan[0].sub || '').slice(0, 120));
 ok('⑦ 有庫存要給成本 + 報酬率 + 損益金額(% 要配元)',
    has(R.hold, '你的成本') && has(R.hold, '報酬率') && /\+[\d,]+/.test(R.hold) && has(R.hold, '損益'));
 ok('⑦b 空手時誠實說「你目前空手」(⛔ 不留空白)', has(R.flat, '空手'));

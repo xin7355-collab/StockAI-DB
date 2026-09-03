@@ -129,6 +129,78 @@ def fetch_picks():
     return j, picks
 
 
+# ═══════ 🚪 V74.5.4 出場(賣出)—— 使用者:「自動下單只管買不管賣,把賣出也接上」 ═══════
+# ⛔ 五條鐵則:
+#   ① **只賣這支程式自己買進、而且有記在狀態檔裡的部位** —— ⛔ 絕不碰你手動買的庫存。
+#   ② 出場規則跟 App 設定的那一條一致(`EXIT_RULE`,預設 atr2)。
+#      ⚠️ 這是**同一條公式的第二份實作**(App 是 JS、這裡是 Python)——
+#      ⛔ 改任何一邊都要改另一邊,而且定義必須跟回測一字不差:
+#        ・don    = 收盤跌破「前 20 個交易日最低」(⛔ 不含今天)
+#        ・atr2   = 進場後最高**收盤** − 2×ATR14(ATR = 進場那天的近 14 日 TR **簡單平均**)
+#        ・trail8 = 進場後最高收盤 × 0.92
+#        ・ma5    = 收盤跌破 5 日均價
+#   ③ 停損(進場 −5% 與前低較近者)與**最長 20 個交易日**不隨規則變 —— 回測沒動過那兩條。
+#   ④ 賣出一樣要過 DRY_RUN / LIVE 的煞車,而且**送出後立刻寫狀態檔**(寧可漏一次,⛔ 不可重複送)。
+#   ⑤ ⛔ 只在收盤前那個時窗動作(13:00~13:28)—— 這幾條全部是「**收盤**跌破」才算數。
+EXIT_RULE = os.getenv('EXIT_RULE', 'atr2')
+SELL_ENABLE = os.getenv('SELL_ENABLE', '1') == '1'
+MAX_HOLD_DAYS = int(os.getenv('MAX_HOLD_DAYS', '20'))
+
+
+def fetch_klines(sym):
+    """日 K(gh-pages 上的 data/{sym}.json)—— 跟 App 讀的是同一份。"""
+    url = GH_BASE.rstrip('/') + f'/data/{sym}.json?t={int(time.time())}'
+    with urllib.request.urlopen(url, timeout=20) as r:
+        j = json.loads(r.read().decode('utf-8'))
+    rows = j if isinstance(j, list) else (j.get('data') or j.get('rows') or [])
+    return [x for x in rows if x.get('close')]
+
+
+def _atr_tr14(rows, i):
+    """近 14 日 TR 簡單平均(⛔ 回測同款,不是 Wilder)。"""
+    s, n = 0.0, 0
+    for q in range(max(1, i - 13), i + 1):
+        pc = float(rows[q - 1]['close'] or 0)
+        if pc <= 0:
+            continue
+        h, l = float(rows[q]['high'] or 0), float(rows[q]['low'] or 0)
+        s += max(h - l, abs(h - pc), abs(l - pc))
+        n += 1
+    return (s / n) if n else 0.0
+
+
+def exit_line(rows, rule, entry_date):
+    """今天的出場價(⛔ 定義跟 App/回測一字不差)。算不出來回 None。"""
+    n = len(rows) - 1
+    if n < 25:
+        return None
+    ei = None
+    for i, r in enumerate(rows):
+        if str(r.get('date', '')).replace('/', '-')[:10] >= str(entry_date)[:10]:
+            ei = i
+            break
+    if ei is None or ei >= n:
+        ei = max(0, n - 19)                       # 沒有進場日 → 用近 20 日當代理(同 App)
+    if rule == 'don':
+        lows = [float(rows[i]['low'] or 0) for i in range(max(0, n - 20), n) if rows[i].get('low')]
+        return min(lows) if lows else None
+    if rule == 'ma5':
+        cl = [float(rows[i]['close']) for i in range(n - 4, n + 1)]
+        return sum(cl) / 5
+    peak = max(float(rows[i]['close']) for i in range(ei, n + 1))
+    if rule == 'trail8':
+        return peak * 0.92
+    atr = _atr_tr14(rows, ei)                     # atr2(預設)
+    return (peak - 2 * atr) if atr > 0 else None
+
+
+def held_trading_days(rows, entry_date):
+    for i, r in enumerate(rows):
+        if str(r.get('date', '')).replace('/', '-')[:10] == str(entry_date)[:10]:
+            return len(rows) - 1 - i
+    return None
+
+
 def shares_for_playbook(price, stop):
     """💰 該買幾股 —— 跟 App 的 `_lotsForPlaybook` 同一條公式(⛔ 別在這裡另立一套)。
     **等權 + 支援零股**:每筆投入 = 帳戶總資金 × POS_PCT%,換算成**股數**。
@@ -186,7 +258,8 @@ def main():
     st = load_state()
     _, _, today = tpe_now()
     if st.get('d') != today:
-        st = {'d': today, 'done': []}
+        # ⚠️ `done`(今天買過誰)每天重置,但 `pos`(還沒賣掉的部位)⛔ 絕不可跟著清掉
+        st = {'d': today, 'done': [], 'pos': st.get('pos') or {}}
     log(f"📒 今天已下過:{st['done'] or '(無)'}")
 
     while True:
@@ -204,6 +277,61 @@ def main():
             meta, picks = fetch_picks()
         except Exception as e:
             log(f"⚠️ 清單抓取失敗({e}),{POLL_SEC}s 後重試"); time.sleep(POLL_SEC); continue
+
+        # ═══ 🚪 先處理出場(⛔ 排在買進之前:錢先回來,才買得起下一檔)═══
+        if SELL_ENABLE and st.get('pos'):
+            for sym, pos in list(st['pos'].items()):
+                try:
+                    contract = api.Contracts.Stocks[sym]
+                    if contract is None:
+                        log(f"⚠️ 出場:找不到合約 {sym}"); continue
+                    px = float(getattr(api.snapshots([contract])[0], 'close', 0) or 0)
+                    if px <= 0:
+                        continue
+                    rows = fetch_klines(sym)
+                    # ⚠️ 把「現在這個價」當今天的收盤接上歷史 → 才跟回測的「收盤跌破」同一個定義
+                    if rows:
+                        rows = rows[:-1] + [dict(rows[-1], close=px)]
+                    rule = pos.get('k') or EXIT_RULE
+                    line = exit_line(rows, rule, pos.get('d')) if rows else None
+                    held = held_trading_days(rows, pos.get('d')) if rows else None
+                    why = None
+                    if px <= float(pos.get('sl') or 0):
+                        why = f"停損 {pos['sl']}"
+                    elif line is not None and px < line:
+                        why = f"跌破{rule} 出場線 {line:.2f}"
+                    elif held is not None and held >= MAX_HOLD_DAYS:
+                        why = f"抱滿 {held} 個交易日(上限 {MAX_HOLD_DAYS})"
+                    if not why:
+                        log(f"   🛡️ {sym} {px} 續抱(出場線 {line and round(line, 2)}"
+                            f"・停損 {pos.get('sl')}・已抱 {held} 天)")
+                        continue
+                    sh = int(pos.get('sh') or 0)
+                    _l, _o = divmod(sh, 1000)
+                    pl = (px - float(pos.get('e') or px)) * sh
+                    log(f"🚪 {sym} 出場!{why} ・賣 {sh} 股 ・帳面 {pl:+,.0f} 元")
+                    if DRY_RUN:
+                        log("   🧪 DRY_RUN:不送單"); continue
+                    sent = []
+                    if _l > 0:
+                        sent.append(api.place_order(contract, api.Order(
+                            price=px, quantity=_l, action=sj.constant.Action.Sell,
+                            price_type=sj.constant.StockPriceType.LMT,
+                            order_type=sj.constant.OrderType.ROD,
+                            order_lot=sj.constant.StockOrderLot.Common,
+                            account=api.stock_account)))
+                    if _o > 0:
+                        sent.append(api.place_order(contract, api.Order(
+                            price=px, quantity=_o, action=sj.constant.Action.Sell,
+                            price_type=sj.constant.StockPriceType.LMT,
+                            order_type=sj.constant.OrderType.ROD,
+                            order_lot=sj.constant.StockOrderLot.IntradayOdd,
+                            account=api.stock_account)))
+                    log(f"   ✅ 賣單已送出 {len(sent)} 筆:{sent}")
+                    # ⚠️ 送出後立刻移除(寧可漏一次,⛔ 不可重複送賣單)
+                    st['pos'].pop(sym, None); save_state(st)
+                except Exception as e:
+                    log(f"   ❌ {sym} 出場處理失敗:{e}")
 
         for p in picks[:MAX_PICKS]:
             sym, trig, stop = str(p.get('s')), p.get('trig'), p.get('stop')
@@ -266,7 +394,11 @@ def main():
                     sent.append(api.place_order(contract, o_o))
                 log(f"   ✅ 已送出 {len(sent)} 筆:{sent}")
                 # ⚠️ 先記再說 —— 寧可漏一次,也⛔ 不可重複下單
-                st['done'].append(sym); save_state(st)
+                st['done'].append(sym)
+                # 🚪 記下部位,出場那段才知道「這是我買的」(⛔ 只賣自己買的,不碰手動庫存)
+                st.setdefault('pos', {})[sym] = {'e': px, 'sl': float(stop), 'd': day,
+                                                 'sh': shares, 'k': EXIT_RULE}
+                save_state(st)
             except Exception as e:
                 log(f"   ❌ 下單失敗:{e}")
 

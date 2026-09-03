@@ -1488,6 +1488,17 @@ const PRO = {
     const g = (((this.BT || {}).dims) || []).find(x => x.k === 'exit');
     return g ? (g.rows || []).find(x => x.t === t) : null;
   },
+  // 🚪 V74.5.4 使用者在散戶救星設的出場規則(⭐ 同一個網域 → localStorage 共用,
+  //    ⛔ 這裡不可以自己另訂一條,否則「App 提醒你走、這裡還叫你抱」= 邏輯打架)
+  _EXIT_NAMES: { atr2: 'ATR 追蹤停利', don: '唐奇安 20 日低點', trail8: '移動停利 8%', ma5: '跌破 5 日線' },
+  _exitRule() {
+    try {
+      const st = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}');
+      const k = String(st.exitRule || 'atr2');
+      return this._EXIT_NAMES[k] ? k : 'atr2';
+    } catch (_) { return 'atr2'; }
+  },
+  _exitRuleName() { return this._EXIT_NAMES[this._exitRule()]; },
   async _exitLevels(sym) {
     this._exCache = this._exCache || {};
     if (sym in this._exCache) return this._exCache[sym];
@@ -1500,7 +1511,25 @@ const PRO = {
         const n = c.length;
         const ma5 = c.slice(n - 5).reduce((a, b) => a + b, 0) / 5;
         const low10 = Math.min(...lo.slice(n - 10));
-        this._exCache[sym] = { c: c[n - 1], ma5, low10, d: String(rows[n - 1].date).replace(/\//g, '-').slice(0, 10) };
+        // 🚪 V74.5.4 另外三條出場線(⛔ 定義跟 App `_exitLines` / 回測一字不差)
+        //   ・唐奇安 = 前 20 個交易日最低(⛔ 不含今天)
+        //   ・ATR 追蹤 = 近 20 日最高收盤 − 2×ATR14(ATR = 近 14 日 TR **簡單平均**,⛔ 不是 Wilder)
+        //   ・移動停利 = 近 20 日最高收盤 × 0.92
+        //   ⚠️ 這裡沒有「你的進場日」→ 用近 20 日當代理(同 App 沒填庫存時的做法)
+        const hi = rows.map(x => +x.high || +x.close);
+        let don = null;
+        if (n >= 21) don = Math.min(...lo.slice(n - 21, n - 1));
+        const peak = Math.max(...c.slice(Math.max(0, n - 20)));
+        let atr = 0, k = 0;
+        for (let i = Math.max(1, n - 14); i < n; i++) {
+          const pc = c[i - 1];
+          if (!(pc > 0)) continue;
+          atr += Math.max(hi[i] - lo[i], Math.abs(hi[i] - pc), Math.abs(lo[i] - pc)); k++;
+        }
+        atr = k ? atr / k : 0;
+        this._exCache[sym] = { c: c[n - 1], ma5, low10, don, atr2: atr > 0 ? peak - 2 * atr : null,
+          trail8: peak > 0 ? peak * 0.92 : null,
+          d: String(rows[n - 1].date).replace(/\//g, '-').slice(0, 10) };
       }
     } catch (_) {}
     return this._exCache[sym];
@@ -1524,16 +1553,17 @@ const PRO = {
   _exitBody(x) {
     const stop = Math.max(x.c * 0.95, x.low10);     // ⭐ 取「進場 −5%」與近 10 日低點**較近**的那個
     const which = x.c * 0.95 >= x.low10 ? '進場 −5%' : '近 10 日最低';
-    const dStop = (stop / x.c - 1) * 100, dMa = (x.ma5 / x.c - 1) * 100;
+    const _ex = x[this._exitRule()] ?? x.ma5;      // ⭐ 你設定的那一條(⛔ 不再寫死 5 日線)
+    const dStop = (stop / x.c - 1) * 100, dMa = (_ex == null ? 0 : (_ex / x.c - 1) * 100);
     const lot = Math.round((stop - x.c) * 1000);
     return `<div class="kv" style="margin-top:6px">
       <div><b>🛑 停損價</b><span class="mono warn">${stop.toFixed(2)}</span></div>
       <div><b>離現在</b><span class="mono">${dStop.toFixed(1)}%・一張約 ${lot.toLocaleString()} 元</span></div>
-      <div><b>🚪 出場線(5 日線)</b><span class="mono">${x.ma5.toFixed(2)}</span></div>
-      <div><b>離現在</b><span class="mono">${dMa >= 0 ? '+' : ''}${dMa.toFixed(1)}%</span></div>
+      <div><b>🚪 出場線(${this._exitRuleName()})</b><span class="mono">${_ex == null ? '—' : _ex.toFixed(2)}</span></div>
+      <div><b>離現在</b><span class="mono">${_ex == null ? '—' : (dMa >= 0 ? '+' : '') + dMa.toFixed(1) + '%'}</span></div>
       </div>
       <div class="note" style="margin-top:4px">🛑 <b>停損</b>取「進場 −5%」與「近 10 日最低」<b>較近</b>的那個(這次是<b>${which}</b>);
-      🚪 <b>收盤跌破 5 日線就走</b>,最長抱 <b>20 個交易日</b> —— ⛔ 不是「賺多少才賣」,是<b>跌破就走</b>。
+      🚪 <b>收盤跌破${this._exitRuleName()}就走</b>,最長抱 <b>20 個交易日</b> —— ⛔ 不是「賺多少才賣」,是<b>跌破就走</b>。
       <span style="color:var(--dim2)">(用 ${x.d} 收盤 ${x.c} 算的估計值;真的要下單以散戶救星盤中重算為準)</span></div>`;
   },
 
@@ -2874,7 +2904,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.5.3',
+  VER: 'V74.5.4',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
