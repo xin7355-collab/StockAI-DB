@@ -100,6 +100,12 @@ const CONF = +(process.env.CONF || 2);     // 共振:同一天同一檔至少幾
 //   ⚠️ 出場一改,**排序用的 per-stock 成績也跟著改**(同一批交易算出來的)→ 是一整套的替換,前後可比。
 const EXIT = process.env.EXIT || 'ma5';
 const MAXD = +(process.env.MAXD || 20);    // 最長持有幾個交易日
+// 🔁 V74.6.3「錯殺」的正解:出場之後條件恢復就買回(⛔ 不是「大跌時不出場」——那 12 種已實測全部沒用)
+//   REENTRY = 出場後幾個交易日內,只要**收盤重新站回 5 日線**就買回(0 = 關掉,維持現行)
+//   RE_MAX  = 同一個原始訊號最多買回幾次(⛔ 沒有上限的話會在均線上下打乒乓,每趟都付 0.44%)
+//   ⚠️ 買回的那一筆是**獨立的一趟**,portfolio 層會照樣扣一次來回成本 → 成本代價自動被算進去。
+const REENTRY = +(process.env.REENTRY || 0);
+const RE_MAX = +(process.env.RE_MAX || 1);
 // 🛑 V72.9.9 停損距離實驗 —— ⭐ 這是整套裡**最沒根據**的一個參數:
 //   現行 `min(訊號日最低, 進場×0.95)` 的 −5% 是當初拍腦袋定的,從來沒驗過。
 //   lo5(現行) | pct3 | pct8 | pct10 | atr2(2倍ATR) | lo(只用訊號日最低,不設 % 底)
@@ -149,10 +155,10 @@ const syms = [];
 const cover = {};
 for (const s of syms) cover[s[0]] = (cover[s[0]] || 0) + 1;
 console.log(`💼 組合回測 ・${syms.length} 檔(分層抽樣,代號開頭分布 ${JSON.stringify(cover)})`);
-console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日 ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
+console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日${REENTRY > 0 ? ` ・買回=${REENTRY}日內站回5MA(最多${RE_MAX}次)` : ''} ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
 
 // 💾 掃描結果快取(只跟這幾個參數有關;行事曆濾網完全不影響掃描結果)
-const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP });
+const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX });
 const allTrades = [];        // {sym, key, inD, outD, ret, amt, entry, stop}
 let cacheHit = false;
 if (TRADES_CACHE && fs.existsSync(TRADES_CACHE)) {
@@ -203,9 +209,14 @@ for (const sym of syms) {
         const out = [];
         for (const p of P) {
             let i = 45;
+            // 🔁 買回:出場後 N 天內收盤站回 5 日線 → 把那一天當成「訊號又成立」丟進同一條路徑
+            //   ⭐ 這樣做的好處是**完全重用底下的進場價/停損/出場模擬**,⛔ 不另寫一份(同名不同義的溫床)
+            let forceEntry = -1, reLeft = 0;
+            const ma5At = j => (j >= 4 ? (C(j) + C(j - 1) + C(j - 2) + C(j - 3) + C(j - 4)) / 5 : null);
             while (i < last) {
                 let fired = false;
                 try { fired = p.test(i); } catch (_) {}
+                if (i === forceEntry) fired = true;      // ← 買回那一天
                 if (fired) {
                     // 🚪 進場點(ENTRY 決定,⛔ 預設 close 維持既有結果不變)
                     //   close    = 訊號當天收盤買(回測慣例,但**現實中你收盤前不知道訊號會成立**)
@@ -370,7 +381,17 @@ for (const sym of syms) {
                                    // 成交值(億):`volume` 是股 → ×收盤÷1e8
                                    amt: data[i].volume * data[i].close / 1e8,
                                    entry, stop: stop0,   // 💰 風險法算張數要用(⛔ 別在外面重算,基準會不一致)
-                                   ret: retAll, tm: tmHit, hf: halfDone });
+                                   ret: retAll, tm: tmHit, hf: halfDone, re: (i === forceEntry ? 1 : 0) });
+                        // 🔁 排下一次買回:原始訊號才重置次數,買回那一筆繼續用剩下的額度
+                        if (i !== forceEntry) reLeft = a.reMax;
+                        forceEntry = -1;
+                        if (a.reentry > 0 && reLeft > 0) {
+                            const lim = Math.min(last - 1, exitIdx + a.reentry);
+                            for (let k = exitIdx + 1; k <= lim; k++) {
+                                const m = ma5At(k);
+                                if (m != null && C(k) > m) { forceEntry = k; reLeft--; break; }
+                            }
+                        }
                         i = exitIdx + 1; continue;
                     }
                 }
@@ -378,7 +399,7 @@ for (const sym of syms) {
             }
         }
         return out;
-    }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP });
+    }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP, reentry: REENTRY, reMax: RE_MAX });
     for (const t of tr) allTrades.push({ ...t, sym });
     if (++done % 50 === 0) {
         const el = (Date.now() - t0) / 1000;
@@ -395,6 +416,12 @@ await browser.close();
 
 
 if (!allTrades.length) { console.log('❌ 一筆交易都沒有 → 回測無效'); process.exit(1); }
+// 🚧 空過守門:開了買回卻一筆都沒買回 = 這個變體根本沒生效,⛔ 不可把它的結果讀成「沒差別」
+if (REENTRY > 0) {
+    const reN = allTrades.filter(t => t.re).length;
+    console.log(`🔁 買回模式(${REENTRY} 日內站回 5MA,最多 ${RE_MAX} 次):候選裡有 ${reN} 筆是買回的`
+        + (reN === 0 ? '  🚨 0 筆 = 沒生效,⛔ 別當成「沒差別」' : ` = ${(reN / allTrades.length * 100).toFixed(1)}%`));
+}
 
 // ── ② 時間軸:用加權指數的交易日 ────────────────────────────────────────
 const twii = JSON.parse(fs.readFileSync(path.join(DATA, '^TWII.json'), 'utf8'))
