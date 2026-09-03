@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.5.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.5.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -698,7 +698,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.5.6 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <button onclick="app._showUpdateLog(); app.vibrate(20);" title="點看更新內容 + 功能總覽" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 leading-none flex-shrink-0 cursor-pointer transition-colors">V74.5.7 ›</button> <button onclick="app._showNoiseList(); app.vibrate(20);" title="哪些訊號實測沒用、哪些已經刪掉了" class="text-[11px] font-bold text-gray-400 tracking-wider px-1.5 py-0.5 rounded border border-[#30363d] bg-white/5 hover:bg-white/10 leading-none flex-shrink-0 cursor-pointer transition-colors">🧹 雜訊清單</button> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7520,8 +7520,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.5.6',
+    _APP_VERSION: 'V74.5.7',
     _CHANGELOG: [
+        { v: 'V74.5.7', dt: '2026-09-03', d: ['📐 <b>TD 序列(DeMark)實測完了 —— 它說「買」的之後跌、說「賣」的之後漲</b>。它最有名的「買進 Setup 9」比隨便挑一天還差(勝率 39.9% vs 對照 41.1%),號稱教科書最強買點的「Countdown 13」更差。⭐ 反過來它的<b>賣出</b>訊號之後是漲的 —— 真因跟本站一貫結論一致:<b>追強 &gt; 抄底</b>。','💎 <b>「商業聖杯指標」(MarketCipher / LuxAlgo 那類)實測:越疊越差</b>。它最招牌的超賣綠點<b>實測是零</b>;把 WaveTrend + RSI + 200EMA 疊三層反而只剩 +0.24pp(還沒過關),而<b>單一條件</b>是 +1.97pp。⭐ 那類商品賣的不是更好的訊號,是更好看的介面。','📋 兩份結論都收進<b>產業作戰室 → 實測總表</b>(❌ 實測沒用 / 🧭 回測自己的坑)。⛔ 散戶救星的判斷邏輯<b>一行都沒改</b> —— 它們疊在現行配置之上沒有增量。'] },
         { v: 'V74.5.6', dt: '2026-09-03', d: ['🚨 <b>盤前體檢修好了</b>:它其實不是「壞掉」,是<b>總經資料整整停了 4 天</b>(停在 08/30)而畫面照樣把它當成「今日開盤預判」。真因是採礦程式每天都崩在同一行、但對外顯示綠燈 —— 已修。⭐ 同時加了守門:<b>資料太舊會直接在卡片上跳橘色警告</b>並改口成「⚠️ 那天的開盤預判(不是今天)」,⛔ 以後不會再默默給你看舊數字。','🧹 <b>籌碼頁那兩張長得很像的卡合併了</b>:摺疊裡那張不再重複「大戶籌碼總結 / 評分 / 💡操作」(跟上面那張一模一樣),改成只放<b>法人明細</b>。結論只有一個地方講。','🪞 <b>勝率鏡子搬到庫存股標題列</b>(「📖 點看說明」右邊那顆鈕),點了跳懸浮視窗 —— 原本它在整份庫存清單的<b>最下面</b>,持股一多就要捲很久。鈕上直接標「N 筆 · 勝率 X%」。','🧹 <b>雜訊清單搬到產業作戰室</b>「實測總表」右邊(🧹 雜訊清單 ↗)。','🎣 <b>拋竿⛔ 不會再挑到「處置中」的股票</b>(你抓到的玉晶光)。真因是程式把「處置中」讀成了「沒事」。處置股是 5/20 分鐘分盤撮合,<b>那個回測用的尾盤價你根本買不到</b>;而且本站實測進處置後 20 日<b>中位 −4.81%</b>。被排除的會列在「📖 這一條的細節」裡,⛔ 不是偷偷丟掉。'] },
         { v: 'V74.5.5', dt: '2026-09-03', d: ['🚪 <b>跑馬燈會提醒你手上的庫存跌破出場線了</b>:原本只有「照作戰清單買的那幾筆」有出場提醒,<b>你自己填的庫存完全沒有</b> —— 而那才是大多數人真正持有的部位。現在跌破你設定的出場線會直接列在跑馬燈最前面(只提醒不推播,免得吵)。','🖥️ <b>電腦版版面收斂</b>:分頁列、跑馬燈、子頁籤的字與圖示適度縮小,同一個畫面看得到更多東西。⛔ 內容區的字不動 —— 那是「⚙️ 介面字體大小」在管的,兩邊都縮會打架。','📐 <b>修掉幾個字會溢出方塊的地方</b>:全球巨頭脈動那十張小卡改成會自動長高(把字體調大時不再被切掉);設定中心彈窗手機維持窄版、電腦變寬;備份/還原/刪除三顆鈕重排成兩欄,刪除獨立一列(免得誤按)。'] },
         { v: 'V74.5.4', dt: '2026-09-03', d: ['🚪 <b>預設出場規則換成「ATR 追蹤停利」</b>(原本是跌破 5 日線):同一套打法、49 個月(含 2022 大跌)只換這一條 —— 賺 <b>531 萬</b>(5 日線 193 萬),而且<b>中途最多賠從 −32% 降到 −20%</b>(全表最小)。','⚙️ 可以自己換:⚙️ 設定中心 →「🚪 出場規則」四選一(ATR 追蹤 / 唐奇安 20 日 / 移動停利 8% / 跌破 5 日線),旁邊直接寫實測賺多少。<b>出場提醒、行動指令中心、產業作戰室釣魚池、自動下單全部跟著這個設定走</b>。','🤖 <b>自動下單程式現在也會賣了</b>:停損 / 跌破你設定的出場線 / 抱滿 20 個交易日 → 自動送賣單。⛔ <b>只賣它自己買的部位</b>,不會碰你手動買的庫存。','💹 總覽的行動徽章旁邊補上<b>大字現價與今日漲跌</b>(跟徽章同一行,不多佔版面)。'] },
