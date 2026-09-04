@@ -6694,11 +6694,6 @@ def _tw_today_str() -> str:
     return datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d')
 
 
-def _tw_today_str() -> str:
-    # 台北今天(⛔ 不可用 UTC —— 台北晚上會差一天)
-    return datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d')
-
-
 def _snap_hist(fname: str, day_map: dict, label: str, keep_days: int = SNAP_HIST_DAYS):
     """把「日期 → {股號: 值}」併進 data/<fname>(滾動 keep_days 個日曆天)。
 

@@ -465,6 +465,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 2. `python3 -m py_compile *.py`(後端語法)+ **`python3 scripts/check_main_order.py`**(採礦進入點順序 — V71.1.1 新增,見下方陷阱 #9)
    + **`python3 scripts/check_workflow_paths.py`**(採礦產物有沒有真的被 artifact 上傳 — V71.4.7 新增,見下方陷阱 #11)
    + **`python3 scripts/check_undefined_py.py`**(用到不存在的名字 = 潛在 NameError — V72.3.0 新增)
+   + **`python3 scripts/check_dup_def.py`**(同一個檔案裡重複定義同名函式 → Python 用最後那個,前面等於死碼 — V74.6.9 新增,實跑踩到才寫的)
    + **`python3 scripts/test_no_token_leak.py`**(🔐 金鑰片段不可印進公開的 Actions log — V74.0.5 新增,見下方)
      ⭐ 它有 `--selftest`;實測 43 支只報 **1 筆而且是真的**(`miner.py` 寫 `datetime.now(TW)`,
      而 `TW` **從來沒定義過** —— 那條 `or` 分支目前沒被走到,是顆未爆彈,一走到就被
