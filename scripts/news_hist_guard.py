@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """🚧 消息面歷史「只增不減」守門(V74.2.8)
 
-用法:python3 scripts/news_hist_guard.py <新的> <gh-pages 上現有的>
+用法:python3 scripts/news_hist_guard.py <新的> <分支上現有的> [標籤]
+
+⭐ V74.6.9 起**通用**:同一支給所有「累積型歷史」檔用(消息面 / 鉅額交易 / 借券 / 融資限額)。
+   ⛔ 別為了新檔案再複製一份(陷阱 #37:兩份實作遲早只改到一邊)。
 
 ⭐ 為什麼要有這一層(⛔ 別把它併回 universal_radar.py):
    `universal_radar.build_news_history` 自己的守門**只看得到本機那一份**。
@@ -29,21 +32,22 @@ def days(path):
 
 def main():
     if len(sys.argv) < 3:
-        print('  ⏭️ 消息面歷史守門:參數不足,跳過')
+        print('  ⏭️ 歷史守門:參數不足,跳過')
         return 0
     new_p, prev_p = sys.argv[1], sys.argv[2]
+    lab = sys.argv[3] if len(sys.argv) > 3 else '消息面'
     new, prev = days(new_p), days(prev_p)
     if new < 0:
-        print('  ⏭️ 消息面歷史:這一輪沒有產出(或檔案壞掉)→ 不動 gh-pages 上的那份')
+        print(f'  ⏭️ {lab}歷史:這一輪沒有產出(或檔案壞掉)→ 不動分支上的那份')
         if prev > 0:
             shutil.copyfile(prev_p, new_p)
         return 0
     if prev > 0 and new < prev:
-        print(f'  ⛔ 消息面歷史:新的只有 {new} 天、少於 gh-pages 上的 {prev} 天 '
+        print(f'  ⛔ {lab}歷史:新的只有 {new} 天、少於分支上的 {prev} 天 '
               f'→ 拒絕覆蓋(疑似還原失敗)')
         shutil.copyfile(prev_p, new_p)
         return 0
-    print(f'  ✅ 消息面歷史:{new} 天(gh-pages 上原本 {prev if prev >= 0 else 0} 天)')
+    print(f'  ✅ {lab}歷史:{new} 天(分支上原本 {prev if prev >= 0 else 0} 天)')
     return 0
 
 

@@ -47,11 +47,18 @@ TW = timezone(timedelta(hours=8))
 OUT = 'data/intraday_probe_result.json'
 
 # 📌 標的:預設涵蓋高/中/低波動(⛔ 別只放權值股 —— 附件講的是「有波動、有量」的當沖標的)
-SYMS = [s.strip() for s in os.environ.get(
-    'PROBE_SYMS',
-    '2330,2317,2454,2603,2609,3661,3037,2376,3231,6547,'
-    '2618,3665,4966,6182,8069,2382,3035,5483,6415,2408'
-).split(',') if s.strip()]
+# 🚨 V74.6.9 實跑抓到:原本寫 `os.environ.get('PROBE_SYMS', 預設)` ——
+#   ⛔ 但 workflow 的「留空」是把它設成**空字串**,不是不設 → `get` 回 '' 而**不是預設值**
+#   → 0 檔 → 一個交易日都沒有 → exit 1。⭐ 而錯誤訊息寫的是「一個可用交易日都沒有」,
+#   看起來像「Shioaji 沒資料」,其實是**標的清單是空的**(⛔ 診斷會被帶往完全錯的方向)。
+#   ⭐ 通用:`os.environ.get(k, 預設)` 擋不住「設成空字串」,一律用 `(os.environ.get(k) or 預設)`
+#     —— 同族:`x = a or 0` 之後用 `x > 0` 當守門(陷阱 V74.2.1)。
+_DEF_SYMS = ('2330,2317,2454,2603,2609,3661,3037,2376,3231,6547,'
+             '2618,3665,4966,6182,8069,2382,3035,5483,6415,2408')
+SYMS = [s.strip() for s in (os.environ.get('PROBE_SYMS') or _DEF_SYMS).split(',') if s.strip()]
+if not SYMS:
+    print('🚨 標的清單是空的 → ⛔ 直接停(⛔ 不可讓它跑到後面變成「沒有交易日」那種會誤導的訊息)')
+    raise SystemExit(1)
 DAYS_BACK = int((os.environ.get('PROBE_DAYS') or '120').strip() or 120)
 COST_PCT = 0.25              # 當沖來回成本 %(⛔ 一律扣)
 OR_MIN = 15                  # 附件:開盤前 15 分鐘

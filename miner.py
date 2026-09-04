@@ -6621,6 +6621,7 @@ def fetch_securities_lending():
     sd = (date.today() - timedelta(days=45)).strftime('%Y-%m-%d')
     ed = date.today().strftime('%Y-%m-%d')
     out: dict = {}
+    ld_days: dict = {}      # 💾 V74.6.9 逐日歷史(⭐ 零額外 API:rows 本來就帶 date,只是以前算完就丟)
     for sym in CHIP_WATCHLIST:
         j = fm_paid_get('data', f'dataset=TaiwanStockSecuritiesLending&data_id={sym}&start_date={sd}&end_date={ed}') or {}
         if j.get('status') in (402, 403):
@@ -6647,6 +6648,8 @@ def fetch_securities_lending():
         prev5 = sum(by_date[x]['vol'] for x in ds[-10:-5]) if len(ds) >= 10 else 0
         out[str(sym)] = {'d': ds[-1], 'vol': by_date[ds[-1]]['vol'], 'fee': by_date[ds[-1]]['fee'],
                          'vol5': vol5, 'surge': round(vol5 / prev5, 2) if prev5 > 0 else None}
+        for _d in ds:                          # 💾 每一天都留(⛔ 不是只留最後一天)
+            ld_days.setdefault(_d, {})[str(sym)] = [by_date[_d]['vol'], by_date[_d]['fee']]
         time.sleep(0.12)
     if not out:
         print("  ⚠️ 借券:0 檔(非交易日/無資料)— 保留舊檔")
@@ -6658,6 +6661,9 @@ def fetch_securities_lending():
     os.replace(str(tmp), str(tgt))
     surging = sum(1 for v in out.values() if v.get('surge') and v['surge'] >= 1.5)
     print(f"  ✅ 借券空方:{len(out)} 檔(借券暴增 {surging} 檔)→ data/lending.json")
+    # 💾 V74.6.9 借券**逐日歷史** —— lending.json 只有「最後一天 + 5 日合計」= 當前快照,回測不了。
+    #   ⚠️ 只涵蓋 CHIP_WATCHLIST(約 50 檔),⛔ 不是全市場 —— 日後回測要把這個限制寫進報告。
+    _snap_hist('lending_hist.json', ld_days, '借券')
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -6674,6 +6680,147 @@ def _fm_write_json(fname: str, out: dict, label: str, extra: str = ''):
     os.replace(str(tmp), str(tgt))
     print(f"  ✅ {label}:{len(out)} 檔{extra} → data/{fname}")
 
+
+
+# ═══ 💾 V74.6.9 「現在不存,以後永遠測不了」的三類資料 ═══
+# 使用者:「都做」。⭐ 動機:K 線可以回補,但**每日快照類**的資料一旦沒存就再也拿不回來
+#   —— 鉅額交易、借券餘額、融資限額 都屬於這一類(CLAUDE.md 多處寫著「想做要先開始存」)。
+# ⛔ 共用同一支 `_snap_hist`,⛔ 不寫三份(陷阱 #37:三份實作遲早只改到一份)。
+SNAP_HIST_DAYS = 500          # 保留幾個**日曆天**(約兩年)
+
+
+def _tw_today_str() -> str:
+    # 台北今天(⛔ 不可用 UTC —— 台北晚上會差一天)
+    return datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d')
+
+
+def _tw_today_str() -> str:
+    # 台北今天(⛔ 不可用 UTC —— 台北晚上會差一天)
+    return datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d')
+
+
+def _snap_hist(fname: str, day_map: dict, label: str, keep_days: int = SNAP_HIST_DAYS):
+    """把「日期 → {股號: 值}」併進 data/<fname>(滾動 keep_days 個日曆天)。
+
+    ⛔ 四條守門(照 `universal_radar.build_news_history` 同一套,已被實跑驗證過):
+      ① 空的不寫(⛔ 壞資料混進歷史之後永遠分不出來)
+      ② 同一天重跑 → 用新的覆蓋那一天(⛔ 不重複累加)
+      ③ 滾動保留 keep_days 天
+      ④ 🚧 **只增不減**(⚠️ 這一層是保險,⛔ 別以為它擋得住「還原失敗」)——
+         🚨 誠實說清楚它的極限:`hist` 是從**本機那份檔案**讀出來再加上今天的,
+         所以只要檔案讀得到,天數就**不可能**變少 → 這條判斷式在正常路徑下永遠不會觸發;
+         而 workflow 還原失敗時檔案**根本不存在** → `old_days` 是空的 → 它也不會觸發。
+         ⭐ **真正擋得住還原失敗的是 workflow 那層**(`scripts/news_hist_guard.py`,
+         推之前跟 data 分支上現有的那份比一次)。這裡留著只當「檔案被別的東西改小」的保險。
+         ⚠️ 基準要**扣掉被窗口正當裁掉的**,⛔ 不可直接比總天數(否則窗口一滿就永遠拒絕覆蓋)。
+    ⛔ 純加值:失敗只印警告,不影響任何既有輸出。
+    """
+    # 🚧 ① 空的一律不寫 —— 🚨 最危險的情況是「**檔案不存在 + 這輪也沒資料**」:
+    #    沒有守門就會寫出一份 `days:{}` 的空檔,把還原回來的歷史整個換成空的。
+    #    ⚠️ 誠實說:這一道跟下面「合併後再判一次」重疊(注入驗證確認:拿掉這一道,
+    #    下面那道照樣擋得住)→ 它只多提供一句更精確的 log,⛔ 別以為它是唯一防線。
+    if not day_map:
+        print(f"  ⏭️ {label}歷史:這一輪沒有可存的資料 → ⛔ 不寫(空的混進去就分不出來了)")
+        return
+    try:
+        tgt = Path(DATA_DIR) / fname
+        hist, old_days = {}, set()
+        try:
+            _o = json.loads(tgt.read_text(encoding='utf-8'))
+            hist = _o.get('days') or {}
+            old_days = set(hist)
+        except Exception:
+            pass
+        n_new = 0
+        for d, m in day_map.items():
+            if not m:
+                continue
+            if d not in hist:
+                n_new += 1
+            hist[d] = m                       # 同一天重跑 → 覆蓋(⛔ 不累加)
+        # 🚨 測試 ③c 抓到的洞:`day_map` 非空**但每一天的內容都是空的**(例如那天一檔都沒解析出來)
+        #    → 上面的迴圈全部 skip → hist 還是 {} → 照樣寫出一份空檔把歷史換成空的。
+        #    ⛔ 所以「空」要在**合併之後**再判一次,不能只判入口。
+        if not hist:
+            print(f"  ⏭️ {label}歷史:合併後一天都沒有 → ⛔ 不寫(⛔ 不可建立空檔)")
+            return
+        cut = (datetime.now(timezone(timedelta(hours=8))) - timedelta(days=keep_days)).strftime('%Y-%m-%d')
+        for d in [d for d in hist if d < cut]:
+            hist.pop(d, None)
+        n_base = len([d for d in old_days if d >= cut])
+        if n_base and len(hist) < n_base:
+            print(f"  ⛔ {label}歷史:算出來只有 {len(hist)} 天、少於舊檔在窗口內的 {n_base} 天 → 拒絕覆蓋(疑似還原失敗)")
+            return
+        Path(DATA_DIR).mkdir(exist_ok=True)
+        out = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+               'days_kept': keep_days, 'days': hist}
+        tmp = tgt.with_suffix('.json.tmp')
+        tmp.write_text(json.dumps(out, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        os.replace(str(tmp), str(tgt))
+        n_cell = sum(len(v) for v in hist.values())
+        print(f"  ✅ {label}歷史:新增 {n_new} 天 ・累積 {len(hist)} 天 / {n_cell:,} 筆 → data/{fname}")
+    except Exception as e:
+        print(f"  ⚠️ {label}歷史失敗(不影響其他輸出):{type(e).__name__}: {e}")
+
+
+def fetch_margin_limit():
+    """💳 個股融資**限額**與餘額 → data/margin_limit_hist.json(每日快照,滾動 500 天)。
+
+    ⭐ 為什麼要存:融資**使用率** = 餘額 ÷ 限額(權證小哥的四大融資指標裡我唯一缺的那個)。
+      CLAUDE.md 評估紀錄⑥ 當時決定不做,理由是「無法回算、只能從今天開始存」——
+      ⭐ 那正是「現在不存以後永遠沒有」那一類,所以現在開始存。
+      ⛔ 在累積滿一年之前**不上任何前端顯示、不計分**(門檻 20/50/70% 未經本站驗證)。
+
+    ⚠️ 只有**上市**(TWSE MI_MARGN);上櫃的 TPEx 對 GitHub runner 整站 403(V73.6.1 實測)。
+    ⛔ 零額外成本:一天一個請求。
+    """
+    import urllib.request
+    day_map = {}
+    try:
+        d8 = _tw_today_str().replace('-', '')
+        url = f'https://www.twse.com.tw/exchangeReport/MI_MARGN?response=json&date={d8}&selectType=ALL'
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=25) as r:
+            j = json.loads(r.read().decode('utf-8', 'ignore'))
+        if str(j.get('stat') or '') != 'OK':
+            print(f"  ⚠️ 融資限額:TWSE 回 stat={j.get('stat')!r} → 保留舊檔(⛔ 不寫空的)")
+            return
+        # ⚠️ MI_MARGN 有多張表 → 找欄位含「限額」而且第一欄是股票代號的那一張
+        rows, hdr = [], []
+        for t in (j.get('tables') or []):
+            f = [str(x) for x in (t.get('fields') or [])]
+            if any('限額' in x for x in f):
+                hdr, rows = f, (t.get('data') or []); break
+        if not rows:
+            print(f"  ⚠️ 融資限額:回應裡找不到含「限額」的表(表數 {len(j.get('tables') or [])})→ 保留舊檔")
+            return
+        i_lim = next((k for k, x in enumerate(hdr) if '限額' in x), None)
+        i_bal = next((k for k, x in enumerate(hdr) if '融資' in x and ('今日餘額' in x or '今日' in x and '餘額' in x)), None)
+        if i_lim is None or i_bal is None:
+            print(f"  ⚠️ 融資限額:欄位對不上(hdr={hdr[:12]})→ 保留舊檔")
+            return
+        num = lambda v: float(str(v).replace(',', '').strip() or 0)
+        m = {}
+        for r0 in rows:
+            try:
+                sid = str(r0[0]).strip()
+                if not _valid_stock(sid):
+                    continue
+                lim, bal = num(r0[i_lim]), num(r0[i_bal])
+                if lim <= 0:
+                    continue
+                m[sid] = [int(bal), int(lim)]      # [今日融資餘額(張), 融資限額(張)]
+            except Exception:
+                continue
+        if len(m) < 200:
+            print(f"  ⚠️ 融資限額:只解析出 {len(m)} 檔(<200)→ 保留舊檔(⛔ 不寫半份)")
+            return
+        day_map[_tw_today_str()] = m
+        print(f"  💳 融資限額:{len(m)} 檔(上市;⚠️ 上櫃的 TPEx 對機房 IP 403,拿不到)")
+    except Exception as e:
+        print(f"  ⚠️ 融資限額抓取失敗:{type(e).__name__}: {e} → 保留舊檔")
+        return
+    _snap_hist('margin_limit_hist.json', day_map, '融資限額')
 
 def _fm_bulk_days(dataset: str, want_days: int, look_back: int, sleep_s: float = 0.12) -> list:
     """single-day 資料集逐日 bulk(比照八大行庫實測:只帶單一 start_date、不帶 data_id/end_date)。
@@ -6874,6 +7021,29 @@ def fetch_block_trade():
         print("  ⚠️ 鉅額交易:0 檔 — 保留舊檔")
         return
     _fm_write_json('blocktrade.json', out, '鉅額交易', f"(近月)")
+    # 💾 V74.6.9 順手存成**每日歷史**(⭐ 零額外 API —— rows 本來就帶 date,只是以前算完就丟)。
+    #   blocktrade.json 是「近月彙總」= 當前快照,回測不了;要問「鉅額轉讓之後那一檔怎麼走」
+    #   必須有逐日事件。⛔ 而這一類現在不存,以後永遠拿不回來。
+    #   ⏳ 累積夠之前**不上前端、不計分**。
+    bt_days = {}
+    for r in rows:
+        sid = str(r.get('stock_id') or '').strip()
+        d = str(r.get('date') or '')[:10]
+        if not (_valid_stock(sid) and d):
+            continue
+        try:
+            money = float(r.get('trading_money') or 0)
+            vol = int(float(r.get('volume') or 0))
+            price = float(r.get('price') or 0)
+        except Exception:
+            continue
+        if money <= 0:
+            continue
+        e = bt_days.setdefault(d, {}).setdefault(sid, [0, 0.0, 0.0])
+        e[0] += 1                              # 幾筆
+        e[1] = round(e[1] + money / 1e8, 3)     # 億元
+        e[2] = price                            # 最後一筆成交價
+    _snap_hist('blocktrade_hist.json', bt_days, '鉅額交易')
 
 
 def fetch_industry_chain():
@@ -7876,6 +8046,8 @@ if __name__ == '__main__':
         _safe_step("當沖比率 fetch_daytrade_ratio", fetch_daytrade_ratio)
         _safe_step("外資水位 fetch_foreign_shareholding", fetch_foreign_shareholding)
         _safe_step("鉅額交易 fetch_block_trade", fetch_block_trade)
+        # 💳 V74.6.9 融資限額(TWSE,免付費、一天一個請求)—— 只存歷史,⏳ 累積滿一年前不上前端
+        _safe_step("融資限額 fetch_margin_limit", fetch_margin_limit)
         _safe_step("可轉債餘額 fetch_cb_balance", fetch_cb_balance)
         _safe_step("權證溢價 fetch_warrant_premium", fetch_warrant_premium)
         _safe_step("分點籌碼 fetch_broker_chips", fetch_broker_chips)           # 🐢 最慢(分點+基本面 ~29分)放後面

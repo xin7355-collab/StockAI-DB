@@ -120,7 +120,19 @@ for (const [g, o] of indIdx) {
     indPos.set(`${g}|${o.d[i]}`, hi > lo ? (rel[i] - lo) / (hi - lo) * 100 : 50);
   }
 }
-console.log(`   產業等權指數:${indIdx.size} 個 ・週期位階樣本 ${indPos.size.toLocaleString()} 個(股·日之前的產業·日)`);
+console.log(`   產業等權指數:${indIdx.size} 個 ・週期位階樣本 ${indPos.size.toLocaleString()} 個(產業·日)`);
+
+// 📤 EMIT=<path> → 把「產業·日 → 週期位階」倒出來給 `portfolio_backtest.mjs` 當濾網用。
+//    ⭐ 刻意用**匯出**而不是在那邊再寫一份 —— ⛔ 兩份實作遲早只改到一邊(陷阱 #37)。
+if (process.env.EMIT) {
+  const out = {};
+  for (const [k, v] of indPos) out[k] = Math.round(v * 10) / 10;
+  fs.writeFileSync(process.env.EMIT, JSON.stringify({
+    note: '產業等權指數 ÷ 全市場等權指數 的近 252 日位階(0~100);key = `${產業代碼}|${日期}`',
+    src: 'scripts/cyclical_probe.mjs', n: indPos.size, pos: out,
+  }));
+  console.log(`   📤 已匯出 ${indPos.size.toLocaleString()} 筆 → ${process.env.EMIT}`);
+}
 
 // ── ② 逐日收事件 ──
 const CELL = p => p < 25 ? '谷底(<25)' : p < 50 ? '偏低(25~50)' : p < 75 ? '偏高(50~75)' : '高峰(≥75)';

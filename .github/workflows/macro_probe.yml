@@ -13,6 +13,7 @@ on:
         options:
           - taifex   # 📐 只跑台指期順逆價差探針(~15 秒,只讀 TAIFEX OpenAPI)
           - macro    # 🌐 完整總經採礦(~2 分,打十幾個外部 API)
+          - overseas # 🌏 台股 vs 美股/日股/韓股 大盤層級對照(~1 分,只讀 Yahoo/stooq)
           - both
 
 permissions:
@@ -40,6 +41,14 @@ jobs:
         if: ${{ inputs.which == 'taifex' || inputs.which == 'both' }}
         run: python3 scripts/taifex_probe.py
 
+      # 🌏 V74.6.9 台股 vs 美日韓大盤層級對照 —— 沙箱連不到 Yahoo/stooq,只能在這裡跑。
+      #   ⛔ 只讀、只印:不寫檔、不碰任何分支、不需要任何機密。
+      #   ⚠️ 它問的**不是**「同一套打法在美日韓的個股上」(本站沒有那些市場的個股資料),
+      #      而是大盤層級的行為:大跌頻率 / V 型反彈 / 同期相關 vs 隔天相關。
+      - name: 🌏 台股 vs 美日韓對照探針
+        if: ${{ inputs.which == 'overseas' || inputs.which == 'both' }}
+        run: python3 scripts/overseas_probe.py
+
       - name: 🌐 執行總經採礦
         if: ${{ inputs.which == 'macro' || inputs.which == 'both' }}
         # 🐛 V71.5.3 補上機密 —— 這支的用途是「純驗證,把每一欄印出來查」,
@@ -57,14 +66,14 @@ jobs:
 
       - name: 🔎 印出 macro_risk.json（驗證每一欄）
         # ⚠️ always() 是刻意的(採礦失敗也要看得到檔);但 taifex-only 模式根本不產這個檔 → 跳過
-        if: ${{ always() && inputs.which != 'taifex' }}
+        if: ${{ always() && (inputs.which == 'macro' || inputs.which == 'both') }}
         run: |
           echo "================ data/macro_risk.json ================"
           cat data/macro_risk.json || echo "❌ 檔案不存在"
           echo "======================================================"
 
       - name: 📤 上傳 macro_risk.json artifact
-        if: ${{ always() && inputs.which != 'taifex' }}
+        if: ${{ always() && (inputs.which == 'macro' || inputs.which == 'both') }}
         uses: actions/upload-artifact@v4
         with:
           name: macro-risk-probe

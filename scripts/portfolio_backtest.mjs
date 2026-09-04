@@ -466,6 +466,35 @@ if (FILTER.some(f => f.startsWith('otc')) && !otcReg) {
     console.error('🚨 FILTER 要用櫃買環境,但讀不到櫃買指數檔 → ⛔ 不靜默放行,直接停');
     process.exit(1);
 }
+// 🔄 V74.6.9 **產業週期位置**濾網(FILTER=indlo / indhi)—— 使用者:「景氣循環股不能用全年回測」
+//   週期位置 = 產業等權指數 ÷ 全市場等權指數 的近 252 日位階(⭐ 定義與檔案由
+//   `scripts/cyclical_probe.mjs --EMIT` 產生 —— ⛔ 不在這裡再寫一份,兩份實作遲早只改到一邊)。
+//   實測(cyclical_probe):🧬 疊在「產業位階 <50」+2.15pp 六關全過;疊在「≥50」只有 +0.35 且不穩健。
+//   ⚠️ 產業只有**上市**有分類(industry_map)→ 上櫃股一律**放行**(⛔ 缺資料不可當條件不成立)。
+//   ⚠️ 產業指數要 252 天暖身 → 早期日子也放行。
+let indCyc = null, indOfMap = null;
+try {
+    const _ip = process.env.INDCYCLE || '/tmp/indcycle.json';
+    if (fs.existsSync(_ip)) {
+        const _j = JSON.parse(fs.readFileSync(_ip, 'utf-8'));
+        if (_j && _j.pos) indCyc = _j.pos;
+    }
+    const _mp = path.join(DATA, 'industry_map.json');
+    if (fs.existsSync(_mp)) indOfMap = JSON.parse(fs.readFileSync(_mp, 'utf-8'));
+} catch (_) { indCyc = null; }
+if (FILTER.some(f => f.startsWith('ind')) && (!indCyc || !indOfMap)) {
+    console.error('🚨 FILTER 要用產業週期,但讀不到 indcycle.json 或 industry_map.json → ⛔ 不靜默放行,直接停');
+    console.error('   先跑:EMIT=/tmp/indcycle.json node scripts/cyclical_probe.mjs');
+    process.exit(1);
+}
+const indCycOk = (sym, d) => {
+    if (!indCyc || !indOfMap) return true;
+    const g = indOfMap[String(sym)]; if (!g) return true;          // 上櫃/沒分類 → 放行
+    const p = indCyc[`${g}|${d}`]; if (p == null) return true;      // 暖身期 → 放行
+    if (FILTER.includes('indlo') && !(p < 50)) return false;
+    if (FILTER.includes('indhi') && !(p >= 50)) return false;
+    return true;
+};
 const days = twii.map(r => r.d);
 // ── 📅 行事曆特徵(純日期運算,零採礦;⛔ 全部只用「當天以前就知道的事」→ 無前視偏誤)
 const dow = d => new Date(d + 'T00:00:00Z').getUTCDay();          // 0=日 1=一 … 5=五
@@ -730,6 +759,7 @@ for (let i = 0; i < days.length; i++) {
                   && x.m && x.m.n >= MIN_MKT_N
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
                   && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF)
+                  && indCycOk(x.t.sym, d)
                   && selfOk(x.t) && sigOk(x.t))
         .sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
     const seen = new Set(live.map(x => x.sym));

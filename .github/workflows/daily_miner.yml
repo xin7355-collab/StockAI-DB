@@ -258,6 +258,9 @@ jobs:
             data/daytrade.json
             data/foreign_hold.json
             data/blocktrade.json
+            data/blocktrade_hist.json
+            data/lending_hist.json
+            data/margin_limit_hist.json
             data/industry_chain.json
             data/cb_overview.json
             data/warrant_premium.json
@@ -336,6 +339,22 @@ jobs:
           name: chips-data
           path: .   # data/chips/, data/radar.json, broker_names.json, futures_cache.json 等同層展開
         continue-on-error: true   # chips_miner 若失敗(timeout/限流),仍部署 mine 結果
+
+      # 🚧 V74.6.9 累積型歷史「只增不減」守門(鉅額交易 / 借券 / 融資限額)
+      #   🚨 為什麼一定要有這一層:miner.py 自己那層**只看得到本機那一份** ——
+      #   如果 batch job 的「還原」步驟失敗(網路/權限),它會以為「本來就沒有歷史」→
+      #   寫出只有今天的一份 → artifact 疊上來就把幾百天洗掉了,而且**完全不會報錯**。
+      #   ⭐ 所以推之前一定要再跟 **data 分支上現有的那份**比一次(同 news_hist 的做法)。
+      #   ⛔ 一律 exit 0:這是保護不是失敗,不可擋掉其他檔的部署。
+      - name: 🚧 累積型歷史只增不減守門
+        run: |
+          cp scripts/news_hist_guard.py /tmp/hist_guard.py 2>/dev/null || echo "⚠️ 守門腳本沒複製到"
+          for f in blocktrade_hist lending_hist margin_limit_hist; do
+            git show origin/data:data/$f.json > /tmp/${f}_prev.json 2>/dev/null || rm -f /tmp/${f}_prev.json
+            if [ -s /tmp/${f}_prev.json ] && [ -f /tmp/hist_guard.py ]; then
+              python3 /tmp/hist_guard.py data/$f.json /tmp/${f}_prev.json "$f" || true
+            fi
+          done
 
       # 🧹 V68.9.9 使用者授權清理:data/chips/ 歷史累積 ~2.6 萬個「非股票代號」空垃圾檔
       #    (權證/債券/ETN 如 020xxx / 01001T / 02001L,買賣超全空)。只刪 chips 目錄、
