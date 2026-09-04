@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.7.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.7.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -698,7 +698,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.7.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.7.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3477,6 +3477,12 @@ const masterWorkerCode = `
     };
 `;
 const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
+// 🚨🚨 V74.7.2 這一行**刻意寫在 init() 外面**,⛔ 別搬回去。
+//   真因鏈(使用者 2026-09-05 截圖抓到的):圖表函式庫(CDN)載不到 → init() 在 `echarts.init` 那行 throw
+//   → 後面的 `masterWorker.onmessage` 綁定**沒跑到** → `this.indicators` 永遠是空
+//   → `refreshStrategy` 第一行 `if (!this.indicators.ma20) return` → **總覽 A/B/C/D 整區空白、價格顯示「--」**,
+//   而且**零錯誤訊息**。⭐ 通用:**資料計算的命脈不可以掛在會 throw 的初始化鏈後面**(同陷阱 #26)。
+masterWorker.onmessage = (e) => { try { app.onWorkerMessage(e.data); } catch (_) {} };
 
 const app = {
     settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', openrouterKey: '', geminiKey1: '', geminiKey2: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, riskAlertThreshold: 60, localApiUrl: '', fontSize: 'medium', workerUrl: '', botUsername: '', cloudCode: '' },
@@ -4124,7 +4130,20 @@ const app = {
         // 📨 Telegram 雲端推送:啟動就攔截 localStorage 變更,自選/庫存/監控改動自動 /sync
         this.telegramCloud._hookAutoSync();
 
-        this.chartInstance = echarts.init(document.getElementById('mainChart'), 'dark');
+        // 🚨 V74.7.2 ⛔ 不可裸呼叫 —— CDN 載不到時這行會 throw,而它後面還有一整串初始化。
+        //   失敗時給一個 no-op 空殼,讓「所有用到 chartInstance 的地方」都不會爆,
+        //   K 線圖確實畫不出來(那是事實),但**文字判讀/籌碼/總覽照常**。
+        try {
+            this.chartInstance = echarts.init(document.getElementById('mainChart'), 'dark');
+        } catch (_e) {
+            this._chartDead = true;
+            const _noop = () => {};
+            this.chartInstance = { setOption: _noop, resize: _noop, dispose: _noop, on: _noop, off: _noop,
+                dispatchAction: _noop, clear: _noop, showLoading: _noop, hideLoading: _noop,
+                getWidth: () => 0, getHeight: () => 0, containPixel: () => false,
+                convertToPixel: () => [0, 0], convertFromPixel: () => [0, 0],
+                getZr: () => ({ on: _noop, off: _noop }) };
+        }
         // 點選 K 棒 → 顯示該日資料;點型態標籤 → 彈解說窗(V29.3)。包 try/catch 避免 throw 進 echarts 跨域堆疊被遮成「Script error.」
         this.chartInstance.on('click', params => {
             try {
@@ -4184,7 +4203,8 @@ const app = {
             }
         } catch (_) {}
         this._initEtfAlert();          // 🏦 ETF 換股紅點提醒(背景拉,失敗不阻塞)
-        masterWorker.onmessage = (e) => this.onWorkerMessage(e.data);
+        // ⚠️ V74.7.2 worker 訊息綁定**已搬到 init() 外面**(檔頭 masterWorker 建立處)—— ⛔ 別在這裡再綁一次,
+        //   兩份會讓「綁定必須在 init 外面」那條測試假通過(實測踩過)。
 
         document.querySelector('.scrollable-main').addEventListener('scroll', () => {
             if(document.getElementById('searchDropdown')) document.getElementById('searchDropdown').classList.add('hidden');
@@ -7520,8 +7540,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.7.1',
+    _APP_VERSION: 'V74.7.2',
     _CHANGELOG: [
+        { v: 'V74.7.2', dt: '2026-09-05', d: ['🚨 <b>修好一個會讓總覽整個空白的真 bug</b>(你今天早上的截圖抓到的)。症狀是:個股頁價格顯示「--」、卡在「讀取中…」,「現在該做什麼」那一整區<b>什麼都沒有</b>,而且畫面上不會跳任何錯誤 —— 但庫存頁卻是正常的。','🔍 <b>真因不是資料壞掉,是網路</b>:畫 K 線圖的元件是從網路載的,<b>訊號差載不到的時候它會把後面的初始化整串弄斷</b>,結果連均線都沒算,總覽自然一片空白。⛔ 以前它壞得<b>完全沒有聲音</b>,所以你只會覺得「是不是壞了」。','✅ <b>現在改成三層保護</b>:①算資料那條線<b>不再掛在畫圖後面</b>(圖掛了資料照算)②圖真的載不到時,會直接告訴你「<b>圖表元件沒有載入成功,不是你的資料壞掉,請下拉重新整理</b>」③還在算的時候會顯示「⏳ 正在計算技術指標…」,⛔ 不再留白畫面。'] },
         { v: 'V74.7.1', dt: '2026-09-04', d: ['🏦 <b>「大盤成交量放大 → 證券股會噴」實測不成立</b>(產業作戰室 → 實測總表)。它一度看起來很漂亮 —— 20 日贏大盤 +3.76pp、五年逐年全正,連非證券的對照組都只有 +0.35pp;<b>但把「量放大幾倍」那個門檻左右各挪一格就垮了</b>(×1.4 只剩 +0.89、×1.7 +1.80 而且逐年不同向)→ 那是<b>孤峰不是高原</b>。⛔ 別因為某天大盤爆量就去追券商股。','🧺 <b>兩種資產配置實測完了</b>(含配息、5.6 年含 2022 那次大跌):<b>「領息存股型」兩種配法都輸給單純買 0050 放著</b>(少賺 118~128 萬),把配息加回去之後還是輸;它換到的是<b>中途比較不會賠那麼多</b>(−22.9% vs −33.9%)—— 那是<b>取捨,不是比較強</b>。','🔁 <b>「每年再平衡」到底有沒有用也測了</b>:賺多賺少<b>四組配置沒有一致方向</b>(有的每年調最好、有的乾脆不要調),⭐ 但<b>「中途最多賠」四組全部變小</b>。它真正的作用是<b>不讓漲最多的那一檔膨脹成整個組合</b>(有一組不調的話會從 20% 變成 47%)。'] },
         { v: 'V74.7.0', dt: '2026-09-04', d: ['📕 <b>那份當沖 PDF 的指標,分 K 版也測完了 —— 全部不成立</b>(產業作戰室 → 實測總表)。20 檔 ・85 個交易日 ・5/15/60 分 K 各跑一次:<b>每一個週期、每一個訊號扣掉成本後都是負的</b>;而且「三大核心」在 5 分是 −0.02、15 分 −0.12、60 分 +0.16 —— <b>跨週期方向相反 = 沒有穩定結構</b>。⛔ 不要用那幾個指標做當沖。','🌏 <b>第一次把台股跟美日韓港並排比</b>:⭐ <b>美股隔夜對台股的預測相關 +0.47~0.49,而且是單向的</b>(台股對美股 ≈ 0);日股韓股<b>同期</b>相關 0.65 很高、但<b>隔天只有 +0.05 ≈ 0</b> → 同步但不領先,⛔ 別拿它們預測台股。台股單日跌 ≥2% 的頻率 4.4% 是六個市場<b>最低</b>。','💾 <b>開始存三類「現在不存以後永遠測不了」的資料</b>:鉅額交易逐日、借券逐日、融資限額(算融資使用率用)。⏳ 累積滿一年前<b>不上前端、不計分</b>。','🩺 <b>新增一道守門</b>:同一個檔案裡重複定義同名函式時會直接擋下來。這是實跑踩到才寫的 —— 有支程式裡有兩份 main(),Python 用最後那個,<b>結果我一直以為在跑新版、其實跑的是舊版</b>,而且全程零錯誤訊息。'] },
         { v: 'V74.6.9', dt: '2026-09-04', d: ['🎯 <b>空手時終於看得到「買點在哪」了</b>(總覽)。這一檔如果有一招是實測有效的,徽章會變成「⏳ <b>等它漲過去</b>」並直接給<b>觸發價</b>、<b>停損價</b>、勝率與次數 —— 以前那個價位只出現在「明日作戰清單」,個股頁一個字都沒提,難怪會以為「這檔沒買點」。','🚨 <b>但那是「漲過去」才算數的觸價買單,⛔ 不是掛在下面等它跌回來</b>。實測掛前一日收盤價那種做法只賺 12.4 萬、中途最多賠 −46.1%(尾盤觸價進場是 +259.9 萬)—— 會成交的正好是「訊號出了、市場卻不買單」的弱股。','⛔ <b>不在清單裡的就誠實說沒有</b>:全市場 2,326 檔裡,扣掉成本後還是正的只有約 200 檔,<b>大部分股票沒有值得做的招是常態</b>,絕不會憑空生一個買點給你。空頭趨勢時一樣不給進場價。','⚙️ <b>「建議減碼」時會講明「你設定的那條還沒破」</b>。之前只列「另一條出場線也破了」,卻從來沒說你設定的那條沒破 → 會以為系統叫你全出。現在會寫清楚:<b>減碼 ≠ 全出</b>,機械式全出要等你設的那條破。'] },
@@ -29262,6 +29283,30 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             return { badge, cls, why, held, cost, shares, pnlPct, pnlAmt, pC, alerts, plan, summary, unknown, state, lines, gene };
         } catch (_) { return null; }
     },
+    // ⏳ V74.7.2 指標還沒算好時的誠實佔位 —— ⛔ 不可留白畫面
+    //   ⭐ 兩種狀態要分清楚:「還在算」(等一下就好)vs「圖表元件沒載入成功」(重整才會好)。
+    //   ⛔ 不可把兩者寫成同一句 —— 使用者會不知道該等還是該動作。
+    _ovWaitNotice(hasData) {
+        const el = document.getElementById('ovCommandCenter');
+        if (!el) return;
+        const dead = !!this._chartDead;
+        // 已經有內容而且不是壞掉 → ⛔ 別把算好的結論蓋掉(切股的清空另有機制)
+        if (!dead && el.innerHTML && el.innerHTML.length > 200) return;
+        el.innerHTML = dead
+            ? `<div class="bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-r p-3">
+                 <div class="text-[11px] font-bold text-orange-300 mb-1">⚠️ 圖表元件沒有載入成功</div>
+                 <div class="text-[11px] text-gray-200 leading-relaxed">
+                   通常是網路不穩或訊號太弱造成的,<b>不是你的資料壞掉</b>。
+                   請<b>下拉重新整理</b>(手機版 App 可以完全關掉再開)。
+                   <div class="mt-1 text-[10px] text-gray-500">重整之後這裡就會出現「現在該做什麼」。</div>
+                 </div>
+               </div>`
+            : `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3 text-center">
+                 <div class="text-[12px] text-gray-300 font-bold">⏳ 正在計算技術指標…</div>
+                 <div class="text-[10px] text-gray-500 mt-1">${hasData ? '資料已經下載完成,均線與型態還在算(通常幾秒)' : '正在下載這一檔的歷史資料'}</div>
+               </div>`;
+    },
+
     _renderOvCommand(data) {
         const el = document.getElementById('ovCommandCenter');
         if (!el) return;
@@ -35598,7 +35643,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
 
     refreshStrategy() {
-        if (!this.activeData || !this.activeData.length || !this.indicators.ma20) return;
+        // 🚨 V74.7.2 ⛔ 這裡以前是「靜默 return」→ 總覽整區空白而且畫面什麼都不說(陷阱 #4)。
+        //   指標由 Web Worker 算,worker 沒回來 = 這支跑不了 → 至少要讓使用者知道是在等什麼。
+        if (!this.activeData || !this.activeData.length || !this.indicators.ma20) {
+            try { this._ovWaitNotice(!!(this.activeData && this.activeData.length)); } catch (_) {}
+            return;
+        }
         this.findPeaksAndTroughs();
 
         const data = this.activeData, ind = this.indicators, last = data.length - 1;
