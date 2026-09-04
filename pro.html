@@ -1734,8 +1734,16 @@ const PRO = {
           atr += Math.max(hi[i] - lo[i], Math.abs(hi[i] - pc), Math.abs(lo[i] - pc)); k++;
         }
         atr = k ? atr / k : 0;
+        // 📏 V74.6.6 使用者:「我要知道它的 ATR 還有回撤」——
+        //   ATR 本來就算好了、只是沒吐出來;回撤用「距近 60 日最高收盤」(這一檔自己現在的水位)。
+        //   ⭐ 真正有用的是 stopATR:停損 −5% 等於幾個 ATR —— 不到 1.5 個就很容易被正常波動掃掉。
+        const peak60 = Math.max(...c.slice(Math.max(0, n - 60)));
         this._exCache[sym] = { c: c[n - 1], ma5, low10, don, atr2: atr > 0 ? peak - 2 * atr : null,
           trail8: peak > 0 ? peak * 0.92 : null,
+          atr: atr > 0 ? atr : null,
+          atrPct: (atr > 0 && c[n - 1] > 0) ? atr / c[n - 1] * 100 : null,
+          dd60: peak60 > 0 ? (c[n - 1] / peak60 - 1) * 100 : null,
+          peak60: peak60 > 0 ? peak60 : null,
           d: String(rows[n - 1].date).replace(/\//g, '-').slice(0, 10) };
       }
     } catch (_) {}
@@ -1763,15 +1771,29 @@ const PRO = {
     const _ex = x[this._exitRule()] ?? x.ma5;      // ⭐ 你設定的那一條(⛔ 不再寫死 5 日線)
     const dStop = (stop / x.c - 1) * 100, dMa = (_ex == null ? 0 : (_ex / x.c - 1) * 100);
     const lot = Math.round((stop - x.c) * 1000);
+    // 📏 停損距離 ÷ ATR = 這個停損「撐得住幾天的正常波動」
+    //   ⛔ 不到 1.5 個 ATR = 它一天正常晃一下就可能被掃到 → 要提醒
+    const nATR = (x.atr > 0) ? Math.abs(x.c - stop) / x.atr : null;
     return `<div class="kv" style="margin-top:6px">
       <div><b>🛑 停損價</b><span class="mono warn">${stop.toFixed(2)}</span></div>
       <div><b>離現在</b><span class="mono">${dStop.toFixed(1)}%・一張約 ${lot.toLocaleString()} 元</span></div>
       <div><b>🚪 出場線(${this._exitRuleName()})</b><span class="mono">${_ex == null ? '—' : _ex.toFixed(2)}</span></div>
       <div><b>離現在</b><span class="mono">${_ex == null ? '—' : (dMa >= 0 ? '+' : '') + dMa.toFixed(1) + '%'}</span></div>
+      <div><b>📏 ATR(這檔一天正常晃多少)</b><span class="mono">${x.atr == null ? '—' : x.atr.toFixed(2) + ' 元・' + x.atrPct.toFixed(1) + '%'}</span></div>
+      <div><b>🛑 停損 = 幾個 ATR</b><span class="mono${nATR != null && nATR < 1.5 ? ' warn' : ''}">${nATR == null ? '—' : nATR.toFixed(1) + ' 個'}</span></div>
+      <div><b>📉 它現在的回撤</b><span class="mono">${x.dd60 == null ? '—' : x.dd60.toFixed(1) + '%'}</span></div>
+      <div><b>(距近 60 日最高)</b><span class="mono">${x.peak60 == null ? '—' : x.peak60.toFixed(2)}</span></div>
       </div>
       <div class="note" style="margin-top:4px">🛑 <b>停損</b>取「進場 −5%」與「近 10 日最低」<b>較近</b>的那個(這次是<b>${which}</b>);
       🚪 <b>收盤跌破${this._exitRuleName()}就走</b>,最長抱 <b>20 個交易日</b> —— ⛔ 不是「賺多少才賣」,是<b>跌破就走</b>。
-      <span style="color:var(--dim2)">(用 ${x.d} 收盤 ${x.c} 算的估計值;真的要下單以散戶救星盤中重算為準)</span></div>`;
+      <span style="color:var(--dim2)">(用 ${x.d} 收盤 ${x.c} 算的估計值;真的要下單以散戶救星盤中重算為準)</span></div>
+      <div class="note" style="margin-top:4px">📏 <b>ATR</b> = 這一檔<b>正常一天會晃多少</b>(近 14 天真實波幅平均)。
+      ${nATR == null ? '' : nATR < 1.5
+        ? `🚨 <b>這次的停損只有 ${nATR.toFixed(1)} 個 ATR</b> —— 它一天正常晃一下就可能被掃到,
+           <b>心理上要先準備常常被停損</b>(⛔ 這不是叫你把停損放寬:停損定義是回測釘死的,放寬等於換一套沒驗過的規則)。`
+        : `✅ 停損距離是 <b>${nATR.toFixed(1)} 個 ATR</b>,比一天的正常波動寬 —— 不會一開盤晃兩下就被掃掉。`}
+      <br>📉 <b>回撤</b>這裡指「<b>這一檔自己</b>從近 60 日最高收盤跌下來多少」,⛔ <b>不是</b>你的帳戶回撤。
+      整套系統的帳戶回撤在「📖 回測計算機」:49 個月實測<b>中途最多賠 −32.4%</b>(36 個月版是 −24.5%)。</div>`;
   },
 
   // 🎣 拋竿上鉤的每一條都要列出來 —— V74.4.3 使用者:「每次點開都是鼎元,是代表它比較強嗎?」
@@ -3257,7 +3279,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.6.2',
+  VER: 'V74.6.6',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

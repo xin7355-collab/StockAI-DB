@@ -540,6 +540,57 @@ ok('📋⑫b 金鑰提示改成指路那顆按鈕(⛔ 長篇搬進摺疊,但不�
 ok('📋⑫c 🔐 ⛔ 絕不可把金鑰放進網址帶過去', !/gotoStock[\s\S]{0,200}(key|Key)=/.test(src));
 ok('💥 沒有未攔截的 JS 錯誤', errs.length === 0, errs.join(' | '));
 
+// ═══ 📏 V74.6.6 ATR 與回撤(使用者:「我要知道它的 ATR 還有回撤」)═══
+{
+  // ⭐ 直接餵一組**算得出唯一答案**的 K 線(⛔ 不用真實資料 —— 那會隨採礦漂移,測試遲早假失敗)
+  //   收盤 100..119(20 根),每根 high=close+1 / low=close−1 → TR 恆為 2 → ATR14 = 2.0
+  //   現價 119、近 10 日最低 = 110−1 = 109;進場 −5% = 113.05 → 較近的是 113.05
+  //   停損距離 = 119 − 113.05 = 5.95 → 5.95 / 2.0 = 2.98 個 ATR
+  //   近 60 日最高收盤 = 119 → 回撤 0.0%
+  const rows = [];
+  for (let i = 0; i < 20; i++) rows.push({ date: `2026-08-${String(i + 1).padStart(2, '0')}`,
+    open: 100 + i, high: 101 + i, low: 99 + i, close: 100 + i, volume: 1000 });
+  const r = await page.evaluate(rw => {
+    PRO._cache = PRO._cache || {};
+    PRO._cache['data/9911.json'] = rw;
+    PRO._exCache = {};
+    return PRO._exitLevels('9911').then(() => {
+      const x = PRO._exRow('9911');
+      return { x, html: x ? PRO._exitBody(x) : '' };
+    });
+  }, rows);
+  const x = r.x || {};
+  ok('📏㉑ ATR 有算出來而且是 2.0(TR 恆為 2 → ATR14 = 2.0)',
+     x.atr != null && Math.abs(x.atr - 2) < 0.01, `atr=${x.atr}`);
+  ok('📏㉑b 回撤算得出來(這組測資現價就是近 60 日最高 → 0%)',
+     x.dd60 != null && Math.abs(x.dd60) < 0.01, `dd60=${x.dd60}`);
+  const txt = r.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  ok('📏㉑c 卡上要看得到 ATR 那一列', /ATR/.test(txt) && /2\.00 元/.test(txt), txt.slice(0, 200));
+  ok('📏㉑d 「停損 = 幾個 ATR」要現算(這組是 2.98 個)',
+     /2\.98 個|3\.0 個/.test(txt), txt.slice(0, 300));
+  ok('📏㉑e 回撤那一列要在,而且⛔ 必須寫清楚「不是你的帳戶回撤」',
+     /回撤/.test(txt) && /不是.{0,6}你的帳戶回撤/.test(txt), txt.slice(0, 400));
+  ok('📏㉑f 🚨 帳戶回撤要給真數字(49 個月 −32.4%),⛔ 不可只寫「會有回撤」',
+     /32\.4/.test(txt), txt.slice(-300));
+  // ⭐ 決定性的一條:停損很近時要示警,而且⛔ 不可叫人把停損放寬(那是換一套沒驗過的規則)
+  const rows2 = rows.map((b, i) => ({ ...b, high: b.close + 8, low: b.close - 8 }));  // ATR 變 16 → 停損只有 0.37 個
+  const r2 = await page.evaluate(rw => {
+    PRO._cache['data/9912.json'] = rw; PRO._exCache = {};
+    return PRO._exitLevels('9912').then(() => PRO._exitBody(PRO._exRow('9912')));
+  }, rows2);
+  const t2 = r2.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  ok('📏㉑g 停損不到 1.5 個 ATR → 要示警', /🚨/.test(t2) && /個 ATR/.test(t2), t2.slice(0, 300));
+  ok('📏㉑h ⛔ 但不可叫人把停損放寬(停損是回測釘死的)',
+     /不是叫你把停損放寬|回測釘死/.test(t2), t2.slice(0, 400));
+  // 🚨 決定性的一條:⛔ 「幾個 ATR」不可寫死 —— 兩組 ATR 差 8 倍的測資,印出來必須不一樣。
+  //    ⚠️ 只驗「有出現 2.98」抓不到寫死(測資剛好就是 2.98)—— 這個坑本專案踩過很多次。
+  const n1 = (txt.match(/([\d.]+) 個/) || [])[1];
+  const n2 = (t2.match(/([\d.]+) 個/) || [])[1];
+  ok('📏㉑i 🚨 換一組 ATR 差 8 倍的測資,倍數要跟著變(⛔ 證明不是寫死的)',
+     !!n1 && !!n2 && n1 !== n2, `第一組 ${n1} 個 / 第二組 ${n2} 個`);
+}
+
 await browser.close();
+
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : `\n✅ 全部通過`);
 process.exit(fails.length ? 1 : 0);

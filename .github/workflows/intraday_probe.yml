@@ -16,6 +16,10 @@ on:
         description: "回溯幾個日曆天(kbars 上限約 120)"
         required: false
         default: "120"
+      periods:
+        description: "要測哪幾種週期 K(逗號分隔;預設 5,15,60)"
+        required: false
+        default: "5,15,60"
 
 permissions:
   contents: read
@@ -52,6 +56,7 @@ jobs:
           SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
           PROBE_SYMS: ${{ github.event.inputs.syms }}
           PROBE_DAYS: ${{ github.event.inputs.days }}
+          PROBE_PERIODS: ${{ github.event.inputs.periods }}
         run: python intraday_probe.py --selftest && python intraday_probe.py
 
       - name: 📤 上傳結果 artifact

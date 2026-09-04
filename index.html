@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.6.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.6.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -698,7 +698,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.6.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.6.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7520,8 +7520,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.6.2',
+    _APP_VERSION: 'V74.6.6',
     _CHANGELOG: [
+        { v: 'V74.6.6', dt: '2026-09-04', d: ['📏 <b>釣到的魚多了「ATR」與「回撤」兩排</b>(產業作戰室 → 釣魚池)。⭐ 最有用的是那行「<b>停損 = 幾個 ATR</b>」—— ATR 就是這一檔<b>正常一天會晃多少</b>,如果停損距離不到 1.5 個 ATR,代表它晃一下就可能把你掃出場,<b>心理上要先有準備</b>。⛔ 但那不是叫你把停損放寬(停損是回測釘死的,放寬等於換一套沒驗過的規則)。','📉 <b>「回撤」講清楚是哪一種</b>:卡上那個是「<b>這一檔自己</b>從近 60 天最高跌下來多少」,⛔ <b>不是</b>你的帳戶回撤 —— 整套系統的帳戶回撤是 49 個月實測<b>中途最多賠 −32.4%</b>,寫在同一段裡。','🔬 <b>當沖指標的分 K 探針加了 15 分 / 60 分</b>(原本只有 5 分)。⚠️ 15 分一天只有 18 根、60 分只有 4~5 根,所以週期 K 是<b>跨日接成一條連續線</b>(交易軟體上本來就是),但進出場一律當天平掉。'] },
         { v: 'V74.6.2', dt: '2026-09-03', d: ['🧹 <b>「雜訊清單」與「更新紀錄」搬到產業作戰室了</b>(⚙️ 設定中心那兩顆鈕點了會過去,標 ↗)。⭐ 搬的是<b>畫面</b>不是資料 —— 那些數字(129 個 K 棒訊號的分級、目前收起來的卡)還是從這邊<b>現算</b>的,產業作戰室去讀它,所以<b>永遠不會出現兩邊數字不一樣</b>。','🔁 <b>回測了「出場之後條件恢復就買回」</b> —— 這是你問「一天大跌一天就回來會不會被錯殺」的正解:不是「不出場」,是<b>走了還追得回來</b>。實測六種設定<b>全部賺更多</b>,最好那組(3 天內站回 5 日線、最多買回 2 次)<b>多賺 119 萬、而且中途最多賠從 −32% 降到 −24%</b>。🚨 <b>但 2022 那個空頭年是虧的</b> → 五道關卡過四道,所以<b>預設沒有改</b>,先當「怕錯殺的人」的選項記錄下來。','🧲 <b>回頭驗自己:「這一檔最會賺的那一招」到底穩不穩</b>。答案不好聽 —— 前半段挑到的招,後半段還是同一招的比例只有 <b>4.3%,比隨機亂猜(5.0%)還低</b>。⛔ 所以以後不會再說「App 挑得準」;⚠️ 但這<b>不代表</b>清單沒用(它的價值可能是「把每一檔的分數拉開」而不是「知道哪一招適合這一檔」)—— 那件事還要另外驗。'] },
         { v: 'V74.6.1', dt: '2026-09-03', d: ['📈 <b>「加碼」原本其實沒有做 —— 已經修好,但刻意只告訴你事實、不叫你加碼</b>。查證後發現:程式裡「符合加碼」那個判斷<b>只在你「沒有庫存」的時候才成立</b> —— 也就是<b>有部位的人永遠看不到</b>,那五個字從上線到現在一次都沒出現過。','⭐ 現在:<b>有庫存、而且這一檔又符合當初的進場條件時,總覽會直接告訴你</b>(🧬 位階+波動 + 幾個期望值為正的訊號)。⚠️ <b>但它不會叫你加碼</b> —— 回測顯示「有部位再往上加一筆」<b>看起來有效卻沒過全部關卡</b>:每趟 0.72% → <b>1.00%</b>、本金 100 萬那組 193 萬 → <b>263 萬</b>、中途最多賠還從 32.3% 縮到 30.0%,但 <b>2022 空頭那年是負的</b>,而且邊際幾乎集中在後半段。→ 事實給你,要不要加你自己決定。','🚪 <b>「每一檔挑它自己適合的出場」實測完了:⛔ 不成立,挑了比不挑還差</b>。2,513 檔 ・21 萬個進場點實測,逐檔挑比現行的「跌破 5 日線」<b>還差 0.30 個百分點</b>,而且反過來做方向相反。🚨 表面上「兩段挑到同一種」有 48.6%(隨機 25%)看起來很穩 —— <b>但那是假象</b>:83% 的股票都挑同一種(跌破 5 日線)= 大家都選同一個,不是每一檔有自己的個性。→ <b>現行「全 App 統一一條出場」是對的</b>。'] },
         { v: 'V74.6.0', dt: '2026-09-03', d: ['🏔️🕳️ <b>補上兩個「實測有效、卻一直沒通知你」的型態</b>(總覽 → ⭐ 重點判讀,當天發生才跳):①<b>創 60 日新高之後回檔沒破、今天收紅站回</b> —— 五年逐年都是正的,是全部回測裡<b>最穩的一條</b>;②<b>向上跳空 ×(股價在一年高檔)</b> —— 🚨 要配高位階才算數,跳空本身沒用、配低位階反而是負的。兩個都會直接告訴你<b>之後 10 天的實測成績、上漲比例、跟基準差多少</b>。','🚨 <b>而且勝率一定配基準看</b>:台股個股隨便挑一天的上漲比例本來就只有 <b>41%</b>(不是 50%)—— 所以看到「45%」不是差,它比基準高 4 個百分點。','❓ 你問「這麼多指標可不可以都加進去、發生就跳出來」—— <b>⛔ 那 48 個經典指標不能加</b>,它們六道關卡一個都沒過,加進去只會<b>每天跳一堆沒用的通知、把真訊號淹掉</b>。完整說明寫在<b>產業作戰室 → 實測總表 → 📚 指標分類表</b>頂端。','📐 <b>指標分類表在手機上爆版已修</b>(原本 4 欄表格,右邊整排被切出畫面)→ 改成一列一塊的直式版面。'] },
