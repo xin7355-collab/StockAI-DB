@@ -79,7 +79,38 @@ const R = await page.evaluate(async () => {
       out.halfSub = half ? half.sub : '';
       out.half35 = A._netPL(px * 2, px * 1.2, 35);       // 手算對照(⛔ 不讓斷言去猜)
       out.half1000 = A._netPL(px * 2, px * 1.2, 1000);
-      A._exitLines = bak; A._upsideStash = null;
+    }
+    // ═══ 🎯 V74.6.9 空手時給「這一檔自己的觸發價」 ═══
+    //   ⭐ 觸發價本來就在 `playbook_edge.json`,⛔ 只是個股頁從來沒顯示 → 使用者以為「這檔沒買點」。
+    {
+      A.inventory = [];
+      const trBak = A._ovTrend;
+      A._ovTrend = { sym: '2330', trend: 'bull' };
+      A._ecCache = { sym: '2330', at: Date.now(), r: { score: 40, verdict: 'x', bullets: [], proven: [] } };
+      // ① 清單裡有這一檔 → 徽章、觸發價、停損、尾盤時窗都要出現
+      A._pbEdge = { picks: [{ s: '2330', k: '🕯️ 站上長黑K壓力', w: 62.5, exp: 3.04, lb: 1.12, n: 24,
+                              trig: 232.5, stop: 220.88, loose: 0, hq: 1 }] };
+      out.pbHit = draw();
+      // ② 空頭 → ⛔ 不可給進場價(講反話鐵則)
+      A._ovTrend = { sym: '2330', trend: 'bear' };
+      out.pbBear = draw();
+      A._ovTrend = { sym: '2330', trend: 'bull' };
+      // ③ 不靠價位的招(loose)→ ⛔ 不可硬給一個價
+      A._pbEdge = { picks: [{ s: '2330', k: '🔧 盤中重算型', w: 55, exp: 2, lb: 0.5, n: 30, trig: 0, loose: 1 }] };
+      out.pbLoose = draw();
+      // ④ 不在清單裡 → 誠實說「大部分股票沒有值得做的招」(⛔ 不憑空生一個買點)
+      A._pbEdge = { picks: [] };
+      out.pbNone = draw();
+      A._pbEdge = undefined; A._ovTrend = trBak;
+    }
+    // ⚙️ V74.6.9 減碼時要講明「你設定的那條還沒破」(使用者:國巨破了另外兩條、他設的 ATR 沒破)
+    {
+      const px2 = A.activeData[A.activeData.length - 1].close;
+      A.inventory = [{ symbol: '2330', cost: px2 * 0.99, shares: 1, buyDate: '2026-06-02' }];
+      A._ovTrend = { sym: '2330', trend: 'bear' };          // 空頭 → reduce
+      A._exitLines = (d, sy) => ({ ...bak.call(A, d, sy), atr2: px2 * 0.9, don: px2 * 1.05, ma5: px2 * 1.05, trail8: px2 * 1.05 });
+      out.reduceWhy = (A._ovDecide(A.activeData, '2330') || {}).why || '';
+      A._exitLines = bak; A._ovTrend = null; A.inventory = [];
     }
     // ③ 黑名單過濾:塞一條「低檔布局」的負面 bullet 與一個「補漲」看多訊號
     A.inventory = [];
@@ -155,6 +186,26 @@ ok('🩹⑩ 「先出一半」的金額用**實際股數的一半**(⛔ 不是�
    `half=${R.halfMoney} ・35股=${R.half35} ・1000股=${R.half1000}`);
 ok('🩹⑩b 金額改了,標籤要跟著寫出是幾股(⛔ 不可讓人以為是一張)',
    /35/.test(R.halfSub) && /股/.test(R.halfSub), R.halfSub);
+// ═══ 🎯 V74.6.9 空手時給這一檔自己的觸發價(使用者:「都只看到觀望,應該新增購買價格」)═══
+ok('🎯⑪ 清單裡有這一檔 → 徽章「等它漲過去」+ 觸發價 + 停損 + 尾盤時窗',
+   has(R.pbHit, '等它漲過去') && has(R.pbHit, '232.50') && has(R.pbHit, '220.88') && has(R.pbHit, '13:00~13:28'),
+   R.pbHit.slice(0, 220).replace(/\n/g, ' '));
+// 🚨 這條最重要:使用者說「掛到就代表買點到」—— ⛔ 掛在下面等實測是最糟的做法
+ok('🎯⑪b 🚨 必須寫「漲過去才算數,⛔ 不是掛在下面等」+ 那組實測數字',
+   has(R.pbHit, '不是掛在下面等') && has(R.pbHit, '12.4 萬') && has(R.pbHit, '46.1'),
+   (R.pbHit.match(/🚨[\s\S]{0,120}/) || [''])[0].replace(/\n/g, ' '));
+ok('🎯⑪c 招的成績要配次數(勝率 62% ・24 次 ・每趟 +3.04%)',
+   has(R.pbHit, '24 次') && has(R.pbHit, '3.04'), (R.pbHit.match(/最會賺的招[\s\S]{0,90}/) || [''])[0]);
+ok('🎯⑪d ⛔ 空頭時不給進場價(講反話鐵則)',
+   !has(R.pbBear, '232.50') && !has(R.pbBear, '等它漲過去'), R.pbBear.slice(0, 160).replace(/\n/g, ' '));
+ok('🎯⑪e 不靠價位的招(loose)⛔ 不可硬給一個價',
+   has(R.pbLoose, '不是靠固定價位') && !has(R.pbLoose, '232.50'), R.pbLoose.slice(0, 200).replace(/\n/g, ' '));
+ok('🎯⑪f 不在清單裡 → 誠實說大部分股票沒有值得做的招(⛔ 不憑空生一個買點)',
+   has(R.pbNone, '沒有值得做的招') && has(R.pbNone, '➖ 觀望'), R.pbNone.slice(0, 200).replace(/\n/g, ' '));
+// ⚙️ V74.6.9 使用者問「破了 ATR 線是不是還是要離場」→ 查證後他看錯了(破的是另外兩條)
+ok('⚙️⑫ 減碼時要主動講明「你設定的那條還沒破」+ 減碼 ≠ 全出',
+   /你設定的那條/.test(R.reduceWhy) && /還沒破/.test(R.reduceWhy) && /不是「全出」|不是「?全出/.test(R.reduceWhy),
+   R.reduceWhy.replace(/<[^>]+>/g, '').slice(0, 200));
 ok('⑨b ⛔ 不可用紅綠 emoji 當狀態燈(燈號鐵則)', !/[🔴🟢]/u.test(R.html), (R.html.match(/[🔴🟢]/gu) || []).join(''));
 
 await browser.close();

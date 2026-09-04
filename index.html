@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.6.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.6.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -698,7 +698,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.6.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.6.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7520,8 +7520,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.6.8',
+    _APP_VERSION: 'V74.6.9',
     _CHANGELOG: [
+        { v: 'V74.6.9', dt: '2026-09-04', d: ['🎯 <b>空手時終於看得到「買點在哪」了</b>(總覽)。這一檔如果有一招是實測有效的,徽章會變成「⏳ <b>等它漲過去</b>」並直接給<b>觸發價</b>、<b>停損價</b>、勝率與次數 —— 以前那個價位只出現在「明日作戰清單」,個股頁一個字都沒提,難怪會以為「這檔沒買點」。','🚨 <b>但那是「漲過去」才算數的觸價買單,⛔ 不是掛在下面等它跌回來</b>。實測掛前一日收盤價那種做法只賺 12.4 萬、中途最多賠 −46.1%(尾盤觸價進場是 +259.9 萬)—— 會成交的正好是「訊號出了、市場卻不買單」的弱股。','⛔ <b>不在清單裡的就誠實說沒有</b>:全市場 2,326 檔裡,扣掉成本後還是正的只有約 200 檔,<b>大部分股票沒有值得做的招是常態</b>,絕不會憑空生一個買點給你。空頭趨勢時一樣不給進場價。','⚙️ <b>「建議減碼」時會講明「你設定的那條還沒破」</b>。之前只列「另一條出場線也破了」,卻從來沒說你設定的那條沒破 → 會以為系統叫你全出。現在會寫清楚:<b>減碼 ≠ 全出</b>,機械式全出要等你設的那條破。'] },
         { v: 'V74.6.8', dt: '2026-09-04', d: ['🩹 <b>修一個零股族會被誤導 14 倍的金額</b>(總覽 → 現在該做什麼)。「反彈到 X → 先出一半」那行原本一律用<b>一張(1,000 股)</b>算錢,而同一張卡上面三行是用<b>你手上的實際股數</b>算的 —— 手上只有 70 股的話,那行會顯示 <b>+33,879 元</b>,實際只有 <b>+1,163 元</b>。現在改用實際股數的一半,而且旁邊直接寫出「一半 ≈ 35 股」。','📡 <b>漁獲籃的現價改成即時的</b>(產業作戰室 → 釣魚池)。盤中每 5 分鐘自動更新,帶 📡 的就是即時來源;收盤後會誠實寫「已經收盤了,那就是收盤價」,⛔ 不會把收盤價假裝成即時價。零金鑰(用採礦機挖好的全市場快照)。⚠️ 但「大盤」那欄仍是到最近收盤為止 → 盤中的「贏大盤」會差一個交易日。','🕐 <b>寫清楚「魚什麼時候換新」</b>:選股條件要用<b>當天收盤價</b>才算得出來 → 這池子每個交易日<b>收盤後</b>才重算(排程 19:00,常被排隊延到 23:00~23:30)。所以你盤中看到的一定是「上一個交易日」的魚,<b>那不是壞掉</b>。🚨 它給的是<b>明天的候選</b>,想知道「今天 13:00~13:28 輪到誰」要看散戶救星的盤中到價提醒。'] },
         { v: 'V74.6.7', dt: '2026-09-04', d: ['🧾 <b>釣到的魚會自動結算了</b>(產業作戰室 → 釣魚池 → 漁獲籃)。釣起之後,只要<b>收盤跌破你設的出場線、碰到停損、或抱滿 20 個交易日</b>,它就自己算完並記下來 —— 底下多一張<b>成績單</b>:勝率、每趟平均、贏大盤幾筆、超額中位、一張合計、中途最多賠。⭐ 這樣才知道<b>這套釣魚到底有沒有用</b>,不再只是看「現在浮動賺賠多少」。','⚙️ <b>換出場規則的話,整籃會全部重算</b> —— 籃子只記「哪一檔、哪一天釣起」,成績每次都從 K 線重算,所以你可以直接看「改用移動停利 8% 的話我會賺多少」。','🚨 <b>誠實話</b>:那是<b>紙上成績</b>(進場用釣起那天的收盤,回測用的是尾盤 13:00~13:28,而且沒有滑價),⛔ 不是你的實際損益;每趟已扣來回成本 0.44%,超額再扣同期大盤;<b>不到 10 筆一律不能當結論</b>。','🛑 <b>順手修一個真的不一致</b>:釣魚卡上的停損原本用「進場 −5% 與<b>近 10 日</b>最低取較近的」,而回測用的是「<b>釣起那天</b>最低與 −5% 取較低的」→ 照卡片做會<b>比回測更常被停損</b>,那份成績單就不是在描述這張卡。已一律改成跟回測一字不差。'] },
         { v: 'V74.6.6', dt: '2026-09-04', d: ['📏 <b>釣到的魚多了「ATR」與「回撤」兩排</b>(產業作戰室 → 釣魚池)。⭐ 最有用的是那行「<b>停損 = 幾個 ATR</b>」—— ATR 就是這一檔<b>正常一天會晃多少</b>,如果停損距離不到 1.5 個 ATR,代表它晃一下就可能把你掃出場,<b>心理上要先有準備</b>。⛔ 但那不是叫你把停損放寬(停損是回測釘死的,放寬等於換一套沒驗過的規則)。','📉 <b>「回撤」講清楚是哪一種</b>:卡上那個是「<b>這一檔自己</b>從近 60 天最高跌下來多少」,⛔ <b>不是</b>你的帳戶回撤 —— 整套系統的帳戶回撤是 49 個月實測<b>中途最多賠 −32.4%</b>,寫在同一段裡。','🔬 <b>當沖指標的分 K 探針加了 15 分 / 60 分</b>(原本只有 5 分)。⚠️ 15 分一天只有 18 根、60 分只有 4~5 根,所以週期 K 是<b>跨日接成一條連續線</b>(交易軟體上本來就是),但進出場一律當天平掉。'] },
@@ -29234,11 +29235,22 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     badge = '🚨 強烈建議出場'; cls = 'border-red-500 text-red-200 bg-red-900/25';
                     why = `已經${broken[0].lbl}(${broken[0].v.toFixed(2)})—— 這是實測有效的出場規則,<b>紀律就是照做</b>。`;
                     break;
-                case 'reduce':
+                case 'reduce': {
                     badge = '📉 建議減碼'; cls = 'border-orange-500 text-orange-200 bg-orange-900/25';
                     why = bigTxt ? `主結論:<b>${String(bigTxt).replace(/<[^>]+>/g, '')}</b> —— 反彈到壓力先出一部分,別等破線才全砍。`
                                  : '中期轉弱 —— 反彈到壓力先出一部分,別等破線才全砍。';
+                    // 🚨 V74.6.9 使用者問「破了 ATR 線是不是還是要照你說的離場」——
+                    //   查下去發現他**看錯了**:破的是另外兩條,他設定的那條還沒破。
+                    //   ⛔ 而畫面上只列了「另一條也破了」,**從來沒說過「你設定的那條沒破」**
+                    //     → 使用者只好自己猜。⭐ 這裡一定要主動講出來,兩件事才不會打架。
+                    const _cur = lines.find(x => x.cur);
+                    if (!broken.length && _cur) {
+                        why += `<br>⚙️ <b>但你設定的那條(${_cur.lbl.replace('跌破', '')} ${_cur.v.toFixed(2)})還沒破</b> —— `
+                             + `所以這是「<b>減碼</b>」不是「全出」:機械式的全部出場要等它跌破;`
+                             + `現在建議減碼是因為<b>中期趨勢轉弱</b>,那是另一件事。`;
+                    }
                     break;
+                }
                 case 'hold':
                     badge = '🛡️ 持股續抱'; cls = 'border-cyan-500 text-cyan-200 bg-cyan-900/20';
                     why = lines.length ? `還沒跌破任何一條實測有效的出場線 —— <b>守住 ${lines[0].v.toFixed(2)}</b>,沒破就抱著。` : '還沒觸發出場條件。';
@@ -29270,11 +29282,23 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     why = `同時符合 <b>🧬 高位階+高波動</b>(位階 ${gene.pos.toFixed(0)}、振幅 ${gene.amp.toFixed(1)}%)`
                         + `與 <b>${provenBull.length}</b> 個期望值為正的訊號 —— 這是實測唯一站得住腳的進場條件組合。`;
                     break;
-                default:
-                    badge = '➖ 觀望'; cls = 'border-gray-600 text-gray-300 bg-[#161b22]';
+                default: {
+                    // 🎯 V74.6.9 使用者:「都只看到觀望,是不是應該新增購買價格,讓我掛到」——
+                    //   ⭐ 這一檔如果真的有一招(在明日作戰清單裡),就不是「沒有進場條件」,
+                    //     而是「**有,但今天還沒漲到那個價**」。⛔ 那兩件事對使用者的意思完全不同。
+                    const _pb = held ? null : this._pbEdgeOf(sym);
+                    const _hasTrig = _pb && !_pb.loose && +_pb.trig > 0 && !bear;
+                    badge = _hasTrig ? '⏳ 等它漲過去' : '➖ 觀望';
+                    cls = _hasTrig ? 'border-yellow-600 text-yellow-200 bg-yellow-900/15' : 'border-gray-600 text-gray-300 bg-[#161b22]';
                     why = held ? '沒有觸發出場,也沒有加碼條件 —— 按原定紀律抱著就好。'
-                               : (gene && !gene.ok) ? `不符合 🧬(位階 ${gene.pos.toFixed(0)}、振幅 ${gene.amp.toFixed(1)}%,要 ≥${R.gene.pos} 且 ≥${R.gene.amp}%)—— 實測「不挑 🧬」整套會少賺一半以上。`
-                               : '目前沒有實測有效的進場條件。';
+                        : _hasTrig ? `這一檔<b>有一招實測有效</b>(${_pb.k || '—'}),但<b>今天還沒漲到那個價</b> —— `
+                                   + `要漲過 <b class="font-mono">${(+_pb.trig).toFixed(2)}</b> 才算數。⛔ 沒漲過去就是<b>買點還沒到</b>,不用勉強。`
+                        : (gene && !gene.ok) ? `不符合 🧬(位階 ${gene.pos.toFixed(0)}、振幅 ${gene.amp.toFixed(1)}%,要 ≥${R.gene.pos} 且 ≥${R.gene.amp}%)—— 實測「不挑 🧬」整套會少賺一半以上。`
+                        : '目前沒有實測有效的進場條件。'
+                          + (_pb && bear ? '(這一檔本來有一招,但<b>中期趨勢是空頭</b> → 依規則不給進場價)' : '')
+                          + (!_pb && !bear ? '(全市場 2,326 檔裡,扣掉成本後還是正的只有約 200 檔 —— <b>大部分股票沒有值得做的招是常態</b>)' : '');
+                    break;
+                }
             }
             // ── 📍 Block C:行動計畫(只放白名單生成的具體點位)──
             const plan = [];
@@ -29307,13 +29331,36 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                         });
                     }
                 } catch (_) {}
-            } else if (state === 'add') {
-                const stop = Math.min(...data.slice(-6, -1).map(b => +((b.low ?? b.l) || 9e9)).filter(v => v < 9e9));
-                plan.push({ t: `<b>訊號日尾盤(13:00~13:28)</b>進場 —— ⛔ 不是隔天開盤買`, sub: '實測:尾盤買 +136 萬、隔天開盤買只剩 +82 萬(還輸 0050)' });
-                if (isFinite(stop) && stop > 0) plan.push({
-                    t: `停損放 <b class="font-mono">${Math.max(stop, pC * 0.95).toFixed(2)}</b>(前低與 −5% 取較近的)`,
-                    sub: '這是回測用的同一條停損,⛔ 別自己放寬',
-                });
+            } else {
+                // 🎯 V74.6.9 空手時給「這一檔自己的觸發價」(⛔ 只在它真的進得了明日作戰清單時)
+                const pb = this._pbEdgeOf(sym);
+                if (pb && !bear) {
+                    const _n = +pb.n || 0, _wr = +pb.w, _exp = +pb.exp, _lb = +pb.lb;
+                    const _tag = _n >= 10 ? '' : ' ⚠️ 次數不足 10 次,⛔ 還不能當結論';
+                    if (pb.loose || !(+pb.trig > 0)) {
+                        plan.push({ t: `這一檔的招是 <b>${pb.k || '—'}</b> —— <b>不是靠固定價位觸發</b>`,
+                            sub: `要盤中重算才知道成不成立(勝率 ${isFinite(_wr) ? _wr.toFixed(0) + '%' : '—'} ・${_n} 次)${_tag}` });
+                    } else {
+                        const _tr = +pb.trig, _up = pC > 0 ? (_tr / pC - 1) * 100 : null;
+                        plan.push({
+                            t: `📈 <b class="font-mono">${_tr.toFixed(2)}</b> 以上才算數${_up != null ? `(離現在 ${_up >= 0 ? '+' : ''}${_up.toFixed(1)}%)` : ''} → <b>尾盤 13:00~13:28</b> 進場`,
+                            sub: `這一檔自己最會賺的招:<b>${pb.k || '—'}</b>(勝率 ${isFinite(_wr) ? _wr.toFixed(0) + '%' : '—'} ・${_n} 次 ・每趟 ${isFinite(_exp) ? (_exp >= 0 ? '+' : '') + _exp.toFixed(2) + '%' : '—'},已扣來回成本)${_tag}`
+                                + `<br>🚨 <b>那是「漲過去」才算數的觸價買單,⛔ 不是掛在下面等它跌回來</b> —— `
+                                + `實測掛前一日收盤價只賺 12.4 萬、中途最多賠 −46.1%(尾盤觸價進場是 +259.9 萬)。`,
+                        });
+                        if (+pb.stop > 0) plan.push({
+                            t: `🛑 買到就把停損掛上 <b class="font-mono">${(+pb.stop).toFixed(2)}</b>`,
+                            sub: 'min(當天最低, 進場 −5%)—— 回測用的同一條,⛔ 別自己放寬',
+                        });
+                    }
+                } else if (state === 'add') {
+                    const stop = Math.min(...data.slice(-6, -1).map(b => +((b.low ?? b.l) || 9e9)).filter(v => v < 9e9));
+                    plan.push({ t: `<b>訊號日尾盤(13:00~13:28)</b>進場 —— ⛔ 不是隔天開盤買`, sub: '實測:尾盤買 +136 萬、隔天開盤買只剩 +82 萬(還輸 0050)' });
+                    if (isFinite(stop) && stop > 0) plan.push({
+                        t: `停損放 <b class="font-mono">${Math.max(stop, pC * 0.95).toFixed(2)}</b>(前低與 −5% 取較近的)`,
+                        sub: '這是回測用的同一條停損,⛔ 別自己放寬',
+                    });
+                }
             }
             const unknown = plan.length === 0;
             // ── 🧠 Block D:判讀(轉述既有結論,⛔ 不產生第二份真相)──
@@ -29331,6 +29378,11 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const sym = String(this.currentSymbolId || '');
         // 🏛️ 指數沒有「買幾張/停損」可言(V71.8.2 的決定)→ 整區不顯示
         if (!sym || (this._isIndexSym && this._isIndexSym())) { el.innerHTML = ''; el.classList.add('hidden'); return; }
+        // 🎯 明日作戰清單(這一檔自己的觸發價)是非同步載入的 → 載完重畫一次
+        if (this._pbEdge === undefined && !this._pbEdgePend) {
+            this._pbEdgePend = 1;
+            this._loadPlaybookEdge().then(() => { this._pbEdgePend = 0; try { this._renderOvCommand(this.activeData); } catch (_) {} });
+        }
         const d = this._ovDecide(data, sym);
         if (!d) { el.innerHTML = ''; el.classList.add('hidden'); return; }
         const nf = v => Math.abs(Math.round(v)).toLocaleString();
@@ -40855,6 +40907,23 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return this._pbEdge;
     },
 
+    // 🎯 V74.6.9 使用者:「個股我都沒有看到進場點,是不是應該觀望部分新增購買價格,讓我掛到」
+    //   ⭐ 觸發價**本來就算好了**(`playbook_edge.json` 的 `trig`),⛔ 但它只出現在「明日作戰清單」,
+    //     個股頁一個字都沒提 → 陷阱 #32 的又一次:功能存在但使用者找不到,只好以為「這檔沒買點」。
+    //   ⛔ 三條不可改掉:
+    //    ① **只顯示清單裡有的**(全市場 2,326 檔只有約 200 檔的招扣掉成本後還是正的)——
+    //       不在清單裡就誠實說「這一檔沒有值得做的招」,⛔ 絕不憑空生一個買點(那正是這張卡的原則)。
+    //    ② 🚨 **觸發價是「漲過去才算數」,⛔ 不是掛在下面等它跌回來** ——
+    //       實測掛前一日收盤價那種做法只賺 12.4 萬、回撤 −46.1%(尾盤觸價進場是 +259.9 萬)。
+    //       真因:會成交的正好是「訊號出了、市場卻不買單」的弱股。
+    //    ③ 觸發價是用**昨天收盤**推的估計值,盤中要以實際重算為準(⛔ 不可講得像鐵板)。
+    _pbEdgeOf(sym) {
+        try {
+            const j = this._pbEdge;
+            if (!j || !Array.isArray(j.picks)) return null;
+            return j.picks.find(x => String(x.s) === String(sym)) || null;
+        } catch (_) { return null; }
+    },
     // 📋 一列 = 一張完整的下單票(⛔ 只寫「可以買」等於把最難的部分丟給使用者)
     // 📊 V73.2.9 這套打法的歷史總成績 —— 使用者:「要讓我有信心知道這個策略是對的」
     //   ⛔ 這些數字是 `scripts/portfolio_backtest.mjs` 實跑出來的,**改了任何規則就要重跑更新**
