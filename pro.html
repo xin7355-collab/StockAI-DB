@@ -1910,7 +1910,18 @@ const PRO = {
         它每個交易日收盤後由採礦機更新。⛔ 這不是這個功能壞掉。</div>`;
       this.fishStop(); return;
     }
-    if (sub) sub.innerHTML = `資料日 ${D.date || '—'} ・${D.rows.length} 檔可下水 ${this._staleChip(D.date, '選股')}`;
+    // 🕐 V74.6.8 使用者:「魚是何時才會更新要寫出來,9/3 更新不會很怪嗎?不是 13:00 之後要給我魚」
+    //   ⭐ 誠實的答案:**選股要用當天收盤價才算得出來** → 這池子本來就是「收盤後才換新」。
+    //   ⛔ 所以它給的是「**明天**可以做的候選」,⛔ 不是「今天 13:00 輪到誰」——
+    //      後者是散戶救星的盤中到價提醒(用即時價重算觸發價),兩件事不同,⛔ 不可混談。
+    if (sub) sub.innerHTML = `資料日 ${D.date || '—'} ・${D.rows.length} 檔可下水 ${this._staleChip(D.date, '選股')}`
+      + `<div class="note" style="margin:4px 0 0">🕐 <b>魚什麼時候換新</b>:每個交易日<b>收盤後</b>由採礦機重算
+         (排程台北 19:00,實測常被排隊延到 <b>23:00~23:30</b>)→ 所以你在<b>盤中看到的一定是「上一個交易日」的魚</b>,
+         那不是壞掉。<br>
+         🚨 <b>這池子是「明天的候選」,⛔ 不是「今天 13:00 輪到誰」</b> ——
+         選股條件(位階、振幅、20 日強弱)全部要用<b>當天收盤價</b>才算得出來。
+         想在盤中知道「今天輪到誰」,要看<b>散戶救星的盤中到價提醒</b>:它在 13:00~13:28 用<b>即時價</b>
+         重算觸發價,站上去才通知你(要先在設定裡把提醒打開)。</div>`;
     // 池子 chips(⭐ 查過星圖的話多一個「同族」池)
     const pools = this.FISH_POOLS.slice();
     if (this._starSym && D.J && D.J.r[this._starSym]) pools.push({ k: 'fam', n: `🕸️ 和 ${this._nmTxt(this._starSym)} 同族`, d: '關聯星圖那一族' });
@@ -2092,7 +2103,9 @@ const PRO = {
     };
     step();
   },
-  fishStop() { if (this._fishRaf) cancelAnimationFrame(this._fishRaf); this._fishRaf = 0; },
+  fishStop() { if (this._fishRaf) cancelAnimationFrame(this._fishRaf); this._fishRaf = 0;
+    // 📡 切走分頁時連即時報價的 timer 一起停(⛔ 不可留一個背景每分鐘打一次 130KB)
+    if (this._lqTimer) { clearTimeout(this._lqTimer); this._lqTimer = 0; } },
   _fishTick(t, move) {
     const cv = document.getElementById('fishCanvas'); if (!cv) return;
     const ctx = cv.getContext('2d'), W = this._fishW, H = this._fishH, F = this._fish;
@@ -2374,6 +2387,43 @@ const PRO = {
         📉 「中途最多賠」是<b>一次做一張、照結算順序</b>算的,
         ⛔ 不是帳戶回撤(回測是同時抱 2 檔、每筆 15 萬 → 49 個月最大回撤 −32.4%)。</div></div>`;
   },
+  // ═══ 📡 V74.6.8 即時報價(使用者:「漁獲籃裡面我想要即時價格,這樣才知道有沒有賺錢」)═══
+  // ⭐ 走 gh-pages 的 `data/live_quotes.json` —— **零金鑰**:採礦端(永豐 Shioaji)盤中每 5 分鐘
+  //    挖一次全市場快照(實測 2,335 檔 / 130KB)。
+  // ⛔ 刻意**不走 Fugle** —— 那要使用者自己的金鑰,而產業作戰室與散戶救星在 iOS 上
+  //    可能是**兩個儲存空間**(V74.4.3 已踩過:金鑰讀不到)。
+  // ⛔ 三條不可改掉:
+  //  ① **自己控快取** —— `fetchJson` 的 `_cache` 會把價格凍在第一次抓到的那一筆。
+  //  ② 🚨 **一定要標出那筆快照的時間**,而且分得出「盤中即時」與「已收盤」——
+  //     ⛔ 不可讓 16:51 的收盤價看起來像「現在的即時價」(陷阱 #34:顯示不該相信的數字比空白更危險)。
+  //  ③ 抓不到就退回選股快照的收盤,並說清楚是哪一天的(⛔ 不靜默)。
+  async _lqLoad() {
+    const now = Date.now();
+    if (this._lq !== undefined && now - (this._lqAt || 0) < 60000) return this._lq;   // 60 秒內不重抓
+    delete this._cache['data/live_quotes.json'];
+    const j = await this.fetchJson('data/live_quotes.json', 9000);
+    this._lqAt = now;
+    this._lq = (j && j.data && typeof j.data === 'object') ? j : null;
+    return this._lq;
+  },
+  _lqPx(sym) { const d = this._lq && this._lq.data, r = d && d[sym]; return r && +r.p > 0 ? +r.p : null; },
+  // 🕐 台北平日 09:00~13:35 才可能有「盤中即時」;⛔ 其餘一律標成「最後更新」
+  _twOpenNow() {
+    try {
+      const p = Object.fromEntries(new Intl.DateTimeFormat('en-US',
+        { timeZone: 'Asia/Taipei', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false })
+        .formatToParts(new Date()).map(x => [x.type, x.value]));
+      if (p.weekday === 'Sat' || p.weekday === 'Sun') return false;
+      const m = (+p.hour) * 60 + (+p.minute);
+      return m >= 540 && m <= 815;
+    } catch (_) { return false; }
+  },
+  _lqStamp() {
+    const L = this._lq; if (!L) return null;
+    const t = Date.parse(String(L.updated || ''));
+    const mins = Number.isFinite(t) ? (Date.now() - t) / 60000 : null;
+    return { txt: String(L.ts || '—'), mins, live: mins != null && mins <= 30 && this._twOpenNow() };
+  },
   _fishBasketRender() {
     const el = document.getElementById('fishBasket'); if (!el) return;
     if (this._twii === undefined) { this._twiiLoad().then(() => this._fishBasketRender()); }   // ⚠️ 載完重畫一次
@@ -2383,9 +2433,17 @@ const PRO = {
     //   ⛔ 而且要用簽章擋住「重畫 → 再載 → 再重畫」的無限迴圈。
     { const sig = list.map(x => `${x.sym}|${x.d}`).join(',') + '|' + this._exitRule();
       if (this._stlSig !== sig) { this._stlSig = sig; this._stlLoad().then(() => this._fishBasketRender()); } }
+    // 📡 即時報價:第一次載完重畫一次;盤中每 60 秒自己更新一次(⛔ 切走分頁要清掉 timer)
+    if (this._lq === undefined) { this._lqLoad().then(() => this._fishBasketRender()); }
+    if (this._lqTimer) { clearTimeout(this._lqTimer); this._lqTimer = 0; }
+    if (list.length && this._twOpenNow()) {
+      this._lqTimer = setTimeout(() => { this._lq = undefined; this._lqAt = 0; this._fishBasketRender(); }, 60000);
+    }
     if (!list.length) { el.innerHTML = `<div class="note" style="margin:0 0 8px">🧺 漁獲籃是空的 —— 點魚 → 「🎣 收進漁獲籃」,之後每次開池子都會算出從釣起到現在賺賠多少。</div>`; return; }
     const rows = list.map(x => {
-      const r = D && D.rows.find(y => y.sym === x.sym), c = r ? r.c : null;
+      const r = D && D.rows.find(y => y.sym === x.sym);
+      // 📡 現價優先用即時快照(⛔ 抓不到才退回選股那天的收盤,並在下方註明是哪一天)
+      const lp = this._lqPx(x.sym), c = lp !== null ? lp : (r ? r.c : null);
       const pct = c !== null && x.px > 0 ? (c / x.px - 1) * 100 : null;
       const lot = c !== null ? (c - x.px) * 1000 : null;                    // 一張毛損益(元)
       const days = x.d && D && D.date ? this._daysBetween(x.d, D.date) : null;
@@ -2412,7 +2470,8 @@ const PRO = {
         ${rows.map(r => `<tr>
           <td class="l">${this._nmc(r.sym, `PRO._fishPick('${r.sym}')`)}</td>
           <td class="mono">${(r.d || '').slice(5)}</td><td class="mono">${r.px}</td>
-          <td class="mono">${r.c === null ? '<span title="今天的選股快照裡沒有這檔">—</span>' : r.c}</td>
+          <td class="mono">${r.c === null ? '<span title="今天的選股快照裡沒有這檔">—</span>'
+            : (this._lqPx(r.sym) !== null ? `${r.c}<span title="即時報價快照" style="font-size:9px;color:var(--cyan)"> 📡</span>` : r.c)}</td>
           <td class="mono ${this.cls(r.pct)}">${r.pct === null ? '—' : this.fmt(r.pct, 2, true) + '%'}</td>
           <td class="mono ${this.cls(r.bench)}">${r.bench === null ? '—' : this.fmt(r.bench, 2, true) + '%'}</td>
           <td class="mono ${this.cls(r.ex)}"><b>${r.ex === null ? '—' : this.fmt(r.ex, 2, true) + 'pp'}</b></td>
@@ -2426,7 +2485,14 @@ const PRO = {
       ${this._stlCard(rows)}
       <div class="note" style="margin-top:6px">「一張(元)」= (現價 − 釣起價)× 1,000,<b>毛損益、還沒扣手續費與證交稅</b>(來回約 0.44%)。
         釣起價是那天的收盤,不是你真的成交的價;這是你自己的紀錄,⛔ 不是本站推薦、也不是進出場指令。
-        現價更新到 ${D && D.date ? D.date : '—'} 的收盤。只存在這台裝置(換手機不會跟著走)。<br>
+        ${(() => { const st = this._lqStamp(); return st
+          ? `📡 <b>現價 = ${st.live ? `盤中即時(${st.txt} 那一筆,每 5 分鐘一輪)` : `最後一筆快照 ${st.txt}`}</b>`
+            + `${st.live ? '' : ' —— <b>已經收盤了,那就是收盤價</b>'};帶 📡 的是即時來源,`
+            + `沒有 📡 的退回 ${D && D.date ? D.date : '—'} 的收盤。`
+          : `⏳ 即時報價還沒載到 → 現價用的是 ${D && D.date ? D.date : '—'} 的<b>收盤</b>。`; })()}
+        🆚 <b>但「大盤」那欄仍是到最近收盤為止</b>(即時快照只有個股與台指期,沒有加權指數)
+        → 盤中的「贏大盤」會差一個交易日,⛔ 別拿它做當下的決定。
+        只存在這台裝置(換手機不會跟著走)。<br>
         🆚 <b>「贏大盤」= 賺賠 − 同期加權指數</b> —— ⭐ 這一欄才是「這條魚到底有沒有用」:
         個股漲 5% 而大盤漲 8%,那其實是輸。本站所有回測都是這樣扣的,這裡用同一把尺。
         ${exs.length && exs.length < 10 ? `<br>⚠️ <b>目前只有 ${exs.length} 筆,⛔ 不能當結論</b>(全站規則:樣本 <10 筆不下判斷)。` : ''}</div>
@@ -3433,7 +3499,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.6.7',
+  VER: 'V74.6.8',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

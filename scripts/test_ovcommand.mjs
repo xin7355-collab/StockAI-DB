@@ -66,6 +66,21 @@ const R = await page.evaluate(async () => {
     out.exit = draw();
     out.dExit = A._ovDecide(A.activeData, '2330');
     A._exitLines = bak;
+    // 🩹 V74.6.8 使用者截圖抓到:「反彈到 X → 先出一半」的金額用「1 張」算,
+    //    而同一張卡上面三行用「你手上的實際股數」→ 兩種基準。零股族差最多(0.07 張 → 差 14 倍)。
+    //    ⭐ 測資刻意用 **0.07 張(70 股)**,一半 = 35 股 → 金額必須落在「35 股」那個量級。
+    {
+      A.inventory = [{ symbol: '2330', cost: px * 2, shares: 0.07, buyDate: '2026-06-02' }];
+      A._exitLines = (d, sy) => ({ ...bak.call(A, d, sy), don: px * 1.5, atr2: px * 1.4, ma5: px * 1.3 });
+      A._upsideStash = { pC: px, list: [{ v: px * 1.2, n: '測試壓力' }] };
+      const dh = A._ovDecide(A.activeData, '2330');
+      const half = ((dh && dh.plan) || []).find(x => /先出一半/.test(x.t));
+      out.halfMoney = half ? half.money : null;
+      out.halfSub = half ? half.sub : '';
+      out.half35 = A._netPL(px * 2, px * 1.2, 35);       // 手算對照(⛔ 不讓斷言去猜)
+      out.half1000 = A._netPL(px * 2, px * 1.2, 1000);
+      A._exitLines = bak; A._upsideStash = null;
+    }
     // ③ 黑名單過濾:塞一條「低檔布局」的負面 bullet 與一個「補漲」看多訊號
     A.inventory = [];
     A._ecCache = { sym: '2330', at: Date.now(), r: {
@@ -134,6 +149,12 @@ ok('⑦ 有庫存要給成本 + 報酬率 + 損益金額(% 要配元)',
 ok('⑦b 空手時誠實說「你目前空手」(⛔ 不留空白)', has(R.flat, '空手'));
 ok('⑧ 原本三個頁籤與明細卡是**收起不是刪除**(DOM 仍在 #ovMoreWrap 裡)', R.moved);
 ok('⑨ 指數不顯示這一區(它沒有買賣價位可言)', R.idxEmpty);
+// 🩹 V74.6.8 零股族的「先出一半」(使用者截圖:上面三行用 70 股算、這一行用 1 張算,差 14 倍)
+ok('🩹⑩ 「先出一半」的金額用**實際股數的一半**(⛔ 不是寫死 1 張)',
+   R.halfMoney != null && Math.abs(R.halfMoney - R.half35) < 1 && Math.abs(R.halfMoney - R.half1000) > 100,
+   `half=${R.halfMoney} ・35股=${R.half35} ・1000股=${R.half1000}`);
+ok('🩹⑩b 金額改了,標籤要跟著寫出是幾股(⛔ 不可讓人以為是一張)',
+   /35/.test(R.halfSub) && /股/.test(R.halfSub), R.halfSub);
 ok('⑨b ⛔ 不可用紅綠 emoji 當狀態燈(燈號鐵則)', !/[🔴🟢]/u.test(R.html), (R.html.match(/[🔴🟢]/gu) || []).join(''));
 
 await browser.close();

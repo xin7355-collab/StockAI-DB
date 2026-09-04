@@ -372,6 +372,32 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV, PBE }) => {
   PRO._catchSave([]); PRO._stl = {}; PRO._stlSig = null; setRule('atr2');
   PRO._fishBasketRender(); await sleep(30);
 
+  // ═══ 📡 V74.6.8 漁獲籃即時價格 ═══
+  {
+    const openBak = PRO._twOpenNow;
+    PRO._catchSave([{ sym: '2408', nm: '南亞科', px: 100, d: PRO._fishD.date }]);
+    // ① 盤中即時:塞一份快照 → 現價要跟著變、要帶 📡、時間要標出來
+    PRO._lq = { updated: new Date().toISOString(), ts: '09/04 11:05', data: { '2408': { p: 123.5 } } };
+    PRO._lqAt = Date.now(); PRO._twOpenNow = () => true;
+    PRO._fishBasketRender(); await sleep(30);
+    out.lqLive = document.getElementById('fishBasket').innerText;
+    // ② 已收盤(同一份快照,但市場沒開)→ ⛔ 不可叫「即時」
+    PRO._twOpenNow = () => false;
+    PRO._fishBasketRender(); await sleep(30);
+    out.lqClosed = document.getElementById('fishBasket').innerText;
+    // ③ 抓不到即時 → 退回選股快照的收盤,而且要說出是哪一天(⛔ 不靜默)
+    PRO._lq = null; PRO._lqAt = Date.now();
+    PRO._fishBasketRender(); await sleep(30);
+    out.lqNone = document.getElementById('fishBasket').innerText;
+    out.lqNoneHtml = document.getElementById('fishBasket').innerHTML;
+    // ④ 切走分頁要把 timer 停掉(⛔ 不可留一個背景每分鐘打一次 130KB)
+    PRO._lqTimer = setTimeout(() => {}, 999999); PRO.fishStop();
+    out.lqTimerCleared = PRO._lqTimer === 0;
+    PRO._twOpenNow = openBak; PRO._lq = undefined; PRO._lqAt = 0;
+    PRO._catchSave([]); PRO._fishBasketRender(); await sleep(20);
+  }
+  out.fishSub = document.getElementById('fishSub').innerText;
+
   // ⑤ 切走要停
   PRO.switchTab('val'); await sleep(50);
   out.stoppedOnLeave = PRO._fishRaf === 0;
@@ -524,6 +550,28 @@ ok('🧾㉒j 🧾 一條都沒觸發時要誠實說(⛔ 不可留白、也不可
    /還沒有任何一條觸發出場/.test(R.stlNone) && /持有中/.test(R.stlNone));
 ok('🧾㉒k 📉 「中途最多賠」要標明⛔ 不是帳戶回撤(回測是同時抱 2 檔、每筆 15 萬)',
    /不是帳戶回撤/.test(R.stlWin) && /−32\.4%|-32\.4%/.test(R.stlWin));
+// ═══ 📡 V74.6.8 漁獲籃即時價格(使用者:「我想要即時價格,這樣才知道有沒有賺錢」)═══
+ok('📡㉓ 現價吃即時快照(123.5 → +23.50%),而且帶 📡 標記',
+   /123\.5/.test(R.lqLive) && /\+23\.50%/.test(R.lqLive),
+   (R.lqLive.match(/南亞科[\s\S]{0,90}/) || [''])[0].replace(/\n/g, ' '));
+ok('📡㉓b 🚨 盤中要標「盤中即時 + 那一筆的時間」',
+   /盤中即時/.test(R.lqLive) && /09\/04 11:05/.test(R.lqLive),
+   (R.lqLive.match(/📡[\s\S]{0,80}/) || [''])[0].replace(/\n/g, ' '));
+// 🚨 陷阱 #34:顯示一個不該相信的數字比空白更危險 —— 收盤後那筆⛔ 不可叫「即時」
+ok('📡㉓c 🚨 已收盤時⛔ 不可寫「盤中即時」,要說那是收盤價',
+   !/盤中即時/.test(R.lqClosed) && /已經收盤了/.test(R.lqClosed),
+   (R.lqClosed.match(/📡[\s\S]{0,80}/) || [''])[0].replace(/\n/g, ' '));
+ok('📡㉓d 抓不到即時 → 退回選股收盤,而且要說出是哪一天(⛔ 不靜默)',
+   /即時報價還沒載到/.test(R.lqNone) && /收盤/.test(R.lqNone) && !/📡/.test(R.lqNoneHtml.replace(/title="[^"]*"/g, '')),
+   (R.lqNone.match(/⏳[\s\S]{0,80}/) || [''])[0].replace(/\n/g, ' '));
+ok('📡㉓e 🆚 必須寫出「大盤那欄仍是到最近收盤」(盤中會差一個交易日)',
+   /大盤」那欄仍是到最近收盤/.test(R.lqLive) && /差一個交易日/.test(R.lqLive));
+ok('📡㉓f 切走分頁要把即時報價的 timer 停掉', R.lqTimerCleared);
+// ═══ 🕐 V74.6.8 魚什麼時候換新(使用者:「9/3 更新不會很怪嗎?」)═══
+ok('🕐㉔ 標題列要寫清楚「收盤後才換新」+ 實際會延到 23:00',
+   /收盤後/.test(R.fishSub) && /23:00/.test(R.fishSub), R.fishSub.slice(0, 120));
+ok('🕐㉔b 🚨 要講明這是「明天的候選」,並指路盤中到價提醒(13:00~13:28)',
+   /明天的候選/.test(R.fishSub) && /13:00~13:28/.test(R.fishSub) && /散戶救星/.test(R.fishSub));
 ok('⑤ 切走分頁 rAF 停,而且之後不再排新的一格', R.stoppedOnLeave && R.noRafAfterLeave);
 ok('⑦ 停在很久以前的資料 → ⚠️ 資料未更新', /資料未更新/.test(R.stale3) && /天前/.test(R.stale3), R.stale3);
 ok('⑦b 2 天前的資料不誤報(週末守門)', R.fresh === '', R.fresh);
