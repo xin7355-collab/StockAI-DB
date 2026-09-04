@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.6.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.7.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -698,7 +698,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.6.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.7.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7520,8 +7520,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.6.9',
+    _APP_VERSION: 'V74.7.0',
     _CHANGELOG: [
+        { v: 'V74.7.0', dt: '2026-09-04', d: ['📕 <b>那份當沖 PDF 的指標,分 K 版也測完了 —— 全部不成立</b>(產業作戰室 → 實測總表)。20 檔 ・85 個交易日 ・5/15/60 分 K 各跑一次:<b>每一個週期、每一個訊號扣掉成本後都是負的</b>;而且「三大核心」在 5 分是 −0.02、15 分 −0.12、60 分 +0.16 —— <b>跨週期方向相反 = 沒有穩定結構</b>。⛔ 不要用那幾個指標做當沖。','🌏 <b>第一次把台股跟美日韓港並排比</b>:⭐ <b>美股隔夜對台股的預測相關 +0.47~0.49,而且是單向的</b>(台股對美股 ≈ 0);日股韓股<b>同期</b>相關 0.65 很高、但<b>隔天只有 +0.05 ≈ 0</b> → 同步但不領先,⛔ 別拿它們預測台股。台股單日跌 ≥2% 的頻率 4.4% 是六個市場<b>最低</b>。','💾 <b>開始存三類「現在不存以後永遠測不了」的資料</b>:鉅額交易逐日、借券逐日、融資限額(算融資使用率用)。⏳ 累積滿一年前<b>不上前端、不計分</b>。','🩺 <b>新增一道守門</b>:同一個檔案裡重複定義同名函式時會直接擋下來。這是實跑踩到才寫的 —— 有支程式裡有兩份 main(),Python 用最後那個,<b>結果我一直以為在跑新版、其實跑的是舊版</b>,而且全程零錯誤訊息。'] },
         { v: 'V74.6.9', dt: '2026-09-04', d: ['🎯 <b>空手時終於看得到「買點在哪」了</b>(總覽)。這一檔如果有一招是實測有效的,徽章會變成「⏳ <b>等它漲過去</b>」並直接給<b>觸發價</b>、<b>停損價</b>、勝率與次數 —— 以前那個價位只出現在「明日作戰清單」,個股頁一個字都沒提,難怪會以為「這檔沒買點」。','🚨 <b>但那是「漲過去」才算數的觸價買單,⛔ 不是掛在下面等它跌回來</b>。實測掛前一日收盤價那種做法只賺 12.4 萬、中途最多賠 −46.1%(尾盤觸價進場是 +259.9 萬)—— 會成交的正好是「訊號出了、市場卻不買單」的弱股。','⛔ <b>不在清單裡的就誠實說沒有</b>:全市場 2,326 檔裡,扣掉成本後還是正的只有約 200 檔,<b>大部分股票沒有值得做的招是常態</b>,絕不會憑空生一個買點給你。空頭趨勢時一樣不給進場價。','⚙️ <b>「建議減碼」時會講明「你設定的那條還沒破」</b>。之前只列「另一條出場線也破了」,卻從來沒說你設定的那條沒破 → 會以為系統叫你全出。現在會寫清楚:<b>減碼 ≠ 全出</b>,機械式全出要等你設的那條破。'] },
         { v: 'V74.6.8', dt: '2026-09-04', d: ['🩹 <b>修一個零股族會被誤導 14 倍的金額</b>(總覽 → 現在該做什麼)。「反彈到 X → 先出一半」那行原本一律用<b>一張(1,000 股)</b>算錢,而同一張卡上面三行是用<b>你手上的實際股數</b>算的 —— 手上只有 70 股的話,那行會顯示 <b>+33,879 元</b>,實際只有 <b>+1,163 元</b>。現在改用實際股數的一半,而且旁邊直接寫出「一半 ≈ 35 股」。','📡 <b>漁獲籃的現價改成即時的</b>(產業作戰室 → 釣魚池)。盤中每 5 分鐘自動更新,帶 📡 的就是即時來源;收盤後會誠實寫「已經收盤了,那就是收盤價」,⛔ 不會把收盤價假裝成即時價。零金鑰(用採礦機挖好的全市場快照)。⚠️ 但「大盤」那欄仍是到最近收盤為止 → 盤中的「贏大盤」會差一個交易日。','🕐 <b>寫清楚「魚什麼時候換新」</b>:選股條件要用<b>當天收盤價</b>才算得出來 → 這池子每個交易日<b>收盤後</b>才重算(排程 19:00,常被排隊延到 23:00~23:30)。所以你盤中看到的一定是「上一個交易日」的魚,<b>那不是壞掉</b>。🚨 它給的是<b>明天的候選</b>,想知道「今天 13:00~13:28 輪到誰」要看散戶救星的盤中到價提醒。'] },
         { v: 'V74.6.7', dt: '2026-09-04', d: ['🧾 <b>釣到的魚會自動結算了</b>(產業作戰室 → 釣魚池 → 漁獲籃)。釣起之後,只要<b>收盤跌破你設的出場線、碰到停損、或抱滿 20 個交易日</b>,它就自己算完並記下來 —— 底下多一張<b>成績單</b>:勝率、每趟平均、贏大盤幾筆、超額中位、一張合計、中途最多賠。⭐ 這樣才知道<b>這套釣魚到底有沒有用</b>,不再只是看「現在浮動賺賠多少」。','⚙️ <b>換出場規則的話,整籃會全部重算</b> —— 籃子只記「哪一檔、哪一天釣起」,成績每次都從 K 線重算,所以你可以直接看「改用移動停利 8% 的話我會賺多少」。','🚨 <b>誠實話</b>:那是<b>紙上成績</b>(進場用釣起那天的收盤,回測用的是尾盤 13:00~13:28,而且沒有滑價),⛔ 不是你的實際損益;每趟已扣來回成本 0.44%,超額再扣同期大盤;<b>不到 10 筆一律不能當結論</b>。','🛑 <b>順手修一個真的不一致</b>:釣魚卡上的停損原本用「進場 −5% 與<b>近 10 日</b>最低取較近的」,而回測用的是「<b>釣起那天</b>最低與 −5% 取較低的」→ 照卡片做會<b>比回測更常被停損</b>,那份成績單就不是在描述這張卡。已一律改成跟回測一字不差。'] },
