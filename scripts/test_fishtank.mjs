@@ -292,7 +292,7 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV, PBE }) => {
   PRO.fishPool('amt'); await sleep(300);
   // 🚪 出場價位要抓那一檔的 K 線 —— headless 的 file:// 抓不到 → 塞進共用 _cache(⛔ 不繞過 fetchJson)。
   //    ⭐ 收盤 100..111、低點 = 收盤 −2 → 5 日線 = 109.00、近 10 日最低 = 100、
-  //      停損取「111×0.95 = 105.45」與「100」較近者 = **105.45**(算得出來才敢斷言數字)
+  //      停損 = min(當天低 109, 111×0.95 = 105.45) = **105.45**(跟回測同一條,算得出來才敢斷言數字)
   PRO._cache['data/2408.json'] = Array.from({ length: 12 }, (_, i) => ({
     date: `2026-08-${String(10 + i).padStart(2, '0')}`, close: 100 + i, high: 100 + i + 1, low: 100 + i - 2, volume: 1000,
   }));
@@ -337,6 +337,40 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV, PBE }) => {
   out.storedAfter = JSON.parse(localStorage.getItem('proWar_catch') || '[]');
   // 壞值守門
   localStorage.setItem('proWar_catch', '{"a":1,"b":[1,2'); out.badLoad = PRO._catchLoad(); out.badCleared = localStorage.getItem('proWar_catch') === null;
+
+  // ═══ 🧾 V74.6.7 漁獲自動結算 ═══
+  // ⭐ 測資全部**手算得出唯一答案**(⛔ 不讓斷言去猜實際輸出):
+  //   收盤 100×10 → 105,106,107,108,109,106;low = close −1、high = close +1
+  //   進場 = 第 9 根(收 100、低 99)→ 停損 = min(99, 100×0.95=95) = **95**
+  //   5 日線:第 15 根 = (106+109+108+107+106)/5 = 107.2 → 收 106 < 107.2 → **跌破 5 日線出場**
+  //   → 報酬 (106/100−1) = +6%,扣來回成本 0.44% → **+5.56%**;抱 **6** 個交易日;一張 **+6,000** 元
+  //   大盤同期 1000 → 1010 = +1.0% → 超額 = 5.56 − 1.0 = **+4.56pp**
+  const _D = i => new Date(Date.UTC(2026, 5, 1) + i * 864e5).toISOString().slice(0, 10);
+  const _mk = cs => cs.map((c, i) => ({ date: _D(i), close: c, high: c + 1, low: c - 1, volume: 1000 }));
+  const FX_WIN = _mk([100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 105, 106, 107, 108, 109, 106]);
+  const setRule = k => localStorage.setItem('proTerminalSettings', JSON.stringify({ exitRule: k }));
+  const stlRun = async (fx, rule) => {
+    setRule(rule);
+    PRO._stl = {}; PRO._stlSig = null; PRO._exCache = {};
+    PRO._cache['data/2408.json'] = fx;
+    PRO._catchSave([{ sym: '2408', nm: '南亞科', px: 100, d: _D(9) }]);
+    PRO._twii = { m: new Map([[_D(9), 1000], [_D(15), 1010], [_D(29), 1010]]), days: [_D(9), _D(15), _D(29)] };
+    await PRO._stlLoad(); PRO._fishBasketRender(); await sleep(30);
+    return document.getElementById('fishBasket').innerText;
+  };
+  out.stlWin = await stlRun(FX_WIN, 'ma5');
+  // 🚨 零前視:把**出場之後**的 K 棒改掉(甚至改成漲停),結算結果⛔ 必須一模一樣
+  out.stlFuture = await stlRun(FX_WIN.concat(_mk([200, 200, 200, 200, 200]).map((b, i) => ({ ...b, date: _D(16 + i) }))), 'ma5');
+  // 🛑 停損:第 10 根收 93 ≤ 95 → 出在**停損價 95**(⛔ 不是 93)→ (95/100−1) − 0.44 = −5.44%
+  out.stlStop = await stlRun(_mk([100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 93, 93]), 'ma5');
+  // ⏳ 抱滿 20 個交易日:全平盤 → 收盤不會「< 5 日線」(相等不算)→ 第 20 天強制出場,−0.44%
+  out.stlMax = await stlRun(_mk(Array.from({ length: 40 }, () => 100)), 'ma5');
+  // ⭐ 換一條出場規則 → **同一批紀錄要全部重算**(移動停利 8%:峰值 109 × 0.92 = 100.28,收 106 沒破 → 還沒觸發)
+  out.stlRule = await stlRun(FX_WIN, 'trail8');
+  // 🧾 一條都還沒觸發時要誠實說(⛔ 不可留白、也不可假裝有成績)
+  out.stlNone = out.stlRule;
+  PRO._catchSave([]); PRO._stl = {}; PRO._stlSig = null; setRule('atr2');
+  PRO._fishBasketRender(); await sleep(30);
 
   // ⑤ 切走要停
   PRO.switchTab('val'); await sleep(50);
@@ -432,12 +466,20 @@ ok('🏆⑰f ⏳ 清單還沒產出要誠實說(⛔ 不可只寫「這個池子�
 ok('③g 🚪 出場那段要**真的算出價位**(⛔ 只寫規則沒有數字等於沒說)',
    /停損價/.test(R.cardExit) && /出場線/.test(R.cardExit) && /\d+\.\d\d/.test(R.cardExit) && /移動停利/.test(R.cardExit),
    JSON.stringify({ ex: R.exDbg, snip: (R.cardExit.match(/🚪[\s\S]{0,200}/) || [''])[0].replace(/\n/g, '⏎') }));
-ok('③h 🚪 停損取「進場 −5%」與「近 10 日最低」**較近**的那個(測資算得出來:105.45)',
+// 🚨 V74.6.7:停損改成跟回測**一字不差** —— min(訊號日當天最低, 進場 −5%)。
+//    ⛔ 舊版寫的是 max(進場 −5%, 近 10 日最低)= 比回測**更緊**,使用者會比回測更常被掃出場。
+//    2408 測資:當天低 109 vs 111×0.95 = 105.45 → 取 105.45(標「進場 −5%」)。
+ok('③h 🚪 停損 = min(訊號日當天最低, 進場 −5%),跟回測同一條(測資算得出來:105.45)',
    /105\.45/.test(R.cardExit) && /進場 −5%/.test(R.cardExit)
    && /出場線\((ATR 追蹤停利|唐奇安 20 日低點|移動停利 8%|跌破 5 日線)\)/.test(R.cardExit),
    (R.cardExit.match(/停損價[\s\S]{0,80}/) || [''])[0].replace(/\n/g, ' '));
+// ⭐ 8299 測資是**分辨新舊規則**的那一組:當天低 509、511×0.95 = 485.45
+//    新規則 min → 485.45 ・舊規則 max(485.45, 近10日最低 500) → 500.00
+ok('③h2 🚪 ⛔ 不可退回舊的「取較近那個」(8299 測資:新 485.45 / 舊 500.00)',
+   /485\.45/.test(R.exRace) && !/500\.00/.test(R.exRace),
+   (R.exRace.match(/停損價[\s\S]{0,60}/) || [''])[0].replace(/\n/g, ' '));
 ok('③i 陷阱 #19:切到別檔之後,舊那檔的出場價位⛔ 不可寫進新卡',
-   /500\.00/.test(R.exRace) && !/105\.45/.test(R.exRace) && !/109\.00/.test(R.exRace),
+   /485\.45/.test(R.exRace) && !/105\.45/.test(R.exRace) && !/109\.00/.test(R.exRace),
    (R.exRace.match(/停損價[\s\S]{0,60}/) || [''])[0].replace(/\n/g, ' '));
 ok('🏅⑮ 每一條魚都算了實測體質', R.scored === R.rowsN && R.rowsN > 0, `${R.scored}/${R.rowsN}`);
 ok('🏅⑮b 手算對照:符合「創一年新高」的魚,分數裡那條的 pp 要等於成績表第 5 欄', R.nhCheck === 'no-sample' || R.nhCheck.has === true, JSON.stringify(R.nhCheck));
@@ -452,6 +494,36 @@ ok('🧺⑯c2 有「大盤」與「贏大盤」兩欄,而且是「賺賠 − 大
 ok('🧺⑯c3 樣本不足 10 筆要明寫⛔ 不能當結論(跟全站同一條規則)', /不能當結論/.test(R.basket2));
 ok('🧺⑯d 放生 → 籃子空、localStorage 也清掉', /漁獲籃是空的/.test(R.basketEmpty) && R.storedAfter.length === 0);
 ok('🧺⑯e 半截 JSON 不會炸,而且壞值被清掉(陷阱 #18)', Array.isArray(R.badLoad) && R.badLoad.length === 0 && R.badCleared);
+// ═══ 🧾 V74.6.7 漁獲自動結算(使用者:「釣起來之後觸發到出場直接結算…這才知道這個策略是不是有用的」)═══
+ok('🧾㉒ 觸發出場 → 自動結算,而且數字跟回測一字不差(+5.56% ・跌破 5 日線 ・6 天)',
+   /\+5\.56%/.test(R.stlWin) && /跌破 5 日線/.test(R.stlWin) && /6天/.test(R.stlWin),
+   (R.stlWin.match(/🧾[\s\S]{0,180}/) || [''])[0].replace(/\n/g, ' '));
+ok('🧾㉒b 成績單:勝率配次數 + 每趟 + 一張合計(手算 +6,000 元)',
+   /1\/1/.test(R.stlWin) && /\+5\.56%/.test(R.stlWin) && /\+6,000 元/.test(R.stlWin),
+   (R.stlWin.match(/勝率[\s\S]{0,160}/) || [''])[0].replace(/\n/g, ' '));
+ok('🧾㉒c 🆚 超額要扣同期加權(大盤 +1.0% → 5.56 − 1.0 = +4.56pp)',
+   /\+4\.56pp/.test(R.stlWin), (R.stlWin.match(/超額[\s\S]{0,60}/) || [''])[0].replace(/\n/g, ' '));
+ok('🧾㉒d ⚠️ 樣本 <10 筆要明寫⛔ 還不能當結論(全站同一條規則)',
+   /只有 1 筆/.test(R.stlWin) && /還不能當結論/.test(R.stlWin));
+ok('🧾㉒e 🚨 必須寫「這是紙上成績」+ 進場價跟回測不同(尾盤 vs 收盤)',
+   /紙上成績/.test(R.stlWin) && /13:00/.test(R.stlWin) && /勝率鏡子/.test(R.stlWin));
+ok('🧾㉒f 🚨 零前視:改掉**出場之後**的 K 棒(改成漲停),結算結果必須一模一樣',
+   /\+5\.56%/.test(R.stlFuture) && /6天/.test(R.stlFuture) && !/200/.test((R.stlFuture.match(/🧾 結算[\s\S]{0,200}/) || [''])[0]),
+   (R.stlFuture.match(/勝率[\s\S]{0,80}/) || [''])[0].replace(/\n/g, ' '));
+ok('🧾㉒g 🛑 停損出在**停損價 95**(⛔ 不是當天收盤 93)→ −5.44%',
+   /−5\.44%|-5\.44%/.test(R.stlStop) && /停損/.test(R.stlStop) && !/−7\.44%|-7\.44%/.test(R.stlStop),
+   (R.stlStop.match(/🧾[\s\S]{0,160}/) || [''])[0].replace(/\n/g, ' '));
+ok('🧾㉒h ⏳ 全平盤 → 抱滿 20 個交易日強制出場(⛔ 不可無限抱下去)',
+   /抱滿 20 個交易日/.test(R.stlMax) && /20天/.test(R.stlMax),
+   (R.stlMax.match(/🧾[\s\S]{0,160}/) || [''])[0].replace(/\n/g, ' '));
+// ⭐ 這條是「⛔ 不產生第二份真相」的實證:籃子只存「哪一檔+哪一天」,換規則整籃重算
+ok('🧾㉒i ⭐ 換一條出場規則 → 同一批紀錄全部重算(移動停利 8% 沒觸發 → 持有中,⛔ 不沿用 ma5 的 +5.56%)',
+   /持有中/.test(R.stlRule) && !/\+5\.56%/.test(R.stlRule),
+   (R.stlRule.match(/🧾[\s\S]{0,200}/) || [''])[0].replace(/\n/g, ' '));
+ok('🧾㉒j 🧾 一條都沒觸發時要誠實說(⛔ 不可留白、也不可假裝有成績)',
+   /還沒有任何一條觸發出場/.test(R.stlNone) && /持有中/.test(R.stlNone));
+ok('🧾㉒k 📉 「中途最多賠」要標明⛔ 不是帳戶回撤(回測是同時抱 2 檔、每筆 15 萬)',
+   /不是帳戶回撤/.test(R.stlWin) && /−32\.4%|-32\.4%/.test(R.stlWin));
 ok('⑤ 切走分頁 rAF 停,而且之後不再排新的一格', R.stoppedOnLeave && R.noRafAfterLeave);
 ok('⑦ 停在很久以前的資料 → ⚠️ 資料未更新', /資料未更新/.test(R.stale3) && /天前/.test(R.stale3), R.stale3);
 ok('⑦b 2 天前的資料不誤報(週末守門)', R.fresh === '', R.fresh);

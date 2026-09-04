@@ -1740,6 +1740,7 @@ const PRO = {
         const peak60 = Math.max(...c.slice(Math.max(0, n - 60)));
         this._exCache[sym] = { c: c[n - 1], ma5, low10, don, atr2: atr > 0 ? peak - 2 * atr : null,
           trail8: peak > 0 ? peak * 0.92 : null,
+          low1: lo[n - 1],                    // 🚨 訊號日**當天**低點 —— 回測的停損用這個
           atr: atr > 0 ? atr : null,
           atrPct: (atr > 0 && c[n - 1] > 0) ? atr / c[n - 1] * 100 : null,
           dd60: peak60 > 0 ? (c[n - 1] / peak60 - 1) * 100 : null,
@@ -1766,8 +1767,14 @@ const PRO = {
   },
   _exRow(sym) { return (this._exCache || {})[sym] || null; },
   _exitBody(x) {
-    const stop = Math.max(x.c * 0.95, x.low10);     // ⭐ 取「進場 −5%」與近 10 日低點**較近**的那個
-    const which = x.c * 0.95 >= x.low10 ? '進場 −5%' : '近 10 日最低';
+    // 🚨🚨 V74.6.7 修一個真的不一致:這張卡引用的是組合回測的數字(+292.8 萬 / −24.5%),
+    //   ⛔ 但它原本用的停損是 `max(進場−5%, **近 10 日**最低)` = 取**較近**的,
+    //   而回測用的是 `min(**訊號日當天**低點, 進場−5%)` = 取**較遠**的。
+    //   → 兩者在「這 10 天都沒跌超過 5%」時會不一樣,而那正是強勢股的常態
+    //      → 照卡片做會**比回測更常被停損**,那份成績單就不是描述這張卡。
+    //   ⭐ 一律以回測為準(CLAUDE.md 全站寫的都是 `min(低點, −5%)`)。
+    const stop = Math.min(x.low1 != null ? x.low1 : x.c * 0.95, x.c * 0.95);
+    const which = (x.low1 != null && x.low1 < x.c * 0.95) ? '訊號日當天最低' : '進場 −5%';
     const _ex = x[this._exitRule()] ?? x.ma5;      // ⭐ 你設定的那一條(⛔ 不再寫死 5 日線)
     const dStop = (stop / x.c - 1) * 100, dMa = (_ex == null ? 0 : (_ex / x.c - 1) * 100);
     const lot = Math.round((stop - x.c) * 1000);
@@ -1784,7 +1791,7 @@ const PRO = {
       <div><b>📉 它現在的回撤</b><span class="mono">${x.dd60 == null ? '—' : x.dd60.toFixed(1) + '%'}</span></div>
       <div><b>(距近 60 日最高)</b><span class="mono">${x.peak60 == null ? '—' : x.peak60.toFixed(2)}</span></div>
       </div>
-      <div class="note" style="margin-top:4px">🛑 <b>停損</b>取「進場 −5%」與「近 10 日最低」<b>較近</b>的那個(這次是<b>${which}</b>);
+      <div class="note" style="margin-top:4px">🛑 <b>停損</b>取「進場 −5%」與「<b>訊號日當天最低</b>」<b>較低</b>的那個(這次是<b>${which}</b>,⭐ 跟回測一字不差);
       🚪 <b>收盤跌破${this._exitRuleName()}就走</b>,最長抱 <b>20 個交易日</b> —— ⛔ 不是「賺多少才賣」,是<b>跌破就走</b>。
       <span style="color:var(--dim2)">(用 ${x.d} 收盤 ${x.c} 算的估計值;真的要下單以散戶救星盤中重算為準)</span></div>
       <div class="note" style="margin-top:4px">📏 <b>ATR</b> = 這一檔<b>正常一天會晃多少</b>(近 14 天真實波幅平均)。
@@ -2229,10 +2236,153 @@ const PRO = {
     return best ? T.m.get(best) : null;
   },
 
+  // ═══ 🧾 V74.6.7 漁獲自動結算(使用者:「釣起來之後觸發到出場直接結算,
+  //     用這樣的計算方式直接紀錄,這才知道這個策略是不是有用的」)═══
+  // ⛔ 五條鐵則(測試 🧾㉒ 系列釘住):
+  //  ① 規則跟 `scripts/portfolio_backtest.mjs` **一字不差**:停損 = min(釣起日最低, 釣起價 −5%)
+  //     ・出場線 = 你設定的那一條(**逐日重算**,⛔ 不是拿今天那條去比昨天)
+  //     ・最長 20 個交易日 ・只用「到當天為止」的資料(零前視)。
+  //     ⚠️ 改了這裡就要重跑回測,否則這張成績單跟「📖 回測計算機」對不起來。
+  //  ② 籃子**只存「哪一檔 + 哪一天釣起」**,成績每次從 K 線重算 → ⛔ 不產生第二份真相;
+  //     換出場規則時**舊紀錄也會跟著重算**(⭐ 那正是想知道的事:換一條規則我會賺多少)。
+  //  ③ 這是**紙上成績**:回測進場是訊號日**尾盤 13:00~13:28**,這裡用釣起那天的**收盤**
+  //     → ⛔ 不可當成實盤成績(實盤那份在散戶救星的「🪞 勝率鏡子」,它問的是你真的成交多少)。
+  //  ④ 報酬一律**扣來回成本 0.44%**、並**扣同期加權**(跟全站同一把尺)。
+  //  ⑤ 樣本 <10 筆 ⛔ 不下結論(全站統一的 `_wrEnough`)。
+  _STL_MAXD: 20, _STL_COST: 0.44,
+  // 🧮 純函式:把回測的持有迴圈原封不動搬過來(⛔ 不可在這裡「順便優化」)
+  _settleReplay(rows, i0, rule) {
+    const n = rows.length; if (!(i0 >= 1) || i0 >= n) return null;
+    const C = j => +rows[j].close, L = j => (+rows[j].low > 0 ? +rows[j].low : +rows[j].close),
+          H = j => (+rows[j].high > 0 ? +rows[j].high : +rows[j].close);
+    const entry = C(i0); if (!(entry > 0)) return null;
+    let stop = Math.min(L(i0), entry * 0.95);
+    if (!(stop > 0) || stop >= entry) stop = entry * 0.95;      // 守門:算壞就退回(⛔ 跟回測同一行)
+    const atrAt = j => {
+      let tr = 0, k = 0;
+      for (let q = Math.max(1, j - 13); q <= j; q++) {
+        const pc = C(q - 1); if (!(pc > 0)) continue;
+        tr += Math.max(H(q) - L(q), Math.abs(H(q) - pc), Math.abs(L(q) - pc)); k++;
+      }
+      return k ? tr / k : 0;
+    };
+    const atr0 = atrAt(i0);            // ⭐ ATR 只在進場日算一次(⛔ 跟回測的 chand 一致,不逐日更新)
+    const endJ = Math.min(n - 1, i0 + this._STL_MAXD);
+    const done = (exitP, j, why) => ({ entry, stop, exitP, exitIdx: j, days: j - i0, why, open: false,
+      d0: this._dstr(rows[i0].date), d1: this._dstr(rows[j].date) });
+    let peak = entry;
+    for (let j = i0 + 1; j <= endJ; j++) {
+      const c = C(j); if (c > peak) peak = c;
+      if (c <= stop) return done(stop, j, '🛑 停損');
+      if (rule === 'don') {
+        let lo = Infinity; for (let q = Math.max(0, j - 20); q < j; q++) lo = Math.min(lo, L(q));
+        if (lo < Infinity && c < lo) return done(c, j, '🚪 跌破唐奇安 20 日低');
+      }
+      if (rule === 'atr2' && atr0 > 0 && c <= peak - 2 * atr0) return done(c, j, '🚪 ATR 追蹤停利');
+      if (rule === 'trail8' && c <= peak * 0.92) return done(c, j, '🚪 移動停利 8%');
+      if (rule === 'ma5' && j >= 4) {
+        let s = 0; for (let q = 0; q < 5; q++) s += C(j - q);
+        if (c < s / 5) return done(c, j, '🚪 跌破 5 日線');
+      }
+      if (j - i0 >= this._STL_MAXD) return done(c, j, '⏳ 抱滿 20 個交易日');
+    }
+    // 還沒觸發任何一條 → 持有中(⛔ 不可假裝結算,那會把還沒發生的事寫成成績)
+    return { entry, stop, exitP: C(n - 1), exitIdx: n - 1, days: n - 1 - i0, why: '持有中', open: true,
+      d0: this._dstr(rows[i0].date), d1: this._dstr(rows[n - 1].date) };
+  },
+  _dstr(d) { return String(d || '').replace(/\//g, '-').slice(0, 10); },
+  // 🧾 把整籃子結算一遍(K 線是非同步抓的 → 抓完重畫一次;⛔ 抓不到就誠實留白)
+  async _stlLoad() {
+    this._stl = this._stl || {};
+    const list = this._catchLoad(); if (!list.length) return this._stl;
+    const rule = this._exitRule();
+    await this._twiiLoad();
+    for (const x of list) {
+      const key = `${x.sym}|${x.d}|${rule}`;
+      if (key in this._stl) continue;
+      this._stl[key] = null;
+      try {
+        const raw = await this.fetchJson(`data/${x.sym}.json`, 9000);
+        const rows = (Array.isArray(raw) ? raw : []).filter(r => r && +r.close > 0);
+        if (rows.length < 12) continue;
+        // 釣起日 → 找那一天(找不到就取「它之後第一個交易日」;⛔ 不硬對索引)
+        const d0 = this._dstr(x.d);
+        let i0 = -1;
+        for (let i = 0; i < rows.length; i++) { if (this._dstr(rows[i].date) >= d0) { i0 = i; break; } }
+        if (i0 < 1) continue;
+        const r = this._settleReplay(rows, i0, rule);
+        if (!r) continue;
+        // 🆚 同期加權(⛔ 沒有指數就給 null,不硬算)
+        const b0 = this._twiiAt(r.d0), b1 = this._twiiAt(r.d1);
+        r.bench = (b0 > 0 && b1 > 0) ? (b1 / b0 - 1) * 100 : null;
+        r.ret = (r.exitP / r.entry - 1) * 100;
+        r.net = r.ret - this._STL_COST;                       // 扣來回成本
+        r.ex = r.bench === null ? null : r.net - r.bench;      // 扣同期加權 = 真正的成績
+        r.lot = Math.round((r.exitP - r.entry) * 1000);
+        this._stl[key] = r;
+      } catch (_) {}
+    }
+    return this._stl;
+  },
+  _stlOf(x) { return (this._stl || {})[`${x.sym}|${x.d}|${this._exitRule()}`] || null; },
+  // 📊 成績單:只算**已結算**的(持有中的⛔ 不可混進來 —— 那會讓還在虧的部位不計入)
+  _stlCard(rows) {
+    const done = rows.map(r => r.st).filter(s => s && !s.open);
+    const open = rows.filter(r => r.st && r.st.open).length;
+    const pend = rows.filter(r => !r.st).length;
+    if (!done.length) {
+      return `<div class="note" style="margin-top:8px">🧾 <b>自動結算</b>:目前<b>還沒有任何一條觸發出場</b>
+        ${open ? `(${open} 條持有中` : '('}${pend ? `${open ? '、' : ''}${pend} 條讀不到 K 線` : ''})。
+        釣起之後只要<b>收盤跌破${this._exitRuleName()}、或碰到停損、或抱滿 20 個交易日</b>,
+        這裡就會自動結算並記下來 —— ⭐ 那時候才知道<b>這套策略到底有沒有用</b>。</div>`;
+    }
+    const n = done.length;
+    const win = done.filter(s => s.net > 0).length;
+    const exs = done.map(s => s.ex).filter(Number.isFinite).sort((a, b) => a - b);
+    const med = a => a.length ? (a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2) : null;
+    const exMed = med(exs), exWin = done.filter(s => s.ex > 0).length;
+    const avg = done.reduce((a, s) => a + s.net, 0) / n;
+    const totLot = done.reduce((a, s) => a + s.lot, 0);
+    const dAvg = done.reduce((a, s) => a + s.days, 0) / n;
+    // 📉 一張一張照順序做的累積曲線 → 最大回撤(⚠️ 這是「一次做一張」的近似,
+    //    ⛔ 不是帳戶回撤:回測是同時抱 2 檔、每筆 15 萬)
+    let cum = 0, peak = 0, dd = 0;
+    for (const s of done.slice().sort((a, b) => (a.d1 > b.d1 ? 1 : -1))) {
+      cum += s.lot; if (cum > peak) peak = cum; if (peak - cum > dd) dd = peak - cum;
+    }
+    const enough = n >= 10;
+    return `<div class="warnbox" style="margin-top:8px;border-color:${enough ? 'var(--cyan)' : 'var(--amber)'}">
+      🧾 <b>自動結算成績單</b>(${n} 筆已結算${open ? ` ・${open} 條持有中` : ''})
+      <div class="kv" style="margin-top:6px">
+        <div><b>勝率(扣成本後)</b><span class="mono">${(win / n * 100).toFixed(0)}% ・${win}/${n}</span></div>
+        <div><b>每趟平均</b><span class="mono ${this.cls(avg)}">${this.fmt(avg, 2, true)}%</span></div>
+        <div><b>贏大盤幾筆</b><span class="mono">${exs.length ? `${exWin}/${exs.length}` : '—'}</span></div>
+        <div><b>超額中位(扣大盤)</b><span class="mono ${this.cls(exMed)}">${exMed === null ? '—' : this.fmt(exMed, 2, true) + 'pp'}</span></div>
+        <div><b>一張合計</b><span class="mono ${this.cls(totLot)}">${(totLot >= 0 ? '+' : '') + totLot.toLocaleString()} 元</span></div>
+        <div><b>中途最多賠</b><span class="mono">${dd > 0 ? '−' + Math.round(dd).toLocaleString() + ' 元' : '—'}</span></div>
+        <div><b>平均抱幾天</b><span class="mono">${dAvg.toFixed(1)} 個交易日</span></div>
+        <div><b>出場規則</b><span class="mono">${this._exitRuleName()}</span></div>
+      </div>
+      <div class="note" style="margin-top:6px">
+        ${enough ? '' : `⚠️ <b>只有 ${n} 筆,⛔ 還不能當結論</b>(全站規則:樣本 <10 筆不下判斷)。<br>`}
+        🧾 <b>怎麼算的</b>:進場 = 釣起那天的收盤;停損 = <b>min(釣起日最低, 釣起價 −5%)</b>;
+        收盤跌破<b>${this._exitRuleName()}</b>就走,最長 20 個交易日 ——
+        ⭐ 跟「📖 回測計算機」那份**一字不差**(改出場規則這裡會全部重算)。
+        每趟已扣<b>來回成本 0.44%</b>,「超額」再扣<b>同期加權指數</b>。<br>
+        🚨 <b>這是紙上成績,⛔ 不是你的實際損益</b>:回測的進場是訊號日<b>尾盤 13:00~13:28</b>,
+        這裡用的是<b>收盤價</b>,而且沒有滑價。要記真的成交價請用散戶救星的「🪞 勝率鏡子」。<br>
+        📉 「中途最多賠」是<b>一次做一張、照結算順序</b>算的,
+        ⛔ 不是帳戶回撤(回測是同時抱 2 檔、每筆 15 萬 → 49 個月最大回撤 −32.4%)。</div></div>`;
+  },
   _fishBasketRender() {
     const el = document.getElementById('fishBasket'); if (!el) return;
     if (this._twii === undefined) { this._twiiLoad().then(() => this._fishBasketRender()); }   // ⚠️ 載完重畫一次
     const list = this._catchLoad(), D = this._fishD;
+    // 🧾 V74.6.7 自動結算:K 線是非同步抓的 → 抓完重畫一次。
+    //   ⚠️ 簽章要含**出場規則** —— 使用者在散戶救星換了規則,這裡要整籃重算(⛔ 不可沿用舊結果)。
+    //   ⛔ 而且要用簽章擋住「重畫 → 再載 → 再重畫」的無限迴圈。
+    { const sig = list.map(x => `${x.sym}|${x.d}`).join(',') + '|' + this._exitRule();
+      if (this._stlSig !== sig) { this._stlSig = sig; this._stlLoad().then(() => this._fishBasketRender()); } }
     if (!list.length) { el.innerHTML = `<div class="note" style="margin:0 0 8px">🧺 漁獲籃是空的 —— 點魚 → 「🎣 收進漁獲籃」,之後每次開池子都會算出從釣起到現在賺賠多少。</div>`; return; }
     const rows = list.map(x => {
       const r = D && D.rows.find(y => y.sym === x.sym), c = r ? r.c : null;
@@ -2243,7 +2393,7 @@ const PRO = {
       const b0 = this._twiiAt(x.d), b1 = D && D.date ? this._twiiAt(D.date) : null;
       const bench = b0 > 0 && b1 > 0 ? (b1 / b0 - 1) * 100 : null;
       const ex = pct !== null && bench !== null ? pct - bench : null;
-      return { ...x, c, pct, lot, days, bench, ex };
+      return { ...x, c, pct, lot, days, bench, ex, st: this._stlOf(x) };
     });
     const tot = rows.reduce((a, r) => a + (Number.isFinite(r.lot) ? r.lot : 0), 0);
     const win = rows.filter(r => r.pct > 0).length, n = rows.filter(r => Number.isFinite(r.pct)).length;
@@ -2258,7 +2408,7 @@ const PRO = {
         ${exs.length ? `<span class="sigtag mono">贏大盤 ${exWin}/${exs.length} ・超額中位 ${exMed >= 0 ? '+' : ''}${exMed.toFixed(1)}pp</span>` : ''}
         <button class="lbtn" style="margin-left:auto" onclick="PRO._fishClearCatch()">🗑 清空</button></div>
       <div style="overflow-x:auto"><table class="startbl">
-        <tr><th style="text-align:left">股票</th><th>釣起日</th><th>釣起價</th><th>現價</th><th>賺賠</th><th title="同期加權指數的漲跌">大盤</th><th title="賺賠 − 大盤:這才是「這條魚有沒有用」">贏大盤</th><th>一張(元)</th><th>天數</th><th></th></tr>
+        <tr><th style="text-align:left">股票</th><th>釣起日</th><th>釣起價</th><th>現價</th><th>賺賠</th><th title="同期加權指數的漲跌">大盤</th><th title="賺賠 − 大盤:這才是「這條魚有沒有用」">贏大盤</th><th>一張(元)</th><th>天數</th><th title="釣起之後,規則觸發就自動結算(⛔ 跟回測同一條)">🧾 結算</th><th></th></tr>
         ${rows.map(r => `<tr>
           <td class="l">${this._nmc(r.sym, `PRO._fishPick('${r.sym}')`)}</td>
           <td class="mono">${(r.d || '').slice(5)}</td><td class="mono">${r.px}</td>
@@ -2268,8 +2418,12 @@ const PRO = {
           <td class="mono ${this.cls(r.ex)}"><b>${r.ex === null ? '—' : this.fmt(r.ex, 2, true) + 'pp'}</b></td>
           <td class="mono ${this.cls(r.lot)}">${r.lot === null ? '—' : (r.lot >= 0 ? '+' : '') + Math.round(r.lot).toLocaleString()}</td>
           <td class="mono">${r.days === null ? '—' : r.days}</td>
+          <td class="mono">${!r.st ? '<span title="讀不到這一檔的 K 線">⏳</span>'
+            : r.st.open ? `<span title="還沒觸發出場,持有第 ${r.st.days} 個交易日">持有中</span>`
+            : `<b class="${this.cls(r.st.net)}">${this.fmt(r.st.net, 2, true)}%</b><br><span style="color:var(--dim2);font-size:10px">${r.st.why}・${r.st.days}天</span>`}</td>
           <td><button class="lbtn" onclick="PRO._fishRelease('${r.sym}')" title="放生(從籃子移除)">🐟↩</button></td></tr>`).join('')}
       </table></div>
+      ${this._stlCard(rows)}
       <div class="note" style="margin-top:6px">「一張(元)」= (現價 − 釣起價)× 1,000,<b>毛損益、還沒扣手續費與證交稅</b>(來回約 0.44%)。
         釣起價是那天的收盤,不是你真的成交的價;這是你自己的紀錄,⛔ 不是本站推薦、也不是進出場指令。
         現價更新到 ${D && D.date ? D.date : '—'} 的收盤。只存在這台裝置(換手機不會跟著走)。<br>
@@ -3279,7 +3433,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.6.6',
+  VER: 'V74.6.7',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
