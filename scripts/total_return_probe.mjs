@@ -29,32 +29,9 @@ import path from 'path';
 const DATA = process.env.DATA_DIR || 'data';
 const DEFAULT_SYMS = ['0050', '006208', '0056', '00878', '00713', '00919', '00929', '00757', '2330', '2317', '2412', '1101'];
 
-const num = x => (x === null || x === undefined || !Number.isFinite(+x) ? null : +x);
-const d10 = s => String(s || '').replace(/\//g, '-').slice(0, 10);
-
-function loadPx(dir, sym) {
-  const p = path.join(dir, `${sym}.json`);
-  if (!fs.existsSync(p)) return null;
-  let rows; try { rows = JSON.parse(fs.readFileSync(p, 'utf8')); } catch (_) { return null; }
-  if (!Array.isArray(rows)) return null;
-  const out = [];
-  for (const r of rows) { const c = num(r.close); if (c !== null && c > 0) out.push({ d: d10(r.date), c }); }
-  out.sort((a, b) => a.d < b.d ? -1 : 1);
-  return out.length ? out : null;
-}
-
-/** 股利尺標對齊:回 {k, why} —— k = 要乘在現金股利上的倍率 */
-function scaleFor(before, closeOnDate) {
-  if (!(before > 0) || !(closeOnDate > 0)) return { k: 1, why: 'no-before' };   // 沒有 before_price → 假設同尺
-  const ratio = closeOnDate / before;
-  if (ratio > 0.9 && ratio < 1.1) return { k: 1, why: 'same' };                 // 同尺(常態)
-  // 常見分割/合併倍數:2~10 與其倒數
-  for (const m of [2, 3, 4, 5, 6, 8, 10]) {
-    if (Math.abs(ratio - 1 / m) / (1 / m) < 0.08) return { k: 1 / m, why: `split1:${m}` };
-    if (Math.abs(ratio - m) / m < 0.08) return { k: m, why: `merge${m}:1` };
-  }
-  return { k: null, why: `ratio=${ratio.toFixed(3)}` };                          // ⛔ 說不出來的一律排除
-}
+// 📚 V74.7.1 共用工具抽到 `scripts/lib_totalreturn.mjs`(⛔ 不再各寫一份 —— 股利尺標對齊
+//    是最容易寫錯的地方,兩份實作遲早只改到一邊)。抽完已驗「輸出逐位元組相同」。
+import { num, d10, loadPx, scaleFor } from './lib_totalreturn.mjs';
 
 function run(px, divs, opt = {}) {
   const f0 = opt.from || px[0].d, t0 = opt.to || px[px.length - 1].d;
