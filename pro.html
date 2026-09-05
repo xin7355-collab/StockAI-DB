@@ -263,6 +263,8 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .starchart{width:100%;height:380px;margin:4px 0 10px;border-radius:11px;background:var(--panel2);
   border:1px solid var(--line2);display:none}
 .starchart.on{display:block}
+    .bzbox{background:#0f1620;border:1px solid #1e2a38;border-radius:10px;padding:8px 10px;margin:8px 0}
+    .bzbox .bzrow{font-size:12px;line-height:1.6;margin:3px 0}
     .starsum{background:#0f1620;border:1px solid #1e2a38;border-radius:10px;padding:8px 10px;margin:0 0 8px}
     .starsum .ssrow{font-size:12px;line-height:1.55;margin:3px 0}
 .startbl{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
@@ -961,9 +963,121 @@ const PRO = {
     this._drawStock(code);
     // ⚠️ 從「關聯星圖」點進來時那頁沒載過選股快照 → 面板會整排沒有數字。
     //    ⭐ 補抓一次再重畫(⛔ 不可讓它靜默空白);回來要確認使用者還停在同一檔(陷阱 #19)。
+    if (!this._cache['data/stock_tags.json']) {
+      this.fetchJson('data/stock_tags.json').catch(() => null)
+        .then(() => { if (this._stk === code) this._drawStock(code); });
+    }
     if (!this._cache['data/screener.json']) {
       this.fetchJson('data/screener.json').then(() => { if (this._stk === code) this._drawStock(code); });
     }
+  },
+  // ═══════════════════════════════════════════════════════════════════
+  // 🏭 V74.7.4 「這家公司做什麼 ・ 上游是誰 ・ 下游是誰」
+  //
+  // ⛔ 四條鐵則(測試 scripts/test_bizchain.mjs 釘住):
+  //  ① 🚨 **只用本站真的有的東西**:`CHAIN.stocks` 第 4 欄(81 檔的產品/技術)、
+  //     `THEMES`(19 個題材 × 成員)、`stock_tags.json`(全市場自動算的題材連動)。
+  //     ⛔ 營收**產品別**佔比 / 產線據點 / 產能時程 / ASP / 供應商梯隊「純度分數」
+  //     —— 台股**沒有免費結構化來源**,⛔ 不編(評估紀錄⑳)。
+  //  ② 🚨 **「它在這個題材」⛔ 不等於「這個題材佔它營收九成」** —— 卡上必須寫。
+  //  ③ **上下游是產業結構事實**(矽晶圓→晶圓代工→先進封裝→伺服器),⛔ 不是預測 → 不下多空。
+  //  ④ 查不到 → 誠實說 + 給免費 AI 查詢入口,⛔ 不可靜默空白(陷阱 #22)。
+  //
+  // ⚠️ 改 THEMES 的 k 值要同步改這張表(測試 ⓪b 會比對「這裡用到的 k 全部存在於 THEMES」)。
+  // 🚨🚨 名字**刻意叫 CHAIN_FLOW 不叫 FLOW** —— `FLOW` 在同一個物件字面量裡
+  //   已經被板塊輪動的「四條法人資金流」用掉了(後面的鍵會覆蓋前面的)。
+  //   第一版就是這樣安靜地變成死碼:上下游永遠是空的、零錯誤訊息。
+  CHAIN_FLOW: [
+    ['wafer', 'foundry'], ['asic', 'foundry'], ['foundry', 'cowos'],
+    ['glass', 'pcb'], ['pcb', 'cowos'], ['cowos', 'test'], ['cowos', 'srv'],
+    ['mem', 'srv'], ['cool', 'srv'], ['pwr', 'srv'], ['bbu', 'srv'],
+    ['mech', 'srv'], ['mlcc', 'srv'], ['sipho', 'srv'], ['net', 'srv'], ['grid', 'srv'],
+  ],
+  // 🏁 這條鏈的終點在海外 —— ⛔ 誠實說出來,別讓使用者以為「下游沒整理」
+  CHAIN_END: {
+    srv: '北美雲端業者(CSP)與伺服器品牌 —— <b>台股沒有對應標的</b>,那是這條鏈的終端買家。',
+    test: '晶片測試是這條鏈的<b>最後一關</b>,測完就出貨給伺服器組裝。',
+  },
+
+  /** 這一檔屬於哪些題材(人工 seed 優先,再看採礦端算出來的連動) */
+  //   ⚠️ `stock_tags.json` 的內容在 **`by_stock`** 底下,每一筆是 `{ s:[人工種子], n:[[連動題材, r]…] }`
+  //   ⛔ 憑印象猜鍵名會**靜默**拿到空的(同 V74.7.1 股利檔那次)→ 這裡照實際結構讀。
+  _bizThemes(code) {
+    const seed = (this.THEMES || []).filter(t => (t.syms || []).includes(code)).map(t => t.k);
+    const T = this._cache['data/stock_tags.json'];
+    const row = T && T.by_stock && T.by_stock[code];
+    const auto = [];
+    for (const k of ((row && row.s) || [])) if (!seed.includes(k) && !auto.includes(k)) auto.push(k);
+    for (const x of ((row && row.n) || [])) {
+      const k = Array.isArray(x) ? x[0] : x;
+      if (k && !seed.includes(k) && !auto.includes(k)) auto.push(k);
+    }
+    return { seed, auto };
+  },
+  _themeName(k) { const t = (this.THEMES || []).find(x => x.k === k); return t ? t.n : k; },
+  _themeSyms(k) { const t = (this.THEMES || []).find(x => x.k === k); return (t && t.syms) || []; },
+
+  /** 上游 / 下游題材(從 FLOW 推,⛔ 只走一層 —— 走兩層會把整條鏈全列出來,等於沒說) */
+  _bizFlow(ks) {
+    const up = new Set(), dn = new Set();
+    for (const [a, b] of this.CHAIN_FLOW) {
+      if (ks.includes(b)) up.add(a);
+      if (ks.includes(a)) dn.add(b);
+    }
+    ks.forEach(k => { up.delete(k); dn.delete(k); });
+    return { up: [...up], dn: [...dn] };
+  },
+
+  /** 它做什麼:81 檔有精確的產品/技術;其餘退回題材名;再退回產業別 */
+  _bizWhat(code) {
+    const ch = (this.CHAIN.stocks || []).find(x => x[0] === code);
+    if (ch && ch[3]) return { txt: ch[3], src: 'chain', layer: ch[7], risk: ch[6] };
+    const { seed, auto } = this._bizThemes(code);
+    const ks = seed.concat(auto);
+    if (ks.length) return { txt: ks.map(k => this._themeName(k)).join(' ・ '), src: seed.length ? 'theme' : 'auto' };
+    const ind = ((this._cache['data/screener.json'] || {}).ind || {})[code] || '';
+    return ind ? { txt: ind, src: 'ind' } : null;
+  },
+
+  _bizChainHtml(code) {
+    const w = this._bizWhat(code);
+    const { seed, auto } = this._bizThemes(code);
+    const ks = seed.concat(auto);
+    const F = ks.length ? this._bizFlow(ks) : { up: [], dn: [] };
+    const endTxt = ks.map(k => this.CHAIN_END[k]).filter(Boolean).join(' ');
+    const chip = c => `<span class="sigtag" style="cursor:pointer" onclick="PRO.openStock('${c}')">${this.nameOf(c) || c}</span>`;
+    const grp = k => `<div class="bzrow"><b>${this._themeName(k)}</b>
+        <span class="note">${this._themeSyms(k).slice(0, 6).map(chip).join(' ') || '(名單裡沒有成員)'}</span></div>`;
+    // ⛔ 什麼都查不到 → 誠實說 + 指路免費查(⛔ 不可空白)
+    if (!w) return `<div class="note" style="margin-top:8px">🏭 <b>這一檔還沒有人工整理的產業定位</b> ——
+      本站的產業鏈名單目前收 ${(this.CHAIN.stocks || []).length} 檔、題材表 ${(this.THEMES || []).length} 組。
+      ⛔ 這不是它沒有業務,是本站沒有收錄。
+      ${this._bizAskHtml(code)}</div>`;
+    const srcTxt = { chain: '人工整理的 AI 產業鏈名單', theme: '人工整理的題材表',
+                     auto: '採礦端算出來的「最近跟哪一族走得最像」', ind: '證交所官方產業別' }[w.src];
+    return `<div class="bzbox">
+      <div class="bzrow"><b>🏭 它做什麼</b> ${w.txt}
+        ${w.layer && this.LAYER[w.layer] ? `<span class="sigtag">${this.LAYER[w.layer].n}</span>` : ''}</div>
+      ${w.risk ? `<div class="bzrow note">⚠️ 已知風險:${w.risk}</div>` : ''}
+      ${F.up.length ? `<div class="bzrow"><b>⬆️ 上游(在它前面的環節)</b></div>${F.up.map(grp).join('')}` : ''}
+      ${F.dn.length ? `<div class="bzrow"><b>⬇️ 下游(在它後面的環節)</b></div>${F.dn.map(grp).join('')}` : ''}
+      ${endTxt ? `<div class="bzrow note">🏁 ${endTxt}</div>` : ''}
+      ${(!F.up.length && !F.dn.length && !endTxt) ? `<div class="bzrow note">⬆️⬇️ <b>上下游還沒有整理到這一族</b> —— 本站的上下游對照表目前只涵蓋 AI 硬體那條鏈(矽晶圓 → 晶圓代工 → 先進封裝 → 伺服器)。</div>` : ''}
+      <div class="note" style="margin-top:6px;color:var(--dim2)">
+        資料來源:${srcTxt}。
+        🚨 <b>「它在這個題材」⛔ 不等於「這個題材佔它營收九成」</b> ——
+        台股沒有免費的<b>營收產品別</b>資料,本站<b>算不出純度</b>,⛔ 別當成主力業務比重。
+        上下游講的是<b>製造流程的先後</b>(矽晶圓 → 晶圓代工 → 封裝 → 伺服器),⛔ <b>不代表這幾家真的有生意往來</b>,也⛔ 不是「上游漲它就會漲」—— 本站沒有驗證過那件事。
+        ${this._bizAskHtml(code)}</div>
+    </div>`;
+  },
+
+  // 🔎 質化問題(公司做什麼、產品、客戶)走外部免費 AI —— 本站鐵則:數字自算、質化外查
+  _bizAskHtml(code) {
+    const nm = this.nameOf(code) || code;
+    const q = encodeURIComponent(`台股 ${code} ${nm} 主要產品與設備是什麼?最新一季各產品營收占比、主要上游供應商與下游客戶分別是誰?請附資料來源與日期。`);
+    return `<a class="lbtn" style="display:inline-block;margin-top:4px" target="_blank" rel="noopener"
+      href="https://www.perplexity.ai/search?q=${q}">🔎 免費查它的產品與客戶</a>`;
   },
   _drawStock(code) {
     const el = document.getElementById('stkSheet'); if (!el) return;
@@ -993,6 +1107,7 @@ const PRO = {
         ${ind ? `<button class="lbtn" onclick="PRO.closeStock();PRO.switchTab('rot');PRO.rotOpen('${ind}')">💧 它的板塊</button>` : ''}
         ${inChain ? `<button class="lbtn" onclick="PRO.closeStock();PRO.switchTab('chain')">🤖 AI 鏈定位</button>` : ''}
       </div>
+      ${this._bizChainHtml(code)}
       ${fam.length ? `<div class="note" style="margin-top:8px">🕸️ 跟它一起動的:${fam.slice(0, 5).map(([cc, rv]) => `<span class="sigtag" style="cursor:pointer" onclick="PRO.openStock('${cc}')">${this._nmTxt(cc)} ${rv.toFixed(2)}</span>`).join(' ')}
         <br><span style="color:var(--dim2)">相關係數是「同一天一起動」,⛔ 不是預測。</span></div>` : ''}
       <div class="note" style="margin-top:6px;color:var(--dim2)">這裡只是帶你去看,⛔ 不下多空、不給買賣價位。</div>`;
@@ -3594,7 +3709,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.7.3',
+  VER: 'V74.7.4',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
