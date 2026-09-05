@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.7.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.8.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -698,7 +698,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.7.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.8.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7540,8 +7540,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.7.9',
+    _APP_VERSION: 'V74.8.0',
     _CHANGELOG: [
+        { v:'V74.8.0', dt:'2026-09-05', d:['🔽 供應鏈星脈圖加**下拉選單**,可以切換不同的鏈;目前有「AI 伺服器鏈」與新拆出來的「機器人鏈」(傳動零組件 → 機器人本體)。','🪜 每條鏈標出它主要服務 **AI 演進的哪一級** —— ⛔ 只做定位不做推薦(本站實測過「哪一層領先」跟後續報酬沒有關係)。','⛔ 區塊鏈/低軌衛星/軍工**查證後決定不做鏈**:區塊鏈概念股早就併進 AI 伺服器;低軌衛星那 4 檔實測內聚度只有 0.17(根本不一起動);軍工有 4 檔但沒有上下游。'] },
         { v:'V74.7.9', dt:'2026-09-05', d:['📅 產業作戰室的星脈圖**標出資料日期**了(原本寫「今天」,但那可能是前一兩個交易日的收盤)。','🚨 修掉一個既有 bug:標題列的資料日期原本只有「產業估值」與「AI 產業鏈」兩頁會填 —— **直接開關聯星圖的人永遠看不到日期**。','⚠️ 而且會說明:星脈圖讀的是**選股快照**、散戶救星個股頁讀的是**另一份 K 線檔**,兩支採礦進度可能差一個交易日 —— **數字對不上時以散戶救星為準**。'] },
         { v:'V74.7.8', dt:'2026-09-05', d:['📐 供應鏈星脈圖改版(使用者:「高高低低、不好看、文字太多」):四欄的**第一格從同一個高度開始**(原本題材多的那一層會把整欄往下推 49px)。','✂️ 欄頭只列 3 個題材、圖例第一眼從 183 字縮到 46 字(完整說明收進「📖」),色塊加深、間距收緊,手機一次看得到 3 欄。','⚠️ 關鍵警告仍留在第一眼:⛔ 這不是連動訊號,本站沒有驗證過「上游漲、下游就會跟著漲」。'] },
         { v:'V74.7.7', dt:'2026-09-05', d:['🔗 產業作戰室的「上下游」改成**供應鏈星脈圖**:上游 → 中游 → 下游分欄排開,每一格是一檔股票、紅漲綠跌,一眼看出**今天哪一層在動**。','⭐ 分層是算「離終點還有幾站」—— 矽晶圓要經過晶圓代工、封裝才到伺服器,而散熱/電源是直接供貨,所以它們不在同一欄。','⚠️ 那張圖只是把當下的漲跌整理給你看,⛔ 本站**沒有驗證過**「上游漲、下游就會跟著漲」。'] },

@@ -974,7 +974,8 @@ const PRO = {
     { k: 'glass', n: '玻纖布/玻纖紗', syms: ['1815', '5340', '1802'] },
     { k: 'grid', n: '重電/電網', syms: ['1513', '1519', '1503', '1504'] },
     { k: 'mlcc', n: '被動元件', syms: ['2327', '2492', '3026'] },
-    { k: 'robot', n: '機器人', syms: ['2049', '4576', '1597', '1536', '6188', '4585', '2359'] },
+    { k: 'rbtpart', n: '機器人傳動零組件', syms: ['2049', '4576', '1597', '1536'] },
+    { k: 'rbtsys', n: '機器人本體/系統整合', syms: ['4585', '6188', '2359'] },
     { k: 'mil', n: '軍工/無人機', syms: ['8033', '2634', '6753', '8222'] },
     { k: 'sat', n: '低軌衛星', syms: ['3491', '6285', '2314', '3105'] },
     { k: 'asic', n: 'ASIC 設計服務/IP', syms: ['3661', '3443', '3035', '3529'] },
@@ -1072,11 +1073,14 @@ const PRO = {
     ['glass', 'pcb'], ['pcb', 'cowos'], ['cowos', 'test'], ['cowos', 'srv'],
     ['mem', 'srv'], ['cool', 'srv'], ['pwr', 'srv'], ['bbu', 'srv'],
     ['mech', 'srv'], ['mlcc', 'srv'], ['sipho', 'srv'], ['net', 'srv'], ['grid', 'srv'],
+    // 🤖 機器人鏈(獨立於 AI 硬體鏈)—— 對應 AI 演進 L3 智能體「實體化」那一段
+    ['rbtpart', 'rbtsys'],
   ],
   // 🏁 這條鏈的終點在海外 —— ⛔ 誠實說出來,別讓使用者以為「下游沒整理」
   CHAIN_END: {
     srv: '北美雲端業者(CSP)與伺服器品牌 —— <b>台股沒有對應標的</b>,那是這條鏈的終端買家。',
     test: '晶片測試是這條鏈的<b>最後一關</b>,測完就出貨給伺服器組裝。',
+    rbtsys: '機器人本體之後就是<b>終端應用</b>(工廠自動化、物流、醫療)—— 買方分散在各行各業,<b>台股沒有單一對應標的</b>。',
   },
 
   /** 這一檔屬於哪些題材(人工 seed 優先,再看採礦端算出來的連動) */
@@ -1094,8 +1098,43 @@ const PRO = {
     }
     return { seed, auto };
   },
-  _themeName(k) { const t = (this.THEMES || []).find(x => x.k === k); return t ? t.n : k; },
+  // ⚠️ 舊 key 對照 —— `stock_tags.json` 的 by_stock 是採礦端**每天重算**的,
+  //   拆題材之後到下一輪採礦跑完之間,它還會回舊 key(robot)→ 少了這張表會把英文 key 顯示給使用者看。
+  //   ⛔ 這是過渡用的,採礦跑過一輪後可以刪。
+  THEME_OLD: { robot: '機器人' },
+  _themeName(k) { const t = (this.THEMES || []).find(x => x.k === k); return t ? t.n : (this.THEME_OLD[k] || k); },
   _themeSyms(k) { const t = (this.THEMES || []).find(x => x.k === k); return (t && t.syms) || []; },
+
+  // 🔗 V74.8.0 鏈清單(下拉選單用)—— 使用者:「不是應該區分 AI 伺服器/區塊鏈等等不一樣類型,用下拉鍵選取」
+  //
+  // ⭐⭐ 用 AI 演進五級盤點過之後的誠實結論:**我不需要很多條鏈** ——
+  //   AI 硬體那一條本來就橫跨 L1(訓練算力)/L2(推論+記憶體+散熱+電源)/L4(超算互連=矽光子)/
+  //   L5(底層基建=重電電網),真正缺的只有 **L3 智能體的實體化 = 機器人**。
+  //
+  // ⛔ 三個**查證後決定不做**的(⛔ 別再提一次):
+  //  ① **區塊鏈** —— THEMES 裡沒有,而且台股的「區塊鏈概念股」多半是 2021 那波的
+  //     礦機/礦卡代工(技嘉/微星/映泰),那幾家現在的營收主軸已經是 AI 伺服器 → **早就在 AI 鏈裡**。
+  //     ⚠️ 硬做就是又一張會過期的寫死對照表(megatime 的 concept_stocks 還留著元宇宙/五倍券)。
+  //  ② **低軌衛星** —— 實測**內聚度只有 0.17**(stock_tags.coh,全表最低之一),
+  //     那 4 檔根本不一起動;而且只有 4 檔。⛔ 硬畫成鏈是假的。
+  //  ③ **軍工/無人機** —— 內聚度 0.67(全表最高)但**沒有上下游**:
+  //     漢翔=整機、龍德=造船、雷虎=無人機、寶一=零件 → 那是一個**題材**不是一條鏈。
+  //     它仍然會出現在題材標籤與板塊輪動裡,只是畫不出分層看板。
+  //
+  // ⚠️ `lv` 是「這條鏈主要服務 AI 演進的哪一級」—— ⛔ **只做定位不做推薦**:
+  //   `ailevel_probe.mjs` 已經實測「哪一層領先跟後續報酬沒有關係」(邊際在雜訊內、前後半不同向)。
+  CHAINS: [
+    { k: 'srv', n: 'AI 伺服器鏈', lv: 'L1~L5', d: '從矽晶圓一路到伺服器組裝 —— 台股最完整的一條' },
+    { k: 'rbtsys', n: '機器人鏈', lv: 'L3', d: 'AI 從螢幕走進實體世界:傳動零組件 → 機器人本體' },
+  ],
+  /** 這一檔屬於哪一條鏈(⛔ 不在任何鏈裡回 null) */
+  _chainOf(ks) {
+    for (const c of this.CHAINS) {
+      const P = this._chainPath([c.k]);
+      if (P && ks.some(k => P.lv[k] !== undefined)) return c;
+    }
+    return null;
+  },
 
   /** 🔗 這一檔所在的**整條鏈**:沿 CHAIN_FLOW 兩個方向走到底,再依最長路徑分層
    *  ⭐ 這裡刻意走到底(跟 _bizFlow 的「只走一層」不同)—— 看板要的就是全貌;
@@ -1150,7 +1189,11 @@ const PRO = {
    *   ⑤ 紅綠只表示**今日漲跌方向**(台股慣例),⛔ 不表示好壞。
    */
   _chainBoardHtml(code, ks) {
-    const P = this._chainPath(ks);
+    // 🔽 使用者用下拉選單選了別條鏈 → 從**那條鏈**的根題材走(⛔ 不是從這一檔的題材走)
+    // ⚠️ 換一檔股票就把選擇清掉 —— ⛔ 不可讓上一檔選的鏈黏在新的股票上
+    if (this._chainPickFor && this._chainPickFor !== code) { this._chainPick = ''; this._chainPickFor = ''; }
+    const picked = this._chainPick && this.CHAINS.some(c => c.k === this._chainPick) ? [this._chainPick] : null;
+    const P = this._chainPath(picked || ks);
     if (!P) return '';
     const PER = 8;                                   // 每層最多顯示幾檔
     const seenSym = new Set();
@@ -1203,10 +1246,25 @@ const PRO = {
     //   真因:screener 快照停在 09/03、個股 K 線已經到 09/04(兩支採礦進度不同)。
     //   ⛔ 兩邊數字對不上時,最該做的是**把日期講出來**,不是讓使用者自己猜(陷阱 #34)。
     const WH = this._chgWhen();
-    return `<div class="bzrow" style="margin-top:6px"><b>🔗 供應鏈星脈圖</b>
+    // 🔽 V74.8.0 鏈的下拉選單 —— ⛔ 只列「畫得出分層看板」的鏈(軍工/低軌衛星拆不出上下游,見 CHAINS 註解)
+    const ch = this._chainOf(ks);
+    const sel = this.CHAINS.length > 1 ? `<select class="lbtn" style="padding:2px 6px;font-size:11px;margin-left:4px"
+        onchange="PRO._chainPick=this.value;PRO._chainPickFor='${code}';PRO.starGo(PRO._starSym||'${code}')">
+        ${this.CHAINS.map(c => `<option value="${c.k}"${(this._chainPick || (ch && ch.k)) === c.k ? ' selected' : ''}>${esc(c.n)}</option>`).join('')}
+      </select>` : '';
+    const cur = this.CHAINS.find(c => c.k === (this._chainPick || (ch && ch.k)));
+    // 🚨 選了別條鏈 → 你查的那一檔**不在這張圖上**,⛔ 一定要說出來(不然使用者會以為查錯)
+    const offChain = cur && ch && cur.k !== ch.k;
+    return `<div class="bzrow" style="margin-top:6px"><b>🔗 供應鏈星脈圖</b>${sel}
         <span class="note">${cols.length} 層 ・ 這條鏈共 ${nAll} 檔,顯示成交額最大的 ${nShow} 檔</span>
         <span class="sigtag" style="margin-left:4px">${WH.live ? '📡 盤中即時' : `📅 ${WH.d || '收盤快照'} 收盤`}</span>
-        ${WH.live ? '' : this._staleChip(WH.d, '選股快照')}</div>
+        ${cur ? `<span class="sigtag">🪜 AI 演進 ${cur.lv}</span>` : ''}
+        ${WH.live ? '' : this._staleChip(WH.d, '選股快照')}
+        ${offChain ? `<div class="note" style="margin-top:2px;color:#f5b942">⚠️ 你正在看的是 <b>${esc(cur.n)}</b>,
+          而 <b>${esc(this._nmTxt(code))}</b> ⛔ 不在這條鏈上(它在 <b>${esc(ch.n)}</b>)—— 下拉選單切回去就看得到它。</div>` : ''}
+        ${cur ? `<div class="note" style="margin-top:2px">${esc(cur.d)} ・
+          🪜 <b>AI 演進 ${cur.lv}</b> 是這條鏈<b>主要服務</b>的階段 —— ⛔ 只是定位,
+          <b>本站實測過「哪一層領先」跟後續報酬沒有關係</b>,別拿它挑股。</div>` : ''}</div>
       <div class="cbwrap"><div class="cbcols">${body}</div></div>
       ${cols.length > 2 ? '<div class="cbhint">← 左右滑看完整條鏈 →</div>' : ''}
       <div class="cbleg">🚨 <b>這不是連動訊號</b> —— 本站<b>沒有驗證過</b>「上游漲、下游就會跟著漲」。
@@ -4020,7 +4078,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.7.9',
+  VER: 'V74.8.0',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

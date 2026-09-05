@@ -71,6 +71,32 @@ const R = await page.evaluate(async () => {
         return { ks, cols: cs, txt, leg, legTop, html };
     };
     const out = { wafer: grab('6488'), srv: grab('3231'), none: grab('1101') };
+    // 🔽 多鏈 + 下拉選單
+    const board = (code, pick) => {
+        P._chainPick = pick || ''; P._chainPickFor = pick ? code : '';
+        const d = document.createElement('div'); d.innerHTML = P._bizChainHtml(code);
+        document.body.appendChild(d);
+        const cols = [...d.querySelectorAll('.cbcol')].map(c => ({
+            hd: c.querySelector('.cbhd').innerText, sub: c.querySelector('.cbsub').innerText,
+            me: c.querySelectorAll('.cbn.me').length }));
+        const r = { cols, opts: [...d.querySelectorAll('select option')].map(o => o.textContent),
+                    txt: d.innerText.replace(/\s+/g, ' ') + '|' + d.innerHTML };
+        d.remove(); return r;
+    };
+    out.chains = P.CHAINS.map(c => `${c.n}(${c.lv})`);
+    out.tsmc = board('2330');
+    out.rbt = board('2049');
+    out.cross = board('2330', 'rbtsys');
+    {   // ⚠️ 上一檔選了機器人鏈 → 換一檔之後應該回到它自己的鏈
+        P._chainPick = 'rbtsys'; P._chainPickFor = '2049';
+        const x = board2('4585');
+        out.sticky = /機器人傳動/.test(x) && P._chainPick === 'rbtsys';
+    }
+    function board2(code) {
+        const d = document.createElement('div'); d.innerHTML = P._bizChainHtml(code);
+        const t = d.innerText || ''; return t;
+    }
+    P._chainPick = ''; P._chainPickFor = '';
     // 📅 標題列日期:⭐ 重現使用者的動線 —— **直接**進關聯星圖(⛔ 沒去過另外兩頁)
     document.getElementById('dataDate').textContent = '';
     P._syncDataDate();
@@ -237,6 +263,24 @@ ok(R.staleWorks, '⑪d 資料真的過期時要出現警告(注入 30 天前的�
 ok(R.snap && R.snap !== 'none',
    `⑪e 橫捲要吸附整欄(⛔ 不可停在半欄,scroll-snap-type=「${R.snap}」)`);
 ok(R.snapAlign === 'start', `⑪f 欄要對齊到起點(實際「${R.snapAlign}」)`);
+
+// 🔽 V74.8.0 多鏈 + 下拉選單(使用者:「不是應該區分 AI 伺服器/區塊鏈等等,用下拉鍵選取」)
+ok(R.chains && R.chains.length >= 2, `⑫ 至少兩條鏈可選(${(R.chains || []).join(' / ')})`);
+ok(R.rbt && R.rbt.cols.length >= 2, `⑫b 機器人鏈畫得出上下游(${R.rbt && R.rbt.cols.length} 層)`);
+ok(R.rbt && /傳動/.test(R.rbt.cols[0].sub) && /本體|系統/.test(R.rbt.cols[1].sub),
+   '⑫c 機器人鏈的方向要對:傳動零組件在上游、本體/系統在下游');
+ok(R.rbt && R.rbt.opts.length >= 2, '⑫d 下拉選單要列得出來');
+// 🚨 選了別條鏈時,你查的那一檔不在圖上 → ⛔ 不可靜默
+ok(R.cross && /不在這條鏈上/.test(R.cross.txt),
+   '⑫e 🚨 選了別條鏈時必須說「你查的這一檔不在這條鏈上」(⛔ 不可靜默)');
+ok(R.cross && /下拉選單切回去/.test(R.cross.txt), '⑫f 而且要告訴他怎麼切回去');
+// ⚠️ 換一檔股票要回到「它自己的鏈」(⛔ 上一檔的選擇不可黏著)
+ok(R.sticky === false, '⑫g ⛔ 換股票時上一檔選的鏈不可黏著');
+// 🪜 AI 演進級只做定位 ⛔ 不做推薦(ailevel_probe 已實測沒有預測力)
+ok(R.tsmc && /🪜 AI 演進/.test(R.tsmc.txt), '⑫h 要標這條鏈服務 AI 演進的哪一級');
+ok(R.tsmc && /跟後續報酬沒有關係|別拿它挑股/.test(R.tsmc.txt),
+   '⑫i 🚨 而且必須寫「實測跟後續報酬沒有關係」(⛔ 不可做成推薦)');
+ok(R.tsmc && !/\*\*/.test(R.tsmc.txt), '⑫j ⛔ 畫面上不可出現沒轉換的 markdown 星號');
 
 ok(errs.length === 0, `⑩ 載入無 pageerror${errs.length ? ':' + errs[0] : ''}`);
 
