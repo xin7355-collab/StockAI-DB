@@ -147,8 +147,12 @@ const R = await page.evaluate(async () => {
             const n = c.querySelector('.cbn');
             return n ? Math.round(n.getBoundingClientRect().top - c.getBoundingClientRect().top) : 0;
         });
+        //  ⚠️ legLen 只量**常駐**的那幾句 —— ⛔ 扣掉條件觸發的落後警告(`.cblag`):
+        //     那是「資料真的差一天才會出現」的警告,跟「別在第一眼堆長篇」是兩件事。
+        const legAll = ((h.querySelector('.cbleg') || {}).innerText || '');
+        const lagTxt = ((h.querySelector('.cblag') || {}).innerText || '');
         const r = { ys, gap: ys.length ? Math.max(...ys) - Math.min(...ys) : 999,
-                    legLen: ((h.querySelector('.cbleg') || {}).innerText || '').length };
+                    legLen: legAll.replace(lagTxt, '').length };
         h.remove(); return r;
     };
     await new Promise(r => setTimeout(r, 150));
@@ -159,6 +163,26 @@ const R = await page.evaluate(async () => {
         out.alignShort = measure();
         P.THEMES.forEach((t, i) => t.n = bak[i]);
     }
+    // ⑬ 📅 V74.8.2 選股快照落後最新交易日 → 第一眼要講出來
+    //   使用者連問兩次「為何欣興的漲跌%不一樣」:screener 停在 09/03、個股頁已經到 09/04。
+    const lagCase = (rotLast) => {
+        P._cache['data/sector_rot.json'] = rotLast ? { days: ['2026-09-02', rotLast] } : null;
+        const h = document.createElement('div'); h.innerHTML = P._bizChainHtml('2330');
+        document.body.appendChild(h);
+        const lagEl = h.querySelector('.cblag');
+        const leg = h.querySelector('.cbleg');
+        // 「第一眼」= 摺疊(details)**外面**那一段
+        const det = leg && leg.querySelector('details');
+        const firstEye = leg ? leg.innerText.split('📖')[0] : '';
+        const r = { fired: !!P._chgLag(), has: !!lagEl, txt: lagEl ? lagEl.innerText : '',
+                    inFirstEye: !!lagEl && (!det || !det.contains(lagEl)) && firstEye.includes('停在') };
+        h.remove(); return r;
+    };
+    out.lagAhead = lagCase('2026-09-05');    // 最新交易日 09/05 > 快照 09/04 → 要警告
+    out.lagSame  = lagCase('2026-09-04');    // 一樣 → ⛔ 不可警告(那會變成每天都在道歉)
+    out.lagNone  = lagCase(null);            // 沒有那份檔 → ⛔ 不可亂猜
+    P._cache['data/sector_rot.json'] = null;
+
     // ① 對照:如果改用「離源頭幾站」分層,矽晶圓會跟散熱在同一欄嗎
     const P2 = P._chainPath(['srv']);
     out.lv = P2 ? P2.lv : null;
@@ -216,6 +240,20 @@ ok(R.alignShort && R.alignShort.gap <= 2,
    `⑥a1 🚨 就算某一欄的題材名只有一行,欄頭仍要固定高度(落差 ${R.alignShort && R.alignShort.gap}px)`);
 ok(R.align && R.align.legLen <= 80,
    `⑥a2 圖例第一眼不可太長(${R.align && R.align.legLen} 字,上限 80)`);
+
+// ⑬ 📅 選股快照落後最新交易日
+ok(R.lagAhead && R.lagAhead.fired && R.lagAhead.has,
+   `⑬ 📅 快照落後最新交易日時,看板要主動講出來(使用者連問兩次的那件事)`);
+ok(R.lagAhead && /2026-09-04[\s\S]*2026-09-05|2026-09-05[\s\S]*2026-09-04/.test(R.lagAhead.txt),
+   `⑬a ⭐ 而且要把**兩個日期都寫出來**(⛔ 只說「資料較舊」使用者對不起來):${R.lagAhead && R.lagAhead.txt}`);
+ok(R.lagAhead && /以那邊為準|以散戶救星/.test(R.lagAhead.txt),
+   `⑬b 🚨 要說清楚「以散戶救星那邊為準」(⛔ 只說不一樣等於沒解決)`);
+ok(R.lagAhead && R.lagAhead.inFirstEye,
+   `⑬c 🚨 這句話必須在**第一眼**(⛔ 收進摺疊 = 使用者還是會再問一次)`);
+ok(R.lagSame && !R.lagSame.fired && !R.lagSame.has,
+   `⑬d ⛔ 沒有落後就不可以警告(⛔ 天天道歉會讓人養成忽略的習慣)`);
+ok(R.lagNone && !R.lagNone.fired && !R.lagNone.has,
+   `⑬e ⛔ 拿不到最新交易日時 ⛔ 不可亂猜(沒有基準就不下結論)`);
 
 // ⑥ 手機版面
 ok(R.scrollX <= 2, `⑥ 手機寬度整頁不可橫向捲動(scrollX=${R.scrollX})`);

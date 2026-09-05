@@ -58,6 +58,33 @@ const R = await page.evaluate(async () => {
     await P.starGo('3231'); await new Promise(r => setTimeout(r, 600));
     out.flat = (document.getElementById('starList').innerText || '').replace(/\s+/g, ' ');
     P._starChg = keepChg;
+
+    // ── 🕸️ V74.8.2 星圖節點的漲跌%(使用者要求新增)──
+    //   ⚠️ 沙箱連不到 echarts CDN → stub 一個只記 setOption 的假引擎(**只驗資料層**,⛔ 不驗畫面)
+    let opt = null;
+    const stub = { setOption: o => { opt = o; }, resize() {}, on() {}, off() {}, dispose() {} };
+    window.echarts = { init: () => stub, getInstanceByDom: () => null };
+    const keepEc = P._starEcharts; P._starEcharts = async () => true;
+    // ⭐ 刻意讓其中一檔「名字拿不到」→ 驗它⛔ 不會印成「3189 -8.5% ➖3189」(V74.3.9 那個坑)
+    const nb = (P._starData.r['3231'] || []).map(x => x[0]);          // 鄰居代號(順序固定)
+    const keepNm = P._nmTxt; P._nmTxt = c => (c === nb[1] ? c : (keepNm.call(P, c)));
+    //  ⭐ 紅 / 綠 / 灰 各安排一檔 —— ⛔ 全部同色的話 ④d/④e 等於沒驗
+    //  ⭐ 再放一檔「沒有行情」(_starChg 回 null)—— 驗它顯示「—」而⛔ 不是 0.0% 或 NaN
+    P._starChg = c => (c === nb[2] ? null
+        : { pct: c === '3231' ? 2.5 : c === nb[0] ? 4.2 : c === nb[1] ? -3.1 : 0, live: false });
+    await P.starGo('3231'); await new Promise(r => setTimeout(r, 800));
+    P._nmTxt = keepNm; P._starChg = keepChg; P._starEcharts = keepEc;
+    if (opt && opt.series && opt.series[0]) {
+        const sr = opt.series[0], ids = new Set(sr.data.map(n => n.name));
+        out.g = {
+            n: sr.data.length,
+            ids: [...ids],
+            uniq: ids.size === sr.data.length,
+            linksOk: sr.links.length > 0 && sr.links.every(l => ids.has(l.source) && ids.has(l.target)),
+            labs: sr.data.map(n => (n.label || {}).formatter || ''),
+            cols: sr.data.map(n => (n.itemStyle || {}).color || ''),
+        };
+    }
     return out;
 });
 await browser.close();
@@ -76,8 +103,14 @@ ok('①d ⚠️ 綁得緊的時候要講「重壓同一個風險」(這才是這
 ok('①e 表格要有「互相」欄與 ✔', /互相/.test(R.a.html) && /✔/.test(R.a.html));
 
 // ── ② 今天有沒有一起動 ──
-ok('② 📈 要顯示「今天 N / M 檔跟它同方向」或誠實說為什麼不談',
-   /今天 \d+ \/ \d+ 檔跟它同方向|先不談「有沒有一起動」/.test(R.a.txt), R.a.txt.slice(0, 240));
+// ⚠️ V74.8.2 斷言改成釘**用意**:⛔ 原本釘死「今天」兩個字,而資料落後一天時寫「今天」是錯的
+//   → 現在會寫成實際日期(「09/03 3 / 5 檔…」)。斷言要跟著改用意,⛔ 不是把程式改回去。
+ok('② 📈 要顯示「(哪一天)N / M 檔跟它同方向」或誠實說為什麼不談',
+   /(今天|盤中|\d{2}\/\d{2}) \d+ \/ \d+ 檔跟它同方向|先不談「有沒有一起動」/.test(R.a.txt), R.a.txt.slice(0, 240));
+// ⭐ 而且那個「哪一天」⛔ 不可含糊 —— 落後一天時必須看得出來是哪一天(⛔ 不可寫「今天」)
+ok('②a 🚨 漲跌那一欄的日期要跟**漲跌本身的來源**一致(⛔ 不可拿相關係數的 data_date 充數)',
+   /_starTable[\s\S]{0,4000}const WH = this\._chgWhen\(\)/.test(SRC)
+   && !/收盤 \$\{J\.data_date\}/.test(SRC));
 ok('②b 🚨 講「整族一起動」時**必須**同時寫「本站沒有驗證過能不能預測」',
    !/整族一起動/.test(R.c.txt) || /沒有.{0,6}驗證過/.test(R.c.txt), R.c.txt.slice(0, 260));
 ok('②c 🚨 中心那檔漲、鄰居全部平盤 → ⛔ 不可說成「整族一起動」',
@@ -95,6 +128,31 @@ ok('③⓪ ⛔ 而且整頁不可出現把補漲講成機會的說法',
 ok('③b ⭐ 而且要寫「逐年全負」(⛔ 只說「比較差」會被當成雜訊)', /逐年全負/.test(R.note));
 ok('③c ⛔ 這一頁仍然不下多空、不給買賣價位', /不下多空/.test(R.note) && /不給任何買賣價位/.test(R.note));
 ok('③d ⛔ 不可出現進場指令', !/(建議買進|可以進場|進場價|停損價|目標價)/.test(R.a.txt), R.a.txt.slice(0, 200));
+
+
+
+// ── 🕸️ 星圖節點漲跌%(V74.8.2)──
+ok('④⓪ 空過守門:假 echarts 真的被呼叫到(⛔ 沒有的話下面全部等於沒驗)',
+   !!(R.g && R.g.n > 1), JSON.stringify(R.g || null).slice(0, 160));
+ok('④ 📈 每個節點的標籤都要帶漲跌%(⛔ 只有名字的話等於沒做)',
+   !!R.g && R.g.labs.length > 1 && R.g.labs.every(l => /[-+]?\d+\.\d%|—/.test(l))
+        && R.g.labs.some(l => l.includes('—')),          // ⭐ 沒有行情的那檔要顯示「—」
+   JSON.stringify(R.g && R.g.labs));
+ok('④a 🚨 節點的識別鍵一律用**股票代號**(⛔ 不可把名字+漲跌塞進 name)',
+   !!R.g && R.g.ids.every(x => /^\d{4,6}$/.test(x)), JSON.stringify(R.g && R.g.ids));
+ok('④b ⭐ 鍵要唯一,而且每一條線的兩端都要對得上(⛔ 對不上 = 那條線畫不出來)',
+   !!R.g && R.g.uniq && R.g.linksOk);
+ok('④c 🚨 名字拿不到時 ⛔ 不可印成「代號 … 代號」(V74.3.9 那個坑)',
+   !!R.g && !R.g.labs.some(l => { const m = l.match(/^(\d{4,6})\b/); return m && l.lastIndexOf(m[1]) !== 0; }),
+   JSON.stringify(R.g && R.g.labs));
+ok('④d 🎨 顏色照台股慣例(紅漲綠跌)—— ⛔ 中心那檔維持青色(它是「你在看的這一檔」不是方向)',
+   !!R.g && R.g.cols[0] === '#22d3ee'
+        && R.g.cols.includes('#e05a5a')            // 有一檔 +4.2% → 紅
+        && R.g.cols.includes('#3fa46a')            // 有一檔 −3.1% → 綠
+        && !R.g.cols.slice(1).includes('#22d3ee'),
+   JSON.stringify(R.g && R.g.cols));
+ok('④e ⭐ 平盤(±0.1% 內)要用中性灰,⛔ 不可硬歸到紅或綠',
+   !!R.g && R.g.cols.slice(1).includes('#5b6b7f'), JSON.stringify(R.g && R.g.cols));
 
 console.log(fails ? `\n❌ STARFAMILY_FAIL(${fails})` : '\n✅ STARFAMILY_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

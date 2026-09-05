@@ -873,6 +873,21 @@ const PRO = {
     const n = this._staleDays(d);
     el.textContent = d ? ('・數字 ' + d + (n !== null && n > 4 ? ` ⚠️${n}天前` : '')) : '';
   },
+  /** 🚨 V74.8.2 選股快照是不是**落後**最新交易日
+   *  使用者連問兩次「為何欣興的漲跌%不一樣」——
+   *   ・這裡(screener 09/03)= 923.0 / −5.14%
+   *   ・散戶救星個股頁(data/3037.json 09/04)= 902.0 / −2.28%
+   *  兩個都沒算錯,是 **screener 少了一天**(screener_miner 掛在 playbook_scan,每晚 19:00 常延遲)。
+   *  ⭐ 而 `sector_rot.json` 的 days[-1] 是採礦端算的**最新交易日** → 拿它當基準就偵測得出來。
+   *  ⛔ 偵測到就要講在**第一眼**,不可只放在摺疊說明裡(那正是他第二次還會問的原因)。
+   */
+  _chgLag() {
+    const d = (this._cache['data/screener.json'] || {}).data_date || '';
+    const R = this._cache['data/sector_rot.json'];
+    const last = R && Array.isArray(R.days) && R.days.length ? R.days[R.days.length - 1] : '';
+    if (!d || !last || last <= d) return null;
+    return { snap: d, last };                       // 選股快照停在 snap,而最新交易日已經是 last
+  },
   /** 這批漲跌是「哪一天的」—— ⛔ 不可一律寫「今天」(週末/盤後看的是上一個交易日的收盤) */
   _chgWhen() {
     const st = this._lqStamp();
@@ -1267,7 +1282,9 @@ const PRO = {
           <b>本站實測過「哪一層領先」跟後續報酬沒有關係</b>,別拿它挑股。</div>` : ''}</div>
       <div class="cbwrap"><div class="cbcols">${body}</div></div>
       ${cols.length > 2 ? '<div class="cbhint">← 左右滑看完整條鏈 →</div>' : ''}
-      <div class="cbleg">🚨 <b>這不是連動訊號</b> —— 本站<b>沒有驗證過</b>「上游漲、下游就會跟著漲」。
+      <div class="cbleg">${(() => { const L = this._chgLag(); return L ? `<div class="cblag" style="color:#f5b942;margin-bottom:3px">📅 <b>這裡的漲跌停在 ${L.snap}</b>,而最新交易日已經是 <b>${L.last}</b> ——
+          散戶救星的個股頁讀的是另一份檔、已經更新到 ${L.last},<b>兩邊數字會不一樣是正常的</b>,以那邊為準。</div>` : ''; })()}
+        🚨 <b>這不是連動訊號</b> —— 本站<b>沒有驗證過</b>「上游漲、下游就會跟著漲」。
         <details><summary>📖 圖例與完整說明</summary>
           <div style="margin-top:3px">🔴 上漲 ・🟢 下跌 ・⬜ 那天沒有行情 ・<span style="color:#38e0d0">青框</span>=你正在看的這一檔 ・🧬 高位階+高波動。點任一格看那一檔。
           <br>📅 <b>這批漲跌是「${WH.txt}」的</b> —— ⚠️ 它來自<b>選股快照</b>,而散戶救星的個股頁讀的是<b>另一份 K 線檔</b>;
@@ -1840,6 +1857,11 @@ const PRO = {
     const stamp = this._lqStamp();
 
     const pc = v => `<span class="${v >= 0 ? 'up' : 'dn'}">${v >= 0 ? '+' : ''}${v.toFixed(2)}%</span>`;
+    // 🚨 V74.8.2 這批漲跌來自 **screener 快照**,⛔ 不是 `top_correlations` 的 data_date ——
+    //   實測兩者會差一個交易日(相關係數 09/04、漲跌 09/03)→ 舊寫法把 09/03 的漲跌標成「收盤 09/04」。
+    //   ⭐ 「今天」兩個字同理:落後時它根本不是今天。
+    const WH = this._chgWhen();
+    const DAY = WH.live ? '盤中' : (WH.short || '收盤');
     const head = `<div class="note" style="margin:2px 0 8px">
       <b>${this._nmFull(sym)}</b> 走勢最像的 ${rows.length} 檔 ——
       ${cnt[1] ? `${S[1].e} 剛突破 ${cnt[1]} 檔 ・` : ''}${cnt[2] ? `${S[2].e} 已過熱 ${cnt[2]} 檔 ・` : ''}${S[0].e} 盤整 ${cnt[0]} 檔。
@@ -1852,15 +1874,15 @@ const PRO = {
               ? '這一族<b>綁得很緊</b> —— ⚠️ 手上同時抱其中幾檔 = <b>重壓同一個風險</b>,族群回檔會一起跌,那不是分散。'
               : '部分互相 —— 打 ✔ 的那幾檔跟你是雙向確認的,沒打的多半只是「順著同一種盤在動」。'}</span></div>
         ${sameN === null ? `<div class="ssrow note">📈 ${me && Math.abs(me.pct) < MOVE
-            ? `<b>${this.nameOf(sym) || sym} 今天幾乎沒動(${me.pct.toFixed(2)}%)</b> → 沒有方向可以比,這一段先不談「有沒有一起動」。`
-            : `今天真的有在動的只有 ${haveChg}/${rows.length} 檔(其餘平盤或沒有資料),樣本太少 → 這一段先不談「有沒有一起動」。`}</div>`
-          : `<div class="ssrow"><b>📈 今天 ${sameN} / ${haveChg} 檔跟它同方向</b>
+            ? `<b>${this._nmTxt(sym)} ${DAY}幾乎沒動(${me.pct.toFixed(2)}%)</b> → 沒有方向可以比,這一段先不談「有沒有一起動」。`
+            : `${DAY}真的有在動的只有 ${haveChg}/${rows.length} 檔(其餘平盤或沒有資料),樣本太少 → 這一段先不談「有沒有一起動」。`}</div>`
+          : `<div class="ssrow"><b>📈 ${DAY} ${sameN} / ${haveChg} 檔跟它同方向</b>
               <span class="note">${sameN >= Math.ceil(haveChg * 0.7)
                 ? '<b>整族一起動</b> —— 這是族群層級的資金在走,⛔ 但這只是描述,本站<b>沒有</b>驗證過「族群共振」能不能拿來預測。'
                 : sameN <= Math.floor(haveChg * 0.3)
                   ? '<b>只有它自己在動</b> —— 可能是單一公司的消息或短線資金,⛔ 同樣不代表會漲或會跌。'
                   : '族群內部分歧 —— 有的漲有的跌,⛔ 這時候「整族在動」的說法不成立。'}${flatN ? `<span class="note">・另有 ${flatN} 檔今天幾乎沒動,⛔ 沒算進來</span>` : ''}
-              ${anyLive && stamp ? `<span class="note">・📡 盤中即時(${stamp.txt})</span>` : `<span class="note">・收盤 ${J.data_date}</span>`}</span></div>`}
+              ${anyLive && stamp ? `<span class="note">・📡 盤中即時(${stamp.txt})</span>` : `<span class="note">・${WH.txt}</span>`}</span></div>`}
       </div>`;
     const body = rows.map(([c, r, st]) => {
       const sst = this._starSt(st), pct = Math.round(Math.max(0, Math.min(1, (r - 0.4) / 0.6)) * 100);
@@ -1880,7 +1902,7 @@ const PRO = {
     //   ⛔ 功能做好了 ≠ 使用者找得到 → 直接放在中心那一檔的表格**上面**。
     document.getElementById('starList').innerHTML = head + this._bizChainHtml(sym) +
       `<div style="overflow-x:auto"><table class="startbl">
-        <tr><th style="text-align:left">跟著動的股票</th><th>像不像</th><th>強度</th><th>今天</th><th title="對方的前幾名裡也有你">互相</th><th>它現在的狀態</th></tr>
+        <tr><th style="text-align:left">跟著動的股票</th><th>像不像</th><th>強度</th><th title="這一欄是「${DAY}」的漲跌,來自選股快照">${DAY}</th><th title="對方的前幾名裡也有你">互相</th><th>它現在的狀態</th></tr>
         ${body}</table></div>
       <div class="note">「像不像」= 相關係數,1.00 是每天完全同步、${J.r_min} 是本站收錄的最低門檻。
       <b>「互相」打 ✔</b> = 對方最像的前幾名裡也有你(雙向確認,⛔ 單向的別當成同一族)。
@@ -1902,24 +1924,37 @@ const PRO = {
     el.classList.add('on');
     const inst = echarts.getInstanceByDom(el) || echarts.init(el, 'dark');
     const nm = c => this._nmTxt(c);   // ⛔ 不用 `nameOf(c) || c` —— 名字拿不到會印成「2882 2882」(V74.3.9)
-    const lab = (c, st) => `${nm(c)}\n${this._starSt(st).e}`;
-    const nodes = [{ name: lab(sym, null), value: sym, symbolSize: 56, fixed: true,
+    // 📈 V74.8.2 節點加漲跌%(使用者要的)
+    //   🚨 **節點的 `name` 一律用股票代號,顯示的字走 `label.formatter`** ——
+    //      ECharts 的 graph 拿 `name` 當節點識別(links 的 source/target 要對得上),
+    //      ⛔ 把「名字+漲跌」塞進 name 的話:① 兩檔同名同漲跌會撞在一起
+    //      ② 名字拿不到時(`_nmTxt` 回代號)畫面會變成「3189 -8.5% ➖3189」= 代號印兩次(V74.3.9 那個坑)。
+    //      ⚠️ 曾經想用 \u200b 把代號藏在後面 —— **那是錯的**,零寬空白不會讓後面的字消失,它照樣看得見。
+    const pctOf = c => { const g = this._starChg(c); return g ? g.pct : null; };
+    const pctTxt = p => p === null ? '—' : (p > 0 ? '+' : '') + p.toFixed(1) + '%';
+    const lab = (c, st) => `${nm(c)}\n${pctTxt(pctOf(c))} ${this._starSt(st).e}`;
+    // 🎨 顏色改用漲跌(台股慣例紅漲綠跌)—— ⛔ 中心那檔維持青色(它是「你在看的這一檔」不是方向)
+    const colOf = c => { const p = pctOf(c);
+      return p === null ? '#5b6b7f' : (p > 0.1 ? '#e05a5a' : (p < -0.1 ? '#3fa46a' : '#5b6b7f')); };
+    const nodes = [{ name: sym, value: sym, symbolSize: 56, fixed: true,
                      x: el.clientWidth / 2, y: el.clientHeight / 2,
                      itemStyle: { color: '#22d3ee' },
-                     label: { fontSize: 13, fontWeight: 900, color: '#eaf6ff' } }];
+                     label: { formatter: lab(sym, null), fontSize: 13, fontWeight: 900, color: '#eaf6ff' } }];
     const links = [];
     rows.forEach(([c, r, st]) => {
-      nodes.push({ name: lab(c, st), value: c,
+      nodes.push({ name: c, value: c,
                    symbolSize: 22 + (r - 0.4) * 48,
-                   itemStyle: { color: st === 2 ? '#f5b942' : st === 1 ? '#3d8bfd' : '#5b6b7f' } });
-      links.push({ source: lab(sym, null), target: lab(c, st), value: r,
+                   itemStyle: { color: colOf(c) },
+                   label: { formatter: lab(c, st) } });
+      links.push({ source: sym, target: c, value: r,
                    lineStyle: { width: 1 + (r - 0.4) * 7, opacity: .55, color: '#3d8bfd', curveness: .06 },
                    label: { show: true, formatter: r.toFixed(2), fontSize: 10, color: '#8fa3bb' } });
     });
     inst.setOption({
       backgroundColor: 'transparent',
       tooltip: { formatter: p => p.dataType === 'edge'
-        ? `相關係數 ${(+p.value).toFixed(2)}` : `${p.data.value} ${nm(p.data.value)}` },
+        ? `相關係數 ${(+p.value).toFixed(2)}`
+        : `${nm(p.data.value)} ${p.data.value}<br/>${this._chgWhen().txt} ${pctTxt(pctOf(p.data.value))}` },
       series: [{
         type: 'graph', layout: 'force', roam: true, draggable: true,
         force: { repulsion: 480, edgeLength: [80, 150], gravity: .08 },
@@ -4078,7 +4113,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.8.1',
+  VER: 'V74.8.2',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
