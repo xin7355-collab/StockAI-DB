@@ -283,9 +283,13 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
     .bzbox .bzrow{font-size:12px;line-height:1.6;margin:3px 0}
     /* 🔗 供應鏈星脈圖(V74.7.7,參考使用者提供的版面)—— 分層欄位看板
        ⚠️ 手機一定要能橫捲(4 欄在 390px 塞不下),⛔ 不可讓整頁跟著橫向溢出 */
-    .cbwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+    /* ⚠️ scroll-snap:⛔ 不讓它停在「半欄」—— 使用者截圖第 3 欄的漲跌 % 被切在畫面外。
+       用 proximity 不用 mandatory(mandatory 會讓小幅度滑動被硬拉回去,手感很怪)。 */
+    .cbwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;
+            scroll-snap-type:x proximity;scroll-padding-left:5px}
     .cbcols{display:flex;gap:6px;min-width:max-content}
-    .cbcol{flex:0 0 118px;background:#0b1220;border:1px solid #1e2a38;border-radius:9px;padding:6px 5px}
+    .cbcol{flex:0 0 118px;background:#0b1220;border:1px solid #1e2a38;border-radius:9px;padding:6px 5px;
+           scroll-snap-align:start}
     /* 🚨 欄頭**固定高度** —— 題材多的那一層(伺服器有 10 種直接供應商)會把整欄往下推,
        實測落差 49px = 使用者說的「高高低低」。⛔ 這三個高度不可改成 auto。 */
     /* ⚠️ 誠實記錄:`.cbhd` 的固定高在現行文案下**永遠不會有作用**(層名都是「上游/中游/下游」兩個字、
@@ -847,13 +851,37 @@ const PRO = {
   _cache: {},
   _tab: 'val',
   async fetchJson(path, timeout = 15000) {
-    if (this._cache[path] !== undefined) return this._cache[path];
+    if (this._cache[path] !== undefined) {
+      if (path === 'data/screener.json') this._syncDataDate();   // ⚠️ early return 這條也要填
+      return this._cache[path];
+    }
     try {
       const r = await fetch(new URL(path, location.href).href + (path.includes('?') ? '&' : '?') + 't=' + Date.now(),
                             { signal: AbortSignal.timeout(timeout) });
       if (r.ok) this._cache[path] = await r.json();   // ⚠️ 只快取成功 —— 失敗不快取,下次點會重試
     } catch (_) {}
+    // 🚨 V74.7.9 資料日期**在這裡統一填**(⛔ 不要在各頁各填一次)——
+    //   舊版只有「產業估值」按鈕與「AI 產業鏈」頁會填 → 直接開「關聯星圖」的人**永遠看不到日期**,
+    //   而那正是最需要它的一頁(星脈圖的漲跌就是那一天的)。使用者實測回報:標題列日期時有時無。
+    if (path === 'data/screener.json') this._syncDataDate();
     return this._cache[path] !== undefined ? this._cache[path] : null;
+  },
+  /** 標題列的資料日期 —— 全 App 唯一填寫點 */
+  _syncDataDate() {
+    const el = document.getElementById('dataDate'); if (!el) return;
+    const d = (this._cache['data/screener.json'] || {}).data_date || '';
+    const n = this._staleDays(d);
+    el.textContent = d ? ('・數字 ' + d + (n !== null && n > 4 ? ` ⚠️${n}天前` : '')) : '';
+  },
+  /** 這批漲跌是「哪一天的」—— ⛔ 不可一律寫「今天」(週末/盤後看的是上一個交易日的收盤) */
+  _chgWhen() {
+    const st = this._lqStamp();
+    if (st && st.live) return { live: true, txt: '盤中即時', short: '盤中' };
+    const d = (this._cache['data/screener.json'] || {}).data_date || '';
+    const n = this._staleDays(d);
+    const md = d ? d.slice(5).replace('-', '/') : '';
+    return { live: false, d, n, txt: d ? `${md} 收盤` : '收盤快照', short: md || '收盤',
+             today: n === 0 };
   },
   toast(msg, ms = 1800) {
     const t = document.getElementById('toast');
@@ -1170,14 +1198,23 @@ const PRO = {
       ${c.total > c.show.length ? `<div class="cbcd" style="text-align:center;padding:2px 0">還有 ${c.total - c.show.length} 檔</div>` : ''}
     </div>`).join('');
     const nShow = cols.reduce((a, c) => a + c.show.length, 0), nAll = cols.reduce((a, c) => a + c.total, 0);
+    // 🚨 V74.7.9 一定要標**這批漲跌是哪一天的** —— 使用者實測回報「怪怪的」:
+    //   星脈圖寫「今天 −1.7%」,而他在散戶救星看到同一檔是「09/04 +4.26%」。
+    //   真因:screener 快照停在 09/03、個股 K 線已經到 09/04(兩支採礦進度不同)。
+    //   ⛔ 兩邊數字對不上時,最該做的是**把日期講出來**,不是讓使用者自己猜(陷阱 #34)。
+    const WH = this._chgWhen();
     return `<div class="bzrow" style="margin-top:6px"><b>🔗 供應鏈星脈圖</b>
-        <span class="note">${cols.length} 層 ・ 這條鏈共 ${nAll} 檔,顯示成交額最大的 ${nShow} 檔</span></div>
+        <span class="note">${cols.length} 層 ・ 這條鏈共 ${nAll} 檔,顯示成交額最大的 ${nShow} 檔</span>
+        <span class="sigtag" style="margin-left:4px">${WH.live ? '📡 盤中即時' : `📅 ${WH.d || '收盤快照'} 收盤`}</span>
+        ${WH.live ? '' : this._staleChip(WH.d, '選股快照')}</div>
       <div class="cbwrap"><div class="cbcols">${body}</div></div>
       ${cols.length > 2 ? '<div class="cbhint">← 左右滑看完整條鏈 →</div>' : ''}
       <div class="cbleg">🚨 <b>這不是連動訊號</b> —— 本站<b>沒有驗證過</b>「上游漲、下游就會跟著漲」。
         <details><summary>📖 圖例與完整說明</summary>
-          <div style="margin-top:3px">🔴 今日上漲 ・🟢 今日下跌 ・⬜ 今天沒有行情 ・<span style="color:#38e0d0">青框</span>=你正在看的這一檔 ・🧬 高位階+高波動。點任一格看那一檔。
-          <br>🚨 <b>這是製造流程的先後,⛔ 不代表這幾家真的有生意往來</b>;「這一層今天幾 %」只是<b>把當下的漲跌整理給你看</b>。
+          <div style="margin-top:3px">🔴 上漲 ・🟢 下跌 ・⬜ 那天沒有行情 ・<span style="color:#38e0d0">青框</span>=你正在看的這一檔 ・🧬 高位階+高波動。點任一格看那一檔。
+          <br>📅 <b>這批漲跌是「${WH.txt}」的</b> —— ⚠️ 它來自<b>選股快照</b>,而散戶救星的個股頁讀的是<b>另一份 K 線檔</b>;
+          兩支採礦的進度可能差一個交易日,<b>數字對不上時以散戶救星那邊為準</b>。
+          <br>🚨 <b>這是製造流程的先後,⛔ 不代表這幾家真的有生意往來</b>;「這一層幾 %」只是<b>把當下的漲跌整理給你看</b>。
           <br>⚠️ 每層只顯示成交額最大的 ${PER} 檔,⛔ 不是這一層的全部。
           <br>🔗 這條鏈的完整分層:${cols.map(c => `<b>${this._chainPos(c.i, cols.length - 1)}</b> ${c.ks.map(k => esc(this._themeName(k))).join('、')}`).join(' → ')}</div>
         </details></div>`;
@@ -3983,7 +4020,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.7.8',
+  VER: 'V74.7.9',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

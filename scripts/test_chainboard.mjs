@@ -71,6 +71,25 @@ const R = await page.evaluate(async () => {
         return { ks, cols: cs, txt, leg, legTop, html };
     };
     const out = { wafer: grab('6488'), srv: grab('3231'), none: grab('1101') };
+    // 📅 標題列日期:⭐ 重現使用者的動線 —— **直接**進關聯星圖(⛔ 沒去過另外兩頁)
+    document.getElementById('dataDate').textContent = '';
+    P._syncDataDate();
+    out.hdrDate = document.getElementById('dataDate').textContent;
+    document.getElementById('dataDate').textContent = '';
+    await P.fetchJson('data/screener.json');          // ⚠️ 這次一定走快取命中那條路
+    out.hdrAfterCacheHit = document.getElementById('dataDate').textContent;
+    out.staleSrc = String(P._chainBoardHtml);
+    {   // 注入「30 天前」驗過期警告真的叫得出來
+        const bak = P._cache['data/screener.json'].data_date;
+        P._cache['data/screener.json'].data_date = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+        out.staleWorks = /沒跑到|天前/.test(P._chainBoardHtml('6488', ['wafer']));
+        P._cache['data/screener.json'].data_date = bak;
+    }
+    {   const t = document.createElement('div'); t.className = 'cbwrap';
+        const c = document.createElement('div'); c.className = 'cbcol'; t.appendChild(c);
+        document.body.appendChild(t);
+        out.snap = getComputedStyle(t).scrollSnapType;
+        out.snapAlign = getComputedStyle(c).scrollSnapAlign; t.remove(); }
     // ⑦c 自己算一次上游那層的中位與平均,跟畫面上的數字對
     {
         const path = P._chainPath(['wafer']);
@@ -194,7 +213,30 @@ ok(/沒有收錄|還沒有整理|還沒有人工整理/.test(R.none.txt),
 // ⑨ 紅綠只表示漲跌
 ok(W.cols.some(c => c.cls.some(x => /\bup\b/.test(x))) &&
    W.cols.some(c => c.cls.some(x => /\bdn\b/.test(x))), '⑨ 漲跌兩種底色都有出現');
-ok(/今日上漲|今日下跌/.test(W.txt), '⑨b 圖例要說明紅綠是「今日漲跌」');
+ok(/🔴 上漲|🟢 下跌/.test(W.txt), '⑨b 圖例要說明紅綠是漲跌方向');
+// 📅 V74.7.9 使用者實測回報「怪怪的」:星脈圖寫「今天 −1.7%」,散戶救星同一檔是「09/04 +4.26%」
+//    → ⛔ 不可一律寫「今天」(週末/盤後看的是上一個交易日),而且要說明兩邊為什麼可能差一天
+ok(/📅 \d{4}-\d{2}-\d{2} 收盤|📡 盤中即時/.test(W.txt),
+   '⑨c 🚨 標題必須標出「這批漲跌是哪一天的」(⛔ 不可只寫「今天」)');
+ok(!/今天沒有行情|今日上漲|這一層今天/.test(W.txt),
+   '⑨d ⛔ 而且畫面上不可再出現寫死的「今天」');
+ok(/以散戶救星那邊為準|差一個交易日/.test(W.txt),
+   '⑨e 要說明「跟散戶救星可能差一個交易日」(那正是使用者覺得怪的原因)');
+
+// 📅 V74.7.9 標題列的資料日期 —— 🚨 既有 bug:舊版只有「產業估值」與「AI 產業鏈」兩頁會填,
+//    直接開「關聯星圖」的人永遠看不到日期(而那正是最需要它的一頁)
+ok(R.hdrDate && /\d{4}-\d{2}-\d{2}/.test(R.hdrDate),
+   `⑪ 🚨 只進關聯星圖也要看得到資料日期(實際「${R.hdrDate}」)`);
+ok(R.hdrAfterCacheHit && /\d{4}-\d{2}-\d{2}/.test(R.hdrAfterCacheHit),
+   '⑪b 快取命中那條路也要填(⛔ early return 會跳過)');
+ok(R.staleSrc && !/WH\.n\s*[!><]/.test(R.staleSrc),
+   '⑪c ⛔ 星脈圖不可自己寫一份過期判斷 —— 走共用的 _staleChip');
+ok(R.staleWorks, '⑪d 資料真的過期時要出現警告(注入 30 天前的日期驗證)');
+// ⚠️ Chromium 會把 `x proximity` **正規化成 `x`**(proximity 是預設值會被省略)
+//    → 斷言只能問「有沒有設 snap」,⛔ 不可比對字面(我第一版就是在猜實際輸出)
+ok(R.snap && R.snap !== 'none',
+   `⑪e 橫捲要吸附整欄(⛔ 不可停在半欄,scroll-snap-type=「${R.snap}」)`);
+ok(R.snapAlign === 'start', `⑪f 欄要對齊到起點(實際「${R.snapAlign}」)`);
 
 ok(errs.length === 0, `⑩ 載入無 pageerror${errs.length ? ':' + errs[0] : ''}`);
 
