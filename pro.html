@@ -284,21 +284,30 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
     /* 🔗 供應鏈星脈圖(V74.7.7,參考使用者提供的版面)—— 分層欄位看板
        ⚠️ 手機一定要能橫捲(4 欄在 390px 塞不下),⛔ 不可讓整頁跟著橫向溢出 */
     .cbwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
-    .cbcols{display:flex;gap:8px;min-width:max-content}
-    .cbcol{flex:0 0 132px;background:#0b1220;border:1px solid #1e2a38;border-radius:9px;padding:6px}
-    .cbhd{font-size:10.5px;font-weight:700;color:#cfe0f5;line-height:1.35;margin-bottom:2px}
-    .cbsub{font-size:9.5px;color:var(--dim2);line-height:1.3;margin-bottom:5px}
-    .cbmed{font-size:10px;font-weight:700;margin-bottom:5px}
-    .cbn{display:block;border-radius:6px;padding:4px 6px;margin-bottom:4px;cursor:pointer;
+    .cbcols{display:flex;gap:6px;min-width:max-content}
+    .cbcol{flex:0 0 118px;background:#0b1220;border:1px solid #1e2a38;border-radius:9px;padding:6px 5px}
+    /* 🚨 欄頭**固定高度** —— 題材多的那一層(伺服器有 10 種直接供應商)會把整欄往下推,
+       實測落差 49px = 使用者說的「高高低低」。⛔ 這三個高度不可改成 auto。 */
+    /* ⚠️ 誠實記錄:`.cbhd` 的固定高在現行文案下**永遠不會有作用**(層名都是「上游/中游/下游」兩個字、
+       一定只有一行)—— 注入驗證確認拿掉它測試照樣綠。留著是萬一日後層名變長的保險。
+       真正撐住「欄高對齊」的是下面 `.cbsub` 的 height + line-clamp(那個注入驗證抓得到)。 */
+    .cbhd{font-size:10.5px;font-weight:700;color:#cfe0f5;line-height:1.3;height:14px}
+    .cbsub{font-size:9px;color:var(--dim2);line-height:1.25;height:23px;overflow:hidden;
+           display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+    .cbmed{font-size:11px;font-weight:800;height:15px;line-height:1.35;margin-bottom:4px}
+    .cbn{display:block;border-radius:5px;padding:3px 5px;margin-bottom:3px;cursor:pointer;
          border:1px solid transparent;background:#141c28}
-    .cbn.up{background:rgba(255,107,107,.20);border-color:rgba(255,107,107,.42)}
-    .cbn.dn{background:rgba(74,222,128,.16);border-color:rgba(74,222,128,.38)}
-    .cbn.na{background:#141c28;border-color:#1e2a38}
+    .cbn.up{background:rgba(180,45,45,.34);border-color:rgba(255,107,107,.5)}
+    .cbn.dn{background:rgba(22,92,58,.34);border-color:rgba(74,222,128,.42)}
+    .cbn.na{background:#131a25;border-color:#1e2a38}
     .cbn.me{border-color:#38e0d0;box-shadow:0 0 0 1px #38e0d0 inset}
-    .cbnm{font-size:11px;font-weight:700;color:#eaf2fb;line-height:1.25}
-    .cbcd{font-size:9px;color:var(--dim2)}
-    .cbpc{font-size:10.5px;font-weight:700;float:right;margin-left:4px}
+    .cbnm{font-size:10.5px;font-weight:700;color:#eaf2fb;line-height:1.25}
+    .cbcd{font-size:8.5px;color:var(--dim2);line-height:1.2}
+    .cbpc{font-size:10.5px;font-weight:800;float:right;margin-left:3px}
     .cbleg{font-size:9.5px;color:var(--dim2);margin-top:5px;line-height:1.5}
+    .cbleg details{margin-top:3px}
+    .cbleg summary{cursor:pointer;color:#8fa3bb}
+    .cbhint{font-size:9px;color:var(--dim2);text-align:center;margin-top:2px}
     .starsum{background:#0f1620;border:1px solid #1e2a38;border-radius:10px;padding:8px 10px;margin:0 0 8px}
     .starsum .ssrow{font-size:12px;line-height:1.55;margin:3px 0}
 .startbl{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
@@ -1146,22 +1155,32 @@ const PRO = {
         <div class="cbnm">${gene ? '🧬 ' : ''}${esc(this._nmTxt(sy))}</div>
         <div class="cbcd">${this._nmTxt(sy) === sy ? '&nbsp;' : sy}</div></div>`;
     };
+    // ⚠️ 欄頭只列 3 個題材(⛔ 全部列出來會佔 6 行、把整欄往下推 49px = 「高高低低」);
+    //    完整清單放在下面的摺疊說明裡,⛔ 不是丟掉。
+    const SUBN = 3;
+    const subOf = c => {
+      const ns = c.ks.map(k => esc(this._themeName(k)));
+      return ns.length <= SUBN ? ns.join(' ・ ') : `${ns.slice(0, SUBN).join(' ・ ')} 等 ${ns.length} 族`;
+    };
     const body = cols.map(c => `<div class="cbcol">
       <div class="cbhd">${this._chainPos(c.i, cols.length - 1)}</div>
-      <div class="cbsub">${c.ks.map(k => esc(this._themeName(k))).join(' ・ ')}</div>
-      <div class="cbmed" style="color:${colr(c.med)}">這一層今天 ${c.med === null ? '—' : this.fmt(c.med, 1, true) + '%'}<span style="color:var(--dim2);font-weight:400"> (${c.nChg} 檔中位)</span></div>
+      <div class="cbsub" title="${c.ks.map(k => esc(this._themeName(k))).join('、')}">${subOf(c)}</div>
+      <div class="cbmed" style="color:${colr(c.med)}">${c.med === null ? '—' : this.fmt(c.med, 1, true) + '%'}<span style="color:var(--dim2);font-weight:400;font-size:9px"> ${c.nChg}檔中位</span></div>
       ${c.show.map(node).join('')}
-      ${c.total > c.show.length ? `<div class="cbcd" style="text-align:center;padding:2px 0">還有 ${c.total - c.show.length} 檔沒顯示</div>` : ''}
+      ${c.total > c.show.length ? `<div class="cbcd" style="text-align:center;padding:2px 0">還有 ${c.total - c.show.length} 檔</div>` : ''}
     </div>`).join('');
     const nShow = cols.reduce((a, c) => a + c.show.length, 0), nAll = cols.reduce((a, c) => a + c.total, 0);
     return `<div class="bzrow" style="margin-top:6px"><b>🔗 供應鏈星脈圖</b>
         <span class="note">${cols.length} 層 ・ 這條鏈共 ${nAll} 檔,顯示成交額最大的 ${nShow} 檔</span></div>
       <div class="cbwrap"><div class="cbcols">${body}</div></div>
-      <div class="cbleg">🔴 今日上漲 ・🟢 今日下跌 ・⬜ 今天沒有行情 ・<span style="color:#38e0d0">青框</span>=你正在看的這一檔 ・🧬 高位階+高波動。點任一格看那一檔。
-        <br>🚨 <b>這是製造流程的先後,⛔ 不代表這幾家真的有生意往來</b>;
-        「這一層今天幾 %」只是<b>把當下的漲跌整理給你看</b>,
-        ⛔ <b>本站沒有驗證過「上游漲、下游就會跟著漲」</b> —— 別拿它當連動訊號。
-        ⚠️ 每層只顯示成交額最大的 ${PER} 檔,⛔ 不是這一層的全部。</div>`;
+      ${cols.length > 2 ? '<div class="cbhint">← 左右滑看完整條鏈 →</div>' : ''}
+      <div class="cbleg">🚨 <b>這不是連動訊號</b> —— 本站<b>沒有驗證過</b>「上游漲、下游就會跟著漲」。
+        <details><summary>📖 圖例與完整說明</summary>
+          <div style="margin-top:3px">🔴 今日上漲 ・🟢 今日下跌 ・⬜ 今天沒有行情 ・<span style="color:#38e0d0">青框</span>=你正在看的這一檔 ・🧬 高位階+高波動。點任一格看那一檔。
+          <br>🚨 <b>這是製造流程的先後,⛔ 不代表這幾家真的有生意往來</b>;「這一層今天幾 %」只是<b>把當下的漲跌整理給你看</b>。
+          <br>⚠️ 每層只顯示成交額最大的 ${PER} 檔,⛔ 不是這一層的全部。
+          <br>🔗 這條鏈的完整分層:${cols.map(c => `<b>${this._chainPos(c.i, cols.length - 1)}</b> ${c.ks.map(k => esc(this._themeName(k))).join('、')}`).join(' → ')}</div>
+        </details></div>`;
   },
 
   /** 上游 / 下游題材(從 FLOW 推,⛔ 只走一層 —— 走兩層會把整條鏈全列出來,等於沒說) */
@@ -3964,7 +3983,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.7.7',
+  VER: 'V74.7.8',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

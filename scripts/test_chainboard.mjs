@@ -60,10 +60,15 @@ const R = await page.evaluate(async () => {
             codes: [...c.querySelectorAll('.cbcd')].map(x => x.innerText.trim()),
             cls: [...c.querySelectorAll('.cbn')].map(n => n.className),
         }));
+        // ⚠️ 這個 Chromium 對**收起的 `<details>`** innerText 回空 → 先展開再讀
+        //    (環境限制,⛔ 不是把斷言放寬;正式環境使用者點得開)
+        d.querySelectorAll('details').forEach(x => x.open = true);
         const txt = d.innerText.replace(/\s+/g, ' ');
         const leg = (d.querySelector('.cbleg') || {}).innerText || '';
+        // 摺疊**外**那一行(第一眼看得到的)—— 關鍵警告必須在這裡,⛔ 不可全部藏進摺疊
+        const legTop = ((d.querySelector('.cbleg') || {}).innerText || '').split('📖')[0];
         d.remove();
-        return { ks, cols: cs, txt, leg, html };
+        return { ks, cols: cs, txt, leg, legTop, html };
     };
     const out = { wafer: grab('6488'), srv: grab('3231'), none: grab('1101') };
     // ⑦c 自己算一次上游那層的中位與平均,跟畫面上的數字對
@@ -86,6 +91,29 @@ const R = await page.evaluate(async () => {
     out.wrapScrolls = (() => { const w = holder.querySelector('.cbwrap');
         return w ? { sw: w.scrollWidth, cw: w.clientWidth } : null; })();
     holder.remove(); window.scrollTo(0, 0);
+    // ⑥a 量欄高對齊(⚠️ 要在**收起**的狀態量,那才是使用者看到的)
+    //  🚨🚨 測兩次:第二次刻意把上游那幾個題材的名字**改成一個字** ——
+    //     ⛔ 不這樣做的話每一欄剛好都是 2 行,「欄頭沒有固定高度」這個缺陷根本重現不出來
+    //     (第一版注入驗證就是這樣溜過去的:拿掉 height 照樣綠)。
+    const measure = () => {
+        const h = document.createElement('div'); h.innerHTML = P._bizChainHtml('2330');
+        document.body.appendChild(h);
+        const ys = [...h.querySelectorAll('.cbcol')].map(c => {
+            const n = c.querySelector('.cbn');
+            return n ? Math.round(n.getBoundingClientRect().top - c.getBoundingClientRect().top) : 0;
+        });
+        const r = { ys, gap: ys.length ? Math.max(...ys) - Math.min(...ys) : 999,
+                    legLen: ((h.querySelector('.cbleg') || {}).innerText || '').length };
+        h.remove(); return r;
+    };
+    await new Promise(r => setTimeout(r, 150));
+    out.align = measure();
+    {
+        const bak = P.THEMES.map(t => t.n);
+        P.THEMES.forEach(t => { if (['wafer', 'asic', 'glass'].includes(t.k)) t.n = '矽'; });
+        out.alignShort = measure();
+        P.THEMES.forEach((t, i) => t.n = bak[i]);
+    }
     // ① 對照:如果改用「離源頭幾站」分層,矽晶圓會跟散熱在同一欄嗎
     const P2 = P._chainPath(['srv']);
     out.lv = P2 ? P2.lv : null;
@@ -114,16 +142,19 @@ ok(W.cols[waferCol].syms.includes('6488'), '②c 而且要在它自己那一層'
 
 // ③ 截斷要說出來
 const cut = W.cols.some(c => c.syms.length < 30);
-ok(/還有 \d+ 檔沒顯示/.test(W.txt) || !cut, '③ 有截斷就要寫「還有 N 檔沒顯示」');
+ok(/還有 \d+ 檔/.test(W.txt) || !cut, '③ 有截斷就要寫「還有 N 檔」');
 ok(/只顯示成交額最大的/.test(W.txt), '③b 圖例要說明每層的截斷規則');
 ok(/共 \d+ 檔/.test(W.txt), '③c 要寫出這條鏈總共幾檔');
 
 // ④ 免責
 // ⚠️ 只掃**看板自己那一段**(.cbleg)—— `沒有驗證過` 在卡片尾巴的免責也有,
 //    掃整張卡的話「把看板那句拿掉」照樣會通過(注入驗證抓到的)。
-ok(/沒有驗證過/.test(W.leg) && /上游漲/.test(W.leg),
-   '④ 🚨 看板自己的圖例必須寫「沒有驗證過上游漲下游會漲」');
-ok(!/上游領先|上游漲.{0,4}下游.{0,4}(會|就)(跟著)?漲(?!」)|產業常識|連動訊號(?!。)/.test(W.leg.replace('別拿它當連動訊號', '')),
+ok(/沒有驗證過/.test(W.legTop) && /上游漲/.test(W.legTop),
+   '④ 🚨 關鍵警告必須在**摺疊外**(第一眼看得到),⛔ 不可整段藏進 📖 說明裡');
+// ⭐ 引號裡的是「被否定的那句話」→ 先剝掉再檢查有沒有相反的推薦
+//    (同本專案「禁止某句話的斷言要先 strip 否定形」那條鐵則)
+const legNQ = W.leg.replace(/「[^」]*」/g, '');
+ok(!/上游領先|產業常識|會跟著漲|連動性強|可以跟著/.test(legNQ),
    '④a ⛔ 而且不可出現相反的正面說法(只驗「有沒有警告」的話,改寫成推薦會溜過去)');
 ok(/不代表這幾家真的有生意往來/.test(W.txt), '④b 必須寫「不代表真的有生意往來」');
 ok(!/建議|買進|進場|目標價/.test(W.txt), '④c ⛔ 看板不可下操作指令');
@@ -132,6 +163,14 @@ ok(!/建議|買進|進場|目標價/.test(W.txt), '④c ⛔ 看板不可下操�
 const bad = W.cols.flatMap(c => c.names.map((n, i) => [n, c.codes[i]]))
                   .filter(([n, c]) => n.replace(/^🧬 /, '') === c);
 ok(bad.length === 0, `⑤ ⛔ 不可印成「代號 代號」(違規 ${bad.length} 筆)`);
+
+// ⑥a 🚨 欄高必須對齊 —— 使用者回報的「高高低低」:題材多的那一層會把整欄往下推(實測落差 49px)
+ok(R.align && R.align.gap <= 2,
+   `⑥a 🚨 每一欄的第一格要從同一個高度開始(落差 ${R.align && R.align.gap}px)`);
+ok(R.alignShort && R.alignShort.gap <= 2,
+   `⑥a1 🚨 就算某一欄的題材名只有一行,欄頭仍要固定高度(落差 ${R.alignShort && R.alignShort.gap}px)`);
+ok(R.align && R.align.legLen <= 80,
+   `⑥a2 圖例第一眼不可太長(${R.align && R.align.legLen} 字,上限 80)`);
 
 // ⑥ 手機版面
 ok(R.scrollX <= 2, `⑥ 手機寬度整頁不可橫向捲動(scrollX=${R.scrollX})`);
