@@ -263,6 +263,8 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .starchart{width:100%;height:380px;margin:4px 0 10px;border-radius:11px;background:var(--panel2);
   border:1px solid var(--line2);display:none}
 .starchart.on{display:block}
+    .starsum{background:#0f1620;border:1px solid #1e2a38;border-radius:10px;padding:8px 10px;margin:0 0 8px}
+    .starsum .ssrow{font-size:12px;line-height:1.55;margin:3px 0}
 .startbl{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
 .startbl th{font-size:10.5px;color:var(--dim2);font-weight:700;text-align:center;padding:6px 6px;
   border-bottom:1px solid var(--line2);white-space:nowrap}
@@ -1356,8 +1358,12 @@ const PRO = {
       51 檔沒有一檔超過 0.3)。<b>所以這頁不下多空、不計分、也不給任何買賣價位</b>——
       買賣一律以散戶救星的「現在怎麼做」為準。<br>
       <b>可以拿來做什麼:</b>① 看手上這檔是「整族一起漲」還是「只有它自己在動」
-      ② 想加碼時看看清單裡是不是都同一族(那樣等於重壓同一個風險)
+      ② 想加碼時看看清單裡是不是都同一族(那樣等於重壓同一個風險)——
+      ⭐ 看表格的 <b>「互相」打不打 ✔</b>,那才是雙向確認的同族
       ③ 這一族裡誰已經 ${S[2].e}過熱、誰剛 ${S[1].e}突破。<br>
+      🚨 <b>⛔ 別拿它來「找補漲」</b> —— 常見的說法是「龍頭噴了就去買同族還沒動的」,
+      本站實測過(1,077 檔・483 個交易日):在強勢板塊裡挑<b>最弱</b>的那一檔,10 日相對報酬 <b>−0.40pp</b>、
+      而且<b>逐年全負</b>;挑<b>最強</b>的才是 +1.34pp(扣成本後 +0.90%)。<b>補漲是穩定地差,不是雜訊。</b><br>
       <b>誰不在名單裡:</b>20 日均量不到 1,000 張又沒爆量的冷門股(相關係數在沒量的股票上是雜訊);
       ${J.excl_etf ? '還有 <b>ETF 全部不列入</b> —— 0050 有四成本來就是台積電,說它們「一起動」是廢話,而且會把真正同族的個股名額吃光。' : ''}</div>`;
   },
@@ -1375,7 +1381,13 @@ const PRO = {
     const sym = String(code || (inp && inp.value) || '').trim().toUpperCase();
     if (inp) inp.value = sym;
     const seq = ++this._starSeq;
-    const J = await this.starFetch();
+    // 📈 V74.7.3 「今天有沒有一起動」要 screener(收盤快照)+ live_quotes(盤中即時)
+    //   ⛔ 併在同一個 await 裡 —— 分開等會讓表格先畫出一整排「—」再跳動。
+    const [J] = await Promise.all([
+      this.starFetch(),
+      this.fetchJson('data/screener.json').catch(() => null),
+      (this._lq === undefined || this._twOpenNow()) ? this._lqLoad().catch(() => null) : Promise.resolve(),
+    ]);
     if (seq !== this._starSeq) return;                 // 使用者已經查別檔了 → 這次的結果作廢
     const msg = document.getElementById('starMsg'), chart = document.getElementById('starChart');
     const list = document.getElementById('starList');
@@ -1401,29 +1413,92 @@ const PRO = {
     this._starDraw(sym, rows, seq);
   },
 
+  // 🔁 互相確認:對方的前 N 名裡也有你 → 這兩檔是**真的**綁在一起
+  //   ⭐ 這解決「假分散、真集中」:單向高相關可能只是它跟大盤像(實測 2330 是 0/5),
+  //     雙向才代表「彼此就是對方最像的那幾檔」。⛔ 零新資料,只是把既有清單交叉比對。
+  _starMutual(sym, rows, J) {
+    const out = {};
+    for (const [c] of rows) out[c] = (J.r[c] || []).some(x => x[0] === sym);
+    return out;
+  },
+
+  // 📈 今天有沒有一起動:盤中用即時價、盤後用收盤快照(⛔ 兩種要標得出來)
+  //   ⚠️ 昨收由 screener 的 c 與 chg 反推(c ÷ (1+chg/100)),⛔ 不另存一份。
+  _starChg(code) {
+    const S = this._cache['data/screener.json'];
+    const row = S && S.rows && S.rows[code];
+    if (!row) return null;
+    const c = +row[0], ch = +row[1];
+    if (!(c > 0) || !Number.isFinite(ch)) return null;
+    const live = this._lqPx(code);
+    const st = this._lqStamp();
+    if (live && st && st.live) {
+      const prev = c / (1 + ch / 100);
+      if (prev > 0) return { pct: (live / prev - 1) * 100, live: true };
+    }
+    return { pct: ch, live: false };
+  },
+
   _starTable(sym, rows, J) {
     const S = this.STAR_STATUS;
-    const nm = c => this.nameOf(c) || c;
     const cnt = { 0: 0, 1: 0, 2: 0 };
     rows.forEach(r => { cnt[r[2]] = (cnt[r[2]] || 0) + 1; });
+    const mu = this._starMutual(sym, rows, J);
+    const muN = rows.filter(([c]) => mu[c]).length;
+    const me = this._starChg(sym);
+    const chgs = rows.map(([c]) => this._starChg(c));
+    // 🚨 平盤(±0.1% 內)⛔ 不可算成「同方向」—— 0.00% 跟 +3% 說成一起動是假的。
+    //   ⭐ 分子分母都要把平盤扣掉,⛔ 只扣分子會系統性高估「整族一起動」。
+    const MOVE = 0.1;
+    const moved = chgs.filter(x => x && Math.abs(x.pct) >= MOVE);
+    const haveChg = moved.length, flatN = chgs.filter(x => x && Math.abs(x.pct) < MOVE).length;
+    // 📈 同向 = 跟中心那檔今天同方向(⛔ 中心那檔沒動或算不出來,整段不談「一起動」)
+    let sameN = null;
+    if (me && Math.abs(me.pct) >= MOVE && haveChg >= 3) sameN = moved.filter(x => (x.pct >= 0) === (me.pct >= 0)).length;
+    const anyLive = !!(me && me.live) || chgs.some(x => x && x.live);
+    const stamp = this._lqStamp();
+
+    const pc = v => `<span class="${v >= 0 ? 'up' : 'dn'}">${v >= 0 ? '+' : ''}${v.toFixed(2)}%</span>`;
     const head = `<div class="note" style="margin:2px 0 8px">
       <b>${this._nmFull(sym)}</b> 走勢最像的 ${rows.length} 檔 ——
       ${cnt[1] ? `${S[1].e} 剛突破 ${cnt[1]} 檔 ・` : ''}${cnt[2] ? `${S[2].e} 已過熱 ${cnt[2]} 檔 ・` : ''}${S[0].e} 盤整 ${cnt[0]} 檔。
-      ${cnt[2] >= 3 ? '⚠️ 這一族大半都過熱了,現在進場等於買在整族的高點。' : ''}</div>`;
+      ${cnt[2] >= 3 ? '⚠️ 這一族大半都過熱了,現在進場等於買在整族的高點。' : ''}</div>
+      <div class="starsum">
+        <div class="ssrow"><b>🔁 真的同一族的有 ${muN} / ${rows.length} 檔</b>
+          <span class="note">${muN === 0
+            ? '一檔都沒有 —— 大家跟著你動,但你<b>不是</b>它們最像的那幾檔(權值股常見:它像的其實是大盤)。'
+            : muN >= Math.ceil(rows.length * 0.6)
+              ? '這一族<b>綁得很緊</b> —— ⚠️ 手上同時抱其中幾檔 = <b>重壓同一個風險</b>,族群回檔會一起跌,那不是分散。'
+              : '部分互相 —— 打 ✔ 的那幾檔跟你是雙向確認的,沒打的多半只是「順著同一種盤在動」。'}</span></div>
+        ${sameN === null ? `<div class="ssrow note">📈 ${me && Math.abs(me.pct) < MOVE
+            ? `<b>${this.nameOf(sym) || sym} 今天幾乎沒動(${me.pct.toFixed(2)}%)</b> → 沒有方向可以比,這一段先不談「有沒有一起動」。`
+            : `今天真的有在動的只有 ${haveChg}/${rows.length} 檔(其餘平盤或沒有資料),樣本太少 → 這一段先不談「有沒有一起動」。`}</div>`
+          : `<div class="ssrow"><b>📈 今天 ${sameN} / ${haveChg} 檔跟它同方向</b>
+              <span class="note">${sameN >= Math.ceil(haveChg * 0.7)
+                ? '<b>整族一起動</b> —— 這是族群層級的資金在走,⛔ 但這只是描述,本站<b>沒有</b>驗證過「族群共振」能不能拿來預測。'
+                : sameN <= Math.floor(haveChg * 0.3)
+                  ? '<b>只有它自己在動</b> —— 可能是單一公司的消息或短線資金,⛔ 同樣不代表會漲或會跌。'
+                  : '族群內部分歧 —— 有的漲有的跌,⛔ 這時候「整族在動」的說法不成立。'}${flatN ? `<span class="note">・另有 ${flatN} 檔今天幾乎沒動,⛔ 沒算進來</span>` : ''}
+              ${anyLive && stamp ? `<span class="note">・📡 盤中即時(${stamp.txt})</span>` : `<span class="note">・收盤 ${J.data_date}</span>`}</span></div>`}
+      </div>`;
     const body = rows.map(([c, r, st]) => {
-      const s = this._starSt(st), pct = Math.round(Math.max(0, Math.min(1, (r - 0.4) / 0.6)) * 100);
+      const sst = this._starSt(st), pct = Math.round(Math.max(0, Math.min(1, (r - 0.4) / 0.6)) * 100);
+      const g = this._starChg(c);
       return `<tr>
         <td class="l">${this._nmc(c, `PRO.openStock('${c}')`)}</td>
         <td class="mono" style="font-weight:800">${r.toFixed(2)}</td>
         <td><div class="starbar2"><i style="width:${pct}%"></i></div></td>
-        <td title="${s.d}">${s.e} ${s.t}</td>
+        <td class="mono">${g ? pc(g.pct) : '<span class="note">—</span>'}</td>
+        <td title="${mu[c] ? '它的前幾名裡也有你 → 雙向確認' : '它最像的另有其人'}">${mu[c] ? '✔' : '<span class="note">–</span>'}</td>
+        <td title="${sst.d}">${sst.e} ${sst.t}</td>
       </tr>`;
     }).join('');
     document.getElementById('starList').innerHTML = head +
       `<div style="overflow-x:auto"><table class="startbl">
-        <tr><th style="text-align:left">跟著動的股票</th><th>像不像</th><th>強度</th><th>它現在的狀態</th></tr>
+        <tr><th style="text-align:left">跟著動的股票</th><th>像不像</th><th>強度</th><th>今天</th><th title="對方的前幾名裡也有你">互相</th><th>它現在的狀態</th></tr>
         ${body}</table></div>
       <div class="note">「像不像」= 相關係數,1.00 是每天完全同步、${J.r_min} 是本站收錄的最低門檻。
+      <b>「互相」打 ✔</b> = 對方最像的前幾名裡也有你(雙向確認,⛔ 單向的別當成同一族)。
       點股名可以跳到散戶救星看那一檔。</div>`;
   },
 
@@ -3220,6 +3295,7 @@ const PRO = {
   _labSel: 'ok',
   LAB: {
     ok: [
+      { r: 30, t: '🕸️ 星圖的「同一族」要看雙向,單向高相關常常只是它像大盤', w: '只描述', d: '「A 的前 5 名有 B」⛔ 不等於「B 的前 5 名有 A」。實測(551 檔・120 個交易日・R>0.4):<b>3231 緯創 3/5 互相</b>、2603 長榮 2/5、而 <b>2330 台積電是 0/5</b> —— 大家跟著台積電動,但那幾檔自己最像的另有其人(它像的其實是大盤)。⭐ 這解決「假分散、真集中」:打 ✔ 的那幾檔跟你是<b>同一個系統性風險</b>,同時抱等於重壓。⛔ 相關係數是<b>同期</b>的,不下多空、不預測。', how: '想加碼前先查星圖:要買的那一檔如果跟手上的打 ✔,那不是分散、是加碼同一個風險;要真的分散就挑完全不在這張圖裡的。', s: '(pro.html 關聯星圖・零新採礦)' },
       { r: 45, t: '🧺 定期再平衡真正在做的事是「不讓組合變成押一檔」,⛔ 不是讓你多賺', w: '配置', d: '四組配置(含息・5.6 年含 2022 空頭)測「不再平衡 / 每半年 / 每年」:<b>報酬沒有一致方向</b> —— 各組最好的頻率是 每年 / 不再平衡 / 每年 / 每半年,<b>四組不一致</b> → 那些差額是各組成分自己的走勢決定的。<b>但「中途最多賠」四組全部變小</b>(+0.7 / +0.5 / <b>+22.8</b> / +0.2 pp)。⭐ B1 那 22.8pp 講的是同一件事:不再平衡的話 1519 華城會從 20% 膨脹到 <b>47%</b>,那時候它已經不是「配置」而是「押一檔」了。', how: '一年調一次就好,目的是把漲太多的那一塊減回原來的比例、控制集中度;⛔ 別期待它讓你多賺(實測量不出來),而且每次調整都要真的買賣、⛔ 手續費沒扣。', s: 'alloc_probe.mjs' },
 
       { r: 66, t: '🌏 美股隔夜對台股的預測相關 +0.47,而且是**單向**的', w: '只描述', d: '五年日線:<b>美股 S&P500 → 台股隔天 +0.469</b>、那斯達克 <b>+0.487</b>;反過來<b>台股 → 美股隔天只有 +0.006 / −0.017 ≈ 0</b> → 單向。⚠️ 誠實說:那<b>不是 alpha,是時區</b> —— 美股收盤後台股才開盤,資訊本來就會傳過來。⭐ 但它<b>證實了盤前體檢分數的基礎是真的</b>(那個分數的成分正是美股/費半/台積 ADR;premkt_probe 已量到開盤後續漲 +0.574pp、六年逐年同方向)。<br>📉 順帶量到:台股單日跌 ≥2% 的頻率 <b>4.4%</b> 是六個市場<b>最低</b>(那指 7.6%、港 6.9%、韓 6.0%、日 5.9%、標普 3.1%);跌 ≥2% 後隔天上漲 60%(平常 55%)有 V 型傾向,<b>但跌 ≥3% 後只剩 50%(比平常還低)</b> → 呼應「跌越深越不會回來」。', how: '早上看盤前體檢分數就好(它已經把美股那半算進去了)。⛔ 別因為「台股愛 V 轉」就去接跌深的刀 —— 跌 ≥3% 那組隔天反而比平常差。', s: 'overseas_probe.py(Actions 實跑)' },
@@ -3380,6 +3456,7 @@ const PRO = {
       { t: '📛 憑空門檻:別人隨口訂的那條線', n: '', d: '實測過的都不成立:摩卡「跳空 2~4%」(相鄰桶沒分別)、Gemini「投量比 >10%」(所有買超桶裡最弱)、權證小哥「地板股 100 檔」(實測有效的是 300)、「乖離年線 200%」(短線完全沒邊際,60 日才顯現)。⭐ 門檻一律用<b>相對自己的歷史位階</b>,⛔ 不寫死數字。', s: '多處' },
     ],
     blocked: [
+      { t: '🏭 個股的營收產品拆解 / 產線據點 / 擴產時程 / ASP / 供應商梯隊 / 實體上下游', d: '使用者上傳的那份 UI 規格要 6 個區塊,⛔ <b>其中 5 個台股沒有免費結構化來源</b>:營收<b>產品別</b>佔比(只有月營收總額)、產線據點與產能時程、ASP 與進入門檻、供應商梯隊與「純度分數」、實體上下游對照表。⭐ 唯一有資料源的是<b>資金關聯星圈</b>(本站已有,V74.7.3 又補了雙向確認與當日共振)。⛔ 硬做就是編數字 —— 那正是本站評估外部資料時最常否決的一類。', s: '(無資料源)' },
       { t: '📏 「1 張改 1 股」(零股制度改革)對股價與成交量的影響', d: '⛔ <b>沒有實施日就無法回測</b> —— 那份對話講的是<b>還沒發生</b>的制度變更,沒有公告生效日。⭐ 回測需要一個「前 vs 後」的切點,而這裡連切點都不存在。⚠️ 它的間接主張(交投變活絡 → 證券股受惠)已經另外測過,見「實測沒用」欄。', s: '(無資料源)' },
 
       { t: '🌅 <b>盤前分數「改用散戶救星那套」回測不了</b> —— ⭐ 而且正確方向是反過來', n: '13 個台股成分沒有歷史 + 沙箱連不到海外資料源', d: '使用者:「產業作戰室的今天的盤前分數改用散戶救星盤前體檢分數去計算,這樣子回測有差異嗎?」<br>⭐ <b>先查清楚兩支公式差在哪</b>(⛔ 不是同一個東西換個地方):散戶救星約 <b>21 個</b>成分、產業作戰室 <b>8 個</b>。相同的有 NASDAQ/標普(±1)、費半(×1.5)、台積 ADR(×2)、台幣階梯;<b>🚨 不同的有兩處</b>:① <b>VIX</b> —— 散戶救星看<b>水位</b>(&lt;20 +1 / &gt;25 −1 / &gt;30 −2),產業作戰室看<b>漲跌%</b>(±0.5);② <b>日經/韓股</b> —— 散戶救星是<b>四段</b>(±1 / ±0.5),產業作戰室是<b>兩段</b>。另外散戶救星多了道瓊、恆指,以及 <b>13 個台股專屬成分</b>(外資台指期、台指期夜盤、三大法人、恐懼貪婪、亞幣/人民幣、加權自己的技術分數…)。<br>🚧 <b>三層阻礙,一層比一層硬</b>:<br>① 那 13 個台股成分<b>沒有任何歷史</b>(全是每日快照)→ 改了就<b>永遠無法回測</b>,而這個分數的全部價值就是「它有一份成績單」;<br>② 能測的那半(道瓊/恆指/VIX 水位)要重抓 5 年海外歷史,而<b>這個環境連不到 Yahoo 與 stooq</b>(跟「台股 vs 美日韓」卡在同一道牆);<br>③ <code>risk_history.json</code> 只有 <b>43 天</b>,而且缺 NASDAQ/費半/台積ADR/台幣 → 連描述性比較都做不了。<br>⭐⭐ <b>所以正解不是「改用散戶救星那套」</b>:產業作戰室目前跟探針<b>是一致的</b>(探針註解自己就寫明 VIX 用漲跌是代理、權重壓到 0.5)→ 真正該修的是<b>把散戶救星那邊的 VIX 與亞股分段對齊</b>,然後<b>兩邊一起重跑探針</b>。⛔ 把 21 個成分搬過來 = 顯示一個沒有成績單的分數。', s: 'V74.6.3 查證(⛔ 未回測,原因如上)' },
@@ -3517,7 +3594,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.7.2',
+  VER: 'V74.7.3',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.7.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.7.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -698,7 +698,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.7.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.7.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7540,8 +7540,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.7.2',
+    _APP_VERSION: 'V74.7.3',
     _CHANGELOG: [
+        { v: 'V74.7.3', dt: '2026-09-05', d: ['🕸️ <b>產業作戰室的「關聯星圖」補了兩件事</b>(⛔ 沒有多開分頁 —— 那頁本來就是「查一檔、看它的族群」一件事,分頁只會讓你多點一次)。','🔁 <b>新增「互相」欄</b>:以前只看「A 最像的前 5 名有誰」,現在會告訴你<b>對方的前 5 名裡有沒有你</b>。實測 <b>緯創 3/5、長榮 2/5,而台積電是 0/5</b> —— 大家跟著台積電動,但那幾檔自己最像的另有其人。⭐ 打 ✔ 的那幾檔跟你是<b>同一個風險</b>,想加碼前先看這欄,免得「以為分散、其實重壓」。','📈 <b>新增「今天」欄</b>:直接告訴你這一族今天是<b>整族一起動</b>還是<b>只有它自己在動</b>(盤中用即時價、盤後用收盤)。⛔ 這只是描述,本站<b>沒有</b>驗證過族群共振能不能預測。另外頁面上明寫了一句:<b>⛔ 別拿它來找補漲</b> —— 在強勢族群裡挑最弱的那一檔,實測 10 日輸 0.40 個百分點而且<b>逐年全負</b>。'] },
         { v: 'V74.7.2', dt: '2026-09-05', d: ['🚨 <b>修好一個會讓總覽整個空白的真 bug</b>(你今天早上的截圖抓到的)。症狀是:個股頁價格顯示「--」、卡在「讀取中…」,「現在該做什麼」那一整區<b>什麼都沒有</b>,而且畫面上不會跳任何錯誤 —— 但庫存頁卻是正常的。','🔍 <b>真因不是資料壞掉,是網路</b>:畫 K 線圖的元件是從網路載的,<b>訊號差載不到的時候它會把後面的初始化整串弄斷</b>,結果連均線都沒算,總覽自然一片空白。⛔ 以前它壞得<b>完全沒有聲音</b>,所以你只會覺得「是不是壞了」。','✅ <b>現在改成三層保護</b>:①算資料那條線<b>不再掛在畫圖後面</b>(圖掛了資料照算)②圖真的載不到時,會直接告訴你「<b>圖表元件沒有載入成功,不是你的資料壞掉,請下拉重新整理</b>」③還在算的時候會顯示「⏳ 正在計算技術指標…」,⛔ 不再留白畫面。'] },
         { v: 'V74.7.1', dt: '2026-09-04', d: ['🏦 <b>「大盤成交量放大 → 證券股會噴」實測不成立</b>(產業作戰室 → 實測總表)。它一度看起來很漂亮 —— 20 日贏大盤 +3.76pp、五年逐年全正,連非證券的對照組都只有 +0.35pp;<b>但把「量放大幾倍」那個門檻左右各挪一格就垮了</b>(×1.4 只剩 +0.89、×1.7 +1.80 而且逐年不同向)→ 那是<b>孤峰不是高原</b>。⛔ 別因為某天大盤爆量就去追券商股。','🧺 <b>兩種資產配置實測完了</b>(含配息、5.6 年含 2022 那次大跌):<b>「領息存股型」兩種配法都輸給單純買 0050 放著</b>(少賺 118~128 萬),把配息加回去之後還是輸;它換到的是<b>中途比較不會賠那麼多</b>(−22.9% vs −33.9%)—— 那是<b>取捨,不是比較強</b>。','🔁 <b>「每年再平衡」到底有沒有用也測了</b>:賺多賺少<b>四組配置沒有一致方向</b>(有的每年調最好、有的乾脆不要調),⭐ 但<b>「中途最多賠」四組全部變小</b>。它真正的作用是<b>不讓漲最多的那一檔膨脹成整個組合</b>(有一組不調的話會從 20% 變成 47%)。'] },
         { v: 'V74.7.0', dt: '2026-09-04', d: ['📕 <b>那份當沖 PDF 的指標,分 K 版也測完了 —— 全部不成立</b>(產業作戰室 → 實測總表)。20 檔 ・85 個交易日 ・5/15/60 分 K 各跑一次:<b>每一個週期、每一個訊號扣掉成本後都是負的</b>;而且「三大核心」在 5 分是 −0.02、15 分 −0.12、60 分 +0.16 —— <b>跨週期方向相反 = 沒有穩定結構</b>。⛔ 不要用那幾個指標做當沖。','🌏 <b>第一次把台股跟美日韓港並排比</b>:⭐ <b>美股隔夜對台股的預測相關 +0.47~0.49,而且是單向的</b>(台股對美股 ≈ 0);日股韓股<b>同期</b>相關 0.65 很高、但<b>隔天只有 +0.05 ≈ 0</b> → 同步但不領先,⛔ 別拿它們預測台股。台股單日跌 ≥2% 的頻率 4.4% 是六個市場<b>最低</b>。','💾 <b>開始存三類「現在不存以後永遠測不了」的資料</b>:鉅額交易逐日、借券逐日、融資限額(算融資使用率用)。⏳ 累積滿一年前<b>不上前端、不計分</b>。','🩺 <b>新增一道守門</b>:同一個檔案裡重複定義同名函式時會直接擋下來。這是實跑踩到才寫的 —— 有支程式裡有兩份 main(),Python 用最後那個,<b>結果我一直以為在跑新版、其實跑的是舊版</b>,而且全程零錯誤訊息。'] },
