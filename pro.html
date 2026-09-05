@@ -281,6 +281,24 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
     .labfrom{font-size:10.5px;color:var(--dim2);margin-left:6px}
     .bzbox{background:#0f1620;border:1px solid #1e2a38;border-radius:10px;padding:8px 10px;margin:8px 0}
     .bzbox .bzrow{font-size:12px;line-height:1.6;margin:3px 0}
+    /* 🔗 供應鏈星脈圖(V74.7.7,參考使用者提供的版面)—— 分層欄位看板
+       ⚠️ 手機一定要能橫捲(4 欄在 390px 塞不下),⛔ 不可讓整頁跟著橫向溢出 */
+    .cbwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+    .cbcols{display:flex;gap:8px;min-width:max-content}
+    .cbcol{flex:0 0 132px;background:#0b1220;border:1px solid #1e2a38;border-radius:9px;padding:6px}
+    .cbhd{font-size:10.5px;font-weight:700;color:#cfe0f5;line-height:1.35;margin-bottom:2px}
+    .cbsub{font-size:9.5px;color:var(--dim2);line-height:1.3;margin-bottom:5px}
+    .cbmed{font-size:10px;font-weight:700;margin-bottom:5px}
+    .cbn{display:block;border-radius:6px;padding:4px 6px;margin-bottom:4px;cursor:pointer;
+         border:1px solid transparent;background:#141c28}
+    .cbn.up{background:rgba(255,107,107,.20);border-color:rgba(255,107,107,.42)}
+    .cbn.dn{background:rgba(74,222,128,.16);border-color:rgba(74,222,128,.38)}
+    .cbn.na{background:#141c28;border-color:#1e2a38}
+    .cbn.me{border-color:#38e0d0;box-shadow:0 0 0 1px #38e0d0 inset}
+    .cbnm{font-size:11px;font-weight:700;color:#eaf2fb;line-height:1.25}
+    .cbcd{font-size:9px;color:var(--dim2)}
+    .cbpc{font-size:10.5px;font-weight:700;float:right;margin-left:4px}
+    .cbleg{font-size:9.5px;color:var(--dim2);margin-top:5px;line-height:1.5}
     .starsum{background:#0f1620;border:1px solid #1e2a38;border-radius:10px;padding:8px 10px;margin:0 0 8px}
     .starsum .ssrow{font-size:12px;line-height:1.55;margin:3px 0}
 .startbl{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
@@ -1042,6 +1060,110 @@ const PRO = {
   _themeName(k) { const t = (this.THEMES || []).find(x => x.k === k); return t ? t.n : k; },
   _themeSyms(k) { const t = (this.THEMES || []).find(x => x.k === k); return (t && t.syms) || []; },
 
+  /** 🔗 這一檔所在的**整條鏈**:沿 CHAIN_FLOW 兩個方向走到底,再依最長路徑分層
+   *  ⭐ 這裡刻意走到底(跟 _bizFlow 的「只走一層」不同)—— 看板要的就是全貌;
+   *     ⛔ 但每一層會截斷(見 _chainBoardHtml),否則上游那層會有十幾個題材、上百檔。
+   *  ⚠️ CHAIN_FLOW 是 DAG(製造流程的先後),所以「鬆弛到不再變」一定收斂。 */
+  _chainPath(ks) {
+    const F = this.CHAIN_FLOW;
+    const seen = new Set(ks.filter(k => F.some(([a, b]) => a === k || b === k)));
+    if (!seen.size) return null;
+    for (let i = 0; i < F.length + 2; i++) {          // 連通擴散(兩個方向)
+      let grow = false;
+      for (const [a, b] of F) {
+        if (seen.has(a) && !seen.has(b)) { seen.add(b); grow = true; }
+        if (seen.has(b) && !seen.has(a)) { seen.add(a); grow = true; }
+      }
+      if (!grow) break;
+    }
+    // 🚨🚨 分層用「**離終點還有幾站**」(從下游往回推),⛔ 不用「離源頭幾站」。
+    //   實測差別很大:用「離源頭」的話 wafer(矽晶圓) 與 cool(散熱)/pwr(電源)/mech(機殼)
+    //   會擠在同一欄(它們都「沒有上游」)→ 那一欄變成 12 個題材 48 檔,等於沒分層。
+    //   用「離終點」才分得開:矽晶圓還要經過 晶圓代工→封裝 才到伺服器(3 站),
+    //   而散熱/電源是**直接**供給伺服器(1 站)—— 那正是「上游 vs 中游」的真正語意。
+    const d = {}; seen.forEach(k => d[k] = 0);
+    for (let i = 0; i < seen.size + 2; i++) {
+      let ch = false;
+      for (const [a, b] of F) {
+        if (seen.has(a) && seen.has(b) && d[a] < d[b] + 1) { d[a] = d[b] + 1; ch = true; }
+      }
+      if (!ch) break;
+    }
+    const maxL = Math.max(...Object.values(d));
+    const cols = [];
+    for (let i = maxL; i >= 0; i--) cols.push({ i: maxL - i, ks: [...seen].filter(k => d[k] === i) });
+    return { cols: cols.filter(c => c.ks.length), lv: d, maxL };
+  },
+
+  /** 層的位置名 —— ⛔ 不自己編「晶片/IP/ASIC」這種歸納名(那會變成第二份分類),
+   *  只講位置(上游/中游/下游),真正的內容用該層的**題材名**列出來。 */
+  _chainPos(i, maxL) {
+    if (maxL === 0) return '單層';
+    if (i === 0) return '上游';
+    if (i === maxL) return '下游';
+    return '中游';
+  },
+
+  /** 🔗 供應鏈星脈圖:分層欄位看板(V74.7.7)
+   *  ⛔ 五條不可改掉的設計:
+   *   ① **每層截斷要說出來**(上游那層可能有十幾個題材、上百檔)—— ⛔ 靜默截斷 = 使用者以為只有這些。
+   *   ② 排序用**成交額**,⛔ 不用漲跌 —— 用漲跌排的話版面每天跳,而且暗示「今天漲多的比較重要」。
+   *   ③ 每層的代表數字用**中位數**,⛔ 不用平均(少數暴衝股會把整層拉紅)。
+   *   ④ 🚨 必須寫「⛔ 本站沒有驗證過『上游漲下游就會漲』」—— 這張圖最容易被當成連動訊號。
+   *   ⑤ 紅綠只表示**今日漲跌方向**(台股慣例),⛔ 不表示好壞。
+   */
+  _chainBoardHtml(code, ks) {
+    const P = this._chainPath(ks);
+    if (!P) return '';
+    const PER = 8;                                   // 每層最多顯示幾檔
+    const seenSym = new Set();
+    const cols = P.cols.map(c => {
+      const all = [], ti = {};
+      c.ks.forEach((k, ki) => { for (const sy of this._themeSyms(k)) {
+        if (seenSym.has(sy)) continue;               // ⚠️ 一檔可屬多題材 → 只在最上游那層出現一次
+        seenSym.add(sy); all.push(sy); ti[sy] = ki;
+      } });
+      const withAmt = all.map(sy => ({ sy, amt: +this._scrV(sy, 'amt') || 0, ti: ti[sy] }));
+      // ⭐ 目前這一檔一定要留下來(⛔ 不可因為成交額小就被截掉 —— 那正是使用者在看的那一檔)
+      withAmt.sort((a, b) => (b.sy === code ? 1 : 0) - (a.sy === code ? 1 : 0) || b.amt - a.amt);
+      // ⭐ 選完之後**照題材重新分組**(同一個題材的排在一起)—— ⛔ 不可讓矽晶圓與散熱交錯,
+      //    那樣使用者看不出這一欄裡誰跟誰是同一族。
+      const pick = withAmt.slice(0, PER).sort((a, b) => a.ti - b.ti || b.amt - a.amt);
+      const chgs = all.map(sy => this._starChg(sy)).filter(Boolean).map(x => x.pct).sort((a, b) => a - b);
+      const med = chgs.length ? (chgs.length % 2 ? chgs[(chgs.length - 1) / 2]
+                                                : (chgs[chgs.length / 2 - 1] + chgs[chgs.length / 2]) / 2) : null;
+      return { ...c, show: pick.map(x => x.sy), total: all.length, med, nChg: chgs.length };
+    }).filter(c => c.total);
+    if (cols.length < 2) return '';
+    const esc = t => String(t).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+    const cls = p => p === null ? 'na' : (p > 0 ? 'up' : (p < 0 ? 'dn' : 'na'));
+    const colr = p => p === null ? 'var(--dim2)' : (p > 0 ? '#ff6b6b' : (p < 0 ? '#4ade80' : 'var(--dim2)'));
+    const node = sy => {
+      const g = this._starChg(sy), p = g ? g.pct : null;
+      const gene = (+this._scrV(sy, 'pos252') >= this.GENE_POS) && (+this._scrV(sy, 'amp20') >= this.GENE_AMP);
+      return `<div class="cbn ${cls(p)}${sy === code ? ' me' : ''}" onclick="PRO.openStock('${sy}')">
+        <span class="cbpc" style="color:${colr(p)}">${p === null ? '—' : this.fmt(p, 1, true) + '%'}</span>
+        <div class="cbnm">${gene ? '🧬 ' : ''}${esc(this._nmTxt(sy))}</div>
+        <div class="cbcd">${this._nmTxt(sy) === sy ? '&nbsp;' : sy}</div></div>`;
+    };
+    const body = cols.map(c => `<div class="cbcol">
+      <div class="cbhd">${this._chainPos(c.i, cols.length - 1)}</div>
+      <div class="cbsub">${c.ks.map(k => esc(this._themeName(k))).join(' ・ ')}</div>
+      <div class="cbmed" style="color:${colr(c.med)}">這一層今天 ${c.med === null ? '—' : this.fmt(c.med, 1, true) + '%'}<span style="color:var(--dim2);font-weight:400"> (${c.nChg} 檔中位)</span></div>
+      ${c.show.map(node).join('')}
+      ${c.total > c.show.length ? `<div class="cbcd" style="text-align:center;padding:2px 0">還有 ${c.total - c.show.length} 檔沒顯示</div>` : ''}
+    </div>`).join('');
+    const nShow = cols.reduce((a, c) => a + c.show.length, 0), nAll = cols.reduce((a, c) => a + c.total, 0);
+    return `<div class="bzrow" style="margin-top:6px"><b>🔗 供應鏈星脈圖</b>
+        <span class="note">${cols.length} 層 ・ 這條鏈共 ${nAll} 檔,顯示成交額最大的 ${nShow} 檔</span></div>
+      <div class="cbwrap"><div class="cbcols">${body}</div></div>
+      <div class="cbleg">🔴 今日上漲 ・🟢 今日下跌 ・⬜ 今天沒有行情 ・<span style="color:#38e0d0">青框</span>=你正在看的這一檔 ・🧬 高位階+高波動。點任一格看那一檔。
+        <br>🚨 <b>這是製造流程的先後,⛔ 不代表這幾家真的有生意往來</b>;
+        「這一層今天幾 %」只是<b>把當下的漲跌整理給你看</b>,
+        ⛔ <b>本站沒有驗證過「上游漲、下游就會跟著漲」</b> —— 別拿它當連動訊號。
+        ⚠️ 每層只顯示成交額最大的 ${PER} 檔,⛔ 不是這一層的全部。</div>`;
+  },
+
   /** 上游 / 下游題材(從 FLOW 推,⛔ 只走一層 —— 走兩層會把整條鏈全列出來,等於沒說) */
   _bizFlow(ks) {
     const up = new Set(), dn = new Set();
@@ -1070,7 +1192,10 @@ const PRO = {
     const ks = seed.concat(auto);
     const F = ks.length ? this._bizFlow(ks) : { up: [], dn: [] };
     const endTxt = ks.map(k => this.CHAIN_END[k]).filter(Boolean).join(' ');
-    const chip = c => `<span class="sigtag" style="cursor:pointer" onclick="PRO.openStock('${c}')">${this.nameOf(c) || c}</span>`;
+    // 🔗 V74.7.7 有整條鏈就畫看板;⛔ 畫不出來(單層/沒收錄)才退回原本的文字清單,
+    //    ⚠️ 退回時**兩段都要退**(⛔ 不可一半看板一半清單 = 同一件事講兩次)。
+    const board = ks.length ? this._chainBoardHtml(code, ks) : '';
+    const chip = c => `<span class="sigtag" style="cursor:pointer" onclick="PRO.openStock('${c}')">${this._nmTxt(c)}</span>`;
     const grp = k => `<div class="bzrow"><b>${this._themeName(k)}</b>
         <span class="note">${this._themeSyms(k).slice(0, 6).map(chip).join(' ') || '(名單裡沒有成員)'}</span></div>`;
     // ⛔ 什麼都查不到 → 誠實說 + 指路免費查(⛔ 不可空白)
@@ -1084,10 +1209,11 @@ const PRO = {
       <div class="bzrow"><b>🏭 它做什麼</b> ${w.txt}
         ${w.layer && this.LAYER[w.layer] ? `<span class="sigtag">${this.LAYER[w.layer].n}</span>` : ''}</div>
       ${w.risk ? `<div class="bzrow note">⚠️ 已知風險:${w.risk}</div>` : ''}
-      ${F.up.length ? `<div class="bzrow"><b>⬆️ 上游(在它前面的環節)</b></div>${F.up.map(grp).join('')}` : ''}
-      ${F.dn.length ? `<div class="bzrow"><b>⬇️ 下游(在它後面的環節)</b></div>${F.dn.map(grp).join('')}` : ''}
+      ${board}
+      ${(!board && F.up.length) ? `<div class="bzrow"><b>⬆️ 上游(在它前面的環節)</b></div>${F.up.map(grp).join('')}` : ''}
+      ${(!board && F.dn.length) ? `<div class="bzrow"><b>⬇️ 下游(在它後面的環節)</b></div>${F.dn.map(grp).join('')}` : ''}
       ${endTxt ? `<div class="bzrow note">🏁 ${endTxt}</div>` : ''}
-      ${(!F.up.length && !F.dn.length && !endTxt) ? `<div class="bzrow note">⬆️⬇️ <b>上下游還沒有整理到這一族</b> —— 本站的上下游對照表目前只涵蓋 AI 硬體那條鏈(矽晶圓 → 晶圓代工 → 先進封裝 → 伺服器)。</div>` : ''}
+      ${(!board && !F.up.length && !F.dn.length && !endTxt) ? `<div class="bzrow note">⬆️⬇️ <b>上下游還沒有整理到這一族</b> —— 本站的上下游對照表目前只涵蓋 AI 硬體那條鏈(矽晶圓 → 晶圓代工 → 先進封裝 → 伺服器)。</div>` : ''}
       <div class="note" style="margin-top:6px;color:var(--dim2)">
         資料來源:${srcTxt}。
         🚨 <b>「它在這個題材」⛔ 不等於「這個題材佔它營收九成」</b> ——
@@ -1661,7 +1787,7 @@ const PRO = {
     }
     el.classList.add('on');
     const inst = echarts.getInstanceByDom(el) || echarts.init(el, 'dark');
-    const nm = c => this.nameOf(c) || c;
+    const nm = c => this._nmTxt(c);   // ⛔ 不用 `nameOf(c) || c` —— 名字拿不到會印成「2882 2882」(V74.3.9)
     const lab = (c, st) => `${nm(c)}\n${this._starSt(st).e}`;
     const nodes = [{ name: lab(sym, null), value: sym, symbolSize: 56, fixed: true,
                      x: el.clientWidth / 2, y: el.clientHeight / 2,
@@ -3838,7 +3964,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.7.6',
+  VER: 'V74.7.7',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

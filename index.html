@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.7.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.7.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -698,7 +698,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.7.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.7.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7540,8 +7540,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.7.6',
+    _APP_VERSION: 'V74.7.7',
     _CHANGELOG: [
+        { v:'V74.7.7', dt:'2026-09-05', d:['🔗 產業作戰室的「上下游」改成**供應鏈星脈圖**:上游 → 中游 → 下游分欄排開,每一格是一檔股票、紅漲綠跌,一眼看出**今天哪一層在動**。','⭐ 分層是算「離終點還有幾站」—— 矽晶圓要經過晶圓代工、封裝才到伺服器,而散熱/電源是直接供貨,所以它們不在同一欄。','⚠️ 那張圖只是把當下的漲跌整理給你看,⛔ 本站**沒有驗證過**「上游漲、下游就會跟著漲」。'] },
         { v: 'V74.7.6', dt: '2026-09-05', d: ['🔍 <b>實測總表加了搜尋框,而且是跨全部分類搜</b> —— 168 條分在 7 個分類裡,以前要一欄一欄翻。現在打「分點」「出場」「空頭」就直接找出來,<b>每一條後面會標它原本屬於哪一欄</b>(✅有用 / ⛔沒用 / 🧭坑 / ⏳測不了),命中的字會highlight。查不到的時候會直接給你幾個可以按的關鍵字,⛔ 不會只留一片空白。','📌 <b>新增主題標籤</b>(籌碼分點 / 出場與部位 / 板塊題材 / 當沖短線 / K線與指標 / 選股與估值 / 大盤與總經 / 消息面 / 模型與 AI)——它是<b>橫切</b>用的,可以一次看「所有跟籌碼有關的實測結論」,⛔ <b>不取代原本的判定分類</b>(有用/沒用才是這張表的價值)。','🧹 <b>「贅詞」的處理方式:⛔ 一個字都沒刪</b>。那些數字與限制是決策紀錄,刪了就查不到「當初為什麼這樣判」。改成把標題破折號後面那半<b>降成小字副標</b> —— 第一眼清爽,細節還在。測試直接釘住「主標+副標拼回來必須等於原標題」。'] },
         { v: 'V74.7.5', dt: '2026-09-05', d: ['🏭 <b>「它做什麼 / 上游 / 下游」搬到關聯星圖頁上了</b> —— 你回報「沒看到」,原因是我第一版把它放在<b>要點股票名字才跳出來的面板</b>裡,而星圖頁是「查一檔 → 往下看表格」,根本不會經過那個面板。現在查完直接顯示在表格上面。','🌠 <b>板塊輪動泡泡圖新增走過的軌跡</b>,越舊越淡、最多留 12 拍。⛔ 只畫<b>前 3 強 / 後 3 弱 + 你點選的那一個</b>—— 32 條全畫會糊成一團。','💰 <b>熱力圖的格子大小現在會跟著時間軸變了</b> —— 你問「不是應該依照今天的資金變嗎」,<b>你是對的</b>。以前做不到是因為<b>每日成交額沒有存歷史</b>;現在採礦端把它算出來了(<b>零額外成本</b> —— 收盤價 × 成交股數,兩個數字本來就在同一筆 K 線裡)。⏳ 要等下一輪採礦跑完才有資料,在那之前卡上會誠實寫「還沒讀到,面積暫時固定」。'] },
         { v: 'V74.7.4', dt: '2026-09-05', d: ['🏭 <b>產業作戰室點任何一檔股票,現在會直接告訴你「它做什麼、上游是誰、下游是誰」</b>。例如點台積電 → <b>先進製程 / CoWoS</b>,上游是<b>矽晶圓</b>(環球晶・中美晶…)與 <b>ASIC 設計</b>,下游是<b>先進封裝</b>;點環球晶 → 它是最上游,只有下游<b>晶圓代工</b>。名字都可以直接點進去看。','⛔ <b>有兩件事我沒做,而且原因要講清楚</b>:①<b>「它在這個題材」不等於「這個題材佔它營收九成」</b> —— 台股沒有免費的<b>營收產品別</b>資料,本站算不出佔比,⛔ 別當成主力業務比重;②上下游講的是<b>製造流程的先後</b>,⛔ <b>不代表這幾家真的有生意往來</b>。卡片上都寫了。另外附一顆<b>🔎 免費查它的產品與客戶</b>,質化問題交給外部 AI 查。','🚨 <b>順手抓到一個會讓功能安靜失效的坑</b>:新加的那張上下游表原本叫 FLOW,而那個名字在同一份程式裡<b>早就被別的功能用掉了</b> → 後面的會蓋掉前面的 → 上下游永遠是空的、<b>而且完全不會報錯</b>。已經改名,並且新增一道守門專門擋這種重複命名。'] },
