@@ -263,6 +263,10 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .starchart{width:100%;height:380px;margin:4px 0 10px;border-radius:11px;background:var(--panel2);
   border:1px solid var(--line2);display:none}
 .starchart.on{display:block}
+    /* 🎞️ 磚要「滑過去」而不是瞬間跳 —— SVG 幾何屬性的 transition(現代瀏覽器支援) */
+    #rotTree .cell rect{transition:x .45s ease,y .45s ease,width .45s ease,height .45s ease,fill .35s ease}
+    #rotTree .cell text{transition:x .45s ease,y .45s ease}
+    @media (prefers-reduced-motion:reduce){#rotTree .cell rect,#rotTree .cell text{transition:none}}
     .bzbox{background:#0f1620;border:1px solid #1e2a38;border-radius:10px;padding:8px 10px;margin:8px 0}
     .bzbox .bzrow{font-size:12px;line-height:1.6;margin:3px 0}
     .starsum{background:#0f1620;border:1px solid #1e2a38;border-radius:10px;padding:8px 10px;margin:0 0 8px}
@@ -1501,6 +1505,7 @@ const PRO = {
     const [J] = await Promise.all([
       this.starFetch(),
       this.fetchJson('data/screener.json').catch(() => null),
+      this.fetchJson('data/stock_tags.json').catch(() => null),
       (this._lq === undefined || this._twOpenNow()) ? this._lqLoad().catch(() => null) : Promise.resolve(),
     ]);
     if (seq !== this._starSeq) return;                 // 使用者已經查別檔了 → 這次的結果作廢
@@ -1608,7 +1613,11 @@ const PRO = {
         <td title="${sst.d}">${sst.e} ${sst.t}</td>
       </tr>`;
     }).join('');
-    document.getElementById('starList').innerHTML = head +
+    // 🏭 V74.7.5 使用者回報「我沒看到你做好的東西」——
+    //   第一版只把這張卡放進 `openStock()` 的**快捷面板**(要點股票名字才跳出來),
+    //   而星圖頁是「查一檔 → 往下看表格」,根本不會經過那個面板(陷阱 #32 的又一次)。
+    //   ⛔ 功能做好了 ≠ 使用者找得到 → 直接放在中心那一檔的表格**上面**。
+    document.getElementById('starList').innerHTML = head + this._bizChainHtml(sym) +
       `<div style="overflow-x:auto"><table class="startbl">
         <tr><th style="text-align:left">跟著動的股票</th><th>像不像</th><th>強度</th><th>今天</th><th title="對方的前幾名裡也有你">互相</th><th>它現在的狀態</th></tr>
         ${body}</table></div>
@@ -3709,7 +3718,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.7.4',
+  VER: 'V74.7.5',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -3987,6 +3996,7 @@ const PRO = {
         <text class="qlab" x="${AX + 2}" y="${H - 22}">⛔ 弱又沒人買</text>
         <text class="qax" x="${W - 8}" y="${H / 2 - 4}" text-anchor="end">強 →</text>
         <text class="qax" x="${AX + 2}" y="${H / 2 - 4}">← 弱</text>
+        <g id="rotTrail"></g>
         <g id="rotBubs"></g>
        </svg>`;
     this._rotAX = AX;
@@ -4435,7 +4445,8 @@ const PRO = {
       t.setAttribute('dy', (r + 9).toFixed(1));
       if (sel) { cir.setAttribute('stroke', '#fff'); cir.setAttribute('stroke-width', '2'); }
     }
-    this._rotTreeSeek(k);          // 🎞️ 熱力圖的顏色也要跟著時間軸動
+    this._rotTrailDraw(k, list);   // 🌠 走過的路(會淡化)
+    this._rotTreeSeek(k);          // 🎞️ 熱力圖的面積與顏色都要跟著時間軸動
     this._rotQuad(list);
     this._rotVerdict(list, N);
     this._rotChips(list, N);
@@ -4725,6 +4736,83 @@ const PRO = {
       + (live ? '' : ' <span style="color:var(--amber)">⏳ 歷史載入中(先顯示最新一天)</span>');
   },
   // ⭐ 四象限計數 —— 這一天市場的樣子(⛔ 只做描述,不下多空)
+  // 產業中文名 → 產業碼(⛔ 全 App 只有這一份,_rotTreemap 與 _rotTreeSeek 共用)
+  _treeCode(n) {
+    if (!this._treeCodeMap) {
+      const m = {};
+      for (const [c, nm] of Object.entries(this.IND_NAME)) { m[nm] = c; for (const a of (this.IND_ALIAS[c] || [])) m[a] = c; }
+      this._treeCodeMap = m;
+    }
+    return this._treeCodeMap[n] || '';
+  },
+
+  // 🌠 V74.7.5 使用者:「泡泡圖新增走過的線紀錄,過了一陣子就會淡化」
+  //   ⛔ 三條不可改掉的設計:
+  //    ① **只畫前 3 / 後 3 + 選中的那一個** —— 32 條全畫會糊成一團(跟標名字同一個道理)。
+  //    ② 座標**每一拍重算**(⛔ 不快取)—— 拉時間軸/換題材模式時尺標會變,快取會畫出錯的路徑。
+  //    ③ 越舊越淡、超過 TRAIL_N 拍就丟掉;`prefers-reduced-motion` 直接不畫。
+  TRAIL_N: 12,
+  _rotTrailDraw(k, list) {
+    const g = document.getElementById('rotTrail'); if (!g) return;
+    if (this._rotTrailOff || window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) { g.innerHTML = ''; return; }
+    const J = this._rotData; if (!J || !J.days) { g.innerHTML = ''; return; }
+    const W = this.QW, H = this.QH, P = this.QPAD, AX = this._rotAX || 34;
+    const G = this._rotSet();
+    const N = list.length;
+    // ⭐ 只跟「值得看的那幾個」—— 前 3 / 後 3 / 選中的
+    const watch = new Set(list.slice(0, 3).map(x => x.c).concat(list.slice(-3).map(x => x.c)));
+    if (this._rotSel) watch.add(this._rotSel);
+    const from = Math.max(0, k - this.TRAIL_N);
+    const pt = (c, kk) => {
+      const v = this._sm((G.grp[c] || {}).r20, kk), f = this._flowAt(c, kk);
+      if (v == null) return null;
+      return [AX + (1 + this._sx(v)) / 2 * (W - AX - 8), H / 2 - this._sy(f) * (H / 2 - P)];
+    };
+    let out = '';
+    for (const c of watch) {
+      const pts = [];
+      for (let kk = from; kk <= k; kk++) { const p2 = pt(c, kk); if (p2) pts.push(p2); }
+      if (pts.length < 2) continue;
+      const sel = this._rotSel === c, hot = list.findIndex(x => x.c === c) < 3;
+      const col = sel ? '#ffffff' : hot ? 'var(--amber)' : 'var(--dim2)';
+      // ⭐ 一段一段畫,越舊越淡(⛔ 一整條 polyline 沒辦法做漸層淡出)
+      for (let i = 1; i < pts.length; i++) {
+        const age = (i - 1) / Math.max(1, pts.length - 1);      // 0 = 最舊
+        const op = (0.06 + 0.42 * age) * (sel ? 1.6 : 1);
+        out += `<line x1="${pts[i - 1][0].toFixed(1)}" y1="${pts[i - 1][1].toFixed(1)}"
+          x2="${pts[i][0].toFixed(1)}" y2="${pts[i][1].toFixed(1)}"
+          stroke="${col}" stroke-width="${(sel ? 1.8 : 1.2).toFixed(1)}"
+          stroke-linecap="round" opacity="${Math.min(1, op).toFixed(3)}"/>`;
+      }
+    }
+    g.innerHTML = out;
+  },
+
+  // 🗺️ squarified treemap 版面(純函式,⛔ 手刻不為這個載 d3)
+  //   amts = 每一磚的大小(順序**必須**跟 items 一致);回 [{it,x,y,w,h}…]
+  _treeLayout(amts, items, W, H) {
+    const total = amts.reduce((a, b) => a + (b > 0 ? b : 0), 0) || 1;
+    const rects = []; let x = 0, y = 0, w = W, h = H, row = [], rowSum = 0;
+    const worst = (rw, sum, side) => { const s2 = side * side, sum2 = sum * sum; let mx = 0, mn = Infinity; for (const a of rw) { mx = Math.max(mx, a); mn = Math.min(mn, a); } return Math.max(s2 * mx / sum2, sum2 / (s2 * mn)); };
+    const layout = (rw, sum) => {
+      // 🐛 第一版寫反(w<h 時沿 y 排、長度卻用 w 算)→ 磚排不滿、最後幾磚被壓成 0(測試 🗺️b 抓到)。
+      //    正解:區域「比較寬」就切一條**直的**(磚沿 y 疊,總長 = h、厚度 = sum/h),反之切橫的。
+      const vert = w > h;
+      const side = vert ? h : w, thick = sum / side;
+      let off = 0;
+      for (const it of rw) { const len = it.a / thick; rects.push(vert ? { it: it.it, x, y: y + off, w: thick, h: len } : { it: it.it, x: x + off, y, w: len, h: thick }); off += len; }
+      if (vert) { x += thick; w -= thick; } else { y += thick; h -= thick; }
+    };
+    const areas = items.map((g, i) => ({ it: g, a: Math.max(0, amts[i]) / total * W * H }));
+    for (const it of areas) {
+      const side = Math.min(w, h);
+      if (row.length && worst(row.map(r => r.a).concat(it.a), rowSum + it.a, side) > worst(row.map(r => r.a), rowSum, side)) { layout(row, rowSum); row = []; rowSum = 0; }
+      row.push(it); rowSum += it.a;
+    }
+    if (row.length) layout(row, rowSum);
+    return rects;
+  },
+
   // ── 🗺️ 產業熱力圖(squarified treemap,手刻 ~60 行,⛔ 不為這個載 d3)──────
   // 磚面積 = 該產業「今天」成交額合計(億);顏色 = 成交額加權今日漲跌(紅漲綠跌 = 方向,燈號鐵則 OK)。
   // ⚠️ 母體 = screener 有官方產業別的**上市**股(約 1,088 檔;證交所 33 大類不涵蓋上櫃),卡上要寫。
@@ -4745,24 +4833,10 @@ const PRO = {
     if (items.length < 5) { box.innerHTML = ''; return; }
     const W = 340, H = 300, total = items.reduce((a, g) => a + g.amt, 0);
     // squarified(Bruls et al.):每一列放到「長寬比最接近 1」為止
-    const rects = []; let x = 0, y = 0, w = W, h = H, row = [], rowSum = 0;
-    const worst = (row, sum, side) => { const s2 = side * side, sum2 = sum * sum; let mx = 0, mn = Infinity; for (const a of row) { mx = Math.max(mx, a); mn = Math.min(mn, a); } return Math.max(s2 * mx / sum2, sum2 / (s2 * mn)); };
-    const layout = (row, sum) => {
-      // 🐛 第一版寫反(w<h 時沿 y 排、長度卻用 w 算)→ 磚排不滿、最後幾磚被壓成 0(測試 🗺️b 抓到)。
-      //    正解:區域「比較寬」就切一條**直的**(磚沿 y 疊,總長 = h、厚度 = sum/h),反之切橫的。
-      const vert = w > h;
-      const side = vert ? h : w, thick = sum / side;
-      let off = 0;
-      for (const it of row) { const len = it.a / thick; rects.push(vert ? { it, x, y: y + off, w: thick, h: len } : { it, x: x + off, y, w: len, h: thick }); off += len; }
-      if (vert) { x += thick; w -= thick; } else { y += thick; h -= thick; }
-    };
-    const areas = items.map(g => ({ ...g, a: g.amt / total * W * H }));
-    for (const it of areas) {
-      const side = Math.min(w, h);
-      if (row.length && worst(row.map(r => r.a).concat(it.a), rowSum + it.a, side) > worst(row.map(r => r.a), rowSum, side)) { layout(row, rowSum); row = []; rowSum = 0; }
-      row.push(it); rowSum += it.a;
-    }
-    if (row.length) layout(row, rowSum);
+    // 🗺️ V74.7.5 版面計算抽成**純函式** —— 每一拍要用「那一天的成交額」重排,⛔ 不能再 inline。
+    //   ⚠️ items 的**順序固定**(用最新一天排好的),只有面積會變 ——
+    //   ⛔ 每一拍重新排序的話磚會互相跳位,動畫看起來像壞掉。
+    const rects = this._treeLayout(items.map(g => g.amt), items, W, H);
     const col = c => { const t = Math.min(1, Math.abs(c) / 3); return c > 0 ? `rgba(255,107,107,${0.18 + 0.6 * t})` : c < 0 ? `rgba(74,222,128,${0.18 + 0.6 * t})` : 'rgba(143,163,187,.25)'; };
     const codeOf = {}; for (const [c, n] of Object.entries(this.IND_NAME)) { codeOf[n] = c; for (const a of (this.IND_ALIAS[c] || [])) codeOf[a] = c; }
     const esc = t => String(t).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
@@ -4770,8 +4844,8 @@ const PRO = {
       const big = r.w > 46 && r.h > 26, mid = r.w > 30 && r.h > 16, code = codeOf[r.it.n] || '';
       return `<g class="cell" data-tk="${i}" data-code="${code}" onclick="${code ? `PRO.rotOpen('${code}')` : ''}">
         <rect x="${r.x.toFixed(1)}" y="${r.y.toFixed(1)}" width="${Math.max(0, r.w - 1).toFixed(1)}" height="${Math.max(0, r.h - 1).toFixed(1)}" rx="3" fill="${col(r.it.chg)}" stroke="#0b1622" stroke-width="1"><title></title></rect>
-        ${mid ? `<text x="${(r.x + r.w / 2).toFixed(1)}" y="${(r.y + r.h / 2 + (big ? -2 : 4)).toFixed(1)}" text-anchor="middle" font-size="${big ? 11 : 9}" font-weight="700" fill="#eaf2fb">${esc(r.it.n)}</text>` : ''}
-        ${big ? `<text class="tkv" x="${(r.x + r.w / 2).toFixed(1)}" y="${(r.y + r.h / 2 + 11).toFixed(1)}" text-anchor="middle" font-size="10" fill="#dbe7f3"></text>` : ''}
+        <text class="tkn" x="${(r.x + r.w / 2).toFixed(1)}" y="${(r.y + r.h / 2 + (big ? -2 : 4)).toFixed(1)}" text-anchor="middle" font-size="${big ? 11 : 9}" font-weight="700" fill="#eaf2fb" style="${mid ? '' : 'display:none'}">${esc(r.it.n)}</text>
+        <text class="tkv" x="${(r.x + r.w / 2).toFixed(1)}" y="${(r.y + r.h / 2 + 11).toFixed(1)}" text-anchor="middle" font-size="10" fill="#dbe7f3" style="${big ? '' : 'display:none'}"></text>
       </g>`;
     }).join('');
     box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="產業熱力圖">${cells}</svg>
@@ -4781,13 +4855,46 @@ const PRO = {
     //    但**顏色可以動** —— sector_rot.json 每個產業每一天都有「20 日相對強弱」。
     //    ⛔ 而且刻意用**同一個數字**當顏色(跟下面泡泡圖的橫軸同源),⛔ 不另算一份。
     //    ⚠️ 面積不動這件事**必須寫在卡上**(⛔ 不可讓人以為整張圖都在回放)。
-    this._tree = { box, rects, total, items, dataDate: scr.data_date || '' };
+    this._tree = { box, rects, total, items, W, H, dataDate: scr.data_date || '' };
     this._rotTreeSeek(this._rotK);
   },
   // 🎞️ 只改顏色與數字(⛔ 不重建 SVG —— 重建會把 CSS transition 洗掉,動畫就沒了)
   _rotTreeSeek(k) {
     const T = this._tree; if (!T) return;
     const J = this._rotData;
+    // 💰 V74.7.5 使用者:「格子大小也不會變化,不是應該依照今天的資金變嗎?」
+    //   ⭐ 他是對的 —— 面積本來就該跟著時間軸動,以前做不到是因為**每日成交額沒有存歷史**。
+    //   V74.7.5 起採礦端把它算出來了(`sector_rot.json` 的 `amt`,零額外 API:
+    //   收盤 × 成交股數,兩個欄位本來就在同一筆 K 線裡)→ 這裡就能重排。
+    //   ⛔ 只改既有 <rect>/<text> 的幾何屬性,**不重建 SVG** —— 重建會把 CSS transition 洗掉。
+    //   ⚠️ items 順序固定(最新一天排好的),⛔ 每一拍重新排序會讓磚互相跳位。
+    const _IND0 = (J && J.ind) || {};
+    const _amtAt = (it, kk) => {
+      const c = this._treeCode(it.n), row = c && _IND0[c];
+      const a = row && row.amt && row.amt[kk];
+      return Number.isFinite(a) ? a : null;
+    };
+    if (J && J.days && k != null && J.days[k] && T.items.some(it => _amtAt(it, k) !== null)) {
+      const amts = T.items.map(it => { const a = _amtAt(it, k); return a == null ? it.amt : a; });
+      const rects = this._treeLayout(amts, T.items, T.W, T.H);
+      const gs0 = document.querySelectorAll('#rotTree .cell');
+      gs0.forEach(g => {
+        const r = rects[+g.dataset.tk]; if (!r) return;
+        const rc = g.querySelector('rect');
+        rc.setAttribute('x', r.x.toFixed(1)); rc.setAttribute('y', r.y.toFixed(1));
+        rc.setAttribute('width', Math.max(0, r.w - 1).toFixed(1));
+        rc.setAttribute('height', Math.max(0, r.h - 1).toFixed(1));
+        const big = r.w > 46 && r.h > 26, mid = r.w > 30 && r.h > 16;
+        const tn = g.querySelector('.tkn'), tv = g.querySelector('.tkv');
+        if (tn) { tn.setAttribute('x', (r.x + r.w / 2).toFixed(1)); tn.setAttribute('y', (r.y + r.h / 2 + (big ? -2 : 4)).toFixed(1));
+                  tn.setAttribute('font-size', big ? 11 : 9); tn.style.display = mid ? '' : 'none'; }
+        if (tv) { tv.setAttribute('x', (r.x + r.w / 2).toFixed(1)); tv.setAttribute('y', (r.y + r.h / 2 + 11).toFixed(1));
+                  tv.style.display = big ? '' : 'none'; }
+        g.dataset.amt = amts[+g.dataset.tk];
+      });
+      T.liveAmt = amts;
+      T.liveTotal = amts.reduce((a, b) => a + b, 0);
+    } else { T.liveAmt = null; T.liveTotal = null; }
     // ⭐ 熱力圖永遠是**官方產業**的 → 直接讀 J.ind,⛔ 不走 _rotSet()
     //    (題材模式下 grp 是題材鍵,對不到產業碼 → 整張會變灰)
     const IND = (J && J.ind) || {};
@@ -4819,11 +4926,12 @@ const PRO = {
         + `・最新交易日加權漲跌 ${it.chg >= 0 ? '+' : ''}${it.chg.toFixed(2)}%・${it.k} 檔`;
     });
     const note = document.getElementById('rotTreeNote');
-    if (note) note.innerHTML = `🗺️ <b>錢在哪一區</b>:磚面積 = 成交額(合計 ${T.total.toFixed(0)} 億)、顏色 = `
+    if (note) note.innerHTML = `🗺️ <b>錢在哪一區</b>:磚面積 = 成交額(合計 ${(T.liveTotal || T.total).toFixed(0)} 億)、顏色 = `
       + (hist ? `<b>${day || '最新'} 那天的「近 20 日相對強弱」</b>` : `<b>最新交易日的加權漲跌</b>(還沒讀到輪動歷史)`)
       + `(<span style="color:#ff6b6b">紅=強</span>/<span style="color:#4ade80">綠=弱</span>);
       ${hot} 強 / ${cold} 弱${na ? ` / ${na} 無歷史` : ''}。點磚 → 板塊明細。
-      🎞️ 播放時<b>動的是顏色</b>;⚠️ <b>磚面積固定是最新交易日(${T.dataDate || '—'})的成交額,⛔ 不會跟著時間軸回放</b>(每日成交額沒有存歷史)。
+      🎞️ 播放時<b>面積與顏色都會動</b>${T.liveAmt ? `(面積 = ${day || '那一天'}的成交額,合計 ${T.liveTotal.toFixed(0)} 億)` : ''}。
+      ${T.liveAmt ? '' : `⚠️ <b>還沒讀到每日成交額歷史</b> → 面積暫時固定在最新交易日(${T.dataDate || '—'});下一輪採礦跑完就會跟著回放。`}
       ⚠️ 母體只含<b>上市</b>股;⛔ 「誰成交多」<b>不是</b>輪動訊號,只是事實描述。`;
   },
 

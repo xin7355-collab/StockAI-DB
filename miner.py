@@ -5725,6 +5725,13 @@ def build_sector_rotation():
                     # ⭐ 每檔每天只算一次,再加進它所屬的每一組(官方產業 + 題材)
                     _adds = {'f': 0.0, 't': 0.0, 'dl': 0.0, 'mg': 0.0}
                     _ret = (c / prev - 1) * 100
+                    # 💰 V74.7.5 每日成交額(收盤 × 成交股數 = 元)—— ⭐ 零額外成本,
+                    #    close 與 volume 本來就在同一筆裡。⛔ 以前沒存 → 前端熱力圖的
+                    #    磚面積只能固定在最新一天、拉時間軸不會回放(使用者回報的第 3 點)。
+                    try:
+                        _amt = float(r.get('volume') or 0) * c
+                    except Exception:
+                        _amt = 0.0
                     # 👥 三大法人(股 × 收盤 = 元)
                     for _k, _fld in (('f', 'foreign_net'), ('t', 'trust_net'), ('dl', 'dealer_net')):
                         try:
@@ -5745,8 +5752,9 @@ def build_sector_rotation():
                         pass
                     for _gk in grp_keys:
                         o = agg.setdefault(_gk, {}).setdefault(
-                            d, {'rets': [], 'f': 0.0, 't': 0.0, 'dl': 0.0, 'mg': 0.0})
+                            d, {'rets': [], 'f': 0.0, 't': 0.0, 'dl': 0.0, 'mg': 0.0, 'amt': 0.0})
                         o['rets'].append(_ret)
+                        o['amt'] += _amt
                         for _k in ('f', 't', 'dl', 'mg'):
                             o[_k] += _adds[_k]
                 prev = c
@@ -5765,7 +5773,8 @@ def build_sector_rotation():
                 if len(o['rets']) < _min:
                     continue
                 _tgt.setdefault(d, {})[_g] = (statistics.median(o['rets']),
-                                              {k: o[k] for k in ('f', 't', 'dl', 'mg')})
+                                              {k: o[k] for k in ('f', 't', 'dl', 'mg')},
+                                              o.get('amt', 0.0))
         days = sorted(d for d, v in per.items() if len(v) >= MIN_IND)
         if len(days) < WIN + 10:
             print(f'  ⏭️ 板塊輪動:可用交易日只有 {len(days)} 天(需 >{WIN + 10}),略過')
@@ -5777,6 +5786,7 @@ def build_sector_rotation():
             _out = {}
             for _g in sorted({i for d in keep for i in _per.get(d, {})}):
                 r20 = []
+                amt = []                            # 💰 每日成交額(億元)—— 給前端熱力圖的磚面積
                 flow = {k: [] for k in ('f', 't', 'dl', 'mg')}
                 for k, d in enumerate(out_days):
                     win = keep[k + 1:k + 1 + WIN]   # 到 d 為止(含)的 WIN 天
@@ -5786,11 +5796,12 @@ def build_sector_rotation():
                     _c = _per.get(d, {}).get(_g)
                     for _k in flow:
                         flow[_k].append(round(_c[1][_k] / 1e8, 2) if _c else None)
+                    amt.append(round(_c[2] / 1e8, 2) if (_c and len(_c) > 2) else None)
                 # ⛔ 整段都算不出來的組不輸出(⛔ 不留一排 null 讓前端顯示空殼)
                 if not any(v is not None for v in r20):
                     continue
                 n_memb = max((len(o['rets']) for o in agg.get((_kind, _g), {}).values()), default=0)
-                _out[_g] = {'n': n_memb, 'r20': r20, 'flow': flow}
+                _out[_g] = {'n': n_memb, 'r20': r20, 'amt': amt, 'flow': flow}
             return _out
         out_ind = _series(per, 'i')
         out_th = _series(per_th, 't') if th_groups else {}
