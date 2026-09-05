@@ -1,0 +1,14 @@
+{
+  "_note": "一次性事件人工編輯區。Claude 可代為更新。系統會自動讀取此檔合併進 macro_risk.json 的 upcoming_macro_events,前端在【即將引爆】卡會顯示。",
+  "_format": "events array,每筆需有 date (YYYY-MM-DD) 與 event(含 emoji 與簡述)",
+  "events": [
+    {
+      "date": "2026-06-12",
+      "event": "🚀 SpaceX IPO 上市 (火箭題材/低軌衛星概念股關注)"
+    },
+    {
+      "date": "2026-06-19",
+      "event": "🔮 美股四巫日 (期權結算疊加,波動激增)"
+    }
+  ]
+}
