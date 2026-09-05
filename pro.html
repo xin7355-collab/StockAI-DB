@@ -267,6 +267,18 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
     #rotTree .cell rect{transition:x .45s ease,y .45s ease,width .45s ease,height .45s ease,fill .35s ease}
     #rotTree .cell text{transition:x .45s ease,y .45s ease}
     @media (prefers-reduced-motion:reduce){#rotTree .cell rect,#rotTree .cell text{transition:none}}
+    .labsearch{display:flex;gap:6px;align-items:center;margin:6px 0}
+    .labsearch input{flex:1 1 auto;min-width:0;background:#0d141d;border:1px solid #263344;border-radius:9px;
+      color:#eaf2fb;font-size:13px;padding:8px 10px;min-height:40px}
+    .labsearch input:focus{outline:none;border-color:#22d3ee}
+    .labtopics{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 6px}
+    .labtopics .tpc{font-size:11.5px;padding:5px 9px;border-radius:999px;border:1px solid #263344;
+      background:#0f1620;color:var(--dim);cursor:pointer;min-height:30px;line-height:1.5}
+    .labtopics .tpc.on{background:#123040;border-color:#22d3ee;color:#dff6ff;font-weight:800}
+    .labitem .lsub{display:block;font-size:11px;color:var(--dim2);font-weight:400;line-height:1.5;margin-top:2px}
+    .labitem .ltag{font-size:10.5px;color:var(--dim2);border:1px solid #263344;border-radius:6px;padding:1px 5px;margin-left:6px}
+    .labitem mark{background:rgba(245,185,66,.30);color:#ffe9b8;border-radius:3px;padding:0 1px}
+    .labfrom{font-size:10.5px;color:var(--dim2);margin-left:6px}
     .bzbox{background:#0f1620;border:1px solid #1e2a38;border-radius:10px;padding:8px 10px;margin:8px 0}
     .bzbox .bzrow{font-size:12px;line-height:1.6;margin:3px 0}
     .starsum{background:#0f1620;border:1px solid #1e2a38;border-radius:10px;padding:8px 10px;margin:0 0 8px}
@@ -770,6 +782,15 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
   <div class="panel">
     <h2>🔬 實測總表 <span class="sub">回測過的東西,按「能不能用」分類</span></h2>
     <div class="labbar" id="labBar"></div>
+    <!-- 🔍 V74.7.6 使用者:「有能搜尋內容的搜尋框」+「可以重新歸納嗎」
+         ⭐ 168 條分 7 個判定欄,靠翻頁籤很慢 → 搜尋**跨全部欄**;
+            主題標籤是**橫切**(籌碼/出場/板塊…),⛔ 不動既有的判定分類(有用/沒用/坑/測不了)。 -->
+    <div class="labsearch">
+      <input id="labQ" type="search" inputmode="search" placeholder="🔍 搜尋全部 168 條(例:分點、出場、空頭、櫃買)"
+             oninput="PRO.labSearch(this.value)" autocomplete="off">
+      <button class="lbtn" id="labQx" style="display:none" onclick="PRO.labSearch('')">✕ 清除</button>
+    </div>
+    <div class="labtopics" id="labTopics"></div>
     <div id="labIntro"></div>
     <!-- 📊 V74.5.0 回測數字(原「回測計算機」分頁)已併進這裡 —— 使用者:「實測總表與回測計算機很像,合併」 -->
     <div class="labbar" id="calcBar" style="display:none"></div>
@@ -3414,7 +3435,6 @@ const PRO = {
     ['blocked', '⏳ 還測不了', '不是不想測,是**沒有資料**。⚠️ 其中幾條屬於「現在不開始存,以後永遠沒有」。'],
     ['next', '🔬 推薦下一步', '有資料、測得動、而且問的是對的問題 —— 但還沒做。'],
     ['zoo', '📚 指標分類表', '⭐ 使用者:「把驗證過的用分類起來,有用的還是要註記排名」。這裡把<b>全部量過的技術指標</b>照分類排開,每一格四種狀態:<b>⭐ 實測有用</b>(有排名)/ <b>⛔ 實測沒用</b> / <b>➖ 只描述不下多空</b> / <b>⏳ 測不了</b>(一定寫原因)。<br>🚨 <b>整張表最重要的一句話:扣掉買賣成本 0.44% 之後還站得住的,全部集中在「位階 / 振幅 / 量能 / 型態」那幾格 —— 而不是任何一個經典指標</b>。<br><br>❓ <b>「這些指標可不可以都加進去,今天發生就跳出來、告訴我幾% 勝率?」</b><br>⛔ <b>⛔ 那 48 個經典指標不能加</b> —— 它們六道關卡<b>一個都沒過</b>。加進去等於每天跳一堆「發生了但沒有用」的通知,而且會<b>把真的訊號淹掉</b>(本站已經有 129 個 K 棒訊號,其中期望值為正的只有 <b>9 個</b>)。⭐ 通知的價值來自「<b>少而準</b>」,不是「多」。<br>✅ <b>而「今天發生 → 跳出來 → 附勝率」這件事本來就在做,而且刻意只放實測有用的</b>:① 個股 <b>K線頁「K棒戰法」</b> —— 今天出現哪些訊號,每一個都附<b>實測勝率 / 期望值 / 樣本數</b>,期望值為正的才會被標成「值得參考的進場訊號」;② 個股 <b>總覽「⭐ 重點判讀」</b> —— 六關全過的型態當天觸發才跳(跌停後紅K・噴30%進注意股・<b>創60日高後回測不破</b>・<b>向上跳空×高位階</b>);③ <b>選股頁「今天出現實測會賺的訊號」</b> —— 全市場掃描,只收扣成本後仍為正的;④ <b>買點到了推播</b>(平日 13:00~13:28,一天最多 2 檔);⑤ 本頁的 <b>🎯 今日訊號</b>。<br>🚨 <b>而且「勝率」一定要配基準看</b>:台股個股隨便挑一天的上漲比例本來就只有 <b>41%</b>(不是 50%)—— 所以看到「勝率 45%」不是很差,它<b>比基準高 4 個百分點</b>;反過來看到「勝率 60%」也要先問樣本幾次。'],
-,
   ],
   _labSel: 'ok',
   LAB: {
@@ -3605,12 +3625,96 @@ const PRO = {
       { t: '🔄 <b>產業週期濾網要不要做成預設</b>(已測完,五關過三關 → 目前不改)', w: '等空頭', n: 'FILTER=indlo', d: '🧬 疊在「產業還沒被追捧」時賺 193.4 → <b>227.2 萬</b>、中途最多賠 <b>−32.3% → −24.2%</b>,反向(只做高峰)每趟 +0.00pp = 零 → 方向確認。<b>🚨 但逐年沒過</b>(2022 −4.8 萬、2026 −13.6 萬)。<br>⏭️ <b>走完下一次空頭後重跑</b>:2022 那年是它唯一明顯吃虧的一段,再多一段空頭才分得出「那是雜訊還是它真的怕空頭」。', s: 'cyclical_probe.mjs + portfolio_backtest.mjs・V74.6.9' },
     ],
   },
+  // ═══════════════════════════════════════════════════════════════════
+  // 🔍 V74.7.6 實測總表:搜尋 + 主題歸納 + 標題分層
+  //
+  // 使用者:「實測總表裡面可以重新歸納嗎?還有裡面很多贅詞,還有有能搜尋內容的搜尋框」。
+  // ⛔ 四條鐵則(測試 scripts/test_labsearch.mjs 釘住):
+  //  ① 🚨 **一個字都不准刪** —— 那些數字與限制是決策紀錄(⛔ 沒有數字的意見不准進來)。
+  //     「贅詞」用**版面層級**解決:標題的破折號後半降成小字副標,⛔ 不是砍掉。
+  //  ② 🔍 搜尋**跨全部判定欄**(168 條分 7 欄,靠翻頁籤找很慢),而且要標出「這條在哪一欄」。
+  //  ③ 📌 主題是**橫切標籤**(籌碼/出場/板塊…),⛔ 不動既有的判定分類
+  //     —— 判定(有用/沒用/坑/測不了)是這張表的價值所在,⛔ 不可被主題取代。
+  //  ④ 找不到要**誠實說 + 給可以按的建議**,⛔ 不可只留一片空白(陷阱 #22)。
+  // ═══════════════════════════════════════════════════════════════════
+  _labQ: '', _labTopic: '',
+  // 📌 主題:從**來源探針檔名 + 標題**推(⛔ 不手動標 168 條 —— 那會漏、也會過期)。
+  //   ⚠️ 順序有意義:先中先得。推不出來 → 「其他」,⛔ 不硬塞。
+  LAB_TOPICS: [
+    ['chip', '🧙 籌碼分點', /chips|broker|tdcc|inst_|trustvol|washout|dispo|分點|集保|大戶|法人|外資|投信|融資|借券|隔日沖|券商/],
+    ['exit', '🚪 出場與部位', /exit|alloc|hold_switch|etf_switch|portfolio|total_return|crash_exit|出場|停損|停利|移動停|唐奇安|再平衡|加碼|部位|配置|本金|買進持有|定期定額/],
+    ['sector', '💧 板塊題材', /sector|rot|cyclical|star|ally|ind_probe|板塊|題材|產業|星圖|輪動|族群|供應鏈/],
+    ['dt', '⚡ 當沖短線', /intraday|dtflip|dtverdict|orb|當沖|隔日|盤中|逐筆|分K|分 K/],
+    ['kbar', '🕯️ K線與指標', /streak|indicator|td_wt|luodds|gapfill|limitup|breakout|kobo|genezone|sixmeridian|型態|K棒|K線|均線|背離|跳空|漲停|跌停|指標|訊號/],
+    ['pick', '🔎 選股與估值', /screener|scredge|valuepick|pe_probe|dividend|fund|選股|本益比|估值|殖利率|除權息|營收|基本面|條件/],
+    ['macro', '🌏 大盤與總經', /macro|premkt|overseas|regime|calendar|floorcount|breadth|大盤|盤前|海外|美股|櫃買|加權|行事曆|空頭|廣度/],
+    ['news', '📰 消息面', /news|新聞|消息|analyst|名嘴|逐字稿/],
+    ['ml', '🤖 模型與 AI', /ml_probe|ailevel|機器學習|AUC|模型|AI 鏈|神經|XGBoost|LightGBM/],
+  ],
+  _labTopicOf(x) {
+    const hay = `${x.t || ''} ${x.s || ''} ${x.n || ''}`;
+    for (const [k, , re] of this.LAB_TOPICS) if (re.test(hay)) return k;
+    return '';
+  },
+  _labTopicName(k) { const t = this.LAB_TOPICS.find(z => z[0] === k); return t ? t[1] : '➖ 其他'; },
+
+  // 🧹 標題分層:「主標 —— 補充」→ 補充降成小字副標(⛔ 一個字都沒刪,只是換層級)
+  _labTitle(t) {
+    const s = String(t || '');
+    const i = s.indexOf(' —— ');
+    if (i > 8 && i < s.length - 4) return { a: s.slice(0, i), b: s.slice(i + 4) };
+    return { a: s, b: '' };
+  },
+
+  // 🔍 命中高亮(⚠️ 內文含 HTML → ⛔ 只在**標籤外**的文字上加 mark,不然會破壞標記)
+  _labHi(html, q) {
+    if (!q) return html;
+    const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    return String(html).split(/(<[^>]*>)/).map(p => p.startsWith('<') ? p : p.replace(re, m => `<mark>${m}</mark>`)).join('');
+  },
+
+  labSearch(v) {
+    this._labQ = String(v || '').trim();
+    const inp = document.getElementById('labQ');
+    if (inp && inp.value !== v) inp.value = this._labQ;
+    const x = document.getElementById('labQx');
+    if (x) x.style.display = this._labQ ? '' : 'none';
+    this.renderLab();
+  },
+  labTopic(k) { this._labTopic = (this._labTopic === k) ? '' : k; this.renderLab(); },
+
+  /** 目前條件下要顯示哪些條目。搜尋時**跨全部判定欄**,並帶上它來自哪一欄。 */
+  _labRows() {
+    const cols = this._labQ
+        ? this.LAB_TABS.filter(t => Array.isArray(this.LAB[t[0]])).map(t => t[0])
+        : [this._labSel];
+    const out = [];
+    for (const c of cols) for (const it of (this.LAB[c] || [])) out.push({ ...it, _col: c });
+    const q = this._labQ.toLowerCase();
+    return out.filter(x => {
+      if (this._labTopic && this._labTopicOf(x) !== this._labTopic) return false;
+      if (!q) return true;
+      return `${x.t || ''} ${x.d || ''} ${x.how || ''} ${x.s || ''} ${x.w || ''} ${x.n || ''}`.toLowerCase().includes(q);
+    });
+  },
   renderLab() {
+    const searching = !!this._labQ;
     document.getElementById('labBar').innerHTML = this.LAB_TABS.map(([k, lbl]) =>
-      `<span class="labbtn ${this._labSel === k ? 'on' : ''}" onclick="PRO.selLab('${k}')">${lbl}(${this._labCnt(k)})</span>`).join('');
+      `<span class="labbtn ${!searching && this._labSel === k ? 'on' : ''}" onclick="PRO.selLab('${k}')">${lbl}(${this._labCnt(k)})</span>`).join('');
+    // 📌 主題列(橫切 7 個判定欄)—— ⛔ 只顯示「真的有東西」的主題,不留空按鈕
+    {
+      const all = [];
+      for (const t of this.LAB_TABS) for (const it of (this.LAB[t[0]] || [])) all.push(it);
+      const cnt = {};
+      for (const it of all) { const k = this._labTopicOf(it); if (k) cnt[k] = (cnt[k] || 0) + 1; }
+      const tp = document.getElementById('labTopics');
+      if (tp) tp.innerHTML = this.LAB_TOPICS.filter(([k]) => cnt[k])
+        .map(([k, nm]) => `<span class="tpc ${this._labTopic === k ? 'on' : ''}" onclick="PRO.labTopic('${k}')">${nm} ${cnt[k]}</span>`).join('')
+        + (this._labTopic ? `<span class="tpc" onclick="PRO.labTopic('')">✕ 全部主題</span>` : '');
+    }
     const meta = this.LAB_TABS.find(x => x[0] === this._labSel);
     // 📊 V74.5.0「回測數字」欄(原回測計算機)—— 兩塊內容互斥顯示,⛔ 不可同時出現(那又變成兩張很像的表)
-    const isBt = this._labSel === 'bt';
+    const isBt = this._labSel === 'bt' && !searching && !this._labTopic;
     document.getElementById('calcBar').style.display = isBt ? '' : 'none';
     document.getElementById('calcIntro').innerHTML = '';
     document.getElementById('calcBody').innerHTML = '';
@@ -3621,7 +3725,7 @@ const PRO = {
       return;
     }
     // 📚 V74.5.9 指標分類表 —— ⛔ 只轉述各支探針的結論,不重算(不產生第二份真相)
-    if (this._labSel === 'zoo') {
+    if (this._labSel === 'zoo' && !searching && !this._labTopic) {
       document.getElementById('labIntro').innerHTML = `<div class="note">${meta ? meta[2] : ''}</div>`;
       const ICO = { ok: '⭐', no: '⛔', desc: '➖', na: '⏳' };
       const LBL = { ok: '實測有用', no: '實測沒用', desc: '只描述', na: '測不了' };
@@ -3660,23 +3764,39 @@ const PRO = {
           <b>六道關卡</b>=① 整段期間要正 ② 前半段後半段方向一致 ③ 每一年都一致
           ④ 拿掉表現最好的那一年還是正的 ⑤ 扣掉成本還是正的 ⑥ 加在現有做法上還有多的貢獻。
         </div></details>
-       <div class="note">${meta ? meta[2] : ''}</div>`;
-    const items = this.LAB[this._labSel] || [];
+       ${searching || this._labTopic
+          ? `<div class="note">🔍 <b>跨全部 ${this.LAB_TABS.filter(t => Array.isArray(this.LAB[t[0]])).length} 個分類搜尋中</b>${this._labTopic ? `・主題:<b>${this._labTopicName(this._labTopic)}</b>` : ''}
+              —— 每一條後面會標它原本屬於哪一欄(✅有用 / ⛔沒用 / 🧭坑 / ⏳測不了)。</div>`
+          : `<div class="note">${meta ? meta[2] : ''}</div>`}`;
+    const items = this._labRows();
     // 🏅 排名(V74.4.4 使用者:「做一個排名,爾後加進來的自動去重新排名」)——
     //   只排 ✅實測有用:依 `r`(排序分)遞減,**渲染時排序** → 新條目只要帶 r 就自動插進正確名次。
     //   r 的規則(⛔ 新增 ok 條目必帶,忘了會排最後並顯「未評分」):
     //     配置類(對整套損益的實測金額差距)> 事件訊號(扣成本後邊際×適用廣度)> 避雷 > 描述型;
     //     樣本薄/單段驗證的要**降分**(偷布局 n=15 → 38),⛔ 不可只看邊際大小(+3.81pp 排太前會誤導)。
-    const sorted = this._labSel === 'ok'
-      ? items.slice().sort((a, b) => (b.r ?? -1) - (a.r ?? -1))
-      : items;
+    // 🏅 排名只在「單純看 ✅實測有用」時才有意義 —— 搜尋/篩主題時是跨欄混合,⛔ 不可再標名次
+    const ranked = !searching && !this._labTopic && this._labSel === 'ok';
+    const sorted = ranked ? items.slice().sort((a, b) => (b.r ?? -1) - (a.r ?? -1)) : items;
     const medal = i => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`;
-    document.getElementById('labList').innerHTML = sorted.map((x, i) =>
-      `<details class="labitem ${this._labSel}"><summary>
-         ${this._labSel === 'ok' ? `<span class="lrank">${x.r != null ? medal(i) : '未評分'}</span>` : ''}
-         <span class="lt">${x.t}</span>${x.w ? `<span class="lw ${this._wCls(x.w)}">${x.w}</span>` : ''}${x.n ? `<span class="ln">${x.n}</span>` : ''}</summary>
-         ${x.how ? `<div class="lhow"><b>📌 怎麼操作(${x.w})</b><br>${x.how}</div>` : ''}
-         <div class="ld">${x.d}</div><div class="lsrc">${this._srcTxt(x.s)}</div></details>`).join('');
+    const colName = c => (this.LAB_TABS.find(t => t[0] === c) || [, c])[1];
+    const Q = this._labQ;
+    document.getElementById('labList').innerHTML = sorted.length ? sorted.map((x, i) => {
+      const T = this._labTitle(x.t), tp = this._labTopicOf(x);
+      return `<details class="labitem ${x._col || this._labSel}"><summary>
+         ${ranked ? `<span class="lrank">${x.r != null ? medal(i) : '未評分'}</span>` : ''}
+         <span class="lt">${this._labHi(T.a, Q)}${T.b ? `<span class="lsub">${this._labHi(T.b, Q)}</span>` : ''}</span>
+         ${x.w ? `<span class="lw ${this._wCls(x.w)}">${x.w}</span>` : ''}${x.n ? `<span class="ln">${x.n}</span>` : ''}
+         ${(searching || this._labTopic) ? `<span class="labfrom">${colName(x._col)}</span>` : ''}
+         ${tp ? `<span class="ltag">${this._labTopicName(tp)}</span>` : ''}</summary>
+         ${x.how ? `<div class="lhow"><b>📌 怎麼操作(${x.w})</b><br>${this._labHi(x.how, Q)}</div>` : ''}
+         <div class="ld">${this._labHi(x.d, Q)}</div><div class="lsrc">${this._srcTxt(x.s)}</div></details>`;
+    }).join('')
+    // ⛔ 找不到 ≠ 留白 —— 要說清楚查了什麼、並給可以直接按的建議(陷阱 #22)
+    : `<div class="warnbox">🔍 <b>「${Q || this._labTopicName(this._labTopic)}」找不到符合的紀錄。</b><br>
+        <span class="note">目前收了 ${(() => { let n = 0; for (const t of this.LAB_TABS) n += (this.LAB[t[0]] || []).length; return n; })()} 條實測紀錄。
+        試試這幾個:</span><br>
+        ${['分點', '出場', '空頭', '櫃買', '再平衡', '漲停', '配息', '補漲'].map(k =>
+          `<span class="tpc" style="display:inline-block;margin:4px 4px 0 0" onclick="PRO.labSearch('${k}')">${k}</span>`).join('')}</div>`;
     // 🧹 V74.4.0 上方那三張 KPI 卡已移除(使用者:「跟下面的頁籤重複了」)——
     //    頁籤本身就帶括號數字(實測有用(14)/沒用(19)/…),⛔ 不需要再放一排大字重講一次。
   },
@@ -3718,7 +3838,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.7.5',
+  VER: 'V74.7.6',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
