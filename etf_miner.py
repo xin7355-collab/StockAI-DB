@@ -28,6 +28,11 @@ DATA_DIR = "data"
 OUT = Path(DATA_DIR) / "etf_tracking.json"
 
 TOP_N = 10            # 前段班檔數
+# 📌 V74.8.1 使用者釘選 —— **無條件納入**(⛔ 不佔 TOP_N 名額,績效排不進前段班也要有)
+#   ⚠️ 只有進到 `etfs` 陣列的檔才有「換股偵測 / 規模 / 現金水位 / 費用率 / 換股頻率」;
+#      只在 `concentration` 裡的檔**只有持股權重**。使用者要追哪幾檔就加在這裡。
+PIN_ETFS = ["00981A", "00403A", "00998A", "00992A"]
+CHG_KEEP = 60         # 換股歷史保留幾個交易日(⛔ 只存有換股的那幾天,多數天是空的)
 HOLD_TOP = 15         # 每檔顯示前幾大持股
 PERF_LOOKBACK = 120   # 績效回看交易日(近似半年)
 MIN_HISTORY = 15      # 最少價格筆數才納入排名(主動 ETF 2025/5 才上市)
@@ -511,6 +516,25 @@ def _attach_est_shares(holdings, fund_size, price_cache):
 EMPTY_CHANGES = {"added": [], "removed": [], "weight_up": [], "weight_down": []}
 
 
+def _push_chg(hist, day, changes):
+    """把今天的換股壓成一筆丟進歷史(⛔ 沒換股就不記,滾動 CHG_KEEP 天)。
+
+    ⚠️ 同一天只留一筆 —— 一天可能跑多輪(手動觸發),⛔ 不可累加成重複列。
+    ⭐ 只留代號與權重變化,⛔ 不存名稱(前端有 getStockName,存兩份會不同步)。
+    """
+    a = [h.get("sym") for h in changes.get("added", []) if h.get("sym")]
+    r = [h.get("sym") for h in changes.get("removed", []) if h.get("sym")]
+    # ⚠️ 權重變化那一欄叫 **`dw`**(diff_holdings 產的),⛔ 不是 `weight_delta` ——
+    #    憑印象猜鍵名會**靜默**存成一整排 null(同 V74.7.1 股利檔那次)。
+    u = [[h.get("sym"), h.get("dw")] for h in changes.get("weight_up", []) if h.get("sym")]
+    w = [[h.get("sym"), h.get("dw")] for h in changes.get("weight_down", []) if h.get("sym")]
+    out = [x for x in (hist or []) if x.get("d") != day]      # ⚠️ 同一天先移掉舊的
+    if a or r or u or w:
+        out.append({"d": day, "a": a, "r": r, "u": u, "w": w})
+    out.sort(key=lambda x: x.get("d") or "")
+    return out[-CHG_KEEP:]
+
+
 def diff_holdings(prev, curr):
     pm = {h["sym"]: h for h in prev if h.get("sym")}
     cm = {h["sym"]: h for h in curr if h.get("sym")}
@@ -618,19 +642,35 @@ def main():
     prev_has_full = {e["symbol"]: bool(e.get("hold_all")) for e in prev.get("etfs", [])}
     # 🆕 缺口8(12-4 主動靈活度):換股頻率 EWMA(decay 0.9)。日日換≈10、週換≈2,越高越常調整持股。
     prev_turnover = {e["symbol"]: (e.get("turnover_score") or 0) for e in prev.get("etfs", [])}
+    # 📜 V74.8.1 換股歷史(滾動 CHG_KEEP 個交易日)——
+    #   ⚠️ 舊版只有 `changes`(今天 vs 昨天),⛔ 沒有歷史 → 使用者問「換了哪些股」只看得到今天。
+    #   ⛔ 只存**有換股的那幾天**(多數天是空的)→ 體積很小。
+    prev_chg = {e["symbol"]: (e.get("chg_hist") or []) for e in prev.get("etfs", [])}
     today = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
 
     actives = list_active_etfs()
     print(f"📋 主動式 ETF 候選 {len(actives)} 檔")
 
     ranked = []
+    ranked_map = {}
     for s in actives:
         m = perf_with_tr(s, load_prices(s))   # V34.3 — 主動 ETF 也算含息(tr_120d/tr_20d),與被動同基礎可比
         if m:
-            ranked.append((s, m))
+            ranked.append((s, m)); ranked_map[s] = m
     ranked.sort(key=lambda t: _rank_value(t[1]), reverse=True)
     top = ranked[:TOP_N]
-    print(f"🏆 績效前段班取前 {len(top)} 檔")
+    # 📌 釘選的檔無條件補進來(⛔ 不佔前段班名額)——
+    #    ⚠️ 它們可能連 perf 都算不出來(上市太新/價格筆數不足)→ 那也要放進去,
+    #       至少拿得到持股與換股偵測(perf 給 None,前端顯「—」)。
+    _have = {x[0] for x in top}
+    _pin_add = []
+    for _p in PIN_ETFS:
+        if _p in _have:
+            continue
+        _m = ranked_map.get(_p) or {}     # ⛔ 不可給 None —— 下游會 .get 它
+        top.append((_p, _m)); _pin_add.append(_p)
+    print(f"🏆 績效前段班取前 {len(ranked[:TOP_N])} 檔"
+          + (f" + 📌 釘選補進 {len(_pin_add)} 檔:{','.join(_pin_add)}" if _pin_add else " (釘選的都已在前段班)"))
 
     etfs, by_stock, hot = [], {}, {}
     # ⭐ V73.3.4 `_w_ref[個股][ETF] = 權重%` —— 使用者要「買入個股的個股全部比例」,
@@ -691,6 +731,7 @@ def main():
             "holdings_count": len(curr_h),
             "changes": changes,
             "changed_today": changed,
+            "chg_hist": _push_chg(prev_chg.get(s, []), today, changes),
         })
         for h in curr_h:
             if h.get("sym"):
