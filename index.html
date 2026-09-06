@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.8.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.8.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -698,7 +698,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.8.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.8.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7681,8 +7681,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.8.5',
+    _APP_VERSION: 'V74.8.6',
     _CHANGELOG: [
+        { v:'V74.8.6', dt:'2026-09-06', d:['⏱️ 你問「不是應該算出多久反應、多久離場嗎」—— **這個問法是對的,我原本的做法確實不夠好**,所以重做了一次:把公布日前 60 天到後 250 天的走勢**一天一天畫出來**。','📊 答案是:**沒有反應時點**。前 20 天只走完全程的 0~28%,而且七種訊號裡有四種前 20 天是往**反方向**走的。真正在動的是「慢慢漂 250 天」,那不叫反應。','🚨 更關鍵的是:**股價在財報出來之前就先動了,而且是反方向** —— 之後那段漂移有一部分只是把先前的走勢還回來,不是在反應財報。','⭐ 用「前半段找最好的持有天數、後半段驗」再逐年拆開,七種只剩一種活著(存貨在去化,要抱 194 天),而且一年才多賺約 1.5% —— 那已經是**選股體質**不是進出場時機了。'] },
         { v:'V74.8.5', dt:'2026-09-06', d:['📦 財報資料挖完了(2,351 檔、34 季、回溯 2018),**回測結果:那套「看庫存去化抓落底」的方法不成立**。','🚨 而且他說的「庫存高檔但去化在加快 = 落底訊號」**是全表最差的一格**(−0.41%),8 年裡有 6 年是負的 —— 是穩定地反著,不是運氣。反而「庫存高檔而且還在惡化」是正的。','⛔ 所以這個不做,前端不會顯示。資料留著給以後的回測用。⭐ 順帶修掉一個會讓整張表說謊的錯:對照組沒有按時間對齊,害七種相反的訊號逐年長得一模一樣。'] },
         { v:'V74.8.4', dt:'2026-09-06', d:['📦 開始把**存貨、資本支出、營業成本**三筆財報資料挖回來(回溯 2018,共 34 季)——⭐ 上游本來就有歷史,所以是**一次回算**,⛔ 不用等好幾季才驗得動。','🚨 挖的時候發現一件很容易搞錯的事:同一份資料裡**損益表是「單季」、現金流量表是「累計」**。如果整批當同一種處理,「存貨週轉天數」會從第一季到第四季一路變小,看起來像庫存一直在去化,其實只是分母在累加。','⛔ 這批資料**前端還讀不到** —— 還沒驗證過的東西不上線。回算完會先跑六道關卡,過不了就不做。'] },
         { v:'V74.8.3', dt:'2026-09-06', d:['⏱️ 有人提議把關聯星圖改成「**A 領先 B 幾天**」並在連線上加箭頭 —— 實測完:**做不出來**。落後相關幾乎是 0(同期 0.29、隔一天只剩 0.018);前半段學到 8 組配對、後半段學到 **0 組**;連「上游領先下游」都**反過來**。','⭐ 最決定性的一格:「A 漲了但 B 還沒漲」之後 20 天 +0.81%,而「**B 自己漲**」是 +1.70% —— 知道 A 漲了不但沒加分,還比不知道更差。⛔ 所以星圖不加那個箭頭。','📦 順手查到一件好消息:**存貨、資本支出、營業成本這三筆財報資料其實拿得到,而且有 34 季(回溯 2018)** —— 本站原本以為沒有。要不要開始存,等你決定(結論都寫在產業作戰室的 🔬 實測總表裡)。'] },

@@ -124,6 +124,7 @@ function fwd(sym, pubDay, n) {
 //   **逐年長得一模一樣**(2018~2022 全 +5~7pp、2023~2025 全負)= 量到的是「那一年大家好不好」,
 //   不是「這個事件有沒有用」。⭐ 這是「對照組要共用非受測那條腿」的時間版。
 const raw = [];                       // {pub, sym, tags[], rets{}}
+const curveJobs = [];                 // 逐日曲線用(⭐ 回答「多久反應、多久離場」)
 const yrOf = d => d.slice(0, 4);
 let nDoi = 0;
 const allPub = [];
@@ -169,6 +170,7 @@ for (const [sym, qs] of Object.entries(F.s)) {
     if (capexYoY != null && capexYoY <= -30) tag.push('✂️ 資本支出大砍(它說的利空出盡)');
     if (capexYoY != null && capexYoY >= 50) tag.push('🏗️ 資本支出大擴');
     raw.push({ pub, sym, tag, rets });
+    curveJobs.push({ pub, sym, tag });
   }
 }
 
@@ -259,3 +261,129 @@ for (const [k] of rows) {
 }
 console.log(`\n   ⚠️ 來回成本 ${COST}% —— 上面任何一格要 > ${COST} 才談得上「可交易」`);
 console.log('   ⚠️ 季報只有 34 季 → 每檔最多 32 個事件;而且窗口(2018~2026)偏多頭。');
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// ⏱️ 逐日累積超額報酬曲線 —— 回答「**多久才反應、反應完多久該走**」
+//
+// 🚨 使用者的質疑成立:只量 20/60/120 三個點、而且固定「抱滿 N 天」,
+//    既看不出反應時點,也看不出該不該提早走。⭐ 正解是畫出**逐日**的曲線。
+// ⭐ 而且窗口要**往前拉**(公布日前 60 天)—— 價格可能在財報出來之前就反應完了
+//    (那份對話自己就說「資訊已 Price-in」)。⛔ 只看事後會漏掉這件事。
+// ⛔ 對照仍然是**按公布日橫斷面去均值**(同上,⛔ 不可拿全期平均)。
+// ═══════════════════════════════════════════════════════════════════════
+const PRE = 60, POST = 250;
+console.log(`\n⏱️ 逐日累積超額報酬曲線(公布日前 ${PRE} 天 ~ 後 ${POST} 天)`);
+
+/** 以「公布日前最後一個收盤」為錨,回傳 k = -PRE..POST 的累積報酬%(相對錨點) */
+function curve(sym, pub) {
+  const st = S.get(sym); if (!st) return null;
+  let a = st.d.findIndex(x => x >= pub); if (a <= 0) return null;
+  a -= 1;                                             // 錨 = 公布日**之前**最後一個收盤
+  if (a - PRE < 0 || a + POST >= st.d.length) return null;
+  const base = st.c[a]; if (!(base > 0)) return null;
+  const out = new Float64Array(PRE + POST + 1);
+  for (let k = -PRE; k <= POST; k++) out[k + PRE] = (st.c[a + k] / base - 1) * 100;
+  return out;
+}
+
+// 第一趟:每個公布日、每個 k 的**橫斷面平均**(那就是對照)
+const cohort = {};                                    // pub → { n, sum:Float64Array }
+const cvs = [];
+for (const j of curveJobs) {
+  const c = curve(j.sym, j.pub); if (!c) continue;
+  cvs.push({ ...j, c });
+  const g = (cohort[j.pub] ||= { n: 0, sum: new Float64Array(PRE + POST + 1) });
+  g.n++; for (let i = 0; i < c.length; i++) g.sum[i] += c[i];
+}
+for (const g of Object.values(cohort)) for (let i = 0; i < g.sum.length; i++) g.sum[i] /= g.n;
+console.log(`   樣本 ${cvs.length} 筆 ・${Object.keys(cohort).length} 個公布日`);
+
+// 第二趟:去均值後按事件分組
+const CUR = {};                                       // tag → { n, sum, half:[sum0,sum1], n0,n1, yr }
+for (const e of cvs) {
+  const g = cohort[e.pub]; if (g.n < 30) continue;
+  const h = e.pub < '2022-07-01' ? 0 : 1;
+  const y = e.pub.slice(0, 4);
+  for (const t of e.tag) {
+    const o = (CUR[t] ||= { n: 0, sum: new Float64Array(PRE + POST + 1),
+                            h: [new Float64Array(PRE + POST + 1), new Float64Array(PRE + POST + 1)], hn: [0, 0],
+                            yr: {} });
+    o.n++; o.hn[h]++;
+    const yo = (o.yr[y] ||= { n: 0, sum: new Float64Array(PRE + POST + 1) });
+    yo.n++;
+    for (let i = 0; i < e.c.length; i++) {
+      const v = e.c[i] - g.sum[i];
+      o.sum[i] += v; o.h[h][i] += v; yo.sum[i] += v;
+    }
+  }
+}
+
+const at = (o, k) => o.sum[k + PRE] / o.n;
+const atH = (o, h, k) => o.h[h][k + PRE] / o.hn[h];
+console.log('\n   事件                                  │ 公布前30 │ 公布日 │  +5日 │ +10日 │ +20日 │ +40日 │ +60日 │ +120日 │ +250日 │ n');
+for (const [t, o] of Object.entries(CUR).sort((a, b) => at(b[1], 60) - at(a[1], 60))) {
+  const cells = [-30, 0, 5, 10, 20, 40, 60, 120, 250].map(k => {
+    const v = at(o, k) - at(o, 0);                     // ⭐ 一律以公布日為 0 點(⛔ 否則會混進事前的漂移)
+    return `${v >= 0 ? '+' : ''}${v.toFixed(2)}`.padStart(k === -30 ? 8 : 6);
+  });
+  console.log(`   ${t.padEnd(36)} │ ${cells.join(' │ ')} │ ${o.n}`);
+}
+console.log('   ⭐「公布前30」是**相對公布日**的 —— 負值代表事件股在公布前跑輸,正值代表已經先漲了');
+
+console.log('\n📈 反應時點:曲線在哪一天最大 / 最小(⚠️ 全期找峰值一定會找到,所以下面還要驗)');
+for (const [t, o] of Object.entries(CUR)) {
+  let bk = 0, bv = 0, wk = 0, wv = 0;
+  for (let k = 1; k <= POST; k++) {
+    const v = at(o, k) - at(o, 0);
+    if (v > bv) { bv = v; bk = k; }
+    if (v < wv) { wv = v; wk = k; }
+  }
+  console.log(`   ${t}`);
+  console.log(`      最大 +${bv.toFixed(2)}pp 在第 ${bk} 天 ・最小 ${wv.toFixed(2)}pp 在第 ${wk} 天 ・` +
+              `第 250 天 ${(at(o, 250) - at(o, 0)).toFixed(2)}pp`);
+}
+
+console.log('\n🚦 「最佳持有天數」有沒有延續性(⭐ 前半段找、後半段驗 —— ⛔ 全期找峰值是過度配適)');
+for (const [t, o] of Object.entries(CUR)) {
+  if (o.hn[0] < 300 || o.hn[1] < 300) { console.log(`   ${t}: 樣本不足,略過`); continue; }
+  let bk = 1, bv = -1e9;
+  for (let k = 5; k <= POST; k++) { const v = atH(o, 0, k) - atH(o, 0, 0); if (v > bv) { bv = v; bk = k; } }
+  const test = atH(o, 1, bk) - atH(o, 1, 0);
+  const ok = test - COST > 0 ? '✅' : '❌';
+  console.log(`   ${t}`);
+  console.log(`      前半最佳持有 ${bk} 天(+${bv.toFixed(2)}pp)→ **後半段同樣抱 ${bk} 天:` +
+              `${test >= 0 ? '+' : ''}${test.toFixed(2)}pp ・扣成本 ${(test - COST).toFixed(2)} ${ok}**`);
+}
+console.log('\n   ⚠️ 這一段回答的是「多久反應、多久離場」;⛔ 但「前半找到的天數在後半沒用」就代表沒有規律可循。');
+
+// ⭐⭐ 上面通過的那幾個,找到的都是 97~248 天 = 「抱到窗口盡頭」,那不是「反應時點」是「慢慢漂」。
+//    ⛔ 所以還要問兩件事:① 那個漂移逐年還是同一個方向嗎 ② 有沒有一個「反應」可言(集中在前幾天嗎)
+console.log('\n🔍 追加兩問:那個「抱很久才賺」到底是不是訊號?');
+console.log('\n   ① 前 20 天吃掉了 250 天走勢的幾成?(⭐ 有「反應」的話應該集中在前面)');
+for (const [t, o] of Object.entries(CUR)) {
+  const d20 = at(o, 20) - at(o, 0), d250 = at(o, 250) - at(o, 0);
+  const pct = Math.abs(d250) > 0.05 ? (d20 / d250 * 100) : NaN;
+  console.log(`   ${t.padEnd(36)} 前20天 ${d20 >= 0 ? '+' : ''}${d20.toFixed(2)}pp / 250天 ` +
+              `${d250 >= 0 ? '+' : ''}${d250.toFixed(2)}pp = ${isFinite(pct) ? pct.toFixed(0) + '%' : '—'}`);
+}
+
+console.log('\n   ② 用「前半驗過的天數」逐年拆開(⛔ 逐年不同向 = 那個漂移不可靠)');
+for (const [t, o] of Object.entries(CUR)) {
+  if (o.hn[0] < 300 || o.hn[1] < 300) continue;
+  let bk = 1, bv = -1e9;
+  for (let k = 5; k <= POST; k++) { const v = atH(o, 0, k) - atH(o, 0, 0); if (v > bv) { bv = v; bk = k; } }
+  const test = atH(o, 1, bk) - atH(o, 1, 0);
+  if (test - COST <= 0) continue;                     // 前半/後半那關就沒過的不用再拆
+  const ys = Object.keys(o.yr).sort();
+  const cells = [], vals = [];
+  for (const y of ys) {
+    const yo = o.yr[y]; if (yo.n < 60) continue;
+    const v = (yo.sum[bk + PRE] - yo.sum[0 + PRE]) / yo.n;
+    vals.push(v); cells.push(`${y} ${v >= 0 ? '+' : ''}${v.toFixed(2)}`);
+  }
+  const pos = vals.filter(v => v > 0).length;
+  console.log(`   ${t}(抱 ${bk} 天)`);
+  console.log(`      ${cells.join(' ・')}`);
+  console.log(`      → ${pos}/${vals.length} 年為正 ${pos === vals.length ? '✅' : '❌ 逐年不同向'}`);
+}
