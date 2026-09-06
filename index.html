@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.9.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.9.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -720,7 +720,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.9.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.9.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7753,8 +7753,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.9.0',
+    _APP_VERSION: 'V74.9.1',
     _CHANGELOG: [
+        { v:'V74.9.1', dt:'2026-09-06', d:['🌦️ 你要求「不要用全時段平均,依大盤狀態切多頭/空頭/盤整分別統計」—— 18 個策略 × 4 種情境 × 4 種持有窗口全部重測,結果在產業作戰室 → 實測總表 → 🌦️ 情境矩陣。','⭐⭐ 最重要的一句話:**策略分兩族** —— 「追強」那一族(位階高+波動高/創新高/RSI>70…)只在多頭有優勢,「抄底」那一族(位階低/創新低/KD<20)只在空頭有優勢,兩族在對方的盤裡都輸給隨便挑一天。**三種盤都過關的只有「跌停後第一根紅K」**(空頭情境勝率 75%、大紅版 81%)。','🚨 你給的 🟢 門檻(三情境勝率皆 >55%)18 個策略 0 個做得到 —— 因為隨便挑一天抱 20 天的上漲比例本來就只有 45%(多頭也一樣)。標籤照你的規格貼、門檻沒改,但每一列同時給本站標準的判定。','⚠️ 這是固定抱 N 天的結果,App 實際有停損 + 跌破 5 日線出場,所以「空頭少賺」在組合回測裡不會長一樣,⛔ 沒有因此改任何進出場規則。']},
         { v:'V74.9.0', dt:'2026-09-06', d:['🧹 你說「選股策略那面太多,把實測後沒有用的都刪除」—— **23 個榜精簡成 10 個**。','⭐ 實測沒有優勢的 13 個(外資連買/投信連買/雙主力/主力鎖股/大戶吃貨/低基期/跌深績優/錯殺便宜/送分題/烏龜過河/口袋支點/營收動能/潛力黑馬)收進左欄最下面的「📉 實測沒優勢」。','⛔ **刻意收起來不是從程式碼刪掉** —— 刪了你會以為沒這回事、跑去別處學了再回來問。點開仍然看得到,而且每一個都寫出**它是被哪一個實測打掉的、數字多少**(例:外資大買佔量比 ≥20% 只有 0.64 倍,比隨便挑一天還低)。','🎯 主清單只留有實測背書或當工具用的:會賺訊號・當沖雷達・渣男賽車・妖股雷達・相對強度・K棒轉多/轉空・處置股(避雷)・題材脈動・AI 鏈。','🫧 產業作戰室板塊輪動的**泡泡大小改成「那一族當天的成交金額」**(以前是成員檔數,那是固定值、既不會動也不帶判斷價值)→ 現在拉時間軸泡泡會跟著脹縮,一眼看得出錢跑到哪一族。⛔ 圖例有寫「泡泡大不等於值得買」。','🔬 實測總表:副標拿掉、**搜尋框搬到標題列**(一進來就看得到);主題標籤改成**搜尋的時候才出現**,平常不佔第一屏。']},
         { v:'V74.8.9', dt:'2026-09-06', d:['🪟 你問「有沒有做事件觸發的彈跳視窗」—— **原本沒有**,現在做了,但**只給該打斷你的那一種**。','⭐ 停損、出場、平倉倒數、處置這類會**彈視窗**(錯過就住套房);買點、點火、共振這類只出一條 toast(錯過還有下一次)。那不是我挑的,是實測:勝率只有三成,整套會賺完全靠「錯的時候小賠出場」。','🚨 順手修掉一個很嚴重的:以前**沒開通知權限的話,事件觸發了畫面上完全沒反應** —— 現在一定看得到。','🚧 防吵:同一件事一天只跳一次(不然股價在門檻上下來回會連跳);而且視窗上會告訴你「為什麼這件事值得打斷你」,附實測數字。'] },
         { v:'V74.8.8', dt:'2026-09-06', d:['🚦 你說「紅漲綠跌會搞混」—— **你是對的,而且 App 裡真的有反的**。全面掃過之後修了 **29 處**,最嚴重的那幾個是把「可進場/續抱/偏多」配成綠色 —— 台股綠色是跌,那樣會直接看反。','🎨 現在規則統一了:**紅綠只用來講漲跌方向**;講「好不好、安不安全」一律改用 ✅ 安全 ・⚠️ 注意 ・⛔ 危險 ・➖ 中性 ・📍 位置。像「燃料飽 / 籌碼乾淨 / 融資過熱」那些都換掉了。','📌 只有一個例外:國發會的「景氣對策信號」是官方名稱,不能改名 —— 所以在它前面加了「官方」兩個字,讓你一眼分得出來那跟漲跌無關。','⛔ 另外做了一件事:以前系統會把「實測沒用的訊號」**默默擋掉**,你看不到也不知道為什麼。現在會在「現在該做什麼」下面告訴你「今天擋掉幾個、分別是什麼、實測數字是多少」。'] },

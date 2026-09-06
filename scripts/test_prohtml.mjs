@@ -870,6 +870,7 @@ const L = await page.evaluate(async () => {
     out.all = all;
     out.counts = Object.fromEntries(Object.entries(PRO.LAB).map(([k, v]) => [k, v.length]));
     out.counts.zoo = PRO.ZOO.reduce((a, g) => a + g.k.length, 0);   // 📚 zoo 數的是指標總數不是分類數
+    out.counts.rm = (PRO.RM && PRO.RM.strats || []).length;          // 🌦️ rm 數的是策略數(資料在 PRO.RM 不在 LAB)
     out.btDims = PRO.BT.dims.length;
     return out;
 });
@@ -1600,10 +1601,11 @@ ok('㉗e 四象限計數:四格加起來 = 泡泡數,而且**不可**用「漲�
    T.quadSum === T.nBubs && !/漲潮|退潮|輪動|觀望/.test(T.quadTxt), [T.quadSum, T.nBubs, T.quadTxt]);
 ok('㉒l ⛔ 切走分頁要停掉動畫(不可留背景 timer)', T.playing && T.stoppedOnLeave, [T.playing, T.stoppedOnLeave]);
 // ㉔ 🔬 實測總表
-ok('㉔ 六個頁籤:回測數字(V74.5.0 併進來)/ 有用 / 沒用 / 回測的坑 / 還測不了 / 推薦下一步',
-   L.tabs.length === 7 && /回測數字/.test(L.tabs[0]) && /實測有用/.test(L.tabs[1]) && /實測沒用/.test(L.tabs[2])
+// ⭐ V74.9.1 改釘「用意」(每一個必要頁籤都在、順序對)⛔ 不釘死頁籤總數 —— 加一頁就假失敗
+ok('㉔ 頁籤:回測數字 / 有用 / 沒用 / 回測的坑 / 還測不了 / 推薦下一步 / 情境矩陣 / 指標分類表',
+   L.tabs.length >= 8 && /回測數字/.test(L.tabs[0]) && /實測有用/.test(L.tabs[1]) && /實測沒用/.test(L.tabs[2])
    && /回測自己的坑/.test(L.tabs[3]) && /還測不了/.test(L.tabs[4]) && /推薦下一步/.test(L.tabs[5])
-   && /指標分類表/.test(L.tabs[6]), L.tabs);
+   && L.tabs.some(t => /情境矩陣/.test(t)) && /指標分類表/.test(L.tabs.at(-1)), L.tabs);
 ok('㉔a2 🚧 空過守門:展開後內文真的抓得到(⛔ <details> 收合時 innerText 不含內文 = 假通過)',
    L.all.length > 6000 && /六道關卡|來回成本/.test(L.all), L.all.length);
 ok('㉔b 每一欄都有內容,切換真的換掉列表',
@@ -1613,7 +1615,7 @@ ok('㉔b 每一欄都有內容,切換真的換掉列表',
    && L.ok.txt !== L.trap.txt && L.trap.txt !== L.method.txt,
    [L.ok.n, L.trap.n, L.method.n, L.blocked.n, L.next.n]);
 ok('㉔c 頁籤數字要跟實際筆數一致(⛔ 不可寫死)',
-   L.tabs.slice(1).every((t, i) => t.includes('(' + L.counts[['ok', 'trap', 'method', 'blocked', 'next', 'zoo'][i]] + ')'))
+   L.tabs.slice(1).every((t, i) => t.includes('(' + L.counts[['ok', 'trap', 'method', 'blocked', 'next', 'rm', 'zoo'][i]] + ')'))
    && L.tabs[0].includes('(' + L.btDims + ')'), L.tabs);
 ok('㉔d 🚨 **每一欄**每一條都要附實測來源(⛔ 沒有數字的意見不准進來)', L.srcMissing === 0, L.srcMissing);
 // 📌 V74.5.0 使用者:「把 portfolio_backtest.mjs 等等這種資訊隱藏,不需要呈現」
