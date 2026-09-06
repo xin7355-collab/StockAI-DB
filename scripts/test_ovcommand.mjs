@@ -49,6 +49,31 @@ const R = await page.evaluate(async () => {
     const draw = () => { A._initOvFold(); A._renderOvCommand(A.activeData); return el.innerText; };
     A.inventory = [];
     out.flat = draw();
+    // ⛔ V74.8.8 黑名單透明化:塞一個「實測沒用」的訊號進去,看它會不會被說出來
+    {
+        const realEc = A._entryCheckup, realCache = A._ecCache;
+        A._ecCache = null;
+        A._entryCheckup = () => ({
+            verdict: '測試', score: 50,
+            proven: [{ tone: 'bull', title: '低檔布局(測試用)', _e: { exp: 1.5 } },
+                     { tone: 'bull', title: '補漲候選(測試用)', _e: { exp: 1.2 } }],
+            bullets: [],
+        });
+        // ⚠️ 理由收在 <details> 裡,而**收起的 details 的 innerText 只給 summary**
+        //   (V74.2.2 踩過)→ 這裡要讀 innerHTML 剝標籤,⛔ 不可用 innerText
+        draw(); out.blkShown = el.innerHTML.replace(/<[^>]+>/g, ' ');
+        A._entryCheckup = realEc; A._ecCache = realCache;
+    }
+    // 🚧 對照:沒有任何被擋的東西時,⛔ 不可硬跳出「有 N 個被擋掉」
+    {
+        const realEc = A._entryCheckup, realCache = A._ecCache;
+        A._ecCache = null;
+        A._entryCheckup = () => ({ verdict: '測試', score: 50, proven: [], bullets: [] });
+        // ⚠️ 同上:⛔ 不可用 innerText(收起的 details 在這個 Chromium 回空)
+        //   → 注入「沒東西也硬跳出來」時 innerText 看不到 summary = 假綠燈(實測踩到)
+        draw(); out.noBlock = el.innerHTML.replace(/<[^>]+>/g, ' ');
+        A._entryCheckup = realEc; A._ecCache = realCache;
+    }
     // 8 collapsed-not-deleted: must be measured AFTER draw() (which runs _initOvFold)
     out.moved = !!document.querySelector('#ovMoreWrap #ovTabBar')
              && !!document.querySelector('#ovMoreWrap #strategyMainBox')
@@ -157,9 +182,13 @@ ok('② 徽章:有庫存沒破線 → 🛡️ 持股續抱', R.dHold && R.dHold.
 ok('②b 徽章:跌破實測有效出場線 → 🚨 強烈建議出場', R.dExit && R.dExit.state === 'exit' && has(R.exit, '🚨 強烈建議出場'), R.dExit && R.dExit.badge);
 ok('②c 徽章:空手且不符條件 → ➖ 觀望(⛔ 不可硬給一個進場理由)', has(R.none, '➖ 觀望'), R.none.slice(0, 80));
 // 卡片底部那句免責本身就含「低檔布局/補漲」(本專案第 11 次踩「正確的句子含有被禁的字」)
-//   -> 掃之前先把那一行剝掉,否則這條永遠紅。
-const _blkBody = String(R.blk).replace(/\u{1F512}[^\n]*/gu, '');
-ok('③ 🚨 黑名單靜默過濾(低檔布局/補漲/撿便宜/布林壓縮 都要被擋)',
+//   -> 掃之前先把那一行剝掉。
+// ⚠️ V74.8.8 起黑名單**不再靜默** → 理由區會刻意提到「低檔布局」等字
+//   → 這條改成只驗**行動計畫那幾行**(📍 開頭)⛔ 不可含黑名單項目;
+//     「有沒有被擋掉」交給 _ovBlocked 的回傳值(R.blocked)驗。
+const _blkBody = String(R.blk).replace(/\u{1F512}[^\n]*/gu, '')
+  .split('\n').filter(l => l.trim().startsWith('📍')).join('\n');
+ok('③ 🚨 黑名單項目⛔ 不可進行動計畫(低檔布局/補漲/撿便宜/布林壓縮 都要被擋)',
    R.blocked.every(Boolean) && !has(_blkBody, '低檔布局') && !has(_blkBody, '補漲'), _blkBody.slice(0, 220));
 ok('③b ⛔ 白名單訊號不可被誤擋(底部頸線突破/晨星轉折/爆量長紅)',
    R.notBlocked.every(v => v === false), JSON.stringify(R.notBlocked));
@@ -207,6 +236,20 @@ ok('⚙️⑫ 減碼時要主動講明「你設定的那條還沒破」+ 減碼 
    /你設定的那條/.test(R.reduceWhy) && /還沒破/.test(R.reduceWhy) && /不是「全出」|不是「?全出/.test(R.reduceWhy),
    R.reduceWhy.replace(/<[^>]+>/g, '').slice(0, 200));
 ok('⑨b ⛔ 不可用紅綠 emoji 當狀態燈(燈號鐵則)', !/[🔴🟢]/u.test(R.html), (R.html.match(/[🔴🟢]/gu) || []).join(''));
+
+// ⛔ V74.8.8 黑名單透明化(附件建議 + 本專案陷阱 #22:守門擋掉東西一定要寫原因)
+// ⚠️ 剝完標籤會留下多餘空白(<b>2</b> → " 2 ")→ 斷言前先正規化,⛔ 別去猜實際輸出長什麼樣
+const _blkTxt = R.blkShown.replace(/\s+/g, ' ');
+ok('⛔⑬ 被擋掉的訊號要**說出來**,而且要講幾個(⛔ 不可靜默過濾)',
+   /今天有 2 個訊號被擋掉/.test(_blkTxt), _blkTxt.slice(0, 200));
+ok('⛔⑬a 要說出**是哪幾個**(低檔布局 / 補漲)',
+   /低檔布局/.test(R.blkShown) && /補漲/.test(R.blkShown));
+ok('⛔⑬b 每一條都要有**實測數字**(⛔ 不可只寫「實測沒用」)',
+   /−0\.58pp|-0\.58pp/.test(R.blkShown) && /逐年全負/.test(R.blkShown));
+ok('⛔⑬c 要說明「擋掉不是說它沒發生」(⛔ 否則使用者以為今天沒訊號)',
+   /不是.{0,4}說它今天沒發生|並不會賺/.test(R.blkShown), R.blkShown.slice(-260).replace(/\n/g, ' '));
+ok('⛔⑬d 沒東西被擋時 ⛔ 不可硬跳出「有 N 個被擋掉」(⛔ 天天道歉會讓人習慣忽略)',
+   !/訊號被擋掉/.test(R.noBlock) && /只採用/.test(R.noBlock), R.noBlock.slice(0, 160).replace(/\n/g, ' '));
 
 await browser.close();
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ OVCOMMAND_PASS(全部通過)');

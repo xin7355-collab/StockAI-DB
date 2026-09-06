@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.8.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.8.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -698,7 +698,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.8.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.8.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3625,7 +3625,7 @@ const app = {
         '基期位階': '把「近 1 年的最高價~最低價」當成一把尺,現價落在這把尺的第幾 %。\n\n🧊 低基期(≤35% 且距高點跌 ≥25%):股價在相對低檔,分析師說的「低基期」就是這個。好處是萬一利多來,漲幅空間大(基期低=比較基準低);風險是「便宜還有更便宜」,低基期不等於會漲。\n\n📊 中基期(35~80%):不上不下。\n\n⛰️ 高基期(≥80%):股價在相對高檔,追高要嚴設停損。\n\n💡 用法:低基期 + 打底跡象(月線翻揚/底部抬高/外資回補/量能回溫)才是真的有爆發力 → 選股頁「🧊 低基期爆發」榜已經幫你篩好。單看低基期就買,常買到還在跌的股票。',
         '突破棒防守': '起漲那根「爆量長紅」的中點(開盤+收盤)÷2,約是主力與大戶的成本區、也是這波多頭的結構防線。跌破 = 這波結構壞了,多單該守;回檔到這條線附近又量縮、低點不破,就是朱老師「回後買上漲」的加碼買點。比單純看 5MA/20MA 更貼近真實主力成本。',
         '盤前體檢': '朱老師「盤前分析」的純公式自動版 — 把今天開盤前該看的東西一次彙總,算出「今天大盤偏多/偏空」一句話總結:\n\n📊 計分材料(全部程式算,不靠 AI):\n  ・ 美股四雄(道瓊/NASDAQ/S&P500/費半)收紅收綠\n  ・ 台積電 ADR 漲跌(權重最高,最連動台積電開盤)\n  ・ VIX 恐慌指數(<20 安全 / >30 恐慌)\n  ・ 外資台指期淨未平倉(偏多/偏空)+ 外資現貨買賣超\n  ・ 🌙 台指期夜盤(15:00~次日5:00,台灣資金對隔夜美股+盤後事件的即時反應,最直接的隔日開盤風向球;有真實漲跌%才計分,夜盤重挫權重略高)\n  ・ 🌍 亞股連動(日經/韓股同盤最直接風向,恆指半權重)+ 恐懼貪婪情緒(≥80 過熱偏空/≤20 極恐偏多,輕權重)(V50.2 新增)\n  ・ 加權指數自己的「進場體檢」技術分數(對 ^TWII 跑同一套純公式)\n\n🎯 總結:🔴 開高偏多 / 🟡 中性震盪 / 🟢 開低偏空(紅漲綠跌)。\n\n🔧 仍「採集中」的(下次採礦自動補):大盤融資券餘額、台指期夜盤源(修復中時暫不計分)。投信/自營商/三大法人合計、日月光/聯電 ADR 已納入採礦,16:30 跑完即顯示。\n\n⚠️ 開盤方向是機率不是保證(美股常被提前反映),僅供盤前風向參考,實際進出仍以開盤量價為準。',
-        '進場體檢': '把這支股票所有「純公式」技術訊號(三星轉折=晨星/夜星、吞噬、橫盤突破、量能=攻擊/出貨/換手量、均線排列)一次彙總,算出一個 0-100「進場友善度」+ 紅綠燈總結,給初學者一眼判斷:\n\n• 🟢 偏多(分數≥65)= 多方訊號 + 站上 5 日線/月線多頭排列 → 可分批試單,務必設停損。\n• 🟡 觀望(38~65 或多空打架)= 訊號不明或正在換手 → 先別進,等明確型態。\n• 🔴 偏空(分數≤38)= 空方訊號 + 跌破均線 → 別接刀,有貨者顧好停損。\n\n⚠️ 這是型態統計、不是預言:紅燈不代表一定跌、綠燈也不保證漲,真正的安全來自「進場就設好停損、跌破就走」。全部 JS 計算,絕不丟給 AI 算(防幻覺)。',
+        '進場體檢': '把這支股票所有「純公式」技術訊號(三星轉折=晨星/夜星、吞噬、橫盤突破、量能=攻擊/出貨/換手量、均線排列)一次彙總,算出一個 0-100「進場友善度」+ 紅綠燈總結,給初學者一眼判斷:\n\n• 🔴 偏多(分數≥65)= 多方訊號 + 站上 5 日線/月線多頭排列 → 可分批試單,務必設停損。\n• 🟡 觀望(38~65 或多空打架)= 訊號不明或正在換手 → 先別進,等明確型態。\n• 🟢 偏空(分數≤38)= 空方訊號 + 跌破均線 → 別接刀,有貨者顧好停損。\n\n⚠️ 台股慣例 🔴=漲、🟢=跌(跟紅綠燈相反,別看反)。這是型態統計、不是預言:偏多不代表一定漲、偏空也不保證跌,真正的安全來自「進場就設好停損、跌破就走」。全部 JS 計算,絕不丟給 AI 算(防幻覺)。',
         '多頭待發射': '把你自選清單裡「剛打完底、橫盤盤整、最靠近上方突破壓力」的股票挑出來,用「離突破還差幾 %」由近到遠排序。排最前=最可能先發動(例如只差 1.5% 就過壓力)。提醒:距離近只是「快到了」,真正進場仍要等帶量突破那一根,別提早猜。已突破無壓力、振幅太大已噴/崩、或「均線空頭排列(現價還在 5日線+月線之下的逆勢股)」都會自動排除 — 這種首席頁會判偏空、要你別接刀,不會再列來這裡跟首席打架。',
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
         '法人連賣': '三大法人(外資+投信+自營)連續 3 天賣超 = 大戶在調節出貨,籌碼鬆動,股價短線易壓回。',
@@ -3957,7 +3957,7 @@ const app = {
                             app.showToast?.(`⚠️ 已自動清 ${freed} 個過期快取,釋出空間存新資料`, 'info');
                         } catch (e2) {
                             console.warn('[localStorage] quota still exhausted after cleanup', e2);
-                            app.showToast?.('🔴 手機儲存空間不足,請至 ⚙️ 設定 → 一鍵刪除清空');
+                            app.showToast?.('⚠️ 手機儲存空間不足,請至 ⚙️ 設定 → 一鍵刪除清空');
                         }
                     } else {
                         console.warn('[localStorage] setItem failed', e);
@@ -4981,7 +4981,7 @@ const app = {
                         const lossPct = ((pC - cost) / cost * 100).toFixed(1);
                         this._fireAlert('🩸 庫存鐵血停損', `${name}(${sym}) 現價 ${pC.toFixed(2)} 已破成本 -5%(${lossPct}%)→ 朱老師鐵律:停損就是保命,別凹單`, sym);
                     } else if (r && r.vColor === 'green' && !this._kbarFiredToday(`invbear_${sym}`)) {
-                        this._fireAlert('🔻 庫存轉偏空', `${name}(${sym}) 進場體檢轉 🔴 偏空(${r.score}分)→ 顧好停損、別放任凹單,留意分批減碼`, sym);
+                        this._fireAlert('🔻 庫存轉偏空', `${name}(${sym}) 進場體檢轉 🟢 偏空(${r.score}分)→ 顧好停損、別放任凹單,留意分批減碼`, sym);
                     }
                 }
             } catch (_) {}
@@ -5267,7 +5267,7 @@ const app = {
                     if (_buySetup) trigger('buyset_' + _buySetup.title.replace(/[^一-龥A-Za-z]/g, ''), _buySetup.title, _buySetup.msg.replace(/<[^>]+>/g, ''));
                     // 🎯 V66.7 A+ 級買點共振推播(≥4 個獨立策略同向且無反向,最高信度,每日 1 次去重靠 30 分冷卻)
                     const _reso = this._signalResonance(_scanData);
-                    if (_reso && _reso.nb >= 4 && _reso.ns === 0) trigger('resoAplus', '🟢 A+ 級買點共振', `${_reso.nb} 個獨立策略同時看多:${_reso.bull.slice(0, 5).join('、')} → 最高信度買點,回檔就是機會(仍守停損)。`);
+                    if (_reso && _reso.nb >= 4 && _reso.ns === 0) trigger('resoAplus', '🔴 A+ 級買點共振', `${_reso.nb} 個獨立策略同時看多:${_reso.bull.slice(0, 5).join('、')} → 最高信度買點,回檔就是機會(仍守停損)。`);
                     else if (_reso && _reso.ns >= 3 && _reso.nb === 0) trigger('resoTop', '⛔ 逃頂共振·高危', `${_reso.ns} 個賣訊同時亮:${_reso.bear.slice(0, 5).join('、')} → 逃命訊號,持股快出、空手勿接刀。`);
                 } catch (_) {}
 
@@ -7681,8 +7681,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.8.7',
+    _APP_VERSION: 'V74.8.8',
     _CHANGELOG: [
+        { v:'V74.8.8', dt:'2026-09-06', d:['🚦 你說「紅漲綠跌會搞混」—— **你是對的,而且 App 裡真的有反的**。全面掃過之後修了 **29 處**,最嚴重的那幾個是把「可進場/續抱/偏多」配成綠色 —— 台股綠色是跌,那樣會直接看反。','🎨 現在規則統一了:**紅綠只用來講漲跌方向**;講「好不好、安不安全」一律改用 ✅ 安全 ・⚠️ 注意 ・⛔ 危險 ・➖ 中性 ・📍 位置。像「燃料飽 / 籌碼乾淨 / 融資過熱」那些都換掉了。','📌 只有一個例外:國發會的「景氣對策信號」是官方名稱,不能改名 —— 所以在它前面加了「官方」兩個字,讓你一眼分得出來那跟漲跌無關。','⛔ 另外做了一件事:以前系統會把「實測沒用的訊號」**默默擋掉**,你看不到也不知道為什麼。現在會在「現在該做什麼」下面告訴你「今天擋掉幾個、分別是什麼、實測數字是多少」。'] },
         { v:'V74.8.7', dt:'2026-09-06', d:['⏱️ 你問「有沒有之前回測過、可以用這種邏輯重測的」—— 有,而且**重測完發現一個清楚的分界**。','⭐ **有真正「反應」的只有一種:跌停後第一根紅K** —— 漲幅**前 5 個交易日就走完 7 成**、**約 20 個交易日到頂**,之後開始回吐,到第 60 天只剩三成。→ 這就是「反應後多久該走」的答案,卡片上已經寫出來了。','➖ 另外兩個(創新高回測不破、向上跳空+高位階)**完全沒有反應時點** —— 前 5 天只走完 2~7%,它們是「一路慢慢漂」。所以⛔ 別期待它們幾天內表態,總覽的提醒也補上了這句。','🚨 順手修掉一個我自己上一版讀反的地方:「事件前 30 天」那一欄的正負號被我讀反了,正確是「股價在事件前就已經往同方向走」,不是反方向。'] },
         { v:'V74.8.6', dt:'2026-09-06', d:['⏱️ 你問「不是應該算出多久反應、多久離場嗎」—— **這個問法是對的,我原本的做法確實不夠好**,所以重做了一次:把公布日前 60 天到後 250 天的走勢**一天一天畫出來**。','📊 答案是:**沒有反應時點**。前 20 天只走完全程的 0~28%,而且七種訊號裡有四種前 20 天是往**反方向**走的。真正在動的是「慢慢漂 250 天」,那不叫反應。','🚨 更關鍵的是:**股價在財報出來之前就已經在往同一個方向走了**,財報那天一點都不特別 —— 那比較像是「這家公司體質本來就比較好/比較差」,不是在反應財報。','⭐ 用「前半段找最好的持有天數、後半段驗」再逐年拆開,七種只剩一種活著(存貨在去化,要抱 194 天),而且一年才多賺約 1.5% —— 那已經是**選股體質**不是進出場時機了。'] },
         { v:'V74.8.5', dt:'2026-09-06', d:['📦 財報資料挖完了(2,351 檔、34 季、回溯 2018),**回測結果:那套「看庫存去化抓落底」的方法不成立**。','🚨 而且他說的「庫存高檔但去化在加快 = 落底訊號」**是全表最差的一格**(−0.41%),8 年裡有 6 年是負的 —— 是穩定地反著,不是運氣。反而「庫存高檔而且還在惡化」是正的。','⛔ 所以這個不做,前端不會顯示。資料留著給以後的回測用。⭐ 順帶修掉一個會讓整張表說謊的錯:對照組沒有按時間對齊,害七種相反的訊號逐年長得一模一樣。'] },
@@ -8395,7 +8396,7 @@ ${list}
         if (state === 'failed' || !provider) {
             const fails = this._getRecentAIFailures(60);
             const failTxt = fails.length ? fails.map(f => `${f.provider}#${f.keyIdx}`).join('·') : '';
-            txt.textContent = failTxt ? `🔴 ${failTxt} 撞 429` : '🔴 三鏈全忙(429)';
+            txt.textContent = failTxt ? `⚠️ ${failTxt} 撞 429` : '⚠️ 三鏈全忙(429)';
             chip.className = 'fixed bottom-20 right-2 z-50 bg-red-900/95 border border-red-600 rounded-full px-2.5 py-1 text-[10px] font-bold shadow-lg backdrop-blur-sm text-red-200 cursor-pointer';
             this._aiStatusDimTimer = setTimeout(() => { chip.classList.add('hidden'); }, 5000);  // 失敗 5 秒可見
             chip.style.opacity = '1';
@@ -8525,7 +8526,7 @@ ${list}
         if (!p || typeof p !== 'string') return p;
         const clause = `【AI 自律條款 — 鐵血決策版】
 - 嚴禁使用模糊詞彙:「可能」「或許」「建議謹慎」「看情況」「一方面...另一方面」「投資人應自行評估」「視情況而定」
-- 必須直接下達操作指令,搭配 🟢(可以買/續抱) / 🟡(觀望/減碼) / 🔴(賣出/避開)
+- 必須直接下達操作指令,搭配 🔴(可以買/續抱) / 🟡(觀望/減碼) / 🟢(賣出/避開)\n- ⚠️ 台股慣例:🔴=漲=偏多、🟢=跌=偏空,⛔ 絕不可反過來用
 - 必須給出具體點位:停利、停損、加碼、突破、跌破 — 數字直接寫,不准用「附近」「左右」「上下」
 - 不准廢話開場:「根據資料」「以下為您分析」「綜合來看」一律刪除,直接進入結論
 
@@ -9829,7 +9830,7 @@ ${list}
                 ${tgt}
                 <!-- ⑤ 分批布局價位 -->
                 <div class="grid grid-cols-3 gap-1.5 mt-2 text-center">
-                    <div class="bg-[#0d1117] rounded py-1"><div class="text-[8px] text-gray-500">🟢 進場參考</div><div class="text-[12px] font-mono font-black text-green-300">${p.entry ?? '—'}</div></div>
+                    <div class="bg-[#0d1117] rounded py-1"><div class="text-[8px] text-gray-500">📍 進場參考</div><div class="text-[12px] font-mono font-black text-green-300">${p.entry ?? '—'}</div></div>
                     <div class="bg-[#0d1117] rounded py-1"><div class="text-[8px] text-gray-500">➕ 加碼(前低)</div><div class="text-[12px] font-mono font-black text-amber-300">${p.add ?? '—'}</div></div>
                     <div class="bg-[#0d1117] rounded py-1"><div class="text-[8px] text-gray-500">🛑 停損</div><div class="text-[12px] font-mono font-black text-red-300">${p.stop ?? '—'}</div></div>
                 </div>
@@ -12561,7 +12562,7 @@ const marginByDate = {};
             }
             // 官方查證連結(非「安全」時都給,帶股名開 Google 直接查官方公告)
             let linkLine = '';
-            if (!(big.startsWith('🟢'))) {
+            if (!(big.startsWith('✅'))) {   // 🐛 V74.8.8 修:原本比 '🟢',但 big 從來沒有 🟢 開頭的分支 = 死條件
                 const nm = (typeof this.getStockName === 'function' ? this.getStockName(sym) : '') || '';
                 const q = encodeURIComponent(`${nm} ${sym} 注意股 處置 證交所 櫃買中心`.trim());
                 linkLine = `<div class="text-[9px] mt-1.5 ${info ? 'text-gray-600' : 'text-orange-400'}">${info ? '✅ 官方公告資料(採礦每日同步)' : '⚠️ 目前僅前端公式推估·非官方'} · <a href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener" class="text-cyan-400 underline">🔗 查官方注意/處置公告</a></div>`;
@@ -12968,7 +12969,7 @@ const marginByDate = {};
                     </div>`
             },
             during: {
-                icon: '🔴', title: '處置中', sub: '5/20 分撮合期間,通常 10 個交易日',
+                icon: '🚨', title: '處置中', sub: '5/20 分撮合期間,通常 10 個交易日',
                 tabActive: 'bg-red-900/30 border-red-500/60 text-red-300',
                 contentBorder: 'border-red-700/40', titleCls: 'text-red-300',
                 tipBox: 'bg-red-900/30 border-red-700/50',
@@ -12984,7 +12985,7 @@ const marginByDate = {};
                     </div>`
             },
             after: {
-                icon: '🟢', title: '處置後', sub: '恢復 5 秒撮合首 5 天',
+                icon: '✅', title: '處置後', sub: '恢復 5 秒撮合首 5 天',
                 tabActive: 'bg-green-900/30 border-green-500/60 text-green-300',
                 contentBorder: 'border-green-700/40', titleCls: 'text-green-300',
                 tipBox: 'bg-green-900/30 border-green-700/50',
@@ -13765,9 +13766,9 @@ const marginByDate = {};
             else if (mgScore > 5) _driver = '散戶退場洗淨';
             this._lastChipClean = { sym, clean, driver: _driver };
             let emo, lbl, cls, bcls;
-            if (clean >= 70) { emo = '🟢'; lbl = '籌碼乾淨'; cls = 'text-red-300'; bcls = 'border-red-500'; }
-            else if (clean >= 45) { emo = '🟡'; lbl = '籌碼普通'; cls = 'text-yellow-300'; bcls = 'border-yellow-500'; }
-            else { emo = '🔴'; lbl = '籌碼凌亂'; cls = 'text-green-300'; bcls = 'border-green-500'; }
+            if (clean >= 70) { emo = '✅'; lbl = '籌碼乾淨'; cls = 'text-red-300'; bcls = 'border-red-500'; }
+            else if (clean >= 45) { emo = '➖'; lbl = '籌碼普通'; cls = 'text-yellow-300'; bcls = 'border-yellow-500'; }
+            else { emo = '⛔'; lbl = '籌碼凌亂'; cls = 'text-green-300'; bcls = 'border-green-500'; }
 
             // ── 量條:三大法人近5日進出(寬=|張|、色=紅買/綠賣;整條同色=一致乾淨,紅綠交雜=亂)──
             const tot = instMag || 1;
@@ -14023,11 +14024,11 @@ const marginByDate = {};
     },
     renderBsiLight() {
         const map = {
-            'blue':         { txt: '🔵 藍燈', sub: '衰退底部 進場長抱', cls: 'text-blue-300',   score: 12 },
-            'yellow-blue':  { txt: '🔷 黃藍', sub: '趨弱震盪 選股謹慎', cls: 'text-cyan-300',   score: 19 },
-            'green':        { txt: '🟢 綠燈', sub: '穩定中性 適合長抱', cls: 'text-green-300',  score: 27 },
-            'yellow-red':   { txt: '🟡 黃紅', sub: '轉強多頭 續強參與', cls: 'text-yellow-300', score: 34 },
-            'red':          { txt: '🔴 紅燈', sub: '過熱泡沫 分批停利', cls: 'text-red-300',    score: 41 },
+            'blue':         { txt: '🔵 官方藍燈', sub: '衰退底部 進場長抱', cls: 'text-blue-300',   score: 12 },
+            'yellow-blue':  { txt: '🔷 官方黃藍', sub: '趨弱震盪 選股謹慎', cls: 'text-cyan-300',   score: 19 },
+            'green':        { txt: '🟢 官方綠燈', sub: '穩定中性 適合長抱', cls: 'text-green-300',  score: 27 },
+            'yellow-red':   { txt: '🟡 官方黃紅', sub: '轉強多頭 續強參與', cls: 'text-yellow-300', score: 34 },
+            'red':          { txt: '🔴 官方紅燈', sub: '過熱泡沫 分批停利', cls: 'text-red-300',    score: 41 },
         };
         // V22.3 — 純自動模式:只讀 _bsiAuto 或 _twBsiLight(已是 _applyAutoBusinessSignal 寫入),不再讀 localStorage
         const v = this._twBsiLight || this._bsiAuto?.light || '';
@@ -14546,9 +14547,9 @@ const marginByDate = {};
                     scoreCls = 'text-yellow-300';
                 }
             } else {
-                verdict = '🟢 主力買超偏多';
+                verdict = '🔴 主力買超偏多';   // 🚨 台股 🔴=漲=偏多(V74.8.8 修:原本寫 🟢,跟紅漲綠跌相反)
                 advice = '5 因子綜合多方 → 主力買超 / 散戶逆向 / 期貨升水(請自行確認 K 線位置)';
-                cardCls = 'bg-gradient-to-br from-green-950/50 to-green-900/20 border-green-700/50';
+                cardCls = 'bg-gradient-to-br from-red-950/50 to-red-900/20 border-red-700/50';
                 scoreCls = 'text-green-300';
             }
         }
@@ -14585,7 +14586,9 @@ const marginByDate = {};
             let vVal = na, vDir = '中性';
             if (typeof vix === 'number') { vVal = vix.toFixed(1); vDir = vix >= 20 ? '偏空' : '中性'; }
             let lVal = na, lDir = '待更新';   // V31.5 — 景氣燈號無資料時顯「待更新」(灰),不偽裝成真的「中性」讀數
-            const lmap = { 'red': ['🔴 紅燈', '偏空'], 'yellow-red': ['🟠 黃紅', '偏空'], 'green': ['🟢 綠燈', '中性'], 'yellow-blue': ['🔵 黃藍', '偏多'], 'blue': ['🔵 藍燈', '偏多'] };
+            // 📌 這是**國發會官方燈號名稱**(紅燈=景氣過熱、綠燈=穩定)—— ⛔ 不可改名(改了使用者查不到官方資料),
+        //    但它跟本站「紅漲綠跌」**完全無關**,顯示時要標「官方燈號」三個字避免混淆。
+        const lmap = { 'red': ['🔴 官方紅燈', '偏空'], 'yellow-red': ['🟠 官方黃紅', '偏空'], 'green': ['🟢 官方綠燈', '中性'], 'yellow-blue': ['🔵 官方黃藍', '偏多'], 'blue': ['🔵 官方藍燈', '偏多'] };
             if (bsiLight && lmap[bsiLight]) { lVal = lmap[bsiLight][0]; lDir = lmap[bsiLight][1]; }
             // 🔼 V33.0 — 籌碼因子日比對 Delta(localStorage 隔日比;同日多次渲染不覆蓋昨日基準)
             //   ▲ 增=紅 / ▼ 減=綠(台股慣例,純數值方向,不代表多空好壞);首次使用無基準則不顯
@@ -15920,8 +15923,9 @@ const marginByDate = {};
         let marginLine = '<span class="text-gray-500">採集中</span>';
         const _mv = (bub && Number.isFinite(+bub['大盤融資餘額_億元'])) ? +bub['大盤融資餘額_億元'] : null;
         if (_mv != null) {
-            const mc = _mv > 3200 ? 'text-red-300' : _mv > 2800 ? 'text-yellow-300' : 'text-green-300';
-            const mtag = _mv > 3200 ? '🔴 過熱' : _mv > 2800 ? '🟡 偏高' : '🟢 安定';
+            // 🚨 燈號鐵則:這是「風險程度」不是漲跌方向 → ⛔ 不用紅綠(V74.8.8 修)
+            const mc = _mv > 3200 ? 'text-orange-400' : _mv > 2800 ? 'text-yellow-300' : 'text-gray-300';
+            const mtag = _mv > 3200 ? '⛔ 過熱' : _mv > 2800 ? '⚠️ 偏高' : '✅ 安定';
             marginLine = `<span class="${mc} font-mono font-bold">${_mv.toLocaleString('en-US', { maximumFractionDigits: 0 })} 億</span> <span class="text-[9px] ${mc}">${mtag}</span>`;
         }
         // 🎯 V43.2 外資現貨連續買/賣超天數 badge
@@ -18478,7 +18482,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 if (vrj <= 0.9 && bpj <= 0.5) { washed = true; break; }
             }
             if (washed) {
-                out.push({ tone: 'bull', title: '🟢 回後買點到了·加碼', val: o,
+                out.push({ tone: 'bull', title: '🔴 回後買點到了·加碼', val: o,
                     msg: `多頭量縮洗盤後,今日<b>帶量紅K</b>(量 ${vr.toFixed(1)}× 均量)站回 5MA、收過昨高=朱式「回後買上漲」臨門一腳,主力重新發動 → <b>加碼點到了</b>,守今日紅K低或 5MA ${ma5.toFixed(2)}。` });
                 return out;
             }
@@ -20552,9 +20556,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (G.length < 4) { el.classList.add('hidden'); el.innerHTML = ''; return; }   // 指標未齊不顯,避免誤導
         const bull = G.filter(x => x.state === 'bull').length, bear = G.filter(x => x.state === 'bear').length;
         let light, verdict, vc, adv;
-        if (bull === 4) { light = '🟢'; verdict = '四大金剛齊發'; vc = 'red'; adv = '四個同方向做多,信度最高;順勢進、守 5MA,跌破就走。'; }
-        else if (bull === 3) { light = '🟢'; verdict = '三金剛偏多'; vc = 'red'; adv = `偏多可留意,補齊缺的「${(G.find(x => x.state !== 'bull') || {}).name || ''}」再進更穩。`; }
-        else if (bear >= 3) { light = '🔴'; verdict = '金剛偏空'; vc = 'green'; adv = '多數金剛翻空,別做多、別接刀;手上有貨顧好停損。'; }
+        if (bull === 4) { light = '🔴'; verdict = '四大金剛齊發'; vc = 'red'; adv = '四個同方向做多,信度最高;順勢進、守 5MA,跌破就走。'; }
+        else if (bull === 3) { light = '🔴'; verdict = '三金剛偏多'; vc = 'red'; adv = `偏多可留意,補齊缺的「${(G.find(x => x.state !== 'bull') || {}).name || ''}」再進更穩。`; }
+        else if (bear >= 3) { light = '🟢'; verdict = '金剛偏空'; vc = 'green'; adv = '多數金剛翻空,別做多、別接刀;手上有貨顧好停損。'; }
         else { light = '🟡'; verdict = '金剛分歧'; vc = 'yellow'; adv = '四大金剛不同調(轉折/盤整),方向不明先觀望,等站齊同方向再動。'; }
         const sc = vc === 'red' ? 'text-red-300' : vc === 'green' ? 'text-green-300' : 'text-yellow-300';
         const bc = vc === 'red' ? 'border-red-500' : vc === 'green' ? 'border-green-500' : 'border-yellow-500';
@@ -20840,13 +20844,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 決策:挑最該講的一個
         let head, sub, cta, cls, big;
         if (hi) {
-            big = '🟢 現在可進場'; head = '回後買上漲・高勝率買點(約8成)'; cls = 'green';
+            big = '🔴 現在可進場'; head = '回後買上漲・高勝率買點(約8成)'; cls = 'red';   // 🚨 台股 🔴=漲=偏多(V74.8.8 修)
             cta = `馬上可進場;進場參考站上 5 日線 ${rt(hi.val).toFixed(2)},停損跌破 5 日線或前低就砍。`; sub = hi.msg;
         } else if (weak) {
             big = '🟡 可小量試單'; head = '回後買上漲・力道偏弱'; cls = 'yellow';
             cta = `站回 5 日線 ${rt(weak.val).toFixed(2)} 了但攻擊力道未滿(紅K/量/過昨高沒到齊)→ 只小量試,等力道齊再加。`; sub = weak.msg;
         } else if (topWarn) {
-            big = '🔴 別買(做頭)'; head = '回後買上漲・做頭不建議'; cls = 'red';
+            big = '🟢 別買(做頭)'; head = '回後買上漲・做頭不建議'; cls = 'green';   // 🚨 台股 🟢=跌=偏空
             cta = `雖回後站上 5 日線,但高檔大量長紅當日平均成本 ${rt(topWarn.val).toFixed(2)} 已被跌破=主力出貨;朱鐵律:此後別再回後買上漲,先觀望。`; sub = topWarn.msg;
         } else if (wait) {
             big = '⏳ 還不是買點・等'; head = '多頭回檔中,等站回 5 日線'; cls = 'gray';
@@ -20954,7 +20958,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const betaTxt = betaOk ? `以它的個性(連動度 ${beta.toFixed(1)})照算會 ${f1(expPct)},實際 ${f1(stkPct)}` : '';
             let tone, bcls, diag, act;
             if (mktPct <= -0.3 && excess <= -0.8 && !grpDown) {
-                tone = '🔴'; bcls = 'border-red-500';
+                tone = '🚨'; bcls = 'border-red-500';
                 diag = `大盤只跌 ${f1(mktPct)}、族群沒跟跌,它卻跌 ${f1(stkPct)} — 這個跌幅<b>用大盤解釋不了,比較像個股自己的消息</b>。`;
                 act = `先查有沒有利空,再決定按停損走或續抱 — 別急著凹、也別亂砍。${askBtn}`;
             } else if (excess <= -0.8 && grpDown) {
@@ -20962,7 +20966,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 diag = `它跌 ${f1(stkPct)} 比大盤(${f1(mktPct)})兇,但同題材也在跌(族群 ${f1(grpPct)}) — <b>是整個題材在退燒,不是它單獨出事</b>。`;
                 act = slPrice ? `守住停損 <b>${slPrice}</b>;題材轉弱時<b>反彈先不加碼</b>,等族群止穩再說。` : `題材轉弱時反彈先不加碼,等族群止穩再說。`;
             } else if (mktPct <= -0.3 && stkPct <= 0.2) {
-                tone = '🟢'; bcls = 'border-green-500';
+                tone = '✅'; bcls = 'border-green-500';
                 diag = `大盤跌 ${f1(mktPct)}${grpDown ? `、族群也跌 ${f1(grpPct)}` : ''} — ${betaTxt ? betaTxt + (excess >= 0.8 ? ',<b>比照算的抗跌,有買盤默默在接</b>' : ',屬正常反應') : `它 ${f1(stkPct)} 與大盤同向`}。<b>是大盤的錯,不是它的錯</b>。`;
                 act = slPrice ? `只要顧一件事:<b>停損 ${slPrice} 沒破就抱著</b>,別被大盤嚇出場。` : `按上方主卡的紀律走,不用因大盤恐慌。`;
             } else if (mktPct >= 0.3 && excess <= -0.8) {
@@ -21344,8 +21348,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { const rg = this._detectMarketRegime?.(); if (rg) { regime = rg.regime; overheat = !!rg.overheat; } } catch (_) {}
         let grade, gcls, gbar, names, note;
         // 🎯 V68.1.3 共振門檻拉高:A+ 級不只要 4 個多方訊號 + 零反向,還要「大盤不是空頭」才成立(下方 regime gate 把逆風的 A+ 降級)
-        if (nb >= 4 && ns === 0) { grade = '🟢 A+ 級買點共振'; gcls = 'text-red-300'; gbar = 'border-red-500 bg-red-900/25'; names = reso.bull; note = '多個獨立策略同時看多、且無反向訊號 → 這是最高信度的買點,回檔就是機會。仍守停損。'; }
-        else if (nb >= 3 && ns <= 1) { grade = '🟢 A 級買點共振'; gcls = 'text-red-300'; gbar = 'border-red-500 bg-red-900/15'; names = reso.bull; note = '多個策略同向看多 → 高信度買點,順勢做、守停損。'; }
+        if (nb >= 4 && ns === 0) { grade = '🔴 A+ 級買點共振'; gcls = 'text-red-300'; gbar = 'border-red-500 bg-red-900/25'; names = reso.bull; note = '多個獨立策略同時看多、且無反向訊號 → 這是最高信度的買點,回檔就是機會。仍守停損。'; }
+        else if (nb >= 3 && ns <= 1) { grade = '🔴 A 級買點共振'; gcls = 'text-red-300'; gbar = 'border-red-500 bg-red-900/15'; names = reso.bull; note = '多個策略同向看多 → 高信度買點,順勢做、守停損。'; }
         else if (ns >= 3 && nb === 0) { grade = '⛔ 逃頂共振·高危'; gcls = 'text-green-300'; gbar = 'border-green-500 bg-green-900/25'; names = reso.bear; note = '多個賣訊/風險同時亮 → 逃命訊號,持股快出、空手勿接刀。'; }
         else if (ns >= 2 && nb <= 1) { grade = '🟢 偏空共振'; gcls = 'text-green-300'; gbar = 'border-green-500 bg-green-900/15'; names = reso.bear; note = '風險訊號偏多 → 保守、減碼,別追。'; }
         else if (nb >= 2 && ns === 0) { grade = '🟡 偏多共振'; gcls = 'text-red-300'; gbar = 'border-yellow-500 bg-yellow-900/10'; names = reso.bull; note = '兩個策略看多,信度中上 → 可留意,等再多一個訊號更穩。'; }
@@ -22210,7 +22214,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (yoy != null && yoy >= 20) fuel += 2; else if (yoy != null && yoy >= 5) fuel += 1;
         if (recHigh) fuel += 1;
         if (inst.instLots10 > 0 && inst.instDays >= 5) fuel += 1;
-        const lamp = fuel >= 4 ? { e: '🟢', t: '燃料飽', c: 'text-red-300' } : fuel >= 2 ? { e: '🟡', t: '燃料部分', c: 'text-yellow-300' } : { e: '🔴', t: '燃料不足', c: 'text-gray-400' };
+        const lamp = fuel >= 4 ? { e: '✅', t: '燃料飽', c: 'text-amber-300' } : fuel >= 2 ? { e: '⚠️', t: '燃料部分', c: 'text-yellow-300' } : { e: '⛔', t: '燃料不足', c: 'text-gray-400' };
         const bits = [];
         if (tri) bits.push(tri);
         if (yoy != null) bits.push(`營收YoY ${yoy >= 0 ? '+' : ''}${yoy.toFixed(0)}%`);
@@ -22584,7 +22588,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 else if (trend === 'bear') { big = '🚪 建議離場'; cls = 'text-orange-400'; why = '這檔已翻空頭,抱著越套越深 → 反彈到 5 日線先減碼,別加碼攤平。'; if (slF) prices.push(['跌破全出', nf(slF)]); }
                 else if (tpS && cur < tpS) { big = '🟡 警戒・先減碼'; cls = 'text-yellow-400'; why = pnlPct > 0 ? '短線轉弱(破 5 日線)→ 先把一半獲利落袋,剩的讓它跑。' : '短線轉弱(破 5 日線)→ 別加碼攤平,守好停損。'; if (slF) prices.push(['跌破全出', nf(slF)]); if (tpS) prices.push(['站回轉強', nf(tpS)]); }
                 else if (score >= 62 && trend === 'bull') { big = '🔴 續抱・可考慮加碼'; cls = 'text-red-300'; why = '趨勢與總評都站你這邊 → 續抱;回測月線不破 + 出紅K 可加碼一次(總部位別超原規劃)。'; if (tpS) prices.push(['停利', `跌破 ${nf(tpS)} 賣一半`]); if (slF) prices.push(['停損', nf(slF)]); }
-                else { big = '🟢 續抱・守好停損'; cls = 'text-red-300'; why = '漲勢沒壞就別亂動,掛好下面停利停損兩張單,不用整天盯盤。'; if (tpS) prices.push(['停利', `跌破 ${nf(tpS)} 賣一半`]); if (slF) prices.push(['停損', nf(slF)]); }
+                else { big = '🔴 續抱・守好停損'; cls = 'text-red-300'; why = '漲勢沒壞就別亂動,掛好下面停利停損兩張單,不用整天盯盤。'; if (tpS) prices.push(['停利', `跌破 ${nf(tpS)} 賣一半`]); if (slF) prices.push(['停損', nf(slF)]); }
             } else {
                 posLine = `📊 現價 <b class="font-mono text-gray-100">${nf(cur)}</b><span class="text-[9px] text-gray-500">(${priceNote})</span> ｜ 你未持有這檔 ｜ ${today}`;
                 if (trend === 'bear') { big = '⛔ 別買(空頭)'; cls = 'text-green-400'; why = '這檔在空頭,現在買=接下墜的刀;等站回月線且不再創新低再考慮。'; if (ma20) prices.push(['站回才考慮', nf(ma20)]); }
@@ -23003,10 +23007,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             light = '🟡'; verdict = '訊號分歧・觀望'; vColor = 'yellow';
             action = '多空訊號同時出現(主力可能正在換手),方向不明先別進,等突破或跌破關鍵價再動。';
         } else if (score >= 65) {
-            light = '🟢'; verdict = '偏多・可留意進場'; vColor = 'red';
+            light = '🔴'; verdict = '偏多・可留意進場'; vColor = 'red';
             action = '型態偏多可分批試單(別一次全押),買進就設停損:跌破5日線或前一根低點先退,賺了沿5日線抱。';
         } else if (score <= 38) {
-            light = '🔴'; verdict = '偏空・不宜進場'; vColor = 'green';
+            light = '🟢'; verdict = '偏空・不宜進場'; vColor = 'green';
             action = '目前偏空,不要進場接刀(接到下跌中的股票像接掉下來的刀子);手上有貨的人留意停利停損,別凹單。';
         } else {
             light = '🟡'; verdict = '中性・再等等'; vColor = 'yellow';
@@ -25136,7 +25140,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="text-[12px] font-black text-gray-100 mb-1.5 flex items-center gap-1">🔄 主力異動 <span class="text-[9px] text-cyan-300 font-normal">昨日 ${md(yest.d)} → 今日 ${md(today.d)} · 真實逐日比對</span></div>
                 ${anyMove ? `<div class="flex flex-col gap-1.5">${fledRows}${stoppedRows}${addRows}${freshRows}</div>`
                     : `<div class="bg-[#0d1117] border-l-4 border-green-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-green-200/90 leading-relaxed">🟢 昨日的主力今日大多沒跑,無明顯落跑/倒貨,籌碼穩。</div></div>`}
-                <div class="text-[8px] text-gray-600 mt-1.5 leading-relaxed">🔴跑了=昨日買、今日翻賣 ・ 🟡停手=昨買今沒動作 ・ 🟢新進=今日新買昨沒買 ・ 🔵加碼=昨買今續加。點券商名看它全市場買賣;@=買賣均價。純公式非投資建議。</div>
+                <div class="text-[8px] text-gray-600 mt-1.5 leading-relaxed">⚠️跑了=昨日買、今日翻賣 ・ ➖停手=昨買今沒動作 ・ ✅新進=今日新買昨沒買 ・ ➕加碼=昨買今續加。點券商名看它全市場買賣;@=買賣均價。純公式非投資建議。</div>
             </div>`;
         } else {
             const p1 = P['1d'], p5m = P['5d'];
@@ -25160,7 +25164,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     <div class="text-[12px] font-black text-gray-100 mb-1.5 flex items-center gap-1">🔄 主力異動 <span class="text-[9px] text-gray-500 font-normal">今日 vs 近5日 · 誰跑了/誰新進</span></div>
                     ${anyMove ? `<div class="flex flex-col gap-1.5">${fledRows}${pausedRows}${freshRows}</div>`
                         : `<div class="bg-[#0d1117] border-l-4 border-green-600 pl-2.5 py-2 rounded-r"><div class="text-[10px] text-green-200/90 leading-relaxed">🟢 近5日買超的主力今日大多還在,無明顯落跑/倒貨,籌碼穩。</div></div>`}
-                    <div class="text-[8px] text-gray-600 mt-1.5 leading-relaxed">🔴落跑=近5日買超大咖今日翻賣(開始出貨) ・ 🟡停手=近5日買、今日沒加碼 ・ 🟢新進=今日新買近5日沒在買。點券商名看它全市場買賣;@=買賣均價。用「今日 vs 近5日累積」比對(分點無逐日史),純公式非投資建議。</div>
+                    <div class="text-[8px] text-gray-600 mt-1.5 leading-relaxed">⚠️落跑=近5日買超大咖今日翻賣(開始出貨) ・ ➖停手=近5日買、今日沒加碼 ・ ✅新進=今日新買近5日沒在買。點券商名看它全市場買賣;@=買賣均價。用「今日 vs 近5日累積」比對(分點無逐日史),純公式非投資建議。</div>
                 </div>`;
             }
         }
@@ -25612,7 +25616,7 @@ ${lightExplain[queryType]}
 【你的任務】
 1. 先用1句話判斷：目前數據是否符合上述訊號？（符合/部分符合/不符合）
 2. 給出具體的「支撐價」與「壓力價」數字（從均線和高低點推算，不要含糊說「附近」）
-3. 最後一定要用「🟢 進場條件」或「🟡 繼續觀察」或「🔴 停損出場」其中一個下操作指令，並說明理由
+3. 最後一定要用「🔴 進場條件」或「🟡 繼續觀察」或「🟢 停損出場」其中一個下操作指令，並說明理由(⚠️ 台股 🔴=漲 🟢=跌，⛔ 別用反)
 4. 全文不超過180字，禁止廢話，散戶看完必須知道要做什麼
 
 記住：你是老師，要讓完全不懂技術分析的散戶讀完就會操作。`;
@@ -26131,7 +26135,7 @@ ${lightExplain[queryType]}
                 }
                 else if (_downs === 3) {
                     if (qoqUps >= 2) triV = { tone: 'warn', icon: '⚙️', txt: '三率落底·近季回升', desc: '拉長 3 季三率仍偏弱,但「最近一季」多數回升 → 可能落底轉折,留意能否連兩季站回,別太早喊反轉。' };
-                    else triV = { tone: 'bear', icon: '🔴', txt: '三率三降', desc: '三率同步下滑、最近一季續弱 = 獲利能力全面惡化,基本面轉弱要警覺' };
+                    else triV = { tone: 'bear', icon: '🟢', txt: '三率三降', desc: '三率同步下滑、最近一季續弱 = 獲利能力全面惡化,基本面轉弱要警覺' };
                 }
                 else if (_ups === 2)   triV = { tone: 'warn', icon: '⚠️', txt: '二升一降', desc: `三率 2 升 1 降,改善中但有隱憂 — 掉的是「${_known.find(t => t.dir < 0)?.name || '某率'}」要留意` };
                 else                   triV = { tone: 'flat', icon: '⚖️', txt: '升降互見', desc: '三率方向分歧,獲利結構待觀察,別只看單一率' };
@@ -29216,11 +29220,31 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         ],
         // ✅ 進場/加碼白名單:🧬 高位階 + 高波動
         gene: { pos: 75, amp: 3.2 },
-        // ⛔ 黑名單:實測沒用 / 方向跟江湖說法相反的 —— 即使今天觸發也**靜默過濾**,不進行動計畫
-        blocked: [/低檔布局/, /撿便宜/, /補漲/, /布林(壓縮|收斂)/, /夾娃娃/, /連量/, /地緣分點/,
-                  /推估成本/, /投量比/, /跌破月線就(停|賣|出)/, /隔日沖勝率/],
+        // ⛔ 黑名單:實測沒用 / 方向跟江湖說法相反的 —— 即使今天觸發也不進行動計畫
+        // 🚨 V74.8.8 起**不再靜默過濾** —— 每一條都要說得出「為什麼被擋」+ 實測數字。
+        //   理由:本專案自己的鐵則就是「任何守門把東西擋掉都要寫原因」(陷阱 #22),
+        //   而且⛔ 靜默擋掉會讓使用者以為「今天沒訊號」,他就跑去別的地方學了再回來問。
+        //   ⛔ why 一律要有數字與來源探針,⛔ 不可只寫「實測沒用」。
+        blocked: [
+            { re: /低檔布局/,          k: '低檔布局',   why: '10/20/60 日全是負的(−0.15/−0.25/−0.58pp,16,358 筆)—— 便宜本身不是買進理由', s: 'playbook_backtest' },
+            { re: /撿便宜/,            k: '撿便宜',     why: '位階低檔(≤25%)實測 −0.63pp;127 個選股條件裡「追強」全面贏「抄底」', s: 'screener_edge_probe' },
+            { re: /補漲/,              k: '補漲',       why: '在強勢板塊裡挑最弱的 −0.40pp,而且**逐年全負**(挑最強的才是 +1.34pp)', s: 'sector_pick_probe' },
+            { re: /布林(壓縮|收斂)/,   k: '布林壓縮',   why: '帶寬自身最低 20% 是全表最差(−0.89pp),方向跟坊間說法**相反**', s: 'kobo_probe' },
+            { re: /夾娃娃/,            k: '夾娃娃',     why: '同上(布林壓縮的別名)——「壓縮後會噴出」實測不成立', s: 'kobo_probe' },
+            { re: /連量/,              k: '盤中連量',   why: '測過兩次都不成立:日線版只差 +0.14pp;真分K版勝率 18~32%(對照組 49~52%)', s: 'volstall/volseq_probe' },
+            { re: /地緣分點/,          k: '地緣分點',   why: '+0.01pp(n=110,100),排除雙北 −0.07pp,前後半都不同向', s: 'broker_skill_probe' },
+            { re: /推估成本/,          k: '法人推估成本', why: '站上/跌破都在 ±0.2pp 內,六道關卡 0 個通過', s: 'instcost_probe' },
+            { re: /投量比/,            k: '投量比',     why: '六關 0 過;而且坊間說的「>10%」反而是全部買超桶裡**最弱**的一格', s: 'trustvol_probe' },
+            { re: /跌破月線就(停|賣|出)/, k: '跌破月線就停損', why: '只比沒跌破差 0.11pp,而且 **10 日內 69% 會站回** —— 砍了多半是白砍', s: 'ma20_probe' },
+            { re: /隔日沖勝率/,        k: '隔日沖勝率', why: '碰得到 ≠ 賺得到:碰 +1.5% 機率 53~72%,但用做得到的出法扣成本後全負', s: 'dtflip_probe' },
+        ],
     },
-    _ovBlocked(txt) { try { return this._EDGE_RULES.blocked.some(re => re.test(String(txt || ''))); } catch (_) { return false; } },
+    _ovBlocked(txt) { return !!this._ovBlockWhy(txt); },
+    /** ⛔ 被黑名單擋下的原因(⛔ 沒有就回 null)—— 給「說出來」用,⛔ 不再靜默 */
+    _ovBlockWhy(txt) {
+        try { return this._EDGE_RULES.blocked.find(b => b.re.test(String(txt || ''))) || null; }
+        catch (_) { return null; }
+    },
     _exitEdgeOf(k) {
         try {
             const E = this._EXIT_EDGE;
@@ -29278,13 +29302,20 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 ck = this._ecCache.r;
             } catch (_) {}
             // 期望值為正、而且不在黑名單的看多訊號(⛔ 「常對但不賺」不算數)
-            const provenBull = (((ck && ck.proven) || [])
-                .filter(x => x && x.tone === 'bull' && x._e && x._e.exp > 0 && !this._ovBlocked(x.title)));
+            // 🚨 V74.8.8:被擋掉的**要記下來說出去**,⛔ 不再靜默(陷阱 #22:守門擋掉東西一定要寫原因)
+            const blkMap = new Map();
+            const keepUnblocked = (arr, key) => (arr || []).filter(x => {
+                const b = this._ovBlockWhy(x && x[key]);
+                if (b) { blkMap.set(b.k, b); return false; }
+                return true;
+            });
+            const provenBull = keepUnblocked(
+                ((ck && ck.proven) || []).filter(x => x && x.tone === 'bull' && x._e && x._e.exp > 0), 'title');
             // ── ⚠️ Block B:預警(只收負面 / 重大事件)──
             const alerts = [];
             broken.forEach(x => alerts.push({ ic: '🚨', t: `已經${x.lbl}(${x.v.toFixed(2)})`, sub: '這是你設定的出場規則 —— 出場提醒與自動下單也用這一條' }));
             brokenOther.slice(0, 2).forEach(x => alerts.push({ ic: '⚠️', t: `另一條出場線也破了:${x.lbl}(${x.v.toFixed(2)})`, sub: '⛔ 不是你設定的那條,列出來只是讓你知道' }));
-            (((ck && ck.bullets) || []).filter(b => b && b.good === false && !this._ovBlocked(b.txt)))
+            keepUnblocked(((ck && ck.bullets) || []).filter(b => b && b.good === false), 'txt')
                 .slice(0, 4).forEach(b => alerts.push({ ic: '⚠️', t: String(b.txt) }));
             if (bear) alerts.push({ ic: '⚠️', t: '中期趨勢是空頭', sub: '反彈是給你出場用的,⛔ 不是進場理由' });
             try {   // 官方注意/處置(⛔ 事實,不是推估 —— 讀啟動時載入的全域名單)
@@ -29444,7 +29475,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             if (ck && ck.verdict) parts.push(`進場體檢 <b>${ck.verdict}</b>(${ck.score} 分)`);
             if (gene) parts.push(gene.ok ? '符合 🧬 高位階+高波動' : '不符合 🧬');
             const summary = parts.join(' ・ ');
-            return { badge, cls, why, held, cost, shares, pnlPct, pnlAmt, pC, alerts, plan, summary, unknown, state, lines, gene };
+            const blocked = [...blkMap.values()];
+            return { badge, cls, why, held, cost, shares, pnlPct, pnlAmt, pC, alerts, plan, summary, unknown, state, lines, gene, blocked };
         } catch (_) { return null; }
     },
     // ⏳ V74.7.2 指標還沒算好時的誠實佔位 —— ⛔ 不可留白畫面
@@ -29524,7 +29556,17 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 : `<ul class="space-y-1.5">${d.plan.map(p => `<li class="text-[11px] text-gray-100 leading-snug">📍 ${p.t}
                      ${p.money != null ? `<span class="block text-[10px] ml-4">賣在這裡 ${money(p.money)}</span>` : ''}
                      ${p.sub ? `<span class="block text-[9px] text-gray-500 ml-4">${p.sub}</span>` : ''}</li>`).join('')}</ul>`)
-            + `<div class="text-[9px] text-gray-600 mt-1.5 leading-snug">🔒 只採用<b>實測有效</b>的規則;實測沒用的(低檔布局、補漲、布林壓縮…)即使今天觸發也<b>不會</b>出現在這裡。</div></div>`;
+            + ((d.blocked && d.blocked.length)
+                // 🚨 有擋到 → 說出**擋掉哪幾個、為什麼**(⛔ 不可靜默 —— 使用者會以為今天沒訊號)
+                //   ⛔ 這裡不用紅綠(那是「有沒有用」不是漲跌方向,燈號鐵則)
+                ? `<details class="mt-1.5"><summary class="text-[9px] text-amber-400/80 cursor-pointer list-none">⛔ 今天有 <b>${d.blocked.length}</b> 個訊號被擋掉了(點看為什麼)</summary>
+                     <ul class="mt-1 space-y-1">${d.blocked.map(b => `<li class="text-[9px] text-gray-400 leading-snug">
+                       ⛔ <b class="text-gray-300">${b.k}</b> —— ${b.why}
+                       <span class="text-gray-600">(${b.s})</span></li>`).join('')}</ul>
+                     <div class="text-[9px] text-gray-600 mt-1">⭐ 擋掉<b>不是</b>說它今天沒發生,是說「本站實測過、照它做並不會賺」。完整實測表在產業作戰室。</div>
+                   </details>`
+                : `<div class="text-[9px] text-gray-600 mt-1.5 leading-snug">🔒 只採用<b>實測有效</b>的規則;實測沒用的(低檔布局、補漲、布林壓縮…)即使今天觸發也<b>不會</b>出現在這裡。</div>`)
+            + `</div>`;
         // ── D 判讀 ──
         const D = d.summary ? `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
             <div class="text-[11px] font-black text-gray-200 mb-1">🧠 系統怎麼判的</div>
@@ -29765,7 +29807,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     if (pnlPct > 0) rules.push('🔻 現在 → 先賣一半,鎖住獲利');
                     if (slF != null) rules.push(`🔻 再跌破 ${nfP(slF)} → 全部出場`);
                     rules.push(`🔺 站回${effLineLbl} ${nfP(effTpS)} → 解除警戒,續抱`);
-                } else { big = '🟢 續抱'; bigCls = 'text-red-400'; cmdBorder = 'border-green-500'; gridMode = 'full';
+                } else { big = '🔴 續抱'; bigCls = 'text-red-400'; cmdBorder = 'border-red-500'; gridMode = 'full';
                     why = _isSwing && tpS != null && C < tpS
                         ? `你做<b>波段</b>,雖然跌破 5 日線 ${nfP(tpS)},但<b>月線 ${nfP(effTpS)} 還沒破</b> → 這只是短線回檔,續抱、別被洗出場(要改嚴一點就切「短線」)。`
                         : bias20 > 15
@@ -31495,7 +31537,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const gateWarn = gateHold
             ? `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-2 mb-2">
                 <div class="text-[10px] font-bold text-yellow-300 mb-0.5">⏸️ 進場面判定目前是「${_av.big}」→ 此計畫先別執行</div>
-                <div class="text-[10px] text-gray-300 leading-relaxed">下面三批價是照「發動K劇本」預先算好的作戰地圖;等頂部「📈 趨勢照表操課」轉 🟢 可進場再照表操作,現在先鎖股觀察。</div>
+                <div class="text-[10px] text-gray-300 leading-relaxed">下面三批價是照「發動K劇本」預先算好的作戰地圖;等頂部「📈 趨勢照表操課」轉 🔴 可進場再照表操作,現在先鎖股觀察。</div>
             </div>`
             : '';
         // ⛔ V69.7.1 出場管理守門(主結論最大):持有中且主結論=出場/反彈再出 → 整張分批計畫收起,
@@ -35790,9 +35832,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const high60 = Math.max(...data.slice(-60).map(d => d.high));
         const foldRatio = high60 > 0 ? (pC / high60) : 0;
         out.foldPct = (foldRatio * 10).toFixed(2);
-        out.foldZone = foldRatio >= 0.95 ? '🔴 高檔過熱區（近頂，嚴防追高）'
-                     : foldRatio >= 0.85 ? '🟡 85折強勢區（飆股黃金回檔觀察帶）'
-                     : foldRatio >= 0.75 ? '🟢 75折深水支撐區（一般股月線支撐帶）'
+        // 🚨 燈號鐵則:這是「位階風險」不是漲跌方向 → ⛔ 不用紅綠(V74.8.8 修)
+        out.foldZone = foldRatio >= 0.95 ? '⚠️ 高檔過熱區（近頂，嚴防追高）'
+                     : foldRatio >= 0.85 ? '➖ 85折強勢區（飆股黃金回檔觀察帶）'
+                     : foldRatio >= 0.75 ? '✅ 75折深水支撐區（一般股月線支撐帶）'
                      : '⛔ 跌深轉空區（跌深非買點，等確認訊號）';
 
         // ── 三盞明燈發動信號 ──
@@ -37593,7 +37636,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
     // 📖 V41.33 — 四大金剛白話教學(小白:怎麼用這張卡)
     showGuardianHelp() {
-        alert('⚡ 朱老師四大金剛 — 怎麼用(小白版)\n\n朱老師說:看盤不要只看一個指標,要「四個一起看」,四個同方向才可靠。這張卡就是自動幫你檢查這四個:\n\n👑 趨勢:是不是「頭頭高、底底高」= 多頭波段(反之頭頭低底底低=空頭)。先定方向。\n📈 均線:是不是「多頭排列」MA5>MA10>MA20>MA60、月線上揚。\n🕯️ K線:今天有沒有強勢發動棒(長紅破昨高)或轉折K(晨星/吞噬)。\n📊 成交量:漲有沒有帶量(價漲量增=真);還是量價背離(漲沒量=假)。\n\n🚦 怎麼判讀(看下面那行燈號):\n  🟢 四大金剛齊發(多4)= 信度最高,順勢進、守 5MA,跌破就走。\n  🟢 三金剛偏多 = 可留意,補齊缺的那個更穩。\n  🟡 分歧 = 四個不同調(轉折/盤整),方向不明先觀望。\n  🔴 金剛偏空 = 別做多、別接刀,有貨顧好停損。\n\n💡 台股色:紅=偏多、綠=偏空。純公式算的事實,不是叫你一定要買賣,是幫你「四個面向一次看齊」。');
+        alert('⚡ 朱老師四大金剛 — 怎麼用(小白版)\n\n朱老師說:看盤不要只看一個指標,要「四個一起看」,四個同方向才可靠。這張卡就是自動幫你檢查這四個:\n\n👑 趨勢:是不是「頭頭高、底底高」= 多頭波段(反之頭頭低底底低=空頭)。先定方向。\n📈 均線:是不是「多頭排列」MA5>MA10>MA20>MA60、月線上揚。\n🕯️ K線:今天有沒有強勢發動棒(長紅破昨高)或轉折K(晨星/吞噬)。\n📊 成交量:漲有沒有帶量(價漲量增=真);還是量價背離(漲沒量=假)。\n\n🚦 怎麼判讀(看下面那行燈號):\n  🔴 四大金剛齊發(多4)= 信度最高,順勢進、守 5MA,跌破就走。\n  🔴 三金剛偏多 = 可留意,補齊缺的那個更穩。\n  🟡 分歧 = 四個不同調(轉折/盤整),方向不明先觀望。\n  🟢 金剛偏空 = 別做多、別接刀,有貨顧好停損。\n\n💡 台股色:紅=偏多、綠=偏空。純公式算的事實,不是叫你一定要買賣,是幫你「四個面向一次看齊」。');
     },
 
     // 📖 V41.33 — K棒戰法白話教學
@@ -38788,7 +38831,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <span class="text-[10px] ${sc}">${vWord}</span>
                 <span class="font-mono text-[13px] font-black ${sc} text-right w-[40px]">${r.score}</span>
             </div>`;
-        }).join('') + `<div class="text-[9px] text-gray-600 mt-1.5 leading-snug">分數=進場友善度 0-100・🟢偏多🟡觀望🔴偏空・<b class="text-amber-400/80">ETF 改看「趨勢」(型態偵測對 ETF 較不精準)</b>・純公式僅供參考,進場務必設停損</div>`;
+        }).join('') + `<div class="text-[9px] text-gray-600 mt-1.5 leading-snug">分數=進場友善度 0-100・🔴偏多➖觀望🟢偏空・<b class="text-amber-400/80">ETF 改看「趨勢」(型態偵測對 ETF 較不精準)</b>・純公式僅供參考,進場務必設停損</div>`;
     },
 
 
