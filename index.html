@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.8.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.9.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -720,7 +720,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.8.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.9.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7753,8 +7753,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.8.9',
+    _APP_VERSION: 'V74.9.0',
     _CHANGELOG: [
+        { v:'V74.9.0', dt:'2026-09-06', d:['🧹 你說「選股策略那面太多,把實測後沒有用的都刪除」—— **23 個榜精簡成 10 個**。','⭐ 實測沒有優勢的 13 個(外資連買/投信連買/雙主力/主力鎖股/大戶吃貨/低基期/跌深績優/錯殺便宜/送分題/烏龜過河/口袋支點/營收動能/潛力黑馬)收進左欄最下面的「📉 實測沒優勢」。','⛔ **刻意收起來不是從程式碼刪掉** —— 刪了你會以為沒這回事、跑去別處學了再回來問。點開仍然看得到,而且每一個都寫出**它是被哪一個實測打掉的、數字多少**(例:外資大買佔量比 ≥20% 只有 0.64 倍,比隨便挑一天還低)。','🎯 主清單只留有實測背書或當工具用的:會賺訊號・當沖雷達・渣男賽車・妖股雷達・相對強度・K棒轉多/轉空・處置股(避雷)・題材脈動・AI 鏈。','🫧 產業作戰室板塊輪動的**泡泡大小改成「那一族當天的成交金額」**(以前是成員檔數,那是固定值、既不會動也不帶判斷價值)→ 現在拉時間軸泡泡會跟著脹縮,一眼看得出錢跑到哪一族。⛔ 圖例有寫「泡泡大不等於值得買」。','🔬 實測總表:副標拿掉、**搜尋框搬到標題列**(一進來就看得到);主題標籤改成**搜尋的時候才出現**,平常不佔第一屏。']},
         { v:'V74.8.9', dt:'2026-09-06', d:['🪟 你問「有沒有做事件觸發的彈跳視窗」—— **原本沒有**,現在做了,但**只給該打斷你的那一種**。','⭐ 停損、出場、平倉倒數、處置這類會**彈視窗**(錯過就住套房);買點、點火、共振這類只出一條 toast(錯過還有下一次)。那不是我挑的,是實測:勝率只有三成,整套會賺完全靠「錯的時候小賠出場」。','🚨 順手修掉一個很嚴重的:以前**沒開通知權限的話,事件觸發了畫面上完全沒反應** —— 現在一定看得到。','🚧 防吵:同一件事一天只跳一次(不然股價在門檻上下來回會連跳);而且視窗上會告訴你「為什麼這件事值得打斷你」,附實測數字。'] },
         { v:'V74.8.8', dt:'2026-09-06', d:['🚦 你說「紅漲綠跌會搞混」—— **你是對的,而且 App 裡真的有反的**。全面掃過之後修了 **29 處**,最嚴重的那幾個是把「可進場/續抱/偏多」配成綠色 —— 台股綠色是跌,那樣會直接看反。','🎨 現在規則統一了:**紅綠只用來講漲跌方向**;講「好不好、安不安全」一律改用 ✅ 安全 ・⚠️ 注意 ・⛔ 危險 ・➖ 中性 ・📍 位置。像「燃料飽 / 籌碼乾淨 / 融資過熱」那些都換掉了。','📌 只有一個例外:國發會的「景氣對策信號」是官方名稱,不能改名 —— 所以在它前面加了「官方」兩個字,讓你一眼分得出來那跟漲跌無關。','⛔ 另外做了一件事:以前系統會把「實測沒用的訊號」**默默擋掉**,你看不到也不知道為什麼。現在會在「現在該做什麼」下面告訴你「今天擋掉幾個、分別是什麼、實測數字是多少」。'] },
         { v:'V74.8.7', dt:'2026-09-06', d:['⏱️ 你問「有沒有之前回測過、可以用這種邏輯重測的」—— 有,而且**重測完發現一個清楚的分界**。','⭐ **有真正「反應」的只有一種:跌停後第一根紅K** —— 漲幅**前 5 個交易日就走完 7 成**、**約 20 個交易日到頂**,之後開始回吐,到第 60 天只剩三成。→ 這就是「反應後多久該走」的答案,卡片上已經寫出來了。','➖ 另外兩個(創新高回測不破、向上跳空+高位階)**完全沒有反應時點** —— 前 5 天只走完 2~7%,它們是「一路慢慢漂」。所以⛔ 別期待它們幾天內表態,總覽的提醒也補上了這句。','🚨 順手修掉一個我自己上一版讀反的地方:「事件前 30 天」那一欄的正負號被我讀反了,正確是「股價在事件前就已經往同方向走」,不是反方向。'] },
@@ -39799,6 +39800,29 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     radarMatrix: null,
     _radarIsDemo: false,
 
+    // 🧹 V74.9.0 選股榜「實測降級」清單(使用者:「把實測後沒有用都刪除」)
+    // ⛔ 刻意用「收進摺疊」而不是從程式碼刪掉 —— 同 `_SIGNAL_EDGE` 對 C 級、V74.1.7 `_TIDY` 的處置:
+    //    刪掉的話使用者會以為沒這回事,跑去別處學了再回來問;收起來 + 把實測數字寫上去,
+    //    他才知道「這招我試過了,而且是實測沒有優勢」。要真刪只要把這裡的條目拿掉 tab 就會回主清單。
+    // ⚠️ 每一條都必須有「實測數字 + 來源探針」(⛔ 沒有數字的意見不准列進來)。
+    _RADAR_WEAK: {
+        layup:     { why: '「至少 2 招共振」實測**少賺 50 萬**(+858,533 vs 不加濾網 +1,361,088 元,同一套配置)', s: 'portfolio_backtest' },
+        swing:     { why: '「站上月線」全市場只有 **+0.25pp**(≈0);法人連買那半實測 **0.64x**(比隨便挑一天還低)', s: 'screener_edge_probe / limitup_probe' },
+        sniper:    { why: '分點集中度**買賣兩端都是負的**(前5大買超佔量最高 10% → 20 日 **−0.60pp**)= 活躍度不是方向', s: 'chips_deep_probe' },
+        pocket_pivot: { why: '**從來沒有回測過** —— 它是國外書上的招,本站沒有它的成績單', s: '(未驗證)' },
+        foreign3:  { why: '外資當日買超佔量比 ≥20% → 隔日漲停機率只有 **0.64x**(比隨便挑一天還低);近 5 日買超 ≥15% 更低 **0.59x**', s: 'limitup_probe' },
+        trust3:    { why: '投信重壓 ≥10% → **0.52x**;投量比七個桶**六關 0 過**,而且**投信賣超也是正的**(活躍度不是方向)', s: 'limitup_probe / trustvol_probe' },
+        dual:      { why: '外資+投信**同買** → **0.80x**,比單獨看還低', s: 'limitup_probe' },
+        revenue:   { why: '營收 YoY ≥50% 只有 **1.59x**,而且**扣掉成本後是負的**(−0.46 ~ −0.63%)', s: 'limitup_probe' },
+        tdcceat:   { why: '104 週深歷史重測:大戶↑散戶↓ 跟**反方向**那格 60 日只差 **0.12pp**;股東人數那條邊際**重測後消失且方向反轉**', s: 'tdcc_probe / tdcc_matrix_probe' },
+        lowbase:   { why: '位階低檔(≤25%)**−0.63pp**、創一年新低 **−0.67pp**;「低檔布局」10/20/60 日**全負**(−0.15/−0.25/−0.58pp,16,358 筆)', s: 'screener_edge_probe / playbook_backtest' },
+        divergent: { why: '同上,跌深型。全站 127 條件實測的結論是**追強 > 抄底**(位階高檔比低檔好 2.39pp)', s: 'screener_edge_probe' },
+        wrongkill: { why: '接刀實測平均輸大盤;含 2022 空頭重跑後「跌停就接」整組陣亡(量縮那格 +2.40% → 2022/2023 轉負;個股自己出事那種只有 **+0.20%**、勝率 **40.6%** 還低於對照組 41.1%)', s: 'floor_probe / streak_probe' },
+        potential: { why: '7 個因子**憑空加權**再加總,**從來沒有回測過**分數本身有沒有用(同「總分=A×20%+B×20%…」那一類)', s: '(未驗證)' },
+    },
+    // 📚 只是查資料、不下多空的榜(留在主清單,但標清楚它不是訊號)
+    _RADAR_INFO: { theme: 1, aichain: 1, attention: 1 },
+
     _RADAR_TAB_BASE: 'radar-tab w-full px-1 py-2 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all ',   // 🎨 V57.5 左欄直排(參考專業 App 焦點股版型)
     _RADAR_TAB_INACTIVE: 'bg-[#161b22] text-gray-400 border-[#30363d] hover:border-gray-500',
     _RADAR_TABS: {
@@ -39935,8 +39959,56 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (d && !d.classList.contains('hidden')) { d.classList.add('hidden'); if (c) c.style.transform = ''; }
     },
 
+    // 🧹 V74.9.0 把「實測沒有優勢」的榜搬進摺疊區(⛔ DOM 移動不是刪除,卡還在、render 照跑)
+    // ⚠️ 只搬一次(用 _radarTidied 上鎖)—— 重複搬會把已經在摺疊裡的又搬一遍、順序亂掉。
+    _tidyRadarTabs() {
+        if (this._radarTidied) return;
+        const W = this._RADAR_WEAK || {}, T = this._RADAR_TABS || {};
+        const keys = Object.keys(W).filter(k => T[k] && document.getElementById(T[k].id));
+        if (!keys.length) return;
+        const first = document.getElementById(T[keys[0]].id);
+        const col = first && first.parentElement;
+        if (!col) return;
+        const bar = document.createElement('button');
+        bar.id = 'radarMoreBar';
+        bar.type = 'button';
+        bar.onclick = () => this._toggleRadarMore();
+        bar.className = 'w-full px-1 py-2 rounded-lg text-[10px] font-bold text-center border leading-tight bg-[#0d1117] text-gray-500 border-[#30363d] border-dashed';
+        bar.innerHTML = `<span class="block">📉 實測<br>沒優勢</span><span id="radarMoreCnt" class="block text-[8px] opacity-60 font-normal mt-0.5">${keys.length} 個 ▾</span>`;
+        const wrap = document.createElement('div');
+        wrap.id = 'radarMoreWrap';
+        wrap.className = 'hidden flex flex-col gap-1';
+        // 依原本的畫面順序搬(⛔ 不用 _RADAR_WEAK 的宣告順序 —— 那會把使用者熟悉的排列打亂)
+        keys.map(k => ({ k, el: document.getElementById(T[k].id) }))
+            .sort((x, y) => Array.prototype.indexOf.call(col.children, x.el) - Array.prototype.indexOf.call(col.children, y.el))
+            .forEach(o => wrap.appendChild(o.el));
+        // 摺疊列插在「主清單最後一個策略鈕」之後(⛔ 不可插在券商/朱老師那兩顆導覽鈕後面)
+        const lastMain = Object.entries(T).filter(([k]) => !W[k]).map(([, c]) => document.getElementById(c.id)).filter(Boolean).pop();
+        if (lastMain && lastMain.nextSibling) col.insertBefore(bar, lastMain.nextSibling); else col.appendChild(bar);
+        if (bar.nextSibling) col.insertBefore(wrap, bar.nextSibling); else col.appendChild(wrap);
+        this._radarTidied = true;
+    },
+
+    _toggleRadarMore(force) {
+        const w = document.getElementById('radarMoreWrap'), c = document.getElementById('radarMoreCnt');
+        if (!w) return;
+        const open = force === undefined ? w.classList.contains('hidden') : !!force;
+        w.classList.toggle('hidden', !open);
+        const n = w.children.length;
+        if (c) c.textContent = open ? `${n} 個 ▴` : `${n} 個 ▾`;
+        if (force === undefined) this.vibrate?.(10);
+    },
+
+    // 🚨 實測降級的榜:說明條最上面先講「它實測沒有優勢」(⛔ 不可只把它藏起來就算了)
+    _radarWeakNote(key) {
+        const w = (this._RADAR_WEAK || {})[key];
+        if (!w) return '';
+        return `<div class="bg-[#161b22] border-l-4 border-amber-500 pl-2 py-1.5 mb-1.5 rounded-r"><div class="text-[10px] text-amber-300 font-bold">📉 這個榜本站實測**沒有**優勢</div><div class="text-[10px] text-gray-300 leading-relaxed mt-0.5">${w.why}<span class="text-gray-600"> ・來源:${w.s}</span></div><div class="text-[9px] text-gray-500 mt-0.5">⛔ 資料照顯示、⛔ 沒有刪掉,但別把它當成進場理由。真正有實測成績的是「🎯 會賺訊號」。</div></div>`;
+    },
+
     switchRadarStrategy(key, _auto) {
-        if (!this._RADAR_TABS[key]) key = 'layup';
+        if (!this._RADAR_TABS[key]) key = 'todaysig';   // 🧹 V74.9.0 舊 fallback 是 layup,但它已被實測降級 → 改成唯一有實測成績的那個
+        this._tidyRadarTabs();
         if (!_auto) { this._radarUserPicked = true; this._closeRadarRail(); this._radarSortKey = null; }   // 🥇 V57.0 手動切過→擂台冠軍不搶;V68.6.7 換策略回原強度排序
         this.radarStrategy = key;
         Object.entries(this._RADAR_TABS).forEach(([k, cfg]) => {
@@ -39945,10 +40017,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         });
         // V59.2 更新抽屜鈕上的「當前類別」標籤(取該 tab 的 emoji + 名稱)
         try { const b = document.getElementById(this._RADAR_TABS[key]?.id); const cc = document.getElementById('radarCurrentCat'); if (b && cc) { const sp = b.querySelectorAll('span'); cc.textContent = `${sp[0]?.textContent || ''} ${sp[1]?.textContent || ''}`.trim(); } } catch (_) {}
+        if (this._RADAR_WEAK && this._RADAR_WEAK[key]) this._toggleRadarMore(true);   // 選到降級榜 → 展開,⛔ 否則使用者看不到自己現在在哪一頁
         const hint = document.getElementById('radarMatrixHint');
-        if (hint) hint.innerHTML = (this._RADAR_HINT[key] || '') + this._radarWinNote(key);
+        if (hint) hint.innerHTML = this._radarWeakNote(key) + (this._RADAR_HINT[key] || '') + this._radarWinNote(key);
         // V32.3 — signal_history 未載入時(首次切非送分題分頁)→ 載入後補回勝率小字
-        if (!this._signalHistCache) { try { Promise.resolve(this._loadSignalAccuracy()).then(() => { const h2 = document.getElementById('radarMatrixHint'); if (h2 && this.radarStrategy === key) h2.innerHTML = (this._RADAR_HINT[key] || '') + this._radarWinNote(key); }).catch(()=>{}); } catch(_){} }
+        if (!this._signalHistCache) { try { Promise.resolve(this._loadSignalAccuracy()).then(() => { const h2 = document.getElementById('radarMatrixHint'); if (h2 && this.radarStrategy === key) h2.innerHTML = this._radarWeakNote(key) + (this._RADAR_HINT[key] || '') + this._radarWinNote(key); }).catch(()=>{}); } catch(_){} }
         // 切換各類別 view(V57.5 左欄式:layup/表格/處置 + 新增 錯殺/題材)
         const layupView = document.getElementById('radarLayupView');
         const tableWrap = document.getElementById('radarTableWrap');
