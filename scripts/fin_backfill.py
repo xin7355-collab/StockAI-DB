@@ -200,6 +200,18 @@ def main():
     os.makedirs(OUTDIR, exist_ok=True)
     with open(OUT, 'w', encoding='utf-8') as f:
         json.dump(payload, f, ensure_ascii=False, separators=(',', ':'))
+    # 🧪 試跑模式:把 2330 的實際內容印出來 —— ⭐ 試跑不推分支,不印的話**看不到資料長什麼樣**,
+    #    而「營業成本是單季還是累計」這種問題只有看真實數字才分得出來(⛔ 不可憑印象假設)。
+    if LIMIT and '2330' in res:
+        print('\n🧪 2330 實際內容(⭐ 用來判斷單季 vs 累計):')
+        print(f'   欄位順序:{FIELDS}')
+        for q in sorted(res['2330'])[:9]:
+            v = res['2330'][q]
+            fmt = ' ・'.join(f'{f}={"-" if v[i] is None else round(v[i]/1e8, 1)}億'
+                             for i, f in enumerate(FIELDS))
+            print(f'   {q}  {fmt}')
+        print('   ⭐ 判準:同一年 Q1<Q2<Q3<Q4 然後隔年 Q1 掉回去 = **累計**,要自己相減才是單季')
+
     mb = os.path.getsize(OUT) / 1e6
     print(f'\n✅ 寫出 {OUT}:{len(res)} 檔 ・{len(qs)} 季 ・{mb:.1f} MB'
           f'(這輪新增 {newn} 檔 ・耗時 {(time.time()-t0)/60:.1f} 分)')
