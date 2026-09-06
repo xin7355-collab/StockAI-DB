@@ -47,6 +47,23 @@ ok('⑦ 🔐 ⛔ 不可印 token 片段', 'TOKENS[' not in CODE.replace("q['toke
 ok('⑩ 欄位名要寫出來(⛔ 不憑印象猜)',
    all(k in CODE for k in ('Inventories', 'CostOfGoodsSold', 'PropertyAndPlantAndEquipment')))
 
+# 🚨 ⓪a 先釘住 `dispo_probe.fm` 的**回傳契約** ——
+#    第一版就是因為 stub 跟真的函式形狀不同(它回 (rows, err) 兩元組),
+#    本機 15 條全綠、雲端實跑當場 AttributeError。⛔ stub 錯了的話所有斷言一起錯(陷阱 #40)。
+import dispo_probe as _DP                                    # noqa: E402
+_keep_tok = list(_DP.TOKENS)
+_DP.TOKENS.clear()
+try:
+    _r = _DP.fm('__nonexistent__', {'data_id': '0000'}, timeout=3)
+    ok('⓪a 🚨 共用的 fm() 必須回 (rows, err) 兩元組(⛔ 不是 rows)',
+       isinstance(_r, tuple) and len(_r) == 2, repr(_r)[:120])
+except Exception as _e:
+    ok('⓪a 🚨 共用的 fm() 必須回 (rows, err) 兩元組(⛔ 不是 rows)', False, f'例外 {_e}')
+finally:
+    _DP.TOKENS.extend(_keep_tok)
+ok('⓪b ⭐ 而且這支要真的解開兩元組(⛔ 當成 rows 用 = 雲端才會炸)',
+   'rows, err = fm(' in CODE and 'rows = fm(' not in CODE)
+
 # ── 動態:stub 網路 ──
 CALLS = {'n': 0}
 QS = ['2018-03-31', '2018-06-30', '2018-09-30']
@@ -55,12 +72,12 @@ def make_fm(good=True, only=None):
         CALLS['n'] += 1
         sym = (extra or {}).get('data_id')
         if only is not None and sym not in only and sym != '2330':
-            return []
+            return [], None
         want = FB.WANT[ds]
         if not good and ds == 'TaiwanStockFinancialStatements':
-            return [{'date': q, 'type': 'SomethingElse', 'value': 1} for q in QS]
-        return [{'date': q, 'type': t, 'value': 100.0 + i}
-                for q in QS for i, t in enumerate(want.values())]
+            return [{'date': q, 'type': 'SomethingElse', 'value': 1} for q in QS], None
+        return ([{'date': q, 'type': t, 'value': 100.0 + i}
+                 for q in QS for i, t in enumerate(want.values())], None)
     return _fm
 
 def run(tmp, **env):

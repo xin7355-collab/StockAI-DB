@@ -37,6 +37,10 @@ from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # ⛔ token 輪動共用 dispo_probe 那一支,⛔ 不在這裡再寫一份(陷阱 #37)
+# 🚨 它回的是 **(rows, err) 兩元組**,⛔ 不是 rows ——
+#    第一版當成 rows 直接用 → 雲端實跑 `AttributeError: 'list' object has no attribute 'get'`,
+#    而**本機測試 15 條全綠**(因為我的 stub 也回錯的形狀)。
+#    ⭐ 通用:用別人寫的函式之前,先確認它到底回什麼(同 dividends_hist 的 `d`、diff_holdings 的 `dw`)。
 from dispo_probe import fm, TOKENS, TOK_STAT           # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -74,9 +78,9 @@ def fetch_one(sym):
     """回 {季別: {欄位: 值}};任何一個資料集失敗就記原因(⛔ 不靜默)。"""
     out = {}
     for ds, want in WANT.items():
-        rows = fm(ds, {'data_id': sym, 'start_date': START})
+        rows, err = fm(ds, {'data_id': sym, 'start_date': START})
         if rows is None:
-            bump(f'{ds}:失敗')
+            bump(f'{ds}:{(err or "失敗").split("/")[-1][:40]}')     # ⭐ 用分類過的原因,⛔ 不只寫「失敗」
             continue
         if not rows:
             bump(f'{ds}:空')
@@ -99,9 +103,9 @@ def probe():
     print('🔎 探路 2330(驗欄位名 + 驗付費層)…')
     bad = []
     for ds, want in WANT.items():
-        rows = fm(ds, {'data_id': '2330', 'start_date': START})
+        rows, err = fm(ds, {'data_id': '2330', 'start_date': START})
         if not rows:
-            print(f'   ❌ {ds}: 回空 → 可能不是付費層或資料集改名')
+            print(f'   ❌ {ds}: 回空或失敗 → {err or "(回 200 但沒有資料)"}')
             bad.append(ds)
             continue
         types = {r.get('type') for r in rows}
