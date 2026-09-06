@@ -105,6 +105,16 @@ def run(tmp, **env):
 SYMS = [str(1000 + i) for i in range(600)]
 FB.stock_list = lambda: SYMS
 
+# 🚨 母體與試跑抽樣(都是實跑才照出來的)
+_real_list = FB.__dict__.get('stock_list')
+import types                                              # noqa: E402
+def _list_with_etf():
+    return ['0050', '0056', '00878'] + SYMS
+ok('⑪ ⛔ ETF(00開頭)不可收進母體(它們沒有財報,收了只是白打請求)',
+   "not x.startswith('00')" in CODE and "not fn.startswith('00')" in CODE)
+ok('⑫ 🚨 試跑要**等距抽樣**,⛔ 不可取前 N 檔(按代號排序 = 按產業取樣,V72.1.7)',
+   'syms[::step][:LIMIT]' in CODE and 'syms[:LIMIT]' not in CODE)
+
 # ① 探路失敗 → exit 1
 with tempfile.TemporaryDirectory() as tmp:
     FB.fm = make_fm(good=False)

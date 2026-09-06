@@ -132,13 +132,15 @@ def stock_list():
     f = os.environ.get('FIN_SYMS_FILE')
     if f and os.path.exists(f):
         syms = [x.strip() for x in io_open(f) if x.strip().isdigit() and 4 <= len(x.strip()) <= 6]
+        syms = [x for x in syms if not x.startswith('00')]      # ⛔ ETF 沒有財報,收進來只是白打請求
         if syms:
             print(f'📋 代號清單來自 {f}:{len(syms)} 檔')
             return sorted(set(syms))
         print(f'⚠️ {f} 讀不到有效代號 → 退回掃 data/(⛔ 不靜默)')
     syms = []
     for fn in sorted(os.listdir(DATA)) if os.path.isdir(DATA) else []:
-        if fn.endswith('.json') and fn[:-5].isdigit() and 4 <= len(fn) - 5 <= 6:
+        if (fn.endswith('.json') and fn[:-5].isdigit() and 4 <= len(fn) - 5 <= 6
+                and not fn.startswith('00')):                   # ⛔ 同上,ETF 不收
             syms.append(fn[:-5])
     return syms
 
@@ -167,7 +169,12 @@ def main():
     syms = stock_list()
     min_ok = MIN_OK
     if LIMIT:
-        syms = syms[:LIMIT]
+        # 🚨 **等距抽樣**,⛔ 不可 `syms[:LIMIT]` ——
+        #    台股代號本身帶產業意義(1xxx 傳產、2xxx 電子金融、3xxx~8xxx 電子居多),
+        #    取前 N 檔 = 按產業取樣。實測第一次試跑取前 30 檔**全是 ETF**(0050~),
+        #    整輪回空、看起來像程式壞掉。這是 V72.1.7 那個選樣偏誤的同型再犯。
+        step = max(1, len(syms) // LIMIT)
+        syms = syms[::step][:LIMIT]
         # 🚨 試跑模式下檔數守門要跟著縮,⛔ 否則 30 檔一定撞到 500 的門檻 → job 紅燈,
         #    看起來像「管線壞掉」其實是守門在工作(那種假紅燈會讓人養成忽略的習慣)。
         #    ⭐ 但要**印出來**,⛔ 不可靜默放寬。
