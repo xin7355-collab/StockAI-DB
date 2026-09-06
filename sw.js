@@ -3,7 +3,7 @@
 // 負責：PWA 快取、Push 通知、背景週期查價告警 (Periodic Background Sync)
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'stockai-928a7534';   // V60.0 — bump 快取版本:強制淘汰舊快取,PWA 抓最新前端
+const CACHE_NAME = 'stockai-84eb21ae';   // V60.0 — bump 快取版本:強制淘汰舊快取,PWA 抓最新前端
 
 // ─── 1. 安裝事件：立即接管，不等舊 SW 失效 ─────────────────────────────────
 self.addEventListener('install', () => {
