@@ -1,0 +1,108 @@
+name: 📦 財報三表深歷史回算 (手動)
+
+# 📦 存貨 / 資本支出 / 營業成本 / 折舊 / 營業活動現金流 —— 回溯 2018(實測 34 季)
+# ⭐⭐ 這是**一次回算**不是「從今天開始累積」:上游本來就給歷史 → 跑完當天就驗得動。
+#
+# 🏛️ 架構照 klines_backfill / chips_backfill(⛔ 別改回去):
+#   ① 推**獨立 orphan 分支 `fin_deep`** —— ⛔ 不碰 data 也不碰 gh-pages
+#      (gh-pages 那步 `git add -f index.html data/` 會整個 data/ 都收)。
+#   ② 冪等:分支上已有的股票跳過 → 中斷再跑會接續。
+#   ③ 前端**不讀**它 —— 還沒驗證過的東西不上前端。
+#
+# 🚨 成本(實測,⛔ 不憑印象):三個資料集**都不給省略 data_id** → 只能逐檔,
+#    3 次請求 × 約 2,300 檔 ≈ 6,900 次 ≈ 1~2 小時(付費層 6,000/hr)。
+#    ⭐ 之後每季只要補新的那一季。
+# ⚠️ 與 daily_miner 共用付費金鑰 → ⛔ 別跟每日採礦同時跑。
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: '只抓前 N 檔驗管線(0 = 全部)'
+        required: false
+        default: '0'
+      budget:
+        description: '時間預算(分)—— 超過就把手上的寫出去,下一輪接續'
+        required: false
+        default: '150'
+
+permissions:
+  contents: write
+
+concurrency:
+  # 🚨 ⛔ 不可跟別人共用 group —— 這支要跑 1~2 小時,佔著共用鎖會把部署整串擠掉(V73.7.9 的教訓)
+  group: fin-deep-backfill
+  cancel-in-progress: false     # 長工作,⛔ 不可被第二次手動觸發砍掉
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180        # ⭐ 只是最後保險:真正的停手交給程式內的時間預算
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依
+        run: pip install requests
+
+      - name: 📂 還原 data 分支的股票清單(決定要抓哪些代號)
+        run: |
+          git fetch origin data --depth=1 2>/dev/null || true
+          mkdir -p data
+          if git rev-parse --verify -q origin/data >/dev/null; then
+            git archive origin/data | tar -x -C . 2>/dev/null || true
+          fi
+          echo "股票檔 $(ls data/*.json 2>/dev/null | wc -l) 個"
+
+      - name: 📂 還原 fin_deep 分支既有檔(冪等接續)
+        run: |
+          git fetch origin fin_deep --depth=1 2>/dev/null || echo "fin_deep 分支還不存在(第一次跑)"
+          mkdir -p fin_deep
+          if git rev-parse --verify -q origin/fin_deep >/dev/null; then
+            git archive origin/fin_deep | tar -x -C . 2>/dev/null || true
+          fi
+          ls -l fin_deep/ 2>/dev/null || true
+
+      - name: 📦 回算(探路 → 逐檔)
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          FIN_BUDGET_MIN: ${{ inputs.budget }}
+          FIN_LIMIT: ${{ inputs.dry }}
+        run: python3 scripts/fin_backfill.py
+
+      - name: 🚀 推上 fin_deep 分支
+        if: ${{ inputs.dry == '0' }}
+        run: |
+          set -e
+          F=fin_deep/fin_deep.json
+          [ -s "$F" ] || { echo "❌ 產物不存在或是空的 → 拒絕推送"; exit 1; }
+          N=$(python3 -c "import json;print(json.load(open('$F'))['meta']['n'])")
+          if [ "$N" -lt 500 ]; then
+            echo "❌ 只有 $N 檔(<500)→ 拒絕推送(⛔ 不可用半份蓋掉)"; exit 1
+          fi
+          OLD=0
+          if git rev-parse --verify -q origin/fin_deep >/dev/null; then
+            OLD=$(git show origin/fin_deep:fin_deep/fin_deep.json 2>/dev/null \
+                  | python3 -c "import sys,json;print(json.load(sys.stdin)['meta']['n'])" 2>/dev/null || echo 0)
+          fi
+          if [ "$N" -lt "$OLD" ]; then
+            echo "❌ 現在 $N 檔 < 分支上已有的 $OLD → 拒絕推送(orphan force-push 會整個取代)"; exit 1
+          fi
+          echo "📦 $OLD → $N 檔 ・$(du -h $F | cut -f1)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan _fin_deploy
+          git rm -rf --cached . -q 2>/dev/null || true
+          git add -f fin_deep/
+          git commit -q -m "📦 財報三表深歷史 ${N} 檔($(date -u '+%Y-%m-%d %H:%M UTC'))"
+          for i in 1 2 3 4 5; do
+            git push origin HEAD:fin_deep --force && { echo "✅ push 成功 (第 $i 次)"; break; }
+            [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; exit 1; }
+            sleep $((i * 5))
+          done
