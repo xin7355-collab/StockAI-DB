@@ -42,25 +42,28 @@ const FI = Object.fromEntries(F.f.map((k, i) => [k, i]));
 console.log(`📥 財報:${F.meta.n} 檔 ・${F.meta.quarters} 季 ・${F.q[0]} ~ ${F.q[F.q.length - 1]}`);
 
 // ── ② 累計 vs 單季:自己偵測(⛔ 不憑印象假設)──
+// ⭐ 判準用 **Q4 ÷ Q1 的比值中位數**,⛔ 不用「是不是遞增」——
+//    遞增會被「某一季虧損 / 負值」打亂(實測 ocf 明明是累計卻只有 43% 遞增)。
+//    累計 → Q4 ≈ 4×Q1(比值 2.5~6);單季 → 比值 0.5~2。
+// 🚨 實測 FinMind 的三表是**混的**:損益表(cogs/rev)單季、現金流量表(capex/dep/ocf)累計。
+//    ⛔ 不可整批當成同一種處理。
 function detectCumulative(field) {
-  const j = FI[field];
-  let asc = 0, tot = 0;
+  const j = FI[field], ratios = [];
   for (const qs of Object.values(F.s)) {
     const byY = {};
     for (const [q, v] of Object.entries(qs)) {
       if (v[j] != null) (byY[q.slice(0, 4)] ||= {})[q.slice(5, 7)] = Math.abs(v[j]);
     }
     for (const mm of Object.values(byY)) {
-      const seq = ['03', '06', '09', '12'].map(m => mm[m]);
-      if (seq.some(x => x == null)) continue;
-      tot++;
-      if (seq[0] < seq[1] && seq[1] < seq[2] && seq[2] < seq[3]) asc++;
+      if (mm['03'] > 0 && mm['12'] > 0) ratios.push(mm['12'] / mm['03']);
     }
   }
-  const pct = tot ? asc / tot * 100 : 0;
-  console.log(`   📐 ${field}: ${tot} 個年度裡 ${asc} 個遞增(${pct.toFixed(0)}%)→ ` +
-              (pct >= 80 ? '🚨 累計 → 自動相減還原成單季' : pct <= 40 ? '✅ 單季' : '⚠️ 看不出來'));
-  return pct >= 80;
+  ratios.sort((a, b) => a - b);
+  const med = ratios.length ? ratios[ratios.length >> 1] : 1;
+  const cum = med >= 2.5;
+  console.log(`   📐 ${field}: Q4÷Q1 中位 ${med.toFixed(2)}(${ratios.length} 個年度)→ ` +
+              (cum ? '🚨 累計 → 自動相減還原成單季' : med <= 2.0 ? '✅ 單季' : '⚠️ 看不出來,當單季處理'));
+  return cum;
 }
 console.log('\n📐 先判斷流量欄位是累計還是單季(⛔ 搞錯的話 DOI 會假裝一直在去化)');
 const CUM = Object.fromEntries(['cogs', 'rev', 'capex', 'ocf', 'dep'].map(f => [f, detectCumulative(f)]));

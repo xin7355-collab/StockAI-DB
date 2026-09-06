@@ -238,27 +238,27 @@ def main():
                 fmt = ' ・'.join(f'{f}={"-" if v[i] is None else round(v[i] / 1e8, 1)}'
                                  for i, f in enumerate(FIELDS))
                 print(f'   {q}  {fmt}(億)')
-        # ⭐ 判準自動化:對每一檔、每一年,看流量欄位是不是 Q1<Q2<Q3<Q4(累計的特徵)
+        # ⭐ 判準用 **Q4 ÷ Q1 的比值中位數**,⛔ 不用「是不是遞增」——
+        #    遞增會被「某一季虧損 / 負值」打亂(實測 ocf 明明是累計卻只有 43% 遞增)。
+        #    累計的話 Q4 ≈ 4×Q1 → 比值落在 2.5~6;單季的話落在 0.5~2。
         for fld in ('cogs', 'rev', 'capex', 'ocf', 'dep'):
             j = FIELDS.index(fld)
-            asc = tot = 0
+            ratios = []
             for _sy, _qmap in res.items():          # ⛔ 不可叫 qs —— 外面的 qs 是季別清單(遮蔽會炸)
                 byy = {}
                 for q, v in _qmap.items():
                     if v[j] is not None:
                         byy.setdefault(q[:4], {})[q[5:7]] = abs(v[j])
-                for y, mm in byy.items():
-                    seq = [mm.get(m) for m in ('03', '06', '09', '12')]
-                    if any(x is None for x in seq):
-                        continue
-                    tot += 1
-                    if seq[0] < seq[1] < seq[2] < seq[3]:
-                        asc += 1
-            if tot:
-                pct = asc / tot * 100
-                tag = ('🚨 **累計**(要自己相減才是單季)' if pct >= 80
-                       else '✅ 單季' if pct <= 40 else '⚠️ 看不出來,人工確認')
-                print(f'   📐 {fld}: {tot} 個年度裡有 {asc} 個是 Q1<Q2<Q3<Q4({pct:.0f}%)→ {tag}')
+                for _y, mm in byy.items():
+                    a, b = mm.get('03'), mm.get('12')
+                    if a and b and a > 0:
+                        ratios.append(b / a)
+            if ratios:
+                ratios.sort()
+                med = ratios[len(ratios) // 2]
+                tag = ('🚨 **累計**(要自己相減才是單季)' if med >= 2.5
+                       else '✅ 單季' if med <= 2.0 else '⚠️ 看不出來,人工確認')
+                print(f'   📐 {fld}: Q4÷Q1 中位 {med:.2f}({len(ratios)} 個年度)→ {tag}')
 
     mb = os.path.getsize(OUT) / 1e6
     print(f'\n✅ 寫出 {OUT}:{len(res)} 檔 ・{len(qs)} 季 ・{mb:.1f} MB'
