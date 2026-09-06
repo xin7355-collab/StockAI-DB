@@ -188,6 +188,31 @@ def main():
                 print(f'\n▸ {nm}: 例外 {str(e)[:80]}')
         print('=' * 60)
 
+        # 📏 歷史深度(決定「存貨週轉天數 / 資本支出」到底驗不驗得動 —— ⛔ 深度不夠就不用談開採礦)
+        print('\n📏 財報歷史深度(2330,往回 8 年)+ 損益表有沒有「營業成本」(DOI 的分母)')
+        for nm, ds, key in [('資產負債表', 'TaiwanStockBalanceSheet', 'Inventories'),
+                            ('現金流量表', 'TaiwanStockCashFlowsStatement', 'PropertyAndPlantAndEquipment'),
+                            ('損益表', 'TaiwanStockFinancialStatements', 'CostOfGoodsSold')]:
+            try:
+                r = _rq4.get(f'{BASE}/data?dataset={ds}&data_id=2330&start_date=2018-01-01',
+                             headers=hdr, timeout=40)
+                j = r.json(); rows = j.get('data') or []
+                ds_all = sorted({x.get('date', '') for x in rows})
+                hit = [x for x in rows if x.get('type') == key]
+                hd = sorted({x.get('date', '') for x in hit})
+                print(f'   ▸ {nm}: rows={len(rows)} ・季數={len(ds_all)} ・'
+                      f'最早 {ds_all[0] if ds_all else "-"} ~ 最新 {ds_all[-1] if ds_all else "-"}')
+                print(f'      {key}: {len(hd)} 季有值'
+                      f'{"（最早 " + hd[0] + "）" if hd else " 🚨 這個 type 不存在"}')
+                if not hit and rows:
+                    import re as _re
+                    cands = sorted({x.get('type', '') for x in rows
+                                    if _re.search('Cost|Inventor|Property', x.get('type', ''))})
+                    print(f'      🔎 名字可能不同,候選 type:{cands[:12]}')
+            except Exception as e:
+                print(f'   ▸ {nm}: 例外 {str(e)[:80]}')
+        print('=' * 60)
+
         # 📐 集保股權持股分級(籌碼分佈用:千張大戶/散戶怎麼分,絕不能猜)
         print('\n' + '=' * 60)
         print('📐 集保股權持股分級 HoldingSharesPer 實測(2330,近60日)')
