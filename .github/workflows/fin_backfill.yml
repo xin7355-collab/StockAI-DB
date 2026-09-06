@@ -51,14 +51,15 @@ jobs:
       - name: 📦 安裝相依
         run: pip install requests
 
-      - name: 📂 還原 data 分支的股票清單(決定要抓哪些代號)
+      - name: 📋 列出要抓哪些代號(⭐ 只要檔名,⛔ 不解 2,500 個檔的內容)
         run: |
           git fetch origin data --depth=1 2>/dev/null || true
-          mkdir -p data
-          if git rev-parse --verify -q origin/data >/dev/null; then
-            git archive origin/data | tar -x -C . 2>/dev/null || true
-          fi
-          echo "股票檔 $(ls data/*.json 2>/dev/null | wc -l) 個"
+          # ⛔ 不用 `git archive origin/data | tar -x` —— 那會把幾百 MB 的籌碼檔全解出來,
+          #    實測比整個採礦還久,而我只需要**檔名**。
+          git ls-tree --name-only origin/data data/ \
+            | sed -n 's#^data/\([0-9]\{4,6\}\)\.json$#\1#p' | sort -u > syms.txt
+          echo "代號 $(wc -l < syms.txt) 個"
+          [ -s syms.txt ] || { echo "❌ 一個代號都列不出來 → 停手(⛔ 不空跑)"; exit 1; }
 
       - name: 📂 還原 fin_deep 分支既有檔(冪等接續)
         run: |
@@ -74,6 +75,7 @@ jobs:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
           FIN_BUDGET_MIN: ${{ inputs.budget }}
           FIN_LIMIT: ${{ inputs.dry }}
+          FIN_SYMS_FILE: syms.txt
         run: python3 scripts/fin_backfill.py
 
       - name: 🚀 推上 fin_deep 分支

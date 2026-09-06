@@ -123,11 +123,29 @@ def probe():
 
 
 def stock_list():
+    """要抓哪些代號。
+
+    ⭐ 優先讀 `FIN_SYMS_FILE`(一行一個代號)—— workflow 用 `git ls-tree` 兩秒就列得出來,
+      ⛔ 不必 `git archive origin/data | tar -x` 把 2,500 個檔(含幾百 MB 的籌碼檔)全解出來
+      (實測那一步比整個採礦還久)。⭐ 我只需要**檔名**,不需要內容。
+    """
+    f = os.environ.get('FIN_SYMS_FILE')
+    if f and os.path.exists(f):
+        syms = [x.strip() for x in io_open(f) if x.strip().isdigit() and 4 <= len(x.strip()) <= 6]
+        if syms:
+            print(f'📋 代號清單來自 {f}:{len(syms)} 檔')
+            return sorted(set(syms))
+        print(f'⚠️ {f} 讀不到有效代號 → 退回掃 data/(⛔ 不靜默)')
     syms = []
-    for f in sorted(os.listdir(DATA)):
-        if f.endswith('.json') and f[:-5].isdigit() and 4 <= len(f) - 5 <= 6:
-            syms.append(f[:-5])
+    for fn in sorted(os.listdir(DATA)) if os.path.isdir(DATA) else []:
+        if fn.endswith('.json') and fn[:-5].isdigit() and 4 <= len(fn) - 5 <= 6:
+            syms.append(fn[:-5])
     return syms
+
+
+def io_open(path):
+    with open(path, encoding='utf-8') as fh:
+        return fh.readlines()
 
 
 def main():
