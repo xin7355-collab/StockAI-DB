@@ -88,5 +88,22 @@ ok('⑨ 🚧 定義要跟 streak_probe 一字不差(0.95 / 0.98 / 缺口≥1 / �
    /0\.95/.test(fn) && /0\.98/.test(fn) && /gp >= 1/.test(fn) && /pos >= 70/.test(fn));
 ok('⑩ 載入無 pageerror', errs.length === 0, errs.join(' | '));
 console.log();
+// ⏱️ V74.8.7:這兩個實測**沒有反應時點**(前 5 天只走完 7% / 2%)→ 文案要說出來
+ok('⑪ ⏱️ 🏔️ 要寫「慢慢漂、別期待幾天內表態」+ 前 5 天的比例(讀 r5,⛔ 不寫死)', (() => {
+      const i = SRC.indexOf('const R = E.retest;');
+      const seg = SRC.slice(i, i + 1400);
+      return /慢慢漂/.test(seg) && /別期待/.test(seg) && /\$\{R\.r5\}/.test(seg);
+    })());
+ok('⑪a ⏱️ 🕳️ 同上(讀 G.r5)', (() => {
+      const i = SRC.indexOf('const G = E.gapHi;');
+      const seg = SRC.slice(i, i + 1400);
+      return /慢慢漂/.test(seg) && /別期待/.test(seg) && /\$\{G\.r5\}/.test(seg);
+    })());
+// ⚠️ 這時 browser 已關 → 直接從原始碼讀(⛔ 不可再 page.evaluate)
+const _r5 = k => { const m = SRC.match(new RegExp(k + ':\\s*\\{[^}]*r5:\\s*(\\d+)')); return m ? +m[1] : NaN; };
+ok('⑪b 常數要真的有 r5 這一欄(⛔ 不可只改文案不改資料)',
+    Number.isFinite(_r5('retest')) && Number.isFinite(_r5('gapHi')) && _r5('retest') < 25 && _r5('gapHi') < 25,
+    `retest.r5=${_r5('retest')} gapHi.r5=${_r5('gapHi')}`);
+
 console.log(fails.length ? `❌ ${fails.length} 條失敗` : '✅ STREAKEDGE_PASS(全部通過)');
 process.exit(fails.length ? 1 : 0);

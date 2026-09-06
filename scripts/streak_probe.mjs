@@ -45,6 +45,7 @@ const mktRet = (d, n) => {
 };
 
 // ── 事件桶 ──
+const SER = new Map();        // sym → {d:[], c:[]}  (⭐ V74.8.7 逐日曲線用)
 const buckets = new Map();
 const add = (k, ev) => { if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(ev); };
 
@@ -61,6 +62,7 @@ for (const f of files) {
   })).filter(r => r.d);
   if (R.length < 260) continue;
   nSym++; nBar += R.length;
+  SER.set(sym, { d: R.map(x => x.d), c: Float64Array.from(R.map(x => x.c)), o: Float64Array.from(R.map(x => x.o)) });
 
   // 每日漲跌 + 連續段
   const chg = R.map((r, i) => i ? (r.c / R[i - 1].c - 1) * 100 : 0);
@@ -90,7 +92,7 @@ for (const f of files) {
       ret[n] = m == null ? null : raw - m;
     }
     last.set(key, i);
-    ret._d = R[e].d;
+    ret._d = R[e].d; ret._s = sym; ret._e = e;
     add(key, ret);
   };
 
@@ -265,3 +267,196 @@ for (const r of rows.slice(0, 26)) {
 }
 console.log('\n(數字 = 相對「隨便挑一天」的超額報酬 pp;進場 = 隔天開盤,已排除開盤鎖死)');
 console.log(`(⭐ 扣掉來回成本 ${COST}% 之後還是正的才有意義)\n`);
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// ⏱️ V74.8.7 逐日累積超額報酬曲線 —— 承 doi_probe 的方法
+//    (使用者:「有沒有之前回測過、可以用這種邏輯重測的」)
+//
+// ⭐ 為什麼要重測:上面那張表只給 1/3/5/10/20 日五個點,回答不了
+//    「**多久才反應**」與「**反應完該什麼時候走**」。
+//
+// ⛔⛔ 三個一定要做對的地方(第一版全部踩到):
+// ① 🚨 **一律減掉對照組同一天的值** —— 曲線是「扣同期加權」的絕對超額,
+//    而中位數個股本來就跑輸市值加權指數(對照組 120 天 −7.6%)→
+//    ⛔ 不減的話每一條 120 天都是負的,會被讀成「全部都不行」,
+//    但其實「向上跳空×高位階 −1.13」是**贏對照組 6.5pp**。
+// ② 🚨 **內部檢核要用同一個子集合** —— 曲線需要 CPOST 天的未來,
+//    所以**最近 CPOST 天的事件全部畫不出來**;拿它跟上表(只需要 10 天未來)
+//    比會系統性對不上。第一版 8 條有 4 條「❌」,那是我自己比錯不是曲線錯。
+// ③ 🚨 **「反應集中度」不可用「前5天 ÷ 120天」** —— 120 天的值可能是負的,
+//    比值會變成 −422% 這種無意義的數字。要用「前5天 ÷ **最高點**」+「最高點在第幾天」。
+//
+// ⚠️ 對照跟 doi_probe **刻意不同**:季報事件擠在同幾個公布日 → 必須橫斷面去均值;
+//    個股事件散在各交易日 → 沿用本檔既有口徑「扣同期加權」+ 減對照組曲線。
+// ═══════════════════════════════════════════════════════════════════════
+const CPRE = 30, CPOST = 120;
+const CURVE_KEYS = [
+  '對照組(所有交易日)',                          // ⭐ 一定要第一個(後面每一條都要減它)
+  '🕯️ 跌停後紅K × 大紅(≥3%)',
+  '🕯️ 跌停後紅K × 當初大盤也在跌(系統性)',
+  '🕯️ 跌停後紅K × 當初大盤沒跌(個股利空)',
+  '🏔️ 創60日高後回測不破(今天收紅)',
+  '🕳️ 向上跳空 × 高位階',
+  '🔻 跌停(全部)',
+  '🔺 漲停',
+];
+console.log(`\n⏱️ 逐日累積超額報酬曲線(進場前 ${CPRE} 天 ~ 後 ${CPOST} 天)`);
+
+function ecurve(sym, e, d0) {
+  const S = SER.get(sym); if (!S) return null;
+  if (e - CPRE < 0 || e + CPOST >= S.c.length) return null;
+  const mi = mIdx.get(d0); if (mi == null) return null;
+  if (mi - CPRE < 0 || mi + CPOST >= mdays.length) return null;
+  const b = S.o[e], mb = mkt.get(mdays[mi]);
+  if (!(b > 0) || !(mb > 0)) return null;
+  const out = new Float64Array(CPRE + CPOST + 1);
+  for (let k = -CPRE; k <= CPOST; k++) {
+    const px = k === 0 ? S.o[e] : S.c[e + k];
+    const mp = mkt.get(mdays[mi + k]);
+    out[k + CPRE] = (px / b - 1) * 100 - (mp / mb - 1) * 100;
+  }
+  return out;
+}
+
+// 🚨🚨 第一版的對照組是「全市場所有交易日」→ 拉到 120 天之後,
+//    **每一條都變成正的,連「跌停」與「漲停」這兩個相反的事件都是**,
+//    而且最高點全部落在窗口盡頭 —— 那是 V74.6.4 剛學到的
+//    「贏全市場常常只是因為它是活躍股」在 120 天窗口下被放大 6 倍。
+// ⭐ 正解:**對照組要共用「同一批股票」那條腿** —— 每個事件各配一組
+//    「同一批股票、但沒觸發那個事件的其他日子」。
+const evSyms = {};
+for (const key of CURVE_KEYS) {
+  if (key.startsWith('對照組')) continue;
+  const evs = buckets.get(key); if (!evs) continue;
+  evSyms[key] = new Set(evs.map(e => e._s));
+}
+
+const EC = {};
+for (const key of CURVE_KEYS) {
+  const evs = buckets.get(key); if (!evs) continue;
+  const step = key.startsWith('對照組') ? 4 : 1;
+  const o = { n: 0, sum: new Float64Array(CPRE + CPOST + 1),
+              h: [new Float64Array(CPRE + CPOST + 1), new Float64Array(CPRE + CPOST + 1)], hn: [0, 0],
+              yr: {}, t10: [] };
+  for (let idx = 0; idx < evs.length; idx += step) {
+    const ev = evs[idx];
+    const c = ecurve(ev._s, ev._e, ev._d); if (!c) continue;
+    const hh = ev._d < MID ? 0 : 1, y = ev._d.slice(0, 4);
+    o.n++; o.hn[hh]++;
+    if (ev[10] != null) o.t10.push(ev[10]);          // 🚧 同子集合的表格值(內部檢核用)
+    const yo = (o.yr[y] ||= { n: 0, sum: new Float64Array(CPRE + CPOST + 1) }); yo.n++;
+    for (let i = 0; i < c.length; i++) { o.sum[i] += c[i]; o.h[hh][i] += c[i]; yo.sum[i] += c[i]; }
+  }
+  if (o.n >= 200) EC[key] = o;
+}
+// ⭐ 每個事件各配一組「同一批股票」的對照
+const CTL = {};
+{
+  const cev = buckets.get('對照組(所有交易日)') || [];
+  for (const key of CURVE_KEYS) {
+    if (key.startsWith('對照組')) continue;
+    const set = evSyms[key]; if (!set) continue;
+    const o = { n: 0, sum: new Float64Array(CPRE + CPOST + 1),
+                h: [new Float64Array(CPRE + CPOST + 1), new Float64Array(CPRE + CPOST + 1)], hn: [0, 0], yr: {} };
+    for (let idx = 0; idx < cev.length; idx += 4) {
+      const ev = cev[idx]; if (!set.has(ev._s)) continue;
+      const c = ecurve(ev._s, ev._e, ev._d); if (!c) continue;
+      const hh = ev._d < MID ? 0 : 1, y = ev._d.slice(0, 4);
+      o.n++; o.hn[hh]++;
+      const yo = (o.yr[y] ||= { n: 0, sum: new Float64Array(CPRE + CPOST + 1) }); yo.n++;
+      for (let i = 0; i < c.length; i++) { o.sum[i] += c[i]; o.h[hh][i] += c[i]; yo.sum[i] += c[i]; }
+    }
+    if (o.n >= 200) CTL[key] = o;
+  }
+}
+const BALL = EC['對照組(所有交易日)'];
+if (!BALL) { console.log('   ⚠️ 對照組畫不出曲線,略過這一段'); }
+else {
+
+const raw  = (o, k) => o.sum[k + CPRE] / o.n;                       // 絕對超額(扣大盤)
+const bOf  = k => CTL[k] || BALL;                                   // ⭐ 優先用同一批股票的對照
+const eat  = (o, k, key) => raw(o, k) - raw(bOf(key), k);
+const eatH = (o, h, k, key) => o.h[h][k + CPRE] / o.hn[h] - bOf(key).h[h][k + CPRE] / bOf(key).hn[h];
+
+// 🚧 內部檢核:**同一個子集合**的 10 日平均 vs 曲線 +10 日(絕對超額,兩邊都不減對照組)
+console.log('\n   🚧 內部檢核(同子集合的曲線 +10 日 vs 表格 10 日 —— ⛔ 對不上就是曲線算錯了)');
+let bad = 0;
+for (const [k, o] of Object.entries(EC)) {
+  const tbl = avg(o.t10), cur = raw(o, 10), gap = Math.abs(cur - tbl);
+  if (gap > 0.05) bad++;
+  console.log(`      ${pad(k, 34)} 曲線 ${cur.toFixed(2)} vs 表 ${tbl.toFixed(2)} ・差 ${gap.toFixed(3)} ${gap > 0.05 ? '❌' : '✅'}`);
+}
+console.log(bad ? `      🚨 ${bad} 條對不上 → 曲線算錯了,下面的數字⛔ 不可信` : '      ✅ 全部對得上 → 曲線算對了');
+console.log(`   ⚠️ 曲線需要 ${CPOST} 天的未來 → **最近 ${CPOST} 天的事件畫不出來**,樣本比上表少`);
+
+console.log(`\n   ⭐ 下面是「減掉**同一批股票**的對照組」之後的相對優勢 pp`);
+console.log(`      (全市場對照 120 天 ${raw(BALL, 120).toFixed(2)}% ・同批股票對照見下)`);
+for (const [k, o] of Object.entries(CTL)) console.log(`      ${pad(k, 34)} 同批對照 120 天 ${raw(o, 120).toFixed(2)}% ・n=${o.n}`);
+console.log('   事件                                  │ 進場前30 │  +1日 │  +3日 │  +5日 │ +10日 │ +20日 │ +40日 │ +60日 │ +120日 │ n');
+for (const [k, o] of Object.entries(EC)) {
+  if (k.startsWith('對照組')) continue;
+  const cells = [-30, 1, 3, 5, 10, 20, 40, 60, 120].map(x => {
+    const v = eat(o, x, k);
+    return `${v >= 0 ? '+' : ''}${v.toFixed(2)}`.padStart(x === -30 ? 8 : 6);
+  });
+  console.log(`   ${pad(k, 36)} │ ${cells.join(' │ ')} │ ${o.n}`);
+}
+console.log('   🚨「進場前30」= 30 天前的價格**相對進場價**,所以 **負值 = 那 30 天漲了**、正值 = 跌了');
+console.log('      (🏔️ 創新高 −10.97 = 事件前漲了 11%;🕯️ 跌停後紅K +6.74 = 事件前跌了 6.7% —— 都合理)');
+
+console.log('\n   📈 反應時點:曲線最高在第幾天 ・前 5 天吃掉了多少');
+for (const [k, o] of Object.entries(EC)) {
+  if (k.startsWith('對照組')) continue;
+  let bk = 1, bv = -1e9;
+  for (let x = 1; x <= CPOST; x++) { const v = eat(o, x, k); if (v > bv) { bv = v; bk = x; } }
+  const d5 = eat(o, 5, k);
+  const pct = bv > 0.05 ? d5 / bv * 100 : NaN;
+  console.log(`      ${pad(k, 34)} 最高 ${bv >= 0 ? '+' : ''}${bv.toFixed(2)} 在第 ${String(bk).padStart(3)} 天 ・前5天 ${d5 >= 0 ? '+' : ''}${d5.toFixed(2)} = 最高點的 ${isFinite(pct) ? pct.toFixed(0) + '%' : '—'}`);
+}
+
+console.log('\n   🚦 「抱幾天」有沒有延續性(前半段找、後半段驗 ・逐年再拆一次)');
+for (const [k, o] of Object.entries(EC)) {
+  if (k.startsWith('對照組')) continue;
+  if (o.hn[0] < 150 || o.hn[1] < 150) { console.log(`      ${pad(k, 34)} 樣本不足`); continue; }
+  let bk = 1, bv = -1e9;
+  for (let x = 1; x <= CPOST; x++) { const v = eatH(o, 0, x, k); if (v > bv) { bv = v; bk = x; } }
+  const test = eatH(o, 1, bk, k);
+  const ys = Object.keys(o.yr).sort()
+    .map(y => (o.yr[y].n >= 40 && bOf(k).yr[y] && bOf(k).yr[y].n >= 40)
+      ? o.yr[y].sum[bk + CPRE] / o.yr[y].n - bOf(k).yr[y].sum[bk + CPRE] / bOf(k).yr[y].n : null)
+    .filter(v => v != null);
+  const pos = ys.filter(v => v > 0).length;
+  const okT = test - COST > 0, okY = ys.length >= 2 && pos === ys.length;
+  console.log(`      ${pad(k, 34)} 前半最佳抱 ${String(bk).padStart(3)} 天(${bv.toFixed(2)})→ 後半 ${test >= 0 ? '+' : ''}${test.toFixed(2)} ・扣成本 ${(test - COST).toFixed(2)} ${okT ? '✅' : '❌'} ・逐年 ${pos}/${ys.length} 正 ${okY ? '✅' : '❌'}${okT && okY ? '  ⭐兩關都過' : ''}`);
+}
+
+// ⭐⭐ 這一段才是回答使用者的:分成「有反應」與「只是慢漂」兩類
+console.log('\n   🧭 分類:這個事件到底有沒有「反應」?(判準 = 前 5 天吃掉最高點的幾成)');
+for (const [k, o] of Object.entries(EC)) {
+  if (k.startsWith('對照組')) continue;
+  let bk = 1, bv = -1e9;
+  for (let x = 1; x <= CPOST; x++) { const v = eat(o, x, k); if (v > bv) { bv = v; bk = x; } }
+  const pct = bv > 0.05 ? eat(o, 5, k) / bv * 100 : NaN;
+  const top20 = eat(o, 20, k), d60 = eat(o, 60, k);
+  const cls = !isFinite(pct) ? '— 沒有正的高點'
+    : pct >= 50 ? `⭐ **有反應**(前 5 天走完 ${pct.toFixed(0)}%)`
+    : pct >= 25 ? `⚠️ 半反應(${pct.toFixed(0)}%)`
+    : `➖ **只是慢漂**(前 5 天只有 ${pct.toFixed(0)}%,沒有反應時點可言)`;
+  const back = (top20 > 0.5 && d60 < top20 * 0.6) ? ` ・🚪 20 天到頂(${top20.toFixed(2)}),60 天回吐到 ${d60.toFixed(2)} → **離場約 20~30 天**` : '';
+  console.log(`      ${pad(k, 34)} ${cls}${back}`);
+}
+
+console.log('\n   🚨🚨 但「抱 N 天賺更多」那半⛔ 不可信 —— 看這兩列:');
+{
+  const a = EC['🔻 跌停(全部)'], b = EC['🔺 漲停'];
+  if (a && b) console.log(`      🔻 跌停 120 天 ${eat(a, 120, '🔻 跌停(全部)').toFixed(2)}pp ・🔺 漲停 120 天 ${eat(b, 120, '🔺 漲停').toFixed(2)}pp`);
+}
+console.log('      **兩個完全相反的事件同時「兩關都過」** → 那是「活躍度」不是「方向」(本站第 N 次遇到)。');
+console.log('      真因:同批股票對照**還沒對齊時間**,而且在 120 天窗口裡搜尋最佳天數一定找得到東西。');
+console.log('      ⭐ 所以這一段可信的只有「**有沒有反應、反應多久**」,⛔ 不是「抱 N 天可以賺多少」。');
+
+console.log('\n   ⚠️ ⛔ 🔺 漲停那一列**不能拿來驗工具** —— V72.0.1 說的「次日 +1.54%」是');
+console.log('      「昨天漲停 × 今天週轉率中等」而且用**當天收盤**進場;這裡是「漲停當天 → 隔天開盤買」,');
+console.log('      漲停鎖死時那段動能**在隔天跳空就被吃掉了**(V74.0.2 的教訓)。⛔ 口徑不同,不可互相驗證。');
+}

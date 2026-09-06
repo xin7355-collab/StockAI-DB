@@ -329,7 +329,8 @@ for (const [t, o] of Object.entries(CUR).sort((a, b) => at(b[1], 60) - at(a[1], 
   });
   console.log(`   ${t.padEnd(36)} │ ${cells.join(' │ ')} │ ${o.n}`);
 }
-console.log('   ⭐「公布前30」是**相對公布日**的 —— 負值代表事件股在公布前跑輸,正值代表已經先漲了');
+console.log('   🚨「公布前30」= 30 天前的價格**相對公布日**,所以 **負值 = 那 30 天漲了**、正值 = 跌了');
+console.log('      (⛔ 極容易讀反 —— V74.8.6 第一版就把它寫成「跑輸」,方向整個相反)');
 
 console.log('\n📈 反應時點:曲線在哪一天最大 / 最小(⚠️ 全期找峰值一定會找到,所以下面還要驗)');
 for (const [t, o] of Object.entries(CUR)) {

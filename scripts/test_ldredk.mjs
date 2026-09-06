@@ -153,5 +153,21 @@ ok('⑦d ⛔ 沒在官方注意股名單就不可以提醒(⛔ 不可自己推�
 ok('⑦e 接線:總覽的重點判讀真的有呼叫 _ovNewEdges',
     /for \(const r of \(this\._ovNewEdges\(data, sym\) \|\| \[\]\)\) rows\.push\(r\);/.test(SRC));
 
+// ⏱️ V74.8.7 逐日曲線量出來的「多久反應、多久走」
+ok('⑧ ⏱️ 大紅那組要寫出「前 5 天走完幾成 / 幾天到頂 / 60 天剩多少」(⛔ 那是使用者問的「多久離場」)',
+    /多久反應/.test(R.hit) && R.hit.includes(`${E.tm.r5big} 成`)
+    && R.hit.includes(`${E.tm.top} 個交易日到頂`) && R.hit.includes(`${E.tm.keepBig}%`), R.hit.slice(0, 60));
+ok('⑧a ⏱️ 小紅(系統性口徑)要用**它自己那組**的比例,⛔ 不可套大紅那組',
+    R.small.includes(`${E.tm.r5sys} 成`) && R.small.includes(`${E.tm.keepSys}%`)
+    && !R.small.includes(`${E.tm.r5big} 成`));
+ok('⑧b 🚨 必須講明那是**比例**、跟上面那個 +% 不是同一個口徑(⛔ 否則就是同名不同義)',
+    /不是同一個口徑/.test(R.hit));
+ok('⑧c ⛔ 數字不可寫死在文案 —— 只准透過 E.tm.* 取值', (() => {
+      const i = SRC.indexOf('_ldRedKHtml(');
+      const src = SRC.slice(i, SRC.indexOf('\n    },', i));
+      return /E\.tm\.r5big/.test(src) && /E\.tm\.top/.test(src) && /E\.tm\.keepBig/.test(src)
+          && /E\.tm\.r5sys/.test(src) && /E\.tm\.keepSys/.test(src);
+    })());
+
 console.log(fails ? `❌ ${fails} 條失敗` : '✅ LDREDK_PASS(全部通過)');
 process.exit(fails ? 1 : 0);
