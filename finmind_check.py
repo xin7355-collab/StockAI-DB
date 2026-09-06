@@ -213,6 +213,27 @@ def main():
                 print(f'   ▸ {nm}: 例外 {str(e)[:80]}')
         print('=' * 60)
 
+        # 🚀 財報三表「一次拿全市場」還有沒有寫法(決定回算成本差幾個數量級)
+        #    ⛔ 分點那次就是先假設「省略 data_id 可以拿全市場」→ 實際差 13 倍(V74.0.7)。
+        #    ⭐ 所以先問一次,⛔ 不憑印象寫採礦。
+        print('\n🚀 財報三表能不能「一次拿全市場」(⛔ 不先問的話成本會差兩個數量級)')
+        for nm, ds in [('資產負債表', 'TaiwanStockBalanceSheet'),
+                       ('現金流量表', 'TaiwanStockCashFlowsStatement'),
+                       ('損益表', 'TaiwanStockFinancialStatements')]:
+            for how, q in [('省略 data_id + 單季 date=', 'date=2026-06-30'),
+                           ('省略 data_id + start_date=', 'start_date=2026-04-01&end_date=2026-06-30')]:
+                try:
+                    r = _rq4.get(f'{BASE}/data?dataset={ds}&{q}', headers=hdr, timeout=60)
+                    j = r.json(); rows = j.get('data') or []
+                    ids = len({x.get('stock_id') for x in rows})
+                    flag = '✅' if ids > 50 else '❌'
+                    print(f'   {flag} {nm} · {how}: status={j.get("status")} rows={len(rows)} '
+                          f'股票數={ids} msg={str(j.get("msg",""))[:70]}')
+                except Exception as e:
+                    print(f'   ❌ {nm} · {how}: 例外 {str(e)[:70]}')
+        print('   ⭐ 股票數 > 50 = 真的拿到全市場;只有 1 = 它把參數忽略了只回一檔')
+        print('=' * 60)
+
         # 📐 集保股權持股分級(籌碼分佈用:千張大戶/散戶怎麼分,絕不能猜)
         print('\n' + '=' * 60)
         print('📐 集保股權持股分級 HoldingSharesPer 實測(2330,近60日)')
