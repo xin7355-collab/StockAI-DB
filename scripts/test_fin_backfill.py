@@ -66,8 +66,9 @@ ok('⓪b ⭐ 而且這支要真的解開兩元組(⛔ 當成 rows 用 = 雲端�
 
 # ── 動態:stub 網路 ──
 CALLS = {'n': 0}
-QS = ['2018-03-31', '2018-06-30', '2018-09-30']
-def make_fm(good=True, only=None):
+# ⭐ 要**四季齊全**,⛔ 否則「單季 vs 累計」那段根本不會執行(第一版就是這樣溜過去的)
+QS = ['2018-03-31', '2018-06-30', '2018-09-30', '2018-12-31']
+def make_fm(good=True, only=None, cum=False):
     def _fm(ds, extra=None, timeout=90):
         CALLS['n'] += 1
         sym = (extra or {}).get('data_id')
@@ -76,7 +77,9 @@ def make_fm(good=True, only=None):
         want = FB.WANT[ds]
         if not good and ds == 'TaiwanStockFinancialStatements':
             return [{'date': q, 'type': 'SomethingElse', 'value': 1} for q in QS], None
-        return ([{'date': q, 'type': t, 'value': 100.0 + i}
+        # ⭐ cum=True 時流量欄位做成 Q1<Q2<Q3<Q4(累計的特徵)→ 驗它認得出來
+        return ([{'date': q, 'type': t,
+                  'value': (100.0 + i) * (QS.index(q) + 1) if cum else 100.0 + i}
                  for q in QS for i, t in enumerate(want.values())], None)
     return _fm
 
@@ -174,6 +177,15 @@ with tempfile.TemporaryDirectory() as tmp:
        rc == 0 and p is not None and p['meta']['n'] == 30, f'rc={rc}')
     ok('⑧c ⭐ 而且放寬要**印出來**,並講明正式跑仍是 500(⛔ 不可靜默放寬)',
        '試跑模式' in out and '正式跑仍是 500' in out, out[:200])
+    # 🚨 這條是「變數遮蔽」那個 bug 的守門:`for sy, qs in res.items()` 會把外面的季別清單蓋掉
+    ok('⑧d ⭐ 試跑要自己判斷「單季 vs 累計」,而且⛔ 不可炸掉後面的收尾',
+       '📐 cogs:' in out and '季別範圍' in out, out[-400:])
+    ok('⑧e ⭐ 數值一樣(非累計)時要判成「單季」', '單季' in out and '**累計**' not in out, out[-300:])
+with tempfile.TemporaryDirectory() as tmp:
+    FB.fm = make_fm(cum=True); FB.REASON = {}
+    rc, out, p = run(tmp, LIMIT=30, MIN_OK=500, SLEEP=0, BUDGET_MIN=99)
+    ok('⑧f 🚨 Q1<Q2<Q3<Q4 時要判成「**累計**」(⛔ 當單季用的話 DOI 會假裝一路在去化)',
+       '**累計**' in out, out[-300:])
 
 print('\n' + ('❌ FIN_BACKFILL_FAIL(%d)' % len(fails) if fails else '✅ FIN_BACKFILL_PASS(全部通過)'))
 sys.exit(1 if fails else 0)

@@ -242,9 +242,9 @@ def main():
         for fld in ('cogs', 'rev', 'capex', 'ocf', 'dep'):
             j = FIELDS.index(fld)
             asc = tot = 0
-            for sy, qs in res.items():
+            for _sy, _qmap in res.items():          # ⛔ 不可叫 qs —— 外面的 qs 是季別清單(遮蔽會炸)
                 byy = {}
-                for q, v in qs.items():
+                for q, v in _qmap.items():
                     if v[j] is not None:
                         byy.setdefault(q[:4], {})[q[5:7]] = abs(v[j])
                 for y, mm in byy.items():
