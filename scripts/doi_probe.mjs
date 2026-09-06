@@ -119,11 +119,12 @@ function fwd(sym, pubDay, n) {
 }
 
 // ── 逐檔算 DOI 序列與事件 ──
-const evt = {};                       // 事件名 → 各天期報酬
-const add = (k, h, v) => { ((evt[k] ||= {})[h] ||= []).push(v); };
-const ctrl = {};
+// 🚨🚨 對照組必須**按公布日對齊**(橫斷面去均值),⛔ 不可拿「全期平均」當基準 ——
+//   第一版就是那樣做的,結果七種事件(連「DOI 上升」與「DOI 下降」這種相反的)
+//   **逐年長得一模一樣**(2018~2022 全 +5~7pp、2023~2025 全負)= 量到的是「那一年大家好不好」,
+//   不是「這個事件有沒有用」。⭐ 這是「對照組要共用非受測那條腿」的時間版。
+const raw = [];                       // {pub, sym, tags[], rets{}}
 const yrOf = d => d.slice(0, 4);
-const byYear = {}, halves = {};
 let nDoi = 0;
 const allPub = [];
 
@@ -159,7 +160,6 @@ for (const [sym, qs] of Object.entries(F.s)) {
     const rets = {};
     for (const h of HOR) { const r = fwd(sym, pub, h); if (r != null) rets[h] = r; }
     if (!Object.keys(rets).length) continue;
-    for (const h of HOR) if (rets[h] != null) ((ctrl[h] ||= []).push(rets[h]));
 
     const tag = [];
     if (rank >= 0.7 && acc < 0) tag.push('🧊 庫存高檔但去化在加快(它說的落底訊號)');
@@ -168,20 +168,69 @@ for (const [sym, qs] of Object.entries(F.s)) {
     if (spd < 0) tag.push('📉 DOI 下降(去化中)'); else if (spd > 0) tag.push('📈 DOI 上升(堆積中)');
     if (capexYoY != null && capexYoY <= -30) tag.push('✂️ 資本支出大砍(它說的利空出盡)');
     if (capexYoY != null && capexYoY >= 50) tag.push('🏗️ 資本支出大擴');
-    for (const t of tag) {
-      for (const h of HOR) if (rets[h] != null) add(t, h, rets[h]);
-      if (rets[120] != null) {
-        ((byYear[t] ||= {})[yrOf(pub)] ||= []).push(rets[120]);
-        ((halves[t] ||= [[], []]))[pub < '2022-07-01' ? 0 : 1].push(rets[120]);
-      }
-    }
+    raw.push({ pub, sym, tag, rets });
   }
 }
-const avg = a => (a && a.length ? a.reduce((s, x) => s + x, 0) / a.length : NaN);
+
+// ── 🚨 橫斷面去均值:每一個公布日各自減掉「那天全部股票的平均」──
+const avg0 = a => (a && a.length ? a.reduce((s, x) => s + x, 0) / a.length : NaN);
+const dayMean = {};                   // pub → { h: 平均 }
+for (const r of raw) for (const h of HOR)
+  if (r.rets[h] != null) ((dayMean[r.pub] ||= {})[h] ||= []).push(r.rets[h]);
+const dayN = {};
+for (const [p, m] of Object.entries(dayMean)) {
+  dayN[p] = (m[120] || []).length;
+  for (const h of HOR) m[h] = avg0(m[h]);
+}
+const evt = {}, byYear = {}, halves = {};
+const ctrl = {}; HOR.forEach(h => ctrl[h] = []);
+let skipThin = 0;
+for (const r of raw) {
+  if (dayN[r.pub] < 30) { skipThin++; continue; }   // ⛔ 同一天樣本太少,平均不可信
+  for (const h of HOR) {
+    if (r.rets[h] == null || !isFinite(dayMean[r.pub][h])) continue;
+    const ex = r.rets[h] - dayMean[r.pub][h];        // ⭐ 相對「同一天的其他股票」
+    ctrl[h].push(ex);                                // 對照組去均值後理應 ≈ 0
+    for (const t of r.tag) ((evt[t] ||= {})[h] ||= []).push(ex);
+  }
+  const e120 = (r.rets[120] != null && isFinite(dayMean[r.pub][120]))
+    ? r.rets[120] - dayMean[r.pub][120] : null;
+  if (e120 != null) for (const t of r.tag) {
+    ((byYear[t] ||= {})[yrOf(r.pub)] ||= []).push(e120);
+    ((halves[t] ||= [[], []]))[r.pub < '2022-07-01' ? 0 : 1].push(e120);
+  }
+}
+console.log(`   ⛔ 同一公布日樣本 <30 檔而略過:${skipThin} 筆`);
+const avg = avg0;
+// 🚧 空過守門:DOI 本身要像話 —— ⛔ 算出來全是垃圾的話,底下整張表都不用看
+{
+  const all = [], byS = {};
+  for (const [sym, qs] of Object.entries(F.s)) {
+    if (!S.has(sym)) continue;
+    for (const q of Object.keys(qs)) {
+      const v = calcDoi(qs[q][FI.inv], q1(sym, q, 'cogs'));
+      if (v != null && v < 2000) { all.push(v); (byS[sym] ||= []).push(v); }
+    }
+  }
+  all.sort((a, b) => a - b);
+  const pick = k => all.length ? all[Math.floor(all.length * k)] : NaN;
+  console.log(`   📏 DOI 分布(天):P10 ${pick(.1).toFixed(0)} ・中位 ${pick(.5).toFixed(0)} ・` +
+              `P90 ${pick(.9).toFixed(0)}(${all.length} 個季度)`);
+  const eg = ['2330', '1101', '2317', '2002', '2454'].filter(x => byS[x]);
+  console.log('   📏 抽樣(各檔中位):' + eg.map(x => {
+    const a = byS[x].slice().sort((p, q) => p - q);
+    return `${x} ${a[a.length >> 1].toFixed(0)} 天`;
+  }).join(' ・'));
+  if (!(pick(.5) > 15 && pick(.5) < 200)) {
+    console.log('   🚨 中位 DOI 不像話(合理應在 15~200 天)→ ⛔ 底下的表不要看,先查累計/單季判斷');
+    process.exit(1);
+  }
+}
 console.log(`   算得出 DOI(≥4 季)的:${nDoi} 檔 ・對照組 ${(ctrl[120] || []).length} 筆`);
 console.log(`   公布日範圍:${allPub.length ? allPub.sort()[0] : '-'} ~ ${allPub.length ? allPub[allPub.length - 1] : '-'}`);
 
-console.log('\n💰 事件研究(公布日隔天開盤買 ・扣同期加權 ・對照組 = 同一批股票同一批公布日)');
+console.log('\n💰 事件研究(公布日隔天開盤買 ・扣同期加權 ・⭐ 再按公布日做橫斷面去均值)');
+console.log('   ⭐ 對照組去均值後理應 ≈ 0 —— 那是這張表有沒有做對的**自我檢查**');
 console.log('   事件                                  │ ' + HOR.map(h => `${h}日`.padStart(9)).join(' │ ') + ' │ n');
 console.log('   (對照組)                              │ ' + HOR.map(h => avg(ctrl[h]).toFixed(2).padStart(9)).join(' │ ') + ` │ ${(ctrl[120] || []).length}`);
 const rows = Object.entries(evt).sort((a, b) => (avg(b[1][120]) || 0) - (avg(a[1][120]) || 0));
