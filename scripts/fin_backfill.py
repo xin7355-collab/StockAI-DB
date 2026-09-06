@@ -225,17 +225,40 @@ def main():
     os.makedirs(OUTDIR, exist_ok=True)
     with open(OUT, 'w', encoding='utf-8') as f:
         json.dump(payload, f, ensure_ascii=False, separators=(',', ':'))
-    # 🧪 試跑模式:把 2330 的實際內容印出來 —— ⭐ 試跑不推分支,不印的話**看不到資料長什麼樣**,
-    #    而「營業成本是單季還是累計」這種問題只有看真實數字才分得出來(⛔ 不可憑印象假設)。
-    if LIMIT and '2330' in res:
-        print('\n🧪 2330 實際內容(⭐ 用來判斷單季 vs 累計):')
-        print(f'   欄位順序:{FIELDS}')
-        for q in sorted(res['2330'])[:9]:
-            v = res['2330'][q]
-            fmt = ' ・'.join(f'{f}={"-" if v[i] is None else round(v[i]/1e8, 1)}億'
-                             for i, f in enumerate(FIELDS))
-            print(f'   {q}  {fmt}')
-        print('   ⭐ 判準:同一年 Q1<Q2<Q3<Q4 然後隔年 Q1 掉回去 = **累計**,要自己相減才是單季')
+    # 🧪 試跑:把實際內容印出來,**並讓程式自己判斷單季 vs 累計** ——
+    #    ⛔ 這件事憑印象假設的話,存貨週轉天數會從 Q1 到 Q4 一路變小,
+    #    看起來像「庫存一直在去化」,其實只是分母(營業成本)在累加。
+    if LIMIT:
+        ref = '2330' if '2330' in res else (sorted(res)[0] if res else None)
+        if ref:
+            print(f'\n🧪 {ref} 實際內容(⭐ 判斷單季 vs 累計):')
+            print(f'   欄位順序:{FIELDS}')
+            for q in sorted(res[ref])[:8]:
+                v = res[ref][q]
+                fmt = ' ・'.join(f'{f}={"-" if v[i] is None else round(v[i] / 1e8, 1)}'
+                                 for i, f in enumerate(FIELDS))
+                print(f'   {q}  {fmt}(億)')
+        # ⭐ 判準自動化:對每一檔、每一年,看流量欄位是不是 Q1<Q2<Q3<Q4(累計的特徵)
+        for fld in ('cogs', 'rev', 'capex', 'ocf', 'dep'):
+            j = FIELDS.index(fld)
+            asc = tot = 0
+            for sy, qs in res.items():
+                byy = {}
+                for q, v in qs.items():
+                    if v[j] is not None:
+                        byy.setdefault(q[:4], {})[q[5:7]] = abs(v[j])
+                for y, mm in byy.items():
+                    seq = [mm.get(m) for m in ('03', '06', '09', '12')]
+                    if any(x is None for x in seq):
+                        continue
+                    tot += 1
+                    if seq[0] < seq[1] < seq[2] < seq[3]:
+                        asc += 1
+            if tot:
+                pct = asc / tot * 100
+                tag = ('🚨 **累計**(要自己相減才是單季)' if pct >= 80
+                       else '✅ 單季' if pct <= 40 else '⚠️ 看不出來,人工確認')
+                print(f'   📐 {fld}: {tot} 個年度裡有 {asc} 個是 Q1<Q2<Q3<Q4({pct:.0f}%)→ {tag}')
 
     mb = os.path.getsize(OUT) / 1e6
     print(f'\n✅ 寫出 {OUT}:{len(res)} 檔 ・{len(qs)} 季 ・{mb:.1f} MB'
