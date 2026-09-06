@@ -143,8 +143,15 @@ def main():
             print(f'⚠️ 舊檔讀不起來({str(e)[:60]}),當成沒有')
 
     syms = stock_list()
+    min_ok = MIN_OK
     if LIMIT:
         syms = syms[:LIMIT]
+        # 🚨 試跑模式下檔數守門要跟著縮,⛔ 否則 30 檔一定撞到 500 的門檻 → job 紅燈,
+        #    看起來像「管線壞掉」其實是守門在工作(那種假紅燈會讓人養成忽略的習慣)。
+        #    ⭐ 但要**印出來**,⛔ 不可靜默放寬。
+        min_ok = max(1, LIMIT // 2)
+        print(f'🧪 試跑模式:只抓 {LIMIT} 檔 ・檔數守門放寬到 {min_ok}'
+              f'(⛔ 正式跑仍是 {MIN_OK})・⛔ 不推分支')
     # ③ 冪等:已經有的排後面(⛔ 不是直接丟掉 —— 預算沒用完時可以順便刷新最新一季)
     todo = [s for s in syms if s not in old] + [s for s in syms if s in old]
     print(f'📋 {len(syms)} 檔(其中 {len(syms) - len([s for s in syms if s not in old])} 檔已有)'
@@ -173,8 +180,8 @@ def main():
             print(f'   … {i}/{len(todo)} ・成功 {okn} ・{(time.time()-t0)/60:.1f} 分')
 
     # ⑤ 自我保護
-    if len(res) < MIN_OK:
-        print(f'🚨 只有 {len(res)} 檔(門檻 {MIN_OK})→ ⛔ 不覆寫舊檔')
+    if len(res) < min_ok:
+        print(f'🚨 只有 {len(res)} 檔(門檻 {min_ok})→ ⛔ 不覆寫舊檔')
         print(f'   原因統計:{REASON}')
         sys.exit(1)
 

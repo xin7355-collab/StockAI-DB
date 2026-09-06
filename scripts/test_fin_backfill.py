@@ -139,5 +139,14 @@ with tempfile.TemporaryDirectory() as tmp:
        f'rc={rc} n={p and p["meta"]["n"]} out={out[:200]}')
     ok('⑦c ⭐ 而且已經抓到的那些⛔ 不可掉(合併舊檔)', p and p['meta']['n'] >= 500)
 
+# 🧪 試跑模式:檔數守門要跟著縮,⛔ 但不可靜默(否則正式跑也被放寬就沒人發現)
+with tempfile.TemporaryDirectory() as tmp:
+    FB.fm = make_fm(); FB.REASON = {}
+    rc, out, p = run(tmp, LIMIT=30, MIN_OK=500, SLEEP=0, BUDGET_MIN=99)
+    ok('⑧b 🧪 試跑 30 檔⛔ 不可撞到 500 的門檻(那會變成看起來像管線壞掉的假紅燈)',
+       rc == 0 and p is not None and p['meta']['n'] == 30, f'rc={rc}')
+    ok('⑧c ⭐ 而且放寬要**印出來**,並講明正式跑仍是 500(⛔ 不可靜默放寬)',
+       '試跑模式' in out and '正式跑仍是 500' in out, out[:200])
+
 print('\n' + ('❌ FIN_BACKFILL_FAIL(%d)' % len(fails) if fails else '✅ FIN_BACKFILL_PASS(全部通過)'))
 sys.exit(1 if fails else 0)
