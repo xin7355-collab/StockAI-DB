@@ -271,6 +271,10 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
     .labsearch input{flex:1 1 auto;min-width:0;background:#0d141d;border:1px solid #263344;border-radius:9px;
       color:#eaf2fb;font-size:13px;padding:8px 10px;min-height:40px}
     .labsearch input:focus{outline:none;border-color:#22d3ee}
+    /* 🔍 V74.9.0 搜尋框搬進標題列(使用者要求)。⚠️ `.panel h2` 是 flex + wrap →
+       `flex:1 1 12em` 讓它在寬螢幕跟標題同一行、窄螢幕自己換一行(⛔ 不可用固定寬,會擠爆標題) */
+    .labhd .labsearch{flex:1 1 12em;margin:0;min-width:0;font-weight:400}
+    .labhd .labsearch input{font-weight:400}
     .labtopics{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 6px}
     .labtopics .tpc{font-size:11.5px;padding:5px 9px;border-radius:999px;border:1px solid #263344;
       background:#0f1620;color:var(--dim);cursor:pointer;min-height:30px;line-height:1.5}
@@ -811,17 +815,22 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 </div>
 <div id="tabLab" class="hidden">
   <div class="panel">
-    <h2>🔬 實測總表 <span class="sub">回測過的東西,按「能不能用」分類</span></h2>
+    <!-- 🔍 V74.9.0 使用者:「右手邊那句副標刪除,把搜尋視窗放在這」
+         ⭐ 搜尋擺在標題列 = 一進來就看得到(⛔ 原本在頁籤列下面,要先看完 7 個頁籤才發現)。
+         🔍 V74.7.6 搜尋**跨全部判定欄**(168 條分 7 欄,靠翻頁籤很慢)。 -->
+    <h2 class="labhd">🔬 實測總表
+      <span class="labsearch">
+        <input id="labQ" type="search" inputmode="search" placeholder="🔍 搜尋(例:分點、出場、空頭)"
+               oninput="PRO.labSearch(this.value)" autocomplete="off">
+        <button class="lbtn" id="labQx" style="display:none" onclick="PRO.labSearch('')">✕</button>
+      </span>
+    </h2>
     <div class="labbar" id="labBar"></div>
-    <!-- 🔍 V74.7.6 使用者:「有能搜尋內容的搜尋框」+「可以重新歸納嗎」
-         ⭐ 168 條分 7 個判定欄,靠翻頁籤很慢 → 搜尋**跨全部欄**;
-            主題標籤是**橫切**(籌碼/出場/板塊…),⛔ 不動既有的判定分類(有用/沒用/坑/測不了)。 -->
-    <div class="labsearch">
-      <input id="labQ" type="search" inputmode="search" placeholder="🔍 搜尋全部 168 條(例:分點、出場、空頭、櫃買)"
-             oninput="PRO.labSearch(this.value)" autocomplete="off">
-      <button class="lbtn" id="labQx" style="display:none" onclick="PRO.labSearch('')">✕ 清除</button>
-    </div>
-    <div class="labtopics" id="labTopics"></div>
+    <!-- 📌 V74.9.0 使用者:「主題標籤隱藏起來,我要的是搜尋時才列出來」
+         ⭐ 主題標籤是**橫切**(籌碼/出場/板塊…),⛔ 不動既有的判定分類(有用/沒用/坑/測不了);
+            平常它只是一整排數字、佔掉第一屏 → 改成**有在搜尋(或已選主題)時才出現**。
+         ⛔ 「已選主題」那個條件不可省 —— 否則點了主題之後整排消失,使用者無法取消。 -->
+    <div class="labtopics hidden" id="labTopics"></div>
     <div id="labIntro"></div>
     <!-- 📊 V74.5.0 回測數字(原「回測計算機」分頁)已併進這裡 —— 使用者:「實測總表與回測計算機很像,合併」 -->
     <div class="labbar" id="calcBar" style="display:none"></div>
@@ -3757,6 +3766,7 @@ const PRO = {
       { r: 34, t: '📅 休市越久隔天越顛(波動,不是方向)', w: '只描述(調停損)', how: '長假 / 週末之後那一天<b>波動會放大</b>(長假 1.32 倍)→ <b>停損放寬一點或部位放小</b>,免得被雜訊掃出場。⛔ 它不講方向,⛔ 不可拿來決定要做多還是做空。', n: '長假 1.43x', d: '休市 1 天 1.639% → 2~3 天(週末)1.09x → 4~5 天 <b>1.43x</b>,<b>單調遞增</b>。⭐ 所以「週一比較顛」與「長假後比較顛」是<b>同一件事</b>,⛔ 不可當成兩個發現。⛔ 只講顛不顛,方向測不出來(見隔壁欄)。', s: 'calendar_stock_probe.mjs・V73.7.3' },
     ],
     trap: [
+      { t: '🧹 散戶救星「選股」23 個榜裡,**13 個實測沒有優勢**(已收進摺疊,⛔ 沒有刪掉)', n: '主清單 23 → 10', d: '使用者:「選股策略那面太多,把實測後沒有用都刪除」。逐榜對照本站既有回測:<br>🏦 <b>外資連買 0.64x</b>・🏛️ 投信連買 <b>0.52x</b>・🤝 雙主力 <b>0.80x</b>(三個都<b>比隨便挑一天還低</b>,limitup_probe);🎯 主力鎖股 = 分點集中度<b>買賣兩端都負</b>(−0.60pp,chips_deep_probe);🐘 大戶吃貨 = 大戶↑散戶↓ 跟反方向那格 60 日只差 <b>0.12pp</b>(tdcc_probe);🧊 低基期/💎 跌深績優 = 位階低檔 <b>−0.63pp</b>、「低檔布局」10/20/60 日<b>全負</b>;🩹 錯殺便宜 = 含空頭重跑後「跌停就接」<b>整組陣亡</b>;⭐ 送分題(多套共振)<b>少賺 50 萬</b>;🐢 烏龜過河 = 站上月線 <b>+0.25pp ≈ 0</b>;🚀 營收動能 = YoY≥50% 只有 1.59x 且<b>扣成本後為負</b>;🎯 口袋支點 / 💎 潛力黑馬 = <b>從來沒有回測過</b>。<br>⛔ <b>刻意收起來不是刪掉</b> —— 刪了使用者會以為沒這回事、跑去別處學了再回來問(同 `_SIGNAL_EDGE` 對 C 級的處置);點開仍看得到,而且每一個都寫出打掉它的那個數字。<br>⭐ 主清單留下的 10 個:🎯 會賺訊號(唯一有實測成績)・當沖雷達・渣男賽車・妖股雷達・相對強度・K棒轉多/轉空・🚨 處置股(<b>避雷</b>用:噴≥30% 又掛注意股 −1.81pp,六關全過)・題材脈動・AI 鏈。', s: 'index.html _RADAR_WEAK・V74.9.0' },
       { t: '📦 「存貨週轉天數 + 資本支出」的供應鏈前瞻指標 —— **六關 0 過,而且他說的落底訊號是全表最差的**', d: '使用者上傳的對話主張:<b>庫存天數高檔但「去化在加快」(二階導數轉負)= 落底訊號,比新聞提前 1~2 個月</b>;<b>資本支出大砍 = 利空出盡、股價拐點</b>。<br>⭐ 為此把三表挖回來(2,351 檔 ・34 季 ・回溯 2018),<b>2,089 檔算得出存貨週轉天數</b>(台積電 76 天 ・鴻海 48 ・台泥 52 ・中鋼 113 ・全市場中位 84,數字合理)。進場=<b>財報公布日隔天開盤</b>(零前視)、扣同期加權、再按公布日做橫斷面去均值。<br><b>📊 120 日結果(對照組去均值後 = −0.00 ✅)</b>:🏗️ 資本支出大擴 <b>+0.36pp</b> ・🚨 庫存高檔且還<b>在惡化</b> +0.34 ・📉 DOI 下降 +0.20 ・✂️ <b>資本支出大砍(他說的利空出盡)+0.12</b> ・📈 DOI 上升 −0.19 ・⚠️ 庫存低檔但開始堆積 −0.29 ・🧊 <b>庫存高檔但去化在加快(他說的落底訊號)−0.41 = 全表最差</b>。<br>🚨 <b>七格全部小於來回成本 0.44%,六道關卡一個都沒過</b>。而且他說的那個訊號<b>前後半都是負的、8 年裡 6 年為負</b> —— 是<b>穩定地反著</b>,不是雜訊。<br>🚨 反直覺的是:<b>「庫存高檔且還在惡化」(直覺最糟的)反而是正的</b>。⚠️ 限制:季報只有 34 季、窗口偏多頭。', how: '⛔ 不要用「庫存去化加速」當落底訊號,實測方向相反。⛔ 也不要用「資本支出大砍」當利空出盡(+0.12pp ≈ 0)。⛔ 也不要期待「等它反應完再走」—— <b>根本沒有反應時點</b>(見下一條)。⭐ 這批資料照留在 fin_deep 分支給日後的探針用,但<b>前端不顯示</b>。', s: 'doi_probe.mjs + fin_backfill.py' },
       { t: '⏱️ 「時間差交錯相關(TLCC)」量不出領先落後 —— 星圖的箭頭做不出來', d: '使用者上傳的 Gemini 對話主張:關聯星圖改算 <b>Corr(A 前 k 天, B 今天)</b>,在連線上標「台積電領先封測廠 30 天」。⭐ 這題問得對(同期相關再高都不能拿來預測),而且純價格就測得動 → 直接測。<b>成交金額前 400 檔 ・1,214 個交易日(含 2022 空頭)・報酬先扣掉當日大盤</b>。<br>🚨 <b>①落後相關根本不存在</b>:同期相關中位 <b>0.290</b>,而 k=1 只有 <b>0.018</b>、k=2~10 全部在 ±0.02 內(安慰劑是 0.003)。<br>🚨 <b>②名單完全不穩</b>:前半段學到 8 組「A 領先 B」、後半段學到 <b>0 組</b>、兩段都出現 <b>0 組</b>(重疊率 0%)。<br>🚨 <b>③連他舉的例子都反過來</b>:上游題材→下游題材 k=1 是 0.0087,而<b>下游→上游反而是 0.0200</b>(差 −0.011)→ 沒有方向性。<br>🚨 <b>④報酬那點正的完全來自 B 自己</b>:「A 漲但 B 沒漲」(真正的領先樣本)20 日 +0.81pp、<b>而且 2022 −0.78 / 2024 −0.93 逐年沒過</b>;<b>「B 自己漲、A 沒漲」卻有 +1.70pp</b> —— 知道 A 漲了不但沒加分,還比不知道更差。', how: '⛔ 不要在星圖上加「領先 N 天」的箭頭 —— 那條線畫得出來,但它明年會指向完全不同的股票。⭐ 想抓動能就直接看<b>那一檔自己</b>有沒有動(本站「追強 > 抄底」的老結論)。', s: 'leadlag_probe.mjs' },
       { t: '🏦 「大盤量大 → 證券股爆發」實測是**孤峰不是高原**', d: '獨立券商(元大期/統一證/群益證/康和證/宏遠證)在「大盤成交金額 > 近 60 日均量 ×1.5」之後 20 日贏大盤 <b>+3.76pp、扣成本 +3.32</b>、前後半同向、<b>逐年五年全正</b>,而同一事件下非證券對照組(中華電/台泥/鴻海)只有 +0.35pp → 看起來很漂亮。<b>🚨 但門檻敏感度一測就破功</b>:×1.2 +0.30 ・×1.3 +0.59 ・×1.4 +0.89 ・<b>×1.5 +3.32</b> ・×1.7 +1.80,<b>只有那一格好、也只有那一格逐年全正</b>。而且 n=16 是「16 個大盤日」不是 16 個獨立樣本(5 檔券商同一天一起動)。<br>📉 更根本的是①:13 檔的「成交量變化 → 隔天超額報酬」相關全部 |r| < 0.1 ≈ 0 → <b>日線上量不到「量能帶來的額外報酬」</b>。', s: 'broker_stock_probe.mjs' },
@@ -3827,6 +3837,9 @@ const PRO = {
       { t: '📆 行事曆與大盤環境當濾網', n: '26 種全部少賺', d: '13 種行事曆(週幾/月初月底/結算日/長假)+ 13 種大盤事件(不追高/廣度極弱/地板股)。⭐ 唯二「贏」的兩個,優勢<b>全部集中在 2026-04 那一個月</b>,拿掉就由正轉負。🚨 累計測了 86 種變體,採用的只有 2 個。', s: 'V73.2.0 / V73.2.1 / V73.2.2' },
     ],
     method: [
+      { t: '🫧 驗「有沒有用對數」⛔ 不可只看兩端', n: '線性下中段展開 0.40px', d: '板塊泡泡大小改成「當天成交金額」時,注入「改回線性刻度」——<b>只斷言「最大最小差 &lt;20px」擋不住</b>(線性下最大最小仍然差 12px)。真正被壓扁的是<b>中間那一大群</b>:amt 11~98 億在線性下全部縮成 4.0~4.5px、展開只有 <b>0.40px</b>(對數是 7px)= 分不出誰大誰小。⭐ 通用:<b>驗刻度型態要看中段的展開度,⛔ 不是兩端的差距</b>。', s: 'test_rotbubsize.mjs・V74.9.0' },
+      { t: '🚨 注入之後測試還是綠的 → 先確認「它真的改到了目標」', n: '第 2 次', d: '把選股榜的警示句注入掉時測試是綠的 —— ⛔ 不是斷言太鬆,是<b>我的 replace 根本沒配到</b>(逸出字元寫錯)= <b>假的「沒抓到」</b>。改成先 assert count==1 再 replace,注入立刻被抓到。⭐ 通用:<b>注入完要先驗「檔案真的變了、而且語法還是好的」</b>,⛔ 別急著去放寬斷言(同 V74.0.6「注入把語法弄壞 → 測試是因為 import 失敗才紅的」)。', s: 'test_radartidy.mjs・V74.9.0' },
+      { t: '⛔ 測試不可直接塞 `_rotData` —— renderRot 會用 fetchJson 覆蓋它', n: 'file:// 必失敗', d: '`renderRot` 開頭就 <code>await fetchJson(\'data/sector_rot.json\')</code>,而 <b>file:// 下 fetchJson 一定失敗</b>(它加 <code>?t=</code> query,file 協定不吃)→ 早退、`_rotBub` 是 undefined 直接炸。⭐ 正解是塞進<b>共用快取 `PRO._cache[...]`</b>(既有測試一律這樣做)—— 那仍然是真實資料的形狀,只是繞過抓不到的那一段。', s: 'test_rotbubsize.mjs・V74.9.0' },
       { t: '⏱️ 財報事件「多久反應、多久離場」—— **量得出來,而答案是「沒有反應時點」**', d: '使用者的方法論質疑:<b>不該固定「抱滿 N 天」,應該算出多久反應、反應完多久離場</b>。⭐ 那個質疑是對的,做法就是畫<b>逐日累積超額報酬曲線</b>(公布日前 60 天 ~ 後 250 天,錨在公布日前最後一個收盤,一樣按公布日橫斷面去均值)。24,762 筆。<br>🚨 <b>① 沒有「反應」可言</b>:前 20 天只吃掉 250 天走勢的 <b>0~28%</b>,而且七個裡有<b>四個是負的(前 20 天往反方向走)</b>。有反應的話應該集中在前幾天,實際上是一路慢漂。<br>🚨 <b>② 公布前後是「同方向延續」,公布日一點都不特別</b>(⚠️ 這一欄的符號極容易讀反,V74.8.6 第一版就讀反了、V74.8.7 更正):📉 DOI 下降的股票公布前 30 天<b>已經在漲</b>、公布後<b>繼續漲</b>(+1.53% @250 天);📈 DOI 上升的公布前<b>已經在跌</b>、公布後<b>繼續跌</b>(−1.58%)。<br>⭐⭐ 前後同方向 = 那是一個「<b>一直都在</b>」的體質差異(存貨在去化的公司本來就走得好,財報只是確認它),⛔ 不是「對財報的反應」→ 這反而<b>強化</b>了「不是事件訊號」的結論。<br>🚦 <b>③ 前半段找最佳持有天數、後半段驗</b>:七個裡四個「通過」,但找到的天數是 <b>97 / 194 / 245 / 248 天</b>(= 抱到窗口盡頭);而找到短天期(5 天)的兩個<b>後半段全部失敗</b>。再逐年拆開,只剩 <b>📉 DOI 下降(抱 194 天)5/5 年為正</b>(後半段 +1.21pp ・扣成本 +0.77)。<br>⚠️ 但 194 天 ≈ 9.7 個月,期間會再出 2~3 次財報 → 那已經<b>不是事件反應,是「長期持有存貨在去化的公司」這個體質因子</b>,年化只有約 +1.5pp,遠小於本站已有的任何訊號(創一年新高抱 20 天就有 +2.84pp)。', how: '⛔ 不要用財報三表當進出場時機 —— 沒有可用的反應時點,也沒有可用的離場時點。⭐ 唯一站得住的「📉 存貨在去化」要抱 9~10 個月而且只賺一點點,那要當<b>選股體質</b>用,⛔ 不是事件訊號。', s: 'doi_probe.mjs' },
       { t: '🚨 對照組沒有按**時間**對齊 → 七種相反的事件逐年長得一模一樣', d: '第一版拿「全期平均」當對照,結果逐年欄位全部長一樣(2018~2022 全 +5~7pp、2023~2025 全負)—— <b>連「庫存增加」與「庫存減少」這種相反的事件都一樣</b>。那不是訊號,是量到了「<b>那一年大家好不好</b>」。<br>⭐ 這是「對照組要共用非受測那條腿」的<b>時間版</b>:季頻事件會擠在同幾個公布日(5/15・8/14・11/14・3/31),所以必須<b>按公布日做橫斷面去均值</b>(每個事件減掉那天全部股票的平均)。<br>🚧 而且要留一條<b>自我檢查:對照組去均值後必須 ≈ 0</b> —— 實測 −0.00 / 0.00 / −0.00,那是「這張表有沒有做對」唯一看得出來的地方。', s: 'doi_probe.mjs' },
       { t: '🚦🚦 燈號鐵則稽核:**自己的 App 也違反了 29 處**,最嚴重的是「🟢 可進場」', d: '使用者上傳的設計文件用 🟢=好/🔴=高風險(西方慣例)—— ⛔ 在台股是災難(紅=漲、綠=跌)。⭐ 但去掃自己的 App,發現<b>本專案自己也違反了 29 處</b>。<br><b>A 類(方向反了,最嚴重)</b>:「🟢 現在可進場」(而且顏色也是綠的)、「🟢 續抱」(配紅字 + 綠框 = <b>同一張卡指三個方向</b>)、「🟢 偏多」、「🟢 四大金剛齊發」、AI 提示詞「🟢(可以買)」→ 全部對調。<br><b>B 類(拿顏色表好壞)</b>:燃料飽/籌碼乾淨/融資過熱/處置中 → 改 <b>✅ ⚠️ ⛔ 🚨 ➖ 📍</b>。<br>⭐ 唯一例外是<b>國發會景氣對策信號</b>(官方名稱,不能改)→ 五種燈都加「官方」兩個字。<br>🐛 順手抓到一個死條件:<code>if (!big.startsWith(\'🟢\'))</code> 而那個變數<b>從來沒有 🟢 開頭的分支</b> = 永遠成立。', how: '⭐ 新增任何一顆燈之前先問:<b>這顆燈是在講「方向」還是在講「好壞」?</b> 講好壞就⛔ 不准用 🔴🟢。而且 <b>emoji、文字色、邊框色三者必須同方向</b>。已寫成巡邏 <code>test_lamprule.mjs</code>(⛔ 四個排除:註解 / 回測資料表 / 更新紀錄 / 否定形,少一個就誤報或假綠燈)。', s: 'test_lamprule.mjs' },
@@ -4003,6 +4016,9 @@ const PRO = {
       if (tp) tp.innerHTML = this.LAB_TOPICS.filter(([k]) => cnt[k])
         .map(([k, nm]) => `<span class="tpc ${this._labTopic === k ? 'on' : ''}" onclick="PRO.labTopic('${k}')">${nm} ${cnt[k]}</span>`).join('')
         + (this._labTopic ? `<span class="tpc" onclick="PRO.labTopic('')">✕ 全部主題</span>` : '');
+      // 📌 V74.9.0 使用者:「主題標籤隱藏起來,我要的是搜尋時才列出來」
+      //   ⛔ 「已經選了主題」也要顯示 —— 否則點完主題整排消失,使用者沒辦法取消(會卡住)。
+      if (tp) tp.classList.toggle('hidden', !searching && !this._labTopic);
     }
     const meta = this.LAB_TABS.find(x => x[0] === this._labSel);
     // 📊 V74.5.0「回測數字」欄(原回測計算機)—— 兩塊內容互斥顯示,⛔ 不可同時出現(那又變成兩張很像的表)
@@ -4130,7 +4146,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V74.8.9',
+  VER: 'V74.9.0',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -4380,6 +4396,19 @@ const PRO = {
     const p95 = a => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(b.length * 0.95)] : 1; };
     this._rotMax = Math.max(p95(mxs), 1);
     this._rotMaxY = Math.max(my, 1);
+    // 🫧 V74.9.0 泡泡大小改成「那一族當天的成交金額」(使用者:「是不是區分大小泡泡」)
+    //   ⛔ 舊版是**成員檔數**(`x.n`)—— 那是一個固定值,既不會動、也不帶任何判斷價值
+    //      (「電子零組件有 104 檔」不代表今天錢在那裡)。
+    //   ⭐ `amt` 是既有產物(V74.7.5 起 `sector_rot.json` 每一組每一天都有,零額外 API),
+    //      而且熱力圖的**磚面積**用的就是它 → 兩張圖同源,⛔ 不產生第二份真相。
+    //   🚨 必須用**對數**:實測最新一天 1.23 ~ 2,526.83 億(差 2,000 倍),
+    //      線性的話小的全部縮成一個點(同 Y 軸那次的教訓)。
+    //   ⛔ 尺標一樣是**全期固定**的(⛔ 不隨當天/勾選縮放,否則「泡泡在長大」是假的)。
+    const _amts = [];
+    for (const c of Object.keys(G.grp)) for (const v of (G.grp[c].amt || [])) if (v != null && v > 0) _amts.push(Math.log10(v));
+    this._rotAmtOK = _amts.length >= 10;                       // ⛔ 太少就退回成員數,並在圖例說明
+    this._rotAmtLo = this._rotAmtOK ? Math.min(..._amts) : 0;
+    this._rotAmtHi = this._rotAmtOK ? Math.max(..._amts) : 1;
     const W = this.QW, H = this.QH, P = this.QPAD;
     // 📏 刻度:⭐ 有刻度才讀得出「這一格差多少錢/多少%」——
     //    ⛔ 只有兩條軸線的話,泡泡的位置是不可解讀的(使用者截圖的問題之一)
@@ -4410,7 +4439,9 @@ const PRO = {
         <text class="qax" x="${AX + 2}" y="${H / 2 - 4}">← 弱</text>
         <g id="rotTrail"></g>
         <g id="rotBubs"></g>
-       </svg>`;
+       </svg>
+       <div class="note" id="rotBubLeg" style="margin-top:4px">🫧 <b>泡泡大小 = 那一族當天的成交金額</b>${this._rotAmtOK ? '(會跟著時間軸變)' : '(⚠️ 這份資料沒有 → 暫時用成員檔數)'}
+         ・⛔ 泡泡大 <b>不等於</b> 值得買:錢多只代表<b>那裡在成交</b>,能不能買看<b>左右</b>那一軸。</div>`;
     this._rotAX = AX;
     this._rotBub = {};
     const g = wrap.querySelector('#rotBubs');
@@ -4809,6 +4840,16 @@ const PRO = {
     }
     return cnt ? acc / cnt : t;
   },
+  // 🫧 泡泡半徑 = 那一族「當天的成交金額」(對數、全期固定尺標)
+  //   ⛔ 拿不到 amt 一律回 null → 呼叫端退回成員數並在圖例講清楚(⛔ 不可靜默用另一個維度)
+  _rotR(c, k) {
+    if (!this._rotAmtOK) return null;
+    const a = ((this._rotSet().grp[c] || {}).amt || [])[k];
+    if (!(a > 0)) return null;
+    const t = (Math.log10(a) - this._rotAmtLo) / Math.max(1e-6, this._rotAmtHi - this._rotAmtLo);
+    return 4 + Math.max(0, Math.min(1, t)) * 13;              // 4~17px
+  },
+
   rotSeek(k) {
     const J = this._rotData; if (!J) return;
     k = Math.max(0, Math.min(k, J.days.length - 1));
@@ -4828,7 +4869,8 @@ const PRO = {
     const W = this.QW, H = this.QH, P = this.QPAD;
     const G = this._rotSet();
     const list = Object.keys(this._rotBub)
-      .map(c => ({ c, v: this._sm((G.grp[c] || {}).r20, k), f: this._flowAt(c, k), n: (G.grp[c] || {}).n || 5 }))
+      .map(c => ({ c, v: this._sm((G.grp[c] || {}).r20, k), f: this._flowAt(c, k), n: (G.grp[c] || {}).n || 5,
+                   a: ((G.grp[c] || {}).amt || [])[k] }))
       .filter(x => x.v != null).sort((a, b) => b.v - a.v);
     const N = list.length;
     const rank = new Map(list.map((x, i) => [x.c, i]));
@@ -4842,7 +4884,8 @@ const PRO = {
       const py = H / 2 - this._sy(x.f) * (H / 2 - P);
       el.style.transform = `translate(${px.toFixed(1)}px,${py.toFixed(1)}px)`;
       const i = rank.get(c), hot = i < 3, cold = i >= N - 3;
-      const r = 5 + Math.min(9, Math.sqrt(x.n) * 1.1);
+      // 🫧 V74.9.0 大小 = 當天成交金額(對數);拿不到才退回成員數(圖例會說明是哪一種)
+      const r = this._rotR(c, k) ?? (5 + Math.min(9, Math.sqrt(x.n) * 1.1));
       const cir = el.querySelector('circle');
       cir.setAttribute('r', r.toFixed(1));
       cir.setAttribute('fill', x.v >= 0 ? 'rgba(255,93,93,.55)' : 'rgba(61,220,132,.5)');
