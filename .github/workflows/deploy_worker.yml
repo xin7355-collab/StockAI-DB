@@ -1,0 +1,68 @@
+name: Deploy Cloudflare Worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'cloud-worker/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy stockai-alerts Worker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 🚧 先擋掉最常見的失敗:沒有 Cloudflare API Token 就直接講清楚,
+      #    ⛔ 別讓它跑到一半噴一堆看不懂的英文。
+      - name: 🔑 檢查 Cloudflare API Token
+        env:
+          CF: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CF" ]; then
+            echo "::error::還沒設 CLOUDFLARE_API_TOKEN。請到 Cloudflare 建一個 API Token(範本選 Edit Cloudflare Workers),再加進這個專案的 Secrets。"
+            exit 1
+          fi
+          echo "✅ 有 Cloudflare API Token"
+
+      # 🐛 V73.3.3 這支 workflow **部署過 13 次、一次都沒成功** —— 每次都掛在同一件事:
+      #    `wrangler-action` 的 `secrets:` 清單只要有**任何一個沒設值**,
+      #    就整包 `Failed to upload secrets` → 連 Worker 本體都不會部署。
+      #    (2026-07-02 那次是 WEBHOOK_SECRET,拿掉之後沒人重跑,
+      #     而 TELEGRAM_BOT_TOKEN / GEMINI_API_KEY 還會踩同一個坑。)
+      #    ⭐ 修法:**先部署 Worker 本體**(不帶任何 secret,一定過),
+      #       再單獨上傳「真的有值」的那幾個 → 選填的沒設也不影響部署。
+      #    ⭐ 這樣只要 App 推播就完全不用 Telegram(VAPID 金鑰 Worker 會自己產,存在 KV)。
+      - name: 🚀 部署 Worker 本體
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: cloud-worker
+
+      # 🛡️ 安全:一律用 stdin 餵給 wrangler,⛔ 絕不 echo 機密值,也不寫進命令列參數
+      #    (命令列會出現在 process list 與部分 log)。
+      - name: 🔑 上傳選填機密(只上傳有值的)
+        working-directory: cloud-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -e
+          for K in TELEGRAM_BOT_TOKEN GEMINI_API_KEY; do
+            V="$(printenv "$K" || true)"
+            if [ -n "$V" ]; then
+              printf '%s' "$V" | npx --yes wrangler@3.90.0 secret put "$K"
+              echo "✅ 已上傳 $K"
+            else
+              echo "⏭️ $K 沒設 → 跳過(選填;只要 App 推播的話不需要它)"
+            fi
+          done
+
+      - name: ✅ 部署完成,下一步
+        run: |
+          echo "Worker 已部署。網址在 Cloudflare → Workers & Pages → stockai-alerts,"
+          echo "長得像 https://stockai-alerts.<你的帳號>.workers.dev"
+          echo "把它填進 App 設定中心的「Worker 網址」,再按「🩺 體檢」確認全綠。"

@@ -1,0 +1,81 @@
+name: 📲 Telegram 警報系統
+
+# 戰區三:讀 origin/data 分支上的最新採礦 JSON,推 Telegram
+#
+# ⛔ V21.4 已停用自動排程(使用者決策):此套只發「全市場籠統摘要」且讀不到個人庫存、
+#    時間用 UTC 判斷有 bug。個人化推播(庫存 -5%/5MA、盤前方向、獵殺買點)全部改由
+#    Cloudflare Worker(cloud-worker/worker.js)負責 — 它能透過 /sync 讀到你的自選/庫存/監控。
+#    保留 workflow_dispatch 供必要時手動觸發(不會再自動發、不再與 Worker 重複)。
+#
+# 必要 secrets:
+#   TELEGRAM_BOT_TOKEN  - @BotFather 建 bot 拿 token
+#   TELEGRAM_CHAT_ID    - @userinfobot 找到您的 chat ID
+
+# 🎯 V73.8.5 新增兩個**個股買點**排程(使用者要求:「買點到了跟我說,不用一直盯」)
+#   ⛔ 舊的 summary/watch(大盤層級籠統摘要)**維持停用** —— V21.4 的決策沒有被推翻,
+#      這兩個新模式問的是完全不同的事(哪一檔、什麼價、什麼時候)。
+#   ⏰ playbook:UTC 12:00 = 台北 20:00 —— playbook_scan 每晚台北 19:00 跑、約 20-25 分,
+#      留 40 分鐘緩衝(⚠️ 太早會讀到昨天的清單,腳本有 data_date 守門會擋掉但就白跑一趟)
+#   ⏰ eod:UTC 05:20 = 台北 13:20 —— ⭐ **刻意只跑一輪**:
+#      ① 無狀態 → 不可能重複推(不用維護「今天推過誰」的檔案)
+#      ② 13:20 正是實測有效進場時窗(13:00~13:28)的中間
+#      ⛔ 別改成每 5 分鐘一輪 —— 那要做去重,而且會把使用者吵到關通知 = 整套失效
+on:
+  schedule:
+    - cron: '0 12 * * 1-5'   # 台北 20:00 — 推「明天的作戰清單」
+    - cron: '20 5 * * 1-5'   # 台北 13:20 — 尾盤買點到了就推
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '模式(playbook=明日清單 / eod=尾盤買點 / summary / watch)'
+        required: false
+        default: 'playbook'
+        type: choice
+        options:
+          - playbook
+          - eod
+          - summary
+          - watch
+
+permissions:
+  contents: read
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 📥 拉 data 分支最新 JSON snapshot
+        run: |
+          git fetch origin data --depth=1 2>&1 || echo "⚠️ data 分支拉取失敗"
+          git checkout FETCH_HEAD -- data/ 2>&1 || echo "⚠️ data/ 取出失敗"
+          ls -la data/*.json 2>&1 | head -5 || echo "(無 JSON 檔)"
+
+      # 🚨 `live_quotes.json` **只在 gh-pages,刻意不進 data 分支**
+      #    (它是每 5 分鐘重生的即時快照,進 data 分支會讓備份分支一直 churn)
+      #    → 尾盤買點那輪一定要另外從 gh-pages 拉,⛔ 只拉 data 分支會永遠讀不到即時價。
+      - name: 📥 拉 gh-pages 的即時報價(尾盤買點才需要)
+        run: |
+          git fetch origin gh-pages --depth=1 2>&1 || echo "⚠️ gh-pages 拉取失敗"
+          mkdir -p data
+          git show FETCH_HEAD:data/live_quotes.json > data/live_quotes.json 2>/dev/null \
+            && echo "✅ live_quotes.json $(wc -c < data/live_quotes.json) bytes" \
+            || echo "⚠️ gh-pages 上沒有 live_quotes.json(盤後/假日正常;盤中沒有就要查 live_snapshot)"
+
+      - name: 🐍 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🚨 跑警報腳本
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # 判斷模式:手動 dispatch 用 input;cron 用**排程字串**對應(⛔ 別改回用 UTC 時間判斷,
+          # 舊版就是那樣才有時區 bug;GitHub 會把觸發的那條 cron 原文放在 github.event.schedule)
+          ALERT_MODE: ${{ github.event.inputs.mode || (github.event.schedule == '20 5 * * 1-5' && 'eod' || 'playbook') }}
+        run: python alert_system.py

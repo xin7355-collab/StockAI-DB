@@ -1,0 +1,93 @@
+name: 📐 PE 自身位階採礦
+
+# 📐 每檔股票「現在的 PE 在它自己近 3 年的哪個位階」→ data/pe_band.json
+#
+# ⛔ 為什麼獨立一支(不併進 daily_miner):2,700 檔逐檔一次 API,實測約 30-45 分,
+#    併進去會把那條已經 30-60 分的關鍵路徑再拉長,而且它失敗不該擋部署。
+#
+# 🕐 每週跑一次就夠 —— PE 位階是「近 3 年」的相對位置,一天不會變多少;
+#    ⛔ 天天跑只是白燒額度。週日 18:00 UTC = 台北週一凌晨 02:00。
+#
+# ⭐ 冪等:每次重跑都重算當下位階,⛔ 不累積 → **不需要先從 data 分支還原舊檔**
+#    (跟 tick_hist / etf mgr_hist 那種累積型檔案不同,別照抄那邊的還原步驟)。
+on:
+  schedule:
+    - cron: '0 18 * * 0'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: '最多幾檔(想快速驗證可填 100)'
+        required: false
+        default: '99999'
+
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  peband:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📂 還原股票清單 (origin/data)
+        run: |
+          set -e
+          git fetch --depth=1 origin data
+          git archive origin/data data | tar -x
+          n=$(ls data/*.json 2>/dev/null | wc -l)
+          echo "還原 $n 檔"
+          # 🚧 空過守門:清單不完整就別跑(不然會產出殘缺的 pe_band.json)
+          if [ "$n" -lt 500 ]; then echo "::error::只還原到 $n 檔 → 中止"; exit 1; fi
+
+      - name: 📐 採礦
+        id: mine
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          LIMIT: ${{ github.event.inputs.limit }}
+          MAX_MIN: '150'
+        run: |
+          set +e
+          python3 pe_band_miner.py
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          # ⛔ 採礦器自己有空過守門(成功 <300 檔就不覆寫檔案且 exit 1)
+          [ "$rc" -ne 0 ] && echo "⚠️ rc=$rc → 不部署,保留線上舊檔"
+          exit 0
+
+      - name: 🚀 部署到 gh-pages + data
+        if: steps.mine.outputs.rc == '0'
+        run: |
+          set -e
+          [ -s data/pe_band.json ] || { echo "❌ 找不到產物"; exit 1; }
+          cp data/pe_band.json /tmp/pe_band.json
+          git config user.name  "StockAI Bot"
+          git config user.email "bot@users.noreply.github.com"
+          deploy () {
+            local BR="$1"
+            git reset --hard -q; git clean -fdxq
+            git fetch origin "$BR" 2>/dev/null || return 0
+            git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR"; return 0; }
+            mkdir -p data && cp /tmp/pe_band.json data/pe_band.json
+            git add -f data/pe_band.json
+            git diff --cached --quiet && { echo "ℹ️ $BR 無變更"; return 0; }
+            git commit -q -m "📐 PE 自身位階 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/pe_band.json
+            for i in 1 2 3 4; do
+              git push origin "$BR" && return 0
+              sleep $((i*5)); git fetch origin "$BR"; git reset --hard -q "origin/$BR"
+              mkdir -p data && cp /tmp/pe_band.json data/pe_band.json
+              git add -f data/pe_band.json
+              git commit -q -m "📐 PE 自身位階 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/pe_band.json 2>/dev/null || true
+            done
+            echo "❌ $BR push 失敗"; return 1
+          }
+          deploy gh-pages
+          deploy data
+          echo "✅ 已部署"

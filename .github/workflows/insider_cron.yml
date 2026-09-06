@@ -1,0 +1,112 @@
+name: 🏛️ 董監質押採礦同步 (insider daily)
+
+# 每日跑 insider_miner.py → 產 data/insider.json(董監質押比/持股)同步到 gh-pages。
+# 資料源 TWSE OpenAPI t187ap11_L(探針實測 Actions 可達、每日更新、穩定 JSON)。
+# 不動 index.html / macro_risk.json,與其他 workflow 共存。
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 20 * * 0-4'   # 台北凌晨 04:00,僅交易日翌晨(⚡ V69.8.6:TWSE 週末不出表,原週末 2 輪白跑)
+  push:
+    branches: [main]
+    paths:
+      - 'insider_miner.py'
+      - '.github/workflows/insider_cron.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: insider-cron
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依套件
+        run: pip install requests --quiet
+
+      - name: 📂 建 data 目錄
+        run: mkdir -p data
+
+      - name: 🏛️ 執行董監質押採礦
+        run: python insider_miner.py
+
+      - name: 📡 同步 data/insider.json 到 gh-pages
+        run: |
+          set -e
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [ ! -f data/insider.json ]; then
+            echo "❌ insider.json 不存在(採礦失敗),跳過(保留舊檔)"
+            exit 0
+          fi
+
+          mkdir -p /tmp/insider
+          cp data/insider.json /tmp/insider/
+
+          push_with_retry() {
+            git fetch origin gh-pages
+            git checkout gh-pages
+            git reset --hard origin/gh-pages
+            mkdir -p data
+            cp /tmp/insider/insider.json data/insider.json
+            if git diff --quiet -- data/insider.json; then
+              echo "無變化,跳過 commit"
+              return 0
+            fi
+            git add data/insider.json
+            git commit -m "🏛️ insider daily sync $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push origin gh-pages
+          }
+
+          for i in 1 2 3; do
+            if push_with_retry; then
+              echo "✅ insider.json 已同步 (try $i)"
+              exit 0
+            fi
+            echo "⚠️ try $i 失敗(可能被其他 force-push 卡),重試..."
+            sleep $((i*3))
+          done
+
+          echo "❌ 連 3 次失敗,放棄(明天 cron 再試)"
+          exit 0
+
+      # 🩹 V69.8.4 P0-2:同步到 data 分支。daily_miner deploy 底層是 git archive origin/data +
+      #    orphan force-push gh-pages → 只在 gh-pages 的檔案每輪被抹掉(insider.json 之前每天
+      #    18:00-04:00 台北整晚 404,董監質押卡/持股身份分布的董監段全空)。推 data 才會被保留。
+      - name: 📡 同步 data/insider.json 到 data 分支(daily_miner archive 保留用)
+        run: |
+          set -e
+          [ -f /tmp/insider/insider.json ] || { echo "無產出,跳過"; exit 0; }
+          git reset --hard -q 2>/dev/null || true
+          git clean -fdq 2>/dev/null || true
+          # ⚠️ checkout@v4 只設觸發分支 refspec → 顯式 refspec 才會建 origin/data(V69.6.4 實測)
+          git fetch origin "+refs/heads/data:refs/remotes/origin/data" 2>/dev/null || true
+          git checkout -f -B data origin/data 2>/dev/null || { echo "⚠️ 無 data 分支,跳過"; exit 0; }
+          mkdir -p data
+          cp /tmp/insider/insider.json data/insider.json
+          git add -f data/insider.json
+          git diff --cached --quiet && { echo "無變化"; exit 0; }
+          git commit -q -m "🏛️ insider → data 分支 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/insider.json
+          for i in 1 2 3 4 5; do
+            git push origin data && { echo "✅ data 分支 push 成功"; exit 0; }
+            [ "$i" -eq 5 ] && { echo "❌ 連 5 次失敗(明天再試)"; exit 0; }
+            sleep $((i*5))
+            git fetch origin "+refs/heads/data:refs/remotes/origin/data" 2>/dev/null || true
+            git reset --hard -q origin/data 2>/dev/null || true
+            cp /tmp/insider/insider.json data/insider.json
+            git add -f data/insider.json
+            git commit -q -m "🏛️ insider → data 分支 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/insider.json 2>/dev/null || true
+          done

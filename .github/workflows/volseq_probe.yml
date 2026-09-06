@@ -1,0 +1,57 @@
+name: 🔢 連次量(盤中第N次爆量)分K探針
+
+# 純驗證用:只跑 volseq_probe.py,實測「空在爆量漲不動、買在爆量跌不動」在**分K**上
+# 扣掉當沖來回成本之後還有沒有正期望。
+#
+# ⛔ 本 workflow **不碰 gh-pages / data 分支**,零部署衝突風險
+#    (同 orb_probe.yml 的設計;結果只上 artifact)。
+# 📌 為什麼要分 K:日線版已於 V71.9.8 用 64,990 個事件驗過 → 兩個方向都在雜訊內,
+#    但他講的本來就是盤中「第幾次爆量」,日線把一整天壓成一根,測不出來。
+# 📌 可行(扣成本後仍正)才正式建 volseq_miner;⛔ 沒驗過不上線。
+# ⚠️ Shioaji 金鑰共用衝突(實測全專案有 5 支 workflow 用同一組 SHIOAJI_API_KEY):
+#    live_snapshot(UTC 01:00~05:30 每 5 分)、tick_flow(UTC 01~05 每 10 分)、
+#    stock_futures(UTC 14:00)、orb_probe(手動)、本檔(手動)。
+#    同一組金鑰同時登入可能被拒 → **手動 Run 時請避開 UTC 01:00~05:30(台北 09:00~13:30 盤中)**
+#    與 UTC 14:00 前後。本檔設為純手動就是為了讓你自己挑時間,⛔ 不加 cron 免得撞到盤中即時報價。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: 🔢 連次量 分K 探針
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: 📦 安裝相依套件(Shioaji)
+        run: pip install "shioaji<1.7" --quiet   # 📌 同 orb_probe/live_snapshot/tick_flow:1.7.0 移除 login(fetch_contract=) → 釘 1.6.x
+
+      - name: 📂 建 data 目錄
+        run: mkdir -p data
+
+      - name: 🔢 執行連次量分K探針
+        env:
+          SHIOAJI_API_KEY: ${{ secrets.SHIOAJI_API_KEY }}
+          SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
+        run: python volseq_probe.py || echo "⚠️ 非零退出(仍印出結果)"
+
+      - name: 📤 上傳探針結果 artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: volseq-probe-result
+          # ⚠️ 註解只能寫在 path: | 之上(block scalar 內行尾 # 不是註解,會變成路徑的一部分)
+          path: |
+            data/_volseq_probe.json
+          retention-days: 7
+          if-no-files-found: warn

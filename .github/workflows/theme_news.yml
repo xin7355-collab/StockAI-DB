@@ -1,0 +1,107 @@
+name: 🔥 夜間情報採礦 (theme_news)
+
+# 🔥 題材脈動(Google News RSS 熱度)+ 🏭 公司本業(TWSE/TPEX 官方 OpenAPI)
+#    兩個輸出各自守門(theme_news.py 印 debug 到 stdout,命中不足不寫檔、保留線上舊檔)。
+#    cron 台北 06:30(週一~五)開盤前更新;零金鑰零 AI 零 FinMind 額度。
+
+on:
+  schedule:
+    # 一天兩趟(使用者要求盡量提早,但 06:30 那趟不能省 — 美股收盤在台北凌晨 4-5 點,早跑會漏隔夜新聞):
+    - cron: '30 16 * * 0-4'   # UTC 16:30 週日~四 = 台北 00:30 週一~五(前晚台股盤後新聞)
+    - cron: '30 22 * * 0-4'   # UTC 22:30 週日~四 = 台北 06:30 週一~五(補美股收盤後,開盤前最完整)
+  workflow_dispatch:
+
+# 與 deploy_pages / daily_miner / fund_sweep 共用 group,避免同時 push gh-pages 撞鎖
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  intel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依 (只需 requests)
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: 🔥 執行情報採礦
+        id: intel
+        run: |
+          set +e
+          python3 theme_news.py
+          rc=$?
+          echo "intel_rc=$rc" >> "$GITHUB_OUTPUT"
+          [ "$rc" -ne 0 ] && echo "⚠️ 兩個輸出都失敗(rc=$rc)→ 不部署,保留線上舊檔"
+          exit 0
+
+      - name: 🚀 部署到 gh-pages + data (只更新有產出的檔)
+        if: steps.intel.outputs.intel_rc == '0'
+        run: |
+          set -e
+          ls -la data/ | grep -E 'theme_news|biz_profile' || { echo "❌ 無任何產出檔,跳過部署"; exit 0; }
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 先存到 /tmp(data/ 在 main 是 gitignore 的未追蹤檔,切分支前要清乾淨)— 同 fund_sweep 實測過的流程
+          for f in theme_news.json biz_profile.json; do
+            [ -f "data/$f" ] && cp "data/$f" "/tmp/$f"
+          done
+
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdq 2>/dev/null || true
+            # 🐛 run#3 教訓:checkout@v4 只抓觸發分支,`git checkout -f data` 會「無分支」跳過 →
+            #    改 daytrade_probe 實證過的 FETCH_HEAD 切法(fetch 成功才切,失敗才是真的無分支)
+            if ! git fetch origin "$BR" 2>/dev/null; then echo "⚠️ 無 $BR 分支,跳過"; return 0; fi
+            git checkout -f -B "$BR" FETCH_HEAD 2>/dev/null || { echo "⚠️ 切 $BR 失敗,跳過"; return 0; }
+            mkdir -p data
+            local staged=0
+            for f in theme_news.json biz_profile.json; do
+              if [ -f "/tmp/$f" ]; then
+                cp "/tmp/$f" "data/$f"
+                git add -f "data/$f"
+                staged=1
+              fi
+            done
+            [ "$staged" -eq 0 ] && { echo "ℹ️ $BR 無檔可部署"; return 0; }
+            if git diff --cached --quiet; then
+              echo "ℹ️ $BR 無變更"; return 0
+            fi
+            # 🐛 pathspec 只列「真的有產出」的檔(run#2 教訓:寫死兩檔名,只產一檔就 pathspec 炸)
+            local paths=()
+            for f in theme_news.json biz_profile.json; do
+              [ -f "/tmp/$f" ] && paths+=("data/$f")
+            done
+            git commit -q -m "🔥 夜間情報採礦 theme_news/biz_profile $(date -u '+%Y-%m-%d %H:%M UTC')" -- "${paths[@]}"
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              echo "⚠️ $BR push attempt $i 失敗,sleep $((i*5))s 重試…"; sleep $((i*5))
+              git fetch origin "$BR" 2>/dev/null || true
+              git reset --hard -q FETCH_HEAD 2>/dev/null || true
+              for f in theme_news.json biz_profile.json; do
+                [ -f "/tmp/$f" ] && { cp "/tmp/$f" "data/$f"; git add -f "data/$f"; }
+              done
+              git commit -q -m "🔥 夜間情報採礦 theme_news/biz_profile $(date -u '+%Y-%m-%d %H:%M UTC')" -- "${paths[@]}" 2>/dev/null || true
+            done
+          }
+
+          # 先 gh-pages(前端立即讀到),再 data(讓 daily_miner deploy 的 git archive 保留)
+          deploy_branch gh-pages
+          deploy_branch data
+          echo "✅ 情報已部署"

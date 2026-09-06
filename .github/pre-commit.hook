@@ -1,0 +1,42 @@
+#!/bin/bash
+# 每次 commit index.html 前，自動驗證所有內嵌 <script> 的 JS 語法
+
+if git diff --cached --name-only | grep -q "index.html"; then
+    echo "🔍 檢查 index.html 所有 <script> 區塊的 JS 語法..."
+
+    # 提取並逐一驗證每個 <script> 區塊
+    RESULT=$(python3 - << 'PYEOF'
+import re, subprocess, sys, tempfile, os
+
+h = open('index.html', encoding='utf-8').read()
+blocks = re.findall(r'<script>(.*?)</script>', h, re.S)
+errors = []
+
+for i, block in enumerate(blocks):
+    if not block.strip():
+        continue
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False, encoding='utf-8') as f:
+        f.write(block)
+        fname = f.name
+    result = subprocess.run(['node', '--check', fname], capture_output=True, text=True)
+    os.unlink(fname)
+    if result.returncode != 0:
+        # Adjust line numbers to match the block (roughly)
+        errors.append(f"Script block #{i+1}:\n{result.stderr}")
+
+if errors:
+    for e in errors:
+        print(e, file=sys.stderr)
+    sys.exit(1)
+PYEOF
+)
+
+    if [ $? -ne 0 ]; then
+        echo "$RESULT"
+        echo ""
+        echo "❌ JS 語法錯誤！commit 已攔截，請修復後再試。"
+        exit 1
+    else
+        echo "✅ JS 語法全部正確，允許 commit"
+    fi
+fi

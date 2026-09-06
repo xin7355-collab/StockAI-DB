@@ -1,0 +1,143 @@
+name: 📚 分點深歷史回算 (手動)
+
+# ⭐ 只手動觸發。把券商分點的**逐日全市場**歷史回算成一天一個 gz 檔。
+#
+# 🏛️ 三個架構決定(⛔ 改之前先讀 CLAUDE.md「V74.0.7 分點深歷史」那節):
+#   ① 推**獨立的 orphan 分支 `chips_deep`** —— ⛔ 不碰 `data` 也不碰 `gh-pages`。
+#      理由:那兩個分支都是 daily_miner 用 orphan force-push 重建的,
+#      這支跑 6 小時,共用分支一定會互相覆蓋;而且 gh-pages 那步是
+#      `git add -f index.html data/`(整個 data/ 都收)→ 放進 data/ 會把
+#      180 MB 深歷史推上 gh-pages,前端下載量爆炸。
+#      ⭐ 用獨立分支的附帶好處:**現有 workflow 一行都不用改**。
+#   ② 按「**券商**」抓不是按「股票」抓 —— 實測前 200 家券商覆蓋 97.8% 的分點淨額,
+#      2 年只要 98,000 次呼叫;按股票抓要 130 萬次(⛔ 不可行)。
+#   ③ **冪等** —— 已經有的日期會跳過,所以可以分很多次跑到完成。
+#
+# ⚠️ 單 job 上限 6 小時 → 一次跑一段(用 from/to)。付費額度 6,000 req/hr,
+#    實測 200 家券商 × 1 天 = 200 次呼叫 → 一小時約 30 個交易日。
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: '起日 YYYY-MM-DD(留空=用 days)'
+        required: false
+        default: ''
+      to:
+        description: '迄日 YYYY-MM-DD(留空=用 days)'
+        required: false
+        default: ''
+      days:
+        description: '或:回算最近 N 個日曆天'
+        required: false
+        default: '120'
+      brokers:
+        description: '取前幾家券商(30≈87% / 100≈95% / 200≈98% 覆蓋)'
+        required: false
+        default: '200'
+      rate:
+        description: '每分鐘最多打幾次(⚠️ 與 daily_miner 共用同一把付費金鑰的 6,000/hr;要一起跑就調低)'
+        required: false
+        default: '95'
+      check_depth:
+        description: '只探上游歷史有多深(約 7 次呼叫,不寫檔)'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+# ⛔ 不與 gh-pages/data 的部署共用 group —— 這支只推 chips_deep,互不影響;
+#    但自己跟自己要序列化(兩個回算同時跑會互相覆蓋)。
+concurrency:
+  group: chips-deep-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350          # ⚠️ 留 10 分鐘給推送,⛔ 不可貼著 360
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依
+        run: pip install requests
+
+      - name: 📂 還原已經回算過的日子 + 現有分點(排券商用)
+        run: |
+          git fetch origin chips_deep --depth=1 2>/dev/null || echo "chips_deep 分支還不存在(第一次跑)"
+          mkdir -p chips_deep data/chips
+          if git rev-parse --verify -q origin/chips_deep >/dev/null; then
+            git archive origin/chips_deep | tar -x -C . 2>/dev/null || true
+          fi
+          echo "已有 $(ls chips_deep/*.json.gz 2>/dev/null | wc -l) 天"
+          # 🏦 top_brokers() 要讀現有分點檔才排得出「前 N 家券商」
+          git fetch origin data --depth=1 2>/dev/null || true
+          if git rev-parse --verify -q origin/data >/dev/null; then
+            git archive origin/data data/chips 2>/dev/null | tar -x -C . 2>/dev/null || true
+          fi
+          echo "現有分點檔 $(ls data/chips/*.json 2>/dev/null | wc -l) 個"
+
+      - name: 📏 只探深度(可選)
+        if: ${{ inputs.check_depth }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/chips_backfill.py --check-depth
+
+      - name: 📚 回算
+        if: ${{ !inputs.check_depth }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          # ⚠️ 只有 1 把付費金鑰(6,000 req/hr),而 daily_miner 的分點步驟吃同一把。
+          #    兩支同時跑就會互相擠 → 429。要並行時把這個調到 55 以下留餘裕給採礦。
+          #    ⭐ 先看回算輸出的「分類統計」有沒有 http_429,⛔ 別憑感覺調。
+          FM_PAID_RATE_MAX: ${{ inputs.rate }}
+        run: |
+          ARGS="--brokers ${{ inputs.brokers }}"
+          if [ -n "${{ inputs.from }}" ] && [ -n "${{ inputs.to }}" ]; then
+            ARGS="$ARGS --from ${{ inputs.from }} --to ${{ inputs.to }}"
+          else
+            ARGS="$ARGS --days ${{ inputs.days }}"
+          fi
+          echo "▶️ python3 scripts/chips_backfill.py $ARGS"
+          python3 scripts/chips_backfill.py $ARGS
+
+      - name: 🚀 推上 chips_deep 分支
+        if: ${{ !inputs.check_depth }}
+        run: |
+          set -e
+          N=$(ls chips_deep/*.json.gz 2>/dev/null | wc -l)
+          # 🚧 空過守門:一天都沒有就別推(⛔ 不可用空的 orphan 蓋掉已經回算好的)
+          if [ "$N" -lt 1 ]; then
+            echo "❌ chips_deep/ 一個檔都沒有 → 拒絕推送"
+            exit 1
+          fi
+          # 🚧 ⛔ 不可比原本少 —— orphan force-push 會整個取代,少了就是真的沒了
+          OLD=0
+          if git rev-parse --verify -q origin/chips_deep >/dev/null; then
+            OLD=$(git ls-tree -r --name-only origin/chips_deep | grep -c '\.json\.gz$' || echo 0)
+          fi
+          if [ "$N" -lt "$OLD" ]; then
+            echo "❌ 現在 $N 天 < 分支上已有的 $OLD 天 → 拒絕推送(會弄丟資料)"
+            exit 1
+          fi
+          echo "📦 $OLD → $N 天 ・ 合計 $(du -sh chips_deep | cut -f1)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan _deep_deploy
+          git rm -rf --cached . -q 2>/dev/null || true
+          git add -f chips_deep/
+          git commit -q -m "📚 分點深歷史 ${N} 天($(date -u '+%Y-%m-%d %H:%M UTC'))"
+          for i in 1 2 3 4 5; do
+            git push origin HEAD:chips_deep --force && { echo "✅ push 成功 (第 $i 次)"; break; }
+            [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; exit 1; }
+            sleep $((i * 5))
+          done

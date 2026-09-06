@@ -1,0 +1,92 @@
+name: ⭐ K線深歷史回算 (手動)
+
+# ⭐⭐ 把個股 K 線補深到 2021(涵蓋 2022 那次 −32% 空頭)—— 一次解鎖十幾支
+# 「走完空頭要重跑」的探針,不用真的等空頭。含 2021 後**下市股**(修倖存者偏誤)。
+#
+# 🏛️ 架構照 chips_backfill(⛔ 別改回去):
+#   ① 推**獨立 orphan 分支 `klines_deep`** —— ⛔ 不碰 data 也不碰 gh-pages。
+#   ② 檔案在頂層 klines_deep/{sym}.json.gz(一檔一股;前端**不讀**,只給探針/回測)。
+#   ③ 冪等:分支上已有的 sym 跳過 → 中斷再跑會接續。
+# ⚠️ 與 daily_miner 共用付費金鑰(6,000/hr)→ ⛔ 別跟每日採礦同時跑
+#    (SLEEP=0.65s ≈ 5,500/hr;全市場 ~2,900 次呼叫 ≈ 40 分)。
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: '只抓前 N 檔驗管線(0 = 全部)'
+        required: false
+        default: '0'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: klines-deep-backfill
+  cancel-in-progress: false     # 長工作,⛔ 不可被第二次手動觸發砍掉
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依
+        run: pip install requests
+
+      - name: 📂 還原分支既有檔(冪等接續;⛔ Python 做 tar 會弄壞二進位 → 在 shell 做)
+        run: |
+          git fetch origin klines_deep --depth=1 2>/dev/null || echo "klines_deep 分支還不存在(第一次跑)"
+          mkdir -p klines_deep
+          if git rev-parse --verify -q origin/klines_deep >/dev/null; then
+            git archive origin/klines_deep | tar -x -C . 2>/dev/null || true
+          fi
+          echo "已有 $(ls klines_deep/*.json.gz 2>/dev/null | wc -l) 檔"
+
+      - name: ⭐ 回算(探路 → 全市場 → 下市股)
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: |
+          if [ "${{ inputs.dry }}" != "0" ]; then
+            python3 scripts/klines_backfill.py --dry ${{ inputs.dry }}
+          else
+            python3 scripts/klines_backfill.py
+          fi
+
+      - name: 🚀 推上 klines_deep 分支
+        if: ${{ inputs.dry == '0' }}
+        run: |
+          set -e
+          N=$(ls klines_deep/*.json.gz 2>/dev/null | wc -l)
+          if [ "$N" -lt 500 ]; then
+            echo "❌ 只有 $N 檔(<500)→ 拒絕推送(⛔ 不可用半份蓋掉)"
+            exit 1
+          fi
+          OLD=0
+          if git rev-parse --verify -q origin/klines_deep >/dev/null; then
+            OLD=$(git ls-tree -r --name-only origin/klines_deep | grep -c '\.json\.gz$' || echo 0)
+          fi
+          if [ "$N" -lt "$OLD" ]; then
+            echo "❌ 現在 $N 檔 < 分支上已有的 $OLD → 拒絕推送(orphan force-push 會整個取代)"
+            exit 1
+          fi
+          echo "📦 $OLD → $N 檔 ・合計 $(du -sh klines_deep | cut -f1)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan _kl_deploy
+          git rm -rf --cached . -q 2>/dev/null || true
+          git add -f klines_deep/
+          git commit -q -m "⭐ K線深歷史 ${N} 檔($(date -u '+%Y-%m-%d %H:%M UTC'))"
+          for i in 1 2 3 4 5; do
+            git push origin HEAD:klines_deep --force && { echo "✅ push 成功 (第 $i 次)"; break; }
+            [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; exit 1; }
+            sleep $((i * 5))
+          done

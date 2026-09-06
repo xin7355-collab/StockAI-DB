@@ -21,9 +21,28 @@
 # ════════════════════════════════════════════════════════════════════════════
 import asyncio
 import json
+import math
 import os
 import sqlite3
 import time
+import requests
+import httpx  # 【終極修復】引入真正的非同步網路庫，解除 FastAPI 櫃檯阻塞危機
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+# ── 🛡️ 【前線防卡死網路引擎】 ──
+def create_robust_session():
+    session = requests.Session()
+    retry = Retry(total=3, connect=3, read=3, backoff_factor=0.3)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
+
+http_session = create_robust_session()
+# ───────────────────────────────
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from threading import Lock
 from typing import Any, Generator, Optional
 
@@ -43,9 +62,39 @@ app.add_middleware(
 )
 
 DB_PATH      = "stock_hunter.db"
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+
+# ── [Key 輪動] 多把 Groq API key 池 ─────────────────────────────────────────────
+# 優先讀 GROQ_API_KEYS（逗號分隔），fallback 到單把 GROQ_API_KEY（向下相容舊部署）
+# 範例：export GROQ_API_KEYS="key_a,key_b,key_c"
+_groq_env = os.getenv("GROQ_API_KEYS") or os.getenv("GROQ_API_KEY", "")
+GROQ_API_KEYS: list[str] = [t.strip() for t in _groq_env.split(",") if t.strip()]
+GROQ_API_KEY = GROQ_API_KEYS[0] if GROQ_API_KEYS else ""   # 向下相容（保留變數）
+print(f"🔑 [Groq 輪動] 載入 {len(GROQ_API_KEYS)} 把 API key（>1 把時 429 會自動切換）")
+
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL   = "llama-3.3-70b-versatile"   # 免費層支援的最強模型
+
+# ── 中央統合避險基金經理人 System Prompt（取代舊 trend/pullback/breakout/defense 四件套）──
+# 強制 JSON 雙層輸出：summary（首頁 30 字短評）+ detail_action（三大硬核板塊）
+HEDGE_FUND_SYSTEM_PROMPT = (
+    "你是頂級避險基金的台股操盤總監，說話像權證小哥一樣犀利、大白話、國中生也聽得懂。"
+    "根據使用者提供的【系統已精算真實數據】，直接告訴散戶該建倉、分批賣還是全面撤退，"
+    "並做硬派的信心喊話或斬倉警告。\n"
+    "🛑 嚴禁自己算數學、嚴禁捏造數字，只能引用使用者給定的數值。\n"
+    "⚠️ 只准輸出純 JSON，禁止 ```json 標籤、禁止 JSON 前後出現任何說明文字，格式如下：\n"
+    "{\n"
+    '  "summary": "首頁短評，30字以內。先用強烈痛點 emoji 開頭（如 出貨🤑 / 低接試單🤔 / '
+    "抱緊處理🔥 / 快逃🚨），把技術、籌碼、防守價無縫融合成『唯一一句、前後不矛盾』的核心總評，"
+    '帶具體點位，不准廢話。",\n'
+    '  "detail_action": "三大板塊，段落間用換行符分隔，每塊以指定【emoji 標題】一字不差開頭：\\n'
+    "【🌏 總體位階與大局觀】結合外資期貨淨口數與市場系統性風險，直白點出大環境的下行壓力或多方天花板在哪。\\n"
+    "【⚔️ 總監專屬戰術室】依庫存情境做 If-Else：若空手→給明確的進場價位、停損點、短線目標價；"
+    "若有持股→精算防守底線與停利目標的具體數字，下達『分批出貨🤑鎖利』或『跌破 XX 元紀律清倉』的軍令狀。\\n"
+    "【🔥 首席操盤手終極喊話】籌碼技術俱佳→堅定信心喊話『別被主力洗盤甩轎，抱緊處理』；"
+    "主力倒貨或大盤崩壞→無情點醒『別抱著空氣泡泡做夢，立刻撤退』。"
+    '最後獨立一行輸出最終判定：✅強力買進 或 ⚠️觀望或減碼 或 ⛔強制撤退。"\n'
+    "}"
+)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -117,23 +166,117 @@ class _GroqRateLimiter:
 
 
 # 全域節流閥實例（整個 FastAPI 程序共用一個，即跨請求共用）
-_groq_limiter = _GroqRateLimiter(rpm=15)
+# [Key 輪動] 每把 key 各有 15 RPM 免費額度，總 RPM 隨 key 數線性放大
+_GROQ_RPM_PER_KEY = 15
+_groq_limiter = _GroqRateLimiter(
+    rpm=max(_GROQ_RPM_PER_KEY * len(GROQ_API_KEYS), _GROQ_RPM_PER_KEY)
+)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 【核心防禦元件 1.5】Groq Key 輪動狀態
+#   - per-key 冷卻時間（unix_ts）；時間到自動復活，不用永久斷路器
+#   - 429 觸發：把當前 key 標冷卻 → 推進 idx → 立刻用新 key 重試
+#   - 全部冷卻：回 503 並帶 unblock_in_seconds，讓前端顯示「約 XX 分後恢復」
+# ══════════════════════════════════════════════════════════════════════════════
+_groq_key_idx: int = 0
+_groq_key_cooldown: dict[int, float] = {}      # idx → 解除冷卻的 unix_ts
+_groq_key_lock = asyncio.Lock()
+
+# ── [TPD 預警] 每把 key 當日 token 累計（防止硬撞 100000 上限才反應）─────────────
+import re as _re
+_groq_tpd_used: dict[int, int] = {}      # idx → 今日已用 token
+_groq_tpd_day:  str = ""                 # 當前統計日期（台北時區 YYYYMMDD）
+_GROQ_TPD_LIMIT = 100000                 # 免費層每日 token 上限
+_GROQ_TPD_GUARD = 97000                  # 逼近此值 → 該 key 主動冷卻至明日，不硬撞 429
+
+
+def _tpd_today() -> str:
+    """台北時區的今日字串，用於每日 0 點重置 token 計數。"""
+    return datetime.now(timezone(timedelta(hours=8))).strftime("%Y%m%d")
+
+
+def _parse_retry_seconds(body_text: str, header_val: str) -> int:
+    """
+    解析「還要等幾秒」：
+      1. 優先讀 Retry-After header（RPM 限流通常放這裡）
+      2. header 沒有 → 從 body 'try again in 3m34.272s' 解析（TPD 用罄放這裡）
+      3. 都沒有 → 回 0（呼叫端會 fallback 用保守冷卻值）
+    """
+    if header_val:
+        try:
+            return int(float(header_val))
+        except (ValueError, TypeError):
+            pass
+    m = _re.search(r"try again in\s*(?:(\d+)m)?([\d.]+)s", body_text or "")
+    if m:
+        mins = int(m.group(1)) if m.group(1) else 0
+        secs = float(m.group(2))
+        return int(mins * 60 + secs) + 1   # +1 秒安全緩衝
+    return 0
+
+
+def _secs_until_taipei_midnight() -> int:
+    """距台北明日 0 點還有幾秒（TPD 用罄時冷卻到隔天才重置）。"""
+    now_tpe = datetime.now(timezone(timedelta(hours=8)))
+    midnight = (now_tpe + timedelta(days=1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    return int(midnight.timestamp() - now_tpe.timestamp())
+
+
+def _groq_active_idx(now: float) -> Optional[int]:
+    """從目前 idx 起順時針找第一把未冷卻的 key；全冷卻回 None。"""
+    if not GROQ_API_KEYS:
+        return None
+    n = len(GROQ_API_KEYS)
+    for off in range(n):
+        i = (_groq_key_idx + off) % n
+        if _groq_key_cooldown.get(i, 0) <= now:
+            return i
+    return None
+
+
+def _groq_earliest_resume_sec(now: float) -> int:
+    """全冷卻時：最快多少秒後有 key 可用（給 503 detail 顯示）。"""
+    if not GROQ_API_KEYS:
+        return 0
+    times = [_groq_key_cooldown.get(i, 0) for i in range(len(GROQ_API_KEYS))]
+    return max(0, int(min(times) - now))
+
+
+async def _groq_mark_blocked(idx: int, retry_after_sec: int):
+    """把第 idx 把 key 標冷卻：header 有給就用之，沒給用 3600s（TPD 用罄保守值）。"""
+    cd = max(retry_after_sec or 3600, 60)   # 至少 60s 避免反覆撞同一把
+    async with _groq_key_lock:
+        _groq_key_cooldown[idx] = time.time() + cd
+        print(f"  ⏳ [Groq 輪動] Key #{idx + 1}/{len(GROQ_API_KEYS)} 進入冷卻 {cd}s")
+
+
+async def _groq_advance_idx():
+    """順時針推進指標，下次優先試下一把 key。"""
+    global _groq_key_idx
+    async with _groq_key_lock:
+        if GROQ_API_KEYS:
+            _groq_key_idx = (_groq_key_idx + 1) % len(GROQ_API_KEYS)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 【核心防禦元件 2】Groq 非同步呼叫封裝（含指數退避重試）
 # ══════════════════════════════════════════════════════════════════════════════
 async def call_groq_api(
-    prompt:      str,
-    model:       str   = GROQ_MODEL,
-    max_tokens:  int   = 900,
-    temperature: float = 0.3,
-    json_mode:   bool  = False,
+    prompt:        str,
+    model:         str   = GROQ_MODEL,
+    max_tokens:    int   = 900,
+    temperature:   float = 0.3,
+    json_mode:     bool  = False,
+    system_prompt: str   = "",
 ) -> str:
     """
-    非同步呼叫 Groq Chat Completion，內建雙重防禦：
+    非同步呼叫 Groq Chat Completion，內建三重防禦：
       ① 節流閥（令牌桶）：超速時排隊等待，不直接拒絕
-      ② 指數退避重試：429/逾時最多重試 3 次（2→4→8 秒）
+      ② [Key 輪動] 多把 key 池：429 立刻換下一把冰 key 重試（不睡）
+      ③ 指數退避：網路錯誤/5xx 時最多重試 3 次（2→4→8 秒）
 
     參數：
       json_mode  若 True，傳入 response_format={"type":"json_object"}，
@@ -143,26 +286,26 @@ async def call_groq_api(
       AI 回覆的純文字（或 JSON 字串），已從 choices[0].message.content 取出。
 
     例外：
-      HTTPException(503) — API 金鑰未設定 或 重試耗盡仍 429
+      HTTPException(503) — 未設 key 或全部 key 達當日上限（detail 帶「約 XX 秒後恢復」）
       HTTPException(502) — 網路錯誤或 Groq 5xx
     """
-    if not GROQ_API_KEY:
+    if not GROQ_API_KEYS:
         raise HTTPException(
             status_code=503,
-            detail="伺服器未設定 GROQ_API_KEY 環境變數，請聯絡系統管理員。"
+            detail="伺服器未設定 GROQ_API_KEY 或 GROQ_API_KEYS 環境變數，請聯絡系統管理員。"
         )
 
     # ── ① 先通過節流閥（超速時在此排隊，不拋錯）──────────────────────────
     await _groq_limiter.acquire()
 
-    # ── 準備請求 Payload ──────────────────────────────────────────────────
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type":  "application/json",
-    }
+    # ── 準備請求 Payload（與 key 解耦）─────────────────────────────────────
+    _msgs: list[dict] = []
+    if system_prompt:
+        _msgs.append({"role": "system", "content": system_prompt})
+    _msgs.append({"role": "user", "content": prompt})
     payload: dict[str, Any] = {
         "model":       model,
-        "messages":    [{"role": "user", "content": prompt}],
+        "messages":    _msgs,
         "max_tokens":  max_tokens,
         "temperature": temperature,
     }
@@ -170,32 +313,73 @@ async def call_groq_api(
         # Groq 支援 OpenAI 相容的 JSON mode，強制輸出可解析的 JSON
         payload["response_format"] = {"type": "json_object"}
 
-    # ── ② 指數退避重試（最多 3 次：等待 2→4→8 秒）───────────────────────
-    # RETRY_DELAYS 的長度即最大重試次數；最後一輪 delay=None 代表已無退路
-    RETRY_DELAYS = [2, 4, 8]
+    # ── 重試策略 ───────────────────────────────────────────────────────────
+    #   429 = [Key 輪動] 標冷卻 → 換下一把 key 立刻重打（冰的不用睡）
+    #   5xx / 網路錯誤 = 指數退避 2 → 4 → 8 秒，最多 3 次
+    # ──────────────────────────────────────────────────────────────────────
+    BACKOFF_DELAYS = [2, 4, 8]
+    backoff_used = 0
+    rate_limit_hits = 0
+    max_429_attempts = len(GROQ_API_KEYS) + 1   # 每把都試一遍 + 1 次保險
     last_err: Exception = RuntimeError("未知錯誤")
 
-    # httpx.AsyncClient 使用 async with，確保連線池在請求結束後釋放
     async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
-        for attempt, delay in enumerate(RETRY_DELAYS + [None]):
+        while True:
+            now = time.time()
+            idx = _groq_active_idx(now)
+            if idx is None:
+                wait_sec = _groq_earliest_resume_sec(now)
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"全部 {len(GROQ_API_KEYS)} 把 Groq Key 均已達當日上限，約 {wait_sec} 秒後恢復。"
+                )
+
+            headers = {
+                "Authorization": f"Bearer {GROQ_API_KEYS[idx]}",
+                "Content-Type":  "application/json",
+            }
             try:
                 resp = await client.post(GROQ_API_URL, headers=headers, json=payload)
 
-                # ── 429 Too Many Requests（Groq 速率限制）───────────────
+                # ── 429 Too Many Requests（個別 key 達上限）──────────────
+                #   關鍵修正：TPD 用罄的等待秒數放在 body（'try again in 3m34s'），
+                #   不在 Retry-After header。舊版讀不到 → 只冷卻 60s → 反覆撞牆。
                 if resp.status_code == 429:
-                    if delay is None:   # 已重試 3 次，放棄
+                    rate_limit_hits += 1
+                    retry_after = _parse_retry_seconds(
+                        resp.text, resp.headers.get("Retry-After", "")
+                    )
+                    # body 明示 'per day' / TPD → 直接冷卻到台北隔日 0 點，杜絕反覆撞
+                    body_low = (resp.text or "").lower()
+                    if ("per day" in body_low or "tpd" in body_low) and retry_after < 300:
+                        retry_after = max(retry_after, _secs_until_taipei_midnight())
+                    await _groq_mark_blocked(idx, retry_after)
+                    await _groq_advance_idx()
+                    if rate_limit_hits >= max_429_attempts:
+                        wait_sec = _groq_earliest_resume_sec(time.time())
                         raise HTTPException(
                             status_code=503,
-                            detail=f"Groq API 速率限制，已重試 {len(RETRY_DELAYS)} 次仍失敗，請稍後再試。"
+                            detail=f"全部 {len(GROQ_API_KEYS)} 把 Groq Key 均已達當日上限，約 {wait_sec} 秒後恢復。"
                         )
-                    # Groq 有時在標頭提供 Retry-After；取其最大值以防萬一
-                    retry_after = int(resp.headers.get("Retry-After", 0))
-                    wait = max(delay, retry_after)
-                    await asyncio.sleep(wait)
-                    continue
+                    continue   # 立刻換下一把 key 重打
 
                 resp.raise_for_status()     # 其他 4xx/5xx → 拋出 HTTPStatusError
                 data = resp.json()
+
+                # ── [TPD 預警] 累計 token，逼近上限主動冷卻該 key（不等撞 429）──
+                global _groq_tpd_day
+                today = _tpd_today()
+                if today != _groq_tpd_day:        # 跨日 → 歸零所有 key 計數
+                    _groq_tpd_day = today
+                    _groq_tpd_used.clear()
+                used = data.get("usage", {}).get("total_tokens", 0)
+                _groq_tpd_used[idx] = _groq_tpd_used.get(idx, 0) + used
+                if _groq_tpd_used[idx] >= _GROQ_TPD_GUARD:
+                    print(f"  🛑 [TPD] Key #{idx + 1}/{len(GROQ_API_KEYS)} "
+                          f"已用 {_groq_tpd_used[idx]} tokens（≥{_GROQ_TPD_GUARD}），主動冷卻至明日")
+                    await _groq_mark_blocked(idx, _secs_until_taipei_midnight())
+                    await _groq_advance_idx()
+
                 return data["choices"][0]["message"]["content"]
 
             except HTTPException:
@@ -203,19 +387,21 @@ async def call_groq_api(
 
             except (httpx.TimeoutException, httpx.NetworkError) as e:
                 last_err = e
-                if delay is None:
+                if backoff_used >= len(BACKOFF_DELAYS):
                     break
-                await asyncio.sleep(delay)
+                await asyncio.sleep(BACKOFF_DELAYS[backoff_used])
+                backoff_used += 1
 
             except httpx.HTTPStatusError as e:
                 last_err = e
-                if delay is None:
+                if backoff_used >= len(BACKOFF_DELAYS):
                     break
-                await asyncio.sleep(delay)
+                await asyncio.sleep(BACKOFF_DELAYS[backoff_used])
+                backoff_used += 1
 
     raise HTTPException(
         status_code=502,
-        detail=f"Groq API 連線失敗（已重試 {len(RETRY_DELAYS)} 次）：{str(last_err)[:200]}"
+        detail=f"Groq API 連線失敗（已重試 {len(BACKOFF_DELAYS)} 次）：{str(last_err)[:200]}"
     )
 
 
@@ -267,15 +453,20 @@ _stock_cache = _TTLCache(ttl=300, maxsize=256)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DB 連線管理
+# DB 連線管理 (WAL 並發防禦裝甲)
 # ══════════════════════════════════════════════════════════════════════════════
 def get_db() -> Generator[sqlite3.Connection, None, None]:
     """
     FastAPI Depends yield 模式：路由執行完畢（或拋出例外）後自動關閉連線。
     杜絕 connection leak，在長時間運行的微型主機上至關重要。
+    並啟用 WAL 寫入預前日誌模式防禦併發鎖死。
     """
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15.0)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
     try:
         yield conn
     finally:
@@ -362,6 +553,48 @@ def get_stock_data(
         )
 
     data = [dict(r) for r in reversed(rows)]   # 時間正序（舊→新）
+
+    # ── 【5MA 盤中動態校準補丁】 ──
+    try:
+        tw_now = datetime.now(timezone(timedelta(hours=8)))
+        today_str = tw_now.strftime('%Y/%m/%d')
+        last_db_date = data[-1]['date'].replace('-', '/') if data else ""
+        current_time = tw_now.time()
+
+        is_market_open = (
+            (current_time.hour == 9 and current_time.minute >= 0) or
+            (current_time.hour > 9 and current_time.hour < 14 and not (current_time.hour == 13 and current_time.minute > 30))
+        )
+
+        # 【效能修復】在同步函式內若要發起網路請求，務必捕捉所有例外，且 timeout 設短一點
+        if last_db_date != today_str and is_market_open:
+            try:
+                url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{symbol}.tw|otc_{symbol}.tw"
+                # 將 timeout 縮短至 2 秒，避免證交所 API 緩慢時卡死背景執行緒
+                res = requests.get(url, timeout=2.0, headers={'User-Agent': 'Mozilla/5.0'})
+                res.raise_for_status()
+                res_json = res.json()
+                if res_json.get('msgArray'):
+                    msg = res_json['msgArray'][0]
+                    z = msg.get('z', '-')
+                    live_price = float(z) if z != '-' else float(msg.get('y', 0))
+                    if live_price > 0:
+                        data.append({
+                            'date': today_str.replace('/', '-'),
+                            'open': float(msg.get('o', live_price) if msg.get('o', '-') != '-' else live_price),
+                            'high': float(msg.get('h', live_price) if msg.get('h', '-') != '-' else live_price),
+                            'low': float(msg.get('l', live_price) if msg.get('l', '-') != '-' else live_price),
+                            'close': live_price,
+                            'volume': int(msg.get('v', 0)),
+                            'foreign_net': 0, 'trust_net': 0, 'dealer_net': 0,
+                            'margin_balance': 0, 'short_balance': 0
+                        })
+            except Exception as e:
+                print(f"⚠️ [Agent盤中校準錯誤] {symbol}: {e}")
+    except Exception as e:
+        print(f"⚠️ [盤中校準錯誤] {symbol}: {e}")
+    # ────────────────────────────────
+
     _stock_cache.set(cache_key, data)
     return data
 
@@ -377,6 +610,23 @@ def get_macro_data(db: sqlite3.Connection = Depends(get_db)):
         return {"status": "no_data", "message": "尚無宏觀資料，請先執行採礦。"}
 
     return dict(row)
+
+
+@app.get("/api/macro/futures")
+def get_futures_cache():
+    """
+    外資台指期未平倉快取代理路由。
+    讀取 miner.py 每日寫入的 futures_cache.json，
+    讓沒有 gh-pages 存取權的手機端能透過後端代理取得資料，免疫 CORS。
+    """
+    futures_path = os.path.join(os.path.dirname(DB_PATH) or ".", "futures_cache.json")
+    try:
+        with open(futures_path, encoding="utf-8") as f:
+            return json.loads(f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="futures_cache.json 尚未產生，請先執行採礦。")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/radar/{strategy}")
@@ -644,7 +894,7 @@ async def morning_brief(db: sqlite3.Connection = Depends(get_db)):
     fi_net    = macro.get("fi_net") or 0
     fi_label  = ("多方無憂" if fi_net > -10000
                  else "⚠️ 暗流湧動" if fi_net > -25000
-                 else "🔴 紅色警戒" if fi_net > -40000
+                 else "⛔ 紅色警戒" if fi_net > -40000
                  else "🚨 黑天鵝")
 
     vix_val   = macro.get("vix") or 0
@@ -692,6 +942,548 @@ async def morning_brief(db: sqlite3.Connection = Depends(get_db)):
     result = {"status": "success", "report": report}
     _brief_cache.set(_BRIEF_CACHE_KEY, result)
     return {**result, "cached": False}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 【自主代理人】Agent Skills（同步函式，由 asyncio.to_thread 包裝執行）
+# ══════════════════════════════════════════════════════════════════════════════
+
+def get_radar_list() -> str:
+    """
+    從 SQLite 的 radar_results 表撈取最新一批雷達強勢股名單。
+    回傳三個策略（底部/飆股/綜合強勢）各自的股票清單，含代號、收盤價與股票名稱。
+    若查無資料，回傳「查無雷達資料，可能今日尚未採礦」。
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=15.0)
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        cur = conn.cursor()
+        cur.execute("SELECT MAX(signal_date) FROM radar_results")
+        row = cur.fetchone()
+        if not row or not row[0]:
+            conn.close()
+            return "查無雷達資料，可能今日尚未採礦"
+        latest_date = row[0]
+        cur.execute(
+            "SELECT strategy, symbol, close, extra_data FROM radar_results WHERE signal_date = ?",
+            (latest_date,)
+        )
+        rows = cur.fetchall()
+        conn.close()
+        if not rows:
+            return "查無雷達資料，可能今日尚未採礦"
+        buckets: dict = {"bottom": [], "surge": [], "score": []}
+        for strategy, symbol, close, extra_data in rows:
+            name = symbol
+            try:
+                ed = json.loads(extra_data or "{}")
+                name = ed.get("name") or ed.get("股名") or symbol
+            except Exception:
+                pass
+            buckets.setdefault(strategy, []).append(f"{symbol}({name}) 收{close}")
+        label_map = {"bottom": "底部訊號", "surge": "飆股訊號", "score": "綜合強勢"}
+        lines = [f"雷達日期：{latest_date}"]
+        for key, label in label_map.items():
+            items = buckets.get(key, [])
+            lines.append(f"【{label}】{'、'.join(items) if items else '無'}")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"查詢雷達資料失敗：{e}"
+
+
+def query_stock_data(symbol: str) -> str:
+    """
+    從 SQLite 的 stock_history 表查詢指定股票最近 5 天的 OHLCV + 三大法人 + 融資融券。
+    需取最近 25 筆資料才能計算 MA20；回傳最後 5 筆的格式化結果。
+    若查無資料，回傳「查無 {symbol} 的歷史資料」。
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=15.0)
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT trade_date, close, volume, "
+            "       foreign_inv, invest_trust, dealer_inv, margin_bal, short_bal "
+            "FROM stock_history WHERE symbol = ? "
+            "ORDER BY trade_date DESC LIMIT 25",
+            (symbol,)
+        )
+        rows = cur.fetchall()
+        conn.close()
+        if not rows:
+            return f"查無 {symbol} 的歷史資料"
+        rows = list(reversed(rows))  # 轉為時間正序
+
+        # ── 【AI 5MA 盤中動態校準補丁】 ──
+        try:
+            tw_now = datetime.now(timezone(timedelta(hours=8)))
+            today_str = tw_now.strftime('%Y-%m-%d')
+            last_db_date = rows[-1][0] if rows else ""
+            current_time = tw_now.time()
+
+            is_market_open = (
+                (current_time.hour == 9 and current_time.minute >= 0) or
+                (current_time.hour > 9 and current_time.hour < 14 and not (current_time.hour == 13 and current_time.minute > 30))
+            )
+
+            if last_db_date != today_str and is_market_open:
+                url = f"https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_{symbol}.tw|otc_{symbol}.tw"
+                res = http_session.get(url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'}).json()
+                if res.get('msgArray'):
+                    msg = res['msgArray'][0]
+                    z = msg.get('z', '-')
+                    live_price = float(z) if z != '-' else float(msg.get('y', 0))
+                    if live_price > 0:
+                        # 盤中快照無法人資料，補 None
+                        rows.append((today_str, live_price, int(msg.get('v', 0)), None, None, None, None, None))
+        except Exception:
+            pass # 備援接口失敗則靜默降級，維持原歷史陣列計算
+        # ────────────────────────────────────────
+
+        # 🛡️ 過濾非有限收盤:DB close 可能為 NULL(或盤中快照補值異常),
+        #    直接 sum([..., None, ...]) 會 TypeError 崩潰整個 /api/tech_ai 端點。
+        closes = [r[1] for r in rows
+                  if isinstance(r[1], (int, float)) and not isinstance(r[1], bool) and math.isfinite(r[1])]
+        # 🛡️ 歷史不足不硬算:MA5 需 5 根、MA20 需 20 根,否則回 None。
+        #    原本用 min(20, len) 當分母 → 只有 3 根也會算出「假 MA20」餵給 AI,誤導判斷。
+        ma5  = round(sum(closes[-5:])  / 5,  2) if len(closes) >= 5  else None
+        ma20 = round(sum(closes[-20:]) / 20, 2) if len(closes) >= 20 else None
+        recent5 = rows[-5:]
+        lines = [f"股票代號：{symbol}（最近 {len(recent5)} 天 OHLCV + 法人+融資）"]
+        lines.append(f"MA5={ma5}  MA20={ma20}")
+        for row in recent5:
+            date_val, close_val, vol = row[0], row[1], row[2]
+            fi  = row[3] if len(row) > 3 else None
+            it  = row[4] if len(row) > 4 else None
+            de  = row[5] if len(row) > 5 else None
+            mb  = row[6] if len(row) > 6 else None
+            sb  = row[7] if len(row) > 7 else None
+            fmt = lambda v, sign=True: ('待採' if v is None else (f"{'+' if sign and v > 0 else ''}{v:,}"))
+            lines.append(
+                f"  {date_val}  收盤={close_val}  量={vol:,}  "
+                f"外資={fmt(fi)}  投信={fmt(it)}  自營={fmt(de)}  "
+                f"融資={fmt(mb, sign=False)}  融券={fmt(sb, sign=False)}"
+            )
+        return "\n".join(lines)
+    except Exception as e:
+        return f"查詢 {symbol} 股價失敗：{e}"
+
+
+def query_broker_chips(symbol: str) -> str:
+    """
+    查指定股票最近 5 個交易日主力分點：聚合各券商淨買賣後排序，
+    回傳 Top10 買超 + Top10 賣超（含中文券商名稱）。
+    """
+    try:
+        # 載入券商代碼→名稱對照表（採礦時已寫入 data/broker_names.json）
+        names = {}
+        bn_path = Path(__file__).resolve().parent / 'data' / 'broker_names.json'
+        if bn_path.exists():
+            try:
+                names = json.loads(bn_path.read_text(encoding='utf-8'))
+            except Exception:
+                names = {}
+        conn = sqlite3.connect(DB_PATH, timeout=15.0)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT date, broker_id, broker_name, buy_vol, sell_vol, net_vol "
+            "FROM broker_chips WHERE symbol = ? "
+            "ORDER BY date DESC, ABS(net_vol) DESC LIMIT 500",
+            (symbol,)
+        ).fetchall()
+        conn.close()
+        if not rows:
+            return f"查無 {symbol} 主力分點資料（採礦機尚未抓到）"
+        # 取最近 5 個交易日
+        recent_dates = sorted({r['date'] for r in rows}, reverse=True)[:5]
+        agg: dict = {}
+        for r in rows:
+            if r['date'] not in recent_dates:
+                continue
+            bid = r['broker_id']
+            display = r['broker_name'] or names.get(bid, bid)
+            agg.setdefault(bid, {'name': display, 'net': 0, 'buy': 0, 'sell': 0})
+            agg[bid]['net']  += int(r['net_vol']  or 0)
+            agg[bid]['buy']  += int(r['buy_vol']  or 0)
+            agg[bid]['sell'] += int(r['sell_vol'] or 0)
+        items = sorted(agg.values(), key=lambda x: x['net'], reverse=True)
+        tops = items[:10]
+        bots = [x for x in items if x['net'] < 0][-10:]
+        date_range = f"{recent_dates[-1]} ~ {recent_dates[0]}" if recent_dates else ""
+        lines = [f"股票代號：{symbol}  分點期間：{date_range}（近 5 個交易日聚合）"]
+        lines.append("■ 買超分點 Top10：")
+        if not tops:
+            lines.append("  （無明顯買超分點）")
+        else:
+            for x in tops:
+                lines.append(f"  {x['name']}  淨買 +{x['net']:,} 張  (買 {x['buy']:,} / 賣 {x['sell']:,})")
+        lines.append("■ 賣超分點 Top10：")
+        if not bots:
+            lines.append("  （無明顯賣超分點）")
+        else:
+            for x in reversed(bots):
+                lines.append(f"  {x['name']}  淨賣 {x['net']:,} 張  (買 {x['buy']:,} / 賣 {x['sell']:,})")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"查詢 {symbol} 分點失敗：{e}"
+
+
+def search_latest_news(symbol: str) -> str:
+    """
+    使用 DuckDuckGo 搜尋指定股票最近的 3 則台股新聞標題與摘要。
+    回傳每則新聞的標題與內文摘要，以換行分隔。
+    若搜尋失敗，回傳「新聞搜尋失敗：{錯誤訊息}」。
+    """
+    try:
+        from duckduckgo_search import DDGS
+        query = f"{symbol} 台股 新聞"
+        results = DDGS().text(query, max_results=3)
+        if not results:
+            return f"查無 {symbol} 相關新聞"
+        lines = []
+        for i, r in enumerate(results, 1):
+            title = r.get("title", "")
+            body  = r.get("body", "")[:120]
+            lines.append(f"[新聞{i}] {title}\n{body}")
+        return "\n\n".join(lines)
+    except Exception as e:
+        return f"新聞搜尋失敗：{e}"
+
+
+# ── Tool Schema（傳給 Groq 的 JSON 結構定義）────────────────────────────────
+CHAT_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_radar_list",
+            "description": "從資料庫撈取今日最新的雷達強勢股名單（底部/飆股/綜合分數三類）",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_stock_data",
+            "description": "查詢個股最近 5 日 OHLCV + 三大法人買賣超（外資/投信/自營）+ 融資融券餘額",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string", "description": "台股股票代號，如 '2330'"}
+                },
+                "required": ["symbol"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_broker_chips",
+            "description": "查詢個股最近 5 日主力分點 Top10 買超 + Top10 賣超分點（含中文券商名稱）",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string", "description": "台股股票代號，如 '2330'"}
+                },
+                "required": ["symbol"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_latest_news",
+            "description": "搜尋指定股票最近的3則台股新聞標題與摘要",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string", "description": "台股股票代號，如 '2330'"}
+                },
+                "required": ["symbol"],
+            },
+        },
+    },
+]
+
+_CHAT_SKILL_DISPATCH = {
+    "get_radar_list":      get_radar_list,
+    "query_stock_data":    query_stock_data,
+    "query_broker_chips":  query_broker_chips,
+    "search_latest_news":  search_latest_news,
+}
+
+_CHAT_SYSTEM_PROMPT = (
+    "你是台股首席 AI 總裁，精通朱家泓技術分析與郭榮哲折數心法。\n"
+    "你可呼叫以下工具取得真實資料，禁止瞎掰數字：\n"
+    "  1. get_radar_list       — 今日雷達強勢股清單（底部/飆股/綜合）\n"
+    "  2. query_stock_data     — 個股 OHLCV + 法人三大行（外資/投信/自營）+ 融資/融券\n"
+    "  3. query_broker_chips   — 個股主力分點 Top10 買 / Top10 賣（含中文券商名）\n"
+    "  4. search_latest_news   — 個股最新 3 則新聞\n"
+    "個股分析時建議的工具呼叫順序：query_stock_data → query_broker_chips → search_latest_news。\n"
+    "回答用權證小哥白話文，附具體數字與點位，標出✅可買/⚠️觀望/⛔避開 操作燈號(紅綠只代表漲跌,不可用於安全危險)。\n"
+    "禁止『根據資料』『以下為您分析』等罐頭廢話，要像戰場參謀直接下令。"
+)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 【個股基本面 X 光機】POST /api/analyze_fundamentals
+# ══════════════════════════════════════════════════════════════════════════════
+
+class FundamentalsRequest(BaseModel):
+    symbol:             str
+    eps:                Optional[float] = None
+    yoy:                Optional[float] = None
+    pe:                 Optional[float] = None
+    yield_rate:         Optional[float] = None
+    gross_margin_trend: Optional[str]   = None
+    payout_ratio:       Optional[float] = None
+    dividend:           Optional[float] = None
+    is_record_high:     Optional[bool]  = None   # 本月營收是否創近24個月新高
+    quarterly_eps:      Optional[list]  = None   # [{period, eps, revenue}, ...] 近4季
+    max_tokens:         int             = Field(default=350, ge=80, le=600)
+
+
+class TechAIRequest(BaseModel):
+    symbol:     str
+    query_type: Optional[str] = None             # 已棄用：保留欄位避免破壞既有呼叫者
+    max_tokens: int = Field(default=1000, ge=80, le=1200)
+
+
+@app.post("/api/tech_ai")
+async def tech_ai_diagnose(req: TechAIRequest):
+    # 【終極修復】query_stock_data 內含同步的 requests.get 網路請求。
+    # 必須用 to_thread 丟到背景執行緒，否則每次點擊都會讓 FastAPI 全站卡死 5 秒！
+    stock_info = await asyncio.to_thread(query_stock_data, req.symbol)
+    user_msg = f"{stock_info}\n\n請依規格輸出純 JSON（summary + detail_action 三大板塊）。"
+    raw = await call_groq_api(
+        user_msg,
+        system_prompt=HEDGE_FUND_SYSTEM_PROMPT,
+        max_tokens=req.max_tokens,
+        temperature=0.4,
+        json_mode=True,
+    )
+    # 健壯解析（仿 /api/ai/investigate）：直接 parse → 抓 {..} 子串 → 降級全文當 detail_action
+    result: dict = {}
+    try:
+        result = json.loads(raw)
+    except Exception:
+        try:
+            s, e = raw.find("{"), raw.rfind("}") + 1
+            if s != -1 and e > s:
+                result = json.loads(raw[s:e])
+        except Exception:
+            result = {}
+    if not isinstance(result, dict):
+        result = {}
+    summary = result.get("summary", "")
+    detail  = result.get("detail_action", "")
+    if not summary and not detail:
+        detail = raw   # 降級：解析全失敗也回原文，前端不白屏
+    return {"status": "success", "summary": summary, "detail_action": detail}
+
+
+@app.post("/api/analyze_fundamentals")
+async def analyze_fundamentals(req: FundamentalsRequest):
+    def _v(val, unit=''):
+        return f"{val}{unit}" if val is not None else "無資料"
+
+    # Python-side 下季 QoQ 移動平均預測（禁止讓 AI 算複利）
+    next_q_str = "無資料"
+    if req.quarterly_eps and len(req.quarterly_eps) >= 2:
+        revs = [q.get('revenue', 0) or 0 for q in req.quarterly_eps]
+        valid_revs = [(revs[i], revs[i-1]) for i in range(1, len(revs))
+                      if revs[i-1] > 0 and revs[i] > 0]
+        if valid_revs:
+            qoq_list = [(cur / prev - 1) * 100 for cur, prev in valid_revs]
+            avg_qoq = sum(qoq_list) / len(qoq_list)
+            latest_rev = revs[-1] if revs[-1] > 0 else None
+            if latest_rev:
+                next_q_rev = latest_rev * (1 + avg_qoq / 100)
+                next_q_str = f"預估 {next_q_rev / 1e8:.1f} 億元（均值 QoQ {avg_qoq:+.1f}%）"
+
+    # 季報摘要字串（近4季）
+    quarterly_str = "無資料"
+    if req.quarterly_eps:
+        lines = []
+        for q in req.quarterly_eps:
+            rev_b = q.get('revenue', 0) or 0
+            rev_s = f"{rev_b / 1e8:.1f}億" if rev_b > 0 else "--"
+            lines.append(f"  {q.get('period', '?')}：EPS {q.get('eps', 0):.2f} 元 / 營收 {rev_s}")
+        quarterly_str = "\n".join(lines)
+
+    record_high_tag = "🔥 本月營收創近24個月歷史新高！\n" if req.is_record_high else ""
+
+    prompt = f"""你是台股身經百戰的操盤總裁，講話犀利直接，專門戳破上市公司財報粉飾。
+根據以下 {req.symbol} 的基本面數據，輸出 150~200 字大白話實戰解析：
+
+{record_high_tag}【最新基本面】
+EPS（最新季）：{_v(req.eps, ' 元')}
+營收 YoY（最新月）：{_v(req.yoy, '%')}
+本益比 PE：{_v(req.pe, 'x')}
+殖利率：{_v(req.yield_rate, '%')}
+毛利率趨勢：{req.gross_margin_trend or '無資料'}
+股利發配率：{_v(req.payout_ratio, '%')}
+最新每股股利：{_v(req.dividend, ' 元')}
+
+【近4季季報摘要】（Python 計算，勿自行算）
+{quarterly_str}
+
+【下季營收預測】（Python 移動均值 QoQ，勿自行算）
+{next_q_str}
+
+解讀矩陣（符合就標記，都不符合就說「中性觀察」）：
+🔥 嚴重低估的成長火箭：高 YoY + PE<15 + 毛利增
+⚠️ 靠題材炒作的空氣泡泡：低/負 YoY + PE>40
+🚨 價值陷阱/掏空資本警告：殖利率>8% + 負YoY 或 發配率>100%
+📐 右下角建倉形態：若下季預測成長 + 目前為均線支撐區，給出具體建倉區間與停損點
+
+先點判定結果，再大白話解讀體質與操作建議。"""
+
+    content = await call_groq_api(prompt, max_tokens=req.max_tokens, temperature=0.5)
+    return {"content": content}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 【自主代理人】POST /api/chat — Groq Tool Calling 迴圈
+# ══════════════════════════════════════════════════════════════════════════════
+
+class ChatRequest(BaseModel):
+    message:     str
+    model:       str   = GROQ_MODEL
+    max_tokens:  int   = Field(default=1200, ge=100, le=4096)
+    temperature: float = Field(default=0.4, ge=0.0, le=2.0)
+
+
+@app.post("/api/chat")
+async def agent_chat(req: ChatRequest):
+    """
+    自主代理人聊天端點。
+    接收使用者提問，透過 Groq Tool Calling 迴圈自動查詢雷達、股價、新聞，
+    最終回傳基於真實數據的分析報告。
+    回傳格式：{"status": "success", "reply": "..."}
+    """
+    if not GROQ_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="伺服器未設定 GROQ_API_KEY 環境變數，請聯絡系統管理員。"
+        )
+
+    messages: list[dict] = [
+        {"role": "system", "content": _CHAT_SYSTEM_PROMPT},
+        {"role": "user",   "content": req.message},
+    ]
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type":  "application/json",
+    }
+
+    MAX_ITERS = 5
+    async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
+        for _iter in range(MAX_ITERS):
+            await _groq_limiter.acquire()
+
+            payload = {
+                "model":       req.model,
+                "messages":    messages,
+                "tools":       CHAT_TOOLS,
+                "tool_choice": "auto",
+                "max_tokens":  req.max_tokens,
+                "temperature": req.temperature,
+            }
+
+            try:
+                resp = await client.post(GROQ_API_URL, headers=headers, json=payload)
+                if resp.status_code == 429:
+                    # 與 call_groq_api 一致：從 body 解析真實等待秒數，TPD 用罄直接回 503
+                    retry_after = _parse_retry_seconds(
+                        resp.text, resp.headers.get("Retry-After", "")
+                    )
+                    body_low = (resp.text or "").lower()
+                    if "per day" in body_low or "tpd" in body_low:
+                        retry_after = max(retry_after, _secs_until_taipei_midnight())
+                    raise HTTPException(
+                        status_code=503,
+                        detail=f"AI 額度已達上限，約 {retry_after or 60} 秒後恢復。"
+                    )
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                raise HTTPException(status_code=502, detail=f"Groq API 錯誤：{e}")
+            except (httpx.TimeoutException, httpx.NetworkError) as e:
+                raise HTTPException(status_code=502, detail=f"Groq 連線失敗：{e}")
+
+            data = resp.json()
+            choice = data["choices"][0]
+            finish_reason = choice.get("finish_reason", "")
+            assistant_msg = choice["message"]
+
+            tool_calls = assistant_msg.get("tool_calls") or []
+
+            # ── 無 tool_calls → Groq 給出最終回覆，直接回傳 ────────────────
+            if not tool_calls:
+                return {"status": "success", "reply": assistant_msg.get("content", "")}
+
+            # ── 有 tool_calls → 執行各 Skill，結果回填後繼續迴圈 ───────────
+            messages.append(assistant_msg)  # 含 tool_calls 的 assistant 訊息
+
+            for tc in tool_calls:
+                fn_name = tc["function"]["name"]
+                fn_args_raw = tc["function"].get("arguments", "{}")
+                try:
+                    fn_args = json.loads(fn_args_raw)
+                except json.JSONDecodeError:
+                    fn_args = {}
+
+                skill_fn = _CHAT_SKILL_DISPATCH.get(fn_name)
+                if skill_fn is None:
+                    tool_result = f"未知工具：{fn_name}"
+                else:
+                    try:
+                        tool_result = await asyncio.to_thread(skill_fn, **fn_args)
+                    except Exception as e:
+                        tool_result = f"工具執行失敗：{e}"
+
+                messages.append({
+                    "role":         "tool",
+                    "tool_call_id": tc["id"],
+                    "content":      str(tool_result),
+                })
+
+    # 超過最大迭代仍未回覆（極少發生）
+    return {"status": "success", "reply": "AI 迭代次數已達上限，無法產生最終回覆，請稍後重試。"}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 籌碼大三元多週期解析（備用端點）
+# 前端預設走 /api/ai/analyze（_callAI），手機無後端時直連 Groq；
+# 此端點供有自架後端者使用，語氣維持白話 5 段。
+# ══════════════════════════════════════════════════════════════════════════════
+class ChipAnalysisRequest(BaseModel):
+    symbol:      str
+    chip_trends: str   # 前端濃縮的 1/3/5/10 日趨勢字串
+    max_tokens:  int = Field(default=800, ge=100, le=1024)
+
+
+@app.post("/api/ai/chip_analysis")
+async def ai_chip_analysis(req: ChipAnalysisRequest):
+    """大三元籌碼多週期透視（白話 5 段升級版）"""
+    # 【升級】採用正面約束，去除 AI 廢話，強制精準對齊結構
+    prompt = f"""你是華爾街頂級避險基金的首席籌碼分析師，說話風格完全模仿權證小哥：直接、有個性、白話、切中要害。請用國中生都能秒懂的生活化比喻，為初學者解析籌碼資料，直接將數據融入對話，省略所有 AI 常見套話。
+
+【股票代號：{req.symbol}】
+【1/3/5/10 日多週期籌碼動態（張）】
+{req.chip_trends}
+
+請嚴格依照下列 5 個重點依序輸出（請加上表情符號，標題本身不可加粗）：
+1️⃣ 外資動向：外資目前是在倒貨還是囤貨？力道強弱？
+2️⃣ 內資大哥（投信與自營）：內資有沒有偷偷進場護盤的跡象？
+3️⃣ 散戶指標（融資券）：現在車上是不是太擠了？散戶正在被割韭菜嗎？
+4️⃣ 主力分點建倉：大戶的成本大約落在哪裡？有沒有券商在偷偷吃貨？
+5️⃣ 實戰戰略結論：綜合上述籌碼面，現在該上車、觀望，還是快逃？
+
+最後獨立一行輸出：⚠️ 投資有風險，以上僅供參考，請自行判斷。"""
+    content = await call_groq_api(prompt=prompt, max_tokens=req.max_tokens, temperature=0.5)
+    return {"status": "success", "reply": content}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

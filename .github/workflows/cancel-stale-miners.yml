@@ -1,0 +1,70 @@
+name: 🧹 取消過時的 daily_miner runs
+
+# V16.3 — 主動保險:V16.1 workflow-level concurrency 只能 cancel 同 group 內的舊版,
+#         無法處理「孤兒 run」(V16.1 之前的 commit 觸發的 run 沒進 group)。
+#         這支 workflow 在每次 push 時主動 list 所有 in_progress daily_miner 留最新 1 個,
+#         其他全 cancel。雙保險,避免配額浪費。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'miner.py'
+      - 'macro_miner.py'
+      - 'radar_miner.py'
+      - 'backtest.py'
+      - 'walk_forward.py'
+      - 'paper_trade.py'
+      - 'etf_miner.py'
+      - 'common.py'            # 🧩 共用工具模組(daily_miner 各腳本皆 import)
+      - 'strategy_sim.py'      # 🎯 朱家泓策略核心(radar_miner/backtest import)
+      - '.github/workflows/daily_miner.yml'
+  workflow_dispatch:    # 也支援手動觸發,清掉孤兒
+
+permissions:
+  actions: write        # 必須:才能 cancel runs
+  contents: read
+
+jobs:
+  cancel-stale:
+    name: 🧹 留最新 1 個 daily_miner,其他全 cancel
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: List + cancel 過時 daily_miner runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -e
+          echo "🔍 查 daily_miner.yml 所有 in_progress runs..."
+          # 按 created_at 排序(新 → 舊),取所有除最新 1 個之外
+          all_runs=$(gh api "repos/$GH_REPO/actions/workflows/daily_miner.yml/runs?status=in_progress&per_page=100" \
+                    --jq '.workflow_runs | sort_by(.created_at) | reverse')
+          # 加 queued 狀態的也算進來(防 queued 太多堆積)
+          queued_runs=$(gh api "repos/$GH_REPO/actions/workflows/daily_miner.yml/runs?status=queued&per_page=100" \
+                       --jq '.workflow_runs | sort_by(.created_at) | reverse')
+          count_progress=$(echo "$all_runs" | jq 'length')
+          count_queued=$(echo "$queued_runs"   | jq 'length')
+          echo "📊 in_progress: $count_progress / queued: $count_queued"
+
+          if [ "$count_progress" -le 1 ] && [ "$count_queued" -le 1 ]; then
+            echo "✅ 只有 ≤1 個 run,無孤兒需要 cancel"
+            exit 0
+          fi
+
+          # in_progress 留最新 1 個,其他 cancel
+          if [ "$count_progress" -gt 1 ]; then
+            echo "$all_runs" | jq -r '.[1:] | .[] | "\(.id)|#\(.run_number) \(.display_title // .name)"' | while IFS='|' read -r run_id title; do
+              echo "⛔ cancel in_progress run $title (id=$run_id)"
+              gh api -X POST "repos/$GH_REPO/actions/runs/$run_id/cancel" || echo "  ⚠️ 失敗(可能剛剛結束)"
+            done
+          fi
+
+          # queued 也留最新 1 個(避免太多 queued 排隊)
+          if [ "$count_queued" -gt 1 ]; then
+            echo "$queued_runs" | jq -r '.[1:] | .[] | "\(.id)|#\(.run_number) \(.display_title // .name)"' | while IFS='|' read -r run_id title; do
+              echo "⛔ cancel queued run $title (id=$run_id)"
+              gh api -X POST "repos/$GH_REPO/actions/runs/$run_id/cancel" || echo "  ⚠️ 失敗"
+            done
+          fi
+          echo "🎉 清理完成"

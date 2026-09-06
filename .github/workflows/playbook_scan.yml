@@ -1,0 +1,171 @@
+name: 🎯 明日作戰清單 (playbook_scan)
+
+# 🎯 每晚採礦完之後跑一次:全市場算「**這一檔自己**在**這一招**上是不是真的會賺」,
+#    並把「明天漲過多少就觸發」算出來,寫成 data/playbook_edge.json。
+#
+# ⛔ 為什麼要獨立一支 workflow(⛔ 不併進 daily_miner):
+#    它要跑 2,300+ 檔的逐檔回測(實測 25 檔 13 秒 → 全市場約 20-25 分),
+#    併進 daily_miner 會把那條已經 30-60 分的關鍵路徑再拉長,而且它失敗不該擋部署。
+#
+# 🕐 排程:11:00 UTC = 台北 19:00(週一~五)。
+#    daily_miner 是 08:30 UTC 開跑、30-60 分跑完 → 這裡留 1.5 小時以上的餘裕,
+#    確保讀到的是**今天收盤後**的 data/*.json。
+#
+# 📌 產物保留:先推 gh-pages(前端立即讀得到),再推 data 分支
+#    → 明天 daily_miner deploy 的 `git archive origin/data` 鋪底層時會自動保留,
+#      不會被 orphan force-push 洗掉(同 fund_sweep.py 的做法)。
+
+# 🚨 V73.3.7 使用者回報「會賺訊號的資料都不會更新」——
+#   查證:這支從 2026-08-08 上線到 08-12,**排程一次都沒觸發過**(total_count=1,
+#   那 1 次還是我手動 dispatch 的)→ 清單停在 08/10,整整兩天沒動。
+#   ⛔ 真因不是程式壞掉,是**只靠 cron**:
+#     ① `0 11` 正好是整點 —— GitHub 官方文件自己講排程在整點負載尖峰**會被延遲甚至丟掉**
+#     ② 排程本來就是 best-effort,沒有任何重試,掉了也不會通知你
+#   ⭐ 修法:**改成掛在每日採礦完成之後**(那支跑了 354 次、排程 100% 正常),
+#      cron 降級成備援、而且錯開整點。這樣還順便解決一個時序問題:
+#      本來 cron 11:00 是「賭」採礦(08:30 開跑、30-60 分)已經跑完;
+#      現在是**確定跑完才開始**,一定讀得到當天收盤資料。
+on:
+  workflow_run:
+    workflows: ["🤖 每日籌碼採礦機 (平行宇宙版)"]
+    types: [completed]
+  schedule:
+    - cron: '17 11 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      max_syms:
+        description: '最多掃幾檔(預設全市場;想快速驗證可填 200)'
+        required: false
+        default: '99999'
+
+# 與 deploy_pages.yml / daily_miner deploy / fund_sweep 共用,避免同時 push gh-pages 打架
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    name: 🎯 全市場打法掃描
+    runs-on: ubuntu-latest
+    # ⛔ 掛 workflow_run 之後要擋兩種情況,否則會白跑 25 分鐘:
+    #   ① 採礦**失敗**了 → 資料不完整,掃了也是垃圾
+    #   ② 採礦是被 **push 觸發**的(改 miner.py 一天可能好幾次)→ 只跟排程那一輪
+    # ⚠️ 手動 dispatch 與 cron 備援不受這個 if 影響(它們的 event 不是 workflow_run)
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'schedule')
+    timeout-minutes: 75   # 掃描 ~25 分 + 還原資料 ~5 分 + 安裝 ~3 分,給足餘裕
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📂 還原全市場 OHLCV (origin/data → data/)
+        run: |
+          git fetch origin data 2>/dev/null || { echo "❌ 沒有 data 分支,無法掃描"; exit 1; }
+          git checkout origin/data -- data/ 2>/dev/null || { echo "❌ 還原 data/ 失敗"; exit 1; }
+          # ⚠️ checkout 會把檔案 stage 進 index → 先 reset 讓工作區乾淨(V49.4 教訓),檔案本身留著
+          git reset -q
+          N=$(ls data/*.json 2>/dev/null | wc -l)
+          echo "還原 data/*.json:$N 檔"
+          [ "$N" -lt 500 ] && { echo "❌ 只有 $N 檔,資料不完整 → 不掃(免得產出殘缺清單)"; exit 1; } || true
+
+      - name: 🌐 安裝 playwright + chromium
+        run: |
+          npm i -D playwright@1.49.1
+          npx playwright install --with-deps chromium
+
+      - name: 🎯 掃描 (playbook_scan)
+        id: scan
+        env:
+          MIN_N: '8'      # 這檔在這招打過幾次才算數(= portfolio_backtest 實測最好那組)
+          CAP: '300'
+          NEAR: '6'
+        run: |
+          set +e
+          node scripts/playbook_scan.mjs "${{ github.event.inputs.max_syms || '99999' }}"
+          rc=$?
+          echo "scan_rc=$rc" >> "$GITHUB_OUTPUT"
+          # ⛔ 掃描器自己有空過守門(掃到 0 檔 / 一筆候選都沒有 → exit 1 且不寫檔)
+          [ "$rc" -ne 0 ] && echo "⚠️ 掃描 rc=$rc → 不部署,保留線上舊檔"
+          exit 0
+
+      # 📸 V73.4.1 榜單事後驗證快照 —— ⚠️ **累積型檔案**
+      #   ⛔ 一定要先從 data 分支還原舊檔,否則每天從零開始、而且**零錯誤訊息**
+      #      (同 tick_hist / ETF mgr_hist 的教訓)。
+      #   ⭐ 上一步的「還原 data/」用的是 `git checkout origin/data -- data/`,
+      #      pick_history.json 若已存在就會一起被還原回來 → 這裡只需確認一下。
+      - name: 📸 榜單快照(事後驗證用)
+        if: steps.scan.outputs.scan_rc == '0'
+        run: |
+          set -e
+          if [ -s data/pick_history.json ]; then
+            echo "✅ 已還原既有快照:$(python3 -c "import json;print(json.load(open('data/pick_history.json')).get('n_days'))" ) 天"
+          else
+            echo "ℹ️ 尚無既有快照(第一次跑,之後會累積)"
+          fi
+          python3 pick_snapshot.py
+
+      # 🔎 V73.5.0 自訂選股的地基 —— 全市場逐檔特徵快照
+      #   ⛔ 前端不可能為了篩選去下載 2,700 個 data/{sym}.json → 這裡先算好壓成一個檔。
+      #   ⭐ 掛在這裡是因為上面那步已經 `git checkout origin/data -- data/` 還原了全市場 OHLCV,
+      #      不必再抓一次;而且這支 workflow 本來就會推 gh-pages + data 兩個分支。
+      #   ⚠️ 這是**每天重算**的快照(⛔ 不是累積型)→ 不需要先還原舊檔。
+      - name: 🔎 全市場特徵快照(自訂選股用)
+        if: steps.scan.outputs.scan_rc == '0'
+        continue-on-error: true      # ⛔ 它失敗不該擋掉明日作戰清單的部署
+        run: python3 screener_miner.py
+
+      - name: 🚀 部署 playbook_edge.json 到 gh-pages + data
+        if: steps.scan.outputs.scan_rc == '0'
+        run: |
+          set -e
+          [ -s data/playbook_edge.json ] || { echo "❌ 找不到 data/playbook_edge.json,跳過部署"; exit 0; }
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # data/ 在 main 是 gitignore 的未追蹤檔 → 切分支前要清乾淨,先存到 /tmp
+          cp data/playbook_edge.json /tmp/playbook_edge.json
+          # ⛔ 快照也要一起推,否則存了等於沒存
+          [ -s data/pick_history.json ] && cp data/pick_history.json /tmp/pick_history.json || true
+          [ -s data/screener.json ] && cp data/screener.json /tmp/screener.json || echo "⚠️ 沒有 screener.json → 自訂選股這輪不更新(前端會顯示既有日期)"
+
+          # ⭐ 三個產物一次放回,⛔ 別在 retry 分支只放回其中一個(那正是以前漏掉快照的原因)
+          restore_files () {
+            cp /tmp/playbook_edge.json data/playbook_edge.json
+            [ -s /tmp/pick_history.json ] && cp /tmp/pick_history.json data/pick_history.json || true
+            [ -s /tmp/screener.json ] && cp /tmp/screener.json data/screener.json || true
+          }
+
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdxq 2>/dev/null || true
+            git fetch origin "$BR" 2>/dev/null || true
+            # ⚠️ 用 -B + origin/$BR 明確指定:避開「data 既是資料夾又是分支名」的 git 歧義 fatal
+            git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
+            mkdir -p data
+            restore_files
+            git add -f data/playbook_edge.json data/pick_history.json data/screener.json 2>/dev/null || git add -f data/playbook_edge.json
+            if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
+            git commit -q -m "🎯 明日作戰清單 + 榜單快照 + 選股快照 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json data/screener.json
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              echo "⚠️ $BR push attempt $i 失敗,sleep $((i*5))s 重試…"; sleep $((i*5))
+              git fetch origin "$BR" 2>/dev/null || true
+              git reset --hard -q "origin/$BR" 2>/dev/null || true
+              mkdir -p data
+              restore_files
+              git add -f data/playbook_edge.json data/pick_history.json data/screener.json 2>/dev/null || git add -f data/playbook_edge.json
+              git commit -q -m "🎯 明日作戰清單 + 榜單快照 + 選股快照 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json data/screener.json 2>/dev/null || true
+            done
+          }
+
+          deploy_branch gh-pages
+          deploy_branch data
+          echo "✅ 明日作戰清單已部署"

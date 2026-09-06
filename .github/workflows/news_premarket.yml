@@ -1,0 +1,84 @@
+name: 🗞️ 盤前新聞晨採 (news_premarket)
+
+# 使用者要求(V50.5):盤前新聞要「前一交易日→今日 05:00 台北」的窗、含美/韓/日+台股。
+# daily_miner 在下午 16:30 跑,早上使用者看到的會是昨天的窗 → 另加一支「晨採」在台北 05:30 跑,
+# 讓開盤前打開 App 就是最新盤前窗。universal_radar.py 內已做 05:00 台北截止窗 + 韓/日來源 + 翻譯。
+# 只更新 3 個新聞檔(radar_news/global_news/tech_giants_news),不動其它資料。
+
+on:
+  schedule:
+    - cron: '30 21 * * 0-4'   # 21:30 UTC(週日~四)= 台北 05:30(週一~五)
+  workflow_dispatch:
+
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests feedparser
+
+      - name: 🗞️ 晨採盤前新聞 (台股 + 美/韓/日,05:00 台北窗)
+        id: news
+        env:
+          GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          GROQ_API_KEY:  ${{ secrets.GROQ_API_KEY }}
+        run: |
+          set +e
+          python3 universal_radar.py
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+          echo "產出:$(ls -1 data/radar_news.json data/global_news.json data/tech_giants_news.json 2>/dev/null | wc -l)/3 檔"
+          exit 0
+
+      - name: 🚀 部署 3 個新聞檔到 gh-pages + data
+        run: |
+          set -e
+          FILES="data/radar_news.json data/global_news.json data/tech_giants_news.json data/stock_news.json"
+          HAVE=""
+          for f in $FILES; do [ -f "$f" ] && HAVE="$HAVE $f"; done
+          if [ -z "$HAVE" ]; then echo "❌ 無任何新聞檔產出,跳過部署"; exit 0; fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p /tmp/news && for f in $HAVE; do cp "$f" /tmp/news/; done
+
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdq 2>/dev/null || true
+            git fetch origin "$BR" 2>/dev/null || true
+            git checkout -f "$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
+            git reset --hard -q "origin/$BR" 2>/dev/null || true
+            mkdir -p data
+            for f in $HAVE; do cp "/tmp/news/$(basename $f)" "data/$(basename $f)"; git add -f "data/$(basename $f)"; done
+            if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
+            git commit -q -m "🗞️ 盤前新聞晨採 $(date -u '+%Y-%m-%d %H:%M UTC')" -- $(for f in $HAVE; do echo "data/$(basename $f)"; done)
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              sleep $((i*5)); git fetch origin "$BR" 2>/dev/null || true; git reset --hard -q "origin/$BR" 2>/dev/null || true
+              for f in $HAVE; do cp "/tmp/news/$(basename $f)" "data/$(basename $f)"; git add -f "data/$(basename $f)"; done
+              git commit -q -m "🗞️ 盤前新聞晨採 $(date -u '+%Y-%m-%d %H:%M UTC')" -- $(for f in $HAVE; do echo "data/$(basename $f)"; done) 2>/dev/null || true
+            done
+          }
+          deploy_branch gh-pages
+          deploy_branch data
+          echo "✅ 盤前新聞已部署"

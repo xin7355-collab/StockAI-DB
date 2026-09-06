@@ -1,0 +1,98 @@
+name: 🏀 個股期貨夜盤採礦 (Shioaji)
+
+# 抓「個股期貨近月合約」即時漲跌%(含夜盤)→ data/stock_futures_night.json
+# ⚠️ 需先設 GitHub Secrets:SHIOAJI_API_KEY、SHIOAJI_SECRET_KEY(永豐 e-Leader 產生;只做行情不下單→免憑證)
+# 🧪 第一次請用「Run workflow」手動觸發,看 log 確認登入/抓取成功再靠 cron 自動跑。
+# 🚨🚨 V73.9.0 錯誤診斷更正:CLAUDE.md 原本推測這支「**跑了但失敗**」(因為 miner 有三處 sys.exit(1))。
+#    ⛔ 那是**錯的** —— 去查 run 清單:`total_count: 0`,**一筆 run 都沒有**,
+#    所以 `stock_futures_night.json` 停在 08-08 跟程式完全無關。
+#    真因:全 repo 一天只有 7~10 筆 schedule run 進得來(而 cron 要求超過 100 筆),
+#    而 live_snapshot(58/天)+ tick_flow(27/天)把配額吃光 → 連一天只要 2 次的這支都擠不進來。
+#    → V73.9.0 已把那兩支從 85 次/天壓到 5 次/天,這支應該就會恢復。
+# ⛔ **刻意不改 cron 分鐘**:我一度想把 `0` 挪開(GitHub 文件寫「高負載時段包含每個整點」),
+#    但同一份資料裡有**三個整點的反例照樣正常跑**(`fund_sweep 0 18`・`daytrade_probe 0 10`・
+#    `telegram_alert 0 12`)→ 那個假設**被推翻了**,⛔ 不拿推論當結論。
+#    這支本身沒有任何問題,不要動它;要驗證的是「配額釋出後它會不會自己恢復」。
+# ⭐ 判斷有沒有修好一律看**產物的日期**(`stock_futures_night.json` 的 updated),
+#    ⛔ 不是看 Actions 頁面的顏色(陷阱 #9)。
+on:
+  workflow_dispatch:
+  schedule:
+    # 台北夜盤:22:00(UTC 14:00,美股盤前)、次日 05:00(UTC 21:00,夜盤收)· 週一~五
+    - cron: '0 14 * * 1-5'
+    - cron: '0 21 * * 1-5'
+
+# 與 deploy_pages / daily_miner 共用 gh-pages-push group,避免同時 push gh-pages 打架
+# 🚨 V73.8.6 搬出共用的 `gh-pages-push`(同 V73.7.9 對 live_snapshot/tick_flow 的修法)。
+#    理由:`0 14 * * 1-5` = 台北 22:00,正好可能撞上 daily_miner 20:00 那輪的 deploy job
+#    (它也在 gh-pages-push 裡)。GitHub 的 concurrency **每個 group 只留一個 pending run**,
+#    撞上就可能被擠掉 —— 而這支一天只有 2 次機會,擠掉一次就少一天資料。
+# ⛔ `cancel-in-progress: false`:夜盤採礦要跑完才有意義,⛔ 不可設 true。
+# ⚠️ 離開共用鎖後,防撞只剩下面既有的 push retry 迴圈(⛔ 不可拿掉)。
+concurrency:
+  group: gh-pages-stock-futures
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  mine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝 shioaji
+        run: pip install "shioaji<1.7"   # 📌 1.7.0 移除 login(fetch_contract=) → 釘在 1.6.x 保留既有登入寫法
+
+      - name: 🏀 採個股期貨夜盤
+        env:
+          SHIOAJI_API_KEY: ${{ secrets.SHIOAJI_API_KEY }}
+          SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
+        run: python3 stock_futures_miner.py
+
+      - name: 🚀 部署 stock_futures_night.json 到 gh-pages + data(雙分支保存)
+        run: |
+          if [ ! -f stock_futures_night.json ]; then echo "❌ 沒產出 JSON,略過部署"; exit 1; fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # data/ 在 main 是 gitignore 未追蹤檔,切分支前存到 /tmp
+          cp stock_futures_night.json /tmp/sfn.json
+
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdxq 2>/dev/null || true   # -x:連 gitignore 的 data/*.json 也清,避免 checkout 撞未追蹤衝突
+            git fetch origin "$BR" 2>/dev/null || true
+            # 🐛 用 -B + origin/$BR 明確指定分支:避開「data 既是資料夾又是分支名」的 git 歧義 fatal
+            git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支(等 daily_miner 先建),跳過"; return 0; }
+            mkdir -p data
+            cp /tmp/sfn.json data/stock_futures_night.json
+            git add -f data/stock_futures_night.json
+            if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
+            git commit -q -m "🏀 個股期貨夜盤 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/stock_futures_night.json
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              echo "⚠️ $BR push attempt $i 失敗,sleep $((i*5))s 重試…"; sleep $((i*5))
+              git fetch origin "$BR" 2>/dev/null || true
+              git reset --hard -q "origin/$BR" 2>/dev/null || true
+              cp /tmp/sfn.json data/stock_futures_night.json
+              git add -f data/stock_futures_night.json
+              git commit -q -m "🏀 個股期貨夜盤 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/stock_futures_night.json 2>/dev/null || true
+            done
+          }
+
+          # 先 gh-pages(前端讀這個,立即生效),再 data(讓 daily_miner deploy 的 git archive origin/data 保留,不被下午完整採礦洗掉)
+          deploy_branch gh-pages
+          deploy_branch data
+          echo "✅ 個股期貨夜盤已雙分支部署(gh-pages + data)"

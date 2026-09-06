@@ -1,5 +1,16 @@
 # 台股歷史數據 JSON（由 miner.py 自動生成，不需要進 git）
 data/*.json
+# ⚠️ 上面那行只蓋 data/ 第一層,蓋不到子目錄 → 分點籌碼(約 37MB)會變成 untracked 一直被提醒。
+#    這些採礦產物屬於 data / gh-pages 分支,⛔ 不該進 main。
+data/chips/
+# ⛔ 採礦中介檔(約 19MB)。V69.9.6(P3-7)已刻意把它移出 gh-pages 改存 data 分支以省空間,
+#    絕對不可再被提交進 main。跑探針時 git archive origin/data 還原到本機會產生它。
+inst_cache_stock.json
+# 但人工編輯的一次性事件清單必須進 git(macro_miner.py 會讀取它合併進 upcoming_macro_events)
+!data/manual_events.json
+# 🏅 V74.3.6 選股條件實測成績(scripts/export_scr_edge.mjs 產物,pro.html 釣魚池在讀;
+#    跟 signal_edge.json 一樣靠 daily_miner 的 git add -f data/ 上 gh-pages)
+!data/scr_edge.json
 
 # Python 相關
 __pycache__/
@@ -25,3 +36,16 @@ Thumbs.db
 # 新聞快取（由後端動態生成）
 news_cache.json
 .claude/
+
+# 本地檔案（不進 git）
+skills-lock.json
+筆記本/
+逐字稿/
+
+# Shioaji SDK 執行時產生的 log(勿進版控)
+shioaji.log
+
+# Android(TWA 外殼)打包產物
+android/.gradle/
+android/local.properties
+chips_deep/

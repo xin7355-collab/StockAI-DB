@@ -1,0 +1,77 @@
+name: 🔎 FinMind 缺口探針
+
+# 🔎 只讀探針:一次測完「FinMind 有、但我還沒用」的候選 dataset。
+#    ⛔ 不寫任何產物、不推任何分支 —— 結果只在 log。
+#    ⚠️ 沙箱連不到 FinMind(proxy 403,已實測)→ 只能在這裡跑。
+#    ⭐ 照 CLAUDE.md 鐵則:會需要「改→等 workflow→看結果」超過兩輪的事,先寫探針。
+on:
+  workflow_dispatch:
+    inputs:
+      which:
+        description: '跑哪一支:both / gap / margin / pe / split / warrant / fund / otc(櫃買指數歷史)'
+        required: false
+        default: 'both'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 🔎 缺口探針(哪些 dataset 拿得到)
+        if: ${{ github.event.inputs.which == 'both' || github.event.inputs.which == 'gap' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/finmind_gap_probe.py
+
+      - name: 💳 大盤融資維持率門檻回測
+        if: ${{ github.event.inputs.which == 'both' || github.event.inputs.which == 'margin' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/margin_maint_probe.py
+
+      - name: 📐 PE/PB 自身位階回測
+        if: ${{ github.event.inputs.which == 'pe' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          N_SYMS: '300'
+        run: |
+          # ⚠️ 回測要對齊 K 線清單 → 先從 data 分支還原(只要檔名,不要內容也行,但一併還原最省事)
+          git fetch --depth=1 origin data
+          git archive origin/data data | tar -x
+          echo "還原 $(ls data/*.json | wc -l) 檔"
+          python3 scripts/pe_band_probe.py
+
+      - name: 🔧 減資/分割 官方 vs 我猜的 交叉驗證
+        if: ${{ github.event.inputs.which == 'split' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: |
+          git fetch --depth=1 origin data
+          git archive origin/data data | tar -x
+          echo "還原 $(ls data/*.json | wc -l) 檔"
+          python3 scripts/split_check_probe.py
+
+      - name: 🎫 權證資料探針(分點 / 溢價率 / 標的對照)
+        if: ${{ github.event.inputs.which == 'warrant' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/warrant_probe.py
+
+      - name: 📊 基本面缺漏探針(股利/EPS/營收 為什麼是空的)
+        if: ${{ github.event.inputs.which == 'fund' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/fund_gap_probe.py
+
+      - name: 🏪 櫃買指數歷史探針(^TWOII 從沒抓成功過的真因)
+        if: ${{ github.event.inputs.which == 'otc' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/otc_probe.py

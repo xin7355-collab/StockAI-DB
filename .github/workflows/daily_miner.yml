@@ -1,21 +1,71 @@
-name: 🤖 每日籌碼採礦機
+name: 🤖 每日籌碼採礦機 (平行宇宙版)
 
 on:
   schedule:
-    # 每個交易日 台灣時間 16:30（UTC 08:30）執行，確保法人資料已公布
+    # 既然開啟了平行宇宙，我們只需要一個時間點觸發，5 台機器就會同時開工！
+    # 這裡設定台灣時間 16:30 (UTC 8:30) 啟動全市場併發
     - cron: '30 8 * * 1-5'
-  workflow_dispatch:   # 允許手動在 GitHub 介面點擊觸發
+    # 🌙 V71.3.6 台灣時間 20:00 (UTC 12:00) 再跑一輪 —— 專治「分點永遠慢一個交易日」
+    #
+    #   問題:證交所的券商分點要傍晚才陸續公布,16:30 那輪跑的時候當日分點還沒出,
+    #   全市場只拿得到前一交易日 → 使用者週三晚上看到的是週二的分點。
+    #   實測佐證(07/29 抽樣 200 檔):當天已跑過採礦的有 25%,但分點日期全是 07-28,
+    #   一檔 07-29 都沒有。
+    #
+    #   解法:晚上再跑一輪。此時分點已公布,配合 miner.py 的「上游分點日探測」
+    #   (用台積電探最新有資料的日期當基準),所有還停在前一交易日的股票會自動重抓。
+    #   ⚠️ 沒有那段探測的話這一輪會 100% 空轉(基準停在昨天 → 每檔都判定已追上 → 全跳過)。
+    #
+    #   成本:公開 repo 的 Actions 時數免費無上限;且 16:30 那輪已把 K 線鋪好,
+    #   20:00 這輪的 20 個 OHLCV 節點多半直接跳過(實測 1.5~4 分),真正在做事的只有分點。
+    #   時間也安全:16:30 那輪約 18:00~18:30 收工,20:00 不會撞到它被 concurrency 取消。
+    - cron: '0 12 * * 1-5'
+  workflow_dispatch:
+    # 手動觸發時，直接點擊 Run workflow，就會自動啟動 5 台機器併發！
+  push:
+    branches: [main]
+    paths:
+      # 註:index.html 純前端改動改由 deploy_frontend.yml 秒級部署,不再觸發完整採礦
+      - 'miner.py'
+      - 'macro_miner.py'
+      - 'radar_miner.py'
+      # V17.0 — chief_ai_batch.py 已 2026-06 退役且檔案不存在,移除觸發避免白費配額
+      - 'backtest.py'
+      - 'walk_forward.py'
+      - 'paper_trade.py'
+      - 'etf_miner.py'
+      - 'extras_miner.py'   # V21.5 — 多空計分卡補三項全市場資料
+      - 'potential_miner.py'   # V46.6 — 全市場長線潛力股排名
+      - 'momentum_miner.py'    # V48.0 — 全市場中線黑馬排名
+      - 'common.py'            # 🧩 共用工具模組:miner/radar/backtest/momentum/potential 皆 import 它,改動須重跑驗證
+      - 'strategy_sim.py'      # 🎯 朱家泓策略核心:radar_miner/backtest import 它,改動須重跑驗證
+      - '.github/workflows/daily_miner.yml'
+
+# V16.1 — workflow-level concurrency:新 push 觸發時自動 cancel 同 branch 進行中的舊 run
+#         省配額(連續 push 改 miner.py 不再重複燒 ~1h × N 次)+ 避免不同版本 miner.py
+#         同時寫 gh-pages 互相干擾。不影響 deploy job 既有 gh-pages-push group。
+concurrency:
+  group: daily-miner-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
 
 jobs:
-  mine-and-deploy:
+  # ══════════════════════════════════════════════════════════════════════════
+  # 🚀 階段一：5 機齊發，各自採礦並上傳暫存區 (Artifacts)
+  # ══════════════════════════════════════════════════════════════════════════
+  mine:
+    name: ⛏️ 採礦節點 ${{ matrix.batch }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90  # 90 分緩衝；搭配下方 if:always() 上傳，超時也保留已採部分
+    strategy:
+      fail-fast: false   # 一台當機不要連累其他台
+      matrix:
+        batch: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]  # 用滿 GitHub Free 20 併發上限
 
     steps:
-      - name: 📥 下載程式碼（只要最新的腳本）
+      - name: 📥 下載程式碼
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 1
@@ -24,85 +74,630 @@ jobs:
         uses: actions/setup-python@v5.6.0
         with:
           python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: '.github/pip-packages.txt'
 
       - name: 📦 安裝相依套件
-        run: pip install requests yfinance fastapi httpx pydantic uvicorn
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests yfinance fastapi httpx pydantic uvicorn duckduckgo-search feedparser ta pandas numpy
+          # 🎯 分點 Sniper(TWSE BSR 驗證碼 OCR)只在節點 0 跑,故只在節點 0 裝重套件 ddddocr/bs4
+          if [ "${{ matrix.batch }}" == "0" ]; then
+            pip install ddddocr beautifulsoup4 || echo "⚠️ ddddocr/bs4 安裝失敗,Sniper 自動停用退回 FinMind"
+          fi
 
-      - name: 📂 還原昨天的快取（data/ + futures/macro cache）
+      - name: 📂 還原昨天的快取 (取得基準資料)
         run: |
           git fetch origin data --depth=1 2>/dev/null || echo "data 分支尚未建立"
-          git checkout origin/data -- data/ 2>/dev/null || echo "首次執行，從零開始"
-          # 還原 futures_cache.json / macro_cache.json（存在 gh-pages 根目錄）
+          git checkout origin/data -- data/ 2>/dev/null || echo "從零開始"
           git fetch origin gh-pages --depth=1 2>/dev/null || true
-          git checkout origin/gh-pages -- futures_cache.json 2>/dev/null || true
-          git checkout origin/gh-pages -- macro_cache.json   2>/dev/null || true
-          echo "快取還原完成：$(ls futures_cache.json macro_cache.json 2>/dev/null | tr '\n' ' ')"
+          git checkout origin/gh-pages -- futures_cache.json      2>/dev/null || true
+          git checkout origin/gh-pages -- macro_cache.json        2>/dev/null || true
+          git checkout origin/gh-pages -- margin_cache_stock.json 2>/dev/null || true
+          # 🧹 V69.9.6 P3-7:inst_cache_stock(18.5MB,前端從不讀)改存 data 分支;先試 data、過渡期 fallback gh-pages
+          #    ⚠️ git show 失敗會留空檔,必須 [ -s ] 驗非空,否則法人快取整份歸零(V49.4 實測模式)
+          (git show origin/data:inst_cache_stock.json > inst_cache_stock.json 2>/dev/null && [ -s inst_cache_stock.json ]) \
+            || { rm -f inst_cache_stock.json; git checkout origin/gh-pages -- inst_cache_stock.json 2>/dev/null || true; }
 
-      - name: ⛏️ 執行採礦（OHLCV + 法人籌碼 + 融資融券 + 分點 + 美股）
+      - name: ⛏️ 執行採礦 (專屬節點 ${{ matrix.batch }})
         env:
-          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
           MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
-        run: python miner.py
+          BATCH_INDEX: ${{ matrix.batch }}
+          TOTAL_BATCHES: 20
+        run: |
+          # 只有節點 0 負責抓取全球總經/期貨/法人等共用資料，節點 1~4 只專心抓個股
+          if [ "${{ matrix.batch }}" != "0" ]; then
+            export SKIP_GLOBAL=1
+          fi
+          python miner.py
 
-      - name: 📡 部署所有資料到 gh-pages（股票K線 + 分點籌碼 + 快取）
+      - name: 🧹 修剪 artifact（依 manifest 只留本批股票；timeout 也會跑）
+        if: always()   # 關鍵：即使採礦 step 被 90 分 timeout 砍，這步仍執行，確保上傳前已修剪
+        run: |
+          if [ "${{ matrix.batch }}" != "0" ]; then export SKIP_GLOBAL=1; else export SKIP_GLOBAL=0; fi
+          python3 - <<'PY'
+          import os, glob, shutil
+          from pathlib import Path
+          skip_global = os.environ.get('SKIP_GLOBAL') == '1'
+          mani = Path('mined_manifest.txt')
+          keep = set(mani.read_text(encoding='utf-8').split()) if mani.exists() else None
+          def valid(s): return (s.isdigit() and len(s) == 4) or s.startswith('00')
+          if keep is None:
+              print('⚠️ 無 manifest（採礦極早期就中斷），保守不修剪')
+          else:
+              removed = 0
+              for f in glob.glob('data/*.json'):
+                  sym = Path(f).stem
+                  if valid(sym) and sym not in keep:
+                      try: os.remove(f); removed += 1
+                      except OSError: pass
+              print(f'🧹 修剪：保留 {len(keep)} 檔、移除 {removed} 檔非本批殘留')
+              if skip_global:
+                  shutil.rmtree('data/chips', ignore_errors=True)
+                  for g in ('radar.json','top_picks.json','global_news.json','radar_news.json','tech_giants_news.json'):
+                      Path('data', g).unlink(missing_ok=True)
+                  for c in ('futures_cache.json','macro_cache.json','margin_cache_stock.json','inst_cache_stock.json'):
+                      Path(c).unlink(missing_ok=True)
+                  print('🧹 SKIP_GLOBAL：已移除 chips / 全域快取（僅 batch 0 提供）')
+          PY
+
+      - name: 📤 上傳該節點的採礦結果到暫存區
+        if: always()   # 即使該 batch 超時或失敗，已採完的部分資料仍上傳，避免下次重跑歸零
+        uses: actions/upload-artifact@v4
+        with:
+          name: mine-data-${{ matrix.batch }}
+          path: |
+            data/
+            futures_cache.json
+            macro_cache.json
+            margin_cache_stock.json
+            inst_cache_stock.json
+          retention-days: 1
+          if-no-files-found: warn
+          # 註:data/miner_status.json 由 miner.py 在 batch 0 寫入 → 自動隨 data/ 上傳(V16.4)
+
+      # V14.12 — 上傳 per-stock per-step timing CSV,給下一輪找瓶頸用
+      - name: ⏱️ 上傳採礦 timing log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: timing-batch-${{ matrix.batch }}
+          path: /tmp/miner_timing_*.csv
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # 🎯 階段一·五:V15.0 chips_miner 獨立平行 job
+  # 把 fetch_broker_chips + futures + macro + radar + bubble + sector + top_picks
+  # 從 batch 0 抽出來,避免 batch 0 一人扛全市場 fundamentals 撞 90 分 timeout
+  # ══════════════════════════════════════════════════════════════════════════
+  chips_miner:
+    name: 🎯 Chips + Fundamentals 採礦(平行)
+    runs-on: ubuntu-latest
+    timeout-minutes: 80   # V68.9.8 45→80:分點改全市場滾動(CHIPS_TIME_BUDGET=35分)+ 後處理(broker_radar/perf/futures/macro/radar/top_picks ~25分)+ govbank/借券/集保(~5分),80 留足餘裕不砍後段
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: '.github/pip-packages.txt'
+
+      - name: 📦 安裝相依套件
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests yfinance fastapi httpx pydantic uvicorn duckduckgo-search feedparser ta pandas numpy
+          pip install ddddocr beautifulsoup4 || echo "⚠️ ddddocr/bs4 安裝失敗,Sniper 自動停用退回 FinMind"
+
+      - name: 📂 還原昨天的資料(OHLCV 從 origin/data,讓 build_radar 等可讀)
+        run: |
+          git fetch origin data --depth=1 2>/dev/null || echo "data 分支尚未建立"
+          git checkout origin/data -- data/ 2>/dev/null || echo "從零開始"
+          git fetch origin gh-pages --depth=1 2>/dev/null || true
+          git checkout origin/gh-pages -- futures_cache.json      2>/dev/null || true
+          git checkout origin/gh-pages -- macro_cache.json        2>/dev/null || true
+          git checkout origin/gh-pages -- margin_cache_stock.json 2>/dev/null || true
+          # 🧹 V69.9.6 P3-7:inst_cache_stock(18.5MB,前端從不讀)改存 data 分支;先試 data、過渡期 fallback gh-pages
+          #    ⚠️ git show 失敗會留空檔,必須 [ -s ] 驗非空,否則法人快取整份歸零(V49.4 實測模式)
+          (git show origin/data:inst_cache_stock.json > inst_cache_stock.json 2>/dev/null && [ -s inst_cache_stock.json ]) \
+            || { rm -f inst_cache_stock.json; git checkout origin/gh-pages -- inst_cache_stock.json 2>/dev/null || true; }
+
+      - name: 🎯 執行 chips/fundamentals/futures/macro 採礦
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          MASSIVE_API_KEY: ${{ secrets.MASSIVE_API_KEY }}
+          GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          GROQ_API_KEY:  ${{ secrets.GROQ_API_KEY }}
+          ONLY_CHIPS: '1'   # V15.0:miner.py 走 chips 專用流程,跳過 OHLCV
+          CHIPS_TIME_BUDGET: '2100'   # V68.9.8 全市場分點時間預算 35 分,到點收工;剩餘下輪「今日已抓→跳過」續抓(熱門股排最前天天新鮮)
+        run: |
+          python3 miner.py
+
+      - name: 🏷️ 概念股採礦(megatime → concept_stocks.json)
+        continue-on-error: true   # 站方限流/改版都不能拖垮 chips 主流程
+        env:
+          CONCEPT_TIME_BUDGET: '360'   # 最多 6 分,逾時寫已抓部分;會 merge origin/data 舊檔不倒退
+        run: python3 concept_miner.py
+
+      - name: 📤 上傳 chips/fundamentals artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chips-data
+          # ⚠️ 以下是 YAML block scalar(path: |),裡面每一行都是「字面路徑」——
+          #    行尾寫 # 註解不會被當註解,會變成路徑的一部分導致該檔靜默漏傳。
+          #    (V71.3.8 的 data/breadth.json 就是這樣漏了,市場廣度歷史一直沒上 gh-pages。)
+          #    要註解請寫在這裡(block 之外),或用 scripts/check_workflow_paths.py 擋。
+          path: |
+            data/chips/
+            chips_deep/
+            data/radar.json
+            data/top_picks.json
+            data/bubble_warning.json
+            data/sector_heat.json
+            data/delisted_stocks.json
+            data/^TWII.json
+            data/^TWOII.json
+            data/fundamentals_cache.json
+            data/industry_pe.json
+            data/industry_map.json
+            data/company_geo.json
+            data/concept_stocks.json
+            data/market_stats.json
+            data/breadth.json
+            data/sector_rot.json
+            data/stock_tags.json
+            data/miner_status.json
+            data/govbank.json
+            data/lending.json
+            data/disposition.json
+            data/daytrade.json
+            data/foreign_hold.json
+            data/blocktrade.json
+            data/blocktrade_hist.json
+            data/lending_hist.json
+            data/margin_limit_hist.json
+            data/industry_chain.json
+            data/cb_overview.json
+            data/warrant_premium.json
+            data/fmx_pack.json
+            data/broker_radar.json
+            data/broker_perf.json
+            data/broker_book.json
+            data/broker_signals.json
+            data/holders.json
+            data/lowbase_picks.json
+            data/wrongkill_picks.json
+            data/sector_chip_flow.json
+            data/factor_quantiles.json
+            broker_names.json
+            futures_cache.json
+            macro_cache.json
+          retention-days: 1
+          if-no-files-found: warn
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # 🧬 階段二:等 mine + chips_miner 都完工後,合併資料並統一發布
+  # ══════════════════════════════════════════════════════════════════════════
+  deploy:
+    name: 🚀 合併與部署總機
+    needs: [mine, chips_miner]   # V15.0:等 mine 跟 chips_miner 都跑完(任一 timeout 仍進 deploy 因 always())
+    # always()（不加 !cancelled）：即使某 batch 跑滿 90 分被 timeout 砍（→ run 變 cancelled），
+    # deploy 仍要執行——否則一個 straggler 就讓整批白做、gh-pages 永遠不更新（曾導致無限卡死）。
+    # 各 batch 已 timeout-safe 修剪（manifest）+ origin/data 底層 + STOCKS<100 守門，三重保險擋空/髒部署。
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # V14.12 — 與 deploy_pages.yml 共用 group,序列化 gh-pages push 避免 race
+    #         只 deploy job 加 group(不加在整 workflow),確保 mine 90 分不會擋 deploy_pages
+    concurrency:
+      group: gh-pages-push
+      cancel-in-progress: false
+
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: '.github/pip-packages.txt'
+
+      - name: 📦 安裝相依套件
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests duckduckgo-search feedparser yfinance ta pandas numpy
+
+      - name: 🗄️ 鋪設底層資料 (origin/data 全市場舊資料當基準)
+        run: |
+          # 各 batch 已修剪成「只含自己採的股票」，這裡先鋪全部舊資料當底層，
+          # 下一步 download-artifact 再把各 batch 的新鮮完整資料疊上去。
+          # 用 git archive | tar 解到工作區（untracked，不動 git index），
+          # 與後續 orphan 分支流程相容；沒被任何 batch 採到的股票仍保留舊資料不消失。
+          git fetch origin data --depth=1 2>/dev/null || echo "data 分支尚未建立"
+          if git rev-parse --verify -q origin/data >/dev/null; then
+            git archive origin/data | tar -x -C . 2>/dev/null || echo "⚠️ 底層展開失敗，改由 artifact 提供"
+          fi
+          echo "底層舊資料：$(ls data/*.json 2>/dev/null | wc -l) 檔"
+
+      - name: 📥 下載並自動合併 20 個平行宇宙的資料 (疊在底層之上)
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mine-data-*
+          merge-multiple: true   # 各 batch 已無同名衝突，直接疊上底層覆蓋成最新
+
+      # V15.0:下載 chips_miner artifact(含 fundamentals + radar + top_picks + futures + macro)
+      - name: 📥 下載 chips_miner artifact(平行採礦結果)
+        uses: actions/download-artifact@v4
+        with:
+          name: chips-data
+          path: .   # data/chips/, data/radar.json, broker_names.json, futures_cache.json 等同層展開
+        continue-on-error: true   # chips_miner 若失敗(timeout/限流),仍部署 mine 結果
+
+      # 🚧 V74.6.9 累積型歷史「只增不減」守門(鉅額交易 / 借券 / 融資限額)
+      #   🚨 為什麼一定要有這一層:miner.py 自己那層**只看得到本機那一份** ——
+      #   如果 batch job 的「還原」步驟失敗(網路/權限),它會以為「本來就沒有歷史」→
+      #   寫出只有今天的一份 → artifact 疊上來就把幾百天洗掉了,而且**完全不會報錯**。
+      #   ⭐ 所以推之前一定要再跟 **data 分支上現有的那份**比一次(同 news_hist 的做法)。
+      #   ⛔ 一律 exit 0:這是保護不是失敗,不可擋掉其他檔的部署。
+      - name: 🚧 累積型歷史只增不減守門
+        run: |
+          cp scripts/news_hist_guard.py /tmp/hist_guard.py 2>/dev/null || echo "⚠️ 守門腳本沒複製到"
+          for f in blocktrade_hist lending_hist margin_limit_hist; do
+            git show origin/data:data/$f.json > /tmp/${f}_prev.json 2>/dev/null || rm -f /tmp/${f}_prev.json
+            if [ -s /tmp/${f}_prev.json ] && [ -f /tmp/hist_guard.py ]; then
+              python3 /tmp/hist_guard.py data/$f.json /tmp/${f}_prev.json "$f" || true
+            fi
+          done
+
+      # 🧹 V68.9.9 使用者授權清理:data/chips/ 歷史累積 ~2.6 萬個「非股票代號」空垃圾檔
+      #    (權證/債券/ETN 如 020xxx / 01001T / 02001L,買賣超全空)。只刪 chips 目錄、
+      #    只刪「非 4碼股票 且 非 00 開頭 ETF」→ 真股票/ETF 一律保留;⚠️絕不動 data/ 本體
+      #    (data/ 有 day_trade/inst_rank/falcon_scores 等合法非股票代號檔,誤刪會壞前端)。
+      #    清完後 gh-pages + data 分支都不再帶垃圾(orphan force-push),下輪 archive 也不會再引入。
+      - name: 🧹 清理 chips 垃圾檔(權證/債券空檔,使用者授權)
+        run: |
+          python3 - <<'PY'
+          import glob, os
+          from pathlib import Path
+          def valid(s):
+              return (s.isdigit() and len(s) == 4) or s.startswith('00')
+          removed = kept = 0
+          for f in glob.glob('data/chips/*.json'):
+              sym = Path(f).stem
+              if valid(sym):
+                  kept += 1
+              else:
+                  try:
+                      os.remove(f); removed += 1
+                  except OSError:
+                      pass
+          print(f'🧹 chips 清理:刪除 {removed} 個非股票代號垃圾檔(權證/債券/ETN),保留 {kept} 個股票/ETF')
+          PY
+
+      # V14.9 採礦加速 — 斧二:7 個獨立 deploy 階段腳本改 bash `&` 後台並行 + `wait`
+      # 串行 ~2.75 分 (universal_radar 30s + macro 15s + radar_miner 30s + backtest 30s
+      #              + walk_forward 20s + paper_trade 10s + etf_miner 30s)
+      # 並行 ~30-45 秒(瓶頸是最慢那支)。每支腳本寫不同 JSON 無 race;
+      # walk_forward.py 是 `from backtest import` 純 module 級 import,不讀 backtest 產出檔。
+      - name: ⚡ 並行跑 7 個 deploy 階段腳本(平行宇宙第二層)
+        env:
+          GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
+          GROQ_API_KEY:  ${{ secrets.GROQ_API_KEY }}
+          # 🐛 V71.5.3 補上 FinMind / Gemini —— 這個 step 會跑 macro_miner.py,
+          #   而它原本只拿到 GROQ,於是:
+          #   ① 台指 VIX(fetch_tw_vix 需要 FINMIND_TOKENS)直接回 'no-token' → 永遠是 null。
+          #      而 macro_cron.yml 那支有給 token、抓得到值,但 daily_miner 這輪跑完會
+          #      force-push gh-pages,把有值的版本蓋成 null → 使用者看到「台指 VIX 沒有資料」。
+          #      (先前診斷以為是 FinMind 資料集改名,實際 log 顯示是 no-token,收回那個猜測。)
+          #   ② 財經行事曆 AI 的 Gemini 備援也拿不到 key,Groq 撞 429 時就沒有第二條路。
+          #   對齊 macro_cron.yml 的 env 清單,兩邊跑出來的東西才會一致。
+          FINMIND_TOKENS:  ${{ secrets.FINMIND_TOKENS }}
+          FINMIND_TOKEN:   ${{ secrets.FINMIND_TOKEN }}
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          GEMINI_API_KEY:  ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python -m pip install requests yfinance ta pandas numpy feedparser --quiet
+          mkdir -p /tmp/parallel
+          python universal_radar.py > /tmp/parallel/r1.log 2>&1 &
+          PID1=$!
+          python macro_miner.py     > /tmp/parallel/r2.log 2>&1 &
+          PID2=$!
+          python radar_miner.py     > /tmp/parallel/r3.log 2>&1 &
+          PID3=$!
+          python backtest.py        > /tmp/parallel/r4.log 2>&1 &
+          PID4=$!
+          python walk_forward.py    > /tmp/parallel/r5.log 2>&1 &
+          PID5=$!
+          python paper_trade.py     > /tmp/parallel/r6.log 2>&1 &
+          PID6=$!
+          python etf_miner.py       > /tmp/parallel/r7.log 2>&1 &
+          PID7=$!
+          echo "⏳ 等待 7 個並行任務完成…"
+          set +e   # 任一失敗不要中斷整體部署
+          wait $PID1; RC1=$?
+          wait $PID2; RC2=$?
+          wait $PID3; RC3=$?
+          wait $PID4; RC4=$?
+          wait $PID5; RC5=$?
+          wait $PID6; RC6=$?
+          wait $PID7; RC7=$?
+          set -e
+          echo ""
+          echo "═════ 並行 7 腳本完成 ═════"
+          names=(universal_radar.py macro_miner.py radar_miner.py backtest.py walk_forward.py paper_trade.py etf_miner.py)
+          rcs=($RC1 $RC2 $RC3 $RC4 $RC5 $RC6 $RC7)
+          for i in 0 1 2 3 4 5 6; do
+            n="${names[$i]}"
+            rc="${rcs[$i]}"
+            idx=$((i + 1))
+            if [ "$rc" = "0" ]; then echo "✅ $n"; else echo "⚠️ $n 失敗 rc=$rc (繼續部署)"; fi
+            echo "── $n log ──"
+            tail -40 /tmp/parallel/r${idx}.log || true
+            echo ""
+          done
+
+      # V17.0 — 移除 chief_ai_batch.py 已退役註解區塊(歷史包袱清掉);
+      #         AI 全盤分析改前端打開個股時即時呼叫,V16.7 staleness gate 已對 stale cache 透明 fallback
+
+      # V21.5 — extras_miner:全市場 5 日法人 Top 50 + TWSE 當沖比 + TDCC 千張大戶
+      #         必須在「並行 7 腳本」之後跑(此時 data/*.json 已合併全市場最新版,可算 inst_rank)
+      #         失敗不擋部署,前端規則 C2/C3/C7/C10 自動降級顯示「⚪ 待採礦補資料」
+      - name: 🎯 extras_miner:多空計分卡補三項全市場資料
+        run: |
+          python3 extras_miner.py || echo "⚠️ extras_miner 失敗(不擋部署)"
+
+      - name: 💎 potential_miner:全市場長線潛力股排名(此時 data/*.json 已全合併)
+        run: |
+          python3 potential_miner.py || echo "⚠️ potential_miner 失敗(不擋部署)"
+
+      - name: 🐎 momentum_miner:全市場中線黑馬排名(此時 data/*.json 已全合併)
+        run: |
+          python3 momentum_miner.py || echo "⚠️ momentum_miner 失敗(不擋部署)"
+
+      # 🕸️ V74.3.4 關聯星圖:全市場「誰跟誰一起動」(產業作戰室的分頁在讀)
+      #   ⚠️ 必須排在**所有 OHLCV 合併完之後**(前面 20 個平行節點各採一部分)——
+      #      跟 potential_miner / momentum_miner 同一個位置、同一個理由。
+      #   ⭐ 產物 data/top_correlations.json 會被下面部署步驟的 `git add -f data/`
+      #      自動收進 gh-pages 與 data 分支 → ⛔ 不用另外接 artifact 清單。
+      #   實測:2,513 檔 / 5.8 秒 / 峰值 211MB / 產出約 48KB。
+      #   ⛔ 失敗一律不擋部署;而且腳本自己有空過守門(有鄰居的檔數 < 200 就拒絕覆寫舊檔)。
+      - name: 🕸️ generate_correlations:全市場關聯星圖
+        run: |
+          python3 generate_correlations.py || echo "⚠️ generate_correlations 失敗(不擋部署)"
+
+      # 🎯 V72.2.0 今日實測訊號:全市場掃「今天出現了哪些期望值為正的訊號」
+      #   ⚠️ 必須排在**所有 OHLCV 合併完之後**(前面 20 個平行節點各採一部分),
+      #      而且要用 **main 最新版的 index.html**(偵測器 + _SIGNAL_EDGE 都在裡面)
+      #      → 下一步的部署會 checkout origin/main -- index.html,這裡先自己拉一次。
+      #   實測:2,315 檔 / 177 秒 / 產出僅 3.6 KB。
+      #   ⛔ 失敗一律不擋部署(它是加值資料,前端讀不到就整條不顯示)。
+      - name: 🎯 今日實測訊號掃描(daily_signal_scan)
+        continue-on-error: true
+        run: |
+          git fetch origin main --depth=1 2>/dev/null || true
+          git checkout origin/main -- index.html 2>/dev/null || true
+          npm i -D playwright@1.49.1 >/dev/null 2>&1 || { echo "⚠️ playwright 安裝失敗,略過"; exit 0; }
+          npx playwright install --with-deps chromium >/dev/null 2>&1 || { echo "⚠️ chromium 安裝失敗,略過"; exit 0; }
+          # 腳本內硬編的 playwright 路徑是本機開發環境用的 → CI 走 node_modules
+          sed -i "s#/opt/node22/lib/node_modules/playwright/index.mjs#playwright#" scripts/daily_signal_scan.mjs
+          sed -i "s#executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'##" scripts/daily_signal_scan.mjs
+          node scripts/daily_signal_scan.mjs || echo "⚠️ 今日訊號掃描失敗(不擋部署)"
+          git checkout -- scripts/daily_signal_scan.mjs 2>/dev/null || true
+          [ -s data/today_signals.json ] && echo "✅ today_signals.json $(wc -c < data/today_signals.json) bytes" || echo "⚠️ 沒產出 today_signals.json"
+
+      - name: 📡 部署所有資料到 gh-pages (前端網站庫)
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # ── Step 1: 備份採礦結果 + 網站檔案到 /tmp（後續步驟都從這裡取）──
+          # 🛡️ 防 race：強制把 index.html / sw.js / manifest.json 換成 main 最新版
+          #    避免採礦 30-60 分跑完後，用啟動瞬間的舊快照覆蓋 deploy_pages.yml 已部署的新版前端
+          git fetch origin main --depth=1
+          git checkout origin/main -- index.html sw.js 2>/dev/null || true
+          git checkout origin/main -- manifest.json 2>/dev/null || true   # V17.0 PWA manifest
+          git checkout origin/main -- apple-touch-icon.jpg icon-192.jpg icon-512.jpg 2>/dev/null || true   # ⚡ V69.8.7 P2-2
+          git checkout origin/main -- .well-known/assetlinks.json 2>/dev/null || true   # 📦 V73.1.1 APK(TWA)驗證檔
+          git checkout origin/main -- pro.html 2>/dev/null || true   # 🛰️ V74.0.1 產業作戰室 PRO
+          git checkout origin/main -- data/scr_edge.json 2>/dev/null || true   # 🏅 V74.3.8 選股條件實測成績(釣魚池讀;⚠️ 這裡是 orphan force-push,不接就每天被洗掉)
+
+          # 備份合併後的完整資料
           mkdir -p /tmp/mine/data/chips
           cp data/*.json           /tmp/mine/data/          2>/dev/null || true
           cp data/chips/*.json     /tmp/mine/data/chips/    2>/dev/null || true
-          cp futures_cache.json    /tmp/mine/                2>/dev/null || true
-          cp macro_cache.json      /tmp/mine/                2>/dev/null || true
-          cp broker_names.json     /tmp/mine/                2>/dev/null || true
-          cp index.html            /tmp/mine/                2>/dev/null || true
-          echo "備份完成：$(ls /tmp/mine/data/*.json 2>/dev/null | wc -l) K線，$(ls /tmp/mine/data/chips/*.json 2>/dev/null | wc -l) 分點"
+          cp futures_cache.json    /tmp/mine/               2>/dev/null || true
+          cp macro_cache.json      /tmp/mine/               2>/dev/null || true
+          cp margin_cache_stock.json /tmp/mine/             2>/dev/null || true
+          cp inst_cache_stock.json /tmp/mine/               2>/dev/null || true
+          cp broker_names.json     /tmp/mine/               2>/dev/null || true
+          cp index.html            /tmp/mine/               2>/dev/null || true
+          cp sw.js                 /tmp/mine/               2>/dev/null || true
+          cp manifest.json         /tmp/mine/               2>/dev/null || true   # V17.0 PWA
+          cp apple-touch-icon.jpg icon-192.jpg icon-512.jpg /tmp/mine/ 2>/dev/null || true   # ⚡ V69.8.7
+          mkdir -p /tmp/mine/.well-known && cp .well-known/assetlinks.json /tmp/mine/.well-known/ 2>/dev/null || true   # 📦 V73.1.1
+          cp pro.html /tmp/mine/ 2>/dev/null || true   # 🛰️ V74.0.1
+          cp data/scr_edge.json /tmp/mine/scr_edge.json 2>/dev/null || true   # 🏅 V74.3.8
 
-          # ── Step 2: 用 orphan 分支 force-push，永遠只保留一個 commit，不累積歷史 ──
+          # 切換到發布分支
           git checkout main 2>/dev/null || true
           git checkout --orphan _pages_deploy
           git rm -rf --cached . -q 2>/dev/null || true
 
-          # 複製所有網站所需檔案
+          # 還原資料並提交
           mkdir -p data/chips
           cp /tmp/mine/data/*.json          data/           2>/dev/null || true
           cp /tmp/mine/data/chips/*.json    data/chips/     2>/dev/null || true
           cp /tmp/mine/futures_cache.json   .               2>/dev/null || true
           cp /tmp/mine/macro_cache.json     .               2>/dev/null || true
           cp /tmp/mine/index.html           .               2>/dev/null || true
+          cp /tmp/mine/sw.js                .               2>/dev/null || true
+          cp /tmp/mine/manifest.json        .               2>/dev/null || true   # V17.0 PWA
+          mkdir -p .well-known && cp /tmp/mine/.well-known/assetlinks.json .well-known/ 2>/dev/null || true   # 📦 V73.1.1
+          cp /tmp/mine/apple-touch-icon.jpg /tmp/mine/icon-192.jpg /tmp/mine/icon-512.jpg . 2>/dev/null || true   # ⚡ V69.8.7
+          cp /tmp/mine/pro.html . 2>/dev/null || true   # 🛰️ V74.0.1(⚠️ 下面一定要 git add)
+          [ -f /tmp/mine/scr_edge.json ] && mkdir -p data && cp /tmp/mine/scr_edge.json data/scr_edge.json 2>/dev/null || true   # 🏅 V74.3.8(⚠️ 下面 git add -f data/ 會收)
           cp /tmp/mine/broker_names.json    .               2>/dev/null || true
+          cp /tmp/mine/margin_cache_stock.json . 2>/dev/null || true
+          # 🧹 V69.9.6 P3-7:inst_cache_stock 不再上 gh-pages(18.5MB 純採礦中介、前端 0 引用)→ 改隨 data 分支保存
+
+          # 🆕 注入 CACHE_NAME（與 deploy_pages.yml 同邏輯）→ 每次部署 sw.js 內容必變
+          #    瀏覽器/PWA 自動接管新 SW + reload，杜絕卡舊版
+          if [ -f sw.js ]; then
+            sed -i "s/const CACHE_NAME = '[^']*'/const CACHE_NAME = 'stockai-${GITHUB_SHA::8}'/" sw.js
+            echo "SW CACHE_NAME → stockai-${GITHUB_SHA::8}"
+          fi
+
+          # V17.1 — 清退役檔案(chief_ai_batch.py 2026-06 退役,chief_ai_cache.json 不再產出)
+          #         前端 V16.7 已有 staleness gate fallback,刪檔讓 fetch 直接 404 → fallback radar_matrix
+          if [ -f data/chief_ai_cache.json ]; then
+            rm -f data/chief_ai_cache.json
+            echo "🧹 已清退役檔 data/chief_ai_cache.json(chief_ai_batch.py 退役)"
+          fi
 
           STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
           CHIPS=$(ls data/chips/*.json 2>/dev/null | wc -l)
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
 
-          git add -f index.html data/
-          [ -f broker_names.json ]  && git add -f broker_names.json  || true
-          [ -f futures_cache.json ] && git add -f futures_cache.json || true
-          [ -f macro_cache.json ]   && git add -f macro_cache.json   || true
-          git commit -m "📡 網站更新 ${DATE}（K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
-          git push origin HEAD:gh-pages --force
-          echo "✅ gh-pages 已更新：K線 ${STOCKS} 檔，分點籌碼 ${CHIPS} 檔"
+          if [ "$STOCKS" -lt 100 ]; then
+            echo "❌ ABORT: 僅 $STOCKS 檔，拒絕強制覆寫 gh-pages 以保護現有資料"
+            exit 1
+          fi
 
-      - name: 📤 推送到獨立 data 分支（永遠只保留一個 commit，不累積歷史）
+          # V16.4 — 部署結尾覆寫 miner_status.json = "ready",讓前端 banner 自動消失並提示「採礦完成」
+          mkdir -p data
+          NOW_ISO=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          printf '{"status":"ready","stage":"deploy_done","last_updated":"%s","stocks":%s,"chips":%s,"run_url":"https://github.com/%s/actions/runs/%s"}\n' \
+            "${NOW_ISO}" "${STOCKS}" "${CHIPS}" "${GITHUB_REPOSITORY}" "${GITHUB_RUN_ID}" \
+            > data/miner_status.json
+          echo "📡 miner_status.json → ready (${NOW_ISO})"
+
+          git add -f index.html data/
+          [ -f sw.js ]                   && git add -f sw.js                   || true
+          [ -f manifest.json ]           && git add -f manifest.json           || true   # V17.0 PWA
+          [ -f .well-known/assetlinks.json ] && git add -f .well-known/assetlinks.json || true   # 📦 V73.1.1 APK 驗證檔
+          # 🖼️ 圖示:上面早就 cp 進來了,但從 V69.8.7 起一直漏掉這行 git add
+          #    → 檔案「放回去了卻沒 commit」,gh-pages 上永遠沒有 → PWA 主畫面圖示 404(零錯誤訊息)
+          for f in apple-touch-icon.jpg icon-192.jpg icon-512.jpg; do [ -f "$f" ] && git add -f "$f" || true; done
+          [ -f pro.html ] && git add -f pro.html || true   # 🛰️ V74.0.1 產業作戰室 PRO
+          [ -f data/scr_edge.json ] && git add -f data/scr_edge.json || true   # 🏅 V74.3.8(data/ 已整包 add,這行只是明示)
+          [ -f broker_names.json ]       && git add -f broker_names.json       || true
+          [ -f futures_cache.json ]      && git add -f futures_cache.json      || true
+          [ -f macro_cache.json ]        && git add -f macro_cache.json        || true
+          [ -f margin_cache_stock.json ] && git add -f margin_cache_stock.json || true
+          # 📋 V72.3.0 先把「這輪到底產出了什麼」寫進 Actions 的 Summary 面板 ——
+          #   ⭐ 那塊不會被 log 的 5,000 行上限截斷。實測部署 job 的最後 5,000 行
+          #      **全部**是 orphan commit 的 `create mode`(4,976 行、只涵蓋 3 秒),
+          #      把 daily_signal_scan / market_stats 的輸出永久擠出可讀視窗
+          #      → CLAUDE.md 鐵則「修完沒生效先看 log」形同失效。
+          #   ⛔ 純診斷,`|| true` 保證不擋部署。
+          python3 scripts/deploy_summary.py "${STOCKS}" "${CHIPS}" "${DATE}" || true
+          # 🔇 `-q`:orphan commit 逐檔印 `create mode` 正是上面那 4,976 行的來源
+          git commit -q -m "📡 網站更新 ${DATE}（平行宇宙合併 | K線 ${STOCKS} 檔 / 分點 ${CHIPS} 檔）"
+          # V14.12 — 5 次 retry 吸收 GitHub server 瞬時 ref lock(雙保險,搭配 concurrency group)
+          for i in 1 2 3 4 5; do
+            if git push origin HEAD:gh-pages --force; then
+              echo "✅ gh-pages push 成功 (attempt $i)"
+              break
+            fi
+            if [ "$i" -eq 5 ]; then
+              echo "❌ gh-pages push 連 5 次失敗,放棄"
+              exit 1
+            fi
+            echo "⚠️ gh-pages push attempt $i 失敗,sleep $((i*5))s 重試..."
+            sleep $((i*5))
+            git fetch origin gh-pages 2>/dev/null || true
+          done
+          echo "✅ gh-pages 已更新：共 ${STOCKS} 檔"
+
+      - name: 📤 推送到獨立 data 分支 (資料備份庫)
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 回到乾淨狀態後建 orphan 分支
           git checkout main 2>/dev/null || true
           git checkout --orphan _data_deploy
           git rm -rf --cached . -q 2>/dev/null || true
 
-          # 從 /tmp 備份還原 data/
           mkdir -p data/chips
           cp /tmp/mine/data/*.json          data/        2>/dev/null || true
           cp /tmp/mine/data/chips/*.json    data/chips/  2>/dev/null || true
-          git add -f data/
+          cp /tmp/mine/inst_cache_stock.json .           2>/dev/null || true   # 🧹 V69.9.6 P3-7:法人中介快取改存這裡(不再上 gh-pages)
 
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
           STOCKS=$(ls data/*.json 2>/dev/null | wc -l)
-          git commit -m "🤖 籌碼快照 ${DATE}（${STOCKS} 檔）"
-          git push origin HEAD:data --force
-          echo "✅ data 分支已更新，共 ${STOCKS} 檔"
+
+          if [ "$STOCKS" -lt 100 ]; then
+            echo "❌ ABORT: 僅 $STOCKS 檔，拒絕強制覆寫 data 分支以保護現有資料"
+            exit 1
+          fi
+
+          git add -f data/
+          [ -f inst_cache_stock.json ] && git add -f inst_cache_stock.json || true   # 🧹 V69.9.6 P3-7
+          git commit -q -m "🤖 籌碼快照 ${DATE}（平行宇宙合併，共 ${STOCKS} 檔）"   # 🔇 V72.3.0 同上,別再洗版
+          # V14.12 — 5 次 retry 吸收 GitHub server 瞬時 ref lock
+          for i in 1 2 3 4 5; do
+            if git push origin HEAD:data --force; then
+              echo "✅ data push 成功 (attempt $i)"
+              break
+            fi
+            if [ "$i" -eq 5 ]; then
+              echo "❌ data push 連 5 次失敗,放棄"
+              exit 1
+            fi
+            echo "⚠️ data push attempt $i 失敗,sleep $((i*5))s 重試..."
+            sleep $((i*5))
+            git fetch origin data 2>/dev/null || true
+          done
+          echo "✅ data 分支已更新"
+
+      # 📚 V74.0.8 把今天新抓的全市場分點累加進 `chips_deep` 分支(回測深歷史)。
+      #   🚨 沒有這步的話,回測資料會**永遠停在最後一次手動回算那天** ——
+      #      採礦每天抓到的全市場分點寫進個股檔後就被 22 天上限截掉丟棄。
+      #   ⛔ 設計成「只增不減」:先把分支現有的天還原回來,再加今天的,
+      #      天數比分支上少就**拒絕推送**(orphan force-push 會整個取代,少了就是真的沒了)。
+      - name: 📚 累加 chips_deep(回測深歷史)
+        if: always()
+        continue-on-error: true      # ⛔ 這步失敗不可影響 gh-pages/data 的部署
+        run: |
+          set -e
+          if [ ! -d chips_deep ] || [ -z "$(ls chips_deep/*.json.gz 2>/dev/null)" ]; then
+            echo "ℹ️ 這輪沒有新的 chips_deep 檔(可能全部日期都已存在)→ 跳過"
+            exit 0
+          fi
+          NEW=$(ls chips_deep/*.json.gz | wc -l)
+          mkdir -p /tmp/deepnew && cp chips_deep/*.json.gz /tmp/deepnew/
+          OLD=0
+          if git fetch origin chips_deep --depth=1 2>/dev/null; then
+            OLD=$(git ls-tree -r --name-only origin/chips_deep | grep -c '\.json\.gz$' || echo 0)
+            git archive origin/chips_deep | tar -x -C . 2>/dev/null || true
+          fi
+          cp -n /tmp/deepnew/*.json.gz chips_deep/ 2>/dev/null || true
+          cp -f /tmp/deepnew/*.json.gz chips_deep/ 2>/dev/null || true
+          N=$(ls chips_deep/*.json.gz | wc -l)
+          # 🚧 只增不減(⛔ orphan force-push 會整個取代)
+          if [ "$N" -lt "$OLD" ]; then
+            echo "❌ 現在 $N 天 < 分支上已有的 $OLD 天 → 拒絕推送(會弄丟資料)"
+            exit 1
+          fi
+          if [ "$N" -eq "$OLD" ]; then
+            echo "ℹ️ $OLD 天沒有變化 → 不推送"
+            exit 0
+          fi
+          echo "📦 chips_deep $OLD → $N 天(本輪新增 $NEW 天)・$(du -sh chips_deep | cut -f1)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan _deep_daily
+          git rm -rf --cached . -q 2>/dev/null || true
+          git add -f chips_deep/
+          git commit -q -m "📚 分點深歷史 ${N} 天($(date -u '+%Y-%m-%d %H:%M UTC'))"
+          for i in 1 2 3 4 5; do
+            git push origin HEAD:chips_deep --force && { echo "✅ chips_deep 已更新"; break; }
+            [ "$i" -eq 5 ] && { echo "❌ chips_deep push 連 5 次失敗"; exit 1; }
+            sleep $((i * 5))
+          done
