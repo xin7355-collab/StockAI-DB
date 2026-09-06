@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.8.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.8.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -503,6 +503,28 @@
         </div>
     </div>
 
+    <!-- 🪟 V74.8.9 事件觸發彈窗 —— 使用者:「有依照這個方式做事件觸發時的彈跳視窗嗎?」
+         ⭐ 只給**高優先級(賣出/風險類)**,⛔ 買進類一律走 toast(不阻斷)。
+            那不是版面偏好,是本站的**多空不對稱**鐵則:勝率只有 30~33%,整套會賺
+            完全靠「錯的時候小賠出場」→ 少提醒出場的代價遠大於多提醒。
+         🚨 而且它補掉一個真缺口:`_fireAlert` 在沒開通知權限時**直接 return**
+            → 事件觸發了畫面上零反應,使用者根本不知道。
+         ⛔ 不用紅綠燈(那是漲跌方向,這裡講的是風險等級)。 -->
+    <div id="alertPopModal" class="hidden fixed inset-0 z-[400] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+         onclick="if(event.target===this)app._closeAlertPop();">
+        <div class="bg-[#161b22] border border-[#30363d] border-l-4 border-l-orange-500 rounded-lg max-w-[22rem] w-full p-4 shadow-2xl" onclick="event.stopPropagation()">
+            <div id="alertPopTitle" class="text-[13px] font-black text-orange-200 mb-1.5 leading-snug"></div>
+            <div id="alertPopBody" class="text-[11px] text-gray-200 leading-relaxed mb-2"></div>
+            <div id="alertPopEdge" class="text-[10px] text-gray-500 leading-snug mb-3"></div>
+            <div class="flex gap-2">
+                <button onclick="app._closeAlertPop(); app.vibrate(20);"
+                        class="flex-1 bg-[#21262d] hover:bg-[#30363d] text-gray-300 py-2 rounded text-[12px] font-bold transition-colors">知道了</button>
+                <button id="alertPopGo" class="flex-1 bg-orange-700 hover:bg-orange-600 text-white py-2 rounded text-[12px] font-bold transition-colors">看這一檔</button>
+            </div>
+            <div class="text-[9px] text-gray-600 mt-2 leading-snug">⚠️ 這是<b>提醒</b>不是自動下單;⛔ 買賣以個股頁「現在該做什麼」為準。同一件事一天只跳一次。</div>
+        </div>
+    </div>
+
     <!-- V19.4 — header 加 safe-area-inset-top + ‹ 按鈕加大觸控區到 44x44pt(蘋果 HIG 最小可觸標準),
                   原本太靠近狀態列被擋,iOS PWA 沒 status bar 偏移更慘 -->
     <div id="globalSearchModal" class="hidden fixed inset-0 z-[999] bg-[#0d1117] flex flex-col" onclick="if(event.target===this)app.closeGlobalSearchModal();">
@@ -698,7 +720,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.8.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.8.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -5337,9 +5359,59 @@ const app = {
     },
 
     // 通用警報通知（與 _fireHuntNotification 並存，盤中監控專用單一入口）
+    // 🪟 V74.8.9 哪些事件值得**打斷**使用者(彈窗)、哪些只配 toast
+    //   ⭐ 判準 = 本站的**多空不對稱**鐵則(⛔ 不是憑感覺分級):
+    //     勝率只有 30~33%,整套會賺完全靠「錯的時候小賠出場」
+    //     → 出場/風險類**錯過就住套房**;進場類**錯過還有下一次**。
+    //   ⛔ 所以買點、點火、共振這類一律**不彈窗**(彈了三天就會被關掉 = 整套失效)。
+    _URGENT_ALERT: /停損|出場|平倉|跌破|熄火|轉偏空|處置|斷頭|追繳|警報|強制/,
+    _isUrgentAlert(title) { try { return this._URGENT_ALERT.test(String(title || '')); } catch (_) { return false; } },
+    /** 🪟 事件觸發彈窗(只給高優先級;同一件事一天只跳一次) */
+    _alertPopup(title, body, sym) {
+        try {
+            if (!this._isUrgentAlert(title)) return false;
+            // 🚧 防噪音:同一個 (標題+股票) 一天只跳一次(⛔ 否則股價在門檻上下震盪會連跳)
+            const key = `popAlert_${sym || '-'}_${String(title).slice(0, 24)}`;
+            const today = this.getTodayStr ? this.getTodayStr() : new Date().toDateString();
+            try { if (localStorage.getItem(key) === today) return false; localStorage.setItem(key, today); } catch (_) {}
+            const m = document.getElementById('alertPopModal');
+            const t = document.getElementById('alertPopTitle');
+            const b = document.getElementById('alertPopBody');
+            const e = document.getElementById('alertPopEdge');
+            const go = document.getElementById('alertPopGo');
+            if (!m || !t || !b) return false;
+            t.textContent = String(title || '');
+            b.textContent = String(body || '');
+            // ⭐ 這是本站相對別家的優勢:提醒要附**實測數字**,⛔ 不是只喊「快跑」
+            if (e) {
+                e.innerHTML = /停損|出場|跌破|平倉/.test(String(title))
+                    ? '📊 為什麼出場提醒不設上限:實測勝率只有 <b>30~33%</b>,整套會賺完全靠「錯的時候小賠出場」——'
+                      + ' 少提醒一次的代價,遠大於多提醒一次。'
+                    : '📊 這是風險提醒 —— 本站對風險類⛔ 不打折(即使統計上沒被證實,忽略它的代價比較大)。';
+            }
+            if (go) {
+                go.onclick = () => {
+                    this._closeAlertPop();
+                    if (sym) { try { this.analyze(sym); this.switchAppTab('diag'); } catch (_) {} }
+                };
+                go.style.display = sym ? '' : 'none';
+            }
+            m.classList.remove('hidden');
+            this.vibrate?.([40, 40, 40]);
+            return true;
+        } catch (_) { return false; }
+    },
+    _closeAlertPop() { try { document.getElementById('alertPopModal')?.classList.add('hidden'); } catch (_) {} },
+
     _fireAlert(title, body, sym) {
         // V19.4 — 記到通知歷史(3 天後自動清),即使通知權限沒開也記,讓使用者能查
         try { this._recordNotifHistory(title, body, sym); } catch(_) {}
+        // 🪟 V74.8.9 App 內也要有反應 —— 🚨 舊版在沒開通知權限時**直接 return**,
+        //   事件觸發了畫面上零反應,使用者根本不知道(而且他多半沒開權限)。
+        //   ⭐ 高優先級(出場/風險)→ 彈窗;其餘 → toast(不阻斷)。
+        try {
+            if (!this._alertPopup(title, body, sym)) this.showToast?.(`${title} — ${body}`, 'info', 6000);
+        } catch (_) {}
         if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
         try {
             const n = new Notification(title, { body, tag: `alert_${sym}_${title}`, requireInteraction: false });
@@ -7681,8 +7753,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.8.8',
+    _APP_VERSION: 'V74.8.9',
     _CHANGELOG: [
+        { v:'V74.8.9', dt:'2026-09-06', d:['🪟 你問「有沒有做事件觸發的彈跳視窗」—— **原本沒有**,現在做了,但**只給該打斷你的那一種**。','⭐ 停損、出場、平倉倒數、處置這類會**彈視窗**(錯過就住套房);買點、點火、共振這類只出一條 toast(錯過還有下一次)。那不是我挑的,是實測:勝率只有三成,整套會賺完全靠「錯的時候小賠出場」。','🚨 順手修掉一個很嚴重的:以前**沒開通知權限的話,事件觸發了畫面上完全沒反應** —— 現在一定看得到。','🚧 防吵:同一件事一天只跳一次(不然股價在門檻上下來回會連跳);而且視窗上會告訴你「為什麼這件事值得打斷你」,附實測數字。'] },
         { v:'V74.8.8', dt:'2026-09-06', d:['🚦 你說「紅漲綠跌會搞混」—— **你是對的,而且 App 裡真的有反的**。全面掃過之後修了 **29 處**,最嚴重的那幾個是把「可進場/續抱/偏多」配成綠色 —— 台股綠色是跌,那樣會直接看反。','🎨 現在規則統一了:**紅綠只用來講漲跌方向**;講「好不好、安不安全」一律改用 ✅ 安全 ・⚠️ 注意 ・⛔ 危險 ・➖ 中性 ・📍 位置。像「燃料飽 / 籌碼乾淨 / 融資過熱」那些都換掉了。','📌 只有一個例外:國發會的「景氣對策信號」是官方名稱,不能改名 —— 所以在它前面加了「官方」兩個字,讓你一眼分得出來那跟漲跌無關。','⛔ 另外做了一件事:以前系統會把「實測沒用的訊號」**默默擋掉**,你看不到也不知道為什麼。現在會在「現在該做什麼」下面告訴你「今天擋掉幾個、分別是什麼、實測數字是多少」。'] },
         { v:'V74.8.7', dt:'2026-09-06', d:['⏱️ 你問「有沒有之前回測過、可以用這種邏輯重測的」—— 有,而且**重測完發現一個清楚的分界**。','⭐ **有真正「反應」的只有一種:跌停後第一根紅K** —— 漲幅**前 5 個交易日就走完 7 成**、**約 20 個交易日到頂**,之後開始回吐,到第 60 天只剩三成。→ 這就是「反應後多久該走」的答案,卡片上已經寫出來了。','➖ 另外兩個(創新高回測不破、向上跳空+高位階)**完全沒有反應時點** —— 前 5 天只走完 2~7%,它們是「一路慢慢漂」。所以⛔ 別期待它們幾天內表態,總覽的提醒也補上了這句。','🚨 順手修掉一個我自己上一版讀反的地方:「事件前 30 天」那一欄的正負號被我讀反了,正確是「股價在事件前就已經往同方向走」,不是反方向。'] },
         { v:'V74.8.6', dt:'2026-09-06', d:['⏱️ 你問「不是應該算出多久反應、多久離場嗎」—— **這個問法是對的,我原本的做法確實不夠好**,所以重做了一次:把公布日前 60 天到後 250 天的走勢**一天一天畫出來**。','📊 答案是:**沒有反應時點**。前 20 天只走完全程的 0~28%,而且七種訊號裡有四種前 20 天是往**反方向**走的。真正在動的是「慢慢漂 250 天」,那不叫反應。','🚨 更關鍵的是:**股價在財報出來之前就已經在往同一個方向走了**,財報那天一點都不特別 —— 那比較像是「這家公司體質本來就比較好/比較差」,不是在反應財報。','⭐ 用「前半段找最好的持有天數、後半段驗」再逐年拆開,七種只剩一種活著(存貨在去化,要抱 194 天),而且一年才多賺約 1.5% —— 那已經是**選股體質**不是進出場時機了。'] },
