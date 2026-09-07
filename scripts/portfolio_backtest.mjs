@@ -106,6 +106,12 @@ const MAXD = +(process.env.MAXD || 20);    // 最長持有幾個交易日
 //   RE_MAX  = 同一個原始訊號最多買回幾次(⛔ 沒有上限的話會在均線上下打乒乓,每趟都付 0.44%)
 //   ⚠️ 買回的那一筆是**獨立的一趟**,portfolio 層會照樣扣一次來回成本 → 成本代價自動被算進去。
 const REENTRY = +(process.env.REENTRY || 0);
+// 🎯 V74.9.3 增量檢定(穩定度探針說「哪一招」不會延續 → 那排序到底有沒有在做事?)
+//   RANKBY = self(預設,這檔自己在這招的期望值)| rand(候選裡**隨機**排序,固定種子)| mkt(全市場該型態平均 = V1 舊法)
+//   GATE   = pat(預設:這檔在**這招**扣成本後為正)| stock(這檔在**任何一招**扣成本後為正 → 不看是哪一招)
+const RANKBY = process.env.RANKBY || 'self';
+const GATE = process.env.GATE || 'pat';
+let _seed = 20260907; const _rnd = () => (_seed = (_seed * 1103515245 + 12345) % 2147483648) / 2147483648;
 const RE_MAX = +(process.env.RE_MAX || 1);
 // 🛑 V72.9.9 停損距離實驗 —— ⭐ 這是整套裡**最沒根據**的一個參數:
 //   現行 `min(訊號日最低, 進場×0.95)` 的 −5% 是當初拍腦袋定的,從來沒驗過。
@@ -156,6 +162,7 @@ const syms = [];
 const cover = {};
 for (const s of syms) cover[s[0]] = (cover[s[0]] || 0) + 1;
 console.log(`💼 組合回測 ・${syms.length} 檔(分層抽樣,代號開頭分布 ${JSON.stringify(cover)})`);
+if (RANKBY !== 'self' || GATE !== 'pat') console.log(`🎯 增量檢定:RANKBY=${RANKBY} ・GATE=${GATE}(⛔ 不是正式配置)`);
 console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日${REENTRY > 0 ? ` ・買回=${REENTRY}日內站回5MA(最多${RE_MAX}次)` : ''} ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
 
 // 💾 掃描結果快取(只跟這幾個參數有關;行事曆濾網完全不影響掃描結果)
@@ -754,8 +761,10 @@ for (let i = 0; i < days.length; i++) {
     // 🤝 同一檔今天有幾招同時觸發(共振)
     const hitCnt = {};
     for (const t of todays) hitCnt[t.sym] = (hitCnt[t.sym] || 0) + 1;
+    // GATE=stock:這檔到昨天為止「任何一招」的成績(⛔ 不看今天觸發的是哪一招)
+    const stockBest = GATE === 'stock' ? (sym => { let b = null; for (const k in stat) { if (k.startsWith(sym + '|')) { const s2 = stat[k]; if (s2.n >= MIN_N) { const v = s2.sum / s2.n; if (b === null || v > b.v) b = { n: s2.n, v }; } } } return b; }) : null;
     const cand = todays
-        .map(t => ({ t, s: stat[`${t.sym}|${t.key}`], m: mkt[t.key] }))
+        .map(t => ({ t, s: (GATE === 'stock' ? (b => b ? { n: b.n, sum: b.v * b.n } : null)(stockBest(t.sym)) : stat[`${t.sym}|${t.key}`]), m: mkt[t.key] }))
         .filter(x => x.s && x.s.n >= MIN_N && (x.s.sum / x.s.n) - COST > 0
                   && x.m && x.m.n >= MIN_MKT_N
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
@@ -763,6 +772,8 @@ for (let i = 0; i < days.length; i++) {
                   && indCycOk(x.t.sym, d)
                   && selfOk(x.t) && sigOk(x.t))
         .sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
+    if (RANKBY === 'rand') { for (let k = cand.length - 1; k > 0; k--) { const j = Math.floor(_rnd() * (k + 1)); [cand[k], cand[j]] = [cand[j], cand[k]]; } }
+    else if (RANKBY === 'mkt') cand.sort((a, b) => (b.m.sum / b.m.n) - (a.m.sum / a.m.n));
     const seen = new Set(live.map(x => x.sym));
     let picked = 0;
     for (const { t } of cand) {
