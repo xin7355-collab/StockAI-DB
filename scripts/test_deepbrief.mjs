@@ -65,6 +65,11 @@ const R = await page.evaluate(async (syms) => {
             const facts = app._deepBriefFacts(data, s);
             app.renderDeepBrief(data);
             const el = document.getElementById('deepBriefCard');
+                // 🚨 V74.9.4 卡片 V73.7.0 起住在總覽的 <details id="ovNowMore"> 摺疊裡,
+                //   而**收起的 <details> 在這個 Chromium 的 innerText 回空字串**(CLAUDE.md V74.2.2 記過的坑)。
+                //   ⛔ 那不是 App 壞掉(innerHTML 有 5,974 字元、hidden=false)→ 量之前先展開祖先 details,
+                //   語意 = 「使用者點開之後看到什麼」。
+                for (let n = el.parentElement; n; n = n.parentElement) if (n.tagName === 'DETAILS') n.open = true;
             out.per[s] = {
                 bars: data.length,
                 dist: dist && { hits: dist.hits, total: dist.total, level: dist.level, names: dist.items.map(x => x.name), whys: dist.items.map(x => x.why) },
@@ -72,6 +77,7 @@ const R = await page.evaluate(async (syms) => {
                 factKeys: facts ? Object.keys(facts) : null,
                 marketKeys: facts?.market ? Object.keys(facts.market) : null,
                 shown: el ? !el.classList.contains('hidden') : false,
+                html: (el?.innerHTML || '').length,
                 text: (el?.innerText || '').replace(/\s+/g, ' ').slice(0, 1600),
             };
         }
@@ -127,7 +133,11 @@ for (const s of SYMS) {
     const p = R.per[s] || {};
     ok(`① ${s} 出貨徵兆表算得出來(8 條)`, !!p.dist && p.dist.total === 8, JSON.stringify(p.dist)?.slice(0, 160));
     ok(`① ${s} 操作型態算得出來`, !!p.play?.mode, JSON.stringify(p.play)?.slice(0, 160));
-    ok(`① ${s} 卡片有顯示且有內容`, p.shown && (p.text || '').length > 80, `shown=${p.shown} len=${(p.text || '').length}`);
+    // ⭐ 兩件事分開釘:①a「有沒有被渲染」(⛔ 跟它現在展不展開無關 —— 卡片可能被搬進任何摺疊區)
+    //                    ①b「使用者點開之後真的看得到字」(空過守門:展開了還是 0 就是真的壞了)
+    ok(`①a ${s} 卡片有被渲染(不 hidden + innerHTML 有內容,⛔ 與摺疊狀態無關)`,
+       p.shown && (p.html || 0) > 500, `shown=${p.shown} html=${p.html}`);
+    ok(`①b ${s} 展開之後看得到內容`, (p.text || '').length > 80, `len=${(p.text || '').length}`);
     ok(`① ${s} ⭐ 每條徵兆都附佐證數字/說明(⛔ 不可只給是非)`,
        !!p.dist && p.dist.whys.every(w => w && w.length > 2), JSON.stringify(p.dist?.whys)?.slice(0, 200));
     anyHit += (p.dist?.hits || 0);
@@ -232,9 +242,15 @@ const trap = await (async () => {
         const d = (await r.json()).map(x => ({ ...x, close: +x.close, open: +x.open, high: +x.high, low: +x.low, volume: +x.volume }));
         app.currentSymbolId = s; app.rawDailyData = d; app.activeData = d;
         app.renderDeepBrief(d);
+        const el = document.getElementById('deepBriefCard');
+                // 🚨 V74.9.4 卡片 V73.7.0 起住在總覽的 <details id="ovNowMore"> 摺疊裡,
+                //   而**收起的 <details> 在這個 Chromium 的 innerText 回空字串**(CLAUDE.md V74.2.2 記過的坑)。
+                //   ⛔ 那不是 App 壞掉(innerHTML 有 5,974 字元、hidden=false)→ 量之前先展開祖先 details,
+                //   語意 = 「使用者點開之後看到什麼」。
+                for (let n = el.parentElement; n; n = n.parentElement) if (n.tagName === 'DETAILS') n.open = true;
         return {
             t: app._trappedRatio(d),
-            txt: (document.getElementById('deepBriefCard')?.innerText || '').replace(/\s+/g, ' '),
+            txt: (el?.innerText || '').replace(/\s+/g, ' '),
             src: app._trappedRatio.toString() + app._retailStructure.toString(),
             ai: app.analyzeStockDeep.toString(),
         };
