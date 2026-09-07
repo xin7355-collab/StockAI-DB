@@ -59,14 +59,20 @@ SLEEP = float(os.environ.get('FIN_SLEEP') or 0.05)
 
 # 🚨 欄位名一律**寫出來**並在探路時驗證,⛔ 不憑印象猜(實測 2330 的 type 名稱)
 WANT = {
-    'TaiwanStockBalanceSheet':        {'inv': 'Inventories'},
+    'TaiwanStockBalanceSheet':        {'inv': 'Inventories',
+                                       'eq': 'Equity',                 # 權益總額(淨值)→ 股價淨值比
+                                       'cap': 'OrdinaryShare'},        # 股本(元;÷10 = 股數)→ 每股淨值
     'TaiwanStockCashFlowsStatement':  {'capex': 'PropertyAndPlantAndEquipment',
                                        'dep': 'Depreciation',
                                        'ocf': 'CashFlowsFromOperatingActivities'},
     'TaiwanStockFinancialStatements': {'cogs': 'CostOfGoodsSold',
-                                       'rev': 'Revenue'},
+                                       'rev': 'Revenue',
+                                       'eps': 'EPS'},                  # 單季 EPS → 近四季加總 = TTM → 歷史本益比
 }
-FIELDS = ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev']
+# ⚠️ V74.9.3 加 eq / cap / eps(⭐ 為了解鎖「估值 5 條」的回測:fund_yoy_gm 的 qeps 只有 8 季,
+#    而這裡本來就有 34 季 —— 差的只是這三個欄位)。⛔ 新欄位一律**加在最後面**,
+#    舊檔的陣列用位置對應,插在中間會讓舊資料的欄位錯位。
+FIELDS = ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev', 'eq', 'cap', 'eps']
 REASON = {}
 
 
@@ -74,10 +80,27 @@ def bump(k):
     REASON[k] = REASON.get(k, 0) + 1
 
 
-def fetch_one(sym):
-    """回 {季別: {欄位: 值}};任何一個資料集失敗就記原因(⛔ 不靜默)。"""
+def _complete(rec):
+    """舊檔那一檔的欄位齊不齊(⭐ 加新欄位後,舊檔的陣列會比 FIELDS 短 → 要補抓)。"""
+    return bool(rec) and all(isinstance(v, list) and len(v) >= len(FIELDS) for v in rec.values())
+
+
+def _need_ds(rec):
+    """舊檔缺哪些欄位 → 只打**含那些欄位**的資料集(⛔ 不必三個都重抓:2 次 vs 3 次差 30 分鐘)。"""
+    if not rec:
+        return list(WANT)
+    have = min(len(v) for v in rec.values() if isinstance(v, list)) if rec else 0
+    missing = set(FIELDS[have:])
+    return [ds for ds, want in WANT.items() if set(want) & missing]
+
+
+def fetch_one(sym, only=None):
+    """回 {季別: {欄位: 值}};任何一個資料集失敗就記原因(⛔ 不靜默)。
+    `only` = 只打這幾個資料集(補欄位模式),其餘欄位由呼叫端從舊檔合併。"""
     out = {}
     for ds, want in WANT.items():
+        if only is not None and ds not in only:
+            continue
         rows, err = fm(ds, {'data_id': sym, 'start_date': START})
         if rows is None:
             bump(f'{ds}:{(err or "失敗").split("/")[-1][:40]}')     # ⭐ 用分類過的原因,⛔ 不只寫「失敗」
@@ -182,9 +205,12 @@ def main():
         print(f'🧪 試跑模式:只抓 {LIMIT} 檔 ・檔數守門放寬到 {min_ok}'
               f'(⛔ 正式跑仍是 {MIN_OK})・⛔ 不推分支')
     # ③ 冪等:已經有的排後面(⛔ 不是直接丟掉 —— 預算沒用完時可以順便刷新最新一季)
-    todo = [s for s in syms if s not in old] + [s for s in syms if s in old]
-    print(f'📋 {len(syms)} 檔(其中 {len(syms) - len([s for s in syms if s not in old])} 檔已有)'
-          f' ・預算 {BUDGET_MIN} 分 ・回溯 {START}')
+    #    ⭐ 「有但欄位不齊」(加了新欄位之後的舊檔)算「沒有」→ 排前面、只補缺的那幾個資料集
+    done = {s for s in syms if s in old and _complete(old[s])}
+    partial = [s for s in syms if s in old and s not in done]
+    todo = [s for s in syms if s not in old] + partial + sorted(done)
+    print(f'📋 {len(syms)} 檔(其中 {len(done)} 檔已齊 ・{len(partial)} 檔要補欄位 ・'
+          f'{len(syms) - len(done) - len(partial)} 檔沒有)・預算 {BUDGET_MIN} 分 ・回溯 {START}')
 
     res = dict(old)
     t0 = time.time()
@@ -193,10 +219,18 @@ def main():
         if (time.time() - t0) / 60 > BUDGET_MIN:
             print(f'⏱️ 預算用完(第 {i} 檔)→ 把手上的寫出去,下一輪接續')
             break
-        if sym in old and okn > 0:
-            continue                                     # 這一輪只補沒有的
-        d = fetch_one(sym)
+        if sym in done and okn > 0:
+            continue                                     # 這一輪只補沒有的 / 欄位不齊的
+        only = _need_ds(old.get(sym)) if sym in old and sym not in done else None
+        d = fetch_one(sym, only=only)
         if d:
+            if only is not None:
+                # ⭐ 補欄位模式:沒重抓的欄位從舊檔合併回來(⛔ 不可整檔丟掉再只留新欄位)
+                orec = old[sym]
+                for q, arr in orec.items():
+                    for i, f in enumerate(FIELDS[:len(arr)]):
+                        if f not in d.setdefault(q, {}) and arr[i] is not None:
+                            d[q][f] = arr[i]
             res[sym] = {k: [v.get(f) for f in FIELDS] for k, v in sorted(d.items())}
             okn += 1
             if sym not in old:

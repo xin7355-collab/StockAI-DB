@@ -144,6 +144,30 @@ with tempfile.TemporaryDirectory() as tmp:
     ok('④ 冪等:第二輪不可重抓全部(⛔ 否則中斷續跑等於從頭來)',
        CALLS['n'] < before / 5 and p2['meta']['n'] == 600, f'第一輪 {before} 次 / 第二輪 {CALLS["n"]} 次')
 
+# ⑬ V74.9.3 補欄位模式:舊檔只有 6 欄(加 eq/cap/eps 之前)→ 要補抓、只打含新欄位的資料集、舊值要合併回來
+with tempfile.TemporaryDirectory() as tmp:
+    os.makedirs(tmp, exist_ok=True)
+    OLDF = ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev']
+    oldrec = {sy: {q: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0] for q in QS} for sy in SYMS}
+    json.dump({'q': QS, 'f': OLDF, 's': oldrec, 'meta': {'n': len(SYMS)}},
+              open(os.path.join(tmp, 'fin_deep.json'), 'w'))
+    DS_SEEN = set()
+    _base = make_fm()
+    def _fm_ds(ds, extra=None, timeout=90):
+        if (extra or {}).get('data_id') != '2330':
+            DS_SEEN.add(ds)
+        return _base(ds, extra, timeout)
+    FB.fm = _fm_ds; FB.REASON = {}
+    rc, out, p = run(tmp, LIMIT=0, MIN_OK=500, SLEEP=0, BUDGET_MIN=99)
+    rec = p['s']['1000'][QS[0]] if p else None
+    ok('⑬ 🚨 舊檔缺新欄位 → 要補抓(⛔ 不可因為「已經有」就跳過)', rc == 0 and rec is not None and len(rec) == len(FB.FIELDS), f'rc={rc} rec={rec}')
+    ok('⑬b ⭐ 只打含新欄位的資料集(⛔ 不必三個都重抓)', DS_SEEN == {'TaiwanStockBalanceSheet', 'TaiwanStockFinancialStatements'}, str(DS_SEEN))
+    ok('⑬c 🚨 沒重抓的舊欄位(capex/dep/ocf)要從舊檔合併回來(⛔ 不可變 None)',
+       rec is not None and rec[2] == 3.0 and rec[3] == 4.0 and rec[4] == 5.0, str(rec))
+    ok('⑬d 新欄位要有值', rec is not None and rec[-1] is not None and rec[-3] is not None, str(rec))
+    ok('⑬e 「要補欄位 N 檔」要印出來(⛔ 不靜默)', '要補欄位' in out)
+ok('⑬f ⛔ 新欄位一律加在 FIELDS 最後面(舊檔陣列靠位置對應)', FB.FIELDS[:6] == ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev'] and FB.FIELDS[-3:] == ['eq', 'cap', 'eps'])
+
 # ⑤ 檔數不足 → 不覆寫
 with tempfile.TemporaryDirectory() as tmp:
     FB.fm = make_fm(only=set(SYMS[:10])); FB.REASON = {}
