@@ -2025,6 +2025,71 @@ def compute_dividend_fill_history(quarterly_dividends, ohlcv_rows):
 
 
 # ── SQLite ↔ JSON 橋接（gh-pages 靜態部署用）────────────────────────────────
+def _drop_bad_bars(records, sym=''):
+    """🧹 V74.9.5 濾掉兩種「物理上不可能是交易日」的壞 K 棒 —— 回 (records, notes)。
+
+    ⭐ 兩種都是**先量全市場再訂判準**的(⛔ 不是憑印象):
+      ① **掛牌前殘留**(實測 33 檔):開頭連續好幾根 `volume == 0` 而且**收盤價一模一樣**。
+         實例 `data/3644.json`:3.63 且量 0 連兩根 → 之後才是真的(218~370)。
+         `data/4170.json` 有 **152 根**、`8098` 有 110 根 —— 那些會讓「一年位階」「近 250 日高低」
+         拿一個從沒成交過的價格當歷史。
+      ② **幽靈棒**(實測全市場**只有 1 根**):單日離譜、**隔天又回來**。
+         實例 `data/3114.json` 2025-04-25:20.90 → **2118.96** → 21.57(×101 隔天回來)
+         → K 線圖整個被壓扁、位階溫度計失真。
+
+    ⛔ 判準刻意訂得很嚴(誤刪真實資料比留著髒資料更糟):
+      ・① 要求 **量 0 且收盤價完全相同**,而且只看**開頭**那一段(⛔ 中間的不動 ——
+        冷門股整天沒成交是常態,實測 1,541 檔近 250 根裡有 volume=0,那些是真的)。
+      ・② 要求**前後兩根彼此接近**(0.8~1.25)**而且**中間那根相對**兩邊都**離譜 →
+        「漲停之後隔天跌停」這種真實走勢前後不會接近,不會被誤刪。
+      ・② 一檔最多濾 3 根 —— 超過就代表整段資料源有問題,⛔ 不該一根一根挑。
+    ⛔ 濾除一律**印出來**(同「任何守門都要說出原因」的鐵則)。
+    """
+    if not records or len(records) < 10:
+        return records, []
+    notes = []
+    C = []
+    V = []
+    for r in records:
+        try:
+            C.append(float(r.get('close') or 0))
+        except (TypeError, ValueError):
+            C.append(0.0)
+        try:
+            V.append(float(r.get('volume') or 0))
+        except (TypeError, ValueError):
+            V.append(0.0)
+    # ① 開頭「量 0 且價格完全不動」那一段
+    head = 0
+    while head < len(records) and V[head] == 0 and C[head] > 0 and C[head] == C[0]:
+        head += 1
+    if head < 5:
+        head = 0                       # ⛔ 少於 5 根不動(可能只是連假前後真的沒成交)
+    if head >= len(records) - 10:
+        head = 0                       # 🚧 幾乎整檔都是 → ⛔ 不砍(那是資料源問題,不是殘留)
+    if head:
+        notes.append(f"開頭 {head} 根掛牌前殘留(量 0 且收盤價全部是 {C[0]})")
+    # ② 幽靈棒(在 head 之後找)
+    drop = set()
+    for i in range(head + 1, len(records) - 1):
+        a, b, c = C[i - 1], C[i], C[i + 1]
+        if a <= 0 or b <= 0 or c <= 0:
+            continue
+        if not (0.8 < a / c < 1.25):
+            continue                   # 前後兩根不接近 → 那是真的走勢
+        r1, r2 = b / a, b / c
+        if (r1 > 1.8 and r2 > 1.8) or (r1 < 0.55 and r2 < 0.55):
+            drop.add(i)
+    if len(drop) > 3:
+        notes.append(f"幽靈棒疑似 {len(drop)} 根(>3)→ ⛔ 不砍(整段資料源可能有問題)")
+        drop = set()
+    for i in sorted(drop):
+        notes.append(f"幽靈棒 {records[i].get('date')} 收 {C[i]}(前 {C[i-1]} 後 {C[i+1]})")
+    if head or drop:
+        records = [r for i, r in enumerate(records) if i >= head and i not in drop]
+    return records, notes
+
+
 def _backadjust_splits(records, sym='', verbose=False):
     """🔧 V71.7.9 股票分割 / 減資 → 回溯調整舊 K 線,讓歷史連續。
 
@@ -2195,6 +2260,17 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
             print(f"  🧹 {sym} 濾掉 {_n0 - len(records)} 根沒有收盤價的空殼 K(盤中快照殘留)")
         if not records:
             continue        # 🚧 全部都是壞列 → ⛔ 不可寫出空檔覆蓋掉原本的好資料
+
+        # 🧹 V74.9.5 再濾兩種「物理上不可能是交易日」的壞棒(掛牌前殘留 / 幽靈棒)。
+        #    ⛔ 要排在分割還原**之前** —— 幽靈棒會干擾「相鄰交易日比值」的判斷。
+        try:
+            records, _bad_notes = _drop_bad_bars(records, sym)
+            for _nt in _bad_notes:
+                print(f"  🧹 {sym} {_nt}")
+        except Exception as e:
+            print(f"  ⚠️ {sym} 壞棒濾除失敗(不影響匯出): {e}")
+        if not records:
+            continue
 
         # 🔧 V71.7.9 分割/減資回溯調整(見 _backadjust_splits 的說明)。
         #    放在寫檔前的最後一步 → 全市場 2,700 檔都會過這關,而且最新那筆價格不會被動到。

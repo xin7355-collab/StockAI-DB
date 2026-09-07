@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.9.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.9.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.9.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.9.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7888,8 +7888,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.9.4',
+    _APP_VERSION: 'V74.9.5',
     _CHANGELOG: [
+        { v:'V74.9.5', dt:'2026-09-08', d:['🧹 **清掉兩種「不可能是交易日」的假 K 棒**:① 掛牌前的殘留(開頭一整段量 0、價格一動也不動 —— 那批新 ETF 全是 10 元或 15 元的發行價,4170 甚至有 152 根)② 幽靈棒(3114 在 2025-04-25 那天收 2118.96,前一天 20.9、後一天 21.57,隔天就回來了)。','⭐ 這些假資料會讓「一年位階」「近 250 日高低」拿一個從沒成交過的價格當歷史,K 線圖也會被壓扁。','🚧 判準訂得很嚴,先掃過全市場才動手:2,488 檔裡只動 34 檔、525 根,而且全部在最前面(⛔ 不碰最新價);冷門股「整天沒成交」的量 0 有 1,541 檔,那是真的,一根都沒動。']},
         { v:'V74.9.4', dt:'2026-09-08', d:['🔧 **0052 富邦科技的 K 線修好了** —— 它 2025-11-19 做了 1:7 分割(245.30 → 35.04),但採礦機的分割還原表只認 2/3/4/5/10 倍、**剛好沒有 7** → 那天之前的歷史價格一直是斷成兩截的,K線、均線、位階溫度計、回測全都歪。倍率表已補齊 2~10。','⭐ 改之前先掃了全市場再動手:2,488 檔裡**只有 2 檔會被調整**(0052 與 7780),其餘 2,486 檔一列都沒改,最新價也完全不動(要對得上官方收盤)。','🚨 順手糾正一個我自己記錯的原因:先前把這類斷崖歸咎於「分割時停牌太久」,實測 0052 根本沒停牌。而真正停牌很久的那 48 筆,全部是合併歷史資料留下的空洞(⛔ 不是分割),硬改反而會弄髒資料 —— 所以那道守門保留。','🧪 另外修好 9 條長期紅著的測試:那不是功能壞掉,是深度診斷卡被收進摺疊區之後,測試沒跟著更新量法。']},
         { v:'V74.9.3', dt:'2026-09-08', d:['🔬 你說「還有什麼回測沒做完的請繼續,該挖礦就挖礦」—— 推薦欄三條收掉兩條,「還測不了」那欄裡唯一靠挖礦能解鎖的(估值 5 條)也解鎖了。','💰 財報深歷史補上 EPS / 淨值 / 股本三欄(34 季、2018 起)→ 本益比、股價淨值比、配息率、PEG、價值陷阱第一次用 **5.6 年含 2022 空頭** 重測(2,185 檔、11.9 萬個事件、含息):**正向沒有一條六關全過**,比同業便宜、股價淨值比低完全零邊際。⛔ 穩定地差的三個才是能用的:「便宜又跌深」(低本益比×位階 ≤30)20 日 −1.07 / 60 日 −3.35pp、五年逐年全負;價值陷阱與配息率 >100% 也 5/6 年為負。選股頁的估值提醒已寫上這組數字 —— **估值只能拿來避雷,不能拿來選股**。','🎯 「這一檔最會賺的那一招」排序做了增量檢定:候選裡隨機排序每趟 +0.72% → +0.49%(排序有在做事),但改用全市場成績 +0.86%、只看這檔任何一招 +0.88%,三種互相之間逐年不同向 = 分不出高下 → 以前說的「自己的成績 vs 全市場 38 倍」在 49 個月 + 🧬 配置下不成立。清單上的招名請當「這檔歷史上賺過的招」讀,⛔ 不是預測。','🔁 出場後「站回 5 日線就買回」測完:+193 → +310 萬、回撤 −32 → −26%,但 2022 與 2025 都是負的(五關過四關)→ ⛔ 不改預設,列為等空頭重跑。','📈 McClellan 擺動 / 新高新低(大盤層級)測完:超賣位階 +2.9pp 但 2022 是 −5.7,又是抄底只在多頭有用;唯一每年同向的是「廣度累積指標在近一年高位階 → 之後 1~2 週偏弱」的避雷。⛔ 都不進 App。','📅 財報公布日規則 6 份 inline 換成共用一份(換之前先驗 164 個季末日四份輸出逐字相同)。']},
         { v:'V74.9.2', dt:'2026-09-07', d:['🪟 你說「通知視窗與彈跳視窗很像,請以大視窗為主」—— 做了三件事:① **賣訊/風險類全部改走大視窗**(頂背離、停利、減碼、出貨、過熱、轉弱、做頭、逃命…以前只是 toast);② 同時來兩則⛔ 不再互相蓋掉,第二則**排隊**、關掉第一則接著跳,而且會寫「還有 N 則」;③ 大視窗已經跳了、App 又在前景時,**不再重複發那個長得一樣的系統通知**(在背景時照發,免得漏掉)。','🥊 你要的「連續技」:賣訊跳出來時,視窗裡直接排好**第 1 擊 先出一半 ≈ 幾股、賣在現價賺賠幾元 → 第 2 擊 跌破你設定的出場線(ATR/唐奇安/移動停利/5 日線,設定中心那條)全部出場 → 第 3 擊 其他兩條線當參考**。按「🔔 幫我盯第 2 擊」,盤中真的跌破那條線會**再跳一次大視窗接力**(⛔ 不會自動下單)。','⛔ 三條要先講清楚:每一擊各自實測過(出場線 49 個月回測),但**串起來沒有另外回測**;空手的人看到賣訊**不是進場點**,⛔ 不可因為它跌下來就想接;零股族的股數是照你實際持股算的(0.07 張 = 70 股 → 一半 35 股,⛔ 不是 1 張)。','📎 你附的那份文件跟前兩次上傳的是**同一個檔案**(md5 完全相同,第三次了),裡面沒有講連續技;它的 6 條建議已在 V74.8.8 逐條評估過。']},
