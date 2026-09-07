@@ -34,6 +34,7 @@ import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
 import { fileURLToPath } from 'url';
+import { pubDate } from './lib_fundamentals.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let DEEP_DIR = process.env.CHIPS_DEEP_DIR || path.join(ROOT, 'chips_deep');
@@ -101,9 +102,9 @@ function loadFund() {
       for (const q of d.qeps) if (q && q.period && q.eps != null) byP.set(q.period, +q.eps);
       const lst = [];
       for (const [period, eps] of byP) {
-        const [y, m] = period.split('-').map(Number);
-        const known = m === 3 ? `${y}-05-15` : m === 6 ? `${y}-08-14`
-          : m === 9 ? `${y}-11-14` : `${y + 1}-03-31`;
+        const y = +period.slice(0, 4);
+        const known = pubDate(period);          // ⭐ V74.9.3 共用 lib_fundamentals(等值已驗)
+        if (!known) continue;
         const prev = byP.get(`${y - 1}-${period.slice(5)}`);
         lst.push([known, eps, prev == null ? null : (eps - prev)]);
       }

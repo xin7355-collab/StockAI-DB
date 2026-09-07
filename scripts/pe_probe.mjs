@@ -24,6 +24,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { pubDate } from './lib_fundamentals.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = path.join(ROOT, 'data');
@@ -57,14 +58,8 @@ const fund = JSON.parse(fs.readFileSync(path.join(DATA, 'fund_yoy_gm.json'), 'ut
 
 // ═══════ 2. 財報公布日規則(⛔ 這一步錯了整份就是前視) ═══════
 // 台股:Q1→5/15 ・ Q2→8/14 ・ Q3→11/14 ・ Q4(全年)→ 隔年 3/31
-const pubDate = period => {
-    const y = +period.slice(0, 4), m = period.slice(5, 7);
-    if (m === '03') return `${y}-05-15`;
-    if (m === '06') return `${y}-08-14`;
-    if (m === '09') return `${y}-11-14`;
-    if (m === '12') return `${y + 1}-03-31`;
-    return null;
-};
+// ⭐ V74.9.3 改走共用 lib_fundamentals.pubDate(等值已驗:164 個季末日四份輸出逐字相同)
+
 
 // ═══════ 3. 逐檔:重建每日 TTM EPS 與 PE ═══════
 const files = fs.readdirSync(DATA).filter(x => /^\d{4}\.json$/.test(x) && !x.startsWith('00'));

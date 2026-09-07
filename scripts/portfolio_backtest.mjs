@@ -24,6 +24,7 @@
  *       node scripts/portfolio_backtest.mjs 600 3
  */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { DEADLINES } from './lib_fundamentals.mjs';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs';
 import path from 'path';
@@ -533,7 +534,7 @@ for (let i = 0; i < days.length - 1; i++) {
 // 財報公布截止日前後 3 個交易日(⚠️ 這**不是法說會** —— 法說會沒有免費結構化資料源)
 const finNear = new Set();
 {
-    const dl = ['-03-31', '-05-15', '-08-14', '-11-14'];
+    const dl = DEADLINES;      // ⭐ V74.9.3 共用 lib_fundamentals
     const yrs = [...new Set(days.map(d => d.slice(0, 4)))];
     for (const y of yrs) for (const t of dl) {
         const target = y + t;

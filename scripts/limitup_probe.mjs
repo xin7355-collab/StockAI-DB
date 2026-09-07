@@ -30,6 +30,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { pubDate } from './lib_fundamentals.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
@@ -64,13 +65,8 @@ try { indMap = JSON.parse(fs.readFileSync(path.join(DATA, 'industry_map.json'), 
 //    Q1→5/15 ・ Q2→8/14 ・ Q3→11/14 ・ Q4→隔年 3/31
 let fundMap = {};
 try { fundMap = JSON.parse(fs.readFileSync(path.join(DATA, 'fund_yoy_gm.json'), 'utf8')); } catch { }
-const pubDate = (period) => {
-    const [y, m] = period.split('-').map(Number);
-    if (m === 3) return `${y}-05-15`;
-    if (m === 6) return `${y}-08-14`;
-    if (m === 9) return `${y}-11-14`;
-    return `${y + 1}-03-31`;
-};
+// ⭐ V74.9.3 改走共用 lib_fundamentals.pubDate(等值已驗:真實 qeps 只有季末月,四份輸出逐字相同)
+
 /** sym → [{pub, epsYoY, revYoY}] 依 pub 排序(已公布才看得到) */
 const fundTL = new Map();
 for (const [sym, o] of Object.entries(fundMap)) {

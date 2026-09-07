@@ -22,6 +22,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { DEADLINES } from './lib_fundamentals.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = process.argv[2] || '';
@@ -59,7 +60,7 @@ for (let i = 0; i < days.length - 1; i++)
 // 財報公布截止日 ±3 交易日(⚠️ 這不是法說會)
 const finNear = new Set();
 for (const y of [...new Set(days.map(d => d.slice(0, 4)))])
-    for (const t of ['-03-31', '-05-15', '-08-14', '-11-14']) {
+    for (const t of DEADLINES) {
         const i = days.findIndex(d => d >= y + t);
         if (i < 0) continue;
         for (let k = -3; k <= 3; k++) if (days[i + k]) finNear.add(days[i + k]);

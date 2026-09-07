@@ -43,6 +43,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { DEADLINES } from './lib_fundamentals.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = path.join(ROOT, 'data');
@@ -158,7 +159,7 @@ for (let i = 0; i < allDays.length - 1; i++) {
 // 財報公布截止日 ±3 交易日(⚠️ 這不是法說會)
 const finDl = new Set(), revDl = new Set();
 for (const y of [...new Set(allDays.map(d => d.slice(0, 4)))]) {
-    for (const t of ['-03-31', '-05-15', '-08-14', '-11-14']) {
+    for (const t of DEADLINES) {
         const i = allDays.findIndex(d => d >= y + t);
         if (i < 0) continue;
         for (let k = -3; k <= 3; k++) if (allDays[i + k]) finDl.add(allDays[i + k]);
