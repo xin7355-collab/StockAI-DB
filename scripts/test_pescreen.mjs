@@ -149,6 +149,8 @@ ok('③c 勾估值條件 → 顯示', R.noteByCond.length > 200, String(R.noteBy
     ok('④c 要說 PE<5 那批是純雜訊(前後半段方向相反)', /純雜訊/.test(txt) && /4\.29pp/.test(txt), '');
     ok('④d ⭐ 要指出真正有用的是「價值陷阱」+ 數字', /價值陷阱/.test(txt) && /-1\.89pp/.test(txt) && /29\.7%/.test(txt), '');
     ok('④e ⚠️ 要誠實說「比同業便宜」也沒有邊際', /沒有邊際/.test(txt) && /前後半段不同向/.test(txt), '');
+    ok('④g 📅 V74.9.3 深歷史重測那段要在:含 2022 空頭 + 「沒有一條六關全過」+ 便宜又跌深的兩個數字(⛔ 數字讀 _SCR_PE_DEEP)',
+       /含 2022 空頭/.test(txt) && /沒有一條六關全過/.test(txt) && /-1\.07pp/.test(txt) && /-3\.35pp/.test(txt) && /只能拿來避雷/.test(txt), txt.slice(-400));
     ok('④f 要附樣本數與窗口 + 兩個限制(多頭窗口 / 一次性業外收益)',
        /13,952 個事件/.test(txt) && /偏多頭/.test(txt) && /業外收益/.test(txt), txt.slice(-260));
     // ⑥ ⛔ 不可宣稱會賺 —— 先 strip 掉否定句(本專案踩過 6 次)
