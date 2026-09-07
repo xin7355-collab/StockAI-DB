@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.9.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.9.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -515,10 +515,14 @@
         <div class="bg-[#161b22] border border-[#30363d] border-l-4 border-l-orange-500 rounded-lg max-w-[22rem] w-full p-4 shadow-2xl" onclick="event.stopPropagation()">
             <div id="alertPopTitle" class="text-[13px] font-black text-orange-200 mb-1.5 leading-snug"></div>
             <div id="alertPopBody" class="text-[11px] text-gray-200 leading-relaxed mb-2"></div>
-            <div id="alertPopEdge" class="text-[10px] text-gray-500 leading-snug mb-3"></div>
+            <!-- 🥊 V74.9.2 連續技:這一擊之後怎麼接(K 線讀回來才填;有貨才顯示「幫我盯第 2 擊」) -->
+            <div id="alertPopCombo" class="bg-[#0d1117] border border-[#30363d] rounded p-2 mb-2"></div>
+            <div id="alertPopEdge" class="text-[10px] text-gray-500 leading-snug mb-2"></div>
+            <div id="alertPopQueue" class="hidden text-[10px] text-amber-300 font-bold mb-2"></div>
             <div class="flex gap-2">
                 <button onclick="app._closeAlertPop(); app.vibrate(20);"
                         class="flex-1 bg-[#21262d] hover:bg-[#30363d] text-gray-300 py-2 rounded text-[12px] font-bold transition-colors">知道了</button>
+                <button id="alertPopArm" class="hidden flex-1 bg-amber-700 hover:bg-amber-600 text-white py-2 rounded text-[12px] font-bold transition-colors">🔔 幫我盯第 2 擊</button>
                 <button id="alertPopGo" class="flex-1 bg-orange-700 hover:bg-orange-600 text-white py-2 rounded text-[12px] font-bold transition-colors">看這一檔</button>
             </div>
             <div class="text-[9px] text-gray-600 mt-2 leading-snug">⚠️ 這是<b>提醒</b>不是自動下單;⛔ 買賣以個股頁「現在該做什麼」為準。同一件事一天只跳一次。</div>
@@ -720,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.9.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.9.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -5076,14 +5080,16 @@ const app = {
     async _watchlistPulse() {
         if (!this.isMarketOpen()) return;
         if (!this.settings.watchlistAlert) return;
-        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        // 🥊 V74.9.2 沒開通知權限的人以前整段不跑 —— 現在有大視窗了,但為了不吵,只在「有人在等第 2 擊」時放行
+        const comboSyms = Object.keys(this._comboWatchGet());
+        if ((typeof Notification === 'undefined' || Notification.permission !== 'granted') && !comboSyms.length) return;
         // V18.8 union:自選股 + 庫存股(去重),確保庫存被監控
         // 🎯 V43.4 union 再加「觀察清單(monitorList)」→ 盤中即時 pulse 也監控觀察股(原本只收盤掃)
         const group = this.favGroups?.[this.activeGroupName] || [];
         const inv = app._getInventory();
         const invSyms = inv.map(i => i.symbol).filter(Boolean);
         const huntSyms = (this.monitorList || []).map(m => m && (m.sym || m.symbol)).filter(Boolean);
-        const allSyms = [...new Set([...group, ...invSyms, ...huntSyms])];
+        const allSyms = [...new Set([...group, ...invSyms, ...huntSyms, ...comboSyms])];   // 🥊 在等第 2 擊的一定要掃到
         if (!allSyms.length) return;
         // 建 cost lookup(沒在 inventory 內的股 entry=null → 跳過 -5% 停損判定)
         const costBy = {};
@@ -5121,6 +5127,7 @@ const app = {
                 this._patchQuoteVol(fugle, sym);   // 🔊 V67.8 上櫃即時量兜底(盤中掃描量比/帶量訊用正確累積量)
                 const nowPrice = fugle?.price;
                 if (!nowPrice || nowPrice <= 0) continue;
+                this._comboCheck(sym, +nowPrice);   // 🥊 第 2 擊接力(碰到出場線 → 大視窗)
 
                 const name = this.getStockName(sym) || sym;
                 // 🎯 V43.4 真假可信度 tag(量價+內外盤,過濾假突破/假跌;quote 免額外抓分鐘K)
@@ -5364,24 +5371,41 @@ const app = {
     //     勝率只有 30~33%,整套會賺完全靠「錯的時候小賠出場」
     //     → 出場/風險類**錯過就住套房**;進場類**錯過還有下一次**。
     //   ⛔ 所以買點、點火、共振這類一律**不彈窗**(彈了三天就會被關掉 = 整套失效)。
-    _URGENT_ALERT: /停損|出場|平倉|跌破|熄火|轉偏空|處置|斷頭|追繳|警報|強制/,
+    // 🥊 V74.9.2 使用者:「通知視窗與有些彈跳視窗很像,請以大視窗為主」→ 賣訊/風險類**全部**改走大視窗
+    //   (頂背離 / 停利 / 減碼 / 出貨 / 賣訊 / 過熱 / 轉弱 / 做頭 / 壓力沉重 / 逃命)。
+    //   ⛔ 仍然只有「賣出/風險」那一側 —— 進場/點火/共振類照舊 toast(多空不對稱鐵則)。
+    _URGENT_ALERT: /停損|出場|平倉|跌破|熄火|轉偏空|處置|斷頭|追繳|警報|強制|背離|停利|減碼|出貨|賣訊|末段|過熱|轉弱|做頭|壓力沉重|逃命|第 ?\d ?擊/,
     _isUrgentAlert(title) { try { return this._URGENT_ALERT.test(String(title || '')); } catch (_) { return false; } },
     /** 🪟 事件觸發彈窗(只給高優先級;同一件事一天只跳一次) */
     _alertPopup(title, body, sym) {
         try {
             if (!this._isUrgentAlert(title)) return false;
-            // 🚧 防噪音:同一個 (標題+股票) 一天只跳一次(⛔ 否則股價在門檻上下震盪會連跳)
-            const key = `popAlert_${sym || '-'}_${String(title).slice(0, 24)}`;
-            const today = this.getTodayStr ? this.getTodayStr() : new Date().toDateString();
-            try { if (localStorage.getItem(key) === today) return false; localStorage.setItem(key, today); } catch (_) {}
             const m = document.getElementById('alertPopModal');
             const t = document.getElementById('alertPopTitle');
             const b = document.getElementById('alertPopBody');
             const e = document.getElementById('alertPopEdge');
             const go = document.getElementById('alertPopGo');
             if (!m || !t || !b) return false;
+            // 🚧 防噪音:同一個 (標題+股票) 一天只跳一次(⛔ 否則股價在門檻上下震盪會連跳)
+            const key = `popAlert_${sym || '-'}_${String(title).slice(0, 24)}`;
+            const today = this.getTodayStr ? this.getTodayStr() : new Date().toDateString();
+            try { if (localStorage.getItem(key) === today) return false; } catch (_) {}
+            // 🥊 V74.9.2 排隊:彈窗還開著時來第二則 → 排到後面(⛔ 不可蓋掉第一則,也不可靜默丟掉)
+            //   🚨 排隊要在「一天一次」**蓋章之前** —— 第一版先蓋章再排隊,輪到它時被當成重複 → 變 toast(測試 ⑩d 抓到)
+            if (!m.classList.contains('hidden')) {
+                this._alertPopQueue = this._alertPopQueue || [];
+                this._alertPopQueue.push({ title, body, sym });
+                try { const q = document.getElementById('alertPopQueue'); if (q) { q.textContent = `還有 ${this._alertPopQueue.length} 則,關掉這則就看到`; q.classList.remove('hidden'); } } catch (_) {}
+                return true;
+            }
+            try { localStorage.setItem(key, today); } catch (_) {}
             t.textContent = String(title || '');
             b.textContent = String(body || '');
+            try { const q = document.getElementById('alertPopQueue'); if (q) q.classList.toggle('hidden', !(this._alertPopQueue && this._alertPopQueue.length)); } catch (_) {}
+            // 🥊 連續技:先放佔位,K 線讀回來再填(⛔ 換股票要驗 sym,免得填到上一則)
+            try { const c = document.getElementById('alertPopCombo'); if (c) { c.dataset.sym = sym || ''; c.innerHTML = sym ? '<div class="text-[10px] text-gray-500">🥊 連續技排列中…</div>' : ''; } } catch (_) {}
+            try { const arm = document.getElementById('alertPopArm'); if (arm) arm.classList.add('hidden'); } catch (_) {}
+            if (sym) this._comboFill(sym, title).catch(() => {});
             // ⭐ 這是本站相對別家的優勢:提醒要附**實測數字**,⛔ 不是只喊「快跑」
             if (e) {
                 e.innerHTML = /停損|出場|跌破|平倉/.test(String(title))
@@ -5401,7 +5425,113 @@ const app = {
             return true;
         } catch (_) { return false; }
     },
-    _closeAlertPop() { try { document.getElementById('alertPopModal')?.classList.add('hidden'); } catch (_) {} },
+    _closeAlertPop() {
+        try { document.getElementById('alertPopModal')?.classList.add('hidden'); } catch (_) {}
+        // 🥊 排隊的下一則接著跳(⛔ 一天一次的去重仍然適用 —— 進 _alertPopup 會再檢查一次)
+        try {
+            const nx = (this._alertPopQueue || []).shift();
+            if (nx) setTimeout(() => { try { if (!this._alertPopup(nx.title, nx.body, nx.sym)) this.showToast?.(`${nx.title} — ${nx.body}`, 'info', 6000); } catch (_) {} }, 250);
+        } catch (_) {}
+    },
+
+    // ═══ 🥊 V74.9.2 連續技(使用者:「我想要的是連續技」)═══════════════════════════
+    //   一個賣訊來了之後,⛔ 不是只講「小心」就沒了 —— 直接排出接下來 2~3 步,而且每一步都是本站已經實測過的規則:
+    //     第 1 擊(現在)= 這則警示 → 有貨先出一半 / 空手別追
+    //     第 2 擊     = 跌破**你設定的出場線**(_exitPrimary,49 個月回測過)→ 全部出場
+    //     第 3 擊     = 其他兩條出場線(參考)
+    //   ⭐ 「幫我盯第 2 擊」= 把那條線設成到價提醒 + 記進 _comboWatch,盤中掃描碰到就再跳一次大視窗(接力)。
+    //   ⛔ 三條誠實限制(測試釘住):① 每一步各自實測過,但**串起來沒有另外回測**(V74.4.2 拋竿的教訓:每層都過 ≠ 合起來有用)
+    //     ② ⛔ 不是自動下單 ③ 空手的人:賣訊**不是進場點**,⛔ 不可因為它跌下來就想接。
+    _comboPlan(sym, kdata) {
+        try {
+            const L = this._exitLines(kdata, sym); if (!L) return null;
+            const key = this._exitRuleKey();
+            const val = { atr2: L.atr2, don: L.don, trail8: L.trail8, ma5: L.ma5 };
+            const nm = k => this._exitRuleName(k);
+            const prim = { k: key, nm: nm(key), px: val[key] };
+            if (!(prim.px > 0)) return null;
+            const others = Object.keys(val).filter(k => k !== key && val[k] > 0).map(k => ({ k, nm: nm(k), px: val[k] }));
+            const held = L.cost > 0 && L.shares > 0;
+            const sh = held ? Math.round(L.shares * 1000) : 0;               // 張 → 股(⛔ 零股族差 14 倍,V74.6.8)
+            const pl = px => held ? this._netPL(L.cost, px, sh) : null;
+            return { held, cost: L.cost, sh, halfSh: Math.max(1, Math.round(sh / 2)), pC: L.pC, prim, others, pl,
+                     plHalf: held ? this._netPL(L.cost, L.pC, Math.max(1, Math.round(sh / 2))) : null };
+        } catch (_) { return null; }
+    },
+    _comboPlanHtml(sym, plan, title) {
+        const nf = v => (v == null) ? '—' : (+v).toFixed(2);
+        const money = v => v == null ? '' : `<span class="${v >= 0 ? 'text-red-300' : 'text-green-300'}">${v >= 0 ? '+' : ''}${v.toLocaleString()} 元</span>`;
+        const name = this.getStockName?.(sym) || sym;
+        if (!plan) return `<div class="text-[10px] text-gray-500">🥊 連續技:${name} 的 K 線還沒載入,先進個股頁再看「現在該做什麼」。</div>`;
+        const step = (n, tt, dd) => `<div class="flex gap-1.5 items-start py-1 border-t border-[#21262d]"><span class="text-[10px] font-black text-amber-300 whitespace-nowrap">第 ${n} 擊</span><div class="text-[10.5px] text-gray-200 leading-snug"><b>${tt}</b>${dd ? `<div class="text-[10px] text-gray-400">${dd}</div>` : ''}</div></div>`;
+        let h = `<div class="text-[11px] font-black text-amber-200 mb-0.5">🥊 連續技(這一擊之後怎麼接)</div>`;
+        if (plan.held) {
+            h += step(1, `現在:${String(title || '').replace(/^[^\w一-鿿]+/, '')} → 先出一半 ≈ ${plan.halfSh.toLocaleString()} 股`,
+                      `賣在現價 ${nf(plan.pC)}:${money(plan.plHalf)}(已扣費,你的成本 ${nf(plan.cost)})`);
+            h += step(2, `跌破 ${plan.prim.nm} <span class="font-mono">${nf(plan.prim.px)}</span> → 剩下全部出場`,
+                      `賣在這裡 ${money(plan.pl(plan.prim.px))}・⚙️ 這是你設定的出場規則,出場提醒與自動下單也用這一條`);
+            if (plan.others.length) h += step(3, `參考:${plan.others.map(o => `${o.nm} <span class="font-mono">${nf(o.px)}</span>`).join(' ・ ')}`,
+                      `⛔ 不是你設定的那條,列出來只是讓你知道還有哪幾條線在附近`);
+        } else {
+            h += step(1, `現在:${String(title || '').replace(/^[^\w一-鿿]+/, '')} → 你沒有部位:這是<b>賣訊</b>,⛔ 不是進場點`,
+                      `⛔ 別因為它跌下來就想接 —— 本站只在實測有效的訊號出現時才給進場價`);
+            h += step(2, `要進場等它出現在「🎯 會賺訊號」或「🕯️ 跌停後第一根紅K」`,
+                      `那兩個才有實測成績單;現在這則只是告訴你「有貨的人該減碼」`);
+            h += step(3, `它跌破 ${plan.prim.nm} <span class="font-mono">${nf(plan.prim.px)}</span> 之後,追強那一族的訊號都先不算數`, '');
+        }
+        h += `<div class="text-[9px] text-gray-500 mt-1 leading-snug">⚠️ 每一步各自實測過(出場線 49 個月回測),但<b>串起來沒有另外回測</b>;⛔ 不是自動下單,以個股頁「現在該做什麼」為準。</div>`;
+        return h;
+    },
+    async _comboFill(sym, title) {
+        const c = document.getElementById('alertPopCombo'); if (!c) return;
+        let kdata = null;
+        try {
+            if (String(sym) === String(this.currentSymbolId) && Array.isArray(this.rawDailyData) && this.rawDailyData.length > 30) kdata = this.rawDailyData;
+            else { const cached = await this.idb?.get?.(`proTerm_kline_${sym}`); kdata = cached?.data || null; }
+        } catch (_) {}
+        if (c.dataset.sym !== String(sym || '')) return;        // 🚧 已經換成下一則了(陷阱 #19)
+        const plan = this._comboPlan(sym, kdata);
+        c.innerHTML = this._comboPlanHtml(sym, plan, title);
+        this._comboPlanCur = plan ? { sym, ...plan } : null;
+        try {
+            const arm = document.getElementById('alertPopArm');
+            if (arm) {
+                const armed = !!(this._comboWatchGet()[sym]);
+                arm.classList.toggle('hidden', !(plan && plan.held));
+                arm.textContent = armed ? '🔔 已在盯第 2 擊' : '🔔 幫我盯第 2 擊';
+                arm.onclick = () => this._armComboWatch(sym);
+            }
+        } catch (_) {}
+    },
+    _comboWatchGet() { try { return this._lsJson ? (this._lsJson('proTerm_comboWatch', {}) || {}) : (JSON.parse(localStorage.getItem('proTerm_comboWatch') || '{}') || {}); } catch (_) { return {}; } },
+    _comboWatchSet(o) { try { localStorage.setItem('proTerm_comboWatch', JSON.stringify(o || {})); } catch (_) {} },
+    _armComboWatch(sym) {
+        const p = this._comboPlanCur; if (!p || p.sym !== sym || !(p.prim && p.prim.px > 0)) { this.showToast?.('這一檔還沒算出出場線'); return; }
+        const price = +p.prim.px.toFixed(2);
+        // ① 跟既有到價提醒同一份清單(雲端推播那條路也會盯)
+        const list = Array.isArray(this.priceAlerts) ? this.priceAlerts.slice() : [];
+        const dup = list.find(a => a.sym === sym && a.cond === 'lte' && +a.price === price);
+        if (dup) { dup.enabled = true; dup.addedAt = Date.now(); }
+        else list.push({ id: `${sym}_lte_${price}_${Date.now()}_combo`, sym, cond: 'lte', price, enabled: true, addedAt: Date.now(), combo: 2 });
+        this.priceAlerts = list; try { this._savePriceAlerts(); } catch (_) {}
+        // ② 記進連續技清單 —— 盤中掃描(_watchlistPulse)碰到就跳「第 2 擊」大視窗
+        const w = this._comboWatchGet(); w[sym] = { px: price, nm: p.prim.nm, step: 2, at: Date.now() }; this._comboWatchSet(w);
+        try { const arm = document.getElementById('alertPopArm'); if (arm) arm.textContent = '🔔 已在盯第 2 擊'; } catch (_) {}
+        const cname = this.getStockName?.(sym) || sym;
+        this.showToast?.(`🥊 已幫你盯 ${cname} 的第 2 擊:跌破 ${p.prim.nm} ${price} 就再跳一次大視窗(⛔ 不會自動下單)`, 'info', 6000);
+        this.vibrate?.([30, 30, 30]);
+    },
+    // 盤中掃描每拿到一個即時價就問一次:這檔有沒有在等第 2 擊?碰到了就接力 + 從清單移除(⛔ 只跳一次)
+    _comboCheck(sym, nowPrice) {
+        try {
+            const w = this._comboWatchGet(), it = w[sym];
+            if (!it || !(nowPrice > 0) || !(nowPrice <= it.px)) return false;
+            delete w[sym]; this._comboWatchSet(w);
+            const name = this.getStockName?.(sym) || sym;
+            this._fireAlert(`🥊 第 2 擊｜跌破 ${it.nm}`, `${name}(${sym}) 現價 ${(+nowPrice).toFixed(2)} 已跌破你設定的出場線 ${it.px} → 剩下的全部出場(第 1 擊時已先出一半)。⛔ 這是提醒不是自動下單。`, sym);
+            return true;
+        } catch (_) { return false; }
+    },
 
     _fireAlert(title, body, sym) {
         // V19.4 — 記到通知歷史(3 天後自動清),即使通知權限沒開也記,讓使用者能查
@@ -5409,9 +5539,14 @@ const app = {
         // 🪟 V74.8.9 App 內也要有反應 —— 🚨 舊版在沒開通知權限時**直接 return**,
         //   事件觸發了畫面上零反應,使用者根本不知道(而且他多半沒開權限)。
         //   ⭐ 高優先級(出場/風險)→ 彈窗;其餘 → toast(不阻斷)。
+        let popped = false;
         try {
-            if (!this._alertPopup(title, body, sym)) this.showToast?.(`${title} — ${body}`, 'info', 6000);
+            popped = !!this._alertPopup(title, body, sym);
+            if (!popped) this.showToast?.(`${title} — ${body}`, 'info', 6000);
         } catch (_) {}
+        // 🥊 V74.9.2 大視窗已經跳了、而且 App 在前景 → ⛔ 不再發系統通知(兩個視窗長得很像,使用者看到兩次)
+        //   App 在背景時仍要發 —— 那時大視窗他看不到。
+        if (popped && typeof document !== 'undefined' && document.visibilityState === 'visible') return;
         if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
         try {
             const n = new Notification(title, { body, tag: `alert_${sym}_${title}`, requireInteraction: false });
@@ -7753,8 +7888,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.9.1',
+    _APP_VERSION: 'V74.9.2',
     _CHANGELOG: [
+        { v:'V74.9.2', dt:'2026-09-07', d:['🪟 你說「通知視窗與彈跳視窗很像,請以大視窗為主」—— 做了三件事:① **賣訊/風險類全部改走大視窗**(頂背離、停利、減碼、出貨、過熱、轉弱、做頭、逃命…以前只是 toast);② 同時來兩則⛔ 不再互相蓋掉,第二則**排隊**、關掉第一則接著跳,而且會寫「還有 N 則」;③ 大視窗已經跳了、App 又在前景時,**不再重複發那個長得一樣的系統通知**(在背景時照發,免得漏掉)。','🥊 你要的「連續技」:賣訊跳出來時,視窗裡直接排好**第 1 擊 先出一半 ≈ 幾股、賣在現價賺賠幾元 → 第 2 擊 跌破你設定的出場線(ATR/唐奇安/移動停利/5 日線,設定中心那條)全部出場 → 第 3 擊 其他兩條線當參考**。按「🔔 幫我盯第 2 擊」,盤中真的跌破那條線會**再跳一次大視窗接力**(⛔ 不會自動下單)。','⛔ 三條要先講清楚:每一擊各自實測過(出場線 49 個月回測),但**串起來沒有另外回測**;空手的人看到賣訊**不是進場點**,⛔ 不可因為它跌下來就想接;零股族的股數是照你實際持股算的(0.07 張 = 70 股 → 一半 35 股,⛔ 不是 1 張)。','📎 你附的那份文件跟前兩次上傳的是**同一個檔案**(md5 完全相同,第三次了),裡面沒有講連續技;它的 6 條建議已在 V74.8.8 逐條評估過。']},
         { v:'V74.9.1', dt:'2026-09-06', d:['🌦️ 你要求「不要用全時段平均,依大盤狀態切多頭/空頭/盤整分別統計」—— 18 個策略 × 4 種情境 × 4 種持有窗口全部重測,結果在產業作戰室 → 實測總表 → 🌦️ 情境矩陣。','⭐⭐ 最重要的一句話:**策略分兩族** —— 「追強」那一族(位階高+波動高/創新高/RSI>70…)只在多頭有優勢,「抄底」那一族(位階低/創新低/KD<20)只在空頭有優勢,兩族在對方的盤裡都輸給隨便挑一天。**三種盤都過關的只有「跌停後第一根紅K」**(空頭情境勝率 75%、大紅版 81%)。','🚨 你給的 🟢 門檻(三情境勝率皆 >55%)18 個策略 0 個做得到 —— 因為隨便挑一天抱 20 天的上漲比例本來就只有 45%(多頭也一樣)。標籤照你的規格貼、門檻沒改,但每一列同時給本站標準的判定。','⚠️ 這是固定抱 N 天的結果,App 實際有停損 + 跌破 5 日線出場,所以「空頭少賺」在組合回測裡不會長一樣,⛔ 沒有因此改任何進出場規則。']},
         { v:'V74.9.0', dt:'2026-09-06', d:['🧹 你說「選股策略那面太多,把實測後沒有用的都刪除」—— **23 個榜精簡成 10 個**。','⭐ 實測沒有優勢的 13 個(外資連買/投信連買/雙主力/主力鎖股/大戶吃貨/低基期/跌深績優/錯殺便宜/送分題/烏龜過河/口袋支點/營收動能/潛力黑馬)收進左欄最下面的「📉 實測沒優勢」。','⛔ **刻意收起來不是從程式碼刪掉** —— 刪了你會以為沒這回事、跑去別處學了再回來問。點開仍然看得到,而且每一個都寫出**它是被哪一個實測打掉的、數字多少**(例:外資大買佔量比 ≥20% 只有 0.64 倍,比隨便挑一天還低)。','🎯 主清單只留有實測背書或當工具用的:會賺訊號・當沖雷達・渣男賽車・妖股雷達・相對強度・K棒轉多/轉空・處置股(避雷)・題材脈動・AI 鏈。','🫧 產業作戰室板塊輪動的**泡泡大小改成「那一族當天的成交金額」**(以前是成員檔數,那是固定值、既不會動也不帶判斷價值)→ 現在拉時間軸泡泡會跟著脹縮,一眼看得出錢跑到哪一族。⛔ 圖例有寫「泡泡大不等於值得買」。','🔬 實測總表:副標拿掉、**搜尋框搬到標題列**(一進來就看得到);主題標籤改成**搜尋的時候才出現**,平常不佔第一屏。']},
         { v:'V74.8.9', dt:'2026-09-06', d:['🪟 你問「有沒有做事件觸發的彈跳視窗」—— **原本沒有**,現在做了,但**只給該打斷你的那一種**。','⭐ 停損、出場、平倉倒數、處置這類會**彈視窗**(錯過就住套房);買點、點火、共振這類只出一條 toast(錯過還有下一次)。那不是我挑的,是實測:勝率只有三成,整套會賺完全靠「錯的時候小賠出場」。','🚨 順手修掉一個很嚴重的:以前**沒開通知權限的話,事件觸發了畫面上完全沒反應** —— 現在一定看得到。','🚧 防吵:同一件事一天只跳一次(不然股價在門檻上下來回會連跳);而且視窗上會告訴你「為什麼這件事值得打斷你」,附實測數字。'] },
@@ -7814,27 +7950,6 @@ ${list}
         { v: 'V74.3.2', dt: '2026-09-01', d: ['🐢 新增一份「買了放著 vs 有買也要有賣」的實測(5.5 年、含 2022 空頭、逐年拆開),結論在產業作戰室的 🔬 實測總表。', '🚪 <b>「跌破就賣、空手等好時機」實測是少賺的,而且賣得越勤快越慘</b>:台積電買了放著賺 348 萬,跌破年線才賣剩 278 萬、跌破季線 137 萬、<b>跌破月線只剩 90 萬</b>(整段換手 153 次)。0050 同樣的走勢。', '⚠️ 擇時唯一的好處是中途賠得少(台積電 −45.7% → −30.1%),但那有一大半是<b>錢根本不在市場</b>(月線版只有 58% 的時間有部位)——「少賠」跟「沒進場」是兩回事。', '📅 逐年報酬也一起列出來了(台積電 +15/−27/+32/+81/+44/+55;0050 +17/−24/+23/+45/+34/+62),⛔ 不含配息,所以高股息那幾檔會被低估。'] },
         { v: 'V74.3.1', dt: '2026-09-01', d: ['📰 <b>消息面第一次真的回測到了</b> —— 你給的五個新聞專案裡,有一個帶了<b>鉅亨網 2026 年 1~7 月的新聞(5,409 筆、含全文)</b>,而且它的內文固定寫成「群創 (3481-TW)」,代號直接印在文章裡 → 抽得精準,不用等自己累積就測得動。', '🚨 結果:<b>「有新聞」本身完全沒用</b>(之後 10 天比大盤 −0.03pp、勝率 37.7%,而平常本來就有 36.9%)。⛔ 別再假設「上新聞 = 有行情」。', '⭐ 真正有一點關係的是<b>「被報導幾則」</b>,而且是單調的:只有 1 則 −0.40pp、2 則 +0.92pp、3 則以上 +1.59pp —— 那是「注意度」的代理。⛔ 但沒有一格通過逐月檢定,而且扣掉成本後站不住。', '🚨 最值得記的一點:<b>利多 +0.60pp、利空 +0.32pp,兩邊都是正的</b> → 又一次「兩端同號 = 那是活躍度不是方向」。<b>新聞的多空方向量不出來。</b>', '⛔ 這個結論<b>沒有拿去改 App 的新聞卡</b> —— 我這裡的利多利空是關鍵詞規則判的,App 那邊是採礦端 AI 判的,定義不同不能混用。等自己存的新聞歷史滿三個月,用同一個定義再測一次。'] },
         { v: 'V74.3.0', dt: '2026-09-01', d: ['📰 你給的那份「用新聞預測航運股漲跌」的專案,我逐行讀完並<b>拿它自己的逐日結果重算了一次</b>:準確率 58.75%,但<b>基準是 52% 不是 50%</b>(它報告裡沒講)→ 真正贏的是 6.7 個百分點。', '🚨 而且它有<b>前視偏誤</b> —— 它先用「全部資料(含未來月份)的答案」挑出 500 個關鍵詞,之後才切訓練/測試,所以連它的移動回測數字也是灌水的。⭐ 佐證就在它自己的報告裡:隨機切分 80~90%、移動回測只有 58.75%,差那麼多本身就是洩漏的訊號。', '⛔ 它<b>沒有附新聞資料集</b>(被 .gitignore 擋掉),所以拿不到現成的歷史新聞;不過它的<b>移動回測骨架</b>(3 個月訓練 → 預測第 4 個月)是對的 —— 已定為本站消息面歷史累積夠了之後要用的做法。', '🔎 結論都收進產業作戰室的「實測總表」(⛔ 實測沒用 / 🧭 回測自己的坑 兩欄),散戶救星的判斷邏輯一行都沒改。'] },
-        { v: 'V74.2.9', dt: '2026-09-01', d: ['🔎 <b>選股頁 127 個條件的成績表也用 2022 空頭重算了一遍</b>(事件數從 37,035 增加到 <b>69,890</b>)。⭐ 好消息:<b>「追強比抄底好」的排序完全沒變</b> —— 創一年新高仍然是第一名(+2.84pp)。', '⛔ 但每個條件的幅度都縮水了,而且六關全過仍然是 0 個 —— 那張表是拿來<b>比較哪個條件比較有用</b>,⛔ 不是「勾了就會賺」。', '🚨 逐年拆開最反直覺的一點:<b>2022 那個空頭年反而是「創一年新高」最有效的一年</b>;真正的衰退是從 <b>2024</b> 才開始。所以「優勢正在變小」跟「空頭會受傷」是兩件不同的事。', '✅ 順便確認<b>板塊 20 日動能、六脈共振最強那一級、地板股家數、0050 一次全買</b>加上空頭之後<b>維持成立</b> —— ⛔ 不是全部被推翻。'] },
-        { v: 'V74.2.8', dt: '2026-09-01', d: ['🚨 用 2022 那次空頭把「等空頭再說」的回測全部重跑了一遍 —— 結果<b>四條原本「每一關都通過」的做法當場不成立</b>:①「跌停後第一根紅K」整體版(2023 那年是負的)②「跌停就接、不等紅K」整組 ③「做夢行情」(族群沒動只有它獨走)④「板塊選對之後再挑板塊裡最強的」。', '⭐ 還站得住的三條有個共同點:<b>都要求「已經確認」</b> —— 跌停後收<b>大紅</b>(力道確認)、當初<b>大盤也在跌</b>(原因確認)、創高後<b>回測不破</b>(支撐確認)。陣亡的那四條則都是「還沒確認就進場」。', 'K線頁的跌停紅K、族群狀態,當沖頁的「今天顛不顛」,數字全部換成含空頭的版本,文案也一起改口(不再說整體版「連空頭都通過」)。', '🗞️ 開始存<b>消息面歷史</b>(每天每檔的新聞標題 + 利多利空 + 分類)—— 這種資料現在不存,一年後還是測不了。累積約三個月後就能回答「利空出現後這檔通常跌多少」。'] },
-        { v: 'V74.2.7', dt: '2026-09-01', d: ['選股頁的「明日作戰清單」也改成總覽的版面邏輯:第一眼只留「怎麼做」那一句(一天最多做前 2 檔 ・不是開盤買 —— 要漲過觸發價,而且尾盤 13:00~13:25 還站得住才進場),支撐它的實測數字(每天做 2 檔 / 3 檔 / 6 檔各賺多少)跟 🧬 強勢高波動的排序依據收進下面的「📊 上面那兩句的實測根據」', '⛔ 一個警告都沒收:不是開盤買、尾盤時窗、今天大盤風險、買點提醒開關全都留在第一眼', '實測前言從 593 字縮到 373 字 —— 也就是看到第一檔股票之前少讀了 220 字'] },
-        { v: 'V74.2.6', dt: '2026-09-01', d: ['基本面頁也改成總覽的版面邏輯:第一眼只留「這家公司體質好不好」一句話 + 🧬 體質總評 + 產業鏈定位,完整 12 項數據(投資屬性/獲利/成長/估值/財務/現金流/股利)收進「🔬 看完整基本面數據」——它本來就有這個摺疊,但預設是打開的,等於沒摺', '打開時圖表會自動重算寬度(收起狀態下算出來會是空的)', '⭐ 財報資料還在整備中時會自動幫你展開 —— 因為那段說明本來就寫著「下方已顯示目前拿得到的訊號」,收起來就變成說謊', '你自己點開/收起之後,程式不會再自動改它'] },
-        { v: 'V74.2.5', dt: '2026-09-01', d: ['當沖頁也改成總覽的版面邏輯:第一眼只留「今日當沖作戰指令 + 成本關卡」和有實測數字的訊號,隔日沖 T+1 預判/買盤竭盡/損益試算機收進「📖 更多解讀」(一張卡、一個字都沒刪)', '實測第一眼要讀的字數從 2,015 降到 387', '順手修版面順序:「當沖候選掃描」(掃的是別檔)原本排在這檔的結論上面 → 已搬到下方,一開頁先看到這檔今天怎麼做', '個股五頁(總覽・K線・籌碼・即時・當沖)現在同一套版面邏輯'] },
-        { v: 'V74.2.4', dt: '2026-09-01', d: ['即時頁也改成總覽的版面邏輯:第一眼只留「盤中當沖總結燈的結論 + 一句操作」和分時圖,完整的進場檢查表與盤中作戰室收進「📖 更多解讀」(一張卡、一個字都沒刪)', '🚨「別追多警訊」的內容直接寫在頁首,不會因為收合而漏看', '盤後/沒金鑰沒東西可看時,連那條「更多解讀」橫條都不出現;換股票也會一起清乾淨', '總覽・K線・籌碼・即時 四頁現在同一套版面邏輯'] },
-        { v: 'V74.2.3', dt: '2026-09-01', d: ['籌碼頁也改成總覽的版面邏輯:第一眼只留「大戶結論 + 綜合評分 + 一句操作 + 其他籌碼指標怎麼說」,法人明細/實測成績/明日劇本/乾淨度收進「📖 更多解讀」(一張卡、一個字都沒刪)', '實測第一眼要讀的字數從 2,538 降到 864(這頁本來是全 App 最重的)', '🚨 融資追繳風險改露在頁首:它原本埋在「籌碼進出」分頁的兩層收合裡,等於看不到 —— 風險類永遠不收'] },
-        { v: 'V74.2.2', dt: '2026-09-01', d: ['K線頁改用總覽的版面邏輯:第一眼只留「一句話結論 + K線圖」,朱老師總評/六脈共振/K棒戰法收進「📖 更多解讀」摺疊(一張卡、一個字都沒刪,點開就有)', '風險提醒不因摺疊而消失:頁首會直接列出風險的標題;六脈亮「強共振」(唯一實測六關全過的複合訊號)時頁首也會露一行', '權值股超跌告警維持在摺疊外(告警類永遠不收)'] },
-        { v: 'V74.2.1', dt: '2026-09-01', d: ['刪除的收尾:功能總覽不再列出已刪的「盤中連量偵測」、已刪卡片的教學條目一併移除(⛔ 說明書不可介紹一個不存在的功能)'] },
-        { v: 'V74.2.0', dt: '2026-09-01', d: ['雜訊清洗收尾:沒用的直接刪除 —— 4 個實測沒用的功能整段移除(隔日沖勝率回測、法人推估成本卡、5日訊號準確度排行、盤中連量偵測)', '刪之前把最後一個懸念驗掉:隔日沖全市場重驗(2,329 檔)——「隔天盤中碰到 +1.5%」機率 58~72% 是真的,但照做得到的方式出場、扣掉當沖成本後三種型態全部是負的 → 碰得到不等於賺得到', '當沖作戰室解除收起:剩下的內容(期貨夜盤、正逆價差、隔日沖風險判讀)是誠實描述,留著', '每一筆刪除的依據都記在產業作戰室的實測總表'] },
-        { v: 'V74.1.9', dt: '2026-09-01', d: ['六脈共振卡驗完**加回來了**(驗到有用就加回來的第一個實例):全市場 5.6 萬次實測,「強共振」那級之後 20 日贏隨便挑一天 +0.80 個百分點、六道關卡全過', '但只有紅燈那級有用 —— 黃燈「試單」級實測 ≈ 0,卡上已改口不再叫人試單', '實測成績直接寫在卡上'] },
-        { v: 'V74.1.8', dt: '2026-09-01', d: ['雜訊清洗第二波:再收 2 張 —— 當沖作戰室的隔日沖段(每檔只有十幾次樣本、最強只贏基準 2pp)、法人推估成本(實測站上 +0.20pp / 跌破 −0.24pp,全在雜訊內)', '收起之前先實測:法人成本這張是量完 7.9 萬筆才收的,數字寫在提示列上', '卡片自己沒資料而藏起來時,「已收起」提示列也會跟著藏(不多佔一行)', '待驗證的(ETF 跟車、隔日沖全市場重驗)已加進產業作戰室的實測總表「推薦下一步」欄'] },
-        { v: 'V74.1.7', dt: '2026-09-01', d: ['開始清雜訊:4 張「實測無背書」的卡預設收起(ETF跟車/六脈共振/29條明細/自選小樣本回測),原地留一行說明為什麼收、點一下就能打開', '收起不是刪除 —— 之後驗證出有用隨時加回來', '風險提醒類的卡一律不收(寧可多提醒)'] },
-        { v: 'V74.1.6', dt: '2026-09-01', d: ['個股泡泡圖現在每一格都有實測數字:圖下方多一條「位階四段的期望值」,左下角標出實測最弱的區域', '實測結論:越貴越強的那一邊反而比較好,「高檔過熱要賣」量出來是相反的', '刻意不畫「買進區/加碼區/賣出區」—— 實測那三個在這張圖上量不出來,卡片裡有寫為什麼'] },
-        { v: 'V74.1.5', dt: '2026-09-01', d: ['產業作戰室現在會顯示版本號,跟這裡一樣就代表兩邊都是最新的', '板塊輪動:走勢圖與個股泡泡圖改成切換頁籤、兩張一樣大,播放列移到圖卡正上方', '新增「平滑」鈕(5日/10日),把時間軸的跳動抹平;只影響看起來的樣子,不改資料', '新增日期區間快選與自訂,選完會列出那段期間最強與最弱的 3 個板塊'] },
-        { v: 'V74.1.4', dt: '2026-09-01', d: ['產業作戰室「板塊輪動」:個股泡泡圖版面放大一倍(手機上原本只有 216 像素高),股名不再疊在一起', '成分股表點欄位可以換排序', '成員各走各的板塊(同步程度低)會標出來,那種板塊的「平均值」參考價值低', '法人籌碼頁只留一句話結論,長說明收起來;策略頁最前面加目錄'] },
-        { v: 'V74.1.3', dt: '2026-09-01', d: ['產業作戰室「板塊輪動」:題材裡面的個股泡泡圖現在會**跟著時間軸一起動**(以前只有上面的文字在動)', '同一個板塊本來有兩張長得很像的明細卡,合併成一張', '大段說明預設收起來,看圖的三頁不再是一面文字牆'] },
-        { v:'V74.1.2', dt:'2026-09-01', d:['🐛 修好「找不到播放鈕」:板塊輪動的控制列黏在畫面最上緣,結果整條藏在標題列後面 — 現在會自動扣掉標題列高度,捲到哪裡都看得到。','📄 板塊明細改成兩段式:點一個板塊就進「它自己的那一頁」(清單收起來),有返回鈕、◀▶ 可以直接翻下一個板塊,還有它自己的 ▶︎ 播放鈕。','📌 返回/播放那一列也會固定在上面,捲到走勢圖下面還是按得到。']},
-        { v:'V74.1.1', dt:'2026-09-01', d:['🧭 產業作戰室的「板塊輪動」整頁重做:拆成 📊 輪動總覽 / 📋 板塊明細 / 💰 法人籌碼 / 📖 策略與回測 四個分頁,不用再一直往下滑。','📖 所有長篇說明、警語、回測數字集中到「策略與回測」那頁 — 主畫面只留一行關鍵免責。','⭐ 每一頁都會動:播放時間軸時四格統計會閃、法人籌碼的長條會滑過去、板塊走勢圖的游標跟著跑。','📋 板塊明細可以打字找板塊;選了之後走勢圖與成分股在同一頁看得完。','🖐️ 按鈕都放大到手機好按的尺寸,分頁列改成一行左右滑。']},
-        { v:'V74.1.0', dt:'2026-09-01', d:['🏷️ 個股標籤新增兩個題材:BBU 備援電池(從「電源/BBU/UPS」拆出來獨立一組)、玻纖布/玻纖紗 — 一樣是每天自動找出跟著這一族動的股票。','🧲 新增「成員同步程度」:這個題材的成員彼此走得像不像。太低的(例如晶圓代工、網通)代表成員各走各的,那種板塊的平均值參考價值很低 — 這種題材就只留人工確認的名單、不自動擴散。']},
-        { v:'V74.0.9', dt:'2026-09-01', d:['🏷️ 個股標籤全面翻新:舊的概念股標籤來源(外部資料)其實停在 2021 年 — 南亞科顯示的是「Smart TV / Windows11 / 台塑」而不是記憶體。現在改成每天採礦重算:題材名單跟「板塊輪動」同一份(記憶體/CPO光通訊/散熱液冷/ASIC/矽晶圓/軍工…),而且會自動找出「跟這一族走得很像」的股票補進來 — 全市場 2,319 檔每天重算一次。','👑 龍頭改成自動判定(該題材裡成交值最大的那一檔),不再用寫死的表。','⏳ 過時題材(Smart TV、Windows11、元宇宙、五倍券、美中貿易戰…)一律不再顯示;仍然有效的舊標籤(電動車等)保留補位。','⚠️ 標籤分兩種:實心=人工確認它就是這個題材;虛線+數字=自動算出來「最近跟這一族走得像」,那是連動不是業務,點標籤看得到相關度。']},
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
