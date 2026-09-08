@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.9.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.9.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.0.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2912,6 +2912,17 @@
         </div>
         </div><!-- V25.0 真根因 — 補閉合 tabContentMarket(原本少 1 個 </div>,5 個 tab 被巢狀其中導致空白!) -->
 
+        <!-- 🎯 V75.0.0 決策台 —— 使用者:「整套散戶 App 實測後常常不知道看哪個」
+             ⭐ 舊的 9 個分頁**一個都沒動**;這一頁只回答三件事:今天要賣什麼、今天可以買什麼、還是今天不用做。
+             ⛔ 它**不產生任何新結論** —— 賣的來自 `_invExitScan`(你設定的出場線)、
+                買的來自 `playbook_edge.json`(每晚全市場實測),兩邊都是既有零件。 -->
+        <div id="tabContentDesk" class="flex-col gap-2 p-2 pb-4" style="display:none;min-height:80vh;">
+            <div id="deckHead"></div>
+            <div id="deckSell"></div>
+            <div id="deckBuy"></div>
+            <div id="deckIdle"></div>
+            <div id="deckNote"></div>
+        </div>
         <div id="tabContentFav" class="flex-col pb-4" style="display:none;min-height:80vh;">
             <div class="sticky top-0 z-40 bg-[#0d1117] border-b border-[#30363d] shadow-sm flex items-center w-full pr-1 pt-1 pb-1">
                 <div id="favGroupTabs" class="flex items-center flex-grow overflow-x-auto scrollbar-hide py-0.5"></div>
@@ -3249,12 +3260,13 @@
         <nav class="flex justify-around items-center text-gray-500 w-full max-w-7xl mx-auto h-[64px]">
             <!-- 診斷 tab 仍可由 🤖/點個股 跳轉,nav 按鈕隱藏(使用者要求) -->
             <button onclick="app.switchAppTab('diag'); app.vibrate(30);" id="navBtnDiag" class="nav-btn hidden flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow">🎯</span><span class="text-[11px] mt-0.5 font-bold">診斷</span></button>
-            <button onclick="app.switchAppTab('inv'); app.vibrate(30);" id="navBtnInv" class="nav-btn active flex-1 py-1.5 flex flex-col items-center justify-center transition-colors text-blue-400"><span class="text-xl drop-shadow">💼</span><span class="text-[11px] mt-0.5 font-bold">庫存</span></button>
+            <button onclick="app.switchAppTab('desk'); app.vibrate(30);" id="navBtnDesk" class="nav-btn active flex-1 py-1.5 flex flex-col items-center justify-center transition-colors text-blue-400 relative"><span class="text-xl drop-shadow">🎯</span><span class="text-[11px] mt-0.5 font-bold">決策</span><span id="navBtnDeskDot" class="hidden absolute top-0.5 right-1.5 bg-amber-500 text-white text-[8px] px-1 rounded-full font-bold min-w-[14px] text-center"></span></button>
+            <button onclick="app.switchAppTab('inv'); app.vibrate(30);" id="navBtnInv" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors text-blue-400"><span class="text-xl drop-shadow">💼</span><span class="text-[11px] mt-0.5 font-bold">庫存</span></button>
             <button onclick="app.switchAppTab('fav'); app.vibrate(30);" id="navBtnFav" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">⭐</span><span class="text-[11px] mt-0.5 font-bold">自選</span></button>
             <button onclick="app.switchAppTab('market'); app.vibrate(30);" id="navBtnMarket" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors"><span class="text-xl drop-shadow grayscale-[80%]">🌐</span><span class="text-[11px] mt-0.5 font-bold">大盤</span></button>
             <button onclick="app.switchAppTab('radar'); app.vibrate(30);" id="navBtnRadar" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">🔥</span><span class="text-[11px] mt-0.5 font-bold">選股</span><!-- 🏦 V71.2.4 ETF 換股紅點跟著 ETF 搬到選股頁(id 保留,免動 _initEtfAlert) --><span id="navBtnEtfDot" class="hidden absolute top-1.5 right-3 bg-amber-500 w-2 h-2 rounded-full"></span></button>
             <button onclick="app.switchAppTab('hunt'); app.vibrate(30);" id="navBtnHunt" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">👀</span><span class="text-[11px] mt-0.5 font-bold">觀察</span><span id="huntAlertCount" class="hidden absolute top-0.5 right-1.5 bg-red-500 text-white text-[8px] px-1 rounded-full font-bold min-w-[14px] text-center"></span></button>
-            <button onclick="app.switchAppTab('broker'); app.vibrate(30);" id="navBtnBroker" class="nav-btn flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">🏦</span><span class="text-[11px] mt-0.5 font-bold">券商</span></button>
+            <button onclick="app.switchAppTab('broker'); app.vibrate(30);" id="navBtnBroker" class="nav-btn hidden flex-1 py-1.5 flex flex-col items-center justify-center transition-colors relative"><span class="text-xl drop-shadow grayscale-[80%]">🏦</span><span class="text-[11px] mt-0.5 font-bold">券商</span></button>
             <!-- 💎 V59.1 潛力頁已併入「選股」→ 選股池左欄「💎 潛力黑馬」;底部 tab 移除,空出導覽空間 -->
             <button onclick="app.switchAppTab('potential'); app.vibrate(30);" id="navBtnPotential" class="hidden"></button>
         </nav>
@@ -4254,7 +4266,8 @@ const app = {
         //   原本 await 跑完 2330 全套分析(K線+報價+14個render+圖表)才切庫存頁 → TTI 慢 1.5-3 秒。
         //   深連結進來(要看該股)仍 await,確保個股頁資料就緒。
         const initialSym = this._deepLinkSym || '2330';
-        this.switchAppTab(this._deepLinkSym ? 'diag' : 'inv');
+        // 🎯 V75.0.0 預設落地改成決策台(⛔ 帶股票代號進來的深連結仍直接進個股頁)
+        this.switchAppTab(this._deepLinkSym ? 'diag' : 'desk');
         if (this._deepLinkSym) {
             await this.analyze(initialSym, true);
         } else {
@@ -7582,7 +7595,7 @@ ${list}
         const _potElNow = document.getElementById('tabContentPotential');
         if (_potElNow && _potElNow.style.display !== 'none' && tabId !== 'potential') this._potentialScrollY = window.scrollY || 0;
 
-        ['Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Broker', 'Potential'].forEach(tab => {
+        ['Desk', 'Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Broker', 'Potential'].forEach(tab => {
             const isMatch = (tab.toLowerCase() === tabId);
             const _el = document.getElementById(`tabContent${tab}`);
             if (_el) {
@@ -7649,6 +7662,7 @@ ${list}
             try { this._startHuntAutoScan(); } catch (_) {} }
         // 🏦 V71.2.4 ETF 已搬進「選股 → 🏦 ETF」;舊的 switchAppTab('etf') 呼叫一律導過去,不留空白頁
         if (tabId === 'etf') { try { this.switchAppTab('radar'); this.switchRadarMode('etf'); } catch(e) { this._handleTabRenderError('radar', '🏦 ETF', e); } return; }
+        if (tabId === 'desk') { try { this.renderDeck(); } catch(e) { this._handleTabRenderError('desk', '🎯 決策台', e); } }
         if (tabId === 'broker') { try { this._loadBrokerData().then(() => { this._buildBrokerCatCol(); this.switchBrokerCat(this._brokerCat || 'follow'); }); } catch(e) { this._handleTabRenderError('broker', '🏦 券商', e); } }
         if (tabId === 'potential') { try { this._potentialRestoreScroll = true; this.renderPotentialTab(); } catch(e) { this._handleTabRenderError('potential', '💎 潛力', e); } }
         // V25.2 — 救援卡邏輯已砍(V25.0 修真因後 5 tab 正常顯示,不再需要)
@@ -7914,8 +7928,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.9.9',
+    _APP_VERSION: 'V75.0.0',
     _CHANGELOG: [
+        { v:'V75.0.0', dt:'2026-09-08', d:['🎯 <b>新增「決策台」,而且它現在是你打開 App 的第一頁</b> —— 只回答三件事:<b>今天要賣什麼、今天可以買什麼、還是今天不用做</b>。⭐ 舊的分頁<b>一個都沒少</b>,細節照樣在那裡。','⭐ 為什麼要做:你說「實測後常常不知道看哪個」。真因是這個 App 照<b>資料類型</b>排(K線/籌碼/基本面…),但你的問題是<b>決策</b>。以前要找「今天買什麼」最多要點 7 層,現在<b>0 層</b>。','🚪 <b>要賣的不限量</b>(勝率只有三成,整套會賺完全靠「錯的時候小賠出場」);🎯 <b>可以買的最多 2 檔</b>,而且只給符合 🧬 又不是空頭的。','🚨 <b>「清單還沒下載到」跟「今天沒有可以買的」會長得不一樣</b> —— 那是兩件事,混在一起你會把「檔案沒下載」讀成「今天沒訊號」。庫存裡 K 線讀不到的那幾檔也會<b>講出來</b>,⛔ 不讓你把「沒警報」當成「安全」。','🚨 <b>誠實揭露沒有藏起來</b>:49 個月(含 2022 大跌)只做 🧬 賺 195.5 萬、不挑 🧬 賺 107.8 萬,而<b>同期 0050 買了放著是 260.0 萬 —— 兩種都輸</b>。⭐ 🧬 讓你少輸,⛔ 不是讓你一定贏大盤。','🏦 底部的「券商」鈕讓位給決策台(選股頁裡本來就有一顆券商入口,仍到得了)。'] },
         { v:'V74.9.9', dt:'2026-09-08', d:['🪟 <b>更新版本提醒不再自動跳出來了</b> —— 想看的時候,設定中心「🆕 更新紀錄」隨時點得到。','🪟 <b>教學說明全部改成大視窗</b>(61 處):以前點「📖 教學」跳出來的是瀏覽器那個灰色小框,字擠成一團又不能捲;現在跟 App 其他視窗長得一樣、看得清楚。⛔ 文案一個字都沒改。','🔔 <b>提醒的判準改成「跟你有關」</b>:你<b>庫存或自選</b>裡的股票出訊號 → 跳大視窗(不管是買點還是賣點);<b>不是你的</b>股票 → 只有風險類才跳;「你有 N 檔有處置風險」這種<b>全市場統計</b> → ⛔ 不再打斷你,改用跑馬燈 + 鈴鐺。','⭐ 為什麼這樣改:讓你混亂的不是「提醒太少」,是<b>跟你無關的東西也在跳</b>。⛔ 而「賣訊比買訊重要」那條沒有被推翻 —— 它降級成第 3 層(別人的股票只有風險類會跳)。','🎯 <b>獵殺清單的通知修好了</b>:以前它自己發系統通知 → ① App 開著時會跟畫面上的訊息重複 ② <b>鈴鐺歷史裡查不到</b> ③ 沒開通知權限就完全沒反應。現在跟其他提醒走同一條路。'] },
         { v:'V74.9.8', dt:'2026-09-08', d:['🧪 回測了兩套外部策略:「布林壓縮後突破上軌」**進場條件本身就沒用**(換哪種出場都輸給隨機進場);「強勢股拉回買」進場有東西(贏隨機 +0.59 個百分點)**但 2022 空頭與 2025 都是負的**,而且每趟只有 +0.17%,遠低於現行做法的 +0.76%。⛔ 兩套都沒接進 App。','💰 順便再驗一次「1.5% 風險模型」:同一批交易只換部位大小,總報酬 −26% → −2%,而每筆百分比報酬完全一樣 → 錢配錯地方會把賺的吃光。'] },
             { v:'V74.9.7', dt:'2026-09-08', d:['🔗 回測了「籌碼先進駐 → 再帶量突破」這條事件鏈:實測**比單獨的帶量突破還差**(10 日 −0.84 / 20 日 −1.20 個百分點),籌碼先來的突破反而更弱;「籌碼進駐但沒突破」更慘(−2.69%)。⛔ 不做事件鏈狀態機,結論記在產業作戰室的實測總表。'] },
@@ -19843,18 +19858,19 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (this._invExitAt && (now - this._invExitAt) < 300000) return this._invExitFlags || [];
             this._invExitAt = now;
             const inv = (this._getInventory() || []).filter(i => i && i.symbol && +i.cost > 0).slice(0, 30);
-            const out = [];
+            const out = [], skip = [];
             for (const it of inv) {
                 const sym = String(it.symbol);
                 let rows = null;
                 try { rows = (await this.idb.get(`proTerm_kline_${sym}`))?.data; } catch (_) {}
-                if (!Array.isArray(rows) || rows.length < 30) continue;
+                // 🚨 V75.0.0 算不出來的**要說出來**(⛔ 不可靜默跳過 —— 使用者會以為「沒警報 = 安全」,陷阱 #22)
+                if (!Array.isArray(rows) || rows.length < 30) { skip.push(sym); continue; }
                 const ep = this._exitPrimary(rows, sym);
                 const pC = +((rows[rows.length - 1].close ?? rows[rows.length - 1].c) || 0);
-                if (!ep || !(pC > 0)) continue;
+                if (!ep || !(pC > 0)) { skip.push(sym); continue; }
                 if (pC < ep.v) out.push({ sym, name: this.getStockName(sym) || sym, v: ep.v, px: pC, rule: ep.name });
             }
-            this._invExitFlags = out;
+            this._invExitFlags = out; this._invExitSkip = skip; this._invExitN = inv.length;
             return out;
         } catch (_) { return this._invExitFlags || []; }
     },
@@ -29626,9 +29642,12 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     why = held ? '沒有觸發出場,也沒有加碼條件 —— 按原定紀律抱著就好。'
                         : _hasTrig ? `這一檔<b>有一招實測有效</b>(${_pb.k || '—'}),但<b>今天還沒漲到那個價</b> —— `
                                    + `要漲過 <b class="font-mono">${(+_pb.trig).toFixed(2)}</b> 才算數。⛔ 沒漲過去就是<b>買點還沒到</b>,不用勉強。`
-                        : (gene && !gene.ok) ? `不符合 🧬(位階 ${gene.pos.toFixed(0)}、振幅 ${gene.amp.toFixed(1)}%,要 ≥${R.gene.pos} 且 ≥${R.gene.amp}%)—— 實測「不挑 🧬」整套會少賺一半以上。`
-                        : '目前沒有實測有效的進場條件。'
+                        : ((gene && !gene.ok)
+                              ? `不符合 🧬(位階 ${gene.pos.toFixed(0)}、振幅 ${gene.amp.toFixed(1)}%,要 ≥${R.gene.pos} 且 ≥${R.gene.amp}%)—— 實測「不挑 🧬」整套會少賺一半以上。`
+                              : '目前沒有實測有效的進場條件。')
                           + (_pb && bear ? '(這一檔本來有一招,但<b>中期趨勢是空頭</b> → 依規則不給進場價)' : '')
+                          // 🚨 V75.0.0 這句本來被 🧬 那個分支吃掉 —— 而它才是最該講的:
+                          //   ⛔ 少了它,使用者會讀成「是這一檔不夠格」,而不是「本來就大多數沒有」。
                           + (!_pb && !bear ? '(全市場 2,326 檔裡,扣掉成本後還是正的只有約 200 檔 —— <b>大部分股票沒有值得做的招是常態</b>)' : '');
                     break;
                 }
@@ -41403,6 +41422,188 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //       實測掛前一日收盤價那種做法只賺 12.4 萬、回撤 −46.1%(尾盤觸價進場是 +259.9 萬)。
     //       真因:會成交的正好是「訊號出了、市場卻不買單」的弱股。
     //    ③ 觸發價是用**昨天收盤**推的估計值,盤中要以實際重算為準(⛔ 不可講得像鐵板)。
+    // ═══ 🎯 V75.0.0 決策台 ═══════════════════════════════════════════════
+    //   使用者:「我覺得整套散戶 App 實測後常常不知道看哪個,決定越來越不會用這套程式,可否重新改版」
+    //
+    //   ⭐ 診斷:App 照「**資料類型**」組織(K線/籌碼/基本面/當沖…),
+    //     而使用者的問題是「**決策**」(今天要賣什麼、今天可以買什麼)。
+    //     已做過約 10 輪逐頁精簡,使用者還是說不知道看哪個 → 剩下的不是頁內雜訊,是**結構**。
+    //   ⛔ 所以做法是**純新增**一頁當落地頁,舊 9 個分頁**一個都沒動**
+    //     (那 78 支釘住「畫面上必須出現某句話」的測試完全打不到)。
+    //
+    //   ⛔ 這一頁**不產生任何新結論**:
+    //     ・要賣的 ← `_invExitScan()`(你在設定中心選的那條出場線)
+    //     ・可以買的 ← `playbook_edge.json`(每晚全市場實測)+ `_pbSort`
+    //     ⭐ 它只是把「你今天要做的事」從 7 層點擊變成 0 層。
+
+    // 📊 這套配置的長窗口成績(49 個月,含 2022 那一段大跌)
+    //   🚨 數字必須跟 `pro.html` 的 `PRO._SIG_DEEP` **一模一樣**(⛔ 同名不同義是全專案犯最多次的錯)
+    //      → `scripts/test_deck.mjs` 直接比對兩個檔案。
+    //   ⚠️ 跟 `_PB_TRACK`(36 個月)是**兩個不同的窗口**:
+    //      36 個月 🧬 +289.6 萬 vs 0050 +201.2 萬 → 贏;
+    //      49 個月 🧬 +195.5 萬 vs 0050 +260.0 萬 → **兩種都輸**。
+    //      ⛔ 不可混用兩個窗口的數字互相對照(那是假對照)。
+    _DECK_TRACK49: { months: 49, from: '2022-08', to: '2026-08', cap: 1000000, posPct: 15, picks: 2,
+                     gene: 1955061, geneDD: 32.4, plain: 1078253, plainDD: 31.8, etf0050: 2600300 },
+
+    /** 🎯 決策台的資料(⛔ 純資料,不碰 DOM) */
+    async _deckState() {
+        const st = { sell: [], skip: [], invN: 0, buy: [], pbNull: false, pbDate: '', hqN: 0, total: 0, bearN: 0 };
+        try { st.sell = (await this._invExitScan()) || []; } catch (_) {}
+        st.skip = this._invExitSkip || []; st.invN = this._invExitN || 0;
+        let j = null;
+        try { j = await this._loadPlaybookEdge(); } catch (_) {}
+        // 🚨 「清單抓不到」與「今天沒有可以買的」是**兩件事**,⛔ 不可長得一樣
+        if (!j || !Array.isArray(j.picks)) { st.pbNull = true; return st; }
+        st.pbDate = String(j.data_date || j.updated || '').slice(0, 10);
+        st.total = j.picks.length;
+        const mine = this._mySyms();
+        const ranked = this._pbSort(j.picks, mine);
+        // 同一檔只留排最前面那一招(清單是「股票 × 招式」,⛔ 不可讓一檔吃掉兩個名額)
+        const seen = new Set(), uniq = [];
+        for (const x of ranked) { const k = String(x.s); if (seen.has(k)) continue; seen.add(k); uniq.push(x); }
+        st.bearN = uniq.filter(x => x.bear).length;
+        // 🧬 是**必要條件不是加分項**(V73.2.9:不挑它整套輸給買 0050);⛔ 空頭不給進場
+        const hq = uniq.filter(x => (+x.hq || 0) === 1 && !x.bear);
+        st.hqN = hq.length;
+        st.buy = hq.slice(0, this._DECK_TRACK49.picks);
+        return st;
+    },
+
+    /** 🎯 決策台渲染(⛔ 一列都不自己排版 —— 買的那幾列直接用 `_pbRowHtml`) */
+    async renderDeck() {
+        const $ = id => document.getElementById(id);
+        const head = $('deckHead'), sell = $('deckSell'), buy = $('deckBuy'), idle = $('deckIdle'), note = $('deckNote');
+        if (!head || !sell || !buy || !idle || !note) return;
+        if (this._deckBusy) return; this._deckBusy = true;
+        try {
+            head.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+                <div class="text-base font-black text-gray-100">🎯 今天要做的事</div>
+                <div class="text-[10px] text-gray-500 mt-0.5 leading-relaxed">⛔ 這一頁<b>不產生新結論</b> —— 要賣的來自你設定的出場線、可以買的來自每晚全市場實測。細節在下面各分頁。</div>
+            </div>`;
+            const st = await this._deckState();
+            const eodTxt = `${String(Math.floor(this._EOD_FROM / 60)).padStart(2, '0')}:${String(this._EOD_FROM % 60).padStart(2, '0')}~${String(Math.floor(this._EOD_TO / 60)).padStart(2, '0')}:${String(this._EOD_TO % 60).padStart(2, '0')}`;
+
+            // ── 🚪 今天要賣的(⛔ 不限量 —— 勝率只有三成,整套會賺完全靠「錯的時候小賠出場」)──
+            const rule = this._exitRuleName ? this._exitRuleName() : '你設定的出場線';
+            if (st.sell.length) {
+                sell.innerHTML = `<div class="bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-3">
+                    <div class="text-sm font-black text-amber-300">🚪 今天要賣的(${st.sell.length} 檔)</div>
+                    <div class="text-[10px] text-gray-400 mt-0.5 mb-2">收盤價已經跌破<b>你設定的那條出場線</b>(${this._escHtml(rule)})。⛔ 出場提醒<b>不限量</b> —— 勝率只有三成,整套會賺完全靠「錯的時候小賠出場」。</div>
+                    ${st.sell.map(f => `<div onclick="app.analyze('${f.sym}'); app.switchAppTab('diag'); app.vibrate(15);" class="px-2 py-1.5 mb-1 rounded bg-[#0d1117] border border-[#30363d] cursor-pointer hover:bg-white/5 flex items-baseline justify-between gap-2">
+                        <div class="min-w-0 flex-1 flex items-baseline gap-1.5"><span class="font-mono font-black text-[12px] text-gray-100">${f.sym}</span><span class="text-[11px] text-gray-200 truncate">${this._escHtml(f.name === f.sym ? '' : f.name)}</span></div>
+                        <span class="text-[10px] text-gray-400 font-mono flex-shrink-0">現價 <b class="text-gray-100">${(+f.px).toFixed(2)}</b> ・ 線 ${(+f.v).toFixed(2)}</span>
+                    </div>`).join('')}
+                    <div class="text-[9px] text-gray-600 mt-1">👆 點進去看完整判讀 ・ 出場線可在 ⚙️ 設定中心換(四選一,實測差距寫在旁邊)</div>
+                </div>`;
+            } else if (st.invN === 0) {
+                sell.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+                    <div class="text-sm font-black text-gray-300">🚪 今天要賣的</div>
+                    <div class="text-[11px] text-gray-400 mt-1">你還沒填庫存 → 這一區永遠是空的。<button onclick="app.switchAppTab('inv')" class="text-cyan-300 underline">去填庫存</button></div>
+                </div>`;
+            } else if (st.skip.length >= st.invN) {
+                // 🚨 V75.0.0 實跑讀輸出抓到的**邏輯打架**:一檔都沒檢查到,卻寫「都還沒跌破」——
+                //   那等於在說謊(而且旁邊還掛著「這 N 檔沒有幫你檢查」,自己跟自己打架)。
+                //   ⛔ 「沒有跌破」與「沒有檢查」是兩件事,絕不可長得一樣。
+                sell.innerHTML = `<div class="bg-[#161b22] border-l-4 border-yellow-600 border-y border-r border-[#30363d] rounded-r p-3">
+                    <div class="text-sm font-black text-yellow-300">🚪 今天要賣的:<b>還沒辦法幫你看</b></div>
+                    <div class="text-[11px] text-gray-300 mt-1">你手上 ${st.invN} 檔(${st.skip.map(x => `<span class="font-mono">${x}</span>`).join('・')})的 K 線<b>都還沒下載到</b> —— 進個股頁看過一次就會有。⛔ 這<b>不代表沒事</b>,只代表今天沒檢查到。</div>
+                </div>`;
+            } else {
+                sell.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+                    <div class="text-sm font-black text-gray-300">🚪 今天要賣的:<b class="text-gray-100">沒有</b></div>
+                    <div class="text-[11px] text-gray-400 mt-1">你手上 ${st.invN - st.skip.length} 檔都還沒跌破<b>你設定的</b>${this._escHtml(rule)} —— 按原定紀律抱著就好。</div>
+                </div>`;
+            }
+            // 🚨 算不出來的要說出來(⛔ 不可讓使用者把「沒警報」當成「安全」)
+            // ⛔ 「全部沒檢查到」時主線已經講完(含代號)→ 這一塊只在**部分**沒檢查到時補(⛔ 不重複講兩次)
+            if (st.skip.length && st.skip.length < st.invN) {
+                sell.innerHTML += `<div class="mt-1 bg-[#161b22] border-l-4 border-yellow-600 border-y border-r border-[#30363d] rounded-r px-3 py-2">
+                    <div class="text-[11px] text-yellow-300 font-bold">⚠️ 這 ${st.skip.length} 檔今天<b>沒有</b>幫你檢查</div>
+                    <div class="text-[10px] text-gray-400 mt-0.5">${st.skip.map(x => `<span class="font-mono">${x}</span>`).join('・')} —— K 線還沒下載到(進個股頁看一次就會有)。⛔ 這<b>不代表它們安全</b>。</div>
+                </div>`;
+            }
+
+            // ── 🎯 今天可以買的 ──
+            if (st.pbNull) {
+                buy.innerHTML = `<div class="bg-[#161b22] border-l-4 border-yellow-600 border-y border-r border-[#30363d] rounded-r p-3">
+                    <div class="text-sm font-black text-yellow-300">⚠️ 今天的作戰清單還沒下載到</div>
+                    <div class="text-[11px] text-gray-300 mt-1 leading-relaxed">這<b>不是</b>「今天沒有可以買的」—— 是檔案抓不到(採礦每晚 19:00 跑,或你現在沒有網路)。
+                        <button onclick="app._pbEdge = undefined; app.renderDeck();" class="ml-1 text-cyan-300 underline">重試一次</button></div>
+                </div>`;
+            } else if (st.buy.length) {
+                const mine = this._mySyms();
+                buy.innerHTML = `<div class="bg-[#161b22] border-l-4 border-cyan-500 border-y border-r border-[#30363d] rounded-r p-3">
+                    <div class="text-sm font-black text-cyan-300">🎯 今天可以買的(最多 ${this._DECK_TRACK49.picks} 檔)</div>
+                    <div class="text-[10px] text-gray-400 mt-0.5 mb-2 leading-relaxed">
+                        🚨 <b>要漲過下面那個觸發價才算數</b> —— ⛔ 不是掛在下面等它跌回來(實測那樣只賺 12.4 萬、中途最多賠 −46.1%)。<br>
+                        🚨 ⛔ <b>不是開盤買</b> —— 進場時窗是<b>尾盤 ${eodTxt}</b>(實測隔天開盤買少賺一半以上)。<br>
+                        ⭐ 一天最多 ${this._DECK_TRACK49.picks} 檔(實測 2 檔賺最多、中途賠最少);${st.hqN} 檔符合 🧬,只取前 ${this._DECK_TRACK49.picks} 名。
+                    </div>
+                    <div class="space-y-1">${st.buy.map((x, i) => this._pbRowHtml(x, mine, i + 1, 0)).join('')}</div>
+                    <div class="text-[9px] text-gray-600 mt-1.5">清單日期 ${this._escHtml(st.pbDate || '—')} ・ 全市場 ${st.total} 筆裡符合 🧬 且非空頭的有 ${st.hqN} 檔${st.bearN ? ` ・已排除空頭 ${st.bearN} 檔` : ''}</div>
+                </div>`;
+            } else {
+                buy.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+                    <div class="text-sm font-black text-gray-300">🎯 今天可以買的:<b class="text-gray-100">沒有</b></div>
+                    <div class="text-[11px] text-gray-400 mt-1 leading-relaxed">全市場 ${st.total} 筆實測有效的招裡,今天<b>沒有一檔同時符合 🧬(位階 ≥${this._EDGE_RULES.gene.pos} 且振幅 ≥${this._EDGE_RULES.gene.amp}%)又不是空頭</b>。
+                        <br>⭐ <b>今天不用做,是常態</b> —— 全市場 2,300 多檔裡,扣掉成本後還是正的只有約 200 檔;⛔ 這裡不會為了填版面硬給你一檔。
+                        <br><button onclick="app.switchAppTab('radar'); app.switchRadarStrategy('todaysig');" class="mt-1 text-cyan-300 underline">還是想看看今天有什麼訊號 →</button></div>
+                </div>`;
+            }
+
+            // ── ✅ 今天沒事 ──
+            idle.innerHTML = (!st.sell.length && !st.buy.length && !st.pbNull)
+                ? `<div class="bg-[#161b22] border-l-4 border-gray-600 border-y border-r border-[#30363d] rounded-r p-3">
+                     <div class="text-sm font-black text-gray-200">✅ 今天不用做</div>
+                     <div class="text-[11px] text-gray-400 mt-1">手上沒有要賣的、也沒有值得買的。⭐ 這種日子占大多數 —— <b>忍住不做</b>本身就是紀律的一部分。</div>
+                   </div>` : '';
+
+            // ── 📊 誠實揭露(⛔ 不可拿掉:少了它這一頁就是在推薦一件會輸給 0050 的事)──
+            const T = this._DECK_TRACK49, m = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
+            note.innerHTML = `<details class="bg-[#161b22] border border-[#30363d] rounded-lg">
+                <summary class="px-3 py-2 text-[11px] font-bold text-gray-300 cursor-pointer">📊 這套做法實測賺多少?(⛔ 含「它輸給 0050」那一段)</summary>
+                <div class="px-3 pb-3 text-[11px] text-gray-300 leading-relaxed">
+                    <div class="text-[10px] text-gray-500 mb-1.5">${T.months} 個月(${T.from}~${T.to},<b>含 2022 那一段大跌</b>)・本金 ${(T.cap / 10000).toFixed(0)} 萬・每天最多 ${T.picks} 檔・每筆本金 ${T.posPct}%・已扣來回成本 0.44%</div>
+                    <div class="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
+                        <div>🧬 只做「高位階+高波動」</div><div class="font-mono text-right"><b class="text-gray-100">${m(T.gene)} 元</b> ・中途最多賠 ${T.geneDD}%</div>
+                        <div>照清單順序做(不挑 🧬)</div><div class="font-mono text-right">${m(T.plain)} 元 ・${T.plainDD}%</div>
+                        <div class="text-amber-300">🆚 同期 0050 買了放著</div><div class="font-mono text-right text-amber-300"><b>${m(T.etf0050)} 元</b></div>
+                    </div>
+                    <div class="mt-2 bg-[#0d1117] border-l-4 border-amber-500 pl-2.5 py-2 rounded-r">
+                        <b class="text-amber-300">⭐ 🧬 讓你少輸,⛔ 不是讓你一定贏大盤。</b><br>
+                        在這個長窗口裡<b>兩種做法都輸給買 0050 放著</b>。挑 🧬 比不挑好(多賺 ${m(T.gene - T.plain)} 元),
+                        但「挑了就贏大盤」<b>只在 36 個月的短窗口成立</b>。<br>
+                        ⚠️ 勝率只有約 <b>33%</b> —— 十次會錯七次,靠的是<b>錯的時候小賠出場</b>。做不到出場紀律的話,這套不會賺。
+                    </div>
+                    <div class="text-[10px] text-gray-500 mt-1.5">⛔ 勝率一定要配次數:次數不到 10 次的不能當結論;而且<b>基準勝率是 36% 不是 50%</b>(台股中位數個股本來就跑輸大盤)。</div>
+                </div>
+            </details>`;
+            // 🔔 導覽紅點:今天有幾件事要做
+            try {
+                const dot = $('navBtnDeskDot'), n = st.sell.length + st.buy.length;
+                if (dot) { dot.textContent = String(n); dot.classList.toggle('hidden', n === 0); }
+            } catch (_) {}
+        } finally { this._deckBusy = false; }
+    },
+
+    /** 📋 作戰清單的排序 —— 全 App 唯一一份(V75.0.0 抽出來)
+     *  ⛔ 本來在 `_tomorrowWatchHtml` 與 `_eodTriggerSweep` **各手抄一份**,而決策台是第三處
+     *     → 照陷阱 #37(同一套規則寫兩份,遲早只改到一邊)當場抽掉。
+     *  排序鍵三層,⛔ 順序不可換:
+     *    ① 👜 自己手上/自選的排最前面
+     *    ② 🧬 高位階+高波動 —— ⭐ V73.2.9 實測**不挑它的話整套輸給買 0050 一百多萬**
+     *       → 它是**必要條件不是加分項**(使用者可用 `pbHqOff` 關掉,但預設開)
+     *    ③ 📐 **保守下界** `lb`(期望值 − 1.28×標準差/√次數)
+     *       ⛔ **不可用原始期望值 `exp`** —— 2,317 檔 × 22 招排點估計值取前面,
+     *          前段班必然被「樣本少但剛好很賺」佔滿(V72.9.2 首跑實測)。 */
+    _pbSort(list, mine) {
+        const _lb = x => Number.isFinite(+x.lb) ? +x.lb : +x.exp;
+        const _hq = x => (this.settings?.pbHqOff ? 0 : (+x.hq || 0));
+        const M = mine || this._mySyms();
+        return (list || []).slice().sort((a, b) =>
+            (M.has(String(b.s)) - M.has(String(a.s))) || (_hq(b) - _hq(a)) || (_lb(b) - _lb(a)));
+    },
     _pbEdgeOf(sym) {
         try {
             const j = this._pbEdge;
@@ -41734,21 +41935,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const j = await this._loadPlaybookEdge();
         const list = (j && Array.isArray(j.picks)) ? j.picks : [];
         if (!list.length) return '';           // ⛔ 沒資料整塊不顯示(不留空殼)
-        const mine = new Set();
-        try { for (const i of (this._getInventory?.() || [])) if (i && i.symbol) mine.add(String(i.symbol)); } catch (_) { }
-        try { for (const g of Object.values(this.favGroups || {})) for (const s of (g || [])) mine.add(String(s)); } catch (_) { }
-        // 👜 自己手上/自選的排最前面(跟今日訊號那塊同一個規則)
-        // ⛔ 用保守下界排,⛔ 不是原始期望值(理由見 _pbRowHtml 的 `shown`)
-        const _lb = x => Number.isFinite(+x.lb) ? +x.lb : +x.exp;
-        // 🚨 V73.8.7 修「看到的順序」跟「實際會推播的順序」不一樣:
-        //   這裡本來只有 `(自己的) || (保守下界)`,但 `_eodTriggerSweep`(真的會通知你的那支)
-        //   是 `(自己的) || (🧬 高位階高波動) || (保守下界)` → **兩邊排出來的第 1 名可能是不同檔**。
-        //   ⭐ 而 V73.2.9 已經實測:不挑 🧬 的話整套會**輸給買 0050 一百多萬**
-        //      → 🧬 是**必要條件不是加分項**,清單當然也要照它排。
-        //   ⛔ 兩處必須用同一個式子(陷阱 #37:同一套規則寫兩份,遲早只改到一邊)。
-        const _hq = x => (this.settings?.pbHqOff ? 0 : (+x.hq || 0));
-        const rows = list.slice().sort((a, b) =>
-            (mine.has(String(b.s)) - mine.has(String(a.s))) || (_hq(b) - _hq(a)) || (_lb(b) - _lb(a)));
+        const mine = this._mySyms();   // ⭐ 唯一一份(見 `_mySyms`)
+        // 👜 自己手上/自選 → 🧬 → 保守下界(V75.0.0 起整段搬進 `_pbSort`,⛔ 這裡不再抄一份)
+        const rows = this._pbSort(list, mine);   // ⭐ 排序式子全 App 唯一一份(見 `_pbSort`)
         // 🐛 V73.3.0 使用者問「為何有 2 個華城」—— 清單是「(股票 × 打法)」不是「股票」,
         //   同一檔可以有不只一種會賺的打法(實測 158 檔裡有 13 檔各有 2 招)。
         //   ⛔ 不去重(兩招的觸發價與停損完全不同,砍掉一招 = 少一個機會),
@@ -41991,17 +42180,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const j = await this._loadPlaybookEdge();
             const list = (j && Array.isArray(j.picks)) ? j.picks : [];
             if (!list.length) return;
-            const mine = new Set();
-            try { for (const i of (this._getInventory?.() || [])) if (i && i.symbol) mine.add(String(i.symbol)); } catch (_) { }
-            try { for (const g of Object.values(this.favGroups || {})) for (const s of (g || [])) mine.add(String(s)); } catch (_) { }
+            const mine = this._mySyms();   // ⭐ 唯一一份(見 `_mySyms`)
             // ⛔ **嚴格限量**:全市場今天可能上百檔觸發,全推 = 使用者三天後關掉通知 = 整套失效。
             //   自己手上/自選的優先,再補期望值最高的,合計最多 6 檔。
-            const _lb = x => Number.isFinite(+x.lb) ? +x.lb : +x.exp;   // ⛔ 同上:保守下界
             // 🧬 V73.2.4 hq(這檔自己的位階 ≥75 且波動 ≥60)優先 —— 實測 +89% 且回撤更小(6 關全過)
             //   ⛔ 只影響**排序**,不影響「有沒有真的觸發」;不符合的仍可能被推(前面沒 2 檔成立時)
-            const _hq = x => (this.settings?.pbHqOff ? 0 : (+x.hq || 0));
-            const ranked = list.slice().sort((a, b) =>
-                (mine.has(String(b.s)) - mine.has(String(a.s))) || (_hq(b) - _hq(a)) || (_lb(b) - _lb(a)));
+            const ranked = this._pbSort(list, mine);   // ⭐ 排序式子全 App 唯一一份(見 `_pbSort`)
             // ⭐⭐ V73.0.0 實測改成「一天最多做 **2 檔**」(⛔ 原本是 6):
             //   `portfolio_backtest.mjs`(600 檔・13 個月・本金 100 萬)每天挑幾檔:
             //     6 檔×5萬  +735,938 元 ・回撤 −18.4%
@@ -42301,9 +42485,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 👜 V72.2.6 ——「全市場 17 檔」對使用者還是有點遠;**他真正關心的是自己手上那幾檔**。
         //   → 把庫存/自選跟榜單對一次,有交集才顯示一行(⛔ 沒交集完全不顯示,不留空殼)。
         //   ⛔ 沒有開新卡,只是在既有這條裡多一行 + 命中的那列加個徽章。
-        const mine = new Set();
-        try { for (const i of (this._getInventory?.() || [])) if (i && i.symbol) mine.add(String(i.symbol)); } catch (_) { }
-        try { for (const g of Object.values(this.favGroups || {})) for (const s of (g || [])) mine.add(String(s)); } catch (_) { }
+        const mine = this._mySyms();   // ⭐ 唯一一份(見 `_mySyms`)
         // 🧹 V72.5.0 使用者:「文字實在太太多了…讓文字一次都顯示出來,要不然實在太亂」。
         //   → 這一行原本會把命中的股號股名**整串列出來**(截圖裡佔了 4 行)。
         //   改成只講「有幾檔」+ 命中的那幾列本來就會排最前面 + 有 👜 徽章,資訊零損失但短很多。

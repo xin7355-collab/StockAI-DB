@@ -93,7 +93,7 @@ page.on('pageerror', e => { const t = (e && e.message) ? e.message : String(e); 
 await page.route('**/*', r => (r.request().url().startsWith('file://') ? r.continue() : r.abort()));
 await page.goto(pathToFileURL(path.join(ROOT, 'index.html')).href, { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForFunction(() => typeof app !== 'undefined' && !!app.analyze, null, { timeout: 25000 });
-// ⚠️⚠️ **等 init() 落地再開始掃** —— `init()` 尾端有一行 `switchAppTab('inv')`,
+// ⚠️⚠️ **等 init() 落地再開始掃** —— `init()` 尾端有一行 `switchAppTab('desk')`(V75.0.0 起,原本是 'inv'),
 //   而它排在 `await fetchMacroData()` 之後;沙箱抓不到資料要等 timeout(實測十幾秒)。
 //   在那之前切到 diag 會**在幾秒後被切回庫存頁** → 整個個股頁 `display:none`
 //   → 第一檔股票只掃到 4 張卡,而輸出上跟「這頁很乾淨」長得一模一樣。
@@ -265,11 +265,11 @@ for (const sym of SYMS) {
 //   ⭐ 這些頁不綁個股 → `_ovTrend` 不適用,**只掃缺值與空殼**(⛔ 不掃講反話,大盤層級的
 //      建議本來就跟個股趨勢無關,掃了全是誤報 —— 見報告尾巴的誤報說明)。
 process.stdout.write('\n🌐 主分頁 ');
-for (const tab of ['market', 'radar', 'hunt', 'broker', 'inv', 'fav']) {
+for (const tab of ['desk', 'market', 'radar', 'hunt', 'broker', 'inv', 'fav']) {
     const cards = await page.evaluate(async t => {
         try { app.switchAppTab(t); } catch (_) { return []; }
         await new Promise(r => setTimeout(r, 1800));
-        // ⭐ 空過守門:init() 尾端會 `switchAppTab('inv')`,而它排在 `await fetchMacroData()` 之後
+        // ⭐ 空過守門:init() 尾端會 `switchAppTab('desk')`(V75.0.0 起),而它排在 `await fetchMacroData()` 之後
         //   —— 沙箱抓不到資料要等 timeout,期間任何切頁都會**在幾秒後被它蓋回庫存頁**。
         //   不驗這一下,掃出來的會是「庫存頁的字」卻標成 market/radar,而輸出看起來完全正常。
         //   (⚠️ 排查時差點誤判成 App bug —— `innerText` 對 **display:none** 的元素照樣回傳全文,

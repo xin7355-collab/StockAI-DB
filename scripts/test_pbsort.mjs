@@ -47,20 +47,24 @@ const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
         ['尾盤推播', block('async _eodTriggerSweep()', '_pbMark(')],
     ];
     ok('① 兩支函式的區塊都抓得到', B.every(([, s]) => s.length > 200), B.map(([n, s]) => `${n}:${s.length}`).join(' '));
-    const keyed = B.map(([n, s]) => ({
-        n,
-        mine: /mine\.has\(String\(b\.s\)\) - mine\.has\(String\(a\.s\)\)/.test(s),
-        hq: /_hq\(b\) - _hq\(a\)/.test(s),
-        lb: /_lb\(b\) - _lb\(a\)/.test(s),
-        exp: /b\.exp - a\.exp/.test(s),
-    }));
-    ok('①b 🚨 兩處都要有 🧬(hq)優先 —— ⛔ 不可一邊有一邊沒有',
-        keyed.every(k => k.mine && k.hq && k.lb), JSON.stringify(keyed));
-    ok('② ⛔ 排序不可用原始期望值 exp(V72.9.2:必定挑到僥倖股)',
-        keyed.every(k => !k.exp), JSON.stringify(keyed));
+    // 🚨 V75.0.0 排序整段抽進 `_pbSort` —— 本來兩處**手抄**,而決策台是第三處
+    //   → 照陷阱 #37 當場抽掉。斷言跟著改成釘**更強的**不變量(⛔ 不是放寬):
+    //     ① 兩處都必須呼叫 `_pbSort`(⛔ 不可自己再排一次)
+    //     ② 排序式子全 App **只准出現一次**(比「兩處各有一份而且長一樣」嚴格)
+    ok('①b 🚨 兩處都要呼叫 `_pbSort`(⛔ 不可自己再排一次)',
+        B.every(([, s]) => /this\._pbSort\(list, mine\)/.test(s)), JSON.stringify(B.map(([n, s]) => [n, /this\._pbSort\(/.test(s)])));
+    const keys = {
+        mine: (src.match(/M\.has\(String\(b\.s\)\) - M\.has\(String\(a\.s\)\)/g) || []).length,
+        hq: (src.match(/_hq\(b\) - _hq\(a\)/g) || []).length,
+        lb: (src.match(/_lb\(b\) - _lb\(a\)/g) || []).length,
+        exp: (src.match(/\(b\.exp - a\.exp\)/g) || []).length,
+    };
+    ok('①c 🚨 三個排序鍵各只准有一份(⛔ 手抄第二份遲早只改到一邊)',
+        keys.mine === 1 && keys.hq === 1 && keys.lb === 1, JSON.stringify(keys));
+    ok('② ⛔ 排序不可用原始期望值 exp(V72.9.2:必定挑到僥倖股)', keys.exp === 0, JSON.stringify(keys));
 }
-ok('②b 兩處都用 `pbHqOff` 開關(使用者可關,但預設開)',
-    (src.match(/settings\?\.pbHqOff \? 0 :/g) || []).length === 2,
+ok('②b `pbHqOff` 開關仍在(使用者可關,但預設開)—— 抽成一份後只剩 1 處',
+    (src.match(/settings\?\.pbHqOff \? 0 :/g) || []).length === 1,
     String((src.match(/settings\?\.pbHqOff \? 0 :/g) || []).length));
 
 // ── 前端實跑 ─────────────────────────────────────────────────────

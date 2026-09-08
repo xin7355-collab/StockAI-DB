@@ -135,7 +135,12 @@ ok('⑤a3e 卡上必須寫「空頭沒有驗證過」(⛔ 不可只報好消息)
 ok('⑤a3f 徽章⛔ 不可用紅綠(燈號鐵則:紅綠只表示漲跌方向)',
    /🧬 強勢高波動/.test(src) && !/text-(red|green)-\d00[^>]*>🧬 強勢高波動/.test(src));
 ok('⑤a4 _patternFitBacktest 有回 sd', /const sd = n > 1 \? Math\.sqrt/.test(src) && /expectancy: mean, sd,/.test(src));
-ok('⑤a5 前端顯示與排序也用下界', /const shown = Number\.isFinite\(\+x\.lb\)/.test(src) && (src.match(/const _lb = x => Number\.isFinite\(\+x\.lb\)/g) || []).length === 2);
+// ⚠️ V75.0.0 排序整段抽進 `_pbSort`(本來兩處手抄,決策台是第三處)→ 斷言改釘**用意**:
+//    「顯示用下界」+「排序用下界」+「排序式子全 App 只准有一份」(⛔ 這比數兩份更嚴)
+ok('⑤a5 前端顯示用下界', /const shown = Number\.isFinite\(\+x\.lb\)/.test(src));
+ok('⑤a5b 🚨 排序也用下界,而且式子只准有一份(⛔ 手抄第二份遲早只改到一邊)',
+   (src.match(/const _lb = x => Number\.isFinite\(\+x\.lb\)/g) || []).length === 1
+   && /_lb\(b\) - _lb\(a\)/.test(src) && (src.match(/this\._pbSort\(/g) || []).length >= 3);
 ok('⑤a6 沒有觸發價(loose)時⛔ 不可顯示「漲過 null」', /const hasTrig = x\.trig != null/.test(src) && /這招不是靠價位觸發/.test(src));
 // ⚠️ V72.9.4 起這條由 ⑤a10 用「進位到跳動單位之後」的版本承接(更嚴)。
 //   ⛔ 這裡改驗「⛔ 不可退回成無條件回傳 b2」——原始 b2 沒對齊跳動單位也可能 <= 現價。
@@ -299,7 +304,10 @@ await browser.close();
     //    ⚠️ 也⛔ 不可綁**函式簽章** —— V73.3.0 加了 rank/dupN 參數,
     //    `_pbRowHtml(x, mine)` 立刻對不上 → 同樣 8 條假失敗(同一種錯犯第二次)。
     //    ⭐ 通用:結束錨點要用「不會因為改功能而變的字」。
-    const A = src.indexOf('這套打法的歷史總成績'), B = src.indexOf('_pbRowHtml(');
+    //    ⚠️ V75.0.0 又犯一次:決策台也呼叫 `_pbRowHtml(`,而且排在前面
+//       → `indexOf('_pbRowHtml(')` 抓到**呼叫端**、B < A、blk 變空 → 8 條假失敗。
+//       ⭐ 結束錨點一律抓**定義**(帶縮排),⛔ 不抓裸的函式名。
+    const A = src.indexOf('這套打法的歷史總成績'), B = src.indexOf('\n    _pbRowHtml(');
     const blk = A > 0 && B > A ? src.slice(A, B) : '';
     ok('⑩a 有 _PB_TRACK 常數,且標明「改回測配置就要重跑」', /_PB_TRACK: \{/.test(src) && /改了任何規則就要重跑更新/.test(blk));
     ok('⑩b 兩種做法都要給(照清單做 / 只做 🧬 標記的)', /照清單順序做/.test(blk) && /只做有 🧬 強勢高波動 標記的/.test(blk));
