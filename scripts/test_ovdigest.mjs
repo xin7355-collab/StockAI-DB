@@ -29,14 +29,20 @@ const browser = await chromium.launch({
     args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
 });
 const page = await browser.newPage();
-const benign = t => /Failed to load resource|net::ERR_|CORS|Cross origin|vibrate|chromestatus|Access to fetch|echarts is not defined|Tailwind/i.test(t);
+const benign = t => /Failed to load resource|net::ERR_|CORS|Cross origin|vibrate|chromestatus|Access to fetch|echarts is not defined|Tailwind|Cache': Request scheme 'file'/i.test(t);
 const errs = [];
 page.on('pageerror', e => { const t = (e && e.message) ? e.message : String(e); if (!benign(t)) errs.push(t); });
 await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof app !== 'undefined' && !!app._ovDigest, null, { timeout: 25000 });
 
 const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-const blk = src.slice(src.indexOf('    _ovDigest(pane, data, sym) {'), src.indexOf('    _ovTopEdge(data, sym) {'));
+// ⚠️ V75.0.2 結束錨點原本用 `_ovTopEdge` —— 但後來有新函式插進兩者之間(V74.6.0 的 `_ovNewEdges`)
+//   → blk 把**別人的迴圈**也收進來 → ②「不可自己算均線」假失敗。
+//   ⭐ 正解:抓「下一個**同縮排**的方法」為止,⛔ 別綁某個特定函式名。
+const _di = src.indexOf('    _ovDigest(pane, data, sym) {');
+const _dj = src.indexOf('\n    },\n', _di);
+const blk = (_di > 0 && _dj > _di) ? src.slice(_di, _dj) : '';
+ok('⓪ 取樣守門:blk 真的只有 `_ovDigest` 這一支', blk.length > 1500 && blk.length < 12000 && !/\n    _ov(TopEdge|NewEdges)\(/.test(blk), String(blk.length));
 
 // ── ② 只轉述,不新增判斷 ──
 {
@@ -87,7 +93,15 @@ const R = await page.evaluate(async () => {
         });
     }
     // ④ 強制空頭 / 出場 → 守門要生效(⛔ 不可等「剛好遇到空頭」才驗)
+    // 🚨 V75.0.2 ⛔ 不可靠「今天剛好有沒有訊號」—— `_ovDigest` 在「K線與籌碼都沒訊號」時
+    //    照設計回空字串(⑥ 那條就是釘這個),而**強制空頭之後 `_ovEdgePick` 會把偏多訊號濾掉**
+    //    → 拿真實資料驗這一組,結果取決於當天有沒有訊號 → ④b/④c/④d 會**假失敗**(V72.1.8 的老坑)。
+    //    ⭐ 正解:**stub 掉那兩個來源**,讓「有內容」變成確定的,才驗得到抬頭那句話。
     const d = app.rawDailyData || [], s = String(app.currentSymbolId || '');
+    const _kBak = app._ovEdgePick, _cBak = app._chipEdgeState;
+    app._ovEdgePick = () => ({ title: '測試訊號', tone: 'bull', _e: { exp: 1.23, n: 42 } });
+    app._chipEdgeState = () => ({ ok: 1, t: '測試籌碼', e: 0.85, n: 1234 });
+    out.gateStub = !!app._ovEdgePick(d, s);
     const keepTrend = app._ovTrend, keepExit = app._exitMode;
     app._ovTrend = { sym: s, trend: 'bear', txt: '空頭' };
     app._exitMode = null;
@@ -97,6 +111,7 @@ const R = await page.evaluate(async () => {
     out.exitNow = (app._ovDigest('now', d, s) || '').replace(/<[^>]+>/g, ' ');
     out.exitEntry = (app._ovDigest('entry', d, s) || '').replace(/<[^>]+>/g, ' ');
     app._ovTrend = keepTrend; app._exitMode = keepExit;
+    app._ovEdgePick = _kBak; app._chipEdgeState = _cBak;   // ⛔ 一定要還原(下面 ⑥ 要驗真的空狀態)
     // ⑥ 兩邊都沒訊號 → 空字串
     const fake = [{ date: '2026-01-01', open: 1, high: 1, low: 1, close: 1, volume: 0 }];
     out.emptyCase = app._ovDigest('now', fake, 'ZZZZ');
@@ -124,6 +139,7 @@ for (const c of R.cases) {
        /36%/.test(c.now) && /沒扣/.test(c.now), '');
 }
 ok('①b ⛔ 不認得的 pane 要回空字串', R.bad === '' || R.cases.every(c => c.bad === ''), String(R.bad).slice(0, 60));
+ok('🚧 ④ 那組的空過守門:stub 真的裝上去了(⛔ 否則下面四條都是空過)', R.gateStub === true, String(R.gateStub));
 ok('④ ⭐ 空頭時 ⛔ 不可出現「可以加碼」', !/可以加碼|建議加碼/.test(R.bearNow + R.bearEntry), (R.bearNow + R.bearEntry).slice(0, 140));
 ok('④b ⭐ 空頭時要明說「只做短、不加碼」', /不加碼|只做短/.test(R.bearEntry), R.bearEntry.slice(0, 140));
 ok('④c ⭐ 出場狀態要明說「不是叫你進場」', /不是叫你進場|出場管理狀態/.test(R.exitEntry), R.exitEntry.slice(0, 140));
