@@ -202,6 +202,15 @@ ok('⑪ 🚨 誠實揭露:三個數字 + 「輸給 0050」+ 「🧬 讓你少輸
    R.noteTxt.slice(0, 260));
 ok('⑪b 🚨 必須寫「勝率只有約 33%、十次會錯七次」', /33%/.test(R.noteTxt) && /十次會錯七次/.test(R.noteTxt));
 ok('⑪c 🚨 必須寫「基準勝率 36% 不是 50%」', /基準勝率是 36% 不是 50%/.test(R.noteTxt));
+// 🔀 V75.0.8 使用者提的「多頭做這套、空頭改抱 0050」—— 測完三關全滅而且仍然輸,
+//   ⛔ 那個結論**必須寫在畫面上**(⛔ 只寫進 pro.html 的實測總表 = 散戶救星的使用者看不到,陷阱 #32)。
+ok('⑪d 🔀 切換策略的結論要寫出來:四個數字 + 「還是輸」',
+   /1,933,944/.test(R.noteTxt) && /2,057,822/.test(R.noteTxt) && /2,247,695/.test(R.noteTxt)
+   && /2,641,000/.test(R.noteTxt) && /還是輸/.test(R.noteTxt), R.noteTxt.slice(-420));
+ok('⑪e 🚨 必須寫「三道穩健性檢定全滅」+ 唯一一次長空頭停泊是賠的',
+   /穩健性檢定全滅/.test(R.noteTxt) && /長空頭/.test(R.noteTxt) && /是賠的/.test(R.noteTxt), R.noteTxt.slice(-420));
+ok('⑪f 🚨 ⛔ 不可把「多賺 31 萬」講成可以照做(要點出那是 ≤4 天的短線來回)',
+   /短線來回/.test(R.noteTxt) && /≤4 個交易日/.test(R.noteTxt), R.noteTxt.slice(-420));
 ok('⑫ 空過守門:三塊真的都渲染出來了', R.all.length > 1200, String(R.all.length));
 
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ DECK_PASS(全部通過)');

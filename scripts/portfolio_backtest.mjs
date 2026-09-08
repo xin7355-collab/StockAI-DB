@@ -446,6 +446,16 @@ const regimeOk = i => twiiMa20[i] != null && twii[i].c > twiiMa20[i];
 const twiiMa60 = twii.map((_, i) => i < 59 ? null
     : twii.slice(i - 59, i + 1).reduce((s2, r) => s2 + r.c, 0) / 60);
 const notBear60 = i => !(twiiMa60[i] != null && twii[i].c < twiiMa60[i] && twiiMa20[i] < twiiMa60[i]);
+
+// 🔀 V75.0.8 「多頭做打法、空頭停泊」切換策略(使用者:「多頭做高位階高波動、空頭就做 0050」)
+//   `PARK=0050` → 嚴格空頭那幾天**不開新倉**,而且把閒置現金放進 0050(逐日 mark-to-market);
+//   `PARK=cash` → 只是不開新倉、錢放現金(= FILTER=bear60 的對照臂)。
+//   ⛔ 預設關閉,關閉時所有行為與輸出**逐位元組不變**(改完已比對過 md5)。
+//   ⚠️ 已知不對稱:既有部位是**以成本計**(保守、不逐日 mark),而停泊那筆是 mark-to-market
+//      → 回撤數字在兩臂之間**不是完全可比**,只有「賺多少」是可比的。這條要跟結論一起講。
+const PARK = (process.env.PARK || '').trim();
+const PARK_COST = +(process.env.PARK_COST || 0.27);   // ETF 來回:手續費 0.1425%×6折×2 + 證交稅 0.1%
+let parkOf = null;   // ⚠️ 真正的初始化在 `days` 之後(它要用 days 對齊)
 // 🏪 V74.6.3 **櫃買指數**環境(FILTER=otcflat / otcbull)—— 使用者:「加上其它指數當變因」
 //   ⭐ 動機(regime_multi_probe 實測):加權是**市值加權**(台積電主導),而這套打法做的是
 //   **中小型股**(位階高+波動高)→ 用加權判斷「有沒有行情」是看錯指數。
@@ -504,6 +514,19 @@ const indCycOk = (sym, d) => {
     return true;
 };
 const days = twii.map(r => r.d);
+if (PARK === '0050') {
+    const _raw = JSON.parse(fs.readFileSync(path.join(DATA, '0050.json'), 'utf8'))
+        .map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close })).filter(r => r.c > 0);
+    const _m = new Map(_raw.map(r => [r.d, r.c]));
+    const _arr = new Array(days.length).fill(null);
+    let _last = null;
+    for (let k = 0; k < days.length; k++) { const v = _m.get(days[k]); if (v > 0) _last = v; _arr[k] = _last; }
+    const _cov = _arr.filter(v => v > 0).length;
+    if (_cov < days.length * 0.5) {   // 🚧 空過守門:讀不到 0050 就直接停,⛔ 不可靜默把停泊變成放現金
+        console.error(`🚨 PARK=0050 但只讀到 ${_cov}/${days.length} 天的 0050 收盤 → ⛔ 不靜默放行`); process.exit(1);
+    }
+    parkOf = k => _arr[k];
+}
 // ── 📅 行事曆特徵(純日期運算,零採礦;⛔ 全部只用「當天以前就知道的事」→ 無前視偏誤)
 const dow = d => new Date(d + 'T00:00:00Z').getUTCDay();          // 0=日 1=一 … 5=五
 const ym = d => d.slice(0, 7);
@@ -718,6 +741,9 @@ let live = [];               // 目前持有
 let addCnt = 0;              // 📈 加碼成交筆數(⛔ 一定要報 —— 0 筆代表這個變體根本沒生效)
 let skipped = 0;             // 💰 因為錢不夠而錯過的次數(⛔ 一定要報 —— 不然等於假設無限資金)
 let cash = CAPITAL;          // 現金
+let parkSh = 0, parkBasis = 0, parkPnL = 0, parkBuy = 0, parkSell = 0, parkDays = 0;   // 🔀 停泊部位
+const parkLog = [];   // 🔀 每一段停泊 {in,out,basis,pnl} —— ⛔ 一定要留,否則停泊那條腿做不了穩健性檢定
+let parkInD = null;
 let realized = 0;            // 已實現損益
 const equity = [];           // 逐日權益(算最大回撤)
 for (let i = 0; i < days.length; i++) {
@@ -746,6 +772,21 @@ for (let i = 0; i < days.length; i++) {
     // 🏛️ 大盤環境濾網:大盤自己都在月線之下就整天不進場(⛔ 個股再強也不做)
     if (FILTER.includes('regime') && !regimeOk(i)) { continue; }
     if (FILTER.includes('bear60') && !notBear60(i)) { continue; }
+    // 🔀 停泊策略(PARK):空頭日把閒置現金放進 0050、轉非空頭就全部賣掉
+    if (PARK) {
+        const _bear = !notBear60(i);
+        const _px = parkOf ? parkOf(i) : null;
+        if (parkOf && _px > 0) {
+            if (_bear && cash > 0) { if (!parkSh) parkInD = days[i]; parkBasis += cash; parkSh += cash * (1 - PARK_COST / 200) / _px; parkBuy++; cash = 0; }
+            else if (!_bear && parkSh > 0) { const _v = parkSh * _px * (1 - PARK_COST / 200); parkPnL += _v - parkBasis; parkLog.push({ in: parkInD, out: days[i], basis: parkBasis, pnl: _v - parkBasis }); cash += _v; parkSh = 0; parkBasis = 0; parkSell++; }
+        }
+        if (_bear) {
+            parkDays++;
+            openCnt.push(live.length);
+            equity.push(cash + parkSh * (_px || 0) + live.reduce((a2, x) => a2 + (x._amt || LOT), 0));
+            continue;   // ⛔ 空頭日不開新倉(這就是「切換」本身)
+        }
+    }
     // 🏪 otcflat = 櫃買盤整那天不進場(避雷)・otcbull = 只在櫃買多頭進場
     //   ⚠️ 沒有櫃買資料的日子(2026-07-17 之後)一律放行 —— ⛔ 缺資料不可當成條件成立
     if (otcReg) {
@@ -824,7 +865,13 @@ for (let i = 0; i < days.length; i++) {
         taken.push(t); live.push(t); picked++;
     }
     openCnt.push(live.length);
-    equity.push(cash + live.reduce((a, x) => a + (x._amt || LOT), 0));   // 持倉以成本計(保守,不逐日 mark-to-market)
+    equity.push(cash + (PARK && parkOf ? parkSh * (parkOf(i) || 0) : 0) + live.reduce((a, x) => a + (x._amt || LOT), 0));   // 持倉以成本計(保守,不逐日 mark-to-market)
+}
+
+// 🔀 收尾:窗口結束時還在停泊的,用最後一天收盤結清(⛔ 不可讓它憑空消失)
+if (PARK && parkOf && parkSh > 0) {
+    const _v = parkSh * (parkOf(days.length - 1) || 0) * (1 - PARK_COST / 200);
+    parkPnL += _v - parkBasis; parkLog.push({ in: parkInD, out: days[days.length - 1], basis: parkBasis, pnl: _v - parkBasis }); cash += _v; parkSh = 0; parkBasis = 0; parkSell++;
 }
 
 if (!taken.length) { console.log('❌ 暖身後一筆都沒進場(門檻太嚴或樣本太小)'); process.exit(1); }
@@ -906,6 +953,23 @@ console.log(`   每趟平均      ${pct(taken.reduce((a, t) => a + net(t), 0) / 
 console.log(`   累積損益      ${totalPnL >= 0 ? '+' : '−'}${nf(Math.abs(totalPnL))} 元`);
 console.log(`   對本金報酬    ${pct(totalPnL / capital * 100)}  ${yrs >= 0.5 ? `(年化約 ${pct((Math.pow(1 + totalPnL / capital, 1 / yrs) - 1) * 100)})` : ''}`);
 console.log(`   📉 最大回撤    ${mdd.toFixed(2)}%  ← 中途最難熬的時候(⚠️ 這是會不會半路砍在最低點的關鍵)`);
+if (PARK) {
+    // 🚧 空過守門:設了 PARK 卻**一天都沒有進入空頭** → 輸出會跟基準一字不差,看起來像「沒差別」
+    console.log(`\n🔀 停泊策略 PARK=${PARK}(空頭日不開新倉)`);
+    console.log(`   空頭天數      ${parkDays} 天 / ${days.length - WARMUP} 個交易日(${(parkDays / Math.max(1, days.length - WARMUP) * 100).toFixed(1)}%)`);
+    if (!parkDays) console.log('   🚨 一天都沒有進入空頭 —— 這個變體沒有生效,⛔ 別把結果讀成「切換沒用」');
+    if (PARK === '0050') {
+        console.log(`   停泊進出      買 ${parkBuy} 次 / 賣 ${parkSell} 次(來回成本 ${PARK_COST}% 已扣)`);
+        console.log(`   停泊損益      ${parkPnL >= 0 ? '+' : '−'}${nf(Math.abs(parkPnL))} 元`);
+        console.log(`   🧮 打法 ${totalPnL >= 0 ? '+' : '−'}${nf(Math.abs(totalPnL))} + 停泊 ${parkPnL >= 0 ? '+' : '−'}${nf(Math.abs(parkPnL))} = **合計 ${(totalPnL + parkPnL) >= 0 ? '+' : '−'}${nf(Math.abs(totalPnL + parkPnL))} 元**`);
+        if (!parkBuy) console.log('   🚨 一次都沒有真的停泊進去 —— 請先查判斷式');
+        if (process.env.PARK_LOG === '1') {
+            console.log('   📋 每一段停泊(進場日 → 出場日 ・投入 ・損益):');
+            for (const g of parkLog) console.log(`      ${g.in} → ${g.out}  ${nf(g.basis)}  ${g.pnl >= 0 ? '+' : '−'}${nf(Math.abs(g.pnl))}`);
+        }
+    }
+    console.log(`   ⚠️ 回撤在兩臂之間**不完全可比**:既有部位以成本計、停泊那筆是逐日 mark-to-market。`);
+}
 // 🚧 空過守門:設了濾網/出場變體,卻**一次都沒有真的觸發** → 輸出會跟基準一字不差,
 //    而那看起來只是「這個變體沒差別」。⛔ 實測踩過(ma5tm5_0 用 `<` 永遠 false)。
 {
