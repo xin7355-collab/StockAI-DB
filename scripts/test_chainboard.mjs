@@ -12,11 +12,13 @@
  *
  * ⚠️ 測資的欄位格式**照真實 screener.json**(cols/rows/ind),⛔ 不憑印象編(陷阱 #40)。
  */
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const SRC = fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../pro.html'), 'utf8');
 const fail = [];
 const ok = (c, m) => { console.log((c ? '✅ ' : '❌ ') + m); if (!c) fail.push(m); };
 
@@ -255,6 +257,14 @@ ok(R.lagSame && !R.lagSame.fired && !R.lagSame.has,
 ok(R.lagNone && !R.lagNone.fired && !R.lagNone.has,
    `⑬e ⛔ 拿不到最新交易日時 ⛔ 不可亂猜(沒有基準就不下結論)`);
 
+// 🚨 V75.0.5 `_staleChip` 是**一整句話**不是短標籤 —— 用 `.sigtag` 的 nowrap 會把整頁撐橫
+//   (實測 390px 下寬 434px、溢出 55px)。⚠️ 而且它只在「快照過期 >4 天」才出現
+//   → **平常測不到,現實時間走過去才會冒出來**(這支測試就是這樣突然變紅的)。
+// ⚠️ 這支的 `ok` 是 **`ok(cond, msg)`**(⛔ 跟別支的 `ok(msg, cond)` 相反)——
+//    寫反的話 cond 永遠是非空字串 = 恆真,那條斷言會變成假綠燈(第一版就這樣溜過去,注入驗證抓到)。
+ok(/_staleChip\(d, what\)[\s\S]{0,400}?class="sigtag warn wraps"/.test(SRC)
+   && /\.sigtag\.wraps\{[^}]*white-space:\s*normal/.test(SRC),
+   '⑥d 🚨 過期提醒那句要能換行(⛔ 一整句話不可用 nowrap,實測會把整頁撐橫 55px)');
 // ⑥ 手機版面
 ok(R.scrollX <= 2, `⑥ 手機寬度整頁不可橫向捲動(scrollX=${R.scrollX})`);
 ok(R.wrapScrolls && R.wrapScrolls.sw > R.wrapScrolls.cw,
