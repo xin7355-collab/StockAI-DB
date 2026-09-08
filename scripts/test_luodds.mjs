@@ -156,8 +156,9 @@ ok('①d 換一份假成績表 → 畫面數字跟著變(⛔ 沒有寫死的第�
 
 // 教學:數字也要現算
 const help = await page.evaluate(() => {
-    let cap = ''; const bak = window.alert; window.alert = m => { cap = m; };
-    app.showLuOddsHelp(); window.alert = bak; return cap;
+    let cap = ''; const bak = window.alert, bh = app._helpBox;
+    window.alert = m => { cap = m; }; app._helpBox = m => { cap = String(m); };
+    app.showLuOddsHelp(); window.alert = bak; app._helpBox = bh; return cap;
 });
 ok('④d 教學也要寫「機率高 ≠ 賺得到」', /機率高\s*≠\s*賺得到/.test(help));
 ok('②c 教學要寫「⛔ 不可相乘」', /不可以把機率相乘/.test(help));

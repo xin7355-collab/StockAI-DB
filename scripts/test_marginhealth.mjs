@@ -69,7 +69,7 @@ ok('③ ⭐⛔ 卡片不可引用未驗證的勝率宣稱', !BAD.test(strip(x.ht
 ok('③ ⭐ 必須明說 11 年一次都沒跌破過 130%', /一次都沒有跌破 130%/.test(x.html), x.html.slice(0, 1400));
 ok('③ ⭐ 必須點出實測方向跟流行說法相反', /跟流行說法相反/.test(x.html), x.html.slice(0, 1600));
 
-const help = await page.evaluate(() => { let t = ''; const o = window.alert; window.alert = s => { t = s; }; app._showMarginHelp(); window.alert = o; return t; });
+const help = await page.evaluate(() => { let t = ''; const o = window.alert, oh = app._helpBox; window.alert = s => { t = s; }; app._helpBox = s => { t = String(s); }; app._showMarginHelp(); window.alert = o; app._helpBox = oh; return t; });
 ok('③ ⭐ 教學⛔ 不可再說「常常跟著一波反彈」當賣點', !/常常跟著一波反彈/.test(help.replace(/⛔[^\n]*/g, '')), help.slice(0, 900));
 ok('③ ⭐ 教學要給實測天數當證據', /2,821|2821/.test(help), help.slice(0, 900));
 ok('③ ⭐ 教學要說明「那條線幾乎永遠不會觸發」', /永遠不會觸發/.test(help), help.slice(0, 1200));

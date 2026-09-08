@@ -107,8 +107,9 @@ ok('⑦ 歷史 <60 天 → 位階誠實顯「累積中」', x.s.pct === null && 
 // ── ⑧ 教學文案:必須交代「我沒有照抄 100 檔」與個股版的區別 ─────────
 const help = await page.evaluate(() => {
     let cap = '';
-    const orig = window.alert; window.alert = t => { cap = t; };
-    try { app._showFloorCountHelp(); } finally { window.alert = orig; }
+    const orig = window.alert, oh = app._helpBox;
+    window.alert = t => { cap = t; }; app._helpBox = t => { cap = String(t); };
+    try { app._showFloorCountHelp(); } finally { window.alert = orig; app._helpBox = oh; }
     return cap;
 });
 ok('⑧ 教學要說明門檻改用 300(而不是他口述的 100)', /300/.test(help) && /100/.test(help), help.slice(0, 300));

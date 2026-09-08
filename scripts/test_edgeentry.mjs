@@ -44,10 +44,10 @@ const R = await page.evaluate(() => {
     out.S = app._edgeEntrySummary();
     out.t = app._edgeEntryHelpText();
     // ⑧ 教學總文案(⛔ alert 會擋住 headless → 攔截掉)
-    const realAlert = window.alert; let cap = '';
-    window.alert = s => { cap = String(s); };
+    const realAlert = window.alert, realHelp = app._helpBox; let cap = '';
+    window.alert = s => { cap = String(s); }; app._helpBox = s => { cap = String(s); };
     try { app._showEdgeHelp(); } catch (e) { cap = 'THREW:' + e.message; }
-    window.alert = realAlert;
+    window.alert = realAlert; app._helpBox = realHelp;
     out.help = cap;
     // ① 換一份**假的**成績表,文案必須跟著變(證明不是寫死的)
     const realT = app._SIGNAL_EDGE;

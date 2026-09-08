@@ -26,6 +26,10 @@ let msg = '';
 p.on('dialog', d => { msg = d.message(); d.dismiss().catch(() => {}); });
 await p.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
 await p.waitForFunction(() => typeof app !== 'undefined' && !!app._pushDiagnose, null, { timeout: 20000 });
+// 🪟 V75.0.0 起「說明類」走大視窗 `app._helpBox`(⛔ 不再是 alert)→ 攔不到 dialog。
+//   ⭐ 這支釘的是「體檢有沒有把那幾件事講出來」,⛔ 不是「用哪一種視窗講」→ 兩條路都收。
+await p.exposeFunction('__capHelp', t => { msg = String(t); });
+await p.evaluate(() => { const o = app._helpBox; app._helpBox = t => { window.__capHelp(String(t)); try { o.call(app, t); } catch (_) {} }; });
 await p.evaluate(() => { app.settings = app.settings || {}; app.settings.workerUrl = ''; });
 p.evaluate(() => app._pushDiagnose()).catch(() => {});
 await new Promise(r => setTimeout(r, 7000));

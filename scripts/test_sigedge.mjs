@@ -108,8 +108,9 @@ ok('④ ⭐ 教學必須寫明基準勝率(否則 41% 會被誤讀成輸)',
 //    「教學兩頁共用同一份,別寫兩套」那條鐵則在講的東西。已改成呼叫 _showEdgeHelp()。
 //    ⛔ 所以教學內容一律驗**共用那一份**,別再驗 render 出來的 HTML 字串。
 const helpTxt = await page.evaluate(() => {
-    let t = ''; const o = window.alert; window.alert = s => { t = s; };
-    app._showEdgeHelp(); window.alert = o; return t;
+    let t = ''; const o = window.alert, oh = app._helpBox;
+    window.alert = s => { t = s; }; app._helpBox = s => { t = String(s); };
+    app._showEdgeHelp(); window.alert = o; app._helpBox = oh; return t;
 });
 ok('④ ⭐ K線頁的教學鈕必須呼叫共用的 _showEdgeHelp(⛔ 不可再內嵌第二份文案)',
    /_showEdgeHelp\(\)/.test(html) && !/我拿 \d+ 檔股票/.test(html), html.slice(0, 600));

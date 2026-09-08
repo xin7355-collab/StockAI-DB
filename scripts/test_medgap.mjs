@@ -105,7 +105,7 @@ ok('⑧ 盤中有快照但拿不到大盤漲跌 → null(⛔ 不拿收盤 idx �
 
 // ── ⑨ ⭐⛔ 不可宣稱台積電權重 / 不可下買賣方向 ──────────────────
 x = await run({ live: mkLive([...Array(300).fill(-2), ...Array(300).fill(0)]), taiex: 1.5 });
-const help = await page.evaluate(() => { let t = ''; const o = window.alert; window.alert = s => { t = s; }; app._showMedGapHelp(); window.alert = o; return t; });
+const help = await page.evaluate(() => { let t = ''; const o = window.alert, oh = app._helpBox; window.alert = s => { t = s; }; app._helpBox = s => { t = String(s); }; app._showMedGapHelp(); window.alert = o; app._helpBox = oh; return t; });
 // ⚠️ 兩句正確的免責寫法本身就含被禁的字串 → 比對前一律先拿掉否定形
 //    ①「沒有去推估台積電的官方權重」含「權重」 ②「不是買賣訊號」含「賣訊」
 //    (第 6 次踩同一個坑,已寫進 CLAUDE.md;⛔ 別把 BAD 放寬成不檢查)

@@ -22,7 +22,9 @@ const SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : `  ${String(e).slice(0, 240)}`}`); if (!c) fails++; };
 
-const h2 = (SRC.match(/<h2 onclick="alert\('💼 庫存股怎麼用[\s\S]*?<\/h2>/) || [''])[0];
+// 🪟 V75.0.0 起 onclick 的教學改走 `app._helpBox(`(⛔ 不再是 `alert(`)——
+//   ⭐ 兩種都吃,釘的是「鈕在庫存標題列的哪個位置」⛔ 不是「教學用哪一支函式開」。
+const h2 = (SRC.match(/<h2 onclick="(?:app\._helpBox|alert)\('💼 庫存股怎麼用[\s\S]*?<\/h2>/) || [''])[0];
 ok('① 鈕在庫存股標題列裡', /tradeMirrorBtnSlot/.test(h2), h2.slice(0, 120));
 ok('①b ⭐ 就在「📖 點看說明」**右邊**',
     h2.indexOf('📖 點看說明') > 0 && h2.indexOf('tradeMirrorBtnSlot') > h2.indexOf('📖 點看說明'));

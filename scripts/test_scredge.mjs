@@ -93,8 +93,9 @@ ok('②e ⛔ 總結不可下操作指令',
 
 // ── ③⑦ 教學 ────────────────────────────────────────────────
 const help = await page.evaluate(() => {
-    let cap = ''; const bak = window.alert; window.alert = m => { cap = m; };
-    app.showScrEdgeHelp(); window.alert = bak; return cap;
+    let cap = ''; const bak = window.alert, bh = app._helpBox;
+    window.alert = m => { cap = m; }; app._helpBox = m => { cap = String(m); };
+    app.showScrEdgeHelp(); window.alert = bak; app._helpBox = bh; return cap;
 });
 ok('⑧c 🚧 空過守門:教學真的有內容', help.length > 500, String(help).slice(0, 100));
 ok('③a 🚨 教學必須寫出對照組的實際數字(⛔ 不可只說「跟平常比」)',

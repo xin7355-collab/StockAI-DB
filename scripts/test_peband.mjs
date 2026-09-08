@@ -76,8 +76,9 @@ ok('① DOM 格子存在', await page.evaluate(() => !!document.getElementById('
 // ④ ⛔ 說明裡不可下買賣指令,而且必須寫出限制
 {
     const help = await page.evaluate(() => {
-        let t = ''; const o = window.alert; window.alert = s => { t = s; };
-        app.currentSymbolId = '2330'; app._showPeBandHelp(); window.alert = o; return t;
+        let t = ''; const o = window.alert, oh = app._helpBox;
+        window.alert = s => { t = s; }; app._helpBox = s => { t = String(s); };
+        app.currentSymbolId = '2330'; app._showPeBandHelp(); window.alert = o; app._helpBox = oh; return t;
     });
     // ⚠️ 免責句本身含被禁的字 → 先 strip 掉否定形(這個坑本專案踩過 6 次)
     const st = help.replace(/⛔[^\n]*/g, '').replace(/別[^\n。]*/g, '').replace(/不[是可要能代][^\n。]*/g, '');
