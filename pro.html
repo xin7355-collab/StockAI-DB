@@ -335,6 +335,18 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
   background:rgba(5,20,36,.72);padding:5px 8px;border-radius:6px;pointer-events:none}
 .fishwrap.list{display:none}
 .fishcard{border:1px solid var(--cyan);border-radius:11px;padding:10px 12px;margin:0 0 10px;background:rgba(34,211,238,.06)}
+/* 🧺 V75.1.0 漁獲籃改「一行一張卡」——⛔ 不用 table:11 欄在 390px 手機上會把最重要的
+   「贏大盤」整欄切到畫面外(使用者截圖),而那正是「這條魚有沒有用」的那一欄。
+   ⭐ CLAUDE.md 既有鐵則:手機上的資料列,欄位 ≥3 個就別用 table。 */
+.bkrow{border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin:0 0 7px;background:var(--bg2)}
+.bkrow.done{border-left:3px solid var(--dim2)}
+.bkrow.hold{border-left:3px solid var(--cyan)}
+.bkhd{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;font-weight:800}
+.bkpx{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:5px;font-size:12px}
+.bkpx .pct{font-size:19px;font-weight:900;font-variant-numeric:tabular-nums}
+.bkvs{margin-top:4px;font-size:11.5px;color:var(--dim);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.bkvs b{font-size:13px}
+.bkft{margin-top:4px;font-size:10.5px;color:var(--dim2);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .fishcard .big{font-size:16px;font-weight:900}
 .fishcard .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px 10px;margin:8px 0;font-size:12px}
 .fishcard .kv b{display:block;font-size:10px;color:var(--dim2);font-weight:700}
@@ -2219,9 +2231,13 @@ const PRO = {
   _exitRule() {
     try {
       const st = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}');
-      const k = String(st.exitRule || 'atr2');
-      return this._EXIT_NAMES[k] ? k : 'atr2';
-    } catch (_) { return 'atr2'; }
+      // 🔁 V75.0.9:預設跟 index.html 的 `_exitRuleKey()` 一致(唐奇安 20 日低)
+      //   ⛔ 這是**同一個設定的第三份實作**(index.html / auto_trade.py / 這裡)——
+      //      改任何一邊都要三邊一起改,否則使用者沒去設定中心點過的話,
+      //      兩邊會用不同的出場規則,而畫面上完全看不出來(陷阱 #37)。
+      const k = String(st.exitRule || 'don');
+      return this._EXIT_NAMES[k] ? k : 'don';
+    } catch (_) { return 'don'; }
   },
   _exitRuleName() { return this._EXIT_NAMES[this._exitRule()]; },
   async _exitLevels(sym) {
@@ -2327,13 +2343,54 @@ const PRO = {
   //    ⭐ 只顯示先挑到的那一條,等於用版面暗示一個不存在的強弱 → 一律把兩條都列出來 + 明說沒有順序。
   _castPicksBarHtml(sym) {
     const R = this._cast, ps = (R && R.picked) || [];
-    if (ps.length < 2 || !ps.some(x => x.sym === sym)) return '';
+    if (!ps.length || !ps.some(x => x.sym === sym)) return '';
+    // ⚠️ 只上鉤 1 條時「沒有強弱之分」那段不用講(沒有第二條可比),
+    //   ⛔ 但「怎麼老是同幾條」那段仍要出現 —— 那正是只上鉤 1 條時最容易發生的事。
+    if (ps.length < 2) return this._castStickyHtml(ps);
     return `<div class="note" style="margin:0 0 8px">🎣 今天拋竿上鉤 <b>${ps.length}</b> 條(點下面切換):
       ${ps.map(x => `<span class="sigtag" style="cursor:pointer${x.sym === sym ? ';border-color:var(--amber);color:var(--amber)' : ''}"
           onclick="PRO._fishPick('${x.sym}')">${this._nmTxt(x.sym)}${x.tier === 2 ? ' 🥈' : ''}</span>`).join(' ')}
       <br>⛔ <b>它們之間沒有強弱之分</b> —— 這個順序只是照「近 20 日漲幅」排的,
       而回測證明<b>這套漏斗連排序都沒有優勢</b>(相對只用 🧬 −1.44pp)。
-      <b>先出現的那一條 ⛔ 不代表比較強</b>,兩條都只是候選。</div>`;
+      <b>先出現的那一條 ⛔ 不代表比較強</b>,兩條都只是候選。</div>
+      ${this._castStickyHtml(ps)}`;
+  },
+
+  // 🔁 V75.1.0 使用者:「已經好幾天釣魚都是一樣魚,這是對的嗎?」
+  //   ⭐ 先量再答(⛔ 不憑感覺回「不會啦」)—— `cast_probe.mjs` 加了 STICKY 段,
+  //      769 個交易日重放同一套漏斗:
+  //        隔 1 天 54.7% 跟上次一樣、41.7% 的日子**完全沒換**
+  //        一條魚連續上榜:中位 **1 天**、第75百分位 2 天、最長 23 天
+  //        最近 5 天總共只出現 3.8 檔不同的(上限 10)、10 天 6.2 檔、20 天 10.6 檔
+  //   ⭐⭐ 真因是**設計的必然**:漏斗四層(一年位階 / 20 日振幅 / 20 日板塊動能 / 板塊內 20 日最強)
+  //      **全部是 20 日以上的窗口** → 它們一天只換掉窗口頭尾各一天,本來就不會天天翻盤。
+  //   ⛔ **不可為了「看起來新鮮」硬換一批** —— 那是用隨機性冒充多樣性(同 V73.8.7 的定調)。
+  //   🚨 但有一件事必須講:**回測是「同一檔 20 個交易日內只算一次」** →
+  //      連續幾天都買同一檔**不在回測涵蓋範圍內**,⛔ 不可拿那份成績替它背書。
+  _CAST_STICKY: { days: 769, lag1: 54.7, same1: 41.7, runMed: 1, runP75: 2, runMax: 23, u5: 3.8, u10: 6.2, u20: 10.6, dedup: 20 },
+  _castStickyHtml(ps) {
+    const K = this._CAST_STICKY;
+    // 🧺 你已經釣過的那幾條(⛔ 這是最實際的一件事:拋竿本身不知道你已經有了)
+    const cau = new Map(this._catchLoad().map(x => [x.sym, x.d]));
+    const dup = ps.filter(x => cau.has(x.sym));
+    const ago = sy => { const d = this._fishD && this._fishD.date; const n = d ? this._daysBetween(cau.get(sy), d) : null;
+                        return n == null ? '' : (n === 0 ? '今天' : `${n} 天前`); };
+    return `<details class="note" style="margin:0 0 8px">
+      <summary style="cursor:pointer">🔁 <b>怎麼好幾天都是同幾條?</b>(實測:一半的日子確實不會換)</summary>
+      <div style="margin-top:5px">
+        ${dup.length ? `<div style="color:var(--amber);font-weight:700;margin-bottom:4px">🧺 這次上鉤的
+          ${dup.map(x => `<b>${this._nmTxt(x.sym)}</b>(${ago(x.sym)}釣過)`).join('、')}
+          <b>你已經在漁獲籃裡了</b>。</div>` : ''}
+        📊 同一套漏斗重放 <b>${K.days}</b> 個交易日:隔 1 天有 <b>${K.lag1}%</b> 跟上次一樣、
+        <b>${K.same1}% 的日子完全沒換</b>;一條魚連續上榜<b>中位 ${K.runMed} 天</b>(最長 ${K.runMax} 天);
+        最近 5 天總共只出現 <b>${K.u5}</b> 檔不同的(上限 ${this.CAST_MAX * 5})。<br>
+        ⭐ <b>這是設計的必然,⛔ 不是壞掉</b>:四層條件(一年位階 / 20 日振幅 / 20 日板塊動能 / 板塊內 20 日最強)
+        <b>全部是 20 日以上的窗口</b> —— 它們一天只換掉窗口頭尾各一天,本來就不會天天翻盤。
+        ⛔ 而且<b>不會為了「看起來新鮮」硬換一批</b>:那是用隨機性冒充多樣性。<br>
+        🚨 <b>但有一件事要講清楚</b>:回測是<b>「同一檔 ${K.dedup} 個交易日內只算一次」</b> ——
+        <b>連續幾天一直買同一檔,⛔ 不在那份回測涵蓋的範圍內</b>,別拿它的成績替重複押注背書。
+        同一檔已經有部位就<b>看那個部位的出場規則</b>,⛔ 不是再買一次。
+      </div></details>`;
   },
 
   _fishPoolK: 'amt', _fishModeV: 'tank', _fish: [], _fishRaf: 0, _fishPick0: null,
@@ -2898,7 +2955,7 @@ const PRO = {
         ${enough ? '' : `⚠️ <b>只有 ${n} 筆,⛔ 還不能當結論</b>(全站規則:樣本 <10 筆不下判斷)。<br>`}
         🧾 <b>怎麼算的</b>:進場 = 釣起那天的收盤;停損 = <b>min(釣起日最低, 釣起價 −5%)</b>;
         收盤跌破<b>${this._exitRuleName()}</b>就走,最長 20 個交易日 ——
-        ⭐ 跟「📖 回測計算機」那份**一字不差**(改出場規則這裡會全部重算)。
+        ⭐ 跟「📖 回測計算機」那份<b>一字不差</b>(改出場規則這裡會全部重算)。
         每趟已扣<b>來回成本 0.44%</b>,「超額」再扣<b>同期加權指數</b>。<br>
         🚨 <b>這是紙上成績,⛔ 不是你的實際損益</b>:回測的進場是訊號日<b>尾盤 13:00~13:28</b>,
         這裡用的是<b>收盤價</b>,而且沒有滑價。要記真的成交價請用散戶救星的「🪞 勝率鏡子」。<br>
@@ -2971,35 +3028,62 @@ const PRO = {
       const ex = pct !== null && bench !== null ? pct - bench : null;
       return { ...x, c, pct, lot, days, bench, ex, st: this._stlOf(x) };
     });
-    const tot = rows.reduce((a, r) => a + (Number.isFinite(r.lot) ? r.lot : 0), 0);
-    const win = rows.filter(r => r.pct > 0).length, n = rows.filter(r => Number.isFinite(r.pct)).length;
-    // 🆚 贏大盤幾條 + 超額中位數(⚠️ 樣本 <10 一律不下結論,跟全站同一條規則 _wrEnough)
-    const exs = rows.map(r => r.ex).filter(Number.isFinite).sort((a, b) => a - b);
+    // 🚨 V75.1.0 使用者:「不好清楚看到現在比較起來賺賠多少」—— 查下去是**三件事**:
+    //   ① 已結算的那幾條,原本還在用**今天的價**算浮動 → 出場之後那個數字就不該再動
+    //   ② 頂端「一張合計」與成績單「一張合計」**同名不同義**(浮動 vs 已實現),兩個數字對不起來
+    //   ③ 11 欄的 table 在 390px 手機上把「贏大盤」整欄切到畫面外(那是最重要的一欄)
+    //   ⛔ 三個都要修,只修其中一個仍然看不清楚。
+    //   ⭐ 已結算的一律用**結算價**(st.exitP / st.net / st.ex),持有中的才用現價算浮動。
+    const hold = rows.filter(r => !r.st || r.st.open);
+    const done = rows.filter(r => r.st && !r.st.open);
+    const sum = (a, f) => a.reduce((t, r) => { const v = f(r); return t + (Number.isFinite(v) ? v : 0); }, 0);
+    const totOpen = sum(hold, r => r.lot);                       // 📌 帳面浮動(還沒出場)
+    const totDone = sum(done, r => r.st.lot);                    // 🧾 已實現(出場了)
+    const win = hold.filter(r => r.pct > 0).length, n = hold.filter(r => Number.isFinite(r.pct)).length;
+    // 🆚 贏大盤(⛔ 持有中用浮動、已結算用結算後的,兩種不可混在同一個平均裡 → 這裡只算持有中)
+    const exs = hold.map(r => r.ex).filter(Number.isFinite).sort((a, b) => a - b);
     const exMed = exs.length ? (exs.length % 2 ? exs[(exs.length - 1) / 2] : (exs[exs.length / 2 - 1] + exs[exs.length / 2]) / 2) : null;
-    const exWin = rows.filter(r => r.ex > 0).length;
+    const exWin = hold.filter(r => r.ex > 0).length;
+    const money = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString() + ' 元';
+    // 🐟 一行一張卡(⛔ 不用 table,理由見 .bkrow 的註解)
+    const rowHtml = r => {
+      const st = r.st, fin = st && !st.open;
+      // ⭐ 已結算 → 一律用結算價;持有中 → 用現價
+      const pct = fin ? st.net : r.pct, lot = fin ? st.lot : r.lot, ex = fin ? st.ex : r.ex;
+      const bench = fin ? st.bench : r.bench, px1 = fin ? st.exitP : r.c, days = fin ? st.days : r.days;
+      const live = !fin && this._lqPx(r.sym) !== null;
+      return `<div class="bkrow ${fin ? 'done' : 'hold'}">
+        <div class="bkhd">${this._nmc(r.sym, `PRO._fishPick('${r.sym}')`)}
+          ${fin ? `<span class="sigtag">🧾 已結算・${st.why}</span>`
+                : `<span class="sigtag good">📌 持有中</span>`}
+          <button class="lbtn" style="margin-left:auto;padding:2px 8px" onclick="PRO._fishRelease('${r.sym}')" title="放生(從籃子移除)">🐟↩</button></div>
+        <div class="bkpx">
+          <span class="mono" style="color:var(--dim)">${(r.d || '').slice(5)} ${fin ? st.entry : r.px}</span>
+          <span style="color:var(--dim2)">→</span>
+          <span class="mono">${px1 == null ? '—' : px1}${live ? '<span title="盤中即時快照" style="font-size:9px;color:var(--cyan)"> 📡</span>' : ''}</span>
+          <span class="pct mono ${this.cls(pct)}">${pct == null ? '—' : this.fmt(pct, 2, true) + '%'}</span>
+          <span class="mono ${this.cls(lot)}" style="margin-left:auto">一張 ${lot == null ? '—' : money(lot)}</span></div>
+        <div class="bkvs">🆚 同期大盤 <span class="mono ${this.cls(bench)}">${bench == null ? '—' : this.fmt(bench, 2, true) + '%'}</span>
+          <span style="color:var(--dim2)">→</span>
+          <b class="mono ${this.cls(ex)}">贏大盤 ${ex == null ? '—' : this.fmt(ex, 2, true) + 'pp'}</b></div>
+        <div class="bkft">${days == null ? '' : `抱 ${days} 個交易日`}
+          ${!st ? '<span title="讀不到這一檔的 K 線">⏳ 還沒結算(讀不到 K 線)</span>'
+                : fin ? `<span>出場價已定,⛔ 這個數字不會再變</span>`
+                      : `<span>還沒觸發出場 —— 上面是<b>帳面浮動</b>,會一直變</span>`}</div></div>`;
+    };
     el.innerHTML = `<div class="fishcard" style="border-color:var(--amber);background:rgba(245,185,66,.05)">
       <div class="big">🧺 漁獲籃 <span class="sigtag">${list.length} 條</span>
-        <span class="sigtag">${n ? `${win}/${n} 條在賺` : '—'}</span>
-        <span class="sigtag mono ${tot > 0 ? 'good' : tot < 0 ? 'warn' : ''}">一張合計 ${tot >= 0 ? '+' : ''}${Math.round(tot).toLocaleString()} 元</span>
-        ${exs.length ? `<span class="sigtag mono">贏大盤 ${exWin}/${exs.length} ・超額中位 ${exMed >= 0 ? '+' : ''}${exMed.toFixed(1)}pp</span>` : ''}
         <button class="lbtn" style="margin-left:auto" onclick="PRO._fishClearCatch()">🗑 清空</button></div>
-      <div style="overflow-x:auto"><table class="startbl">
-        <tr><th style="text-align:left">股票</th><th>釣起日</th><th>釣起價</th><th>現價</th><th>賺賠</th><th title="同期加權指數的漲跌">大盤</th><th title="賺賠 − 大盤:這才是「這條魚有沒有用」">贏大盤</th><th>一張(元)</th><th>天數</th><th title="釣起之後,規則觸發就自動結算(⛔ 跟回測同一條)">🧾 結算</th><th></th></tr>
-        ${rows.map(r => `<tr>
-          <td class="l">${this._nmc(r.sym, `PRO._fishPick('${r.sym}')`)}</td>
-          <td class="mono">${(r.d || '').slice(5)}</td><td class="mono">${r.px}</td>
-          <td class="mono">${r.c === null ? '<span title="今天的選股快照裡沒有這檔">—</span>'
-            : (this._lqPx(r.sym) !== null ? `${r.c}<span title="即時報價快照" style="font-size:9px;color:var(--cyan)"> 📡</span>` : r.c)}</td>
-          <td class="mono ${this.cls(r.pct)}">${r.pct === null ? '—' : this.fmt(r.pct, 2, true) + '%'}</td>
-          <td class="mono ${this.cls(r.bench)}">${r.bench === null ? '—' : this.fmt(r.bench, 2, true) + '%'}</td>
-          <td class="mono ${this.cls(r.ex)}"><b>${r.ex === null ? '—' : this.fmt(r.ex, 2, true) + 'pp'}</b></td>
-          <td class="mono ${this.cls(r.lot)}">${r.lot === null ? '—' : (r.lot >= 0 ? '+' : '') + Math.round(r.lot).toLocaleString()}</td>
-          <td class="mono">${r.days === null ? '—' : r.days}</td>
-          <td class="mono">${!r.st ? '<span title="讀不到這一檔的 K 線">⏳</span>'
-            : r.st.open ? `<span title="還沒觸發出場,持有第 ${r.st.days} 個交易日">持有中</span>`
-            : `<b class="${this.cls(r.st.net)}">${this.fmt(r.st.net, 2, true)}%</b><br><span style="color:var(--dim2);font-size:10px">${r.st.why}・${r.st.days}天</span>`}</td>
-          <td><button class="lbtn" onclick="PRO._fishRelease('${r.sym}')" title="放生(從籃子移除)">🐟↩</button></td></tr>`).join('')}
-      </table></div>
+      <div class="kv" style="margin:8px 0 4px">
+        <div><b>📌 持有中(帳面浮動)</b><span class="mono ${this.cls(totOpen)}">${hold.length ? `${money(totOpen)} ・${hold.length} 條` : '—'}</span></div>
+        <div><b>🧾 已結算(已實現)</b><span class="mono ${this.cls(totDone)}">${done.length ? `${money(totDone)} ・${done.length} 筆` : '—'}</span></div>
+        <div><b>💰 兩個加起來</b><span class="mono ${this.cls(totOpen + totDone)}"><b>${money(totOpen + totDone)}</b></span></div>
+        <div><b>持有中在賺幾條</b><span class="mono">${n ? `${win}/${n}` : '—'}${exs.length ? ` ・贏大盤 ${exWin}/${exs.length}` : ''}</span></div>
+      </div>
+      <div class="note" style="margin:0 0 8px;font-size:10.5px">⚠️ 這三個數字<b>意思不一樣</b>:「持有中」還會跟著股價變,「已結算」<b>是定了的</b>。
+        ⛔ 別把它們當成同一件事 —— 下面成績單只算<b>已結算</b>那幾筆。${exs.length ? `超額中位(持有中)${exMed >= 0 ? '+' : ''}${exMed.toFixed(1)}pp。` : ''}</div>
+      ${hold.length ? `<div style="font-size:11px;color:var(--dim2);font-weight:700;margin:2px 0 5px">📌 持有中 ${hold.length} 條</div>${hold.map(rowHtml).join('')}` : ''}
+      ${done.length ? `<div style="font-size:11px;color:var(--dim2);font-weight:700;margin:8px 0 5px">🧾 已結算 ${done.length} 筆(數字不會再變)</div>${done.map(rowHtml).join('')}` : ''}
       ${this._stlCard(rows)}
       <div class="note" style="margin-top:6px">「一張(元)」= (現價 − 釣起價)× 1,000,<b>毛損益、還沒扣手續費與證交稅</b>(來回約 0.44%)。
         釣起價是那天的收盤,不是你真的成交的價;這是你自己的紀錄,⛔ 不是本站推薦、也不是進出場指令。
@@ -4020,10 +4104,16 @@ const PRO = {
   },
 
   // 🔍 命中高亮(⚠️ 內文含 HTML → ⛔ 只在**標籤外**的文字上加 mark,不然會破壞標記)
+  //  🐛 V75.1.0 順手修:實測總表的條目是手寫的,裡面混著 markdown 粗體 `**x**` ——
+  //     template literal **不會**幫你轉,所以那兩顆星是**原樣印給使用者看的**
+  //     (實測攤開的畫面上就有 20+ 處)。⭐ 在這個**唯一的**顯示入口轉掉,
+  //     ⛔ 不去改那 20+ 條資料字串(那會打到一堆釘住字串的測試,而且下次寫錯還是會再犯)。
+  //     ⚠️ 樣式刻意不吃跨標籤的 `**`(`[^*<>]`)—— ⛔ 免得把 HTML 標記切壞。
   _labHi(html, q) {
-    if (!q) return html;
+    let t = String(html == null ? '' : html).replace(/\*\*([^*<>]{1,80})\*\*/g, '<b>$1</b>');
+    if (!q) return t;
     const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-    return String(html).split(/(<[^>]*>)/).map(p => p.startsWith('<') ? p : p.replace(re, m => `<mark>${m}</mark>`)).join('');
+    return t.split(/(<[^>]*>)/).map(p => p.startsWith('<') ? p : p.replace(re, m => `<mark>${m}</mark>`)).join('');
   },
 
   labSearch(v) {
@@ -4236,7 +4326,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V75.0.9',
+  VER: 'V75.1.0',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.1.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.0.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.1.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7950,8 +7950,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.0.9',
+    _APP_VERSION: 'V75.1.0',
     _CHANGELOG: [
+        { v: 'V75.1.0', dt: '2026-09-08', d: ['🧺 <b>漁獲籃改版:現在一眼看得出「賺賠多少」</b>(產業作戰室 → 釣魚池)。以前 11 欄的表格在手機上會把<b>最右邊的「贏大盤」整欄切到畫面外</b> —— 而那正是「這條魚有沒有用」的那一欄。現在改成<b>一行一張卡</b>,每一條都看得到「釣起價 → 現價 ・賺賠% ・一張幾元 ・贏大盤幾 pp」。','🚨 <b>已經出場的那幾條,數字不會再跟著今天的股價亂跑</b>。以前結算完了還在用今天的價算浮動;現在一律用<b>出場價</b>,而且分成「📌 持有中」與「🧾 已結算」兩區。','🚨 <b>兩個「一張合計」意思不一樣,現在分開叫了</b>:上面是<b>帳面浮動</b>(還會變)、下面成績單是<b>已實現</b>(定了的),再給一個「兩個加起來」。以前兩個都叫「一張合計」,數字對不起來。','🔁 <b>你問「好幾天都是同幾條,這是對的嗎?」—— 量了 769 個交易日:是正常的</b>。隔 1 天有 <b>54.7%</b> 跟上次一樣、<b>41.7% 的日子完全沒換</b>;一條魚連續上榜中位 1 天(最長 23 天)。真因是漏斗四層(一年位階 / 20 日振幅 / 20 日板塊動能 / 板塊內 20 日最強)<b>全部是 20 日以上的窗口</b>,本來就不會天天翻盤。⛔ 也不會為了「看起來新鮮」硬換一批。','🚨 <b>但有一件事要講清楚</b>:回測是「<b>同一檔 20 個交易日內只算一次</b>」→ <b>連續幾天一直買同一檔,不在那份回測涵蓋的範圍內</b>。同一檔已經有部位就看那個部位的出場規則,⛔ 不是再買一次。拋竿現在也會直接標出「這條你 N 天前已經釣過了」。','🐛 順手修兩個:① <b>產業作戰室的出場規則預設沒跟著換</b>(V75.0.9 只換了散戶救星與自動下單,漏了這裡)→ 兩邊會用不同規則而畫面看不出來,已修。② 實測總表有 20 幾處把 <code>**粗體**</code> 的星號原樣印出來,已修。'] },
         { v: 'V75.0.9', dt: '2026-09-08', d: ['🔁 <b>你說「測出更好的就直接換,不要等我發現」—— 這一版把規則訂下來,而且第一項當場換了</b>:預設出場從「ATR 追蹤」改成「<b>唐奇安 20 日低點</b>」(同一套打法、同一段 49 個月只換這一條:531 萬 → <b>590 萬</b>)。⚠️ <b>代價</b>:中途最多賠從 −20.0% 變成 −25.2%。','🪟 <b>以後策略預設值一換,開 App 會跳一次窗告訴你</b> —— 寫清楚「原本是什麼 / 現在是什麼 / 為什麼換(數字)/ 代價 / 對你的影響」,而且有一顆<b>「換回舊的」</b>。<b>按了「知道了」才不再跳</b>。⛔ 一般功能更新照舊<b>不跳窗</b>(那是你之前要求關掉的)。','🚨 <b>順手發現決策台在低估自己</b>:那三個數字是用<b>舊出場</b>跑的。重跑之後 —— 🧬 <b>589.8 萬</b>、不挑 🧬 308.1 萬、0050 買了放著 264.1 萬 → <b>舊的「兩種都輸 0050」在新預設下不成立了</b>。','⭐⭐ 但真正的意思是:<b>贏不贏大盤取決於「出場」,不是「選股」</b> —— 選股一模一樣,只是太早出場會把贏家洗掉。⚠️ 這個「贏」要打折:那段期間加權指數自己就漲 208%(偏多頭)、倖存者偏誤、勝率只有三成、中途最多賠 25%。','🛠️ 順手修三個:自動下單沒設「帳戶總資金」時會<b>印警告</b>(以前會默默每筆買 1 張,跟 App 算的不一樣);尾盤推播的「最多 2 檔」不再寫死;兩處把進場時窗寫成 13:25 的文案改回 <b>13:28</b>。'] },
         { v: 'V75.0.8', dt: '2026-09-08', d: ['🔀 你問的「多頭做這套、空頭改抱 0050」測完了 —— <b>切換多賺 31 萬,但三道穩健性檢定全滅,而且還是輸 0050</b>,結論寫在決策台的揭露區。','🚨 關鍵在細節:唯一一次真正的長空頭(2022 那 53 天)停泊 0050 <b>是賠的</b>;七成的「賺」來自 ≤4 個交易日的短線來回。','💰 除權息也第一次回測了(8,609 次):「除息當天買」沒有優勢、「除息前先買一段」量不出來;抱過除息賺的是<b>股利本身</b>,價格那一面是貼息的(而且還沒扣稅)。'] },
         { v: 'V75.0.8', dt: '2026-09-08', d: ['⚖️ 總覽主卡下面多一行「這一頁有幾個系統在講方向」:幾個偏多、幾個偏空,而且標出哪幾個真的有實測數字。','🚨 打架時⛔ 不投票、不平均,一律以上面那張主卡為準。','🧭 第一次回測「主結論趨勢」那條規則(228 萬筆),結果與限制都寫在卡上與產業作戰室的實測總表。'] },

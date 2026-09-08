@@ -42,6 +42,7 @@ const MIN_MEMB = 5;          // 板塊當天至少幾檔算得出來
 const MIN_AMT = 1e8;         // 🚧 成交額 ≥ 1 億(pro.html CAST_MIN_AMT,⛔ 改一邊要改兩邊)
 const POS_MIN = 75, AMP_MIN = 3.2;   // 🧬(pro.html _castPick,⛔ 同上)
 const CAST_MAX = 2;          // 一天最多幾條(V73.0.0)
+const STICKY = [];           // 🔁 每天挑到誰(給「怎麼老是同幾條」那一題用)
 
 // ── 大盤 ──
 const twii = JSON.parse(fs.readFileSync(path.join(DATA, '^TWII.json'), 'utf8')).filter(r => r && r.close > 0);
@@ -192,13 +193,17 @@ for (let di = 0; di < days.length - 21; di++) {
   const geneInHot = pool.filter(x => x.pos >= POS_MIN && x.amp >= AMP_MIN && x.amt >= MIN_AMT)
                         .sort((a, b) => b.r20 - a.r20);
   const usedInd = new Set(); let got = 0;
+  const _todayPicks = [];
   for (const x of geneInHot) {
     const g = indOf[x.sym];
     if (usedInd.has(g)) continue;                            // ⛔ 兩條不押同一族
     usedInd.add(g);
     emit('🎣 拋竿(完整漏斗)', x);
+    _todayPicks.push(x.sym);
     if (++got >= CAST_MAX) break;
   }
+  // 🔁 使用者:「已經好幾天釣魚都是一樣魚,這是對的嗎?」→ 記下每天挑到誰,收尾算重疊率
+  STICKY.push({ d: D, syms: _todayPicks });
   // 🔬 拆解:少一關會差多少(⛔ 這才知道哪一層真的在做事)
   {
     const noSector = geneAll.slice().sort((a, b) => b.r20 - a.r20).slice(0, CAST_MAX);
@@ -210,6 +215,42 @@ for (let di = 0; di < days.length - 21; di++) {
     const u3 = new Set(); let g3 = 0;
     for (const x of noLiq) { const g = indOf[x.sym]; if (u3.has(g)) continue; u3.add(g); emit('🔬 少了買得到那一關', x); if (++g3 >= CAST_MAX) break; }
   }
+}
+
+// ── 🔁 「怎麼老是同幾條?」——(⛔ 先量再答,別憑感覺回「不會啦」)
+{
+  STICKY.sort((a, b) => a.d < b.d ? -1 : 1);
+  const days = STICKY.filter(x => x.syms.length);
+  console.log(`\n🔁 拋竿名單的「換不換」(${days.length} 個交易日,每天最多 ${CAST_MAX} 條)`);
+  for (const lag of [1, 2, 3, 5, 10, 20]) {
+    let pair = 0, same = 0, both = 0;
+    for (let i = lag; i < days.length; i++) {
+      const A = new Set(days[i - lag].syms), B = days[i].syms;
+      if (!A.size || !B.length) continue;
+      pair++; const hit = B.filter(x => A.has(x)).length;
+      same += hit / B.length; if (hit === B.length) both++;
+    }
+    if (pair) console.log(`   隔 ${String(lag).padStart(2)} 天:平均 ${(same / pair * 100).toFixed(1)}% 跟上次一樣 ・完全沒換的日子 ${(both / pair * 100).toFixed(1)}%`);
+  }
+  // 連續上榜天數分布(⭐ 這一項最直觀:一條魚平均會連續出現幾天)
+  const run = new Map(), runs = [];
+  for (let i = 0; i < days.length; i++) {
+    const cur = new Set(days[i].syms);
+    for (const [sy, n] of [...run]) if (!cur.has(sy)) { runs.push(n); run.delete(sy); }
+    for (const sy of cur) run.set(sy, (run.get(sy) || 0) + 1);
+  }
+  for (const n of run.values()) runs.push(n);
+  runs.sort((a, b) => a - b);
+  const q = p => runs.length ? runs[Math.min(runs.length - 1, Math.floor(runs.length * p))] : 0;
+  console.log(`   一條魚連續上榜天數:中位 ${q(0.5)} 天 ・第75百分位 ${q(0.75)} 天 ・最長 ${runs[runs.length - 1] || 0} 天 ・共 ${runs.length} 段`);
+  // 過去 N 天總共出現過幾檔不同的
+  for (const w of [5, 10, 20]) {
+    let sum = 0, k = 0;
+    for (let i = w - 1; i < days.length; i++) { const S2 = new Set(); for (let j = i - w + 1; j <= i; j++) days[j].syms.forEach(x => S2.add(x)); sum += S2.size; k++; }
+    if (k) console.log(`   最近 ${String(w).padStart(2)} 天總共出現過 ${(sum / k).toFixed(1)} 檔不同的(理論上限 ${w * CAST_MAX})`);
+  }
+  // 🆚 對照組:同樣一天挑 2 條,但改成「全市場 20 日最強」(⛔ 沒有任何篩選)—— 它換不換?
+  console.log(`   ⚠️ 這個數字要跟「一條魚本來就會強一陣子」比,⛔ 不是跟 0% 比。`);
 }
 
 // ── 統計 ──

@@ -22,6 +22,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const fails = [];
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : `  ${String(e).slice(0, 300)}`}`); if (!c) fails.push(n); };
 const src = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
+const PROSRC = src;   // 🧾 V75.1.0 新增那幾組用的別名(⛔ 不重讀一次檔)
 const SCR = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/fixtures/screener.sample.json'), 'utf8'));
 const COR = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/fixtures/top_correlations.sample.json'), 'utf8'));
 // 🏅 實測成績表:直接用真的產物(它本來就是從 index.html 匯出的資料,不是測資)
@@ -527,7 +528,7 @@ ok('🧺⑯d 放生 → 籃子空、localStorage 也清掉', /漁獲籃是空的
 ok('🧺⑯e 半截 JSON 不會炸,而且壞值被清掉(陷阱 #18)', Array.isArray(R.badLoad) && R.badLoad.length === 0 && R.badCleared);
 // ═══ 🧾 V74.6.7 漁獲自動結算(使用者:「釣起來之後觸發到出場直接結算…這才知道這個策略是不是有用的」)═══
 ok('🧾㉒ 觸發出場 → 自動結算,而且數字跟回測一字不差(+5.56% ・跌破 5 日線 ・6 天)',
-   /\+5\.56%/.test(R.stlWin) && /跌破 5 日線/.test(R.stlWin) && /6天/.test(R.stlWin),
+   /\+5\.56%/.test(R.stlWin) && /跌破 5 日線/.test(R.stlWin) && /(6天|抱 6 個交易日)/.test(R.stlWin),
    (R.stlWin.match(/🧾[\s\S]{0,180}/) || [''])[0].replace(/\n/g, ' '));
 ok('🧾㉒b 成績單:勝率配次數 + 每趟 + 一張合計(手算 +6,000 元)',
    /1\/1/.test(R.stlWin) && /\+5\.56%/.test(R.stlWin) && /\+6,000 元/.test(R.stlWin),
@@ -539,13 +540,13 @@ ok('🧾㉒d ⚠️ 樣本 <10 筆要明寫⛔ 還不能當結論(全站同一�
 ok('🧾㉒e 🚨 必須寫「這是紙上成績」+ 進場價跟回測不同(尾盤 vs 收盤)',
    /紙上成績/.test(R.stlWin) && /13:00/.test(R.stlWin) && /勝率鏡子/.test(R.stlWin));
 ok('🧾㉒f 🚨 零前視:改掉**出場之後**的 K 棒(改成漲停),結算結果必須一模一樣',
-   /\+5\.56%/.test(R.stlFuture) && /6天/.test(R.stlFuture) && !/200/.test((R.stlFuture.match(/🧾 結算[\s\S]{0,200}/) || [''])[0]),
+   /\+5\.56%/.test(R.stlFuture) && /(6天|抱 6 個交易日)/.test(R.stlFuture) && !/200/.test(R.stlFuture),
    (R.stlFuture.match(/勝率[\s\S]{0,80}/) || [''])[0].replace(/\n/g, ' '));
 ok('🧾㉒g 🛑 停損出在**停損價 95**(⛔ 不是當天收盤 93)→ −5.44%',
    /−5\.44%|-5\.44%/.test(R.stlStop) && /停損/.test(R.stlStop) && !/−7\.44%|-7\.44%/.test(R.stlStop),
    (R.stlStop.match(/🧾[\s\S]{0,160}/) || [''])[0].replace(/\n/g, ' '));
 ok('🧾㉒h ⏳ 全平盤 → 抱滿 20 個交易日強制出場(⛔ 不可無限抱下去)',
-   /抱滿 20 個交易日/.test(R.stlMax) && /20天/.test(R.stlMax),
+   /抱滿 20 個交易日/.test(R.stlMax) && /(20天|抱 20 個交易日)/.test(R.stlMax),
    (R.stlMax.match(/🧾[\s\S]{0,160}/) || [''])[0].replace(/\n/g, ' '));
 // ⭐ 這條是「⛔ 不產生第二份真相」的實證:籃子只存「哪一檔+哪一天」,換規則整籃重算
 ok('🧾㉒i ⭐ 換一條出場規則 → 同一批紀錄全部重算(移動停利 8% 沒觸發 → 持有中,⛔ 不沿用 ma5 的 +5.56%)',
@@ -715,7 +716,119 @@ ok('💥 沒有未攔截的 JS 錯誤', errs.length === 0, errs.join(' | '));
      !!n1 && !!n2 && n1 !== n2, `第一組 ${n1} 個 / 第二組 ${n2} 個`);
 }
 
-await browser.close();
+// ═══════════════════════════════════════════════════════════════════
+// 🧺 V75.1.0 使用者:「還是覺得不好清楚看到現在比較起來賺賠多少」
+//   查下去是**三件事**(⛔ 只修一件仍然看不清楚):
+//   ① 已結算的那幾條原本還在用**今天的價**算浮動 —— 出場之後那個數字就不該再動
+//   ② 頂端「一張合計」與成績單「一張合計」**同名不同義**(浮動 vs 已實現)
+//   ③ 11 欄的 table 在 390px 手機上把「贏大盤」整欄切到畫面外(那是最重要的一欄)
+// ═══════════════════════════════════════════════════════════════════
+{
+  const pg = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await pg.goto('file://' + path.join(ROOT, 'pro.html'));
+  await pg.waitForFunction(() => typeof PRO !== 'undefined' && PRO._fishBasketRender, null, { timeout: 30000 });
+  const B = await pg.evaluate(() => {
+    const P = window.PRO;
+    P._fishD = { date: '2026-09-08', rows: [{ sym: '2851', c: 45.65 }, { sym: '2426', c: 97.5 }], J: {} };
+    P._twii = { m: new Map([['2026-09-01', 24000], ['2026-09-03', 24100], ['2026-09-08', 24700], ['2026-09-12', 24300]]),
+                days: ['2026-09-01', '2026-09-03', '2026-09-08', '2026-09-12'] };
+    P._lq = null; P._lqAt = Date.now();
+    P._catchSave([{ sym: '2851', d: '2026-09-03', px: 47.3 }, { sym: '2426', d: '2026-09-01', px: 107.5 }]);
+    const rule = P._exitRule();
+    P._stl = {};
+    // 📌 持有中:浮動 −1,650 元
+    P._stl[`2851|2026-09-03|${rule}`] = { entry: 47.3, exitP: 45.65, days: 3, why: '持有中', open: true,
+      d0: '2026-09-03', d1: '2026-09-08', bench: 2.49, net: -3.49, ex: -5.98, lot: -1650 };
+    // 🧾 已結算:出場價 99(⛔ 不是今天的 97.5)→ 一張 −8,500 元
+    P._stl[`2426|2026-09-01|${rule}`] = { entry: 107.5, exitP: 99, days: 6, why: '跌破唐奇安 20 日低', open: false,
+      d0: '2026-09-01', d1: '2026-09-12', bench: 1.25, net: -8.35, ex: -9.6, lot: -8500 };
+    P._stlSig = P._catchLoad().map(x => `${x.sym}|${x.d}`).join(',') + '|' + rule;
+    let el = document.getElementById('fishBasket');
+    if (!el) { el = document.createElement('div'); el.id = 'fishBasket'; document.body.appendChild(el); }
+    P._fishBasketRender();
+    // 📐 爆版量法:容器內容有沒有比它的框寬(⛔ 只看整頁橫不橫捲不夠 —— 外層 overflow 會把它剪掉)
+    let over = 0, worst = '';
+    el.querySelectorAll('*').forEach(n => { if (n.clientWidth > 0 && n.scrollWidth > n.clientWidth + 2) { over++; if (!worst) worst = (n.className || n.tagName) + ' ' + n.scrollWidth + '/' + n.clientWidth; } });
+    const rows = [...el.querySelectorAll('.bkrow')];
+    return { t: el.innerText.replace(/\s+/g, ' '), over, worst,
+             hasTable: !!el.querySelector('table'), nRow: rows.length,
+             vsVisible: rows.every(r => { const v = r.querySelector('.bkvs'); return !!v && v.getBoundingClientRect().right <= 391; }),
+             hd: (el.querySelector('.fishcard > .kv') || {}).innerText || '',   // ⚠️ 只取**頂端合計那一塊**
+             doneTxt: (el.querySelector('.bkrow.done') || {}).innerText || '',
+             holdTxt: (el.querySelector('.bkrow.hold') || {}).innerText || '' };
+  });
+  await pg.close();
+
+  ok('🧺㉗ 🚧 空過守門:籃子真的渲染出兩條', B.nRow === 2, `nRow=${B.nRow}`);
+  // ① 已結算 → 用結算價,⛔ 不可再用今天的現價算浮動
+  ok('🧺㉗a 🚨 已結算那條用**結算價 99**(⛔ 不是今天的 97.5)',
+     /99/.test(B.doneTxt) && !/97\.5/.test(B.doneTxt), B.doneTxt.replace(/\s+/g, ' '));
+  ok('🧺㉗b 🚨 已結算那條的賺賠 = 扣成本後的 −8.35%(⛔ 不是浮動的 −9.30%)',
+     /−8\.35%|-8\.35%/.test(B.doneTxt) && !/9\.30/.test(B.doneTxt), B.doneTxt.replace(/\s+/g, ' '));
+  ok('🧺㉗c 已結算那條要說「數字不會再變」,持有中那條要說「會一直變」',
+     /不會再變/.test(B.doneTxt) && /會一直變/.test(B.holdTxt));
+  // ② 兩個合計 ⛔ 不可同名
+  // ⚠️ 斷言範圍要縮到**頂端那一塊**(`B.hd`)—— 用整份 innerText 的話,
+  //   「帳面浮動」在每一列的註腳也有 → 把頂端標籤改回「一張合計」照樣會過(注入②抓到的假綠燈)。
+  ok('🧺㉗ⓓ 🚧 空過守門:抓得到頂端合計那一塊', B.hd.length > 20, B.hd);
+  ok('🧺㉗d 🚨 兩個合計要分開叫:帳面浮動 vs 已實現(⛔ 同名不同義是全站犯最多次的錯)',
+     /帳面浮動/.test(B.hd) && /已實現/.test(B.hd) && !/一張合計/.test(B.hd), B.hd.replace(/\s+/g, ' '));
+  ok('🧺㉗e 兩個數字要對得起來:−1,650(浮動) + −8,500(已實現) = −10,150',
+     /-1,650|−1,650/.test(B.t) && /-8,500|−8,500/.test(B.t) && /-10,150|−10,150/.test(B.t), B.t.slice(0, 220));
+  ok('🧺㉗f 🚨 要明說這幾個數字意思不一樣(⛔ 不可讓人以為是同一件事)',
+     /意思不一樣/.test(B.t) && /只算.{0,4}已結算/.test(B.t));
+  // ③ 390px 上「贏大盤」必須看得見
+  ok('🧺㉗g 🚨 手機 390px 上⛔ 不可有橫向溢出(那會把最右邊的欄切掉)',
+     B.over === 0, B.worst);
+  ok('🧺㉗h 🚨 每一條的「贏大盤」都要在畫面內(那是「這條魚有沒有用」的那一欄)',
+     B.vsVisible === true && /贏大盤/.test(B.t));
+  ok('🧺㉗i ⛔ 籃子不可再用 table(欄位 ≥3 個在手機上一定會被切,CLAUDE.md 既有鐵則)',
+     B.hasTable === false);
+}
+
+// 🔁 V75.1.0 使用者:「已經好幾天釣魚都是一樣魚,這是對的嗎?」
+{
+  const src = PROSRC;
+  const i = src.indexOf('_castStickyHtml(ps) {');
+  const blk = i > 0 ? src.slice(i, src.indexOf('\n  },', i)) : '';
+  ok('🔁㉘ 🚧 空過守門:抓得到 `_castStickyHtml`', i > 0 && blk.length > 400, `len=${blk.length}`);
+  ok('🔁㉘a 🚨 數字一律讀 `_CAST_STICKY`(⛔ 不可寫死 —— 重跑探針時畫面要跟著變)',
+     /K\.lag1/.test(blk) && /K\.same1/.test(blk) && /K\.runMed/.test(blk)
+     && !/54\.7|41\.7/.test(blk), blk.slice(0, 160));
+  ok('🔁㉘b 🚨 必須說「這是設計的必然,⛔ 不是壞掉」+ 四層都是 20 日以上的窗口',
+     /設計的必然/.test(blk) && /不是壞掉/.test(blk) && /20 日以上的窗口/.test(blk));
+  ok('🔁㉘c 🚨 ⛔ 不可承諾「會幫你換一批」(那是用隨機性冒充多樣性)',
+     /硬換一批/.test(blk) && /隨機性冒充多樣性/.test(blk)
+     && !/會幫你換|每天都會不一樣/.test(blk));
+  ok('🔁㉘d 🚨🚨 必須講「回測是同一檔 20 日只算一次 → 連續買同一檔不在涵蓋範圍」',
+     /只算一次/.test(blk) && /不在.{0,6}回測涵蓋|不在那份回測涵蓋/.test(blk), blk.slice(-400));
+  ok('🔁㉘e 🧺 已經在籃子裡的要點出來(⛔ 拋竿本身不知道你已經有了)',
+     /_catchLoad\(\)/.test(blk) && /已經在漁獲籃裡/.test(blk));
+  ok('🔁㉘f 只上鉤 1 條時這段仍要出現(⛔ 那正是最容易「老是同一條」的情況)',
+     /if \(ps\.length < 2\) return this\._castStickyHtml\(ps\);/.test(src));
+  ok('🔁㉘g ⛔ 不用紅綠燈(講的是「換不換」不是漲跌方向)', !/🔴|🟢/.test(blk));
+}
+
+// 🚪 V75.0.9 漏網:pro.html 的出場預設是**第三份實作**,要跟 index.html 一致
+{
+  const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const iBlk = idx.slice(idx.indexOf('\n    _exitRuleKey() {'), idx.indexOf('\n    _exitRuleKey() {') + 300);
+  const pBlk = PROSRC.slice(PROSRC.indexOf('  _exitRule() {'), PROSRC.indexOf('  _exitRule() {') + 500);
+  const g = b => (b.match(/'(don|atr2|trail8|ma5)'/g) || []).map(x => x.slice(1, -1));
+  ok('🚪㉙ 🚨 pro.html 的出場預設要跟 index.html 一模一樣(⛔ 不一致的話兩邊用不同規則,而且畫面看不出來)',
+     g(iBlk).length >= 2 && g(pBlk).length >= 2 && new Set([...g(iBlk), ...g(pBlk)]).size === 1,
+     `index=${g(iBlk)} pro=${g(pBlk)}`);
+}
+
+// 🐛 V75.1.0 順手修:實測總表把 markdown 的 `**粗體**` 原樣印給使用者看
+{
+  ok('🐛㉚ `_labHi` 會把 `**x**` 轉成 <b>(⛔ template literal 不會幫你轉)',
+     /_labHi\(html, q\) \{[\s\S]{0,300}\\\*\\\*\(\[\^\*<>\]/.test(PROSRC), 'regex 不在');
+}
 
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : `\n✅ 全部通過`);
 process.exit(fails.length ? 1 : 0);
+
+
+await browser.close();
+
