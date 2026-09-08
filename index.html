@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.0.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.0.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.0.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7947,16 +7947,17 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.0.5',
+    _APP_VERSION: 'V75.0.6',
     _CHANGELOG: [
-        { v:'V75.0.5', dt:'2026-09-08', d:[
+        { v: 'V75.0.6', dt: '2026-09-08', d: ['🚦 補上 4 處「主結論是空頭、卡片還在叫你做多」的漏洞:六脈共振的操作、朱老師 K 棒總評的兩格、多策略共振卡、盤中當沖燈。','⭐ 當沖那處刻意不蓋掉方向 —— 當沖看今天、主結論看波段,改成加一句「這是逆勢單:不留倉、部位放小」。','📅 庫存編輯頁補「買進日」欄位,K 線圖的 ATR 出場線才畫得出真值段。'] },
+        { v:'V75.0.6', dt:'2026-09-08', d:[
             '🐛 產業作戰室:選股快照過期時那句提醒會把手機版面撐橫(整頁要左右拖)—— 已修。',
             '⚠️ 它只在「快照超過 4 天沒更新」才出現,所以平常看不到。' ] },
-        { v:'V75.0.5', dt:'2026-09-08', d:[
+        { v:'V75.0.6', dt:'2026-09-08', d:[
             '📅 編輯庫存頁新增「買進日」欄位 —— 以前只有新增部位時才會自動記,舊的部位空著就再也補不回來了。',
             '📉 K 線圖上的「ATR 追蹤停利」改成兩段:填了買進日 → 用你真正的進場點畫(跟出場卡上的數字一模一樣);沒填 → 維持近 20 日的代理版,而且會告訴你它是代理版。',
             '⚠️ 以前圖上那條線永遠是代理版,跟卡片上的數字會有落差 —— 現在填了買進日就一致了。' ] },
-        { v:'V75.0.5', dt:'2026-09-08', d:['🐛 修好基本面「股利政策」三格會被洗成 --:那幾格預設收在摺疊區,而守門用 innerText 判斷「有沒有內容」→ 收起時一律回空字串 → 保護失效(改用 textContent,兩處都修)','🧹 例行維護:修好 14 支測試'] },
+        { v:'V75.0.6', dt:'2026-09-08', d:['🐛 修好基本面「股利政策」三格會被洗成 --:那幾格預設收在摺疊區,而守門用 innerText 判斷「有沒有內容」→ 收起時一律回空字串 → 保護失效(改用 textContent,兩處都修)','🧹 例行維護:修好 14 支測試'] },
         { v:'V75.0.2', dt:'2026-09-08', d:['🧠 <b>總覽的「完整明細」多了一句實話</b>:裡面那 4 份判讀(現在怎麼做 / 進場劇本 / 朱老師 / 深度診斷)跟上面的行動指令<b>是同一份來源</b>,⛔ <b>各自沒有獨立的實測背書</b> —— <b>說法不一樣時一律以上面那張為準</b>。','⭐ 為什麼只加一句話不再大改:那 4 份 V73.7.0 起<b>本來就已經收在摺疊裡</b>了。收起來還不夠 —— 你點開之後還是會看到 4 個結論,不明講「以哪一個為準」等於只是把矛盾藏起來。','⛔ <b>收起 ≠ 拿掉計算</b>:那幾張卡照樣在算(全 App 很多地方讀它們的結論),只是不佔你的第一眼。'] },
         { v:'V75.0.1', dt:'2026-09-08', d:['🚪 <b>出場價全站統一成「你在設定中心選的那條」</b>(你說「太多版本、很混亂」)—— 永豐智慧單 SOP、盤中推播、條件單複製文字、防守尺、機器人卡,以前各講各的,現在全部讀同一條。','🚨 <b>最要緊的是永豐智慧單那個停利觸發價</b> —— 那是你會<b>照抄去券商掛單</b>的數字,而它以前用的是 5 日線(沒有回測背書的那條)。','🚨 <b>修好「同一天收到兩則互相矛盾的通知」</b>:盤中的「跌破 5MA」提醒寫死 5 日線,而作戰清單的出場提醒早就改讀你的設定 → 一則叫你走、一則沒動靜。現在兩支讀同一條、而且<b>共用同一個去重</b>(不會重複吵你)。','⚠️ <b>換了出場規則,會主動告訴你「歷史成績是用 5 日線算的」</b> —— ⛔ 不會只把名字換掉裝作成績也一樣。','⛔ 舊的 5MA / 20MA 那兩條<b>沒有刪掉</b>,降級成「舊版・沒有 49 個月回測背書」照樣看得到。','📈 K 線圖上疊的那兩條是<b>代理版</b>(用近 20 天最高收盤起算)—— 你填了買進日之後跟卡片上的數字會有落差,這件事以前只寫在程式註解裡,現在畫面上會說。'] },
         { v:'V75.0.0', dt:'2026-09-08', d:['🎯 <b>新增「決策台」,而且它現在是你打開 App 的第一頁</b> —— 只回答三件事:<b>今天要賣什麼、今天可以買什麼、還是今天不用做</b>。⭐ 舊的分頁<b>一個都沒少</b>,細節照樣在那裡。','⭐ 為什麼要做:你說「實測後常常不知道看哪個」。真因是這個 App 照<b>資料類型</b>排(K線/籌碼/基本面…),但你的問題是<b>決策</b>。以前要找「今天買什麼」最多要點 7 層,現在<b>0 層</b>。','🚪 <b>要賣的不限量</b>(勝率只有三成,整套會賺完全靠「錯的時候小賠出場」);🎯 <b>可以買的最多 2 檔</b>,而且只給符合 🧬 又不是空頭的。','🚨 <b>「清單還沒下載到」跟「今天沒有可以買的」會長得不一樣</b> —— 那是兩件事,混在一起你會把「檔案沒下載」讀成「今天沒訊號」。庫存裡 K 線讀不到的那幾檔也會<b>講出來</b>,⛔ 不讓你把「沒警報」當成「安全」。','🚨 <b>誠實揭露沒有藏起來</b>:49 個月(含 2022 大跌)只做 🧬 賺 195.5 萬、不挑 🧬 賺 107.8 萬,而<b>同期 0050 買了放著是 260.0 萬 —— 兩種都輸</b>。⭐ 🧬 讓你少輸,⛔ 不是讓你一定贏大盤。','🏦 底部的「券商」鈕讓位給決策台(選股頁裡本來就有一顆券商入口,仍到得了)。'] },
@@ -19999,7 +20000,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 let pk = 0; for (let q = i - 19; q <= i; q++) pk = Math.max(pk, C(q));
                 if (pk > 0) atrTrail[i] = Number((pk - 2 * a).toFixed(2));
             }
-            // 🚪 V75.0.5 真值段:有填買進日時,從進場那根起改用**跟卡片、跟回測一字不差**的算法
+            // 🚪 V75.0.6 真值段:有填買進日時,從進場那根起改用**跟卡片、跟回測一字不差**的算法
             //   ⭐ 兩處都要對齊(⛔ 只對齊一處等於沒修):
             //     ① peak 從 `eIdx` 起算(⛔ 不是永遠近 20 根)
             //     ② 🚨 **ATR 凍結在進場那天**(⛔ 不是每根用當根的)——
@@ -20114,7 +20115,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             : `✅ 用你的買進日 <b>${String(x.buyDate).slice(0, 10)}</b> 起算(到今天 ${x.days} 根 K 棒),進場後最高收盤 <b>${f2(x.peak)}</b> —— 跟回測算法完全一致。`;
         // 🚨 V75.0.1 K 線圖上疊的那兩條是**代理版**(用近 20 日最高收盤起算)——
         //   填了買進日之後,卡上的數字會跟圖上的線**不一樣**。以前這件事只寫在程式註解裡,畫面一個字都沒有。
-        // 📉 V75.0.5 K 線圖上的 ATR 線改成兩段之後,原本那句「圖上是代理版、以上面為準」**變成假的**
+        // 📉 V75.0.6 K 線圖上的 ATR 線改成兩段之後,原本那句「圖上是代理版、以上面為準」**變成假的**
         //   → 有買進日 = 圖上那條粗虛線就是這個數字(⭐ 那才是使用者要的一致);
         //     沒買進日 = 圖上只有代理版,要說出來(⛔ 不可讓人以為那條線是他的進場點算的)。
         const proxyNote = x.proxy
@@ -21690,6 +21691,16 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         } else if (isBullGrade && regime === 'bull') {
             mktTag = '<span class="text-[9px] font-bold text-red-300 ml-1">🌡️大盤順風</span>';
         }
+        // 🚨 V75.0.6 補守門(講反話第 12 處)—— 這裡**只守了大盤 regime**,⛔ 沒守「這一檔自己的主結論」
+        //   → 大盤是多頭、但這一檔 `_ovTrend` 是空頭時,照樣寫「高信度買點,順勢做」。
+        //   ⭐ 排在大盤那段**之後**:個股的主結論優先(單一劇本原則的主結論講的就是這一檔)。
+        try {
+            if (isBullGrade && this._bearGate?.(this.currentSymbolId)) {
+                grade = '⚠️ 買點共振·但這檔中期是空頭'; gcls = 'text-yellow-300'; gbar = 'border-yellow-500 bg-yellow-900/10';
+                note = '多個策略同時看多,<b>但上面的主結論是空頭</b> —— 這只能當<b>反彈</b>看,⛔ 不是買點;有貨的趁反彈減碼,空手的等它站回中期趨勢再說。';
+                mktTag += '<span class="text-[9px] font-bold text-yellow-300 ml-1">⚠️這檔中期空頭</span>';
+            }
+        } catch (_) {}
         const showNames = names.slice(0, 5).join(' · ');
         return `<div class="border ${gbar} rounded-lg px-2.5 py-1.5 mb-2">
             <div class="text-[13px] font-black ${gcls}">${grade} <span class="text-[10px] font-normal text-gray-400">(多 ${nb} / 空 ${ns} 訊號)</span>${mktTag}</div>
@@ -21858,6 +21869,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const adxTxt = v.adx == null ? '—' : `${v.adx.toFixed(0)} ${v.trendStrong ? '(強趨勢)' : v.trendForming ? '(趨勢成形)' : '(盤整)'}`;
         const adxCls = v.adx == null ? 'text-gray-500' : v.trendStrong ? (v.diUp ? 'text-red-300' : 'text-green-300') : v.trendForming ? 'text-yellow-300' : 'text-gray-400';
         els.forEach(x => x.className = 'bg-[#161b22] border-l-4 ' + bcls + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg mt-1');
+        // 🚨 V75.0.6 補守門(講反話第 9 處)—— `_sixMeridianCalc` 只吃 `data`、算不到 sym,
+        //   而 `sop` 在 🔴 強共振時寫著「右側加碼區:突破帶量可追、回檔量縮可承接」。
+        //   ⛔ 主結論是空頭時那句不可照顯示;之前**只有 K線頁首那一行**(`_leadSix` L21073)有守,
+        //      這張卡本體與函式層都沒有 → 同一頁上面收掉、下面照樣叫人追(邏輯打架)。
+        //   ⭐ 照既有慣例:**只改「叫人怎麼做」那句,事實描述(verdict / 條件明細 / 實測數字)一個字不動**。
+        const _smBear = (() => { try { return !!this._bearGate?.(this.currentSymbolId); } catch (_) { return false; } })();
+        const _smSop = _smBear
+            ? '⚠️ <b>上面的主結論是空頭</b> → 這幾條翻多只能<b>當反彈看待</b>,⛔ 別加碼、別追;想做只能小量搶短而且守緊停損。(下面那組實測數字是<b>全市場平均</b>,⛔ 沒有分多空頭環境。)'
+            : v.sop;
         const _smHtml = `
             <div class="flex items-center justify-between gap-2">
                 <div class="text-[13px] font-black text-gray-100">⚔️ 新六脈・共振計分 <button onclick="app._helpBox('⚔️ 新六脈共振計分\\n\\n把「六脈神劍」去繁從簡:剔除同質又滯後的 BBI/MTM/LWR,精簡成 3 個不同時間尺度的劍 + 加入市場靈魂(量能+籌碼):\\n\\n① 趨勢:站上 20MA(月線=多空分水嶺)\\n② MACD:柱狀翻紅/金叉(中期波段)\\n③ RSI:動能偏強且非超買(短線)\\n④ 量能:突破要放量(≥1.5倍)、回檔要量縮(洗盤才是好買點)——分情境\\n⑤ 籌碼:外資近3日連買\\n\\nADX 趨勢強度過濾盤整假金叉(<20 盤整、≥25 強趨勢)。\\n\\n右側分批:3脈翻多=第1點試單、4-5脈共振=加碼。早出場:RSI高檔下彎或跌破5日線先減碼(寧早勿晚)。\\n\\n純公式、日K盤後,非投資建議,一律守停損。');event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300">ⓘ</button> ${this._dChip(data[data.length - 1]?.date, '日K')}</div>
@@ -21865,11 +21885,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             </div>
             <div class="text-base font-black ${tcls} leading-tight mt-1">${v.verdict}</div>
             ${ignite ? (ignite.type === 'fire'
-                ? `<div class="bg-red-900/30 border-l-4 border-red-500 pl-2.5 py-1.5 rounded-r mt-1.5 animate-pulse"><div class="text-[11px] font-black text-red-300">⚡ 六脈點火!${ignite.from} 分 → ${v.okN} 分 + 爆量 ${ignite.volX.toFixed(1)}×</div><div class="text-[10px] text-gray-300 leading-relaxed mt-0.5">低檔多脈齊發+量進場 = 強啟動訊號。進場的話,<b class="text-yellow-300">無條件停損設今日 K 線最低點</b>(點火失敗跌破當日低=假訊號,立走)。</div></div>`
+                ? `<div class="bg-red-900/30 border-l-4 border-red-500 pl-2.5 py-1.5 rounded-r mt-1.5 animate-pulse"><div class="text-[11px] font-black text-red-300">⚡ 六脈點火!${ignite.from} 分 → ${v.okN} 分 + 爆量 ${ignite.volX.toFixed(1)}×</div><div class="text-[10px] text-gray-300 leading-relaxed mt-0.5">${_smBear ? '⚠️ <b>但主結論是空頭</b> —— 空頭裡的點火多半是反彈,⛔ 別當進場訊號;而且實測點火這一級扣成本後是 −0.20 個百分點(本來就沒有邊際)。' : '低檔多脈齊發+量進場 = 強啟動訊號。進場的話,<b class=\'text-yellow-300\'>無條件停損設今日 K 線最低點</b>(點火失敗跌破當日低=假訊號,立走)。'}</div></div>`
                 : `<div class="bg-green-900/25 border-l-4 border-green-500 pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] font-black text-green-300">🧯 六脈熄火:${ignite.from} 分 → ${v.okN} 分</div><div class="text-[10px] text-gray-300 leading-relaxed mt-0.5">多方動能快速退潮 → 持股先減碼/停利,別等全部翻空才動。</div></div>`) : ''}
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2.5 py-1.5 mt-2">${rows}</div>
             <div class="flex items-center justify-between mt-2 text-[10px]"><span class="text-gray-500">📏 ADX 趨勢強度 <span class="text-gray-600">(過濾盤整假訊號)</span></span><span class="font-mono font-bold ${adxCls}">${adxTxt}</span></div>
-            <div class="bg-[#0d1117] border-l-4 ${bcls} pl-2.5 py-1.5 rounded-r mt-2"><div class="text-[10px] text-gray-200 leading-relaxed"><b class="${tcls}">✅ 操作:</b>${v.sop}</div></div>
+            <div class="bg-[#0d1117] border-l-4 ${bcls} pl-2.5 py-1.5 rounded-r mt-2"><div class="text-[10px] text-gray-200 leading-relaxed"><b class="${tcls}">${_smBear ? '⚠️ 操作(主結論空頭)' : '✅ 操作'}:</b>${_smSop}</div></div>
             ${v.exits.length ? `<div class="mt-2"><div class="text-[10px] font-bold text-orange-300 mb-0.5">🚪 早出場提示(寧早勿晚)</div>${v.exits.map(e => `<div class="text-[10px] text-gray-300 leading-snug">• ${e}</div>`).join('')}</div>` : ''}
             <div class="text-[8px] text-gray-600 mt-2 leading-snug">🧮 純公式(日K盤後):三劍 20MA/MACD/RSI + 量能(突破放量·回檔量縮分情境) + 外資籌碼,ADX 過濾盤整假金叉。精簡自六脈神劍(剔除同質滯後的 BBI/MTM/LWR);訊號非保證,一律守停損。</div>`;
         els.forEach(x => { x.innerHTML = _smHtml; x.classList.remove('hidden'); });
@@ -22314,9 +22334,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             // ── headline + 對策 ──
             //   🎯 V65.0 一致性守門:月線是多空分水嶺,「跌破月線」時不喊「多頭噴相」(避免型態多頭卻價在月線下的矛盾)
             const belowMa20 = ma20 != null && price < ma20;
+            // 🚨 V75.0.6 補守門(講反話第 10 處)—— 這支原本**只有 1/6 分支**過 `_bearGate`
+            //   (`sc>=1.5 && belowMa20` 那格,V72.1.7 修的)。
+            //   ⛔ 但 `belowMa20=false` ⛔ 不等於中期是多頭:價站上月線、月線卻在季線之下
+            //      或月線下彎時 `_ovTrend` 仍是 bear → 上面兩格照樣喊「順勢做多」「過前高再追」。
+            //   ⭐ 照既有慣例:**headline 與型態敘述一個字不動,只改「叫人怎麼做」那句**。
+            const _ckBear = (() => { try { return !!this._bearGate?.(this.currentSymbolId); } catch (_) { return false; } })();
             let tone, headline, cta, barCls, headCls;
-            if (sc >= 4 && !belowMa20) { tone = 'bull'; headline = '🔴 型態讚!多頭噴相'; cta = '順勢做多,買點守 5MA,跌破 5MA 先停利,別凹單。'; barCls = 'border-red-500'; headCls = 'text-red-300'; }
-            else if (sc >= 1.5 && !belowMa20) { tone = 'bull'; headline = '🔴 型態偏多成形'; cta = '偏多但力道未滿,等帶量長紅過前高再追,回檔不破月線續抱。'; barCls = 'border-red-500'; headCls = 'text-red-300'; }
+            if (sc >= 4 && !belowMa20) { tone = 'bull'; headline = '🔴 型態讚!多頭噴相'; cta = _ckBear ? '⚠️ 型態確實漂亮,<b>但上面的主結論是空頭</b> —— 這只能當<b>反彈</b>看,⛔ 不是順勢做多的理由;有貨的跌破 5MA 先減碼,空手的別追。' : '順勢做多,買點守 5MA,跌破 5MA 先停利,別凹單。'; barCls = 'border-red-500'; headCls = 'text-red-300'; }
+            else if (sc >= 1.5 && !belowMa20) { tone = 'bull'; headline = '🔴 型態偏多成形'; cta = _ckBear ? '⚠️ 型態偏多,<b>但上面的主結論是空頭</b> —— 力道未滿又逆勢,⛔ 別追;有貨的趁反彈減碼,跌破月線就走。' : '偏多但力道未滿,等帶量長紅過前高再追,回檔不破月線續抱。'; barCls = 'border-red-500'; headCls = 'text-red-300'; }
             else if (sc >= 1.5 && belowMa20) { tone = 'bull'; headline = '🟠 型態偏多·但月線壓著';
                 // 🐛 V72.1.7 兩個修:
                 //   ① `recentLow`(波段低點)可能是 null → 原本直接 `nf(null)` 印出
@@ -22328,7 +22354,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 const _l20 = (() => { const a = (data || []).slice(-20).map(b => +b.low || +b.close).filter(v => v > 0); return a.length ? Math.min(...a) : null; })();
                 const _stopTxt = (recentLow != null && recentLow > 0) ? `跌破前低 ${nf(recentLow)} 就撤`
                     : (_l20 != null ? `跌破近 20 日低 ${nf(_l20)} 就撤` : '跌破你自己設的停損就撤');
-                cta = this._bearGate(this.currentSymbolId)
+                cta = _ckBear
                     ? `型態是偏多沒錯,但價還在月線 ${nf(ma20)} 之下,<b>而且中期趨勢是空頭</b> —— 這只能當<b>反彈</b>看,⛔ 不是進場理由;有貨的趁反彈減碼,${_stopTxt}。`
                     : `型態是偏多沒錯,但價還在月線 ${nf(ma20)} 之下——<b>先站回月線才算真轉強</b>;現在追要快進快出,${_stopTxt},別當多頭噴相硬抱。`;
                 barCls = 'border-orange-500'; headCls = 'text-orange-300'; }
@@ -25760,7 +25786,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (!el) return;
             if (val == null) {
                 // ⛔ 已經有真值就不要動它(⛔ 不可把別人查到的資料洗掉)
-                // 🚨 V75.0.5 這裡**必須用 `textContent`,⛔ 不可用 `innerText`** ——
+                // 🚨 V75.0.6 這裡**必須用 `textContent`,⛔ 不可用 `innerText`** ——
                 //    這幾格住在基本面頁的 `<details>` 裡,而 V74.2.6 起它**預設收起**;
                 //    收起的 details 內容不算「有被渲染」→ `innerText` 回**空字串**
                 //    → 落進 BLANKS → 上面 V73.9.5 那道「⛔ 不可洗掉已有真值」的守門**整個失效**,
@@ -25821,7 +25847,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             } else if (BLANKS.has((tdEl.textContent || '').trim()) || /未發放/.test(tdEl.textContent || '')) {
                 // ⛔ 同 `set()`:拿不到值時**不可洗掉已經有真值的格子**
                 //    (這一格沒走 set(),所以保護要在這裡自己補一次 —— 測試 ① 就是這樣抓到的)
-                // 🚨 V75.0.5 同樣**必須 `textContent`** —— 這幾格預設住在收起的 `<details>` 裡,
+                // 🚨 V75.0.6 同樣**必須 `textContent`** —— 這幾格預設住在收起的 `<details>` 裡,
                 //    `innerText` 會回空字串 → 守門失效、真值被洗成 `--`(⛔ 兩處都要改,只改一處等於沒修)
                 tdEl.innerText = '--';
                 tdEl.className = tdEl.className.replace(/text-\w+-\d+/g, '') + ' text-gray-600';
@@ -33699,6 +33725,22 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         w.classList.toggle('hidden', !live);
     },
 
+    // 🚨 V75.0.6 補守門(講反話第 11 處)—— 即時頁整條鏈(`_dayTradeVerdict` → `renderDayTradeLight`
+    //   → `_renderLiveLead`)**一次 `_bearGate` 都沒有**,日線主結論是空頭時照樣寫「站上均價續抱、可順勢加」。
+    //   ⭐⭐ 但這裡的修法**刻意跟別處不同**:當沖看的是**今天**、主結論看的是**波段**,
+    //      ⛔ 時間尺度不同 → **不可以把方向蓋掉**(那會變成另一種說謊)。
+    //      照 V71.7.7 的定調:「短線可以描述,但中期沒過關就不准下加碼指令」
+    //      → 方向照給,**加一句「這是逆勢單:不留倉、部位放小」**。
+    //   ⛔ 只在「當沖說做多 + 主結論空頭」時出現(⛔ 天天掛著會讓人習慣忽略)。
+    //   ⭐ 全 App 只有這一份(⛔ 兩個顯示點不可各寫一份,陷阱 #37)。
+    _dtBearNote(v) {
+        try {
+            if (!v || v.dir !== 'long') return '';
+            if (!this._bearGate?.(this.currentSymbolId)) return '';
+            return ' <b class="text-orange-300">⚠️ 但日線的主結論是空頭</b> → 這是<b>逆勢單</b>:只做當沖<b>不留倉</b>、部位放小、停損守緊。(當沖看今天、主結論看波段,⛔ 兩者不衝突,但逆勢做要縮小。)';
+        } catch (_) { return ''; }
+    },
+
     // 🧭 V74.2.4 即時頁頁首結論(總覽邏輯)—— ⛔ 只轉述 `_dayTradeVerdict` 算好的東西,
     //   ⛔ 不重算(不產生第二份真相);🚨 警訊標題必須露出來(風險不可只藏在摺疊裡)。
     _renderLiveLead(v) {
@@ -33715,7 +33757,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <span class="text-[9px] text-gray-500">${v.hasReal ? '真實內外盤' : '估算'}</span>
             </div>
             <div class="text-lg font-black ${tcls} leading-tight mt-1">${v.verdict}</div>
-            <div class="bg-[#0d1117] border-l-4 ${bcls} pl-2.5 py-1.5 rounded-r mt-2"><div class="text-[11px] text-gray-200 leading-relaxed"><b class="${tcls}">✅ 操作:</b>${v.sop}</div></div>
+            <div class="bg-[#0d1117] border-l-4 ${bcls} pl-2.5 py-1.5 rounded-r mt-2"><div class="text-[11px] text-gray-200 leading-relaxed"><b class="${tcls}">✅ 操作:</b>${v.sop}${this._dtBearNote(v)}</div></div>
             ${warns.length ? `<div class="mt-1.5 text-[11px] text-green-300 leading-snug">⚠️ <b>別追多警訊 ${warns.length} 條:</b>${warns.slice(0, 2).join('・')}${warns.length > 2 ? ` …等 ${warns.length} 條` : ''} <span class="text-gray-500">(細節在下面「更多解讀」)</span></div>` : ''}
             <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📋 進場檢查 <b class="text-gray-500">${v.chkOk}/${v.chkApplic} 成立</b>、逐條明細與盤中作戰室在下面「📖 更多解讀」。⚠️ 當沖扣掉來回成本約 0.25% 後難有正期望,燈號只幫你判氣氛、<b class="text-gray-500">不是必賺</b>;做多也一律守均價/停損。</div>`;
         el.classList.remove('hidden');
@@ -33741,7 +33783,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </div>
             <div class="text-lg font-black ${tcls} leading-tight mt-1">${v.verdict}</div>
             ${v.warns.length ? `<div class="bg-[#0d1117] border-l-4 border-green-500 pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[10px] font-bold text-green-300 mb-0.5">⚠️ 別追多警訊</div>${v.warns.map(w => `<div class="text-[10px] text-gray-300 leading-snug">• ${w}</div>`).join('')}</div>` : ''}
-            <div class="bg-[#0d1117] border-l-4 ${bcls} pl-2.5 py-1.5 rounded-r mt-2"><div class="text-[10px] text-gray-200 leading-relaxed"><b class="${tcls}">✅ 操作:</b>${v.sop}</div></div>
+            <div class="bg-[#0d1117] border-l-4 ${bcls} pl-2.5 py-1.5 rounded-r mt-2"><div class="text-[10px] text-gray-200 leading-relaxed"><b class="${tcls}">✅ 操作:</b>${v.sop}${this._dtBearNote(v)}</div></div>
             <!-- 🧹 V69.6.6 降噪:檢查表明細/多空因子收合,只留燈+X/Y+警訊+操作(重點是準,不是資訊多) -->
             <div class="text-center text-[10px] text-cyan-400 hover:text-cyan-300 cursor-pointer select-none mt-1.5 flex items-center justify-center gap-1" onclick="app.toggleCollapse('dtLightMore', this); app.vibrate(15);">📋 進場檢查 <span class="${v.chkOk >= Math.ceil(v.chkApplic * 0.7) ? 'text-red-300' : 'text-gray-500'} font-black">${v.chkOk}/${v.chkApplic} 成立</span> <span class="text-[9px] text-gray-500 font-normal">點看逐條明細</span> <span class="text-[9px]" data-chevron>▾</span></div>
             <div id="dtLightMore" class="ov-body hidden">
@@ -36920,7 +36962,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (document.getElementById('toggleBB')?.checked && ind.upperBB && ind.upperBB[index]) html += `<span class="text-[#c084fc]">布林上軌 ${ind.upperBB[index].toFixed(2)}</span>`;
         try {   // 🚪 V74.4.9 出場防守線讀數(⛔ 同一份 `_exitLineSeries`,不在 HUD 再算一次)
             if (document.getElementById('toggleDon')?.checked || document.getElementById('toggleAtrTrail')?.checked) {
-                // 🚨 V75.0.5 快取 key 要含 **buyDate** —— 序列現在會依買進日切出真值段,
+                // 🚨 V75.0.6 快取 key 要含 **buyDate** —— 序列現在會依買進日切出真值段,
                 //   只用 {sym,n} 的話「改了庫存買進日」之後 HUD 會一直吐舊值(而且零錯誤訊息)。
                 const _bdK = (() => { try { const inv = this._getInventory() || []; const p = inv.find(i => String(i.symbol) === String(this.currentSymbolId)); return String(p && p.buyDate || ''); } catch (_) { return ''; } })();
                 if (!this._exSeriesCache || this._exSeriesCache.sym !== String(this.currentSymbolId) || this._exSeriesCache.n !== (this.activeData || []).length || this._exSeriesCache.bd !== _bdK)
@@ -37140,7 +37182,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 if (document.getElementById('toggleDon')?.checked)
                     option.series.push({ name: '唐奇安20低', type: 'line', data: _exS.don, showSymbol: false, smooth: false, connectNulls: true, lineStyle: { width: 1.5, color: '#38bdf8', type: 'dashed' }, xAxisIndex: 0, yAxisIndex: 0, z: 2 });
                 if (document.getElementById('toggleAtrTrail')?.checked) {
-                    // 🚪 V75.0.5 兩段:代理段(點線、淡)+ 真值段(虛線、實色,只有填了買進日才有)
+                    // 🚪 V75.0.6 兩段:代理段(點線、淡)+ 真值段(虛線、實色,只有填了買進日才有)
                     //   ⛔ 名稱必須不同(legend/HUD 撞名會互相蓋掉);
                     //   ⛔ 真值段 `connectNulls: false` —— 前面整段是 null,不可讓它被橋接成一條直線。
                     //   ⛔ 不可用 piecewise visualMap 做分段著色:ECharts 5.5.0 的 piecewise + line
@@ -39249,7 +39291,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const cost = item.cost || 0;
             const shares = item.shares || 0;
             const totalCost = Math.round(cost * shares * 1000);
-            // 📅 V75.0.5 買進日欄位(使用者看不到的那個缺口)——
+            // 📅 V75.0.6 買進日欄位(使用者看不到的那個缺口)——
             //   ⭐ 為什麼要有:填了買進日,K線圖與出場卡才會用**你真正的進場點**算 ATR 追蹤停利
             //      (跟回測的 chand2 一字不差);沒填就只能退回「近 20 日最高收盤」的代理版。
             //   🚨 舊部位多半是空的(自動填今天那條路是後來才加的),而**在這之前完全補不回來** ——

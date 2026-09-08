@@ -378,7 +378,7 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .sigbuy{font-size:15px;font-weight:800;font-family:var(--mono);color:var(--amber)}
 .sigfrom{font-size:10.5px;color:var(--dim2);font-family:var(--mono);line-height:1.4}
 .sigtag{display:inline-block;font-size:10.5px;padding:2px 6px;border-radius:4px;border:1px solid var(--line2);color:var(--dim2);white-space:nowrap}
-/* 🚨 V75.0.5 一整句話的提醒⛔ 不可用 nowrap —— 實測 390px 手機上寬 434px、把整頁撐爆 55px。
+/* 🚨 V75.0.6 一整句話的提醒⛔ 不可用 nowrap —— 實測 390px 手機上寬 434px、把整頁撐爆 55px。
    ⭐ 而且它只在「快照過期 >4 天」才出現 → 平常看不到,**現實時間走過去才會冒出來**。 */
 .sigtag.wraps{white-space:normal;max-width:100%;line-height:1.5}
 .sigtag.good{border-color:var(--cyan);color:var(--cyan)}
@@ -4218,7 +4218,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V75.0.5',
+  VER: 'V75.0.6',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
