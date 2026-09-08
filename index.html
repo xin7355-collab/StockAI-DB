@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.0.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.0.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.0.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7947,9 +7947,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.0.3',
+    _APP_VERSION: 'V75.0.4',
     _CHANGELOG: [
-        { v:'V75.0.3', dt:'2026-09-08', d:['🐛 修好基本面「股利政策」三格會被洗成 --:那幾格預設收在摺疊區,而守門用 innerText 判斷「有沒有內容」→ 收起時一律回空字串 → 保護失效(改用 textContent,兩處都修)','🧹 例行維護:修好 14 支測試'] },
+        { v:'V75.0.4', dt:'2026-09-08', d:[
+            '📅 編輯庫存頁新增「買進日」欄位 —— 以前只有新增部位時才會自動記,舊的部位空著就再也補不回來了。',
+            '📉 K 線圖上的「ATR 追蹤停利」改成兩段:填了買進日 → 用你真正的進場點畫(跟出場卡上的數字一模一樣);沒填 → 維持近 20 日的代理版,而且會告訴你它是代理版。',
+            '⚠️ 以前圖上那條線永遠是代理版,跟卡片上的數字會有落差 —— 現在填了買進日就一致了。' ] },
+        { v:'V75.0.4', dt:'2026-09-08', d:['🐛 修好基本面「股利政策」三格會被洗成 --:那幾格預設收在摺疊區,而守門用 innerText 判斷「有沒有內容」→ 收起時一律回空字串 → 保護失效(改用 textContent,兩處都修)','🧹 例行維護:修好 14 支測試'] },
         { v:'V75.0.2', dt:'2026-09-08', d:['🧠 <b>總覽的「完整明細」多了一句實話</b>:裡面那 4 份判讀(現在怎麼做 / 進場劇本 / 朱老師 / 深度診斷)跟上面的行動指令<b>是同一份來源</b>,⛔ <b>各自沒有獨立的實測背書</b> —— <b>說法不一樣時一律以上面那張為準</b>。','⭐ 為什麼只加一句話不再大改:那 4 份 V73.7.0 起<b>本來就已經收在摺疊裡</b>了。收起來還不夠 —— 你點開之後還是會看到 4 個結論,不明講「以哪一個為準」等於只是把矛盾藏起來。','⛔ <b>收起 ≠ 拿掉計算</b>:那幾張卡照樣在算(全 App 很多地方讀它們的結論),只是不佔你的第一眼。'] },
         { v:'V75.0.1', dt:'2026-09-08', d:['🚪 <b>出場價全站統一成「你在設定中心選的那條」</b>(你說「太多版本、很混亂」)—— 永豐智慧單 SOP、盤中推播、條件單複製文字、防守尺、機器人卡,以前各講各的,現在全部讀同一條。','🚨 <b>最要緊的是永豐智慧單那個停利觸發價</b> —— 那是你會<b>照抄去券商掛單</b>的數字,而它以前用的是 5 日線(沒有回測背書的那條)。','🚨 <b>修好「同一天收到兩則互相矛盾的通知」</b>:盤中的「跌破 5MA」提醒寫死 5 日線,而作戰清單的出場提醒早就改讀你的設定 → 一則叫你走、一則沒動靜。現在兩支讀同一條、而且<b>共用同一個去重</b>(不會重複吵你)。','⚠️ <b>換了出場規則,會主動告訴你「歷史成績是用 5 日線算的」</b> —— ⛔ 不會只把名字換掉裝作成績也一樣。','⛔ 舊的 5MA / 20MA 那兩條<b>沒有刪掉</b>,降級成「舊版・沒有 49 個月回測背書」照樣看得到。','📈 K 線圖上疊的那兩條是<b>代理版</b>(用近 20 天最高收盤起算)—— 你填了買進日之後跟卡片上的數字會有落差,這件事以前只寫在程式註解裡,現在畫面上會說。'] },
         { v:'V75.0.0', dt:'2026-09-08', d:['🎯 <b>新增「決策台」,而且它現在是你打開 App 的第一頁</b> —— 只回答三件事:<b>今天要賣什麼、今天可以買什麼、還是今天不用做</b>。⭐ 舊的分頁<b>一個都沒少</b>,細節照樣在那裡。','⭐ 為什麼要做:你說「實測後常常不知道看哪個」。真因是這個 App 照<b>資料類型</b>排(K線/籌碼/基本面…),但你的問題是<b>決策</b>。以前要找「今天買什麼」最多要點 7 層,現在<b>0 層</b>。','🚪 <b>要賣的不限量</b>(勝率只有三成,整套會賺完全靠「錯的時候小賠出場」);🎯 <b>可以買的最多 2 檔</b>,而且只給符合 🧬 又不是空頭的。','🚨 <b>「清單還沒下載到」跟「今天沒有可以買的」會長得不一樣</b> —— 那是兩件事,混在一起你會把「檔案沒下載」讀成「今天沒訊號」。庫存裡 K 線讀不到的那幾檔也會<b>講出來</b>,⛔ 不讓你把「沒警報」當成「安全」。','🚨 <b>誠實揭露沒有藏起來</b>:49 個月(含 2022 大跌)只做 🧬 賺 195.5 萬、不挑 🧬 賺 107.8 萬,而<b>同期 0050 買了放著是 260.0 萬 —— 兩種都輸</b>。⭐ 🧬 讓你少輸,⛔ 不是讓你一定贏大盤。','🏦 底部的「券商」鈕讓位給決策台(選股頁裡本來就有一顆券商入口,仍到得了)。'] },
@@ -19962,18 +19966,63 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     // 📈 K 線圖疊圖用的整條序列(⚠️ 圖上的 ATR 線是**代理版**:用「近 20 日最高收盤」當高點,
     //    因為圖上每一根 K 都要有值、不可能知道你哪天買的 —— 文字卡有庫存時才會用你真正的買進日)
-    _exitLineSeries(data) {
+    /** 📅 這一檔在 `data` 裡的**進場索引**(第一根 date >= 買進日)—— 全 App 唯一一份。
+     *  ⛔ `_exitLines` 與 `_exitLineSeries` 共用,⛔ 不可各寫一份(改一邊會讓卡片與圖對不上)。
+     *  ⚠️ `eIdx === n`(今天才買)一律回 null —— 還沒有「進場後最高收盤」可算,退回代理版。 */
+    _entryIdx(data, sym) {
+        try {
+            if (!Array.isArray(data) || !data.length) return null;
+            const n = data.length - 1;
+            const inv = (typeof this._getInventory === 'function') ? this._getInventory() : (this.inventory || []);
+            const p = (inv || []).find(i => String(i.symbol) === String(sym) && +i.cost > 0);
+            if (!p || !p.buyDate) return null;
+            const bd = String(p.buyDate).replace(/\//g, '-').slice(0, 10);
+            for (let i = 0; i <= n; i++) {
+                const d = String(data[i].date || '').replace(/\//g, '-').slice(0, 10);
+                if (d && d >= bd) return i === n ? null : i;
+            }
+        } catch (_) {}
+        return null;
+    },
+
+    _exitLineSeries(data, sym) {
         try {
             const n = (data || []).length; if (n < 25) return null;
             const L = k => +((data[k].low ?? data[k].l) || 0), C = k => +((data[k].close ?? data[k].c) || 0);
-            const don = new Array(n).fill(null), atrTrail = new Array(n).fill(null);
+            const don = new Array(n).fill(null), atrTrail = new Array(n).fill(null), atrReal = new Array(n).fill(null);
             for (let i = 20; i < n; i++) { let lo = Infinity; for (let q = i - 20; q < i; q++) lo = Math.min(lo, L(q) || Infinity); if (isFinite(lo) && lo > 0) don[i] = Number(lo.toFixed(2)); }
             for (let i = 19; i < n; i++) {
                 const a = this._atrTR14(data, i); if (!(a > 0)) continue;
                 let pk = 0; for (let q = i - 19; q <= i; q++) pk = Math.max(pk, C(q));
                 if (pk > 0) atrTrail[i] = Number((pk - 2 * a).toFixed(2));
             }
-            return { don, atrTrail };
+            // 🚪 V75.0.4 真值段:有填買進日時,從進場那根起改用**跟卡片、跟回測一字不差**的算法
+            //   ⭐ 兩處都要對齊(⛔ 只對齊一處等於沒修):
+            //     ① peak 從 `eIdx` 起算(⛔ 不是永遠近 20 根)
+            //     ② 🚨 **ATR 凍結在進場那天**(⛔ 不是每根用當根的)——
+            //        `portfolio_backtest.mjs` 的 chand2 就是這樣算的(CLAUDE.md V74.4.9:
+            //        「出場線逐日重算、ATR 只在進場日算一次」)→ 偏離的是圖不是卡片。
+            //   ⭐ 這樣畫出來才是真正的 ratchet(單調不下降);代理版會跟著近 20 日窗口上下擺動。
+            //   ⚠️ 邊界那一根(eIdx)**兩段都放值**,否則圖上會斷一格。
+            let eIdx = null;
+            try { eIdx = this._entryIdx(data, sym); } catch (_) {}   // ⚠️ 這裡 n = data.length,而 _entryIdx 內部用 length-1,不可混
+            // 🚨 ⛔ 這裡**不可以**加 `eIdx >= 19` 之類的暖身門檻 —— `_atrTR14` 自己就吃得下短窗口
+            //    (`Math.max(1, i-13)`),而卡片 `_exitLines` 也沒有那道門檻。
+            //    加了的話「買進日比較早」的部位真值段整段不會畫,而且**一路上漲的測資看不出來**
+            //    (兩種算法剛好同值)—— 這正是 ⑥g0 那條測資守門抓到的。
+            if (eIdx != null && eIdx < n) {
+                const aE = this._atrTR14(data, eIdx);
+                if (aE > 0) {
+                    let pk = 0;
+                    for (let i = eIdx; i < n; i++) {
+                        pk = Math.max(pk, C(i));
+                        if (pk > 0) atrReal[i] = Number((pk - 2 * aE).toFixed(2));
+                    }
+                    // 真值段接手之後,代理段從 eIdx+1 起收掉(⛔ 邊界那根留著才不會斷線)
+                    for (let i = eIdx + 1; i < n; i++) atrTrail[i] = null;
+                }
+            }
+            return { don, atrTrail, atrReal, eIdx };
         } catch (_) { return null; }
     },
     // 🚪 今天這一檔的三個出場價(有填庫存買進日 → 用你真正的進場點算,跟回測完全一致)
@@ -19989,14 +20038,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 const p = (inv || []).find(i => String(i.symbol) === String(sym) && +i.cost > 0);
                 if (p) {
                     cost = +p.cost; shares = +p.shares || 0; buyDate = p.buyDate || null;
-                    if (buyDate) {
-                        const bd = String(buyDate).replace(/\//g, '-').slice(0, 10);
-                        for (let i = 0; i <= n; i++) {
-                            const d = String(data[i].date || '').replace(/\//g, '-').slice(0, 10);
-                            if (d && d >= bd) { eIdx = i; break; }
-                        }
-                        if (eIdx === n) eIdx = null;   // 今天才買 → 還沒有「進場後最高收盤」可算,退回代理版
-                    }
+                    eIdx = this._entryIdx(data, sym);   // ⛔ 共用同一支(⛔ 不在這裡再算一次)
                 }
             } catch (_) {}
             const proxy = (eIdx == null);
@@ -20069,7 +20111,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             : `✅ 用你的買進日 <b>${String(x.buyDate).slice(0, 10)}</b> 起算(到今天 ${x.days} 根 K 棒),進場後最高收盤 <b>${f2(x.peak)}</b> —— 跟回測算法完全一致。`;
         // 🚨 V75.0.1 K 線圖上疊的那兩條是**代理版**(用近 20 日最高收盤起算)——
         //   填了買進日之後,卡上的數字會跟圖上的線**不一樣**。以前這件事只寫在程式註解裡,畫面一個字都沒有。
-        const proxyNote = x.proxy ? '' : '<div class="text-[9px] text-amber-300/80 leading-snug mt-0.5">⚠️ K 線圖上疊的那兩條是<b>代理版</b>(用近 20 日最高收盤起算,每根 K 都要有值才畫得出來)→ 跟上面的數字會有落差,<b>以上面為準</b>。</div>'; 
+        // 📉 V75.0.4 K 線圖上的 ATR 線改成兩段之後,原本那句「圖上是代理版、以上面為準」**變成假的**
+        //   → 有買進日 = 圖上那條粗虛線就是這個數字(⭐ 那才是使用者要的一致);
+        //     沒買進日 = 圖上只有代理版,要說出來(⛔ 不可讓人以為那條線是他的進場點算的)。
+        const proxyNote = x.proxy
+            ? '<div class="text-[9px] text-amber-300/80 leading-snug mt-0.5">⚠️ 你沒有填<b>買進日</b> → 上面與 K 線圖都只能用<b>代理版</b>(近 20 日最高收盤起算)。到「庫存 → ✏️ 編輯庫存」把買進日補上,就會改用你真正的進場點算(跟回測一字不差)。</div>'
+            : '<div class="text-[9px] text-cyan-300/80 leading-snug mt-0.5">📉 K 線圖上那條<b>粗虛線(你的進場日)</b>就是上面的 ATR 追蹤停利,兩邊一致;旁邊的<b>點線</b>是沒有買進日時才用的代理版。</div>'; 
         return `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 mb-2">
             <div class="flex items-center justify-between mb-1">
                 <span class="text-[12px] font-black text-cyan-200">🚪 這檔今天的出場防守價</span>
@@ -25710,7 +25757,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (!el) return;
             if (val == null) {
                 // ⛔ 已經有真值就不要動它(⛔ 不可把別人查到的資料洗掉)
-                // 🚨 V75.0.3 這裡**必須用 `textContent`,⛔ 不可用 `innerText`** ——
+                // 🚨 V75.0.4 這裡**必須用 `textContent`,⛔ 不可用 `innerText`** ——
                 //    這幾格住在基本面頁的 `<details>` 裡,而 V74.2.6 起它**預設收起**;
                 //    收起的 details 內容不算「有被渲染」→ `innerText` 回**空字串**
                 //    → 落進 BLANKS → 上面 V73.9.5 那道「⛔ 不可洗掉已有真值」的守門**整個失效**,
@@ -25771,7 +25818,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             } else if (BLANKS.has((tdEl.textContent || '').trim()) || /未發放/.test(tdEl.textContent || '')) {
                 // ⛔ 同 `set()`:拿不到值時**不可洗掉已經有真值的格子**
                 //    (這一格沒走 set(),所以保護要在這裡自己補一次 —— 測試 ① 就是這樣抓到的)
-                // 🚨 V75.0.3 同樣**必須 `textContent`** —— 這幾格預設住在收起的 `<details>` 裡,
+                // 🚨 V75.0.4 同樣**必須 `textContent`** —— 這幾格預設住在收起的 `<details>` 裡,
                 //    `innerText` 會回空字串 → 守門失效、真值被洗成 `--`(⛔ 兩處都要改,只改一處等於沒修)
                 tdEl.innerText = '--';
                 tdEl.className = tdEl.className.replace(/text-\w+-\d+/g, '') + ' text-gray-600';
@@ -36870,11 +36917,18 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (document.getElementById('toggleBB')?.checked && ind.upperBB && ind.upperBB[index]) html += `<span class="text-[#c084fc]">布林上軌 ${ind.upperBB[index].toFixed(2)}</span>`;
         try {   // 🚪 V74.4.9 出場防守線讀數(⛔ 同一份 `_exitLineSeries`,不在 HUD 再算一次)
             if (document.getElementById('toggleDon')?.checked || document.getElementById('toggleAtrTrail')?.checked) {
-                if (!this._exSeriesCache || this._exSeriesCache.sym !== String(this.currentSymbolId) || this._exSeriesCache.n !== (this.activeData || []).length)
-                    this._exSeriesCache = { sym: String(this.currentSymbolId), n: (this.activeData || []).length, v: this._exitLineSeries(this.activeData || []) };
+                // 🚨 V75.0.4 快取 key 要含 **buyDate** —— 序列現在會依買進日切出真值段,
+                //   只用 {sym,n} 的話「改了庫存買進日」之後 HUD 會一直吐舊值(而且零錯誤訊息)。
+                const _bdK = (() => { try { const inv = this._getInventory() || []; const p = inv.find(i => String(i.symbol) === String(this.currentSymbolId)); return String(p && p.buyDate || ''); } catch (_) { return ''; } })();
+                if (!this._exSeriesCache || this._exSeriesCache.sym !== String(this.currentSymbolId) || this._exSeriesCache.n !== (this.activeData || []).length || this._exSeriesCache.bd !== _bdK)
+                    this._exSeriesCache = { sym: String(this.currentSymbolId), n: (this.activeData || []).length, bd: _bdK, v: this._exitLineSeries(this.activeData || [], this.currentSymbolId) };
                 const _s = this._exSeriesCache.v;
                 if (_s && document.getElementById('toggleDon')?.checked && _s.don[index] != null) html += `<span class="text-[#38bdf8]">唐奇安 ${_s.don[index].toFixed(2)}</span>`;
-                if (_s && document.getElementById('toggleAtrTrail')?.checked && _s.atrTrail[index] != null) html += `<span class="text-[#f59e0b]">ATR停利 ${_s.atrTrail[index].toFixed(2)}</span>`;
+                if (_s && document.getElementById('toggleAtrTrail')?.checked) {
+                    // ⭐ 真值段優先(它才是跟卡片一致的那條);沒有才退回代理段
+                    if (_s.atrReal && _s.atrReal[index] != null) html += `<span class="text-[#f59e0b]">ATR停利 ${_s.atrReal[index].toFixed(2)}</span>`;
+                    else if (_s.atrTrail[index] != null) html += `<span class="text-[#f59e0b]/70">ATR停利(代理) ${_s.atrTrail[index].toFixed(2)}</span>`;
+                }
             }
         } catch (_) {}
         // 🎛️ V61.10 HUD 顯標準 5/10/20 MA(策略引擎用的固定週期);對應 slot 有開才顯
@@ -37078,12 +37132,21 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         //      K棒戰法卡的「出場防守價」有填庫存買進日時會改用**你真正的進場日**,跟回測完全一致。
         //   ⛔ 公式一律走 `_exitLineSeries`(全 App 唯一一份),⛔ 不在這裡再寫一次。
         try {
-            const _exS = this._exitLineSeries(data);
+            const _exS = this._exitLineSeries(data, this.currentSymbolId);
             if (_exS) {
                 if (document.getElementById('toggleDon')?.checked)
                     option.series.push({ name: '唐奇安20低', type: 'line', data: _exS.don, showSymbol: false, smooth: false, connectNulls: true, lineStyle: { width: 1.5, color: '#38bdf8', type: 'dashed' }, xAxisIndex: 0, yAxisIndex: 0, z: 2 });
-                if (document.getElementById('toggleAtrTrail')?.checked)
-                    option.series.push({ name: 'ATR追蹤停利', type: 'line', data: _exS.atrTrail, showSymbol: false, smooth: false, connectNulls: true, lineStyle: { width: 1.5, color: '#f59e0b', type: 'dashed' }, xAxisIndex: 0, yAxisIndex: 0, z: 2 });
+                if (document.getElementById('toggleAtrTrail')?.checked) {
+                    // 🚪 V75.0.4 兩段:代理段(點線、淡)+ 真值段(虛線、實色,只有填了買進日才有)
+                    //   ⛔ 名稱必須不同(legend/HUD 撞名會互相蓋掉);
+                    //   ⛔ 真值段 `connectNulls: false` —— 前面整段是 null,不可讓它被橋接成一條直線。
+                    //   ⛔ 不可用 piecewise visualMap 做分段著色:ECharts 5.5.0 的 piecewise + line
+                    //      會 throw 'coord'(分時圖 L34984 已記過這個上游 bug)。
+                    const _hasReal = _exS.atrReal && _exS.eIdx != null;
+                    option.series.push({ name: _hasReal ? 'ATR追蹤停利(代理)' : 'ATR追蹤停利', type: 'line', data: _exS.atrTrail, showSymbol: false, smooth: false, connectNulls: true, lineStyle: { width: 1.5, color: '#f59e0b', type: _hasReal ? 'dotted' : 'dashed', opacity: _hasReal ? 0.45 : 1 }, xAxisIndex: 0, yAxisIndex: 0, z: 2 });
+                    if (_hasReal)
+                        option.series.push({ name: 'ATR追蹤停利(你的進場日)', type: 'line', data: _exS.atrReal, showSymbol: false, smooth: false, connectNulls: false, lineStyle: { width: 2, color: '#f59e0b', type: 'dashed' }, xAxisIndex: 0, yAxisIndex: 0, z: 3 });
+                }
             }
         } catch (_) {}
 
@@ -39183,7 +39246,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const cost = item.cost || 0;
             const shares = item.shares || 0;
             const totalCost = Math.round(cost * shares * 1000);
-            return `<div class="grid grid-cols-[1.2fr_85px_85px_95px_28px] gap-1 items-center px-2 py-2 border-b border-[#21262d]">
+            // 📅 V75.0.4 買進日欄位(使用者看不到的那個缺口)——
+            //   ⭐ 為什麼要有:填了買進日,K線圖與出場卡才會用**你真正的進場點**算 ATR 追蹤停利
+            //      (跟回測的 chand2 一字不差);沒填就只能退回「近 20 日最高收盤」的代理版。
+            //   🚨 舊部位多半是空的(自動填今天那條路是後來才加的),而**在這之前完全補不回來** ——
+            //      建倉 modal `invModal` 是死 UI(全檔沒有任何地方打得開它),
+            //      而這個全頁編輯器只給 cost / shares 兩個框。
+            //   ⚠️ 存進去的一律正規化成 `YYYY-MM-DD`(`<input type="date">` 只吃這種),
+            //      而 `_exitLines` 兩種格式都吃得下(它有 replace(/\//g,'-'))。
+            const bd = String(item.buyDate || '').replace(/\//g, '-').slice(0, 10);
+            return `<div class="border-b border-[#21262d]">
+            <div class="grid grid-cols-[1.2fr_85px_85px_95px_28px] gap-1 items-center px-2 pt-2">
                 <!-- 持有股票 -->
                 <div class="flex flex-col gap-0.5 min-w-0">
                     <span class="text-[9px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
@@ -39194,6 +39267,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <input type="number" step="1000" min="0" value="${shares * 1000}" oninput="app._updateInvEditDraft(${idx}, 'sharesAbsolute', this.value)" class="bg-[#21262d] text-white text-[13px] font-mono px-1.5 py-1 rounded border border-[#30363d] outline-none focus:border-blue-500 text-right w-full" placeholder="股數">
                 <div class="text-[13px] font-mono font-black text-gray-300 text-right" data-totalcost="${idx}">${totalCost.toLocaleString()}</div>
                 <button onclick="app._deleteInvEditDraft(${idx}, this)" class="text-red-400 hover:text-red-300 text-[18px] leading-none transition-all" data-confirming="0" title="點 1 次預備,2 秒內再點即刪">🗑️</button>
+            </div>
+            <div class="flex items-center gap-2 px-2 pb-2 pt-1">
+                <span class="text-[10px] text-gray-500 flex-shrink-0">📅 買進日</span>
+                <input type="date" value="${bd}" onchange="app._updateInvEditDraft(${idx}, 'buyDate', this.value)" class="bg-[#21262d] text-white text-[11px] font-mono px-1.5 py-0.5 rounded border border-[#30363d] outline-none focus:border-blue-500">
+                <span class="text-[9px] leading-tight flex-1 text-right ${bd ? 'text-gray-600' : 'text-amber-400/80'}" data-bdnote="${idx}">${bd ? '出場線會用這天起算' : '沒填 → 出場線只能用近 20 日代理'}</span>
+            </div>
             </div>`;
         }).join('');
 
@@ -39233,6 +39312,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             this._invEditDraft[idx].shares = (+value || 0) / 1000;
         } else if (field === 'symbol') {
             this._invEditDraft[idx].symbol = String(value || '').trim().toUpperCase();
+        } else if (field === 'buyDate') {
+            // 📅 ⛔ 空字串要存成空字串(允許清掉),⛔ 不可硬塞今天 —— 那會變成假的進場點
+            this._invEditDraft[idx].buyDate = String(value || '').slice(0, 10);
+            const note = document.querySelector(`[data-bdnote="${idx}"]`);
+            if (note) {
+                const has = !!this._invEditDraft[idx].buyDate;
+                note.textContent = has ? '出場線會用這天起算' : '沒填 → 出場線只能用近 20 日代理';
+                note.classList.toggle('text-gray-600', has);
+                note.classList.toggle('text-amber-400/80', !has);
+            }
+            return;   // ⛔ 買進日不影響總成本,不用往下重算
         }
         // 即時更新總成本顯示
         const item = this._invEditDraft[idx];
