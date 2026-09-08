@@ -68,6 +68,18 @@ const CAL = (process.env.CAL || '').split('+').filter(Boolean);
 //    存起來重用,後面每試一個行事曆假設就從 3 分鐘變成 3 秒。
 //    ⛔ 參數不同一定要重掃(檔案內有 meta,對不上會拒絕載入)。
 const TRADES_CACHE = process.env.TRADES_CACHE || '';
+// ⏳ V75.1.1 GRACE=N —— 「進場後前 N 個交易日不執行移動/趨勢類出場」的**通用**寬限期。
+//   ⭐ 為什麼要有這支:V74.4.8 第一批實跑時,唐奇安寫錯的變體 `don10w`(進場後前 10 天
+//     只看停損)是**全表第一 +708 萬**,比正確版的 don10 還多 81 萬。程式碼註解當時就寫下
+//     真正的問題:「要分得出贏的是**唐奇安**還是**別太早砍**」——這支就是為了回答那一句。
+//   ⛔ 三條不可改掉的設計:
+//     ① 🛑 **停損不受寬限期影響**(`c <= stop` 每一天都跑)→ ⭐ 單筆最大虧損完全不變。
+//     ② ⏳ 最長持有 `MAXD` 的強制出場也不受影響(⛔ 不可讓部位無限期抱下去)。
+//     ③ 🎯 停利類(tp/rr/half)與時間停損 tmD **不 gate** ——
+//        對停利加寬限期只是「延後獲利」,那不是這次要測的設計。
+//   🚨 `GRACE` **必須進 `CACHE_KEY`** —— 漏了的話 GRACE=0 的掃描快取會被 GRACE=10 靜默重用,
+//      跑出「加了寬限期完全沒差」的假結論,而且**零錯誤訊息**。
+const GRACE = Math.max(0, +(process.env.GRACE || 0) || 0);
 // ⚖️ V73.2.2 部位縮放實驗 —— ⭐ 這才是上面 53 種濾網真正指向的方向:
 //   實測發現「差的環境」每趟**還是正的**(貼著波段高 +0.86%)→ 砍掉它就是砍獲利,
 //   所以該調的是**押多少**不是**做不做**。
@@ -166,8 +178,9 @@ if (RANKBY !== 'self' || GATE !== 'pat') console.log(`🎯 增量檢定:RANKBY=$
 console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日${REENTRY > 0 ? ` ・買回=${REENTRY}日內站回5MA(最多${RE_MAX}次)` : ''} ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
 
 // 💾 掃描結果快取(只跟這幾個參數有關;行事曆濾網完全不影響掃描結果)
-const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX });
+const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE });
 const allTrades = [];        // {sym, key, inD, outD, ret, amt, entry, stop}
+let graceBlocked = 0;        // ⏳ 有幾個(交易·日)真的被寬限期擋下過(空過守門用)
 let cacheHit = false;
 if (TRADES_CACHE && fs.existsSync(TRADES_CACHE)) {
     try {
@@ -215,6 +228,9 @@ for (const sym of syms) {
         let P;
         try { P = app._playbookPatternDefs(data); } catch (_) { return []; }
         const out = [];
+        // ⏳ V75.1.1 寬限期:⛔ 一定要從 `a` 拿(這段跑在**瀏覽器**裡,讀不到 Node 端的 GRACE)
+        const GR = Math.max(0, +(a.grace || 0) || 0);
+        let gBlocked = 0;
         for (const p of P) {
             let i = 45;
             // 🔁 買回:出場後 N 天內收盤站回 5 日線 → 把那一天當成「訊號又成立」丟進同一條路徑
@@ -331,13 +347,21 @@ for (const sym of syms) {
                         let sarV = data[eIdx].low, sarEP = data[eIdx].high, sarAF = 0.02;
                         let halfDone = 0, halfRet = 0, dynStop = stop;
                         let peak = entry, tmHit = 0;
+                        // ⏳ 寬限期閘門:`gx(cond)` = 「這個移動/趨勢類出場成立了嗎」
+                        //   🚧 空過守門的關鍵:⛔ 不可只數「有幾天在寬限期內」(那只要 GRACE>0 幾乎必然 >0,
+                        //      等於沒驗到)—— 要數「**真的有一個出場訊號被擋下來**」才算。
+                        //      V74.3.5 踩過:寫錯的變體輸出跟基準一字不差,看起來只是「沒差別」。
+                        let graced = false;
+                        const gx = (cond) => { if (!cond) return false; if (graced) { gBlocked++; return false; } return true; };
                         for (let j = eIdx + 1; j <= endJ; j++) {
                             const c = C(j);
                             if (c > peak) peak = c;
+                            // ⏳ 寬限期內:移動/趨勢類出場整批跳過(🛑 停損與 ⏳ MAXD 仍照跑)
+                            graced = GR > 0 && (j - eIdx) < GR;
                             // 🛡️ 保本:漲過 +beP% 之後,停損上移到進場價(只升不降)
                             if (beP > 0 && peak >= entry * (1 + beP / 100) && stop < entry) stop = entry;
                             // 📐 ATR 移動停損(只升不降)
-                            if (atrtK > 0) { const s2 = c - atrtK * atrAt(j); if (s2 > dynStop) dynStop = s2; if (c <= dynStop) { exitP = c; exitIdx = j; break; } }
+                            if (atrtK > 0) { const s2 = c - atrtK * atrAt(j); if (s2 > dynStop) dynStop = s2; if (gx(c <= dynStop)) { exitP = c; exitIdx = j; break; } }
                             if (c <= stop) { exitP = stop; exitIdx = j; break; }
                             // 🎯 固定停利 / 風報比停利:達標就走(⚠️ 用收盤價,不假設剛好碰到目標價)
                             if (tpP > 0 && c >= entry * (1 + tpP / 100)) { exitP = c; exitIdx = j; break; }
@@ -347,21 +371,23 @@ for (const sym of syms) {
                             // 🐢 唐奇安:收盤跌破前 N 日最低(⛔ 不含今天)
                             if (donN > 0 && (!donWait || j - donN >= eIdx)) {
                                 let lo = Infinity; for (let q = j - donN; q < j; q++) lo = Math.min(lo, data[q].low);
-                                if (c < lo) { exitP = c; exitIdx = j; break; }
+                                if (gx(c < lo)) { exitP = c; exitIdx = j; break; }
                             }
-                            if (plow && c < data[j - 1].low) { exitP = c; exitIdx = j; break; }
+                            if (gx(plow && c < data[j - 1].low)) { exitP = c; exitIdx = j; break; }
                             // 🪂 拋物線 SAR(做多):先算今天的 SAR,再比
                             if (sar) {
                                 sarV = sarV + sarAF * (sarEP - sarV);
                                 sarV = Math.min(sarV, data[j - 1].low, j - 2 >= eIdx ? data[j - 2].low : data[j - 1].low);
                                 if (data[j].high > sarEP) { sarEP = data[j].high; sarAF = Math.min(0.2, sarAF + 0.02); }
-                                if (c < sarV) { exitP = c; exitIdx = j; break; }
+                                // ⚠️ SAR 的狀態照樣逐日推進(⛔ 不可連狀態一起凍結 —— 那會讓寬限期結束時
+                                //    SAR 停在一個遠低於現價的舊值,等於又多送一段沒人要的寬限)
+                                if (gx(c < sarV)) { exitP = c; exitIdx = j; break; }
                             }
                             if (x520 && j >= 19) {
                                 let s5 = 0, s20 = 0; for (let q = 0; q < 20; q++) { s20 += C(j - q); if (q < 5) s5 += C(j - q); }
-                                if (s5 / 5 < s20 / 20) { exitP = c; exitIdx = j; break; }
+                                if (gx(s5 / 5 < s20 / 20)) { exitP = c; exitIdx = j; break; }
                             }
-                            if (chanddK > 0) { const at = atrAt(j); if (at > 0 && c <= peak - chanddK * at) { exitP = c; exitIdx = j; break; } }
+                            if (chanddK > 0) { const at = atrAt(j); if (gx(at > 0 && c <= peak - chanddK * at)) { exitP = c; exitIdx = j; break; } }
                             // ⏱️ 到了第 tmD 天,若最高點還沒漲過 tmP% → 認賠時間成本先出
                             // 🚨 這裡必須是 `<=` 不是 `<`:`peak` 從 `entry` 起算,
                             //    所以 tmP=0(「完全沒漲就出」)用 `<` 會變成 `entry < entry` = 永遠 false
@@ -372,10 +398,10 @@ for (const sym of syms) {
                             }
                             if (maN2 > 0 && j >= maN2 - 1) {
                                 let s2 = 0; for (let q = 0; q < maN2; q++) s2 += C(j - q);
-                                if (c < s2 / maN2) { exitP = c; exitIdx = j; break; }
+                                if (gx(c < s2 / maN2)) { exitP = c; exitIdx = j; break; }
                             }
-                            if (trailPct2 > 0 && c <= peak * (1 - trailPct2 / 100)) { exitP = c; exitIdx = j; break; }
-                            if (chandK > 0 && chandATR > 0 && c <= peak - chandK * chandATR) { exitP = c; exitIdx = j; break; }
+                            if (gx(trailPct2 > 0 && c <= peak * (1 - trailPct2 / 100))) { exitP = c; exitIdx = j; break; }
+                            if (gx(chandK > 0 && chandATR > 0 && c <= peak - chandK * chandATR)) { exitP = c; exitIdx = j; break; }
                             // 🚪 移動停利:從進場後的最高收盤回落 N% 就走(讓贏家跑,輸家照樣被 stop 砍)
                             if (j === endJ) { exitP = c; exitIdx = j; }
                         }
@@ -406,9 +432,12 @@ for (const sym of syms) {
                 i++;
             }
         }
+        // ⏳ 把「被寬限期擋下幾次」帶回 Node 端 —— ⛔ 陣列的自訂屬性會被結構化複製丟掉,
+        //    所以塞成一筆特殊列,外面收完立刻濾掉(⛔ 不可讓它混進交易清單)
+        if (GR > 0) out.push({ __g: gBlocked });
         return out;
-    }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP, reentry: REENTRY, reMax: RE_MAX });
-    for (const t of tr) allTrades.push({ ...t, sym });
+    }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP, reentry: REENTRY, reMax: RE_MAX, grace: GRACE });
+    for (const t of tr) { if (t.__g != null) { graceBlocked += t.__g; continue; } allTrades.push({ ...t, sym }); }
     if (++done % 50 === 0) {
         const el = (Date.now() - t0) / 1000;
         process.stdout.write(`\r   掃描 ${done}/${syms.length} ・${allTrades.length} 筆交易 ・${el.toFixed(0)}s`);
@@ -416,6 +445,11 @@ for (const sym of syms) {
 }
 console.log(`\r   ✅ 掃描完成:${done} 檔 ・${allTrades.length} 筆候選交易 ・${((Date.now() - t0) / 1000).toFixed(0)}s      \n`);
 await browser.close();
+    // 🚧 空過守門:設了 GRACE 卻一筆都沒擋到 → 那個變體沒有生效,⛔ 不可讓它看起來只是「沒差別」
+    if (GRACE > 0) {
+        console.log(`⏳ 寬限期 GRACE=${GRACE}:真的擋下 ${graceBlocked.toLocaleString()} 次移動/趨勢類出場訊號`);
+        if (!graceBlocked) { console.error('❌ GRACE > 0 卻一次都沒擋到出場訊號 → 這個變體沒有生效(⛔ 不是「沒差別」)'); process.exit(1); }
+    }
     if (TRADES_CACHE) {
         fs.writeFileSync(TRADES_CACHE, JSON.stringify({ key: CACHE_KEY, trades: allTrades }));
         console.log(`💾 交易已快取:${TRADES_CACHE}`);
