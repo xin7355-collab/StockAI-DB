@@ -64,7 +64,14 @@ await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcont
 await page.waitForFunction(() => typeof app !== 'undefined' && !!app._applyFundamentalsToXray, null, { timeout: 25000 });
 
 const R = await page.evaluate(() => {
-    const g = id => (document.getElementById(id)?.innerText || '').trim();
+    // 🚨 V75.0.3:這幾格住在基本面頁的 `<details>` 裡,而 V74.2.6 起它**預設收起** ——
+    //    收起的 details 內容不算「有被渲染」→ `innerText` 回**空字串**。
+    //    ⭐⭐ 這裡**刻意不展開**,因為那正是正式環境的預設狀態:
+    //       App 的守門本來也讀 `innerText` → 每一格都被判成「空的」→
+    //       V73.9.5 那道「⛔ 不可洗掉已有真值」的守門整個失效(真 bug,已修成 textContent)。
+    //    ⛔ 所以讀值一律用 `textContent`(問「這一格有沒有內容」),
+    //       `innerText`(問「使用者現在看不看得到」)在這裡會量到錯的東西。
+    const g = id => (document.getElementById(id)?.textContent || '').trim();
     const setRaw = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
     const out = {};
 

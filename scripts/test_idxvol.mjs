@@ -1,5 +1,6 @@
 // 🧪 指數的「量」改用成交金額(V71.8.4)—— 使用者:「k線部分有問題」
-// 實測 data/^TWII.json:486 根裡最近 44 根 volume=0,但 amount(證交所官方成交值)486 根全有。
+// 實測 data/^TWII.json:當時 486 根裡最近 44 根 volume=0,但 amount(證交所官方成交值)全有。
+// ⚠️ 根數會隨採礦變深(V73.2.9 起 1,214 根)→ 斷言一律跟測資長度比,⛔ 不寫死。
 // → 量柱、量能判斷、六脈「量能」對指數全部失效。改成整條序列換成 amount(⛔ 不可只補缺的那幾根)。
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
@@ -55,7 +56,10 @@ ok('渲染無 pageerror', errs.length === 0, errs[0] || '');
 const I = R.idx, S = R.stock;
 console.log(`   指數: ${I.n} 根 ・零量 ${I.zero} 根 ・volIsAmount=${I.volIsAmount} ・最後3根量 ${JSON.stringify(I.last)}`);
 console.log(`   個股: ${S.n} 根 ・零量 ${S.zero} 根 ・volIsAmount=${S.volIsAmount}`);
-ok('① K線根數沒有被砍(幽靈棒守門仍有效)', I.n === 486, String(I.n));
+// ⚠️ ⛔ 不可寫死根數 —— `^TWII.json` V73.2.9 起補深到 2021(486 → 1,214 根),
+//    釘死當時的數字會在資料一變深就假失敗(看起來像「幽靈棒守門把 K 砍掉了」)。
+//    ⭐ 這條要驗的**用意**是「一根都沒被砍掉」→ 跟測資自己的長度比。
+ok('① K線根數沒有被砍(幽靈棒守門仍有效)', I.n === REAL.length, `${I.n} vs 測資 ${REAL.length}`);
 ok('② 指數的量已改用成交金額,零量根數歸零', I.zero === 0, `還有 ${I.zero} 根零量`);
 ok('② 有標記 _volIsAmount(顯示端才知道要叫「成交金額」)', I.volIsAmount === true, '');
 ok('③ ⛔ 整條序列一次換完,不可只補缺的那幾根(否則兩種尺標)',
