@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V74.9.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V74.9.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.9.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V74.9.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2049,7 +2049,7 @@
                 <div class="panel p-4 border border-amber-700/40 rounded-lg bg-[#0d1117] shadow-sm border-l-4 border-l-amber-500">
                     <div class="flex items-center justify-between mb-1.5">
                         <h2 class="text-base font-black text-amber-300 flex items-center gap-1.5">🎯 這檔適合什麼打法</h2>
-                        <button onclick="app.showJargon?.('打法適配') || alert('【個股打法適配儀】\n\n每檔股票脾氣不同,同一招在 A 股神準、在 B 股卻虧。這裡用「這檔自己的歷史」算出:\n\n① 性格標籤:趨勢波段股 / 箱型區間股 / 高波動飆股 / 牛皮存股型 → 決定打法方向。\n② 型態回測排名:把 ~9 個進場型態逐個對這檔歷史回測(訊號日收盤進場、跌破5MA或-5%停損出場),算勝率+每趟期望值+樣本,排名。\n\n👉 主打前 2-3 名正期望值型態,避開負期望值的。純公式歷史回測,過去不代表未來。')" class="text-[9px] text-gray-500 hover:text-amber-300">📖 說明</button>
+                        <button onclick="app.showJargon?.('打法適配') || app._helpBox('【個股打法適配儀】\n\n每檔股票脾氣不同,同一招在 A 股神準、在 B 股卻虧。這裡用「這檔自己的歷史」算出:\n\n① 性格標籤:趨勢波段股 / 箱型區間股 / 高波動飆股 / 牛皮存股型 → 決定打法方向。\n② 型態回測排名:把 ~9 個進場型態逐個對這檔歷史回測(訊號日收盤進場、跌破5MA或-5%停損出場),算勝率+每趟期望值+樣本,排名。\n\n👉 主打前 2-3 名正期望值型態,避開負期望值的。純公式歷史回測,過去不代表未來。')" class="text-[9px] text-gray-500 hover:text-amber-300">📖 說明</button>
                     </div>
                     <div id="playbookCard" class="hidden"></div>
                     <!-- 🎯 V45.12 進頁自動分析,大按鈕改隱藏;保留小鈕供手動重抽 -->
@@ -2951,7 +2951,7 @@
             <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col overflow-hidden">
                 <div class="flex justify-between items-center px-4 py-3 border-b border-[#30363d] bg-[#161b22] shadow-sm">
                     <!-- 💼 V45.12 改名「庫存股」+ 點標題彈出說明(移除常駐說明banner) -->
-                    <h2 onclick="alert('💼 庫存股怎麼用\n\n這是你「實際持有」的股票。\n\n・輸入買入價 → 每天自動算盈虧\n・獲利 > 15% → 建議上移停利\n・虧損 > 10% → 提醒評估停損\n・點代號旁 ⋯ → 結算平倉(記入交易日誌算勝率)/ 改成本 / 刪除')" class="text-base md:text-lg font-bold text-white flex items-center gap-1.5 tracking-wide cursor-pointer"><span class="bg-orange-600 text-white text-sm px-2 py-0.5 rounded font-black shadow-inner">庫</span> 庫存股 <span class="text-[10px] text-gray-500 font-normal ml-0.5">📖 點看說明</span> <span id="tradeMirrorBtnSlot" class="ml-1"></span></h2>
+                    <h2 onclick="app._helpBox('💼 庫存股怎麼用\n\n這是你「實際持有」的股票。\n\n・輸入買入價 → 每天自動算盈虧\n・獲利 > 15% → 建議上移停利\n・虧損 > 10% → 提醒評估停損\n・點代號旁 ⋯ → 結算平倉(記入交易日誌算勝率)/ 改成本 / 刪除')" class="text-base md:text-lg font-bold text-white flex items-center gap-1.5 tracking-wide cursor-pointer"><span class="bg-orange-600 text-white text-sm px-2 py-0.5 rounded font-black shadow-inner">庫</span> 庫存股 <span class="text-[10px] text-gray-500 font-normal ml-0.5">📖 點看說明</span> <span id="tradeMirrorBtnSlot" class="ml-1"></span></h2>
                     <div class="flex gap-1.5">
                         <!-- V17.12 — 簡化為單一「編輯」按鈕,建倉/刷新整合進編輯頁 -->
                         <button onclick="app.openInventoryEditPage(); app.vibrate(30);" class="bg-blue-700 hover:bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold shadow-sm transition-colors">✏️ 編輯庫存</button>
@@ -3188,7 +3188,7 @@
             <!-- 🗡️ V68.6.8 觀察清單說明精簡成一行 + ⓘ(原整屏大框文字太多)-->
             <div class="bg-[#161b22] border-l-4 border-purple-500 border-y border-r border-[#30363d] rounded-r px-2.5 py-1.5 text-[11px] text-gray-300 leading-snug flex items-center justify-between gap-2">
                 <span>🗡️ 觸發=<b class="text-green-300">強烈關注</b>,非立刻買 → 點開個股確認再進</span>
-                <button onclick="alert('🗡️ 觀察清單怎麼用?\n\n✅ 觸發訊號 =「強烈關注」,不等於立刻買進。\n\n📋 用法:看到觸發 → 點開個股看詳細(總評分 / AI / 籌碼)→ 確認再進場。\n\n⏰ 時效:盤後採礦(每日 16:30 後)→ 隔日盤中參考進場。\n\n🚨 盤中即時:需手動點「盤中即時更新」按鈕(避免高頻撞限流)。')" class="text-[10px] text-purple-300 border border-purple-700/50 rounded px-1.5 py-0.5 flex-shrink-0 hover:bg-purple-900/20">ⓘ 詳細</button>
+                <button onclick="app._helpBox('🗡️ 觀察清單怎麼用?\n\n✅ 觸發訊號 =「強烈關注」,不等於立刻買進。\n\n📋 用法:看到觸發 → 點開個股看詳細(總評分 / AI / 籌碼)→ 確認再進場。\n\n⏰ 時效:盤後採礦(每日 16:30 後)→ 隔日盤中參考進場。\n\n🚨 盤中即時:需手動點「盤中即時更新」按鈕(避免高頻撞限流)。')" class="text-[10px] text-purple-300 border border-purple-700/50 rounded px-1.5 py-0.5 flex-shrink-0 hover:bg-purple-900/20">ⓘ 詳細</button>
             </div>
 
             <!-- Strategy Guide -->
@@ -3803,7 +3803,7 @@ const app = {
             const botU = (app.settings?.botUsername || '').replace(/^@/, '').trim();
             const link = botU ? `https://t.me/${botU}` : '';
             const html = `📨 *綁定碼*\n\n        ${code}\n\n步驟:\n1. ${link ? `開 ${link}(已自動複製連結)` : '開你設定的 Telegram bot'}\n2. 按 Start 進入聊天室\n3. 傳「/bind ${code}」給 bot\n4. 等 bot 回「✅ 綁定成功」\n\n綁定碼 10 分鐘內有效,網頁會自動偵測完成`;
-            alert(html);
+            app._helpBox(html);
             try { navigator.clipboard?.writeText(code); } catch (_) {}
             if (link) {
                 setTimeout(() => window.open(link, '_blank'), 200);
@@ -5376,10 +5376,36 @@ const app = {
     //   ⛔ 仍然只有「賣出/風險」那一側 —— 進場/點火/共振類照舊 toast(多空不對稱鐵則)。
     _URGENT_ALERT: /停損|出場|平倉|跌破|熄火|轉偏空|處置|斷頭|追繳|警報|強制|背離|停利|減碼|出貨|賣訊|末段|過熱|轉弱|做頭|壓力沉重|逃命|第 ?\d ?擊/,
     _isUrgentAlert(title) { try { return this._URGENT_ALERT.test(String(title || '')); } catch (_) { return false; } },
+    /** 👜 你手上的(庫存)+ 你在追的(自選)—— 全 App 唯一一份
+     *  ⛔ 這段本來在 `_tomorrowWatchHtml` 與 `_eodTriggerSweep` 各抄一份(陷阱 #37:
+     *     同一套規則寫兩份,遲早只改到一邊)。 */
+    _mySyms() {
+        const s = new Set();
+        try { for (const i of (this._getInventory?.() || [])) if (i && i.symbol) s.add(String(i.symbol)); } catch (_) {}
+        try { for (const g of Object.values(this.favGroups || {})) for (const x of (g || [])) s.add(String(x)); } catch (_) {}
+        return s;
+    },
+    /** 🪟 V75.0.0 彈窗判準改成「**跟你有關**」(使用者:「統一用大的」)
+     *  ⭐ 舊判準是「多空不對稱」(只有賣訊彈)—— 那條鐵則**沒有被推翻**,只是換了問題:
+     *     使用者混亂的來源不是「彈太少」,是「跟他無關的東西也在彈」。
+     *  判準三層(⛔ 順序不可換):
+     *    ① `sym` 在你的庫存或自選 → **彈**(不論多空 —— 你手上的股票出訊號,買賣都該打斷你)
+     *    ② 沒有 `sym`(全市場盤點摘要:處置股盤點/神分點跟單摘要/內部人籌碼盤點…)
+     *       → ⛔ **不彈**,走 toast + 鈴鐺(那是「你有 N 檔…」的統計,不是一件要你現在做的事)
+     *    ③ 有 `sym` 但不是你的 → 沿用舊的風險詞判準(⛔ 不可整個關掉:
+     *       你可能正在看那一檔,而忽略風險的代價遠大於多看一眼) */
+    _shouldPopup(title, sym) {
+        try {
+            const s = String(sym || '').trim();
+            if (!s) return false;                                  // ② 全市場盤點摘要
+            if (this._mySyms().has(s)) return true;                // ① 跟你有關
+            return this._isUrgentAlert(title);                     // ③ 別人的股票:只有風險類
+        } catch (_) { return this._isUrgentAlert(title); }
+    },
     /** 🪟 事件觸發彈窗(只給高優先級;同一件事一天只跳一次) */
     _alertPopup(title, body, sym) {
         try {
-            if (!this._isUrgentAlert(title)) return false;
+            if (!this._shouldPopup(title, sym)) return false;
             const m = document.getElementById('alertPopModal');
             const t = document.getElementById('alertPopTitle');
             const b = document.getElementById('alertPopBody');
@@ -7278,7 +7304,7 @@ ${list}
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
                 <div class="flex items-center justify-between mb-1.5">
                     <div class="text-[11px] text-gray-300 font-bold">🧩 市值型集中度對照</div>
-                    <button onclick="alert('【市值型 ETF 集中度】\\n\\n市值型 ETF 依「市值大小」配權重,龍頭股會佔很重 → 買 0050 約一半資金押在台積電一檔(集中度高、跟台積電高度連動)。\\n\\n00922/00923 等「等權重/Smart Beta」把單一股上限壓到約一成 → 分散、不押單一龍頭。\\n\\n🟠 單一成分股 >40% = 集中度過高(漲跌看龍頭臉色);想分散選等權重。')" class="text-gray-500 text-[10px]">📖 教學</button>
+                    <button onclick="app._helpBox('【市值型 ETF 集中度】\\n\\n市值型 ETF 依「市值大小」配權重,龍頭股會佔很重 → 買 0050 約一半資金押在台積電一檔(集中度高、跟台積電高度連動)。\\n\\n00922/00923 等「等權重/Smart Beta」把單一股上限壓到約一成 → 分散、不押單一龍頭。\\n\\n🟠 單一成分股 >40% = 集中度過高(漲跌看龍頭臉色);想分散選等權重。')" class="text-gray-500 text-[10px]">📖 教學</button>
                 </div>
                 <div class="flex flex-col gap-1.5">${_conc.map(c => {
                     const w = c.top1.weight, hi = w > 40;
@@ -7687,7 +7713,7 @@ ${list}
                 </div>
                 <div class="flex flex-col gap-2">
                     <button onclick="app.forcePwaReload()" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-black rounded text-sm transition-colors">🆘 強制清 SW + 重整(救 iOS PWA)</button>
-                    <button onclick="alert('1. 截圖此整張紅卡\\n2. 拷貝錯誤訊息\\n3. 回報給 Claude\\n\\nClaude 看到具體錯誤就能對症修')" class="w-full py-2 bg-blue-700 hover:bg-blue-600 text-white font-bold rounded text-xs transition-colors">📸 截圖回報給 Claude</button>
+                    <button onclick="app._helpBox('1. 截圖此整張紅卡\\n2. 拷貝錯誤訊息\\n3. 回報給 Claude\\n\\nClaude 看到具體錯誤就能對症修')" class="w-full py-2 bg-blue-700 hover:bg-blue-600 text-white font-bold rounded text-xs transition-colors">📸 截圖回報給 Claude</button>
                 </div>
                 <div class="text-[9px] text-gray-400 text-center mt-2 leading-relaxed">
                     💡 iOS PWA 救命招:雙擊 Home 完全關 App → iPhone 設定 → Safari → 清歷史 → 重開 App
@@ -7888,8 +7914,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V74.9.8',
+    _APP_VERSION: 'V74.9.9',
     _CHANGELOG: [
+        { v:'V74.9.9', dt:'2026-09-08', d:['🪟 <b>更新版本提醒不再自動跳出來了</b> —— 想看的時候,設定中心「🆕 更新紀錄」隨時點得到。','🪟 <b>教學說明全部改成大視窗</b>(61 處):以前點「📖 教學」跳出來的是瀏覽器那個灰色小框,字擠成一團又不能捲;現在跟 App 其他視窗長得一樣、看得清楚。⛔ 文案一個字都沒改。','🔔 <b>提醒的判準改成「跟你有關」</b>:你<b>庫存或自選</b>裡的股票出訊號 → 跳大視窗(不管是買點還是賣點);<b>不是你的</b>股票 → 只有風險類才跳;「你有 N 檔有處置風險」這種<b>全市場統計</b> → ⛔ 不再打斷你,改用跑馬燈 + 鈴鐺。','⭐ 為什麼這樣改:讓你混亂的不是「提醒太少」,是<b>跟你無關的東西也在跳</b>。⛔ 而「賣訊比買訊重要」那條沒有被推翻 —— 它降級成第 3 層(別人的股票只有風險類會跳)。','🎯 <b>獵殺清單的通知修好了</b>:以前它自己發系統通知 → ① App 開著時會跟畫面上的訊息重複 ② <b>鈴鐺歷史裡查不到</b> ③ 沒開通知權限就完全沒反應。現在跟其他提醒走同一條路。'] },
         { v:'V74.9.8', dt:'2026-09-08', d:['🧪 回測了兩套外部策略:「布林壓縮後突破上軌」**進場條件本身就沒用**(換哪種出場都輸給隨機進場);「強勢股拉回買」進場有東西(贏隨機 +0.59 個百分點)**但 2022 空頭與 2025 都是負的**,而且每趟只有 +0.17%,遠低於現行做法的 +0.76%。⛔ 兩套都沒接進 App。','💰 順便再驗一次「1.5% 風險模型」:同一批交易只換部位大小,總報酬 −26% → −2%,而每筆百分比報酬完全一樣 → 錢配錯地方會把賺的吃光。'] },
             { v:'V74.9.7', dt:'2026-09-08', d:['🔗 回測了「籌碼先進駐 → 再帶量突破」這條事件鏈:實測**比單獨的帶量突破還差**(10 日 −0.84 / 20 日 −1.20 個百分點),籌碼先來的突破反而更弱;「籌碼進駐但沒突破」更慘(−2.69%)。⛔ 不做事件鏈狀態機,結論記在產業作戰室的實測總表。'] },
             { v:'V74.9.6', dt:'2026-09-07', d:['🏝️ 修好 136 檔的「孤兒開頭段」:0052 開頭有 2017 年 12 月那 21 根、然後直接跳到 2023 年 6 月,中間空了 5 年半。那種孤島會讓 K 線圖前面掛一段年代不明的東西。','⛔ 只砍「前面 ≤60 根 + 後面接一個 ≥120 天的洞 + 後面還有 ≥200 根」那種;前段超過 60 根的 5 檔是真的深歷史,一根都沒動。','✅ 全市場模擬:2,523 檔裡動 171 檔(孤島 136 ・掛牌前殘留 34 ・單日離譜 1),再跑一次不會再砍。'] },
@@ -7972,7 +7999,11 @@ ${list}
                 //   ⚠️ 用台北時區比日期(⛔ 不可用 toISOString —— 那是 UTC,台北晚上會差一天)。
                 const relDt = (this._CHANGELOG && this._CHANGELOG[0] && this._CHANGELOG[0].dt) || '';
                 const tpeToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
-                if (relDt === tpeToday) this._showUpdateLog(seen);
+                // 🪟 V75.0.0 使用者:「把更新版本提醒主動彈跳關閉」→ ⛔ 不再自動跳窗。
+                //   ⛔ 但下面那行蓋章**一定要留** —— 不蓋章的話日後恢復自動彈時,
+                //      會一次把中間累積的所有版本全倒出來。
+                //   ⭐ 想看的人:設定中心「🆕 更新紀錄」隨時點得到(那條路沒有動)。
+                void relDt; void tpeToday;
                 localStorage.setItem(KEY, cur);
             }
         } catch (_) {}
@@ -9905,7 +9936,7 @@ ${list}
                 <div class="flex gap-1 mb-2 bg-[#0d1117] p-1 rounded-lg border border-[#30363d]">${modeBtn('momentum', '🐎 中線黑馬')}${modeBtn('long', '🌱 長線潛力')}</div>
                 <div class="flex items-center justify-between">
                     <h2 class="text-base font-black ${titleCol} flex items-center gap-1.5">${title}
-                        <button onclick="alert('${help}')" class="text-[10px] text-gray-500 hover:text-cyan-300">📖</button>
+                        <button onclick="app._helpBox('${help}')" class="text-[10px] text-gray-500 hover:text-cyan-300">📖</button>
                     </h2>
                     <button onclick="app.rescanPotential();" class="text-[11px] text-cyan-300/80 hover:text-cyan-200 border border-cyan-700/40 rounded px-2 py-0.5">🔄 重掃</button>
                 </div>
@@ -10724,7 +10755,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         const e = (j && j.edge) || { lo10: 0.68, lo25: 0.63, mid: -0.31, hi25: -0.43, hi10: -0.49,
                                      horizon: 60, cost: 0.44, files: 300, years: 11 };
         const d = j && j.data && j.data[String(this.currentSymbolId)];
-        alert('【vs 自己 = 這檔現在的本益比,在它自己近 3 年的哪個位置】\n\n'
+        app._helpBox('【vs 自己 = 這檔現在的本益比,在它自己近 3 年的哪個位置】\n\n'
             + '0% = 近 3 年最便宜的時候;100% = 最貴的時候。\n'
             + (d ? `這檔現在 PE ${d.pe},近 3 年區間 ${d.lo}~${d.hi}(中位 ${d.med}),位階 ${d.pct}%。\n\n` : '\n')
             + '⭐【跟旁邊那格「vs 同業」不一樣,別搞混】\n'
@@ -13413,7 +13444,7 @@ const marginByDate = {};
             box.className = 'bg-[#161b22] border-l-4 ' + bcls + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg';
             box.innerHTML = `
                 <div class="flex items-center justify-between gap-2 mb-1.5">
-                    <span class="text-[12px] font-black text-gray-100">🏛️ 法人明細 <button onclick="alert('🔬 籌碼綜合評分怎麼算\\n\\n把所有籌碼因子加權成一個分數(50=中性、越高越偏多):\\n・外資 1/3/5/10 日買賣超 + 連續方向(權重最高)\\n・投信＋自營\\n・融資券(散戶指標)\\n・主力分點集中度\\n・法人反轉(賣轉買/買轉賣)\\n・投信季底做帳\\n・借券空方壓力\\n\\n純公式、零 AI。籌碼為輔,進出仍以 K 線為主。'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300 align-middle">ⓘ</button>
+                    <span class="text-[12px] font-black text-gray-100">🏛️ 法人明細 <button onclick="app._helpBox('🔬 籌碼綜合評分怎麼算\\n\\n把所有籌碼因子加權成一個分數(50=中性、越高越偏多):\\n・外資 1/3/5/10 日買賣超 + 連續方向(權重最高)\\n・投信＋自營\\n・融資券(散戶指標)\\n・主力分點集中度\\n・法人反轉(賣轉買/買轉賣)\\n・投信季底做帳\\n・借券空方壓力\\n\\n純公式、零 AI。籌碼為輔,進出仍以 K 線為主。'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300 align-middle">ⓘ</button>
                         <span class="text-[9px] text-gray-600 font-normal ml-1">結論在上面那張,這裡是明細</span></span>
                     <span class="flex items-center gap-1.5 flex-shrink-0">${this._dChip(arr[arr.length - 1]?.date, '法人資料日')}${sparkScore}</span>
                 </div>
@@ -13734,7 +13765,7 @@ const marginByDate = {};
         </div>`;
     },
     _helpOvernight() {
-        alert(`🌙 隔夜資金足跡 — 這是什麼?
+        app._helpBox(`🌙 隔夜資金足跡 — 這是什麼?
 
 把每天的漲跌拆成兩段看:
 
@@ -13999,7 +14030,7 @@ const marginByDate = {};
             if (slot) {
                 slot.innerHTML = `
                     <div class="border-t border-[#21262d] pt-2 flex items-center justify-between gap-2">
-                        <span class="text-[12px] font-black text-gray-100">🧹 籌碼乾淨度 <span class="${cls}">${emo} ${lbl}</span> <button onclick="alert('🧹 籌碼乾淨度 = 看「亂不亂」\\n\\n上半部看【方向偏多偏空】,這區看【集中/一致 vs 分散/亂】。\\n\\n怎麼算(純公式、零AI):\\n・三大法人近5日進出「一致性」(權重最高)\\n・🏦 千張大戶持股趨勢(集保官方週資料,週六更新)\\n・🔄 換手率(今日成交÷總發行股數,>15% 過熱)\\n・主力前10大分點集中度\\n・融資(散戶追高=亂、退場=乾淨,已計分)\\n・⚡ 當沖比(>50%=浮額虛)/🌐 外資持股水位20日趨勢/💳 可轉債餘額大減/🐘 鉅額交易(付費資料,有才顯)\\n\\n⚠️ 勝率加分項非保證漲:大戶也會套牢/坑殺,配合方向+K線+停損。'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300 align-middle">ⓘ</button></span>
+                        <span class="text-[12px] font-black text-gray-100">🧹 籌碼乾淨度 <span class="${cls}">${emo} ${lbl}</span> <button onclick="app._helpBox('🧹 籌碼乾淨度 = 看「亂不亂」\\n\\n上半部看【方向偏多偏空】,這區看【集中/一致 vs 分散/亂】。\\n\\n怎麼算(純公式、零AI):\\n・三大法人近5日進出「一致性」(權重最高)\\n・🏦 千張大戶持股趨勢(集保官方週資料,週六更新)\\n・🔄 換手率(今日成交÷總發行股數,>15% 過熱)\\n・主力前10大分點集中度\\n・融資(散戶追高=亂、退場=乾淨,已計分)\\n・⚡ 當沖比(>50%=浮額虛)/🌐 外資持股水位20日趨勢/💳 可轉債餘額大減/🐘 鉅額交易(付費資料,有才顯)\\n\\n⚠️ 勝率加分項非保證漲:大戶也會套牢/坑殺,配合方向+K線+停損。'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300 align-middle">ⓘ</button></span>
                         <span class="font-mono font-black text-xl ${cls} flex-shrink-0">${clean}<span class="text-[10px] text-gray-500 font-normal">/100</span></span>
                     </div>
                     <div class="text-[9px] text-gray-500 mt-1 mb-1">📊 三大法人近5日量條(寬=張數、<span class="text-red-300">紅=買</span>/<span class="text-green-300">綠=賣</span>;同色=一致乾淨、紅綠交雜=分歧)</div>
@@ -14013,7 +14044,7 @@ const marginByDate = {};
             box.innerHTML = `
                 <div class="flex items-start justify-between gap-2 mb-2">
                     <div class="min-w-0">
-                        <span class="text-[12px] font-black text-gray-100">🧹 籌碼乾淨度 <button onclick="alert('🧹 籌碼乾淨度 = 看「亂不亂」\\n\\n跟「大戶籌碼總結」不同:那張看【方向偏多偏空】,這張看【集中/一致 vs 分散/亂】。\\n\\n怎麼算(純公式、零AI):\\n・三大法人近5日進出「一致性」(權重最高)—— 一起買/一起賣=乾淨;互相打架=亂\\n・🏦 千張大戶持股趨勢(集保結算所官方週資料)—— 大戶連週增持=吸籌;連週減+散戶人數暴增=倒貨給散戶\\n・🔄 換手率(今日成交÷總發行股數)—— >15% 過熱危險、1~8% 健康\\n・主力前10大分點集中度(熱門股才有)—— 越集中=大戶鎖籌\\n・融資(散戶指標)—— 散戶追高=亂、退場=乾淨\\n\\n⚠️ 這是「勝率加分項」不是保證漲!籌碼集中也可能是主力套牢/坑殺,一定要配合方向一起看,並守停損。'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300 align-middle">ⓘ</button> ${this._dChip(this._fmxUpdated, '付費資料')}</span>
+                        <span class="text-[12px] font-black text-gray-100">🧹 籌碼乾淨度 <button onclick="app._helpBox('🧹 籌碼乾淨度 = 看「亂不亂」\\n\\n跟「大戶籌碼總結」不同:那張看【方向偏多偏空】,這張看【集中/一致 vs 分散/亂】。\\n\\n怎麼算(純公式、零AI):\\n・三大法人近5日進出「一致性」(權重最高)—— 一起買/一起賣=乾淨;互相打架=亂\\n・🏦 千張大戶持股趨勢(集保結算所官方週資料)—— 大戶連週增持=吸籌;連週減+散戶人數暴增=倒貨給散戶\\n・🔄 換手率(今日成交÷總發行股數)—— >15% 過熱危險、1~8% 健康\\n・主力前10大分點集中度(熱門股才有)—— 越集中=大戶鎖籌\\n・融資(散戶指標)—— 散戶追高=亂、退場=乾淨\\n\\n⚠️ 這是「勝率加分項」不是保證漲!籌碼集中也可能是主力套牢/坑殺,一定要配合方向一起看,並守停損。'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300 align-middle">ⓘ</button> ${this._dChip(this._fmxUpdated, '付費資料')}</span>
                         <div class="text-2xl font-black ${cls} leading-tight mt-1">${emo} ${lbl}</div>
                     </div>
                     <div class="flex flex-col items-center flex-shrink-0 bg-[#0d1117] border border-[#30363d] rounded-lg px-3 py-1.5">
@@ -15356,7 +15387,7 @@ const marginByDate = {};
                     + `👩 投量比 <b class="font-mono">${ratio.toFixed(1)}%</b>`
                     + `<span class="text-gray-600">(${this._dW ? this._dW(arr[i].date) : String(arr[i].date).slice(5)} 投信買 ${lots.toLocaleString()} 張 ÷ 當日成交量)</span>`
                     + (strong ? ' ← 佔比不低' : '')
-                    + `<button onclick="alert('【投量比】投信買超股數 ÷ 當天成交量\\n\\n為什麼看這個而不是看張數?\\n\\n因為「買幾張」在不同股票意義差很多。舉例:某檔當天只成交 205 張,投信買了 40 張——40 張根本上不了投信買超排行榜,你在榜上完全看不到它,但那 40 張其實佔了當天成交量的 20%。\\n\\n反過來,大型股投信買 1,000 張看起來很多,可能連當天成交量的 0.5% 都不到。\\n\\n所以投量比是拿來「補排行榜看不到的地方」,特別是冷門小型股。\\n\\n⚠️ 誠實說明:這只是把張數換算成佔比,幫你判斷這筆買超相對這檔股票算不算大。\\n「投量比高會不會漲」我目前【還沒驗證過】——因為法人買賣超資料要 2026 年才開始有,樣本還不夠做統計。\\n等資料累積滿一年我會回頭驗,有效果才會拿來計分。在那之前它只是參考資訊,不是買賣訊號。')" class="ml-1 text-gray-600 hover:text-blue-300">ⓘ</button></span>`;
+                    + `<button onclick="app._helpBox('【投量比】投信買超股數 ÷ 當天成交量\\n\\n為什麼看這個而不是看張數?\\n\\n因為「買幾張」在不同股票意義差很多。舉例:某檔當天只成交 205 張,投信買了 40 張——40 張根本上不了投信買超排行榜,你在榜上完全看不到它,但那 40 張其實佔了當天成交量的 20%。\\n\\n反過來,大型股投信買 1,000 張看起來很多,可能連當天成交量的 0.5% 都不到。\\n\\n所以投量比是拿來「補排行榜看不到的地方」,特別是冷門小型股。\\n\\n⚠️ 誠實說明:這只是把張數換算成佔比,幫你判斷這筆買超相對這檔股票算不算大。\\n「投量比高會不會漲」我目前【還沒驗證過】——因為法人買賣超資料要 2026 年才開始有,樣本還不夠做統計。\\n等資料累積滿一年我會回頭驗,有效果才會拿來計分。在那之前它只是參考資訊,不是買賣訊號。')" class="ml-1 text-gray-600 hover:text-blue-300">ⓘ</button></span>`;
             }
             return '';
         } catch (_) { return ''; }
@@ -15446,7 +15477,7 @@ const marginByDate = {};
         </div>`).join('');
         return `<div class="mt-2.5 pt-2 border-t border-[#30363d]">
             <div class="text-[11px] font-black text-gray-100 mb-1">🪜 跌到哪裡才敢買(定價不定時)
-                <button onclick="alert('🪜 定價不定時 — 這張表在幹嘛\\n\\n電視上分析師講「破 4 萬我就敢買 0050」,常被誤會成他預測到低點。\\n其實他做的是「定價不定時」:先設好價位,跌到就分批買,不猜什麼時候到。\\n\\n・事後看像抄底,實際上是紀律\\n・他買 0050(一籃子、不會下市),所以敢在下跌途中接\\n・他的 1 億是配置的一小塊,套半年也不影響生活 —— 這點你我都學不來\\n\\n這張表只做「算得出來的部分」:用加權現價、年線、近一年最低、千點整數關,\\n列出三個檔位與各自要準備多少錢。⛔ 它不預測低點,也不保證跌到就會反彈。\\n\\n💡 搭配上面的條件雷達看:價位到了、雷達也過門檻,才是比較完整的進場理由。')" class="text-[9px] text-gray-500 hover:text-blue-300 font-normal">📖 教學</button>
+                <button onclick="app._helpBox('🪜 定價不定時 — 這張表在幹嘛\\n\\n電視上分析師講「破 4 萬我就敢買 0050」,常被誤會成他預測到低點。\\n其實他做的是「定價不定時」:先設好價位,跌到就分批買,不猜什麼時候到。\\n\\n・事後看像抄底,實際上是紀律\\n・他買 0050(一籃子、不會下市),所以敢在下跌途中接\\n・他的 1 億是配置的一小塊,套半年也不影響生活 —— 這點你我都學不來\\n\\n這張表只做「算得出來的部分」:用加權現價、年線、近一年最低、千點整數關,\\n列出三個檔位與各自要準備多少錢。⛔ 它不預測低點,也不保證跌到就會反彈。\\n\\n💡 搭配上面的條件雷達看:價位到了、雷達也過門檻,才是比較完整的進場理由。')" class="text-[9px] text-gray-500 hover:text-blue-300 font-normal">📖 教學</button>
             </div>
             <div class="text-[9px] text-gray-500 leading-snug mb-1.5">分析師不是預測低點,是<b class="text-gray-300">先設價位、跌到就分批進</b>。目前加權 ${cma(L.now)}(一年高 ${cma(L.hi250)})。</div>
             ${rows}
@@ -15711,7 +15742,7 @@ const marginByDate = {};
         box.className = 'bg-[#161b22] border-l-4 ' + heroCls.split(' ')[1] + ' border-y border-r border-[#30363d] rounded-r p-3';
         box.innerHTML = `
             <div class="flex items-center justify-between gap-2">
-                <span class="text-[12px] font-black text-gray-100">🧭 反攻條件雷達 <button onclick="alert('🧭 反攻條件雷達 — 怎麼用\n\n回答一個問題:「還差什麼,台股才會漲?」\n\n每一條都是歷史上台股止跌回升的必要條件,右邊寫著現值與「何時轉綠」。\n\n🎯 要幾條才算過?不用全亮:\n・過半(${halfN}/${judged.length})=打底中,空手準備\n・${needN}/${judged.length}=反攻條件成形,分批回場(先1/3)\n  → 門檻是「全部條件數 −2」(至少 6 條),也就是容許 2 條沒過;條件數變動時門檻自動跟著算。\n・觸發黑天鵝(VIX爆表/外資空單4萬口/日圓急升/日韓股-5%)=先停損保命\n\n全部純公式即時算,資料來源與盤前體檢相同;非投資建議。')" class="text-[10px] text-gray-500 hover:text-blue-300">📖 教學</button></span>
+                <span class="text-[12px] font-black text-gray-100">🧭 反攻條件雷達 <button onclick="app._helpBox('🧭 反攻條件雷達 — 怎麼用\n\n回答一個問題:「還差什麼,台股才會漲?」\n\n每一條都是歷史上台股止跌回升的必要條件,右邊寫著現值與「何時轉綠」。\n\n🎯 要幾條才算過?不用全亮:\n・過半(${halfN}/${judged.length})=打底中,空手準備\n・${needN}/${judged.length}=反攻條件成形,分批回場(先1/3)\n  → 門檻是「全部條件數 −2」(至少 6 條),也就是容許 2 條沒過;條件數變動時門檻自動跟著算。\n・觸發黑天鵝(VIX爆表/外資空單4萬口/日圓急升/日韓股-5%)=先停損保命\n\n全部純公式即時算,資料來源與盤前體檢相同;非投資建議。')" class="text-[10px] text-gray-500 hover:text-blue-300">📖 教學</button></span>
                 <span class="text-sm font-black ${heroCls.split(' ')[0]} text-right">${heroIcon} ${heroTxt} <span class="font-mono text-[11px] text-gray-500">${passN}/${judged.length}${C.length > judged.length ? `<span class="text-gray-600">(+${C.length - judged.length}⏳)</span>` : ''}</span><br><span class="font-mono text-[9px] text-gray-600 font-normal">進場門檻 ${needN}/${judged.length}</span></span>
             </div>
             <div class="bg-[#0d1117] border-l-4 ${heroCls.split(' ')[1]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
@@ -16236,7 +16267,7 @@ const marginByDate = {};
               <div class="bg-[#0d1117]/60 rounded p-2 mt-1.5 space-y-1.5 text-[10px]">
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1">
                     <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">📊 加權</span><span class="text-right">${twii ? `<span class="font-mono font-bold text-gray-200">${_fmtComma(twii)}</span>${twiiChg ? ` <span class="font-mono ${clr(twiiChg)}">${twiiChg}</span>` : ''}` : '<span class="text-gray-500 text-[9px]">採集中</span>'}</span></div>
-                    <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">📈 櫃買</span><span class="text-right">${twoii ? `<span class="font-mono font-bold text-gray-200">${_fmtComma(twoii)}</span>${twoiiChg ? ` <span class="font-mono ${clr(twoiiChg)}">${twoiiChg}</span>` : ''}` : `<span onclick="alert('📈 櫃買(OTC)指數暫時抓不到\\n\\n上櫃指數的免費資料來源近期不穩,採礦端正在修。標「採集中」代表這一格暫時沒抓到值,下次盤後(16:30 台北)採礦會再試著補上。\\n\\n👉 不影響上市加權、美股隔夜、外資法人等其他判讀,可先看那些。')" class="text-yellow-500/80 text-[9px] cursor-pointer underline decoration-dotted">採集中 ⓘ</span>`}</span></div>
+                    <div class="flex items-baseline justify-between gap-1"><span class="text-gray-400">📈 櫃買</span><span class="text-right">${twoii ? `<span class="font-mono font-bold text-gray-200">${_fmtComma(twoii)}</span>${twoiiChg ? ` <span class="font-mono ${clr(twoiiChg)}">${twoiiChg}</span>` : ''}` : `<span onclick="app._helpBox('📈 櫃買(OTC)指數暫時抓不到\\n\\n上櫃指數的免費資料來源近期不穩,採礦端正在修。標「採集中」代表這一格暫時沒抓到值,下次盤後(16:30 台北)採礦會再試著補上。\\n\\n👉 不影響上市加權、美股隔夜、外資法人等其他判讀,可先看那些。')" class="text-yellow-500/80 text-[9px] cursor-pointer underline decoration-dotted">採集中 ⓘ</span>`}</span></div>
                 </div>
                 <div class="border-t border-[#21262d] pt-1.5">
                     <div class="text-[9px] text-gray-600 font-bold mb-1">🌙 美股隔夜${_usClosed ? ' <span class="text-yellow-500/80 font-normal">· 週末休市,以下為上週五收盤</span>' : ''}</div>
@@ -17097,7 +17128,7 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
 
     // V20.2 — 注意股機制教學(alert,使用者點「📖 教學」鈕觸發)
     _showAttentionRulesHelp() {
-        alert(
+        app._helpBox(
 `📖 注意股 → 處置股 機制完整說明
 
 ━━━━━━━━━━━━━━━━━━━━
@@ -17324,7 +17355,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         let started = '--';
         try { if (ms.started_at) started = new Date(ms.started_at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (_) {}
         const snap = (ms.last_updated || ms.started_at || '').slice(0, 10) || '前一交易日';
-        alert('⛏️ 採礦中(背景更新資料)\n\n'
+        app._helpBox('⛏️ 採礦中(背景更新資料)\n\n'
             + '📍 目前階段:' + stageZh + '\n'
             + '🕐 開始時間:' + started + '\n'
             + '📅 你現在看到的資料日期:' + snap + '(採礦完成才會換成最新)\n\n'
@@ -19255,7 +19286,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     // 📖 V72.0.0 「實測勝率」教學 —— K 線頁與總覽共用同一份(⛔ 不寫兩份,免得日後改一邊忘另一邊)
     _showEdgeHelp() {
         const m = this._SIGNAL_EDGE_META || {};
-        alert('【這些勝率是怎麼來的?】\n\n'
+        app._helpBox('【這些勝率是怎麼來的?】\n\n'
             // ⚠️ V72.1.7 「3 年」是寫死的且**跟實際對不上** —— 回測窗口受 ^TWII 長度限制,
             //   實測只有 486 個交易日(約 2 年)。改成從 meta 帶入真實窗口,⛔ 別再寫死。
             + `我把 App 裡每一個 K 線訊號都拿去回測:${m.syms || 250} 檔股票、`
@@ -19454,7 +19485,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     _showMarginHelp() {
         const E = this._MARGIN_EDGE;
-        alert('【全市場融資維持率】\n\n'
+        app._helpBox('【全市場融資維持率】\n\n'
             + '融資維持率 = 用融資買的股票現在值多少 ÷ 跟券商借的錢。\n'
             + '跌破 130% 券商會叫你補錢,不補隔天電腦自動強制賣掉(斷頭)。\n\n'
             + '🚨【但我實測之後,把原本這張卡的說法整個推翻了】\n\n'
@@ -20020,7 +20051,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _showExitHelp() {
         const E = this._EXIT_EDGE;
         const line = r => `・${r.t}:賺 ${r.p.toFixed(0)} 萬,中途最多賠 ${r.dd.toFixed(1)}%,平均每趟 +${r.per.toFixed(2)}%`;
-        alert('【出場防守價:這三條是什麼?】\n\n'
+        app._helpBox('【出場防守價:這三條是什麼?】\n\n'
             + '① 唐奇安 20 日低點(Donchian)\n'
             + '  「前 20 個交易日的最低價」。收盤跌破它才出場 —— 只要它還在那條線上面,不管中間怎麼晃都抱著。\n'
             + '  ⚠️ 算的是「前 20 天」不含今天。\n\n'
@@ -20069,7 +20100,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const O = this._LU_ODDS, B = O.base, H = O.hits;
         const rows = Object.keys(H).map(k => `　命中 ${k}${k === '5' ? '+' : ''} 個 → 漲停 ${H[k][0]}%　大漲≥5% ${H[k][1]}%　(${H[k][3].toLocaleString()} 次)`).join('\n');
         const cs = Object.keys(this._LU_COND_NAME).map(k => `　${k} ${this._LU_COND_NAME[k]} → 漲停 ${O.cond[k][0]}%`).join('\n');
-        alert(`📊 明天漲停/大漲的機率 —— 怎麼算的\n\n`
+        app._helpBox(`📊 明天漲停/大漲的機率 —— 怎麼算的\n\n`
             + `站在「今天收盤」用純 K 線判斷,看明天會不會漲停或大漲。\n`
             + `全市場 ${O.syms.toLocaleString()} 檔 × ${O.n.toLocaleString()} 個(股·日),${O.win[0]} ~ ${O.win[1]}。\n\n`
             + `【平常的機率】漲停 ${B[0]}%(約 ${Math.round(100 / B[0])} 天一次)・漲≥5% ${B[1]}%・漲≥3% ${B[2]}%\n\n`
@@ -21360,7 +21391,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.innerHTML = `
             <div class="flex items-center justify-between mb-1.5 border-b border-[#30363d] pb-1.5">
                 <h4 class="font-bold text-sm text-gray-100 flex items-center gap-1.5">📊 位階溫度計 <span class="text-[9px] text-gray-500 font-normal">距高 + 52週位階</span></h4>
-                <button onclick="alert('【位階溫度計】怎麼看(小白版)\\n\\n判斷「這檔在強勢主流、還是低基期落後」——選股很重要的相對強弱維度。\\n\\n📏 距歷史高折價 = (歷史最高 − 現價) ÷ 歷史最高。越接近 0%(甚至創新高)= 越強。\\n\\n🏷️ 打幾折 = 現價 ÷ 歷史高 × 10(像大拍賣的折數)。例:現價是高點的 77% → 7.7 折。折數越低=離高點越遠、跌越多。\\n\\n🧭 52週位階 白話講:把「這一年的最低價當 0 分、最高價當 100 分」,現價落在幾分。\\n・80~100 分 = 幾乎在一年高點附近(強、貴、追高風險)\\n・40~60 分 = 卡在半山腰(方向不明)\\n・0~30 分 = 快貼近一年低點(便宜、但可能是弱勢/破底,別只因便宜就買)\\n\\n❓「強勢股打 75 折是好買點」是真的嗎?\\n半真半假:它講的是「強勢股回檔約 25%(到高點的 75%)常回到月線/季線支撐,是找買點的參考區」。但這只是「經驗法則、不是鐵律」——\\n✅ 要同時看:①趨勢還在多頭(沒破月線)②有量守穩③基本面沒壞。\\n❌ 單看折數就接刀很危險:弱勢股/破線股打 5 折還會再跌(接掉下來的刀)。\\n👉 正解:強勢股(位階>55、沒破月線)+ 回檔到 7~8 折附近 + 出現「回後買上漲」訊號 = 較好的買點;純折數便宜不代表能買。\\n\\n💡 搭配「回後買上漲/四大金剛/進場體檢」一起看。純公式僅供參考,非投資建議。')" class="text-[9px] text-gray-500 hover:text-blue-300">📖 教學</button>
+                <button onclick="app._helpBox('【位階溫度計】怎麼看(小白版)\\n\\n判斷「這檔在強勢主流、還是低基期落後」——選股很重要的相對強弱維度。\\n\\n📏 距歷史高折價 = (歷史最高 − 現價) ÷ 歷史最高。越接近 0%(甚至創新高)= 越強。\\n\\n🏷️ 打幾折 = 現價 ÷ 歷史高 × 10(像大拍賣的折數)。例:現價是高點的 77% → 7.7 折。折數越低=離高點越遠、跌越多。\\n\\n🧭 52週位階 白話講:把「這一年的最低價當 0 分、最高價當 100 分」,現價落在幾分。\\n・80~100 分 = 幾乎在一年高點附近(強、貴、追高風險)\\n・40~60 分 = 卡在半山腰(方向不明)\\n・0~30 分 = 快貼近一年低點(便宜、但可能是弱勢/破底,別只因便宜就買)\\n\\n❓「強勢股打 75 折是好買點」是真的嗎?\\n半真半假:它講的是「強勢股回檔約 25%(到高點的 75%)常回到月線/季線支撐,是找買點的參考區」。但這只是「經驗法則、不是鐵律」——\\n✅ 要同時看:①趨勢還在多頭(沒破月線)②有量守穩③基本面沒壞。\\n❌ 單看折數就接刀很危險:弱勢股/破線股打 5 折還會再跌(接掉下來的刀)。\\n👉 正解:強勢股(位階>55、沒破月線)+ 回檔到 7~8 折附近 + 出現「回後買上漲」訊號 = 較好的買點;純折數便宜不代表能買。\\n\\n💡 搭配「回後買上漲/四大金剛/進場體檢」一起看。純公式僅供參考,非投資建議。')" class="text-[9px] text-gray-500 hover:text-blue-300">📖 教學</button>
             </div>
             <div class="bg-[#0d1117] border-l-4 ${bc} border-y border-r border-[#30363d] rounded-r p-2 mb-2">
                 <div class="text-sm font-black ${tc} mb-0.5">${r.tag}</div>
@@ -21733,7 +21764,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         els.forEach(x => x.className = 'bg-[#161b22] border-l-4 ' + bcls + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg mt-1');
         const _smHtml = `
             <div class="flex items-center justify-between gap-2">
-                <div class="text-[13px] font-black text-gray-100">⚔️ 新六脈・共振計分 <button onclick="alert('⚔️ 新六脈共振計分\\n\\n把「六脈神劍」去繁從簡:剔除同質又滯後的 BBI/MTM/LWR,精簡成 3 個不同時間尺度的劍 + 加入市場靈魂(量能+籌碼):\\n\\n① 趨勢:站上 20MA(月線=多空分水嶺)\\n② MACD:柱狀翻紅/金叉(中期波段)\\n③ RSI:動能偏強且非超買(短線)\\n④ 量能:突破要放量(≥1.5倍)、回檔要量縮(洗盤才是好買點)——分情境\\n⑤ 籌碼:外資近3日連買\\n\\nADX 趨勢強度過濾盤整假金叉(<20 盤整、≥25 強趨勢)。\\n\\n右側分批:3脈翻多=第1點試單、4-5脈共振=加碼。早出場:RSI高檔下彎或跌破5日線先減碼(寧早勿晚)。\\n\\n純公式、日K盤後,非投資建議,一律守停損。');event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300">ⓘ</button> ${this._dChip(data[data.length - 1]?.date, '日K')}</div>
+                <div class="text-[13px] font-black text-gray-100">⚔️ 新六脈・共振計分 <button onclick="app._helpBox('⚔️ 新六脈共振計分\\n\\n把「六脈神劍」去繁從簡:剔除同質又滯後的 BBI/MTM/LWR,精簡成 3 個不同時間尺度的劍 + 加入市場靈魂(量能+籌碼):\\n\\n① 趨勢:站上 20MA(月線=多空分水嶺)\\n② MACD:柱狀翻紅/金叉(中期波段)\\n③ RSI:動能偏強且非超買(短線)\\n④ 量能:突破要放量(≥1.5倍)、回檔要量縮(洗盤才是好買點)——分情境\\n⑤ 籌碼:外資近3日連買\\n\\nADX 趨勢強度過濾盤整假金叉(<20 盤整、≥25 強趨勢)。\\n\\n右側分批:3脈翻多=第1點試單、4-5脈共振=加碼。早出場:RSI高檔下彎或跌破5日線先減碼(寧早勿晚)。\\n\\n純公式、日K盤後,非投資建議,一律守停損。');event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300">ⓘ</button> ${this._dChip(data[data.length - 1]?.date, '日K')}</div>
                 <div class="flex items-baseline gap-0.5"><span class="font-mono font-black text-2xl ${tcls} leading-none">${v.okN}</span><span class="text-[10px] text-gray-500">/${v.applicable || 5}</span></div>
             </div>
             <div class="text-base font-black ${tcls} leading-tight mt-1">${v.verdict}</div>
@@ -21900,7 +21931,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         box.className = 'bg-[#161b22] border-l-4 ' + hero[2] + ' border-y border-r border-[#30363d] rounded-r p-3 shadow-lg';
         box.innerHTML = `
             <div class="flex items-center justify-between gap-2">
-                <div class="text-[12px] font-black text-gray-100">⚡ 盤中六脈 <button onclick="alert('⚡ 盤中六脈 — 30 秒上手\n\n【看什麼】分時圖第 3 格「多空溫度計」:6 個維度(均價/斜率/趨勢/MACD/RSI/昨收)逐分鐘投票,紅柱向上=偏多票多、綠柱向下=偏空票多。\n\n【何時做多/做空】柱子衝進上方紅區(≥5票)=多方共振→做多時機;跌進下方綠區=空方共振→做空或避開;柱子短短的=分歧,休息。\n\n【怎麼操作,三句話】\n① 圖上出現**紅帶(做多)或綠帶(做空)**(≥5 維同向=共振)→ 順著方向做,別逆勢\n② 帶子裡回踩均價不破 = 加碼點;帶子消失 = 動能退,先出\n③ 沒有帶子(分歧)= 當沖休息,別硬做\n\n【卡片上的價位條】共振進行中會直接給你「可進場區、防守價(均價)、已走幾%」,並在下面寫明離場條件;沒有視窗時也會告訴你均價在哪、現價差多少(含每張多少元)。共振開始與結束都會推播提醒。\n\n【防呆】已做 3 根平滑,單根翻色不算;下方清單是今天每段共振的實際漲跌%,靈不靈自己看得到。隔日方向以日K六脈(上面那張)為準。')" class="text-[10px] text-gray-500 hover:text-blue-300">📖 教學</button></div>
+                <div class="text-[12px] font-black text-gray-100">⚡ 盤中六脈 <button onclick="app._helpBox('⚡ 盤中六脈 — 30 秒上手\n\n【看什麼】分時圖第 3 格「多空溫度計」:6 個維度(均價/斜率/趨勢/MACD/RSI/昨收)逐分鐘投票,紅柱向上=偏多票多、綠柱向下=偏空票多。\n\n【何時做多/做空】柱子衝進上方紅區(≥5票)=多方共振→做多時機;跌進下方綠區=空方共振→做空或避開;柱子短短的=分歧,休息。\n\n【怎麼操作,三句話】\n① 圖上出現**紅帶(做多)或綠帶(做空)**(≥5 維同向=共振)→ 順著方向做,別逆勢\n② 帶子裡回踩均價不破 = 加碼點;帶子消失 = 動能退,先出\n③ 沒有帶子(分歧)= 當沖休息,別硬做\n\n【卡片上的價位條】共振進行中會直接給你「可進場區、防守價(均價)、已走幾%」,並在下面寫明離場條件;沒有視窗時也會告訴你均價在哪、現價差多少(含每張多少元)。共振開始與結束都會推播提醒。\n\n【防呆】已做 3 根平滑,單根翻色不算;下方清單是今天每段共振的實際漲跌%,靈不靈自己看得到。隔日方向以日K六脈(上面那張)為準。')" class="text-[10px] text-gray-500 hover:text-blue-300">📖 教學</button></div>
                 <div class="text-base font-black ${hero[1]}">${hero[0]} <span class="font-mono text-[11px] text-gray-500">${v.nowBull}多/${v.nowBear}空</span></div>
             </div>
             <div class="bg-[#0d1117] border-l-4 ${hero[2]} pl-2.5 py-1.5 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">💡 ${act}</div></div>
@@ -24335,7 +24366,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     const lots = Math.round((+ins.dir_hold || 0) / 1000);
                     pledgeHtml = `<div class="bg-[#161b22] border-l-4 ${lv.b} border-y border-r border-[#30363d] rounded-r p-2.5">
                         <div class="flex items-center justify-between mb-1">
-                            <span class="text-[11px] font-bold text-gray-300">🏛️ 董監質押比 <button onclick="alert('【董監質押比】\\n\\n董監事、大股東把自己的持股拿去向銀行質押(抵押)借錢的比例。\\n\\n・質押比高 = 大股東把很多股票押給銀行借錢 → 萬一股價大跌,銀行會「追繳」甚至「斷頭」(強制賣股),形成連鎖賣壓。\\n・所以高質押 + 股價高檔 = 風險訊號。\\n\\n⚠️ 但質押不必然是壞事:有時是理財、投資別的事業、節稅。要配合股價位階、法人動向一起看,別無腦看空。\\n\\n資料:證交所每日「董監事持股餘額明細」聚合。')" class="text-gray-600 hover:text-blue-300">ⓘ</button></span>
+                            <span class="text-[11px] font-bold text-gray-300">🏛️ 董監質押比 <button onclick="app._helpBox('【董監質押比】\\n\\n董監事、大股東把自己的持股拿去向銀行質押(抵押)借錢的比例。\\n\\n・質押比高 = 大股東把很多股票押給銀行借錢 → 萬一股價大跌,銀行會「追繳」甚至「斷頭」(強制賣股),形成連鎖賣壓。\\n・所以高質押 + 股價高檔 = 風險訊號。\\n\\n⚠️ 但質押不必然是壞事:有時是理財、投資別的事業、節稅。要配合股價位階、法人動向一起看,別無腦看空。\\n\\n資料:證交所每日「董監事持股餘額明細」聚合。')" class="text-gray-600 hover:text-blue-300">ⓘ</button></span>
                             <span class="text-lg font-black font-mono text-${lv.c}-300">${pp.toFixed(1)}%</span>
                         </div>
                         <div class="text-[10px] text-gray-300 leading-relaxed"><b class="text-${lv.c}-300">${lv.t}</b> · 董監 ${ins.dir_people || '?'} 人、持股 ${lots.toLocaleString()} 張。${pp >= 50 ? '大股東拿一半以上股票去借錢,股價大跌會被追繳/斷頭賣壓,高檔特別小心。' : pp >= 30 ? '質押比偏高,留意股價下跌時的追繳壓力。' : '質押比低,董監財務壓力小,籌碼相對穩。'}</div>
@@ -24371,7 +24402,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             let html = `
                 <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-[11px] text-gray-400 font-bold flex items-center gap-1">🧊 集保籌碼分佈 <button onclick="alert('【集保籌碼分佈】\\n\\n集保結算每週五公布「每個持股張數級距各有多少人、佔多少股權」。\\n\\n千張大戶(>1000張)是外資/投信/主力等大咖;散戶(<10張)是一般人。\\n\\n看「大戶持股比例的週變化」最重要:\\n・大戶↑加碼 = 籌碼集中、通常偏多\\n・大戶↓減碼 = 大戶出貨、通常偏空\\n\\n資料為週頻,非每日。')" class="text-gray-600 hover:text-blue-300">ⓘ</button></span>
+                        <span class="text-[11px] text-gray-400 font-bold flex items-center gap-1">🧊 集保籌碼分佈 <button onclick="app._helpBox('【集保籌碼分佈】\\n\\n集保結算每週五公布「每個持股張數級距各有多少人、佔多少股權」。\\n\\n千張大戶(>1000張)是外資/投信/主力等大咖;散戶(<10張)是一般人。\\n\\n看「大戶持股比例的週變化」最重要:\\n・大戶↑加碼 = 籌碼集中、通常偏多\\n・大戶↓減碼 = 大戶出貨、通常偏空\\n\\n資料為週頻,非每日。')" class="text-gray-600 hover:text-blue-300">ⓘ</button></span>
                         <span class="text-[9px] text-gray-500 font-mono">集保 ${dStr} · 週頻</span>
                     </div>
                     <div class="flex items-end justify-between mb-3">
@@ -27802,8 +27833,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const defs = this.PATTERN_DEFS;
         const titleEl = document.getElementById('jargonTitle'), descEl = document.getElementById('jargonDesc'), modal = document.getElementById('jargonModal');
         if (!titleEl || !descEl || !modal) {
-            if (type === '__all') { alert('📐 技術型態教學\n\n' + Object.values(defs).map(d => `【${d.label}】\n特徵:${d.feature}\n結論:${d.conclusion}`).join('\n\n')); return; }
-            const dd = defs[type]; if (dd) alert(`${dd.label}\n\n特徵:${dd.feature}\n\n結論:${dd.conclusion}`); return;
+            if (type === '__all') { app._helpBox('📐 技術型態教學\n\n' + Object.values(defs).map(d => `【${d.label}】\n特徵:${d.feature}\n結論:${d.conclusion}`).join('\n\n')); return; }
+            const dd = defs[type]; if (dd) app._helpBox(`${dd.label}\n\n特徵:${dd.feature}\n\n結論:${dd.conclusion}`); return;
         }
         if (type === '__all') {
             titleEl.innerHTML = '📐 技術型態教學';
@@ -28935,7 +28966,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const biasTxt = (typeof a.bias === 'number') ? `年線乖離 ${a.bias.toFixed(1)}%` : '整備中';   // V16.6 文案對齊 _detectMarketRegime fallback
         el.className = `w-full max-w-7xl mx-auto px-3 py-1 text-[11px] font-bold border-b cursor-pointer ${a.color}`;
         el.innerHTML = `📊 朱老師建議部位:<b class="text-base mx-0.5">${a.pct}</b> · <span class="font-normal opacity-90">${a.regimeLabel}・${biasTxt}・${a.advice}</span>`;
-        el.onclick = () => alert('📌 朱老師心法 — 第一關:大盤環境\n\n' + this._chuOriginalText.gate1 + '\n\n目前判定:\n大盤:' + a.regimeLabel + '(' + biasTxt + ')\n建議部位:' + a.pct + '\n操作策略:' + a.advice);
+        el.onclick = () => app._helpBox('📌 朱老師心法 — 第一關:大盤環境\n\n' + this._chuOriginalText.gate1 + '\n\n目前判定:\n大盤:' + a.regimeLabel + '(' + biasTxt + ')\n建議部位:' + a.pct + '\n操作策略:' + a.advice);
     },
 
     // V14.17 — 從近 200 日推算最近 N 週的 close/high/low(每週取最後一個交易日)
@@ -29175,7 +29206,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             box.innerHTML = `
                 <div class="flex items-center justify-between mb-1.5">
                     <span class="text-[12px] font-black text-gray-100">💰 該買幾張 <span class="text-[9px] text-gray-500 font-normal">ATR 波動率部位管理</span></span>
-                    <button onclick="alert('【ATR 波動率部位管理 + 吊燈停損】\\n\\n散戶九成虧在「買太多 + 停損太寬」,不是買錯點。這張卡幫你把「單筆風險」鎖死:\\n\\n① 停損價 = 吊燈停損(近22日高 − 3×ATR)或 2×ATR,取較嚴的,最寬不超過 -8%。跟著這檔的「波動」走,不是死板 -5%。\\n② 該買幾張 = (帳戶 × 風險%) ÷ (每股風險 × 1000)。這樣不管買哪檔,萬一停損都只虧帳戶的 1~2%。\\n③ 單檔上限 25% 帳戶,防止單押一檔。\\n\\n這是 Minervini/Van Tharp 的核心:先想「會虧多少」再想「能賺多少」。活得久才有複利。')" class="text-[9px] text-gray-500 hover:text-red-300">📖 原理</button>
+                    <button onclick="app._helpBox('【ATR 波動率部位管理 + 吊燈停損】\\n\\n散戶九成虧在「買太多 + 停損太寬」,不是買錯點。這張卡幫你把「單筆風險」鎖死:\\n\\n① 停損價 = 吊燈停損(近22日高 − 3×ATR)或 2×ATR,取較嚴的,最寬不超過 -8%。跟著這檔的「波動」走,不是死板 -5%。\\n② 該買幾張 = (帳戶 × 風險%) ÷ (每股風險 × 1000)。這樣不管買哪檔,萬一停損都只虧帳戶的 1~2%。\\n③ 單檔上限 25% 帳戶,防止單押一檔。\\n\\n這是 Minervini/Van Tharp 的核心:先想「會虧多少」再想「能賺多少」。活得久才有複利。')" class="text-[9px] text-gray-500 hover:text-red-300">📖 原理</button>
                 </div>
                 <div class="grid grid-cols-3 gap-1.5 text-center mb-1.5">
                     <div class="bg-[#0d1117] border border-[#30363d] rounded px-1 py-1.5">
@@ -30485,7 +30516,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         this._lastGauge = { total, gV, gCls, gBar, posLbl, posCls, posDesc, emg, oneLiner, strong, weak, hiVol };
         return `<div class="bg-[#0d1117] border-l-4 ${gBar} border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
             <div class="flex items-center justify-between mb-1">
-                <span class="text-[11px] font-black text-gray-100">🧭 總評儀表板 <button onclick="alert('🧭 總評儀表板怎麼算\\n\\n把「這檔現在該不該做」拆成 5 個面向,各給 0-100 分(50=中性、越高越偏多),再照權重加成一個總分:\\n\\n・📈 技術·K線 34%(短線時機最重要,朱家泓:趨勢＞位置＞K棒＞量)\\n・🌍 大盤環境 24%(覆巢之下無完卵,大盤偏空全打折)\\n・📊 籌碼 22%(大戶動向=底氣)\\n・🧬 基本面 14%(體質,可缺)\\n・🎯 市場預期 6%(利多出盡風險,可缺)\\n\\n空頭趨勢時總分自動打折(誠實:底氣再好也別逆勢做多)。缺資料的維度自動略過。\\n\\n📦 部位水位:用總分＋這檔波動度決定「該押多少」(不用填資金)——波動大的股自動降級,避免買太多被洗。純公式零 AI。'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300 align-middle">ⓘ</button></span>
+                <span class="text-[11px] font-black text-gray-100">🧭 總評儀表板 <button onclick="app._helpBox('🧭 總評儀表板怎麼算\\n\\n把「這檔現在該不該做」拆成 5 個面向,各給 0-100 分(50=中性、越高越偏多),再照權重加成一個總分:\\n\\n・📈 技術·K線 34%(短線時機最重要,朱家泓:趨勢＞位置＞K棒＞量)\\n・🌍 大盤環境 24%(覆巢之下無完卵,大盤偏空全打折)\\n・📊 籌碼 22%(大戶動向=底氣)\\n・🧬 基本面 14%(體質,可缺)\\n・🎯 市場預期 6%(利多出盡風險,可缺)\\n\\n空頭趨勢時總分自動打折(誠實:底氣再好也別逆勢做多)。缺資料的維度自動略過。\\n\\n📦 部位水位:用總分＋這檔波動度決定「該押多少」(不用填資金)——波動大的股自動降級,避免買太多被洗。純公式零 AI。'); event.stopPropagation();" class="text-[10px] text-gray-500 hover:text-blue-300 align-middle">ⓘ</button></span>
                 <div class="flex items-baseline gap-1"><span class="font-mono font-black text-3xl ${gCls} leading-none">${total}</span><span class="text-[9px] text-gray-500">/100</span></div>
             </div>
             <div class="text-lg font-black ${gCls} leading-tight mb-1.5">${gV}</div>
@@ -30947,7 +30978,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     },
 
     _showTrendCommandHelp() {
-        alert(`📈 趨勢照表操課 — 為什麼這張卡是主軸?
+        app._helpBox(`📈 趨勢照表操課 — 為什麼這張卡是主軸?
 
 【中心思想(朱家泓)】
 K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌碼再漂亮,股價不漲就是不漲 — 所有題材都是為了拉抬股價服務的。所以判斷順序永遠是:
@@ -31815,7 +31846,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             `💰 單檔總資金: ${this.budgetPerStock ? this.budgetPerStock.toLocaleString() + ' 元' : '尚未設(去⚙️設定填)'}`,
             '💡 V15.5 改零股計算 — 算「實際能買幾股」(1 股起跳)',
         ];
-        alert(lines.join('\n'));
+        app._helpBox(lines.join('\n'));
     },
 
     _chuOnBudgetInput(val) {
@@ -32058,7 +32089,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             : '<div class="text-[9px] text-amber-400 mt-1">⚠️ 未設成本 → 庫存填入後才能算「賣的話虧多少」</div>';
 
         box.innerHTML = `
-            <div class="text-yellow-400 font-bold text-sm flex items-center justify-between cursor-pointer select-none" onclick="alert('📌 朱老師心法 — 離場機制\\n\\n' + app._chuOriginalText.exit)">
+            <div class="text-yellow-400 font-bold text-sm flex items-center justify-between cursor-pointer select-none" onclick="app._helpBox('📌 朱老師心法 — 離場機制\\n\\n' + app._chuOriginalText.exit)">
                 <span>🎯 出場總表 <span class="text-[10px] text-gray-500 font-normal">(劇本+有效價位・點看心法)</span></span>
                 <span class="text-[10px] text-gray-500 font-normal">現價 ${x.pC.toFixed(2)} <span class="text-gray-600">${this._dW((data[data.length - 1] || {}).date)}</span></span>
             </div>
@@ -32093,7 +32124,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
         banner.classList.remove('hidden');
         // V26.1 — Alert Box 樣板:深底 + 左紅邊框 + leading-relaxed(不再整句紅,只 emoji + 標籤紅)
-        banner.innerHTML = `<div class="bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r px-3 py-2 cursor-pointer" onclick="alert('📌 朱老師心法 — 結構轉折\\n\\n' + app._chuOriginalText.gate4 + '\\n\\n' + app._chuOriginalText.exit)"><div class="text-[10px] text-red-400 font-bold mb-1">⚠️ 朱老師警告</div><div class="text-[12px] text-gray-200 leading-relaxed">${a.text.replace(/[✅⚠️❌]/g, '')} — 隔日開盤立刻離場,不留戀</div></div>`;
+        banner.innerHTML = `<div class="bg-[#161b22] border-l-4 border-red-500 border-y border-r border-[#30363d] rounded-r px-3 py-2 cursor-pointer" onclick="app._helpBox('📌 朱老師心法 — 結構轉折\\n\\n' + app._chuOriginalText.gate4 + '\\n\\n' + app._chuOriginalText.exit)"><div class="text-[10px] text-red-400 font-bold mb-1">⚠️ 朱老師警告</div><div class="text-[12px] text-gray-200 leading-relaxed">${a.text.replace(/[✅⚠️❌]/g, '')} — 隔日開盤立刻離場,不留戀</div></div>`;
         if (sopCard) sopCard.classList.add('border-red-600');
     },
 
@@ -32155,7 +32186,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _chuShowGateModal(idx) {
         const g = (this._chuCurrentGates || [])[idx];
         if (!g) return;
-        alert(`📌 朱老師心法 — 第 ${idx + 1} 關:${g.name}\n\n${g.edu}\n\n────────────────\n目前判定:${g.icon} ${g.text}`);
+        app._helpBox(`📌 朱老師心法 — 第 ${idx + 1} 關:${g.name}\n\n${g.edu}\n\n────────────────\n目前判定:${g.icon} ${g.text}`);
     },
 
     // ── V14.8 盤中即時雷達 ──────────────────────────────────────────────────
@@ -32698,7 +32729,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const e = this._IDX_WHY[key];
         if (!e) return;
         try { if (this.showJargonText) { this.showJargonText(e[0], e[1]); return; } } catch (_) {}
-        alert(`【${e[0]}】\n\n${e[1]}`);
+        app._helpBox(`【${e[0]}】\n\n${e[1]}`);
     },
 
     _applyLiveIndex(id, price, pct, dec) {
@@ -33141,7 +33172,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         card.innerHTML = `
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2">
                 <div class="flex items-center justify-between mb-1">
-                    <span class="text-[11px] font-black text-gray-100">🐋 大戶 vs 🐑 散戶 累積流向 <button onclick="alert('🐋 大戶控盤(逐筆回推)\\n\\n每一筆成交:成交在賣價=主動買(+)、成交在買價=主動賣(−)。\\n單筆 ≥50 張=大戶手筆;<10 張=散戶。\\n\\n・大戶累積線向上=主力邊拉邊買(偏多)\\n・大戶賣、散戶買=倒貨給散戶(危險)\\n・付費籌碼 App 的「大戶控盤」同原理\\n\\n⚠️ 免費資料一次只給最近 100 筆 → 從你開頁起持續累積,開越久越完整(非全日);確認以收盤後真實分點為準。'); event.stopPropagation();" class="text-[10px] text-gray-500">ⓘ</button></span>
+                    <span class="text-[11px] font-black text-gray-100">🐋 大戶 vs 🐑 散戶 累積流向 <button onclick="app._helpBox('🐋 大戶控盤(逐筆回推)\\n\\n每一筆成交:成交在賣價=主動買(+)、成交在買價=主動賣(−)。\\n單筆 ≥50 張=大戶手筆;<10 張=散戶。\\n\\n・大戶累積線向上=主力邊拉邊買(偏多)\\n・大戶賣、散戶買=倒貨給散戶(危險)\\n・付費籌碼 App 的「大戶控盤」同原理\\n\\n⚠️ 免費資料一次只給最近 100 筆 → 從你開頁起持續累積,開越久越完整(非全日);確認以收盤後真實分點為準。'); event.stopPropagation();" class="text-[10px] text-gray-500">ⓘ</button></span>
                     <span class="text-[9px] text-gray-500">${_rangeTxt}・逐筆回推</span>
                 </div>
                 <div class="flex h-2.5 rounded-full overflow-hidden bg-[#21262d] mb-1">
@@ -33918,7 +33949,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
               <div class="bg-[#161b22] border-l-4 border-${tone}-500 border-y border-r border-[#30363d] rounded-r p-3">
                 <div class="flex items-center justify-between mb-1">
                   <div class="text-[11px] font-bold text-${tone}-300">🩳 借券空方壓力${hot ? ' · ⚠️ 借券暴增' : ''} <span class="text-[9px] text-gray-500 font-normal">${this._dW((this._lendingCache || {}).updated)}</span></div>
-                  <button onclick="alert('【借券空方壓力】\\n\\n借券=有人「借股票來賣」(看跌才借券放空)。借券賣出量暴增,代表空方在布局、賣壓變重。\\n\\n近5日借券量 vs 前5日 = 暴增倍數,≥1.5 倍亮紅燈。借券費率越高=空方越搶著借、越積極。\\n\\n對策:借券暴增別追高;但若股價卻不跌,可能軋空(空單被迫回補)反噬向上。')" class="text-[9px] text-gray-500 hover:text-red-300">📖</button>
+                  <button onclick="app._helpBox('【借券空方壓力】\\n\\n借券=有人「借股票來賣」(看跌才借券放空)。借券賣出量暴增,代表空方在布局、賣壓變重。\\n\\n近5日借券量 vs 前5日 = 暴增倍數,≥1.5 倍亮紅燈。借券費率越高=空方越搶著借、越積極。\\n\\n對策:借券暴增別追高;但若股價卻不跌,可能軋空(空單被迫回補)反噬向上。')" class="text-[9px] text-gray-500 hover:text-red-300">📖</button>
                 </div>
                 <div class="grid grid-cols-3 gap-2 text-center">
                   <div><div class="text-[9px] text-gray-500">近5日借券</div><div class="text-sm font-black font-mono text-gray-100">${this._fmtLots(lend.vol5)}</div></div>
@@ -33936,7 +33967,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
               <div class="bg-[#161b22] border-l-4 border-${tone}-500 border-y border-r border-[#30363d] rounded-r p-3">
                 <div class="flex items-center justify-between mb-1">
                   <div class="text-[11px] font-bold text-${tone}-300">🏦 八大行庫(官股)動向</div>
-                  <button onclick="alert('【八大行庫護盤】\\n\\n八大行庫=公股銀行(台銀、土銀…)。它們進場買股常被視為「政府護盤」訊號,尤其大盤重挫時。\\n\\n今日淨買賣(張):正=官股買超(護盤)、負=官股調節。近5日累計看趨勢是否持續。\\n\\n對策:官股護盤的股常有下檔支撐,但官股偏長線、買點分散,別當短線飆股訊號。')" class="text-[9px] text-gray-500 hover:text-red-300">📖</button>
+                  <button onclick="app._helpBox('【八大行庫護盤】\\n\\n八大行庫=公股銀行(台銀、土銀…)。它們進場買股常被視為「政府護盤」訊號,尤其大盤重挫時。\\n\\n今日淨買賣(張):正=官股買超(護盤)、負=官股調節。近5日累計看趨勢是否持續。\\n\\n對策:官股護盤的股常有下檔支撐,但官股偏長線、買點分散,別當短線飆股訊號。')" class="text-[9px] text-gray-500 hover:text-red-300">📖</button>
                 </div>
                 <div class="text-sm font-bold text-${tone}-300 mb-1">${verdict}</div>
                 <div class="grid grid-cols-2 gap-2 text-center">
@@ -34668,7 +34699,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </button>`;
         }).join('');
         return `<div class="bg-[#161b22] border border-amber-700/40 rounded-lg p-2.5 mb-3">
-            <div class="flex items-center justify-between mb-1.5"><div class="text-[12px] font-black text-amber-300">🎯 跟單精選 · 今日最值得跟</div><button onclick="alert('把「好分點(排掉隔日沖/避險/散戶)+ 好行為(布局加碼/新卡位/留倉)+ 歷史勝率 + 身分(官股/外資/投信)+ 集中度」加權合成。同一檔越多好分點吃貨、分數越高。只列真個股(不含 ETF)。純公式,非投資建議,務必自設停損。')" class="text-[10px] text-gray-500 hover:text-amber-300">📖</button></div>
+            <div class="flex items-center justify-between mb-1.5"><div class="text-[12px] font-black text-amber-300">🎯 跟單精選 · 今日最值得跟</div><button onclick="app._helpBox('把「好分點(排掉隔日沖/避險/散戶)+ 好行為(布局加碼/新卡位/留倉)+ 歷史勝率 + 身分(官股/外資/投信)+ 集中度」加權合成。同一檔越多好分點吃貨、分數越高。只列真個股(不含 ETF)。純公式,非投資建議,務必自設停損。')" class="text-[10px] text-gray-500 hover:text-amber-300">📖</button></div>
             ${rows}
             <div class="text-[9px] text-gray-600 mt-1.5">多家好分點同買=主力共識強。點任一列看個股(內含每家分點細節)。</div>
         </div>`;
@@ -37762,6 +37793,27 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         this.vibrate?.(20);
     },
 
+    /** 📖 教學/說明改走大視窗(V75.0.0 使用者:「小視窗跟大視窗感覺很像,統一用大的」)
+     *  ⭐ 吃的就是原本 `alert()` 的那個純文字字串(⛔ 不用改任何一處的文案)——
+     *     第一行當標題、其餘原樣顯示(`whitespace-pre-wrap` 保留換行與縮排)。
+     *  ⛔ 只給「教學/說明」那一類:
+     *     ・破壞性操作的二次確認仍走 `showConfirm`(11 處,擋掉才安全)
+     *     ・操作回饋(已加入自選/已儲存…)仍走 `showToast`(每按一次鈕都被大視窗擋一次,體驗會崩)
+     *     ・輸入驗證錯誤(格式不對/請先填…)仍走 `alert`(它要**阻斷**後續動作)
+     *  🚧 自己壞掉時退回 alert —— ⛔ 不可讓使用者按了完全沒反應。 */
+    _helpBox(text) {
+        try {
+            const raw = String(text == null ? '' : text);
+            const nl = raw.indexOf('\n');
+            let title = nl > 0 ? raw.slice(0, nl).trim() : '';
+            let body = nl > 0 ? raw.slice(nl + 1) : raw;
+            // ⛔ 第一行太長就不當標題(那是內文不是抬頭)
+            if (!title || title.length > 30) { title = '📖 說明'; body = raw; }
+            this._showRichModal(this._escHtml(title),
+                `<div class="text-[12px] text-gray-200 leading-relaxed whitespace-pre-wrap break-words">${this._escHtml(body.replace(/^\n+/, ''))}</div>`);
+        } catch (_) { try { alert(text); } catch (__) {} }
+    },
+
     // 📈 V42.2 — 葛蘭碧八大法則完整教學(4 買 4 賣,含 App 偵測對照)
     showGranvilleFull() {
         const row = (badge, bc, title, sit, how, appNote) => `
@@ -37823,7 +37875,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             { re: /盤整|三角|收斂/, icon: '📦', name: '盤整 / 三角收斂', what: '上下區間或越收越窄的三角整理,方向未定。', spot: '高不過前高、低不破前低,量縮。', how: '等帶量突破再順勢做,別在盤整中間追;突破假的就回箱。', tip: '盤整就是觀望,突破才是訊號。' },
         ];
         const e = W.find(x => x.re.test(t));
-        if (!e) { alert(`${t}\n\n此訊號的白話教學整理中,可先看卡片內的訊號說明文字。`); return; }
+        if (!e) { app._helpBox(`${t}\n\n此訊號的白話教學整理中,可先看卡片內的訊號說明文字。`); return; }
         const sec = (lb, tx, c) => tx ? `<div class="mb-2"><div class="text-[11px] font-bold ${c || 'text-amber-300'} mb-0.5">${lb}</div><div class="text-[11px] text-gray-200 leading-relaxed">${tx}</div></div>` : '';
         this._showRichModal(`${e.icon} ${e.name}`,
             sec('【是什麼】', e.what, 'text-blue-300') + sec('【怎麼認】', e.spot) + sec('【怎麼做】', e.how, 'text-green-300') + sec('【小白提醒】', e.tip, 'text-yellow-300') +
@@ -37832,17 +37884,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
     // 📖 V41.33 — 四大金剛白話教學(小白:怎麼用這張卡)
     showGuardianHelp() {
-        alert('⚡ 朱老師四大金剛 — 怎麼用(小白版)\n\n朱老師說:看盤不要只看一個指標,要「四個一起看」,四個同方向才可靠。這張卡就是自動幫你檢查這四個:\n\n👑 趨勢:是不是「頭頭高、底底高」= 多頭波段(反之頭頭低底底低=空頭)。先定方向。\n📈 均線:是不是「多頭排列」MA5>MA10>MA20>MA60、月線上揚。\n🕯️ K線:今天有沒有強勢發動棒(長紅破昨高)或轉折K(晨星/吞噬)。\n📊 成交量:漲有沒有帶量(價漲量增=真);還是量價背離(漲沒量=假)。\n\n🚦 怎麼判讀(看下面那行燈號):\n  🔴 四大金剛齊發(多4)= 信度最高,順勢進、守 5MA,跌破就走。\n  🔴 三金剛偏多 = 可留意,補齊缺的那個更穩。\n  🟡 分歧 = 四個不同調(轉折/盤整),方向不明先觀望。\n  🟢 金剛偏空 = 別做多、別接刀,有貨顧好停損。\n\n💡 台股色:紅=偏多、綠=偏空。純公式算的事實,不是叫你一定要買賣,是幫你「四個面向一次看齊」。');
+        app._helpBox('⚡ 朱老師四大金剛 — 怎麼用(小白版)\n\n朱老師說:看盤不要只看一個指標,要「四個一起看」,四個同方向才可靠。這張卡就是自動幫你檢查這四個:\n\n👑 趨勢:是不是「頭頭高、底底高」= 多頭波段(反之頭頭低底底低=空頭)。先定方向。\n📈 均線:是不是「多頭排列」MA5>MA10>MA20>MA60、月線上揚。\n🕯️ K線:今天有沒有強勢發動棒(長紅破昨高)或轉折K(晨星/吞噬)。\n📊 成交量:漲有沒有帶量(價漲量增=真);還是量價背離(漲沒量=假)。\n\n🚦 怎麼判讀(看下面那行燈號):\n  🔴 四大金剛齊發(多4)= 信度最高,順勢進、守 5MA,跌破就走。\n  🔴 三金剛偏多 = 可留意,補齊缺的那個更穩。\n  🟡 分歧 = 四個不同調(轉折/盤整),方向不明先觀望。\n  🟢 金剛偏空 = 別做多、別接刀,有貨顧好停損。\n\n💡 台股色:紅=偏多、綠=偏空。純公式算的事實,不是叫你一定要買賣,是幫你「四個面向一次看齊」。');
     },
 
     // 📖 V41.33 — K棒戰法白話教學
     showKbarTacticsHelp() {
-        alert('📐 K棒戰法 — 怎麼用(小白版)\n\n這張卡用純公式(不是 AI 亂猜)幫你抓出朱家泓/林穎的 K 棒型態,每條訊號標紅(偏多)或綠(偏空):\n\n🔺 紅=偏多訊號(晨星/長紅吞噬/向上缺口/底部突破/回後買上漲…)\n🔻 綠=偏空訊號(夜星/長黑吞噬/向下缺口/測壓有壓/頂背離/做頭…)\n⚪ 中性 / ⚠️ 留意\n\n幾個常用的白話:\n• 當日平均成本=(最高+最低)÷2(舊稱½價),站上偏多、跌破偏空。\n• 缺口不補繼續走、補掉就轉弱。\n• KD/MACD 背離=價創高但指標沒跟上=動能衰竭,高檔要小心。\n• 均線扣抵=提前 1-2 天算出月線明天會往上還往下。\n\n🔑 朱老師鐵律「開盤定生死」:出現變盤/轉折K後,看<次日開盤>——開低=變盤確認多單該跑;開高=化解疑慮可續抱。\n\n💡 訊號很多條時,以個股頁上方「進場體檢」的紅綠燈總結為準,別每條分開看。純公式、僅供參考,實際要配合大盤與停損。');
+        app._helpBox('📐 K棒戰法 — 怎麼用(小白版)\n\n這張卡用純公式(不是 AI 亂猜)幫你抓出朱家泓/林穎的 K 棒型態,每條訊號標紅(偏多)或綠(偏空):\n\n🔺 紅=偏多訊號(晨星/長紅吞噬/向上缺口/底部突破/回後買上漲…)\n🔻 綠=偏空訊號(夜星/長黑吞噬/向下缺口/測壓有壓/頂背離/做頭…)\n⚪ 中性 / ⚠️ 留意\n\n幾個常用的白話:\n• 當日平均成本=(最高+最低)÷2(舊稱½價),站上偏多、跌破偏空。\n• 缺口不補繼續走、補掉就轉弱。\n• KD/MACD 背離=價創高但指標沒跟上=動能衰竭,高檔要小心。\n• 均線扣抵=提前 1-2 天算出月線明天會往上還往下。\n\n🔑 朱老師鐵律「開盤定生死」:出現變盤/轉折K後,看<次日開盤>——開低=變盤確認多單該跑;開高=化解疑慮可續抱。\n\n💡 訊號很多條時,以個股頁上方「進場體檢」的紅綠燈總結為準,別每條分開看。純公式、僅供參考,實際要配合大盤與停損。');
     },
 
     // 🎯 V41.32 — 打法表「怎麼看」總說明(小白:期望值 vs 勝率 vs 賺賠比)
     showPlaybookConceptHelp() {
-        alert('🎓 這張表怎麼看(小白必讀)\n\n很多人只看「勝率」,以為勝率高才好 —— 這是散戶最大的錯覺。\n\n真正決定賺不賺的是【每趟期望值】= 平均每做一趟賺(賠)多少 %,它同時考慮了:\n  • 勝率(對的機率)\n  • 賺賠比(對的時候賺多少 ÷ 錯的時候賠多少)\n\n📊 舉例:一招勝率只有 40%,但賺的時候賺 +5%、賠的時候只賠 -2%(賺賠比 2.5)\n  → 10 趟裡對 4 趟賺 20%、錯 6 趟賠 12% → 淨賺 +8% → 每趟期望值 +0.8% ✅ 還是賺!\n\n這就是朱老師的核心:「賺大賠小」—— 不是靠猜對,是靠<對的時候抱住賺多、錯的時候快停損賠少>。\n\n👉 所以本表【依期望值排名】,不是依勝率。期望值 > 0 才值得做,越大越好。\n👉 ⭐主打 = 期望值最高的前 3 名;⚠️避開 = 期望值為負(這檔用這招長期會賠)。\n\n⚠️ 純歷史回測,過去不代表未來;仍要看當下大盤與個股狀況,並嚴守停損。');
+        app._helpBox('🎓 這張表怎麼看(小白必讀)\n\n很多人只看「勝率」,以為勝率高才好 —— 這是散戶最大的錯覺。\n\n真正決定賺不賺的是【每趟期望值】= 平均每做一趟賺(賠)多少 %,它同時考慮了:\n  • 勝率(對的機率)\n  • 賺賠比(對的時候賺多少 ÷ 錯的時候賠多少)\n\n📊 舉例:一招勝率只有 40%,但賺的時候賺 +5%、賠的時候只賠 -2%(賺賠比 2.5)\n  → 10 趟裡對 4 趟賺 20%、錯 6 趟賠 12% → 淨賺 +8% → 每趟期望值 +0.8% ✅ 還是賺!\n\n這就是朱老師的核心:「賺大賠小」—— 不是靠猜對,是靠<對的時候抱住賺多、錯的時候快停損賠少>。\n\n👉 所以本表【依期望值排名】,不是依勝率。期望值 > 0 才值得做,越大越好。\n👉 ⭐主打 = 期望值最高的前 3 名;⚠️避開 = 期望值為負(這檔用這招長期會賠)。\n\n⚠️ 純歷史回測,過去不代表未來;仍要看當下大盤與個股狀況,並嚴守停損。');
     },
 
     // 🎯 V41.32 — 點型態列 → 白話教學(是什麼/怎麼認/怎麼做SOP)+ 帶入這檔實際回測數字
@@ -38830,7 +38882,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             box.innerHTML = `
                 <div class="flex items-center justify-between mb-0.5">
                     <span class="text-[11px] font-black text-gray-200">🚀 相對強弱排名 <span class="text-[9px] text-gray-500 font-normal">近20日 vs 大盤(${txRet >= 0 ? '+' : ''}${txRet.toFixed(0)}%)</span></span>
-                    <button onclick="alert('【相對強弱 RS 排名】\\n\\n把清單裡每檔的「近 20 日報酬」減掉「大盤近 20 日報酬」= 超額報酬。正的=強於大盤,負的=弱於大盤。\\n\\n歐尼爾鐵律:買股先買最強的(RS 排名前段)。強者恆強,回檔就是買點;別買落後補漲的弱勢股(RS 負),錢放最強的才會長大。\\n\\n純公式,非投資建議。')" class="text-[9px] text-gray-500 hover:text-red-300">📖</button>
+                    <button onclick="app._helpBox('【相對強弱 RS 排名】\\n\\n把清單裡每檔的「近 20 日報酬」減掉「大盤近 20 日報酬」= 超額報酬。正的=強於大盤,負的=弱於大盤。\\n\\n歐尼爾鐵律:買股先買最強的(RS 排名前段)。強者恆強,回檔就是買點;別買落後補漲的弱勢股(RS 負),錢放最強的才會長大。\\n\\n純公式,非投資建議。')" class="text-[9px] text-gray-500 hover:text-red-300">📖</button>
                 </div>
                 <div class="text-[11px] leading-relaxed"><span class="text-gray-500">最強 🔥 </span>${top.map(o => chip(o, true)).join(' ・ ')}</div>
                 <div class="text-[11px] leading-relaxed"><span class="text-gray-500">最弱 🐌 </span>${bot.map(o => chip(o, false)).join(' ・ ')}</div>
@@ -40509,7 +40561,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const E = this._SCR_EDGE, ids = Object.entries(E.c).sort((a, b) => b[1][4] - a[1][4]);
         const nm = i => (this._SCR_CONDS.find(c => c.id === i) || {}).t || i;
         const fmt = ([i, v]) => `　${(v[4] >= 0 ? '+' : '') + v[4].toFixed(1)}pp　${nm(i)}(${v[2].toLocaleString()} 次)`;
-        alert(`🔎 選股條件的實測成績 —— 怎麼算的\n\n`
+        app._helpBox(`🔎 選股條件的實測成績 —— 怎麼算的\n\n`
             + `全市場 ${E.syms.toLocaleString()} 檔・${E.n.toLocaleString()} 個獨立事件・${E.win[0]} ~ ${E.win[1]}。\n`
             + `每個條件成立那天買進、抱 ${E.fwd} 個交易日,報酬扣掉同期加權指數,再扣來回成本 ${E.cost}%。\n`
             + `同一檔、同一個條件 ${E.fwd} 天內只算一次(⛔ 不然重疊的窗口會讓次數看起來很多)。\n\n`
@@ -41275,7 +41327,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
     _showScrHelp() {
         const d = this._scrData || {};
-        alert(`🛠️ 自訂選股 —— 怎麼用
+        app._helpBox(`🛠️ 自訂選股 —— 怎麼用
 
 【基本】
 從下面三大類(價量／籌碼／財務)點條件,點過的會加到上面。
@@ -41506,7 +41558,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ...(ps.oddOnly ? ['⚠️ 這是零股數量 —— 券商的智慧單/觸價委託**多半只吃整股**,零股通常要盤中自己下「零股」單。掛不進去就改手動。'] : []),
             ...(this._pbEdge?.picks?.find(p2 => String(p2.s) === String(sym))?.bear ? ['⚠️ 這檔目前跌破 20 日線與 60 日線(全面破線)—— 沒漲過觸發價就不會成立,別提前買。'] : []),
         ].join('\n');
-        const done = () => alert('✅ 已複製,貼到永豐 App 的「智慧單 / 觸價委託」照著填:\n\n' + txt);
+        const done = () => app._helpBox('✅ 已複製,貼到永豐 App 的「智慧單 / 觸價委託」照著填:\n\n' + txt);
         try {
             if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(txt).then(done).catch(() => done()); return; }
         } catch (_) { }
@@ -41793,7 +41845,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
     _showPbHelp() {
         const j = this._pbEdge || {};
-        alert(`🎯 明日作戰清單 —— 怎麼用
+        app._helpBox(`🎯 明日作戰清單 —— 怎麼用
 
 【這份在回答什麼】
 「明天盤中,哪幾檔漲過某個價位之後,值得照它自己最會賺的那一招進場。」
@@ -42354,7 +42406,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
               + (j.risk_syms ? `另有 ${j.risk_syms.toLocaleString()} 檔出現風險訊號 —— 只當今天大盤氛圍看,⛔ 不逐檔列出(全市場幾千筆,取前 N 只是任意截斷,沒有可操作性)。\n` : '')
               + '\n'
             : '';
-        alert('【今天出現「實測會賺」的訊號】\n\n' + stat
+        app._helpBox('【今天出現「實測會賺」的訊號】\n\n' + stat
             + `💰【那個 % 是什麼】\n右邊那個數字 = 這個訊號的歷史平均期望值,【已經扣掉來回交易成本 ${cost}%】\n(手續費 ${this._feeDisc ? this._feeDisc() : 0.28} 折 ×2 + 證交稅 0.3%,折數可在設定中心改)。\n\n`
             + `每天收盤後,我把全市場 ${(j.scanned || 2315).toLocaleString()} 檔股票、每一檔都跑過 App 裡所有 K 線訊號,\n`
             + '挑出「今天有出現訊號、而且那個訊號的【實測期望值是正的】」的股票。\n\n'
@@ -42775,7 +42827,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
         this._renderChuPickList(key);
         this.renderHuntTab();
-        alert(`✅ 一鍵全加完成\n\n  • 新加入：${added} 檔\n  • 已存在（跳過）：${skipped} 檔\n  • 資料不足（失敗）：${failed} 檔\n\n觀察掃描時會根據選股法套用專屬進場觸發。`);
+        app._helpBox(`✅ 一鍵全加完成\n\n  • 新加入：${added} 檔\n  • 已存在（跳過）：${skipped} 檔\n  • 資料不足（失敗）：${failed} 檔\n\n觀察掃描時會根據選股法套用專屬進場觸發。`);
     },
 
     // V17.4 — 只加綠燈股(無 warning)到監控,跳過已過熱/出貨警示
@@ -44362,7 +44414,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
     _showEnvInfo() {
         const env = this._runtimeEnv();
         const name = env === 'apk' ? '🤖 APK(安卓安裝檔)' : env === 'pwa' ? '📱 PWA(加到主畫面)' : '🌐 一般瀏覽器';
-        alert(`📦 你現在用的版本:${name}
+        app._helpBox(`📦 你現在用的版本:${name}
 
 【三種版本的差別】
 🌐 網頁:直接開網址。⚠️ 通知最不可靠(分頁關掉就收不到)。
@@ -44470,7 +44522,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         }
 
         const allOk = !blocker;
-        alert('🩺 推播體檢\n' + '─'.repeat(22) + '\n' + L.join('\n') + '\n' + '─'.repeat(22) + '\n\n'
+        app._helpBox('🩺 推播體檢\n' + '─'.repeat(22) + '\n' + L.join('\n') + '\n' + '─'.repeat(22) + '\n\n'
             + (allOk
                 ? '🎉 全部通過!關掉 App 也收得到。\n\n'
                 : `🔧 要先修這一個:\n${blocker}\n\n`)
@@ -44731,7 +44783,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             box.innerHTML = `
                 <div class="flex items-center justify-between mb-1">
                     <span class="text-[12px] font-black text-gray-100">🔄 大盤現在是什麼盤</span>
-                    <button onclick="alert('【市場狀態機 Regime】\\n\\n同一招在不同盤勢結果天差地遠:趨勢盤「回檔買」超好用,盤整盤「追突破」一直被巴。所以先判「現在什麼盤」再選策略。\\n\\n用加權指數的:①均線排列(價 vs 月線 vs 季線)②月線斜率(上揚/走平/下彎)③波動率(日報酬標準差)分成:\\n\\n📈 趨勢多頭盤=順勢抱波段、回檔買、全策略開。\\n↔️ 盤整箱型盤=選股不選勢、箱型高出低進、別追突破。\\n📉 空頭/🩸崩跌盤=現金為王、別接刀、只做超跌快反彈。\\n🔀 轉折盤=觀望等表態。\\n\\n純公式,非投資建議。')" class="text-[9px] text-gray-500 hover:text-cyan-300">📖 原理</button>
+                    <button onclick="app._helpBox('【市場狀態機 Regime】\\n\\n同一招在不同盤勢結果天差地遠:趨勢盤「回檔買」超好用,盤整盤「追突破」一直被巴。所以先判「現在什麼盤」再選策略。\\n\\n用加權指數的:①均線排列(價 vs 月線 vs 季線)②月線斜率(上揚/走平/下彎)③波動率(日報酬標準差)分成:\\n\\n📈 趨勢多頭盤=順勢抱波段、回檔買、全策略開。\\n↔️ 盤整箱型盤=選股不選勢、箱型高出低進、別追突破。\\n📉 空頭/🩸崩跌盤=現金為王、別接刀、只做超跌快反彈。\\n🔀 轉折盤=觀望等表態。\\n\\n純公式,非投資建議。')" class="text-[9px] text-gray-500 hover:text-cyan-300">📖 原理</button>
                 </div>
                 <div class="text-2xl font-black ${vcls} leading-tight">${r.regime}</div>
                 <div class="text-[10px] text-gray-500 mt-0.5 mb-1.5 font-mono">月線斜率 ${r.slope20 >= 0 ? '+' : ''}${r.slope20.toFixed(2)}% · 波動率 ${r.vol.toFixed(2)}%/日 · 加權 ${Math.round(r.price)}(月線 ${Math.round(r.ma20)})</div>
@@ -44892,7 +44944,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
     _showMedGapHelp() {
         const s = this._medGapState() || {};
-        alert('【大盤 vs 你手上那檔】\n\n'
+        app._helpBox('【大盤 vs 你手上那檔】\n\n'
             + '常有人問:「大盤明明漲,為什麼我的股票沒漲?」\n'
             + '答案是 —— 加權指數是【市值加權】的,台積電一檔就佔了非常大的比重。\n'
             + '所以指數其實比較像「台積電 + 幾檔權值股」的成績單,不是「多數股票」的成績單。\n\n'
@@ -44970,7 +45022,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
     _showFloorCountHelp() {
         const s = this._floorCountState() || {};
-        alert('【全市場跌到「地板」的有幾檔】\n\n'
+        app._helpBox('【全市場跌到「地板」的有幾檔】\n\n'
             + '📌 什麼叫「地板股」\n'
             + '把這一檔股票離月線多遠(乖離)排成它自己的歷史,\n'
             + '今天落在【它自己最慘的那 5%】,就算跌到地板了。\n'
@@ -45068,7 +45120,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             box.innerHTML = `
                 <div class="flex items-center justify-between mb-1.5">
                     <span class="text-[12px] font-black text-gray-100">📊 市場廣度 <span class="text-[9px] text-gray-500 font-normal">全市場 ${total} 檔即時 · ${this._liveTs || ''}</span></span>
-                    <button onclick="alert('【市場廣度 Market Breadth】\\n\\n指數只反映「權值股」(台積電佔權重超大),廣度反映「多數股」的真實狀況。\\n\\n・騰落比 = 上漲家數 ÷ 下跌家數。>1 多方、<1 空方。\\n・漲停 vs 跌停家數:極端情緒。\\n・上漲家數% ≥ 65% 且漲停多 = 全面上攻(主升段);≤ 35% 且跌停多 = 全面下殺。\\n\\n🎯 最重要:指數 vs 廣度「背離」——指數創高但只有少數股在漲(廣度弱)=少數大牛扛盤的假強,常是頭部前兆。反之指數跌但多數股漲=個股行情,選股偏多。\\n\\n這是機構級大盤健康度指標,用全市場即時快照算,免費。')" class="text-[9px] text-gray-500 hover:text-cyan-300">📖 原理</button>
+                    <button onclick="app._helpBox('【市場廣度 Market Breadth】\\n\\n指數只反映「權值股」(台積電佔權重超大),廣度反映「多數股」的真實狀況。\\n\\n・騰落比 = 上漲家數 ÷ 下跌家數。>1 多方、<1 空方。\\n・漲停 vs 跌停家數:極端情緒。\\n・上漲家數% ≥ 65% 且漲停多 = 全面上攻(主升段);≤ 35% 且跌停多 = 全面下殺。\\n\\n🎯 最重要:指數 vs 廣度「背離」——指數創高但只有少數股在漲(廣度弱)=少數大牛扛盤的假強,常是頭部前兆。反之指數跌但多數股漲=個股行情,選股偏多。\\n\\n這是機構級大盤健康度指標,用全市場即時快照算,免費。')" class="text-[9px] text-gray-500 hover:text-cyan-300">📖 原理</button>
                 </div>
                 <div class="text-xl font-black ${vcls} leading-tight mb-1.5">${verdict}</div>
                 <div class="grid grid-cols-4 gap-1.5 mb-1.5">
@@ -45155,7 +45207,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             <div class="bg-[#161b22] border border-[#30363d] rounded-t-2xl md:rounded-2xl w-full max-w-md p-4 pb-6 max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[13px] font-black text-gray-100">🚨 剛爆量啟動 <span class="text-[9px] text-gray-500 font-normal">主力剛進場 · ${list.length} 檔</span></span>
-                    <button onclick="alert('【盤中異常爆量雷達】\\n\\n掃全市場「量比爆(今日投影量 ≥ 5日均量 2.5 倍)+ 剛啟動(漲 1.5~6%,還沒噴完)」= 主力剛進場最早期訊號。\\n\\n量先爆、價剛動,比追已漲 7% 的更早卡位。漲太多(>7%)或下跌都排除。\\n\\n點名≠明牌,進場看個股訊號 + 守停損。')" class="text-[10px] text-gray-500 hover:text-orange-300">📖 原理</button>
+                    <button onclick="app._helpBox('【盤中異常爆量雷達】\\n\\n掃全市場「量比爆(今日投影量 ≥ 5日均量 2.5 倍)+ 剛啟動(漲 1.5~6%,還沒噴完)」= 主力剛進場最早期訊號。\\n\\n量先爆、價剛動,比追已漲 7% 的更早卡位。漲太多(>7%)或下跌都排除。\\n\\n點名≠明牌,進場看個股訊號 + 守停損。')" class="text-[10px] text-gray-500 hover:text-orange-300">📖 原理</button>
                 </div>
                 ${rows}
                 <div class="text-[9px] text-gray-600 mt-2">💡 量先爆、價剛動=主力剛進場,比追高更早。點任一檔看「朱老師這樣看 + 該買幾張」。</div>
@@ -47418,7 +47470,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 ``,
                 `掃描時，系統會在條件成立的當下推播提醒！`,
             ];
-            alert(lines.join('\n'));
+            app._helpBox(lines.join('\n'));
             this.renderHuntTab();
         }
         return true;
@@ -47992,15 +48044,14 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         </div>`;
     },
 
+    /** 🎯 獵殺清單觸發 → 一律走 `_fireAlert`(V75.0.0)
+     *  🚨 舊版自己 `new Notification`,漏了三件事:
+     *     ① 前景也發系統通知(而大視窗/toast 已經講過一次 = 使用者看兩次)
+     *     ② 繞過 `_recordNotifHistory` → **鈴鐺歷史裡查不到**
+     *     ③ 沒開通知權限時完全零反應
+     *  ⛔ 別再繞過 `_fireAlert` 自己發通知(陷阱 #37)。 */
     _fireHuntNotification(alert) {
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            try {
-                new Notification(alert.label, {
-                    body: `${alert.name}(${alert.sym})\n${alert.msg}`,
-                    tag: `hunt_${alert.sym}_${alert.strategy}`,
-                });
-            } catch (e) {}
-        }
+        try { this._fireAlert(alert.label, `${alert.name}(${alert.sym})\n${alert.msg}`, alert.sym); } catch (_) {}
     },
 
     _strategyLabel(s) {

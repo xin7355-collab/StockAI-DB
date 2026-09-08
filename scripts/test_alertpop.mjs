@@ -5,8 +5,17 @@
  * 答案原本是「沒有」:觸發時只走系統推播 + 鈴鐺,
  * 🚨 而 `_fireAlert` 在**沒開通知權限時直接 return** → 畫面上零反應。
  *
+ * 🪟 V75.0.0 判準變更(使用者:「彈跳視窗有大小視窗感覺很像,請關閉小的統一用大的」):
+ *   舊判準 = 「多空不對稱」(只有賣訊彈);新判準 = 「**跟你有關**」——
+ *   ⭐ 使用者混亂的來源不是「彈太少」,是「**跟他無關的東西也在彈**」。
+ *   ⛔ 多空不對稱那條鐵則**沒有被推翻**,它降級成第 ③ 層(別人的股票只有風險類才彈)。
+ *   三層(⛔ 順序不可換,見 `_shouldPopup`):
+ *     ① `sym` 在庫存/自選 → 彈(不論多空)
+ *     ② 沒有 `sym`(全市場盤點摘要)→ ⛔ 不彈,走 toast + 鈴鐺
+ *     ③ 有 `sym` 但不是你的 → 沿用舊的風險詞判準
+ *
  * ⛔ 五條不可改掉的設計:
- * ① ⭐ **只有出場/風險類才彈窗**,買進/點火類一律 toast ——
+ * ① ⭐ **買進/點火類對「不是你的股票」一律 toast** ——
  *    那不是版面偏好,是本站的**多空不對稱**鐵則(勝率 30~33%,靠小賠出場才會賺)。
  *    ⛔ 每個事件都彈 = 使用者三天後關掉 = 整套失效。
  * ② 同一件事**一天只跳一次**(⛔ 否則股價在門檻上下震盪會連跳)。
@@ -65,11 +74,33 @@ const R = await page.evaluate(async () => {
     out.urgent = ['🩸 庫存鐵血停損', '🔻 庫存轉偏空', '⏰ 當沖平倉倒數(13:25)', '🧯 六脈熄火(盤中)', '🚨 官方處置'].map(t => A._isUrgentAlert(t));
     out.calm   = ['⚡ 六脈點火(盤中)', '🎯 買點到了', '📈 A+ 級買點共振', '📅 財報行事曆'].map(t => A._isUrgentAlert(t));
 
-    // ⑤ 沒有 sym 時「看這一檔」要收起來
-    clear(); A._fireAlert('🚨 大盤跌破月線', '風險提醒', '');
-    out.noSymGoHidden = document.getElementById('alertPopGo').style.display === 'none';
+    // ⑤ V75.0.0 沒有 sym(全市場盤點摘要)→ ⛔ 不彈窗,走 toast + 鈴鐺
+    //    ⭐ 「你有 5 檔有處置風險」是統計,不是一件要你現在做的事 —— 彈窗要留給「哪一檔、現在」。
+    clear(); toasts = [];
+    A._fireAlert('📊 處置股盤點摘要', '你還有 3 檔股有處置風險,點🔔看歷史通知', '');
+    out.noSymShown = shown();
+    out.noSymToast = toasts.length;
     A._closeAlertPop();
     out.closed = !shown();
+
+    // ⑮ V75.0.0 「跟你有關」判準:同一個標題,你的股票要彈、別人的不彈
+    const invBak0 = A.inventory, favBak0 = A.favGroups;
+    A.inventory = [{ symbol: '2330', cost: 900, shares: 1 }];
+    A.favGroups = { 預設: ['1101'] };
+    clear(); toasts = [];
+    A._fireAlert('⚡ 六脈點火(盤中)', '台積電(2330) 低檔齊發', '2330');   // 庫存 → 彈(買進類也彈)
+    out.mineInvShown = shown(); A._closeAlertPop();
+    clear(); toasts = [];
+    A._fireAlert('⚡ 六脈點火(盤中)', '台泥(1101) 低檔齊發', '1101');      // 自選 → 彈
+    out.mineFavShown = shown(); A._closeAlertPop();
+    clear(); toasts = [];
+    A._fireAlert('⚡ 六脈點火(盤中)', '別人的(9999) 低檔齊發', '9999');    // 不是你的 + 買進類 → ⛔ 不彈
+    out.otherBuyShown = shown(); out.otherBuyToast = toasts.length; A._closeAlertPop();
+    clear(); toasts = [];
+    A._fireAlert('🩸 庫存鐵血停損', '別人的(9999) 已破成本', '9999');       // 不是你的 + 風險類 → 仍要彈
+    out.otherRiskShown = shown(); A._closeAlertPop();
+    out.mySymsHas = [A._mySyms().has('2330'), A._mySyms().has('1101'), A._mySyms().has('9999')];
+    A.inventory = invBak0; A.favGroups = favBak0;
 
     // ═══ 🥊 V74.9.2 大視窗為主 + 排隊 + 不重複系統通知 + 連續技 ═══
     // ⑨ 賣訊/風險類(頂背離/停利/出貨…)→ 以前是 toast,現在要走大視窗
@@ -165,7 +196,14 @@ ok('③ 🚨 買進/點火類 ⛔ 不可彈窗(多空不對稱:錯過還有下�
 ok('③b 買進類仍要有 toast(⛔ 不可完全沒反應)', R.buyToast === 1, `toast=${R.buyToast}`);
 ok('④ 分級:出場/風險類全部判為高優先級', R.urgent.every(Boolean), JSON.stringify(R.urgent));
 ok('④b 分級:買進/共振類全部⛔ 不可判為高優先級', R.calm.every(v => v === false), JSON.stringify(R.calm));
-ok('⑤ 沒有股票代號時「看這一檔」要收起來(⛔ 不可給一顆按了沒用的鈕)', R.noSymGoHidden);
+ok('⑤ 🚨 全市場盤點摘要(沒有 sym)⛔ 不可彈窗 —— 那是統計不是「現在要做的事」', R.noSymShown === false);
+ok('⑤b 沒彈窗就一定要有 toast(⛔ 不可靜默吞掉)', R.noSymToast >= 1);
+ok('⑮ 你**庫存**裡的股票 → 彈窗(⭐ 買進類也彈,判準是「跟你有關」不是多空)', R.mineInvShown === true);
+ok('⑮b 你**自選**裡的股票 → 彈窗', R.mineFavShown === true);
+ok('⑮c 🚨 不是你的股票 + 買進類 → ⛔ 不可彈窗(那正是「跟他無關的東西也在彈」)', R.otherBuyShown === false, JSON.stringify(R.otherBuyShown));
+ok('⑮d 不是你的股票 + 買進類 → 仍要有 toast', R.otherBuyToast >= 1);
+ok('⑮e 不是你的股票 + **風險類** → 仍要彈(⛔ 多空不對稱那層不可整個關掉)', R.otherRiskShown === true);
+ok('⑮f `_mySyms()` 涵蓋庫存與自選、⛔ 不含別人的', JSON.stringify(R.mySymsHas) === '[true,true,false]', JSON.stringify(R.mySymsHas));
 ok('⑥ 關得掉', R.closed);
 // ═══ 🥊 V74.9.2 ═══
 ok('⑨ 🚨 賣訊/風險類(頂背離)→ 大視窗(使用者:「請以大視窗為主」),⛔ 不再是 toast', R.divShown === true && R.divToast === 0, `shown=${R.divShown} toast=${R.divToast}`);
