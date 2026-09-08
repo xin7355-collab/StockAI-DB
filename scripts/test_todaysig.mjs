@@ -22,6 +22,7 @@
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { execSync } from 'child_process';
 import path from 'path';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -39,8 +40,16 @@ await page.waitForFunction(() => typeof app !== 'undefined' && !!app._renderToda
 
 // ⭐ 用**採礦端真的產出的檔**當測資(⛔ 不用合成的,那驗不到欄位對接)
 let real = null;
+// ⚠️ `data/today_signals.json` **不在版控裡**(跟 `playbook_edge.json` 一樣只在 gh-pages)
+//   → 本地讀不到是**正常的**。⭐ 改成先讀本地、再退回 `git show origin/gh-pages:`;
+//   ⛔ 兩邊都拿不到時**誠實跳過並說原因**,⛔ 不可當成失敗(那會讓這支永遠紅)。
 try { real = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/today_signals.json'), 'utf8')); } catch (_) { }
-ok('① ⭐ 採礦端真的產得出 today_signals.json', !!real, '找不到 data/today_signals.json');
+if (!real) {
+    try { real = JSON.parse(execSync('git show origin/gh-pages:data/today_signals.json', { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })); }
+    catch (_) { }
+}
+ok('① ⭐ 拿得到 today_signals.json(本地或 gh-pages)', !!real,
+   '兩邊都沒有 —— 這個產物不在版控裡,要 `git fetch origin gh-pages` 之後才驗得到');
 if (real) {
     ok('① 有 bull 榜且是陣列', Array.isArray(real.bull), typeof real.bull);
     ok('① ⭐ bull 榜每筆的期望值都必須 > 0(⛔ 常對但不賺的不進榜)',
@@ -56,6 +65,22 @@ if (real) {
     ok('① 檔案要夠小(≤ 30 KB)', JSON.stringify(real).length <= 30720, `${(JSON.stringify(real).length / 1024).toFixed(1)} KB`);
     console.log(`   ↳ 掃 ${real.scanned} 檔 ・命中 ${real.bull.length} 檔 ・風險 ${real.risk_n} 筆/${real.risk_syms} 檔`);
 }
+
+// 🪟 V75.0.0 起「教學/說明」統一走大視窗(`app._helpBox`),⛔ 不再是 `alert()`。
+//   ⭐ 這支測試釘的是「**那幾句話有沒有講**」,⛔ 不是「用哪一種視窗講」
+//      → 攔 `_helpBox` 拿原文,搬家/換殼都不會讓它假失敗。
+//   🚧 空過守門:`_helpBox` 沒被呼叫到就直接 throw —— ⛔ 不可回空字串,
+//      那會讓下面每一條「必須寫到某句話」的斷言變成「都沒寫」的假紅燈,
+//      而下一個人會跑去改 App 的文案(改錯地方)。
+const grabHelp = () => page.evaluate(() => {
+    let s = '', hit = 0;
+    const o = app._helpBox, oa = window.alert;
+    app._helpBox = x => { hit++; s = String(x); };
+    window.alert = x => { hit++; s = String(x); };   // 舊寫法退回 alert 時也收得到
+    try { app._showTodaySigHelp(); } finally { app._helpBox = o; window.alert = oa; }
+    if (!hit) throw new Error('_showTodaySigHelp 沒有呼叫 _helpBox 也沒有 alert —— 教學根本沒顯示出來');
+    return s;
+});
 
 const render = d => page.evaluate(async j => {
     app._todaySig = j;
@@ -79,7 +104,7 @@ ok('② ⭐⛔ 賺不回成本的**不可刪掉**,要收在摺疊區並說明',
 ok('② ⭐ 必須寫明「不是保證」', /不是保證/.test(t), t.slice(-320));
 ok('② 要標資料日期(⛔ 別讓人以為是即時)', /收盤資料/.test(t), t.slice(-320));
 // 🧹 V72.5.0 風險總數那段搬進 alert(卡上留三個免責就好);⛔ 但**不可以刪掉**
-const _hlp = await page.evaluate(() => { let s2=''; const o=window.alert; window.alert=x=>{s2=x;}; app._showTodaySigHelp(); window.alert=o; return s2; });
+const _hlp = await grabHelp();
 ok('② ⭐ 風險只給檔數、⛔ 不逐檔列(V72.5.0 起在教學裡)',
    !R.html.includes('risk') && (/檔出現風險訊號/.test(_hlp) || !(real && real.risk_syms)), _hlp.slice(0, 400));
 // 🧹 V72.5.0 使用者:「文字太多、沒辦法一次顯示完」→ 每列改兩行式,股名不可被截成「太.」
@@ -98,7 +123,7 @@ const R2 = await render({ ...(real || {}), scanned: 2316, bull_total: 137, bull_
     base_win: 36.4, data_date: '2026-08-04', cost_note: '期望值未扣交易成本(來回約 0.44%,當沖 0.25%)', risk_n: 1, risk_syms: 1 });
 const t2 = txt(R2.html);
 // 🧹 V72.5.0 全榜統計搬進「ⓘ 怎麼看」(卡上太吵)—— ⛔ 是**搬**不是刪,一樣要驗得到
-const h2 = await page.evaluate(() => { let s2=''; const o=window.alert; window.alert=x=>{s2=x;}; app._showTodaySigHelp(); window.alert=o; return s2; });
+const h2 = await grabHelp();
 ok('②b ⭐ 全榜的「檔/筆」要用採礦端的真值(⛔ 不是截斷後的陣列長度)',
    /共 96 檔 \/ 137 筆/.test(h2), h2.slice(0, 400));
 ok('②b ⭐⛔ 有截斷就要看得出來(silent cap = 假裝「這就是全部」)',
@@ -125,10 +150,7 @@ for (const [name, d] of [['bull 是空陣列', { bull: [], scanned: 2315 }], ['�
 }
 
 // ── ④ 教學要說清楚「為什麼只有十幾檔」────────────────────────
-const help = await page.evaluate(() => {
-    let s = ''; const o = window.alert; window.alert = x => { s = x; };
-    app._showTodaySigHelp(); window.alert = o; return s;
-});
+const help = await grabHelp();
 ok('④ ⭐ 教學要解釋「為什麼通常只有十幾檔」', /為什麼通常只有十幾檔/.test(help), help.slice(0, 300));
 ok('④ ⭐ 要說明「大部分訊號常對但輸更大」', /輸的時候輸更大/.test(help), help.slice(0, 500));
 ok('④ ⭐ 三個免責都要在(基準不是 50% / 成本 / 不是保證)',

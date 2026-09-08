@@ -17,7 +17,13 @@ import { fileURLToPath } from 'url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome',args:['--no-sandbox','--allow-file-access-from-files']});
 const p=await b.newPage();
-const errs=[]; p.on('pageerror',e=>errs.push(String(e&&e.message||e)));
+// ⚠️ `file://` 下 Service Worker 的 `Cache.put` **必炸**(`Request scheme 'file' is unsupported`)
+//   —— 那是**沙箱環境限制不是 App bug**(CLAUDE.md 記過)。⛔ 不濾掉的話這支永遠紅,
+//      而永遠紅的測試等於沒有測試(⛔ 誤報會讓人養成無視守門的習慣)。
+//   ⛔ 範圍**刻意只放這一種** —— `echarts is not defined` ⛔ 不可加進來:
+//      V74.7.2 才修過「圖表載不到會把整條初始化鏈帶走」,把它濾掉等於把那個守門關掉。
+const benign = t => /Cache': Request scheme 'file'/i.test(t);
+const errs=[]; p.on('pageerror',e=>{ const t=String(e&&e.message||e); if(!benign(t)) errs.push(t); });
 p.on('dialog', d=>{ console.log('   💬 跳出說明:', d.message().replace(/\n/g,' ⏎ ').slice(0,70)+'…'); d.dismiss(); });
 await p.goto('file://'+ROOT+'/index.html',{waitUntil:'domcontentloaded'});
 await p.waitForFunction(()=>typeof app!=='undefined'&&!!app._renderIndexRow,null,{timeout:20000});

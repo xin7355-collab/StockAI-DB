@@ -173,7 +173,21 @@ const scanOf = (sym, trend) => bbPage.evaluate(async a => {
     await new Promise(r => setTimeout(r, 1500));
     app._ovTrend = a.trend ? { sym: a.sym, trend: a.trend, txt: 'x' } : app._ovTrend;
     const r = app._calcBullBearScan(a.sym);
-    return r && { verdict: r.verdict, hits: r.hits, bull: r.bullCount, bear: r.bearCount, low: r.lowSample, one: r.oneLiner, n: (app.rawDailyData || []).length };
+    // 🔁 ⭐ **同一次 evaluate 內**再用「主結論=空頭」算一遍(控制變因:同一份資料、同一個快取狀態)。
+    //   🚨 ⛔ 不可改成「等一下再呼叫一次 `analyze`」——
+    //      籌碼/基本面快取是非同步的,第二次常常少命中一兩條 → verdict 從「多方優勢」掉到「訊號不足」
+    //      → 「verdict 不可被竄改」那條會變成**假失敗**(看起來像 App 講反話,其實是測試自己重載資料)。
+    //   🚨 也⛔ 不可靠 `currentSymbolId` 事後補算 —— init() 會在幾秒後把頁面切回預設檔,
+    //      那樣會變成「靜默略過」= 這條斷言等於不存在(注入驗證當場抓到)。
+    let bb = null;
+    try {
+        const _sv = app._ovTrend;
+        app._ovTrend = { sym: a.sym, trend: 'bear', txt: 'x' };
+        const rb = app._calcBullBearScan(a.sym);
+        app._ovTrend = _sv;
+        bb = rb && { verdict: rb.verdict, one: rb.oneLiner };
+    } catch (_) { }
+    return r && { verdict: r.verdict, hits: r.hits, bull: r.bullCount, bear: r.bearCount, low: r.lowSample, one: r.oneLiner, n: (app.rawDailyData || []).length, bb };
 }, { sym, trend });
 
 // ⚠️ ⛔ **不可綁死「1101 一定是 7多/0空」** —— 命中數會隨採礦資料浮動(V72.1.8 的教訓)。
@@ -200,7 +214,10 @@ if (anyCase && !anyCase.low) {
        new RegExp(`命中 ${anyCase.hits} 條`).test(txt(anyCase.one)) || /四面向同步攻擊/.test(anyCase.one), txt(anyCase.one));
     // 同一檔強制主結論空頭 → 多方指令必須收掉,但**方向判定本身不動**
     if (anyCase.verdict === '多方優勢') {
-        const BB = await scanOf(anyCase.sym, 'bear');
+        // 🚧 空過守門:`bb` 沒算出來就直接紅 —— ⛔ 不可退回空字串當「通過」,
+        //    那會讓下面兩條變成「都沒講反話」的假綠燈。
+        ok('⑤ 空頭那組真的有算到(⛔ 不可靜默略過)', !!(anyCase.bb && anyCase.bb.one), JSON.stringify(anyCase.bb));
+        const BB = anyCase.bb || { verdict: '(沒算到)', one: '' };
         ok('⑤ ⭐⛔ 主結論空頭時不可下多方指令(講反話第 8 處)',
            !/可順勢操作|可放心做多/.test(BB.one), txt(BB.one));
         ok('⑤ ⭐ 空頭時改講「當反彈看待、別加碼」,但 verdict 本身不動(事實不竄改)',
