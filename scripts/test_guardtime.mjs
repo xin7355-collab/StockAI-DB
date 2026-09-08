@@ -36,7 +36,15 @@ await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcont
 await page.waitForFunction(() => typeof app !== 'undefined' && !!app._unifiedExitPlan, null, { timeout: 20000 });
 
 // ⭐ 用**真實**的 2327 日 K(重現使用者那張截圖),⛔ 不用合成資料
-const rows = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/2327.json'), 'utf8'));
+// 🚨 V75.0.1 但要**截到截圖那一天為止** —— 這支測試釘的是「2026-08-04 那張截圖」的情境,
+//    而 `data/2327.json` 每天都會長新的 K 棒 → 不截的話發動K 會漂到最近那根
+//    (實測已漂成 2026/08/28 低 576)→ 6 條**假失敗**,而且看起來像 App 壞了。
+//    ⭐ CLAUDE.md V72.1.8 的鐵則:**測試⛔ 不可綁死會浮動的資料狀態**。
+//    ⛔ 這不是改成合成資料(那會失去「用真實資料重現」的意義),是把時間軸釘住。
+const CUT = '2026/08/01';   // 使用者 08/01 買進、08/04 截圖 → 只要到 08/01 為止的真實 K 棒
+const rowsAll = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/2327.json'), 'utf8'));
+const rows = rowsAll.filter(r => String(r.date).replace(/-/g, '/') <= CUT);
+if (rows.length < 300) { console.log(`❌ 測資守門:截到 ${CUT} 只剩 ${rows.length} 根(⛔ 太少,下面全是空過)`); process.exit(1); }
 const setup = await page.evaluate(rows => {
     // 補上截圖當下那根盤中(08/04 現價 565)
     const d = rows.slice();
@@ -52,9 +60,16 @@ const setup = await page.evaluate(rows => {
     return t ? { idx: t.idx, low: t.low, date: String(t.date) } : null;
 }, rows);
 
-// ── ① 先確認測資真的重現了截圖(⛔ 否則下面全是空過)──────────────
-ok('① ⭐ 真實資料真的挑到 07/22 那根發動K(低 676)',
-   setup && Math.abs(setup.low - 676) < 0.01 && /07\/22/.test(setup.date), JSON.stringify(setup));
+// ── ① 先確認測資真的重現了「發動K 在買進日之前、而且低點高於成本」那個情境 ──────
+// 🚨 V75.0.1 ⛔ **不再寫死 676 / 07-22** —— `data/2327.json` 的歷史價格會被採礦端回溯調整
+//    (分割還原、髒 K 棒清除…),實測發動K 已從 07/22 低 676 變成 07/21 低 608。
+//    ⭐ 斷言改成**從資料推**(釘用意不釘當時的數字,CLAUDE.md V72.1.8)。
+//    ⛔ 但空過守門要更嚴:必須真的重現「發動K低 > 成本 且 現價在它下方」才算數。
+const COST = 561, NOW = 565;                    // 使用者截圖:成本 561、現價 565
+const TLOW = setup ? setup.low : 0;
+const TDATE = setup ? String(setup.date).replace(/\//g, '-') : '';
+ok('① ⭐ 測資真的重現了情境(有發動K、而且它的低點高於成本、現價又在它下方)',
+   !!setup && TLOW > COST && NOW < TLOW, JSON.stringify(setup));
 
 const plan = (cost, buyDate) => page.evaluate(a =>
     app._unifiedExitPlan(app._d, a.cost, a.buyDate), { cost, buyDate });
@@ -64,8 +79,8 @@ let r = await plan(561, '2026/08/01');
 ok('② ⭐ 防守價變成成本−5%(532.95),不再是 676', r && r.stopFinal === 532.95, JSON.stringify(r && r.stopFinal));
 ok('② ⭐ 必須留下原因(陷阱 #22:拿掉值要說為什麼)', /早於你的買進日/.test(r.stopADropped || ''), r.stopADropped);
 ok('② 原因裡要有兩個日期(否則查不出真因)',
-   /2026-07-22/.test(r.stopADropped || '') && /2026-08-01/.test(r.stopADropped || ''), r.stopADropped);
-ok('② 原始值要保留在 stopARaw(⛔ 不可整個丟掉)', r.stopARaw && r.stopARaw.low === 676, JSON.stringify(r.stopARaw));
+   r.stopADropped?.includes(TDATE) && /2026-08-01/.test(r.stopADropped || ''), `${r.stopADropped} / 期望含 ${TDATE}`);
+ok('② 原始值要保留在 stopARaw(⛔ 不可整個丟掉)', r.stopARaw && r.stopARaw.low === TLOW, JSON.stringify(r.stopARaw));
 ok('② ⭐⛔ 防守價不可高於成本(一進場就破防是不可能的)', r.stopFinal <= 561, r.stopFinal);
 
 // ── ③ 📏 一致性守門:沒填買進日也要擋得住 ──────────────────────
@@ -73,11 +88,14 @@ r = await plan(561, null);
 ok('③ ⭐ 沒填買進日 → 一樣是 532.95', r && r.stopFinal === 532.95, JSON.stringify(r && r.stopFinal));
 ok('③ ⭐ 原因要說「早就破了・是上方壓力」', /早就破了/.test(r.stopADropped || '') && /上方壓力/.test(r.stopADropped || ''), r.stopADropped);
 ok('③ 原因要帶原始數字(發動K低 / 成本 / 現價)',
-   /676/.test(r.stopADropped) && /561/.test(r.stopADropped) && /565/.test(r.stopADropped), r.stopADropped);
+   String(r.stopADropped).includes(String(TLOW)) && /561/.test(r.stopADropped) && /565/.test(r.stopADropped),
+   `${r.stopADropped} / 期望含 ${TLOW}`);
 
 // ── ④ ⛔ 不可誤擋正常情境(移動停利是對的,別把 max 改壞)──────────
-r = await plan(700, null);   // 成本 700 > 發動K低 676 → 那是正常停損,不該擋
-ok('④ ⭐⛔ 成本高於發動K低 → 照舊採用 676(正常停損,不可誤擋)', r && r.stopFinal === 676, JSON.stringify(r && r.stopFinal));
+const HICOST = Math.round(TLOW * 1.05);   // 成本 > 發動K低 → 那是正常停損,不該擋
+r = await plan(HICOST, null);
+ok(`④ ⭐⛔ 成本(${HICOST})高於發動K低(${TLOW})→ 照舊採用 ${TLOW}(正常停損,不可誤擋)`,
+   r && r.stopFinal === TLOW, JSON.stringify(r && r.stopFinal));
 ok('④ 沒有被擋 → stopADropped 為 null', r.stopADropped == null, r.stopADropped);
 
 r = await plan(561, '2026/07/01');   // 買在發動K之前 → 時間守門不該觸發

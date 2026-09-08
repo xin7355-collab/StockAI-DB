@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.0.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.0.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.0.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4988,7 +4988,7 @@ const app = {
             const pl = r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1);
             const ev = (r.expectancy >= 0 ? '+' : '') + r.expectancy.toFixed(1);
             this._fireAlert(`🎯 主打型態觸發｜${nm}`,
-                `${name}(${sym}) 今日觸發!此型態在本股歷史 勝率 ${wr}%・賺賠比 ${pl}・每趟期望值 ${ev}%(${r.count} 次)→ 正期望主打,依紀律進場,跌破 5MA 或成本 -5% 就出`, sym);
+                `${name}(${sym}) 今日觸發!此型態在本股歷史 勝率 ${wr}%・賺賠比 ${pl}・每趟期望值 ${ev}%(${r.count} 次)→ 正期望主打,依紀律進場,跌破${this._exitRuleName ? this._exitRuleName() : '5 日線'}或成本 -5% 就出`, sym);
         }
     },
     // 📐 V36.5 — 每日開 App(含盤後)掃自選+庫存,觸發 K棒戰法/量能型態就推(純讀 IDB K線,免 Fugle)
@@ -5214,7 +5214,18 @@ const app = {
 
                 if (prevClose <= ma5 && nowPrice > ma5)  trigger('break5',  '🔴 突破 5MA',   `現價 ${nowPrice.toFixed(2)} 上穿 5MA ${ma5.toFixed(2)}(停利訊號)${upTag}`);
                 // V18.8 — 朱家泓:跌破 5MA = 短線停利/停損(原本只監突破,缺賣訊)
-                if (prevClose >= ma5 && nowPrice < ma5)  trigger('dn5',     '🟡 跌破 5MA',   `現價 ${nowPrice.toFixed(2)} 跌破 5MA ${ma5.toFixed(2)}(朱:短線停利/停損)${dnTag}`);
+                // 🚨 V75.0.1 這裡本來**寫死 5MA**,而 `_pbExitSweep` 已改讀 `_exitPrimary`
+                //   → 同一天可能收到**兩則互相矛盾的通知**(一則叫你走、一則沒動靜)。
+                //   ⛔ 改讀設定中心那條;算不出來才退回 5MA(⛔ 不可靜默不提醒)。
+                const _epL = (() => { try { return this._exitPrimary(this.rawDailyData, sym); } catch (_) { return null; } })();
+                const _exV = (_epL && _epL.v > 0) ? _epL.v : ma5;
+                const _exN = (_epL && _epL.v > 0) ? _epL.name : '5 日線';
+                //   🚨 而且 dedupe key 要**跟 `_pbExitSweep` 共用**(`pbtp_<sym>_<ymd>`)——
+                //      ⛔ 兩支各自去重的話,同一檔同一天照樣會收到兩則講同一件事的通知。
+                //      (`_kbarFiredToday` 讀到就順手蓋章 → 誰先到誰發,另一支自動閉嘴)
+                if (prevClose >= _exV && nowPrice < _exV
+                    && !this._kbarFiredToday(`pbtp_${sym}_${this._tpeMinutes().ymd}`))
+                    trigger('dn5', `🟡 跌破${_exN}`, `現價 ${nowPrice.toFixed(2)} 跌破${_exN} ${_exV.toFixed(2)} —— 這是你在 ⚙️ 設定中心選的出場線${dnTag}`);
                 // ⚠️ V71.9.2 文案改寫:實測 2,227 檔、38,923 次跌破月線,**69% 在 10 個交易日內就站回去**,
                 //    而且跌破組往後 20 日只比沒跌破差 0.11pp(幾乎沒有鑑別力)。舊文案寫「中線停損警告」
                 //    會讓人一收到推播就砍,實際上多半是被巴假動作(還要付來回約 0.44% 成本)。
@@ -7928,8 +7939,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.0.0',
+    _APP_VERSION: 'V75.0.1',
     _CHANGELOG: [
+        { v:'V75.0.1', dt:'2026-09-08', d:['🚪 <b>出場價全站統一成「你在設定中心選的那條」</b>(你說「太多版本、很混亂」)—— 永豐智慧單 SOP、盤中推播、條件單複製文字、防守尺、機器人卡,以前各講各的,現在全部讀同一條。','🚨 <b>最要緊的是永豐智慧單那個停利觸發價</b> —— 那是你會<b>照抄去券商掛單</b>的數字,而它以前用的是 5 日線(沒有回測背書的那條)。','🚨 <b>修好「同一天收到兩則互相矛盾的通知」</b>:盤中的「跌破 5MA」提醒寫死 5 日線,而作戰清單的出場提醒早就改讀你的設定 → 一則叫你走、一則沒動靜。現在兩支讀同一條、而且<b>共用同一個去重</b>(不會重複吵你)。','⚠️ <b>換了出場規則,會主動告訴你「歷史成績是用 5 日線算的」</b> —— ⛔ 不會只把名字換掉裝作成績也一樣。','⛔ 舊的 5MA / 20MA 那兩條<b>沒有刪掉</b>,降級成「舊版・沒有 49 個月回測背書」照樣看得到。','📈 K 線圖上疊的那兩條是<b>代理版</b>(用近 20 天最高收盤起算)—— 你填了買進日之後跟卡片上的數字會有落差,這件事以前只寫在程式註解裡,現在畫面上會說。'] },
         { v:'V75.0.0', dt:'2026-09-08', d:['🎯 <b>新增「決策台」,而且它現在是你打開 App 的第一頁</b> —— 只回答三件事:<b>今天要賣什麼、今天可以買什麼、還是今天不用做</b>。⭐ 舊的分頁<b>一個都沒少</b>,細節照樣在那裡。','⭐ 為什麼要做:你說「實測後常常不知道看哪個」。真因是這個 App 照<b>資料類型</b>排(K線/籌碼/基本面…),但你的問題是<b>決策</b>。以前要找「今天買什麼」最多要點 7 層,現在<b>0 層</b>。','🚪 <b>要賣的不限量</b>(勝率只有三成,整套會賺完全靠「錯的時候小賠出場」);🎯 <b>可以買的最多 2 檔</b>,而且只給符合 🧬 又不是空頭的。','🚨 <b>「清單還沒下載到」跟「今天沒有可以買的」會長得不一樣</b> —— 那是兩件事,混在一起你會把「檔案沒下載」讀成「今天沒訊號」。庫存裡 K 線讀不到的那幾檔也會<b>講出來</b>,⛔ 不讓你把「沒警報」當成「安全」。','🚨 <b>誠實揭露沒有藏起來</b>:49 個月(含 2022 大跌)只做 🧬 賺 195.5 萬、不挑 🧬 賺 107.8 萬,而<b>同期 0050 買了放著是 260.0 萬 —— 兩種都輸</b>。⭐ 🧬 讓你少輸,⛔ 不是讓你一定贏大盤。','🏦 底部的「券商」鈕讓位給決策台(選股頁裡本來就有一顆券商入口,仍到得了)。'] },
         { v:'V74.9.9', dt:'2026-09-08', d:['🪟 <b>更新版本提醒不再自動跳出來了</b> —— 想看的時候,設定中心「🆕 更新紀錄」隨時點得到。','🪟 <b>教學說明全部改成大視窗</b>(61 處):以前點「📖 教學」跳出來的是瀏覽器那個灰色小框,字擠成一團又不能捲;現在跟 App 其他視窗長得一樣、看得清楚。⛔ 文案一個字都沒改。','🔔 <b>提醒的判準改成「跟你有關」</b>:你<b>庫存或自選</b>裡的股票出訊號 → 跳大視窗(不管是買點還是賣點);<b>不是你的</b>股票 → 只有風險類才跳;「你有 N 檔有處置風險」這種<b>全市場統計</b> → ⛔ 不再打斷你,改用跑馬燈 + 鈴鐺。','⭐ 為什麼這樣改:讓你混亂的不是「提醒太少」,是<b>跟你無關的東西也在跳</b>。⛔ 而「賣訊比買訊重要」那條沒有被推翻 —— 它降級成第 3 層(別人的股票只有風險類會跳)。','🎯 <b>獵殺清單的通知修好了</b>:以前它自己發系統通知 → ① App 開著時會跟畫面上的訊息重複 ② <b>鈴鐺歷史裡查不到</b> ③ 沒開通知權限就完全沒反應。現在跟其他提醒走同一條路。'] },
         { v:'V74.9.8', dt:'2026-09-08', d:['🧪 回測了兩套外部策略:「布林壓縮後突破上軌」**進場條件本身就沒用**(換哪種出場都輸給隨機進場);「強勢股拉回買」進場有東西(贏隨機 +0.59 個百分點)**但 2022 空頭與 2025 都是負的**,而且每趟只有 +0.17%,遠低於現行做法的 +0.76%。⛔ 兩套都沒接進 App。','💰 順便再驗一次「1.5% 風險模型」:同一批交易只換部位大小,總報酬 −26% → −2%,而每筆百分比報酬完全一樣 → 錢配錯地方會把賺的吃光。'] },
@@ -20045,6 +20057,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const src = x.proxy
             ? `⚠️ 你<b>沒有填這檔的庫存買進日</b> → 上面用「<b>近 20 天最高收盤 ${f2(x.peak)}</b>」當起算點。填了庫存(含買進日)之後,會改用<b>你真正的進場日</b>重算,那才跟回測一模一樣。`
             : `✅ 用你的買進日 <b>${String(x.buyDate).slice(0, 10)}</b> 起算(到今天 ${x.days} 根 K 棒),進場後最高收盤 <b>${f2(x.peak)}</b> —— 跟回測算法完全一致。`;
+        // 🚨 V75.0.1 K 線圖上疊的那兩條是**代理版**(用近 20 日最高收盤起算)——
+        //   填了買進日之後,卡上的數字會跟圖上的線**不一樣**。以前這件事只寫在程式註解裡,畫面一個字都沒有。
+        const proxyNote = x.proxy ? '' : '<div class="text-[9px] text-amber-300/80 leading-snug mt-0.5">⚠️ K 線圖上疊的那兩條是<b>代理版</b>(用近 20 日最高收盤起算,每根 K 都要有值才畫得出來)→ 跟上面的數字會有落差,<b>以上面為準</b>。</div>'; 
         return `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5 mb-2">
             <div class="flex items-center justify-between mb-1">
                 <span class="text-[12px] font-black text-cyan-200">🚪 這檔今天的出場防守價</span>
@@ -20053,6 +20068,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <div class="text-[10px] text-gray-400 leading-snug mb-1.5">跌破哪一條就走 —— 三條都自動幫你算好了,<b class="text-gray-300">數字越大代表越早出場</b>。</div>
             ${items.map(row).join('')}
             <div class="text-[9px] text-gray-500 leading-snug mt-1.5">${src}</div>
+            ${proxyNote}
             <div class="text-[10px] text-amber-200/90 leading-snug mt-1.5 bg-amber-900/15 border-l-2 border-amber-500/60 pl-2 py-1 rounded-r">
                 📊 <b>為什麼標 ⭐</b>:同一套打法、同一段 ${E.win}、⛔ 只換出場規則跑 ${E.n} 種 ——
                 「跌破 5 日線」賺 <b>${E.base.p.toFixed(0)} 萬</b>,而唐奇安 20 日 <b>${E.rows[0].p.toFixed(0)} 萬</b>、
@@ -20681,7 +20697,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             { n: '60MA 保衛價',   v: gs.g60,   src: '明日均線保衛' },
             { n: '突破棒防守價',  v: gs.boMid, src: '突破棒防守' },
             { n: '突破棒最低價',  v: gs.boLow, src: '突破棒防守(跌破=多空易位)' },
-            { n: '停損價',        v: dx.def,   src: '出場總表(實際下單依據)' },
+            // 🚪 V75.0.1 主線 = 你在設定中心選的那條(49 個月回測背書);⛔ 舊的 `dx.def` 不刪,降級標「舊版」
+            ...(() => { try { const e = this._exitPrimary(data, this.currentSymbolId);
+                              return (e && e.v > 0) ? [{ n: `出場線(${e.name})`, v: e.v, src: '⚙️ 設定中心那一條 —— 出場提醒與自動下單也用它' }] : []; }
+                        catch (_) { return []; } })(),
+            { n: '停損價(舊版)',  v: dx.def,   src: '出場總表 —— ⛔ 沒有 49 個月回測背書' },
         ].filter(x => Number.isFinite(+x.v) && +x.v > 0).map(x => ({ ...x, v: +x.v, d: (pC - +x.v) / pC * 100 }));
         // 📈 V71.7.8 上檔空間(使用者問「我現在買還有多少利潤空間」)
         const up = this._upsideRoom(pC, data, last);
@@ -21331,7 +21351,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     ${cell('停損', stop.toFixed(2), 'text-green-300', `${pctTo(stop)}<span class="text-[8px]">(${net(buyRef, stop).toLocaleString()}/張)</span>`)}
                     ${cell('參考目標', tgt.toFixed(2), 'text-red-300', `${pctTo(tgt)}<span class="text-[8px]">(+${net(buyRef, tgt).toLocaleString()}/張)</span>`)}
                 </div>
-                <div class="text-[9px] text-gray-500 leading-snug">💡 出場紀律:跌破 5 日線或停損價就出,最多抱 20 天(=回測同一套規則);賺賠元已扣手續費${_fd}折+稅。</div>
+                <div class="text-[9px] text-gray-500 leading-snug">💡 出場紀律:跌破<b>${this._exitRuleName ? this._exitRuleName() : '5 日線'}</b>或停損價就出,最多抱 20 天${(this._exitRuleKey ? this._exitRuleKey() : 'ma5') === 'ma5' ? '(=回測同一套規則)' : '(⚠️ 回測用的是 5 日線,你設定的是這條 —— 差距見 K線頁「出場防守價」)'};賺賠元已扣手續費${_fd}折+稅。</div>
                 ${(() => { const av = this._chuActionVerdict; return (av && av.sym === sym && av.cls !== 'green')
                     ? `<div class="bg-[#0d1117] border-l-2 border-yellow-500 pl-2 py-1 rounded-r text-[9px] text-yellow-300/90 leading-snug mt-1">⚖️ 對帳:上方朱式買點目前是「${av.big}」,跟這裡不衝突 — 那是<b>波段</b>格局判斷,這是<b>短線突破</b>劇本。想穩=等上方轉 🟢 再進;想搶短=只小量+嚴守上面停損價。</div>`
                     : ''; })()}`;
@@ -22804,7 +22824,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const ma20prev = m >= 22 ? closes.slice(m - 22, m - 2).reduce((a, b) => a + b, 0) / 20 : null;
             const bull = ma5 && ma20 && ma60 && ma20prev && ma5 > ma20 && ma20 > ma60 && ma20 > ma20prev;
             const bear = ma5 && ma20 && ma60 && ma20prev && ma5 < ma20 && ma20 < ma60 && ma20 < ma20prev;
-            const trend = bull ? 'bull' : bear ? 'bear' : 'flat';
+            // 🧭 V75.0.1 趨勢改讀**主結論**(`_ovTrend`,行動指令中心寫的那一份)——
+            //   ⛔ 這裡本來自算一份 → 同一個畫面可能出現兩個方向(單一劇本原則)。
+            //   讀不到(還沒渲染 / 換股中)才退回自算,並在文案標明。
+            const _selfTrend = bull ? 'bull' : bear ? 'bear' : 'flat';
+            const _ovT = (this._ovTrend && this._ovTrend.sym === sym) ? this._ovTrend.trend : null;
+            const trend = _ovT || _selfTrend;
             const score = q ? q.score : 50;
             const nf = v => (v != null && isFinite(v)) ? (+v).toFixed(2) : '—';
             // 持倉
@@ -22815,7 +22840,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 if (p) { cost = +p.cost; shares = +p.shares || 0; _buyDate = p.buyDate || null; if (p.buyDate) { const bd = new Date(String(p.buyDate).replace(/\//g, '-')); const dd = Math.round((Date.now() - bd.getTime()) / 86400000); if (Number.isFinite(dd) && dd >= 0) holdDays = dd; } }
             } catch (_) {}
             let plan = null; try { plan = this._unifiedExitPlan(rows, cost, _buyDate); } catch (_) {}
-            const tpS = plan?.takeShort, slF = plan?.stopFinal;
+            // 🚪 V75.0.1 停利價改讀**你設定的那條**(⛔ `takeShort` 是 MA5,沒有 49 個月回測背書)
+            //   ⛔ `slF`(stopFinal)⛔ 一行都不動 —— 那是 V72.0.7 的時間守門,`test_guardtime` 釘著。
+            const _epG = (() => { try { return this._exitPrimary(rows, sym); } catch (_) { return null; } })();
+            const tpS = (_epG && _epG.v > 0) ? _epG.v : plan?.takeShort;
+            const tpSName = (_epG && _epG.v > 0) ? _epG.name : '5 日線';
+            const slF = plan?.stopFinal;
             const today = (this.getTodayStr ? this.getTodayStr() : '');
             let big, cls, why; const prices = [];
             let posLine;
@@ -32014,8 +32044,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         route('🎯', dx.t1L || '第一目標(前高)', '', dx.t1, 'text-red-400', 'target');
         route('🚀', dx.t2L || '第二目標', '', dx.t2, 'text-red-400', 'target');
         if (defUnique) route('🛡️', dx.defL || '逃命防守', '', dx.def, 'text-green-400', 'guard');
-        route('📤', '短線停利', '跌破 5MA 隔日賣', x.takeShort, 'text-green-400', 'guard');
-        route('📤', '中長停利', '跌破 20MA 結束波段', x.takeLong, 'text-green-400', 'guard');
+        // 🚪 V75.0.1 主線 = **你在設定中心選的那條**(49 個月回測背書的那一條)
+        //   ⛔ 舊的兩條(5MA/20MA)⛔ 不刪(刪了使用者會以為沒這回事)→ 降級成「舊版・沒有回測背書」
+        const _ep = this._exitPrimary ? this._exitPrimary(data, this.currentSymbolId) : null;
+        if (_ep && _ep.v > 0) route('🚪', `出場線(${_ep.name})`, '你在 ⚙️ 設定中心選的那條 —— 出場提醒與自動下單都用它', _ep.v, 'text-amber-300', 'guard');
+        route('📤', '短線停利(舊版)', '跌破 5MA 隔日賣 —— ⛔ 沒有 49 個月回測背書', x.takeShort, 'text-green-400', 'guard');
+        route('📤', '中長停利(舊版)', '跌破 20MA 結束波段 —— ⛔ 沒有 49 個月回測背書', x.takeLong, 'text-green-400', 'guard');
         if (x.stopA) route('🛡️', '技術停損', `${x.stopA.date} 大紅K最低點`, x.stopA.low, 'text-red-400', 'guard');
         route('🛡️', '鐵血停損', cost ? `成本 ${cost.toFixed(2)} × 95%,任何狀況都不破` : '', x.stopB, 'text-red-400', 'guard');
         const abs10 = cost ? cost * 0.90 : null;
@@ -32041,7 +32075,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // ⚔️ 永豐 App 操作步驟(濃縮)— V69.7.1 停損觸發價改用「現在還有效」的最高防守價(已跌破的線設了也沒用)
         const _activeGuardMax = active.filter(r => r.p < x.pC).reduce((m, r) => Math.max(m, r.p), 0);
         const sinopacStop = _activeGuardMax || Math.max(x.stopA?.low || 0, x.stopB || 0);
-        const sinopacTake = x.takeShort || x.takeLong || 0;
+        // 🚨 V75.0.1 這是**使用者會照抄去券商掛單**的數字 —— 舊版用 `takeShort`(MA5,沒有回測背書)
+        //   → 改用 `_exitPrimary`(設定中心那條,49 個月 28 種實測選出來的)。
+        //   ⛔ 這一行改錯 = 他真的會掛錯價,是全 App 最不可以錯的地方之一。
+        const sinopacTake = (_ep && _ep.v > 0) ? _ep.v : (x.takeShort || x.takeLong || 0);
         const season = this._lastSinopacCtx?.season || '';
         // V26.9 — 永豐 App SOP 改 Vertical Stepper(取代原純文字 ❶❷❸,使用者面臨虧損焦慮時更易讀)
         const sinopacHtml = (sinopacStop > 0 && sinopacTake > 0) ? `
@@ -41661,6 +41698,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div class="text-[10px] text-gray-200 mt-1.5 leading-relaxed">
                     📤 <b>出場一律照這三條</b>(回測就是這樣算的,⛔ 自己改就不算數):
                     ① 收盤跌破 <b>5 日線</b> → 隔天出 ② 跌破<b>停損價</b> → 立刻出 ③ 最長 <b>20 個交易日</b>。
+                    ${(this._exitRuleKey ? this._exitRuleKey() : 'ma5') === 'ma5' ? '' : `<br><span class="text-amber-300">⚠️ 上面那組成績是用「跌破 5 日線」算的,而<b>你設定的是「${this._exitRuleName()}」</b> —— 同一段 ${this._EXIT_EDGE.win.slice(0, 20)} 換成它是 <b>${(this._EXIT_EDGE.rows.find(r => r.k === this._exitRuleKey()) || this._EXIT_EDGE.base).p.toFixed(0)} 萬</b>(5 日線 ${this._EXIT_EDGE.base.p.toFixed(0)} 萬)。</span>`}
                     <span class="text-gray-500">⛔ 沒有目標價 —— 這套是「錯的小賠、對的讓它跑」,設目標價會把大賺那幾筆砍掉。</span>
                 </div>
                 <div class="text-[10px] text-yellow-200/90 bg-[#161b22] border-l-4 border-yellow-600 rounded-r px-2 py-1 mt-1.5 leading-snug">
@@ -41740,6 +41778,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const x = (j.picks || []).find(p => String(p.s) === String(sym));
         if (!x || x.trig == null) { alert('這一檔沒有固定的觸發價(這招不是靠價位成立)→ 不適合掛條件單,請等 App 盤中提醒。'); return; }
         const nm = this.getStockName ? (this.getStockName(sym) || '') : '';
+        const _exNm = this._exitRuleName ? this._exitRuleName() : '5 日線';
+        const _exIsMa5 = (this._exitRuleKey ? this._exitRuleKey() : 'ma5') === 'ma5';
         const ps = this._lotsForPlaybook(+x.trig, +x.stop);   // ⭐ 等權(見該函式)
         const lots = (ps.acc > 0 && ps.shares > 0) ? ps.howTxt : null;
         const txt = [
@@ -41750,12 +41790,15 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             `打法:${x.k}(保守每趟 +${x.lb}%・勝率 ${x.w}%・打過 ${x.n} 次)`,
             '',
             '── 📤 怎麼出場(⛔ 這三條是回測用的規則,照做才算數)',
-            `① 停利:收盤跌破 5 日線 → 隔天出場(⛔ 不是漲到某個價就跑,${x.k} 靠的是「賺的時候讓它跑」)`,
+            // 🚨 V75.0.1 這是使用者會**照抄去掛單**的文字 → 要講他自己設定的那條
+            //   ⚠️ 但**回測用的是 5 日線** → 落差要一起講出來(⛔ 只換名字 = 成績跟規則對不上)
+            `① 停利:收盤跌破${_exNm} → 隔天出場(⛔ 不是漲到某個價就跑,${x.k} 靠的是「賺的時候讓它跑」)`,
             `② 停損:跌破 ${x.stop} → 立刻出場(這是唯一的硬底線)`,
             '③ 時間:最長抱 20 個交易日,沒動靜就出場換下一檔',
             `⚠️ 勝率只有 ${x.w}% —— 十次會錯五、六次,整套會賺**完全靠②守得住**。`,
             'App 會在你標記「我買了」之後,每天幫你盯這三條,到了就推播。',
             `⚠️ 回測是「尾盤買」算的;條件單是「觸價就買」,時點不同。能設 13:00 後才觸發最好。`,
+            ...(_exIsMa5 ? [] : [`⚠️ 上面那個「打過幾次・每趟多少」是用**跌破 5 日線**出場算的;你設定的是**${_exNm}** —— 兩者實測差距見 K線頁「出場防守價」。`]),
             ...(ps.oddOnly ? ['⚠️ 這是零股數量 —— 券商的智慧單/觸價委託**多半只吃整股**,零股通常要盤中自己下「零股」單。掛不進去就改手動。'] : []),
             ...(this._pbEdge?.picks?.find(p2 => String(p2.s) === String(sym))?.bear ? ['⚠️ 這檔目前跌破 20 日線與 60 日線(全面破線)—— 沒漲過觸發價就不會成立,別提前買。'] : []),
         ].join('\n');
