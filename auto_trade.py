@@ -132,7 +132,7 @@ def fetch_picks():
 # ═══════ 🚪 V74.5.4 出場(賣出)—— 使用者:「自動下單只管買不管賣,把賣出也接上」 ═══════
 # ⛔ 五條鐵則:
 #   ① **只賣這支程式自己買進、而且有記在狀態檔裡的部位** —— ⛔ 絕不碰你手動買的庫存。
-#   ② 出場規則跟 App 設定的那一條一致(`EXIT_RULE`,預設 atr2)。
+#   ② 出場規則跟 App 設定的那一條一致(`EXIT_RULE`,V75.0.9 起預設 **don**)。
 #      ⚠️ 這是**同一條公式的第二份實作**(App 是 JS、這裡是 Python)——
 #      ⛔ 改任何一邊都要改另一邊,而且定義必須跟回測一字不差:
 #        ・don    = 收盤跌破「前 20 個交易日最低」(⛔ 不含今天)
@@ -142,7 +142,7 @@ def fetch_picks():
 #   ③ 停損(進場 −5% 與前低較近者)與**最長 20 個交易日**不隨規則變 —— 回測沒動過那兩條。
 #   ④ 賣出一樣要過 DRY_RUN / LIVE 的煞車,而且**送出後立刻寫狀態檔**(寧可漏一次,⛔ 不可重複送)。
 #   ⑤ ⛔ 只在收盤前那個時窗動作(13:00~13:28)—— 這幾條全部是「**收盤**跌破」才算數。
-EXIT_RULE = os.getenv('EXIT_RULE', 'atr2')
+EXIT_RULE = os.getenv('EXIT_RULE', 'don')   # 🔁 V75.0.9:預設 atr2 → don(唐奇安 20 日低,同一段 49 個月 531 萬 → 590 萬)
 SELL_ENABLE = os.getenv('SELL_ENABLE', '1') == '1'
 MAX_HOLD_DAYS = int(os.getenv('MAX_HOLD_DAYS', '20'))
 
@@ -227,6 +227,17 @@ def main():
     else:
         log("🔴🔴 真實下單模式 —— 這會用你的真錢。5 秒內 Ctrl+C 可中止")
         time.sleep(5)
+
+    # 🚨 V75.0.9:沒設 ACCOUNT_SIZE 的話 POS_PCT 完全不生效(shares_for_playbook 退成固定 1000 股)
+    #    → 部位大小會跟 App 顯示的**不一樣**。⛔ 不可靜默 —— 這支會動真錢。
+    log(f"🚪 出場規則:{EXIT_RULE}(要跟 App 設定中心的那一條一致,⛔ 不同的話你看到的出場價不是它執行的)")
+    if ACCOUNT_SIZE <= 0:
+        log("⚠️⚠️ 你沒有設 ACCOUNT_SIZE(帳戶總資金)→ POS_PCT 這個設定**完全沒有作用**,"
+            "每筆一律買 1,000 股(再被 MAX_LOTS_PER_TRADE / MAX_AMT_PER_TRADE 壓一次)"
+            f"→ 部位大小跟 App 算的**不一樣**。要一致請設 ACCOUNT_SIZE=<你的總資金>(App 用的是 POS_PCT={POS_PCT:g}%)")
+    else:
+        log(f"💰 帳戶總資金 {ACCOUNT_SIZE:,} 元 ・每筆投入 {POS_PCT:g}%"
+            f"(上限 {MAX_LOTS_PER_TRADE} 張 / {MAX_AMT_PER_TRADE:,} 元)")
 
     try:
         import shioaji as sj

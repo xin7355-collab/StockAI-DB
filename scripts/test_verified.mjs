@@ -38,7 +38,9 @@ const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     ok('⑦ 🚨 ⛔ 不可新增第三種通知(買點推播仍只呼叫一次 _fireAlert)',
        (blk.match(/this\._fireAlert\(/g) || []).length === 1,
        (blk.match(/this\._fireAlert\(/g) || []).length);
-    ok('⑦b 一天最多 2 檔的上限還在', /_pushed >= 2/.test(blk));
+    // ⚠️ V75.0.9:上限改讀 `_DECK_TRACK49.picks`(⛔ 不寫死)→ 釘用意不釘實作
+    ok('⑦b 一天最多幾檔的上限還在,而且讀常數(⛔ 不寫死)',
+       /_pushed >= _maxPick/.test(blk) && /_DECK_TRACK49[\s\S]{0,40}picks/.test(blk));
     ok('④b A 級是**升級既有通知**而不是另發一則', /_g\.top \?/.test(blk));
 }
 ok('⑤ 樣本門檻走 `_wrEnough`(⛔ 不可在分級裡寫死 10)',

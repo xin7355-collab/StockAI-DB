@@ -51,8 +51,14 @@ console.log('② 靜態:限量與紀律');
 //   → 推播上限改成 **2**(掃 8 檔但最多推 2 則,因為不是每檔都會真的成立)。
 //   ⛔ 日後有人「順手放寬」成推更多,這裡要擋下來。
 ok('②a 推播有嚴格上限(⛔ 全推等於使用者關通知)', /ranked\.slice\(0,\s*[1-9]\)/.test(pbBlock), '找不到 slice 限量');
-ok('②a2 ⭐ 一天最多推 2 檔(⛔ 實測做越多賺越少)',
-   /if \(_pushed >= 2\) break;/.test(pbBlock) && /_pushed\+\+;/.test(pbBlock));
+// ⚠️ V75.0.9:上限從寫死的 2 改成讀 `_DECK_TRACK49.picks`(陷阱 #37:改設定要改兩處)
+//   → 斷言改釘**用意**:有上限、上限來自那個常數、而且那個常數真的是 2。
+//   ⛔ 不可只釘 `_pushed >= 2` —— 那是在釘實作,換成常數就變假失敗。
+ok('②a2 ⭐ 一天最多推 N 檔,而且 N 讀 `_DECK_TRACK49.picks`(⛔ 不寫死)',
+   /if \(_pushed >= _maxPick\) break;/.test(pbBlock) && /_pushed\+\+;/.test(pbBlock)
+   && /_DECK_TRACK49[\s\S]{0,40}picks/.test(pbBlock));
+ok('②a2b ⭐ 那個上限實測是 2 檔(⛔ 實測做越多賺越少)',
+   /picks: 2/.test(src.slice(src.indexOf('_DECK_TRACK49:'), src.indexOf('_DECK_TRACK49:') + 300)));
 // ⚠️ V74.2.7 把「就好」兩個字拿掉了(第一眼那句要短)→ 斷言改釘**實質**不釘尾字。
 //    數字仍要在(它只是搬進摺疊,⛔ 不可消失)。
 ok('②a3 清單上有明講「一天最多做前 2 檔」+ 數字', /一天最多做前 2 檔/.test(pbBlock) && /1,718,529/.test(pbBlock));

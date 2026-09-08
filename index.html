@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.0.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.0.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -750,10 +750,11 @@
                     <p class="text-[10px] text-gray-500 leading-snug">同一套打法、同一段 49 個月(含 2022 大跌)<b>只換這一條</b>的實測:
                         ATR 追蹤 <b class="text-gray-300">531 萬</b>・唐奇安 <b class="text-gray-300">590 萬</b>・移動停利 <b class="text-gray-300">476 萬</b>・
                         5 日線 <b class="text-gray-300">193 萬</b>(本金 100 萬,已扣成本)。
-                        <b class="text-gray-400">預設選 ATR 是因為它中途最多賠只有 −20%</b>(5 日線是 −32%)。</p>
+                        <b class="text-gray-400">預設選唐奇安是因為「賺最多就換」</b>(使用者明示的判準);
+                        想要中途少賠一點就改選 ATR(中途最多賠 <b class="text-gray-300">−20%</b> vs 唐奇安 <b class="text-gray-300">−25%</b>,但少賺 59 萬)。</p>
                     <div class="grid grid-cols-1 gap-1.5" id="exitRuleBtns">
-                        <button onclick="app.setExitRule('atr2')" id="btn_exit_atr2" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">🕯️ ATR 追蹤停利(預設)<span class="block text-[9px] font-normal text-gray-500">進場後最高收盤 − 2×ATR;波動大的股票自動給比較寬的空間</span></button>
-                        <button onclick="app.setExitRule('don')" id="btn_exit_don" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">🐢 唐奇安 20 日低點<span class="block text-[9px] font-normal text-gray-500">收盤跌破「前 20 天最低價」才走 —— 三條裡賺最多</span></button>
+                        <button onclick="app.setExitRule('don')" id="btn_exit_don" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">🐢 唐奇安 20 日低點(預設)<span class="block text-[9px] font-normal text-gray-500">收盤跌破「前 20 天最低價」才走 —— 四條裡<b>賺最多</b>(590 萬)</span></button>
+                        <button onclick="app.setExitRule('atr2')" id="btn_exit_atr2" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">🕯️ ATR 追蹤停利<span class="block text-[9px] font-normal text-gray-500">進場後最高收盤 − 2×ATR;賺 531 萬,但<b>中途最多賠只有 −20%</b>(全表最小)</span></button>
                         <button onclick="app.setExitRule('trail8')" id="btn_exit_trail8" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">📉 移動停利 8%<span class="block text-[9px] font-normal text-gray-500">從最高收盤回落 8% 就走 —— 最單純</span></button>
                         <button onclick="app.setExitRule('ma5')" id="btn_exit_ma5" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">📏 跌破 5 日線(舊版)<span class="block text-[9px] font-normal text-gray-500">出得最早、賺最少;想早點離場的人才選</span></button>
                     </div>
@@ -4477,6 +4478,8 @@ const app = {
         setTimeout(() => { try { this._loadConceptData(); } catch(_) {} }, 4000);
         // 🆕 V68.0.0 — 版本更新提醒:載入遮罩收掉後檢查,有新版跳一次窗(首次/舊用戶靜默設起點不跳)
         setTimeout(() => { try { this._checkVersionUpdate(); } catch(_) {} }, 2000);
+        // 🔁 V75.0.9:策略預設值變更**要跳窗**(⛔ 跟上面那個一般更新提醒是兩件事)
+        setTimeout(() => { try { this._checkStratChange(); } catch(_) {} }, 2600);
         // 📨 V69.1.12 — 每次開 App 自動把「自選/庫存/監控/股名」同步上雲(給 Telegram worker),
         //   修「雲端清單卡在舊資料」:原本只在改清單時 sync,失敗一次就永遠舊。已綁定才跑。
         setTimeout(() => { try { if (this.settings?.cloudCode) this.telegramCloud?.sync?.(true); } catch (_) {} }, 12000);
@@ -7947,8 +7950,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.0.8',
+    _APP_VERSION: 'V75.0.9',
     _CHANGELOG: [
+        { v: 'V75.0.9', dt: '2026-09-08', d: ['🔁 <b>你說「測出更好的就直接換,不要等我發現」—— 這一版把規則訂下來,而且第一項當場換了</b>:預設出場從「ATR 追蹤」改成「<b>唐奇安 20 日低點</b>」(同一套打法、同一段 49 個月只換這一條:531 萬 → <b>590 萬</b>)。⚠️ <b>代價</b>:中途最多賠從 −20.0% 變成 −25.2%。','🪟 <b>以後策略預設值一換,開 App 會跳一次窗告訴你</b> —— 寫清楚「原本是什麼 / 現在是什麼 / 為什麼換(數字)/ 代價 / 對你的影響」,而且有一顆<b>「換回舊的」</b>。<b>按了「知道了」才不再跳</b>。⛔ 一般功能更新照舊<b>不跳窗</b>(那是你之前要求關掉的)。','🚨 <b>順手發現決策台在低估自己</b>:那三個數字是用<b>舊出場</b>跑的。重跑之後 —— 🧬 <b>589.8 萬</b>、不挑 🧬 308.1 萬、0050 買了放著 264.1 萬 → <b>舊的「兩種都輸 0050」在新預設下不成立了</b>。','⭐⭐ 但真正的意思是:<b>贏不贏大盤取決於「出場」,不是「選股」</b> —— 選股一模一樣,只是太早出場會把贏家洗掉。⚠️ 這個「贏」要打折:那段期間加權指數自己就漲 208%(偏多頭)、倖存者偏誤、勝率只有三成、中途最多賠 25%。','🛠️ 順手修三個:自動下單沒設「帳戶總資金」時會<b>印警告</b>(以前會默默每筆買 1 張,跟 App 算的不一樣);尾盤推播的「最多 2 檔」不再寫死;兩處把進場時窗寫成 13:25 的文案改回 <b>13:28</b>。'] },
         { v: 'V75.0.8', dt: '2026-09-08', d: ['🔀 你問的「多頭做這套、空頭改抱 0050」測完了 —— <b>切換多賺 31 萬,但三道穩健性檢定全滅,而且還是輸 0050</b>,結論寫在決策台的揭露區。','🚨 關鍵在細節:唯一一次真正的長空頭(2022 那 53 天)停泊 0050 <b>是賠的</b>;七成的「賺」來自 ≤4 個交易日的短線來回。','💰 除權息也第一次回測了(8,609 次):「除息當天買」沒有優勢、「除息前先買一段」量不出來;抱過除息賺的是<b>股利本身</b>,價格那一面是貼息的(而且還沒扣稅)。'] },
         { v: 'V75.0.8', dt: '2026-09-08', d: ['⚖️ 總覽主卡下面多一行「這一頁有幾個系統在講方向」:幾個偏多、幾個偏空,而且標出哪幾個真的有實測數字。','🚨 打架時⛔ 不投票、不平均,一律以上面那張主卡為準。','🧭 第一次回測「主結論趨勢」那條規則(228 萬筆),結果與限制都寫在卡上與產業作戰室的實測總表。'] },
         { v: 'V75.0.8', dt: '2026-09-08', d: ['🚦 補上 4 處「主結論是空頭、卡片還在叫你做多」的漏洞:六脈共振的操作、朱老師 K 棒總評的兩格、多策略共振卡、盤中當沖燈。','⭐ 當沖那處刻意不蓋掉方向 —— 當沖看今天、主結論看波段,改成加一句「這是逆勢單:不留倉、部位放小」。','📅 庫存編輯頁補「買進日」欄位,K 線圖的 ATR 出場線才畫得出真值段。'] },
@@ -8038,6 +8042,10 @@ ${list}
         try {
             const KEY = 'proTerm_lastSeenVer', cur = this._APP_VERSION;
             const seen = localStorage.getItem(KEY);
+            // 🔁 V75.0.9:記下「這台裝置是不是真的第一次跑」——
+            //   `_checkStratChange` 要靠它分辨「全新安裝」與「老用戶但還沒看過任何策略變更」。
+            //   ⛔ 不可讓後者也被靜默蓋章(那樣第一次的策略變更**誰都不會收到**,整套通知等於沒做)。
+            this._firstRun = !seen;
             if (!seen) { localStorage.setItem(KEY, cur); return; }        // 首次/舊用戶=起點,不跳
             if (this._verCmp(cur, seen) > 0) {
                 // 📅 V73.1.2 使用者要求:更新跳窗**只在發佈當天**自動顯示 ——
@@ -19909,8 +19917,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
     // ═══ 🚪 V74.5.4 出場規則:全 App 唯一的「現在用哪一條」判斷點 ═══
     //   使用者:「把預設出場換成唐奇安/ATR,推播、自動下單、釣魚池出場卡整套換」。
-    //   ⭐ 預設改成 **ATR 追蹤 K=2**(`chand2`)—— 49 個月 28 種全測裡:
-    //     賺 531 萬(5 日線 193 萬)、**中途最多賠從 −32.3% 降到 −20.0%(全表最小)**、六關全過。
+    //   🔁 V75.0.9 預設從 ATR 追蹤改成 **唐奇安 20 日低**(`don20`)——
+    //     使用者明示判準是「**賺最多就換**」,而 49 個月 28 種全測裡唐奇安賺最多:
+    //     唐奇安 **590 萬** > ATR 531 萬 > 移動停利 476 萬 > 5 日線 193 萬,而且六關全過。
+    //     ⚠️ **代價**:中途最多賠從 −20.0%(ATR,全表最小)變成 −25.2%。
+    //     ⛔ 更賺的 don10w(708 萬)**不採用** —— 那是第一版寫錯造成的意外(進場後 10 天才開始看),
+    //        沒有單獨驗證過那個設計本身;don10(627 萬)逐年沒過(2022 −2 萬)。
     //   ⛔ 三條鐵則:
     //     ① 這支是**唯一判斷點** —— 出場提醒、行動指令中心、釣魚池、自動下單都讀它,
     //        ⛔ 誰都不准自己另外寫一套(那就是「同一套規則寫兩份」,遲早只改到一邊)。
@@ -19918,18 +19930,18 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //        因為 5 日線出得早、回撤小的人可能比較習慣;實測差距寫在選單旁邊讓他自己決定。
     //     ③ 停損(進場 −5% 與前低較近者)與最長 20 個交易日 **不隨這個設定變** —— 那兩條回測沒動過。
     _EXIT_RULE_OPTS: [
-        { k: 'atr2',   t: 'ATR 追蹤停利(預設)', d: '進場後最高收盤 − 2×ATR;波動大的股票自動給比較寬的空間' },
-        { k: 'don',    t: '唐奇安 20 日低點',    d: '收盤跌破「前 20 天最低價」才走 —— 三條裡賺最多' },
+        { k: 'don',    t: '唐奇安 20 日低點(預設)', d: '收盤跌破「前 20 天最低價」才走 —— 四條裡**賺最多**(590 萬)' },
+        { k: 'atr2',   t: 'ATR 追蹤停利',        d: '進場後最高收盤 − 2×ATR;賺 531 萬,但**中途最多賠只有 −20%**(全表最小)' },
         { k: 'trail8', t: '移動停利 8%',         d: '從最高收盤回落 8% 就走 —— 最單純' },
         { k: 'ma5',    t: '跌破 5 日線(舊版)',  d: '出得最早、賺最少;想要更早離場的人才選' },
     ],
     _exitRuleKey() {
-        const k = String((this.settings && this.settings.exitRule) || 'atr2');
-        return this._EXIT_RULE_OPTS.some(o => o.k === k) ? k : 'atr2';
+        const k = String((this.settings && this.settings.exitRule) || 'don');
+        return this._EXIT_RULE_OPTS.some(o => o.k === k) ? k : 'don';
     },
     _exitRuleName(k) {
         const o = this._EXIT_RULE_OPTS.find(x => x.k === (k || this._exitRuleKey()));
-        return o ? o.t.replace('(預設)', '').replace('(舊版)', '') : 'ATR 追蹤停利';
+        return o ? o.t.replace('(預設)', '').replace('(舊版)', '') : '唐奇安 20 日低點';
     },
     // 🚪 今天這一檔「主要出場價」= 使用者選的那一條(⛔ 其他地方不要自己挑)
     _exitPrimary(data, sym) {
@@ -19956,6 +19968,81 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 ? 'text-left px-2.5 py-2 text-[11px] font-bold rounded border border-cyan-600 bg-cyan-900/40 text-cyan-200 transition-colors'
                 : 'text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors';
         });
+    },
+
+    // ═══ 🔁 V75.0.9 策略預設值變更通知(使用者:「比我原本設定的策略還要好就直接替換,
+    //     我不要等我發現你才替換」+「開 App 跳一次,按了才消失」)═══
+    //   🚨 只收「**會改變你手上部位的出場價 / 買幾檔 / 買多少**」的變更 ——
+    //      ⛔ 一般功能更新**仍然不跳窗**(V75.0.0 使用者明確要求關掉的,`_checkVersionUpdate` 一行都不動)。
+    //   ⛔ 五條不可改掉的設計(測試 `scripts/test_stratchange.mjs` 釘住):
+    //     ① 必須同時寫 from / to / why(**數字**)/ cost(**代價**)/ you(**對你的影響**)——
+    //        ⛔ 只寫「換成更好的了」等於沒說,他無法判斷要不要換回去。
+    //     ② 🚨 **按了「知道了」才蓋章** —— ⛔ 不可 render 時就蓋(那會變成「跳一次就沒了」,
+    //        正是他抱怨的東西);⛔ 也不可用日期判斷(那是一般更新彈窗的做法)。
+    //     ③ ⛔ 舊選項**不刪**,而且視窗要有「換回舊的」一鍵。
+    //     ④ 首次安裝/舊用戶:**只蓋章不跳**(⛔ 否則新用戶第一次開就被歷史變更洗版)。
+    //     ⑤ ⛔ 不用紅綠燈(講的是「規則換了」不是漲跌方向)。
+    _STRAT_CHANGES: [
+        {
+            v: 'V75.0.9', dt: '2026-09-08', what: '出場規則(停利)',
+            from: 'ATR 追蹤停利(進場後最高收盤 − 2×ATR)',
+            to: '唐奇安 20 日低點(收盤跌破「前 20 天最低價」才走)',
+            why: '同一套打法、同一段 49 個月(含 2022 大跌)<b>只換這一條</b>:ATR <b>531 萬</b> → 唐奇安 <b>590 萬</b>(本金 100 萬,已扣成本 0.44%,六道關卡全過)',
+            cost: '中途最多賠從 <b>−20.0%</b>(ATR,全表最小)變成 <b>−25.2%</b> —— 多賺 59 萬換來的是路上更難熬',
+            you: '你手上部位的<b>防守價會變寬</b>(出場線往下移)—— 打開任何一檔,K 線圖上的出場線、「現在怎麼做」的防守價、釣魚池的出場卡都會同時變成新的數字',
+            back: 'atr2', backName: 'ATR 追蹤停利',
+        },
+    ],
+    /** 🔁 init 呼叫:有沒有「還沒看過的策略變更」。⛔ 跟 `_checkVersionUpdate` 完全分開。 */
+    _checkStratChange() {
+        try {
+            const KEY = 'proTerm_lastSeenStrat';
+            const c = (this._STRAT_CHANGES || [])[0];
+            if (!c) return;
+            const seen = localStorage.getItem(KEY);
+            if (!seen) {
+                // ④ 🚨 這裡要分兩種人(⛔ 不可一律靜默 —— 那樣**第一次的策略變更誰都收不到**):
+                //   ・全新安裝(`_firstRun`,由 `_checkVersionUpdate` 標的)→ 設起點、⛔ 不跳
+                //     (⛔ 否則新用戶第一次開 App 就被歷史變更洗版)
+                //   ・老用戶但還沒看過任何策略變更 → **要跳**,因為他就是那個「不會自己發現」的人
+                //   ⚠️ 拿不到旗標時一律當老用戶(寧可多提醒一次,⛔ 不可漏掉)
+                if (this._firstRun) { localStorage.setItem(KEY, c.v); return; }
+                this._showStratChange(c); return;
+            }
+            if (this._verCmp(c.v, seen) <= 0) return;
+            this._showStratChange(c);
+        } catch (_) {}
+    },
+    _showStratChange(c) {
+        try {
+            const e = h => this._escHtml(h);
+            const html = `
+            <div class="text-[11px] text-gray-400 mb-2">${e(c.dt)} ・ 這是<b class="text-amber-300">策略預設值</b>的變更,⛔ 不是一般的功能更新。</div>
+            <div class="bg-[#0d1117] border-l-4 border-amber-500 rounded-r px-3 py-2 mb-2">
+                <div class="text-[11px] text-gray-400 mb-1">📤 原本:${e(c.from)}</div>
+                <div class="text-[12px] text-amber-200 font-bold">📥 現在:${e(c.to)}</div>
+            </div>
+            <div class="text-[11px] text-gray-300 leading-relaxed mb-2"><b class="text-gray-100">為什麼換:</b>${c.why}</div>
+            <div class="bg-[#0d1117] border-l-4 border-yellow-600 rounded-r px-3 py-2 mb-2">
+                <div class="text-[11px] text-yellow-300 font-bold mb-0.5">⚠️ 代價(⛔ 不是只有好處)</div>
+                <div class="text-[11px] text-gray-300 leading-relaxed">${c.cost}</div>
+            </div>
+            <div class="bg-[#0d1117] border-l-4 border-cyan-600 rounded-r px-3 py-2 mb-3">
+                <div class="text-[11px] text-cyan-300 font-bold mb-0.5">👤 對你的影響</div>
+                <div class="text-[11px] text-gray-300 leading-relaxed">${c.you}</div>
+            </div>
+            <div class="text-[10px] text-gray-500 leading-snug mb-3">⛔ 舊的那條<b>沒有刪掉</b> —— 設定中心「🚪 出場規則」四個選項都還在,每一條旁邊都寫著實測賺多少,你隨時可以自己換回去。</div>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="app._ackStratChange('${e(c.v)}')" class="bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-black py-2.5 rounded">知道了</button>
+                <button onclick="app._ackStratChange('${e(c.v)}'); app.setExitRule('${e(c.back)}');" class="bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-bold py-2.5 rounded">↩️ 換回舊的(${e(c.backName || '')})</button>
+            </div>`;
+            this._showRichModal('🔁 策略預設值換了', html);
+        } catch (_) {}
+    },
+    /** 🚨 ② 蓋章只在這裡發生 —— 使用者**按了**才算看過(⛔ 不可在 `_showStratChange` 裡蓋)。 */
+    _ackStratChange(v) {
+        try { localStorage.setItem('proTerm_lastSeenStrat', String(v || '')); } catch (_) {}
+        try { document.getElementById('richHelpModal')?.classList.add('hidden'); } catch (_) {}
     },
 
     // 📐 近 14 日 TR 簡單平均(⛔ 回測同款,不是 Wilder;兩者同名不同義,別互相取代)
@@ -41646,7 +41733,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //     隔天開盤+「跳空>1% 不追」更慘,**倒賠 147,644 元**、回撤 −36.4%
     //     (真因:跳空開高的那幾檔正是後來走最遠的,濾掉等於專挑爛的買)。
     //     → 打法的判定條件全部用**收盤價**算 → 有效進場點只有「觸發當天的尾盤」。
-    _PB_ENTRY_NOTE: '有效進場時點是「觸發當天尾盤 13:00~13:25」,⛔ 不是隔天開盤(實測隔天開盤買會把賺頭吃光)',
+    _PB_ENTRY_NOTE: '有效進場時點是「觸發當天尾盤 13:00~13:28」,⛔ 不是隔天開盤(實測隔天開盤買會把賺頭吃光)',
     async _loadPlaybookEdge() {
         if (this._pbEdge !== undefined) return this._pbEdge;
         try {
@@ -41685,16 +41772,22 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // 📊 這套配置的長窗口成績(49 個月,含 2022 那一段大跌)
     //   🚨 數字必須跟 `pro.html` 的 `PRO._SIG_DEEP` **一模一樣**(⛔ 同名不同義是全專案犯最多次的錯)
     //      → `scripts/test_deck.mjs` 直接比對兩個檔案。
-    //   ⚠️ 跟 `_PB_TRACK`(36 個月)是**兩個不同的窗口**:
-    //      36 個月 🧬 +289.6 萬 vs 0050 +201.2 萬 → 贏;
-    //      49 個月 🧬 +195.5 萬 vs 0050 +260.0 萬 → **兩種都輸**。
-    //      ⛔ 不可混用兩個窗口的數字互相對照(那是假對照)。
+    //   ⚠️ 跟 `_PB_TRACK`(36 個月)是**兩個不同的窗口**,⛔ 不可混用兩個窗口的數字互相對照。
+    //   🔁 V75.0.9 **這三個數字重跑過** —— 預設出場從 5 日線/ATR 換成**唐奇安 20 日**之後,
+    //      同一批股票、同一段 49 個月、同一套選股,只換出場:
+    //        🧬 195.5 萬 → **589.8 萬** ・不挑 🧬 107.8 萬 → **308.1 萬** ・0050 264.1 萬
+    //      → 舊的「**兩種都輸給 0050**」在新的預設下**不再成立**。
+    //   ⭐⭐ 但這件事真正的意思是:**這套贏不贏大盤,高度取決於出場規則,不是選股** ——
+    //      ⛔ 不可解讀成「選股變厲害了」(選股一模一樣)。
+    //   🚨 舊數字保留在 `ma5` 欄位裡 —— 那個對照本身就是證據,⛔ 不可刪掉。
     _DECK_TRACK49: { months: 49, from: '2022-08', to: '2026-08', cap: 1000000, posPct: 15, picks: 2,
-                     gene: 1955061, geneDD: 32.4, plain: 1078253, plainDD: 31.8, etf0050: 2600300,
-                     // 🔀 V75.0.8「多頭做打法、空頭改抱 0050」切換策略實測(使用者提的)——
-                     //   ⛔ 三關全滅而且**仍然輸 0050**。⚠️ 這裡的三個數字跟上面同一支回測、
-                     //      但**是另一輪重跑的**(data/ 每天會更新,基準 193.4 萬 vs 上面 195.5 萬的小幅漂移就是這個原因)
-                     //      → ⛔ 不可跟上面那三個數字直接相減,只能比量級。
+                     exit: 'don', exitName: '唐奇安 20 日低點',
+                     gene: 5898128, geneDD: 25.2, plain: 3080625, plainDD: 25.1, etf0050: 2641000,
+                     // 📉 舊預設(跌破 5 日線)同一段的成績 —— 留著當「換出場差多少」的對照
+                     ma5: { gene: 1955061, geneDD: 32.4, plain: 1078253, plainDD: 31.8 },
+                     // 🔀 V75.0.8「多頭做打法、空頭改抱 0050」切換策略實測(使用者提的)—— ⛔ 三關全滅。
+                     //   🚨 ⚠️ 這一組是用**舊的 5 日線出場**跑的(換出場是 V75.0.9 才做的事)
+                     //      → ⛔ **不可跟上面那三個數字直接相減**,它只回答「切換 vs 不切換」這一個問題。
                      sw: { base: 1933944, cash: 2057822, park: 2247695, etf: 2641000, bearDays: 168, allDays: 974 } },
 
     /** 🎯 決策台的資料(⛔ 純資料,不碰 DOM) */
@@ -41810,22 +41903,35 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                      <div class="text-[11px] text-gray-400 mt-1">手上沒有要賣的、也沒有值得買的。⭐ 這種日子占大多數 —— <b>忍住不做</b>本身就是紀律的一部分。</div>
                    </div>` : '';
 
-            // ── 📊 誠實揭露(⛔ 不可拿掉:少了它這一頁就是在推薦一件會輸給 0050 的事)──
+            // ── 📊 誠實揭露(⛔ 不可拿掉)──
+            //   🔁 V75.0.9:換成唐奇安出場之後這一段的方向翻過來了(從「兩種都輸」變成「兩種都贏」)
+            //     → ⛔ 文案**不可寫死方向**,一律從數字現算(`_win`),否則下次再換預設又會說謊。
             const T = this._DECK_TRACK49, m = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
+            const _win = T.gene > T.etf0050;      // 🧬 有沒有贏 0050
+            const _winP = T.plain > T.etf0050;    // 不挑 🧬 有沒有贏
             note.innerHTML = `<details class="bg-[#161b22] border border-[#30363d] rounded-lg">
-                <summary class="px-3 py-2 text-[11px] font-bold text-gray-300 cursor-pointer">📊 這套做法實測賺多少?(⛔ 含「它輸給 0050」那一段)</summary>
+                <summary class="px-3 py-2 text-[11px] font-bold text-gray-300 cursor-pointer">📊 這套做法實測賺多少?(⛔ 含它跟 0050 的對照)</summary>
                 <div class="px-3 pb-3 text-[11px] text-gray-300 leading-relaxed">
-                    <div class="text-[10px] text-gray-500 mb-1.5">${T.months} 個月(${T.from}~${T.to},<b>含 2022 那一段大跌</b>)・本金 ${(T.cap / 10000).toFixed(0)} 萬・每天最多 ${T.picks} 檔・每筆本金 ${T.posPct}%・已扣來回成本 0.44%</div>
+                    <div class="text-[10px] text-gray-500 mb-1.5">${T.months} 個月(${T.from}~${T.to},<b>含 2022 那一段大跌</b>)・本金 ${(T.cap / 10000).toFixed(0)} 萬・每天最多 ${T.picks} 檔・每筆本金 ${T.posPct}%・出場用<b>${T.exitName}</b>・已扣來回成本 0.44%</div>
                     <div class="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
                         <div>🧬 只做「高位階+高波動」</div><div class="font-mono text-right"><b class="text-gray-100">${m(T.gene)} 元</b> ・中途最多賠 ${T.geneDD}%</div>
                         <div>照清單順序做(不挑 🧬)</div><div class="font-mono text-right">${m(T.plain)} 元 ・${T.plainDD}%</div>
                         <div class="text-amber-300">🆚 同期 0050 買了放著</div><div class="font-mono text-right text-amber-300"><b>${m(T.etf0050)} 元</b></div>
                     </div>
                     <div class="mt-2 bg-[#0d1117] border-l-4 border-amber-500 pl-2.5 py-2 rounded-r">
-                        <b class="text-amber-300">⭐ 🧬 讓你少輸,⛔ 不是讓你一定贏大盤。</b><br>
-                        在這個長窗口裡<b>兩種做法都輸給買 0050 放著</b>。挑 🧬 比不挑好(多賺 ${m(T.gene - T.plain)} 元),
-                        但「挑了就贏大盤」<b>只在 36 個月的短窗口成立</b>。<br>
-                        ⚠️ 勝率只有約 <b>33%</b> —— 十次會錯七次,靠的是<b>錯的時候小賠出場</b>。做不到出場紀律的話,這套不會賺。
+                        <b class="text-amber-300">⭐ 真正決定輸贏的是「出場」,不是選股。</b><br>
+                        同一批股票、同一套選股、同一段 ${T.months} 個月,<b>只把出場從「跌破 5 日線」換成「${T.exitName}」</b>:
+                        🧬 從 ${m(T.ma5.gene)} 變成 <b>${m(T.gene)}</b>、不挑 🧬 從 ${m(T.ma5.plain)} 變成 ${m(T.plain)}
+                        —— 舊的那組<b>兩種都輸 0050</b>,新的這組${_win && _winP ? '<b>兩種都贏</b>' : (_win ? '只有 🧬 贏' : '仍然輸')}。
+                        ⛔ 這<b>不代表選股變厲害了</b>(選股一模一樣),它代表的是「太早出場會把贏家洗掉」。<br>
+                        挑 🧬 仍然比不挑好(多賺 ${m(T.gene - T.plain)} 元)。<br>
+                        ⚠️ 但<b>勝率只有約 30%</b> —— 十次會錯七次,整套會賺<b>完全靠讓對的那幾筆抱久一點</b>。
+                        做不到出場紀律(該走沒走、該抱沒抱)的話,這套不會賺。
+                    </div>
+                    <div class="mt-2 bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r text-[10px] text-gray-300 leading-relaxed">
+                        <b class="text-gray-200">⚠️ 這個「贏」要打幾個折</b>:① 這段期間<b>加權指數自己就漲了 208%</b>,是一段偏多頭的行情,
+                        ⛔ 不可外推到長空頭;② 回測只用「現在還在市場上」的股票(倖存者偏誤),結果偏樂觀;
+                        ③ 用收盤價成交、沒有滑價;④ 中途最多賠 <b>${T.geneDD}%</b> —— 那個水位很多人會在最低點放棄,放棄就一毛都拿不到。
                     </div>
                     <div class="mt-2 bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r text-[10px] text-gray-300 leading-relaxed">
                         <b class="text-gray-200">🔀 「那多頭做這套、空頭改抱 0050」呢?—— 測過了,⛔ 還是輸。</b><br>
@@ -42051,7 +42157,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const ready = on && perm === 'granted';
         return `<div class="bg-[#0d1117] border-l-4 ${ready ? 'border-gray-600' : 'border-blue-500'} rounded-r px-2 py-1.5 mb-1.5 text-[10px] leading-snug">
             ${ready
-                ? `<b class="text-gray-200">🔔 買點到了會提醒你</b> —— 平日 <b>13:00~13:28</b> 自動盯,最多推 2 檔。
+                ? `<b class="text-gray-200">🔔 買點到了會提醒你</b> —— 平日 <b>13:00~13:28</b> 自動盯,最多推 ${(this._DECK_TRACK49 && this._DECK_TRACK49.picks) || 2} 檔。
                    <span class="text-gray-500">(實測進場時機只有「訊號日尾盤」有效,所以只在這個時窗提醒)</span>`
                 : `<b class="text-blue-300">🔔 要我在買點到的時候提醒你嗎?</b> 開了之後平日 13:00~13:28 會自動盯,買點到了直接通知,不用一直盯盤。
                    <button onclick="app._enableAlertsFromBanner()" class="ml-1 px-2 py-0.5 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black rounded">開啟提醒</button>`}
@@ -42271,7 +42377,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                  ⛔ 一個警告都沒收:「不是開盤買」「尾盤時窗」「大盤風險」「空頭未驗證」全部還在
                  (前三個在第一眼,最後一個在摺疊的第一行)。 -->
             <div class="text-[10px] text-cyan-100 bg-[#0d1117] border-l-4 border-cyan-500 rounded-r px-2 py-1 leading-snug mb-1">
-                ⭐ <b>一天最多做前 2 檔</b> ・ ⛔ <b>不是開盤買</b> —— 要「漲過觸發價」,而且<b>尾盤 13:00~13:25</b> 還站得住才進場。
+                ⭐ <b>一天最多做前 2 檔</b> ・ ⛔ <b>不是開盤買</b> —— 要「漲過觸發價」,而且<b>尾盤 13:00~13:28</b> 還站得住才進場。
             </div>
             <details class="mb-1.5">
                 <summary class="text-[10px] text-gray-500 cursor-pointer list-none px-2 py-0.5 hover:text-cyan-300">📊 上面那兩句的實測根據(點開看數字)${hqN ? ` ・🧬 強勢高波動 <b class="text-gray-300">${hqN}</b> 檔已排前面` : ''}</summary>
@@ -42462,8 +42568,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             //   ⭐ 這反過來證明「每檔自己的打法排序」真的有鑑別力 —— 挑到第 3 名以後就在拉低成績。
             //   ⚠️ 掃 8 檔但**最多推 2 則** —— 掃得多是因為不是每一檔都會真的成立。
             let _pushed = 0;
+            // 🔁 V75.0.9:一天最多幾檔一律讀 `_DECK_TRACK49.picks`(⛔ 不寫死 —— 改設定要改兩處就是陷阱 #37)
+            const _maxPick = (this._DECK_TRACK49 && +this._DECK_TRACK49.picks) || 2;
             for (const x of ranked.slice(0, 8)) {
-                if (_pushed >= 2) break;
+                if (_pushed >= _maxPick) break;
                 const sym = String(x.s);
                 const dkey = `eod_${sym}_${x.k}`;
                 if (this._kbarFiredToday(dkey)) continue;

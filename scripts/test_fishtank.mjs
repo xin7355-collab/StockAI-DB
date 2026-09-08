@@ -481,9 +481,14 @@ ok('🏆⑰b 池子選項看得到', /最強招式/.test(R.pbChip), R.pbChip.sli
 ok('🏆⑰c 卡片攤開那一招:招式名 / 觸發價 / 停損 / 勝率+次數 / 每趟平均',
    /突破頸線/.test(R.pbCard) && /120\.00/.test(R.pbCard) && /114\.00/.test(R.pbCard)
    && /48% ・14 次/.test(R.pbCard) && /\+3\.40%/.test(R.pbCard), (R.pbCard.match(/🏆[\s\S]{0,160}/) || [''])[0]);
-ok('🏆⑰d 🚨 必寫「不是開盤買」+「基準 36% 不是 50%」+「仍輸 0050」',
+// ⚠️ V75.0.9:換出場之後「兩種都輸 0050」不再成立 → ⛔ 不可再釘那句話(那會逼人寫謊)。
+//   改釘**用意**:① 不是開盤買 ② 基準 36% ③ **要跟 0050 對照**(數字有出現) ④ **要寫限制**。
+ok('🏆⑰d 🚨 必寫「不是開盤買」+「基準 36% 不是 50%」+ 跟 0050 的對照',
    /不是明天一開盤就買|⛔ <b>不是明天一開盤/.test(R.pbCard) && /36%/.test(R.pbCard)
-   && /輸給買 0050/.test(R.pbCard), (R.pbCard.match(/⏰[\s\S]{0,200}/) || [''])[0]);
+   && /0050/.test(R.pbCard), (R.pbCard.match(/⏰[\s\S]{0,200}/) || [''])[0]);
+ok('🏆⑰d2 🚨 ⛔ 不可只報好消息:要同時寫出限制(窗口偏多頭 / 勝率三成 / 中途最多賠)',
+   /加權指數自己就漲|偏多頭/.test(R.pbCard) && /勝率只有三成|勝率只有約 3/.test(R.pbCard)
+   && /中途最多賠/.test(R.pbCard), (R.pbCard.match(/🚨[\s\S]{0,200}/) || [''])[0]);
 ok('🏆⑰e ⛔ 排序只准有一份(renderSig 與魚池都吃 _pbSort)',
    /_pbSort/.test(seg('renderSig')) && /_pbSort/.test(seg('_fishPoolRows'))
    && !/hq \|\| 0\) - \(a\.hq/.test(seg('renderSig')) && !/hq \|\| 0\) - \(a\.hq/.test(seg('_fishPoolRows')));

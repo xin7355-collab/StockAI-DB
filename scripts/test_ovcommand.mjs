@@ -133,7 +133,12 @@ const R = await page.evaluate(async () => {
       const px2 = A.activeData[A.activeData.length - 1].close;
       A.inventory = [{ symbol: '2330', cost: px2 * 0.99, shares: 1, buyDate: '2026-06-02' }];
       A._ovTrend = { sym: '2330', trend: 'bear' };          // 空頭 → reduce
-      A._exitLines = (d, sy) => ({ ...bak.call(A, d, sy), atr2: px2 * 0.9, don: px2 * 1.05, ma5: px2 * 1.05, trail8: px2 * 1.05 });
+      // ⚠️ 測資要**跟著使用者設定的那一條走**(⛔ 不可寫死某一條 —— V75.0.9 預設從 atr2 換成 don
+      //    的時候,寫死的版本會讓這條變成假失敗)。情境:他設定的那條**還沒破**、另外三條破了。
+      const _uk = A._exitRuleKey();
+      A._exitLines = (d, sy) => { const o = { ...bak.call(A, d, sy) };
+          for (const k of ['atr2', 'don', 'ma5', 'trail8']) o[k] = px2 * (k === _uk ? 0.9 : 1.05);
+          return o; };
       out.reduceWhy = (A._ovDecide(A.activeData, '2330') || {}).why || '';
       A._exitLines = bak; A._ovTrend = null; A.inventory = [];
     }
