@@ -89,7 +89,12 @@ const R = await page.evaluate(async () => {
     app.renderKbarTactics(dataR);
     const leadR = (document.getElementById('klineLead') || { innerText: '' }).innerText.replace(/\s+/g, ' ');
     o.riskLead = leadR;
-    o.riskListed = /⚠️ 風險提醒 \d+ 條:/.test(leadR) && /收盤轉弱|大量長黑|轉弱/.test(leadR);
+    // ⚠️ V75.1.5:⛔ 不可釘死「哪一條風險」—— 偵測器新增/排序一變,top3 就換人,
+    //   斷言會假失敗(而用意只是「有把標題寫出來,不是只寫有 N 條」)。
+    //   ⭐ 改釘用意:數字後面要真的接得出**標題**(≥2 個字,⛔ 不可只有數字)。
+    const _mR = leadR.match(/⚠️ 風險提醒 (\d+) 條[:：]\s*([^(（]{2,})/);
+    o.riskTitles = _mR ? _mR[2].replace(/…等 \d+ 條/, '').trim() : '';
+    o.riskListed = !!_mR && /[\u4e00-\u9fa5]{2,}/.test(o.riskTitles);
 
     // ⑦ 六脈強共振:stub 亮紅 → 頁首要露;_bearGate=true → 不露
     const realSix = app._sixMeridianCalc, realBear = app._bearGate;
@@ -114,7 +119,7 @@ ok('③ 頁首一句話真的顯示(真實 2330)', R.leadShown && /一句話結�
 ok('④ ⛔ 頁首不下指令、不給價位(單一劇本:指令在總覽),而且要指路總覽',
     !/可進場|買進 \d|掛單|停損 \d|目標價 \d/.test(R.leadTxt) && /總覽/.test(R.leadTxt), R.leadTxt.slice(0, 160));
 ok('① 摺疊實跑也是收起的、卡在裡面', R.wrapClosed && R.inWrap, JSON.stringify({ c: R.wrapClosed, i: R.inWrap }));
-ok('⑥ ⭐ 風險提醒的**標題**要列在頁首(⛔ 只寫「有 N 條」= 沒提醒)', R.riskListed, R.riskLead.slice(0, 200));
+ok("⑥ ⭐ 風險提醒的**標題**要列在頁首(⛔ 只寫「有 N 條」= 沒提醒)", R.riskListed, R.riskLead.slice(0, 200));
 ok('⑦ 六脈亮「強共振」→ 頁首露一行(附實測 +0.80)', R.sixOn === true, '');
 ok('⑦b ⛔ 空頭(_bearGate)時六脈那行不露(講反話鐵則)', R.sixOffBear === true, '');
 ok('⑤b 資料不足時頁首收掉(⛔ 不殘留上一檔)', R.leadGone === true, '');

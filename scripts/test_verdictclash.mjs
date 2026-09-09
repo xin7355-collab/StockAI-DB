@@ -66,7 +66,11 @@ ok('④ 短線偏空時結論不變(仍是偏空格局)', R.bear.includes('偏�
     await p2.goto('file://' + ROOT + '/index.html', { waitUntil: 'domcontentloaded' });
     await p2.waitForFunction(() => typeof app !== 'undefined' && !!app._tomorrowPlaybookHtml, null, { timeout: 20000 });
     // ⭐ 用**真實** 2327 日 K 重現那張截圖(⛔ 不用合成資料)
-    const rows2327 = JSON.parse(fs.readFileSync(ROOT + '/data/2327.json', 'utf8'));
+    // ⚠️ V75.1.5:⛔ 不可直接吃「最新的」真實資料 —— 這段重現的是 2026-08 那張截圖的情境
+    //   (均線空排),而 data/2327.json 會一直往後長 → 走勢一變 ⑤ 就會假失敗、
+    //   底下 ⑥~⑨ 全部變成空過。⭐ 把窗口釘在截圖那天,情境才是可重現的。
+    const rows2327 = JSON.parse(fs.readFileSync(ROOT + '/data/2327.json', 'utf8'))
+        .filter(r => String(r.date).replace(/\//g, '-') <= '2026-08-03');
     const R2 = await p2.evaluate(rows => {
         rows = rows.slice();
         rows.push({ date: '2026/08/04', open: 552, high: 568, low: 550, close: 565, volume: 9e6 });

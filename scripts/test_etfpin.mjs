@@ -60,6 +60,10 @@ const R = await page.evaluate(async (d) => {
         emptyList: app._etfPinHtml({ concentration: [] }),
         // ③ 共用入口
         nmOnly: app._nmOnly('9999'), nmPair: app._nmPair('9999'),
+        // ⑤b ⚠️ V75.1.5:⛔ 不可靠「真實資料剛好還沒追到某一檔」來驗這條 ——
+        //   採礦補上之後(現在四檔都進 etfs 了)那個分支就永遠不會走 = 假失敗。
+        //   ⭐ 改成**主動拿掉追蹤名單**,直接把那條路走一次。
+        noTrack: (() => { const c = JSON.parse(JSON.stringify(d)); c.etfs = []; return app._etfPinHtml(c); })(),
     };
     e.remove(); return out;
 }, D);
@@ -87,7 +91,8 @@ ok(R.nmOnly === '9999' && R.nmPair === '<span>9999</span>',
 
 // ④ 換股
 ok(/還沒開始比對|還沒有歷史|沒有換股/.test(R.txt), '⑤ 換股狀態要說得出來');
-ok(/換股偵測要等/.test(R.txt), '⑤b 沒被納入追蹤的檔要誠實說原因(⛔ 不可靜默空白)');
+ok(/換股偵測要等/.test(R.noTrack) && /還沒開始比對/.test(R.noTrack),
+   '⑤b 沒被納入追蹤的檔要誠實說原因(⛔ 不可靜默空白)');
 
 // ⑤ 重疊只做描述
 ok(/共識/.test(R.txt) && /獨門/.test(R.txt), '⑥ 四檔重疊:共識與獨門都要列');

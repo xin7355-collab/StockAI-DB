@@ -2,6 +2,7 @@
 // 實測 data/^TWII.json:當時 486 根裡最近 44 根 volume=0,但 amount(證交所官方成交值)全有。
 // ⚠️ 根數會隨採礦變深(V73.2.9 起 1,214 根)→ 斷言一律跟測資長度比,⛔ 不寫死。
 // → 量柱、量能判斷、六脈「量能」對指數全部失效。改成整條序列換成 amount(⛔ 不可只補缺的那幾根)。
+import { ghJsonOrDie } from './lib_ghdata.mjs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
@@ -9,13 +10,10 @@ import fs from 'fs';
 import { pathToFileURL } from 'node:url';
 let fails = [];
 const ok = (n, c, x = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : '  ' + x}`); if (!c) fails.push(n); };
-// 用**真的** gh-pages 上那份 ^TWII.json 當測資(沒有就從 git 撈)
-import { execSync } from 'node:child_process';
-const CACHE = '/tmp/twii_real.json';
-if (!fs.existsSync(CACHE)) {
-    execSync(`git -C /home/user/StockAI-DB show origin/gh-pages:data/^TWII.json > ${CACHE}`, { shell: '/bin/bash' });
-}
-const REAL = JSON.parse(fs.readFileSync(CACHE, 'utf8'));
+// 用**真的** gh-pages 上那份 ^TWII.json 當測資
+// 🚨 V75.1.5:改走共用入口 —— 舊寫法 `> CACHE` 在 git show 失敗時會留下 0 bytes 快取,
+//   `existsSync` 卻是 true → 每次都讀空檔、永遠好不了(壞快取被永久固化,同陷阱 #18/#20)。
+const REAL = ghJsonOrDie('data/^TWII.json');
 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu'] });
 const pg = await b.newPage();
@@ -59,7 +57,15 @@ console.log(`   個股: ${S.n} 根 ・零量 ${S.zero} 根 ・volIsAmount=${S.vo
 // ⚠️ ⛔ 不可寫死根數 —— `^TWII.json` V73.2.9 起補深到 2021(486 → 1,214 根),
 //    釘死當時的數字會在資料一變深就假失敗(看起來像「幽靈棒守門把 K 砍掉了」)。
 //    ⭐ 這條要驗的**用意**是「一根都沒被砍掉」→ 跟測資自己的長度比。
-ok('① K線根數沒有被砍(幽靈棒守門仍有效)', I.n === REAL.length, `${I.n} vs 測資 ${REAL.length}`);
+// ⚠️ 2026-09-09 **同一條註解的第二次犯案,但成因不同**:這次不是資料變深,
+//    是 `^TWII.json` 的最後一根可能是**今天的盤中列** —— `volume: 0` **而且 `amount: null`**
+//    (實測 1,214 根裡唯一一根連成交金額都沒有的)。那根量還沒結算,幽靈棒守門砍它是**對的**。
+// ⛔ 但只准砍那一種:分母扣掉「volume 與 amount **都**沒有」的根數,而且用 `===` 不用 `>=`
+//    —— ⛔ 寫成「少幾根都算過」就等於把 486→424 那個老 bug 的守門整個關掉。
+const _incomplete = REAL.filter(r => !r.volume && !r.amount).length;
+ok('① K線根數沒有被砍(幽靈棒守門仍有效;盤中未結算那根除外)',
+   I.n === REAL.length - _incomplete,
+   `${I.n} vs 測資 ${REAL.length} − 不完整 ${_incomplete}`);
 ok('② 指數的量已改用成交金額,零量根數歸零', I.zero === 0, `還有 ${I.zero} 根零量`);
 ok('② 有標記 _volIsAmount(顯示端才知道要叫「成交金額」)', I.volIsAmount === true, '');
 ok('③ ⛔ 整條序列一次換完,不可只補缺的那幾根(否則兩種尺標)',

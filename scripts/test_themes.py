@@ -15,8 +15,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import miner  # noqa: E402
+sys.path.insert(0, str(ROOT / 'scripts'))
+import lib_testdata  # noqa: E402
 
 fails = []
+
+
+skips = []
 
 
 def ok(name, cond, extra=''):
@@ -47,8 +52,15 @@ ok('②b 使用者點名的都在:記憶體含南亞科(2408)/群聯(8299)、矽
    and 'sipho' in (groups or {}) and 'cool' in (groups or {}))
 
 # ②c 每一檔成員都要有 K 線檔(⛔ 沒 K 線的不加,V74.2.0 8497 教訓)
-missing = [sy for sy in flat if not (ROOT / 'data' / f'{sy}.json').exists()]
-ok('②c 每一檔成員都有 data/{sym}.json', not missing, missing)
+# ⚠️ 2026-09-09:本地 `data/` 是 gitignore、沙箱只有 3 個檔 → 這條原本**永遠紅**。
+#    ⛔ 解法不是放寬斷言(那會把「加了沒 K 線的成員」這個真 bug 一起放過),
+#    ⭐ 而是退回 origin/gh-pages 拿真實清單;兩邊都沒有才誠實跳過(⛔ 不算通過)。
+_syms = lib_testdata.kline_syms()
+if _syms is None:
+    skips.append('②c 每一檔成員都有 K 線檔')
+else:
+    missing = [sy for sy in flat if sy not in _syms]
+    ok('②c 每一檔成員都有 K 線檔(⛔ 沒 K 線的不加,V74.2.0 8497 教訓)', not missing, missing)
 
 # ③ 空過守門:格式壞掉(THEMES 區塊消失)→ 必須回 (None, None) 且不 raise
 #    ⚠️ 用暫存目錄放一份壞的 pro.html,再 monkeypatch __file__ 的解析
@@ -77,6 +89,8 @@ ok('④ JS 端每個題材鍵 parser 都抽到(單一來源)', js_keys == set(gr
    js_keys ^ set(groups or {}))
 
 print()
+if skips:
+    print(f'⏭️ 跳過 {len(skips)} 條(拿不到真實資料,⛔ 這不算通過):', skips)
 if fails:
     print(f'❌ TEST_THEMES_FAIL({len(fails)}):', fails)
     sys.exit(1)

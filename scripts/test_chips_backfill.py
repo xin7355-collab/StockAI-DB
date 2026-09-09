@@ -33,6 +33,12 @@ spec.loader.exec_module(cbf)
 fails = []
 
 
+sys.path.insert(0, str(ROOT / 'scripts'))
+import lib_testdata  # noqa: E402
+
+skips = []
+
+
 def ok(name, cond, extra=''):
     print(f"{'✅' if cond else '❌'} {name}{'' if cond else f'  {extra}'}")
     if not cond:
@@ -149,11 +155,19 @@ ok('⑨e --brokers 可調,預設 200(實測 98% 覆蓋)',
    "'--brokers'" in src and 'default=200' in src, '')
 
 # top_brokers:用真實 data/chips 驗(⛔ 不用假資料 —— 要驗的正是「真的資料裡撈得到代號」)
-_bs = cbf.top_brokers(200)
-ok('⑨f 🚧 空過守門:top_brokers 從真實資料撈得出 ≥100 家', len(_bs) >= 100, f'只有 {len(_bs)} 家')
-ok('⑨g ⭐ 回的是**代號**不是名稱(⛔ 名稱不能當 API 參數)',
-   all(str(b).replace('A', '').replace('a', '').isdigit() and len(str(b)) <= 5 for b in _bs),
-   [b for b in _bs if not str(b).replace('A', '').isdigit()][:5])
+# ⚠️ 2026-09-09:本地 `data/chips/` 是 gitignore、沙箱是 0 個檔 → 這兩條原本**永遠紅**。
+#    ⛔ 不可改成假資料(那就驗不到「真的資料裡撈得到代號」這件事,而那正是 V74.0.7
+#       『改讀 hist 再用名稱反查 → 906 個查不到、只湊出 18 家』那個 bug 的守門)。
+#    ⭐ 改成退回 origin/gh-pages 取樣;兩邊都沒有才誠實跳過(⛔ 不算通過)。
+_cdir = lib_testdata.chips_dir()
+_bs = cbf.top_brokers(200, chips_dir=_cdir) if _cdir else []
+if _cdir is None:
+    skips += ['⑨f top_brokers 撈得出 ≥100 家', '⑨g 回的是代號不是名稱']
+else:
+    ok('⑨f 🚧 空過守門:top_brokers 從真實資料撈得出 ≥100 家', len(_bs) >= 100, f'只有 {len(_bs)} 家')
+    ok('⑨g ⭐ 回的是**代號**不是名稱(⛔ 名稱不能當 API 參數)',
+       all(str(b).replace('A', '').replace('a', '').isdigit() and len(str(b)) <= 5 for b in _bs),
+       [b for b in _bs if not str(b).replace('A', '').isdigit()][:5])
 ok('⑨h 依 |淨額| 由大到小(第一名要是主力分點)', len(set(_bs)) == len(_bs), '有重複代號')
 # ⚠️ 第一版用「名稱反查 broker_names.json」→ 906 個查不到、只湊出 18 家。
 #    這條就是釘住那個回歸。
@@ -166,5 +180,7 @@ ok('🏛️ 註解要寫明「只推 data 分支,不上 gh-pages」', '不上 gh
 ok('🏛️ 註解要寫明「一天一個檔」的理由', '一天一個檔' in src and '2,653' in src)
 
 print()
+if skips:
+    print(f'⏭️ 跳過 {len(skips)} 條(拿不到真實 chips,⛔ 這不算通過):', skips)
 print(f'❌ {len(fails)} 條失敗' if fails else '✅ CHIPS_BACKFILL_PASS(全部通過)')
 sys.exit(1 if fails else 0)

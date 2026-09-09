@@ -108,8 +108,15 @@ const kbar = (expMap) => page.evaluate(a => {
 const ktNone = txt(await kbar({ map: {} }));   // 查不到成績 = 未驗證 → 不會進 good
 ok('① ⭐ 沒有正期望值訊號時要誠實說「沒有」', /沒有.{0,20}進場訊號/.test(ktNone), ktNone.slice(0, 300));
 ok('① ⭐ 要勸阻「別硬找理由進場」', /別硬找理由進場/.test(ktNone), ktNone.slice(0, 300));
+// ⚠️ V75.1.5:⛔ 不可用「文字裡有沒有『風險提醒』四個字」當前提 ——
+//   沒有風險訊號時,那句「下面那些是風險提醒與觀察用的」也含這四個字
+//   → 前提永遠成立、卻找不到免責句 = 假失敗。
+//   ⭐ 改成兩段:① 原始碼釘住那個區塊的標題(跟當天資料無關)
+//              ② 真的渲染出**風險區塊標題**時,才要求畫面上看得到免責句。
 ok('① ⭐ 風險提醒要標「不是賣出指令」(有風險訊號時)',
-   !/風險提醒/.test(kt) || /不是賣出指令/.test(kt), kt.slice(0, 460));
+   /⚠️ 風險提醒\(\$\{risk\.length\}\)[^`]*不是賣出指令/.test(K.src)
+   && (!/⚠️ 風險提醒\s*\(\d+\)/.test(kt) || /不是賣出指令/.test(kt)),
+   (K.src.match(/風險提醒\(\$\{risk\.length\}\)[^`]{0,80}/) || ['(原始碼裡找不到那個標題)'])[0]);
 
 // ⛔ 最關鍵:置頂區裡⛔ 不可出現任何負期望值的**看多**訊號
 const head = kt.split('其餘')[0];
@@ -139,8 +146,22 @@ const C = await page.evaluate(a => {
         v1: app._chipScenarioCalc(P, px, a.chips.hist),
         src: app._chipTomorrowScenario.toString(),
     };
-}, { rows, chips: chipsRaw || synth });
+}, { rows, chips: synth });
 const ct = txt(C.html);
+
+// 🚨 V75.1.5:這一段要驗的是「方向相反時有沒有講出來」——
+//   ⛔ 不可靠真實分點**剛好**方向相反(採礦一更新就變成同向 → 守門失敗、下面五條全空過)。
+//   ⭐ 情境用合成的釘死;真實分點另外做一次**煙霧測試**(渲染得出來、不炸掉)。
+if (chipsRaw) {
+    const RC = await page.evaluate(a => {
+        app.currentSymbolId = '2327'; app._fenSym = '2327'; app._fenPeriods = a.chips.periods;
+        app._fenHist = a.chips.hist || null; app._fenDataDate = a.chips.data_date;
+        try { return app._chipTomorrowScenario(a.chips.periods, +a.rows[a.rows.length - 1].close, a.chips.hist) || ''; }
+        catch (e) { return 'THROW:' + e.message; }
+    }, { rows, chips: chipsRaw });
+    ok('② 🔥 真實分點也要渲染得出來(⛔ 不可炸掉/空白)',
+       !/^THROW:/.test(RC) && txt(RC).length > 80, String(RC).slice(0, 200));
+}
 
 ok('② 這組資料真的是「今日 vs 近5日 方向相反」(⛔ 否則下面空過)',
    C.v1 && C.m5 && (C.v1.mainNetLots > 0) !== (C.m5.net > 0),
@@ -232,11 +253,16 @@ ok('③ ⭐⛔ 結論句本身不可下具體買賣指令(買進/掛單/停損�
         // ⚠️ 真實 chips 資料會隨每天採礦漂移 —— 曾經是「分歧」的那一檔後來變成兩項都偏空,
         //   於是下面幾條「分歧時要講什麼」的斷言全部**假失敗**。
         //   ⭐ 分歧情境改用**合成**資料(今日大買 vs 近5日大賣)釘死,⛔ 不靠當天的真實資料。
-        const _realFen = app._fenPeriods;
+        const _realFen = app._fenPeriods, _realHist = app._fenHist;
+        // 🚨 V75.1.5:合成情境要**整組**合成 —— 只換 periods 卻留著真實 `hist`,
+        //   `_chipScenarioCalc` 會拿真實歷史去算分,`分點今日` 那一項就掉出 |score|≥2
+        //   → 變成「2 項都偏空」,底下四條「分歧時要講什麼」全部假失敗。
+        //   ⭐ 通用:注入合成資料時,凡是同一個計算會讀到的欄位都要一起換掉。
+        app._fenHist = null;
         app._fenPeriods = { '1d': { buy: [{ name: 'A', net: 9e6, avg: 550 }], sell: [] },
                             '5d': { buy: [], sell: [{ name: 'B', net: 9e6, avg: 560 }] } };
         const o = { clash: app._chipConsensusLine('2327', -2) };
-        app._fenPeriods = _realFen;
+        app._fenPeriods = _realFen; app._fenHist = _realHist;
         app._lastChipClean = { sym: '2327', clean: 80 };
         o.clean = app._chipConsensusLine('2327', -2);
         // 全同向(合成:今日大買 + 近5日大買 + 法人偏多)

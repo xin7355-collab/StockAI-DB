@@ -1,5 +1,6 @@
 // 🧪 空殼卡清掃 + 上檔空間搬家(V71.8.8)
 // 使用者:「1.找不到上方套牢區 2/3/4. 三頁請重新審視,該出現的顯示、不需要的隱藏」
+import { ghJsonOrDie } from './lib_ghdata.mjs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
@@ -7,9 +8,8 @@ import fs from 'fs'; import { execSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 let fails = [];
 const ok = (n, c, x = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : '  ' + x}`); if (!c) fails.push(n); };
-const C = '/tmp/k2327.json';
-if (!fs.existsSync(C)) execSync(`git -C /home/user/StockAI-DB show origin/gh-pages:data/2327.json > ${C}`, { shell: '/bin/bash' });
-const REAL = JSON.parse(fs.readFileSync(C, 'utf8'));
+// 🚨 V75.1.5:見 lib_ghdata.mjs —— 舊寫法會把「抓失敗」固化成 0 bytes 快取。
+const REAL = ghJsonOrDie('data/2327.json');
 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu'] });
 const pg = await b.newPage();

@@ -104,11 +104,23 @@ ok('⑤c 盤前與盤中都呼叫同一支(剛好 2 個呼叫端)', _calls == 2,
 # ── ⑥ workflow ───────────────────────────────────────────────────────
 crons = re.findall(r"cron:\s*'([^']+)'", WF)
 ok('⑥ 有 3 組 cron(盤前 + 盤中 + 收盤)', len(crons) == 3, str(crons))
-ok('⑥b 盤前 cron 是 UTC 00:45~00:55(= 台北 08:45~08:55)、且只在平日',
-   any(c.startswith('45,50,55 0 ') and c.endswith('1-5') for c in crons), str(crons))
+# ⚠️ 2026-09-09 改過這條:原本釘 '45,50,55 0 * * 1-5' —— 那是 V73.9.0 **之前**
+#    「要求 GitHub 幫我們排 58 次」的舊架構。V73.9.0 實測全 repo 一天只進得來 7~10 筆
+#    schedule run(而 cron 要求超過 100 筆)→ 改成**排 1 次、自己在 job 裡迴圈**。
+#    ⭐ 所以改成釘**用意**:主迴圈必須趕在台指期 08:45 開盤前起跑,而且只在平日。
+_pre = [c for c in crons if c.endswith('1-5') and c.split()[1] == '0']
+ok('⑥b 盤前主迴圈在台北 08:45(台指期開盤)前啟動、且只在平日',
+   bool(_pre) and all(int(c.split()[0].split(',')[0]) <= 45 for c in _pre), str(crons))
+ok('⑥b2 ⭐ 要有接手排程(V73.9.0:主迴圈掛掉時才有意義,⛔ 不可只排一筆)',
+   len(crons) >= 2, str(crons))
 ok('⑥c 🚨 部署步驟要分檔(盤前 → data/live_index.json、盤中 → data/live_quotes.json)',
    'data/live_index.json' in WF and 'data/live_quotes.json' in WF, '')
-ok('⑥d 兩個檔都沒有時要失敗(⛔ 不可靜默成功)', 'else echo "❌ 沒產出 JSON,略過部署"; exit 1; fi' in WF)
+# ⚠️ 同上:V73.9.0 把單拍包成 `once()` 函式 → `exit 1` 變成 `return 1`(那一拍算失敗),
+#    而**整個 run 一拍都沒成功**才 `exit 1`。用意沒變而且守得更嚴 → 兩層都要釘。
+ok('⑥d 單拍沒產出 JSON → 那一拍要算失敗(⛔ 不可靜默當成功)',
+   '沒產出 JSON,略過部署"; return 1' in WF or '沒產出 JSON,略過部署"; exit 1' in WF, '')
+ok('⑥d2 🚧 整個 run 一拍都沒成功 → 必須紅燈(⛔ 不可全綠沒資料)',
+   '完全沒有產出任何快照' in WF and 'exit 1' in WF, '')
 ok('⑥e ⛔ 盤前產物不可被寫成 live_quotes.json',
    re.search(r'live_index\.json;\s*DST=data/live_quotes\.json', WF) is None)
 

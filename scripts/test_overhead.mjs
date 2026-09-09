@@ -4,6 +4,7 @@
 //   ① 前高只收 +15% 以內(國巨最近前高在 +46%,全被濾掉)
 //   ② 量價密集區只挑單一最大格(國巨最大格是暴漲前的底部,在下方)
 // 用**真的** gh-pages 2327 資料當測資。
+import { ghJsonOrDie } from './lib_ghdata.mjs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require('/opt/node22/lib/node_modules/playwright');
@@ -12,9 +13,9 @@ import { execSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 let fails = [];
 const ok = (n, c, x = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : '  ' + x}`); if (!c) fails.push(n); };
-const CACHE = '/tmp/k2327.json';
-if (!fs.existsSync(CACHE)) execSync(`git -C /home/user/StockAI-DB show origin/gh-pages:data/2327.json > ${CACHE}`, { shell: '/bin/bash' });
-const REAL = JSON.parse(fs.readFileSync(CACHE, 'utf8'));
+// 🚨 V75.1.5:改走共用入口 —— 舊寫法的 `> CACHE` 在 git show 失敗時會留下 0 bytes 的快取檔,
+//   而 `existsSync` 是 true → 之後每次都讀那個空檔、**永遠不會自己好**(壞快取被永久固化)。
+const REAL = ghJsonOrDie('data/2327.json');
 
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu'] });
 const pg = await b.newPage();

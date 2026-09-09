@@ -87,8 +87,17 @@ if (R.err) { console.log(`⏭️ ${R.err} —— 略過動態驗證`); process.e
 
 const P = R.preamble;
 ok('① 第一眼要留「一天最多做前 2 檔」', /一天最多做前 2 檔/.test(P), P.slice(0, 160));
+// ⚠️ V75.1.5:⛔ 不可把尾盤時窗的**分鐘數**寫死在測試裡(舊版釘 `13:00~13:25`,
+//   App 後來統一成 13:00~13:28 → 假失敗)。⭐ 改成「跟 index.html 裡實際在用的那個時窗一致」,
+//   這樣時窗要改的時候,測試擋的是「兩邊不一致」,而不是「跟我當年寫的不一樣」。
+const _WIN = (() => {
+    const all = (fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').match(/13:\d\d~13:\d\d/g) || []);
+    const cnt = {}; all.forEach(x => cnt[x] = (cnt[x] || 0) + 1);
+    return Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || '';
+})();
+ok('🚧 空過守門:index.html 裡找得到尾盤時窗字串', !!_WIN, _WIN);
 ok('① 🚨 第一眼要留「不是開盤買」+ 尾盤時窗(⛔ 這是防止做錯事的指令,不可收)',
-    /不是開盤買/.test(P) && /13:00~13:25/.test(P), P.slice(0, 200));
+    /不是開盤買/.test(P) && !!_WIN && P.includes(_WIN), `窗口=${_WIN} / ${P.slice(0, 200)}`);
 ok('🚧 空過守門:找得到「實測根據」那個摺疊,而且它是收起的', R.foldFound === true && R.foldHas.noOpen === true,
     JSON.stringify({ found: R.foldFound, closed: R.foldHas.noOpen }));
 ok('② ⛔ 實測數字沒有消失,只是搬進摺疊(2 檔 / 3 檔 / 6 檔各賺多少)',
