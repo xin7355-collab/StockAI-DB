@@ -623,6 +623,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
      `except Exception as _e_mh` 吞成 `margin_error`)。⛔ 誤報率高的版本已丟棄(第一版 345 筆全是閉包誤判)。
 3. `python3 scripts/check_dom_ids.py`(DOM id 唯一性 — V71.0.7 起取代已失效的 check_prompt_vars.py)
    + **`node scripts/check_dup_key.mjs`**(同一個物件字面量裡重複定義同名鍵 → 後面那個贏、前面整段變死碼 — V74.7.4 新增,實跑踩到才寫的)
+   + **`node scripts/test_skills.mjs`**(🧩 Skill/代理定義守門 — 2026-09-09 新增:frontmatter 合法 ・ **Skill 裡提到的腳本檔名要真的存在** ・ 兩支 description 不可太像 ・ 有寫「⛔ 這支不做什麼」。⭐ 那些檔**沒有任何程式會引用**,壞掉時零錯誤訊息 = 陷阱 #37 最極端的形式)
 4. **`awk '...' index.html`** 確認 7 個 `tabContent*` 容器 div 開合平衡(防 V25.0 那種 HTML 巢狀 bug 重演 — `tabContentMarket` 少 1 個 `</div>` 導致 5 tab 被巢狀其中,8 次嘗試才修到)
 
 **驗證 HTML div 平衡腳本**(每次改 main HTML 結構必跑):
@@ -1754,6 +1755,29 @@ node scripts/test_sigedge.mjs         # 驗證
 - 主要 repo:`StockAI-DB`(此專案)
 - 其他:`gdp-dashboard`(保留)、`pro-terminal-v4`(已刪除)
 - GitHub Pages 1GB 限制:**2026-07-27 實測 388MB**;V69.9.6 起 inst_cache_stock.json(18.5MB 採礦中介)已移出 gh-pages 改存 data 分支(P3-7),下次 daily_miner 後約 370MB
+
+---
+
+## 🧩 這個專案有哪 5 支 Skill + 1 支代理(2026-09-09)
+
+⛔ **本節只留索引,內文在各自的檔案裡** —— 同「決策紀錄搬去 `docs/`」的理由。
+完整說明與「怎麼自己加一支」見 **`.claude/skills/README.md`**。
+
+| 打什麼 | 何時用 | ⛔ 這支不做 |
+|---|---|---|
+| `/ship` | 要 push / 上線 / 發佈 / bump | 改功能本身、開 PR |
+| `/probe` | 「這個策略有沒有用」「幫我回測」 | 改 App 判定邏輯、動採礦 |
+| `/audit` | 跑資料體檢 / 巡邏 / 找 bug | 把誤報也修掉、放寬斷言 |
+| `/mining` | 採礦沒跑 / 資料停在舊日期 / workflow 全綠卻沒東西 | 改 workflow(那要先問使用者) |
+| `/uicard` | 加卡片 / 改版面 / 改文案 | 改判定門檻(要先回測) |
+| 代理 `scout` | 同時掃前端/採礦/workflow 找 bug | 改任何檔案(它只回清單) |
+
+⛔ **三條不可違反的設計**(`scripts/test_skills.mjs` 釘住):
+- ⛔ **Skill 不可複製 CLAUDE.md 的內容** —— 本檔每個 session 都完整載入,複製 = 兩份真相。
+  Skill 只寫「步驟 + 指令 + **指向本檔哪一節**」,一支控制在 60~120 行。
+- ⛔ **不可新增跟 `.claude/commands/finmind.md` 功能重疊的 Skill** —— 描述太像會互相搶
+  (同「⛔ 不要再新增第二支只部署前端的 workflow」)。
+- ⛔ **`.claude/` 在 `.gitignore` 裡** → 新增 Skill 一律 `git add -f`,否則**只活在你這台機器上**。
 
 ---
 
