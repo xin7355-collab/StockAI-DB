@@ -1,0 +1,30 @@
+name: 🔑 測 FinMind 金鑰 (20 秒快檢)
+
+# 改完 GitHub Secrets 的 FINMIND_TOKENS 後,手動 Run 這支,20 秒知道金鑰有效/貼錯/非付費。
+# ⚠️ 只手動觸發(workflow_dispatch),不跑 cron、不碰 gh-pages/data、不採礦 → 零風險。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝 requests
+        run: pip install requests
+
+      - name: 🔑 檢測 FinMind 金鑰
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 finmind_check.py

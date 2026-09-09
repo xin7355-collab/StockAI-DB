@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 跟 manifest.json 的 theme_color / background_color 一致 -->
+    <color name="colorPrimary">#3b82f6</color>
+    <color name="backgroundColor">#0d1117</color>
+</resources>

@@ -1,0 +1,8 @@
+requests
+yfinance
+fastapi
+httpx
+pydantic
+uvicorn
+duckduckgo-search
+feedparser

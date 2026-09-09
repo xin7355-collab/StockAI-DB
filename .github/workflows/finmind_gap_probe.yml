@@ -1,0 +1,92 @@
+name: 🔎 FinMind 缺口探針
+
+# 🔎 只讀探針:一次測完「FinMind 有、但我還沒用」的候選 dataset。
+#    ⛔ 不寫任何產物、不推任何分支 —— 結果只在 log。
+#    ⚠️ 沙箱連不到 FinMind(proxy 403,已實測)→ 只能在這裡跑。
+#    ⭐ 照 CLAUDE.md 鐵則:會需要「改→等 workflow→看結果」超過兩輪的事,先寫探針。
+on:
+  workflow_dispatch:
+    inputs:
+      which:
+        description: '跑哪一支:both / gap / margin / pe / split / warrant / fund / otc(櫃買指數歷史) / otcmargin(上櫃融資券端點)'
+        required: false
+        default: 'both'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 🔎 缺口探針(哪些 dataset 拿得到)
+        if: ${{ github.event.inputs.which == 'both' || github.event.inputs.which == 'gap' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/finmind_gap_probe.py
+
+      - name: 💳 大盤融資維持率門檻回測
+        if: ${{ github.event.inputs.which == 'both' || github.event.inputs.which == 'margin' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/margin_maint_probe.py
+
+      - name: 📐 PE/PB 自身位階回測
+        if: ${{ github.event.inputs.which == 'pe' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          N_SYMS: '300'
+        run: |
+          # ⚠️ 回測要對齊 K 線清單 → 先從 data 分支還原(只要檔名,不要內容也行,但一併還原最省事)
+          git fetch --depth=1 origin data
+          git archive origin/data data | tar -x
+          echo "還原 $(ls data/*.json | wc -l) 檔"
+          python3 scripts/pe_band_probe.py
+
+      - name: 🔧 減資/分割 官方 vs 我猜的 交叉驗證
+        if: ${{ github.event.inputs.which == 'split' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: |
+          git fetch --depth=1 origin data
+          git archive origin/data data | tar -x
+          echo "還原 $(ls data/*.json | wc -l) 檔"
+          python3 scripts/split_check_probe.py
+
+      - name: 🎫 權證資料探針(分點 / 溢價率 / 標的對照)
+        if: ${{ github.event.inputs.which == 'warrant' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/warrant_probe.py
+
+      - name: 📊 基本面缺漏探針(股利/EPS/營收 為什麼是空的)
+        if: ${{ github.event.inputs.which == 'fund' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/fund_gap_probe.py
+
+      - name: 🏪 櫃買指數歷史探針(^TWOII 從沒抓成功過的真因)
+        if: ${{ github.event.inputs.which == 'otc' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/otc_probe.py
+
+      - name: 💳 上櫃融資券端點探針(哪一個端點還活著)
+        if: ${{ github.event.inputs.which == 'otcmargin' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: |
+          # 🚨 `pip install` 這行 ⛔ 不可省:otc_margin_probe.py 第 27 行是 `import miner`,
+          #    而 miner.py 頂層就 `import requests` + `from urllib3.util.retry import Retry` 並開 Session。
+          #    這支 workflow 其餘 6 支探針都是純標準庫,所以整支一直沒有 pip 步驟 →
+          #    少了這行會直接 `ModuleNotFoundError: No module named 'requests'` 當場死。
+          # ⛔ 刻意裝在這一步裡面,不做成全 job 共用的步驟(免得拖慢另外 6 支)。
+          # ⭐ 不需要還原 data 分支:import miner 只會 `Path('data').mkdir(exist_ok=True)`,
+          #    這支探針不讀任何 data/*.json(跟 pe / split 那兩支不同)。
+          pip install -q requests urllib3
+          python3 scripts/otc_margin_probe.py

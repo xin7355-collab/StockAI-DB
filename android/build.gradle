@@ -1,0 +1,5 @@
+// 📦 TWA(Trusted Web Activity)外殼專案 —— 只是把網站包成安卓 App
+// ⛔ 這裡沒有任何商業邏輯,所有功能都在 index.html;改功能不用動這裡。
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+}

@@ -1,0 +1,88 @@
+name: 🌍 總經採礦定時同步 (macro 4hr cron)
+
+# 每 4 小時跑 macro_miner.py → 同步 data/macro_risk.json 到 gh-pages
+# 黃金 / 原油 / DXY / VIX / 亞股 數字小時級更新,不再卡每日 1 次採礦
+# 不動 index.html / sw.js / 其他資料,與 daily_miner.yml / deploy_pages.yml 共存
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0,4,12,16,20 * * 1-5'   # ⚡ V69.8.6 P3-3:原每 4 小時全天全週(週末 12 輪抓不更新的資料);改交易日 5 輪並避開 08:00(daily_miner 08:30 自帶一輪)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: macro-cron
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依套件
+        run: pip install requests yfinance --quiet
+
+      - name: 🌍 執行總經採礦
+        env:
+          # 🩹 V69.8.4 P0-6:原本沒傳 token → fetch_tw_vix 永遠 no-token,台指 VIX 恆 null
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          FINMIND_TOKEN:  ${{ secrets.FINMIND_TOKEN }}
+          # 🤖 V70.3.0 財經行事曆 Groq 解讀(沒 key 就跳過,不影響其他總經欄位)
+          GROQ_API_KEYS:  ${{ secrets.GROQ_API_KEYS }}
+          GROQ_API_KEY:   ${{ secrets.GROQ_API_KEY }}
+          # 🧠 V71.3.9 財經行事曆改用 Gemini 2.5 Flash 深度判讀(Groq 退居備援)
+          #   沒設 GEMINI_API_KEY 也不會壞:_gemini_chat_mm 直接回 None → 自動退回 Groq
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          GEMINI_API_KEY:  ${{ secrets.GEMINI_API_KEY }}
+        run: python macro_miner.py
+
+      - name: 📡 同步 data/macro_risk.json 到 gh-pages
+        run: |
+          set -e
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [ ! -f data/macro_risk.json ]; then
+            echo "❌ macro_risk.json 不存在,跳過"
+            exit 0
+          fi
+
+          mkdir -p /tmp/macro
+          cp data/macro_risk.json /tmp/macro/
+
+          push_with_retry() {
+            git fetch origin gh-pages
+            git checkout gh-pages
+            git reset --hard origin/gh-pages
+            mkdir -p data
+            cp /tmp/macro/macro_risk.json data/macro_risk.json
+            if git diff --quiet -- data/macro_risk.json; then
+              echo "無變化,跳過 commit"
+              return 0
+            fi
+            git add data/macro_risk.json
+            git commit -m "🌍 macro 4hr sync $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push origin gh-pages
+          }
+
+          for i in 1 2 3; do
+            if push_with_retry; then
+              echo "✅ macro_risk.json 已同步 (try $i)"
+              exit 0
+            fi
+            echo "⚠️ try $i 失敗,可能被 daily_miner force-push 卡到,重試..."
+            sleep $((i*3))
+          done
+
+          echo "❌ 連 3 次失敗,放棄(4hr 後 cron 會再試)"
+          exit 0

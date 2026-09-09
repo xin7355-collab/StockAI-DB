@@ -1,0 +1,32 @@
+name = "stockai-alerts"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+
+# 💾 KV namespace 綁定(部署前先跑 `wrangler kv:namespace create "KV"` 然後把 id 貼進來)
+[[kv_namespaces]]
+binding = "KV"
+id = "9d4249726b324b38892a69b9992cdb4d"
+
+# 🕐 排程(V21.4:盤中改每 30 分、盤前改 08:00,UTC → 台北 +8):
+#   "0,30 1-4 * * 1-5" — 台北 09:00-12:30 每 30 分(盤中庫存彙總掃描)
+#   "0,20 5 * * 1-5"    — 台北 13:00 + 13:20(盤中末班,收盤前最後一次)
+#   "0 21 * * 0-4"      — 🌃 台北 05:00 隔夜美股戰報
+#   "0 0 * * 1-5"       — 🌅 台北 08:00 盤前簡報(V21.4 從 08:30 提前 + 精簡)
+#   "0 1 * * 1-5"       — 台北 09:00 開盤(掃 monitorList + ETF 跟單)
+#   "0 4 * * 1-5"       — 🌞 台北 12:00 午盤戰報
+#   "0 9 * * 1-5"       — 🌆 台北 17:00 盤後總結 + AI 短評
+# 🧹 V22 精簡:移除「隔夜美股(0 21)」「午盤戰報(0 4)」兩則長篇廣播 cron(使用者反映沒用)
+# ⏱️ V22.1 盤中掃描 30 分 → 15 分(使用者要求)。UTC hour 1-5 = 台北 09-13。
+[triggers]
+crons = [
+  "0,15,30,45 1-4 * * 1-5",
+  "0,15,30 5 * * 1-5",
+  "0 0 * * 1-5",
+  "0 1 * * 1-5",
+  "0 9 * * 1-5"
+]
+
+# 🛡️ Secrets(用 `wrangler secret put XXX` 設定,不要寫在這個檔)
+#   TELEGRAM_BOT_TOKEN   ← BotFather 給的 token,必填
+#   WEBHOOK_SECRET       ← 自訂亂數,選填,防偽造 webhook
+#   GEMINI_API_KEY       ← Gemini API key,選填(沒設則每日總結不附 AI 短評)

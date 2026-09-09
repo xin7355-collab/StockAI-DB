@@ -1,0 +1,34 @@
+name: 🚨 處置/注意股歷史探針 (dispo probe)
+
+# 純驗證用:回答「處置/注意股的歷史事件抓不抓得到、回溯多深」(V74.4.2)。
+# 只讀、不寫任何產物、不碰任何分支;事件以壓縮行(D|/N|)印進 log,本地回測從 log 收。
+# ⛔ 手動觸發 only —— 不佔排程配額(V73.9.0:全 repo 一天只進得來 7~10 筆 schedule run)。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dispo-probe
+  cancel-in-progress: true   # 探針執行 ~1 分 ≪ 手動觸發間隔 → true 安全(V73.7.9 判準)
+
+jobs:
+  probe:
+    name: 🚨 dispo 探針
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.11"
+
+      # 探針要能重現正式環境才有意義 —— FinMind 金鑰對齊 daily_miner(V71.5.3 教訓)
+      - name: 🚨 處置/注意股歷史探針
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/dispo_probe.py

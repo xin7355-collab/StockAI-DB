@@ -1,0 +1,115 @@
+name: 🏦 法人/融資券 歷史回補
+
+# 🚨 為什麼要這支:`data/{sym}.json` 的 `foreign_net` 只回溯到 2026/04(約 60 個交易日),
+#    害至少 5 條功能長期卡在「樣本不足以回測」。
+#    ⭐ 但那不是資料源的限制 —— 探針實測 FinMind 一檔一次呼叫就給 **2015 年起、2,827 個交易日**。
+#
+# 💾 只寫 `data/*.json` → 推 **data 分支**。
+#    ⭐ 不推 gh-pages:`miner.py::seed_db_from_json` 每天會把 JSON 讀回 SQLite
+#       (已確認它帶 foreign_net/trust_net/dealer_net/margin_balance/short_balance),
+#       再 export 回 JSON 並部署 → 隔天自動出現在前端。
+#    ⛔ 這也避免跟 daily_miner 的 gh-pages force-push 打架。
+#
+# ⛔ 只能手動觸發。可分批跑(LIMIT),重跑會自己跳過已補滿的檔。
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: '這一輪最多補幾檔(想先小量驗證可填 30;全市場填 99999)'
+        required: false
+        default: '99999'
+      max_min:
+        description: '時間預算(分鐘,GitHub job 上限 360)'
+        required: false
+        default: '300'
+
+# 跟 daily_miner 錯開:同時跑會兩邊都在改 data/*.json
+concurrency:
+  group: data-branch-write
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 🐍 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ⚠️ V49.4 教訓:還原資料用 `git show origin/data:檔 > 檔`,
+      #    ⛔ 不要 `git checkout origin/data -- data/`(會把整批 stage 進 index 弄髒工作區)
+      - name: 📂 從 data 分支還原全市場 JSON
+        run: |
+          set -e
+          git fetch --depth=1 origin data
+          mkdir -p data
+          git archive origin/data data | tar -x
+          n=$(ls data/*.json 2>/dev/null | wc -l)
+          echo "還原了 $n 個 data/*.json"
+          # 🚧 空過守門:沒還原到就別跑(不然會用空目錄跑完然後回報「成功」)
+          if [ "$n" -lt 500 ]; then echo "::error::只還原到 $n 檔,data 分支可能有問題 → 中止"; exit 1; fi
+
+      - name: 🏦 回補法人 / 融資券
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          LIMIT: ${{ github.event.inputs.limit }}
+          MAX_MIN: ${{ github.event.inputs.max_min }}
+        run: python3 inst_backfill.py
+
+      - name: 📊 回補後的實際深度(⛔ 不只看綠燈,要確認真的變深了)
+        run: |
+          python3 - <<'PY'
+          import json, glob, statistics
+          nz = []
+          for f in sorted(glob.glob('data/*.json'))[:400]:
+              try: rows = json.load(open(f))
+              except Exception: continue
+              if not isinstance(rows, list) or len(rows) < 60: continue
+              nz.append(sum(1 for r in rows if r.get('foreign_net')))
+          if nz:
+              print(f"抽驗 {len(nz)} 檔:foreign_net 非零天數 中位 {int(statistics.median(nz))} ・最大 {max(nz)} ・最小 {min(nz)}")
+              print("⭐ 回補前中位數是 28 天 —— 沒有明顯變大就代表這一輪其實沒補到")
+          else:
+              print("⚠️ 抽不到任何檔案")
+          PY
+
+      # ⚠️ 順序很重要:`git checkout` 會蓋掉工作目錄的 data/ →
+      #    ⛔ 一定要**先把回補結果搬到 /tmp**,切完分支再搬回來,否則整輪白做。
+      - name: 💾 推回 data 分支
+        run: |
+          set -e
+          rm -rf /tmp/bf && mkdir -p /tmp/bf
+          cp -a data/. /tmp/bf/
+          n=$(ls /tmp/bf/*.json 2>/dev/null | wc -l)
+          echo "暫存 $n 個檔"
+          # 🚧 空過守門:暫存數量不對就不要動 data 分支(⛔ 寧可不推,也不要推壞的)
+          if [ "$n" -lt 500 ]; then echo "::error::暫存只有 $n 檔 → 中止,不推分支"; exit 1; fi
+
+          git config user.name  "StockAI Bot"
+          git config user.email "bot@users.noreply.github.com"
+          git reset --hard && git clean -fdq
+          git fetch --depth=1 origin data
+          git checkout -f -B data origin/data
+          rm -rf data && mkdir -p data
+          cp -a /tmp/bf/. data/
+          git add -f data
+          if git diff --cached --quiet; then
+            echo "✅ 沒有任何變更(可能都已補滿)→ 不 commit"
+          else
+            git commit -q -m "🏦 法人/融資券歷史回補 $(date -u +%Y-%m-%d)"
+            for i in 1 2 3 4; do
+              git push origin data && break || { echo "push 失敗,第 $i 次重試"; sleep $((2**i)); }
+            done
+            echo "✅ 已推回 data 分支"
+          fi
+
+      - name: ✅ 完成
+        run: echo "回補完成。明天 daily_miner 會把它讀回 SQLite 再匯出,前端隔天自動看得到。"

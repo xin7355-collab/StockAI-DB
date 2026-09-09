@@ -1,0 +1,31 @@
+name: 💰 除權息資料源探針 (div probe)
+
+# 純驗證用:回答「配息/除權息紀錄抓不抓得到、回溯多深」(V74.3.7)。
+# 只讀、不寫任何產物、不碰任何分支。⛔ 手動觸發 only —— 不佔排程配額(V73.9.0)。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: div-probe
+  cancel-in-progress: true   # 探針 ~1 分 ≪ 手動觸發間隔 → true 安全(V73.7.9 判準)
+
+jobs:
+  probe:
+    name: 💰 除權息探針
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.11"
+      # 金鑰對齊 daily_miner(V71.5.3 教訓:探針沒給金鑰就永遠驗不出真因)
+      - name: 💰 除權息探針
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/div_probe.py

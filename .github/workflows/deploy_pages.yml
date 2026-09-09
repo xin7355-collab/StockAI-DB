@@ -3,9 +3,21 @@ name: 🚀 部署到 GitHub Pages
 on:
   push:
     branches:
-      - claude/optimize-html-c20DA
       - main
+    paths:
+      - 'index.html'
+      - 'sw.js'
+      - 'manifest.json'   # V17.0 — PWA installable manifest
+      - '.well-known/**'  # 📦 V73.1.1 — APK(TWA)驗證用 assetlinks.json
+      - 'pro.html'        # 🛰️ V74.0.1 — 產業作戰室 PRO(獨立頁,不掛在 App 內)
+      - 'data/scr_edge.json'   # 🏅 V74.3.6 — 選股條件實測成績(釣魚池在讀;index.html 匯出的產物)
   workflow_dispatch:
+
+# V14.12 — 與 daily_miner.yml deploy job 共用 'gh-pages-push' group,
+# 避免兩支 workflow 同時 push gh-pages 觸發 "cannot lock ref" race
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -20,6 +32,26 @@ jobs:
         with:
           fetch-depth: 0
 
+      # 🗜️ V71.0.8 P2-3 — 部署產物壓縮(原始碼永遠保留註解,只有 gh-pages 上的是壓縮版)
+      #   實測:3,113 KB → 2,084 KB(-33%);gzip 後 942 KB → 686 KB(-256 KB)
+      #   ⛔ 失敗就中止部署,絕不推出未驗證的壓縮版(build_min.mjs 內建 4 道驗證)
+      #   ⚠️ 壓縮後 gh-pages 的 index.html 不再與 main 逐位元組相同 →
+      #      驗證部署是否成功請改比對「版本號」,不要再用 md5 比對(見 CLAUDE.md)
+      - name: 🗜️ 壓縮 index.html（部署產物）
+        run: |
+          set +e
+          npm i --no-audit --no-fund --silent esbuild
+          # ⚠️ 產物寫到 /tmp,**絕不動工作區的 index.html** —
+          #    工作區一髒,後面的 `git checkout gh-pages` 會拒絕切換(local changes would be overwritten)
+          node scripts/build_min.mjs index.html /tmp/index.deploy.html
+          if [ $? -eq 0 ] && [ -s /tmp/index.deploy.html ]; then
+            echo "✅ 使用壓縮版部署"
+          else
+            echo "⚠️ 壓縮或驗證未通過 → 改用未壓縮原檔部署(功能優先於體積,絕不推未驗證產物)"
+            cp index.html /tmp/index.deploy.html
+          fi
+          git checkout -- . 2>/dev/null || true   # 保險:確保工作區乾淨
+
       - name: 🌐 部署到 gh-pages（只更新 index.html 與 sw.js，保留股票資料）
         run: |
           git config user.name  "github-actions[bot]"
@@ -27,8 +59,16 @@ jobs:
 
           # 暫存最新的前端檔案
           mkdir -p /tmp/deploy
-          cp index.html /tmp/deploy/
+          # 🗜️ V71.0.8:上一步產出的部署用 index.html(壓縮版;壓縮失敗時是原檔)
+          cp /tmp/index.deploy.html /tmp/deploy/index.html
           cp sw.js      /tmp/deploy/
+          # V17.0 — PWA manifest 一併部署(若不存在則跳過,不阻塞舊版部署)
+          [ -f manifest.json ] && cp manifest.json /tmp/deploy/ || true
+          # 📦 V73.1.1 — APK(TWA)驗證檔:讓安卓確認「這個 APK 跟這個網站是同一人」,驗證過 APK 才會全螢幕
+          [ -f .well-known/assetlinks.json ] && { mkdir -p /tmp/deploy/.well-known; cp .well-known/assetlinks.json /tmp/deploy/.well-known/; } || true
+          for f in apple-touch-icon.jpg icon-192.jpg icon-512.jpg; do [ -f "$f" ] && cp "$f" /tmp/deploy/ || true; done   # ⚡ V69.8.7 P2-2 icon 外部化
+          [ -f pro.html ] && cp pro.html /tmp/deploy/ || true   # 🛰️ V74.0.1 產業作戰室 PRO
+          [ -f data/scr_edge.json ] && cp data/scr_edge.json /tmp/deploy/ || true   # 🏅 V74.3.6(⚠️ 下面一定要 cp 回 + git add)
 
           # 切到現有的 gh-pages（保留所有資料，不用 --orphan）
           git fetch origin gh-pages 2>/dev/null || true
@@ -42,11 +82,42 @@ jobs:
           # 只更新前端檔案，資料目錄 data/ 保持不動
           cp /tmp/deploy/index.html .
           cp /tmp/deploy/sw.js      .
+          [ -f /tmp/deploy/manifest.json ] && cp /tmp/deploy/manifest.json . || true
+          [ -f /tmp/deploy/.well-known/assetlinks.json ] && { mkdir -p .well-known; cp /tmp/deploy/.well-known/assetlinks.json .well-known/; } || true   # 📦 V73.1.1
+          for f in apple-touch-icon.jpg icon-192.jpg icon-512.jpg; do [ -f "/tmp/deploy/$f" ] && cp "/tmp/deploy/$f" . || true; done
+          [ -f /tmp/deploy/pro.html ] && cp /tmp/deploy/pro.html . || true   # 🛰️ V74.0.1(⚠️ cp 完下面一定要 git add,V69.8.7 圖示漏過)
+          [ -f /tmp/deploy/scr_edge.json ] && mkdir -p data && cp /tmp/deploy/scr_edge.json data/scr_edge.json || true   # 🏅 V74.3.6
+
+          # 🆕 每次部署把 Service Worker 的 CACHE_NAME 注入 commit SHA，
+          #     讓 sw.js 內容隨每次部署改變 → 瀏覽器認得新 SW → 自動接管+reload，杜絕使用者卡舊版
+          sed -i "s/const CACHE_NAME = '[^']*'/const CACHE_NAME = 'stockai-${GITHUB_SHA::8}'/" sw.js
+          echo "SW CACHE_NAME → stockai-${GITHUB_SHA::8}"
 
           git add index.html sw.js
+          # 🖼️ 圖示:上面早就 cp 進來了,但從 V69.8.7 起一直漏掉這行 git add
+          #    → 檔案「放回去了卻沒 commit」,gh-pages 上永遠沒有 → PWA 主畫面圖示 404(零錯誤訊息)
+          for f in apple-touch-icon.jpg icon-192.jpg icon-512.jpg; do [ -f "$f" ] && git add -f "$f" || true; done
+          [ -f manifest.json ] && git add manifest.json || true
+          [ -f .well-known/assetlinks.json ] && git add -f .well-known/assetlinks.json || true   # 📦 V73.1.1
+          [ -f pro.html ] && git add -f pro.html || true   # 🛰️ V74.0.1 產業作戰室 PRO
+          [ -f data/scr_edge.json ] && git add -f data/scr_edge.json || true   # 🏅 V74.3.6(漏這行 = 每天被洗掉、零錯誤訊息)
           git diff --cached --quiet && echo "無變更，跳過" || {
             git commit -m "🚀 前端更新 $(date -u '+%Y-%m-%d %H:%M UTC')"
-            git push origin gh-pages
+            # V14.12 — 5 次 retry 吸收 GitHub server 瞬時 ref lock
+            for i in 1 2 3 4 5; do
+              if git push origin gh-pages; then
+                echo "✅ Push 成功 (attempt $i)"
+                break
+              fi
+              if [ "$i" -eq 5 ]; then
+                echo "❌ Push 連 5 次失敗,放棄"
+                exit 1
+              fi
+              echo "⚠️ Push attempt $i 失敗,sleep $((i*5))s 重試..."
+              sleep $((i*5))
+              git fetch origin gh-pages 2>/dev/null || true
+              git pull --rebase origin gh-pages 2>/dev/null || true
+            done
           }
 
           echo "✅ gh-pages index.html 已更新（股票資料完整保留）"

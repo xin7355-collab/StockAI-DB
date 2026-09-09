@@ -1,0 +1,53 @@
+name: 🌅 盤前體檢分數回測 (premkt probe)
+
+# 使用者:「盤前檢視頁面裡面的分數幫我回測一下,我覺得還滿準」
+# ⛔ 只讀不寫任何產物、不碰任何分支;結論印進 log。
+# ⚠️ 沙箱連不到 yfinance → 只能在 Actions 跑。
+on:
+  workflow_dispatch:
+    inputs:
+      years:
+        description: '海外歷史長度(1y/2y/5y/10y)'
+        required: false
+        default: '5y'
+      strict:
+        description: '只用前端 macro_risk 也有的 8 個成分(要接進前端就選 yes)'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: premkt-probe
+  cancel-in-progress: true     # 探針 ~2 分 ≪ 手動觸發間隔 → true 安全
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: 📦 安裝相依
+        run: pip install yfinance --quiet
+
+      - name: 📈 從 gh-pages 撈加權指數日線(⛔ main 的 data/ 在 gitignore)
+        run: |
+          git fetch origin gh-pages --depth=1
+          mkdir -p data
+          git show origin/gh-pages:data/^TWII.json > 'data/^TWII.json'
+          python3 -c "import json;d=json.load(open('data/^TWII.json'));print(f'✅ 加權 {len(d)} 根 ・{d[0][\"date\"]} ~ {d[-1][\"date\"]}')"
+
+      - name: 🌅 回測盤前分數
+        env:
+          PREMKT_YEARS: ${{ inputs.years }}
+          PREMKT_STRICT: ${{ inputs.strict && '1' || '' }}
+        run: python3 scripts/premkt_probe.py

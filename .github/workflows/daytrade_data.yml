@@ -1,0 +1,68 @@
+name: 📊 當沖/大盤方向免費資料 (TWSE+TAIFEX)
+
+# 盤後抓「當沖熱度 + 選擇權 P/C Ratio」等免費官方 OpenAPI → data/daytrade_pack.json
+# 無金鑰、免費。⚠️ 首次請「Run workflow」手動觸發看 log(會印各來源欄位)校準後再靠 cron。
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1-5'   # UTC 06:00 = 台北 14:00(收盤後,官方統計已出)週一~五
+
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  mine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📊 採當沖/大盤方向資料
+        run: python3 daytrade_data_miner.py
+
+      - name: 🚀 部署 daytrade_pack.json 到 gh-pages + data(雙分支保存)
+        run: |
+          if [ ! -f daytrade_pack.json ]; then echo "❌ 沒產出 JSON,略過部署"; exit 1; fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp daytrade_pack.json /tmp/dtp.json
+
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdxq 2>/dev/null || true   # -x:連 gitignore 的 data/*.json 也清,避免 checkout 撞未追蹤衝突
+            git fetch origin "$BR" 2>/dev/null || true
+            # 🐛 用 -B + origin/$BR 明確指定分支:避開「data 既是資料夾又是分支名」的 git 歧義 fatal
+            git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支(等 daily_miner 先建),跳過"; return 0; }
+            mkdir -p data
+            cp /tmp/dtp.json data/daytrade_pack.json
+            git add -f data/daytrade_pack.json
+            if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
+            git commit -q -m "📊 當沖資料包 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/daytrade_pack.json
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              echo "⚠️ $BR push attempt $i 失敗,sleep $((i*5))s 重試…"; sleep $((i*5))
+              git fetch origin "$BR" 2>/dev/null || true
+              git reset --hard -q "origin/$BR" 2>/dev/null || true
+              cp /tmp/dtp.json data/daytrade_pack.json
+              git add -f data/daytrade_pack.json
+              git commit -q -m "📊 當沖資料包 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/daytrade_pack.json 2>/dev/null || true
+            done
+          }
+
+          deploy_branch gh-pages
+          deploy_branch data
+          echo "✅ 當沖資料包已雙分支部署(gh-pages + data)"

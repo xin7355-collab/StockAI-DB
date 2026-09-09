@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">散戶救星</string>
+
+    <!-- ⭐ ?source=twa 是 App 用來認出「我是 APK」的記號(設定中心的 🤖 徽章靠它) -->
+    <string name="launch_url">https://xin7355-collab.github.io/StockAI-DB/?source=twa</string>
+
+    <string name="asset_statements">
+        [{
+        \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+        \"target\": {
+        \"namespace\": \"web\",
+        \"site\": \"https://xin7355-collab.github.io\"
+        }
+        }]
+    </string>
+</resources>

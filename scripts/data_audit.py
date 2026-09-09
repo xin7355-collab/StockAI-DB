@@ -1,0 +1,528 @@
+#!/usr/bin/env python3
+"""🩺 全盤資料體檢 —— 一支指令查完「資料有沒有、新不新、對不對接、有沒有互相打架」。
+
+╔══════════════════════════════════════════════════════════════════════╗
+║ 這支存在的理由(使用者 2026-07-30 問的):                              ║
+║   「為何我請你檢查整份資料,你還是一輪一輪才找到錯?                     ║
+║     我要怎麼下指令你才能全盤找到,並檢查連動與資料連接錯誤?」            ║
+║                                                                      ║
+║ 老實說,之前的檢查是**結構性**的(檔案在不在、能不能解析、id 有沒有重複),║
+║ 抓不到**語意性**錯誤(41,613 這個數字本身是錯的)。語意錯只有兩種抓法:  ║
+║   ① 有外部對照(使用者給籌碼K線截圖)—— 這是最有效的,請繼續給          ║
+║   ② 把「內部應該一致的東西」互相對帳 —— 這支就是做這件事,而且可重複跑  ║
+║                                                                      ║
+║ 下指令方式:直接說「跑資料體檢」,我就執行這支並逐項回報。               ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+檢查五類:
+  A. 檔案存在 / 可解析 / 內容非空          (前端 fetch 的每一個 data/*.json)
+  B. 新鮮度                                (更新時間 vs 該檔的預期節奏)
+  C. 錯誤欄位                              (任何 *_error 有值)
+  D. 前後端對接                            (前端讀的欄名,後端到底有沒有產)← 連接錯誤
+  D2. 關鍵欄位缺漏                          (檔案在、能解析,但「該有的那半沒有」)← V72.2.6
+  E. 連動一致性                            (同一個指標出現在多個檔,值要一致)← 連動
+  E2. 榜單 vs 原始資料                      (今日訊號榜的價格/日期,跟 data/{sym}.json 對不對得上)
+
+資料來源:gh-pages 分支(= 使用者手機真正讀到的那份),用 git 讀,不打網路。
+用法:python3 scripts/data_audit.py [--ref origin/gh-pages]
+"""
+import argparse
+import json
+import re
+import subprocess
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+TW = timezone(timedelta(hours=8))
+
+# 每個檔的預期更新節奏(小時)。超過 → 報「過期」。
+# None = 不檢查新鮮度(靜態對照表 / 手動維護 / 週月更)
+CADENCE_H = {
+    'macro_risk.json': 6,        # 每 4 小時 cron
+    'macro_cache.json': 30,      # 每日採礦
+    'radar.json': 30,
+    'top_picks.json': 30,
+    'breadth.json': 30,
+    'daytrade.json': 30,
+    'fmx_pack.json': 30,
+    'sector_heat.json': 30,
+    'sector_chip_flow.json': 30,
+    'attention_status.json': 30,
+    'disposition.json': 30,
+    'lowbase_picks.json': 30,
+    'broker_radar.json': 30,
+    'broker_perf.json': 30,
+    'global_news.json': 12,
+    'radar_news.json': 12,
+    'industry_pe.json': 72,
+    'industry_map.json': None,
+    'concept_stocks.json': 168,
+    'holders.json': 240,         # 集保週更
+    'insider.json': 800,         # 董監月更
+    'day_trade.json': None,      # V71.5.4 已被 daytrade.json 取代,不再要求新鮮
+    # 🕐 盤中才產出的:收盤後 / 假日本來就會舊,不算問題
+    'live_quotes.json': None,
+    'tick_flow.json': None,
+    'daytrade_pack.json': None,
+    'live_index.json': None,     # 🌅 V73.9.0 盤前(08:45~09:00)才產的台指期快照
+    'paper_trades.json': None,   # 紙上交易,有訊號才寫
+}
+
+META_KEYS = {'updated', 'generated', 'date', 'data_date', 'ts', 'miner_version', 'count', 'total'}
+
+# 🕐 盤中才產出的檔:收盤後/假日不在 gh-pages 是正常的,不是缺口。
+#    ⚠️ 要驗這幾個檔,必須**盤中**再跑一次體檢 —— 收盤後跑再久都不會出現。
+INTRADAY_ONLY = {'live_quotes.json', 'tick_flow.json', 'daytrade_pack.json',
+                 # 🌅 V73.9.0 盤前台指期快照 —— 收盤後不在 gh-pages 是正常的,
+                 #    但 B2 仍會用「相對全站最新資料日」條件式檢查它有沒有默默停產。
+                 'live_index.json'}
+
+# 📌 「刻意不在 gh-pages」的檔:報成缺口會誤導,把「為什麼」寫在這裡當活文件。
+#    2026-07-30 首跑時我把這幾條都寫成「缺口待修」,逐條讀原始碼才發現是刻意的 ——
+#    照著修會把已經下架的東西又接回來。工具只知道「檔案不在」,不知道「本來就不該在」。
+#    ⚠️ 新增項目前務必先 grep 過:`rm -f`、`= False`、「退役」「停用」「暫停」。
+# 🗂️ V72.1.2 「已被取代、payload 空掉是正常的」舊檔 —— ⛔ 別報成錯誤
+#   工具只知道「檔案是空的」,不知道「它已經退休了」。
+#   ⚠️ 誤報留著會讓人養成忽略體檢輸出的習慣,真的壞掉那條就被淹掉了。
+SUPERSEDED = {
+    'day_trade.json': 'V71.5.4 起前端改讀 daytrade.json,這個舊檔只留備援,空掉不影響',
+}
+
+DELIBERATELY_ABSENT = {
+    'chief_ai_cache.json':
+        'chief_ai_batch.py 2026-06 退役,daily_miner.yml 每次部署都 rm -f 這個檔;'
+        '前端 V16.7 已有 stale 判定(>2 天視同無 cache)並自動 fallback radar_matrix',
+    'biz_profile.json':
+        'theme_news.py::main() 的 ok_b=False 是寫死的 —— run#3 已印出 TWSE/TPEX '
+        '「公司基本資料」全部欄位確認官方 API 沒有業務說明文字欄。要做是先找來源,不是改程式',
+}
+
+
+def sh(*a):
+    return subprocess.run(a, capture_output=True, text=True).stdout
+
+
+ROOT_LEVEL = {'macro_cache.json', 'futures_cache.json', 'margin_cache_stock.json'}
+
+
+def read_json(ref, path):
+    raw = subprocess.run(['git', 'show', f'{ref}:{path}'], capture_output=True, text=True)
+    if raw.returncode != 0 and Path(path).name in ROOT_LEVEL:
+        # gh-pages 上這幾個歷史因素放在根目錄,不在 data/
+        raw = subprocess.run(['git', 'show', f'{ref}:{Path(path).name}'], capture_output=True, text=True)
+    if raw.returncode != 0:
+        return None, 'MISSING'
+    try:
+        return json.loads(raw.stdout), None
+    except Exception as e:
+        return None, f'PARSE_FAIL: {str(e)[:60]}'
+
+
+def payload_size(j):
+    if isinstance(j, list):
+        return len(j)
+    if not isinstance(j, dict):
+        return 0
+    real = {k: v for k, v in j.items() if k not in META_KEYS and not str(k).startswith('__')}
+    if len(real) == 1:
+        v = next(iter(real.values()))
+        if isinstance(v, (list, dict)):
+            return len(v)
+    return len(real)
+
+
+def parse_ts(j):
+    """從常見欄位取更新時間,回 datetime(台北)或 None。"""
+    if not isinstance(j, dict):
+        return None
+    for k in ('updated', 'generated', 'data_date', 'date'):
+        v = j.get(k)
+        if not isinstance(v, str) or len(v) < 8:
+            continue
+        t = v.strip().replace('/', '-')
+        for fmt in ('%Y-%m-%d %H:%M', '%Y-%m-%dT%H:%M:%SZ', '%Y-%m-%dT%H:%M:%S',
+                    '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+            try:
+                d = datetime.strptime(t[:len(datetime.now().strftime(fmt))], fmt)
+                if fmt.endswith('Z'):
+                    d = d.replace(tzinfo=timezone.utc).astimezone(TW)
+                else:
+                    d = d.replace(tzinfo=TW)
+                return d
+            except Exception:
+                continue
+        m = re.match(r'(\d{4})-(\d{2})-(\d{2})', t)
+        if m:
+            return datetime(int(m[1]), int(m[2]), int(m[3]), tzinfo=TW)
+    return None
+
+
+def frontend_fetched_files():
+    """index.html 裡 fetch 的 data/*.json 檔名(去掉 data/chips/ 逐檔)。"""
+    src = (ROOT / 'index.html').read_text(encoding='utf-8')
+    names = set(re.findall(r"['\"`]data/([A-Za-z_][\w.^-]*\.json)['\"`?]", src))
+    names |= set(re.findall(r"data/([A-Za-z_][\w.^-]*\.json)\?", src))
+    return {n for n in names if '{' not in n and '$' not in n}
+
+
+def macro_fields_read():
+    """index.html 從 _macroRiskCache 讀了哪些欄名(mr.x / macro.x / this._macroRiskCache?.x)。"""
+    src = (ROOT / 'index.html').read_text(encoding='utf-8')
+    pats = [r'\bmr\.([a-z][a-z0-9_]{2,})', r'\bmacro\.([a-z][a-z0-9_]{2,})',
+            r'_macroRiskCache\s*\?\?\s*\{\}\)\.([a-z][a-z0-9_]{2,})',
+            r'_macroRiskCache\s*\)?\s*\?\.\s*([a-z][a-z0-9_]{2,})']
+    out = set()
+    for p in pats:
+        out |= set(re.findall(p, src))
+    # 過濾明顯是方法/JS 內建的
+    skip = {'length', 'forEach', 'map', 'filter', 'then', 'catch', 'toFixed', 'slice',
+            'push', 'join', 'sort', 'keys', 'values', 'includes', 'replace', 'split',
+            'indexof', 'tolowercase', 'touppercase', 'concat', 'reduce', 'some', 'every'}
+    return {f for f in out if f.lower() not in skip}
+
+
+# ── D2. 關鍵欄位缺漏(V72.2.6)────────────────────────────────────────
+# ⭐ 為什麼要有這一類:`market_stats.json` 從 V72.0.3 上線到 V72.2.1 **一直只有 pb 沒有 margin**
+#    —— 檔案在、能解析、118 bytes 也不算「空」,A 類全綠;而 D 類**只檢查 macro_risk.json**,
+#    完全沒看它。於是「全市場融資維持率」做好了卻一次都沒產出過,零錯誤訊息、workflow 全綠。
+#    (真因是採礦端兩層 `if` 巢狀,同一個坑修了兩次才對 —— 見 CLAUDE.md V72.2.1/V72.2.3。)
+#
+# ⛔ 這裡刻意用**明確清單**而不是自動推導:自動掃前端讀哪些欄位會產生大量誤報,
+#    而 CLAUDE.md 鐵則說「誤報留著會讓人養成忽略體檢輸出的習慣」。
+#    ⚠️ 新增任何「一個檔裡有多個互相獨立的區塊」的採礦產物時,記得加進來。
+EXPECTED_KEYS = {
+    # 檔名: (該有的頂層 key, 少了的話是什麼意思)
+    'market_stats.json': [
+        ('pb', '全市場 P/B 分位數(compute_market_pb_percentiles)'),
+        ('margin', '全市場融資維持率(compute_market_margin_health)'),
+    ],
+    'today_signals.json': [
+        ('bull', '今日正期望值訊號榜(daily_signal_scan.mjs)'),
+        ('scanned', '掃了幾檔'),
+    ],
+}
+
+# 同一個指標出現在多個檔 → 值必須一致(連動對帳)
+#  ⚠️ 已知結論(2026-07-30 對照籌碼K線驗過):同一指標在這兩個檔不一致時,
+#     **macro_risk.json 是對的**(每 4 小時 cron,美股收完才抓);
+#     macro_cache.json 由 miner.py 在 16:30 那輪抓,美股當天還沒收 → 拿到前一個 session,
+#     卻被 yfinance 標上今天的日期,所以「日期一樣但數字不一樣」。
+#     前端目前沒有任何卡片讀 usMacroCache 的 dji/sox/tsm/vix(已 grep 確認),所以畫面沒錯,
+#     但這條對帳要留著 —— 哪天有人接了錯的那邊,這裡會立刻叫出來。
+CROSS_CHECKS = [
+    # (說明, 檔A, 取值路徑A, 檔B, 取值路徑B, 容差, 誰為準)
+    ('費半 SOX',   'macro_risk.json', ('sox',), 'macro_cache.json', ('sox', 'close'), 0.5, 'macro_risk'),
+    ('道瓊 DJI',   'macro_risk.json', ('dji',), 'macro_cache.json', ('dji', 'close'), 0.5, 'macro_risk'),
+    ('VIX',        'macro_risk.json', ('vix',), 'macro_cache.json', ('vix', 'close'), 0.2, 'macro_risk'),
+    ('台積電 ADR', 'macro_risk.json', ('tsm',), 'macro_cache.json', ('tsm', 'close'), 0.5, 'macro_risk'),
+]
+
+
+def dig(j, path):
+    cur = j
+    for k in path:
+        if not isinstance(cur, dict) or k not in cur:
+            return None
+        cur = cur[k]
+    return cur
+
+
+def audit(ref):
+    problems = []   # (等級, 類別, 訊息)
+    add = lambda lv, cat, msg: problems.append((lv, cat, msg))
+    now = datetime.now(TW)
+
+    files = sorted(frontend_fetched_files())
+    print(f'🩺 全盤資料體檢  ref={ref}  時間={now:%Y-%m-%d %H:%M} (台北)')
+    print(f'   前端 fetch 的 data/*.json 共 {len(files)} 個\n')
+
+    cache = {}
+    # ── A/B/C ────────────────────────────────────────────────────────
+    print('── A. 檔案存在 / 可解析 / 內容非空 ──────────────────────')
+    for f in files:
+        j, err = read_json(ref, f'data/{f}')
+        cache[f] = j
+        if err == 'MISSING':
+            # 🕐 盤中才產的檔:收盤/假日不在 gh-pages 是正常的,報成 ❌ 只是噪音
+            #    (跟 B 類新鮮度用同一份名單:CADENCE_H 標 None 且列在盤中清單裡的)
+            if f in INTRADAY_ONLY:
+                print(f'   ➖ data/{f} 不在 {ref} —— 盤中才產出,收盤/假日沒有是正常的'
+                      f'(要驗這個檔必須**盤中**再跑一次)')
+            elif f in DELIBERATELY_ABSENT:
+                print(f'   ➖ data/{f} 不在 {ref} —— 刻意的,不是缺口:{DELIBERATELY_ABSENT[f]}')
+            else:
+                add('❌', 'A', f'data/{f} 在 {ref} 不存在,但前端會去 fetch')
+            continue
+        if err:
+            add('❌', 'A', f'data/{f} {err}')
+            continue
+        n = payload_size(j)
+        if n == 0:
+            # ⚠️ V72.1.2 已被取代的舊檔不算錯 —— 每次體檢都報一次會變雜訊,
+            #   真的壞掉的那條反而被淹掉(CLAUDE.md:誤報要標掉,別讓人養成忽略的習慣)。
+            if f in SUPERSEDED:
+                print(f'   ➖ data/{f} payload 是空的 —— 刻意的:{SUPERSEDED[f]}')
+            else:
+                add('❌', 'A', f'data/{f} 內容是空的(payload 0 筆)')
+    print(f'   完成,問題 {sum(1 for p in problems if p[1] == "A")} 件')
+
+    print('\n── B. 新鮮度(更新時間 vs 預期節奏)─────────────────────')
+    for f in files:
+        j = cache.get(f)
+        if not isinstance(j, dict):
+            continue
+        cad = CADENCE_H.get(f, 'unknown')
+        if cad is None:
+            continue
+        ts = parse_ts(j)
+        if ts is None:
+            if cad != 'unknown':
+                add('⚠️', 'B', f'data/{f} 找不到更新時間欄位(updated/generated/date),無法判斷新舊')
+            continue
+        age_h = (now - ts).total_seconds() / 3600
+        limit = 30 if cad == 'unknown' else cad
+        # ⚠️ 只有日期沒有時間的檔(如 "2026-07-29"),parse 出來會是當天 00:00,
+        #   於是隔天早上一律被算成「過期 32 小時」= 誤報。這種一律改用「日數」判斷。
+        if ts.hour == 0 and ts.minute == 0:
+            day_gap = (now.date() - ts.date()).days
+            allow_days = max(1, int(round(limit / 24)) + 1)
+            if day_gap > allow_days:
+                add('⚠️', 'B', f'data/{f} 資料日期 {ts:%m/%d} 已距今 {day_gap} 天(預期 ≤{allow_days} 天)')
+            continue
+        if age_h > limit:
+            add('⚠️', 'B', f'data/{f} 已過期 {age_h:.0f} 小時(預期 ≤{limit}h,更新於 {ts:%m/%d %H:%M})')
+    print(f'   完成,問題 {sum(1 for p in problems if p[1] == "B")} 件')
+
+    # ── B2. 盤中檔:相對「全站最新資料日」的落後 ─────────────────────
+    # 🚨 V73.7.9 補上的盲點(2026-08-20 抓到,而且它已經瞎了 13 天):
+    #    INTRADAY_ONLY 這幾個檔在 CADENCE_H 一律標 None → **B 類整個 continue 跳過**,
+    #    A 類的 MISSING 也被無條件原諒 → `tick_flow.json` 停在 08-07、
+    #    `live_quotes.json` 根本沒產出過,體檢每次都一片乾淨。
+    #    ⭐ 原本的豁免本身沒錯(收盤/假日本來就會舊),錯在**無條件**。
+    #
+    # ⭐ 判準刻意用「相對」不用絕對天數 —— 這是為了**連假不誤報**:
+    #    比的是「全站最新資料日」(所有檔案裡最新的那個 ts)。連假時所有採礦一起停、
+    #    那個基準也跟著停 → 落後量不會膨脹。寫死「≤4 天」會在春節連假整排誤報,
+    #    而誤報留著就會讓人養成忽略體檢輸出的習慣(同 SUPERSEDED 清單的理由)。
+    print('\n── B2. 盤中檔有沒有默默停產(相對全站最新資料日)──────────')
+    all_ts = [t for t in (parse_ts(j) for j in cache.values() if isinstance(j, dict)) if t]
+    newest = max(all_ts) if all_ts else None
+    LAG_DAYS = 3          # 全站還在更新,盤中檔卻落後這麼多天 = 停產,不是「今天剛好沒開盤」
+    INTRADAY_FRESH_MIN = 60   # 盤中時段內,這幾個檔該有多新(分鐘)
+    if newest is None:
+        print('   ⏳ 全站一個時間戳都讀不到,跳過(這本身要先查 B 類)')
+    else:
+        print(f'   基準:全站最新資料日 = {newest:%m/%d %H:%M}')
+        in_session = (now.weekday() < 5 and (9 * 60 + 5) <= (now.hour * 60 + now.minute) <= (13 * 60 + 30))
+        for f in sorted(INTRADAY_ONLY):
+            j = cache.get(f)
+            if not isinstance(j, dict):
+                # A 類已經印過「盤中才產出」那句 —— 但那句在停產時是**假的安慰**,
+                # 所以這裡要在盤中時段補一句真正的錯誤。
+                if in_session:
+                    add('❌', 'B2', f'data/{f} 現在是盤中卻不在 {ref} —— 該產出的時段沒產出')
+                else:
+                    print(f'   ➖ data/{f} 不在 {ref},且現在非盤中 —— 無法判斷,請盤中再跑一次')
+                continue
+            ts = parse_ts(j)
+            if ts is None:
+                add('⚠️', 'B2', f'data/{f} 找不到更新時間欄位,無法判斷有沒有停產')
+                continue
+            lag_d = (newest.date() - ts.date()).days
+            if lag_d > LAG_DAYS:
+                add('❌', 'B2', f'data/{f} 停在 {ts:%m/%d %H:%M},比全站最新資料日落後 {lag_d} 天'
+                                f' —— 這不是「收盤後本來就舊」,是那支採礦已經沒在跑了')
+            elif in_session:
+                age_m = (now - ts).total_seconds() / 60
+                if age_m > INTRADAY_FRESH_MIN:
+                    add('⚠️', 'B2', f'data/{f} 現在是盤中,但它 {age_m:.0f} 分鐘沒更新了'
+                                    f'(預期 ≤{INTRADAY_FRESH_MIN} 分,更新於 {ts:%m/%d %H:%M})')
+                else:
+                    print(f'   ✅ data/{f} 盤中新鮮({age_m:.0f} 分鐘前)')
+            else:
+                print(f'   ✅ data/{f} 更新於 {ts:%m/%d %H:%M},沒有停產跡象')
+    print(f'   完成,問題 {sum(1 for p in problems if p[1] == "B2")} 件')
+
+    print('\n── C. 錯誤欄位(*_error 有值)───────────────────────────')
+    for f in files:
+        j = cache.get(f)
+        if not isinstance(j, dict):
+            continue
+        for k, v in j.items():
+            if str(k).endswith('_error') and v:
+                add('⚠️', 'C', f'data/{f} 的 {k} = {str(v)[:70]}')
+                # 🐛 V72.1.2 ⭐ 新增「值與 error **自相矛盾**」偵測 ——
+                #   體檢原本只會分別報「這個 error 有值」,**看不出值本身還在**,
+                #   所以 taifex_backwardation = -156.0 配「不計價差」那次它漏報了。
+                #   ⛔ 這一類比「那格空著」危險得多:使用者會拿一個不該信的數字去做決定。
+                #   典型成因:守門把值設成 None,但斷崖防護(last-good)又把昨天的填回去
+                #   → 昨天的數字配今天的日期(陷阱 #34)。
+                base = str(k)[:-len('_error')]
+                bv = j.get(base)
+                # ⚠️ 但要先排除**刻意的**情況,否則會誤報(首跑就誤報了 3 個)——
+                #   有些 error 針對的是**衍生欄位**而不是值本身:
+                #   例如 es_fut_error =「不給漲跌%」→ **價位是可信的**,只是不給方向(V72.0.5),
+                #   那不叫矛盾。同理「內插/fallback/已保留舊值」都是有交代的降級,不是壞掉。
+                #   ⭐ 只有 error 針對「值本身不可信」時,值還在才是真矛盾。
+                _intentional = ('不給漲跌', '不給方向', '方向待確認', '內插',
+                                'fallback', '已保留', '沿用', '備援')
+                if (bv is not None
+                        and not (isinstance(bv, (list, dict, str)) and len(bv) == 0)
+                        and not any(t in str(v) for t in _intentional)):
+                    add('❌', 'C', f'data/{f} 的 {base} 有值({str(bv)[:28]})但 {k} 說有問題'
+                                   f' → 兩者矛盾,多半是守門清掉後又被 last-good 填回昨天的值(陷阱 #34)')
+            # 🆕 V72.3.2 ⭐ **巢狀** error:C 類原本只掃頂層 → 把錯誤包在 dict 裡的完全看不見。
+            #   實例:`macro_risk.json` 的 `business_signal` = {'light':None,'score':None,
+            #   'error':'Expecting value: line 1 column 1'} —— 景氣對策信號抓不到(陷阱 #23,
+            #   拿到 HTML 去 parse JSON),而頂層 `business_signal_error` 是 None
+            #   → **體檢從上線到 V72.3.2 一路放過它**。
+            #   ⛔ 只往下走一層(再深就會開始誤報,而誤報會讓人養成忽略體檢的習慣)。
+            elif isinstance(v, dict):
+                for kk, vv in v.items():
+                    if not vv:
+                        continue
+                    lk = str(kk).lower()
+                    if lk == 'err' or lk.endswith('error'):
+                        add('⚠️', 'C', f'data/{f} 的 {k}.{kk} = {str(vv)[:70]}'
+                                       f'(⭐ 巢狀 error —— 頂層 {k}_error 是空的,所以以前掃不到)')
+    print(f'   完成,問題 {sum(1 for p in problems if p[1] == "C")} 件')
+
+    # ── D. 前後端對接 ────────────────────────────────────────────────
+    print('\n── D. 前後端對接:前端讀的欄名,後端有沒有產 ─────────────')
+    mr = cache.get('macro_risk.json')
+    if isinstance(mr, dict):
+        have = set(mr.keys())
+        read = macro_fields_read()
+        # ⚠️ V71.6.2 誤報修正:有些欄位是**前端自己算完寫進 `_macroRiskCache`** 的
+        #    (如 taiex_ma240_bias / taiex_bubble_msg,`_loadTaiexMA240Bias` 用 ^TWII K 線純算式算),
+        #    後端本來就不該有 → 報成「後端沒產出」是誤報,而且會把真的斷點淹掉。
+        #    做法:凡是 index.html 裡出現 `_macroRiskCache.X =` 的欄位,一律視為前端自算。
+        html = (ROOT / 'index.html').read_text(encoding='utf-8')
+        self_computed = set(re.findall(r'_macroRiskCache(?:\s*\|\|\s*\{\})?\.([a-z][\w]*)\s*=', html))
+        # 只報「看起來像後端欄位」的(有底線或已知前綴),避免誤傷區域變數
+        suspicious = sorted(x for x in (read - have - self_computed) if '_' in x)
+        for x in suspicious:
+            add('⚠️', 'D', f'前端讀 macro_risk 的 {x},但檔案裡沒有這個欄位(可能改名或從沒產出)')
+        if self_computed & read - have:
+            print(f'   ➖ 前端自算(不算斷點):{sorted(self_computed & read - have)}')
+        print(f'   前端讀 {len(read)} 個欄名 / 檔案有 {len(have)} 個 → 對不上的 {len(suspicious)} 個')
+    else:
+        add('❌', 'D', 'macro_risk.json 讀不到,無法做對接檢查')
+
+    # ── D2. 關鍵欄位缺漏 ─────────────────────────────────────────────
+    #   「檔案在 + 能解析 + 不是空的」全過,但**該有的那半沒有** —— A 類看不出來。
+    print('\n── D2. 關鍵欄位缺漏:檔案在,但少了該有的區塊 ────────────')
+    _d2 = 0
+    for fname, keys in EXPECTED_KEYS.items():
+        j = cache.get(fname)
+        if j is None:
+            j, _e = read_json(ref, f'data/{fname}')
+        if not isinstance(j, dict):
+            continue          # 檔案不存在/不是物件 → A 類已經報過,這裡不重複吵
+        for k, what in keys:
+            v = j.get(k)
+            if v is None or (isinstance(v, (dict, list, str)) and len(v) == 0):
+                err = j.get(f'{k}_error')
+                # ⭐ 有寫原因 = 守門刻意擋掉的(陷阱 #22 的正確做法)→ 降級成警告,不是明確錯誤
+                if err:
+                    add('⚠️', 'D2', f'{fname} 少了 `{k}`({what}),但有寫原因:{str(err)[:90]}')
+                else:
+                    add('❌', 'D2', f'{fname} 少了 `{k}`({what}),而且**沒有 {k}_error** '
+                                    f'→ 查不出是「算不出來」還是「根本沒跑到」(同陷阱 #9/#22)')
+                _d2 += 1
+    print(f'   檢查 {sum(len(v) for v in EXPECTED_KEYS.values())} 個關鍵欄位 → 缺 {_d2} 個')
+
+    # ── E. 連動一致性 ────────────────────────────────────────────────
+    print('\n── E. 連動一致性:同一指標在多個檔要一致 ────────────────')
+    checked = 0
+    for name, fa, pa, fb, pb, tol, truth in CROSS_CHECKS:
+        ja, jb = cache.get(fa), cache.get(fb)
+        if not isinstance(jb, dict):
+            jb, _e = read_json(ref, f'data/{fb}')
+        if not isinstance(ja, dict) or not isinstance(jb, dict):
+            continue
+        va, vb = dig(ja, pa), dig(jb, pb)
+        if va is None or vb is None:
+            add('⚠️', 'E', f'{name}:{fa}{list(pa)}={va} / {fb}{list(pb)}={vb} → 有一邊缺值,無法對帳')
+            continue
+        checked += 1
+        try:
+            if abs(float(va) - float(vb)) > float(tol):
+                add('⚠️', 'E', f'{name} 兩處不一致:{fa}={va} vs {fb}={vb}(容差 {tol});以 {truth} 為準')
+        except Exception:
+            add('⚠️', 'E', f'{name}:值不是數字({va} / {vb})')
+    print(f'   對帳 {checked} 組')
+
+    # ── E2. 榜單 vs 原始 K 線:價格與日期要對得上(V72.2.8)──────────
+    #   ⭐ 這抓的是**流程時序**問題,不是數值問題:
+    #      `daily_signal_scan` 排在 deploy job 裡、20 個平行採礦節點合併「之後」才跑。
+    #      萬一哪天順序被動過(或某節點 artifact 沒到齊),榜單就會拿**舊價**去掃 ——
+    #      使用者在選股頁第一眼看到的價格會跟點進去的個股頁**對不起來**,
+    #      而檔案本身完全自洽、A/C/D 四類全都看不出來。
+    #   ⚠️ 只抽前 40 筆(每檔要 `git show` 一次,全掃太慢);對不上就一定要人工看。
+    ts = cache.get('today_signals.json')
+    if ts is None:
+        ts, _e = read_json(ref, 'data/today_signals.json')
+    if isinstance(ts, dict) and isinstance(ts.get('bull'), list) and ts['bull']:
+        n_ok = n_bad = 0
+        for b in ts['bull'][:40]:
+            sym = str(b.get('s') or '')
+            kd, _e = read_json(ref, f'data/{sym}.json')
+            if not isinstance(kd, list) or not kd:
+                add('⚠️', 'E2', f'今日訊號榜有 {sym},但 data/{sym}.json 讀不到 → 點進去會沒資料')
+                n_bad += 1
+                continue
+            last = kd[-1]
+            try:
+                c_k = round(float(last.get('close')), 2)
+                c_s = round(float(b.get('c')), 2)
+            except Exception:
+                add('⚠️', 'E2', f'{sym} 收盤價不是數字(榜單 {b.get("c")} / K線 {last.get("close")})')
+                n_bad += 1
+                continue
+            d_k = str(last.get('date') or '').replace('/', '-')
+            if abs(c_k - c_s) > 0.011:
+                add('❌', 'E2', f'{sym} 榜單價 {c_s} ≠ K線最後一根 {c_k} → 榜單可能是用**舊價**掃的(掃描排在合併之前?)')
+                n_bad += 1
+            elif d_k != str(ts.get('data_date') or ''):
+                add('⚠️', 'E2', f'{sym} K線最後日期 {d_k} ≠ 榜單宣稱的 {ts.get("data_date")}')
+                n_bad += 1
+            else:
+                n_ok += 1
+        print(f'\n── E2. 今日訊號榜 vs 原始 K 線 ─────────────────────────')
+        print(f'   抽驗 {n_ok + n_bad} 筆:對得上 {n_ok} ・對不上 {n_bad}')
+        # ⛔ 截斷要誠實(no silent caps):沒有 bull_total 就代表採礦端還是舊版
+        if ts.get('bull_total') is None:
+            add('⚠️', 'E2', 'today_signals.json 沒有 bull_total/bull_syms → 顯示端算不出「今天總共幾檔/幾筆」,'
+                            '只能拿截斷後的長度充數(採礦端還是 V72.2.7 之前的版本,下輪採礦後會有)')
+        elif ts['bull_total'] > len(ts['bull']):
+            print(f"   ℹ️ 榜單有截斷:{ts['bull_total']} 筆 → 輸出 {len(ts['bull'])} 筆(上限 {ts.get('bull_cap')});"
+                  f"不重複 {ts.get('bull_syms')} 檔 —— 顯示端要用 bull_total/bull_syms 講總數")
+
+    # ── 總結 ─────────────────────────────────────────────────────────
+    print('\n' + '═' * 66)
+    bad = [p for p in problems if p[0] == '❌']
+    warn = [p for p in problems if p[0] == '⚠️']
+    if not problems:
+        print('✅ 全部通過,沒有發現問題')
+        return 0
+    print(f'發現 {len(bad)} 個明確錯誤、{len(warn)} 個警告\n')
+    for lv in ('❌', '⚠️'):
+        for l, cat, msg in problems:
+            if l == lv:
+                print(f'{lv} [{cat}] {msg}')
+    print('\n說明:❌ = 明確壞掉要修;⚠️ = 可能是正常現象(如週更檔、盤前尚未產出),需人工判斷。')
+    return 1 if bad else 0
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--ref', default='origin/gh-pages', help='要體檢哪個 ref(預設 origin/gh-pages)')
+    args = ap.parse_args()
+    sys.exit(audit(args.ref))
+
+
+if __name__ == '__main__':
+    main()

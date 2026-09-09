@@ -1,0 +1,123 @@
+name: 🏦 集保大戶散戶週採礦 (tdcc_sweep)
+
+# V69.6.3 黑科技資料源:TDCC 集保股權分散表開放資料(零金鑰零額度,每週六更新)
+# → 千張大戶比率趨勢 / 散戶人數 / 總發行股數(前端算換手率)。
+# 只更新 data/tdcc_holders.json,不動其它資料;滾動保留 13 週歷史。
+# 沙盒/本機測 403 是 proxy 擋;GitHub Actions 可正常存取(同 TWSE T86 前例)。
+
+on:
+  schedule:
+    - cron: '0 23 * * 5'   # 23:00 UTC 週五 = 台北週六 07:00(TDCC 週六更新後)
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: '歷史回補(FinMind 抓近13週,一次性)yes/no'
+        required: false
+        default: 'no'
+
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  tdcc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70   # 回補模式(backfill=yes)約 30-40 分;純週採礦 <5 分
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: ↩️ 還原舊 tdcc_holders.json(滾動累積歷史)
+        run: |
+          # ⚠️ checkout@v4 只設觸發分支的 fetch refspec → 必須顯式 refspec 才會建 origin/data(V69.6.4 實測修)
+          git fetch origin "+refs/heads/data:refs/remotes/origin/data" 2>/dev/null || true
+          mkdir -p data
+          if git show origin/data:data/tdcc_holders.json > data/tdcc_holders.json 2>/dev/null; then
+            echo "↩️ 已還原舊檔($(du -k data/tdcc_holders.json | cut -f1) KB)"
+          else
+            rm -f data/tdcc_holders.json
+            echo "ℹ️ 無舊檔(首次跑)"
+          fi
+          # 🕳️ V72.5.1 深歷史(104 週,只給探針/回測)—— 一定要先還原,否則每次回補都從頭抓、永遠加不深
+          #   ⚠️ `git show` 失敗時會留下一個 0 byte 檔 → 一定要驗非空再留(同 V49.4 教訓)
+          if git show origin/data:data/tdcc_deep.json > data/tdcc_deep.json 2>/dev/null && [ -s data/tdcc_deep.json ]; then
+            echo "↩️ 已還原深歷史($(du -k data/tdcc_deep.json | cut -f1) KB)"
+          else
+            rm -f data/tdcc_deep.json
+            echo "ℹ️ 無深歷史舊檔(首次跑,會從 FinMind 抓 2 年)"
+          fi
+
+      - name: 🏦 抓 TDCC 股權分散表
+        id: sweep
+        run: |
+          set +e
+          python3 tdcc_sweep.py
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          [ -f data/tdcc_holders.json ] && echo "📦 $(du -k data/tdcc_holders.json | cut -f1) KB" || echo "⚠️ 無產出"
+          exit 0
+
+      - name: 🏦 歷史回補(FinMind,手動勾 backfill=yes 才跑)
+        if: ${{ github.event.inputs.backfill == 'yes' }}
+        timeout-minutes: 50
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          FINMIND_TOKEN:  ${{ secrets.FINMIND_TOKEN }}
+        run: |
+          # -u 不緩衝 → 進度 log 即時可見;腳本內建 40 分軟時限自我收工 + checkpoint
+          python3 -u tdcc_backfill.py || echo "⚠️ 回補非零退出(checkpoint 已補的部分仍保留)"
+
+      - name: 🚀 部署到 gh-pages + data
+        run: |
+          set -e
+          F="data/tdcc_holders.json"
+          if [ ! -f "$F" ]; then echo "❌ 無產出檔,跳過部署"; exit 0; fi
+          if [ "${{ steps.sweep.outputs.rc }}" != "0" ]; then echo "⚠️ 採礦非零退出(自我保護不覆寫)→ 跳過部署"; exit 0; fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p /tmp/tdcc && cp "$F" /tmp/tdcc/
+          # 🕳️ V72.5.1 深歷史只推 data 分支(⛔ 不推 gh-pages):
+          #   ① 前端**不會** fetch 它(前端讀的是 tdcc_holders.json)
+          #   ② 它約 16 MB,gh-pages 有 1 GB 上限(實測已用 388 MB)→ 沒必要佔那個空間
+          [ -s data/tdcc_deep.json ] && cp data/tdcc_deep.json /tmp/tdcc/ && echo "🕳️ 深歷史 $(du -k data/tdcc_deep.json | cut -f1) KB(只推 data 分支)"
+
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdq 2>/dev/null || true
+            # ⚠️ 顯式 refspec:checkout@v4 預設只認觸發分支,普通 fetch 不會建 origin/$BR → checkout 會誤判「無分支」(V69.6.4 實測修)
+            git fetch origin "+refs/heads/$BR:refs/remotes/origin/$BR" 2>/dev/null || true
+            git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
+            mkdir -p data
+            # ⚠️ 深歷史只進 data 分支;PATHS 同時當「要 add / 要 commit」的清單,兩處不可分歧
+            local PATHS="data/tdcc_holders.json"
+            [ "$BR" = "data" ] && [ -s /tmp/tdcc/tdcc_deep.json ] && PATHS="$PATHS data/tdcc_deep.json"
+            stage () {
+              cp /tmp/tdcc/tdcc_holders.json data/tdcc_holders.json
+              [ "$BR" = "data" ] && [ -s /tmp/tdcc/tdcc_deep.json ] && cp /tmp/tdcc/tdcc_deep.json data/tdcc_deep.json
+              git add -f $PATHS
+            }
+            stage
+            if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
+            git commit -q -m "🏦 集保大戶散戶週更 $(date -u '+%Y-%m-%d %H:%M UTC')" -- $PATHS
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              sleep $((i*5)); git fetch origin "+refs/heads/$BR:refs/remotes/origin/$BR" 2>/dev/null || true; git reset --hard -q "origin/$BR" 2>/dev/null || true
+              stage
+              git commit -q -m "🏦 集保大戶散戶週更 $(date -u '+%Y-%m-%d %H:%M UTC')" -- $PATHS 2>/dev/null || true
+            done
+          }
+          deploy_branch gh-pages
+          deploy_branch data
+          echo "✅ 集保週採礦部署完成"
