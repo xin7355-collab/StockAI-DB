@@ -140,7 +140,7 @@ _fm_paid_lock = threading.Lock()
 #   讓付費那把的 6,000 req/hr **一滴都不浪費在別的資料集上**。
 #   舊版 fm_request() 是對「全部」token 輪動 → 每 4 次就有 1 次在吃付費額度。
 FINMIND_FREE_TOKENS: list = []      # 探測後:非付費(免費層)的 token
-_FM_PAID_RATE_MAX = int(os.getenv('FM_PAID_RATE_MAX', '95'))   # 付費單把 6000/hr=100/min,留 5% 安全邊
+_FM_PAID_RATE_MAX = int(os.getenv('FM_PAID_RATE_MAX') or '95')   # 付費單把 6000/hr=100/min,留 5% 安全邊
 _fm_paid_calls: list = []           # 最近一分鐘的呼叫時間戳(節流用)
 
 
@@ -957,6 +957,10 @@ def fetch_market_margin(d: date) -> dict:
     d_iso = d.strftime('%Y-%m-%d')
     roc_y = d.year - 1911
     d_tpex = f"{roc_y}/{d.strftime('%m/%d')}"
+    # 💳 V75.1.3 來源計數(寫進結果的 `_src`,呼叫端存進 margin_cache):
+    #   ⭐ 沒有這幾個數字,「上櫃全 0」會被誤讀成「上櫃本來就沒融資」(實際是 TPEx 對 runner 403 一個月)。
+    _src = {'twse': 0, 'tpex': 0, 'finmind': 0, 'why': ''}
+    _n_before = 0
 
     # 1. 抓取上市 (TWSE MI_MARGN)
     try:
@@ -1068,28 +1072,83 @@ def fetch_market_margin(d: date) -> dict:
         time.sleep(random.uniform(2.0, 4.0))
 
     # 2. 抓取上櫃 (TPEX)
-    try:
-        url_otc = f'https://www.tpex.org.tw/web/stock/margin_trading/margin_balance/margin_bal_result.php?l=zh-tw&o=json&d={d_tpex}'
-        j = http_session.get(url_otc, headers=_rnd_hdrs(), timeout=15).json()
-        for r in (j.get('aaData') or []):
-            sid = str(r[0]).strip()
-            if not _valid_stock(sid):   # 跳過總計列 / 非個股列
-                continue
+    #   🚨 V75.1.3:舊站 `margin_bal_result.php` 對 GitHub runner 早就 403(V73.6.1 實測整站 403),
+    #      上櫃融資券自 2026-08-12 起全 0 卻零錯誤訊息。改成:新站候選(欄位**用名稱定位**,⛔ 不用 r[6]/r[13])
+    #      → 舊站 php 當最後備援;每個候選失敗都印原因 + raw 前 200 字(陷阱 #23:不存在的路徑常回 200 + HTML)。
+    #   ⚠️ 沙箱 proxy 擋 tpex → 這段只能在 GHA 驗;先跑 `scripts/otc_margin_probe.py` 看哪條活著。
+    _src['twse'] = len(res)
+    _n_before = len(res)
+    _ce = d.strftime('%Y/%m/%d')
+    _otc_cands = [
+        f'https://www.tpex.org.tw/www/zh-tw/margin/balance?date={_ce}&response=json',
+        f'https://www.tpex.org.tw/www/zh-tw/margin/balance?date={d_tpex}&response=json',
+        f'https://www.tpex.org.tw/rwd/zh/margin/balance?date={_ce}&response=json',
+        f'https://www.tpex.org.tw/web/stock/margin_trading/margin_balance/margin_bal_result.php?l=zh-tw&o=json&d={d_tpex}',
+    ]
+    _otc_why = []
+    for url_otc in _otc_cands:
+        _tag = url_otc.split('tpex.org.tw')[-1][:44]
+        try:
+            r_otc = http_session.get(url_otc, headers=_rnd_hdrs(), timeout=15)
+            if r_otc.status_code != 200:
+                _otc_why.append(f"{_tag}→HTTP {r_otc.status_code}"); continue
             try:
-                res[sid] = {
-                    'margin_balance': int(str(r[6]).replace(',','')), # 融資現在餘額
-                    'short_balance': int(str(r[13]).replace(',',''))  # 融券現在餘額
-                }
-            except: pass
-    except Exception as e: print(f"  ⚠️ 上櫃融資券失敗: {e}")
+                j = r_otc.json()
+            except Exception:
+                _otc_why.append(f"{_tag}→非 JSON {str(r_otc.text or '')[:200].strip()!r}"); continue
+            # 新站是 {tables:[{fields,data}]};舊站是 {aaData:[...]} —— 兩種都吃,欄位用名稱找,找不到才退回舊位置
+            rows_otc, fields_otc = [], []
+            if isinstance(j, dict) and j.get('tables'):
+                for t in j.get('tables') or []:
+                    if (t.get('data') or []):
+                        rows_otc, fields_otc = (t.get('data') or []), (t.get('fields') or []); break
+            elif isinstance(j, dict):
+                rows_otc, fields_otc = (j.get('aaData') or j.get('data') or []), (j.get('fields') or [])
+            if not rows_otc:
+                _otc_why.append(f"{_tag}→200 但無資料列 stat={j.get('stat') if isinstance(j, dict) else '?'} raw={str(j)[:200]!r}"); continue
+            def _col(keys, default):
+                for i, f in enumerate(fields_otc):
+                    f = str(f or '')
+                    if all(k in f for k in keys) and '買進' not in f and '賣出' not in f and '償還' not in f and '前日' not in f and '限額' not in f:
+                        return i
+                return default
+            i_mb = _col(['融資', '餘額'], 6); i_sb = _col(['融券', '餘額'], 13)
+            n_ok = 0
+            for r in rows_otc:
+                sid = str(r[0]).strip()
+                if not _valid_stock(sid):   # 跳過總計列 / 非個股列
+                    continue
+                try:
+                    res[sid] = {
+                        'margin_balance': int(str(r[i_mb]).replace(',', '') or 0),
+                        'short_balance':  int(str(r[i_sb]).replace(',', '') or 0),
+                    }
+                    n_ok += 1
+                except Exception:
+                    pass
+            if n_ok:
+                print(f"  [TPEx 融資券] {_tag} 命中 {n_ok} 檔(欄位 融資={i_mb} 融券={i_sb})")
+                break
+            _otc_why.append(f"{_tag}→{len(rows_otc)} 列但一檔都解不出(fields={fields_otc[:8]})")
+        except Exception as e:
+            _otc_why.append(f"{_tag}→EXC {str(e)[:120]}")
+    _src['tpex'] = len(res) - _n_before
+    if _src['tpex'] < 200:
+        print(f"  ⚠️ 上櫃融資券只拿到 {_src['tpex']} 檔(正常約 800):" + ' | '.join(_otc_why)[:600])
     time.sleep(random.uniform(3.0, 5.0))
 
     # 3. FinMind 備援：兩種情況啟動 —(a) TWSE/TPEX 整批失敗;(b) 有資料但融券全 0(TWSE 欄位抓錯)
     #    後者是融券長期全 0 的根因:TWSE 給了融資卻漏融券,改由 FinMind 整批覆蓋補回融券
     _short_all_zero = bool(res) and all((v.get('short_balance', 0) == 0) for v in res.values())
-    if (not res or _short_all_zero) and not _FINMIND_BLOCKED:
-        reason = "TWSE+TPEX 兩條都失敗" if not res else f"融券全 0({len(res)} 檔,疑 TWSE 欄位抓錯)"
-        print(f"  ⚠️ [融資券] {reason}，啟動 FinMind TaiwanStockMarginPurchaseShortSale 備援…")
+    # 🚨 V75.1.3 第三種觸發:**上櫃太少**(< 200 檔;正常約 800)。⛔ 以前只看「全部失敗」或「融券全 0」
+    #    → TWSE 上市成功時永遠不會為上櫃補 → 上櫃全 0 一個月零錯誤訊息。判準看「夠不夠」不看「有沒有」(陷阱 #10)。
+    _otc_short = _src['tpex'] < 200
+    print(f"  [融資券來源] twse={_src['twse']} tpex={_src['tpex']} ・_FINMIND_BLOCKED={_FINMIND_BLOCKED} ・tokens={len(FINMIND_TOKENS)} 把")
+    if (not res or _short_all_zero or _otc_short) and not _FINMIND_BLOCKED:
+        reason = "TWSE+TPEX 兩條都失敗" if not res else (f"融券全 0({len(res)} 檔,疑 TWSE 欄位抓錯)" if _short_all_zero else f"上櫃只有 {_src['tpex']} 檔(TPEx 對 runner 403?)")
+        _src['why'] = reason
+        _fill_only = bool(res) and not _short_all_zero   # ⛔ 只補「還沒有」的,不覆蓋 TWSE/TPEx 已抓到的
+        print(f"  ⚠️ [融資券] {reason}，啟動 FinMind TaiwanStockMarginPurchaseShortSale 備援…(只補缺的={_fill_only})")
         try:
             url_fm = (
                 f'https://api.finmindtrade.com/api/v4/data'
@@ -1102,6 +1161,8 @@ def fetch_market_margin(d: date) -> dict:
                 sid = str(row.get('stock_id') or '').strip()
                 if not _valid_stock(sid):
                     continue
+                if _fill_only and sid in res:
+                    continue
                 try:
                     res[sid] = {
                         'margin_balance': int(row.get('MarginPurchaseTodayBalance') or 0),
@@ -1110,7 +1171,8 @@ def fetch_market_margin(d: date) -> dict:
                     cnt += 1
                 except Exception:
                     pass
-            print(f"  [FinMind 融資券] 命中 {cnt} 檔")
+            _src['finmind'] = cnt
+            print(f"  [FinMind 融資券] 命中 {cnt} 檔(只補缺的={_fill_only})")
         except Exception as e:
             print(f"  ⚠️ [FinMind 融資券] 備援失敗：{e}")
 
@@ -1145,6 +1207,7 @@ def fetch_market_margin(d: date) -> dict:
         except Exception as e:
             print(f"  ⚠️ [yfinance 融券] 備援失敗:{e}")
 
+    fetch_market_margin.last_src = _src   # 💳 V75.1.3 來源計數(⛔ 不塞進 res —— 下游把 res 的鍵當股號迭代)
     return res
 
 
@@ -2570,6 +2633,12 @@ def run():
                 if marg:
                     margin_cache[dd] = marg
                     print(f"  融券 {dd}: {len(marg)} 筆")
+                # 💳 V75.1.3 來源計數寫進快取(`_src` 底線鍵,下游 `sym not in by_sym` 天然跳過):
+                #   ⛔ 不寫的話「上櫃全 0」永遠分不出是「沒融資」還是「TPEx 被擋」
+                try:
+                    margin_cache.setdefault('_src', {})[dd] = dict(getattr(fetch_market_margin, 'last_src', {}) or {})
+                except Exception:
+                    pass
             except Exception as e:
                 print(f"  ⚠️ fetch_market_margin({dd}) 例外，跳過：{e}")
             time.sleep(0.8)

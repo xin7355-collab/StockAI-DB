@@ -40,8 +40,8 @@ API = 'https://api.finmindtrade.com/api/v4/data'
 DATA_DIR = Path(os.getenv('DATA_DIR', 'data'))
 # ⚠️ ⛔ 不可用 `.strip()` —— 金鑰中間常夾一個空白(V73.2.7 實測 4 把有 3 把中招)
 TOKENS = [''.join(t.split()) for t in (os.getenv('FINMIND_TOKENS') or '').split(',') if t.strip()]
-LIMIT = int(os.getenv('LIMIT', '99999'))
-MAX_MIN = int(os.getenv('MAX_MIN', '300'))         # 時間預算(GitHub job 上限 6 小時)
+LIMIT = int(os.getenv('LIMIT') or '99999')   # V75.1.3 空字串守門
+MAX_MIN = int(os.getenv('MAX_MIN') or '300')         # 時間預算(GitHub job 上限 6 小時)
 SLEEP = float(os.getenv('SLEEP', '0.12'))
 # ⭐ 補到「已經有 K 線的那些日子」即可 —— K 線本身只有 2~3 年,補更早也沒有價格可以配對
 MIN_FILL_RATIO = float(os.getenv('MIN_FILL_RATIO', '0.80'))   # 已補到這個比例就跳過

@@ -35,7 +35,7 @@ TICKERS = {
     'tsm': 'TSM', 'vix': '^VIX', 'nk': '^N225', 'ks': '^KS11', 'hs': '^HSI',
     'twd': 'TWD=X',
 }
-YEARS = os.getenv('PREMKT_YEARS', '5y')
+YEARS = (os.getenv('PREMKT_YEARS') or '5y')
 
 
 def load_twii():

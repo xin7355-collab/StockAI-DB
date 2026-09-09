@@ -582,6 +582,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
    + **`python3 scripts/check_workflow_paths.py`**(採礦產物有沒有真的被 artifact 上傳 — V71.4.7 新增,見下方陷阱 #11)
    + **`python3 scripts/check_undefined_py.py`**(用到不存在的名字 = 潛在 NameError — V72.3.0 新增)
    + **`python3 scripts/check_dup_def.py`**(同一個檔案裡重複定義同名函式 → Python 用最後那個,前面等於死碼 — V74.6.9 新增,實跑踩到才寫的)
+   + **`python3 scripts/check_env_default.py`**(🔧 workflow 從 `inputs.*` 餵的環境變數,Python 端必須 `or 預設` —— 排程觸發時是**空字串**不是不存在;V75.1.3 新增,pe_band 四個週日零產出就是這個坑,V74.7.0 intraday_probe 是第一次)
    + **`python3 scripts/test_no_token_leak.py`**(🔐 金鑰片段不可印進公開的 Actions log — V74.0.5 新增,見下方)
      ⭐ 它有 `--selftest`;實測 43 支只報 **1 筆而且是真的**(`miner.py` 寫 `datetime.now(TW)`,
      而 `TW` **從來沒定義過** —— 那條 `or` 分支目前沒被走到,是顆未爆彈,一走到就被
@@ -9020,6 +9021,18 @@ V74.2.3 加了頁首 `#chipLead`(大字結論 + 評分 + 一句操作 + 其他�
 #### 🐛 盤點時順手抓到的兩個真 bug(C2 / C4 修)
 - 🚨 **`pe_band.yml` 四個週日都跑、都綠燈、零產出**:`pe_band_miner.py:41` `int(os.getenv('LIMIT','99999'))` 在排程觸發時 `inputs.limit` 是**空字串** → `int('')` 炸;workflow `set +e … exit 0` 把 rc 吞掉 → 部署 skipped、`pe_band.json` 停在 08-14。⭐ 跟 V74.7.0 `intraday_probe` 的 `os.environ.get` 空字串坑**一模一樣** → 新增 `scripts/check_env_default.py`(納入四驗證第 2 項):只掃 workflow 從 `inputs.*` 餵、且沒有 `||` 後備的變數(全掃 81 處九成是寫死的值,誤報會讓人養成無視守門的習慣)→ 實測抓到 6 處真的中。
 - 🚨 **`miner.py` 股利「近 4 筆」被當「近 4 季」**:半年配的中美晶被算成 2 年(12.8 / 配息率 174%)→ X 光機誤標「吃老本」。⭐ 通用:**近 N 筆 ≠ 近 N 季**,配息頻率不同的公司會差 2~4 倍。
+
+### 💳 V75.1.3 上櫃融資券全 0 一個月 —— 真因是「備援永遠不會被叫到」,不是 FinMind 壞掉
+`data/5483.json` 的 `margin_balance` 自 2026-08-12 起全 0。`fetch_market_margin` 的 FinMind 備援只在
+「TWSE+TPEx **全部**失敗」或「融券全 0」才啟動 → **TWSE 上市成功時永遠不會為上櫃補**,
+而 TPEx 舊站 `margin_bal_result.php` 對 runner 早就 403(V73.6.1)→ 上櫃 800 多檔無聲歸零(連「擋掉」都不是,是「沒接上」)。
+修法(`test_margin_otc.py` 12 條,2 種注入驗過):① 第三種觸發「**上櫃 < 200 檔**」(陷阱 #10:看夠不夠不看有沒有)
+② FinMind **只補缺的**(`_fill_only`,⛔ 不覆蓋 TWSE/TPEx 已抓到的)③ TPEx 新站候選(欄位**名稱定位**,失敗印 raw 前 200 字)
+④ 來源計數 `fetch_market_margin.last_src` → 呼叫端寫進 `margin_cache['_src'][日期]`(⛔ 不塞進 res —— 下游把 res 的鍵當股號迭代)
++ log 印 `_FINMIND_BLOCKED`(第二嫌疑:跑到融資段時 key 已被法人段耗盡)。
+⚠️ 沙箱 proxy 擋 tpex → 新站端點只能在 GHA 驗:`finmind_gap_probe.yml` → which=`otcmargin` 跑 `scripts/otc_margin_probe.py`
+(⭐ 內建對照組 TWSE MI_MARGN + 本站在用的 st41;對照組也掛 = 機器被擋,⛔ 不可解讀成端點改名)。
+⏭️ 修好後 20 天內的 0 會被 daily_miner「`margin_balance==0` 才覆蓋」自動補回;08/12 起超過 20 天的要手動 dispatch `inst_backfill`。
 
 ### ⏳ V75.1.1 出場「寬限期」(GRACE)階段 1 —— ⛔ 不是通用設計,don10w 的 +708 萬是巧合
 承 V74.4.8:don10w(進場 10 天後才看唐奇安 10 日)+708 萬全表最高,但那是寫錯造成的意外。
