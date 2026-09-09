@@ -1397,7 +1397,60 @@ def build_stock_names(industry_map: dict) -> int:
         names[sym] = [nm, (industry_map or {}).get(sym, '')]
     src['official'] = len(names)
 
-    # ② ETF 保底:etf_tracking.json 本來就有 name 欄(⛔ 只補官方表沒有的,不覆蓋)
+    # ② ⭐ 每日收盤行情 —— **ETF 名字的正解**(免金鑰、官方、含 ETF)
+    #   探針實測(2026-09-09,scripts/stockname_probe.py):
+    #     官方公司表 1,984 檔 / ETF **0 檔**  ⛔ 六檔試金石漏掉 0050・009816・00981A
+    #     ⭐ 每日收盤 12,402 檔 / ETF 359 檔 ・**六檔試金石全中**
+    #        0050 元大台灣50 ・009816 凱基台灣TOP50 ・00981A 主動統一台股增長
+    #   ⚠️ 那 12,402 檔**含權證**(TPEx 那份 4.2MB)→ 一定要過濾。
+    #   🚨 ⛔ 不可用「代號格式」過濾:主動式 ETF `00981A`(5 數字 + 1 英文)跟權證
+    #      `03013T` **格式一模一樣**,規則分不開。
+    #   ⭐ 正解沿用 CLAUDE.md 既有做法:**拿代號問 `data/{code}.json` 存不存在**
+    #      —— 有 K 線就是有效標的,自動涵蓋 ETF/槓桿反向/主動式,零維護。
+    #      代價:今天剛上市、data/ 還沒有的會漏掉一輪(可接受,FinMind 那層還在)。
+    _known = set()
+    try:
+        _known = {f.stem for f in Path('data').glob('*.json')}
+    except Exception:
+        pass
+    n_quote, n_skip = 0, 0
+    if _known:
+        for _url, _lbl, _ck, _nk in [
+            ('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL', 'TWSE 收盤', 'Code', 'Name'),
+            ('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes', 'TPEx 收盤',
+             'SecuritiesCompanyCode', 'CompanyName'),
+        ]:
+            try:
+                _r = http_session.get(_url, headers=_rnd_hdrs(), timeout=30)
+                if _r.status_code != 200:
+                    print(f"  ⚠️ {_lbl} HTTP {_r.status_code} → 這輪沒有它的名字")
+                    continue
+                _rows = _r.json()
+                if not isinstance(_rows, list) or not _rows:
+                    print(f"  ⚠️ {_lbl} 回應非預期 list(type={type(_rows).__name__})")
+                    continue
+                _add = 0
+                for _row in _rows:
+                    _sy = str(_row.get(_ck) or '').strip()
+                    _nm = str(_row.get(_nk) or '').strip()
+                    if not _sy or len(_nm) < 2:
+                        continue
+                    if _sy not in _known:      # 🚧 權證/沒在追的標的一律不收
+                        n_skip += 1
+                        continue
+                    if _sy not in names:       # ⛔ 官方公司表為準,不覆蓋
+                        names[_sy] = [_nm, (industry_map or {}).get(_sy, '')]
+                        _add += 1
+                print(f"  📇 {_lbl}:回 {len(_rows)} 列 → 新增 {_add} 檔")
+                n_quote += _add
+            except Exception as e:
+                print(f"  ⚠️ {_lbl} 失敗:{type(e).__name__}: {e}")
+    else:
+        print("  ⚠️ data/ 讀不到任何 *.json → 跳過收盤行情那層(⛔ 沒有白名單就不敢收,會混進權證)")
+    src['daily_quote'] = n_quote
+    src['skipped_not_in_data'] = n_skip
+
+    # ③ ETF 保底:etf_tracking.json 本來就有 name 欄(⛔ 只補前面沒有的,不覆蓋)
     n_etf = 0
     try:
         _p = Path('data', 'etf_tracking.json')
@@ -1414,7 +1467,7 @@ def build_stock_names(industry_map: dict) -> int:
         print(f"  ⚠️ ETF 名字保底讀取失敗:{type(e).__name__}: {e}")
     src['etf_tracking'] = n_etf
 
-    # ③ 合併舊檔:這輪某個來源掛掉時,舊的名字要留著(⛔ 不可讓它整份消失)
+    # ④ 合併舊檔:這輪某個來源掛掉時,舊的名字要留著(⛔ 不可讓它整份消失)
     out_path = Path('data', 'stock_names.json')
     n_old = 0
     try:
@@ -1442,15 +1495,17 @@ def build_stock_names(industry_map: dict) -> int:
         'n': len(names),
         'n_etf': n_etf_total,
         'src': src,
-        'caveat': '官方公司基本資料沒有 ETF;ETF 名字目前只有 etf_tracking 那幾檔,其餘待補',
+        'caveat': '一般股來自官方公司基本資料(零額外 API);ETF 來自每日收盤行情,並用 data/*.json 當白名單濾掉權證 —— 今天剛上市、data/ 還沒有的會漏一輪',
         'names': names,
     }
     out_path.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     print(f"  💾 股名離線表 → data/stock_names.json({len(names)} 檔,其中 00 開頭 {n_etf_total} 檔)")
     print(f"     來源分佈:{src}")
+    # 🚧 ETF 覆蓋率守門:探針實測 data/ 裡 ETF 約 361 檔,收盤行情那層應該補得到 300+。
+    #    掉到 100 以下 = 收盤行情那兩支掛了 → ⛔ 不可靜默(前端那些 ETF 會全部顯示代號)。
     if n_etf_total < 100:
         print(f"  ⚠️ ETF 只有 {n_etf_total} 檔(data/ 裡約 361 檔)→ 前端那些 ETF 仍會顯示代號。"
-              f"跑 finmind_gap_probe.yml → which=stockname 定案來源後補上。")
+              f"多半是每日收盤行情那兩支沒抓到,看上面的 HTTP 狀態。")
     return len(names)
 
 
