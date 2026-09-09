@@ -8998,6 +8998,82 @@ V74.2.3 加了頁首 `#chipLead`(大字結論 + 評分 + 一句操作 + 其他�
 - 📌 **`scripts/test_kchip_audit.mjs` 有 5 條紅是既有的**(V74.4.8 之前就在,已用 git stash 對照確認)
   —— 籌碼頁「方向分歧」那幾條斷言,⛔ 不是這三版造成的。⏭️ 待查。
 
+### 🏷️ V75.1.4 個股中文名全部變成代號 —— 名字**只有一個來源**,而那支 URL 連金鑰都沒帶
+使用者截圖:庫存頁四檔(009816 / 5483 / 0050 / 2327)名字全部只顯示代號,
+而且**大字與小字印的是同一個代號**。⭐ 連 0050 都沒名字 → 那證明**整份清單是空的**,⛔ 不是個別查不到。
+
+#### 🚨 根因鏈(逐行查證)
+| # | 位置 | 事實 |
+|---|---|---|
+| ① | `index.html:3585` | `allStockList` 是全 App **唯一**股名來源,初始 `[]` |
+| ② | `index.html:11549` | `fetchStockList` 打 FinMind `TaiwanStockInfo`,🚨 **URL 沒帶 `token=`** |
+| ③ | `index.html:10630` | safeFetch 的輪動注入條件是 `if (isFinMind && /[?&]token=/.test(url))` → **輪動器不會幫它補**,那支請求**永遠匿名發出** |
+| ④ | `index.html:11564-11569` | API 非 success **且** cache 空 → 兩個 `else if` 都不成立 → **函式靜默結束**(無 toast / 無 console / 無 throw) |
+| ⑤ | `index.html:9311-9319` | `getStockName` 查不到 → **回傳代號本身** → 名字列與代號列各印一次 |
+
+🚨🚨 **比名字不見嚴重、而使用者還沒發現的**:`_filterStockList`(`index.html:9325`)開頭就
+`if (!this.allStockList.length) return []` → **新增庫存/自選的搜尋、全域搜尋全部打不出東西**,零錯誤訊息。
+連帶還有:新增庫存的代號正規化、產業/同業比較(`industry_category` 那 5 個讀取點)。
+
+#### ⛔ `_nmOnly` 解不了這個情境(⭐ 這條最容易再犯)
+`_nmOnly` / `_nmPair`(`index.html:6938`)**早就寫好**,註解還寫著「股名顯示的**唯一入口**…已踩三次」——
+⛔ 但它只被 ETF 那段用到,而且 **`_nmOnly` 拿不到名字時照樣回代號**
+→ 對「**名字一列、代號一列**」的**兩層**版面(庫存/自選)**單純換函式沒有用**,兩列還是各印一次。
+⭐ 正解是新增 **`_nmDual(code)`**:拿不到 → `{n: 代號, sub: ''}`(副標留空)。
+⚠️ 一次接完**六處**:庫存 4(⭐ 其中 AI 股神那處是**掃描時才發現的**,原本以為只有 3 處)+ 自選 2。
+
+#### ⭐ 修法:名字改「三層」,⛔ 不再只靠 FinMind
+`離線表 data/stock_names.json`(gh-pages,**免金鑰**)→ `FinMind`(🚨 **這次補上 token**)→ `舊 cache`。
+⛔ 順序不可對調 —— 離線表是唯一不受 FinMind 額度與匿名層影響的一條。
+🚧 離線表 **<500 檔不採用**(半份表會讓「查不到」看起來像「這檔不存在」)。
+🚨 三層全落空 **⛔ 不可再靜默** → `_nameWarnHtml()` 在庫存/自選頁最上面直接說
+「名稱沒載入、**搜尋會打不出東西**、這不是你的資料壞掉」+ 一鍵重試(`retryStockNames`)。
+⛔ **空庫存/空自選那條路也要顯示** —— 那正是要新增持股、而搜尋是壞的時候;⛔ 正常時整條不顯示。
+
+#### 🏭 採礦端:一般股那半是**零額外 API**
+`miner.fetch_industry_map`(`miner.py:1300`)每天都在打官方公司基本資料 `t187ap03_L/O`,
+而**同一份回應、同一列**就有「公司簡稱」→ 順手收進 `_COMPANY_NAME`(跟 `_COMPANY_GEO` 同一個模式)。
+`build_stock_names()` → `data/stock_names.json`,四個守門:**<1500 檔不覆寫 / 合併舊檔 /
+分來源統計 / ETF 太少要主動示警**;⛔ 獨立 try(它失敗不可拖累 industry_map,V72.2.1 的教訓)。
+⚠️ 取名字的條件刻意跟產業別**分開** —— 有些列有名字但沒產業別,綁一起會一起漏掉。
+
+#### ⚠️ ETF 那半是真缺口(⛔ 不是補丁)
+| | 檔數 |
+|---|---|
+| `data/` 總檔數 | **2,718** |
+| 其中 `00` 開頭(ETF) | **361 = 13.3%** |
+| 🚨 官方公司基本資料涵蓋 ETF | **0 檔** |
+| `etf_tracking.json` 有名字的 | **45 檔**(含 0050)→ ⛔ 仍缺約 316 |
+→ `scripts/stockname_probe.py`(`finmind_gap_probe.yml` → which=`stockname`)一次試完
+官方公司表(⭐ **兼對照組**)/ `mis.twse all_etf.txt` / 每日收盤行情 /
+**FinMind 匿名 vs 帶 token 分開測**(要證實根因就是匿名層被擋)。
+⛔ 沙箱連不到那些站 → **定案前不寫死任何 ETF 端點**。
+
+🚨 **順帶查到 `all_etf.txt` 自己就壞了**:`etf_tracking.json` 的 `_premium_status` 是
+「命中0檔;arr長=24;**首筆keys=['msgArray','refURL',…]**」→ 回應**多包了一層**
+(`etf_miner.py:597-603` 的 `arr` 抓到外層而不是資料列)→ **ETF 折溢價/淨值目前全空且零錯誤訊息**。
+⭐ MIS 的 `msgArray` 標準欄位含 `n`(簡稱)→ 若真是這樣,**修好折溢價的同時就拿到 ETF 名字**。
+
+#### 🚨 這一輪自己踩到的三個(⛔ 都會安靜地誤導)
+① 🚨🚨 **剝註解的 regex `\/\/[^\n]*` 會誤傷 URL** —— `https://api.finmindtrade.com` 的 `//`
+   也被當成註解起點,**整個網址被剝掉** → 「有沒有帶 token」那條斷言拿到 -1,
+   **看起來像程式沒改到**。⭐ 改用 lookbehind 排除 `:`。
+   ⭐⭐ 通用:**任何原始碼掃描在剝註解之後,都要先確認「該在的關鍵字還在不在」**。
+② **取樣守門只驗長度是不夠的** —— 取樣壞掉時長度照樣夠,而斷言會給出「順序錯了」這種
+   **誤導的失敗訊息**。⭐ 守門要驗「**關鍵字都在**」。
+③ ⭐ **我對部署佈線的分析是錯的,是守門抓到的**:我以為 `stock_names.json` 在 deploy job 產出、
+   `git add -f data/` 會整包收 → 實際上它跟 `industry_map` **同一個採礦 job**,必須進 artifact 清單。
+   ⛔ `data/etf_tracking.json` 那筆是**誤報**(`check_workflow_paths` 掃 `Path('data','x.json')`
+   的所有出現、**分不出讀寫**,而我只是讀它)→ 已在白名單註明原因。
+   ⭐ 通用:**「這個產物走哪條路上 gh-pages」不要憑印象,讓守門說**。
+
+⏭️ **驗證(⛔ 一律驗產物不看綠燈)**:
+```bash
+git show origin/gh-pages:data/stock_names.json | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['n'],'檔 ・ETF',d['n_etf'],'・',d['src']);print({k:d['names'].get(k) for k in ['0050','009816','5483','2327']})"
+```
+測試 `scripts/test_stockname.mjs` 15 條(**5 種注入驗過**,注入「`_nmDual` 的 sub 改回代號」時
+輸出**直接重現使用者截圖的「009816 009816」**)+ `scripts/test_stocknames.py` 16 條(4 種注入驗過)。
+
 ### 📄 V75.1.1 個股「📄 報告」分頁 —— 使用者拿別家 AI 產的產業報告問「散戶救星做得到嗎」
 使用者給了一份 AI 產的中美晶 5483 產業報告(目標價 250–280),問 ① 做得到嗎 ② 那份準不準。
 **逐筆對真實 gh-pages 資料的結論**(⛔ 別再對一次):
