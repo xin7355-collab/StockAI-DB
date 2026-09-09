@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       which:
-        description: '跑哪一支:both / gap / margin / pe / split / warrant / fund / otc(櫃買指數歷史) / otcmargin(上櫃融資券端點)'
+        description: '跑哪一支:both / gap / margin / pe / split / warrant / fund / otc(櫃買指數歷史) / otcmargin(上櫃融資券端點) / stockname(股名來源·含ETF)'
         required: false
         default: 'both'
 
@@ -90,3 +90,14 @@ jobs:
           #    這支探針不讀任何 data/*.json(跟 pe / split 那兩支不同)。
           pip install -q requests urllib3
           python3 scripts/otc_margin_probe.py
+
+      - name: 🏷️ 股名來源探針(哪個來源給得到 ETF 中文名)
+        if: ${{ github.event.inputs.which == 'stockname' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: |
+          # 🚨 同上,`pip install` ⛔ 不可省 —— stockname_probe.py 直接 `import requests`。
+          # ⭐ 但它 ⛔ **不** import miner(刻意的:這支只打 HTTP、不需要 miner 的 Session/重試),
+          #    所以不必裝 urllib3、也不必還原 data 分支。
+          pip install -q requests
+          python3 scripts/stockname_probe.py

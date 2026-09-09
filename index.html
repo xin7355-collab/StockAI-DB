@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.1.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.1.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.1.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.1.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -6941,6 +6941,46 @@ ${list}
         return n === code ? `<span>${code}</span>`
                           : `<span>${n}</span> <span class="${codeCls || 'text-gray-600 font-mono'}">${code}</span>`;
     },
+    /** 🏷️ V75.1.5 —— 給「**名字一列、代號一列**」那種**兩層**版面用的唯一入口(庫存頁 / 自選頁)。
+     *  🚨 `_nmOnly` 解不了這個情境:它拿不到名字時**照樣回代號**,所以兩層會各印一次
+     *     → 使用者截圖看到的「009816 / 009816」正是這樣來的。
+     *  回 `{n, sub}`:拿得到 → `{n:'台積電', sub:'2330'}`;拿不到 → `{n:'2330', sub:''}`。
+     *  ⛔ 版面結構不動(只是副標那列空著),⛔ 不可讓兩列都印代號。
+     *  ⚠️ 副標空著時使用者不知道為什麼 → 由 `_nameWarnHtml()` 在頁面上方誠實說明(⛔ 不可省)。 */
+    _nmDual(code) {
+        const n = this._nmOnly(code);
+        return n === code ? { n: code, sub: '' } : { n, sub: code };
+    },
+    /** 🚨 V75.1.5 股名清單載不進來時的**誠實揭露**(⛔ 不可靜默 —— 陷阱 #22)。
+     *  真正嚴重的不是「名字變代號」,是**搜尋一起失效**(`_filterStockList` 清單空就回 []),
+     *  而使用者只會覺得「App 壞了」。→ 一定要說出來 + 給一鍵重試。
+     *  ⛔ 正常時整條不顯示(天天掛著會讓人養成忽略的習慣)。 */
+    _nameWarnHtml() {
+        if (this._nameSrc && this._nameSrc !== 'fail') return '';
+        if (this.allStockList && this.allStockList.length) return '';
+        return `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
+            <div class="text-[11px] font-bold text-yellow-300 mb-1">⚠️ 股票名稱清單沒有載入成功</div>
+            <div class="text-[10px] text-gray-300 leading-relaxed">
+                名字暫時顯示代號,<b class="text-yellow-300">而且搜尋股票會打不出東西</b> —— 這不是你的資料壞掉,
+                庫存的成本與損益都還在。多半是網路或名稱來源暫時不通。
+            </div>
+            <button onclick="app.retryStockNames()" class="mt-2 px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-white text-[11px] font-black rounded">🔄 重新載入名稱</button>
+        </div>`;
+    },
+    /** 🔄 手動重抓股名(清掉可能已損毀的快取再走一次多層)。 */
+    async retryStockNames() {
+        try { localStorage.removeItem('proTerm_stockList'); localStorage.removeItem('proTerm_stockList_at'); } catch (_) {}
+        this._nameSrc = null;
+        this.showToast?.('🔄 重新載入股票名稱…');
+        await this.fetchStockList();
+        if (this.allStockList.length) {
+            this.showToast?.(`✅ 已載入 ${this.allStockList.length} 檔名稱`);
+        } else {
+            this.showToast?.('⚠️ 還是載不到 —— 換個網路或稍後再試');
+        }
+        try { this.renderInventory?.(); } catch (_) {}
+        try { this.renderFavList?.(); } catch (_) {}
+    },
     ETF_PIN: ['00981A', '00403A', '00998A', '00992A'],
     _etfPinHtml(d) {
         if (!d || !Array.isArray(d.concentration)) return `<div class="text-[11px] text-gray-500 px-1 py-3">⏳ ETF 資料還沒載入。</div>`;
@@ -7970,8 +8010,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.1.3',
+    _APP_VERSION: 'V75.1.4',
     _CHANGELOG: [
+        { v: 'V75.1.4', dt: '2026-09-09', d: ['🏷️ <b>修好「個股中文名稱不見了」</b>(你截圖的庫存頁四檔只顯示代號)。真因:股名<b>整個 App 只靠一個來源</b> —— 前端去跟 FinMind 要,而那支網址<b>連金鑰都沒帶</b>,對方擋掉匿名查詢之後名字就整份消失了,而且<b>完全沒有任何訊息</b>。','🚨 <b>比名字不見更嚴重、你可能還沒發現的</b>:名字清單一空,<b>新增庫存/自選的搜尋、還有上方的全域搜尋,通通打不出東西</b>(程式碼裡是「清單空就直接回空」)。這次一起修好。','⭐ <b>改成三層來源</b>:① 每天採礦時產一份<b>離線名字表</b>放在雲端(免金鑰,不受對方額度影響)② FinMind(<b>這次補上金鑰</b>)③ 舊快取。三層都拿不到時 <b>不再默默不講</b> —— 會直接在庫存/自選頁最上面說「名稱沒載入成功、搜尋會打不出東西、這不是你的資料壞掉」,並給一顆「🔄 重新載入名稱」。','🐛 順手修掉<b>代號印兩次</b>(009816 / 009816):名字拿不到時,下面那行代號現在會留空,⛔ 不再重複。庫存頁 4 處 + 自選頁 2 處一次接完。','⚠️ <b>ETF 的名字要再等一輪</b>:官方公司基本資料<b>一檔 ETF 都沒有</b>(而你的 009816、0050 都是 ETF),目前只先從既有的 ETF 追蹤檔補到約 45 檔(含 0050)。其餘約 316 檔要等探針確認來源後補上。'] },
         { v: 'V75.1.3', dt: '2026-09-09', d: ['🐛 <b>上櫃股的融資餘額從 8/12 起全部是 0</b>(報告頁看到「融資餘額本站停在 08/11」就是它)—— 真因不是資料源壞掉,是採礦端的備援<b>永遠不會被叫到</b>:上市那條抓成功,就不會為上櫃補。現在「上櫃拿到的檔數不夠」也會啟動備援,而且只補缺的、不覆蓋已抓到的。<b>要等下一輪採礦跑完才看得到</b>;8/12 之前那段還要另外回補。','🐛 <b>「本益比位階」一個月沒更新</b>(停在 08/14):排程觸發時一個參數是空字串,採礦第一行就炸,而 workflow 把錯誤吞掉 → 四個週日都顯示綠燈、零產出。已修,並加一支守門擋同型寫法。','📐 本益比位階改成<b>每個交易日</b>更新(報告分頁的估值位階要用今天的)。'] },
         { v: 'V75.1.2', dt: '2026-09-09', d: ['🐛 <b>「近一年配息」算錯了</b>:採礦端原本拿「近 4 <b>筆</b>」當「近 4 季」—— 季配的公司剛好是一年,但<b>半年配</b>的(例:中美晶)會被算成兩年(12.8 元 / 配息率 174% → X 光機誤標「吃老本」),年配的算成四年。現在改成「除息日落在近 365 天內」的合計(中美晶 = 1.0 + 2.5 = 3.5,對得上官方殖利率 1.94%)。<b>要等下一輪夜間採礦(台北 02:00)跑完才會換新數字</b>。','📊 報告分頁多三個資料:<b>最新月營收(億)、累計年增、近 12 個月營收長條</b> —— 夜間採礦順手多存(零額外 API);X 光機月營收圖抓不到 FinMind 時也改用它當備援。','🔍 每一檔多記「財報/月營收/股利各抓到幾列」,以後看得出「為什麼這檔的基本面比籌碼檔舊」。'] },
         { v: 'V75.1.1', dt: '2026-09-09', d: ['📄 <b>個股頁多一個「📄 報告」分頁</b>:一頁看完 數字卡 → 現在該做什麼 → 歷史估值對照價位 → 基本面(8 季 EPS/三率/月營收) → 產業定位 → 籌碼(法人/分點/集保/融資) → 風險與反轉訊號 → 結論與操作 → 每個數字的日期。你拿別家 AI 產的「產業報告」來問,這頁就是本站自己的版本 —— 但<b>每一格都只轉述既有的卡片與採礦資料</b>,不會為了湊版面另外算一套。','💰 <b>「目標價」那一塊改成「歷史估值對照價位」</b>:年化 EPS(已公布四季合計,⛔ 不是預估)× 它自己近 3 年本益比 P5/P25/中位/P75/P95 → 對應股價、距現價 %、一張差多少元。還有一個<b>反查器</b>:輸入 250,它告訴你「市場得給它幾倍本益比、那是它近 3 年第幾百分位」—— 那份報告的 250–280 換算出來是超過它三年來 95% 的水位。','🔎 <b>產業景氣/漲價/法說重點那段本站沒有資料源 → 一鍵帶著上面的數字問 Perplexity</b>(不耗額度,回來的文字不進 App)。提示詞含 5 條防幻覺規則(禁目標價與評等、EPS 是已公布不是預估、無資料不可腦補)。','⚠️ 誠實標示:上櫃股沒有官方產業分類 → 同業中位 PE 寫「上櫃無官方分類」;融資餘額本站停在 08/11 的檔會寫「採礦缺口」而不是顯 0;ETF 直接說沒有財報。'] },
@@ -11544,28 +11585,106 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         const cachedAt = parseInt(localStorage.getItem('proTerm_stockList_at') || '0', 10);
         const fresh = Array.isArray(cached) && cached.length && cachedAt
                       && (Date.now() - cachedAt) < 86400000;  // 24 hr
-        if (fresh) { this.allStockList = cached; return; }
+        if (fresh) { this.allStockList = cached; this._nameSrc = 'cache'; return; }
+
+        // ══════════════════════════════════════════════════════════════
+        // 🏷️ V75.1.5 —— 名字改成「多層」,⛔ 不再只靠 FinMind
+        //
+        // 🚨 使用者回報「個股中文名稱怎麼不見了」,逐行查證的根因鏈:
+        //   ① 這支原本**只有** FinMind 一條路,而那支 URL **沒帶 `token=`**;
+        //      safeFetch 的金鑰輪動注入條件是 `/[?&]token=/.test(url)` →
+        //      **輪動器不會幫它補**,那個請求永遠是匿名發出的。
+        //   ② FinMind 匿名層擋掉 TaiwanStockInfo(V74.0.5 已記載 4 把 token 都掉回 register 層,
+        //      匿名更低)+ 24 小時 cache 過期 → allStockList 維持 `[]`。
+        //   ③ `getStockName` 查不到會**回傳代號本身** → 名字欄印出代號,
+        //      而庫存/自選頁的名字列與代號列是兩個獨立元素 → **代號印兩次**(使用者截圖)。
+        //   ④ 🚨 更嚴重的是連帶災情:`_filterStockList` 開頭就 `if (!this.allStockList.length) return []`
+        //      → **新增庫存/自選的搜尋、全域搜尋全部打不出東西**,而使用者還沒發現。
+        //
+        // ⭐ 所以順序是「離線表 → FinMind → 舊 cache」,⛔ 不可對調:
+        //    離線表在 gh-pages 上、**免金鑰**,是唯一不受 FinMind 額度與匿名層影響的一條。
+        // ══════════════════════════════════════════════════════════════
+
+        // ① 離線名字表(採礦端每天產,零金鑰)
+        const off = await this._fetchNameTable();
+        if (off && off.length) {
+            this.allStockList = off;
+            this._nameSrc = 'offline';
+            this._saveStockList();
+            return;
+        }
+
         try {
-            const res = await this.safeFetch('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo', {}, { timeout: 10000, maxRetries: 2 });
+            // ② FinMind —— 🚨 **一定要帶 token**,否則上面 ① 說的輪動器不會注入(這正是本次的 bug)
+            const _tk = this._getFinmindToken();
+            const _url = 'https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo'
+                       + (_tk ? `&token=${_tk}` : '');
+            const res = await this.safeFetch(_url, {}, { timeout: 10000, maxRetries: 2 });
             const json = await res.json();
             if (json.msg === 'success') {
+                this._nameSrc = 'finmind';
                 const map = new Map();
                 json.data.forEach(s => { if (s.stock_id.length >= 4 && !map.has(s.stock_id)) map.set(s.stock_id, s); });
                 this.allStockList = Array.from(map.values());
-                try {
-                    localStorage.setItem('proTerm_stockList', JSON.stringify(this.allStockList));
-                    localStorage.setItem('proTerm_stockList_at', String(Date.now()));
-                } catch (_) {
-                    // 🛡️ 儲存空間不足時 setItem 會 throw —— 不可讓它把「已經抓好的清單」一起帶走。
-                    //   寫不進去就算了(下次再抓),但也要把可能只寫一半的殘骸清掉。
-                    try { localStorage.removeItem('proTerm_stockList'); localStorage.removeItem('proTerm_stockList_at'); } catch (__) {}
-                }
+                // 🛡️ 儲存空間不足時 setItem 會 throw(V71.6.9)→ 一律走 _saveStockList 這**唯一一份**,
+                //    ⛔ 別在這裡再抄一次(離線表那條也要存,兩份遲早只改到一邊 —— 陷阱 #37)。
+                this._saveStockList();
             } else if (Array.isArray(cached) && cached.length) {
-                // FinMind 回應異常 → 退回舊 cache,不要把對照表洗掉
-                this.allStockList = cached;
+                // ③ FinMind 回應異常 → 退回舊 cache,不要把對照表洗掉
+                this.allStockList = cached; this._nameSrc = 'stale';
             }
         } catch (e) {
-            if (Array.isArray(cached) && cached.length) this.allStockList = cached;   // 網路失敗也退回舊 cache
+            if (Array.isArray(cached) && cached.length) {
+                this.allStockList = cached; this._nameSrc = 'stale';   // 網路失敗也退回舊 cache
+            }
+        }
+        // 🚨 ④ 三層全落空 —— ⛔ **不可再靜默結束**(這是本次最該修的一條)。
+        //    舊版到這裡什麼都不做、連 console 都沒有 → 使用者只看到「名字變代號 + 搜尋打不出東西」,
+        //    完全不知道發生什麼事,只會以為 App 壞了。
+        if (!this.allStockList.length) {
+            this._nameSrc = 'fail';
+            console.warn('[股名] 離線表 / FinMind / 快取三層全部落空 → 名字暫顯代號、搜尋暫時不可用');
+        }
+    },
+
+    /** 🏷️ V75.1.5 離線股名表(gh-pages `data/stock_names.json`,採礦端每天產,**零金鑰**)。
+     *  格式 `{updated, n, names: {代號: [中文名, 產業別]}}` → 轉成 allStockList 既有的
+     *  `{stock_id, stock_name, industry_category}` 形狀(⛔ 不改既有 19 + 6 + 5 個欄位讀取點)。
+     *  ⚠️ 拿不到就回 null 讓上層往下一層走,⛔ 不 throw。 */
+    async _fetchNameTable() {
+        try {
+            const gb = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/stock_names.json', gb).href + `?t=${Date.now()}`,
+                                  { signal: AbortSignal.timeout(8000) });
+            if (!r.ok) return null;
+            const j = await r.json();
+            const nm = j && j.names;
+            if (!nm || typeof nm !== 'object') return null;
+            const out = [];
+            for (const k in nm) {
+                const v = nm[k];
+                const name = Array.isArray(v) ? v[0] : v;
+                if (!name) continue;
+                out.push({ stock_id: k, stock_name: String(name),
+                           industry_category: (Array.isArray(v) && v[1]) ? String(v[1]) : '' });
+            }
+            // 🚧 空過守門:半份表比沒有更糟(會讓「查不到」看起來像「這檔不存在」)
+            if (out.length < 500) {
+                console.warn(`[股名] 離線表只有 ${out.length} 檔(<500)→ 不採用,改走 FinMind`);
+                return null;
+            }
+            this._nameTableAt = j.updated || '';
+            return out;
+        } catch (_) { return null; }
+    },
+
+    /** 把 allStockList 寫進 localStorage(⛔ 空間不足要清殘骸,同 V71.6.9 的教訓)。 */
+    _saveStockList() {
+        try {
+            localStorage.setItem('proTerm_stockList', JSON.stringify(this.allStockList));
+            localStorage.setItem('proTerm_stockList_at', String(Date.now()));
+        } catch (_) {
+            try { localStorage.removeItem('proTerm_stockList'); localStorage.removeItem('proTerm_stockList_at'); } catch (__) {}
         }
     },
 
@@ -23260,12 +23379,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         for (const item of inv) {
             let rows = null;
             try { rows = await this.fetchHistoricalData(item.symbol, false); } catch (_) {}
-            const name = this.getStockName(item.symbol) || item.symbol;
+            const _nd = this._nmDual(item.symbol), name = _nd.n;  // 🏷️ V75.1.5 走 _nmDual:名字拿不到時副標留空,⛔ 不可讓名字列與代號列都印代號(使用者截圖的「009816 / 009816」)
             const verdict = this._aiGodStockVerdict(rows);
             bubbles.push(`<div class="flex gap-2">
                 <div class="text-3xl flex-shrink-0 leading-none mt-1">🤖</div>
                 <div data-aigod-bubble="${item.symbol}" onclick="app.aiGodSelect('${item.symbol}')" class="flex-1 min-w-0 bg-[#161b22] rounded-2xl rounded-tl-sm p-3 border border-[#30363d] cursor-pointer transition-colors">
-                    <button onclick="event.stopPropagation(); app.aiGodGoStock('${item.symbol}')" class="inline-flex items-center gap-1 text-[13px] font-black text-amber-300 bg-[#0d1117] border border-amber-700/40 rounded px-2 py-0.5 mb-2 hover:border-amber-500 transition-colors">📈 ${name} <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span> <span class="text-[10px] text-cyan-400">→ 個股</span></button>
+                    <button onclick="event.stopPropagation(); app.aiGodGoStock('${item.symbol}')" class="inline-flex items-center gap-1 text-[13px] font-black text-amber-300 bg-[#0d1117] border border-amber-700/40 rounded px-2 py-0.5 mb-2 hover:border-amber-500 transition-colors">📈 ${name} <span class="text-[10px] text-gray-500 font-mono">${_nd.sub}</span> <span class="text-[10px] text-cyan-400">→ 個股</span></button>
                     <div class="text-[14px] text-gray-200 leading-relaxed">${verdict}</div>
                     <button onclick="event.stopPropagation(); app._openFreeAiForSym('${item.symbol}')" class="mt-2 text-[11px] font-bold text-cyan-300 hover:text-cyan-200">🔎 深入查 ${name} 最新消息 →</button>
                 </div>
@@ -39175,8 +39294,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     <button onclick="app._favEditToggleSelect('${sym}')" class="flex-shrink-0 w-6 h-6 rounded-full border-2 ${checked ? 'bg-blue-500 border-blue-500' : 'border-gray-600'} flex items-center justify-center text-white text-[13px] leading-none">${checked ? '✓' : ''}</button>
                     <button onclick="app._favEditMoveTop('${sym}')" title="移到最上" class="flex-shrink-0 text-gray-400 hover:text-blue-300 text-lg font-bold w-7 text-center">↑</button>
                     <div class="flex-1 min-w-0">
-                        <div class="text-white font-bold text-[14px] truncate">${this.getStockName(sym)}</div>
-                        <div class="text-[10px] text-gray-500 font-mono">${sym}</div>
+                        <div class="text-white font-bold text-[14px] truncate">${this._nmDual(sym).n}</div>
+                        <div class="text-[10px] text-gray-500 font-mono">${this._nmDual(sym).sub}</div>
                     </div>
                     <button onclick="app._favEditDeleteOne('${sym}')" class="flex-shrink-0 text-gray-500 hover:text-red-400 text-lg w-7 text-center">🗑️</button>
                     <div class="fav-edit-handle flex-shrink-0 text-gray-600 hover:text-white text-xl w-7 text-center cursor-grab">≡</div>
@@ -39582,14 +39701,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const container = document.getElementById('favListContainer');
         const emptyState = document.getElementById('favEmptyState');
         if (!container) return;
-        if(list.length === 0) { container.innerHTML = ''; emptyState?.classList.remove('hidden'); emptyState?.classList.add('flex'); return; }
+        if(list.length === 0) { container.innerHTML = this._nameWarnHtml(); emptyState?.classList.remove('hidden'); emptyState?.classList.add('flex'); return; }
         emptyState?.classList.add('hidden'); emptyState?.classList.remove('flex');
 
         // Pass 1：同步畫出所有列。V62.7 使用者要求:主清單取消拖曳排序 + 左右滑刪(這些都移到「✏️ 編輯」頁);
         //   加欄位表頭(個股 / 趨勢 / 股價·漲跌幅);持有庫存股顯 💼 標記。
         let heldSet = new Set();
         try { heldSet = new Set(app._getInventory().map(i => String(i.symbol))); } catch (_) {}
-        let html = `<div class="flex items-center gap-2 mx-2 px-3 py-1.5 border-b border-[#30363d] text-[10px] text-gray-500 font-bold sticky top-0 bg-[#0d1117] z-10">
+        let html = this._nameWarnHtml() + `<div class="flex items-center gap-2 mx-2 px-3 py-1.5 border-b border-[#30363d] text-[10px] text-gray-500 font-bold sticky top-0 bg-[#0d1117] z-10">
             <span class="flex-1">個股</span>
             <button onclick="event.stopPropagation(); app._toggleFavSort();" class="w-[62px] text-center text-gray-500 hover:text-amber-300 font-bold">總評·趨勢 <span id="favSortInd" class="text-amber-400">${this._favSortByScore ? '▼分' : '⇅'}</span></button>
             <span class="w-[86px] text-right">股價·漲跌幅</span>
@@ -39599,10 +39718,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             html += `<div class="m-2 rounded-lg border border-[#30363d] shadow-sm bg-[#1c2128] px-3 py-3 flex items-center gap-2 cursor-pointer active:bg-[#21262d] transition-colors" data-fav-row="${sym}" onclick="app.analyze('${sym}'); app.switchAppTab('diag');">
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-1.5">
-                        <span class="font-bold text-white text-[15px] truncate">${this.getStockName(sym)}</span>
+                        <span class="font-bold text-white text-[15px] truncate">${this._nmDual(sym).n}</span>
                         ${held}${this._renderFalconBadge(sym)}${this._renderAttentionBadge(sym)}
                     </div>
-                    <div class="text-[10px] text-gray-500 font-mono mt-0.5">${sym}</div>
+                    <div class="text-[10px] text-gray-500 font-mono mt-0.5">${this._nmDual(sym).sub}</div>
                     <div data-fav-cf class="flex items-center gap-1 mt-1 flex-wrap"></div>
                 </div>
                 <div data-fav-trend class="flex-shrink-0 w-[62px] text-center"><span class="text-[10px] text-gray-600 font-bold">--</span></div>
@@ -39908,7 +40027,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _renderInventoryEditPage(modal) {
         const draft = this._invEditDraft || [];
         const rowsHtml = draft.map((item, idx) => {
-            const cname = this.getStockName(item.symbol) || item.symbol;
+            const _nd = this._nmDual(item.symbol), cname = _nd.n;  // 🏷️ V75.1.5 走 _nmDual:名字拿不到時副標留空,⛔ 不可讓名字列與代號列都印代號(使用者截圖的「009816 / 009816」)
             const cost = item.cost || 0;
             const shares = item.shares || 0;
             const totalCost = Math.round(cost * shares * 1000);
@@ -39927,7 +40046,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div class="flex flex-col gap-0.5 min-w-0">
                     <span class="text-[9px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
                     <span class="text-white font-bold text-[13px] truncate leading-tight">${cname}</span>
-                    <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span>
+                    <span class="text-[10px] text-gray-500 font-mono">${_nd.sub}</span>
                 </div>
                 <input type="number" step="0.01" min="0" value="${cost}" oninput="app._updateInvEditDraft(${idx}, 'cost', this.value)" class="bg-[#21262d] text-white text-[13px] font-mono px-1.5 py-1 rounded border border-[#30363d] outline-none focus:border-blue-500 text-right w-full" placeholder="均價">
                 <input type="number" step="1000" min="0" value="${shares * 1000}" oninput="app._updateInvEditDraft(${idx}, 'sharesAbsolute', this.value)" class="bg-[#21262d] text-white text-[13px] font-mono px-1.5 py-1 rounded border border-[#30363d] outline-none focus:border-blue-500 text-right w-full" placeholder="股數">
@@ -40452,7 +40571,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const container = document.getElementById('inventoryCardContainer');
         try { this.renderTradeJournal(); } catch (_) {}   // 📓 V67.0 交易日誌鏡子(空庫存也顯,鼓勵回顧)
         if(this.inventory.length === 0) {
-            container.innerHTML = '<p class="text-center text-gray-500 font-bold border border-dashed border-[#30363d] rounded-lg m-3 py-8 text-sm">目前無庫存部位</p>';
+            // 🚨 V75.1.5 空庫存這條路**也要**顯示股名警告 —— 那正是使用者要新增持股的時候,
+            //    而清單沒載入時「新增庫存的搜尋」是打不出東西的(⛔ 不可讓他以為 App 壞了)。
+            container.innerHTML = this._nameWarnHtml() + '<p class="text-center text-gray-500 font-bold border border-dashed border-[#30363d] rounded-lg m-3 py-8 text-sm">目前無庫存部位</p>';
             ['invTodayPnL','invTodayPnLPct','invTotalPnL','invTotalPnLPct','invMarketVal','invCostBasis'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.innerText = '--';
@@ -40515,7 +40636,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                             : isLimitDown ? 'bg-green-600 text-white px-1.5 rounded inline-block'
                             : 'text-white';
             const bgClass = 'bg-[#1c2128]';   // V34.x — 移除整列紅底(使用者要求,損益已用文字顏色表達)
-            const cname = this.getStockName(item.symbol) || item.symbol;
+            const _nd = this._nmDual(item.symbol), cname = _nd.n;  // 🏷️ V75.1.5 走 _nmDual:名字拿不到時副標留空,⛔ 不可讓名字列與代號列都印代號(使用者截圖的「009816 / 009816」)
             // V46.3 — 股名字級隨長度自動縮(避免「凱基台灣TOP50」被切),148px 欄內剛好放得下
             const _nlen = [...cname].length;
             const nameFs = _nlen >= 9 ? 'text-[11px]' : _nlen >= 7 ? 'text-[13px]' : _nlen >= 6 ? 'text-[14px]' : 'text-[16px]';
@@ -40532,7 +40653,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     <span class="text-[9px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
                     <span class="text-white font-black ${nameFs} truncate leading-tight">${cname}</span>
                     <div class="flex items-center gap-1.5">
-                        <span class="text-[10px] text-gray-500 font-mono">${item.symbol}</span>
+                        <span class="text-[10px] text-gray-500 font-mono">${_nd.sub}</span>
                         <span onclick="event.stopPropagation(); app.openPriceAlertModal('${item.symbol}'); app.vibrate(20);" class="cursor-pointer text-[11px] ${hasAlert ? '' : 'opacity-30'} hover:opacity-100" title="${hasAlert ? '已設到價監控,點此管理' : '設到價監控'}">🚨</span>
                         <span onclick="event.stopPropagation(); app._showInvRowMenu(${idx}); app.vibrate(15);" class="cursor-pointer text-[13px] text-gray-500 hover:text-white leading-none px-0.5" title="操作:結算平倉 / 改成本 / 刪除">⋯</span>
                     </div>
@@ -40563,7 +40684,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </div>`;
           } catch (_rowErr) { console.warn('[庫存列渲染跳過]', r?.item?.symbol, _rowErr?.message); }
         }
-        container.innerHTML = html;
+        container.innerHTML = this._nameWarnHtml() + html;
         // 🗑️ V50.6 市值佔比欄已刪除(使用者要求)
 
         // 統計卡
@@ -40616,7 +40737,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _showInvRowMenu(idx) {
         const item = this.inventory[idx];
         if (!item) return;
-        const cname = this.getStockName(item.symbol) || item.symbol;
+        const _nd = this._nmDual(item.symbol), cname = _nd.n;  // 🏷️ V75.1.5 走 _nmDual:名字拿不到時副標留空,⛔ 不可讓名字列與代號列都印代號(使用者截圖的「009816 / 009816」)
         const price = parseFloat(item.currentPrice) || parseFloat(item.cost) || 0;
         const cost = parseFloat(item.cost) || 0;
         const shares = parseFloat(item.shares) || 1;
@@ -40637,7 +40758,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     <div class="flex items-center gap-2">
                         <span class="text-[9px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0">現股</span>
                         <span class="text-white font-black text-base">${cname}</span>
-                        <span class="text-[11px] text-gray-500 font-mono">${item.symbol}</span>
+                        <span class="text-[11px] text-gray-500 font-mono">${_nd.sub}</span>
                     </div>
                     <span class="text-[11px] font-mono font-bold ${pnlCls}">${pnlNTD >= 0 ? '+' : ''}${pnlNTD.toLocaleString()} 元 (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%)</span>
                 </div>

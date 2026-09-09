@@ -33,6 +33,11 @@ KNOWN_NOT_UPLOADED = {
     'data/margin_cache_stock.json',   # 同上,中介快取
     'data/fund_yoy_gm.json',          # fund_sweep.yml 自己部署,不走 daily_miner artifact
     'data/risk_history.json',         # macro 端 append,靠 deploy 的 git archive origin/data 保留
+    # 🏷️ V75.1.4 ⚠️ 這是**誤報**不是「刻意不上傳」:etf_tracking.json 是 etf_miner.py 的產物,
+    #    在 deploy job 裡跑、直接被 `git add -f data/` 收走 → 本來就不需要 artifact。
+    #    ⛔ 它會被掃到只是因為 miner.build_stock_names **讀**了它(拿 ETF 名字保底),
+    #    而上面那段 regex 掃的是 `Path('data','x.json')` 的所有出現、**分不出讀寫**。
+    'data/etf_tracking.json',
 }
 
 

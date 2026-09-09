@@ -1276,6 +1276,10 @@ CYCLICAL_INDUSTRIES = {
 
 
 _COMPANY_GEO: dict = {}   # 🗺️ V71.9.8 {sym: 縣市},由 fetch_industry_map 順便填(零額外 API)
+_COMPANY_NAME: dict = {}  # 🏷️ V75.1.4 {sym: 中文簡稱},同樣由 fetch_industry_map 順便填(零額外 API)
+#   🚨 這份表的存在理由:前端股名本來**只靠 FinMind 匿名 API**,而它被擋之後
+#      `allStockList` 變空 → 名字全變代號、**搜尋一起失效**(使用者回報的正是這個)。
+#   ⛔ 官方公司基本資料**一檔 ETF 都沒有** → ETF 那半要另外補(見 build_stock_names)。
 
 # 🗺️ V71.9.8 地緣分點用:公司住址 → 縣市。逐字稿說「關鍵分點常常就是**地緣分點**」
 #    (公司在彰化,關鍵分點常在台中;「入港的分點怎麼都在買股票」)。
@@ -1302,8 +1306,9 @@ def fetch_industry_map() -> dict:
     上市 t187ap03_L + 上櫃 t187ap03_O 兩個資料集,免費無 token。
     ⭐ V71.9.8 順便把「住址→縣市」收進全域 _COMPANY_GEO(地緣分點用,零額外 API)。"""
     industry_map = {}
-    global _COMPANY_GEO
+    global _COMPANY_GEO, _COMPANY_NAME
     _COMPANY_GEO = {}
+    _COMPANY_NAME = {}
     _geo_miss_keys = None
     for url, label in [
         ('https://openapi.twse.com.tw/v1/opendata/t187ap03_L', 'TWSE 上市'),
@@ -1329,6 +1334,13 @@ def fetch_industry_map() -> dict:
                     if sym and ind and sym.isdigit() and 4 <= len(sym) <= 6:
                         industry_map[sym] = ind
                         added += 1
+                    # 🏷️ V75.1.4 同一列順便取「公司簡稱」= 中文股名(零額外 API)
+                    #   ⚠️ 條件刻意跟產業別那行**分開**:有些列可能有名字但沒產業別,
+                    #      綁在一起會讓那幾檔的名字一起漏掉(同 _COMPANY_GEO 的做法)。
+                    if sym and sym.isdigit() and 4 <= len(sym) <= 6:
+                        _nm = str(row.get('公司簡稱') or row.get('CompanyAbbreviation') or '').strip()
+                        if len(_nm) >= 2:
+                            _COMPANY_NAME[sym] = _nm
                     # 🗺️ 地緣:同一列順便取住址縣市(欄名兩種寫法都吃)
                     if sym and sym.isdigit() and 4 <= len(sym) <= 6:
                         _city = _addr_city(row.get('住址') or row.get('地址')
@@ -1351,7 +1363,95 @@ def fetch_industry_map() -> dict:
         print(f"  🗺️ 公司所在縣市:{len(_COMPANY_GEO)} 檔(地緣分點用)")
     else:
         print(f"  ⚠️ 公司所在縣市:0 檔 — 住址欄可能改名。實際欄名 = {_geo_miss_keys}")
+    if _COMPANY_NAME:
+        print(f"  🏷️ 公司中文簡稱:{len(_COMPANY_NAME)} 檔(前端股名離線表用)")
+    else:
+        print(f"  ⚠️ 公司中文簡稱:0 檔 — 「公司簡稱」欄可能改名。實際欄名 = {_geo_miss_keys}")
     return industry_map
+
+
+
+def build_stock_names(industry_map: dict) -> int:
+    """🏷️ V75.1.4 產出 data/stock_names.json —— 前端股名的**離線來源**(免金鑰)。
+
+    🚨 為什麼要有這份表(使用者回報「個股中文名稱怎麼不見了」):
+       前端 `fetchStockList` 本來**只靠 FinMind 匿名 API**(而且那支 URL 連 token 都沒帶),
+       它被擋之後 `allStockList` 變成空的 → `getStockName` 回傳代號本身 → 名字全變代號;
+       ⛔ 更嚴重的是 `_filterStockList` 清單空就直接 return [] → **搜尋整個失效**,零錯誤訊息。
+
+    ⭐ 成本:一般股那半是**零額外 API** —— `_COMPANY_NAME` 由 fetch_industry_map 在
+       同一份官方回應裡順手收的(跟 _COMPANY_GEO 同一個模式)。
+
+    ⚠️ 已知缺口:官方公司基本資料**一檔 ETF 都沒有**,而 `data/` 裡 ETF 佔 361/2718 = 13%。
+       目前先用 etf_tracking.json(約 45 檔,含 0050)保底;
+       完整的 361 檔要等 `scripts/stockname_probe.py` 在 Actions 跑完定案來源再補。
+       ⛔ 在那之前 **不可** 假裝已經涵蓋 ETF —— 產物裡的 `src` 統計會誠實說出各來源幾檔。
+
+    回傳寫進去的檔數(0 = 沒寫)。
+    """
+    names: dict = {}
+    src = {}
+
+    # ① 官方公司基本資料(一般股)—— 零額外 API
+    for sym, nm in (_COMPANY_NAME or {}).items():
+        names[sym] = [nm, (industry_map or {}).get(sym, '')]
+    src['official'] = len(names)
+
+    # ② ETF 保底:etf_tracking.json 本來就有 name 欄(⛔ 只補官方表沒有的,不覆蓋)
+    n_etf = 0
+    try:
+        _p = Path('data', 'etf_tracking.json')
+        if _p.exists():
+            _j = json.loads(_p.read_text(encoding='utf-8'))
+            for _k in ('concentration', 'etfs'):
+                for _x in (_j.get(_k) or []):
+                    _sy = str(_x.get('symbol') or '').strip()
+                    _nm = str(_x.get('name') or '').strip()
+                    if _sy and len(_nm) >= 2 and _sy not in names:
+                        names[_sy] = [_nm, '']
+                        n_etf += 1
+    except Exception as e:
+        print(f"  ⚠️ ETF 名字保底讀取失敗:{type(e).__name__}: {e}")
+    src['etf_tracking'] = n_etf
+
+    # ③ 合併舊檔:這輪某個來源掛掉時,舊的名字要留著(⛔ 不可讓它整份消失)
+    out_path = Path('data', 'stock_names.json')
+    n_old = 0
+    try:
+        if out_path.exists():
+            _old = json.loads(out_path.read_text(encoding='utf-8')).get('names') or {}
+            for _sy, _v in _old.items():
+                if _sy not in names and isinstance(_v, list) and _v and _v[0]:
+                    names[_sy] = _v
+                    n_old += 1
+    except Exception as e:
+        print(f"  ⚠️ 舊 stock_names.json 讀取失敗(當成沒有):{type(e).__name__}: {e}")
+    src['merged_old'] = n_old
+
+    # 🚧 空過守門:半份表比沒有更糟 —— 前端會把「查不到」顯示成「這檔不存在」。
+    #    ⛔ 不覆寫舊檔,讓線上維持上一輪的好資料(同 fund_sweep / chips_backfill 的自我保護)。
+    MIN_OK = 1500
+    if len(names) < MIN_OK:
+        print(f"  ⏭️ 股名表只有 {len(names)} 檔(<{MIN_OK})→ ⛔ 不覆寫,保留既有 data/stock_names.json"
+              f"(來源:{src})")
+        return 0
+
+    n_etf_total = sum(1 for k in names if k.startswith('00'))
+    payload = {
+        'updated': datetime.now(timezone(timedelta(hours=8))).isoformat(timespec='seconds'),
+        'n': len(names),
+        'n_etf': n_etf_total,
+        'src': src,
+        'caveat': '官方公司基本資料沒有 ETF;ETF 名字目前只有 etf_tracking 那幾檔,其餘待補',
+        'names': names,
+    }
+    out_path.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    print(f"  💾 股名離線表 → data/stock_names.json({len(names)} 檔,其中 00 開頭 {n_etf_total} 檔)")
+    print(f"     來源分佈:{src}")
+    if n_etf_total < 100:
+        print(f"  ⚠️ ETF 只有 {n_etf_total} 檔(data/ 裡約 361 檔)→ 前端那些 ETF 仍會顯示代號。"
+              f"跑 finmind_gap_probe.yml → which=stockname 定案來源後補上。")
+    return len(names)
 
 
 def fetch_bulk_revenue_yoy() -> dict:
@@ -4476,6 +4576,14 @@ def fetch_broker_chips():
                     print(f"  💾 個股→產業對照 → data/industry_map.json({len(industry_map)} 檔)")
                 else:
                     print("  ⏭️ 產業對照表為空,保留既有 industry_map.json(若有)")
+
+                # 🏷️ V75.1.4 股名離線表 — 同一次 API 產出(零額外 API)
+                #   ⛔ 獨立 try:它失敗 ⛔ 不可拖累 industry_map / company_geo
+                #      (V72.2.1 的教訓:兩個獨立指標綁同一個 try,一個失敗會拖垮另一個)
+                try:
+                    build_stock_names(industry_map)
+                except Exception as _e_sn:
+                    print(f"  ⚠️ 股名離線表產出失敗(不影響其他產物):{type(_e_sn).__name__}: {_e_sn}")
 
                 # 🗺️ V71.9.8 公司所在縣市(地緣分點用)— 跟 industry_map 同一次 API 產出
                 #    ⛔ 空的時候不覆蓋(同「保留舊檔」原則),否則上游一次抽風就整份消失
