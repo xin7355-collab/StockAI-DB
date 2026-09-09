@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.1.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.1.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.1.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.1.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8010,8 +8010,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.1.5',
+    _APP_VERSION: 'V75.1.6',
     _CHANGELOG: [
+        { v: 'V75.1.6', dt: '2026-09-09', d: ['🌡️ <b>修掉一組「卡片自己跟自己打架」</b>(巡邏工具掃出來的):頂端跑馬燈寫「多頭<b>過熱</b>・絕不追高、分批停利」,同一個畫面底下的<b>打法適配儀</b>卻寫「可依紀律進場」、<b>多空計分卡</b>寫「可順勢操作」。三句話同時出現,你根本不知道要聽誰的。','⭐ 現在只要大盤是<b>過熱 / 轉弱 / 盤整 / 空頭</b>,這兩張卡就會<b>把大盤狀況直接寫在那句話裡</b> —— 例如「可依紀律進場,<b>但大盤多頭(過熱)、建議總部位 3~5 成 → 別重押、別追高</b>」。⛔ 只有「健康多頭(建議 8 成)」才維持原本的說法。','⛔ 三件<b>刻意沒做</b>的事:① <b>數字一個都沒動</b>(命中幾條、期望值多少都是事實,改的只有那句「叫你怎麼做」的話)② <b>不是叫你反手做空</b>,只是降級成「別追高」③ 不新開卡片。','🔧 順手把這個判斷<b>收成一份</b>(原本同一段判斷式在三個地方各寫一次,改一處就會漏掉另外兩處 —— 這個坑本站已經踩過很多次)。'] },
         { v: 'V75.1.5', dt: '2026-09-09', d: ['🐛 <b>產業作戰室的版本號沒跟上</b>(散戶救星顯 V75.1.4、產業作戰室還停在 V75.1.3)—— 你就是靠這個號碼判斷「有沒有更新」,兩邊不一樣等於這個號碼不能信。已對齊。','🧪 <b>把長期紅燈的自我檢查修好(6 支)</b>:它們紅的原因<b>都不是程式壞掉</b>,是檢查本身<b>釘住了「我當年寫的那個字」或「當天剛好長那樣的資料」</b> —— 例如尾盤時窗後來統一成 13:00~13:28、某檔股票的均線排列變了、四檔 ETF 都已經被追蹤到了。⭐ 全部改成<b>釘「用意」</b>(時窗要跟 App 內部一致、情境改用固定測資),並逐條注入假缺陷確認它真的叫得出來。','⚠️ 為什麼這件事重要:<b>永遠紅的檢查等於沒有檢查</b> —— 看久了就會習慣忽略,真的壞掉那次也會被當成又一個誤報。','🐛 修掉一個會<b>自己永遠好不了</b>的坑:測試把雲端資料抓下來當測資時,抓失敗會留下一個<b>空檔案</b>,之後每次都讀那個空檔 → 永遠失敗。已改成先驗內容、壞的就刪掉重抓。'] },
         { v: 'V75.1.4', dt: '2026-09-09', d: ['🏷️ <b>修好「個股中文名稱不見了」</b>(你截圖的庫存頁四檔只顯示代號)。真因:股名<b>整個 App 只靠一個來源</b> —— 前端去跟 FinMind 要,而那支網址<b>連金鑰都沒帶</b>,對方擋掉匿名查詢之後名字就整份消失了,而且<b>完全沒有任何訊息</b>。','🚨 <b>比名字不見更嚴重、你可能還沒發現的</b>:名字清單一空,<b>新增庫存/自選的搜尋、還有上方的全域搜尋,通通打不出東西</b>(程式碼裡是「清單空就直接回空」)。這次一起修好。','⭐ <b>改成三層來源</b>:① 每天採礦時產一份<b>離線名字表</b>放在雲端(免金鑰,不受對方額度影響)② FinMind(<b>這次補上金鑰</b>)③ 舊快取。三層都拿不到時 <b>不再默默不講</b> —— 會直接在庫存/自選頁最上面說「名稱沒載入成功、搜尋會打不出東西、這不是你的資料壞掉」,並給一顆「🔄 重新載入名稱」。','🐛 順手修掉<b>代號印兩次</b>(009816 / 009816):名字拿不到時,下面那行代號現在會留空,⛔ 不再重複。庫存頁 4 處 + 自選頁 2 處一次接完。','⚠️ <b>ETF 的名字要再等一輪</b>:官方公司基本資料<b>一檔 ETF 都沒有</b>(而你的 009816、0050 都是 ETF),目前只先從既有的 ETF 追蹤檔補到約 45 檔(含 0050)。其餘約 316 檔要等探針確認來源後補上。'] },
         { v: 'V75.1.3', dt: '2026-09-09', d: ['🐛 <b>上櫃股的融資餘額從 8/12 起全部是 0</b>(報告頁看到「融資餘額本站停在 08/11」就是它)—— 真因不是資料源壞掉,是採礦端的備援<b>永遠不會被叫到</b>:上市那條抓成功,就不會為上櫃補。現在「上櫃拿到的檔數不夠」也會啟動備援,而且只補缺的、不覆蓋已抓到的。<b>要等下一輪採礦跑完才看得到</b>;8/12 之前那段還要另外回補。','🐛 <b>「本益比位階」一個月沒更新</b>(停在 08/14):排程觸發時一個參數是空字串,採礦第一行就炸,而 workflow 把錯誤吞掉 → 四個週日都顯示綠燈、零產出。已修,並加一支守門擋同型寫法。','📐 本益比位階改成<b>每個交易日</b>更新(報告分頁的估值位階要用今天的)。'] },
@@ -12582,6 +12583,7 @@ const marginByDate = {};
         const _zero = (bullCount === 0 || bearCount === 0)
             ? `⚠️ ${bullCount === 0 ? '多' : '空'}方一條都沒亮 —— 多半是那一類資料還沒到齊,<b>不等於沒有風險</b>。` : '';
         const _bg = this._bearGate?.(sym);
+        const _mg = this._mktGate?.();
         // 「可放心做多」的門檻:四面向多數同步 **且** 命中夠多(⛔ 別只看面向數)
         const STRONG_HITS = 8;
         if (ratio >= 0.65) {
@@ -12591,7 +12593,10 @@ const marginByDate = {};
                 // ⛔ 主結論空頭 → 只准描述,不准下多方指令(講反話第 8 處,一律走 `_bearGate`)
                 ? `多方訊號較多,<b>但上方主結論是空頭</b> → 先當反彈看待、別加碼,想做只能小量搶短。`
                 : (top.length >= 3 && hits >= STRONG_HITS)
-                    ? '四面向同步攻擊,可順勢操作(留意大盤)'
+                    // 🌡️ V75.1.6:「(留意大盤)」四個字太輕 —— 大盤真的過熱時要**講出來是什麼狀況**
+                    //   (⛔ 不可跟頂端跑馬燈的「絕不追高」打架)。
+                    ? (_mg ? `四面向同步攻擊,<b>但大盤${_mg.regimeLabel}、建議總部位 ${_mg.pct}</b> → 有貨的續抱,<b>空手的別追高</b>`
+                           : '四面向同步攻擊,可順勢操作(留意大盤)')
                     : `局部優勢明顯(28 條命中 ${hits} 條),沿月線操作不破不出`;
             oneLiner = _zero + oneLiner;
         } else if (ratio <= 0.35) {
@@ -14252,6 +14257,28 @@ const marginByDate = {};
     _bearGate(sym) {
         const t = this._ovTrend;
         return !!(t && t.sym === String(sym == null ? this.currentSymbolId : sym) && t.trend === 'bear');
+    },
+
+    // 🌡️ V75.1.6 — **大盤守門**(`_bearGate` 是個股空頭,這支是大盤環境)
+    //   🚨 為什麼要抽出來:`page_sweep` 掃到兩張卡跟頂端跑馬燈打架 ——
+    //      跑馬燈寫「多頭(過熱)・絕不追高;嚴設停損、分批停利」,
+    //      同一畫面「打法適配儀」卻寫「可依紀律進場」、多空計分卡寫「可順勢操作」。
+    //   ⭐ 這不是新規則 —— V73.2.9 早就為「明日劇本」做過(大盤過熱時改講
+    //      「有貨的可以續抱、⛔ 別追高加碼」),但**只接了那一處**(陷阱 #37)。
+    //   ⛔ 新增任何會講「進場 / 加碼 / 順勢做多」的卡,先問兩件事:
+    //      ① 這檔自己是不是空頭 → `_bearGate(sym)`
+    //      ② 大盤是不是過熱/轉弱/空頭 → `_mktGate()`
+    //   ⚠️ 回傳非 null **只降級措辭**(別追高加碼),⛔ 不是叫人反手放空,
+    //      也⛔ 不改任何數字(數字是事實,要改的只有那句叫人怎麼做的話)。
+    //   ⭐ 文案一律引用 `_chuPositionAdvice()` 自己的 `regimeLabel` / `pct`,⛔ 不另寫一套。
+    _mktGate() {
+        try {
+            const m = this._chuPositionAdvice();
+            if (!m) return null;
+            // 只有「健康多頭(建議 8 成)」才算不用守門;過熱 / 轉弱 / 盤整 / 空頭都要守
+            if (m.regime === 'bull' && /^8 成/.test(m.pct || '')) return null;
+            return m;
+        } catch (_) { return null; }
     },
 
     // 💼 V69.6.5 — 籌碼一句話(專業分析師口吻):方向(大戶籌碼總結)× 乾淨度 → 一句重點/打氣,總覽用
@@ -25670,7 +25697,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             //   ⛔ 舊版只擋「這一檔自己空頭」(`_mainBear`),**大盤過熱/轉弱/盤整完全沒擋**。
             //   ⭐ 事實不動(續強是真的),改的只有那句「叫你怎麼做」——「抱單」留著、「做多(追買)」拿掉。
             let _mktCap = null;
-            try { const _m = this._chuPositionAdvice(); if (_m && !(_m.regime === 'bull' && /^8 成/.test(_m.pct || ''))) _mktCap = _m; } catch (_) {}
+            _mktCap = this._mktGate();   // ⭐ V75.1.6 改走共用守門(⛔ 這裡原本是同一段判斷式的複製品)
             scen.push({ ic: '📈', c: _mktCap ? 'yellow' : 'red', t: `開高站上昨高 <b class="font-mono">${f2(yHigh)}</b>`,
                 d: _mktCap
                     ? `買盤延續、上方無套牢的話續強 → <b>有貨的可以續抱</b>(回不破昨高續抱);⛔ 但大盤 ${_mktCap.regimeLabel}、總部位上限 ${_mktCap.pct} → <b>別追高加碼</b>。`
@@ -30992,9 +31019,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             //     ・range(盤整,5 成以下)
             //   ⭐ 直接引用 `_chuPositionAdvice()` 自己的文案,⛔ 不另寫一套(免得變第二份真相)。
             try {
-                const m0 = this._chuPositionAdvice();
-                // 只有「多頭且不過熱不轉弱」才是滿倉狀態 → 其餘一律要在個股卡上講出來
-                if (m0 && !(m0.regime === 'bull' && /^8 成/.test(m0.pct || ''))) {
+                // ⭐ V75.1.6 改走共用守門 `_mktGate()`(⛔ 這裡原本是同一段判斷式的複製品)——
+                //   只有「多頭且不過熱不轉弱」才是滿倉狀態,其餘一律要在個股卡上講出來。
+                const m0 = this._mktGate();
+                if (m0) {
                     warn = m0.regime === 'bear'
                         ? `大盤現在偏空 — 就算這檔訊號再好,部位也要放小(建議總部位 ${m0.pct})。`
                         : `大盤 ${m0.regimeLabel} — ${m0.advice};總部位建議 ${m0.pct}。這檔就算條件到了,也照這個上限做。`;
@@ -38649,11 +38677,16 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     //      —— 這是「講反話」的**第 7 處**,前 6 處見 CLAUDE.md。⛔ 一律走 `_bearGate`,別自己寫判斷式。
                     const _en = this._wrEnough(r0.count);
                     const _bg = this._bearGate?.(sym);
+                    const _mg = this._mktGate?.();
                     const _act = !_en
                         ? `但這個型態在這檔<b>只出現過 ${r0.count} 次</b> —— <b class="text-orange-300">次數太少還不能當結論</b>,想做只能小量試。`
                         : _bg
                             ? `但上方主結論目前是<b class="text-green-300">空頭</b> → <b>先別加碼</b>,這只是短線型態、反彈仍偏減碼,想做只能小量搶短。`
-                            : `→ 可依紀律進場。`;
+                            : (_mg
+                                // 🌡️ V75.1.6 大盤守門:大盤過熱/轉弱時⛔ 不可孤零零說「可依紀律進場」
+                                //   —— 頂端跑馬燈同時在寫「絕不追高」,兩張卡會打架(page_sweep 掃到)。
+                                ? `→ 可依紀律進場,<b>但大盤 ${_mg.regimeLabel}、建議總部位 ${_mg.pct}</b> → <b>別重押、別追高</b>。`
+                                : `→ 可依紀律進場。`);
                     nowCard = `<div class="bg-red-900/25 border-l-4 ${_en && !_bg ? 'border-red-500' : 'border-yellow-500'} border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
                         <div class="text-sm font-black text-red-200 mb-0.5">🔔 現在觸發:${_nm(r0)} <span class="text-[10px] font-normal">(這檔主打 +${r0.expectancy.toFixed(1)}%/趟・${r0.count} 次)</span>${this._wrTag(r0.winRate, r0.count)}</div>
                         <div class="text-[10px] text-gray-200 leading-relaxed">今天 K 線出現這檔<b>歷史期望值最高</b>的型態 ${_act}<b class="text-amber-300">👇 點下面「${_nm(r0)}」那一列</b>會即時算頸線/停損/目標給你。目前 ${_regime}。</div></div>`;
