@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       which:
-        description: '跑哪一支:both / gap / margin / pe / split / warrant / fund / otc(櫃買指數歷史)'
+        description: '跑哪一支:both / gap / margin / pe / split / warrant / fund / otc(櫃買指數歷史)/ otcmargin(上櫃融資券端點)'
         required: false
         default: 'both'
 
@@ -29,6 +29,12 @@ jobs:
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
         run: python3 scripts/finmind_gap_probe.py
+
+      - name: 💳 上櫃融資券端點探針(V75.1.3:哪個 TPEx 端點還活著 + FinMind bulk 有沒有上櫃股)
+        if: ${{ github.event.inputs.which == 'otcmargin' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: python3 scripts/otc_margin_probe.py
 
       - name: 💳 大盤融資維持率門檻回測
         if: ${{ github.event.inputs.which == 'both' || github.event.inputs.which == 'margin' }}
