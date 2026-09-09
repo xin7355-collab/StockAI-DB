@@ -23,9 +23,24 @@ name: 📐 PE 自身位階採礦
 # ⏭️ 排程觸發 + 線上 `updated` 已經是今天(UTC)→ 直接跳過,⛔ 不重燒付費額度。
 #    ⚠️ 只擋 schedule,**手動 dispatch 一律照跑**(要重跑驗證時不可被自己擋住)。
 #
+#
+# 🚨 V75.2.2 但那個 cron **實測進不來**:近 9 天全 repo 只有 100 筆排程 run(要求約 250 筆),
+#    而這支從 08-16 起**只跑過 4 次、全在週日**(≈ 每週 1 次)——
+#    再配上當時「rc 被吞掉」的 bug,就成了「四個週日全綠零產出」。
+#    → 改成跟在 **fund_sweep 跑完之後**(`workflow_run` ⛔ 不吃排程配額)。
+#    ⭐ 這剛好也符合上面那條「避開共用付費金鑰」的設計:`workflow_run` 是等 fund_sweep
+#      **完成**才觸發 → 兩支天然不重疊,而且時間(約 18:30 UTC)離原本的 19:30 很近。
+#    ⚠️ cron 一行沒刪(配額鬆了它自己會跑);而下面那個「今天已經有產物就跳過」的守門
+#      要**連 workflow_run 一起擋**,否則同一天會跑兩輪、白燒付費額度。
+#
 # ⭐ 冪等:每次重跑都重算當下位階,⛔ 不累積 → **不需要先從 data 分支還原舊檔**
 #    (跟 tick_hist / etf mgr_hist 那種累積型檔案不同,別照抄那邊的還原步驟)。
 on:
+  # ⭐ 跟車:fund_sweep 是實測排程真的進得來的(⛔ 改它的名字要同步改這裡)
+  workflow_run:
+    workflows:
+      - "🌙 夜間全市場基本面補齊 (fund_sweep)"
+    types: [completed]
   schedule:
     - cron: '30 19 * * 1-5'
   workflow_dispatch:
@@ -50,6 +65,11 @@ permissions:
 jobs:
   peband:
     runs-on: ubuntu-latest
+    # ⛔ 只跟 fund_sweep 的**排程**那一輪;⚠️ 刻意不要求它成功
+    #   —— 這支讀的是 origin/data(daily_miner 早上就推好了),跟 fund_sweep 的產物無關。
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.event == 'schedule'
     timeout-minutes: 200
     steps:
       - uses: actions/checkout@v4
@@ -75,7 +95,8 @@ jobs:
           # ⚠️ 讀的是 data 分支那一份:萬一某次只推成功 gh-pages、沒推成 data,兩邊會差一天。
           # ⛔ 檔案不存在 / updated 解析不出來 → **不跳過**(寧可多跑一輪,不可靜默不動)。
           skip=no
-          if [ "${{ github.event_name }}" = "schedule" ] && [ -s data/pe_band.json ]; then
+          # 🚨 V75.2.2 `workflow_run` 也要吃這個守門(⛔ 不然 cron 與跟車同一天都跑到 = 白燒付費額度)
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [ -s data/pe_band.json ]; then
             u=$(python3 -c "import json;print((json.load(open('data/pe_band.json')).get('updated') or '')[:10])" 2>/dev/null || echo '')
             t=$(date -u +%F)
             echo "線上 updated=${u:-無} ・今天(UTC)=$t"

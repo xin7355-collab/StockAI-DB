@@ -59,7 +59,9 @@ GOOD_HOSTS = {
     '🗞️ 盤前新聞晨採 (news_premarket)', '🎯 明日作戰清單 (playbook_scan)',
 }
 STARVED = ['insider_cron.yml', 'rotation_probe.yml', 'macro_cron.yml',
-           'news_express.yml', 'stock_futures.yml']
+           'news_express.yml', 'stock_futures.yml',
+           # V75.2.2 追加:cron 是「每個交易日」但實測只跑到「每週一次」(4 次全在週日)
+           'pe_band.yml']
 
 for base in STARVED:
     f = f'.github/workflows/{base}'
@@ -101,6 +103,13 @@ for h in ((on_of(sf).get('workflow_run') or {}).get('workflows') or []):
        any(night), f'crons={crons}')
 ok('⑤b 🚧 空過守門:真的抓到 stock_futures 的 host(⛔ 否則上面那條沒驗到東西)',
    bool((on_of(sf).get('workflow_run') or {}).get('workflows')), '')
+
+# ⑥ pe_band 的「今天已經有產物就跳過」守門要**連 workflow_run 一起擋**
+#    ⛔ 否則 cron 與跟車同一天都跑到 = 白燒付費 FinMind 額度。
+_pb = (ROOT_TXT := open('.github/workflows/pe_band.yml', encoding='utf-8').read())
+ok('⑥ pe_band 的冪等守門要擋掉 schedule 與 workflow_run(只放行手動 dispatch)',
+   'github.event_name }}" != "workflow_dispatch" ] && [ -s data/pe_band.json' in _pb,
+   [l for l in _pb.split(chr(10)) if 'pe_band.json ]; then' in l][:1])
 
 print()
 print(f'❌ WF_QUOTA_FAIL({len(fails)}):{fails[:6]}' if fails else '✅ WF_QUOTA_PASS(全部通過)')
