@@ -950,8 +950,18 @@ def fetch_market_institutional(d: date) -> dict:
     return res
 
 
-def fetch_market_margin(d: date) -> dict:
-    """整合 TWSE (上市) 與 TPEX (上櫃) 的融資融券餘額；TWSE 失敗時用 FinMind fallback"""
+def fetch_market_margin(d: date, is_latest: bool = True) -> dict:
+    """整合 TWSE (上市) 與 TPEX (上櫃) 的融資融券餘額；TWSE 失敗時用 FinMind fallback
+
+    is_latest:`d` 是不是這一批要抓的**最新交易日**。
+      🚨 V75.1.4:step 1.5 的 TWSE OpenAPI 端點**沒有日期參數 → 永遠回最新一天**,
+         而呼叫端是拿最近 20 個交易日逐日呼叫 → 舊日期會被填進「最新那天」的數字。
+         實證(gh-pages margin_cache_stock.json):2330 的 20 天 margin_balance
+         **全部是 27,577**(2317/2603 同樣只有 1 種值)。
+      ⭐ 目前還沒造成明顯髒資料(下游「只補 0」擋住了),但那是未爆彈 →
+         非最新交易日一律**不採用** OpenAPI,留給 deploy job 那條**帶日期**的回補路徑。
+      ⛔ 預設 True 是為了向後相容(其他呼叫端行為不變)。
+    """
     res = {}
     d8 = d.strftime('%Y%m%d')
     d_iso = d.strftime('%Y-%m-%d')
@@ -989,8 +999,19 @@ def fetch_market_margin(d: date) -> dict:
                     best = (valid, t, idx_id)
 
             if best is None:
-                titles = [t.get('title', '') for t in tables]
-                print(f"  ⚠️ 上市融資券找不到個股表（無 table id 欄含 >50 股號）；tables 標題={titles}")
+                # 🚨 V75.1.4:這條路現在**必定失敗**,而且不是 bug —— rwd 端點 2026/06 起改回彙總表:
+                #    id 欄叫「代號」(這裡找的是「股票代號/證券代號」),而且**整張表的欄名裡
+                #    完全沒有「融資/融券」字樣**(是「買進/賣出/現金償還/前日餘額/今日餘額」,
+                #    前半融資、後半融券,只靠位置區分)→ 就算修好 id 比對,下面的 _find_col 一樣回 None。
+                # ⛔ **別再試圖修 rwd 的解析** —— 硬修就要靠位置猜融資/融券,比現在更脆弱;
+                #    實際供料的是下面 step 1.5 的 TWSE OpenAPI(欄位是具名的,安全得多)。
+                # ⚠️ 警告降成一次性:呼叫端一輪跑 20 個交易日,每天印一次 = 20 行雜訊,
+                #    而雜訊會讓人養成忽略警告的習慣。
+                if not getattr(fetch_market_margin, '_rwd_warned', False):
+                    fetch_market_margin._rwd_warned = True
+                    titles = [t.get('title', '') for t in tables]
+                    print(f"  ℹ️ [MI_MARGN rwd] 找不到個股表(2026/06 起改彙總表,已知且預期)→ 改走 OpenAPI;"
+                          f"tables 標題={titles}(本輪只印這一次)")
             else:
                 _, target_table, idx_id = best
                 fields = target_table.get('fields', [])
@@ -1037,7 +1058,9 @@ def fetch_market_margin(d: date) -> dict:
     # 🏛️ 1.5. TWSE OpenAPI v1 第二條源:rwd 端點 2026/06 起改回彙總表後,改試官方 OpenAPI
     #    端點:https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN(RESTful list[dict])
     #    僅在 step 1 沒拿到任何個股(res 空)時試,避免徒耗 API。OpenAPI 成功則直接補上市段
-    if not res:
+    if not res and not is_latest:
+        print(f"  ⏭️ [TWSE OpenAPI] {d} 不是最新交易日 → 跳過(該端點沒有日期參數,只會回最新一天)")
+    if not res and is_latest:
         try:
             url_oapi = 'https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN'
             r_oapi = http_session.get(url_oapi, headers=_rnd_hdrs(), timeout=15)
@@ -1106,14 +1129,29 @@ def fetch_market_margin(d: date) -> dict:
                 rows_otc, fields_otc = (j.get('aaData') or j.get('data') or []), (j.get('fields') or [])
             if not rows_otc:
                 _otc_why.append(f"{_tag}→200 但無資料列 stat={j.get('stat') if isinstance(j, dict) else '?'} raw={str(j)[:200]!r}"); continue
-            def _col(keys, default):
-                for i, f in enumerate(fields_otc):
-                    f = str(f or '')
-                    if all(k in f for k in keys) and '買進' not in f and '賣出' not in f and '償還' not in f and '前日' not in f and '限額' not in f:
+            # 🚨 V75.1.4:TPEx 的欄名是**簡寫**「資餘額 / 券餘額」,⛔ 不是 TWSE 的「融資今日餘額」。
+            #    V75.1.3 找 '融資'/'融券' → **一個都配不到** → 一路 fall through 到寫死的 6/13,
+            #    而 13 是「券償」(當日券償還)不是「券餘額」(=14) → 上櫃融券值全錯。
+            #    實測(scripts/otc_margin_probe.py,2026-09-08)真實欄位:
+            #      0 代號 1 名稱 2 前資餘額(張) 3 資買 4 資賣 5 現償 6 資餘額 7 資屬證金
+            #      8 資使用率(%) 9 資限額 10 前券餘額(張) 11 券賣 12 券買 13 券償 14 券餘額 15 券屬證金
+            #    佐證:修前 5483 融券/融資 = 0.02%、3105 = 0.00%(上市正常是 0.5~5%)。
+            def _col(exact, k1, default):
+                for i, f in enumerate(fields_otc):          # ① 精確:欄名就是「資餘額」/「券餘額」
+                    if str(f or '').strip() == exact:
                         return i
-                return default
-            i_mb = _col(['融資', '餘額'], 6); i_sb = _col(['融券', '餘額'], 13)
+                for i, f in enumerate(fields_otc):          # ② 寬鬆:含「資/券」+「餘」
+                    f = str(f or '')
+                    # 🚨「前」一定要排除 —— 前資餘額(張)/前券餘額(張) 也含「資/券」+「餘」,
+                    #    配到就變成**昨天**的餘額(而且完全不會報錯)。
+                    if k1 in f and '餘' in f and not any(x in f for x in ('前', '買', '賣', '償', '限額', '屬證金', '使用率')):
+                        return i
+                return default                              # ③ 寫死(最後備援)
+            i_mb = _col('資餘額', '資', 6); i_sb = _col('券餘額', '券', 14)
             n_ok = 0
+            _otc_ratio = []     # 🚧 只收**這一批 TPEx** 的融券/融資比值
+            #    ⛔ 不可拿整個 `res` 去算 —— 裡面混著 TWSE 的上市股(比值 0.5~6%),
+            #    max() 永遠不會落在門檻內 → 守門形同虛設(這個錯是測試 ⑧f 抓到的)。
             for r in rows_otc:
                 sid = str(r[0]).strip()
                 if not _valid_stock(sid):   # 跳過總計列 / 非個股列
@@ -1123,11 +1161,20 @@ def fetch_market_margin(d: date) -> dict:
                         'margin_balance': int(str(r[i_mb]).replace(',', '') or 0),
                         'short_balance':  int(str(r[i_sb]).replace(',', '') or 0),
                     }
+                    if res[sid]['margin_balance']:
+                        _otc_ratio.append(res[sid]['short_balance'] / res[sid]['margin_balance'])
                     n_ok += 1
                 except Exception:
                     pass
             if n_ok:
                 print(f"  [TPEx 融資券] {_tag} 命中 {n_ok} 檔(欄位 融資={i_mb} 融券={i_sb})")
+                # 🚧 合理性守門(V75.1.4):欄位抓錯**不會丟例外**,只會給出合法但錯誤的整數
+                #    → 唯一看得出來的訊號是「融券/融資比值」。實測上市 0.14~6.17%,
+                #    而抓到「券償」時全部 ≤0.02% → 門檻取 0.05% 並要求**樣本夠**才判。
+                if len(_otc_ratio) >= 50 and max(_otc_ratio) <= 0.0005:
+                    print(f"  ::warning::[TPEx 融資券] {len(_otc_ratio)} 檔的融券/融資比值全部 ≤0.05%"
+                          f"(正常 0.5~5%)→ 疑似 i_sb={i_sb} 抓到「券償」而不是「券餘額」;"
+                          f"完整 fields={fields_otc}")
                 break
             _otc_why.append(f"{_tag}→{len(rows_otc)} 列但一檔都解不出(fields={fields_otc[:8]})")
         except Exception as e:
@@ -1145,7 +1192,16 @@ def fetch_market_margin(d: date) -> dict:
     _otc_short = _src['tpex'] < 200
     print(f"  [融資券來源] twse={_src['twse']} tpex={_src['tpex']} ・_FINMIND_BLOCKED={_FINMIND_BLOCKED} ・tokens={len(FINMIND_TOKENS)} 把")
     if (not res or _short_all_zero or _otc_short) and not _FINMIND_BLOCKED:
-        reason = "TWSE+TPEX 兩條都失敗" if not res else (f"融券全 0({len(res)} 檔,疑 TWSE 欄位抓錯)" if _short_all_zero else f"上櫃只有 {_src['tpex']} 檔(TPEx 對 runner 403?)")
+        # 🚨 V75.1.4:⛔ 不可再無條件寫「TPEx 對 runner 403?」—— 那是**錯的歸因**。
+        #    探針實測(otc_margin_probe.py)TPEx 三個端點全部 HTTP 200、回 920 列;
+        #    而 09-09 那天 tpex=0 的真因是採礦跑在台北 08:52(**盤都還沒開**),當日資料本來就還沒公布。
+        _tw_now = datetime.now(timezone(timedelta(hours=8)))
+        # 未來日期,或「今天而且還沒到收盤後的公布時間(台北 18:00)」→ 本來就不該有資料
+        _not_yet = d > _tw_now.date() or (d == _tw_now.date() and _tw_now.hour < 18)
+        _otc_reason = (f"上櫃 {_src['tpex']} 檔:{d} 的資料尚未公布(採礦時間台北 {_tw_now:%m-%d %H:%M},早於收盤後的公布時間)"
+                       if _not_yet else
+                       f"上櫃只有 {_src['tpex']} 檔(正常約 800;⛔ 先看上面 _otc_why 的每條原因,別直接歸因 403)")
+        reason = "TWSE+TPEX 兩條都失敗" if not res else (f"融券全 0({len(res)} 檔,疑 TWSE 欄位抓錯)" if _short_all_zero else _otc_reason)
         _src['why'] = reason
         _fill_only = bool(res) and not _short_all_zero   # ⛔ 只補「還沒有」的,不覆蓋 TWSE/TPEx 已抓到的
         print(f"  ⚠️ [融資券] {reason}，啟動 FinMind TaiwanStockMarginPurchaseShortSale 備援…(只補缺的={_fill_only})")
@@ -2629,7 +2685,8 @@ def run():
                 print(f"  ⚠️ fetch_market_institutional({dd}) 例外，跳過：{e}")
             time.sleep(0.8)
             try:
-                marg = fetch_market_margin(d)
+                # ⭐ V75.1.4:只有最新交易日才准用 TWSE OpenAPI(那個端點沒有日期參數)
+                marg = fetch_market_margin(d, is_latest=(d == trading_days[-1]))
                 if marg:
                     margin_cache[dd] = marg
                     print(f"  融券 {dd}: {len(marg)} 筆")
