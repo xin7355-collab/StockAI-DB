@@ -5,14 +5,22 @@ name: 📐 PE 自身位階採礦
 # ⛔ 為什麼獨立一支(不併進 daily_miner):2,700 檔逐檔一次 API,實測約 30-45 分,
 #    併進去會把那條已經 30-60 分的關鍵路徑再拉長,而且它失敗不該擋部署。
 #
-# 🕐 每週跑一次就夠 —— PE 位階是「近 3 年」的相對位置,一天不會變多少;
-#    ⛔ 天天跑只是白燒額度。週日 18:00 UTC = 台北週一凌晨 02:00。
+# 🕐 V75.1.3 改**每個交易日**跑一次(使用者 2026-09-09 決定:報告分頁要用「今日」的 PE 位階,
+#    舊註解「每週跑一次就夠、天天跑白燒額度」已作廢 —— ⛔ 別留互相矛盾的說明)。
+#    代價:每天約 2,700 次 TaiwanStockPER / 30-45 分 / 與 FINMIND_TOKENS 共池
+#    → 排在台北 03:30(19:30 UTC),避開 daily_miner 16:30 那輪同一把付費金鑰的時段;
+#    每天 1 次在這個 repo 實測 100% 可靠(V73.9.0)。
+#
+# 🚨 V75.1.3 修一個「四個週日都綠燈、零產出」的 bug:排程觸發時 `inputs.limit` 是**空字串**
+#    → `int(os.getenv('LIMIT','99999'))` 炸 `int('')`;而採礦步驟 `set +e … exit 0` 把 rc 吞掉
+#    → 部署 skipped、pe_band.json 停在 08-14 一個月。⛔ rc≠0 現在會讓 job 變紅(部署照樣 skipped,
+#    「不覆寫舊檔」的意圖不變 —— 只是要**看得見**);Python 端改 `or '99999'`(check_env_default.py 守門)。
 #
 # ⭐ 冪等:每次重跑都重算當下位階,⛔ 不累積 → **不需要先從 data 分支還原舊檔**
 #    (跟 tick_hist / etf mgr_hist 那種累積型檔案不同,別照抄那邊的還原步驟)。
 on:
   schedule:
-    - cron: '0 18 * * 0'
+    - cron: '30 19 * * 1-5'
   workflow_dispatch:
     inputs:
       limit:
@@ -47,8 +55,24 @@ jobs:
           # 🚧 空過守門:清單不完整就別跑(不然會產出殘缺的 pe_band.json)
           if [ "$n" -lt 500 ]; then echo "::error::只還原到 $n 檔 → 中止"; exit 1; fi
 
+      - name: 🚧 今天已經產過就不重跑(防手動 + 排程同一天重複燒額度)
+        id: fresh
+        run: |
+          set +e
+          git fetch --depth=1 origin gh-pages 2>/dev/null
+          upd=$(git show origin/gh-pages:data/pe_band.json 2>/dev/null | python3 -c "import sys,json;print(str(json.load(sys.stdin).get('updated',''))[:10])" 2>/dev/null)
+          today=$(date -u '+%Y-%m-%d')
+          echo "線上 pe_band.json updated=$upd ・今天(UTC)=$today"
+          if [ -n "$upd" ] && [ "$upd" = "$today" ] && [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "skip=1" >> "$GITHUB_OUTPUT"; echo "ℹ️ 今天已經產過 → 跳過(手動 dispatch 不受此限)"
+          else
+            echo "skip=0" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
       - name: 📐 採礦
         id: mine
+        if: steps.fresh.outputs.skip != '1'
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
           LIMIT: ${{ github.event.inputs.limit }}
@@ -59,8 +83,9 @@ jobs:
           rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           # ⛔ 採礦器自己有空過守門(成功 <300 檔就不覆寫檔案且 exit 1)
-          [ "$rc" -ne 0 ] && echo "⚠️ rc=$rc → 不部署,保留線上舊檔"
-          exit 0
+          # 🚨 V75.1.3:⛔ 不可再 `exit 0` 吞 rc —— 那正是四個週日全綠零產出的原因。job 變紅、部署照樣 skipped。
+          [ "$rc" -ne 0 ] && echo "::error::pe_band_miner rc=$rc → 不部署,保留線上舊檔(看上面的 log 找原因)"
+          exit $rc
 
       - name: 🚀 部署到 gh-pages + data
         if: steps.mine.outputs.rc == '0'
