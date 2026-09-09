@@ -209,8 +209,16 @@ EXPECTED_KEYS = {
 #     **macro_risk.json 是對的**(每 4 小時 cron,美股收完才抓);
 #     macro_cache.json 由 miner.py 在 16:30 那輪抓,美股當天還沒收 → 拿到前一個 session,
 #     卻被 yfinance 標上今天的日期,所以「日期一樣但數字不一樣」。
-#     前端目前沒有任何卡片讀 usMacroCache 的 dji/sox/tsm/vix(已 grep 確認),所以畫面沒錯,
-#     但這條對帳要留著 —— 哪天有人接了錯的那邊,這裡會立刻叫出來。
+#     🚨 V75.2.3 更正:上面那句「前端目前沒有任何卡片讀 usMacroCache 的 dji/sox/tsm/vix
+#     (已 grep 確認)」**是錯的** —— 實際上有兩處在讀 macro_cache 的 `vix.close`:
+#     ① 美股列的 VIX 顯示 ② `_calcRiskScore`(風險指數)。
+#     後者最嚴重:**畫面顯示的 VIX 跟拿去計分的 VIX 不是同一個數字**,而那在畫面上看不出來。
+#     → 前端已抽成 `app._vixState()`(macro_risk 優先 → macro_cache 備援)。
+#     ⭐ 教訓:**「已 grep 確認」要寫清楚 grep 了什麼字串** —— 當時大概只搜了 `usMacroCache.vix`,
+#        而真正的呼叫端寫的是 `m.vix?.close` / `mr.vix`,搜不到。
+#     ⭐ 這條對帳**照樣留著**,但它問的問題要講清楚(見下面的訊息):
+#        日期相同 = 抓取時間不同(盤中報價),⛔ 不是誰算錯;
+#        B 的日期明顯落後 = macro_cache 停更,**那才要動作**。
 CROSS_CHECKS = [
     # (說明, 檔A, 取值路徑A, 檔B, 取值路徑B, 容差, 誰為準)
     ('費半 SOX',   'macro_risk.json', ('sox',), 'macro_cache.json', ('sox', 'close'), 0.5, 'macro_risk'),
@@ -448,9 +456,18 @@ def audit(ref):
             add('⚠️', 'E', f'{name}:{fa}{list(pa)}={va} / {fb}{list(pb)}={vb} → 有一邊缺值,無法對帳')
             continue
         checked += 1
+        # 🚨 V75.2.3 把**兩邊的日期**一起印出來 —— 只報「值不一樣」會讓人分不出
+        #   「抓取時間不同(正常)」與「其中一邊停更(要修)」,而這兩件事的處置完全相反。
+        da = dig(ja, (f'{pa[0]}_date',)) or (ja.get('updated') or '')[:10]
+        db = dig(jb, (pb[0], 'date')) or ''
         try:
             if abs(float(va) - float(vb)) > float(tol):
-                add('⚠️', 'E', f'{name} 兩處不一致:{fa}={va} vs {fb}={vb}(容差 {tol});以 {truth} 為準')
+                same_day = bool(da) and bool(db) and str(da)[:10] == str(db)[:10]
+                why = ('兩邊日期相同 → 多半是**抓取時間不同**(盤中報價),⛔ 不是誰算錯'
+                       if same_day else
+                       f'🚨 **日期就不一樣**({fa}={da or "?"} / {fb}={db or "?"})→ 比較可能是 {fb} 停更')
+                add('⚠️', 'E', f'{name} 兩處值不同:{fa}={va}({da or "?"}) vs {fb}={vb}({db or "?"})'
+                                f',容差 {tol};App 以 {truth} 為準。{why}')
         except Exception:
             add('⚠️', 'E', f'{name}:值不是數字({va} / {vb})')
     print(f'   對帳 {checked} 組')

@@ -100,5 +100,59 @@ ok('① ⭐ 主來源是 NaN/字串 → 要退回備援(⛔ 不可把 NaN 當有
 ok('④ ⭐ 風險指數吃得到那個值(⛔ 不是永遠 null)',
    R.bothRisk !== null && R.bothRisk !== undefined, String(R.bothRisk));
 
+
+// ══ 🌍 V75.2.4 通用入口 `_macroPick` —— 風險指數的四個因子曾經**永遠是 null** ══
+//   🚨 `_calcRiskScore` 從頭到尾只讀 macro_cache,而 `es_fut` / `nq_fut` / `gold` / `usdjpy`
+//      這四個 key 在 macro_cache 裡**根本不存在** → 那幾個因子永遠不計分,
+//      而註解卻寫著「美股方向期貨夜盤優先」(V32.7)—— 那條優先**從來沒有生效過**。
+{
+    const b2 = await chromium.launch({
+        executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+        args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
+    });
+    const p2 = await b2.newPage();
+    await p2.addInitScript(() => {
+        const inst = new Proxy({}, { get: (_t, k) => (k === 'getWidth' || k === 'getHeight') ? (() => 300) : (() => inst) });
+        Object.defineProperty(window, 'echarts', {
+            value: new Proxy({}, { get: (_t, k) => k === 'init' ? (() => inst) : (k === 'graphic' ? {} : () => inst) }),
+            writable: true, configurable: true,
+        });
+    });
+    await p2.goto(pathToFileURL(path.join(ROOT, 'index.html')).href, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await p2.waitForFunction(() => typeof app !== 'undefined' && !!app._macroPick, null, { timeout: 25000 });
+    const M = await p2.evaluate(() => {
+        const rMR = app._macroRiskCache, rMS = app._marketSnapshot, rUM = app.usMacroCache;
+        const o = {};
+        // 只有 macro_risk 有的那幾個(扁平形狀)
+        app._macroRiskCache = { gold_chg_pct: 1.56, es_fut: 7658.25, es_fut_chg_pct: null,
+                                nq_fut: 29514, nq_fut_chg_pct: 0.8, sp500: 7652.61, sp500_chg_pct: -0.27 };
+        // 只有 macro_cache 有的那個(巢狀形狀)
+        app._marketSnapshot = { ukoil: { close: 100.71, chg_pct: 2.85, date: '2026-09-09' },
+                                sp500: { close: 7652.71, chg_pct: -9.99, date: '2026-09-09' } };
+        o.gold = app._macroChg('gold');
+        o.nq = app._macroChg('nq_fut');
+        o.oil = app._macroChg('ukoil');
+        o.sp500 = app._macroChg('sp500');          // 兩邊都有 → 要拿 macro_risk 那個
+        o.usdjpy = app._macroChg('usdjpy');        // 兩邊都沒有 → null
+        o.esChg = app._macroChg('es_fut');         // 有值但 chg 刻意是 null
+        o.esPick = app._macroPick('es_fut');
+        app._macroRiskCache = rMR; app._marketSnapshot = rMS; app.usMacroCache = rUM;
+        return o;
+    });
+    await b2.close();
+    ok('⑥ 🚨 只有 macro_risk 有的因子(黃金)要讀得到 —— ⛔ 它以前永遠是 null', M.gold === 1.56, M.gold);
+    ok('⑥ 🚨 那斯達克期同理(⛔ 以前永遠不計分)', M.nq === 0.8, M.nq);
+    ok('⑥ ⭐ 只有 macro_cache 有的(油價)要走備援', M.oil === 2.85, M.oil);
+    ok('⑥ ⭐ 兩邊都有 → 取 macro_risk(⛔ 不可拿到舊的 −9.99)', M.sp500 === -0.27, M.sp500);
+    ok('⑥ ⛔ 兩份都沒有的(usdjpy)回 null —— 誠實,⛔ 不可去別處硬湊', M.usdjpy === null, M.usdjpy);
+    ok('⑥ ⭐ 有價位但漲跌%刻意留空(期貨)→ val 有值、chg 是 null(⛔ 不可拿 0 充數)',
+       M.esPick.val === 7658.25 && M.esChg === null, JSON.stringify(M.esPick));
+    // 靜態:風險指數的那幾行不可再直接讀 m.xxx
+    const _rs = SRC.slice(SRC.indexOf('_calcRiskScore() {'), SRC.indexOf('_calcRiskScore() {') + 4200);
+    ok('⑥ ⛔ 風險指數不可再直接讀 `m.xxx?.chg_pct`(一律 `_macroChg`)',
+       !/m\.(es_fut|nq_fut|gold|usdjpy|dxy|sox|tsm|ukoil|sp500)\?\.chg_pct/.test(_rs),
+       (_rs.match(/m\.\w+\?\.chg_pct/g) || []).join(' '));
+}
+
 console.log(fails ? `❌ ${fails} 條失敗` : '✅ VIXSRC_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

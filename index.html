@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.2.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.2.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.2.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.2.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8010,8 +8010,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.2.3',
+    _APP_VERSION: 'V75.2.4',
     _CHANGELOG: [
+        { v: 'V75.2.4', dt: '2026-09-09', d: ['🚨 <b>風險指數裡有四個因子從來沒有作用過</b>:S&amp;P 期、那斯達克期、<b>黃金</b>、日圓 —— 它們讀的那份檔案<b>根本沒有這幾個欄位</b>,所以永遠算 0 分。而程式註解上寫著「美股方向以期貨夜盤優先」—— <b>那條優先從來沒有生效過</b>,每次都退回用現貨。','⭐ 順著 VIX 那條線查下去才發現的:同一個問題,黃金、期貨、日圓一起中。現在全部改走同一個入口(比較新的那份優先、舊的當備援)。','📊 <b>誠實說明影響</b>:用今天的真實資料實測,風險指數 <b>26 → 32(+6)</b> —— 那 6 分就是<b>黃金</b>(今天 +1.56%,地緣避險)。⚠️ 也就是說<b>以前的風險分數偏低</b>,不是現在變高了。','⚠️ <b>日圓兩份檔都沒有</b>(採礦端就沒採)→ 它照樣是 0 分,⛔ 我沒有去別處硬湊一個數字來填。','⭐ 量的時候自己先犯了一次錯:第一版量出「16 → 32」,但那是<b>量測方法錯了</b>(把整份檔清空,連台指 VIX、匯率那兩個本來就正常的因子也一起關掉)。改用正確方法重量才是 +6。'] },
         { v: 'V75.2.3', dt: '2026-09-09', d: ['😱 <b>同一個「VIX」在 App 裡有兩個數字</b>(實測同一天 <b>16.41</b> vs <b>16.31</b>)—— ⛔ 不是誰算錯,是<b>兩份採礦檔抓的時間不同</b>(VIX 是美股盤中即時報價)。但畫面上出現兩個就是打架。','🚨 <b>更嚴重的是:風險指數算進去的那個 VIX 是舊的那份</b> —— 等於<b>你看到的數字跟拿去計分的數字不是同一個</b>。','⭐ 現在全站只留一個入口:<b>比較新的那份優先、舊的當備援</b>(這個優先序本來就定過,只是沒接完)。顯示、風險指數、盤前體檢一起接上。','⛔ 兩件刻意做的:① 兩份都沒有時<b>回空白不亂編數字</b> ② 主來源壞掉(不是數字)也會自動退回備援。'] },
         { v: 'V75.2.2', dt: '2026-09-09', d: ['📐 <b>「本益比位階」也接上跟車</b>:它的排程寫的是「每個交易日」,實測卻<b>只跑到每週一次</b>(4 次全在週日)—— 再配上之前那個「錯誤被吞掉」的 bug,就成了四個週日全綠卻零產出、資料停在 08/14 一個月沒人發現。','⭐ 現在改成跟在夜間基本面採礦<b>跑完之後</b>,剛好也符合它原本「避開跟別支搶同一把付費金鑰」的設計 —— 等對方跑完才開始,天然不會撞在一起。','⛔ 同一天不會跑兩輪:「今天已經有產物就跳過」那道守門<b>連跟車也一起擋</b>(只有手動觸發才強制重跑),不浪費付費額度。','🔍 順手查清楚一件事:集保週採礦的排程也是 0 筆,但<b>那個檔本來就由每日採礦順便產出</b>(今天的日期是新的)→ ⛔ 不動它。先查「這個檔是不是別處已經在產」再決定要不要修,是本站的既有規矩。'] },
         { v: 'V75.2.1', dt: '2026-09-09', d: ['🔬 <b>實測總表補上四筆漏收錄的回測</b>(產業作戰室 → 實測總表):① <b>ORB 開盤區間突破當沖</b> —— 毛利本來就 ≈ 0,扣掉當沖成本後<b>沒有一組是賺的</b> ② <b>缺貨 / 供貨 / 做夢行情</b> 七種族群狀態,<b>六種扣完成本是負的</b>,唯一過關的「做夢」在 2022 空頭也翻負 ③ <b>隔日沖分點的兩個江湖說法</b>(開高就倒、賺 X% 才出)實測都不成立 ④ <b>投量比</b>資料太短、連分桶都做不出來(所以 App 只做換算、不給方向)。','⚠️ 這四筆<b>本來就測過</b>,只是結論沒同步寫進你看得到的那張表 —— 等於白測。現在補上,每一條都附實測數字與來源。','🔍 順手寫了一支<b>巡邏工具</b>自動比對「測過的」與「表上有的」,以後不會再漏。'] },
@@ -15357,16 +15358,39 @@ const marginByDate = {};
     //   ⭐ 優先序沿用 V58.7 已經定過的:`macro_risk` 優先 → `macro_cache` 備援
     //      (理由是實測 macro_cache 曾停在 07-07 顯 18.41,而實際是 16.9)。
     //   ⚠️ 回傳 `src` 讓呼叫端**需要時說得出來源**,⛔ 呼叫端不准自己再挑一次。
-    _vixState() {
+    //   ⭐ V75.2.4 抽成通用的 `_macroPick(key)`(⛔ 不只 VIX)—— 見下面那個更大的問題。
+    _vixState() { return this._macroPick('vix'); },
+
+    // 🌍 V75.2.4 — **所有**美股/總經指標的唯一入口(⛔ 別再直接讀原始欄位)
+    //   兩份檔的**形狀不一樣**,這正是它一直被讀錯的原因:
+    //     `macro_risk.json`(每 4 小時,新)→ **扁平**:`sox` / `sox_chg_pct` / `sox_date`
+    //     `macro_cache.json`(daily_miner 那輪,舊)→ **巢狀**:`sox.close` / `sox.chg_pct` / `sox.date`
+    //   🚨🚨 V75.2.4 實跑照出的真問題:`_calcRiskScore` 從頭到尾只讀 `macro_cache`,
+    //      而 **`es_fut` / `nq_fut` / `gold` / `usdjpy` 這四個 key 在 macro_cache 裡根本不存在**
+    //      → 那幾個因子**永遠是 null = 永遠不計分**,而註解卻寫著「美股方向期貨夜盤優先」
+    //      (V32.7)—— **那條優先從來沒有生效過**,每次都退回現貨。
+    //      同一類:`sox`/`tsm`/`sp500`/`dxy` 兩邊都有,但它讀到的一直是**舊的那份**。
+    //   ⛔ 這跟 V71.1.6 外資期貨、V75.2.3 的 VIX 是同一種病:**因子恆為常數 = 毫無鑑別力**,
+    //      而且畫面上完全看不出來。
+    //   ⚠️ `ukoil` 只有 macro_cache 有、`usdjpy` **兩份都沒有**(資料源就沒採)——
+    //      前者本來就會走備援;後者回 null 是誠實的,⛔ 不可為了「有值」去別處硬湊。
+    _macroPick(key) {
         const N = v => (v == null || isNaN(+v)) ? null : +v;
         const mr = this._macroRiskCache || {};
         const m = this._marketSnapshot || this.usMacroCache || {};
-        const a = N(mr.vix);
-        if (a != null) return { val: a, chg: N(mr.vix_chg_pct), date: mr.vix_date || null, src: 'macro_risk' };
-        const b = N(m.vix && m.vix.close);
-        if (b != null) return { val: b, chg: N(m.vix && m.vix.chg_pct), date: (m.vix && m.vix.date) || null, src: 'macro_cache' };
+        // ⚠️ 有些指標**只有漲跌%沒有價位**(實測:`gold` 只有 gold_chg_pct / gold_chg_3d / gold_date)
+        //   → 判斷「這份檔認不認得這個 key」要**兩個欄位任一有值**,
+        //   ⛔ 只看價位的話黃金會整個掉到備援、而備援根本沒有 gold → 又變回 null(第一版就是這樣)。
+        //   ⭐ 但**一旦認定用哪一份,val 與 chg 就一起從那一份拿**(⛔ 不可一半新一半舊)。
+        const a = N(mr[key]), ac = N(mr[`${key}_chg_pct`]);
+        if (a != null || ac != null) return { val: a, chg: ac, date: mr[`${key}_date`] || null, src: 'macro_risk' };
+        const o = m[key];
+        const b = N(o && o.close);
+        if (b != null) return { val: b, chg: N(o && o.chg_pct), date: (o && o.date) || null, src: 'macro_cache' };
         return { val: null, chg: null, date: null, src: null };
     },
+    /** 漲跌%(⛔ 呼叫端別自己挑檔案);拿不到回 null */
+    _macroChg(key) { return this._macroPick(key).chg; },
 
     // 💰 V71.2.2 融資去槓桿進度(唯一真相來源,別在別處再算一次)
     //   法人常用的判斷:「融資減幅仍落後加權指數跌幅 → 去槓桿未結束」。
@@ -45409,11 +45433,13 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const vix = this._vixState().val;
         // V32.7 — 美股方向「期貨夜盤優先」:ES=F(S&P 期)近 24h 交易,週末/隔夜地緣消息
         //   會即時反映 → 比現貨 ^GSPC(收盤後不動)更早預警週一台股跳空。抓不到期貨才退回現貨。
-        const spxChg = m.es_fut?.chg_pct ?? m.sp500?.chg_pct ?? null;
-        const nqChg  = m.nq_fut?.chg_pct ?? null;   // Nasdaq 期夜盤(科技權值 → 台積電/台股連動)
-        const dxyChg = m.dxy?.chg_pct ?? null;
-        const goldChg = m.gold?.chg_pct ?? null;
-        const usdjpyChg = m.usdjpy?.chg_pct ?? null;
+        // 🚨 V75.2.4 `m.es_fut` 在 macro_cache 裡**根本不存在** → 這條「期貨優先」從來沒生效過。
+        const spxChg = this._macroChg('es_fut') ?? this._macroChg('sp500');
+        const nqChg  = this._macroChg('nq_fut');    // Nasdaq 期夜盤(🚨 V75.2.4 前這個因子永遠 null)
+        const dxyChg = this._macroChg('dxy');
+        const goldChg = this._macroChg('gold');     // 🚨 V75.2.4 前永遠 null(macro_cache 沒有 gold)
+        // ⚠️ usdjpy **兩份檔都沒有**(採礦端就沒採)→ 回 null 是誠實的,⛔ 不可去別處硬湊一個
+        const usdjpyChg = this._macroChg('usdjpy');
         const fi = this.fiShortQty;
 
         if (vix === null && fi === null) return null;
@@ -45504,21 +45530,21 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
         // ───────── V32.8 台股專屬領先因子(原本只看全球宏觀,補上半導體 + 地緣 + 位階)─────────
         // 🇹🇼 台積電 ADR 夜盤:佔台股權重 ~35%,隔夜最直接的領先指標(跌 → 拉積盤拖累大盤) 0-8
-        const tsmChg = m.tsm?.chg_pct ?? null;
+        const tsmChg = this._macroChg('tsm');
         if (tsmChg !== null) {
             if      (tsmChg < -3) score += 8;
             else if (tsmChg < -2) score += 5;
             else if (tsmChg < -1) score += 2;
         }
         // 🔬 SOX 費城半導體夜盤:台股=半導體權值股,費半重挫 → 台積電/聯發科隔日壓力 0-6
-        const soxChg = m.sox?.chg_pct ?? null;
+        const soxChg = this._macroChg('sox');
         if (soxChg !== null) {
             if      (soxChg < -3) score += 6;
             else if (soxChg < -2) score += 4;
             else if (soxChg < -1) score += 2;
         }
         // 🛢️ 油價(Brent)漲幅:戰爭/地緣衝突最敏感 → 通膨 + 風險趨避(你的伊朗情境) 0-6
-        const oilChg = m.ukoil?.chg_pct ?? null;
+        const oilChg = this._macroChg('ukoil');     // ⚠️ 只有 macro_cache 有 → 本來就走備援
         if (oilChg !== null) {
             if      (oilChg > 6)   score += 6;
             else if (oilChg > 3)   score += 4;
