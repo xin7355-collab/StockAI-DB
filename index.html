@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.1.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.1.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.1.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.1.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8010,8 +8010,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.1.8',
+    _APP_VERSION: 'V75.1.9',
     _CHANGELOG: [
+        { v: 'V75.1.9', dt: '2026-09-09', d: ['🌡️ <b>上一版那個「大盤過熱提醒」做得不夠徹底</b>:它只是<b>在後面補一句</b>「但大盤過熱、別追高」,前半仍然寫著完整的「<b>可依紀律進場</b>」—— 你只讀粗體那半就會照做。現在直接<b>把那句指令換掉</b>:改成「<b>條件是到了</b>,但大盤過熱、建議總部位 3~5 成 → <b>只能小量,⛔ 別追高</b>」。','✅ 巡邏工具實測:整個 App <b>跨卡打架 0 筆</b>(改之前是 2 筆)。','⭐ 這件事本身是個教訓,寫下來提醒自己:<b>「補一句但書」不等於修好</b> —— 兩種相反的指令並排時,人只會看見比較強的那一句。'] },
         { v: 'V75.1.8', dt: '2026-09-09', d: ['📊 <b>當沖那兩個大盤訊號的資料要恢復了</b>(上一版只先做到「過期就標日期、不計分」)。真因查清楚了:它的採礦排程<b>從 7/13 上線到現在一筆都沒被觸發過</b> —— 不是程式壞掉,是 GitHub 給這個 repo 的排程配額被吃光。','⭐ 修法照本站實測過的結論:<b>不再多開一支排程去搶配額</b>,而是把它<b>併進每天固定會跑的「當沖熱度」那一支</b>(台北 18:00,主題一樣、實測一直都跑得到)。<b>下一個交易日傍晚就會有新資料</b>。','⛔ 兩件刻意保留的:① 兩支採礦<b>互不影響</b>,一支失敗不會拖累另一支 ② <b>沒抓到就不覆寫線上舊檔</b>(寧可舊,也不要被殘缺資料蓋掉)。','🧪 這次的 git 流程有<b>開一個小 repo 實跑四種情況</b>(兩支都成功 / 只有一支成功 / 都失敗 / 內容沒變)才推上去 —— 不是用猜的。'] },
         { v: 'V75.1.7', dt: '2026-09-09', d: ['🏦 <b>修掉「每天都在講同一句話」的外資台指期判斷(9 處)</b>。小台/微台上市後未平倉總量變大,近 22 個交易日的外資淨額<b>每一天</b>都在 −75,000 口以下 —— 而 App 裡還有九個地方拿「≤ −25,000 就是偏空」這種<b>固定口數</b>在判斷,等於<b>每天都顯示「極空」、每天都進緊急模式、每天都多加 15 分風險</b>。那不是訊號,是常數。','⭐ 全部改成<b>跟它自己比</b>:近 20 日在什麼位階、最近 5 天是加空還是回補 —— 所以現在會出現「空單很大<b>但一直都這麼大</b> → 不算急遽加空」這種比較誠實的判讀。⚠️ 這條規則其實 V71.1.6 就定了,只是那次<b>沒接完</b>。','⏳ <b>當沖的兩個大盤訊號(選擇權 P/C、台指期大額交易人)資料停在 08/07</b> —— 而畫面上原本標「盤後」、照樣計分,等於<b>拿一個月前的數字當今天的方向</b>。現在會直接寫「⏳ 停在 08/07(33 天前)・不計分」,而且<b>數字照顯示</b>(不藏起來,只是不給方向)。','⚠️ 那個資料會停,是因為它的<b>採礦排程從 7 月上線到現在一次都沒被觸發過</b>(GitHub 排程配額問題)—— 那要改設定檔,已經另外列出來要問過你再動。'] },
         { v: 'V75.1.6', dt: '2026-09-09', d: ['🌡️ <b>修掉一組「卡片自己跟自己打架」</b>(巡邏工具掃出來的):頂端跑馬燈寫「多頭<b>過熱</b>・絕不追高、分批停利」,同一個畫面底下的<b>打法適配儀</b>卻寫「可依紀律進場」、<b>多空計分卡</b>寫「可順勢操作」。三句話同時出現,你根本不知道要聽誰的。','⭐ 現在只要大盤是<b>過熱 / 轉弱 / 盤整 / 空頭</b>,這兩張卡就會<b>把大盤狀況直接寫在那句話裡</b> —— 例如「可依紀律進場,<b>但大盤多頭(過熱)、建議總部位 3~5 成 → 別重押、別追高</b>」。⛔ 只有「健康多頭(建議 8 成)」才維持原本的說法。','⛔ 三件<b>刻意沒做</b>的事:① <b>數字一個都沒動</b>(命中幾條、期望值多少都是事實,改的只有那句「叫你怎麼做」的話)② <b>不是叫你反手做空</b>,只是降級成「別追高」③ 不新開卡片。','🔧 順手把這個判斷<b>收成一份</b>(原本同一段判斷式在三個地方各寫一次,改一處就會漏掉另外兩處 —— 這個坑本站已經踩過很多次)。'] },
@@ -38700,9 +38701,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         : _bg
                             ? `但上方主結論目前是<b class="text-green-300">空頭</b> → <b>先別加碼</b>,這只是短線型態、反彈仍偏減碼,想做只能小量搶短。`
                             : (_mg
-                                // 🌡️ V75.1.6 大盤守門:大盤過熱/轉弱時⛔ 不可孤零零說「可依紀律進場」
+                                // 🌡️ V75.1.6/V75.1.7 大盤守門:大盤過熱/轉弱時⛔ 不可孤零零說「可依紀律進場」
                                 //   —— 頂端跑馬燈同時在寫「絕不追高」,兩張卡會打架(page_sweep 掃到)。
-                                ? `→ 可依紀律進場,<b>但大盤 ${_mg.regimeLabel}、建議總部位 ${_mg.pct}</b> → <b>別重押、別追高</b>。`
+                                //   ⚠️ V75.1.9 再修一次:第一版只是**在後面補一句**「但大盤…別追高」,
+                                //      前半仍然是完整的「可依紀律進場」→ 使用者只讀粗體那半就會照做,
+                                //      巡邏工具也照樣判定打架。⭐ 正解是**把那句指令本身換掉**,
+                                //      改成「條件到了」(事實)+「只能小量、別追高」(指令),⛔ 不並存兩種指令。
+                                ? `→ <b>條件是到了</b>,但大盤 ${_mg.regimeLabel}、建議總部位 ${_mg.pct} → <b>只能小量,⛔ 別追高</b>。`
                                 : `→ 可依紀律進場。`);
                     nowCard = `<div class="bg-red-900/25 border-l-4 ${_en && !_bg ? 'border-red-500' : 'border-yellow-500'} border-y border-r border-[#30363d] rounded-r p-2.5 mb-2">
                         <div class="text-sm font-black text-red-200 mb-0.5">🔔 現在觸發:${_nm(r0)} <span class="text-[10px] font-normal">(這檔主打 +${r0.expectancy.toFixed(1)}%/趟・${r0.count} 次)</span>${this._wrTag(r0.winRate, r0.count)}</div>

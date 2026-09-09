@@ -96,8 +96,14 @@ ok('① 基準是 50% 時,文案維持「純靠運氣」(⛔ 別改壞既有那 
 }
 
 // ══ ③ 打法適配儀:樣本 + 空頭 兩道守門 ══════════════════════
-const play = (count, trend) => page.evaluate(async a => {
+// ⚠️ V75.1.9:多一個 `mkt` 參數 —— 這一段驗的是「**樣本 + 個股空頭**」那兩道守門,
+//   而 V75.1.6 之後還多了一道**大盤守門**(`_mktGate`)。⛔ 不 stub 的話,
+//   大盤剛好過熱的那幾天措辭會被降級 → 這裡會**假失敗**(而它根本不是在驗大盤那道)。
+//   ⭐ 預設關掉大盤那道;要驗它時傳 mkt 物件(⑥ 那組)。
+const play = (count, trend, mkt = null) => page.evaluate(async a => {
     const realFit = app._patternFitBacktest, realPer = app._stockPersonality;
+    const realMkt = app._mktGate;
+    app._mktGate = () => a.mkt;
     app._patternFitBacktest = () => ([
         { key: '📐 測試型態', winRate: 100, plRatio: 99, count: a.count, expectancy: 3.3, firedToday: true },
         { key: '📐 陪跑', winRate: 30, plRatio: 0.8, count: 40, expectancy: -0.5, firedToday: false },
@@ -110,9 +116,9 @@ const play = (count, trend) => page.evaluate(async a => {
     app.analyzeStockPlaybook();
     await new Promise(r => setTimeout(r, 260));
     const h = document.getElementById('playbookCard').innerHTML;
-    app._patternFitBacktest = realFit; app._stockPersonality = realPer;
+    app._patternFitBacktest = realFit; app._stockPersonality = realPer; app._mktGate = realMkt;
     return h;
-}, { count, trend });
+}, { count, trend, mkt });
 
 const P3 = txt(await play(3, 'flat'));
 ok('③ ⭐⛔ 只有 3 次時,不可寫「可依紀律進場」', !/可依紀律進場/.test(P3), P3.slice(0, 300));
@@ -120,7 +126,18 @@ ok('③ ⭐ 要直接說「只出現過 3 次…還不能當結論」', /只出�
 ok('③ ⭐ 排名列旁邊要有樣本徽章', /只有 3 次/.test(P3), P3.slice(0, 400));
 
 const P20 = txt(await play(20, 'flat'));
-ok('③ ⭐ 樣本夠 + 非空頭 → 指令照給(⛔ 別矯枉過正)', /可依紀律進場/.test(P20), P20.slice(0, 300));
+ok('③ ⭐ 樣本夠 + 非空頭 + 大盤沒事 → 指令照給(⛔ 別矯枉過正)', /可依紀律進場/.test(P20), P20.slice(0, 300));
+
+// ⑥ V75.1.9 大盤守門那道:同樣的樣本與趨勢,只把大盤換成「過熱」
+//   ⭐ 要驗的是**降級**不是**消失** —— 還是要給得出「怎麼做」,⛔ 不可整段不講。
+const P20hot = txt(await play(20, 'flat', { regime: 'bull', regimeLabel: '🐂 多頭(過熱)', pct: '3~5 成(只留強勢股)' }));
+ok('⑥ ⭐ 大盤過熱 → ⛔ 不可再說「可依紀律進場」', !/可依紀律進場/.test(P20hot), P20hot.slice(0, 300));
+ok('⑥ ⭐ 但仍要講得出怎麼做(降級成「只能小量、別追高」,⛔ 不是整段不講)',
+   /只能小量/.test(P20hot) && /別追高/.test(P20hot), P20hot.slice(0, 300));
+ok('⑥ ⭐ 而且要說出大盤是什麼狀況 + 部位上限(⛔ 只寫「留意大盤」等於沒講)',
+   /過熱/.test(P20hot) && /3~5 成/.test(P20hot), P20hot.slice(0, 320));
+ok('⑥ ⛔ 數字不可被守門動到(期望值那個數字兩種情境要一樣)',
+   (P20.match(/\+3\.3%/) || []).length > 0 && (P20hot.match(/\+3\.3%/) || []).length > 0, '');
 
 const PB = txt(await play(20, 'bear'));
 ok('③ ⭐⛔ 主結論空頭時,⛔ 不可寫「可依紀律進場」(講反話第 7 處)',
