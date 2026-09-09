@@ -88,8 +88,101 @@ for f in ['blocktrade_hist.json', 'lending_hist.json', 'margin_limit_hist.json']
 ok('⑦b 融資限額有接進主流程', 'fetch_margin_limit' in src.split("if __name__")[0] and '_safe_step("融資限額 fetch_margin_limit"' in src)
 
 # ⑧ 🚧 融資限額:解析不到 200 檔一律不寫(⛔ 不可寫半份)
-ok('⑧ 融資限額有「<200 檔不寫」守門', 'len(m) < 200' in src)
+_fml = src[src.index('def fetch_margin_limit()'):src.index('\ndef _fm_bulk_days(')]
+ok('⑧ 融資限額有「<200 檔不寫」守門', 'len(mm) < 200' in _fml or 'len(m) < 200' in _fml)
 ok('⑧b 融資限額有誠實揭露「只有上市」', 'TPEx' in src and '403' in src)
+
+# ⑪ 🚨 V75.2.6:這支從 V74.6.9 上線到 2026-09-09 **一天都沒寫出來**,死在
+#    「找欄名含『融資』的那一欄」—— 而 rwd 版 MI_MARGN 整張表沒有「融資/融券」字樣。
+#    ⭐ 釘的是**用意**:欄位定位⛔ 不可只靠寫死索引,靠位置時必須先過表頭指紋。
+ok('⑪ 欄位定位⛔ 不可只靠寫死索引 —— 要嘛具名、要嘛先過表頭指紋',
+   ('OpenAPI' in _fml and 'Limit' in _fml)          # ① 具名來源
+   and 'fp = (' in _fml and 'len(hdr) == 12' in _fml  # ③ 位置解析前的指紋
+   and '⛔ 不靠位置硬猜' in _fml)
+ok('⑪b 指紋對不上時要**印出完整 hdr** 再放棄(⛔ 不可靜默 return)',
+   _fml.count('完整 hdr = {hdr}') >= 2)
+ok('⑪c 🚨 寫檔前要有資料合理性守門(餘額 ≤ 限額)—— 欄位配錯時 200 檔門檻擋不住',
+   'def _sane(' in _fml and 'b <= l' in _fml and '< 90' in _fml)
+
+# ⑫ 🚨 語意:TWSE 那一欄叫「次一營業日限額」,⛔ 不是「今日限額」——
+#    文案寫錯會讓日後算出來的「融資使用率」被解讀成別的東西。
+ok('⑫ 限額語意有寫明(次一營業日限額 ≠ 今日限額)',
+   '次一營業日限額' in _fml and '不是今日限額' in _fml)
+ok('⑫b 這件事也要出現在 log 裡(⛔ 不能只寫在註解給自己看)',
+   '次一營業日限額」不是今日限額' in _fml)
+
+# ⑬ 🚨 **功能測試**(⛔ 不是字串斷言):拿**真實 log 那一行 hdr** 餵進去,
+#    確認 rwd 那條路真的解析得出來。照 V75.1.3→V75.1.4 的教訓(陷阱 #40):
+#    測資的欄名**逐字抄自真實回應**,⛔ 不可憑想像寫 —— 那次 12 條全綠 + 注入全過,
+#    真實資料卻完全對不上。
+import io, urllib.request as _ur
+_REAL_HDR = ['代號', '名稱', '買進', '賣出', '現金償還', '前日餘額', '今日餘額',
+             '次一營業日限額', '買進', '賣出', '現券償還', '前日餘額']
+
+class _Resp(io.BytesIO):
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+
+def _fake(payload):
+    def f(req, timeout=None):
+        u = req.full_url if hasattr(req, 'full_url') else str(req)
+        return _Resp(json.dumps(payload('openapi' if 'openapi' in u else 'rwd')).encode())
+    return f
+
+_orig_open = _ur.urlopen
+try:
+    def _pl(kind):
+        if kind == 'openapi':
+            # 具名端點回了資料,但**沒有限額欄** → 必須自動退到 rwd(⛔ 不可就此放棄)
+            return [{'Code': '2330', 'MarginPurchaseTodayBalance': '1,000'}]
+        rows = []
+        for i in range(300):
+            sid = str(1101 + i)
+            rows.append([sid, f'X{i}', '0', '0', '0', '900', '1,000', '9,000',
+                         '0', '0', '0', '0'])
+        return {'stat': 'OK', 'tables': [{'fields': _REAL_HDR, 'data': rows}]}
+    _ur.urlopen = _fake(_pl)
+    miner.DATA_DIR = d
+    _MP = os.path.join(d, 'margin_limit_hist.json')
+    if os.path.exists(_MP): os.remove(_MP)
+    miner.fetch_margin_limit()
+    got = json.load(open(_MP))['days'] if os.path.exists(_MP) else {}
+    day = sorted(got)[-1] if got else ''
+    ok('⑬ 用真實欄名 hdr 餵進去 → 真的解析得出來(≥200 檔)', len(got.get(day, {})) >= 200,
+       f'天={day} 檔數={len(got.get(day, {}))}')
+    ok('⑬b 解析出來的是 [今日融資餘額, 次一營業日限額] 這兩欄',
+       got.get(day, {}).get('1101') == [1000, 9000], got.get(day, {}).get('1101'))
+
+    # ⑭ 🚨 欄位配錯時,合理性守門要擋下來(⛔ 200 檔門檻擋不住配錯欄)
+    def _pl_bad(kind):
+        if kind == 'openapi':
+            return []
+        rows = []
+        for i in range(300):
+            # 把「限額」欄放成一個比餘額小的數字 = 典型的欄位錯位
+            rows.append([str(1101 + i), f'X{i}', '0', '0', '0', '900', '9,000', '1,000',
+                         '0', '0', '0', '0'])
+        return {'stat': 'OK', 'tables': [{'fields': _REAL_HDR, 'data': rows}]}
+    _ur.urlopen = _fake(_pl_bad)
+    os.remove(_MP)
+    miner.fetch_margin_limit()
+    ok('⑭ 🚨 餘額 > 限額(欄位配錯的樣子)→ ⛔ 不可寫檔', not os.path.exists(_MP))
+
+    # ⑮ 表頭指紋對不上(TWSE 又改 schema)→ ⛔ 不可硬猜位置
+    def _pl_new(kind):
+        if kind == 'openapi':
+            return []
+        h = _REAL_HDR[:6] + ['某個新欄'] + _REAL_HDR[6:]     # 欄數變 13
+        rows = [[str(1101 + i)] + ['1'] * 12 for i in range(300)]
+        return {'stat': 'OK', 'tables': [{'fields': h, 'data': rows}]}
+    _ur.urlopen = _fake(_pl_new)
+    # ⚠️ 每一條都先把檔案清掉再跑 —— 否則上一條若「不該寫卻寫了」,
+    #    這一條的 `not exists` 會**繼承**上一條的殘留,變成假失敗(注入驗證時實際踩到)。
+    if os.path.exists(_MP): os.remove(_MP)
+    miner.fetch_margin_limit()
+    ok('⑮ 表頭指紋對不上 → ⛔ 不硬猜位置、不寫檔', not os.path.exists(_MP))
+finally:
+    _ur.urlopen = _orig_open
 
 print('\n' + ('❌ %d 條失敗' % len(FAIL) if FAIL else '✅ SNAPHIST_PASS'))
 sys.exit(1 if FAIL else 0)

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.2.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.2.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.2.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.2.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8010,8 +8010,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.2.5',
+    _APP_VERSION: 'V75.2.6',
     _CHANGELOG: [
+        { v: 'V75.2.6', dt: '2026-09-09', d: ['🚨 <b>「融資限額」這份資料從 2026 年 8 月上線到今天,<b>一天都沒有存到</b></b> —— 而且畫面上、紀錄裡<b>完全沒有任何錯誤訊息</b>。真正的原因是證交所把欄位名稱改了(整張表裡再也沒有「融資」兩個字),程式找不到就<b>安靜地放棄</b>。今天修好了,而且改成「找不到就把完整欄位名印出來」,下次再改版不用再猜一輪。','⭐ <b>順便學到的一件事(對你也有用)</b>:一個功能「沒有報錯」<b>不等於</b>「它有在做事」 —— 判斷一份資料活著,要看<b>產物的日期</b>,不是看有沒有紅字。','🔥 <b>「券資比高 = 會軋空」這個說法,用三年資料重測還是不成立</b>(1,736 檔、6.4 萬個事件)。而且要更正上次講的話:上次說「方向剛好相反」,這次量出來其實是<b>接近零</b>,既不會漲也不會跌,扣掉手續費就沒了。⛔ 所以 App 不會為它開任何功能。','🚨 <b>這次差點被兩根壞資料騙到</b>:第一版跑出「某一格特別會賺」,查下去發現是一檔槓桿 ETF 的價格檔案裡有一個 16 倍的斷崖(舊資料沒還原分割),<b>一根壞棒就把那一格從賠錢拉成大賺</b>。現在探針會自動把這種檔案整個剔除。⚠️ 順手量到:全市場個股 2,367 檔裡有 <b>97 檔</b>有這種斷崖。','🔬 實測總表更新:「投量比」從「還測不了」改到「<b>實測沒用</b>」(它其實早就測完了,是我歸類錯);借券 / 鉅額 / 消息面三條的「從來沒存過」也更正成實際天數(37 / 23 / 10 天)。'] },
         { v: 'V75.2.5', dt: '2026-09-09', d: ['🌙 <b>指數列的「美股期貨夜盤」從上線到現在一直是「夜盤 --」</b> —— 同一個病(讀的那份檔沒有那兩個欄位)。現在接上了。','⭐ 而且期貨常常是「<b>有價格、但拿不到漲跌%</b>」(要有前一個結算價才能算)—— 這種時候<b>改成把價格顯出來 + 寫「無漲跌基準」</b>,⛔ 不再只丟一個「--」讓你不知道是壞了還是沒資料。','🩺 <b>資料體檢新增一類檢查</b>:專門抓「前端讀的欄位,那份檔根本沒有」—— 這正是前面那幾個因子壞了很久卻沒人發現的原因(檔案沒問題、沒有錯誤訊息、舊的檢查只看另一份檔)。','⭐ 新檢查寫好後<b>當場又抓到 2 處</b>沒改到的,修完再注入一個假欄位確認它真的叫得出來 —— 第一版的比對式其實有洞,是這樣才發現的。'] },
         { v: 'V75.2.4', dt: '2026-09-09', d: ['🚨 <b>風險指數裡有四個因子從來沒有作用過</b>:S&amp;P 期、那斯達克期、<b>黃金</b>、日圓 —— 它們讀的那份檔案<b>根本沒有這幾個欄位</b>,所以永遠算 0 分。而程式註解上寫著「美股方向以期貨夜盤優先」—— <b>那條優先從來沒有生效過</b>,每次都退回用現貨。','⭐ 順著 VIX 那條線查下去才發現的:同一個問題,黃金、期貨、日圓一起中。現在全部改走同一個入口(比較新的那份優先、舊的當備援)。','📊 <b>誠實說明影響</b>:用今天的真實資料實測,風險指數 <b>26 → 32(+6)</b> —— 那 6 分就是<b>黃金</b>(今天 +1.56%,地緣避險)。⚠️ 也就是說<b>以前的風險分數偏低</b>,不是現在變高了。','⚠️ <b>日圓兩份檔都沒有</b>(採礦端就沒採)→ 它照樣是 0 分,⛔ 我沒有去別處硬湊一個數字來填。','⭐ 量的時候自己先犯了一次錯:第一版量出「16 → 32」,但那是<b>量測方法錯了</b>(把整份檔清空,連台指 VIX、匯率那兩個本來就正常的因子也一起關掉)。改用正確方法重量才是 +6。'] },
         { v: 'V75.2.3', dt: '2026-09-09', d: ['😱 <b>同一個「VIX」在 App 裡有兩個數字</b>(實測同一天 <b>16.41</b> vs <b>16.31</b>)—— ⛔ 不是誰算錯,是<b>兩份採礦檔抓的時間不同</b>(VIX 是美股盤中即時報價)。但畫面上出現兩個就是打架。','🚨 <b>更嚴重的是:風險指數算進去的那個 VIX 是舊的那份</b> —— 等於<b>你看到的數字跟拿去計分的數字不是同一個</b>。','⭐ 現在全站只留一個入口:<b>比較新的那份優先、舊的當備援</b>(這個優先序本來就定過,只是沒接完)。顯示、風險指數、盤前體檢一起接上。','⛔ 兩件刻意做的:① 兩份都沒有時<b>回空白不亂編數字</b> ② 主來源壞掉(不是數字)也會自動退回備援。'] },

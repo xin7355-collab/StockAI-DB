@@ -7282,55 +7282,163 @@ def fetch_margin_limit():
       ⛔ 在累積滿一年之前**不上任何前端顯示、不計分**(門檻 20/50/70% 未經本站驗證)。
 
     ⚠️ 只有**上市**(TWSE MI_MARGN);上櫃的 TPEx 對 GitHub runner 整站 403(V73.6.1 實測)。
-    ⛔ 零額外成本:一天一個請求。
+    ⛔ 零額外成本:一天一個請求(OpenAPI 通了就不再打 rwd)。
+
+    🚨🚨 2026-09-09 實測:**這支從 V74.6.9 上線到現在,`margin_limit_hist.json` 一天都沒寫出來**
+       (本地 / origin/gh-pages / origin/data 三邊都沒有這個檔;同一個 job 的
+        `lending_hist` 37 天、`blocktrade_hist` 23 天都寫成功了 → 管線無罪)。
+       死在第三道 early-return:舊版找「欄名同時含**融資**與今日餘額」的欄,
+       而 rwd 版 MI_MARGN 的欄名是
+       `['代號','名稱','買進','賣出','現金償還','前日餘額','今日餘額','次一營業日限額',
+         '買進','賣出','現券償還','前日餘額']`
+       —— **整張表沒有「融資/融券」四個字**,前半融資、後半融券,只靠**位置**區分
+       → `i_bal = None` → 直接 return。⭐ 這跟 `fetch_market_margin` 的 rwd 端點是
+       **同一份 schema 變更**(miner.py 那邊 V75.1.4 已記過),只是沒人回頭看這支也吃它。
+
+    ⭐ 修法(三層,一層比一層不安全,⛔ 位置解析只能當最後手段):
+      ① **TWSE OpenAPI**(list[dict],欄位是**具名**的)—— 跟 `fetch_market_margin`
+         step 1.5 同一個端點,那邊實測供料正常。⭐ 一律先印首筆 keys,
+         下一輪就算又改名也能從 log 直接看到真名(⛔ 不用再猜一輪)。
+      ② rwd JSON **用欄名找**(維持舊行為,萬一哪天欄名加回「融資」就自動走回這條)。
+      ③ rwd JSON **靠位置**,但要先過**表頭指紋**:欄數 = 12、第 0 欄含「代號」、
+         只有一欄含「限額」而且它在 index 7、index 6 是「今日餘額」。
+         ⛔ 指紋對不上就**印出完整 hdr 然後不寫**(⛔ 不硬猜)。
+      ④ 不管走哪一層,寫檔前都要過**資料合理性守門**:限額 > 0、而且
+         「餘額 ≤ 限額」的比例 ≥ 90%(融資餘額不可能超過限額)。
+         ⛔ 不合理就印數字然後不寫 —— 那代表欄位配錯了。
+
+    ⚠️ **語意**:TWSE 那一欄叫「**次一營業日限額**」,不是「今天的限額」。
+       它是該股的融資**額度上限**(隔天生效),拿來當使用率的分母是對的,
+       但文案⛔ 不可寫成「今日限額」。輸出裡用 `lim_next` 這個名字把它釘住。
     """
     import urllib.request
     day_map = {}
+    m = {}
+    src = ''
+
+    def _num(v):
+        try:
+            return float(str(v).replace(',', '').strip() or 0)
+        except Exception:
+            return 0.0
+
+    def _sane(mm, where):
+        """限額 > 0 且「餘額 ≤ 限額」佔比 ≥ 90% —— 不合理代表欄位配錯,⛔ 不寫。"""
+        if len(mm) < 200:
+            print(f"  ⚠️ 融資限額[{where}]:只解析出 {len(mm)} 檔(<200)→ 保留舊檔(⛔ 不寫半份)")
+            return False
+        ok = sum(1 for b, l in mm.values() if l > 0 and b <= l)
+        pct = ok / len(mm) * 100
+        if pct < 90:
+            samp = list(mm.items())[:3]
+            print(f"  ⚠️ 融資限額[{where}]:只有 {pct:.1f}% 的列滿足「餘額 ≤ 限額」(<90%)"
+                  f" → 欄位很可能配錯,保留舊檔。抽樣 {samp}")
+            return False
+        return True
+
+    # ── ① TWSE OpenAPI(具名欄位,最安全)────────────────────────────
     try:
-        d8 = _tw_today_str().replace('-', '')
-        url = f'https://www.twse.com.tw/exchangeReport/MI_MARGN?response=json&date={d8}&selectType=ALL'
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        url_o = 'https://openapi.twse.com.tw/v1/exchangeReport/MI_MARGN'
+        req = urllib.request.Request(url_o, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=25) as r:
-            j = json.loads(r.read().decode('utf-8', 'ignore'))
-        if str(j.get('stat') or '') != 'OK':
-            print(f"  ⚠️ 融資限額:TWSE 回 stat={j.get('stat')!r} → 保留舊檔(⛔ 不寫空的)")
-            return
-        # ⚠️ MI_MARGN 有多張表 → 找欄位含「限額」而且第一欄是股票代號的那一張
-        rows, hdr = [], []
-        for t in (j.get('tables') or []):
-            f = [str(x) for x in (t.get('fields') or [])]
-            if any('限額' in x for x in f):
-                hdr, rows = f, (t.get('data') or []); break
-        if not rows:
-            print(f"  ⚠️ 融資限額:回應裡找不到含「限額」的表(表數 {len(j.get('tables') or [])})→ 保留舊檔")
-            return
-        i_lim = next((k for k, x in enumerate(hdr) if '限額' in x), None)
-        i_bal = next((k for k, x in enumerate(hdr) if '融資' in x and ('今日餘額' in x or '今日' in x and '餘額' in x)), None)
-        if i_lim is None or i_bal is None:
-            print(f"  ⚠️ 融資限額:欄位對不上(hdr={hdr[:12]})→ 保留舊檔")
-            return
-        num = lambda v: float(str(v).replace(',', '').strip() or 0)
-        m = {}
-        for r0 in rows:
-            try:
-                sid = str(r0[0]).strip()
-                if not _valid_stock(sid):
-                    continue
-                lim, bal = num(r0[i_lim]), num(r0[i_bal])
-                if lim <= 0:
-                    continue
-                m[sid] = [int(bal), int(lim)]      # [今日融資餘額(張), 融資限額(張)]
-            except Exception:
-                continue
-        if len(m) < 200:
-            print(f"  ⚠️ 融資限額:只解析出 {len(m)} 檔(<200)→ 保留舊檔(⛔ 不寫半份)")
-            return
-        day_map[_tw_today_str()] = m
-        print(f"  💳 融資限額:{len(m)} 檔(上市;⚠️ 上櫃的 TPEx 對機房 IP 403,拿不到)")
+            rows_o = json.loads(r.read().decode('utf-8', 'ignore'))
+        if isinstance(rows_o, list) and rows_o and isinstance(rows_o[0], dict):
+            keys = list(rows_o[0].keys())
+            print(f"  [融資限額/OpenAPI] 首筆 keys: {keys}")
+            k_lim = next((k for k in keys if 'Limit' in k or '限額' in k), None)
+            k_bal = next((k for k in keys
+                          if k in ('MarginPurchaseTodayBalance', '融資今日餘額', '融資現在餘額')), None)
+            k_id = next((k for k in keys if k in ('Code', 'StockNo', '股票代號', '證券代號', '代號')), None)
+            if k_lim and k_bal and k_id:
+                mm = {}
+                for row in rows_o:
+                    if not isinstance(row, dict):
+                        continue
+                    sid = str(row.get(k_id) or '').strip()
+                    if not _valid_stock(sid):
+                        continue
+                    lim, bal = _num(row.get(k_lim)), _num(row.get(k_bal))
+                    if lim <= 0:
+                        continue
+                    mm[sid] = [int(bal), int(lim)]
+                if _sane(mm, 'OpenAPI'):
+                    m, src = mm, f'OpenAPI({k_bal}/{k_lim})'
+            else:
+                print(f"  ⚠️ 融資限額[OpenAPI]:找不到需要的欄"
+                      f"(id={k_id!r} bal={k_bal!r} lim={k_lim!r})→ 改試 rwd")
+        else:
+            print(f"  ⚠️ 融資限額[OpenAPI]:回應非 list 或為空 → 改試 rwd")
     except Exception as e:
-        print(f"  ⚠️ 融資限額抓取失敗:{type(e).__name__}: {e} → 保留舊檔")
+        print(f"  ⚠️ 融資限額[OpenAPI] 失敗:{type(e).__name__}: {str(e)[:80]} → 改試 rwd")
+
+    # ── ②③ rwd JSON:先用欄名,再用「有指紋守門」的位置 ────────────────
+    if not m:
+        try:
+            d8 = _tw_today_str().replace('-', '')
+            url = f'https://www.twse.com.tw/exchangeReport/MI_MARGN?response=json&date={d8}&selectType=ALL'
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=25) as r:
+                j = json.loads(r.read().decode('utf-8', 'ignore'))
+            if str(j.get('stat') or '') != 'OK':
+                print(f"  ⚠️ 融資限額[rwd]:TWSE 回 stat={j.get('stat')!r} → 保留舊檔(⛔ 不寫空的)")
+                return
+            # ⚠️ MI_MARGN 有多張表 → 找欄位含「限額」而且第一欄是股票代號的那一張
+            rows, hdr = [], []
+            for t in (j.get('tables') or []):
+                f = [str(x) for x in (t.get('fields') or [])]
+                if any('限額' in x for x in f):
+                    hdr, rows = f, (t.get('data') or [])
+                    break
+            if not rows:
+                titles = [str(t.get('title', ''))[:40] for t in (j.get('tables') or [])]
+                print(f"  ⚠️ 融資限額[rwd]:找不到含「限額」的表(表數 {len(j.get('tables') or [])},"
+                      f"標題 {titles})→ 保留舊檔")
+                return
+            i_lim = next((k for k, x in enumerate(hdr) if '限額' in x), None)
+            i_bal = next((k for k, x in enumerate(hdr)
+                          if '融資' in x and ('今日餘額' in x or ('今日' in x and '餘額' in x))), None)
+            how = '欄名'
+            if i_bal is None:
+                # 表頭指紋:對得上才敢用位置(⛔ 對不上就印完整 hdr 然後不寫)
+                lim_cols = [k for k, x in enumerate(hdr) if '限額' in x]
+                fp = (len(hdr) == 12 and '代號' in hdr[0] and lim_cols == [7]
+                      and hdr[6] == '今日餘額')
+                if not fp:
+                    print(f"  ⚠️ 融資限額[rwd]:欄名找不到融資餘額,而且**表頭指紋對不上**"
+                          f" → ⛔ 不靠位置硬猜,保留舊檔。完整 hdr = {hdr}")
+                    return
+                i_bal, how = 6, '位置(指紋已核對)'
+            if i_lim is None:
+                print(f"  ⚠️ 融資限額[rwd]:找不到限額欄 → 保留舊檔。完整 hdr = {hdr}")
+                return
+            mm = {}
+            for r0 in rows:
+                try:
+                    sid = str(r0[0]).strip()
+                    if not _valid_stock(sid):
+                        continue
+                    lim, bal = _num(r0[i_lim]), _num(r0[i_bal])
+                    if lim <= 0:
+                        continue
+                    mm[sid] = [int(bal), int(lim)]   # [今日融資餘額(張), 次一營業日融資限額(張)]
+                except Exception:
+                    continue
+            if not _sane(mm, f'rwd/{how}'):
+                print(f"     ↳ 參考:hdr = {hdr}")
+                return
+            m, src = mm, f'rwd/{how}(bal=hdr[{i_bal}]{hdr[i_bal]!r} lim=hdr[{i_lim}]{hdr[i_lim]!r})'
+        except Exception as e:
+            print(f"  ⚠️ 融資限額[rwd] 抓取失敗:{type(e).__name__}: {e} → 保留舊檔")
+            return
+
+    if not m:
+        print("  ⚠️ 融資限額:三條路都沒拿到 → 保留舊檔")
         return
+    day_map[_tw_today_str()] = m
+    print(f"  💳 融資限額:{len(m)} 檔(上市;來源 {src};"
+          f"⚠️ 限額欄是「次一營業日限額」不是今日限額;⚠️ 上櫃的 TPEx 對機房 IP 403,拿不到)")
     _snap_hist('margin_limit_hist.json', day_map, '融資限額')
+
 
 def _fm_bulk_days(dataset: str, want_days: int, look_back: int, sleep_s: float = 0.12) -> list:
     """single-day 資料集逐日 bulk(比照八大行庫實測:只帶單一 start_date、不帶 data_id/end_date)。
