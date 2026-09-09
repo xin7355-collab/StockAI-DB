@@ -166,6 +166,12 @@ def main():
         #   這些欄位 fetch_finmind_fundamentals 大多已抓到只是原本沒存 → 順手併入,零/低額外成本。
         pb = payout = div4q = fillp = filld = None
         qeps = fund.get('quarterly_eps') or []
+        # 📄 V75.1.2 報告頁要的新欄(零額外 API —— fetch_finmind_fundamentals 本來就抓到,只是沒存)
+        mrh = fund.get('monthly_revenue_history') or []
+        mrev = fund.get('latest_revenue')
+        ytd = fund.get('revenue_ytd_yoy'); ytdm = fund.get('revenue_ytd_months')
+        fdiag = fund.get('_fetch_diag') or {}
+        div_win = fund.get('div_win')
         try:
             payout = fund.get('payout_ratio')
             div4q = fund.get('total_dividend_4q')
@@ -208,6 +214,14 @@ def main():
             if fillp is not None:  entry['fillp'] = fillp
             if filld is not None:  entry['filld'] = filld
             if isinstance(qeps, list) and qeps: entry['qeps'] = qeps[-8:]   # PEG 需 ≥6 季,存近 8 季夠且控大小
+            # 📄 V75.1.2 月營收 12 個月(**緊湊** [['2026-08', 百萬 int], …];現檔 1 MB,⛔ 不存元為單位的 dict)
+            _m = [[str(h.get('ym')), int(round(float(h.get('rev') or 0) / 1e6))] for h in mrh[-12:]
+                  if isinstance(h, dict) and h.get('ym') and float(h.get('rev') or 0) > 0]
+            if _m: entry['mrh'] = _m
+            if mrev is not None and float(mrev) > 0: entry['mrev'] = float(mrev)     # 最新月營收(元)
+            if ytd is not None: entry['ytd'] = round(float(ytd), 1); entry['ytdm'] = int(ytdm or 0)
+            if fdiag: entry['fd'] = [int(fdiag.get('fs') or 0), int(fdiag.get('rev') or 0), int(fdiag.get('div') or 0)]   # 解釋「為什麼這檔比 chips 檔舊」
+            if div_win: entry['div_win'] = div_win
         except Exception:
             pass
         return sym, entry
@@ -266,6 +280,7 @@ def main():
         'this_run_hits': hits,
         'budget': BUDGET,
         'source': 'fund_sweep_nightly',
+        'mrh_unit': '百萬', 'div_method': '12m',   # 📄 V75.1.2
     }
     DATA_DIR.mkdir(exist_ok=True)
     OUT_PATH.write_text(json.dumps(existing, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
@@ -318,6 +333,7 @@ def merge_mode():
         'shards': shards_seen,
         'budget': BUDGET,
         'source': 'fund_sweep_nightly_parallel',
+        'mrh_unit': '百萬', 'div_method': '12m',   # 📄 V75.1.2
     }
     DATA_DIR.mkdir(exist_ok=True)
     OUT_PATH.write_text(json.dumps(merged, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')

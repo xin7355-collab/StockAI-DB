@@ -1734,6 +1734,71 @@ def _fetch_finmind_per(sym: str) -> dict:
         return {}
 
 
+
+# ── 📄 V75.1.2 兩支純函式(報告頁「最新月營收 / 累計年增 / 近一年配息」的資料源)──────────
+def _calc_revenue_ytd(rows):
+    """月營收「累計年增」:今年 1 月 ~ 最新月合計 vs 去年**同一段**。
+    rows = FinMind TaiwanStockMonthRevenue 列(需 revenue_year / revenue_month / revenue),順序不拘。
+    回 (ytd_yoy_pct, months) 或 (None, 0)。
+    ⛔ 去年同一段任何一個月缺列就回 None(⛔ 不可拿不完整的分母硬算 —— 那會把 YoY 灌成幾倍)。
+    ⚠️ FinMind 沒有累計欄 → 一律自算;既有 730 天窗口剛好夠(今年 + 去年)。"""
+    try:
+        by = {}
+        for r in rows or []:
+            y = int(r.get('revenue_year') or 0); m = int(r.get('revenue_month') or 0)
+            v = float(r.get('revenue', 0) or 0)
+            if y and 1 <= m <= 12 and v > 0:
+                by[(y, m)] = v
+        if not by:
+            return None, 0
+        ly, lm = max(by.keys())
+        cur = [by.get((ly, m)) for m in range(1, lm + 1)]
+        prv = [by.get((ly - 1, m)) for m in range(1, lm + 1)]
+        if any(v is None for v in cur) or any(v is None for v in prv):
+            return None, 0
+        s_cur, s_prv = sum(cur), sum(prv)
+        if s_prv <= 0:
+            return None, 0
+        return round((s_cur - s_prv) / s_prv * 100, 1), lm
+    except Exception:
+        return None, 0
+
+
+def _div_ttm(qdivs, asof=None):
+    """近一年配息合計(TTM)。回 (total, method)。
+    🚨 V75.1.2 之前寫 `sum(qdivs[-4:])` = 「近 4 **筆**」—— 對季配公司剛好是一年,
+       但半年配的中美晶 5483 會被算成**兩年**(12.8 元 / 配息率 174%)、年配公司算成四年
+       → X 光機誤標「吃老本」。⭐ 通用:**近 N 筆 ≠ 近 N 季**,配息頻率不同的公司會差 2~4 倍。
+    method:'12m' = 除息日落在近 365 天內的列合計;'last' = 近一年一筆都沒有、但 550 天內有最後一筆
+           (年配公司資料稍舊時的退路,⛔ 不可直接回 0 —— 那會顯示「沒配息」);None = 沒有任何紀錄。
+    ⚠️ 用 ex_date(除息交易日)判斷,沒有的列退回公告日 date。"""
+    from datetime import date as _d, datetime as _dt, timedelta as _td
+    asof = asof or _d.today()
+    def _p(s):
+        s = str(s or '').strip().replace('/', '-')[:10]
+        try:
+            return _dt.strptime(s, '%Y-%m-%d').date()
+        except Exception:
+            return None
+    rows = []
+    for q in qdivs or []:
+        dt = _p(q.get('ex_date')) or _p(q.get('date'))
+        if not dt:
+            continue
+        rows.append((dt, float(q.get('cash', 0) or 0) + float(q.get('stock', 0) or 0)))
+    if not rows:
+        return 0.0, None
+    lo = asof - _td(days=365)
+    win = [v for dt, v in rows if lo < dt <= asof + _td(days=30)]   # +30 天:已公告、除息日就在眼前的也算
+    if win:
+        return round(sum(win), 2), '12m'
+    rows.sort()
+    last_dt, last_v = rows[-1]
+    if last_dt >= asof - _td(days=550):
+        return round(last_v, 2), 'last'
+    return 0.0, None
+
+
 def fetch_finmind_fundamentals(sym: str) -> dict:
     """V14.9 採礦加速 — 斧三:把 3 個獨立 FinMind 端點(財報/月營收/股利)
     從序列改 ThreadPoolExecutor 並行,單股省 6-13 秒。
@@ -1910,6 +1975,11 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
                 result['is_record_high'] = latest_rev >= prior_max
             else:
                 result['is_record_high'] = False
+            # 📄 V75.1.2 累計年增(報告頁要的;FinMind 沒有累計欄 → 自算,去年同段缺月就 None)
+            _ytd, _ytdm = _calc_revenue_ytd(rows)
+            if _ytd is not None:
+                result['revenue_ytd_yoy'] = _ytd
+                result['revenue_ytd_months'] = _ytdm
     except Exception as e:
         print(f"    ⚠️ FinMind Revenue {sym}: {e}")
 
@@ -1943,9 +2013,11 @@ def fetch_finmind_fundamentals(sym: str) -> dict:
             stk_div  = _div_stock(latest)
             result['total_dividend'] = cash_div + stk_div
 
-            # 近 4 季加總 = 年化股利(對齊使用者預期)
-            total_4q = sum(q['cash'] + q['stock'] for q in qdivs[-4:])
+            # 近一年配息合計(⛔ V75.1.2 起不再是「近 4 筆」—— 半年配/年配會被算成 2~4 年,見 _div_ttm)
+            #   欄位名不改(total_dividend_4q / div / payout 的語意本來就是「近一年」,改名會動到前端與 api.py)
+            total_4q, _div_method = _div_ttm(qdivs)
             result['total_dividend_4q'] = round(total_4q, 2)
+            result['div_win'] = _div_method or 'none'
 
             # 發配率改用近 4 季加總,搭配近 4 季 EPS
             eps_hist = result.get('quarterly_eps', [])
