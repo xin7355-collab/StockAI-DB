@@ -61,6 +61,28 @@ jobs:
           echo "probe rc=$rc"
           exit 0
 
+      # 📊 V75.1.8 併進來的第二支採礦(原本是獨立的 daytrade_data.yml)
+      #   🚨 原因:那支從 2026-07-13 上線到 2026-09-09 **一筆排程 run 都沒有**
+      #      (total_count=1,唯一那筆是手動且被 cancel)→ daytrade_pack.json 停在 08/07。
+      #   ⭐ 這支(daytrade_probe,cron '0 10')在同一份實測裡是**正常跑的整點反例**,
+      #      而 V73.9.0 的結論是「每天 1~3 次在這個 repo 100% 可靠」→ 併進來而不是再開一支 cron。
+      #   ⛔ 兩支採礦互不影響:各自 set +e 記 rc,任一支失敗不可拖累另一支(⛔ 不要用 set -e 串起來)。
+      #   ⚠️ 它跑純 TWSE/TAIFEX 免費 OpenAPI,**不需要任何金鑰**(所以沒有 env)。
+      - name: 📊 抓當沖/大盤方向資料 → daytrade_pack.json
+        id: pack
+        run: |
+          set +e
+          python3 daytrade_data_miner.py
+          rc=$?
+          echo "pack rc=$rc"
+          if [ "$rc" = "0" ] && [ -f daytrade_pack.json ]; then
+            echo "pack_ok=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "pack_ok=0" >> "$GITHUB_OUTPUT"
+            echo "::warning::daytrade_pack 這輪沒產出(rc=$rc)→ 保留線上舊檔,不覆寫"
+          fi
+          exit 0
+
       - name: 📤 上傳診斷檔 (失敗時看真實欄位)
         if: steps.probe.outputs.probe_rc != '0'
         uses: actions/upload-artifact@v4
@@ -70,17 +92,26 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
-      - name: 🚀 部署 daytrade_stats.json 到 gh-pages + data (只更新這一檔)
-        if: steps.probe.outputs.probe_rc == '0'
+      # 🚀 一次部署這輪**真的有產出**的檔(daytrade_stats / daytrade_pack)
+      #   ⛔ 有產出的才進 /tmp/dtdeploy —— 沒產出的那支絕不可覆寫線上舊檔(自我守門的意義就在這)。
+      - name: 🚀 部署到 gh-pages + data (只更新這輪有產出的檔)
+        if: steps.probe.outputs.probe_rc == '0' || steps.pack.outputs.pack_ok == '1'
         run: |
           set -e
-          if [ ! -f data/daytrade_stats.json ]; then
-            echo "❌ 找不到 data/daytrade_stats.json,跳過部署"; exit 0
+          # 產出先存 /tmp(data/ 在 main 是 gitignore 的未追蹤檔,切分支前要清乾淨)
+          rm -rf /tmp/dtdeploy && mkdir -p /tmp/dtdeploy
+          if [ "${{ steps.probe.outputs.probe_rc }}" = "0" ] && [ -f data/daytrade_stats.json ]; then
+            cp data/daytrade_stats.json /tmp/dtdeploy/daytrade_stats.json
           fi
+          if [ "${{ steps.pack.outputs.pack_ok }}" = "1" ] && [ -f daytrade_pack.json ]; then
+            cp daytrade_pack.json /tmp/dtdeploy/daytrade_pack.json
+          fi
+          if [ -z "$(ls -A /tmp/dtdeploy 2>/dev/null)" ]; then
+            echo "❌ 這輪兩支都沒有可部署的產出,跳過(保留線上舊檔)"; exit 0
+          fi
+          echo "📦 這輪要部署:$(ls /tmp/dtdeploy | tr '\n' ' ')"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # 產出先存 /tmp(data/ 在 main 是 gitignore 的未追蹤檔,切分支前要清乾淨)
-          cp data/daytrade_stats.json /tmp/daytrade_stats.json
 
           deploy_branch () {
             local BR="$1"
@@ -91,26 +122,34 @@ jobs:
             #    改用 FETCH_HEAD:git fetch origin $BR 成功才切,-B 強制建/重置本地分支到抓回的 tip(gh-pages/data 皆穩)
             if ! git fetch origin "$BR" 2>/dev/null; then echo "⚠️ fetch $BR 失敗(可能無此分支),跳過"; return 0; fi
             git checkout -f -B "$BR" FETCH_HEAD 2>/dev/null || { echo "⚠️ checkout $BR 失敗,跳過"; return 0; }
-            mkdir -p data
-            cp /tmp/daytrade_stats.json data/daytrade_stats.json
-            git add -f data/daytrade_stats.json   # -f:該分支若也 gitignore data/*.json 仍強制加入
+            # 把這輪有產出的檔都放進去(⛔ 只 commit 這幾個明確 pathspec,不牽連無關檔)
+            stage_all () {
+              mkdir -p data
+              PATHS=""
+              for f in /tmp/dtdeploy/*; do
+                b="$(basename "$f")"
+                cp "$f" "data/$b"
+                git add -f "data/$b"   # -f:該分支若也 gitignore data/*.json 仍強制加入
+                PATHS="$PATHS data/$b"
+              done
+            }
+            stage_all
             if git diff --cached --quiet; then
               echo "ℹ️ $BR 無變更"; return 0
             fi
-            git commit -q -m "⚡ 當沖熱度 daytrade_stats.json $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/daytrade_stats.json
+            git commit -q -m "⚡📊 當沖資料 $(date -u '+%Y-%m-%d %H:%M UTC')" -- $PATHS
             for i in 1 2 3 4 5; do
               if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
               [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
               echo "⚠️ $BR push attempt $i 失敗,sleep $((i*5))s 重試…"; sleep $((i*5))
               git fetch origin "$BR" 2>/dev/null || true
               git reset --hard -q "origin/$BR" 2>/dev/null || true
-              cp /tmp/daytrade_stats.json data/daytrade_stats.json
-              git add -f data/daytrade_stats.json
-              git commit -q -m "⚡ 當沖熱度 daytrade_stats.json $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/daytrade_stats.json 2>/dev/null || true
+              stage_all
+              git commit -q -m "⚡📊 當沖資料 $(date -u '+%Y-%m-%d %H:%M UTC')" -- $PATHS 2>/dev/null || true
             done
           }
 
           # 先 gh-pages(前端讀這個,立即生效),再 data(讓 daily_miner deploy 的 git archive 保留)
           deploy_branch gh-pages
           deploy_branch data
-          echo "✅ 當沖熱度已部署"
+          echo "✅ 當沖資料已部署"

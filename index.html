@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.1.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.1.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -724,7 +724,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.1.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.1.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8010,8 +8010,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.1.7',
+    _APP_VERSION: 'V75.1.8',
     _CHANGELOG: [
+        { v: 'V75.1.8', dt: '2026-09-09', d: ['📊 <b>當沖那兩個大盤訊號的資料要恢復了</b>(上一版只先做到「過期就標日期、不計分」)。真因查清楚了:它的採礦排程<b>從 7/13 上線到現在一筆都沒被觸發過</b> —— 不是程式壞掉,是 GitHub 給這個 repo 的排程配額被吃光。','⭐ 修法照本站實測過的結論:<b>不再多開一支排程去搶配額</b>,而是把它<b>併進每天固定會跑的「當沖熱度」那一支</b>(台北 18:00,主題一樣、實測一直都跑得到)。<b>下一個交易日傍晚就會有新資料</b>。','⛔ 兩件刻意保留的:① 兩支採礦<b>互不影響</b>,一支失敗不會拖累另一支 ② <b>沒抓到就不覆寫線上舊檔</b>(寧可舊,也不要被殘缺資料蓋掉)。','🧪 這次的 git 流程有<b>開一個小 repo 實跑四種情況</b>(兩支都成功 / 只有一支成功 / 都失敗 / 內容沒變)才推上去 —— 不是用猜的。'] },
         { v: 'V75.1.7', dt: '2026-09-09', d: ['🏦 <b>修掉「每天都在講同一句話」的外資台指期判斷(9 處)</b>。小台/微台上市後未平倉總量變大,近 22 個交易日的外資淨額<b>每一天</b>都在 −75,000 口以下 —— 而 App 裡還有九個地方拿「≤ −25,000 就是偏空」這種<b>固定口數</b>在判斷,等於<b>每天都顯示「極空」、每天都進緊急模式、每天都多加 15 分風險</b>。那不是訊號,是常數。','⭐ 全部改成<b>跟它自己比</b>:近 20 日在什麼位階、最近 5 天是加空還是回補 —— 所以現在會出現「空單很大<b>但一直都這麼大</b> → 不算急遽加空」這種比較誠實的判讀。⚠️ 這條規則其實 V71.1.6 就定了,只是那次<b>沒接完</b>。','⏳ <b>當沖的兩個大盤訊號(選擇權 P/C、台指期大額交易人)資料停在 08/07</b> —— 而畫面上原本標「盤後」、照樣計分,等於<b>拿一個月前的數字當今天的方向</b>。現在會直接寫「⏳ 停在 08/07(33 天前)・不計分」,而且<b>數字照顯示</b>(不藏起來,只是不給方向)。','⚠️ 那個資料會停,是因為它的<b>採礦排程從 7 月上線到現在一次都沒被觸發過</b>(GitHub 排程配額問題)—— 那要改設定檔,已經另外列出來要問過你再動。'] },
         { v: 'V75.1.6', dt: '2026-09-09', d: ['🌡️ <b>修掉一組「卡片自己跟自己打架」</b>(巡邏工具掃出來的):頂端跑馬燈寫「多頭<b>過熱</b>・絕不追高、分批停利」,同一個畫面底下的<b>打法適配儀</b>卻寫「可依紀律進場」、<b>多空計分卡</b>寫「可順勢操作」。三句話同時出現,你根本不知道要聽誰的。','⭐ 現在只要大盤是<b>過熱 / 轉弱 / 盤整 / 空頭</b>,這兩張卡就會<b>把大盤狀況直接寫在那句話裡</b> —— 例如「可依紀律進場,<b>但大盤多頭(過熱)、建議總部位 3~5 成 → 別重押、別追高</b>」。⛔ 只有「健康多頭(建議 8 成)」才維持原本的說法。','⛔ 三件<b>刻意沒做</b>的事:① <b>數字一個都沒動</b>(命中幾條、期望值多少都是事實,改的只有那句「叫你怎麼做」的話)② <b>不是叫你反手做空</b>,只是降級成「別追高」③ 不新開卡片。','🔧 順手把這個判斷<b>收成一份</b>(原本同一段判斷式在三個地方各寫一次,改一處就會漏掉另外兩處 —— 這個坑本站已經踩過很多次)。'] },
         { v: 'V75.1.5', dt: '2026-09-09', d: ['🐛 <b>產業作戰室的版本號沒跟上</b>(散戶救星顯 V75.1.4、產業作戰室還停在 V75.1.3)—— 你就是靠這個號碼判斷「有沒有更新」,兩邊不一樣等於這個號碼不能信。已對齊。','🧪 <b>把長期紅燈的自我檢查修好(6 支)</b>:它們紅的原因<b>都不是程式壞掉</b>,是檢查本身<b>釘住了「我當年寫的那個字」或「當天剛好長那樣的資料」</b> —— 例如尾盤時窗後來統一成 13:00~13:28、某檔股票的均線排列變了、四檔 ETF 都已經被追蹤到了。⭐ 全部改成<b>釘「用意」</b>(時窗要跟 App 內部一致、情境改用固定測資),並逐條注入假缺陷確認它真的叫得出來。','⚠️ 為什麼這件事重要:<b>永遠紅的檢查等於沒有檢查</b> —— 看久了就會習慣忽略,真的壞掉那次也會被當成又一個誤報。','🐛 修掉一個會<b>自己永遠好不了</b>的坑:測試把雲端資料抓下來當測資時,抓失敗會留下一個<b>空檔案</b>,之後每次都讀那個空檔 → 永遠失敗。已改成先驗內容、壞的就刪掉重抓。'] },

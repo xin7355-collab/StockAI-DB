@@ -7,6 +7,43 @@
 
 ---
 
+### 📊 V75.1.8 `daytrade_pack` 採礦搬家 —— ⛔ 不是「再開一支 cron」,是併進一支**實測跑得到**的
+
+承 V75.1.7 查到的:`daytrade_data.yml` 從 2026-07-13 上線到 2026-09-09
+**`total_count = 1`**(唯一那筆還是手動觸發 + 被 cancel)→ **排程一次都沒被觸發過**。
+
+⭐ **使用者選了「併進既有排程」**,理由與 V73.9.0 一致:
+「⛔ 不要求 GitHub 幫我們排很多次」,而**每天 1~3 次在這個 repo 實測 100% 可靠**。
+→ 併進 `daytrade_probe.yml`(cron `0 10` = 台北 18:00):
+它在同一份實測裡正是**正常跑的整點反例**(和 `fund_sweep 0 18`、`telegram_alert 0 12` 一起),
+主題也相同(都是當沖),而且時間比原本的台北 14:00 更晚 → 官方統計一定已公布。
+`daytrade_data.yml` **保留但停用排程**(`workflow_dispatch` 留著補跑用),
+並把「為什麼停用」寫在檔頭 —— ⛔ 沒寫原因,下次有人會直接把 cron 加回去。
+
+⛔ **三條設計**(測試 `scripts/test_daytrade_sched.py` 13 條釘住):
+1. **兩支採礦互不影響** —— 各自 `set +e` 記 rc、結尾 `exit 0`,⛔ 不可用 `set -e` 串起來
+   (一支失敗拖累另一支,就是把「分開部署」的好處丟掉)。
+2. **沒產出不覆寫** —— `pack_ok` 要**同時**看 rc 與檔案是否真的存在(⛔ rc=0 不等於有產出);
+   只有有產出的檔才進 `/tmp/dtdeploy`,兩支都沒有就整個跳過(⛔ 不推空 commit)。
+3. **commit 只帶明確 pathspec** —— ⛔ 不可 `git add .` 把無關檔推上 gh-pages。
+
+⭐⭐ **照 CLAUDE.md「git/workflow 類要實測不要用猜的」,開了 `/tmp` 小 repo 實跑四種情況**:
+| 情境 | 結果 |
+|---|---|
+| 兩支都有產出 | 兩檔都上,`data/other.json` 未被動到 ✅ |
+| 只有 pack 有(probe 失敗) | pack 更新、**stats 保留線上舊值** ✅(殘缺的那份沒有蓋上去)|
+| 兩支都沒產出 | 整個跳過,零 commit ✅ |
+| 內容沒變再跑一次 | 「無變更」、commit 數不增加 ✅ |
+
+⏭️ **怎麼驗有沒有修好**(⛔ 看產物的日期,不是 Actions 頁面的顏色):
+```bash
+git show origin/gh-pages:data/daytrade_pack.json | grep -oE '"updated"[^,}]*'
+```
+下一個交易日台北 18:00 之後應該變成當天。⚠️ 若仍然沒有,那才輪到查 `daytrade_data_miner.py` 自己
+(⭐ 通用:下「程式有問題」的結論之前,先確認它到底有沒有被觸發過)。
+
+---
+
 ### 🏦⏳ V75.1.7 資料體檢 + 巡邏抓到兩組「拿常數當訊號」—— 而其中一組 CLAUDE.md 四個月前就寫過
 
 跑 `python3 scripts/data_audit.py`(對象是 gh-pages,手機真正讀到的那份)報 **2 個明確錯誤**:
