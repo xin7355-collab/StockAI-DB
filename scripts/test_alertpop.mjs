@@ -5,20 +5,30 @@
  * 答案原本是「沒有」:觸發時只走系統推播 + 鈴鐺,
  * 🚨 而 `_fireAlert` 在**沒開通知權限時直接 return** → 畫面上零反應。
  *
- * 🪟 V75.0.0 判準變更(使用者:「彈跳視窗有大小視窗感覺很像,請關閉小的統一用大的」):
- *   舊判準 = 「多空不對稱」(只有賣訊彈);新判準 = 「**跟你有關**」——
- *   ⭐ 使用者混亂的來源不是「彈太少」,是「**跟他無關的東西也在彈**」。
- *   ⛔ 多空不對稱那條鐵則**沒有被推翻**,它降級成第 ③ 層(別人的股票只有風險類才彈)。
- *   三層(⛔ 順序不可換,見 `_shouldPopup`):
- *     ① `sym` 在庫存/自選 → 彈(不論多空)
- *     ② 沒有 `sym`(全市場盤點摘要)→ ⛔ 不彈,走 toast + 鈴鐺
- *     ③ 有 `sym` 但不是你的 → 沿用舊的風險詞判準
+ * 🪟 V75.0.0 判準曾經改成「**跟你有關**」(① 庫存/自選不論多空都彈)——
+ *   🚨 **V75.2.7 收回那一層**(使用者 2026-09-09:「太頻繁還有重疊了」)。
+ *   ⭐ 為什麼收回是**量出來的**,⛔ 不是憑感覺:`scripts/popup_audit.mjs` 實測
+ *      開 App 14 秒 / 20 檔庫存+自選 → 跳 **14 個大視窗,其中 13 個是買進類**,
+ *      佇列最長 13 則 = 要按 **14 次**「知道了」;真正該打斷他的只有 1 則。
+ *   現行判準兩層(⛔ 順序不可換,見 `_shouldPopup`):
+ *     ① 沒有 `sym`(全市場盤點摘要)→ ⛔ 不彈,走 toast + 鈴鐺
+ *     ② **風險/賣出類** → 彈(⛔ 不論是不是你的股票);買進類一律 toast
+ *   ⭐ 這是回到 V74.8.9 的**多空不對稱**鐵則:勝率只有 30~33%,
+ *      整套會賺完全靠「錯的時候小賠出場」→ 買進錯過還有下一次,出場錯過就住套房。
+ *
+ * 🪟 V75.2.7 另外三件(每一件都對應使用者講的一個現象):
+ *   ・「關掉一個又馬上跳一個」→ 排隊改**合併**:同一批進同一個視窗,其餘則列成一行一則,
+ *     按一次整批關掉。⛔ 一則都不遺失(測試 ⑩b2 數列出幾則)。
+ *   ・「手機通知和 App 視窗講同一件事」→ **前景一律不發系統通知**(不只大視窗那條);背景照發。
+ *   ・🚨 兩個會讓提醒**靜默消失**的 bug:① 視窗被更高層的視窗蓋住卻已蓋章
+ *     ② 停損的 30 分分桶被「一天一次」吃掉(V72.9.1「出場提醒不限量」名存實亡)。
  *
  * ⛔ 五條不可改掉的設計:
- * ① ⭐ **買進/點火類對「不是你的股票」一律 toast** ——
+ * ① ⭐ **買進/點火類一律 toast** ——
  *    那不是版面偏好,是本站的**多空不對稱**鐵則(勝率 30~33%,靠小賠出場才會賺)。
  *    ⛔ 每個事件都彈 = 使用者三天後關掉 = 整套失效。
- * ② 同一件事**一天只跳一次**(⛔ 否則股價在門檻上下震盪會連跳)。
+ * ② 同一件事**一天只跳一次**;⭐ **但風險/出場類跟著 30 分鐘分桶**
+ *    (V72.9.1:出場提醒⛔ 不限量 —— 少提醒一次的代價遠大於多提醒一次)。
  * ③ 沒被彈窗攔下的**一定要有 toast**(⛔ 不可靜默 —— 那正是原本的 bug)。
  * ④ ⛔ 不用紅綠燈(講風險不是漲跌方向,V74.8.8 的鐵則)。
  * ⑤ 要附**實測數字**說明為什麼值得打斷(⭐ 那是本站相對別家的優勢)。
@@ -83,16 +93,21 @@ const R = await page.evaluate(async () => {
     A._closeAlertPop();
     out.closed = !shown();
 
-    // ⑮ V75.0.0 「跟你有關」判準:同一個標題,你的股票要彈、別人的不彈
+    // ⑮ V75.2.7 判準**收回 V75.0.0 的第 ① 層**:買進類⛔ 一律不彈(不論是不是你的股票)
+    //   使用者 2026-09-09:「太頻繁還有重疊」。實測 popup_audit:開 App 跳 14 個大視窗、
+    //   其中 **13 個是買進類** → 要按 14 次「知道了」。⭐ 回到多空不對稱鐵則(V74.8.9)。
     const invBak0 = A.inventory, favBak0 = A.favGroups;
     A.inventory = [{ symbol: '2330', cost: 900, shares: 1 }];
     A.favGroups = { 預設: ['1101'] };
     clear(); toasts = [];
-    A._fireAlert('⚡ 六脈點火(盤中)', '台積電(2330) 低檔齊發', '2330');   // 庫存 → 彈(買進類也彈)
-    out.mineInvShown = shown(); A._closeAlertPop();
+    A._fireAlert('⚡ 六脈點火(盤中)', '台積電(2330) 低檔齊發', '2330');   // 庫存 + 買進類 → ⛔ 不彈
+    out.mineInvShown = shown(); out.mineInvToast = toasts.length; A._closeAlertPop();
     clear(); toasts = [];
-    A._fireAlert('⚡ 六脈點火(盤中)', '台泥(1101) 低檔齊發', '1101');      // 自選 → 彈
+    A._fireAlert('⚡ 六脈點火(盤中)', '台泥(1101) 低檔齊發', '1101');      // 自選 + 買進類 → ⛔ 不彈
     out.mineFavShown = shown(); A._closeAlertPop();
+    clear(); toasts = [];
+    A._fireAlert('🩸 庫存鐵血停損', '台積電(2330) 已破成本', '2330');       // 庫存 + 風險類 → 要彈
+    out.mineRiskShown = shown(); A._closeAlertPop();
     clear(); toasts = [];
     A._fireAlert('⚡ 六脈點火(盤中)', '別人的(9999) 低檔齊發', '9999');    // 不是你的 + 買進類 → ⛔ 不彈
     out.otherBuyShown = shown(); out.otherBuyToast = toasts.length; A._closeAlertPop();
@@ -111,17 +126,20 @@ const R = await page.evaluate(async () => {
     out.sellUrgent = ['📉 高檔出貨訊號', '🔺 多頭過熱停利', '📉 無量創高(量價背離)', '🔻 庫存減碼', '🥊 第 2 擊｜跌破 ATR 追蹤停利'].map(t => A._isUrgentAlert(t));
     out.buyCalm2  = ['🔺 晨星轉折', '🎯 主打型態觸發｜台積電', '🔺 底部頸線突破'].map(t => A._isUrgentAlert(t));
 
-    // ⑩ 排隊:彈窗開著時來第二則 → ⛔ 不可蓋掉、關掉第一則後要接著跳
+    // ⑩ 🪟 V75.2.7 合併:彈窗開著時來第二則 → ⛔ 不可蓋掉第一則,而是**列在同一個視窗裡**,
+    //   按一次「知道了」整批關掉(⛔ 不再逐則重跳)
     clear(); toasts = [];
     A._fireAlert('⚠️ RSI 頂背離', '宏致(3605) …', '3605');
     A._fireAlert('📉 高檔出貨訊號', '南亞(1303) …', '1303');
     out.q1Title = document.getElementById('alertPopTitle').textContent;          // 仍是第一則
     out.qHint = document.getElementById('alertPopQueue').textContent;
     out.qHintShown = !document.getElementById('alertPopQueue').classList.contains('hidden');
-    out.qToast = toasts.length;                                                   // 排隊的那則⛔ 不可另外 toast
+    out.moreCount = document.querySelectorAll('#alertPopMore button').length;     // 其餘則要列出來
+    out.moreTxt = document.getElementById('alertPopMore').textContent;
+    out.qToast = toasts.length;                                                   // 併進去的那則⛔ 不可另外 toast
     A._closeAlertPop(); await new Promise(r => setTimeout(r, 400));
-    out.q2Title = document.getElementById('alertPopTitle').textContent;          // 關掉後第二則接著跳
-    out.q2Shown = shown();
+    out.q2Title = document.getElementById('alertPopTitle').textContent;
+    out.q2Shown = shown();                                                        // ⛔ 應該已經整批關掉
     A._closeAlertPop(); await new Promise(r => setTimeout(r, 300));
 
     // ⑪ 大視窗跳了 + App 在前景 → ⛔ 不再發系統通知(兩個視窗長得很像);背景時仍要發
@@ -132,8 +150,17 @@ const R = await page.evaluate(async () => {
     A._fireAlert('🩸 庫存鐵血停損', '測試(2330)', '2330');                          // 前景 + 彈窗 → 0 次
     out.osWhenPopped = nCalls; A._closeAlertPop();
     clear(); nCalls = 0;
-    A._fireAlert('⚡ 六脈點火(盤中)', '低檔齊發', '2330');                           // 沒彈窗(toast)→ 仍要發系統通知
+    A._fireAlert('⚡ 六脈點火(盤中)', '低檔齊發', '2330');                           // 前景 + 走 toast → ⛔ 也不發
     out.osWhenToast = nCalls;
+    // ⭐ 但背景時一定要發(⛔ 那時畫面上的東西他一個都看不到)——
+    //   用 defineProperty 蓋掉 visibilityState(⛔ 直接指派無效,它是 getter)
+    const _vd = Object.getOwnPropertyDescriptor(Document.prototype, 'visibilityState');
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    clear(); nCalls = 0;
+    A._fireAlert('⚡ 六脈點火(盤中)', '低檔齊發(背景)', '2317');
+    out.osWhenHidden = nCalls;
+    delete document.visibilityState;
+    if (_vd) { try { Object.defineProperty(Document.prototype, 'visibilityState', _vd); } catch (_) {} }
     window.Notification = RealN;
 
     // ⑫ 連續技:有貨 → 三擊 + 金額 + 「幫我盯第 2 擊」;⛔ 三條誠實限制要在
@@ -198,8 +225,11 @@ ok('④ 分級:出場/風險類全部判為高優先級', R.urgent.every(Boolean
 ok('④b 分級:買進/共振類全部⛔ 不可判為高優先級', R.calm.every(v => v === false), JSON.stringify(R.calm));
 ok('⑤ 🚨 全市場盤點摘要(沒有 sym)⛔ 不可彈窗 —— 那是統計不是「現在要做的事」', R.noSymShown === false);
 ok('⑤b 沒彈窗就一定要有 toast(⛔ 不可靜默吞掉)', R.noSymToast >= 1);
-ok('⑮ 你**庫存**裡的股票 → 彈窗(⭐ 買進類也彈,判準是「跟你有關」不是多空)', R.mineInvShown === true);
-ok('⑮b 你**自選**裡的股票 → 彈窗', R.mineFavShown === true);
+ok('⑮ 🚨 你**庫存**裡的股票 + **買進類** → ⛔ 不可彈窗(V75.2.7 收回;使用者回報太頻繁)',
+   R.mineInvShown === false, JSON.stringify(R.mineInvShown));
+ok('⑮a2 但它⛔ 不可靜默 —— 要有 toast(錯過還有下一次,但不能沒訊息)', R.mineInvToast >= 1, `${R.mineInvToast}`);
+ok('⑮b 你**自選**裡的股票 + 買進類 → 同樣⛔ 不彈', R.mineFavShown === false);
+ok('⑮b2 ⭐ 你庫存裡的股票 + **風險類** → 一定要彈(⛔ 這一半不可跟著收掉)', R.mineRiskShown === true);
 ok('⑮c 🚨 不是你的股票 + 買進類 → ⛔ 不可彈窗(那正是「跟他無關的東西也在彈」)', R.otherBuyShown === false, JSON.stringify(R.otherBuyShown));
 ok('⑮d 不是你的股票 + 買進類 → 仍要有 toast', R.otherBuyToast >= 1);
 ok('⑮e 不是你的股票 + **風險類** → 仍要彈(⛔ 多空不對稱那層不可整個關掉)', R.otherRiskShown === true);
@@ -210,11 +240,17 @@ ok('⑨ 🚨 賣訊/風險類(頂背離)→ 大視窗(使用者:「請以大視�
 ok('⑨b 停利/出貨/減碼/背離/第N擊 全部判高優先', R.sellUrgent.every(Boolean), JSON.stringify(R.sellUrgent));
 ok('⑨c ⛔ 進場類(晨星/主打型態/頸線突破)仍⛔ 不可彈窗(多空不對稱)', R.buyCalm2.every(v => v === false), JSON.stringify(R.buyCalm2));
 ok('⑩ 排隊:第二則⛔ 不可蓋掉第一則', /RSI 頂背離/.test(R.q1Title), R.q1Title);
-ok('⑩b 排隊提示要顯示「還有 N 則」', R.qHintShown && /還有 1 則/.test(R.qHint), R.qHint);
+ok('⑩b 🪟 V75.2.7 合併:提示要說「這批共 N 則」(⛔ 不再是「還有 N 則」那種看不到內容的排隊)',
+   R.qHintShown && /這批共 2 則/.test(R.qHint), R.qHint);
+ok('⑩b2 ⭐ 其餘則要**真的列在視窗裡**(⛔ 一則都不可遺失)', R.moreCount === 1, `列出 ${R.moreCount} 則`);
 ok('⑩c 排隊的那則⛔ 不可另外 toast(那正是「兩個視窗很像」的來源)', R.qToast === 0, `toast=${R.qToast}`);
-ok('⑩d 關掉第一則 → 第二則接著跳', R.q2Shown && /高檔出貨/.test(R.q2Title), R.q2Title);
+ok('⑩d 🪟 V75.2.7 按一次「知道了」→ **整批關掉**(⛔ 不再逐則重跳 —— 使用者:「關掉一個又馬上跳一個」)',
+   R.q2Shown === false, `關掉後還開著=${R.q2Shown}`);
 ok('⑪ 🚨 大視窗跳了 + App 在前景 → ⛔ 不再發系統通知', R.osWhenPopped === 0, `Notification 呼叫 ${R.osWhenPopped} 次`);
-ok('⑪b 沒彈窗(toast)時系統通知照發(⛔ 不可整個關掉)', R.osWhenToast === 1, `${R.osWhenToast}`);
+ok('⑪b 🚨 V75.2.7 走 toast 的那些,**前景時也⛔ 不可再發系統通知**'
+   + '(使用者:「手機通知和 App 視窗講同一件事」)', R.osWhenToast === 0, `${R.osWhenToast}`);
+ok('⑪b2 ⭐ 但 App 在**背景**時一定要發(⛔ 那時畫面上的東西他一個都看不到)',
+   R.osWhenHidden >= 1, `背景時發了 ${R.osWhenHidden} 次`);
 ok('⑫ 🥊 連續技:有貨 → 第 1/2/3 擊都排出來', /第 1 擊/.test(R.comboTxt) && /第 2 擊/.test(R.comboTxt) && /第 3 擊/.test(R.comboTxt), R.comboTxt.slice(0, 120));
 ok('⑫b 第 2 擊 = 你設定的出場線(設定改成唐奇安 → 名字與價位都要跟著變,⛔ 不可自己另訂一條)',
    !!R.plan && /唐奇安/.test(R.plan.nm) && R.plan.px > 0 && R.donPx > 0 && Math.abs(R.plan.px - R.donPx) < 1e-6 && R.donPx !== R.ma5Px && /唐奇安/.test(R.comboTxt),
@@ -244,13 +280,12 @@ ok('⑭ 空手:⛔ 不給「幫我盯」、必須寫「不是進場點」', R.fl
 }
 // 靜態:接線只有一處(⛔ 不可在 28 個呼叫端各寫一次 —— 陷阱 #37)
 {
-  // 🥊 V74.9.2 起允許第二處:`_closeAlertPop` 裡「排隊的下一則接著跳」—— 那不是呼叫端各接,是同一個入口的接力。
-  //   ⛔ 只准這兩處(_fireAlert / _closeAlertPop);任何 _fireAlert 的呼叫端自己接 _alertPopup 仍要抓。
+  // 🪟 V75.2.7 回到**只有一處**:`_closeAlertPop` 的「排隊接力」已經拿掉(改成整批一起關),
+  //   所以合法呼叫端只剩 `_fireAlert`。⛔ 任何 `_fireAlert` 的呼叫端自己接 `_alertPopup` 仍要抓。
   const fn = (head) => { const i = SRC.indexOf(`    ${head}`); const j = SRC.indexOf('\n    },', i); return i >= 0 ? SRC.slice(i, j) : ''; };
   const nAll = (SRC.match(/this\._alertPopup\(/g) || []).length;
-  const nOK = (fn('_fireAlert(title, body, sym) {').match(/this\._alertPopup\(/g) || []).length
-            + (fn('_closeAlertPop() {').match(/this\._alertPopup\(/g) || []).length;
-  ok('⑧ 接線只在 `_fireAlert`(+ `_closeAlertPop` 的排隊接力)⛔ 28 個呼叫端不可各接一次', nAll === 2 && nOK === 2, `全檔 ${nAll} 處 / 合法 ${nOK} 處`);
+  const nOK = (fn('_fireAlert(title, body, sym) {').match(/this\._alertPopup\(/g) || []).length;
+  ok('⑧ 接線只在 `_fireAlert` 一處 ⛔ 28 個呼叫端不可各接一次', nAll === 1 && nOK === 1, `全檔 ${nAll} 處 / 合法 ${nOK} 處`);
 }
 
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ ALERTPOP_PASS(全部通過)');
