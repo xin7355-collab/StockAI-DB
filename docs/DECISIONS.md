@@ -7,6 +7,62 @@
 
 ---
 
+### 📅📅 V75.2.0 排程配額:五支採礦「從來沒被觸發過」—— ⭐ 而且推翻了 V73.9.0 自己下的那條規則
+
+承 V75.1.8(daytrade_data 一筆排程都沒有)往下查,拿 `actions_list` 量了**近 9 天全 repo**:
+
+| | 實測 |
+|---|---|
+| 9 天內成功觸發的 schedule run | **100 筆** |
+| 所有 cron 加起來要求 | 約 **250 筆** |
+| 🚨 被丟掉的是誰 | **固定那五支**:`macro_cron` / `news_express` / `rotation_probe` / `stock_futures` / `insider_cron` —— **全部 0 筆** |
+
+⭐⭐ **這推翻了 CLAUDE.md V73.9.0 自己寫的「每天 1~3 次在這個 repo 實測 100% 可靠」**:
+`insider_cron` 一天只要 **1 次** → **0 筆**(資料已經舊 51 天);
+而 `fund_sweep` **同樣一天 1 次** → 9 天跑了 7 次,完全正常。
+⛔ 所以判準**不是「頻率低就安全」**,而是「**這一支實測進不進得來**」——
+⭐ 通用:**要判斷一支採礦活著,先問 `actions_list` 的 `total_count`**,⛔ 別從頻率推理
+(這正是 V73.9.0 自己記過的教訓,而那一版的結論本身又犯了同一種推理)。
+
+#### ⭐ 修法:掛 `workflow_run`(⛔ 不是 schedule → 不吃排程配額)
+| 餓死的 | 跟在誰後面 | 為什麼是它 |
+|---|---|---|
+| `insider_cron` ・ `rotation_probe` | 🌙 fund_sweep(台北 02:00) | 同樣是夜間 FinMind 基本面 |
+| `macro_cron` | 📲 telegram_alert(2 輪)・⚡ daytrade_probe | 一天約 3 輪,分散在盤中與盤後 |
+| `news_express` | 📲 telegram_alert ・ 🔥 theme_news ・ ⚡ daytrade_probe | 一天約 5 輪 |
+| 🚨 `stock_futures`(夜盤) | 🔥 theme_news(台北 00:30)・🌙 fund_sweep(台北 02:00) | **兩個都在夜盤時段內**(15:00~次日 05:00) |
+
+⭐⭐ **這不是新玩法 —— 本 repo 早就有一支在用而且驗證過**:
+`playbook_scan` ← `daily_miner`,實測 **66 筆** `workflow_run` 觸發的 run。
+(⚠️ 這條「先找repo內已驗證過的前例」比自己憑文件推理安全得多。)
+
+⛔ **四條設計**(測試 `scripts/test_wf_quota.py` 釘住,兩種注入驗過):
+1. **host 名字要跟 host 檔的 `name:` 完全一致** —— ⛔ 差一個字 = 永遠不會觸發,
+   **而且完全沒有錯誤訊息**(這正是本專案最怕的那種失敗)。測試直接比對兩邊。
+2. **host 必須是「實測跑得到」的那幾支** —— ⛔ 不可掛在另一支同樣餓死的上面。
+3. **原本的 cron 一行都不刪** —— 哪天配額鬆了它自己會跑;`workflow_run` 只是多一條路。
+4. **job 守門:只跟 host 的「排程」那一輪**(`workflow_run.event == 'schedule'`)——
+   ⛔ 否則手動 dispatch 一次 host 會把五支全帶跑。
+   ⚠️ **刻意不要求 host 成功** —— 這幾支跟 host 的產物無關(playbook_scan 要求成功是因為它吃 daily_miner 的資料)。
+
+#### 🚨 夜盤那支的額外考量(⛔ 不可照抄前四支)
+`stock_futures_miner.py` 寫的是**夜盤**快照 → 白天跑會把日盤資料標成「夜盤」。
+→ host 只挑**落在夜盤時段內**的兩支;而且它自己有守門(抓到 < MIN_FUT 檔就 `exit 1`、
+**不覆寫舊檔**)→ 最壞只是白跑一次,⛔ 不會污染資料。
+⚠️ **誠實說明代價**:原本的 `0 21`(台北 05:00)抓的是**夜盤收盤**那一刻,
+新的兩輪都是**盤中**快照 → 少了收盤價那一筆。但現在的實際狀態是**32 天完全沒資料**,
+盤中快照遠好過沒有。
+
+⏭️ **怎麼驗**(⛔ 看產物日期,不看 Actions 顏色):
+```bash
+for f in insider stock_futures_night macro_risk stock_news; do
+  echo -n "$f: "; git show origin/gh-pages:data/$f.json 2>/dev/null | grep -oE '"updated"[^,}]*' | head -1
+done
+```
+明天(host 跑過之後)這幾個的日期應該會變新。⚠️ 若仍然沒有 → 才輪到查各自的程式。
+
+---
+
 ### 🌡️ V75.1.9 「補一句但書」不等於修好 —— ⭐ 兩種相反的指令並排時,人只會看見比較強的那一句
 
 V75.1.6 的大盤守門**只做了一半**:它在原句後面補一段「但大盤過熱、建議總部位 3~5 成 → 別重押、別追高」,

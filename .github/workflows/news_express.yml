@@ -16,7 +16,25 @@ name: 📰 即時新聞快訊 (news express)
 #      舊註解寫的「2000 分免費額度」對 public repo 不適用(daily_miner 光 20 併發就遠超過)。
 #   ⛔ 真正的限制是 **Groq 翻譯額度**:universal_radar 每輪最多翻 10 則、每則 sleep 2.5s,
 #      而且「新聞無變化就跳過 commit」→ 沒事的時段實際成本很低。
+
+# 🚨 V75.2.0 排程配額:這支的 cron **從來沒有被觸發過**(實測見下),所以改成
+#   「**跟在一支實測跑得到的 workflow 後面**」—— GitHub 的 `workflow_run` 事件
+#   不是 schedule,⛔ 不吃排程配額。
+#   📊 實測(2026-09-09,`actions_list` 近 9 天全 repo 的 schedule run):
+#      總共只有 **100 筆**進得來,而所有 cron 加起來要求約 **250 筆** → 六成被丟掉,
+#      而且被丟掉的是**固定那幾支**(macro_cron / news_express / rotation_probe /
+#      stock_futures / insider_cron **五支全部 0 筆**),不是隨機。
+#   ⛔ 連「一天只要 1 次」的 insider_cron 也是 0 → CLAUDE.md 舊寫的
+#      「每天 1~3 次在這個 repo 100% 可靠」**被這個反例推翻**(fund_sweep 同樣 1 次/天卻正常)。
+#   ⚠️ cron 一行都沒刪 —— 萬一哪天配額鬆了它自己會跑;`workflow_run` 只是多一條進得來的路。
 on:
+  # ⭐ 跟車:下面這幾支是實測「排程真的進得來」的(⛔ 改它們的名字要同步改這裡)
+  workflow_run:
+    workflows:
+      - "📲 Telegram 警報系統"
+      - "🔥 夜間情報採礦 (theme_news)"
+      - "⚡ 當沖熱度採礦 (daytrade_probe)"
+    types: [completed]
   schedule:
     - cron: "0 1-5,9,13,17,21 * * 1-5"
     - cron: "0 1,7,13,19 * * 6,0"
@@ -39,6 +57,14 @@ jobs:
   news_express:
     name: 📰 抓即時新聞 + 更新 gh-pages
     runs-on: ubuntu-latest
+    # ⛔ 只跟「host 的**排程**那一輪」(同 playbook_scan 已驗證過的做法)——
+    #   host 被手動 dispatch / push 觸發時⛔ 不跟,否則一天可能被帶跑好幾次。
+    # ⚠️ 這裡**刻意不要求 host 成功** —— 這支採礦跟 host 的產物無關,
+    #   host 失敗(例如 runner 配不出來)不該連累它。
+    # ⚠️ 手動 dispatch 與原本的 cron 備援不受這個 if 影響(它們的 event 不是 workflow_run)。
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.event == 'schedule'
     steps:
       - name: 📥 下載程式碼
         uses: actions/checkout@v4

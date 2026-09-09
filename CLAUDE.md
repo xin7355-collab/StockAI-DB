@@ -74,6 +74,17 @@ V73.7.9 搬出共用 group 之後,`live_quotes.json` **確實第一次上得了 
 ⭐ **修法:⛔ 不要求 GitHub 幫我們排 58 次,改成排 1 次、自己在 job 裡迴圈。**
 `scripts/intraday_window.py`(RUN / SLEEP n / DONE)+ workflow 裡的 `once()` 迴圈。
 需求從 **85 次/天 → 5 次/天**,而每天 1~2 次的頻率在這個 repo 實測 **100% 可靠**。
+🚨🚨 **V75.2.0 更正:上面那句「每天 1~2 次 100% 可靠」被反例推翻了**。
+近 9 天實測:全 repo 只有 **100 筆**排程進得來(cron 要求約 250 筆),而被丟掉的是**固定五支**
+(`macro_cron` / `news_express` / `rotation_probe` / `stock_futures` / `insider_cron` 全部 **0 筆**)。
+⛔ `insider_cron` 一天只要 **1 次**也是 0,而 `fund_sweep` 同樣一天 1 次卻正常
+→ **判準不是頻率,是「這一支實測進不進得來」**(先問 `actions_list` 的 `total_count`)。
+⭐ **現行修法:餓死的那幾支改掛 `workflow_run`**(⛔ 不是 schedule → 不吃配額),
+跟在實測跑得到的 host 後面;cron 一行不刪當備援。
+本 repo 早有驗證過的前例:`playbook_scan` ← `daily_miner`(66 筆)。
+⛔ 四條設計(測試 `scripts/test_wf_quota.py`):host 名字要**完全一致**(差一字永遠不觸發且零訊息)/
+host 必須是實測跑得到的 / cron 不刪 / job 只跟 host 的**排程**那一輪。
+🚨 夜盤採礦(`stock_futures`)的 host **必須落在夜盤時段**,白天跑會把日盤寫成「夜盤」。
 
 ⛔ **六條不可改掉的設計**(測試 `scripts/test_intraday_loop.py` 37 條釘住,已用注入缺陷自我驗證):
 ① 🚨 **每輪開頭要 `git checkout -f "$BASE_SHA"`** —— deploy 結束時工作區停在 gh-pages/data,
@@ -1757,6 +1768,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 📅📅 V75.2.0 排程配額:五支採礦「從來沒被觸發過」—— ⭐ 而且推翻了 V73.9.0 自己下的那條規則
 - 🌡️ V75.1.9 「補一句但書」不等於修好 —— ⭐ 兩種相反的指令並排時,人只會看見比較強的那一句
 - 📊 V75.1.8 `daytrade_pack` 採礦搬家 —— ⛔ 不是「再開一支 cron」,是併進一支**實測跑得到**的
 - 🏦⏳ V75.1.7 資料體檢 + 巡邏抓到兩組「拿常數當訊號」—— 而其中一組 CLAUDE.md 四個月前就寫過
