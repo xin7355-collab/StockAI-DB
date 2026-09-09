@@ -5,14 +5,29 @@ name: 📐 PE 自身位階採礦
 # ⛔ 為什麼獨立一支(不併進 daily_miner):2,700 檔逐檔一次 API,實測約 30-45 分,
 #    併進去會把那條已經 30-60 分的關鍵路徑再拉長,而且它失敗不該擋部署。
 #
-# 🕐 每週跑一次就夠 —— PE 位階是「近 3 年」的相對位置,一天不會變多少;
-#    ⛔ 天天跑只是白燒額度。週日 18:00 UTC = 台北週一凌晨 02:00。
+# 🕐 每個交易日翌晨跑一輪 —— `30 19 * * 1-5` = 19:30 UTC = **台北 03:30**,
+#    而 UTC 週一~五 = **台北週二~週六** → 剛好一個交易日收盤配一輪(週六那輪吃週五收盤)。
+#    ⛔ 不可「順手」改成 `0-4`(台北週一~五)—— 那會週一早上拿週五資料重跑一次,
+#       而週五收盤要等到下週一才進得來。
+#    ⭐ 選這個時段是為了避開共用付費金鑰的那幾支:daily_miner(08:30 / 12:00 UTC,30-60 分)、
+#       fund_sweep(18:00 UTC,FinMind 重度 ~30-40 分)、macro_cron(20:00 UTC)。
+#       而 daily_miner 12:00 那輪的部署約 13:00 UTC 完成 → 19:30 還原到的 origin/data 是當天最新的。
+#    ⛔ 舊註解寫的「每週跑一次就夠 / 天天跑只是白燒額度」**已作廢** —— PE 位階雖然一天不會變多少,
+#       但「一週一次」配上下面那個「rc 被吞掉」,正是四個週日全綠零產出、
+#       `pe_band.json` 停在 08-14 一個月都沒人發現的原因。
+#
+# 🚨 rc 一定要往外丟(`exit $rc`)—— 採礦失敗要讓 job **紅燈**。
+#    舊版 `set +e … exit 0` 把 rc 吞掉 = 陷阱 #9(rc=0 不等於功能有跑)。
+#    步驟失敗之後的部署自然不會跑 → **線上舊檔照樣保留**,只是這次看得見。
+#
+# ⏭️ 排程觸發 + 線上 `updated` 已經是今天(UTC)→ 直接跳過,⛔ 不重燒付費額度。
+#    ⚠️ 只擋 schedule,**手動 dispatch 一律照跑**(要重跑驗證時不可被自己擋住)。
 #
 # ⭐ 冪等:每次重跑都重算當下位階,⛔ 不累積 → **不需要先從 data 分支還原舊檔**
 #    (跟 tick_hist / etf mgr_hist 那種累積型檔案不同,別照抄那邊的還原步驟)。
 on:
   schedule:
-    - cron: '0 18 * * 0'
+    - cron: '30 19 * * 1-5'
   workflow_dispatch:
     inputs:
       limit:
@@ -21,7 +36,12 @@ on:
         default: '99999'
 
 concurrency:
-  group: gh-pages-push
+  # 🚨 ⛔ 不可掛回共用的 `gh-pages-push` —— 這支 timeout 200 分、MAX_MIN 150,是那把鎖上最長的一支。
+  #    共用 group 只留一個 pending run,**後面來的會把前面還在排隊的直接取消掉**
+  #    (V73.7.9 / V74.3.8:dividend_sweep 就是這樣把整站部署卡死一小時)。
+  #    19:30 UTC 的尾巴會壓到 news_express(21:00)與 news_premarket(21:30),那兩支都在共用鎖上。
+  # ⭐ 離開共用鎖之後,防撞就只剩下方 deploy step 既有的「4 次 retry + fetch/reset --hard」→ ⛔ 不可拿掉。
+  group: gh-pages-peband
   cancel-in-progress: false
 
 permissions:
@@ -47,8 +67,27 @@ jobs:
           # 🚧 空過守門:清單不完整就別跑(不然會產出殘缺的 pe_band.json)
           if [ "$n" -lt 500 ]; then echo "::error::只還原到 $n 檔 → 中止"; exit 1; fi
 
+      - name: ⏭️ 今天已經跑過就跳過(⛔ 不重燒付費額度)
+        id: guard
+        run: |
+          # ⭐ 上一步的 `git archive origin/data data | tar -x` 本來就把 data/pe_band.json 一起還原下來了
+          #    → 讀它就好,**零額外 fetch**(⛔ 不為了一個欄位去 shallow fetch 約 450MB 的 gh-pages)。
+          # ⚠️ 讀的是 data 分支那一份:萬一某次只推成功 gh-pages、沒推成 data,兩邊會差一天。
+          # ⛔ 檔案不存在 / updated 解析不出來 → **不跳過**(寧可多跑一輪,不可靜默不動)。
+          skip=no
+          if [ "${{ github.event_name }}" = "schedule" ] && [ -s data/pe_band.json ]; then
+            u=$(python3 -c "import json;print((json.load(open('data/pe_band.json')).get('updated') or '')[:10])" 2>/dev/null || echo '')
+            t=$(date -u +%F)
+            echo "線上 updated=${u:-無} ・今天(UTC)=$t"
+            if [ "$u" = "$t" ]; then skip=yes; echo "⏭️ 今天已經有產物 → 跳過本輪"; fi
+          else
+            echo "觸發方式=${{ github.event_name }} → 照跑(手動 dispatch ⛔ 不受此守門影響)"
+          fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+
       - name: 📐 採礦
         id: mine
+        if: steps.guard.outputs.skip != 'yes'
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
           LIMIT: ${{ github.event.inputs.limit }}
@@ -59,11 +98,12 @@ jobs:
           rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           # ⛔ 採礦器自己有空過守門(成功 <300 檔就不覆寫檔案且 exit 1)
-          [ "$rc" -ne 0 ] && echo "⚠️ rc=$rc → 不部署,保留線上舊檔"
-          exit 0
+          [ "$rc" -ne 0 ] && echo "::error::採礦 rc=$rc → ⛔ 不部署,保留線上舊檔"
+          # 🚨 一定要 `exit $rc`,⛔ 不可 `exit 0`:吞掉 rc 就是四個週日全綠零產出的成因(陷阱 #9)。
+          exit $rc
 
       - name: 🚀 部署到 gh-pages + data
-        if: steps.mine.outputs.rc == '0'
+        if: steps.guard.outputs.skip != 'yes' && steps.mine.outputs.rc == '0'
         run: |
           set -e
           [ -s data/pe_band.json ] || { echo "❌ 找不到產物"; exit 1; }

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       which:
-        description: '跑哪一支:both / gap / margin / pe / split / warrant / fund / otc(櫃買指數歷史)'
+        description: '跑哪一支:both / gap / margin / pe / split / warrant / fund / otc(櫃買指數歷史) / otcmargin(上櫃融資券端點)'
         required: false
         default: 'both'
 
@@ -75,3 +75,18 @@ jobs:
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
         run: python3 scripts/otc_probe.py
+
+      - name: 💳 上櫃融資券端點探針(哪一個端點還活著)
+        if: ${{ github.event.inputs.which == 'otcmargin' }}
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: |
+          # 🚨 `pip install` 這行 ⛔ 不可省:otc_margin_probe.py 第 27 行是 `import miner`,
+          #    而 miner.py 頂層就 `import requests` + `from urllib3.util.retry import Retry` 並開 Session。
+          #    這支 workflow 其餘 6 支探針都是純標準庫,所以整支一直沒有 pip 步驟 →
+          #    少了這行會直接 `ModuleNotFoundError: No module named 'requests'` 當場死。
+          # ⛔ 刻意裝在這一步裡面,不做成全 job 共用的步驟(免得拖慢另外 6 支)。
+          # ⭐ 不需要還原 data 分支:import miner 只會 `Path('data').mkdir(exist_ok=True)`,
+          #    這支探針不讀任何 data/*.json(跟 pe / split 那兩支不同)。
+          pip install -q requests urllib3
+          python3 scripts/otc_margin_probe.py
