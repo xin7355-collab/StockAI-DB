@@ -154,5 +154,47 @@ ok('④ ⭐ 風險指數吃得到那個值(⛔ 不是永遠 null)',
        (_rs.match(/m\.\w+\?\.chg_pct/g) || []).join(' '));
 }
 
+
+// ══ 🌙 V75.2.5 美股期貨夜盤那條顯示 —— 它一直是「🌙 夜盤 --」══
+//   🚨 讀的是 `m.es_fut?.chg_pct`(macro_cache),而那份檔**根本沒有 es_fut/nq_fut**
+//      → 從上線到現在一直空著,零錯誤訊息(資料體檢新的 D3 類掃出來的)。
+//   ⚠️ 而且期貨是「**有價無方向**」(V72.0.5:拿不到上一個結算基準時刻意不給漲跌%)
+//      → ⛔ 這種時候不可只顯一個「--」,要把**價位**顯出來並說清楚為什麼沒有 %。
+{
+    const b3 = await chromium.launch({
+        executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+        args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
+    });
+    const p3 = await b3.newPage();
+    await p3.addInitScript(() => {
+        const inst = new Proxy({}, { get: (_t, k) => (k === 'getWidth' || k === 'getHeight') ? (() => 300) : (() => inst) });
+        Object.defineProperty(window, 'echarts', {
+            value: new Proxy({}, { get: (_t, k) => k === 'init' ? (() => inst) : (k === 'graphic' ? {} : () => inst) }),
+            writable: true, configurable: true,
+        });
+    });
+    await p3.goto(pathToFileURL(path.join(ROOT, 'index.html')).href, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await p3.waitForFunction(() => typeof app !== 'undefined' && !!app._renderUsFutNight, null, { timeout: 25000 });
+    const F = await p3.evaluate(() => {
+        const rMR = app._macroRiskCache, rMS = app._marketSnapshot;
+        let el = document.getElementById('usFutNight');
+        if (!el) { el = document.createElement('div'); el.id = 'usFutNight'; document.body.appendChild(el); }
+        const run = (mr, ms) => { app._macroRiskCache = mr; app._marketSnapshot = ms; app._renderUsFutNight(); return el.innerText.replace(/\s+/g, ' '); };
+        const o = {};
+        o.pct  = run({ es_fut: 7658.25, es_fut_chg_pct: -0.8, nq_fut: 29514, nq_fut_chg_pct: -1.2 }, {});
+        o.noPct = run({ es_fut: 7658.25, es_fut_chg_pct: null, nq_fut: 29514, nq_fut_chg_pct: null }, {});
+        o.none = run({}, {});
+        app._macroRiskCache = rMR; app._marketSnapshot = rMS;
+        return o;
+    });
+    await b3.close();
+    ok('⑦ 🚨 有漲跌% → 要顯出來(⛔ 以前永遠是「夜盤 --」)',
+       /-0\.80%/.test(F.pct) && /-1\.20%/.test(F.pct), F.pct);
+    ok('⑦ ⭐ 有價位但沒有漲跌%(期貨有價無方向)→ 要顯**價位**並說原因,⛔ 不可只給「--」',
+       /7,658/.test(F.noPct) && /無漲跌基準/.test(F.noPct), F.noPct);
+    ok('⑦ ⛔ 真的什麼都沒有 → 才顯「--」(⛔ 不可亂編一個數字)',
+       /夜盤 --/.test(F.none) && !/無漲跌基準/.test(F.none), F.none);
+}
+
 console.log(fails ? `❌ ${fails} 條失敗` : '✅ VIXSRC_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

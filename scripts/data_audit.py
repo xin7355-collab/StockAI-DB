@@ -19,6 +19,7 @@
   B. 新鮮度                                (更新時間 vs 該檔的預期節奏)
   C. 錯誤欄位                              (任何 *_error 有值)
   D. 前後端對接                            (前端讀的欄名,後端到底有沒有產)← 連接錯誤
+  D3. macro_cache 對接                     (前端用巢狀形狀讀的欄位,那份檔有沒有)← V75.2.4
   D2. 關鍵欄位缺漏                          (檔案在、能解析,但「該有的那半沒有」)← V72.2.6
   E. 連動一致性                            (同一個指標出現在多個檔,值要一致)← 連動
   E2. 榜單 vs 原始資料                      (今日訊號榜的價格/日期,跟 data/{sym}.json 對不對得上)
@@ -181,6 +182,33 @@ def macro_fields_read():
             'push', 'join', 'sort', 'keys', 'values', 'includes', 'replace', 'split',
             'indexof', 'tolowercase', 'touppercase', 'concat', 'reduce', 'some', 'every'}
     return {f for f in out if f.lower() not in skip}
+
+
+def macro_cache_fields_read():
+    """index.html 用「巢狀形狀」(`X.<key>.close` / `X.<key>.chg_pct`)讀了哪些 macro_cache 欄名。
+
+    🚨 V75.2.4 為什麼要有這一類:D 類**只檢查 macro_risk.json**,
+       而 `_calcRiskScore` 整支讀的是 `macro_cache` —— 它要的
+       `es_fut` / `nq_fut` / `gold` / `usdjpy` 在那份檔裡**根本不存在**
+       → 那四個因子**永遠是 null = 永遠不計分**,而註解還寫著「期貨夜盤優先」。
+       A/B/C/D/D2 五類**全部放過它**(檔案沒問題、沒有 error 可報、D 沒看這份檔)。
+    ⭐ 判別用「形狀」不是變數名:`macro_cache` 是巢狀的(`sox.close` / `sox.chg_pct`),
+       `macro_risk` 是扁平的(`sox` / `sox_chg_pct`)→ 看到巢狀寫法就是在讀 macro_cache。
+    """
+    src = (ROOT / 'index.html').read_text(encoding='utf-8')
+    out = set()
+    # ⚠️ ⛔ 註解行不算 —— 註解裡常常引用「舊寫法」來說明為什麼不能那樣寫
+    #   (第一版就把自己剛寫的那句註解報成違規 = 誤報,而誤報會讓人養成忽略體檢的習慣)。
+    for ln in src.split('\n'):
+        t = ln.strip()
+        if t.startswith('//') or t.startswith('*') or t.startswith('/*'):
+            continue
+        # 🚨 第一版寫 `\b\w+\.` 當前綴 → 注入 `(this._marketSnapshot || {}).banana?.chg_pct`
+        #   **抓不到**(前面是 `)` 不是 \w)= 偵測器有洞。⭐ 前綴只要求一個 `.`,⛔ 不限定它前面是什麼。
+        for m in re.finditer(r'\.\s*([a-z][a-z0-9_]{1,})\s*\??\.\s*(close|chg_pct)\b', ln):
+            out.add(m.group(1))
+    skip = {'data', 'value', 'val', 'item', 'row', 'last', 'prev', 'cur', 'bar', 'k', 'd'}
+    return {f for f in out if f not in skip}
 
 
 # ── D2. 關鍵欄位缺漏(V72.2.6)────────────────────────────────────────
@@ -418,6 +446,35 @@ def audit(ref):
         print(f'   前端讀 {len(read)} 個欄名 / 檔案有 {len(have)} 個 → 對不上的 {len(suspicious)} 個')
     else:
         add('❌', 'D', 'macro_risk.json 讀不到,無法做對接檢查')
+
+    # ── D3. 前端用「巢狀形狀」讀 macro_cache 的欄位,那份檔有沒有 ────
+    #   🚨 V75.2.4 血淋淋的實例:`_calcRiskScore` 讀 `m.es_fut?.chg_pct` / `m.gold?.chg_pct`,
+    #      而 macro_cache.json **根本沒有那兩個 key** → 四個因子永遠不計分,
+    #      而且 A/B/C/D/D2 五類全部放過它(檔案沒問題、沒有 error、D 只看 macro_risk)。
+    print('\n── D3. 前端讀 macro_cache 的欄名,那份檔有沒有 ──────────────')
+    mc = cache.get('macro_cache.json')
+    if not isinstance(mc, dict):
+        mc, _e = read_json(ref, 'macro_cache.json')      # ⚠️ 它在 gh-pages **根目錄**不在 data/
+    if isinstance(mc, dict):
+        have_mc = set(mc.keys())
+        read_mc = macro_cache_fields_read()
+        # ⭐ 只報「macro_risk 也沒有」的 —— 兩邊都沒有才是真的讀了個空氣;
+        #   macro_risk 有的話,正解是改走 `_macroPick()`(而不是說 macro_cache 少東西)。
+        mr_have = set(mr.keys()) if isinstance(mr, dict) else set()
+        miss = sorted(x for x in (read_mc - have_mc)
+                      if x not in mr_have and f'{x}_chg_pct' not in mr_have)
+        soft = sorted(x for x in (read_mc - have_mc)
+                      if x in mr_have or f'{x}_chg_pct' in mr_have)
+        for x in miss:
+            add('❌', 'D3', f'前端用巢狀形狀讀 macro_cache 的 {x},但**兩份總經檔都沒有這個欄位** '
+                            f'→ 那個因子永遠是 null(零錯誤訊息)')
+        for x in soft:
+            add('⚠️', 'D3', f'前端用巢狀形狀讀 macro_cache 的 {x},macro_cache 沒有但 **macro_risk 有** '
+                            f'→ 應改走 `app._macroPick(\'{x}\')`(V75.2.4)')
+        print(f'   前端(巢狀形狀)讀 {len(read_mc)} 個欄名 / macro_cache 有 {len(have_mc)} 個 '
+              f'→ 兩邊都沒有的 {len(miss)} 個 ・ 該改走共用入口的 {len(soft)} 個')
+    else:
+        add('⚠️', 'D3', 'macro_cache.json 讀不到(它在 gh-pages 根目錄不在 data/),無法做這項檢查')
 
     # ── D2. 關鍵欄位缺漏 ─────────────────────────────────────────────
     #   「檔案在 + 能解析 + 不是空的」全過,但**該有的那半沒有** —— A 類看不出來。
