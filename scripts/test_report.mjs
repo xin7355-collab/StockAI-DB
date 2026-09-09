@@ -1,0 +1,263 @@
+#!/usr/bin/env node
+/**
+ * 📄 V75.1.1 報告分頁測試(index.html 個股頁第 9 個 sub-tab)
+ *
+ * 背景:使用者拿一份別家 AI 產的「個股產業報告」(中美晶 5483,目標價 250–280)問「散戶救星做得到嗎」。
+ *   對完資料:基本面全對得上、價格那塊全錯、目標價 = 猜的 EPS × 猜的倍數。
+ *   → 做成一頁式報告,但**每一格只轉述既有零件**、目標價那塊改成「歷史估值對照價位」。
+ *
+ * ⛔ 這支要擋住的(每條先想「注入什麼它會叫」):
+ *   ① 忘加 switchSubTab 陣列 → 分頁顯示不出來      ② 指數沒藏這頁
+ *   ③ 渲染層自己寫買賣指令 / 出現「目標價」        ④ 同業列硬湊(上櫃無官方分類要說出來)
+ *   ⑤ 估值表公式/列序跟 pro.html 漂移              ⑥ 年化 EPS 來源靜默換掉
+ *   ⑦ 融資停產顯 0 而不是「停在哪天」              ⑧ 數字卡漏標日期
+ *   ⑨ 缺資料留 `--`                                 ⑩ 風險段用紅綠燈
+ *   ⑪ 切股殘留(陷阱 #19)                          ⑫ 提示詞漏防幻覺 / 用 window.open
+ *   ⑬ 誤呼叫 FinMind                                ⑭ % 不配元
+ *   ⑮ 反查器插值方向反                              ⑯ pageerror
+ *
+ * 測資:**真實 gh-pages 產物**(`git show origin/gh-pages:data/…`,⛔ 不憑印象編;陷阱 #40),
+ *   本機沒有 origin/gh-pages 時退回 data/ 目錄,兩邊都沒有就誠實 exit 1。
+ */
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+const fails = [];
+const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : `  ${String(e).slice(0, 300)}`}`); if (!c) fails.push(n); };
+
+// ── 測資(真實產物)──
+const gh = (f) => {
+    try { return JSON.parse(execSync(`git -C "${ROOT}" show origin/gh-pages:data/${f}`, { encoding: 'utf8', maxBuffer: 64 << 20 })); }
+    catch (_) { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'data', f), 'utf8')); } catch (__) { return null; } }
+};
+const FX = {
+    k5483: gh('5483.json'), k2330: gh('2330.json'), chips5483: gh('chips/5483.json'),
+    fyg: gh('fund_yoy_gm.json'), band: gh('pe_band.json'), fc: gh('fundamentals_cache.json'),
+    ipe: gh('industry_pe.json'), imap: gh('industry_map.json'), tdcc: gh('tdcc_holders.json'),
+    macro: gh('macro_risk.json'), pb: gh('playbook_edge.json'), att: gh('attention_status.json'),
+};
+const missing = Object.entries(FX).filter(([, v]) => !v).map(([k]) => k);
+if (missing.length) { console.log(`❌ 測資抓不到(origin/gh-pages 與 data/ 都沒有):${missing.join(', ')} —— ⛔ 不跑假測試`); process.exit(1); }
+// 🚧 測資守門:5483 要有「融資餘額停在較早日期」這個情境(⑦ 靠它),沒有就直接說
+const lastMg = [...FX.k5483].reverse().find(r => +r.margin_balance > 0);
+const lastK = FX.k5483[FX.k5483.length - 1];
+console.log(`ℹ️ 5483 K 線末日 ${lastK.date}・最後一筆融資 ${lastMg ? lastMg.date : '無'}・chips data_date ${FX.chips5483.data_date}`);
+
+// ── 靜態斷言(⛔ 先剝註解,本專案第 16 次踩「說明 bug 的註解含被禁字串」)──
+const strip = s => s.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');   // 整行註解 + 行尾註解都剝
+{
+    const sw = SRC.slice(SRC.indexOf('    switchSubTab(tab) {'), SRC.indexOf('    switchSubTab(tab) {') + 9000);
+    ok('① switchSubTab 的容器陣列含 Report(⛔ 漏加 = 分頁永遠顯示不出來)', /\['Strategy'[^\]]*'Report'\]/.test(sw));
+    ok('①b switchSubTab 有 report 分支呼叫 renderReportTab', /tab === 'report'[\s\S]{0,200}renderReportTab/.test(sw));
+    ok('② _idxHiddenSubTabs 含 report 且 MAP 含 report: \'Report\'', /_idxHiddenSubTabs: \[[^\]]*'report'\]/.test(SRC) && /bullbear: 'BullBear', report: 'Report'/.test(SRC));
+    ok('⑪a analyze() 切股清單含九個 rp*(⛔ 少一個 = 那一段顯上一檔)', ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc'].every(id => new RegExp(`'deepBriefCard', 'deepBriefAi',[\\s\\S]{0,400}'${id}'`).test(SRC)));
+    // ③ 渲染層不可自己寫買賣指令:只掃報告區塊(_rpNumHtml ~ _reportAsk),排除轉述 _ovDecide 的那支
+    const a = SRC.indexOf('    _rpNumHtml('), b = SRC.indexOf('    _reportAsk(');
+    const blk = strip(SRC.slice(a, b));
+    ok('③a 報告渲染層不可出現新的操作指令動詞(順勢做多/可進場/加碼/追…)', !/(順勢做多|可以進場|可進場|放心做|可加碼|建議買進|建議賣出|追要|可以追)/.test(blk), (blk.match(/(順勢做多|可以進場|可進場|放心做|可加碼|建議買進|建議賣出|追要|可以追)/) || [])[0]);
+    ok('③b 報告區塊不呼叫任何偵測器/計分函式(⛔ 不產生第二份真相)', !/_detect[A-Z]\w*\(|_calcBullBearScan\(|_sixMeridianCalc\(|_entryCheckup\(/.test(blk));
+    ok('⑬a 報告區塊零 FinMind 字串', !/finmind/i.test(blk));
+    const ask = strip(SRC.slice(SRC.indexOf('    _reportPrompt('), SRC.indexOf('    _reportAsk(') + 600));   // ⚠️ 先剝註解(說明「不用 window.open」的註解本身含那個字)
+    ok('⑫c _reportAsk 走 _freeAiOpen、⛔ 不用 window.open', /_freeAiOpen\(/.test(ask) && !/window\.open/.test(ask));
+    // 陷阱 #37:法說會比對只剩一份(reminder 要呼叫共用的)
+    const rem = SRC.slice(SRC.indexOf('    _renderStockEarningsReminder('), SRC.indexOf('    _renderStockEarningsReminder(') + 2500);
+    ok('⑰ 法說會事件比對抽成 _findEarningsEvent,現價下方的提醒要呼叫它(⛔ 不可再抄一份迴圈)', /_findEarningsEvent\(sym, 2\)/.test(rem) && !/for \(const ev of events\)/.test(rem));
+}
+
+// ── 動態 ──
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
+const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+const benign = t => /Failed to load resource|net::ERR_|CORS|Cross origin|vibrate|chromestatus|Access to fetch|echarts is not defined|Request scheme 'file' is unsupported|Cache\.put/i.test(t);
+const errs = [];
+page.on('pageerror', e => { const t = (e && e.message) ? e.message : String(e); if (!benign(t)) errs.push(t); });
+let finmindHits = 0;
+page.on('request', r => { if (/finmindtrade\.com/i.test(r.url())) finmindHits++; });
+await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
+await page.waitForFunction(() => typeof app !== 'undefined' && !!app.renderReportTab, null, { timeout: 30000 });
+await page.waitForTimeout(1200);
+
+// 灌快取(全部真實產物;⛔ 繞過抓不到的 fetch,不繞過任何判斷)
+await page.evaluate((F) => {
+    const A = app;
+    A._fundCacheAll = { ts: Date.now(), data: F.fc };
+    A._fundYoyGmAll = { ts: Date.now(), data: F.fyg };
+    A._peBandAll = { ts: Date.now(), data: F.band };
+    A._industryPeCache = { ts: Date.now(), data: { industries: F.ipe.industries || {}, map: F.imap || {} } };
+    A._tdccHoldersCache = F.tdcc;
+    A._macroRiskCache = Object.assign({}, A._macroRiskCache || {}, F.macro);
+    A._pbEdge = F.pb;
+    A.attentionStatus = (F.att && F.att.stocks) || {};
+    // 分點:用真實 chips/5483.json 餵 _loadFenPeriodsDirect 的結果(它抓不到 file://)
+    window.__chips = { '5483': F.chips5483 };
+    A._loadFenPeriodsDirect = async function (sym) {
+        sym = String(sym); const raw = window.__chips[sym]; if (!raw) return false;
+        this._fenPeriods = raw.periods; this._fenSym = sym; this._fenDataDate = raw.data_date || null;
+        this._fenFund = raw.fundamentals || null; this._fenHist = raw.hist || null; return true;
+    };
+    window.__K = { '5483': F.k5483, '2330': F.k2330 };
+}, FX);
+
+// ⑬ FinMind 計數要在**乾淨的窗口**量:init() 與 analyze() 的背景鏈(fetchStockList / X 光機)本來就會打 FinMind,
+//   ⛔ 跟報告頁混在同一段計數會變成隨機紅燈(第一版就這樣)→ 等 init 安靜 4 秒、不跑 analyze、直接餵 K 線渲染。
+await page.waitForTimeout(4000);
+finmindHits = 0;
+await page.evaluate(async () => {
+    const A = app; A.switchAppTab && A.switchAppTab('diag');
+    A.currentSymbolId = '5483'; A.rawDailyData = JSON.parse(JSON.stringify(window.__K['5483'])); A.activeData = A.rawDailyData; A.baseRawData = A.rawDailyData;
+    A.switchSubTab('report'); await A.renderReportTab('5483'); await new Promise(r => setTimeout(r, 1500));
+});
+const hitsAfterRender = finmindHits;
+
+// 開個股頁、載 5483(真實 K 線),再把 rawDailyData 換成 gh-pages 那份(本機 data/ 可能較舊)
+const render = async (sym) => {
+  await page.evaluate(async (s) => {
+    const A = app;
+    A.switchAppTab && A.switchAppTab('diag');
+    try { await A.analyze(s); } catch (_) {}
+    await new Promise(r => setTimeout(r, 1500));
+  }, sym);
+  return page.evaluate(async (s) => {
+    const A = app;
+    A.currentSymbolId = s;
+    A.rawDailyData = JSON.parse(JSON.stringify(window.__K[s])); A.activeData = A.rawDailyData; A.baseRawData = A.rawDailyData;
+    A.switchSubTab('report');
+    await A.renderReportTab(s);
+    await new Promise(r => setTimeout(r, 300));
+    const g = id => { const el = document.getElementById(id); return el ? el.innerHTML : null; };
+    const txt = id => { const el = document.getElementById(id); return el ? el.innerHTML.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ') : ''; };
+    return {
+        disp: ['Strategy', 'Live', 'DayTrade', 'Chart', 'Chip', 'Corp', 'Backtest', 'BullBear', 'Report'].map(t => [t, document.getElementById(`subContent${t}`)?.style.display]),
+        btnCount: document.querySelectorAll('.sub-tab-btn').length,
+        html: ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc'].map(g),
+        txt: Object.fromEntries(['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc'].map(id => [id, txt(id)])),
+        ctx: (() => { const C = A._rpLast; return C ? { sym: C.sym, eps: C.eps, aeSrc: C.ae && C.ae.src, kind: C.ae && C.ae.kind, pe: C.pe, pC: C.pC, peer: C.peer, indK: C.indK, band: C.band, valRows: C.valRows, marginDate: C.s20 && C.s20.marginDate, badge: C.dec && C.dec.badge } : null; })(),
+        s20: A._chipPeriodSums(A.rawDailyData, 20),
+        wide: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+    };
+  }, sym);
+};
+
+const R = await render('5483');
+ok('① 9 顆 sub-tab 按鈕、切到 report 後只有 subContentReport 是 flex', R.btnCount === 9 && R.disp.every(([t, d]) => (t === 'Report') === (d === 'flex')), JSON.stringify(R.disp));
+ok('⓪ 九段全部有內容(⛔ 不留空殼)', R.html.every(h => h && h.length > 40), R.html.map(h => (h || '').length).join(','));
+const ALL = Object.values(R.txt).join(' ');
+const ALLnoDisc = ALL.replace(/⛔ ?這不是目標價,也不是預測/g, '').replace(/⛔ ?不是目標價/g, '');
+ok('③c 整頁不出現「目標價」(免責句除外)', !/目標價/.test(ALLnoDisc), (ALLnoDisc.match(/.{20}目標價.{20}/) || [])[0]);
+ok('③d 結論段的徽章 = _ovDecide.badge(轉述,不是自己判的)', R.ctx && R.ctx.badge && R.txt.rpAct.includes(R.ctx.badge.replace(/<[^>]+>/g, '')), `${R.ctx && R.ctx.badge} | ${R.txt.rpAct.slice(0, 80)}`);
+ok('④a 5483(上櫃)同業列要寫「上櫃無官方產業分類」', R.ctx && !R.ctx.indK && /上櫃無官方產業分類/.test(R.txt.rpVal), R.txt.rpVal.slice(0, 200));
+// ⑤ 估值表數字 = 手算
+{
+    const C = R.ctx, b = C.band;
+    const raw = [b.p5, b.p25, b.med, b.p75, b.p95].map(m => C.eps * m);
+    const exp = raw.map(v => +v.toFixed(1));
+    const got = [...R.txt.rpVal.matchAll(/(?:P\d+ PE|中位\(PE) [\d.]+x\)\s+([\d,]+\.\d) 元/g)].map(m => +m[1].replace(/,/g, ''));
+    ok('⑤a 五個對照價 = 年化 EPS × 分位(手算)', got.length === 5 && exp.every((v, i) => Math.abs(v - got[i]) < 0.06), `exp ${exp} got ${got}`);
+    const diff0 = (raw[0] - C.pC) / C.pC * 100, lot0 = (raw[0] - C.pC) * 1000;
+    ok('⑤b 距現價% 與 一張差多少元 手算一致', new RegExp(`${diff0 >= 0 ? '\\+' : ''}${diff0.toFixed(1)}% / ${lot0 >= 0 ? '\\+' : ''}${Math.round(lot0).toLocaleString()} 元`).test(R.txt.rpVal), `${diff0.toFixed(1)}% / ${Math.round(lot0)}`);
+    ok('⑤c 列序:P5 → P25 → 中位 → P75 → P95', /近3年最便宜[\s\S]*偏便宜[\s\S]*中位[\s\S]*偏貴[\s\S]*近3年最貴/.test(R.txt.rpVal));
+    ok('⑤d 免責句原文(跟 pro.html 一字不差)', R.txt.rpVal.includes('這不是目標價,也不是預測') && R.txt.rpVal.includes('同樣的獲利、乘上它自己過去被給過的本益比'));
+    ok('⑥ 年化 EPS 來源標籤在表頭且與資料一致', C.kind === 'qeps' && /已公布四季合計/.test(R.txt.rpVal) && R.txt.rpVal.includes(C.eps.toFixed(2)), `${C.kind} ${C.aeSrc}`);
+}
+// ⑦ 融資停產:顯「停在 MM/DD」而不是 0
+ok('⑦a _chipPeriodSums 回 marginDate(最後一筆有效餘額的日期)', R.s20 && R.s20.marginDate === (lastMg && lastMg.date), JSON.stringify([R.s20 && R.s20.marginDate, lastMg && lastMg.date]));
+if (lastMg && lastMg.date !== lastK.date) ok('⑦b 融資餘額落後 K 線時,籌碼段要寫「本站停在 …(採礦缺口)」', /融資餘額本站停在/.test(R.txt.rpChip), R.txt.rpChip.slice(-300));
+else console.log('⏭️ ⑦b 這份測資的融資餘額跟 K 線同一天,情境不存在(⛔ 不算過,只是沒東西可驗)');
+ok('⑧ 數字卡每一格都有日期徽章或誠實文字(⛔ 不可有空的第三行)', (R.html[0].match(/K線 |官方 |採礦 |季末 |本站|年增/g) || []).length >= 8, R.txt.rpNum.slice(0, 300));
+ok('⑨ 整頁不出現 `--`(缺資料要寫本站沒有/尚未)', !/(^|[^-])--([^-]|$)/.test(ALL), (ALL.match(/.{20}--.{20}/) || [])[0]);
+ok('⑩a 風險段只用 ✅⚠️⛔🚨,⛔ 不用 🔴🟢', !/[🔴🟢]/u.test(R.txt.rpRisk) && /[✅⚠️]/u.test(R.txt.rpRisk));
+ok('⑩b 估值表的距現價用文字色(紅漲綠跌)、免責用琥珀,⛔ 不用紅綠 emoji', !/[🔴🟢]/u.test(R.txt.rpVal));
+ok('⑭ 估值表每一列 % 都配「元」', (R.txt.rpVal.match(/% \/ [+-][\d,]+ 元/g) || []).length >= 5);
+ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.html[2]));
+{
+    const rev = await page.evaluate(() => {
+        const A = app; const C = A._rpLast;
+        document.getElementById('rpRevIn').value = '250'; A._rpReverse('5483');
+        const t = document.getElementById('rpRevOut').innerText;
+        return { t, mult: 250 / C.eps, p95: C.band.p95, hi: C.band.hi };
+    });
+    const m = rev.mult.toFixed(1);
+    ok('⑮b 反查 250 → 倍數 = 250 ÷ 年化 EPS', rev.t.includes(`${m} 倍`), rev.t);
+    ok('⑮c 倍數超過 P95 要寫「超過它近 3 年 95% 的水位」或「最高本益比」', rev.mult <= rev.p95 || /超過它近 3 年/.test(rev.t), rev.t);
+    ok('⑮d 反查文案不可出現「合理/便宜/可以買」(算術不是預測)', !/合理|便宜|可以買|值得/.test(rev.t), rev.t);
+    const rev2 = await page.evaluate(() => { const C = app._rpLast; document.getElementById('rpRevIn').value = String((C.eps * C.band.med).toFixed(1)); app._rpReverse('5483'); return document.getElementById('rpRevOut').innerText; });
+    ok('⑮e 反查「中位對照價」→ 位階應在第 50 百分位附近(插值方向沒反)', /第 (4[5-9]|5[0-5]) 百分位/.test(rev2), rev2);
+}
+// ⑫ prompt
+{
+    const P = await page.evaluate(() => { let cap = null; const real = app._freeAiOpen; app._freeAiOpen = q => { cap = q; }; app._reportAsk('5483'); app._freeAiOpen = real; return cap; });
+    ok('⑫a 提示詞含 5 條防幻覺關鍵句 + 第 6 條', ['絕對禁止「主觀預測」', '年化EPS × 近3年 P5/中位/P95 PE', '不可腦補', '股價基期」與「估值基期」是兩件事', '循環股獲利頂峰時 PE 最低', '附日期與來源網址'].every(k => P.includes(k)));
+    ok('⑫b 提示詞四段標題', ['🏭 【產業景氣】', '💲 【漲價與供需】', '📞 【最近法說重點】', '⚠️ 【最大風險】'].every(k => P.includes(k)));
+    ok('⑫d 提示詞 <2,500 字且帶入年化 EPS / 對照價 / 位階', P.length < 2500 && P.includes(R.ctx.eps.toFixed(2)) && /估值基期.*\d+%/.test(P), `len ${P.length}`);
+    ok('⑫e 提示詞「目標價」只出現在禁令句', P.split('目標價').length - 1 === 1 && P.includes('「具體目標價」'));
+}
+// 2330(上市):同業列要有數字
+const R2 = await render('2330');
+ok('④b 2330(上市)同業列有中位 PE 數字', R2.ctx && Number.isFinite(R2.ctx.peer) && /同業中位 PE [\d.]+x/.test(R2.txt.rpVal), `${R2.ctx && R2.ctx.peer} ${R2.txt.rpVal.slice(0, 120)}`);
+ok('④c 2330 五段有內容、無 --', R2.html.every(h => h && h.length > 40) && !/(^|[^-])--([^-]|$)/.test(Object.values(R2.txt).join(' ')));
+// ⑪ 切股殘留
+{
+    const r = await page.evaluate(async () => {
+        const A = app;
+        A.currentSymbolId = '5483'; A.rawDailyData = JSON.parse(JSON.stringify(window.__K['5483'])); A.activeData = A.rawDailyData;
+        await A.renderReportTab('5483');
+        const before = document.getElementById('rpVal').innerHTML.length;
+        // 切股:analyze('2330') 一開始就該把 rp* 清掉(不等資料回來)
+        const p = A.analyze('2330');
+        await new Promise(r => setTimeout(r, 50));
+        const mid = ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc'].map(id => document.getElementById(id).innerHTML.length);
+        await p.catch(() => {});
+        // await 回來時 sym 已不同 → ⛔ 不可寫入
+        // ⚠️ 用「載入中途切股」重現:第一個 await 回來時 currentSymbolId 已經變了
+        //   (⛔ 不是在呼叫前就換 —— 那樣第一行就 return,驗不到 await 之後那幾道守門)
+        A.currentSymbolId = '5483';
+        const realLoad = A._loadFundCache;
+        A._loadFundCache = async function () { A.currentSymbolId = '2330'; return realLoad.call(this); };
+        await A.renderReportTab('5483');
+        A._loadFundCache = realLoad;
+        const after = ['rpNum', 'rpVal', 'rpFund', 'rpChip', 'rpRisk', 'rpSrc'].reduce((n, id) => n + document.getElementById(id).innerHTML.length, 0);
+        return { before, mid, after, rpSym: A._rpSym };
+    });
+    ok('⑪b analyze(別檔) 一開始就清空九段(⛔ 不等資料回來)', r.before > 40 && r.mid.every(n => n === 0), JSON.stringify(r));
+    ok('⑪c 載入中途切股(await 回來 sym 不符)→ 六個 async 段一個字都不寫', r.after === 0, JSON.stringify(r));
+}
+// ② 指數藏這頁
+{
+    const r = await page.evaluate(async () => {
+        const A = app; A.currentSymbolId = '^TWII';
+        A._syncIndexSubTabs(); A.switchSubTab('report');
+        return { hidden: document.getElementById('subTabBtnReport').classList.contains('hidden'), active: A._activeSubTab };
+    });
+    ok('② 指數(^TWII)藏「報告」按鈕、點 report 導回 strategy', r.hidden && r.active === 'strategy', JSON.stringify(r));
+}
+ok('⑬b 報告頁渲染期間對 FinMind 的請求數 = 0(analyze 那段不算)', hitsAfterRender === 0, `hits ${hitsAfterRender}`);
+ok('📱 390px 頁面不可橫向溢出', !R.wide);
+ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '));
+
+// ⑤e 跟 pro.html `_pxTableHtml` 餵同一 fixture,數字序列要完全一致
+{
+    const p2 = await browser.newPage();
+    await p2.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domcontentloaded' });
+    await p2.waitForFunction(() => typeof PRO !== 'undefined' && !!PRO._pxTableHtml, null, { timeout: 30000 });
+    const fx = { px: R.ctx.pC, pe: R.ctx.pe, eps: R.ctx.eps, b: R.ctx.band, peer: 27.3 };
+    const proNums = await p2.evaluate((f) => {
+        const r = { px: f.px, pe: f.pe, eps: f.eps, b: f.b, peer: f.peer, lo: f.eps * f.b.p5, q25: f.eps * f.b.p25, mid: f.eps * f.b.med, q75: f.eps * f.b.p75, hi: f.eps * f.b.p95, peerPx: f.eps * f.peer };
+        const h = PRO._pxTableHtml(r).replace(/<[^>]+>/g, ' ');
+        return (h.match(/[+-]?\d[\d,]*\.?\d*/g) || []).map(x => x.replace(/,/g, ''));
+    }, fx);
+    const mineNums = await page.evaluate((f) => {
+        const h = app._rpPxTableHtml(app._rpValRows(f.eps, f.b, f.peer), f.px, f.pe).replace(/<[^>]+>/g, ' ');
+        return (h.match(/[+-]?\d[\d,]*\.?\d*/g) || []).map(x => x.replace(/,/g, ''));
+    }, fx);
+    // pro 的表頭沒有數字;我的多了「距現價 / 一張差多少元」說明列(也沒有數字)→ 兩邊的數字序列應該完全相同
+    ok('⑤e index.html 估值表 與 pro.html _pxTableHtml 餵同一 fixture,數字序列完全一致(⛔ 公式漂移就會叫)', JSON.stringify(proNums) === JSON.stringify(mineNums), `pro ${proNums.join(' ')}\n mine ${mineNums.join(' ')}`);
+    await p2.close();
+}
+
+await browser.close();
+console.log(fails.length ? `\n❌ ${fails.length} 條失敗:${fails.join(' / ')}` : '\n✅ test_report 全過');
+process.exit(fails.length ? 1 : 0);

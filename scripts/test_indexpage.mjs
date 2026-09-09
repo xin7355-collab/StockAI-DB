@@ -51,7 +51,7 @@ const R = await pg.evaluate(() => {
     // V71.8.4:籌碼與多空也整個藏掉(使用者問「是否需要刪除」→ 是)。
     //   籌碼三張卡對指數永遠是空的(法人買賣超是逐檔資料、指數沒有融資券也沒有借券);
     //   多空 28 條有 27 條需要籌碼/基本面/價量 → 永遠「訊號不足 1/28」。
-    out.subHidden = ['Corp', 'DayTrade', 'Backtest', 'Live', 'Chip', 'BullBear'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
+    out.subHidden = ['Corp', 'DayTrade', 'Backtest', 'Live', 'Chip', 'BullBear', 'Report'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
     out.subShown = ['Strategy', 'Chart'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
     // 多空:命中太少不可給「多方 100%」
     const few = { sym: '^TWII', rules: [], cats: { chip: { bull:0,bear:0,rules:[] }, price: { bull:0,bear:0,rules:[] }, fund: { bull:0,bear:0,rules:[] }, tech: { bull:0,bear:0,rules:[] } } };
@@ -68,7 +68,7 @@ const R = await pg.evaluate(() => {
     app._syncIndexSubTabs(); app.switchOvTab('now', { auto: true });
     out.stockTxt = document.getElementById('trendCommandCard').innerText;
     out.tabsBack = ['entry', 'exit'].map(k => document.querySelector(`[data-ovtab="${k}"]`)?.classList.contains('hidden'));
-    out.subBack = ['Corp', 'DayTrade', 'Backtest', 'Live', 'Chip', 'BullBear'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
+    out.subBack = ['Corp', 'DayTrade', 'Backtest', 'Live', 'Chip', 'BullBear', 'Report'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
     app.switchChipTab('broker');
     out.chipBack = ['broker', 'flow', 'dist'].map(k => document.getElementById('chipTabBtn-' + k)?.classList.contains('hidden'));
     out.chipTabBack = app._activeChipTab;
