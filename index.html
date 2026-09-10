@@ -10178,7 +10178,11 @@ ${list}
                 const kl = await this.fetchHistoricalData(sym, false);
                 if (Array.isArray(kl) && kl.length >= 60) {
                     let medianPe = null;
-                    try { const { industry } = this._getIndustryPeers(sym); medianPe = peData?.industries?.[industry]?.median_pe ?? null; } catch (_) {}
+                    // 🐛 V76.0.0 修:`_getIndustryPeers` 回的是**中文產業名**,而 `industries` 的鍵是
+                    //   `industry_map.json` 的代碼("01"~"38")→ 這一行從上線到現在 `medianPe` **永遠是 null**,
+                    //   而且包在 `catch (_) {}` 裡**完全靜默**(陷阱 #40:跨檔對照的鍵對不上)。
+                    //   ⭐ 正解同檔 10944 / 27898 / 38112 早就做對了:`map[sym]` → 代碼 → `industries[代碼]`。
+                    try { const code = peData?.map?.[sym]; medianPe = (code && peData?.industries?.[code]?.median_pe) ?? null; } catch (_) {}
                     const r = this[scoreFn](sym, kl, fundCache[sym], medianPe);
                     if (r) rows.push(r);
                 }
