@@ -49,3 +49,9 @@ shioaji.log
 android/.gradle/
 android/local.properties
 chips_deep/
+
+# 🔌 MCP 伺服器設定(評估紀錄㉕):它會帶**機器專屬的絕對路徑**
+#    (如 Windows 的 C:/Users/.../@playwright/mcp/cli.js)→ commit 進去會讓
+#    Claude Code on the web 的雲端 session 拿到一個指向不存在路徑的壞設定。
+#    ⛔ 這是預防性的:本專案的測試直接用 /opt/pw-browsers 的 chromium,不走 MCP。
+.mcp.json

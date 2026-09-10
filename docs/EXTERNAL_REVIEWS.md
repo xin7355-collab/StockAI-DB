@@ -757,6 +757,83 @@ CB 轉換價 parity(=V71.9.1)、處置聽牌/連兩天第一款(=官方 attentio
    的可信度差很多。⚠️ 它只檢定「跟丟銅板有沒有差」,不代表未來延續,也未扣交易成本。
    測試 `scripts/test_winrate.mjs`(用課本值釘住:P(≥8/10)=56/1024、P(≥10/10)=1/1024)。
 
+### 🔌 外部參考資料的評估紀錄㉕:四個 Claude Code 外掛(2026-09-11 使用者貼社群貼文 + 另一個 AI 的評論)⭐ 兩條建議照做會**弄壞這個 repo**
+
+使用者貼了一篇社群貼文(推薦 4 個外掛,「留言『外掛』我私訊給你」)+ 另一個 AI 對它的完整評論
++ 一份 Windows 安裝步驟,要求照慣例評估。
+
+⭐ **這份跟前 24 份都不一樣**:它談的不是選股策略,是**開發工具鏈**。
+所以判準不是六道關卡,而是「**這個 repo 的實際工作流會不會因此更好或更壞**」。
+
+#### 🚨 三件跟原文不一樣的事(全部實查,⛔ 不是推理)
+
+| # | 原文說 | 實查(2026-09-11) |
+|---|---|---|
+| 1 | 星數 63,153 / 93,548 | ✅ **是真的**(GitHub API:OmniRoute **64,210**、claude-mem **93,640**)。⭐ 我原本懷疑灌水(93.5k 會排進全 GitHub 前 30),**查完證明我自己錯了** —— 這條寫下來提醒:**「這數字看起來太誇張」也是一種推理,不是證據** |
+| 2 | 第二個 AI 說 OmniRoute「你的程式碼和提示字**全部經過它**、誰在收集你的數據無法審計」 | ⚠️ **結論對、理由要修正**。README 明寫 local-first、`"no hosted prompt-processing hop"`、telemetry 預設關、憑證 AES-256-GCM 加密。**真正的風險不是 OmniRoute 自己收集**,而是它的 **4 層降級(訂閱 → API → 便宜 → 免費)**:額度用完會自動退到 **56 家 keyless「免費永久」供應商**,那些人的資料政策才是真的審計不了。⭐ 通用:**批評一個工具要打在它真的做的那件事上**,理由錯了下次就防不到同型風險 |
+| 3 | 兩個 AI 給的 `frontend-design` 安裝指令**互相矛盾** | ✅ **第二個是對的**:官方市集現在會自動註冊 → `/plugin install frontend-design@claude-plugins-official`。第一則引的 Boris Cherny 貼文寫 `@claude-code-plugins`,那是**先手動 `/plugin marketplace add anthropics/claude-code` 之後**的舊路徑 |
+
+#### 🚨🚨 兩條照做會弄壞這個 repo 的建議(這才是重點)
+
+**① 「把 `CLAUDE.md` 加進 `.gitignore`」—— ⛔ 絕對不可以做**
+
+它的理由:「GitHub Pages 的儲存庫是公開的,不排除的話你的架構筆記和進度會在網路上公開」。
+實查:`git ls-files CLAUDE.md` → **已在版控**;GitHub API → repo `"visibility":"public"`。
+
+**四層錯誤**:
+- 🚨🚨 **Claude Code on the web 每個 session 靠 repo 裡的 `CLAUDE.md` 載入專案規則。**
+  移出版控 → **四驗證、41 條陷阱清單、燈號鐵則、部署規則、探針登記表、連動檢查清單全部消失**
+  —— 而那正是使用者實際的工作方式(V75/V76 全部是在 web session 做的)。
+- **`.gitignore` 不會讓已經 push 出去的東西消失**(還在 git 歷史裡)→ 它想達到的目的**根本沒達到**,
+  代價卻是真的。⭐ 通用:**「停止追蹤」跟「已經公開的收回來」是兩件事。**
+- ⭐ **歸因錯了**:公開的原因是 **repo 本身是 public**,跟 Pages 無關;
+  而且 **main 分支的內容從來不會被部署到網站**(`deploy_pages.yml` 只覆蓋 `index.html` + `sw.js`,
+  gh-pages 其餘是 `data/`)→ `CLAUDE.md` **一次都沒有出現在網站上過**。
+- ⭐⭐ **那個隱私顧慮本身是假的**:所有判定邏輯與回測成績(`_SIGNAL_EDGE`・`_STREAK_EDGE`・
+  `_DECK_TRACK49`・`_SCR_EDGE`…)**本來就嵌在公開的 `index.html` 裡**,而那份是真的掛在網站上。
+  藏 `CLAUDE.md` = **假隱私、真代價**。
+- ✅ 真正該守的是**金鑰**,而這條本專案早就做對了(「⛔ key 絕不硬編進 index.html」,
+  金鑰全在 GitHub Secrets)→ `CLAUDE.md` 裡**沒有**任何金鑰,不用改。
+
+→ 📌 已把「⛔ `CLAUDE.md` 不可加進 `.gitignore`、不可移出版控」寫成 CLAUDE.md 的明文鐵則,
+   免得下一個 AI(或下一個 session)再建議一次。
+
+**② 「新增 `PROGRESS.md`」—— ⛔ 這個 repo 加它會製造第三份真相**
+
+本專案已經有 `CLAUDE.md`(現行規則)+ `docs/DECISIONS.md`(188 節,**含「📋 待辦盤點」**)。
+再開一個 `PROGRESS.md` 寫「做到哪」= 第三個地方 → 正是使用者講最多次的
+**「邏輯不打架、資訊不爆炸」**的反面(同 V69.7.5 主力成本、V72.0.8 三個「主力」那類同名不同義)。
+⭐ 但「收工前更新進度」這個**行為**是對的 → 接到**既有**的 `docs/DECISIONS.md` 待辦節,⛔ 不新開檔。
+
+#### ⚠️ 環境錯配:那份安裝步驟改不到這個專案
+
+安裝步驟是給**使用者的 Windows 機器**(`C:\Users\23\Desktop\AI專案區\`)本機 Claude Code 的。
+但這個專案實際上是在 **Claude Code on the web(雲端 Linux 容器)**開發 → 我從這裡**碰不到那台機器**。
+而且 ③ Playwright 在**這個雲端環境本來就裝好了**(`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`),
+專案更已經有 **128 支 headless Playwright 測試** + `scripts/page_sweep.mjs`(實際渲染後掃 innerText)
+—— 比 MCP 版**更嚴格**(有四道空過守門 + `test_sweep_selfcheck.mjs` 注入自我驗證)。
+
+#### 📋 四個工具的處置
+
+| | 判定 | 理由 |
+|---|---|---|
+| ① OmniRoute | ⛔ **不裝** | 降級到 56 家 keyless 免費供應商時,**程式碼與提示字會送到那些人手上**;「不斷線 ≠ 不降級」(切到非工具型模型時 Claude Code 最核心的讀寫能力會斷)。⚠️ 「違反 Anthropic ToS」這條 README 沒提,**未經證實**,⛔ 不當成事實引用 |
+| ② claude-mem | ⛔ **不裝** | 功能是真的(五個生命週期鉤子 + SQLite),但本專案的 `CLAUDE.md` + `docs/DECISIONS.md` 已經做到同一件事,而且**是 git 版控的、可以 diff、可以 revert**。🚨 它會記錄**工具輸出** → Claude 讀過含金鑰的檔案就可能把金鑰寫進記憶庫;壓縮本身還要另外呼叫 Claude 吃 token(跟「省額度」這個痛點自相矛盾) |
+| ③ Playwright MCP | 🟰 **本專案已經有,而且更好** | 他**其它**專案值得裝;本 repo ⛔ 不新增 `.mcp.json`。⚠️ 頁面快照很吃 token,就算裝了也該驗收時才開 |
+| ④ frontend-design | ✅ **可以裝,但本專案要加護欄** | Anthropic 官方、純設計指引、沒有執行風險。⚠️ **但它的官方描述是「bold aesthetic choices・distinctive typography・high-impact animations」,跟本專案 UI 規範的「視覺降噪鐵則 ⛔ 禁用霓虹漸層」直接對立** → 已在 UI 規範那節加註「本專案一律以本節為準」 |
+
+#### ⭐ 額度問題的正解(⛔ 不是把流量導去第三方)
+`/model` 手動切:雜事 / 跑測試 → Sonnet,架構決策與大改 → Opus。
+零風險、零依賴,而且**不會把程式碼送出去**。
+
+#### 🧾 這一輪實際改了什麼
+**一行程式碼都沒改**(同評估紀錄⑫⑮)。只動三個文件:
+本節 ・`CLAUDE.md`(索引 + 兩條新鐵則)・`.gitignore` 加 `.mcp.json`
+(MCP 設定會帶**機器專屬絕對路徑**,commit 進去會讓雲端 session 拿到壞掉的設定)。
+
+⚠️ **誠實標註**:那條「Windows 上 `npx` 會讓 MCP 的 stdio 接不上 → 改用 `node <path>/cli.js`」
+**我在 Linux 沙箱無法實測 Windows**(陷阱 #40:別的環境測得過不算數)→ ⛔ 我沒有替它背書。
+
 ### 🧪 外部參考資料的評估紀錄㉔:兩套完整策略規格 + 回測框架(2026-09-08 使用者提供)
 使用者給了兩套寫得很完整的策略(布林壓縮突破 / 強勢股多頭拉回)+ 一份績效報表規格,
 指定用 `vectorbt` / `backtrader` + `plotly`。⭐ 照鐵則:**先回測再談要不要做框架** ——
