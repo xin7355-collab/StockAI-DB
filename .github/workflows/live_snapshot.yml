@@ -71,10 +71,19 @@ jobs:
       # ══════════════════════════════════════════════════════════════════════
       # 🔁 盤中常駐迴圈(V73.9.0)—— 一輪 = 採快照 + 部署,自己算下一拍
       #
-      # ℹ️ 只 push gh-pages,不進 data 分支(刻意):live_quotes 是「每 5 分鐘重生」的即時快照,
-      #    盤中會不斷刷新、盤後前端不讀(isMarketOpen 守門)。daily_miner 下午洗掉它無妨——
-      #    下個交易日開盤第一輪就重建。若進 data 分支反而讓備份分支每 5 分鐘 churn 一次,不值得。
-      #    (對比 stock_futures_night.json 是隔夜持久資料 → 那支才走雙分支保存。)
+      # 🩹 **也推 data 分支**(2026-09-10 改;⛔ 別再改回「只推 gh-pages」)——
+      #    這裡原本寫「不進 data 分支(刻意)…daily_miner 下午洗掉它無妨,下個交易日開盤第一輪就重建」。
+      #    🚨 **那個理由被實測推翻了**:gh-pages 是 daily_miner 的 **orphan force-push**,內容
+      #    **全部來自工作區的 data/**(而工作區的 data/ 來自 `git archive origin/data`)
+      #    → **只要一個檔不在 data 分支,每一輪 daily_miner 都會讓它從 gh-pages 消失**,跟部署窗口無關。
+      #    實測(2026-09-09):run #97 log 逐字「✅ push 成功」共 4 次,而隔天 gh-pages 與 data
+      #    **兩邊都查不到 live_quotes.json** —— 中間只發生了 3 輪 daily_miner。
+      #    ⛔ 兩個舊前提都不成立:① daily_miner 不只下午跑(可被 push 觸發,實測台北 12:06 部署=盤中)
+      #    ② 「下一輪就重建」的前提是這支排得到,而它的排程實測會整天進不來。
+      #    📊 churn 的代價先量過才推翻:live_quotes ≈ 95 KB(2,335 檔),對照 tick_hist 39 KB
+      #    已每 10 分鐘推很久;而 data 分支每天被 daily_miner orphan force-push 重置成 1 個 commit → 不累積。
+      #    ⭐ 這是 tick_flow.yml「🩹 V69.8.4 P0-2:也推 data 分支(否則 daily_miner orphan
+      #    force-push 每輪抹掉」的**同一個修法** —— 當初只接了一支(陷阱 #37)。
       # 🌅 盤前模式產出的是 live_index.json(只有台指期);盤中是 live_quotes.json(全市場)。
       #    ⭐ 兩者部署到**不同檔名**,⛔ 盤前那輪絕不覆蓋盤中快照。
       # ══════════════════════════════════════════════════════════════════════
@@ -87,7 +96,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 🚨 節拍計算器要複製出去 —— 每輪結束時工作區停在 **gh-pages**,
+          # 🚨 節拍計算器要複製出去 —— 每輪結束時工作區停在 **data 分支**(2026-09-10 之前是 gh-pages),
           #    那個分支上沒有 scripts/,直接呼叫會 "No such file"(而且迴圈會整個停掉)。
           cp scripts/intraday_window.py /tmp/win.py
           # 🚧 空過守門:節拍計算器不能用的話,迴圈會一拍都不跑而且看起來很正常 → 直接紅燈
@@ -107,23 +116,48 @@ jobs:
             mkdir -p data
             cp /tmp/lq.json "$DST"
             git add "$DST"
+            # 🚨 這裡**不可以早退**(以前是 `return 0`)—— 下面還有「也推 data 分支」那段,
+            #    早退等於那段永遠走不到,而且完全沒有錯誤訊息。
             if git diff --cached --quiet; then
-              echo "無變更,跳過"; return 0
+              echo "無變更,跳過 gh-pages"
+            else
+              git commit -q -m "📸 即時快照 $(basename $DST) $(date -u '+%Y-%m-%d %H:%M UTC')"
+              # ⛔ 這個 retry 迴圈不可拿掉:離開共用 concurrency group 之後,
+              #    它就是唯一擋「跟 deploy_pages / daily_miner 同時 push」的東西。
+              local pushed=0
+              for i in 1 2 3 4 5; do
+                git push origin gh-pages 2>/dev/null && { echo "✅ push 成功 ($i)"; pushed=1; break; }
+                [ "$i" -eq 5 ] && break
+                sleep $((i*5))
+                git fetch origin gh-pages 2>/dev/null || true
+                git pull --rebase origin gh-pages 2>/dev/null || true
+              done
+              [ "$pushed" -eq 1 ] || { echo "❌ push 連 5 次失敗"; return 1; }
             fi
-            git commit -q -m "📸 即時快照 $(basename $DST) $(date -u '+%Y-%m-%d %H:%M UTC')"
-            # ⛔ 這個 retry 迴圈不可拿掉:離開共用 concurrency group 之後,
-            #    它就是唯一擋「跟 deploy_pages / daily_miner 同時 push」的東西。
-            for i in 1 2 3 4 5; do
-              git push origin gh-pages 2>/dev/null && { echo "✅ push 成功 ($i)"; return 0; }
-              [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; return 1; }
-              sleep $((i*5))
-              git fetch origin gh-pages 2>/dev/null || true
-              git pull --rebase origin gh-pages 2>/dev/null || true
-            done
+            echo "✅ $DST 已部署"
+
+            # 🩹 **也推 data 分支**(否則 daily_miner orphan force-push 每輪把它從 gh-pages 抹掉)。
+            #    ⚠️ 必須排在 gh-pages push **之後**(排前面會推到還沒更新的內容)。失敗不擋主流程。
+            #    ⭐ 沿用上面已經分好的 $DST → 盤前那輪寫 live_index.json,⛔ 絕不覆蓋盤中快照。
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdq -e '*.json' 2>/dev/null || true
+            git fetch origin "+refs/heads/data:refs/remotes/origin/data" 2>/dev/null || true
+            if git checkout -f -B data origin/data 2>/dev/null; then
+              mkdir -p data
+              cp /tmp/lq.json "$DST"
+              git add -f "$DST"
+              if ! git diff --cached --quiet; then
+                git commit -q -m "📸 即時快照 → data 分支 $(basename $DST) $(date -u '+%Y-%m-%d %H:%M UTC')" -- "$DST"
+                git push origin data 2>/dev/null && echo "✅ data 分支也已同步" || echo "⚠️ data 分支 push 失敗(不擋主流程)"
+              fi
+            else
+              echo "⚠️ 無 data 分支,跳過"
+            fi
+            return 0
           }
 
           once() {
-            # 🚨 每輪開頭一定要回到主程式碼 —— 上一輪的 deploy 把我們留在 gh-pages,
+            # 🚨 每輪開頭一定要回到主程式碼 —— 上一輪的 deploy 把我們留在 **data 分支**,
             #    那裡沒有 live_snapshot_miner.py。⛔ 少了這行第二輪就開始失敗。
             git checkout -f "$BASE_SHA" >/dev/null 2>&1 || { echo "❌ 回不到主程式碼"; return 1; }
             rm -f live_quotes.json live_index.json   # ⛔ 免得採礦失敗時部署到上一輪的舊檔
