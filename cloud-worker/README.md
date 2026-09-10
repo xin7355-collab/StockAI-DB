@@ -201,11 +201,60 @@ curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 - 盤中推送只有台北 Mon-Fri 09:00-13:30 才觸發
 
 ### 多個 cron 沒觸發
-- Cloudflare 免費版 cron 只能 5 個,目前用 2 個
+- Cloudflare 免費版 cron 只能 **5 個**,目前 **5 個全部用滿**(見 `wrangler.toml` 的 `[triggers]`)
+- ⭐ 所以新功能一律**掛在既有 cron 的 handler 裡**(`worker.js` 的 `scheduled()` 依 `event.cron` 分流),
+  ⛔ 別想再加第 6 個 —— 加了不會生效而且沒有錯誤訊息
 
 ### deploy_worker.yml 失敗
 - 確認 `CLOUDFLARE_API_TOKEN` 已加到 GitHub Secrets
 - 確認 wrangler.toml 的 KV namespace id 已替換
+
+## 🚀 2026-09-10 — 用 Worker 叫醒盤中採礦(排程救援)
+
+### 這是在解什麼問題
+GitHub 自己的排程(cron)在這個專案**很不可靠** —— 實測**遲到 4.5~5 小時,而且常常整天不進來**:
+盤中即時報價的主迴圈排台北 08:44 開始,2026-09-09 實際 **13:15** 才跑(那時盤只剩 15 分鐘),
+09-10 更是一整個上午**一筆都沒有**。
+
+⭐ 而這個 Worker 的排程**每天都準時**(你每天收到的 Telegram 就是證據)。
+→ 讓 Worker 用 GitHub 的「外部觸發」把採礦叫起來,**完全不吃 GitHub 的排程配額**。
+
+### 你要做的(兩步,⛔ 不用碰 Cloudflare 指令列)
+
+**1️⃣ 建一把 GitHub 金鑰**
+GitHub → 右上頭像 → Settings → Developer settings → Personal access tokens
+→ **Fine-grained tokens** → Generate new token
+- Repository access:**Only select repositories** → 選 `StockAI-DB`
+- Permissions → Repository permissions → **Contents: Read and write**(⭐ 外部觸發需要這個)
+- 有效期建議選 **1 year**(到期要重設一次;過期時 Worker 那段會靜靜失效,採礦就退回舊的排程)
+
+**2️⃣ 加進這個專案的 Secrets,然後按一下部署**
+- 本專案 → Settings → Secrets and variables → Actions → New repository secret
+  - Name:`GH_DISPATCH_TOKEN`
+  - Secret:貼上剛剛那把金鑰
+- Actions → **Deploy Cloudflare Worker** → Run workflow(選 `main`)
+
+⛔ **不用改 Cloudflare 任何東西** —— 部署那支 workflow 會自動把金鑰送上去。
+
+### 怎麼確認有效(⛔ 看產物,不是看顏色)
+隔天台北 09:10 之後:
+```bash
+git fetch origin gh-pages --depth=1
+git show origin/gh-pages:data/live_quotes.json | grep -oE '"updated":"[^"]*"' | head -1
+```
+→ 時間應該落在**最近 20 分鐘內**。也可以到 Actions 看 `📸 全市場即時快照` 有沒有
+一筆 **event 是 `repository_dispatch`** 的 run。
+
+### ⛔ 幾個不可以改的設計
+- **看門狗只在「產物太久沒更新」時才補發** —— 盤中每 15 分無條件發會**一直砍掉自己的主迴圈**
+  (`live_snapshot` 是 `cancel-in-progress: true`)。
+- **兩支採礦原本的 cron 一行都沒刪** —— Worker 掛掉時它們還是備援。
+- **事件名兩邊要完全一致**(`worker.js` 的 `ghDispatch(env, 'intraday-quotes')`
+  ↔ workflow 的 `types: [intraday-quotes]`)—— 差一個字**永遠不會觸發,而且兩邊都零訊息**。
+  `scripts/test_intraday_relay.py` 的 ④b/④b2 會擋下來。
+- **沒設金鑰 = 整段跳過**,既有 Telegram 推播完全不受影響。
+
+---
 
 ## 🔔 V22.3 — 手機 Web Push(關 App 也能收推播,iOS 16.4+)
 

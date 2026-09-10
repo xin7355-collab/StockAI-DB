@@ -7,6 +7,68 @@
 
 ---
 
+### 🚀 V75.2.7 排程遲到 4.5~5 小時 —— 改用 Cloudflare Worker 叫醒(⛔ 不是再加 cron)
+
+承上一節:即時報價「留不住」修好了,但它還有另一半 ——「**跑不動**」。
+
+#### 📊 先量(⛔ 不是推論)
+`live_snapshot` 的 cron 排台北 **08:44 / 10:17 / 12:17**,2026-09-09 實際跑的是
+**13:15 / 15:22 / 16:57** —— 每一筆遲到 **4h31m / 5h06m / 4h40m**;09-10 到台北 12:20
+**一筆都沒進來**。主迴圈本來要涵蓋整個盤中,開跑時盤只剩 15 分鐘。
+⚠️ 先確認 cron 沒被改過(`git log -- live_snapshot.yml`:自 09-06 起就是這三條)才敢下這個結論。
+
+#### 🚨 CLAUDE.md 現行解法(改掛 `workflow_run`)在這裡**用不了**
+掃全 repo 的 cron 才看到:**台北早上 08:00~10:30 整個時段只有 4 支排程**
+(`live_snapshot` / `macro_cron` / `tick_flow` / `rotation_probe`),
+而其中 **3 支正是 V75.2.0 記載「餓死」的那幾支**(實測 0 筆)。
+→ **沒有可靠的 host 可以掛**。⛔ 而「再排密一點」是 V73.9.0 已經被推翻的方向。
+
+#### ⭐ 正解:CLAUDE.md 自己早就寫了下一步 —— Cloudflare Worker → `repository_dispatch`
+> ⚠️ 若 GitHub 對「5 小時的常駐 job」有意見,下一步是走 **Cloudflare Worker cron →
+> `repository_dispatch`**(專案已有 `cloud-worker/`),⛔ 別退回高頻 cron。
+
+查證後**兩個關鍵條件都成立**:
+1. Worker **已經有一個涵蓋盤中、每 15 分鐘的 cron 在跑** —— 就是每天推 Telegram 給使用者那個
+   (⚠️ 我無法直接進 Cloudflare 實測,這是**間接證據**,已在問使用者時說明)。
+2. Cloudflare 免費版 cron 上限 5 個而**已經用滿** → ⭐ 但新功能**掛在既有 handler 裡**
+   (`scheduled()` 依 `event.cron` 分流)→ **不需要新增 cron 槽位**。
+   ⚠️ README 寫「目前用 2 個」是**過期敘述**,已更正。
+
+#### ✅ 落地(三個檔 + 一支測試)
+- `cloud-worker/worker.js`:`ghDispatch()` 發 `repository_dispatch` +
+  `intradayWatchdog()` 盤中看門狗。台北 08:00 那輪叫 `live_snapshot`、09:00 那輪叫 `tick_flow`。
+- `live_snapshot.yml` / `tick_flow.yml`:加 `repository_dispatch: types: [...]`,**cron 一行不刪**(備援)。
+- `deploy_worker.yml`:金鑰加進既有的「只上傳有值的」迴圈 → ⭐ **使用者完全不用碰 Cloudflare 指令列**,
+  只要在 GitHub 設一個 secret 再按一次 Run。
+
+⛔ **四條不可改掉的設計**(`scripts/test_intraday_relay.py` ④ 釘住,三種注入都驗過):
+1. 🚨 **看門狗只在「產物太久沒更新」才發** —— `live_snapshot` 是 `cancel-in-progress: true`,
+   每 15 分無條件發會**一直砍掉自己的主迴圈**(那只是把一種 starvation 換成另一種)。
+2. **cron 一行不刪** —— Worker 掛掉時它是唯一備援。
+3. 🚨 **事件名兩邊完全一致**,而且測試要**雙向**比(發了沒人收 = 白發;收了沒人發 = 永遠不觸發)。
+   ⛔ 只比一邊抓不到打錯字 —— 實測注入「少一個 s」時正是 ④b 與 ④b2 一起紅。
+4. 🔐 **金鑰只進 Authorization header** —— ⛔ 不可進網址、不可被印出來(④e/④e2 釘住,注入驗過)。
+5. **沒設金鑰 = 整段跳過**,既有 Telegram 推播零影響。
+
+#### 🚨🚨 順手抓到一個更危險的:`node --check` 對 `cloud-worker/worker.js` **完全沒有鑑別力**
+第一版我把 helper 插錯位置 —— 插進了 `export default { … }` 的**物件字面量裡面**
+(`export default` 在 265 行、我的 `const GH_REPO` 落在 308 行、物件到 382 行才結束)。
+🚨 而 `node --check cloud-worker/worker.js` **照樣 rc=0 放行**。
+當場做了鑑別力測試:把 `const __X = 1;` 硬插進物件字面量 → **還是 rc=0**。
+真因:`cloud-worker/package.json` 沒有 `"type": "module"` → node 用 **CJS** 解析 `.js`。
+⭐ 修法:驗之前**複製成 `.mjs`** 再 `node --check` → 當場指到那一行。
+測試 ⑤a 用這個方法驗 worker.js,⑤b **注入一個語法錯確認這個檢查法真的叫得出來**
+—— ⛔ 沒有 ⑤b,⑤a 就跟沒驗一樣(我差點把語法壞掉的 Worker 推上去)。
+⭐⭐ 通用(陷阱 #40 的又一種形式):**「檢查工具沒報錯」不等於「它有能力報錯」** ——
+   拿它當守門之前,先注入一個已知的壞東西問它一次。
+
+⏭️ **使用者要動手的兩步**(寫在 `cloud-worker/README.md` 新增那節):
+建一把 fine-grained GitHub 金鑰(只給 `StockAI-DB` 的 **Contents: Read and write**)
+→ 加進本專案 Secrets 的 `GH_DISPATCH_TOKEN` → Actions 跑一次 `Deploy Cloudflare Worker`。
+⚠️ 金鑰過期時 Worker 那段會**靜靜失效**(退回舊排程)→ README 已寫明有效期要記得重設。
+
+⛔ 沒動 `index.html` / `pro.html` → 不 bump 版本。
+
 ### 📸 V75.2.7 全市場即時報價 **從來留不住** —— 每一輪 daily_miner 都把它抹掉
 
 盤中(台北 12:12)跑資料體檢,`live_quotes.json` / `live_index.json` 在 gh-pages 上 **不存在** ❌。

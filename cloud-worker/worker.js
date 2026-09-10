@@ -259,6 +259,72 @@ function tplPriceAlert(label, sym, hitPrice, livePrice, condText) {
     ].join('\n');
 }
 
+// ═══════════ 🚀 GitHub 排程救援:發 repository_dispatch(2026-09-10)═══════════
+// 為什麼要有這段(實測,⛔ 不是推論):
+//   GitHub 的 schedule 事件在這個 repo **遲到 4.5~5 小時,而且常常整天不進來** ——
+//   `live_snapshot` 的 cron 排台北 08:44 / 10:17 / 12:17,
+//   2026-09-09 實際在 13:15 / 15:22 / 16:57 才跑(主迴圈開跑時盤只剩 15 分鐘);
+//   09-10 到台北 12:20 為止**一筆都沒進來**。
+//   查全 repo 的 cron 才確定:台北早上 08:00~10:30 只有 4 支排程,
+//   而其中 3 支正是實測「餓死」的那幾支 → **沒有可靠的 host 可以掛 workflow_run**。
+// ⭐ `repository_dispatch` 跟 `workflow_dispatch` 一樣**不吃 schedule 配額**,
+//   而這個 Worker 的 cron 每天都在跑(使用者每天收到的 Telegram 就是證據)。
+// ⛔ 純加值層:沒設 `GH_DISPATCH_TOKEN` 就整段跳過,絕不影響既有 Telegram 功能。
+// 🔐 金鑰只從 env 讀、只進 Authorization header —— ⛔ 絕不寫進任何 log / 訊息 / 回傳值。
+// ⚠️ `repository_dispatch` 只認 **default branch(main)** 上的 workflow 定義。
+const GH_REPO = 'xin7355-collab/StockAI-DB';
+
+async function ghDispatch(env, eventType) {
+    if (!env.GH_DISPATCH_TOKEN) return { ok: false, why: 'no-token' };
+    try {
+        const r = await fetch(`https://api.github.com/repos/${GH_REPO}/dispatches`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${env.GH_DISPATCH_TOKEN}`,
+                'Accept': 'application/vnd.github+json',
+                'User-Agent': 'stockai-worker',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ event_type: eventType }),
+        });
+        // ⚠️ GitHub 成功時回 **204 No Content**(⛔ 不是 200)
+        return { ok: r.status === 204, why: `http-${r.status}` };
+    } catch (_) {
+        return { ok: false, why: 'fetch-failed' };
+    }
+}
+
+// ⏱️ 盤中看門狗 —— ⛔ **不可以每輪都發**:
+//   `live_snapshot` 是 `cancel-in-progress: true`,每 15 分發一次會**一直砍掉自己的主迴圈**
+//   (那只是把一種 starvation 換成另一種)。→ 只在「產物真的太久沒更新」時才補發。
+// ⚠️ 抓不到檔(404)也算 stale —— 那正是「今天還沒起跑」的樣子。
+const _INTRADAY_WATCH = [
+    { file: 'live_quotes.json', ev: 'intraday-quotes', staleMin: 20 },
+    { file: 'tick_flow.json', ev: 'intraday-ticks', staleMin: 30 },
+];
+
+async function intradayWatchdog(env) {
+    if (!env.GH_DISPATCH_TOKEN) return;
+    // 只在台北平日 09:05~13:25 管(⛔ 盤前/收盤後補發沒有意義)
+    const tw = new Date(Date.now() + 8 * 3600e3);
+    const wd = tw.getUTCDay();
+    if (wd === 0 || wd === 6) return;
+    const mins = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+    if (mins < 9 * 60 + 5 || mins > 13 * 60 + 25) return;
+    for (const w of _INTRADAY_WATCH) {
+        try {
+            const r = await fetch(`${GH_PAGES_BASE}/data/${w.file}?t=${Date.now()}`);
+            let stale = true;
+            if (r.ok) {
+                const j = await r.json().catch(() => null);
+                const u = Date.parse(j?.updated || '');
+                if (u) stale = (Date.now() - u) > w.staleMin * 60e3;
+            }
+            if (stale) await ghDispatch(env, w.ev);
+        } catch (_) { /* ⛔ 純加值,失敗不影響掃描 */ }
+    }
+}
+
 const WORKER_VER = 'V22.3 (2026-08-11)';
 const WORKER_FEAT = ['push', 'vapid', 'names', 'sync'];   // 有 push/vapid 才支援「關 App 推播」
 
@@ -308,10 +374,17 @@ export default {
         } else if (event.cron === '0 1 * * 1-5') {
             ctx.waitUntil(runMonitorChuMorningScan(env));
             ctx.waitUntil(runEtfFollowMorningPush(env));  // V17.18
+            // 🚀 逐筆內外盤的窗口是 09:03 起 → 用台北 09:00 這一輪叫它(⛔ 別跟 quotes 同一輪發)
+            ctx.waitUntil(ghDispatch(env, 'intraday-ticks'));
         } else if (event.cron === '0 0 * * 1-5') {
             ctx.waitUntil(runPreMarket(env));      // V21.4 盤前簡報(台北 08:00)
+            // 🚀 順便把盤中快照的主迴圈叫起來(GitHub 排程實測整天不進來,見上面那段)。
+            //    ⭐ 08:00 發沒問題 —— `intraday_window.py` 會自己 SLEEP 到 08:45 那一拍。
+            ctx.waitUntil(ghDispatch(env, 'intraday-quotes'));
         } else {
             ctx.waitUntil(runScan(env));           // 盤中個人警報(庫存/自選/到價/處置…)
+            // ⏱️ 同一輪順便當看門狗(⛔ 它自己會判「太久沒更新」才發,不是每輪都發)
+            ctx.waitUntil(intradayWatchdog(env));
         }
     },
 };

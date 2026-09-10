@@ -28,6 +28,15 @@ name: 📸 全市場即時快照 (Shioaji)
 #    寫 `live_index.json`,⛔ **完全不碰 `live_quotes.json`**(盤中快照是當沖頁命脈)。
 on:
   workflow_dispatch:
+  # 🚀 Cloudflare Worker 的 cron 打過來(2026-09-10)——
+  #    GitHub 的 schedule 在這個 repo 實測**遲到 4.5~5 小時、常常整天不進來**
+  #    (live_snapshot cron 排台北 08:44/10:17/12:17,09-09 實際 13:15/15:22/16:57)。
+  #    `repository_dispatch` 跟 `workflow_dispatch` 一樣**不吃 schedule 配額**。
+  #    ⚠️ 事件名要跟 `cloud-worker/worker.js` 的 `ghDispatch(env, '...')` **完全一致**
+  #       —— 差一個字永遠不會觸發而且零訊息(同 workflow_run host 名字那條)。
+  #    ⛔ 下面的 cron **一行都不刪**:當備援,而且 Worker 掛掉時還有它。
+  repository_dispatch:
+    types: [intraday-quotes]
   schedule:
     - cron: '44 0 * * 1-5'   # 台北 08:44 —— 主迴圈(盤前台指期 → 一路跑到 13:30 收盤)
     - cron: '17 2 * * 1-5'   # 台北 10:17 —— 接手①(主迴圈掛了才有意義)

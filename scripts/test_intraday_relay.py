@@ -172,6 +172,65 @@ if cur:
     finally:
         shutil.rmtree(base2, ignore_errors=True)
 
+
+# ── ④ Cloudflare Worker → repository_dispatch 的接線(2026-09-10)────────
+#   ⛔ 為什麼要釘:GitHub 的 schedule 在這個 repo 實測遲到 4.5~5 小時、常常整天不進來,
+#   所以盤中主迴圈改由 Worker 的 cron 用 `repository_dispatch` 叫起來。
+#   🚨 **事件名差一個字就永遠不會觸發,而且兩邊都零訊息** —— 跟 workflow_run 的 host 名字同一種坑。
+WORKER = os.path.join(ROOT, 'cloud-worker/worker.js')
+if not os.path.exists(WORKER):
+    ok('④ 找得到 cloud-worker/worker.js', False)
+else:
+    wsrc = open(WORKER, encoding='utf-8').read()
+    sent = set(re.findall(r"ghDispatch\(env,\s*'([^']+)'\)", wsrc))
+    recv = {}
+    for k, path in WFS.items():
+        for m in re.finditer(r'repository_dispatch:\s*\n\s*types:\s*\[([^\]]+)\]', open(path, encoding='utf-8').read()):
+            for ev in m.group(1).split(','):
+                recv[ev.strip()] = k
+    ok('④a Worker 真的會發 repository_dispatch', bool(sent), sorted(sent))
+    # ⭐ **雙向**都要比:發了沒人收 = 白發;收了沒人發 = 永遠不觸發。⛔ 只比一邊抓不到打錯字。
+    ok('④b ⭐⭐ Worker 發的每個事件名都有 workflow 接(⛔ 差一字永遠不觸發且零訊息)',
+       sent and sent <= set(recv), f'發 {sorted(sent)} / 收 {sorted(recv)}')
+    ok('④b2 workflow 收的每個事件名都真的有人發', set(recv) and set(recv) <= sent,
+       f'收 {sorted(recv)} / 發 {sorted(sent)}')
+    # ⛔ cron 一行都不刪 —— Worker 掛掉時它是唯一的備援(同 workflow_run 那條設計)
+    for k, path in WFS.items():
+        ok(f'④c {k} 的 cron ⛔ 沒被刪掉(Worker 掛掉時的備援)',
+           bool(re.search(r'^\s+- cron:', open(path, encoding='utf-8').read(), re.M)))
+    # 🚨 看門狗不可以無條件發 —— live_snapshot 是 cancel-in-progress: true,
+    #    每輪都發會一直砍掉自己的主迴圈(把一種 starvation 換成另一種)
+    ok('④d 🚨 看門狗有「太久沒更新才發」的判斷(⛔ 無條件發會一直砍掉主迴圈)',
+       'staleMin' in wsrc and re.search(r'if \(stale\)\s*await ghDispatch', wsrc) is not None)
+    # 🔐 金鑰只能進 Authorization header —— ⛔ 不可進 URL、不可被印出來
+    tokline = [l for l in wsrc.split('\n') if 'GH_DISPATCH_TOKEN' in l]
+    ok('④e 🔐 金鑰⛔ 不可出現在網址裡', not any(('http' in l and '?' in l) for l in tokline), tokline[:3])
+    ok('④e2 🔐 金鑰⛔ 不可被 console/訊息印出來',
+       not any(re.search(r'(console\.|tg\(|JSON\.stringify)', l) for l in tokline), tokline[:3])
+
+# ── ⑤ ⛔ 驗 worker.js 語法要用 .mjs —— `node --check` 對 .js 沒有鑑別力 ────
+#   🚨 實測(2026-09-10):把 `const __X = 1;` 插進 `export default {}` 的物件字面量裡,
+#   `node --check cloud-worker/worker.js` **照樣 rc=0 放行**(package.json 沒有 "type":"module",
+#   node 用 CJS 解析)→ 我差點把語法壞掉的 Worker 推上去。複製成 .mjs 才驗得到。
+if os.path.exists(WORKER):
+    tmpd = tempfile.mkdtemp(prefix='wchk_')
+    try:
+        mj = os.path.join(tmpd, 'w.mjs')
+        shutil.copyfile(WORKER, mj)
+        r = subprocess.run(['node', '--check', mj], capture_output=True, text=True)
+        ok('⑤a worker.js 語法合法(⛔ 用 .mjs 驗 —— .js 走 CJS 解析沒有鑑別力)',
+           r.returncode == 0, r.stderr[-300:])
+        # ⭐ 自我驗證:注入一個明確的語法錯,這個檢查法必須抓得到(⛔ 否則它跟沒驗一樣)
+        bad = os.path.join(tmpd, 'bad.mjs')
+        src = open(WORKER, encoding='utf-8').read().replace(
+            '    async scheduled(event, env, ctx) {', 'const __INJ = 1;\n    async scheduled(event, env, ctx) {', 1)
+        open(bad, 'w', encoding='utf-8').write(src)
+        r2 = subprocess.run(['node', '--check', bad], capture_output=True, text=True)
+        ok('⑤b ⭐ 注入語法錯時這個檢查法真的叫得出來(⛔ 沒有這條就不知道它有沒有在驗)',
+           r2.returncode != 0)
+    finally:
+        shutil.rmtree(tmpd, ignore_errors=True)
+
 print()
 if FAILS:
     print('❌ INTRADAY_RELAY_FAIL:', FAILS)
