@@ -18,6 +18,9 @@ import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { pathToFileURL } from 'url';
 const RE_ACT_BULL = /(可以進場|可依紀律進場|可放心做多|可順勢操作|順勢做多|可加碼|分批試單|可以追)/g;
 const RE_ACT_BEAR = /(空手觀望|反彈減碼|分批停利|先別加碼|別做,?等|不接刀|先出場|全數出場)/g;
+// ③ 極端占比的兩級判準(2026-09-10)—— ⚠️ 必須跟 page_sweep.mjs 逐字一致,下面有斷言擋
+const RE_PCT = /(?:^|[^\d.])(100(?:\.0)?%|0(?:\.0)?%)/g;
+const RE_PCT_DISCLOSED = /(命中\s*\d+\s*\/\s*\d+|只有\s*\d+\s*次|\d+\s*次|不等於沒有風險|樣本不足|訊號不足|資料還沒到齊)/;
 const nono = t => String(t).replace(/(?:不是|並非|沒有|不可|不准|別|禁|⛔)[^。;,\n]{0,26}(進場|加碼|抱好|順勢|追|試單|做多)/g,'').replace(/(?:不建議|不宜|暫不)[^。;,\n]{0,20}(進場|加碼|做多|追)/g,'');
 const b = await chromium.launch({ executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args:['--no-sandbox','--allow-file-access-from-files'] });
 const p = await b.newPage();
@@ -37,6 +40,32 @@ let fired=null;
 if(acts.bull.length&&acts.bear.length){ for(const x of acts.bull){ const o=acts.bear.find(y=>y.id!==x.id); if(o){fired=`${x.w} ⇄ ${o.w} (${x.id} vs ${o.id})`; break;} } }
 console.log(fired ? `✅ ⑤ 偵測器真的報得出來:${fired}` : `❌ ⑤ 注入了明確矛盾卻沒報 —— 偵測器壞了 (bull=${acts.bull.length} bear=${acts.bear.length})`);
 
+// ③ ⭐ 注入「裸的 100%」與「已揭露的 100%」各一張,驗兩級判準真的分得開
+//   ⛔ 這條的用意:降噪很容易一不小心變成「把偵測器關掉」——
+//   所以要同時證明「裸的抓得到」**和**「已揭露的不報」,少驗一邊都不算數。
+const pctCards = await p.evaluate(() => {
+  const host = document.body;
+  const n = document.createElement('div'); n.id = '__fakeNakedPct';
+  n.textContent = '四面向同步攻擊,多方優勢 100%,可放心做多。';
+  const d = document.createElement('div'); d.id = '__fakeDisclosedPct';
+  d.textContent = '多方優勢 100%(命中 8/29)⚠️ 空方一條都沒亮 —— 多半是那一類資料還沒到齊,不等於沒有風險。';
+  host.appendChild(n); host.appendChild(d);
+  return [{ id: '__fakeNakedPct', t: n.textContent }, { id: '__fakeDisclosedPct', t: d.textContent }];
+});
+const ctxOf = (t, i) => t.slice(Math.max(0, i - 45), i + 55).replace(/\s+/g, ' ');
+let nakedHit = 0, disclosedHit = 0;
+for (const c of pctCards) {
+  for (const m of c.t.matchAll(RE_PCT)) {
+    const ctx = ctxOf(c.t, m.index);
+    if (!/勝率|優勢|佔比|占比|命中/.test(ctx)) continue;
+    if (RE_PCT_DISCLOSED.test(ctx)) disclosedHit++; else nakedHit++;
+  }
+}
+const pctOk = nakedHit === 1 && disclosedHit === 1;
+console.log(pctOk
+    ? '✅ ③ 兩級判準分得開:裸的 1 筆會報 ・已揭露 1 筆降級成計數'
+    : `❌ ③ 兩級判準失效(裸 ${nakedHit} / 已揭露 ${disclosedHit},期望 1/1)—— 降噪不可以變成把偵測器關掉`);
+
 // ⭐ 樣式必須跟 page_sweep.mjs 同步(⛔ 兩份分歧的話,這支就變成在驗一個不存在的偵測器)
 import fs from 'fs';
 import path from 'path';
@@ -44,6 +73,18 @@ import { fileURLToPath } from 'url';
 const SWEEP = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'page_sweep.mjs'), 'utf8');
 const sameBull = SWEEP.includes(String(RE_ACT_BULL));
 const sameBear = SWEEP.includes(String(RE_ACT_BEAR));
+const samePct = SWEEP.includes(String(RE_PCT)) && SWEEP.includes(String(RE_PCT_DISCLOSED));
+// 🚨 上面那條只驗「樣式一樣」,**驗不到 page_sweep 的實作**(這裡是複製一份判準跑的 = 第二份真相)。
+//   實測:把 page_sweep 的 `if (RE_PCT_DISCLOSED.test(ctx))` 整個拿掉(降噪過頭、裸的也放過),
+//   上面三條照樣全綠 —— ⛔ 那就是假綠燈。→ 補一條**原始碼層**斷言把接線本身釘住。
+const wiredPct = /if \(RE_PCT_DISCLOSED\.test\(ctx\)\)\s*\{\s*pctTally\.disclosed\+\+;\s*continue;/.test(SWEEP)
+    && /pctTally\.naked\+\+;/.test(SWEEP);
+console.log(wiredPct
+    ? '✅ ③ page_sweep 真的有「先判已揭露才降級」那道接線'
+    : '❌ ③ page_sweep 沒有那道接線 —— 降噪變成把偵測器關掉(裸的也會被放過)');
+console.log(samePct
+    ? '✅ ③ 兩級樣式與 page_sweep.mjs 一致'
+    : '❌ ③ 樣式跟 page_sweep.mjs 不一致 —— 這支會驗到一個不存在的判準');
 console.log(sameBull && sameBear
     ? '✅ 樣式與 page_sweep.mjs 一致'
     : `❌ 樣式跟 page_sweep.mjs 不一致(bull=${sameBull} bear=${sameBear})—— 這支會驗到一個不存在的偵測器`);
@@ -54,7 +95,7 @@ console.log(hasShellSkip
     : '❌ page_sweep 沒有排除外殼 → 整頁又會變成一張卡,⑤ 永遠不可能觸發');
 
 await b.close();
-const okAll = !!fired && sameBull && sameBear && hasShellSkip;
+const okAll = !!fired && sameBull && sameBear && hasShellSkip && pctOk && samePct && wiredPct;
 console.log('');
 console.log(okAll ? '✅ SWEEP_SELFCHECK_PASS' : '❌ SWEEP_SELFCHECK_FAIL');
 process.exit(okAll ? 0 : 1);

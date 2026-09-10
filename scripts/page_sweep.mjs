@@ -46,10 +46,18 @@ const RE_MISSING = /(跌破|站上|守住?|突破|回測|停損|停利|目標價
 const RE_BULLCMD = /(順勢做多|順著做|可順勢|抱好|別提早下車|放心做|可以進場|順勢操作|抱單|可加碼|快進快出|分批試單|可以追|追要|逢低|進場)/g;
 // ③ 極端占比(100%/0%)—— 要人工去看它旁邊的樣本數
 const RE_PCT = /(?:^|[^\d.])(100(?:\.0)?%|0(?:\.0)?%)/g;
+// ⭐ 「這個 100% 旁邊有沒有誠實揭露」——(命中 N/M)・⏳ 只有 N 次・N 次・不等於沒有風險・樣本不足
+//   ⛔ 沒有 /g:這是 `.test()` 用的,帶 g 會因為 lastIndex 殘留而**每隔一次就回 false**(經典坑)。
+const RE_PCT_DISCLOSED = /(命中\s*\d+\s*\/\s*\d+|只有\s*\d+\s*次|\d+\s*次|不等於沒有風險|樣本不足|訊號不足|資料還沒到齊)/;
 // ⑤ 同一畫面兩張卡下**相反的操作指令** —— 使用者講最多次的那句「邏輯不打架」。
 //   ⚠️ 只收「叫人怎麼做」的動詞,⛔ 不收方向描述(「偏多格局」跟「跌破就走」並存是正常的)。
 const RE_ACT_BULL = /(可以進場|可依紀律進場|可放心做多|可順勢操作|順勢做多|可加碼|分批試單|可以追)/g;
 const RE_ACT_BEAR = /(空手觀望|反彈減碼|分批停利|先別加碼|別做,?等|不接刀|先出場|全數出場)/g;
+// ⭐⭐ 守門**降級後**的措辭(V75.1.9:「可依紀律進場」→「條件是到了…只能小量、⛔ 別追高」)。
+//   ⛔ 這一組不算「多方指令」—— 它本來就是叫人別追。收它只有一個用途:
+//   **當多方指令掛零時,用來分辨「守門真的有在作用」與「字典過時、偵測器瞎了」**。
+//   🚨 沒有它的話,那兩件事在輸出上長得一模一樣(同陷阱 #41「K=0 分不出來」那個坑)。
+const RE_ACT_DOWNGRADE = /(條件是到了|只能小量|別重押|別追高|絕不追高)/g;
 // ⚠️ 否定形先拿掉 —— 正確的免責寫法本身就含被禁字串(本專案已踩 7 次)
 const nono = t => String(t)
     .replace(/(?:不是|並非|沒有|不可|不准|別|禁|⛔)[^。;,\n]{0,26}(進場|加碼|抱好|順勢|追|試單|做多)/g, '')
@@ -120,7 +128,8 @@ await page.waitForFunction(() => typeof app !== 'undefined' && !!app.analyze, nu
 
 const findings = [];
 let scanned = 0;
-const actTally = { bull: 0, bear: 0 };   // ⑤ 偵測器到底有沒有吃到東西(0/0 = 沒驗到,不是沒問題)
+const actTally = { bull: 0, bear: 0, down: 0 };
+const pctTally = { naked: 0, disclosed: 0 };   // ③ 裸的 vs 已揭露(⛔ 已揭露也要計數,否則「沒有裸的」跟「沒掃到」長一樣)   // ⑤ 偵測器到底有沒有吃到東西(0/0 = 沒驗到,不是沒問題;down = 被守門降級的措辭)
 const add = (sym, tab, kind, card, hit, ctx) => findings.push({ sym, tab, kind, card, hit, ctx });
 
 for (const sym of SYMS) {
@@ -213,14 +222,25 @@ for (const sym of SYMS) {
                 for (const m of c.t.matchAll(RE_MISSING)) add(sym, label, '💥缺值', c.id, m[0], ctxOf(c.t, m.index));
                 // ② 空頭卻叫人做多
                 if (meta.bear) for (const m of clean.matchAll(RE_BULLCMD)) add(sym, label, '🗣️講反話', c.id, m[0], ctxOf(clean, m.index));
-                // ③ 極端占比
+                // ③ 極端占比 —— ⭐ 分兩級(2026-09-10):
+                //   🚨 **裸的**才報:旁邊沒有樣本數 / 命中數 / 「不等於沒有風險」那類揭露。
+                //   ➖ 已揭露的只計數不列出(如「多方 100%(**命中 8/29**)」「勝率 100% ⏳ **只有 3 次**」)——
+                //      那正是陷阱 #27/#35/#36 修好之後**應該長的樣子**,再報就是誤報。
+                //   ⛔ 為什麼不乾脆不掃:CLAUDE.md 明載「誤報留著會讓人養成忽略體檢輸出的習慣,
+                //      真的壞掉那條就被淹掉了」;但**完全不掃**又會讓「沒有裸的」跟「偵測器沒跑到」
+                //      長得一模一樣 → 所以是**降級成計數**,不是拿掉。
                 for (const m of c.t.matchAll(RE_PCT)) {
                     const ctx = ctxOf(c.t, m.index);
-                    if (/勝率|優勢|佔比|占比|命中/.test(ctx)) add(sym, label, '📉極端占比', c.id, m[1], ctx);
+                    if (!/勝率|優勢|佔比|占比|命中/.test(ctx)) continue;
+                    if (RE_PCT_DISCLOSED.test(ctx)) { pctTally.disclosed++; continue; }
+                    pctTally.naked++;
+                    add(sym, label, '📉極端占比', c.id, m[1], ctx);
                 }
                 // ⑤ 收集「操作指令」,同一畫面看完再判斷有沒有互相打架
                 for (const m of clean.matchAll(RE_ACT_BULL)) { acts.bull.push({ id: c.id, w: m[1], ctx: ctxOf(clean, m.index) }); actTally.bull++; }
                 for (const m of clean.matchAll(RE_ACT_BEAR)) { acts.bear.push({ id: c.id, w: m[1], ctx: ctxOf(clean, m.index) }); actTally.bear++; }
+                // ⭐ 只計數,⛔ 不進 acts(它不是一種「指令方向」,不參與打架判斷)
+                for (const _ of c.t.matchAll(RE_ACT_DOWNGRADE)) actTally.down++;
             }
             // ⑤ 同一畫面、**不同卡**同時叫人進場又叫人出場 → 使用者不知道該聽誰(單一劇本原則)
             //   ⚠️ 同一張卡內出現兩者是正常的(「可進場,跌破 X 就先出場」),⛔ 只比跨卡的。
@@ -321,9 +341,21 @@ await browser.close();
 function ctxOf(t, i) { return t.slice(Math.max(0, i - 45), i + 55).replace(/\s+/g, ' '); }
 
 // ── 報告 ────────────────────────────────────────────────────
-console.log(`\n\n共掃過 ${scanned} 張可見卡片 ・操作指令收到 ${actTally.bull} 多 / ${actTally.bear} 空`);
+console.log(`\n\n共掃過 ${scanned} 張可見卡片 ・操作指令收到 ${actTally.bull} 多 / ${actTally.bear} 空 ・守門降級措辭 ${actTally.down} 處`);
 // ⭐ 同一種空過守門:⑤ 完全沒吃到指令時,「0 筆打架」跟「偵測器壞了」長得一模一樣
 if (!actTally.bull && !actTally.bear) console.log('⚠️ ⑤ 一句操作指令都沒收到 —— 可能是字典過時或卡片沒渲染,別把「沒打架」讀成「沒問題」');
+// ⭐⭐ **一邊掛零也要說話**(2026-09-10 實測踩到:0 多 / 64 空,而那 8 句多方措辭在原始碼裡全都還在)。
+//   真因是 `_mktGate()` 回「🐂 多頭(過熱)」→ 全站多方指令被降級成「條件是到了…只能小量、⛔ 別追高」。
+//   ⛔ 但「守門有在作用」與「字典過時 → 偵測器瞎了」在舊版輸出上**長得一模一樣**,
+//   而只在「兩邊都零」才示警的守門放它過去了 → 用降級措辭的計數把兩者分開。
+else if (!actTally.bull) {
+    if (actTally.down) console.log(`✅ ⑤ 多方指令 0 句,但掃到 ${actTally.down} 處「守門降級」措辭 → 是守門在作用,不是偵測器瞎了`);
+    else console.log('⚠️ ⑤ 多方指令 0 句,而且**一處降級措辭都沒有** —— 比較可能是字典過時(⛔ 別讀成「今天就是沒有多方指令」)');
+} else if (!actTally.bear) {
+    console.log('⚠️ ⑤ 空方指令 0 句 —— 全 App 連一句「先出場/減碼」都沒有很不尋常,先確認 RE_ACT_BEAR 字典還跟得上文案');
+}
+console.log(`③ 極端占比:🚨 裸的 ${pctTally.naked} 筆 ・➖ 已誠實揭露(命中 N/M・只有 N 次…)${pctTally.disclosed} 筆`);
+if (!pctTally.naked && !pctTally.disclosed) console.log('⚠️ ③ 一個 100%/0% 都沒掃到 —— 先確認卡片真的渲染了,別讀成「沒問題」');
 if (!scanned) { console.log('❌ 一張卡都沒掃到 —— 這次掃描無效(⛔ 別讀成沒問題)'); process.exit(1); }
 console.log('═'.repeat(70));
 if (errs.length) console.log(`⚠️ 渲染期間有 ${errs.length} 個 pageerror:\n   ` + errs.slice(0, 5).join('\n   ') + '\n');
