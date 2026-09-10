@@ -40,6 +40,9 @@ const FX = {
     fyg: gh('fund_yoy_gm.json'), band: gh('pe_band.json'), fc: gh('fundamentals_cache.json'),
     ipe: gh('industry_pe.json'), imap: gh('industry_map.json'), tdcc: gh('tdcc_holders.json'),
     macro: gh('macro_risk.json'), pb: gh('playbook_edge.json'), att: gh('attention_status.json'),
+    // 🏭 V76.0.0 產業報告的四個來源(⛔ 一樣是真實產物,不憑印象編 —— 陷阱 #40)
+    scr: gh('screener.json'), tags: gh('stock_tags.json'), rot: gh('sector_rot.json'), corr: gh('top_correlations.json'),
+    fmx: gh('fmx_pack.json'),
 };
 const missing = Object.entries(FX).filter(([, v]) => !v).map(([k]) => k);
 if (missing.length) { console.log(`❌ 測資抓不到(origin/gh-pages 與 data/ 都沒有):${missing.join(', ')} —— ⛔ 不跑假測試`); process.exit(1); }
@@ -92,6 +95,10 @@ await page.evaluate((F) => {
     A._macroRiskCache = Object.assign({}, A._macroRiskCache || {}, F.macro);
     A._pbEdge = F.pb;
     A.attentionStatus = (F.att && F.att.stocks) || {};
+    // 🏭 產業報告來源(照各自 loader 寫進去的形狀灌,⛔ 不繞過任何判斷)
+    A._scrData = F.scr; A._scrC = {}; (F.scr.cols || []).forEach((k, i) => { A._scrC[k] = i; });
+    A._tagsCache = F.tags; A._secRotCache = F.rot; A._corrCache = F.corr;
+    A._fmxCache = (F.fmx && F.fmx.data) || {};
     // 分點:用真實 chips/5483.json 餵 _loadFenPeriodsDirect 的結果(它抓不到 file://)
     window.__chips = { '5483': F.chips5483 };
     A._loadFenPeriodsDirect = async function (sym) {
@@ -344,6 +351,150 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     // pro 的表頭沒有數字;我的多了「距現價 / 一張差多少元」說明列(也沒有數字)→ 兩邊的數字序列應該完全相同
     ok('⑤e index.html 估值表 與 pro.html _pxTableHtml 餵同一 fixture,數字序列完全一致(⛔ 公式漂移就會叫)', JSON.stringify(proNums) === JSON.stringify(mineNums), `pro ${proNums.join(' ')}\n mine ${mineNums.join(' ')}`);
     await p2.close();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 🏭 V76.0.0 產業報告(使用者:「我要的是**產業報告**,你現在做的感覺是總結」)
+//   ⛔ 每一條都想過「注入什麼它會叫」,並實際注入驗證過。
+// ──────────────────────────────────────────────────────────────────────────
+{
+    // 🏭b(靜態)🚨 唯一真相:族群名次只准走 `_regimeStats()` / `_stockRegime()`
+    const a = SRC.indexOf('    _rpPeerGroup(sym) {'), b = SRC.indexOf('    // F 籌碼(全部轉述 _chipPeriodSums');
+    const blk = strip(SRC.slice(a, b));
+    ok('🏭b1 ⭐ 族群強弱那段**整段轉述** _stockRegimeHtml(⛔ 不可自己判)', /_stockRegimeHtml\(/.test(blk));
+    ok('🏭b2 ⭐⭐ 產業名次只從 _regimeStats() 換算,⛔ 不可拿 sector_rot 自己排一次',
+       /_rpIndRank\(ind\) \{[\s\S]{0,300}_regimeStats\(\)/.test(blk)
+       && !/(R|rot)\.ind\)[\s\S]{0,200}\.sort\(/.test(blk)
+       && !/Object\.(keys|entries|values)\((R|rot|this\._secRotCache)\.ind\)/.test(blk),
+       (blk.match(/Object\.(keys|entries|values)\((R|rot|this\._secRotCache)\.ind\)/) || [])[0]);
+    ok('🏭b3 sector_rot 只拿來做走勢與資金流(檔內註解就寫著實測排不出順序)', /不可拿它排名次/.test(SRC.slice(a - 3000, a)));
+    ok('🏭c1 ⛔ 細項分類不可標成「上游 / 下游」(那份是分類標籤不是上下游)',
+       !/上游|下游/.test(blk.replace(/不是上下游關係/g, '')) || /不是上下游關係/.test(blk));
+    ok('🏭d1 🚨 筆記只寫 localStorage,⛔ 不進 _ovDecide / 任何計分',
+       /_rpNoteSave\(sym\)[\s\S]{0,900}localStorage\.setItem/.test(blk) && !/_ovDecide|_calcRiskScore|score \+=/.test(blk));
+    ok('🏭e1 medianPe 用 map[sym] 取到的**代碼**去查(⛔ 不是中文產業名)',
+       /const code = peData\?\.map\?\.\[sym\]; medianPe = \(code && peData\?\.industries\?\.\[code\]\?\.median_pe\)/.test(SRC));
+}
+{
+    const R3 = await render('5483');
+    const T = R3.txt.rpInd;
+    // 🏭a ⭐ 真實資料實跑:同業列得出來,而且**你自己那檔一定在表內**
+    const peers = await page.evaluate(() => {
+        const A = app, sym = A.currentSymbolId;
+        const g = A._rpPeerGroup(sym);
+        const box = document.getElementById('rpInd');
+        const codes = [...box.querySelectorAll('button[onclick^="app.openStockFromRadar"]')]
+            .map(b => (b.getAttribute('onclick').match(/'(\d[\dA-Z]*)'/) || [])[1]);
+        return { g: g && { kind: g.kind, key: g.key, name: g.name, n: g.mem.length }, codes, sym };
+    });
+    ok('🏭a ⭐ 5483(上櫃,沒有官方產業別)也列得出同業 —— 走題材名單', !!peers.g && peers.g.kind === 'theme' && peers.g.n >= 4, JSON.stringify(peers.g));
+    ok('🏭a1 ⭐ 同業表裡**一定有你自己那一檔**(⛔ 不可只列別人)', peers.codes.includes('5483'), peers.codes.join(','));
+    // 🚨🚨 上面那條**驗不到「補進來」那條路** —— 5483 的題材只有 4 檔,它本來就在前 10
+    //   (第一輪注入驗證當場抓到:把那行刪掉測試照樣綠)。⭐ 改成餵一檔**成交值排 10 名之外**的股。
+    {
+        const out = await page.evaluate(() => {
+            const A = app, real = A._tagsCache;
+            A._tagsCache = { by_stock: {}, names: {} };          // 關掉題材 → 走官方產業(104 檔)
+            const sym = '3376';                                   // 電子零組件,成交值排第 11
+            const g = A._rpPeerGroup(sym);
+            const h = A._rpPeerHtml({ sym, isEtf: false }, g);
+            A._tagsCache = real;
+            const d = document.createElement('div'); d.innerHTML = h;
+            const codes = [...d.querySelectorAll('button[onclick^="app.openStockFromRadar"]')]
+                .map(b => (b.getAttribute('onclick').match(/'(\d[\dA-Z]*)'/) || [])[1]);
+            return { codes, n: g && g.mem.length, kind: g && g.kind, txt: d.textContent.replace(/\s+/g, ' ') };
+        });
+        ok('🏭a1b ⭐⭐ 成交值排在 10 名之外的股,也要被補進表裡(⛔ 刪掉那行 → 這條才叫得出來)',
+           out.kind === 'ind' && out.n > 10 && out.codes.indexOf('3376') === out.codes.length - 1, JSON.stringify(out.codes));
+        ok('🏭a1c 補進來時標題要說明(⛔ 不可讓使用者以為它排前 10)', /前 10 名 \+ 你這檔/.test(out.txt), out.txt.slice(0, 160));
+    }
+    ok('🏭a2 ⭐ 五個欄位都講得出「第 N / 共 M」或誠實寫「本站沒有」(⛔ 不可留白也不可補 0)',
+       ['成交值', '近20日', '本益比', '營收年增', '毛利率'].every(k => new RegExp(`${k} (第 \\d+ ?/ ?\\d+|本站沒有)`).test(T.replace(/\s+/g, ' '))), T.slice(0, 400));
+    // 🏭a3 ⭐⭐ 決定性對照組:同一支純函式,只把「有沒有題材」這一個維度換掉
+    const sw = await page.evaluate(() => {
+        const A = app, real = A._tagsCache;
+        const g1 = A._rpPeerGroup('2330');
+        A._tagsCache = { by_stock: {}, names: {} };
+        const g2 = A._rpPeerGroup('2330');
+        const g3 = A._rpPeerGroup('5483');           // 上櫃 + 沒題材 → 什麼都沒有
+        A._tagsCache = real;
+        return { g1: g1 && { k: g1.kind, n: g1.mem.length }, g2: g2 && { k: g2.kind, n: g2.mem.length }, g3 };
+    });
+    ok('🏭a3 ⭐⭐ 有題材 → 用題材分群;把題材拿掉 → 退回官方產業(⛔ 不是寫死一種)',
+       sw.g1 && sw.g1.k === 'theme' && sw.g2 && sw.g2.k === 'ind' && sw.g2.n > sw.g1.n, JSON.stringify(sw));
+    ok('🏭a4 ⭐ 兩種都沒有時誠實回 null(⛔ 不硬湊一組同業)', sw.g3 === null, JSON.stringify(sw.g3));
+    ok('🏭a5 同業表要標「這是當天快照,沒有歷史」與名次方向(本益比由低到高)',
+       /當天快照/.test(T) && /本益比是.*由低到高/.test(T.replace(/\s+/g, ' ')), T.slice(0, 300));
+    // 🏭d 筆記鐵線
+    const note = await page.evaluate(async () => {
+        const A = app, sym = A.currentSymbolId;
+        const MARK = 'ZZ產業筆記測試字串ZZ';
+        document.getElementById('rpNoteIn').value = MARK;
+        A._rpNoteSave(sym);
+        //   ⚠️ ⛔ 這裡不可用 `innerText` —— 整個產業節裝在**收合的 `<details>`** 裡,
+        //     收合時 innerText 回空字串(V75.0.3 踩過)→ 會變成假失敗
+        //   🚨🚨 而且範圍要縮到**已存筆記那一塊**(`[data-rpnote]`):第一輪注入驗證抓到
+        //     「外部 AI 寫的 ・本站沒有驗證」在**節標題**也有一份 → 把筆記上的標籤整條拿掉,
+        //     測試照樣綠 = 假綠燈(V75.1.0 那條教訓的再犯)。
+        const box = document.querySelector('#rpInd [data-rpnote]');
+        const t = box ? box.innerHTML.replace(/<[^>]+>/g, ' ') : '';
+        const cp = A._rpCopyPlain();
+        const dec = JSON.stringify(A._ovDecide(A.activeData, sym) || {});
+        A._rpNoteClear(sym);
+        const after = document.querySelector('#rpInd [data-rpnote]') ? 'still-there' : '';
+        return { MARK, shown: t.includes(MARK), label: /外部 AI 寫的/.test(t) && /本站沒有驗證/.test(t), inCopy: cp.includes(MARK), inDec: dec.includes(MARK), gone: !after.includes(MARK) };
+    });
+    ok('🏭d2 貼進去的筆記存得起來、顯示得出來', note.shown, JSON.stringify(note));
+    ok('🏭d3 🚨 顯示時**一定**帶「外部 AI 寫的 ・本站沒有驗證」(注入:拿掉那行 → 這條會紅)', note.label, JSON.stringify(note));
+    ok('🏭d4 🚨 筆記⛔ 不可進「📋 複製整份報告」', !note.inCopy, JSON.stringify(note));
+    ok('🏭d5 🚨 筆記⛔ 不可進 _ovDecide(不參與任何買賣判斷)', !note.inDec, JSON.stringify(note));
+    ok('🏭d6 一鍵清除真的清得掉', note.gone, JSON.stringify(note));
+}
+{
+    const R4 = await render('2330');
+    const T = R4.txt.rpInd;
+    // 🏭b ⭐⭐ 實跑比對:報告頁講的族群結論,要跟 K 棒戰法卡**一字不差**
+    const same = await page.evaluate(() => {
+        const A = app, sym = A.currentSymbolId;
+        const card = A._stockRegimeHtml(sym).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        const rep = document.getElementById('rpInd').innerHTML.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        const S = A._regimeStats();
+        const ind = A._scrData.ind[sym];
+        const rk = A._rpIndRank(ind);
+        // 用 rank 這份唯一真相自己算一次(⛔ 測試不複製第二套判定,只驗換算)
+        const j = Math.round(S.rank.get(ind) * (S.rank.size - 1));
+        return { card, hasCard: card.length > 20 && rep.includes(card), rk, expect: S.rank.size - j, m: S.rank.size };
+    });
+    ok('🏭b4 ⭐⭐ 報告頁的族群結論 = K 棒戰法卡那一段(注入:讓報告自己算 → 必紅)', same.hasCard, same.card.slice(0, 160));
+    ok('🏭b5 ⭐ 「排第幾」跟 _regimeStats().rank 換算一致',
+       same.rk && same.rk.n === same.expect && same.rk.m === same.m, JSON.stringify(same.rk) + ' expect ' + same.expect);
+    ok('🏭b6 節標題那句要直接講「排第幾」(⛔ 不是只有產業名詞)',
+       new RegExp(`排第 ${same.expect}`).test(T.replace(/\s+/g, ' ')), T.slice(0, 200));
+    ok('🏭b7 資金流要標明是描述用、⛔ 不可拿來排名次或當訊號', /描述用/.test(T) && /不可拿來排名次/.test(T.replace(/\s+/g, ' ')), T.slice(-400));
+    // 🏭c 關聯星圖
+    const st = await page.evaluate(() => {
+        const A = app, sym = A.currentSymbolId;
+        const fam = (A._corrCache.r || {})[sym] || [];
+        const E = A._corrCache.status_enum;
+        const h = document.getElementById('rpInd').innerHTML.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+        // 這一檔實際被畫出來的每一筆,狀態文字都要是檔內 enum 的**原文**
+        return { need: fam.slice(0, 5).map(x => `${x[0]}`), want: fam.slice(0, 5).map(x => E[x[2]]),
+                 hit: fam.slice(0, 5).every(x => h.includes(E[x[2]])), n: fam.length, enums: E };
+    });
+    ok('🏭c2 狀態文字要跟 top_correlations 檔內的 status_enum 一致(⛔ 不可自己另寫一份)',
+       st.n === 0 ? /本站沒有這檔的連動名單/.test(T) : st.hit,
+       JSON.stringify(st.want) + ' | ' + JSON.stringify(st.enums));
+    // ⚠️ 這一檔剛好只出現一種狀態時,上面那條只驗到一種 → 再直接比對照表本身(⛔ 不可自己另寫一份文字)
+    ok('🏭c2b ⭐ 三種狀態的文字直接讀檔內 status_enum,⛔ 程式裡不可寫死中文對照',
+       /const ST = \(K && K\.status_enum\)/.test(SRC), '');
+    ok('🏭c3 關聯段要原文顯示檔內 caveat「⛔ 不是預測」', T.includes('不是預測'), T.slice(0, 300));
+    ok('🏭c4 ⭐ 關聯段要講出用途(我是不是重壓在同一族)', /重壓在同一族/.test(T.replace(/\s+/g, ' ')), T.slice(0, 300));
+    ok('🏭f 實測成績段要帶數字與來源探針(⛔ 沒有數字的意見不准進來)',
+       /\+0\.90%/.test(T) && /sector_pick_probe/.test(T) && /空頭還沒驗證過/.test(T), T.slice(-400));
+    ok('🏭g 產業節不可出現操作指令(⛔ 這一節只描述,不下單)',
+       !/(可以進場|可進場|建議買進|建議賣出|可加碼|放心做多)/.test(T), (T.match(/(可以進場|可進場|建議買進|建議賣出|可加碼|放心做多)/) || [])[0]);
+    ok('🏭h 產業節不可出現 `--` 或空白格', !/(^|[^-])--([^-]|$)/.test(T));
+    ok('📱2 加了產業報告之後 390px 仍不可橫向溢出', !R4.wide);
 }
 
 await browser.close();

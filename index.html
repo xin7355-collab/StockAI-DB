@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.3.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.0.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8173,8 +8173,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.3.3',
+    _APP_VERSION: 'V76.0.0',
     _CHANGELOG: [
+        { v: 'V76.0.0', d: ['🏭 <b>個股「報告」分頁改成真的產業報告</b>(你說「我要的是產業報告,現在這個感覺是總結」)—— 以前那一節只有兩行(產業別 + 代碼),難怪看起來像別的分頁的摘要。','① <b>同業對照表</b>:直接告訴你「你在這一族 N 檔裡,成交值第幾 ・近 20 日第幾 ・本益比第幾便宜 ・營收年增第幾 ・毛利率第幾」,並列出這一族成交值前 10 名(<b>你自己那一檔一定在表內</b>,點名字可以直接跳過去)。分群優先用<b>題材名單</b>(每天重算,比官方 33 大類精準);上櫃股沒有官方產業別,現在也有得比了。','② <b>這一族現在強不強</b>:這一族近 20 日在 32 個產業裡排第幾 + 近半年走勢圖 + 外資/投信/自營/融資近 5 日往哪流。⚠️ 資金流是<b>描述用</b>,本站實測它排不出有效順序,⛔ 不可拿來當買賣訊號(卡上有寫)。','③ <b>誰跟它一起動</b>:近 120 日走勢最像的前 5 檔 —— 用途是「我是不是重壓在同一族」(手上如果都有,那不是分散,是同一注下了好幾次)。','④ <b>這一族的實測成績</b>:同一族買最強的 +0.90%(六關全過)、買落後補漲的<b>逐年全負</b> —— 別因為「它還沒漲」就買它。','⑤ <b>📝 產業筆記</b>:產業景氣/漲價/法說這些質化的東西,按「🔎 問 Perplexity」問完可以把回答<b>貼回來存起來</b>。⛔ 它一定會標「外部 AI 寫的、本站沒有驗證」,而且<b>不會</b>被算進任何結論、評分或「📋 複製整份報告」。','🐛 順手修一個藏很久的:潛力/黑馬榜算「同業中位本益比」時,查表用的是中文產業名、但表格的鍵是數字代碼 → 那個值<b>一直都是空的</b>,而且被靜默吃掉完全看不出來。'] },
         { v: 'V75.3.3', d: ['🏷️ <b>修掉一個會讓「股票名字變代號」的真問題</b>:離線工作程式(Service Worker)在快取沒命中時回的是「空的」而不是錯誤碼 —— 網路抖一下,名稱清單那支請求就會直接爆掉,而畫面上完全看不出原因。','🔎 名稱載不到時,警語卡現在會<b>直接寫出卡在哪一層</b>(離線表 HTTP 幾號 / 只抓到幾檔 / FinMind 回什麼),還多一顆「📋 複製診斷」可以貼給我。⛔ 診斷裡只寫金鑰「有填/沒填」,不會寫出金鑰本身。','🛟 <b>你自己庫存與自選那幾檔的名字,現在另外存了一份</b> —— 就算全市場兩千多檔的清單載不到,你手上那幾檔仍然看得到中文名。'] },
         { v: 'V75.3.2', d: ['📄 <b>個股「報告」頁大改版</b>:結論從第 8 個搬到<b>最上面</b>並放大;關鍵數字從 10 格擠成 3 欄 → <b>4 格重點</b>(⭐ 而且會自動挑「這一檔真的有資料」的那幾格,不再出現一排「沒有」),其餘收進摺疊。','🗂️ 每一節的標題<b>直接寫出那一節的答案</b>(例如「本益比 20.2x ・落在自己近 3 年的第 72 百分位」),⛔ 不再只是「籌碼」「基本面」這種名詞 —— 摺疊起來也看得出裡面有沒有事。','⚠️ <b>只有「風險」那一節會自動展開</b>,而且只在真的有事時(預警 / 官方注意處置 / 法說會將到)。','📋 新增<b>一鍵複製整份報告</b>(純文字,可貼 LINE 或筆記),免責跟著一起複製出去。'] },
         { v: 'V75.3.1', d: ['📅 今日訊號榜:採礦碼剛更新、但採礦還沒重跑的那段空窗期,舊檔會拿「還沒收盤的那根K」算 —— 現在會直接寫出「這份是盤中幾點算的,收盤後會變」,⛔ 不再寫成「收盤資料」。'] },
@@ -22246,11 +22247,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._rpSet('rpAct', this._rpActHtml(dec), sym);
 
         // ── 非同步載入(全部是 gh-pages 產物,⛔ 零 FinMind)──
+        // 🏭 V76.0.0 產業報告的四個來源一起併進這一輪(⛔ 別另開一輪 await —— 那會多一次白畫面)
         const [fund, fyg, band, ip] = await Promise.all([
             this._loadFundCache().catch(() => null),
             this._loadFundYoyGm().catch(() => ({})),
             this._loadPeBand().catch(() => null),
             this._loadIndustryPeData().catch(() => null),
+            this._loadScreener().catch(() => null),
+            this._loadStockTags().catch(() => null),
+            this._loadSectorRot().catch(() => null),
+            this._loadTopCorr().catch(() => null),
+            this._loadFmx().catch(() => null),
         ]);
         if (String(this.currentSymbolId) !== sym) return;
         let fenOk = false; try { fenOk = await this._loadFenPeriodsDirect(sym); } catch (_) {}
@@ -22423,17 +22430,276 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return this._rpDetails('🏢 這家公司賺不賺錢、有沒有在成長', bits.length ? bits.join(' ・') : '本站尚未採到這檔的財報', body);
     },
 
-    // E 產業定位(⛔ 只轉述:AI 鏈是人工整理、產業別是官方/FinMind 分類)
+    // ═══ 🏭 V76.0.0 產業報告 ═══════════════════════════════════════════════════
+    //
+    // 使用者:「我的個股想要**產業報告**,你現在做的跟其它分頁裡面資料還蠻像的,感覺是總結。」
+    // ⭐ 查證後的真因:這一節原本**只有兩行**(產業別 + 證交所代碼 + AI 鏈 chip)——
+    //   完全沒有任何產業層級的內容,所以看起來就是「別的分頁的總結」。
+    //   而範本裡真正像研究報告的那幾段(產業景氣/漲價供需/法說重點)**全部是質化文字**,
+    //   本站外包給 Perplexity 而回來的文字不進 App → 產業那半永遠是空的。
+    //
+    // ⛔ 五條鐵線(測試 scripts/test_report.mjs 🏭a~🏭e 釘住,每條都用注入驗證過):
+    //  ① 🚨 **族群強弱/名次只有一個來源** = `_stockRegime()` / `_regimeStats()`
+    //     (K 棒戰法卡在用的那一份)。⛔ 報告頁不可自己再算一次同業中位或族群名次 ——
+    //     否則同一個 App 會出現兩個「這族排第幾」= 使用者最討厭的邏輯打架。
+    //  ② `sector_rot.json` **只補既有計算沒有的兩樣**:120 日走勢 + 四條資金流。
+    //     ⛔ 不可拿它排名次或下多空 —— `sector_rotation_probe` 實測「成交額佔比變化」
+    //     與「加速度」完全沒有預測力(數字見 miner.py build_sector_rotation 註解)。
+    //  ③ `industry_chain.json` **不是上下游**,它是**分類標籤**(2327 → 被動元件/濾波器/
+    //     電容器/電感器)→ 文案只能寫「細項分類」,⛔ 不可標成「上游 / 下游」(那是編的)。
+    //  ④ 關聯星圖是**同期**相關 → 檔內 caveat 原文照顯示,⛔ 不是預測。
+    //  ⑤ 產業筆記是**外部 AI 寫的** → ⛔ 不進 `_ovDecide`、不進任何計分、
+    //     不進「📋 複製整份報告」;顯示時**一定**帶「本站沒有驗證」。
+    async _loadSectorRot() {
+        if (this._secRotCache !== undefined) return this._secRotCache;
+        this._secRotCache = null;
+        try {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/sector_rot.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+            if (r.ok) { const j = await r.json(); if (j && Array.isArray(j.days) && j.ind) this._secRotCache = j; }
+        } catch (_) {}
+        return this._secRotCache;
+    },
+    async _loadTopCorr() {
+        if (this._corrCache !== undefined) return this._corrCache;
+        this._corrCache = null;
+        try {
+            const base = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/top_correlations.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+            if (r.ok) { const j = await r.json(); if (j && j.r) this._corrCache = j; }
+        } catch (_) {}
+        return this._corrCache;
+    },
+
+    // 🎯 同業分群:**題材優先**(名單每天用「扣掉大盤之後的殘差相關」重算,比官方 33 大類精準),
+    //   題材成員不足 4 檔才退回官方產業。⚠️ 上櫃股沒有官方產業別 → 題材是它唯一的路。
+    _rpPeerGroup(sym) {
+        sym = String(sym || '');
+        const D = this._scrData, T = this._tagsCache;
+        if (!D || !D.rows) return null;
+        const tb = T && T.by_stock && T.by_stock[sym];
+        const tk = (tb && Array.isArray(tb.s) && tb.s.length) ? tb.s[0]
+                 : ((tb && Array.isArray(tb.n) && tb.n.length) ? tb.n[0][0] : null);
+        if (tk) {
+            const hit = v => (Array.isArray(v.s) && v.s.indexOf(tk) >= 0) || (Array.isArray(v.n) && v.n.some(x => x[0] === tk));
+            const mem = Object.keys(T.by_stock).filter(s => hit(T.by_stock[s]) && D.rows[s]);
+            if (mem.length >= 4) return { kind: 'theme', key: tk, name: (T.names && T.names[tk]) || tk, mem };
+        }
+        const ind = (D.ind || {})[sym];
+        if (ind) return { kind: 'ind', key: ind, name: ind, mem: Object.keys(D.ind).filter(s => D.ind[s] === ind && D.rows[s]) };
+        return null;
+    },
+    // 🚨 「這一族在幾個產業裡排第幾」**全 App 只有這一個算法** —— 讀 `_regimeStats()` 的 rank
+    //   (升冪分位:0 = 最弱、1 = 最強)。⛔ 別再從 sector_rot 自己排一次 = 第二份真相。
+    _rpIndRank(ind) {
+        const S = this._regimeStats();
+        if (!S || !S.rank || !S.rank.has(ind)) return null;
+        const m = S.rank.size, ir = S.rank.get(ind);
+        return { n: Math.min(m, Math.max(1, Math.round(m - ir * (m - 1)))), m, ir };
+    },
+    // ⚠️ 本益比是**由低到高**排(低 = 便宜),其餘由高到低 → 顯示時要講清楚,⛔ 不可混在一起
+    _RP_PEER_COLS: [
+        { k: 'amt',   n: '成交值',   d: -1, u: '億', hi: '大' },
+        { k: 'chg20', n: '近20日',   d: -1, u: '%',  hi: '強', pct: 1 },
+        { k: 'pe',    n: '本益比',   d: 1,  u: 'x',  hi: '便宜' },
+        { k: 'yoy',   n: '營收年增', d: -1, u: '%',  hi: '高', pct: 1 },
+        { k: 'gm',    n: '毛利率',   d: -1, u: '%',  hi: '高' },
+    ],
+    // ① 同業對照表 —— ⛔ 零額外網路請求(`screener.json` 一檔就有這五欄)
+    _rpPeerHtml(C, g) {
+        if (!g) return this._rpNa(C.isEtf ? 'ETF 沒有同業可比(它本身就是一籃子股票)' : '本站沒有這檔的產業分類,也沒有題材名單 → 沒有可比的同業');
+        const D = this._scrData, sym = String(C.sym), COLS = this._RP_PEER_COLS;
+        const v = (s, k) => this._scrV(D.rows[s], k);
+        const M = g.mem.length;
+        // 每一欄各自算名次(⛔ 只在**有值**的成員裡排 —— 沒資料不可當 0,那會把它排到最前面)
+        const rk = {}, cov = {};
+        COLS.forEach(c => {
+            const arr = g.mem.filter(s => v(s, c.k) !== null).map(s => [s, +v(s, c.k)]);
+            cov[c.k] = arr.length;
+            arr.sort((a, b) => (a[1] - b[1]) * c.d);
+            const i = arr.findIndex(x => x[0] === sym);
+            rk[c.k] = i >= 0 ? { n: i + 1, m: arr.length } : null;
+        });
+        const fv = (val, c) => val === null ? '<span class="text-gray-600">—</span>'
+            : (c.pct ? `<span class="${this._rpDir(val)}">${this._rpPct(val)}</span>`
+                     : `${this._rpFmt(val, 1)}<span class="text-gray-500">${c.u}</span>`);
+        // 名單:成交值由大到小取前 10,**你自己那檔一定在內**(不在前 10 就補進來)
+        const top = g.mem.filter(s => v(s, 'amt') !== null).sort((a, b) => +v(b, 'amt') - +v(a, 'amt')).slice(0, 10);
+        if (top.indexOf(sym) < 0 && D.rows[sym]) top.push(sym);
+        // 🚨 股名一律走唯一入口 `_nmPair` —— `getStockName` 在清單沒載入時**回傳代號本身**,
+        //   自己寫 `${name} ${code}` 會印成「2327 2327」(這個坑本專案已經踩第四次;V74.3.9 / V74.7.7)
+        const rows = top.map(s => {
+            const me = s === sym;
+            return `<div class="py-1.5 border-b border-[#21262d] last:border-0${me ? ' bg-cyan-900/20 -mx-2 px-2 rounded' : ''}">
+                <div class="flex items-baseline justify-between gap-2">
+                    <button onclick="app.openStockFromRadar('${s}')" class="text-[11px] font-bold ${me ? 'text-cyan-200' : 'text-gray-200'} hover:underline text-left">${this._nmPair(s, 'text-[9px] font-mono text-gray-500')}</button>
+                    ${me ? '<span class="text-[9px] text-cyan-300 flex-shrink-0">← 你看的這檔</span>' : ''}
+                </div>
+                <div class="grid grid-cols-5 gap-1 mt-0.5 text-center">${COLS.map(c => `<div><div class="text-[8px] text-gray-500 leading-tight">${c.n}</div><div class="text-[10px] font-mono leading-tight">${fv(v(s, c.k), c)}</div></div>`).join('')}</div>
+            </div>`;
+        }).join('');
+        // ⭐ 這一段才是「報告」的重點:你在同業裡各排第幾(⛔ 不可只列別人)
+        const mine = COLS.map(c => rk[c.k]
+            ? `${c.n} <b class="text-gray-100">第 ${rk[c.k].n}</b><span class="text-gray-500">/${rk[c.k].m} ${c.hi}</span>`
+            : `${c.n} <span class="text-gray-500">本站沒有</span>`).join(' ・');
+        const thin = M < 8 ? `<div class="text-[9px] text-amber-300/80 mt-1">⚠️ 這一族只有 ${M} 檔,名次的參考價值有限(樣本太少)。</div>` : '';
+        const src = g.kind === 'theme'
+            ? `題材名單每天由採礦端用「扣掉大盤之後的殘差相關」重算${(D.ind || {})[sym] ? `;這檔的官方產業分類是「${this._escHtml((D.ind || {})[sym])}」(範圍較廣,這裡用比較精準的題材名單比)` : ''}`
+            : '證交所官方產業分類(⚠️ 只涵蓋上市股)';
+        return `<div class="text-[10px] text-gray-300 leading-snug mb-1">📍 你在「<b class="text-gray-100">${this._escHtml(g.name)}</b>」這 <b>${M}</b> 檔裡:${mine}</div>${thin}
+            <div class="text-[9px] text-gray-500 mb-1">本益比是<b>由低到高</b>排(第 1 = 最便宜),其餘由高到低。缺的欄位寫「本站沒有」,⛔ 不補 0。</div>
+            <div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">🏢 這一族成交值前 10 名${top.indexOf(sym) >= 10 ? ' + 你這檔' : ''}</div>${rows}
+            <div class="text-[9px] text-gray-500 mt-1.5 leading-snug">📅 這張表是<b>當天快照</b>(來源 screener 採礦,${this._dW(D.data_date) || D.data_date || '日期不明'})—— 本站只有產業<b>彙總</b>層級的歷史,個股的同業對照沒有歷史。<br>📚 ${src}。<br>⭐ 本站實測:同一族裡買<b>最強</b>的那檔 +0.90%(六道關卡全過);⛔ 買<b>落後補漲</b>的那檔<b>逐年全負</b> —— 別因為「它還沒漲」就買它。</div>`;
+    },
+    // 走勢縮圖(⛔ 不用 ECharts —— 這一節不值得為它拉 1MB 的圖表元件)
+    _rpSpark(vals, color) {
+        const v = (vals || []).slice(-60).map(x => (x === null || x === undefined) ? null : +x);
+        const ok = v.filter(x => x !== null);
+        if (ok.length < 10) return '';
+        const mn = Math.min(...ok, 0), mx = Math.max(...ok, 0), rg = (mx - mn) || 1, W = 240, H = 34;
+        const y = x => (H - (x - mn) / rg * H).toFixed(1);
+        const pts = v.map((x, i) => x === null ? null : `${(i / (v.length - 1) * W).toFixed(1)},${y(x)}`).filter(Boolean).join(' ');
+        return `<svg viewBox="0 0 ${W} ${H}" class="w-full h-8 mt-0.5" preserveAspectRatio="none">
+            <line x1="0" y1="${y(0)}" x2="${W}" y2="${y(0)}" stroke="#484f58" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>
+            <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>`;
+    },
+    // ② 這一族現在強不強 —— 🚨 判定**整段轉述** `_stockRegimeHtml`(K 棒戰法卡那一份)
+    _rpSecTrendHtml(C, g) {
+        const sym = String(C.sym);
+        const reg = (() => { try { return this._stockRegimeHtml(sym); } catch (_) { return ''; } })();
+        const R = this._secRotCache;
+        let trend = '';
+        if (R) {
+            const seg = [];
+            const one = (blk, label, note) => {
+                if (!blk || !Array.isArray(blk.r20)) return;
+                const last = [...blk.r20].reverse().find(x => x !== null && x !== undefined);
+                if (last === undefined) return;
+                const fl = blk.flow || {};
+                const sum5 = k => { const a = (fl[k] || []).slice(-5).filter(x => x !== null && x !== undefined); return a.length ? a.reduce((s, x) => s + (+x || 0), 0) : null; };
+                const flows = [['f', '外資'], ['t', '投信'], ['dl', '自營'], ['mg', '融資']].map(([k, n]) => {
+                    const s = sum5(k);
+                    return s === null ? '' : `${n} <span class="${this._rpDir(s)} font-mono">${s >= 0 ? '+' : ''}${this._rpFmt(s, 1)}</span>`;
+                }).filter(Boolean).join(' ・');
+                seg.push(`<div class="mt-2"><div class="text-[10px] text-gray-300 leading-snug">${label} ・這一族近 20 日中位漲跌 <b class="${this._rpDir(last)} font-mono">${this._rpPct(last)}</b>${note}</div>
+                    ${this._rpSpark(blk.r20, last >= 0 ? '#f85149' : '#3fb950')}
+                    <div class="text-[9px] text-gray-500 leading-snug">近 ${(R.days || []).length} 個交易日的「這一族 20 日中位漲跌」走勢(虛線 = 0)。</div>
+                    ${flows ? `<div class="text-[10px] text-gray-400 mt-1">💰 近 5 日資金淨流入(億元):${flows}</div>` : ''}</div>`);
+            };
+            const ind = (this._scrData && this._scrData.ind) ? this._scrData.ind[sym] : null;
+            const rk = ind ? this._rpIndRank(ind) : null;
+            one(C.indK ? (R.ind || {})[C.indK] : null,
+                `🏛️ 官方產業「<b class="text-gray-100">${this._escHtml(ind || C.indK || '')}</b>」`,
+                rk ? ` ・在 ${rk.m} 個產業裡<b class="text-gray-100">排第 ${rk.n}</b>` : '');
+            if (g && g.kind === 'theme') one((R.themes || {})[g.key],
+                `🎯 題材「<b class="text-gray-100">${this._escHtml(g.name)}</b>」<span class="text-gray-500">(核心 ${((R.themes || {})[g.key] || {}).n || '?'} 檔)</span>`, '');
+            trend = seg.join('');
+        }
+        const foot = `<div class="text-[9px] text-gray-500 mt-2 leading-snug">⛔ 上面那四條資金流是<b>描述用</b>,⛔ 不可拿來排名次或當買賣訊號 —— 本站實測(1,087 檔 × 33 產業 × 775 個交易日):外資淨流入排出來的順序<b>去掉最好的那一年就只剩一半</b>、「成交額佔比的變化」<b>≈ 0 甚至是負的</b>。真正站得住的只有<b>20 日價格動能</b>(+1.44pp,四關全過),而且邊際是<b>不對稱</b>的:<b>避開最弱的板塊(−0.80pp)比追最強的(+0.63pp)更有價值</b>。<br>⚠️ 這份板塊資料只涵蓋<b>上市</b>(官方產業分類沒有上櫃)。</div>`;
+        if (!reg && !trend) return this._rpNa('本站的板塊資料還沒載入(或這檔不在上市產業分類裡)');
+        return `${reg}${trend}${foot}`;
+    },
+    // ③ 細項分類 + 誰跟它一起動
+    _rpChainHtml(C, g) {
+        const sym = String(C.sym);
+        const ch = (() => { try { return this._fmx('chain', sym); } catch (_) { return null; } })();
+        let chain;
+        if (Array.isArray(ch) && ch.length) {
+            chain = ch.slice(0, 6).map(p => `<span class="inline-block bg-white/5 border border-[#30363d] rounded px-1.5 py-0.5 text-[10px] text-gray-200 mr-1 mb-1">${this._escHtml(p[0])}${p[1] ? ` › ${this._escHtml(p[1])}` : ''}</span>`).join('');
+            chain = `<div class="mt-0.5">${chain}</div>
+                <div class="text-[9px] text-gray-500 mt-0.5 leading-snug">📌 這是官方的<b>細項分類標籤</b>,⛔ <b>不是上下游關係</b> —— 本站沒有「誰賣給誰」的結構化資料,⛔ 不編。</div>`;
+        } else chain = this._rpNa('本站沒有這檔的細項分類');
+        const K = this._corrCache;
+        const fam = (K && K.r) ? (K.r[sym] || null) : null;
+        const ST = (K && K.status_enum) || { 0: '盤整', 1: '突破', 2: '過熱' };
+        const ICO = { 0: '➖', 1: '🚀', 2: '🔥' };
+        let corr;
+        if (fam && fam.length) {
+            corr = fam.slice(0, 5).map(x => this._rpRow(
+                `<button onclick="app.openStockFromRadar('${x[0]}')" class="text-cyan-300 hover:underline">${this._nmPair(x[0], 'text-gray-600 font-mono')}</button>`,
+                `<span class="text-gray-300">走勢像 ${(+x[1] * 100).toFixed(0)}%</span> <span class="text-gray-500">${ICO[x[2]] || ''}${this._escHtml(ST[x[2]] || '')}</span>`)).join('');
+            corr += `<div class="text-[9px] text-gray-500 mt-1 leading-snug">${this._escHtml(K.caveat || '相關係數是同期的,⛔ 不是預測。')}<br>💡 用途是「<b>我是不是重壓在同一族</b>」:上面幾檔如果你手上也有,那不是分散,是同一注下了好幾次。<br>📅 近 ${K.window || 120} 個交易日 ・${this._dW(K.data_date) || K.data_date || ''}</div>`;
+        } else corr = this._rpNa('本站沒有這檔的連動名單(相關係數要 ≥0.4 才收,這檔沒有夠像的)');
+        return `<div class="text-[10px] font-bold text-gray-300 mb-0.5">🏷️ 細項分類</div>${chain}
+            <div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">🔗 誰跟它一起動(近 120 日走勢最像的前 5 檔)</div>${corr}`;
+    },
+    // ④ 這一族的實測成績(⛔ 全部轉述已記錄的探針結論,⛔ 不重跑、⛔ 不新增數字)
+    _rpIndEdgeHtml() {
+        const row = (ic, t, d) => `<div class="flex gap-1.5 py-1 border-b border-[#21262d] last:border-0"><span class="flex-shrink-0">${ic}</span><div><div class="text-[10px] text-gray-200 leading-snug">${t}</div><div class="text-[9px] text-gray-500 leading-snug">${d}</div></div></div>`;
+        return row('✅', '選對板塊之後,買<b>板塊內最強</b>的那檔 <b class="font-mono">+0.90%</b>', '六道關卡全過。⚠️ 對照組是「強勢板塊裡的<b>所有</b>股票」,⛔ 不是全市場 —— 這個數字回答的是「板塊選對了,裡面怎麼挑」,⛔ 不含「選對板塊」本身的功勞。')
+             + row('⛔', '買<b>落後補漲</b>的那檔 —— <b>逐年全負</b>', '「它還沒漲、應該會輪到」在實測裡完全不成立。同批被打掉的還有「挑最便宜的」「挑波動最大的」「挑龍頭」。')
+             + row('⛔', '看<b>成交額佔比在搬家</b>選板塊 —— 不成立', '那是最直覺、最好做成動畫的一個,實測 ≈0 甚至是負的;「加速度」也一樣。真正有東西的只有 20 日價格動能。')
+             + row('⚠️', '整套「板塊 → 族群內最強 → 一天挑 2 檔」<b>合起來反而是負的</b>', '每一層單獨測都過,疊起來相對「強勢板塊裡隨便挑」是 −0.52pp。⛔ 別假設「每層都過 = 合起來更好」。')
+             + `<div class="text-[9px] text-gray-500 mt-1.5 leading-snug">📚 以上全部來自本站自己的回測(<b>不是</b>網路上抄的),來源探針:sector_pick_probe / sector_rotation_probe / cast_probe。⚠️ 回測窗口整段偏多頭,<b>空頭還沒驗證過</b> —— 而「追強」正是空頭最容易受傷的做法。</div>`;
+    },
+    // ⑤ 📝 產業筆記:質化那半「貼回來」
+    //   ⛔ 鐵線:不進 `_ovDecide`、不進任何計分、不進「📋 複製整份報告」。
+    _rpNoteKey(sym) { return `rpNote_${String(sym)}`; },
+    _rpNote(sym) { const o = this._lsJson(this._rpNoteKey(sym), null); return (o && o.t) ? o : null; },
+    _rpNoteSave(sym) {
+        const el = document.getElementById('rpNoteIn'); if (!el) return;
+        const t = String(el.value || '').trim();
+        if (!t) { this.showToast?.('⚠️ 先把外部 AI 的回答貼進來再存'); return; }
+        try { localStorage.setItem(this._rpNoteKey(sym), JSON.stringify({ t: t.slice(0, 20000), ts: Date.now() })); }
+        catch (_) { this.showToast?.('⚠️ 這台裝置存不下來(儲存空間滿了)'); return; }
+        this.vibrate?.(20);
+        this.showToast?.('📝 已存成這一檔的產業筆記 —— 本站沒有驗證,⛔ 不參與任何買賣判斷', 'info');
+        this._rpRefreshInd(sym);
+    },
+    _rpNoteClear(sym) {
+        try { localStorage.removeItem(this._rpNoteKey(sym)); } catch (_) {}
+        this.vibrate?.(20); this.showToast?.('🗑️ 已刪除這一檔的產業筆記');
+        this._rpRefreshInd(sym);
+    },
+    _rpRefreshInd(sym) {
+        const C = this._rpLast;
+        if (!C || String(C.sym) !== String(sym)) return;
+        this._rpSet('rpInd', this._rpIndHtml(C), sym);
+    },
+    _rpNoteHtml(C) {
+        const sym = String(C.sym);
+        const n = this._rpNote(sym);
+        const days = n && n.ts ? Math.floor((Date.now() - n.ts) / 864e5) : null;
+        const stale = (days !== null && days >= 30) ? `<span class="text-amber-300">⚠️ 這份筆記已經 ${days} 天了,產業狀況可能已經變了</span>` : '';
+        const saved = n ? `<div data-rpnote="1" class="bg-[#0d1117] border-l-4 border-l-[#8b949e] border-y border-r border-[#30363d] rounded-r p-2 mb-1.5">
+                <div class="text-[9px] text-amber-300/90 font-bold mb-1">📝 外部 AI 寫的 ・你在 ${n.ts ? this._dW(new Date(n.ts).toISOString().slice(0, 10)) : ''} 貼進來的 ・本站沒有驗證 ・⛔ 不參與任何買賣判斷 ${stale}</div>
+                <div class="text-[11px] text-gray-200 leading-relaxed whitespace-pre-wrap">${this._escHtml(n.t)}</div>
+                <button onclick="app._rpNoteClear('${sym}')" class="mt-1.5 text-[10px] text-gray-400 hover:text-red-300 underline">🗑️ 刪掉這份筆記</button>
+            </div>` : '';
+        return `${saved}<div class="text-[10px] text-gray-400 leading-snug mb-1">產業景氣 / 漲價與供需 / 法說重點 / 競爭對手 —— 這些是<b>質化</b>資訊,台股<b>沒有免費的結構化來源</b>,本站⛔ 不編。<br>做法:按下面的「🔎 問 Perplexity」(提示詞已經寫成產業報告規格,而且要求它附來源網址),把回答<b>貼回這裡</b>存起來。</div>
+            <textarea id="rpNoteIn" rows="3" placeholder="把外部 AI 的產業回答貼進來…" class="w-full bg-[#0d1117] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 leading-relaxed"></textarea>
+            <button onclick="app._rpNoteSave('${sym}')" class="mt-1 px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-bold rounded">💾 存成這一檔的產業筆記</button>
+            <div class="text-[9px] text-gray-500 mt-1.5 leading-snug">💾 只存在<b>你這台裝置</b>(換手機不會跟著走);⛔ 它<b>不會</b>被算進本站任何結論、評分或「📋 複製整份報告」。</div>`;
+    },
     _rpIndHtml(C) {
-        const chip = (() => { try { return this._aiChainChipHtml(C.sym); } catch (_) { return ''; } })();
-        const secTxt = C.sector ? `${this._escHtml(C.sector.name)}${C.sector.names ? `(同板塊:${this._escHtml(C.sector.names)})` : ''}` : (C.isEtf ? 'ETF / 指數型商品,產業定位不適用' : '本站沒有這檔的產業分類');
-        const body = `${this._rpRow('產業別', secTxt)}${C.indK ? this._rpRow('證交所產業代碼', C.indK) : this._rpRow('證交所產業代碼', this._rpNa('上櫃無官方分類'))}
-            ${chip || `<div class="text-[10px] text-gray-500 mt-1.5">不在本站 AI 產業鏈名單(選股 → 🤖 AI 鏈,人工整理的 81 檔)</div>`}
-            <div class="text-[9px] text-gray-500 mt-1.5 leading-snug">📌 母子公司持股比例、產品別營收、擴產進度 —— 台股沒有免費的結構化來源,本站⛔ 不編數字;要問這些請按最下面「🔎 問 Perplexity」。</div>`;
-        const inote = C.sector
-            ? `<b class="text-gray-200">${this._escHtml(C.sector.name)}</b>${C.peer ? ` ・同業中位本益比 ${(+C.peer).toFixed(1)}x` : ''}`
-            : (C.isEtf ? 'ETF / 指數型商品,產業定位不適用' : '本站沒有這檔的產業分類');
-        return this._rpDetails('🏭 它算哪一族的', inote, body);
+        const sym = String(C.sym || '');
+        const g = (() => { try { return this._rpPeerGroup(sym); } catch (_) { return null; } })();
+        const chip = (() => { try { return this._aiChainChipHtml(sym); } catch (_) { return ''; } })();
+        const sub = (t, b) => `<div class="text-[11px] font-bold text-gray-200 mt-3 first:mt-0 mb-1 pb-0.5 border-b border-[#30363d]">${t}</div>${b}`;
+        const body = sub('① 同業對照 —— 你在這一族裡排第幾', this._rpPeerHtml(C, g))
+            + sub('② 這一族現在強不強', this._rpSecTrendHtml(C, g))
+            + sub('③ 細項分類 ・誰跟它一起動', this._rpChainHtml(C, g))
+            + sub('④ 這一族的實測成績(本站自己回測的)', this._rpIndEdgeHtml())
+            + sub('⑤ 📝 產業筆記(外部 AI 寫的,本站沒有驗證)', this._rpNoteHtml(C))
+            + (chip ? `<div class="mt-3">${chip}</div>` : '');
+        // 節標題那句 = 這一節的答案(⛔ 不是名詞)
+        const bits = [];
+        if (g) bits.push(`<b class="text-gray-200">${this._escHtml(g.name)}</b> ${g.mem.length} 檔`);
+        else if (C.isEtf) bits.push('ETF,沒有同業可比');
+        const ind0 = (this._scrData && this._scrData.ind) ? this._scrData.ind[sym] : null;
+        const rk = ind0 ? this._rpIndRank(ind0) : null;
+        //   ⚠️ `rk` 是**官方產業**的名次,而上面那個分群可能是**題材** —— 兩個不是同一族。
+        //   ⛔ 寫成「這一族排第 25」會被讀成題材排第 25(同名不同義)→ 名次一定要帶自己的族名。
+        if (rk) bits.push(`官方產業「${this._escHtml(ind0)}」近 20 日在 ${rk.m} 個產業裡<b class="text-gray-200">排第 ${rk.n}</b>`);
+        if (g) {
+            const amtRank = (() => {
+                const D = this._scrData, arr = g.mem.filter(s => this._scrV(D.rows[s], 'amt') !== null)
+                    .sort((a, b) => +this._scrV(D.rows[b], 'amt') - +this._scrV(D.rows[a], 'amt'));
+                const i = arr.indexOf(sym); return i >= 0 ? `${i + 1}/${arr.length}` : null;
+            })();
+            if (amtRank) bits.push(`你的成交值排 <b class="text-gray-200">${amtRank}</b>`);
+        }
+        return this._rpDetails('🏭 產業報告:這一族在幹嘛、你排第幾', bits.length ? bits.join(' ・') : '本站沒有這檔的產業分類與題材名單', body);
     },
 
     // F 籌碼(全部轉述 _chipPeriodSums / 分點 periods / _tdccFourFactor / _marginCallState)
