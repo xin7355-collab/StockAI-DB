@@ -326,10 +326,34 @@ jobs:
             git archive origin/data | tar -x -C . 2>/dev/null || echo "⚠️ 底層展開失敗，改由 artifact 提供"
           fi
           echo "底層舊資料：$(ls data/*.json 2>/dev/null | wc -l) 檔"
-          # ⭐ 本輪的分界線:這之後被改過的 data 檔 = daily_miner 自己產的。
-          #    下面「🛟 撿回」那步靠它區分「本輪產的」與「別支在部署窗口內推上來的」。
-          #    ⛔ 不可拿掉,也⛔ 不可搬到 download-artifact 之後(那會把 artifact 的檔誤判成舊的)。
-          touch /tmp/base.stamp
+          # ⭐ 本輪的基準:鋪完底層當下的「內容指紋」(此時 data/ 就是 origin/data 的快照)。
+          #    下面「🛟 撿回」那步靠它三方比對,區分「本輪真的改了」與「別支在部署窗口內推上來的」。
+          # 🚨 ⛔ 判準刻意用**內容**不用 mtime —— V75.2.7 第一版用 mtime,實測整個失效:
+          #    `mine-data-*` artifact 的 path 是 **`data/`(整個目錄)**,而每個 batch job 開頭
+          #    都會 `git archive origin/data | tar -x` 還原整個 data/;「修剪 artifact」只修剪
+          #    **股票 K 線檔**,`pe_band.json` 這種非股票檔會原封不動跟著 artifact 回來
+          #    → download-artifact 把它們疊上去,mtime 變成下載時間 → 全部被誤判成「本輪產的」。
+          #    實測 log:「本輪自己產出 5521 檔 ・沒變動 0 檔」= `cmp` 一次都沒執行到。
+          #    ⛔ 不可搬到 download-artifact 之後(那就變成拿 artifact 當基準,等於沒基準)。
+          python3 - <<'BASEMD5'
+          import hashlib, json, os
+          base = {}
+          for root, _, files in os.walk('data'):
+              for fn in files:
+                  if not fn.endswith('.json'):
+                      continue
+                  p = os.path.join(root, fn)
+                  h = hashlib.md5()
+                  try:
+                      with open(p, 'rb') as f:
+                          for c in iter(lambda: f.read(1 << 20), b''):
+                              h.update(c)
+                  except OSError:
+                      continue
+                  base[p] = h.hexdigest()
+          json.dump(base, open('/tmp/base_md5.json', 'w'))
+          print(f'基準指紋:{len(base)} 檔')
+          BASEMD5
 
       - name: 📥 下載並自動合併 20 個平行宇宙的資料 (疊在底層之上)
         uses: actions/download-artifact@v4
@@ -524,19 +548,49 @@ jobs:
           echo "比對基準:$REF"
           rm -rf /tmp/relay && mkdir -p /tmp/relay
           git archive "$REF" data 2>/dev/null | tar -x -C /tmp/relay || { echo "⚠️ 展開失敗 → 略過撿回"; exit 0; }
-          kept=0; back=0; same=0
-          while IFS= read -r f; do
-            # 本輪 daily_miner 自己產的(mtime 比分界線新)→ 保留,⛔ 不可被遠端舊版洗掉
-            if [ -f "$f" ] && [ "$f" -nt /tmp/base.stamp ]; then kept=$((kept+1)); continue; fi
-            # 內容一樣 → 不用動
-            if cmp -s "/tmp/relay/$f" "$f" 2>/dev/null; then same=$((same+1)); continue; fi
-            # 本輪沒動、而遠端比較新 → 那是別支在窗口內推上來的,撿回來
-            mkdir -p "$(dirname "$f")"
-            cp -f "/tmp/relay/$f" "$f"
-            back=$((back+1))
-            echo "  🛟 撿回 $f"
-          done < <(cd /tmp/relay && find data -type f -name '*.json' | sort)
-          echo "本輪自己產出 $kept 檔 ・沒變動 $same 檔 ・🛟 撿回別支的 $back 檔"
+          python3 - <<'RELAY'
+          import hashlib, json, os, shutil, sys
+          def md5(p):
+              h = hashlib.md5()
+              with open(p, 'rb') as f:
+                  for c in iter(lambda: f.read(1 << 20), b''):
+                      h.update(c)
+              return h.hexdigest()
+          try:
+              base = json.load(open('/tmp/base_md5.json'))
+          except Exception as e:
+              print(f'⚠️ 讀不到基準指紋({e}) → 略過撿回')
+              sys.exit(0)
+          if len(base) < 100:
+              print(f'⚠️ 基準指紋只有 {len(base)} 檔 → 不可信,略過撿回')
+              sys.exit(0)
+          kept = same = back = 0
+          picked = []
+          for root, _, files in os.walk('/tmp/relay/data'):
+              for fn in files:
+                  if not fn.endswith('.json'):
+                      continue
+                  rp = os.path.join(root, fn)
+                  wp = os.path.relpath(rp, '/tmp/relay')      # data/xxx.json
+                  b = base.get(wp)
+                  rh = md5(rp)
+                  if b is not None and rh == b:
+                      same += 1                                # 遠端跟基準一樣 → 沒東西可撿
+                      continue
+                  # 遠端跟基準不同 = 別支在部署窗口內動過它
+                  if b is not None and os.path.exists(wp) and md5(wp) != b:
+                      kept += 1                                # 本輪也真的改了它 → 保留本輪的
+                      continue
+                  os.makedirs(os.path.dirname(wp) or '.', exist_ok=True)
+                  shutil.copyfile(rp, wp)
+                  back += 1
+                  picked.append(wp)
+          for p in picked[:40]:
+              print(f'  🛟 撿回 {p}')
+          if len(picked) > 40:
+              print(f'  …另外還有 {len(picked) - 40} 檔')
+          print(f'比對基準 {len(base)} 檔 ・遠端沒動 {same} 檔 ・本輪自己改過 {kept} 檔 ・🛟 撿回別支的 {back} 檔')
+          RELAY
 
       - name: 📡 部署所有資料到 gh-pages (前端網站庫)
         run: |
