@@ -127,6 +127,10 @@ const R = await page.evaluate(() => {
     out.afterBack = A._exitRuleKey();
     delete A.settings.exitRule;
     out.backToDefault = A._exitRuleKey();
+    // ⭐ 把那一筆本身帶回去 —— 斷言跟**資料**比對,⛔ 不在測試裡寫死內容
+    //   (寫死的話,下次再換一筆進來就整排假紅 = 斷言釘住實作不是用意)
+    const c0 = A._STRAT_CHANGES[0];
+    out.chg = { back: c0.back, from: c0.from, to: c0.to, why: c0.why, cost: c0.cost, you: c0.you };
     return out;
 });
 await browser.close();
@@ -141,16 +145,29 @@ ok('⑨ 按「知道了」才蓋章', R.stampAfterAck && R.stampAfterAck !== 'V7
 ok('⑨b 按了之後視窗會關掉', R.hiddenAfterAck === true);
 ok('⑩ 已看過 → ⛔ 不再跳', R.seenShown === false);
 ok('⑪ 預設是唐奇安', R.defRule === 'don', R.defRule);
-ok('⑪b 「換回舊的」真的換得回 ATR', R.afterBack === 'atr2', R.afterBack);
+// ⭐ V75.3.0 起改成跟**資料本身**比對(⛔ 別再寫死 'atr2')——
+//   這條要釘的是「按了『換回舊的』會換成那一筆宣告的 `back`」,⛔ 不是「一定是 ATR」。
+//   🚨 上一版寫死 atr2,於是 V75.3.0 換了一筆進來就整排假紅(斷言釘住實作,不是用意)。
+ok('⑪b 「換回舊的」真的換得回**那一筆宣告的舊規則**',
+   R.afterBack === R.chg.back, `afterBack=${R.afterBack} ・ 宣告 back=${R.chg.back}`);
 ok('⑪c 清掉設定會回到預設 don', R.backToDefault === 'don', R.backToDefault);
 
 // 內容:五件事都要看得到(⛔ 只寫「換成更好的了」等於沒說)
 const B = String(R.body).replace(/\s+/g, ' ');
-ok('⑫ 視窗要寫「原本是什麼」', /原本[：:]?/.test(B) && /ATR/.test(B), B.slice(0, 160));
-ok('⑫b 視窗要寫「現在是什麼」', /現在[：:]?/.test(B) && /唐奇安/.test(B));
-ok('⑫c 視窗要寫「為什麼換」而且有數字', /為什麼換/.test(B) && /590/.test(B) && /531/.test(B));
-ok('⑫d 🚨 視窗要寫「代價」', /代價/.test(B) && /25\.2/.test(B));
-ok('⑫e 🚨 視窗要寫「對你的影響」', /對你的影響/.test(B) && /防守價/.test(B));
+// ⭐ 同理:內容比對改成「視窗要真的把那一筆的 from/to 端出來」,⛔ 不寫死 ATR / 唐奇安 / 590
+const _kw = t => String(t).replace(/<[^>]+>/g, '').replace(/\s+/g, '').slice(0, 8);
+// ⚠️ 視窗 body 裡**保留著 `<b>` 標籤**(那是刻意的,重點字要粗體)→ 比對前兩邊要同尺,
+//   ⛔ 只剝一邊會假紅(第一版就是這樣:找「排名一律用「跌破」,而 body 是「排名一律用<b>「跌破」)。
+const Bt = B.replace(/<[^>]+>/g, '').replace(/\s+/g, '');
+ok('⑫ 視窗要寫「原本是什麼」,而且內容要對得上那一筆的 `from`',
+   /原本[：:]?/.test(B) && Bt.includes(_kw(R.chg.from)),
+   `找 ${_kw(R.chg.from)} ・ ${B.slice(0, 160)}`);
+ok('⑫b 視窗要寫「現在是什麼」,而且對得上 `to`',
+   /現在[：:]?/.test(B) && Bt.includes(_kw(R.chg.to)), _kw(R.chg.to));
+ok('⑫c 視窗要寫「為什麼換」而且**有數字**(⛔ 只寫「換成更好的」不算)',
+   /為什麼換/.test(B) && /\d/.test(String(R.chg.why)) && Bt.includes(_kw(R.chg.why)));
+ok('⑫d 🚨 視窗要寫「代價」而且有具體內容', /代價/.test(B) && Bt.includes(_kw(R.chg.cost)));
+ok('⑫e 🚨 視窗要寫「對你的影響」而且有具體內容', /對你的影響/.test(B) && Bt.includes(_kw(R.chg.you)));
 ok('⑫f 視窗要有「換回舊的」', /換回舊的/.test(B));
 ok('⑫g ⛔ 要明說舊的沒有刪掉', /沒有刪掉|都還在/.test(B));
 
