@@ -144,7 +144,11 @@ const render = async (sym) => {
 
 const R = await render('5483');
 ok('① 9 顆 sub-tab 按鈕、切到 report 後只有 subContentReport 是 flex', R.btnCount === 9 && R.disp.every(([t, d]) => (t === 'Report') === (d === 'flex')), JSON.stringify(R.disp));
-ok('⓪ 九段全部有內容(⛔ 不留空殼)', R.html.every(h => h && h.length > 40), R.html.map(h => (h || '').length).join(','));
+// ⚠️ V75.3.2 起 `rpLead`(index 1)在**有結論時刻意留空** —— 結論卡已經把同一句話講完了,
+//   並存兩個聲音正是使用者最討厭的「邏輯打架 / 資訊爆炸」。它是 hidden 不是空殼。
+ok('⓪ 其餘八段全部有內容(⛔ 不留空殼)', R.html.filter((_, i) => i !== 1).every(h => h && h.length > 40), R.html.map(h => (h || '').length).join(','));
+ok('⓪b ⭐ 有結論時 lead 那條整條不顯示(⛔ 不可跟結論卡講同一句話兩次)',
+   !R.html[1] && !!R.ctx && !!R.ctx.badge, `lead=${(R.html[1] || '').length} badge=${R.ctx && R.ctx.badge}`);
 const ALL = Object.values(R.txt).join(' ');
 const ALLnoDisc = ALL.replace(/⛔ ?這不是目標價,也不是預測/g, '').replace(/⛔ ?不是目標價/g, '');
 ok('③c 整頁不出現「目標價」(免責句除外)', !/目標價/.test(ALLnoDisc), (ALLnoDisc.match(/.{20}目標價.{20}/) || [])[0]);
@@ -176,6 +180,8 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.ht
 {
     const rev = await page.evaluate(() => {
         const A = app; const C = A._rpLast;
+        // ⚠️ V75.3.2 起估值節預設收合 —— `<details>` 沒展開時 innerText 回空字串(同 V75.0.3 的坑)
+        const d = document.querySelector('#rpVal details'); if (d) d.open = true;
         document.getElementById('rpRevIn').value = '250'; A._rpReverse('5483');
         const t = document.getElementById('rpRevOut').innerText;
         return { t, mult: 250 / C.eps, p95: C.band.p95, hi: C.band.hi };
@@ -184,9 +190,91 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.ht
     ok('⑮b 反查 250 → 倍數 = 250 ÷ 年化 EPS', rev.t.includes(`${m} 倍`), rev.t);
     ok('⑮c 倍數超過 P95 要寫「超過它近 3 年 95% 的水位」或「最高本益比」', rev.mult <= rev.p95 || /超過它近 3 年/.test(rev.t), rev.t);
     ok('⑮d 反查文案不可出現「合理/便宜/可以買」(算術不是預測)', !/合理|便宜|可以買|值得/.test(rev.t), rev.t);
-    const rev2 = await page.evaluate(() => { const C = app._rpLast; document.getElementById('rpRevIn').value = String((C.eps * C.band.med).toFixed(1)); app._rpReverse('5483'); return document.getElementById('rpRevOut').innerText; });
+    const rev2 = await page.evaluate(() => { const C = app._rpLast; const d = document.querySelector('#rpVal details'); if (d) d.open = true; document.getElementById('rpRevIn').value = String((C.eps * C.band.med).toFixed(1)); app._rpReverse('5483'); return document.getElementById('rpRevOut').innerText; });
     ok('⑮e 反查「中位對照價」→ 位階應在第 50 百分位附近(插值方向沒反)', /第 (4[5-9]|5[0-5]) 百分位/.test(rev2), rev2);
 }
+// ══════════════════════════════════════════════════════════════════════════
+// 📄 V75.3.2 改版:決策摘要版面(使用者:「版面不好看、文字敘述沒有很清楚明瞭」)
+// ──────────────────────────────────────────────────────────────────────────
+{
+    const ord = await page.evaluate(() => [...document.getElementById('subContentReport').children]
+        .map(d => d.id).filter(Boolean));
+    const at = id => ord.indexOf(id);
+    ok('📄a 結論(rpAct)必須排在五個背景節之前(⛔ 別再搬回第 8 個)',
+       at('rpAct') >= 0 && at('rpAct') < Math.min(at('rpVal'), at('rpFund'), at('rpChip'), at('rpInd')), ord.join(','));
+    ok('📄a2 重點數字(rpNum)排在結論之後、背景節之前',
+       at('rpAct') < at('rpNum') && at('rpNum') < at('rpVal'), ord.join(','));
+
+    // ⭐⭐ 決定性對照組:同一檔、同一份測資,**只改「有沒有事」**這一個維度
+    const openOf = await page.evaluate(async () => {
+        const A = app, sym = A.currentSymbolId;
+        const real = A._ovDecide;
+        const shot = () => { const d = document.querySelector('#rpRisk details'); return d ? d.open : null; };
+        A._ovDecide = (...a) => { const r = real.apply(A, a); return Object.assign({}, r, { alerts: [{ ic: '⚠️', t: '測試用預警' }] }); };
+        await A.renderReportTab(sym); const hot = shot();
+        A._ovDecide = (...a) => { const r = real.apply(A, a); return Object.assign({}, r, { alerts: [] }); };
+        await A.renderReportTab(sym); const cold = shot();
+        A._ovDecide = real; await A.renderReportTab(sym);
+        return { hot, cold };
+    });
+    ok('📄b ⭐⭐ 有預警 → 風險節自動展開(⛔ 沒有這個,收起來就等於沒講)', openOf.hot === true, JSON.stringify(openOf));
+    ok('📄b2 ⭐⭐ 沒預警 → 風險節不展開(只換「有沒有事」這一個維度)', openOf.cold === false, JSON.stringify(openOf));
+
+    const R2 = await render('5483');
+    const heroN = await page.evaluate(() => document.querySelectorAll('#rpNum > .grid.grid-cols-2 > div').length);
+    ok('📄c 第一眼只有 4 格重點數字(其餘收進「其他數字」摺疊)', heroN === 4, `heroN=${heroN}`);
+    const keys = await page.evaluate(() => [...document.querySelectorAll('#rpNum [data-rpk]')].map(d => d.getAttribute('data-rpk')));
+    ok('📄c2 其餘數字仍在頁面上(⛔ 是收起來不是刪掉)', /其他數字/.test(R2.txt.rpNum) && (R2.txt.rpNum.match(/本益比|股價淨值比|殖利率|最新季 EPS/g) || []).length >= 2, R2.txt.rpNum.slice(0, 200));
+    // 🚨🚨 這一組原本寫成「5483 沒有 PE」→ **假綠燈**:測試 fixture 裡 5483 其實有 PE,
+    //   於是注入「寫死四格」之後它照樣綠(注入驗證當場抓到)。
+    //   ⭐ 改成**直接餵兩份只差一個維度的 ctx 給純函式**,⛔ 不依賴哪一檔剛好缺什麼
+    //     (那是測資的性質,不是程式的性質 —— 陷阱 #40)。
+    {
+        const sw = await page.evaluate(() => {
+            const A = app, C = A._rpLast;
+            const keysOf = html => { const d = document.createElement('div'); d.innerHTML = html;
+                return { k: [...d.querySelectorAll('[data-rpk]')].map(x => x.getAttribute('data-rpk')),
+                         t: [...d.querySelectorAll('[data-rpk]')].map(x => x.textContent).join(' ') }; };
+            const has = keysOf(A._rpNumHtml(Object.assign({}, C, { pe: 12.3, mrev: 1.23e9, yoy: 5 })));
+            const none = keysOf(A._rpNumHtml(Object.assign({}, C, { pe: null, mrev: null, band: null })));
+            return { has, none };
+        });
+        ok('📄c3 有本益比 / 月營收時,那兩格要進重點區', sw.has.k.includes('本益比') && sw.has.k.includes('最新月營收'), JSON.stringify(sw.has.k));
+        ok('📄c4 ⭐⭐ 同一份資料只把 PE / 月營收拿掉 → 重點格自動換成有值的(⛔ 不是寫死那四格)',
+           !sw.none.k.includes('本益比') && !sw.none.k.includes('最新月營收') && sw.none.k.length === 4, JSON.stringify(sw.none.k));
+        ok('📄c5 ⭐ 換掉之後重點區⛔ 不可出現「沒有」(一片灰色的「沒有」正是版面難看的主因)',
+           !/沒有/.test(sw.none.t), sw.none.t.slice(0, 200));
+    }
+    // 五節標題那句 = 事實 + 數字,⛔ 不下判定詞
+    const sums = await page.evaluate(() => [...document.querySelectorAll('#subContentReport details > summary')]
+        .map(d => d.textContent.replace(/\s+/g, ' ').trim()));
+    ok('📄d 每一節標題都帶一句「這一節的答案」(⛔ 不是只有名詞)',
+       sums.length >= 5 && sums.filter(t => t.replace(/展開 ▾/, '').trim().length > 12).length >= 5, JSON.stringify(sums).slice(0, 400));
+    ok('📄e 標題那句⛔ 不可出現判定詞(合理/便宜/貴/可以買/該賣)',
+       !/合理|便宜|可以買|該買|該賣|值得買/.test(sums.join(' ')), JSON.stringify(sums).slice(0, 300));
+
+    // 📋 一鍵複製
+    const cp = await page.evaluate(() => app._rpCopyPlain());
+    ok('📄f 複製文字有內容且含股名/代號/資料日期/結論', cp.length > 80 && /5483/.test(cp) && /資料日期/.test(cp) && /🎯 結論/.test(cp), cp.slice(0, 160));
+    ok('📄f2 ⛔ 複製文字不可含 HTML 標籤,也不可含「展開 ▾」這種 UI 字',
+       !/<[a-zA-Z\/!]/.test(cp) && !/展開\s*▾/.test(cp), (cp.match(/<[a-zA-Z\/!][^>]*>/) || [])[0] || (cp.match(/展開\s*▾/) || [])[0] || '');
+    ok('📄f3 複製文字要帶免責(⛔ 數字被帶出去,限制也要跟著出去)', /不是投資建議/.test(cp) && /不含任何 AI 推估/.test(cp));
+    ok('📄g 複製按鈕在第一屏(⛔ 不埋進最後的摺疊區 —— 陷阱 #32)', /_rpCopyReport\(\)/.test(R2.html[0]));
+}
+
+// ⓪c ⭐⭐ 決定性對照組:同一檔、只把「算不算得出結論」這一個維度拿掉 → lead 要出來講「還在算」
+{
+    const noDec = await page.evaluate(async () => {
+        const A = app, sym = A.currentSymbolId, real = A._ovDecide;
+        A._ovDecide = () => null;
+        await A.renderReportTab(sym);
+        const h = document.getElementById('rpLead').innerHTML;
+        A._ovDecide = real; await A.renderReportTab(sym);
+        return h;
+    });
+    ok('⓪c ⭐⭐ 算不出結論時 lead 要說「正在計算」(⛔ 不可整片空白 —— 陷阱 #4)', /正在計算/.test(noDec), noDec.slice(0, 120));
+}
+
 // ⑫ prompt
 {
     const P = await page.evaluate(() => { let cap = null; const real = app._freeAiOpen; app._freeAiOpen = q => { cap = q; }; app._reportAsk('5483'); app._freeAiOpen = real; return cap; });
@@ -198,7 +286,7 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.ht
 // 2330(上市):同業列要有數字
 const R2 = await render('2330');
 ok('④b 2330(上市)同業列有中位 PE 數字', R2.ctx && Number.isFinite(R2.ctx.peer) && /同業中位 PE [\d.]+x/.test(R2.txt.rpVal), `${R2.ctx && R2.ctx.peer} ${R2.txt.rpVal.slice(0, 120)}`);
-ok('④c 2330 五段有內容、無 --', R2.html.every(h => h && h.length > 40) && !/(^|[^-])--([^-]|$)/.test(Object.values(R2.txt).join(' ')));
+ok('④c 2330 五段有內容、無 --', R2.html.filter((_, i) => i !== 1).every(h => h && h.length > 40) && !/(^|[^-])--([^-]|$)/.test(Object.values(R2.txt).join(' ')));
 // ⑪ 切股殘留
 {
     const r = await page.evaluate(async () => {
