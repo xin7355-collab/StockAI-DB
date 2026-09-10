@@ -326,6 +326,10 @@ jobs:
             git archive origin/data | tar -x -C . 2>/dev/null || echo "⚠️ 底層展開失敗，改由 artifact 提供"
           fi
           echo "底層舊資料：$(ls data/*.json 2>/dev/null | wc -l) 檔"
+          # ⭐ 本輪的分界線:這之後被改過的 data 檔 = daily_miner 自己產的。
+          #    下面「🛟 撿回」那步靠它區分「本輪產的」與「別支在部署窗口內推上來的」。
+          #    ⛔ 不可拿掉,也⛔ 不可搬到 download-artifact 之後(那會把 artifact 的檔誤判成舊的)。
+          touch /tmp/base.stamp
 
       - name: 📥 下載並自動合併 20 個平行宇宙的資料 (疊在底層之上)
         uses: actions/download-artifact@v4
@@ -492,6 +496,47 @@ jobs:
           node scripts/daily_signal_scan.mjs || echo "⚠️ 今日訊號掃描失敗(不擋部署)"
           git checkout -- scripts/daily_signal_scan.mjs 2>/dev/null || true
           [ -s data/today_signals.json ] && echo "✅ today_signals.json $(wc -c < data/today_signals.json) bytes" || echo "⚠️ 沒產出 today_signals.json"
+
+      - name: 🛟 撿回部署窗口內別支推上來的新檔(⛔ 不可拿掉、⛔ 不可排到部署之後)
+        run: |
+          # 🚨 為什麼要有這一步(2026-09-09 實測抓到,pe_band 停在 08-14 一個月的真因):
+          #    這個 job 在**開頭**(上面那步)用 `git archive origin/data` 抓了一份快照,
+          #    然後跑 20~25 分鐘,最後**orphan force-push** gh-pages 與 data。
+          #    → 任何別支 workflow 在這段窗口內 push 上去的產物,會被這次 force-push
+          #      **無聲丟掉**:兩邊 log 都寫「部署成功」、兩個分支都是 orphan
+          #      → git 歷史上完全看不出被吃掉(全 repo 有 20 支會自己 push gh-pages/data)。
+          #    實例時間軸:22:04 抓快照 → 22:22 pe_band push 成功 → 22:28 這裡 force-push → 沒了。
+          # ⭐ 一個插入點治兩邊:gh-pages 是 orphan,內容全部來自工作區的 data/(經 /tmp/mine 中繼),
+          #    data 分支同理 → 這裡把工作區補到最新,兩側一起修好。
+          # ⛔ 判準刻意用 **mtime** 不用 `git diff BASE_SHA origin/data`:
+          #    這個 job 用 `--depth=1` shallow fetch → 拿不到舊 commit 的物件,
+          #    而且別支若改成 orphan 推,BASE_SHA 直接不可達 → SHA 法在雲端會壞
+          #    (陷阱 #40:本機完整 clone 永遠測得過)。mtime 不依賴 git 物件可達性。
+          # ⚠️ 這一步只補 data/ 側;`live_quotes.json` 那種「只在 gh-pages、不進 data」的盤中產物
+          #    不在涵蓋範圍(daily_miner 的窗口都在收盤後)。
+          git fetch origin data --depth=1 2>/dev/null || { echo "⚠️ 抓不到 data 分支 → 略過撿回"; exit 0; }
+          # ⚠️ `origin/data` 這個 remote-tracking ref 存不存在,要看 checkout 當時設的 refspec
+          #    —— shallow / single-branch clone 下它不一定會被建立(⛔ 別假設它一定在)。
+          #    `FETCH_HEAD` 是剛剛那次 fetch 一定會寫的 → 當備援。
+          REF=origin/data
+          git rev-parse --verify -q "$REF" >/dev/null || REF=FETCH_HEAD
+          git rev-parse --verify -q "$REF" >/dev/null || { echo "⚠️ 拿不到 data 分支的內容 → 略過撿回"; exit 0; }
+          echo "比對基準:$REF"
+          rm -rf /tmp/relay && mkdir -p /tmp/relay
+          git archive "$REF" data 2>/dev/null | tar -x -C /tmp/relay || { echo "⚠️ 展開失敗 → 略過撿回"; exit 0; }
+          kept=0; back=0; same=0
+          while IFS= read -r f; do
+            # 本輪 daily_miner 自己產的(mtime 比分界線新)→ 保留,⛔ 不可被遠端舊版洗掉
+            if [ -f "$f" ] && [ "$f" -nt /tmp/base.stamp ]; then kept=$((kept+1)); continue; fi
+            # 內容一樣 → 不用動
+            if cmp -s "/tmp/relay/$f" "$f" 2>/dev/null; then same=$((same+1)); continue; fi
+            # 本輪沒動、而遠端比較新 → 那是別支在窗口內推上來的,撿回來
+            mkdir -p "$(dirname "$f")"
+            cp -f "/tmp/relay/$f" "$f"
+            back=$((back+1))
+            echo "  🛟 撿回 $f"
+          done < <(cd /tmp/relay && find data -type f -name '*.json' | sort)
+          echo "本輪自己產出 $kept 檔 ・沒變動 $same 檔 ・🛟 撿回別支的 $back 檔"
 
       - name: 📡 部署所有資料到 gh-pages (前端網站庫)
         run: |

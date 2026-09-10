@@ -285,7 +285,91 @@ expanding 百分位 ・**隔天開盤**進場 + 排除鎖漲停 ・20 日去重 
 
 ---
 
-### 🩺 V75.2.5 資料體檢新增 **D3 類** —— 專抓「前端讀的欄位,那份檔根本沒有」
+### 🛟 V75.2.7 `pe_band` 停在 08-14 一個月 —— 真因是 **daily_miner 的 orphan force-push 有個 24 分鐘的無聲黑洞**
+
+驗收 `margin_limit_hist` / `pe_band` 這兩件待辦時查出來的,而且**不是 pe_band 的問題**
+(它的 yaml V75.2.2 已經修得很完整:rc 往外丟、跟車、今天跑過就跳過)。
+
+### 🔍 照 `/mining` 的順序查,四步才看到真相
+① **有沒有被觸發過** → `actions_list` 顯示 **7 筆 run 全部 success**,⛔ 不是配額問題。
+② **產物日期** → `updated` 停在 `2026-08-14T01:56:12Z`(27 天)。
+③ **那個 updated 是誰的日期** → 是抓取時間,而且**剛好等於 run #1 的結束時刻** → 之後每一輪都沒寫進去。
+④ **才輪到查程式** —— 而查下去發現程式沒問題,問題在**別支 workflow**。
+
+### 🚨 決定性的時間軸(2026-09-09 UTC)
+| 時間 | 發生什麼 |
+|---|---|
+| 21:10:18 | `pe_band` 跟車開跑(fund_sweep 完成) |
+| 22:04:25 → 22:04:31 | **daily_miner 的 deploy job 用 `git archive origin/data` 抓快照**(pe_band 還是 08-14 那版) |
+| 22:22:57 / 22:22:59 | pe_band 跑完 72 分鐘,**push 成功**:`2c75e7a..312f8f0 gh-pages` / `61a1b15..15f52c3 data` |
+| 22:28:46 / 22:29:11 | daily_miner 用 **22:04 的舊快照** orphan **force-push** → pe_band 的新檔**整個被丟掉** |
+
+⭐⭐ 事後查證:`git cat-file -t 15f52c3` → **本地已經沒有那個 commit**,
+`data` 分支只剩 1 個 commit(22:29 那筆 orphan)。**被吃掉的東西連痕跡都沒有。**
+
+### ⛔ 三件讓它藏了一個月的事
+1. **兩支 workflow 都綠**,而且**兩邊 log 都寫「部署成功」** —— pe_band 的 log 白紙黑字有 push 的 SHA。
+2. **兩個分支都是 orphan force-push** → git 歷史上看不出「有東西被覆蓋」。
+3. 我自己第一次查也差點下錯結論(以為是 pe_band 的排程配額 / 環境變數空字串那個舊坑)。
+
+### ⚠️ 不是 pe_band 個案 —— 全 repo **20 支** workflow 會自己 push gh-pages/data
+`news_express`(每 4 小時)・`macro_cron`・`insider_cron`・`stock_futures`・`theme_news`・
+`dividend_sweep`・`tdcc_sweep`・`live_snapshot`・`tick_flow` …
+而 daily_miner 一天跑 2 次以上(08:30 / 12:00 UTC)**又可被 push 隨時觸發**
+→ 窗口不固定,⛔「把 pe_band 的時間挪開」治不乾淨。
+⭐ 這次會撞到,正是因為我 21:24 push 了 `miner.py`(V75.2.6)觸發了一輪計畫外的 daily_miner。
+
+### ⭐ 檔案裡本來就有這個病的兩塊逐檔補丁(病摸到過,只是沒通用化)
+```
+git checkout origin/main -- index.html sw.js …      # 註解寫「🛡️ 防 race」
+git checkout origin/main -- data/scr_edge.json      # 註解寫「⚠️ 這裡是 orphan force-push,不接就每天被洗掉」
+```
+
+### 🛟 修法:部署之前加一步「撿回」
+在「🎯 今日實測訊號掃描」之後、「📡 部署所有資料到 gh-pages」之前,
+重新 `git fetch origin data`,把「**本輪 daily_miner 沒產出、而遠端比較新**」的檔撿回工作區。
+⭐ **一個插入點治兩邊** —— gh-pages 是 orphan,內容全部來自工作區的 `data/`(經 `/tmp/mine` 中繼),
+data 分支同理。
+
+⛔ **判準用 mtime,不用 `git diff BASE_SHA origin/data`**:deploy job 是 `--depth=1` shallow fetch
+→ 拿不到舊 commit 的物件;而且別支若改成 orphan 推,BASE_SHA 直接不可達。
+**那正是陷阱 #40(本機完整 clone 永遠測得過)** —— 若走 SHA 法,本機會全綠、雲端靜默失效。
+
+四種情況逐一檢查過:
+| 情況 | 結果 |
+|---|---|
+| 本輪 daily_miner 產的(mtime 較新) | **保留**,⛔ 不會被遠端舊版洗掉 |
+| 兩邊都沒動 | `cmp -s` 相同 → 不動 |
+| 本輪沒動、**窗口內別支推了新版** | **撿回** ← 這就是黑洞那一格 |
+| 某腳本「內容沒變就不寫」導致 mtime 沒更新 | 遠端相同 → `cmp` 擋掉;遠端被別支更新 → 撿回是**對的**(本輪確實沒動它) |
+
+`data/chief_ai_cache.json`(刻意刪的退役檔)的 `rm -f` 在 gh-pages 部署步驟**內部**,
+排在撿回**之後** → ⛔ 不會被復活。
+
+### 🧪 本機實跑當場抓到的第二個坑(⛔ 推理不出來的那種)
+第一版功能測試用 `git clone --depth=1` 之後 `git fetch origin data --depth=1`,
+結果 **`origin/data` 這個 remote-tracking ref 根本沒被建立**
+(shallow clone 隱含 single-branch → refspec 只涵蓋 main,不會做 opportunistic update)。
+→ 撿回腳本補上 **`FETCH_HEAD` 備援**;測試改成**兩種 clone 形態各跑一次**,
+乙(single-branch)那組就是專門驗備援的。
+⭐ 通用:**「這個 ref 一定存在」是假設不是事實** —— 它取決於 clone 當時設的 refspec。
+
+### 🧪 測試 `scripts/test_deploy_relay.py`
+- 順序釘住:分界線在「鋪底層」那步裡、撿回排在兩個 push 之前(排後面等於沒接上,同陷阱 #34)
+- ⭐ **功能測試開真的 git repo,實跑 yaml 裡那段原始腳本**(從 yaml 抽出來寫成 .sh)
+  —— ⛔ 測試裡不複製一份邏輯,否則改了 yaml 測試還是綠的(第二份真相)
+- 三種注入全部叫得出來:刪掉那步 / 排到部署之後 / mtime 判斷反向
+
+⚠️ **這支測試自己第一次跑就誤報一條**:④「⛔ 判準不可用 `git diff`」把**註解裡**那句
+「⛔ 不用 `git diff BASE_SHA`」也掃進去了 → 斷言改成只看**實際指令**(濾掉 `#` 開頭的行)。
+⭐ 又一次:**工具報的要先驗工具本身**。
+
+### ✅ 順帶驗收:`margin_limit_hist.json` 產出成功
+1,229 檔(門檻 200),日期 `2026-09-10` —— ⚠️ 那是 TWSE「**次一營業日**限額」的生效日,
+⛔ 不是抓取日(抓取時間是 `updated` 的 09-09T21:28Z)。
+目前只有 1 天,**明天要變 2 天**才證明它是累積而不是每次重寫。
+
+## 🩺 V75.2.5 資料體檢新增 **D3 類** —— 專抓「前端讀的欄位,那份檔根本沒有」
 
 V75.2.4 的四個死因子躲過了體檢的**全部五類**:
 A(檔案在、能解析、不是空的 ✅)・B(新鮮度 ✅)・C(沒有 `*_error` 可報)・
