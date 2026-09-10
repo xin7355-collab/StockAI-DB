@@ -71,7 +71,14 @@ log(`🔬 偵測器 ${alive.length}/${DETECTORS.length} 可用・成績表涵蓋
 //   採礦端再存一份等於同一份資料兩個來源,改名時會不同步(同「同名不同值」那類問題)。
 
 const bull = [], risk = [];
-let used = 0, latest = '';
+let used = 0;
+// 🚨 陷阱 #14:⛔ 不可用「全市場最大日期」當 data_date ——
+//    只要有少數股票已寫入**當天未完成的盤中列**,max 就會被那幾檔綁架。
+//    實測 2026-09-10 台北 10:16 那輪:96.2% 的股票最後一根是 09/09(昨天收盤),
+//    但 2.8%(11/400)有 09/10 的盤中列 → data_date 變成 09-10,
+//    而前端寫「📅 09/10 收盤資料」—— 那天根本還沒收盤,榜上每一筆其實都是 09/09。
+// ⭐ 改用**眾數**(絕大多數股票的最後一根是哪天),並把佔比一起輸出當佐證。
+const dateCnt = new Map();
 for (const f of files) {
     if (used >= MAX_SYMS) break;
     const sym = f.slice(0, 4);
@@ -101,7 +108,7 @@ for (const f of files) {
     }, { rows, dets: alive, sym });
 
     const last = rows[rows.length - 1];
-    if (!latest || last.date > latest) latest = last.date;
+    dateCnt.set(last.date, (dateCnt.get(last.date) || 0) + 1);
     for (const h of hits) {
         const row = { s: sym, c: Math.round(last.close * 100) / 100, v: Math.round(last.volume / 1000), d: last.date, t: h.t, g: h.g, n: h.n, w: h.w, exp: h.exp, po: h.po };
         // ① 看多只收 exp>0(常對但不賺的不進榜)
@@ -116,11 +123,34 @@ await browser.close();
 // 期望值高的排前面;風險榜用「跌得越多代表越準」→ exp 越負排越前
 // 同一個訊號的 exp/n 完全相同 → 第二鍵用**成交量**(量大的參與度高),
 // ⛔ 別讓它退化成代號順序(那等於「1xxx 永遠排前面」,又是一種偏誤)
+// ⭐ data_date = 最後一根 K 的**眾數**(⛔ 不是 max,見上面陷阱 #14 那段)
+//    同票數時取比較新的那天(降序),避免結果隨 Map 插入順序飄動。
+const dateRank = [...dateCnt.entries()].sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? 1 : -1));
+const dataDate = dateRank.length ? dateRank[0][0] : null;
+const dataDateN = dateRank.length ? dateRank[0][1] : 0;
+
+// 🚨 只收「最後一根就是 data_date」的訊號 —— 兩種要剔除的:
+//   ① 停牌/資料落後的股票:它的最後一根是好幾天前,卻被當成「今天的訊號」
+//      (實測 2026-09-10 那輪,60 筆裡有 1 筆是 **09-04** 的,停牌 5 天)
+//   ② 已寫入當天盤中列的那 2.8%:那根還沒收盤,拿它算訊號等於用半根 K
+// ⭐ 剔除幾筆一定要印出來(那是「這道守門真的有跑到」的佐證)——
+//    ⛔ 靜默過濾會讓「沒東西可剔」跟「守門失效」長得一模一樣。
+const _keep = r => !dataDate || r.d === dataDate;
+const bullDrop = bull.length, riskDrop = risk.length;
+const bullKept = bull.filter(_keep), riskKept = risk.filter(_keep);
+const droppedStale = (bullDrop - bullKept.length) + (riskDrop - riskKept.length);
+bull.length = 0; bull.push(...bullKept);
+risk.length = 0; risk.push(...riskKept);
+
 bull.sort((a, b) => (b.exp - a.exp) || (b.v - a.v));
 
 const out = {
     updated: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
-    data_date: latest,
+    data_date: dataDate,
+    // ⭐ 佐證欄位(⛔ 別拿掉):讓人一眼看出 data_date 是不是被少數盤中列綁架
+    data_date_n: dataDateN,                                    // 眾數那天有幾檔
+    data_date_pct: used ? Math.round(dataDateN / used * 1000) / 10 : null,
+    dropped_stale: droppedStale,                               // 剔除幾筆「不是當日」的
     scanned: used,
     edge_syms: meta.syms || null,
     base_win: meta.base_win || null,
@@ -148,6 +178,10 @@ log(`\n✅ ${used} 檔 ・${((Date.now() - t0) / 1000).toFixed(0)}s`);
 log(`   🎯 正期望值看多訊號:${bull.length} 筆 / ${out.bull_syms} 檔(輸出前 ${out.bull.length} 筆)`);
 if (bull.length > out.bull.length) log(`   ⚠️ 有截斷:${bull.length} → ${out.bull.length}(上限 ${BULL_CAP});bull_total/bull_syms 已寫進 JSON,顯示端要用那兩個講總數`);
 log(`   ⚠️ 風險提醒:${out.risk_n} 筆 / ${out.risk_syms} 檔(⛔ 不輸出清單,只給總數當大盤氛圍)`);
+log(`   📅 資料日期 ${out.data_date}(${out.data_date_n}/${used} 檔 = ${out.data_date_pct}% 的最後一根是這天)`);
+if (droppedStale) log(`   🧹 剔除 ${droppedStale} 筆「最後一根不是 ${out.data_date}」的(停牌落後 / 當天未完成的盤中列)`);
+else log(`   🧹 剔除 0 筆(全部訊號都落在 ${out.data_date})`);
+if (out.data_date_pct != null && out.data_date_pct < 50) log(`   ⚠️ 眾數只佔 ${out.data_date_pct}% → 資料日期不集中,顯示端要當心`);
 if (out.bull.length) {
     log('\n🏆 期望值最高的 8 檔:');
     for (const b of out.bull.slice(0, 8)) log(`   ${b.s} ${String(b.c).padStart(8)}  ${b.t}  期望 ${b.exp >= 0 ? '+' : ''}${b.exp}% ・勝率 ${b.w}% ・${b.n} 次`);

@@ -58,6 +58,32 @@ if (real) {
        !Array.isArray(real.risk), `risk 欄位型別 ${typeof real.risk}`);
     ok('① 有給風險總數當大盤氛圍', Number.isFinite(real.risk_n) && Number.isFinite(real.risk_syms),
        JSON.stringify({ n: real.risk_n, s: real.risk_syms }));
+
+    // ── ①c 📅 資料日期(V75.2.8,資料體檢 E2 那 40 筆誤報照出來的真 bug)────────
+    // 🚨 舊版 `data_date` 取的是**全市場最大日期** → 只要有少數股票已寫入當天
+    //    **未完成的盤中列**,它就會被綁架。實測 2026-09-10 台北 10:16 那輪:
+    //    96.2% 的股票最後一根是 09/09,但 2.8% 有 09/10 的盤中列 → data_date = 09-10,
+    //    而前端寫「📅 09/10 收盤資料」—— 那天根本還沒收盤(陷阱 #14)。
+    //    同一份產物裡還混了 1 筆 **09-04**(停牌 5 天)被當成今天的訊號。
+    // ⭐ 判準改成**眾數** + 只收「最後一根 = data_date」的訊號。
+    // ⚠️ 產物要等下一輪採礦才會變成新版 → 這裡**不寫成「現在一定紅」的斷言**
+    //    (CLAUDE.md:永遠紅的測試等於沒有測試),但也⛔ 不可變成永遠不驗 →
+    //    用 `updated` 當分界:比 CUTOFF 新卻還沒有佐證欄位,就是採礦端沒吃到新版 → ❌。
+    const TS_CUTOFF = '2026-09-10T05:00:00Z';
+    const hasNewFields = real.data_date_n !== undefined;
+    if (!hasNewFields && !(real.updated && real.updated > TS_CUTOFF)) {
+        console.log(`⏳ ①c 產物還是舊版(updated ${real.updated})→ 資料日期那幾條先跳過,下一輪採礦後會自動開始驗`);
+    } else {
+        ok('①c ⭐ 採礦端要輸出佐證欄位(data_date_n / data_date_pct / dropped_stale)',
+           hasNewFields && real.data_date_pct !== undefined && real.dropped_stale !== undefined,
+           JSON.stringify({ n: real.data_date_n, pct: real.data_date_pct, drop: real.dropped_stale }));
+        ok('①c ⭐⭐ data_date 必須是眾數,⛔ 不可被少數盤中列綁架(眾數要佔多數)',
+           !real.data_date_pct || real.data_date_pct >= 50, `data_date_pct=${real.data_date_pct}%`);
+        const offDate = (real.bull || []).filter(b => b.d && real.data_date && b.d !== real.data_date);
+        ok('①c ⭐⭐ 榜上每一筆的日期都要等於 data_date(⛔ 停牌落後的舊 K 不可當今天的訊號)',
+           offDate.length === 0,
+           `${offDate.length} 筆對不上:${JSON.stringify(offDate.slice(0, 3))} vs data_date=${real.data_date}`);
+    }
     ok('① ⭐ 必須帶交易成本免責欄位', /未扣交易成本/.test(String(real.cost_note)), real.cost_note);
     ok('① 價格要 round(⛔ 不可出現 62.70000076293945 這種)',
        real.bull.every(x => String(x.c).replace(/^-?\d+\.?/, '').length <= 2),
@@ -246,6 +272,18 @@ ok('⑧ ⭐⛔ 沒交集時整行不顯示(⛔ 不留空殼、不寫「你沒有
 ok('⑧ 沒交集時榜單本身照顯示', m0.length > 80, `len=${m0.length}`);
 
 ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
+
+// ── ①d 採礦端原始碼:⛔ 判準不可退回「全市場最大日期」──────────────
+{
+    const scan = fs.readFileSync(path.join(ROOT, 'scripts/daily_signal_scan.mjs'), 'utf8');
+    const code = scan.split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+    ok('①d ⛔ 不可再用 `last.date > latest` 取全市場最大日期(陷阱 #14)',
+       !/last\.date\s*>\s*latest/.test(code));
+    ok('①d 要統計日期分布(眾數的前提)', /dateCnt/.test(code));
+    ok('①d ⭐ 要剔除「最後一根不是 data_date」的訊號', /dropped_stale|droppedStale/.test(code));
+    ok('①d ⭐ 剔除幾筆要印出來(⛔ 靜默過濾 = 看不出守門有沒有跑到)',
+       /剔除/.test(scan) && /log\(/.test(scan));
+}
 
 await browser.close();
 console.log('');
