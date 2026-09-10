@@ -365,6 +365,87 @@ ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
     fs.rmSync(bad, { recursive: true, force: true });
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// 💧 「買得到嗎」—— 八道關卡追加的第一道(V75.2.9)
+// ──────────────────────────────────────────────────────────────────────────
+// 為什麼要有:實測 2026-09-10 那份 bull 35 筆裡,2 筆成交量 0 張(4150 停牌 6 天)、
+// 10 筆不到 100 張 → 34% 買不太到,而掃描端**通篇沒有任何流動性判斷**
+// (`volume` 只被當排序的第二鍵)。⭐ 這裡驗的是**行為**:同一批訊號、只換「你有多少錢」。
+{
+    const mkSig = (over) => ({
+        updated: '2026-09-10T08:00:00Z', data_date: '2026-09-10', bar_closed: true, cutoff: null,
+        scanned: 2000, edge_syms: 2227, base_win: 36.4, bull_total: 3, bull_syms: 3, bull_cap: 200,
+        risk_n: 0, risk_syms: 0,
+        bull: [
+            // 大型股:一天成交 5 億 → 誰都買得到
+            { s: '1111', c: 100, v: 5000, a20: 50000, d: '2026-09-10', t: '🕯️ 測試訊號', g: 'A', n: 500, w: 45, exp: 2.0, po: 1.5 },
+            // 中小型:一天成交 200 萬 → 15 萬的部位佔 7.5% → ⚠️ 量偏薄(仍在主榜)
+            { s: '2222', c: 50, v: 40, a20: 200, d: '2026-09-10', t: '🕯️ 測試訊號', g: 'A', n: 500, w: 45, exp: 2.0, po: 1.5 },
+            // 停牌股:中位成交金額 0 → ⛔ 一律收起來(不需要任何門檻,那是事實)
+            { s: '3333', c: 1.58, v: 0, a20: 0, d: '2026-09-10', t: '🕯️ 測試訊號', g: 'A', n: 500, w: 45, exp: 2.0, po: 1.5 },
+        ], ...over,
+    });
+    const render = async (sig, acc) => await page.evaluate(async a => {
+        app._todaySig = a.sig;
+        app.settings = Object.assign({}, app.settings, { accountSize: a.acc });
+        const el = document.getElementById('radarTodaySigView') || (() => {
+            const d = document.createElement('div'); d.id = 'radarTodaySigView'; document.body.appendChild(d); return d;
+        })();
+        el.innerHTML = '';
+        await app._renderTodaySignalView();
+        // ⭐ 逐「列」回傳 —— ⛔ 不可用「代號後面 N 個字」當範圍:相鄰那一列的字會咬進來
+        //   (💧d 第一版就是這樣假失敗的,而功能本身完全正確)。
+        return { html: el.innerHTML,
+                 rows: [...el.querySelectorAll('div[onclick*="app.analyze"]')]
+                        .map(d => ({ sym: (d.innerText.match(/\b\d{4}\b/) || [''])[0],
+                                     t: d.innerText.replace(/\s+/g, ' ').trim() })) };
+    }, { sig, acc });
+    const rowOf = (R, sym) => (R.rows.find(r => r.sym === sym) || { t: '' }).t;
+
+    // 💰 本金 100 萬(每筆約 15% = 15 萬)
+    const R = await render(mkSig(), 1000000);
+    const H = R.html, T = txt(H);
+    ok('💧a 停牌股(中位成交金額 0)必須被收進摺疊區,⛔ 不可留在主榜',
+       /你買不太到/.test(T) && /3333/.test(H), T.slice(0, 260));
+    ok('💧b ⛔ 收起來不是刪掉 —— 那一檔仍要出現在頁面上',
+       (H.match(/3333/g) || []).length >= 1);
+    ok('💧c 量偏薄那檔要標出來,而且要寫「沒有算滑價」',
+       /量偏薄/.test(T) && /沒有算滑價|沒算滑價/.test(T), T.slice(0, 400));
+    ok('💧d 大型股⛔ 不可被誤標 —— ⭐ 只取**它自己那一列**(⛔ 別用「代號後 N 字」,會咬到下一列)',
+       !!rowOf(R, '1111') && !/量偏薄|買不太到|填了本金/.test(rowOf(R, '1111')), rowOf(R, '1111'));
+    ok('💧d2 ⭐ 量偏薄的那一列要**自己**帶著佔比數字(⛔ 不是靠別列的字救活)',
+       /7\.5%|佔它一天成交金額/.test(rowOf(R, '2222')), rowOf(R, '2222'));
+    ok('💧e 摺疊區要寫明理由(期望值沒扣滑價 → 這種量做不到)',
+       /沒有扣滑價|沒扣滑價/.test(T) && /不是叫你去買|不是叫你/.test(T));
+
+    // 🚧 沒填本金 → ⛔ 不可下判定,只講事實
+    const R0 = await render(mkSig(), 0);
+    const H0 = R0.html, T0 = txt(H0);
+    ok('💧f 沒填本金:⛔ 不下「買不到」的判定,只說事實 + 指路',
+       /填了本金/.test(T0) && !/量偏薄/.test(T0), T0.slice(0, 300));
+    ok('💧f2 沒填本金時,中位成交金額 0 那檔**仍要**收起來(那是事實不是判斷)',
+       /你買不太到/.test(T0));
+
+    // 🚨 決定性對照組:錢變多 → 同一批訊號要有更多被收起來
+    const HBig = (await render(mkSig(), 20000000)).html;          // 本金 2000 萬 → 每筆 300 萬
+    const nOut = s2 => { const m = s2.match(/另有\s*(\d+)\s*筆「訊號有,但你買不太到」/); return m ? +m[1] : 0; };
+    ok('💧g ⭐⭐ 本金變大(100萬→2000萬)→ 買不到的筆數必須變多(⛔ 判準真的吃「你自己的部位」)',
+       nOut(txt(HBig)) > nOut(T), `小資 ${nOut(T)} 筆 → 大戶 ${nOut(txt(HBig))} 筆`);
+
+    // 🚨 注入自我驗證:舊產物沒有 a20 欄位 → 必須完全不判(向後相容),⛔ 不可把整榜收光
+    const HOld = (await render(mkSig({ bull: mkSig().bull.map(b => { const c = { ...b }; delete c.a20; return c; }) }), 1000000)).html;
+    ok('💧h ⛔ 舊產物沒有 a20 → 一筆都不收(向後相容,⛔ 不可誤把整榜藏起來)',
+       !/你買不太到/.test(txt(HOld)) && /3333/.test(HOld), txt(HOld).slice(0, 240));
+
+    // 採礦端:欄位真的有算出來
+    {
+        const scan = fs.readFileSync(path.join(ROOT, 'scripts/daily_signal_scan.mjs'), 'utf8');
+        ok('💧i 採礦端要輸出 a20(近20日**中位**日成交金額)', /a20/.test(scan) && /slice\(-20\)/.test(scan));
+        ok('💧i2 ⛔ 要用中位不是平均(單日量會跳:停牌 0、法說會暴量)',
+           /_amtArr\[Math\.floor\(_amtArr\.length \/ 2\)\]/.test(scan));
+    }
+}
+
 await browser.close();
 console.log('');
 if (fails.length) { console.log(`❌ TODAYSIG_TEST_FAIL: ${JSON.stringify(fails)}`); process.exit(1); }

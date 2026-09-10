@@ -143,8 +143,14 @@ for (const f of files) {
 
     const last = rows[rows.length - 1];
     dateCnt.set(last.date, (dateCnt.get(last.date) || 0) + 1);
+    // 💧 「買得到嗎」—— 八道關卡追加的第一道,而這張榜以前完全沒有這個守門。
+    //   ⭐ 用**近 20 根已收盤 K 的中位日成交金額**(萬元),⛔ 不用最後一根:
+    //      單日量會跳(停牌那天是 0、法說會那天暴量),中位才代表「平常買不買得到」。
+    //   ⚠️ `rows` 已經被 MAX_DATE_EXCL 切過 → 這 20 根一定是已收盤的。
+    const _amtArr = rows.slice(-20).map(r => r.close * r.volume / 1e4).filter(x => x >= 0).sort((a, b) => a - b);
+    const a20 = _amtArr.length ? Math.round(_amtArr[Math.floor(_amtArr.length / 2)]) : 0;
     for (const h of hits) {
-        const row = { s: sym, c: Math.round(last.close * 100) / 100, v: Math.round(last.volume / 1000), d: last.date, t: h.t, g: h.g, n: h.n, w: h.w, exp: h.exp, po: h.po };
+        const row = { s: sym, c: Math.round(last.close * 100) / 100, v: Math.round(last.volume / 1000), a20, d: last.date, t: h.t, g: h.g, n: h.n, w: h.w, exp: h.exp, po: h.po };
         // ① 看多只收 exp>0(常對但不賺的不進榜)
         if (h.tone === 'bull' && h.exp != null && h.exp > 0) bull.push(row);
         // ② 看空/警示照收(風險提醒不打折),但分開放

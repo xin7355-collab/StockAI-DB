@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.2.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.2.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.2.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8144,8 +8144,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.2.8',
+    _APP_VERSION: 'V75.2.9',
     _CHANGELOG: [
+        { v: 'V75.2.9', d: ['💧 「今天出現實測會賺的訊號」榜加上**買不買得到**的判斷:以前完全沒有這道守門,實測 35 筆裡有 2 筆成交量掛零(其中一檔停牌 6 天)、10 筆不到 100 張,等於三分之一買不太到。','現在會拿這檔近 20 天的**中位**成交金額,跟**你這一筆要投入多少錢**比:佔 1%~10% 標「量偏薄」提醒你榜上那個 % 沒有算滑價;佔超過 10%(你一個人就是那天的十分之一)或根本沒在交易的,收進「你買不太到」那一區。','⛔ 是收起來不是刪掉,點開看得到,每一筆都寫明為什麼。沒填本金的話只告訴你「一天成交多少錢」,不下判定。','🔬 實測總表:兩條已經測完的條目從「推薦下一步」移到「實測沒用」,推薦欄只留真的還沒做的。'] },
         { v: 'V75.2.8', d: ['🎯 修好「今日訊號」的日期:採礦在盤中跑的時候,榜上那些訊號其實是用**還沒收盤的半根 K**算的,卻標成「今天收盤資料」——收盤前那根還會變,訊號可能就消失了。現在一律先把未收盤那根整根切掉,榜上就是**上一個交易日**的收盤訊號,而且卡片上會直接寫明。','⚠️ 上一版(V75.2.7)改成「看多數股票是哪一天」其實沒修好——實測採礦盤中那輪,95.5% 的股票最後一根就是那根未收盤的,所以「多數」跟「最大」選到同一天。'] },
         { v: 'V75.2.7', dt: '2026-09-10', d: ['🪟 <b>彈跳視窗大整理</b>(你說「太頻繁還有重疊」)。先<b>實際量過</b>才動:開 App 14 秒、20 檔庫存+自選 → 會跳 <b>14 個大視窗</b>,其中 <b>13 個是買進類</b>,要按 14 次「知道了」才看得完 —— 真正該打斷你的只有 1 則。', '✅ 改完再量:大視窗 <b>14 → 1 則</b>,而<b>風險/賣出類一則都沒少</b>(那一類刻意不設上限 —— 實測勝率只有 30~33%,整套會賺完全靠「錯的時候小賠出場」,少提醒一次的代價大得多)。', '📥 <b>買進類不再跳大視窗</b>,改成畫面上方的小提示 + 🔔 通知歷史。⚠️ 這是把上一版「你的股票不論買賣都跳」收回一半 —— 那正是吵的來源。', '🧩 <b>同一批訊息合併成一個視窗</b>:其餘幾則直接列在下面,點哪一則就看哪一則,按一次「知道了」<b>整批關掉</b> —— ⛔ 不再「關掉一個又馬上跳一個」,而且一則都不會不見。', '📱 <b>App 開著的時候不再發手機通知</b>(畫面上已經有了,不用再震一次);App 關著時照發。', '🚨 <b>順手修好兩個你不會發現、但更嚴重的問題</b>:① 有時候提醒視窗被別的視窗蓋住,你一個字都沒看到,系統卻已經記成「今天跳過了」→ <b>那則警示當天就永遠不見了</b>;② 停損提醒本來設計成「每 30 分鐘可以再提醒一次」,實際上<b>第二次以後只會變成小提示</b> —— 現在真的會再跳。'] },
         { v: 'V75.2.6', dt: '2026-09-09', d: ['🚨 <b>「融資限額」這份資料從 2026 年 8 月上線到今天,<b>一天都沒有存到</b></b> —— 而且畫面上、紀錄裡<b>完全沒有任何錯誤訊息</b>。真正的原因是證交所把欄位名稱改了(整張表裡再也沒有「融資」兩個字),程式找不到就<b>安靜地放棄</b>。今天修好了,而且改成「找不到就把完整欄位名印出來」,下次再改版不用再猜一輪。','⭐ <b>順便學到的一件事(對你也有用)</b>:一個功能「沒有報錯」<b>不等於</b>「它有在做事」 —— 判斷一份資料活著,要看<b>產物的日期</b>,不是看有沒有紅字。','🔥 <b>「券資比高 = 會軋空」這個說法,用三年資料重測還是不成立</b>(1,736 檔、6.4 萬個事件)。而且要更正上次講的話:上次說「方向剛好相反」,這次量出來其實是<b>接近零</b>,既不會漲也不會跌,扣掉手續費就沒了。⛔ 所以 App 不會為它開任何功能。','🚨 <b>這次差點被兩根壞資料騙到</b>:第一版跑出「某一格特別會賺」,查下去發現是一檔槓桿 ETF 的價格檔案裡有一個 16 倍的斷崖(舊資料沒還原分割),<b>一根壞棒就把那一格從賠錢拉成大賺</b>。現在探針會自動把這種檔案整個剔除。⚠️ 順手量到:全市場個股 2,367 檔裡有 <b>97 檔</b>有這種斷崖。','🔬 實測總表更新:「投量比」從「還測不了」改到「<b>實測沒用</b>」(它其實早就測完了,是我歸類錯);借券 / 鉅額 / 消息面三條的「從來沒存過」也更正成實際天數(37 / 23 / 10 天)。'] },
@@ -43739,15 +43740,53 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const cost = this._roundTripCostPct ? this._roundTripCostPct() : 0.44;
         const net = x => (+x.exp || 0) - cost;
         // 👜 自己手上的排最前面(取代原本那條落落長的「你手上有 A、B、C…」)
-        const worth = list.filter(x => net(x) > 0)
+        let worth = list.filter(x => net(x) > 0)   // ⚠️ 必須 let:下面「買得到嗎」會重新指派(同陷阱 #33)
             .sort((a, b) => (mine.has(String(b.s)) - mine.has(String(a.s))) || (net(b) - net(a)) || ((+b.v || 0) - (+a.v || 0)));
         const thin = list.filter(x => net(x) <= 0);
+        // 💧💧 「買得到嗎」—— 八道關卡追加的第一道,而這張榜以前**完全沒有**這個守門。
+        //   📊 實測 2026-09-10 那份:bull 35 筆裡 **2 筆成交量 0 張**(4150 停牌 6 天、現價 1.58 元)、
+        //      **10 筆不到 100 張**(3646 一天只成交 2 張)→ 34% 買不太到。
+        //   🚨 為什麼這是真問題:`_SIGNAL_EDGE` 的期望值是**全市場平均、沒扣滑價** →
+        //      對一天成交 2 張的股票,那個數字**物理上不可實現**(掛不到單,掛得到也被價差吃光)。
+        //   ⛔ 三個刻意的設計:
+        //   ① **判準用「你自己要買多少」**,⛔ 不寫死張數門檻 —— 冷門股很多,寫死會把
+        //      正常中小型股一起砍掉。實測全市場「近20日中位日成交金額」中位是 **528 萬**,
+        //      但 P10 只有 22 萬 → 同一個絕對門檻對兩端都不對。
+        //   ② **收起來,⛔ 不刪掉**(同 `_SIGNAL_EDGE` 對 C 級的處置)—— 而且每一列寫明原因。
+        //   ③ ⚠️ 1% / 10% 是**市場微結構的通則,不是回測出來的** → 說明頁要照實寫。
+        //      唯一不需要門檻的是 `a20 <= 0`:「完全沒有成交」是事實不是判斷。
+        const _liq = x => {
+            const a20 = +x.a20;                                  // 近20日中位日成交金額(萬元)
+            if (!Number.isFinite(a20)) return { lvl: 'na' };      // 舊產物沒這個欄位 → 不判(向後相容)
+            if (a20 <= 0) return { lvl: 'dead', a20, why: '最近 20 天的中位成交金額是 0,等於沒有在交易' };
+            const ps = this._lotsForPlaybook ? this._lotsForPlaybook(+x.c, 0) : null;
+            if (!ps || !(ps.acc > 0) || !(ps.investAmt > 0)) return { lvl: 'unknown', a20 };
+            const share = ps.investAmt / 1e4 / a20 * 100;        // 你這筆佔它一天成交金額的 %
+            const amtTxt = `你這筆約 ${Math.round(ps.investAmt).toLocaleString()} 元,佔它一天成交金額 ${share < 1 ? share.toFixed(2) : share.toFixed(1)}%`;
+            if (share >= 10) return { lvl: 'dead', a20, share, why: `${amtTxt} —— 你一個人就是那天的十分之一,買單會自己把價格推上去` };
+            if (share >= 1) return { lvl: 'thinish', a20, share, why: amtTxt };
+            return { lvl: 'ok', a20, share };
+        };
+        const _liqOf = new Map(list.map(x => [x, _liq(x)]));
+        const _hardOut = x => (_liqOf.get(x) || {}).lvl === 'dead';
+        const illiq = worth.filter(_hardOut);
+        worth = worth.filter(x => !_hardOut(x));
         const worthSyms = new Set(worth.map(x => String(x.s))).size;
         // 🧹 V72.5.0 兩行式排版(使用者:「文字太多、沒辦法一次顯示完、太亂」)。
         //   ⛔ 舊版把 代號/股名/價/訊號名/扣成本/勝率 全擠成**一行** → 在手機寬度下
         //      股名被 truncate 成「太.」「元…」(截圖實測),等於**看不出是哪一檔**。
         //   ⭐ 改成:第一行「代號 股名 價 …… 期望值」、第二行「訊號名 …… 勝率」。
         //   ⛔「扣成本」三個字拿掉 —— 卡片標題已經寫死是扣完成本的數字,每列再重複一次是純雜訊。
+        // 💧 那一列的流動性註腳 —— ⭐ 只寫**事實**(一天成交多少 / 你這筆佔幾%),
+        //   ⛔ 不改任何數字、⛔ 不下「別買」的指令(那是使用者自己的決定)。
+        const liqNote = x => {
+            const L = _liqOf.get(x) || {};
+            if (L.lvl === 'ok' || L.lvl === 'na') return '';
+            const amt = Number.isFinite(L.a20) ? `一天約成交 <b class="font-mono">${(+L.a20).toLocaleString()}</b> 萬元` : '';
+            if (L.lvl === 'unknown') return `<div class="text-[9px] text-gray-600 mt-0.5 leading-snug">💧 ${amt}・<span class="text-gray-500">填了本金我才算得出你買不買得到</span></div>`;
+            if (L.lvl === 'thinish') return `<div class="text-[9px] text-yellow-300/90 mt-0.5 leading-snug">⚠️ 量偏薄:${amt},${L.why} → <span class="text-gray-400">上面那個 % <b>沒有算滑價</b>,實際會比它差</span></div>`;
+            return `<div class="text-[9px] text-orange-300 mt-0.5 leading-snug">⛔ ${amt},${L.why}</div>`;
+        };
         const mkRow = x => {
             const isMine = mine.has(String(x.s));
             const e = net(x);
@@ -43765,6 +43804,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     <span class="text-[10px] text-red-300/90 truncate">${x.t}</span>
                     <span class="font-mono text-[9px] text-gray-500 flex-shrink-0">勝率 ${x.w}%${this._wrTag(x.w, x.n, (j.base_win || 36.4) / 100)}</span>
                 </div>
+                ${liqNote(x)}
             </div>`;
         };
         // 🐛 V73.3.0 使用者連問兩次「第一名是誰 / 第二名是不是台勝科」——
@@ -43778,6 +43818,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 ? `<div class="text-[10px] text-gray-400 mb-1.5 leading-relaxed">ℹ️ 同一個訊號的幾檔會顯示<b class="text-gray-200">一樣的期望值與勝率</b>(那是訊號的成績,不是個股的)→ 那幾檔之間沒有名次之分。</div>`
                 : '';
         // ⛔ 扣完成本不夠賺的**不刪**(誠實顯示),收進摺疊區並講清楚為什麼不推薦
+        // ⛔ **收起來不是刪掉** —— 而且每一列都寫明「為什麼你買不太到」。
+        const illiqBlock = illiq.length ? `<details class="mt-1.5">
+            <summary class="text-[10px] text-orange-300/80 cursor-pointer">💧 另有 ${illiq.length} 筆「訊號有,但你買不太到」</summary>
+            <div class="text-[9px] text-gray-500 my-1 leading-snug">它們的期望值跟上面一樣是正的,但<b class="text-gray-400">成交量撐不起你的部位</b> —— 掛不到單,掛得到也會被買賣價差吃掉。⭐ 上面那些 % 是<b class="text-gray-400">全市場平均、沒有扣滑價</b>,套在這種量的股票上物理上做不到。⛔ 列出來是讓你知道它們存在,不是叫你去買。</div>
+            <div class="space-y-1">${illiq.slice(0, 10).map(mkRow).join('')}</div>
+            ${illiq.length > 10 ? `<div class="text-[9px] text-gray-600 mt-1">…另有 ${illiq.length - 10} 筆同類</div>` : ''}
+        </details>` : '';
         const thinBlock = thin.length ? `<details class="mt-1.5">
             <summary class="text-[10px] text-gray-500 cursor-pointer">➕ 另有 ${thin.length} 筆「有訊號,但扣完成本不夠賺」</summary>
             <div class="text-[9px] text-gray-600 my-1 leading-snug">歷史期望值是正的,但<b class="text-gray-500">贏不過來回成本 ${cost}%</b> → 做了平均還是賠。⛔ 列出來是讓你知道它們存在,不是叫你做。</div>
@@ -43803,6 +43850,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ${sameSigLine}
             ${worth.length ? `<div class="space-y-1">${worth.map(mkRow).join('')}</div>`
               : `<div class="text-[11px] text-gray-300 bg-[#0d1117] border-l-4 border-gray-500 rounded-r px-2.5 py-2 leading-relaxed">⛔ <b>今天沒有一檔的訊號賺得回交易成本</b>(來回約 ${cost}%)。<br><span class="text-gray-500">榜上那些毛期望值雖然是正的,扣完手續費 + 證交稅平均還是賠 → 今天就別硬找理由進場。</span></div>`}
+            ${illiqBlock}
             ${thinBlock}
             <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📅 ${this._dW ? this._dW(j.data_date) : (j.data_date || '')} 收盤資料${notToday}・全市場 ${(j.scanned || 0).toLocaleString()} 檔掃過 ｜ ⚠️ 基準勝率 ${(j.base_win || 36).toFixed(0)}% <b class="text-gray-500">不是 50%</b>・上面的 % <b class="text-gray-500">已扣來回成本 ${cost}%</b>・歷史統計<b class="text-gray-500">不是保證</b> → <span class="text-gray-500">ⓘ 怎麼看</span></div>`;
     },
@@ -43831,7 +43879,19 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             + `買賣一趟要付 手續費×2 + 證交稅 = 約 ${(app._roundTripCostPct ? app._roundTripCostPct() : 0.44)}%(依你設定的折數)。\n`
             + '實測 2026-08-04:全榜 297 筆裡有 175 筆的期望值只有 +0.079% —— 毛看是賺,扣完成本是【賠】。\n'
             + '所以上面那個檔數是【扣完成本還會賺】的,其餘收在「另有 N 筆」裡,點開看得到但不建議做。\n\n'
-            + '⚠️【一定要知道的三件事】\n'
+            + '💧【「買不買得到」是怎麼判的】\n'
+            + '我拿這檔【近 20 個交易日的中位成交金額】(不是最後一天 —— 停牌那天是 0、法說會那天暴量,中位才代表平常)\n'
+            + '跟【你這一筆要投入多少錢】(照你設定的本金與每筆比例算)比:\n'
+            + '　・佔 1% 以下 → 正常,不特別提\n'
+            + '　・佔 1%~10% → ⚠️ 標「量偏薄」,因為上面那個 % 【沒有算滑價】,實際會比它差\n'
+            + '　・佔 10% 以上 → ⛔ 收進「你買不太到」那一區(你一個人就是那天的十分之一成交量)\n'
+            + '　・中位成交金額是 0 → ⛔ 一律收起來(那是【沒有在交易】,不是判斷)\n'
+            + '🚨【要誠實講的一件事】1% 與 10% 是【市場上通用的經驗法則,不是我回測出來的數字】。\n'
+            + '真正有實測根據的是另一件事:上面那些期望值是【全市場平均、而且沒有扣滑價】,\n'
+            + '所以套在成交量很小的股票上【物理上做不到】—— 這才是要把它們收起來的理由。\n'
+            + '⛔ 收起來不是刪掉,點開看得到,只是不建議做。\n'
+            + '(沒填本金的話我算不出佔比 → 只會告訴你「一天成交多少錢」這個事實,不下判定。)\n\n'
+            + '⚠️【一定要知道的三件事】'
             + `① 基準勝率是 ${(j.base_win || 36).toFixed(0)}%,不是 50%(加權指數是市值加權,中位數個股本來就跑輸)。\n`
             + '② 期望值是【歷史平均】,不是每一次都會賺;而且滑價沒算在內。\n'
             + '③ 這是【歷史統計,不是保證】,而且只看 K 線,沒有看籌碼與基本面。\n\n'
