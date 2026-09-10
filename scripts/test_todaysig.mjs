@@ -446,6 +446,92 @@ ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
     }
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// 🕰️ 空窗期:舊碼產的檔沒有 `bar_closed`,而且**沒切掉未收盤那根**(V75.3.1)
+// ──────────────────────────────────────────────────────────────────────────
+// 為什麼要有:2026-09-10 實測 —— V75.2.8 的採礦碼 07:27 push,但 daily_miner 那輪跑的
+// 還是 03:00 的舊碼(`scripts/*.mjs` 不在它的 push paths)→ gh-pages 上那份是
+// **台北 12:31 盤中**算的,而前端在收盤後照樣寫「📅 09/10 收盤資料」不示警。
+// 🚨 這跟上面 ㊀ 那個情境**相反**:㊀ 是「切掉了 → 榜上是上一個交易日」,
+//    這裡是「沒切 → 榜上就是那根還沒收盤的 K」→ ⛔ 兩者不可共用同一句文案。
+{
+    const mkOld = (over) => {
+        const o = {
+            updated: '2026-09-10T04:31:00Z',   // = 台北 12:31,盤中
+            data_date: '2026-09-10',
+            scanned: 2000, edge_syms: 2227, base_win: 36.4, bull_total: 1, bull_syms: 1, bull_cap: 200,
+            risk_n: 0, risk_syms: 0,
+            bull: [{ s: '1111', c: 100, v: 5000, a20: 50000, d: '2026-09-10', t: '🕯️ 測試訊號', g: 'A', n: 500, w: 45, exp: 2.0, po: 1.5 }],
+            ...over,
+        };
+        // ⛔ 舊檔是**沒有這個鍵**,不是設成 undefined —— 要驗的正是「鍵不存在」那條路
+        if (!('bar_closed' in (over || {}))) delete o.bar_closed;
+        return o;
+    };
+    const draw = async (sig) => await page.evaluate(async a => {
+        app._todaySig = a;
+        const el = document.getElementById('radarTodaySigView') || (() => {
+            const d = document.createElement('div'); d.id = 'radarTodaySigView'; document.body.appendChild(d); return d;
+        })();
+        el.innerHTML = '';
+        await app._renderTodaySignalView();
+        return el.innerText.replace(/\s+/g, ' ').trim();
+    }, sig);
+
+    const A = await draw(mkOld());
+    ok('🕰️a 舊檔(沒有 bar_closed)+ updated 在台北 13:45 前 → 必須示警',
+       /還沒收盤/.test(A), A.slice(-260));
+    ok('🕰️a2 ⭐ 而且要講對是哪一種 —— 要寫「盤中 12:31 算的」,⛔ 不可講成「這是上一個交易日的」',
+       /盤中 12:31/.test(A) && !/這是上一個交易日的/.test(A), A.slice(-260));
+
+    // ⭐ 決定性對照組:同一份測資,**只換 `updated` 那一個維度**
+    const B = await draw(mkOld({ updated: '2026-09-10T06:00:00Z' }));   // = 台北 14:00,已收盤
+    ok('🕰️b ⭐⭐ 只把 updated 換成台北 14:00(已收盤)→ 就**不可**再示警',
+       !/還沒收盤|盤中/.test(B), B.slice(-260));
+
+    // ⭐ 新碼優先:有 bar_closed 就以它為準,備援不可蓋掉它
+    const C = await draw(mkOld({ bar_closed: true, cutoff: null }));    // updated 仍是盤中 12:31
+    ok('🕰️c ⛔ 有 bar_closed:true 時不可走備援 —— 新碼是唯一真相',
+       !/還沒收盤|盤中/.test(C), C.slice(-260));
+    const D = await draw(mkOld({ bar_closed: false, cutoff: '2026-09-10', data_date: '2026-09-09' }));
+    ok('🕰️c2 bar_closed:false 仍要走原本那句(採礦端已經切掉未收盤那根)',
+       /這是上一個交易日的/.test(D) && !/盤中 /.test(D), D.slice(-260));
+
+    // 🧪 注入自我驗證:拿掉備援那條,🕰️a2 必須紅
+    {
+        const HTMLP = path.join(ROOT, 'index.html');
+        const src = fs.readFileSync(HTMLP, 'utf8');
+        const hit = /const _intraday = !!\(_up[^\n]*\n/.exec(src);
+        ok('🕰️d 注入前:找得到要拿掉的那一行', !!hit);
+        if (hit) {
+            const broken = src.replace(hit[0], 'const _intraday = false;\n');
+            const tmp = path.join(ROOT, '_inj_intraday.html');
+            fs.writeFileSync(tmp, broken);
+            const pg = await browser.newPage();
+            await pg.goto('file://' + tmp);
+            // ⛔ 陷阱 #5:`const app = {}` **沒有掛上 window** → 判斷式要用 `typeof app`
+            await pg.waitForFunction(() => typeof app !== 'undefined' && !!app._renderTodaySignalView, null, { timeout: 20000 });
+            const bad = await pg.evaluate(async a => {
+                app._todaySig = a;
+                // ⛔ 陷阱 #8:頁面本來就有一個同 id 的容器 → 無條件 createElement 會拿到「看不見的第二份」,
+                //   函式寫進去的是**頁面上原本那個**,而我讀的是空的新 div = 假綠燈(這條就是這樣抓到的)
+                const el = document.getElementById('radarTodaySigView') || (() => {
+                    const d = document.createElement('div'); d.id = 'radarTodaySigView'; document.body.appendChild(d); return d;
+                })();
+                el.innerHTML = '';
+                await app._renderTodaySignalView();
+                return el.innerText.replace(/\s+/g, ' ').trim();
+            }, mkOld());
+            await pg.close(); fs.unlinkSync(tmp);
+            // 🚧 空過守門:注入版若整個載不起來,`bad` 會是空字串 → 下面那條會**假綠**
+            ok('🕰️d2a 注入版仍要真的渲染出榜單(⛔ 沒這條的話下一條會空過)',
+               /1111/.test(bad) && bad.length > 40, bad.slice(0, 160));
+            ok('🕰️d2 ⭐⭐ 拿掉備援之後,「盤中算的」那句必須消失(= 這條測試真的驗得到東西)',
+               /1111/.test(bad) && !/盤中 12:31/.test(bad), bad.slice(-200));
+        }
+    }
+}
+
 await browser.close();
 console.log('');
 if (fails.length) { console.log(`❌ TODAYSIG_TEST_FAIL: ${JSON.stringify(fails)}`); process.exit(1); }
