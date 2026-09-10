@@ -119,12 +119,24 @@ import re as _re
 #    ⭐ 正解:把印出來的日期真的解析出來,逐個檢查 weekday。
 _days = _re.findall(r'\d{4}-\d{2}-\d{2}', out.split('前 5 天 =')[-1])
 ok('⑧🚧 空過守門:dry-run 真的印出日期', len(_days) >= 3, out[-200:])
-from datetime import date as _date
+from datetime import date as _date, timedelta
 ok('⑧ 待抓清單裡⛔ 不可有週末',
    all(_date.fromisoformat(d).weekday() < 5 for d in _days),
    [d + '/w' + str(_date.fromisoformat(d).weekday()) for d in _days])
 m = _re.search(r'→ (\d+) 個平日', out)
-ok('⑧ 10 個日曆天只排到 ≤8 個平日', m and int(m.group(1)) <= 8, out[:200])
+# 🚨 這條原本寫死「≤8」—— 那是把「10 個日曆天最多 8 個平日」當成前提,
+#    但腳本的迴圈是 `while dd >= d0`(**頭尾都含**)→ `--days 10` 實際掃的是 **11** 天,
+#    最多會有 **9** 個平日 → 這條**跨到某些週幾就會自己紅**(2026-09-10 實跑踩到)。
+#    ⭐ 正解:別釘死一個數字,**拿它自己印出來的區間當唯一真相**逐日數一次 ——
+#    這樣驗的是「週末有沒有被排掉、有沒有多排或少排」(用意),而不是某一天剛好幾天。
+_rng = _re.search(r'回算:(\d{4}-\d{2}-\d{2}) ~ (\d{4}-\d{2}-\d{2})', out)
+_exp = None
+if _rng:
+    _a, _b = _date.fromisoformat(_rng.group(1)), _date.fromisoformat(_rng.group(2))
+    _exp = sum(1 for i in range((_b - _a).days + 1) if (_a + timedelta(days=i)).weekday() < 5)
+ok('⑧ 平日數 = 它自己印的區間裡真正的平日數(⛔ 不可多排週末,也⛔ 不可少排平日)',
+   m and _exp is not None and int(m.group(1)) == _exp,
+   f'印出來 {m and m.group(1)} ・區間 {_rng and _rng.groups()} 應該是 {_exp}')
 ok('④ 冪等:已經有的天數會被扣掉',
    '已經有的' in out and '這次要抓' in out, out[:300])
 ok('⑦ --dry-run ⛔ 不可去偵測付費(那需要 Secrets)', 'FinMind' not in out, out[:300])
