@@ -146,6 +146,68 @@ const R = await page.evaluate(async () => {
     window.fetch = realFetch;
     return o;
 });
+// ══════════════════════════════════════════════════════════════════════════
+// 🏷️ V75.3.3 「卡在哪一層」要說得出來 + 自己那幾檔的名字備援
+// ──────────────────────────────────────────────────────────────────────────
+// 使用者截圖:庫存四檔全變代號、警語卡掛著,而**三層全是靜默的** → 我這邊查不出卡在哪
+// (陷阱 #22)。⭐ 決定性對照組:同一支程式,只換「這一層怎麼失敗」,原因字串必須不同。
+{
+    const probe = async (mode) => await page.evaluate(async (m) => {
+        const A = app;
+        A.allStockList = []; A._nameSrc = null; A._nameWhy = [];
+        try { localStorage.removeItem('proTerm_stockList'); localStorage.removeItem('proTerm_stockList_at'); } catch (_) {}
+        const realFetch = window.fetch;
+        window.fetch = async (u, o) => {
+            const url = String(u);
+            if (/stock_names\.json/.test(url)) {
+                if (m === 'http500') return new Response('x', { status: 500 });
+                if (m === 'thin') return new Response(JSON.stringify({ names: { '1101': ['台泥', '01'] } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+                if (m === 'boom') throw new TypeError('Load failed');
+            }
+            if (/finmindtrade/.test(url)) return new Response(JSON.stringify({ msg: 'token不合法' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            return realFetch(u, o);
+        };
+        try { await A.fetchStockList(); } catch (_) {}
+        window.fetch = realFetch;
+        return { why: (A._nameWhy || []).join(' → '), src: A._nameSrc, warn: A._nameWarnHtml() };
+    }, mode);
+
+    const a = await probe('http500'), b = await probe('thin'), c = await probe('boom');
+    ok('🏷️b1 離線表 HTTP 失敗 → 原因要寫出狀態碼', /離線表 HTTP 500/.test(a.why), a.why);
+    ok('🏷️b2 離線表**筆數不足** → 原因要寫出實際筆數(⛔ 不可跟 HTTP 失敗同一句)',
+       /只有 1 檔/.test(b.why) && b.why !== a.why, `${b.why} ｜ ${a.why}`);
+    ok('🏷️b3 fetch 直接爆掉 → 原因要帶例外訊息', /離線表讀不到/.test(c.why) && /Load failed|TypeError/.test(c.why), c.why);
+    ok('🏷️b4 FinMind 那一層失敗也要留原因(⛔ 三層不可有任何一層是靜默的)', /FinMind/.test(a.why), a.why);
+    ok('🏷️c 警語卡要**印出原因**(⛔ 不可留白)', /卡在哪一層/.test(a.warn) && a.warn.includes(a.why.slice(0, 12)), a.warn.slice(0, 300));
+
+    const diag = await page.evaluate(() => {
+        app._nameWhy = ['離線表 HTTP 500'];
+        app.settings = Object.assign({}, app.settings, { finmindToken: 'SECRET-TOKEN-1234567890' });
+        let cap = ''; const w = navigator.clipboard && navigator.clipboard.writeText;
+        try { navigator.clipboard.writeText = async t => { cap = t; }; } catch (_) {}
+        app.copyNameDiag();
+        try { if (w) navigator.clipboard.writeText = w; } catch (_) {}
+        return cap;
+    });
+    ok('🏷️d1 診斷文字有內容且含「卡在哪一層」', diag.length > 40 && /卡在哪一層/.test(diag), diag.slice(0, 200));
+    ok('🏷️d2 🔐 診斷文字⛔ 不可含金鑰本身,只寫有填/沒填',
+       !/SECRET-TOKEN/.test(diag) && /金鑰:(有填|沒填)/.test(diag), diag);
+
+    // ⭐ 自己那幾檔的名字備援:全市場清單被清空後仍要查得到
+    const mine = await page.evaluate(() => {
+        const A = app;
+        A.allStockList = [{ stock_id: '5483', stock_name: '中美晶', industry_category: '24' }];
+        A.inventory = [{ symbol: '5483' }];
+        A._myNames = null; try { localStorage.removeItem('proTerm_myNames'); } catch (_) {}
+        A._saveMyNames();
+        A.allStockList = []; A._myNames = null;              // ← 只換這一個維度:清單不見了
+        return { after: A.getStockName('5483'), miss: A.getStockName('9999') };
+    });
+    ok('🏷️e ⭐⭐ 全市場清單不見了,自己庫存那幾檔仍要有名字(只換「清單在不在」一個維度)',
+       mine.after === '中美晶', JSON.stringify(mine));
+    ok('🏷️e2 沒存過的仍照舊回代號(⛔ 不可亂編名字)', mine.miss === '9999', JSON.stringify(mine));
+}
+
 await browser.close();
 
 ok('④ 🚨 名字拿不到 → sub 要空(⛔ 代號不可印兩次)',

@@ -94,3 +94,22 @@ ok('⑤ 網路掛掉時仍有東西可端(不吐 503 空白)', r.served === HALF
 console.log();
 if (fails.length) { console.log('❌ SWCACHE_TEST_FAIL:', fails); process.exit(1); }
 console.log('✅ SWCACHE_TEST_PASS');
+// ══════════════════════════════════════════════════════════════════════════
+// 🏷️a V75.3.3 真 bug:`caches.match(...) || new Response(504)` —— Promise 恆為真
+// ──────────────────────────────────────────────────────────────────────────
+// 後果:快取沒命中時 `caches.match` resolve 成 **undefined** → `respondWith(undefined)`
+//   → **呼叫端那個 fetch 直接 reject**,頁面拿不到任何狀態碼,只看到「載入失敗」。
+//   使用者那次「股票名稱清單沒有載入成功」就是這條路可能的成因之一。
+{
+    const src = fs.readFileSync('/home/user/StockAI-DB/sw.js', 'utf8');
+    const m = /e\.respondWith\(fetchWithTimeout\.catch\(([\s\S]{0,320}?)\)\);/.exec(src);
+    ok('🏷️a1 找得到 data/*.json 那條 catch 備援(⛔ 找不到就代表這條測試在驗空氣)', !!m);
+    if (m) {
+        const body = m[1];
+        ok('🏷️a2 ⭐⭐ 必須 `await caches.match(...)` —— ⛔ 少了 await,後面的 504 備援永遠不會執行',
+           /await\s+caches\.match\(/.test(body), body.replace(/\s+/g, ' ').slice(0, 200));
+        ok('🏷️a3 快取沒命中時要回**真的 504**,⛔ 不可讓 respondWith 收到 undefined',
+           /status:\s*504/.test(body), body.replace(/\s+/g, ' ').slice(0, 200));
+    }
+}
+

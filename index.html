@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V75.3.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V75.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.3.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V75.3.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -7100,8 +7100,35 @@ ${list}
                 名字暫時顯示代號,<b class="text-yellow-300">而且搜尋股票會打不出東西</b> —— 這不是你的資料壞掉,
                 庫存的成本與損益都還在。多半是網路或名稱來源暫時不通。
             </div>
-            <button onclick="app.retryStockNames()" class="mt-2 px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-white text-[11px] font-black rounded">🔄 重新載入名稱</button>
+            <div class="text-[10px] text-gray-400 mt-1.5 leading-snug"><b class="text-gray-300">卡在哪一層:</b>${
+                (this._nameWhy && this._nameWhy.length) ? this._escHtml(this._nameWhy.join(' → ')) : '原因不明(這一版之前沒有記錄)'}</div>
+            <div class="flex gap-1.5 mt-2">
+                <button onclick="app.retryStockNames()" class="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-white text-[11px] font-black rounded">🔄 重新載入名稱</button>
+                <button onclick="app.copyNameDiag()" class="px-3 py-1.5 bg-[#0d1117] border border-[#30363d] text-gray-200 text-[11px] font-bold rounded">📋 複製診斷</button>
+            </div>
         </div>`;
+    },
+    /** 📋 V75.3.3 把「卡在哪一層」整理成一段可貼的文字。
+     *  ⛔ 絕不可寫出金鑰本身 —— 只寫「有填 / 沒填」(同 test_no_token_leak 的精神)。 */
+    copyNameDiag() {
+        const L = [];
+        L.push(`🏷️ 股名診斷 ・${this._APP_VERSION || ''}`);
+        L.push(`來源判定:${this._nameSrc || '(還沒跑完)'} ・清單筆數 ${(this.allStockList || []).length}`);
+        L.push(`卡在哪一層:${(this._nameWhy && this._nameWhy.length) ? this._nameWhy.join(' → ') : '沒有記錄'}`);
+        L.push(`網址:${(window.location.href.split('?')[0].split('#')[0]) || ''}`);
+        L.push(`連線:${navigator.onLine ? '有網路' : '離線'} ・安裝方式:${window.matchMedia?.('(display-mode: standalone)')?.matches ? '主畫面 App' : '瀏覽器'}`);
+        L.push(`FinMind 金鑰:${this._getFinmindToken?.() ? '有填' : '沒填'}`);   // ⛔ 只寫有沒有,不寫內容
+        L.push(`我自己那幾檔的名字備援:${Object.keys(this._myNames || {}).length} 筆`);
+        const t = L.join('\n');
+        (async () => {
+            let ok = false;
+            try { await navigator.clipboard.writeText(t); ok = true; } catch (_) {
+                try { const ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                      document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove(); } catch (_e) { ok = false; }
+            }
+            if (ok) this.showToast?.('📋 已複製診斷 —— 貼給我就知道卡在哪', 'info');
+            else this.showToast?.('⚠️ 複製失敗 —— 請直接截圖上面那行「卡在哪一層」');
+        })();
     },
     /** 🔄 手動重抓股名(清掉可能已損毀的快取再走一次多層)。 */
     async retryStockNames() {
@@ -8146,8 +8173,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V75.3.2',
+    _APP_VERSION: 'V75.3.3',
     _CHANGELOG: [
+        { v: 'V75.3.3', d: ['🏷️ <b>修掉一個會讓「股票名字變代號」的真問題</b>:離線工作程式(Service Worker)在快取沒命中時回的是「空的」而不是錯誤碼 —— 網路抖一下,名稱清單那支請求就會直接爆掉,而畫面上完全看不出原因。','🔎 名稱載不到時,警語卡現在會<b>直接寫出卡在哪一層</b>(離線表 HTTP 幾號 / 只抓到幾檔 / FinMind 回什麼),還多一顆「📋 複製診斷」可以貼給我。⛔ 診斷裡只寫金鑰「有填/沒填」,不會寫出金鑰本身。','🛟 <b>你自己庫存與自選那幾檔的名字,現在另外存了一份</b> —— 就算全市場兩千多檔的清單載不到,你手上那幾檔仍然看得到中文名。'] },
         { v: 'V75.3.2', d: ['📄 <b>個股「報告」頁大改版</b>:結論從第 8 個搬到<b>最上面</b>並放大;關鍵數字從 10 格擠成 3 欄 → <b>4 格重點</b>(⭐ 而且會自動挑「這一檔真的有資料」的那幾格,不再出現一排「沒有」),其餘收進摺疊。','🗂️ 每一節的標題<b>直接寫出那一節的答案</b>(例如「本益比 20.2x ・落在自己近 3 年的第 72 百分位」),⛔ 不再只是「籌碼」「基本面」這種名詞 —— 摺疊起來也看得出裡面有沒有事。','⚠️ <b>只有「風險」那一節會自動展開</b>,而且只在真的有事時(預警 / 官方注意處置 / 法說會將到)。','📋 新增<b>一鍵複製整份報告</b>(純文字,可貼 LINE 或筆記),免責跟著一起複製出去。'] },
         { v: 'V75.3.1', d: ['📅 今日訊號榜:採礦碼剛更新、但採礦還沒重跑的那段空窗期,舊檔會拿「還沒收盤的那根K」算 —— 現在會直接寫出「這份是盤中幾點算的,收盤後會變」,⛔ 不再寫成「收盤資料」。'] },
         { v: 'V75.3.0', d: ['🚪 **回測頁那份排名以前是用錯的出場算的**:它把出場寫死成「跌破 5 日線」,而那是 28 種出場全測裡**賺最少**的一種(193 萬 vs 唐奇安 590 萬),你實際用的早就換成唐奇安了。','現在改成**跟你設定的出場走**。實測 2408:主打從「VCP 突破 +1.9%」變成「口袋支點 +7.7%(勝率 83%)」,突破下降趨勢線 +0.9% → +6.6%。⚠️ 數字整排變大不是變厲害了,是之前基準錯了。','📉 同一頁新增一段摺疊「這張排名有多可信?」——老實寫我回頭驗過它自己:「每檔挑自己最適合的招」實測穩定度只有 4.3%,比隨便猜的 5.0% 還低;而「全市場最會賺的那一招」兩個方向都贏過逐檔挑。⛔ 表沒刪,但別把第一名當保證。'] },
@@ -9487,9 +9515,31 @@ ${list}
         if (sym === '^TWII')  return '加權指數';
         if (sym === '^TWO')   return '櫃買指數';
         if (sym === '^TWOII') return '櫃買指數';
-        // 找不到對照(新股、特殊代號)→ 回傳代號本身,而非「未知」
         const f = this.allStockList.find(s => s.stock_id === sym);
-        return f ? f.stock_name : (sym || '未知');
+        if (f) return f.stock_name;
+        // 🏷️ V75.3.3 全市場清單載不到時的**最後一道**:自己庫存/自選那幾檔的名字另存一份小的。
+        //   ⭐ 那份是「上次成功載入時順手記下來的」,只有幾十筆 → ⛔ 不會像兩千檔那筆被 iOS 寫成半截。
+        const mine = this._myNames || (this._myNames = this._lsJson('proTerm_myNames', {}) || {});
+        if (mine && mine[sym]) return mine[sym];
+        // 找不到對照(新股、特殊代號)→ 回傳代號本身,而非「未知」
+        return sym || '未知';
+    },
+    /** 🏷️ V75.3.3 把「自己手上那幾檔」的名字另存一份(⛔ 只存自己的,不是全市場)。
+     *  在名單成功載入後呼叫;⛔ 名單是空的時候不可覆寫(那會把好的洗掉)。 */
+    _saveMyNames() {
+        try {
+            if (!this.allStockList || !this.allStockList.length) return;
+            const syms = new Set();
+            (this.inventory || []).forEach(x => x && x.symbol && syms.add(String(x.symbol)));
+            Object.values(this.favGroups || {}).forEach(g => (Array.isArray(g) ? g : []).forEach(x => {
+                const v = (x && typeof x === 'object') ? (x.symbol || x.sym || x.id) : x; if (v) syms.add(String(v));
+            }));
+            if (!syms.size) return;
+            const out = Object.assign({}, this._myNames || {});
+            syms.forEach(sy => { const f = this.allStockList.find(s => s.stock_id === sy); if (f && f.stock_name && f.stock_name !== sy) out[sy] = f.stock_name; });
+            this._myNames = out;
+            localStorage.setItem('proTerm_myNames', JSON.stringify(out));
+        } catch (_) {}   // ⛔ 空間不足只影響這層備援,不可影響主流程
     },
     getFullStockName(sym) { return `${this.getStockName(sym)} (${sym})`; },
 
@@ -11721,6 +11771,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
         //   實測重現:把 proTerm_stockList 灌成 '{"a":1,"b":[1,2' 再載入 → 必現。
         //   (Safari 對這種情況說 "Unexpected EOF",Chrome 說 "Expected ',' or ']'",同一件事。)
         //   → 三處全改走 _lsJson():壞掉自動清除該 key,下次自然重抓,對使用者零影響。
+        this._nameWhy = [];   // 🏷️ V75.3.3 每次重來先清,⛔ 否則按「重新載入」會越積越長
         const cached = this._lsJson('proTerm_stockList', null);
         const cachedAt = parseInt(localStorage.getItem('proTerm_stockList_at') || '0', 10);
         const fresh = Array.isArray(cached) && cached.length && cachedAt
@@ -11761,6 +11812,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                        + (_tk ? `&token=${_tk}` : '');
             const res = await this.safeFetch(_url, {}, { timeout: 10000, maxRetries: 2 });
             const json = await res.json();
+            if (json.msg !== 'success') (this._nameWhy = this._nameWhy || []).push(`FinMind 回 ${json.msg || res.status || '異常'}`);
             if (json.msg === 'success') {
                 this._nameSrc = 'finmind';
                 const map = new Map();
@@ -11774,6 +11826,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                 this.allStockList = cached; this._nameSrc = 'stale';
             }
         } catch (e) {
+            (this._nameWhy = this._nameWhy || []).push(`FinMind 連不上:${(e && e.name) || ''} ${(e && e.message) || e}`.trim());
             if (Array.isArray(cached) && cached.length) {
                 this.allStockList = cached; this._nameSrc = 'stale';   // 網路失敗也退回舊 cache
             }
@@ -11792,14 +11845,18 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
      *  `{stock_id, stock_name, industry_category}` 形狀(⛔ 不改既有 19 + 6 + 5 個欄位讀取點)。
      *  ⚠️ 拿不到就回 null 讓上層往下一層走,⛔ 不 throw。 */
     async _fetchNameTable() {
+        // 🚨 V75.3.3 這支原本**每一條失敗路徑都是靜默的**(`return null` / `catch (_)`)——
+        //   使用者只看到「名字變代號」,而我這邊連「卡在哪一層」都查不出來(陷阱 #22)。
+        //   → 一律把原因寫進 `_nameWhy`,警語卡直接顯示 + 可一鍵複製給我。
+        const why = t => { (this._nameWhy = this._nameWhy || []).push(t); return null; };
         try {
             const gb = window.location.href.split('?')[0].split('#')[0];
-            const r = await fetch(new URL('data/stock_names.json', gb).href + `?t=${Date.now()}`,
-                                  { signal: AbortSignal.timeout(8000) });
-            if (!r.ok) return null;
+            const url = new URL('data/stock_names.json', gb).href + `?t=${Date.now()}`;
+            const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+            if (!r.ok) return why(`離線表 HTTP ${r.status}`);
             const j = await r.json();
             const nm = j && j.names;
-            if (!nm || typeof nm !== 'object') return null;
+            if (!nm || typeof nm !== 'object') return why('離線表格式不對(沒有 names 這一段)');
             const out = [];
             for (const k in nm) {
                 const v = nm[k];
@@ -11811,15 +11868,16 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             // 🚧 空過守門:半份表比沒有更糟(會讓「查不到」看起來像「這檔不存在」)
             if (out.length < 500) {
                 console.warn(`[股名] 離線表只有 ${out.length} 檔(<500)→ 不採用,改走 FinMind`);
-                return null;
+                return why(`離線表只有 ${out.length} 檔(<500 不採用)`);
             }
             this._nameTableAt = j.updated || '';
             return out;
-        } catch (_) { return null; }
+        } catch (e) { return why(`離線表讀不到:${(e && e.name) || ''} ${(e && e.message) || e}`.trim()); }
     },
 
     /** 把 allStockList 寫進 localStorage(⛔ 空間不足要清殘骸,同 V71.6.9 的教訓)。 */
     _saveStockList() {
+        this._saveMyNames();   // 🏷️ V75.3.3 順手把自己那幾檔另存一份(⛔ 大表寫失敗也還有這個)
         try {
             localStorage.setItem('proTerm_stockList', JSON.stringify(this.allStockList));
             localStorage.setItem('proTerm_stockList_at', String(Date.now()));

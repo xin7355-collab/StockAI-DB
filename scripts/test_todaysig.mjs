@@ -455,13 +455,22 @@ ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
 // 🚨 這跟上面 ㊀ 那個情境**相反**:㊀ 是「切掉了 → 榜上是上一個交易日」,
 //    這裡是「沒切 → 榜上就是那根還沒收盤的 K」→ ⛔ 兩者不可共用同一句文案。
 {
+    // 🚨 V75.3.3 這裡原本把日期寫死成 '2026-09-10' —— **跨日之後就自己紅了**
+    //   (第三條 stale 判準是 `data_date !== 台北今天`)。
+    //   ⭐ 這一組要驗的是「`updated` 落在收盤前還是收盤後」**這一個維度**,
+    //     ⛔ 不是「那天是幾號」→ 日期一律動態算今天(斷言釘用意,不是釘當天的資料)。
+    const TPE_TODAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
+    const tpeAt = (hh, mm) => {   // 台北 hh:mm 的那一刻(轉成 UTC 的 ISO)
+        const [Y, M, D] = TPE_TODAY.split('-').map(Number);
+        return new Date(Date.UTC(Y, M - 1, D, hh - 8, mm, 0)).toISOString();
+    };
     const mkOld = (over) => {
         const o = {
-            updated: '2026-09-10T04:31:00Z',   // = 台北 12:31,盤中
-            data_date: '2026-09-10',
+            updated: tpeAt(12, 31),   // = 台北 12:31,盤中
+            data_date: TPE_TODAY,
             scanned: 2000, edge_syms: 2227, base_win: 36.4, bull_total: 1, bull_syms: 1, bull_cap: 200,
             risk_n: 0, risk_syms: 0,
-            bull: [{ s: '1111', c: 100, v: 5000, a20: 50000, d: '2026-09-10', t: '🕯️ 測試訊號', g: 'A', n: 500, w: 45, exp: 2.0, po: 1.5 }],
+            bull: [{ s: '1111', c: 100, v: 5000, a20: 50000, d: TPE_TODAY, t: '🕯️ 測試訊號', g: 'A', n: 500, w: 45, exp: 2.0, po: 1.5 }],
             ...over,
         };
         // ⛔ 舊檔是**沒有這個鍵**,不是設成 undefined —— 要驗的正是「鍵不存在」那條路
@@ -485,7 +494,7 @@ ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
        /盤中 12:31/.test(A) && !/這是上一個交易日的/.test(A), A.slice(-260));
 
     // ⭐ 決定性對照組:同一份測資,**只換 `updated` 那一個維度**
-    const B = await draw(mkOld({ updated: '2026-09-10T06:00:00Z' }));   // = 台北 14:00,已收盤
+    const B = await draw(mkOld({ updated: tpeAt(14, 0) }));   // = 台北 14:00,已收盤
     ok('🕰️b ⭐⭐ 只把 updated 換成台北 14:00(已收盤)→ 就**不可**再示警',
        !/還沒收盤|盤中/.test(B), B.slice(-260));
 
@@ -493,7 +502,7 @@ ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
     const C = await draw(mkOld({ bar_closed: true, cutoff: null }));    // updated 仍是盤中 12:31
     ok('🕰️c ⛔ 有 bar_closed:true 時不可走備援 —— 新碼是唯一真相',
        !/還沒收盤|盤中/.test(C), C.slice(-260));
-    const D = await draw(mkOld({ bar_closed: false, cutoff: '2026-09-10', data_date: '2026-09-09' }));
+    const D = await draw(mkOld({ bar_closed: false, cutoff: TPE_TODAY, data_date: '2020-01-02' }));   // 明顯不是今天
     ok('🕰️c2 bar_closed:false 仍要走原本那句(採礦端已經切掉未收盤那根)',
        /這是上一個交易日的/.test(D) && !/盤中 /.test(D), D.slice(-260));
 

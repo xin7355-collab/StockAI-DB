@@ -111,7 +111,13 @@ self.addEventListener('fetch', e => {
             fetch(e.request),
             new Promise((_, rej) => setTimeout(() => rej(new Error('SW fetch timeout 18s')), 18000))
         ]);
-        e.respondWith(fetchWithTimeout.catch(() => caches.match(e.request) || new Response('{}', { status: 504, headers: { 'Content-Type': 'application/json' } })));
+        // 🚨 V75.3.3 真 bug:原本寫 `caches.match(e.request) || new Response(504)` ——
+        //   `caches.match()` 回的是 **Promise,恆為真** → 後面那個 504 備援**永遠不會執行**;
+        //   而快取沒命中時它 resolve 成 **undefined** → `respondWith(undefined)`
+        //   → **呼叫端那個 fetch 直接 reject**,頁面只看到「載入失敗」而拿不到任何狀態碼。
+        //   ⛔ 別把 await 拿掉(測試 🏷️a 釘住)。
+        e.respondWith(fetchWithTimeout.catch(async () =>
+            (await caches.match(e.request)) || new Response('{}', { status: 504, headers: { 'Content-Type': 'application/json' } })));
         return;
     }
 
