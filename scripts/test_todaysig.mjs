@@ -285,6 +285,86 @@ ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
        /剔除/.test(scan) && /log\(/.test(scan));
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// ㊀㊁㊂ 🚨 陷阱 #14(第二次)—— **決定性對照組**,⛔ 不是只驗「有沒有那個欄位」
+// ──────────────────────────────────────────────────────────────────────────
+// 為什麼要有這一段:V75.2.7 第一版把 data_date 從 max 改成「眾數」,①d 那幾條**照樣全綠**,
+// 但實際上**完全沒修好** —— 實測 daily_miner 盤中那輪,95.5% 的股票最後一根就是那根
+// 未收盤的盤中列 → 眾數 = max。⭐ 所以這裡驗的是**行為**:同一批測資、只換「幾點跑」,
+// 未收盤那次必須退回**上一個交易日**。
+// ⭐ 做法:在 /tmp 開一個**真的 ROOT**(scanner 的 ROOT 是從自己的檔案路徑推的)
+//    → 複製 index.html + 腳本進去,餵**整組合成**的 data/(⛔ 不可只換一半被真實資料汙染)。
+{
+    const os = await import('os');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'todaysig-'));
+    fs.mkdirSync(path.join(tmp, 'scripts'));
+    fs.mkdirSync(path.join(tmp, 'data'));
+    fs.copyFileSync(path.join(ROOT, 'index.html'), path.join(tmp, 'index.html'));
+    fs.copyFileSync(path.join(ROOT, 'scripts/daily_signal_scan.mjs'), path.join(tmp, 'scripts/daily_signal_scan.mjs'));
+
+    // 整組合成:140 根連續日 K(切掉最後一根仍有 139 根 > 120 的門檻)
+    const mkRows = (endDate, n = 140) => {
+        const rows = []; const d = new Date(endDate + 'T00:00:00Z');
+        for (let i = n - 1; i >= 0; i--) {
+            const t = new Date(+d - i * 86400e3);
+            const c = 100 + Math.sin(i / 7) * 8 + (n - i) * 0.05;
+            rows.push({ date: t.toISOString().slice(0, 10).replace(/-/g, '/'),
+                        open: +(c * 0.995).toFixed(2), high: +(c * 1.02).toFixed(2),
+                        low: +(c * 0.98).toFixed(2), close: +c.toFixed(2), volume: 5000000 });
+        }
+        return rows;
+    };
+    const LAST = '2026-09-10', PREV = '2026-09-09';
+    for (const sym of ['1111', '2222', '3333']) {
+        fs.writeFileSync(path.join(tmp, 'data', `${sym}.json`), JSON.stringify(mkRows(LAST)), 'utf-8');
+    }
+    const run = (asof, root = tmp) => {
+        try {
+            execSync(`node ${path.join(root, 'scripts/daily_signal_scan.mjs')} 3`,
+                     { env: { ...process.env, SCAN_ASOF: asof }, stdio: 'pipe', timeout: 180000 });
+        } catch (e) { return { _err: String((e && e.stderr) || e).slice(0, 300) }; }
+        try { return JSON.parse(fs.readFileSync(path.join(root, 'data/today_signals.json'), 'utf-8')); }
+        catch (e) { return { _err: 'no output: ' + e.message }; }
+    };
+
+    // ㊀ 盤中(台北 12:31,未收盤)→ 必須退回上一個交易日
+    const mid = run(`${LAST}T12:31:00+08:00`);
+    ok('㊀ 盤中跑:data_date 必須退回上一個交易日(⛔ 不可是還沒收盤的今天)',
+       mid.data_date === PREV, JSON.stringify({ d: mid.data_date, err: mid._err }));
+    ok('㊀b 盤中跑:bar_closed=false ・ cutoff = 被切掉的那天',
+       mid.bar_closed === false && mid.cutoff === LAST, JSON.stringify({ b: mid.bar_closed, c: mid.cutoff }));
+
+    // ㊁ 收盤後(台北 14:00)→ 今天那根照用
+    const late = run(`${LAST}T14:00:00+08:00`);
+    ok('㊁ 收盤後跑:data_date = 今天 ・ bar_closed=true ・ cutoff=null',
+       late.data_date === LAST && late.bar_closed === true && late.cutoff === null,
+       JSON.stringify({ d: late.data_date, b: late.bar_closed, c: late.cutoff, err: late._err }));
+
+    // ㊂ 注入自我驗證:把「切掉未收盤那根」拿掉 → ㊀ 必須紅燈
+    //   🚨 CLAUDE.md 鐵則:注入後要先確認 **① 真的注進去了 ② 注完仍可執行**,
+    //      否則「沒抓到」會被誤讀成偵測器有洞(V75.2.6 踩過)。
+    const bad = fs.mkdtempSync(path.join(os.tmpdir(), 'todaysig-bad-'));
+    fs.mkdirSync(path.join(bad, 'scripts')); fs.mkdirSync(path.join(bad, 'data'));
+    fs.copyFileSync(path.join(tmp, 'index.html'), path.join(bad, 'index.html'));
+    for (const sym of ['1111', '2222', '3333']) {
+        fs.copyFileSync(path.join(tmp, 'data', `${sym}.json`), path.join(bad, 'data', `${sym}.json`));
+    }
+    const SRC = fs.readFileSync(path.join(tmp, 'scripts/daily_signal_scan.mjs'), 'utf-8');
+    const GUARD = 'if (MAX_DATE_EXCL && d >= MAX_DATE_EXCL) continue;';
+    ok('㊂a 注入前:守門那行確實在原始碼裡(⛔ 找不到就代表這條測試在驗空氣)', SRC.includes(GUARD));
+    fs.writeFileSync(path.join(bad, 'scripts/daily_signal_scan.mjs'), SRC.replace(GUARD, ''), 'utf-8');
+    const badSrc = fs.readFileSync(path.join(bad, 'scripts/daily_signal_scan.mjs'), 'utf-8');
+    ok('㊂b 注入後:那行真的不見了,而且腳本仍然可執行(語法沒被切壞)',
+       !badSrc.includes(GUARD)
+       && (() => { try { execSync(`node --check ${path.join(bad, 'scripts/daily_signal_scan.mjs')}`, { stdio: 'pipe' }); return true; } catch (_) { return false; } })());
+    const injected = run(`${LAST}T12:31:00+08:00`, bad);
+    ok('㊂c ⭐⭐ 拿掉守門後,盤中那次必須「重現症狀」(data_date 變成還沒收盤的今天)',
+       injected.data_date === LAST, JSON.stringify({ d: injected.data_date, err: injected._err }));
+
+    fs.rmSync(tmp, { recursive: true, force: true });
+    fs.rmSync(bad, { recursive: true, force: true });
+}
+
 await browser.close();
 console.log('');
 if (fails.length) { console.log(`❌ TODAYSIG_TEST_FAIL: ${JSON.stringify(fails)}`); process.exit(1); }
