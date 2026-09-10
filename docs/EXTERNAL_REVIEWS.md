@@ -805,6 +805,53 @@ CB 轉換價 parity(=V71.9.1)、處置聽牌/連兩天第一款(=官方 attentio
 **「邏輯不打架、資訊不爆炸」**的反面(同 V69.7.5 主力成本、V72.0.8 三個「主力」那類同名不同義)。
 ⭐ 但「收工前更新進度」這個**行為**是對的 → 接到**既有**的 `docs/DECISIONS.md` 待辦節,⛔ 不新開檔。
 
+
+#### 🎨 追記(同日稍晚,使用者說「好,那幫我裝 frontend-design 吧」+「網頁介面專業美觀要裝什麼」)
+
+**① 我原本說「我裝不到」是錯的 —— 專案層裝得到,而且那正是官方對雲端 session 的指定做法**
+
+| 查證 | 結果 |
+|---|---|
+| 容器有沒有 `claude` CLI | ✅ **v2.1.268**,有 **`claude plugin install <p> --scope project`** shell 指令(⛔ 不必打 `/plugin`) |
+| 官方市集在雲端 session | ⚠️ `claude plugin marketplace list` 一開始是 **「No marketplaces configured」** —— 自動註冊只發生在**互動式**啟動 |
+| 官方文件 | 逐字:「If Claude replies that `/plugin` isn't available in this environment, … or **declare the plugin under `enabledPlugins` in `.claude/settings.json` for cloud sessions**」 |
+
+🚨 **scope 只能選 project,⛔ 不能選 user**:容器是 **ephemeral** 的,`~/.claude/` 下次 session 就沒了。
+⚠️ 而且 `claude plugin install --scope project` 只寫 `enabledPlugins`,**市集是寫進 user settings** ——
+新的雲端 session 會拿到一個「指向不存在市集」的設定 → **手動把 `extraKnownMarketplaces` 也補進專案設定**,
+讓 `.claude/settings.json` 自給自足。⚠️ `.claude/` 在 `.gitignore` 裡 → **`git add -f`**(⛔ 漏了就只活在這台機器上)。
+
+**② 🚨 我對這個外掛的描述**(上一則寫進 CLAUDE.md 的那句)**是錯的,而且錯得離譜**
+
+我引的是**部落格的二手摘要**(「bold aesthetic choices・distinctive typography・**high-impact animations**」),
+說它「跟視覺降噪鐵則**直接對立**」。⛔ 讀完它真正的 `SKILL.md` 之後:**它其實是降噪派的**——
+> 「**Spend your boldness in one place**,其餘保持安靜克制,**砍掉任何不服務主題的裝飾**」
+> 「**gradient washes as decoration**」= 它列為「一眼看出是 AI 做的」tell(**跟本站「⛔ 禁用霓虹漸層」同一邊**)
+> 「非使用者觸發的動畫要**極少且刻意**;每段 fade-and-slide-up、每張卡 hover 特效 = AI 味」
+
+⭐⭐ **通用教訓(這次自己犯的)**:**引用要引一手來源**。二手摘要會把意思帶偏,
+而我還把那個偏掉的版本**寫進了 CLAUDE.md 的鐵則區** —— 那會變成長期誤導,比講錯一次嚴重。
+⛔ 下次寫「某個外部工具的取向是 X」之前,**先把它的原始檔讀過**(這次只花一個 `find` + `head`)。
+
+**③ 真正的衝突是另一件事,而且更具體**(已改寫進 CLAUDE.md UI 規範那節)
+
+它把三樣列為「AI 生成的 tell」,而那三樣正是本專案**刻意**的設計(仿券商 App):
+near-black 背景 ・ 一堆一模一樣的圓角卡 ・ 小資料標籤用等寬字。
+⭐ 判準:它服務「**做出不像 AI 做的網頁**」;本站是**每天用的密集型金融終端機**,
+**一致與可掃視 > 獨特** → 版面決策以 CLAUDE.md 為準,它的「克制/砍裝飾/動畫要有理由/標籤不全大寫」照收。
+
+**④ 「網頁介面專業美觀要裝什麼」的誠實答案**
+
+- **官方就這一支**(`frontend-design`),⛔ 不用再裝別的;`figma` / `canva` 這個帳號**已經連著**了。
+- ⭐⭐ **但對 StockAI-DB 來說,真正的瓶頸不是「美不美」是「資訊密度」**:
+  使用者反覆講的是「版面不好看 / 文字太多 / 資訊爆炸」,而 `scripts/card_inventory.mjs`
+  實測 2330 **單頁攤開 12,419 字**(最重四張 playbookCard 1,522・chipVerdictCard 1,446・
+  chuMergedCard 1,283・dayTradeBody 1,276)。
+  ⛔ **裝任何設計外掛都不會讓那 12,419 字變少** —— 那要靠既有的 `_TIDY` 精簡機制與砍卡流程。
+
+⚠️ **這個 session 不會立刻生效,而且我沒辦法讓它生效**:啟用要 `/reload-plugins` 或開新 session,
+而官方文件寫明該指令「從遠端連線送進來時會拒絕執行」→ ⛔ 不假裝已經啟用。
+
 #### ⚠️ 環境錯配:那份安裝步驟改不到這個專案
 
 安裝步驟是給**使用者的 Windows 機器**(`C:\Users\23\Desktop\AI專案區\`)本機 Claude Code 的。
@@ -820,7 +867,7 @@ CB 轉換價 parity(=V71.9.1)、處置聽牌/連兩天第一款(=官方 attentio
 | ① OmniRoute | ⛔ **不裝** | 降級到 56 家 keyless 免費供應商時,**程式碼與提示字會送到那些人手上**;「不斷線 ≠ 不降級」(切到非工具型模型時 Claude Code 最核心的讀寫能力會斷)。⚠️ 「違反 Anthropic ToS」這條 README 沒提,**未經證實**,⛔ 不當成事實引用 |
 | ② claude-mem | ⛔ **不裝** | 功能是真的(五個生命週期鉤子 + SQLite),但本專案的 `CLAUDE.md` + `docs/DECISIONS.md` 已經做到同一件事,而且**是 git 版控的、可以 diff、可以 revert**。🚨 它會記錄**工具輸出** → Claude 讀過含金鑰的檔案就可能把金鑰寫進記憶庫;壓縮本身還要另外呼叫 Claude 吃 token(跟「省額度」這個痛點自相矛盾) |
 | ③ Playwright MCP | 🟰 **本專案已經有,而且更好** | 他**其它**專案值得裝;本 repo ⛔ 不新增 `.mcp.json`。⚠️ 頁面快照很吃 token,就算裝了也該驗收時才開 |
-| ④ frontend-design | ✅ **可以裝,但本專案要加護欄** | Anthropic 官方、純設計指引、沒有執行風險。⚠️ **但它的官方描述是「bold aesthetic choices・distinctive typography・high-impact animations」,跟本專案 UI 規範的「視覺降噪鐵則 ⛔ 禁用霓虹漸層」直接對立** → 已在 UI 規範那節加註「本專案一律以本節為準」 |
+| ④ frontend-design | ✅ **已裝(專案層)** | Anthropic 官方、純設計指引、沒有執行風險。⚠️ 我第一版寫「跟視覺降噪鐵則直接對立」是**引二手摘要引錯了**,詳見下方追記 |
 
 #### ⭐ 額度問題的正解(⛔ 不是把流量導去第三方)
 `/model` 手動切:雜事 / 跑測試 → Sonnet,架構決策與大改 → Opus。
