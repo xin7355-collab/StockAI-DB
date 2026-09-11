@@ -37,6 +37,28 @@ for (const s of ['2327', '2330', '0050', '009816']) if (!fs.existsSync(path.join
     ok('⑭s ovWhyBox 在 analyze() 切股清空清單裡(陷阱 #19)', /'rpSrc',\s*\n\s*'ovWhyBox'/.test(SRC), '');
 }
 
+// ── 🎨 V76.0.8 靜態 ──
+{
+    const strip = (x) => x.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '');
+    const fnV = strip(SRC.slice(SRC.indexOf('    _renderXrayVerdict() {'), SRC.indexOf('    _renderXrayVerdict() {') + 2600));
+    ok('㉒a 體質分只有一份公式:_renderXrayVerdict 必須呼叫 _xrayScoreOf,⛔ 不可自己再算一遍',
+       /this\._xrayScoreOf\(/.test(fnV) && !/let score = 0, max = 0/.test(fnV), '');
+    const fnE = strip(SRC.slice(SRC.indexOf('    _renderXrayExpectation(revData) {'), SRC.indexOf('    _renderXrayExpectation(revData) {') + 1200));
+    ok('㉒b 預期分同理:_renderXrayExpectation 必須呼叫 _expectScoreOf', /this\._expectScoreOf\(/.test(fnE) && !/let risk = 0/.test(fnE), '');
+    const fnStrip2 = strip(SRC.slice(SRC.indexOf('    _gaugeStripHtml(sym) {'), SRC.indexOf('    _riskHot(sym) {')));
+    ok('㉒c 顯示層⛔ 不可自己去讀採礦快取算分數(算的地方在上游 _seedXrayFromCache)',
+       !/_loadFundCache|_loadFundYoyGm|_xrayScoreOf|_expectScoreOf/.test(fnStrip2), '');
+    const fnAuto = strip(SRC.slice(SRC.indexOf('    async _autoLoadFundamentals(sym) {'), SRC.indexOf('    async _autoLoadFundamentals(sym) {') + 1400));
+    // 🚨 seed 必須排在那句 `if (!res.ok) return;` **之前** —— 沒有 chips 檔的股票(2,300 檔裡的絕大多數)
+    //    會在那裡直接 return,排後面等於對它們完全沒作用(使用者回報的 2426 正是這一類)。
+    ok('㉑s seed 排在 chips fetch 的 early-return 之前(⛔ 排後面對沒有 chips 檔的股票完全沒作用)',
+       fnAuto.indexOf('_seedXrayFromCache') > 0 && fnAuto.indexOf('_seedXrayFromCache') < fnAuto.indexOf('if (!res.ok) return;'), '');
+    // 版面幾何一律 inline style —— Tailwind 是 CDN,沙箱連不到,用 class 排版的話測試量到的幾何是假的(陷阱 #40)
+    const fnRow = strip(SRC.slice(SRC.indexOf('    _gaugeRow(label, pct, o = {}) {'), SRC.indexOf('    _rpValRuler(C) {')));
+    ok('⑯s 量條的版面幾何走 inline style(⛔ 不靠 Tailwind class —— 沙箱沒有 Tailwind,靠 class 量到的對齊是假的)',
+       /position:relative;flex:1 1 0/.test(fnRow) && /flex:0 0 54px/.test(fnRow), '');
+}
+
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
 const errs = [];
 async function boot(viewport) {
@@ -52,7 +74,13 @@ const load = async (page, sym) => { await page.evaluate(s => { app.switchAppTab(
 const snap = async (page) => page.evaluate(() => {
     const txt = el => (el && el.innerText || '').replace(/\s+/g, ' ').trim();
     const cc = document.getElementById('ovCommandCenter'), why = document.getElementById('ovWhyBox');
-    const g = [...cc.querySelectorAll('[data-gauge]')].map(e => ({ k: e.dataset.gauge, pct: +e.dataset.pct, kind: e.dataset.kind, html: e.innerHTML }));
+    const g = [...cc.querySelectorAll('[data-gauge]')].map(e => {
+        const bar = e.querySelector('[data-bar]'), fl = e.querySelector('[data-fill]');
+        const r = bar ? bar.getBoundingClientRect() : null;
+        return { k: e.dataset.gauge, pct: +e.dataset.pct, kind: e.dataset.kind, html: e.innerHTML,
+                 fill: fl ? fl.getAttribute('class') : null, fw: fl ? +fl.dataset.fill : null,
+                 bx: r ? [+r.left.toFixed(1), +r.right.toFixed(1)] : null };
+    });
     const sr = cc.querySelector('[data-priceruler]');
     return {
         sym: app.currentSymbolId, ccLen: txt(cc).length, ccTxt: txt(cc),
@@ -65,6 +93,16 @@ const snap = async (page) => page.evaluate(() => {
         stash: (app._upsideStash && Array.isArray(app._upsideStash.list)) ? app._upsideStash.list.filter(x => +x.sup > 0).slice(0, 2).map(x => `${Math.round(x.lo)}~${Math.round(x.hi)}`) : [],
         whyTxt: txt(why), whyParent: why.parentElement.id, whyInDetails: !!why.closest('#ovMoreWrap'),
         stripOuter: (cc.querySelector('[data-gaugestrip]') || {}).outerHTML || '',
+        // 🎨 V76.0.8:標題那個數字 / 少幾格的說明 / 價格尺圖例 / 有沒有跑出卡片外
+        stripN: (() => { const e = cc.querySelector('[data-gaugen]'); return e ? +e.dataset.gaugen : null; })(),
+        stripTitle: (() => { const e = cc.querySelector('[data-gaugen]'); return e ? e.innerText.trim() : ''; })(),
+        stripNote: (() => { const e = cc.querySelector('[data-gaugestrip]'); return e ? (e.innerText.match(/還在讀財報[^\n]*|ETF 是一籃子[^\n]*/) || [''])[0] : ''; })(),
+        legend: sr ? [...sr.querySelectorAll('[data-leg]')].map(e => e.innerText.trim()) : [],
+        prOver: (() => { if (!sr) return []; const cb = sr.getBoundingClientRect(); const bad = [];
+            sr.querySelectorAll('[data-leg],[data-mark],[data-supplyband]').forEach(e => { const b = e.getBoundingClientRect();
+                if (b.left < cb.left - 1 || b.right > cb.right + 1) bad.push(e.getAttribute('data-leg') || e.getAttribute('data-mark') || e.getAttribute('data-supplyband')); });
+            return bad; })(),
+        rulerTrackHasText: sr ? ((sr.querySelector('[data-rulertrack]') || {}).innerText || '').replace(/\s/g, '') : '',
     };
 });
 const page = await boot({ width: 390, height: 844 });
@@ -85,7 +123,20 @@ ok('② 位置類(基本面/預期)與大盤那格**不可**出現 text-red/text
     const mk = A.gauges.find(x => x.k === 'mkt');
     ok('③b 大盤那格用 ✅⚠️⛔ 徽章、不畫 ▼', mk && /✅|⚠️|⛔/.test(mk.html) && !/▼/.test(mk.html), mk && mk.html.slice(0, 100));
 }
-ok('④ 缺維 → 那一列不存在、不顯 --(這個環境沒跑 X 光 → 基本面/預期本來就沒有)', !A.gauges.some(x => ['fund', 'expect'].includes(x.k)) && !/--/.test(A.stripOuter), '');
+{
+    // ⚠️ V76.0.8 這條原本釘的是「這個環境沒跑 X 光 → 本來就沒有那兩格」—— 那個**前提已經不成立**
+    //    (採礦快取 seed 之後 2327/2330 就有了)。改成釘**用意**:把分數 stub 成 null,那一列就該整列消失。
+    const S = await page.evaluate(() => {
+        // ⚠️ `_regaugeStrip` 要有 `_gaugeArgs` 才動得了(它是 `_overallGaugeHtml` 跑過才會有)——
+        //    沒有的話這條會**安靜地量到舊畫面** = 假綠燈 → 先確定它在(不在就先跑一次 refreshStrategy 補上)。
+        if (!app._gaugeArgs) { try { app.refreshStrategy(); } catch (_) {} }
+        const sv = [app._lastXrayScore, app._lastExpectScore];
+        app._lastXrayScore = null; app._lastExpectScore = null; app._regaugeStrip(app.currentSymbolId);
+        const e = document.getElementById('ovCommandCenter').querySelector('[data-gaugestrip]');
+        const r = { ks: [...e.querySelectorAll('[data-gauge]')].map(x => x.dataset.gauge), out: e.outerHTML, n: +e.querySelector('[data-gaugen]').dataset.gaugen, ga: !!app._gaugeArgs };
+        app._lastXrayScore = sv[0]; app._lastExpectScore = sv[1]; app._regaugeStrip(app.currentSymbolId); return r; });
+    ok('④ 缺維 → 那一列**整列不存在**、不顯 --(stub 成 null 再重畫)', S.ga && !S.ks.some(k => ['fund', 'expect'].includes(k)) && !/--/.test(S.out) && S.n === S.ks.length, JSON.stringify(S));
+}
 ok('⑥ 價格尺每個標記價位 == _keyLevels(注入:自己算前高 → 紅)',
    A.K && A.marks.length >= 3 && A.marks.every(([n, v]) => ({ 停損: A.K.sl, 防線: A.K.sl, 現價: A.K.C, 轉強: A.K.buy, 買進: A.K.buy, 追買: A.K.add }[n] || 0).toFixed(2) === v.toFixed(2)),
    JSON.stringify({ marks: A.marks, K: A.K }));
@@ -149,6 +200,67 @@ await page.close();
     ok('⑥b 2330 沒有上方套牢層 → 尺仍畫得出(停損/買進/現價 ≥3 個標記)、沒有假的套牢帶', B.marks.length >= 3 && B.bands.length === 0 && B.ccLen <= 600, JSON.stringify({ marks: B.marks, bands: B.bands, len: B.ccLen }));
     ok('⑧b 2330 🔔 顆數 == _armTrigStash', (B.bell == null ? 0 : +B.bell) === B.stashN && B.stashN > 0, JSON.stringify({ bell: B.bell, stashN: B.stashN }));
     await p3.close();
+}
+// ── 🎨 V76.0.8 上色 / 對齊 / 五個面向真的有五個 ──
+{
+    const p4 = await boot({ width: 390, height: 844 });
+    await load(p4, '2327'); const D = await snap(p4);
+    console.log(`   2327 填色 ${D.gauges.map(x => x.k + '=' + (x.fill || '').replace(/bg-/, '')).join(',')} ・條 ${JSON.stringify(D.gauges[0] && D.gauges[0].bx)}`);
+    // 🚨 沙箱沒有 Tailwind → 頁面上那張卡的祖先沒有寬度,量到的條寬可能是 **0**(0 == 0 會讓這條變成假綠燈)。
+    //    → 把儀表列渲染進一個**寬度已知**的容器再量,並且先斷言「條真的有寬度」。
+    const G = await p4.evaluate(() => {
+        const d = document.createElement('div');
+        d.style.cssText = 'width:340px;position:absolute;left:0;top:0';
+        d.innerHTML = app._gaugeStripHtml(app.currentSymbolId);
+        document.body.appendChild(d);
+        const rows = [...d.querySelectorAll('[data-gauge]')].map(e => { const b = e.querySelector('[data-bar]').getBoundingClientRect();
+            return { k: e.dataset.gauge, kind: e.dataset.kind, x: +b.left.toFixed(1), r: +b.right.toFixed(1), w: +b.width.toFixed(1) }; });
+        d.remove(); return rows;
+    });
+    console.log(`   340px 容器實測:${G.map(x => `${x.k} ${x.x}~${x.r}`).join(' ・')}`);
+    ok('⑯ ⭐ 每一條量條的左右端點落在**同一條 x 軸**上(注入:非 risk 列不留徽章佔位 → 紅)',
+       G.length >= 3 && G.every(x => x.w > 80) && G.every(x => Math.abs(x.x - G[0].x) <= 1 && Math.abs(x.r - G[0].r) <= 1),
+       JSON.stringify(G));
+    // ⚠️ 這裡一定要量**畫出來的寬度**,⛔ 不可比 `data-fill` 屬性 —— 屬性跟分數本來就是同一個變數算的,
+    //    比它等於自己跟自己比(注入「寬度寫死 100%」時屬性照樣是對的 = 假綠燈,實測踩到過)。
+    const F = await p4.evaluate(() => {
+        const d = document.createElement('div'); d.style.cssText = 'width:340px;position:absolute;left:0;top:0';
+        d.innerHTML = app._gaugeStripHtml(app.currentSymbolId); document.body.appendChild(d);
+        const rows = [...d.querySelectorAll('[data-gauge]')].map(e => {
+            const bw = e.querySelector('[data-bar]').getBoundingClientRect().width;
+            const fw = e.querySelector('[data-fill]') ? e.querySelector('[data-fill]').getBoundingClientRect().width : null;
+            return { k: e.dataset.gauge, pct: +e.dataset.pct, rel: fw == null ? null : +(fw / bw * 100).toFixed(1) };
+        }); d.remove(); return rows;
+    });
+    ok('⑰ 每一條都有填色,而且**畫出來的**寬度 == 分數(注入:寬度寫死 100% → 紅)',
+       F.length >= 3 && F.every(x => x.rel != null && Math.abs(x.rel - x.pct) <= 2), JSON.stringify(F));
+    ok('⑰b ⭐ 燈號鐵則:位置類(基本面/預期)與大盤那格的**填色**⛔ 不可是紅或綠(② 只驗了文字色)',
+       D.gauges.filter(x => ['fund', 'expect', 'mkt'].includes(x.k)).every(x => !/bg-red|bg-green/.test(x.fill || '')),
+       JSON.stringify(D.gauges.map(x => [x.k, x.fill])));
+    ok('⑰c 方向類(技術/籌碼)的填色照 58/42 紅綠',
+       D.gauges.filter(x => x.kind === 'dir').every(x => /bg-(red|green|gray)-/.test(x.fill || '')
+           && (x.pct >= 58 ? /bg-red/ : x.pct <= 42 ? /bg-green/ : /bg-gray/).test(x.fill)),
+       JSON.stringify(D.gauges.filter(x => x.kind === 'dir').map(x => [x.pct, x.fill])));
+    ok('⑱ ⭐ 價格尺沒有任何東西跑出卡片外(注入:把標籤放回軌道上 → 紅)。⛔ 不可用 scrollWidth 判 —— overflow-x:hidden 會把它救成假綠燈',
+       D.prOver.length === 0, JSON.stringify(D.prOver));
+    ok('⑱b 軌道上只有圖示、⛔ 沒有字(字全部搬到下面的圖例)', !/[0-9]/.test(D.rulerTrackHasText), D.rulerTrackHasText);
+    ok('⑱c 圖例把每個價位都講完(停損/現價各一,數量 == 標記數 + 套牢層數)',
+       D.legend.length === D.marks.length + D.bands.length, JSON.stringify({ legend: D.legend, marks: D.marks.length, bands: D.bands.length }));
+    ok('⑲ ⭐ 標題那個數字 == 實際列數(注入:寫死「五個」→ 紅)',
+       D.stripN === D.gauges.length && D.stripTitle.includes(String(D.gauges.length)) && !/五個面向/.test(D.stripTitle),
+       JSON.stringify({ n: D.stripN, rows: D.gauges.length, t: D.stripTitle }));
+    ok('㉑ ⭐ 一般股在總覽載入後就有 🧬 基本面 與 🎯 預期(注入:拿掉 _seedXrayFromCache → 紅)',
+       D.gauges.some(x => x.k === 'fund') && D.gauges.some(x => x.k === 'expect'), JSON.stringify(D.gauges.map(x => x.k)));
+    ok('⑳ 五格到齊時⛔ 不留那句「還在讀財報」的說明', D.gauges.length < 5 || D.stripNote === '', D.stripNote);
+    // ㉓ 切股要清乾淨(陷阱 #19):2327 有分數 → 換一檔沒有基本面資料的,⛔ 不可沿用上一檔
+    const sw = await p4.evaluate(async () => { await app.analyze('0050'); await new Promise(r => setTimeout(r, 1500));
+        return { x: app._lastXrayScore, e: app._lastExpectScore, ga: app._gaugeArgs && app._gaugeArgs.sym }; });
+    ok('㉓ 切股後 _lastXrayScore / _lastExpectScore / _gaugeArgs ⛔ 不可殘留上一檔(陷阱 #19)',
+       (sw.x == null || String(sw.x.sym) === '0050') && (sw.e == null || String(sw.e.sym) === '0050') && (sw.ga == null || String(sw.ga) === '0050'), JSON.stringify(sw));
+    await p4.waitForTimeout(6000); const E = await snap(p4);
+    ok('⑳b ETF 只有 3 格,而且說的是「ETF 本來就沒有」不是「還在讀」(⛔ 不可讓使用者以為壞掉)',
+       E.stripN === 3 && /ETF 是一籃子/.test(E.stripNote), JSON.stringify({ n: E.stripN, note: E.stripNote }));
+    await p4.close();
 }
 ok('⑮ 無 pageerror', errs.length === 0, errs[0] || '');
 await browser.close();
