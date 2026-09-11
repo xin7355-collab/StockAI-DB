@@ -43,6 +43,23 @@ const R = await pg.evaluate((real) => {
         layers: app._overheadSupply(data, last, pC),
         zones: app._chuResistanceZones(data, last),
         up: app._upsideRoom(pC, data, last),
+        // ── 🪤 V76.0.6 實測賠率 + 回填到總覽關鍵價位卡 ──
+        edge: app._SUPPLY_EDGE,
+        odds: { big: app._supplyOdds(8.8), mid: app._supplyOdds(5), small: app._supplyOdds(3), zero: app._supplyOdds(0) },
+        html: app._upsideRoomHtml(app._upsideRoom(pC, data, last)),
+        cell: (() => {
+            // 真的跑一次 `_renderGuardRuler`(⛔ 不在測試裡複製一份回填邏輯)
+            const mk = id => { let e = document.getElementById(id); if (!e) { e = document.createElement('div'); e.id = id; document.body.appendChild(e); } return e; };
+            mk('guardRuler'); mk('upsideRoomCard');
+            const ph = document.createElement('div'); ph.setAttribute('data-supplycell', '1'); ph.className = 'hidden'; document.body.appendChild(ph);
+            app._renderGuardRuler(pC, data, last);
+            const got = { on: !ph.classList.contains('hidden'), t: (ph.innerText || '').replace(/\s+/g, ' ') };
+            // ⑨ 空過:stash 對不上現價(跨股殘留)→ 那一格必須整個不顯,⛔ 不可顯 `--`
+            app._upsideStash = null;
+            app._renderGuardRuler(pC, data.map(r => ({ ...r, volume: 0 })), last);
+            got.offWhenNoLayer = ph.classList.contains('hidden') && !(ph.innerText || '').trim();
+            return got;
+        })(),
     };
 }, REAL);
 await b.close();
@@ -65,6 +82,34 @@ ok('⑥ 套牢區有進到「上檔空間」單一真相源',
    R.up.list.some(x => x.n.includes('套牢區')), JSON.stringify(R.up.list.map(x => x.n)));
 ok('⑦ 上檔清單仍由近到遠', R.up.list.every((x, i) => i === 0 || x.v >= R.up.list[i - 1].v), '');
 ok('⑧ 每一道都有 % 與一張淨賺元', R.up.list.every(x => Number.isFinite(x.pct) && Number.isFinite(x.ntd)), '');
+
+
+// ═══ 🪤 V76.0.6 上方套牢區的**實測賠率**(overhead_probe.mjs)═══
+console.log('\n   回填那一格:', JSON.stringify(R.cell));
+const E = R.edge;
+ok('⑨ `_SUPPLY_EDGE` 三段齊全且**穿過去的機率單調遞減**(牆越大越不容易穿過去)',
+   E && E.band.length === 3 && E.band.every((b, i) => i === 0 || b.thru < E.band[i - 1].thru),
+   JSON.stringify(E && E.band.map(b => b.thru)));
+ok('⑩ `_supplyOdds` 依「佔量 %」查得到對的那一段;0 回 null(⛔ 不假裝有成績)',
+   R.odds.big.lbl === '大' && R.odds.mid.lbl === '中' && R.odds.small.lbl === '小' && R.odds.zero === null,
+   JSON.stringify(R.odds));
+ok('⑪ 上檔空間卡有寫出實測賠率,而且數字**來自 `_SUPPLY_EDGE`**(注入:把數字**寫死在文案裡** → 必紅。⛔ 注意「改常數」不是有效注入 —— 兩邊都讀同一個常數,那樣改只會一起變、照樣綠)',
+   R.html.includes(`${R.odds.big.thru.toFixed(0)}% 穿過去`) && R.html.includes(`${R.odds.big.back.toFixed(0)}% 被壓回`),
+   R.html.slice(-420));
+ok('⑫ 🚨 那段文案**必須寫明不是賣出訊號 + 邊際比成本小**(⛔ 不可變成「彈到這就跑」)',
+   /不是賣出訊號/.test(R.html) && /比來回成本/.test(R.html) && /把期待值放低/.test(R.html), '');
+ok('⑬ ⛔ 文案不可出現賣出/進場**指令**詞',
+   !/(就跑|該賣|停利出場|可以賣|建議賣出|放空|彈到這就)/.test(R.html), (R.html.match(/就跑|該賣|停利出場|可以賣|建議賣出|放空|彈到這就/) || [''])[0]);
+{
+    // ⭐ 這條是重點:關鍵價位那一格的區間 **必須等於** `_upsideRoom` 算出來的那一層
+    //   (注入:在 _renderGuardRuler 裡自己呼叫一次 _overheadSupply 重算 → 數字會對不上 → 必紅)
+    const z = R.up.list.filter(x => +x.sup > 0)[0];
+    ok('⑭ ⭐⭐ 回填那一格的區間 = `_upsideRoom` 的同一層(⛔ 不可自己再算一份)',
+       !!z && R.cell.on && R.cell.t.includes(`${Math.round(z.lo)}~${Math.round(z.hi)}`)
+          && R.cell.t.includes(`${z.sup.toFixed(0)}% 的量卡在這`),
+       `cell=${R.cell.t} / stash=${z ? Math.round(z.lo) + '~' + Math.round(z.hi) : 'none'}`);
+}
+ok('⑮ 沒有套牢層時那一格**整個不顯**(⛔ 不留空殼、⛔ 不顯 --)', R.cell.offWhenNoLayer === true, JSON.stringify(R.cell));
 
 console.log();
 if (fails.length) { console.log('❌ OVERHEAD_TEST_FAIL:', fails); process.exit(1); }

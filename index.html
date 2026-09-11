@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.0.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.0.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.0.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8196,8 +8196,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.0.5',
+    _APP_VERSION: 'V76.0.6',
     _CHANGELOG: [
+        { v: 'V76.0.6', d: ['🪤 <b>「散戶都卡在 800」那道牆,你的 App 其實早就算出來了</b>(你拿國巨問的)。它叫<b>上方套牢區</b>,看的是 K 線+成交量(⛔ 跟主力成本 554 那條完全是兩件事,那條是券商分點買超王的均價)。國巨現價 565 上面有三道:<b>591~706</b>(近 120 日 <b>14.8%</b> 的量卡在這)、<b>774~866</b>(8.8%,就是大家說的「800」)、957~980(2.3%)。⚠️ 最近而且最大的那道是 <b>591~706</b>,⛔ 不是 800 —— 要跑也是先看它。','🔬 <b>可不可以當來回操作依據?實測答案:可以拿來「把期待值放低」,⛔ 不能當買賣訊號。</b>全市場 2,259 檔、2021~2026(含 2022 空頭)、11.9 萬筆:牆越大越不容易穿過去(小層 <b>79% 穿過去</b> → 中層 73% → 大層只有 <b>47.6%</b>,被壓回 40.2%),這個趨勢是單調的、站得住。但<b>賺不到錢</b>:撞到牆 vs 沒撞到,之後 10 天的報酬只差 <b>0.19pp</b>,比來回成本 0.44% 還小,六道關卡一關都沒過。真正的原因是<b>還是有將近一半會穿過去,而穿過去那幾筆會走很遠</b> —— 在牆前面先賣掉等於把賺最多的那幾筆砍掉(跟之前測固定停利的結論一樣)。','📍 <b>不用再去翻了</b>:套牢區現在直接顯示在總覽「🎯 關鍵價位・掛單就看這」那張卡裡(以前埋在 總覽→進場→摺疊區,難怪找不到);「📈 上檔空間」那張則會告訴你這種大小的牆實測幾成會被壓回。'] },
         { v: 'V76.0.5', d: ['📈 <b>加碼功能為什麼還是沒有 —— 用現行出場重測完了</b>(你說「沒看到加碼策略,但不要盲目加」)。正式配置(2021 起含 2022 空頭、每筆 15 萬、每天 2 檔、49 個月):不加碼 <b>+507 萬</b> → 只在比成本高 8% 以上才加一筆 <b>+744 萬</b>,中途最多賠還從 −21.2% 縮到 −19.6%;往上 3%／5%／8% 都是 +690~744 萬(一片高原),「不看價格亂加」只有 +607 萬(往上加真的比亂加好)。','🚨 <b>但 2022 空頭那年的增量是 −3,344 元</b>(那年只加到 47 筆,幾乎沒觸發)→ 「逐年同向」那一關沒過。標準跟之前拒掉別的候選一樣(don10 就是差 2022 那 2 萬被擋),⛔ 所以不做成功能、不換預設;總覽在你有部位又符合進場條件時,只把這組數字告訴你,要不要加你自己決定。','⚠️ 順手抓到一件要核對的事:同一組資料下,不加碼的基準是 +507 萬、2022 是負的,跟決策台成績單記的 +590 萬不一樣(資料多了 9 天、137 檔深歷史接縫失敗維持淺版)→ 下一輪重跑決策台那組核對。'] },
         { v: 'V76.0.4', d: ['📒 <b>產業作戰室 → 釣魚池 → 漁獲籃下面新增「決策台推薦成績單」</b>(你說:「實測自動紀錄這套 App 推薦個股可以賺多少、勝率等等,推薦買就記下來、說要賣就結算」)。⭐ 推薦的定義只有一個 = 散戶救星決策台「🎯 今天可以買的(最多 2 檔)」;每天收盤後採礦自動存下當天名單(⛔ 不用你開 App),結算規則跟漁獲籃/回測<b>一字不差</b>(你設定的出場線・停損・最長 20 天・扣成本・扣同期大盤)。','⚠️ <b>從 2026-09-12 起累積</b> —— 之前的快照少了兩個旗標,重建不出決策台名單,⛔ 不硬湊;<b>不滿 10 筆不下結論</b>(全站同一條規則)。這是紙上成績(進場 = 推薦日收盤),⛔ 不是你的實際損益。','🚧 <b>加碼功能為什麼沒有</b>:其實早就回測過一次(每趟 0.72 → 1.00%、49 個月 193 → 263 萬),<b>但 2022 那年沒過關</b>,而且那是用舊出場算的 → 這輪用現行出場重跑,過八關才會做,沒過就寫進實測總表。','🧹 板塊輪動分頁那顆「→ 產業作戰室」連結鈕拿掉了(你明示 PRO 不掛在 App 內,我上一版漏了)。'] },
         { v: 'V76.0.3', d: ['💧 <b>大盤頁多了第 4 格「板塊輪動」</b>,就在「盤前檢視」右邊(你指定的位置)。「市場板塊輪動」那張美股對標卡從「行情」搬過來了。','📊 <b>新增「32 個產業近 20 日相對強弱」排名</b>:一句話先講最強三族、最弱三族,下面 32 列排名條。⭐ 為什麼是這一條:它是本站板塊實測<b>唯一過六關</b>的 —— 前 3 強減後 3 弱 +1.44pp、含 2022 空頭重跑不變;而且<b>避開最弱那幾族(−0.80pp)比追最強的(+0.63pp)更有價值</b>,卡上有寫。名次跟個股頁「這一族排第幾」是同一份數字。','🛰️ 產業作戰室的泡泡圖/熱力圖/播放<b>沒有搬進來</b>(你說不要資料太亂)—— 留一顆鈕連過去。⛔ 這一頁只描述、不下買賣指令;資金流(外資/投信/自營/融資)實測排不出有效順序,所以沒畫。'] },
@@ -21110,6 +21111,30 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         } catch (_) {}
     },
 
+    // 🪤 V76.0.6 上方套牢區的**實測成績**(`scripts/overhead_probe.mjs`)
+    //   2,259 檔 ・2021-07 ~ 2026-08(**含 2022 空頭**)・119,426 筆事件 ・20 日去重 ・進場=隔天開盤 ・扣同期加權。
+    //   ⭐⭐ 兩個結論方向**相反**,⛔ 不可只講其中一個:
+    //     ① 事實成立而且**單調**:牆越大越不容易穿過去(79.0% → 73.3% → 47.6%)。
+    //     ② 交易**不成立**:大層 vs 小層 10 日只有 −0.19pp,扣成本 −0.63、逐年不同向、
+    //        門檻敏感度 5 格 0 過(= 根本沒有山)、位階交叉 3 格全滅。
+    //   ⭐ 為什麼「牆是真的」卻「賺不到」:47.6% 會穿過去,而**穿過去那幾筆會走很遠**
+    //     → 在牆前面賣掉 = 砍贏家(同 V74.4.8:固定停利 ma5tp10/15/20 只有 +122/112/118 萬,
+    //       而唐奇安 20 日 +590 萬)。
+    //   ⛔ 所以這組數字的用途跟 `_trappedRatio` 一樣:**把期待值放低**,⛔ 不是買賣訊號。
+    //   ⛔ 改了下面 `_overheadSupply` 的判定就要重跑探針,否則卡上的數字會對不上。
+    _SUPPLY_EDGE: {
+        band: [{ max: 4, lbl: '小', thru: 79.0, back: 20.4, stuck: 0.6, n: 27370 },
+               { max: 8, lbl: '中', thru: 73.3, back: 25.3, stuck: 1.3, n: 28808 },
+               { max: 1e9, lbl: '大', thru: 47.6, back: 40.2, stuck: 12.2, n: 63248 }],
+        edge10: -0.19, cost: 0.44, ctrl: '撞進小層', win: '2021-07~2026-08(含 2022 空頭)',
+        syms: 2259, gates: 0, sens: '5 格 0 過',
+    },
+    // 依「這一層佔近 120 日成交量幾 %」查它的實測賠率;⛔ 查不到就回 null(不假裝有成績)
+    _supplyOdds(pct) {
+        if (!(+pct > 0)) return null;
+        return this._SUPPLY_EDGE.band.find(b => +pct < b.max) || null;
+    },
+
     // 🧱 V71.8.7 上方「套牢區」(overhead supply)—— 使用者問:分析師說國巨壓力在 800 左右,
     //   這是籌碼看出來的還是 K 線?**是 K 線+成交量**:800~850 那一帶當初成交了很多量,
     //   買在那裡的人套牢,股價彈回去他們就想解套 → 形成賣壓。這叫套牢區/量價堆積。
@@ -21166,11 +21191,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (!(pC > 0)) return null;
         const gs = this._guardStash || {}, dx = this._dynExit || {};
         const out = [];
-        const add = (n, v, src) => {
+        const add = (n, v, src, extra) => {
             const x = +v;
             if (!Number.isFinite(x) || x <= pC * 1.002) return;          // 只收「還在上方」的(差 <0.2% 視同已到)
             if (out.some(o => Math.abs(o.v - x) / x < 0.005)) return;    // 相差 <0.5% 視為同一道,不重複列
-            out.push({ n, v: x, src });
+            out.push({ n, v: x, src, ...(extra || {}) });
         };
         // ① 近 120 日 M 頭壓力區(跟「朱老師四關通關卡」下方那塊同一個計算)
         try {
@@ -21182,7 +21207,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try {
             (this._overheadSupply(data, last, pC) || []).forEach(L =>
                 add(`套牢區 ${Math.round(L.lo)}~${Math.round(L.hi)}`, L.mid,
-                    `近120日 ${L.pct.toFixed(0)}% 成交量卡在這`));
+                    `近120日 ${L.pct.toFixed(0)}% 成交量卡在這`,
+                    { sup: L.pct, lo: L.lo, hi: L.hi }));   // 🪤 V76.0.6 帶出 pct → 顯示端才查得到實測賠率
         } catch (_) {}
         // ② 出場總表的第一/第二目標(實際下單依據,不另算)
         add(String(dx.t1L || '🎯 第一目標').replace(/^[^一-龥A-Za-z0-9]+/, ''), dx.t1, '出場總表');
@@ -21323,6 +21349,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <span class="font-mono text-[10px] w-[46px] text-right text-red-300">+${x.pct.toFixed(1)}%</span>
             <span class="font-mono text-[10px] w-[64px] text-right ${x.ntd >= 0 ? 'text-red-300' : 'text-green-300'}">${money(x.ntd)}</span>
         </div>`).join('');
+        // 🪤 V76.0.6 套牢區的**實測賠率**(`overhead_probe.mjs`)——
+        //   ⛔ 只描述、不是賣出訊號:同一份回測裡「撞不撞得到牆」之後的報酬差只有 0.19pp < 成本 0.44%。
+        //   ⭐ 數字一律讀 `_SUPPLY_EDGE`(⛔ 別寫死在文案裡,重跑探針要跟著變)。
+        const _sup = u.list.filter(x => +x.sup > 0);
+        const _o = _sup.length ? this._supplyOdds(_sup[0].sup) : null;
+        const E = this._SUPPLY_EDGE;
+        const supNote = !_o ? '' : `<div class="text-[9px] text-gray-500 mt-1.5 leading-snug bg-[#0d1117] border-l-2 border-[#30363d] pl-2 py-1 rounded-r">🪤 最近那道套牢區佔近 120 日成交量 <b class="text-gray-400">${_sup[0].sup.toFixed(0)}%</b>(${_o.lbl}層)—— 實測<b>同樣大小的牆</b>,20 個交易日內 <b class="text-gray-400">${_o.thru.toFixed(0)}% 穿過去</b>・<b class="text-gray-400">${_o.back.toFixed(0)}% 被壓回</b>${_o.stuck >= 3 ? `・${_o.stuck.toFixed(0)}% 卡在裡面` : ''}(${E.syms.toLocaleString()} 檔 ・${E.win})。<br>⭐ 用途是<b class="text-gray-300">把期待值放低</b>,⛔ <b>不是賣出訊號</b> —— 同一份回測裡撞不撞得到牆,之後的報酬只差 ${Math.abs(E.edge10).toFixed(2)}pp,<b>比來回成本 ${E.cost}% 還小</b>;門檻左右各挪兩格也是 ${E.sens}。</div>`;
         // 🚪 V72.4.7 出場管理狀態時**改講「反彈到哪裡該出」** ——
         //   使用者截圖:主結論寫「建議離場」,這張卻寫「還有 +8.7% 的空間、一張淨賺 +49,210 元」
         //   → 同一畫面一邊叫你走、一邊告訴你還能賺,是最典型的資訊打架(單一劇本原則)。
@@ -21332,13 +21365,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     🚪 你現在是<b class="text-orange-300">出場管理狀態</b> → 下面這些不是「還能賺多少」,是<b class="text-orange-300">反彈到哪裡該分批出</b>。<br>
                     最近一道是 <b class="text-orange-300">${f.n} ${f.v.toFixed(2)}</b>(現價上方 <b class="font-mono">${f.pct.toFixed(1)}%</b>)—— <b>彈到這附近就是減碼點</b>,${f.pct < 5 ? '而且空間只有 ' + f.pct.toFixed(1) + '%,不值得為它扛風險。' : '別期待一次走完。'}
                 </div>
-                <div class="text-[9px] text-gray-500 mt-2 mb-0.5">⬆️ 反彈減碼參考位(由近到遠・⛔ 不是買進目標)</div>${rows}`;
+                <div class="text-[9px] text-gray-500 mt-2 mb-0.5">⬆️ 反彈減碼參考位(由近到遠・⛔ 不是買進目標)</div>${rows}${supNote}`;
         }
         return `<div class="text-[11px] text-gray-200 bg-[#0d1117] border-l-2 border-red-500 pl-2.5 py-1.5 rounded-r mb-2 leading-relaxed">
                 現在買,先碰到的是 <b class="text-red-300">${f.n} ${f.v.toFixed(2)}</b> —— 還有 <b class="text-red-300 font-mono">+${f.pct.toFixed(1)}%</b> 的空間,<b class="text-red-300 font-mono">${this._upsideUnitLbl}淨賺 ${money(f.ntd)}</b>。${f.pct < 3 ? '<b class="text-yellow-300">空間不到 3%,扣掉成本幾乎沒得賺 —— 現在追等於幫人抬轎。</b>' : ''}
             </div>
             ${rrTxt}
-            <div class="text-[9px] text-gray-500 mt-2 mb-0.5">⬆️ 上檔空間(由近到遠・元=${this._upsideUnitLbl}淨賺,已扣費稅)</div>${rows}`;
+            <div class="text-[9px] text-gray-500 mt-2 mb-0.5">⬆️ 上檔空間(由近到遠・元=${this._upsideUnitLbl}淨賺,已扣費稅)</div>${rows}${supNote}`;
     },
 
     // 🛡️ V71.0.1 — 防守價一覽(U-18):把下方 4 張卡各自算出的防守價彙整成一條「由近到遠」的尺。
@@ -21367,6 +21400,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const up = this._upsideRoom(pC, data, last);
         const upHtml = this._upsideRoomHtml(up);
         this._upsideStash = up;   // 供「上方壓力區」那塊引用同一組數字(⛔ 不重算)
+        // 🪤 V76.0.6 回填總覽「🎯 關鍵價位」那張卡的套牢區格(陷阱 #32 第三次:
+        //   功能 V71.8.7 就做好了,但埋在 總覽→進場→摺疊區,使用者連兩年說「找不到」)。
+        //   ⛔ 數字全部讀這裡算好的 `up`,⛔ 不另外算一份。
+        try {
+            const sup = (up && up.list || []).filter(x => +x.sup > 0);
+            const od = sup.length ? this._supplyOdds(sup[0].sup) : null;
+            document.querySelectorAll('[data-supplycell]').forEach(el => {
+                if (!sup.length) { el.className = 'hidden'; el.innerHTML = ''; return; }
+                const z = sup[0];
+                el.className = 'bg-[#0d1117] rounded px-2 py-1.5';
+                el.innerHTML = `<div class="text-[9px] text-gray-500">🪤 上方套牢區(120日)</div>`
+                    + `<div class="font-mono font-black text-[15px] text-gray-300 leading-tight">${Math.round(z.lo)}~${Math.round(z.hi)}</div>`
+                    + `<div class="text-[9px] text-gray-500 leading-tight">+${z.pct.toFixed(1)}% ・${z.sup.toFixed(0)}% 的量卡在這${od ? ` ・實測 ${od.back.toFixed(0)}% 被壓回` : ''}</div>`;
+            });
+        } catch (_) {}
         if (cand.length < 2 && !upHtml) {
             el.classList.add('hidden');
             const _u = document.getElementById('upsideRoomCard');
@@ -32611,6 +32659,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
 
     // 🎯 V69.6.6 — 總覽「關鍵價位」:任何狀態都給買/加碼/停損具體價 + 掛單訣;含 🧲 POC 主力成本區(黑科技:
     //   近60日「典型價×成交量」分布最大量的價區 = 市場共識成本 = 最有效的掛單磁鐵,純公式零 API)
+    // 🪤 V76.0.6 這張卡裡有一格 data-supplycell —— **上方套牢區**,由 `_renderGuardRuler` 回填。
+    //   為什麼不在這裡算:這張卡比「防守價一覽」**早**渲染(_renderTrendCommand 34225 vs _renderGuardRuler 38339),
+    //   而 `_upsideStash` 要等 `_dynExit`/`_guardStash` 備好才算得出來 → 這裡只留空格。
+    //   ⛔ 不在這裡自己呼叫 `_overheadSupply`,那會變成第二份真相(壓力價位的唯一真相是 `_upsideRoom`)。
+    //   ⛔ 用 data-* 不用 id:兩個分支(出場/一般)各要一個,同名 id 會被 check_dom_ids 判重複。
+    //   🚨 而且那個佔位 div 的說明**只能寫成 JS 註解** —— 寫成 HTML 註解會被塞進 template literal,
+    //      裡面的反引號會直接把字串切斷(V76.0.6 實際踩到,smoke_test 當場紅)。
     _ovKeyLevelsHtml(data, C, cost, opts) {
         try {
             if (!Array.isArray(data) || data.length < 30 || !(C > 0)) return '';
@@ -32666,6 +32721,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 return `<div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2.5 py-2 mt-2">
                     <div class="text-[10px] font-bold text-gray-400 mb-1">🎯 關鍵價位 <span class="text-[8px] text-orange-300 font-normal">⛔ 出場狀態:一切以上方「照這樣做」的價位為準</span></div>
                     <div class="grid grid-cols-1 gap-1.5">
+                        <div data-supplycell="1" class="hidden"></div><!-- 🪤 V76.0.6 由 _renderGuardRuler 回填 -->
                         ${pocLo != null ? cell('🧲', '量價密集區(60日)', `${nf(pocLo)}~${nf(pocHi)}`, pocRel, pocFar ? 'text-gray-400' : pocIn ? 'text-yellow-300' : (C > pocHi ? 'text-red-300' : 'text-green-300')) : ''}
                     </div>
                     <div class="text-[9px] text-gray-500 mt-1 leading-snug">📌 買進/加碼價位已收起——這檔目前是<b class="text-orange-300">出場管理狀態</b>,先照上面的減碼/防線執行;${slFMain != null ? `等站回 <b class="text-gray-300">${nf(slFMain)}</b> 解除警報後,買點價位才會重新顯示。` : '等解除警報後買點價位才會重新顯示。'}想「彈回來了繼續抱」= 沒有規則、是情緒——反彈到位就照表減碼,之後真轉強(解除警報)再買回來,少虧的錢遠多於重買的成本。</div>
@@ -32693,6 +32749,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             return `<div class="bg-[#0d1117] border border-[#30363d] rounded-lg px-2.5 py-2 mt-2">
                 <div class="text-[10px] font-bold text-gray-400 mb-1">🎯 關鍵價位・掛單就看這 <span class="text-[8px] text-gray-600 font-normal">(收盤後每日更新;限價掛好等它來,別追市價)</span></div>
                 <div class="grid grid-cols-2 gap-1.5">
+                    <div data-supplycell="1" class="hidden"></div><!-- 🪤 V76.0.6 由 _renderGuardRuler 回填(見上面的說明) -->
                     ${buyPx != null ? cell('🛒', bull ? '買進參考' : '轉強確認', nf(buyPx) + ' ' + pctTxt(buyPx), buyLb, bull ? 'text-red-300' : 'text-yellow-300') : ''}
                     ${addPx != null ? cell('🔺', '突破追買', nf(addPx) + ' ' + pctTxt(addPx), '帶量過前高才追', 'text-red-300') : cell('🔺', '突破追買', '創高中', '無前高壓力・回檔再接不追高', 'text-red-300')}
                     ${pocLo != null ? cell('🧲', '量價密集區(60日)', `${nf(pocLo)}~${nf(pocHi)}`, pocRel, pocFar ? 'text-gray-400' : pocIn ? 'text-yellow-300' : (C > pocHi ? 'text-red-300' : 'text-green-300')) : ''}
