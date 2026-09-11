@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.0.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.0.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.0.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.0.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1571,7 +1571,7 @@
                     <button onclick="app.switchSubTab('chip')" id="subTabBtnChip" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">籌碼</button>
                     <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">基本</button>
                     <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">回測</button>
-                    <button onclick="app.switchSubTab('bullbear')" id="subTabBtnBullBear" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">多空</button>
+                    <button onclick="app.switchSubTab('bullbear')" id="subTabBtnBullBear" class="hidden sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">多空</button>
                 </div>
             </div>
 
@@ -8012,12 +8012,17 @@ ${list}
     //     → 永遠是「訊號不足 命中 1/28」。留著只會像壞掉。
     //   留下:總覽(指數版位置解讀)+ K線(指數的技術面本來就有意義)
     _idxHiddenSubTabs: ['corp', 'daytrade', 'backtest', 'live', 'chip', 'bullbear', 'report'],
+    // 🗂️ V76.0.2 使用者:「多空頁面我覺得沒有用…隱藏不要顯示這頁,節省空間」→ **藏入口、⛔ 不刪程式**
+    //   (同 `_TIDY` 鐵則:收起 ≠ 刪除;`renderBullBearCard`/`_calcBullBearScan`/`_leadBullBear` 全部照留,
+    //   程式呼叫 switchSubTab('bullbear') 仍然渲染得出來 —— 測試與巡邏工具照掃)。
+    //   🚨 一定要寫在這裡而不是只在 HTML 加 hidden:下面那個 toggle 在**換回個股**時會把 hidden 洗掉。
+    _SUBTAB_OFF: ['bullbear'],
     _syncIndexSubTabs() {
         const idx = this._isIndexSym?.();
         const MAP = { corp: 'Corp', daytrade: 'DayTrade', backtest: 'Backtest', live: 'Live', chip: 'Chip', bullbear: 'BullBear', report: 'Report' };
         Object.entries(MAP).forEach(([k, t]) => {
             const btn = document.getElementById(`subTabBtn${t}`);
-            if (btn) btn.classList.toggle('hidden', !!(idx && this._idxHiddenSubTabs.includes(k)));
+            if (btn) btn.classList.toggle('hidden', this._SUBTAB_OFF.includes(k) || !!(idx && this._idxHiddenSubTabs.includes(k)));
         });
         // 正停在被藏起來的分頁 → 拉回總覽,免得看到一片空白
         if (idx && this._idxHiddenSubTabs.includes(this._activeSubTab)) this.switchSubTab('strategy');
@@ -8173,8 +8178,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.0.1',
+    _APP_VERSION: 'V76.0.2',
     _CHANGELOG: [
+        { v: 'V76.0.2', d: ['🐛 <b>報告分頁換股變黑畫面 —— 修好了</b>(你的截圖:凱基台灣TOP50 那頁整片黑)。真因:換股時九個區塊都有被清掉,但「換完要重畫」的清單漏了報告這一頁,所以要切到別的分頁再切回來才有東西。','📏 <b>報告頁的估值改成一把尺</b>(你要「一眼知道這隻股票的價位在哪、心裡有個底」):橫軸是它<b>自己近 3 年</b>被市場給過的本益比(最便宜 → 最貴)換算成股價,▼ 標出現價落在第幾百分位、◆ 標出「用同業中位本益比算會是幾元」。摺疊標題直接寫「估值帶 A ~ B 元 ・中位 C ・現價 = 第 N 百分位」,不用點開就看得到。⛔ 這是「市場過去給過它幾倍」,<b>不是目標價、不是預測</b>(卡上有寫)。','🗂️ <b>「多空」分頁收起來了</b>(你說沒有用)。程式還在、總覽的判斷不受影響;收了什麼寫在設定中心「已收起的卡片」那一節。','🧹 決策台標題底下那句「⛔ 這一頁不產生新結論…」刪掉了(你說沒用)。'] },
         { v: 'V76.0.1', d: ['📄 <b>「報告」分頁搬到「總覽」右邊</b>(你要求的位置),⛔ 兩頁<b>不合併</b> —— 實際量過了:報告頁 459 行裡<b>只有 8.8% 跟總覽重複</b>,合併只會讓總覽從 10,622 字暴增到一萬五以上,正好是你最常說的「資訊爆炸」。','🎯 <b>「很雷同」的真因找到了,而且就一格</b>:報告頁第一眼那張「結論與操作」有 <b>73% 跟總覽逐字相同</b>(整串出場價位照抄一次)。現在只留大字結論 + 一句理由 + 你的庫存損益,<b>價位明細收進摺疊</b>(⛔ 沒有刪掉 —— 那是真的防守價),並註明「要照著下單以總覽為準」。','📋 <b>「複製整份報告」現在會把那幾個出場價位一起複製出去</b> —— 以前一行都沒複製到。畫面變輕、帶出去反而更完整。','🗂️ <b>回測頁「最佳打法」瘦身</b>(實測是全 App 最重的一張卡):排名表只攤開「值得做的 + 今天真的觸發的 + ⚠️避開的」,其餘沒有優勢的那些收進摺疊。⛔ 一列都沒刪,點開就看得到。','🔬 順手補一個藏很久的盲點:三支巡邏工具的分頁清單<b>從來沒有包含「報告」頁</b> → 那一頁從上線到現在一次都沒被自動巡邏過,現在補上了。'] },
         { v: 'V76.0.0', d: ['🏭 <b>個股「報告」分頁改成真的產業報告</b>(你說「我要的是產業報告,現在這個感覺是總結」)—— 以前那一節只有兩行(產業別 + 代碼),難怪看起來像別的分頁的摘要。','① <b>同業對照表</b>:直接告訴你「你在這一族 N 檔裡,成交值第幾 ・近 20 日第幾 ・本益比第幾便宜 ・營收年增第幾 ・毛利率第幾」,並列出這一族成交值前 10 名(<b>你自己那一檔一定在表內</b>,點名字可以直接跳過去)。分群優先用<b>題材名單</b>(每天重算,比官方 33 大類精準);上櫃股沒有官方產業別,現在也有得比了。','② <b>這一族現在強不強</b>:這一族近 20 日在 32 個產業裡排第幾 + 近半年走勢圖 + 外資/投信/自營/融資近 5 日往哪流。⚠️ 資金流是<b>描述用</b>,本站實測它排不出有效順序,⛔ 不可拿來當買賣訊號(卡上有寫)。','③ <b>誰跟它一起動</b>:近 120 日走勢最像的前 5 檔 —— 用途是「我是不是重壓在同一族」(手上如果都有,那不是分散,是同一注下了好幾次)。','④ <b>這一族的實測成績</b>:同一族買最強的 +0.90%(六關全過)、買落後補漲的<b>逐年全負</b> —— 別因為「它還沒漲」就買它。','⑤ <b>📝 產業筆記</b>:產業景氣/漲價/法說這些質化的東西,按「🔎 問 Perplexity」問完可以把回答<b>貼回來存起來</b>。⛔ 它一定會標「外部 AI 寫的、本站沒有驗證」,而且<b>不會</b>被算進任何結論、評分或「📋 複製整份報告」。','🐛 順手修一個藏很久的:潛力/黑馬榜算「同業中位本益比」時,查表用的是中文產業名、但表格的鍵是數字代碼 → 那個值<b>一直都是空的</b>,而且被靜默吃掉完全看不出來。'] },
         { v: 'V75.3.3', d: ['🏷️ <b>修掉一個會讓「股票名字變代號」的真問題</b>:離線工作程式(Service Worker)在快取沒命中時回的是「空的」而不是錯誤碼 —— 網路抖一下,名稱清單那支請求就會直接爆掉,而畫面上完全看不出原因。','🔎 名稱載不到時,警語卡現在會<b>直接寫出卡在哪一層</b>(離線表 HTTP 幾號 / 只抓到幾檔 / FinMind 回什麼),還多一顆「📋 複製診斷」可以貼給我。⛔ 診斷裡只寫金鑰「有填/沒填」,不會寫出金鑰本身。','🛟 <b>你自己庫存與自選那幾檔的名字,現在另外存了一份</b> —— 就算全市場兩千多檔的清單載不到,你手上那幾檔仍然看得到中文名。'] },
@@ -8331,7 +8337,9 @@ ${list}
             });
         } catch (_) {}
         const tidy = (this._TIDY || []).map(([id, name, why]) =>
-            `<li class="text-[11px] text-gray-300 leading-relaxed">・<b>${name}</b> —— ${String(why).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</li>`).join('');
+            `<li class="text-[11px] text-gray-300 leading-relaxed">・<b>${name}</b> —— ${String(why).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')}</li>`).join('')
+            // 🗂️ V76.0.2 整個分頁收起來的也列在這裡(⛔ 不做「點開」鈕 —— 那會又多一個狀態)
+            + `<li class="text-[11px] text-gray-300 leading-relaxed">・<b>個股頁「多空」分頁</b> —— 你說沒有用 → 入口藏起來了;28 條規則的計分程式還在,總覽的判斷不受影響(它本來就不吃這一頁)</li>`;
         const sec = (title, sub, body) => `<div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 mb-2.5">
             <div class="text-[12px] font-black text-gray-100 mb-0.5">${title}</div>
             <div class="text-[10px] text-gray-500 mb-1.5 leading-snug">${sub}</div>${body}</div>`;
@@ -22238,6 +22246,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 
         // ── 先同步畫得出來的:B 一句話 + H 結論(都轉述 _ovDecide)+ A 的價格那半 ──
         const dec = (() => { try { return this._ovDecide(this.activeData, sym); } catch (_) { return null; } })();
+        // ⏳ V76.0.2 切股當下指標可能還沒算完 → dec 是 null、結論卡只會寫「正在計算」而且**沒人會再叫它**。
+        //   記一個旗標,`_renderOvCommand` 算出結論那一刻補畫一次(⛔ 只補這一個回呼點,不輪詢)。
+        this._rpNeedsDec = dec ? null : sym;
         const toneOf = { exit: 'bear', reduce: 'warn', hold: 'bull', add: 'bull', wait: 'flat' };
         // 🚨 V75.3.2 實跑抓到:結論卡搬到第二個之後,`rpLead` 與它**一字不差地講了兩次**
         //   (以前中間隔了五節所以沒人發現)→ 有結論時 lead 整條不顯示,⛔ 不並存兩個聲音。
@@ -22372,6 +22383,40 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
 
     // C 歷史估值對照價位表
+    // 📏 V76.0.2 估值尺(使用者:「要設計清楚明瞭讓使用者知道這隻股票預估價格在哪,心裡有個底」)
+    //   ⭐ 用**它自己近 3 年給過的本益比**當刻度(P5 / P25 / 中位 / P75 / P95 × 年化 EPS = 5 個對照價),
+    //      現價 ▼ 標在「現價 ÷ 年化 EPS」落在那個分布的第幾百分位 —— 跟下面那張表**同一組數字**,⛔ 不另算。
+    //   ⛔ 三條不可改:① 文案不出現「目標價 / 預估價」(這是歷史對照,不是預測;test ③c 釘住)
+    //   ② 顏色只用灰階 —— 這是「位置」不是漲跌方向,燈號鐵則不准借紅綠  ③ 超出兩端就貼邊 + 明講超過多少
+    _rpValRuler(C) {
+        const b = C.band, eps = C.ae && C.ae.eps;
+        if (!b || !(eps > 0) || !(C.pC > 0)) return '';
+        const f = this._rpFmt;
+        const ticks = [[5, '最便宜', b.p5], [25, '便宜', b.p25], [50, '中位', b.med], [75, '偏貴', b.p75], [95, '最貴', b.p95]]
+            .filter(t => Number.isFinite(+t[2]) && +t[2] > 0);
+        if (ticks.length < 3) return '';
+        const mult = C.pC / eps, rk = this._rpPeRank(mult, b);
+        if (rk == null) return '';
+        const clamp = v => Math.max(2, Math.min(98, v));
+        const over = Number.isFinite(+b.p95) && mult > +b.p95, under = Number.isFinite(+b.p5) && mult < +b.p5;
+        const peerRk = (Number.isFinite(+C.peer) && +C.peer > 0) ? this._rpPeRank(+C.peer, b) : null;
+        const tickHtml = ticks.map(([q, nm, pe]) => `<div class="absolute top-0 flex flex-col items-center" style="left:${q}%;transform:translateX(-50%)">
+                <div class="w-px h-2 bg-[#30363d]"></div>
+                <div class="text-[8px] text-gray-500 leading-none mt-0.5 whitespace-nowrap">${nm}</div>
+                <div class="text-[9px] font-mono text-gray-300 leading-none mt-0.5 whitespace-nowrap">${f(eps * pe, 1)}</div></div>`).join('');
+        return `<div class="mb-2" data-rpruler="1" data-rk="${rk}">
+            <div class="text-[10px] text-gray-300 font-bold mb-0.5">📏 現價落在它自己近 3 年估值帶的哪裡</div>
+            <div class="relative h-[52px] mt-3">
+                <div class="absolute left-0 right-0 top-0 h-1.5 rounded-full bg-gradient-to-r from-[#21262d] via-[#3a4250] to-[#21262d]"></div>
+                <div class="absolute flex flex-col items-center" style="left:${clamp(rk)}%;top:-13px;transform:translateX(-50%)">
+                    <div class="text-[9px] font-black text-gray-100 leading-none whitespace-nowrap">現價 ${f(C.pC, 1)}</div>
+                    <div class="text-[9px] text-gray-100 leading-none">▼</div></div>
+                ${peerRk != null ? `<div class="absolute" style="left:${clamp(peerRk)}%;top:-1px;transform:translateX(-50%)" title="同業中位本益比對應價 ${f(eps * C.peer, 1)}"><div class="text-[8px] text-amber-300/90 leading-none">◆</div></div>` : ''}
+                <div class="absolute left-0 right-0 top-2">${tickHtml}</div>
+            </div>
+            <div class="text-[9px] text-gray-500 leading-snug mt-1">現價 ÷ 年化 EPS = <b class="font-mono text-gray-300">${f(mult, 1)}x</b>,落在它近 3 年的第 <b class="text-gray-200">${rk}</b> 百分位${over ? ' —— <b class="text-amber-300">已超過近 3 年 95% 的水位</b>' : (under ? ' —— <b class="text-amber-300">低於近 3 年最便宜的 5%</b>' : '')}${peerRk != null ? ` ・◆ 同業中位給法 = ${f(eps * C.peer, 1)} 元` : ''}。⛔ 這是「市場過去給過它幾倍」,不是預測。</div>
+        </div>`;
+    },
     _rpValHtml(C) {
         const f = this._rpFmt;
         let body;
@@ -22382,9 +22427,14 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const b = C.band;
             const bandPe = Number.isFinite(+b.pe) ? +b.pe : null;
             const gap = (C.pe && bandPe) ? Math.abs(C.pe / bandPe - 1) * 100 : 0;
+            // 📏 V76.0.2 位階一律用「現價 ÷ 年化 EPS」現算(跟尺上的 ▼ 與摺疊標題**同一個數**)。
+            //   實跑 2330 抓到:舊寫法用統計日的 `b.pct`(32.7x → 97%),而尺用今天的 28.6x → 第 77 百分位,
+            //   同一節出現 97% 與 77 兩個「位階」= 邏輯打架。統計日那個只留在 ⚠️ 差距提示裡。
+            const rkLive = (C.ae && C.ae.eps > 0 && C.pC > 0) ? this._rpPeRank(C.pC / C.ae.eps, b) : null;
             body = `<div class="text-[10px] text-gray-300 leading-snug mb-1.5">年化 EPS <b class="font-mono">${f(C.ae.eps, 2)}</b> = <b>${C.ae.src}</b>,⛔ 不是預估${C.ae.asOf ? ` ・截至 ${this._dW(C.ae.asOf)}` : ''}</div>
-                <div class="text-[10px] text-gray-400 mb-1.5">現在本益比 <b class="font-mono text-gray-200">${f(C.pe, 1)}x</b>(${C.peSrc})在它自己近 3 年的位階:<b class="font-mono text-gray-200">${Number.isFinite(+b.pct) ? Math.round(+b.pct) + '%' : '—'}</b>(0 = 歷史最低本益比)・分布統計至 ${this._dW(b.d) || '—'}
-                ${gap > 10 ? `<div class="text-[9px] text-amber-300/80 mt-0.5">⚠️ 分布統計日的 PE 是 ${f(bandPe, 1)}x、今日官方 ${f(C.pe, 1)}x(差 ${gap.toFixed(0)}%)—— 位階 % 是統計日算的</div>` : ''}</div>
+                <div class="text-[10px] text-gray-400 mb-1.5">現在本益比 <b class="font-mono text-gray-200">${f(C.pe, 1)}x</b>(${C.peSrc})在它自己近 3 年的位階:<b class="font-mono text-gray-200">${rkLive != null ? `第 ${rkLive} 百分位` : (Number.isFinite(+b.pct) ? `第 ${Math.round(+b.pct)} 百分位` : '—')}</b>(0 = 歷史最低本益比)・分布統計至 ${this._dW(b.d) || '—'}
+                ${gap > 10 ? `<div class="text-[9px] text-amber-300/80 mt-0.5">⚠️ 分布統計日(${this._dW(b.d) || '—'})的 PE 是 ${f(bandPe, 1)}x、那天算的位階是第 ${Number.isFinite(+b.pct) ? Math.round(+b.pct) : '—'} 百分位;今日官方 ${f(C.pe, 1)}x(差 ${gap.toFixed(0)}%)—— 上面的位階是用今天的價現算的</div>` : ''}</div>
+                ${this._rpValRuler(C)}
                 ${this._rpPxTableHtml(C.valRows, C.pC, C.pe)}
                 <div class="text-[9px] text-gray-500 mt-1">${C.peer ? `同業中位 PE 來自 industry_pe(上市 33 大類)` : `同業中位 PE:${C.indK ? '本站沒有這一類的中位數' : '上櫃無官方產業分類(本站 industry_pe 只涵蓋上市 33 類)'}`}</div>
                 <div class="mt-2 bg-[#0d1117] border border-[#21262d] rounded p-2">
@@ -22394,12 +22444,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     <div id="rpRevOut" class="mt-1"></div></div>`;
         }
         // ⭐ 標題那行 = 這一節的答案(事實 + 數字),⛔ 不下判定詞(便宜/貴/可以買)
+        // ⭐ V76.0.2 摺疊標題直接給三個價(收起來也看得到)—— 使用者要「一眼知道價位在哪」;
+        //   數字一律取自 `valRows`(⛔ 不另算一份),分位用現價 ÷ 年化 EPS(跟尺上的 ▼ 同一個數)
+        const rows = C.valRows || [];
+        const pick = re => { const r = rows.find(x => re.test(x[0])); return r ? r[1] : null; };
+        const p25 = pick(/偏便宜/), pMed = pick(/中位\(PE/), p75 = pick(/^偏貴/), pPeer = pick(/^同業中位/);
+        const rkNow = (C.band && C.ae && C.ae.eps > 0 && C.pC > 0) ? this._rpPeRank(C.pC / C.ae.eps, C.band) : null;
         const note = C.isEtf ? 'ETF 沒有 EPS,估值對照不適用'
-            : (C.valRows && C.band && Number.isFinite(+C.band.pct))
-                ? `本益比 ${f(C.pe, 1)}x ・落在自己近 3 年的第 <b class="text-gray-200">${Math.round(+C.band.pct)}</b> 百分位(0 = 歷史最低本益比)・${C.valRows.length} 個歷史對照價`
-                : (C.ae ? `年化 EPS ${f(C.ae.eps, 2)} 元,但本站沒有這檔近 3 年的本益比分布` : '本站沒有季 EPS,算不出年化 EPS');
-        const vtitle = (C.valRows && C.band) ? '💰 現在的本益比,在它自己歷史上的哪裡' : '💰 估值對照(本站算不出來)';
-        return this._rpDetails(vtitle, note, body);
+            : (C.valRows && C.band && p25 != null && pMed != null && p75 != null)
+                ? `估值帶 <b class="font-mono text-gray-200">${f(p25, 1)} ~ ${f(p75, 1)}</b> 元(它自己近 3 年第 25~75 百分位)・中位 <b class="font-mono text-gray-200">${f(pMed, 1)}</b> ・現價 ${f(C.pC, 1)}${rkNow != null ? ` = 第 <b class="text-gray-200">${rkNow}</b> 百分位` : ''}${pPeer != null ? ` ・同業給法 ${f(pPeer, 1)}` : ''}`
+                : (C.valRows && C.band && Number.isFinite(+C.band.pct))
+                    ? `本益比 ${f(C.pe, 1)}x ・落在自己近 3 年的第 <b class="text-gray-200">${Math.round(+C.band.pct)}</b> 百分位(0 = 歷史最低本益比)・${C.valRows.length} 個歷史對照價`
+                    : (C.ae ? `年化 EPS ${f(C.ae.eps, 2)} 元,但本站沒有這檔近 3 年的本益比分布` : '本站沒有季 EPS,算不出年化 EPS');
+        const vtitle = (C.valRows && C.band) ? '💰 它自己近 3 年的估值帶,現價落在哪' : '💰 估值對照(本站算不出來)';
+        // ⭐ 算得出估值帶就**預設攤開**(使用者要的就是這一段;rpRisk 有事時也是這樣做)
+        return this._rpDetails(vtitle, note, body, !!(C.valRows && C.band));
     },
 
     // D 公司基本面
@@ -29032,6 +29091,11 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             try { this.analyzeStockPlaybook(); } catch(_) {}   // 🎯 V45.12 切股自動重跑打法適配
         } else if (_sub === 'daytrade') {
             try { this._dtMarkUsed(); this.renderDayTradeTab(targetSym); } catch(_) {}   // 🐛 V55.5 切股殘留:當沖頁沒補跑→用舊股價,補上
+        } else if (_sub === 'report') {
+            // 🐛 V76.0.2 使用者截圖:停在「報告」分頁換股 → **整頁黑的**。真因:上面 V71.7.6 的統一清空
+            //   把 rp* 九個容器清掉了(對),但這裡的補跑清單**沒有 report**(陷阱 #37 —— V75.1.1 加分頁時漏接)
+            //   → 清了不重畫,要切到別的分頁再切回來才會有東西。
+            try { this.renderReportTab(targetSym); } catch(_) {}
         }
 
         if(!silent) {
@@ -31325,6 +31389,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             this._loadPlaybookEdge().then(() => { this._pbEdgePend = 0; try { this._renderOvCommand(this.activeData); } catch (_) {} });
         }
         const d = this._ovDecide(data, sym);
+        // 📄 V76.0.2 報告頁剛才因為 dec 還沒算好而留白 → 現在算出來了,補畫一次(見 renderReportTab 的 _rpNeedsDec)
+        if (d && this._rpNeedsDec === sym && this._activeSubTab === 'report') { this._rpNeedsDec = null; setTimeout(() => { try { this.renderReportTab(sym); } catch (_) {} }, 0); }
         if (!d) { el.innerHTML = ''; el.classList.add('hidden'); return; }
         const nf = v => Math.abs(Math.round(v)).toLocaleString();
         const money = v => v == null ? '' : `<span class="${v >= 0 ? 'text-red-300' : 'text-green-300'}">${v >= 0 ? '+' : '−'}${nf(v)} 元</span>`;
@@ -43209,7 +43275,6 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         try {
             head.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
                 <div class="text-base font-black text-gray-100">🎯 今天要做的事</div>
-                <div class="text-[10px] text-gray-500 mt-0.5 leading-relaxed">⛔ 這一頁<b>不產生新結論</b> —— 要賣的來自你設定的出場線、可以買的來自每晚全市場實測。細節在下面各分頁。</div>
             </div>`;
             const st = await this._deckState();
             const eodTxt = `${String(Math.floor(this._EOD_FROM / 60)).padStart(2, '0')}:${String(this._EOD_FROM % 60).padStart(2, '0')}~${String(Math.floor(this._EOD_TO / 60)).padStart(2, '0')}:${String(this._EOD_TO % 60).padStart(2, '0')}`;

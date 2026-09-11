@@ -101,8 +101,12 @@ ok('⑥ 點到被藏的分頁要導回總覽', R.redirected === 'strategy', Stri
 ok('⑦ 換回個股:恢復個股版面(有買賣指令)',
    /買進|停損|掛單|表態|進場/.test(R.stockTxt) && !R.stockTxt.includes('現在什麼位置'), R.stockTxt.slice(0, 80));
 ok('⑦ 換回個股:進場/出場頁籤要回來', R.tabsBack.every(v => v === false), JSON.stringify(R.tabsBack));
-ok('⑦ 換回個股:基本/當沖/回測/即時要回來', R.subBack.every(v => v === false), JSON.stringify(R.subBack));
-ok('⑦ 換回個股:籌碼/多空分頁要回來', R.subShownBack.every(v => v === false), JSON.stringify(R.subShownBack));
+// 🗂️ V76.0.2 「多空」分頁是**刻意**收起來的(`_SUBTAB_OFF`,使用者:沒有用)→ 換回個股它也**不該回來**;
+//   其餘六個要回來。⛔ 不是放寬斷言 —— 是釘住兩個相反的用意(其他分頁復原 / 多空永遠藏)。
+const _SUBS = ['Corp', 'DayTrade', 'Backtest', 'Live', 'Chip', 'BullBear', 'Report'];
+ok('⑦ 換回個股:基本/當沖/回測/即時/籌碼/報告要回來', R.subBack.every((v, i) => _SUBS[i] === 'BullBear' ? true : v === false), JSON.stringify(R.subBack));
+ok('⑦b 🗂️ 多空分頁換回個股也**維持藏著**(_SUBTAB_OFF 刻意收起;注入:拿掉 _SUBTAB_OFF 判斷 → 必紅)', R.subBack[_SUBS.indexOf('BullBear')] === true, JSON.stringify(R.subBack));
+ok('⑦c 換回個股:籌碼分頁要回來', R.subShownBack[0] === false, JSON.stringify(R.subShownBack));
 ok('⑦ 換回個股:三個籌碼分頁都要回來', R.chipBack.every(v => v === false), JSON.stringify(R.chipBack));
 ok('⑦ 換回個股:券商分點點得進去', R.chipTabBack === 'broker', String(R.chipTabBack));
 

@@ -302,6 +302,10 @@ ok('④c 2330 五段有內容、無 --', R2.html.filter((_, i) => i !== 1).every
 {
     const r = await page.evaluate(async () => {
         const A = app;
+        // ⚠️ V76.0.2 起 analyze() 停在報告分頁會**自己**重畫報告(那正是修掉的黑畫面 bug)→
+        //   這個實驗驗的是 renderReportTab **自己的** await 守門,所以先離開報告分頁,免得合法的重畫被誤讀成「守門漏了」。
+        //   (analyze 自己會不會重畫報告 → 另有 🔁s1 驗)
+        A._activeSubTab = 'strategy';
         A.currentSymbolId = '5483'; A.rawDailyData = JSON.parse(JSON.stringify(window.__K['5483'])); A.activeData = A.rawDailyData;
         await A.renderReportTab('5483');
         const before = document.getElementById('rpVal').innerHTML.length;
@@ -319,6 +323,7 @@ ok('④c 2330 五段有內容、無 --', R2.html.filter((_, i) => i !== 1).every
         await A.renderReportTab('5483');
         A._loadFundCache = realLoad;
         const after = ['rpNum', 'rpVal', 'rpFund', 'rpChip', 'rpRisk', 'rpSrc'].reduce((n, id) => n + document.getElementById(id).innerHTML.length, 0);
+        A._activeSubTab = 'report';
         return { before, mid, after, rpSym: A._rpSym };
     });
     ok('⑪b analyze(別檔) 一開始就清空九段(⛔ 不等資料回來)', r.before > 40 && r.mid.every(n => n === 0), JSON.stringify(r));
@@ -532,6 +537,67 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('🎯p4 結論本身仍要留在攤開區(⛔ 不可連結論都收起來)', !!act.badge && act.vis.includes(act.badge), act.vis.slice(0, 120));
     ok('🎯p5 複製出去的價位段⛔ 不可出現兩次(摺疊標題會被節標題那段再收一次)',
        (act.cp.match(/出場／加碼價位/g) || []).length === 1, String((act.cp.match(/出場／加碼價位/g) || []).length));
+}
+
+// ── 🔁 V76.0.2 報告分頁換股黑畫面(使用者截圖:009816 那頁整片黑)──────────────────────
+{
+    const r = await page.evaluate(async () => {
+        const A = app;
+        A.switchSubTab('report');
+        for (const id of ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc']) document.getElementById(id).innerHTML = '';
+        await A.analyze('5483').catch(() => {});
+        await new Promise(r => setTimeout(r, 2500));
+        const act = document.getElementById('rpAct').innerHTML;
+        return { sub: A._activeSubTab, rpSym: A._rpSym, actLen: act.length, hasBadge: /結論與操作/.test(act), sym: A.currentSymbolId };
+    });
+    ok('🔁s1 🚨 停在報告分頁換股 → analyze() 要自己重畫(⛔ 不可整頁黑;注入:拿掉 _sub===report 分支 → 必紅)',
+       r.sub === 'report' && r.sym === '5483' && r.rpSym === '5483' && r.actLen > 40 && r.hasBadge, JSON.stringify(r));
+    // dec 晚到:renderReportTab 當下算不出結論 → 留旗標,_renderOvCommand 算出來那一刻補畫
+    const r2 = await page.evaluate(async () => {
+        const A = app;
+        A._activeSubTab = 'report';
+        A.currentSymbolId = '2330'; A.rawDailyData = JSON.parse(JSON.stringify(window.__K['2330'])); A.activeData = A.rawDailyData;
+        const real = A._ovDecide; A._ovDecide = () => null;
+        await A.renderReportTab('2330');
+        const pending = A._rpNeedsDec, actWait = document.getElementById('rpAct').innerHTML;
+        A._ovDecide = real;
+        try { A._renderOvCommand(A.activeData); } catch (_) {}
+        await new Promise(r => setTimeout(r, 400));
+        return { pending, waiting: /正在計算|還在計算/.test(actWait), after: A._rpNeedsDec, act: document.getElementById('rpAct').innerHTML.replace(/<[^>]+>/g, ' ').slice(0, 120) };
+    });
+    ok('🔁s2 結論晚到時先寫「還在計算」並留旗標', r2.pending === '2330' && r2.waiting, JSON.stringify(r2).slice(0, 200));
+    ok('🔁s2b ⭐ _renderOvCommand 算出結論那一刻要補畫報告(⛔ 不可永遠停在「還在計算」;注入:拿掉回呼 → 必紅)',
+       r2.after === null && !/正在計算|還在計算/.test(r2.act) && r2.act.trim().length > 20, JSON.stringify(r2).slice(0, 300));
+}
+// ── 💰 V76.0.2 估值尺(使用者:「一眼知道這隻股票的價位在哪」)────────────────────────
+{
+    const v = await page.evaluate(async () => {
+        const A = app;
+        A._activeSubTab = 'report';
+        A.currentSymbolId = '2330'; A.rawDailyData = JSON.parse(JSON.stringify(window.__K['2330'])); A.activeData = A.rawDailyData;
+        await A.renderReportTab('2330');
+        const C = A._rpLast, box = document.getElementById('rpVal');
+        const d = box.querySelector('details'), sum = d && d.querySelector('summary');
+        const f = x => A._rpFmt(x, 1);
+        const pick = re => { const r = (C.valRows || []).find(x => re.test(x[0])); return r ? r[1] : null; };
+        const ruler = box.querySelector('[data-rpruler]');
+        const marker = ruler && [...ruler.querySelectorAll('div[style*="translateX(-50%)"]')].find(el => /▼/.test(el.textContent));
+        const left = marker ? parseFloat((marker.getAttribute('style').match(/left:\s*([\d.]+)%/) || [])[1]) : null;
+        const rk = A._rpPeRank(C.pC / C.ae.eps, C.band);
+        // 超出上端:直接餵一個離譜的現價給純函式(⛔ 不改真資料)
+        const over = A._rpValRuler({ ...C, pC: C.pC * 20 });
+        const overLeft = parseFloat((over.match(/left:\s*([\d.]+)%;top:-13px/) || [])[1]);
+        return { open: !!(d && d.open), sum: sum ? sum.innerText.replace(/\s+/g, ' ') : '', p25: f(pick(/偏便宜/)), med: f(pick(/中位\(PE/)), p75: f(pick(/^偏貴/)),
+                 hasRuler: !!ruler, dataRk: ruler ? +ruler.getAttribute('data-rk') : null, left, rk, overTxt: /已超過近 3 年 95%/.test(over), overLeft,
+                 noTarget: !/目標價(?!,也不是預測)|預估價/.test(box.innerText) };
+    });
+    ok('💰v1 摺疊標題直接寫「估值帶 P25 ~ P75 ・中位」三個價,數字 = 對照表那三列(⛔ 不另算)',
+       v.sum.includes(`${v.p25} ~ ${v.p75}`) && v.sum.includes(`中位 ${v.med}`) && /第 \d+ 百分位/.test(v.sum), v.sum.slice(0, 160));
+    ok('💰v1b 算得出估值帶 → 這一節預設攤開', v.open, String(v.open));
+    ok('💰v2 尺上 ▼ 的位置 = _rpPeRank(現價÷年化EPS)(注入:改成線性用 PE 算 → 必紅)',
+       v.hasRuler && v.dataRk === v.rk && v.left != null && Math.abs(v.left - Math.max(2, Math.min(98, v.rk))) < 0.01, JSON.stringify({ rk: v.rk, dataRk: v.dataRk, left: v.left }));
+    ok('💰v3 現價超出 P95 → 貼右邊(98%)+ 明講「已超過近 3 年 95%」', v.overTxt && v.overLeft === 98, JSON.stringify({ overLeft: v.overLeft, overTxt: v.overTxt }));
+    ok('💰v4 估值節⛔ 不出現「目標價／預估價」(免責句除外)', v.noTarget, '');
 }
 
 await browser.close();
