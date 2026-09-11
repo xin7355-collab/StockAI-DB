@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.0.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.0.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.0.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2437,7 +2437,8 @@
 
                 <!-- V69.8.0 「📖 美股對標 ETF 速查表」摺疊卡已刪(使用者要求) -->
             </div>
-                <button onclick="window.open('pro.html#rot','_blank'); app.vibrate && app.vibrate(20);" class="w-full text-[11px] font-bold text-emerald-200 bg-emerald-900/20 border border-emerald-700/50 rounded-lg py-2 hover:bg-emerald-900/40">🛰️ 完整版:泡泡圖・熱力圖・播放輪動 → 產業作戰室</button>
+                <!-- ⛔ V76.0.4 這裡原本是一顆「→ 產業作戰室」的連結鈕 —— 使用者明示 PRO 不掛在 App 內(test_prohtml ② 釘住),改成純文字指路 -->
+                <div class="text-[10px] text-gray-500 leading-snug px-1">🛰️ 完整版(泡泡圖・熱力圖・播放輪動)在<b class="text-gray-400">產業作戰室</b>的「板塊輪動」分頁 —— 那是另一個獨立介面,不掛在這裡。</div>
             </div>
 
             <!-- ════════ 【區 3-A】🗞️ 消息面(盤前新聞 + 財經行事曆)════════ -->
@@ -8195,8 +8196,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.0.3',
+    _APP_VERSION: 'V76.0.4',
     _CHANGELOG: [
+        { v: 'V76.0.4', d: ['📒 <b>產業作戰室 → 釣魚池 → 漁獲籃下面新增「決策台推薦成績單」</b>(你說:「實測自動紀錄這套 App 推薦個股可以賺多少、勝率等等,推薦買就記下來、說要賣就結算」)。⭐ 推薦的定義只有一個 = 散戶救星決策台「🎯 今天可以買的(最多 2 檔)」;每天收盤後採礦自動存下當天名單(⛔ 不用你開 App),結算規則跟漁獲籃/回測<b>一字不差</b>(你設定的出場線・停損・最長 20 天・扣成本・扣同期大盤)。','⚠️ <b>從 2026-09-12 起累積</b> —— 之前的快照少了兩個旗標,重建不出決策台名單,⛔ 不硬湊;<b>不滿 10 筆不下結論</b>(全站同一條規則)。這是紙上成績(進場 = 推薦日收盤),⛔ 不是你的實際損益。','🚧 <b>加碼功能為什麼沒有</b>:其實早就回測過一次(每趟 0.72 → 1.00%、49 個月 193 → 263 萬),<b>但 2022 那年沒過關</b>,而且那是用舊出場算的 → 這輪用現行出場重跑,過八關才會做,沒過就寫進實測總表。','🧹 板塊輪動分頁那顆「→ 產業作戰室」連結鈕拿掉了(你明示 PRO 不掛在 App 內,我上一版漏了)。'] },
         { v: 'V76.0.3', d: ['💧 <b>大盤頁多了第 4 格「板塊輪動」</b>,就在「盤前檢視」右邊(你指定的位置)。「市場板塊輪動」那張美股對標卡從「行情」搬過來了。','📊 <b>新增「32 個產業近 20 日相對強弱」排名</b>:一句話先講最強三族、最弱三族,下面 32 列排名條。⭐ 為什麼是這一條:它是本站板塊實測<b>唯一過六關</b>的 —— 前 3 強減後 3 弱 +1.44pp、含 2022 空頭重跑不變;而且<b>避開最弱那幾族(−0.80pp)比追最強的(+0.63pp)更有價值</b>,卡上有寫。名次跟個股頁「這一族排第幾」是同一份數字。','🛰️ 產業作戰室的泡泡圖/熱力圖/播放<b>沒有搬進來</b>(你說不要資料太亂)—— 留一顆鈕連過去。⛔ 這一頁只描述、不下買賣指令;資金流(外資/投信/自營/融資)實測排不出有效順序,所以沒畫。'] },
         { v: 'V76.0.2', d: ['🐛 <b>報告分頁換股變黑畫面 —— 修好了</b>(你的截圖:凱基台灣TOP50 那頁整片黑)。真因:換股時九個區塊都有被清掉,但「換完要重畫」的清單漏了報告這一頁,所以要切到別的分頁再切回來才有東西。','📏 <b>報告頁的估值改成一把尺</b>(你要「一眼知道這隻股票的價位在哪、心裡有個底」):橫軸是它<b>自己近 3 年</b>被市場給過的本益比(最便宜 → 最貴)換算成股價,▼ 標出現價落在第幾百分位、◆ 標出「用同業中位本益比算會是幾元」。摺疊標題直接寫「估值帶 A ~ B 元 ・中位 C ・現價 = 第 N 百分位」,不用點開就看得到。⛔ 這是「市場過去給過它幾倍」,<b>不是目標價、不是預測</b>(卡上有寫)。','🗂️ <b>「多空」分頁收起來了</b>(你說沒有用)。程式還在、總覽的判斷不受影響;收了什麼寫在設定中心「已收起的卡片」那一節。','🧹 決策台標題底下那句「⛔ 這一頁不產生新結論…」刪掉了(你說沒用)。'] },
         { v: 'V76.0.1', d: ['📄 <b>「報告」分頁搬到「總覽」右邊</b>(你要求的位置),⛔ 兩頁<b>不合併</b> —— 實際量過了:報告頁 459 行裡<b>只有 8.8% 跟總覽重複</b>,合併只會讓總覽從 10,622 字暴增到一萬五以上,正好是你最常說的「資訊爆炸」。','🎯 <b>「很雷同」的真因找到了,而且就一格</b>:報告頁第一眼那張「結論與操作」有 <b>73% 跟總覽逐字相同</b>(整串出場價位照抄一次)。現在只留大字結論 + 一句理由 + 你的庫存損益,<b>價位明細收進摺疊</b>(⛔ 沒有刪掉 —— 那是真的防守價),並註明「要照著下單以總覽為準」。','📋 <b>「複製整份報告」現在會把那幾個出場價位一起複製出去</b> —— 以前一行都沒複製到。畫面變輕、帶出去反而更完整。','🗂️ <b>回測頁「最佳打法」瘦身</b>(實測是全 App 最重的一張卡):排名表只攤開「值得做的 + 今天真的觸發的 + ⚠️避開的」,其餘沒有優勢的那些收進摺疊。⛔ 一列都沒刪,點開就看得到。','🔬 順手補一個藏很久的盲點:三支巡邏工具的分頁清單<b>從來沒有包含「報告」頁</b> → 那一頁從上線到現在一次都沒被自動巡邏過,現在補上了。'] },

@@ -84,6 +84,8 @@ with tempfile.TemporaryDirectory() as td:
     ok('④ ⛔ 不可存結論/評分(那會變成第二份真相)',
        not (keys & banned), f'存了不該存的:{sorted(keys & banned)}')
     ok('④b 該存的事實都在', {'s', 'c', 'k'} <= keys, f'keys={sorted(keys)}')
+    # 📒 V76.0.4 決策台推薦成績單要用 hq / bear 重建「今天可以買的」名單(⛔ 少存 = 名單重建不出來,而且零錯誤訊息)
+    ok('④c 📒 hq / bear 兩個事實旗標也要存(推薦成績單靠它重建決策台名單)', {'hq', 'bear'} <= keys, f'keys={sorted(keys)}')
 
 # ⑤ 累積不足要明說(⛔ 不可在樣本不夠時給績效)
 with tempfile.TemporaryDirectory() as td:

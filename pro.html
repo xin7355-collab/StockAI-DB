@@ -813,7 +813,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     </div>
     <div id="fishCard"></div>
   </div>
-  <div class="panel" id="fishBasketPane"><div id="fishBasket"></div></div>
+  <div class="panel" id="fishBasketPane"><div id="fishBasket"></div><div id="recoLedger"></div></div>
 </div>
 <div id="tabSig" class="hidden">
   <div class="panel">
@@ -2506,6 +2506,7 @@ const PRO = {
       `<button class="rotchip fishpool${p.k === this._fishPoolK ? ' on' : ''}" title="${p.d}" onclick="PRO.fishPool('${p.k}')">${p.n}</button>`).join('');
     this._fishNote(D);
     this._fishBasketRender();
+    this._recoLedgerRender();   // 📒 V76.0.4 決策台推薦成績單(⛔ 不寫 localStorage,每次從 pick_history 重算)
     this._fishRebuild();
   },
   fishPool(k) { this._fishPoolK = k; this.buzz(15); this.fishBack(true); this.renderFish(); },
@@ -2900,28 +2901,142 @@ const PRO = {
         if (i0 < 1) continue;
         const r = this._settleReplay(rows, i0, rule);
         if (!r) continue;
-        // 🆚 同期加權(⛔ 沒有指數就給 null,不硬算)
-        const b0 = this._twiiAt(r.d0), b1 = this._twiiAt(r.d1);
-        r.bench = (b0 > 0 && b1 > 0) ? (b1 / b0 - 1) * 100 : null;
-        r.ret = (r.exitP / r.entry - 1) * 100;
-        r.net = r.ret - this._STL_COST;                       // 扣來回成本
-        r.ex = r.bench === null ? null : r.net - r.bench;      // 扣同期加權 = 真正的成績
-        r.lot = Math.round((r.exitP - r.entry) * 1000);
+        this._stlEnrich(r);
         this._stl[key] = r;
       } catch (_) {}
     }
     return this._stl;
   },
+  // 🆚 結算結果加上成本與同期加權(漁獲籃與 📒 推薦成績單**共用這一份**,⛔ 不複製)
+  _stlEnrich(r) {
+    // 同期加權(⛔ 沒有指數就給 null,不硬算)
+    const b0 = this._twiiAt(r.d0), b1 = this._twiiAt(r.d1);
+    r.bench = (b0 > 0 && b1 > 0) ? (b1 / b0 - 1) * 100 : null;
+    r.ret = (r.exitP / r.entry - 1) * 100;
+    r.net = r.ret - this._STL_COST;                       // 扣來回成本
+    r.ex = r.bench === null ? null : r.net - r.bench;      // 扣同期加權 = 真正的成績
+    r.lot = Math.round((r.exitP - r.entry) * 1000);
+    return r;
+  },
   _stlOf(x) { return (this._stl || {})[`${x.sym}|${x.d}|${this._exitRule()}`] || null; },
+
+  // ═══ 📒 V76.0.4 決策台推薦成績單(使用者:「實測自動紀錄這套 App 推薦個股可以賺多少、勝率等等
+  //     一目了然,我要的是你推薦買就紀錄下來,策略說要賣的時候就結算,紀錄在產業作戰室裡面」)═══
+  // ⛔ 五條鐵則(測試 📒 系列釘住):
+  //  ① 「推薦」只有一個定義 = 散戶救星決策台「🎯 今天可以買的」:playbook_edge 依 (hq, lb) 排 → 同一檔留一招
+  //     → hq==1 且 !bear → 取前 _RECO_PICKS。跟 index.html `_deckState`/`_pbSort` **同一套順序**(測試跨檔比對)。
+  //     ⚠️ 決策台實際還會把**你自己持有的**排前面 —— 這裡用不含持股的純推薦版(卡上有寫)。
+  //  ② 名單來源 = data/pick_history.json(採礦每天存,⛔ 不靠使用者開 App、⛔ 不寫 localStorage)。
+  //     🚨 hq/bear 兩個旗標從 _RECO_SINCE 起才有 → 之前的天數重建不出來,**誠實寫起算日,⛔ 不硬湊**。
+  //  ③ 結算 = `_settleReplay` + `_stlEnrich`(跟漁獲籃、回測一字不差;⛔ 不在這裡再寫一份持有迴圈)。
+  //  ④ 同一檔還持有中 → 後面幾天再被推薦**不重複開倉**(決策台「已有部位不再買」+ cast_probe DEDUP 同一件事)。
+  //  ⑤ 樣本 <10 筆⛔ 不下結論;這是紙上成績(進場 = 推薦日收盤),⛔ 不是實盤。
+  _RECO_PICKS: 2,                 // = index.html `_DECK_TRACK49.picks`(測試 📒㉛ 跨檔比對,⛔ 改一邊會被擋)
+  _RECO_SINCE: '2026-09-12',      // pick_snapshot 開始存 hq/bear 的那一天
+  _recoPicks(pb) {
+    const rows = (pb || []).filter(x => x && x.s && ('hq' in x));
+    if (!rows.length) return null;                                   // 舊快照沒有旗標 → 重建不出來(⛔ 不猜)
+    const lb = x => Number.isFinite(+x.lb) ? +x.lb : -1e9;
+    const sorted = rows.slice().sort((a, b) => ((+b.hq || 0) - (+a.hq || 0)) || (lb(b) - lb(a)));   // 同 index._pbSort(不含 mine)
+    const seen = new Set(), uniq = [];
+    for (const x of sorted) { const k = String(x.s); if (seen.has(k)) continue; seen.add(k); uniq.push(x); }   // 同一檔只留排最前面那一招
+    return uniq.filter(x => (+x.hq || 0) === 1 && !(+x.bear || 0)).slice(0, this._RECO_PICKS);
+  },
+  async _recoLedgerLoad() {
+    const rule = this._exitRule();
+    const H = await this.fetchJson('data/pick_history.json', 12000);
+    const days = (H && Array.isArray(H.days) ? H.days : []).filter(d => d && d.d && Array.isArray(d.pb)).slice().sort((a, b) => (a.d < b.d ? -1 : 1));
+    await this._twiiLoad();
+    const out = { rule, days: days.length, since: null, skipped: 0, trades: [], noK: [] };
+    const open = new Map();                       // sym → 那筆的出場日('9999' = 還持有中)
+    const K = this._rlK = this._rlK || {};        // K 線快取(⛔ 同一檔不重抓)
+    for (const day of days) {
+      const picks = this._recoPicks(day.pb);
+      if (!picks) { out.skipped++; continue; }
+      out.since = out.since || day.d;
+      for (const x of picks) {
+        const until = open.get(x.s);
+        if (until && until >= day.d) continue;    // ④ 還持有中 → 不重複開倉
+        let rows = K[x.s];
+        if (rows === undefined) {
+          try { const raw = await this.fetchJson(`data/${x.s}.json`, 9000); rows = (Array.isArray(raw) ? raw : []).filter(r => r && +r.close > 0); }
+          catch (_) { rows = []; }
+          K[x.s] = rows;
+        }
+        const t = { sym: x.s, d: day.d, px: +x.c, k: x.k, st: null };
+        if (rows.length >= 12) {
+          const d0 = this._dstr(day.d);
+          let i0 = -1; for (let i = 0; i < rows.length; i++) { if (this._dstr(rows[i].date) >= d0) { i0 = i; break; } }
+          if (i0 >= 1) { const r = this._settleReplay(rows, i0, rule); if (r) t.st = this._stlEnrich(r); }
+        }
+        if (!t.st) out.noK.push(x.s);
+        open.set(x.s, (t.st && !t.st.open) ? t.st.d1 : '9999-99-99');
+        out.trades.push(t);
+      }
+    }
+    return out;
+  },
+  _recoLedgerRender() {
+    const el = document.getElementById('recoLedger'); if (!el) return;
+    const sig = 'reco|' + this._exitRule();
+    if (this._rlSig !== sig || !this._rl) {
+      this._rlSig = sig; this._rl = null;
+      el.innerHTML = `<div class="fishcard" style="margin-top:10px"><div class="big">📒 決策台推薦成績單</div><div class="note">⏳ 正在讀每天的推薦快照並逐筆結算…</div></div>`;
+      this._recoLedgerLoad().then(r => { if (this._rlSig !== sig) return; this._rl = r; this._recoLedgerRender(); })
+        .catch(e => { if (this._rlSig !== sig) return; this._rl = { err: String(e).slice(0, 120) }; this._recoLedgerRender(); });
+      return;
+    }
+    const R = this._rl;
+    const money = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString() + ' 元';
+    const head = `<div class="big">📒 決策台推薦成績單 <span class="sigtag">${R.trades ? R.trades.length : 0} 筆</span></div>`;
+    if (R.err) { el.innerHTML = `<div class="fishcard" style="margin-top:10px">${head}<div class="note">⚠️ 讀不到推薦快照(${R.err})—— 稍後再開一次;⛔ 這不是成績為零。</div></div>`; return; }
+    if (!R.days) { el.innerHTML = `<div class="fishcard" style="margin-top:10px">${head}<div class="note">⏳ 還沒有任何一天的推薦快照(data/pick_history.json)—— 採礦每個交易日收盤後會自動存下決策台「今天可以買的」名單,⛔ 不用你開 App。</div></div>`; return; }
+    const since = R.since || this._RECO_SINCE;
+    const done = R.trades.filter(t => t.st && !t.st.open), hold = R.trades.filter(t => t.st && t.st.open), pend = R.trades.filter(t => !t.st);
+    const row = t => {
+      const st = t.st, fin = st && !st.open;
+      if (!st) return `<div class="bkrow"><div class="bkhd">${this._nmc(t.sym, `PRO._fishPick('${t.sym}')`)}<span class="sigtag">⏳ 讀不到 K 線</span></div>
+        <div class="bkpx"><span class="mono" style="color:var(--dim)">${(t.d || '').slice(5)} ${t.px}</span><span style="color:var(--dim2)">・${t.k || ''}</span></div></div>`;
+      return `<div class="bkrow ${fin ? 'done' : 'hold'}">
+        <div class="bkhd">${this._nmc(t.sym, `PRO._fishPick('${t.sym}')`)}
+          ${fin ? `<span class="sigtag">🧾 已結算・${st.why}</span>` : `<span class="sigtag good">📌 持有中</span>`}
+          <span style="margin-left:auto;font-size:10px;color:var(--dim2)">${t.k || ''}</span></div>
+        <div class="bkpx">
+          <span class="mono" style="color:var(--dim)">${(t.d || '').slice(5)} ${st.entry}</span>
+          <span style="color:var(--dim2)">→</span>
+          <span class="mono">${st.exitP}</span>
+          <span class="pct mono ${this.cls(st.net)}">${this.fmt(st.net, 2, true)}%</span>
+          <span class="mono ${this.cls(st.lot)}" style="margin-left:auto">一張 ${money(st.lot)}</span></div>
+        <div class="bkvs">🆚 同期大盤 <span class="mono ${this.cls(st.bench)}">${st.bench == null ? '—' : this.fmt(st.bench, 2, true) + '%'}</span>
+          <span style="color:var(--dim2)">→</span>
+          <b class="mono ${this.cls(st.ex)}">贏大盤 ${st.ex == null ? '—' : this.fmt(st.ex, 2, true) + 'pp'}</b></div>
+        <div class="bkft">抱 ${st.days} 個交易日 ${fin ? '<span>出場價已定,⛔ 這個數字不會再變</span>' : '<span>還沒觸發出場 —— 上面是<b>帳面浮動</b>,會一直變</span>'}</div></div>`;
+    };
+    el.innerHTML = `<div class="fishcard" style="margin-top:10px;border-color:var(--cyan);background:rgba(56,189,248,.05)">
+      ${head}
+      <div class="note" style="margin:6px 0 8px;font-size:10.5px">
+        ⭐ <b>推薦 = 散戶救星決策台「🎯 今天可以買的(最多 ${this._RECO_PICKS} 檔)」</b>,採礦每天收盤後自動存名單(⛔ 不靠你開 App),
+        進場 = 推薦那天的收盤,出場 = <b>${this._exitRuleName()}</b>(換規則整張表重算)。
+        📅 從 <b>${since}</b> 起累積${R.skipped ? `(之前 ${R.skipped} 天的快照沒有旗標,重建不出決策台名單,⛔ 不硬湊)` : ''}
+        ・快照 ${R.days} 天 ・持有中 ${hold.length} ・已結算 ${done.length}${pend.length ? ` ・讀不到 K 線 ${pend.length}` : ''}。<br>
+        ⚠️ 決策台真正排序時會把<b>你自己持有的</b>排前面,這裡是<b>不含持股的純推薦版</b>;同一檔還持有中就不重複開倉。
+      </div>
+      ${R.trades.length ? '' : `<div class="note">📭 ${since} 之後還沒有任何一天有「可以買的」(決策台那幾天是空手 —— ⛔ 那不是壞掉,是 🧬 必要條件沒過或大盤空頭)。</div>`}
+      ${hold.length ? `<div style="font-size:11px;color:var(--dim2);font-weight:700;margin:2px 0 5px">📌 持有中 ${hold.length} 筆</div>${hold.map(row).join('')}` : ''}
+      ${done.length ? `<div style="font-size:11px;color:var(--dim2);font-weight:700;margin:8px 0 5px">🧾 已結算 ${done.length} 筆(數字不會再變)</div>${done.map(row).join('')}` : ''}
+      ${pend.length ? pend.map(row).join('') : ''}
+      ${R.trades.length ? this._stlCard(R.trades, '推薦') : ''}
+    </div>`;
+  },
   // 📊 成績單:只算**已結算**的(持有中的⛔ 不可混進來 —— 那會讓還在虧的部位不計入)
-  _stlCard(rows) {
+  _stlCard(rows, who = '釣起') {
     const done = rows.map(r => r.st).filter(s => s && !s.open);
     const open = rows.filter(r => r.st && r.st.open).length;
     const pend = rows.filter(r => !r.st).length;
     if (!done.length) {
       return `<div class="note" style="margin-top:8px">🧾 <b>自動結算</b>:目前<b>還沒有任何一條觸發出場</b>
         ${open ? `(${open} 條持有中` : '('}${pend ? `${open ? '、' : ''}${pend} 條讀不到 K 線` : ''})。
-        釣起之後只要<b>收盤跌破${this._exitRuleName()}、或碰到停損、或抱滿 20 個交易日</b>,
+        ${who}之後只要<b>收盤跌破${this._exitRuleName()}、或碰到停損、或抱滿 20 個交易日</b>,
         這裡就會自動結算並記下來 —— ⭐ 那時候才知道<b>這套策略到底有沒有用</b>。</div>`;
     }
     const n = done.length;
@@ -2953,7 +3068,7 @@ const PRO = {
       </div>
       <div class="note" style="margin-top:6px">
         ${enough ? '' : `⚠️ <b>只有 ${n} 筆,⛔ 還不能當結論</b>(全站規則:樣本 <10 筆不下判斷)。<br>`}
-        🧾 <b>怎麼算的</b>:進場 = 釣起那天的收盤;停損 = <b>min(釣起日最低, 釣起價 −5%)</b>;
+        🧾 <b>怎麼算的</b>:進場 = ${who}那天的收盤;停損 = <b>min(${who}日最低, ${who}價 −5%)</b>;
         收盤跌破<b>${this._exitRuleName()}</b>就走,最長 20 個交易日 ——
         ⭐ 跟「📖 回測計算機」那份<b>一字不差</b>(改出場規則這裡會全部重算)。
         每趟已扣<b>來回成本 0.44%</b>,「超額」再扣<b>同期加權指數</b>。<br>
@@ -4335,7 +4450,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V76.0.0',
+  VER: 'V76.0.4',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

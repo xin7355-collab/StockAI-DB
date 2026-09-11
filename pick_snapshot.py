@@ -56,15 +56,24 @@ def main():
     if isinstance(pe, dict) and pe.get('picks'):
         d = str(pe.get('data_date') or '')[:10]
         picks = []
-        for x in pe['picks'][:TOP_N]:
-            if not isinstance(x, dict):
-                continue
+        # 📒 V76.0.4 決策台「今天可以買的」= hq==1 且 !bear、依 lb 排、取前 2(index.html `_deckState`)。
+        #   要事後重建那份名單,快照裡就得有 hq / bear 兩個**事實欄**(它們是 playbook_edge 算好的旗標,
+        #   ⛔ 不是結論),而且 hq 候選可能排在 TOP_N 之外 → 前 TOP_N 之外再補前 EXTRA_HQ 個 hq 候選。
+        #   ⚠️ 這兩欄從 2026-09-12 起才有;之前的天數重建不出決策台名單(前端會誠實寫起算日)。
+        EXTRA_HQ = int(os.getenv('EXTRA_HQ', '10'))
+        rows_all = [x for x in pe['picks'] if isinstance(x, dict)]
+        keep = list(range(min(TOP_N, len(rows_all))))
+        extra = [i for i, x in enumerate(rows_all) if i >= TOP_N and (x.get('hq') or 0) == 1 and not x.get('bear')][:EXTRA_HQ]
+        for i in keep + extra:
+            x = rows_all[i]
             picks.append({
                 's': str(x.get('s') or ''),
                 'c': x.get('c'),                 # 當時收盤(⭐ 事後算報酬要用它當基準)
                 'k': x.get('k'),                 # 打法名稱
                 'lb': x.get('lb'),               # 保守下界(當時的排序依據)
                 'trig': x.get('trig'),           # 觸發價(⛔ 是估計值,已知)
+                'hq': 1 if (x.get('hq') or 0) == 1 else 0,   # 🧬 高位階+高波動(事實旗標)
+                'bear': 1 if x.get('bear') else 0,           # 空頭(事實旗標;決策台⛔ 不給進場)
             })
         if d and picks:
             day['d'] = d

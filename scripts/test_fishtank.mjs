@@ -436,6 +436,80 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV, PBE }) => {
   return out;
 }, { SCR, COR, EDGE, DIV, PBE });
 
+// ═══ 📒 V76.0.4 決策台推薦成績單(使用者:「推薦買就記下來,策略說要賣就結算,勝率一目了然」)═══
+//   測資全部手算得出唯一答案;K 線沿用上面 🧾㉒ 同一組(2408:100 → 跌破 5 日線 +5.56%、一張 +6,000)
+//   ⭐ 這正是要驗的:推薦成績單的結算數字必須跟漁獲籃**一字不差**(同一支 _settleReplay)
+const RL = await page.evaluate(async () => {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const _D = i => new Date(Date.UTC(2026, 5, 1) + i * 864e5).toISOString().slice(0, 10);
+  const _mk = cs => cs.map((c, i) => ({ date: _D(i), close: c, high: c + 1, low: c - 1, volume: 1000 }));
+  const out = {};
+  localStorage.setItem('proTerminalSettings', JSON.stringify({ exitRule: 'ma5' }));
+  // ① 純函式:決策台名單重建(同 index._pbSort:hq → lb;同一檔留一招;hq==1 且 !bear;取前 2)
+  const PB = [
+    { s: '2330', c: 1180, k: '爆量長紅', lb: 0.9, hq: 1, bear: 0 },
+    { s: '2408', c: 100, k: '突破頸線', lb: 1.8, hq: 1, bear: 0 },
+    { s: '8299', c: 500, k: '回後買上漲', lb: 5.0, hq: 0, bear: 1 },   // 非 🧬 → ⛔ 排除(lb 最高也不行)
+    { s: '6666', c: 50, k: '空頭卻高分', lb: 9.9, hq: 1, bear: 1 },      // 🧬 有、但**空頭** → ⛔ 排除(⚠️ 注入驗證第一輪就是少了這一筆才沒抓到「不排除空頭」)
+    { s: '2408', c: 100, k: '⛔ 差的那一招', lb: 0.1, hq: 1, bear: 0 },  // 同一檔第二招 → 去重
+  ];
+  out.picks = (PRO._recoPicks(PB) || []).map(x => `${x.s}|${x.k}`);
+  out.picksOld = PRO._recoPicks([{ s: '2330', c: 1, k: 'x', lb: 1 }]);      // 舊快照(沒有 hq)→ null
+  // ② 整份帳:4 天快照(A 沒旗標 / B 推薦 2408+2330 / C 同兩檔仍持有 → 不重複 / D 2408 已出場 → 再開一筆)
+  const FX = _mk([100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 105, 106, 107, 108, 109, 106, 106, 106, 106, 106, 106, 106, 106, 106, 106, 106, 106, 106, 106, 106]);
+  PRO._cache['data/2408.json'] = FX;
+  PRO._cache['data/2330.json'] = null;                                    // 讀不到 K 線的那一檔
+  PRO._cache['data/pick_history.json'] = { n_days: 4, days: [
+    { d: _D(3), pb: [{ s: '2408', c: 100, k: '舊格式', lb: 2 }] },
+    { d: _D(9), pb: PB },
+    { d: _D(10), pb: [{ s: '2408', c: 105, k: '突破頸線', lb: 1.9, hq: 1, bear: 0 }, { s: '2330', c: 1200, k: '爆量長紅', lb: 1.0, hq: 1, bear: 0 }] },
+    { d: _D(20), pb: [{ s: '2408', c: 106, k: '突破頸線', lb: 1.2, hq: 1, bear: 0 }] },
+  ] };
+  PRO._twii = { m: new Map([[_D(9), 1000], [_D(15), 1010], [_D(20), 1010], [_D(29), 1010]]), days: [_D(9), _D(15), _D(20), _D(29)] };
+  PRO._rlK = {}; PRO._rl = null; PRO._rlSig = null;
+  const el = document.getElementById('recoLedger');
+  out.hasEl = !!el && el.closest('#fishBasketPane') !== null;
+  PRO._recoLedgerRender(); await sleep(400);
+  const R = PRO._rl;
+  out.ledger = R ? { days: R.days, skipped: R.skipped, since: R.since, rule: R.rule,
+    trades: R.trades.map(t => ({ sym: t.sym, d: t.d, st: t.st ? { open: t.st.open, net: +t.st.net.toFixed(2), lot: t.st.lot, why: t.st.why, ex: t.st.ex == null ? null : +t.st.ex.toFixed(2) } : null })) } : null;
+  out.txt = el ? el.innerText.replace(/\s+/g, ' ') : '';
+  // ③ 換出場規則 → 整張表重算(簽章換了要重載,⛔ 不沿用 ma5 的結果)
+  localStorage.setItem('proTerminalSettings', JSON.stringify({ exitRule: 'trail8' }));
+  PRO._recoLedgerRender(); await sleep(400);
+  // trail8:峰 109 × 0.92 = 100.28,收 106 沒跌破 → 抱滿 20 個交易日才出(_D(29));而 _D(20) 那天 2408 還持有 → 不再開倉 → 只剩 2 筆
+  out.rule2 = PRO._rl && PRO._rl.rule; out.n2 = PRO._rl ? PRO._rl.trades.length : -1; out.why2 = PRO._rl && PRO._rl.trades[0].st ? PRO._rl.trades[0].st.why : '';
+  localStorage.setItem('proTerminalSettings', JSON.stringify({ exitRule: 'ma5' }));
+  return out;
+});
+ok('📒① 名單重建 = 決策台順序:hq → lb、同一檔留一招、空頭排除、取前 2 → [2408, 2330]',
+   JSON.stringify(RL.picks) === JSON.stringify(['2408|突破頸線', '2330|爆量長紅']), JSON.stringify(RL.picks));
+ok('📒①b 舊快照(沒有 hq 旗標)→ null,⛔ 不猜名單', RL.picksOld === null);
+ok('📒② 容器在漁獲籃那個 panel 裡(⛔ 不另開分頁)', RL.hasEl);
+ok('📒③ 沒旗標那一天要跳過並算進「之前 N 天」,起算日 = 第一個有旗標的日子',
+   RL.ledger && RL.ledger.days === 4 && RL.ledger.skipped === 1 && RL.ledger.since === RL.ledger.trades[0].d, JSON.stringify(RL.ledger).slice(0, 200));
+ok('📒④ ⭐ 結算數字跟漁獲籃/回測一字不差:2408 +5.56% ・跌破 5 日線 ・一張 +6,000 ・超額 +4.56pp',
+   RL.ledger && RL.ledger.trades[0].sym === '2408' && RL.ledger.trades[0].st && RL.ledger.trades[0].st.net === 5.56 && /跌破 5 日線/.test(RL.ledger.trades[0].st.why)
+   && RL.ledger.trades[0].st.lot === 6000 && RL.ledger.trades[0].st.ex === 4.56, JSON.stringify(RL.ledger && RL.ledger.trades[0]));
+ok('📒⑤ 同一檔還持有中,隔天再被推薦⛔ 不重複開倉;出場之後再推薦才開新的一筆(共 3 筆:2408 / 2330 / 2408)',
+   RL.ledger && RL.ledger.trades.length === 3 && RL.ledger.trades.map(t => t.sym).join() === '2408,2330,2408' && RL.ledger.trades[2].st && RL.ledger.trades[2].st.open === true,
+   JSON.stringify(RL.ledger && RL.ledger.trades.map(t => [t.sym, t.d, t.st && t.st.open])));
+ok('📒⑥ 讀不到 K 線的那一檔要標出來、⛔ 不算進成績單(成績單 1/1)', /讀不到 K 線/.test(RL.txt) && /1\/1/.test(RL.txt), RL.txt.slice(0, 200));
+ok('📒⑦ 文案:推薦的定義 + 不含持股 + 起算日 + 紙上成績 + 樣本不足不下結論',
+   /今天可以買的/.test(RL.txt) && /不含持股/.test(RL.txt) && /從 \d{4}-\d{2}-\d{2} 起累積/.test(RL.txt) && /紙上成績/.test(RL.txt) && /還不能當結論/.test(RL.txt), RL.txt.slice(0, 300));
+ok('📒⑦b 成績單措辭要用「推薦」不是「釣起」(⛔ 同一支 _stlCard 換稱呼,不複製第二份)', /進場 = 推薦那天的收盤/.test(RL.txt) && !/釣起那天/.test(RL.txt));
+ok('📒⑧ 換出場規則 → 整張表重算(trail8 沒觸發 → 2408 改成「抱滿 20 個交易日」出場,而且 _D(20) 那天不再開倉 → 2 筆)',
+   RL.rule2 === 'trail8' && /抱滿 20/.test(RL.why2) && RL.n2 === 2, `${RL.rule2} why=${RL.why2} n=${RL.n2}`);
+{
+  const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const a = +(idx.match(/_DECK_TRACK49: \{[^}]*picks: (\d+)/) || [])[1], b = +(PROSRC.match(/_RECO_PICKS: (\d+)/) || [])[1];
+  ok('📒㉛ 🚨 每天推薦幾檔要跟 index.html 決策台一模一樣(⛔ 改一邊會被擋)', a >= 1 && a === b, `index=${a} pro=${b}`);
+  const blk = seg('_recoLedgerLoad');
+  ok('📒㉜ 🚨 結算只准呼叫 _settleReplay + _stlEnrich(⛔ 不可在這裡再寫一份持有迴圈)',
+     /_settleReplay\(/.test(blk) && /_stlEnrich\(/.test(blk) && !/for \(let j = i0 \+ 1/.test(blk) && !/peak/.test(blk));
+  ok('📒㉝ ⛔ 不寫 localStorage(它是全站事實,不是這台裝置的紀錄)', !/localStorage/.test(blk + seg('_recoLedgerRender') + seg('_recoPicks')));
+}
+
 ok('⑪ 分頁切得過去', R.tabVisible);
 ok('⑪b 標題旁有資料日與檔數', /資料日 \d{4}-\d{2}-\d{2}/.test(R.sub) && /檔可下水/.test(R.sub), R.sub);
 ok('⑪c 預設池 = 成交額前 100,魚數 ≤ 100 且 > 50', R.nFish > 50 && R.nFish <= 100, R.nFish);
