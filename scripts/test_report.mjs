@@ -587,13 +587,16 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         // 超出上端:直接餵一個離譜的現價給純函式(⛔ 不改真資料)
         const over = A._rpValRuler({ ...C, pC: C.pC * 20 });
         const overLeft = parseFloat((over.match(/left:\s*([\d.]+)%;top:-13px/) || [])[1]);
-        return { open: !!(d && d.open), sum: sum ? sum.innerText.replace(/\s+/g, ' ') : '', p25: f(pick(/偏便宜/)), med: f(pick(/中位\(PE/)), p75: f(pick(/^偏貴/)),
+        // 📏 V76.0.7 尺要在 <details> **外面**(收合也看得到)—— 注入:把尺塞回 body → rulerOutside 變 false → 必紅
+        const rulerOutside = !!(ruler && !ruler.closest('details'));
+        return { open: !!(d && d.open), rulerOutside, sum: sum ? sum.innerText.replace(/\s+/g, ' ') : '', p25: f(pick(/偏便宜/)), med: f(pick(/中位\(PE/)), p75: f(pick(/^偏貴/)),
                  hasRuler: !!ruler, dataRk: ruler ? +ruler.getAttribute('data-rk') : null, left, rk, overTxt: /已超過近 3 年 95%/.test(over), overLeft,
                  noTarget: !/目標價(?!,也不是預測)|預估價/.test(box.innerText) };
     });
     ok('💰v1 摺疊標題直接寫「估值帶 P25 ~ P75 ・中位」三個價,數字 = 對照表那三列(⛔ 不另算)',
        v.sum.includes(`${v.p25} ~ ${v.p75}`) && v.sum.includes(`中位 ${v.med}`) && /第 \d+ 百分位/.test(v.sum), v.sum.slice(0, 160));
-    ok('💰v1b 算得出估值帶 → 這一節預設攤開', v.open, String(v.open));
+    // 📏 V76.0.7 使用者:「報告頁資料很多」→ 改成「尺在摺疊區外面、6 列表預設收合」(⛔ 不再預設攤開)
+    ok('💰v1b 估值尺在 <details> 外面(收合也看得到),6 列表預設收合', v.rulerOutside && !v.open, JSON.stringify({ rulerOutside: v.rulerOutside, open: v.open }));
     ok('💰v2 尺上 ▼ 的位置 = _rpPeRank(現價÷年化EPS)(注入:改成線性用 PE 算 → 必紅)',
        v.hasRuler && v.dataRk === v.rk && v.left != null && Math.abs(v.left - Math.max(2, Math.min(98, v.rk))) < 0.01, JSON.stringify({ rk: v.rk, dataRk: v.dataRk, left: v.left }));
     ok('💰v3 現價超出 P95 → 貼右邊(98%)+ 明講「已超過近 3 年 95%」', v.overTxt && v.overLeft === 98, JSON.stringify({ overLeft: v.overLeft, overTxt: v.overTxt }));

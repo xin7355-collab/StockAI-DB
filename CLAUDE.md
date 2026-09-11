@@ -980,6 +980,7 @@ CLAUDE.md 自己早就寫了「巡邏 grep 只能抓你想得到的說法 → **
 | **顯示「股名 + 代號」** | ⛔ 一律走 `app._nmPair(code, cls)`(兩層版面用 `_nmSub`)—— `getStockName` 在清單沒載入時**回傳代號本身**,自己寫 `${name} ${code}` 會印成「2327 2327」。🚨 **這個坑本專案已經踩第四次**(V72.2.0 / V74.3.9 / V74.7.7 / V76.0.0),而且每次都是**實跑真實資料**才看得到,單元測試抓不到 |
 | **顯示或計分用到 VIX** | ⛔ 一律走 `app._vixState()`(V75.2.3)—— 兩份採礦檔都有 VIX(`macro_risk` 新 / `macro_cache` 舊),實測同一天 16.41 vs 16.31(**抓的時間不同**,不是誰算錯)。⛔ 別再直接讀 `m.vix.close`。🚨 V75.2.3 修掉的正是「**顯示的 VIX 跟風險指數算進去的 VIX 不是同一個數字**」。測試 `scripts/test_vixsrc.mjs` |
 | **新增任何「賺/賠多少元」的顯示** | ⛔ 一律走 `app._netPL(buy, sell, shares)`(V71.7.8)+ `app._feeDisc()` —— 淨損益公式全 App 只有一份(已扣買賣手續費 0.1425%×使用者折數 + 賣出證交稅 0.3%)。⛔ 別再 inline 寫一份(V71.7.8 前「今天這檔怎麼做」卡就有一份複製品),折數規則一改就會有兩個版本的金額 |
+| **新增任何「量表 / 刻度尺 / 進度條」式的顯示** | ⛔ 一律走 `app._gaugeRow(label, pct, o)`(V76.0.7)—— 全 App 只有一種尺(灰階底條 + ▼)。`kind:'pos'` 位置灰階 ・`'dir'` 方向才准紅綠(58/42)・`'risk'` 安全/危險用 ✅⚠️⛔(燈號鐵則)。⛔ 別再自己畫 `bg-gradient-to-r … ▼`(估值尺 V76.0.2 就是這樣先各畫一份才收回來的)。🧭 五維儀表列 = `_gaugeStripHtml(sym)`,**總覽與報告頁同一支**,只讀 `_lastGauge.dims`(⛔ 不重算、⛔ 不顯融合總分 —— 陷阱 #38)。📏 價格尺 = `_priceRulerHtml()`,只讀 `_keyLevels`(關鍵價位卡存的)+ `_upsideStash`,由 `_renderGuardRuler` 回填(同 V76.0.6)。測試 `scripts/test_gauge.mjs` |
 | **新增任何「上檔目標/壓力價位」** | ⛔ 一律加進 `app._upsideRoom(pC, data, last)` 的來源清單,由它統一排序 + 算 %/元/風報比;顯示端讀 `_upsideStash`,⛔ 不自己再算一份。⭐ **來源要含「量」不能只有「價」**(V71.8.7):前高只是一個價位,`_overheadSupply()` 的**套牢區**是「一整片有量的區間」,對「彈上去會不會被壓下來」解釋力更強。⚠️ `_upsideRoom` 必須在顯示端**之前**跑,且 stash 有比對現價防跨股殘留。測試 `scripts/test_upside.mjs` / `test_overhead.mjs` |
 | **新增 setCell 純公式卡**(取代 AI) | ① 指標暫存 `this._xrayMetrics` 逐項寫入 ② 末端統一產結論(如 `_renderXrayVerdict`)③ **資料充足度守門**:缺關鍵維度顯「整備中」別硬判 ④ 切股競態守門 `currentSymbolId!==sym` return |
 | **夜間 fund_sweep 改欄位**(fund_yoy_gm.json) | ① 前端 `_loadFundYoyGm()` fallback 讀取欄名一致 ② X 光機 YoY/毛利 fallback 鏈 ③ fund_sweep.py 輸出欄名跟前端**完全一致** ④ 獨立檔靠 daily_miner `git archive origin/data` 保留,勿併回 fundamentals_cache.json(會被下午重建洗掉) |
@@ -1871,6 +1872,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 🧭 V76.0.7 「看得懂的第一眼」—— 總覽 778 → 474 字:🧭 儀表列 + 📏 價格尺 + 一個摺疊區 ・⭐ 五維儀表板 V68.4.6 就有,藏在第三層(陷阱 #32 又一次)・全 App 的尺統一成 `_gaugeRow` ・9 種注入全叫得出來
 - 🪤 V76.0.6 「散戶都卡在 800」那道牆 —— ⭐ App 早就算出來了(埋在三層底下,陷阱 #32 第三次)・🔬 第一次回測:**穿不穿得過測得到(單調),賺不賺得到測不到**・🚨 測資踩了四個坑才讓 selftest 真的會紅
 - 🧰 V76.0.2~V76.0.4 使用者七題一次做 —— ⭐ 三題早就有一半(估值表 / pick_history / 加碼回測)・🐛 報告頁切股黑畫面真因是補跑清單漏 report ・📏 估值尺 ・🗂️ 藏多空 ・💧 板塊輪動第 4 格(名次唯一真相 `_regimeStats`)・📒 推薦成績單(零第二份真相)・🚨 我放了 PRO 連結違反使用者明示,test_prohtml ② 抓到
 - 📄 V76.0.1 「報告頁跟總覽很雷同」—— ⭐ 量完才知道 **91.2% 不重複**,雷同的只有第一眼那一格(73% 逐字相同)・⛔ 不合併 ・🚨 三支巡邏工具**從來沒掃過報告頁** ・📋 2026-09-10 那份待辦盤點三條的下場
