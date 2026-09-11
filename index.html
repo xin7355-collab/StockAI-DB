@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.0.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.0.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.0.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.0.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2366,6 +2366,9 @@
                         class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-amber-300 border border-transparent">📈 行情</button>
                 <button onclick="app.switchMarketSubTab('tw')" id="subTab_tw2"
                         class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-purple-300 border border-transparent">🌅 盤前檢視</button>
+                <!-- 💧 V76.0.3 第 4 格「板塊輪動」(使用者:放在盤前檢視右手邊)—— 市場板塊輪動卡從「行情」搬來 + 20 日相對強弱排名 -->
+                <button onclick="app.switchMarketSubTab('rot')" id="subTab_rot"
+                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-emerald-300 border border-transparent">💧 板塊輪動</button>
                 <button onclick="app.switchMarketSubTab('global')" id="subTab_global2"
                         class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-cyan-300 border border-transparent">🗞️ 消息面</button>
             </div>
@@ -2377,6 +2380,35 @@
                 <div id="marketBreadthCard" class="hidden"></div>
                 <!-- 🔄 V67.4 市場狀態機 Regime(趨勢盤/盤整盤/崩跌盤) -->
                 <div id="marketRegimeCard" class="hidden"></div>
+            <!-- 📊 V76.0.3 「市場板塊輪動」卡已搬到第 4 格「💧 板塊輪動」(使用者要求;所有 id 不變,JS 零改動)-->
+            </div>
+
+            <!-- ════════ 🌅 盤前檢視:盤前體檢 + 反攻雷達 + 指揮中心(會下判斷的都在這)════════ -->
+            <div id="subContent_advice" class="hidden flex-col gap-3">
+                <!-- 🌅 V36.8 盤前大盤體檢(加權技術+美股+ADR+外資 → 開盤方向總結) -->
+                <div id="marketBriefing" class="hidden w-full rounded-lg p-3 border"></div>
+                <!-- 🧭 V70.2.7 反攻條件雷達(還差什麼條件台股才會漲 / 是不是黑天鵝該停損) -->
+                <div id="reboundRadarCard" class="hidden"></div>
+
+            <!-- 🚨 V68.3.2 盤中爆量雷達已從大盤頁移除(使用者要求);renderVolSurgeRadar 因 box 不存在自動 no-op,函式保留 -->
+            <!-- <div id="volSurgeRadarCard" class="hidden"></div> -->
+
+
+            <!-- 📅 V71.4.4 財經行事曆已搬到「🗞️ 消息面」分頁(使用者要求:行事曆＝未來的消息,跟新聞放一起才是同一件事) -->
+
+            </div><!-- /subContent_advice 之 上半(盤前體檢/反攻雷達)-->
+            <!-- 🗑️ V71.4.2 舊的兩格分頁列已被上方三格取代(避免兩層選單) -->
+
+            <!-- ════════ 💧 板塊輪動(V76.0.3):錢在哪一族、哪一族最弱 + 美股對標跟漲 ════════
+                 使用者:「新增市場板塊輪動頁面,放在盤前檢視右手邊,把市場板塊輪動移到這裡面;
+                 產業作戰室 PRO 的板塊輪動要不要?我不要資料太亂,應該簡化還有重新設計介面」
+                 ⭐ 決定:只接**一條有實測背書**的 —— 近 20 日相對強弱(前 3 強 − 後 3 弱 +1.44pp,sector_rotation_probe,
+                 含 2022 空頭重跑不變);⛔ 不搬 PRO 的泡泡圖/熱力圖/播放(那是另一個介面,而且泡泡的
+                 CSS transition 陷阱已經踩過四次),只放一顆鈕連過去。⛔ 不畫資金流(實測「描述用、排不出順序」)。
+                 🚨 名次唯一真相 = app._regimeStats()(跟 K 棒戰法卡 / 報告頁同一份)—— ⛔ 不可從 sector_rot.json 自己再排一次 -->
+            <div id="subContent_rot" class="hidden flex-col gap-3">
+                <div id="rotLead"></div>
+                <div id="rotRankCard" class="hidden"></div>
             <!-- 📊 V26.14/V31.4 — 9 板塊跨市場板塊輪動整合卡;V43.8 order:2(中) -->
             <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
                 <div class="flex items-center gap-1.5 mb-1">
@@ -2405,23 +2437,8 @@
 
                 <!-- V69.8.0 「📖 美股對標 ETF 速查表」摺疊卡已刪(使用者要求) -->
             </div>
+                <button onclick="window.open('pro.html#rot','_blank'); app.vibrate && app.vibrate(20);" class="w-full text-[11px] font-bold text-emerald-200 bg-emerald-900/20 border border-emerald-700/50 rounded-lg py-2 hover:bg-emerald-900/40">🛰️ 完整版:泡泡圖・熱力圖・播放輪動 → 產業作戰室</button>
             </div>
-
-            <!-- ════════ 🌅 盤前檢視:盤前體檢 + 反攻雷達 + 指揮中心(會下判斷的都在這)════════ -->
-            <div id="subContent_advice" class="hidden flex-col gap-3">
-                <!-- 🌅 V36.8 盤前大盤體檢(加權技術+美股+ADR+外資 → 開盤方向總結) -->
-                <div id="marketBriefing" class="hidden w-full rounded-lg p-3 border"></div>
-                <!-- 🧭 V70.2.7 反攻條件雷達(還差什麼條件台股才會漲 / 是不是黑天鵝該停損) -->
-                <div id="reboundRadarCard" class="hidden"></div>
-
-            <!-- 🚨 V68.3.2 盤中爆量雷達已從大盤頁移除(使用者要求);renderVolSurgeRadar 因 box 不存在自動 no-op,函式保留 -->
-            <!-- <div id="volSurgeRadarCard" class="hidden"></div> -->
-
-
-            <!-- 📅 V71.4.4 財經行事曆已搬到「🗞️ 消息面」分頁(使用者要求:行事曆＝未來的消息,跟新聞放一起才是同一件事) -->
-
-            </div><!-- /subContent_advice 之 上半(盤前體檢/反攻雷達)-->
-            <!-- 🗑️ V71.4.2 舊的兩格分頁列已被上方三格取代(避免兩層選單) -->
 
             <!-- ════════ 【區 3-A】🗞️ 消息面(盤前新聞 + 財經行事曆)════════ -->
             <div id="subContent_global" class="flex flex-col gap-3">
@@ -8178,8 +8195,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.0.2',
+    _APP_VERSION: 'V76.0.3',
     _CHANGELOG: [
+        { v: 'V76.0.3', d: ['💧 <b>大盤頁多了第 4 格「板塊輪動」</b>,就在「盤前檢視」右邊(你指定的位置)。「市場板塊輪動」那張美股對標卡從「行情」搬過來了。','📊 <b>新增「32 個產業近 20 日相對強弱」排名</b>:一句話先講最強三族、最弱三族,下面 32 列排名條。⭐ 為什麼是這一條:它是本站板塊實測<b>唯一過六關</b>的 —— 前 3 強減後 3 弱 +1.44pp、含 2022 空頭重跑不變;而且<b>避開最弱那幾族(−0.80pp)比追最強的(+0.63pp)更有價值</b>,卡上有寫。名次跟個股頁「這一族排第幾」是同一份數字。','🛰️ 產業作戰室的泡泡圖/熱力圖/播放<b>沒有搬進來</b>(你說不要資料太亂)—— 留一顆鈕連過去。⛔ 這一頁只描述、不下買賣指令;資金流(外資/投信/自營/融資)實測排不出有效順序,所以沒畫。'] },
         { v: 'V76.0.2', d: ['🐛 <b>報告分頁換股變黑畫面 —— 修好了</b>(你的截圖:凱基台灣TOP50 那頁整片黑)。真因:換股時九個區塊都有被清掉,但「換完要重畫」的清單漏了報告這一頁,所以要切到別的分頁再切回來才有東西。','📏 <b>報告頁的估值改成一把尺</b>(你要「一眼知道這隻股票的價位在哪、心裡有個底」):橫軸是它<b>自己近 3 年</b>被市場給過的本益比(最便宜 → 最貴)換算成股價,▼ 標出現價落在第幾百分位、◆ 標出「用同業中位本益比算會是幾元」。摺疊標題直接寫「估值帶 A ~ B 元 ・中位 C ・現價 = 第 N 百分位」,不用點開就看得到。⛔ 這是「市場過去給過它幾倍」,<b>不是目標價、不是預測</b>(卡上有寫)。','🗂️ <b>「多空」分頁收起來了</b>(你說沒有用)。程式還在、總覽的判斷不受影響;收了什麼寫在設定中心「已收起的卡片」那一節。','🧹 決策台標題底下那句「⛔ 這一頁不產生新結論…」刪掉了(你說沒用)。'] },
         { v: 'V76.0.1', d: ['📄 <b>「報告」分頁搬到「總覽」右邊</b>(你要求的位置),⛔ 兩頁<b>不合併</b> —— 實際量過了:報告頁 459 行裡<b>只有 8.8% 跟總覽重複</b>,合併只會讓總覽從 10,622 字暴增到一萬五以上,正好是你最常說的「資訊爆炸」。','🎯 <b>「很雷同」的真因找到了,而且就一格</b>:報告頁第一眼那張「結論與操作」有 <b>73% 跟總覽逐字相同</b>(整串出場價位照抄一次)。現在只留大字結論 + 一句理由 + 你的庫存損益,<b>價位明細收進摺疊</b>(⛔ 沒有刪掉 —— 那是真的防守價),並註明「要照著下單以總覽為準」。','📋 <b>「複製整份報告」現在會把那幾個出場價位一起複製出去</b> —— 以前一行都沒複製到。畫面變輕、帶出去反而更完整。','🗂️ <b>回測頁「最佳打法」瘦身</b>(實測是全 App 最重的一張卡):排名表只攤開「值得做的 + 今天真的觸發的 + ⚠️避開的」,其餘沒有優勢的那些收進摺疊。⛔ 一列都沒刪,點開就看得到。','🔬 順手補一個藏很久的盲點:三支巡邏工具的分頁清單<b>從來沒有包含「報告」頁</b> → 那一頁從上線到現在一次都沒被自動巡邏過,現在補上了。'] },
         { v: 'V76.0.0', d: ['🏭 <b>個股「報告」分頁改成真的產業報告</b>(你說「我要的是產業報告,現在這個感覺是總結」)—— 以前那一節只有兩行(產業別 + 代碼),難怪看起來像別的分頁的摘要。','① <b>同業對照表</b>:直接告訴你「你在這一族 N 檔裡,成交值第幾 ・近 20 日第幾 ・本益比第幾便宜 ・營收年增第幾 ・毛利率第幾」,並列出這一族成交值前 10 名(<b>你自己那一檔一定在表內</b>,點名字可以直接跳過去)。分群優先用<b>題材名單</b>(每天重算,比官方 33 大類精準);上櫃股沒有官方產業別,現在也有得比了。','② <b>這一族現在強不強</b>:這一族近 20 日在 32 個產業裡排第幾 + 近半年走勢圖 + 外資/投信/自營/融資近 5 日往哪流。⚠️ 資金流是<b>描述用</b>,本站實測它排不出有效順序,⛔ 不可拿來當買賣訊號(卡上有寫)。','③ <b>誰跟它一起動</b>:近 120 日走勢最像的前 5 檔 —— 用途是「我是不是重壓在同一族」(手上如果都有,那不是分散,是同一注下了好幾次)。','④ <b>這一族的實測成績</b>:同一族買最強的 +0.90%(六關全過)、買落後補漲的<b>逐年全負</b> —— 別因為「它還沒漲」就買它。','⑤ <b>📝 產業筆記</b>:產業景氣/漲價/法說這些質化的東西,按「🔎 問 Perplexity」問完可以把回答<b>貼回來存起來</b>。⛔ 它一定會標「外部 AI 寫的、本站沒有驗證」,而且<b>不會</b>被算進任何結論、評分或「📋 複製整份報告」。','🐛 順手修一個藏很久的:潛力/黑馬榜算「同業中位本益比」時,查表用的是中文產業名、但表格的鍵是數字代碼 → 那個值<b>一直都是空的</b>,而且被靜默吃掉完全看不出來。'] },
@@ -29721,11 +29739,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const t = document.getElementById('subContent_tw');
         const ix = document.getElementById('subContent_idx');
         const ad = document.getElementById('subContent_advice');
+        const ro = document.getElementById('subContent_rot');   // 💧 V76.0.3 第 4 格
         if (!g || !t) return;
         const show = (el, on) => { if (!el) return; el.classList.toggle('hidden', !on); el.classList.toggle('flex', !!on); };
         show(ix, tab === 'idx');
         show(ad, tab === 'tw');
         show(t,  tab === 'tw');
+        show(ro, tab === 'rot');
         show(g,  tab === 'global');
         const styleBtn = (id, on, color) => {
             const b = document.getElementById(id);
@@ -29733,7 +29753,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         };
         styleBtn('subTab_idx', tab === 'idx', 'amber');
         styleBtn('subTab_tw2', tab === 'tw', 'purple');
+        styleBtn('subTab_rot', tab === 'rot', 'emerald');
         styleBtn('subTab_global2', tab === 'global', 'cyan');
+        if (tab === 'rot') { this._renderRotTab().catch(() => {}); }
         if (tab === 'idx') { try { this._renderIndexRow(); } catch (_) {} try { this.renderMarketBreadth(); } catch (_) {} try { this.renderMarketRegime(); } catch (_) {} }
         // 🗞️ V72.6.2 進「消息面」時把三格分頁初始化(記住上次選的;預設新聞焦點)
         if (tab === 'global') { try { this.switchNewsPane(this._newsPane || localStorage.getItem('newsPane') || 'news'); } catch (_) {} }
@@ -29742,6 +29764,66 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         //    但原本寫反了(進消息面才刷體檢、進盤前檢視才拉新聞)。分頁改名後一併校正。
         if (tab === 'tw') { try { this.renderMarketBriefing(); } catch(_){} try { this.switchSccTab(localStorage.getItem('sccTab') || 'weather'); this._initSccSwipe(); } catch(_){} }
         if (tab === 'global') { this.loadNewsHeadlines(); }   // _newsCache 1 分鐘內走快取,不會狂打
+    },
+
+    // 💧 V76.0.3 「板塊輪動」分頁:一句話 + 32 個產業的 20 日相對強弱排名(⛔ 只描述,不下指令)
+    //   🚨 名次唯一真相 = _regimeStats()(K 棒戰法卡 / 報告頁 / 這裡 三處同一份;⛔ 不可自己從 sector_rot 排)
+    //   ⭐ 實測背書:sector_rotation_probe —— 前 3 強 − 後 3 弱 +1.44pp(未來 20 日),
+    //     前 3 相對全產業 +0.63pp、後 3 是 −0.80pp → **避開最弱的比追最強的更有價值**;含 2022 空頭重跑一模一樣。
+    //   ⛔ 不畫資金流(外資/投信/自營/融資四條實測排不出有效順序,只是描述用)。
+    _ROT_EDGE: { spread: 1.44, top: 0.63, bot: -0.80, win: 20, src: 'sector_rotation_probe.mjs', days: 1214 },
+    async _renderRotTab() {
+        const lead = document.getElementById('rotLead'), card = document.getElementById('rotRankCard');
+        if (!lead || !card) return;
+        if (this._scrData === undefined) {
+            lead.innerHTML = `<div class="text-[10px] text-gray-500 px-1">⏳ 正在讀選股快照…</div>`;
+            try { await this._loadScreener(); } catch (_) {}
+        }
+        const S = this._regimeStats();
+        const D = this._scrData;
+        // 空過守門:算不出來就誠實說,⛔ 不留空殼、⛔ 不假造名次
+        if (!S || !S.imed || S.imed.size < 5) {
+            lead.innerHTML = this._pageLeadHtml('錢現在在哪一族、哪一族最弱', '⏳ 選股快照還沒載入,算不出族群排名',
+                'flat', `${this._scrErr ? `原因:${this._escHtml ? this._escHtml(String(this._scrErr)) : String(this._scrErr)}` : '每天收盤後採礦才會產出;下方美股對標卡不受影響'}`);
+            card.classList.add('hidden'); card.innerHTML = '';
+            return;
+        }
+        // 成員數(⛔ 只算「有官方產業別而且在 screener 裡」的,跟 _regimeStats 的母體一致)
+        const cnt = new Map();
+        for (const [sym, k] of Object.entries(D.ind || {})) { if (k && D.rows && D.rows[sym]) cnt.set(k, (cnt.get(k) || 0) + 1); }
+        const rows = [...S.imed.entries()].sort((a, b) => b[1] - a[1]);   // 20 日中位漲跌,由強到弱 = 名次
+        const m = rows.length, top = rows.slice(0, 3), bot = rows.slice(-3).reverse();
+        const E = this._ROT_EDGE, dt = this._dW ? this._dW(D.data_date || (D.updated || '').slice(0, 10)) : (D.data_date || '');
+        const nm = k => `<b>${k}</b>`;
+        lead.innerHTML = this._pageLeadHtml('錢現在在哪一族、哪一族最弱(近 20 日,上市 ' + m + ' 個產業)',
+            `🔺 最強 ${top.map(x => nm(x[0])).join('・')}<span class="text-gray-500 font-normal mx-1">／</span>🔻 最弱 ${bot.map(x => nm(x[0])).join('・')}`,
+            'flat',
+            `📊 實測:前 3 強 − 後 3 弱 <b class="text-gray-200">+${E.spread}pp</b>(未來 ${E.win} 日,${E.days} 個交易日、含 2022 空頭)・前 3 相對全產業 +${E.top}pp、後 3 是 <b class="text-gray-200">${E.bot}pp</b> → <b>避開最弱那幾族,比追最強的更有價值</b>。`
+            + `⛔ 這頁只描述、不下買賣指令;名次跟個股頁 K 棒戰法卡 / 報告頁是同一份。<span class="text-gray-600">資料 ${dt}・${E.src}</span>`);
+        const maxAbs = Math.max(0.5, ...rows.map(x => Math.abs(x[1])));
+        const rowHtml = rows.map(([k, v], i) => {
+            const rank = i + 1, w = Math.min(50, Math.abs(v) / maxAbs * 50);
+            const strong = rank <= 3, weak = rank > m - 3;
+            const tag = strong ? '<span class="text-red-300 text-[9px] font-bold">🔺 前 3</span>' : (weak ? '<span class="text-green-300 text-[9px] font-bold">🔻 後 3</span>' : '');
+            const col = v >= 0 ? 'bg-red-400' : 'bg-green-400';
+            return `<div class="grid grid-cols-[28px_1fr_auto] gap-2 items-center py-1 ${strong || weak ? '' : 'opacity-80'} border-b border-[#21262d] last:border-0" data-rotrank="${rank}" data-rotind="${k}">
+                <div class="text-[10px] font-mono text-gray-500 text-right">${rank}</div>
+                <div>
+                    <div class="flex items-center gap-1.5"><span class="text-[11px] ${strong || weak ? 'font-black text-gray-100' : 'text-gray-300'}">${k}</span><span class="text-[9px] text-gray-600">${cnt.get(k) || 0} 檔</span>${tag}</div>
+                    <div class="relative h-1 bg-[#21262d] rounded-full mt-0.5 overflow-hidden"><div class="absolute top-0 h-full ${col}" style="left:${v >= 0 ? 50 : 50 - w}%;width:${w}%"></div></div>
+                </div>
+                <div class="font-mono text-[11px] font-bold ${this._rpDir ? this._rpDir(v) : ''} text-right">${v >= 0 ? '+' : ''}${(+v).toFixed(1)}%</div>
+            </div>`;
+        }).join('');
+        card.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+            <div class="flex items-center justify-between gap-2 mb-1">
+                <span class="text-[12px] font-black text-gray-100">📊 32 個產業近 20 日相對強弱</span>
+                <span class="text-[9px] text-gray-500">中位數 ・全市場中位 ${S.mktMed >= 0 ? '+' : ''}${(+S.mktMed).toFixed(1)}%</span>
+            </div>
+            <div class="text-[9px] text-gray-500 mb-1.5 leading-snug">每一族取成員近 20 日漲跌的<b>中位數</b>(⛔ 不是平均,免得一檔飆股把整族拉高);條形以 0 為中線,右紅左綠 = 漲跌方向。</div>
+            ${rowHtml}
+        </div>`;
+        card.classList.remove('hidden');
     },
 
     // 📑 V32.1 大盤指揮中心次級頁籤(天氣/因子/風控):切換 + 淡入 + 左右滑動
