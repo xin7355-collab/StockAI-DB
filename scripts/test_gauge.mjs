@@ -32,7 +32,7 @@ for (const s of ['2327', '2330', '0050', '009816']) if (!fs.existsSync(path.join
        /_lastGauge/.test(fnStrip) && !/_lastTechScore|_lastChipScore|_lastXrayScore|_lastExpectScore|_calcRiskScore|_entryCheckup/.test(fnStrip), '');
     const fnRuler2 = strip(SRC.slice(SRC.indexOf('    _priceRulerHtml() {'), SRC.indexOf('    _ovEmergencyBar() {')));
     ok('⑥s 價格尺只讀 _keyLevels / _upsideStash(⛔ 不可出現 _overheadSupply/_chuResistanceZones/peaks = 自己算價位)',
-       /_keyLevels/.test(fnRuler2) && /_upsideStash/.test(fnRuler2) && !/_overheadSupply|_chuResistanceZones|this\.peaks|this\.troughs|\.ma20|\.ma5/.test(fnRuler2), '');
+       /_keyLevels/.test(fnRuler2) && /_upsideStash/.test(fnRuler2) && !/_overheadSupply|_volProfile|_volStuckBands|_chuResistanceZones|this\.peaks|this\.troughs|\.ma20|\.ma5/.test(fnRuler2), '');
     ok('⑤s 報告頁與總覽都呼叫同一支 _gaugeStripHtml(⛔ 不可另有 _rpGaugeStrip 之類)', (SRC.match(/this\._gaugeStripHtml\(sym\)/g) || []).length >= 2 && !/_rpGaugeStrip|_ovGaugeStrip/.test(SRC), '');
     ok('⑭s ovWhyBox 在 analyze() 切股清空清單裡(陷阱 #19)', /'rpSrc',\s*\n\s*'ovWhyBox'/.test(SRC), '');
 }
@@ -121,7 +121,10 @@ ok('② 位置類(基本面/預期)與大盤那格**不可**出現 text-red/text
     const want = p => p >= 58 ? 'red' : p <= 42 ? 'green' : 'grey';
     ok('③ 方向類(技術/籌碼)▼ 顏色 = 58/42 門檻(≤42 綠、≥58 紅、中間灰)', t && c && clsOf(t) === want(t.pct) && clsOf(c) === want(c.pct), JSON.stringify({ t: [t && t.pct, clsOf(t)], c: [c && c.pct, clsOf(c)] }));
     const mk = A.gauges.find(x => x.k === 'mkt');
-    ok('③b 大盤那格用 ✅⚠️⛔ 徽章、不畫 ▼', mk && /✅|⚠️|⛔/.test(mk.html) && !/▼/.test(mk.html), mk && mk.html.slice(0, 100));
+    // ⚠️ V76.0.9 這條原本釘「大盤**不畫** ▼」—— 使用者回報「大盤沒有倒三角符號」,那個設計被推翻了。
+    //    改成釘**用意**:安全/危險由 ✅⚠️⛔ 說(⛔ 不用紅綠),而 ▼ 只負責講「位置在哪」→ 兩者並存。
+    ok('③b 大盤那格用 ✅⚠️⛔ 講安不安全,▼ 照畫(只講位置、⛔ 不上紅綠)',
+       mk && /✅|⚠️|⛔/.test(mk.html) && /▼/.test(mk.html) && !/text-red-|text-green-/.test(mk.html), mk && mk.html.slice(0, 120));
 }
 {
     // ⚠️ V76.0.8 這條原本釘的是「這個環境沒跑 X 光 → 本來就沒有那兩格」—— 那個**前提已經不成立**
@@ -153,8 +156,15 @@ ok('⑭c 「不是你設定的那條」那類預警排在預警清單**最後**'
 // ⑤ 報告頁同一條儀表列
 await page.evaluate(() => app.switchSubTab('report')); await page.waitForTimeout(3500);
 // 儀表列放在結論卡 rpAct 上方(⛔ 不放 rpLead —— test_report ⓪b 釘住「有結論時 lead 要空」)
-const R = await page.evaluate(() => { const l = document.getElementById('rpAct'); const s = l && l.querySelector('[data-gaugestrip]'); return { has: !!s, outer: s ? s.outerHTML : '' }; });
-ok('⑤ ⭐ 報告頁頂端的儀表列 outerHTML == 總覽的(同一支函式;注入:報告頁改呼叫另一份 → 紅)', R.has && R.outer === A.stripOuter, `${R.has} ${R.outer.length} vs ${A.stripOuter.length}`);
+// ⚠️ V76.0.9 兩份都要**同一個時刻**讀 —— 舊版拿早就存好的 `A.stripOuter` 去比,
+//    中間那幾條測試(⑪ 動過庫存、④ stub 過分數)會讓預警數變動 → 比到的是「兩個時間點」不是「兩支函式」。
+const R = await page.evaluate(() => {
+    const l = document.getElementById('rpAct'), s = l && l.querySelector('[data-gaugestrip]');
+    const o = document.getElementById('ovCommandCenter').querySelector('[data-gaugestrip]');
+    return { has: !!s, outer: s ? s.outerHTML : '', ov: o ? o.outerHTML : '' };
+});
+ok('⑤ ⭐ 報告頁頂端的儀表列 outerHTML == 總覽的(同一時刻、同一支函式;注入:報告頁改呼叫另一份 → 紅)',
+   R.has && !!R.ov && R.outer === R.ov, `${R.has} ${R.outer.length} vs ${R.ov.length}`);
 await page.evaluate(() => app.switchSubTab('strategy'));
 
 // ⑩ 換股後 _lastGauge 沒 sym 相符 → 儀表列不畫(直接假造殘留)
@@ -244,8 +254,9 @@ await page.close();
     ok('⑱ ⭐ 價格尺沒有任何東西跑出卡片外(注入:把標籤放回軌道上 → 紅)。⛔ 不可用 scrollWidth 判 —— overflow-x:hidden 會把它救成假綠燈',
        D.prOver.length === 0, JSON.stringify(D.prOver));
     ok('⑱b 軌道上只有圖示、⛔ 沒有字(字全部搬到下面的圖例)', !/[0-9]/.test(D.rulerTrackHasText), D.rulerTrackHasText);
-    ok('⑱c 圖例把每個價位都講完(停損/現價各一,數量 == 標記數 + 套牢層數)',
-       D.legend.length === D.marks.length + D.bands.length, JSON.stringify({ legend: D.legend, marks: D.marks.length, bands: D.bands.length }));
+    const pocN = await p4.evaluate(() => (document.getElementById('ovCommandCenter').querySelectorAll('[data-pocband]') || []).length);
+    ok('⑱c 圖例把每個價位都講完(標記 + 套牢層 + 量價密集區,一個都不能少)',
+       D.legend.length === D.marks.length + D.bands.length + pocN, JSON.stringify({ legend: D.legend, marks: D.marks.length, bands: D.bands.length, poc: pocN }));
     ok('⑲ ⭐ 標題那個數字 == 實際列數(注入:寫死「五個」→ 紅)',
        D.stripN === D.gauges.length && D.stripTitle.includes(String(D.gauges.length)) && !/五個面向/.test(D.stripTitle),
        JSON.stringify({ n: D.stripN, rows: D.gauges.length, t: D.stripTitle }));
@@ -261,6 +272,47 @@ await page.close();
     ok('⑳b ETF 只有 3 格,而且說的是「ETF 本來就沒有」不是「還在讀」(⛔ 不可讓使用者以為壞掉)',
        E.stripN === 3 && /ETF 是一籃子/.test(E.stripNote), JSON.stringify({ n: E.stripN, note: E.stripNote }));
     await p4.close();
+}
+// ── 🔣 V76.0.9 每格都要有符號 / 大盤也要 ▼ / 價格尺上色 + 密集區 + 「量卡在哪」 ──
+{
+    const p5 = await boot({ width: 390, height: 844 });
+    await load(p5, '2327');
+    const V = await p5.evaluate(() => {
+        const cc = document.getElementById('ovCommandCenter');
+        const st = cc.querySelector('[data-gaugestrip]');
+        const rows = [...st.querySelectorAll('[data-gauge]')].map(e => {
+            const kids = [...e.children];
+            const bi = kids.findIndex(x => /^\s*\d+\s*$/.test(x.innerText || '')) - 1;   // 分數欄的前一欄 = 徽章欄
+            return { k: e.dataset.gauge, kind: e.dataset.kind, pct: +e.dataset.pct,
+                     badge: (kids[bi] || {}).innerText || '', tri: /▼/.test(e.innerText) };
+        });
+        const pr = cc.querySelector('[data-priceruler]');
+        const K = app._keyLevels || {};
+        return { rows, chipSnap: !!document.getElementById('ovChipSnap'),
+            title: pr ? pr.querySelector('.font-black').innerText : '',
+            fill: pr && pr.querySelector('[data-rulerfill]') ? +pr.querySelector('[data-rulerfill]').dataset.rulerfill : null,
+            poc: pr && pr.querySelector('[data-pocband]') ? pr.querySelector('[data-pocband]').dataset.pocband : null,
+            pocK: (K.pocLo > 0 && K.pocHi > 0) ? `${Math.round(K.pocLo)}~${Math.round(K.pocHi)}` : null,
+            stuck: pr ? [...pr.querySelectorAll('[data-stuck]')].map(e => e.dataset.stuck) : [],
+            stuckK: Array.isArray(K.stuck) ? K.stuck.map(z => `${Math.round(z.lo)}~${Math.round(z.hi)}`) : [],
+            prHtml: pr ? pr.innerHTML : '', ccLen: (cc.innerText || '').replace(/\s+/g, ' ').trim().length };
+    });
+    console.log(`   符號 ${V.rows.map(r => r.k + '=' + r.badge).join(',')} ・填色 ${V.fill}% ・密集區 ${V.poc} ・卡在哪 ${V.stuck.length} 段`);
+    ok('㉔ ⭐ 每一格都要有符號提示(使用者:「除了大盤外其它面向沒有符號」;注入:pos 那兩格不給徽章 → 紅)',
+       V.rows.length >= 3 && V.rows.every(r => (r.badge || '').trim().length > 0), JSON.stringify(V.rows.map(r => [r.k, r.badge])));
+    ok('㉔b ⭐ 燈號鐵則:位置類(基本面/預期)的符號⛔ 不可是 🔴🟢(那兩顆只准講漲跌方向)',
+       V.rows.filter(r => r.kind === 'pos').every(r => !/🔴|🟢/.test(r.badge)) && V.rows.filter(r => r.kind === 'dir').every(r => /🔴|🟢|➖/.test(r.badge)),
+       JSON.stringify(V.rows.map(r => [r.kind, r.badge])));
+    ok('㉕ 每一格(含大盤)都畫得出 ▼(使用者:「大盤沒有倒三角符號」;注入:risk 不畫 ▼ → 紅)',
+       V.rows.every(r => r.tri), JSON.stringify(V.rows.map(r => [r.k, r.tri])));
+    ok('㉖ 價格尺有填色,而且畫到現價那一格(注入:拿掉填色 → 紅)', V.fill != null && V.fill > 0 && V.fill < 100, String(V.fill));
+    ok('㉗ 🧲 量價密集區 == _keyLevels 的 pocLo~pocHi(⛔ 價格尺不自己再分一次桶)', V.poc === V.pocK, JSON.stringify([V.poc, V.pocK]));
+    ok('㉘ 「量卡在哪」清單 == _keyLevels.stuck(⛔ 不自己算;注入:顯示端自己呼叫 _volStuckBands → 紅)',
+       V.stuck.length > 0 && V.stuck.join('|') === V.stuckK.join('|'), JSON.stringify([V.stuck, V.stuckK]));
+    ok('㉘b ⭐ 誠實話必須寫在卡上:成交量 ⛔ 不等於「幾 % 的人還套在那」', /不等於/.test(V.prHtml) && /成交量/.test(V.prHtml), '');
+    ok('㉙ 📊 主力籌碼快照已從總覽下架(使用者明示刪除)', !V.chipSnap, '');
+    ok('㉚ 第一眼字數仍 ≤ 600(⛔ 不可為了塞新東西調鬆門檻)', V.ccLen <= 600, String(V.ccLen));
+    await p5.close();
 }
 ok('⑮ 無 pageerror', errs.length === 0, errs[0] || '');
 await browser.close();
