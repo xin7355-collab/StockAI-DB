@@ -140,11 +140,19 @@ ok('② 位置類(基本面/預期)與大盤那格**不可**出現 text-red/text
         app._lastXrayScore = sv[0]; app._lastExpectScore = sv[1]; app._regaugeStrip(app.currentSymbolId); return r; });
     ok('④ 缺維 → 那一列**整列不存在**、不顯 --(stub 成 null 再重畫)', S.ga && !S.ks.some(k => ['fund', 'expect'].includes(k)) && !/--/.test(S.out) && S.n === S.ks.length, JSON.stringify(S));
 }
-ok('⑥ 價格尺每個標記價位 == _keyLevels(注入:自己算前高 → 紅)',
-   A.K && A.marks.length >= 3 && A.marks.every(([n, v]) => ({ 停損: A.K.sl, 防線: A.K.sl, 現價: A.K.C, 轉強: A.K.buy, 買進: A.K.buy, 追買: A.K.add }[n] || 0).toFixed(2) === v.toFixed(2)),
+// ⚠️ V76.1.0 這條原本把 `data-mark` 的**名字**寫死(停損/買進/轉強/追買)—— 空頭時名字改成
+//    「轉強觀察 / 前高」就整條紅了。⭐ 它要釘的**用意**是「價位全部來自 `_keyLevels`,⛔ 顯示端不自己算」
+//    → 改成比**數值集合**:尺上每一個價位都必須在 `_keyLevels` 那組數字裡找得到(跟叫什麼名字無關)。
+ok('⑥ 價格尺每個標記價位 == _keyLevels 的數字(⛔ 顯示端不自己算;注入:自己算前高 → 紅)',
+   (() => { if (!A.K || A.marks.length < 3) return false;
+       const pool = [A.K.sl, A.K.C, A.K.buy, A.K.add].filter(x => Number.isFinite(+x)).map(x => +(+x).toFixed(2));
+       return A.marks.every(([, v]) => pool.some(p => Math.abs(p - v) < 0.011)); })(),
    JSON.stringify({ marks: A.marks, K: A.K }));
 ok('⑦ ⭐ 套牢帶 == _upsideStash 同一層的 lo~hi(注入:自己呼叫 _overheadSupply → 紅)', A.bands.length >= 1 && A.bands.every(b => A.stash.includes(b)), JSON.stringify({ bands: A.bands, stash: A.stash }));
-ok('⑦b 更遠的那道(774~866,超過 +35%)用一句話交代,⛔ 不硬畫進尺裡把尺壓扁', /更遠還有套牢區 774~866/.test(A.ccTxt) && !A.bands.includes('774~866'), A.ccTxt.slice(-300));
+// ⚠️ V76.1.0 文案瘦身過(「更遠還有套牢區 X—— 超過 +35%…」→「↑ 更遠 X 也有套牢量」)→ 斷言改釘**用意**:
+//    那個區間要出現在文字裡、而且⛔ 不可被畫成尺上的帶子。
+ok('⑦b 更遠的那道(774~866,超過 +35%)用一句話交代,⛔ 不硬畫進尺裡把尺壓扁',
+   /更遠[^\n]*774~866/.test(A.ccTxt) && !A.bands.includes('774~866'), A.ccTxt.slice(-300));
 ok('⑧ 🔔 顆數 == _armTrigStash.triggers.length(2327 這一天沒有觸發價 → 沒有鈕也對)', (A.bell == null ? 0 : +A.bell) === A.stashN, JSON.stringify({ bell: A.bell, stashN: A.stashN }));
 ok('⑨ ⭐ 第一眼字數 ≤ 600(舊版 778;三檔實測 474~487 +20%)(注入:把 ⚖️ 4 個系統搬回第一眼 → 紅)', A.ccLen <= 600, String(A.ccLen));
 ok('⑨b 第一眼**不再出現**規則說明句(刻意不給點位 / 只採用實測有效 / 個系統在講方向)', !/刻意不給點位|只採用實測有效|個系統在講方向|系統怎麼判的/.test(A.ccTxt), '');
@@ -313,6 +321,68 @@ await page.close();
     ok('㉙ 📊 主力籌碼快照已從總覽下架(使用者明示刪除)', !V.chipSnap, '');
     ok('㉚ 第一眼字數仍 ≤ 600(⛔ 不可為了塞新東西調鬆門檻)', V.ccLen <= 600, String(V.ccLen));
     await p5.close();
+}
+// ── 📏 V76.1.0 空頭觀察價 / 📖 說明 / 🎯 估值對照 ──
+{
+    const p6 = await boot({ width: 390, height: 844 });
+    await load(p6, '2327');   // 2327 是空頭(_ovTrend.trend === 'bear')
+    const W = await p6.evaluate(() => {
+        const cc = document.getElementById('ovCommandCenter'), pr = cc.querySelector('[data-priceruler]');
+        const K = app._keyLevels || {};
+        return { bear: app._bearGate(app.currentSymbolId), trend: (app._ovTrend || {}).trend,
+            txt: pr ? pr.innerText : '', legs: pr ? [...pr.querySelectorAll('[data-leg]')].map(e => e.innerText.trim()) : [],
+            marks: pr ? [...pr.querySelectorAll('[data-mark]')].map(e => [e.dataset.mark, +e.dataset.v]) : [],
+            addPx: K.addPx, buyPx: K.buyPx, ccLen: (cc.innerText || '').replace(/\s+/g, ' ').trim().length };
+    });
+    console.log(`   2327 trend=${W.trend} ・圖例 ${W.legs.join(' / ')}`);
+    ok('㉛ ⭐ 空頭股的價格尺⛔ 不可出現「追買 / 買進」,要改成觀察價(注入:拿掉 _bearGate → 紅)',
+       W.bear && !/追買|買進/.test(W.txt) && /觀察/.test(W.txt), JSON.stringify(W.legs));
+    ok('㉛b ⭐ 但**價位一個都沒變**(事實不竄改,只改叫人怎麼做的那句話)',
+       (() => { const a = W.marks.find(m => m[0] === '前高'), b = W.marks.find(m => m[0] === '轉強觀察');
+                return (!W.addPx || (a && Math.abs(a[1] - W.addPx) < 0.01)) && (!W.buyPx || (b && Math.abs(b[1] - W.buyPx) < 0.01)); })(),
+       JSON.stringify({ marks: W.marks, addPx: W.addPx, buyPx: W.buyPx }));
+    ok('㉛c 空頭時要直接說「不是叫你買」(⛔ 不可只在後面補一句但書 —— V75.1.9 的教訓)',
+       /不是叫你買/.test(W.txt), '');
+    // 📖 說明彈窗
+    const H = await p6.evaluate(() => { app._rulerHelp(); const m = document.getElementById('richHelpModal');
+        return { t: m ? m.innerText : '', btn: !!(m && m.querySelector('[data-ruleraskbtn]')) }; });
+    await p6.waitForTimeout(300);
+    const H2 = await p6.evaluate(() => { const m = document.getElementById('richHelpModal');
+        return { t: m ? m.innerText : '', btn: !!(m && m.querySelector('[data-ruleraskbtn]')) }; });
+    ok('㉜ ⭐ 📖 彈窗要直接更正「追買是我可以買的價格嗎」:它是**前高**、要**帶量突破**、直接掛 = **追高**',
+       /前高/.test(H.t) && /帶量突破/.test(H.t) && /追高/.test(H.t), H.t.slice(0, 150));
+    ok('㉜b 彈窗明講密集區⛔ 不是「最多人買」,而且說出為什麼(每筆成交都同時有買方賣方)',
+       /不是.{0,2}「?60 天最多人買|不是.{0,8}最多人買/.test(H.t) && /買方跟?一?個?賣方|買方.*賣方/.test(H.t), '');
+    ok('㉜c 彈窗誠實說 🎯 是**我們自己算的**、⛔ 不是外資喊的,而且沒回測過',
+       /自己算/.test(H.t) && /不是分析師|不是.{0,3}外資/.test(H.t) && /沒有回測過|沒有回測/.test(H.t), '');
+    ok('㉜d ⭐ 說「App 裡沒有外資喊價」時要給替代方案(🔎 免費查按鈕)', H2.btn && /新聞原文/.test(H2.t), String(H2.btn));
+    await p6.evaluate(() => { const m = document.getElementById('richHelpModal'); if (m) m.classList.add('hidden'); });
+    // 🎯 估值對照:沙箱的 FinMind 被擋 → `_instTargetStash` 是**競態**,所以用 stub 釘行為(⛔ 不靠它剛好有值)
+    const T = await p6.evaluate(() => {
+        // ⚠️ stub 的值必須**落在第一道技術壓力之前**(現價之上、610 之下)——
+        //    否則「拿掉 kind:'val' 過濾」根本不會改變 `first`,那個注入就驗不出東西(無效注入)。
+        const _c = app._keyLevels.C, _u0 = app._upsideRoom(_c, app.activeData, (app.activeData || []).length - 1);
+        const _f0 = (_u0.list || []).find(x => x.kind !== 'val');
+        const _mid = _f0 ? +( (_c * 1.002 + _f0.v) / 2 ).toFixed(2) : +(_c * 1.03).toFixed(2);
+        app._instTargetStash = { sym: app.currentSymbolId, mid: _mid, lo: _mid * 0.85, hi: _mid * 1.15, method: '測試用' };
+        const h = app._priceRulerHtml();
+        document.querySelectorAll('[data-priceruler]').forEach(el => { el.outerHTML = h; });
+        const pr = document.getElementById('ovCommandCenter').querySelector('[data-priceruler]');
+        const legs = [...pr.querySelectorAll('[data-leg]')].map(e => e.innerText.trim());
+        const mk = [...pr.querySelectorAll('[data-mark]')].map(e => [e.dataset.mark, +e.dataset.v]);
+        const u = app._upsideRoom(app._keyLevels.C, app.activeData, (app.activeData || []).length - 1);
+        app._instTargetStash = null;
+        return { legs, mk, txt: pr.innerText, mid: _mid,
+                 vals: (u.list || []).filter(x => x.kind === 'val').map(x => +x.v),
+                 first: u.first ? [u.first.n, u.first.kind || ''] : null };
+    });
+    ok('㉝ 🎯 估值對照價 == _instTargetStash.mid(注入:顯示端自己算 EPS×PE → 紅)',
+       T.mk.some(m => m[0] === '估值對照' && Math.abs(m[1] - T.mid) < 0.01), JSON.stringify(T.mk));
+    ok('㉝b ⭐ 它有進 _upsideRoom(單一真相源),但 **first / 風報比⛔ 不可用它**(那是沒回測過的數字)',
+       T.vals.some(v => Math.abs(v - T.mid) < 0.01) && T.first && T.first[1] !== 'val', JSON.stringify(T));
+    ok('㉞ 價格尺上⛔ 不可出現「目標價」三個字(全 App 統一用詞)', !/目標價/.test(T.txt), '');
+    ok('㉟ 第一眼字數仍 ≤600(📖 是一顆鈕不是內文)', W.ccLen <= 600, String(W.ccLen));
+    await p6.close();
 }
 ok('⑮ 無 pageerror', errs.length === 0, errs[0] || '');
 await browser.close();

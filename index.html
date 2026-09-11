@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.1.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.0.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8199,8 +8199,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.0.9',
+    _APP_VERSION: 'V76.1.0',
     _CHANGELOG: [
+        { v: 'V76.1.0', d: ['🚨 <b>你問對了一個 bug</b>:2327 上面寫「🟢 空方・避開」,價格尺卻印「🔺 追買 605」。現在空頭時那兩個會變成 <b>👀 轉強觀察 / 👀 前高</b>,底下直接寫「<b>這兩個不是叫你買</b>」。⭐ 價位一個都沒改(那是事實),只改叫你怎麼做的那句話。','📖 <b>價格位置圖右上多一顆「怎麼看」</b>,把你問的兩件事講清楚:① <b>追買不是你可以掛的買價</b> —— 它是「<b>前高</b>」,要等<b>帶量突破</b>那根出現才算起漲,直接掛在那買 = 追高;而且它沒有時間限制,大跌過的股票這個前高可能是好幾個月前的。② <b>密集區不是「60 天最多人買的價格」</b> —— 它是「近 60 天<b>成交量</b>最大的那一格」,而每一筆成交都同時有一個買方跟一個賣方,量大只代表那裡換手多,分不出買的人多還是賣的人多。','🎯 <b>新增「估值對照價」</b>(你說的目標價):畫在尺上,算法是<b>最近四季 EPS × 同業中位本益比</b>。⚠️ 它<b>沒有回測過準不準</b> → 刻意<b>不參與</b>「第一道壓力」與風報比的計算,只當對照。','❓ <b>外資喊的價格:做不到,我把量到的數字告訴你</b> —— 台股沒有免費、整理好的分析師共識資料源(證交所、FinMind 都沒有這種資料集)。我們唯一拿得到的只有<b>新聞標題的文字</b>,實測全部新聞檔加起來只找得到 <b>7 筆</b>、而且已經有抓錯的 → 做成功能等於 99% 的股票永遠空白、少數還是錯的。⭐ 改成在 📖 裡給你一顆「<b>🔎 查這檔最近的法人目標價</b>」,免費開新分頁看新聞原文,⛔ 我們不轉述、不加工。'] },
         { v: 'V76.0.9', d: ['🔣 <b>五個面向每一格都有符號了</b>(你說「除了大盤外其它沒有符號」):技術/籌碼講漲跌方向 → 🔴 偏多 / 🟢 偏空 / ➖ 中性;大盤講安不安全 → ✅⚠️⛔;基本面/預期是位置高低 → <b>強/中/弱</b>(⛔ 刻意用字不用紅綠,否則同一顆顏色一下是「漲」一下是「好」)。而且<b>大盤那格也補上 ▼ 了</b> —— ▼ 只講「位置在哪」,安不安全還是看 ✅⚠️⛔。','📏 <b>價格尺改名「價格位置圖」,而且上色了</b>:藍色從最低一路畫到<b>現價</b>,一眼看出你在整段區間的哪裡。另外把 <b>🧲 量價密集區(60 日量最大那一格)</b> 也畫上去(虛線框),跟 🪤 套牢區(120 日、現價上方)<b>分開標示</b> —— 兩個不是同一件事。','🧲 <b>「幾 % 的量卡在哪個價位」列出來了</b>(你要的那個):點開價格尺下面那行,會列「X% 的量在 A~B 元」,並標在你上面還是下面。⚠️ 誠實話寫在卡上:那是<b>成交量</b>的分布,<b>不等於</b>「現在還有幾 % 的人套在那」(期間內買了又賣掉的也算)。','🗑️ <b>總覽再瘦一次</b>:① 刪掉「📊 主力籌碼快照」(它自己就有一顆「詳看分點/天秤 →」= 承認跟籌碼頁重複)② 摺疊區「總評儀表板」裡那排<b>五格分數拿掉</b> —— 跟頂端的儀表列是同一份數字,同一頁出現兩次就是雜訊;那張卡只留頂端<b>刻意不顯示</b>的三樣:總分 / 一句話 / 建議部位水位。'] },
         { v: 'V76.0.8', d: ['🎨 <b>五條量條有顏色了</b>(你說「應該要有顏色」):技術/籌碼講的是<b>漲跌方向</b> → 用紅綠;🌍 大盤講的是<b>安不安全</b> → 用琥珀色的深淺 + ✅⚠️⛔(⛔ 刻意不用紅綠,否則同一顆顏色一下代表「漲」、一下代表「安全」,你會看反);🧬 基本面 / 🎯 預期 是<b>位置</b> → 天藍(「基本面強」不等於「會漲」)。','📐 <b>排版對齊了</b>(你說「排版要調整整齊」):五條的左右端點現在落在<b>同一條線</b>上(以前大盤那條多一顆徽章、左右的字又長短不一,每條長度都不一樣);<b>價格尺的字全部搬到下面一行</b>,兩端的「買進 xx」「+12.8%」不會再被切掉。','🧭 <b>「五個面向」真的有五個了</b>(你說「我只看到3個」):真因不是慢,是<b>根本沒去算</b> —— 你看的 2426 這種股票沒有券商分點資料,程式在那一步就直接跳出去了,基本面/預期兩格永遠不會出現(全市場 2,300 檔都是這樣)。現在改成一開股票就先用採礦資料算一次(<b>不花你的 API 額度</b>),財報回來再自動更新。','⭐ 而且標題那個數字<b>會跟著實際有幾格走</b>:ETF 只有 3 格,卡片會直接說「ETF 是一籃子股票,沒有自己的財報 → 這兩格本來就不會有,不是壞掉」—— ⛔ 不再讓你以為是壞掉。'] },
         { v: 'V76.0.7', d: ['🧭 <b>總覽第一眼只留四件</b>(你說「資訊量太大…我不是很懂,要量表或圖」):① 一句結論 ② <b>🧭 五個面向一眼看</b>(技術/大盤/籌碼/基本面/預期,一格一條尺、▼ 越右越好)③ <b>📏 價格在哪、牆在哪</b>(停損 🛑・現價 ▼・轉強 🛒・追買 🔺・<b>套牢區 🪤 灰帶</b>,一條線看完)④ 🔔 盯價鈕。其餘「要注意的事／現在該做什麼／系統怎麼判的／4 個系統」<b>一個字都沒刪</b>,全收進下面那顆「📂」裡。國巨第一眼從 778 字降到 474 字。','⭐ 那五格尺<b>不是新算的</b> —— 那是 App 早就有的「總評儀表板」(V68.4.6),但一直藏在「看更多分析」第三層,你看不到。現在搬到第一眼,而且刻意<b>不顯示加總的總分</b>(那組權重沒驗證過),要怎麼做只看最上面那一句。','📄 <b>報告頁</b>:頂端放<b>同一條</b>儀表列(跟總覽同一支程式,數字永遠一樣);估值那節改成<b>尺在外面、6 列表收起</b>(上一版預設攤開讓一節就 1,018 字);「不是你設定的那條」那類預警一律排最後。','🚨 條件觸發不收:你<b>有部位</b>而且<b>你設定的出場線被跌破</b>時,那條 🚨 仍留在第一眼(空手時才全收)。全 App 的尺從此只有一種畫法(<code>_gaugeRow</code>),方向才用紅綠、安全與否用 ✅⚠️⛔、位置用灰階。'] },
@@ -21237,6 +21238,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // ② 出場總表的第一/第二目標(實際下單依據,不另算)
         add(String(dx.t1L || '🎯 第一目標').replace(/^[^一-龥A-Za-z0-9]+/, ''), dx.t1, '出場總表');
         add(String(dx.t2L || '🚀 第二目標').replace(/^[^一-龥A-Za-z0-9]+/, ''), dx.t2, '出場總表');
+        // 🎯 V76.1.0 估值對照價(使用者說的「目標價」)—— ⛔ 不另外算一份:直接讀
+        //   `fetchInstitutionTarget` 算好的那個數字(年化EPS × 同業中位本益比)。
+        //   ⛔ 它**不是**分析師/外資喊的,也**沒有回測過準不準** → 標 kind:'val',
+        //      下面的「第一道 / 風報比」會把它排除掉(那兩個是下單依據,只能用技術面的壓力)。
+        try {
+            const it = this._instTargetStash;
+            if (it && String(it.sym) === String(this.currentSymbolId) && it.mid > 0)
+                add('估值對照', it.mid, it.method || '年化EPS×同業中位本益比', { kind: 'val' });
+        } catch (_) {}
         // ③ 已跌破的防守價 → 現在變成上方壓力(反彈到那附近容易遇賣壓)
         add('5MA 保衛價', gs.g5, '已跌破・變壓力');
         add('20MA 保衛價', gs.g20, '已跌破・變壓力');
@@ -21249,7 +21259,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         out._shares = _sh;   // 顯示端要據此改用詞(你手上 X 張 / 一張)
         // 風報比:用「第一個上檔目標」對「出場總表的停損價」——兩邊都是既有數字,不自己訂
         const stopV = Number.isFinite(+dx.def) && +dx.def > 0 && +dx.def < pC ? +dx.def : null;
-        const first = out[0] || null;
+        // 🚨 V76.1.0 「第一道」與風報比 ⛔ 排除估值對照價 —— 風報比問的是
+        //   「**技術面**第一道壓力 vs 停損」,混進一個沒回測過的估值會讓它變成下單依據。
+        const first = out.find(o => o.kind !== 'val') || null;
         const risk = stopV ? this._netPL(pC, stopV, _sh || 1000) : null;  // 負值(⭐ 風報比也要用同一個股數)
         const rr = (first && risk != null && risk < 0) ? (first.ntd / -risk) : null;
         return { list: out, first, stop: stopV, risk, rr, pC, shares: _sh };
@@ -29142,6 +29154,11 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         this._lastChipScore = null;   // 🐛 V55.8 切股必清(V69.9.8 改為大戶籌碼總結分;xref 端另有 sym 守門雙保險)
         // 🧭 V76.0.8 這兩個以前**只靠 okScore 比 sym** 擋跨股殘留(⛔ 沒有第二層)→ 補上明確清空(陷阱 #19,同隔壁那行)
         this._lastXrayScore = null; this._lastExpectScore = null; this._gaugeArgs = null;
+        // 🎯 V76.1.0 估值對照價也是 per-stock(實測切股後還留著上一檔的)。
+        // 🚨 但**只能清掉別檔的** —— `analyze()` 同一檔會被重跑(自動更新/worker 回來),
+        //    無條件清會把剛算好的值殺掉,而 `fetchInstitutionTarget` 有 `_itTried` 守門不會再算第二次
+        //    → 那一格從此永遠空白(第一版就是這樣,實測抓到)。
+        try { if (this._instTargetStash && String(this._instTargetStash.sym) !== String(targetSym)) this._instTargetStash = null; } catch (_) {}
         this._chuActionVerdict = null;  // ⚖️ V56.0 仲裁結論也是 per-stock,切股必清
         if(!silent) document.getElementById('symbolInput').value = '';
 
@@ -32623,17 +32640,94 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     //   (使用者:「把套牢區給列出來…有沒有更簡單的敘述或者量表,還是圖」)。
     //   ⛔ 一個價位都不算:全讀 `_keyLevels`(關鍵價位卡存的)與 `_upsideStash`(上檔空間卡存的)。
     //   🚨 `_upsideStash` 比這張卡晚算出來 → `_renderGuardRuler` 用**同一支函式**整條重畫(同 V76.0.6 的回填)。
+    // 📖 V76.1.0 價格位置圖的完整說明 —— 使用者問「追買是我們可以買的價格嗎?密集區是 60 天最多人買的價格嗎?」
+    //   ⭐ 兩個答案**都是「不是」** → 這支就是把那兩個誤解講清楚的地方。
+    //   ⛔ 放彈窗不放卡上:總覽第一眼有 600 字上限(使用者上一版才抱怨「資訊量太大」)。
+    _rulerHelp() {
+        const K = this._keyLevels || {}, IT = this._instTargetStash;
+        const sym = this.currentSymbolId, nm = (() => { try { const n = this.getStockName(sym); return (n && n !== sym) ? n : ''; } catch (_) { return ''; } })();
+        const hasVal = IT && String(IT.sym) === String(sym) && +IT.mid > 0;
+        const L = [];
+        L.push('📏 這張圖怎麼看');
+        L.push('');
+        L.push('一條線上放你這檔的幾個關鍵價,左邊是低價、右邊是高價。藍色那段從區間最低畫到「現價」,只是告訴你位置在哪。');
+        L.push('');
+        L.push('🛑 停損 / 防線');
+        L.push('・買了之後跌到這裡就該走。數字跟上面「關鍵價位」那張卡是同一個,不會有兩個停損價。');
+        L.push('');
+        L.push('🛒 買進 / 轉強（空頭時顯示成 👀 轉強觀察）');
+        L.push('・來源是 5 日線 / 月線。多頭時的意思是「回檔到這裡掛限價單承接」。');
+        L.push('・空頭時它**不是買點**,只是「漲回這裡才值得重新看一眼」。');
+        L.push('');
+        L.push('🔺 追買（空頭時顯示成 👀 前高）');
+        L.push('🚨 這**不是**你可以掛的買價 —— 它是「前高」,也就是最近一個波段的最高點。');
+        L.push('・正確用法:要等它**帶量突破**那根 K 棒出現,那根才是起漲第一根。直接掛在那個價位買 = 追高。');
+        L.push('・⚠️ 它**沒有時間限制**:大跌過的股票,這個前高可能是好幾個月前的,離現價很遠也很正常。');
+        L.push('');
+        L.push('🪤 套牢區（灰色帶）');
+        L.push('・近 120 個交易日裡,**現價上方**成交量堆在哪幾段。帶子越寬代表卡在裡面的量越多。');
+        L.push('・實測過(2,259 檔・含 2022 空頭):撞上去之後能不能穿過去,小層 79%、中層 73%、大層只剩 48% —— 這個**測得出來**。');
+        L.push('・但「賺不賺得到」測不出來(邊際 0.19% 小於來回成本 0.44%)→ 只能拿來**把期待值放低**,⛔ 不是「彈到這就跑」的訊號。');
+        L.push('');
+        L.push('🧲 量價密集區（虛線框）');
+        L.push('🚨 這**不是**「60 天最多人買的價格」。它是「近 60 個交易日裡,成交量最大的那一格價位」。');
+        L.push('・為什麼不是「人」:每一筆成交都同時有一個買方跟一個賣方,量大只代表那裡換手多,分不出買的人多還是賣的人多。');
+        L.push('・而且它是用**日 K**分的(一天算一格),不是盤中逐筆的分佈。');
+        L.push('・不夠集中時(最大那格佔不到 12%)會**直接不給** —— 那代表這 60 天根本沒盤整過,硬給一個精確價位反而危險。');
+        L.push('・怎麼用:現價在它上面 → 拉回到區間上緣比較容易有買盤接;跌破 → 變成上方套牢反壓。');
+        L.push('');
+        L.push('🧲 「量卡在哪些價位」那份清單');
+        L.push('・同一份成交量分布,但上下都列,標「X% 的量在 A~B 元」。');
+        L.push('・⚠️ 一樣是**成交量**不是人數:期間內買了又賣掉的也被算進去,所以它不等於「現在還有幾 % 的人套在那」。');
+        L.push('');
+        L.push('🎯 估值對照價' + (hasVal ? `（現在算出來是 ${(+IT.mid).toFixed(+IT.mid >= 100 ? 0 : 1)} 元,${IT.method || ''}）` : '（這檔目前算不出來）'));
+        L.push('🚨 這是**我們自己算的**,⛔ 不是分析師或外資喊的價。');
+        L.push('・算法:把它最近四季的每股盈餘(EPS)加起來,乘上**同業的中位本益比**,再取 ±15% 當區間。');
+        L.push('・意思是「市場過去願意給這個產業幾倍,那這檔大概值多少」,⛔ 不是預測它會漲到那裡。');
+        L.push('・⚠️ 這個數字**沒有回測過準不準**,所以它不參與「第一道壓力」與風報比的計算,只當對照。');
+        L.push('・虧損股、算不出 EPS 的、ETF → 直接不顯示,⛔ 不硬給。');
+        L.push('');
+        L.push('❓ 為什麼 App 裡沒有「外資喊的目標價」?');
+        L.push('・台股**沒有免費、整理好的分析師共識資料**可以抓(FinMind / 證交所都沒有這種資料集)。');
+        L.push('・我們唯一拿得到的只有新聞標題的文字(像「大摩目標價喊上 3,330 元」),實測全部新聞檔加起來只找得到個位數筆,而且還會抓錯 —— 做成功能等於 99% 的股票永遠空白、少數還是錯的。');
+        L.push('・⭐ 所以改成:你要看真的外資喊價,就用下面那顆按鈕去查新聞原文,⛔ 我們不轉述、不加工、不假裝有這個數字。');
+        this._helpBox(L.join('\n'));
+        // 🔎 免費查(零 API 額度,走既有 `_freeAiOpen` 深連結)—— 把按鈕塞進剛開好的彈窗底部
+        try {
+            const q = `${nm || ''}(${sym}) 台股 最近有哪些券商/外資出報告喊目標價?各喊多少、哪一天、哪一家?請列出來源與日期`;
+            setTimeout(() => {
+                // ⚠️ 容器是 `_showRichModal` 產的 `#richHelpModal .p-4`(⛔ 別憑印象猜 id —— 陷阱 #40)
+                const box = document.querySelector('#richHelpModal .p-4');
+                if (!box || box.querySelector('[data-ruleraskbtn]')) return;
+                const d = document.createElement('div');
+                d.className = 'mt-2';
+                d.innerHTML = `<button data-ruleraskbtn="1" onclick="app._freeAiOpen(${JSON.stringify(q).replace(/"/g, '&quot;')}); app.vibrate?.(20);" class="w-full px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-black rounded-lg">🔎 查這檔最近的法人目標價（免費・開新分頁看新聞原文）</button>`;
+                box.appendChild(d);
+            }, 60);
+        } catch (_) {}
+    },
     _priceRulerHtml() {
         const K = this._keyLevels, sym = this.currentSymbolId;
         if (!K || String(K.sym) !== String(sym) || !(K.C > 0)) return '';
         const C = K.C, U = this._upsideStash, ex = !!K.exitMode;
+        // 🚨 V76.1.0 空頭守門 —— 使用者截圖抓到:2327 上面寫「🟢 空方・避開」,這條尺卻印「🔺 追買 605.0」。
+        //   真因:這支以前**只看 K.exitMode**,而 exitMode 來自 /出場|離場|反彈再出/.test(big),
+        //   空頭又沒部位時 big='🔴 別碰' → regex 沒中 → 買點照畫。
+        //   ⛔ 修法用**唯一守門** _bearGate(⛔ 不自己寫判斷式、⛔ 不改 _exitMode 的 regex ——
+        //      那會打到進場劇本/上檔空間/四關卡等一票呼叫端)。
+        //   ⭐ 價位**一個都不動**(那是事實),只改名字與口吻:買點 → 觀察價(同「事實不竄改、只改指令」鐵則)。
+        const bear = (() => { try { return !ex && !!this._bearGate(sym); } catch (_) { return false; } })();
         const sup = (U && Math.abs(+U.pC - C) < 0.01 && Array.isArray(U.list)) ? U.list.filter(x => +x.sup > 0).slice(0, 2) : [];
         const marks = [];
         if (K.slPx > 0) marks.push({ v: +K.slPx, g: '🛑', n: ex ? '防線' : '停損', cls: 'text-green-300' });
         marks.push({ v: C, g: '▼', n: '現價', cls: 'text-gray-100', cur: 1 });
         // 🚪 出場狀態(同 _upsideRoomHtml 的分支):⛔ 不畫買點,套牢帶改講「反彈減碼位」
-        if (!ex && K.buyPx > 0) marks.push({ v: +K.buyPx, g: '🛒', n: K.bull ? '買進' : '轉強', cls: 'text-yellow-300' });
-        if (!ex && K.addPx > 0) marks.push({ v: +K.addPx, g: '🔺', n: '追買', cls: 'text-red-300' });
+        if (!ex && K.buyPx > 0) marks.push({ v: +K.buyPx, g: bear ? '👀' : '🛒', n: bear ? '轉強觀察' : (K.bull ? '買進' : '轉強'), cls: bear ? 'text-gray-300' : 'text-yellow-300' });
+        if (!ex && K.addPx > 0) marks.push({ v: +K.addPx, g: bear ? '👀' : '🔺', n: bear ? '前高' : '追買', cls: bear ? 'text-gray-300' : 'text-red-300' });
+        // 🎯 估值對照價(⛔ 不是目標價、⛔ 不是外資喊的)—— 只讀 _instTargetStash,⛔ 這裡不算 EPS×PE
+        const IT = this._instTargetStash;
+        const val = (IT && String(IT.sym) === String(sym) && +IT.mid > 0) ? +IT.mid : null;
+        if (val != null) marks.push({ v: val, g: '🎯', n: '估值對照', cls: 'text-amber-300' });
         if (marks.length < 2 && !sup.length) return '';
         // 刻度範圍:最遠只畫到現價 +35%(太遠的牆會把整把尺壓扁),更遠的用一句話交代
         const cap = C * 1.35;
@@ -32665,6 +32759,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             return `<span class="${m.cls}" style="white-space:nowrap" data-leg="${m.n}">${m.g} ${m.n} ${fmt(m.v)}${dTxt}</span>`;
         }).concat(near.map(z => `<span class="text-gray-400" style="white-space:nowrap" data-leg="套牢">🪤 ${ex ? '反彈減碼位' : '套牢'} ${Math.round(+z.lo)}~${Math.round(+z.hi)}(${(+z.sup).toFixed(0)}% 的量)</span>`))
             .concat(poc ? [`<span class="text-amber-300" style="white-space:nowrap" data-leg="密集">🧲 密集區 ${fmt(poc.lo)}~${fmt(poc.hi)}</span>`] : []).join('');
+        // ⚠️ 空頭時那句但書 —— ⛔ 不可只在後面補「但是」(V75.1.9 的教訓:人只會讀比較強的那半),
+        //   要直接說「這兩個不是叫你買」。
+        const bearNote = (bear && (K.buyPx > 0 || K.addPx > 0))
+            ? `<div class="text-[9px] text-gray-300 leading-snug" style="margin-top:3px">👀 <b>現在是空頭</b> —— 上面那兩個是「漲到這裡才值得重看」的<b>觀察價</b>,⛔ 不是叫你買。</div>` : '';
         // 🧲 V76.0.9 使用者:「把幾%的人價位卡在多少列出來,比如說 20% 價格在 30-50 元」
         //   ⛔ 只讀 `_keyLevels.stuck`(關鍵價位卡算好的),⛔ 這裡不分桶。
         //   ⚠️ 必須寫清楚這是「成交量」不是「人數」—— 期間內買了又賣掉的也算在內。
@@ -32680,17 +32778,20 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 </div>`; }).join('')}
             <div class="text-[8px] text-gray-600 leading-snug mt-1">⚠️ 這是「近 120 日的<b>成交量</b>發生在哪個價位」,⛔ <b>不等於</b>「現在還有幾 % 的人套在那」—— 期間內買了又賣掉的也算在內。只能拿來把期待值放低(上面那段量越大,越別期待一口氣噴過去),⛔ 不是買賣訊號。</div>
             </details>` : '';
-        const farTxt = far.length ? `<div class="text-[8px] text-gray-500 leading-snug mt-0.5">↑ 更遠還有套牢區 ${far.map(z => `${Math.round(+z.lo)}~${Math.round(+z.hi)}(${(+z.sup).toFixed(0)}% 的量)`).join('、')}—— 超過 +35%,先看近的那道</div>` : '';
+        const farTxt = far.length ? `<div class="text-[8px] text-gray-500 leading-snug mt-0.5">↑ 更遠 ${far.map(z => `${Math.round(+z.lo)}~${Math.round(+z.hi)}(${(+z.sup).toFixed(0)}%)`).join('、')} 也有套牢量</div>` : '';
         return `<div class="bg-[#0d1117] border border-[#30363d] rounded-lg" style="padding:8px 10px 6px" data-priceruler="${sym}">
-            <div class="text-[11px] font-black text-gray-200 mb-0.5">📏 價格位置圖 <span class="text-[8px] text-gray-500 font-normal">(左低右高)</span></div>
+            <div class="mb-0.5" style="display:flex;align-items:center;justify-content:space-between">
+                <span class="text-[11px] font-black text-gray-200">📏 價格位置圖 <span class="text-[8px] text-gray-500 font-normal">(左低右高)</span></span>
+                <button onclick="event.stopPropagation(); app._rulerHelp();" class="text-[9px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 怎麼看</button>
+            </div>
             <div data-rulertrack="1" style="position:relative;height:26px">
                 <div style="position:absolute;left:0;right:0;top:10px;height:6px;border-radius:9999px;background:linear-gradient(90deg,#21262d,#3a4250,#21262d)"></div>
                 <div class="bg-sky-500/80" data-rulerfill="${Math.round(fillW)}" style="position:absolute;left:0;top:10px;height:6px;width:${fillW.toFixed(1)}%;border-radius:9999px"></div>
                 ${pocBand}${bands}${mk}
             </div>
-            <div class="text-[9px]" style="display:flex;flex-wrap:wrap;align-items:center;column-gap:8px;row-gap:2px;margin-top:2px">${legend}</div>${farTxt}
+            <div class="text-[9px]" style="display:flex;flex-wrap:wrap;align-items:center;column-gap:8px;row-gap:2px;margin-top:2px">${legend}</div>${bearNote}${farTxt}
             ${stuckHtml}
-            <div class="text-[8px] text-gray-600 leading-snug" style="margin-top:4px">🔵 藍條畫到現價 ・🪤 灰帶 = 上方套牢區(120 日) ・🧲 虛線 = 量最大那一格(60 日)—— 兩個不同。價位全部來自別張卡,⛔ 這裡不另算。</div>
+            <div class="text-[8px] text-gray-600 leading-snug" style="margin-top:4px">🪤 灰帶 = 上方套牢區 ・🧲 虛線 = 量最大那一格 ・🎯 我們自己算的估值對照(⛔ 不是外資喊的)。完整說明點右上「📖 怎麼看」。</div>
         </div>`;
     },
     _ovEmergencyBar() {
@@ -38966,6 +39067,18 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const lowN = +(mid * 0.85).toFixed(mid >= 100 ? 0 : 1);
         const highN = +(mid * 1.15).toFixed(mid >= 100 ? 0 : 1);
         const upside = (pC && pC > 0) ? ((mid - pC) / pC * 100) : null;
+        // 🎯 V76.1.0 把**數字**存起來(以前只存 HTML `_instLineCache` → 別張卡拿不到,只能自己再算一次)。
+        //   ⛔ 全 App 只有這一份估值對照價;價格尺與上檔空間都讀它。
+        //   ⚠️ 它比價格尺晚算好 → 存完要回填重畫(同 `_renderGuardRuler` / `_regaugeStrip` 的做法)。
+        this._instTargetStash = { sym, mid, lo: lowN, hi: highN, method: peMethod, eps: annualEps, fairPE };
+        try {
+            if (String(this.currentSymbolId) === String(sym)) {
+                // ⛔ 這裡**不可**清掉 `_upsideStash` —— 價格尺的 🪤 套牢帶靠它,清了那條帶會消失。
+                //    🎯 的數字價格尺直接讀 `_instTargetStash`;上檔空間卡等下一輪 `_renderGuardRuler` 自然會併進來。
+                const _n = this._priceRulerHtml();
+                if (_n) document.querySelectorAll('[data-priceruler]').forEach(el => { el.outerHTML = _n; });
+            }
+        } catch (_) {}
         const upTxt = upside == null ? '' : (upside >= 0
             ? `<span class="text-red-400 font-bold text-[11px]">▲ 中值距現價 +${upside.toFixed(1)}%</span>`
             : `<span class="text-green-400 font-bold text-[11px]">▼ 中值距現價 ${upside.toFixed(1)}%</span>`);
