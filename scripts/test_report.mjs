@@ -55,7 +55,11 @@ console.log(`ℹ️ 5483 K 線末日 ${lastK.date}・最後一筆融資 ${lastMg
 const strip = s => s.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');   // 整行註解 + 行尾註解都剝
 {
     const sw = SRC.slice(SRC.indexOf('    switchSubTab(tab) {'), SRC.indexOf('    switchSubTab(tab) {') + 9000);
-    ok('① switchSubTab 的容器陣列含 Report(⛔ 漏加 = 分頁永遠顯示不出來)', /\['Strategy'[^\]]*'Report'\]/.test(sw));
+    // ⚠️ V76.0.1 報告分頁搬到「總覽」右邊 → ⛔ 這條**不可以**釘「Report 排在陣列最後」,
+    //   那是釘住當時的實作而不是用意(CLAUDE.md:斷言要釘用意)。用意 = 它有在那個陣列裡。
+    ok('① switchSubTab 的容器陣列含 Report(⛔ 漏加 = 分頁永遠顯示不出來)', /\['Strategy'[^\]]*'Report'[^\]]*\]/.test(sw));
+    ok('①c ⭐ 報告分頁的按鈕就排在「總覽」右邊(使用者指定的位置)',
+       /id="subTabBtnStrategy"[\s\S]{0,400}?id="subTabBtnReport"[\s\S]{0,400}?id="subTabBtnLive"/.test(SRC));
     ok('①b switchSubTab 有 report 分支呼叫 renderReportTab', /tab === 'report'[\s\S]{0,200}renderReportTab/.test(sw));
     ok('② _idxHiddenSubTabs 含 report 且 MAP 含 report: \'Report\'', /_idxHiddenSubTabs: \[[^\]]*'report'\]/.test(SRC) && /bullbear: 'BullBear', report: 'Report'/.test(SRC));
     ok('⑪a analyze() 切股清單含九個 rp*(⛔ 少一個 = 那一段顯上一檔)', ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc'].every(id => new RegExp(`'deepBriefCard', 'deepBriefAi',[\\s\\S]{0,400}'${id}'`).test(SRC)));
@@ -495,6 +499,39 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
        !/(可以進場|可進場|建議買進|建議賣出|可加碼|放心做多)/.test(T), (T.match(/(可以進場|可進場|建議買進|建議賣出|可加碼|放心做多)/) || [])[0]);
     ok('🏭h 產業節不可出現 `--` 或空白格', !/(^|[^-])--([^-]|$)/.test(T));
     ok('📱2 加了產業報告之後 390px 仍不可橫向溢出', !R4.wide);
+
+    // ── 🎯 V76.0.1 「報告頁跟總覽看起來很雷同」的修法 ──────────────────────────────
+    // 實測(headless 逐行比對 2330):結論卡 481 字裡 **350 字(73%)跟總覽逐字相同**,
+    //   而它是報告頁的第一眼 → 重複的全部是 `dec.plan` 那一串價位明細。
+    // ⛔ 但**不可以刪掉**(那是真的防守價)→ 收進摺疊 + 補進「📋 複製整份報告」。
+    // 🚨 斷言範圍一律縮到 `#rpAct` 內 —— 同樣的價位字串在總覽也有,
+    //    掃全頁會被別處救活變成假綠燈(🏭d3 就是這樣假綠過一次)。
+    const act = await page.evaluate(() => {
+        const A = app, el = document.getElementById('rpAct');
+        const dec = A._rpLast && A._rpLast.dec;
+        const pl = (dec && Array.isArray(dec.plan)) ? dec.plan : [];
+        const clean = t => String(t || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+        const d = el.querySelector('details');
+        return {
+            n: pl.length,
+            heads: pl.map(x => clean(x.t)),
+            vis: (el.innerText || '').replace(/\s+/g, ' '),          // ⭐ innerText 看不到關起來的 <details>
+            inFold: d ? d.innerHTML.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ') : '',
+            badge: clean(dec && dec.badge),
+            cp: A._rpCopyPlain(),
+        };
+    });
+    // 🚧 守門:沒有價位計畫時下面三條驗不到東西 → 誠實說出來,⛔ 不可靜默通過
+    ok('🎯p0 這檔要有價位計畫,下面三條才驗得到(⛔ 沒有就不是綠燈是驗不到)', act.n >= 1, `plan=${act.n}`);
+    ok('🎯p1 ⭐ 結論卡**攤開**的部分不可再逐字重述總覽那串價位(注入:把 plan 搬回攤開區 → 必紅)',
+       act.n >= 1 && act.heads.every(h => !act.vis.includes(h)), act.vis.slice(0, 200));
+    ok('🎯p2 🚨 但那些價位**仍然在 DOM 裡**(收進摺疊,⛔ 不是刪掉 —— 那是真的防守價)',
+       act.n >= 1 && act.heads.every(h => act.inFold.includes(h)), act.inFold.slice(0, 200));
+    ok('🎯p3 ⭐ 「📋 複製整份報告」要把價位一起帶出去(以前一行都沒複製到)',
+       act.n >= 1 && act.heads.every(h => act.cp.replace(/\s+/g, ' ').includes(h)), act.cp.slice(0, 300));
+    ok('🎯p4 結論本身仍要留在攤開區(⛔ 不可連結論都收起來)', !!act.badge && act.vis.includes(act.badge), act.vis.slice(0, 120));
+    ok('🎯p5 複製出去的價位段⛔ 不可出現兩次(摺疊標題會被節標題那段再收一次)',
+       (act.cp.match(/出場／加碼價位/g) || []).length === 1, String((act.cp.match(/出場／加碼價位/g) || []).length));
 }
 
 await browser.close();

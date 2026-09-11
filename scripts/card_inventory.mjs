@@ -27,7 +27,7 @@ import path from 'path';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SYM = process.argv[2] || '2330';
-const SUBTABS = ['strategy', 'live', 'daytrade', 'chart', 'chip', 'corp', 'backtest', 'bullbear'];
+const SUBTABS = ['strategy', 'report', 'live', 'daytrade', 'chart', 'chip', 'corp', 'backtest', 'bullbear'];
 const OVPANES = ['now', 'entry', 'exit'];
 
 if (!fs.existsSync(path.join(ROOT, 'data', `${SYM}.json`))) {
@@ -137,24 +137,36 @@ for (const tab of SUBTABS) {
                     if (st && st !== 'none') continue;       // inline display 會蓋掉 class(switchAppTab 就這樣做)
                     pushFold(h);
                 }
-                let folded = 0;
+                // 🐛 V76.0.1 第三個「安靜地量錯」——**兩種摺疊要分開算**:
+                //   ・關起來的 <details>:Chromium 的 `innerText` **看不到**它的內容
+                //     → 它本來就不在 `t` 裡面 → ⛔ 不可再從 `t` 扣一次(扣了攤開字數會偏小),
+                //       但也不能像舊版那樣算成 0(`dt - sm` 恆等於 0,所以整個報告頁 9 節全是
+                //       <details> 卻報「摺疊 0」,看起來像「什麼都沒收起來」)→ 改用 innerHTML 剝標籤量。
+                //   ・Tailwind `.hidden`:沙箱載不到 CDN → 它**有**被算進 `t` → 這種才要扣。
+                let foldedD = 0, foldedH = 0;
                 for (const d of foldedEls) {
+                    if (d.tagName === 'DETAILS' && !d.hasAttribute('open')) {
+                        foldedD += d.innerHTML.replace(/<summary[\s\S]*?<\/summary>/i, '')
+                            .replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim().length;
+                        continue;
+                    }
                     const dt = (d.innerText || '').replace(/\s+/g, ' ').trim();
                     const sm = (d.tagName === 'DETAILS' ? (d.querySelector('summary')?.innerText || '') : '').replace(/\s+/g, ' ').trim();
-                    folded += Math.max(0, dt.length - sm.length);
+                    foldedH += Math.max(0, dt.length - sm.length);
                 }
+                const folded = Math.min(foldedH, t.length) + foldedD;
                 // ⚠️ folded 可能**大於** len:`innerText` 對摺疊起來的 <details> 內容回傳的是全文,
                 //    但外層那張卡的 innerText 反而不含它 → 相減會變負數(實測 −445)。
                 //    ⛔ 不可讓「攤開字數」出現負值(會讓報表看起來像壞掉),一律 clamp。
                 // ⛔ `txt` 不可截斷:舊版只留前 400 字 → 「有沒有下操作指令」只掃到卡片開頭,
                 //    而指令通常寫在**最後**的「💡 對策 / 怎麼做」那一段 → 幾乎全部漏判。
-                out.push({ id: el.id, len: t.length, folded: Math.min(folded, t.length), txt: t });
+                out.push({ id: el.id, len: t.length, open: Math.max(0, t.length - Math.min(foldedH, t.length)), folded, txt: t });
             }
             return out;
         }, { tab, pane });
         for (const c of cards) {
             rows.push({
-                page: label, id: c.id, len: c.len, open: c.len - c.folded, folded: c.folded,
+                page: label, id: c.id, len: c.len, open: c.open, folded: c.folded,
                 cmd: RE_CMD.test(_deneg(c.txt)), edge: RE_EDGE.test(c.txt),
             });
         }

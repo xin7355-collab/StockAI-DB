@@ -93,7 +93,7 @@ for (let i = 0; i < 25; i++) {
     if (ok) break;
 }
 
-const SUB = ['strategy', 'live', 'daytrade', 'chart', 'chip', 'corp', 'backtest', 'bullbear'];
+const SUB = ['strategy', 'report', 'live', 'daytrade', 'chart', 'chip', 'corp', 'backtest', 'bullbear'];
 for (const sym of SYMS) {
     if (!fs.existsSync(path.join(ROOT, 'data', `${sym}.json`))) { console.log(`⏭️ ${sym} 沒有本機資料`); continue; }
     process.stdout.write(`\n🔎 ${sym} `);

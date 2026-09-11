@@ -34,7 +34,7 @@ import path from 'path';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SYMS = process.argv.slice(2).length ? process.argv.slice(2) : ['2327', '2330', '2317', '0050', '^TWII'];
-const SUBTABS = ['strategy', 'live', 'daytrade', 'chart', 'chip', 'corp', 'backtest', 'bullbear'];
+const SUBTABS = ['strategy', 'report', 'live', 'daytrade', 'chart', 'chip', 'corp', 'backtest', 'bullbear'];
 const OVPANES = ['now', 'entry', 'exit'];
 
 // ── 五類缺陷的樣式 ───────────────────────────────────────────

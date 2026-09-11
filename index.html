@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.0.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.0.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.0.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1564,6 +1564,7 @@
                 <div class="flex items-end px-2 pt-1 bg-[#0d1117] overflow-x-auto scrollbar-hide border-b border-[#21262d]">
                     <span class="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-amber-500 self-center mr-1.5 ml-0.5"></span>
                     <button onclick="app.switchSubTab('strategy')" id="subTabBtnStrategy" class="sub-tab-btn active flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">總覽</button>
+                    <button onclick="app.switchSubTab('report')" id="subTabBtnReport" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📄報告</button>
                     <button onclick="app.switchSubTab('live')" id="subTabBtnLive" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">即時</button>
                     <button onclick="app.switchSubTab('daytrade')" id="subTabBtnDayTrade" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">⚡當沖</button>
                     <button onclick="app.switchSubTab('chart')" id="subTabBtnChart" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">K線</button>
@@ -1571,7 +1572,6 @@
                     <button onclick="app.switchSubTab('corp')" id="subTabBtnCorp" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">基本</button>
                     <button onclick="app.switchSubTab('backtest')" id="subTabBtnBacktest" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">回測</button>
                     <button onclick="app.switchSubTab('bullbear')" id="subTabBtnBullBear" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">多空</button>
-                    <button onclick="app.switchSubTab('report')" id="subTabBtnReport" class="sub-tab-btn flex-shrink-0 px-3.5 py-1 text-[13px] font-bold tracking-normal rounded-t-lg whitespace-nowrap">📄報告</button>
                 </div>
             </div>
 
@@ -8028,7 +8028,7 @@ ${list}
         if (this._isIndexSym?.() && this._idxHiddenSubTabs.includes(tab)) tab = 'strategy';
         this._activeSubTab = tab;   // 🐛 V41.28 記錄當前 sub-tab,切股時 analyze 才知道要補跑哪個載入器
         if (tab !== 'daytrade') { try { this._stopDtAccel?.(); } catch (_) {} }   // ⚡ V55.2 離開當沖 sub-tab 停加速刷價
-        ['Strategy', 'Live', 'DayTrade', 'Chart', 'Chip', 'Corp', 'Backtest', 'Disposed', 'BullBear', 'Report'].forEach(t => {
+        ['Strategy', 'Report', 'Live', 'DayTrade', 'Chart', 'Chip', 'Corp', 'Backtest', 'Disposed', 'BullBear'].forEach(t => {
             const el = document.getElementById(`subContent${t}`);
             if (el) el.style.display = t.toLowerCase() === tab ? 'flex' : 'none';
             const btn = document.getElementById(`subTabBtn${t}`);
@@ -8173,8 +8173,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.0.0',
+    _APP_VERSION: 'V76.0.1',
     _CHANGELOG: [
+        { v: 'V76.0.1', d: ['📄 <b>「報告」分頁搬到「總覽」右邊</b>(你要求的位置),⛔ 兩頁<b>不合併</b> —— 實際量過了:報告頁 459 行裡<b>只有 8.8% 跟總覽重複</b>,合併只會讓總覽從 10,622 字暴增到一萬五以上,正好是你最常說的「資訊爆炸」。','🎯 <b>「很雷同」的真因找到了,而且就一格</b>:報告頁第一眼那張「結論與操作」有 <b>73% 跟總覽逐字相同</b>(整串出場價位照抄一次)。現在只留大字結論 + 一句理由 + 你的庫存損益,<b>價位明細收進摺疊</b>(⛔ 沒有刪掉 —— 那是真的防守價),並註明「要照著下單以總覽為準」。','📋 <b>「複製整份報告」現在會把那幾個出場價位一起複製出去</b> —— 以前一行都沒複製到。畫面變輕、帶出去反而更完整。','🗂️ <b>回測頁「最佳打法」瘦身</b>(實測是全 App 最重的一張卡):排名表只攤開「值得做的 + 今天真的觸發的 + ⚠️避開的」,其餘沒有優勢的那些收進摺疊。⛔ 一列都沒刪,點開就看得到。','🔬 順手補一個藏很久的盲點:三支巡邏工具的分頁清單<b>從來沒有包含「報告」頁</b> → 那一頁從上線到現在一次都沒被自動巡邏過,現在補上了。'] },
         { v: 'V76.0.0', d: ['🏭 <b>個股「報告」分頁改成真的產業報告</b>(你說「我要的是產業報告,現在這個感覺是總結」)—— 以前那一節只有兩行(產業別 + 代碼),難怪看起來像別的分頁的摘要。','① <b>同業對照表</b>:直接告訴你「你在這一族 N 檔裡,成交值第幾 ・近 20 日第幾 ・本益比第幾便宜 ・營收年增第幾 ・毛利率第幾」,並列出這一族成交值前 10 名(<b>你自己那一檔一定在表內</b>,點名字可以直接跳過去)。分群優先用<b>題材名單</b>(每天重算,比官方 33 大類精準);上櫃股沒有官方產業別,現在也有得比了。','② <b>這一族現在強不強</b>:這一族近 20 日在 32 個產業裡排第幾 + 近半年走勢圖 + 外資/投信/自營/融資近 5 日往哪流。⚠️ 資金流是<b>描述用</b>,本站實測它排不出有效順序,⛔ 不可拿來當買賣訊號(卡上有寫)。','③ <b>誰跟它一起動</b>:近 120 日走勢最像的前 5 檔 —— 用途是「我是不是重壓在同一族」(手上如果都有,那不是分散,是同一注下了好幾次)。','④ <b>這一族的實測成績</b>:同一族買最強的 +0.90%(六關全過)、買落後補漲的<b>逐年全負</b> —— 別因為「它還沒漲」就買它。','⑤ <b>📝 產業筆記</b>:產業景氣/漲價/法說這些質化的東西,按「🔎 問 Perplexity」問完可以把回答<b>貼回來存起來</b>。⛔ 它一定會標「外部 AI 寫的、本站沒有驗證」,而且<b>不會</b>被算進任何結論、評分或「📋 複製整份報告」。','🐛 順手修一個藏很久的:潛力/黑馬榜算「同業中位本益比」時,查表用的是中文產業名、但表格的鍵是數字代碼 → 那個值<b>一直都是空的</b>,而且被靜默吃掉完全看不出來。'] },
         { v: 'V75.3.3', d: ['🏷️ <b>修掉一個會讓「股票名字變代號」的真問題</b>:離線工作程式(Service Worker)在快取沒命中時回的是「空的」而不是錯誤碼 —— 網路抖一下,名稱清單那支請求就會直接爆掉,而畫面上完全看不出原因。','🔎 名稱載不到時,警語卡現在會<b>直接寫出卡在哪一層</b>(離線表 HTTP 幾號 / 只抓到幾檔 / FinMind 回什麼),還多一顆「📋 複製診斷」可以貼給我。⛔ 診斷裡只寫金鑰「有填/沒填」,不會寫出金鑰本身。','🛟 <b>你自己庫存與自選那幾檔的名字,現在另外存了一份</b> —— 就算全市場兩千多檔的清單載不到,你手上那幾檔仍然看得到中文名。'] },
         { v: 'V75.3.2', d: ['📄 <b>個股「報告」頁大改版</b>:結論從第 8 個搬到<b>最上面</b>並放大;關鍵數字從 10 格擠成 3 欄 → <b>4 格重點</b>(⭐ 而且會自動挑「這一檔真的有資料」的那幾格,不再出現一排「沒有」),其餘收進摺疊。','🗂️ 每一節的標題<b>直接寫出那一節的答案</b>(例如「本益比 20.2x ・落在自己近 3 年的第 72 百分位」),⛔ 不再只是「籌碼」「基本面」這種名詞 —— 摺疊起來也看得出裡面有沒有事。','⚠️ <b>只有「風險」那一節會自動展開</b>,而且只在真的有事時(預警 / 官方注意處置 / 法說會將到)。','📋 新增<b>一鍵複製整份報告</b>(純文字,可貼 LINE 或筆記),免責跟著一起複製出去。'] },
@@ -22797,9 +22798,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const held = dec.held ? `<div class="text-[10px] text-gray-300 mt-1">庫存成本 <b class="font-mono">${(+dec.cost).toFixed(2)}</b> ・${Number.isFinite(+dec.pnlPct) ? `<span class="${this._rpDir(dec.pnlPct)}">${this._rpPct(dec.pnlPct, 2)}</span>` : ''}${Number.isFinite(+dec.pnlAmt) ? ` <span class="font-mono ${this._rpDir(dec.pnlAmt)}">${dec.pnlAmt >= 0 ? '+' : ''}${Math.round(dec.pnlAmt).toLocaleString()} 元</span>` : ''}</div>` : '';
         // ⭐ V75.3.2 升級成 hero:大字 + 左側色條(⛔ 顏色只表方向,風險一律 ✅⚠️⛔ —— 燈號鐵則)
         const edge = { exit: 'border-green-500', reduce: 'border-yellow-500', hold: 'border-red-500', add: 'border-red-500' }[dec.state] || 'border-gray-500';
+        // 🚨 V76.0.1 實測(headless 逐行比對 2330):這張卡 481 字裡有 **350 字(73%)跟總覽逐字相同**,
+        //   而它是報告頁的**第一眼** → 使用者回報「報告頁跟總覽看起來很雷同」的真因就是這裡。
+        //   ⭐ 重複的全部是 `dec.plan` 那一串價位明細,而**總覽才是那串的唯一真相**。
+        //   ⛔ 但**不可以刪掉** —— 那幾個是真的防守價,消失會讓人以為沒有(同 `_TIDY` 鐵則:收起 ≠ 刪除)。
+        //   → 收進摺疊;⭐ 同時把它補進 `_rpCopyPlain`(以前一行都沒複製到)→ 畫面變輕、帶出去反而更完整。
+        const planN = (Array.isArray(dec.plan) ? dec.plan : []).length;
+        const planBlock = plan
+            ? `<details class="mt-1.5 bg-[#0d1117] border border-[#30363d] rounded">
+                <summary class="cursor-pointer px-2 py-1.5 list-none flex items-center justify-between gap-2"><span class="text-[10px] font-bold text-gray-300">📍 出場／加碼價位 ${planN} 條</span><span class="text-[9px] text-gray-600 flex-shrink-0">展開 ▾</span></summary>
+                <div class="px-2 pb-2 pt-1 border-t border-[#21262d]">${plan}</div></details>
+               <div class="text-[9px] text-gray-600 mt-1 leading-snug">⛔ 這幾條跟總覽「行動指令中心」是同一份數字 —— 要照著下單請以總覽為準(這裡只是讓報告帶得走)。</div>`
+            : `<div class="text-[10px] text-gray-500 mt-1.5">${dec.summary || '目前沒有具體的價位計畫'}</div>`;
         const body = `<div class="text-lg font-black text-gray-100 leading-tight">${dec.badge || '—'}</div>
             <div class="text-[11px] text-gray-300 leading-relaxed mt-1">${dec.why || ''}</div>${held}
-            ${plan ? `<div class="mt-1.5">${plan}</div>` : `<div class="text-[10px] text-gray-500 mt-1.5">${dec.summary || '目前沒有具體的價位計畫'}</div>`}
+            ${planBlock}
             <button onclick="app.switchSubTab('strategy'); app.vibrate?.(10);" class="mt-2 w-full text-[10px] font-bold text-cyan-300 bg-[#0d1117] hover:bg-cyan-900/20 border border-cyan-700/50 rounded py-1.5">以總覽「行動指令中心」為準 →</button>`;
         return `<div class="bg-[#161b22] border border-[#30363d] border-l-4 ${edge} rounded-lg p-3">
             <div class="flex items-center justify-between gap-2 mb-1"><span class="text-[10px] font-bold text-gray-500">🎯 結論與操作</span><span class="text-[9px] text-gray-600">轉述行動指令中心</span></div>${body}</div>`;
@@ -22833,7 +22846,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         L.push(`📄 ${(C.name && C.name !== C.sym) ? `${C.name}(${C.sym})` : (C.sym || '')} 報告`);
         if (C.kDate) L.push(`資料日期:${this._dW(C.kDate) || C.kDate}`);
         const dec = C.dec;
-        if (dec) { L.push(''); L.push(`🎯 結論:${clean(dec.badge)}`); if (dec.why) L.push(`   ${clean(dec.why)}`); }
+        if (dec) {
+            L.push(''); L.push(`🎯 結論:${clean(dec.badge)}`); if (dec.why) L.push(`   ${clean(dec.why)}`);
+            // 📍 V76.0.1 出場/加碼價位 —— ⛔ 從 `dec.plan` 取,**不讀 DOM**(畫面上那一段已經收進摺疊)
+            const pl = Array.isArray(dec.plan) ? dec.plan : [];
+            if (pl.length) {
+                L.push('📍 出場／加碼價位(跟總覽「行動指令中心」同一份)');
+                pl.forEach(x => L.push(`   ・${clean(x.t)}${x.sub ? ` —— ${clean(x.sub)}` : ''}`));
+            }
+        }
         //   ⚠️ 實跑抓到:直接串整格的 innerText 會變成「收盤K線 09/10(四) 178.50 -1.11%」
         //     —— 日期徽章夾在標籤與數值中間 → 改成按欄位取
         const nums = [...box.querySelectorAll('#rpNum [data-rpk]')].map(d => {
@@ -22845,7 +22866,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return `${d.getAttribute('data-rpk')}:${clean(val && val.textContent)}${sb ? glue + sb : ''}${dt ? `(${dt})` : ''}`;
         }).filter(Boolean);
         if (nums.length) { L.push(''); L.push('📊 重點數字'); nums.forEach(t => L.push(`   ${t}`)); }
-        const secs = [...box.querySelectorAll('details > summary')].map(d => clean(d.innerText)).filter(t => t && !/^📊 其他數字/.test(t));
+        //   ⚠️ V76.0.1:`📍 出場／加碼價位 N 條` 那個摺疊的內容**上面已經逐條列過了** → 這裡要排掉,
+        //     否則複製出去會出現兩次(實跑抓到)。同理 `📊 其他數字`(重點數字上面列過)。
+        const secs = [...box.querySelectorAll('details > summary')].map(d => clean(d.innerText)).filter(t => t && !/^📊 其他數字/.test(t) && !/^📍 出場/.test(t));
         if (secs.length) { L.push(''); secs.forEach(t => L.push(t)); }
         L.push('');
         L.push('📚 全部讀本站採礦產物(證交所 / 櫃買 / 集保 / 夜間基本面採礦),每個數字都標日期,不含任何 AI 推估。');
@@ -39335,7 +39358,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 const eCol = e => e > 0.5 ? 'text-red-300' : e >= 0 ? 'text-yellow-300' : 'text-green-300';
                 this._lastPlaybook = { ranked, per };   // 供點型態看教學時取用(含快取還原)
                 try { this._renderPageLead?.('backtest'); } catch (_) {}   // 🧭 V72.6.0 每頁一句話
-                const rows = ranked.map((r, idx) => {
+                const _rowsAll = ranked.map((r, idx) => {
                     // 🎲 V72.2.4 ⭐主打**要樣本夠才給** —— 實測 2603 的「晨星轉折 勝率 100%・3 次」
                     //   排進 top3 就掛 ⭐主打,而它旁邊的「⏳ 只有 3 次」根本搶不過那顆星的視覺份量。
                     //   ⛔ 不刪掉那一列(資料照顯示),只是把星拿掉、改標「⏳ 樣本不足」。
@@ -39350,13 +39373,30 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         : '';
                     const barW = Math.max(4, Math.min(100, 50 + r.expectancy * 20));
                     const barC = r.expectancy > 0.5 ? 'bg-red-400' : r.expectancy >= 0 ? 'bg-yellow-400' : 'bg-green-400';
-                    return `<div onclick="app.showPlaybookPatternHelp(${idx})" class="grid grid-cols-[1fr_auto] gap-2 items-center py-1.5 border-b border-[#21262d] cursor-pointer hover:bg-white/5 rounded px-1 -mx-1 transition-colors">
+                    const html = `<div onclick="app.showPlaybookPatternHelp(${idx})" class="grid grid-cols-[1fr_auto] gap-2 items-center py-1.5 border-b border-[#21262d] cursor-pointer hover:bg-white/5 rounded px-1 -mx-1 transition-colors">
                         <div><div class="text-[11px] text-gray-200 font-bold">${r.key}${star}${todayTag} <span class="text-[9px] text-amber-400/80 font-normal">👆點看怎麼做</span></div>
                             <div class="text-[9px] text-gray-500 font-mono">勝率 ${r.winRate.toFixed(0)}% ・ 賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)} ・ ${r.count} 次${this._wrTag(r.winRate, r.count)}</div>
                             <div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden mt-0.5"><div class="h-full ${barC}" style="width:${barW}%"></div></div></div>
                         <div class="font-mono font-black text-right text-sm ${eCol(r.expectancy)}">${r.expectancy >= 0 ? '+' : ''}${r.expectancy.toFixed(1)}%</div>
                     </div>`;
-                }).join('');
+                    // 🗂️ V76.0.1 精簡:這張卡是實測**全 App 最重的一張**(2330 攤開 1,523 字)——
+                    //   而 129 個型態裡值得做的只有個位數,其餘整排「期望值 -0.1%」是純雜訊。
+                    //   ⛔ 但**一列都不能刪**(同 `_SIGNAL_EDGE` 對 C 級的鐵則:刪掉會讓人以為沒風險)。
+                    //   ⭐ 攤開三種:① 期望值為正(值得做)② 今天真的觸發了 ③ ⚠️避開級(風險提醒⛔ 不打折)
+                    //      其餘收進摺疊,並在摺疊標題寫清楚收了幾條、為什麼。
+                    //   ⚠️ 樣本不足(`_wrEnough` < 10 次)那幾列**也收起來** —— CLAUDE.md 鐵則本來就寫著
+                    //      「n < 10 一律不准下進場指令」,那它擺在攤開區只是佔版面(2330 實測有 4 列是 3~9 次)。
+                    const keep = (r.expectancy > 0 && this._wrEnough(r.count)) || !!r.firedToday
+                                 || (r.expectancy <= -0.3 && r.count >= 4);
+                    return { html, keep };
+                });
+                const rows = _rowsAll.filter(x => x.keep).map(x => x.html).join('');
+                const _rest = _rowsAll.filter(x => !x.keep);
+                const rowsRest = _rest.length
+                    ? `<details class="mt-1 bg-[#0d1117] border border-[#30363d] rounded">
+                        <summary class="cursor-pointer px-2 py-1.5 list-none flex items-center justify-between gap-2"><span class="text-[10px] font-bold text-gray-300">🗂️ 其餘 ${_rest.length} 種型態(沒有優勢,或測到的次數不足 10 次)</span><span class="text-[9px] text-gray-600 flex-shrink-0">展開 ▾</span></summary>
+                        <div class="px-2 pb-2 pt-1 border-t border-[#21262d]">${_rest.map(x => x.html).join('')}</div></details>`
+                    : '';
                 // 🐛 V72.5.5 這行本來**沒有樣本守門** —— 而同一張卡的 ⭐主打星星(下方)與觸發提示
                 //   都已經有 `_wrEnough`,只有這條總結漏掉(陷阱 #37「共用工具只接了一處」的再犯)。
                 //   後果:3 次樣本的型態會被寫進「等這檔的主打 X 出現**再動**」——那是操作指令。
@@ -39424,7 +39464,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     <div class="bg-blue-900/15 border-l-2 border-blue-500/60 pl-2 py-1.5 rounded-r mb-2 text-[10px] text-blue-100/90 leading-relaxed cursor-pointer" onclick="app.showPlaybookConceptHelp()">🎓 <b>為什麼勝率 40% 還是「主打」?</b> 排名看的是<b>每趟期望值</b>不是勝率 —— 勝率低但「賺賠比」高(賺大賠小)長期照樣賺。這就是朱老師精神:不是靠猜對,是靠對的時候賺多、錯的時候賠少。<span class="text-blue-300">(點看完整說明)</span></div>
                     <div class="text-[10px] text-gray-500 mb-1">📊 型態實戰回測排名(這檔自己的歷史 ・ 依每趟期望值排序 ・ <b class="text-amber-400/80">點任一列看怎麼操作</b>)</div>
                     ${this._playbookHonestyHtml()}
-                    ${rows || '<div class="text-[11px] text-gray-500 py-2 text-center">歷史訊號太少,無足夠樣本回測。</div>'}
+                    ${rows || '<div class="text-[11px] text-gray-500 py-2 text-center">這檔沒有實測站得住的型態(⛔ 不是資料壞掉 —— 是這檔難用技術短打)。</div>'}
+                    ${rowsRest}
                     <div class="bg-[#0d1117] border border-[#30363d] rounded p-2 mt-2 text-[11px] leading-relaxed">
                         <div class="text-gray-200"><span class="text-red-300 font-bold">✅ 主打:</span>${bestTxt}</div>
                         <div class="text-gray-200 mt-0.5"><span class="text-green-300 font-bold">⚠️ 避開:</span>${avoidTxt}</div>
