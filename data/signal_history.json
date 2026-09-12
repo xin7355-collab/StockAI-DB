@@ -1,0 +1,6140 @@
+{
+  "updated": "2026-09-12 19:53",
+  "replay_days": 480,
+  "scanned_stocks": 2719,
+  "skipped_zombie": 1187,
+  "skipped_attention": 4,
+  "fwd_windows": [
+    5,
+    10,
+    20,
+    60
+  ],
+  "round_trip_cost_pct": 0.785,
+  "by_signal": {
+    "🟢送分題": {
+      "samples": 124997,
+      "win_rate_5d": 47.3,
+      "win_rate_10d": 48.0,
+      "avg_return_5d": 0.52,
+      "avg_return_10d": 1.0
+    },
+    "🟡偏多": {
+      "samples": 143127,
+      "win_rate_5d": 43.8,
+      "win_rate_10d": 43.9,
+      "avg_return_5d": 0.42,
+      "avg_return_10d": 0.91
+    }
+  },
+  "by_signal_extended": {
+    "🌅 KD黃金交叉": {
+      "5d": {
+        "gross": {
+          "samples": 60679,
+          "win_rate": 48.4,
+          "avg_return": 0.49,
+          "median_return": 0.0,
+          "std": 13.31,
+          "sharpe": 0.04,
+          "sortino": 0.12,
+          "profit_factor": 1.24,
+          "mdd_pct": null,
+          "best": 2051.98,
+          "worst": -63.76
+        },
+        "net": {
+          "samples": 60679,
+          "win_rate": 40.5,
+          "avg_return": -0.3,
+          "median_return": -0.78,
+          "std": 13.31,
+          "sharpe": -0.02,
+          "sortino": -0.07,
+          "profit_factor": 0.88,
+          "mdd_pct": null,
+          "best": 2051.2,
+          "worst": -64.54
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 60679,
+          "win_rate": 48.1,
+          "avg_return": 0.96,
+          "median_return": -0.14,
+          "std": 14.7,
+          "sharpe": 0.07,
+          "sortino": 0.19,
+          "profit_factor": 1.37,
+          "mdd_pct": null,
+          "best": 1998.44,
+          "worst": -62.45
+        },
+        "net": {
+          "samples": 60679,
+          "win_rate": 42.6,
+          "avg_return": 0.17,
+          "median_return": -0.92,
+          "std": 14.7,
+          "sharpe": 0.01,
+          "sortino": 0.03,
+          "profit_factor": 1.06,
+          "mdd_pct": null,
+          "best": 1997.65,
+          "worst": -63.23
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 60679,
+          "win_rate": 47.1,
+          "avg_return": 1.45,
+          "median_return": -0.41,
+          "std": 18.9,
+          "sharpe": 0.08,
+          "sortino": 0.2,
+          "profit_factor": 1.38,
+          "mdd_pct": null,
+          "best": 2078.84,
+          "worst": -95.64
+        },
+        "net": {
+          "samples": 60679,
+          "win_rate": 43.1,
+          "avg_return": 0.67,
+          "median_return": -1.19,
+          "std": 18.9,
+          "sharpe": 0.04,
+          "sortino": 0.09,
+          "profit_factor": 1.16,
+          "mdd_pct": null,
+          "best": 2078.06,
+          "worst": -96.43
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 60679,
+          "win_rate": 47.6,
+          "avg_return": 5.29,
+          "median_return": -0.62,
+          "std": 34.07,
+          "sharpe": 0.16,
+          "sortino": 0.49,
+          "profit_factor": 1.89,
+          "mdd_pct": null,
+          "best": 2156.89,
+          "worst": -95.63
+        },
+        "net": {
+          "samples": 60679,
+          "win_rate": 45.4,
+          "avg_return": 4.5,
+          "median_return": -1.41,
+          "std": 34.07,
+          "sharpe": 0.13,
+          "sortino": 0.4,
+          "profit_factor": 1.71,
+          "mdd_pct": null,
+          "best": 2156.11,
+          "worst": -96.42
+        }
+      }
+    },
+    "🌇 KD死亡交叉": {
+      "5d": {
+        "gross": {
+          "samples": 23285,
+          "win_rate": 47.5,
+          "avg_return": 0.35,
+          "median_return": -0.1,
+          "std": 7.24,
+          "sharpe": 0.05,
+          "sortino": 0.08,
+          "profit_factor": 1.17,
+          "mdd_pct": null,
+          "best": 111.08,
+          "worst": -54.83
+        },
+        "net": {
+          "samples": 23285,
+          "win_rate": 38.8,
+          "avg_return": -0.44,
+          "median_return": -0.89,
+          "std": 7.24,
+          "sharpe": -0.06,
+          "sortino": -0.1,
+          "profit_factor": 0.83,
+          "mdd_pct": null,
+          "best": 110.3,
+          "worst": -55.62
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 23285,
+          "win_rate": 48.4,
+          "avg_return": 0.86,
+          "median_return": -0.07,
+          "std": 10.42,
+          "sharpe": 0.08,
+          "sortino": 0.16,
+          "profit_factor": 1.31,
+          "mdd_pct": null,
+          "best": 137.95,
+          "worst": -57.96
+        },
+        "net": {
+          "samples": 23285,
+          "win_rate": 42.3,
+          "avg_return": 0.07,
+          "median_return": -0.86,
+          "std": 10.42,
+          "sharpe": 0.01,
+          "sortino": 0.01,
+          "profit_factor": 1.02,
+          "mdd_pct": null,
+          "best": 137.16,
+          "worst": -58.75
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 23285,
+          "win_rate": 50.0,
+          "avg_return": 2.44,
+          "median_return": 0.0,
+          "std": 22.05,
+          "sharpe": 0.11,
+          "sortino": 0.35,
+          "profit_factor": 1.67,
+          "mdd_pct": null,
+          "best": 1682.86,
+          "worst": -96.23
+        },
+        "net": {
+          "samples": 23285,
+          "win_rate": 46.0,
+          "avg_return": 1.65,
+          "median_return": -0.78,
+          "std": 22.05,
+          "sharpe": 0.07,
+          "sortino": 0.22,
+          "profit_factor": 1.41,
+          "mdd_pct": null,
+          "best": 1682.07,
+          "worst": -97.01
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 23285,
+          "win_rate": 49.0,
+          "avg_return": 5.91,
+          "median_return": -0.28,
+          "std": 36.36,
+          "sharpe": 0.16,
+          "sortino": 0.52,
+          "profit_factor": 1.96,
+          "mdd_pct": null,
+          "best": 1884.08,
+          "worst": -96.13
+        },
+        "net": {
+          "samples": 23285,
+          "win_rate": 47.0,
+          "avg_return": 5.13,
+          "median_return": -1.07,
+          "std": 36.36,
+          "sharpe": 0.14,
+          "sortino": 0.44,
+          "profit_factor": 1.78,
+          "mdd_pct": null,
+          "best": 1883.3,
+          "worst": -96.91
+        }
+      }
+    },
+    "🚀 爆量長紅": {
+      "5d": {
+        "gross": {
+          "samples": 29826,
+          "win_rate": 44.0,
+          "avg_return": 0.98,
+          "median_return": -0.79,
+          "std": 10.72,
+          "sharpe": 0.09,
+          "sortino": 0.2,
+          "profit_factor": 1.34,
+          "mdd_pct": null,
+          "best": 298.67,
+          "worst": -50.72
+        },
+        "net": {
+          "samples": 29826,
+          "win_rate": 39.9,
+          "avg_return": 0.19,
+          "median_return": -1.57,
+          "std": 10.72,
+          "sharpe": 0.02,
+          "sortino": 0.03,
+          "profit_factor": 1.06,
+          "mdd_pct": null,
+          "best": 297.89,
+          "worst": -51.51
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 29826,
+          "win_rate": 45.0,
+          "avg_return": 1.73,
+          "median_return": -0.89,
+          "std": 14.41,
+          "sharpe": 0.12,
+          "sortino": 0.27,
+          "profit_factor": 1.47,
+          "mdd_pct": null,
+          "best": 294.52,
+          "worst": -58.68
+        },
+        "net": {
+          "samples": 29826,
+          "win_rate": 42.1,
+          "avg_return": 0.95,
+          "median_return": -1.68,
+          "std": 14.41,
+          "sharpe": 0.07,
+          "sortino": 0.14,
+          "profit_factor": 1.23,
+          "mdd_pct": null,
+          "best": 293.74,
+          "worst": -59.47
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 29826,
+          "win_rate": 45.4,
+          "avg_return": 3.23,
+          "median_return": -1.21,
+          "std": 21.61,
+          "sharpe": 0.15,
+          "sortino": 0.38,
+          "profit_factor": 1.66,
+          "mdd_pct": null,
+          "best": 428.41,
+          "worst": -61.78
+        },
+        "net": {
+          "samples": 29826,
+          "win_rate": 43.3,
+          "avg_return": 2.45,
+          "median_return": -2.0,
+          "std": 21.61,
+          "sharpe": 0.11,
+          "sortino": 0.27,
+          "profit_factor": 1.46,
+          "mdd_pct": null,
+          "best": 427.62,
+          "worst": -62.57
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 29826,
+          "win_rate": 45.7,
+          "avg_return": 8.47,
+          "median_return": -2.12,
+          "std": 44.39,
+          "sharpe": 0.19,
+          "sortino": 0.65,
+          "profit_factor": 2.09,
+          "mdd_pct": null,
+          "best": 948.78,
+          "worst": -95.7
+        },
+        "net": {
+          "samples": 29826,
+          "win_rate": 44.4,
+          "avg_return": 7.69,
+          "median_return": -2.91,
+          "std": 44.39,
+          "sharpe": 0.17,
+          "sortino": 0.57,
+          "profit_factor": 1.94,
+          "mdd_pct": null,
+          "best": 948.0,
+          "worst": -96.49
+        }
+      }
+    },
+    "🏔️ 創60日新高": {
+      "5d": {
+        "gross": {
+          "samples": 25906,
+          "win_rate": 51.0,
+          "avg_return": 1.44,
+          "median_return": 0.17,
+          "std": 10.68,
+          "sharpe": 0.13,
+          "sortino": 0.28,
+          "profit_factor": 1.58,
+          "mdd_pct": null,
+          "best": 298.67,
+          "worst": -60.07
+        },
+        "net": {
+          "samples": 25906,
+          "win_rate": 44.1,
+          "avg_return": 0.65,
+          "median_return": -0.62,
+          "std": 10.68,
+          "sharpe": 0.06,
+          "sortino": 0.12,
+          "profit_factor": 1.22,
+          "mdd_pct": null,
+          "best": 297.89,
+          "worst": -60.86
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 25906,
+          "win_rate": 52.4,
+          "avg_return": 2.52,
+          "median_return": 0.41,
+          "std": 14.25,
+          "sharpe": 0.18,
+          "sortino": 0.4,
+          "profit_factor": 1.8,
+          "mdd_pct": null,
+          "best": 241.94,
+          "worst": -61.19
+        },
+        "net": {
+          "samples": 25906,
+          "win_rate": 47.4,
+          "avg_return": 1.73,
+          "median_return": -0.38,
+          "std": 14.25,
+          "sharpe": 0.12,
+          "sortino": 0.26,
+          "profit_factor": 1.49,
+          "mdd_pct": null,
+          "best": 241.15,
+          "worst": -61.98
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 25906,
+          "win_rate": 54.0,
+          "avg_return": 4.75,
+          "median_return": 0.93,
+          "std": 26.9,
+          "sharpe": 0.18,
+          "sortino": 0.57,
+          "profit_factor": 2.12,
+          "mdd_pct": null,
+          "best": 1594.74,
+          "worst": -96.23
+        },
+        "net": {
+          "samples": 25906,
+          "win_rate": 50.7,
+          "avg_return": 3.97,
+          "median_return": 0.14,
+          "std": 26.9,
+          "sharpe": 0.15,
+          "sortino": 0.45,
+          "profit_factor": 1.86,
+          "mdd_pct": null,
+          "best": 1593.95,
+          "worst": -97.01
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 25906,
+          "win_rate": 54.7,
+          "avg_return": 9.64,
+          "median_return": 1.82,
+          "std": 44.34,
+          "sharpe": 0.22,
+          "sortino": 0.76,
+          "profit_factor": 2.48,
+          "mdd_pct": null,
+          "best": 1828.74,
+          "worst": -96.47
+        },
+        "net": {
+          "samples": 25906,
+          "win_rate": 52.9,
+          "avg_return": 8.86,
+          "median_return": 1.04,
+          "std": 44.34,
+          "sharpe": 0.2,
+          "sortino": 0.68,
+          "profit_factor": 2.28,
+          "mdd_pct": null,
+          "best": 1827.96,
+          "worst": -97.26
+        }
+      }
+    },
+    "⛏️ 跌破前20日低": {
+      "5d": {
+        "gross": {
+          "samples": 40445,
+          "win_rate": 53.4,
+          "avg_return": 0.54,
+          "median_return": 0.4,
+          "std": 12.52,
+          "sharpe": 0.04,
+          "sortino": 0.1,
+          "profit_factor": 1.23,
+          "mdd_pct": null,
+          "best": 1979.86,
+          "worst": -44.52
+        },
+        "net": {
+          "samples": 40445,
+          "win_rate": 46.1,
+          "avg_return": -0.25,
+          "median_return": -0.39,
+          "std": 12.52,
+          "sharpe": -0.02,
+          "sortino": -0.04,
+          "profit_factor": 0.91,
+          "mdd_pct": null,
+          "best": 1979.08,
+          "worst": -45.3
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 40445,
+          "win_rate": 51.7,
+          "avg_return": 1.01,
+          "median_return": 0.32,
+          "std": 16.16,
+          "sharpe": 0.06,
+          "sortino": 0.18,
+          "profit_factor": 1.38,
+          "mdd_pct": null,
+          "best": 1910.53,
+          "worst": -53.0
+        },
+        "net": {
+          "samples": 40445,
+          "win_rate": 46.6,
+          "avg_return": 0.22,
+          "median_return": -0.46,
+          "std": 16.16,
+          "sharpe": 0.01,
+          "sortino": 0.04,
+          "profit_factor": 1.07,
+          "mdd_pct": null,
+          "best": 1909.75,
+          "worst": -53.78
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 40445,
+          "win_rate": 52.7,
+          "avg_return": 2.05,
+          "median_return": 0.58,
+          "std": 19.31,
+          "sharpe": 0.11,
+          "sortino": 0.31,
+          "profit_factor": 1.62,
+          "mdd_pct": null,
+          "best": 2052.51,
+          "worst": -58.72
+        },
+        "net": {
+          "samples": 40445,
+          "win_rate": 49.0,
+          "avg_return": 1.27,
+          "median_return": -0.21,
+          "std": 19.31,
+          "sharpe": 0.07,
+          "sortino": 0.18,
+          "profit_factor": 1.34,
+          "mdd_pct": null,
+          "best": 2051.73,
+          "worst": -59.51
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 40445,
+          "win_rate": 51.2,
+          "avg_return": 5.29,
+          "median_return": 0.42,
+          "std": 31.04,
+          "sharpe": 0.17,
+          "sortino": 0.55,
+          "profit_factor": 2.02,
+          "mdd_pct": null,
+          "best": 2255.65,
+          "worst": -81.28
+        },
+        "net": {
+          "samples": 40445,
+          "win_rate": 48.7,
+          "avg_return": 4.5,
+          "median_return": -0.36,
+          "std": 31.04,
+          "sharpe": 0.15,
+          "sortino": 0.45,
+          "profit_factor": 1.81,
+          "mdd_pct": null,
+          "best": 2254.87,
+          "worst": -82.07
+        }
+      }
+    },
+    "📉 跌破季線60MA": {
+      "5d": {
+        "gross": {
+          "samples": 8991,
+          "win_rate": 46.5,
+          "avg_return": 0.26,
+          "median_return": -0.14,
+          "std": 5.88,
+          "sharpe": 0.04,
+          "sortino": 0.08,
+          "profit_factor": 1.15,
+          "mdd_pct": null,
+          "best": 105.21,
+          "worst": -40.58
+        },
+        "net": {
+          "samples": 8991,
+          "win_rate": 38.2,
+          "avg_return": -0.53,
+          "median_return": -0.92,
+          "std": 5.88,
+          "sharpe": -0.09,
+          "sortino": -0.14,
+          "profit_factor": 0.75,
+          "mdd_pct": null,
+          "best": 104.43,
+          "worst": -41.36
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 8991,
+          "win_rate": 45.4,
+          "avg_return": 0.41,
+          "median_return": -0.36,
+          "std": 9.32,
+          "sharpe": 0.04,
+          "sortino": 0.09,
+          "profit_factor": 1.17,
+          "mdd_pct": null,
+          "best": 364.45,
+          "worst": -44.82
+        },
+        "net": {
+          "samples": 8991,
+          "win_rate": 39.1,
+          "avg_return": -0.37,
+          "median_return": -1.14,
+          "std": 9.32,
+          "sharpe": -0.04,
+          "sortino": -0.07,
+          "profit_factor": 0.87,
+          "mdd_pct": null,
+          "best": 363.66,
+          "worst": -45.6
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 8991,
+          "win_rate": 44.8,
+          "avg_return": 0.53,
+          "median_return": -0.72,
+          "std": 13.94,
+          "sharpe": 0.04,
+          "sortino": 0.08,
+          "profit_factor": 1.14,
+          "mdd_pct": null,
+          "best": 341.96,
+          "worst": -65.74
+        },
+        "net": {
+          "samples": 8991,
+          "win_rate": 40.4,
+          "avg_return": -0.26,
+          "median_return": -1.5,
+          "std": 13.94,
+          "sharpe": -0.02,
+          "sortino": -0.03,
+          "profit_factor": 0.94,
+          "mdd_pct": null,
+          "best": 341.18,
+          "worst": -66.52
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 8991,
+          "win_rate": 43.5,
+          "avg_return": 3.47,
+          "median_return": -1.71,
+          "std": 29.5,
+          "sharpe": 0.12,
+          "sortino": 0.33,
+          "profit_factor": 1.56,
+          "mdd_pct": null,
+          "best": 622.85,
+          "worst": -66.92
+        },
+        "net": {
+          "samples": 8991,
+          "win_rate": 41.1,
+          "avg_return": 2.69,
+          "median_return": -2.49,
+          "std": 29.5,
+          "sharpe": 0.09,
+          "sortino": 0.25,
+          "profit_factor": 1.41,
+          "mdd_pct": null,
+          "best": 622.07,
+          "worst": -67.71
+        }
+      }
+    },
+    "✨ 5MA黃金交叉": {
+      "5d": {
+        "gross": {
+          "samples": 42631,
+          "win_rate": 46.1,
+          "avg_return": 0.62,
+          "median_return": -0.28,
+          "std": 7.51,
+          "sharpe": 0.08,
+          "sortino": 0.17,
+          "profit_factor": 1.32,
+          "mdd_pct": null,
+          "best": 261.33,
+          "worst": -37.61
+        },
+        "net": {
+          "samples": 42631,
+          "win_rate": 38.7,
+          "avg_return": -0.16,
+          "median_return": -1.06,
+          "std": 7.51,
+          "sharpe": -0.02,
+          "sortino": -0.04,
+          "profit_factor": 0.93,
+          "mdd_pct": null,
+          "best": 260.55,
+          "worst": -38.4
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 42631,
+          "win_rate": 46.6,
+          "avg_return": 1.0,
+          "median_return": -0.34,
+          "std": 11.1,
+          "sharpe": 0.09,
+          "sortino": 0.19,
+          "profit_factor": 1.36,
+          "mdd_pct": null,
+          "best": 357.02,
+          "worst": -95.98
+        },
+        "net": {
+          "samples": 42631,
+          "win_rate": 41.4,
+          "avg_return": 0.22,
+          "median_return": -1.13,
+          "std": 11.1,
+          "sharpe": 0.02,
+          "sortino": 0.04,
+          "profit_factor": 1.07,
+          "mdd_pct": null,
+          "best": 356.24,
+          "worst": -96.77
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 42631,
+          "win_rate": 46.8,
+          "avg_return": 1.88,
+          "median_return": -0.5,
+          "std": 18.67,
+          "sharpe": 0.1,
+          "sortino": 0.26,
+          "profit_factor": 1.48,
+          "mdd_pct": null,
+          "best": 1797.6,
+          "worst": -95.12
+        },
+        "net": {
+          "samples": 42631,
+          "win_rate": 43.0,
+          "avg_return": 1.1,
+          "median_return": -1.29,
+          "std": 18.67,
+          "sharpe": 0.06,
+          "sortino": 0.14,
+          "profit_factor": 1.25,
+          "mdd_pct": null,
+          "best": 1796.81,
+          "worst": -95.9
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 42631,
+          "win_rate": 47.0,
+          "avg_return": 5.9,
+          "median_return": -0.88,
+          "std": 35.09,
+          "sharpe": 0.17,
+          "sortino": 0.54,
+          "profit_factor": 1.95,
+          "mdd_pct": null,
+          "best": 1883.81,
+          "worst": -95.5
+        },
+        "net": {
+          "samples": 42631,
+          "win_rate": 45.0,
+          "avg_return": 5.11,
+          "median_return": -1.67,
+          "std": 35.09,
+          "sharpe": 0.15,
+          "sortino": 0.45,
+          "profit_factor": 1.77,
+          "mdd_pct": null,
+          "best": 1883.03,
+          "worst": -96.28
+        }
+      }
+    },
+    "🌡️ 乖離過大+12%": {
+      "5d": {
+        "gross": {
+          "samples": 38431,
+          "win_rate": 48.1,
+          "avg_return": 1.78,
+          "median_return": -0.34,
+          "std": 13.09,
+          "sharpe": 0.14,
+          "sortino": 0.28,
+          "profit_factor": 1.49,
+          "mdd_pct": null,
+          "best": 298.67,
+          "worst": -54.83
+        },
+        "net": {
+          "samples": 38431,
+          "win_rate": 45.3,
+          "avg_return": 0.99,
+          "median_return": -1.12,
+          "std": 13.09,
+          "sharpe": 0.08,
+          "sortino": 0.15,
+          "profit_factor": 1.25,
+          "mdd_pct": null,
+          "best": 297.89,
+          "worst": -55.62
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 38431,
+          "win_rate": 49.4,
+          "avg_return": 3.48,
+          "median_return": 0.0,
+          "std": 18.51,
+          "sharpe": 0.19,
+          "sortino": 0.44,
+          "profit_factor": 1.77,
+          "mdd_pct": null,
+          "best": 617.39,
+          "worst": -58.46
+        },
+        "net": {
+          "samples": 38431,
+          "win_rate": 47.3,
+          "avg_return": 2.69,
+          "median_return": -0.78,
+          "std": 18.51,
+          "sharpe": 0.15,
+          "sortino": 0.32,
+          "profit_factor": 1.55,
+          "mdd_pct": null,
+          "best": 616.61,
+          "worst": -59.24
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 38431,
+          "win_rate": 50.5,
+          "avg_return": 6.67,
+          "median_return": 0.35,
+          "std": 27.86,
+          "sharpe": 0.24,
+          "sortino": 0.66,
+          "profit_factor": 2.15,
+          "mdd_pct": null,
+          "best": 469.57,
+          "worst": -96.25
+        },
+        "net": {
+          "samples": 38431,
+          "win_rate": 49.1,
+          "avg_return": 5.89,
+          "median_return": -0.43,
+          "std": 27.86,
+          "sharpe": 0.21,
+          "sortino": 0.55,
+          "profit_factor": 1.95,
+          "mdd_pct": null,
+          "best": 468.78,
+          "worst": -97.04
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 38431,
+          "win_rate": 46.4,
+          "avg_return": 11.12,
+          "median_return": -2.57,
+          "std": 51.89,
+          "sharpe": 0.21,
+          "sortino": 0.67,
+          "profit_factor": 2.11,
+          "mdd_pct": null,
+          "best": 965.57,
+          "worst": -96.47
+        },
+        "net": {
+          "samples": 38431,
+          "win_rate": 45.6,
+          "avg_return": 10.33,
+          "median_return": -3.36,
+          "std": 51.89,
+          "sharpe": 0.2,
+          "sortino": 0.61,
+          "profit_factor": 1.99,
+          "mdd_pct": null,
+          "best": 964.79,
+          "worst": -97.26
+        }
+      }
+    },
+    "😴 量縮窒息": {
+      "5d": {
+        "gross": {
+          "samples": 122765,
+          "win_rate": 46.9,
+          "avg_return": 0.3,
+          "median_return": -0.17,
+          "std": 6.97,
+          "sharpe": 0.04,
+          "sortino": 0.07,
+          "profit_factor": 1.15,
+          "mdd_pct": null,
+          "best": 110.63,
+          "worst": -54.83
+        },
+        "net": {
+          "samples": 122765,
+          "win_rate": 39.5,
+          "avg_return": -0.48,
+          "median_return": -0.96,
+          "std": 6.97,
+          "sharpe": -0.07,
+          "sortino": -0.11,
+          "profit_factor": 0.81,
+          "mdd_pct": null,
+          "best": 109.85,
+          "worst": -55.62
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 122765,
+          "win_rate": 47.6,
+          "avg_return": 0.79,
+          "median_return": -0.21,
+          "std": 10.48,
+          "sharpe": 0.08,
+          "sortino": 0.14,
+          "profit_factor": 1.28,
+          "mdd_pct": null,
+          "best": 414.08,
+          "worst": -95.84
+        },
+        "net": {
+          "samples": 122765,
+          "win_rate": 42.4,
+          "avg_return": 0.01,
+          "median_return": -0.99,
+          "std": 10.48,
+          "sharpe": 0.0,
+          "sortino": 0.0,
+          "profit_factor": 1.0,
+          "mdd_pct": null,
+          "best": 413.3,
+          "worst": -96.63
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 122765,
+          "win_rate": 46.9,
+          "avg_return": 1.55,
+          "median_return": -0.49,
+          "std": 15.79,
+          "sharpe": 0.1,
+          "sortino": 0.21,
+          "profit_factor": 1.39,
+          "mdd_pct": null,
+          "best": 425.27,
+          "worst": -96.56
+        },
+        "net": {
+          "samples": 122765,
+          "win_rate": 43.4,
+          "avg_return": 0.77,
+          "median_return": -1.28,
+          "std": 15.79,
+          "sharpe": 0.05,
+          "sortino": 0.1,
+          "profit_factor": 1.17,
+          "mdd_pct": null,
+          "best": 424.49,
+          "worst": -97.35
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 122765,
+          "win_rate": 46.3,
+          "avg_return": 4.83,
+          "median_return": -1.17,
+          "std": 33.19,
+          "sharpe": 0.15,
+          "sortino": 0.42,
+          "profit_factor": 1.74,
+          "mdd_pct": null,
+          "best": 1970.72,
+          "worst": -96.14
+        },
+        "net": {
+          "samples": 122765,
+          "win_rate": 44.2,
+          "avg_return": 4.04,
+          "median_return": -1.95,
+          "std": 33.19,
+          "sharpe": 0.12,
+          "sortino": 0.34,
+          "profit_factor": 1.58,
+          "mdd_pct": null,
+          "best": 1969.93,
+          "worst": -96.93
+        }
+      }
+    },
+    "⚠️ 價漲量縮背離": {
+      "5d": {
+        "gross": {
+          "samples": 111943,
+          "win_rate": 48.3,
+          "avg_return": 0.46,
+          "median_return": 0.0,
+          "std": 10.29,
+          "sharpe": 0.04,
+          "sortino": 0.12,
+          "profit_factor": 1.24,
+          "mdd_pct": null,
+          "best": 2051.98,
+          "worst": -49.45
+        },
+        "net": {
+          "samples": 111943,
+          "win_rate": 40.1,
+          "avg_return": -0.32,
+          "median_return": -0.78,
+          "std": 10.29,
+          "sharpe": -0.03,
+          "sortino": -0.08,
+          "profit_factor": 0.86,
+          "mdd_pct": null,
+          "best": 2051.2,
+          "worst": -50.23
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 111943,
+          "win_rate": 49.2,
+          "avg_return": 1.03,
+          "median_return": 0.0,
+          "std": 12.8,
+          "sharpe": 0.08,
+          "sortino": 0.2,
+          "profit_factor": 1.4,
+          "mdd_pct": null,
+          "best": 1944.54,
+          "worst": -95.98
+        },
+        "net": {
+          "samples": 111943,
+          "win_rate": 43.6,
+          "avg_return": 0.25,
+          "median_return": -0.78,
+          "std": 12.8,
+          "sharpe": 0.02,
+          "sortino": 0.04,
+          "profit_factor": 1.08,
+          "mdd_pct": null,
+          "best": 1943.75,
+          "worst": -96.77
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 111943,
+          "win_rate": 48.3,
+          "avg_return": 1.76,
+          "median_return": -0.21,
+          "std": 17.36,
+          "sharpe": 0.1,
+          "sortino": 0.25,
+          "profit_factor": 1.48,
+          "mdd_pct": null,
+          "best": 2043.47,
+          "worst": -96.06
+        },
+        "net": {
+          "samples": 111943,
+          "win_rate": 44.5,
+          "avg_return": 0.98,
+          "median_return": -1.0,
+          "std": 17.36,
+          "sharpe": 0.06,
+          "sortino": 0.13,
+          "profit_factor": 1.24,
+          "mdd_pct": null,
+          "best": 2042.68,
+          "worst": -96.84
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 111943,
+          "win_rate": 47.9,
+          "avg_return": 5.43,
+          "median_return": -0.59,
+          "std": 33.9,
+          "sharpe": 0.16,
+          "sortino": 0.5,
+          "profit_factor": 1.9,
+          "mdd_pct": null,
+          "best": 2260.17,
+          "worst": -96.25
+        },
+        "net": {
+          "samples": 111943,
+          "win_rate": 45.7,
+          "avg_return": 4.64,
+          "median_return": -1.38,
+          "std": 33.9,
+          "sharpe": 0.14,
+          "sortino": 0.41,
+          "profit_factor": 1.72,
+          "mdd_pct": null,
+          "best": 2259.39,
+          "worst": -97.03
+        }
+      }
+    },
+    "💀 大黑K摜壓": {
+      "5d": {
+        "gross": {
+          "samples": 33630,
+          "win_rate": 52.0,
+          "avg_return": 1.34,
+          "median_return": 0.43,
+          "std": 9.7,
+          "sharpe": 0.14,
+          "sortino": 0.25,
+          "profit_factor": 1.5,
+          "mdd_pct": null,
+          "best": 237.45,
+          "worst": -55.7
+        },
+        "net": {
+          "samples": 33630,
+          "win_rate": 47.8,
+          "avg_return": 0.56,
+          "median_return": -0.35,
+          "std": 9.7,
+          "sharpe": 0.06,
+          "sortino": 0.1,
+          "profit_factor": 1.18,
+          "mdd_pct": null,
+          "best": 236.66,
+          "worst": -56.49
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 33630,
+          "win_rate": 51.8,
+          "avg_return": 2.41,
+          "median_return": 0.49,
+          "std": 14.22,
+          "sharpe": 0.17,
+          "sortino": 0.36,
+          "profit_factor": 1.7,
+          "mdd_pct": null,
+          "best": 617.39,
+          "worst": -63.91
+        },
+        "net": {
+          "samples": 33630,
+          "win_rate": 48.8,
+          "avg_return": 1.63,
+          "median_return": -0.29,
+          "std": 14.22,
+          "sharpe": 0.11,
+          "sortino": 0.23,
+          "profit_factor": 1.42,
+          "mdd_pct": null,
+          "best": 616.61,
+          "worst": -64.7
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 33630,
+          "win_rate": 50.7,
+          "avg_return": 3.93,
+          "median_return": 0.35,
+          "std": 20.05,
+          "sharpe": 0.2,
+          "sortino": 0.46,
+          "profit_factor": 1.85,
+          "mdd_pct": null,
+          "best": 469.57,
+          "worst": -96.15
+        },
+        "net": {
+          "samples": 33630,
+          "win_rate": 48.6,
+          "avg_return": 3.15,
+          "median_return": -0.44,
+          "std": 20.05,
+          "sharpe": 0.16,
+          "sortino": 0.35,
+          "profit_factor": 1.62,
+          "mdd_pct": null,
+          "best": 468.78,
+          "worst": -96.94
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 33630,
+          "win_rate": 49.2,
+          "avg_return": 8.94,
+          "median_return": -0.35,
+          "std": 40.58,
+          "sharpe": 0.22,
+          "sortino": 0.68,
+          "profit_factor": 2.18,
+          "mdd_pct": null,
+          "best": 989.39,
+          "worst": -95.91
+        },
+        "net": {
+          "samples": 33630,
+          "win_rate": 47.9,
+          "avg_return": 8.16,
+          "median_return": -1.14,
+          "std": 40.58,
+          "sharpe": 0.2,
+          "sortino": 0.6,
+          "profit_factor": 2.02,
+          "mdd_pct": null,
+          "best": 988.6,
+          "worst": -96.69
+        }
+      }
+    },
+    "🌋 島狀反轉": {
+      "5d": {
+        "gross": {
+          "samples": 62212,
+          "win_rate": 54.9,
+          "avg_return": 0.9,
+          "median_return": 0.36,
+          "std": 17.54,
+          "sharpe": 0.05,
+          "sortino": 0.27,
+          "profit_factor": 1.66,
+          "mdd_pct": null,
+          "best": 2051.98,
+          "worst": -95.74
+        },
+        "net": {
+          "samples": 62212,
+          "win_rate": 43.5,
+          "avg_return": 0.12,
+          "median_return": -0.42,
+          "std": 17.54,
+          "sharpe": 0.01,
+          "sortino": 0.03,
+          "profit_factor": 1.07,
+          "mdd_pct": null,
+          "best": 2051.2,
+          "worst": -96.52
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 62212,
+          "win_rate": 55.7,
+          "avg_return": 1.52,
+          "median_return": 0.56,
+          "std": 24.19,
+          "sharpe": 0.06,
+          "sortino": 0.36,
+          "profit_factor": 1.84,
+          "mdd_pct": null,
+          "best": 1998.44,
+          "worst": -95.98
+        },
+        "net": {
+          "samples": 62212,
+          "win_rate": 47.5,
+          "avg_return": 0.73,
+          "median_return": -0.23,
+          "std": 24.19,
+          "sharpe": 0.03,
+          "sortino": 0.16,
+          "profit_factor": 1.34,
+          "mdd_pct": null,
+          "best": 1997.65,
+          "worst": -96.77
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 62212,
+          "win_rate": 54.4,
+          "avg_return": 2.08,
+          "median_return": 0.58,
+          "std": 28.99,
+          "sharpe": 0.07,
+          "sortino": 0.36,
+          "profit_factor": 1.79,
+          "mdd_pct": null,
+          "best": 2078.84,
+          "worst": -96.06
+        },
+        "net": {
+          "samples": 62212,
+          "win_rate": 48.3,
+          "avg_return": 1.3,
+          "median_return": -0.21,
+          "std": 28.99,
+          "sharpe": 0.04,
+          "sortino": 0.21,
+          "profit_factor": 1.43,
+          "mdd_pct": null,
+          "best": 2078.06,
+          "worst": -96.84
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 62212,
+          "win_rate": 53.5,
+          "avg_return": 6.18,
+          "median_return": 0.8,
+          "std": 38.6,
+          "sharpe": 0.16,
+          "sortino": 0.73,
+          "profit_factor": 2.5,
+          "mdd_pct": null,
+          "best": 2260.17,
+          "worst": -95.9
+        },
+        "net": {
+          "samples": 62212,
+          "win_rate": 50.0,
+          "avg_return": 5.39,
+          "median_return": 0.01,
+          "std": 38.6,
+          "sharpe": 0.14,
+          "sortino": 0.61,
+          "profit_factor": 2.2,
+          "mdd_pct": null,
+          "best": 2259.39,
+          "worst": -96.68
+        }
+      }
+    },
+    "🟢 法人連3日買": {
+      "5d": {
+        "gross": {
+          "samples": 112612,
+          "win_rate": 49.9,
+          "avg_return": 0.61,
+          "median_return": 0.0,
+          "std": 6.61,
+          "sharpe": 0.09,
+          "sortino": 0.17,
+          "profit_factor": 1.35,
+          "mdd_pct": null,
+          "best": 112.55,
+          "worst": -60.07
+        },
+        "net": {
+          "samples": 112612,
+          "win_rate": 41.1,
+          "avg_return": -0.17,
+          "median_return": -0.78,
+          "std": 6.61,
+          "sharpe": -0.03,
+          "sortino": -0.04,
+          "profit_factor": 0.92,
+          "mdd_pct": null,
+          "best": 111.76,
+          "worst": -60.86
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 112612,
+          "win_rate": 50.4,
+          "avg_return": 1.03,
+          "median_return": 0.12,
+          "std": 9.31,
+          "sharpe": 0.11,
+          "sortino": 0.21,
+          "profit_factor": 1.43,
+          "mdd_pct": null,
+          "best": 281.25,
+          "worst": -61.19
+        },
+        "net": {
+          "samples": 112612,
+          "win_rate": 44.3,
+          "avg_return": 0.24,
+          "median_return": -0.67,
+          "std": 9.31,
+          "sharpe": 0.03,
+          "sortino": 0.05,
+          "profit_factor": 1.09,
+          "mdd_pct": null,
+          "best": 280.46,
+          "worst": -61.98
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 112612,
+          "win_rate": 50.2,
+          "avg_return": 1.95,
+          "median_return": 0.09,
+          "std": 14.08,
+          "sharpe": 0.14,
+          "sortino": 0.3,
+          "profit_factor": 1.59,
+          "mdd_pct": null,
+          "best": 398.86,
+          "worst": -63.43
+        },
+        "net": {
+          "samples": 112612,
+          "win_rate": 45.8,
+          "avg_return": 1.17,
+          "median_return": -0.69,
+          "std": 14.08,
+          "sharpe": 0.08,
+          "sortino": 0.17,
+          "profit_factor": 1.31,
+          "mdd_pct": null,
+          "best": 398.07,
+          "worst": -64.22
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 112612,
+          "win_rate": 50.2,
+          "avg_return": 5.6,
+          "median_return": 0.14,
+          "std": 29.05,
+          "sharpe": 0.19,
+          "sortino": 0.56,
+          "profit_factor": 2.05,
+          "mdd_pct": null,
+          "best": 934.09,
+          "worst": -94.47
+        },
+        "net": {
+          "samples": 112612,
+          "win_rate": 47.8,
+          "avg_return": 4.82,
+          "median_return": -0.64,
+          "std": 29.05,
+          "sharpe": 0.17,
+          "sortino": 0.47,
+          "profit_factor": 1.84,
+          "mdd_pct": null,
+          "best": 933.31,
+          "worst": -95.25
+        }
+      }
+    },
+    "🔴 法人連3日賣": {
+      "5d": {
+        "gross": {
+          "samples": 110647,
+          "win_rate": 47.5,
+          "avg_return": 0.18,
+          "median_return": 0.0,
+          "std": 6.19,
+          "sharpe": 0.03,
+          "sortino": 0.05,
+          "profit_factor": 1.1,
+          "mdd_pct": null,
+          "best": 97.76,
+          "worst": -95.71
+        },
+        "net": {
+          "samples": 110647,
+          "win_rate": 38.6,
+          "avg_return": -0.61,
+          "median_return": -0.78,
+          "std": 6.19,
+          "sharpe": -0.1,
+          "sortino": -0.14,
+          "profit_factor": 0.74,
+          "mdd_pct": null,
+          "best": 96.97,
+          "worst": -96.49
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 110647,
+          "win_rate": 47.5,
+          "avg_return": 0.53,
+          "median_return": -0.17,
+          "std": 11.7,
+          "sharpe": 0.05,
+          "sortino": 0.1,
+          "profit_factor": 1.21,
+          "mdd_pct": null,
+          "best": 1844.92,
+          "worst": -95.84
+        },
+        "net": {
+          "samples": 110647,
+          "win_rate": 41.3,
+          "avg_return": -0.25,
+          "median_return": -0.95,
+          "std": 11.7,
+          "sharpe": -0.02,
+          "sortino": -0.05,
+          "profit_factor": 0.92,
+          "mdd_pct": null,
+          "best": 1844.14,
+          "worst": -96.63
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 110647,
+          "win_rate": 47.6,
+          "avg_return": 1.14,
+          "median_return": -0.31,
+          "std": 20.8,
+          "sharpe": 0.05,
+          "sortino": 0.16,
+          "profit_factor": 1.32,
+          "mdd_pct": null,
+          "best": 2054.59,
+          "worst": -96.56
+        },
+        "net": {
+          "samples": 110647,
+          "win_rate": 43.2,
+          "avg_return": 0.36,
+          "median_return": -1.1,
+          "std": 20.8,
+          "sharpe": 0.02,
+          "sortino": 0.05,
+          "profit_factor": 1.09,
+          "mdd_pct": null,
+          "best": 2053.81,
+          "worst": -97.35
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 110647,
+          "win_rate": 46.4,
+          "avg_return": 3.86,
+          "median_return": -0.88,
+          "std": 35.72,
+          "sharpe": 0.11,
+          "sortino": 0.37,
+          "profit_factor": 1.67,
+          "mdd_pct": null,
+          "best": 2255.65,
+          "worst": -96.47
+        },
+        "net": {
+          "samples": 110647,
+          "win_rate": 43.9,
+          "avg_return": 3.07,
+          "median_return": -1.67,
+          "std": 35.72,
+          "sharpe": 0.09,
+          "sortino": 0.28,
+          "profit_factor": 1.5,
+          "mdd_pct": null,
+          "best": 2254.87,
+          "worst": -97.26
+        }
+      }
+    },
+    "📈 多頭排列": {
+      "5d": {
+        "gross": {
+          "samples": 195535,
+          "win_rate": 47.8,
+          "avg_return": 0.76,
+          "median_return": -0.12,
+          "std": 8.73,
+          "sharpe": 0.09,
+          "sortino": 0.17,
+          "profit_factor": 1.33,
+          "mdd_pct": null,
+          "best": 333.02,
+          "worst": -60.07
+        },
+        "net": {
+          "samples": 195535,
+          "win_rate": 40.6,
+          "avg_return": -0.03,
+          "median_return": -0.91,
+          "std": 8.73,
+          "sharpe": -0.0,
+          "sortino": -0.01,
+          "profit_factor": 0.99,
+          "mdd_pct": null,
+          "best": 332.23,
+          "worst": -60.86
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 195535,
+          "win_rate": 48.6,
+          "avg_return": 1.55,
+          "median_return": -0.1,
+          "std": 14.85,
+          "sharpe": 0.1,
+          "sortino": 0.26,
+          "profit_factor": 1.5,
+          "mdd_pct": null,
+          "best": 1857.35,
+          "worst": -95.84
+        },
+        "net": {
+          "samples": 195535,
+          "win_rate": 43.6,
+          "avg_return": 0.77,
+          "median_return": -0.88,
+          "std": 14.85,
+          "sharpe": 0.05,
+          "sortino": 0.12,
+          "profit_factor": 1.22,
+          "mdd_pct": null,
+          "best": 1856.57,
+          "worst": -96.63
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 195535,
+          "win_rate": 48.3,
+          "avg_return": 2.95,
+          "median_return": -0.28,
+          "std": 24.18,
+          "sharpe": 0.12,
+          "sortino": 0.37,
+          "profit_factor": 1.68,
+          "mdd_pct": null,
+          "best": 2054.59,
+          "worst": -96.56
+        },
+        "net": {
+          "samples": 195535,
+          "win_rate": 45.0,
+          "avg_return": 2.16,
+          "median_return": -1.07,
+          "std": 24.18,
+          "sharpe": 0.09,
+          "sortino": 0.26,
+          "profit_factor": 1.46,
+          "mdd_pct": null,
+          "best": 2053.81,
+          "worst": -97.35
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 195535,
+          "win_rate": 49.3,
+          "avg_return": 7.92,
+          "median_return": -0.18,
+          "std": 42.36,
+          "sharpe": 0.19,
+          "sortino": 0.66,
+          "profit_factor": 2.19,
+          "mdd_pct": null,
+          "best": 2152.73,
+          "worst": -96.47
+        },
+        "net": {
+          "samples": 195535,
+          "win_rate": 47.5,
+          "avg_return": 7.13,
+          "median_return": -0.96,
+          "std": 42.36,
+          "sharpe": 0.17,
+          "sortino": 0.57,
+          "profit_factor": 2.01,
+          "mdd_pct": null,
+          "best": 2151.94,
+          "worst": -97.26
+        }
+      }
+    },
+    "🍀 朱家泓六六大順": {
+      "5d": {
+        "gross": {
+          "samples": 16286,
+          "win_rate": 47.5,
+          "avg_return": 1.41,
+          "median_return": -0.27,
+          "std": 11.5,
+          "sharpe": 0.12,
+          "sortino": 0.27,
+          "profit_factor": 1.5,
+          "mdd_pct": null,
+          "best": 298.67,
+          "worst": -48.1
+        },
+        "net": {
+          "samples": 16286,
+          "win_rate": 42.5,
+          "avg_return": 0.62,
+          "median_return": -1.05,
+          "std": 11.5,
+          "sharpe": 0.05,
+          "sortino": 0.11,
+          "profit_factor": 1.19,
+          "mdd_pct": null,
+          "best": 297.89,
+          "worst": -48.88
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 16286,
+          "win_rate": 49.4,
+          "avg_return": 2.47,
+          "median_return": 0.0,
+          "std": 15.26,
+          "sharpe": 0.16,
+          "sortino": 0.37,
+          "profit_factor": 1.69,
+          "mdd_pct": null,
+          "best": 217.36,
+          "worst": -58.46
+        },
+        "net": {
+          "samples": 16286,
+          "win_rate": 45.8,
+          "avg_return": 1.69,
+          "median_return": -0.78,
+          "std": 15.26,
+          "sharpe": 0.11,
+          "sortino": 0.24,
+          "profit_factor": 1.42,
+          "mdd_pct": null,
+          "best": 216.57,
+          "worst": -59.24
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 16286,
+          "win_rate": 49.6,
+          "avg_return": 4.3,
+          "median_return": 0.0,
+          "std": 22.95,
+          "sharpe": 0.19,
+          "sortino": 0.49,
+          "profit_factor": 1.88,
+          "mdd_pct": null,
+          "best": 428.41,
+          "worst": -60.81
+        },
+        "net": {
+          "samples": 16286,
+          "win_rate": 47.4,
+          "avg_return": 3.51,
+          "median_return": -0.78,
+          "std": 22.95,
+          "sharpe": 0.15,
+          "sortino": 0.38,
+          "profit_factor": 1.66,
+          "mdd_pct": null,
+          "best": 427.62,
+          "worst": -61.6
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 16286,
+          "win_rate": 51.2,
+          "avg_return": 10.05,
+          "median_return": 0.71,
+          "std": 42.47,
+          "sharpe": 0.24,
+          "sortino": 0.79,
+          "profit_factor": 2.41,
+          "mdd_pct": null,
+          "best": 620.27,
+          "worst": -95.7
+        },
+        "net": {
+          "samples": 16286,
+          "win_rate": 49.8,
+          "avg_return": 9.26,
+          "median_return": -0.08,
+          "std": 42.47,
+          "sharpe": 0.22,
+          "sortino": 0.7,
+          "profit_factor": 2.23,
+          "mdd_pct": null,
+          "best": 619.49,
+          "worst": -96.49
+        }
+      }
+    },
+    "🔥 朱家泓特別報價": {
+      "5d": {
+        "gross": {
+          "samples": 32487,
+          "win_rate": 47.6,
+          "avg_return": 1.3,
+          "median_return": -0.36,
+          "std": 16.0,
+          "sharpe": 0.08,
+          "sortino": 0.23,
+          "profit_factor": 1.41,
+          "mdd_pct": null,
+          "best": 2051.98,
+          "worst": -95.94
+        },
+        "net": {
+          "samples": 32487,
+          "win_rate": 44.1,
+          "avg_return": 0.51,
+          "median_return": -1.15,
+          "std": 16.0,
+          "sharpe": 0.03,
+          "sortino": 0.08,
+          "profit_factor": 1.14,
+          "mdd_pct": null,
+          "best": 2051.2,
+          "worst": -96.72
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 32487,
+          "win_rate": 49.2,
+          "avg_return": 2.35,
+          "median_return": -0.11,
+          "std": 17.57,
+          "sharpe": 0.13,
+          "sortino": 0.33,
+          "profit_factor": 1.6,
+          "mdd_pct": null,
+          "best": 1681.61,
+          "worst": -95.98
+        },
+        "net": {
+          "samples": 32487,
+          "win_rate": 46.5,
+          "avg_return": 1.57,
+          "median_return": -0.89,
+          "std": 17.57,
+          "sharpe": 0.09,
+          "sortino": 0.21,
+          "profit_factor": 1.36,
+          "mdd_pct": null,
+          "best": 1680.82,
+          "worst": -96.77
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 32487,
+          "win_rate": 49.0,
+          "avg_return": 4.41,
+          "median_return": -0.28,
+          "std": 28.89,
+          "sharpe": 0.15,
+          "sortino": 0.47,
+          "profit_factor": 1.84,
+          "mdd_pct": null,
+          "best": 1905.26,
+          "worst": -96.23
+        },
+        "net": {
+          "samples": 32487,
+          "win_rate": 47.3,
+          "avg_return": 3.62,
+          "median_return": -1.07,
+          "std": 28.89,
+          "sharpe": 0.13,
+          "sortino": 0.37,
+          "profit_factor": 1.64,
+          "mdd_pct": null,
+          "best": 1904.47,
+          "worst": -97.01
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 32487,
+          "win_rate": 48.2,
+          "avg_return": 9.68,
+          "median_return": -1.04,
+          "std": 47.37,
+          "sharpe": 0.2,
+          "sortino": 0.68,
+          "profit_factor": 2.16,
+          "mdd_pct": null,
+          "best": 2120.45,
+          "worst": -96.25
+        },
+        "net": {
+          "samples": 32487,
+          "win_rate": 47.1,
+          "avg_return": 8.89,
+          "median_return": -1.82,
+          "std": 47.37,
+          "sharpe": 0.19,
+          "sortino": 0.61,
+          "profit_factor": 2.02,
+          "mdd_pct": null,
+          "best": 2119.67,
+          "worst": -97.03
+        }
+      }
+    },
+    "🥣 朱家泓底部轉折": {
+      "5d": {
+        "gross": {
+          "samples": 664,
+          "win_rate": 39.5,
+          "avg_return": 0.38,
+          "median_return": -0.99,
+          "std": 7.88,
+          "sharpe": 0.05,
+          "sortino": 0.1,
+          "profit_factor": 1.17,
+          "mdd_pct": null,
+          "best": 84.8,
+          "worst": -23.31
+        },
+        "net": {
+          "samples": 664,
+          "win_rate": 34.6,
+          "avg_return": -0.4,
+          "median_return": -1.78,
+          "std": 7.88,
+          "sharpe": -0.05,
+          "sortino": -0.09,
+          "profit_factor": 0.86,
+          "mdd_pct": null,
+          "best": 84.02,
+          "worst": -24.09
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 664,
+          "win_rate": 44.6,
+          "avg_return": 1.23,
+          "median_return": -0.86,
+          "std": 12.2,
+          "sharpe": 0.1,
+          "sortino": 0.23,
+          "profit_factor": 1.42,
+          "mdd_pct": null,
+          "best": 159.07,
+          "worst": -32.54
+        },
+        "net": {
+          "samples": 664,
+          "win_rate": 40.5,
+          "avg_return": 0.45,
+          "median_return": -1.65,
+          "std": 12.2,
+          "sharpe": 0.04,
+          "sortino": 0.08,
+          "profit_factor": 1.13,
+          "mdd_pct": null,
+          "best": 158.28,
+          "worst": -33.32
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 664,
+          "win_rate": 44.1,
+          "avg_return": 1.67,
+          "median_return": -1.32,
+          "std": 16.8,
+          "sharpe": 0.1,
+          "sortino": 0.23,
+          "profit_factor": 1.4,
+          "mdd_pct": null,
+          "best": 159.41,
+          "worst": -31.55
+        },
+        "net": {
+          "samples": 664,
+          "win_rate": 42.0,
+          "avg_return": 0.89,
+          "median_return": -2.1,
+          "std": 16.8,
+          "sharpe": 0.05,
+          "sortino": 0.11,
+          "profit_factor": 1.19,
+          "mdd_pct": null,
+          "best": 158.63,
+          "worst": -32.33
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 664,
+          "win_rate": 42.9,
+          "avg_return": 3.32,
+          "median_return": -2.62,
+          "std": 28.69,
+          "sharpe": 0.12,
+          "sortino": 0.29,
+          "profit_factor": 1.48,
+          "mdd_pct": null,
+          "best": 215.06,
+          "worst": -46.55
+        },
+        "net": {
+          "samples": 664,
+          "win_rate": 41.4,
+          "avg_return": 2.54,
+          "median_return": -3.41,
+          "std": 28.69,
+          "sharpe": 0.09,
+          "sortino": 0.21,
+          "profit_factor": 1.34,
+          "mdd_pct": null,
+          "best": 214.27,
+          "worst": -47.34
+        }
+      }
+    },
+    "🚀 朱家泓5MA飆股": {
+      "5d": {
+        "gross": {
+          "samples": 9741,
+          "win_rate": 47.5,
+          "avg_return": 1.61,
+          "median_return": -0.5,
+          "std": 12.53,
+          "sharpe": 0.13,
+          "sortino": 0.25,
+          "profit_factor": 1.43,
+          "mdd_pct": null,
+          "best": 130.25,
+          "worst": -39.18
+        },
+        "net": {
+          "samples": 9741,
+          "win_rate": 45.0,
+          "avg_return": 0.82,
+          "median_return": -1.28,
+          "std": 12.53,
+          "sharpe": 0.07,
+          "sortino": 0.12,
+          "profit_factor": 1.2,
+          "mdd_pct": null,
+          "best": 129.47,
+          "worst": -39.97
+        }
+      },
+      "10d": {
+        "gross": {
+          "samples": 9741,
+          "win_rate": 48.3,
+          "avg_return": 3.1,
+          "median_return": -0.41,
+          "std": 17.35,
+          "sharpe": 0.18,
+          "sortino": 0.38,
+          "profit_factor": 1.67,
+          "mdd_pct": null,
+          "best": 161.35,
+          "worst": -95.84
+        },
+        "net": {
+          "samples": 9741,
+          "win_rate": 46.3,
+          "avg_return": 2.32,
+          "median_return": -1.2,
+          "std": 17.35,
+          "sharpe": 0.13,
+          "sortino": 0.27,
+          "profit_factor": 1.46,
+          "mdd_pct": null,
+          "best": 160.56,
+          "worst": -96.63
+        }
+      },
+      "20d": {
+        "gross": {
+          "samples": 9741,
+          "win_rate": 50.2,
+          "avg_return": 6.19,
+          "median_return": 0.2,
+          "std": 25.68,
+          "sharpe": 0.24,
+          "sortino": 0.6,
+          "profit_factor": 2.04,
+          "mdd_pct": null,
+          "best": 261.36,
+          "worst": -96.08
+        },
+        "net": {
+          "samples": 9741,
+          "win_rate": 48.8,
+          "avg_return": 5.41,
+          "median_return": -0.58,
+          "std": 25.68,
+          "sharpe": 0.21,
+          "sortino": 0.5,
+          "profit_factor": 1.85,
+          "mdd_pct": null,
+          "best": 260.57,
+          "worst": -96.87
+        }
+      },
+      "60d": {
+        "gross": {
+          "samples": 9741,
+          "win_rate": 46.9,
+          "avg_return": 11.31,
+          "median_return": -2.54,
+          "std": 50.21,
+          "sharpe": 0.23,
+          "sortino": 0.7,
+          "profit_factor": 2.14,
+          "mdd_pct": null,
+          "best": 668.49,
+          "worst": -96.13
+        },
+        "net": {
+          "samples": 9741,
+          "win_rate": 46.0,
+          "avg_return": 10.53,
+          "median_return": -3.33,
+          "std": 50.21,
+          "sharpe": 0.21,
+          "sortino": 0.63,
+          "profit_factor": 2.02,
+          "mdd_pct": null,
+          "best": 667.7,
+          "worst": -96.92
+        }
+      }
+    }
+  },
+  "by_signal_by_tier": {
+    "large": {
+      "🌅 KD黃金交叉": {
+        "5d": {
+          "net": {
+            "samples": 997,
+            "win_rate": 47.7,
+            "avg_return": 4.54,
+            "median_return": -0.17,
+            "std": 88.06,
+            "sharpe": 0.05,
+            "sortino": 1.08,
+            "profit_factor": 3.12,
+            "mdd_pct": null,
+            "best": 2051.2,
+            "worst": -22.08
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 997,
+            "win_rate": 50.6,
+            "avg_return": 5.08,
+            "median_return": 0.1,
+            "std": 83.18,
+            "sharpe": 0.06,
+            "sortino": 1.01,
+            "profit_factor": 2.9,
+            "mdd_pct": null,
+            "best": 1997.65,
+            "worst": -26.56
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 997,
+            "win_rate": 49.2,
+            "avg_return": 6.71,
+            "median_return": -0.13,
+            "std": 90.78,
+            "sharpe": 0.07,
+            "sortino": 0.85,
+            "profit_factor": 2.72,
+            "mdd_pct": null,
+            "best": 2078.06,
+            "worst": -96.43
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 997,
+            "win_rate": 57.6,
+            "avg_return": 17.61,
+            "median_return": 2.1,
+            "std": 104.07,
+            "sharpe": 0.17,
+            "sortino": 1.47,
+            "profit_factor": 4.19,
+            "mdd_pct": null,
+            "best": 2156.11,
+            "worst": -96.42
+          }
+        }
+      },
+      "🌇 KD死亡交叉": {
+        "5d": {
+          "net": {
+            "samples": 566,
+            "win_rate": 44.7,
+            "avg_return": 0.04,
+            "median_return": -0.61,
+            "std": 8.17,
+            "sharpe": 0.01,
+            "sortino": 0.01,
+            "profit_factor": 1.02,
+            "mdd_pct": null,
+            "best": 40.08,
+            "worst": -31.35
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 566,
+            "win_rate": 48.4,
+            "avg_return": 2.05,
+            "median_return": -0.18,
+            "std": 11.95,
+            "sharpe": 0.17,
+            "sortino": 0.4,
+            "profit_factor": 1.74,
+            "mdd_pct": null,
+            "best": 69.44,
+            "worst": -29.26
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 566,
+            "win_rate": 58.5,
+            "avg_return": 10.93,
+            "median_return": 2.24,
+            "std": 96.98,
+            "sharpe": 0.11,
+            "sortino": 1.16,
+            "profit_factor": 4.03,
+            "mdd_pct": null,
+            "best": 1682.07,
+            "worst": -97.01
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 566,
+            "win_rate": 59.0,
+            "avg_return": 19.33,
+            "median_return": 5.4,
+            "std": 116.07,
+            "sharpe": 0.17,
+            "sortino": 1.18,
+            "profit_factor": 4.08,
+            "mdd_pct": null,
+            "best": 1883.3,
+            "worst": -96.91
+          }
+        }
+      },
+      "🚀 爆量長紅": {
+        "5d": {
+          "net": {
+            "samples": 496,
+            "win_rate": 45.8,
+            "avg_return": 1.39,
+            "median_return": -0.58,
+            "std": 10.16,
+            "sharpe": 0.14,
+            "sortino": 0.28,
+            "profit_factor": 1.49,
+            "mdd_pct": null,
+            "best": 46.35,
+            "worst": -19.38
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 496,
+            "win_rate": 48.8,
+            "avg_return": 2.7,
+            "median_return": -0.3,
+            "std": 13.08,
+            "sharpe": 0.21,
+            "sortino": 0.46,
+            "profit_factor": 1.81,
+            "mdd_pct": null,
+            "best": 54.91,
+            "worst": -29.45
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 496,
+            "win_rate": 57.1,
+            "avg_return": 7.95,
+            "median_return": 2.53,
+            "std": 22.71,
+            "sharpe": 0.35,
+            "sortino": 1.08,
+            "profit_factor": 3.04,
+            "mdd_pct": null,
+            "best": 116.77,
+            "worst": -36.54
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 496,
+            "win_rate": 60.9,
+            "avg_return": 21.36,
+            "median_return": 6.69,
+            "std": 54.51,
+            "sharpe": 0.39,
+            "sortino": 1.75,
+            "profit_factor": 4.87,
+            "mdd_pct": null,
+            "best": 382.21,
+            "worst": -96.49
+          }
+        }
+      },
+      "🏔️ 創60日新高": {
+        "5d": {
+          "net": {
+            "samples": 754,
+            "win_rate": 51.2,
+            "avg_return": 1.08,
+            "median_return": 0.11,
+            "std": 10.06,
+            "sharpe": 0.11,
+            "sortino": 0.19,
+            "profit_factor": 1.38,
+            "mdd_pct": null,
+            "best": 55.77,
+            "worst": -37.35
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 754,
+            "win_rate": 55.3,
+            "avg_return": 3.72,
+            "median_return": 1.26,
+            "std": 13.87,
+            "sharpe": 0.27,
+            "sortino": 0.64,
+            "profit_factor": 2.23,
+            "mdd_pct": null,
+            "best": 60.91,
+            "worst": -27.35
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 754,
+            "win_rate": 66.2,
+            "avg_return": 15.34,
+            "median_return": 5.07,
+            "std": 98.06,
+            "sharpe": 0.16,
+            "sortino": 1.66,
+            "profit_factor": 5.3,
+            "mdd_pct": null,
+            "best": 1593.95,
+            "worst": -97.01
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 754,
+            "win_rate": 65.9,
+            "avg_return": 23.71,
+            "median_return": 12.61,
+            "std": 121.31,
+            "sharpe": 0.2,
+            "sortino": 1.14,
+            "profit_factor": 4.24,
+            "mdd_pct": null,
+            "best": 1827.96,
+            "worst": -97.26
+          }
+        }
+      },
+      "⛏️ 跌破前20日低": {
+        "5d": {
+          "net": {
+            "samples": 739,
+            "win_rate": 43.3,
+            "avg_return": 2.26,
+            "median_return": -0.49,
+            "std": 73.15,
+            "sharpe": 0.03,
+            "sortino": 0.4,
+            "profit_factor": 1.83,
+            "mdd_pct": null,
+            "best": 1979.08,
+            "worst": -34.58
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 739,
+            "win_rate": 48.4,
+            "avg_return": 5.49,
+            "median_return": -0.4,
+            "std": 97.97,
+            "sharpe": 0.06,
+            "sortino": 1.01,
+            "profit_factor": 2.85,
+            "mdd_pct": null,
+            "best": 1909.75,
+            "worst": -35.29
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 739,
+            "win_rate": 46.7,
+            "avg_return": 6.0,
+            "median_return": -1.0,
+            "std": 106.54,
+            "sharpe": 0.06,
+            "sortino": 0.85,
+            "profit_factor": 2.44,
+            "mdd_pct": null,
+            "best": 2051.73,
+            "worst": -30.39
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 739,
+            "win_rate": 50.7,
+            "avg_return": 14.13,
+            "median_return": 0.22,
+            "std": 121.0,
+            "sharpe": 0.12,
+            "sortino": 1.37,
+            "profit_factor": 3.32,
+            "mdd_pct": null,
+            "best": 2254.87,
+            "worst": -37.34
+          }
+        }
+      },
+      "📉 跌破季線60MA": {
+        "5d": {
+          "net": {
+            "samples": 127,
+            "win_rate": 47.2,
+            "avg_return": 0.16,
+            "median_return": -0.19,
+            "std": 5.6,
+            "sharpe": 0.03,
+            "sortino": 0.04,
+            "profit_factor": 1.09,
+            "mdd_pct": null,
+            "best": 23.69,
+            "worst": -18.62
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 127,
+            "win_rate": 48.0,
+            "avg_return": 1.29,
+            "median_return": -0.22,
+            "std": 8.8,
+            "sharpe": 0.15,
+            "sortino": 0.33,
+            "profit_factor": 1.59,
+            "mdd_pct": null,
+            "best": 46.05,
+            "worst": -12.55
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 127,
+            "win_rate": 52.0,
+            "avg_return": 1.49,
+            "median_return": 0.2,
+            "std": 12.03,
+            "sharpe": 0.12,
+            "sortino": 0.23,
+            "profit_factor": 1.44,
+            "mdd_pct": null,
+            "best": 45.57,
+            "worst": -33.08
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 127,
+            "win_rate": 48.0,
+            "avg_return": 3.02,
+            "median_return": -0.78,
+            "std": 29.8,
+            "sharpe": 0.1,
+            "sortino": 0.27,
+            "profit_factor": 1.46,
+            "mdd_pct": null,
+            "best": 255.57,
+            "worst": -35.0
+          }
+        }
+      },
+      "✨ 5MA黃金交叉": {
+        "5d": {
+          "net": {
+            "samples": 764,
+            "win_rate": 45.5,
+            "avg_return": 0.88,
+            "median_return": -0.45,
+            "std": 7.79,
+            "sharpe": 0.11,
+            "sortino": 0.24,
+            "profit_factor": 1.42,
+            "mdd_pct": null,
+            "best": 43.2,
+            "worst": -18.31
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 764,
+            "win_rate": 48.8,
+            "avg_return": 1.37,
+            "median_return": -0.16,
+            "std": 12.44,
+            "sharpe": 0.11,
+            "sortino": 0.19,
+            "profit_factor": 1.45,
+            "mdd_pct": null,
+            "best": 88.57,
+            "worst": -96.77
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 764,
+            "win_rate": 54.1,
+            "avg_return": 6.67,
+            "median_return": 1.07,
+            "std": 67.53,
+            "sharpe": 0.1,
+            "sortino": 0.83,
+            "profit_factor": 2.91,
+            "mdd_pct": null,
+            "best": 1796.81,
+            "worst": -95.9
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 764,
+            "win_rate": 60.3,
+            "avg_return": 18.06,
+            "median_return": 4.39,
+            "std": 80.48,
+            "sharpe": 0.22,
+            "sortino": 1.46,
+            "profit_factor": 4.44,
+            "mdd_pct": null,
+            "best": 1883.03,
+            "worst": -96.28
+          }
+        }
+      },
+      "🌡️ 乖離過大+12%": {
+        "5d": {
+          "net": {
+            "samples": 979,
+            "win_rate": 55.4,
+            "avg_return": 2.83,
+            "median_return": 1.62,
+            "std": 13.21,
+            "sharpe": 0.21,
+            "sortino": 0.41,
+            "profit_factor": 1.76,
+            "mdd_pct": null,
+            "best": 63.21,
+            "worst": -37.35
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 979,
+            "win_rate": 59.6,
+            "avg_return": 7.72,
+            "median_return": 4.54,
+            "std": 18.17,
+            "sharpe": 0.43,
+            "sortino": 1.2,
+            "profit_factor": 3.28,
+            "mdd_pct": null,
+            "best": 88.57,
+            "worst": -28.05
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 979,
+            "win_rate": 69.4,
+            "avg_return": 16.32,
+            "median_return": 9.33,
+            "std": 29.17,
+            "sharpe": 0.56,
+            "sortino": 1.6,
+            "profit_factor": 5.51,
+            "mdd_pct": null,
+            "best": 141.97,
+            "worst": -97.04
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 979,
+            "win_rate": 67.4,
+            "avg_return": 27.28,
+            "median_return": 14.27,
+            "std": 56.31,
+            "sharpe": 0.48,
+            "sortino": 1.34,
+            "profit_factor": 4.73,
+            "mdd_pct": null,
+            "best": 280.41,
+            "worst": -97.26
+          }
+        }
+      },
+      "😴 量縮窒息": {
+        "5d": {
+          "net": {
+            "samples": 1497,
+            "win_rate": 42.0,
+            "avg_return": 0.1,
+            "median_return": -0.78,
+            "std": 7.77,
+            "sharpe": 0.01,
+            "sortino": 0.02,
+            "profit_factor": 1.04,
+            "mdd_pct": null,
+            "best": 52.11,
+            "worst": -37.35
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 1497,
+            "win_rate": 50.4,
+            "avg_return": 1.96,
+            "median_return": 0.05,
+            "std": 12.45,
+            "sharpe": 0.16,
+            "sortino": 0.35,
+            "profit_factor": 1.73,
+            "mdd_pct": null,
+            "best": 129.67,
+            "worst": -96.63
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 1497,
+            "win_rate": 53.2,
+            "avg_return": 3.63,
+            "median_return": 0.63,
+            "std": 17.69,
+            "sharpe": 0.21,
+            "sortino": 0.48,
+            "profit_factor": 1.98,
+            "mdd_pct": null,
+            "best": 147.93,
+            "worst": -97.35
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 1497,
+            "win_rate": 58.7,
+            "avg_return": 14.83,
+            "median_return": 3.65,
+            "std": 64.69,
+            "sharpe": 0.23,
+            "sortino": 1.34,
+            "profit_factor": 3.81,
+            "mdd_pct": null,
+            "best": 1969.93,
+            "worst": -96.93
+          }
+        }
+      },
+      "⚠️ 價漲量縮背離": {
+        "5d": {
+          "net": {
+            "samples": 1810,
+            "win_rate": 45.2,
+            "avg_return": 2.29,
+            "median_return": -0.45,
+            "std": 61.02,
+            "sharpe": 0.04,
+            "sortino": 0.57,
+            "profit_factor": 2.09,
+            "mdd_pct": null,
+            "best": 2051.2,
+            "worst": -37.35
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 1810,
+            "win_rate": 50.0,
+            "avg_return": 3.32,
+            "median_return": 0.01,
+            "std": 61.19,
+            "sharpe": 0.05,
+            "sortino": 0.62,
+            "profit_factor": 2.27,
+            "mdd_pct": null,
+            "best": 1943.75,
+            "worst": -96.77
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 1810,
+            "win_rate": 51.5,
+            "avg_return": 5.02,
+            "median_return": 0.5,
+            "std": 67.6,
+            "sharpe": 0.07,
+            "sortino": 0.59,
+            "profit_factor": 2.32,
+            "mdd_pct": null,
+            "best": 2042.68,
+            "worst": -96.84
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 1810,
+            "win_rate": 57.1,
+            "avg_return": 14.31,
+            "median_return": 2.99,
+            "std": 82.39,
+            "sharpe": 0.17,
+            "sortino": 1.08,
+            "profit_factor": 3.47,
+            "mdd_pct": null,
+            "best": 2259.39,
+            "worst": -97.03
+          }
+        }
+      },
+      "💀 大黑K摜壓": {
+        "5d": {
+          "net": {
+            "samples": 567,
+            "win_rate": 57.7,
+            "avg_return": 3.08,
+            "median_return": 1.43,
+            "std": 10.86,
+            "sharpe": 0.28,
+            "sortino": 0.6,
+            "profit_factor": 2.24,
+            "mdd_pct": null,
+            "best": 57.8,
+            "worst": -31.35
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 567,
+            "win_rate": 63.5,
+            "avg_return": 6.46,
+            "median_return": 4.01,
+            "std": 14.89,
+            "sharpe": 0.43,
+            "sortino": 1.18,
+            "profit_factor": 3.54,
+            "mdd_pct": null,
+            "best": 62.44,
+            "worst": -32.11
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 567,
+            "win_rate": 64.0,
+            "avg_return": 10.03,
+            "median_return": 5.38,
+            "std": 23.11,
+            "sharpe": 0.43,
+            "sortino": 1.17,
+            "profit_factor": 3.93,
+            "mdd_pct": null,
+            "best": 112.44,
+            "worst": -96.94
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 567,
+            "win_rate": 75.0,
+            "avg_return": 35.03,
+            "median_return": 16.53,
+            "std": 60.76,
+            "sharpe": 0.58,
+            "sortino": 3.12,
+            "profit_factor": 10.12,
+            "mdd_pct": null,
+            "best": 419.98,
+            "worst": -96.69
+          }
+        }
+      },
+      "🌋 島狀反轉": {
+        "5d": {
+          "net": {
+            "samples": 1410,
+            "win_rate": 52.5,
+            "avg_return": 7.55,
+            "median_return": 0.22,
+            "std": 110.04,
+            "sharpe": 0.07,
+            "sortino": 1.15,
+            "profit_factor": 4.52,
+            "mdd_pct": null,
+            "best": 2051.2,
+            "worst": -96.52
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 1410,
+            "win_rate": 54.2,
+            "avg_return": 14.49,
+            "median_return": 0.56,
+            "std": 151.37,
+            "sharpe": 0.1,
+            "sortino": 1.58,
+            "profit_factor": 5.99,
+            "mdd_pct": null,
+            "best": 1997.65,
+            "worst": -96.77
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 1410,
+            "win_rate": 50.6,
+            "avg_return": 17.41,
+            "median_return": 0.14,
+            "std": 176.11,
+            "sharpe": 0.1,
+            "sortino": 1.35,
+            "profit_factor": 4.59,
+            "mdd_pct": null,
+            "best": 2078.06,
+            "worst": -96.84
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 1410,
+            "win_rate": 52.9,
+            "avg_return": 30.47,
+            "median_return": 1.73,
+            "std": 197.73,
+            "sharpe": 0.15,
+            "sortino": 1.66,
+            "profit_factor": 4.72,
+            "mdd_pct": null,
+            "best": 2259.39,
+            "worst": -96.68
+          }
+        }
+      },
+      "🟢 法人連3日買": {
+        "5d": {
+          "net": {
+            "samples": 1870,
+            "win_rate": 45.7,
+            "avg_return": 0.5,
+            "median_return": -0.45,
+            "std": 7.43,
+            "sharpe": 0.07,
+            "sortino": 0.13,
+            "profit_factor": 1.24,
+            "mdd_pct": null,
+            "best": 63.21,
+            "worst": -26.37
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 1870,
+            "win_rate": 51.2,
+            "avg_return": 1.81,
+            "median_return": 0.16,
+            "std": 10.53,
+            "sharpe": 0.17,
+            "sortino": 0.39,
+            "profit_factor": 1.73,
+            "mdd_pct": null,
+            "best": 75.4,
+            "worst": -28.05
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 1870,
+            "win_rate": 57.4,
+            "avg_return": 6.03,
+            "median_return": 1.95,
+            "std": 19.62,
+            "sharpe": 0.31,
+            "sortino": 1.02,
+            "profit_factor": 3.02,
+            "mdd_pct": null,
+            "best": 164.71,
+            "worst": -33.67
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 1870,
+            "win_rate": 62.1,
+            "avg_return": 15.12,
+            "median_return": 5.84,
+            "std": 42.72,
+            "sharpe": 0.35,
+            "sortino": 1.26,
+            "profit_factor": 4.05,
+            "mdd_pct": null,
+            "best": 413.37,
+            "worst": -95.25
+          }
+        }
+      },
+      "🔴 法人連3日賣": {
+        "5d": {
+          "net": {
+            "samples": 2530,
+            "win_rate": 45.3,
+            "avg_return": 0.0,
+            "median_return": -0.45,
+            "std": 7.72,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 1.0,
+            "mdd_pct": null,
+            "best": 46.62,
+            "worst": -96.49
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 2530,
+            "win_rate": 47.8,
+            "avg_return": 2.56,
+            "median_return": -0.31,
+            "std": 50.19,
+            "sharpe": 0.05,
+            "sortino": 0.36,
+            "profit_factor": 1.87,
+            "mdd_pct": null,
+            "best": 1844.14,
+            "worst": -96.63
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 2530,
+            "win_rate": 50.7,
+            "avg_return": 7.82,
+            "median_return": 0.11,
+            "std": 106.14,
+            "sharpe": 0.07,
+            "sortino": 0.72,
+            "profit_factor": 2.84,
+            "mdd_pct": null,
+            "best": 2053.81,
+            "worst": -97.35
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 2530,
+            "win_rate": 53.2,
+            "avg_return": 18.89,
+            "median_return": 1.19,
+            "std": 149.46,
+            "sharpe": 0.13,
+            "sortino": 1.14,
+            "profit_factor": 3.65,
+            "mdd_pct": null,
+            "best": 2254.87,
+            "worst": -97.26
+          }
+        }
+      },
+      "📈 多頭排列": {
+        "5d": {
+          "net": {
+            "samples": 4400,
+            "win_rate": 49.8,
+            "avg_return": 1.24,
+            "median_return": -0.02,
+            "std": 9.17,
+            "sharpe": 0.14,
+            "sortino": 0.26,
+            "profit_factor": 1.51,
+            "mdd_pct": null,
+            "best": 63.21,
+            "worst": -37.35
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 4400,
+            "win_rate": 54.2,
+            "avg_return": 4.55,
+            "median_return": 0.72,
+            "std": 51.45,
+            "sharpe": 0.09,
+            "sortino": 0.76,
+            "profit_factor": 2.59,
+            "mdd_pct": null,
+            "best": 1856.57,
+            "worst": -96.63
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 4400,
+            "win_rate": 58.0,
+            "avg_return": 11.49,
+            "median_return": 2.21,
+            "std": 98.21,
+            "sharpe": 0.12,
+            "sortino": 1.24,
+            "profit_factor": 4.0,
+            "mdd_pct": null,
+            "best": 2053.81,
+            "worst": -97.35
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 4400,
+            "win_rate": 66.0,
+            "avg_return": 26.52,
+            "median_return": 10.29,
+            "std": 132.02,
+            "sharpe": 0.2,
+            "sortino": 1.66,
+            "profit_factor": 5.71,
+            "mdd_pct": null,
+            "best": 2151.94,
+            "worst": -97.26
+          }
+        }
+      },
+      "🍀 朱家泓六六大順": {
+        "5d": {
+          "net": {
+            "samples": 356,
+            "win_rate": 47.5,
+            "avg_return": 1.57,
+            "median_return": -0.19,
+            "std": 10.98,
+            "sharpe": 0.14,
+            "sortino": 0.29,
+            "profit_factor": 1.55,
+            "mdd_pct": null,
+            "best": 59.67,
+            "worst": -21.93
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 356,
+            "win_rate": 52.8,
+            "avg_return": 3.27,
+            "median_return": 0.41,
+            "std": 14.43,
+            "sharpe": 0.23,
+            "sortino": 0.5,
+            "profit_factor": 1.94,
+            "mdd_pct": null,
+            "best": 56.9,
+            "worst": -27.35
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 356,
+            "win_rate": 61.8,
+            "avg_return": 8.88,
+            "median_return": 2.45,
+            "std": 24.54,
+            "sharpe": 0.36,
+            "sortino": 1.14,
+            "profit_factor": 3.27,
+            "mdd_pct": null,
+            "best": 132.68,
+            "worst": -33.38
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 356,
+            "win_rate": 65.7,
+            "avg_return": 20.7,
+            "median_return": 10.02,
+            "std": 44.66,
+            "sharpe": 0.46,
+            "sortino": 1.51,
+            "profit_factor": 5.21,
+            "mdd_pct": null,
+            "best": 259.16,
+            "worst": -96.49
+          }
+        }
+      },
+      "🔥 朱家泓特別報價": {
+        "5d": {
+          "net": {
+            "samples": 1186,
+            "win_rate": 54.9,
+            "avg_return": 3.97,
+            "median_return": 0.96,
+            "std": 60.55,
+            "sharpe": 0.07,
+            "sortino": 0.63,
+            "profit_factor": 2.35,
+            "mdd_pct": null,
+            "best": 2051.2,
+            "worst": -96.72
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 1186,
+            "win_rate": 55.9,
+            "avg_return": 5.65,
+            "median_return": 1.57,
+            "std": 51.03,
+            "sharpe": 0.11,
+            "sortino": 0.74,
+            "profit_factor": 2.71,
+            "mdd_pct": null,
+            "best": 1680.82,
+            "worst": -96.77
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 1186,
+            "win_rate": 62.1,
+            "avg_return": 15.85,
+            "median_return": 4.24,
+            "std": 97.24,
+            "sharpe": 0.16,
+            "sortino": 1.55,
+            "profit_factor": 4.97,
+            "mdd_pct": null,
+            "best": 1904.47,
+            "worst": -97.01
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 1186,
+            "win_rate": 66.4,
+            "avg_return": 33.61,
+            "median_return": 11.36,
+            "std": 122.61,
+            "sharpe": 0.27,
+            "sortino": 2.26,
+            "profit_factor": 6.98,
+            "mdd_pct": null,
+            "best": 2119.67,
+            "worst": -97.03
+          }
+        }
+      },
+      "🥣 朱家泓底部轉折": {
+        "5d": {
+          "net": {
+            "samples": 3,
+            "win_rate": 33.3,
+            "avg_return": -0.77,
+            "median_return": -1.46,
+            "std": 2.47,
+            "sharpe": -0.31,
+            "sortino": -0.36,
+            "profit_factor": 0.52,
+            "mdd_pct": null,
+            "best": 2.54,
+            "worst": -3.39
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 3,
+            "win_rate": 33.3,
+            "avg_return": -2.87,
+            "median_return": -2.74,
+            "std": 3.39,
+            "sharpe": -0.85,
+            "sortino": -0.65,
+            "profit_factor": 0.12,
+            "mdd_pct": null,
+            "best": 1.21,
+            "worst": -7.09
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 3,
+            "win_rate": 66.7,
+            "avg_return": 3.68,
+            "median_return": 4.85,
+            "std": 5.89,
+            "sharpe": 0.63,
+            "sortino": 1.58,
+            "profit_factor": 3.73,
+            "mdd_pct": null,
+            "best": 10.24,
+            "worst": -4.04
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 3,
+            "win_rate": 100.0,
+            "avg_return": 14.99,
+            "median_return": 4.13,
+            "std": 18.22,
+            "sharpe": 0.82,
+            "sortino": 0,
+            "profit_factor": null,
+            "mdd_pct": null,
+            "best": 40.66,
+            "worst": 0.19
+          }
+        }
+      },
+      "🚀 朱家泓5MA飆股": {
+        "5d": {
+          "net": {
+            "samples": 288,
+            "win_rate": 47.2,
+            "avg_return": 0.52,
+            "median_return": -0.33,
+            "std": 12.81,
+            "sharpe": 0.04,
+            "sortino": 0.07,
+            "profit_factor": 1.11,
+            "mdd_pct": null,
+            "best": 55.77,
+            "worst": -26.21
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 288,
+            "win_rate": 53.1,
+            "avg_return": 5.38,
+            "median_return": 2.06,
+            "std": 19.96,
+            "sharpe": 0.27,
+            "sortino": 0.55,
+            "profit_factor": 2.12,
+            "mdd_pct": null,
+            "best": 69.44,
+            "worst": -96.63
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 288,
+            "win_rate": 68.1,
+            "avg_return": 15.51,
+            "median_return": 9.6,
+            "std": 30.1,
+            "sharpe": 0.52,
+            "sortino": 1.37,
+            "profit_factor": 4.56,
+            "mdd_pct": null,
+            "best": 141.97,
+            "worst": -96.87
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 288,
+            "win_rate": 71.5,
+            "avg_return": 31.28,
+            "median_return": 17.05,
+            "std": 56.77,
+            "sharpe": 0.55,
+            "sortino": 1.94,
+            "profit_factor": 6.75,
+            "mdd_pct": null,
+            "best": 413.37,
+            "worst": -96.92
+          }
+        }
+      }
+    },
+    "mid": {
+      "🌅 KD黃金交叉": {
+        "5d": {
+          "net": {
+            "samples": 5309,
+            "win_rate": 43.8,
+            "avg_return": 0.01,
+            "median_return": -0.47,
+            "std": 6.56,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 1.0,
+            "mdd_pct": null,
+            "best": 52.14,
+            "worst": -30.65
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 5309,
+            "win_rate": 46.4,
+            "avg_return": 0.75,
+            "median_return": -0.4,
+            "std": 9.19,
+            "sharpe": 0.08,
+            "sortino": 0.16,
+            "profit_factor": 1.3,
+            "mdd_pct": null,
+            "best": 106.06,
+            "worst": -36.06
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 5309,
+            "win_rate": 48.3,
+            "avg_return": 1.8,
+            "median_return": -0.28,
+            "std": 13.66,
+            "sharpe": 0.13,
+            "sortino": 0.29,
+            "profit_factor": 1.54,
+            "mdd_pct": null,
+            "best": 181.36,
+            "worst": -39.78
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 5309,
+            "win_rate": 53.0,
+            "avg_return": 8.91,
+            "median_return": 0.73,
+            "std": 33.43,
+            "sharpe": 0.27,
+            "sortino": 1.02,
+            "profit_factor": 2.94,
+            "mdd_pct": null,
+            "best": 420.09,
+            "worst": -56.74
+          }
+        }
+      },
+      "🌇 KD死亡交叉": {
+        "5d": {
+          "net": {
+            "samples": 2685,
+            "win_rate": 39.2,
+            "avg_return": -0.49,
+            "median_return": -0.78,
+            "std": 6.85,
+            "sharpe": -0.07,
+            "sortino": -0.11,
+            "profit_factor": 0.8,
+            "mdd_pct": null,
+            "best": 58.83,
+            "worst": -22.86
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 2685,
+            "win_rate": 43.8,
+            "avg_return": 0.24,
+            "median_return": -0.67,
+            "std": 9.49,
+            "sharpe": 0.03,
+            "sortino": 0.05,
+            "profit_factor": 1.08,
+            "mdd_pct": null,
+            "best": 90.48,
+            "worst": -35.69
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 2685,
+            "win_rate": 48.0,
+            "avg_return": 2.25,
+            "median_return": -0.32,
+            "std": 14.84,
+            "sharpe": 0.15,
+            "sortino": 0.37,
+            "profit_factor": 1.68,
+            "mdd_pct": null,
+            "best": 133.75,
+            "worst": -45.97
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 2685,
+            "win_rate": 52.7,
+            "avg_return": 8.4,
+            "median_return": 0.86,
+            "std": 30.98,
+            "sharpe": 0.27,
+            "sortino": 0.95,
+            "profit_factor": 2.77,
+            "mdd_pct": null,
+            "best": 420.2,
+            "worst": -45.42
+          }
+        }
+      },
+      "🚀 爆量長紅": {
+        "5d": {
+          "net": {
+            "samples": 2332,
+            "win_rate": 43.1,
+            "avg_return": 0.89,
+            "median_return": -1.04,
+            "std": 10.17,
+            "sharpe": 0.09,
+            "sortino": 0.18,
+            "profit_factor": 1.3,
+            "mdd_pct": null,
+            "best": 59.92,
+            "worst": -31.93
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 2332,
+            "win_rate": 44.8,
+            "avg_return": 1.97,
+            "median_return": -1.01,
+            "std": 14.13,
+            "sharpe": 0.14,
+            "sortino": 0.32,
+            "profit_factor": 1.54,
+            "mdd_pct": null,
+            "best": 106.06,
+            "worst": -35.33
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 2332,
+            "win_rate": 49.1,
+            "avg_return": 4.76,
+            "median_return": -0.3,
+            "std": 20.55,
+            "sharpe": 0.23,
+            "sortino": 0.62,
+            "profit_factor": 2.1,
+            "mdd_pct": null,
+            "best": 206.29,
+            "worst": -39.91
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 2332,
+            "win_rate": 55.2,
+            "avg_return": 16.46,
+            "median_return": 3.19,
+            "std": 46.44,
+            "sharpe": 0.35,
+            "sortino": 1.6,
+            "profit_factor": 3.92,
+            "mdd_pct": null,
+            "best": 355.07,
+            "worst": -48.13
+          }
+        }
+      },
+      "🏔️ 創60日新高": {
+        "5d": {
+          "net": {
+            "samples": 3252,
+            "win_rate": 46.5,
+            "avg_return": 0.72,
+            "median_return": -0.37,
+            "std": 9.05,
+            "sharpe": 0.08,
+            "sortino": 0.15,
+            "profit_factor": 1.28,
+            "mdd_pct": null,
+            "best": 59.92,
+            "worst": -31.93
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 3252,
+            "win_rate": 49.6,
+            "avg_return": 1.93,
+            "median_return": -0.05,
+            "std": 12.89,
+            "sharpe": 0.15,
+            "sortino": 0.32,
+            "profit_factor": 1.63,
+            "mdd_pct": null,
+            "best": 89.81,
+            "worst": -34.7
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 3252,
+            "win_rate": 53.9,
+            "avg_return": 5.01,
+            "median_return": 0.86,
+            "std": 19.59,
+            "sharpe": 0.26,
+            "sortino": 0.7,
+            "profit_factor": 2.35,
+            "mdd_pct": null,
+            "best": 144.22,
+            "worst": -44.12
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 3252,
+            "win_rate": 59.7,
+            "avg_return": 13.18,
+            "median_return": 3.84,
+            "std": 35.33,
+            "sharpe": 0.37,
+            "sortino": 1.44,
+            "profit_factor": 3.95,
+            "mdd_pct": null,
+            "best": 277.23,
+            "worst": -48.58
+          }
+        }
+      },
+      "⛏️ 跌破前20日低": {
+        "5d": {
+          "net": {
+            "samples": 3500,
+            "win_rate": 47.8,
+            "avg_return": -0.03,
+            "median_return": -0.21,
+            "std": 7.46,
+            "sharpe": -0.0,
+            "sortino": -0.01,
+            "profit_factor": 0.99,
+            "mdd_pct": null,
+            "best": 45.01,
+            "worst": -35.33
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 3500,
+            "win_rate": 48.4,
+            "avg_return": 0.5,
+            "median_return": -0.2,
+            "std": 8.41,
+            "sharpe": 0.06,
+            "sortino": 0.1,
+            "profit_factor": 1.19,
+            "mdd_pct": null,
+            "best": 72.28,
+            "worst": -33.82
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 3500,
+            "win_rate": 52.8,
+            "avg_return": 1.64,
+            "median_return": 0.48,
+            "std": 11.05,
+            "sharpe": 0.15,
+            "sortino": 0.28,
+            "profit_factor": 1.55,
+            "mdd_pct": null,
+            "best": 85.69,
+            "worst": -43.72
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 3500,
+            "win_rate": 54.8,
+            "avg_return": 7.21,
+            "median_return": 1.4,
+            "std": 30.32,
+            "sharpe": 0.24,
+            "sortino": 0.86,
+            "profit_factor": 2.68,
+            "mdd_pct": null,
+            "best": 513.05,
+            "worst": -56.65
+          }
+        }
+      },
+      "📉 跌破季線60MA": {
+        "5d": {
+          "net": {
+            "samples": 822,
+            "win_rate": 40.6,
+            "avg_return": -0.38,
+            "median_return": -0.66,
+            "std": 4.95,
+            "sharpe": -0.08,
+            "sortino": -0.11,
+            "profit_factor": 0.79,
+            "mdd_pct": null,
+            "best": 40.81,
+            "worst": -27.5
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 822,
+            "win_rate": 41.4,
+            "avg_return": -0.24,
+            "median_return": -0.78,
+            "std": 7.23,
+            "sharpe": -0.03,
+            "sortino": -0.05,
+            "profit_factor": 0.9,
+            "mdd_pct": null,
+            "best": 55.87,
+            "worst": -28.41
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 822,
+            "win_rate": 45.6,
+            "avg_return": 0.44,
+            "median_return": -0.64,
+            "std": 13.87,
+            "sharpe": 0.03,
+            "sortino": 0.07,
+            "profit_factor": 1.13,
+            "mdd_pct": null,
+            "best": 198.83,
+            "worst": -31.26
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 822,
+            "win_rate": 46.6,
+            "avg_return": 4.53,
+            "median_return": -0.89,
+            "std": 28.85,
+            "sharpe": 0.16,
+            "sortino": 0.51,
+            "profit_factor": 1.9,
+            "mdd_pct": null,
+            "best": 280.97,
+            "worst": -40.19
+          }
+        }
+      },
+      "✨ 5MA黃金交叉": {
+        "5d": {
+          "net": {
+            "samples": 4064,
+            "win_rate": 41.1,
+            "avg_return": 0.06,
+            "median_return": -0.78,
+            "std": 6.64,
+            "sharpe": 0.01,
+            "sortino": 0.02,
+            "profit_factor": 1.03,
+            "mdd_pct": null,
+            "best": 59.61,
+            "worst": -31.93
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 4064,
+            "win_rate": 44.7,
+            "avg_return": 0.66,
+            "median_return": -0.78,
+            "std": 10.0,
+            "sharpe": 0.07,
+            "sortino": 0.14,
+            "profit_factor": 1.25,
+            "mdd_pct": null,
+            "best": 106.06,
+            "worst": -36.06
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 4064,
+            "win_rate": 47.8,
+            "avg_return": 2.08,
+            "median_return": -0.38,
+            "std": 14.96,
+            "sharpe": 0.14,
+            "sortino": 0.33,
+            "profit_factor": 1.61,
+            "mdd_pct": null,
+            "best": 199.58,
+            "worst": -38.39
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 4064,
+            "win_rate": 52.3,
+            "avg_return": 9.33,
+            "median_return": 0.6,
+            "std": 34.34,
+            "sharpe": 0.27,
+            "sortino": 1.07,
+            "profit_factor": 2.99,
+            "mdd_pct": null,
+            "best": 375.45,
+            "worst": -52.74
+          }
+        }
+      },
+      "🌡️ 乖離過大+12%": {
+        "5d": {
+          "net": {
+            "samples": 3519,
+            "win_rate": 48.7,
+            "avg_return": 1.76,
+            "median_return": -0.33,
+            "std": 12.45,
+            "sharpe": 0.14,
+            "sortino": 0.27,
+            "profit_factor": 1.47,
+            "mdd_pct": null,
+            "best": 59.92,
+            "worst": -31.93
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 3519,
+            "win_rate": 52.2,
+            "avg_return": 4.3,
+            "median_return": 0.79,
+            "std": 17.5,
+            "sharpe": 0.25,
+            "sortino": 0.57,
+            "profit_factor": 2.02,
+            "mdd_pct": null,
+            "best": 106.49,
+            "worst": -34.7
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 3519,
+            "win_rate": 57.7,
+            "avg_return": 10.14,
+            "median_return": 3.61,
+            "std": 26.68,
+            "sharpe": 0.38,
+            "sortino": 1.22,
+            "profit_factor": 3.28,
+            "mdd_pct": null,
+            "best": 185.79,
+            "worst": -45.97
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 3519,
+            "win_rate": 58.0,
+            "avg_return": 20.72,
+            "median_return": 6.59,
+            "std": 48.63,
+            "sharpe": 0.43,
+            "sortino": 1.76,
+            "profit_factor": 4.21,
+            "mdd_pct": null,
+            "best": 288.81,
+            "worst": -45.82
+          }
+        }
+      },
+      "😴 量縮窒息": {
+        "5d": {
+          "net": {
+            "samples": 9464,
+            "win_rate": 41.7,
+            "avg_return": -0.13,
+            "median_return": -0.68,
+            "std": 6.67,
+            "sharpe": -0.02,
+            "sortino": -0.03,
+            "profit_factor": 0.94,
+            "mdd_pct": null,
+            "best": 59.61,
+            "worst": -28.03
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 9464,
+            "win_rate": 46.0,
+            "avg_return": 0.75,
+            "median_return": -0.47,
+            "std": 10.26,
+            "sharpe": 0.07,
+            "sortino": 0.14,
+            "profit_factor": 1.27,
+            "mdd_pct": null,
+            "best": 106.49,
+            "worst": -42.57
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 9464,
+            "win_rate": 48.3,
+            "avg_return": 2.31,
+            "median_return": -0.35,
+            "std": 15.88,
+            "sharpe": 0.15,
+            "sortino": 0.34,
+            "profit_factor": 1.63,
+            "mdd_pct": null,
+            "best": 195.8,
+            "worst": -45.97
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 9464,
+            "win_rate": 52.1,
+            "avg_return": 10.0,
+            "median_return": 0.73,
+            "std": 36.19,
+            "sharpe": 0.28,
+            "sortino": 1.06,
+            "profit_factor": 2.96,
+            "mdd_pct": null,
+            "best": 446.96,
+            "worst": -56.74
+          }
+        }
+      },
+      "⚠️ 價漲量縮背離": {
+        "5d": {
+          "net": {
+            "samples": 10050,
+            "win_rate": 42.9,
+            "avg_return": -0.08,
+            "median_return": -0.52,
+            "std": 6.24,
+            "sharpe": -0.01,
+            "sortino": -0.02,
+            "profit_factor": 0.96,
+            "mdd_pct": null,
+            "best": 59.61,
+            "worst": -30.32
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 10050,
+            "win_rate": 47.7,
+            "avg_return": 0.69,
+            "median_return": -0.27,
+            "std": 9.28,
+            "sharpe": 0.07,
+            "sortino": 0.14,
+            "profit_factor": 1.28,
+            "mdd_pct": null,
+            "best": 106.49,
+            "worst": -35.14
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 10050,
+            "win_rate": 48.6,
+            "avg_return": 1.94,
+            "median_return": -0.23,
+            "std": 14.27,
+            "sharpe": 0.14,
+            "sortino": 0.31,
+            "profit_factor": 1.59,
+            "mdd_pct": null,
+            "best": 182.81,
+            "worst": -38.48
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 10050,
+            "win_rate": 51.9,
+            "avg_return": 8.69,
+            "median_return": 0.6,
+            "std": 33.57,
+            "sharpe": 0.26,
+            "sortino": 0.99,
+            "profit_factor": 2.84,
+            "mdd_pct": null,
+            "best": 446.96,
+            "worst": -56.74
+          }
+        }
+      },
+      "💀 大黑K摜壓": {
+        "5d": {
+          "net": {
+            "samples": 2495,
+            "win_rate": 52.3,
+            "avg_return": 1.38,
+            "median_return": 0.43,
+            "std": 10.14,
+            "sharpe": 0.14,
+            "sortino": 0.25,
+            "profit_factor": 1.47,
+            "mdd_pct": null,
+            "best": 51.36,
+            "worst": -30.04
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 2495,
+            "win_rate": 54.1,
+            "avg_return": 3.4,
+            "median_return": 0.98,
+            "std": 14.0,
+            "sharpe": 0.24,
+            "sortino": 0.54,
+            "profit_factor": 2.03,
+            "mdd_pct": null,
+            "best": 90.48,
+            "worst": -37.92
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 2495,
+            "win_rate": 56.4,
+            "avg_return": 6.3,
+            "median_return": 2.16,
+            "std": 21.02,
+            "sharpe": 0.3,
+            "sortino": 0.87,
+            "profit_factor": 2.63,
+            "mdd_pct": null,
+            "best": 195.8,
+            "worst": -40.29
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 2495,
+            "win_rate": 60.5,
+            "avg_return": 19.99,
+            "median_return": 6.58,
+            "std": 49.29,
+            "sharpe": 0.41,
+            "sortino": 2.01,
+            "profit_factor": 4.88,
+            "mdd_pct": null,
+            "best": 513.05,
+            "worst": -47.19
+          }
+        }
+      },
+      "🌋 島狀反轉": {
+        "5d": {
+          "net": {
+            "samples": 7011,
+            "win_rate": 45.4,
+            "avg_return": 0.12,
+            "median_return": -0.33,
+            "std": 5.37,
+            "sharpe": 0.02,
+            "sortino": 0.03,
+            "profit_factor": 1.07,
+            "mdd_pct": null,
+            "best": 41.97,
+            "worst": -35.33
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 7011,
+            "win_rate": 49.5,
+            "avg_return": 0.68,
+            "median_return": -0.06,
+            "std": 7.69,
+            "sharpe": 0.09,
+            "sortino": 0.16,
+            "profit_factor": 1.32,
+            "mdd_pct": null,
+            "best": 86.77,
+            "worst": -42.57
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 7011,
+            "win_rate": 50.9,
+            "avg_return": 1.21,
+            "median_return": 0.09,
+            "std": 10.87,
+            "sharpe": 0.11,
+            "sortino": 0.22,
+            "profit_factor": 1.43,
+            "mdd_pct": null,
+            "best": 119.62,
+            "worst": -44.36
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 7011,
+            "win_rate": 52.8,
+            "avg_return": 7.49,
+            "median_return": 0.69,
+            "std": 27.93,
+            "sharpe": 0.27,
+            "sortino": 0.9,
+            "profit_factor": 2.83,
+            "mdd_pct": null,
+            "best": 383.37,
+            "worst": -58.85
+          }
+        }
+      },
+      "🟢 法人連3日買": {
+        "5d": {
+          "net": {
+            "samples": 12064,
+            "win_rate": 42.6,
+            "avg_return": 0.05,
+            "median_return": -0.52,
+            "std": 6.14,
+            "sharpe": 0.01,
+            "sortino": 0.01,
+            "profit_factor": 1.02,
+            "mdd_pct": null,
+            "best": 58.74,
+            "worst": -29.45
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 12064,
+            "win_rate": 46.5,
+            "avg_return": 0.62,
+            "median_return": -0.36,
+            "std": 8.62,
+            "sharpe": 0.07,
+            "sortino": 0.14,
+            "profit_factor": 1.27,
+            "mdd_pct": null,
+            "best": 90.48,
+            "worst": -36.06
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 12064,
+            "win_rate": 49.9,
+            "avg_return": 2.23,
+            "median_return": -0.01,
+            "std": 13.37,
+            "sharpe": 0.17,
+            "sortino": 0.4,
+            "profit_factor": 1.77,
+            "mdd_pct": null,
+            "best": 186.97,
+            "worst": -44.12
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 12064,
+            "win_rate": 52.9,
+            "avg_return": 7.68,
+            "median_return": 0.77,
+            "std": 28.78,
+            "sharpe": 0.27,
+            "sortino": 0.98,
+            "profit_factor": 2.89,
+            "mdd_pct": null,
+            "best": 357.08,
+            "worst": -45.82
+          }
+        }
+      },
+      "🔴 法人連3日賣": {
+        "5d": {
+          "net": {
+            "samples": 12390,
+            "win_rate": 39.9,
+            "avg_return": -0.52,
+            "median_return": -0.78,
+            "std": 5.56,
+            "sharpe": -0.09,
+            "sortino": -0.13,
+            "profit_factor": 0.75,
+            "mdd_pct": null,
+            "best": 53.06,
+            "worst": -34.72
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 12390,
+            "win_rate": 43.0,
+            "avg_return": -0.05,
+            "median_return": -0.68,
+            "std": 8.12,
+            "sharpe": -0.01,
+            "sortino": -0.01,
+            "profit_factor": 0.98,
+            "mdd_pct": null,
+            "best": 105.83,
+            "worst": -35.25
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 12390,
+            "win_rate": 46.2,
+            "avg_return": 0.74,
+            "median_return": -0.52,
+            "std": 12.22,
+            "sharpe": 0.06,
+            "sortino": 0.12,
+            "profit_factor": 1.22,
+            "mdd_pct": null,
+            "best": 157.19,
+            "worst": -44.36
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 12390,
+            "win_rate": 50.1,
+            "avg_return": 6.11,
+            "median_return": 0.01,
+            "std": 31.02,
+            "sharpe": 0.2,
+            "sortino": 0.71,
+            "profit_factor": 2.3,
+            "mdd_pct": null,
+            "best": 513.05,
+            "worst": -52.75
+          }
+        }
+      },
+      "📈 多頭排列": {
+        "5d": {
+          "net": {
+            "samples": 21496,
+            "win_rate": 42.9,
+            "avg_return": 0.23,
+            "median_return": -0.66,
+            "std": 7.79,
+            "sharpe": 0.03,
+            "sortino": 0.05,
+            "profit_factor": 1.1,
+            "mdd_pct": null,
+            "best": 59.92,
+            "worst": -31.93
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 21496,
+            "win_rate": 46.9,
+            "avg_return": 1.37,
+            "median_return": -0.39,
+            "std": 11.56,
+            "sharpe": 0.12,
+            "sortino": 0.25,
+            "profit_factor": 1.47,
+            "mdd_pct": null,
+            "best": 106.49,
+            "worst": -40.85
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 21496,
+            "win_rate": 49.6,
+            "avg_return": 3.52,
+            "median_return": -0.08,
+            "std": 17.75,
+            "sharpe": 0.2,
+            "sortino": 0.52,
+            "profit_factor": 1.95,
+            "mdd_pct": null,
+            "best": 206.29,
+            "worst": -45.97
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 21496,
+            "win_rate": 56.0,
+            "avg_return": 12.59,
+            "median_return": 2.39,
+            "std": 37.03,
+            "sharpe": 0.34,
+            "sortino": 1.39,
+            "profit_factor": 3.66,
+            "mdd_pct": null,
+            "best": 364.01,
+            "worst": -52.23
+          }
+        }
+      },
+      "🍀 朱家泓六六大順": {
+        "5d": {
+          "net": {
+            "samples": 1812,
+            "win_rate": 44.0,
+            "avg_return": 0.77,
+            "median_return": -0.6,
+            "std": 9.77,
+            "sharpe": 0.08,
+            "sortino": 0.15,
+            "profit_factor": 1.27,
+            "mdd_pct": null,
+            "best": 59.92,
+            "worst": -31.93
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 1812,
+            "win_rate": 47.4,
+            "avg_return": 2.22,
+            "median_return": -0.36,
+            "std": 13.92,
+            "sharpe": 0.16,
+            "sortino": 0.36,
+            "profit_factor": 1.66,
+            "mdd_pct": null,
+            "best": 89.81,
+            "worst": -32.44
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 1812,
+            "win_rate": 52.9,
+            "avg_return": 4.87,
+            "median_return": 0.79,
+            "std": 19.81,
+            "sharpe": 0.25,
+            "sortino": 0.65,
+            "profit_factor": 2.2,
+            "mdd_pct": null,
+            "best": 132.64,
+            "worst": -39.91
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 1812,
+            "win_rate": 61.1,
+            "avg_return": 16.15,
+            "median_return": 5.66,
+            "std": 40.65,
+            "sharpe": 0.4,
+            "sortino": 1.69,
+            "profit_factor": 4.4,
+            "mdd_pct": null,
+            "best": 288.34,
+            "worst": -48.58
+          }
+        }
+      },
+      "🔥 朱家泓特別報價": {
+        "5d": {
+          "net": {
+            "samples": 4694,
+            "win_rate": 48.0,
+            "avg_return": 1.21,
+            "median_return": -0.28,
+            "std": 10.46,
+            "sharpe": 0.12,
+            "sortino": 0.22,
+            "profit_factor": 1.4,
+            "mdd_pct": null,
+            "best": 59.92,
+            "worst": -31.93
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 4694,
+            "win_rate": 51.2,
+            "avg_return": 2.87,
+            "median_return": 0.29,
+            "std": 14.45,
+            "sharpe": 0.2,
+            "sortino": 0.45,
+            "profit_factor": 1.82,
+            "mdd_pct": null,
+            "best": 106.06,
+            "worst": -35.33
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 4694,
+            "win_rate": 55.2,
+            "avg_return": 6.62,
+            "median_return": 1.51,
+            "std": 22.18,
+            "sharpe": 0.3,
+            "sortino": 0.85,
+            "profit_factor": 2.6,
+            "mdd_pct": null,
+            "best": 206.29,
+            "worst": -44.12
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 4694,
+            "win_rate": 60.8,
+            "avg_return": 18.7,
+            "median_return": 6.42,
+            "std": 45.3,
+            "sharpe": 0.41,
+            "sortino": 1.81,
+            "profit_factor": 4.54,
+            "mdd_pct": null,
+            "best": 379.37,
+            "worst": -54.13
+          }
+        }
+      },
+      "🥣 朱家泓底部轉折": {
+        "5d": {
+          "net": {
+            "samples": 37,
+            "win_rate": 32.4,
+            "avg_return": -0.87,
+            "median_return": -1.51,
+            "std": 5.14,
+            "sharpe": -0.17,
+            "sortino": -0.24,
+            "profit_factor": 0.65,
+            "mdd_pct": null,
+            "best": 14.84,
+            "worst": -9.36
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 37,
+            "win_rate": 43.2,
+            "avg_return": 0.2,
+            "median_return": -1.55,
+            "std": 10.4,
+            "sharpe": 0.02,
+            "sortino": 0.03,
+            "profit_factor": 1.05,
+            "mdd_pct": null,
+            "best": 29.13,
+            "worst": -15.74
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 37,
+            "win_rate": 37.8,
+            "avg_return": 1.43,
+            "median_return": -3.95,
+            "std": 19.92,
+            "sharpe": 0.07,
+            "sortino": 0.17,
+            "profit_factor": 1.28,
+            "mdd_pct": null,
+            "best": 74.83,
+            "worst": -30.11
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 37,
+            "win_rate": 43.2,
+            "avg_return": 1.41,
+            "median_return": -3.22,
+            "std": 29.4,
+            "sharpe": 0.05,
+            "sortino": 0.08,
+            "profit_factor": 1.14,
+            "mdd_pct": null,
+            "best": 106.24,
+            "worst": -41.53
+          }
+        }
+      },
+      "🚀 朱家泓5MA飆股": {
+        "5d": {
+          "net": {
+            "samples": 931,
+            "win_rate": 49.3,
+            "avg_return": 2.33,
+            "median_return": -0.14,
+            "std": 13.59,
+            "sharpe": 0.17,
+            "sortino": 0.35,
+            "profit_factor": 1.59,
+            "mdd_pct": null,
+            "best": 58.74,
+            "worst": -26.16
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 931,
+            "win_rate": 52.0,
+            "avg_return": 4.75,
+            "median_return": 0.73,
+            "std": 18.57,
+            "sharpe": 0.26,
+            "sortino": 0.6,
+            "profit_factor": 2.05,
+            "mdd_pct": null,
+            "best": 106.49,
+            "worst": -37.92
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 931,
+            "win_rate": 56.8,
+            "avg_return": 12.06,
+            "median_return": 4.1,
+            "std": 29.69,
+            "sharpe": 0.41,
+            "sortino": 1.37,
+            "profit_factor": 3.5,
+            "mdd_pct": null,
+            "best": 165.88,
+            "worst": -41.31
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 931,
+            "win_rate": 61.0,
+            "avg_return": 26.03,
+            "median_return": 10.27,
+            "std": 53.63,
+            "sharpe": 0.49,
+            "sortino": 2.19,
+            "profit_factor": 5.09,
+            "mdd_pct": null,
+            "best": 300.58,
+            "worst": -45.47
+          }
+        }
+      }
+    },
+    "small": {
+      "🌅 KD黃金交叉": {
+        "5d": {
+          "net": {
+            "samples": 54373,
+            "win_rate": 40.0,
+            "avg_return": -0.42,
+            "median_return": -0.78,
+            "std": 7.14,
+            "sharpe": -0.06,
+            "sortino": -0.09,
+            "profit_factor": 0.83,
+            "mdd_pct": null,
+            "best": 260.55,
+            "worst": -64.54
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 54373,
+            "win_rate": 42.0,
+            "avg_return": 0.03,
+            "median_return": -1.01,
+            "std": 10.27,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 1.01,
+            "mdd_pct": null,
+            "best": 413.3,
+            "worst": -63.23
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 54373,
+            "win_rate": 42.5,
+            "avg_return": 0.44,
+            "median_return": -1.3,
+            "std": 15.12,
+            "sharpe": 0.03,
+            "sortino": 0.06,
+            "profit_factor": 1.1,
+            "mdd_pct": null,
+            "best": 466.38,
+            "worst": -66.39
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 54373,
+            "win_rate": 44.5,
+            "avg_return": 3.83,
+            "median_return": -1.7,
+            "std": 31.34,
+            "sharpe": 0.12,
+            "sortino": 0.34,
+            "profit_factor": 1.58,
+            "mdd_pct": null,
+            "best": 1007.41,
+            "worst": -90.09
+          }
+        }
+      },
+      "🌇 KD死亡交叉": {
+        "5d": {
+          "net": {
+            "samples": 20034,
+            "win_rate": 38.5,
+            "avg_return": -0.45,
+            "median_return": -0.9,
+            "std": 7.27,
+            "sharpe": -0.06,
+            "sortino": -0.1,
+            "profit_factor": 0.82,
+            "mdd_pct": null,
+            "best": 110.3,
+            "worst": -55.62
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 20034,
+            "win_rate": 41.9,
+            "avg_return": -0.0,
+            "median_return": -0.92,
+            "std": 10.49,
+            "sharpe": -0.0,
+            "sortino": -0.0,
+            "profit_factor": 1.0,
+            "mdd_pct": null,
+            "best": 137.16,
+            "worst": -58.75
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 20034,
+            "win_rate": 45.4,
+            "avg_return": 1.31,
+            "median_return": -0.78,
+            "std": 16.35,
+            "sharpe": 0.08,
+            "sortino": 0.17,
+            "profit_factor": 1.31,
+            "mdd_pct": null,
+            "best": 394.92,
+            "worst": -64.56
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 20034,
+            "win_rate": 45.9,
+            "avg_return": 4.29,
+            "median_return": -1.41,
+            "std": 31.93,
+            "sharpe": 0.13,
+            "sortino": 0.36,
+            "profit_factor": 1.63,
+            "mdd_pct": null,
+            "best": 652.16,
+            "worst": -94.97
+          }
+        }
+      },
+      "🚀 爆量長紅": {
+        "5d": {
+          "net": {
+            "samples": 26998,
+            "win_rate": 39.5,
+            "avg_return": 0.11,
+            "median_return": -1.64,
+            "std": 10.78,
+            "sharpe": 0.01,
+            "sortino": 0.02,
+            "profit_factor": 1.03,
+            "mdd_pct": null,
+            "best": 297.89,
+            "worst": -51.51
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 26998,
+            "win_rate": 41.8,
+            "avg_return": 0.82,
+            "median_return": -1.74,
+            "std": 14.46,
+            "sharpe": 0.06,
+            "sortino": 0.12,
+            "profit_factor": 1.2,
+            "mdd_pct": null,
+            "best": 293.74,
+            "worst": -59.47
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 26998,
+            "win_rate": 42.6,
+            "avg_return": 2.15,
+            "median_return": -2.16,
+            "std": 21.65,
+            "sharpe": 0.1,
+            "sortino": 0.24,
+            "profit_factor": 1.39,
+            "mdd_pct": null,
+            "best": 427.62,
+            "worst": -62.57
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 26998,
+            "win_rate": 43.2,
+            "avg_return": 6.68,
+            "median_return": -3.47,
+            "std": 43.88,
+            "sharpe": 0.15,
+            "sortino": 0.49,
+            "profit_factor": 1.79,
+            "mdd_pct": null,
+            "best": 948.0,
+            "worst": -90.51
+          }
+        }
+      },
+      "🏔️ 創60日新高": {
+        "5d": {
+          "net": {
+            "samples": 21900,
+            "win_rate": 43.4,
+            "avg_return": 0.63,
+            "median_return": -0.69,
+            "std": 10.92,
+            "sharpe": 0.06,
+            "sortino": 0.11,
+            "profit_factor": 1.21,
+            "mdd_pct": null,
+            "best": 297.89,
+            "worst": -60.86
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 21900,
+            "win_rate": 46.8,
+            "avg_return": 1.64,
+            "median_return": -0.46,
+            "std": 14.44,
+            "sharpe": 0.11,
+            "sortino": 0.24,
+            "profit_factor": 1.45,
+            "mdd_pct": null,
+            "best": 241.15,
+            "worst": -61.98
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 21900,
+            "win_rate": 49.7,
+            "avg_return": 3.42,
+            "median_return": -0.05,
+            "std": 21.51,
+            "sharpe": 0.16,
+            "sortino": 0.38,
+            "profit_factor": 1.72,
+            "mdd_pct": null,
+            "best": 427.62,
+            "worst": -64.22
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 21900,
+            "win_rate": 51.4,
+            "avg_return": 7.7,
+            "median_return": 0.44,
+            "std": 40.27,
+            "sharpe": 0.19,
+            "sortino": 0.58,
+            "profit_factor": 2.06,
+            "mdd_pct": null,
+            "best": 577.93,
+            "worst": -87.43
+          }
+        }
+      },
+      "⛏️ 跌破前20日低": {
+        "5d": {
+          "net": {
+            "samples": 36206,
+            "win_rate": 45.9,
+            "avg_return": -0.32,
+            "median_return": -0.4,
+            "std": 7.77,
+            "sharpe": -0.04,
+            "sortino": -0.06,
+            "profit_factor": 0.88,
+            "mdd_pct": null,
+            "best": 59.99,
+            "worst": -45.3
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 36206,
+            "win_rate": 46.4,
+            "avg_return": 0.09,
+            "median_return": -0.49,
+            "std": 9.4,
+            "sharpe": 0.01,
+            "sortino": 0.01,
+            "profit_factor": 1.03,
+            "mdd_pct": null,
+            "best": 119.71,
+            "worst": -53.78
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 36206,
+            "win_rate": 48.7,
+            "avg_return": 1.14,
+            "median_return": -0.26,
+            "std": 13.14,
+            "sharpe": 0.09,
+            "sortino": 0.16,
+            "profit_factor": 1.3,
+            "mdd_pct": null,
+            "best": 267.79,
+            "worst": -59.51
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 36206,
+            "win_rate": 48.1,
+            "avg_return": 4.05,
+            "median_return": -0.55,
+            "std": 26.19,
+            "sharpe": 0.15,
+            "sortino": 0.39,
+            "profit_factor": 1.71,
+            "mdd_pct": null,
+            "best": 585.21,
+            "worst": -82.07
+          }
+        }
+      },
+      "📉 跌破季線60MA": {
+        "5d": {
+          "net": {
+            "samples": 8042,
+            "win_rate": 37.8,
+            "avg_return": -0.55,
+            "median_return": -0.97,
+            "std": 5.97,
+            "sharpe": -0.09,
+            "sortino": -0.14,
+            "profit_factor": 0.75,
+            "mdd_pct": null,
+            "best": 104.43,
+            "worst": -41.36
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 8042,
+            "win_rate": 38.7,
+            "avg_return": -0.41,
+            "median_return": -1.2,
+            "std": 9.51,
+            "sharpe": -0.04,
+            "sortino": -0.08,
+            "profit_factor": 0.86,
+            "mdd_pct": null,
+            "best": 363.66,
+            "worst": -45.6
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 8042,
+            "win_rate": 39.7,
+            "avg_return": -0.36,
+            "median_return": -1.63,
+            "std": 13.97,
+            "sharpe": -0.03,
+            "sortino": -0.05,
+            "profit_factor": 0.92,
+            "mdd_pct": null,
+            "best": 341.18,
+            "worst": -66.52
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 8042,
+            "win_rate": 40.4,
+            "avg_return": 2.49,
+            "median_return": -2.65,
+            "std": 29.55,
+            "sharpe": 0.08,
+            "sortino": 0.22,
+            "profit_factor": 1.37,
+            "mdd_pct": null,
+            "best": 622.07,
+            "worst": -67.71
+          }
+        }
+      },
+      "✨ 5MA黃金交叉": {
+        "5d": {
+          "net": {
+            "samples": 37803,
+            "win_rate": 38.2,
+            "avg_return": -0.21,
+            "median_return": -1.11,
+            "std": 7.58,
+            "sharpe": -0.03,
+            "sortino": -0.05,
+            "profit_factor": 0.92,
+            "mdd_pct": null,
+            "best": 260.55,
+            "worst": -38.4
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 37803,
+            "win_rate": 40.9,
+            "avg_return": 0.15,
+            "median_return": -1.18,
+            "std": 11.18,
+            "sharpe": 0.01,
+            "sortino": 0.03,
+            "profit_factor": 1.04,
+            "mdd_pct": null,
+            "best": 356.24,
+            "worst": -46.64
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 37803,
+            "win_rate": 42.2,
+            "avg_return": 0.88,
+            "median_return": -1.46,
+            "std": 16.61,
+            "sharpe": 0.05,
+            "sortino": 0.11,
+            "profit_factor": 1.2,
+            "mdd_pct": null,
+            "best": 466.38,
+            "worst": -66.44
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 37803,
+            "win_rate": 43.9,
+            "avg_return": 4.4,
+            "median_return": -2.02,
+            "std": 33.55,
+            "sharpe": 0.13,
+            "sortino": 0.38,
+            "profit_factor": 1.64,
+            "mdd_pct": null,
+            "best": 762.57,
+            "worst": -90.09
+          }
+        }
+      },
+      "🌡️ 乖離過大+12%": {
+        "5d": {
+          "net": {
+            "samples": 33933,
+            "win_rate": 44.6,
+            "avg_return": 0.86,
+            "median_return": -1.22,
+            "std": 13.14,
+            "sharpe": 0.07,
+            "sortino": 0.13,
+            "profit_factor": 1.21,
+            "mdd_pct": null,
+            "best": 297.89,
+            "worst": -55.62
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 33933,
+            "win_rate": 46.4,
+            "avg_return": 2.38,
+            "median_return": -1.13,
+            "std": 18.59,
+            "sharpe": 0.13,
+            "sortino": 0.28,
+            "profit_factor": 1.47,
+            "mdd_pct": null,
+            "best": 616.61,
+            "worst": -59.24
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 33933,
+            "win_rate": 47.6,
+            "avg_return": 5.15,
+            "median_return": -1.15,
+            "std": 27.84,
+            "sharpe": 0.18,
+            "sortino": 0.47,
+            "profit_factor": 1.8,
+            "mdd_pct": null,
+            "best": 468.78,
+            "worst": -64.56
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 33933,
+            "win_rate": 43.7,
+            "avg_return": 8.77,
+            "median_return": -4.82,
+            "std": 51.87,
+            "sharpe": 0.17,
+            "sortino": 0.5,
+            "profit_factor": 1.8,
+            "mdd_pct": null,
+            "best": 964.79,
+            "worst": -94.97
+          }
+        }
+      },
+      "😴 量縮窒息": {
+        "5d": {
+          "net": {
+            "samples": 111804,
+            "win_rate": 39.2,
+            "avg_return": -0.52,
+            "median_return": -0.98,
+            "std": 6.98,
+            "sharpe": -0.07,
+            "sortino": -0.11,
+            "profit_factor": 0.8,
+            "mdd_pct": null,
+            "best": 109.85,
+            "worst": -55.62
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 111804,
+            "win_rate": 42.0,
+            "avg_return": -0.08,
+            "median_return": -1.06,
+            "std": 10.47,
+            "sharpe": -0.01,
+            "sortino": -0.01,
+            "profit_factor": 0.98,
+            "mdd_pct": null,
+            "best": 413.3,
+            "worst": -58.75
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 111804,
+            "win_rate": 42.8,
+            "avg_return": 0.6,
+            "median_return": -1.38,
+            "std": 15.75,
+            "sharpe": 0.04,
+            "sortino": 0.08,
+            "profit_factor": 1.13,
+            "mdd_pct": null,
+            "best": 424.49,
+            "worst": -67.33
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 111804,
+            "win_rate": 43.4,
+            "avg_return": 3.39,
+            "median_return": -2.23,
+            "std": 32.22,
+            "sharpe": 0.11,
+            "sortino": 0.28,
+            "profit_factor": 1.48,
+            "mdd_pct": null,
+            "best": 1127.14,
+            "worst": -94.97
+          }
+        }
+      },
+      "⚠️ 價漲量縮背離": {
+        "5d": {
+          "net": {
+            "samples": 100083,
+            "win_rate": 39.7,
+            "avg_return": -0.39,
+            "median_return": -0.78,
+            "std": 6.87,
+            "sharpe": -0.06,
+            "sortino": -0.09,
+            "profit_factor": 0.83,
+            "mdd_pct": null,
+            "best": 221.8,
+            "worst": -50.23
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 100083,
+            "win_rate": 43.0,
+            "avg_return": 0.15,
+            "median_return": -0.78,
+            "std": 10.33,
+            "sharpe": 0.01,
+            "sortino": 0.03,
+            "profit_factor": 1.05,
+            "mdd_pct": null,
+            "best": 413.3,
+            "worst": -60.46
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 100083,
+            "win_rate": 43.9,
+            "avg_return": 0.81,
+            "median_return": -1.1,
+            "std": 15.29,
+            "sharpe": 0.05,
+            "sortino": 0.11,
+            "profit_factor": 1.19,
+            "mdd_pct": null,
+            "best": 424.49,
+            "worst": -67.33
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 100083,
+            "win_rate": 44.9,
+            "avg_return": 4.06,
+            "median_return": -1.65,
+            "std": 32.34,
+            "sharpe": 0.13,
+            "sortino": 0.35,
+            "profit_factor": 1.61,
+            "mdd_pct": null,
+            "best": 1140.59,
+            "worst": -90.39
+          }
+        }
+      },
+      "💀 大黑K摜壓": {
+        "5d": {
+          "net": {
+            "samples": 30568,
+            "win_rate": 47.2,
+            "avg_return": 0.45,
+            "median_return": -0.42,
+            "std": 9.63,
+            "sharpe": 0.05,
+            "sortino": 0.08,
+            "profit_factor": 1.14,
+            "mdd_pct": null,
+            "best": 236.66,
+            "worst": -56.49
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 30568,
+            "win_rate": 48.1,
+            "avg_return": 1.4,
+            "median_return": -0.43,
+            "std": 14.2,
+            "sharpe": 0.1,
+            "sortino": 0.19,
+            "profit_factor": 1.36,
+            "mdd_pct": null,
+            "best": 616.61,
+            "worst": -64.7
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 30568,
+            "win_rate": 47.7,
+            "avg_return": 2.76,
+            "median_return": -0.78,
+            "std": 19.86,
+            "sharpe": 0.14,
+            "sortino": 0.3,
+            "profit_factor": 1.53,
+            "mdd_pct": null,
+            "best": 468.78,
+            "worst": -66.63
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 30568,
+            "win_rate": 46.3,
+            "avg_return": 6.69,
+            "median_return": -1.9,
+            "std": 38.96,
+            "sharpe": 0.17,
+            "sortino": 0.48,
+            "profit_factor": 1.81,
+            "mdd_pct": null,
+            "best": 988.6,
+            "worst": -92.28
+          }
+        }
+      },
+      "🌋 島狀反轉": {
+        "5d": {
+          "net": {
+            "samples": 53791,
+            "win_rate": 43.1,
+            "avg_return": -0.08,
+            "median_return": -0.44,
+            "std": 5.75,
+            "sharpe": -0.01,
+            "sortino": -0.02,
+            "profit_factor": 0.96,
+            "mdd_pct": null,
+            "best": 191.02,
+            "worst": -41.48
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 53791,
+            "win_rate": 47.0,
+            "avg_return": 0.38,
+            "median_return": -0.25,
+            "std": 7.97,
+            "sharpe": 0.05,
+            "sortino": 0.09,
+            "profit_factor": 1.18,
+            "mdd_pct": null,
+            "best": 279.0,
+            "worst": -48.67
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 53791,
+            "win_rate": 48.0,
+            "avg_return": 0.89,
+            "median_return": -0.24,
+            "std": 11.69,
+            "sharpe": 0.08,
+            "sortino": 0.15,
+            "profit_factor": 1.3,
+            "mdd_pct": null,
+            "best": 255.02,
+            "worst": -53.86
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 53791,
+            "win_rate": 49.6,
+            "avg_return": 4.46,
+            "median_return": -0.08,
+            "std": 24.06,
+            "sharpe": 0.19,
+            "sortino": 0.52,
+            "profit_factor": 2.0,
+            "mdd_pct": null,
+            "best": 665.6,
+            "worst": -70.11
+          }
+        }
+      },
+      "🟢 法人連3日買": {
+        "5d": {
+          "net": {
+            "samples": 98678,
+            "win_rate": 40.8,
+            "avg_return": -0.21,
+            "median_return": -0.78,
+            "std": 6.65,
+            "sharpe": -0.03,
+            "sortino": -0.05,
+            "profit_factor": 0.9,
+            "mdd_pct": null,
+            "best": 111.76,
+            "worst": -60.86
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 98678,
+            "win_rate": 43.8,
+            "avg_return": 0.17,
+            "median_return": -0.78,
+            "std": 9.37,
+            "sharpe": 0.02,
+            "sortino": 0.03,
+            "profit_factor": 1.06,
+            "mdd_pct": null,
+            "best": 280.46,
+            "worst": -61.98
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 98678,
+            "win_rate": 45.1,
+            "avg_return": 0.95,
+            "median_return": -0.78,
+            "std": 14.01,
+            "sharpe": 0.07,
+            "sortino": 0.13,
+            "profit_factor": 1.25,
+            "mdd_pct": null,
+            "best": 398.07,
+            "worst": -64.22
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 98678,
+            "win_rate": 46.9,
+            "avg_return": 4.27,
+            "median_return": -0.89,
+            "std": 28.7,
+            "sharpe": 0.15,
+            "sortino": 0.4,
+            "profit_factor": 1.72,
+            "mdd_pct": null,
+            "best": 933.31,
+            "worst": -94.97
+          }
+        }
+      },
+      "🔴 法人連3日賣": {
+        "5d": {
+          "net": {
+            "samples": 95727,
+            "win_rate": 38.2,
+            "avg_return": -0.63,
+            "median_return": -0.89,
+            "std": 6.23,
+            "sharpe": -0.1,
+            "sortino": -0.15,
+            "profit_factor": 0.73,
+            "mdd_pct": null,
+            "best": 96.97,
+            "worst": -56.6
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 95727,
+            "win_rate": 40.9,
+            "avg_return": -0.35,
+            "median_return": -1.01,
+            "std": 9.11,
+            "sharpe": -0.04,
+            "sortino": -0.06,
+            "profit_factor": 0.88,
+            "mdd_pct": null,
+            "best": 195.06,
+            "worst": -60.07
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 95727,
+            "win_rate": 42.7,
+            "avg_return": 0.11,
+            "median_return": -1.19,
+            "std": 13.46,
+            "sharpe": 0.01,
+            "sortino": 0.01,
+            "profit_factor": 1.03,
+            "mdd_pct": null,
+            "best": 261.44,
+            "worst": -67.18
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 95727,
+            "win_rate": 42.9,
+            "avg_return": 2.26,
+            "median_return": -1.96,
+            "std": 27.41,
+            "sharpe": 0.08,
+            "sortino": 0.21,
+            "profit_factor": 1.35,
+            "mdd_pct": null,
+            "best": 1121.83,
+            "worst": -86.53
+          }
+        }
+      },
+      "📈 多頭排列": {
+        "5d": {
+          "net": {
+            "samples": 169639,
+            "win_rate": 40.1,
+            "avg_return": -0.09,
+            "median_return": -0.97,
+            "std": 8.82,
+            "sharpe": -0.01,
+            "sortino": -0.02,
+            "profit_factor": 0.97,
+            "mdd_pct": null,
+            "best": 332.23,
+            "worst": -60.86
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 169639,
+            "win_rate": 42.9,
+            "avg_return": 0.59,
+            "median_return": -0.99,
+            "std": 12.97,
+            "sharpe": 0.05,
+            "sortino": 0.09,
+            "profit_factor": 1.16,
+            "mdd_pct": null,
+            "best": 616.61,
+            "worst": -61.98
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 169639,
+            "win_rate": 44.1,
+            "avg_return": 1.75,
+            "median_return": -1.25,
+            "std": 19.52,
+            "sharpe": 0.09,
+            "sortino": 0.2,
+            "profit_factor": 1.36,
+            "mdd_pct": null,
+            "best": 839.39,
+            "worst": -64.56
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 169639,
+            "win_rate": 45.9,
+            "avg_return": 5.94,
+            "median_return": -1.56,
+            "std": 37.79,
+            "sharpe": 0.16,
+            "sortino": 0.46,
+            "profit_factor": 1.8,
+            "mdd_pct": null,
+            "best": 807.7,
+            "worst": -94.97
+          }
+        }
+      },
+      "🍀 朱家泓六六大順": {
+        "5d": {
+          "net": {
+            "samples": 14118,
+            "win_rate": 42.2,
+            "avg_return": 0.58,
+            "median_return": -1.13,
+            "std": 11.71,
+            "sharpe": 0.05,
+            "sortino": 0.1,
+            "profit_factor": 1.18,
+            "mdd_pct": null,
+            "best": 297.89,
+            "worst": -48.88
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 14118,
+            "win_rate": 45.4,
+            "avg_return": 1.58,
+            "median_return": -0.87,
+            "std": 15.44,
+            "sharpe": 0.1,
+            "sortino": 0.22,
+            "profit_factor": 1.39,
+            "mdd_pct": null,
+            "best": 216.57,
+            "worst": -59.24
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 14118,
+            "win_rate": 46.3,
+            "avg_return": 3.2,
+            "median_return": -1.11,
+            "std": 23.26,
+            "sharpe": 0.14,
+            "sortino": 0.34,
+            "profit_factor": 1.58,
+            "mdd_pct": null,
+            "best": 427.62,
+            "worst": -61.6
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 14118,
+            "win_rate": 48.0,
+            "avg_return": 8.09,
+            "median_return": -0.97,
+            "std": 42.51,
+            "sharpe": 0.19,
+            "sortino": 0.6,
+            "profit_factor": 2.02,
+            "mdd_pct": null,
+            "best": 619.49,
+            "worst": -86.06
+          }
+        }
+      },
+      "🔥 朱家泓特別報價": {
+        "5d": {
+          "net": {
+            "samples": 26607,
+            "win_rate": 42.9,
+            "avg_return": 0.23,
+            "median_return": -1.38,
+            "std": 11.36,
+            "sharpe": 0.02,
+            "sortino": 0.04,
+            "profit_factor": 1.06,
+            "mdd_pct": null,
+            "best": 297.89,
+            "worst": -56.6
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 26607,
+            "win_rate": 45.2,
+            "avg_return": 1.16,
+            "median_return": -1.22,
+            "std": 14.92,
+            "sharpe": 0.08,
+            "sortino": 0.15,
+            "profit_factor": 1.25,
+            "mdd_pct": null,
+            "best": 241.15,
+            "worst": -60.07
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 26607,
+            "win_rate": 45.2,
+            "avg_return": 2.55,
+            "median_return": -1.81,
+            "std": 22.4,
+            "sharpe": 0.11,
+            "sortino": 0.25,
+            "profit_factor": 1.43,
+            "mdd_pct": null,
+            "best": 839.39,
+            "worst": -62.57
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 26607,
+            "win_rate": 43.9,
+            "avg_return": 6.06,
+            "median_return": -3.8,
+            "std": 40.68,
+            "sharpe": 0.15,
+            "sortino": 0.4,
+            "profit_factor": 1.64,
+            "mdd_pct": null,
+            "best": 694.7,
+            "worst": -90.09
+          }
+        }
+      },
+      "🥣 朱家泓底部轉折": {
+        "5d": {
+          "net": {
+            "samples": 624,
+            "win_rate": 34.8,
+            "avg_return": -0.37,
+            "median_return": -1.83,
+            "std": 8.03,
+            "sharpe": -0.05,
+            "sortino": -0.09,
+            "profit_factor": 0.87,
+            "mdd_pct": null,
+            "best": 84.02,
+            "worst": -24.09
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 624,
+            "win_rate": 40.4,
+            "avg_return": 0.48,
+            "median_return": -1.65,
+            "std": 12.32,
+            "sharpe": 0.04,
+            "sortino": 0.08,
+            "profit_factor": 1.14,
+            "mdd_pct": null,
+            "best": 158.28,
+            "worst": -33.32
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 624,
+            "win_rate": 42.1,
+            "avg_return": 0.84,
+            "median_return": -2.01,
+            "std": 16.63,
+            "sharpe": 0.05,
+            "sortino": 0.11,
+            "profit_factor": 1.18,
+            "mdd_pct": null,
+            "best": 158.63,
+            "worst": -32.33
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 624,
+            "win_rate": 41.0,
+            "avg_return": 2.54,
+            "median_return": -3.44,
+            "std": 28.68,
+            "sharpe": 0.09,
+            "sortino": 0.22,
+            "profit_factor": 1.35,
+            "mdd_pct": null,
+            "best": 214.27,
+            "worst": -47.34
+          }
+        }
+      },
+      "🚀 朱家泓5MA飆股": {
+        "5d": {
+          "net": {
+            "samples": 8522,
+            "win_rate": 44.4,
+            "avg_return": 0.67,
+            "median_return": -1.41,
+            "std": 12.39,
+            "sharpe": 0.05,
+            "sortino": 0.1,
+            "profit_factor": 1.16,
+            "mdd_pct": null,
+            "best": 129.47,
+            "worst": -39.97
+          }
+        },
+        "10d": {
+          "net": {
+            "samples": 8522,
+            "win_rate": 45.5,
+            "avg_return": 1.95,
+            "median_return": -1.42,
+            "std": 17.08,
+            "sharpe": 0.11,
+            "sortino": 0.23,
+            "profit_factor": 1.38,
+            "mdd_pct": null,
+            "best": 160.56,
+            "worst": -50.43
+          }
+        },
+        "20d": {
+          "net": {
+            "samples": 8522,
+            "win_rate": 47.3,
+            "avg_return": 4.34,
+            "median_return": -1.26,
+            "std": 24.85,
+            "sharpe": 0.17,
+            "sortino": 0.4,
+            "profit_factor": 1.66,
+            "mdd_pct": null,
+            "best": 260.57,
+            "worst": -60.14
+          }
+        },
+        "60d": {
+          "net": {
+            "samples": 8522,
+            "win_rate": 43.5,
+            "avg_return": 8.13,
+            "median_return": -5.22,
+            "std": 49.12,
+            "sharpe": 0.17,
+            "sortino": 0.47,
+            "profit_factor": 1.74,
+            "mdd_pct": null,
+            "best": 667.7,
+            "worst": -94.33
+          }
+        }
+      }
+    }
+  },
+  "tier_stocks": {
+    "large": 33,
+    "mid": 141,
+    "small": 2545
+  },
+  "falcon_strategy": {
+    "falcon60": {
+      "samples": 281067,
+      "win_rate": 44.8,
+      "avg_return": 0.11
+    },
+    "falcon45": {
+      "samples": 216601,
+      "win_rate": 42.2,
+      "avg_return": 0.03
+    },
+    "falcon75": {
+      "samples": 203687,
+      "win_rate": 45.2,
+      "avg_return": 0.04
+    }
+  },
+  "combos": [
+    {
+      "signals": [
+        "✨ 5MA黃金交叉",
+        "🚀 朱家泓5MA飆股"
+      ],
+      "samples": 75,
+      "win_rate_10d": 58.7,
+      "avg_return": 9.42,
+      "sharpe": 0.41,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌅 KD黃金交叉",
+        "🌡️ 乖離過大+12%"
+      ],
+      "samples": 477,
+      "win_rate_10d": 54.7,
+      "avg_return": 8.63,
+      "sharpe": 0.28,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "⚠️ 價漲量縮背離",
+        "💀 大黑K摜壓"
+      ],
+      "samples": 184,
+      "win_rate_10d": 62.0,
+      "avg_return": 6.95,
+      "sharpe": 0.41,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌋 島狀反轉",
+        "💀 大黑K摜壓"
+      ],
+      "samples": 2394,
+      "win_rate_10d": 63.4,
+      "avg_return": 4.95,
+      "sharpe": 0.36,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌡️ 乖離過大+12%",
+        "📉 跌破季線60MA"
+      ],
+      "samples": 23,
+      "win_rate_10d": 52.2,
+      "avg_return": 5.34,
+      "sharpe": 0.42,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "⚠️ 價漲量縮背離",
+        "🚀 朱家泓5MA飆股"
+      ],
+      "samples": 991,
+      "win_rate_10d": 53.0,
+      "avg_return": 5.09,
+      "sharpe": 0.26,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌅 KD黃金交叉",
+        "🏔️ 創60日新高"
+      ],
+      "samples": 267,
+      "win_rate_10d": 50.2,
+      "avg_return": 5.04,
+      "sharpe": 0.23,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "😴 量縮窒息",
+        "🚀 朱家泓5MA飆股"
+      ],
+      "samples": 645,
+      "win_rate_10d": 51.2,
+      "avg_return": 4.38,
+      "sharpe": 0.23,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "✨ 5MA黃金交叉",
+        "🌡️ 乖離過大+12%"
+      ],
+      "samples": 2270,
+      "win_rate_10d": 49.3,
+      "avg_return": 4.09,
+      "sharpe": 0.19,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🏔️ 創60日新高",
+        "😴 量縮窒息"
+      ],
+      "samples": 1318,
+      "win_rate_10d": 53.3,
+      "avg_return": 3.78,
+      "sharpe": 0.24,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌋 島狀反轉",
+        "🌡️ 乖離過大+12%"
+      ],
+      "samples": 486,
+      "win_rate_10d": 54.1,
+      "avg_return": 3.58,
+      "sharpe": 0.2,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌋 島狀反轉",
+        "🔥 朱家泓特別報價"
+      ],
+      "samples": 691,
+      "win_rate_10d": 52.4,
+      "avg_return": 3.55,
+      "sharpe": 0.05,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "⚠️ 價漲量縮背離",
+        "🌡️ 乖離過大+12%"
+      ],
+      "samples": 6081,
+      "win_rate_10d": 49.4,
+      "avg_return": 3.75,
+      "sharpe": 0.2,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🔥 朱家泓特別報價",
+        "😴 量縮窒息"
+      ],
+      "samples": 1109,
+      "win_rate_10d": 51.8,
+      "avg_return": 3.55,
+      "sharpe": 0.22,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "⚠️ 價漲量縮背離",
+        "🔥 朱家泓特別報價"
+      ],
+      "samples": 3164,
+      "win_rate_10d": 52.1,
+      "avg_return": 3.45,
+      "sharpe": 0.1,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "💀 大黑K摜壓",
+        "🟢 法人連3日買"
+      ],
+      "samples": 2005,
+      "win_rate_10d": 54.1,
+      "avg_return": 3.32,
+      "sharpe": 0.23,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌡️ 乖離過大+12%",
+        "🏔️ 創60日新高"
+      ],
+      "samples": 12914,
+      "win_rate_10d": 49.1,
+      "avg_return": 3.29,
+      "sharpe": 0.18,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌡️ 乖離過大+12%",
+        "🍀 朱家泓六六大順"
+      ],
+      "samples": 7465,
+      "win_rate_10d": 48.5,
+      "avg_return": 3.19,
+      "sharpe": 0.17,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌡️ 乖離過大+12%",
+        "📈 多頭排列"
+      ],
+      "samples": 31641,
+      "win_rate_10d": 48.4,
+      "avg_return": 3.13,
+      "sharpe": 0.16,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌡️ 乖離過大+12%",
+        "🟢 法人連3日買"
+      ],
+      "samples": 8307,
+      "win_rate_10d": 49.9,
+      "avg_return": 3.0,
+      "sharpe": 0.18,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🚀 朱家泓5MA飆股",
+        "🟢 法人連3日買"
+      ],
+      "samples": 2176,
+      "win_rate_10d": 48.8,
+      "avg_return": 3.05,
+      "sharpe": 0.18,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "⚠️ 價漲量縮背離",
+        "🏔️ 創60日新高"
+      ],
+      "samples": 3048,
+      "win_rate_10d": 51.8,
+      "avg_return": 2.83,
+      "sharpe": 0.2,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🏔️ 創60日新高",
+        "🚀 朱家泓5MA飆股"
+      ],
+      "samples": 4694,
+      "win_rate_10d": 47.6,
+      "avg_return": 3.05,
+      "sharpe": 0.17,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌡️ 乖離過大+12%",
+        "😴 量縮窒息"
+      ],
+      "samples": 6988,
+      "win_rate_10d": 48.4,
+      "avg_return": 2.95,
+      "sharpe": 0.17,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "📈 多頭排列",
+        "🚀 朱家泓5MA飆股"
+      ],
+      "samples": 7382,
+      "win_rate_10d": 47.4,
+      "avg_return": 2.92,
+      "sharpe": 0.16,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "⛏️ 跌破前20日低",
+        "💀 大黑K摜壓"
+      ],
+      "samples": 7226,
+      "win_rate_10d": 56.8,
+      "avg_return": 2.43,
+      "sharpe": 0.21,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🍀 朱家泓六六大順",
+        "🚀 朱家泓5MA飆股"
+      ],
+      "samples": 2153,
+      "win_rate_10d": 47.6,
+      "avg_return": 2.86,
+      "sharpe": 0.16,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌡️ 乖離過大+12%",
+        "🚀 爆量長紅"
+      ],
+      "samples": 7839,
+      "win_rate_10d": 46.5,
+      "avg_return": 2.81,
+      "sharpe": 0.15,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌡️ 乖離過大+12%",
+        "🔥 朱家泓特別報價"
+      ],
+      "samples": 12039,
+      "win_rate_10d": 47.3,
+      "avg_return": 2.51,
+      "sharpe": 0.14,
+      "mdd_pct": null
+    },
+    {
+      "signals": [
+        "🌡️ 乖離過大+12%",
+        "🚀 朱家泓5MA飆股"
+      ],
+      "samples": 8512,
+      "win_rate_10d": 46.8,
+      "avg_return": 2.52,
+      "sharpe": 0.14,
+      "mdd_pct": null
+    }
+  ],
+  "chu_swing_backtest": {
+    "stocks_with_signal": 1779,
+    "stocks_positive_ev": 693,
+    "positive_ev_ratio": 39.0,
+    "total_trades": 19258,
+    "avg_expectancy_pct": -0.24,
+    "avg_win_rate_pct": 22.0,
+    "exit_rule": "跌破5MA停利 / 破進場K低或-5%停損 / 獲利+7%鎖利、+20%加速停利"
+  },
+  "chu_swing_scaled_backtest": {
+    "stocks_with_signal": 1578,
+    "stocks_positive_ev": 746,
+    "positive_ev_ratio": 47.3,
+    "total_trades": 13758,
+    "avg_expectancy_pct": 0.36,
+    "avg_win_rate_pct": 26.1,
+    "exit_rule": "三均線分批:跌破5/10/20MA各賣1/3、急漲>20%跌破5MA全出"
+  },
+  "chu_swing_kline_backtest": {
+    "stocks_with_signal": 1764,
+    "stocks_positive_ev": 656,
+    "positive_ev_ratio": 37.2,
+    "total_trades": 18696,
+    "avg_expectancy_pct": -0.23,
+    "avg_win_rate_pct": 28.3,
+    "exit_rule": "第8-2章K線轉折:守前一日K低,跌破即出(飆股專用)"
+  },
+  "chu_swing_long_backtest": {
+    "stocks_with_signal": 1692,
+    "stocks_positive_ev": 718,
+    "positive_ev_ratio": 42.4,
+    "total_trades": 15751,
+    "avg_expectancy_pct": 0.04,
+    "avg_win_rate_pct": 25.1,
+    "exit_rule": "第8-4章長線:守月線20MA,獲利>20%改守5MA鎖利"
+  },
+  "chu_swing_trend_backtest": {
+    "stocks_with_signal": 1749,
+    "stocks_positive_ev": 624,
+    "positive_ev_ratio": 35.7,
+    "total_trades": 17750,
+    "avg_expectancy_pct": -0.15,
+    "avg_win_rate_pct": 25.3,
+    "exit_rule": "第6-15章飆股:守兩墊高低點上升切線,跌破即出(無切線退守5MA)"
+  },
+  "_note": "擴充版回測:15 訊號 × 4 時間段 × Sharpe/MDD/Profit Factor + 股池分群 + 戰術組合。淨報酬已扣手續費+證交稅+滑價。過去績效不代表未來。"
+}
