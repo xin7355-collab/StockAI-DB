@@ -87,6 +87,15 @@ const R = await page.evaluate(async () => {
     P.switchRadarStrategy('todaysig');
     await new Promise(r => setTimeout(r, 300));
     o.hintMain = hint ? hint.innerHTML.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ') : '';
+    // 🚨 V76.1.4 **每一個榜都要講清楚自己的實測狀態**(⛔ 不可靜默、⛔ 不可含混套同一句)
+    o.perTab = {};
+    for (const k of Object.keys(P._RADAR_TABS || {})) {
+        P.switchRadarStrategy(k);
+        await new Promise(r => setTimeout(r, 60));
+        o.perTab[k] = hint ? hint.innerHTML.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ') : '';
+    }
+    o.weakKeys = Object.keys(P._RADAR_WEAK || {});
+    o.statusKeys = Object.keys(P._RADAR_STATUS || {});
     return o;
 });
 await browser.close();
@@ -104,6 +113,26 @@ ok('⑥ 🚨 說明條最上面要講「實測沒有優勢」+ 附數字 + 來�
 ok('⑥ 🚨 而且要明說「⛔ 沒有刪掉」(⛔ 不可讓使用者以為功能被拿走)',
    /沒有刪掉|資料照顯示/.test(R.hintWeak), R.hintWeak.slice(0, 140));
 ok('⑦ 主清單的榜 ⛔ 不可誤掛那段警示', !/實測.{0,4}沒.{0,4}優勢/.test(R.hintMain), R.hintMain.slice(0, 100));
+// 🚨🚨 V76.1.4 使用者:「16 個榜只有一個有實測成績」→ 量完發現問題不是「榜太多」,
+//   而是**中間那幾個什麼都沒說**,而且 `todaysig` 還被印上「未納入歷史回測」= 自己跟自己打架。
+const _ALL = Object.keys(R.perTab);
+const _silent = _ALL.filter(k => !R.weakKeys.includes(k) && !R.statusKeys.includes(k));
+ok('⑨ 🚨 每一個榜都要有實測狀態(📉 沒優勢 / ✅ 有實測 / ⚠️ 間接證據 / 📚 查資料用),⛔ 一個都不可沉默',
+   _silent.length === 0, '沉默的:' + JSON.stringify(_silent));
+ok('⑨b 🚨 `todaysig` ⛔ 不可再出現「未納入歷史回測」(它是唯一有實測的那個 —— 以前這兩句同時印,自相矛盾)',
+   !/未納入歷史回測/.test(R.perTab.todaysig || '') && /有實測成績/.test(R.perTab.todaysig || ''),
+   (R.perTab.todaysig || '').slice(-160));
+ok('⑨c ⭐ 有實測的要附**基準**(36.4% 不是 50%;⛔ 不可只給勝率)', /36\.4|36%/.test(R.perTab.todaysig || ''), '');
+ok('⑨d ⚠️ 只有間接證據的要明說「**這個榜本身沒單獨測過**」,⛔ 不可借別的成績當背書',
+   ['rs_strong', 'momentum', 'monster'].every(k => /沒(有)?單獨(回)?測過|沒有回測過/.test(R.perTab[k] || '')),
+   JSON.stringify(['rs_strong', 'momentum', 'monster'].map(k => (R.perTab[k] || '').slice(-80))));
+const _BADGE = /✅ 這個榜有實測成績|⚠️ 只有間接證據|📚 查資料用,不下多空/;
+ok('⑨e ⛔ 降級榜不可同時掛兩段(📉 沒優勢 + 另一個徽章)—— 同一件事講兩遍',
+   R.weakKeys.every(k => !_BADGE.test(R.perTab[k] || '')),
+   JSON.stringify(R.weakKeys.filter(k => _BADGE.test(R.perTab[k] || ''))));
+ok('⑨f ⭐ 非降級榜**一定要**掛到徽章(⛔ 不可只是沒報錯)',
+   _ALL.filter(k => !R.weakKeys.includes(k)).every(k => _BADGE.test(R.perTab[k] || '')),
+   JSON.stringify(_ALL.filter(k => !R.weakKeys.includes(k) && !_BADGE.test(R.perTab[k] || ''))));
 ok('⑧ 無 pageerror', perr.length === 0, perr.join(' | '));
 
 console.log(fails ? `\n❌ ${fails} 條未通過` : '\n✅ 全部通過');

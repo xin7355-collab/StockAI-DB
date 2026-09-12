@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.1.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.1.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8203,8 +8203,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.1.3',
+    _APP_VERSION: 'V76.1.4',
     _CHANGELOG: [
+        { v: 'V76.1.4', d: ['📋 <b>你問「選股頁的榜要不要砍」—— 我先量了,結論是「不是榜太多,是有幾個什麼都沒說」</b>。23 個榜裡<b>已經有 13 個</b>被標成「📉 實測沒優勢」收進摺疊區、3 個標成「查資料用」;真正的問題是中間那幾個(相對強度 / 渣男賽車 / 妖股雷達 / K棒轉多 / K棒轉空)<b>從來沒告訴你它到底有沒有實測背書</b>。', '🚨 <b>而且照出一個自打嘴巴的地方</b>:「🎯 會賺訊號」的說明寫著「這是唯一有實測成績的榜」,底下卻緊接著印「此戰區…<b>未納入歷史回測</b>」—— 同一畫面兩句話打架,已修。', '✅ 現在<b>每一個榜都會講清楚自己的實測狀態</b>,四種:✅ 有實測(附基準 36.4%,⛔ 不是 50%)/ ⚠️ 只有間接證據(會明說「<b>這個榜本身沒單獨測過</b>」,⛔ 不借別的成績當背書)/ 📚 查資料用 / 📉 實測沒優勢。⛔ 一個都不准沉默。'] },
         { v: 'V76.1.3', d: ['🏛️ <b>「籌碼分頁怎麼不見了」有答案了,而且順手修好</b>:它<b>沒壞</b> —— 看<b>大盤指數</b>時程式會刻意把 基本・當沖・回測・即時・籌碼・多空・報告 這七頁藏起來(法人買賣超、券商分點、EPS 都是<b>逐檔股票</b>才有的資料,指數沒有自己的一份)。以前這個理由只寫在程式裡、<b>畫面上一個字都沒說</b>,所以你只看到分頁憑空消失。現在指數頁會直接告訴你少了哪幾頁、為什麼,還會指路(大盤法人看「大盤」頁、個股分點點進那一檔)。', '🗑️ <b>清掉三段死碼</b>(你說「依照建議做」):①「主力分點動向」每次都往一個<b>永遠隱藏</b>的框寫 455 字,2026-06 起就沒人看得到 ②總覽籌碼快照的函式(上次刪卡後零呼叫)③⚖️ 那張卡的函式(這次刪卡後零呼叫)。', '⚠️ 順手把兩處<b>指向已刪函式</b>的說明改掉,免得下次有人照著找找不到。'] },
         { v: 'V76.1.2', d: ['🗑️ <b>依你指名刪掉四樣</b>:①「🧭 5 個面向」底下那行說明文字 ②「⚖️ 這一頁有 N 個系統在講方向」整張卡 ③「🧭 總評儀表板」整張卡 ④「🚦 ETF 跟車狀態」整張卡。<b>ETF 跟車那張本來就該刪</b> —— 實測跟車不成立,而且它靠的持股變動歷史 8 月才開始存,本來就還驗不動。', '🔗 <b>「🎯 關鍵價位・掛單就看這」併進「📏 價格位置圖」了</b>(你說排版很像):現在是<b>一張卡</b> —— 上面一條尺看位置,下面用原本關鍵價位那種<b>兩欄格子</b>把每個價位寫清楚(停損/現價/買進/追買/估值/套牢區/密集區,每格都有「這個價位在講什麼」)。底部原本逐項解釋的那段刪掉了,因為每一格自己就寫了。', '🐛 順手修一個會看錯的地方:空手時停損那格原本寫「<b>買進</b>後跌破前低就退出」→ 空頭股的尺上就會冒出「買進」兩個字。它本來就只是在講防線在哪,已改成「跌破前低就退出」。', '📉 個股頁總覽第一眼從 635 字降到 <b>571 字</b>,全站卡片總字數 11,360 → <b>10,197</b>。'] },
         { v: 'V76.1.1', d: ['📰 <b>你問「新聞回測可以開始了嗎」—— 還不行,而且我去查了才知道原因</b>:之前測完的那一輪用的是<b>別人的新聞資料</b>(鉅亨網 5,409 則,結論是「有新聞」本身沒用、方向量不出來);本站<b>自己存的</b>只有 <b>11 天</b>(9/1~9/11、285 則)。而且時鐘<b>不是 8 月開始的</b> —— 抓新聞那支排程從 8/5 到 9/8 <b>一次都沒被觸發</b>(被 GitHub 的排程配額吃掉),9/9 改掛在別支後面才穩定 → 大約要到 <b>2026 年 12 月上旬</b>才夠測。', '🔌 <b>新裝的外掛幫不上這件事</b>:那類連接器只有「跟我對話時」用得到,你的網站跟採礦機都呼叫不到;而且它是搜尋不是全量傾印(實測一檔半年只回 6 段、一半是廣告稿),來源也是英文通訊社,跟我們抓的中文新聞不是同一批。', '🧪 回測工具已經先準備好:資料夠了會自動能跑,<b>不夠就直接告訴你還差幾天</b>,⛔ 絕不用不夠的樣本硬給結論。'] },
@@ -45034,17 +45035,39 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
 
     // V32.3 — 雷達戰區回測勝率小字:僅送分題/獵鷹有回測(signal_history.json);其餘即時掃描誠實標未回測
+    // 🚨🚨 V76.1.4 這支以前是「除了 layup / attention,其餘一律回**未納入歷史回測**」——
+    //   實測照出一個**自相矛盾**:`todaysig` 的說明白紙黑字寫「這是唯一有實測成績的榜」,
+    //   底下卻緊接著印「ℹ️ 此戰區為即時技術掃描,**未納入歷史回測**」。同一畫面兩句話打架。
+    // ⭐ 改成**逐榜講清楚自己的實測狀態**(使用者鐵則:「沒有資料」與「條件不成立」是兩件事,⛔ 不可靜默/含混)。
+    //   四種狀態,⛔ 不可再有第五種「一律套用」的預設句:
+    //     ✅ 有實測      → 說清楚測了什麼、基準是多少
+    //     ⚠️ 只有間接證據 → 說「這個榜本身沒單獨測過」,⛔ 不可借用別的成績當背書
+    //     📚 查資料用     → 本來就不下多空(_RADAR_INFO)
+    //     📉 實測沒優勢   → 已由 `_radarWeakNote` 講完,這裡**不再重複**(⛔ 不可疊兩段)
+    _RADAR_STATUS: {
+        todaysig:  ['ok',   '每天收盤把全市場每一檔跑過所有 K 線訊號,只留**期望值為正、而且扣完來回成本 0.44% 還有得賺**的。⚠️ 基準勝率是 <b>36.4%</b> 不是 50%;是歷史平均不是保證,而且只看 K 線。'],
+        daytrade:  ['ok',   '「今天怎麼做」那半是**純歷史統計**(同一條勝負定義掃過每一個交易日當對照組),⚠️ 環境訊號**沒有計入**上面那個勝率。當沖來回成本約 0.25%,扣完是負的就別做。'],
+        kbar_bull: ['part', '這些 K 棒訊號**單獨**都有實測成績(全市場 2,227 檔),⛔ 但這個榜**沒有逐檔標出來** —— 想看某一檔那個訊號實測賺不賺,點進去看「K線」分頁的戰法卡。'],
+        kbar_bear: ['part', '同上,而且**看空訊號本來就不該用賺賠去篩** —— 它是風險提醒,忽略它的代價比多看一眼大。'],
+        rs_strong: ['part', '「追強」這個**方向**本站實測站得住(創一年新高 / 位階高檔那幾條是全庫最好的),⛔ 但<b>這個榜本身沒有單獨回測過</b>,而且實測顯示追強的優勢 <b>2024 之後逐年遞減</b>。'],
+        momentum:  ['part', '同上,追強方向有證據、<b>這個榜沒單獨測過</b>。⚠️ 它抓的是「5 日內噴過 7%」= 追高,而追高正是空頭最容易受傷的一類。'],
+        monster:   ['part', '⛔ <b>這個榜沒有回測過</b>。「5 日 ≥20% / 10 日 ≥30% + 2 倍量」是極端追高,妖股會續妖也會突然斷頭 —— 只用閒錢、停損要硬。'],
+        theme:     ['info', '新聞熱度**只是熱度**。本站實測:「有新聞」本身 10 日 <b>−0.03pp</b>(等於沒有),而且**利多利空兩邊都是正的** = 那是活躍度不是方向。'],
+        aichain:   ['info', '人工整理的**產業說明書**,⛔ 不是買進名單。而且那套五級分層本站實測**沒有預測力**(各層邊際在雜訊內、前後半不同向)。'],
+        attention: ['info', '處置股 = **風控區**(分盤撮合),本來就不是選股名單。✅ 唯一有實測的是拿它避雷:「噴 ≥30% 才進注意股」之後 <b>−1.81pp</b>。'],
+    },
     _radarWinNote(key) {
-        const h = this._signalHistCache;
-        if (key === 'layup') {
-            const s = h?.by_signal?.['🟢送分題'];
-            if (s && s.win_rate_10d != null) return `<div class="mt-1 text-[10px]"><span class="text-green-300 font-bold">✅ 回測勝率 ${s.win_rate_10d}%</span> <span class="text-gray-500">· 平均 ${s.avg_return_10d > 0 ? '+' : ''}${s.avg_return_10d}% · ${s.samples} 樣本(10日扣成本)</span></div>`;
-        } else if (key === 'attention') {
-            return '<div class="mt-1 text-[10px] text-gray-500">ℹ️ 處置股=風控區(分盤撮合),不納入回測</div>';
-        } else {
-            return '<div class="mt-1 text-[10px] text-gray-500">ℹ️ 此戰區為即時技術掃描,未納入歷史回測(動能/波段/籌碼即時邏輯)</div>';
-        }
-        return '';
+        try {
+            // 📉 實測沒優勢的那幾個:`_radarWeakNote` 已經把話講完了 → ⛔ 這裡不再補一段(免得同一件事講兩遍)
+            if ((this._RADAR_WEAK || {})[key]) return '';
+            const st = (this._RADAR_STATUS || {})[key];
+            if (!st) return '';
+            const [kind, why] = st;
+            const head = kind === 'ok' ? '<span class="text-green-300 font-bold">✅ 這個榜有實測成績</span>'
+                : kind === 'part' ? '<span class="text-amber-300 font-bold">⚠️ 只有間接證據</span>'
+                : '<span class="text-gray-400 font-bold">📚 查資料用,不下多空</span>';
+            return `<div class="mt-1 text-[10px] text-gray-300 leading-relaxed">${head} · ${why}</div>`;
+        } catch (_) { return ''; }
     },
 
     // ===== 📚 朱家泓五大選股法 modal =====
