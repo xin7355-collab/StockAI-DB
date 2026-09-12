@@ -5565,7 +5565,13 @@ def _quick_ind(data):
     return {'close': closes[-1], 'prev_close': closes[-2],
             'ma5': ma5, 'ma10': ma10, 'ma20': ma20,
             'pma5': pma5, 'pma10': pma10, 'pma20': pma20,
-            'vma5': vma5, 'upper_bb': upper_bb, 'recent_vols': vols[-3:]}
+            # 🚨🚨 V76.1.6 這裡以前是 `vols[-3:]`(長度 3)—— 而 V76.1.5 的妖股修法要拿
+            #   `rv[-8:-3]`(那 3 根之前的 5 日均量)當爆量基準 → `len(rv) >= 8` **永遠不成立**
+            #   → 基準恆為 0 → `vol_burst` 恆為 0 → 🐲 妖股榜**修完還是空的**,而且一樣零錯誤訊息。
+            #   ⛔ 長度必須 ≥ 8(= 3 根被判斷的 + 5 根基準),改這個數字之前先看 build_radar_cache 的 rv 用法。
+            #   ⭐ 教訓(陷阱 #40 第六例):我當時是在**獨立模擬腳本**上量「修正後 8 檔」的,
+            #      那裡有完整的 vols,沒有走這條正式路徑 → 假綠燈。驗修法一定要走正式入口。
+            'vma5': vma5, 'upper_bb': upper_bb, 'recent_vols': vols[-8:]}
 
 
 def build_radar_cache():
@@ -6727,13 +6733,36 @@ def build_bubble_warning():
             total_range = h - l
             upper_shadow = h - max(o, c) if total_range > 0 else 0
             shadow_ratio = (upper_shadow / total_range) if total_range > 0 else 0
-            past5 = twii_hist[-6:-1] if len(twii_hist) >= 6 else twii_hist[:-1]
-            avg_v = (sum(float(t.get('volume', 0) or 0) for t in past5) / len(past5)) if past5 else v
-            vol_ratio = (v / avg_v) if avg_v > 0 else 1.0
+            # 🚨🚨 V76.1.6 這段的「量」以前只讀 `volume` —— 而**指數的 volume 是 0**(陷阱 #29,
+            #   資料源不給指數成交量)。實測 origin/gh-pages:macro_cache.json 的 twii_history
+            #   **120 根 volume 全部是 0** → avg_v=0 → vol_ratio 掉進 fallback **恆為 1.0**
+            #   → 「爆量長上影」「上影警示」兩個等級的**量那條腿,從上線到現在一次都不可能觸發**,
+            #      而且沒有任何 *_error 說出來(陷阱 #22)。前端兩處在顯示它。
+            #   ⭐ 修法:改吃 amount(元,證交所官方集中市場成交值)→ mkt_vol(股數)→ volume 三層。
+            #   ⛔ 照陷阱 #17:**整條序列用同一個欄位**(今日與基準必須同尺),不可今日 amount、基準 volume。
+            def _vseries(key):
+                vals = [float(t.get(key, 0) or 0) for t in twii_hist]
+                return vals if all(x > 0 for x in vals[-6:]) and len(vals) >= 6 else None
+            _vkey, _vals = None, None
+            for _k in ('amount', 'mkt_vol', 'volume'):
+                _vals = _vseries(_k)
+                if _vals:
+                    _vkey = _k
+                    break
+            vol_ratio, vol_err = None, None
+            if _vals:
+                past5 = _vals[-6:-1]
+                avg_v = sum(past5) / len(past5)
+                vol_ratio = (_vals[-1] / avg_v) if avg_v > 0 else None
+            if vol_ratio is None:
+                vol_err = '指數資料源不給成交量(amount/mkt_vol/volume 都取不到)'
 
-            if shadow_ratio >= 0.4 and vol_ratio >= 1.3:
+            # ⛔ 量算不出來時,含「量」的那兩個等級整條不判(只用上影線),
+            #    ⛔ 不可再用 1.0 假裝「量能正常」—— 那會讓卡片天天顯「多頭整理」= 拿常數當訊號。
+            _vr = vol_ratio if vol_ratio is not None else None
+            if shadow_ratio >= 0.4 and _vr is not None and _vr >= 1.3:
                 lbl, lvl, dsc = '⚠️ 爆量長上影', 'red', '主力高檔派發'
-            elif shadow_ratio >= 0.3 or vol_ratio >= 1.5:
+            elif shadow_ratio >= 0.3 or (_vr is not None and _vr >= 1.5):
                 lbl, lvl, dsc = '⚠️ 上影警示', 'orange', '上檔有壓力'
             elif c >= o and shadow_ratio < 0.2:
                 lbl, lvl, dsc = '✅ 健康收紅', 'gray', '量價穩健'
@@ -6742,8 +6771,11 @@ def build_bubble_warning():
             out['kline_status'] = {
                 'label': lbl, 'level': lvl, 'desc': dsc,
                 'shadow_ratio': round(shadow_ratio, 2),
-                'vol_ratio':    round(vol_ratio, 2),
+                'vol_ratio':    (round(vol_ratio, 2) if vol_ratio is not None else None),
+                'vol_src':      _vkey,
             }
+            if vol_err:
+                out['kline_status']['vol_error'] = vol_err
         else:
             out['kline_status'] = {'label': '資料整編中', 'level': 'gray', 'desc': '待 ^TWII 抓取'}
     except Exception as e:

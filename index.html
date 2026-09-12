@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.1.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.1.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3739,6 +3739,27 @@ const app = {
     },
 
     getTodayStr() { const d = new Date(); return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`; },
+
+    // 🚨 V76.1.6 「今日那根還沒收盤的 K」共用守門(陷阱 #43)。
+    //   實測 **95.5% 的 data/*.json 最後一根就是今天那根未收盤的**(CLAUDE.md V75.2.8)→
+    //   任何「創 N 日新高/新低」「前高前低」「均量基準」只要吃到它,判斷就等於**拿今天比今天**:
+    //   ・`c > max(含今日)` → 幾乎永遠不成立  ・`c < min(含今日)` → **數學上不可能**
+    //   而且兩種都是**安靜地不作用**,不會報錯。
+    // ⛔ 用途是「基準/前高前低」時一律先過這支;⛔ 顯示「位階/距高幾%/今日量比」那類**不要**用
+    //   (那些本來就該含今日)。
+    // ⚠️ TODO:同一份判斷在本檔還有 6 處各自複製貼上(約 L5382 / L34377 / L47963 / L48268 /
+    //   L48879 / L48918),形狀各異(有的要昨日那根、有的要 closedEnd 索引)→ 之後逐一遷移到這支。
+    _lastBarIsToday(data) {
+        try {
+            if (!Array.isArray(data) || !data.length) return false;
+            const b = data[data.length - 1];
+            return !!b && String(b.date || '').replace(/-/g, '/') === this.getTodayStr();
+        } catch (_) { return false; }
+    },
+    _closedTail(data) {
+        if (!Array.isArray(data)) return [];
+        return this._lastBarIsToday(data) ? data.slice(0, -1) : data;
+    },
     
     isMarketOpen() {
         const now = new Date(); 
@@ -5198,15 +5219,21 @@ const app = {
                 const kdata = cached?.data;
                 if (!kdata || kdata.length < 21) continue;
 
-                // 最後 K 棒收盤、近 5 日 MA、近 20 日 MA、近 20 日高低
-                const last20 = kdata.slice(-20);
-                const last5closes  = kdata.slice(-5).map(r => r.close);
+                // 🚨🚨 V76.1.6 這裡以前直接吃 kdata 的尾巴,但實測 **95.5% 的 data/*.json 最後一根
+                //   就是今天那根還沒收盤的**(CLAUDE.md V75.2.8)→ hi20 已經含今天的最高價
+                //   → 「🚀 創 20 日新高」幾乎推不出來,而且**無聲**(同 P5/P7,陷阱 #43)。
+                //   ⭐ 一律先走 app._closedTail() 取「不含今日形成中 K」的序列。
+                //   ⚠️ 變數以前叫 prevClose 但裝的其實是**今日**收盤 → 一併正名為 lastClosedC。
+                const kClosed = this._closedTail(kdata);
+                if (kClosed.length < 20) continue;
+                const last20 = kClosed.slice(-20);
+                const last5closes  = kClosed.slice(-5).map(r => r.close);
                 const last20closes = last20.map(r => r.close);
                 const ma5  = last5closes.reduce((s,v) => s+v, 0) / 5;
                 const ma20 = last20closes.reduce((s,v) => s+v, 0) / 20;
                 const hi20 = Math.max(...last20.map(r => r.high));
                 const lo20 = Math.min(...last20.map(r => r.low));
-                const prevClose = kdata[kdata.length - 1].close;
+                const prevClose = kClosed[kClosed.length - 1].close;   // = 最後一根**已收盤**的收盤價
 
                 // 拿即時價（fetchFugleData 內含 token 輪動 + 429 防護）
                 const fugle = await this.fetchFugleData(sym).catch(() => null);
@@ -6741,7 +6768,12 @@ ${list}
         if (valid.length < 3) return null;   // 無投信資料 → 不顯
         const today = series[series.length - 1];
         const accumulated = valid.filter(x => x > 0).reduce((a, b) => a + b, 0);   // 近10日累計買超
-        const peak = Math.max(...valid, 0);
+        // 🚨 V76.1.6 peak 以前是 Math.max(...valid, 0) —— **含今日**,於是今日只要是近 10 日
+        //   最大買超,momentum 必然 = 100 → 下游直接給「🟢 安全搭乘・可試單 30% 跟車」的**操作指令**,
+        //   即使那是投信第一天進場、金額極小。基準要跟被判斷的那一天分開(陷阱 #43)。
+        const prevVals = series.slice(0, -1).filter(x => x != null);
+        if (prevVals.length < 2) return null;      // ⛔ 沒有可比的基準就不給方向(⛔ 不硬給 100)
+        const peak = Math.max(...prevVals, 0);
         const momentum = (peak > 0 && typeof today === 'number') ? Math.max(0, Math.round(today / peak * 100)) : 0;
         // 連續買超天數(從最後一天往回)
         let consecutive = 0;
@@ -8190,8 +8222,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.1.5',
+    _APP_VERSION: 'V76.1.6',
     _CHANGELOG: [
+        { v: 'V76.1.6', d: ['🚨 <b>上一版說修好的妖股雷達,其實一次都沒生效 —— 這次真的修了</b>(你選的「巡一次同型錯誤」):V76.1.5 我把爆量基準換成「那幾根之前的 5 日均量」,但上游只把<b>最近 3 天</b>的量傳下來,而新算法要<b>8 天</b> → 那個長度檢查<b>永遠過不了</b>,基準恆為 0,結果還是 0 檔。⭐ 更難堪的是:我當時是在<b>另一支模擬程式</b>上量到「修完有 8 檔」的,沒走真正的採礦路徑 —— 而「測試環境跟正式環境不一樣會得到假綠燈」這條教訓,正是我<b>同一版</b>寫進專案筆記的。已改成傳 8 天,走真路徑實測 <b>115 檔</b>通過爆量那一關。⚠️ 要等下一次採礦跑完才看得到。','🚨 <b>多空計分卡有兩條規則長期漏判,其中一條是空方的</b>:①「跌破前低」拿今天收盤去比「<b>含今天</b>的 20 日最低」—— 今天的最低本來就 ≤ 今天收盤,所以這條<b>數學上永遠不可能成立</b>,等於<b>死碼</b>(41 萬根 K 實測:少抓 <b>99.75%</b>)。②「爆量突破 60 日新高」同樣毛病,少抓 <b>67%</b>。兩條都是 3 分權重。⛔ 少報空方訊號比少報多方更嚴重(寧可多提醒),兩條都已修。','🔔 <b>「創 20 日新高/新低」的推播長期推不出來</b>:它拿的是快取裡的日 K,而其中 <b>95%</b> 的最後一根就是<b>今天那根還沒收盤的</b> → 等於拿今天比今天。已加共用守門,一律只用「已收盤」的那幾根當基準。','📉 <b>泡沫預警的「大盤 K 線型態」有一半從上線就沒在動</b>:它看「量」的那半讀的是加權指數的成交量,而<b>資料源根本不給指數成交量</b>(120 根全是 0)→ 量比永遠算成「1.0 倍」=「正常」,所以「爆量長上影」「上影警示」兩個警告<b>一次都不可能亮</b>。已改吃證交所官方的<b>成交金額</b>;真的算不出來時會<b>直接說「沒有資料」</b>,⛔ 不再用 1.0 假裝正常。','🚗 順手修:投信動能那格的基準<b>把今天自己算進去</b> → 今天只要是近 10 天買最多的一天,動能就必然顯示 <b>100 分</b>並直接建議「可試單 30% 跟車」,哪怕只買了幾張。已改成跟<b>前 9 天</b>比。'] },
         { v: 'V76.1.5', d: ['🗑️ <b>選股頁的榜 23 → 10</b>(你說「把沒有用的榜刪除」):實測沒優勢的那 13 個(送分題/烏龜過河/主力鎖股/口袋支點/外資連買/投信連買/雙主力/營收動能/大戶吃貨/低基期/跌深績優/錯殺便宜/潛力黑馬)<b>整組移除</b>。⭐ 打掉它們的實測數字<b>留在程式裡當紀錄</b>,免得日後又做一次。', '🐲 <b>妖股雷達不是壞掉,是數學上不可能成立</b>(你問「都沒看到」):它要求「近 3 根裡有 2 根量 &gt; 3 倍<b>5 日均量</b>」,但 5 日均量<b>把爆量那幾根自己算進去了</b> → 第一根爆完就把門檻墊高,第二根永遠追不上。全市場 2,719 檔實測 <b>0 檔</b>通過,而「漲幅」那關本身有 43 檔。已把爆量基準改成<b>那幾根之前</b>的 5 日均量 → 同樣門檻下有 <b>8 檔</b>。⚠️ 要等下一次採礦跑完才看得到。', '⚠️ 順手修好文案跟程式不一致:說明寫「2 倍量」但程式是 <b>3 倍</b>。'] },
         { v: 'V76.1.4', d: ['📋 <b>你問「選股頁的榜要不要砍」—— 我先量了,結論是「不是榜太多,是有幾個什麼都沒說」</b>。23 個榜裡<b>已經有 13 個</b>被標成「📉 實測沒優勢」收進摺疊區、3 個標成「查資料用」;真正的問題是中間那幾個(相對強度 / 渣男賽車 / 妖股雷達 / K棒轉多 / K棒轉空)<b>從來沒告訴你它到底有沒有實測背書</b>。', '🚨 <b>而且照出一個自打嘴巴的地方</b>:「🎯 會賺訊號」的說明寫著「這是唯一有實測成績的榜」,底下卻緊接著印「此戰區…<b>未納入歷史回測</b>」—— 同一畫面兩句話打架,已修。', '✅ 現在<b>每一個榜都會講清楚自己的實測狀態</b>,四種:✅ 有實測(附基準 36.4%,⛔ 不是 50%)/ ⚠️ 只有間接證據(會明說「<b>這個榜本身沒單獨測過</b>」,⛔ 不借別的成績當背書)/ 📚 查資料用 / 📉 實測沒優勢。⛔ 一個都不准沉默。'] },
         { v: 'V76.1.3', d: ['🏛️ <b>「籌碼分頁怎麼不見了」有答案了,而且順手修好</b>:它<b>沒壞</b> —— 看<b>大盤指數</b>時程式會刻意把 基本・當沖・回測・即時・籌碼・多空・報告 這七頁藏起來(法人買賣超、券商分點、EPS 都是<b>逐檔股票</b>才有的資料,指數沒有自己的一份)。以前這個理由只寫在程式裡、<b>畫面上一個字都沒說</b>,所以你只看到分頁憑空消失。現在指數頁會直接告訴你少了哪幾頁、為什麼,還會指路(大盤法人看「大盤」頁、個股分點點進那一檔)。', '🗑️ <b>清掉三段死碼</b>(你說「依照建議做」):①「主力分點動向」每次都往一個<b>永遠隱藏</b>的框寫 455 字,2026-06 起就沒人看得到 ②總覽籌碼快照的函式(上次刪卡後零呼叫)③⚖️ 那張卡的函式(這次刪卡後零呼叫)。', '⚠️ 順手把兩處<b>指向已刪函式</b>的說明改掉,免得下次有人照著找找不到。'] },
@@ -12587,8 +12620,15 @@ const marginByDate = {};
         const p60 = cumPct(60);
         const v60 = avgVol(60, 1), v5 = avgVol(5);
         const lastVol = last.volume || 0;
-        const high60 = n >= 60 ? Math.max(...arr.slice(n - 60).map(b => b.high || b.close)) : null;
-        const low20 = n >= 20 ? Math.min(...arr.slice(n - 20).map(b => b.low || b.close)) : null;
+        // 🚨🚨 V76.1.6 這兩行以前是 slice(n-60) / slice(n-20) —— **視窗含今日**,而 P5/P7 是拿今日去比它:
+        //   ・P7「跌破 20 日低」:今日 low ≤ 今日 close = pC,而 low20 含今日 low → low20 ≤ pC
+        //     → `pC < low20` **數學上不可能** = 死碼。實測 415,687 根:含今日 57 次(0.014%,還是髒資料)
+        //     vs 排除今日 22,804 次(5.486%)→ **少抓 99.75%**,一條 weight=3 的空方規則整條沒作用。
+        //   ・P5「爆量突破 60 日新高」:high60 ≥ 今日 high ≥ pC → 只有「收盤＝當日最高且那個高剛好是
+        //     60 日最高」(≈漲停鎖死)才成立。實測 0.502% → 1.524%,**少抓 67%**。
+        //   ⛔ 這兩條的 hint 寫的都是「突破/跌破**前** N 日高低」→ 基準本來就該排除今日(陷阱 #43)。
+        const high60 = n >= 61 ? Math.max(...arr.slice(n - 61, n - 1).map(b => b.high || b.close)) : null;
+        const low20 = n >= 21 ? Math.min(...arr.slice(n - 21, n - 1).map(b => b.low || b.close)) : null;
         const prevC = n >= 2 ? arr[n - 2].close : pC;
         const todayChg = prevC > 0 ? ((pC - prevC) / prevC * 100) : 0;
         const biasMA20 = MA20 > 0 ? ((pC - MA20) / MA20 * 100) : 0;
