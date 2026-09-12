@@ -5644,7 +5644,14 @@ def build_radar_cache():
                 last_l = last_raw.get('low',  c) or c
                 gain5d = (c - raw[-6]['close']) / raw[-6]['close'] * 100 if len(raw) >= 6 and raw[-6]['close'] > 0 else 0
                 gain10d = (c - raw[-11]['close']) / raw[-11]['close'] * 100 if len(raw) >= 11 and raw[-11]['close'] > 0 else 0
-                vol_burst = sum(1 for v in (rv[-3:] if rv else []) if vma5 > 0 and v > vma5 * 3)
+                # 🚨🚨 V76.1.5 這一行以前拿 `vma5`(近 5 日均量,**含爆量棒自己**)當爆量基準 →
+                #   第一根爆 3 倍會把均量自己墊高,第二根幾乎不可能再超過新門檻。
+                #   📊 全市場實測(2,719 檔):`vol_burst>=2` 通過 **0 檔** → 妖股榜**從上線到現在一直是空的**,
+                #      而「漲幅」那一關本身有 43 檔 → 卡住的百分之百是這裡。
+                #   ⭐ 修法:基準改成「**那 3 根之前**的 5 日均量」(rv[-8:-3]),這才是「爆量」的標準定義。
+                #      修正後同樣的 3 倍 × 2 根 → **8 檔**(合理),⛔ 門檻本身一個數字都沒放寬。
+                _vbase = (sum(rv[-8:-3]) / 5) if len(rv) >= 8 else 0
+                vol_burst = sum(1 for v in (rv[-3:] if rv else []) if _vbase > 0 and v > _vbase * 3)
                 recent_strong = c >= (last_h + last_l) / 2
                 day_chg = (c - pc) / pc * 100 if pc > 0 else 0
                 near_limit_up = day_chg >= 9.0   # 台股 ±10%，> 9% 視為近漲停

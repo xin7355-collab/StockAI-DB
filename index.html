@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.1.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.1.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3096,22 +3096,9 @@
                              `sigCount` 紅點徽章由 `_renderTodaySignalView` 填,沒訊號時 hidden。 -->
                         <button onclick="app.switchRadarStrategy('todaysig')" id="radarTabTodaySig" class="radar-tab relative w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="最近一個交易日收盤時出現、而且扣完交易成本還會賺的訊號(全市場掃描,唯一有實測成績的榜;實際日期以卡片上那一行為準)"><span class="block text-[11px]">🎯 會賺訊號</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">扣完成本</span><span id="radarTodaySigCount" class="hidden absolute -top-1 -right-1 min-w-[16px] px-1 py-[1px] rounded-full bg-red-600 text-white text-[9px] font-black leading-none"></span></button>
                         <button onclick="app.switchRadarStrategy('daytrade')" id="radarTabDaytrade" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="當沖雷達:今天怎麼做(歷史勝率×大盤方向,做多/做空)+ 全市場即時強勢"><span class="block text-[11px]">當沖雷達</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">今天怎麼做</span></button>
-                        <button onclick="app.switchRadarStrategy('layup')" id="radarTabLayup" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">送分題</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">高勝率</span></button>
                         <button onclick="app.switchRadarStrategy('momentum')" id="radarTabMomentum" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">渣男賽車</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">動能</span></button>
-                        <button onclick="app.switchRadarStrategy('swing')" id="radarTabSwing" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">烏龜過河</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">波段</span></button>
-                        <button onclick="app.switchRadarStrategy('sniper')" id="radarTabSniper" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">主力鎖股</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">籌碼</span></button>
-                        <button onclick="app.switchRadarStrategy('pocket_pivot')" id="radarTabPocket" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="Minervini 口袋支點:主力趁盤整偷買的早期買點"><span class="block text-[11px]">口袋支點</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">主力偷買</span></button>
                         <button onclick="app.switchRadarStrategy('rs_strong')" id="radarTabRs" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="相對強度:近20日超額贏過大盤的強勢股"><span class="block text-[11px]">相對強度</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">強於大盤</span></button>
-                        <button onclick="app.switchRadarStrategy('foreign3')" id="radarTabForeign3" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">外資連買</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">連3買超</span></button>
-                        <button onclick="app.switchRadarStrategy('trust3')" id="radarTabTrust3" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">投信連買</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">連3買超</span></button>
-                        <button onclick="app.switchRadarStrategy('dual')" id="radarTabDual" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">雙主力</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">外資投信同買</span></button>
-                        <button onclick="app.switchRadarStrategy('revenue')" id="radarTabRevenue" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">營收動能</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">YoY爆發</span></button>
-                        <button onclick="app.switchRadarStrategy('tdcceat')" id="radarTabTdccEat" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">🐘 大戶吃貨</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">連週增持</span></button>
-                        <button onclick="app.switchRadarStrategy('lowbase')" id="radarTabLowbase" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">🧊 低基期</span><span class="block text-[9px] font-normal opacity-70">跌深打底</span></button>
-                        <button onclick="app.switchRadarStrategy('divergent')" id="radarTabDivergent" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">💎 跌深績優</span><span class="block text-[9px] font-normal opacity-70">賺更多卻更便宜</span></button>
                         <button onclick="app.switchRadarStrategy('kbar_bull')" id="radarTabKbarBull" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">K棒轉多</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">找買點</span></button>
-                        <button onclick="app.switchRadarStrategy('potential')" id="radarTabPotential" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">潛力黑馬</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">長線/中線</span></button>
-                        <button onclick="app.switchRadarStrategy('wrongkill')" id="radarTabWrongkill" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">錯殺便宜</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">大跌抗性</span></button>
                         <button onclick="app.switchRadarStrategy('theme')" id="radarTabTheme" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">題材脈動</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">新聞熱度</span></button>
                         <button onclick="app.switchRadarStrategy('aichain')" id="radarTabAiChain" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]" title="AI 演進五級 × 台股受惠股地圖:誰在哪一層賺錢、正在發生的技術轉折(人工整理的產業說明書,不是買進名單)"><span class="block text-[11px]">🤖 AI 鏈</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">產業地圖</span></button>
                         <button onclick="app.switchRadarStrategy('monster')" id="radarTabMonster" class="radar-tab w-full px-1 py-2.5 rounded-lg text-[11px] font-bold text-center border leading-tight transition-all bg-[#161b22] text-gray-400 border-[#30363d]"><span class="block text-[11px]">妖股雷達</span><span class="block text-[8px] opacity-60 font-normal mt-0.5">高風險</span></button>
@@ -8203,8 +8190,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.1.4',
+    _APP_VERSION: 'V76.1.5',
     _CHANGELOG: [
+        { v: 'V76.1.5', d: ['🗑️ <b>選股頁的榜 23 → 10</b>(你說「把沒有用的榜刪除」):實測沒優勢的那 13 個(送分題/烏龜過河/主力鎖股/口袋支點/外資連買/投信連買/雙主力/營收動能/大戶吃貨/低基期/跌深績優/錯殺便宜/潛力黑馬)<b>整組移除</b>。⭐ 打掉它們的實測數字<b>留在程式裡當紀錄</b>,免得日後又做一次。', '🐲 <b>妖股雷達不是壞掉,是數學上不可能成立</b>(你問「都沒看到」):它要求「近 3 根裡有 2 根量 &gt; 3 倍<b>5 日均量</b>」,但 5 日均量<b>把爆量那幾根自己算進去了</b> → 第一根爆完就把門檻墊高,第二根永遠追不上。全市場 2,719 檔實測 <b>0 檔</b>通過,而「漲幅」那關本身有 43 檔。已把爆量基準改成<b>那幾根之前</b>的 5 日均量 → 同樣門檻下有 <b>8 檔</b>。⚠️ 要等下一次採礦跑完才看得到。', '⚠️ 順手修好文案跟程式不一致:說明寫「2 倍量」但程式是 <b>3 倍</b>。'] },
         { v: 'V76.1.4', d: ['📋 <b>你問「選股頁的榜要不要砍」—— 我先量了,結論是「不是榜太多,是有幾個什麼都沒說」</b>。23 個榜裡<b>已經有 13 個</b>被標成「📉 實測沒優勢」收進摺疊區、3 個標成「查資料用」;真正的問題是中間那幾個(相對強度 / 渣男賽車 / 妖股雷達 / K棒轉多 / K棒轉空)<b>從來沒告訴你它到底有沒有實測背書</b>。', '🚨 <b>而且照出一個自打嘴巴的地方</b>:「🎯 會賺訊號」的說明寫著「這是唯一有實測成績的榜」,底下卻緊接著印「此戰區…<b>未納入歷史回測</b>」—— 同一畫面兩句話打架,已修。', '✅ 現在<b>每一個榜都會講清楚自己的實測狀態</b>,四種:✅ 有實測(附基準 36.4%,⛔ 不是 50%)/ ⚠️ 只有間接證據(會明說「<b>這個榜本身沒單獨測過</b>」,⛔ 不借別的成績當背書)/ 📚 查資料用 / 📉 實測沒優勢。⛔ 一個都不准沉默。'] },
         { v: 'V76.1.3', d: ['🏛️ <b>「籌碼分頁怎麼不見了」有答案了,而且順手修好</b>:它<b>沒壞</b> —— 看<b>大盤指數</b>時程式會刻意把 基本・當沖・回測・即時・籌碼・多空・報告 這七頁藏起來(法人買賣超、券商分點、EPS 都是<b>逐檔股票</b>才有的資料,指數沒有自己的一份)。以前這個理由只寫在程式裡、<b>畫面上一個字都沒說</b>,所以你只看到分頁憑空消失。現在指數頁會直接告訴你少了哪幾頁、為什麼,還會指路(大盤法人看「大盤」頁、個股分點點進那一檔)。', '🗑️ <b>清掉三段死碼</b>(你說「依照建議做」):①「主力分點動向」每次都往一個<b>永遠隱藏</b>的框寫 455 字,2026-06 起就沒人看得到 ②總覽籌碼快照的函式(上次刪卡後零呼叫)③⚖️ 那張卡的函式(這次刪卡後零呼叫)。', '⚠️ 順手把兩處<b>指向已刪函式</b>的說明改掉,免得下次有人照著找找不到。'] },
         { v: 'V76.1.2', d: ['🗑️ <b>依你指名刪掉四樣</b>:①「🧭 5 個面向」底下那行說明文字 ②「⚖️ 這一頁有 N 個系統在講方向」整張卡 ③「🧭 總評儀表板」整張卡 ④「🚦 ETF 跟車狀態」整張卡。<b>ETF 跟車那張本來就該刪</b> —— 實測跟車不成立,而且它靠的持股變動歷史 8 月才開始存,本來就還驗不動。', '🔗 <b>「🎯 關鍵價位・掛單就看這」併進「📏 價格位置圖」了</b>(你說排版很像):現在是<b>一張卡</b> —— 上面一條尺看位置,下面用原本關鍵價位那種<b>兩欄格子</b>把每個價位寫清楚(停損/現價/買進/追買/估值/套牢區/密集區,每格都有「這個價位在講什麼」)。底部原本逐項解釋的那段刪掉了,因為每一格自己就寫了。', '🐛 順手修一個會看錯的地方:空手時停損那格原本寫「<b>買進</b>後跌破前低就退出」→ 空頭股的尺上就會冒出「買進」兩個字。它本來就只是在講防線在哪,已改成「跌破前低就退出」。', '📉 個股頁總覽第一眼從 635 字降到 <b>571 字</b>,全站卡片總字數 11,360 → <b>10,197</b>。'] },
@@ -12306,7 +12294,7 @@ const marginByDate = {};
                 this._attentionUpdated = j.updated || j.date || null;   // 📅 V70.2.0 官方名單日期(供卡片標示)
                 console.log(`[處置神器] 已載入 ${Object.keys(j.stocks).length} 檔注意/處置股`);
                 // 若已渲染過雷達或自選股,觸發重畫讓 badge 補上
-                if (this.radarMatrix) this.renderRadarMatrix?.(this.radarStrategy || 'layup');
+                if (this.radarMatrix) this.renderRadarMatrix?.(this.radarStrategy || 'todaysig');   // 🧹 V76.1.5 舊 fallback 是 layup(已刪)
                 this.renderFavTabs?.();
             }
         } catch (e) {
@@ -42225,7 +42213,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //    刪掉的話使用者會以為沒這回事,跑去別處學了再回來問;收起來 + 把實測數字寫上去,
     //    他才知道「這招我試過了,而且是實測沒有優勢」。要真刪只要把這裡的條目拿掉 tab 就會回主清單。
     // ⚠️ 每一條都必須有「實測數字 + 來源探針」(⛔ 沒有數字的意見不准列進來)。
-    _RADAR_WEAK: {
+    // 🗑️🗑️ V76.1.5 使用者:「把沒有用的榜刪除」→ 下面這 13 個榜的**按鈕與分頁入口已整組移除**。
+    //   ⭐ 這份清單**刻意留著當墓碑**(⛔ 不可清空):它記著每一個榜是被**哪一支探針、用什麼數字**打掉的,
+    //      沒有它,下次有人看到「相對強度」「外資連買」又會再做一次(這已經是第 2 輪砍了,V74.9.0 是第 1 輪)。
+    //   ⛔ 測試 test_radartidy ⑩ 釘住:這 13 個 key ⛔ 不可再出現在 _RADAR_TABS 裡。
+    //   ⚠️ 同名不同義:`swing` 也是**交易風格**、`dual` 也是**自訂選股條件 id**、`potential` 也是**獨立分頁**
+    //      → 那些**一個字都沒動**,只刪了選股頁的榜。
+    _RADAR_DELETED: {
         layup:     { why: '「至少 2 招共振」實測**少賺 50 萬**(+858,533 vs 不加濾網 +1,361,088 元,同一套配置)', s: 'portfolio_backtest' },
         swing:     { why: '「站上月線」全市場只有 **+0.25pp**(≈0);法人連買那半實測 **0.64x**(比隨便挑一天還低)', s: 'screener_edge_probe / limitup_probe' },
         sniper:    { why: '分點集中度**買賣兩端都是負的**(前5大買超佔量最高 10% → 20 日 **−0.60pp**)= 活躍度不是方向', s: 'chips_deep_probe' },
@@ -42248,36 +42242,23 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _RADAR_TABS: {
         todaysig:  { id: 'radarTabTodaySig',  active: 'bg-red-600/30 text-red-100 border-red-500' },
         daytrade:  { id: 'radarTabDaytrade',  active: 'bg-cyan-600/30 text-cyan-100 border-cyan-500' },
-        layup:     { id: 'radarTabLayup',     active: 'bg-yellow-600/30 text-yellow-200 border-yellow-500' },
         momentum:  { id: 'radarTabMomentum',  active: 'bg-red-600/20 text-red-300 border-red-500' },
-        swing:     { id: 'radarTabSwing',     active: 'bg-green-600/20 text-green-300 border-green-500' },
-        sniper:    { id: 'radarTabSniper',    active: 'bg-purple-600/20 text-purple-300 border-purple-500' },
-        pocket_pivot: { id: 'radarTabPocket', active: 'bg-teal-600/25 text-teal-200 border-teal-500' },
         rs_strong: { id: 'radarTabRs',        active: 'bg-lime-600/25 text-lime-200 border-lime-500' },
         monster:   { id: 'radarTabMonster',   active: 'bg-fuchsia-600/25 text-fuchsia-200 border-fuchsia-500' },
-        foreign3:  { id: 'radarTabForeign3',  active: 'bg-sky-600/25 text-sky-200 border-sky-500' },
-        trust3:    { id: 'radarTabTrust3',    active: 'bg-indigo-600/25 text-indigo-200 border-indigo-500' },
-        dual:      { id: 'radarTabDual',      active: 'bg-orange-600/25 text-orange-200 border-orange-500' },
-        revenue:   { id: 'radarTabRevenue',   active: 'bg-rose-600/25 text-rose-200 border-rose-500' },
-        tdcceat:   { id: 'radarTabTdccEat',   active: 'bg-violet-600/25 text-violet-200 border-violet-500' },
-        lowbase:   { id: 'radarTabLowbase',   active: 'bg-cyan-600/25 text-cyan-200 border-cyan-500' },
-        divergent: { id: 'radarTabDivergent', active: 'bg-teal-600/25 text-teal-200 border-teal-500' },
-        wrongkill: { id: 'radarTabWrongkill', active: 'bg-emerald-600/25 text-emerald-200 border-emerald-500' },
         theme:     { id: 'radarTabTheme',     active: 'bg-amber-600/25 text-amber-200 border-amber-500' },
         aichain:   { id: 'radarTabAiChain',   active: 'bg-blue-600/25 text-blue-200 border-blue-500' },
         attention: { id: 'radarTabAttention', active: 'bg-orange-600/25 text-orange-300 border-orange-500' },
         kbar_bull: { id: 'radarTabKbarBull',  active: 'bg-red-600/25 text-red-300 border-red-500' },
         kbar_bear: { id: 'radarTabKbarBear',  active: 'bg-green-600/25 text-green-300 border-green-500' },
-        potential: { id: 'radarTabPotential', active: 'bg-cyan-600/25 text-cyan-200 border-cyan-500' },
     },
     _RADAR_HINT: {
-        todaysig:  '🎯 會賺訊號｜每天收盤後把全市場每一檔都跑過所有 K 線訊號,只留「那個訊號的**實測期望值是正的**」、而且**扣完來回交易成本還有得賺**的。這是 16 個榜裡唯一有實測成績的。⚠️ 基準勝率是 36% 不是 50%;期望值是歷史平均、不是保證,而且只看 K 線沒看籌碼基本面。',
+        todaysig:  '🎯 會賺訊號｜每天收盤後把全市場每一檔都跑過所有 K 線訊號,只留「那個訊號的**實測期望值是正的**」、而且**扣完來回交易成本還有得賺**的。這是剩下 10 個榜裡唯一有實測成績的(另外 13 個實測沒優勢的已於 V76.1.5 移除)。⚠️ 基準勝率是 36% 不是 50%;期望值是歷史平均、不是保證,而且只看 K 線沒看籌碼基本面。',
         daytrade:  '🚦 當沖雷達｜盤前做功課用:①「今天怎麼做」= 各股歷史當沖勝率 × 今天推估大盤開盤方向(外資期+P/C+台指期大額),做多/做空分開,只挑勝率最高的;②全市場即時強勢/漲停/期貨補漲。⚠️ 歷史勝率非保證,盤中務必看即時量價、嚴設停損;當沖來回成本約 0.25%,沒肉別硬沖。',
         layup:     '⭐ 送分題｜每天自動從十幾套選股策略裡,挑「同時被多套方法看好」的股:命中越多套排越前面。每檔都寫「為何入選 + 怎麼操作(停損價算好給你)」,照做就行。',
         momentum:  '🏎️ 渣男賽車｜成交 > 5億、近 5 日有單日噴 7%+、收盤站上 5 日線。賺快錢，但跌破 5 日線無情停利。今日小回不破 5 日線仍算動能，別看到今日小跌就嚇跑。',
         swing:     '🐢 烏龜過河｜剛站上月線、法人連 3 買、量能放大的波段起漲股。沿月線操作，不破不出場。',
         sniper:    '🎯 主力鎖股｜股價貼著月線盤整，但前三大主力買盤集中 ≥ 30% 的吸貨股。主力一連賣我們就跑。',
-        monster:   '🐲 妖股雷達｜5 日漲 ≥20% 或 10 日漲 ≥30%,配合 2 倍爆量的連續飆漲股。妖股會續妖但也會突然斷頭 — 只用閒錢小部位,跌破 5 日線無條件出場,嚴禁重壓。',
+        monster:   '🐲 妖股雷達｜5 日漲 ≥20% 或 10 日漲 ≥30%,配合 <b>3 倍</b>爆量的連續飆漲股(爆量基準是<b>那幾根之前</b>的 5 日均量)。妖股會續妖但也會突然斷頭 — 只用閒錢小部位,跌破 5 日線無條件出場,嚴禁重壓。',
         foreign3:  '🏦 外資連買｜外資連續 3 天都買超的個股,按 3 日累計買超張數排行。外資是最大咖的長線資金,連買=看好;搭配站上月線再進更穩。',
         trust3:    '🏛️ 投信連買｜投信連續 3 天都買超的個股,按 3 日累計張數排行。投信愛鎖中小型股+季底作帳行情,連買常是波段起漲訊號;但投信一轉賣要跟著跑。',
         dual:      '🤝 雙主力共識｜外資「連3買」∩ 投信「連3買」的交集股 — 兩大法人同時押同一檔=雙主力共識,續航與勝率遠高於單邊。按外資+投信合計買超排行。一方轉賣就要留意。純公式(取現有兩榜交集),零採礦。',
@@ -42345,7 +42326,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 }
             }
         }
-        this.switchRadarStrategy(this.radarStrategy || 'layup');
+        this.switchRadarStrategy(this.radarStrategy || 'todaysig');   // 🧹 V76.1.5 舊 fallback 是 layup(已刪)
         try { this._updateRadarTabCounts(); } catch (_) {}   // 🔢 V68.6.7 左欄類別「今日檔數」
     },
 
@@ -42383,7 +42364,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // ⚠️ 只搬一次(用 _radarTidied 上鎖)—— 重複搬會把已經在摺疊裡的又搬一遍、順序亂掉。
     _tidyRadarTabs() {
         if (this._radarTidied) return;
-        const W = this._RADAR_WEAK || {}, T = this._RADAR_TABS || {};
+        const W = this._RADAR_DELETED || {}, T = this._RADAR_TABS || {};
         const keys = Object.keys(W).filter(k => T[k] && document.getElementById(T[k].id));
         if (!keys.length) return;
         const first = document.getElementById(T[keys[0]].id);
@@ -42421,7 +42402,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
     // 🚨 實測降級的榜:說明條最上面先講「它實測沒有優勢」(⛔ 不可只把它藏起來就算了)
     _radarWeakNote(key) {
-        const w = (this._RADAR_WEAK || {})[key];
+        const w = (this._RADAR_DELETED || {})[key];
         if (!w) return '';
         return `<div class="bg-[#161b22] border-l-4 border-amber-500 pl-2 py-1.5 mb-1.5 rounded-r"><div class="text-[10px] text-amber-300 font-bold">📉 這個榜本站實測**沒有**優勢</div><div class="text-[10px] text-gray-300 leading-relaxed mt-0.5">${w.why}<span class="text-gray-600"> ・來源:${w.s}</span></div><div class="text-[9px] text-gray-500 mt-0.5">⛔ 資料照顯示、⛔ 沒有刪掉,但別把它當成進場理由。真正有實測成績的是「🎯 會賺訊號」。</div></div>`;
     },
@@ -42437,7 +42418,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         });
         // V59.2 更新抽屜鈕上的「當前類別」標籤(取該 tab 的 emoji + 名稱)
         try { const b = document.getElementById(this._RADAR_TABS[key]?.id); const cc = document.getElementById('radarCurrentCat'); if (b && cc) { const sp = b.querySelectorAll('span'); cc.textContent = `${sp[0]?.textContent || ''} ${sp[1]?.textContent || ''}`.trim(); } } catch (_) {}
-        if (this._RADAR_WEAK && this._RADAR_WEAK[key]) this._toggleRadarMore(true);   // 選到降級榜 → 展開,⛔ 否則使用者看不到自己現在在哪一頁
+        if (this._RADAR_DELETED && this._RADAR_DELETED[key]) this._toggleRadarMore(true);   // 選到降級榜 → 展開,⛔ 否則使用者看不到自己現在在哪一頁
         const hint = document.getElementById('radarMatrixHint');
         if (hint) hint.innerHTML = this._radarWeakNote(key) + (this._RADAR_HINT[key] || '') + this._radarWinNote(key);
         // V32.3 — signal_history 未載入時(首次切非送分題分頁)→ 載入後補回勝率小字
@@ -42535,7 +42516,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const pool = good.length ? good : cand;
             pool.sort((a, b) => b.expectancy - a.expectancy);
             const champ = pool[0];
-            const tabMap = { layup: 'layup', falcon: 'layup', racer: 'momentum', turtle: 'swing', chu: null };
+            const tabMap = { layup: 'todaysig', falcon: 'todaysig', racer: 'momentum', turtle: 'todaysig', chu: null };   // 🧹 V76.1.5 layup/swing 榜已刪 → 導到唯一有實測的那個
             const btnMap = { layup: 'radarTabLayup', falcon: 'radarTabLayup', racer: 'radarTabMomentum', turtle: 'radarTabSwing', chu: 'radarTabChu' };
             const btn = document.getElementById(btnMap[champ.key]);
             if (btn && !btn.innerHTML.includes('🥇')) {
@@ -45051,7 +45032,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         kbar_bear: ['part', '同上,而且**看空訊號本來就不該用賺賠去篩** —— 它是風險提醒,忽略它的代價比多看一眼大。'],
         rs_strong: ['part', '「追強」這個**方向**本站實測站得住(創一年新高 / 位階高檔那幾條是全庫最好的),⛔ 但<b>這個榜本身沒有單獨回測過</b>,而且實測顯示追強的優勢 <b>2024 之後逐年遞減</b>。'],
         momentum:  ['part', '同上,追強方向有證據、<b>這個榜沒單獨測過</b>。⚠️ 它抓的是「5 日內噴過 7%」= 追高,而追高正是空頭最容易受傷的一類。'],
-        monster:   ['part', '⛔ <b>這個榜沒有回測過</b>。「5 日 ≥20% / 10 日 ≥30% + 2 倍量」是極端追高,妖股會續妖也會突然斷頭 —— 只用閒錢、停損要硬。'],
+        monster:   ['part', '⛔ <b>這個榜沒有回測過</b>。「5 日 ≥20% / 10 日 ≥30% + 3 倍量」是極端追高,妖股會續妖也會突然斷頭 —— 只用閒錢、停損要硬。'],
         theme:     ['info', '新聞熱度**只是熱度**。本站實測:「有新聞」本身 10 日 <b>−0.03pp</b>(等於沒有),而且**利多利空兩邊都是正的** = 那是活躍度不是方向。'],
         aichain:   ['info', '人工整理的**產業說明書**,⛔ 不是買進名單。而且那套五級分層本站實測**沒有預測力**(各層邊際在雜訊內、前後半不同向)。'],
         attention: ['info', '處置股 = **風控區**(分盤撮合),本來就不是選股名單。✅ 唯一有實測的是拿它避雷:「噴 ≥30% 才進注意股」之後 <b>−1.81pp</b>。'],
@@ -45059,7 +45040,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _radarWinNote(key) {
         try {
             // 📉 實測沒優勢的那幾個:`_radarWeakNote` 已經把話講完了 → ⛔ 這裡不再補一段(免得同一件事講兩遍)
-            if ((this._RADAR_WEAK || {})[key]) return '';
+            if ((this._RADAR_DELETED || {})[key]) return '';
             const st = (this._RADAR_STATUS || {})[key];
             if (!st) return '';
             const [kind, why] = st;
