@@ -26,12 +26,29 @@
  * 用法:node scripts/news_event_probe.mjs <cnyes_news_2026.json>
  */
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
+import { execFileSync } from 'child_process';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
-const NEWS = process.argv[2];
-if (!NEWS || !fs.existsSync(NEWS)) { console.error('用法:node scripts/news_event_probe.mjs <新聞 json>'); process.exit(1); }
+const ARGV = process.argv.slice(2);
+const SELFTEST = ARGV.includes('--selftest');
+const HIST = ARGV.includes('--hist');
+const NEWS = ARGV.find(a => !a.startsWith('--'));
+// 🗞️ --hist:改吃**本站自己存的** data/news_hist.json(V74.2.8 起累積)
+const HISTF = process.env.NEWS_HIST || path.join(DATA, 'news_hist.json');
+// 🚧 資料量守門(⛔ 不可省、⛔ 不可用環境變數調鬆 —— 調鬆等於拿雜訊當結論)
+const MIN_DAYS = 60;    // 交易日
+const MIN_EV = 300;     // 「算得出 10 日報酬」的事件數
+if (SELFTEST) { runSelftest(); process.exit(0); }
+if (!HIST && (!NEWS || !fs.existsSync(NEWS))) {
+  console.error('用法:node scripts/news_event_probe.mjs <新聞 json>   (外部新聞資料集)');
+  console.error('     node scripts/news_event_probe.mjs --hist        (本站自己的 data/news_hist.json)');
+  console.error('     node scripts/news_event_probe.mjs --hist --selftest');
+  process.exit(1);
+}
+if (HIST && !fs.existsSync(HISTF)) { console.error(`❌ 找不到 ${HISTF}`); process.exit(1); }
 
 const HOR = [1, 3, 5, 10, 20];
 const COST = 0.44;
@@ -53,7 +70,7 @@ const mktRet = (d, n) => {
 };
 
 // ── 新聞 ──
-const raw = JSON.parse(fs.readFileSync(NEWS, 'utf8'));
+const raw = HIST ? [] : JSON.parse(fs.readFileSync(NEWS, 'utf8'));
 const tpe = ts => new Date((+ts + 8 * 3600) * 1000).toISOString().slice(0, 10);   // ⭐ publishAt → 台北日期
 const TICK = /\((\d{4,6})-TW\)/g;
 
@@ -65,28 +82,71 @@ const tone = t => {
   return p > n ? 'pos' : n > p ? 'neg' : 'neu';
 };
 
-const evByStock = new Map();     // sym -> [{d(新聞台北日), tone, nSameDay}]
-let nTick = 0, nNoTick = 0;
+const evByStock = new Map();     // sym -> [{d(新聞台北日), tone}]
+let nTick = 0, nNoTick = 0, nItems = 0;
 const dayCount = new Map();      // `${sym}|${d}` -> 幾則
-for (const a of raw) {
-  const d = tpe(a.publishAt);
-  const txt = (a.title || '') + '\n' + (a.content || '');
-  const codes = new Set();
-  let m; TICK.lastIndex = 0;
-  while ((m = TICK.exec(txt))) codes.add(m[1]);
-  if (!codes.size) { nNoTick++; continue; }
-  nTick++;
-  const tn = tone(a.title || '');
-  for (const c of codes) {
-    if (!evByStock.has(c)) evByStock.set(c, []);
-    evByStock.get(c).push({ d, tone: tn });
-    dayCount.set(`${c}|${d}`, (dayCount.get(`${c}|${d}`) || 0) + 1);
+let newsDays = [];
+
+if (HIST) {
+  // 🗞️ 本站自己的歷史:days[日期][代號] = [[標題, AI判的tone, 分類], …]
+  // ⛔⛔ **不讀檔案裡那個 tone 欄** —— 它是採礦端 **AI** 判的(universal_radar 的 ai_sentiment),
+  //     ① 不可重現 ② 本站的 Groq 模型被下架換過(V73.9.0)→ 前後幾個月定義不一樣
+  //     ③ 已測那一輪用的是上面那份**關鍵詞規則** → 兩者同名不同義。
+  //     ⭐ 所以一律拿**標題**重判一次,才叫「用同一個定義重測」。
+  const H = JSON.parse(fs.readFileSync(HISTF, 'utf8'));
+  const days = (H && H.days) || {};
+  for (const d of Object.keys(days).sort()) {
+    const byS = days[d] || {};
+    for (const sym of Object.keys(byS)) {
+      const items = byS[sym];
+      if (!Array.isArray(items) || !items.length) continue;
+      if (!/^\d{4,6}$/.test(sym)) continue;
+      nTick++;
+      if (!evByStock.has(sym)) evByStock.set(sym, []);
+      for (const it of items) {
+        const title = Array.isArray(it) ? String(it[0] || '') : String((it && it.title) || '');
+        if (!title) continue;
+        nItems++;
+        evByStock.get(sym).push({ d, tone: tone(title) });
+        dayCount.set(`${sym}|${d}`, (dayCount.get(`${sym}|${d}`) || 0) + 1);
+      }
+    }
   }
+  newsDays = Object.keys(days).sort();
+  const tradeDays = newsDays.filter(d => mIdx.has(d));
+  console.log(`\n🗞️ 本站自己的消息面歷史 ${HISTF}`);
+  console.log(`   ${newsDays.length} 天(其中交易日 ${tradeDays.length} 天)・${nItems} 則 ・涵蓋 ${evByStock.size} 檔 ・(股·日) ${dayCount.size} 筆`);
+  console.log(`   台北日期 ${newsDays[0] || '-'} ~ ${newsDays[newsDays.length - 1] || '-'}`);
+  console.log(`   ⛔ 情緒**用標題重判**(關鍵詞規則,利多 ${POS.length} 詞 / 利空 ${NEG.length} 詞),⛔ 不用檔案裡 AI 判的那欄`);
+  console.log(`   ⚠️ 這裡的日期是**採礦當天**不是發布時間 → 但進場仍是「之後第一個交易日開盤」,`);
+  console.log(`      而採礦日 ≥ 發布日 → 方向是**保守的**,⛔ 不會前視。`);
+  if (tradeDays.length < MIN_DAYS) {
+    console.log(`\n🚧 資料量守門:交易日只有 **${tradeDays.length} 天**,還差 **${MIN_DAYS - tradeDays.length} 天**(門檻 ${MIN_DAYS})`);
+    console.log(`   ⛔ 一個結論都不給 —— 這種樣本跑出來的數字是雜訊,印出來就會被當成結論。`);
+    console.log(`   ℹ️ 時鐘從 2026-09-09 才真的開始跑(在那之前 news_express 被排程配額餓死 35 天)。\n`);
+    process.exit(1);
+  }
+} else {
+  for (const a of raw) {
+    const d = tpe(a.publishAt);
+    const txt = (a.title || '') + '\n' + (a.content || '');
+    const codes = new Set();
+    let m; TICK.lastIndex = 0;
+    while ((m = TICK.exec(txt))) codes.add(m[1]);
+    if (!codes.size) { nNoTick++; continue; }
+    nTick++;
+    const tn = tone(a.title || '');
+    for (const c of codes) {
+      if (!evByStock.has(c)) evByStock.set(c, []);
+      evByStock.get(c).push({ d, tone: tn });
+      dayCount.set(`${c}|${d}`, (dayCount.get(`${c}|${d}`) || 0) + 1);
+    }
+  }
+  newsDays = [...new Set(raw.map(a => tpe(a.publishAt)))].sort();
+  console.log(`\n📰 新聞 ${raw.length} 筆 ・台北日期 ${newsDays[0]} ~ ${newsDays[newsDays.length - 1]}`);
+  console.log(`   抓得到台股代號 ${nTick} 筆(${(nTick / raw.length * 100).toFixed(1)}%)・涵蓋 ${evByStock.size} 檔`);
+  console.log(`   ⛔ 情緒是**關鍵詞規則**判的(不是 AI):利多詞 ${POS.length} 個 / 利空詞 ${NEG.length} 個`);
 }
-const newsDays = [...new Set(raw.map(a => tpe(a.publishAt)))].sort();
-console.log(`\n📰 新聞 ${raw.length} 筆 ・台北日期 ${newsDays[0]} ~ ${newsDays[newsDays.length - 1]}`);
-console.log(`   抓得到台股代號 ${nTick} 筆(${(nTick / raw.length * 100).toFixed(1)}%)・涵蓋 ${evByStock.size} 檔`);
-console.log(`   ⛔ 情緒是**關鍵詞規則**判的(不是 AI):利多詞 ${POS.length} 個 / 利空詞 ${NEG.length} 個`);
 
 // ── 個股 K 線 ──
 const buckets = new Map();
@@ -155,6 +215,18 @@ for (const [sym, evs] of evByStock) {
   }
 }
 console.log(`   個股 K 線:用到 ${used} 檔(${noFile} 檔在 data/ 裡沒有,多半是美股/沒上市)\n`);
+
+// 🚧 第二道資料量守門(⭐ 天數夠不代表**算得完 10 日報酬** —— 最後 10 個交易日的事件是算不出來的)
+if (HIST) {
+  const all = buckets.get('📰 有新聞(全部)') || [];
+  const ok10 = all.filter(e => e[10] != null).length;
+  if (ok10 < MIN_EV) {
+    console.log(`🚧 資料量守門:算得出 10 日報酬的事件只有 **${ok10} 筆**,還差 **${MIN_EV - ok10} 筆**(門檻 ${MIN_EV})`);
+    console.log('   ⛔ 一個結論都不給。\n');
+    process.exit(1);
+  }
+  console.log(`✅ 資料量守門通過:算得出 10 日報酬的事件 ${ok10} 筆(門檻 ${MIN_EV})\n`);
+}
 
 // ── 統計 ──
 const avg = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
@@ -256,3 +328,102 @@ console.log('  ② 進場 = **新聞日之後第一個交易日的開盤**(發�
 console.log(`  ③ 窗口只有 ${MONS.length} 個月且**整段偏多頭** → ⛔ 不可外推;逐月那一關特別嚴是刻意的。`);
 console.log('  ④ 情緒是**關鍵詞規則**判的,⛔ 不是 AI,也沒有經過人工標註驗證 → 那兩列只能當粗略參考。');
 console.log('  ⑤ 資料只有鉅亨網一家 → 有來源偏誤;而且「有新聞」本身跟「成交量大/市值大」高度相關。\n');
+
+// ═══════════════════════════════════════════════════════════════════
+// 🧪 --selftest:合成資料驗「這支探針量得到已知的邊際、也量得到『沒有邊際』」
+//    ⭐ CLAUDE.md 陷阱 #40:「檢查工具沒報錯」⛔ 不等於「它有能力報錯」
+//       → 每一條斷言都配一組會讓它變成另一個答案的對照。
+// ═══════════════════════════════════════════════════════════════════
+function runSelftest() {
+  const SELF = new URL(import.meta.url).pathname;
+  const ok = (t, c) => { console.log((c ? '✅' : '❌') + ' ' + t); if (!c) process.exitCode = 1; };
+
+  // ── 造交易日(跳週末)──
+  const mkDays = n => {
+    const out = []; const d = new Date(Date.UTC(2026, 8, 11));
+    while (out.length < n) {
+      const w = d.getUTCDay();
+      if (w !== 0 && w !== 6) out.push(d.toISOString().slice(0, 10));
+      d.setUTCDate(d.getUTCDate() - 1);
+    }
+    return out.reverse();
+  };
+
+  // ── 造一整組合成資料;edge = 事件後 10 根累積漲幅(0 = 沒有邊際)──
+  const build = (newsTradeDays, edge) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'newshist-'));
+    const BARS = 400, PAD = 30;                       // ⭐ 新聞窗口之後留 30 根,10/20 日報酬才算得完
+    const days = mkDays(BARS);
+    const winEnd = BARS - PAD - 1, winStart = winEnd - newsTradeDays + 1;
+    fs.writeFileSync(path.join(dir, '^TWII.json'),
+      JSON.stringify(days.map(d => ({ date: d, close: 10000 }))));   // 大盤打平 → 超額 = 原始報酬
+
+    // ⚠️ 對照組也吃 DEDUP=10(每檔 10 個交易日才留 1 筆)→ 要湊過既有的「對照組 ≥5000」空過守門,
+    //    檔數與窗口都不能小(300 檔 × 180 交易日 ÷ 10 ≈ 5,400)
+    const SYMS = Array.from({ length: 300 }, (_, i) => String(1001 + i));
+    const hist = { updated: 'selftest', days_kept: 500, days: {} };
+    SYMS.forEach((sym, si) => {
+      const g = new Array(BARS).fill(0);
+      // ⭐ 每檔錯開起點 → 窗口內**每一天**都有新聞(不然合成出來只有幾天,守門會擋掉),
+      //    但同一檔間隔 30 根:① > DEDUP 10 不會被去重吃掉
+      //    ② ⚠️ 對照組是「窗口內每一個交易日」,它也會吃到漲幅 → 間隔太密會把邊際稀釋掉
+      //       (間隔 12 時 +5% 只量到 +0.55pp;間隔 30 才拉得開 → 注入要**看得出來**才算注得進去)
+      for (let i = winStart + (si % 30); i <= winEnd; i += 30) {
+        const d = days[i];
+        (hist.days[d] ||= {})[sym] ||= [];
+        // 🚨 標題是**利多**、但 tone 欄故意寫 'neg' —— 用來證明探針讀的是標題不是那個 AI 欄位
+        hist.days[d][sym].push(['營收創新高 接單滿載', 'neg', '📊 財務事件']);
+        const e = i + 1;                                             // 進場 = 隔一個交易日開盤
+        for (let k = 0; k < 10; k++) if (e + k < BARS) g[e + k] += Math.pow(1 + edge, 0.1) - 1;
+      }
+      const rows = []; let c = 100;
+      for (let i = 0; i < BARS; i++) {
+        const o = c; c = c * (1 + g[i]);
+        rows.push({ date: days[i], open: +o.toFixed(2), high: +(Math.max(o, c) * 1.005).toFixed(2), low: +(Math.min(o, c) * 0.995).toFixed(2), close: +c.toFixed(2), volume: 1000 });
+      }
+      fs.writeFileSync(path.join(dir, `${sym}.json`), JSON.stringify(rows));
+    });
+    const hf = path.join(dir, 'news_hist.json');
+    fs.writeFileSync(hf, JSON.stringify(hist));
+    return { dir, hf };
+  };
+
+  const run = (b) => {
+    try {
+      return { rc: 0, out: execFileSync(process.execPath, [SELF, '--hist'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: { ...process.env, DATA_DIR: b.dir, NEWS_HIST: b.hf } }) };
+    } catch (e) { return { rc: e.status ?? 1, out: (e.stdout || '') + (e.stderr || '') }; }
+  };
+  // 🔍 SELFTEST_DEBUG=1 才印子行程的完整輸出(排查「注入到底有沒有注進去」時用)
+  const dbg = (tag, r) => { if (process.env.SELFTEST_DEBUG) console.log(`--- ${tag} rc=${r.rc} ---\n` + r.out.slice(-3000)); };
+  const e10of = out => {
+    const i = out.indexOf('穩健性檢定'); if (i < 0) return null;
+    const m = out.slice(i).match(/📰 有新聞\(全部\)\s+([+-][\d.]+)/);
+    return m ? parseFloat(m[1]) : null;
+  };
+
+  console.log('🧪 news_event_probe --hist 自我驗證\n');
+
+  // ① 注入 +5% 邊際 → 一定要量得到
+  const A = run(build(180, 0.05)); dbg('A', A);
+  ok('① 注入 +5% 邊際:跑得完(rc=0)', A.rc === 0);
+  const eA = e10of(A.out);
+  ok(`① 注入 +5% 邊際:10 日邊際量得到(實測 ${eA},應 > 2)`, eA != null && eA > 2.0);
+
+  // ② ⭐ 決定性對照:完全沒有邊際的同一組測資 → ⛔ 不可以生出訊號
+  const B = run(build(180, 0));
+  const eB = e10of(B.out);
+  ok(`② 沒有邊際時 ⛔ 不可生出訊號(實測 ${eB})`, eB != null && Math.abs(eB) < 0.5);
+  ok('② 兩組差得出來(⛔ 否則等於沒有鑑別力)', eA != null && eB != null && eA - eB > 2.0);
+
+  // ③ ⛔ 不可以讀檔案裡 AI 判的 tone(測資的 tone 全部寫 'neg',標題全是利多)
+  ok('③ 情緒用**標題**重判 → 應出現「標題偏利多」而不是偏利空',
+    A.out.includes('🟥 標題偏利多(規則判)') && !A.out.includes('🟩 標題偏利空(規則判)'));
+
+  // ④ 資料量守門真的擋得住(⛔ 這一條就是「把守門拿掉會怎樣」的對照)
+  const C = run(build(20, 0.05));
+  ok('④ 交易日不足 → rc=1', C.rc === 1);
+  ok('④ 交易日不足 → 要說「還差幾天」', /還差 \*\*\d+ 天\*\*/.test(C.out));
+  ok('④ 交易日不足 → ⛔ 一個結論都不給(不可印出穩健性表)', !C.out.includes('穩健性檢定'));
+
+  console.log(process.exitCode ? '\n❌ 自我驗證有失敗項' : '\n✅ 全部通過');
+}

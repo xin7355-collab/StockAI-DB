@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.1.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.1.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8199,8 +8199,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.1.0',
+    _APP_VERSION: 'V76.1.1',
     _CHANGELOG: [
+        { v: 'V76.1.1', d: ['📰 <b>你問「新聞回測可以開始了嗎」—— 還不行,而且我去查了才知道原因</b>:之前測完的那一輪用的是<b>別人的新聞資料</b>(鉅亨網 5,409 則,結論是「有新聞」本身沒用、方向量不出來);本站<b>自己存的</b>只有 <b>11 天</b>(9/1~9/11、285 則)。而且時鐘<b>不是 8 月開始的</b> —— 抓新聞那支排程從 8/5 到 9/8 <b>一次都沒被觸發</b>(被 GitHub 的排程配額吃掉),9/9 改掛在別支後面才穩定 → 大約要到 <b>2026 年 12 月上旬</b>才夠測。', '🔌 <b>新裝的外掛幫不上這件事</b>:那類連接器只有「跟我對話時」用得到,你的網站跟採礦機都呼叫不到;而且它是搜尋不是全量傾印(實測一檔半年只回 6 段、一半是廣告稿),來源也是英文通訊社,跟我們抓的中文新聞不是同一批。', '🧪 回測工具已經先準備好:資料夠了會自動能跑,<b>不夠就直接告訴你還差幾天</b>,⛔ 絕不用不夠的樣本硬給結論。'] },
         { v: 'V76.1.0', d: ['🚨 <b>你問對了一個 bug</b>:2327 上面寫「🟢 空方・避開」,價格尺卻印「🔺 追買 605」。現在空頭時那兩個會變成 <b>👀 轉強觀察 / 👀 前高</b>,底下直接寫「<b>這兩個不是叫你買</b>」。⭐ 價位一個都沒改(那是事實),只改叫你怎麼做的那句話。','📖 <b>價格位置圖右上多一顆「怎麼看」</b>,把你問的兩件事講清楚:① <b>追買不是你可以掛的買價</b> —— 它是「<b>前高</b>」,要等<b>帶量突破</b>那根出現才算起漲,直接掛在那買 = 追高;而且它沒有時間限制,大跌過的股票這個前高可能是好幾個月前的。② <b>密集區不是「60 天最多人買的價格」</b> —— 它是「近 60 天<b>成交量</b>最大的那一格」,而每一筆成交都同時有一個買方跟一個賣方,量大只代表那裡換手多,分不出買的人多還是賣的人多。','🎯 <b>新增「估值對照價」</b>(你說的目標價):畫在尺上,算法是<b>最近四季 EPS × 同業中位本益比</b>。⚠️ 它<b>沒有回測過準不準</b> → 刻意<b>不參與</b>「第一道壓力」與風報比的計算,只當對照。','❓ <b>外資喊的價格:做不到,我把量到的數字告訴你</b> —— 台股沒有免費、整理好的分析師共識資料源(證交所、FinMind 都沒有這種資料集)。我們唯一拿得到的只有<b>新聞標題的文字</b>,實測全部新聞檔加起來只找得到 <b>7 筆</b>、而且已經有抓錯的 → 做成功能等於 99% 的股票永遠空白、少數還是錯的。⭐ 改成在 📖 裡給你一顆「<b>🔎 查這檔最近的法人目標價</b>」,免費開新分頁看新聞原文,⛔ 我們不轉述、不加工。'] },
         { v: 'V76.0.9', d: ['🔣 <b>五個面向每一格都有符號了</b>(你說「除了大盤外其它沒有符號」):技術/籌碼講漲跌方向 → 🔴 偏多 / 🟢 偏空 / ➖ 中性;大盤講安不安全 → ✅⚠️⛔;基本面/預期是位置高低 → <b>強/中/弱</b>(⛔ 刻意用字不用紅綠,否則同一顆顏色一下是「漲」一下是「好」)。而且<b>大盤那格也補上 ▼ 了</b> —— ▼ 只講「位置在哪」,安不安全還是看 ✅⚠️⛔。','📏 <b>價格尺改名「價格位置圖」,而且上色了</b>:藍色從最低一路畫到<b>現價</b>,一眼看出你在整段區間的哪裡。另外把 <b>🧲 量價密集區(60 日量最大那一格)</b> 也畫上去(虛線框),跟 🪤 套牢區(120 日、現價上方)<b>分開標示</b> —— 兩個不是同一件事。','🧲 <b>「幾 % 的量卡在哪個價位」列出來了</b>(你要的那個):點開價格尺下面那行,會列「X% 的量在 A~B 元」,並標在你上面還是下面。⚠️ 誠實話寫在卡上:那是<b>成交量</b>的分布,<b>不等於</b>「現在還有幾 % 的人套在那」(期間內買了又賣掉的也算)。','🗑️ <b>總覽再瘦一次</b>:① 刪掉「📊 主力籌碼快照」(它自己就有一顆「詳看分點/天秤 →」= 承認跟籌碼頁重複)② 摺疊區「總評儀表板」裡那排<b>五格分數拿掉</b> —— 跟頂端的儀表列是同一份數字,同一頁出現兩次就是雜訊;那張卡只留頂端<b>刻意不顯示</b>的三樣:總分 / 一句話 / 建議部位水位。'] },
         { v: 'V76.0.8', d: ['🎨 <b>五條量條有顏色了</b>(你說「應該要有顏色」):技術/籌碼講的是<b>漲跌方向</b> → 用紅綠;🌍 大盤講的是<b>安不安全</b> → 用琥珀色的深淺 + ✅⚠️⛔(⛔ 刻意不用紅綠,否則同一顆顏色一下代表「漲」、一下代表「安全」,你會看反);🧬 基本面 / 🎯 預期 是<b>位置</b> → 天藍(「基本面強」不等於「會漲」)。','📐 <b>排版對齊了</b>(你說「排版要調整整齊」):五條的左右端點現在落在<b>同一條線</b>上(以前大盤那條多一顆徽章、左右的字又長短不一,每條長度都不一樣);<b>價格尺的字全部搬到下面一行</b>,兩端的「買進 xx」「+12.8%」不會再被切掉。','🧭 <b>「五個面向」真的有五個了</b>(你說「我只看到3個」):真因不是慢,是<b>根本沒去算</b> —— 你看的 2426 這種股票沒有券商分點資料,程式在那一步就直接跳出去了,基本面/預期兩格永遠不會出現(全市場 2,300 檔都是這樣)。現在改成一開股票就先用採礦資料算一次(<b>不花你的 API 額度</b>),財報回來再自動更新。','⭐ 而且標題那個數字<b>會跟著實際有幾格走</b>:ETF 只有 3 格,卡片會直接說「ETF 是一籃子股票,沒有自己的財報 → 這兩格本來就不會有,不是壞掉」—— ⛔ 不再讓你以為是壞掉。'] },
