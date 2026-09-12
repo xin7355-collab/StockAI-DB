@@ -1,0 +1,217 @@
+{
+  "updated": "2026-09-12 19:36 UTC",
+  "count": 15,
+  "data": [
+    {
+      "source_name": "自由財經",
+      "title": "三星攜手台積電布局zHBM  2奈米良率衝上70％受矚目",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5572094",
+      "published_time": "Sat, 12 Sep 2026 23:50:52 +0800",
+      "matched_keywords": [
+        "良率",
+        "HBM",
+        "奈米"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "台灣首檔加密股來了？MaiCoin申請上市　4個月前金管會質疑「1事」",
+      "link": "https://tw.news.yahoo.com/%E5%8F%B0%E7%81%A3%E9%A6%96%E6%AA%94%E5%8A%A0%E5%AF%86%E8%82%A1%E4%BE%86%E4%BA%86-maicoin%E7%94%B3%E8%AB%8B%E4%B8%8A%E5%B8%82-4%E5%80%8B%E6%9C%88%E5%89%8D%E9%87%91%E7%AE%A1%E6%9C%83%E8%B3%AA%E7%96%91-1%E4%BA%8B-181500455.html",
+      "published_time": "Sat, 12 Sep 2026 18:15:00 +0800",
+      "matched_keywords": [
+        "財報"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "台股5萬點不是夢！高盛更喊「這點位」　法人點名8受惠族群",
+      "link": "https://tw.news.yahoo.com/%E5%8F%B0%E8%82%A15%E8%90%AC%E9%BB%9E%E4%B8%8D%E6%98%AF%E5%A4%A2-%E9%AB%98%E7%9B%9B%E6%9B%B4%E5%96%8A-%E9%80%99%E9%BB%9E%E4%BD%8D-%E6%B3%95%E4%BA%BA%E9%BB%9E%E5%90%8D8%E5%8F%97%E6%83%A0%E6%97%8F%E7%BE%A4-172500075.html",
+      "published_time": "Sat, 12 Sep 2026 17:25:00 +0800",
+      "matched_keywords": [
+        "突破",
+        "財報",
+        "新高"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI供應鏈獲利大增，預期全年創新高",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "快去加油！中油宣布下週汽油漲0.7元、柴油漲0.6元",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5571798",
+      "published_time": "Sat, 12 Sep 2026 17:16:04 +0800",
+      "matched_keywords": [
+        "調漲",
+        "油價"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "群創股東必看　週末溫習扇形封裝進度",
+      "link": "https://tw.news.yahoo.com/%E7%BE%A4%E5%89%B5%E8%82%A1%E6%9D%B1%E5%BF%85%E7%9C%8B-%E9%80%B1%E6%9C%AB%E6%BA%AB%E7%BF%92%E6%89%87%E5%BD%A2%E5%B0%81%E8%A3%9D%E9%80%B2%E5%BA%A6-170500954.html",
+      "published_time": "Sat, 12 Sep 2026 17:05:00 +0800",
+      "matched_keywords": [
+        "良率",
+        "先進封裝",
+        "矽晶圓"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI需求刺激扇形封裝，提升產能降成本",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "台股ETF展望Q4被動式換股資金效應升溫　主動式留意邊際資金影響力",
+      "link": "https://tw.news.yahoo.com/%E5%8F%B0%E8%82%A1etf%E5%B1%95%E6%9C%9Bq4%E8%A2%AB%E5%8B%95%E5%BC%8F%E6%8F%9B%E8%82%A1%E8%B3%87%E9%87%91%E6%95%88%E6%87%89%E5%8D%87%E6%BA%AB-%E4%B8%BB%E5%8B%95%E5%BC%8F%E7%95%99%E6%84%8F%E9%82%8A%E9%9A%9B%E8%B3%87%E9%87%91%E5%BD%B1%E9%9F%BF%E5%8A%9B-163052409.html",
+      "published_time": "Sat, 12 Sep 2026 16:30:52 +0800",
+      "matched_keywords": [
+        "展望"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "台股個股、供應鏈、半導體和大盤的市場情節及外國本土新聞、廣告",
+      "title_zh": "台股市情節、外國本土新聞、廣告業配無關台股有所影響，生活消費、體育娛樂等消息則有少量影響。",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "喊美伊戰爭在期中選舉後結束！川普：油價屆時將暴跌",
+      "link": "https://tw.news.yahoo.com/%E5%96%8A%E7%BE%8E%E4%BC%8A%E6%88%B0%E7%88%AD%E5%9C%A8%E6%9C%9F%E4%B8%AD%E9%81%B8%E8%88%89%E5%BE%8C%E7%B5%90%E6%9D%9F-%E5%B7%9D%E6%99%AE-%E6%B2%B9%E5%83%B9%E5%B1%86%E6%99%82%E5%B0%87%E6%9A%B4%E8%B7%8C-153500546.html",
+      "published_time": "Sat, 12 Sep 2026 15:35:00 +0800",
+      "matched_keywords": [
+        "戰爭",
+        "突破",
+        "油價"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "中油：14日起汽、柴油價格調漲0.7及0.6元",
+      "link": "https://tw.news.yahoo.com/%E4%B8%AD%E6%B2%B9-14%E6%97%A5%E8%B5%B7%E6%B1%BD-%E6%9F%B4%E6%B2%B9%E5%83%B9%E6%A0%BC%E8%AA%BF%E6%BC%B20-7%E5%8F%8A0-6%E5%85%83-133615489.html",
+      "published_time": "Sat, 12 Sep 2026 13:36:15 +0800",
+      "matched_keywords": [
+        "調漲",
+        "油價"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "根據消息，中油宣布於14日起，汽油和柴油價格將進行調整，具體",
+      "title_zh": "中油宣布14日起汽油柴油價格調整，因戰爭升熱和油料供應問題，因此汽油價格會漲增12.29%。這將有所",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "估值上看2兆美元！Anthropic發起　傳輝達砸百億美元",
+      "link": "https://tw.news.yahoo.com/%E4%BC%B0%E5%80%BC%E4%B8%8A%E7%9C%8B2%E5%85%86%E7%BE%8E%E5%85%83-anthropic%E7%99%BC%E8%B5%B7-%E5%82%B3%E8%BC%9D%E9%81%94%E7%A0%B8%E7%99%BE%E5%84%84%E7%BE%8E%E5%85%83-133400614.html",
+      "published_time": "Sat, 12 Sep 2026 13:34:00 +0800",
+      "matched_keywords": [
+        "拉貨",
+        "營收"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "台積電 CoWoS 產能供不應求，聯電、Amkor 等受惠 AI 訂單外溢",
+      "link": "https://technews.tw/2026/09/12/tsmc-cowos-capacity/",
+      "published_time": "Sat, 12 Sep 2026 05:30:09 +0000",
+      "matched_keywords": [
+        "供不應求",
+        "CoWoS"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 用量到上限(全部 1 把金鑰冷卻中,約 1 小時後恢復)",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "EPS賺4.68元！「晶圓代工大廠」有望打入台積電CPO平台　外資卻連賣2週帶走90.67億元",
+      "link": "https://tw.stock.yahoo.com/news/eps%E8%B3%BA4-68%E5%85%83-%E6%99%B6%E5%9C%93%E4%BB%A3%E5%B7%A5%E5%A4%A7%E5%BB%A0-%E6%9C%89%E6%9C%9B%E6%89%93%E5%85%A5%E5%8F%B0%E7%A9%8D%E9%9B%BBcpo%E5%B9%B3%E5%8F%B0-%E5%A4%96%E8%B3%87%E5%8D%BB%E9%80%A3%E8%B3%A32%E9%80%B1%E5%B8%B6%E8%B5%B090-115000615.html",
+      "published_time": "Sat, 12 Sep 2026 11:50:00 +0800",
+      "matched_keywords": [
+        "CPO",
+        "EPS"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 用量到上限(全部 1 把金鑰冷卻中,約 1 小時後恢復)",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "美國公布8月CPI高於預期 外界預料美聯準會將升息",
+      "link": "https://tw.news.yahoo.com/%E7%BE%8E%E5%9C%8B%E5%85%AC%E5%B8%838%E6%9C%88cpi%E9%AB%98%E6%96%BC%E9%A0%90%E6%9C%9F-%E5%A4%96%E7%95%8C%E9%A0%90%E6%96%99%E7%BE%8E%E8%81%AF%E6%BA%96%E6%9C%83%E5%B0%87%E5%8D%87%E6%81%AF-112009624.html",
+      "published_time": "Sat, 12 Sep 2026 11:20:09 +0800",
+      "matched_keywords": [
+        "戰爭",
+        "油價"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 用量到上限(全部 1 把金鑰冷卻中,約 1 小時後恢復)",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "Google 晶片大神降臨 SEMICON Taiwan 開示：瓶頸每天都不同，台廠人人有機會當主角",
+      "link": "https://technews.tw/2026/09/12/google-amin-vahdat-interview/",
+      "published_time": "Sat, 12 Sep 2026 02:00:04 +0000",
+      "matched_keywords": [
+        "突破"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 用量到上限(全部 1 把金鑰冷卻中,約 1 小時後恢復)",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "SemiAnalysis 出手收購 Citrini Research，再擴大 AI 研究版圖",
+      "link": "https://finance.technews.tw/2026/09/12/semianalysis-buys-citrini-research/",
+      "published_time": "Sat, 12 Sep 2026 01:14:54 +0000",
+      "matched_keywords": [
+        "收購"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 用量到上限(全部 1 把金鑰冷卻中,約 1 小時後恢復)",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "輝達與ASIC雙引擎催動　奇鋐雙鴻年底再拉新成長曲線",
+      "link": "https://www.cna.com.tw/news/afe/202609120020.aspx",
+      "published_time": "Sat, 12 Sep 2026 08:30:01 +0800",
+      "matched_keywords": [
+        "出貨"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 用量到上限(全部 1 把金鑰冷卻中,約 1 小時後恢復)",
+      "important": true
+    }
+  ]
+}
