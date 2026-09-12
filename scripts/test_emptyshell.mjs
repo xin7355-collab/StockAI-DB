@@ -57,8 +57,10 @@ const R = await pg.evaluate((real) => {
     app._sweepEmptyShells();
     out.shellAfter = shell ? shell.classList.contains('hidden') : null;
     // ⛔ 有內容的外殼不可被藏
-    // 🗑️ V74.2.0 chipRadarPanel 已刪除 → 換用同在白名單、仍存在的 brokerWarRoom 當測試容器
-    const merged = document.getElementById('brokerWarRoom');
+    // 🗑️ V74.2.0 chipRadarPanel 已刪除 → 換 brokerWarRoom;🗑️ V76.1.3 brokerWarRoom 也刪了(死寫入)
+    //    → 換用同在白名單、仍存在的 chipScenarioSlot。⚠️ 這裡只需要「一個在 _EMPTY_SHELLS 裡的容器」,
+    //    ⛔ 不可改用 chuMergedCard(上面已拿它當「真空殼」用,兩個用途會打架)。
+    const merged = document.getElementById('chipScenarioSlot');
     merged.innerHTML = '<div>有內容不可以被藏</div>';
     app._sweepEmptyShells();
     out.mergedHidden = merged.classList.contains('hidden');

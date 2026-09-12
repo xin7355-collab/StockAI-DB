@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.1.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.1.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1906,9 +1906,9 @@
                 </div>
 
                 <!-- 🗑️ V68.4.4 「🕵️ 主力分點追蹤」卡刪除(使用者要求;已被「券商分點」分頁完整取代);
-                     brokerChipContent/brokerWarRoom/brokerChipDate 保留 hidden stub → renderChipPeriod 仍設 _brokerChipSummary 供大戶總結分點行,不報錯 -->
+                <!-- 🗑️ V76.1.2 brokerWarRoom stub 與 renderBrokerWarRoom 已刪除(死寫入)。
+                     brokerChipContent / brokerChipDate 仍有寫入者 → **留著**(⛔ 不可一起刪)。 -->
                 <div id="brokerChipContent" class="hidden"></div>
-                <div id="brokerWarRoom" class="hidden"></div>
                 <span id="brokerChipDate" class="hidden"></span>
                     </div>
                 </details><!-- /📊 原始數據收合 -->
@@ -8203,8 +8203,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.1.2',
+    _APP_VERSION: 'V76.1.3',
     _CHANGELOG: [
+        { v: 'V76.1.3', d: ['🏛️ <b>「籌碼分頁怎麼不見了」有答案了,而且順手修好</b>:它<b>沒壞</b> —— 看<b>大盤指數</b>時程式會刻意把 基本・當沖・回測・即時・籌碼・多空・報告 這七頁藏起來(法人買賣超、券商分點、EPS 都是<b>逐檔股票</b>才有的資料,指數沒有自己的一份)。以前這個理由只寫在程式裡、<b>畫面上一個字都沒說</b>,所以你只看到分頁憑空消失。現在指數頁會直接告訴你少了哪幾頁、為什麼,還會指路(大盤法人看「大盤」頁、個股分點點進那一檔)。', '🗑️ <b>清掉三段死碼</b>(你說「依照建議做」):①「主力分點動向」每次都往一個<b>永遠隱藏</b>的框寫 455 字,2026-06 起就沒人看得到 ②總覽籌碼快照的函式(上次刪卡後零呼叫)③⚖️ 那張卡的函式(這次刪卡後零呼叫)。', '⚠️ 順手把兩處<b>指向已刪函式</b>的說明改掉,免得下次有人照著找找不到。'] },
         { v: 'V76.1.2', d: ['🗑️ <b>依你指名刪掉四樣</b>:①「🧭 5 個面向」底下那行說明文字 ②「⚖️ 這一頁有 N 個系統在講方向」整張卡 ③「🧭 總評儀表板」整張卡 ④「🚦 ETF 跟車狀態」整張卡。<b>ETF 跟車那張本來就該刪</b> —— 實測跟車不成立,而且它靠的持股變動歷史 8 月才開始存,本來就還驗不動。', '🔗 <b>「🎯 關鍵價位・掛單就看這」併進「📏 價格位置圖」了</b>(你說排版很像):現在是<b>一張卡</b> —— 上面一條尺看位置,下面用原本關鍵價位那種<b>兩欄格子</b>把每個價位寫清楚(停損/現價/買進/追買/估值/套牢區/密集區,每格都有「這個價位在講什麼」)。底部原本逐項解釋的那段刪掉了,因為每一格自己就寫了。', '🐛 順手修一個會看錯的地方:空手時停損那格原本寫「<b>買進</b>後跌破前低就退出」→ 空頭股的尺上就會冒出「買進」兩個字。它本來就只是在講防線在哪,已改成「跌破前低就退出」。', '📉 個股頁總覽第一眼從 635 字降到 <b>571 字</b>,全站卡片總字數 11,360 → <b>10,197</b>。'] },
         { v: 'V76.1.1', d: ['📰 <b>你問「新聞回測可以開始了嗎」—— 還不行,而且我去查了才知道原因</b>:之前測完的那一輪用的是<b>別人的新聞資料</b>(鉅亨網 5,409 則,結論是「有新聞」本身沒用、方向量不出來);本站<b>自己存的</b>只有 <b>11 天</b>(9/1~9/11、285 則)。而且時鐘<b>不是 8 月開始的</b> —— 抓新聞那支排程從 8/5 到 9/8 <b>一次都沒被觸發</b>(被 GitHub 的排程配額吃掉),9/9 改掛在別支後面才穩定 → 大約要到 <b>2026 年 12 月上旬</b>才夠測。', '🔌 <b>新裝的外掛幫不上這件事</b>:那類連接器只有「跟我對話時」用得到,你的網站跟採礦機都呼叫不到;而且它是搜尋不是全量傾印(實測一檔半年只回 6 段、一半是廣告稿),來源也是英文通訊社,跟我們抓的中文新聞不是同一批。', '🧪 回測工具已經先準備好:資料夠了會自動能跑,<b>不夠就直接告訴你還差幾天</b>,⛔ 絕不用不夠的樣本硬給結論。'] },
         { v: 'V76.1.0', d: ['🚨 <b>你問對了一個 bug</b>:2327 上面寫「🟢 空方・避開」,價格尺卻印「🔺 追買 605」。現在空頭時那兩個會變成 <b>👀 轉強觀察 / 👀 前高</b>,底下直接寫「<b>這兩個不是叫你買</b>」。⭐ 價位一個都沒改(那是事實),只改叫你怎麼做的那句話。','📖 <b>價格位置圖右上多一顆「怎麼看」</b>,把你問的兩件事講清楚:① <b>追買不是你可以掛的買價</b> —— 它是「<b>前高</b>」,要等<b>帶量突破</b>那根出現才算起漲,直接掛在那買 = 追高;而且它沒有時間限制,大跌過的股票這個前高可能是好幾個月前的。② <b>密集區不是「60 天最多人買的價格」</b> —— 它是「近 60 天<b>成交量</b>最大的那一格」,而每一筆成交都同時有一個買方跟一個賣方,量大只代表那裡換手多,分不出買的人多還是賣的人多。','🎯 <b>新增「估值對照價」</b>(你說的目標價):畫在尺上,算法是<b>最近四季 EPS × 同業中位本益比</b>。⚠️ 它<b>沒有回測過準不準</b> → 刻意<b>不參與</b>「第一道壓力」與風報比的計算,只當對照。','❓ <b>外資喊的價格:做不到,我把量到的數字告訴你</b> —— 台股沒有免費、整理好的分析師共識資料源(證交所、FinMind 都沒有這種資料集)。我們唯一拿得到的只有<b>新聞標題的文字</b>,實測全部新聞檔加起來只找得到 <b>7 筆</b>、而且已經有抓錯的 → 做成功能等於 99% 的股票永遠空白、少數還是錯的。⭐ 改成在 📖 裡給你一顆「<b>🔎 查這檔最近的法人目標價</b>」,免費開新分頁看新聞原文,⛔ 我們不轉述、不加工。'] },
@@ -18160,82 +18161,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
 
     // 🎯 V35.9 — 主力分點動向:連續吸籌天數 + 主力成本估 + 前5大集中度(純公式,資料乾淨才算)
-    renderBrokerWarRoom() {
-        const el = document.getElementById('brokerWarRoom');
-        if (!el) return;
-        const records = this._chipRecords;
-        const q = this._chipQuality(records, this._chipDataDate);
-        if (!q.ok) {
-            el.innerHTML = `<div class="bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-3">
-                <div class="text-[11px] font-bold text-amber-300 mb-1">⚠️ 主力分點動向：維護中</div>
-                <div class="text-[10px] text-gray-300 leading-relaxed">${q.reason}。免費分點靠證交所 BSR(雲端破驗證碼)近期不穩;要穩定分點建議升級 FinMind Sponsor。<br>(法人 / 融資不受影響,上方照常顯示)</div>
-            </div>`;
-            return;
-        }
-        // 每日主力淨額(買超分點 net 合計 − 賣超分點 |net| 合計)
-        const daily = records.map(rec => {
-            const b = (rec.buyers || []).reduce((s, x) => s + (x.net || 0), 0);
-            const sNeg = (rec.sellers || []).reduce((s, x) => s + Math.abs(x.net || 0), 0);
-            return { date: rec.date, net: b - sNeg };
-        });
-        // 連續同向天數(從最後往回)
-        let streak = 0, dir = 0;
-        for (let i = daily.length - 1; i >= 0; i--) {
-            const d = daily[i].net;
-            if (d === 0) break;
-            const cur = d > 0 ? 1 : -1;
-            if (dir === 0) dir = cur;
-            if (cur === dir) streak++; else break;
-        }
-        // 主力成本:rawDailyData close 依日對齊,買超日 Σ(close×net)/Σ(net)
-        const closeByDate = {};
-        for (const r of (this.rawDailyData || [])) {
-            const dk = String(r.date || r.t || '').slice(0, 10).replace(/\//g, '-');
-            if (dk) closeByDate[dk] = +r.close || 0;
-        }
-        let buyVal = 0, buyNet = 0;
-        for (const d of daily) {
-            const dk = String(d.date || '').slice(0, 10).replace(/\//g, '-');
-            const c = closeByDate[dk];
-            if (c && d.net > 0) { buyVal += c * d.net; buyNet += d.net; }
-        }
-        const cost = buyNet > 0 ? (buyVal / buyNet) : null;
-        const lastClose = (this.rawDailyData || []).length ? +this.rawDailyData[this.rawDailyData.length - 1].close : null;
-        // 集中度:最後一天前 5 大買超佔總買超
-        const last = records[records.length - 1] || {};
-        const lb = (last.buyers || []).map(x => Math.abs(x.net || 0)).sort((a, b) => b - a);
-        const top5 = lb.slice(0, 5).reduce((s, v) => s + v, 0);
-        const allb = lb.reduce((s, v) => s + v, 0);
-        const conc = allb > 0 ? (top5 / allb * 100) : null;
-        const streakTxt = streak >= 2
-            ? (dir > 0 ? `<span class="text-red-400 font-black">連 ${streak} 天吸籌</span>` : `<span class="text-green-400 font-black">連 ${streak} 天倒貨</span>`)
-            : '<span class="text-gray-400">方向未連續</span>';
-        const costTxt = cost ? `<span class="font-mono font-black text-gray-100">${cost.toFixed(1)}</span>` : '<span class="text-gray-500">—</span>';
-        const costVs = (cost && lastClose) ? (lastClose >= cost
-            ? `<span class="text-red-400 text-[10px]">現價高於吸籌成本 +${((lastClose - cost) / cost * 100).toFixed(1)}%（主力帳面獲利,支撐較穩）</span>`
-            : `<span class="text-green-400 text-[10px]">現價低於吸籌成本 ${((lastClose - cost) / cost * 100).toFixed(1)}%（主力套牢,留意解套賣壓）</span>`) : '';
-        const concTxt = conc != null ? `<span class="font-mono font-black ${conc >= 40 ? 'text-red-400' : 'text-gray-200'}">${conc.toFixed(0)}%</span>` : '—';
-        el.innerHTML = `
-        <div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
-            <div class="text-[11px] font-bold text-amber-300 mb-2 flex items-center gap-1.5">🎯 主力分點動向 ${this._dChip(this._fenDataDate, '分點')}</div>
-            <div class="grid grid-cols-3 gap-2">
-                <div class="bg-[#0d1117] rounded p-2 text-center">
-                    <div class="text-[9px] text-gray-500 mb-1">主力方向</div>
-                    <div class="text-[11px]">${streakTxt}</div>
-                </div>
-                <div class="bg-[#0d1117] rounded p-2 text-center">
-                    <div class="text-[9px] text-gray-500 mb-1">吸籌加權成本</div>
-                    <div class="text-base">${costTxt}</div>
-                </div>
-                <div class="bg-[#0d1117] rounded p-2 text-center">
-                    <div class="text-[9px] text-gray-500 mb-1">前5大集中度</div>
-                    <div class="text-base">${concTxt}</div>
-                </div>
-            </div>
-            ${costVs ? `<div class="mt-2 text-center">${costVs}</div>` : ''}
-            <div class="text-[9px] text-gray-600 mt-2 leading-snug">💡 吸籌加權成本=買超日收盤依量加權(跟 K 線「主力成本」線=買超王均價是不同算法,故不同名)・集中度≥40%=主力鎖籌・全公式計算非 AI・僅供參考</div>
-        </div>`;
-    },
+    // 🗑️ V76.1.2 `renderBrokerWarRoom` 已整段刪除(使用者:「依照你的建議做」)—— 它是**死碼**,見 docs/DECISIONS.md V76.1.2。 它每次都往**永遠 hidden** 的 #brokerWarRoom 寫 455 字,V68.4.4 起就沒人看得到。
 
     // ⭐ V41.12 — 單一型態引擎(消除「圖表 vs 卡片」兩套 K 棒偵測漂移):
     //   _matchStarAt / _match2BarAt 是唯一的 K 棒轉折偵測源,回傳同時含【圖表欄位 type/side/anchor】
@@ -21106,7 +21032,6 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _EMPTY_SHELLS: [
         'chuMergedCard',      // K線:朱老師總評 + 六脈的外殼,兩張都沒訊號時整塊空白
         // 🗑️ chipRadarPanel 已於 V74.2.0 刪除(instcost_probe 實測無優勢)
-        'brokerWarRoom',      // 籌碼:分點作戰室
         'chipScenarioSlot',   // 籌碼:情境卡插槽
         'ovBodyPlan',         // 總覽:分批計畫摺疊區
     ],
@@ -22519,7 +22444,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ② 顏色只用灰階 —— 這是「位置」不是漲跌方向,燈號鐵則不准借紅綠  ③ 超出兩端就貼邊 + 明講超過多少
     // 📏 V76.0.7 全 App **唯一**的「刻度尺」畫法(⛔ 別再各自畫一份 —— 同一件事兩種畫法就是使用者最討厭的「資訊爆炸」)。
     //   使用者(自述「我不是很懂」):「有沒有更簡單的敘述或者量表,還是圖」→ 底條 + 填色 + ▼ 標記 + 左右各一個白話字。
-    //   kind:'pos' 位置(▼ 灰階)/ 'dir' 方向(▼ 依 58/42 紅綠 —— 燈號鐵則:**只有漲跌方向准用紅綠**,門檻沿用 _ovArbSources)
+    //   kind:'pos' 位置(▼ 灰階)/ 'dir' 方向(▼ 依 **58/42** 紅綠 —— 燈號鐵則:**只有漲跌方向准用紅綠**)
+    //   ⚠️ V76.1.2:那組 58/42 以前寫「門檻沿用 _ovArbSources」,而那支已隨 ⚖️ 卡一起刪除 → 數字寫在這裡就是唯一來源。
     //         / 'risk' 安全/危險(⛔ 不畫 ▼、不用紅綠,畫 ✅⚠️⛔ 徽章,門檻沿用 _ovConfidenceBar 的 60/45)。
     //   o.lo/o.hi 左右白話字 ・o.val 右側小字 ・o.ticks=[{pct,nm,val}] 刻度 ・o.marks=[{pct,glyph,cls,title}] 額外標記
     //   ・o.top 標記上方的字(估值尺的「現價 X」)・o.key 給測試比對用 ・o.tip 整列的 title。
@@ -25534,7 +25460,6 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                             box.innerHTML = html;
                             this.renderChipGlobal(this._activeChipPeriod || '3d');
                         }
-                        this.renderBrokerWarRoom();           // V35.9 — 戰情卡(快取路徑)
                         return;
                     }
                 } catch(e) {}
@@ -25618,10 +25543,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 this._chipPeriods = null;
                 document.getElementById('chipGlobalPeriodBtns')?.classList.add('hidden');
                 this.renderChipGlobal(this._activeChipPeriod || '3d');   // 法人/融資 bars 照常(不依賴分點)
-                this.renderBrokerWarRoom();
                 return;
             }
-            this.renderBrokerWarRoom();   // 乾淨 → 戰情卡上線(獨立於下方分點表渲染)
 
             // ── 多週期模式（新版 JSON 有 periods）：用週期切換按鈕渲染 ──
             if (chipPeriods) {
@@ -31364,6 +31287,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 💡 <b>指數不能直接買</b> —— 想跟著大盤走就是買 <b class="text-blue-300">0050 / 006208</b> 這類 ETF(點代號可查);
                 想買個股,把這裡當<b>環境</b>看:大盤在修正區時,個股跌得比大盤兇是常態,買點要更嚴、部位要更小。
             </div>
+            ${this._idxHiddenNote()}
             <div class="text-[8px] text-gray-600 mt-1.5 leading-snug">🧮 全部純公式即時算。⛔ 這張卡刻意<b>不給買賣價位</b> —— 指數沒有「掛單價」,個股的進出場請到個股頁看。非投資建議。</div>`;
         box.classList.remove('hidden');
         return true;
@@ -31772,66 +31696,12 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         el.innerHTML = A + emg + urgentHtml + strip + ruler + bell;
         el.classList.remove('hidden');
         const why = document.getElementById('ovWhyBox');
-        // 🗑️ V76.1.2 「⚖️ 這一頁有 N 個系統在講方向」整張卡已下架(使用者明示「卡片刪除」)。
-        //   ⚠️ `_ovArbLine` / `_ovArbSources` **刻意保留**(同 V70.3.1 處置股、V76.0.9 籌碼快照的做法)——
-        //   `_gaugeRow` 的 dir 門檻註解還指著 `_ovArbSources`,而且它是零副作用的純轉述器。
-        //   ⛔ 「不投票、一律以主卡為準」那條鐵則**沒有廢除** —— 它本來就寫在 `_renderTrendCommand`,
-        //   這張卡只是把它「講出來」而已,拿掉的是那段字不是那個規則。
+        // 🗑️ V76.1.2 「⚖️ 這一頁有 N 個系統在講方向」整張卡已下架(使用者明示),函式也已刪除。
         if (why) { why.innerHTML = B + C + D; why.classList.remove('hidden'); }
     },
 
-    // ⚖️ V75.0.8 仲裁層(一行收斂條)—— 使用者:「整套散戶 App 常常不知道看哪個」
-    //   個股頁有 20+ 個各自獨立的「這檔多空」結論產生點,以前**沒有任何地方**把它們並排。
-    //
-    // ⭐⭐ 這是第三個「只轉述、⛔ 不重算」的轉述器(同 `_ovDigest` / `_renderPageLead`)——
-    //   它**只讀各張卡自己已經算好並存下來的結論**(`_lastXxx` / `_ecCache` / `_ovTrend`),
-    //   ⛔ 一個指標都不算(⛔ 不可出現 `_detectXxx` / `_calcBullBearScan(` / 均線)。
-    //   ⛔ 而且**不投票、不加權平均**(陷阱 #38)—— 只報「幾個講多幾個講空」,
-    //      方向一律**以主結論為準**(單一劇本原則)。
-    //
-    // 🚨 為什麼要標「有沒有實測背書」:V75.0.8 第一次回測 `_ovTrend`
-    //   (`scripts/ovtrend_probe.mjs`,2,321 檔 / 228 萬個股·日 / 2021-07 ~ 2026-06)之後才知道
-    //   —— 這 5 個系統裡**只有 1 個有任何回測數字**,其餘 4 個從來沒被驗證過。
-    //   ⛔ 不標的話,使用者會把「5 個裡有 4 個看多」當成證據,而那 4 個的預測力是未知的。
-    _ovArbSources(sym) {
-        const S = [];
-        const put = (ic, name, dir, why, edge) => S.push({ ic, name, dir, why, edge });
-        const g = (o) => (o && String(o.sym) === String(sym)) ? o : null;
-        // ① 主結論趨勢(全 App 方向的根)—— ⭐ 唯一有實測數字的
-        const t = g(this._ovTrend);
-        if (t) put('🧭', '主結論趨勢', t.trend === 'bull' ? 1 : t.trend === 'bear' ? -1 : 0, t.txt, 'part');
-        // ② 朱老師 K 棒總評
-        const k = g(this._lastTechScore);
-        if (k && k.score != null) put('📈', 'K線總評', k.score >= 58 ? 1 : k.score <= 42 ? -1 : 0, `${k.score} 分`, null);
-        // ③ 大戶籌碼總結
-        const c = g(this._lastChipScore);
-        if (c && c.score != null) put('🏦', '籌碼總結', c.score >= 58 ? 1 : c.score <= 42 ? -1 : 0, `${c.score} 分`, null);
-        // ④ 多空計分卡(28 條)—— ⚠️ 命中數不足時它自己會標 lowSample,那時⛔ 不當一票
-        const b = g(this._lastBBScan);
-        if (b && !b.lowSample && b.ratio != null) put('⚖️', '多空計分', b.ratio >= 0.6 ? 1 : b.ratio <= 0.4 ? -1 : 0, b.verdict || `${Math.round(b.ratio * 100)}%`, null);
-        // ⑤ 進場體檢
-        const e = g(this._ecCache);
-        const er = e && e.r;
-        if (er && er.score != null) put('✅', '進場體檢', er.score >= 58 ? 1 : er.score <= 42 ? -1 : 0, `${er.score} 分`, 'part');
-        return S;
-    },
-    _ovArbLine(sym) {
-        try {
-            const S = this._ovArbSources(sym);
-            if (S.length < 2) return '';   // ⛔ 只有一個就不叫仲裁,不留空殼
-            const nB = S.filter(x => x.dir > 0).length, nS = S.filter(x => x.dir < 0).length, nN = S.length - nB - nS;
-            const withEdge = S.filter(x => x.edge).length;
-            const t = (this._ovTrend && String(this._ovTrend.sym) === String(sym)) ? this._ovTrend : null;
-            const clash = nB > 0 && nS > 0;
-            const chip = x => `<span class="inline-block px-1 rounded bg-white/5 mr-1 mb-0.5">${x.ic} ${x.name} <b class="${x.dir > 0 ? 'text-red-300' : x.dir < 0 ? 'text-green-300' : 'text-gray-400'}">${x.why}</b>${x.edge ? ' <span class="text-amber-300">⭐</span>' : ''}</span>`;
-            return `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
-                <div class="text-[11px] font-black text-gray-200 mb-1">⚖️ 這一頁有 ${S.length} 個系統在講方向</div>
-                <div class="text-[11px] leading-relaxed">${S.map(chip).join('')}</div>
-                <div class="text-[11px] text-gray-300 leading-relaxed mt-1">偏多 <b>${nB}</b> ・偏空 <b>${nS}</b> ・中性 <b>${nN}</b>${clash ? ' —— <b class="text-yellow-300">它們在打架</b>' : ''}。${t ? `⛔ 打架時<b>不投票</b>,一律以上面那張主卡(主結論:${t.txt})為準。` : ''}</div>
-                <div class="text-[9px] text-gray-500 mt-1 leading-snug">⭐ = 有實測數字的(${withEdge}/${S.length})。🚨 其餘 ${S.length - withEdge} 個<b>從來沒有回測過</b>,⛔ 別把「幾個看多」當成證據。
-                主結論趨勢實測:在「位階≥75 且振幅≥3.2」的股票上,空頭那批 20 日平均比非空頭差 <b>1.28 個百分點</b>(228 萬個股·日),⛔ 但它只擋掉其中 4.8%、而且 2022 那個空頭年方向是相反的 → 當<b>一致性守門</b>用,⛔ 不是「空頭一定會跌」。</div></div>`;
-        } catch (_) { return ''; }
-    },
+    // 🗑️ V76.1.2 `_ovArbSources / _ovArbLine` 已整段刪除(使用者:「依照你的建議做」)—— 它是**死碼**,見 docs/DECISIONS.md V76.1.2。 零呼叫(V76.1.2 下架 ⚖️ 那張卡後)。
+    //   ⛔ 「不投票、一律以主卡為準」那條鐵則**沒有廢除** —— 它本來就寫在 `_renderTrendCommand`。
     // 📂 把原本的三個頁籤與明細卡收進摺疊容器(⛔ 移動 DOM 不是刪除 —— 卡照常渲染,函式與測試不受影響)
     _initOvFold() {
         try {
@@ -31850,6 +31720,29 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (!w) return;
         const open = w.classList.toggle('hidden') === false;
         if (b) b.textContent = open ? '📂 收起(⛔ 說法不一樣時以上面那張為準)' : '📂 為什麼是這個結論・要注意的事・完整明細';
+    },
+
+    // 🏛️🚨 V76.1.2 使用者回報「分點籌碼頁面怎麼不見了」—— 查完是**指數刻意藏了七個分頁**,
+    //   而藏起來的理由以前**只寫在 JS 註解裡(見 _idxHiddenSubTabs 上方),畫面上一個字都沒有**
+    //   → 使用者只看到分頁憑空消失,當然以為壞掉。
+    //   ⛔ 這違反本專案自己的鐵則:陷阱 #28「『沒有資料』與『條件不成立』是兩件事」、
+    //      陷阱 #22「靜默 = 查不出原因」。
+    // ⭐ 三條設計:
+    //   ① 分頁名稱**從 `_idxHiddenSubTabs` 動態產生**(⛔ 不寫死清單 —— 陣列一改文案就對不上,陷阱 #37)
+    //   ② 只在指數顯示;一般個股/ETF **整段不出現**(⛔ 不留空殼)
+    //   ③ 燈號鐵則:用 📑 / 👉,⛔ 不用 🔴🟢(這在講「有沒有資料」不是講漲跌)
+    _idxHiddenNote() {
+        try {
+            if (!this._isIndexSym?.()) return '';
+            const NM = { corp: '基本', daytrade: '當沖', backtest: '回測', live: '即時', chip: '籌碼', bullbear: '多空', report: '報告' };
+            const hid = (this._idxHiddenSubTabs || []).map(k => NM[k]).filter(Boolean);
+            if (!hid.length) return '';
+            return `<div class="bg-[#0d1117] border-l-4 border-gray-500 pl-2.5 py-1.5 rounded-r mt-2 text-[11px] text-gray-300 leading-relaxed">
+                📑 <b>指數只有「總覽 + K線」兩頁</b> —— <b class="text-gray-200">${hid.join('・')}</b> 這 ${hid.length} 頁<b>不會出現</b>,那不是壞掉:
+                法人買賣超、券商分點、EPS 這些都是<b>逐檔股票</b>才有的資料,指數沒有自己的一份。
+                <br>👉 想看<b>大盤三大法人</b>請到「<b class="text-blue-300">大盤</b>」頁;想看<b>某一檔</b>的分點,點進那一檔再看「籌碼」。
+            </div>`;
+        } catch (_) { return ''; }
     },
 
     _renderTrendCommand(data, ind, last) {
@@ -32326,7 +32219,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     <!-- 🗑️ V76.0.9 「📊 主力籌碼快照」已從總覽下架(使用者明示「刪除」)——
                          它本來就有一顆「詳看分點/天秤 →」按鈕指向籌碼頁 = 自己承認重複,
                          而籌碼那一格的分數已經在頂端的 🧭 儀表列裡。
-                         ⚠️ _overviewChipSnapInner 函式刻意保留(同 V70.3.1 處置股的做法):
+                         🗑️ V76.1.2 _overviewChipSnapInner 也已整段刪除(零呼叫死碼);原本的保留理由:
                          裡面的「🤝 你成本 ≈ 主力買超王」與「法人 vs 分點主力方向相反」是別處沒有的,
                          要復活或搬去籌碼頁時直接呼叫即可。⛔ 看到它別以為壞掉 —— 是刻意不渲染。 -->
                     <div id="ovTomorrowPlaybook" class="mt-1.5">${(() => { try { return this._tomorrowPlaybookHtml(); } catch (_) { return ''; } })()}</div>
@@ -32377,84 +32270,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         return { word, net, unlockPx, topBuyAvg };
     },
     // 🧭 V68.7.0 — 總覽「主力籌碼快照」內層:三大法人近5日(現成必顯)+ 籌碼綜合分(籌碼頁算過才顯)+ 主力方向/上方套牢價(分點載入則顯,否則背景載入補)
-    _overviewChipSnapInner() {
-        const sym = this.currentSymbolId;
-        const arr = this.rawDailyData || [];
-        if (arr.length < 5) return '<div class="text-[10px] text-gray-600">籌碼資料整備中…</div>';
-        const curPx = +arr[arr.length - 1].close || null;
-        const fi5 = arr.slice(-5).reduce((s, d) => s + (Number(d.foreign_net) || 0), 0) / 1000;
-        const ti5 = arr.slice(-5).reduce((s, d) => s + (Number(d.trust_net) || 0), 0) / 1000;
-        const fmt = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
-        const cls = v => v > 0 ? 'text-red-300' : v < 0 ? 'text-green-300' : 'text-gray-400';
-        // 主力方向(分點)
-        let forceCell = '', sameBoat = '', _mainNet = null;
-        if (this._fenSym === sym && this._fenPeriods) {
-            const m = this._chipMainForce(this._fenPeriods, curPx);
-            if (m) {
-                _mainNet = m.net;   // 供下方「方向相反」比對(同為近 5 日,可比)
-                const wCls = /大買|偏買/.test(m.word) ? 'text-red-400' : /大賣|偏賣/.test(m.word) ? 'text-green-400' : 'text-gray-300';
-                forceCell = `<div class="flex items-center gap-1.5"><span class="text-gray-500" title="券商分點前 15 大買方 − 前 15 大賣方,近 5 日。⚠️ 跟上面「法人」不是同一批人:法人是外資/投信的官方身分別,這裡是「哪家券商」,兩者方向可以不同。">分點主力<span class="text-[8px] text-gray-600">近5日</span></span><b class="${wCls}">${m.word}</b><span class="font-mono ${cls(m.net)}">${fmt(m.net)}張</span>${m.unlockPx ? `<span class="text-gray-600">·上壓~<b class="text-orange-300 font-mono">${m.unlockPx.toFixed(0)}</b></span>` : ''}</div>`;
-                // 🤝 跟主力同成本:你的成本 ≈ 主力買超王均價(差 ≤3%)→ 判斷能不能跟著等
-                let myCost = null; try { const inv = app._getInventory(); const p = inv.find(i => i.symbol === sym && +i.cost > 0); if (p) myCost = +p.cost; } catch (_) {}
-                if (myCost && m.topBuyAvg && Math.abs(myCost - m.topBuyAvg) / m.topBuyAvg <= 0.03) {
-                    const notFled = m.net >= 0;
-                    sameBoat = `<div class="text-[10px] leading-relaxed ${notFled ? 'text-cyan-200' : 'text-gray-400'} bg-[#161b22] border-l-2 ${notFled ? 'border-cyan-500/60' : 'border-gray-600'} rounded-r px-2 py-1 mt-0.5">🤝 你成本 <b class="font-mono">${myCost}</b> ≈ 主力買超王 <b class="font-mono">${m.topBuyAvg.toFixed(1)}</b> — ${notFled ? `跟主力同一條船,近5日主力還沒跑(淨 ${fmt(m.net)}張)。套牢主力通常會護盤、不會殺在自己成本 → 想做波段可切「波段」跟著守月線等,不必見短線破就砍;但主力一翻空(轉大賣)你要先走。` : `但近5日主力在賣(${fmt(m.net)}張),別把「同成本」當抱死理由 — 破防守線照紀律走。`}</div>`;
-                }
-            }
-        } else if (sym) {
-            this._loadFenPeriodsDirect(sym).then(ok => { if (ok && String(this.currentSymbolId) === sym) { const pb = document.getElementById('ovTomorrowPlaybook'); if (pb) { try { pb.innerHTML = this._tomorrowPlaybookHtml(); } catch (_) {} } const ss = document.getElementById('ovStrongSig'); if (ss) { try { ss.innerHTML = this._ovStrongSignals(); } catch (_) {} } } }).catch(() => {});
-            forceCell = `<div class="text-[10px] text-gray-600">主力分點載入中…</div>`;
-        }
-        // 籌碼綜合分
-        let scoreCell = '';
-        if (this._lastChipScore && this._lastChipScore.sym === sym && Number.isFinite(this._lastChipScore.score)) {
-            const sc = this._lastChipScore.score;
-            const scCls = sc >= 70 ? 'text-red-400' : sc >= 57 ? 'text-red-300' : sc > 45 ? 'text-yellow-300' : sc > 30 ? 'text-green-300' : 'text-green-400';
-            const scLbl = sc >= 70 ? '強力偏多' : sc >= 57 ? '偏多' : sc > 45 ? '中性' : sc > 30 ? '偏空' : '強力偏空';
-            scoreCell = `<span class="flex items-center gap-1"><span class="text-gray-500">籌碼分</span><b class="${scCls} font-mono">${sc}</b><span class="${scCls}">${scLbl}</span></span>`;
-        }
-        // 🐛 V72.0.8 ⭐ 「法人」與「分點主力」方向相反時**主動點出來**,別讓使用者自己發現。
-        //   使用者 2327 截圖同一畫面出現三個看起來同義、數字卻打架的詞:
-        //     「大戶 5 日買超 2,126 張(在收貨)」/「主力 偏賣 −19,503 張」/
-        //     「主力今日整體大買 4,914 張」
-        //   ⛔ 三個**都沒算錯**,是三件不同的事:
-        //     ① 官方三大法人(外資+投信)近 5 日 —— 看的是「身分別」
-        //     ② 券商分點前 15 大買方 − 前 15 大賣方,近 5 日 —— 看的是「哪家券商」
-        //     ③ 分點**今日**淨額
-        //   錯在**名字讓人以為是同一批人**(已改名:①法人 ②分點主力·近5日 ③已有「今日」)。
-        //   ⭐ 但改名不夠 —— 方向相反本身是有意義的訊息(外資可透過多家券商分散下單,
-        //      或官方掛名在買、實際整體券商賣壓更大)→ 直接講白話,這才是「邏輯不打架」的正解:
-        //      ⛔ 不是硬統一成一個數字(那會失真),是誠實說明兩者為什麼不同。
-        let clashNote = '';
-        try {
-            const _inst5 = fi5 + ti5;
-            if (_mainNet != null && Math.abs(_inst5) >= 300 && Math.abs(_mainNet) >= 300
-                && (_inst5 > 0) !== (_mainNet > 0)) {
-                clashNote = `<div class="text-[10px] text-gray-300 leading-relaxed bg-[#161b22] border-l-2 border-yellow-500 pl-2 py-1 rounded-r">`
-                    + `⚠️ <b class="text-gray-100">這兩個方向相反,不是算錯</b> —— 法人近 5 日`
-                    + `<b class="${cls(_inst5)}">${fmt(_inst5)}張</b>、分點主力近 5 日`
-                    + `<b class="${cls(_mainNet)}">${fmt(_mainNet)}張</b>。`
-                    + `「法人」看的是<b>身分別</b>(外資/投信),「分點主力」看的是<b>哪家券商</b>(只取前 15 大)。`
-                    + `${_inst5 > 0 ? '官方掛名的法人在買,但整體券商賣壓更大 → 可能是中實戶/散戶在倒,或外資分散到其他券商賣。'
-                                    : '法人在賣,但券商分點買盤較強 → 可能是本土資金在承接。'}`
-                    + `<b class="text-gray-100">兩個都要看,別只挑順眼的那個。</b></div>`;
-            }
-        } catch (_) {}
-        return `<div class="flex items-center justify-between mb-1">
-                <span class="text-[11px] font-bold text-gray-300">📊 主力籌碼快照</span>
-                <button onclick="event.stopPropagation(); app.switchSubTab('chip');" class="text-[9px] text-cyan-400 hover:text-cyan-300 flex-shrink-0">詳看分點/天秤 →</button>
-            </div>
-            <div class="flex flex-col gap-1 text-[11px] text-gray-300">
-                ${forceCell}
-                ${clashNote}
-                ${sameBoat}
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                    <span><span class="text-gray-500">外資5日</span> <b class="font-mono ${cls(fi5)}">${fmt(fi5)}張</b></span>
-                    <span><span class="text-gray-500">投信5日</span> <b class="font-mono ${cls(ti5)}">${fmt(ti5)}張</b></span>
-                    ${scoreCell}
-                </div>
-            </div>`;
-    },
+    // 🗑️ V76.1.2 `_overviewChipSnapInner` 已整段刪除(使用者:「依照你的建議做」)—— 它是**死碼**,見 docs/DECISIONS.md V76.1.2。 零呼叫(V76.0.9 下架籌碼快照後就沒人叫了)。
 
     // 🧭 V68.4.6 — 總評儀表板 HTML:五維(技術·K線/大盤/籌碼/基本面/預期)加權融合 → 總分 + 白話結論 + 部位水位
     //   誠實面對打架:各維度分數並列顯示,總分由權重決定(技術·大盤主導短線時機,籌碼/基本面/預期是底氣)

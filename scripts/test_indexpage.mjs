@@ -59,6 +59,10 @@ const R = await pg.evaluate(() => {
         const scan = app._bullBearScan ? null : null;
         return null;
     })();
+    // 🏛️ V76.1.2 指數頁要**把「為什麼少了那幾頁」講出來**(使用者:「分點籌碼頁面怎麼不見了」)
+    out.idxNote = (() => { try { return app._idxHiddenNote(); } catch (e) { return 'ERR:' + e; } })();
+    out.idxCardTxt = document.getElementById('trendCommandCard').innerText;
+    out.hidList = (app._idxHiddenSubTabs || []).slice();
     // 指數點到被藏的分頁 → 要導回總覽
     app.switchSubTab('corp');
     out.redirected = app._activeSubTab;
@@ -73,6 +77,8 @@ const R = await pg.evaluate(() => {
     out.chipBack = ['broker', 'flow', 'dist'].map(k => document.getElementById('chipTabBtn-' + k)?.classList.contains('hidden'));
     out.chipTabBack = app._activeChipTab;
     out.subShownBack = ['Chip', 'BullBear'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
+    // ⛔ 一般個股**整段不可出現**(不留空殼)
+    out.stockNote = (() => { try { return app._idxHiddenNote(); } catch (_) { return 'ERR'; } })();
     return out;
 });
 await b.close();
@@ -109,6 +115,20 @@ ok('⑦b 🗂️ 多空分頁換回個股也**維持藏著**(_SUBTAB_OFF 刻意�
 ok('⑦c 換回個股:籌碼分頁要回來', R.subShownBack[0] === false, JSON.stringify(R.subShownBack));
 ok('⑦ 換回個股:三個籌碼分頁都要回來', R.chipBack.every(v => v === false), JSON.stringify(R.chipBack));
 ok('⑦ 換回個股:券商分點點得進去', R.chipTabBack === 'broker', String(R.chipTabBack));
+
+// 🏛️🚨 V76.1.2 使用者回報「分點籌碼頁面怎麼不見了」—— 查完不是壞掉,是指數刻意藏七個分頁,
+//   而理由以前**只寫在 JS 註解裡、畫面上一個字都沒有**(違反陷阱 #28 / #22)。
+const _NM = { corp: '基本', daytrade: '當沖', backtest: '回測', live: '即時', chip: '籌碼', bullbear: '多空', report: '報告' };
+ok('⑧ 🏛️ 指數頁要說出「少了哪幾頁」(注入:把 _idxHiddenNote 回傳空字串 → 紅)',
+   /指數只有「總覽 \+ K線」兩頁/.test(R.idxCardTxt), R.idxCardTxt.slice(-200));
+ok('⑧b ⭐ 分頁名稱**從 _idxHiddenSubTabs 動態產生**(注入:在文案裡寫死清單 → 改陣列時必紅)',
+   R.hidList.length > 0 && R.hidList.every(k => !_NM[k] || R.idxNote.includes(_NM[k])),
+   JSON.stringify({ hid: R.hidList, note: R.idxNote.slice(0, 160) }));
+ok('⑧c 要說出**為什麼**(逐檔資料,指數沒有自己的一份),⛔ 不可只說「不會出現」',
+   /逐檔股票/.test(R.idxNote) && /不是壞掉/.test(R.idxNote), '');
+ok('⑧d ⭐ 要**指路**:大盤法人去「大盤」頁、個股分點點進個股', /大盤/.test(R.idxNote) && /分點/.test(R.idxNote), '');
+ok('⑧e ⛔ 一般個股整段不出現(不留空殼)', R.stockNote === '', String(R.stockNote).slice(0, 80));
+ok('⑧f 🚦 燈號鐵則:這段在講「有沒有資料」⛔ 不可用 🔴🟢', !/🔴|🟢/.test(R.idxNote), '');
 
 console.log();
 if (fails.length) { console.log('❌ INDEXPAGE_TEST_FAIL:', fails); process.exit(1); }
