@@ -59,6 +59,8 @@ for (const s of ['2327', '2330', '0050', '009816']) if (!fs.existsSync(path.join
        /position:relative;flex:1 1 0/.test(fnRow) && /flex:0 0 54px/.test(fnRow), '');
 }
 
+const _SRC12 = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+const app0TidyHasEtf = () => /_TIDY:\s*\[[\s\S]{0,600}?\['etfFollowCard'/.test(_SRC12);
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
 const errs = [];
 async function boot(viewport) {
@@ -157,7 +159,10 @@ ok('⑧ 🔔 顆數 == _armTrigStash.triggers.length(2327 這一天沒有觸發�
 ok('⑨ ⭐ 第一眼字數 ≤ 600(舊版 778;三檔實測 474~487 +20%)(注入:把 ⚖️ 4 個系統搬回第一眼 → 紅)', A.ccLen <= 600, String(A.ccLen));
 ok('⑨b 第一眼**不再出現**規則說明句(刻意不給點位 / 只採用實測有效 / 個系統在講方向)', !/刻意不給點位|只採用實測有效|個系統在講方向|系統怎麼判的/.test(A.ccTxt), '');
 ok('⑭ ⭐ 那些段落**還在**(收進 ovWhyBox,⛔ 是收不是刪),而且 ovWhyBox 已被搬進既有的 ovMoreWrap 摺疊區',
-   /系統怎麼判的|要注意的事/.test(A.whyTxt) && /個系統在講方向/.test(A.whyTxt) && A.whyParent === 'ovMoreWrap', JSON.stringify({ parent: A.whyParent, len: A.whyTxt.length }));
+   /系統怎麼判的|要注意的事/.test(A.whyTxt) && A.whyParent === 'ovMoreWrap', JSON.stringify({ parent: A.whyParent, len: A.whyTxt.length }));
+// 🗑️ V76.1.2 使用者明示「卡片刪除」→ ⚖️ 那張**整個不見**(⛔ 這不是放寬 ⑭,是規格改了要重新釘)
+ok('⑭d 🗑️ V76.1.2「⚖️ N 個系統在講方向」整張卡已下架(第一眼與摺疊區都不可再出現)',
+   !/個系統在講方向/.test(A.whyTxt) && !/個系統在講方向/.test(A.ccTxt), A.whyTxt.slice(0, 120));
 ok('⑭b 空手時預警(⚠️ 要注意的事)在摺疊區裡、不在第一眼', /要注意的事/.test(A.whyTxt) && !/要注意的事/.test(A.ccTxt), '');
 ok('⑭c 「不是你設定的那條」那類預警排在預警清單**最後**', (() => { const i = A.whyTxt.indexOf('不是你設定的那條'); const j = A.whyTxt.indexOf('中期趨勢是空頭'); return i < 0 || j < 0 || i > j; })(), '');
 
@@ -383,6 +388,48 @@ await page.close();
     ok('㉞ 價格尺上⛔ 不可出現「目標價」三個字(全 App 統一用詞)', !/目標價/.test(T.txt), '');
     ok('㉟ 第一眼字數仍 ≤600(📖 是一顆鈕不是內文)', W.ccLen <= 600, String(W.ccLen));
     await p6.close();
+}
+// ═══════════ V76.1.2 使用者五項(刪四張 + 合併一張)═══════════
+{
+    const p7 = await boot({ width: 390, height: 844 });
+    await load(p7, '2330');
+    const V2 = await p7.evaluate(() => {
+        const body = document.body.innerText;
+        const cc = document.getElementById('ovCommandCenter');
+        const pr = cc.querySelector('[data-priceruler]');
+        const cells = pr ? [...pr.querySelectorAll('[data-cell]')].map(e => ({ n: e.dataset.cell, t: e.innerText.trim(), lines: e.innerText.trim().split('\n').length })) : [];
+        const vis = id => { const e = document.getElementById(id); return !!(e && e.offsetParent !== null); };
+        return {
+            body, cells,
+            // 🚨 最重要的一條:總評儀表板的**卡**下架了,但 _lastGauge 必須還活著
+            hasGaugeCard: !!document.querySelector('[data-gaugecard]'),
+            lastGaugeDims: (app._lastGauge && String(app._lastGauge.sym) === String(app.currentSymbolId)) ? app._lastGauge.dims.length : 0,
+            stripN: (() => { const e = cc.querySelector('[data-gaugen]'); return e ? +e.dataset.gaugen : 0; })(),
+            etfDom: !!document.getElementById('etfFollowCard'),
+            keyLvlHtml: (() => { try { return app._ovKeyLevelsHtml(app.activeData, app._keyLevels.C, 0, {}); } catch (_) { return 'ERR'; } })(),
+            kl: app._keyLevels ? { pocRel: app._keyLevels.pocRel !== undefined, buyLb: app._keyLevels.buyLb } : null,
+        };
+    });
+    // ① 🧭 五面向底下那行說明文字刪除
+    ok('㊱ 🗑️ 🧭 儀表列底下那行說明("越右越好,50 = 中性…不是買賣訊號")已刪除',
+       !/越右越好|不加總、不是買賣訊號/.test(V2.body), '');
+    // ④ 總評儀表板卡下架 —— 🚨 但 _lastGauge 不可跟著死
+    ok('㊲ 🗑️「🧭 總評儀表板」那張卡已下架(頁面上找不到 data-gaugecard)', !V2.hasGaugeCard, '');
+    ok('㊲b 🚨🚨 但 _lastGauge 仍然活著(⛔ 注入:把 _overallGaugeHtml 那行呼叫也刪掉 → 儀表列/緊急列/報告頁一起死,而且不會報錯)',
+       V2.lastGaugeDims >= 2 && V2.stripN === V2.lastGaugeDims, JSON.stringify({ dims: V2.lastGaugeDims, stripN: V2.stripN }));
+    // ⑤ ETF 跟車刪除
+    ok('㊳ 🗑️「🚦 ETF 跟車狀態」DOM 已刪除(⛔ 也不可再出現在 _TIDY 收起清單裡)',
+       !V2.etfDom && !app0TidyHasEtf(), JSON.stringify({ dom: V2.etfDom, tidy: app0TidyHasEtf() }));
+    // ③ 關鍵價位併進價格位置圖
+    ok('㊴ 🔗「🎯 關鍵價位」卡已併入 —— 該函式只算不顯(回傳空字串)', V2.keyLvlHtml === '', String(V2.keyLvlHtml).slice(0, 80));
+    ok('㊴b ⭐ 但它仍然是 _keyLevels 的產生者(⛔ 刪掉整支 = 價格尺沒東西可畫)',
+       !!(V2.kl && V2.kl.pocRel === true), JSON.stringify(V2.kl));
+    ok('㊴c ⭐ 每一格都有「這個價位在講什麼」(三行:名稱 / 價格 / 說明;現價那格可以只有兩行)',
+       V2.cells.length >= 3 && V2.cells.filter(c => c.lines >= 3).length >= V2.cells.length - 1,
+       JSON.stringify(V2.cells.map(c => [c.n, c.lines])));
+    ok('㊴d 🗑️ 底部那行逐項解釋已刪(每一格自己寫了,⛔ 不講第二遍)',
+       !/灰帶 = 上方套牢區/.test(V2.body), '');
+    await p7.close();
 }
 ok('⑮ 無 pageerror', errs.length === 0, errs[0] || '');
 await browser.close();

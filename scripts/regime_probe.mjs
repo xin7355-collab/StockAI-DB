@@ -37,7 +37,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DATA = path.join(ROOT, 'data');
+// 📂 深歷史(klines_deep 合併後,2021 起)放在 repo 外 → 用 DATA_DIR 指過去,⛔ 不動 repo 的 data/
+const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
 const OUT = process.argv[2] || '';
 const LOOK = 20;          // 用近 20 個交易日的報酬定義「這波」
 const STEP = 3;           // 每 3 天取樣一次(⛔ 之後還會再做 20 日去重)
