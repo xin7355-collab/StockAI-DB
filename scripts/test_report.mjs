@@ -345,6 +345,7 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.ht
 // ⑫ prompt
 {
     const P = await page.evaluate(() => { let cap = null; const real = app._freeAiOpen; app._freeAiOpen = q => { cap = q; }; app._reportAsk('5483'); app._freeAiOpen = real; return cap; });
+    await page.evaluate((p) => { window.P0 = p; }, P);
     ok('⑫a 提示詞含 5 條防幻覺關鍵句 + 第 6 條', ['絕對禁止「主觀預測」', '年化EPS × 近3年 P5/中位/P95 PE', '不可腦補', '股價基期」與「估值基期」是兩件事', '循環股獲利頂峰時 PE 最低', '附日期與來源網址'].every(k => P.includes(k)));
     // V76.2.0 提示詞改成使用者那份 22 節骨架:每節 §N、第一行基準日、結尾來源表、本站已算的節⛔ 不要自己算、⛔ 不給評分/星等/機率
     ok('⑫b 提示詞 22 節骨架:§1~§22 每一節都點名 + 第一行「分析基準日期」+ 結尾「§23 來源表」', Array.from({ length: 22 }, (_, i) => `§${i + 1} `).every(k => P.includes(k)) && /分析基準日期/.test(P) && /§23 來源表/.test(P), P.slice(0, 200));
@@ -352,6 +353,36 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.ht
     ok('⑫b3 提示詞客觀數據補了均線 / 上方套牢區 / 出場線(AI 要引用本站的牆,不是自己編價位)', /- 均線:/.test(P) && /上方套牢區/.test(P) && /你設的出場線/.test(P), '');
     ok('⑫d 提示詞 <6,500 字(V76.2.0 從 3,800 放寬:22 節骨架 + 三行客觀數據)且帶入年化 EPS / 位階', P.length < 6500 && P.includes(R.ctx.eps.toFixed(2)) && /估值基期.*\d+%/.test(P), `len ${P.length}`);
     ok('⑫e 提示詞「目標價」只出現在禁令句', P.split('目標價').length - 1 === 1 && P.includes('「具體目標價」'));
+    // 📋 V76.2.1 使用者實測:點開 Perplexity 輸入框是空的(提示詞 2,400 字 → 網址 1.6 萬字元,App 接手時帶不過去)
+    //   → ⭐ 開之前要**先複製**;另外要有一顆手動「複製提示詞」;複製不了要跳手動選取視窗(⛔ 不可靜默失敗)
+    ok('⑫f 🚨 提示詞做成網址會超過 1 萬字元 —— 這就是 App 帶不進去的原因(釘住:別再以為縮短一點就好)', encodeURIComponent(P).length > 10000, `enc ${encodeURIComponent(P).length}`);
+    const CP = await page.evaluate(() => {
+        const A = app, seen = [];
+        const realCopy = A._copyText, realOpen = A._freeAiOpen, realModal = A._showRichModal;
+        const order = [];
+        A._copyText = t => { order.push('copy'); seen.push(t); return true; };
+        A._freeAiOpen = () => { order.push('open'); };
+        A._reportAsk('5483');
+        const askOrder = order.join('>'), askCopied = seen[0];
+        // 手動那顆:複製成功 → 只複製不開視窗
+        seen.length = 0; order.length = 0;
+        A._reportCopyPrompt('5483');
+        const manualCopied = seen[0];
+        // 複製失敗 → 一定要跳手動選取視窗,而且視窗裡是**完整**提示詞
+        let modal = null;
+        A._copyText = () => false; A._showRichModal = (t, h) => { modal = { t, h }; };
+        A._reportCopyPrompt('5483');
+        A._copyText = realCopy; A._freeAiOpen = realOpen; A._showRichModal = realModal;
+        const src = A._copyText.toString();
+        return { askOrder, askSame: askCopied === P0, manualSame: manualCopied === P0, modal,
+                 syncFirst: src.indexOf('execCommand') < src.indexOf('navigator.clipboard') && !/async |await /.test(src),
+                 btn: !!document.querySelector('#rpPaste [data-rpcopyprompt]') };
+    });
+    ok('⑫g ⭐ 「🔎 開 Perplexity」要**先複製再開**(⛔ 反過來就沒意義了)', CP.askOrder === 'copy>open' && CP.askSame, CP.askOrder);
+    ok('⑫g2 ⭐ `_copyText` 必須是**同步**、而且 execCommand 排在 clipboard API 之前(await 會讓外連被瀏覽器擋掉)', CP.syncFirst, '');
+    ok('⑫h 📋 有「複製提示詞」按鈕,按下去複製的就是完整提示詞', CP.btn && CP.manualSame, JSON.stringify({ btn: CP.btn, same: CP.manualSame }));
+    ok('⑫i 🔲 複製失敗⛔ 不可靜默 —— 要跳手動選取視窗,且 textarea 內是完整提示詞(注入:拿掉 else 分支 → 紅)',
+       !!CP.modal && /提示詞/.test(CP.modal.t) && CP.modal.h.includes('<textarea') && CP.modal.h.includes('全選'), JSON.stringify(CP.modal && CP.modal.t));
 }
 // 2330(上市):同業列要有數字
 const R2 = await render('2330');

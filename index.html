@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.2.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.2.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -737,7 +737,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.2.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.2.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8290,8 +8290,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.2.0',
+    _APP_VERSION: 'V76.2.1',
     _CHANGELOG: [
+        { v: 'V76.2.1', d: ['🚨 <b>你說「不是應該直接點開就能貼上嗎」—— 查出來了,而且不是程式壞掉</b>:提示詞 <b>2,400 多字</b>,做成網址(要把中文編碼)會膨脹到 <b>1 萬 6 千字元</b>;iOS 把連結交棒給 Perplexity App 時那串帶不過去,App 只收到「開搜尋頁」→ 所以輸入框是空的。⛔ 縮短提示詞不是辦法(縮到塞得進網址等於把 22 節砍光)。', '📋 <b>加了「複製提示詞」按鈕</b>(你要的),而且<b>兩顆按鈕都會先幫你複製</b> —— 按「🔎 開 Perplexity」也會在開之前把提示詞放進剪貼簿,過去長按輸入框<b>貼上</b>就好。', '🔲 <b>複製不了還有逃生門</b>:iOS PWA 有時不讓程式碰剪貼簿 → 會跳出一個視窗把提示詞整份列出來,按「全選」再長按拷貝。', '🧹 順手把報告頁兩處各自寫的複製程式碼合成一份(改一邊忘另一邊的老問題)。'] },
         { v: 'V76.2.0', d: ['📝 <b>報告頁多一格「§22 你貼上的 AI 報告」</b>,就在 ⚡ 快速判別表正下方(以前藏在「產業」節第 ⑤ 小段的摺疊裡 —— 你沒找到就是證據)。把外部 AI 產的 22 節報告整份貼進去存起來,<b>下次開就在,不用再產一次</b>;只存在你這台裝置。', '🖍️ <b>貼上的內容會自動上色</b>:結論 / 買點 / 停損 / 風險 / 上修 / 賣超 這類重點詞用<b>琥珀底</b>標出來、帶單位的數字加粗;想自己標就用兩個等號包住(==這一句==)。⛔ 不用紅綠 —— 紅綠只講漲跌。', '📑 <b>第一眼只留 §1 一句話結論 + §22 最後筆記</b>,其餘 §2~§21 逐節收起來點開看(跟本站的 § 編號對得上)。§19 因子評分 / §20 星等 / §14 機率那幾節照顯,但標「AI 主觀,本站實測這類權重沒有預測力」。', '🔁 <b>該重新產出了會告訴你</b>(只在報告頁內,不跳窗):貼上之後有新的<b>月營收 / 財報法定日 / 除息 / 法說會</b>,或<b>股價已偏離報告寫的價 8% 以上</b>、或超過 30 天,都會亮「🔁 建議重新產出:原因」;快速判別表第 11 列也會標「需更新」。', '🆚 <b>AI 講的價位拿去跟本站的價格牆對照</b>:「第一買點 530~540」「停損 500」「合理價 550」這類,逐一寫出本站在那附近有沒有牆(套牢區 / 均線 / 密集區 / 你的出場線),還會並排「AI 說 / 本站說」兩個結論。⛔ 只對照不裁決,AI 的價位不進本站任何計算。', '🔎 <b>問 Perplexity 的提示詞改成 22 節骨架</b>:標題一律 §N、第一行寫分析基準日期、結尾附來源表(有網址),並明說哪幾節本站已經算好⛔ 不要自己算、⛔ 不要給因子評分與星等、本益比一律寫現在的(要講預估要標「預估」)。', '🚨 <b>抓到本站自己一個錯 —— 財報三表的淨利率在「面額變更」的股票會算錯 4 倍</b>(國巨 2025Q3 面額 10 → 2.5 元:股本金額一毛不變、股數 ×4、EPS ÷4,本站用「EPS × 股本÷10」推淨利率就變成 5.3%,實際約 21%),而且旗標文案還把它寫成「業外/一次性」。<b>上一版我自己下的「國巨真因是業外不是股本」是錯的</b>,AI 報告那一點反而是對的。現在疑似面額變更的那一季起淨利率/ROE 改顯「算不出來(可能面額變更)」不給錯數字;採礦端補抓官方「稅後淨利」欄,下一次回算之後就不用假設面額。'] },
         { v: 'V76.1.9', d: ['📐 <b>報告頁「⚡ 快速判別表」重排</b>(你說「版面修正」)。先量再改:原本每一列擠三行(面向/數字/實測說明)、11 列合起來<b>第一眼 850 字</b>,超過本站自己訂的 600 字上限;說明字又小。<b>現在第一眼只留「面向 + 數字」兩行、數字放大</b>,11 條實測說明<b>整批收進卡片底部的摺疊</b> —— ⛔ 一個字都沒刪,點開就看得到(改完第一眼 <b>385 字</b>)。', '🔤 <b>畫面上不再出現英文函式名</b>:原本印著 pe_band_probe、ma20_probe、overhead_probe 這類<b>程式檔名</b>(7 個),全部改成白話中文,檔名只留在摺疊區裡。', '🚨 <b>抓到一個數字放大 1000 倍的錯</b>:現價下面那顆徽章寫「法人連3賣 <b>−14,067,577 張</b>」—— 台積電總股本才 2,593 萬張,根本不可能。真因是那筆資料<b>單位是「股」卻直接當「張」印</b>,正確是 <b>1.4 萬張</b>。(全 App 其他 7 處都換算對了,只有這一顆漏掉。)', '🚨 <b>同一個「位階」以前有兩個數字</b>:總覽徽章寫「⛰️ 高基期 91%」、報告頁寫「93%」—— 一個用最高/最低價算、一個用收盤算。現在<b>統一成同一份</b>(91%),⛔ 以後不會再各講各的。', '🔠 <b>字放大了</b>:報告頁的說明字全部拉到看得清楚的級距;順便巡了個股 9 個分頁,把剩下 12 段過小的說明字一起修掉(當沖、籌碼、K線、總覽都有)。<b>而且你在設定中心切「大字/特大」時,這些新字級現在也會跟著放大</b>(以前那張放大表沒涵蓋到它們)。', '📏 <b>修掉三處會被切掉的版面</b>:價格牆表、下跌壓力測試那幾列、估值對照表,在窄螢幕上本來會被默默切掉一截(看不到錯誤訊息,就是少一塊)。估值尺最右邊那個價格標籤也會凸出去 21px,一起修。', '🧪 順手把測試自己的毛病修了:原本那條「390px 不可溢出」用錯判準,<b>從頭到尾是假綠燈</b> —— 換成本站文件規定的判法之後,<b>第一次跑就抓到上面那三處</b>。', '🔢 零股族看到的「你的 2.35 張」改成「你的 2,350 股」。'] },
         { v: 'V76.1.8', d: ['📄 <b>報告頁對照你給的「法人級 22 節研究提示詞」重排</b>:先量過 —— 22 節裡 <b>8 節本站已有、9 節有一半、5 節填不了真實數據</b>(3 節是質化只能外包、2 節刻意不做)。所以⛔ 不是「取代」,是拿它當骨架:每一節標題帶 <b>§ 編號</b>,你拿外部 AI 的產出來對照時一眼對得上。', '⚡ <b>報告頁最上面多一張「快速判別表」</b>(11 個面向:結論 / 價格位階 / 估值位階 / 均線 / 價格牆 / 法人 / 集保 / 融資 / 財報品質 / 下一個事件 / 質化),每一格都轉述既有數字、⛔ 不另算,而且每一列都標來源:✅ 真實資料 / 🧮 純公式 / 🔎 要自己查 / ⛔ 本站沒有 / 🚫 實測打掉。', '🧱 <b>新增 §11 價格牆表 + §17 下跌壓力測試</b>:由高到低列出每一道牆是什麼(套牢區 / 均線 / 密集區 / 你的出場線 / 融資追繳線)、距現價幾 % 與一張差多少元;跌 10/20/30/40% 各是一張賠多少、有部位就算你的張數、途中撞到哪幾道牆。國巨 544 元:上方 569~650 與 772~865 兩堵牆(就是那個 800),跌 20% 就到年線附近。', '🧮 <b>§14 敏感度表</b>:獲利 ±20% × 它自己近 3 年給過的倍數(P25/中位/P75)= 9 個對照價。⛔ 沒有機率欄 —— 沒有母體可以估「樂觀幾 %」,硬給的機率是編的。', '📦 <b>§4 財報品質接上「財報三表」</b>(存貨天數 / 自由現金流 / 資本支出 / ROE / 淨利率 / 股本):34 季的深歷史以前只在回測用,現在切成每檔一個小檔進報告頁。⚠️ 現金流量表在資料源是<b>累計</b>的,切片時已還原成單季。兩道旗標只標事實:①「EPS 崩但營收毛利沒掉」(國巨 2025Q3:9.74 → 3.10,股本沒變 → 是業外/一次性,⛔ 不是股本、也不是本業)②「股本一季變 >20%」(國巨 2024Q3 現增 +20%)。⚠️ 要等 fin_backfill 用 slice_only 跑一次,切片才會出現。', '🗓️ <b>§12 事件表 + §21 觀察清單</b>:下一次財報法定日 / 月營收日 / 除息日(除權息檔以前只有產業作戰室讀)/ 法說會(本站沒抓到就誠實說 + 🔎);只講「前後波動大」⛔ 不講漲跌(37 種行事曆日實測方向 0 個成立)。', '🔄 循環股一行:官方產業標成循環股的,估值節會提醒「獲利頂峰時本益比最低,位階要反著讀」—— 這是法人真的在看、提示詞沒寫的那條。同業表補「淨值比」欄。', '🔎 問 Perplexity 的提示詞從 4 段擴成 8 段(商業模式 / 法人預估變化 / 客戶集中與匯率關稅 / 空方論點),每段都要附來源、查不到寫查不到。回來的文字仍只能貼成 §22 筆記,⛔ 不進任何判斷。', '⛔ 刻意不做並寫在畫面上:§19 因子總分、§20 ★ 評等(權重憑空訂的沒驗證過;AI 五級實測無預測力)、§14 三情境機率、§5/§6 市場預期與 EPS 上修下修(台股沒有免費共識,本站不編)。'] },
@@ -23180,7 +23181,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <textarea id="rpNoteIn" rows="3" placeholder="把外部 AI 的 22 節報告整份貼進來…" class="w-full bg-[#0d1117] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 leading-relaxed"></textarea>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
                 <button onclick="app._rpNoteSave('${sym}')" class="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-bold rounded">💾 存成這一檔的報告</button>
-                <button onclick="app._reportAsk('${sym}'); app.vibrate?.(20);" class="px-3 py-1.5 text-[11px] font-bold text-purple-300 bg-[#0d1117] hover:bg-purple-900/20 border border-purple-700/50 rounded">🔎 問 Perplexity(22 節)</button></div>
+                <button onclick="app._reportCopyPrompt('${sym}')" data-rpcopyprompt="1" class="px-3 py-1.5 text-[11px] font-bold text-purple-200 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-700/50 rounded">📋 複製提示詞</button>
+                <button onclick="app._reportAsk('${sym}'); app.vibrate?.(20);" class="px-3 py-1.5 text-[11px] font-bold text-purple-300 bg-[#0d1117] hover:bg-purple-900/20 border border-purple-700/50 rounded">🔎 開 Perplexity</button></div>
+            <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💡 <b>Perplexity 打開會是空白的</b> —— 提示詞 2,400 多字,做成網址會膨脹到 1 萬 6 千字元,手機 App 接手時帶不過去(不是壞掉)。<b>兩顆按鈕都會先幫你複製</b>,到那邊<b>長按輸入框「貼上」</b>再送出就好;複製不了會跳出視窗讓你自己選取。</div>
             <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💾 只存在<b>你這台裝置</b>;⛔ <b>不</b>進本站任何結論、評分或「📋 複製整份報告」;AI 的價位只拿去跟 🧱 價格牆<b>對照</b>。</div>`;
         const title = `📝 §22 你貼上的 AI 報告${n ? (st.stale ? ' <span class="text-amber-300">・🔁 需更新</span>' : '') : ' <span class="text-gray-500 font-normal">・還沒貼</span>'}`;
         return this._rpCard(title, body, asof ? `基準日 ${this._dW(asof)}` : '');
@@ -23728,18 +23731,46 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         L.push('⚠️ 這不是投資建議;歷史統計不是保證,買賣一律以你自己的紀律為準。');
         return L.join('\n');
     },
-    async _rpCopyReport() {
+    // 📋 V76.2.1 複製文字 —— 報告頁共用一份(⛔ 別再 inline 寫第二份)
+    //   ⭐ **同步**回傳 true/false:先走 `execCommand`(在使用者手勢裡一定有授權、而且不用 await)
+    //      → 「複製完立刻開外部 App」那條路不會因為 await 掉了 user activation 被瀏覽器擋下來。
+    //   非同步的 clipboard API 只當補強;它失敗時呼叫端自己開手動彈窗(⛔ 不可靜默失敗)。
+    //   ⚠️ iOS 對 `opacity:0` 的 textarea 有時選不到 → 一定要 `setSelectionRange`。
+    _copyText(t) {
+        const str = String(t == null ? '' : t); if (!str) return false;
+        let ok = false;
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = str; ta.setAttribute('readonly', '');
+            ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;padding:0;border:0';
+            document.body.appendChild(ta);
+            ta.select(); try { ta.setSelectionRange(0, str.length); } catch (_e) {}
+            ok = document.execCommand('copy');
+            ta.remove();
+        } catch (_) { ok = false; }
+        if (!ok) { try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(str).then(() => {}).catch(() => {}); ok = true; } } catch (_) {} }
+        return ok;
+    },
+    // 📋 §22 提示詞:手動複製(使用者要求)+ 複製不了時的逃生門(長按自己選)
+    _reportCopyPrompt(sym) {
+        const q = this._reportPrompt(sym);
+        if (!q) { this.showToast?.('⏳ 報告還在算,幾秒後再試'); return; }
+        const ok = this._copyText(q);
+        this.vibrate?.(20);
+        if (ok) this.showToast?.(`📋 已複製提示詞(${q.length.toLocaleString()} 字)—— 到 Perplexity 長按輸入框「貼上」再送出`, 'info');
+        else this._reportPromptManual(sym);
+    },
+    _reportPromptManual(sym) {
+        const q = this._reportPrompt(sym); if (!q) return;
+        //   ⚠️ 提示詞裡有 `<` `>` 之類 → 一定要跳脫再塞進 textarea(⛔ 不可直接串)
+        this._showRichModal('📋 提示詞(自己選取複製)', `<div class="text-[11px] text-gray-400 leading-snug mb-2">這個瀏覽器不讓程式複製(iOS PWA 常見)。<b>長按下面的文字 → 全選 → 拷貝</b>,再到 Perplexity 貼上。</div>
+            <textarea readonly onclick="this.select()" class="w-full bg-[#0d1117] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 leading-relaxed" style="height:40vh">${this._escHtml(q)}</textarea>
+            <button onclick="const t=this.previousElementSibling; t.focus(); t.select(); try{t.setSelectionRange(0,t.value.length);}catch(e){}" class="w-full mt-2 px-3 py-2 bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-black rounded-lg">🔲 全選(然後長按「拷貝」)</button>`);
+    },
+    _rpCopyReport() {
         const t = this._rpCopyPlain();
         if (!t) { this.showToast?.('⏳ 報告還在算,幾秒後再試'); return; }
-        let ok = false;
-        try { await navigator.clipboard.writeText(t); ok = true; } catch (_) {
-            // iOS PWA / 非安全來源常常沒有 clipboard API → 退回舊做法
-            try {
-                const ta = document.createElement('textarea');
-                ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
-                document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove();
-            } catch (_e) { ok = false; }
-        }
+        const ok = this._copyText(t);
         this.vibrate?.(ok ? 20 : 0);
         if (ok) this.showToast?.(`📋 已複製報告(${t.split('\n').length} 行),可以直接貼給別人`, 'info');
         else this.showToast?.('⚠️ 這個瀏覽器不讓程式複製 —— 請長按畫面自己選取');
@@ -23814,7 +23845,16 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _reportAsk(sym) {
         const q = this._reportPrompt(sym);
         if (!q) return;
+        // 🚨 V76.2.1 使用者實測:點開 Perplexity **輸入框是空的**。真因是網址太長 ——
+        //   提示詞 2,400 字,`encodeURIComponent` 之後變 **16,000 字元**;iOS 用 universal link
+        //   把連結交棒給 Perplexity App 時,那串 query 帶不過去(App 只收到「開搜尋頁」)。
+        //   ⛔ 這不是程式壞掉,也不是縮短提示詞就能解決(縮到能塞進網址就等於閹割提示詞)。
+        //   ⭐ 修法:**開之前先把提示詞複製到剪貼簿**(同步的 `_copyText`,⛔ 不可 await ——
+        //      await 之後 `<a>.click()` 會被當成非使用者操作擋掉),到那邊長按貼上就好。
+        const ok = this._copyText(q);
         this._freeAiOpen(q);   // ⛔ 走既有入口(真實 <a target=_blank>,不用 window.open)
+        this.showToast?.(ok ? '📋 提示詞已複製 —— Perplexity 若是空白的,長按輸入框「貼上」再送出'
+                            : '⚠️ 複製不了 → 回來按「📋 複製提示詞」自己選取', 'info');
     },
 
     // 📢 V51.6 — 個股法說會提醒(現價下方):此股 2 個交易日內有法說會才顯(來源:財經行事曆 upcoming_macro_events)
