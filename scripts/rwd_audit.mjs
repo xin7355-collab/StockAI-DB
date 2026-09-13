@@ -5,7 +5,7 @@
  * 使用者:「筆電上畫面過大、元件被無限制拉伸;手機上文字/按鈕超出卡片、字體調大後版面崩壞」。
  * ⭐ 憑感覺改全站 CSS 風險極高 → 先量:
  *   ① 整頁橫向溢出(scrollWidth > innerWidth)
- *   ② 元素右緣超出**父容器**(真正的「衝出方塊」)
+ *   ② 元素右緣超出**父容器**(真正的「衝出方塊」)—— ⛔ 父層 overflow:hidden 的另外歸一類「被裁掉」
  *   ③ 固定高度容器裡的內容溢出(scrollHeight > clientHeight + 4)——字體放大最容易炸的就是這個
  * 兩種寬度 × 兩種字級各量一次(medium / xl)。
  */
@@ -39,7 +39,14 @@ const SCAN = async (w, h, font, opener) => {
                 if (/(^|\s)hidden(\s|$)/.test(String(n.className || ''))) return false;
             return true;
         };
-        const out = { pageOverflow: document.scrollingElement.scrollWidth - window.innerWidth, esc: [], clip: [] };
+        // 🚨 CLAUDE.md 鐵則:⛔ 不可用 `scrollWidth` 判整頁橫向溢出 —— `html,body{overflow-x:hidden}`
+        //   會把真的溢出**默默切掉**,而 scrollWidth 仍把被 clip 的內容算進去 → 兩個方向都失真。
+        //   正解是**真的去捲捲看**:捲得動才是真的能橫向捲動(V76.1.9,同 test_report 的修正)。
+        //   ⚠️ 被 `overflow-x:hidden` 夾死的那種溢出改由下面「逐元素跟父層比」抓。
+        window.scrollTo(80, 0);
+        const _sx = Math.round(window.scrollX);
+        window.scrollTo(0, 0);
+        const out = { pageOverflow: _sx, esc: [], cut: [], clip: [] };
         for (const el of document.querySelectorAll('div,span,button,table,ul,section,header,nav,input')) {
             if (!vis(el)) continue;
             const p = el.parentElement; if (!p) continue;
@@ -52,7 +59,19 @@ const SCAN = async (w, h, font, opener) => {
             const pcls = String(p.className || '');
             if (/auto|scroll/.test(ps.overflowX + ps.overflow) || /overflow-x-auto|overflow-auto|overflow-x-scroll/.test(pcls)) continue;
             const over = Math.round(a.right - b.right);
-            if (over > 6) out.esc.push({ t: (el.id || el.className || '').toString().slice(0, 46), over, w: Math.round(a.width) });
+            // 🚨 V76.1.9 誤報收斂:父層 `overflow:hidden`(或 clip)的話,孩子**根本衝不出去** —— 它被裁掉。
+            //   那是另一件事(內容看不完),⛔ 不是「衝出方塊」。混在一起報會讓人養成忽略巡邏輸出的習慣
+            //   (同 data_audit 的 SUPERSEDED 清單)。⭐ 而 `text-overflow:ellipsis` 是**刻意**裁的
+            //   (V76.0.8 價格尺就是這樣修的)→ 標出來,⛔ 但不隱藏。
+            if (over > 6) {
+                //   ⚠️ 沙箱連不到 Tailwind → `overflow-hidden` 這個 **class** 不生效(同上面那段 overflow-x-auto 的處置)
+                //   → 再看一次 className,否則跑馬燈這種「本來就該比框寬」的會一直被報成 🚨 衝出。
+                const clipped = /hidden|clip/.test(ps.overflowX + ps.overflow)
+                    || /overflow-hidden|overflow-x-hidden|overflow-clip/.test(pcls);
+                const row = { t: (el.id || el.className || '').toString().slice(0, 46), over, w: Math.round(a.width) };
+                if (clipped) out.cut.push({ ...row, ell: ps.textOverflow === 'ellipsis' });
+                else out.esc.push(row);
+            }
             // 固定高度但內容裝不下
             const s = getComputedStyle(el);
             if (/px$/.test(s.height) && el.scrollHeight - el.clientHeight > 4 && !/auto|scroll/.test(s.overflowY + s.overflow))
@@ -60,7 +79,7 @@ const SCAN = async (w, h, font, opener) => {
         }
         const key = o => o.t + '|' + (o.over ?? o.extra);
         const dedupe = a => [...new Map(a.map(o => [key(o), o])).values()].sort((x, y) => (y.over ?? y.extra) - (x.over ?? x.extra)).slice(0, 8);
-        out.esc = dedupe(out.esc); out.clip = dedupe(out.clip);
+        out.esc = dedupe(out.esc); out.cut = dedupe(out.cut); out.clip = dedupe(out.clip);
         return out;
     }, [font, opener]);
     await page.close();
@@ -89,9 +108,13 @@ for (const [w, h, label] of [[390, 844, '📱 手機 390'], [1440, 900, '🖥️
             const r = await SCAN(w, h, font, opener);
             const tag = `${label} ・字級 ${font} ・${opener === 'inv' ? '庫存頁' : opener === 'stock' ? '個股頁' : '設定中心'}`;
             console.log(`\n═══ ${tag} ═══`);
-            console.log(`  整頁橫向溢出:${r.pageOverflow > 2 ? '❌ ' + r.pageOverflow + 'px' : '✅ 無'}`);
+            console.log(`  整頁可橫向捲動:${r.pageOverflow > 2 ? '❌ 捲得動 ' + r.pageOverflow + 'px' : '✅ 捲不動'}`);
             if (r.esc.length) { console.log('  🚨 衝出父容器:'); r.esc.forEach(o => console.log(`     +${o.over}px  w=${o.w}  ${o.t}`)); }
             else console.log('  ✅ 沒有元素衝出父容器');
+            if (r.cut.length) {
+                console.log('  ✂️ 被父層裁掉(內容看不完;⭐ 有 … 的是刻意的):');
+                r.cut.forEach(o => console.log(`     ${o.ell ? '⭐…' : '⚠️  '} 超出 ${o.over}px  w=${o.w}  ${o.t}`));
+            }
             if (r.clip.length) { console.log('  ✂️ 固定高度裝不下:'); r.clip.forEach(o => console.log(`     溢出 ${o.extra}px  ${o.t}`)); }
             else console.log('  ✅ 沒有固定高度被撐爆');
         }

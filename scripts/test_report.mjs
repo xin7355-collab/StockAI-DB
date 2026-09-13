@@ -166,7 +166,45 @@ const render = async (sym) => {
         txt: Object.fromEntries(['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls'].map(id => [id, txt(id)])),
         ctx: (() => { const C = A._rpLast; return C ? { sym: C.sym, eps: C.eps, aeSrc: C.ae && C.ae.src, kind: C.ae && C.ae.kind, pe: C.pe, pC: C.pC, peer: C.peer, indK: C.indK, band: C.band, valRows: C.valRows, marginDate: C.s20 && C.s20.marginDate, badge: C.dec && C.dec.badge } : null; })(),
         s20: A._chipPeriodSums(A.rawDailyData, 20),
-        wide: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+        // 🚨 V76.1.9 判準換掉 —— `scrollWidth` 被 CLAUDE.md:1550 明文禁用(「會把被 clip 的內容也算進去」),
+        //   而 index.html 有 `html,body{overflow-x:hidden}` → 真的溢出會被默默切掉、這條永遠綠(陷阱 #40)。
+        //   ⭐ 改成 CLAUDE.md 規定的 `scrollTo(80,0)` + `scrollX`,再加**逐元素跟父層比**(照 rwd_audit.mjs)。
+        wide: (() => { window.scrollTo(80, 0); const x = window.scrollX; window.scrollTo(0, 0); return x > 2; })(),
+        // 🚨 沙箱沒有 Tailwind → 祖先(`p-3` / `px-2` / flex-col)全部沒寬度,實測父層只剩 **43px**,
+        //   量到的「超出 36px」是**假的**。⭐ 照 test_gauge.mjs 的做法:先把容器釘成**已知寬度**再量,
+        //   並回報那個寬度(⛔ 寬度是 0/太窄就不可信 → 下面有空過守門)。390 − 頁面 16 − 卡片 16 ≈ 358。
+        esc: (() => {
+            const src = document.getElementById('subContentReport'); if (!src) return { w: 0, list: [] };
+            // ⭐ 原地釘寬度沒用(祖先鏈會把它壓回 200px)→ 照 test_gauge 的做法**複製到固定寬度的容器**再量
+            const host = document.createElement('div');
+            host.style.cssText = 'position:absolute;left:0;top:0;width:358px;max-width:358px;display:block';
+            const box = src.cloneNode(true);
+            box.setAttribute('style', 'display:block;width:358px;max-width:358px');
+            box.removeAttribute('id');
+            host.appendChild(box); document.body.appendChild(host);
+            const vis = el => { if (!el.offsetParent && el.tagName !== 'BODY') return false;
+                for (let n = el; n && n !== document.body; n = n.parentElement) {
+                    const d = n.style && n.style.display; if (d === 'none') return false;
+                    if (!d && n.classList && n.classList.contains('hidden')) return false; } return true; };
+            const out = [];
+            for (const el of box.querySelectorAll('div,span,button,table')) {
+                if (!vis(el)) continue;
+                const pa = el.parentElement; if (!pa) continue;
+                const a = el.getBoundingClientRect(), b = pa.getBoundingClientRect();
+                if (b.width < 40 || a.width < 20) continue;
+                const ps = getComputedStyle(pa), pcls = String(pa.className || '');
+                if (/auto|scroll/.test(ps.overflowX + ps.overflow) || /overflow-x-auto|overflow-auto|overflow-x-scroll/.test(pcls)) continue;
+                const over = Math.round(a.right - b.right);
+                if (over > 6) out.push({ t: (el.id || el.getAttribute('data-rpq') || el.getAttribute('data-rpwall') || el.className || '').toString().slice(0, 40), over, pw: Math.round(b.width) });
+            }
+            const w = Math.round(box.getBoundingClientRect().width);
+            host.remove();
+            return { w, list: out.slice(0, 8) };
+        })(),
+        tw: (() => { const d = document.createElement('div'); d.className = 'hidden'; document.body.appendChild(d);
+            const ok = getComputedStyle(d).display === 'none'; d.remove(); return ok; })(),
+        quickSeen: (() => { const q = document.getElementById('rpQuick'); return q ? (q.innerText || '') : ''; })(),
+        quickAll: (() => { const q = document.getElementById('rpQuick'); return q ? q.innerHTML : ''; })(),
     };
   }, sym);
 };
@@ -357,7 +395,12 @@ ok('④c 2330 五段有內容、無 --', R2.html.filter((_, i) => i !== 1).every
     ok('② 指數(^TWII)藏「報告」按鈕、點 report 導回 strategy', r.hidden && r.active === 'strategy', JSON.stringify(r));
 }
 ok('⑬b 報告頁渲染期間對 FinMind 的請求數 = 0(analyze 那段不算)', hitsAfterRender === 0, `hits ${hitsAfterRender}`);
-ok('📱 390px 頁面不可橫向溢出', !R.wide);
+console.log(R.tw ? '✅ Tailwind 有載入,class 型版面規則有效'
+    : '⚠️⚠️ Tailwind CDN 沒載入(沙箱)→ `min-w-0` / `grid-cols-*` / `truncate` **全部沒生效** →\n'
+    + '   下面的 📱 幾何斷言只涵蓋「檔案內 CSS + inline 樣式」;class 型的版面問題要靠 §g 寫法守門擋。');
+ok('📱 390px 頁面不可橫向捲動(scrollTo(80,0) 後 scrollX ≤ 2 —— ⛔ 不用 scrollWidth,那個被 overflow-x:hidden 夾死)', !R.wide);
+ok('📱e0 🚧 空過守門:量測容器真的有 358px 寬(⛔ 0 或太窄 = 下面那條沒有鑑別力)', R.esc.w >= 350, `w=${R.esc.w}`);
+ok('📱e 報告頁沒有元素右緣超出父層 >6px(這條不被 overflow-x:hidden 夾死)', R.esc.list.length === 0, JSON.stringify(R.esc.list));
 ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '));
 
 // ⑤e 跟 pro.html `_pxTableHtml` 餵同一 fixture,數字序列要完全一致
@@ -646,6 +689,56 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('§q2 第一列 = 結論,徽章 = _ovDecide.badge(轉述)', Q.keys[0] === '§1 結論' && Q.badge && Q.first.includes(Q.badge.replace(/<[^>]+>/g, '')), Q.first);
     ok('§q3 每一列標題帶 § 編號(對照 22 節提示詞)', Q.keys.every(k => /^§\d/.test(k)), JSON.stringify(Q.keys));
     ok('§q4 快速表⛔ 不下操作指令(指令只有結論那一句)', !/(可以進場|可進場|建議買進|建議賣出|可加碼|放心做多|順勢做多)/.test(Q.txt.replace(Q.badge ? Q.badge.replace(/<[^>]+>/g, '') : '', '')), (Q.txt.match(/(可以進場|可進場|建議買進|建議賣出|可加碼|放心做多|順勢做多)/) || [])[0]);
+    // ── ⚡ V76.1.9 版面修正(使用者:「版面修正」;選了「收說明 + 字放大」)──────────────
+    const QV = await page.evaluate(() => {
+        const A = app, q = document.getElementById('rpQuick');
+        const seen = (q.innerText || '').replace(/\s+/g, '');          // ⭐ 關起來的 <details> innerText 看不到 → 這就是「第一眼」
+        const all = q.innerHTML;
+        const d = q.querySelector('details');
+        return {
+            chars: seen.length, seen, allHasProbe: /_probe|chips_deep|inst_leadlag/.test(all),
+            seenHasProbe: /_probe|chips_deep|inst_leadlag/.test(seen),
+            foldOpen: d ? d.open : null, notes: q.querySelectorAll('[data-rpqnote]').length,
+            rows: q.querySelectorAll('[data-rpq]').length,
+            // 字級:值那行 13px、說明收進摺疊後用 11px(V74.4.6:⛔ 別再往 10px 以下調)
+            small: [...q.querySelectorAll('[class*="text-["]')].map(e => {
+                const m = String(e.className).match(/text-\[([\d.]+)px\]/); return m ? +m[1] : null;
+            }).filter(x => x != null),
+        };
+    });
+    ok('§q6 ⚡ 第一眼 ≤ 600 字(V76.1.0 訂的上限;改版前實測 850 字)', QV.chars <= 600 && QV.chars > 120, `${QV.chars} 字`);
+    ok('§q7 ⭐ 第一眼⛔ 不可出現英文探針檔名(禁在 UI 暴露內部函式名)', !QV.seenHasProbe, (QV.seen.match(/.{0,20}_probe.{0,10}/) || [])[0] || '');
+    ok('§q7b 🚨 但那些說明**還在**(收起來 ≠ 刪掉;11 條一條不少)', QV.allHasProbe && QV.notes === QV.rows && QV.rows === 11, JSON.stringify({ notes: QV.notes, rows: QV.rows }));
+    ok('§q7c 說明摺疊**預設收起**(⛔ 展開就等於沒瘦)', QV.foldOpen === false, String(QV.foldOpen));
+    ok('§q8 ⛔ 快速表裡不可再有 10px 以下的字(V74.4.6:手機上看不清楚)', QV.small.every(x => x >= 10), JSON.stringify([...new Set(QV.small)].sort((a, b) => a - b)));
+    // 📍 位階只有一個來源:總覽徽章 vs 報告頁 §11 必須是同一個數字
+    const POS = await page.evaluate(() => {
+        const A = app, b = A._basePos(A.rawDailyData), r = A._rpPricePos(A.rawDailyData);
+        return { badge: b && +b.pos.toFixed(4), rep: r && +r.pos.toFixed(4), shown: Math.round((b || {}).pos) };
+    });
+    ok('§q9 ⭐⭐ 總覽基期徽章與報告頁 §11 價格位階是**同一個數字**(注入:讓 _rpPricePos 自己用收盤算 → 必紅)',
+       POS.badge != null && POS.badge === POS.rep, JSON.stringify(POS));
+    // 🧾 單位:法人連 N 賣的張數不可是「股」
+    const UNIT = await page.evaluate(() => {
+        const a = app.rawDailyData.slice(-3);
+        const sum = a.reduce((s, r) => s + (+r.foreign_net || 0) + (+r.trust_net || 0) + (+r.dealer_net || 0), 0);
+        return { rawShares: Math.round(sum), lots: Math.round(sum / 1000), lotTxt: [app._lotTxt(2000), app._lotTxt(2350), app._lotTxt(0)] };
+    });
+    ok('§q10 🚨 `instSum3` 在源頭就換算成張(原始碼斷言;⛔ 不是只改顯示字串 —— 它還餵給 chipSafety)',
+       /const instSum3 = [\s\S]{0,120}?\/ 1000;/.test(SRC) && /法人連3賣 \$\{Math\.round\(Math\.abs\(instSum3\)\)\.toLocaleString\(\)\} 張/.test(strip(SRC))
+       && UNIT.lots === Math.round(UNIT.rawShares / 1000), JSON.stringify({ rawShares: UNIT.rawShares, lots: UNIT.lots }));
+    ok('§q10b `_lotTxt`:整張講「張」、零股直接講「股」(⛔ 不印 2.35 張)',
+       UNIT.lotTxt[0] === '2 張' && UNIT.lotTxt[1] === '2,350 股' && UNIT.lotTxt[2] === '0 股', JSON.stringify(UNIT.lotTxt));
+    // 📐 寫法守門:真幾何在沙箱量不到(沒有 Tailwind)→ 只能釘寫法(同 test_gauge ⑯s)
+    {
+        const qa2 = SRC.indexOf('    _rpQuickHtml(C) {'), qb2 = SRC.indexOf('    // 🧮 §14 敏感度');
+        const wa2 = SRC.indexOf('    _rpWallsHtml(C) {'), wb2 = SRC.indexOf('    // 🗓️ §12 事件');
+        const seg = SRC.slice(qa2, qb2) + SRC.slice(wa2, wb2);
+        ok('§g1 📐 快速表/價格牆的版面幾何走 inline style(⛔ 不靠 Tailwind class —— 沙箱沒有 Tailwind,靠 class 量到的是假的)',
+           /display:flex;align-items:baseline;gap:8px/.test(seg) && /flex:1 1 0;min-width:0/.test(seg), '');
+        ok('§g2 🚨 ⛔ 不可用 `grid-cols-[1fr_auto]`(**任意值** `1fr` = `minmax(auto,1fr)`,不是具名 class 的 `minmax(0,1fr)` → 左欄會被撐開)',
+           !/grid-cols-\[1fr_auto\]/.test(strip(seg)) && /grid-template-columns:minmax\(0,1fr\) auto/.test(seg), '');
+    }
     ok('§q5 六個節標題帶 § 編號(§4~§6 / §10 / §12… / §14・§15 / §2・§3… / §0)', ['§4~§6', '§10', '§12・§13・§18・§21', '§14・§15', '§2・§3・§7~§9', '§0'].every(k => R5.txt.rpFund.includes(k) || R5.txt.rpChip.includes(k) || R5.txt.rpRisk.includes(k) || R5.txt.rpVal.includes(k) || R5.txt.rpInd.includes(k) || R5.txt.rpSrc.includes(k)), '');
     ok('§a1 結論卡寫明⛔ 不給 §19 因子總分 / §20 ★ 評等,而且真的沒有 ★★ 這種評等', /data-rpnostar/.test(R5.html[7]) && !/★{2,}/.test(R5.txt.rpAct), R5.txt.rpAct.slice(-200));
     // 🧱 §11・§17
