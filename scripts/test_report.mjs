@@ -399,6 +399,27 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html.rpVal) && /rpRevOut/.test(R
     ok('🎨c 🚨 把實測抓到的四個錯寫成規則:數字照抄 / 出場線≠融資追繳線 / 估值尺要照價格排序 / ⛔ 不要評分星等機率 / ⛔ 不要重複字',
        /照抄/.test(CH.q) && /出場線 ≠ 融資追繳線/.test(CH.q) && /按「價格由小到大」排/.test(CH.q) && /★ 星等評分/.test(CH.q) && /不重複的繁體中文/.test(CH.q), '');
     ok('🎨d 圖的最下面一定要有免責那一行', /這不是投資建議 ・歷史統計不是保證/.test(CH.q), '');
+    // 🚨 V76.2.6 使用者第二張 AI 圖照出來的三個新錯 → 寫成規則(⛔ 不是改文案而已)
+    ok('🎨e 🚨 刻度尺/長條⛔ 不可用綠→黃→紅漸層表示「低估→高估」(同一個綠會一邊是跌、一邊是便宜)',
+       /不可以做「綠 → 黃 → 紅」那種漸層/.test(CH.q) && /灰階或藍階/.test(CH.q), '');
+    ok('🎨f 🚨 估值尺「同業中位」那一格也要照價格排進去(⛔ 不可固定放最後)',
+       /同業中位那一格也要一起排進去/.test(CH.q), '');
+    ok('🎨g 🚨 ⛔ 不可自己下「位階偏高/偏低」判語(實測:數字 38% 卻寫「位階偏高」)',
+       /不可以自己下「位階偏高 \/ 偏低」這種判語/.test(CH.q) && /照抄下面的「本站結論」/.test(CH.q), '');
+    // 🚨 V76.2.6 同名不同義:餵給外部 AI 的每一條價位都要用**同一把尺**。
+    //   ⚠️ 行為斷言在這份測資上**沒有鑑別力**(它沒有同時產出出場線與追繳線 —— 第一版就印了
+    //      「情境不存在」)→ 改成**釘寫法**(同 §g1/§g2 的做法):那一行必須走 `rel(`,⛔ 不可用 `mcs.distPct`。
+    //   實測後果:出場線 533.0 標 −2.0%、追繳線 532.3 標 **+2.2%**,兩條都在現價下方卻一正一負。
+    {
+        const fa = SRC.indexOf('    _reportFacts('), fb = SRC.indexOf('    _reportPrompt(');
+        const fseg = SRC.slice(fa, fb);
+        const mgLine = (fseg.split('\n').find(l => l.includes('融資追繳壓力區(推估')) || '');
+        ok('🎨h 🚨 融資追繳線的「距現價」要跟別條用**同一把尺** `rel()`(⛔ 不可用方向相反的 `mcs.distPct`)',
+           /rel\(C\.mcs\.callLine\)/.test(mgLine) && !/mcs\.distPct/.test(mgLine), mgLine.slice(0, 160));
+        ok('🎨h2 ⭐ 而且那把尺對**每一條**都一樣(均線 / 套牢區上下緣 / 出場線 / 追繳線 都用 rel)',
+           (fseg.match(/rel\(/g) || []).length >= 6, String((fseg.match(/rel\(/g) || []).length));
+    }
+
     // ⚠️ V76.2.3:「目標價」現在出現 2 次 —— 禁令句 + 出場線那列的澄清(「⛔ 不是目標價」),兩個都是**禁止**的語氣。
     //   要釘的用意是「⛔ 不可以有『請給目標價』這種要求」,⛔ 不是釘次數(釘次數 = 釘住當時的實作)。
     ok('⑫e 提示詞的「目標價」只出現在禁止/澄清句,⛔ 沒有任何一句在要 AI 給目標價',
@@ -687,11 +708,18 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
                  panel: !!card.querySelector('details[data-rppanel]'),
                  taInPanel: !!card.querySelector('details[data-rppanel] #rpNoteIn'),
                  btnInPanel: !!card.querySelector('details[data-rppanel] [data-rpcopyprompt]'),
+                 //   📋 V76.2.6 使用者:「提示詞加上一鍵複製,這樣我直接貼上來比較方便」
+                 //     → 那顆拉到摺疊**外面**常駐(⛔ 不可再收回去 —— 收回去要點兩下才看得到)
+                 btnOutside: !!card.querySelector(':scope > div > [data-rpcopyprompt], :scope > [data-rpcopyprompt]')
+                             || [...card.querySelectorAll('[data-rpcopyprompt]')].some(b => !b.closest('details')),
+                 title: (card.querySelector('.font-black, [class*="font-bold"]') || {}).textContent || '',
                  howtoHidden: !/膨脹到 1 萬 6 千字元/.test(seen),
                  dateOnce: (seen.match(/基準日/g) || []).length };
     }, stale);
     ok('📐a 已貼過報告時第一眼 ≤ 450 字(改版前 655:操作說明佔了一半)', LAY.chars <= 450 && LAY.chars > 120, `${LAY.chars} 字`);
-    ok('📐b 輸入框 + 複製提示詞按鈕 + 「Perplexity 會空白」那段說明都收進摺疊(⛔ 收起來不是刪掉)', LAY.panel && LAY.taInPanel && LAY.btnInPanel && LAY.howtoHidden, JSON.stringify(LAY));
+    ok('📐b 輸入框 + 「Perplexity 會空白」那段說明收進摺疊(⛔ 收起來不是刪掉)', LAY.panel && LAY.taInPanel && LAY.howtoHidden, JSON.stringify(LAY).slice(0, 200));
+    ok('📋b ⭐ V76.2.6「📋 複製提示詞」要在摺疊**外面**常駐(使用者:一鍵複製才方便直接貼;⛔ 不可再收回摺疊)',
+       LAY.btnOutside, JSON.stringify({ outside: LAY.btnOutside, inPanel: LAY.btnInPanel }));
     ok('📐c 「基準日」整張卡只講一次(卡頭右邊那個;⛔ 同一個日期講兩次看起來像壞掉)', LAY.dateOnce === 1, `${LAY.dateOnce} 次`);
     await page.evaluate(() => app._rpNoteClear('2327'));
 }

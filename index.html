@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.2.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.2.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -746,7 +746,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.2.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.2.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8329,8 +8329,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.2.5',
+    _APP_VERSION: 'V76.2.6',
     _CHANGELOG: [
+        { v: 'V76.2.6', d: ['📖 <b>「你貼上的 AI 報告」改名「完整報告」</b> —— 跟上面那張「📄 短評報告」成對(一個是圖、一個是文字)。',
+            '📋 <b>「複製提示詞」拉出來常駐</b>(你說要一鍵複製才方便直接貼)。那顆按鈕本來就有,但貼過一次之後被收進摺疊 → 要點兩下才看得到,現在跟「🔎 開 Perplexity」一起放在第一眼。',
+            '🚨 <b>你那張圖照出一個真的算錯</b>:「你的出場線 533.0」標 −2.0%、「融資追繳線 532.3」標 <b>+2.2%</b> —— 兩條都在現價<b>下方</b>卻一正一負。真因是那兩個數字用了<b>兩把方向相反的尺</b>(一把是「比現價低多少」、一把是「還能跌多少才碰到」)。已統一。',
+            '🎨 <b>做圖提示詞再補三條</b>(也都是那張圖照出來的):①⛔ 位階尺/估值尺不可用「綠→黃→紅」漸層表示低估→高估(同一個綠會一邊是「跌」一邊是「便宜」)→ 改灰階或藍階 ②估值尺的「同業中位」要照價格排進去(你那張排在最貴後面,但它的價格比較小)③⛔ AI 不可自己下「位階偏高」這種判語 —— 你那張數字寫 38%(中間偏低)標題卻寫「位階偏高」,自己跟自己打架;標題一律照抄本站結論。'] },
         { v: 'V76.2.5', d: ['🔠 <b>個股頁標題那兩行(📊 總量 / 📅 日期)在「特大字」不再撐爆版面</b>(你說用特大字會超過)—— 實測 390px 那兩行從 145px 被撐到 181px、右邊只剩 12px,現在鎖回跟一般字級一樣。⛔ <b>只鎖這兩行</b>,別處照樣跟著放大。',
             '📄 <b>報告頁最上面直接就是圖</b>,而且卡名改叫「短評報告」、圖拉高到將近一整屏;說明與按鈕收進「⚙️ 換一張」。要看細節往下滑就好。',
             '🗑️ <b>報告頁的「🧭 5 個面向一眼看」與「🎯 結論與操作」刪掉了</b>(你說跟總覽重複 —— 對)。⚠️ 但<b>算那些數字的程式一行都沒拿掉</b>:⚡ 快速判別表整張都靠它,總覽那條儀表列也是。',
@@ -22686,7 +22690,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (String(this.currentSymbolId) !== sym) return;
         this._rpSet('rpImg', this._rpImgHtml(ctx), sym);        // 📄 短評報告(外部 AI 畫的圖,本站沒驗證)
         this._rpSet('rpQuick', this._rpQuickHtml(ctx), sym);    // ⚡ 第一層
-        this._rpSet('rpPaste', this._rpPasteHtml(ctx), sym);    // 📝 你貼上的 AI 報告(§20)
+        this._rpSet('rpPaste', this._rpPasteHtml(ctx), sym);    // 📖 完整報告(你貼上的外部 AI 報告)
         this._rpSet('rpWalls', this._rpWallsHtml(ctx), sym);    // 🧱 §11・§16・§17
         this._rpSet('rpVal', this._rpValHtml(ctx), sym);
         this._rpSet('rpFund', this._rpFundHtml(ctx), sym);
@@ -23100,7 +23104,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     // ⑤ V76.2.0 起貼上區搬到 #rpPaste(⚡ 快速判別表正下方);這裡只留一行指路(⛔ 不再放第二個 textarea —— 兩個同 id 會互相搶)
     _rpNoteHtml(C) {
         const n = this._rpNote(String(C.sym));
-        return `<div class="text-[10px] text-gray-400 leading-snug" data-rpnote-ptr="1">📝 產業筆記已搬到<b>上面「⚡ 快速判別表」正下方</b>那一格(「📝 §20 你貼上的 AI 報告」)${n ? ' —— 你已經貼過一份,在那裡看。' : ' —— 還沒貼,去那裡按「🔎 問 Perplexity」。'}</div>`;
+        return `<div class="text-[10px] text-gray-400 leading-snug" data-rpnote-ptr="1">📝 產業筆記已搬到<b>上面「📖 完整報告」那一格</b>${n ? ' —— 你已經貼過一份,在那裡看。' : ' —— 還沒貼,去那裡按「📋 複製提示詞」。'}</div>`;
     },
     // ───────── 📝 你貼上的外部 AI 報告 + 📄 短評報告(AI 圖)—— 獨立一格 #rpPaste / #rpImg ─────────
     //   使用者:「我看不出來,只有數據;產出後我手動貼上存起來;過期要提醒我;重點用別的顏色」。
@@ -23216,7 +23220,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="text-[10px] text-gray-500 leading-snug" style="overflow-wrap:anywhere">→ 本站:${txt}</div></div>`;
         }).join('');
         const site = C.dec ? this._rpTxt(C.dec.badge) : null;
-        return `<div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">🆚 你貼上的 AI 報告 vs 本站的牆(⛔ 只對照、不裁決;AI 的價位不進本站任何計算)</div>
+        return `<div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">🆚 完整報告寫的價位 vs 本站的牆(⛔ 只對照、不裁決;AI 的價位不進本站任何計算)</div>
             <div class="text-[11px] text-gray-200 leading-snug" style="padding:2px 0" data-rpvs-say="1">AI 說:<b>${this._escHtml(aiSay || '(沒寫結論)')}</b> ・本站說:<b>${site || '(還在算)'}</b></div>${rows}`;
     },
     _rpRefreshPaste(sym) {
@@ -23256,8 +23260,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 📐 V76.2.2 已經貼過的:輸入框 + 三顆按鈕 + 四段說明(約 270 字)**全部收進一個摺疊** ——
         //   第一眼要留給「報告內容」,⛔ 不是留給操作說明(實測第一眼 655 → 380 字)。
         //   ⚠️ 還沒貼的維持攤開:那時候第一眼要做的事就是引導他去貼。
-        const ask = `<div class="text-[10px] text-gray-400 leading-snug mb-1">${n ? '重產一份貼回來存檔會<b>覆蓋</b>舊的。' : '商業模式 / 產業景氣 / 法說語氣 / 法人預估 —— 這些是<b>質化</b>資訊,台股<b>沒有免費的結構化來源</b>,本站⛔ 不編。做法:按「🔎 開 Perplexity」(提示詞已寫成 22 節規格、標題帶 §N、第一行寫基準日、結尾附來源網址),把回答<b>貼回這裡</b>存起來,下次開就在。'}</div>
-            <textarea id="rpNoteIn" rows="3" placeholder="把外部 AI 的 22 節報告整份貼進來…" class="w-full bg-[#0d1117] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 leading-relaxed"></textarea>
+        const ask = `<div class="text-[10px] text-gray-400 leading-snug mb-1">${n ? '重產一份貼回來存檔會<b>覆蓋</b>舊的。' : '商業模式 / 產業景氣 / 法說語氣 / 法人預估 —— 這些是<b>質化</b>資訊,台股<b>沒有免費的結構化來源</b>,本站⛔ 不編。做法:按「🔎 開 Perplexity」(提示詞已寫成 20 節規格、標題帶 §N、第一行寫基準日、結尾附來源網址),把回答<b>貼回這裡</b>存起來,下次開就在。'}</div>
+            <textarea id="rpNoteIn" rows="3" placeholder="把外部 AI 產的整份報告貼進來…" class="w-full bg-[#0d1117] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 leading-relaxed"></textarea>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
                 <button onclick="app._rpNoteSave('${sym}')" class="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-bold rounded">💾 存成這一檔的報告</button>
                 <button onclick="app._reportCopyPrompt('${sym}')" data-rpcopyprompt="1" class="px-3 py-1.5 text-[11px] font-bold text-purple-200 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-700/50 rounded">📋 複製提示詞</button>
@@ -23267,12 +23271,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💡 <b>Perplexity 打開會是空白的</b> —— 提示詞 2,400 多字,做成網址會膨脹到 1 萬 6 千字元,手機 App 接手時帶不過去(不是壞掉)。<b>兩顆按鈕都會先幫你複製</b>,到那邊<b>長按輸入框「貼上」</b>再送出就好;複製不了會跳出視窗讓你自己選取。</div>
             ${n ? `<div class="text-[10px] text-gray-500 mt-1.5 leading-snug">🖍️ <mark class="rp-hi">琥珀底</mark> = 重點詞(自動)・<b class="font-mono text-gray-100">粗體</b> = 帶單位的數字;要自己標就用 ==兩個等號== 包住。${P && P.secs.length ? `第一眼只留 §1 與最後一節,其餘 ${rest.length} 節收在上面。` : ''}</div>` : ''}
             <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💾 只存在<b>你這台裝置</b>;⛔ <b>不</b>進本站任何結論或評分;AI 的價位只拿去跟 🧱 價格牆<b>對照</b>。</div>`;
+        //   📋 V76.2.6 使用者:「提示詞加上一鍵複製,這樣我直接貼上來比較方便」——
+        //     那顆按鈕本來就有,但**已貼過之後被收進摺疊**(V76.2.2 為了瘦身第一眼)→ 要點兩下才看得到。
+        //     ⭐ 只把**複製提示詞 / 開 Perplexity 那兩顆**拉到摺疊外面常駐;
+        //       其餘(存檔 / 做圖提示詞 / 刪掉)留在裡面。
+        const copyBtn = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+            <button onclick="app._reportCopyPrompt('${sym}')" data-rpcopyprompt="1" class="px-3 py-1.5 text-[11px] font-bold text-purple-200 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-700/50 rounded">📋 複製提示詞</button>
+            <button onclick="app._reportAsk('${sym}'); app.vibrate?.(20);" class="px-3 py-1.5 text-[11px] font-bold text-purple-300 bg-[#0d1117] hover:bg-purple-900/20 border border-purple-700/50 rounded">🔎 開 Perplexity</button></div>`;
         const body = n
-            ? `${saved}<details data-rppanel="1"><summary class="cursor-pointer text-[11px] font-bold text-gray-300" style="padding:4px 0;list-style:none">⚙️ 換一份 / 複製提示詞<span class="text-[10px] text-gray-600 font-normal"> ・展開 ▾</span></summary><div style="padding-top:4px">${ask}</div></details>`
+            ? `${saved}${copyBtn}<details data-rppanel="1"><summary class="cursor-pointer text-[11px] font-bold text-gray-300" style="padding:4px 0;list-style:none">⚙️ 換一份 / 複製提示詞<span class="text-[10px] text-gray-600 font-normal"> ・展開 ▾</span></summary><div style="padding-top:4px">${ask}</div></details>`
             : ask;
-        //   🏷️ V76.2.5 拿掉 § 編號(使用者選的):這張卡裝的是**整份**報告(20 節)而不是某一節,
-        //   → 掛任何 § 編號都會跟內容打架(他手上那份舊的是 22 節)。
-        const title = `📝 你貼上的 AI 報告${n ? (st.stale ? ' <span class="text-amber-300">・🔁 需更新</span>' : '') : ' <span class="text-gray-500 font-normal">・還沒貼</span>'}`;
+        //   🏷️ V76.2.6 卡名跟上面那張「📄 短評報告」**成對**:一個是圖(短評)、一個是文字(完整)。
+        //   ⛔ 不掛 § 編號(V76.2.5 的理由沒變:它裝的是整份報告,不是某一節)。
+        //   ⚠️ ⛔ 不會誤導成「本站的報告」—— 內文第一行就寫著「外部 AI 寫的,本站沒有驗證」。
+        const title = `📖 完整報告${n ? (st.stale ? ' <span class="text-amber-300">・🔁 需更新</span>' : '') : ' <span class="text-gray-500 font-normal">・還沒貼</span>'}`;
         return this._rpCard(title, body, asof ? `基準日 ${this._dW(asof)}` : '');
     },
     _rpIndHtml(C) {
@@ -23836,7 +23848,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         L.push(`- 現價上方套牢區(近 120 日成交量堆積層;⭐ 反彈最可能被壓回來的地方):${zones.length ? zones.map(x => `${Math.round(x.lo)}~${Math.round(x.hi)}(佔 ${(+x.sup).toFixed(0)}% 的量 ・下緣距現價 ${rel(x.lo)} ・上緣距現價 ${rel(x.hi)})`).join(' / ') : '—'}`);
         L.push(`- 「算突破」的價位(= 上方第一道套牢區的上緣,⛔ 本站沒有回測過「突破就會漲」,只是描述):${zones.length ? `${Math.round(zones[0].hi)} 元(距現價 ${rel(zones[0].hi)})` : '—'}`);
         L.push(`- 你設的出場線(使用者自己的紀律,⛔ 不是目標價、⛔ 不是融資追繳線;⛔ 別寫出它是用哪個指標算的):${(K && C && String(K.sym) === String(C.sym) && K.slPx > 0) ? `${F(K.slPx, 1)} 元(距現價 ${rel(K.slPx)})` : '—'}`);
-        L.push(`- 融資追繳壓力區(推估,⛔ 跟上面那條出場線是兩回事):${C && C.mcs && Number.isFinite(+C.mcs.callLine) ? `${F(C.mcs.callLine, 1)} 元(距現價 ${F(C.mcs.distPct, 1)}%,近 ${C.mcs.win} 日融資族群均價推的${C.mcs.mktKnown ? '' : ',以上市六成推'})` : '—'}`);
+        //   🚨 V76.2.6 這裡以前用 `mcs.distPct` —— 它的定義是「**現價還能跌幾 %** 才碰到追繳線」(正值),
+        //      而上面每一條都用 `rel()`(「那個價位比現價高/低幾 %」,在下方是負值)→ **兩把尺方向相反**。
+        //      實測後果(使用者那張 AI 圖):出場線 533.0 標 −2.0%、追繳線 532.3 標 **+2.2%**,
+        //      兩條都在現價下方卻一正一負 = 同一張圖自己打架(使用者鐵則「邏輯不打架」)。
+        //      ⭐ 餵給外部 AI 的一律用**同一把尺**;`distPct` 本身不動(`level` 判定與 §13 卡還在用)。
+        L.push(`- 融資追繳壓力區(推估,⛔ 跟上面那條出場線是兩回事):${C && C.mcs && Number.isFinite(+C.mcs.callLine) ? `${F(C.mcs.callLine, 1)} 元(距現價 ${rel(C.mcs.callLine)},近 ${C.mcs.win} 日融資族群均價推的${C.mcs.mktKnown ? '' : ',以上市六成推'})` : '—'}`);
         L.push(`- 最新月營收:${C && C.mrev != null ? F(C.mrev / 1e8, 2) + ' 億' : '—'} ・年增 ${C ? F(C.yoy) : '—'}% ・累計年增 ${C && C.ytd != null ? F(C.ytd) + '%' : '—'} ・毛利率 ${C ? F(C.gm) : '—'}%`);
         L.push(`- 財報三表(最新季${fin ? ' ' + fin.p : ''}):存貨天數 ${fin && fin.doi != null ? fin.doi + ' 天' : '—'} ・自由現金流近4季 ${C && C.fin && C.fin.fcf4 != null ? F(C.fin.fcf4 / 1e8, 1) + ' 億' : '—'} ・ROE近4季 ${C && C.fin && C.fin.roe4 != null && !parQ ? F(C.fin.roe4, 1) + '%' : '—'} ・淨利率 ${fin && fin.nm != null && !parQ ? F(fin.nm, 1) + '%' : '—'}${parQ ? `(⚠️ ${parQ.slice(0, 7)} 起疑似面額變更,本站算不出淨利率/ROE)` : ''}`);
         L.push(`- 法人近5日:外資 ${C && C.s5 && C.s5.hasInst ? Math.round(C.s5.foreign) : '—'} 張 / 投信 ${C && C.s5 && C.s5.hasInst ? Math.round(C.s5.trust) : '—'} 張;近20日 外資 ${C && C.s20 && C.s20.hasInst ? Math.round(C.s20.foreign) : '—'} 張 / 投信 ${C && C.s20 && C.s20.hasInst ? Math.round(C.s20.trust) : '—'} 張`);
@@ -23909,6 +23926,9 @@ ${this._reportFacts(sym)}
 2. ⛔⛔ **紅綠只准表示漲跌方向,絕對不可以拿來表示「好 / 壞」或「安全 / 風險」** ——
    否則同一張圖上「收盤 −4.9% 用綠色(下跌)」跟「基本面亮點用綠色(好)」會互相打架,看的人會讀反。
 3. 安全 / 風險一律用**圖示**:✅ 安全 ・⚠️ 注意 ・⛔ 危險 ・🚨 緊急 ・➖ 中性;底色用**灰階或琥珀**,⛔ 不用紅綠。
+3b. 🚨 **刻度尺與長條也算在第 2 條裡面** —— ⛔ 不可以做「綠 → 黃 → 紅」那種漸層來表示
+   「低估 → 高估」「便宜 → 貴」「安全 → 危險」。那會讓同一張圖上的綠色一邊是「跌」一邊是「便宜」。
+   ⭐ 位階尺、估值尺一律用**單一顏色的灰階或藍階**(左淺右深),位置用 ▼ 或 ▲ 標。
 4. ⛔ **不要畫任何動物、吉祥物或擬人角色**(牛、熊、公仔都不要)——
    那既佔版面又會用到歐美的紅綠語意。只用數字、長條、價格軸與圖示。
 
@@ -23918,8 +23938,12 @@ ${this._reportFacts(sym)}
 6. **出場線 ≠ 融資追繳線** —— 兩個都給你了,⛔ 不可拿其中一個當另一個用。
 7. ⛔ **不要寫出任何技術指標的名字或英文縮寫**(ATR、唐奇安、KD、MACD、RSI… 一律不要)。
    那條線就叫「**你的出場線**」;它怎麼算的使用者不需要知道,寫了只會看不懂。
-8. 估值對照那一條尺,**一定要按「價格由小到大」排**。
+8. 估值對照那一條尺,**一定要按「價格由小到大」排**,而且**同業中位那一格也要一起排進去**
+   (⛔ 不可以把它固定放最後 —— 實測它的價格常常夾在中間,放最後整排就看起來壞掉)。
 9. 本益比寫「現在的」。要寫預估本益比,必須標「預估」兩個字並寫出用哪一年的 EPS。
+9b. 🚨 **⛔ 不可以自己下「位階偏高 / 偏低」這種判語** —— 位階是下面給你的**數字**,
+   幾 % 就寫幾 %。實測犯過:數字是 38%(中間偏低)、標題卻寫「當前股價位階偏高」,自己跟自己打架。
+   ⭐ 標題那句一律**照抄下面的「本站結論」**,⛔ 不要自己再下一個。
 
 # 🚨 「怎麼操作」這一段的鐵則(最重要,⛔ 違反就整張圖不能用)
 10. ⛔ **不可以預測時間** —— ⛔ 不准出現「幾月幾號會反攻」「下週落底」「X 天後回升」這種話。
