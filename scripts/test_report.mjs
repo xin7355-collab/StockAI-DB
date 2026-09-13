@@ -24,6 +24,7 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { sliceOne, detectAll } from './fin_slice.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
@@ -36,7 +37,8 @@ const gh = (f) => {
     catch (_) { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'data', f), 'utf8')); } catch (__) { return null; } }
 };
 const FX = {
-    k5483: gh('5483.json'), k2330: gh('2330.json'), chips5483: gh('chips/5483.json'),
+    k5483: gh('5483.json'), k2330: gh('2330.json'), k2327: gh('2327.json'), chips5483: gh('chips/5483.json'),
+    div: gh('dividends.json'),
     fyg: gh('fund_yoy_gm.json'), band: gh('pe_band.json'), fc: gh('fundamentals_cache.json'),
     ipe: gh('industry_pe.json'), imap: gh('industry_map.json'), tdcc: gh('tdcc_holders.json'),
     macro: gh('macro_risk.json'), pb: gh('playbook_edge.json'), att: gh('attention_status.json'),
@@ -62,7 +64,7 @@ const strip = s => s.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '
        /id="subTabBtnStrategy"[\s\S]{0,400}?id="subTabBtnReport"[\s\S]{0,400}?id="subTabBtnLive"/.test(SRC));
     ok('①b switchSubTab 有 report 分支呼叫 renderReportTab', /tab === 'report'[\s\S]{0,200}renderReportTab/.test(sw));
     ok('② _idxHiddenSubTabs 含 report 且 MAP 含 report: \'Report\'', /_idxHiddenSubTabs: \[[^\]]*'report'\]/.test(SRC) && /bullbear: 'BullBear', report: 'Report'/.test(SRC));
-    ok('⑪a analyze() 切股清單含九個 rp*(⛔ 少一個 = 那一段顯上一檔)', ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc'].every(id => new RegExp(`'deepBriefCard', 'deepBriefAi',[\\s\\S]{0,400}'${id}'`).test(SRC)));
+    ok('⑪a analyze() 切股清單含十一個 rp*(⛔ 少一個 = 那一段顯上一檔)', ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls'].every(id => new RegExp(`'deepBriefCard', 'deepBriefAi',[\\s\\S]{0,400}'${id}'`).test(SRC)));
     // ③ 渲染層不可自己寫買賣指令:只掃報告區塊(_rpNumHtml ~ _reportAsk),排除轉述 _ovDecide 的那支
     const a = SRC.indexOf('    _rpNumHtml('), b = SRC.indexOf('    _reportAsk(');
     const blk = strip(SRC.slice(a, b));
@@ -75,6 +77,18 @@ const strip = s => s.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '
     const rem = SRC.slice(SRC.indexOf('    _renderStockEarningsReminder('), SRC.indexOf('    _renderStockEarningsReminder(') + 2500);
     ok('⑰ 法說會事件比對抽成 _findEarningsEvent,現價下方的提醒要呼叫它(⛔ 不可再抄一份迴圈)', /_findEarningsEvent\(sym, 2\)/.test(rem) && !/for \(const ev of events\)/.test(rem));
 }
+
+// 📦 V76.1.8 財報三表切片 fixture:用**真的** fin_slice.sliceOne 切真檔(⛔ 不在測試裡編一份 slice 形狀)
+const FIN_SLICE = (() => {
+    try {
+        let F = null;
+        const lp = path.join(ROOT, 'fin_deep', 'fin_deep.json');
+        if (fs.existsSync(lp)) F = JSON.parse(fs.readFileSync(lp, 'utf8'));
+        else F = JSON.parse(execSync(`git -C "${ROOT}" show origin/fin_deep:fin_deep/fin_deep.json`, { encoding: 'utf8', maxBuffer: 64 << 20 }));
+        const CUM = detectAll(F);
+        return { '2327': sliceOne(F, CUM, '2327'), '2330': sliceOne(F, CUM, '2330') };
+    } catch (_) { return null; }
+})();
 
 // ── 動態 ──
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
@@ -110,8 +124,12 @@ await page.evaluate((F) => {
         this._fenPeriods = raw.periods; this._fenSym = sym; this._fenDataDate = raw.data_date || null;
         this._fenFund = raw.fundamentals || null; this._fenHist = raw.hist || null; return true;
     };
-    window.__K = { '5483': F.k5483, '2330': F.k2330 };
-}, FX);
+    window.__K = { '5483': F.k5483, '2330': F.k2330, '2327': F.k2327 };
+    A._divFileCache = { ts: Date.now(), data: F.div };
+    window.__FIN = F.fin || null;
+    A._finSlimCache = {};
+    if (window.__FIN) for (const k of Object.keys(window.__FIN)) A._finSlimCache[k] = { ts: Date.now(), data: window.__FIN[k] };
+}, Object.assign({}, FX, { fin: FIN_SLICE }));
 
 // ⑬ FinMind 計數要在**乾淨的窗口**量:init() 與 analyze() 的背景鏈(fetchStockList / X 光機)本來就會打 FinMind,
 //   ⛔ 跟報告頁混在同一段計數會變成隨機紅燈(第一版就這樣)→ 等 init 安靜 4 秒、不跑 analyze、直接餵 K 線渲染。
@@ -144,8 +162,8 @@ const render = async (sym) => {
     return {
         disp: ['Strategy', 'Live', 'DayTrade', 'Chart', 'Chip', 'Corp', 'Backtest', 'BullBear', 'Report'].map(t => [t, document.getElementById(`subContent${t}`)?.style.display]),
         btnCount: document.querySelectorAll('.sub-tab-btn').length,
-        html: ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc'].map(g),
-        txt: Object.fromEntries(['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc'].map(id => [id, txt(id)])),
+        html: ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls'].map(g),
+        txt: Object.fromEntries(['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls'].map(id => [id, txt(id)])),
         ctx: (() => { const C = A._rpLast; return C ? { sym: C.sym, eps: C.eps, aeSrc: C.ae && C.ae.src, kind: C.ae && C.ae.kind, pe: C.pe, pC: C.pC, peer: C.peer, indK: C.indK, band: C.band, valRows: C.valRows, marginDate: C.s20 && C.s20.marginDate, badge: C.dec && C.dec.badge } : null; })(),
         s20: A._chipPeriodSums(A.rawDailyData, 20),
         wide: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
@@ -157,7 +175,7 @@ const R = await render('5483');
 ok('① 9 顆 sub-tab 按鈕、切到 report 後只有 subContentReport 是 flex', R.btnCount === 9 && R.disp.every(([t, d]) => (t === 'Report') === (d === 'flex')), JSON.stringify(R.disp));
 // ⚠️ V75.3.2 起 `rpLead`(index 1)在**有結論時刻意留空** —— 結論卡已經把同一句話講完了,
 //   並存兩個聲音正是使用者最討厭的「邏輯打架 / 資訊爆炸」。它是 hidden 不是空殼。
-ok('⓪ 其餘八段全部有內容(⛔ 不留空殼)', R.html.filter((_, i) => i !== 1).every(h => h && h.length > 40), R.html.map(h => (h || '').length).join(','));
+ok('⓪ 其餘十段全部有內容(⛔ 不留空殼)', R.html.filter((_, i) => i !== 1).every(h => h && h.length > 40), R.html.map(h => (h || '').length).join(','));
 ok('⓪b ⭐ 有結論時 lead 那條整條不顯示(⛔ 不可跟結論卡講同一句話兩次)',
    !R.html[1] && !!R.ctx && !!R.ctx.badge, `lead=${(R.html[1] || '').length} badge=${R.ctx && R.ctx.badge}`);
 const ALL = Object.values(R.txt).join(' ');
@@ -290,8 +308,8 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.ht
 {
     const P = await page.evaluate(() => { let cap = null; const real = app._freeAiOpen; app._freeAiOpen = q => { cap = q; }; app._reportAsk('5483'); app._freeAiOpen = real; return cap; });
     ok('⑫a 提示詞含 5 條防幻覺關鍵句 + 第 6 條', ['絕對禁止「主觀預測」', '年化EPS × 近3年 P5/中位/P95 PE', '不可腦補', '股價基期」與「估值基期」是兩件事', '循環股獲利頂峰時 PE 最低', '附日期與來源網址'].every(k => P.includes(k)));
-    ok('⑫b 提示詞四段標題', ['🏭 【產業景氣】', '💲 【漲價與供需】', '📞 【最近法說重點】', '⚠️ 【最大風險】'].every(k => P.includes(k)));
-    ok('⑫d 提示詞 <2,500 字且帶入年化 EPS / 對照價 / 位階', P.length < 2500 && P.includes(R.ctx.eps.toFixed(2)) && /估值基期.*\d+%/.test(P), `len ${P.length}`);
+    ok('⑫b 提示詞八段標題(V76.1.8 從四段擴成八段:商業模式 / 法人預估變化 / 客戶集中與曝險 / 空方論點)', ['🏢 【商業模式】', '🏭 【產業景氣】', '💲 【漲價與供需】', '📞 【最近法說重點】', '📈 【法人預估變化】', '👥 【客戶集中與曝險】', '🐻 【空方論點】', '⚠️ 【最大風險】'].every(k => P.includes(k)));
+    ok('⑫d 提示詞 <3,800 字且帶入年化 EPS / 對照價 / 位階', P.length < 3800 && P.includes(R.ctx.eps.toFixed(2)) && /估值基期.*\d+%/.test(P), `len ${P.length}`);
     ok('⑫e 提示詞「目標價」只出現在禁令句', P.split('目標價').length - 1 === 1 && P.includes('「具體目標價」'));
 }
 // 2330(上市):同業列要有數字
@@ -312,7 +330,7 @@ ok('④c 2330 五段有內容、無 --', R2.html.filter((_, i) => i !== 1).every
         // 切股:analyze('2330') 一開始就該把 rp* 清掉(不等資料回來)
         const p = A.analyze('2330');
         await new Promise(r => setTimeout(r, 50));
-        const mid = ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc'].map(id => document.getElementById(id).innerHTML.length);
+        const mid = ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls'].map(id => document.getElementById(id).innerHTML.length);
         await p.catch(() => {});
         // await 回來時 sym 已不同 → ⛔ 不可寫入
         // ⚠️ 用「載入中途切股」重現:第一個 await 回來時 currentSymbolId 已經變了
@@ -322,12 +340,12 @@ ok('④c 2330 五段有內容、無 --', R2.html.filter((_, i) => i !== 1).every
         A._loadFundCache = async function () { A.currentSymbolId = '2330'; return realLoad.call(this); };
         await A.renderReportTab('5483');
         A._loadFundCache = realLoad;
-        const after = ['rpNum', 'rpVal', 'rpFund', 'rpChip', 'rpRisk', 'rpSrc'].reduce((n, id) => n + document.getElementById(id).innerHTML.length, 0);
+        const after = ['rpNum', 'rpVal', 'rpFund', 'rpChip', 'rpRisk', 'rpSrc', 'rpQuick', 'rpWalls'].reduce((n, id) => n + document.getElementById(id).innerHTML.length, 0);
         A._activeSubTab = 'report';
         return { before, mid, after, rpSym: A._rpSym };
     });
-    ok('⑪b analyze(別檔) 一開始就清空九段(⛔ 不等資料回來)', r.before > 40 && r.mid.every(n => n === 0), JSON.stringify(r));
-    ok('⑪c 載入中途切股(await 回來 sym 不符)→ 六個 async 段一個字都不寫', r.after === 0, JSON.stringify(r));
+    ok('⑪b analyze(別檔) 一開始就清空十一段(⛔ 不等資料回來)', r.before > 40 && r.mid.every(n => n === 0), JSON.stringify(r));
+    ok('⑪c 載入中途切股(await 回來 sym 不符)→ 八個 async 段一個字都不寫', r.after === 0, JSON.stringify(r));
 }
 // ② 指數藏這頁
 {
@@ -544,7 +562,7 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     const r = await page.evaluate(async () => {
         const A = app;
         A.switchSubTab('report');
-        for (const id of ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc']) document.getElementById(id).innerHTML = '';
+        for (const id of ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls']) document.getElementById(id).innerHTML = '';
         await A.analyze('5483').catch(() => {});
         await new Promise(r => setTimeout(r, 2500));
         const act = document.getElementById('rpAct').innerHTML;
@@ -601,6 +619,100 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
        v.hasRuler && v.dataRk === v.rk && v.left != null && Math.abs(v.left - Math.max(2, Math.min(98, v.rk))) < 0.01, JSON.stringify({ rk: v.rk, dataRk: v.dataRk, left: v.left }));
     ok('💰v3 現價超出 P95 → 貼右邊(98%)+ 明講「已超過近 3 年 95%」', v.overTxt && v.overLeft === 98, JSON.stringify({ overLeft: v.overLeft, overTxt: v.overTxt }));
     ok('💰v4 估值節⛔ 不出現「目標價／預估價」(免責句除外)', v.noTarget, '');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// 📋 V76.1.8 「法人級 22 節提示詞」對照:一頁兩層(⚡ 快速判別表 + § 編號骨架 + 四段純公式)
+//   ⛔ 每一條先想「注入什麼它會叫」。
+// ──────────────────────────────────────────────────────────────────────────
+{
+    // 靜態:快速表與價格牆**零現算** —— 只准讀 stash
+    const qa = SRC.indexOf('    _rpQuickHtml(C) {'), qb = SRC.indexOf('    // 🧮 §14 敏感度');
+    const wa = SRC.indexOf('    _rpWallsHtml(C) {'), wb = SRC.indexOf('    // 🗓️ §12 事件');
+    const zero = /_detect[A-Z]\w*\(|_calcBullBearScan\(|_entryCheckup\(|_ovDecide\(|_volProfile\(|_overheadSupply\(|_upsideRoom\(|_volStuckBands\(|_chuResistanceZones\(/;
+    ok('§z1 ⚡ 快速表零現算:原始碼不可呼叫任何偵測器/分桶/判定函式(只讀 stash;注入:加一行 _ovDecide( → 必紅)', qa > 0 && qb > qa && !zero.test(strip(SRC.slice(qa, qb))), (strip(SRC.slice(qa, qb)).match(zero) || [])[0]);
+    ok('§z2 🧱 價格牆零現算(套牢區/密集區只讀 _keyLevels / _upsideStash)', wa > 0 && wb > wa && !zero.test(strip(SRC.slice(wa, wb))), (strip(SRC.slice(wa, wb)).match(zero) || [])[0]);
+    ok('§z3 🧱 價格位置圖整段轉述 _priceRulerHtml()(⛔ 不自己畫第二把尺)', /this\._priceRulerHtml\(\)/.test(SRC.slice(wa, wb)) && !/_gaugeRow\(/.test(SRC.slice(wa, wb)));
+    ok('§z4 快速表每一列都有來源標籤(五種之一)', /_RP_TAG: \{ real:.*calc:.*ask:.*none:.*dead:/.test(SRC) && /this\._rpTag\(r\.tag\)/.test(SRC.slice(qa, qb)));
+
+    const R5 = await render('2330');
+    const Q = await page.evaluate(() => {
+        const A = app, box = document.getElementById('rpQuick');
+        const rows = [...box.querySelectorAll('[data-rpq]')].map(d => ({ k: d.getAttribute('data-rpq'), t: d.textContent.replace(/\s+/g, ' ').trim() }));
+        const tags = rows.map(r => ['✅ 真實資料', '🧮 純公式', '🔎 要自己查', '⛔ 本站沒有', '🚫 實測打掉'].find(t => r.t.includes(t)) || null);
+        return { n: rows.length, keys: rows.map(r => r.k), tags, badge: A._rpLast.dec && A._rpLast.dec.badge, first: rows[0] && rows[0].t, txt: box.textContent.replace(/\s+/g, ' ') };
+    });
+    ok('§q1 ⚡ 快速表 11 個面向、每一列都有來源標籤', Q.n === 11 && Q.tags.every(Boolean), JSON.stringify({ n: Q.n, tags: Q.tags }));
+    ok('§q2 第一列 = 結論,徽章 = _ovDecide.badge(轉述)', Q.keys[0] === '§1 結論' && Q.badge && Q.first.includes(Q.badge.replace(/<[^>]+>/g, '')), Q.first);
+    ok('§q3 每一列標題帶 § 編號(對照 22 節提示詞)', Q.keys.every(k => /^§\d/.test(k)), JSON.stringify(Q.keys));
+    ok('§q4 快速表⛔ 不下操作指令(指令只有結論那一句)', !/(可以進場|可進場|建議買進|建議賣出|可加碼|放心做多|順勢做多)/.test(Q.txt.replace(Q.badge ? Q.badge.replace(/<[^>]+>/g, '') : '', '')), (Q.txt.match(/(可以進場|可進場|建議買進|建議賣出|可加碼|放心做多|順勢做多)/) || [])[0]);
+    ok('§q5 六個節標題帶 § 編號(§4~§6 / §10 / §12… / §14・§15 / §2・§3… / §0)', ['§4~§6', '§10', '§12・§13・§18・§21', '§14・§15', '§2・§3・§7~§9', '§0'].every(k => R5.txt.rpFund.includes(k) || R5.txt.rpChip.includes(k) || R5.txt.rpRisk.includes(k) || R5.txt.rpVal.includes(k) || R5.txt.rpInd.includes(k) || R5.txt.rpSrc.includes(k)), '');
+    ok('§a1 結論卡寫明⛔ 不給 §19 因子總分 / §20 ★ 評等,而且真的沒有 ★★ 這種評等', /data-rpnostar/.test(R5.html[7]) && !/★{2,}/.test(R5.txt.rpAct), R5.txt.rpAct.slice(-200));
+    // 🧱 §11・§17
+    const W = await page.evaluate(() => {
+        const A = app, C = A._rpLast, box = document.getElementById('rpWalls');
+        const d = box.querySelector('details'); if (d) d.open = true;
+        const walls = [...box.querySelectorAll('[data-rpwall]')].map(el => ({ n: el.getAttribute('data-rpwall'), v: +(el.querySelector('.font-mono').textContent.replace(/,/g, '')) }));
+        const st = Object.fromEntries([...box.querySelectorAll('[data-rpstress]')].map(el => [el.getAttribute('data-rpstress'), el.textContent.replace(/\s+/g, ' ')]));
+        // ⚠️ 原始字串 vs innerHTML 會被 DOM 序列化改掉尾巴(onclick 裡的引號變 &quot;)→ 兩邊都先過一次 DOM 再比
+        const norm = h => { const t = document.createElement('div'); t.innerHTML = h; return t.innerHTML; };
+        const ruler = A._priceRulerHtml();
+        return { walls, st, pC: C.pC, one20: Math.round(A._netPL(C.pC, C.pC * 0.8, 1000)), px20: A._rpFmt(C.pC * 0.8, 1), rulerLen: ruler.length, hasRuler: ruler ? box.innerHTML.includes(norm(ruler)) : null, txt: box.textContent.replace(/\s+/g, ' ') };
+    });
+    ok('§w1 價格牆表由高到低排、含「📍 現價」列', W.walls.length >= 4 && W.walls.some(x => x.n === '📍 現價') && W.walls.every((x, i) => i === 0 || x.v <= W.walls[i - 1].v + 0.001), JSON.stringify(W.walls.slice(0, 6)));
+    ok('§w2 每一道牆都配「距現價 % / 一張差多少元」', (W.txt.match(/% \/ [+-][\d,]+ 元/g) || []).length >= W.walls.length - 1, W.txt.slice(0, 300));
+    if (W.rulerLen) ok('§w3 ⭐ 報告頁的價格位置圖 = 總覽 _priceRulerHtml() 逐字相同(同一支函式;注入:自己畫 → 必紅)', W.hasRuler === true, `rulerLen ${W.rulerLen}`);
+    else console.log('⏭️ §w3 這一輪 _keyLevels 還沒算(尺是空的)→ 驗不到逐字相同,不算過');
+    ok('§s1 §17 壓力測試:跌 20% 的價位與一張賠多少 = 手算(_netPL(現價, 現價×0.8, 1000))', W.st['20'] && W.st['20'].includes(W.px20) && W.st['20'].includes(`一張 ${W.one20.toLocaleString()} 元`), W.st['20']);
+    ok('§s2 四級都在(10/20/30/40)且每級講「途中撞到」或「沒有本站記錄的價位」', ['10', '20', '30', '40'].every(k => W.st[k] && /(途中撞到|沒有本站記錄)/.test(W.st[k])), JSON.stringify(Object.keys(W.st)));
+    ok('§s3 壓力測試文案⛔ 不出現「機率」「目標價」', !/機率|目標價/.test(W.txt), (W.txt.match(/.{15}(機率|目標價).{15}/) || [])[0]);
+    // 🧮 §14
+    const S = await page.evaluate(() => {
+        const A = app, C = A._rpLast, box = document.getElementById('rpVal');
+        const s = box.querySelector('[data-rpsens]');
+        const cells = s ? [...s.querySelectorAll('.font-mono.text-\\[11px\\]')].map(el => +el.textContent.replace(/,/g, '')) : [];
+        return { has: !!s, cells, mid: Math.round(C.eps * 1.0 * C.band.med), lo: Math.round(C.eps * 0.8 * C.band.p25), hi: Math.round(C.eps * 1.2 * C.band.p75), txt: s ? s.textContent.replace(/\s+/g, ' ') : '' };
+    });
+    ok('§v1 §14 敏感度 9 格 = EPS×變動×倍數(左上 = 0.8×P25、中 = 1.0×中位、右下 = 1.2×P75 手算一致)', S.has && S.cells.length === 9 && S.cells[0] === S.lo && S.cells[4] === S.mid && S.cells[8] === S.hi, JSON.stringify({ cells: S.cells, lo: S.lo, mid: S.mid, hi: S.hi }));
+    ok('§v2 敏感度⛔ 沒有機率欄、不叫目標價/預估價、要寫「算術不是預測」', S.has && !/樂觀機率|悲觀機率|目標價|預估價/.test(S.txt) && /算術/.test(S.txt) && /不給機率/.test(S.txt), S.txt.slice(0, 200));
+    // 🔄 循環股:純函式只換 cyc 這一個維度
+    const CY = await page.evaluate(() => { const A = app, C = A._rpLast; return { on: /data-rpcyc/.test(A._rpValHtml(Object.assign({}, C, { cyc: true }))), off: /data-rpcyc/.test(A._rpValHtml(Object.assign({}, C, { cyc: false }))) }; });
+    ok('§c1 循環股旗標 → 估值節多一行「位階要反著讀」;非循環股沒有(只換 cyc 一個維度)', CY.on && !CY.off, JSON.stringify(CY));
+    // 🗓️ §12・§21
+    const E = await page.evaluate(() => {
+        const box = document.getElementById('rpRisk'); const d = box.querySelector('details'); if (d) d.open = true;
+        const t = box.textContent.replace(/\s+/g, ' ');
+        return { t, watch: box.querySelector('[data-rpwatch]') && +box.querySelector('[data-rpwatch]').getAttribute('data-rpwatch') };
+    });
+    ok('§e1 §12 事件表有財報法定日 / 月營收 / 除權息 / 法說會四列', /財報\s*最晚 \d{2}\/\d{2}/.test(E.t) && /月營收\s*\d{2}\/\d{2}/.test(E.t) && /除權息/.test(E.t) && /法說會/.test(E.t), E.t.slice(0, 300));
+    ok('§e2 法說會抓不到時誠實寫「本站沒抓到」+ 🔎(⛔ 不留空)', /法說會 \d{2}\/\d{2}/.test(E.t) || (/本站沒抓到/.test(E.t) && /🔎 查/.test(E.t)), '');
+    ok('§e3 事件只講波動⛔ 不講方向(利多/利空/會漲/會跌)', !/利多|利空|會漲|會跌/.test(E.t.slice(E.t.indexOf('§12'))), (E.t.slice(E.t.indexOf('§12')).match(/.{15}(利多|利空|會漲|會跌).{15}/) || [])[0]);
+    ok('§e4 §21 觀察清單 5 件事,第一件是你設的出場線', E.watch === 5 && /§21/.test(E.t) && /出場線/.test(E.t), String(E.watch));
+    // 📦 §4 財報三表(真檔切片;拿不到就 ⏭️)
+    if (FIN_SLICE && FIN_SLICE['2327']) {
+        const R6 = await render('2327');
+        const FD = await page.evaluate(() => {
+            const box = document.getElementById('rpFund'); const d = box.querySelector('details'); if (d) d.open = true;
+            const t = box.textContent.replace(/\s+/g, ' ');
+            const fl = box.querySelector('[data-rpflags]');
+            const q = document.getElementById('rpQuick').textContent.replace(/\s+/g, ' ');
+            const src = document.getElementById('rpSrc').textContent.replace(/\s+/g, ' ');
+            return { t, flags: fl ? +fl.getAttribute('data-rpflags') : 0, q, src, pb: document.getElementById('rpInd').textContent.includes('淨值比') };
+        });
+        ok('§f1 📦 國巨:三表段有存貨天數 / 自由現金流 / ROE / 股本', /存貨天數/.test(FD.t) && /自由現金流/.test(FD.t) && /ROE/.test(FD.t) && /股本/.test(FD.t), FD.t.slice(0, 300));
+        ok('§f2 🚨 國巨兩道旗標都亮:2025Q3「EPS 崩但營收毛利沒掉 → 業外」+ 2024Q3「股本 +20%」', FD.flags === 2 && /業外/.test(FD.t) && /股本 .* 億元/.test(FD.t), `flags=${FD.flags} ${FD.t.slice(-400)}`);
+        ok('§f3 快速表 §4 那列寫「2 個旗標」且標 ✅ 真實資料', /§4 財報品質.*2 個旗標.*✅ 真實資料/.test(FD.q), (FD.q.match(/§4 財報品質.{0,160}/) || [])[0]);
+        ok('§f4 來源段列出「財報三表切片」日期', /財報三表切片/.test(FD.src) && !/財報三表切片[^0-9]*本站沒有/.test(FD.src), FD.src.slice(0, 300));
+        ok('§f5 §4 誠實寫「應收帳款天數本站沒有」、§5/§6 寫「本站沒有」分析師共識(⛔ 不編)', /應收帳款天數本站沒有/.test(FD.t) && /沒有免費的分析師共識/.test(FD.t), '');
+        ok('§f6 上市股同業表多了「淨值比」欄', FD.pb, '');
+        ok('📱3 國巨那頁 390px 仍不可橫向溢出', !R6.wide);
+        // 累計 vs 單季:切片裡的 cum_fixed 要含 ocf(注入:切片器不還原 → 這裡的 fixture 就會少這個欄)
+        ok('§f7 切片 fixture 標示現金流量表已從累計還原成單季(cum_fixed 含 ocf/capex)', FIN_SLICE['2327'].cum_fixed.includes('ocf') && FIN_SLICE['2327'].cum_fixed.includes('capex'), JSON.stringify(FIN_SLICE['2327'].cum_fixed));
+    } else console.log('⏭️ 沒有 fin_deep 分支/檔 → §f1~§f7 跳過(git show origin/fin_deep:fin_deep/fin_deep.json > fin_deep/fin_deep.json)');
+    // 沒切片的股(5483 不在 fixture)→ 誠實「本站尚未切出」+ 快速表 ⛔
+    const R7 = await render('5483');
+    ok('§f8 沒有切片的股:§4 寫「本站尚未切出這檔的財報三表」、快速表那列標 ⛔ 本站沒有', /尚未切出/.test(R7.txt.rpFund) && /§4 財報品質[^§]*⛔ 本站沒有/.test(R7.txt.rpQuick), R7.txt.rpQuick.slice(0, 200));
+    ok('📄a3 版面順序:結論 → ⚡ 快速表 → 重點數字 → 風險 → 🧱 價格牆 → 估值', (() => { const o = ['rpAct', 'rpQuick', 'rpNum', 'rpRisk', 'rpWalls', 'rpVal']; return true; })() && (await page.evaluate(() => { const ord = [...document.getElementById('subContentReport').children].map(d => d.id); const at = id => ord.indexOf(id); return at('rpAct') < at('rpQuick') && at('rpQuick') < at('rpNum') && at('rpNum') < at('rpRisk') && at('rpRisk') < at('rpWalls') && at('rpWalls') < at('rpVal'); })), '');
 }
 
 await browser.close();

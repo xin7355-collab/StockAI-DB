@@ -55,3 +55,6 @@ chips_deep/
 #    Claude Code on the web 的雲端 session 拿到一個指向不存在路徑的壞設定。
 #    ⛔ 這是預防性的:本專案的測試直接用 /opt/pw-browsers 的 chromium,不走 MCP。
 .mcp.json
+
+# 📦 V76.1.8 財報三表深歷史(7.8 MB,只活在 fin_deep 分支與本機測試;切片走 data/fin/)
+fin_deep/

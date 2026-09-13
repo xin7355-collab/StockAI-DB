@@ -44,3 +44,45 @@ export const knownAsOf = (periods, day) => {
  *     DOI 會從 Q1 到 Q4 一路變小,看起來像「庫存一直在去化」,其實只是分母在累加。 */
 export const doi = (inv, cogsQuarter) =>
     (inv > 0 && cogsQuarter > 0) ? inv / cogsQuarter * 90 : null;
+
+/** 📐 「這個流量欄位是累計還是單季?」—— ⛔ 不憑印象假設,用 Q4 ÷ Q1 的比值中位數判
+ *  (⛔ 不用「是不是遞增」:某一季虧損/負值會打亂它,實測 ocf 明明是累計卻只有 43% 遞增)。
+ *  累計 → Q4 ≈ 4×Q1(比值 2.5~6);單季 → 0.5~2。
+ *  🚨 實測 FinMind 三表是**混的**:損益表(cogs/rev)單季、現金流量表(capex/dep/ocf)累計 → ⛔ 不可整批當同一種。
+ *  F = fin_deep.json 整份({q, f, s});回 true = 累計。log=true 時印判斷依據(探針用)。 */
+export const detectCumulative = (F, field, log = false) => {
+    const j = F.f.indexOf(field), ratios = [];
+    if (j < 0) return false;
+    for (const qs of Object.values(F.s)) {
+        const byY = {};
+        for (const [q, v] of Object.entries(qs)) {
+            if (v[j] != null) (byY[q.slice(0, 4)] ||= {})[q.slice(5, 7)] = Math.abs(v[j]);
+        }
+        for (const mm of Object.values(byY)) {
+            if (mm['03'] > 0 && mm['12'] > 0) ratios.push(mm['12'] / mm['03']);
+        }
+    }
+    ratios.sort((a, b) => a - b);
+    const med = ratios.length ? ratios[ratios.length >> 1] : 1;
+    const cum = med >= 2.5;
+    if (log) console.log(`   📐 ${field}: Q4÷Q1 中位 ${med.toFixed(2)}(${ratios.length} 個年度)→ ` +
+        (cum ? '🚨 累計 → 自動相減還原成單季' : med <= 2.0 ? '✅ 單季' : '⚠️ 看不出來,當單季處理'));
+    return cum;
+};
+
+/** 取某一檔某一季的**單季**值:累計欄位就跟同一年的前一季相減(Q1 本來就是單季);
+ *  找不到前一季 → 回 null(⛔ 不硬算)。CUM = {field: bool}(detectCumulative 的結果)。 */
+export const quarterValue = (F, sym, q, field, CUM) => {
+    const j = F.f.indexOf(field), row = F.s[sym] && F.s[sym][q];
+    if (j < 0 || !row || row[j] == null) return null;
+    const v = row[j];
+    if (!CUM[field] || q.slice(5, 7) === '03') return v;
+    const i = F.q.indexOf(q);
+    for (let k = i - 1; k >= 0; k--) {                       // 找同一年的前一季
+        const p = F.q[k];
+        if (p.slice(0, 4) !== q.slice(0, 4)) break;
+        const pr = F.s[sym][p];
+        if (pr && pr[j] != null) return v - pr[j];
+    }
+    return null;
+};

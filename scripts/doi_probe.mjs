@@ -22,7 +22,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { knownAsOf, doi as calcDoi } from './lib_fundamentals.mjs';
+import { knownAsOf, doi as calcDoi, detectCumulative as libDetectCumulative, quarterValue } from './lib_fundamentals.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const DATA = path.join(ROOT, 'data');
@@ -47,42 +47,13 @@ console.log(`📥 財報:${F.meta.n} 檔 ・${F.meta.quarters} 季 ・${F.q[0]} 
 //    累計 → Q4 ≈ 4×Q1(比值 2.5~6);單季 → 比值 0.5~2。
 // 🚨 實測 FinMind 的三表是**混的**:損益表(cogs/rev)單季、現金流量表(capex/dep/ocf)累計。
 //    ⛔ 不可整批當成同一種處理。
-function detectCumulative(field) {
-  const j = FI[field], ratios = [];
-  for (const qs of Object.values(F.s)) {
-    const byY = {};
-    for (const [q, v] of Object.entries(qs)) {
-      if (v[j] != null) (byY[q.slice(0, 4)] ||= {})[q.slice(5, 7)] = Math.abs(v[j]);
-    }
-    for (const mm of Object.values(byY)) {
-      if (mm['03'] > 0 && mm['12'] > 0) ratios.push(mm['12'] / mm['03']);
-    }
-  }
-  ratios.sort((a, b) => a - b);
-  const med = ratios.length ? ratios[ratios.length >> 1] : 1;
-  const cum = med >= 2.5;
-  console.log(`   📐 ${field}: Q4÷Q1 中位 ${med.toFixed(2)}(${ratios.length} 個年度)→ ` +
-              (cum ? '🚨 累計 → 自動相減還原成單季' : med <= 2.0 ? '✅ 單季' : '⚠️ 看不出來,當單季處理'));
-  return cum;
-}
+// ⭐ 2026-09-13 判斷式搬進 lib_fundamentals.mjs(fin_slice.mjs 也要用同一份,⛔ 不複製第二份 —— 陷阱 #37)
+function detectCumulative(field) { return libDetectCumulative(F, field, true); }
 console.log('\n📐 先判斷流量欄位是累計還是單季(⛔ 搞錯的話 DOI 會假裝一直在去化)');
 const CUM = Object.fromEntries(['cogs', 'rev', 'capex', 'ocf', 'dep'].map(f => [f, detectCumulative(f)]));
 
 /** 取某一檔某一季的**單季**值(累計就跟前一季相減;Q1 本來就是單季) */
-function q1(sym, q, field) {
-  const j = FI[field], row = F.s[sym][q];
-  if (!row || row[j] == null) return null;
-  const v = row[j];
-  if (!CUM[field] || q.slice(5, 7) === '03') return v;
-  const i = F.q.indexOf(q);
-  for (let k = i - 1; k >= 0; k--) {                       // 找同一年的前一季
-    const p = F.q[k];
-    if (p.slice(0, 4) !== q.slice(0, 4)) break;
-    const pr = F.s[sym][p];
-    if (pr && pr[j] != null) return v - pr[j];
-  }
-  return null;                                             // ⛔ 找不到前一季就不硬算
-}
+function q1(sym, q, field) { return quarterValue(F, sym, q, field, CUM); }
 
 // ── 價格 ──
 const norm = d => String(d || '').replace(/\//g, '-').slice(0, 10);

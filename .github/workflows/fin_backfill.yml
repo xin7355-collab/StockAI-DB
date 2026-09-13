@@ -24,6 +24,10 @@ on:
         description: '時間預算(分)—— 超過就把手上的寫出去,下一輪接續'
         required: false
         default: '150'
+      slice_only:
+        description: '1 = 不回算,只把分支上既有的 fin_deep.json 切片推到 data 分支(約 1 分鐘,不吃 FinMind 額度)'
+        required: false
+        default: '0'
 
 permissions:
   contents: write
@@ -71,6 +75,7 @@ jobs:
           ls -l fin_deep/ 2>/dev/null || true
 
       - name: 📦 回算(探路 → 逐檔)
+        if: ${{ inputs.slice_only != '1' }}
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
           FIN_BUDGET_MIN: ${{ inputs.budget }}
@@ -79,7 +84,7 @@ jobs:
         run: python3 scripts/fin_backfill.py
 
       - name: 🚀 推上 fin_deep 分支
-        if: ${{ inputs.dry == '0' }}
+        if: ${{ inputs.dry == '0' && inputs.slice_only != '1' }}
         run: |
           set -e
           F=fin_deep/fin_deep.json
@@ -108,3 +113,47 @@ jobs:
             [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; exit 1; }
             sleep $((i * 5))
           done
+
+      # ✂️ V76.1.8 每檔切片 → data 分支(使用者選「這次一起做」:存貨天數/資本支出/營業成本接進報告頁)
+      #   ⭐ 為什麼推 data 分支而不是 gh-pages:daily_miner 的 gh-pages 是 orphan force-push,
+      #      內容全部來自 `git archive origin/data` 鋪的底層 + 🛟 撿回 → 進了 data 分支就會自動跟著上 gh-pages,
+      #      **daily_miner 一行不改**(同 tick_flow「也推 data 分支」那條,V69.8.4 P0-2)。
+      #   🚨 上一步 `git checkout --orphan` 之後工作區沒有可信的 scripts/ 可依賴 → 切片器先 cp 到 /tmp 再跑
+      #      (同 intraday 迴圈鐵則 ②),而且複製完立刻試跑,不能用就直接紅燈。
+      #   ⛔ 切出來 <500 檔就停手(⛔ 不可用半份覆蓋);push 失敗 5 次才算失敗(中間 pull --rebase)。
+      - name: ✂️ 每檔切片 → 推 data 分支(data/fin/{sym}.json)
+        if: ${{ inputs.dry == '0' }}
+        run: |
+          set -e
+          F=fin_deep/fin_deep.json
+          [ -s "$F" ] || { echo "❌ 沒有 $F → 沒東西可切(先跑一次回算)"; exit 1; }
+          git show origin/main:scripts/fin_slice.mjs > /tmp/fin_slice.mjs
+          git show origin/main:scripts/lib_fundamentals.mjs > /tmp/lib_fundamentals.mjs
+          node --check /tmp/fin_slice.mjs
+          rm -rf /tmp/fin_out
+          FIN="$F" OUT=/tmp/fin_out node /tmp/fin_slice.mjs
+          N=$(ls /tmp/fin_out/*.json 2>/dev/null | wc -l)
+          [ "$N" -ge 500 ] || { echo "❌ 只切出 $N 檔(<500)→ 拒絕推送"; exit 1; }
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git reset --hard -q 2>/dev/null || true
+          git clean -fdq -e fin_deep 2>/dev/null || true
+          git fetch origin "+refs/heads/data:refs/remotes/origin/data"
+          git checkout -f -B data origin/data
+          mkdir -p data/fin
+          rm -rf data/fin/*.json
+          cp /tmp/fin_out/*.json data/fin/
+          git add -f data/fin
+          if git diff --cached --quiet; then
+            echo "ℹ️ data/fin 跟分支上一樣,沒東西可推"
+          else
+            git commit -q -m "✂️ 財報切片 ${N} 檔 → data 分支 ($(date -u '+%Y-%m-%d %H:%M UTC'))" -- data/fin
+            pushed=0
+            for i in 1 2 3 4 5; do
+              git push origin data && { pushed=1; echo "✅ data/fin/ 已推上 data 分支 (第 $i 次)"; break; }
+              sleep $((i * 3))
+              git pull --rebase origin data 2>/dev/null || true
+            done
+            [ "$pushed" -eq 1 ] || { echo "❌ push 連 5 次失敗"; exit 1; }
+          fi
+          echo "📦 data/fin/ $N 檔 ・下一輪 daily_miner 部署會帶進 gh-pages(前端才讀得到)"

@@ -230,6 +230,12 @@ EXPECTED_KEYS = {
         ('bull', '今日正期望值訊號榜(daily_signal_scan.mjs)'),
         ('scanned', '掃了幾檔'),
     ],
+    # 📦 V76.1.8 財報三表切片(fin_slice.mjs → fin_backfill.yml 推 data 分支 → daily_miner 帶上 gh-pages)
+    #    抽 2330 一檔當代表:檔在但沒有 q(季資料)/ cum_fixed(累計還原標記)= 切片器壞了
+    'fin/2330.json': [
+        ('q', '財報三表 12 季(存貨/現金流/EPS,fin_slice.mjs)'),
+        ('cum_fixed', '現金流量表累計→單季的還原標記(空 = 沒還原,DOI 會假裝一直去化)'),
+    ],
 }
 
 # 同一個指標出現在多個檔 → 值必須一致(連動對帳)
