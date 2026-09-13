@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.2.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.2.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -737,7 +737,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.2.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.2.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -785,8 +785,8 @@
                     </div>
                     <!-- 🔑 V69.6.0 使用者要求:API 金鑰與持股「分開備份」→ 各存一個獨立 .sjbak,還原時只覆蓋自己那一份、不動另一份 -->
                     <div class="grid grid-cols-2 gap-2 mb-1">
-                        <button onclick="app.exportData('holdings'); app.vibrate(50);" class="bg-emerald-800/50 hover:bg-emerald-700/60 text-emerald-100 text-[11px] py-2 rounded font-bold transition leading-tight border border-emerald-700/50">📊 只備份持股/自選<br><span class="text-[8px] text-emerald-300/70 font-normal">不含金鑰・可安心分享</span></button>
-                        <button onclick="app.exportData('keys'); app.vibrate(50);" class="bg-amber-800/50 hover:bg-amber-700/60 text-amber-100 text-[11px] py-2 rounded font-bold transition leading-tight border border-amber-700/50">🔑 只備份 API 金鑰<br><span class="text-[8px] text-amber-300/70 font-normal">敏感・單獨保管</span></button>
+                        <button onclick="app.exportData('holdings'); app.vibrate(50);" class="bg-emerald-800/50 hover:bg-emerald-700/60 text-emerald-100 text-[11px] py-2 rounded font-bold transition leading-tight border border-emerald-700/50">📊 只備份持股/自選<br><span class="text-[10px] text-emerald-300/70 font-normal">不含金鑰・可安心分享</span></button>
+                        <button onclick="app.exportData('keys'); app.vibrate(50);" class="bg-amber-800/50 hover:bg-amber-700/60 text-amber-100 text-[11px] py-2 rounded font-bold transition leading-tight border border-amber-700/50">🔑 只備份 API 金鑰<br><span class="text-[10px] text-amber-300/70 font-normal">敏感・單獨保管</span></button>
                     </div>
                     <p class="text-[9px] text-gray-600 leading-tight">💡 分開備份的檔案用同一個「📥 還原備份」還原即可,系統會自動只覆蓋那一份(還持股不動金鑰、還金鑰不動持股)。</p>
                     <!-- 🔒 V69.6.2 使用者要求:txt 怕被看 → 選填備份密碼走 AES 真加密,沒密碼誰都解不開 -->
@@ -2237,7 +2237,7 @@
                     <!-- ════════ 💰 獲利能力(毛利率 + 三率 + 每季 EPS)════════ -->
                     <div id="xp-profit" class="scroll-mt-4 inline-flex items-center text-cyan-300 text-xs font-black mb-1.5 bg-cyan-900/40 border-l-[3px] border-cyan-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">💰 獲利能力 <span class="text-[9px] font-normal ml-1 text-cyan-400/70">賺不賺、會不會越賺越多</span></div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-cyan-900/40 mb-1.5">
-                        <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">毛利率 <button onclick="app.showJargon('毛利率趨勢'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
+                        <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex flex-wrap items-center gap-x-1 gap-y-0">毛利率 <button onclick="app.showJargon('毛利率趨勢'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
                         <span id="xrayGrossMargin" class="font-mono font-black text-xl leading-tight text-gray-600">--</span>
                         <div id="xrayGmSpark" style="width:100%;height:22px;margin-top:1px;"></div>
                         <span id="xrayGmCompare" class="text-[9px] font-mono text-gray-500 mt-0.5"></span>
@@ -2251,7 +2251,7 @@
                     <!-- ════════ 📈 成長性(營收 YoY + 月營收歷史)════════ -->
                     <div id="xp-growth" class="scroll-mt-4 inline-flex items-center text-blue-300 text-xs font-black mb-1.5 bg-blue-900/40 border-l-[3px] border-blue-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">📈 成長性 <span class="text-[9px] font-normal ml-1 text-blue-400/70">營收有沒有越做越大</span></div>
                     <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-blue-900/40 mb-1.5">
-                        <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">營收 YoY <button onclick="app.showJargon('營收YoY'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
+                        <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex flex-wrap items-center gap-x-1 gap-y-0">營收 YoY <button onclick="app.showJargon('營收YoY'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
                         <span id="xrayYoy" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         <span id="xrayRevMom" class="text-[10px] font-mono text-gray-500"></span>
                     </div>
@@ -2274,19 +2274,19 @@
                     </div>
                     <div class="grid grid-cols-3 gap-1.5 mb-1.5">
                         <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-violet-900/40">
-                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">PEG <button onclick="app.showJargon('PEG'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button> <span id="xrayPegTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
+                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex flex-wrap items-center gap-x-1 gap-y-0">PEG <button onclick="app.showJargon('PEG'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button> <span id="xrayPegTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
                             <span id="xrayPeg" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-violet-900/40">
-                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">vs 同業 <button onclick="app.showJargon('產業相對PE'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button> <span id="xrayIndustryPeTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
+                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex flex-wrap items-center gap-x-1 gap-y-0">vs 同業 <button onclick="app.showJargon('產業相對PE'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button> <span id="xrayIndustryPeTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
                             <span id="xrayIndustryPe" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-violet-900/40">
-                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">vs 自己 <button onclick="app._showPeBandHelp(); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button> <span id="xrayPeBandTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
+                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex flex-wrap items-center gap-x-1 gap-y-0">vs 自己 <button onclick="app._showPeBandHelp(); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button> <span id="xrayPeBandTag" class="text-[9px] font-mono px-1.5 py-0.5 rounded"></span></span>
                             <span id="xrayPeBand" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-violet-900/40">
-                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">P/B <button onclick="app.showJargon('股價淨值比PB'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
+                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex flex-wrap items-center gap-x-1 gap-y-0">P/B <button onclick="app.showJargon('股價淨值比PB'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
                             <span id="xrayPb" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                     </div>
@@ -2303,25 +2303,25 @@
                     <div id="xp-div" class="scroll-mt-4 inline-flex items-center text-amber-300 text-xs font-black mb-1.5 bg-amber-900/40 border-l-[3px] border-amber-500 pl-2 pr-2.5 py-0.5 rounded-r tracking-widest shadow-sm">🎁 股利政策 <span class="text-[9px] font-normal ml-1 text-amber-400/70">存股族看這區</span></div>
                     <div class="grid grid-cols-3 gap-1.5 mb-1.5">
                         <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
-                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">殖利率 <button onclick="app.showJargon('殖利率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
+                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex flex-wrap items-center gap-x-1 gap-y-0">殖利率 <button onclick="app.showJargon('殖利率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
                             <span id="xrayYield" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
-                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">發配率 <button onclick="app.showJargon('股利發配率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
+                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex flex-wrap items-center gap-x-1 gap-y-0">發配率 <button onclick="app.showJargon('股利發配率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
                             <span id="xrayPayout" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
-                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">每股股利 <button onclick="app.showJargon('每股股利'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
+                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex flex-wrap items-center gap-x-1 gap-y-0">每股股利 <button onclick="app.showJargon('每股股利'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
                             <span id="xrayDividend" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-1.5 mb-1.5">
                         <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
-                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">📊 填息機率<span class="text-[8px] text-gray-500">(近5年)</span> <button onclick="app.showJargon('填息機率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
+                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex flex-wrap items-center gap-x-1 gap-y-0">📊 填息機率<span class="text-[8px] text-gray-500">(近5年)</span> <button onclick="app.showJargon('填息機率'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
                             <span id="xrayFillProb" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                         <div class="bg-[#0d1117] rounded-lg p-2.5 flex flex-col gap-0.5 border border-amber-900/40">
-                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex items-center gap-1">⏱️ 平均填息天數 <button onclick="app.showJargon('平均填息天數'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
+                            <span class="text-gray-400 text-[10px] font-mono tracking-wide inline-flex flex-wrap items-center gap-x-1 gap-y-0">⏱️ 平均填息天數 <button onclick="app.showJargon('平均填息天數'); event.stopPropagation();" class="text-gray-500 hover:text-blue-300">ⓘ</button></span>
                             <span id="xrayFillDays" class="font-mono font-black text-xl text-gray-600 leading-tight">--</span>
                         </div>
                     </div>
@@ -8306,8 +8306,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.2.3',
+    _APP_VERSION: 'V76.2.4',
     _CHANGELOG: [
+        { v: 'V76.2.4', d: ['📊 報告頁「其他數字」不再硬切 3 欄 —— 手機開特大字時數字會被切成「…」讀不到,現在會自動降成 2 欄',
+            '📐 回測頁打法清單、決策台兩張成績表的欄位改成會收縮的排法(長數字不再撐破那一列)',
+            '🔠 設定中心備份鈕的小字從 8px 放大到 10px(全 App 最小字下限)',
+            '🧭 內部:版面與字級兩支巡邏工具本來只掃 3 頁,補到 60 頁;並修好它們「看起來有掃、其實沒掃到」的四個盲點'] },
         { v: 'V76.2.3', d: ['🖼️ <b>報告頁最上面多一格「AI 圖」</b>(你說用圖比較清楚 —— 對,而且一張圖抵一整頁字)。按「🎨 做圖提示詞」→ 貼給會畫圖的 AI → 產出後回來「🖼️ 選圖存起來」,下次開就在;桌機也可以直接在那張卡上 Ctrl+V 貼。圖存在你這台裝置(壓成最寬 1400px),⛔ 不進本站任何結論或評分。⚠️ 它排在<b>本站結論那一句之後</b> —— 外部 AI 畫的東西⛔ 不可壓在本站自己的結論上面(這是你自己訂的規矩)。', '🎨 <b>做圖提示詞把「紅漲綠跌」寫死進去</b>:你那張圖把「基本面亮點」塗綠、「評價面警訊」塗紅,但同一張圖上「收盤 −4.90%」也是綠的 —— <b>同一個綠色一邊代表「好」一邊代表「跌」,會讀反</b>。新提示詞規定:紅綠<b>只准表示漲跌</b>,安全/風險一律用 ✅⚠️⛔ 圖示;也禁止畫「綠牛 vs 紅熊」那種歐美配色。', '🔢 <b>§ 編號重排成 1~20,而且快速判別表改成照 § 由小到大排</b>(你問「為何排序跳來跳去」—— 你是對的,那張是對照表就該照編號排)。⛔ 砍掉舊的 §19 因子評分、§20 星等評等(權重憑空訂、本站實測沒有預測力,本來就標「不要輸出」);舊 §21 觀察清單→§19、舊 §22 投資筆記→§20。你手上那份 22 節的舊報告照樣顯示得對(第一眼改成抓「第一節 + 最後一節」,⛔ 不寫死編號)。', '🗑️ <b>重複的提示詞入口刪掉一個</b>(你問「有兩處都有提示詞,是重複的嗎?」—— 是,同一支函式同一份提示詞)。現在只留 §20 那張卡那一組。', '📋 <b>提示詞補上本站已經算好、以前沒給的數字</b>:股價位階、財報三表(存貨天數/自由現金流/ROE/淨利率)、集保大戶散戶、法人近20日、融資追繳壓力區、下一個事件、族群名次、本站自己的結論。並且加了一條硬規定:<b>看到「—」⛔ 絕對不可以自己算</b>。', '🚨 <b>順手修一個會讓 AI 亂編的 bug</b>:提示詞裡的均線是讀背景執行緒算好的,而切到報告頁時<b>常常還沒算完</b> → 那一格印「—」→ AI 自己去算(你那張圖季線寫 707.4、半年線 594.5,本站真值是 <b>704.4 / 606.9</b>)。現在算不到就自己從 K 線補算。', '🛡️ 順手補一個未爆彈:圖片存的地方本來有個「7 天自動清掉」的清理程式,而且<b>連沒有時間戳的東西也一起刪</b> —— 已經把使用者存的圖排除在外,⛔ 不會自己消失。'] },
         { v: 'V76.2.2', d: ['🚨 <b>「§13 融資壓力沒有資料」其實資料一列都不缺 —— 而且它以前算出來的數字是錯的</b>。查下去兩層:①那格的守門條件是「知不知道這檔是上市還是上櫃」,而 V75.1.5 把股名改讀離線表之後那份表<b>沒有市場別</b> → 條件永遠不成立 → 一律顯「融資資料不足」(融資餘額其實 795 天全有)。②更糟的是它<b>吃整條 3 年 K 線</b>算融資族群成本 —— 融資是短期部位,拿三年平均等於假數字:國巨算出成本 331 元、追繳線 259 元、<b>距現價 52%</b>,永遠顯示「安全」,毫無意義。', '💳 <b>改成只看近 60 個交易日,國巨的數字整個翻過來</b>:融資族群成本 <b>683 元</b>、追繳壓力區 <b>533 元</b>、<b>距現價只剩 2%</b> —— 而且融資餘額還在增加(散戶接刀)。這才是這檔現在真正的融資風險。分不出上市/上櫃時改成<b>用上市六成推並標明</b>,⛔ 不再整格不給;採礦端的股名表<b>補上市場別</b>(零額外 API —— 它本來就分「上市收盤」「上櫃收盤」兩個來源抓,只是以前沒記下來),下一輪採礦後自動變準。', '🏢 <b>§4 財報品質的「本站尚未切出」</b>:2,351 檔的財報三表切片<b>已經產好、也推上 data 分支了</b>,只是還沒被帶到網站那一份;這次連同採礦一起跑完就會出現(存貨天數 / 自由現金流 / ROE / 淨利率)。', '📐 <b>貼上的報告版面瘦身</b>:已經貼過之後,輸入框、三顆按鈕、四段操作說明<b>全部收進「⚙️ 換一份 / 複製提示詞」摺疊</b> —— 第一眼要留給報告內容,不是留給操作說明(第一眼 655 → <b>334 字</b>)。另外卡片右上已經寫了「基準日」,底下那行就不再重複講一次(同一個日期講兩次看起來像壞掉);AI 段落開頭那個多餘的破折號也剝掉。', '🔬 順手修巡邏工具:版面巡邏以前在沙箱量到的寬度是<b>假的</b>(卡片只有 166px,正式環境 373px)→ 現在會自動補上最小版面規則再量,數字才有意義。'] },
         { v: 'V76.2.1', d: ['🚨 <b>你說「不是應該直接點開就能貼上嗎」—— 查出來了,而且不是程式壞掉</b>:提示詞 <b>2,400 多字</b>,做成網址(要把中文編碼)會膨脹到 <b>1 萬 6 千字元</b>;iOS 把連結交棒給 Perplexity App 時那串帶不過去,App 只收到「開搜尋頁」→ 所以輸入框是空的。⛔ 縮短提示詞不是辦法(縮到塞得進網址等於把 22 節砍光)。', '📋 <b>加了「複製提示詞」按鈕</b>(你要的),而且<b>兩顆按鈕都會先幫你複製</b> —— 按「🔎 開 Perplexity」也會在開之前把提示詞放進剪貼簿,過去長按輸入框<b>貼上</b>就好。', '🔲 <b>複製不了還有逃生門</b>:iOS PWA 有時不讓程式碰剪貼簿 → 會跳出一個視窗把提示詞整份列出來,按「全選」再長按拷貝。', '🧹 順手把報告頁兩處各自寫的複製程式碼合成一份(改一邊忘另一邊的老問題)。'] },
@@ -22649,7 +22653,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         //   ⛔ 提示詞的入口全 App 只留 §20 那張卡那一組(陷阱 #37 的反面:同一件事不要兩個入口)。
         const btns = `<button onclick="app._rpCopyReport()" class="w-full text-[10px] font-bold text-gray-200 bg-[#0d1117] hover:bg-[#21262d] border border-[#30363d] rounded py-2">📋 複製整份報告<div class="text-[10px] text-gray-500 font-normal">純文字,可貼 LINE / 筆記</div></button>`;
         return `<div class="grid grid-cols-2 gap-1.5">${hero}</div>${btns}
-            ${this._rpDetails('📊 其他數字', `${rest.length} 項 ・每一項都標了日期`, `<div class="grid grid-cols-3 gap-1.5">${rest.join('')}</div>`)}`;
+            ${this._rpDetails('📊 其他數字', `${rest.length} 項 ・每一項都標了日期`, `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.375rem">${rest.join('')}</div>`)}`;
     },
 
     // C 歷史估值對照價位表
@@ -40860,7 +40864,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         : '';
                     const barW = Math.max(4, Math.min(100, 50 + r.expectancy * 20));
                     const barC = r.expectancy > 0.5 ? 'bg-red-400' : r.expectancy >= 0 ? 'bg-yellow-400' : 'bg-green-400';
-                    const html = `<div onclick="app.showPlaybookPatternHelp(${idx})" class="grid grid-cols-[1fr_auto] gap-2 items-center py-1.5 border-b border-[#21262d] cursor-pointer hover:bg-white/5 rounded px-1 -mx-1 transition-colors">
+                    const html = `<div onclick="app.showPlaybookPatternHelp(${idx})" class="gap-2 items-center py-1.5 border-b border-[#21262d] cursor-pointer hover:bg-white/5 rounded px-1 -mx-1 transition-colors" style="display:grid;grid-template-columns:minmax(0,1fr) auto">
                         <div><div class="text-[11px] text-gray-200 font-bold">${r.key}${star}${todayTag} <span class="text-[9px] text-amber-400/80 font-normal">👆點看怎麼做</span></div>
                             <div class="text-[9px] text-gray-500 font-mono">勝率 ${r.winRate.toFixed(0)}% ・ 賺賠比 ${r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1)} ・ ${r.count} 次${this._wrTag(r.winRate, r.count)}</div>
                             <div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden mt-0.5"><div class="h-full ${barC}" style="width:${barW}%"></div></div></div>
@@ -44778,7 +44782,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <summary class="px-3 py-2 text-[11px] font-bold text-gray-300 cursor-pointer">📊 這套做法實測賺多少?(⛔ 含它跟 0050 的對照)</summary>
                 <div class="px-3 pb-3 text-[11px] text-gray-300 leading-relaxed">
                     <div class="text-[10px] text-gray-500 mb-1.5">${T.months} 個月(${T.from}~${T.to},<b>含 2022 那一段大跌</b>)・本金 ${(T.cap / 10000).toFixed(0)} 萬・每天最多 ${T.picks} 檔・每筆本金 ${T.posPct}%・出場用<b>${T.exitName}</b>・已扣來回成本 0.44%</div>
-                    <div class="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
+                    <div class="gap-x-2 gap-y-1" style="display:grid;grid-template-columns:minmax(0,1fr) auto">
                         <div>🧬 只做「高位階+高波動」</div><div class="font-mono text-right"><b class="text-gray-100">${m(T.gene)} 元</b> ・中途最多賠 ${T.geneDD}%</div>
                         <div>照清單順序做(不挑 🧬)</div><div class="font-mono text-right">${m(T.plain)} 元 ・${T.plainDD}%</div>
                         <div class="text-amber-300">🆚 同期 0050 買了放著</div><div class="font-mono text-right text-amber-300"><b>${m(T.etf0050)} 元</b></div>
@@ -44867,7 +44871,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const T = this._PB_TRACK; if (!T) return '';
         const m = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
         const ref50 = Math.round(T.cap * T.etf50 / 100);   // 同期買 0050 賺多少元
-        const row = (lab, o, star, note) => `<div class="grid grid-cols-[1fr_auto] gap-2 items-baseline py-1 border-b border-[#21262d]">
+        const row = (lab, o, star, note) => `<div class="gap-2 items-baseline py-1 border-b border-[#21262d]" style="display:grid;grid-template-columns:minmax(0,1fr) auto">
             <div><div class="text-[11px] ${star ? 'text-gray-100 font-bold' : 'text-gray-300'}">${star ? '⭐ ' : ''}${lab}</div>
                  <div class="text-[9px] text-gray-500 font-mono">勝率 ${o.wr}% ・每趟 +${o.avg}% ・${o.n} 筆 ・最大回撤 ${o.mdd}% ・賺錢月 ${o.winMon}/${T.months}</div>
                  ${note ? `<div class="text-[9px] ${o.pnl >= ref50 ? 'text-gray-400' : 'text-yellow-300'} mt-0.5">${note}</div>` : ''}</div>
@@ -44879,7 +44883,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div class="text-[9px] text-gray-500 mb-1">本金 ${(T.cap / 10000).toFixed(0)} 萬 ・每天最多 2 檔 ・每筆 ${(T.per / 10000).toFixed(0)} 萬 ・${T.syms} 檔全市場抽樣 ・${T.from} ~ ${T.to}</div>
                 ${row('照清單順序做(不挑標記)', T.all, 0, '⚠️ 這樣做**輸給什麼都不做買 0050**(少賺 ' + Math.round((T.cap * T.etf50 / 100) - T.all.pnl).toLocaleString() + ' 元)')}
                 ${row('只做有 🧬 強勢高波動 標記的', T.hq, 1, '比 0050 多賺 ' + Math.round(T.hq.pnl - (T.cap * T.etf50 / 100)).toLocaleString() + ' 元')}
-                <div class="grid grid-cols-[1fr_auto] gap-2 items-baseline py-1 border-b border-[#21262d]">
+                <div class="gap-2 items-baseline py-1 border-b border-[#21262d]" style="display:grid;grid-template-columns:minmax(0,1fr) auto">
                     <div><div class="text-[11px] text-gray-400">🆚 同期買 0050 放著</div>
                          <div class="text-[9px] text-gray-500 font-mono">什麼都不做,最省事的比較基準</div></div>
                     <div class="font-mono font-black text-[13px] text-gray-300 text-right">+${Math.round(T.cap * T.etf50 / 100).toLocaleString()}<span class="text-[9px] text-gray-500 font-normal"> 元</span></div>

@@ -29,6 +29,14 @@ const SYM = SYMS[0] || '2330';
 const FLOOR = 10;            // V74.4.6 訂的下限:⛔ 別再往 10px 以下調
 const MIN_CJK = 8;           // 至少 8 個中文字才算「給人讀的說明」(⛔ 不報純數字標籤/圖表刻度)
 const TABS = ['strategy', 'report', 'chart', 'chip', 'corp', 'backtest', 'bullbear', 'daytrade', 'live'];
+// ⭐ V76.2.4:原本只掃個股那 9 個分頁 → 庫存/選股/大盤/自選/決策台/設定中心**一次都沒掃過**。
+//   ⛔ `settings` 是 modal(`openSettings()`)不是 `switchAppTab`,分開走。
+const APPTABS = [['inv', '庫存'], ['radar', '選股'], ['market', '大盤'], ['fav', '自選'], ['desk', '決策台'], ['settings', '設定中心']];
+// 🚨 V76.2.4:分頁容器 id ⛔ 不是 `t[0].toUpperCase()+t.slice(1)` 組得出來的 ——
+//   實際是 `subContentBullBear` / `subContentDayTrade`(**中間那個字母也大寫**)。
+//   組錯的後果是安靜的:`font_audit` 那兩頁一路退回掃 `appMainArea`(**整頁**)、
+//   `rwd_audit` 則量不到字數 → 都不會報錯。⭐ 改用明確對照表(同 data_audit 用明確清單不自動推導的理由)。
+const SUBID = { strategy: 'subContentStrategy', report: 'subContentReport', chart: 'subContentChart', chip: 'subContentChip', corp: 'subContentCorp', backtest: 'subContentBacktest', bullbear: 'subContentBullBear', daytrade: 'subContentDayTrade', live: 'subContentLive' };
 
 const gh = f => { try { return JSON.parse(execSync(`git -C "${ROOT}" show origin/gh-pages:data/${f}`, { encoding: 'utf8', maxBuffer: 64 << 20 })); } catch (_) { return null; } };
 const K = gh(`${SYM}.json`);
@@ -69,36 +77,60 @@ await page.evaluate(async (s) => { app.switchAppTab('diag'); try { await app.ana
 await page.waitForTimeout(2500);
 
 const found = [];
-for (const t of TABS) {
-    const rows = await page.evaluate(async ({ t, FLOOR, MIN_CJK }) => {
-        try { app.switchSubTab(t); } catch (_) {}
-        await new Promise(r => setTimeout(r, 900));
+const BLIND = [];
+// ⭐ 一支掃描函式兩種用法:`kind:'sub'` 切個股分頁、`kind:'app'` 切 app 分頁 / 開設定中心
+//   ⛔ 不複製第二份掃描邏輯(陷阱 #37)。
+const scan = async (kind, t) => await page.evaluate(async ({ kind, t, FLOOR, MIN_CJK, SUBID }) => {
+        if (kind === 'sub') { try { app.switchSubTab(t); } catch (_) {} }
+        else if (t === 'settings') { try { app.openSettings(); } catch (_) {} }
+        else { try { app.switchAppTab(t); } catch (_) {} }
+        await new Promise(r => setTimeout(r, kind === 'sub' ? 900 : 1400));
         document.querySelectorAll('details').forEach(d => { d.open = true; });
         await new Promise(r => setTimeout(r, 300));
         // 可見性:⛔ 不信 offsetParent(沒有 Tailwind,`.hidden` 不生效)→ 自己往上追(同 page_sweep)
         const vis = el => { for (let n = el; n && n !== document.body; n = n.parentElement) {
             const d = n.style && n.style.display; if (d === 'none') return false;
             if (!d && n.classList && n.classList.contains('hidden')) return false; } return true; };
-        const box = document.getElementById(`subContent${t[0].toUpperCase()}${t.slice(1)}`) || document.getElementById('appMainArea');
-        if (!box) return [];
+        const box = kind === 'sub'
+            ? document.getElementById(SUBID[t])                          // ⛔ 找不到就回 0 讓空過守門叫出來,⛔ 不可退回掃整頁
+            : (t === 'settings' ? document.getElementById('settingsModal')
+                : document.getElementById(`tabContent${t[0].toUpperCase()}${t.slice(1)}`));
+        if (!box) return { rows: [], seen: 0 };
         const out = [];
+        let seen = 0;   // 🚧 空過守門:掃過幾個「看得見而且有中文」的段落(⛔ 0 = 切不過去,不是沒問題)
         for (const el of box.querySelectorAll('div,span,p,li,b,button,summary')) {
             if (el.querySelector('div,span,p,li,b,button,summary')) continue;      // 只看最內層(⛔ 免得父子重複報)
             if (!vis(el)) continue;
             const txt = (el.textContent || '').replace(/\s+/g, '');
             const cjk = (txt.match(/[一-鿿]/g) || []).length;
             if (cjk < MIN_CJK) continue;                                            // ⛔ 純數字/短標籤不報
+            seen++;
             const fs = parseFloat(getComputedStyle(el).fontSize);
             if (!(fs > 0) || fs >= FLOOR) continue;
             // 往上找最近一張有 id 的卡,方便人工去對
             let card = ''; for (let n = el; n && n !== box; n = n.parentElement) if (n.id) { card = n.id; break; }
             out.push({ card, fs, cjk, txt: txt.slice(0, 34) });
         }
-        return out;
-    }, { t, FLOOR, MIN_CJK });
+        return { rows: out, seen };
+    }, { kind, t, FLOOR, MIN_CJK, SUBID });
+
+for (const t of TABS) {
+    const { rows, seen } = await scan('sub', t);
+    if (!seen) { BLIND.push(`個股→${t}`); continue; }
     rows.forEach(r => found.push({ tab: t, ...r }));
 }
+// ⭐ 再掃 app 分頁(`switchAppTab` 自己會把個股頁收起來);⛔ settings 排最後 —— 它是 modal,會蓋住後面的頁
+for (const [t, name] of APPTABS) {
+    const { rows, seen } = await scan('app', t);
+    if (!seen) { BLIND.push(name); continue; }
+    rows.forEach(r => found.push({ tab: name, ...r }));
+    // ⛔ settings 是 modal,掃完要真的關掉(它會蓋住後面的頁);⚠️ 只加 hidden class 不夠 —— 開的時候是寫 inline display
+    if (t === 'settings') await page.evaluate(() => { const m = document.getElementById('settingsModal'); if (m) { m.classList.add('hidden'); m.style.display = 'none'; } });
+}
 await browser.close();
+
+// 🚧 空過守門:⛔「沒報到」與「根本沒掃到」不可長得一樣
+if (BLIND.length) console.log(`\n🚨 有 ${BLIND.length} 個頁面掃到 0 段中文說明(切不過去或沒渲染)→ ⛔ 那幾頁不算掃過:${BLIND.join('、')}`);
 
 if (!found.length) { console.log('\n✅ 這幾頁沒有 10px 以下的說明文字'); process.exit(0); }
 const byCard = new Map();
@@ -112,7 +144,7 @@ for (const [k, v] of list.slice(0, 30)) {
 }
 if (list.length > 30) console.log(`  …另外還有 ${list.length - 30} 張卡`);
 console.log('\n⚠️ 盲區(⛔ 不可把「沒報到」讀成「沒問題」):');
-console.log('   ・只掃個股頁的 9 個分頁 —— ⛔ 庫存/選股/大盤/自選/設定中心**沒掃**');
+console.log('   ・V76.2.4 起已含 庫存/選股/大盤/自選/決策台/設定中心;⛔ 仍沒掃的:各種 modal(教學/回測計算機/更新紀錄)與 pro.html');
 console.log('   ・只掃「≥8 個中文字」的段落 —— 短標籤、圖表刻度、純數字**刻意不報**');
 console.log('   ・`<details>` 全部展開才掃 —— 使用者實際看到的第一眼更少');
 console.log('   ・字級 shim 只補 `text-[Npx]`,⛔ 不含 `text-xs`/`text-sm` 這種具名字級');
