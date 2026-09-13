@@ -137,17 +137,21 @@ ok('④ 短線偏空時結論不變(仍是偏空格局)', R.bear.includes('偏�
        /抱好\|別提早下車\|抱著\|加碼/.test(src3), '');
 
     // 🏷️ V72.0.8 同名不同義:三個「主力/大戶」
-    const src4 = await p3.evaluate(() => app._overviewChipSnapInner.toString());
+    // ⚠️ V76.2.0:`_overviewChipSnapInner` 在 V76.1.3 被當死碼清掉 → 這一支從那天起**每次都在第 140 行炸掉**(TypeError),
+    //   整支測試一條都沒跑到 = 永遠紅的測試等於沒有測試(CLAUDE.md)。分點那五條的載體不在了 → 誠實跳過,⛔ 不假裝綠。
+    const src4 = await p3.evaluate(() => typeof app._overviewChipSnapInner === 'function' ? app._overviewChipSnapInner.toString() : null);
     const src5 = await p3.evaluate(() => app._renderTrendCommand.toString());
     ok('⑪ ⭐ 官方三大法人那格改叫「法人」(它算的是 foreign_net+trust_net,不是分點大戶)',
        /法人 5 日買超/.test(src5) && !/大戶 5 日買超/.test(src5), '');
-    ok('⑪ ⭐ 分點那格要叫「分點主力」並標明近5日', /分點主力/.test(src4) && /近5日/.test(src4), '');
-    ok('⑪ ⭐ 要有 title 說明「跟法人不是同一批人」', /跟上面「法人」不是同一批人/.test(src4), '');
-    ok('⑪ ⭐⛔ 方向相反時要主動點出來(⛔ 不可讓使用者自己發現)',
-       /方向相反,不是算錯/.test(src4), '');
-    ok('⑪ 說明要講清楚差別(身分別 vs 哪家券商)',
-       /身分別/.test(src4) && /哪家券商/.test(src4), '');
-    ok('⑪ ⛔ 不可硬統一成一個數字(那會失真)', /不是硬統一成一個數字/.test(src4), '');
+    if (src4) {
+        ok('⑪ ⭐ 分點那格要叫「分點主力」並標明近5日', /分點主力/.test(src4) && /近5日/.test(src4), '');
+        ok('⑪ ⭐ 要有 title 說明「跟法人不是同一批人」', /跟上面「法人」不是同一批人/.test(src4), '');
+        ok('⑪ ⭐⛔ 方向相反時要主動點出來(⛔ 不可讓使用者自己發現)',
+           /方向相反,不是算錯/.test(src4), '');
+        ok('⑪ 說明要講清楚差別(身分別 vs 哪家券商)',
+           /身分別/.test(src4) && /哪家券商/.test(src4), '');
+        ok('⑪ ⛔ 不可硬統一成一個數字(那會失真)', /不是硬統一成一個數字/.test(src4), '');
+    } else console.log('⏭️ ⑪ 分點主力那五條跳過:_overviewChipSnapInner 已於 V76.1.3 刪除(死碼),載體不在了');
 
     // 📐 V72.0.8 波動率金額必須跟顯示的 % 自洽(使用者會拿畫面數字驗算)
     const vol = await p3.evaluate(() => {

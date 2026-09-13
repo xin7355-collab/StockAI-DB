@@ -67,12 +67,13 @@ WANT = {
                                        'ocf': 'CashFlowsFromOperatingActivities'},
     'TaiwanStockFinancialStatements': {'cogs': 'CostOfGoodsSold',
                                        'rev': 'Revenue',
-                                       'eps': 'EPS'},                  # 單季 EPS → 近四季加總 = TTM → 歷史本益比
+                                       'eps': 'EPS',                   # 單季 EPS → 近四季加總 = TTM → 歷史本益比
+                                       'ni': 'IncomeAfterTaxes'},      # 🚨 V76.2.0 稅後淨利 —— 以前用 EPS×股本÷10 推,面額不是 10 元就錯 4 倍(國巨)
 }
 # ⚠️ V74.9.3 加 eq / cap / eps(⭐ 為了解鎖「估值 5 條」的回測:fund_yoy_gm 的 qeps 只有 8 季,
 #    而這裡本來就有 34 季 —— 差的只是這三個欄位)。⛔ 新欄位一律**加在最後面**,
 #    舊檔的陣列用位置對應,插在中間會讓舊資料的欄位錯位。
-FIELDS = ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev', 'eq', 'cap', 'eps']
+FIELDS = ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev', 'eq', 'cap', 'eps', 'ni']   # V76.2.0 ni 加在最後(舊檔補抓只打損益表那一個資料集)
 REASON = {}
 
 

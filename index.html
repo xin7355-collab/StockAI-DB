@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.1.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.2.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -364,6 +364,7 @@
         html, body { overflow-x: hidden; }                  /* 📐 V70.1.0 橫向溢出總保險(寬內容一律在自己的容器內滾) */
         @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         .marquee-wrap:active .marquee-track { animation-play-state: paused; }
+        .rp-hi { background: rgba(217, 119, 6, .28); color: #fde68a; padding: 0 2px; border-radius: 2px; }   /* 🖍️ V76.2.0 貼上報告的重點詞:琥珀(⛔ 不用紅綠 —— 燈號鐵則) */
 
         #loadingOverlay { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); display: none; z-index: 9999;}
         .nav-btn.active { color: #60a5fa; }
@@ -736,7 +737,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.2.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2355,6 +2356,8 @@
                 <div id="rpAct" class="hidden"></div>
                 <!-- ⚡ V76.1.8 快速判別表(第一層)+ 🧱 價格牆/壓力測試(§11・§16・§17)—— 對照「法人級 22 節提示詞」 -->
                 <div id="rpQuick" class="hidden"></div>
+                <!-- 📝 V76.2.0 你貼上的外部 AI 報告(§22)—— 從產業節第 ⑤ 小段搬上來(使用者沒找到 = 陷阱 #32) -->
+                <div id="rpPaste" class="hidden"></div>
                 <div id="rpNum" class="hidden"></div>
                 <div id="rpRisk" class="hidden"></div>
                 <div id="rpWalls" class="hidden"></div>
@@ -8287,8 +8290,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.1.9',
+    _APP_VERSION: 'V76.2.0',
     _CHANGELOG: [
+        { v: 'V76.2.0', d: ['📝 <b>報告頁多一格「§22 你貼上的 AI 報告」</b>,就在 ⚡ 快速判別表正下方(以前藏在「產業」節第 ⑤ 小段的摺疊裡 —— 你沒找到就是證據)。把外部 AI 產的 22 節報告整份貼進去存起來,<b>下次開就在,不用再產一次</b>;只存在你這台裝置。', '🖍️ <b>貼上的內容會自動上色</b>:結論 / 買點 / 停損 / 風險 / 上修 / 賣超 這類重點詞用<b>琥珀底</b>標出來、帶單位的數字加粗;想自己標就用兩個等號包住(==這一句==)。⛔ 不用紅綠 —— 紅綠只講漲跌。', '📑 <b>第一眼只留 §1 一句話結論 + §22 最後筆記</b>,其餘 §2~§21 逐節收起來點開看(跟本站的 § 編號對得上)。§19 因子評分 / §20 星等 / §14 機率那幾節照顯,但標「AI 主觀,本站實測這類權重沒有預測力」。', '🔁 <b>該重新產出了會告訴你</b>(只在報告頁內,不跳窗):貼上之後有新的<b>月營收 / 財報法定日 / 除息 / 法說會</b>,或<b>股價已偏離報告寫的價 8% 以上</b>、或超過 30 天,都會亮「🔁 建議重新產出:原因」;快速判別表第 11 列也會標「需更新」。', '🆚 <b>AI 講的價位拿去跟本站的價格牆對照</b>:「第一買點 530~540」「停損 500」「合理價 550」這類,逐一寫出本站在那附近有沒有牆(套牢區 / 均線 / 密集區 / 你的出場線),還會並排「AI 說 / 本站說」兩個結論。⛔ 只對照不裁決,AI 的價位不進本站任何計算。', '🔎 <b>問 Perplexity 的提示詞改成 22 節骨架</b>:標題一律 §N、第一行寫分析基準日期、結尾附來源表(有網址),並明說哪幾節本站已經算好⛔ 不要自己算、⛔ 不要給因子評分與星等、本益比一律寫現在的(要講預估要標「預估」)。', '🚨 <b>抓到本站自己一個錯 —— 財報三表的淨利率在「面額變更」的股票會算錯 4 倍</b>(國巨 2025Q3 面額 10 → 2.5 元:股本金額一毛不變、股數 ×4、EPS ÷4,本站用「EPS × 股本÷10」推淨利率就變成 5.3%,實際約 21%),而且旗標文案還把它寫成「業外/一次性」。<b>上一版我自己下的「國巨真因是業外不是股本」是錯的</b>,AI 報告那一點反而是對的。現在疑似面額變更的那一季起淨利率/ROE 改顯「算不出來(可能面額變更)」不給錯數字;採礦端補抓官方「稅後淨利」欄,下一次回算之後就不用假設面額。'] },
         { v: 'V76.1.9', d: ['📐 <b>報告頁「⚡ 快速判別表」重排</b>(你說「版面修正」)。先量再改:原本每一列擠三行(面向/數字/實測說明)、11 列合起來<b>第一眼 850 字</b>,超過本站自己訂的 600 字上限;說明字又小。<b>現在第一眼只留「面向 + 數字」兩行、數字放大</b>,11 條實測說明<b>整批收進卡片底部的摺疊</b> —— ⛔ 一個字都沒刪,點開就看得到(改完第一眼 <b>385 字</b>)。', '🔤 <b>畫面上不再出現英文函式名</b>:原本印著 pe_band_probe、ma20_probe、overhead_probe 這類<b>程式檔名</b>(7 個),全部改成白話中文,檔名只留在摺疊區裡。', '🚨 <b>抓到一個數字放大 1000 倍的錯</b>:現價下面那顆徽章寫「法人連3賣 <b>−14,067,577 張</b>」—— 台積電總股本才 2,593 萬張,根本不可能。真因是那筆資料<b>單位是「股」卻直接當「張」印</b>,正確是 <b>1.4 萬張</b>。(全 App 其他 7 處都換算對了,只有這一顆漏掉。)', '🚨 <b>同一個「位階」以前有兩個數字</b>:總覽徽章寫「⛰️ 高基期 91%」、報告頁寫「93%」—— 一個用最高/最低價算、一個用收盤算。現在<b>統一成同一份</b>(91%),⛔ 以後不會再各講各的。', '🔠 <b>字放大了</b>:報告頁的說明字全部拉到看得清楚的級距;順便巡了個股 9 個分頁,把剩下 12 段過小的說明字一起修掉(當沖、籌碼、K線、總覽都有)。<b>而且你在設定中心切「大字/特大」時,這些新字級現在也會跟著放大</b>(以前那張放大表沒涵蓋到它們)。', '📏 <b>修掉三處會被切掉的版面</b>:價格牆表、下跌壓力測試那幾列、估值對照表,在窄螢幕上本來會被默默切掉一截(看不到錯誤訊息,就是少一塊)。估值尺最右邊那個價格標籤也會凸出去 21px,一起修。', '🧪 順手把測試自己的毛病修了:原本那條「390px 不可溢出」用錯判準,<b>從頭到尾是假綠燈</b> —— 換成本站文件規定的判法之後,<b>第一次跑就抓到上面那三處</b>。', '🔢 零股族看到的「你的 2.35 張」改成「你的 2,350 股」。'] },
         { v: 'V76.1.8', d: ['📄 <b>報告頁對照你給的「法人級 22 節研究提示詞」重排</b>:先量過 —— 22 節裡 <b>8 節本站已有、9 節有一半、5 節填不了真實數據</b>(3 節是質化只能外包、2 節刻意不做)。所以⛔ 不是「取代」,是拿它當骨架:每一節標題帶 <b>§ 編號</b>,你拿外部 AI 的產出來對照時一眼對得上。', '⚡ <b>報告頁最上面多一張「快速判別表」</b>(11 個面向:結論 / 價格位階 / 估值位階 / 均線 / 價格牆 / 法人 / 集保 / 融資 / 財報品質 / 下一個事件 / 質化),每一格都轉述既有數字、⛔ 不另算,而且每一列都標來源:✅ 真實資料 / 🧮 純公式 / 🔎 要自己查 / ⛔ 本站沒有 / 🚫 實測打掉。', '🧱 <b>新增 §11 價格牆表 + §17 下跌壓力測試</b>:由高到低列出每一道牆是什麼(套牢區 / 均線 / 密集區 / 你的出場線 / 融資追繳線)、距現價幾 % 與一張差多少元;跌 10/20/30/40% 各是一張賠多少、有部位就算你的張數、途中撞到哪幾道牆。國巨 544 元:上方 569~650 與 772~865 兩堵牆(就是那個 800),跌 20% 就到年線附近。', '🧮 <b>§14 敏感度表</b>:獲利 ±20% × 它自己近 3 年給過的倍數(P25/中位/P75)= 9 個對照價。⛔ 沒有機率欄 —— 沒有母體可以估「樂觀幾 %」,硬給的機率是編的。', '📦 <b>§4 財報品質接上「財報三表」</b>(存貨天數 / 自由現金流 / 資本支出 / ROE / 淨利率 / 股本):34 季的深歷史以前只在回測用,現在切成每檔一個小檔進報告頁。⚠️ 現金流量表在資料源是<b>累計</b>的,切片時已還原成單季。兩道旗標只標事實:①「EPS 崩但營收毛利沒掉」(國巨 2025Q3:9.74 → 3.10,股本沒變 → 是業外/一次性,⛔ 不是股本、也不是本業)②「股本一季變 >20%」(國巨 2024Q3 現增 +20%)。⚠️ 要等 fin_backfill 用 slice_only 跑一次,切片才會出現。', '🗓️ <b>§12 事件表 + §21 觀察清單</b>:下一次財報法定日 / 月營收日 / 除息日(除權息檔以前只有產業作戰室讀)/ 法說會(本站沒抓到就誠實說 + 🔎);只講「前後波動大」⛔ 不講漲跌(37 種行事曆日實測方向 0 個成立)。', '🔄 循環股一行:官方產業標成循環股的,估值節會提醒「獲利頂峰時本益比最低,位階要反著讀」—— 這是法人真的在看、提示詞沒寫的那條。同業表補「淨值比」欄。', '🔎 問 Perplexity 的提示詞從 4 段擴成 8 段(商業模式 / 法人預估變化 / 客戶集中與匯率關稅 / 空方論點),每段都要附來源、查不到寫查不到。回來的文字仍只能貼成 §22 筆記,⛔ 不進任何判斷。', '⛔ 刻意不做並寫在畫面上:§19 因子總分、§20 ★ 評等(權重憑空訂的沒驗證過;AI 五級實測無預測力)、§14 三情境機率、§5/§6 市場預期與 EPS 上修下修(台股沒有免費共識,本站不編)。'] },
         { v: 'V76.1.7', d: ['🔕 <b>你說「不準就不用提醒」—— 我先量了,你是對的,而且比想的嚴重</b>:提醒會發的 <b>56 種</b> K 棒訊號裡,實測<b>每趟期望值為正的只有 7 種</b>。你截圖那 6 則逐一對表 → <b>5 則該砍</b>:「K線橫盤突破」每趟 <b>−1.21%</b>(統計上 p=0.9995 完全沒鑑別力)、「費波納契回撤買點」<b>−1.26%</b>、「長紅遭遇一日封口」<b>−1.48%</b>、「K線橫盤跌破」警告了但之後<b>根本沒比大盤差</b>、「壓力沉重‧反覆過不了」更妙 —— 出現之後反而<b>比大盤好 0.11%</b>(警告方向是相反的)。只有「長黑遭遇(一日封口)」站得住(之後 10 日確實比大盤差 0.21%,2,496 次,A 級)。','🚨 <b>真因:提醒這條路從來沒查過實測成績</b>。K線分頁早就會查(好的置頂、沒用的收摺疊區),但「跳出來提醒你」那條路一行都沒問過。已加上<b>入場券</b>:<b>看多的</b>要「每趟期望值為正 + 樣本夠」、<b>看空的</b>要「之後真的比大盤差、而且不是雜訊」,<b>查不到成績的一律不推</b>(沒驗過 ≠ 有效)。','🔕 <b>三種「方法本身已經被實測打掉」的,整組不再主動推</b>(仍收在 🔔 通知歷史):①<b>🔮 明日劇本</b>(實測只能當事實標籤,不能拿來下判斷)②<b>🧙 跟單分點</b>(分點慣性/同盟/產業專精<b>三次回測全部不成立</b>)③<b>🎯 主打型態觸發</b>(「這檔最會賺的招」那份排名,實測<b>穩定度接近隨機</b>)。另外全市場盤點摘要那幾則也不再跳 toast。','⭐ <b>被擋下來的一則都不會消失</b> —— 照樣收在 🔔 通知歷史(標「（未達實測門檻）」並寫出實測數字),個股頁的 K線分頁也照看得到。你要的是<b>不被打擾</b>,不是查不到。','⛔ <b>跟你部位有關的一個都沒動</b>:庫存鐵血停損、停損到了、停利條件到了、第 2 擊跌破你設的出場線、到價提醒、13:25 當沖平倉倒數 —— 那些不是「訊號準不準」,是<b>你的錢到了你自己設的點</b>,照跳。','📉 實測:開 App 那 14 秒從「大視窗 2 則・toast 7 則」降到「<b>大視窗 0・toast 3</b>」。⚙️ 設定中心有開關「🔕 只提醒實測站得住的」,想回到舊行為(全部都推)關掉它就好。'] },
@@ -22537,6 +22541,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._rpLast = ctx;
         if (String(this.currentSymbolId) !== sym) return;
         this._rpSet('rpQuick', this._rpQuickHtml(ctx), sym);    // ⚡ 第一層
+        this._rpSet('rpPaste', this._rpPasteHtml(ctx), sym);    // 📝 V76.2.0 你貼上的 AI 報告(§22)
         this._rpSet('rpNum', this._rpNumHtml(ctx), sym);
         this._rpSet('rpWalls', this._rpWallsHtml(ctx), sym);    // 🧱 §11・§16・§17
         this._rpSet('rpVal', this._rpValHtml(ctx), sym);
@@ -23002,36 +23007,183 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const el = document.getElementById('rpNoteIn'); if (!el) return;
         const t = String(el.value || '').trim();
         if (!t) { this.showToast?.('⚠️ 先把外部 AI 的回答貼進來再存'); return; }
-        try { localStorage.setItem(this._rpNoteKey(sym), JSON.stringify({ t: t.slice(0, 20000), ts: Date.now() })); }
+        //   V76.2.0:上限 20k → 30k(使用者那份 22 節報告 6.5k;`_hookAutoSync` 的清理名單不含 rpNote_,不會被踢掉)
+        //   `asof` = 報告自己寫的「分析基準日期」(抓不到就用貼上時間)—— 更新提醒靠它比對月營收/財報日
+        try { localStorage.setItem(this._rpNoteKey(sym), JSON.stringify({ t: t.slice(0, 30000), ts: Date.now(), asof: this._rpNoteAsof(t), v: 2 })); }
         catch (_) { this.showToast?.('⚠️ 這台裝置存不下來(儲存空間滿了)'); return; }
         this.vibrate?.(20);
-        this.showToast?.('📝 已存成這一檔的產業筆記 —— 本站沒有驗證,⛔ 不參與任何買賣判斷', 'info');
-        this._rpRefreshInd(sym);
+        this.showToast?.('📝 已存成這一檔的報告 —— 本站沒有驗證,⛔ 不參與任何買賣判斷', 'info');
+        this._rpRefreshPaste(sym); this._rpRefreshInd(sym);
     },
     _rpNoteClear(sym) {
         try { localStorage.removeItem(this._rpNoteKey(sym)); } catch (_) {}
-        this.vibrate?.(20); this.showToast?.('🗑️ 已刪除這一檔的產業筆記');
-        this._rpRefreshInd(sym);
+        this.vibrate?.(20); this.showToast?.('🗑️ 已刪除這一檔的報告');
+        this._rpRefreshPaste(sym); this._rpRefreshInd(sym);
     },
     _rpRefreshInd(sym) {
         const C = this._rpLast;
         if (!C || String(C.sym) !== String(sym)) return;
         this._rpSet('rpInd', this._rpIndHtml(C), sym);
     },
+    // ⑤ V76.2.0 起貼上區搬到 #rpPaste(⚡ 快速判別表正下方);這裡只留一行指路(⛔ 不再放第二個 textarea —— 兩個同 id 會互相搶)
     _rpNoteHtml(C) {
-        const sym = String(C.sym);
-        const n = this._rpNote(sym);
-        const days = n && n.ts ? Math.floor((Date.now() - n.ts) / 864e5) : null;
-        const stale = (days !== null && days >= 30) ? `<span class="text-amber-300">⚠️ 這份筆記已經 ${days} 天了,產業狀況可能已經變了</span>` : '';
-        const saved = n ? `<div data-rpnote="1" class="bg-[#0d1117] border-l-4 border-l-[#8b949e] border-y border-r border-[#30363d] rounded-r p-2 mb-1.5">
-                <div class="text-[10px] text-amber-300/90 font-bold mb-1">📝 外部 AI 寫的 ・你在 ${n.ts ? this._dW(new Date(n.ts).toISOString().slice(0, 10)) : ''} 貼進來的 ・本站沒有驗證 ・⛔ 不參與任何買賣判斷 ${stale}</div>
-                <div class="text-[11px] text-gray-200 leading-relaxed whitespace-pre-wrap">${this._escHtml(n.t)}</div>
-                <button onclick="app._rpNoteClear('${sym}')" class="mt-1.5 text-[10px] text-gray-400 hover:text-red-300 underline">🗑️ 刪掉這份筆記</button>
-            </div>` : '';
-        return `${saved}<div class="text-[10px] text-gray-400 leading-snug mb-1">產業景氣 / 漲價與供需 / 法說重點 / 競爭對手 —— 這些是<b>質化</b>資訊,台股<b>沒有免費的結構化來源</b>,本站⛔ 不編。<br>做法:按下面的「🔎 問 Perplexity」(提示詞已經寫成產業報告規格,而且要求它附來源網址),把回答<b>貼回這裡</b>存起來。</div>
-            <textarea id="rpNoteIn" rows="3" placeholder="把外部 AI 的產業回答貼進來…" class="w-full bg-[#0d1117] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 leading-relaxed"></textarea>
-            <button onclick="app._rpNoteSave('${sym}')" class="mt-1 px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-bold rounded">💾 存成這一檔的產業筆記</button>
-            <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💾 只存在<b>你這台裝置</b>(換手機不會跟著走);⛔ 它<b>不會</b>被算進本站任何結論、評分或「📋 複製整份報告」。</div>`;
+        const n = this._rpNote(String(C.sym));
+        return `<div class="text-[10px] text-gray-400 leading-snug" data-rpnote-ptr="1">📝 產業筆記已搬到<b>上面「⚡ 快速判別表」正下方</b>那一格(「📝 §22 你貼上的 AI 報告」)${n ? ' —— 你已經貼過一份,在那裡看。' : ' —— 還沒貼,去那裡按「🔎 問 Perplexity」。'}</div>`;
+    },
+    // ───────── 📝 V76.2.0 你貼上的外部 AI 報告(§22)—— 從產業節第 ⑤ 小段搬成獨立一格 #rpPaste ─────────
+    //   使用者:「我看不出來,只有數據;產出後我手動貼上存起來;過期要提醒我;重點用別的顏色」。
+    //   ⛔ 鐵線一條都沒放寬:不進 _ovDecide、不進任何計分、不進「📋 複製整份報告」;AI 的價位⛔ 不進 _keyLevels/_upsideRoom。
+    //   ⭐ 這一格做四件事:①存(沿用 rpNote_{sym})②切節(第一眼只留 §1 結論 + §22 筆記)③重點上色(琥珀,⛔ 不用紅綠)④對照本站的日期與價格牆。
+    _rpNoteAsof(t) {
+        const s = String(t || '').slice(0, 800);   // 基準日只會在最前面
+        let m = s.match(/基準日期?[:：]?\s*(\d{4})\s*[年\-/.]\s*(\d{1,2})\s*[月\-/.]\s*(\d{1,2})/);
+        if (!m) m = s.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+        if (!m) return null;
+        const y = +m[1], mo = +m[2], d = +m[3];
+        if (!(y > 2000 && y < 2100 && mo >= 1 && mo <= 12 && d >= 1 && d <= 31)) return null;
+        return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    },
+    _rpNoteAsofOf(n) { return n ? (n.asof || (n.ts ? new Date(n.ts).toISOString().slice(0, 10) : null)) : null; },
+    // 切節:鍵帽數字 1️⃣ = '1' + U+FE0F + U+20E3(2️⃣2️⃣ 是兩個鍵帽)→ 先拆成純數字再切;有 §N 的話只認 §N(提示詞 V76.2.0 起要求)
+    _rpPasteParse(t) {
+        const norm = String(t || '').replace(/\r/g, '').replace(/(\d)️?⃣/g, '$1');
+        const lines = norm.split('\n');
+        const strict = /^\s*§\s*\d/m.test(norm);
+        const head = strict ? /^\s*§\s*(\d{1,2})[^\S\n]*[:：.、]?\s*(\S.*)?$/ : /^\s*(?:§\s*|【|第)?(\d{1,2})(?:】|節|\.|、|[:：])?\s*(\S.*)?$/;
+        const secs = []; let cur = null; const pre = [];
+        for (const ln of lines) {
+            const m = ln.match(head);
+            //   標題不可是「8月營收…」「9/4 法說…」「20 日線」「2027 EPS」這種以單位/數字/斜線開頭的句子
+            const isHead = !!(m && m[2] && !/^[\d.,%~\-\/／月日年元張倍億萬x×]/.test(m[2]) && m[2].length <= 40 && +m[1] >= 1 && +m[1] <= 30 && (!cur || +m[1] > cur.n));
+            if (isHead) { cur = { n: +m[1], title: m[2].trim(), body: [] }; secs.push(cur); }
+            else if (cur) cur.body.push(ln); else pre.push(ln);
+        }
+        secs.forEach(s => { s.body = s.body.join('\n').trim(); });
+        if (secs.length < 3) return { pre: norm.trim(), secs: [] };   // 切不出來就整份當一節,⛔ 不裝懂
+        return { pre: pre.join('\n').trim(), secs };
+    },
+    // 🖍️ 重點上色:先跳脫,再只對「標籤外的文字」動手(切標籤的做法照 pro.html 的 _labHi)。
+    //   琥珀 = 本站「重點/警戒」色;⛔ 不用紅綠 —— 燈號鐵則:紅綠只講漲跌方向。
+    _rpHi(t) {
+        const onText = (s, fn) => s.split(/(<[^>]*>)/).map(p => p.startsWith('<') ? p : fn(p)).join('');
+        const KW = /(結論|買點|加碼|停損|停利|合理價|安全邊際|風險|上修|下修|賣超|買超|漲停|跌停|跌破|站上|支撐|壓力|觀察清單|不能加碼|失效|利多出盡|背離|等拉回|等待買點|法說|毛利率)/g;
+        const NUM = /(\d[\d,]*(?:\.\d+)?\s*(?:元|%|億|萬張|張|倍|x|X|口|個百分點))/g;
+        let h = this._escHtml(String(t || ''));
+        h = h.replace(/==([^=\n]{1,60})==/g, '<mark class="rp-hi">$1</mark>');            // 手動:==重點==
+        h = onText(h, p => p.replace(/\*\*([^*\n]{1,80})\*\*/g, '<b class="text-gray-100">$1</b>'));
+        h = onText(h, p => p.replace(NUM, '<b class="font-mono text-gray-100">$1</b>'));
+        h = onText(h, p => p.replace(KW, '<mark class="rp-hi">$1</mark>'));
+        return h;
+    },
+    // 🔁 過期判斷(純函式;回 {stale, reasons[]})—— 判準是「貼上之後有沒有新資料」,⛔ 不只看天數
+    _rpNoteStale(C, n) {
+        const out = { stale: false, reasons: [] };
+        const asof = this._rpNoteAsofOf(n); if (!asof || !C) return out;
+        const today = new Date().toISOString().slice(0, 10);
+        const days = Math.floor((Date.parse(today) - Date.parse(asof)) / 864e5);
+        // ① 月營收:基準日那個月 10 號前,「上個月」的營收都還沒公布 → 看得到的最後一個月要往前推
+        const mrh = (C.fy && Array.isArray(C.fy.mrh)) ? C.fy.mrh : [];
+        const lastM = mrh.length ? String(mrh[mrh.length - 1][0]).slice(0, 7) : null;
+        if (lastM) {
+            const d = new Date(asof + 'T00:00:00');
+            const seen = new Date(d.getFullYear(), d.getMonth() - (d.getDate() <= 10 ? 2 : 1), 1);
+            const seenKey = `${seen.getFullYear()}-${String(seen.getMonth() + 1).padStart(2, '0')}`;
+            if (lastM > seenKey) out.reasons.push(`${+lastM.slice(5)} 月營收已公布(報告寫的時候還沒有)`);
+        }
+        // ② 財報:法定公布日落在基準日與今天之間
+        const y = +asof.slice(0, 4);
+        for (const yy of [y, y + 1]) for (const [md, q] of [['03-31', '第 4 季'], ['05-15', '第 1 季'], ['08-14', '第 2 季'], ['11-14', '第 3 季']]) {
+            const dl = `${yy}-${md}`; if (dl > asof && dl <= today) { out.reasons.push(`${q}財報法定公布日 ${this._dW(dl)} 已過`); }
+        }
+        // ③ 法說會 / ④ 除息:落在基準日與今天之間
+        try {
+            const events = (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || this._upcomingMacroEvents || [];
+            const name = (this.getStockName(C.sym) || '').replace(/-KY|\*|　/g, '').trim();
+            const hit = (Array.isArray(events) ? events : []).find(ev => /法說|法人說明會/.test(String(ev && ev.event || '')) && ((name && String(ev.event).includes(name)) || String(ev.event).includes(String(C.sym))) && String(ev.date || '').slice(0, 10) > asof && String(ev.date || '').slice(0, 10) <= today);
+            if (hit) out.reasons.push(`法說會 ${this._dW(String(hit.date).slice(0, 10))} 已開過`);
+        } catch (_) {}
+        const hist = (C.div && Array.isArray(C.div.h)) ? C.div.h : [];
+        const ex = hist.map(x => String(x && x[0] || '').slice(0, 10)).find(dd => dd > asof && dd <= today);
+        if (ex) out.reasons.push(`${this._dW(ex)} 已除息`);
+        // ⑤ 股價偏離報告寫的價 ≥8%
+        const pm = String(n.t || '').match(/目前股價[:：]?\s*([\d,]+(?:\.\d+)?)\s*元/);
+        if (pm && C.pC > 0) { const p0 = +pm[1].replace(/,/g, ''); const dv = (C.pC / p0 - 1) * 100; if (p0 > 0 && Math.abs(dv) >= 8) out.reasons.push(`股價已偏離報告寫的 ${p0} 元 ${dv >= 0 ? '+' : ''}${dv.toFixed(0)}%`); }
+        // ⑥ 太舊
+        if (days >= 30) out.reasons.push(`已經 ${days} 天`);
+        out.stale = out.reasons.length > 0;
+        return out;
+    },
+    // 🆚 從貼文抓價位(⛔ 只拿來對照本站的牆,不進任何計算)
+    _rpPastePrices(t) {
+        const s = String(t || '').replace(/(\d)️?⃣/g, '$1');
+        const re = /(第[一二三]買點|買點|停損|停利|保守合理價|中性合理價|樂觀合理價|合理價|支撐|壓力|防守)[^\d\n]{0,14}(\d[\d,]{1,7}(?:\.\d+)?)(?:\s*[~～\-–至]\s*(\d[\d,]{1,7}(?:\.\d+)?))?\s*元/g;
+        const out = [], seen = new Set(); let m;
+        while ((m = re.exec(s)) && out.length < 8) {
+            const lo = +m[2].replace(/,/g, ''), hi = m[3] ? +m[3].replace(/,/g, '') : lo;
+            if (!(lo > 0)) continue;
+            const k = `${m[1]}|${lo}`; if (seen.has(k)) continue; seen.add(k);
+            out.push({ label: m[1], lo: Math.min(lo, hi), hi: Math.max(lo, hi) });
+        }
+        return out;
+    },
+    _rpPasteVsWalls(C, n) {
+        if (!n || !C || !(C.pC > 0)) return '';
+        const P = this._rpPastePrices(n.t);
+        const aiSay = (() => { const s = String(n.t).match(/目前屬於[:：]?\s*([^\n。]{2,12})/) || String(n.t).match(/最適合策略[:：]?\s*([^\n。]{2,12})/); return s ? s[1].trim() : null; })();
+        if (!P.length && !aiSay) return '';
+        const lv = this._rpWallList(C), f = this._rpFmt;
+        const rows = P.map(x => {
+            const m = (x.lo + x.hi) / 2, rel = (m - C.pC) / C.pC * 100;
+            const near = lv.map(w => ({ w, d: Math.abs(w.v - m) / m })).filter(z => z.d <= 0.03).sort((a, b) => a.d - b.d).slice(0, 2);
+            const txt = near.length ? `${near.map(z => `${z.w.n} ${f(z.w.v, 1)}`).join('、')} 就在附近(±3%)` : '本站沒有對應的牆(那個價位沒有量堆積、沒有均線、也不是你的出場線)';
+            return `<div class="border-b border-[#21262d] last:border-0" style="padding:4px 0" data-rpvs="${this._escHtml(x.label)}">
+                <div style="display:flex;align-items:baseline;gap:8px"><span class="text-[11px] text-gray-300" style="flex:1 1 0;min-width:0;overflow-wrap:anywhere">AI 的「${this._escHtml(x.label)}」<b class="font-mono text-gray-100">${x.lo === x.hi ? f(x.lo, 0) : `${f(x.lo, 0)}~${f(x.hi, 0)}`}</b> 元</span><span class="font-mono text-[10px] ${this._rpDir(rel)}" style="flex:0 0 auto">${this._rpPct(rel)}</span></div>
+                <div class="text-[10px] text-gray-500 leading-snug" style="overflow-wrap:anywhere">→ 本站:${txt}</div></div>`;
+        }).join('');
+        const site = C.dec ? this._rpTxt(C.dec.badge) : null;
+        return `<div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">🆚 你貼上的 AI 報告 vs 本站的牆(⛔ 只對照、不裁決;AI 的價位不進本站任何計算)</div>
+            <div class="text-[11px] text-gray-200 leading-snug" style="padding:2px 0" data-rpvs-say="1">AI 說:<b>${this._escHtml(aiSay || '(沒寫結論)')}</b> ・本站說:<b>${site || '(還在算)'}</b></div>${rows}`;
+    },
+    _rpRefreshPaste(sym) {
+        const C = this._rpLast;
+        if (!C || String(C.sym) !== String(sym)) return;
+        this._rpSet('rpPaste', this._rpPasteHtml(C), sym);
+        this._rpSet('rpQuick', this._rpQuickHtml(C), sym);   // 第 11 列會顯「已有 X 的報告」
+        this._rpSet('rpWalls', this._rpWallsHtml(C), sym);   // 🆚 對照段
+    },
+    _rpPasteHtml(C) {
+        const sym = String(C.sym), n = this._rpNote(sym);
+        const asof = this._rpNoteAsofOf(n), st = this._rpNoteStale(C, n);
+        let saved = '';
+        if (n) {
+            const P = this._rpPasteParse(n.t);
+            const SUBJ = { 19: '因子評分', 20: '星等評分', 14: '情境機率' };   // 🚫 陷阱 #38:憑空權重,照顯但標明
+            const isFirst = s => s.n === 1 || s.n === 22;
+            const sec = s => `<div class="text-[11px] text-gray-200 leading-relaxed whitespace-pre-wrap" style="overflow-wrap:anywhere">${this._rpHi(s)}</div>`;
+            const firstHtml = P.secs.length
+                ? P.secs.filter(isFirst).map(s => `<div style="margin-top:6px" data-rpsec-first="${s.n}"><div class="text-[11px] font-bold text-gray-100">§${s.n} ${this._escHtml(s.title)}</div>${sec(s.body)}</div>`).join('')
+                : `<div data-rpsec-first="0">${sec(P.pre.slice(0, 500))}${P.pre.length > 500 ? '<div class="text-[10px] text-gray-500">…(全文在下面)</div>' : ''}</div>`;
+            const rest = P.secs.length ? P.secs.filter(s => !isFirst(s)) : (P.pre.length > 500 ? [{ n: 0, title: '全文', body: P.pre }] : []);
+            const restHtml = rest.map(s => `<details class="border-t border-[#21262d]" data-rpsec="${s.n}"><summary class="cursor-pointer text-[11px] text-gray-300" style="padding:5px 0;list-style:none">${s.n ? `§${s.n} ` : ''}${this._escHtml(s.title)}${SUBJ[s.n] ? ` <span class="text-[10px] text-gray-500">(AI 主觀${SUBJ[s.n]} —— 本站實測這類權重沒有預測力,⛔ 別當數字用)</span>` : ''}<span class="text-[10px] text-gray-600"> ・展開 ▾</span></summary>${sec(s.body)}</details>`).join('');
+            const staleHtml = st.stale
+                ? `<div class="text-[11px] text-amber-300 leading-snug" style="padding:4px 0" data-rpstale="${st.reasons.length}">🔁 <b>建議重新產出</b>:${st.reasons.map(r => this._escHtml(r)).join(' ・')} → 按下面「🔎 問 Perplexity」重產一份再貼回來</div>`
+                : `<div class="text-[10px] text-gray-500" style="padding:2px 0" data-rpstale="0">✅ 貼上之後沒有新的月營收 / 財報 / 除息,股價也沒偏離報告寫的價,還算新</div>`;
+            saved = `<div data-rpnote="1" class="bg-[#0d1117] border-l-4 border-l-[#8b949e] border-y border-r border-[#30363d] rounded-r p-2 mb-1.5">
+                <div class="text-[10px] text-amber-300/90 font-bold leading-snug">📝 外部 AI 寫的 ・基準日 ${asof ? this._dW(asof) : '(沒寫)'} ・你在 ${n.ts ? this._dW(new Date(n.ts).toISOString().slice(0, 10)) : ''} 貼進來的 ・本站沒有驗證 ・⛔ 不參與任何買賣判斷</div>
+                ${staleHtml}${firstHtml}
+                ${restHtml ? `<details style="margin-top:6px" data-rpsec-rest="${rest.length}"><summary class="cursor-pointer text-[11px] font-bold text-gray-300" style="padding:5px 0;list-style:none">📚 其餘 ${P.secs.length ? `§2~§21 共 ${rest.length} 節` : '全文'}<span class="text-[10px] text-gray-600 font-normal"> ・逐節點開 ▾</span></summary><div style="padding-left:4px">${restHtml}</div></details>` : ''}
+                <div class="text-[10px] text-gray-500 leading-snug" style="margin-top:6px">🖍️ <mark class="rp-hi">琥珀底</mark> = 重點詞(自動)・<b class="font-mono text-gray-100">粗體</b> = 帶單位的數字;要自己標就用 ==兩個等號== 包住。${P.secs.length ? `第一眼只留 §1 與 §22,其餘 ${rest.length} 節收在上面。` : '沒有 §1~§22 編號 → 沒切節(用本站 🔎 提示詞重產會有)。'}</div>
+                <button onclick="app._rpNoteClear('${sym}')" class="mt-1.5 text-[10px] text-gray-400 hover:text-red-300 underline">🗑️ 刪掉這份報告</button>
+            </div>`;
+        }
+        const body = `${saved}<div class="text-[10px] text-gray-400 leading-snug mb-1">${n ? '要換新的:按「🔎 問 Perplexity」重產一份、貼回來存檔會<b>覆蓋</b>舊的。' : '商業模式 / 產業景氣 / 法說語氣 / 法人預估 —— 這些是<b>質化</b>資訊,台股<b>沒有免費的結構化來源</b>,本站⛔ 不編。做法:按「🔎 問 Perplexity」(提示詞已寫成 22 節規格、標題帶 §N、第一行寫基準日、結尾附來源網址),把回答<b>貼回這裡</b>存起來,下次開就在。'}</div>
+            <textarea id="rpNoteIn" rows="3" placeholder="把外部 AI 的 22 節報告整份貼進來…" class="w-full bg-[#0d1117] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 leading-relaxed"></textarea>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+                <button onclick="app._rpNoteSave('${sym}')" class="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-bold rounded">💾 存成這一檔的報告</button>
+                <button onclick="app._reportAsk('${sym}'); app.vibrate?.(20);" class="px-3 py-1.5 text-[11px] font-bold text-purple-300 bg-[#0d1117] hover:bg-purple-900/20 border border-purple-700/50 rounded">🔎 問 Perplexity(22 節)</button></div>
+            <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💾 只存在<b>你這台裝置</b>;⛔ <b>不</b>進本站任何結論、評分或「📋 複製整份報告」;AI 的價位只拿去跟 🧱 價格牆<b>對照</b>。</div>`;
+        const title = `📝 §22 你貼上的 AI 報告${n ? (st.stale ? ' <span class="text-amber-300">・🔁 需更新</span>' : '') : ' <span class="text-gray-500 font-normal">・還沒貼</span>'}`;
+        return this._rpCard(title, body, asof ? `基準日 ${this._dW(asof)}` : '');
     },
     _rpIndHtml(C) {
         const sym = String(C.sym || '');
@@ -23334,7 +23486,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const bits = [];
             if (L.doi != null) bits.push(`存貨 ${L.doi} 天`);
             if (F.fcf4 != null) bits.push(`自由現金流近 4 季 <span class="${this._rpDir(F.fcf4)}">${f(F.fcf4 / 1e8, 1)} 億</span>`);
-            if (F.roe4 != null) bits.push(`ROE ${f(F.roe4, 1)}%`);
+            const parQ = this._rpFinParQ(F);
+            if (F.roe4 != null && !parQ) bits.push(`ROE ${f(F.roe4, 1)}%`);
+            if (parQ) bits.push(`<span class="text-amber-300">⚠️ 疑似面額變更,淨利率/ROE 不給數字</span>`);
             if (F.flags && F.flags.length) bits.push(`<span class="text-amber-300">⚠️ ${F.flags.length} 個旗標</span>`);
             add('🏢', '§4 財報品質', bits.join(' ・') || this._rpNa('三表有檔但欄位不足'),
                 '本站實測:存貨天數的七種變化沒有一種賺得到錢 → 只描述。兩個旗標(獲利崩但營收毛利沒掉 / 股本一季變超過兩成)只標**事實**,⛔ 不下結論。', 'real', 'doi_probe');
@@ -23352,8 +23506,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         add('🗓️', '§12 下一個事件', evBits.join(' ・'),
             '本站實測 37 種財經行事曆日:**沒有一種能預測漲跌**,但「當天特別顛」是真的 → 只提醒你前後波動會變大,⛔ 不預設漲或跌。', 'calc', 'calendar_stock_probe');
         // 11 質化
-        add('🔎', '§2・§5~§8・§13 質化', '商業模式 / 市場預期與獲利預估上修下修 / 法說語氣 / 產業報價 / 客戶集中與匯率關稅',
-            '這幾項台股**沒有免費的結構化來源**(分析師共識那種是付費資料庫),本站⛔ 不編 → 按下面的「🔎 問 Perplexity」(提示詞已經含這幾段、而且要求它附來源網址),再把回答貼回最下面的 §22 產業筆記。', 'ask');
+        const note = this._rpNote(sym), nst = this._rpNoteStale(C, note), nAsof = this._rpNoteAsofOf(note);
+        add('🔎', '§2・§5~§8・§13 質化', note
+                ? `📝 已有 ${nAsof ? this._dW(nAsof) : ''} 的報告(下一格)${nst.stale ? ' ・<span class="text-amber-300">🔁 需更新</span>' : ' ・還算新'}`
+                : '商業模式 / 市場預期與獲利預估上修下修 / 法說語氣 / 產業報價 / 客戶集中與匯率關稅',
+            '這幾項台股**沒有免費的結構化來源**(分析師共識那種是付費資料庫),本站⛔ 不編 → 按下一格的「🔎 問 Perplexity」(提示詞是 22 節規格、要求附來源網址),再把回答整份貼回那一格存起來;貼上之後有新的月營收 / 財報 / 除息、或股價偏離報告寫的價 8% 以上,會標「需更新」。', 'ask');
 
         // ── 第一眼:一列兩行(面向+徽章 / 值)。幾何全 inline,⛔ 不靠 class ──
         const body = rows.map(r => `<div data-rpq="${this._escHtml(r.k)}" class="border-b border-[#21262d] last:border-0" style="padding:6px 0">
@@ -23395,10 +23552,28 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <div class="text-[10px] text-gray-500 leading-snug mt-1">每格 = 年化 EPS × 變動 × 那個本益比,格內小字是距現價。⛔ 這是<b>算術</b>不是預測:本站沒有分析師預估、也沒有母體可以估「樂觀/悲觀各幾 % 機率」,所以⛔ 不給機率 —— 硬給的機率是編的。</div></div>`;
     },
     // 🏢 §4 財報三表切片(data/fin/{sym}.json,fin_slice.mjs 切的;⛔ 這裡只顯示,一個數字都不算)
+    // 🚨 V76.2.0 面額變更守門(前端這一份是**雙保險**:gh-pages 上的舊切片還沒重切之前,規則要跟 fin_slice.mjs 一模一樣)
+    //   「股本(元)沒變」⛔ 不等於「股數沒變」—— 國巨 2025Q3 面額 10 → 2.5:股本一毛不變、股數 ×4、EPS ÷4,
+    //   用 EPS × 股本÷10 推的淨利率因此被低估 4 倍(顯示 5.3%,實際約 21%)。
+    _rpFinParQ(F) {
+        if (!F || !Array.isArray(F.q)) return null;
+        if (F.par_chg_q !== undefined) return F.par_chg_q || null;   // 新切片自己判過(有官方淨利時是 null)
+        const Q = F.q;
+        for (let i = 1; i < Q.length; i++) {
+            const a = Q[i - 1], b = Q[i];
+            if (a.eps > 0 && b.eps != null && b.eps <= a.eps * 0.5 && a.rev > 0 && b.rev >= a.rev * 0.97 && a.gm != null && b.gm != null && b.gm >= a.gm - 1
+                && a.cap > 0 && b.cap > 0 && Math.abs(b.cap / a.cap - 1) < 0.05 && b.ni_src !== 'fs') return b.p;
+        }
+        return null;
+    },
     _rpFinDeepHtml(C) {
         const F = C.fin, f = this._rpFmt;
         if (!F || !Array.isArray(F.q) || !F.q.length) return `<div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">📦 存貨 / 現金流 / ROE(財報三表)</div>${this._rpNa('本站尚未切出這檔的財報三表(fin_backfill 切片後才有;ETF 沒有財報)')}`;
         const Q = F.q, L = Q[Q.length - 1], P4 = Q.length >= 5 ? Q[Q.length - 5] : null, P8 = Q.length >= 9 ? Q[Q.length - 9] : null;
+        const parQ = this._rpFinParQ(F);
+        const parErr = parQ ? `⚠️ 疑似面額變更(${parQ.slice(0, 7)} 起 EPS 縮小、股本金額不變 → 股數變多),本站沒有股數欄位算不出來` : null;
+        const warn = t => `<span class="text-amber-300 font-sans" style="min-width:0;overflow-wrap:anywhere;text-align:right">${this._escHtml(t)}</span>`;
+        const nmOk = L.nm != null && !(parQ && L.p >= parQ), roeOk = F.roe4 != null && !parQ;
         const yi = v => v == null ? this._rpNa('本站沒有') : `${f(v / 1e8, 1)} 億`;
         const tr = (a, b) => (a != null && b != null) ? ` <span class="text-gray-500">(一年前 ${b})</span>` : '';
         const rows = [
@@ -23406,19 +23581,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             this._rpRow('自由現金流(近 4 季)', F.fcf4 != null ? `<span class="${this._rpDir(F.fcf4)}">${yi(F.fcf4)}</span>` : this._rpNa('不足 4 季')),
             this._rpRow('資本支出(近 4 季)', F.capex4 != null ? yi(Math.abs(F.capex4)) : this._rpNa('不足 4 季')),
             this._rpRow('營業現金流(最新季)', L.ocf != null ? `<span class="${this._rpDir(L.ocf)}">${yi(L.ocf)}</span>` : this._rpNa('本站沒有')),
-            this._rpRow('ROE(近 4 季)', F.roe4 != null ? `${f(F.roe4, 1)}%` : this._rpNa('不足 4 季')),
-            this._rpRow('淨利率(最新季)', L.nm != null ? `${f(L.nm, 1)}%${tr(L.nm, P4 && P4.nm != null ? `${f(P4.nm, 1)}%` : null)}` : this._rpNa('算不出來(面額或資料)')),
+            this._rpRow('ROE(近 4 季)', roeOk ? `${f(F.roe4, 1)}%` : (parErr ? warn(L.nm_error || parErr) : this._rpNa('不足 4 季'))),
+            this._rpRow('淨利率(最新季)', nmOk ? `${f(L.nm, 1)}%${tr(L.nm, (P4 && P4.nm != null && !(parQ && P4.p >= parQ)) ? `${f(P4.nm, 1)}%` : null)}` : (parErr ? warn(L.nm_error || parErr) : this._rpNa('算不出來(面額或資料)'))),
             this._rpRow('股本', L.cap != null ? `${f(L.cap / 1e8, 1)} 億元` : this._rpNa('本站沒有')),
         ].join('');
         const flags = (F.flags || []).map(x => `<div style="display:flex;align-items:flex-start;gap:6px;padding:2px 0"><span style="flex:0 0 auto">⚠️</span><div class="text-[11px] text-amber-200 leading-snug" style="flex:1 1 0;min-width:0;overflow-wrap:anywhere">${this._escHtml(x.t)}</div></div>`).join('');
         return `<div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">📦 存貨 / 現金流 / ROE(財報三表)${this._dChip(F.updated, '三表')}</div>${rows}
-            ${flags ? `<div class="mt-1" data-rpflags="${(F.flags || []).length}">${flags}</div>` : `<div class="text-[10px] text-gray-500 mt-1">✅ 近 ${Q.length} 季沒有「EPS 崩但營收毛利沒掉」「股本大變動」這兩種旗標</div>`}
+            ${flags ? `<div class="mt-1" data-rpflags="${(F.flags || []).length}">${flags}</div>` : `<div class="text-[10px] text-gray-500 mt-1">✅ 近 ${Q.length} 季沒有「EPS 崩但營收毛利沒掉」「股本大變動」「面額變更」這三種旗標</div>`}
             <div class="text-[10px] text-gray-500 mt-1 leading-snug">現金流量表在資料源是<b>累計</b>的,切片時已還原成單季(${(F.cum_fixed || []).join('/')});${this._escHtml(F.shares_note || '')}。最新季 ${L.p} 法定最晚公布 ${this._dW(L.pub) || L.pub || '—'}。⚠️ 應收帳款天數本站沒有(資料源沒這欄)。</div>`;
     },
     // 📏📉 §11・§16・§17 價格牆 + 壓力測試(⛔ 價位全部讀 stash:_keyLevels / _upsideStash / indicators / _marginCallState)
-    _rpWallsHtml(C) {
-        const f = this._rpFmt, sym = String(C.sym), pC = C.pC;
-        if (!(pC > 0)) return '';
+    // 🧱 牆的清單只有一份(V76.2.0 抽出來給 🆚 對照段共用,⛔ 不可再算第二份)
+    _rpWallList(C) {
+        const sym = String(C.sym), pC = C.pC;
+        if (!(pC > 0)) return [];
         const K = (this._keyLevels && String(this._keyLevels.sym) === sym) ? this._keyLevels : null;
         const U = (this._upsideStash && Math.abs(+this._upsideStash.pC - pC) < 0.01) ? this._upsideStash : null;
         const MA = this._rpMaLevels(), pp = this._rpPricePos(this.rawDailyData);
@@ -23434,6 +23610,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         }
         if (C.mcs && C.mcs.known && Number.isFinite(+C.mcs.callLine)) add('融資追繳壓力區(推估)', C.mcs.callLine, '融資族群均價 × 追繳比例;⛔ 不是官方值');
         lv.sort((a, b) => b.v - a.v);
+        return lv;
+    },
+    _rpWallsHtml(C) {
+        const f = this._rpFmt, sym = String(C.sym), pC = C.pC;
+        if (!(pC > 0)) return '';
+        const lv = this._rpWallList(C);
         // 📐 V76.1.9 幾何改 inline —— 🚨 `grid-cols-[1fr_auto]` 是**任意值**,展開是 `minmax(auto,1fr)`,
         //   **不是**具名 `grid-cols-N` 的 `minmax(0,1fr)` → 左欄會被 max-content 撐開,右邊 `auto` 欄又永不收縮
         //   (`-154,312` 這種 font-mono 千分位是不可斷的 token)→ 整列撐寬,再被 `html,body{overflow-x:hidden}`
@@ -23463,7 +23645,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">📉 §17 下跌壓力測試(算術,已扣手續費與稅)</div>${st}
             <div class="text-[10px] text-gray-500 mt-1 leading-snug">「股價跌 ≠ 公司價值跌」—— 跌到每一級要重看的是 §4 的旗標與 §12 的下一次財報,⛔ 這張表回答不了「是估值修正還是基本面惡化」(那要看財報)。</div>
             <div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">🪜 §16 分批進場</div>
-            <div class="text-[10px] text-gray-300 leading-snug">${bear ? '🚫 這檔目前是空頭(主結論),本站⛔ 不給買點 —— 上面那把尺的 🛒/🔺 已改成「觀察價」。提示詞裡「第一/第二/第三買點」那一節對空頭股不適用。' : '分批計畫器在總覽「進場劇本」(3-3-4 三批,張數走 `_lotsForRisk`),⛔ 這裡不另算一份價位。'}<br><span class="text-gray-500">什麼情況不能因為便宜就加碼:主結論轉空、或 §4 亮旗標而你還沒查清楚。</span></div>`;
+            <div class="text-[10px] text-gray-300 leading-snug">${bear ? '🚫 這檔目前是空頭(主結論),本站⛔ 不給買點 —— 上面那把尺的 🛒/🔺 已改成「觀察價」。提示詞裡「第一/第二/第三買點」那一節對空頭股不適用。' : '分批計畫器在總覽「進場劇本」(3-3-4 三批,張數走 `_lotsForRisk`),⛔ 這裡不另算一份價位。'}<br><span class="text-gray-500">什麼情況不能因為便宜就加碼:主結論轉空、或 §4 亮旗標而你還沒查清楚。</span></div>
+            ${(() => { try { return this._rpPasteVsWalls(C, this._rpNote(sym)); } catch (_) { return ''; } })()}`;
         const head = above.filter(x => /套牢|量/.test(x.n)).slice(0, 2).map(x => `${x.n.replace(/^套牢區 /, '')} 牆`).join(' ・');
         const note = `${head ? `上方 ${head}` : `上方 ${above.length} 道 / 下方 ${below.length} 道`} ・跌 20% = 一張 <span class="text-green-400">${Math.round(this._netPL(pC, pC * 0.8, 1000)).toLocaleString()}</span> 元`;
         return this._rpDetails('🧱 §11・§16・§17 價格卡在哪、跌下去撞到什麼', note, body, false);
@@ -23537,7 +23720,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (quick.length) { L.push(''); L.push('⚡ 快速判別表'); quick.forEach(t => L.push(`   ${t}`)); }
         //   ⚠️ V76.0.1:`📍 出場／加碼價位 N 條` 那個摺疊的內容**上面已經逐條列過了** → 這裡要排掉,
         //     否則複製出去會出現兩次(實跑抓到)。同理 `📊 其他數字`(重點數字上面列過)。
-        const secs = [...box.querySelectorAll('details > summary')].map(d => clean(d.innerText)).filter(t => t && !/^📊 其他數字/.test(t) && !/^📍 出場/.test(t));
+        //   📝 V76.2.0 貼上的 AI 報告也是一堆 <details> → ⛔ 整格排除(鐵線:不進「複製整份報告」)
+        const secs = [...box.querySelectorAll('details > summary')].filter(d => !d.closest('#rpPaste')).map(d => clean(d.innerText)).filter(t => t && !/^📊 其他數字/.test(t) && !/^📍 出場/.test(t));
         if (secs.length) { L.push(''); secs.forEach(t => L.push(t)); }
         L.push('');
         L.push('📚 全部讀本站採礦產物(證交所 / 櫃買 / 集保 / 夜間基本面採礦),每個數字都標日期,不含任何 AI 推估。');
@@ -23588,16 +23772,26 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 5. 循環股警語:若毛利率高但 PE 位階極低,必須提醒「循環股獲利頂峰時 PE 最低」的陷阱,不可直接判定「便宜」。
 6. ⛔ 不預測股價、不給進出場點;你補充的每一筆產業數字(報價、產能、出貨)都要附日期與來源網址,查不到就寫「查不到」。
 
-# 輸出格式 (Output)
-每段最多 3 條,條列式(⛔ 每一段都要附日期與來源網址;查不到就寫「查不到」,⛔ 不可用常識補):
-- 🏢 【商業模式】:它靠什麼賺錢、最賺錢的產品、主要客戶;一句話「這家公司到底靠什麼賺錢」。
-- 🏭 【產業景氣】:這檔所屬產業現在是「主升段、末升段、還是落底反彈」?依據是什麼(附日期)。
-- 💲 【漲價與供需】:主要產品最近的報價 / 產能 / 庫存動態(附來源)。
-- 📞 【最近法說重點】:最近一次法說會或月營收公布時,公司自己怎麼說(附日期);跟上一季比,對需求/價格/產能的說法是更樂觀還是更保守。
-- 📈 【法人預估變化】:最近 1~3 個月有沒有券商/法人公開上修或下修它的 EPS 預估(附報告日期與來源;查不到就寫查不到,⛔ 不可自己估數字)。
-- 👥 【客戶集中與曝險】:主要客戶集中度、美元/台幣匯率、關稅或出口管制的曝險(附來源)。
-- 🐻 【空方論點】:假設看多是錯的,最可能的 2 個原因(要有具體事件,不要泛泛的「競爭加劇」)。
-- ⚠️ 【最大風險】:1~2 個會讓上面判斷失效的事件。
+# 輸出格式 (Output)—— 22 節骨架(⭐ 本站程式會照 §N 切節,格式一定要照下面)
+- 第一行只寫:「分析基準日期:YYYY-MM-DD」(今天的日期)。
+- 每一節**自己一行**標題,格式「§N 標題」(例:§2 商業模式),N 從 1 到 22 依序,⛔ 不用表情符號數字、不跳號。
+- 每節最多 5 條,條列式;每一條要附**日期 + 來源網址**,查不到就寫「查不到」,⛔ 不可用常識補。
+- 最後加「§23 來源表」:每筆一行「日期 ・媒體 ・網址」(⛔ 內文只寫媒體名沒有網址的,視為沒有來源)。
+
+【本站已經算好的節 —— 這幾節你只寫「質化解讀」,數字直接引用下方客觀數據,⛔ 不要自己算、不要另外估】
+§1 一句話結論(方向與位階本站有,你寫「為什麼」)・§4 財報品質(數字本站有,你找那一季的異常原因)・
+§10 法人籌碼(數字本站有,你寫誰在買誰在賣的解讀)・§11 技術面(均線/位階/上方套牢區本站有)・
+§14 三情境(只寫**假設與依據**,⛔ 不給機率、⛔ 不給價位)・§15 安全邊際 / §16 分批進場 / §17 壓力測試(本站有價格牆與你的出場線 → 這三節只寫**條件**,⛔ 不給價位)。
+
+【⛔ 不要輸出的東西】§19 因子評分、§20 星等評分 —— 權重是憑空訂的,本站實測這類評分沒有預測力;硬要寫就整節標「主觀」。
+⭐ 本益比一律寫**現在的**(近 4 季)並引用下方本站給的位階;要講預估本益比,必須寫出「預估」兩個字與用哪一年的 EPS(⛔ 不可把預估 PE 寫成「本益比約 N 倍」)。
+
+§1 一句話投資結論 ・§2 商業模式(靠什麼賺錢、最賺的產品、主要客戶、優勢、最大弱點)・§3 產業鏈位置(上下游、議價能力、供需與價格方向、循環階段)・
+§4 財報品質(異常原因、一次性項目、面額或股本變動)・§5 盈餘預期差(市場原本期待多少、實際多少、上修或下修展望)・§6 法人預估變化(近 1~6 個月 EPS 預估怎麼變,附報告日期)・
+§7 管理層與法說會訊號(需求/價格/毛利/產能的說法,語氣比上一季樂觀或保守)・§8 產業領先指標(3 個,轉弱後多久影響 EPS)・§9 同業比較(成長/毛利/風險誰好誰差)・
+§10 法人籌碼解讀 ・§11 技術面解讀(基本面改善前/中/已反映完)・§12 事件驅動(未來 90 天,只講波動不預設方向)・§13 市場可能忽略的風險(供應鏈/客戶/匯率/循環)・
+§14 三情境假設 ・§15 安全邊際的條件 ・§16 什麼情況不能因為便宜就加碼 ・§17 跌 10/20/30/40% 各代表什麼 ・§18 反向驗證(看多錯了的 5 個原因,哪個最可能)・
+§19(略)・§20(略)・§21 未來 30~90 天觀察清單(哪個指標變了就要重看)・§22 最後 200 字投資筆記(買進理由 / 主要風險 / 失效條件 / 持有時間 / 3 個觀察指標)。
 
 ---
 【個股客觀數據】(⛔ 以下數字已由程式算好,請直接引用,不要自己加減乘除)
@@ -23606,6 +23800,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
 - 年化EPS(${C && C.ae ? C.ae.src : '無資料'},⛔ 不是分析師預估):${C && C.ae ? F(C.ae.eps, 2) : '—'} 元
 - 現在本益比:${C ? F(C.pe) : '—'}x ・ 股價淨值比:${C ? F(C.pb, 2) : '—'} ・ 殖利率:${C ? F(C.yld, 2) : '—'}%
 - 估值基期(PE 在自己近3年的位階,0=最便宜):${b && Number.isFinite(+b.pct) ? Math.round(+b.pct) + '%' : '—'}${b && b.d ? `(統計至 ${b.d})` : ''}
+- 均線:${(() => { const MA = this._rpMaLevels(); const t = [[20, '月線'], [60, '季線'], [120, '半年線'], [240, '年線']].filter(([n]) => MA[n]).map(([n, nm]) => `${nm} ${F(MA[n], 1)}`).join(' / '); return t || '—'; })()}
+- 現價上方套牢區(近 120 日成交量堆積層,本站算的):${(() => { const U = this._upsideStash; const z = (U && C && Math.abs(+U.pC - C.pC) < 0.01 && Array.isArray(U.list)) ? U.list.filter(x => +x.sup > 0).slice(0, 2) : []; return z.length ? z.map(x => `${Math.round(x.lo)}~${Math.round(x.hi)}(${(+x.sup).toFixed(0)}% 的量)`).join(' / ') : '—'; })()}
+- 你設的出場線:${(() => { const K = this._keyLevels; return (K && C && String(K.sym) === String(C.sym) && K.slPx > 0) ? F(K.slPx, 1) : '—'; })()} 元(⛔ 這是使用者自己的紀律,不是目標)
 - 歷史估值對照價位:${rows}
 - 同業中位 PE:${peerTxt}
 - 最新月營收:${C && C.mrev != null ? F(C.mrev / 1e8, 2) + ' 億' : '—'} ・年增 ${C ? F(C.yoy) : '—'}% ・累計年增 ${C && C.ytd != null ? F(C.ytd) + '%' : '—'} ・毛利率 ${C ? F(C.gm) : '—'}%
@@ -29608,7 +29805,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                 // 🗑️ chipRadarPanel 已於 V74.2.0 刪除(instcost_probe 實測無優勢)
                 'deepBriefCard', 'deepBriefAi',           // 🧠 深度診斷(V72.4.0;AI 段是 async,不清會顯上一檔的解讀)
                 // 📄 V75.1.1 報告分頁九段(全是 async 才填;不清會顯上一檔的估值/籌碼)
-                'rpNum', 'rpLead', 'rpQuick', 'rpWalls', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc',
+                'rpNum', 'rpLead', 'rpQuick', 'rpPaste', 'rpWalls', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc',
                 'ovWhyBox',                               // 🧭 V76.0.7 主卡收進摺疊區的那一半(_renderOvCommand 才填)
             ].forEach(id => {
                 const el = document.getElementById(id);

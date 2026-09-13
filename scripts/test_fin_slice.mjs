@@ -54,6 +54,24 @@ const t2 = sliceOne(F, CUM, 'T2'), t3 = sliceOne(F, CUM, 'T3'), t4 = sliceOne(F,
 ok('③a 旗標①:EPS 1.0 → 0.4 而營收/毛利率沒動 → eps_drop_biz 要亮在 2025-09-30', t2.flags.some(f => f.k === 'eps_drop_biz' && f.q === '2025-09-30'), JSON.stringify(t2.flags));
 ok('③b 旗標①:EPS 同樣掉但營收也掉 40% → ⛔ 不亮(那是本業變差,不是業外)', !t3.flags.some(f => f.k === 'eps_drop_biz'), JSON.stringify(t3.flags));
 ok('③c 沒事的那檔 0 個旗標', t1.flags.length === 0, JSON.stringify(t1.flags));
+// 🚨 V76.2.0 面額變更守門(國巨 2025Q3:EPS 9.74 → 3.10、營收毛利反升、股本金額不變 → 股數 ×4,淨利率被算成 1/4)
+ok('③d ⭐ 旗標①的文案要寫出「面額變更」這個可能(⛔ 不可只寫業外 —— 那正是 V76.1.8 誤判國巨的原因)', /面額變更/.test(t2.flags.find(f => f.k === 'eps_drop_biz').t), t2.flags[0].t);
+const q3 = t2.q.find(x => x.p === '2025-09-30'), q2 = t2.q.find(x => x.p === '2025-06-30'), qL = t2.q[t2.q.length - 1];
+ok('③e 🚨 沒有官方淨利時,疑似面額變更那一季起 nm/ni 一律 null 並寫 nm_error(⛔ 不給算錯 4 倍的數字;注入:拿掉守門 → 這條紅)', q3.nm === null && q3.ni === null && /面額/.test(q3.nm_error || '') && qL.ni === null && q2.ni != null && q2.nm_error == null, JSON.stringify([q2.ni, q3.ni, q3.nm_error]));   // ⚠️ 合成測資的 nm 本來就 >100% → 恆 null,要驗就驗 ni(⛔ 別驗一個在這組測資裡永遠是 null 的欄位 = 假綠燈)
+ok('③f 那一季之後 roe4 也不硬算(近 4 季有 null 就 null)、shares_note 講清楚從哪一季起', t2.roe4 === null && t2.par_chg_q === '2025-09-30' && /2025-09/.test(t2.shares_note), JSON.stringify([t2.roe4, t2.par_chg_q, t2.shares_note]));
+// T7:有官方「稅後淨利」欄(fin_backfill V76.2.0 起)→ 隱含股數 ×4 直接證實 par_chg,淨利率照給(用官方值)
+{
+    const F2 = JSON.parse(JSON.stringify(F)); F2.f = [...FIELDS, 'ni'];
+    const s7 = {}; Q.forEach((q, i) => { const k = i % 4; const par = q >= '2025-09-30';
+        const row = { inv: 150, cogs: 100, capex: CUMV.capex[k], dep: CUMV.dep[k], ocf: CUMV.ocf[k], rev: 200, eq: 1000, cap: 1e9, eps: par ? 0.25 : 1.0, ni: 25 };   // 淨利不變 25、EPS ÷4 = 股數 ×4
+        s7[q] = F2.f.map(f => row[f]); });
+    F2.s = { T7: s7 };
+    const t7 = sliceOne(F2, detectAll(F2), 'T7');
+    const q7 = t7.q.find(x => x.p === '2025-09-30');
+    ok('③g 有官方淨利:ni 用官方值(25)、nm = 12.5%、⛔ 不再 null', q7.ni === 25 && q7.nm === 12.5 && q7.ni_src === 'fs' && q7.nm_error == null, JSON.stringify(q7));
+    ok('③h 有官方淨利:亮 par_chg(股數 ×4.0)而**不是** eps_drop_biz(已經分得出來了)', t7.flags.some(f => f.k === 'par_chg' && f.q === '2025-09-30' && /×4\.0/.test(f.t)) && !t7.flags.some(f => f.k === 'eps_drop_biz'), JSON.stringify(t7.flags));
+    ok('③i 有官方淨利:shares_note 寫「不用假設面額」、par_chg_q 為 null', /不用假設面額/.test(t7.shares_note) && t7.par_chg_q === null, t7.shares_note);
+}
 ok('④ 旗標②:股本 10 → 14 億(+40%)→ cap_chg 要亮、之後季別不重複亮', t4.flags.filter(f => f.k === 'cap_chg').length === 1 && t4.flags[0].q === '2025-06-30', JSON.stringify(t4.flags));
 const t5 = sliceOne(F, CUM, 'T5');
 ok('⑤ 只有 3 季 → roe4 / fcf4 / ni4 一律 null(⛔ 不硬算)', t5.nq === 3 && t5.roe4 === null && t5.fcf4 === null && t5.ni4 === null, JSON.stringify([t5.nq, t5.roe4, t5.fcf4]));
@@ -72,10 +90,15 @@ if (fs.existsSync(FIN)) {
     ok('⑦a 真檔:2330 切出 12 季、累計欄位被還原', s && s.nq === 12 && s.cum_fixed.length >= 2, s && JSON.stringify([s.nq, s.cum_fixed]));
     ok('⑦b 真檔:2330 存貨天數落在 10~400 天(離譜就是把累計當單季)', s && s.q.slice(-4).every(x => x.doi > 10 && x.doi < 400), s && JSON.stringify(s.q.slice(-4).map(x => x.doi)));
     const g = sliceOne(R, C, '2327');
-    ok('⑦c 真檔:國巨 2025Q3 亮「業外/一次性」旗標(EPS 9.74 → 3.10、營收毛利沒掉)', g && g.flags.some(f => f.k === 'eps_drop_biz' && f.q === '2025-09-30'), g && JSON.stringify(g.flags));
+    ok('⑦c 真檔:國巨 2025Q3 亮旗標①(EPS 9.74 → 3.10、營收毛利沒掉),而且文案要提「面額變更」', g && g.flags.some(f => f.k === 'eps_drop_biz' && f.q === '2025-09-30' && /面額變更/.test(f.t)), g && JSON.stringify(g.flags));
     // ⚠️ 第一版斷言寫「國巨股本沒變」→ 真檔當場打臉:2024Q3 股本 42 → 51 億元(+20%,那年的現增),
-    //    旗標亮在 2024-09 是**對的**;錯的是我的前提。要驗的用意是「2025Q3 那次 EPS 崩跌**不是**股本造成的」。
-    ok('⑦d 真檔:國巨 2025Q3 ⛔ 不可亮 cap_chg(那一季股本沒變,EPS 崩跌是業外不是分割 —— 我第一版推論「分割」就是錯的)', g && !g.flags.some(f => f.k === 'cap_chg' && f.q === '2025-09-30'), g && JSON.stringify(g.flags));
+    //    旗標亮在 2024-09 是**對的**;錯的是我的前提。
+    // 🚨🚨 V76.2.0 再更正一次:V76.1.8 我又推論「股本沒變 → 不是股數的事 → 是業外」—— **也是錯的**。
+    //    國巨 2025Q3 是**面額 10 → 2.5 元**:股本(元)一毛不變、股數 ×4、EPS ÷4 —— cap_chg 本來就不會亮,
+    //    而「EPS × 股本÷10」推的淨利率因此被低估 4 倍。⭐ 「股本(元)沒變」⛔ 不等於「股數沒變」。
+    ok('⑦d 真檔:國巨 2025Q3 cap_chg 不會亮(面額變更股本金額不變 —— 這正是它抓不到的原因,所以要靠 ③e 那道守門)', g && !g.flags.some(f => f.k === 'cap_chg' && f.q === '2025-09-30'), g && JSON.stringify(g.flags));
+    const g3 = g && g.q.find(x => x.p === '2025-09-30'), g2 = g && g.q.find(x => x.p === '2025-06-30');
+    ok('⑦f 🚨 真檔:國巨 2025Q3 起淨利率 null + nm_error(⛔ 不可再顯 4.9% / 5.3%);2025Q2 仍有 15.4%', g && g3.nm === null && /面額/.test(g3.nm_error || '') && g2.nm === 15.4 && g.roe4 === null, g && JSON.stringify([g2.nm, g3.nm, g3.nm_error, g.roe4]));
     ok('⑦e 真檔:國巨 2024Q3 股本 +20%(現增)要亮 cap_chg、而且單位是「億元」', g && g.flags.some(f => f.k === 'cap_chg' && f.q === '2024-09-30' && /億元/.test(f.t)), g && JSON.stringify(g.flags));
 } else console.log(`⏭️ 沒有 ${FIN} → 跳過真檔驗證(git show origin/fin_deep:fin_deep/fin_deep.json > fin_deep/fin_deep.json)`);
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗:${fails.join(' / ')}` : '\n✅ test_fin_slice 全過');

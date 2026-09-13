@@ -64,7 +64,7 @@ const strip = s => s.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '
        /id="subTabBtnStrategy"[\s\S]{0,400}?id="subTabBtnReport"[\s\S]{0,400}?id="subTabBtnLive"/.test(SRC));
     ok('①b switchSubTab 有 report 分支呼叫 renderReportTab', /tab === 'report'[\s\S]{0,200}renderReportTab/.test(sw));
     ok('② _idxHiddenSubTabs 含 report 且 MAP 含 report: \'Report\'', /_idxHiddenSubTabs: \[[^\]]*'report'\]/.test(SRC) && /bullbear: 'BullBear', report: 'Report'/.test(SRC));
-    ok('⑪a analyze() 切股清單含十一個 rp*(⛔ 少一個 = 那一段顯上一檔)', ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls'].every(id => new RegExp(`'deepBriefCard', 'deepBriefAi',[\\s\\S]{0,400}'${id}'`).test(SRC)));
+    ok('⑪a analyze() 切股清單含十二個 rp*(⛔ 少一個 = 那一段顯上一檔;V76.2.0 加 rpPaste)', ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls', 'rpPaste'].every(id => new RegExp(`'deepBriefCard', 'deepBriefAi',[\\s\\S]{0,400}'${id}'`).test(SRC)));
     // ③ 渲染層不可自己寫買賣指令:只掃報告區塊(_rpNumHtml ~ _reportAsk),排除轉述 _ovDecide 的那支
     const a = SRC.indexOf('    _rpNumHtml('), b = SRC.indexOf('    _reportAsk(');
     const blk = strip(SRC.slice(a, b));
@@ -346,8 +346,11 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.ht
 {
     const P = await page.evaluate(() => { let cap = null; const real = app._freeAiOpen; app._freeAiOpen = q => { cap = q; }; app._reportAsk('5483'); app._freeAiOpen = real; return cap; });
     ok('⑫a 提示詞含 5 條防幻覺關鍵句 + 第 6 條', ['絕對禁止「主觀預測」', '年化EPS × 近3年 P5/中位/P95 PE', '不可腦補', '股價基期」與「估值基期」是兩件事', '循環股獲利頂峰時 PE 最低', '附日期與來源網址'].every(k => P.includes(k)));
-    ok('⑫b 提示詞八段標題(V76.1.8 從四段擴成八段:商業模式 / 法人預估變化 / 客戶集中與曝險 / 空方論點)', ['🏢 【商業模式】', '🏭 【產業景氣】', '💲 【漲價與供需】', '📞 【最近法說重點】', '📈 【法人預估變化】', '👥 【客戶集中與曝險】', '🐻 【空方論點】', '⚠️ 【最大風險】'].every(k => P.includes(k)));
-    ok('⑫d 提示詞 <3,800 字且帶入年化 EPS / 對照價 / 位階', P.length < 3800 && P.includes(R.ctx.eps.toFixed(2)) && /估值基期.*\d+%/.test(P), `len ${P.length}`);
+    // V76.2.0 提示詞改成使用者那份 22 節骨架:每節 §N、第一行基準日、結尾來源表、本站已算的節⛔ 不要自己算、⛔ 不給評分/星等/機率
+    ok('⑫b 提示詞 22 節骨架:§1~§22 每一節都點名 + 第一行「分析基準日期」+ 結尾「§23 來源表」', Array.from({ length: 22 }, (_, i) => `§${i + 1} `).every(k => P.includes(k)) && /分析基準日期/.test(P) && /§23 來源表/.test(P), P.slice(0, 200));
+    ok('⑫b2 提示詞明說「本站已經算好的節⛔ 不要自己算」+ ⛔ §19 因子評分 / §20 星等 / §14 不給機率 + 本益比要寫「現在的」', /本站已經算好的節/.test(P) && /不要自己算/.test(P) && /§19 因子評分、§20 星等/.test(P) && /不給機率/.test(P) && /本益比一律寫\*\*現在的\*\*/.test(P), '');
+    ok('⑫b3 提示詞客觀數據補了均線 / 上方套牢區 / 出場線(AI 要引用本站的牆,不是自己編價位)', /- 均線:/.test(P) && /上方套牢區/.test(P) && /你設的出場線/.test(P), '');
+    ok('⑫d 提示詞 <6,500 字(V76.2.0 從 3,800 放寬:22 節骨架 + 三行客觀數據)且帶入年化 EPS / 位階', P.length < 6500 && P.includes(R.ctx.eps.toFixed(2)) && /估值基期.*\d+%/.test(P), `len ${P.length}`);
     ok('⑫e 提示詞「目標價」只出現在禁令句', P.split('目標價').length - 1 === 1 && P.includes('「具體目標價」'));
 }
 // 2330(上市):同業列要有數字
@@ -506,12 +509,13 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         //   🚨🚨 而且範圍要縮到**已存筆記那一塊**(`[data-rpnote]`):第一輪注入驗證抓到
         //     「外部 AI 寫的 ・本站沒有驗證」在**節標題**也有一份 → 把筆記上的標籤整條拿掉,
         //     測試照樣綠 = 假綠燈(V75.1.0 那條教訓的再犯)。
-        const box = document.querySelector('#rpInd [data-rpnote]');
+        //   📝 V76.2.0 已存的報告搬到 #rpPaste(⚡ 快速表正下方);產業節 ⑤ 只剩一行指路
+        const box = document.querySelector('#rpPaste [data-rpnote]');
         const t = box ? box.innerHTML.replace(/<[^>]+>/g, ' ') : '';
         const cp = A._rpCopyPlain();
         const dec = JSON.stringify(A._ovDecide(A.activeData, sym) || {});
         A._rpNoteClear(sym);
-        const after = document.querySelector('#rpInd [data-rpnote]') ? 'still-there' : '';
+        const after = document.querySelector('#rpPaste [data-rpnote]') ? 'still-there' : '';
         return { MARK, shown: t.includes(MARK), label: /外部 AI 寫的/.test(t) && /本站沒有驗證/.test(t), inCopy: cp.includes(MARK), inDec: dec.includes(MARK), gone: !after.includes(MARK) };
     });
     ok('🏭d2 貼進去的筆記存得起來、顯示得出來', note.shown, JSON.stringify(note));
@@ -519,6 +523,79 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('🏭d4 🚨 筆記⛔ 不可進「📋 複製整份報告」', !note.inCopy, JSON.stringify(note));
     ok('🏭d5 🚨 筆記⛔ 不可進 _ovDecide(不參與任何買賣判斷)', !note.inDec, JSON.stringify(note));
     ok('🏭d6 一鍵清除真的清得掉', note.gone, JSON.stringify(note));
+    ok('🏭d7 產業節 ⑤ 只剩一行指路、整個文件只有一個 #rpNoteIn(⛔ 兩個同 id 會互相搶)', /已搬到/.test(T) && !/<textarea/.test(R3.html[4] || '') && (await page.evaluate(() => document.querySelectorAll('#rpNoteIn').length)) === 1, T.slice(0, 120));
+}
+// ── 📝 V76.2.0 你貼上的 AI 報告:用使用者那份 22 節報告的**真實形狀**(鍵帽數字 1️⃣…2️⃣2️⃣、首行基準日、「8月營收…」那種會被誤認成標題的行)──
+{
+    const KC = n => String(n).split('').map(d => d + '\uFE0F\u20E3').join('');   // 1️⃣ / 2️⃣2️⃣
+    const mkReport = (asof, px) => [
+        `【國巨／2327.TW】完整投資研究報告`, `分析基準日期:${asof}`,
+        `${KC(1)} 一句話投資結論`, `【國巨】目前屬於:等待買點`, `最大原因:受惠AI伺服器需求,但短期籌碼面受法人結帳賣壓影響,需待籌碼沉澱後逢低佈局。`,
+        `${KC(2)} 商業模式:公司到底靠什麼賺錢?`, `全球領先的被動元件供應商;利基型產品營收佔比近八成。`,
+        `${KC(3)} 產業鏈位置`, `中游製造商;議價能力強。`,
+        `${KC(4)} 財報品質分析`, `營收 445 億元 毛利率 38.5% EPS 4.59 元`, `8月營收異常強勁:8月營收達163.32億元(年增51.8%),創下歷史單月新高。`, `9/4 法說會當日漲停 562 元。`,
+        `${KC(5)} 盈餘預期差`, `正向預期差。`, `${KC(6)} EPS Revision`, `持續上修。`, `${KC(7)} 管理層與法說會訊號`, `樂觀。`, `${KC(8)} 產業領先指標`, `B/B Ratio。`,
+        `${KC(9)} 同業比較`, `村田 / 華新科。`, `${KC(10)} 法人籌碼`, `外資近期連續賣超,9月初曾單日賣超逾1.6萬張。`, `${KC(11)} 技術面`, `跌破20日線。`,
+        `${KC(12)} 事件驅動`, `9月營收公布。`, `${KC(13)} 市場可能忽略的風險`, `匯率。`, `${KC(14)} 三情境推演`, `樂觀(機率:20%) 合理股價 687 元`,
+        `${KC(15)} 安全邊際`, `以中性合理價 550 元為基準。`, `${KC(16)} 分批進場策略`, `第一買點:530 ~ 540 元。`, `第二買點:500 元。`, `第三買點:450 元以下。`,
+        `${KC(17)} 下跌壓力測試`, `下跌10% (約 490 元)`, `${KC(18)} Bear Case反向驗證`, `AI需求被高估。`,
+        `${KC(19)} 因子評分`, `總分:77 / 100`, `${KC(20)} 最終投資判斷`, `公司品質:★★★★☆`, `目前股價:${px} 元`, `保守合理價:450 元`, `最適合策略:等拉回`,
+        `${KC(21)} 未來30~90天最重要的觀察清單`, `每月營收動能。`,
+        `${KC(22)} 最後200字投資筆記`, `買進理由:AI 需求爆發。主要風險:結帳賣壓。停損/基本面失效條件:毛利率跌破35%。==這一句是我自己標的==`,
+    ].join('\n');
+    const today = new Date();
+    const fresh = mkReport(`${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`, '544');
+    const stale = mkReport('2026年7月20日', '480');
+    // 純函式:切節 / 基準日 / 價位抽取(⛔ 不靠畫面)
+    const PF = await page.evaluate((txt) => { const A = app; const P = A._rpPasteParse(txt); return { n: P.secs.length, ns: P.secs.map(s => s.n), asof: A._rpNoteAsof(txt), s4: (P.secs.find(s => s.n === 4) || {}).body, s8: (P.secs.find(s => s.n === 8) || {}).title, prices: A._rpPastePrices(txt), hi: A._rpHi('停損 500 元 ==重點== **粗**') }; }, stale);
+    ok('📝a 鍵帽數字 1️⃣…2️⃣2️⃣ 切成 22 節、編號 1~22 依序', PF.n === 22 && PF.ns.join(',') === Array.from({ length: 22 }, (_, i) => i + 1).join(','), JSON.stringify(PF.ns));
+    ok('📝a2 「分析基準日期:2026年7月20日」抓成 2026-07-20', PF.asof === '2026-07-20', String(PF.asof));
+    ok('📝a3 ⭐ 「8月營收達163.32億元」「9/4 法說會…」那種行**不可**被當成 §8 / §9 標題(留在 §4 裡)', /8月營收達163/.test(PF.s4 || '') && /9\/4 法說/.test(PF.s4 || '') && PF.s8 === '產業領先指標', JSON.stringify([PF.s4, PF.s8]));
+    ok('📝a4 價位抽取:第一買點 530~540 / 第二買點 500 / 第三買點 450 / 保守合理價 450', PF.prices.some(x => x.label === '第一買點' && x.lo === 530 && x.hi === 540) && PF.prices.some(x => x.label === '第二買點' && x.lo === 500) && PF.prices.some(x => x.label === '保守合理價' && x.lo === 450), JSON.stringify(PF.prices));
+    ok('📝a5 上色:關鍵詞琥珀 mark、==手標==、帶單位數字粗體、**粗**;⛔ mark 裡不可有紅綠 class', /<mark class="rp-hi">停損<\/mark>/.test(PF.hi) && /<mark class="rp-hi">重點<\/mark>/.test(PF.hi) && /<b class="font-mono text-gray-100">500 元<\/b>/.test(PF.hi) && /<b class="text-gray-100">粗<\/b>/.test(PF.hi) && !/text-(red|green)/.test(PF.hi), PF.hi);
+    ok('📝a6 上色先跳脫:<script> 進來也只是文字', await page.evaluate(() => !/<script/.test(app._rpHi('<script>x</script> 風險'))), '');
+    // 畫面:存 stale 版 → 過期提醒 / 第一眼 / 摺疊 / 對照 / 鐵線
+    await render('2327');
+    const V = await page.evaluate(async (txt) => {
+        const A = app, sym = '2327';
+        document.getElementById('rpNoteIn').value = txt; A._rpNoteSave(sym);
+        await new Promise(r => setTimeout(r, 200));
+        const card = document.getElementById('rpPaste'), box = card.querySelector('[data-rpnote]');
+        const seen = (card.innerText || '').replace(/\s+/g, '');
+        const all = card.innerHTML;
+        const st = A._rpNoteStale(A._rpLast, A._rpNote(sym));
+        const q11 = document.querySelector('#rpQuick [data-rpq="§2・§5~§8・§13 質化"]');
+        const vs = [...document.querySelectorAll('#rpWalls [data-rpvs]')].map(d => d.getAttribute('data-rpvs'));
+        const vsTxt = (document.querySelector('#rpWalls [data-rpvs-say]') || {}).textContent || '';
+        const cp = A._rpCopyPlain(), dec = JSON.stringify(A._ovDecide(A.activeData, sym) || {});
+        const ord = [...document.getElementById('subContentReport').children].map(d => d.id);
+        return { seen, chars: seen.length, has: { s1: /等待買點/.test(seen), s22: /買進理由/.test(seen), s5: /正向預期差/.test(seen), s4: /8月營收達163/.test(seen) },
+                 secs: card.querySelectorAll('details[data-rpsec]').length, first: card.querySelectorAll('[data-rpsec-first]').length,
+                 subj: [...card.querySelectorAll('details[data-rpsec="19"] summary, details[data-rpsec="20"] summary, details[data-rpsec="14"] summary')].map(e => /AI 主觀/.test(e.textContent)),
+                 marks: box.querySelectorAll('mark.rp-hi').length, markRG: [...box.querySelectorAll('mark')].some(m => /text-(red|green)/.test(m.className)),
+                 stale: st, staleShown: /建議重新產出/.test(seen), q11: q11 ? q11.textContent : '', vs, vsTxt,
+                 rail: { copy: /等待買點|買進理由|第一買點|Bear Case|其餘 §2~§21/.test(cp), dec: /等待買點|買進理由/.test(dec) }, ord,
+                 keyLv: JSON.stringify(A._keyLevels || {}).includes('530') };
+    }, stale);
+    ok('📝b 存完顯示在 #rpPaste;第一眼只有 §1 結論 + §22 筆記,§4/§5 收在摺疊裡', V.has.s1 && V.has.s22 && !V.has.s5 && !V.has.s4 && V.first === 2 && V.secs === 20, JSON.stringify(V.has) + ` first=${V.first} secs=${V.secs}`);
+    ok('📝b2 貼上區第一眼 ≤ 800 字(⛔ 整份 6k 全攤開就是資訊爆炸)', V.chars <= 800 && V.chars > 150, `${V.chars} 字`);
+    ok('📝b3 §19 因子評分 / §20 星等 / §14 機率那三節標「AI 主觀」', V.subj.length === 3 && V.subj.every(Boolean), JSON.stringify(V.subj));
+    ok('📝b4 重點詞真的被上色(≥5 個琥珀 mark),而且 ⛔ 不是紅綠', V.marks >= 5 && !V.markRG, `marks=${V.marks}`);
+    ok('📝c 🔁 過期判斷(基準日 2026-07-20、報告寫 480 元):8 月營收已公布 + 第 2 季財報法定日已過 + 股價偏離 + 已經 N 天(注入:拿掉月營收那條 → 這條紅)', V.stale.stale && V.stale.reasons.some(r => /8 月營收已公布/.test(r)) && V.stale.reasons.some(r => /第 2 季財報法定公布日/.test(r)) && V.stale.reasons.some(r => /偏離報告寫的 480 元/.test(r)) && V.stale.reasons.some(r => /已經 \d+ 天/.test(r)), JSON.stringify(V.stale));
+    ok('📝c2 提醒**在頁內顯示**(「🔁 建議重新產出」)+ 快速表第 11 列標「已有 … 的報告 ・🔁 需更新」', V.staleShown && /已有/.test(V.q11) && /需更新/.test(V.q11), V.q11);
+    ok('📝d 🆚 AI 價位對照本站的牆:每個抽到的價位一列(第一買點 / 第二買點 / 第三買點 / 保守合理價)+「AI 說 / 本站說」並排', V.vs.length >= 4 && V.vs.includes('第一買點') && /AI 說/.test(V.vsTxt) && /本站說/.test(V.vsTxt) && /等待買點/.test(V.vsTxt), JSON.stringify(V.vs) + ' ' + V.vsTxt);
+    ok('📝e 🚨 鐵線:貼上的報告⛔ 不進「📋 複製整份報告」、⛔ 不進 _ovDecide、AI 的價位⛔ 不進 _keyLevels', !V.rail.copy && !V.rail.dec && !V.keyLv, JSON.stringify(V.rail));
+    ok('📝f 版面順序:⚡ 快速表 → 📝 貼上區 → 重點數字', V.ord.indexOf('rpQuick') < V.ord.indexOf('rpPaste') && V.ord.indexOf('rpPaste') < V.ord.indexOf('rpNum'), V.ord.join(','));
+    // fresh 版(基準日 = 今天、價 544):不可亮「天數 / 偏離 / 法定日 / 除息」
+    const FR = await page.evaluate(async (txt) => { const A = app; document.getElementById('rpNoteIn').value = txt; A._rpNoteSave('2327'); await new Promise(r => setTimeout(r, 150)); return A._rpNoteStale(A._rpLast, A._rpNote('2327')); }, fresh);
+    ok('📝c3 fresh 版(基準日今天、價位 = 現價):⛔ 不可亮天數 / 偏離 / 財報法定日 / 除息', !FR.reasons.some(r => /已經 \d+ 天|偏離|法定|除息/.test(r)), JSON.stringify(FR));
+    // 舊格式(V76.1.8 存的,沒有 asof)照讀,基準日退回貼上日
+    const OLD = await page.evaluate(async () => { const A = app; localStorage.setItem('rpNote_2327', JSON.stringify({ t: '舊格式筆記 沒有節', ts: Date.now() - 3 * 864e5 })); A._rpRefreshPaste('2327'); await new Promise(r => setTimeout(r, 100)); const c = document.getElementById('rpPaste'); return { shown: /舊格式筆記/.test(c.innerText), asof: A._rpNoteAsofOf(A._rpNote('2327')), noSec: /沒切節/.test(c.innerText) }; });
+    ok('📝g 舊格式存檔(沒 asof)照讀:基準日退回貼上日、標「沒切節」', OLD.shown && OLD.asof && OLD.noSec, JSON.stringify(OLD));
+    // 390px:存了 6k 報告之後仍不可溢出(逐元素跟父層比)
+    const R8 = await render('2327');
+    ok('📱4 貼了報告之後 390px 仍不可橫向捲動、沒有元素衝出父層', !R8.wide && R8.esc.list.length === 0, JSON.stringify(R8.esc.list));
+    await page.evaluate(() => app._rpNoteClear('2327'));
 }
 {
     const R4 = await render('2330');
@@ -801,6 +878,12 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         ok('📱3 國巨那頁 390px 仍不可橫向溢出', !R6.wide);
         // 累計 vs 單季:切片裡的 cum_fixed 要含 ocf(注入:切片器不還原 → 這裡的 fixture 就會少這個欄)
         ok('§f7 切片 fixture 標示現金流量表已從累計還原成單季(cum_fixed 含 ocf/capex)', FIN_SLICE['2327'].cum_fixed.includes('ocf') && FIN_SLICE['2327'].cum_fixed.includes('capex'), JSON.stringify(FIN_SLICE['2327'].cum_fixed));
+    // 🚨 V76.2.0 面額變更:新切片 2025Q3 起 nm null + nm_error;畫面⛔ 不可再印 5.3% / 4.9%
+    ok('§f9 新切片:國巨 2025Q3 起淨利率 null、par_chg_q = 2025-09-30;畫面寫「疑似面額變更」而不是 5.3%', FIN_SLICE['2327'].par_chg_q === '2025-09-30' && /疑似面額變更/.test(R6.txt.rpFund) && !/淨利率\(最新季\)\s*5\.3%/.test(R6.txt.rpFund), R6.txt.rpFund.slice(0, 300));
+    // 🚨 gh-pages 上的**舊切片**(V76.1.8 產的:沒有 par_chg_q、nm 還是 5.3)→ 前端那道雙保險要自己判出來(注入:拿掉 _rpFinParQ 的迴圈 → 紅)
+    const OLDF = await page.evaluate((F) => { const A = app; const G = JSON.parse(JSON.stringify(F)); delete G.par_chg_q; G.q.forEach(r => { delete r.nm_error; delete r.ni_src; if (r.p >= '2025-09-30') r.nm = 5.3; }); G.roe4 = 4.3;
+        const html = A._rpFinDeepHtml(Object.assign({}, A._rpLast, { fin: G })); return { parQ: A._rpFinParQ(G), txt: html.replace(/<[^>]+>/g, ' ') }; }, FIN_SLICE['2327']);
+    ok('§f10 ⭐ 舊切片(沒 par_chg_q、nm=5.3、roe4=4.3)→ 前端自己判出 2025-09-30,淨利率/ROE 都不印那個數字', OLDF.parQ === '2025-09-30' && /疑似面額變更/.test(OLDF.txt) && !/5\.3%/.test(OLDF.txt) && !/4\.3%/.test(OLDF.txt), OLDF.txt.slice(0, 300));
     } else console.log('⏭️ 沒有 fin_deep 分支/檔 → §f1~§f7 跳過(git show origin/fin_deep:fin_deep/fin_deep.json > fin_deep/fin_deep.json)');
     // 沒切片的股(5483 不在 fixture)→ 誠實「本站尚未切出」+ 快速表 ⛔
     const R7 = await render('5483');

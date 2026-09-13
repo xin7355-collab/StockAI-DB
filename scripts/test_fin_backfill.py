@@ -166,7 +166,7 @@ with tempfile.TemporaryDirectory() as tmp:
        rec is not None and rec[2] == 3.0 and rec[3] == 4.0 and rec[4] == 5.0, str(rec))
     ok('⑬d 新欄位要有值', rec is not None and rec[-1] is not None and rec[-3] is not None, str(rec))
     ok('⑬e 「要補欄位 N 檔」要印出來(⛔ 不靜默)', '要補欄位' in out)
-ok('⑬f ⛔ 新欄位一律加在 FIELDS 最後面(舊檔陣列靠位置對應)', FB.FIELDS[:6] == ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev'] and FB.FIELDS[-3:] == ['eq', 'cap', 'eps'])
+ok('⑬f ⛔ 新欄位一律加在 FIELDS 最後面(舊檔陣列靠位置對應)', FB.FIELDS[:6] == ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev'] and FB.FIELDS[-4:] == ['eq', 'cap', 'eps', 'ni'])
 
 # ⑤ 檔數不足 → 不覆寫
 with tempfile.TemporaryDirectory() as tmp:
