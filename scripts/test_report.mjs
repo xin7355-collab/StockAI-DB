@@ -64,11 +64,24 @@ const strip = s => s.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '
        /id="subTabBtnStrategy"[\s\S]{0,400}?id="subTabBtnReport"[\s\S]{0,400}?id="subTabBtnLive"/.test(SRC));
     ok('①b switchSubTab 有 report 分支呼叫 renderReportTab', /tab === 'report'[\s\S]{0,200}renderReportTab/.test(sw));
     ok('② _idxHiddenSubTabs 含 report 且 MAP 含 report: \'Report\'', /_idxHiddenSubTabs: \[[^\]]*'report'\]/.test(SRC) && /bullbear: 'BullBear', report: 'Report'/.test(SRC));
-    ok('⑪a analyze() 切股清單含十三個 rp*(⛔ 少一個 = 那一段顯上一檔;V76.2.3 加 rpImg)', ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls', 'rpPaste', 'rpImg'].every(id => new RegExp(`'deepBriefCard', 'deepBriefAi',[\\s\\S]{0,400}'${id}'`).test(SRC)));
-    // ③ 渲染層不可自己寫買賣指令:只掃報告區塊(_rpNumHtml ~ _reportAsk),排除轉述 _ovDecide 的那支
-    const a = SRC.indexOf('    _rpNumHtml('), b = SRC.indexOf('    _reportAsk(');
+    ok('⑪a analyze() 切股清單含每一個 rp*(⛔ 少一個 = 那一段顯上一檔;V76.2.5 移除已下架的 rpNum/rpAct)', ['rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpSrc', 'rpQuick', 'rpWalls', 'rpPaste', 'rpImg'].every(id => new RegExp(`'deepBriefCard', 'deepBriefAi',[\\s\\S]{0,400}'${id}'`).test(SRC)));
+    ok('⑪a2 🗑️ V76.2.5 `rpNum`/`rpAct` 已下架 → ⛔ 容器與寫入都不可以還在(留著會顯示上一檔的殘留)',
+       !/id="rpNum"/.test(SRC) && !/id="rpAct"/.test(SRC) && !/_rpSet\('rpNum'/.test(SRC) && !/_rpSet\('rpAct'/.test(SRC));
+    //   🚨 注入驗證抓到:`/this\._regaugeStrip\(sym\)/` 會被**函式定義那一行**救活 = 假綠燈
+    //      → 一定要釘「`try { … } catch` 包起來的**呼叫**」那個形狀(CLAUDE.md:斷言被別處救活)。
+    ok('⑪a3 ⚠️ 但**產生資料**的那兩行一行都不可以拿掉(同 V76.1.2:卡可以下架,產生者不行)',
+       /const dec = \(\(\) => \{ try \{ return this\._ovDecide\(/.test(SRC)
+       && /try \{ this\._regaugeStrip\(sym\); \} catch/.test(SRC));
+    // ③ 渲染層不可自己寫買賣指令:只掃報告區塊(_rpValHtml ~ _reportAsk),排除轉述 _ovDecide 的那支
+    //   ⚠️ V76.2.5 起點從 `_rpNumHtml`(已下架)換成 `_rpValHtml`。
+    //   🚨 一度改成 `_rpAnnualEps` —— **那是錯的**:它排在 `renderReportTab` **之前**,
+    //      會把 renderReportTab 整支(含 `'FinMind 採礦'` 這個來源標籤)掃進來 → ⑬a 當場紅。
+    //      ⭐ 起點一定要挑**渲染函式**,⛔ 不可挑資料組裝函式。
+    const a = SRC.indexOf('    _rpValHtml('), b = SRC.indexOf('    _reportAsk(');
     const blk = strip(SRC.slice(a, b));
-    ok('③a 報告渲染層不可出現新的操作指令動詞(順勢做多/可進場/加碼/追…)', !/(順勢做多|可以進場|可進場|放心做|可加碼|建議買進|建議賣出|追要|可以追)/.test(blk), (blk.match(/(順勢做多|可以進場|可進場|放心做|可加碼|建議買進|建議賣出|追要|可以追)/) || [])[0]);
+    //   ⚠️ 做圖提示詞裡有「⛔ 不可…」這種**禁止句** —— 那是在禁止,⛔ 不是在下指令 → 先剝掉再掃。
+    const blkNoBan = blk.replace(/⛔[^\n。]*/g, '');
+    ok('③a 報告渲染層不可出現新的操作指令動詞(順勢做多/可進場/加碼/追…)', !/(順勢做多|可以進場|可進場|放心做|可加碼|建議買進|建議賣出|追要|可以追)/.test(blkNoBan), (blkNoBan.match(/(順勢做多|可以進場|可進場|放心做|可加碼|建議買進|建議賣出|追要|可以追)/) || [])[0]);
     ok('③b 報告區塊不呼叫任何偵測器/計分函式(⛔ 不產生第二份真相)', !/_detect[A-Z]\w*\(|_calcBullBearScan\(|_sixMeridianCalc\(|_entryCheckup\(/.test(blk));
     ok('⑬a 報告區塊零 FinMind 字串', !/finmind/i.test(blk));
     const ask = strip(SRC.slice(SRC.indexOf('    _reportPrompt('), SRC.indexOf('    _reportAsk(') + 600));   // ⚠️ 先剝註解(說明「不用 window.open」的註解本身含那個字)
@@ -162,8 +175,10 @@ const render = async (sym) => {
     return {
         disp: ['Strategy', 'Live', 'DayTrade', 'Chart', 'Chip', 'Corp', 'Backtest', 'BullBear', 'Report'].map(t => [t, document.getElementById(`subContent${t}`)?.style.display]),
         btnCount: document.querySelectorAll('.sub-tab-btn').length,
-        html: ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls'].map(g),
-        txt: Object.fromEntries(['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls'].map(id => [id, txt(id)])),
+        // 🏷️ V76.2.5 改成**按名字取**(⛔ 不再用 `R.html[0]` 這種索引 —— 那是釘住當時的陣列順序,
+        //   卡片一下架就整批錯位;CLAUDE.md:斷言要釘用意)。
+        html: Object.fromEntries(['rpLead', 'rpQuick', 'rpWalls', 'rpRisk', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpSrc'].map(id => [id, g(id)])),
+        txt: Object.fromEntries(['rpLead', 'rpQuick', 'rpWalls', 'rpRisk', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpSrc'].map(id => [id, txt(id)])),
         ctx: (() => { const C = A._rpLast; return C ? { sym: C.sym, eps: C.eps, aeSrc: C.ae && C.ae.src, kind: C.ae && C.ae.kind, pe: C.pe, pC: C.pC, peer: C.peer, indK: C.indK, band: C.band, valRows: C.valRows, marginDate: C.s20 && C.s20.marginDate, badge: C.dec && C.dec.badge } : null; })(),
         s20: A._chipPeriodSums(A.rawDailyData, 20),
         // 🚨 V76.1.9 判準換掉 —— `scrollWidth` 被 CLAUDE.md:1550 明文禁用(「會把被 clip 的內容也算進去」),
@@ -213,13 +228,18 @@ const R = await render('5483');
 ok('① 9 顆 sub-tab 按鈕、切到 report 後只有 subContentReport 是 flex', R.btnCount === 9 && R.disp.every(([t, d]) => (t === 'Report') === (d === 'flex')), JSON.stringify(R.disp));
 // ⚠️ V75.3.2 起 `rpLead`(index 1)在**有結論時刻意留空** —— 結論卡已經把同一句話講完了,
 //   並存兩個聲音正是使用者最討厭的「邏輯打架 / 資訊爆炸」。它是 hidden 不是空殼。
-ok('⓪ 其餘十段全部有內容(⛔ 不留空殼)', R.html.filter((_, i) => i !== 1).every(h => h && h.length > 40), R.html.map(h => (h || '').length).join(','));
+ok('⓪ 其餘每一段都有內容(⛔ 不留空殼)',
+   Object.entries(R.html).filter(([k]) => k !== 'rpLead').every(([, h]) => h && h.length > 40),
+   Object.entries(R.html).map(([k, h]) => `${k}=${(h || '').length}`).join(','));
 ok('⓪b ⭐ 有結論時 lead 那條整條不顯示(⛔ 不可跟結論卡講同一句話兩次)',
-   !R.html[1] && !!R.ctx && !!R.ctx.badge, `lead=${(R.html[1] || '').length} badge=${R.ctx && R.ctx.badge}`);
+   !R.html.rpLead && !!R.ctx && !!R.ctx.badge, `lead=${(R.html.rpLead || '').length} badge=${R.ctx && R.ctx.badge}`);
 const ALL = Object.values(R.txt).join(' ');
 const ALLnoDisc = ALL.replace(/⛔ ?這不是目標價,也不是預測/g, '').replace(/⛔ ?不是目標價/g, '');
 ok('③c 整頁不出現「目標價」(免責句除外)', !/目標價/.test(ALLnoDisc), (ALLnoDisc.match(/.{20}目標價.{20}/) || [])[0]);
-ok('③d 結論段的徽章 = _ovDecide.badge(轉述,不是自己判的)', R.ctx && R.ctx.badge && R.txt.rpAct.includes(R.ctx.badge.replace(/<[^>]+>/g, '')), `${R.ctx && R.ctx.badge} | ${R.txt.rpAct.slice(0, 80)}`);
+// 🗑️ V76.2.5 結論卡已下架(跟總覽重複)→ 這條改驗「⚡ 快速表仍然轉述 `_ovDecide`,⛔ 不自己判」。
+//   ⭐ 那才是原本的用意:報告頁的結論只能是**轉述**。
+ok('③d ⚡ 快速表的結論 = _ovDecide.badge(轉述,不是自己判的)',
+   R.ctx && R.ctx.badge && R.txt.rpQuick.includes(R.ctx.badge.replace(/<[^>]+>/g, '')), `${R.ctx && R.ctx.badge} | ${R.txt.rpQuick.slice(0, 120)}`);
 ok('④a 5483(上櫃)同業列要寫「上櫃無官方產業分類」', R.ctx && !R.ctx.indK && /上櫃無官方產業分類/.test(R.txt.rpVal), R.txt.rpVal.slice(0, 200));
 // ⑤ 估值表數字 = 手算
 {
@@ -238,12 +258,12 @@ ok('④a 5483(上櫃)同業列要寫「上櫃無官方產業分類」', R.ctx &&
 ok('⑦a _chipPeriodSums 回 marginDate(最後一筆有效餘額的日期)', R.s20 && R.s20.marginDate === (lastMg && lastMg.date), JSON.stringify([R.s20 && R.s20.marginDate, lastMg && lastMg.date]));
 if (lastMg && lastMg.date !== lastK.date) ok('⑦b 融資餘額落後 K 線時,籌碼段要寫「本站停在 …(採礦缺口)」', /融資餘額本站停在/.test(R.txt.rpChip), R.txt.rpChip.slice(-300));
 else console.log('⏭️ ⑦b 這份測資的融資餘額跟 K 線同一天,情境不存在(⛔ 不算過,只是沒東西可驗)');
-ok('⑧ 數字卡每一格都有日期徽章或誠實文字(⛔ 不可有空的第三行)', (R.html[0].match(/K線 |官方 |採礦 |季末 |本站|年增/g) || []).length >= 8, R.txt.rpNum.slice(0, 300));
+// 🗑️ V76.2.5 ⑧「數字卡每格都有日期徽章」已隨重點數字搬去基本頁 → 由 📄c 系列在那邊驗。
 ok('⑨ 整頁不出現 `--`(缺資料要寫本站沒有/尚未)', !/(^|[^-])--([^-]|$)/.test(ALL), (ALL.match(/.{20}--.{20}/) || [])[0]);
 ok('⑩a 風險段只用 ✅⚠️⛔🚨,⛔ 不用 🔴🟢', !/[🔴🟢]/u.test(R.txt.rpRisk) && /[✅⚠️]/u.test(R.txt.rpRisk));
 ok('⑩b 估值表的距現價用文字色(紅漲綠跌)、免責用琥珀,⛔ 不用紅綠 emoji', !/[🔴🟢]/u.test(R.txt.rpVal));
 ok('⑭ 估值表每一列 % 都配「元」', (R.txt.rpVal.match(/% \/ [+-][\d,]+ 元/g) || []).length >= 5);
-ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.html[2]));
+ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html.rpVal) && /rpRevOut/.test(R.html.rpVal));
 {
     const rev = await page.evaluate(() => {
         const A = app; const C = A._rpLast;
@@ -267,10 +287,13 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.ht
     const ord = await page.evaluate(() => [...document.getElementById('subContentReport').children]
         .map(d => d.id).filter(Boolean));
     const at = id => ord.indexOf(id);
-    ok('📄a 結論(rpAct)必須排在五個背景節之前(⛔ 別再搬回第 8 個)',
-       at('rpAct') >= 0 && at('rpAct') < Math.min(at('rpVal'), at('rpFund'), at('rpChip'), at('rpInd')), ord.join(','));
-    ok('📄a2 重點數字(rpNum)排在結論之後、背景節之前',
-       at('rpAct') < at('rpNum') && at('rpNum') < at('rpVal'), ord.join(','));
+    // 📐 V76.2.5 使用者指定的新版面:📄 短評報告(圖)→ 📝 你貼上的 → ⚡ 快速表 → 各節照 § 排
+    ok('📄a ⭐ 短評報告(圖)是第一眼(rpLead 只在「還在算」時才有字)',
+       at('rpImg') >= 0 && at('rpImg') < at('rpPaste') && at('rpPaste') < at('rpQuick'), ord.join(','));
+    ok('📄a2 ⭐⭐ 各節**照 § 由小到大**排(使用者問了兩次;他拿外部 AI 的 20 節報告逐節對照)',
+       at('rpInd') < at('rpFund') && at('rpFund') < at('rpChip') && at('rpChip') < at('rpWalls')
+       && at('rpWalls') < at('rpRisk') && at('rpRisk') < at('rpVal'), ord.join(','));
+    ok('📄a2b §0(資料日期)是附錄 → 排最後', at('rpSrc') === ord.length - 1, ord.join(','));
 
     // ⭐⭐ 決定性對照組:同一檔、同一份測資,**只改「有沒有事」**這一個維度
     const openOf = await page.evaluate(async () => {
@@ -288,30 +311,35 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.ht
     ok('📄b2 ⭐⭐ 沒預警 → 風險節不展開(只換「有沒有事」這一個維度)', openOf.cold === false, JSON.stringify(openOf));
 
     const R2 = await render('5483');
-    const heroN = await page.evaluate(() => document.querySelectorAll('#rpNum > .grid.grid-cols-2 > div').length);
-    ok('📄c 第一眼只有 4 格重點數字(其餘收進「其他數字」摺疊)', heroN === 4, `heroN=${heroN}`);
-    const keys = await page.evaluate(() => [...document.querySelectorAll('#rpNum [data-rpk]')].map(d => d.getAttribute('data-rpk')));
-    ok('📄c2 其餘數字仍在頁面上(⛔ 是收起來不是刪掉)', /其他數字/.test(R2.txt.rpNum) && (R2.txt.rpNum.match(/本益比|股價淨值比|殖利率|最新季 EPS/g) || []).length >= 2, R2.txt.rpNum.slice(0, 200));
-    // 🚨🚨 這一組原本寫成「5483 沒有 PE」→ **假綠燈**:測試 fixture 裡 5483 其實有 PE,
-    //   於是注入「寫死四格」之後它照樣綠(注入驗證當場抓到)。
-    //   ⭐ 改成**直接餵兩份只差一個維度的 ctx 給純函式**,⛔ 不依賴哪一檔剛好缺什麼
-    //     (那是測資的性質,不是程式的性質 —— 陷阱 #40)。
-    {
-        const sw = await page.evaluate(() => {
-            const A = app, C = A._rpLast;
-            const keysOf = html => { const d = document.createElement('div'); d.innerHTML = html;
-                return { k: [...d.querySelectorAll('[data-rpk]')].map(x => x.getAttribute('data-rpk')),
-                         t: [...d.querySelectorAll('[data-rpk]')].map(x => x.textContent).join(' ') }; };
-            const has = keysOf(A._rpNumHtml(Object.assign({}, C, { pe: 12.3, mrev: 1.23e9, yoy: 5 })));
-            const none = keysOf(A._rpNumHtml(Object.assign({}, C, { pe: null, mrev: null, band: null })));
-            return { has, none };
-        });
-        ok('📄c3 有本益比 / 月營收時,那兩格要進重點區', sw.has.k.includes('本益比') && sw.has.k.includes('最新月營收'), JSON.stringify(sw.has.k));
-        ok('📄c4 ⭐⭐ 同一份資料只把 PE / 月營收拿掉 → 重點格自動換成有值的(⛔ 不是寫死那四格)',
-           !sw.none.k.includes('本益比') && !sw.none.k.includes('最新月營收') && sw.none.k.length === 4, JSON.stringify(sw.none.k));
-        ok('📄c5 ⭐ 換掉之後重點區⛔ 不可出現「沒有」(一片灰色的「沒有」正是版面難看的主因)',
-           !/沒有/.test(sw.none.t), sw.none.t.slice(0, 200));
-    }
+    // 📊 V76.2.5 重點數字**已搬到「基本」分頁**(使用者明示)→ 這一組跟著搬過去驗。
+    const CN = await page.evaluate(async () => {
+        const A = app;
+        try { A.switchSubTab('corp'); } catch (_) {}
+        await new Promise(r => setTimeout(r, 700));
+        const el = document.getElementById('corpNums');
+        const hero = document.querySelectorAll('#corpNums .grid.grid-cols-2 > div').length;
+        const keys = [...document.querySelectorAll('#corpNums [data-rpk]')].map(d => d.getAttribute('data-rpk'));
+        el && el.querySelectorAll('details').forEach(d => { d.open = true; });
+        const txt = el ? el.innerText.replace(/\s+/g, ' ') : '';
+        try { A.switchSubTab('report'); } catch (_) {}
+        await new Promise(r => setTimeout(r, 500));
+        return { hidden: el ? el.classList.contains('hidden') : null, hero, keys, txt, len: txt.length };
+    });
+    ok('📄c ⭐ 重點數字搬到「基本」分頁而且真的畫出來了', CN.hidden === false && CN.len > 40, JSON.stringify(CN).slice(0, 240));
+    ok('📄c1 第一眼只有 4 格(其餘收進「其他數字」摺疊)', CN.hero === 4, `hero=${CN.hero} keys=${CN.keys}`);
+    ok('📄c2 其餘數字仍在頁面上(⛔ 是收起來不是刪掉)', /其他數字/.test(CN.txt) && CN.keys.length >= 6, `${CN.keys}`);
+    // 🚨🚨 這條是這次改版的**核心鐵則**:基本頁 X 光機本來就有本益比/殖利率/股價淨值比/月營收,
+    //   搬過來時**刻意不重複放** —— 同一個數字全 App 只能有一份(使用者鐵則「邏輯不打架」)。
+    ok('📄c3 ⭐⭐ ⛔ 不重複放 X 光機已有的四項(本益比 / 殖利率 / 股價淨值比 / 最新月營收)',
+       !CN.keys.some(k => /本益比|殖利率|股價淨值比|最新月營收/.test(k)), `${CN.keys}`);
+    ok('📄c4 ⭐ 而且要主動指路「那四個在下面的完整基本面數據裡」(⛔ 不可讓使用者以為不見了)',
+       /完整基本面數據/.test(CN.txt), CN.txt.slice(-200));
+    //   ⚠️ ⛔ 別用「innerHTML 含不含 rpNum 這個字串」判 —— DOM 註解裡就提到它,會誤判(實跑踩到)
+    ok('📄c5 🗑️ 報告頁**不可以**還有重點數字容器(⛔ 搬走就是搬走,不是複製一份)',
+       await page.evaluate(() => !document.getElementById('rpNum') && !document.querySelector('#subContentReport [data-rpk]')));
+    ok('📄c6 🗑️ 「📋 複製整份報告」已下架(使用者明示)',
+       await page.evaluate(() => typeof app._rpCopyReport !== 'function' && typeof app._rpCopyPlain !== 'function'));
+
     // 五節標題那句 = 事實 + 數字,⛔ 不下判定詞
     const sums = await page.evaluate(() => [...document.querySelectorAll('#subContentReport details > summary')]
         .map(d => d.textContent.replace(/\s+/g, ' ').trim()));
@@ -320,13 +348,7 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.ht
     ok('📄e 標題那句⛔ 不可出現判定詞(合理/便宜/貴/可以買/該賣)',
        !/合理|便宜|可以買|該買|該賣|值得買/.test(sums.join(' ')), JSON.stringify(sums).slice(0, 300));
 
-    // 📋 一鍵複製
-    const cp = await page.evaluate(() => app._rpCopyPlain());
-    ok('📄f 複製文字有內容且含股名/代號/資料日期/結論', cp.length > 80 && /5483/.test(cp) && /資料日期/.test(cp) && /🎯 結論/.test(cp), cp.slice(0, 160));
-    ok('📄f2 ⛔ 複製文字不可含 HTML 標籤,也不可含「展開 ▾」這種 UI 字',
-       !/<[a-zA-Z\/!]/.test(cp) && !/展開\s*▾/.test(cp), (cp.match(/<[a-zA-Z\/!][^>]*>/) || [])[0] || (cp.match(/展開\s*▾/) || [])[0] || '');
-    ok('📄f3 複製文字要帶免責(⛔ 數字被帶出去,限制也要跟著出去)', /不是投資建議/.test(cp) && /不含任何 AI 推估/.test(cp));
-    ok('📄g 複製按鈕在第一屏(⛔ 不埋進最後的摺疊區 —— 陷阱 #32)', /_rpCopyReport\(\)/.test(R2.html[0]));
+    // 🗑️ V76.2.5「📋 複製整份報告」已下架 → 這一組改成上面的 📄c6 驗「真的沒了」。
 }
 
 // ⓪c ⭐⭐ 決定性對照組:同一檔、只把「算不算得出結論」這一個維度拿掉 → lead 要出來講「還在算」
@@ -372,7 +394,7 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.ht
     // 🎨 V76.2.3 做圖提示詞:顏色鐵則要寫死(使用者那張圖把「好」塗綠、「風險」塗紅,跟同圖上的漲跌顏色打架)
     const CH = await page.evaluate(() => { const A = app; return { q: A._reportChartPrompt('5483'), sameFacts: A._reportChartPrompt('5483').includes(A._reportFacts('5483')) }; });
     ok('🎨a 做圖提示詞寫死台股紅漲綠跌 + ⛔ 紅綠不可表示好壞 + 風險用 ✅⚠️⛔ 圖示 + ⛔ 不畫綠牛紅熊',
-       /紅色 = 上漲/.test(CH.q) && /綠色 = 下跌/.test(CH.q) && /絕對不可以拿來表示「好 \/ 壞」/.test(CH.q) && /✅ 安全/.test(CH.q) && /綠色公牛/.test(CH.q), CH.q.slice(0, 120));
+       /紅色 = 上漲/.test(CH.q) && /綠色 = 下跌/.test(CH.q) && /絕對不可以拿來表示「好 \/ 壞」/.test(CH.q) && /✅ 安全/.test(CH.q) && /不要畫任何動物、吉祥物或擬人角色/.test(CH.q), CH.q.slice(0, 120));
     ok('🎨b 做圖提示詞跟研究提示詞**共用同一份數字**(⛔ 不寫兩份 —— 改一邊會忘另一邊)', CH.sameFacts, '');
     ok('🎨c 🚨 把實測抓到的四個錯寫成規則:數字照抄 / 出場線≠融資追繳線 / 估值尺要照價格排序 / ⛔ 不要評分星等機率 / ⛔ 不要重複字',
        /照抄/.test(CH.q) && /出場線 ≠ 融資追繳線/.test(CH.q) && /按「價格由小到大」排/.test(CH.q) && /★ 星等評分/.test(CH.q) && /不重複的繁體中文/.test(CH.q), '');
@@ -416,7 +438,7 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.ht
 // 2330(上市):同業列要有數字
 const R2 = await render('2330');
 ok('④b 2330(上市)同業列有中位 PE 數字', R2.ctx && Number.isFinite(R2.ctx.peer) && /同業中位 PE [\d.]+x/.test(R2.txt.rpVal), `${R2.ctx && R2.ctx.peer} ${R2.txt.rpVal.slice(0, 120)}`);
-ok('④c 2330 五段有內容、無 --', R2.html.filter((_, i) => i !== 1).every(h => h && h.length > 40) && !/(^|[^-])--([^-]|$)/.test(Object.values(R2.txt).join(' ')));
+ok('④c 2330 每一段有內容、無 --', Object.entries(R2.html).filter(([k]) => k !== 'rpLead').every(([, h]) => h && h.length > 40) && !/(^|[^-])--([^-]|$)/.test(Object.values(R2.txt).join(' ')));
 // ⑪ 切股殘留
 {
     const r = await page.evaluate(async () => {
@@ -431,7 +453,7 @@ ok('④c 2330 五段有內容、無 --', R2.html.filter((_, i) => i !== 1).every
         // 切股:analyze('2330') 一開始就該把 rp* 清掉(不等資料回來)
         const p = A.analyze('2330');
         await new Promise(r => setTimeout(r, 50));
-        const mid = ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls'].map(id => document.getElementById(id).innerHTML.length);
+        const mid = ['rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpSrc', 'rpQuick', 'rpWalls'].map(id => document.getElementById(id).innerHTML.length);
         await p.catch(() => {});
         // await 回來時 sym 已不同 → ⛔ 不可寫入
         // ⚠️ 用「載入中途切股」重現:第一個 await 回來時 currentSymbolId 已經變了
@@ -441,11 +463,11 @@ ok('④c 2330 五段有內容、無 --', R2.html.filter((_, i) => i !== 1).every
         A._loadFundCache = async function () { A.currentSymbolId = '2330'; return realLoad.call(this); };
         await A.renderReportTab('5483');
         A._loadFundCache = realLoad;
-        const after = ['rpNum', 'rpVal', 'rpFund', 'rpChip', 'rpRisk', 'rpSrc', 'rpQuick', 'rpWalls'].reduce((n, id) => n + document.getElementById(id).innerHTML.length, 0);
+        const after = ['rpVal', 'rpFund', 'rpChip', 'rpRisk', 'rpSrc', 'rpQuick', 'rpWalls'].reduce((n, id) => n + document.getElementById(id).innerHTML.length, 0);
         A._activeSubTab = 'report';
         return { before, mid, after, rpSym: A._rpSym };
     });
-    ok('⑪b analyze(別檔) 一開始就清空十一段(⛔ 不等資料回來)', r.before > 40 && r.mid.every(n => n === 0), JSON.stringify(r));
+    ok('⑪b analyze(別檔) 一開始就清空每一段(⛔ 不等資料回來)', r.before > 40 && r.mid.every(n => n === 0), JSON.stringify(r));
     ok('⑪c 載入中途切股(await 回來 sym 不符)→ 八個 async 段一個字都不寫', r.after === 0, JSON.stringify(r));
 }
 // ② 指數藏這頁
@@ -572,15 +594,14 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         //   📝 V76.2.0 已存的報告搬到 #rpPaste(⚡ 快速表正下方);產業節 ⑤ 只剩一行指路
         const box = document.querySelector('#rpPaste [data-rpnote]');
         const t = box ? box.innerHTML.replace(/<[^>]+>/g, ' ') : '';
-        const cp = A._rpCopyPlain();
-        const dec = JSON.stringify(A._ovDecide(A.activeData, sym) || {});
+        const dec = JSON.stringify(A._ovDecide(A.activeData, sym) || {}), cp = '';   // 🗑️ V76.2.5 複製功能已下架
         A._rpNoteClear(sym);
         const after = document.querySelector('#rpPaste [data-rpnote]') ? 'still-there' : '';
         return { MARK, shown: t.includes(MARK), label: /外部 AI 寫的/.test(t) && /本站沒有驗證/.test(t), inCopy: cp.includes(MARK), inDec: dec.includes(MARK), gone: !after.includes(MARK) };
     });
     ok('🏭d2 貼進去的筆記存得起來、顯示得出來', note.shown, JSON.stringify(note));
     ok('🏭d3 🚨 顯示時**一定**帶「外部 AI 寫的 ・本站沒有驗證」(注入:拿掉那行 → 這條會紅)', note.label, JSON.stringify(note));
-    ok('🏭d4 🚨 筆記⛔ 不可進「📋 複製整份報告」', !note.inCopy, JSON.stringify(note));
+    ok('🏭d4 🚨 筆記⛔ 不可進任何本站產物(V76.2.5 複製功能下架 → 這條由 d5 的 _ovDecide 接手守)', !note.inCopy, JSON.stringify(note));
     ok('🏭d5 🚨 筆記⛔ 不可進 _ovDecide(不參與任何買賣判斷)', !note.inDec, JSON.stringify(note));
     ok('🏭d6 一鍵清除真的清得掉', note.gone, JSON.stringify(note));
     ok('🏭d7 產業節 ⑤ 只剩一行指路、整個文件只有一個 #rpNoteIn(⛔ 兩個同 id 會互相搶)', /已搬到/.test(T) && !/<textarea/.test(R3.html[4] || '') && (await page.evaluate(() => document.querySelectorAll('#rpNoteIn').length)) === 1, T.slice(0, 120));
@@ -627,7 +648,7 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         const q11 = document.querySelector('#rpQuick [data-rpq="§2・§5~§8・§13 質化"]');
         const vs = [...document.querySelectorAll('#rpWalls [data-rpvs]')].map(d => d.getAttribute('data-rpvs'));
         const vsTxt = (document.querySelector('#rpWalls [data-rpvs-say]') || {}).textContent || '';
-        const cp = A._rpCopyPlain(), dec = JSON.stringify(A._ovDecide(A.activeData, sym) || {});
+        const dec = JSON.stringify(A._ovDecide(A.activeData, sym) || {}), cp = '';   // 🗑️ V76.2.5 複製功能已下架
         const ord = [...document.getElementById('subContentReport').children].map(d => d.id);
         return { seen, chars: seen.length, has: { s1: /等待買點/.test(seen), s22: /買進理由/.test(seen), s5: /正向預期差/.test(seen), s4: /8月營收達163/.test(seen) },
                  secs: card.querySelectorAll('details[data-rpsec]').length, first: card.querySelectorAll('[data-rpsec-first]').length,
@@ -645,7 +666,8 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('📝c2 提醒**在頁內顯示**(「🔁 建議重新產出」)+ 快速表第 11 列標「已有 … 的報告 ・🔁 需更新」', V.staleShown && /已有/.test(V.q11) && /需更新/.test(V.q11), V.q11);
     ok('📝d 🆚 AI 價位對照本站的牆:每個抽到的價位一列(第一買點 / 第二買點 / 第三買點 / 保守合理價)+「AI 說 / 本站說」並排', V.vs.length >= 4 && V.vs.includes('第一買點') && /AI 說/.test(V.vsTxt) && /本站說/.test(V.vsTxt) && /等待買點/.test(V.vsTxt), JSON.stringify(V.vs) + ' ' + V.vsTxt);
     ok('📝e 🚨 鐵線:貼上的報告⛔ 不進「📋 複製整份報告」、⛔ 不進 _ovDecide、AI 的價位⛔ 不進 _keyLevels', !V.rail.copy && !V.rail.dec && !V.keyLv, JSON.stringify(V.rail));
-    ok('📝f 版面順序:⚡ 快速表 → 📝 貼上區 → 重點數字', V.ord.indexOf('rpQuick') < V.ord.indexOf('rpPaste') && V.ord.indexOf('rpPaste') < V.ord.indexOf('rpNum'), V.ord.join(','));
+    ok('📝f 版面順序(V76.2.5 使用者指定):📄 短評報告 → 📝 貼上區 → ⚡ 快速表',
+       V.ord.indexOf('rpImg') < V.ord.indexOf('rpPaste') && V.ord.indexOf('rpPaste') < V.ord.indexOf('rpQuick'), V.ord.join(','));
     // fresh 版(基準日 = 今天、價 544):不可亮「天數 / 偏離 / 法定日 / 除息」
     const FR = await page.evaluate(async (txt) => { const A = app; document.getElementById('rpNoteIn').value = txt; A._rpNoteSave('2327'); await new Promise(r => setTimeout(r, 150)); return A._rpNoteStale(A._rpLast, A._rpNote('2327')); }, fresh);
     ok('📝c3 fresh 版(基準日今天、價位 = 現價):⛔ 不可亮天數 / 偏離 / 財報法定日 / 除息', !FR.reasons.some(r => /已經 \d+ 天|偏離|法定|除息/.test(r)), JSON.stringify(FR));
@@ -687,10 +709,12 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         const box = document.getElementById('rpImg');
         //   ⚠️ 這三個要**當下**就抓 —— 下面會 `_rpImgClear`,回傳物件是最後才組的(第一版就是這樣量到 false = 假失敗)
         const shown = !!box.querySelector('img');
+        //   ⚠️ V76.2.5 說明與按鈕收進 `<details>`(使用者:「開啟報告頁直接顯示圖」)→ 先展開再讀
+        box.querySelectorAll('details').forEach(d => { d.open = true; });
         const label = /沒有驗證/.test(box.innerText) && /不參與任何買賣判斷/.test(box.innerText);
         const chartBtn = !!box.querySelector('[data-rpchartbtn]');
         const stored = await A.idb.get(A._rpImgKey(sym));
-        const cp = A._rpCopyPlain(), dec = JSON.stringify(A._ovDecide(A.activeData, sym) || {});
+        const dec = JSON.stringify(A._ovDecide(A.activeData, sym) || {}), cp = '';   // 🗑️ V76.2.5 複製功能已下架
         const ord = [...document.getElementById('subContentReport').children].map(d => d.id);
         // prune 不可以把使用者存的圖清掉(它的規則是「ts 超過 7 天**或沒有 ts**」)
         await A.idb.put(A._rpImgKey(sym), Object.assign({}, stored, { ts: Date.now() - 30 * 864e5 }));
@@ -708,8 +732,8 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('🖼️b 🚨 `idb.prune()` ⛔ 不可清掉使用者存的圖(它的規則是「ts 超過 7 天**或沒有 ts**」→ 圖一定中;注入:拿掉 rpImg_ 白名單 → 這條紅)', !IMG.prunedAway, `prunedAway=${IMG.prunedAway}`);
     ok('🖼️c 🗑️ 刪得掉(⛔ 不可只從畫面消失、資料還在)', IMG.cleared && IMG.emptyAfterClear, JSON.stringify({ cleared: IMG.cleared, empty: IMG.emptyAfterClear }));
     ok('🖼️d 🚨 鐵線:圖⛔ 不進「📋 複製整份報告」、⛔ 不進 _ovDecide', !IMG.inCopy && !IMG.inDec, JSON.stringify({ copy: IMG.inCopy, dec: IMG.inDec }));
-    ok('🖼️e ⭐ 圖排在**本站結論(rpAct)之後**、快速表之前(⛔ 外部 AI 畫的不可壓在本站結論上面)',
-       IMG.ord.indexOf('rpAct') < IMG.ord.indexOf('rpImg') && IMG.ord.indexOf('rpImg') < IMG.ord.indexOf('rpQuick'), IMG.ord.join(','));
+    ok('🖼️e ⭐ V76.2.5 使用者要「開啟報告頁直接看到圖」→ 短評報告排第一(rpLead 之後;那格只在「還在算」時才有字)',
+       IMG.ord.indexOf('rpImg') === 1 && IMG.ord.indexOf('rpImg') < IMG.ord.indexOf('rpQuick'), IMG.ord.join(','));
     // 🔢 § 排序 + 🗑️ 重複入口
     const ORD = await page.evaluate(() => {
         const q = document.getElementById('rpQuick');
@@ -792,38 +816,9 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('🏭h 產業節不可出現 `--` 或空白格', !/(^|[^-])--([^-]|$)/.test(T));
     ok('📱2 加了產業報告之後 390px 仍不可橫向溢出', !R4.wide);
 
-    // ── 🎯 V76.0.1 「報告頁跟總覽看起來很雷同」的修法 ──────────────────────────────
-    // 實測(headless 逐行比對 2330):結論卡 481 字裡 **350 字(73%)跟總覽逐字相同**,
-    //   而它是報告頁的第一眼 → 重複的全部是 `dec.plan` 那一串價位明細。
-    // ⛔ 但**不可以刪掉**(那是真的防守價)→ 收進摺疊 + 補進「📋 複製整份報告」。
-    // 🚨 斷言範圍一律縮到 `#rpAct` 內 —— 同樣的價位字串在總覽也有,
-    //    掃全頁會被別處救活變成假綠燈(🏭d3 就是這樣假綠過一次)。
-    const act = await page.evaluate(() => {
-        const A = app, el = document.getElementById('rpAct');
-        const dec = A._rpLast && A._rpLast.dec;
-        const pl = (dec && Array.isArray(dec.plan)) ? dec.plan : [];
-        const clean = t => String(t || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-        const d = el.querySelector('details');
-        return {
-            n: pl.length,
-            heads: pl.map(x => clean(x.t)),
-            vis: (el.innerText || '').replace(/\s+/g, ' '),          // ⭐ innerText 看不到關起來的 <details>
-            inFold: d ? d.innerHTML.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ') : '',
-            badge: clean(dec && dec.badge),
-            cp: A._rpCopyPlain(),
-        };
-    });
-    // 🚧 守門:沒有價位計畫時下面三條驗不到東西 → 誠實說出來,⛔ 不可靜默通過
-    ok('🎯p0 這檔要有價位計畫,下面三條才驗得到(⛔ 沒有就不是綠燈是驗不到)', act.n >= 1, `plan=${act.n}`);
-    ok('🎯p1 ⭐ 結論卡**攤開**的部分不可再逐字重述總覽那串價位(注入:把 plan 搬回攤開區 → 必紅)',
-       act.n >= 1 && act.heads.every(h => !act.vis.includes(h)), act.vis.slice(0, 200));
-    ok('🎯p2 🚨 但那些價位**仍然在 DOM 裡**(收進摺疊,⛔ 不是刪掉 —— 那是真的防守價)',
-       act.n >= 1 && act.heads.every(h => act.inFold.includes(h)), act.inFold.slice(0, 200));
-    ok('🎯p3 ⭐ 「📋 複製整份報告」要把價位一起帶出去(以前一行都沒複製到)',
-       act.n >= 1 && act.heads.every(h => act.cp.replace(/\s+/g, ' ').includes(h)), act.cp.slice(0, 300));
-    ok('🎯p4 結論本身仍要留在攤開區(⛔ 不可連結論都收起來)', !!act.badge && act.vis.includes(act.badge), act.vis.slice(0, 120));
-    ok('🎯p5 複製出去的價位段⛔ 不可出現兩次(摺疊標題會被節標題那段再收一次)',
-       (act.cp.match(/出場／加碼價位/g) || []).length === 1, String((act.cp.match(/出場／加碼價位/g) || []).length));
+    // 🗑️ V76.2.5 這一整組(🎯 結論卡的重複度 / 📍 出場價位摺疊 / 📋 複製整份報告)**隨 rpAct 一起下架** ——
+    //   使用者明示「🧭 5 個面向一眼看 及 🎯 結論與操作 刪除,與總覽重複了」。
+    //   ⭐ 它原本守的用意(報告頁⛔ 不可自己下指令、只能轉述)由 ③a / ③d 接手。
 }
 
 // ── 🔁 V76.0.2 報告分頁換股黑畫面(使用者截圖:009816 那頁整片黑)──────────────────────
@@ -831,11 +826,11 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     const r = await page.evaluate(async () => {
         const A = app;
         A.switchSubTab('report');
-        for (const id of ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls']) document.getElementById(id).innerHTML = '';
+        for (const id of ['rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpSrc', 'rpQuick', 'rpWalls']) document.getElementById(id).innerHTML = '';
         await A.analyze('5483').catch(() => {});
         await new Promise(r => setTimeout(r, 2500));
-        const act = document.getElementById('rpAct').innerHTML;
-        return { sub: A._activeSubTab, rpSym: A._rpSym, actLen: act.length, hasBadge: /結論與操作/.test(act), sym: A.currentSymbolId };
+        const act = document.getElementById('rpQuick').innerHTML;   // 🗑️ V76.2.5 rpAct 已下架 → 改看快速表
+        return { sub: A._activeSubTab, rpSym: A._rpSym, actLen: act.length, hasBadge: /結論/.test(act.replace(/<[^>]+>/g, '')), sym: A.currentSymbolId };
     });
     ok('🔁s1 🚨 停在報告分頁換股 → analyze() 要自己重畫(⛔ 不可整頁黑;注入:拿掉 _sub===report 分支 → 必紅)',
        r.sub === 'report' && r.sym === '5483' && r.rpSym === '5483' && r.actLen > 40 && r.hasBadge, JSON.stringify(r));
@@ -846,11 +841,11 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         A.currentSymbolId = '2330'; A.rawDailyData = JSON.parse(JSON.stringify(window.__K['2330'])); A.activeData = A.rawDailyData;
         const real = A._ovDecide; A._ovDecide = () => null;
         await A.renderReportTab('2330');
-        const pending = A._rpNeedsDec, actWait = document.getElementById('rpAct').innerHTML;
+        const pending = A._rpNeedsDec, actWait = document.getElementById('rpLead').innerHTML;   // 🗑️ V76.2.5「還在算」那句住 rpLead
         A._ovDecide = real;
         try { A._renderOvCommand(A.activeData); } catch (_) {}
         await new Promise(r => setTimeout(r, 400));
-        return { pending, waiting: /正在計算|還在計算/.test(actWait), after: A._rpNeedsDec, act: document.getElementById('rpAct').innerHTML.replace(/<[^>]+>/g, ' ').slice(0, 120) };
+        return { pending, waiting: /正在計算|還在計算/.test(actWait), after: A._rpNeedsDec, act: document.getElementById('rpQuick').innerHTML.replace(/<[^>]+>/g, ' ').slice(0, 120) };
     });
     ok('🔁s2 結論晚到時先寫「還在計算」並留旗標', r2.pending === '2330' && r2.waiting, JSON.stringify(r2).slice(0, 200));
     ok('🔁s2b ⭐ _renderOvCommand 算出結論那一刻要補畫報告(⛔ 不可永遠停在「還在計算」;注入:拿掉回呼 → 必紅)',
@@ -966,7 +961,38 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
            !/grid-cols-\[1fr_auto\]/.test(strip(seg)) && /grid-template-columns:minmax\(0,1fr\) auto/.test(seg), '');
     }
     ok('§q5 六個節標題帶 § 編號(§4~§6 / §10 / §12… / §14・§15 / §2・§3… / §0)', ['§4~§6', '§10', '§12・§13・§18・§19', '§14・§15', '§2・§3・§7~§9', '§0'].every(k => R5.txt.rpFund.includes(k) || R5.txt.rpChip.includes(k) || R5.txt.rpRisk.includes(k) || R5.txt.rpVal.includes(k) || R5.txt.rpInd.includes(k) || R5.txt.rpSrc.includes(k)), '');
-    ok('§a1 結論卡寫明⛔ 不給因子總分 / ★ 評等,而且真的沒有 ★★ 這種評等', /data-rpnostar/.test(R5.html[7]) && !/★{2,}/.test(R5.txt.rpAct), R5.txt.rpAct.slice(-200));
+    // 🔠 V76.2.5 使用者:「總量 3.4萬張 及 09/11 那兩行,我用特大字體版面會超過,單獨調整這 2 行就好」。
+    //   實測 390px:medium 12px→寬 145px(右緣還有 73px 餘裕);xl 15px→寬 181px、右緣只剩 12px。
+    //   ⛔ 它是 `whitespace-nowrap` + `flex-shrink-0`(數字不可斷行)→ 救不了換行,只能不跟著放大。
+    //   ⭐ 注入:把那兩條 CSS 拿掉 → 這條會紅。
+    {
+        const FS = await page.evaluate(async () => {
+            const A = app, out = {};
+            for (const f of ['medium', 'xl']) {
+                try { A.setFontSize(f); } catch (_) {}
+                await new Promise(r => setTimeout(r, 250));
+                const v = document.getElementById('quoteVolInfo');
+                const d = v && v.querySelector('.text-\\[9px\\]');
+                out[f] = { fs: v ? parseFloat(getComputedStyle(v).fontSize) : null,
+                           sub: d ? parseFloat(getComputedStyle(d).fontSize) : null };
+            }
+            try { A.setFontSize('medium'); } catch (_) {}
+            return out;
+        });
+        ok('🔠v1 ⭐ 個股頁標題列那兩行(📊 總量 / 📅 資料日期)在「特大字」時**不可以跟著放大**',
+           FS.xl.fs === FS.medium.fs && FS.xl.fs > 0, JSON.stringify(FS));
+        ok('🔠v2 ⛔ 只鎖那兩行 —— 別處照樣要跟著放大(拿報告頁的 13px 當對照組)',
+           await page.evaluate(async () => {
+               const A = app, mk = () => { const d = document.createElement('div'); d.className = 'text-[13px]'; d.textContent = 'x';
+                   document.body.appendChild(d); const n = parseFloat(getComputedStyle(d).fontSize); d.remove(); return n; };
+               try { A.setFontSize('medium'); } catch (_) {} await new Promise(r => setTimeout(r, 200)); const m = mk();
+               try { A.setFontSize('xl'); } catch (_) {} await new Promise(r => setTimeout(r, 200)); const x = mk();
+               try { A.setFontSize('medium'); } catch (_) {} await new Promise(r => setTimeout(r, 200));
+               return x > m;
+           }));
+    }
+    ok('§a1 ⛔ 整頁不給 ★ 評等(V76.2.5 結論卡下架後,這條改掃整個報告頁)',
+       !/★{2,}/.test(Object.values(R5.txt).join(' ')), Object.values(R5.txt).join(' ').slice(0, 200));
     // 🧱 §11・§17
     const W = await page.evaluate(() => {
         const A = app, C = A._rpLast, box = document.getElementById('rpWalls');
@@ -1037,7 +1063,12 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     // 沒切片的股(5483 不在 fixture)→ 誠實「本站尚未切出」+ 快速表 ⛔
     const R7 = await render('5483');
     ok('§f8 沒有切片的股:§4 寫「本站尚未切出這檔的財報三表」、快速表那列標 ⛔ 本站沒有', /尚未切出/.test(R7.txt.rpFund) && /§4 財報品質[^§]*⛔ 本站沒有/.test(R7.txt.rpQuick), R7.txt.rpQuick.slice(0, 200));
-    ok('📄a3 版面順序:結論 → ⚡ 快速表 → 重點數字 → 風險 → 🧱 價格牆 → 估值', (() => { const o = ['rpAct', 'rpQuick', 'rpNum', 'rpRisk', 'rpWalls', 'rpVal']; return true; })() && (await page.evaluate(() => { const ord = [...document.getElementById('subContentReport').children].map(d => d.id); const at = id => ord.indexOf(id); return at('rpAct') < at('rpQuick') && at('rpQuick') < at('rpNum') && at('rpNum') < at('rpRisk') && at('rpRisk') < at('rpWalls') && at('rpWalls') < at('rpVal'); })), '');
+    {
+        const ordF = await page.evaluate(() => [...document.getElementById('subContentReport').children].map(d => d.id).filter(Boolean));
+        const seq = ['rpImg', 'rpPaste', 'rpQuick', 'rpInd', 'rpFund', 'rpChip', 'rpWalls', 'rpRisk', 'rpVal', 'rpSrc'];
+        ok('📄a3 版面順序(V76.2.5):📄 短評 → 📝 貼上 → ⚡ 快速表 → 各節照 § 由小到大 → §0 來源排最後',
+           seq.every((id, i) => i === 0 || ordF.indexOf(seq[i - 1]) < ordF.indexOf(id)), ordF.join(','));
+    }
 }
 
 await browser.close();

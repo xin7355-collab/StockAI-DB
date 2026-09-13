@@ -166,18 +166,20 @@ ok('⑭d 🗑️ V76.1.2「⚖️ N 個系統在講方向」整張卡已下架(�
 ok('⑭b 空手時預警(⚠️ 要注意的事)在摺疊區裡、不在第一眼', /要注意的事/.test(A.whyTxt) && !/要注意的事/.test(A.ccTxt), '');
 ok('⑭c 「不是你設定的那條」那類預警排在預警清單**最後**', (() => { const i = A.whyTxt.indexOf('不是你設定的那條'); const j = A.whyTxt.indexOf('中期趨勢是空頭'); return i < 0 || j < 0 || i > j; })(), '');
 
-// ⑤ 報告頁同一條儀表列
+// ⑤ 🗑️ V76.2.5 報告頁的儀表列**已下架**(使用者:「🧭 5 個面向一眼看 及 🎯 結論與操作 刪除,與總覽重複了」)。
+//   ⭐ 這條的用意翻轉了:要驗的不再是「兩頁一模一樣」,而是
+//      ① 報告頁真的沒有那條了 ② **產生資料的那支沒被一起拿掉**(同 V76.1.2:
+//      `_overallGaugeHtml` 是 `_lastGauge` 的唯一來源,拿掉會讓總覽儀表列/緊急列一起無聲消失)。
 await page.evaluate(() => app.switchSubTab('report')); await page.waitForTimeout(3500);
-// 儀表列放在結論卡 rpAct 上方(⛔ 不放 rpLead —— test_report ⓪b 釘住「有結論時 lead 要空」)
-// ⚠️ V76.0.9 兩份都要**同一個時刻**讀 —— 舊版拿早就存好的 `A.stripOuter` 去比,
-//    中間那幾條測試(⑪ 動過庫存、④ stub 過分數)會讓預警數變動 → 比到的是「兩個時間點」不是「兩支函式」。
 const R = await page.evaluate(() => {
-    const l = document.getElementById('rpAct'), s = l && l.querySelector('[data-gaugestrip]');
+    const rep = document.getElementById('subContentReport');
     const o = document.getElementById('ovCommandCenter').querySelector('[data-gaugestrip]');
-    return { has: !!s, outer: s ? s.outerHTML : '', ov: o ? o.outerHTML : '' };
+    return { inReport: !!(rep && rep.querySelector('[data-gaugestrip]')), ov: o ? o.outerHTML : '',
+             gauge: !!(app._lastGauge && Array.isArray(app._lastGauge.dims) && app._lastGauge.dims.length >= 2) };
 });
-ok('⑤ ⭐ 報告頁頂端的儀表列 outerHTML == 總覽的(同一時刻、同一支函式;注入:報告頁改呼叫另一份 → 紅)',
-   R.has && !!R.ov && R.outer === R.ov, `${R.has} ${R.outer.length} vs ${R.ov.length}`);
+ok('⑤ 🗑️ 報告頁⛔ 不可再有儀表列(V76.2.5 使用者明示下架)', !R.inReport, `inReport=${R.inReport}`);
+ok('⑤b ⭐⭐ 但總覽那條照樣在,而且 `_lastGauge` 還活著(⛔ 卡可以下架,產生資料的那支不行)',
+   R.ov.length > 40 && R.gauge, `ov=${R.ov.length} gauge=${R.gauge}`);
 await page.evaluate(() => app.switchSubTab('strategy'));
 
 // ⑩ 換股後 _lastGauge 沒 sym 相符 → 儀表列不畫(直接假造殘留)
