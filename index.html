@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.1.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.1.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -727,7 +727,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.1.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -995,6 +995,17 @@
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="set_watchlistAlert" onchange="app.toggleWatchlistAlert(this.checked);" class="sr-only peer">
                             <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                        </label>
+                    </div>
+                    <!-- 🔕 V76.1.7 只提醒實測站得住的(使用者:「不準就不用提醒」)。⛔ 這是逃生門不是預設值 -->
+                    <div class="flex items-center justify-between pt-2">
+                        <div class="flex-1 min-w-0 pr-2">
+                            <label class="text-xs font-bold text-amber-300">🔕 只提醒實測站得住的</label>
+                            <p class="text-[10px] text-gray-500 leading-relaxed">開著(預設):訊號要先通過實測才會跳出來 —— 看多的要「每趟期望值為正」、看空的要「之後真的比大盤差且不是雜訊」。沒通過的<b>不會消失</b>,一樣收在 🔔 通知歷史與個股頁。<br>關掉 = 回到舊行為(全部都推)。</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                            <input type="checkbox" id="set_alertStrict" onchange="app.toggleAlertStrict(this.checked);" class="sr-only peer">
+                            <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
                         </label>
                     </div>
                     <!-- 🚨 V32.8 大盤風險提醒門檻:風險指數 ≥ 此分數時推播(沿用上方推播開關+通知權限) -->
@@ -3565,7 +3576,7 @@ const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode],
 masterWorker.onmessage = (e) => { try { app.onWorkerMessage(e.data); } catch (_) {} };
 
 const app = {
-    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', openrouterKey: '', geminiKey1: '', geminiKey2: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, riskAlertThreshold: 60, localApiUrl: '', fontSize: 'medium', workerUrl: '', botUsername: '', cloudCode: '' },
+    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', openrouterKey: '', geminiKey1: '', geminiKey2: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, alertStrict: true, riskAlertThreshold: 60, localApiUrl: '', fontSize: 'medium', workerUrl: '', botUsername: '', cloudCode: '' },
     MAX_FAV_PER_GROUP: 50,
     // 🚨 處置神器全域名單(radar_miner.py 生成 data/attention_status.json,前端啟動時 fetch 一次)
     attentionStatus: {},
@@ -4587,7 +4598,7 @@ const app = {
         // 限制最多推 3 則(避免轟炸)
         alerts.slice(0, 3).forEach(a => this._fireAlert(a.title, a.body, a.sym));
         if (alerts.length > 3) {
-            this._fireAlert('📊 處置股盤點摘要', `你還有 ${alerts.length - 3} 檔股有處置風險,點🔔看歷史通知`, '');
+            this._alertQuiet('📊 處置股盤點摘要', `你還有 ${alerts.length - 3} 檔股有處置風險`, '');   // 🔕 V76.1.7 摘要類只記不吵
         }
     },
 
@@ -4617,8 +4628,10 @@ const app = {
             else if (c >= 5 && vr != null && vr >= 2) alerts.push({ sym, title: `⚡ 隔日沖提醒｜${name}`, body: `${name}(${sym}) 昨天爆量大漲 +${c.toFixed(1)}%(量 ${vr.toFixed(1)} 倍)→ 今天隔日沖客可能倒貨:開高別追、開高走低快閃` });
         }
         if (!alerts.length) return;
-        alerts.slice(0, 3).forEach(a => this._fireAlert(a.title, a.body, a.sym));
-        if (alerts.length > 3) this._fireAlert('⚡ 隔日沖盤點', `你有 ${alerts.length} 檔昨天爆量大漲/漲停,今天留意隔日沖賣壓,點🔔看歷史`, '');
+        // 🔕 V76.1.7 改成「只記不吵」—— `dtflip_probe` 實測**碰得到 ≠ 賺得到**
+        //   (碰 +1.5% 機率 53~72%,但務實損益全負)→ 不該每天主動推。
+        alerts.slice(0, 3).forEach(a => this._alertQuiet(a.title, a.body, a.sym));
+        if (alerts.length > 3) this._alertQuiet('⚡ 隔日沖盤點', `你有 ${alerts.length} 檔昨天爆量大漲/漲停,今天留意隔日沖賣壓`, '');
     },
 
     // 🔮 V69.1.10 — 每日開 App 掃「明日劇本(籌碼面)」:庫存+自選有分點的股,籌碼偏空就推 1 則(當日去重)
@@ -4662,8 +4675,11 @@ const app = {
             } catch (_) {}
         }
         if (!bear.length) return;
-        bear.slice(0, 3).forEach(b => this._fireAlert(`🔮 明日劇本偏空｜${b.name}`, `${b.name}(${b.sym}) 籌碼面偏空:${b.top};開高多是逃命波、開低易破底,有貨顧停損`, b.sym));
-        if (bear.length > 3) this._fireAlert('🔮 明日劇本盤點', `你有 ${bear.length} 檔籌碼面偏空(外資/隔日沖/套牢賣壓),點🔔看歷史`, '');
+        // 🔕 V76.1.7 改成「只記不吵」—— V73.2.2 實測:明日劇本**不能當閘門,只能當事實標籤**。
+        //   ⛔ 拿一個自己都說「不能當閘門」的東西每天推 3 則,正是使用者說的「不準還一直提醒」。
+        //   ⭐ 內容一個字都沒少,🔔 通知歷史與個股頁照看得到。
+        bear.slice(0, 3).forEach(b => this._alertQuiet(`🔮 明日劇本偏空｜${b.name}`, `${b.name}(${b.sym}) 籌碼面偏空:${b.top};開高多是逃命波、開低易破底,有貨顧停損`, b.sym));
+        if (bear.length > 3) this._alertQuiet('🔮 明日劇本盤點', `你有 ${bear.length} 檔籌碼面偏空(外資/隔日沖/套牢賣壓)`, '');
     },
 
     // 🕯️ V69.1.28 每日開 App 掃「長黑K壓力/回檔確認」:庫存+自選中,現價壓在近期長黑K最低價之下(空方最強壓力)→ 推播
@@ -4689,13 +4705,17 @@ const app = {
                 }
                 if (!Array.isArray(k) || k.length < 25) continue;
                 const sig = (this._detectBlackCandleLevels(k) || [])[0];
-                if (sig && sig.tone === 'bear') hits.push({ sym, name: this.getStockName(sym) || sym, msg: (sig.title || '').replace(/^🕯️\s*/, '') });
+                // 🔕 V76.1.7 也要過入場券(見 `_alertWorthIt`):這支偵測器四條裡有兩條空方實測站得住
+                //   (壓在長黑K最低價下 −0.22pp p=0 / 卡在下半段 −0.12pp p=0),⛔ 別整組放行。
+                const _w = sig ? this._alertWorthIt('_detectBlackCandleLevels', sig.title, sig.tone) : null;
+                if (sig && sig.tone === 'bear' && _w && _w.ok) hits.push({ sym, name: this.getStockName(sym) || sym, msg: (sig.title || '').replace(/^🕯️\s*/, ''), edge: this._alertEdgeNote(_w) });
+                else if (sig && sig.tone === 'bear') this._alertQuiet(`（未達實測門檻）🕯️ 長黑K壓力｜${this.getStockName(sym) || sym}`, `${sym} ${sig.title} — ${_w ? _w.why : ''}`, sym);
                 await new Promise(r2 => setTimeout(r2, 250));   // 節流
             } catch (_) {}
         }
         if (!hits.length) return;
-        hits.slice(0, 3).forEach(h => this._fireAlert(`🕯️ 長黑K壓力｜${h.name}`, `${h.name}(${h.sym}) ${h.msg} — 反彈遇長黑K壓不過易再跌,有貨顧停損別凹`, h.sym));
-        if (hits.length > 3) this._fireAlert('🕯️ 長黑K壓力盤點', `你有 ${hits.length} 檔壓在近期長黑K壓力下,點🔔看歷史`, '');
+        hits.slice(0, 3).forEach(h => this._fireAlert(`🕯️ 長黑K壓力｜${h.name}`, `${h.name}(${h.sym}) ${h.msg} — 反彈遇長黑K壓不過易再跌,有貨顧停損別凹${h.edge || ''}`, h.sym));
+        if (hits.length > 3) this._alertQuiet('🕯️ 長黑K壓力盤點', `你有 ${hits.length} 檔壓在近期長黑K壓力下`, '');   // 🔕 V76.1.7 摘要類只記不吵
     },
 
     // 🕵️ V68.8.6 — 每日開 App 掃「內部人籌碼轉弱」:自選+庫存中董監高質押(≥50%)/大戶連續減碼(≥3週)→ 推播
@@ -4728,7 +4748,7 @@ const app = {
         }
         if (!alerts.length) return;
         alerts.slice(0, 3).forEach(a => this._fireAlert(a.title, a.body, a.sym));
-        if (alerts.length > 3) this._fireAlert('🕵️ 內部人籌碼盤點', `你有 ${alerts.length} 檔內部人籌碼轉弱(高質押/大戶減碼),點🔔看歷史`, '');
+        if (alerts.length > 3) this._alertQuiet('🕵️ 內部人籌碼盤點', `你有 ${alerts.length} 檔內部人籌碼轉弱(高質押/大戶減碼)`, '');   // 🔕 V76.1.7 摘要類只記不吵
     },
 
     // ⚡ V71.7.4 現價更新速度:共用狀態 + 控制列(即時頁 & 當沖頁)
@@ -5005,8 +5025,11 @@ const app = {
             alerts.push({ bn, top, sym: buys[0]?.sym || '' });
         }
         if (!alerts.length) return;
-        alerts.slice(0, 3).forEach(a => this._fireAlert(`🧙 跟單:${a.bn} 今天在買`, `${a.bn} 今日買超 ${a.top} — 你訂閱的分點動作了,點看它全市場買賣`, a.sym));
-        if (alerts.length > 3) this._fireAlert('🧙 神分點跟單摘要', `你訂閱的 ${alerts.length} 家分點今天都有買超,開主力雷達看`, '');
+        // 🔕 V76.1.7 改成「只記不吵」—— 分點跟單的三支探針**全部實測不成立**:
+        //   `broker_habit_probe`(隔日沖慣性,兩個直覺都被否定)・`broker_ally_probe`(同盟集團,
+        //   反向驗證翻盤、兩段名單重疊率 0%)・`broker_ind_probe`(某券商在某產業特別準 → 不存在)。
+        alerts.slice(0, 3).forEach(a => this._alertQuiet(`🧙 跟單:${a.bn} 今天在買`, `${a.bn} 今日買超 ${a.top} — 你訂閱的分點動作了`, a.sym));
+        if (alerts.length > 3) this._alertQuiet('🧙 神分點跟單摘要', `你訂閱的 ${alerts.length} 家分點今天都有買超`, '');
     },
 
     // 📐 V36.5 — K棒戰法/量能 訊號 → 推播(盤中 pulse + 盤後開App sweep 共用);localStorage 每日去重(防重載重發)
@@ -5023,21 +5046,33 @@ const app = {
     },
     _kbarTryFire(sym, name, kdata, budget) {
         if (!Array.isArray(kdata) || kdata.length < 8) return;
-        const push = [];
-        (this._detectStarPatterns?.(kdata) || []).forEach(s => push.push(s));                                  // 夜星/晨星(轉折最強)
-        (this._detect2BarReversal?.(kdata) || []).forEach(s => { if (/吞噬|遭遇/.test(s.title)) push.push(s); });   // 長黑/長紅吞噬=主力出貨/進貨;⭐ V41.4 遭遇線(一日封口,爆量=出貨)
-        (this._detectBoxBreakout?.(kdata) || []).forEach(s => push.push(s));                                   // K線橫盤突破/跌破=進出場
-        (this._detectChuLongEntry?.(kdata) || []).forEach(s => { if (/做多買點/.test(s.title)) push.push(s); }); // ⭐ V37.0 朱式等做多買點(回後站5MA)
-        (this._detectChuOverheat?.(kdata) || []).forEach(s => { if (/停利|爆量隔天|過熱/.test(s.title)) push.push(s); }); // ⭐ V37.2 多頭過熱停利(持倉者)
-        (this._detectChuShortTrend?.(kdata) || []).forEach(s => { if (/轉多訊號|轉強|急跌爆量/.test(s.title)) push.push(s); }); // ⭐ V37.3/37.4 空頭轉多/轉強(過前高)/急跌爆量
-        (this._detectBottomBreakout?.(kdata) || []).forEach(s => push.push(s)); // ⭐ V38.0 底部頸線突破(形態買點+目標價)
-        (this._detectPressureTest?.(kdata) || []).forEach(s => push.push(s));   // ⭐ V41.4 測壓有壓(多單別追)/測撐有撐(可承接)
-        (this._detectVolPriceDiverge?.(kdata) || []).forEach(s => push.push(s)); // ⭐ V41.6 量價背離(無量創高/高檔價漲量縮=出貨前兆)
-        (this._detectHeavyResistance?.(kdata) || []).forEach(s => push.push(s)); // ⭐ V41.9 壓力沉重反覆過不了(別選/多單先走)
-        (this._detectChuLongEntry?.(kdata) || []).forEach(s => { if (/做頭不建議/.test(s.title)) push.push(s); }); // ⭐ V41.9 回後買上漲做頭警示
-        (this._detectVolumeSignals?.(kdata) || []).forEach(s => { if (/出貨量|攻擊量|換手量/.test(s.title)) push.push(s); });
+        // 🔕 V76.1.7 這裡以前是裸 `push.push(s)` → **訊號身上沒有 `_d`(哪個偵測器)**
+        //   → `_sigEdge` 查不到成績 → 入場券形同虛設。一律改走既有的 `_tagPush`(它會補 `s._d`)。
+        //   ⚠️ 原本有 `.filter` 的那 6 行改成「先收再濾」,⛔ 不可把 filter 拿掉(那會多放一堆訊號進來)。
+        let push = [];
+        const _tp = (d, re) => {
+            const before = push.length;
+            this._tagPush(push, d, kdata);
+            if (re) push = push.slice(0, before).concat(push.slice(before).filter(s => re.test(s.title)));
+        };
+        _tp('_detectStarPatterns');                       // 夜星/晨星(轉折最強)
+        _tp('_detect2BarReversal', /吞噬|遭遇/);           // 長黑/長紅吞噬=主力出貨/進貨;⭐ V41.4 遭遇線(一日封口,爆量=出貨)
+        _tp('_detectBoxBreakout');                        // K線橫盤突破/跌破=進出場
+        _tp('_detectChuLongEntry', /做多買點/);            // ⭐ V37.0 朱式等做多買點(回後站5MA)
+        _tp('_detectChuOverheat', /停利|爆量隔天|過熱/);    // ⭐ V37.2 多頭過熱停利(持倉者)
+        _tp('_detectChuShortTrend', /轉多訊號|轉強|急跌爆量/); // ⭐ V37.3/37.4 空頭轉多/轉強(過前高)/急跌爆量
+        _tp('_detectBottomBreakout');                     // ⭐ V38.0 底部頸線突破(形態買點+目標價)
+        _tp('_detectPressureTest');                       // ⭐ V41.4 測壓有壓(多單別追)/測撐有撐(可承接)
+        _tp('_detectVolPriceDiverge');                    // ⭐ V41.6 量價背離(無量創高/高檔價漲量縮=出貨前兆)
+        _tp('_detectHeavyResistance');                    // ⭐ V41.9 壓力沉重反覆過不了(別選/多單先走)
+        _tp('_detectChuLongEntry', /做頭不建議/);          // ⭐ V41.9 回後買上漲做頭警示
+        _tp('_detectVolumeSignals', /出貨量|攻擊量|換手量/);
         for (const s of push) {
             if (this._kbarFiredToday(`${s.title}_${sym}`)) continue;
+            // 🔕 V76.1.7 **入場券**:只提醒「宣稱的方向實測真的往那邊走」的(見 `_alertWorthIt`)。
+            //   ⛔ 被擋下來的**不會消失** —— 照樣進 🔔 通知歷史、個股頁 K線分頁也照顯。
+            const _w = this._alertWorthIt(s._d, s.title, s.tone);
+            if (!_w.ok) { try { this._recordNotifHistory(`（未達實測門檻）${s.title}`, `${name}(${sym}) ${_w.why}`, sym); } catch (_) {} continue; }
             const emo = s.tone === 'bull' ? '🔺' : (s.tone === 'bear' ? '🔻' : (s.tone === 'warn' ? '⚠️' : '⚪'));
             // 🚧 V75.2.7 預算:這支是**唯一**沒有「最多 3 則」上限的 sweep(其他六支都有)——
             //   實測 60 檔 × 13 類偵測器,開 App 第 6 秒一口氣發 14 則。⛔ 超過就只計數,最後出一則摘要。
@@ -5047,7 +5082,7 @@ const app = {
                 if (budget.left <= 0) { budget.extra++; continue; }
                 budget.left--;
             }
-            this._fireAlert(`${emo} ${s.title}`, `${name}(${sym}) ${String(s.msg || '').slice(0, 90)}`, sym);
+            this._fireAlert(`${emo} ${s.title}`, `${name}(${sym}) ${String(s.msg || '').slice(0, 90)}${this._alertEdgeNote(_w)}`, sym);
         }
     },
     // 🎯 V47.2 — 回測勝率型態觸發提醒:今日觸發「該股主打(正期望值)型態」就推,附本股歷史勝率/賺賠比/期望值
@@ -5073,8 +5108,14 @@ const app = {
             const wr = r.winRate.toFixed(0);
             const pl = r.plRatio >= 99 ? '全贏' : r.plRatio.toFixed(1);
             const ev = (r.expectancy >= 0 ? '+' : '') + r.expectancy.toFixed(1);
-            this._fireAlert(`🎯 主打型態觸發｜${nm}`,
-                `${name}(${sym}) 今日觸發!此型態在本股歷史 勝率 ${wr}%・賺賠比 ${pl}・每趟期望值 ${ev}%(${r.count} 次)→ 正期望主打,依紀律進場,跌破${this._exitRuleName ? this._exitRuleName() : '5 日線'}或成本 -5% 就出`, sym);
+            // 🔕 V76.1.7 改成「只記不吵」——「這檔最會賺的招」這個**排名方法本身**已被實測打掉:
+            //   `perstock_playbook_probe`(V74.6.3,V74.9.3 獨立複驗一致)量到**名單穩定度 ≈ 隨機**
+            //   → 前半段學到的「主打」到後半段就換人,那個排名不可拿來主動叫人進場。
+            //   ⚠️ 使用者截圖的「🎯 主打型態觸發｜費波納契回撤買點」正是這條;而那個型態在
+            //      全市場實測是 **C 級、每趟期望值 −1.26%、p=0.99**(_SIGNAL_EDGE)→ 兩層都不成立。
+            //   ⛔ **個股頁那張卡不動** —— 這裡只停「主動推」,不是把功能拿掉。
+            this._alertQuiet(`🎯 主打型態觸發｜${nm}`,
+                `${name}(${sym}) 今日觸發!此型態在本股歷史 勝率 ${wr}%・賺賠比 ${pl}・每趟期望值 ${ev}%(${r.count} 次)。⚠️ 這個「本股最會賺的招」排名實測**穩定度接近隨機**,只當參考`, sym);
         }
     },
     // 📐 V36.5 — 每日開 App(含盤後)掃自選+庫存,觸發 K棒戰法/量能型態就推(純讀 IDB K線,免 Fugle)
@@ -5116,8 +5157,8 @@ const app = {
         }
         // 🚧 V75.2.7 超出預算的買進類 → 一則摘要(⛔ 不可靜默丟掉:使用者要知道「還有」)
         if (_budget.extra > 0) {
-            this._fireAlert('📐 K棒型態摘要', `你的自選+庫存今天另外還有 ${_budget.extra} 個買進型態訊號(已收在 🔔 通知歷史裡)`
-                + ' → 開個股頁的「K線」分頁看完整清單。⛔ 買進類不再逐則跳視窗,免得洗版。', '');
+            this._alertQuiet('📐 K棒型態摘要', `你的自選+庫存今天另外還有 ${_budget.extra} 個買進型態訊號(已收在 🔔 通知歷史裡)`
+                + ' → 開個股頁的「K線」分頁看完整清單。', '');   // 🔕 V76.1.7 摘要類只記不吵
         }
     },
 
@@ -5386,7 +5427,11 @@ const app = {
                         if (!this._alertCache) this._alertCache = {};
                         if (!this._alertCache[_dk]) {
                             this._alertCache[_dk] = Date.now();
-                            this._fireAlert('📉 高檔出貨訊號', `${name}(${sym}) 近高爆量收小實體/長上影,主力恐高檔出貨,有貨分批停利`, sym);
+                            // 🔕 V76.1.7 這條是**行內公式**、沒有自己的實測成績 → 依規則只記不吵。
+                            //   ⛔ 不可硬掛最接近那兩條的成績當背書(CLAUDE.md:查不到成績一律當未驗證,
+                            //   不可假裝有成績)——而且那兩條方向還相反:`高檔出貨量` 空方站得住(−0.27pp,p=0.043),
+                            //   `價漲量縮(高檔背離)` 卻是 **+0.55pp(警告方向相反)**。
+                            this._alertQuiet('📉 高檔出貨訊號', `${name}(${sym}) 近高爆量收小實體/長上影,主力恐高檔出貨,有貨分批停利`, sym);
                         }
                     }
                 } catch (_) {}
@@ -5432,6 +5477,14 @@ const app = {
     },
 
     // 盤中即時警報開關：開啟時先要求通知授權，沒授權則回退關閉
+    /** 🔕 V76.1.7 嚴格模式開關 —— ⛔ 這是**逃生門**不是預設值(預設開)。
+     *  留它的理由:這次是刻意推翻 CLAUDE.md 舊鐵則「看空與警示一律不打折」,
+     *  照 `_STRAT_CHANGES`「舊的留成選項」那條,要留得回去。 */
+    toggleAlertStrict(checked) {
+        this.settings.alertStrict = !!checked;
+        try { this.saveSettings?.(); } catch (_) {}
+        this.showToast?.(checked ? '🔕 只提醒實測站得住的(沒過的仍收在 🔔 通知歷史)' : '🔔 已改回全部都推(舊行為)', 'info', 4000);
+    },
     async toggleWatchlistAlert(checked) {
         if (checked) {
             if (typeof Notification === 'undefined') {
@@ -8222,8 +8275,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.1.6',
+    _APP_VERSION: 'V76.1.7',
     _CHANGELOG: [
+        { v: 'V76.1.7', d: ['🔕 <b>你說「不準就不用提醒」—— 我先量了,你是對的,而且比想的嚴重</b>:提醒會發的 <b>56 種</b> K 棒訊號裡,實測<b>每趟期望值為正的只有 7 種</b>。你截圖那 6 則逐一對表 → <b>5 則該砍</b>:「K線橫盤突破」每趟 <b>−1.21%</b>(統計上 p=0.9995 完全沒鑑別力)、「費波納契回撤買點」<b>−1.26%</b>、「長紅遭遇一日封口」<b>−1.48%</b>、「K線橫盤跌破」警告了但之後<b>根本沒比大盤差</b>、「壓力沉重‧反覆過不了」更妙 —— 出現之後反而<b>比大盤好 0.11%</b>(警告方向是相反的)。只有「長黑遭遇(一日封口)」站得住(之後 10 日確實比大盤差 0.21%,2,496 次,A 級)。','🚨 <b>真因:提醒這條路從來沒查過實測成績</b>。K線分頁早就會查(好的置頂、沒用的收摺疊區),但「跳出來提醒你」那條路一行都沒問過。已加上<b>入場券</b>:<b>看多的</b>要「每趟期望值為正 + 樣本夠」、<b>看空的</b>要「之後真的比大盤差、而且不是雜訊」,<b>查不到成績的一律不推</b>(沒驗過 ≠ 有效)。','🔕 <b>三種「方法本身已經被實測打掉」的,整組不再主動推</b>(仍收在 🔔 通知歷史):①<b>🔮 明日劇本</b>(實測只能當事實標籤,不能拿來下判斷)②<b>🧙 跟單分點</b>(分點慣性/同盟/產業專精<b>三次回測全部不成立</b>)③<b>🎯 主打型態觸發</b>(「這檔最會賺的招」那份排名,實測<b>穩定度接近隨機</b>)。另外全市場盤點摘要那幾則也不再跳 toast。','⭐ <b>被擋下來的一則都不會消失</b> —— 照樣收在 🔔 通知歷史(標「（未達實測門檻）」並寫出實測數字),個股頁的 K線分頁也照看得到。你要的是<b>不被打擾</b>,不是查不到。','⛔ <b>跟你部位有關的一個都沒動</b>:庫存鐵血停損、停損到了、停利條件到了、第 2 擊跌破你設的出場線、到價提醒、13:25 當沖平倉倒數 —— 那些不是「訊號準不準」,是<b>你的錢到了你自己設的點</b>,照跳。','📉 實測:開 App 那 14 秒從「大視窗 2 則・toast 7 則」降到「<b>大視窗 0・toast 3</b>」。⚙️ 設定中心有開關「🔕 只提醒實測站得住的」,想回到舊行為(全部都推)關掉它就好。'] },
         { v: 'V76.1.6', d: ['🚨 <b>上一版說修好的妖股雷達,其實一次都沒生效 —— 這次真的修了</b>(你選的「巡一次同型錯誤」):V76.1.5 我把爆量基準換成「那幾根之前的 5 日均量」,但上游只把<b>最近 3 天</b>的量傳下來,而新算法要<b>8 天</b> → 那個長度檢查<b>永遠過不了</b>,基準恆為 0,結果還是 0 檔。⭐ 更難堪的是:我當時是在<b>另一支模擬程式</b>上量到「修完有 8 檔」的,沒走真正的採礦路徑 —— 而「測試環境跟正式環境不一樣會得到假綠燈」這條教訓,正是我<b>同一版</b>寫進專案筆記的。已改成傳 8 天,走真路徑實測 <b>115 檔</b>通過爆量那一關。⚠️ 要等下一次採礦跑完才看得到。','🚨 <b>多空計分卡有兩條規則長期漏判,其中一條是空方的</b>:①「跌破前低」拿今天收盤去比「<b>含今天</b>的 20 日最低」—— 今天的最低本來就 ≤ 今天收盤,所以這條<b>數學上永遠不可能成立</b>,等於<b>死碼</b>(41 萬根 K 實測:少抓 <b>99.75%</b>)。②「爆量突破 60 日新高」同樣毛病,少抓 <b>67%</b>。兩條都是 3 分權重。⛔ 少報空方訊號比少報多方更嚴重(寧可多提醒),兩條都已修。','🔔 <b>「創 20 日新高/新低」的推播長期推不出來</b>:它拿的是快取裡的日 K,而其中 <b>95%</b> 的最後一根就是<b>今天那根還沒收盤的</b> → 等於拿今天比今天。已加共用守門,一律只用「已收盤」的那幾根當基準。','📉 <b>泡沫預警的「大盤 K 線型態」有一半從上線就沒在動</b>:它看「量」的那半讀的是加權指數的成交量,而<b>資料源根本不給指數成交量</b>(120 根全是 0)→ 量比永遠算成「1.0 倍」=「正常」,所以「爆量長上影」「上影警示」兩個警告<b>一次都不可能亮</b>。已改吃證交所官方的<b>成交金額</b>;真的算不出來時會<b>直接說「沒有資料」</b>,⛔ 不再用 1.0 假裝正常。','🚗 順手修:投信動能那格的基準<b>把今天自己算進去</b> → 今天只要是近 10 天買最多的一天,動能就必然顯示 <b>100 分</b>並直接建議「可試單 30% 跟車」,哪怕只買了幾張。已改成跟<b>前 9 天</b>比。'] },
         { v: 'V76.1.5', d: ['🗑️ <b>選股頁的榜 23 → 10</b>(你說「把沒有用的榜刪除」):實測沒優勢的那 13 個(送分題/烏龜過河/主力鎖股/口袋支點/外資連買/投信連買/雙主力/營收動能/大戶吃貨/低基期/跌深績優/錯殺便宜/潛力黑馬)<b>整組移除</b>。⭐ 打掉它們的實測數字<b>留在程式裡當紀錄</b>,免得日後又做一次。', '🐲 <b>妖股雷達不是壞掉,是數學上不可能成立</b>(你問「都沒看到」):它要求「近 3 根裡有 2 根量 &gt; 3 倍<b>5 日均量</b>」,但 5 日均量<b>把爆量那幾根自己算進去了</b> → 第一根爆完就把門檻墊高,第二根永遠追不上。全市場 2,719 檔實測 <b>0 檔</b>通過,而「漲幅」那關本身有 43 檔。已把爆量基準改成<b>那幾根之前</b>的 5 日均量 → 同樣門檻下有 <b>8 檔</b>。⚠️ 要等下一次採礦跑完才看得到。', '⚠️ 順手修好文案跟程式不一致:說明寫「2 倍量」但程式是 <b>3 倍</b>。'] },
         { v: 'V76.1.4', d: ['📋 <b>你問「選股頁的榜要不要砍」—— 我先量了,結論是「不是榜太多,是有幾個什麼都沒說」</b>。23 個榜裡<b>已經有 13 個</b>被標成「📉 實測沒優勢」收進摺疊區、3 個標成「查資料用」;真正的問題是中間那幾個(相對強度 / 渣男賽車 / 妖股雷達 / K棒轉多 / K棒轉空)<b>從來沒告訴你它到底有沒有實測背書</b>。', '🚨 <b>而且照出一個自打嘴巴的地方</b>:「🎯 會賺訊號」的說明寫著「這是唯一有實測成績的榜」,底下卻緊接著印「此戰區…<b>未納入歷史回測</b>」—— 同一畫面兩句話打架,已修。', '✅ 現在<b>每一個榜都會講清楚自己的實測狀態</b>,四種:✅ 有實測(附基準 36.4%,⛔ 不是 50%)/ ⚠️ 只有間接證據(會明說「<b>這個榜本身沒單獨測過</b>」,⛔ 不借別的成績當背書)/ 📚 查資料用 / 📉 實測沒優勢。⛔ 一個都不准沉默。'] },
@@ -8520,6 +8574,8 @@ ${list}
         document.getElementById('set_voiceAlert').checked = this.settings.voiceAlert || false;
         const wlEl = document.getElementById('set_watchlistAlert');
         if (wlEl) wlEl.checked = this.settings.watchlistAlert || false;
+        const asEl = document.getElementById('set_alertStrict');
+        if (asEl) asEl.checked = this.settings.alertStrict !== false;   // 🔕 V76.1.7 預設開
         // V41.2 — autoRunChiefAI 已停用(首席 AI 純手動),設定頁 checkbox 已移除
         this._applyFontSizeUI(this.settings.fontSize || 'medium');
         try { this._applyExitRuleUI(); } catch (_) {}   // 🚪 V74.5.4 出場規則選單反白
@@ -19981,6 +20037,62 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return { grade: v[0], n: v[1], e10: v[2], w10: v[3], p: v[4], e20: v[5],
                      payoff: v[6] ?? null, exp: v[7] ?? null };
         } catch (_) { return null; }
+    },
+
+    /** 🔕 V76.1.7 **提醒的入場券** —— 使用者 2026-09-12:「我只想提醒有用資訊,**如果不準就不用提醒**」。
+     *
+     *  🚨 真因:提醒這條路徑**從來沒有查過實測成績**。`_kbarTryFire` 一口氣跑 13 類偵測器、
+     *     命中的**全部**丟給 `_fireAlert`,中間一行都沒問過 `_sigEdge` —— 而 K線分頁早就會查
+     *     (A/B 級置頂、C 級收摺疊區)。📊 那 13 類共 **56 種訊號,期望值為正的只有 7 種**。
+     *     使用者截圖那 6 則逐一對表:**5 則該砍**(K線橫盤突破期望值 −1.21%・p=0.9995;
+     *     費波納契回撤買點 −1.26%;長紅遭遇 −1.48%;K線橫盤跌破 p=0.87 警告了但之後沒比較差;
+     *     壓力沉重‧反覆過不了 10 日邊際 **+0.11 = 警告方向相反**),只有「長黑遭遇(一日封口)」站得住。
+     *
+     *  ⭐ **一個原則、兩把尺:「它宣稱的方向,實測要真的往那邊走」**
+     *    ・多方(`tone==='bull'`)→ `exp > 0` 且 `n ≥ _wrEnough()` —— 買了要**真的賺得到**(期望值已含賺賠比)
+     *    ・空方/警示(`bear`/`warn`)→ `e10 < 0` 且 `p ≤ 0.25` —— 警告之後要**真的比大盤差**且不是雜訊
+     *    ・查不到成績 → ⛔ 一律不過(未驗證 ≠ 有效)
+     *  ⛔⛔ **兩把尺不可互換**(這是這支最關鍵的一點):拿多方的尺量空方會全滅;
+     *     拿空方的尺量多方會放行「高勝率做多買點」「多頭回檔等買點」這種**實測方向相反的買訊**
+     *     當成警告 —— 兩種都荒謬。所以 `tone` 一定要傳進來。
+     *
+     *  ⚠️ **這次刻意推翻 CLAUDE.md 舊鐵則「看空與警示一律不打折」**(使用者明示,已提醒過代價)。
+     *  ⛔⛔ **「你的部位 / 你自己設的線」⛔ 不可以走這支** —— 停損/停利/到價/第 2 擊/13:25 平倉/
+     *     庫存鐵血停損 那些不是「訊號準不準」,是**你的錢到了你自己設的點**;
+     *     拿統計去擋它等於幫使用者改他的停損。測試 `test_alertgate.mjs` ⓔ 釘住這條。
+     *  🔁 `settings.alertStrict === false` → 整支放行(舊行為,設定中心的逃生門)。 */
+    _alertWorthIt(det, sigTitle, tone) {
+        try {
+            if (this.settings && this.settings.alertStrict === false) return { ok: true, why: '（已關閉嚴格模式）', edge: null };
+            const e = this._sigEdge?.(det, sigTitle);
+            if (!e) return { ok: false, why: '這個訊號沒有實測成績(未驗證)', edge: null };
+            const bear = (tone === 'bear' || tone === 'warn');
+            if (bear) {
+                const ok = (e.e10 < 0) && (e.p <= 0.25);
+                return { ok, edge: e,
+                    why: ok ? `實測:出現後 10 日比大盤差 ${Math.abs(e.e10).toFixed(2)}%・${e.n.toLocaleString()} 次・${e.grade} 級`
+                            : (e.e10 >= 0 ? `實測警告方向相反(出現後反而比大盤好 ${e.e10.toFixed(2)}%)`
+                                          : `統計上跟沒警告沒差(p=${e.p})`) };
+            }
+            const ok = (e.exp > 0) && !!this._wrEnough?.(e.n);
+            return { ok, edge: e,
+                why: ok ? `實測:每趟期望值 ${e.exp > 0 ? '+' : ''}${e.exp.toFixed(2)}%・${e.n.toLocaleString()} 次・${e.grade} 級`
+                        : (e.exp > 0 ? `樣本只有 ${e.n} 次,不夠` : `實測每趟期望值 ${e.exp.toFixed(2)}%(賠的)`) };
+        } catch (_) { return { ok: false, why: '查不到成績', edge: null }; }
+    },
+    /** 🔕 V76.1.7 **只記不吵** —— 寫進 🔔 通知歷史 + 點亮紅點,⛔ 不彈窗、不 toast、不發系統通知。
+     *  用在兩種:①「方法已被實測打掉」的提醒(明日劇本 / 跟單分點 / 隔日沖盤點 / 主打型態)
+     *  ②「全市場盤點摘要」(沒有個股、是統計不是一件要你現在做的事)。
+     *  ⭐ 使用者要的是「**不被打擾**」不是「查不到」→ 一則都不會遺失,鈴鐺裡都還在。 */
+    _alertQuiet(title, body, sym) {
+        try { this._recordNotifHistory(title, body || '', sym || ''); } catch (_) {}
+    },
+    /** 🔕 V76.1.7 把實測成績接在提醒文案後面(⛔ 數字說贏的時候更要寫限制,CLAUDE.md 既有規定)。 */
+    _alertEdgeNote(v) {
+        try {
+            if (!v || !v.edge) return '';
+            return ` ｜📊 ${v.why}(基準勝率 36.4% 不是 50%・未扣來回成本 0.44%・歷史統計不是保證)`;
+        } catch (_) { return ''; }
     },
 
     _winRateP(wins, n, p0 = 0.5) {
