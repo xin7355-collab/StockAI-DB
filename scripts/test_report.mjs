@@ -64,7 +64,7 @@ const strip = s => s.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '
        /id="subTabBtnStrategy"[\s\S]{0,400}?id="subTabBtnReport"[\s\S]{0,400}?id="subTabBtnLive"/.test(SRC));
     ok('①b switchSubTab 有 report 分支呼叫 renderReportTab', /tab === 'report'[\s\S]{0,200}renderReportTab/.test(sw));
     ok('② _idxHiddenSubTabs 含 report 且 MAP 含 report: \'Report\'', /_idxHiddenSubTabs: \[[^\]]*'report'\]/.test(SRC) && /bullbear: 'BullBear', report: 'Report'/.test(SRC));
-    ok('⑪a analyze() 切股清單含十二個 rp*(⛔ 少一個 = 那一段顯上一檔;V76.2.0 加 rpPaste)', ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls', 'rpPaste'].every(id => new RegExp(`'deepBriefCard', 'deepBriefAi',[\\s\\S]{0,400}'${id}'`).test(SRC)));
+    ok('⑪a analyze() 切股清單含十三個 rp*(⛔ 少一個 = 那一段顯上一檔;V76.2.3 加 rpImg)', ['rpNum', 'rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc', 'rpQuick', 'rpWalls', 'rpPaste', 'rpImg'].every(id => new RegExp(`'deepBriefCard', 'deepBriefAi',[\\s\\S]{0,400}'${id}'`).test(SRC)));
     // ③ 渲染層不可自己寫買賣指令:只掃報告區塊(_rpNumHtml ~ _reportAsk),排除轉述 _ovDecide 的那支
     const a = SRC.indexOf('    _rpNumHtml('), b = SRC.indexOf('    _reportAsk(');
     const blk = strip(SRC.slice(a, b));
@@ -348,11 +348,40 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html[2]) && /rpRevOut/.test(R.ht
     await page.evaluate((p) => { window.P0 = p; }, P);
     ok('⑫a 提示詞含 5 條防幻覺關鍵句 + 第 6 條', ['絕對禁止「主觀預測」', '年化EPS × 近3年 P5/中位/P95 PE', '不可腦補', '股價基期」與「估值基期」是兩件事', '循環股獲利頂峰時 PE 最低', '附日期與來源網址'].every(k => P.includes(k)));
     // V76.2.0 提示詞改成使用者那份 22 節骨架:每節 §N、第一行基準日、結尾來源表、本站已算的節⛔ 不要自己算、⛔ 不給評分/星等/機率
-    ok('⑫b 提示詞 22 節骨架:§1~§22 每一節都點名 + 第一行「分析基準日期」+ 結尾「§23 來源表」', Array.from({ length: 22 }, (_, i) => `§${i + 1} `).every(k => P.includes(k)) && /分析基準日期/.test(P) && /§23 來源表/.test(P), P.slice(0, 200));
-    ok('⑫b2 提示詞明說「本站已經算好的節⛔ 不要自己算」+ ⛔ §19 因子評分 / §20 星等 / §14 不給機率 + 本益比要寫「現在的」', /本站已經算好的節/.test(P) && /不要自己算/.test(P) && /§19 因子評分、§20 星等/.test(P) && /不給機率/.test(P) && /本益比一律寫\*\*現在的\*\*/.test(P), '');
-    ok('⑫b3 提示詞客觀數據補了均線 / 上方套牢區 / 出場線(AI 要引用本站的牆,不是自己編價位)', /- 均線:/.test(P) && /上方套牢區/.test(P) && /你設的出場線/.test(P), '');
-    ok('⑫d 提示詞 <6,500 字(V76.2.0 從 3,800 放寬:22 節骨架 + 三行客觀數據)且帶入年化 EPS / 位階', P.length < 6500 && P.includes(R.ctx.eps.toFixed(2)) && /估值基期.*\d+%/.test(P), `len ${P.length}`);
-    ok('⑫e 提示詞「目標價」只出現在禁令句', P.split('目標價').length - 1 === 1 && P.includes('「具體目標價」'));
+    ok('⑫b 提示詞 20 節骨架:§1~§20 每一節都點名、⛔ 不可再出現 §21/§22 當內容節 + 第一行「分析基準日期」+ 結尾「§21 來源表」',
+       Array.from({ length: 20 }, (_, i) => `§${i + 1} `).every(k => P.includes(k)) && /分析基準日期/.test(P) && /§21 來源表/.test(P) && !/§22 /.test(P), P.slice(0, 200));
+    ok('⑫b2 提示詞明說「本站已經算好⛔ 不要自己算」+ ⛔ 刪掉因子評分/星等 + ⛔ 不給機率 + 本益比要寫「現在的」', /本站已經算好的數字/.test(P) && /不要自己算/.test(P) && /因子評分、§20 星等評等已經刪掉/.test(P) && /不給機率/.test(P) && /本益比一律寫「現在的」/.test(P), '');
+    const FACT_KEYS = ['- 均線:', '上方套牢區', '你設的出場線', '股價位階', '財報三表', '集保大戶散戶', '融資追繳壓力區', '下一個事件', '族群名次', '本站結論'];
+    ok('⑫b3 客觀數據要有均線 / 套牢區 / 出場線,而且 V76.2.3 補上位階 / 財報三表 / 集保 / 融資追繳 / 事件 / 族群名次 / 本站結論',
+       FACT_KEYS.every(k => P.includes(k)), FACT_KEYS.filter(k => !P.includes(k)).join(','));
+    // 🚨 這一條才有鑑別力:上一條只看「- 均線:」那幾個字在不在,值印「—」也照樣綠(注入「拿掉 K 線 fallback」時實測沒被抓到)。
+    //   `indicators` 是 worker 算的、切到報告頁常常還沒好 → 一定要**自己從 K 線補算**,⛔ 不可留空給外部 AI 自己填。
+    const MAF = await page.evaluate(() => {
+        const A = app, bak = A.indicators;
+        A.indicators = {};                                   // 模擬「worker 還沒算完」
+        const line = (A._reportPrompt('5483').match(/- 均線:[^\n]*/) || [''])[0];
+        const o = A._rpMaLevels();
+        A.indicators = bak;
+        return { line, n: Object.keys(o).length };
+    });
+    ok('⑫b3b 🚨 worker 還沒算完時,均線那行**照樣要有數字**(⛔ 不可印「—」—— 實測外部 AI 會自己算,季線寫 707.4、真值 704.4)',
+       MAF.n >= 3 && /月線 \d/.test(MAF.line) && !/^- 均線:—$/.test(MAF.line), MAF.line);
+    ok('⑫b4 🚨 提示詞要明寫「看到『—』⛔ 不可以自己算」+「出場線 ≠ 融資追繳線」(實測外部 AI 兩件都犯過)',
+       /不可以自己算或自己編/.test(P) && /出場線 ≠ 融資追繳線/.test(P), '');
+    ok('⑫d 提示詞 <6,500 字且帶入年化 EPS / 位階', P.length < 6500 && P.includes(R.ctx.eps.toFixed(2)) && /估值基期.*\d+%/.test(P), `len ${P.length}`);
+    // 🎨 V76.2.3 做圖提示詞:顏色鐵則要寫死(使用者那張圖把「好」塗綠、「風險」塗紅,跟同圖上的漲跌顏色打架)
+    const CH = await page.evaluate(() => { const A = app; return { q: A._reportChartPrompt('5483'), sameFacts: A._reportChartPrompt('5483').includes(A._reportFacts('5483')) }; });
+    ok('🎨a 做圖提示詞寫死台股紅漲綠跌 + ⛔ 紅綠不可表示好壞 + 風險用 ✅⚠️⛔ 圖示 + ⛔ 不畫綠牛紅熊',
+       /紅色 = 上漲/.test(CH.q) && /綠色 = 下跌/.test(CH.q) && /絕對不可以拿來表示「好 \/ 壞」/.test(CH.q) && /✅ 安全/.test(CH.q) && /綠色公牛/.test(CH.q), CH.q.slice(0, 120));
+    ok('🎨b 做圖提示詞跟研究提示詞**共用同一份數字**(⛔ 不寫兩份 —— 改一邊會忘另一邊)', CH.sameFacts, '');
+    ok('🎨c 🚨 把實測抓到的四個錯寫成規則:數字照抄 / 出場線≠融資追繳線 / 估值尺要照價格排序 / ⛔ 不要評分星等機率 / ⛔ 不要重複字',
+       /照抄/.test(CH.q) && /出場線 ≠ 融資追繳線/.test(CH.q) && /按「價格由小到大」排/.test(CH.q) && /★ 星等評分/.test(CH.q) && /不重複的繁體中文/.test(CH.q), '');
+    ok('🎨d 圖的最下面一定要有免責那一行', /這不是投資建議 ・歷史統計不是保證/.test(CH.q), '');
+    // ⚠️ V76.2.3:「目標價」現在出現 2 次 —— 禁令句 + 出場線那列的澄清(「⛔ 不是目標價」),兩個都是**禁止**的語氣。
+    //   要釘的用意是「⛔ 不可以有『請給目標價』這種要求」,⛔ 不是釘次數(釘次數 = 釘住當時的實作)。
+    ok('⑫e 提示詞的「目標價」只出現在禁止/澄清句,⛔ 沒有任何一句在要 AI 給目標價',
+       P.includes('「具體目標價」') && !/(請|要|給出|提供|寫出)[^。\n]{0,8}目標價(?!」)/.test(P.replace('絕對禁止「主觀預測」未來股價或給出「具體目標價」', '')),
+       (P.match(/.{0,18}目標價.{0,10}/g) || []).join(' | '));
     // 📋 V76.2.1 使用者實測:點開 Perplexity 輸入框是空的(提示詞 2,400 字 → 網址 1.6 萬字元,App 接手時帶不過去)
     //   → ⭐ 開之前要**先複製**;另外要有一顆手動「複製提示詞」;複製不了要跳手動選取視窗(⛔ 不可靜默失敗)
     ok('⑫f 🚨 提示詞做成網址會超過 1 萬字元 —— 這就是 App 帶不進去的原因(釘住:別再以為縮短一點就好)', encodeURIComponent(P).length > 10000, `enc ${encodeURIComponent(P).length}`);
@@ -644,6 +673,54 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('📐c 「基準日」整張卡只講一次(卡頭右邊那個;⛔ 同一個日期講兩次看起來像壞掉)', LAY.dateOnce === 1, `${LAY.dateOnce} 次`);
     await page.evaluate(() => app._rpNoteClear('2327'));
 }
+// ── 🖼️ V76.2.3 AI 圖 + 🔢 § 排序 + 🗑️ 重複入口 ──
+{
+    const R = await render('2327');
+    // 1×1 透明 PNG(⛔ 不用外部檔 —— 測試不可依賴網路)
+    const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const IMG = await page.evaluate(async (png) => {
+        const A = app, sym = '2327';
+        const blob = await (await fetch(png)).blob();
+        const file = new File([blob], 'x.png', { type: 'image/png' });
+        await A._rpImgStore(sym, file);
+        await new Promise(r => setTimeout(r, 400));
+        const box = document.getElementById('rpImg');
+        //   ⚠️ 這三個要**當下**就抓 —— 下面會 `_rpImgClear`,回傳物件是最後才組的(第一版就是這樣量到 false = 假失敗)
+        const shown = !!box.querySelector('img');
+        const label = /沒有驗證/.test(box.innerText) && /不參與任何買賣判斷/.test(box.innerText);
+        const chartBtn = !!box.querySelector('[data-rpchartbtn]');
+        const stored = await A.idb.get(A._rpImgKey(sym));
+        const cp = A._rpCopyPlain(), dec = JSON.stringify(A._ovDecide(A.activeData, sym) || {});
+        const ord = [...document.getElementById('subContentReport').children].map(d => d.id);
+        // prune 不可以把使用者存的圖清掉(它的規則是「ts 超過 7 天**或沒有 ts**」)
+        await A.idb.put(A._rpImgKey(sym), Object.assign({}, stored, { ts: Date.now() - 30 * 864e5 }));
+        await A.idb.prune();
+        const afterPrune = await A.idb.get(A._rpImgKey(sym));
+        await A._rpImgClear(sym);
+        await new Promise(r => setTimeout(r, 200));
+        const gone = await A.idb.get(A._rpImgKey(sym));
+        return { hasImg: !!(stored && stored.d), shown, label, chartBtn,
+                 prunedAway: !afterPrune, cleared: !gone,
+                 inCopy: /AI 圖/.test(cp), inDec: /rpImg|AI 圖/.test(dec),
+                 ord, emptyAfterClear: !document.getElementById('rpImg').querySelector('img') };
+    }, PNG);
+    ok('🖼️a 圖存得進 IndexedDB、畫得出來,而且一定帶「本站沒有驗證 ・⛔ 不參與任何買賣判斷」', IMG.hasImg && IMG.shown && IMG.label, JSON.stringify(IMG));
+    ok('🖼️b 🚨 `idb.prune()` ⛔ 不可清掉使用者存的圖(它的規則是「ts 超過 7 天**或沒有 ts**」→ 圖一定中;注入:拿掉 rpImg_ 白名單 → 這條紅)', !IMG.prunedAway, `prunedAway=${IMG.prunedAway}`);
+    ok('🖼️c 🗑️ 刪得掉(⛔ 不可只從畫面消失、資料還在)', IMG.cleared && IMG.emptyAfterClear, JSON.stringify({ cleared: IMG.cleared, empty: IMG.emptyAfterClear }));
+    ok('🖼️d 🚨 鐵線:圖⛔ 不進「📋 複製整份報告」、⛔ 不進 _ovDecide', !IMG.inCopy && !IMG.inDec, JSON.stringify({ copy: IMG.inCopy, dec: IMG.inDec }));
+    ok('🖼️e ⭐ 圖排在**本站結論(rpAct)之後**、快速表之前(⛔ 外部 AI 畫的不可壓在本站結論上面)',
+       IMG.ord.indexOf('rpAct') < IMG.ord.indexOf('rpImg') && IMG.ord.indexOf('rpImg') < IMG.ord.indexOf('rpQuick'), IMG.ord.join(','));
+    // 🔢 § 排序 + 🗑️ 重複入口
+    const ORD = await page.evaluate(() => {
+        const q = document.getElementById('rpQuick');
+        const ks = [...q.querySelectorAll('[data-rpq]')].map(d => d.getAttribute('data-rpq'));
+        const no = k => { const m = String(k).match(/§\s*(\d+)/); return m ? +m[1] : 99; };
+        return { ks, sorted: ks.every((k, i) => i === 0 || no(ks[i - 1]) <= no(k)),
+                 askBtns: document.querySelectorAll('#subContentReport [onclick*="_reportAsk"]').length };
+    });
+    ok('🔢a ⚡ 快速表按 § 由小到大排(使用者:「§符號有順序,為何排序跳來跳去」)', ORD.sorted, ORD.ks.join(' / '));
+    ok('🗑️a 報告頁只剩**一個** 🔎 提示詞入口(以前重點數字卡與 §20 卡各一顆、同一支函式 = 重複)', ORD.askBtns === 1, `${ORD.askBtns} 顆`);
+}
 // ── 💳 V76.2.2 §13 融資壓力:窗口 60 日 + 分不出上市/上櫃也要給數字 ──
 {
     const M = await page.evaluate((k) => {
@@ -888,8 +965,8 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         ok('§g2 🚨 ⛔ 不可用 `grid-cols-[1fr_auto]`(**任意值** `1fr` = `minmax(auto,1fr)`,不是具名 class 的 `minmax(0,1fr)` → 左欄會被撐開)',
            !/grid-cols-\[1fr_auto\]/.test(strip(seg)) && /grid-template-columns:minmax\(0,1fr\) auto/.test(seg), '');
     }
-    ok('§q5 六個節標題帶 § 編號(§4~§6 / §10 / §12… / §14・§15 / §2・§3… / §0)', ['§4~§6', '§10', '§12・§13・§18・§21', '§14・§15', '§2・§3・§7~§9', '§0'].every(k => R5.txt.rpFund.includes(k) || R5.txt.rpChip.includes(k) || R5.txt.rpRisk.includes(k) || R5.txt.rpVal.includes(k) || R5.txt.rpInd.includes(k) || R5.txt.rpSrc.includes(k)), '');
-    ok('§a1 結論卡寫明⛔ 不給 §19 因子總分 / §20 ★ 評等,而且真的沒有 ★★ 這種評等', /data-rpnostar/.test(R5.html[7]) && !/★{2,}/.test(R5.txt.rpAct), R5.txt.rpAct.slice(-200));
+    ok('§q5 六個節標題帶 § 編號(§4~§6 / §10 / §12… / §14・§15 / §2・§3… / §0)', ['§4~§6', '§10', '§12・§13・§18・§19', '§14・§15', '§2・§3・§7~§9', '§0'].every(k => R5.txt.rpFund.includes(k) || R5.txt.rpChip.includes(k) || R5.txt.rpRisk.includes(k) || R5.txt.rpVal.includes(k) || R5.txt.rpInd.includes(k) || R5.txt.rpSrc.includes(k)), '');
+    ok('§a1 結論卡寫明⛔ 不給因子總分 / ★ 評等,而且真的沒有 ★★ 這種評等', /data-rpnostar/.test(R5.html[7]) && !/★{2,}/.test(R5.txt.rpAct), R5.txt.rpAct.slice(-200));
     // 🧱 §11・§17
     const W = await page.evaluate(() => {
         const A = app, C = A._rpLast, box = document.getElementById('rpWalls');
