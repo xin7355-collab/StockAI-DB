@@ -1413,12 +1413,16 @@ def build_stock_names(industry_map: dict) -> int:
         _known = {f.stem for f in Path('data').glob('*.json')}
     except Exception:
         pass
-    n_quote, n_skip = 0, 0
+    n_quote, n_skip, _n_mkt = 0, 0, 0
     if _known:
-        for _url, _lbl, _ck, _nk in [
-            ('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL', 'TWSE 收盤', 'Code', 'Name'),
+        # 🏦 V76.2.2 第三欄 = **市場別**(twse / tpex)—— 零額外 API,這個迴圈本來就分兩個來源,
+        #   以前只是沒把「是從哪一支回來的」記下來。前端融資追繳線要用它分成數(上市 6 成 / 上櫃 5 成);
+        #   在這之前前端 `_marginCallState` 的 `known` 恆為 false → §13 一律顯「融資資料不足」,
+        #   而融資資料其實 795 列全都有(陷阱 #28:「資料源沒有」被當成「條件沒過」,訊息還講錯原因)。
+        for _url, _lbl, _ck, _nk, _mkt in [
+            ('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL', 'TWSE 收盤', 'Code', 'Name', 'twse'),
             ('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes', 'TPEx 收盤',
-             'SecuritiesCompanyCode', 'CompanyName'),
+             'SecuritiesCompanyCode', 'CompanyName', 'tpex'),
         ]:
             try:
                 _r = http_session.get(_url, headers=_rnd_hdrs(), timeout=30)
@@ -1438,9 +1442,16 @@ def build_stock_names(industry_map: dict) -> int:
                     if _sy not in _known:      # 🚧 權證/沒在追的標的一律不收
                         n_skip += 1
                         continue
-                    if _sy not in names:       # ⛔ 官方公司表為準,不覆蓋
-                        names[_sy] = [_nm, (industry_map or {}).get(_sy, '')]
+                    if _sy not in names:       # ⛔ 官方公司表為準,不覆蓋**名字**
+                        names[_sy] = [_nm, (industry_map or {}).get(_sy, ''), _mkt]
                         _add += 1
+                    else:
+                        # ⭐ 名字保留官方的,但**市場別要補上去** —— 官方公司基本資料沒有這一欄,
+                        #   只有這兩支收盤行情分得出來(⛔ 代號格式分不出上市/上櫃,4 碼兩邊都有)。
+                        _r0 = names[_sy]
+                        if isinstance(_r0, list) and len(_r0) < 3:
+                            names[_sy] = [_r0[0], _r0[1] if len(_r0) > 1 else '', _mkt]
+                            _n_mkt += 1
                 print(f"  📇 {_lbl}:回 {len(_rows)} 列 → 新增 {_add} 檔")
                 n_quote += _add
             except Exception as e:
@@ -1448,6 +1459,7 @@ def build_stock_names(industry_map: dict) -> int:
     else:
         print("  ⚠️ data/ 讀不到任何 *.json → 跳過收盤行情那層(⛔ 沒有白名單就不敢收,會混進權證)")
     src['daily_quote'] = n_quote
+    src['market_tagged'] = _n_mkt      # 🏦 V76.2.2 補到市場別的檔數(給資料體檢看)
     src['skipped_not_in_data'] = n_skip
 
     # ③ ETF 保底:etf_tracking.json 本來就有 name 欄(⛔ 只補前面沒有的,不覆蓋)

@@ -25,6 +25,28 @@ const SCAN = async (w, h, font, opener) => {
     await page.waitForFunction(() => !!(window.app || typeof app !== 'undefined'), null, { timeout: 30000 });
     await page.waitForTimeout(1200);
     const r = await page.evaluate(async ([font, opener]) => {
+        // 🚨 V76.2.2 沙箱連不到 Tailwind CDN → **祖先鏈整個塌掉**(實測報告頁卡片只剩 166px,
+        //   正式環境是 373px)→ 量到的「沒有溢出」是假的(陷阱 #40)。
+        //   ⭐ 注入**只補版面**的最小 shim(box-sizing / padding / width / flex / 換行),
+        //      讓寬度跟正式環境一致;⛔ 它不假裝補齊 Tailwind(顏色、md: 斷點、max-w-* 都沒補)。
+        //   ⚠️ 第一條 `box-sizing:border-box` 最關鍵 —— 少了它,`w-full` + `p-2` 的 textarea
+        //      會被誤報成「超出父層 5px」(實測)。
+        (() => {
+            const R = ['*,::before,::after{box-sizing:border-box}', '.flex{display:flex}', '.flex-col{display:flex;flex-direction:column}',
+                '.w-full{width:100%}', '.flex-1{flex:1 1 0%}', '.min-w-0{min-width:0}', '.flex-shrink-0{flex-shrink:0}',
+                '.items-center{align-items:center}', '.items-baseline{align-items:baseline}', '.justify-between{justify-content:space-between}',
+                '.text-right{text-align:right}', '.whitespace-pre-wrap{white-space:pre-wrap}', '.whitespace-nowrap{white-space:nowrap}',
+                '.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+                '.border{border-width:1px;border-style:solid}', '.border-l-4{border-left-width:4px;border-left-style:solid}',
+                '.gap-2{gap:.5rem}', '.gap-1{gap:.25rem}', '.gap-1\\.5{gap:.375rem}',
+                '.p-2{padding:.5rem}', '.p-3{padding:.75rem}', '.p-4{padding:1rem}',
+                '.px-2{padding-left:.5rem;padding-right:.5rem}', '.px-3{padding-left:.75rem;padding-right:.75rem}',
+                '.px-1{padding-left:.25rem;padding-right:.25rem}', '.py-1{padding-top:.25rem;padding-bottom:.25rem}',
+                '.py-2{padding-top:.5rem;padding-bottom:.5rem}', '.rounded{border-radius:.25rem}', '.rounded-lg{border-radius:.5rem}'];
+            const fs = new Set((document.documentElement.innerHTML.match(/text-\[([\d.]+)px\]/g) || []).map(m => m.match(/[\d.]+/)[0]));
+            fs.forEach(n => R.push(`.text-\\[${String(n).replace('.', '\\.')}px\\]{font-size:${n}px}`));
+            const st = document.createElement('style'); st.id = '__rwdshim'; st.textContent = R.join('\n'); document.head.appendChild(st);
+        })();
         const A = window.app || app;
         try { A.setFontSize(font); } catch (_) {}
         if (opener === 'settings') { try { A.openSettings(); } catch (_) {} }
@@ -98,8 +120,9 @@ const SCAN = async (w, h, font, opener) => {
     });
     await pg.close();
     console.log(tw ? '✅ Tailwind 有載入,class 型版面規則有效'
-        : '⚠️⚠️ Tailwind CDN 沒載入(沙箱)→ `max-w-*` / `md:` / `hidden` / `overflow-x-auto` **全部沒生效**。\n'
-        + '   ⛔ 這份報告只涵蓋「檔案內 CSS + inline 樣式」;class 型的版面問題要在**真機**上看。');
+        : '⚠️ Tailwind CDN 沒載入(沙箱)→ V76.2.2 起自動注入**只補版面**的最小 shim\n'
+        + '   (box-sizing / padding / width / flex / 換行 / text-[Npx])→ 寬度已接近正式環境。\n'
+        + '   ⛔ 仍沒補的:`max-w-*`、`md:` 斷點、`hidden`、`overflow-x-auto`、顏色 → 那幾類要在**真機**上看。');
 }
 
 for (const [w, h, label] of [[390, 844, '📱 手機 390'], [1440, 900, '🖥️ 桌機 1440']]) {

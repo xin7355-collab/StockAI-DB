@@ -626,7 +626,48 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     // 390px:存了 6k 報告之後仍不可溢出(逐元素跟父層比)
     const R8 = await render('2327');
     ok('📱4 貼了報告之後 390px 仍不可橫向捲動、沒有元素衝出父層', !R8.wide && R8.esc.list.length === 0, JSON.stringify(R8.esc.list));
+    // 📐 V76.2.2 版面:已經貼過的時候,輸入框/按鈕/四段操作說明全部收摺疊 —— 第一眼要留給**報告內容**
+    const LAY = await page.evaluate(async (txt) => {
+        const A = app; document.getElementById('rpNoteIn').value = txt; A._rpNoteSave('2327');
+        await new Promise(r => setTimeout(r, 200));
+        const card = document.getElementById('rpPaste');
+        const seen = (card.innerText || '').replace(/\s+/g, '');
+        return { chars: seen.length, seen,
+                 panel: !!card.querySelector('details[data-rppanel]'),
+                 taInPanel: !!card.querySelector('details[data-rppanel] #rpNoteIn'),
+                 btnInPanel: !!card.querySelector('details[data-rppanel] [data-rpcopyprompt]'),
+                 howtoHidden: !/膨脹到 1 萬 6 千字元/.test(seen),
+                 dateOnce: (seen.match(/基準日/g) || []).length };
+    }, stale);
+    ok('📐a 已貼過報告時第一眼 ≤ 450 字(改版前 655:操作說明佔了一半)', LAY.chars <= 450 && LAY.chars > 120, `${LAY.chars} 字`);
+    ok('📐b 輸入框 + 複製提示詞按鈕 + 「Perplexity 會空白」那段說明都收進摺疊(⛔ 收起來不是刪掉)', LAY.panel && LAY.taInPanel && LAY.btnInPanel && LAY.howtoHidden, JSON.stringify(LAY));
+    ok('📐c 「基準日」整張卡只講一次(卡頭右邊那個;⛔ 同一個日期講兩次看起來像壞掉)', LAY.dateOnce === 1, `${LAY.dateOnce} 次`);
     await page.evaluate(() => app._rpNoteClear('2327'));
+}
+// ── 💳 V76.2.2 §13 融資壓力:窗口 60 日 + 分不出上市/上櫃也要給數字 ──
+{
+    const M = await page.evaluate((k) => {
+        const A = app, d = Array.isArray(k) ? k : (k.data || k);
+        const cur = A._marginCallState(d, '2327');
+        // 注入對照組:吃整條 K 線(舊行為)—— 用同一份資料、只換窗口
+        const all = d.filter(r => +r.margin_balance > 0);
+        const wide = A._marginCallState(all, '2327');       // slice(-60) 之後還是 60 → 用手算模擬舊版
+        let wsum = 0, psum = 0;
+        for (let i = 1; i < all.length; i++) { const dq = +all[i].margin_balance - +all[i - 1].margin_balance; if (!(dq > 0)) continue;
+            const h = +all[i].high, l = +all[i].low, c = +all[i].close; const px = (h > 0 && l > 0 && c > 0) ? (h + l + c) / 3 : c; wsum += dq; psum += dq * px; }
+        const oldCall = (psum / wsum) * 0.78, oldDist = (+all[all.length - 1].close - oldCall) / +all[all.length - 1].close * 100;
+        return { cur, oldCall, oldDist, rows: all.length };
+    }, FX.k2327);
+    ok('💳a 🚨 融資成本只看近 60 個交易日(注入:吃整條 795 根 → 追繳線從 533 掉到 259、距現價 2% 變 52% = 永遠 safe 的常數)',
+       M.cur && M.cur.win === 60 && M.cur.winTotal > 300 && Math.abs(M.cur.distPct - M.oldDist) > 20,
+       JSON.stringify({ win: M.cur && M.cur.win, dist: M.cur && Math.round(M.cur.distPct), oldDist: Math.round(M.oldDist), rows: M.rows }));
+    ok('💳b 分不出上市/上櫃時**照樣給數字**(⛔ 不可再顯「融資資料不足」—— 融資 795 列一列不缺,陷阱 #28)',
+       M.cur && M.cur.known === true && M.cur.mktKnown === false && Number.isFinite(+M.cur.callLine), JSON.stringify(M.cur && { known: M.cur.known, mktKnown: M.cur.mktKnown, call: M.cur.callLine }));
+    const R9 = await render('2327');
+    ok('💳c 快速表 §13 那列有數字,而且標明「以上市六成推」(⛔ 不可靜默用假設值)',
+       /§13 融資壓力[^§]*追繳壓力區/.test(R9.txt.rpQuick) && /以上市六成推/.test(R9.txt.rpQuick) && !/融資資料不足/.test(R9.txt.rpQuick), (R9.txt.rpQuick.match(/§13 融資壓力[^§]{0,120}/) || [])[0]);
+    ok('💳d 離線名字表要讀第三欄(市場別)—— 下一輪採礦帶上來就自動變準',
+       /type: \(Array\.isArray\(v\) && v\[2\]\)/.test(SRC) && /names\[_sy\] = \[_nm, \(industry_map or \{\}\)\.get\(_sy, ''\), _mkt\]/.test(fs.readFileSync(path.join(ROOT, 'miner.py'), 'utf8')), '');
 }
 {
     const R4 = await render('2330');
