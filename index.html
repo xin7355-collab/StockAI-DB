@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.4.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.4.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -809,7 +809,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.4.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.4.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8406,8 +8406,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.4.1',
+    _APP_VERSION: 'V76.4.2',
     _CHANGELOG: [
+        { v: 'V76.4.2', d: [
+            '🏭 <b>上櫃股的產業別再補 ~1,600 檔</b> —— 上一版的備援接上了,但只補進 327 檔。真因不是資料缺,是<b>同一個產業兩邊寫法不同</b>:資料源給「半導體<b>業</b>」「電腦<b>及週邊設備</b>業」,而本站的對照表存的是「半導體」「電腦週邊」→ 字串直接比當然對不上。現在會自動把「業/工業/事業」那種尾巴對齊。',
+            '📋 log 也改成分開數:「ETF 這種本來就沒有產業別的幾檔」跟「<b>真的</b>對不到代碼的幾檔」——以前混在一起,真的漏接會被 1,600 檔淹掉。',
+        ] },
         { v: 'V76.4.1', d: [
             '🧱 <b>報告頁與「📈 個股數據速覽」那張圖拿掉了卡片外框</b> —— 你問「設計上一定要有框框嗎?沒有框框可以放的東西比較多」,量過之後你是對的:那張圖左右被框吃掉 54px(內容只佔 86%),報告頁最深的一段左右被吃掉 40px(390 的手機只剩 310)。現在改成「標題 + 一條細分隔線」分段,<b>資料一個字都沒刪</b>,但那張圖每一行多 52px、報告頁每一行多 24~26px。',
             '📐 <b>判準寫下來了:框如果在講事情就留,只是把東西圍起來的就拿掉</b> —— 所以 ⚠️ 警示用的左邊色條、按鈕、可以打字的框、量條的底槽、一格一筆的價位格<b>全部保留</b>;拿掉的只有「卡片底色 + 四周邊框 + 圓角」那一種。',

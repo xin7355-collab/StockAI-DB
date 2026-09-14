@@ -1396,10 +1396,38 @@ def fetch_industry_map() -> dict:
     if _added_by.get('TPEX 上櫃', 0) == 0:
         try:
             from screener_miner import IND as _IND_NAMES          # ⛔ 不另抄一份對照表(單一真相)
-            _name2code = {v: k for k, v in _IND_NAMES.items()}
+            # 🚨 V76.4.1 實跑 #577:FinMind 回 4,321 列卻只補進 327 檔、**1,635 檔對不到代碼**。
+            #   真因不是資料缺,是**同一個產業兩邊的寫法不同**:FinMind 給「半導體**業**」「電腦**及週邊設備**業」,
+            #   而 IND 存的是「半導體」「電腦週邊」→ 字串直接比當然對不上(陷阱 #17 的近親)。
+            #   ⭐ 修法是**正規化**(去掉「業/工業/事業」尾巴 + 一張只放「真的寫法不同」的別名表),
+            #      ⛔ 不是在這裡另抄一份產業表 —— IND 仍然是唯一真相。
+            def _nrm(s):
+                s = str(s or '').strip()
+                for suf in ('工業', '事業', '業'):
+                    if len(s) > len(suf) and s.endswith(suf):
+                        s = s[:-len(suf)]; break
+                return s
+            # ⚠️ 只收「正規化之後還是對不上」的那幾個(實跑 log 印出來的 + 官方 33 類逐一核過)
+            _ALIAS = {
+                '電腦及週邊設備': '電腦週邊', '紡織纖維': '紡織', '建材營造': '營建',
+                '觀光': '觀光餐旅', '觀光餐旅': '觀光餐旅', '電子': '電子',
+                '化學生技醫療': '化學生技', '生技醫療': '生技醫療', '油電燃氣': '油電燃氣',
+                '其他電子': '其他電子', '電子通路': '電子通路', '資訊服務': '資訊服務',
+                '文化創意': '文化創意', '數位雲端': '數位雲端', '綠能環保': '綠能環保',
+                '運動休閒': '運動休閒', '居家生活': '居家生活', '農業科技': '農業科技',
+                '電子商務': '電子商務', '航運': '航運', '金融保險': '金融保險',
+            }
+            _base = {v: k for k, v in _IND_NAMES.items()}
+            _name2code = dict(_base)
+            for k, v in _base.items():                 # 正規化過的鍵也收(「半導體業」→「半導體」)
+                _name2code.setdefault(_nrm(k), v)
+            for a, b in _ALIAS.items():                # 別名 → 正規名 → 代碼
+                c = _base.get(b) or _base.get(_nrm(b))
+                if c:
+                    _name2code.setdefault(a, c)
             jj = fm_request('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo') or {}
             rows = jj.get('data') or []
-            got = miss = 0
+            got = miss = skip_ok = 0
             _miss_names = {}
             for row in rows:
                 sym = str(row.get('stock_id') or '').strip()
@@ -1408,15 +1436,18 @@ def fetch_industry_map() -> dict:
                     continue
                 if sym in industry_map:
                     continue
-                code = _name2code.get(nm)
+                code = _name2code.get(nm) or _name2code.get(_nrm(nm))
                 if code:
                     industry_map[sym] = code
                     got += 1
+                elif nm in ('ETF', 'ETN', 'Index', '大盤', '存託憑證', '受益證券', '不動產投資信託'):
+                    skip_ok += 1          # ⭐ 這幾種**本來就沒有產業別**,⛔ 不可算進「對不到」(會讓真的漏接被淹掉)
                 else:
                     miss += 1
                     _miss_names[nm] = _miss_names.get(nm, 0) + 1
             print(f"  🆘 上櫃改走 FinMind TaiwanStockInfo:回 {len(rows)} 列 → 補進 {got} 檔"
-                  f"(對不到代碼而略過 {miss} 檔;前 8 種:{sorted(_miss_names, key=_miss_names.get, reverse=True)[:8]})")
+                  f"(ETF 等本來就沒產業別 {skip_ok} 檔;⚠️ 真的對不到代碼 {miss} 檔"
+                  f"{';前 8 種:' + str(sorted(_miss_names, key=_miss_names.get, reverse=True)[:8]) if miss else ''})")
         except Exception as _e_fm:
             print(f"  ⚠️ 上櫃 FinMind 備援也失敗:{type(_e_fm).__name__}: {str(_e_fm)[:120]}")
     # 🗺️ 地緣診斷:抓不到縣市時把**實際欄名**印出來(同陷阱 #23:別讓人猜欄名)

@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))   # ⓔ 要 import screener_miner(⛔ 不在測試裡複製一份產業表)
 SRC = (ROOT / 'miner.py').read_text(encoding='utf-8')
 # ⚠️ 原始碼斷言一律先剝掉 `#` 註解 —— 本 repo 被自己的註解救活斷言已經三次
 NOCOM = re.sub(r'(?m)#[^\n]*', '', SRC)
@@ -104,6 +105,53 @@ ck(len(seg) > 800, 'ⓓ0 切不到 fetch_industry_map → 這一條不算數')
 ck('r.text' in seg, 'ⓓ JSON 解不開時沒有把 body 印出來 → 「網址錯」跟「被擋」永遠分不出來(陷阱 #23)')
 ck('sorted(data[0].keys())' in seg,
    'ⓓ2 回了資料卻一列都認不出來時沒有印**實際欄名** → 下一個人又要猜一輪')
+
+# ── ⓔ V76.4.1 FinMind 的中文產業名要**真的**查得到代碼 ─────────────
+#   🚨 實跑 #577:備援接上了,但「回 4,321 列 → 只補進 327 檔、1,635 檔對不到代碼」——
+#      真因是兩邊寫法不同(FinMind「半導體**業**」vs IND「半導體」)。
+#   ⭐ 這一條**執行 miner.py 裡那一段真的程式碼**(⛔ 不在測試裡複製一份等價的正規化邏輯 ——
+#      那樣量到的是那份複製品,不是產品;陷阱 #40 第六例)。
+_i = SRC.find('from screener_miner import IND as _IND_NAMES')
+_j = SRC.find('jj = fm_request', _i) if _i > 0 else -1
+ck(_i > 0 and _j > _i, 'ⓔ0 切不到 FinMind 反查那一段 → 這一條不算數(空過守門)')
+if _i > 0 and _j > _i:
+    _seg = '\n'.join(l[12:] if l.startswith(' ' * 12) else l for l in SRC[_i:_j].split('\n'))
+    _ns = {}
+    try:
+        exec(_seg, _ns)
+    except Exception as e:
+        ck(False, f'ⓔ0b 那一段跑不起來:{type(e).__name__}: {e}')
+        _ns = {}
+    n2c, nrm = _ns.get('_name2code'), _ns.get('_nrm')
+    ck(bool(n2c) and callable(nrm), 'ⓔ0c 那一段沒有產生 _name2code / _nrm → 這一條不算數')
+    if n2c and callable(nrm):
+        # FinMind 實際會回的全名(#577 log 印出來的 8 種 + 官方 33 類)
+        REAL = ['生技醫療業', '半導體業', '電子零組件業', '光電業', '電子工業', '電腦及週邊設備業', '通信網路業',
+                '水泥工業', '食品工業', '塑膠工業', '紡織纖維', '電機機械', '電器電纜', '化學工業', '玻璃陶瓷',
+                '造紙工業', '鋼鐵工業', '橡膠工業', '汽車工業', '建材營造', '航運業', '觀光事業', '金融保險',
+                '貿易百貨', '油電燃氣業', '電子通路業', '資訊服務業', '其他電子業', '其他', '綜合',
+                '文化創意業', '農業科技', '電子商務', '綠能環保', '數位雲端', '運動休閒', '居家生活']
+        bad = [n for n in REAL if not (n2c.get(n) or n2c.get(nrm(n)))]
+        ck(not bad, f'ⓔ FinMind 的這幾種產業名查不到代碼 → 那幾檔的產業別會是空的:{bad[:8]}')
+        # ⚠️ ETF 這種**本來就沒有產業別**的,⛔ 不可查到東西(查到 = 硬塞)
+        ck(not (n2c.get('ETF') or n2c.get(nrm('ETF'))), 'ⓔ2 「ETF」竟然對到一個產業代碼 → ⛔ 不可硬塞')
+# 🚨 ⓔ 只驗「對照表查得到」,查不到「那一行有沒有用它」——
+#   注入把查詢那行退回 `{v:k for…}.get(nm)`(= 字串直接比)時 ⓔ 照樣綠,因為對照表本身沒被動到。
+#   ⭐ 所以要再釘**查詢那一行**。⚠️ 先剝掉 `#` 註解(本 repo 被自己的註解救活斷言已經五次)。
+SEG_NC = re.sub(r'#[^\n]*', '', SEG)
+mlk = re.search(r'(?m)^\s*code\s*=\s*([^\n]+)', SEG_NC)
+ck(bool(mlk), 'ⓔ4a 找不到查代碼那一行 → 這一條不算數')
+if mlk:
+    lk = mlk.group(1)
+    ck('_name2code' in lk and '_nrm(' in lk,
+       f'ⓔ4 查代碼那一行沒有同時用 _name2code 與 _nrm() → 「半導體業」查不到「半導體」:{lk[:90]}')
+    ck('_IND_NAMES.items()' not in lk,
+       'ⓔ4b 查代碼那一行又自己重建了一次原始對照表 → 等於繞過正規化(注入退回這個寫法就會走到這裡)')
+# ⭐ 而且「對不到」的計數要把 ETF 那種排掉,否則真的漏接會被淹在 1,600 檔裡
+mskip = re.search(r"elif\s+nm\s+in\s*\(([^)]*)\)", SEG_NC)
+ck(bool(mskip) and 'ETF' in mskip.group(1),
+   'ⓔ3 沒有把「本來就沒有產業別」(ETF 等)跟「真的對不到代碼」分開數 → 下次漏接會被淹掉')
+ck('skip_ok' in SEG_NC, 'ⓔ3b 沒有 skip_ok 計數 → log 上分不出「本來就沒有」跟「真的漏接」')
 
 print()
 if fails:
