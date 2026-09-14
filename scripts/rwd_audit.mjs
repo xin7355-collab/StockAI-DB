@@ -19,6 +19,7 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { rwdShim } from './lib_rwdshim.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const browser = await chromium.launch({
@@ -31,6 +32,7 @@ const SCAN = async (w, h, font, opener) => {
     await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => !!(window.app || typeof app !== 'undefined'), null, { timeout: 30000 });
     await page.waitForTimeout(1200);
+    await page.evaluate(rwdShim);   // 🧩 唯一一份版面 shim(見 scripts/lib_rwdshim.mjs)
     const r = await page.evaluate(async ([font, opener, SUBTABS, SUBID]) => {
         // 🚨 V76.2.2 沙箱連不到 Tailwind CDN → **祖先鏈整個塌掉**(實測報告頁卡片只剩 166px,
         //   正式環境是 373px)→ 量到的「沒有溢出」是假的(陷阱 #40)。
@@ -38,97 +40,8 @@ const SCAN = async (w, h, font, opener) => {
         //      讓寬度跟正式環境一致;⛔ 它不假裝補齊 Tailwind(顏色、md: 斷點、max-w-* 都沒補)。
         //   ⚠️ 第一條 `box-sizing:border-box` 最關鍵 —— 少了它,`w-full` + `p-2` 的 textarea
         //      會被誤報成「超出父層 5px」(實測)。
-        (() => {
-            // ⭐ V76.2.4 改成**產生器**:一條一條補會沒完沒了,而且每漏一條就整片誤報
-            //   (實測漏 `overflow-*` → 跑馬燈害 header 報 +2719px;漏 `hidden` → 每頁 +135px;
-            //    漏 `flex-wrap` → K線 HUD 本來會換行卻被擠成一行報 +129px)。
-            //   ⛔ 它仍然**不是** Tailwind —— 只補「會影響版面幾何」的那些,顏色/斷點/動畫一律不補。
-            const R = ['*,::before,::after{box-sizing:border-box}'];
-            const H0 = document.documentElement.innerHTML;
-            const REM = n => (n === '0' ? '0' : (parseFloat(n.replace('\\.', '.')) * 0.25) + 'rem');
-            // ① 固定對照表(display / flex / position / 文字流)
-            Object.entries({
-                'flex': 'display:flex', 'inline-flex': 'display:inline-flex', 'grid': 'display:grid', 'inline-grid': 'display:inline-grid',
-                'block': 'display:block', 'inline-block': 'display:inline-block', 'inline': 'display:inline', 'hidden': 'display:none',
-                'flex-col': 'flex-direction:column', 'flex-row': 'flex-direction:row',
-                'flex-wrap': 'flex-wrap:wrap', 'flex-nowrap': 'flex-wrap:nowrap',
-                'flex-1': 'flex:1 1 0%', 'flex-auto': 'flex:1 1 auto', 'flex-none': 'flex:none',
-                'flex-shrink-0': 'flex-shrink:0', 'shrink-0': 'flex-shrink:0', 'grow': 'flex-grow:1',
-                'min-w-0': 'min-width:0', 'w-full': 'width:100%', 'h-full': 'height:100%',
-                'w-max': 'width:max-content', 'w-min': 'width:min-content', 'w-fit': 'width:fit-content',
-                'items-center': 'align-items:center', 'items-start': 'align-items:flex-start', 'items-end': 'align-items:flex-end',
-                'items-baseline': 'align-items:baseline', 'items-stretch': 'align-items:stretch',
-                'justify-between': 'justify-content:space-between', 'justify-center': 'justify-content:center',
-                'justify-end': 'justify-content:flex-end', 'justify-start': 'justify-content:flex-start',
-                'justify-around': 'justify-content:space-around', 'justify-evenly': 'justify-content:space-evenly',
-                'text-right': 'text-align:right', 'text-center': 'text-align:center', 'text-left': 'text-align:left',
-                'whitespace-pre-wrap': 'white-space:pre-wrap', 'whitespace-nowrap': 'white-space:nowrap', 'whitespace-normal': 'white-space:normal',
-                'break-words': 'overflow-wrap:break-word', 'break-all': 'word-break:break-all',
-                'truncate': 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap',
-                'relative': 'position:relative', 'absolute': 'position:absolute', 'fixed': 'position:fixed', 'sticky': 'position:sticky',
-                'overflow-hidden': 'overflow:hidden', 'overflow-x-hidden': 'overflow-x:hidden', 'overflow-y-hidden': 'overflow-y:hidden',
-                'overflow-auto': 'overflow:auto', 'overflow-x-auto': 'overflow-x:auto', 'overflow-y-auto': 'overflow-y:auto',
-                'overflow-scroll': 'overflow:scroll', 'overflow-x-scroll': 'overflow-x:scroll', 'overflow-clip': 'overflow:clip',
-                'mx-auto': 'margin-left:auto;margin-right:auto',
-                'border': 'border-width:1px;border-style:solid', 'border-l-4': 'border-left-width:4px;border-left-style:solid',
-                'rounded': 'border-radius:.25rem', 'rounded-lg': 'border-radius:.5rem',
-                'grid-flow-col': 'grid-auto-flow:column',
-            }).forEach(([k, v]) => R.push(`.${k.replace(/([.\/])/g, '\\$1')}{${v}}`));
-            // ② 數值級距(gap / padding / margin)—— 只收檔案裡真的用到的,⛔ 不整張表倒進去
-            const SCALE = { gap: 'gap', 'gap-x': 'column-gap', 'gap-y': 'row-gap',
-                p: 'padding', px: 'padding-left|padding-right', py: 'padding-top|padding-bottom',
-                pl: 'padding-left', pr: 'padding-right', pt: 'padding-top', pb: 'padding-bottom',
-                m: 'margin', mx: 'margin-left|margin-right', my: 'margin-top|margin-bottom',
-                ml: 'margin-left', mr: 'margin-right', mt: 'margin-top', mb: 'margin-bottom' };
-            new Set((H0.match(/\b(?:gap-x|gap-y|gap|px|py|pl|pr|pt|pb|mx|my|ml|mr|mt|mb|p|m)-\d+(?:\.\d+)?\b/g) || [])).forEach(cls => {
-                const i = cls.lastIndexOf('-'), pre = cls.slice(0, i), num = cls.slice(i + 1);
-                const prop = SCALE[pre]; if (!prop) return;
-                const body = prop.split('|').map(x => `${x}:${REM(num)}`).join(';');
-                R.push(`.${pre}-${num.replace('.', '\\.')}{${body}}`);
-            });
-            // ③ 字級(⚠️ index.html 自己有 V44.2 的 `!important` 放大表,它會贏過這裡 —— 那是對的)
-            new Set((H0.match(/text-\[([\d.]+)px\]/g) || []).map(m => m.match(/[\d.]+/)[0])).forEach(n =>
-                R.push(`.text-\\[${String(n).replace('.', '\\.')}px\\]{font-size:${n}px}`));
-            // ④ 🚨 grid 樣板:刻意重現 Tailwind 的**語意差別**,⛔ 不可兩種都寫成一樣
-            //     ・具名 `grid-cols-N` → `repeat(N, minmax(0,1fr))`(會收縮)
-            //     ・任意值 `[1fr_auto]` → 原生 `1fr auto` = `minmax(auto,1fr)`(⛔ 不收縮,就是它在撐寬)
-            new Set((H0.match(/grid-cols-(\d+)/g) || [])).forEach(m => {
-                const n = m.match(/\d+/)[0]; R.push(`.grid-cols-${n}{grid-template-columns:repeat(${n},minmax(0,1fr))}`);
-            });
-            const ESC = raw => raw.replace(/[.[\]()%,#/]/g, c => '\\' + c);
-            new Set((H0.match(/grid-cols-\[[^\]"' ]+\]/g) || [])).forEach(m => {
-                const raw = m.slice(11, -1);
-                R.push(`.grid-cols-\\[${ESC(raw)}\\]{grid-template-columns:${raw.replace(/_/g, ' ')}}`);
-            });
-            // ⑤ 寬度:具名 max-w-* 與任意值 min-w-[…] / max-w-[…] / w-[…]
-            const MAXW = { xs: 320, sm: 384, md: 448, lg: 512, xl: 576, '2xl': 672, '3xl': 768, '4xl': 896, '5xl': 1024, '6xl': 1152, '7xl': 1280 };
-            Object.entries(MAXW).forEach(([k, v]) => R.push(`.max-w-${k}{max-width:${v}px}`));   // ⭐ 開頭是字母 → ⛔ 不需 CSS 轉義
-            new Set((H0.match(/(?:min-w|max-w|w)-\[[^\]"' ]+\]/g) || [])).forEach(m => {
-                const i = m.indexOf('['), pre = m.slice(0, i - 1), raw = m.slice(i + 1, -1);
-                const prop = pre === 'min-w' ? 'min-width' : pre === 'max-w' ? 'max-width' : 'width';
-                R.push(`.${pre}-\\[${ESC(raw)}\\]{${prop}:${raw.replace(/_/g, ' ')}}`);
-            });
-            const st = document.createElement('style'); st.id = '__rwdshim'; st.textContent = R.join('\n'); document.head.appendChild(st);
-            // 🚧 空過守門③(V76.2.4):**shim 自己有沒有生效** —— ⛔ 「沒報錯」不等於「它有能力報錯」。
-            //   少一條規則就會整片誤報(實測 overflow-* / hidden / flex-wrap 各害過一次),
-            //   而那種誤報跟真問題**長得一模一樣** → 先拿幾條代表性的問它一次。
-            const probe = [];
-            //   ⚠️ 斷言要挑**computed 之後還看得出來**的形式:`getComputedStyle().gridTemplateColumns`
-            //      回的是**已解析的 px**(例如 `390px 0px`),⛔ 不會回 `1fr auto`;`gap-1.5` 也不是 6px
-            //      (這個 App 的 root font-size 不是 16px,實測 6.36px)。第一版兩條都寫錯 —— 自我檢查抓到自己。
-            const mk = (cls, fn, label) => { const d = document.createElement('div'); d.className = cls;
-                d.innerHTML = '<span>xxxxxxxx</span><span>y</span>'; document.body.appendChild(d);
-                let ok = false; try { ok = fn(getComputedStyle(d), d); } catch (_) {}
-                d.remove(); if (!ok) probe.push(label || cls); };
-            mk('flex-wrap', s => s.flexWrap === 'wrap', 'flex-wrap 沒生效');
-            mk('hidden', s => s.display === 'none', 'hidden 沒生效');
-            mk('overflow-x-auto', s => s.overflowX === 'auto', 'overflow-x-auto 沒生效');
-            //   grid 任意值:兩條軌道、而且**第二條明顯比第一條窄**(`auto` 只吃內容)→ 證明 `1fr auto` 真的套上了
-            mk('grid grid-cols-[1fr_auto]', s => { const t = String(s.gridTemplateColumns).split(/\s+/).map(parseFloat);
-                return t.length === 2 && t[0] > t[1] && t[0] > 0; }, 'grid-cols-[1fr_auto] 沒生效');
-            mk('gap-1.5', s => parseFloat(s.columnGap) > 0, 'gap-1.5 沒生效');
-            window.__rwdShimBad = probe;
-        })();
+        // 🧩 版面 shim 已在 page.evaluate **之前**注入(`scripts/lib_rwdshim.mjs`,唯一一份)
+        //   ⛔ 別在這裡再補一份 —— 兩份會各自漏規則,而漏掉的誤報跟真問題長得一模一樣。
         const shimBad = window.__rwdShimBad || [];
         const A = window.app || app;
         try { A.setFontSize(font); } catch (_) {}
@@ -160,6 +73,38 @@ const SCAN = async (w, h, font, opener) => {
         const _sx = Math.round(window.scrollX);
         window.scrollTo(0, 0);
         const out = { pageOverflow: _sx, esc: [], cut: [], clip: [], wide: [], scanned: 0 };
+        // 🧱 V76.3.2 新增:**垂直空間佔用** —— 使用者:「螢幕可觀看地方變窄、能使用空間很小」。
+        //   以前這支只查橫向,而桌機真正被吃掉的是**垂直**:頂端列 + 分頁列 + 個股 sticky 區
+        //   都是**永遠佔著**的固定框架,剩下才是內容。⛔ 憑截圖猜不準 → 量。
+        //   ⚠️ 只收「真的看得到而且真的佔著位置」的(sticky/static 才算;手機的 nav 是 fixed,
+        //      它蓋在內容上但 .scrollable-main 有等高 padding-bottom → 一樣算佔用)。
+        out.vsp = (() => {
+            const vh = window.innerHeight;
+            const hh = (sel) => { const e = document.querySelector(sel);
+                if (!e) return 0; const s2 = getComputedStyle(e);
+                if (s2.display === 'none' || s2.visibility === 'hidden') return 0;
+                return Math.round(e.getBoundingClientRect().height); };
+            const head = hh('.header-fixed');
+            const nav = hh('.nav-fixed');
+            // 個股頁那一塊 sticky(報價頭 + 標籤列 + sub-tab 列)—— ⛔ 只有正在顯示的那個 tab 算
+            let sub = 0;
+            for (const el of document.querySelectorAll('.sticky-sub')) {
+                if (!vis(el)) continue;
+                sub += Math.round(el.getBoundingClientRect().height);
+            }
+            const chrome = head + nav + sub;
+            // ⭐ 誰吃掉的要指名道姓 —— ⛔ 只報總數的話,下一輪還是得重量一次才知道要動哪裡
+            const parts = [];
+            for (const root of [document.querySelector('.header-fixed'), ...document.querySelectorAll('.sticky-sub')]) {
+                if (!root || !vis(root)) continue;
+                for (const c of root.children) {
+                    if (!vis(c)) continue;
+                    const hgt = Math.round(c.getBoundingClientRect().height);
+                    if (hgt >= 8) parts.push({ t: (c.id || c.tagName.toLowerCase() + '.' + String(c.className || '').split(' ')[0]).slice(0, 28), h: hgt });
+                }
+            }
+            return { vh, head, nav, sub, chrome, parts, freePct: Math.round((vh - chrome) / vh * 100) };
+        })();
         for (const el of document.querySelectorAll('div,span,button,table,ul,section,header,nav,input')) {
             if (!vis(el)) continue;
             out.scanned++;
@@ -282,10 +227,17 @@ const OPENERS = [['inv', '庫存頁'], ['stock', '個股頁'], ['radar', '選股
         + '   ⛔ 仍沒補的:`md:`/`sm:` 斷點、`space-x-*`、顏色 → 那幾類要在**真機**上看。');
 }
 
+// 🔎 迭代用的篩選(⛔ 巡邏本身不吃它 —— 預設仍然全掃):
+//   `RWD_ONLY=stock,inv node scripts/rwd_audit.mjs` 只跑那幾頁,`RWD_FONT=medium` 只跑一種字級。
+//   ⚠️ 用過之後**要再跑一次完整的**,⛔ 別拿只掃兩頁的輸出當「全站乾淨」。
+const ONLY = (process.env.RWD_ONLY || '').split(',').map(x => x.trim()).filter(Boolean);
+const FONTS = (process.env.RWD_FONT || 'medium,xl').split(',').map(x => x.trim()).filter(Boolean);
+if (ONLY.length || process.env.RWD_FONT) console.log(`⚠️ 這一輪是**篩選過的**(RWD_ONLY=${ONLY.join('|') || '全部'} ・RWD_FONT=${FONTS.join('|')})→ ⛔ 不可當成全站結論`);
 const BLIND = []; let SHIM_REPORTED = false;
 for (const [w, h, label] of [[390, 844, '📱 手機 390'], [1440, 900, '🖥️ 桌機 1440']]) {
-    for (const font of ['medium', 'xl']) {
+    for (const font of FONTS) {
         for (const [opener, oname] of OPENERS) {
+            if (ONLY.length && !ONLY.includes(opener)) continue;
             for (const r of await SCAN(w, h, font, opener)) {
                 const tag = `${label} ・字級 ${font} ・${oname}${r.tab ? ' → ' + (SUBNAME[r.tab] || r.tab) : ''}`;
                 console.log(`\n═══ ${tag} ═══`);
@@ -297,6 +249,11 @@ for (const [w, h, label] of [[390, 844, '📱 手機 390'], [1440, 900, '🖥️
                 if (!r.scanned) { console.log(`  🚨 這一頁掃到 0 個可見元素 → 切不過去或沒渲染,⛔ 這頁的結論不算數`); BLIND.push(tag); continue; }
                 console.log(`  (掃了 ${r.scanned} 個可見元素${r.txt != null ? ' ・' + r.txt + ' 字' : ''})`);
                 console.log(`  整頁可橫向捲動:${r.pageOverflow > 2 ? '❌ 捲得動 ' + r.pageOverflow + 'px' : '✅ 捲不動'}`);
+                if (r.vsp) { const v = r.vsp;
+                    const bar = v.freePct >= 70 ? '✅' : v.freePct >= 55 ? '⚠️' : '🚨';
+                    console.log(`  🧱 垂直空間:視窗 ${v.vh}px → 框架吃掉 ${v.chrome}px(頂端 ${v.head} + 分頁列 ${v.nav} + 個股置頂 ${v.sub})→ 內容剩 ${bar} ${v.freePct}%`);
+                    if (v.parts && v.parts.length) console.log('     └ ' + v.parts.map(x => `${x.t} ${x.h}`).join(' ・ '));
+                }
                 if (r.esc.length) { console.log('  🚨 衝出父容器:'); r.esc.forEach(o => console.log(`     +${o.over}px  w=${o.w}  ${o.t}`)); }
                 else console.log('  ✅ 沒有元素衝出父容器');
                 if (r.cut.length) {

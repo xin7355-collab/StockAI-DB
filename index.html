@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.3.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.3.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -359,6 +359,21 @@
         .text-\[9px\]  { font-size: 10px !important; }
         .text-\[10px\] { font-size: 11px !important; }
         .text-\[11px\] { font-size: 12px !important; }
+        /* 🔠 V76.3.2 使用者:「已經調到最小字體,感覺還是很大、能使用空間很小」——
+           ⭐ **先量才發現「小」這一檔根本沒有讓密集字變小**:上面那張 V44.2 的表是**無條件**的,
+              `html[data-font="small"]` 只把 root 縮到 93%,而寫死的 `text-[8/9/10/11px]`
+              **完全不吃 root font-size** → 8px 照樣被墊到 9px、10px 照樣 11px。
+           ⛔ 那不是「他感覺錯了」,是「小」這個選項對全 App 最多的那批字**一點作用都沒有**。
+           ⭐ 修法:在「小」把它們放回**寫在標記裡的原尺寸**(⛔ 不是再往下砍 —— 8px 已經是下限)。
+           ⚠️ 只動 small;medium/large/xl 三檔一行都不改(改預設會讓全 App 密集格爆版,V44.2 的理由仍成立)。*/
+        html[data-font="small"] .text-\[8px\]  { font-size: 8px  !important; }
+        html[data-font="small"] .text-\[9px\]  { font-size: 9px  !important; }
+        html[data-font="small"] .text-\[10px\] { font-size: 10px !important; }
+        html[data-font="small"] .text-\[11px\] { font-size: 11px !important; }
+        html[data-font="small"] .text-\[12px\] { font-size: 11px !important; }
+        html[data-font="small"] .text-\[13px\] { font-size: 12px !important; }
+        html[data-font="small"] .text-xs        { font-size: 11px !important; }
+        html[data-font="small"] .text-sm        { font-size: 13px !important; }
         /* 盤前體檢等密集兩欄格:標籤/數字不換行,避免「外資現/貨」「期現/基差」斷字 */
         #marketBriefing .grid > div > span,
         #marketBriefing .grid > div > div > span { white-space: nowrap; }
@@ -494,6 +509,34 @@
             .marquee-track { font-size: 0.75rem; }
             .sub-tab-btn { font-size: 0.8125rem; }
 
+            /* 🧱 V76.3.2 桌機垂直空間 —— 使用者:「螢幕可觀看地方變窄、能使用空間很小」。
+               ⭐ 先量(`node scripts/rwd_audit.mjs` 的「🧱 垂直空間」那行):1440×900 個股頁
+                  **框架吃掉 410px(頂端 143 + 分頁列 53 + 個股置頂 214)→ 內容只剩 54%**,
+                  而使用者的筆電視窗更矮(~760px)→ 實際只剩 4 成多。
+               ⭐ 桌機是**橫的**,手機是**直的** → 手機把「股名列 / 現價列」上下疊是對的,
+                  桌機左右並排就好,⛔ 不必為了省空間砍掉任何一個元素(資訊一個都沒少)。
+               ⚠️ 只在 ≥1024px 生效,手機版一行都不受影響。 */
+            #quoteHeadBox { display: flex; flex-wrap: wrap; align-items: center;
+                            column-gap: 16px; padding-top: 2px; padding-bottom: 2px; }
+            #quoteRowName  { flex: 1 1 320px; min-width: 0; }
+            #quoteRowPrice { flex: 1 1 auto; margin-top: 0 !important; }
+            #stockEarningsReminder { flex: 1 0 100%; }
+            /* 概念列與技術標籤列在桌機也並排(兩個都是單行橫捲,各拿一半仍捲得動) */
+            #stockConceptRow { flex: 1 1 46%; min-width: 0; margin-top: 2px !important; }
+            #quoteRowTags    { flex: 1 1 46%; min-width: 0; margin-top: 2px !important; }
+
+            /* 🧱 V76.3.2 桌機的另外兩塊固定框架(量出來的:頂端列 60px ・分頁列 53px)——
+               它們在**每一頁**都佔著,而桌機是橫的、圖示旁邊有的是空位 → 改成「圖示與字並排」。
+               ⛔ 手機不動(手機直的,上下疊才點得準)。 */
+            .header-fixed > header { padding-top: .2rem !important; padding-bottom: .2rem !important; }
+            .header-fixed > header svg { width: 22px; height: 22px; }
+            .header-fixed > header button { font-size: 1.3rem; }
+            .nav-fixed > nav { height: 40px !important; }
+            .nav-fixed > nav button { flex-direction: row !important; gap: 5px; padding-top: 0 !important; padding-bottom: 0 !important; }
+            .nav-fixed > nav button > span { margin-top: 0 !important; }
+            /* ⚠️ 紅點/數字 badge 是 `absolute` 定位的,⛔ 不可被上面那條 gap 影響 → 排除 */
+            .nav-fixed > nav button > span.absolute { position: absolute; }
+
             /* 🖥️ V69.5.0 桌機:個股頁不進「全螢幕沉浸」(手機才隱藏 header/nav 求沉浸;桌機有空間 →
                頂部導覽持續顯示,不會一進個股就整條消失、要靠頁內返回鍵) */
             body.diag-fullscreen .header-fixed { display: flex !important; }
@@ -501,6 +544,15 @@
         }
     /* 🗂️ V74.1.7 精簡檢視:實測無背書的卡預設收起(⛔ 屬性選擇器 + !important ——
        render 函式常用 classList.remove('hidden') 自己把卡打開,class 壓不住它) */
+    /* 💼 V76.3.2 庫存表版面 —— ⛔ 表頭與每一列**共用這一份**,別再各寫一份 `grid-cols-[…]`
+       (以前兩處各寫一次,改一邊就會對不齊)。
+       ⭐ 先量:桌機 1440 的內容區有 ~1180px,而舊版寫死 `w-max` + 六個固定 px 欄 = **466px**
+          → 右邊 **714px 永遠空著**(使用者:「螢幕可觀看地方變窄、能使用空間很小」)。
+       ⭐ 改成 `minmax(原本的 px, 比例)`:手機上 min 加起來還是 466px(照舊橫捲、一格都沒變窄),
+          桌機才會把多出來的寬度按比例分掉。⛔ 不是把欄位變窄,是把空白補滿。 */
+    .inv-grid { display: grid; gap: 4px; align-items: center;
+        grid-template-columns: minmax(96px,1.5fr) minmax(66px,1fr) minmax(76px,1.1fr)
+                               minmax(88px,1.25fr) minmax(52px,.8fr) minmax(88px,1.25fr); }
     [data-tidy="1"]{display:none !important}
     .tidyrow{background:#161b22;border:1px dashed #30363d;border-radius:8px;padding:7px 10px;
       font-size:11px;color:#8b949e;line-height:1.55;display:flex;gap:8px;align-items:center;margin:4px 0}
@@ -746,7 +798,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1538,11 +1590,11 @@
                 </div>
                 <!-- V20.7 — pt 2.5→1 / pb 1.5→0.5 壓縮上方空白(原一大片空) -->
                 <!-- 🎯 V45.4 券商風格個股報價頭:置中股名(◀▶ 切換庫存個股 + 點名開搜尋)+ 現價超大 -->
-                <div class="px-3 pt-1 pb-1"
+                <div id="quoteHeadBox" class="px-3 pt-1 pb-1"
                      ontouchstart="app._huntSwipeX=event.touches[0].clientX"
                      ontouchend="if(app._huntSwipeX-event.changedTouches[0].clientX>40){app.openHuntPanel();}">
                     <!-- Row 1:返回 + 置中股名(◀ 🔍名 代號 ▶)+ ☆ 🚨 -->
-                    <div class="flex items-center gap-1">
+                    <div id="quoteRowName" class="flex items-center gap-1">
                         <button onclick="app.goBack();" class="flex-shrink-0 text-gray-200 hover:text-white -ml-1 mr-2" title="上一頁(回到上個動作的頁面)">
                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                         </button>
@@ -1568,7 +1620,7 @@
                         </button>
                     </div>
                     <!-- Row 2:🕯️K棒 + 現價 + 漲跌(右,上下堆疊)+ 🚨處置/注意(現價右手邊,點→免費查操作建議)... 總量/量縮(右) -->
-                    <div class="flex items-center gap-2.5 mt-1">
+                    <div id="quoteRowPrice" class="flex items-center gap-2.5 mt-1">
                         <!-- 🕯️ V45.7 個股即時/收盤 K 棒(紅漲綠跌),由 onWorkerMessage 以今日 OHLC 繪製 -->
                         <span id="quoteKbar" class="flex-shrink-0 flex items-center" aria-hidden="true"></span>
                         <span id="livePriceText" class="text-3xl font-black font-mono text-gray-500 leading-none tracking-tighter transition-all duration-200">--</span>
@@ -1586,7 +1638,7 @@
                     <!-- Row 2.5:V45.9 龍頭 / 產業別 / 概念股(仿籌碼K線,curated 對照,點概念丟免費查) -->
                     <div id="stockConceptRow" class="hidden flex flex-row flex-nowrap items-center gap-1 mt-1.5 overflow-x-auto scrollbar-hide"></div>
                     <!-- Row 3:技術屬性標籤(處置/注意 badge 已移到 Row 2 現價右側,此處不再重複)。V69.5.1 改單行橫捲不換行,表頭高度固定 → 切股 sub-tab 不跳 -->
-                    <div class="flex flex-row flex-nowrap items-center gap-x-1 mt-1 overflow-x-auto scrollbar-hide">
+                    <div id="quoteRowTags" class="flex flex-row flex-nowrap items-center gap-x-1 mt-1 overflow-x-auto scrollbar-hide">
                         <span id="stockTags" class="inline-flex flex-nowrap gap-x-1 items-center"><span class="inline-block bg-gray-800 text-gray-500 text-[9px] px-1 py-0 rounded font-bold whitespace-nowrap">讀取中...</span></span>
                         <span id="attentionBadge" class="hidden"></span>
                     </div>
@@ -3067,7 +3119,7 @@
 
         <div id="tabContentInv" class="flex-col gap-3 p-2 pb-4" style="display:none;min-height:80vh;">
             <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col overflow-hidden">
-                <div class="flex justify-between items-center px-4 py-3 border-b border-[#30363d] bg-[#161b22] shadow-sm">
+                <div class="flex justify-between items-center px-3 py-2 border-b border-[#30363d] bg-[#161b22] shadow-sm">
                     <!-- 💼 V45.12 改名「庫存股」+ 點標題彈出說明(移除常駐說明banner) -->
                     <h2 onclick="app._helpBox('💼 庫存股怎麼用\n\n這是你「實際持有」的股票。\n\n・輸入買入價 → 每天自動算盈虧\n・獲利 > 15% → 建議上移停利\n・虧損 > 10% → 提醒評估停損\n・點代號旁 ⋯ → 結算平倉(記入交易日誌算勝率)/ 改成本 / 刪除')" class="text-base md:text-lg font-bold text-white flex items-center gap-1.5 tracking-wide cursor-pointer"><span class="bg-orange-600 text-white text-sm px-2 py-0.5 rounded font-black shadow-inner">庫</span> 庫存股 <span class="text-[10px] text-gray-500 font-normal ml-0.5">📖 點看說明</span> <span id="tradeMirrorBtnSlot" class="ml-1"></span></h2>
                     <div class="flex gap-1.5">
@@ -3076,7 +3128,7 @@
                     </div>
                 </div>
 
-                <div class="bg-[#161b22] px-3 py-3 border-b border-[#30363d]">
+                <div class="bg-[#161b22] px-3 py-2 border-b border-[#30363d]">
                     <!-- V17.10 — 參考籌碼K線 App 設計:3 欄統計卡(今日損益 / 累積損益 / 股票市值) -->
                     <div class="grid grid-cols-3 gap-2 text-center">
                         <div class="flex flex-col gap-0.5 border-r border-[#30363d] pr-1">
@@ -3102,8 +3154,12 @@
                     <!-- V46.2 左右滑動;🧊 V59.2/V68.3.2 凍結:清單改容器內捲(max-height + overflow-auto + min-h-0 讓 flex 內捲確實生效),表頭 sticky top-0 固定於捲動區頂;上方統計卡不被捲走 -->
                     <div class="overflow-auto scrollbar-hide" style="max-height: calc(100dvh - 320px);">
                         <!-- 🐛 V61.7 w-max:讓外框寬度=最寬列的內容寬(而非只吃 466px 視窗寬)→ 橫捲到最右時「均價/總成本」欄列底色也填滿,不再露出頁面底色 -->
-                        <div class="w-max min-w-[466px]">
-                            <div class="bg-[#0d1117] px-2 py-2 border-b border-[#30363d] grid grid-cols-[96px_66px_76px_88px_52px_88px] gap-1 text-[10px] text-gray-400 font-bold sticky top-0 z-10">
+                        <!-- 💼 V76.3.2 min-w 從 466 → **502**:`w-max` 改 `w-full` 之後,外框不再被內容撐開
+                             → 必須把「六欄的最小寬 466 + 5 個間距 20 + 左右 padding 16」算進去,
+                             否則手機上欄位會被擠爆(`rwd_audit` 當場報表頭「衝出父容器 28px」)。
+                             ⛔ 改欄寬或 gap/padding 時要**一起改這個數字**。 -->
+                        <div class="w-full min-w-[502px]">
+                            <div class="inv-grid bg-[#0d1117] px-2 py-1.5 border-b border-[#30363d] text-[10px] text-gray-400 font-bold sticky top-0 z-10">
                                 <span class="cursor-pointer hover:text-white flex items-center gap-1" onclick="app.sortInventory('name')"><span>庫存股</span><span id="invSortIcon_name" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                                 <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('today')"><span class="leading-tight">今日<br><span class="text-[9px] opacity-80">損益</span></span><span id="invSortIcon_today" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
                                 <span class="cursor-pointer hover:text-white flex items-center justify-end gap-1 text-right" onclick="app.sortInventory('price')"><span class="leading-tight">股價<br><span class="text-[9px] opacity-80">漲跌幅</span></span><span id="invSortIcon_price" class="inline-flex flex-col items-center flex-shrink-0 leading-none"></span></span>
@@ -8335,8 +8391,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.3.1',
+    _APP_VERSION: 'V76.3.2',
     _CHANGELOG: [
+        { v: 'V76.3.2', d: ['🧱 <b>「螢幕能看的地方變窄、字調到最小還是很大」—— 先量,結果三個都不是我以為的那樣</b>:',
+            '① <b>桌機個股頁的固定框架吃掉 410px</b>(1440×900 實測)→ 內容只剩 <b>54%</b>。桌機是橫的,而股名列與現價列卻還是照手機上下疊 → <b>改成並排</b>(⛔ 資訊一個字都沒刪),個股置頂 214px → <b>140px</b>;頂端列與分頁列的圖示也改成「圖示與字並排」(60→47 / 53→40)。合計內容區從 54% → <b>66%</b>,⛔ 手機一行都沒動。',
+            '② <b>庫存表在桌機右邊有 774px 永遠空著</b> —— 六個欄位寬度是寫死的 px(合計 466px),而桌機內容區有 1268px。改成「最小還是那個寬度、多出來的按比例分掉」→ 手機照舊橫捲、桌機整排用滿。',
+            '③ 🚨 <b>「小」這個字體選項,對全 App 最多的那批字一點作用都沒有</b>:寫死的 8/9/10/11px 不吃「整體縮放」,而另一張<b>無條件</b>的放大表又把它們墊高一級 → 你調到最小,那些字還是 9/10/11/12px。現在「小」會把它們放回原尺寸(⛔ 中/大/特大一行都沒改)。',
+            '④ 庫存每一列的「現股」標籤從自己佔一行改成跟代號同一行 → 每列矮 14px,一頁多看 3~4 檔。',
+            '🔬 巡邏工具 <code>rwd_audit</code> 新增「🧱 垂直空間」那一行(誰吃掉幾 px 逐項列出)—— 以前它只查橫向,所以這件事一直量不到。'] },
         { v: 'V76.3.1', d: ['🔁 <b>當沖榜昨天跑出來是空的</b>(0 家 / 0 日)—— 採礦全綠、檔案照傳,就是沒東西。查出來的真因跟上一版<b>是同一個錯,只是在更上游</b>:',
             '🚨 <b>抓分點的時候,每一檔每天只留「淨額最大的 25 家」</b> —— 而純當沖的分點<b>買 1000 賣 1000、淨額等於 0</b> → 排最後、<b>資料連進來的機會都沒有</b>。上一版我修掉的是下游那一處(買超榜只收前 15 名),<b>上游這一處判準一模一樣、而且更早</b>,只修一半等於沒修。',
             '✅ 已改成<b>兩種排序的聯集</b>(淨額前 25 + 同日雙向成交量前 10),並寫了測試把「舊寫法真的會砍掉那家純當沖分點」釘成決定性對照組 —— 下一輪盤後採礦就會有數字。',
@@ -43157,12 +43219,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const _prevP = this._invPrevPrices[item.symbol];
             const priceFlash = (_prevP != null && price !== _prevP) ? (price > _prevP ? 'price-flash-up' : 'price-flash-down') : '';
             this._invPrevPrices[item.symbol] = price;
-            html += `<div data-inv-sym="${item.symbol}" class="${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2 grid grid-cols-[96px_66px_76px_88px_52px_88px] gap-1 items-center" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
+            html += `<div data-inv-sym="${item.symbol}" class="inv-grid ${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-1" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
                 <!-- 庫存股:現股 tag + 股名 + 代號 + 🚨 -->
-                <div class="flex flex-col gap-0.5 min-w-0">
-                    <span class="text-[9px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 w-fit">現股</span>
+                <div class="flex flex-col gap-0 min-w-0">
                     <span class="text-white font-black ${nameFs} truncate leading-tight">${cname}</span>
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex items-center gap-1">
+                        <!-- 💼 V76.3.2「現股」tag 從**自己佔一行**改成跟代號同一行 → 每列少 14px、
+                             一頁多看 3~4 檔(⛔ 資訊一個字都沒刪) -->
+                        <span class="text-[9px] font-bold bg-yellow-700/40 text-yellow-200 border border-yellow-700/60 rounded px-1 py-0 flex-shrink-0 leading-tight">現股</span>
                         <span class="text-[10px] text-gray-500 font-mono">${_nd.sub}</span>
                         <span onclick="event.stopPropagation(); app.openPriceAlertModal('${item.symbol}'); app.vibrate(20);" class="cursor-pointer text-[11px] ${hasAlert ? '' : 'opacity-30'} hover:opacity-100" title="${hasAlert ? '已設到價監控,點此管理' : '設到價監控'}">🚨</span>
                         <span onclick="event.stopPropagation(); app._showInvRowMenu(${idx}); app.vibrate(15);" class="cursor-pointer text-[13px] text-gray-500 hover:text-white leading-none px-0.5" title="操作:結算平倉 / 改成本 / 刪除">⋯</span>
