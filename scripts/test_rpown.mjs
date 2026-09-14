@@ -93,7 +93,18 @@ const r = await page.evaluate(async () => {
     A._rpLast.chg = 0; A._rpDrawOwn('2330'); const a1 = cv.toDataURL('image/png'), s1 = sig();
     A._rpLast.pC = (+A._rpLast.pC || 100) * 2 + 7; A._rpDrawOwn('2330'); const a2 = cv.toDataURL('image/png'), s2 = sig();
     const FT = A._rpOwnFacts('2330') || {};
-    return { ...base, ...chk, up, dn, same: a1 === a2, pxSame: s1 === s2, w: cv.width, h: cv.height,
+    // ── V76.3.8 ⓟ~ⓤ ──
+    A._rpLast.pC = pC0; A._rpDrawOwn('2330');                       // 還原現價,重畫一張乾淨的
+    const S = A._RP_STYLE, dbg = A._rpOwnDbg || { cards: [], bars: [] };
+    const pr = A._reportChartPrompt('2330');
+    const promptHas = [S.bg, S.card, S.pos, S.amb, S.risk.mid, S.risk.lo].map(h => pr.includes(h));
+    const cardGap = dbg.cards.map(c => ({ t: c.title, gap: c.yFirst - c.yTitle }));
+    const px = (x, y) => { const d = g.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data; return { r: d[0], gg: d[1], b: d[2] }; };
+    const bars = dbg.bars.map(b => ({ ...b, p: px(b.x + Math.max(4, b.w * 0.3), b.y + b.h / 2) }));
+    const valOk = !FT.val || !FT.val.length || (FT.val.every((x, i, a) => i === 0 || a[i - 1].v <= x.v) && FT.val.some(x => x.t === 'now'));
+    const w1440 = await (async () => {
+        const cvw = document.getElementById('rpOwnCv'); return cvw ? cvw.getBoundingClientRect().width : 0; })();
+    return { ...base, ...chk, promptHas, cardGap, bars, valOk, w390: w1440, up, dn, same: a1 === a2, pxSame: s1 === s2, w: cv.width, h: cv.height,
              hasNow: (FT.lv || []).some(x => x.t === 'now'), nLv: (FT.lv || []).length,
              nEv: (FT.evs || []).length, nDim: (FT.dims || []).length };
 });
@@ -122,6 +133,32 @@ if (!r.no) {
     ck(r.factsNext, 'ⓛ5 _reportFacts 沒把「接下來怎麼看」那三行**逐字**餵給 AI → 留空位它就會自己填');
     ck(r.factsTheme, 'ⓝ _reportFacts 沒有「題材標籤」那一格 → 上櫃股會一直印「未分類」');
     ck(r.evRev, 'ⓜ 本站自己畫的圖事件段少了「月營收」(提示詞那邊有,兩張圖對不起來)');
+    // ── V76.3.8 ──
+    ck(r.promptHas.every(Boolean), `ⓟ 做圖提示詞沒把 _RP_STYLE 的每一個 hex 寫給 AI(${r.promptHas.map(Number).join('')})→ 兩張圖配色會各自一套`);
+    ck(r.cardGap.length >= 6, `ⓤ0 只記到 ${r.cardGap.length} 張卡 → 這一條不算數`);
+    for (const c of r.cardGap) ck(c.gap >= 30, `ⓤ 卡片「${c.t}」第一列跟標題基線只差 ${c.gap}px → 疊字(V76.3.8 第一版就這樣)`);
+    ck(r.bars.length >= 3, `ⓢ0 五個面向只記到 ${r.bars.length} 條 → 這一條不算數`);
+    for (const b of r.bars) {
+        const p = b.p, isRed = p.r > 150 && p.r > p.gg + 40, isGreen = p.gg > 150 && p.gg > p.r + 40, isSky = p.b > 150 && p.b > p.r + 40, isAmber = p.r > 180 && p.gg > 100 && p.b < p.gg - 50;   // amber-200/400/600 三階都要收,紅(#f87171)不可誤收
+        if (b.kind === 'dir') ck((b.score >= 58 && isRed) || (b.score <= 42 && isGreen) || (b.score > 42 && b.score < 58), `ⓢ 方向類「${b.name}」${b.score} 分的量條不是紅/綠(${JSON.stringify(p)})`);
+        else if (b.kind === 'risk') ck(isAmber, `ⓢ 風險類「${b.name}」的量條不是琥珀(${JSON.stringify(p)})→ 燈號鐵則:安全/危險⛔ 不用紅綠`);
+        else ck(isSky, `ⓢ 位置類「${b.name}」的量條不是天藍(${JSON.stringify(p)})`);
+    }
+    ck(r.valOk, 'ⓣ 估值對照價位沒有由小到大、或沒把現價插進去');
+}
+// ── ⓠ 顏色一律走 _RP_STYLE(⛔ 畫圖程式裡不可寫死 hex);ⓣ2 產業四格只有一份 ──
+ck(!/'#[0-9a-fA-F]{3,6}'/.test(fn), 'ⓠ _rpDrawOwn 裡寫死了 hex 顏色 → 跟提示詞那份會分歧,一律讀 _RP_STYLE');
+{
+    const fa = code.slice(code.indexOf('_reportFacts(sym) {'), code.indexOf('_reportPrompt(sym) {'));
+    const fo = code.slice(code.indexOf('_rpOwnFacts(sym) {'), code.indexOf('_rpDrawOwn(sym) {'));
+    ck(/_rpIndustryFacts\(/.test(fa) && /_rpIndustryFacts\(/.test(fo), 'ⓣ2 產業四格(產業別/題材/名次/AI 鏈)沒有走同一份 _rpIndustryFacts → 兩張圖會各講各的');
+}
+// ── ⓡ 桌機海報限寬(畫布字級不吃 App 字級設定;使用者:「筆電的字體太大」) ──
+{
+    const i0 = SRC.indexOf('@media (min-width: 1024px)');
+    const blk = SRC.slice(i0, SRC.indexOf('@media', i0 + 10));
+    ck(i0 > 0 && /\.rp-poster\s*\{[^}]*max-width:\s*6\d\dpx/.test(blk), 'ⓡ 桌機那個 @media 區塊裡沒有 .rp-poster 限寬 → 筆電上整張圖放大兩倍');
+    ck(/id="rpOwnCv" class="rp-poster"/.test(SRC) && /alt="短評報告" class="rp-poster"/.test(SRC), 'ⓡ2 兩張海報(canvas / 外部 AI 圖)沒有都掛 rp-poster → 一張限寬一張沒有,兩張又對不起來');
 }
 // ── ⓞ 畫圖那一段要有 ⑧ 接下來怎麼看;提示詞補的三條 ──
 ck(/接下來怎麼看/.test(fn), 'ⓞ 本站自己畫的圖沒有「接下來怎麼看」那一段(骨架跟提示詞對不起來)');
@@ -141,7 +178,8 @@ ck(/沒有經過 AI|不是 AI 畫的/.test(fn + SRC), 'ⓕ2 沒有講清楚「�
 //   V76.3.4 第一版就是這樣錯的:季線 +28.2% 塗紅、年線 −23.5% 塗綠 → 讀起來像「季線漲了 28%」。
 //   ⭐ 燈號鐵則:紅綠只准表示漲跌方向。位置一律灰 + ▲/▼。
 {
-    const seg = fn.slice(fn.indexOf('關鍵價位'), fn.indexOf('五個面向'));
+    // V76.3.8 起關鍵價位每一列由 rowLv 畫(定義在 run() 之前)→ 切片從 rowLv 開始到五個面向為止
+    const seg = fn.slice(fn.indexOf('const rowLv'), fn.indexOf('五個面向'));
     ck(seg.length > 200, 'ⓖ0 切不到關鍵價位那一段 → 這一條不算數');
     ck(/▲|▼/.test(seg), 'ⓖ 關鍵價位沒有用 ▲/▼ 表示在現價上面還是下面');
     ck(!/\bUP\b|\bDN\b/.test(seg), 'ⓖ2 關鍵價位那一段用到了紅(UP)/綠(DN)—— ⛔ 那是漲跌的顏色,距現價 % 是位置(燈號鐵則)');
