@@ -30,6 +30,13 @@
    ・對照組樣本 < 200 → 不下結論
    ・報酬一律**扣當沖來回成本 0.25%**(手續費打折×2 + 當沖稅減半),⛔ 毛利不可拿來下結論
 
+🗣️ V77.0.1 追加:使用者貼的 12 條盤中口訣裡,**非分 K 不可**的那三條
+   ⑦ 下午大漲不追 / 下午大跌次日買 ・⑧ 早上大跌等 10 分鐘看站不站得回開盤價 ・
+   ⑨ 第一根 5 分 K 上影線太長絕對不追。判定抽成純函式 `maxim_signals()`,
+   `--selftest ④` 用 10 條情境驗它(含「不該觸發的不可觸發」),⭐ 沙箱裡唯一驗得到的那一段。
+   ⚠️ ⑧ 口訣原句講的是「**不割**」(持有者的事),這裡測「買」是**代理**,⛔ 不等於原句。
+   ⛔ 那三條**不吃** NO_ENTRY_AFTER(12:30)那道閘門 —— 口訣講的就是下午(selftest ④b 釘住)。
+
 ⚠️ 已知限制(⛔ 不可省略):Shioaji kbars 只回溯約 81~120 天 → 窗口單一、**逐年檢定做不了**;
    而且 ORB 那次(orb_probe)用同樣的資料測過,扣成本後全部是虧的。
 """
@@ -164,6 +171,52 @@ def simulate(b5, ei, side, vwap5, stop0, e5=None, day=None):
     return None
 
 
+# ═══════════ 🗣️ 盤中口訣的三個分 K 變體(V77.0.1)═══════════
+#  使用者貼的 12 條口訣裡,有 3 條**日 K 量不到、非分 K 不可**:
+#    ⑦ ②a「下午大漲不追 / 下午大跌次日買」—— 需要「現在幾點」
+#    ⑧ ③a「早上大跌不割,等 10 分鐘看站不站得回開盤價」—— 需要 09:10 那個時點
+#    ⑨ 檢②「第一根 5 分 K 上影線太長絕對不追」—— 需要 09:00~09:05 那一根
+#  ⚠️⚠️ **跑之前先讀這段**:Shioaji kbars 只回溯 81~120 天 → 窗口單一、**逐年檢定做不了**,
+#     六關裡的③④天生過不了 → 這三條的結論**只能當方向參考,⛔ 不可據以做提醒**
+#     (V76.1.7 的 `_alertWorthIt` 鐵則:查不到成績的一律擋)。
+#  ⭐ 抽成純函式是刻意的:沙箱連不到 Shioaji,只有這樣 `--selftest` 才驗得到判定本身。
+MAXIM_AFTERNOON = 12 * 60    # ⛔ 這三條**不吃** NO_ENTRY_AFTER(12:30)—— 口訣講的就是下午
+MAXIM_GAP_DN = -2.0          # 「早上大跌」的門檻(開盤相對昨收 %)
+MAXIM_RUSH = 3.0             # 「大漲/大跌」的門檻(現價相對昨收 %)
+MAXIM_SHADOW = 0.5           # 上影線佔全幅多少算「太長」
+
+
+def maxim_signals(st):
+    """回傳這一根該觸發哪些口訣變體 → [(名稱, 方向)]。
+    st 需要:hm(現在,分)・t0(當天第一根的分)・pc(昨收)・op(今開)・c(現價)
+             ・sh5(第一根 5 分 K 的上影佔全幅)・back10(09:10 有沒有站回開盤價)
+    ⛔ 全部只用「此刻之前就知道」的東西(零前視);⛔ 不看未來任何一根。"""
+    out = []
+    hm, t0, pc, op, c = st['hm'], st['t0'], st['pc'], st['op'], st['c']
+    if not (pc and pc > 0 and op and op > 0):
+        return out
+    gap0 = (op / pc - 1) * 100          # 開盤跳空 %
+    chg = (c / pc - 1) * 100            # 此刻相對昨收 %
+    # ⑨ 第一根 5 分 K 的上影線(進場點 = 那根收完的下一根)
+    if hm == t0 + 5 and st.get('sh5') is not None:
+        if st['sh5'] >= MAXIM_SHADOW:
+            out.append(('⑨ 第一根5分K長上影後仍追(口訣說絕對不追)', 'long'))
+        elif st['sh5'] <= 0.2:
+            out.append(('⑨b 對照:第一根5分K沒上影後追', 'long'))
+    # ⑧ 早上大跌,10 分鐘後站不站得回開盤價
+    #   ⚠️ 口訣講的是「不割」(持有者的事);這裡測「買」是**代理**,⛔ 不等於原句
+    if hm == t0 + 10 and gap0 <= MAXIM_GAP_DN and st.get('back10') is not None:
+        out.append(('⑧ 開盤大跌·10分內站回開盤價' if st['back10']
+                    else '⑧b 開盤大跌·10分沒站回', 'long'))
+    # ⑦ 下午急漲/急跌(口訣:下午大漲不追、下午大跌次日買)
+    if hm >= MAXIM_AFTERNOON:
+        if chg >= MAXIM_RUSH:
+            out.append(('⑦ 下午急漲(≥+3%)後追(口訣說不要追)', 'long'))
+        elif chg <= -MAXIM_RUSH:
+            out.append(('⑦b 下午急跌(≤-3%)後接', 'long'))
+    return out
+
+
 def hist_update(hist, b1):
     for b in b1:
         hist.setdefault(_hm(b['t']), []).append(b['v'])
@@ -266,11 +319,52 @@ def selftest():
     else:
         _line(f'✅ selftest③ 注入訊號抓到 {len(got)} 筆 ・平均毛利 {sum(got) / len(got):+.2f}%')
 
+    # ④ 🗣️ 口訣變體的判定(⭐ 純函式,沙箱裡唯一驗得到的那一段)
+    T0 = 540      # 09:00
+    cases = [
+        # (情境, st, 應該出現的名稱片段, 不應該出現的片段)
+        ('長上影後追', dict(hm=T0 + 5, t0=T0, pc=100, op=100, c=101, sh5=0.7, back10=None), '長上影', '沒上影'),
+        ('沒上影對照', dict(hm=T0 + 5, t0=T0, pc=100, op=100, c=101, sh5=0.1, back10=None), '沒上影', '長上影'),
+        ('上影中間值不觸發', dict(hm=T0 + 5, t0=T0, pc=100, op=100, c=101, sh5=0.35, back10=None), None, '⑨'),
+        ('開盤大跌+站回', dict(hm=T0 + 10, t0=T0, pc=100, op=97, c=97.5, sh5=None, back10=True), '站回開盤價', '沒站回'),
+        ('開盤大跌+沒站回', dict(hm=T0 + 10, t0=T0, pc=100, op=97, c=96, sh5=None, back10=False), '沒站回', '站回開盤價'),
+        ('開盤沒大跌 → ⛔ 不觸發', dict(hm=T0 + 10, t0=T0, pc=100, op=99.5, c=99, sh5=None, back10=False), None, '⑧'),
+        ('下午急漲', dict(hm=12 * 60 + 5, t0=T0, pc=100, op=100, c=104, sh5=None, back10=None), '下午急漲', '急跌'),
+        ('下午急跌', dict(hm=12 * 60 + 5, t0=T0, pc=100, op=100, c=96, sh5=None, back10=None), '下午急跌', '急漲'),
+        ('上午急漲 → ⛔ 不是「下午」', dict(hm=10 * 60, t0=T0, pc=100, op=100, c=104, sh5=None, back10=None), None, '⑦'),
+        ('沒有昨收 → ⛔ 什麼都不觸發', dict(hm=12 * 60 + 5, t0=T0, pc=None, op=100, c=104, sh5=None, back10=None), None, ''),
+    ]
+    bad4 = 0
+    for label, st, want, avoid in cases:
+        names = ' | '.join(n for n, _ in maxim_signals(st))
+        hit = (want is None) or (want in names)
+        miss = (not avoid) and names == '' or (avoid and avoid not in names)
+        if not (hit and miss):
+            _line(f'❌ selftest④ {label}:得到「{names or "(空)"}」'); bad4 += 1; ok = False
+    if not bad4:
+        _line(f'✅ selftest④ 口訣三變體的判定 {len(cases)} 條全過(含「不該觸發的不可觸發」)')
+    # ④b ⛔ 這三條**不可以**吃 NO_ENTRY_AFTER(12:30)那道閘門 —— 口訣講的就是下午
+    if MAXIM_AFTERNOON >= NO_ENTRY_AFTER[0] * 60 + NO_ENTRY_AFTER[1]:
+        _line('❌ selftest④b 下午變體的時間門比 NO_ENTRY_AFTER 還晚 → 它永遠不會觸發'); ok = False
+    else:
+        _line('✅ selftest④b 下午變體有自己的時間門(⛔ 不吃 12:30 那道)')
+
     _line('✅ SELFTEST_PASS' if ok else '❌ SELFTEST_FAIL')
     return 0 if ok else 1
 
 
 def main():
+    # 🚨🚨 這面旗子**一定要印在最上面**(⛔ 不可只寫在 docstring —— 看 log 的人不會回去讀原始碼):
+    #   Shioaji kbars 只回溯 81~120 天 → 窗口單一、**逐年檢定與「去最好年」天生做不了**
+    #   → 這支印出來的任何數字都**只能當方向參考**,⛔ 不可據以做盤中提醒
+    #     (V76.1.7 `_alertWorthIt` 鐵則:查不到成績的一律擋)。
+    #   ⚠️ 而且分 K **一根都沒有被存下來** → 每次重跑窗口都往後滑,**兩次結果不會一樣**。
+    _line('=' * 72)
+    _line('⚠️ 窗口限制:Shioaji kbars 只回溯 81~120 天 → ⛔ 逐年檢定 / 去最好年這兩關做不了。')
+    _line('⚠️ 分 K 沒有落地存檔 → 每次重跑窗口都往後滑,**兩次跑出來不會一樣**。')
+    _line('⛔ 所以:這裡的數字只能當**方向參考**,⛔ 不可拿來做盤中提醒或接進 App。')
+    _line(f'⚠️ 當沖來回成本一律扣 {COST_PCT}%;⛔ 毛利為正不代表賺得到(orb_probe 就是這樣死的)。')
+    _line('=' * 72)
     key = os.environ.get('SHIOAJI_API_KEY', '').strip()
     sec = os.environ.get('SHIOAJI_SECRET_KEY', '').strip()
     res = {'ok': False, 'rows': [], 'note': ''}
@@ -331,6 +425,7 @@ def main():
 
         # ── 第 1 輪:每天各自算 RVOL / VWAP / ORB(⛔ 都只用當天到目前為止 + 之前的天)──
         hist, perday = {}, {}
+        prev_close = None          # 🗣️ 口訣變體要用的「昨收」(第一天沒有 → 那天不觸發,刻意)
         for d in sorted(by_day):
             b1 = sorted(by_day[d], key=lambda x: x['t'])
             if len(b1) < 60:
@@ -357,7 +452,19 @@ def main():
             orh = max(b['h'] for b in orb); orl = min(b['l'] for b in orb)
             if not (orh > orl > 0):
                 continue
-            perday[d] = {'b1': b1, 'rv': rv, 'vw': vwap1, 't0': t0, 'orh': orh, 'orl': orl}
+            # 🗣️ 口訣變體要用的當日純量(⛔ 全部只用當天到該時點為止 + 前一天收盤 = 零前視)
+            op0 = b1[0]['o']
+            five = [b for b in b1 if t0 <= _hm(b['t']) < t0 + 5]
+            sh5 = None
+            if five:
+                fh = max(b['h'] for b in five); fl = min(b['l'] for b in five)
+                fo, fc = five[0]['o'], five[-1]['c']
+                sh5 = (fh - max(fo, fc)) / (fh - fl) if fh > fl else 0.0
+            b10 = [b for b in b1 if _hm(b['t']) <= t0 + 10]
+            back10 = (b10[-1]['c'] >= op0) if b10 else None
+            perday[d] = {'b1': b1, 'rv': rv, 'vw': vwap1, 't0': t0, 'orh': orh, 'orl': orl,
+                         'pc': prev_close, 'op': op0, 'sh5': sh5, 'back10': back10}
+            prev_close = b1[-1]['c']          # ⭐ 給**下一個**交易日當昨收(⛔ 不是今天自己的)
 
         if not perday:
             _line(f'[{sym}] ⚠️ 沒有可用交易日'); continue
@@ -433,6 +540,25 @@ def main():
                     once('⑤c 🚨 做空版:跌破ORB低+價<VWAP+RVOL≥2', 'short')
                 if sq_fire and rvol is not None and rvol >= RVOL_HI:
                     once('⑥ 🚨 終極訊號:TTM發射+RVOL≥2', 'long' if (mom[i] or 0) > 0 else 'short')
+
+            # ── 🗣️ 口訣變體(⛔ 只在 5 分 K 跑:⑧⑨ 綁 09:05 / 09:10 這兩個時點,
+            #    15/60 分 K 上根本沒有那兩根 → 在別的週期跑會變成「沉默不觸發」= 看起來像沒差別)
+            if P == 5:
+                for i in range(1, len(bars)):
+                    d = bars[i].get('day'); pd = perday.get(d)
+                    if not pd or bars[i - 1].get('day') != d:
+                        continue
+                    hm = _hm(bars[i]['t'])
+                    vw = pd['vw'].get(hm) or pd['vw'].get(hm - 1) or bars[i]['c']
+                    sigs = maxim_signals({'hm': hm, 't0': pd['t0'], 'pc': pd['pc'], 'op': pd['op'],
+                                          'c': bars[i]['c'], 'sh5': pd['sh5'], 'back10': pd['back10']})
+                    for name, side in sigs:
+                        k = f'[口訣] {name}'
+                        if (d, k) in fired:
+                            continue
+                        fired.add((d, k))
+                        put(k, simulate(bars, i, side, vw,
+                                        min(bars[i]['l'], vw) if side == 'long' else max(bars[i]['h'], vw), e5, d))
 
             # ⭐ 對照組:同樣的出場規則,但進場時間**固定挑幾個**(⛔ 不看任何訊號)
             for d in sorted(perday):

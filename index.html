@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.0.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -849,7 +849,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8446,10 +8446,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.0.0',
+    _APP_VERSION: 'V77.0.1',
     _CHANGELOG: [
+        { v: 'V77.0.1', d: ['🗣️ <b>你貼的 12 條盤中口訣,我一條一條查過了</b> —— 其中 <b>6 條本站早就測過,全部沒用</b>(開盤跳水就買、早盤急拉是假的、下午大跌次日買、量增價不漲、9:15 帶量突破…),⛔ 不用再測一次。','✅ <b>唯一站得住的是「不漲不跌就睡覺」</b>:盤整那一桶的邊際 +0.007 = 跟丟銅板一樣,而「橫盤<b>突破</b>」還是 −0.52 → <b>不交易比等突破更對</b>。','🏦 <b>「先看前一天籌碼軌跡」是唯一過關的一條</b>(1,754 檔・含 2022 空頭實測):昨天三大法人買超佔量比是它自己歷史最極端那 0.5% → 之後 10 天比其他股票好 <b>+0.65%</b>,六道關卡全過。⚠️ 但那一桶<b>自己還是輸大盤 0.48%</b> → 它只能拿來<b>排序</b>(在你已經要挑的幾檔裡優先挑它),⛔ <b>不是「看到就買」</b>。','⛔ <b>這一版一個提醒都沒有新增</b> —— 照你定的「不準就不用提醒」,沒過門檻的一律不主動推。','🐛 順手修:本益比拿不到的時候,報告頁的估值表會印成「現在(PE <b>0.0</b> 倍)」—— 現在改成「—」。'] },
         { v: 'V77.0.0', d: [
-            '🧱 <b>整個 App 都拿掉卡片外框了</b>(你說「整個系統比照無框邏輯製作」)—— 現在每一段是「標題 + 一條細分隔線」,<b>資料一個字都沒刪</b>,但每一行左右各多出 13~26px。含產業作戰室(pro.html)。',
+            '🧱 <b>整個 App 都拿掉卡片外框了</b>(你說「整個系統比照無框邏輯製作」)—— 現在每一段是「標題 + 一條細分隔線」,<b>資料一個字都沒刪</b>,但每一行左右各多出 13~26px。產業作戰室也一樣。',
             '🔒 <b>框在講事情的全部留著</b>:⚠️ 警示用的左邊色條、按鈕、可以打字的框、量條底槽、一格一個數字的格子。判準就一句話:<b>框如果在講事情就留,只是把東西圍起來的就拿掉</b>。',
             '⭐ 先量過才動手:靜態看有 349 處框,<b>實際跑起來只有 111 個看得見</b>(其餘是條件式卡片)——所以做成「一條規則管全部」而不是逐一改,不然那些卡一被觸發又是有框的。',
             '📏 順手修掉價格位置圖最左邊那個標記會凸出去 1px。',
@@ -22804,7 +22805,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             </div>`;
         }).join('');
         return `<div class="text-[10px] text-gray-500 mb-1">如果市場給它這個評價 → 對應股價</div>
-            <div class="border-b border-[#30363d] bg-[#0d1117] px-1 rounded" style="display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;padding-top:6px;padding-bottom:6px"><div class="text-[10px] text-gray-100">📍 <b>現在</b>(PE ${Number.isFinite(+pe) ? f1(pe) : '—'}x)</div><div class="text-right font-mono text-[11px] text-gray-100"><b>${f1(cur)}</b> 元</div></div>
+            <div class="border-b border-[#30363d] bg-[#0d1117] px-1 rounded" style="display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;padding-top:6px;padding-bottom:6px"><div class="text-[10px] text-gray-100">📍 <b>現在</b>(PE ${+pe > 0 ? f1(pe) : '—'}x)</div><div class="text-right font-mono text-[11px] text-gray-100"><b>${f1(cur)}</b> 元</div></div>
             ${body}
             <div class="text-[10px] text-amber-300/90 leading-snug mt-2">⛔ <b>這不是目標價,也不是預測</b> —— 只是把「同樣的獲利、乘上它自己過去被給過的本益比」算出來。獲利變了、產業變了,市場就不會再給同一個 PE;循環股尤其危險。</div>`;
     },
