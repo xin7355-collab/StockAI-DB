@@ -218,11 +218,24 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV, PBE }) => {
       ...Array.from({ length: 6 }, (_, i) => mk('I' + i, { ind: '航運', chg20: 4 })),
       ...Array.from({ length: 6 }, (_, i) => mk('J' + i, { ind: '食品', chg20: -9 })),
     ] };
+    // 🎯 V76.3.0 拋竿改吃**決策台名單**(playbook_edge)→ 測資要一起給,⛔ 只給 rows 會挑不出東西
+    //    ⚠️ 每一筆都要 hq:1 且 bear:0,否則 `_recoPicks` 在守門之前就先濾掉 = 那三道守門測不到
+    PRO._RECO_PICKS = 6;                                   // 測試要看到全部守門標註(正式是 2)
+    PRO._pbJ = { picks: [
+      { s: 'AAAA', hq: 1, bear: 0, lb: 9.9, k: '💪 發動棒破昨高', w: 70, n: 20, exp: 3.1, trig: 105, stop: 95 },
+      { s: 'KKKK', hq: 1, bear: 0, lb: 9.0, k: '🕯️ 站上長黑K壓力', w: 65, n: 15, exp: 2.5, trig: 101, stop: 94 },
+      { s: 'EEEE', hq: 1, bear: 0, lb: 8.0, k: '💪 發動棒破昨高', w: 60, n: 12, exp: 2.0, trig: 102, stop: 93 },
+      { s: 'DDDD', hq: 1, bear: 0, lb: 7.0, k: '🎯 回後買上漲',   w: 58, n: 11, exp: 1.5, trig: 103, stop: 92 },
+      { s: 'CCCC', hq: 1, bear: 0, lb: 6.0, k: '💪 發動棒破昨高', w: 55, n: 10, exp: 1.2, trig: 104, stop: 91 },
+      { s: 'BBBB', hq: 0, bear: 0, lb: 99,  k: '(🧬 沒過關)',      w: 99, n: 99, exp: 9.9, trig: 106, stop: 90 },
+      { s: 'ZZZZ', hq: 1, bear: 1, lb: 98,  k: '(空頭旗標)',       w: 98, n: 98, exp: 9.8, trig: 107, stop: 89 },
+    ] };
     const R2 = PRO._castPick(PRO._fishD);
     out.cast = {
       picked: R2.picked.map(x => x.sym), tiers: R2.picked.map(x => x.tier),
       inds: R2.picked.map(x => x.ind), avoided: R2.avoided, thin: R2.thin,
-      disposed: R2.disposed, top3: R2.top3.map(x => x.k),
+      disposed: R2.disposed, warns: R2.picked.map(x => (x.warn || []).join('+')), warnN: R2.warnN,
+      auto: (R2.picked.find(x => !(x.warn || []).length) || R2.picked[0] || {}).sym,
     };
     // 🚨 處置中被擋掉之後要**說出來**(⛔ 不可靜默 —— 陷阱 #22)。
     //    ⚠️ 它跟「避雷擋掉幾檔」一樣屬於**證據**(V74.4.3 那條分界線:拿掉不會害人)
@@ -243,6 +256,9 @@ const R = await page.evaluate(async ({ SCR, COR, EDGE, DIV, PBE }) => {
     PRO.closeModal();
     out.modalClosed = _md.classList.contains('hidden') && _md.innerHTML === '' && document.body.style.overflow !== 'hidden';
     // 自己點的(不是拋竿挑的)→ 視窗要誠實說沒有那份理由
+    // ⚠️ 警示是**逐檔**的 → 另外開一次「處置中那一檔」的視窗(⛔ 不可拿 AAAA 的視窗去驗 KKKK 的警示)
+    PRO._fishPickSym = 'KKKK'; PRO._castWhyOpen(); await sleep(20);
+    out.modalDispTxt = _md.innerText; PRO.closeModal();
     PRO._cast = null; PRO._fishPickSym = 'AAAA'; PRO._castWhyOpen(); await sleep(20);
     out.modalManual = _md.innerText; PRO.closeModal();
     PRO._cast = R2;
@@ -680,21 +696,32 @@ ok('💰③a 空過守門:免責句真的在(剝掉前找得到、剝掉後找�
 ok('💰③b 非同步回來要驗還是同一檔(陷阱 #19)', /_fishPickSym === sym/.test(seg('_fishPick')));
 ok('💰③c 殖利率分母是現價、分子只算現金(排除「權」)', /x\[2\] !== '權'/.test(seg('_divInfo')) && /y12 \/ px/.test(seg('_divInfo')));
 // ═══ 🎣 拋竿(V74.4.0)═══
-ok('🎣① 一天最多 2 條(V73.0.0:27 種變體裡唯一沒有任何一項變差的)', R.cast.picked.length === 2, JSON.stringify(R.cast));
-ok('🎣② 同一個板塊只挑 1 條(⛔ 不可兩條都押同一族)', new Set(R.cast.inds).size === R.cast.inds.length, JSON.stringify(R.cast.inds));
-ok('🎣③ 🚧 買不到的要擋掉(成交額 0.2 億)', !R.cast.picked.includes('DDDD') && R.cast.thin >= 1, `thin=${R.cast.thin}`);
-ok('🎣④ ⚠️ 避雷守門:噴 ≥30% 又掛官方注意股的要擋掉(另一條六關全過的實測 −1.81pp)',
-   !R.cast.picked.includes('EEEE') && R.cast.avoided.includes('EEEE'), JSON.stringify(R.cast.avoided));
-ok('🎣⑤ 🧬 位階/振幅不過的不上鉤(它是必要條件不是加分)',
-   !R.cast.picked.includes('FFFF') && !R.cast.picked.includes('GGGG'));
-ok('🎣⑥ 挑的是「強勢板塊裡近 20 日最強」那一檔(⛔ 不是補漲:實測逐年全負)', R.cast.picked[0] === 'AAAA', JSON.stringify(R.cast.picked));
-ok('🚨🎣⑨ 處置中的股票⛔ 不可被拋竿挑出來(使用者截圖:玉晶光處置中卻被推薦)',
-   !R.cast.picked.includes('KKKK'), JSON.stringify(R.cast.picked));
+ok('🎣① 名單就是決策台那份(⛔ 一檔都不多不少 —— 動了名單就量不到決策台的成績)',
+   R.cast.picked.length === 5 && !R.cast.picked.includes('BBBB') && !R.cast.picked.includes('ZZZZ'), JSON.stringify(R.cast.picked));
+ok('🎣①b ⭐ 🧬 沒過關(hq=0)與大盤空頭(bear=1)的⛔ 不可進來 —— 那是決策台自己的門檻',
+   !R.cast.picked.includes('BBBB') && !R.cast.picked.includes('ZZZZ'), JSON.stringify(R.cast.picked));
+ok('🎣② ⭐ 挑法只有一份:`_castPick` 必須走 `_recoPicks`(⛔ 不可自己再寫一套排序/篩選)',
+   /_recoPicks\(/.test(seg('_castPick')) && !/pos252\s*>=|amp20\s*>=|top3/.test(seg('_castPick')), seg('_castPick').slice(0, 200));
+ok('🎣③ 🚧 買不到的要**標出來**(成交額 0.2 億;⛔ 不刪名單 —— 刪了就不是決策台的成績)',
+   R.cast.thin >= 1 && R.cast.warns[R.cast.picked.indexOf('DDDD')] === 'thin', `thin=${R.cast.thin} warns=${JSON.stringify(R.cast.warns)}`);
+ok('🎣④ ⚠️ 避雷:噴 ≥30% 又掛官方注意股的要**標出來**(另一條六關全過的實測 −1.81pp)',
+   R.cast.avoided.includes('EEEE') && R.cast.warns[R.cast.picked.indexOf('EEEE')] === 'hot', JSON.stringify(R.cast.warns));
+ok('🎣⑤ 🧬 沒過關的不上鉤(它是必要條件不是加分;⭐ 現在由決策台的 hq 旗標決定)',
+   !R.cast.picked.includes('FFFF') && !R.cast.picked.includes('GGGG') && !R.cast.picked.includes('BBBB'));
+ok('🎣⑥ 排序用**保守下界 lb**(⛔ 不排原始期望值 —— 那會挑到僥倖股)', R.cast.picked[0] === 'AAAA', JSON.stringify(R.cast.picked));
+ok('🎣⑥b ⭐ 自動展開的那一條要**跳過被標警示的**(⛔ 但它仍在名單裡)',
+   R.cast.auto === 'AAAA' && R.cast.picked.includes('KKKK'), `auto=${R.cast.auto}`);
+ok('🚨🎣⑨ 處置中的股票⛔ 不可被**自動選取**(使用者截圖:玉晶光處置中卻被推薦)',
+   R.cast.auto !== 'KKKK', `auto=${R.cast.auto}`);
 ok('🚨🎣⑨b 它要被列進 disposed(⛔ 不是靜默丟掉)', (R.cast.disposed || []).includes('KKKK'), JSON.stringify(R.cast.disposed));
-ok('🚨🎣⑨c 卡上要說出「排除幾檔處置中」+ 為什麼(分盤撮合買不到 + 中位是負的)',
-   /排除 1 檔/.test(R.modalTxt.replace(/\s+/g, ' ')) && /分盤撮合/.test(R.modalTxt) && /4\.81/.test(R.modalTxt),
-   R.modalTxt.replace(/\s+/g, ' ').slice(0, 260));
-ok('🚨🎣⑨d ⛔ 那段要寫明「這是排除不是放空訊號」', /不是放空訊號/.test(R.modalTxt));
+// ⚠️ 警示改成**逐檔**顯示 → 要開「處置中那一檔」的視窗才看得到(⛔ 開別檔的視窗當然沒有 = 假失敗)
+ok('🚨🎣⑨c 那一檔的視窗要說出為什麼(分盤撮合買不到 + 中位是負的)',
+   /處置中/.test(R.modalDispTxt) && /分盤撮合/.test(R.modalDispTxt) && /4\.81/.test(R.modalDispTxt),
+   R.modalDispTxt.replace(/\s+/g, ' ').slice(0, 240));
+ok('🚨🎣⑨d ⛔ 那段要寫明「這是排除不是放空訊號」', /不是放空訊號/.test(R.modalDispTxt));
+ok('🚨🎣⑨d2 ⭐ 要講清楚「為什麼有警示還留在名單裡」(⛔ 動名單就量不到決策台的成績)',
+   /決策台本身沒有這三道守門/.test(R.modalDispTxt) && /不是決策台的成績/.test(R.modalDispTxt),
+   R.modalDispTxt.replace(/\s+/g, ' ').slice(0, 200));
 ok('🚨🎣⑨e 🚧 空過守門:注意股那條避雷仍然有效(⛔ 別把它一起弄壞)',
    (R.cast.avoided || []).includes('EEEE'), JSON.stringify(R.cast.avoided));
 ok('🚨🎣⑨f ⛔ `att` 不可再用 `=== 1` 讀(那會把處置中讀成 false)',
@@ -704,21 +731,28 @@ ok('🎣⑧ ⛔ 挑選規則不可用 🏅 加總排序(它的 IC≈0,已被自�
    !/sc\.sum/.test(seg('_castPick')) && !/sort\s*===\s*'score'/.test(seg('_castPick')));
 // 🚨 V74.4.2:組合回測跑完是**負的** → 這條免責是這張卡最重要的東西,⛔ 不可拿掉也不可收進摺疊
 // ⚠️ V74.4.4 使用者明示把這段搬進懸浮視窗 → 交換條件是「開視窗那顆按鈕必須帶 🚨 且永遠看得到」
-ok('🎣⑧b 「合起來回測量不出優勢」與那兩個負數必須在視窗裡',
-   /合起來/.test(seg('_castWhyFull')) && /−0\.52pp/.test(seg('_castWhyFull')) && /−1\.44pp/.test(seg('_castWhyFull'))
-   && /不是一個回測過的策略/.test(seg('_castWhyFull')) && /cast_probe/.test(seg('_castWhyFull'))
-   && /−0\.52pp/.test(R.modalTxt) && /−1\.44pp/.test(R.modalTxt));
+// 🎯 V76.3.0 換成決策台選股 → ⛔ 舊漏斗那兩個負數不再適用(拿它們當免責等於貼錯成績單);
+//    改成釘**新來源的成績與代價**:數字一律從 `_DECK_TRACK49` 帶入,⛔ 不可寫死在文案裡。
+ok('🎣⑧b 視窗要寫出**這一套**的實測成績 + 對照 0050 + 回撤 + 勝率只有 3 成',
+   /_DECK_TRACK49/.test(seg('_castWhyFull')) && /0050/.test(R.modalTxt)
+   && /30~33%/.test(R.modalTxt) && /中途最多賠/.test(R.modalTxt) && /cast_probe/.test(seg('_castWhyFull')),
+   R.modalTxt.replace(/\s+/g, ' ').slice(-260));
+ok('🎣⑧b2 ⛔ 舊漏斗那兩個負數不可再當成這一套的成績(−0.52pp / −1.44pp 只能出現在「已換掉」的說明裡)',
+   !/相對「強勢板塊裡隨便挑一檔」/.test(seg('_castWhyFull')), seg('_castWhyFull').slice(0, 120));
 ok('🎣⑧c 🚨 開視窗那顆按鈕要帶警示、⛔ 不可收進摺疊(否則那個負數等於消失了)',
    R.whyBtn.on && /🚨/.test(R.whyBtn.txt) && !R.whyBtn.inFold, JSON.stringify(R.whyBtn));
-ok('🎣⑨ 「為什麼釣到它」(懸浮視窗裡)要寫出每一層的實測數字 + ⛔ 不是買進訊號',
-   /\+289\.6/.test(seg('_castWhyFull')) && /\+1\.44pp/.test(seg('_castWhyFull')) && /\+0\.90/.test(seg('_castWhyFull'))
-   && /不是買進訊號/.test(seg('_castWhyFull')) && /散戶救星/.test(seg('_castWhyFull')));
+ok('🎣⑨ 「為什麼是它」要寫出那一招的勝率/次數/期望值/觸發價/停損 + ⛔ 不是買進訊號',
+   /勝率/.test(R.modalTxt) && /打過/.test(R.modalTxt) && /觸發價/.test(R.modalTxt) && /停損/.test(R.modalTxt)
+   && /不是買進訊號/.test(R.modalTxt) && /散戶救星/.test(R.modalTxt),
+   R.modalTxt.replace(/\s+/g, ' ').slice(0, 240));
+ok('🎣⑨b ⭐ 排序用「保守下界」要寫在畫面上(⛔ 排平均會挑到僥倖股)',
+   /下界/.test(R.modalTxt), R.modalTxt.replace(/\s+/g, ' ').slice(0, 200));
 // 📖 V74.4.3 使用者:「這是你點到的那一條的細節這個變成按鈕…用懸浮視窗方式呈現」
 ok('🎣⑩ 標題列那個「細節」已經是按鈕,而且真的接到 _castWhyOpen',
    /<button[^>]*id="fishWhyBtn"[^>]*PRO\._castWhyOpen\(\)/.test(src) && !/>這是你點到的那一條的細節</.test(src));
-ok('🎣⑩b 懸浮視窗打得開,而且完整理由(每一層的數字)真的在視窗裡',
-   R.modalOpen && /為什麼釣到它/.test(R.modalTxt) && /\+289\.6/.test(R.modalTxt) && /\+1\.44pp/.test(R.modalTxt),
-   (R.modalTxt || '').slice(0, 120));
+ok('🎣⑩b 懸浮視窗打得開,而且完整理由(那一招的數字 + 這一套的成績)真的在視窗裡',
+   R.modalOpen && /為什麼是它/.test(R.modalTxt) && /勝率/.test(R.modalTxt) && /實測成績/.test(R.modalTxt),
+   (R.modalTxt || '').slice(0, 140));
 ok('🎣⑩c 關掉要真的關掉(內容清空 + 背景可以捲回來)', R.modalClosed);
 ok('🎣⑩d 開著時背景⛔ 不可跟著捲', R.modalBodyLock);
 ok('🎣⑩e 自己點的(不是拋竿挑的)→ 視窗要誠實說沒有那份理由,⛔ 不可空白',

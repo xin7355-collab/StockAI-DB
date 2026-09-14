@@ -300,6 +300,27 @@ const cwp = fs.readFileSync(path.join(ROOT, 'scripts/check_workflow_paths.py'), 
 ok('⑨o 這條規則有納入 push 前四驗證(⛔ 光靠人記會忘)',
    /def check_no_trading_in_ci/.test(cwp) && /ok = check_no_trading_in_ci\(\) and ok/.test(cwp));
 
+// ─── ⛔ V76.3.0 決策台自己也要標處置股(使用者:「還有什麼可以更好」)───
+//   🚨 `_deckState` 實測就是「🧬 過關 + 非空頭」取前 2,**完全沒有**處置股守門,
+//      而 V74.5.6 使用者已明示「推薦處置中的股票不對」—— 釣魚池那邊當時修了、這裡漏接(陷阱 #37)。
+//   ⛔ 但**不刪名單**:刪了 📒 推薦成績單量到的就不是決策台真正的成績 → 只標註。
+{
+  const D = await page.evaluate(() => {
+    const A = app;
+    A.attentionStatus = { '9999': { interval: 5, end_date: '2026-09-20' } };
+    const mk = s => ({ s, c: 100, k: '💪 發動棒破昨高', w: 60, n: 12, exp: 2, lb: 1.5, trig: 105, stop: 95, hq: 1, bear: 0 });
+    const h1 = A._pbRowHtml(mk('9999'), new Set(), 1, 0);
+    const h2 = A._pbRowHtml(mk('8888'), new Set(), 2, 0);
+    return { disp: /⛔處置/.test(h1), clean: !/⛔處置/.test(h2),
+             why: /分盤撮合/.test(h1), notDeleted: /9999/.test(h1), keepNote: /名單刻意不刪/.test(h1) };
+  });
+  ok('⛔① 處置中的那一檔要標 ⛔處置(使用者 V74.5.6 明示:推薦處置股不對)', D.disp, JSON.stringify(D));
+  ok('⛔② 🚧 決定性對照:沒有處置的⛔ 不可被亂標', D.clean, JSON.stringify(D));
+  ok('⛔③ 要說出為什麼(分盤撮合 → 尾盤觸價那個價買不到)', D.why);
+  ok('⛔④ ⭐ 名單⛔ 不刪 —— 刪了推薦成績單量到的就不是決策台真正的成績,而且卡上要講明',
+     D.notDeleted && D.keepNote, JSON.stringify(D));
+}
+
 await browser.close();
 
 // ─── ⑩ 📊 歷史成績區(V73.2.7)——「要讓使用者有信心」但⛔ 不可只報好消息 ───

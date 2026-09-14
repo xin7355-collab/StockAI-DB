@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -746,7 +746,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.2.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8335,8 +8335,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.2.9',
+    _APP_VERSION: 'V76.3.0',
     _CHANGELOG: [
+        { v: 'V76.3.0', d: ['🎣 <b>釣魚池的「拋竿」整組換成決策台的選股</b>(你說的:既然沒用就換成決策台那套,要觀察到底有沒有用)。舊的三層漏斗實測<b>六關 0 過</b>,而且拆解顯示<b>少了板塊那兩關反而比較好</b> —— 已整組拿掉。現在釣到的魚 = 決策台「🎯 今天可以買的」那幾檔,<b>🧺 漁獲籃量到的就是決策台的成績</b>。',
+            '🚨 <b>而且刻意「不刪名單、只標警示」</b>:決策台本身<b>沒有</b>處置股/流動性/避雷那三道守門 —— 如果釣魚池先刪掉幾檔,你量到的就不是決策台真正的成績了。交換條件是:被標到的那幾條<b>不會被自動選取</b>,而且點開會用 ⛔ 寫清楚為什麼。',
+            '🏅 <b>券商榜可以自己排序了</b>(你說爾後這種都要有,不用再提醒):點「報酬 / 勝率 / 出手」任一個表頭就重排,<b>再點一次反向</b>,目前照哪一欄排看得到 ▼▲;換分類會回到那一類自己的預設。',
+            '📐 <b>券商榜版面改成專業 App 那種</b>:12 項變成<b>左邊窄窄的凍結欄</b>,右邊是緊湊表格 —— <b>一頁從只看得到 4 列變成 10 列以上</b>(列高 30px)。這條已寫成全站規則:以後密集資料表一律這樣做。',
+            '🔁 <b>「📖 完整報告展開會一直跳掉」修好了</b>。真因是每次重繪都把整張卡重建 → 展開的全部關回去、而且高度一變畫面就被推走。已經修在<b>唯一的那個入口</b>,報告頁所有卡片一起受益。⭐ 只記「<b>你自己點開的</b>」—— 「這一節有事所以自動展開」那條規則⛔ 不受影響。',
+            '🔢 <b>貼上的舊報告會提示編號對照</b>:你那份是舊的 22 節格式,而現行提示詞是 §1~§20 —— 舊 §21 觀察清單 → <b>§19</b>、舊 §22 → <b>§20 最後 200 字投資筆記</b>(買進理由/主要風險/失效條件/持有時間/3 個觀察指標)。⭐ 那兩件<b>提示詞早就有了</b>,是你手上那份的編號舊了,重產一次就對得上。',
+            '🐛 順手修一個自打嘴巴:「🏆 最強招式」還寫著「仍輸買 0050」,但同一個檔案早就記著<b>換出場之後變成贏</b>(49 個月 +590 萬 vs 0050 +264 萬)。已改成寫出兩個數字 + 代價(中途最多賠 −25%、要每天盯尾盤)。'] },
         { v: 'V76.2.9', d: ['🚨 <b>停損價以前是「掛不出去的價格」</b> —— 你截圖裡南亞的出場價印成 <b>222.77499999999998</b>,查下去發現不只是難看:台股有<b>跳動單位</b>(200~500 元只能跳 0.5 元),而明日作戰清單 <b>300 檔裡有 257 檔(85.7%)的停損價根本掛不出去</b>(740.05 / 154.38 / 5177.5 那種)。',
             '💰 <b>而自動下單就是拿這個價去掛真的停損單</b> —— 這是會動到錢的,不是顯示問題。',
             '📏 <b>已全部對到跳動單位</b>,方向是<b>無條件捨去</b>:跟「觸發價無條件進位」是同一個原則 —— <b>買要真的漲過、賣要真的跌破</b>,⛔ 不在條件還沒成立時就把你洗出去(四捨五入會把停損價修到比你設的 −5% 還高)。',
@@ -22426,7 +22433,38 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _rpSet(id, html, sym) {
         if (sym != null && String(this.currentSymbolId) !== String(sym)) return false;   // ⚠️ 切股競態守門
         const el = document.getElementById(id); if (!el) return false;
-        el.innerHTML = html || ''; el.classList.toggle('hidden', !html); return true;
+        // 🔁 V76.3.0 使用者:「📖 完整報告展開會一直跳掉」——
+        //   真因:`innerHTML =` 會把整張卡重建 → ① 所有 `<details open>` 全部關回去
+        //   ② 高度一變,人在畫面上的位置就被推走。⛔ 兩件事都不是「偶爾」,是**每次重繪必然發生**。
+        //   ⭐ 報告頁所有卡片都走這一個入口 → 修這裡一次,全頁受益(⛔ 別在各張卡各補一次)。
+        //   ⚠️ 只認 `data-dk`(穩定鍵,由 `_rpDetails` 用標題產生)—— ⛔ 不可用 DOM 順序當鍵,
+        //      卡片內容會變多變少,順序對不起來就會把「別人的展開」套到這一段上。
+        // ⭐⭐ 只記「**使用者自己點開的**」(`data-utog`)—— ⛔ 不可記所有 open 的:
+        //   `_rpDetails(..., open)` 會在「這一節有預警」時自動展開,那不是使用者的意思;
+        //   把它一起記下來,下次沒預警時就收不回去 = 蓋掉「一眼看到有事」那條規則(第一版就這樣打破 📄b2)。
+        const keep = Object.create(null);
+        for (const d of el.querySelectorAll('details[data-dk][data-utog="1"]')) if (d.open) keep[d.getAttribute('data-dk')] = true;
+        const sy = window.scrollY, h0 = el.offsetHeight, top0 = el.getBoundingClientRect().top;
+        el.innerHTML = html || ''; el.classList.toggle('hidden', !html);
+        // ⭐ 只還原「使用者**多開**的」,⛔ 不還原「使用者關掉的」——
+        //   否則會蓋掉既有規則「這一節有預警就自動展開」(`_rpDetails(..., open)`),
+        //   而那條規則正是讓人一眼看到有事的東西。⚠️ 第一版沒分這兩種,當場打破 test_report 📄b2。
+        for (const d of el.querySelectorAll('details[data-dk]')) {
+            const k = d.getAttribute('data-dk');
+            if (keep[k] === true) { d.open = true; d.dataset.utog = '1'; }
+        }
+        // 使用者點 summary 才算「他自己開的」(⛔ 不可聽 `toggle` —— 程式改 open 也會觸發)
+        if (!el.dataset.dkHook) {
+            el.dataset.dkHook = '1';
+            el.addEventListener('click', (e) => {
+                const d = e.target && e.target.closest && e.target.closest('summary')?.parentElement;
+                if (d && d.matches && d.matches('details[data-dk]')) d.dataset.utog = '1';
+            });
+        }
+        // 這張卡整個在視窗上方 → 高度變化會把畫面往上/下推,補回差額(⛔ 不動使用者正在看的那一段)
+        const dh = el.offsetHeight - h0;
+        if (dh && top0 < 0) { try { window.scrollTo(0, Math.max(0, sy + dh)); } catch (_) {} }
+        return true;
     },
     _rpCard(title, body, sub = '') {
         return `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
@@ -22437,7 +22475,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ⛔ 摺疊起來時看不出裡面有沒有事,正是使用者說「敘述不清楚」的主因 → 標題那行就要講完
     _rpDetails(title, note, body, open = false, tone = '') {
         const edge = tone === 'warn' ? 'border-l-4 border-l-amber-500' : (tone === 'ok' ? 'border-l-4 border-l-[#30363d]' : '');
-        return `<details class="bg-[#161b22] border border-[#30363d] ${edge} rounded-lg"${open ? ' open' : ''}>
+        const dk = this._rpTxt(title).replace(/["'<>]/g, '').slice(0, 40);   // 🔁 穩定鍵(展開狀態靠它撐過重繪)
+        return `<details data-dk="${dk}" class="bg-[#161b22] border border-[#30363d] ${edge} rounded-lg"${open ? ' open' : ''}>
             <summary class="cursor-pointer px-3 py-2 list-none">
                 <div class="flex items-center justify-between gap-2"><span class="text-[11px] font-bold text-gray-200">${title}</span><span class="text-[10px] text-gray-600 font-normal flex-shrink-0">展開 ▾</span></div>
                 ${note ? `<div class="text-[10px] text-gray-400 font-normal leading-snug mt-0.5">${note}</div>` : ''}</summary>
@@ -23221,7 +23260,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         }
         secs.forEach(s => { s.body = s.body.join('\n').trim(); });
         if (secs.length < 3) return { pre: norm.trim(), secs: [] };   // 切不出來就整份當一節,⛔ 不裝懂
-        return { pre: pre.join('\n').trim(), secs };
+        // 🔢 V76.3.0 最大節號 —— >20 代表這份是**舊的 22 節格式**,顯示端要提示「重產一次才對得上」
+        //   (使用者拿舊報告問「§21 改成 200 字投資筆記還有觀察清單」→ 那兩件**現行提示詞早就有**,
+        //    是他手上那份的編號舊了。⛔ 不可默默不講,不然他會以為功能沒做。)
+        const maxN = secs.reduce((m, x) => Math.max(m, +x.n || 0), 0);
+        return { pre: pre.join('\n').trim(), secs, maxN };
     },
     // 🖍️ 重點上色:先跳脫,再只對「標籤外的文字」動手(切標籤的做法照 pro.html 的 _labHi)。
     //   琥珀 = 本站「重點/警戒」色;⛔ 不用紅綠 —— 燈號鐵則:紅綠只講漲跌方向。
@@ -23327,7 +23370,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 ? P.secs.filter(isFirst).map(x => `<div style="margin-top:6px" data-rpsec-first="${x.n}"><div class="text-[11px] font-bold text-gray-100">§${x.n} ${this._escHtml(x.title)}</div>${sec(x.body)}</div>`).join('')
                 : `<div data-rpsec-first="0">${sec(P.pre.slice(0, 500))}${P.pre.length > 500 ? '<div class="text-[10px] text-gray-500">…(全文在下面)</div>' : ''}</div>`;
             rest = P.secs.length ? P.secs.filter(x => !isFirst(x)) : (P.pre.length > 500 ? [{ n: 0, title: '全文', body: P.pre }] : []);
-            const restHtml = rest.map(x => `<details class="border-t border-[#21262d]" data-rpsec="${x.n}"><summary class="cursor-pointer text-[11px] text-gray-300" style="padding:5px 0;list-style:none">${x.n ? `§${x.n} ` : ''}${this._escHtml(x.title)}${SUBJ[x.n] ? ` <span class="text-[10px] text-gray-500">(AI 主觀${SUBJ[x.n]} —— 本站實測這類權重沒有預測力,⛔ 別當數字用)</span>` : ''}<span class="text-[10px] text-gray-600"> ・展開 ▾</span></summary>${sec(x.body)}</details>`).join('');
+            const restHtml = rest.map(x => `<details data-dk="sec${x.n}" class="border-t border-[#21262d]" data-rpsec="${x.n}"><summary class="cursor-pointer text-[11px] text-gray-300" style="padding:5px 0;list-style:none">${x.n ? `§${x.n} ` : ''}${this._escHtml(x.title)}${SUBJ[x.n] ? ` <span class="text-[10px] text-gray-500">(AI 主觀${SUBJ[x.n]} —— 本站實測這類權重沒有預測力,⛔ 別當數字用)</span>` : ''}<span class="text-[10px] text-gray-600"> ・展開 ▾</span></summary>${sec(x.body)}</details>`).join('');
             const staleHtml = st.stale
                 ? `<div class="text-[11px] text-amber-300 leading-snug" style="padding:4px 0" data-rpstale="${st.reasons.length}">🔁 <b>建議重新產出</b>:${st.reasons.map(r => this._escHtml(r)).join(' ・')}</div>`
                 : `<div class="text-[10px] text-gray-500" style="padding:2px 0" data-rpstale="0">✅ 貼上之後沒有新的月營收 / 財報 / 除息,股價也沒偏離,還算新</div>`;
@@ -23335,8 +23378,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             saved = `<div data-rpnote="1" class="bg-[#0d1117] border-l-4 border-l-[#8b949e] border-y border-r border-[#30363d] rounded-r p-2 mb-1.5">
                 <div class="text-[10px] text-amber-300/90 font-bold leading-snug">📝 外部 AI 寫的,本站沒有驗證 ・⛔ 不參與任何買賣判斷</div>
                 ${staleHtml}${firstHtml}
-                ${restHtml ? `<details style="margin-top:6px" data-rpsec-rest="${rest.length}"><summary class="cursor-pointer text-[11px] font-bold text-gray-300" style="padding:5px 0;list-style:none">📚 其餘 ${P.secs.length ? `§2~§${Math.max(2, lastN - 1)} 共 ${rest.length} 節` : '全文'}<span class="text-[10px] text-gray-600 font-normal"> ・逐節點開 ▾</span></summary><div style="padding-left:4px">${restHtml}</div></details>` : ''}
+                ${restHtml ? `<details data-dk="rest" style="margin-top:6px" data-rpsec-rest="${rest.length}"><summary class="cursor-pointer text-[11px] font-bold text-gray-300" style="padding:5px 0;list-style:none">📚 其餘 ${P.secs.length ? `§2~§${Math.max(2, lastN - 1)} 共 ${rest.length} 節` : '全文'}<span class="text-[10px] text-gray-600 font-normal"> ・逐節點開 ▾</span></summary><div style="padding-left:4px">${restHtml}</div></details>` : ''}
                 ${P.secs.length ? '' : '<div class="text-[10px] text-gray-500 leading-snug" style="margin-top:4px">⚠️ 這份沒有 §1~§20 編號 → <b>沒切節</b>,整份照原樣顯示(用本站的提示詞重產會有編號,第一眼就只留結論與筆記)。</div>'}
+
             </div>`;
         }
         // 📐 V76.2.2 已經貼過的:輸入框 + 三顆按鈕 + 四段說明(約 270 字)**全部收進一個摺疊** ——
@@ -23366,7 +23410,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <button onclick="app._reportCopyPrompt('${sym}')" data-rpcopyprompt="1" class="px-3 py-1.5 text-[11px] font-bold text-purple-200 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-700/50 rounded">📋 複製提示詞</button>
             <button onclick="app._reportAsk('${sym}'); app.vibrate?.(20);" class="px-3 py-1.5 text-[11px] font-bold text-purple-300 bg-[#0d1117] hover:bg-purple-900/20 border border-purple-700/50 rounded">🔎 開 Perplexity</button></div>`;
         const body = n
-            ? `${saved}${copyBtn}<details data-rppanel="1"><summary class="cursor-pointer text-[11px] font-bold text-gray-300" style="padding:4px 0;list-style:none">⚙️ 換一份 / 複製提示詞<span class="text-[10px] text-gray-600 font-normal"> ・展開 ▾</span></summary><div style="padding-top:4px">${ask}</div></details>`
+            ? `${saved}${copyBtn}${P.secs.length && P.maxN > 20 ? `<div class="text-[10px] text-yellow-300/90 leading-snug" style="margin:4px 0">🔢 <b>這份是舊的 ${P.maxN} 節格式</b>(現行是 <b>§1~§20</b>)—— 舊 §21 觀察清單 → <b>§19</b>、舊 §22 筆記 → <b>§20 最後 200 字投資筆記</b>(買進理由 / 主要風險 / 失效條件 / 持有時間 / 3 個觀察指標);舊的 §19 因子評分・§20 星等<b>已砍掉</b>。⭐ 按「📋 複製提示詞」重產一次就對得上,⛔ 舊的這份不會自己變。</div>` : ''}<details data-dk="panel" data-rppanel="1"><summary class="cursor-pointer text-[11px] font-bold text-gray-300" style="padding:4px 0;list-style:none">⚙️ 換一份 / 複製提示詞<span class="text-[10px] text-gray-600 font-normal"> ・展開 ▾</span></summary><div style="padding-top:4px">${ask}</div></details>`
             : ask;
         //   🏷️ V76.2.6 卡名跟上面那張「📄 短評報告」**成對**:一個是圖(短評)、一個是文字(完整)。
         //   ⛔ 不掛 § 編號(V76.2.5 的理由沒變:它裝的是整份報告,不是某一節)。
@@ -37485,17 +37529,30 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     ],
     _bkLeagueP: 'swing',
     _bkLeagueC: 'ret',
-    switchBkLeague(p, c) {
-        if (p) this._bkLeagueP = p;
-        if (c) this._bkLeagueC = c;
-        this.vibrate(10);
-        // 兩個入口都可能開著 → 一起重畫(⛔ 別只畫眼前那個,切回去會看到舊的)
+    // 🔢 V76.3.0 排序狀態(⛔ 使用者明示:「爾後類似這種的都要有排序功能,不要我又提醒」)
+    //   12 格決定**預設**排序;點表頭可以蓋過去,切格子時回到那一格的預設。
+    _bkSortK: null, _bkSortDir: -1,
+    _BK_SORT: { ret: ['avg_ret', '平均報酬'], win: ['win_rate', '勝率'], busy: ['__busy', '出手'] },
+    switchBkSort(k) {
+        if (this._bkSortK === k) this._bkSortDir = -this._bkSortDir;
+        else { this._bkSortK = k; this._bkSortDir = -1; }
+        this.vibrate(8);
+        this._bkRepaint();
+    },
+    _bkRepaint() {
         for (const id of ['radarModeBroker', 'brokerCatBody']) {
             const el = document.getElementById(id);
             if (!el) continue;
             if (id === 'brokerCatBody' && this._brokerCat !== 'god') continue;
             el.innerHTML = this._brokerLeagueHtml();
         }
+    },
+    switchBkLeague(p, c) {
+        if (p) this._bkLeagueP = p;
+        if (c) this._bkLeagueC = c;
+        this._bkSortK = null;              // 切格子 → 回到那一格自己的預設排序(⛔ 不留上一格的)
+        this.vibrate(10);
+        this._bkRepaint();                 // 兩個入口都可能開著 → 一起重畫
     },
     _brokerLeagueHtml() {
         const p = this._brokerPerf;
@@ -37506,78 +37563,77 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const esc = (s) => String(s || '').replace(/'/g, '');
         const base = (p.base && p.base[P]) || null;
 
-        // ── 12 格選擇器(4 期間 × 3 類)──
-        let sel = `<div class="grid grid-cols-3 gap-1 mb-2">`;
+        // ── 左欄:12 項凍結直排(⭐ 對標專業 App:窄欄 + 右側緊湊表格 = 版面空間最大化)──
+        //   ⛔ 舊版是 4×3 大方格橫擺,光選擇器就吃掉半個畫面、右邊只看得到 4 列。
+        let side = '';
         for (const [pk, plbl] of this._BK_LEAGUE_P) {
             for (const [ck, clbl, cdesc] of this._BK_LEAGUE_C) {
                 const on = pk === P && ck === C;
-                sel += `<button onclick="app.switchBkLeague('${pk}','${ck}')" class="px-1 py-1.5 rounded-lg text-[10px] font-bold border leading-tight transition-all ${on ? 'bg-purple-600/30 text-purple-100 border-purple-500' : 'bg-[#161b22] text-gray-400 border-[#30363d]'}" title="${plbl}・${cdesc}"><span class="block">${plbl}</span><span class="block text-[9px] opacity-70 font-normal">${clbl}</span></button>`;
+                side += `<button onclick="app.switchBkLeague('${pk}','${ck}')" title="${plbl}・${cdesc}" style="display:block;width:100%;padding:5px 2px;border-radius:5px;border:1px solid ${on ? '#a855f7' : '#30363d'};background:${on ? 'rgba(168,85,247,.22)' : '#161b22'};color:${on ? '#f3e8ff' : '#9ca3af'};line-height:1.15;text-align:center;font-weight:700">
+                    <span style="display:block;font-size:10px">${plbl}</span><span style="display:block;font-size:9px;opacity:.7;font-weight:400">${clbl}</span></button>`;
             }
         }
-        sel += `</div>`;
 
-        // ── 榜單 ──
         const raw = (p[P] || []).filter(r => r && r.broker);
+        const busyVal = (r) => (P === 'dt' ? (r.q || 0) : (r.count || 0));
+        let body;
         if (!raw.length) {
             const why = P === 'dt'
                 ? '當沖榜要等下一輪盤後採礦才會出現(V76.2.8 新加的,需要採礦機跑過一次)。'
                 : `${pm[1]}榜樣本累積中。`;
-            return sel + `<div class="text-[11px] text-gray-500 py-6 text-center leading-relaxed">${why}</div>`;
-        }
-        // 🎲 樣本守門:n < 10 一律不進榜(CLAUDE.md 顯示勝率三條鐵則第 1 條,⛔ 別在這裡寫死數字)
-        const rows0 = raw.filter(r => this._wrEnough(r.count));
-        const cut = raw.length - rows0.length;
-        const busyVal = (r) => (P === 'dt' ? (r.q || 0) : (r.count || 0));
-        const sorter = C === 'ret' ? ((a, b) => (b.avg_ret || 0) - (a.avg_ret || 0))
-            : C === 'win' ? ((a, b) => (b.win_rate || 0) - (a.win_rate || 0) || (b.avg_ret || 0) - (a.avg_ret || 0))
-            : ((a, b) => busyVal(b) - busyVal(a));
-        const rows = [...rows0].sort(sorter).slice(0, 20);
+            body = `<div class="text-[11px] text-gray-500 py-6 text-center leading-relaxed">${why}</div>`;
+        } else {
+            // 🎲 樣本守門:n < 10 一律不進榜(⛔ 別在這裡寫死數字)
+            const rows0 = raw.filter(r => this._wrEnough(r.count));
+            const cut = raw.length - rows0.length;
+            const key = this._bkSortK || C;                       // 沒點表頭就用那一格的預設
+            const dir = this._bkSortK ? this._bkSortDir : -1;
+            const val = (r) => key === 'ret' ? (r.avg_ret || 0) : key === 'win' ? (r.win_rate || 0) : busyVal(r);
+            const rows = [...rows0].sort((a, b) => (val(a) - val(b)) * dir || (b.avg_ret || 0) - (a.avg_ret || 0)).slice(0, 40);
 
-        // ── 對照組(⛔ 不可省:多頭窗口裡「隨便挑一家」本來就常常是贏的)──
-        const baseLine = base
-            ? `<div class="bg-[#161b22] border-l-4 border-[#30363d] border-y border-r rounded-r px-2 py-1.5 mb-2">
-                 <div class="text-[10px] text-gray-400 leading-snug">🎯 <b class="text-gray-200">對照組(隨便挑一家券商)</b>:勝率 <span class="font-mono font-black text-gray-100">${base.win_rate}%</span> ・平均 <span class="font-mono font-black ${base.avg_ret >= 0 ? 'text-red-300' : 'text-green-300'}">${base.avg_ret >= 0 ? '+' : ''}${base.avg_ret}%</span> <span class="text-gray-600">(${base.count.toLocaleString()} 筆)</span></div>
-                 <div class="text-[9px] text-gray-600 mt-0.5">⚠️ 贏不過這條線就沒有意義 —— ⛔ 基準不是 50%。</div>
-               </div>`
-            : `<div class="text-[10px] text-yellow-300/90 mb-2">⚠️ 對照組基準累積中(下一輪採礦後出現)→ 下面的勝率<b>暫時沒有比較對象</b>,⛔ 先別當結論。</div>`;
+            const GRID = 'display:grid;grid-template-columns:16px minmax(0,1fr) 44px 42px 40px;gap:0 4px;align-items:center';
+            const arrow = (k) => (this._bkSortK || C) === k ? (dir < 0 ? ' ▼' : ' ▲') : '';
+            const hcls = (k) => (this._bkSortK || C) === k ? 'color:#d8b4fe;font-weight:700' : 'color:#6b7280';
+            const head = `<div style="${GRID};border-bottom:1px solid #30363d;padding:0 2px 3px;font-size:9px">
+                <span style="color:#6b7280">#</span><span style="color:#6b7280">券商</span>
+                <button onclick="app.switchBkSort('ret')" style="text-align:right;${hcls('ret')};font-size:9px">報酬${arrow('ret')}</button>
+                <button onclick="app.switchBkSort('win')" style="text-align:right;${hcls('win')};font-size:9px">勝率${arrow('win')}</button>
+                <button onclick="app.switchBkSort('busy')" style="text-align:right;${hcls('busy')};font-size:9px">出手${arrow('busy')}</button></div>`;
 
-        let html = sel + baseLine;
-        html += `<div class="grid gap-x-1.5 items-center text-[9px] text-gray-500 border-b border-[#30363d] pb-1 mb-1 px-1" style="display:grid;grid-template-columns:22px minmax(0,1fr) 56px 58px"><span>#</span><span>券商</span><span class="text-right">平均報酬</span><span class="text-right">勝率</span></div>`;
-        rows.forEach((r, i) => {
-            const gt = this._brokerGodTag ? this._brokerGodTag(r.broker) : '';
-            const nm = this._shortBroker ? this._shortBroker(r.broker) : r.broker;
-            const dRet = base ? (r.avg_ret - base.avg_ret) : null;
-            const dWin = base ? (r.win_rate - base.win_rate) : null;
-            const busyTxt = P === 'dt'
-                ? `${Math.round((r.q || 0) / 1000).toLocaleString()} 張`
-                : `${r.count} 次`;
-            html += `<div class="grid gap-x-1.5 items-center pt-1.5 pb-1 border-b border-[#21262d] px-1" style="display:grid;grid-template-columns:22px minmax(0,1fr) 56px 58px">
-                <span class="text-[10px] font-mono font-black ${i < 3 ? 'text-amber-300' : 'text-gray-600'}">${i + 1}</span>
-                <div class="min-w-0">
-                  <button onclick="app._openBrokerFromNameFromPage('${esc(r.broker)}')" class="block text-left text-[11px] font-bold text-gray-100 hover:underline truncate w-full">${nm}${gt ? ` <span class="text-[8px] text-amber-300">${gt}</span>` : ''}</button>
-                  <div class="text-[9px] text-gray-500">${busyTxt}${base ? this._wrTag(r.win_rate, r.count, base.win_rate / 100) : ' <span class="text-[9px] font-bold border rounded px-1 text-gray-400 border-gray-700/60" title="對照組基準還沒算出來 → ⛔ 不可拿 50% 當對照,所以這裡先不下判斷">⏳ 待基準</span>'}</div>
-                </div>
-                <div class="text-right leading-tight">
-                  <div class="text-[11px] font-mono font-black ${(r.avg_ret || 0) >= 0 ? 'text-red-400' : 'text-green-400'}">${(r.avg_ret || 0) >= 0 ? '+' : ''}${r.avg_ret}%</div>
-                  ${dRet == null ? '' : `<div class="text-[8px] font-mono text-gray-600">基準${dRet >= 0 ? '+' : ''}${dRet.toFixed(2)}</div>`}
-                </div>
-                <div class="text-right leading-tight">
-                  <div class="text-[11px] font-mono font-black text-gray-100">${r.win_rate}%</div>
-                  ${dWin == null ? '' : `<div class="text-[8px] font-mono text-gray-600">基準${dWin >= 0 ? '+' : ''}${dWin.toFixed(1)}</div>`}
-                </div>
+            let list = '';
+            rows.forEach((r, i) => {
+                const gt = this._brokerGodTag ? this._brokerGodTag(r.broker) : '';
+                const nm = this._shortBroker ? this._shortBroker(r.broker) : r.broker;
+                const dRet = base ? (r.avg_ret - base.avg_ret) : null;
+                const busyTxt = P === 'dt' ? `${Math.round((r.q || 0) / 1000).toLocaleString()}張` : `${r.count}次`;
+                list += `<div style="${GRID};padding:3px 2px;border-bottom:1px solid #21262d">
+                    <span class="font-mono" style="font-size:10px;font-weight:900;color:${i < 3 ? '#fcd34d' : '#4b5563'}">${i + 1}</span>
+                    <button onclick="app._openBrokerFromNameFromPage('${esc(r.broker)}')" style="text-align:left;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:700;color:#f3f4f6">${nm}${gt ? ` <span style="font-size:8px;color:#fcd34d">${gt}</span>` : ''}${base ? this._wrTag(r.win_rate, r.count, base.win_rate / 100) : ' <span style="font-size:9px;border:1px solid #4b5563;border-radius:3px;padding:0 2px;color:#9ca3af" title="對照組基準還沒算出來 → ⛔ 不可拿 50% 當對照,所以這裡先不下判斷">⏳ 待基準</span>'}</button>
+                    <span class="font-mono" style="text-align:right;font-size:11px;font-weight:900;color:${(r.avg_ret || 0) >= 0 ? '#f87171' : '#4ade80'}">${(r.avg_ret || 0) >= 0 ? '+' : ''}${r.avg_ret}%${dRet == null ? '' : `<span style="display:block;font-size:8px;font-weight:400;color:#6b7280">基準${dRet >= 0 ? '+' : ''}${dRet.toFixed(2)}</span>`}</span>
+                    <span class="font-mono" style="text-align:right;font-size:11px;font-weight:900;color:#f3f4f6">${r.win_rate}%</span>
+                    <span class="font-mono" style="text-align:right;font-size:10px;color:#9ca3af">${busyTxt}</span></div>`;
+            });
+
+            const days = P === 'dt' ? (p.dt_days || 0) : (p.days || 0);
+            const bf = (p.backfill && p.backfill[P]) || 0;
+            const baseLine = base
+                ? `<div style="background:#161b22;border-left:3px solid #30363d;border-radius:0 4px 4px 0;padding:4px 6px;margin-bottom:5px">
+                     <div style="font-size:10px;color:#9ca3af;line-height:1.35">🎯 <b style="color:#e5e7eb">對照組(隨便挑一家券商)</b> 勝率 <span class="font-mono" style="color:#f3f4f6;font-weight:900">${base.win_rate}%</span> ・平均 <span class="font-mono" style="font-weight:900;color:${base.avg_ret >= 0 ? '#fca5a5' : '#86efac'}">${base.avg_ret >= 0 ? '+' : ''}${base.avg_ret}%</span> <span style="color:#4b5563">(${base.count.toLocaleString()} 筆)</span> —— ⚠️ 贏不過這條線就沒有意義,⛔ 基準不是 50%。</div></div>`
+                : `<div style="font-size:10px;color:#fcd34d;margin-bottom:5px;line-height:1.35">⚠️ 對照組基準累積中(下一輪採礦後出現)→ 下面的勝率<b>暫時沒有比較對象</b>,⛔ 先別當結論。</div>`;
+
+            body = baseLine + head + list + `<div style="font-size:9px;color:#4b5563;margin-top:6px;line-height:1.55;padding:0 2px">
+                <div>💡 <b style="color:#9ca3af">${pm[1]}・${cm[1]}</b> = ${cm[2]}。${pm[2].replace(/\*\*/g, '')}。點欄位標題可以改排序、點券商名看它在買什麼。</div>
+                <div>📅 窗口 ${days} 個交易日${cut > 0 ? ` ・已擋掉 ${cut} 家樣本不足 10 次的` : ''}${bf ? ` ・含 ${bf} 筆歷史回推近似值` : ''}。</div>
+                ${P === 'dt' ? `<div>⚠️ 「當沖」是用<b>同一家分點同一天既買又賣</b>推的<b>估計</b>,⛔ 不是官方當沖數字(可能是 A 客戶買、B 客戶賣)。</div>` : ''}
+                <div>⚠️ 未扣交易成本(${P === 'dt' ? '當沖來回約 0.25%' : '來回約 0.44%'})→ 上面的報酬要自己減掉。</div>
+                <div>⛔ <b style="color:#fdba74">這是成績記錄,不是買進名單</b>:本站三支探針(分點慣性 / 分點同盟 / 分點×產業)實測「跟著分點做」都<b>沒有</b>預測力,而且窗口偏多頭、有倖存者偏誤。</div>
               </div>`;
-        });
+        }
 
-        const days = P === 'dt' ? (p.dt_days || 0) : (p.days || 0);
-        const bf = (p.backfill && p.backfill[P]) || 0;
-        html += `<div class="text-[9px] text-gray-600 mt-2 leading-relaxed px-1 space-y-0.5">
-            <div>💡 <b class="text-gray-400">${pm[1]}・${cm[1]}</b> = ${cm[2]}。${pm[2].replace(/\*\*/g, '')}。點券商名看它在買什麼。</div>
-            <div>📅 窗口 ${days} 個交易日${cut > 0 ? ` ・已擋掉 ${cut} 家樣本不足 10 次的` : ''}${bf ? ` ・含 ${bf} 筆歷史回推近似值` : ''}。</div>
-            ${P === 'dt' ? `<div>⚠️ 「當沖」是用<b>同一家分點同一天既買又賣</b>推的<b>估計</b>,⛔ 不是官方當沖數字(可能是 A 客戶買、B 客戶賣)。</div>` : ''}
-            <div>⚠️ 未扣交易成本(${P === 'dt' ? '當沖來回約 0.25%' : '來回約 0.44%'})→ 上面的報酬要自己減掉。</div>
-            <div>⛔ <b class="text-orange-300/90">這是成績記錄,不是買進名單</b>:本站三支探針(分點慣性 / 分點同盟 / 分點×產業)實測「跟著分點做」都<b>沒有</b>預測力,而且窗口偏多頭、有倖存者偏誤。</div>
-          </div>`;
-        return html;
+        // ⭐ 左欄凍結 + 右側表格(⛔ 幾何一律 inline style —— Tailwind 是 CDN,沙箱載不到,用 class 排的版在測試裡完全沒作用)
+        return `<div style="display:flex;gap:5px;align-items:flex-start">
+            <div style="width:60px;flex-shrink:0;display:flex;flex-direction:column;gap:2px;position:sticky;top:0">${side}</div>
+            <div style="flex:1;min-width:0">${body}</div></div>`;
     },
     // 🏅 高手券商(券商頁)—— ⛔ 只是轉呼叫,⛔ 不可再寫一份挑法(V76.2.8 前它自己挑 top-1,
     //   結果跟選股頁的榜對不上,而且是從「按勝率排序的前 30 家」裡挑報酬王 = 挑到的不是真第一名)。
@@ -45090,6 +45146,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // ⚠️ `trig` 可能是 null(這招不是靠價位觸發)→ 一律用現價當基準,⛔ 不可拿 null 去算
         const hasTrig = x.trig != null && +x.trig > 0;
         const trig = hasTrig ? +x.trig : c;
+        // 🚨 V76.3.0 使用者問「還有什麼可以更好」→ **決策台自己也該標處置股**。
+        //   實測 `_deckState` 就是「🧬 過關 + 非空頭」取前 2,**完全沒有**處置股守門 ——
+        //   而 V74.5.6 使用者已明示「推薦處置中的股票不對」(釣魚池那邊當時修了、這裡漏接 = 陷阱 #37)。
+        //   ⛔ 但**不從名單刪掉**:刪了就不是決策台真正的成績(📒 推薦成績單量的就是它)
+        //      → 跟釣魚池同一個處置方式:**只標註**,理由寫在 title 裡。
+        //   ⚠️ 處置股是 5/20 分鐘**分盤撮合**,而這套回測的進場是「尾盤觸價買」→ **那個價買不到**。
+        const _att = (this.attentionStatus || {})[String(x.s)];
+        const _disp = !!(_att && (_att.interval || _att.end_date));
+        const dispTag = _disp
+            ? '<span class="text-[9px] flex-shrink-0 font-bold text-orange-300 border border-orange-700/60 rounded px-1" title="🚨 官方處置中 —— 5 或 20 分鐘分盤撮合,而這套回測的進場方式是「尾盤 13:00~13:28 觸價買」:那個價你買不到。而且實測「進處置」之後 20 日中位 −4.81%、勝率 40.4%。⛔ 這是提醒不是放空訊號;名單刻意不刪(刪了就不是決策台真正的成績)。">⛔處置</span>'
+            : '';
         // ⭐ V73.0.1 改用**等權**(⛔ 不是風險法)—— 理由見 `_lotsForPlaybook` 上方的實測數字
         const ps = this._lotsForPlaybook(trig, stop);
         // 📐 主數字用**保守下界**(期望值 − 1.28×標準差/√次數),⛔ 不可用原始期望值 ——
@@ -45106,6 +45173,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div class="min-w-0 flex-1 flex items-baseline gap-1.5">
                     ${rank ? `<span class="font-mono font-black text-[11px] flex-shrink-0 ${rank <= 3 ? 'text-amber-300' : 'text-gray-600'}" title="第 ${rank} 名(依「保守下界」排,樣本少的會被罰)">#${rank}</span>` : ''}
                     ${isMine ? '<span class="text-[10px] flex-shrink-0">👜</span>' : ''}
+                    ${dispTag}
                     <span class="font-mono font-black text-[12px] text-gray-100 flex-shrink-0">${x.s}</span>
                     <span class="text-[11px] text-gray-200 truncate">${nm(x.s)}</span>
                     <span class="font-mono text-[10px] text-gray-500 flex-shrink-0">${c.toLocaleString()}</span>

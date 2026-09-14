@@ -1164,6 +1164,54 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         const seq = ['rpImg', 'rpPaste', 'rpQuick', 'rpInd', 'rpFund', 'rpChip', 'rpWalls', 'rpRisk', 'rpVal', 'rpSrc'];
         ok('📄a3 版面順序(V76.2.5):📄 短評 → 📝 貼上 → ⚡ 快速表 → 各節照 § 由小到大 → §0 來源排最後',
            seq.every((id, i) => i === 0 || ordF.indexOf(seq[i - 1]) < ordF.indexOf(id)), ordF.join(','));
+
+        // ═══ 🔁 V76.3.0 展開狀態要撐過重繪(使用者:「📖 完整報告展開會一直跳掉」)═══
+        //   ⛔ 這是 `_rpSet` 那個**唯一入口**的行為 → 直接對它下手,⛔ 不挑某一張卡驗
+        const R6 = await page.evaluate(() => {
+            const A = app, id = 'rpRisk';
+            const el = document.getElementById(id);
+            const out = {};
+            // ① 使用者**自己點**開一節 → 重繪之後要還在
+            const d0 = el.querySelector('details[data-dk]');
+            out.hasDk = !!d0;
+            if (d0) {
+                out.k = d0.getAttribute('data-dk');
+                // 🚨 這一節**有預警時會自動展開** → 直接判 `if (!open) click()` 等於沒點,
+                //    `data-utog` 不會被標記 → 🔁b 量到的是「自動展開沒被記住」(對的行為)而不是它要驗的事。
+                //    ⭐ 一律**點兩下**(關→開),確定是「使用者自己開的」。
+                const sm = d0.querySelector('summary');
+                if (d0.open) sm.click();
+                sm.click();
+                out.utog = d0.dataset.utog;
+                out.openedByClick = d0.open;
+                // 🚨 Chrome 把布林屬性序列化成 `open=""` → 只比對 ` open` 的正則**吃不到**,
+                //    那次「重繪成全部收起來」根本沒收起來 → 🔁b 會變成**假綠燈**(第一版就是這樣,注入驗證才抓到)。
+                const closed = el.innerHTML.replace(/\sopen(="")?(?=[\s>])/g, '');
+                out.reallyClosed = !/\sopen(="")?[\s>]/.test(closed);     // 🚧 空過守門:確認真的關掉了才算數
+                A._rpSet(id, closed, A.currentSymbolId);
+                const d1 = document.getElementById(id).querySelector(`details[data-dk="${out.k}"]`);
+                out.survives = !!(d1 && d1.open);
+            }
+            // ② ⭐ 決定性對照:**程式自動展開**的(沒被點過)⛔ 不可被記住
+            const wrap = document.createElement('div'); wrap.id = 'rpTmpDk'; document.body.appendChild(wrap);
+            A._rpSet('rpTmpDk', '<details data-dk="auto" open><summary>x</summary>y</details>');
+            A._rpSet('rpTmpDk', '<details data-dk="auto"><summary>x</summary>y</details>');
+            out.autoNotSticky = !wrap.querySelector('details').open;
+            wrap.remove();
+            // ③ 捲動位置:卡片在畫面上方時,高度變化⛔ 不可把人推走
+            out.hasScrollFix = /window\.scrollTo\(0, Math\.max\(0, sy \+ dh\)\)/.test(A._rpSet.toString());
+            out.onlyUtog = /data-utog="1"/.test(A._rpSet.toString());
+            return out;
+        });
+        ok('🔁a 報告頁的 details 都有穩定鍵 data-dk(⛔ 不可用 DOM 順序當鍵)', R6.hasDk, JSON.stringify(R6));
+        ok('🔁b0 🚧 空過守門:那次重繪真的把全部收起來了 + 真的是「使用者點開的」(⛔ 否則 🔁b 是假綠燈)',
+           R6.reallyClosed && R6.utog === '1' && R6.openedByClick, JSON.stringify(R6));
+        ok('🔁b ⭐ 使用者**點開**的那一節,重繪之後仍然是開的(使用者原話:「展開會一直跳掉」)',
+           R6.openedByClick && R6.survives, JSON.stringify(R6));
+        ok('🔁c ⭐⭐ 決定性對照:**程式自動展開**的(沒被點過)⛔ 不可被記住 —— 否則會蓋掉「有預警才展開」那條規則',
+           R6.autoNotSticky, JSON.stringify(R6));
+        ok('🔁d 只記 data-utog(使用者點過的)⛔ 不是所有 open 的', R6.onlyUtog);
+        ok('🔁e 卡片在畫面上方時要補回捲動差(⛔ 不讓高度變化把人推走)', R6.hasScrollFix);
     }
 }
 

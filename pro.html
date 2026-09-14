@@ -786,8 +786,9 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <div id="fishKeyWarn"></div>
     <div class="starbar" style="margin-top:0">
       <button class="lbtn on" id="castBtn" onclick="PRO.castRod()" style="font-weight:900">🎣 拋竿</button>
-      <span class="note" style="margin:0">幫你挑 —— 每一層都是實測有邊際的條件(🧬 位階+波動 → 前 3 強板塊 → 板塊內最強,一天最多 2 條)。
-        <b>⚠️ 但「合起來」回測量不出優勢</b>,見卡片上的數字。</span>
+      <span class="note" style="margin:0">幫你挑 —— <b>用的就是決策台「🎯 今天可以買的」那套</b>(每檔自己最會賺的招 + 🧬 + 一天最多 2 檔)。
+        ⭐ 所以 🧺 漁獲籃量到的,跟 📒 決策台推薦成績單<b>是同一件事</b>。
+        <span style="color:var(--dim2)">(V76.3.0 換掉舊的三層漏斗 —— 它實測六關 0 過)</span></span>
     </div>
     <div class="labbar" id="fishPool"></div>
     <div class="starbar" style="justify-content:space-between;margin-top:0">
@@ -2046,7 +2047,7 @@ const PRO = {
     // 🏆 V74.4.6 使用者:「把最厲害的招式加到釣魚區裡面」——
     //    ⭐ 本站實測最強的**不是**拋竿漏斗(它合起來是負的),是「每檔自己最會賺的招」那份清單。
     //    ⛔ 排序走共用的 `_pbSort`(🧬 優先 → 保守下界),不在這裡另寫一份。
-    { k: 'pb', n: '🏆 最強招式', d: '明日作戰清單:每一檔「自己歷史上最會賺的那一招」明天會觸發的。這是本站實測最強的做法(⛔ 但仍輸買 0050 放著)',
+    { k: 'pb', n: '🏆 最強招式', d: '明日作戰清單:每一檔「自己歷史上最會賺的那一招」明天會觸發的。這是本站實測最強的做法(49 個月 +590 萬 vs 買 0050 放著 +264 萬;⚠️ 中途最多賠 −25%,而 0050 買了什麼都不用做)',
       f: (r, S) => true, sort: 'pb' },
     { k: 'avoid', n: '⚠️ 避雷池', d: '符合「實測落後」條件比較多的(⛔ 不是放空訊號,是別在這裡挑)',
       f: (r, S) => r.sc && r.sc.minus.length >= 2 && r.sc.sum < -1, sort: 'amt' },
@@ -2076,52 +2077,46 @@ const PRO = {
   //    設 1 億會留下 472 檔、其中 🧬 過關的 130 檔 —— 夠挑,⛔ 不會沒東西可選。
   CAST_MIN_AMT: 1,
 
+  // 🎯 V76.3.0 使用者明示:「釣魚池既然沒有用就改成決策台的選股策略,我要觀察到底有沒有用」
+  //
+  // ⛔⛔ 舊的三層漏斗(🧬 高位階+高波動 → 前 3 強板塊 → 板塊內近 20 日最強)**整組換掉** ——
+  //    `cast_probe.mjs` 實測**六關 0 過**(相對「強勢板塊裡隨便挑」−0.52pp、相對「只用 🧬」−1.44pp),
+  //    而且拆解顯示**少了板塊那兩關反而比較好**(+1.11pp)= 那兩層是負貢獻。
+  //
+  // ⭐ 新來源 = **決策台「🎯 今天可以買的」**,走**同一支** `_recoPicks`(📒 推薦成績單也用它)
+  //    → 釣到的魚 = 決策台推薦的那幾檔 → 🧺 漁獲籃量到的就是決策台那套的實測成績。
+  //    ⛔ 這正是使用者要的「我要觀察到底有沒有用」:兩個畫面從此量的是**同一件事**,
+  //       ⛔ 不會再出現「釣魚池在賠、但那套根本不是決策台那套」這種誤讀(V76.2.9 就發生過)。
+  //    ⚠️ 它背後是 `playbook_edge`(每檔自己最會賺的那一招 + 🧬 + 一天 2 檔),
+  //       49 個月組合回測 +590 萬、六關全過,而同期買 0050 放著是 +264 萬 → **贏**。
+  //       ⚠️ 但代價要照寫:中途最多賠 **−25%**,而且要每天盯尾盤、嚴格停損;0050 買了什麼都不用做。
+  //       ⛔ 舊文案「兩種都輸 0050」是**換出場(唐奇安 20 日)之前**的數字,已不成立(見 `_DECK_TRACK49` 註解)。
+  //
+  // ⛔ 三道守門**原封不動保留**(每一道都有自己的實測支撐,跟漏斗換不換無關):
+  //    ① 買得到嗎(成交額)② 處置中一律排除 ③ 前 5 日噴 ≥30% 才被掛注意股 → −1.81pp
   _castPick(D) {
     const rows = D.rows || [];
-    const geneAll = rows.filter(r => r.pos252 >= 75 && r.amp20 >= 3.2);
-    const liquid = geneAll.filter(r => r.amt >= this.CAST_MIN_AMT);    // 🚧 買得到才算數(理由見 CAST_MIN_AMT)
-    const thin = geneAll.length - liquid.length;
-    // 🚨 V74.5.6 **處置中一律排除**(使用者:「釣魚裡面有推薦玉晶光,是處置中這樣子對嘛」→ ⛔ 不對)。
-    //    ⭐ 三個理由,每一個單獨都足以排除:
-    //      ① **買不到那個價** —— 處置股是 5 或 20 分鐘**分盤撮合**,而這套回測的進場是
-    //         「尾盤 13:00~13:28 觸價買」,那個方式在分盤下根本不成立(同「漲停鎖死買不到」那一類)。
-    //      ② **實測本身就不支持** —— dispo_backtest(1,441 個進處置事件):20 日平均 +1.62pp
-    //         看起來是正的,但**中位 −4.81%**、勝率 40.4%、逐年不同向 = **賠率型**
-    //         (少數妖股大噴拉高平均,大多數繼續跌)→ ⛔ 明文記為「不能當進場訊號」。
-    //      ③ 流動性差 → 實際滑價比回測更糟。
-    //    ⚠️ 這是**排除**不是放空訊號;而且⛔ 不可靜默 —— 卡上要說出擋掉了誰(陷阱 #22)。
-    const disposed = liquid.filter(r => r.att === 2).map(r => r.sym);
-    const notDisp = liquid.filter(r => r.att !== 2);
-    // ⚠️ 避雷守門:🚨 **本站另一條六關全過的實測直接跟「追強」打架,必須讓它贏** ——
-    //    「前 5 日噴 ≥30% 才被掛官方注意股」實測後 20 日 **−1.81pp ・中位 −7.21% ・勝率掉回 34.5%**
-    //    (前後半同向、去最好年仍 −2.90;V74.4.2 dispo_backtest)。
-    const gene = notDisp.filter(r => !(r.att >= 1 && r.chg5 >= 30));
-    const avoided = notDisp.filter(r => r.att >= 1 && r.chg5 >= 30).map(r => r.sym);
-    // ② 板塊 20 日報酬中位數 → 前 3 強(母體 = 有官方產業別的上市股,跟回測同一個母體)
-    const byInd = {};
-    for (const r of rows) if (r.ind) (byInd[r.ind] = byInd[r.ind] || []).push(r.chg20);
-    const med = a => { const x = a.slice().sort((p, q) => p - q); return x.length ? (x.length % 2 ? x[(x.length - 1) / 2] : (x[x.length / 2 - 1] + x[x.length / 2]) / 2) : null; };
-    const inds = Object.entries(byInd).filter(([, v]) => v.length >= 5)
-      .map(([k, v]) => ({ k, m: med(v), n: v.length })).sort((a, b) => b.m - a.m);
-    const top3 = inds.slice(0, 3);
-    const top3k = new Set(top3.map(x => x.k));
-    // ③ 前 3 強板塊裡、🧬 過關的,依近 20 日由強到弱;⭐ 同一個板塊最多挑 1 條(⛔ 不可兩條都押同一族)
-    const picked = [], usedInd = new Set();
-    for (const r of gene.filter(r => top3k.has(r.ind)).sort((a, b) => b.chg20 - a.chg20)) {
-      if (usedInd.has(r.ind)) continue;
-      picked.push({ ...r, tier: 1, why: top3.find(x => x.k === r.ind) });
-      usedInd.add(r.ind);
-      if (picked.length >= this.CAST_MAX) break;
+    const byS = {}; for (const r of rows) byS[r.sym] = r;
+    // ① 決策台名單(⛔ 不在這裡另寫一份挑法 —— `_recoPicks` 是唯一那一份,📒 推薦成績單也用它)
+    const reco = this._recoPicks((this._pbJ && this._pbJ.picks) || []) || [];
+    if (!reco.length) return { picked: [], warnN: 0, thin: 0, avoided: [], disposed: [],
+                               srcNone: this._pbJ ? 'empty' : 'noFile', fromDeck: true };
+    // ② 三道守門改成**標註**,⛔ 不從名單裡刪 ——
+    //    🚨 這是刻意的取捨:決策台**本身沒有**這三道守門(`index._deckState` 就是 hq && !bear 取前 2)。
+    //    如果這裡先刪掉幾檔,釣魚池的名單就跟決策台不一樣 → 🧺 漁獲籃量到的**就不是決策台的成績**,
+    //    而使用者要的正是「觀察決策台到底有沒有用」→ ⛔ 動名單就觀察不到。
+    //    ⭐ 交換條件:被標到的那幾條**不可被自動選取**(`castRod` 會跳過),而且卡上要用 ⛔ 講清楚。
+    const thinL = [], disposed = [], avoided = [], picked = [];
+    for (const x of reco) {
+      const r = byS[x.s] || {};
+      const w = [];
+      if (r.amt != null && r.amt < this.CAST_MIN_AMT) { w.push('thin'); thinL.push(x.s); }        // 🚧 買得到嗎
+      if (r.att === 2) { w.push('disp'); disposed.push(x.s); }                                    // 🚨 處置中(分盤撮合,尾盤觸價進場不成立)
+      if (r.att >= 1 && r.chg5 >= 30) { w.push('hot'); avoided.push(x.s); }                       // ⚠️ 噴 ≥30% 才進注意股 → 實測 −1.81pp
+      picked.push({ ...r, sym: x.s, tier: 1, why: null, pb: x, warn: w });
     }
-    // 🥈 不足時補「🧬 過關但不在前 3 強板塊(或沒有產業別)」—— ⛔ 標明少過了哪一關,不混為一談
-    if (picked.length < this.CAST_MAX) {
-      const have = new Set(picked.map(x => x.sym));
-      for (const r of gene.filter(r => !have.has(r.sym)).sort((a, b) => b.chg20 - a.chg20)) {
-        picked.push({ ...r, tier: 2, why: null });
-        if (picked.length >= this.CAST_MAX) break;
-      }
-    }
-    return { picked, top3, geneN: gene.length, geneAllN: geneAll.length, thin, avoided, disposed, indN: inds.length };
+    return { picked, warnN: picked.filter(x => x.warn.length).length,
+             thin: thinL.length, avoided, disposed, fromDeck: true };
   },
 
   async castRod() {
@@ -2139,16 +2134,23 @@ const PRO = {
     this._fishPoolK = 'cast';
     await this.renderFish();
     this.buzz(60);
-    this._fishPick(R.picked[0].sym);
+    // ⚠️ 自動展開的那一條**跳過被標警示的**(⛔ 但它仍然在名單裡,見 _castPick 的取捨說明)
+    this._fishPick((R.picked.find(x => !(x.warn || []).length) || R.picked[0]).sym);
   },
 
   _castNone(R) {
+    const why = R.srcNone === 'noFile'
+      ? '<b>明日作戰清單還沒載進來</b>(盤後採礦完成後才有)——⛔ 這不是「今天沒有」,是還沒讀到。'
+      : `全市場掃完,<b>決策台今天一檔「可以買的」都沒有</b>。<br>
+         ⭐ 那通常是 🧬(一年位階 ≥75 且 20 日振幅 ≥3.2%)**沒有一檔過關**,或過關的都被大盤空頭旗標擋下來。`;
     document.getElementById('fishCard').innerHTML = `<div class="fishcard">
       <div class="big">🎣 今天沒有魚上鉤</div>
-      <div class="note" style="margin-top:6px">全市場 <b>${(this._fishD.rows || []).length}</b> 檔裡,通過 🧬(一年位階 ≥75 且 20 日振幅 ≥3.2%)的有 <b>${R.geneAllN}</b> 檔,
-      其中 <b>${R.geneN}</b> 檔成交額 ≥1 億(買得到;被流動性擋掉 ${R.thin} 檔),
-      但沒有一檔落在近 20 日最強的前 3 個板塊裡。<br>
-      ⛔ <b>不放寬條件硬給你一條</b> —— 那樣挑出來的東西沒有實測根據。今天就空手,是這套規則本來的樣子。</div></div>`;
+      <div class="note" style="margin-top:6px">${why}
+      ${(R.thin || R.disposed.length || R.avoided.length) ? `<br>另外被守門擋掉:${[
+        R.thin ? `${R.thin} 檔買不到(成交額不足)` : '',
+        R.disposed.length ? `${R.disposed.length} 檔處置中` : '',
+        R.avoided.length ? `${R.avoided.length} 檔噴太多才進注意股` : ''].filter(Boolean).join('、')}。` : ''}
+      <br>⛔ <b>不放寬條件硬給你一條</b> —— 那樣挑出來的東西沒有實測根據。今天就空手,是這套規則本來的樣子。</div></div>`;
     document.getElementById('fishCard').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   },
 
@@ -2164,49 +2166,56 @@ const PRO = {
     if (!p) return `<div class="note">這一條是你<b>自己從池子裡點的</b>,⛔ 不是拋竿挑的 —— 所以沒有「為什麼釣到它」那份理由。
       想讓程式幫你挑,回魚池按 <b>🎣 拋竿</b>。<br>⛔ 不論哪一種,魚池都<b>不下多空、不給買賣價位</b>:
       要不要買、買幾張、停損在哪,一律以散戶救星的「現在怎麼做」為準。</div>`;
-    const t3 = (R.top3 || []).map(x => `${x.k} ${x.m >= 0 ? '+' : ''}${x.m.toFixed(1)}%`).join(' ・');
-    return `<div class="warnbox" style="margin:0 0 8px">🎣 <b>這條是拋竿挑出來的</b>${p.tier === 2 ? '(🥈 少過了一關)' : ''}
-      <div class="note" style="margin-top:4px">🚨 <b>這套漏斗「合起來」回測量不出優勢 —— 一定要知道</b>:
-      492 個交易日、186 次,相對「強勢板塊裡隨便挑一檔」10 日 <b>−0.52pp</b>、
-      相對「只用 🧬 篩」10 日 <b>−1.44pp</b>(兩個都是<b>負的</b>)。
-      ⛔ 請把它當一份<b>有條件的候選清單</b>,<b>⛔ 不是一個回測過的策略</b>,更不是買進訊號。
-      <span style="color:var(--dim2)">來源:scripts/cast_probe.mjs</span></div></div>
+    const D = this._DECK_TRACK49 || {};
+    const w = v => (v / 10000).toFixed(0);
+    const x = p.pb || {};
+    const num = (v, s2 = '') => (v == null || !Number.isFinite(+v)) ? '—' : (+v).toFixed(2) + s2;
+    return `<div class="warnbox" style="margin:0 0 8px">🎯 <b>這條是「決策台今天可以買的」挑出來的</b>
+      <div class="note" style="margin-top:4px">⭐ V76.3.0 起拋竿<b>改用決策台那套選股</b>(⛔ 舊的三層漏斗已整組拿掉 ——
+      <code>cast_probe</code> 實測<b>六關 0 過</b>,而且拆解顯示<b>少了板塊那兩關反而比較好</b>)。<br>
+      ⭐ 好處是:你在 🧺 漁獲籃看到的賺賠,跟 📒 決策台推薦成績單量的是<b>同一件事</b> ——
+      ⛔ 不會再出現「釣魚池在賠,但那套根本不是決策台那套」這種誤讀。</div></div>
     <div class="warnbox" style="margin:0 0 8px">
-      🎣 <b>為什麼釣到它</b>${p.tier === 2 ? '(🥈 少過了一關,見下)' : ''}
+      🎯 <b>為什麼是它</b>
       <div class="note" style="margin-top:4px">
-        ⓪ 🚧 <b>成交額 ${p.amt.toFixed(1)} 億</b> —— 過了「買得到」那一關(每筆 15 萬 ÷ 1 億 = 當日成交額的 0.15%,不會推動價格)。
-        ⭐ 這一關<b>不是為了提高報酬,是為了買得到</b>:全市場一半的股票成交額不到 0.06 億,
-        回測裡的成交價在那種標的上拿不到。<br>
-        ① 🧬 <b>一年位階 ${Math.round(p.pos252)} ・20 日振幅 ${p.amp20.toFixed(1)}%</b> —— 過了「位階 ≥75 且振幅 ≥3.2%」。
-        這一關是<b>必要條件不是加分</b>:36 個月組合回測 <b>只做 🧬 +289.6 萬</b>、不挑只有 +126.1 萬;
-        49 個月長窗口 +195.5 萬 vs +107.8 萬。<br>
-        ${p.tier === 1
-          ? `② 💧 它在<b>近 20 日最強的前 3 個板塊</b>裡(${t3})—— 前3強減後3弱實測 <b>+1.44pp</b>(六關全過)。<br>
-             ③ 🏭 它是<b>「${p.ind}」裡近 20 日漲最多</b>的(${p.chg20 >= 0 ? '+' : ''}${p.chg20.toFixed(1)}%)——
-             「板塊選最強、板塊裡再選最強」扣成本後 <b>+0.90%</b>(六關全過);⛔ 江湖最愛的「補漲」實測逐年全負。`
-          : `②③ ⚠️ <b>它沒有過板塊那兩關</b>(${p.ind ? `「${p.ind}」不在前 3 強` : '上櫃股沒有官方產業別,判斷不了'})——
-             這是 🧬 過關、近 20 日又最強的遞補,<b>證據比上面那種弱一級</b>。`}
+        ① 🏆 <b>這一檔自己歷史上最會賺的那一招:${x.k || '—'}</b> —— 勝率 <b>${x.w == null ? '—' : x.w + '%'}</b>
+        ・打過 <b>${x.n == null ? '—' : x.n}</b> 次 ・每趟平均 <b>${num(x.exp, '%')}</b>
+        (保守下界 <b>${num(x.lb, '%')}</b>,⭐ 排序用的是<b>下界</b>不是平均 —— 排平均會挑到僥倖股)。<br>
+        ② 🧬 <b>一年位階 ${p.pos252 == null ? '—' : Math.round(p.pos252)} ・20 日振幅 ${p.amp20 == null ? '—' : p.amp20.toFixed(1) + '%'}</b>
+        —— 過了「位階 ≥75 且振幅 ≥3.2%」。這一關是<b>必要條件不是加分</b>。<br>
+        ③ 🚧 <b>成交額 ${p.amt == null ? '—' : p.amt.toFixed(1)} 億</b> —— 過了「買得到」那一關。<br>
+        ④ 📅 觸發價 <b>${x.trig == null ? '(沒有價格閘門,現在的價位就符合)' : x.trig}</b>
+        ・停損 <b>${x.stop == null ? '—' : x.stop}</b>
+        <span style="color:var(--dim2)">(⛔ 不是明天一開盤就買 —— 觸發價是「站上去才算數」,看<b>尾盤 13:00~13:28</b>)</span>
       </div>
-      ${(R.disposed || []).length ? `<div class="note" style="margin-top:6px">🚨 這次<b>排除 ${R.disposed.length} 檔「官方處置中」</b>(${R.disposed.slice(0, 4).map(c => this._nmTxt(c)).join('、')}${R.disposed.length > 4 ? '…' : ''}):
-        處置股是 <b>5 或 20 分鐘分盤撮合</b>,而這套回測的進場方式是「尾盤 13:00~13:28 觸價買」——
-        <b>那個價你買不到</b>。而且本站實測「進處置」之後 20 日<b>中位 −4.81%</b>、勝率 40.4%、逐年不同向
-        (平均是正的但那是少數妖股大噴拉上去的)→ ⛔ 不能當進場訊號。
-        <span style="color:var(--dim2)">來源:dispo_backtest.mjs ・ 這是排除,⛔ 不是放空訊號</span></div>` : ''}
-      ${(R.avoided || []).length ? `<div class="note" style="margin-top:6px">⚠️ 這次<b>擋掉 ${R.avoided.length} 檔</b>(${R.avoided.slice(0, 4).map(c => this._nmTxt(c)).join('、')}${R.avoided.length > 4 ? '…' : ''}):
-        它們 🧬 有過關,但<b>前 5 日噴 ≥30% 又被掛官方注意股</b> —— 本站實測那個組合後 20 日
-        <b>−1.81pp ・中位 −7.21%</b>(六關全過的避雷訊號),⛔ 不能一邊追強一邊無視它。</div>` : ''}
-      <div class="warnbox" style="margin:8px 0 0">🚨 <b>這套漏斗「合起來」回測量不出優勢 —— 一定要知道</b>
-        <div class="note" style="margin-top:4px">上面每一層<b>單獨</b>都有實測邊際,⛔ <b>但把它們串起來之後沒有加分</b>:
-        492 個交易日、186 次(一天最多 2 條 + 20 日去重),相對
-        <b>「強勢板塊裡隨便挑一檔」10 日 −0.52pp</b>、相對 <b>「只用 🧬 篩」10 日 −1.44pp</b>(兩個都是<b>負的</b>)。
-        <br>⭐ 真因很可能是<b>條件重疊</b>:🧬(高位階+高波動)跟「板塊內近 20 日最強」講的其實是同一件事,
-        疊起來只是把樣本切到最極端的那幾檔。這跟 🏅 實測體質「每個零件都測過、加總卻排不出順序」是<b>同一種錯</b>。
-        <br>⛔ 所以請把它當成<b>一份有條件的候選清單</b>(流動性夠、位階高、波動夠、在強勢族群、避開了實測會賠的組合),
-        <b>⛔ 不是一個回測過的策略</b>。<span style="color:var(--dim2)">來源:scripts/cast_probe.mjs ・⚠️ 避雷那一關沒進回測(沒有注意股歷史)→ 這是保守下界</span></div></div>
-      <div class="note" style="margin-top:6px">⛔ <b>這是「候選」不是買進訊號</b>:上面每個數字都是<b>過去</b>的統計,
-      而且回測窗口整段偏多頭、追強那族的優勢 2024 起逐年變小。要不要買、買幾張、停損在哪,
-      一律以散戶救星的「現在怎麼做」為準。</div></div>`;
+      ${(p.warn || []).includes('disp') ? `<div class="warnbox" style="margin-top:6px;border-color:var(--red)">⛔ <b>這一檔「官方處置中」</b>
+        —— 處置股是 <b>5 或 20 分鐘分盤撮合</b>,而這套回測的進場方式是「尾盤 13:00~13:28 觸價買」:<b>那個價你買不到</b>。
+        而且實測「進處置」之後 20 日<b>中位 −4.81%</b>、勝率 40.4%、逐年不同向 → ⛔ 不能當進場訊號。
+        <span style="color:var(--dim2)">來源:dispo_backtest.mjs ・這是<b>排除不是放空訊號</b></span></div>` : ''}
+      ${(p.warn || []).includes('hot') ? `<div class="warnbox" style="margin-top:6px;border-color:var(--amber)">⚠️ <b>這一檔前 5 日噴 ≥30% 又被掛官方注意股</b>
+        —— 實測那個組合後 20 日 <b>−1.81pp ・中位 −7.21%</b>(六關全過的避雷訊號),⛔ 不能一邊追強一邊無視它。</div>` : ''}
+      ${(p.warn || []).includes('thin') ? `<div class="warnbox" style="margin-top:6px;border-color:var(--amber)">🚧 <b>這一檔成交額不到 ${this.CAST_MIN_AMT} 億 —— 買不到那個價</b>
+        。回測裡的成交價在這種流動性上拿不到,⛔ 實際滑價會比回測差。</div>` : ''}
+      <div class="note" style="margin-top:6px">🚨 <b>為什麼有警示還留在名單裡</b>:因為<b>決策台本身沒有這三道守門</b>
+      (它就是「🧬 過關 + 非空頭」取前 ${(this._DECK_TRACK49 || {}).picks || 2} 檔)。這裡如果先刪掉幾檔,
+      你在 🧺 漁獲籃量到的<b>就不是決策台的成績</b> —— 而你要觀察的正是它。
+      ⭐ 交換條件:被標到的那幾條<b>不會被自動選取</b>,而且警示寫在這裡。
+      ${(R.disposed || []).length || (R.avoided || []).length || R.thin ? `<br>這次被標到的:${[
+        R.disposed.length ? `⛔ 處置中 ${R.disposed.map(c => this._nmTxt(c)).join('、')}` : '',
+        R.avoided.length ? `⚠️ 噴太多才進注意股 ${R.avoided.map(c => this._nmTxt(c)).join('、')}` : '',
+        R.thin ? `🚧 買不到 ${R.thin} 檔` : ''].filter(Boolean).join(' ・')}。` : ''}</div>
+      <div class="warnbox" style="margin:8px 0 0">📊 <b>這套的實測成績(⭐ 這就是你要觀察的那個)</b>
+        <div class="note" style="margin-top:4px">${D.months || 49} 個月(${D.from || ''}~${D.to || ''})、本金 ${((D.cap || 1000000) / 10000).toFixed(0)} 萬、
+        每天最多 ${D.picks || 2} 檔、出場 <b>${D.exitName || '唐奇安 20 日低點'}</b>:
+        <b>+${w(D.gene || 0)} 萬</b>(🆚 同期買 0050 放著 +${w(D.etf0050 || 0)} 萬)。
+        <br>⚠️ <b>代價要一起看</b>:中途最多賠 <b>−${D.geneDD || 25}%</b>,而且要<b>每天盯尾盤、嚴格停損</b>;
+        0050 買了什麼都不用做。這個取捨是你自己的,不是技術問題。
+        <br>⚠️ 而且窗口偏多頭(加權自己就漲了)、有倖存者偏誤、勝率只有 <b>30~33%</b>
+        —— 整套會賺<b>完全靠錯的時候小賠、對的時候抱住</b>,⛔ 連幾筆賠不代表壞掉。</div></div>
+      <div class="note" style="margin-top:6px">⛔ <b>這是「候選」不是買進訊號</b>:上面每個數字都是<b>過去</b>的統計。
+      要不要買、買幾張、停損在哪,一律以散戶救星的「現在怎麼做」為準。</div></div>`;
   },
+
   _castWhyOpen() {
     const sym = this._fishPickSym;
     this.openModal(`📖 ${sym ? this._nmFull(sym) : '這一條'} 的細節`, this._castWhyFull(sym));
@@ -2381,11 +2390,12 @@ const PRO = {
         ${dup.length ? `<div style="color:var(--amber);font-weight:700;margin-bottom:4px">🧺 這次上鉤的
           ${dup.map(x => `<b>${this._nmTxt(x.sym)}</b>(${ago(x.sym)}釣過)`).join('、')}
           <b>你已經在漁獲籃裡了</b>。</div>` : ''}
-        📊 同一套漏斗重放 <b>${K.days}</b> 個交易日:隔 1 天有 <b>${K.lag1}%</b> 跟上次一樣、
-        <b>${K.same1}% 的日子完全沒換</b>;一條魚連續上榜<b>中位 ${K.runMed} 天</b>(最長 ${K.runMax} 天);
-        最近 5 天總共只出現 <b>${K.u5}</b> 檔不同的(上限 ${this.CAST_MAX * 5})。<br>
-        ⭐ <b>這是設計的必然,⛔ 不是壞掉</b>:四層條件(一年位階 / 20 日振幅 / 20 日板塊動能 / 板塊內 20 日最強)
-        <b>全部是 20 日以上的窗口</b> —— 它們一天只換掉窗口頭尾各一天,本來就不會天天翻盤。
+        📊 <b>⚠️ 下面這組數字是「舊漏斗」量的(V76.3.0 已換成決策台選股)</b> —— 新的那套還沒單獨量過黏著度,
+        ⛔ 所以只能當<b>參考量級</b>,別當成新版的成績:<br>
+        同一套漏斗重放 <b>${K.days}</b> 個交易日:隔 1 天有 <b>${K.lag1}%</b> 跟上次一樣、
+        <b>${K.same1}% 的日子完全沒換</b>;一條魚連續上榜<b>中位 ${K.runMed} 天</b>(最長 ${K.runMax} 天)。<br>
+        ⭐ <b>會重複是設計的必然,⛔ 不是壞掉</b>:兩套的條件<b>都是 20 日以上的窗口</b>
+        (🧬 一年位階 / 20 日振幅、打法勝率也是長期統計)—— 一天只換掉窗口頭尾各一天,本來就不會天天翻盤。
         ⛔ 而且<b>不會為了「看起來新鮮」硬換一批</b>:那是用隨機性冒充多樣性。<br>
         🚨 <b>但有一件事要講清楚</b>:回測是<b>「同一檔 ${K.dedup} 個交易日內只算一次」</b> ——
         <b>連續幾天一直買同一檔,⛔ 不在那份回測涵蓋的範圍內</b>,別拿它的成績替重複押注背書。
@@ -4460,7 +4470,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V76.2.9',
+  VER: 'V76.3.0',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

@@ -43,9 +43,30 @@ const R = await pg.evaluate(async (PERF) => {
     const out = { cells: {}, vis: !el.classList.contains('hidden') };
     for (const [pk] of A._BK_LEAGUE_P) for (const [ck2] of A._BK_LEAGUE_C) {
         A.switchBkLeague(pk, ck2);
-        const names = [...el.querySelectorAll('button[onclick*="_openBrokerFromNameFromPage"]')].map(x => x.innerText.trim());
+        // ⚠️ 券商按鈕內含「・N 次」與樣本徽章 → 只取**第一個 token** 當名字(釘用意:第一名是誰,⛔ 不釘整串長相)
+        const names = [...el.querySelectorAll('button[onclick*="_openBrokerFromNameFromPage"]')].map(x => x.innerText.trim().split(/[\s・]/)[0]);
         out.cells[pk + '/' + ck2] = { names, txt: el.innerText, btns: el.querySelectorAll('button[onclick*="switchBkLeague"]').length };
     }
+    // 🔢 排序:點表頭要真的改順序,再點一次要反向;切格子要重設
+    A.switchBkLeague('daytrade', 'ret');
+    const first = () => { const b = el.querySelector('button[onclick*="_openBrokerFromNameFromPage"]'); return b ? b.innerText.trim().split(/[\s・]/)[0] : ''; };
+    out.sort = { defRet: first() };
+    A.switchBkSort('win'); out.sort.byWin = first();
+    A.switchBkSort('win'); out.sort.byWinAsc = first();          // 再點一次 = 反向
+    A.switchBkLeague('daytrade', 'busy'); out.sort.afterSwitch = first();   // 切格子要回到那一格的預設
+    out.sort.heads = el.querySelectorAll('button[onclick*="switchBkSort"]').length;
+    out.sort.arrow = /▼|▲/.test(el.innerText);
+
+    // 📐 版面空間:一頁(844px)看得到幾列 —— 對標專業 App 的密集表格
+    A.switchBkLeague('daytrade', 'ret');
+    const rows = [...el.querySelectorAll('button[onclick*="_openBrokerFromNameFromPage"]')];
+    out.layout = {
+        rows: rows.length,
+        listH: (() => { const w = el.querySelector('[style*="flex:1"]'); return w ? Math.round(w.getBoundingClientRect().height) : 0; })(),
+        rowH: rows.length > 1 ? Math.round(rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().top) : 0,
+        sideW: Math.round((el.querySelector('button[onclick*="switchBkLeague"]')?.getBoundingClientRect().width) || 0),
+    };
+
     A.switchBkLeague('swing', 'ret');
     out.godSame = A._godBrokerHtml() === A._brokerLeagueHtml();
     // 券商頁那邊也要走同一支
@@ -100,6 +121,22 @@ ck(/沒有.{0,3}預測力/.test(t), '⑥b ⭐ 要寫出本站三支探針實測�
 ck(/未扣交易成本/.test(t), '⑥c 要寫未扣成本');
 ck(/估計/.test(t) && /不是官方當沖/.test(t), '⑥d ⭐ 當沖是「同日雙向成交」的估計,⛔ 不可講成官方當沖');
 ck(/窗口 \d+ 個交易日/.test(t), '⑥e 要寫窗口幾天');
+
+console.log('\n── ⑨ 排序(⛔ 使用者明示:這種榜都要能排序)──');
+ck(R.sort.heads >= 3, `⑨a 表頭有可點的排序鈕(實得 ${R.sort.heads})`);
+ck(R.sort.arrow, '⑨b 目前照哪一欄排要看得出來(▼/▲)');
+ck(R.sort.defRet === 'D報酬王', `⑨c 預設照那一格的類別排(報酬王格 → ${R.sort.defRet})`);
+ck(R.sort.byWin === 'D常勝軍', `⑨d ⭐ 點「勝率」表頭 → 第一名換成勝率最高的(實得 ${R.sort.byWin})`);
+ck(R.sort.byWinAsc !== R.sort.byWin, `⑨e ⭐ 同一個表頭再點一次要**反向**(實得 ${R.sort.byWinAsc})`);
+ck(R.sort.afterSwitch === 'D交易狂', `⑨f 切到別格 → 回到那一格自己的預設排序(實得 ${R.sort.afterSwitch})`);
+
+console.log('\n── ⑩ 版面空間最大化(對標專業 App 的密集表格)──');
+ck(R.layout.sideW > 0 && R.layout.sideW <= 70, `⑩a 左欄 12 項是**窄的凍結欄**(實得 ${R.layout.sideW}px;⛔ 舊版 4×3 大方格橫擺吃掉半個畫面)`);
+ck(R.layout.rowH > 0 && R.layout.rowH <= 34, `⑩b 每列高度 ≤34px(實得 ${R.layout.rowH}px;⛔ 一列兩行會讓一頁只看得到 4 筆)`);
+// ⚠️ ⛔ 不用「現在有幾列在畫面內」當判準 —— headless 的捲動位置不可靠(第一版量到 0);
+//    改成用**列高**推「一頁(844px,扣掉標題與免責約 300px)塞得下幾列」= 可重現的密度指標。
+ck(R.layout.rowH * 10 <= 544, `⑩c ⭐ 一頁(844px)塞得下 10 列以上(列高 ${R.layout.rowH}px × 10 = ${R.layout.rowH * 10}px ≤ 544px)`);
+ck(R.sort.heads >= 3, `⑩d 三個數值欄都可以排(報酬/勝率/出手;實得 ${R.sort.heads})`);
 
 console.log('\n── ⑦ 版面 / 空狀態 ──');
 ck(R.scrollX <= 2, `⑦a 390px 下不可橫向捲動(scrollX=${R.scrollX})`);
