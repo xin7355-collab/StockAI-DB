@@ -105,6 +105,39 @@ for (const [w, h, mode] of [[1440, 900, 'desk'], [390, 844, 'phone']]) {
     ck(r.squeeze <= 4 && r.headSqueeze <= 4, `③${mode} 庫存表被擠爆(列 +${r.squeeze}px ・表頭 +${r.headSqueeze}px)→ 外框 min-w 沒把間距與 padding 算進去`);
 }
 
+// ── ⑤ 庫存頁「下面不可以空一大片」(V76.3.3,使用者截圖) ───────────────
+for (const [w, h, mode] of [[1362, 760, 'desk'], [390, 844, 'phone']]) {
+    const page = await open(w, h);
+    const r = await page.evaluate(async () => {
+        const A = window.app || app;
+        // ⭐ 只放 3 檔(使用者截圖就是這個量)—— 舊版的兩個寫死 min-height 會在這種短清單下空一大片
+        A.inventory = [{ symbol: '2330', cost: 1000, shares: 2 }, { symbol: '2317', cost: 200, shares: 5 }, { symbol: '0050', cost: 93, shares: 1 }];
+        try { A.switchAppTab('inv'); A.renderInventory(); } catch (_) {}
+        await new Promise(r => setTimeout(r, 900));
+        const tab = document.getElementById('tabContentInv');
+        const panel = tab && tab.querySelector('.panel');
+        const sc = document.getElementById('invScroller');
+        if (!tab || !panel || !sc) return null;
+        const tr = tab.getBoundingClientRect(), pr = panel.getBoundingClientRect();
+        return {
+            tabH: Math.round(tr.height), panelH: Math.round(pr.height),
+            // 面板底下還剩幾 px 沒人用(扣掉分頁自己的 p-2 + pb-4 = 8 + 16)
+            slack: Math.round(tr.bottom - pr.bottom - 24),
+            scMax: Math.round(parseFloat(getComputedStyle(sc).maxHeight) || 0),
+            scH: Math.round(sc.getBoundingClientRect().height),
+            vh: window.innerHeight,
+        };
+    });
+    await page.close();
+    ck(r && r.panelH > 100, `⑤${mode} 量不到庫存面板 → 這一輪不算數`);
+    if (!r) continue;
+    ck(r.slack <= 20, `⑤${mode} 庫存面板底下空了 ${r.slack}px → 又把高度寫死了(⛔ 短清單不可以留一大片黑的)`);
+    // 🚧 上限要是「量出來的」:⛔ 不可再是 calc(100dvh-320) 那種憑空的數字
+    ck(r.scMax > 0, `⑤${mode} 捲動區沒有算出 maxHeight → _invFitHeight 沒跑到`);
+    ck(Math.abs(r.scMax - (r.vh - 320)) > 8, `⑤${mode} 捲動區上限剛好等於「視窗高 − 320」→ 還是那個寫死的數字,⛔ 沒有量`);
+    ck(r.scMax < r.vh, `⑤${mode} 捲動區上限 ${r.scMax}px 比整個視窗還高 → 一定會被底部導覽蓋住`);
+}
+
 // ── ④ 字級「小」真的會變小 ──────────────────────────────────────────
 {
     const page = await open(390, 844);

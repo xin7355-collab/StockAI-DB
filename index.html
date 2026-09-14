@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.3.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -432,6 +432,13 @@
             visibility: visible !important;
             opacity: 1 !important;
         }
+        /* 💼 V76.3.3 庫存頁**不吃**上面那個 `min-height: 80vh` ——
+           使用者截圖:3 檔庫存,清單下面卻空了一大片黑的(「庫存頁面下面還有空間」)。
+           ⭐ 那個 80vh 是 V24.9 為了「分頁不可以塌掉」加的雙保險,但庫存頁裡面
+              **本來就有內容(標題列 + 統計卡 + 清單)**,不可能塌 → 它在這一頁只會製造空白。
+           ⛔ 其餘四頁不動(它們有「載入中什麼都還沒有」的狀態,塌掉會閃)。
+           ⭐ 清單自己的高度改由 `app._invFitHeight()` **量出來**(⛔ 不再寫死 vh/px)。 */
+        #tabContentInv.tab-active { min-height: 0 !important; }
         /* 🎛️ 雷達頁(策略/券商):外層整頁不捲動,只讓左右兩欄各自 overflow-y 獨立上下滑(使用者要求:最右側整頁捲軸/滾輪失效) */
         /* V69.1.21 改用 flex 撐滿(不再固定 calc(100dvh-172px)):讓左右兩欄高度自動貼合可視區,底部不被 nav 蓋住 → 券商榜/朱家泓 滑得到、不回彈 */
         .scrollable-main:has(> #tabContentRadar.tab-active) { overflow: hidden !important; display: flex; flex-direction: column; }
@@ -798,7 +805,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3099,7 +3106,7 @@
                         <div class="flex items-center gap-1.5">
                             <span class="text-[13px]">📢</span>
                             <span class="text-[12px] font-black text-gray-100">多頭待發射</span>
-                            <span class="text-[9px] text-gray-500">距突破近→遠</span>
+                            <span class="text-[9px] text-gray-500">離壓力近→遠 ・<span class="text-gray-600">觀察用,⛔ 不是買進順序</span></span>
                             <button onclick="app.showJargon('多頭待發射')" class="text-[10px] text-gray-500 hover:text-blue-300">❓</button>
                             <button onclick="app._scanBreakoutCandidates(true); app.vibrate(20);" class="ml-auto text-[10px] text-cyan-300/80 hover:text-cyan-200">🔄 重掃</button>
                         </div>
@@ -3117,8 +3124,8 @@
             </div>
         </div>
 
-        <div id="tabContentInv" class="flex-col gap-3 p-2 pb-4" style="display:none;min-height:80vh;">
-            <div class="panel border border-[#30363d] bg-[#0d1117] min-h-[70vh] flex flex-col overflow-hidden">
+        <div id="tabContentInv" class="flex-col gap-3 p-2 pb-4" style="display:none;">
+            <div class="panel border border-[#30363d] bg-[#0d1117] flex flex-col overflow-hidden">
                 <div class="flex justify-between items-center px-3 py-2 border-b border-[#30363d] bg-[#161b22] shadow-sm">
                     <!-- 💼 V45.12 改名「庫存股」+ 點標題彈出說明(移除常駐說明banner) -->
                     <h2 onclick="app._helpBox('💼 庫存股怎麼用\n\n這是你「實際持有」的股票。\n\n・輸入買入價 → 每天自動算盈虧\n・獲利 > 15% → 建議上移停利\n・虧損 > 10% → 提醒評估停損\n・點代號旁 ⋯ → 結算平倉(記入交易日誌算勝率)/ 改成本 / 刪除')" class="text-base md:text-lg font-bold text-white flex items-center gap-1.5 tracking-wide cursor-pointer"><span class="bg-orange-600 text-white text-sm px-2 py-0.5 rounded font-black shadow-inner">庫</span> 庫存股 <span class="text-[10px] text-gray-500 font-normal ml-0.5">📖 點看說明</span> <span id="tradeMirrorBtnSlot" class="ml-1"></span></h2>
@@ -3152,7 +3159,7 @@
                 <div class="flex-grow min-h-0 bg-[#0d1117] overflow-hidden">
 <!-- 💡 操作提示行 V44.6 已刪除(使用者要求版面乾淨) -->
                     <!-- V46.2 左右滑動;🧊 V59.2/V68.3.2 凍結:清單改容器內捲(max-height + overflow-auto + min-h-0 讓 flex 內捲確實生效),表頭 sticky top-0 固定於捲動區頂;上方統計卡不被捲走 -->
-                    <div class="overflow-auto scrollbar-hide" style="max-height: calc(100dvh - 320px);">
+                    <div id="invScroller" class="overflow-auto scrollbar-hide" style="max-height: calc(100dvh - 320px);">
                         <!-- 🐛 V61.7 w-max:讓外框寬度=最寬列的內容寬(而非只吃 466px 視窗寬)→ 橫捲到最右時「均價/總成本」欄列底色也填滿,不再露出頁面底色 -->
                         <!-- 💼 V76.3.2 min-w 從 466 → **502**:`w-max` 改 `w-full` 之後,外框不再被內容撐開
                              → 必須把「六欄的最小寬 466 + 5 個間距 20 + 左右 padding 16」算進去,
@@ -3820,7 +3827,7 @@ const app = {
         '突破棒防守': '起漲那根「爆量長紅」的中點(開盤+收盤)÷2,約是主力與大戶的成本區、也是這波多頭的結構防線。跌破 = 這波結構壞了,多單該守;回檔到這條線附近又量縮、低點不破,就是朱老師「回後買上漲」的加碼買點。比單純看 5MA/20MA 更貼近真實主力成本。',
         '盤前體檢': '朱老師「盤前分析」的純公式自動版 — 把今天開盤前該看的東西一次彙總,算出「今天大盤偏多/偏空」一句話總結:\n\n📊 計分材料(全部程式算,不靠 AI):\n  ・ 美股四雄(道瓊/NASDAQ/S&P500/費半)收紅收綠\n  ・ 台積電 ADR 漲跌(權重最高,最連動台積電開盤)\n  ・ VIX 恐慌指數(<20 安全 / >30 恐慌)\n  ・ 外資台指期淨未平倉(偏多/偏空)+ 外資現貨買賣超\n  ・ 🌙 台指期夜盤(15:00~次日5:00,台灣資金對隔夜美股+盤後事件的即時反應,最直接的隔日開盤風向球;有真實漲跌%才計分,夜盤重挫權重略高)\n  ・ 🌍 亞股連動(日經/韓股同盤最直接風向,恆指半權重)+ 恐懼貪婪情緒(≥80 過熱偏空/≤20 極恐偏多,輕權重)(V50.2 新增)\n  ・ 加權指數自己的「進場體檢」技術分數(對 ^TWII 跑同一套純公式)\n\n🎯 總結:🔴 開高偏多 / 🟡 中性震盪 / 🟢 開低偏空(紅漲綠跌)。\n\n🔧 仍「採集中」的(下次採礦自動補):大盤融資券餘額、台指期夜盤源(修復中時暫不計分)。投信/自營商/三大法人合計、日月光/聯電 ADR 已納入採礦,16:30 跑完即顯示。\n\n⚠️ 開盤方向是機率不是保證(美股常被提前反映),僅供盤前風向參考,實際進出仍以開盤量價為準。',
         '進場體檢': '把這支股票所有「純公式」技術訊號(三星轉折=晨星/夜星、吞噬、橫盤突破、量能=攻擊/出貨/換手量、均線排列)一次彙總,算出一個 0-100「進場友善度」+ 紅綠燈總結,給初學者一眼判斷:\n\n• 🔴 偏多(分數≥65)= 多方訊號 + 站上 5 日線/月線多頭排列 → 可分批試單,務必設停損。\n• 🟡 觀望(38~65 或多空打架)= 訊號不明或正在換手 → 先別進,等明確型態。\n• 🟢 偏空(分數≤38)= 空方訊號 + 跌破均線 → 別接刀,有貨者顧好停損。\n\n⚠️ 台股慣例 🔴=漲、🟢=跌(跟紅綠燈相反,別看反)。這是型態統計、不是預言:偏多不代表一定漲、偏空也不保證跌,真正的安全來自「進場就設好停損、跌破就走」。全部 JS 計算,絕不丟給 AI 算(防幻覺)。',
-        '多頭待發射': '把你自選清單裡「剛打完底、橫盤盤整、最靠近上方突破壓力」的股票挑出來,用「離突破還差幾 %」由近到遠排序。排最前=最可能先發動(例如只差 1.5% 就過壓力)。提醒:距離近只是「快到了」,真正進場仍要等帶量突破那一根,別提早猜。已突破無壓力、振幅太大已噴/崩、或「均線空頭排列(現價還在 5日線+月線之下的逆勢股)」都會自動排除 — 這種首席頁會判偏空、要你別接刀,不會再列來這裡跟首席打架。',
+        '多頭待發射': '把你自選清單裡「剛打完底、橫盤盤整、最靠近上方突破壓力」的股票挑出來,用「離突破還差幾 %」由近到遠排序。\n\n🔬 這張卡 V76.3.3 回測過了(2,237 檔・36,987 次),結論分成兩半:\n⭐ 有用的那半:「快到了」是真的 — 離壓力 ≤2% 的有 57.6% 會在 10 個交易日內收盤站上去,離 5~10% 只有 19.7%,離 10% 以上只剩 7.5%,完全單調。\n⛔ 沒用的那半:站上去不等於賺得到 — 排最前那一桶比同一批候選只好 0.14 個百分點,扣掉來回成本 0.44% 之後是負的(−0.30);六道關卡只過 3 關(2026 年方向還相反)。連這個漏斗本身都比「隨便挑一天」差 0.22 個百分點。\n\n→ 所以它是「誰快碰到壓力了」的觀察清單,排第一⛔ 不代表最該買,也⛔ 不是買進順序。要不要進場看總覽「現在怎麼做」。\n\n已突破無壓力、振幅太大已噴/崩、或「均線空頭排列(現價還在 5日線+月線之下的逆勢股)」都會自動排除 — 這種首席頁會判偏空、要你別接刀,不會再列來這裡跟首席打架。',
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
         '法人連賣': '三大法人(外資+投信+自營)連續 3 天賣超 = 大戶在調節出貨,籌碼鬆動,股價短線易壓回。',
         '盤中主力估算': '⚠️ 先講清楚:「哪一家券商分點在買賣」證交所只在收盤後才公布,盤中全世界都拿不到 —— 這是制度限制,不是資料沒買到。付費看盤軟體標的「即時主力」同樣是推估的,沒有例外。\n\n盤中能做的是「推估」,本 App 分兩層:\n① 熱門股(當日成交量前 80 名)→ 用真實逐筆成交算全日累計主動買賣量 + 大單(單筆 ≥50 張),盤中每 10 分鐘更新,在「⚡當沖」作戰室。這層最接近真相。\n② 其他股票 → 用即時逐筆成交累積推估,開著頁面越久越完整,在「分時逐筆」頁的「🐋 大單流向」。\n\n兩層都是推估方向,可能與收盤後的真實分點有出入。盤中當參考、收盤後看真實分點才準。',
@@ -4392,6 +4399,7 @@ const app = {
             this.__ecResizeT = setTimeout(() => {
                 try { this.chartInstance && this.chartInstance.resize(); } catch (_) {}
                 try { document.querySelectorAll('[_echarts_instance_]').forEach(el => { try { echarts.getInstanceByDom(el)?.resize(); } catch (_) {} }); } catch (_) {}
+                try { this._invFitHeight(); } catch (_) {}
             }, 250);
         });
         this._loadBrokerNames();
@@ -8391,8 +8399,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.3.2',
+    _APP_VERSION: 'V76.3.3',
     _CHANGELOG: [
+        { v: 'V76.3.3', d: ['💼 <b>庫存頁下面那一大片空白修掉了</b>:真因是<b>兩個寫死的高度</b>(分頁 80vh + 面板 70vh)讓面板跟內容脫鉤 —— 3 檔庫存也硬撐到 8 成螢幕高。現在面板貼著內容,清單自己的高度<b>量出來</b>(視窗高 − 它的位置 − 底部導覽),⛔ 不再用 <code>100dvh−320</code> 那個憑空的數字。',
+            '📢 <b>「多頭待發射」回測完了(2,237 檔 ・36,987 次)</b> —— 結論分兩半,兩半都寫在卡上了:',
+            '⭐ <b>它宣稱的「快到了」是真的</b>:離壓力 ≤2% 的有 <b>57.6%</b> 會在 10 個交易日內收盤站上去;離 5~10% 只有 19.7%、離 10% 以上只剩 <b>7.5%</b> —— 完全單調。',
+            '⛔ <b>但站上去不等於賺得到</b>:排最前那一桶比同一批候選只好 0.14 個百分點,扣掉來回成本 0.44% 之後是 <b>−0.30</b>;六道關卡只過 <b>3/6</b>(2026 年方向還相反)。連這個漏斗本身都比「隨便挑一天」差 0.22 個百分點。',
+            '→ 所以它改成<b>觀察清單</b>(誰快碰到壓力了),副標也改了:⛔ 排第一不代表最該買、⛔ 不是買進順序。要不要進場一律看總覽「現在怎麼做」。'] },
         { v: 'V76.3.2', d: ['🧱 <b>「螢幕能看的地方變窄、字調到最小還是很大」—— 先量,結果三個都不是我以為的那樣</b>:',
             '① <b>桌機個股頁的固定框架吃掉 410px</b>(1440×900 實測)→ 內容只剩 <b>54%</b>。桌機是橫的,而股名列與現價列卻還是照手機上下疊 → <b>改成並排</b>(⛔ 資訊一個字都沒刪),個股置頂 214px → <b>140px</b>;頂端列與分頁列的圖示也改成「圖示與字並排」(60→47 / 53→40)。合計內容區從 54% → <b>66%</b>,⛔ 手機一行都沒動。',
             '② <b>庫存表在桌機右邊有 774px 永遠空著</b> —— 六個欄位寬度是寫死的 px(合計 466px),而桌機內容區有 1268px。改成「最小還是那個寬度、多出來的按比例分掉」→ 手機照舊橫捲、桌機整排用滿。',
@@ -42478,13 +42491,27 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // ⚡ V71.3.1 已改 setTimeout 自我重排 → 這裡必須用 clearTimeout,用 clearInterval 停不掉會變雙倍輪詢
     _stopFavPricePoll() { if (this._favPollTimer) { clearTimeout(this._favPollTimer); this._favPollTimer = null; } },
 
+    // 📢 V76.3.3 「多頭待發射」的實測成績(`scripts/breakoutdist_probe.mjs`,2,237 檔 ・36,987 個候選事件)
+    //   ⭐ 結論跟 `overhead_probe` 一模一樣:**「快到了」是真的,「所以會賺」是假的**。
+    //   ⛔ 這幾個數字是唯一一份 —— 顯示端一律讀它,⛔ 不可把數字寫死在文案裡
+    //      (改了探針門檻就會對不上,同 `_SIGNAL_EDGE` 的鐵則)。
+    _BREAKOUT_EDGE: {
+        syms: 2237, n: 36987, from: '2024-05-30', to: '2026-08-12',
+        funnel: -0.22,          // 漏斗本身 vs「隨便挑一天」的 10 日超額(pp)
+        near: 0.14,             // ≤2% 那一桶 vs 漏斗全體(pp)
+        cost: 0.44,
+        gates: 3,               // 六關通過幾關
+        yr: '2024 +0.47 ・2025 +0.37 ・2026 −0.73',
+        brk: [57.6, 34.9, 19.7, 7.5],   // 各桶「10 日內收盤站上那道壓力」的比例(單調)
+    },
+
     // 📢 V31.9 多頭待發射:掃自選清單,重用 _chuResistanceZones 取「距最近上方壓力%」,由近到遠排序
     async _scanBreakoutCandidates(force = false) {
         const box = document.getElementById('breakoutScanList');
         if (!box) return;
         const group = this.activeGroupName;
         const list = (this.favGroups?.[group] || []).slice(0, 60);
-        if (!list.length) { box.innerHTML = '<div class="text-[10px] text-gray-600 text-center py-3">自選清單空,先加股票才能掃描待發射</div>'; return; }
+        if (!list.length) { box.innerHTML = this._breakoutEdgeHtml() + '<div class="text-[10px] text-gray-600 text-center py-3">自選清單空,先加股票才能掃描待發射</div>'; return; }
         if (!force && this._breakoutScanCache && this._breakoutScanCache.group === group && (Date.now() - this._breakoutScanCache.ts < 10 * 60 * 1000)) {
             this._renderBreakoutScan(this._breakoutScanCache.rows); return;
         }
@@ -42515,11 +42542,27 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         this._renderBreakoutScan(rows);
     },
 
+    // 📢 V76.3.3 這張卡的誠實話 —— ⛔ 數字一律讀 `_BREAKOUT_EDGE`,不可寫死
+    _breakoutEdgeHtml() {
+        const E = this._BREAKOUT_EDGE || {};
+        const f = x => (x >= 0 ? '+' : '') + Number(x).toFixed(2);
+        const b = E.brk || [];
+        return `<div class="text-[10px] text-gray-400 leading-snug border-b border-[#21262d] pb-1.5 mb-1">
+            <div><span class="text-amber-300 font-bold">⭐ 「快到了」是真的</span>:離壓力 ≤2% 的,<b class="text-gray-100">${b[0]}%</b> 會在 10 個交易日內收盤站上去;
+                 離 5~10% 只有 ${b[2]}%、離 10% 以上只剩 <b>${b[3]}%</b>(越近越容易過,完全單調)。</div>
+            <div class="mt-0.5"><span class="text-gray-300 font-bold">⛔ 但「站上去」不等於「賺得到」</span>:排最前那一桶比同一批候選只好 ${f(E.near)}pp,
+                 扣來回成本 ${E.cost}% 後是 <b class="text-green-300">${f(E.near - E.cost)}pp</b>;六關只過 <b>${E.gates}/6</b>(逐年 ${E.yr})。
+                 連這個漏斗本身都比「隨便挑一天」差 ${f(E.funnel)}pp。</div>
+            <div class="mt-0.5 text-gray-500">→ 這是<b>觀察清單</b>(誰快碰到壓力了),⛔ 不是買進順序、⛔ 排第一不代表最該買。
+                 要不要進場看總覽「現在怎麼做」。<span class="text-gray-600">實測 ${E.syms} 檔 ・${(E.n || 0).toLocaleString()} 次 ・${E.from}~${E.to}</span></div>
+        </div>`;
+    },
+
     _renderBreakoutScan(rows) {
         const box = document.getElementById('breakoutScanList');
         if (!box) return;
-        if (!rows || !rows.length) { box.innerHTML = '<div class="text-[10px] text-gray-500 text-center py-3">自選股目前無「接近突破」的打底候選(已突破 / 資料不足 / 振幅過大 / 空頭排列已排除)</div>'; return; }
-        box.innerHTML = rows.slice(0, 20).map((r, i) => {
+        if (!rows || !rows.length) { box.innerHTML = this._breakoutEdgeHtml() + '<div class="text-[10px] text-gray-500 text-center py-3">自選股目前無「接近突破」的打底候選(已突破 / 資料不足 / 振幅過大 / 空頭排列已排除)</div>'; return; }
+        box.innerHTML = this._breakoutEdgeHtml() + rows.slice(0, 20).map((r, i) => {
             const distCls = r.dist <= 2 ? 'text-red-300' : r.dist <= 5 ? 'text-amber-300' : 'text-gray-400';
             const hot = r.dist <= 2 ? ' 🔥' : '';
             return `<div onclick="app.analyze('${r.sym}'); app.switchAppTab('diag'); app.vibrate(20);" class="grid grid-cols-[1fr_auto_auto] gap-2 items-center px-2 py-1.5 border-b border-[#21262d] last:border-0 cursor-pointer hover:bg-white/5">
@@ -43134,6 +43177,27 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return true;
     },
 
+    // 📐 V76.3.3 庫存清單「把剩下的高度用滿,而且不要留一片空的」——
+    //   使用者截圖:列只有 3 檔,面板卻硬撐到 70vh → 底下一大片黑的(「庫存頁面下面還有空間」)。
+    //   ⭐ 真因是**兩個寫死的 min-height**(`#tabContentInv` 80vh + 面板 70vh)——
+    //      它們讓面板跟內容脫鉤:少的時候空一片、多的時候又被 `calc(100dvh - 320px)` 這個
+    //      **憑空訂的 320** 卡住(桌機 V76.3.2 把框架縮掉 100px 之後,那個 320 更加不準)。
+    //   ⭐ 修法:min-height 全部拿掉(短清單就短),捲動區的上限**量出來**:
+    //      視窗高 − 它自己的 top − 底部導覽(只有在 `position:fixed` 時才要扣,桌機它是靜態的)。
+    //   ⛔ 不可再寫死任何 vh/px 數字 —— 字級、桌機/手機、有沒有橫幅都會動到那個 top。
+    _invFitHeight() {
+        const sc = document.getElementById('invScroller');
+        if (!sc || sc.offsetParent === null) return;
+        const nav = document.querySelector('.nav-fixed');
+        let reserve = 12;
+        try {
+            if (nav && getComputedStyle(nav).position === 'fixed') reserve += Math.round(nav.getBoundingClientRect().height);
+        } catch (_) {}
+        const top = sc.getBoundingClientRect().top;
+        // 🚧 下限 180px:算出負數或極小值時(頁面還沒排好 / 被捲走)⛔ 不可把清單壓成 0 高
+        const avail = Math.max(180, Math.round(window.innerHeight - top - reserve));
+        sc.style.maxHeight = avail + 'px';
+    },
     renderInventory() {
         // 🛡️ 重新渲染前強制重置所有殘留 swipe state,防止特定一列「自動展開兩邊按鈕」的視覺 bug
         document.querySelectorAll('#inventoryCardContainer .swipe-content').forEach(el => {
@@ -43146,6 +43210,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             // 🚨 V75.1.5 空庫存這條路**也要**顯示股名警告 —— 那正是使用者要新增持股的時候,
             //    而清單沒載入時「新增庫存的搜尋」是打不出東西的(⛔ 不可讓他以為 App 壞了)。
             container.innerHTML = this._nameWarnHtml() + '<p class="text-center text-gray-500 font-bold border border-dashed border-[#30363d] rounded-lg m-3 py-8 text-sm">目前無庫存部位</p>';
+            try { this._invFitHeight(); } catch (_) {}
             ['invTodayPnL','invTodayPnLPct','invTotalPnL','invTotalPnLPct','invMarketVal','invCostBasis'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.innerText = '--';
@@ -43259,6 +43324,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
           } catch (_rowErr) { console.warn('[庫存列渲染跳過]', r?.item?.symbol, _rowErr?.message); }
         }
         container.innerHTML = this._nameWarnHtml() + html;
+        try { this._invFitHeight(); } catch (_) {}
         // 🗑️ V50.6 市值佔比欄已刪除(使用者要求)
 
         // 統計卡
