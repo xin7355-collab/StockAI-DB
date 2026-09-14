@@ -97,7 +97,10 @@ const r = await page.evaluate(async () => {
     A._rpLast.pC = pC0; A._rpDrawOwn('2330');                       // 還原現價,重畫一張乾淨的
     const S = A._RP_STYLE, dbg = A._rpOwnDbg || { cards: [], bars: [] };
     const pr = A._reportChartPrompt('2330');
-    const promptHas = [S.bg, S.card, S.pos, S.amb, S.risk.mid, S.risk.lo].map(h => pr.includes(h));
+    // ⚠️ V76.4.1 起海報是**無框**的 → `S.card`(卡片底色)畫布上一次都沒用到,
+    //    再要求它出現在提示詞裡等於逼提示詞去描述一個不存在的東西。改比「畫布真的會用到」的那幾個,
+    //    並補上 `S.line`(分隔線 —— 無框版面就是靠它分段)。
+    const promptHas = [S.bg, S.line, S.pos, S.amb, S.risk.mid, S.risk.lo].map(h => pr.includes(h));
     // 🚨 只比**規則那半**:提示詞尾巴接著 `_reportFacts`,那裡也有同一句白話 →
     //    整串比會被自己的資料段救活(注入「提示詞拿掉白話那條」照樣綠 —— 本 repo 第四次踩到)。
     const prRule = pr.split(/\n---\n【資料】\n/)[0];   // ⚠️ 「【資料】」在規則裡也出現過 → 一定要用**整行**的那個分隔,⛔ 不可只比四個字
@@ -120,11 +123,67 @@ const r = await page.evaluate(async () => {
     const onScreen = fsBody * 358 / Wc;
     const ry = typeof A._revYoY === 'function'
         ? A._revYoY({ yoy: 7.6, mrh: [['2026-07', 1], ['2026-08', 2]] }, { rev_yoy: 27.7 }, null) : null;
-    return { ...base, ...chk, promptHas, cardGap, bars, valOk, w390: w1440, lad, glN, nWhite, tipInFacts, onScreen, ry, fsBody, Wc, promptGl, notes: dbg.notes, up, dn, same: a1 === a2, pxSame: s1 === s2, w: cv.width, h: cv.height,
+    // ── V76.4.1 ⓐ2~ⓒ2 無框 ──
+    //   ⓐ2 內容有多寬(佔畫布幾 %)・ⓒ2 每張卡的左界是不是同一條(⛔ 兩套邊界就是使用者看到的那個歪)
+    const widths = dbg.cards.map(c => ({ t: c.title, x0: c.x0, x1: c.x1, pct: (c.x1 - c.x0) / S.W }));
+    //   ⓖ2 段與段⛔ 不可重疊:每一段回報的高度必須真的蓋住它畫出去的東西
+    //      (V76.4.1 實跑截圖抓到 ② 的最後三列壓在 ③ 上面 —— 舊的測試一條都沒抓到)
+    const overlap = dbg.cards.slice(1).map((c, i) => ({ a: dbg.cards[i].title, b: c.title, gap: (c.yTitle - 26) - dbg.cards[i].yEnd }));
+    const ladOut = (dbg.lad || []).map(x => { const c = dbg.cards.find(c => c.sec === x.sec);
+        return c ? { n: x.name, t: c.title, out: Math.round(x.y - c.yEnd) } : null; }).filter(Boolean);
+    //   ⓑ2 卡片左上角那一點:無框 → 一定是底色 S.bg。⛔ 取樣點要落在**卡片範圍內**而不是分隔線上
+    //      (用第 2 張卡的 yTitle − 20,那是舊版外框會塗到、新版不會的位置)
+    const c1 = dbg.cards[1] || dbg.cards[0];
+    const corner = c1 ? px(c1.x0 + 2, c1.yTitle - 20) : null;
+    const hexBg = (() => { const h = S.bg.replace('#', ''); return { r: parseInt(h.slice(0, 2), 16), gg: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) }; })();
+    const noFrameRule = /不要畫卡片外框/.test(prRule);
+    return { ...base, ...chk, promptHas, cardGap, bars, valOk, w390: w1440, lad, glN, nWhite, tipInFacts, onScreen, ry, fsBody, Wc, promptGl, notes: dbg.notes, widths, corner, hexBg, noFrameRule, overlap, ladOut, PADx: dbg.pad, up, dn, same: a1 === a2, pxSame: s1 === s2, w: cv.width, h: cv.height,
              hasNow: (FT.lv || []).some(x => x.t === 'now'), nLv: (FT.lv || []).length,
              nEv: (FT.evs || []).length, nDim: (FT.dims || []).length };
 });
+// ── 📄 V76.4.1 報告頁(HTML 那半)也去框了 → 量「內容真的變寬了沒」+「三種 tone 有沒有對齊」──
+//   ⚠️ 幾何一律先注入版面 shim(⛔ 沙箱沒有 Tailwind,不注入量到的全是假的 —— 陷阱 #40)。
+//   ⚠️ 這一段**排在最後**:shim 會加一張 <style>,⛔ 不可影響上面那些量測。
+const { rwdShim } = await import(path.join(ROOT, 'scripts/lib_rwdshim.mjs'));
+const shimBad = await page.evaluate(rwdShim);
+const rep = await page.evaluate(() => {
+    const A = window.app || app;
+    A.switchAppTab('diag'); A.switchSubTab('report');       // ⚠️ init 會在幾秒後把分頁切回庫存頁 → 再切一次
+    const C = document.getElementById('subContentReport');
+    if (!C || !C.clientWidth) return { no: 1 };
+    C.querySelectorAll('details').forEach(d => { d.open = true; });   // 收起來的量不到寬度
+    const pick = id => { const e = document.getElementById(id); if (!e) return null;
+        const body = e.querySelector('details > div:not(summary)') || e.firstElementChild;
+        return body ? Math.round(body.getBoundingClientRect().width) : null; };
+    const pr = C.querySelector('[data-priceruler]');
+    // 三種 tone(warn / ok / 中性)的標題文字左緣要**完全一樣**
+    // ⚠️ 只取**最外層**的摺疊節(⛔ 巢狀在別的 details 裡面的本來就該縮排)
+    //    ⚠️ 一個 details 只取**第一個**節標(summary 裡的 note 那行也有 span,不去重會把它算成第二節)
+    const lefts = [...C.querySelectorAll('details')]
+        .filter(d => !d.parentElement.closest('details'))
+        .map(d => d.querySelector('summary > div > span'))
+        .filter(Boolean).map(s => Math.round(s.getBoundingClientRect().left));
+    // ⚠️ 琥珀色只能比 class:shim ⛔ 不補顏色(它只補會影響幾何的),computed 出來一律是預設色
+    const warn = [...C.querySelectorAll('details')].filter(d => /border-l-amber/.test(d.className)).length;
+    return { cw: C.clientWidth, walls: pick('rpWalls'), ruler: pr ? Math.round(pr.getBoundingClientRect().width) : null, lefts, warn };
+});
 await browser.close();
+
+ck(shimBad.length === 0, `📄0 版面 shim 有規則沒生效(${shimBad.join('、')})→ ⛔ 底下的報告頁幾何全部不可信`);
+if (!rep.no) {
+    ck(rep.cw >= 350, `📄0b 🚧 空過守門:報告頁容器只有 ${rep.cw}px → 下面幾條沒有鑑別力`);
+    const lim = (rep.cw - 16) * 0.94;   // 扣掉頁面對螢幕邊緣那道 px-2,再要求內容佔 94%(把 px-3 加回去 = 349px 就會紅)
+    ck(rep.walls == null || rep.walls >= lim,
+       `ⓓ2 §11 價格牆那一節的內容只有 ${rep.walls}px(容器 ${rep.cw})→ 卡片框又把寬度吃回去了(無框前只有 310px)`);
+    ck(rep.ruler == null || rep.ruler >= lim,
+       `ⓓ2b 價格位置圖只有 ${rep.ruler}px → 它外面那層框又回來了`);
+    ck(rep.lefts.length >= 3, `ⓔ20 只量到 ${rep.lefts.length} 個摺疊節標 → 這一條不算數`);
+    ck(new Set(rep.lefts).size <= 1,
+       `ⓔ2 摺疊節的標題左緣不一致 ${JSON.stringify(rep.lefts)} → 只有「有事」那幾節縮排 = 看起來歪掉(透明左邊框就是為了這個)`);
+    ck(rep.warn >= 1, 'ⓔ2b 找不到任何琥珀色左邊框 → ⚠️「這一節有事」的那條色邊不見了(⛔ 那個框在講事情,不可拿掉)');
+} else {
+    ck(false, '📄0c 切不到報告頁 → 上面幾條不算數');
+}
 
 ck(!r.no, 'ⓐ0 報告頁上找不到那張 canvas → 這一輪不算數');
 if (!r.no) {
@@ -179,6 +238,25 @@ if (!r.no) {
         }
     }
     ck(ladderedAny > 0, 'ⓥ3 每一列間距都剛好等於固定列高 → 那是等距清單不是價格軸(看不出誰離現價近)');
+    // ── V76.4.1 ⓐ2/ⓑ2/ⓒ2 無框:框拿掉之後,寬度要**真的**還給內容 ──
+    //   ⛔ 一律釘「量得到的結果」(內容佔畫布幾 % / 那一點是什麼顏色),⛔ 不釘 class 或常數等於多少
+    ck(r.widths.length >= 6, `ⓐ20 只記到 ${r.widths.length} 張卡的寬度 → 這一條不算數(空過守門)`);
+    for (const w of r.widths) ck(w.pct >= 0.9,
+        `ⓐ2 「${w.t}」的內容只有畫布的 ${(w.pct * 100).toFixed(1)}%(${w.x0}→${w.x1})→ 框又把寬度吃回去了(無框前是 86.2%)`);
+    ck(r.PADx != null && r.widths.every(w => w.x0 === r.PADx),
+       `ⓒ2 有卡片的左界不等於頁首那條邊(PAD=${r.PADx}):${JSON.stringify(r.widths.map(w => w.x0))} → 標題會比內文寬一截(使用者截圖上看得出來)`);
+    ck(r.widths.every(w => Math.abs((w.x1 - w.x0) - (r.Wc - 2 * r.PADx)) < 0.5),
+       'ⓒ2b 左右邊界不對稱 → 內容沒有置中在畫布上');
+    ck(!!r.corner, 'ⓑ20 取樣不到卡片左上角 → 這一條不算數');
+    if (r.corner) ck(r.corner.r === r.hexBg.r && r.corner.gg === r.hexBg.gg && r.corner.b === r.hexBg.b,
+       `ⓑ2 卡片左上角那一點是 rgb(${r.corner.r},${r.corner.gg},${r.corner.b}),不是底色 ${JSON.stringify(r.hexBg)} → 卡片外框/底色被加回來了(使用者要的是無框)`);
+    ck(r.noFrameRule, 'ⓕ2 做圖提示詞沒寫「⛔ 不要畫卡片外框」→ 外部 AI 那張又會長回有框的樣子(兩張圖對不起來)');
+    // ── ⓖ2 段與段⛔ 不可重疊(沒有框之後,重疊就是「兩段的字黏在一起」,比有框時更難看出來)──
+    ck(r.overlap.length >= 5, `ⓖ20 只比得到 ${r.overlap.length} 對相鄰段 → 這一條不算數`);
+    for (const o of r.overlap) ck(o.gap >= 0,
+        `ⓖ2 「${o.b}」的標題壓進「${o.a}」裡面 ${-o.gap}px → 兩段的字疊在一起`);
+    for (const x of r.ladOut) ck(x.out <= 0,
+        `ⓖ3 「${x.t}」的價格軸把「${x.n}」畫到自己這一段外面 ${x.out}px → 會壓到下一段(V76.4.1 實跑截圖抓到的)`);
     // ── ⓦ 字級:⛔ 釘「螢幕上實際幾 px」,不是釘畫布寬等於多少 ──
     ck(r.onScreen >= 11, `ⓦ 手機上內文只有 ${r.onScreen.toFixed(1)}px(內文 ${r.fsBody}px ÷ 畫布 ${r.Wc}px × 358)→ 太小看不清楚`);
     // ── ⓧ 每個數字都要有一句白話(使用者:「產出來的資料還要敘述那是什麼意思」)──

@@ -243,7 +243,7 @@ for (const [w, h, label] of [[390, 844, '📱 手機 390'], [1440, 900, '🖥️
                 console.log(`\n═══ ${tag} ═══`);
                 if (!SHIM_REPORTED) { SHIM_REPORTED = true;
                     if (r.shimBad && r.shimBad.length) { console.log('  🚨 版面 shim 有規則沒生效 → ⛔ 底下的幾何數字全部不可信:'); r.shimBad.forEach(x => console.log('     ・' + x)); }
-                    else console.log('  🚧 版面 shim 自我檢查 5 條全過(flex-wrap / hidden / overflow / grid 任意值 / gap)');
+                    else console.log('  🚧 版面 shim 自我檢查 7 條全過(flex-wrap / hidden / overflow / grid 任意值 / gap / border-b / border-l-4)');
                 }
                 // 🚧 空過守門:⛔「乾淨的輸出」與「根本沒掃到」不可長得一樣
                 if (!r.scanned) { console.log(`  🚨 這一頁掃到 0 個可見元素 → 切不過去或沒渲染,⛔ 這頁的結論不算數`); BLIND.push(tag); continue; }

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.4.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.4.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -809,7 +809,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.4.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.4.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2428,7 +2428,9 @@
             <!-- 📄 V75.1.1 報告分頁:一頁式個股報告(數字 → 一句話 → 估值對照 → 基本面 → 產業 → 籌碼 → 風險 → 結論 → 來源 → 🔎)
                  ⛔ 每一段都只轉述既有函式/採礦產物(不產生第二份真相);零 FinMind 呼叫;切股由 analyze() 清空。
                  id 一律 rp 前綴(⛔ 不複用 xray*)。渲染:app.renderReportTab(sym) -->
-            <div id="subContentReport" class="hidden flex-col gap-2 mt-3 px-2 md:px-4 pb-10">
+            <!-- 🧱 V76.4.1 `gap-2` → `gap-0`:每一節自己有 `border-b` 分隔線,再疊 8px 間距會變成「線 + 空白 + 線」。
+                 `px-2 md:px-4` **保留** —— 那是頁面對螢幕邊緣最後一道邊,拿掉字會貼著螢幕。 -->
+            <div id="subContentReport" class="hidden flex-col gap-0 mt-3 px-2 md:px-4 pb-10">
                 <!-- 📄 V75.3.2 順序 = 決策摘要:一句話 → 結論 → 4 格重點數字 → 風險(有事才自動展開) → 其餘背景收合
                      ⛔ 結論以前排在第 8 個(要捲到最下面才看得到)—— 別再搬回去 -->
                 <div id="rpLead" class="hidden"></div>
@@ -8404,8 +8406,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.4.0',
+    _APP_VERSION: 'V76.4.1',
     _CHANGELOG: [
+        { v: 'V76.4.1', d: [
+            '🧱 <b>報告頁與「📈 個股數據速覽」那張圖拿掉了卡片外框</b> —— 你問「設計上一定要有框框嗎?沒有框框可以放的東西比較多」,量過之後你是對的:那張圖左右被框吃掉 54px(內容只佔 86%),報告頁最深的一段左右被吃掉 40px(390 的手機只剩 310)。現在改成「標題 + 一條細分隔線」分段,<b>資料一個字都沒刪</b>,但那張圖每一行多 52px、報告頁每一行多 24~26px。',
+            '📐 <b>判準寫下來了:框如果在講事情就留,只是把東西圍起來的就拿掉</b> —— 所以 ⚠️ 警示用的左邊色條、按鈕、可以打字的框、量條的底槽、一格一筆的價位格<b>全部保留</b>;拿掉的只有「卡片底色 + 四周邊框 + 圓角」那一種。',
+            '🐛 <b>修掉「套牢區 957~980 佔 2%957.46」那個疊字</b>(你截圖裡三列都疊)—— 註記字以前沒有任何寬度限制,直接印到價格數字上面。現在名稱與註記一律切在數字之前。',
+            '🎨 給外部 AI 的做圖提示詞也同步改成無框 —— 不然你產出來的那張圖會跟本站這張長得不一樣。',
+            '⏭️ 其他頁面還沒改(你說先看這一頁)——看過覺得可以,再照同一套推過去。',
+        ] },
         { v: 'V76.4.0', d: [
             '🏭 <b>上櫃股的「產業別」終於抓得到了</b> —— 真因是採礦機**網址寫錯**:那個位址回的是網頁不是資料,而程式只印「抓取失敗」,所以連續 6 輪沒人發現。改用本站其他四支程式已經在用、而且實測拿得到 1,984 檔的那個位址,另外加一條 FinMind 備援(官方網站偶爾會擋我們的機器)。',
             '🚨 <b>修掉一個「一個不相干的資料源失敗,三個產物一起不更新」</b>:證交所的本益比表回空(週末或還沒收盤都會),竟然會讓**產業對照表、中文股名離線表、公司所在縣市**一起不更新 —— 2026-09-12、13、14 連三天都是這樣,而且畫面上全綠、零錯誤訊息。現在只有真的需要本益比的那一項會跳過。',
@@ -22571,21 +22580,30 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (dh && top0 < 0) { try { window.scrollTo(0, Math.max(0, sy + dh)); } catch (_) {} }
         return true;
     },
+    // 🧱 V76.4.1 無框:卡片底色 + 四周邊框 + 圓角 → 「標題 + 一條細分隔線」
+    //   使用者:「設計上一定要有框框嗎?沒有框框可以放的東西比較多」。
+    //   ⭐ 判準:**框如果在講事情就留,只是把東西圍起來的就拿掉**(警示邊 / 按鈕 / 輸入框 / 量條底槽 / 一格一筆的清單格 → 留)。
+    //   📐 手機 390px:`border(1) + p-3(12)` = 左右各 13px → 0,內容當場多 26px。
     _rpCard(title, body, sub = '') {
-        return `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+        return `<div class="border-b border-[#21262d] py-2.5">
             <div class="flex items-center justify-between gap-2 mb-1.5"><span class="text-[11px] font-bold text-gray-200">${title}</span>${sub ? `<span class="text-[10px] text-gray-500 text-right">${sub}</span>` : ''}</div>${body}</div>`;
     },
     // ⭐ V75.3.2 `note` 改成「**這一節的答案**」(事實 + 數字),⛔ 不是名詞、⛔ 不下判定詞
     //   `tone`:'warn' 有事(左側琥珀色 + 自動展開) / 'ok' 沒事 / '' 中性
     //   ⛔ 摺疊起來時看不出裡面有沒有事,正是使用者說「敘述不清楚」的主因 → 標題那行就要講完
     _rpDetails(title, note, body, open = false, tone = '') {
-        const edge = tone === 'warn' ? 'border-l-4 border-l-amber-500' : (tone === 'ok' ? 'border-l-4 border-l-[#30363d]' : '');
+        // 🧱 V76.4.1 無框(同 _rpCard)。⚠️ 三種 tone 的**左邊框寬度一律 4px**、只有顏色不同 ——
+        //   透明邊是為了讓三種 tone 的文字左緣**完全對齊**(⛔ 只有 warn 縮排會看起來歪掉)。
+        //   🚨 ⛔ 不可改成任意值 `border-l-[3px]`:`scripts/lib_rwdshim.mjs` 只認 `border` / `border-l-4`,
+        //      沙箱量到的幾何會是假的(陷阱 #40)。要換寬度先去改那份唯一的 shim。
+        //   ⛔ `展開 ▾` 不可拿掉 —— 沒有底色之後它是「這一列可以點」唯一的提示。
+        const edge = tone === 'warn' ? 'border-l-4 border-l-amber-500' : (tone === 'ok' ? 'border-l-4 border-l-[#30363d]' : 'border-l-4 border-l-transparent');
         const dk = this._rpTxt(title).replace(/["'<>]/g, '').slice(0, 40);   // 🔁 穩定鍵(展開狀態靠它撐過重繪)
-        return `<details data-dk="${dk}" class="bg-[#161b22] border border-[#30363d] ${edge} rounded-lg"${open ? ' open' : ''}>
-            <summary class="cursor-pointer px-3 py-2 list-none">
+        return `<details data-dk="${dk}" class="border-b border-[#21262d] ${edge} pl-2"${open ? ' open' : ''}>
+            <summary class="cursor-pointer py-2.5 list-none">
                 <div class="flex items-center justify-between gap-2"><span class="text-[11px] font-bold text-gray-200">${title}</span><span class="text-[10px] text-gray-600 font-normal flex-shrink-0">展開 ▾</span></div>
                 ${note ? `<div class="text-[10px] text-gray-400 font-normal leading-snug mt-0.5">${note}</div>` : ''}</summary>
-            <div class="px-3 pb-3 pt-1.5 border-t border-[#21262d]">${body}</div></details>`;
+            <div class="pb-3 pt-1.5 border-t border-[#21262d]">${body}</div></details>`;
     },
     // 一列一卡(⛔ 手機 390px 上 ≥3 欄的資料列不用 table)
     _rpRow(k, v) {
@@ -24230,8 +24248,11 @@ ${this._reportFacts(sym)}
     ⛔ 不可以寫成「建議賣出」「建議買進」這種指令句 —— 本站只描述,不下單。
 
 # 🎨 樣式規格(⭐ 跟本站自己畫的那張圖**完全同一組**,⛔ 不要自己配色)
-- 畫布:直式,寬 ${S.W}px;底色 ${S.bg}。每一段是一張**卡片**:底 ${S.card}、1px 邊框 ${S.border}、圓角 12px、
-  左上一顆琥珀色(${S.amb})圓形編號(①②③…)+ 白字段標。
+- 畫布:直式,寬 ${S.W}px;底色 ${S.bg}(整張圖**只有這一個底色**)。
+- 🚨 **⛔ 不要畫卡片外框、圓角方塊或任何有底色的區塊** —— 使用者明說「沒有框框可以放的東西比較多」。
+  每一段的樣子是:**琥珀色(${S.amb})節號 + 段標,下面一條 1px 的細分隔線(${S.line}),然後內容**。
+  內容**貼齊左右邊界**(左右各只留畫布寬的 3.6%,也就是 ${Math.round(S.W * 0.036)}px),
+  ⛔ 不要再往內縮一層。段與段之間靠**留白**分開(約 26px),⛔ 不是靠框。
 - 文字:主文字 ${S.fg} ・次要 ${S.gy} ・註解 ${S.dim};字級(以 ${S.W}px 寬為準)標題 ${FS.title}px / 現價大字 ${FS.big}px /
   段標 ${FS.h}px / 內文 ${FS.body}px / 註解 ${FS.small}px。⛔ 不要用更大的字、⛔ 不要用彩色底的整段大字。
 - 只有這幾種顏色可以用:漲 ${S.up} ・跌 ${S.dn}(**只用在漲跌**)・現價 / 本站結論 / 本檔事件 = 琥珀 ${S.amb} ・
@@ -24240,7 +24261,7 @@ ${this._reportFacts(sym)}
 
 # 版面(直式,由上往下 10 段 —— ⛔ 不要自己換順序、⛔ 不要少一段、⛔ 不要多一段)
 # ⭐⭐ 這個骨架**跟本站自己畫的那張圖一模一樣**(報告頁最上面那張「📈 個股數據速覽」),使用者要兩張對得起來。
-- ⓪ 標題列(不是卡片):股票名稱(代號)・收盤日 ・現價大字 + 今日漲跌% + 近 20 日%(← **這裡才用紅漲綠跌**)・
+- ⓪ 標題列(沒有節號):股票名稱(代號)・收盤日 ・現價大字 + 今日漲跌% + 近 20 日%(← **這裡才用紅漲綠跌**)・
      右邊琥珀底白字的**本站結論**(照抄,⛔ 不要自己下)・下面一行「本站結論的理由」(照抄)
 - ① 價格位置(近一年):一條天藍色的橫向量條(左淺灰底、右填到位階 %)+ 琥珀 ▼ + 右邊寫百分比 + 兩端標最低/最高
 - ② **關鍵價位**:🚨 **畫成一條「直的」價格軸**(⛔ 不是等距的清單)—— 左邊一條直立的長條(天藍 ${S.pos}、圓角),
@@ -24438,6 +24459,8 @@ ${this._reportFacts(sym)}
     //   一律讀這裡;提示詞也把同一組 hex 與字級寫給 AI(測試 ⓟ 釘住兩邊用的是同一組)。
     //   🚦 燈號鐵則:up/dn 只用在**漲跌**;安全/危險走 risk 三階琥珀(同 _gaugeFill);位置類走 pos(天藍)。
     _RP_STYLE: {
+        // ⛔ V76.4.1 起海報是**無框**的(卡片底色 `card` 與邊框 `border` 已經不再畫)——
+        //    兩個 token 留著只為了對照 App 的 `bg-[#161b22]` / `border-[#30363d]`,⛔ 不要拿它們把框加回來。
         bg: '#0d1117', card: '#161b22', border: '#30363d', line: '#21262d',
         fg: '#e6edf3', gy: '#8b949e', dim: '#6e7681',
         up: '#f87171', dn: '#4ade80', amb: '#f59e0b', pos: '#0ea5e9',
@@ -24523,7 +24546,10 @@ ${this._reportFacts(sym)}
         const F = this._rpOwnFacts(sym);
         if (!cv || !F) return;
         const { C, pp, lv, dims, evs, td, fin, parQ, val, why, att, ind, next } = F;
-        const S = this._RP_STYLE, FS = S.font, W = S.W, PAD = 36;
+        // 🧱 V76.4.1 PAD 36 → 28(使用者:「左右邊不是還有空間嗎?設計上一定要有框框嗎?」)
+        //   ⭐ 卡片外框拿掉之後,內容左右界直接用 PAD(⛔ 不再 +18 內縮)→ 內容 672 → 724px,
+        //      而且**跟頁首同一條邊**(頁首本來就用 PAD,舊版差 18px,截圖上看得出來標題比內文寬一截)。
+        const S = this._RP_STYLE, FS = S.font, W = S.W, PAD = 28;
         const FONT = '"PingFang TC","Microsoft JhengHei","Noto Sans TC",-apple-system,sans-serif';
         const dpr = Math.max(2, Math.min(3, window.devicePixelRatio || 1));   // 🖼️ V76.3.9 存出來的圖**至少 2 倍**(780 → 1560px)—— ⛔ 畫質不該看使用者的螢幕臉色
         // 📏 兩段式:第一趟只量高度(paint=false),第二趟真的畫 —— ⛔ 不猜高度(猜少了字蓋到頁尾、猜多了底下一片黑)
@@ -24535,38 +24561,41 @@ ${this._reportFacts(sym)}
         const mt = (t, size, weight = '700') => { _mg.font = `${weight} ${size}px ${FONT}`; return _mg.measureText(String(t)).width; };
         const rect = (x, yy, w, h, col, r = 0) => { if (!paint) return; g.fillStyle = col; if (!r) { g.fillRect(x, yy, w, h); return; }
             g.beginPath(); g.moveTo(x + r, yy); g.arcTo(x + w, yy, x + w, yy + h, r); g.arcTo(x + w, yy + h, x, yy + h, r); g.arcTo(x, yy + h, x, yy, r); g.arcTo(x, yy, x + w, yy, r); g.closePath(); g.fill(); };
-        const line = (yy, x0 = PAD + 18, x1 = W - PAD - 18) => { if (!paint) return; g.strokeStyle = S.line; g.lineWidth = 1; g.beginPath(); g.moveTo(x0, yy); g.lineTo(x1, yy); g.stroke(); };
+        const line = (yy, x0 = PAD, x1 = W - PAD) => { if (!paint) return; g.strokeStyle = S.line; g.lineWidth = 1; g.beginPath(); g.moveTo(x0, yy); g.lineTo(x1, yy); g.stroke(); };
         const wrapRows = (str, size, maxW) => { const rows = []; let ln = ''; for (const ch of String(str)) { if (ln && mt(ln + ch, size) > maxW) { rows.push(ln); ln = ch; } else ln += ch; } if (ln) rows.push(ln); return rows; };
         const num = (v, d = 2) => Number.isFinite(+v) ? (+v).toFixed(d) : '—';
         const pct = v => Number.isFinite(+v) ? `${+v >= 0 ? '+' : ''}${(+v).toFixed(1)}%` : '—';
         const lot = v => Number.isFinite(+v) && C.pC > 0 ? `一張 ${(+v - C.pC) >= 0 ? '+' : '−'}${Math.round(Math.abs((+v - C.pC) * 1000)).toLocaleString()} 元` : '';
-        // 🃏 卡片:圓形編號 + 標題;body(yy) 要回傳用掉的高度
+        // 🃏 V76.4.1 卡片改成**無框分段**:琥珀節號 + 標題 + 一條細分隔線;body(yy) 要回傳用掉的高度
+        //   使用者:「設計上一定要有框框嗎?沒有框框可以放的東西比較多」。
+        //   ⭐ 判準(⛔ 全 App 通用):**框如果在講事情就留,只是把東西「圍起來」的就拿掉**。
+        //      卡片的底色+邊框只說「這裡是一張卡」,而「標題 + 分隔線」說得一樣清楚且**完全不吃寬度**。
+        //   📐 內容 672 → 724px(左右各多 26);每張卡固定開銷 118 → 98px(9 張省 180px)。
+        //   ⛔ 不可把外框加回來(測試 ⓑ 會取樣卡片左上角那一點,必須是 S.bg)。
         let secN = 0;
-        // 🚨 V76.3.8 第一版 body 起點 top+46,而標題基線在 top+36(26px 字)→ 每張卡第一列疊在標題上
-        //   (實跑截圖抓到的,測試第一版沒抓到 → 補 ⓤ:標題基線與第一列基線差 ≥ 30px,由 _rpOwnDbg 讀)
-        const BODY = 84;
+        // 🚨 V76.3.8 第一版 body 起點疊到標題上(實跑截圖抓到的,單元測試沒抓到)
+        //   → 測試 ⓤ 釘住「標題基線與第一列基線差 ≥ 30px」:現在是 72 − 26 = 46 ✅
+        const BODY = 72;
         const card = (title, body, hint = '') => {
             secN += 1;
-            const x0 = PAD, x1 = W - PAD, top = y, inner = x0 + 18;
+            const x0 = PAD, x1 = W - PAD, top = y;   // ⭐ 內容左右界 = 頁首那條邊(⛔ 不再 +18 內縮)
             let yy = top + BODY;
-            // 先量 body 高度(paint 暫時關掉),再畫底再畫內容 —— 底要先畫,不然會蓋掉字
-            const p0 = paint; paint = false; const hBody = body(yy, inner, x1 - 18); paint = p0;
-            const hAll = BODY + hBody + 18;
-            if (paint) this._rpOwnDbg.cards.push({ title, yTitle: top + 36, yFirst: yy });
-            rect(x0, top, x1 - x0, hAll, S.card, 12);
-            if (paint) { g.strokeStyle = S.border; g.lineWidth = 1.5; g.beginPath(); g.roundRect ? g.roundRect(x0 + .75, top + .75, x1 - x0 - 1.5, hAll - 1.5, 12) : g.rect(x0, top, x1 - x0, hAll); g.stroke(); }
-            rect(inner, top + 14, 30, 30, S.amb, 15);
-            txt(secN, inner + 15, top + 36, 20, S.bg, '900', 'center');
-            txt(title, inner + 42, top + 36, FS.h, S.fg, '900');
-            // ⚠️ V76.3.9 畫布變窄 → 右上那句說明會**壓到標題**;量得下才印,裝不下就截(⛔ 不讓它疊字)
+            const p0 = paint; paint = false; const hBody = body(yy, x0, x1); paint = p0;
+            const hAll = BODY + hBody;
+            if (paint) this._rpOwnDbg.cards.push({ title, sec: secN, yTitle: top + 26, yFirst: yy, yEnd: top + hAll, x0, x1 });
+            const nw = mt(secN, FS.h, '900') + 14;
+            txt(secN, x0, top + 26, FS.h, S.amb, '900');            // 節號 = 琥珀「文字」(⛔ 不再畫圓盤)
+            txt(title, x0 + nw, top + 26, FS.h, S.fg, '900');
+            // ⚠️ 右上那句說明會壓到標題;量得下才印,裝不下就截(⛔ 不讓它疊字)
             if (hint) {
-                const room = (x1 - 18) - (inner + 42 + mt(title, FS.h, '900')) - 14;
+                const room = x1 - (x0 + nw + mt(title, FS.h, '900')) - 14;
                 let ht = String(hint);
                 while (ht.length > 4 && mt(ht, FS.small) > room) ht = ht.slice(0, -1);
-                if (room > 90 && ht.length > 4) txt(ht === String(hint) ? ht : ht + '…', x1 - 18, top + 36, FS.small, S.dim, '700', 'right');
+                if (room > 90 && ht.length > 4) txt(ht === String(hint) ? ht : ht + '…', x1, top + 26, FS.small, S.dim, '700', 'right');
             }
-            body(yy, inner, x1 - 18);
-            y = top + hAll + 16;
+            line(top + 40, x0, x1);                                 // 分段靠這條線(⛔ 不是靠框)
+            body(yy, x0, x1);
+            y = top + hAll + 26;                                    // 沒有框 → 分段改靠留白,16 → 26
         };
         // 📖 V76.3.9 一排最多四格(標題 + 大字 + **一句白話**)
         //   使用者:「產出來的資料另外還要敘述那是什麼意思」→ 白話一律讀 _RP_GLOSSARY(⛔ 不在這裡另寫一份)
@@ -24585,11 +24614,28 @@ ${this._reportFacts(sym)}
         };
         const rowLv = (x, yy, x0, x1, opt = {}) => {   // 關鍵價位 / 估值對照 的一列
             const now = x.t === 'now', col = now ? S.amb : S.fg;
-            txt(x.n, x0, yy, now ? 26 : 24, col, now ? '900' : '700');
-            if (x.sub) txt(x.sub, x0 + mt(x.n, now ? 26 : 24) + 10, yy, 18, S.dim, '700');
+            const nf = now ? 26 : 24;
             // ⚠️ V76.3.9 沒有「一張差多少元」那一欄時(估值對照),把空出來的寬度讓給名稱 ——
             //    「近3年最便宜(P5 PE 14.5x)」這種長名字在窄畫布上會直接撞到數字
+            // ⚠️ 右邊三欄是**排滿的**:「▼ 22.1%」右對齊在 x1−170 時左緣就到 x1−265
+            //    → 數字欄的右界⛔ 不可越過 x1−285(我第一版收到 −255,當場跟百分比撞上)
             const vX = opt.lot === false ? x1 - 120 : x1 - 285, pX = opt.lot === false ? x1 : x1 - 170;
+            // 🚨 V76.4.1 使用者截圖抓到:「套牢區 957~980 **佔 2%**957.46」—— `sub`(佔幾 % 的量)
+            //   以前沒有任何寬度限制,直接印到數字上面(三列全疊)。⭐ 數字是右對齊的 →
+            //   它的左緣 = vX − 數字寬,名稱與 sub 一律**切到那條線之前**(⛔ 不可再讓它們自由生長)。
+            const vLeft = vX - mt(num(x.v, 2), 26, '900') - 12;
+            let nm = String(x.n);
+            while (nm.length > 3 && x0 + mt(nm, nf, now ? '900' : '700') > vLeft) nm = nm.slice(0, -1);
+            if (nm !== String(x.n)) nm += '…';
+            txt(nm, x0, yy, nf, col, now ? '900' : '700');
+            if (x.sub) {
+                // ⭐ V76.4.1 同一行放得下就放同一行;放不下**換到第二行**(⛔ 不切成「佔 2% 的…」——
+                //    「佔幾 % 的量」正是這一道牆有沒有份量的證據,切掉等於把證據弄丟)。
+                //    列距固定 46px、第二行只往下 19px → ⛔ 不會撞到下一列。
+                const sx = x0 + mt(nm, nf, now ? '900' : '700') + 10;
+                if (sx + mt(String(x.sub), 18) <= vLeft) txt(x.sub, sx, yy, 18, S.dim, '700');
+                else txt(x.sub, x0, yy + 19, 17, S.dim, '700');
+            }
             txt(num(x.v, 2), vX, yy, 26, col, '900', 'right');
             txt(now ? '—' : `${x.r >= 0 ? '▲' : '▼'} ${Math.abs(x.r).toFixed(1)}%`, pX, yy, 22, now ? S.amb : S.gy, '700', 'right');
             if (!now && opt.lot !== false) txt(lot(x.v), x1, yy, 18, S.dim, '700', 'right');
@@ -24618,10 +24664,15 @@ ${this._reportFacts(sym)}
                 const ys = []; items.forEach((x, i) => { const t = py(+x.v); ys.push(i === 0 ? t : Math.max(t, ys[i - 1] + ROW)); });
                 return { py, ys };
             };
+            // 🚨 V76.4.1 實跑截圖抓到:② 的最後三列**直接壓在 ③ 上面**(測試一條都沒抓到)。
+            //   真因是舊版把「軸要多高」跟「這一段用掉多少高度」當成同一個數字,而那個式子
+            //   **數學上不可能收斂** —— 軸越高,最後一列的自然位置(軸底)也跟著越低,need 永遠 > AH。
+            //   ⭐ 拆成兩件事:① 軸的高度要跟**價格**對得上(⛔ 不可亂長高,否則位置就說謊了)
+            //                  ② 回傳的高度要收**最後一列**(被防疊字推下去的那幾列在軸底下,靠引線牽回刻度)
             let AH = Math.max(items.length * ROW, 240);
             let L = layout(AH);
-            const need = L.ys[L.ys.length - 1] - TOP + 18;
-            if (need > AH) { AH = need; L = layout(AH); }
+            const over = L.ys[L.ys.length - 1] - (TOP + AH - 10);   // 最後一列被推出軸底多少
+            if (over > 0) { AH += over; L = layout(AH); }           // 軸長高**一次**,讓刻度不要擠成一團
             // 直條:底槽 + 由下往上填到「現在的價」= 現價在這組價位裡的位置
             rect(AX, TOP, AW, AH, S.line, 8);
             const pyNow = Math.max(TOP, Math.min(TOP + AH, L.py(C.pC)));
@@ -24633,14 +24684,15 @@ ${this._reportFacts(sym)}
                     g.strokeStyle = S.line; g.lineWidth = 1; g.beginPath();
                     g.moveTo(AX + AW + 6, t); g.lineTo(x0 + 42, yRow - 8); g.stroke();
                 }
-                if (paint) this._rpOwnDbg.lad.push({ g: ladN, name: x.n, v: +x.v, y: yRow });
+                if (paint) this._rpOwnDbg.lad.push({ g: ladN, sec: secN, name: x.n, v: +x.v, y: yRow });
                 rowLv(x, yRow, x0 + 48, x1, opt);
             });
-            return AH - 8;
+            return Math.max(AH, L.ys[L.ys.length - 1] - TOP + 18) - 8;   // ⛔ 不可回 AH —— 那會讓下一段疊上來
         };
 
         const run = () => {
             y = 0; secN = 0; ladN = 0;
+            if (paint) this._rpOwnDbg.pad = PAD;   // 🧱 V76.4.1 測試 ⓒ2 用它比「頁首與每一段是不是同一條邊」
             rect(0, 0, W, 99999, S.bg);
             // ── 標題列(⛔ 這一段的座標不動:測試 ⓒ/ⓑ2 取樣現價那幾個字的位置)──
             y = 74;
@@ -24751,11 +24803,12 @@ ${this._reportFacts(sym)}
                     rect(x0, yy + h - 20, 58, 28, own ? S.amb : S.line, 6);
                     txt(own ? '本檔' : '大盤', x0 + 29, yy + h, 18, own ? S.bg : S.gy, '900', 'center');
                     txt(e.d.slice(5).replace('-', '/'), x0 + 78, yy + h, 24, S.fg, '900');
-                    txt(String(e.t).slice(0, 17), x0 + 175, yy + h, 24, S.fg, '700');   // ⚠️ V76.3.9 畫布變窄 → 26 字會凸出卡片
+                    txt(String(e.t).slice(0, 20), x0 + 175, yy + h, 24, S.fg, '700');   // ⚠️ 26 字會凸出;V76.4.1 去框多 52px → 17 放寬回 20
                     h += 42;
                 }
-                txt('本站實測 37 種行事曆日:能講的方向一個都不成立,只有「那幾天波動比較大」是真的。', x0, yy + h, FS.small, S.dim, '700');
-                return h + 8;
+                // ⚠️ V76.4.1 這句 38 字 × 20px = 760px > 內容寬 724 → 一定要換行(實跑截圖看到它被切掉)
+                for (const r of wrapRows('本站實測 37 種行事曆日:能講的方向一個都不成立,只有「那幾天波動比較大」是真的。', FS.small, x1 - x0)) { txt(r, x0, yy + h, FS.small, S.dim, '700'); h += 26; }
+                return h - 18;
             }, '⛔ 只講波動,不講漲跌');
             // ── ⑨ 接下來怎麼看(三行條件式;⛔ 不下買賣指令 —— 文字來自 _rpNextLines,跟餵給 AI 的是同一份)──
             if (next.length) card('接下來怎麼看', (yy, x0, x1) => {
@@ -24772,8 +24825,9 @@ ${this._reportFacts(sym)}
             // ── 頁尾 ──
             txt('這張圖是「散戶救星」自己畫的,數字全部由本站計算 ・⛔ 沒有經過 AI', PAD, y + 6, FS.small, S.dim, '700');
             txt('⛔ 不是買賣建議 ・要不要進場看總覽「現在怎麼做」 ・歷史統計不等於未來', PAD, y + 36, FS.small, S.dim, '700');
-            txt(`${C.name} ${C.sym}`, W - PAD, y + 36, FS.small, S.border, '900', 'right');
-            return y + 60;
+            // ⚠️ V76.4.1 浮水印以前跟上面那行**同一條基線** → 兩段字疊在一起(實跑截圖看到的)→ 自己一行
+            txt(`${C.name} ${C.sym}`, W - PAD, y + 66, FS.small, S.border, '900', 'right');
+            return y + 90;
         };
         this._rpOwnDbg = { cards: [], bars: [], lad: [], notes: 0 };        // 只在畫的那一趟記(測試讀;⛔ 顯示端不用)
         const H = Math.ceil(run());                      // 第一趟:量
@@ -34350,7 +34404,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const exitNote = (ex && K.exitNote)
             ? `<div class="text-[9px] text-orange-200 leading-snug" style="margin-top:4px">📌 ${String(K.exitNote).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')}想「彈回來了繼續抱」= 沒有規則、是情緒 —— 反彈到位就照表減碼,之後真轉強(解除警報)再買回來。</div>` : '';
         const farTxt = far.length ? `<div class="text-[8px] text-gray-500 leading-snug mt-0.5">↑ 更遠 ${far.map(z => `${Math.round(+z.lo)}~${Math.round(+z.hi)}(${(+z.sup).toFixed(0)}%)`).join('、')} 也有套牢量</div>` : '';
-        return `<div class="bg-[#0d1117] border border-[#30363d] rounded-lg" style="padding:8px 10px 6px" data-priceruler="${sym}">
+        // 🧱 V76.4.1 無框(外框只是把東西圍起來;⛔ 裡面每一格 `cell()` 的框**保留** —— 它在分「這是哪一個價位」)
+        //   ⚠️ 這支是 總覽 與 報告頁 **共用**的 → 兩邊會一起變無框,這是刻意的(使用者:「其它頁面也一樣不必要就不要框框」)
+        return `<div style="padding:8px 0 6px" data-priceruler="${sym}">
             <div class="mb-0.5" style="display:flex;align-items:center;justify-content:space-between">
                 <span class="text-[11px] font-black text-gray-200">📏 價格位置圖・掛單就看這 <span class="text-[10px] text-gray-500 font-normal">(左低右高;掛限價等它來)</span></span>
                 <button onclick="event.stopPropagation(); app._rulerHelp();" class="text-[10px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 怎麼看</button>

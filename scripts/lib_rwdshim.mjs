@@ -8,7 +8,7 @@
  * ⭐ V76.3.2 從 `scripts/rwd_audit.mjs` 抽出來共用(`test_vspace.mjs` 也要用)——
  *    ⛔ 不可複製第二份:漏一條規則就會整片誤報,而那種誤報跟真問題**長得一模一樣**。
  *
- * 用法:`await page.evaluate(rwdShim)` → 回傳「沒生效的規則」陣列(空陣列 = 5 條自我檢查全過)。
+ * 用法:`await page.evaluate(rwdShim)` → 回傳「沒生效的規則」陣列(空陣列 = 7 條自我檢查全過)。
  * 🚧 ⛔ 拿到非空陣列時,底下量到的所有幾何數字**都不可信**,要當紅燈處理。
  */
 export function rwdShim() {
@@ -43,7 +43,12 @@ export function rwdShim() {
         'overflow-auto': 'overflow:auto', 'overflow-x-auto': 'overflow-x:auto', 'overflow-y-auto': 'overflow-y:auto',
         'overflow-scroll': 'overflow:scroll', 'overflow-x-scroll': 'overflow-x:scroll', 'overflow-clip': 'overflow:clip',
         'mx-auto': 'margin-left:auto;margin-right:auto',
+        // 🧱 V76.4.1 無框版面靠「分隔線」分段 → `border-b` / `border-t` 少了的話,沙箱裡看起來會像「分段壞掉」,
+        //    而那是工具的錯不是版面的錯(而且 border-b 也**真的佔 1px 高度**,量垂直空間時會差)。
         'border': 'border-width:1px;border-style:solid', 'border-l-4': 'border-left-width:4px;border-left-style:solid',
+        'border-b': 'border-bottom-width:1px;border-bottom-style:solid', 'border-t': 'border-top-width:1px;border-top-style:solid',
+        'border-l': 'border-left-width:1px;border-left-style:solid', 'border-r': 'border-right-width:1px;border-right-style:solid',
+        'border-l-2': 'border-left-width:2px;border-left-style:solid',
         'rounded': 'border-radius:.25rem', 'rounded-lg': 'border-radius:.5rem',
         'grid-flow-col': 'grid-auto-flow:column',
     }).forEach(([k, v]) => R.push(`.${k.replace(/([.\/])/g, '\\$1')}{${v}}`));
@@ -100,6 +105,9 @@ export function rwdShim() {
     mk('grid grid-cols-[1fr_auto]', s => { const t = String(s.gridTemplateColumns).split(/\s+/).map(parseFloat);
         return t.length === 2 && t[0] > t[1] && t[0] > 0; }, 'grid-cols-[1fr_auto] 沒生效');
     mk('gap-1.5', s => parseFloat(s.columnGap) > 0, 'gap-1.5 沒生效');
+    //   🧱 V76.4.1 無框版面全靠分隔線分段 → 這兩條沒生效的話,量到的「乾淨」跟「分段消失」分不出來
+    mk('border-b', s => parseFloat(s.borderBottomWidth) === 1, 'border-b 沒生效');
+    mk('border-l-4', s => parseFloat(s.borderLeftWidth) === 4, 'border-l-4 沒生效');
     window.__rwdShimBad = probe;
     return probe;
 }
