@@ -54,7 +54,7 @@ const r = await page.evaluate(async () => {
     // ⚠️ 取樣範圍要**只框住現價那幾個字** —— 框太大會把「近 20 日」那行(顏色是另一個方向)
     //   跟價格位置尺的琥珀色一起算進來,兩邊就分不出來了(第一版就是這樣假失敗的)。
     //   canvas 是照 devicePixelRatio 放大的 → 座標要乘上 k。
-    const k = cv.width / 1080;
+    const k = cv.width / (A._RP_STYLE.W || 1080);   // ⚠️ V76.3.9 畫布寬是常數 → ⛔ 不可寫死 1080,否則取樣座標整個偏掉
     const hue = () => { const d = g.getImageData(0, Math.round(96 * k), Math.round(cv.width * 0.42), Math.round(60 * k)).data; let R = 0, G2 = 0;
         for (let i = 0; i < d.length; i += 4) { if (d[i] > 120 && d[i] > d[i + 1] + 40) R++; if (d[i + 1] > 120 && d[i + 1] > d[i] + 40) G2++; }
         return { R, G: G2 }; };
@@ -98,13 +98,29 @@ const r = await page.evaluate(async () => {
     const S = A._RP_STYLE, dbg = A._rpOwnDbg || { cards: [], bars: [] };
     const pr = A._reportChartPrompt('2330');
     const promptHas = [S.bg, S.card, S.pos, S.amb, S.risk.mid, S.risk.lo].map(h => pr.includes(h));
+    // 🚨 只比**規則那半**:提示詞尾巴接著 `_reportFacts`,那裡也有同一句白話 →
+    //    整串比會被自己的資料段救活(注入「提示詞拿掉白話那條」照樣綠 —— 本 repo 第四次踩到)。
+    const prRule = pr.split(/\n---\n【資料】\n/)[0];   // ⚠️ 「【資料】」在規則裡也出現過 → 一定要用**整行**的那個分隔,⛔ 不可只比四個字
+    const promptGl = prRule.includes(A._RP_GLOSSARY['本益比']);
     const cardGap = dbg.cards.map(c => ({ t: c.title, gap: c.yFirst - c.yTitle }));
     const px = (x, y) => { const d = g.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data; return { r: d[0], gg: d[1], b: d[2] }; };
     const bars = dbg.bars.map(b => ({ ...b, p: px(b.x + Math.max(4, b.w * 0.3), b.y + b.h / 2) }));
     const valOk = !FT.val || !FT.val.length || (FT.val.every((x, i, a) => i === 0 || a[i - 1].v <= x.v) && FT.val.some(x => x.t === 'now'));
     const w1440 = await (async () => {
         const cvw = document.getElementById('rpOwnCv'); return cvw ? cvw.getBoundingClientRect().width : 0; })();
-    return { ...base, ...chk, promptHas, cardGap, bars, valOk, w390: w1440, up, dn, same: a1 === a2, pxSame: s1 === s2, w: cv.width, h: cv.height,
+    // ── V76.3.9 ⓥ~ⓩ ──
+    const lad = (dbg.lad || []).slice();
+    const tips = Object.values(A._GAUGE_SPEC || {}).map(x => x.tip).filter(Boolean);
+    const glN = Object.keys(A._RP_GLOSSARY || {}).length;
+    const nWhite = ((facts || '').match(/白話:/g) || []).length;
+    const tipInFacts = tips.some(t => (facts || '').includes(t));
+    // 📏 手機(390px 視窗)上這張海報的顯示寬約 358px;沙箱沒有 Tailwind、祖先鏈會塌掉(陷阱 #40)
+    //    → ⛔ 不量 live 寬度(那會量到假的),改用「設計契約」:字級 ÷ 畫布寬 × 358 = 螢幕上幾 px。
+    const fsBody = (A._RP_STYLE.font || {}).body, Wc = A._RP_STYLE.W;
+    const onScreen = fsBody * 358 / Wc;
+    const ry = typeof A._revYoY === 'function'
+        ? A._revYoY({ yoy: 7.6, mrh: [['2026-07', 1], ['2026-08', 2]] }, { rev_yoy: 27.7 }, null) : null;
+    return { ...base, ...chk, promptHas, cardGap, bars, valOk, w390: w1440, lad, glN, nWhite, tipInFacts, onScreen, ry, fsBody, Wc, promptGl, notes: dbg.notes, up, dn, same: a1 === a2, pxSame: s1 === s2, w: cv.width, h: cv.height,
              hasNow: (FT.lv || []).some(x => x.t === 'now'), nLv: (FT.lv || []).length,
              nEv: (FT.evs || []).length, nDim: (FT.dims || []).length };
 });
@@ -145,9 +161,53 @@ if (!r.no) {
         else ck(isSky, `ⓢ 位置類「${b.name}」的量條不是天藍(${JSON.stringify(p)})`);
     }
     ck(r.valOk, 'ⓣ 估值對照價位沒有由小到大、或沒把現價插進去');
+    // ── ⓥ 直式價格軸:價格越高畫得越上面,而且⛔ 不可疊字 ──
+    ck(r.lad.length >= 3, `ⓥ0 直式價格軸只記到 ${r.lad.length} 個刻度 → 這一條不算數(空過守門)`);
+    // ⚠️ lad 裡有**兩座**軸(② 關鍵價位 / ④ 對照價位)→ 一定要分組比,
+    //    跨組比的話「下一組從頭開始」會被誤判,而且注入「拿掉排序」時會溜過去(第一版就是這樣)。
+    const grp = {}; for (const x of r.lad) (grp[x.g] = grp[x.g] || []).push(x);
+    ck(Object.keys(grp).length >= 2, `ⓥ0b 只畫到 ${Object.keys(grp).length} 座價格軸 → ② 或 ④ 沒走直式軸`);
+    let ladderedAny = 0;
+    for (const gk of Object.keys(grp)) {
+        const G = grp[gk];
+        for (let i = 1; i < G.length; i++) {
+            ck(G[i].v <= G[i - 1].v,
+               `ⓥ 第 ${gk} 座軸沒照價格高低排:「${G[i - 1].name} ${G[i - 1].v}」畫在「${G[i].name} ${G[i].v}」上面`);
+            ck(G[i].y - G[i - 1].y >= 30,
+               `ⓥ2 「${G[i - 1].name}」跟「${G[i].name}」只差 ${Math.round(G[i].y - G[i - 1].y)}px → 兩列疊在一起`);
+            if (Math.abs(G[i].y - G[i - 1].y - 46) > 1) ladderedAny += 1;
+        }
+    }
+    ck(ladderedAny > 0, 'ⓥ3 每一列間距都剛好等於固定列高 → 那是等距清單不是價格軸(看不出誰離現價近)');
+    // ── ⓦ 字級:⛔ 釘「螢幕上實際幾 px」,不是釘畫布寬等於多少 ──
+    ck(r.onScreen >= 11, `ⓦ 手機上內文只有 ${r.onScreen.toFixed(1)}px(內文 ${r.fsBody}px ÷ 畫布 ${r.Wc}px × 358)→ 太小看不清楚`);
+    // ── ⓧ 每個數字都要有一句白話(使用者:「產出來的資料還要敘述那是什麼意思」)──
+    ck(r.glN >= 15, `ⓧ0 _RP_GLOSSARY 只有 ${r.glN} 條 → 這一條不算數`);
+    ck(r.notes >= 10, `ⓧ3 圖上只畫了 ${r.notes} 行白話 → 格子沒有在說明那個數字是什麼意思`);
+    ck(r.promptGl, 'ⓧ4 做圖提示詞沒把白話**逐字**寫給 AI → 它會自己編一句解釋');
+    ck(r.nWhite >= 5, `ⓧ 餵給外部 AI 的資料裡只有 ${r.nWhite} 處「白話:」→ 它會自己編一句(或整段不寫)`);
+    // ── ⓨ 五個面向的白話走現成的 _GAUGE_SPEC.tip,⛔ 不另寫一份 ──
+    ck(r.tipInFacts, 'ⓨ _reportFacts 沒把 _GAUGE_SPEC 的 tip 餵出去 → 外部 AI 只拿到「技術 62」這種光禿禿的數字');
+    // ── ⓩ 營收年增只有一個聲音 ──
+    ck(r.ry && r.ry.v === 7.6 && r.ry.month === '2026-08',
+       `ⓩ0 _revYoY 沒有回「哪一個月」或優先序不對:${JSON.stringify(r.ry)}`);
 }
 // ── ⓠ 顏色一律走 _RP_STYLE(⛔ 畫圖程式裡不可寫死 hex);ⓣ2 產業四格只有一份 ──
 ck(!/'#[0-9a-fA-F]{3,6}'/.test(fn), 'ⓠ _rpDrawOwn 裡寫死了 hex 顏色 → 跟提示詞那份會分歧,一律讀 _RP_STYLE');
+// ── ⓧ2 每一個格子的標題都要查得到白話(⛔ 不可有一格沒解釋)──
+{
+    const gl = code.slice(code.indexOf('_RP_GLOSSARY: {'), code.indexOf('_rpIndustryFacts(sym) {'));
+    const keys = new Set([...gl.matchAll(/'([^']+)':\s*'/g)].map(m => m[1]));
+    const labs = [...fn.matchAll(/cells\(\[([\s\S]*?)\], yy/g)]
+        .flatMap(m => [...m[1].matchAll(/\['([^']+)'/g)].map(x => x[1]));
+    ck(labs.length >= 8, `ⓧ2-0 只掃到 ${labs.length} 個格子標題 → 這一條不算數(切片或正則過時)`);
+    const miss = [...new Set(labs)].filter(l => !keys.has(l));
+    ck(miss.length === 0, `ⓧ2 這幾格沒有白話說明:${miss.join(' / ')} → 補進 _RP_GLOSSARY(或用第三個參數指定鍵)`);
+}
+// ── ⓩ 營收年增:兩個呼叫端都要走同一支(⛔ 以前報告頁跟 X 光機的優先序是相反的)──
+ck((code.match(/_revYoY\(/g) || []).length >= 3, 'ⓩ _revYoY 沒有被兩個呼叫端用到 → 年增又會有兩個數字');
+ck(!/Number\.isFinite\(\+fy\?\.yoy\)\s*\?\s*\+fy\.yoy/.test(code) && !/num\(f\.rev_yoy\)\s*!=\s*null\s*\?\s*num\(f\.rev_yoy\)/.test(code),
+   'ⓩ2 舊的「自己排優先序」寫法還在 → 報告頁與 X 光機會各顯示一個年增');
 {
     const fa = code.slice(code.indexOf('_reportFacts(sym) {'), code.indexOf('_reportPrompt(sym) {'));
     const fo = code.slice(code.indexOf('_rpOwnFacts(sym) {'), code.indexOf('_rpDrawOwn(sym) {'));

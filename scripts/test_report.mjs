@@ -30,6 +30,22 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const fails = [];
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : `  ${String(e).slice(0, 300)}`}`); if (!c) fails.push(n); };
+// ⏳ V76.3.9 報告頁有好幾份**非同步才到齊**的資料(fund_yoy_gm / _keyLevels / _upsideStash / _lastGauge)。
+//   「渲染當下的 HTML」跟「等一下再算一次」因此可能不一樣 → ⑫g/⑫h/§w3 會隨機紅(每次紅的還不同條)。
+//   ⭐ 永遠會紅的測試等於沒有測試 → 比對之前先讓它**站定**:重繪到「連續兩次算出來一模一樣」為止。
+//   ⛔ 不是放寬斷言(那會把真的壞掉一起放過)。同 page_sweep「等 diag 連續兩次站得住」的做法。
+const settle = async (page) => page.evaluate(async () => {
+    const A = app, s = A._rpLast && A._rpLast.sym; if (!s) return false;
+    let prev = null;
+    for (let i = 0; i < 10; i++) {
+        await A.renderReportTab(s);
+        await new Promise(r => setTimeout(r, 350));
+        const cur = A._reportPrompt(s) + '|' + (A._priceRulerHtml() || '');
+        if (cur === prev) return true;
+        prev = cur;
+    }
+    return false;
+});
 
 // ── 測資(真實產物)──
 const gh = (f) => {
@@ -366,6 +382,7 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html.rpVal) && /rpRevOut/.test(R
 
 // ⑫ prompt
 {
+    await settle(page);   // ⏳ 先站定,否則「複製的」跟「等一下再算的」會差一點點(隨機紅)
     const P = await page.evaluate(() => { let cap = null; const real = app._freeAiOpen; app._freeAiOpen = q => { cap = q; }; app._reportAsk('5483'); app._freeAiOpen = real; return cap; });
     await page.evaluate((p) => { window.P0 = p; }, P);
     ok('⑫a 提示詞含 5 條防幻覺關鍵句 + 第 6 條', ['絕對禁止「主觀預測」', '年化EPS × 近3年 P5/中位/P95 PE', '不可腦補', '股價基期」與「估值基期」是兩件事', '循環股獲利頂峰時 PE 最低', '附日期與來源網址'].every(k => P.includes(k)));
@@ -1097,6 +1114,7 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('§a1 ⛔ 整頁不給 ★ 評等(V76.2.5 結論卡下架後,這條改掃整個報告頁)',
        !/★{2,}/.test(Object.values(R5.txt).join(' ')), Object.values(R5.txt).join(' ').slice(0, 200));
     // 🧱 §11・§17
+    await settle(page);   // ⏳ §w3 要比「畫面上那段」跟「現在再算一次」→ 不站定就會隨機紅
     const W = await page.evaluate(() => {
         const A = app, C = A._rpLast, box = document.getElementById('rpWalls');
         const d = box.querySelector('details'); if (d) d.open = true;
