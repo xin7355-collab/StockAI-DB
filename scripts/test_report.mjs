@@ -398,6 +398,71 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html.rpVal) && /rpRevOut/.test(R
     ok('🎨b 做圖提示詞跟研究提示詞**共用同一份數字**(⛔ 不寫兩份 —— 改一邊會忘另一邊)', CH.sameFacts, '');
     ok('🎨c 🚨 把實測抓到的四個錯寫成規則:數字照抄 / 出場線≠融資追繳線 / 估值尺要照價格排序 / ⛔ 不要評分星等機率 / ⛔ 不要重複字',
        /照抄/.test(CH.q) && /出場線 ≠ 融資追繳線/.test(CH.q) && /按「價格由小到大」排/.test(CH.q) && /★ 星等評分/.test(CH.q) && /不重複的繁體中文/.test(CH.q), '');
+    // 💾 V76.2.7 完整報告搬到 IndexedDB(使用者回報「這台裝置存不下來(儲存空間滿了)」)
+    //   🚨 真因⛔ 不是報告太大(6.5 KB)—— 實測 `brokerChips_v2_{sym}` **一檔就 108 KB**、無上限累積。
+    {
+        const ST = await page.evaluate(async () => {
+            const A = app, out = {};
+            //   ⚠️ ⛔ 別自己 append 一個 rpNoteIn —— 頁面上**已經有一個**(貼上區的),
+            //     getElementById 只會抓到 DOM 順序較前的那個(空的)→ 會拿到「先貼進來再存」= 假失敗(實跑踩到)
+            let ta = document.getElementById('rpNoteIn'), tmp = false;
+            if (!ta) { ta = document.createElement('textarea'); ta.id = 'rpNoteIn'; document.body.appendChild(ta); tmp = true; }
+            const prev = ta.value;
+            ta.value = '測試報告內容'.repeat(40);
+            const rt = A.showToast; let toast = ''; A.showToast = m => { toast += m + '|'; };
+            await A._rpNoteSave('9998');
+            A.showToast = rt; if (tmp) ta.remove(); else ta.value = prev;
+            out.toast = toast;
+            out.inIdb = !!(await A.idb.get('rpNote_9998'));
+            out.inLs = !!localStorage.getItem('rpNote_9998');
+            out.syncRead = !!A._rpNote('9998');
+            // prune 的規則是「ts 超過 7 天**或沒有 ts**就刪」→ 使用者自己存的東西一定中
+            const rec = await A.idb.get('rpNote_9998');
+            await A.idb.put('rpNote_9998', Object.assign({}, rec, { ts: Date.now() - 30 * 864e5 }));
+            await A.idb.prune();
+            out.survivedPrune = !!(await A.idb.get('rpNote_9998'));
+            // 舊版(V76.2.7 前存 localStorage)要自動搬家 **並刪掉舊的**
+            localStorage.setItem('rpNote_9997', JSON.stringify({ t: '舊版存的報告', ts: Date.now(), v: 2 }));
+            await A._rpNoteLoad('9997');
+            out.migrated = !!(await A.idb.get('rpNote_9997')) && !localStorage.getItem('rpNote_9997') && !!A._rpNote('9997');
+            await A._rpNoteClear('9998'); await A._rpNoteClear('9997');
+            out.cleared = !(await A.idb.get('rpNote_9998')) && !A._rpNote('9998');
+            // LRU:語意是「留 keep 筆」,而且留**最新**的
+            //   ⚠️ 先清乾淨 —— 真實的 `brokerChips_v2_{sym}` 也會被算進去(實跑量到 5 而不是 7)
+            Object.keys(localStorage).forEach(k => { if (k.startsWith('brokerChips_v2_')) localStorage.removeItem(k); });
+            for (let i = 0; i < 12; i++) localStorage.setItem('brokerChips_v2_ZZ' + i, JSON.stringify({ ts: 1000 + i, x: 1 }));
+            A._lruTrim('brokerChips_v2_', 7);
+            out.lruLeft = Object.keys(localStorage).filter(k => k.startsWith('brokerChips_v2_ZZ')).length;
+            out.lruNewest = !!localStorage.getItem('brokerChips_v2_ZZ11') && !localStorage.getItem('brokerChips_v2_ZZ0');
+            Object.keys(localStorage).forEach(k => { if (k.startsWith('brokerChips_v2_ZZ')) localStorage.removeItem(k); });
+            return out;
+        });
+        ok('💾a ⭐ 完整報告存進 **IndexedDB**,⛔ 不再佔 localStorage(那 5 MB 要留給別人)',
+           ST.inIdb && !ST.inLs, JSON.stringify(ST).slice(0, 200));
+        ok('💾a2 顯示端仍**同步**讀得到(照 _rpImg 的做法,四個呼叫端一行都不用改)', ST.syncRead, String(ST.syncRead));
+        ok('💾a3 🚨 存成功要顯示成功 —— ⛔ 不可存進去了卻跳「存不下來」(idb.put 以前成功回 undefined)',
+           /已存成這一檔的報告/.test(ST.toast) && !/存不下來/.test(ST.toast), ST.toast.slice(0, 80));
+        ok('💾b 🚨 `idb.prune()` ⛔ 不可清掉(它的規則是「ts 超過 7 天**或沒有 ts**」→ 一定中;注入:拿掉 rpNote_ 白名單 → 這條紅)',
+           ST.survivedPrune, String(ST.survivedPrune));
+        ok('💾c ⭐ 舊版存在 localStorage 的要自動搬進 IndexedDB **並刪掉舊的**(⛔ 不可只複製 —— 那 30 KB 還佔著)',
+           ST.migrated, String(ST.migrated));
+        ok('💾d 刪得掉(IndexedDB 與同步快取都要清)', ST.cleared, String(ST.cleared));
+        ok('💾e 🧹 `_lruTrim(prefix, keep)` 語意 = 留 keep 筆,而且留**最新**的',
+           ST.lruLeft === 7 && ST.lruNewest, JSON.stringify({ left: ST.lruLeft, newest: ST.lruNewest }));
+        ok('💾e2 ⭐ `brokerChips_v2_`(實測一檔 108 KB)要接上 LRU —— ⛔ 沒有上限就是配額爆掉的真兇',
+           /_lruTrim\('brokerChips_v2_', 7\)/.test(SRC), '');
+    }
+    // 🗑️ V76.2.7 做圖提示詞的入口全 App 只留一個(使用者:「有何不同?是否保留上方就好」→ 是同一支函式)
+    ok('🗑️b 🎨 做圖提示詞只有**短評報告**那張卡有入口(⛔ 完整報告卡那顆已刪 —— 同一支 _reportCopyChart)',
+       await page.evaluate(() => {
+           const img = document.getElementById('rpImg'), paste = document.getElementById('rpPaste');
+           //   ⚠️ ⛔ 別用「innerHTML 含不含字串」—— 說明用的**註解**也會進 innerHTML,會誤判(實跑踩到)
+           //     → 數真正的**按鈕**。
+           const inImg = img ? img.querySelectorAll('button[onclick*="_reportCopyChart"]').length : 0;
+           const inPaste = paste ? paste.querySelectorAll('button[onclick*="_reportCopyChart"]').length : 0;
+           return inImg >= 1 && inPaste === 0;
+       }));
+
     ok('🎨d 圖的最下面一定要有免責那一行', /這不是投資建議 ・歷史統計不是保證/.test(CH.q), '');
     // 🚨 V76.2.6 使用者第二張 AI 圖照出來的三個新錯 → 寫成規則(⛔ 不是改文案而已)
     ok('🎨e 🚨 刻度尺/長條⛔ 不可用綠→黃→紅漸層表示「低估→高估」(同一個綠會一邊是跌、一邊是便宜)',
@@ -546,8 +611,10 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('🏭b3 sector_rot 只拿來做走勢與資金流(檔內註解就寫著實測排不出順序)', /不可拿它排名次/.test(SRC.slice(a - 3000, a)));
     ok('🏭c1 ⛔ 細項分類不可標成「上游 / 下游」(那份是分類標籤不是上下游)',
        !/上游|下游/.test(blk.replace(/不是上下游關係/g, '')) || /不是上下游關係/.test(blk));
-    ok('🏭d1 🚨 筆記只寫 localStorage,⛔ 不進 _ovDecide / 任何計分',
-       /_rpNoteSave\(sym\)[\s\S]{0,900}localStorage\.setItem/.test(blk) && !/_ovDecide|_calcRiskScore|score \+=/.test(blk));
+    //   💾 V76.2.7 存的地方從 localStorage 換成 IndexedDB(真因見 💾a 那組)→ 斷言跟著換,
+    //     但**用意一字未改**:它只被「存起來」,⛔ 不進 `_ovDecide` 或任何計分。
+    ok('🏭d1 🚨 筆記只被存起來(IndexedDB),⛔ 不進 _ovDecide / 任何計分',
+       /_rpNoteSave\(sym\)[\s\S]{0,1200}idb\.put/.test(blk) && !/_ovDecide|_calcRiskScore|score \+=/.test(blk));
     ok('🏭e1 medianPe 用 map[sym] 取到的**代碼**去查(⛔ 不是中文產業名)',
        /const code = peData\?\.map\?\.\[sym\]; medianPe = \(code && peData\?\.industries\?\.\[code\]\?\.median_pe\)/.test(SRC));
 }
@@ -606,7 +673,7 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         const A = app, sym = A.currentSymbolId;
         const MARK = 'ZZ產業筆記測試字串ZZ';
         document.getElementById('rpNoteIn').value = MARK;
-        A._rpNoteSave(sym);
+        await A._rpNoteSave(sym);   // 💾 V76.2.7 改存 IndexedDB → 變 async,⛔ 不 await 會抓到還沒寫完
         //   ⚠️ ⛔ 這裡不可用 `innerText` —— 整個產業節裝在**收合的 `<details>`** 裡,
         //     收合時 innerText 回空字串(V75.0.3 踩過)→ 會變成假失敗
         //   🚨🚨 而且範圍要縮到**已存筆記那一塊**(`[data-rpnote]`):第一輪注入驗證抓到
@@ -693,8 +760,9 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     const FR = await page.evaluate(async (txt) => { const A = app; document.getElementById('rpNoteIn').value = txt; A._rpNoteSave('2327'); await new Promise(r => setTimeout(r, 150)); return A._rpNoteStale(A._rpLast, A._rpNote('2327')); }, fresh);
     ok('📝c3 fresh 版(基準日今天、價位 = 現價):⛔ 不可亮天數 / 偏離 / 財報法定日 / 除息', !FR.reasons.some(r => /已經 \d+ 天|偏離|法定|除息/.test(r)), JSON.stringify(FR));
     // 舊格式(V76.1.8 存的,沒有 asof)照讀,基準日退回貼上日
-    const OLD = await page.evaluate(async () => { const A = app; localStorage.setItem('rpNote_2327', JSON.stringify({ t: '舊格式筆記 沒有節', ts: Date.now() - 3 * 864e5 })); A._rpRefreshPaste('2327'); await new Promise(r => setTimeout(r, 100)); const c = document.getElementById('rpPaste'); return { shown: /舊格式筆記/.test(c.innerText), asof: A._rpNoteAsofOf(A._rpNote('2327')), noSec: /沒切節/.test(c.innerText) }; });
-    ok('📝g 舊格式存檔(沒 asof)照讀:基準日退回貼上日、標「沒切節」', OLD.shown && OLD.asof && OLD.noSec, JSON.stringify(OLD));
+    const OLD = await page.evaluate(async () => { const A = app; localStorage.setItem('rpNote_2327', JSON.stringify({ t: '舊格式筆記 沒有節', ts: Date.now() - 3 * 864e5 })); await A.idb.del('rpNote_2327'); await A._rpNoteLoad('2327'); A._rpRefreshPaste('2327'); await new Promise(r => setTimeout(r, 100)); const c = document.getElementById('rpPaste'); return { shown: /舊格式筆記/.test(c.innerText), asof: A._rpNoteAsofOf(A._rpNote('2327')), noSec: /沒切節/.test(c.innerText) }; });
+    //   💾 V76.2.7 起讀取走 IndexedDB → 這條同時也驗到「舊版 localStorage 會自動搬家」那條路徑
+    ok('📝g 舊格式存檔(沒 asof)照讀:基準日退回貼上日、標「沒切節」(V76.2.7 起同時驗到自動搬家)', OLD.shown && OLD.asof && OLD.noSec, JSON.stringify(OLD));
     // 390px:存了 6k 報告之後仍不可溢出(逐元素跟父層比)
     const R8 = await render('2327');
     ok('📱4 貼了報告之後 390px 仍不可橫向捲動、沒有元素衝出父層', !R8.wide && R8.esc.list.length === 0, JSON.stringify(R8.esc.list));

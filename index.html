@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.2.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.2.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -746,7 +746,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.2.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.2.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8329,8 +8329,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.2.6',
+    _APP_VERSION: 'V76.2.7',
     _CHANGELOG: [
+        { v: 'V76.2.7', d: ['💾 <b>「這台裝置存不下來」修好了</b> —— 而真因<b>不是你的報告太大</b>(那份才 6.5 KB)。實測手機的儲存空間:<b>一檔股票的分點籌碼快取就佔 108 KB</b>,而且以前<b>沒有上限</b> → 你看過 45 檔左右就把 iOS 給網頁的 ~5 MB 用光了。',
+            '💾 <b>完整報告改存到容量大得多的地方</b>(跟你存的 AI 圖同一個地方)。它是<b>你自己產的、不可重建</b>的東西,不該跟「可以重新算出來的快取」搶那 5 MB。<b>舊的會自動搬過去</b>,你以前存的不會不見。',
+            '🧹 <b>分點籌碼快取加上限:只留最近 8 檔</b>(那一頁一次只看一檔,8 檔夠來回切)。⛔ 沒有改快取內容、也沒有縮短有效期,只限制筆數。',
+            '🎨 <b>「做圖提示詞」重複的入口刪掉一個</b>(你問「有何不同?」→ <b>沒有不同</b>,同一支程式、同一份提示詞)。現在只留在「📄 短評報告」那張卡 —— 圖就是產在那裡。',
+            '🚨 <b>順手抓到一個會說謊的訊息</b>:存檔成功時竟然也會跳「存不下來」(底層那支存檔函式成功時回傳空值,判斷式永遠當成失敗)。已修,而且訊息現在會告訴你<b>該去哪裡清</b>。'] },
         { v: 'V76.2.6', d: ['📖 <b>「你貼上的 AI 報告」改名「完整報告」</b> —— 跟上面那張「📄 短評報告」成對(一個是圖、一個是文字)。',
             '📋 <b>「複製提示詞」拉出來常駐</b>(你說要一鍵複製才方便直接貼)。那顆按鈕本來就有,但貼過一次之後被收進摺疊 → 要點兩下才看得到,現在跟「🔎 開 Perplexity」一起放在第一眼。',
             '🚨 <b>你那張圖照出一個真的算錯</b>:「你的出場線 533.0」標 −2.0%、「融資追繳線 532.3」標 <b>+2.2%</b> —— 兩條都在現價<b>下方</b>卻一正一負。真因是那兩個數字用了<b>兩把方向相反的尺</b>(一把是「比現價低多少」、一把是「還能跌多少才碰到」)。已統一。',
@@ -10963,14 +10968,20 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             async put(key, value) {
                 try {
                     const db = await _open();
-                    return new Promise((resolve, reject) => {
+                    return new Promise((resolve) => {
                         const tx  = db.transaction(STORE_NAME, 'readwrite');
                         const req = tx.objectStore(STORE_NAME).put(value, key);
-                        req.onsuccess = () => resolve();
-                        req.onerror   = e => reject(e.target.error);
+                        //   🚨 V76.2.7 以前成功是 `resolve()` → 回 **undefined(falsy)**,
+                        //      呼叫端只要寫 `if (await idb.put(...))` 就會**永遠判定失敗**
+                        //      (寫完之後才發現:存進去了卻跳「存不下來」,跟使用者回報的症狀一模一樣)。
+                        //   ⭐ 改成明確回 true/false;⛔ 也不再 reject —— 失敗要讓呼叫端**看得到**,
+                        //      而不是丟一個多數人沒接的例外(既有三個呼叫端都沒看回傳,不受影響)。
+                        req.onsuccess = () => resolve(true);
+                        req.onerror   = () => resolve(false);
                     });
                 } catch (e) {
                     console.warn('[IDB] put 失敗，略過快取寫入:', e);
+                    return false;
                 }
             },
             // ⚡ V69.8.5 P1-7:清掉過期 entry(原本只寫不刪,重度使用者累積數十 MB,
@@ -11002,7 +11013,8 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                             // 🚨 V76.2.3 使用者自己存的東西(AI 圖)⛔ 不可被自動清掉 ——
                             //   這支的規則是「ts 超過 7 天 **或沒有 ts**」就刪,圖存進來一定會中。
                             //   ⛔ 新增任何「使用者資料」進這個 store,都要在這裡開白名單。
-                            if (String(c.key || '').startsWith('rpImg_')) { c.continue(); return; }
+                            //   💾 V76.2.7 完整報告(rpNote_)也搬進來了 → 一起開白名單。
+                            if (/^(rpImg_|rpNote_)/.test(String(c.key || ''))) { c.continue(); return; }
                             const ts = c.value && c.value.ts;
                             if (!ts || (now - ts) > maxAgeMs) { try { c.delete(); removed++; } catch (_) {} }
                             c.continue();
@@ -22687,6 +22699,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._rpLast = ctx;
         if (String(this.currentSymbolId) !== sym) return;
         try { await this._rpImgLoad(sym); } catch (_) {}
+        try { await this._rpNoteLoad(sym); } catch (_) {}   // 💾 V76.2.7 完整報告也在 IndexedDB(⛔ 顯示端仍同步讀 `_rpNote`)
         if (String(this.currentSymbolId) !== sym) return;
         this._rpSet('rpImg', this._rpImgHtml(ctx), sym);        // 📄 短評報告(外部 AI 畫的圖,本站沒驗證)
         this._rpSet('rpQuick', this._rpQuickHtml(ctx), sym);    // ⚡ 第一層
@@ -23077,22 +23090,74 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     // ⑤ 📝 產業筆記:質化那半「貼回來」
     //   ⛔ 鐵線:不進 `_ovDecide`、不進任何計分。
+    // 🧹 V76.2.7 per-symbol 快取的 LRU —— 留最近 `keep` 筆,其餘依 `ts` 由舊到新刪掉。
+    //   ⭐ 全 App 只有這一份(⛔ 別再 inline 寫第二份);新增任何「每檔一份」的 localStorage
+    //      快取都該接上它 —— 實測 `brokerChips_v2_` 一檔 108 KB、無上限累積,正是配額爆掉的真兇。
+    //   ⛔ 只刪**自己這個前綴**的,⛔ 不碰別人的 key。
+    _lruTrim(prefix, keep) {
+        try {
+            const rows = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (!k || !k.startsWith(prefix)) continue;
+                let ts = 0;
+                try { ts = +(JSON.parse(localStorage.getItem(k) || '{}').ts) || 0; } catch (_) { ts = 0; }
+                rows.push([k, ts]);
+            }
+            if (rows.length <= keep) return 0;
+            rows.sort((a, b) => b[1] - a[1]);            // 新 → 舊
+            let n = 0;
+            rows.slice(keep).forEach(([k]) => { try { localStorage.removeItem(k); n++; } catch (_) {} });   // ⭐ 語意就是「留 keep 筆」
+            return n;
+        } catch (_) { return 0; }
+    },
     _rpNoteKey(sym) { return `rpNote_${String(sym)}`; },
-    _rpNote(sym) { const o = this._lsJson(this._rpNoteKey(sym), null); return (o && o.t) ? o : null; },
-    _rpNoteSave(sym) {
+    // 💾 V76.2.7 **搬到 IndexedDB**(使用者回報「這台裝置存不下來(儲存空間滿了)」)。
+    //   🚨 真因⛔ 不是報告太大(他那份 6.5 KB)—— 實測 localStorage:**一檔股票的
+    //      `brokerChips_v2_{sym}` 就佔 108 KB**,看 45 檔就把 iOS 的 ~5 MB 配額吃光。
+    //   ⭐ 判準:報告是**使用者自己產的、不可重建**的東西,⛔ 不該跟「可重新計算的快取」
+    //      搶那 5 MB;而 AI 圖(V76.2.3)早就在 IndexedDB 了 → 兩者同性質就該同一個地方。
+    //   ⛔ 讀取仍是**同步**(照 `_rpImg` 的做法:async 載進 `_rpNoteCache`,顯示端同步讀)
+    //      → 四個呼叫端(`_rpPasteHtml`/`_rpQuickHtml`/`_rpPasteVsWalls`/`_rpIndHtml`)一行都不用改。
+    _rpNote(sym) { return (this._rpNoteCache || {})[String(sym)] || null; },
+    //   🔁 搬家:舊的存在 localStorage → 第一次載入時搬過去並**刪掉舊的**(⛔ 不可只複製,
+    //      不然那 30 KB 還佔著 localStorage;也⛔ 不可直接丟掉 —— 那是使用者自己貼的東西)。
+    async _rpNoteLoad(sym) {
+        sym = String(sym);
+        this._rpNoteCache = this._rpNoteCache || {};
+        let o = null;
+        try { o = await this.idb.get(this._rpNoteKey(sym)); } catch (_) { o = null; }
+        if (!(o && o.t)) {
+            const legacy = this._lsJson(this._rpNoteKey(sym), null);
+            if (legacy && legacy.t) {
+                o = legacy;
+                try { await this.idb.put(this._rpNoteKey(sym), legacy); localStorage.removeItem(this._rpNoteKey(sym)); } catch (_) {}
+            }
+        }
+        this._rpNoteCache[sym] = (o && o.t) ? o : null;
+        return this._rpNoteCache[sym];
+    },
+    async _rpNoteSave(sym) {
         const el = document.getElementById('rpNoteIn'); if (!el) return;
         const t = String(el.value || '').trim();
         if (!t) { this.showToast?.('⚠️ 先把外部 AI 的回答貼進來再存'); return; }
-        //   V76.2.0:上限 20k → 30k(使用者那份 22 節報告 6.5k;`_hookAutoSync` 的清理名單不含 rpNote_,不會被踢掉)
+        //   V76.2.0:上限 20k → 30k(使用者那份 22 節報告 6.5k)
         //   `asof` = 報告自己寫的「分析基準日期」(抓不到就用貼上時間)—— 更新提醒靠它比對月營收/財報日
-        try { localStorage.setItem(this._rpNoteKey(sym), JSON.stringify({ t: t.slice(0, 30000), ts: Date.now(), asof: this._rpNoteAsof(t), v: 2 })); }
-        catch (_) { this.showToast?.('⚠️ 這台裝置存不下來(儲存空間滿了)'); return; }
+        //   💾 V76.2.7 改存 IndexedDB(見 `_rpNoteLoad` 的說明);⛔ 訊息要說得出**真因與解法**,
+        //      ⛔ 不可只講「滿了」讓使用者無從下手。
+        const rec = { t: t.slice(0, 30000), ts: Date.now(), asof: this._rpNoteAsof(t), v: 2 };
+        let ok = false;
+        try { ok = await this.idb.put(this._rpNoteKey(sym), rec); } catch (_) { ok = false; }
+        if (!ok) { this.showToast?.('⚠️ 存不下來 —— 這台裝置的儲存空間滿了。到 ⚙️ 設定中心 →「🧹 清理快取」清掉可重算的資料再試一次'); return; }
+        (this._rpNoteCache = this._rpNoteCache || {})[String(sym)] = rec;
         this.vibrate?.(20);
         this.showToast?.('📝 已存成這一檔的報告 —— 本站沒有驗證,⛔ 不參與任何買賣判斷', 'info');
         this._rpRefreshPaste(sym); this._rpRefreshInd(sym);
     },
-    _rpNoteClear(sym) {
-        try { localStorage.removeItem(this._rpNoteKey(sym)); } catch (_) {}
+    async _rpNoteClear(sym) {
+        try { await this.idb.del(this._rpNoteKey(sym)); } catch (_) {}
+        try { localStorage.removeItem(this._rpNoteKey(sym)); } catch (_) {}   // 舊版殘留(V76.2.7 前存這裡)
+        (this._rpNoteCache = this._rpNoteCache || {})[String(sym)] = null;
         this.vibrate?.(20); this.showToast?.('🗑️ 已刪除這一檔的報告');
         this._rpRefreshPaste(sym); this._rpRefreshInd(sym);
     },
@@ -23260,13 +23325,18 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 📐 V76.2.2 已經貼過的:輸入框 + 三顆按鈕 + 四段說明(約 270 字)**全部收進一個摺疊** ——
         //   第一眼要留給「報告內容」,⛔ 不是留給操作說明(實測第一眼 655 → 380 字)。
         //   ⚠️ 還沒貼的維持攤開:那時候第一眼要做的事就是引導他去貼。
+        // 🗑️ V76.2.7 這裡原本還有一顆「🎨 做圖提示詞」—— 跟「📄 短評報告」卡的「🎨 複製做圖提示詞」
+        //   是**同一支 _reportCopyChart、同一份提示詞**(使用者問「有何不同」→ 沒有不同)。
+        //   ⛔ 做圖提示詞的入口只留在短評報告那張卡(圖就是產在那裡);同 V76.2.3 刪掉重複的
+        //   研究提示詞入口 —— 那次漏了這一顆(陷阱 #37)。
+        //   ⚠️ 這段刻意寫成 JS 註解放在 template literal **外面**:HTML 註解會被輸出到 innerHTML,
+        //   害「這張卡還有沒有那顆按鈕」的斷言被自己的註解救活(實跑踩到);順便也避開陷阱 #42。
         const ask = `<div class="text-[10px] text-gray-400 leading-snug mb-1">${n ? '重產一份貼回來存檔會<b>覆蓋</b>舊的。' : '商業模式 / 產業景氣 / 法說語氣 / 法人預估 —— 這些是<b>質化</b>資訊,台股<b>沒有免費的結構化來源</b>,本站⛔ 不編。做法:按「🔎 開 Perplexity」(提示詞已寫成 20 節規格、標題帶 §N、第一行寫基準日、結尾附來源網址),把回答<b>貼回這裡</b>存起來,下次開就在。'}</div>
             <textarea id="rpNoteIn" rows="3" placeholder="把外部 AI 產的整份報告貼進來…" class="w-full bg-[#0d1117] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 leading-relaxed"></textarea>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
                 <button onclick="app._rpNoteSave('${sym}')" class="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-bold rounded">💾 存成這一檔的報告</button>
                 <button onclick="app._reportCopyPrompt('${sym}')" data-rpcopyprompt="1" class="px-3 py-1.5 text-[11px] font-bold text-purple-200 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-700/50 rounded">📋 複製提示詞</button>
                 <button onclick="app._reportAsk('${sym}'); app.vibrate?.(20);" class="px-3 py-1.5 text-[11px] font-bold text-purple-300 bg-[#0d1117] hover:bg-purple-900/20 border border-purple-700/50 rounded">🔎 開 Perplexity</button>
-                <button onclick="app._reportCopyChart('${sym}')" class="px-3 py-1.5 text-[11px] font-bold text-purple-200 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-700/50 rounded">🎨 做圖提示詞</button>
                 ${n ? `<button onclick="app._rpNoteClear('${sym}')" class="px-3 py-1.5 text-[11px] text-gray-400 hover:text-red-300 bg-[#0d1117] border border-[#30363d] rounded">🗑️ 刪掉</button>` : ''}</div>
             <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💡 <b>Perplexity 打開會是空白的</b> —— 提示詞 2,400 多字,做成網址會膨脹到 1 萬 6 千字元,手機 App 接手時帶不過去(不是壞掉)。<b>兩顆按鈕都會先幫你複製</b>,到那邊<b>長按輸入框「貼上」</b>再送出就好;複製不了會跳出視窗讓你自己選取。</div>
             ${n ? `<div class="text-[10px] text-gray-500 mt-1.5 leading-snug">🖍️ <mark class="rp-hi">琥珀底</mark> = 重點詞(自動)・<b class="font-mono text-gray-100">粗體</b> = 帶單位的數字;要自己標就用 ==兩個等號== 包住。${P && P.secs.length ? `第一眼只留 §1 與最後一節,其餘 ${rest.length} 節收在上面。` : ''}</div>` : ''}
@@ -26527,6 +26597,13 @@ ${this._reportFacts(sym)}
                 this._chipSym         = sym;
                 document.getElementById('chipGlobalPeriodBtns')?.classList.remove('hidden');
                 this.renderChipGlobal(this._activeChipPeriod || '3d');
+                //   🚨 V76.2.7 這一份**一檔就 108 KB**(實測 2330),而以前**沒有上限** ——
+                //      看 45 檔就把 iOS 的 ~5 MB localStorage 配額吃光,使用者存自己的報告時
+                //      就會跳「這台裝置存不下來」(而他那份報告才 6.5 KB)。
+                //   ⭐ 加 LRU:只留最近 8 檔(分點頁一次只看一檔,8 檔夠來回切)。
+                //      ⛔ 不改快取內容、⛔ 不縮短有效期 —— 只限制**筆數**。
+                //   ⚠️ 傳 7 不是 8 —— `_lruTrim` 的語意是「留 N 筆」,而下一行馬上要寫進第 8 筆。
+                this._lruTrim('brokerChips_v2_', 7);
                 localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), periods: chipPeriods, dateLabel, records, dataDate: this._chipDataDate }));
                 return;
             }
