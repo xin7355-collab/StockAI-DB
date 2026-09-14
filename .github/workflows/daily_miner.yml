@@ -270,6 +270,7 @@ jobs:
             data/broker_perf.json
             data/broker_book.json
             data/broker_signals.json
+            data/broker_dt.json
             data/holders.json
             data/lowbase_picks.json
             data/wrongkill_picks.json

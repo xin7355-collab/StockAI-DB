@@ -4121,6 +4121,44 @@ def _fetch_twse_bsr(symbol: str, max_retries=4) -> dict:
 CHIP_DAYS = int(os.getenv('CHIP_DAYS', '22'))          # 批次要抓幾個交易日(要 > 最大週期)
 CHIP_HIST_KEEP = int(os.getenv('CHIP_HIST_KEEP', '22'))  # 每檔 hist 保留幾天
 CHIP_PERIODS_HOT = (1, 3, 5, 10, 20)                   # 熱門股的彙總窗口(⚠️ 最大值要 <= CHIP_DAYS)
+
+# 🔁 V76.2.8 當沖(同日雙向成交)當日累加器:{日期: {分點名: {n,w,r,q}}}
+#   由分點採礦迴圈邊抓邊填,採礦結束後由 build_broker_perf 收成滾動歷史(broker_dt.json)。
+#   ⛔ 刻意用全域而不是寫進每個 chips 檔:2,650 檔各塞 15 列 ≈ +2.4MB,而這份資料只有採礦端要用。
+_DT_ACC: dict = {}
+
+
+def _dt_collect(day, slot):
+    """🔁 V76.2.8 從當日**原始**分點資料收「同日雙向成交」(當沖估計)→ `_DT_ACC`。
+
+    ⛔ 這段刻意**不從 `periods` 撈**:`buy_top`/`sell_top` 是按**淨額**取前 15 名,
+       而純當沖分點買 1000 賣 1000 → 淨額≈0 → 兩張榜都進不去,整批被截掉。
+    ⛔ 報酬也**不可**用 `pv/vol`(買賣混在一起的均價)算 —— 買賣同一個數字相減恆為 0。
+       要用 `bpv/bvol`(買均價)與 `spv/svol`(賣均價)分開算。
+    ⚠️ 「同日雙向成交」是**估計**不是官方當沖:同一家分點可能是 A 客戶買、B 客戶賣。
+    ⭐ 報酬 =(賣均價 − 買均價)/買均價,是**當天就實現**的(⛔ 不是前瞻回測、沒有前視偏誤)。
+    """
+    for _bid, _e in (slot or {}).items():
+        _nm = _e.get('broker_name') or _bid
+        if not _nm or str(_nm).isdigit():
+            continue
+        _q = min(int(_e.get('buy') or 0), int(_e.get('sel') or 0))
+        _bv, _sv = _e.get('bvol') or 0, _e.get('svol') or 0
+        if _q <= 0 or _bv <= 0 or _sv <= 0:
+            continue
+        _ba = (_e.get('bpv') or 0.0) / _bv
+        _sa = (_e.get('spv') or 0.0) / _sv
+        if _ba <= 0:
+            continue
+        _r = (_sa - _ba) / _ba * 100
+        if _r < -12 or _r > 12:
+            continue   # 單日漲跌停 ±10% → 超出必是髒資料(同 _backadjust_splits 的物理判準)
+        _a = _DT_ACC.setdefault(str(day), {}).setdefault(_nm, {'n': 0, 'w': 0, 'r': 0.0, 'q': 0})
+        _a['n'] += 1
+        _a['r'] += _r
+        _a['q'] += _q
+        if _r > 0:
+            _a['w'] += 1
 CHIP_PERIODS_COLD = (1, 3)                             # 冷門股(逐檔模式只抓 3 天)
 
 
@@ -5128,6 +5166,10 @@ def fetch_broker_chips():
                     e['buy'] += buy; e['sel'] += sel; e['net'] += (buy - sel)
                     if price > 0:   # 💎 V68.3 均價:Σ(價×量)/Σ量(分點頁顯券商成交均價)
                         e['pv'] += price * (buy + sel); e['vol'] += (buy + sel)
+                        # 🔁 V76.2.8 當沖榜要的是「買均價 vs 賣均價」——
+                        #   ⛔ 上面那個 pv/vol 是買賣**混在一起**的,算不出當沖賺賠(差價會被自己抵消掉)。
+                        e['bpv'] = e.get('bpv', 0.0) + price * buy; e['bvol'] = e.get('bvol', 0) + buy
+                        e['spv'] = e.get('spv', 0.0) + price * sel; e['svol'] = e.get('svol', 0) + sel
                     if bnm and not str(bnm).isdigit(): e['broker_name'] = bnm
 
                 if by_date:
@@ -5195,6 +5237,16 @@ def fetch_broker_chips():
                     # V68.9.8 熱門股完整週期;冷門股只抓 3 日 → 只給 1/3d(其餘前端顯「熱門股才有」)
                     # 📅 V72.9.8 熱門股加到 20d(使用者要求),窗口清單見檔頭 CHIP_PERIODS_HOT
                     periods = {f'{n}d': _agg_period(n) for n in (CHIP_PERIODS_HOT if _is_hot else CHIP_PERIODS_COLD)}
+                    # 🔁 V76.2.8 當沖(同日雙向成交)——⛔ 這一段**不能**從 periods 撈:
+                    #   `buy_top`/`sell_top` 是**按淨額**取前 15 名,而純當沖分點買 1000 賣 1000 → 淨額≈0
+                    #   → 兩張榜都進不去,整批被截掉。所以直接從當日原始 by_date 算。
+                    #   ⚠️ 「同日雙向成交」是**估計**不是官方當沖:同一家分點可能是 A 客戶買、B 客戶賣。
+                    #   報酬 =(賣均價 − 買均價)/買均價,是**當天就實現**的(⛔ 不是前瞻回測)。
+                    try:
+                        if by_date:
+                            _dt_collect(sorted(by_date.keys())[-1], by_date[sorted(by_date.keys())[-1]])
+                    except Exception as _e_dt:
+                        print(f"    ⚠️ 當沖統計 {sym} 失敗: {type(_e_dt).__name__}")
                     # Sniper 已拿到今日真分點時不被 FinMind 覆蓋(Sniper=官方 TWSE 較準);
                     # 否則用 FinMind 當日資料
                     if not sniper_data:
@@ -8660,7 +8712,21 @@ def build_broker_perf():
                 bf_added[hz] += 1
     print(f"  📼 歷史回推(近似):短線 +{bf_added['short']} 筆、波段 +{bf_added['swing']} 筆 合成訊號")
 
+    def _pool(agg):
+        """🎯 對照組:把**所有**分點的訊號 pooled 起來 =「隨便挑一家券商」的基準。
+        ⛔ 沒有這個,榜上的 91% 勝率會被當成很厲害 —— 但多頭窗口裡持有 20 日本來就常常是贏的
+        (CLAUDE.md 顯示勝率三條鐵則第 2 條:基準不是 50%)。"""
+        w = t = 0
+        r = 0.0
+        for a in agg.values():
+            w += a['wins']; t += a['total']; r += a['ret']
+        if not t:
+            return None
+        return {'win_rate': round(w / t * 100, 1), 'avg_ret': round(r / t, 2), 'count': t}
+
     def rank(agg, min_pos):
+        """⛔ 舊版只回「按勝率排序的前 30」→ 前端再從那 30 家裡挑報酬王/交易狂,
+        挑到的根本不是真正的第一名(截斷偏誤)。改成**三種排序各取前 30 的聯集**。"""
         rows = []
         for name, a in agg.items():
             if a['total'] < min_pos:
@@ -8669,8 +8735,46 @@ def build_broker_perf():
                          'win_rate': round(a['wins'] / a['total'] * 100, 1),
                          'avg_ret': round(a['ret'] / a['total'], 2),
                          'count': a['total']})
-        rows.sort(key=lambda r: (-r['win_rate'], -r['avg_ret']))
-        return rows[:30]
+        keep, seen = [], set()
+        for key in (lambda r: (-r['win_rate'], -r['avg_ret']),
+                    lambda r: (-r['avg_ret'], -r['win_rate']),
+                    lambda r: (-r['count'], -r['win_rate'])):
+            for r in sorted(rows, key=key)[:30]:
+                if r['broker'] in seen:
+                    continue
+                seen.add(r['broker']); keep.append(r)
+        keep.sort(key=lambda r: (-r['win_rate'], -r['avg_ret']))
+        return keep
+
+    # ── ③b 🔁 當沖(同日雙向成交)滾動歷史 ──────────────────────────────
+    #   ⭐ 跟前瞻回測**本質不同**:當沖的賺賠當天就實現了,⛔ 不用等 N 個交易日,也沒有前視偏誤。
+    dt_path = Path(DATA_DIR) / 'broker_dt.json'
+    try:
+        dt_hist = json.loads(dt_path.read_text(encoding='utf-8')) if dt_path.exists() else []
+    except Exception:
+        dt_hist = []
+    if not isinstance(dt_hist, list):
+        dt_hist = []
+    _new_dates = set(_DT_ACC.keys())
+    if _new_dates:
+        dt_hist = [x for x in dt_hist if x and x[0] not in _new_dates]
+        for _d, _m in _DT_ACC.items():
+            for _nm, _a in _m.items():
+                dt_hist.append([_d, _nm, _a['n'], _a['w'], round(_a['r'], 3), _a['q']])
+    _dt_keep = set(sorted({x[0] for x in dt_hist if x}, reverse=True)[:45])
+    dt_hist = [x for x in dt_hist if x and x[0] in _dt_keep]
+    dt_agg: dict = {}
+    for x in dt_hist:
+        try:
+            _nm, _n, _w, _r, _q = x[1], int(x[2]), int(x[3]), float(x[4]), int(x[5])
+        except Exception:
+            continue
+        a = dt_agg.setdefault(_nm, {'wins': 0, 'total': 0, 'ret': 0.0, 'q': 0})
+        a['total'] += _n; a['wins'] += _w; a['ret'] += _r; a['q'] += _q
+    dt_rows = rank(dt_agg, 10)
+    _qmap = {k: v['q'] for k, v in dt_agg.items()}
+    for r in dt_rows:
+        r['q'] = _qmap.get(r['broker'], 0)   # 交易狂那一欄用「當沖股數」比「事件數」更貼近本意
 
     try:
         _flip_list, _flip_days = build_broker_flip()
@@ -8683,6 +8787,10 @@ def build_broker_perf():
         'daytrade': rank(fwd['daytrade'], 12),
         'short': rank(fwd['short'], 8),
         'swing': rank(fwd['swing'], 8),
+        # 🔁 V76.2.8 當沖(同日雙向成交,當天實現)+ 四個榜各自的「隨便挑一家」對照組
+        'dt': dt_rows, 'dt_days': len(_dt_keep),
+        'base': {'dt': _pool(dt_agg), 'daytrade': _pool(fwd['daytrade']),
+                 'short': _pool(fwd['short']), 'swing': _pool(fwd['swing'])},
         'float_short': rank(float_short, 8),
         'float_swing': rank(float_swing, 8),
         'signals': len(hist), 'days': len(keep_dates),
@@ -8692,12 +8800,13 @@ def build_broker_perf():
         'backfill': bf_added,   # 短線/波段榜含幾筆歷史回推近似(前端標註;真實累積後占比自然下降)
     }
     Path(DATA_DIR).mkdir(exist_ok=True)
-    for name, obj in (('broker_signals.json', hist), ('broker_perf.json', payload)):
+    for name, obj in (('broker_signals.json', hist), ('broker_dt.json', dt_hist), ('broker_perf.json', payload)):
         tgt = Path(DATA_DIR) / name
         tmp = Path(str(tgt) + '.tmp')
         tmp.write_text(json.dumps(obj, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
         os.replace(str(tmp), str(tgt))
     print(f"  ✅ 券商勝率榜:訊號累積 {len(hist)} 筆/{len(keep_dates)} 日;前瞻 隔日沖{len(payload['daytrade'])}/短線{len(payload['short'])}/波段{len(payload['swing'])}、浮動{len(payload['float_swing'])} → broker_perf.json")
+    print(f"  🔁 當沖(同日雙向成交):{len(dt_rows)} 家/{len(_dt_keep)} 日(本輪新增 {len(_new_dates)} 日) → broker_dt.json")
 
 
 if __name__ == '__main__':

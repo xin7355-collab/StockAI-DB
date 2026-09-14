@@ -226,6 +226,17 @@ const SCAN = async (w, h, font, opener) => {
                 }
                 const m = measure(); m.tab = t; m.txt = prev; res.push(m);
             }
+        } else if (opener === 'radar') {
+            // 🏅 V76.2.8 選股頁有 4 個**頂層模式**(策略/ETF/自訂/券商)——
+            //   ⛔ 只切 switchAppTab 只量得到預設那個「策略」,新加的券商榜(4×3=12 格)整個掃不到。
+            try { A.switchAppTab('radar'); } catch (_) {}
+            await nap(1200);
+            for (const [mode, nm] of [['strategy', '策略'], ['etf', 'ETF'], ['custom', '自訂'], ['broker', '券商']]) {
+                try { A.switchRadarMode(mode); } catch (_) {}
+                await nap(1400);
+                const m = measure(); m.tab = nm; res.push(m);
+            }
+            try { A.switchRadarMode('strategy'); } catch (_) {}
         } else if (opener === 'settings') {
             try { A.openSettings(); } catch (_) {}
             await nap(600);
