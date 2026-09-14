@@ -13,6 +13,7 @@
 跑法:python3 scripts/test_broker_league.py   (⛔ 不打網路、⛔ 不動 repo 的 data/)
 """
 import json
+import re
 import os
 import sys
 import tempfile
@@ -165,8 +166,34 @@ def main():
        f"(實得 {x.get('q') if x else None});⛔ 用 max 會把它灌成 1,200 萬、直接霸榜交易狂")
     ck((p.get('base') or {}).get('dt') is not None, 'ⓒ8 當沖也要有自己的對照組')
 
-    print('\n── ⓓ 當沖⛔ 不可從 periods 的 top-15 撈 ──')
+    # ── ⓔ 🚨 上游截斷:`_fetch_chips_bulk` 的 top_per_day ──────────────
     src = (ROOT / 'miner.py').read_text(encoding='utf-8')
+    print('\n── ⓔ 🚨 上游 `_fetch_chips_bulk` 的截斷(V76.3.1:0 家/0 日的真因就在這)──')
+    #   ⭐ 走**正式入口**:直接呼叫 `_ingest`(它是 `_fetch_chips_bulk` 內的巢狀函式,
+    #      沒辦法單獨 import)→ 改用「跑一次 `_fetch_chips_bulk`、把網路層 stub 掉」太重
+    #      → 這裡釘**原始碼的判準**,並用一組合成資料驗那段挑選邏輯本身。
+    ck('def _dt_q(' in src, 'ⓔ1 有 `_dt_q`(同日雙向成交量 = min(買,賣))')
+    seg2 = src[src.index('for sid, rs in bucket.items():'):]
+    seg2 = seg2[:seg2.index('idx.setdefault')]
+    # 🚨 斷言前**先剝掉 `#` 註解** —— 否則會被「我自己寫的註解裡提到 `_dt_q`」救活 = 假綠燈。
+    #   (實測:注入「退回只按淨額」之後 ⓔ2 照樣綠,因為註解裡還留著那三個字。
+    #    CLAUDE.md 已記過同型兩次:V75.1.0 的搜尋範圍、V76.1.7 的原始碼斷言。)
+    seg2 = re.sub(r'#[^\n]*', '', seg2)
+    ck('_net_abs' in seg2 and '_dt_q' in seg2,
+       'ⓔ2 ⭐⭐ 截斷要**兩種排序的聯集** —— ⛔ 只按淨額取前 N,純當沖分點(買1000賣1000、淨額≈0)'
+       '會在資料進 `by_date` **之前**就被砍掉(實跑 #573:「當沖 0 家/0 日」)')
+    ck('dt_per_day' in src.split('def _fetch_chips_bulk')[1][:200],
+       'ⓔ3 `dt_per_day` 是參數(⛔ 不寫死,日後要調得動)')
+    # 合成一組:25 家淨額大但完全沒當沖 + 1 家純當沖(淨額 0、雙向量最大)
+    rows_syn = [{'stock_id': '1111', 'buy': 100000 - i * 10, 'sell': 0, 'price': 10.0} for i in range(25)]
+    rows_syn.append({'stock_id': '1111', 'buy': 500000, 'sell': 500000, 'price': 10.0})   # 🎯 純當沖
+    def _na(x): return abs(int(x.get('buy', 0)) - int(x.get('sell', 0)))
+    def _dq(x): return min(int(x.get('buy', 0)), int(x.get('sell', 0)))
+    old_keep = sorted(rows_syn, key=_na, reverse=True)[:25]
+    ck(not any(_dq(r) > 0 for r in old_keep),
+       'ⓔ4 🚧 決定性對照:**舊寫法(只按淨額前 25)真的會把那家純當沖分點砍掉** —— 沒有這條就證明不了修法有效')
+
+    print('\n── ⓓ 當沖⛔ 不可從 periods 的 top-15 撈 ──')
     ck('_dt_collect(sorted(by_date.keys())[-1], by_date[' in src,
        'ⓓ1 ⭐ 當沖是從當日原始 `by_date` 算的 —— ⛔ 純當沖分點淨額≈0,periods 的 top-15 兩張榜都進不去')
     ck("e['bpv']" in src and "e['spv']" in src,

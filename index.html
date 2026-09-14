@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.3.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -746,7 +746,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8335,8 +8335,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.3.0',
+    _APP_VERSION: 'V76.3.1',
     _CHANGELOG: [
+        { v: 'V76.3.1', d: ['🔁 <b>當沖榜昨天跑出來是空的</b>(0 家 / 0 日)—— 採礦全綠、檔案照傳,就是沒東西。查出來的真因跟上一版<b>是同一個錯,只是在更上游</b>:',
+            '🚨 <b>抓分點的時候,每一檔每天只留「淨額最大的 25 家」</b> —— 而純當沖的分點<b>買 1000 賣 1000、淨額等於 0</b> → 排最後、<b>資料連進來的機會都沒有</b>。上一版我修掉的是下游那一處(買超榜只收前 15 名),<b>上游這一處判準一模一樣、而且更早</b>,只修一半等於沒修。',
+            '✅ 已改成<b>兩種排序的聯集</b>(淨額前 25 + 同日雙向成交量前 10),並寫了測試把「舊寫法真的會砍掉那家純當沖分點」釘成決定性對照組 —— 下一輪盤後採礦就會有數字。',
+            '🐛 順手記一件我自己的事:這一版的注入驗證<b>第一次沒紅</b>(假綠燈),因為斷言被<b>我自己寫在旁邊的註解</b>救活了(註解裡提到了那個函式名)。已改成比對前先把註解剝掉 —— 這個坑本站已經記過兩次了。'] },
         { v: 'V76.3.0', d: ['🎣 <b>釣魚池的「拋竿」整組換成決策台的選股</b>(你說的:既然沒用就換成決策台那套,要觀察到底有沒有用)。舊的三層漏斗實測<b>六關 0 過</b>,而且拆解顯示<b>少了板塊那兩關反而比較好</b> —— 已整組拿掉。現在釣到的魚 = 決策台「🎯 今天可以買的」那幾檔,<b>🧺 漁獲籃量到的就是決策台的成績</b>。',
             '🚨 <b>而且刻意「不刪名單、只標警示」</b>:決策台本身<b>沒有</b>處置股/流動性/避雷那三道守門 —— 如果釣魚池先刪掉幾檔,你量到的就不是決策台真正的成績了。交換條件是:被標到的那幾條<b>不會被自動選取</b>,而且點開會用 ⛔ 寫清楚為什麼。',
             '🏅 <b>券商榜可以自己排序了</b>(你說爾後這種都要有,不用再提醒):點「報酬 / 勝率 / 出手」任一個表頭就重排,<b>再點一次反向</b>,目前照哪一欄排看得到 ▼▲;換分類會回到那一類自己的預設。',

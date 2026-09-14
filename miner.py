@@ -4281,7 +4281,7 @@ def _chips_broker_ids(n=None):
         return []
 
 
-def _fetch_chips_bulk(dates, need_days=CHIP_DAYS, top_per_day=25, min_syms=200,
+def _fetch_chips_bulk(dates, need_days=CHIP_DAYS, top_per_day=25, dt_per_day=10, min_syms=200,
                       have_dates=None, budget_s=None):
     """🚀 V74.0.6 分點「單日全市場」——⭐ 按**券商**抓,⛔ 不是省略 data_id。
 
@@ -4326,6 +4326,22 @@ def _fetch_chips_bulk(dates, need_days=CHIP_DAYS, top_per_day=25, min_syms=200,
     def _net_abs(x):
         try:
             return abs(int(x.get('buy', 0)) - int(x.get('sell', 0)))
+        except Exception:
+            return 0
+
+    def _dt_q(x):
+        """🔁 V76.3.1 同日雙向成交量(當沖估計)= min(買, 賣)。
+
+        🚨🚨 **這支存在的理由**:`top_per_day` 原本**只**按 `_net_abs` 排序截斷,
+        而純當沖分點買 1000 賣 1000 → 淨額 ≈ 0 → **排最後、直接被砍掉**,
+        資料連進 `by_date` 的機會都沒有。
+        ⭐ 實跑證據(#573 log 逐字):「🔁 當沖(同日雙向成交):**0 家/0 日**」——
+        全綠、artifact 照傳、產物是空的(陷阱 #9 的型態)。
+        ⚠️ V76.2.8 我修掉的是**下游** `periods` 的 top-15 截斷(同一個錯),
+        但**上游這一處更早、判準一模一樣** → 只修一半等於沒修(陷阱 #37)。
+        """
+        try:
+            return min(int(x.get('buy', 0)), int(x.get('sell', 0)))
         except Exception:
             return 0
 
@@ -4379,7 +4395,18 @@ def _fetch_chips_bulk(dates, need_days=CHIP_DAYS, top_per_day=25, min_syms=200,
             return 'skip'
         for sid, rs in bucket.items():
             if len(rs) > top_per_day:
-                rs = sorted(rs, key=_net_abs, reverse=True)[:top_per_day]
+                # 🔁 V76.3.1 **兩種排序的聯集**(同 build_broker_perf 的 `rank()`)——
+                #   ⛔ 只按淨額取前 N 會把「同日雙向成交」那一群整批砍掉(見 `_dt_q` 的說明)。
+                _keepr, _seen = [], set()
+                for _key, _n in ((_net_abs, top_per_day), (_dt_q, dt_per_day)):
+                    for _r in sorted(rs, key=_key, reverse=True)[:_n]:
+                        if _key is _dt_q and _dt_q(_r) <= 0:
+                            break                       # 🚧 雙向量是 0 的不用留(⛔ 也別讓它擠掉淨額大的)
+                        _k = id(_r)
+                        if _k in _seen:
+                            continue
+                        _seen.add(_k); _keepr.append(_r)
+                rs = _keepr
             idx.setdefault(sid, []).extend(rs)
         got += 1
         print(f"  📦 分點全市場批次 {d}:{len(bucket)} 檔 / {len(rows_all)} 列({src}、"
