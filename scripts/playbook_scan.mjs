@@ -46,6 +46,11 @@ import path from 'path';
 //   ⛔ 別再用 workflow 裡 `sed` 改原始碼那招(daily_signal_scan 那樣做)——
 //      我的 launch() 是多行多屬性,sed 掉一行會留下 `{ , args: … }` 直接語法錯,
 //      而且 workflow 全綠、只有這支靜默失敗(陷阱 #9 的同型)。改成程式自己判斷。
+// 📏 台股跳動單位(⚠️ 跟 index.html / pro.html 的 `_tickOf` **一字不差**,測試 test_ticksize.mjs 跨檔比對)
+const tickOf = v => v < 10 ? 0.01 : v < 50 ? 0.05 : v < 100 ? 0.1 : v < 500 ? 0.5 : v < 1000 ? 1 : 5;
+// 停損價專用:無條件**捨去**(⛔ 四捨五入會讓停損價高於真正的 −5%,等於提早把人洗出去)
+const floorTick = p => { p = +p || 0; if (!(p > 0)) return 0; const t = tickOf(p); return +(Math.floor(p / t + 1e-9) * t).toFixed(2); };
+
 let chromium;
 try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); }
 catch (_) { ({ chromium } = await import('playwright')); }
@@ -152,7 +157,6 @@ for (const f of files) {
                 // 📏 對齊台股真實跳動單位,並**無條件進位** ——
                 //   ⛔ 四捨五入會把觸發價修到比真正的門檻**低**,等於叫人在條件還沒成立時就買。
                 //   而且對不到跳動單位的價格根本掛不出去(89.97 那種)。
-                const tickOf = v => v < 10 ? 0.01 : v < 50 ? 0.05 : v < 100 ? 0.1 : v < 500 ? 0.5 : v < 1000 ? 1 : 5;
                 // ⚠️ 跳動單位要看**進位後那個價**落在哪一檔(498 → 501 會從 0.5 檔跨進 1 元檔)
                 let up = Math.ceil((b2 - 1e-9) / tickOf(b2)) * tickOf(b2);
                 for (let g = 0; g < 3; g++) {
@@ -230,7 +234,12 @@ for (const f of files) {
         picks.push({ s: sym, c: r.c, v: r.v, d: r.d, ...x,
                      rank: r.rank, vol: r.vol, hq, bear: r.bear || 0,
                      up: x.trig != null ? +((x.trig - r.c) / r.c * 100).toFixed(2) : null,
-                     stop: +(base * 0.95).toFixed(2) });
+                     // 📏 V76.2.9 停損價也要對到跳動單位 —— ⛔ 以前只有 `toFixed(2)`:
+                     //   實測 300 檔裡 **257 檔(85.7%)掛不出去**(740.05 / 154.38 / 5177.5 那種),
+                     //   而 `auto_trade.py` 正是拿這個值去掛**真的**停損單。
+                     //   ⭐ 方向用**無條件捨去**,跟上面觸發價的無條件進位是同一個原則:
+                     //      買要真的漲過、賣要真的跌破,⛔ 不在條件還沒成立時就動作。
+                     stop: floorTick(base * 0.95) });
     }
     for (const x of r.fired) firedToday.push({ s: sym, c: r.c, v: r.v, d: r.d, ...x });
     if (used % 200 === 0) log(`   …${used} 檔 / ${((Date.now() - t0) / 1000).toFixed(0)}s / 候選 ${picks.length}・今日已觸發 ${firedToday.length}`);

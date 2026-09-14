@@ -2840,6 +2840,13 @@ const PRO = {
   //  ⑤ 樣本 <10 筆 ⛔ 不下結論(全站統一的 `_wrEnough`)。
   _STL_MAXD: 20, _STL_COST: 0.44,
   // 🧮 純函式:把回測的持有迴圈原封不動搬過來(⛔ 不可在這裡「順便優化」)
+  // 📏 V76.2.9 台股跳動單位(⚠️ 跟 index.html `_tickOf` **一字不差**,測試 test_ticksize.mjs 跨檔比對)
+  //   ⛔ 兩個檔沒辦法互相 import → 只能各存一份,改一邊會被測試擋下來(同 VER 的做法)。
+  _tickOf(p) { const v = +p || 0; return v < 10 ? 0.01 : v < 50 ? 0.05 : v < 100 ? 0.1 : v < 500 ? 0.5 : v < 1000 ? 1 : 5; },
+  // 停損價**無條件捨去**到跳動單位 —— ⛔ 不可四捨五入(會在還沒跌到停損時就把人洗出去)。
+  //   🚨 沒有這一行的後果使用者截圖裡就看得到:出場價印成 `222.77499999999998`
+  //      (= 234.5 × 0.95 的浮點殘值),而且那是**掛不出去的價格**。
+  _floorTick(p) { p = +p || 0; if (p <= 0) return 0; const t = this._tickOf(p); return +(Math.floor(p / t + 1e-9) * t).toFixed(2); },
   _settleReplay(rows, i0, rule) {
     const n = rows.length; if (!(i0 >= 1) || i0 >= n) return null;
     const C = j => +rows[j].close, L = j => (+rows[j].low > 0 ? +rows[j].low : +rows[j].close),
@@ -2847,6 +2854,8 @@ const PRO = {
     const entry = C(i0); if (!(entry > 0)) return null;
     let stop = Math.min(L(i0), entry * 0.95);
     if (!(stop > 0) || stop >= entry) stop = entry * 0.95;      // 守門:算壞就退回(⛔ 跟回測同一行)
+    stop = this._floorTick(stop);                               // 📏 V76.2.9 對到台股跳動單位(⛔ 不可四捨五入,見 _floorTick)
+    if (!(stop > 0) || stop >= entry) stop = this._floorTick(entry * 0.95);
     const atrAt = j => {
       let tr = 0, k = 0;
       for (let q = Math.max(1, j - 13); q <= j; q++) {
@@ -4451,7 +4460,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V76.2.8',
+  VER: 'V76.2.9',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

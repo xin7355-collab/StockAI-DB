@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.2.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -746,7 +746,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.2.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.2.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8335,8 +8335,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.2.8',
+    _APP_VERSION: 'V76.2.9',
     _CHANGELOG: [
+        { v: 'V76.2.9', d: ['🚨 <b>停損價以前是「掛不出去的價格」</b> —— 你截圖裡南亞的出場價印成 <b>222.77499999999998</b>,查下去發現不只是難看:台股有<b>跳動單位</b>(200~500 元只能跳 0.5 元),而明日作戰清單 <b>300 檔裡有 257 檔(85.7%)的停損價根本掛不出去</b>(740.05 / 154.38 / 5177.5 那種)。',
+            '💰 <b>而自動下單就是拿這個價去掛真的停損單</b> —— 這是會動到錢的,不是顯示問題。',
+            '📏 <b>已全部對到跳動單位</b>,方向是<b>無條件捨去</b>:跟「觸發價無條件進位」是同一個原則 —— <b>買要真的漲過、賣要真的跌破</b>,⛔ 不在條件還沒成立時就把你洗出去(四捨五入會把停損價修到比你設的 −5% 還高)。',
+            '🔍 這個坑最諷刺的地方:<b>觸發價 300/300 全部早就對好了</b>,連註解都寫著「對不到跳動單位的價格根本掛不出去」—— 就差 11 行外的停損價沒接上。已寫測試把三個檔案的跳動單位表釘在一起,以後改一邊會被擋下來。',
+            '⚠️ <b>回測那邊還沒對跳動單位</b>(差半檔、中位 0.088%),所以實際下單會比回測數字略差一點點 —— 為了 0.088% 重跑 49 個月的回測不划算,先誠實寫在這裡。'] },
         { v: 'V76.2.8', d: ['🏅 <b>選股頁多了「券商」頁籤</b> —— 你要的那 12 項全在裡面:<b>當沖 / 隔日沖 / 短線 / 波段</b> × <b>報酬王 / 常勝軍 / 交易狂</b>,點哪一格就看那一榜的前 20 名(以前只看得到每一類的第 1 名,而且藏在底部「券商」頁)。',
             '🔁 <b>「當沖」那 4 格是新的</b> —— 以前算不出來:當沖分點<b>買 1000 賣 1000、淨額等於 0</b>,而舊的買超榜只收「淨額前 15 名」,所以它們整批被漏掉。現在改從原始資料算<b>同一家分點同一天既買又賣</b>的部分。⚠️ 這是<b>估計</b>不是官方當沖(可能是 A 客戶買、B 客戶賣),而且要等下一輪盤後採礦跑完才會有數字。',
             '🎯 <b>每一榜都加了「隨便挑一家券商」的對照組</b> —— ⛔ 沒有這條線,波段榜上那個 91% 勝率會被當成很厲害,但那段本來就在漲、隨便買都常常是贏的。現在每一列都會標「贏基準多少」。',
@@ -22272,7 +22277,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             let big, tc, bc, inner;
             if (hit) {
                 const sigIdx = last - hit.ago, e = C(data[sigIdx]);
-                const stop = rt(Math.min(Lo(data[sigIdx]), e * 0.95));
+                const stop = this._floorTick(Math.min(Lo(data[sigIdx]), e * 0.95));   // 📏 停損價用無條件捨去(⛔ 不可 rt/四捨五入,見 _floorTick)
                 const plr = hit.r.plRatio >= 99 ? 2 : Math.min(Math.max(hit.r.plRatio, 1), 4);
                 const tgt = rt(e + plr * (e - stop));
                 const _fd = this._feeDisc();                       // 💰 V71.7.8 折數改走單一真相源
@@ -50769,6 +50774,19 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         p = +p || 0; if (p <= 0) return 0;
         const t = this._tickOf(p);      // ⛔ 別再 inline 一份階梯(陷阱 #37:改一處就會不同步)
         return +(Math.round(p / t) * t).toFixed(2);
+    },
+    // 📏 V76.2.9 **停損價專用**:無條件捨去到跳動單位。
+    //   ⛔ 停損價**不可以**用 `_roundTick`(四捨五入)—— 那會把停損價修到比真正的 −5% **還高**,
+    //      等於「還沒跌到你設的停損就先把你洗出去」。
+    //   ⭐ 這跟 `playbook_scan.mjs` 對**觸發價**用無條件進位是**同一個原則**:
+    //      條件真的成立了才動作(買要真的漲過、賣要真的跌破),⛔ 不在條件沒成立時就動。
+    //   🚨 實測(V76.2.9 量的):`playbook_edge.json` 300 檔裡 **257 檔(85.7%)的停損價對不到跳動單位**
+    //      —— 那種價格**掛不出去**,而 `auto_trade.py` 正是拿它去掛真的停損單。
+    //      (同一份檔案的**觸發價** 300/300 全部對得到 → 只有停損這一條漏掉 = 陷阱 #37)
+    _floorTick(p) {
+        p = +p || 0; if (p <= 0) return 0;
+        const t = this._tickOf(p);
+        return +(Math.floor(p / t + 1e-9) * t).toFixed(2);
     },
     // 💤 懶人快設:依現價一鍵算觸發價(現價/±%),並自動選好 ≥/≤ 條件
     _paQuickSet(pct) {
