@@ -194,7 +194,10 @@ def main():
        'ⓔ4 🚧 決定性對照:**舊寫法(只按淨額前 25)真的會把那家純當沖分點砍掉** —— 沒有這條就證明不了修法有效')
 
     print('\n── ⓓ 當沖⛔ 不可從 periods 的 top-15 撈 ──')
-    ck('_dt_collect(sorted(by_date.keys())[-1], by_date[' in src,
+    # ⚠️ V76.3.6 這條原本釘的是「`_dt_collect(sorted(by_date.keys())[-1], ...)`」= 當時的**實作**,
+    #   而那個寫法正是「當沖榜永遠 0 家」的元兇之一(穩態下最後一天一定是還原來的)。
+    #   ⭐ 改成釘**用意**:來源是當日原始 `by_date`,⛔ 不是 periods 的 top-15。
+    ck('_dt_collect(' in src and 'by_date[' in src and '_dt_collect(sorted(buy_top' not in src,
        'ⓓ1 ⭐ 當沖是從當日原始 `by_date` 算的 —— ⛔ 純當沖分點淨額≈0,periods 的 top-15 兩張榜都進不去')
     ck("e['bpv']" in src and "e['spv']" in src,
        'ⓓ2 買/賣各自的均價分子分母都有累加(bpv/spv)')

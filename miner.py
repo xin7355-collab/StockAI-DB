@@ -4142,7 +4142,12 @@ def _dt_collect(day, slot):
         _nm = _e.get('broker_name') or _bid
         if not _nm or str(_nm).isdigit():
             continue
-        _q = min(int(_e.get('buy') or 0), int(_e.get('sel') or 0))
+        # 🚨 V76.3.6 還原來的天(chips_deep 分支 / 自己的 hist)**只存淨額** → 偽造出來的
+        #   buy/sell 必有一邊是 0 → 舊版 `min(buy,sel)` 恆為 0,全市場一列都收不到。
+        #   實跑 #574 的 job log 逐字:「🔁 當沖(同日雙向成交):0 家/0 日」+「API 新抓 0 天」
+        #   → 穩態下 API 永遠不再抓(have + 分支還原就湊滿 22 天)= **這個榜永遠不可能有資料**。
+        #   ⭐ 修法:寫入端另存一小塊 `dt`(只放兩邊都有量的分點),還原端還回 `dtq/bpv/bvol/...`。
+        _q = int(_e.get('dtq') or 0) or min(int(_e.get('buy') or 0), int(_e.get('sel') or 0))
         _bv, _sv = _e.get('bvol') or 0, _e.get('svol') or 0
         if _q <= 0 or _bv <= 0 or _sv <= 0:
             continue
@@ -5170,6 +5175,22 @@ def fetch_broker_chips():
                         _e['net'] += _nt
                         if _av is not None:
                             _e['pv'] += _av * abs(_nt); _e['vol'] += abs(_nt)
+                    # 🔁 V76.3.6 還原「同日雙向成交」那一小塊(V76.3.6 起才寫;更早的天沒有 → 誠實地就是沒有)
+                    for _dtr in list(_h.get('dt') or []):
+                        try:
+                            _dn = str(_dtr[0]); _dq = int(_dtr[1])
+                            _dba = float(_dtr[2]); _dsa = float(_dtr[3])
+                        except (TypeError, ValueError, IndexError):
+                            continue
+                        if not _dn or _dq <= 0 or _dba <= 0 or _dsa <= 0:
+                            continue
+                        _de = _slot.setdefault(_dn, {'broker_id': '', 'broker_name': _dn,
+                                                     'net': 0, 'buy': 0, 'sel': 0, 'pv': 0.0, 'vol': 0})
+                        # ⛔ 刻意**不動** net/buy/sel/pv/vol —— 那幾欄是買賣超榜在用的,
+                        #    把當沖量混進去會讓同一個欄位有兩種意思(本專案犯最多次的錯)。
+                        _de['dtq'] = _dq
+                        _de['bvol'] = _dq; _de['bpv'] = _dba * _dq
+                        _de['svol'] = _dq; _de['spv'] = _dsa * _dq
                 for r in data_rows:
                     d   = r.get('date') or today_str
                     bid = str(r.get('secBrokerId') or r.get('securities_trader_id') or r.get('broker_id') or '').strip()
@@ -5224,8 +5245,28 @@ def fetch_broker_chips():
                             _vals2.append([_nm2, _net2, _av2])
                         _b2 = sorted([x for x in _vals2 if x[1] > 0], key=lambda x: -x[1])[:15]
                         _s2 = sorted([x for x in _vals2 if x[1] < 0], key=lambda x: x[1])[:15]
-                        if _b2 or _s2:
-                            _day_snaps[str(_d2)] = {'d': str(_d2), 'b': _b2, 's': _s2}
+                        # 🔁 V76.3.6 「同日雙向成交」單獨存一小塊 —— ⛔ 不可以指望 b/s 兩張榜:
+                        #   ① 它們按**淨額**取前 15,純當沖分點淨額≈0 → 整批被截掉(陷阱:V76.3.1 同型)
+                        #   ② 它們只留**一個**均價(買賣混在一起)→ 買賣相減恆為 0,算不出賺賠
+                        #   每檔每天最多 10 筆 × 4 個欄位 ≈ +300 bytes,換來這個榜活得下來。
+                        _dt2 = []
+                        for _bid3, _e3 in _slot2.items():
+                            _nm3 = _e3.get('broker_name') or _bid3
+                            if not _nm3 or str(_nm3).isdigit():
+                                continue
+                            _q3 = int(_e3.get('dtq') or 0) or min(int(_e3.get('buy') or 0), int(_e3.get('sel') or 0))
+                            _bv3, _sv3 = _e3.get('bvol') or 0, _e3.get('svol') or 0
+                            if _q3 <= 0 or _bv3 <= 0 or _sv3 <= 0:
+                                continue
+                            _dt2.append([_nm3, _q3, round((_e3.get('bpv') or 0.0) / _bv3, 2),
+                                         round((_e3.get('spv') or 0.0) / _sv3, 2)])
+                        _dt2.sort(key=lambda x: -x[1])
+                        _dt2 = _dt2[:10]
+                        if _b2 or _s2 or _dt2:
+                            _snap2 = {'d': str(_d2), 'b': _b2, 's': _s2}
+                            if _dt2:
+                                _snap2['dt'] = _dt2
+                            _day_snaps[str(_d2)] = _snap2
 
                     # 🚨 V73.3.7 使用者問「分點是到 20 天了嗎?為何有些還是只有 10 天」→ 查出真 bug:
                     #    這裡 `[-n:]` 在**天數不足時會給幾天算幾天**,而外面照樣把它標成 `20d`。
@@ -5269,9 +5310,12 @@ def fetch_broker_chips():
                     #   → 兩張榜都進不去,整批被截掉。所以直接從當日原始 by_date 算。
                     #   ⚠️ 「同日雙向成交」是**估計**不是官方當沖:同一家分點可能是 A 客戶買、B 客戶賣。
                     #   報酬 =(賣均價 − 買均價)/買均價,是**當天就實現**的(⛔ 不是前瞻回測)。
+                    #   🚨 V76.3.6 ⛔ 不可以只收 `sorted(by_date.keys())[-1]`:穩態下**最新那天一定是
+                    #     還原來的**(chips_deep 分支 + 自己的 hist),而還原的天以前沒有雙向資料
+                    #     → 只收最後一天 = 永遠收到空的。⭐ 改成整串天都收(`_DT_ACC` 本來就按日期分桶)。
                     try:
-                        if by_date:
-                            _dt_collect(sorted(by_date.keys())[-1], by_date[sorted(by_date.keys())[-1]])
+                        for _dtd in sorted(by_date.keys()):
+                            _dt_collect(_dtd, by_date[_dtd])
                     except Exception as _e_dt:
                         print(f"    ⚠️ 當沖統計 {sym} 失敗: {type(_e_dt).__name__}")
                     # Sniper 已拿到今日真分點時不被 FinMind 覆蓋(Sniper=官方 TWSE 較準);
@@ -5470,9 +5514,14 @@ def fetch_broker_chips():
             _dd = output.get('data_date')
             # 最新那天用 out_periods['1d'](Sniper 官方分點優先,比 by_date 準)
             if _dd and (_p1.get('buy') or _p1.get('sell')):
+                # 🔁 V76.3.6 ⛔ 這裡是**覆寫**不是新增 → 上面剛算好的 `dt` 那一塊要接回來,
+                #   否則最新那天(最有價值的那天)的當沖資料每輪都被 Sniper 這條路洗掉。
+                _prev_dt = (_day_snaps.get(str(_dd)) or {}).get('dt')
                 _day_snaps[str(_dd)] = {'d': str(_dd),
                                         'b': _compact_side(_p1.get('buy')),
                                         's': _compact_side(_p1.get('sell'))}
+                if _prev_dt:
+                    _day_snaps[str(_dd)]['dt'] = _prev_dt
             if _day_snaps:
                 # 📅 V74.0.7 依日期合併(新的覆蓋舊的),⛔ 不再只 append 一筆。
                 _merged = {str(h.get('d')): h for h in _hist
@@ -8782,12 +8831,19 @@ def build_broker_perf():
         dt_hist = []
     if not isinstance(dt_hist, list):
         dt_hist = []
-    _new_dates = set(_DT_ACC.keys())
-    if _new_dates:
-        dt_hist = [x for x in dt_hist if x and x[0] not in _new_dates]
-        for _d, _m in _DT_ACC.items():
-            for _nm, _a in _m.items():
-                dt_hist.append([_d, _nm, _a['n'], _a['w'], round(_a['r'], 3), _a['q']])
+    # 🚧 V76.3.6 「**更完整才覆蓋**」:一輪只更新 70 檔是常態(其餘「今日已抓」被跳過),
+    #   ⛔ 不可以拿那 70 檔算出來的那一天,去蓋掉上一輪跑到 2,700 檔的同一天。
+    _by_d: dict = {}
+    for x in dt_hist:
+        if x:
+            _by_d.setdefault(x[0], []).append(x)
+    _new_dates = set()
+    for _d, _m in _DT_ACC.items():
+        _rows_new = [[_d, _nm, _a['n'], _a['w'], round(_a['r'], 3), _a['q']] for _nm, _a in _m.items()]
+        if _rows_new and len(_rows_new) >= len(_by_d.get(_d) or []):
+            _by_d[_d] = _rows_new
+            _new_dates.add(_d)
+    dt_hist = [r for _rows in _by_d.values() for r in _rows]
     _dt_keep = set(sorted({x[0] for x in dt_hist if x}, reverse=True)[:45])
     dt_hist = [x for x in dt_hist if x and x[0] in _dt_keep]
     dt_agg: dict = {}
@@ -8833,7 +8889,16 @@ def build_broker_perf():
         tmp.write_text(json.dumps(obj, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
         os.replace(str(tmp), str(tgt))
     print(f"  ✅ 券商勝率榜:訊號累積 {len(hist)} 筆/{len(keep_dates)} 日;前瞻 隔日沖{len(payload['daytrade'])}/短線{len(payload['short'])}/波段{len(payload['swing'])}、浮動{len(payload['float_swing'])} → broker_perf.json")
-    print(f"  🔁 當沖(同日雙向成交):{len(dt_rows)} 家/{len(_dt_keep)} 日(本輪新增 {len(_new_dates)} 日) → broker_dt.json")
+    # ⛔ 0 家的時候一定要說**為什麼**(陷阱 #22:空白不可以沒有原因)——
+    #   「這個榜壞了」跟「今天的原始資料本來就沒有雙向」長得一模一樣。
+    _dt_why = ''
+    if not dt_rows:
+        _raw_days = len(_DT_ACC)
+        _dt_why = (f" ・⚠️ 本輪原始資料裡有雙向成交的天數={_raw_days}"
+                   + ("(=0 → 這輪每一天都是『還原』來的,還原格式只有淨額;"
+                      "要等 API 真的新抓一天才會有,見 _dt_collect 的說明)"
+                      if _raw_days == 0 else "(有天數但沒有分點過樣本門檻)"))
+    print(f"  🔁 當沖(同日雙向成交):{len(dt_rows)} 家/{len(_dt_keep)} 日(本輪新增 {len(_new_dates)} 日){_dt_why} → broker_dt.json")
 
 
 if __name__ == '__main__':

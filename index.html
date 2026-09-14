@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.3.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.3.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -805,7 +805,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8400,8 +8400,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.3.5',
+    _APP_VERSION: 'V76.3.6',
     _CHANGELOG: [
+        { v: 'V76.3.6', d: ['🔁 <b>當沖榜(同日雙向成交)從上線到現在一筆都沒產出過</b> —— 查採礦 log 才找到真因,而且跟程式判定無關:採礦機平常<b>不會真的去抓分點</b>(22 天裡 15 天從備份還原、其餘「已經有了」),而<b>備份格式只留「淨買超」</b>→ 還原時只能猜「買 500、賣 0」,於是「同一天既買又賣」這件事在資料裡<b>根本不存在</b> → 每一列都被跳過。','⭐ 修法:每天的分點快照多存一小塊「兩邊都有量的分點」(每檔每天最多 10 筆),還原時把它還回來 → <b>這個榜從這一版開始，每個交易日長一天</b>。⚠️ 以前的日子真的沒有這份資料,⛔ 補不回來 —— 畫面上已經把這句話寫出來,不再寫「等下一輪採礦就有」那種假話。','🚧 順手補三道:① 只跑到 70 檔的那一輪 ⛔ 不可以蓋掉上一輪跑到 2,700 檔的同一天 ② ⛔ 不可以只看「最後一天」(穩態下最後一天一定是還原來的 = 永遠空的)③ 0 家的時候要印出<b>為什麼</b>,不然「壞了」跟「原始資料本來就沒有」長得一模一樣。'] },
         { v: 'V76.3.5', d: ['🚨 <b>我自己畫的那張圖用錯顏色了</b> —— 「距現價 +28.2% / −23.5%」那一欄被塗成紅綠,但它講的是<b>那個價位在現價上面還是下面</b>,⛔ 不是漲跌。塗紅會讀成「季線漲了 28%」。現在改成<b>灰字 + ▲(在上面)/ ▼(在下面)</b>;⭐ 這正是我上一版批評外部 AI 圖的同一個錯,做圖提示詞也補上這條教它別犯。',
             '🧱 <b>關鍵價位補上「現在的價」那一列</b>(琥珀色插在中間)—— 一眼看得出哪幾道在上面、哪幾道在下面;<b>套牢區改成每一層都列</b>並標「佔幾 % 的量」(以前只列最近那一層)。',
             '📊 <b>圖上多了三排數字</b>:估值(本益比/股價淨值比/殖利率/估值基期)・基本面(月營收/年增/毛利率/存貨天數)・籌碼(外資/投信近5日、千張大戶/散戶)。',
@@ -37889,7 +37890,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         let body;
         if (!raw.length) {
             const why = P === 'dt'
-                ? '當沖榜要等下一輪盤後採礦才會出現(V76.2.8 新加的,需要採礦機跑過一次)。'
+                ? `🔁 當沖榜<b>從 ${'V76.3.6'} 才開始累積</b>(每個交易日長一天)。<br>採礦端只有在「當天第一次真的去抓分點」時拿得到<b>買賣兩側的量</b>；其餘輪次是從備份還原的，而還原格式只留淨額 → 算不出當沖賺賠。<br>⛔ 這不是壞掉，是<b>以前的日子真的沒有這份資料</b>，要等新的交易日一天一天長出來。`
                 : `${pm[1]}榜樣本累積中。`;
             body = `<div class="text-[11px] text-gray-500 py-6 text-center leading-relaxed">${why}</div>`;
         } else {
