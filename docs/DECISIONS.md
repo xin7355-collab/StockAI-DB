@@ -209,9 +209,12 @@ localStorage 總計 111.4 KB ・10 個 key
 → V76.2.0 的更正(**真因是面額變更,⛔ 不是業外**)成立;
 ⛔ 而 V76.1.8 我第一次改口寫的「真因是業外不是股本」**確實是錯的**。
 
-⚠️ **切片落地要等一輪 daily_miner** —— `fin_backfill` 只推 `data` 分支,gh-pages 上仍是舊的
-(實測當下 `updated 2026-09-07`、`nm=5.3`、`ni_src=None`)→ 前端要等
-daily_miner 的 `git archive origin/data` 鋪底層才看得到。
+✅ **切片已落地 gh-pages**(daily_miner run #572,2026-09-14 00:5x UTC):
+`updated=2026-09-13 ・最新季 2026-06-30 ・淨利率 21.3% ・ROE 17.2% ・ni_src=fs ・面額變更旗標 2025-09-30`,
+`data/fin/` 共 **2,352 檔**;同一輪把 gh-pages 一起帶到 **V76.2.7**。
+⭐ 記住這條流程:`fin_backfill` **只推 `data` 分支**(實測鋪上去之前 gh-pages 仍是
+`nm=5.3 / ni_src=None`)→ 前端要等 daily_miner 的 `git archive origin/data` 鋪底層才看得到,
+⛔ 不需要重跑回算、也⛔ 不需要 `slice_only`。
 
 ### 🧭📐 V76.2.4 收掉兩份待辦 —— ⭐ 而「先量」這一步照出**巡邏工具自己有四個盲點**,修完才量到真問題
 
