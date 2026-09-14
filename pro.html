@@ -58,7 +58,14 @@ a{color:var(--cyan)}
 .datebadge{font-size:10px;color:var(--dim2);font-family:var(--mono)}
 .swipehint{font-size:9px;color:var(--dim2);width:100%;text-align:center;margin-top:-2px}
 /* ── 面板 ── */
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:14px}
+/* 🧱 V77.0.0 全站無框(使用者:「整個系統比照無框邏輯製作」)—— 判準見 CLAUDE.md「🧱 去框判準」。
+   ⭐ class 名稱**一個都不改** —— `test_prohtml` 拿 `.closest('.panel')` 當**結構**選擇器在用
+      (⑳b 釘「提醒要跟戰情表在同一個 panel」),改名等於把那條測試弄瞎。
+   ⛔ `.vcard` / `.fishcard` / `.bkrow` / `.labitem` 這些**一排/一列一張**的不動 —— 框在分「這是第幾張」。
+   ⛔ 按鈕(.tab-btn/.preset/.copybtn/.stepbtn/.cbtn)與輸入框(.dtin/.starinput)不動 —— 框在講「可以點/可以打字」。 */
+.panel{background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:16px 0;margin-top:14px}
+/* 巢狀:panel 裡的 panel 不再畫線(會變成「線 + 線」) */
+.panel .panel{border-bottom:0;padding-bottom:0}
 .panel h2{font-size:14px;font-weight:900;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .panel h2 .sub{font-size:10px;color:var(--dim2);font-weight:400}
 label{display:block;font-size:11px;color:var(--sub);margin:10px 0 4px;font-weight:700}
@@ -4480,7 +4487,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V76.4.2',
+  VER: 'V77.0.0',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

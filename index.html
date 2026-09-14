@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.4.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -564,6 +564,46 @@
     .inv-grid { display: grid; gap: 4px; align-items: center;
         grid-template-columns: minmax(96px,1.5fr) minmax(66px,1fr) minmax(76px,1.1fr)
                                minmax(88px,1.25fr) minmax(52px,.8fr) minmax(88px,1.25fr); }
+    /* ═══ 🧱 V77.0.0 全站無框(使用者:「整個系統比照無框邏輯製作」)═══════════════
+       ⭐ 判準寫在 CLAUDE.md「🧱 去框判準」:**框如果在講事情就留,只是把東西圍起來的就拿掉**。
+       ⭐⭐ 為什麼做成一條 CSS 而不是去改那 349 處 class 字串:
+         ① 實跑盤點(`node scripts/box_inventory.mjs`)只有 **111 個框看得見**,其餘是**條件式/隱藏**的 ——
+            只改看得見的,那些卡片一旦被觸發就又是有框的(改一半比不改更糟)。
+         ② 全站 **213 種**手寫組合,而且一大半在 JS 模板字串裡 → 逐一改必然漏、也容易改壞字串。
+         ③ 一個地方、可逆、動態產生的 HTML 自動涵蓋。
+       🎯 選到誰:`[class~="border"]` = class 裡有**獨立的 `border`**(= 四邊框),
+          再加上 `border-[#30363d]`(CLAUDE.md 的「預設邊框」token)。
+          ⛔ `border-b` / `border-t` / `border-l-4` / `border-y border-r` 都**不含**獨立的 `border`
+             → 分隔線與 ⚠️ 警示左色條天生就不會被選到(⭐ 那正是要保留的那幾種)。
+          ⛔ `border-[#21262d]`(分隔線 token)也不選 —— 那是內層小格子在用的。
+       🔒 例外用 `.keepbox`:一排 ≥2 個同款框的**格子**(框在分「這是第幾格」)。
+       🔒 `cursor-pointer` 也排除 —— 全站有一批**用 `<div>` 做的按鈕**(設定的切換鈕、選股的吸頂列、
+          大盤的指數方塊),它們的框在講「這裡可以點」。⛔ 只排除 `<button>` 會把那批一起拉平
+          (實跑 `box_inventory` 當場抓到 4 種)。
+       ⚠️ `border-color: transparent` 而**不是** `border-width: 0` —— 寬度留著,版面才不會左右各跳 1px。
+       ⚠️ 只清**左右** padding(那才是使用者說的「左右還有空間」),垂直留著當段落間距。 */
+    .bx:not(.keepbox):not(button):not(input):not(textarea):not(select):not(a):not(label):not([class*="cursor-pointer"]),
+    div[class~="border"][class*="border-[#30363d]"]:not(.keepbox):not(button):not(input):not(textarea):not(select):not(a):not(label):not([class*="cursor-pointer"]),
+    details[class~="border"][class*="border-[#30363d]"]:not(.keepbox),
+    section[class~="border"][class*="border-[#30363d]"]:not(.keepbox) {
+        background-color: transparent !important;
+        border-color: transparent !important;
+        border-radius: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        border-bottom: 1px solid #21262d !important;
+    }
+    /* 巢狀:框裡的框已經被拉平了,再畫一條線會變成「線 + 線」→ 只留最外那一條 */
+    div[class~="border"][class*="border-[#30363d]"] div[class~="border"][class*="border-[#30363d]"]:not(.keepbox),
+    div[class~="border"][class*="border-[#30363d]"] details[class~="border"][class*="border-[#30363d]"]:not(.keepbox),
+    details[class~="border"][class*="border-[#30363d]"] div[class~="border"][class*="border-[#30363d]"]:not(.keepbox) {
+        border-bottom-color: transparent !important;
+    }
+    /* 🔒 按鈕裡面的框不受影響(分頁鈕、卡片裡的小按鈕都靠框在說「這可以點」) */
+    button [class~="border"], label [class~="border"], a [class~="border"] {
+        background-color: revert; border-color: revert; border-radius: revert;
+        padding-left: revert; padding-right: revert; border-bottom: revert;
+    }
     [data-tidy="1"]{display:none !important}
     .tidyrow{background:#161b22;border:1px dashed #30363d;border-radius:8px;padding:7px 10px;
       font-size:11px;color:#8b949e;line-height:1.55;display:flex;gap:8px;align-items:center;margin:4px 0}
@@ -809,7 +849,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.4.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -959,31 +999,31 @@
                         <p class="text-[10px] text-gray-500 leading-snug">開啟後 <b class="text-orange-300">比特幣</b>用 CoinGecko、<b class="text-orange-300">加權/櫃買</b>用你現有 Fugle 金鑰的指數行情即時更新(免另外申請)。<b class="text-gray-400">日經/韓股/恆指/VIX/ADR 屬授權指數,免費抓不到即時,維持後端採礦;加權/櫃買若你的 Fugle 方案不含指數行情,會自動保留後端值(零風險)</b>。</p>
                     </div>
                     <p class="text-[10px] text-gray-500 leading-tight -mt-1">每組 key 旁有 <span class="text-purple-300">☑</span> 啟動開關;取消打勾即<b class="text-amber-300">暫時停用該 key</b>(輪動會跳過,設定保留)。</p>
-                    <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
+                    <div class="keepbox flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
                         <label class="text-xs font-bold text-purple-400 mb-1">🧠 Groq API Key 池(雙 key 輪動,降低 TPD 限流壓力)</label>
                         <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-purple-400">console.groq.com</span> → API Keys → Create。負責<b class="text-purple-300">新聞翻譯、彙整等輕量分析</b>,也是深度推理撞 429 時的備援。<b class="text-gray-400">☑ 啟用 · 驗 驗證 · 🗑️ 刪列 · ➕ 加列</b></p>
                         <div id="keyRows_groq"></div>
                     </div>
 
-                    <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
+                    <div class="keepbox flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
                         <label class="text-xs font-bold text-cyan-400 mb-1">🚀 OpenRouter API Key 池(雙 key 輪動,DeepSeek R1 深度推理)</label>
                         <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-cyan-400">openrouter.ai</span> → Keys → Create。負責<b class="text-cyan-300">盤前速報、首席五維、籌碼/技術深度分析</b>。第一把撞 429 自動切下一把 + jitter,全失敗 fallback Gemini / Groq。</p>
                         <div id="keyRows_openrouter"></div>
                     </div>
 
-                    <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
+                    <div class="keepbox flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
                         <label class="text-xs font-bold text-amber-400 mb-1">🤖 Google Gemini API Key 池(第三條輪動鏈,雙 key 共 500 req/day)</label>
                         <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">免費申請:<span class="text-amber-400">aistudio.google.com</span> → Get API key。OpenRouter 撞 429 時自動接手(Gemini 2.5 Flash),多 key 內部輪動,降低 Groq 限流壓力。</p>
                         <div id="keyRows_gemini"></div>
                     </div>
 
-                    <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
+                    <div class="keepbox flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
                         <label class="text-xs font-bold text-green-400 mb-1">🔑 Fugle 輪動金鑰池 (台股即時)</label>
                         <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">多把 Token 自動輪動,撞 429 限流自動切下一把。可 <b class="text-green-300">➕新增 / 🗑️刪除</b>、勾選啟用、單列「驗」測有效。免費申請:<span class="text-green-400">developer.fugle.tw</span></p>
                         <div id="keyRows_fugle"></div>
                     </div>
 
-                    <div class="flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
+                    <div class="keepbox flex flex-col gap-1 p-2 bg-[#161b22] border border-[#30363d] rounded">
                         <label class="text-xs font-bold text-yellow-400 mb-1">🔑 FinMind Token 輪動池 (籌碼/基本面)</label>
                         <p class="text-[10px] text-gray-500 leading-tight -mt-0.5 mb-1">多組免費帳號輪流用,每小時額度耗盡自動切換,杜絕採礦中斷。可 <b class="text-yellow-300">➕新增 / 🗑️刪除</b>、勾選啟用、單列「驗」測有效。免費申請:<span class="text-yellow-400">finmindtrade.com</span></p>
                         <!-- ⛔ V71.3.0 這裡只准填免費金鑰。額度是綁在「金鑰」上、不是綁裝置,
@@ -8406,8 +8446,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.4.2',
+    _APP_VERSION: 'V77.0.0',
     _CHANGELOG: [
+        { v: 'V77.0.0', d: [
+            '🧱 <b>整個 App 都拿掉卡片外框了</b>(你說「整個系統比照無框邏輯製作」)—— 現在每一段是「標題 + 一條細分隔線」,<b>資料一個字都沒刪</b>,但每一行左右各多出 13~26px。含產業作戰室(pro.html)。',
+            '🔒 <b>框在講事情的全部留著</b>:⚠️ 警示用的左邊色條、按鈕、可以打字的框、量條底槽、一格一個數字的格子。判準就一句話:<b>框如果在講事情就留,只是把東西圍起來的就拿掉</b>。',
+            '⭐ 先量過才動手:靜態看有 349 處框,<b>實際跑起來只有 111 個看得見</b>(其餘是條件式卡片)——所以做成「一條規則管全部」而不是逐一改,不然那些卡一被觸發又是有框的。',
+            '📏 順手修掉價格位置圖最左邊那個標記會凸出去 1px。',
+        ] },
         { v: 'V76.4.2', d: [
             '🏭 <b>上櫃股的產業別再補 ~1,600 檔</b> —— 上一版的備援接上了,但只補進 327 檔。真因不是資料缺,是<b>同一個產業兩邊寫法不同</b>:資料源給「半導體<b>業</b>」「電腦<b>及週邊設備</b>業」,而本站的對照表存的是「半導體」「電腦週邊」→ 字串直接比當然對不上。現在會自動把「業/工業/事業」那種尾巴對齊。',
             '📋 log 也改成分開數:「ETF 這種本來就沒有產業別的幾檔」跟「<b>真的</b>對不到代碼的幾檔」——以前混在一起,真的漏接會被 1,600 檔淹掉。',
@@ -22331,7 +22377,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     + (slPrice ? `有貨的守好 ${slPrice},破了就走。` : `有貨的守好上方主卡給的防守價。`);
                 tone = '⚠️'; bcls = 'border-yellow-500';
             }
-            const cell = (label, v) => `<div class="bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center min-w-0">
+            const cell = (label, v) => `<div class="keepbox bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center min-w-0">
                 <div class="text-[9px] text-gray-500 truncate">${label}</div>
                 <div class="text-sm font-black font-mono ${v != null ? vc(v) : 'text-gray-600'}">${v != null ? f1(v) : '—'}</div>
             </div>`;
@@ -22408,7 +22454,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 const _fd = this._feeDisc();                       // 💰 V71.7.8 折數改走單一真相源
                 const net = (b, s) => this._netPL(b, s);           // 同上:淨損益公式全 App 只有一份
                 const buyRef = hit.ago === 0 ? rt(pC) : rt(Math.min(pC, e * 1.01));
-                const cell = (l, v, c, sub) => `<div class="bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">${l}</div><div class="text-sm font-black font-mono ${c}">${v}</div>${sub ? `<div class="text-[9px] text-gray-500">${sub}</div>` : ''}</div>`;
+                const cell = (l, v, c, sub) => `<div class="keepbox bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">${l}</div><div class="text-sm font-black font-mono ${c}">${v}</div>${sub ? `<div class="text-[9px] text-gray-500">${sub}</div>` : ''}</div>`;
                 big = `✅ ${nm(hit.r.key)}・${hit.ago === 0 ? '今天觸發' : hit.ago + ' 天前觸發・仍有效'}`;
                 tc = 'text-red-400'; bc = 'border-red-500';
                 const pctTo = v => `${v >= buyRef ? '+' : ''}${((v - buyRef) / buyRef * 100).toFixed(1)}%`;   // 🎨 V56.2 高價股一張數十萬,改 % 為主、元/張縮括號
@@ -34409,8 +34455,10 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             ? `<div class="text-[9px] text-orange-200 leading-snug" style="margin-top:4px">📌 ${String(K.exitNote).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')}想「彈回來了繼續抱」= 沒有規則、是情緒 —— 反彈到位就照表減碼,之後真轉強(解除警報)再買回來。</div>` : '';
         const farTxt = far.length ? `<div class="text-[8px] text-gray-500 leading-snug mt-0.5">↑ 更遠 ${far.map(z => `${Math.round(+z.lo)}~${Math.round(+z.hi)}(${(+z.sup).toFixed(0)}%)`).join('、')} 也有套牢量</div>` : '';
         // 🧱 V76.4.1 無框(外框只是把東西圍起來;⛔ 裡面每一格 `cell()` 的框**保留** —— 它在分「這是哪一個價位」)
+        //   ⚠️ V77.0.0 左右留 **3px** —— 全站去框之後這支貼齊容器邊,軌道最左邊那個**標記**會凸出 1.32px
+        //      (test_gauge ⑱ 抓到的)。⛔ 不是把斷言放寬,是刻度兩端本來就不該貼著邊;3px 換 51px 的增益。
         //   ⚠️ 這支是 總覽 與 報告頁 **共用**的 → 兩邊會一起變無框,這是刻意的(使用者:「其它頁面也一樣不必要就不要框框」)
-        return `<div style="padding:8px 0 6px" data-priceruler="${sym}">
+        return `<div style="padding:8px 3px 6px" data-priceruler="${sym}">
             <div class="mb-0.5" style="display:flex;align-items:center;justify-content:space-between">
                 <span class="text-[11px] font-black text-gray-200">📏 價格位置圖・掛單就看這 <span class="text-[10px] text-gray-500 font-normal">(左低右高;掛限價等它來)</span></span>
                 <button onclick="event.stopPropagation(); app._rulerHelp();" class="text-[10px] text-gray-500 hover:text-amber-300 flex-shrink-0">📖 怎麼看</button>
@@ -50177,9 +50225,9 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
         // 盤前數據列
         const dataRow = `<div class="grid grid-cols-3 gap-1.5 mt-2">
-            <div class="bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">隔日沖賣壓</div><div class="text-sm font-black font-mono ${dtPct >= 35 ? 'text-orange-300' : 'text-gray-100'}">${dtLots.toLocaleString()}<span class="text-[9px] text-gray-500"> 張</span></div><div class="text-[8px] text-gray-500">佔買超 ${dtPct}%</div></div>
-            <div class="bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">隔日沖成本</div><div class="text-sm font-black font-mono ${profitState === 'win' ? 'text-red-300' : profitState === 'loss' ? 'text-green-300' : 'text-gray-100'}">${dtCost ? dtCost.toFixed(2) : '—'}</div><div class="text-[8px] text-gray-500">${profitState === 'win' ? '客獲利中' : profitState === 'loss' ? '客套牢' : profitState === 'flat' ? '約打平' : '無均價'}</div></div>
-            <div class="bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">需求量(估)</div><div class="text-sm font-black font-mono ${volPct == null ? 'text-gray-500' : volPct >= 80 ? 'text-red-300' : volPct >= 50 ? 'text-yellow-300' : 'text-green-300'}">${volPct == null ? '—' : (volPct > 999 ? '999+' : volPct) + '%'}</div><div class="text-[8px] text-gray-500">${volPct == null ? '待盤中' : volPct >= 80 ? '量足能吃' : volPct >= 50 ? '量中等' : '量縮難撐'}</div></div>
+            <div class="keepbox bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">隔日沖賣壓</div><div class="text-sm font-black font-mono ${dtPct >= 35 ? 'text-orange-300' : 'text-gray-100'}">${dtLots.toLocaleString()}<span class="text-[9px] text-gray-500"> 張</span></div><div class="text-[8px] text-gray-500">佔買超 ${dtPct}%</div></div>
+            <div class="keepbox bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">隔日沖成本</div><div class="text-sm font-black font-mono ${profitState === 'win' ? 'text-red-300' : profitState === 'loss' ? 'text-green-300' : 'text-gray-100'}">${dtCost ? dtCost.toFixed(2) : '—'}</div><div class="text-[8px] text-gray-500">${profitState === 'win' ? '客獲利中' : profitState === 'loss' ? '客套牢' : profitState === 'flat' ? '約打平' : '無均價'}</div></div>
+            <div class="keepbox bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">需求量(估)</div><div class="text-sm font-black font-mono ${volPct == null ? 'text-gray-500' : volPct >= 80 ? 'text-red-300' : volPct >= 50 ? 'text-yellow-300' : 'text-green-300'}">${volPct == null ? '—' : (volPct > 999 ? '999+' : volPct) + '%'}</div><div class="text-[8px] text-gray-500">${volPct == null ? '待盤中' : volPct >= 80 ? '量足能吃' : volPct >= 50 ? '量中等' : '量縮難撐'}</div></div>
         </div>`;
 
         // 對策
@@ -50839,7 +50887,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                          : `<span class="text-gray-500">距${d.toFixed(1)}%</span>`);
         const dashGrid = `<div class="grid grid-cols-3 gap-2 mt-1.5">
                 <div class="bg-red-900/25 border border-red-700/40 rounded p-1.5 text-center"><div class="text-[9px] text-red-300">🔺 漲停 ${_lim(distUp, '漲停')}</div><div class="text-sm font-black font-mono text-red-300">${_f2(limitUp)}</div></div>
-                <div class="bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">📊 振幅</div><div class="text-sm font-black font-mono text-gray-100">${amp == null ? '—' : amp.toFixed(1) + '%'}</div></div>
+                <div class="keepbox bg-[#21262d] border border-[#30363d] rounded p-1.5 text-center"><div class="text-[9px] text-gray-400">📊 振幅</div><div class="text-sm font-black font-mono text-gray-100">${amp == null ? '—' : amp.toFixed(1) + '%'}</div></div>
                 <div class="bg-green-900/25 border border-green-700/40 rounded p-1.5 text-center"><div class="text-[9px] text-green-300">🔻 跌停 ${_lim(distDown, '跌停')}</div><div class="text-sm font-black font-mono text-green-300">${_f2(limitDown)}</div></div>
             </div>`;
 
