@@ -59,6 +59,30 @@ const r = await page.evaluate(async () => {
         for (let i = 0; i < d.length; i += 4) { if (d[i] > 120 && d[i] > d[i + 1] + 40) R++; if (d[i + 1] > 120 && d[i + 1] > d[i] + 40) G2++; }
         return { R, G: G2 }; };
     const base = { ink: ink(), png: cv.toDataURL('image/png').length };
+    // ── V76.3.7 ⓚ~ⓝ(⚠️ 排在下面那些「改 pC / chg」的注入**之前**,量的才是真實狀態)──
+    const pC0 = +A._rpLast.pC;
+    // ⚠️ 2330 常在高檔、上方沒有套牢區 → 用**合成的**一道(形狀照 _upsideRoom 的 list:{lo,hi,sup}),量完還原
+    const U0 = A._upsideStash;
+    A._upsideStash = { pC: pC0, list: [{ lo: pC0 * 1.05, hi: pC0 * 1.15, sup: 20 }] };
+    const F0 = A._rpOwnFacts('2330') || {};
+    // ⓚ 套牢區那一列:印的數字跟「距現價 %」必須是同一個點(上一版印中點卻標下緣的 %)
+    const zones = (F0.lv || []).filter(x => x.t === 'zone');
+    const zoneOk = zones.every(x => Math.abs(x.r - ((x.v / pC0 - 1) * 100)) < 0.05 && String(x.n).includes(`${Math.round(x.v)}~`));
+    // ⓛ 接下來怎麼看:出場線在現價**上面**(已跌破)時,第一行要說「已在…之下」,⛔ 不可拿融資追繳線去填「跌破 ___」
+    const K0 = A._keyLevels; const kbase = Object.assign({}, K0 || {}, { sym: '2330' });
+    const cl = (A._rpLast.mcs && Number.isFinite(+A._rpLast.mcs.callLine)) ? +A._rpLast.mcs.callLine : null;
+    A._keyLevels = Object.assign({}, kbase, { slPx: pC0 * 1.2 });
+    const nAbove = A._rpNextLines('2330');
+    A._keyLevels = Object.assign({}, kbase, { slPx: pC0 * 0.9 });
+    const nBelow = A._rpNextLines('2330');
+    const facts = A._reportFacts('2330');
+    A._keyLevels = K0; A._upsideStash = U0;
+    const chk = { zoneN: zones.length, zoneOk,
+        aboveTxt: nAbove[0] || '', belowTxt: nBelow[0] || '', cl,
+        factsNext: facts.includes('接下來怎麼看') && (nBelow[0] ? facts.includes(nBelow[0]) : true),
+        factsTheme: facts.includes('題材標籤'),
+        evRev: (F0.evs || []).some(e => /月營收/.test(e.t)),
+        hasCall: nBelow.some(t => /融資追繳壓力區/.test(t)) };
     A._rpLast.chg = 5.5; A._rpDrawOwn('2330'); const up = hue();
     A._rpLast.chg = -5.5; A._rpDrawOwn('2330'); const dn = hue();
     // ⓑ 數字不是寫死的:改本站算好的那個值 → 圖要變
@@ -69,7 +93,7 @@ const r = await page.evaluate(async () => {
     A._rpLast.chg = 0; A._rpDrawOwn('2330'); const a1 = cv.toDataURL('image/png'), s1 = sig();
     A._rpLast.pC = (+A._rpLast.pC || 100) * 2 + 7; A._rpDrawOwn('2330'); const a2 = cv.toDataURL('image/png'), s2 = sig();
     const FT = A._rpOwnFacts('2330') || {};
-    return { ...base, up, dn, same: a1 === a2, pxSame: s1 === s2, w: cv.width, h: cv.height,
+    return { ...base, ...chk, up, dn, same: a1 === a2, pxSame: s1 === s2, w: cv.width, h: cv.height,
              hasNow: (FT.lv || []).some(x => x.t === 'now'), nLv: (FT.lv || []).length,
              nEv: (FT.evs || []).length, nDim: (FT.dims || []).length };
 });
@@ -88,6 +112,24 @@ if (!r.no) {
     //   把 `_rpOwnFacts` 裡真正 push 那一行刪掉照樣綠(注入⑦ 溜過去)。⭐ 改成**行為**斷言。
     ck(r.hasNow, 'ⓖ3 關鍵價位裡沒有「現在的價」那一列 → 看不出哪些在上面、哪些在下面');
     ck(r.nLv >= 3, `ⓖ4 關鍵價位只有 ${r.nLv} 列 → 太少,圖沒有骨架`);
+    // ── V76.3.7 ⓚ~ⓝ ──
+    ck(r.zoneN > 0, 'ⓚ0 2330 沒有任何套牢區列 → ⓚ 這一條不算數(換一檔有上方套牢區的測資)');
+    ck(r.zoneOk, 'ⓚ 套牢區那一列「印的價位」跟「距現價 %」不是同一個點(上一版印中點 193.19 卻標下緣的 +1.5%)');
+    ck(/已在你的出場線/.test(r.aboveTxt) && /之下/.test(r.aboveTxt), `ⓛ 出場線在現價上面(已跌破)時第一行沒說「已在你的出場線…之下」:${r.aboveTxt}`);
+    ck(!(r.cl != null && r.aboveTxt.includes((+r.cl).toFixed(1))), `ⓛ2 已跌破出場線時,第一行把融資追繳線 ${r.cl} 填進去了 → 跟使用者那張 AI 圖同一個錯`);
+    ck(/跌破你的出場線/.test(r.belowTxt), `ⓛ3 出場線在現價下面時第一行沒寫「跌破你的出場線」:${r.belowTxt}`);
+    ck(r.hasCall, 'ⓛ4 三行裡沒有那句「融資追繳壓力區…⛔ 不是任何人的紀律線」→ AI 又會拿它當出場線');
+    ck(r.factsNext, 'ⓛ5 _reportFacts 沒把「接下來怎麼看」那三行**逐字**餵給 AI → 留空位它就會自己填');
+    ck(r.factsTheme, 'ⓝ _reportFacts 沒有「題材標籤」那一格 → 上櫃股會一直印「未分類」');
+    ck(r.evRev, 'ⓜ 本站自己畫的圖事件段少了「月營收」(提示詞那邊有,兩張圖對不起來)');
+}
+// ── ⓞ 畫圖那一段要有 ⑧ 接下來怎麼看;提示詞補的三條 ──
+ck(/接下來怎麼看/.test(fn), 'ⓞ 本站自己畫的圖沒有「接下來怎麼看」那一段(骨架跟提示詞對不起來)');
+{
+    const pr = SRC.slice(SRC.indexOf('_reportChartPrompt(sym) {'), SRC.indexOf('_reportCopyChart(sym) {'));
+    ck(/PE 0\.0x/.test(pr), 'ⓞ2 提示詞沒禁止 AI 把沒資料的同業中位畫成「PE 0.0x」');
+    ck(/不可自己多加一道/.test(pr), 'ⓞ3 提示詞沒禁止 AI 自己多加一道套牢區');
+    ck(/逐字照抄【資料】最後那三行|逐字照抄/.test(pr) && /出場線\*\*可能在現價上面/.test(pr), 'ⓞ4 提示詞沒講「出場線可能在現價上面 → 不可拿追繳線填跌破」+「三行逐字照抄」');
 }
 
 // ── ⓕ 免責 ─────────────────────────────────────────────────
