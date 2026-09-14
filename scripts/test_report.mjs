@@ -828,8 +828,15 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('🖼️b 🚨 `idb.prune()` ⛔ 不可清掉使用者存的圖(它的規則是「ts 超過 7 天**或沒有 ts**」→ 圖一定中;注入:拿掉 rpImg_ 白名單 → 這條紅)', !IMG.prunedAway, `prunedAway=${IMG.prunedAway}`);
     ok('🖼️c 🗑️ 刪得掉(⛔ 不可只從畫面消失、資料還在)', IMG.cleared && IMG.emptyAfterClear, JSON.stringify({ cleared: IMG.cleared, empty: IMG.emptyAfterClear }));
     ok('🖼️d 🚨 鐵線:圖⛔ 不進「📋 複製整份報告」、⛔ 不進 _ovDecide', !IMG.inCopy && !IMG.inDec, JSON.stringify({ copy: IMG.inCopy, dec: IMG.inDec }));
-    ok('🖼️e ⭐ V76.2.5 使用者要「開啟報告頁直接看到圖」→ 短評報告排第一(rpLead 之後;那格只在「還在算」時才有字)',
-       IMG.ord.indexOf('rpImg') === 1 && IMG.ord.indexOf('rpImg') < IMG.ord.indexOf('rpQuick'), IMG.ord.join(','));
+    // ⚠️ V76.3.4 這條原本釘死「`rpImg` 必須是第 1 格」—— 但使用者要的是**一開報告頁就看到圖**,
+    //   ⛔ 不是「一定要是那一張」。V76.3.4 新增了**本站自己畫的**一頁圖(`rpOwn`)並排在它前面
+    //   (主結論最大:外部 AI 畫的不可壓在本站自己的東西上面),而且那張**永遠都有**
+    //   (外部 AI 那張常常是「還沒存」)→ 第一眼看到圖的體驗其實更好。
+    //   ⭐ 改成釘**用意**:第 1 格必須是一張圖(rpOwn / rpImg 其一),而且兩張都要排在快速表之前。
+    ok('🖼️e ⭐ 使用者要「開啟報告頁直接看到圖」→ 第一格就是圖(rpLead 之後),兩張圖都在快速表之前',
+       ['rpOwn', 'rpImg'].includes(IMG.ord[1])
+       && IMG.ord.indexOf('rpImg') >= 0 && IMG.ord.indexOf('rpImg') < IMG.ord.indexOf('rpQuick')
+       && IMG.ord.indexOf('rpOwn') < IMG.ord.indexOf('rpImg'), IMG.ord.join(','));
     // 🔢 § 排序 + 🗑️ 重複入口
     const ORD = await page.evaluate(() => {
         const q = document.getElementById('rpQuick');

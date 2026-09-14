@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.3.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -805,7 +805,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2434,6 +2434,7 @@
                      (同 V76.1.2 的教訓:卡可以下架,產生資料的那行不可以)。 -->
                 <!-- 📄 V76.2.5 短評報告(AI 圖)—— 使用者:「開啟報告頁面直接顯示圖,要看詳細再往下滑」
                      → rpAct 下架之後它就是第一眼;⛔ 仍排在 rpLead 之後(那格只在「還在算」時才有字)。 -->
+                <div id="rpOwn" class="hidden"></div>
                 <div id="rpImg" class="hidden"></div>
                 <!-- 📝 你貼上的外部 AI 報告 —— V76.2.5 移到短評報告正下方(使用者指定) -->
                 <div id="rpPaste" class="hidden"></div>
@@ -8399,8 +8400,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.3.3',
+    _APP_VERSION: 'V76.3.4',
     _CHANGELOG: [
+        { v: 'V76.3.4', d: ['📅 <b>「今天可以買的」把日期與更新時間寫在標題旁</b>(使用者:「才不會錯亂」)—— 而且那是<b>兩件事</b>:<b>用哪一天的收盤算的</b> vs <b>採礦幾點跑完</b>。超過 4 天會自動變黃加 ⚠️。',
+            '🎣 <b>釣魚池的說明整段換掉</b>:它從上一版起就已經改用<b>決策台「🎯 今天可以買的」那一套</b>,但卡上還在講舊漏斗的「照近 20 日漲幅排」「−1.44pp」= 講一個<b>已經不存在的東西</b>(你問「已經變成決策台的策略了嗎?」就是看到它)。',
+            '⚠️ <b>順便講清楚為什麼兩邊名單可能不一樣</b>:決策台會把 👜 <b>你的庫存/自選排到最前面</b>(所以你看到鼎元/宏致),釣魚池刻意用<b>不含持股</b>的純推薦版(漁獲籃要量的是「這套推薦」的成績,混進自選股就量不到)。⛔ 兩邊都沒算錯,是問的問題不一樣。',
+            '🖼️ <b>新增「本站自己畫的一頁圖」</b>(報告頁,⛔ 原本那張外部 AI 圖一行都沒刪)—— 你問「有沒有免費生成圖表的 AI / 還是自己填資料」,答案是<b>自己畫最好</b>:零 API、零等待、<b>零幻覺</b>(數字直接讀本站算好的),而且顏色完全受控(台股紅漲綠跌、風險用 ✅⚠️⛔)。一鍵「💾 存成圖片」。'] },
         { v: 'V76.3.3', d: ['💼 <b>庫存頁下面那一大片空白修掉了</b>:真因是<b>兩個寫死的高度</b>(分頁 80vh + 面板 70vh)讓面板跟內容脫鉤 —— 3 檔庫存也硬撐到 8 成螢幕高。現在面板貼著內容,清單自己的高度<b>量出來</b>(視窗高 − 它的位置 − 底部導覽),⛔ 不再用 <code>100dvh−320</code> 那個憑空的數字。',
             '📢 <b>「多頭待發射」回測完了(2,237 檔 ・36,987 次)</b> —— 結論分兩半,兩半都寫在卡上了:',
             '⭐ <b>它宣稱的「快到了」是真的</b>:離壓力 ≤2% 的有 <b>57.6%</b> 會在 10 個交易日內收盤站上去;離 5~10% 只有 19.7%、離 10% 以上只剩 <b>7.5%</b> —— 完全單調。',
@@ -22836,6 +22841,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { await this._rpImgLoad(sym); } catch (_) {}
         try { await this._rpNoteLoad(sym); } catch (_) {}   // 💾 V76.2.7 完整報告也在 IndexedDB(⛔ 顯示端仍同步讀 `_rpNote`)
         if (String(this.currentSymbolId) !== sym) return;
+        this._rpSet('rpOwn', this._rpOwnHtml(ctx), sym);        // 🖼️ 本站自己畫的一頁圖(零 AI)
+        try { this._rpDrawOwn(sym); } catch (_) {}              // ⚠️ 要在 _rpSet 把 canvas 放進 DOM **之後**才畫得到
         this._rpSet('rpImg', this._rpImgHtml(ctx), sym);        // 📄 短評報告(外部 AI 畫的圖,本站沒驗證)
         this._rpSet('rpQuick', this._rpQuickHtml(ctx), sym);    // ⚡ 第一層
         this._rpSet('rpPaste', this._rpPasteHtml(ctx), sym);    // 📖 完整報告(你貼上的外部 AI 報告)
@@ -24270,6 +24277,159 @@ ${this._reportFacts(sym)}
         const C = this._rpLast;
         if (!C || String(C.sym) !== String(sym)) return;
         this._rpSet('rpImg', this._rpImgHtml(C), sym);
+    },
+    // ═══ 🖼️ V76.3.4 本站自己畫的「一頁圖」(#rpOwn)═══
+    //   使用者:「AI 做圖報告圖部分沒有產出,直接是一鍵可以複製版本,請修正。
+    //            另外有免費生成報告的圖表 AI 嗎?還是製作預設好表格用自己資料填入?」
+    //   ⭐ 我的判斷:**自己畫**比外包給 AI 好,而且好三件事 ——
+    //     ① 零 API、零額度、零等待(外部 AI 做圖每次都要來回貼)
+    //     ② 零幻覺:數字直接讀本站算好的,⛔ 不經過任何模型
+    //     ③ 顏色與燈號**完全受控** —— 外部 AI 那張圖 V76.2.6 就把「好=綠、風險=紅」
+    //        畫得跟同圖上「−4.90% 用綠」自相矛盾(台股紅漲綠跌),自己畫就不會。
+    //   ⛔ **原本那張外部 AI 圖(#rpImg)一行都沒動**(使用者明示不要刪),這是**新增**的一張卡。
+    //   ⛔ 零現算:每一個數字都從既有的唯一真相來源讀
+    //      (`_rpLast` / `_keyLevels` / `_upsideStash` / `_lastGauge` / `_rpPricePos` / `_rpMaLevels`),
+    //      ⛔ 這裡不重新計算任何指標(同 `_rpQuickHtml` 的鐵則)。
+    //   ⛔ 用純 Canvas 畫,⛔ 不用 ECharts —— V74.7.2 的教訓:圖表元件載不到會把整個 App 帶走。
+    _rpOwnHtml(C) {
+        const sym = String(C.sym);
+        return this._rpCard('🖼️ 本站自己畫的一頁圖 <span class="text-gray-500 font-normal">・零 AI</span>',
+            `<canvas id="rpOwnCv" style="width:100%;height:auto;display:block;border-radius:6px;background:#0d1117"></canvas>
+             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+               <button onclick="app._rpOwnSave('${sym}')" class="px-3 py-1.5 text-[11px] font-bold text-white bg-cyan-700 hover:bg-cyan-600 rounded">💾 存成圖片</button>
+               <button onclick="app._rpDrawOwn('${sym}')" class="px-3 py-1.5 text-[11px] font-bold text-gray-200 bg-[#0d1117] hover:bg-[#21262d] border border-[#30363d] rounded">🔄 重畫</button>
+             </div>
+             <div class="text-[10px] text-gray-500 leading-snug" style="margin-top:6px">
+               ⭐ 這張圖<b>不是 AI 畫的</b> —— 每一個數字都是本站自己算的,所以<b>不會有幻覺</b>,顏色也照台股慣例(<b class="text-red-400">紅漲</b>/<b class="text-green-400">綠跌</b>;安全與否用 ✅⚠️⛔,⛔ 不用紅綠)。
+               <br>📱 手機存不下來的話<b>長按圖片</b>選「儲存影像」。⛔ 這張圖跟上面那張外部 AI 圖一樣,<b>不進本站任何結論或評分</b>。
+             </div>`, '零 AI');
+    },
+    _rpOwnFacts(sym) {
+        const C = (this._rpLast && String(this._rpLast.sym) === String(sym)) ? this._rpLast : null;
+        if (!C) return null;
+        const pp = this._rpPricePos(this.rawDailyData);
+        const K = this._keyLevels, U = this._upsideStash, G = this._lastGauge;
+        const MA = this._rpMaLevels() || {};
+        const rel = v => (C.pC > 0 && Number.isFinite(+v)) ? ((+v / C.pC - 1) * 100) : null;
+        const lv = [];
+        const zone = (U && Math.abs(+U.pC - C.pC) < 0.01 && Array.isArray(U.list)) ? U.list.filter(x => +x.sup > 0)[0] : null;
+        if (zone) lv.push({ n: '上方套牢區下緣', v: +zone.lo, r: rel(zone.lo), t: 'up' });
+        for (const [n, nm] of [[20, '月線'], [60, '季線'], [240, '年線']]) if (MA[n] > 0) lv.push({ n: nm, v: +MA[n], r: rel(MA[n]), t: 'ma' });
+        if (K && String(K.sym) === String(sym) && +K.slPx > 0) lv.push({ n: '你的出場線', v: +K.slPx, r: rel(K.slPx), t: 'sl' });
+        if (C.mcs && Number.isFinite(+C.mcs.callLine)) lv.push({ n: '融資追繳壓力區', v: +C.mcs.callLine, r: rel(C.mcs.callLine), t: 'mc' });
+        lv.sort((a, b) => b.v - a.v);
+        return { C, pp, lv, dims: (G && String(G.sym) === String(sym) && Array.isArray(G.dims)) ? G.dims : [] };
+    },
+    _rpDrawOwn(sym) {
+        const cv = document.getElementById('rpOwnCv');
+        const F = this._rpOwnFacts(sym);
+        if (!cv || !F) return;
+        const { C, pp, lv, dims } = F;
+        const W = 1080, PAD = 44;
+        // 高度先照內容算(⛔ 不寫死 —— 關鍵價位與五維的行數會變)
+        const H = 300 + (pp ? 150 : 0) + (lv.length ? 60 + lv.length * 52 : 0) + (dims.length ? 60 + dims.length * 46 : 0) + 250;
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        cv.width = W * dpr; cv.height = H * dpr;
+        cv.style.aspectRatio = `${W} / ${H}`;
+        const g = cv.getContext('2d'); if (!g) return;
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const FONT = '"PingFang TC","Microsoft JhengHei","Noto Sans TC",-apple-system,sans-serif';
+        const UP = '#f87171', DN = '#4ade80', GY = '#8b949e', FG = '#e6edf3', DIM = '#6e7681', AMB = '#f59e0b';
+        const txt = (s, x, y, size, col, weight = '700', align = 'left') => {
+            g.font = `${weight} ${size}px ${FONT}`; g.fillStyle = col; g.textAlign = align;
+            g.fillText(String(s), x, y);
+        };
+        const line = y => { g.strokeStyle = '#21262d'; g.lineWidth = 1; g.beginPath(); g.moveTo(PAD, y); g.lineTo(W - PAD, y); g.stroke(); };
+        const num = (v, d = 2) => Number.isFinite(+v) ? (+v).toFixed(d) : '—';
+        const pct = v => Number.isFinite(+v) ? `${+v >= 0 ? '+' : ''}${(+v).toFixed(1)}%` : '—';
+        g.fillStyle = '#0d1117'; g.fillRect(0, 0, W, H);
+        let y = 74;
+        // ── 標題列 ──
+        txt(`${C.name}`, PAD, y, 46, FG, '900');
+        g.font = '900 46px ' + FONT; const nw = g.measureText(String(C.name)).width;
+        txt(`${C.sym}`, PAD + nw + 14, y, 26, GY, '700');
+        txt(`收盤 ${C.kDate || '—'}`, W - PAD, y, 22, DIM, '700', 'right');
+        y += 26; line(y); y += 56;
+        // ── 現價 + 漲跌 ──
+        const col = (+C.chg >= 0) ? UP : DN;
+        txt(num(C.pC, 2), PAD, y, 72, col, '900');
+        g.font = '900 72px ' + FONT; const pw = g.measureText(num(C.pC, 2)).width;
+        txt(`${pct(C.chg)}  今日`, PAD + pw + 20, y - 26, 26, col, '900');
+        txt(`${pct(C.chg20)}  近 20 日`, PAD + pw + 20, y + 6, 24, (+C.chg20 >= 0 ? UP : DN), '700');
+        // 本站結論(⛔ 只轉述 `_ovDecide` 的徽章,這裡不判斷方向)
+        const badge = C.dec ? this._rpTxt(C.dec.badge) : '';
+        if (badge) txt(badge.slice(0, 18), W - PAD, y - 10, 30, AMB, '900', 'right');
+        y += 46; line(y); y += 56;
+        // ── 價格位置(一年區間)──
+        if (pp && Number.isFinite(+pp.pos)) {
+            txt('價格位置(近一年)', PAD, y, 24, GY, '700');
+            txt(`${Math.round(pp.pos)}%`, W - PAD, y, 30, FG, '900', 'right');
+            y += 30;
+            const bw = W - PAD * 2, bh = 16;
+            const grd = g.createLinearGradient(PAD, 0, PAD + bw, 0);
+            grd.addColorStop(0, '#1f2937'); grd.addColorStop(1, '#4b5563');
+            g.fillStyle = grd; g.fillRect(PAD, y, bw, bh);
+            const px = PAD + bw * Math.max(0, Math.min(1, pp.pos / 100));
+            g.fillStyle = AMB; g.beginPath(); g.moveTo(px, y - 4); g.lineTo(px - 11, y - 22); g.lineTo(px + 11, y - 22); g.closePath(); g.fill();
+            y += bh + 30;
+            txt(`最低 ${num(pp.lo, 1)}`, PAD, y, 22, DIM, '700');
+            txt(`最高 ${num(pp.hi, 1)}`, W - PAD, y, 22, DIM, '700', 'right');
+            y += 36; line(y); y += 52;
+        }
+        // ── 關鍵價位(由高到低)──
+        if (lv.length) {
+            txt('關鍵價位(由高到低 ・距現價)', PAD, y, 24, GY, '700');
+            y += 42;
+            for (const x of lv) {
+                const isUp = x.v > C.pC;
+                txt(x.n, PAD, y, 26, FG, '700');
+                txt(num(x.v, 2), W - PAD - 150, y, 28, FG, '900', 'right');
+                txt(pct(x.r), W - PAD, y, 26, isUp ? UP : DN, '900', 'right');
+                y += 52;
+            }
+            y += 8; line(y); y += 52;
+        }
+        // ── 五個面向(⛔ 只轉述 `_lastGauge.dims`,⛔ 不顯融合總分 —— 陷阱 #38)──
+        if (dims.length) {
+            txt('五個面向(0~100 ・越高越有底氣)', PAD, y, 24, GY, '700');
+            y += 42;
+            for (const d of dims) {
+                txt(`${d.name}`, PAD, y, 26, FG, '700');
+                const bx = PAD + 150, bw = W - PAD * 2 - 150 - 90, bh = 14;
+                g.fillStyle = '#21262d'; g.fillRect(bx, y - 12, bw, bh);
+                g.fillStyle = '#38bdf8'; g.fillRect(bx, y - 12, bw * Math.max(0, Math.min(1, d.score / 100)), bh);
+                txt(Math.round(d.score), W - PAD, y, 26, FG, '900', 'right');
+                y += 46;
+            }
+            y += 8; line(y); y += 52;
+        }
+        // ── 重點數字 ──
+        const cells = [['本益比', Number.isFinite(+C.pe) ? num(C.pe, 1) + 'x' : '—'],
+                       ['股價淨值比', num(C.pb, 2)],
+                       ['殖利率', Number.isFinite(+C.yld) ? num(C.yld, 2) + '%' : '—'],
+                       ['月營收年增', Number.isFinite(+C.yoy) ? pct(C.yoy) : '—']];
+        const cw = (W - PAD * 2) / 4;
+        cells.forEach(([k, v], i) => {
+            txt(k, PAD + cw * i, y, 22, DIM, '700');
+            txt(v, PAD + cw * i, y + 40, 32, FG, '900');
+        });
+        y += 88; line(y); y += 44;
+        // ── 免責(⛔ 不可省 —— 數字說得越清楚,限制越要寫)──
+        txt('這張圖是「散戶救星」自己畫的,數字全部由本站計算 ・⛔ 沒有經過 AI', PAD, y, 21, DIM, '700');
+        txt('⛔ 不是買賣建議 ・要不要進場看總覽「現在怎麼做」 ・歷史統計不等於未來', PAD, y + 30, 21, DIM, '700');
+        txt(`${C.name} ${C.sym}`, W - PAD, y + 30, 21, '#30363d', '900', 'right');
+        this._rpOwnH = H;
+    },
+    _rpOwnSave(sym) {
+        const cv = document.getElementById('rpOwnCv');
+        if (!cv) return;
+        try {
+            const a = document.createElement('a');
+            a.download = `${this.getStockName(sym) || sym}_${sym}_${String(this._rpLast && this._rpLast.kDate || '').replace(/\//g, '-')}.png`;
+            a.href = cv.toDataURL('image/png');
+            document.body.appendChild(a); a.click(); a.remove();
+            this.showToast?.('💾 已存成圖片(手機若沒反應請長按圖片選「儲存影像」)', 'info');
+        } catch (_) { this.showToast?.('⚠️ 存不起來 → 請長按圖片選「儲存影像」'); }
     },
     _rpImgHtml(C) {
         const sym = String(C.sym), o = this._rpImg(sym);
@@ -45033,6 +45193,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 🚨 「清單抓不到」與「今天沒有可以買的」是**兩件事**,⛔ 不可長得一樣
         if (!j || !Array.isArray(j.picks)) { st.pbNull = true; return st; }
         st.pbDate = String(j.data_date || j.updated || '').slice(0, 10);
+        st.pbUpd = String(j.updated || '');   // 📅 V76.3.4 採礦真正跑完的時間(⛔ 跟「清單日期」不是同一件事)
         st.total = j.picks.length;
         const mine = this._mySyms();
         const ranked = this._pbSort(j.picks, mine);
@@ -45109,15 +45270,31 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 </div>`;
             } else if (st.buy.length) {
                 const mine = this._mySyms();
+                // 📅 V76.3.4 使用者:「把更新時間寫出來,才不會錯亂」——
+                //   ⛔ 原本只有最底下一行 9px 灰字寫「清單日期」,而且沒有採礦時間:
+                //   那兩個是不同的東西(清單算的是哪一天的收盤 vs 採礦幾點跑完)。
+                //   ⚠️ 日期一律走 _dChip(≥4 天自動轉黃 + ⚠️),⛔ 不可自己拼字串。
+                //   🚨 這段說明刻意寫成 JS 註解放在字串外面 —— 陷阱 #42:HTML 註解裡只要有一個反引號
+                //      就會把整個 template literal 切斷(這一版第一次寫就又踩到了,第五次)。
                 buy.innerHTML = `<div class="bg-[#161b22] border-l-4 border-cyan-500 border-y border-r border-[#30363d] rounded-r p-3">
-                    <div class="text-sm font-black text-cyan-300">🎯 今天可以買的(最多 ${this._DECK_TRACK49.picks} 檔)</div>
+                    <div class="flex items-baseline justify-between gap-2 flex-wrap">
+                        <div class="text-sm font-black text-cyan-300">🎯 今天可以買的(最多 ${this._DECK_TRACK49.picks} 檔)</div>
+                        <div class="text-[10px] text-gray-400 font-mono flex items-center gap-1">
+                            ${this._dChip(st.pbDate, '收盤')}
+                            ${st.pbUpd ? `<span class="text-gray-600">・更新 ${this._escHtml(this._fmtNewsTime(st.pbUpd))}</span>` : ''}
+                        </div>
+                    </div>
                     <div class="text-[10px] text-gray-400 mt-0.5 mb-2 leading-relaxed">
                         🚨 <b>要漲過下面那個觸發價才算數</b> —— ⛔ 不是掛在下面等它跌回來(實測那樣只賺 12.4 萬、中途最多賠 −46.1%)。<br>
                         🚨 ⛔ <b>不是開盤買</b> —— 進場時窗是<b>尾盤 ${eodTxt}</b>(實測隔天開盤買少賺一半以上)。<br>
                         ⭐ 一天最多 ${this._DECK_TRACK49.picks} 檔(實測 2 檔賺最多、中途賠最少);${st.hqN} 檔符合 🧬,只取前 ${this._DECK_TRACK49.picks} 名。
                     </div>
                     <div class="space-y-1">${st.buy.map((x, i) => this._pbRowHtml(x, mine, i + 1, 0)).join('')}</div>
-                    <div class="text-[9px] text-gray-600 mt-1.5">清單日期 ${this._escHtml(st.pbDate || '—')} ・ 全市場 ${st.total} 筆裡符合 🧬 且非空頭的有 ${st.hqN} 檔${st.bearN ? ` ・已排除空頭 ${st.bearN} 檔` : ''}</div>
+                    <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">
+                        📅 用 <b class="text-gray-500">${this._escHtml(st.pbDate || '—')}</b> 的收盤算的${st.pbUpd ? ` ・採礦 ${this._escHtml(this._fmtNewsTime(st.pbUpd))} 跑完` : ''}
+                        ・全市場 ${st.total} 筆裡符合 🧬 且非空頭的有 ${st.hqN} 檔${st.bearN ? ` ・已排除空頭 ${st.bearN} 檔` : ''}
+                        ${st.buy.some(x => mine.has(String(x.s))) ? '<br>👜 = <b class="text-gray-500">你的庫存/自選</b> —— 它們會被<b>排到最前面</b>(⛔ 不代表比較強);⭐ 產業作戰室的 🎣 釣魚池用的是<b>不含持股</b>的純推薦版,所以那邊的名單可能不一樣。' : ''}
+                    </div>
                 </div>`;
             } else {
                 buy.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
