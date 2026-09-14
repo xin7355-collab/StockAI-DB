@@ -1,3 +1,83 @@
+# 🏭🚨 V76.4.0 上櫃產業別「6 輪全部失敗」的真因是**網址寫錯**;而一個不相干的 API 回空會讓**三個產物一起不更新**
+
+使用者:「還沒做完繼續做,**要挖礦就挖礦**」→ 收掉 V76.3.7 留的那條採礦待辦。
+⭐ 兩件事都是**先讀實跑 log** 才看到的(⛔ 不是讀程式碼推理出來的)。
+
+## 🚨 ① 一個閘門底下掛了四個產物(陷阱 #44,**同一個函式裡的第三次**)
+
+`daily_miner` #576 的 chips job log 逐字:
+```
+📊 抓取 TWSE 全市場本益比 / 殖利率快取...
+  ⏭️ TWSE 基本面回空,沿用既有 fundamentals_cache.json(1799 檔)再補 YoY/毛利
+  ⏭️ TWSE 基本面回空,跳過產業 PE 聚合(YoY/毛利已獨立補入既有快取)
+```
+2026-09-12、09-13、09-14 **連三輪**。而 `miner.py` 的 `if twse_fund:` 底下掛著**四件事**:
+產業 PE 聚合 / `industry_map.json` / `stock_names.json`(中文股名離線表)/ `company_geo.json`
+→ 後面三個**跟本益比完全無關**的產物一起沒更新,而且全綠、零錯誤訊息。
+
+⚠️ 最諷刺的是**同一段程式碼的註解自己就寫著**
+「⛔ 獨立 try:它失敗 ⛔ 不可拖累 industry_map / company_geo(V72.2.1 的教訓)」——
+**內層拆開了,外層那個閘門沒拆**;而下面 `market_stats` 那一段已經因為**同一個坑修過兩次**
+(V72.1.1 拆內層 → V72.2.1 才發現外面還有一層)。這是**第三次**。
+
+→ 整段搬出閘門;只有 `aggregate_industry_pe()` 留在 `if twse_fund:` 裡(它真的需要那份本益比)。
+
+⭐ 順帶查清楚:「TWSE 基本面回空」**本身多半是對的** —— 09-12 那輪是台北 12:56 跑的(還沒收盤)、
+09-13/14 是週末。⛔ 真正的 bug 從來不是它回空,是它**把不相干的東西一起擋掉**。
+(但它以前**一個字都不說原因** → 補上 `stat` 與「非交易日 / 還沒收盤」的提示,陷阱 #22。)
+
+## 🚨 ② 上櫃產業別:HTTP 200 但 body 不是 JSON(陷阱 #23)
+
+逐字 log(**6 輪全中**:08-31 / 09-07 / 09-08 / 09-09 / 09-10 / 09-11):
+```
+✅ TWSE 上市 產業別:本次 +1094 / 累計 1094 (回應 1094 列,前 3:['1101','1102','1103'])
+⚠️ TPEX 上櫃 產業別抓取失敗 (attempt 1/3):Expecting value: line 1 column 1 (char 0)
+❌ TPEX 上櫃 產業別 3 次重試皆失敗,跳過此源
+```
+⭐ 判準:`HTTP {status}` 那行**一次都沒出現** → `status == 200`;
+`✅ TPEX 上櫃 …+0` 也沒出現 → 連逐列迴圈都沒走到。
+→ 那是 `r.json()` 丟的 `JSONDecodeError` = **回了網頁不是 JSON**,
+⛔ **不是**「欄名對不上」,也**不是**「IP 被擋」。
+
+真因:`miner.py` 打的是 `openapi.twse.com.tw/v1/opendata/**t187ap03_O**`(**TWSE 的主機**),
+而同一個 repo 裡另外四支(`theme_news` / `universal_radar` / `stockname_probe` / `otc_probe`)
+打的是 `www.tpex.org.tw/openapi/v1/**mopsfin_t187ap03_O`**(櫃買自己的主機 + `mopsfin_` 前綴)。
+📊 佐證:`stockname_probe.py` 2026-09-09 在 Actions 實跑,官方公司表 L+O **合計 1,984 檔**;
+而 `industry_map.json` 只有 **1,094 檔**(= 上市那半)。
+
+**修法三層**:① 上櫃改用那個實測會通的網址,舊的降為備援
+② 兩個官方網址都不通時走 **FinMind `TaiwanStockInfo`**(付費 token 本來就有、含上櫃)——
+理由是 09-12~14 三輪 log 顯示 `www.tpex.org.tw` 會**間歇 SSLError**,⛔ 不可只靠一條腿
+③ **說得出原因**:JSON 解不開就印 **body 前 160 字**;回了資料卻一列都認不出來就印**實際欄名**。
+
+🚨 **FinMind 那條腿有一個容易踩的坑(陷阱 #17)**:它給的是**中文產業名**、TWSE 給的是**兩位數代碼**。
+直接混進同一個欄位 → 下游 `aggregate_industry_pe` 會把同一個產業拆成兩組。
+→ 一律用 **`screener_miner.IND` 反查回代碼**(⛔ 不在 miner.py 另抄一份對照表;
+實測 `import screener_miner` 是 0.02 秒、零副作用)。
+
+## 🧪 `scripts/test_industry_gate.py`(已納入四驗證第 2 項)
+
+⭐ ⓐ 用 **AST** 問「這個呼叫被哪些 `if` 包著」(⛔ 不是 grep 縮排)——
+`fetch_industry_map` / `build_stock_names` ⛔ 不可被 `twse_fund` 包住,而 `aggregate_industry_pe` **必須**被包住。
+ⓑ 上櫃第一順位要是 `mopsfin_…` 且至少兩個來源 ・ⓒ FinMind 備援 + 走 `screener_miner.IND` ・
+ⓓ 解不開 JSON 要印 body、欄名對不上要印欄名。
+
+🚨 **注入驗證第一輪有一種沒抓到,又是同一個病**:
+「拿掉 FinMind 備援」把 `dataset=TaiwanStockInfo` 改掉之後**照樣綠** ——
+因為 `TaiwanStockInfo` 這個字串在檔案別處(`TaiwanStockInfoWithWarrantSummary`)也有。
+→ 所有斷言改成**只比 `fetch_industry_map` 那一段**。
+⛔ 這是本 repo **第五次**踩「斷言被別處的同樣字串救活」(同一天內第二次)。
+5 種注入現在全部叫得出來。
+
+## ⏭️ 怎麼驗有沒有修好(⛔ 看**產物**不是 Actions 顏色)
+
+```bash
+git fetch -q origin data && git show origin/data:data/industry_map.json | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+print('總',len([k for k in d if k.isdigit()]),'・上櫃試金石',[(s,d.get(s)) for s in ['5483','6488','3105','4966','8299']])"
+```
+現在是 **1,094 檔、五個上櫃試金石全是 None**;修好之後應該多出約 890 檔、那五檔都要有值。
+
 # 📈🔠 V76.3.9 兩張圖看得懂:字太小的真因是**畫布寬**、② ④ 改直式價格軸、每個數字配一句白話
 
 使用者三點:「還沒做完繼續做,**要挖礦就挖礦**,另外產出來的資料**還要敘述那是什麼意思**,提示詞該補改改就改,紀錄下來」/

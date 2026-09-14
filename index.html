@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.3.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.4.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -809,7 +809,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.4.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8404,8 +8404,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.3.9',
+    _APP_VERSION: 'V76.4.0',
     _CHANGELOG: [
+        { v: 'V76.4.0', d: [
+            '🏭 <b>上櫃股的「產業別」終於抓得到了</b> —— 真因是採礦機**網址寫錯**:那個位址回的是網頁不是資料,而程式只印「抓取失敗」,所以連續 6 輪沒人發現。改用本站其他四支程式已經在用、而且實測拿得到 1,984 檔的那個位址,另外加一條 FinMind 備援(官方網站偶爾會擋我們的機器)。',
+            '🚨 <b>修掉一個「一個不相干的資料源失敗,三個產物一起不更新」</b>:證交所的本益比表回空(週末或還沒收盤都會),竟然會讓**產業對照表、中文股名離線表、公司所在縣市**一起不更新 —— 2026-09-12、13、14 連三天都是這樣,而且畫面上全綠、零錯誤訊息。現在只有真的需要本益比的那一項會跳過。',
+            '🔎 資料抓不到時<b>會說得出原因</b>了:回的是網頁就把內容前 160 字印出來、欄位名對不上就把實際欄名印出來 —— 以前只寫「失敗」,分不出是網址錯還是被擋。',
+        ] },
         { v: 'V76.3.9', d: [
             '📈 <b>「本站自己畫的一頁圖」改名「個股數據速覽」</b>(右上角標「不是 AI 畫的」)。',
             '🔠 <b>兩張圖的字變大了</b> —— 真因不是字級設定:它是一張固定寬度的圖片再被縮放,螢幕上的字 = 字級 ÷ 畫布寬。把畫布從 1080px 收到 780px,手機上內文 8px → <b>11px</b>、筆電 13px → <b>18.5px</b>,同一個改動兩張圖一起變。存出來的圖也改成至少 2 倍解析度。',

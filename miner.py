@@ -1310,54 +1310,115 @@ def fetch_industry_map() -> dict:
     _COMPANY_GEO = {}
     _COMPANY_NAME = {}
     _geo_miss_keys = None
-    for url, label in [
-        ('https://openapi.twse.com.tw/v1/opendata/t187ap03_L', 'TWSE 上市'),
-        ('https://openapi.twse.com.tw/v1/opendata/t187ap03_O', 'TPEX 上櫃'),
-    ]:
+    _added_by = {}
+    # 🚨 V76.4.0 上櫃換門牌 —— 舊的 `openapi.twse.com.tw/v1/opendata/t187ap03_O` 回 **HTTP 200
+    #   但 body 不是 JSON**(`r.json()` 丟 `Expecting value: line 1 column 1`),
+    #   **連續 6 輪 run 全中**(08-31 / 09-07 / 09-08 / 09-09 / 09-10 / 09-11)→
+    #   那個路徑在 TWSE 主機上根本不存在(陷阱 #23:API 對不存在的路徑回 200 + 網頁,不是 404)。
+    #   ⭐ 同一個 repo 裡另外四支(theme_news / universal_radar / stockname_probe / otc_probe)
+    #     用的是**櫃買自己的主機**,而且資料集名多了 `mopsfin_` 前綴;
+    #     `stockname_probe.py` 2026-09-09 在 Actions 實跑拿回 L+O **合計 1,984 檔** → 那條是通的。
+    #   ⚠️ 但 www.tpex.org.tw 對 runner 會間歇 SSLError(09-12~14 三輪都是)→ ⛔ 不可只靠一條腿:
+    #     舊網址留成備援,兩條都不通還有下面的 FinMind `TaiwanStockInfo`。
+    SOURCES = [
+        ('TWSE 上市', ['https://openapi.twse.com.tw/v1/opendata/t187ap03_L']),
+        ('TPEX 上櫃', ['https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O',
+                       'https://www.tpex.org.tw/openapi/v1/t187ap03_O',
+                       'https://openapi.twse.com.tw/v1/opendata/t187ap03_O']),
+    ]
+    for label, urls in SOURCES:
         ok = False
-        for attempt in range(3):
-            try:
-                r = http_session.get(url, headers=_rnd_hdrs(), timeout=20)
-                if r.status_code != 200:
-                    print(f"  ⚠️ {label} 產業別 HTTP {r.status_code} (attempt {attempt+1}/3)")
-                    time.sleep(2 ** attempt)
-                    continue
-                data = r.json()
-                if not isinstance(data, list) or not data:
-                    print(f"  ⚠️ {label} 產業別回應非預期 list 或空 (type={type(data).__name__}, sample={str(data)[:120]})")
-                    time.sleep(2 ** attempt)
-                    continue
-                added = 0
-                for row in data:
-                    sym = str(row.get('公司代號') or row.get('SecuritiesCompanyCode') or '').strip()
-                    ind = str(row.get('產業別') or row.get('IndustryCategory') or '').strip()
-                    if sym and ind and sym.isdigit() and 4 <= len(sym) <= 6:
-                        industry_map[sym] = ind
-                        added += 1
-                    # 🏷️ V75.1.4 同一列順便取「公司簡稱」= 中文股名(零額外 API)
-                    #   ⚠️ 條件刻意跟產業別那行**分開**:有些列可能有名字但沒產業別,
-                    #      綁在一起會讓那幾檔的名字一起漏掉(同 _COMPANY_GEO 的做法)。
-                    if sym and sym.isdigit() and 4 <= len(sym) <= 6:
-                        _nm = str(row.get('公司簡稱') or row.get('CompanyAbbreviation') or '').strip()
-                        if len(_nm) >= 2:
-                            _COMPANY_NAME[sym] = _nm
-                    # 🗺️ 地緣:同一列順便取住址縣市(欄名兩種寫法都吃)
-                    if sym and sym.isdigit() and 4 <= len(sym) <= 6:
-                        _city = _addr_city(row.get('住址') or row.get('地址')
-                                           or row.get('Address') or row.get('CompanyAddress') or '')
-                        if _city:
-                            _COMPANY_GEO[sym] = _city
-                        elif _geo_miss_keys is None:
-                            _geo_miss_keys = sorted(row.keys())[:25]   # 只記一次,供診斷欄名
-                print(f"  ✅ {label} 產業別:本次 +{added} / 累計 {len(industry_map)} (回應 {len(data)} 列,前 3:{[r.get('公司代號') or r.get('SecuritiesCompanyCode') for r in data[:3]]})")
-                ok = True
+        for url in urls:
+            if ok:
                 break
-            except Exception as e:
-                print(f"  ⚠️ {label} 產業別抓取失敗 (attempt {attempt+1}/3):{e}")
-                time.sleep(2 ** attempt)
+            for attempt in range(2):
+                try:
+                    r = http_session.get(url, headers=_rnd_hdrs(), timeout=20)
+                    if r.status_code != 200:
+                        print(f"  ⚠️ {label} 產業別 HTTP {r.status_code} @{url.split('/')[-1]} (attempt {attempt+1}/2)")
+                        time.sleep(2 ** attempt)
+                        continue
+                    try:
+                        data = r.json()
+                    except Exception as _ej:
+                        # 🚨 陷阱 #23:回 200 但 body 是網頁 → ⛔ 不可只印例外訊息(那看起來像「網路壞了」),
+                        #   把 **body 前 160 字**印出來,下次一眼看得出是「網址錯」還是「被擋」。
+                        _bs = (r.text or '')[:160].replace('\n', ' ').strip()
+                        print(f"  ⚠️ {label} 產業別 @{url.split('/')[-1]} 回 200 但不是 JSON({type(_ej).__name__})→ body 前 160 字:{_bs}")
+                        break            # 同一個網址再試也是一樣的東西,換下一個
+                    if not isinstance(data, list) or not data:
+                        print(f"  ⚠️ {label} 產業別回應非預期 list 或空 (type={type(data).__name__}, sample={str(data)[:120]})")
+                        time.sleep(2 ** attempt)
+                        continue
+                    added = 0
+                    for row in data:
+                        sym = str(row.get('公司代號') or row.get('SecuritiesCompanyCode') or row.get('Code') or '').strip()
+                        ind = str(row.get('產業別') or row.get('IndustryCategory')
+                                  or row.get('SecuritiesIndustryCode') or row.get('IndustryCode') or '').strip()
+                        if sym and ind and sym.isdigit() and 4 <= len(sym) <= 6:
+                            industry_map[sym] = ind
+                            added += 1
+                        # 🏷️ V75.1.4 同一列順便取「公司簡稱」= 中文股名(零額外 API)
+                        #   ⚠️ 條件刻意跟產業別那行**分開**:有些列可能有名字但沒產業別,
+                        #      綁在一起會讓那幾檔的名字一起漏掉(同 _COMPANY_GEO 的做法)。
+                        if sym and sym.isdigit() and 4 <= len(sym) <= 6:
+                            _nm = str(row.get('公司簡稱') or row.get('CompanyAbbreviation')
+                                      or row.get('CompanyName') or '').strip()
+                            if len(_nm) >= 2:
+                                _COMPANY_NAME[sym] = _nm
+                        # 🗺️ 地緣:同一列順便取住址縣市(欄名兩種寫法都吃)
+                        if sym and sym.isdigit() and 4 <= len(sym) <= 6:
+                            _city = _addr_city(row.get('住址') or row.get('地址')
+                                               or row.get('Address') or row.get('CompanyAddress') or '')
+                            if _city:
+                                _COMPANY_GEO[sym] = _city
+                            elif _geo_miss_keys is None:
+                                _geo_miss_keys = sorted(row.keys())[:25]   # 只記一次,供診斷欄名
+                    _added_by[label] = _added_by.get(label, 0) + added
+                    print(f"  ✅ {label} 產業別:本次 +{added} / 累計 {len(industry_map)} @{url.split('/')[-1]} (回應 {len(data)} 列)")
+                    if added == 0:
+                        # 🚨 陷阱 #23 的另一半:有資料但一列都認不出來 = **欄名不同** → 把實際欄名印出來,
+                        #   ⛔ 別讓下一個人再猜一輪(同 _taifex_list_endpoints 的做法)。
+                        print(f"     ⚠️ 回了 {len(data)} 列卻一檔都沒收到 → 實際欄名 = {sorted(data[0].keys())[:25]}")
+                    ok = True
+                    break
+                except Exception as e:
+                    print(f"  ⚠️ {label} 產業別抓取失敗 @{url.split('/')[-1]} (attempt {attempt+1}/2):{type(e).__name__}: {str(e)[:120]}")
+                    time.sleep(2 ** attempt)
         if not ok:
-            print(f"  ❌ {label} 產業別 3 次重試皆失敗,跳過此源")
+            print(f"  ❌ {label} 產業別 {len(urls)} 個來源全部失敗,跳過此源")
         time.sleep(random.uniform(1.0, 2.0))
+    # 🆘 V76.4.0 上櫃一檔都沒拿到 → 走 FinMind `TaiwanStockInfo`(付費 token 本來就有,含上櫃)
+    #   ⭐ 同 V71.7.0「台指 VIX 不必付費,換來源就好」的前例:上游不通就換一條腿,⛔ 別讓那一格永遠空著。
+    #   🚨 但 FinMind 給的是**中文產業名**、TWSE 給的是**兩位數代碼** —— 直接混進去就是陷阱 #17
+    #      (同一個欄位兩種格式,下游 aggregate_industry_pe 會把同一個產業拆成兩組)
+    #      → 一律用 screener_miner.IND 反查回**代碼**;查不到的就跳過(⛔ 不硬塞)。
+    if _added_by.get('TPEX 上櫃', 0) == 0:
+        try:
+            from screener_miner import IND as _IND_NAMES          # ⛔ 不另抄一份對照表(單一真相)
+            _name2code = {v: k for k, v in _IND_NAMES.items()}
+            jj = fm_request('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo') or {}
+            rows = jj.get('data') or []
+            got = miss = 0
+            _miss_names = {}
+            for row in rows:
+                sym = str(row.get('stock_id') or '').strip()
+                nm = str(row.get('industry_category') or '').strip()
+                if not (sym.isdigit() and 4 <= len(sym) <= 6 and nm):
+                    continue
+                if sym in industry_map:
+                    continue
+                code = _name2code.get(nm)
+                if code:
+                    industry_map[sym] = code
+                    got += 1
+                else:
+                    miss += 1
+                    _miss_names[nm] = _miss_names.get(nm, 0) + 1
+            print(f"  🆘 上櫃改走 FinMind TaiwanStockInfo:回 {len(rows)} 列 → 補進 {got} 檔"
+                  f"(對不到代碼而略過 {miss} 檔;前 8 種:{sorted(_miss_names, key=_miss_names.get, reverse=True)[:8]})")
+        except Exception as _e_fm:
+            print(f"  ⚠️ 上櫃 FinMind 備援也失敗:{type(_e_fm).__name__}: {str(_e_fm)[:120]}")
     # 🗺️ 地緣診斷:抓不到縣市時把**實際欄名**印出來(同陷阱 #23:別讓人猜欄名)
     if _COMPANY_GEO:
         print(f"  🗺️ 公司所在縣市:{len(_COMPANY_GEO)} 檔(地緣分點用)")
@@ -1839,6 +1900,13 @@ def fetch_twse_fundamentals(d: date) -> dict:
     res = {}
     try:
         j = http_session.get(url, headers=_rnd_hdrs(), timeout=20).json()
+        # 🚨 V76.4.0 回空要**說得出原因**(陷阱 #22)—— 以前只是靜靜回 {},
+        #   而上游那句 log 只寫「TWSE 基本面回空」,分不出是「非交易日 / 還沒收盤」還是「端點改版 / 被擋」。
+        #   ⚠️ 實測 2026-09-12 那輪是台北 12:56 跑的(還沒收盤)、09-13/14 是週末 → 回空**本來就是對的**;
+        #      真正的 bug 是它把三個不相干的產物一起擋掉(見 V76.4.0 那段註解)。
+        if j.get('stat') != 'OK':
+            print(f"  ⚠️ BWIBBU_d({d8}) stat={str(j.get('stat'))[:60]} → 回空"
+                  f"(常見原因:非交易日 / 當天還沒收盤;⛔ 這跟端點改版是兩件事)")
         if j.get('stat') == 'OK':
             fields = j.get('fields', [])
             fi = lambda kw: next((i for i, f in enumerate(fields) if kw in f), None)
@@ -4707,69 +4775,82 @@ def fetch_broker_chips():
         else:
             print("  ⏭️ fund_cache 為空(TWSE 回空且無既有快取),跳過")
 
-        if twse_fund:
+        # 🏭🚨 V76.4.0 這一整段**從 `if twse_fund:` 底下搬出來**(使用者:「要挖礦就挖礦」)。
+        #   實跑證據(daily_miner #576 的 chips job log 逐字):
+        #     ⏭️ TWSE 基本面回空,沿用既有 fundamentals_cache.json(1799 檔)再補 YoY/毛利
+        #     ⏭️ TWSE 基本面回空,跳過產業 PE 聚合(YoY/毛利已獨立補入既有快取)
+        #   2026-09-12、13、14 **連三輪**都是這樣,而這個閘門底下掛著四件事:產業 PE 聚合 /
+        #   industry_map.json / stock_names.json(中文股名離線表)/ company_geo.json →
+        #   後面三個**跟本益比完全無關**的產物一起沒更新,而且全綠、零錯誤訊息。
+        #   ⚠️ 最諷刺的是下面那個 build_stock_names 的註解自己就寫著「⛔ 獨立 try:它失敗
+        #   ⛔ 不可拖累 industry_map / company_geo」——**內層拆開了,外層這個閘門沒拆**;
+        #   而 market_stats 那一段(下方 V72.1.1 / V72.2.1)已經因為同一個坑修過兩次。
+        #   ⭐⭐ 通用:一個閘門只能管**真的需要它**的那一件事(陷阱 #44)。
 
-            # 🏷️ 產業相對 PE 聚合(供前端 X 光機算「比同業便宜?」)
-            print("  🏭 抓產業類別 + 算每產業中位數 PE...")
-            ipe_path = Path('data', 'industry_pe.json')
-            imap_path = Path('data', 'industry_map.json')
+        # 🏷️ 產業相對 PE 聚合(供前端 X 光機算「比同業便宜?」)
+        print("  🏭 抓產業類別 + 算每產業中位數 PE...")
+        ipe_path = Path('data', 'industry_pe.json')
+        imap_path = Path('data', 'industry_map.json')
+        try:
+            industry_map = fetch_industry_map()
+            # industry_map 非空 → 永遠寫(分組 PE 失敗也保留對照表,前端可獨立用)
+            if industry_map:
+                imap_path.write_text(
+                    json.dumps(industry_map, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                print(f"  💾 個股→產業對照 → data/industry_map.json({len(industry_map)} 檔)")
+            else:
+                print("  ⏭️ 產業對照表為空,保留既有 industry_map.json(若有)")
+
+            # 🏷️ V75.1.4 股名離線表 — 同一次 API 產出(零額外 API)
+            #   ⛔ 獨立 try:它失敗 ⛔ 不可拖累 industry_map / company_geo
+            #      (V72.2.1 的教訓:兩個獨立指標綁同一個 try,一個失敗會拖垮另一個)
             try:
-                industry_map = fetch_industry_map()
-                # industry_map 非空 → 永遠寫(分組 PE 失敗也保留對照表,前端可獨立用)
-                if industry_map:
-                    imap_path.write_text(
-                        json.dumps(industry_map, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-                    print(f"  💾 個股→產業對照 → data/industry_map.json({len(industry_map)} 檔)")
+                build_stock_names(industry_map)
+            except Exception as _e_sn:
+                print(f"  ⚠️ 股名離線表產出失敗(不影響其他產物):{type(_e_sn).__name__}: {_e_sn}")
+
+            # 🗺️ V71.9.8 公司所在縣市(地緣分點用)— 跟 industry_map 同一次 API 產出
+            #    ⛔ 空的時候不覆蓋(同「保留舊檔」原則),否則上游一次抽風就整份消失
+            try:
+                _geo_path = Path('data', 'company_geo.json')
+                if _COMPANY_GEO and len(_COMPANY_GEO) >= 500:
+                    _geo_path.write_text(json.dumps(
+                        {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                         'n': len(_COMPANY_GEO), 'data': _COMPANY_GEO},
+                        ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                    print(f"  💾 公司所在縣市 → data/company_geo.json({len(_COMPANY_GEO)} 檔)")
                 else:
-                    print("  ⏭️ 產業對照表為空,保留既有 industry_map.json(若有)")
+                    print(f"  ⏭️ 公司縣市僅 {len(_COMPANY_GEO)} 檔(<500)— 保留既有 company_geo.json")
+            except Exception as _e_geo:
+                print(f"  ⚠️ company_geo.json 寫入失敗:{str(_e_geo)[:80]}")
 
-                # 🏷️ V75.1.4 股名離線表 — 同一次 API 產出(零額外 API)
-                #   ⛔ 獨立 try:它失敗 ⛔ 不可拖累 industry_map / company_geo
-                #      (V72.2.1 的教訓:兩個獨立指標綁同一個 try,一個失敗會拖垮另一個)
-                try:
-                    build_stock_names(industry_map)
-                except Exception as _e_sn:
-                    print(f"  ⚠️ 股名離線表產出失敗(不影響其他產物):{type(_e_sn).__name__}: {_e_sn}")
-
-                # 🗺️ V71.9.8 公司所在縣市(地緣分點用)— 跟 industry_map 同一次 API 產出
-                #    ⛔ 空的時候不覆蓋(同「保留舊檔」原則),否則上游一次抽風就整份消失
-                try:
-                    _geo_path = Path('data', 'company_geo.json')
-                    if _COMPANY_GEO and len(_COMPANY_GEO) >= 500:
-                        _geo_path.write_text(json.dumps(
-                            {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
-                             'n': len(_COMPANY_GEO), 'data': _COMPANY_GEO},
-                            ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-                        print(f"  💾 公司所在縣市 → data/company_geo.json({len(_COMPANY_GEO)} 檔)")
-                    else:
-                        print(f"  ⏭️ 公司縣市僅 {len(_COMPANY_GEO)} 檔(<500)— 保留既有 company_geo.json")
-                except Exception as _e_geo:
-                    print(f"  ⚠️ company_geo.json 寫入失敗:{str(_e_geo)[:80]}")
-
+            # 🚦 V76.4.0 只有「產業 PE 聚合」真的需要 twse_fund —— ⛔ 它不可以再把上面三個產物一起擋掉
+            if twse_fund:
                 industries = aggregate_industry_pe(fund_cache, industry_map)
-                if industries:
-                    ipe_path.write_text(json.dumps({
-                        'updated': date.today().strftime('%Y-%m-%d'),
-                        'industries': industries,
-                        '_note': '中位數 PE(避免極端值偏誤);is_cyclical=true 為景氣循環產業,PE 低不等於便宜',
-                    }, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-                    print(f"  💾 產業相對 PE → data/industry_pe.json({len(industries)} 個產業)")
-                elif not ipe_path.exists():
-                    # 首次失敗(檔案還不存在)→ 寫一個有 _status 的最小 JSON,讓前端能判斷顯示「採集失敗」
-                    ipe_path.write_text(json.dumps({
-                        'updated': date.today().strftime('%Y-%m-%d'),
-                        'industries': {},
-                        '_status': 'failed',
-                        '_reason': f'industry_map 空({len(industry_map)} 檔) 或 fund_cache 無 PE 對應',
-                    }, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
-                    print(f"  ⚠️ 產業 PE 聚合無資料且首次跑,寫入 _status=failed 旗標 → data/industry_pe.json")
-                else:
-                    print("  ⏭️ 產業 PE 聚合無資料,保留既有 industry_pe.json")
+            else:
+                industries = None
+                print("  ⏭️ TWSE 基本面回空 → **只**跳過產業 PE 聚合(產業對照表 / 股名離線表 / 公司縣市已獨立產出)")
+            if industries:
+                ipe_path.write_text(json.dumps({
+                    'updated': date.today().strftime('%Y-%m-%d'),
+                    'industries': industries,
+                    '_note': '中位數 PE(避免極端值偏誤);is_cyclical=true 為景氣循環產業,PE 低不等於便宜',
+                }, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                print(f"  💾 產業相對 PE → data/industry_pe.json({len(industries)} 個產業)")
+            elif not ipe_path.exists():
+                # 首次失敗(檔案還不存在)→ 寫一個有 _status 的最小 JSON,讓前端能判斷顯示「採集失敗」
+                ipe_path.write_text(json.dumps({
+                    'updated': date.today().strftime('%Y-%m-%d'),
+                    'industries': {},
+                    '_status': 'failed',
+                    '_reason': f'industry_map 空({len(industry_map)} 檔) 或 fund_cache 無 PE 對應',
+                }, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+                print(f"  ⚠️ 產業 PE 聚合無資料且首次跑,寫入 _status=failed 旗標 → data/industry_pe.json")
+            else:
+                print("  ⏭️ 產業 PE 聚合無資料,保留既有 industry_pe.json")
 
-            except Exception as e:
-                print(f"  ⚠️ 產業 PE 聚合失敗(不影響主流程):{e}")
-        else:
-            print("  ⏭️ TWSE 基本面回空,跳過產業 PE 聚合(YoY/毛利已獨立補入既有快取)")
+        except Exception as e:
+            print(f"  ⚠️ 產業 PE 聚合失敗(不影響主流程):{e}")
 
         # V16.2 — 全市場 P/B 分位數寫 data/market_stats.json(供前端動態判斷取代固定 <2/>5)
         # 🐛 V72.1.1 → V72.2.1 **同一個坑修了兩次才修對,兩層巢狀都要拆**:
