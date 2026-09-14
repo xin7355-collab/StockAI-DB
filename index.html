@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.0.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.0.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -849,7 +849,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8446,8 +8446,10 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.0.1',
+    _APP_VERSION: 'V77.0.3',
     _CHANGELOG: [
+        { v: 'V77.0.3', d: ['📼 <b>開始存 5 分 K 了</b>(你說的「開始存分k」)—— 以前本站<b>一根分 K 都沒有留下來</b>,所以那三條盤中口訣(下午時段 / 開盤 10 分鐘站回 / 第一根 5 分 K 上影)只能現抓現算,<b>每次重跑結果都不一樣</b>,而且「逐年同向」那一關天生過不了。','⏳ <b>第一次跑就有約 80 個交易日</b>(不是要等半年),但要做得動「逐年」那一關得滿一年 → 大約 <b>2027 年 2 月</b>。','⚠️ 存的是「<b>當天成交量前 80 名</b>」那批(你選的)—— 代價是名單每天會變,某一檔在歷史上會斷斷續續,而且天生只收「當天夠熱」的日子。檔案裡已經把每天的實際名單與這段警語一起存進去,回測時一定會先算「這檔在窗口裡有幾天」。','⛔ 它存在自己的分支、<b>不佔網站空間</b>,也不會讓你的 App 變慢。'] },
+        { v: 'V77.0.2', d: ['💾 <b>「存成圖片」修好了</b> —— 而且它以前<b>失敗也照樣跟你說「已存成」</b>,所以看起來像壞掉但不知道哪裡壞。現在 iPhone 會直接跳「分享」(選「儲存影像」就進相簿),存不起來會誠實告訴你怎麼長按存。','🧭 <b>「五個面向」少一格的真相</b>:標題是<b>寫死</b>的「五個面向」,而 6706 惠特是虧損股 → 沒有本益比、月營收也只有 12 個月算不出兩個年增點 → 🎯 預期那一格<b>本來就該是空的</b>。現在標題會照實際幾格寫,而且<b>直接在圖上寫出「缺哪一格 + 為什麼」</b>。','🧬 <b>「為何沒有基本面」是三個 bug 疊在一起</b>:① 同一個「營收年增」全 App 有<b>兩條相反的優先序</b> —— 報告頁拿到最新的 +120.5%、基本面分數卻吃到 7 月的舊值 −26.1% → 被打成 0 分。現在統一成一份。','🩸 ② 但<b>只修那個會讓 6706 從 0 分變 57 分(「體質穩健」)</b>,而它近 4 季 ROE −7.1%、最新一季 EPS −1.89 元 → 那比 0 分更誤導。<b>新增「虧損封頂」</b>:真的在虧錢時分數最高 30 分,並在卡上寫出是哪個數字把它封住的。','💲 ③ 拿不到的數字會被印成 <b>0.0</b>(虧損股的本益比印成「0.0 倍」、股價淨值比明明有 3.2 卻印 0.00)—— 報告頁那條數字格式鏈已全部修掉,虧損股改印「—(虧損)」。','🌐 你給的「海外訊號篇」清單看過了:<b>6 項裡本站已經有 4 項</b>(台積 ADR / 費半 / 那斯達克 / 美債 10 年期 + 倒掛),而且已經算進盤前體檢分數。只補了「每天 3-5 分鐘」那一層的<b>指路</b>;DRAM 報價與雲端巨頭資本支出<b>台股沒有免費來源</b>,已記進實測總表免得日後重複評估。'] },
         { v: 'V77.0.1', d: ['🗣️ <b>你貼的 12 條盤中口訣,我一條一條查過了</b> —— 其中 <b>6 條本站早就測過,全部沒用</b>(開盤跳水就買、早盤急拉是假的、下午大跌次日買、量增價不漲、9:15 帶量突破…),⛔ 不用再測一次。','✅ <b>唯一站得住的是「不漲不跌就睡覺」</b>:盤整那一桶的邊際 +0.007 = 跟丟銅板一樣,而「橫盤<b>突破</b>」還是 −0.52 → <b>不交易比等突破更對</b>。','🏦 <b>「先看前一天籌碼軌跡」是唯一過關的一條</b>(1,754 檔・含 2022 空頭實測):昨天三大法人買超佔量比是它自己歷史最極端那 0.5% → 之後 10 天比其他股票好 <b>+0.65%</b>,六道關卡全過。⚠️ 但那一桶<b>自己還是輸大盤 0.48%</b> → 它只能拿來<b>排序</b>(在你已經要挑的幾檔裡優先挑它),⛔ <b>不是「看到就買」</b>。','⛔ <b>這一版一個提醒都沒有新增</b> —— 照你定的「不準就不用提醒」,沒過門檻的一律不主動推。','🐛 順手修:本益比拿不到的時候,報告頁的估值表會印成「現在(PE <b>0.0</b> 倍)」—— 現在改成「—」。'] },
         { v: 'V77.0.0', d: [
             '🧱 <b>整個 App 都拿掉卡片外框了</b>(你說「整個系統比照無框邏輯製作」)—— 現在每一段是「標題 + 一條細分隔線」,<b>資料一個字都沒刪</b>,但每一行左右各多出 13~26px。產業作戰室也一樣。',
@@ -8842,15 +8844,15 @@ ${list}
     // 📤 匯出預測歷史 JSON（複製到剪貼簿 + 下載檔案）
     exportPredHist() {
         const data = localStorage.getItem('proTerminalPredHist') || '{}';
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `stockai_predhist_${new Date().toISOString().slice(0,10)}.json`;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        if (navigator.clipboard) navigator.clipboard.writeText(data).catch(()=>{});
-        alert('✅ 已下載 JSON 並複製到剪貼簿');
+        // 💾 V77.0.2 改走唯一入口 _saveBlob(⛔ 不再自己寫第三份);⭐ 訊息改成回報**真實結果**
+        this._saveBlob(new Blob([data], { type: 'application/json' }),
+            `stockai_predhist_${new Date().toISOString().slice(0, 10)}.json`, { shareFirst: false })
+            .then(r => {
+                if (navigator.clipboard) navigator.clipboard.writeText(data).catch(() => {});
+                alert(r === 'downloaded' ? '✅ 已下載 JSON 並複製到剪貼簿'
+                    : r === 'inapp' ? '📵 這個內建瀏覽器不能下載檔案 → 已複製到剪貼簿,請貼給自己保存'
+                    : '⚠️ 下載失敗 → 已複製到剪貼簿,請貼到記事本保存');
+            });
     },
 
     // 🗑️ 清除預測歷史（雙確認）
@@ -9716,14 +9718,10 @@ ${list}
         }
     },
     _downloadBackupFile(encoded, fileName) {
-        try {
-            const blob = new Blob([encoded], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = fileName;
-            document.body.appendChild(a); a.click();
-            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
-        } catch (e) { console.warn('[backup] 下載失敗', e); }
+        // 💾 V77.0.2 改走唯一入口 _saveBlob(⛔ 不再自己寫一份)。
+        //   shareFirst:false —— 呼叫端(makeBackup)**自己已經試過** navigator.share,這裡只負責下載那一半;
+        //   forceDownload:true —— 內建瀏覽器那條分支也由呼叫端自己處理過了。
+        this._saveBlob(new Blob([encoded], { type: 'text/plain' }), fileName, { shareFirst: false, forceDownload: true });
     },
 
     // V16.8 — 開啟還原面板:顯示 textarea,等使用者貼+按確認(不再「按鈕同時觸發空文字錯誤」)
@@ -11303,6 +11301,15 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             if (fund) this._localFundLast = { sym, data: fund };
             return fund || ((this._localFundLast?.sym === sym) ? this._localFundLast.data : null);
         } catch(e) { return (this._localFundLast?.sym === sym) ? this._localFundLast.data : null; }
+    },
+
+    // 🏪 V77.0.2 這一檔是不是上櫃 —— 市場別來自 `data/stock_names.json` 第三欄(同 `_marginCallState`)。
+    //   回 `null` = **分不出來**(舊的離線表沒有這一欄),⛔ 不可把 null 當成「上市」。
+    _isOtcSym(sym) {
+        const info = (this.allStockList || []).find(x => x.stock_id === String(sym));
+        const mkt = String(info?.type || '').toLowerCase();
+        if (!mkt) return null;
+        return mkt.includes('tpex') || mkt.includes('otc');
     },
 
     // 🏷️ V71.4.5 本益比「跟同業比」標籤(填 #xrayPeTag 這個一直空著的版位)
@@ -22591,8 +22598,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     // ════════════════════════════════════════════════════════════════════════════════
     _rpSym: null,
     _rpLast: null,
-    _rpFmt(n, d = 1) { return Number.isFinite(+n) ? (+n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : null; },
-    _rpPct(n, d = 1) { return Number.isFinite(+n) ? `${+n >= 0 ? '+' : ''}${(+n).toFixed(d)}%` : null; },
+    // 🚨 V77.0.2 `+null === 0` 而 `Number.isFinite(0) === true` → 舊版把「沒有這個數字」印成 `0.0`
+    //   (6706 虧損股的本益比實測印成 `0.0x`)。⛔ 真正的 0 仍然要印得出來 → 只擋 null / undefined / ''。
+    _rpFmt(n, d = 1) { return (n != null && n !== '' && Number.isFinite(+n)) ? (+n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : null; },
+    _rpPct(n, d = 1) { return (n != null && n !== '' && Number.isFinite(+n)) ? `${+n >= 0 ? '+' : ''}${(+n).toFixed(d)}%` : null; },
     _rpDir(n) { return !Number.isFinite(+n) || +n === 0 ? 'text-gray-300' : (+n > 0 ? 'text-red-400' : 'text-green-400'); },
     _rpNa(t) { return `<span class="text-gray-500 text-[10px]">${t}</span>`; },
     _rpSet(id, html, sym) {
@@ -22896,15 +22905,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const peer = (indK && ip.industries && ip.industries[indK]) ? +ip.industries[indK].median_pe : null;
         const pe = Number.isFinite(+fc?.pe) && +fc.pe > 0 ? +fc.pe : (Number.isFinite(+fen?.pe) && +fen.pe > 0 ? +fen.pe : null);
         const peSrc = (Number.isFinite(+fc?.pe) && +fc.pe > 0) ? 'TWSE/TPEx 官方' : (pe ? 'FinMind 採礦' : '');
-        const pb = Number.isFinite(+fc?.pbr) ? +fc.pbr : (Number.isFinite(+fen?.pb) ? +fen.pb : (Number.isFinite(+fy?.pb) ? +fy.pb : null));
-        const yld = Number.isFinite(+fc?.yield_rate) ? +fc.yield_rate : (Number.isFinite(+fen?.yield_rate) ? +fen.yield_rate : null);
+        // 🚨 V77.0.2 `+null === 0` 而 `Number.isFinite(0) === true` → 舊寫法會**短路成 0**:
+        //   chips 檔的 `pb: null` 讓 `fund_yoy_gm` 真的有的 3.2 永遠讀不到(6706 實測)。
+        //   ⭐ 股價淨值比必 > 0(0 倍不存在);殖利率 0% 是合法值 → 只擋 null/''(⛔ 不可一律改成 > 0)。
+        const _fv = v => (v != null && v !== '' && Number.isFinite(+v)) ? +v : null;
+        const _fp = v => { const n = _fv(v); return (n != null && n > 0) ? n : null; };
+        const otc = this._isOtcSym(sym) === true;   // 🏪 V77.0.2 分不出來時當成「不特別標註」(⛔ 不可猜成上櫃)
+        const pb = _fp(fc?.pbr) ?? _fp(fen?.pb) ?? _fp(fy?.pb);
+        const yld = _fv(fc?.yield_rate) ?? _fv(fen?.yield_rate) ?? null;
         const ae = this._rpAnnualEps(fy, fen, pC, pe);
         const valRows = ae ? this._rpValRows(ae.eps, b, peer) : null;
         // 月營收:C2 新欄(mrev/ytd/mrh)優先,沒有就退回 chips 檔的 latest_revenue(元)
-        const mrev = Number.isFinite(+fy?.mrev) ? +fy.mrev : (Number.isFinite(+fen?.latest_revenue) ? +fen.latest_revenue : null);
+        const mrev = _fp(fy?.mrev) ?? _fp(fen?.latest_revenue);
         const _ry = this._revYoY(fy, fc, fen), yoy = _ry.v, yoyM = _ry.month;   // 📅 V76.3.9 唯一真相 + 是哪一個月
-        const ytd = Number.isFinite(+fy?.ytd) ? +fy.ytd : null;
-        const gm = Number.isFinite(+fy?.gm) ? +fy.gm : (Number.isFinite(+fc?.gross_margin) ? +fc.gross_margin : null);
+        const ytd = _fv(fy?.ytd);
+        const gm = _fv(fy?.gm) ?? _fv(fc?.gross_margin);   // ⚠️ 毛利率可以是負的(6706 −14.2%)→ ⛔ 不可用 `> 0` 擋
         // 籌碼(全部轉述既有函式)
         const s1 = this._chipPeriodSums(data, 1), s5 = this._chipPeriodSums(data, 5), s20 = this._chipPeriodSums(data, 20);
         const P = (fenOk && this._fenSym === sym) ? this._fenPeriods : null;
@@ -22923,7 +22938,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const div = (divFile && divFile.d && divFile.d[sym]) ? divFile.d[sym] : null;
         const cyc = !!(indK && ip && ip.industries && ip.industries[indK] && ip.industries[indK].is_cyclical);
 
-        const ctx = { sym, name: this.getStockName(sym) || sym, pC, chg, chg20, kDate, isEtf, pe, peSrc, pb, yld, ae, eps: ae ? ae.eps : null, band: b, peer, indK,
+        const ctx = { sym, name: this.getStockName(sym) || sym, pC, chg, chg20, kDate, isEtf, pe, peSrc, pb, yld, otc, ae, eps: ae ? ae.eps : null, band: b, peer, indK,
                       valRows, mrev, yoy, yoyM, ytd, gm, fc, fcUpd, fy, fen, fenDate, s1, s5, s20, P, td, tdRaw, mcs, dist, trap, pbE, att, earn, sector, dec,
                       fin, div, cyc, divUpd: divFile ? (divFile.data_date || divFile.updated) : null };
         this._rpLast = ctx;
@@ -23049,10 +23064,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             //   同一節出現 97% 與 77 兩個「位階」= 邏輯打架。統計日那個只留在 ⚠️ 差距提示裡。
             const rkLive = (C.ae && C.ae.eps > 0 && C.pC > 0) ? this._rpPeRank(C.pC / C.ae.eps, b) : null;
             body = `<div class="text-[10px] text-gray-300 leading-snug mb-1.5">年化 EPS <b class="font-mono">${f(C.ae.eps, 2)}</b> = <b>${C.ae.src}</b>,⛔ 不是預估${C.ae.asOf ? ` ・截至 ${this._dW(C.ae.asOf)}` : ''}</div>
-                <div class="text-[10px] text-gray-400 mb-1.5">現在本益比 <b class="font-mono text-gray-200">${f(C.pe, 1)}x</b>(${C.peSrc})在它自己近 3 年的位階:<b class="font-mono text-gray-200">${rkLive != null ? `第 ${rkLive} 百分位` : (Number.isFinite(+b.pct) ? `第 ${Math.round(+b.pct)} 百分位` : '—')}</b>(0 = 歷史最低本益比)・分布統計至 ${this._dW(b.d) || '—'}
-                ${gap > 10 ? `<div class="text-[10px] text-amber-300/80 mt-0.5">⚠️ 分布統計日(${this._dW(b.d) || '—'})的 PE 是 ${f(bandPe, 1)}x、那天算的位階是第 ${Number.isFinite(+b.pct) ? Math.round(+b.pct) : '—'} 百分位;今日官方 ${f(C.pe, 1)}x(差 ${gap.toFixed(0)}%)—— 上面的位階是用今天的價現算的</div>` : ''}</div>
+                <div class="text-[10px] text-gray-400 mb-1.5">現在本益比 <b class="font-mono text-gray-200">${f(C.pe, 1) ? f(C.pe, 1) + 'x' : '—'}</b>(${C.peSrc})在它自己近 3 年的位階:<b class="font-mono text-gray-200">${rkLive != null ? `第 ${rkLive} 百分位` : (Number.isFinite(+b.pct) ? `第 ${Math.round(+b.pct)} 百分位` : '—')}</b>(0 = 歷史最低本益比)・分布統計至 ${this._dW(b.d) || '—'}
+                ${gap > 10 ? `<div class="text-[10px] text-amber-300/80 mt-0.5">⚠️ 分布統計日(${this._dW(b.d) || '—'})的 PE 是 ${f(bandPe, 1)}x、那天算的位階是第 ${Number.isFinite(+b.pct) ? Math.round(+b.pct) : '—'} 百分位;今日官方 ${f(C.pe, 1) ?? '—'}x(差 ${gap.toFixed(0)}%)—— 上面的位階是用今天的價現算的</div>` : ''}</div>
                 ${this._rpPxTableHtml(C.valRows, C.pC, C.pe)}
-                <div class="text-[10px] text-gray-500 mt-1">${C.peer ? `同業中位 PE 來自 industry_pe(上市 33 大類)` : `同業中位 PE:${C.indK ? '本站沒有這一類的中位數' : '上櫃無官方產業分類(本站 industry_pe 只涵蓋上市 33 類)'}`}</div>
+                <div class="text-[10px] text-gray-500 mt-1">${C.peer ? `同業中位 PE 來自 industry_pe(33 大類)${C.otc ? ' ・⚠️ 這一檔是上櫃:分類對得上,但那個中位數<b>只用上市股算的</b>' : ''}` : `同業中位 PE:${C.indK ? '本站沒有這一類的中位數' : '本站沒有這一檔的產業分類'}`}</div>
                 <div class="mt-2 bg-[#0d1117] border border-[#21262d] rounded p-2">
                     <div class="text-[10px] text-gray-300 font-bold">🔁 反查:要到某個價位,市場得給它幾倍?</div>
                     <div class="flex items-center gap-1.5 mt-1"><input id="rpRevIn" type="number" inputmode="decimal" placeholder="例如 250" class="flex-1 min-w-0 bg-[#161b22] border border-[#30363d] rounded px-2 py-1 text-[11px] font-mono text-gray-100">
@@ -23070,7 +23085,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             : (C.valRows && C.band && p25 != null && pMed != null && p75 != null)
                 ? `估值帶 <b class="font-mono text-gray-200">${f(p25, 1)} ~ ${f(p75, 1)}</b> 元(它自己近 3 年第 25~75 百分位)・中位 <b class="font-mono text-gray-200">${f(pMed, 1)}</b> ・現價 ${f(C.pC, 1)}${rkNow != null ? ` = 第 <b class="text-gray-200">${rkNow}</b> 百分位` : ''}${pPeer != null ? ` ・同業給法 ${f(pPeer, 1)}` : ''}`
                 : (C.valRows && C.band && Number.isFinite(+C.band.pct))
-                    ? `本益比 ${f(C.pe, 1)}x ・落在自己近 3 年的第 <b class="text-gray-200">${Math.round(+C.band.pct)}</b> 百分位(0 = 歷史最低本益比)・${C.valRows.length} 個歷史對照價`
+                    ? `本益比 ${f(C.pe, 1) ?? '—'}x ・落在自己近 3 年的第 <b class="text-gray-200">${Math.round(+C.band.pct)}</b> 百分位(0 = 歷史最低本益比)・${C.valRows.length} 個歷史對照價`
                     : (C.ae ? `年化 EPS ${f(C.ae.eps, 2)} 元,但本站沒有這檔近 3 年的本益比分布` : '本站沒有季 EPS,算不出年化 EPS');
         const vtitle = (C.valRows && C.band) ? '💰 §14・§15 它自己近 3 年的估值帶,現價落在哪' : '💰 §14・§15 估值對照(本站算不出來)';
         // 🔄 V76.1.8 循環股一行(法人真的在看、提示詞沒寫的那條):獲利頂峰時本益比最低 → 位階要反著讀
@@ -24066,7 +24081,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             `🗓️ ${this._dW(nr)} 前的月營收 —— 現在年增 ${C.yoy != null ? `<b class="${this._rpDir(C.yoy)}">${this._rpPct(C.yoy)}</b>` : '本站沒有'},看它有沒有轉向`,
             nf ? `📑 ${this._dW(nf[0])} 前的${nf[1]}財報 —— 現在毛利率 ${C.gm != null ? `<b>${f(C.gm, 1)}%</b>` : '本站沒有'},看 §4 旗標有沒有新增` : '📑 下一次財報',
             `🏛️ 法人 20 日方向 —— 現在外資 ${(C.s20 && C.s20.hasInst) ? `<b class="${this._rpDir(C.s20.foreign)}">${Math.round(C.s20.foreign).toLocaleString()} 張</b>` : '本站沒有'}`,
-            rk ? `🏭 族群名次 —— 現在「${this._escHtml(ind0)}」在 ${rk.m} 個產業裡排第 <b>${rk.n}</b>(sector_rotation_probe:避開最弱的板塊比追最強的更有價值)` : '🏭 族群名次(上櫃無官方產業分類)',
+            rk ? `🏭 族群名次 —— 現在「${this._escHtml(ind0)}」在 ${rk.m} 個產業裡排第 <b>${rk.n}</b>(sector_rotation_probe:避開最弱的板塊比追最強的更有價值)` : '🏭 族群名次(本站沒有這一檔的產業分類)',
         ];
         return `<div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">🗓️ §12 接下來的事件</div>${rows.join('')}
             <div class="text-[10px] text-gray-500 mt-0.5 leading-snug">calendar_stock_probe(37 種行事曆日):<b>方向 0 個成立、波動成立</b> → 這幾天前後波動大,⛔ 不預設漲跌。</div>
@@ -24111,7 +24126,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     _reportFacts(sym) {
         const C = (this._rpLast && String(this._rpLast.sym) === String(sym)) ? this._rpLast : null;
-        const F = (x, d = 1) => Number.isFinite(+x) ? (+x).toFixed(d) : '—';
+        const F = (x, d = 1) => (x != null && x !== '' && Number.isFinite(+x)) ? (+x).toFixed(d) : '—';   // 🚨 V77.0.2 `+null === 0`
         const GL = this._RP_GLOSSARY;   // 📖 V76.3.9 每個數字附一句白話 —— ⛔ 跟自己畫的圖同一份(測試 ⓧ)
         const b = C && C.band;
         const MA = this._rpMaLevels();
@@ -24130,7 +24145,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const IF = this._rpIndustryFacts(sym);
         const rk = IF.rk;
         const rows = C && C.valRows ? C.valRows.map(([k, v]) => `${k.replace(/^⭐ /, '')} → ${F(v)} 元`).join(' / ') : '無資料(虧損或無 PE 歷史)';
-        const peerTxt = C && Number.isFinite(+C.peer) ? `${F(C.peer)}x` : (C && C.indK ? '無資料' : '上櫃無官方產業分類');
+        const peerTxt = C && Number.isFinite(+C.peer) ? `${F(C.peer)}x${C.otc ? '(⚠️ 這一檔是上櫃,但這個中位數只用上市股算的)' : ''}` : (C && C.indK ? '無資料' : '本站沒有這一檔的產業分類');
         // 🏷️ V76.3.7 上櫃股在官方產業表(industry_map / stock_names 第二欄)裡本來就是空的(5483 中美晶實測)
         //   → 以前印「未分類」,外部 AI 就照抄「產業別:未分類」。⭐ 退回本站的**題材標籤**,⛔ 但名字要不同
         //   (題材 ≠ 官方產業,同名不同義是本專案犯最多次的錯)。
@@ -24148,7 +24163,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         L.push(`- 收盤價:${C ? F(C.pC, 2) : '—'} 元(當日 ${C ? F(C.chg, 2) : '—'}%,近20日 ${C ? F(C.chg20) : '—'}%;K 線 ${C ? C.kDate : '—'})`);
         L.push(`- 股價位階(近 250 日 ${pp ? `${F(pp.lo, 1)}~${F(pp.hi, 1)}` : '—'}):${pp && pp.pos != null ? Math.round(pp.pos) + '%' : '—'}${pp && pp.dd != null ? ` ・距一年高點 ${F(-Math.abs(pp.dd), 1)}%` : ''} ・白話:${GL['價格位置']}`);
         L.push(`- 年化EPS(${C && C.ae ? C.ae.src : '無資料'},⛔ 不是分析師預估):${C && C.ae ? F(C.ae.eps, 2) : '—'} 元`);
-        L.push(`- 現在本益比:${C ? F(C.pe) : '—'}x(白話:${GL['本益比']}) ・ 股價淨值比:${C ? F(C.pb, 2) : '—'}(白話:${GL['股價淨值比']}) ・ 殖利率:${C ? F(C.yld, 2) : '—'}%(白話:${GL['殖利率']})`);
+        L.push(`- 現在本益比:${(C && +C.pe > 0) ? F(C.pe) + 'x' : ((C && C.ae && +C.ae.eps < 0) ? '—(公司在虧損 → 沒有本益比,⛔ 不可以自己算一個)' : '—')}(白話:${GL['本益比']}) ・ 股價淨值比:${C ? F(C.pb, 2) : '—'}(白話:${GL['股價淨值比']}) ・ 殖利率:${C ? F(C.yld, 2) : '—'}%(白話:${GL['殖利率']})`);
         L.push(`- 估值基期(PE 在自己近3年的位階,0=最便宜):${b && Number.isFinite(+b.pct) ? Math.round(+b.pct) + '%' : '—'}${b && b.d ? `(統計至 ${b.d})` : ''}${C && C.cyc ? ' ・⚠️ 官方分類為循環股' : ''}`);
         L.push(`- 歷史估值對照價位(年化EPS × 它自己近3年給過的本益比):${rows}`);
         L.push(`- 同業中位 PE:${peerTxt}`);
@@ -24276,7 +24291,7 @@ ${this._reportFacts(sym)}
    那條線就叫「**你的出場線**」;它怎麼算的使用者不需要知道,寫了只會看不懂。
 8. 估值對照那一條尺,**一定要按「價格由小到大」排**,而且**同業中位那一格也要一起排進去**
    (⛔ 不可以把它固定放最後 —— 實測它的價格常常夾在中間,放最後整排就看起來壞掉)。
-   ⚠️ 同業中位若本站寫「無資料 / 上櫃無官方產業分類」→ **那一格整個不要畫**,⛔ 不可畫成「PE 0.0x」。
+   ⚠️ 同業中位若本站寫「無資料 / 本站沒有這一檔的產業分類」→ **那一格整個不要畫**,⛔ 不可畫成「PE 0.0x」。
 9. 本益比寫「現在的」。要寫預估本益比,必須標「預估」兩個字並寫出用哪一年的 EPS。
 9b. 🚨 **⛔ 不可以自己下「位階偏高 / 偏低」這種判語** —— 位階是下面給你的**數字**,
    幾 % 就寫幾 %。實測犯過:數字是 38%(中間偏低)、標題卻寫「當前股價位階偏高」,自己跟自己打架。
@@ -24325,7 +24340,7 @@ ${this._reportFacts(sym)}
      大盤是「風險」→ 琥珀三階(越亮越安全)+ ✅⚠️⛔;基本面、預期是「位置」→ 天藍 + 強/中/弱。⛔ **不可以加總成一個總分**。
 - ④ 估值:四格(本益比 / 股價淨值比 / 殖利率 / 估值基期)+ 底下「對照價位」——
      🚨 **跟 ② 一樣畫成「直的」價格軸**(按價格高低排在對應高度,⛔ 不是等距清單),現價琥珀插在中間;
-     同業中位若本站寫「無資料 / 上櫃無官方產業分類」→ **那一格整個不要畫**,⛔ 不可畫成「PE 0.0x」)
+     同業中位若本站寫「無資料 / 本站沒有這一檔的產業分類」→ **那一格整個不要畫**,⛔ 不可畫成「PE 0.0x」)
 - ⑤ 基本面:四格(最新月營收 / 年增 / 累計年增 / 毛利率)+ 財報三表四格(存貨天數 / 自由現金流近4季 / ROE近4季 / 淨利率);
      那一行有 ⚠️ 面額變更註記 → ROE、淨利率兩格就是「—」,把警語原文印出來。
 - ⑥ 籌碼:四格(外資近5日 / 投信近5日 / 外資近20日 / 投信近20日)+ 四格(千張大戶 / 散戶 / 融資追繳壓力區 / 距現價)
@@ -24614,9 +24629,10 @@ ${this._reportFacts(sym)}
             g.beginPath(); g.moveTo(x + r, yy); g.arcTo(x + w, yy, x + w, yy + h, r); g.arcTo(x + w, yy + h, x, yy + h, r); g.arcTo(x, yy + h, x, yy, r); g.arcTo(x, yy, x + w, yy, r); g.closePath(); g.fill(); };
         const line = (yy, x0 = PAD, x1 = W - PAD) => { if (!paint) return; g.strokeStyle = S.line; g.lineWidth = 1; g.beginPath(); g.moveTo(x0, yy); g.lineTo(x1, yy); g.stroke(); };
         const wrapRows = (str, size, maxW) => { const rows = []; let ln = ''; for (const ch of String(str)) { if (ln && mt(ln + ch, size) > maxW) { rows.push(ln); ln = ch; } else ln += ch; } if (ln) rows.push(ln); return rows; };
-        const num = (v, d = 2) => Number.isFinite(+v) ? (+v).toFixed(d) : '—';
-        const pct = v => Number.isFinite(+v) ? `${+v >= 0 ? '+' : ''}${(+v).toFixed(1)}%` : '—';
-        const lot = v => Number.isFinite(+v) && C.pC > 0 ? `一張 ${(+v - C.pC) >= 0 ? '+' : '−'}${Math.round(Math.abs((+v - C.pC) * 1000)).toLocaleString()} 元` : '';
+        // 🚨 V77.0.2 `+null === 0` → 舊寫法把「沒有這個數字」印成 `0.00`(6706 的本益比實測印成 `0.0x`)
+        const num = (v, d = 2) => (v != null && v !== '' && Number.isFinite(+v)) ? (+v).toFixed(d) : '—';
+        const pct = v => (v != null && v !== '' && Number.isFinite(+v)) ? `${+v >= 0 ? '+' : ''}${(+v).toFixed(1)}%` : '—';
+        const lot = v => (v != null && v !== '' && Number.isFinite(+v)) && C.pC > 0 ? `一張 ${(+v - C.pC) >= 0 ? '+' : '−'}${Math.round(Math.abs((+v - C.pC) * 1000)).toLocaleString()} 元` : '';
         // 🃏 V76.4.1 卡片改成**無框分段**:琥珀節號 + 標題 + 一條細分隔線;body(yy) 要回傳用掉的高度
         //   使用者:「設計上一定要有框框嗎?沒有框框可以放的東西比較多」。
         //   ⭐ 判準(⛔ 全 App 通用):**框如果在講事情就留,只是把東西「圍起來」的就拿掉**。
@@ -24778,7 +24794,11 @@ ${this._reportFacts(sym)}
             // ── ② 關鍵價位 ── 🚨 距現價 % ⛔ 不可用紅綠:它講的是「位置」不是「漲跌」(燈號鐵則)
             if (lv.length) card('關鍵價位(由高到低)', (yy, x0, x1) => priceLadder(lv, yy, x0, x1), '▲ 在上 ・▼ 在下 ・左邊 = 現價的位置');
             // ── ③ 五個面向 ── 🎨 量條顏色照 _GAUGE_SPEC 的 kind:方向類紅綠 / 大盤(風險)琥珀三階 / 位置類天藍
-            if (dims.length) card('五個面向(0~100 ・越右越有底氣)', (yy, x0, x1) => {
+            // 🚨 V77.0.2 標題的數字**跟著實際列數走**(⛔ 不可寫死「五個」)——
+            //   使用者 2026-09-15 截圖:標題寫「五個面向」但只列出 4 條(6706 是虧損股 → 沒有本益比 →
+            //   🎯 預期算不出來,那是**對的**);HTML 版 V76.0.8 早就改動態了,⛔ 只有這張海報沒跟上(陷阱 #37)。
+            const _gm = this._gaugeMiss(sym, dims);
+            if (dims.length) card(`${dims.length} 個面向(0~100 ・越右越有底氣)`, (yy, x0, x1) => {
                 let h = 0;
                 for (const d of dims) {
                     const sp = this._GAUGE_SPEC[d.name] || { kind: 'pos', lo: '弱', hi: '強' };
@@ -24798,12 +24818,15 @@ ${this._reportFacts(sym)}
                     if (sp.tip) wrapRows(sp.tip, 14, 160).slice(0, 2).forEach((r, j) => txt(r, x0, yy + h + 18 + j * 17, 14, S.dim, '700'));
                     h += 68;
                 }
+                // 🧭 少於 5 格時一定要說出**為什麼**(⛔ 不可讓使用者自己猜「是不是壞掉」)——
+                //    文字整段轉述共用的 _gaugeMiss,⛔ 不在這裡另寫一份判斷(不產生第二份真相)
+                if (_gm) { h -= 4; wrapRows(_gm.text, 15, x1 - x0).slice(0, 2).forEach((r, j) => txt(r, x0, yy + h + j * 19, 15, S.dim, '700')); h += 19 * Math.min(2, wrapRows(_gm.text, 15, x1 - x0).length) + 6; }
                 return h - 10;
             }, '⛔ 不加總成一個總分');
             // ── ④ 估值 + 對照價位 ──
             card('估值(現在)', (yy, x0, x1) => {
-                let h = cells([['本益比', Number.isFinite(+C.pe) ? num(C.pe, 1) + 'x' : '—'], ['股價淨值比', num(C.pb, 2)],
-                                ['殖利率', Number.isFinite(+C.yld) ? num(C.yld, 2) + '%' : '—'],
+                let h = cells([['本益比', (+C.pe > 0) ? num(C.pe, 1) + 'x' : ((C.ae && +C.ae.eps < 0) ? '—(虧損)' : '—')], ['股價淨值比', num(C.pb, 2)],
+                                ['殖利率', (C.yld != null && Number.isFinite(+C.yld)) ? num(C.yld, 2) + '%' : '—'],
                                 ['估值基期', (C.band && Number.isFinite(+C.band.pct)) ? Math.round(+C.band.pct) + '%' : '—']], yy, x0, x1);
                 if (val.length) {
                     line(yy + h + 2, x0, x1); h += 30;
@@ -24891,14 +24914,53 @@ ${this._reportFacts(sym)}
     },
     _rpOwnSave(sym) {
         const cv = document.getElementById('rpOwnCv');
-        if (!cv) return;
+        if (!cv) { this.showToast?.('⚠️ 圖還沒畫好,請先按「🔄 重畫」'); return; }
+        this._savePng(cv, `${this.getStockName(sym) || sym}_${sym}_${String(this._rpLast && this._rpLast.kDate || '').replace(/\//g, '-')}.png`);
+    },
+    // 💾 V77.0.2 存檔的**唯一入口**(⛔ 全 App 只有這一份)
+    //   🚨 舊寫法:`a.href = cv.toDataURL(); a.click(); a.remove()` 然後**無條件**跳「已存成圖片」——
+    //      ① iOS Safari / PWA 對 `<a download>` 的 data: URL 基本不支援
+    //      ② `a.click()` 不 throw、也不回報結果 → 檔案沒落地卻照樣說成功(使用者回報「壞掉、沒有作用」)
+    //      ③ `a.remove()` 同步緊接在 click 後,連緩衝都沒有
+    //   ⭐ 而備份那條路(V69.6.1 分享 / V70.0.1 內建瀏覽器特判 / setTimeout 200)**早就做對了**,
+    //      只是沒接過來 —— 陷阱 #37。這支就是把那三層抽出來共用。
+    //   ⛔ 自己不跳 toast:回 Promise<'shared'|'downloaded'|'inapp'|'failed'>,文案由呼叫端決定。
+    async _saveBlob(blob, fileName, opts = {}) {
+        if (!blob) return 'failed';
+        // 📵 LINE/FB/IG 內建瀏覽器會擋檔案下載(跳「不支援檔案下載功能」)→ ⛔ 不硬試
+        if (!opts.forceDownload && /Line\/|FBAV|FB_IAB|Instagram|MicroMessenger/i.test(navigator.userAgent || '')) return 'inapp';
+        if (opts.shareFirst !== false) {
+            try {
+                const f = (typeof File !== 'undefined')
+                    ? new File([blob], fileName, { type: blob.type || 'application/octet-stream' }) : null;
+                if (f && navigator.canShare && navigator.canShare({ files: [f] }) && navigator.share) {
+                    try { await navigator.share({ files: [f], title: opts.title || fileName, text: opts.text || '' }); return 'shared'; }
+                    catch (err) { if (err && err.name === 'AbortError') return 'shared'; }   // 使用者自己取消,⛔ 不算失敗
+                }
+            } catch (_) { /* 不支援分享 → 往下走下載 */ }
+        }
         try {
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.download = `${this.getStockName(sym) || sym}_${sym}_${String(this._rpLast && this._rpLast.kDate || '').replace(/\//g, '-')}.png`;
-            a.href = cv.toDataURL('image/png');
-            document.body.appendChild(a); a.click(); a.remove();
-            this.showToast?.('💾 已存成圖片(手機若沒反應請長按圖片選「儲存影像」)', 'info');
-        } catch (_) { this.showToast?.('⚠️ 存不起來 → 請長按圖片選「儲存影像」'); }
+            a.href = url; a.download = fileName;
+            document.body.appendChild(a); a.click();
+            // ⚠️ 200ms 才清理 —— 同步 remove 在 Safari 上會讓下載中斷(備份那支 V69.6.1 已驗過)
+            setTimeout(() => { try { a.remove(); URL.revokeObjectURL(url); } catch (_) {} }, 200);
+            return 'downloaded';
+        } catch (e) { console.warn('[save] 下載失敗', e); return 'failed'; }
+    },
+    // 🖼️ canvas → 圖片檔。⛔ 新增任何「把圖存下來」的按鈕一律走這支,別再自己寫 toDataURL + a.click
+    _savePng(cv, fileName) {
+        const done = (r) => {
+            if (r === 'shared') this.showToast?.('✅ 已開啟分享 → 選「儲存影像」就進相簿', 'info');
+            else if (r === 'downloaded') this.showToast?.('✅ 圖片已下載', 'info');
+            else if (r === 'inapp') this.showToast?.('📵 這個內建瀏覽器不能下載檔案 → 請長按圖片選「儲存影像」,或右下「⋯」用外部瀏覽器開啟', 'info', 6500);
+            else this.showToast?.('⚠️ 存不起來 → 請長按圖片選「儲存影像」', 'info', 6500);
+        };
+        try {
+            if (cv && cv.toBlob) { cv.toBlob(b => { this._saveBlob(b, fileName, { title: fileName }).then(done).catch(() => done('failed')); }, 'image/png'); return; }
+            done('failed');
+        } catch (_) { done('failed'); }
     },
     _rpImgHtml(C) {
         const sym = String(C.sym), o = this._rpImg(sym);
@@ -29664,7 +29726,7 @@ ${lightExplain[queryType]}
     async _seedXrayFromCache(sym) {
         try {
             if (!sym || this._isEtfSym(String(sym))) return;   // ETF 沒有自己的財報 → 這兩格本來就不該有,⛔ 不硬給
-            const [fc, yg] = await Promise.all([this._loadFundCache(), this._loadFundYoyGm()]);
+            const [fc, yg] = await Promise.all([this._loadFundCache(), this._loadFundYoyGm(), this._loadFinSlim(sym)]);   // 🩸 V77.0.2 第三個只為了暖 `_finSlimCache`(虧損封頂要同步讀得到)
             if (String(this.currentSymbolId) !== String(sym)) return;   // 切股了就別寫(陷阱 #19)
             // `_xrayMetrics` 是 `fetchFundamentalAnalysis` 的地盤:是這一檔的就直接補進去(之後財報回來會用更齊的資料再算),
             // 不是的話就用一份**本地副本**算分數即可,⛔ 不去動它(免得兩邊搶同一個物件)。
@@ -29860,7 +29922,6 @@ ${lightExplain[queryType]}
                 }
             } catch (_) {}
             const haveMineEPS       = Array.isArray(localFund.quarterly_eps) && localFund.quarterly_eps.length > 0;
-            const haveMineYoY       = localFund.revenue_yoy != null;
             const haveMineGM        = typeof localFund.gross_margin_trend === 'string' && localFund.gross_margin_trend.length > 0;
             const haveMinePayout    = localFund.payout_ratio != null;
             const haveMineLatestRev = localFund.latest_revenue != null && Number(localFund.latest_revenue) > 0;
@@ -30021,8 +30082,11 @@ ${lightExplain[queryType]}
                 latestYoy = ((latestRev.revenue - lastYearRev.revenue) / lastYearRev.revenue) * 100;
             }
         }
-        // YoY — FinMind 仍空就用採礦值（採礦端已用 4 token 輪動,可靠性高得多）
-        if (latestYoy == null && haveMineYoY) latestYoy = Number(localFund.revenue_yoy);
+        // YoY — FinMind 仍空就用採礦值。
+        // 🚨 V77.0.2 這裡本來是 `latestYoy = localFund.revenue_yoy`(**個股籌碼檔**),
+        //    但 `_revYoY` 把籌碼檔排在**最後**一位 → 觀察清單股會拿到比 `fund_yoy_gm` 舊的那個數字,
+        //    跟報告頁第 5 節顯示的不一樣(使用者鐵則:同一個名詞只能有一個數字)。
+        //    → 整條 fallback 交給下面那個 `_revYoY` 區塊(它的第三個參數就是 localFund),⛔ 這裡不再自己排一套。
 
         // Dividend: Yield & Payout (FinMind uses PascalCase field names)
         const divData = (divRes.data||[]).sort((a,b)=>a.date>b.date?1:-1);
@@ -30085,7 +30149,8 @@ ${lightExplain[queryType]}
                 if (_fcv) {
                     if (pe == null && typeof _fcv.pe === 'number' && _fcv.pe > 0) { pe = _fcv.pe; localFund.pe_source = 'TWSE_TTM'; }
                     if (yieldRate == null && typeof _fcv.yield_rate === 'number') yieldRate = _fcv.yield_rate;
-                    if (latestYoy == null && typeof _fcv.rev_yoy === 'number') latestYoy = _fcv.rev_yoy;
+                    // 🚨 V77.0.2 這裡**不再**自己取 rev_yoy —— 年增一律交給 _revYoY(見下方),
+                    //   舊版在這裡先吃 fundamentals_cache,而報告頁的 _revYoY 是 fund_yoy_gm 先 → 兩個數打架。
                 }
             }
         } catch (_) {}
@@ -30097,9 +30162,25 @@ ${lightExplain[queryType]}
                 const _yg = await this._loadFundYoyGm();
                 const _v = _yg && _yg[sym];
                 if (_v) {
-                    if (latestYoy == null && typeof _v.yoy === 'number') latestYoy = _v.yoy;
                     if (gmTrendStr == null && _v.gmt) gmTrendStr = _v.gmt;   // gmt 字串自帶 ↑↓ 箭頭,顯示端自行解析;不動 gmTrend(那是 pp 差值,語意不同)
                 }
+            }
+        } catch (_) {}
+
+        // 🚨 V77.0.2 營收年增**一律交給 `app._revYoY` 決定**(⛔ 這裡不再自己排一套)
+        //   舊版:這支先吃 fundamentals_cache 的 `rev_yoy`、fund_yoy_gm 排在後面;
+        //         而報告頁走的 `_revYoY` 剛好**相反**(fund_yoy_gm 先)。
+        //   → 同一檔的「年增」在**基本面分數**與**報告頁第 5 節**是兩個數:
+        //     6706 惠特的分數吃到 2026-07-17 的 **−26.1%**、畫面卻印最新的 **+120.5%**
+        //     → `_xrayScoreOf` 把它打成 **0 分**(使用者:「為何沒有基本面」)。
+        //   ⭐ `_revYoY` 的註解自己就寫了「兩處優先序相反」這個 bug,只是這一處沒接上 —— 陷阱 #37。
+        //   ⚠️ FinMind 即時(上面的 latestRev)仍然最優先 —— 它比夜間採礦新,這裡只補「還是 null」的情況。
+        try {
+            if (latestYoy == null) {
+                const _fcAll2 = await this._loadFundCache();
+                const _yg2 = await this._loadFundYoyGm();
+                const _r2 = this._revYoY(_yg2 && _yg2[sym], _fcAll2 && _fcAll2[sym], localFund);
+                if (Number.isFinite(+_r2.v)) latestYoy = +_r2.v;
             }
         } catch (_) {}
 
@@ -30622,7 +30703,7 @@ ${lightExplain[queryType]}
                 const revStr = rev >= 1e8 ? `${(rev/1e8).toFixed(1)} 億`
                              : rev >= 1e4 ? `${(rev/1e4).toFixed(0)} 萬`
                              : `${rev.toFixed(0)}`;
-                const yoy = haveMineYoY ? Number(localFund.revenue_yoy) : null;
+                const yoy = Number.isFinite(+latestYoy) ? +latestYoy : null;   // 🚨 V77.0.2 同上:⛔ 不可在同一畫面出現第二個「年增」
                 const yoyStr = yoy == null ? '' : ` <span class="${yoy>0?'text-red-400':yoy<0?'text-green-400':'text-yellow-300'}">YoY ${yoy>0?'+':''}${yoy.toFixed(1)}%</span>`;
                 rvTrendEl.innerHTML = `<div class="text-blue-300/90 text-xs text-center px-3" style="line-height:1.6;padding-top:60px">📊 最新月營收 <b class="text-white">${revStr}</b>${yoyStr}<br><span class="text-[10px] text-amber-300/80">🔄 12 個月柱狀圖待採礦更新</span><br><span class="text-[10px] text-gray-500">週一 16:30 自動補資料</span></div>`;
             } else {
@@ -34228,6 +34309,23 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     //   ⛔ 只讀 `_lastGauge.dims`(各卡自己算好的分數);⛔ 不算任何新東西;⛔ 不顯示融合總分
     //      (權重 34/24/22/14/6 沒驗證過 —— 陷阱 #38);⛔ 不下指令(要怎麼做永遠只看主卡那一句)。
     //   燈號鐵則:技術/籌碼是「方向」才准紅綠;大盤是「安全/危險」→ ✅⚠️⛔;基本面/預期是位置 → 灰階 ▼。
+    // 🧭 V77.0.2 「缺哪幾格 + 為什麼」**全 App 只有這一份** —— 儀表列與 📈 個股數據速覽(canvas)共用。
+    //   🚨 為什麼抽出來:V76.0.8 已經為了同一句抱怨(「五個面向?我只看到3個」)把 HTML 版改成動態,
+    //      ⛔ 但**海報那張的標題還是寫死「五個面向」**,所以使用者 2026-09-15 又問了一次(陷阱 #37)。
+    //   回 `{ names, lbl, text, etf }`;⛔ 沒缺就回 null(不留空殼)。
+    _gaugeMiss(sym, dims) {
+        const ALL = ['技術', '大盤', '籌碼', '基本面', '預期'];
+        const ICON = { '技術': '📈 技術', '大盤': '🌍 大盤', '籌碼': '📊 籌碼', '基本面': '🧬 基本面', '預期': '🎯 預期' };
+        const names = (Array.isArray(dims) ? dims : []).map(d => d && d.name);
+        const miss = ALL.filter(n => !names.includes(n));
+        if (!miss.length) return null;
+        const etf = (() => { try { return !!this._isEtfSym?.(sym); } catch (_) { return false; } })()
+            && miss.every(n => n === '基本面' || n === '預期');
+        const lbl = miss.map(n => ICON[n] || n).join('・');
+        return { names: miss, lbl, etf,
+            text: etf ? `${lbl}：ETF 是一籃子股票,沒有自己的財報 → 這兩格本來就不會有,不是壞掉。`
+                      : `${lbl}：還在讀財報 / 這檔沒有這份資料,有了會自己補上來。` };
+    },
     _GAUGE_SPEC: {
         // ⚠️ V76.0.8 左右白話字一律 **2 個字以內** —— 欄寬寫死 26px 才排得整齊(使用者:「排版要調整整齊」);
         //    完整說法放 tip(整列的 title)與卡片底部那句,⛔ 不是刪掉。
@@ -34252,16 +34350,8 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 🚨 V76.0.8 標題的數字**跟著實際列數走**(⛔ 不可寫死「五個」—— 使用者:「五個面向?我只看到3個」)。
         //    少於 5 格時一定要說出**為什麼**:ETF 本來就沒有基本面/預期(fetchFundamentalAnalysis 對 ETF 直接 early-return),
         //    一般股則是財報還在讀(讀完會自己補上,⛔ 不用手動重整)。
-        const names = g.dims.map(d => d.name);
-        const miss = ['技術', '大盤', '籌碼', '基本面', '預期'].filter(n => !names.includes(n));
-        let missNote = '';
-        if (miss.length) {
-            const isEtf = (() => { try { return !!this._isEtfSym?.(sym); } catch (_) { return false; } })();
-            const lbl = miss.map(n => ({ '技術': '📈 技術', '大盤': '🌍 大盤', '籌碼': '📊 籌碼', '基本面': '🧬 基本面', '預期': '🎯 預期' })[n] || n).join('・');
-            missNote = isEtf && miss.every(n => n === '基本面' || n === '預期')
-                ? `<div class="text-[8px] text-gray-500 leading-snug" style="margin-top:5px">${lbl}：ETF 是一籃子股票,沒有自己的財報 → 這兩格本來就不會有,不是壞掉。</div>`
-                : `<div class="text-[10px] text-gray-500 leading-snug" style="margin-top:5px">${lbl}：還在讀財報 / 這檔沒有這份資料,有了會自己補上來。</div>`;
-        }
+        const _mi = this._gaugeMiss(sym, g.dims);
+        const missNote = _mi ? `<div class="text-[${_mi.etf ? 8 : 10}px] text-gray-500 leading-snug" style="margin-top:5px">${_mi.text}</div>` : '';
         return `<div class="bg-[#0d1117] border border-[#30363d] rounded-lg" style="padding:8px 10px" data-gaugestrip="${sym}">
             <div class="mb-1.5" style="display:flex;align-items:center;justify-content:space-between"><span class="text-[11px] font-black text-gray-200" data-gaugen="${g.dims.length}">🧭 ${g.dims.length} 個面向一眼看</span>${badge}</div>
             <div style="display:flex;flex-direction:column;gap:7px">${rows}</div>${missNote}
@@ -35376,6 +35466,23 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // 🧬 V76.0.8 **純計分**(零 DOM)—— 從 `_renderXrayVerdict` 原封搬出,⛔ 一個門檻都沒改。
     //   為什麼要抽出來:那兩個分數本來要等五路 FinMind 回來才有,總覽的儀表列因此永遠只有 3 格。
     //   抽出來之後,採礦快取先餵一次與財報回來後那一次走的是**同一支函式** —— ⛔ 不可另寫一套估算(同名不同值)。
+    // 🩸 V77.0.2 **虧損封頂**(使用者明示:「修 bug + 虧損封頂」)—— 讀 `data/fin/{sym}.json`(`_loadFinSlim` 的快取,同步取用)。
+    //   為什麼要有這道:V77.0.2 把營收年增的優先序修對之後,6706 惠特會從 0 分變成約 57 分(「體質穩健」),
+    //   但它近 4 季 ROE −7.1%、最新一季 EPS −1.89 元、淨利率 −83.7% —— **那比原本的 0 分更誤導**。
+    //   ⛔ 不重配權重、⛔ 不動 `pillars < 2` 那道守門;只在「真的在虧錢」時把分數封頂,並把理由寫在卡上。
+    _lossCapOf(sym) {
+        try {
+            const d = this._finSlimCache && this._finSlimCache[String(sym)] && this._finSlimCache[String(sym)].data;
+            if (!d) return null;
+            const q = Array.isArray(d.q) && d.q.length ? d.q[d.q.length - 1] : null;
+            const bad = [];
+            if (Number.isFinite(+d.roe4) && +d.roe4 < 0) bad.push(`近 4 季 ROE ${(+d.roe4).toFixed(1)}%`);
+            if (q && Number.isFinite(+q.eps) && +q.eps < 0) bad.push(`最新一季 EPS ${(+q.eps).toFixed(2)} 元`);
+            if (!bad.length) return null;   // ⛔ 只認 ROE / EPS 這兩個(淨利率只當補充說明,⛔ 不單獨觸發)
+            if (q && Number.isFinite(+q.nm) && +q.nm < 0) bad.push(`淨利率 ${(+q.nm).toFixed(1)}%`);
+            return { cap: 0.30, why: bad.join(' ・ ') };
+        } catch (_) { return null; }
+    },
     _xrayScoreOf(m) {
         const has = v => v != null && Number.isFinite(+v);
         let score = 0, max = 0; const pos = [], neg = [], note = [];
@@ -35431,7 +35538,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const hasDiv = has(m.yield);
         const pillars = (hasProfit ? 1 : 0) + (hasVal ? 1 : 0) + (hasDiv ? 1 : 0);
         // ── 綜合判定 ──
-        const pct = max > 0 ? score / max : null;
+        let pct = max > 0 ? score / max : null;
+        // 🩸 V77.0.2 虧損封頂:公司在虧錢時,單一亮點(例如營收年增 +120%)⛔ 不可把它拱成「體質穩健」
+        const lossCap = this._lossCapOf(m.sym);
+        if (lossCap) {
+            neg.push(`${lossCap.why} → 公司還在虧錢,體質分已封頂 ${Math.round(lossCap.cap * 100)}`);
+            if (pct != null && pct > lossCap.cap) pct = lossCap.cap;
+        }
         let tone, verdict, act;
         if (pct == null || !hasProfit || pillars < 2) {
             tone = 'flat'; verdict = '⏳ 財報資料整備中';
@@ -35443,7 +35556,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         else if (pct >= 0.55) { tone = 'good'; verdict = '✅ 體質穩健'; act = '基本面中上,適合波段或存股。搭配 K 線決定進出、別追高。'; }
         else if (pct >= 0.35) { tone = 'warn'; verdict = '⚖️ 中性偏保守'; act = '亮點與隱憂並存,別只靠基本面 → 要有技術/籌碼加持才進,嚴設停損。'; }
         else { tone = 'bear'; verdict = '🚨 體質偏弱 / 偏貴'; act = '獲利或估值有警訊 → 不適合存股長抱;真要做只做短線價差,快進快出。'; }
-        return { score, max, pos, neg, note, hasProfit, hasVal, hasDiv, pillars, pct, tone, verdict, act };
+        return { score, max, pos, neg, note, hasProfit, hasVal, hasDiv, pillars, pct, tone, verdict, act, lossCap };
     },
     _renderXrayVerdict() {
         const box = document.getElementById('xrayVerdict');
@@ -47849,6 +47962,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         ],
         // ✅ 檢核清單:整條鏈要定期盯的事(對應 App 內已有的資料會標出來)
         chk: [
+            // 🌐 V77.0.2 補上「每天 3-5 分鐘」這一層 —— 使用者上傳的「海外訊號篇」清單指出這一格是空的。
+            //   ⭐ 三個都是本站**早就有**的資料(`macro_miner` 的 `tsmc_adr` / `sox` / `us10y_yield`),
+            //   而且已經做成盤前體檢分數(`premkt_probe` 實測 +0.574pp、6 年每年同方向)→ ⛔ 不做新卡,只補指路。
+            { f: '每天 3-5 分鐘', i: '台積電 ADR 收盤 vs 台北收盤的價差', s: 'ADR 大跌 = 隔天台積電開盤壓力', in: '🌏 全球大環境 → 盤前體檢(已計分)' },
+            { f: '每天 3-5 分鐘', i: '費城半導體 / 那斯達克收黑幾 %', s: '費半連 2 天跌 >2% = 電子股同步修正', in: '🌏 全球大環境 → 四雄卡(已計分)' },
+            { f: '每天 3-5 分鐘', i: '美國 10 年期公債殖利率 + 2/10 年利差', s: '殖利率急升 = 高本益比成長股先殺', in: '🌏 全球大環境 → 債市卡(已有倒掛判讀)' },
             { f: '每季', i: '四大 CSP Capex 指引 YoY 增速', s: '增速放緩 = 整條鏈降評風險', in: '📅 財經行事曆已收美股巨頭財報日' },
             { f: '每月 10 日', i: '台積電 + 四大 ODM 月營收', s: '連 2 月 MoM 轉負 = 拉貨降溫', in: '🚀 營收動能榜 / 個股基本頁有 YoY' },
             { f: '每季', i: '輝達財報 Data Center 營收 + 指引', s: '指引低於預期 = 台鏈同步修正', in: '📅 財經行事曆已收(附台股對應族群)' },

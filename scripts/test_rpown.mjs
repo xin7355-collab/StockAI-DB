@@ -167,6 +167,29 @@ const rep = await page.evaluate(() => {
     const warn = [...C.querySelectorAll('details')].filter(d => /border-l-amber/.test(d.className)).length;
     return { cw: C.clientWidth, walls: pick('rpWalls'), ruler: pr ? Math.round(pr.getBoundingClientRect().width) : null, lefts, warn };
 });
+{
+    // 💾c 🚨 **行為**驗證:讓下載真的失敗 → toast ⛔ 不可說成功
+    const t = await page.evaluate(async () => {
+        const A = window.app || app;
+        const said = [];
+        const origToast = A.showToast, origCOU = URL.createObjectURL, origShare = navigator.share;
+        A.showToast = (m) => { said.push(String(m)); };
+        URL.createObjectURL = () => { throw new Error('boom'); };
+        try { delete navigator.share; } catch (_) {}
+        const cv = document.createElement('canvas'); cv.width = 10; cv.height = 10;
+        // ⚠️ 先空跑一次 toBlob 暖機 —— 這一頁跑過完整 analyze,第一次 toBlob 會慢到超過斷言的等待時間
+        //   (⛔ 這一筆**不可**進 said,否則它會自己把「有沒有跳 toast」那條斷言餵飽 = 假綠燈)
+        try { await new Promise(res => { cv.toBlob(() => res()); setTimeout(res, 800); }); } catch (_) {}
+        A._savePng(cv, 'x.png');
+        await new Promise(r => setTimeout(r, 1200));
+        A.showToast = origToast; URL.createObjectURL = origCOU; if (origShare) navigator.share = origShare;
+        return said.join(' | ');
+    });
+    ck(t.length > 0, '💾c0 完全沒跳 toast → 這一條不算數(使用者會以為按鈕沒反應)');
+    ck(!/已存成|已下載|✅/.test(t),
+       `💾c 🚨 下載失敗時還跟使用者說成功了:「${t}」—— 這正是他回報「壞掉」的原因(toast 不可無條件跳)`);
+    ck(/長按圖片|存不起來/.test(t), `💾c2 失敗時沒告訴使用者可以怎麼辦:「${t}」`);
+}
 await browser.close();
 
 ck(shimBad.length === 0, `📄0 版面 shim 有規則沒生效(${shimBad.join('、')})→ ⛔ 底下的報告頁幾何全部不可信`);
@@ -350,6 +373,47 @@ ck(/沒有經過 AI|不是 AI 畫的/.test(fn + SRC), 'ⓕ2 沒有講清楚「�
 {
     ck(/AI 建議\(⛔ 沒有實測背書\)/.test(SRC), 'ⓙ 行事曆那段 AI 的「👉 怎麼做」沒有標明⛔ 沒有實測背書');
     ck(/37 種財經行事曆日/.test(SRC), 'ⓙ2 行事曆區塊沒把實測結論寫上去(方向 0 個成立,只有波動是真的)');
+}
+
+// ── 🧭 V77.0.2 「五個面向」標題不可寫死(使用者:「不是說有5個面向,為何只有4個」)──
+{
+    const dw = code.slice(code.indexOf('_rpDrawOwn(sym) {'), code.indexOf('_rpOwnSave(sym) {'));
+    ck(dw.length > 1000, '🧭a0 切不到 _rpDrawOwn → 這幾條不算數');
+    ck(!/card\('五個面向|card\("五個面向|card\(`五個面向/.test(dw),
+       '🧭a 海報的面向標題又被寫死成「五個面向」了 —— ⛔ 要跟著 dims.length 走(V76.0.8 已經為同一句抱怨修過 HTML 版)');
+    ck(/\$\{dims\.length\}\s*個面向/.test(dw), '🧭a2 標題沒有用 ${dims.length} 帶入實際列數');
+    ck(/_gaugeMiss\(/.test(dw),
+       '🧭b 海報沒有畫出「缺哪一格 + 為什麼」—— 少一格卻不說原因,使用者只會以為壞掉');
+    // ⛔ 不可自己再寫一份判斷(不產生第二份真相)
+    ck(!/技術['"]\s*,\s*['"]大盤/.test(dw), '🧭b2 海報自己抄了一份面向清單 → ⛔ 一律轉述 _gaugeMiss');
+    // ⚠️ 終點要**從起點之後**找 —— `_regaugeStrip(` 在檔案更前面就出現過(22862),直接 indexOf 會切出空字串
+    const _gi = code.indexOf('_gaugeStripHtml(sym) {');
+    const gs = code.slice(_gi, code.indexOf('_regaugeStrip(', _gi));
+    ck(gs.length > 200 && /_gaugeMiss\(/.test(gs), '🧭b3 儀表列沒有走同一支 _gaugeMiss → 兩邊會各講一套');
+}
+
+// ── 💾 V77.0.2 存成圖片(使用者回報「壞掉,沒有作用」)──────────────
+//   🚨 舊寫法用 `<a download>` + **data: URL**(iOS Safari/PWA 基本不支援),而且
+//      toast 是**無條件**跳的 → 檔案沒落地卻跟使用者說「已存成圖片」。
+//   ⭐ 釘的是用意:① 不可再自己寫一份下載 ② 三條路徑都在 ③ **失敗時不可說成功**
+{
+    const sv = code.slice(code.indexOf('_rpOwnSave(sym) {'), code.indexOf('async _saveBlob(blob, fileName, opts = {}) {'));
+    ck(sv.length > 50 && sv.length < 900, '💾a0 切不到 _rpOwnSave → 這幾條不算數(空過守門)');
+    ck(!/toDataURL|a\.click\(/.test(sv),
+       '💾a _rpOwnSave 又自己寫 toDataURL / a.click() 了 —— ⛔ 一律轉呼叫 _savePng(全 App 只有一份)');
+    ck(/_savePng\(/.test(sv), '💾a2 _rpOwnSave 沒有轉呼叫 _savePng');
+
+    const sb = code.slice(code.indexOf('async _saveBlob(blob, fileName, opts = {}) {'), code.indexOf('_savePng(cv, fileName) {'));
+    ck(sb.length > 400, '💾b0 切不到 _saveBlob → 這幾條不算數');
+    ck(/navigator\.canShare/.test(sb) && /navigator\.share/.test(sb),
+       '💾b _saveBlob 沒有「先試原生分享」那一層 —— iOS 存圖的正解就是它');
+    ck(/AbortError/.test(sb), '💾b2 使用者自己取消分享被當成失敗了(⛔ 那不是錯誤)');
+    ck(/Line\\\/|FBAV|FB_IAB|Instagram|MicroMessenger/.test(sb),
+       '💾b3 _saveBlob 少了 LINE/FB/IG 內建瀏覽器特判 —— 那些瀏覽器會擋下載,⛔ 不可硬試');
+    ck(/setTimeout\(/.test(sb), '💾b4 清理 <a> 沒有延遲 —— 同步 remove 在 Safari 會讓下載中斷');
+    // ⛔ 全 App 不可再有第 2、3 份下載寫法
+    const others = (code.match(/URL\.createObjectURL/g) || []).length;
+    ck(others <= 2, `💾b5 全檔還有 ${others} 處 URL.createObjectURL —— 下載寫法應該只剩 _saveBlob 一份(Worker 那處不算)`);
 }
 
 if (fail.length) { console.log('❌ RPOWN_FAIL'); fail.forEach(f => console.log('   ・' + f)); process.exit(1); }

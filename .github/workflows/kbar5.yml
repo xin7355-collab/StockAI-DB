@@ -1,0 +1,150 @@
+name: 📼 5 分 K 逐日累積 (kbar5)
+
+# 📼 收盤後跑一次:抓「當日成交量前 80」檔的 1 分 K,agg 成 5 分 K,
+#    逐日累積到**獨立分支 `kbar5`** 的 `kbar5/{YYYY-MM}.json.gz`。
+#
+# ⛔ 為什麼要有這支(V77.0.1 的結論,使用者 2026-09-14 明示「開始存分k」):
+#    12 條盤中口訣裡有 3 條非分 K 不可,而本 repo **一根分 K 都沒有存下來**
+#    → `api.kbars()` 只回溯 81~120 天,六關的「逐年同向 / 去最好年」天生過不了,
+#      而且每次重跑窗口都往後滑、兩次結果不會一樣。
+#
+# ⛔ 三個刻意的設計(理由寫在 kbar5_miner.py 檔頭,改之前先讀):
+#   ① 存**獨立分支 kbar5**,⛔ 不進 gh-pages(前端用不到它;gh-pages 有 1GB 上限)
+#      → 連帶完全避開陷阱 #41(daily_miner 的 orphan force-push 只吃 data/,碰不到別的分支)
+#   ② 按月分檔 + gzip:每天只重寫**當月那一檔**,⛔ 不是每天重傳整年
+#   ③ **收盤後跑一次就好,⛔ 不做盤中迴圈** —— kbars 收盤後一次給當天完整 1 分 K
+#      → ⛔ 不需要 intraday_window 那套節拍、⛔ 不吃排程配額
+#
+# 🚨 誰來觸發:**掛在 daily_miner 後面**(`workflow_run`),⛔ 不新開 cron。
+#    實測 45 支 workflow 裡排程進得來的只有 theme_news / daily_miner / fund_sweep / playbook_scan;
+#    tick_flow / stock_futures / macro_cron / news_express / insider_cron / rotation_probe 都是 **0 筆**。
+#    Cloudflare 免費版 cron 上限 5 個**已用滿** → 也不能加那邊。
+#    ⭐ 既有驗證過的前例:playbook_scan ← daily_miner(66 筆)。
+#    四條設計照 CLAUDE.md:host 名字**逐字一致** / host 實測跑得到 / cron 不刪當備援 / 只跟 host 的**排程**那一輪。
+#    ⏱️ daily_miner 台北 16:30 開跑、30-60 分跑完;收盤 13:30 → 一定拿得到當天完整分 K。
+#
+# ⚠️ **第一次要手動 Run 一次**(days 填 120)把過去約 80 個交易日灌進去。
+#    驗證⛔ 不可只看 Actions 綠燈(陷阱 #9)→ 要 `git show origin/kbar5:kbar5/2026-09.json.gz | wc -c`。
+#
+# ⚠️ 需 GitHub Secrets:SHIOAJI_API_KEY / SHIOAJI_SECRET_KEY(同 live_snapshot / tick_flow,已設好)
+
+on:
+  workflow_run:
+    workflows: ["🤖 每日籌碼採礦機 (平行宇宙版)"]
+    types: [completed]
+  schedule:
+    - cron: '23 10 * * 1-5'   # 台北 18:23(備援;刻意錯開整點)
+  workflow_dispatch:
+    inputs:
+      days:
+        description: '往回抓幾天(第一次回補填 120;平常留空 = 自動)'
+        required: false
+        default: ''
+
+# ⛔ 它**不碰 gh-pages / data**,只推自己的 kbar5 分支 → 不必跟 gh-pages-push 共用鎖。
+#    ⭐ 但要防「同一支自己疊在一起」(手動 Run + workflow_run 同時來)→ 自己一個 group。
+#    ⚠️ `cancel-in-progress: false`:回補那一輪跑很久,被新的一輪砍掉等於白跑
+#       (CLAUDE.md 鐵則:true 只有在「執行時間 ≪ 觸發間隔」時才安全,這裡不滿足)。
+concurrency:
+  group: kbar5-append
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  mine:
+    name: 📼 抓 5 分 K 並累積
+    runs-on: ubuntu-latest
+    # ⛔ 掛 workflow_run 之後要擋兩種情況:
+    #   ① 採礦失敗 → 那一輪不算數(雖然這支不讀 data/,但那代表當天環境有問題)
+    #   ② 採礦是被 **push 觸發**的(改 miner.py 一天可能好幾次)→ 只跟排程那一輪
+    # ⚠️ 手動 dispatch 與 cron 備援不受這個 if 影響(它們的 event 不是 workflow_run)
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'schedule')
+    timeout-minutes: 60
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝 shioaji
+        run: pip install "shioaji<1.7"   # 📌 1.7.0 移除 login(fetch_contract=) → 釘在 1.6.x 保留既有登入寫法
+
+      # 📚 kbar5 是**累積型**檔案 → 必須先從 kbar5 分支還原,否則每輪都從零開始
+      #    ⚠️ 用 git show 而不是 git checkout(後者會把檔案 stage 進 index 弄髒工作區,V49.4 教訓)
+      #    ⚠️ 必須驗非空(`git show` 失敗會留下 0 bytes 的檔 → 陷阱 #18/#20)
+      - name: 📚 還原既有月檔 (origin/kbar5 → kbar5/)
+        run: |
+          mkdir -p kbar5
+          git fetch origin kbar5 --depth=1 2>/dev/null || true
+          if git rev-parse --verify -q origin/kbar5 >/dev/null; then
+            for f in $(git ls-tree --name-only -r origin/kbar5 -- kbar5/ 2>/dev/null); do
+              if git show "origin/kbar5:$f" > "$f" 2>/dev/null && [ -s "$f" ]; then
+                echo "  ✅ $f $(wc -c < "$f") bytes"
+              else
+                rm -f "$f"; echo "  ⚠️ $f 還原失敗(當成沒有,這輪不會覆寫它)"
+              fi
+            done
+          fi
+          echo "📚 既有月檔 $(ls kbar5/*.json.gz 2>/dev/null | wc -l) 個"
+
+      # ⚠️ selftest 跟正式跑**故意寫在同一個 step** —— `check_workflow_paths.py::check_script_secrets`
+      #    只比「同一支腳本同一個機密,一邊給一邊不給」(陷阱 #12),拆成兩個 step 會被它擋下來。
+      #    ⭐ 而且合在一起本來就比較對:selftest 沒過就⛔ 不該去動 kbar5 分支。
+      - name: 📼 selftest → 抓 5 分 K
+        env:
+          SHIOAJI_API_KEY: ${{ secrets.SHIOAJI_API_KEY }}
+          SHIOAJI_SECRET_KEY: ${{ secrets.SHIOAJI_SECRET_KEY }}
+          # 🔧 排程觸發時 inputs.* 是**空字串**不是不存在 → Python 端一律 `or 預設`
+          #    (check_env_default.py 會擋;V75.1.3 pe_band 四個週日零產出就是這個坑)
+          KBAR5_DAYS: ${{ github.event.inputs.days }}
+        run: |
+          python3 kbar5_miner.py --selftest
+          python3 kbar5_miner.py
+
+      - name: 🚀 推到 kbar5 分支
+        run: |
+          set -e
+          ls kbar5/*.json.gz >/dev/null 2>&1 || { echo "❌ 沒有任何月檔 → 不推"; exit 1; }
+          # 🚧 空過守門:全部加起來 < 10KB 幾乎一定是空的(⛔ 不可把好的洗成空的)
+          TOT=$(cat kbar5/*.json.gz | wc -c)
+          [ "$TOT" -ge 10240 ] || { echo "❌ 月檔合計只有 $TOT bytes(<10KB)→ 判定異常,不推"; exit 1; }
+
+          cp -r kbar5 /tmp/kbar5_out
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin "+refs/heads/kbar5:refs/remotes/origin/kbar5" 2>/dev/null || true
+          if git rev-parse --verify -q origin/kbar5 >/dev/null; then
+            git checkout -f -B kbar5 origin/kbar5
+          else
+            echo "ℹ️ 第一次:建立 kbar5 分支(orphan)"
+            git checkout -f --orphan kbar5
+            git rm -rfq --cached . 2>/dev/null || true
+            git clean -fdq -e kbar5 -e .git 2>/dev/null || true
+          fi
+          rm -rf kbar5 && cp -r /tmp/kbar5_out kbar5
+          git add -f kbar5
+          if git diff --cached --quiet; then
+            echo "無變更,跳過"
+          else
+            git commit -q -m "📼 5 分 K 累積 $(date -u '+%Y-%m-%d %H:%M UTC')"
+            # ⛔ 這個 retry 迴圈不可拿掉(唯一擋「同時 push」的東西)
+            pushed=0
+            for i in 1 2 3 4 5; do
+              git push origin kbar5 2>/dev/null && { echo "✅ push 成功 ($i)"; pushed=1; break; }
+              sleep $((i*5))
+              git fetch origin kbar5 2>/dev/null || true
+              git pull --rebase origin kbar5 2>/dev/null || true
+            done
+            [ "$pushed" -eq 1 ] || { echo "❌ push 連 5 次失敗"; exit 1; }
+          fi
+          echo "📦 kbar5 分支目前 $(ls kbar5/*.json.gz | wc -l) 個月檔 / $(cat kbar5/*.json.gz | wc -c) bytes"
+          echo "⏭️ 驗證⛔ 不可只看綠燈:git show origin/kbar5:kbar5/$(date -u +%Y-%m).json.gz | wc -c"

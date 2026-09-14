@@ -195,7 +195,7 @@ const render = async (sym) => {
         //   卡片一下架就整批錯位;CLAUDE.md:斷言要釘用意)。
         html: Object.fromEntries(['rpLead', 'rpQuick', 'rpWalls', 'rpRisk', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpSrc'].map(id => [id, g(id)])),
         txt: Object.fromEntries(['rpLead', 'rpQuick', 'rpWalls', 'rpRisk', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpSrc'].map(id => [id, txt(id)])),
-        ctx: (() => { const C = A._rpLast; return C ? { sym: C.sym, eps: C.eps, aeSrc: C.ae && C.ae.src, kind: C.ae && C.ae.kind, pe: C.pe, pC: C.pC, peer: C.peer, indK: C.indK, band: C.band, valRows: C.valRows, marginDate: C.s20 && C.s20.marginDate, badge: C.dec && C.dec.badge } : null; })(),
+        ctx: (() => { const C = A._rpLast; return C ? { sym: C.sym, eps: C.eps, aeSrc: C.ae && C.ae.src, kind: C.ae && C.ae.kind, pe: C.pe, pC: C.pC, peer: C.peer, indK: C.indK, otc: C.otc, band: C.band, valRows: C.valRows, marginDate: C.s20 && C.s20.marginDate, badge: C.dec && C.dec.badge } : null; })(),
         s20: A._chipPeriodSums(A.rawDailyData, 20),
         // 🚨 V76.1.9 判準換掉 —— `scrollWidth` 被 CLAUDE.md:1550 明文禁用(「會把被 clip 的內容也算進去」),
         //   而 index.html 有 `html,body{overflow-x:hidden}` → 真的溢出會被默默切掉、這條永遠綠(陷阱 #40)。
@@ -256,7 +256,16 @@ ok('③c 整頁不出現「目標價」(免責句除外)', !/目標價/.test(ALL
 //   ⭐ 那才是原本的用意:報告頁的結論只能是**轉述**。
 ok('③d ⚡ 快速表的結論 = _ovDecide.badge(轉述,不是自己判的)',
    R.ctx && R.ctx.badge && R.txt.rpQuick.includes(R.ctx.badge.replace(/<[^>]+>/g, '')), `${R.ctx && R.ctx.badge} | ${R.txt.rpQuick.slice(0, 120)}`);
-ok('④a 5483(上櫃)同業列要寫「上櫃無官方產業分類」', R.ctx && !R.ctx.indK && /上櫃無官方產業分類/.test(R.txt.rpVal), R.txt.rpVal.slice(0, 200));
+// 🏪 V77.0.2 這條原本釘「5483 要寫『上櫃無官方產業分類』」—— V76.4.0 把上櫃產業別接上之後,
+//   5483 真的有分類了(industry_map → 24 半導體)→ 那句話變成**謊話**,而測試還在逼它說謊。
+//   ⭐ 改成釘**用意**:同業那一行**只有兩種合法輸出** —— 給得出中位數(並在上櫃時說明中位數只用上市股算),
+//   或誠實說沒有;⛔ 不可留白、⛔ 不可印成 0.0x(陷阱 #28:「資料源沒有」與「條件不成立」是兩件事)。
+ok('④a 同業中位那一行只有兩種合法輸出:給得出來(上櫃要標明中位數只用上市股算)或誠實說沒有',
+   R.ctx && (R.ctx.peer != null
+       ? (/同業中位 PE 來自 industry_pe/.test(R.txt.rpVal) && (!R.ctx.otc || /只用上市股算/.test(R.txt.rpVal)))
+       : /本站沒有這一類的中位數|本站沒有這一檔的產業分類/.test(R.txt.rpVal))
+   && !/同業中位 PE[^。]*\b0\.0+x/.test(R.txt.rpVal),   // ⚠️ 第一版寫成 `0\.0` → 被「同業中位給法 = 200.0 元」誤判(自己的假失敗)
+   `peer=${R.ctx && R.ctx.peer} otc=${R.ctx && R.ctx.otc} :: ` + R.txt.rpVal.slice(0, 300));
 // ⑤ 估值表數字 = 手算
 {
     const C = R.ctx, b = C.band;
@@ -676,7 +685,13 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         const g1 = A._rpPeerGroup('2330');
         A._tagsCache = { by_stock: {}, names: {} };
         const g2 = A._rpPeerGroup('2330');
-        const g3 = A._rpPeerGroup('5483');           // 上櫃 + 沒題材 → 什麼都沒有
+        // 🏪 V77.0.2 原本拿 5483 當「兩種都沒有」的例子 —— V76.4.0 接上上櫃產業別之後它**有**官方分類了,
+        //   ⭐ 用意不變但要換做法:把**官方產業對照表也拿掉**,直接測「兩種都沒有」這個情境本身
+        //   (⛔ 不依賴「剛好哪一檔沒分類」= 釘當天的資料)。
+        const realInd = A._scrData.ind;
+        A._scrData = Object.assign({}, A._scrData, { ind: {} });
+        const g3 = A._rpPeerGroup('5483');           // 題材 + 官方產業都拿掉 → 什麼都沒有
+        A._scrData = Object.assign({}, A._scrData, { ind: realInd });
         A._tagsCache = real;
         return { g1: g1 && { k: g1.kind, n: g1.mem.length }, g2: g2 && { k: g2.kind, n: g2.mem.length }, g3 };
     });

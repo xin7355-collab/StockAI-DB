@@ -51,6 +51,44 @@ const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     ok('⑤ ⛔ emoji 與邊框顏色不可互相矛盾(舊版:🟢 配 red 框)', !clash.length, clash);
 }
 
+// ── 🧬 V77.0.2 靜態:營收年增只准有一份優先序 + 虧損封頂 ────────────
+{
+    const strip = t => t.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    // ⚠️ 終點⛔ 不可用 `_applyFundamentalsToXray`(它排在**前面**)也⛔ 不可用寫死的字元數
+    //   —— 第一版兩個都踩到:切片提早結束 → 月營收圖那行根本沒被掃到 = 假綠燈。
+    const i = src.indexOf('    async fetchFundamentalAnalysis('), j = src.indexOf('async fetchCorpEvents(', i);
+    const blk = strip(src.slice(i, j > i ? j : i + 60000));
+    ok('🧬a 空過守門:抓得到 fetchFundamentalAnalysis 那一整段', i > 0 && blk.length > 3000, blk.length);
+    // 🚨 真因:同一個「營收年增」有兩條**相反**的優先序 —— `_revYoY` 是 fund_yoy_gm 先、
+    //    這裡是 fundamentals_cache 先 → 6706 分數吃到 −26.1%(舊 rotation)而報告頁是 +120.5%。
+    ok('🧬a2 🚨 基本面分數的營收年增必須走 `_revYoY`(⛔ 不可自己再排一套優先序;三種舊寫法任一注回去 → 紅)',
+       /_revYoY\(/.test(blk)
+       && !/latestYoy == null && typeof _fcv\.rev_yoy/.test(blk)
+       && !/latestYoy == null && typeof _v\.yoy/.test(blk)
+       && !/latestYoy = Number\(localFund\.revenue_yoy\)/.test(blk),   // ⚠️ 籌碼檔在 `_revYoY` 裡排**最後**,直接 fallback 會蓋掉 fund_yoy_gm
+       (blk.match(/latestYoy == null[^\n]*/g) || []).join(' | ').slice(0, 200));
+    ok('🧬a3 ⚠️ 月營收圖的那行摘要也要讀同一個 `latestYoy`(⛔ 同一畫面不可出現第二個「年增」)',
+       /const yoy = Number\.isFinite\(\+latestYoy\)/.test(blk) && !/haveMineYoY/.test(blk));
+    const lc = strip(src.slice(src.indexOf('    _lossCapOf(sym) {'), src.indexOf('    _xrayScoreOf(m) {')));
+    ok('🧬b 🩸 虧損封頂 `_lossCapOf` 存在,且判準只認「近 4 季 ROE」與「最新一季 EPS」',
+       lc.length > 200 && /roe4/.test(lc) && /\.eps/.test(lc) && /cap: 0\.30/.test(lc), lc.length);
+    const xs = strip(src.slice(src.indexOf('    _xrayScoreOf(m) {'), src.indexOf('    _renderXrayVerdict() {')));
+    ok('🧬b2 `_xrayScoreOf` 真的有套上封頂(⛔ 寫好了沒接 = 陷阱 #37),而且理由要寫進 neg',
+       /const lossCap = this\._lossCapOf\(m\.sym\)/.test(xs) && /pct = lossCap\.cap/.test(xs) && /neg\.push\(`\$\{lossCap\.why\}/.test(xs), xs.length);
+    ok('🧬b3 ⚠️ pct 必須是 `let`(封頂要改寫它;`const` 會被空 catch 吞成「卡片直接不見」—— 陷阱 #33)',
+       /let pct = max > 0 \? score \/ max : null;/.test(xs));
+    // 💲 `+null === 0` —— 上一版在 `_rpPxTableHtml` 修過的同一個坑
+    ok('💲a 🚨 報告頁唯一的格式化器 `_rpFmt`/`_rpPct` ⛔ 不可用裸 `Number.isFinite(+n)`(`+null === 0` 會把「沒有」印成 0.0)',
+       /_rpFmt\(n, d = 1\) \{ return \(n != null && n !== '' && Number\.isFinite\(\+n\)\)/.test(src)
+       && /_rpPct\(n, d = 1\) \{ return \(n != null && n !== '' && Number\.isFinite\(\+n\)\)/.test(src));
+    ok('💲a2 🚨 股價淨值比的 fallback 鏈必須要求 > 0(`fen.pb: null` 會短路成 0,害 fund_yoy_gm 真的有的值永遠讀不到)',
+       /const pb = _fp\(fc\?\.pbr\) \?\? _fp\(fen\?\.pb\) \?\? _fp\(fy\?\.pb\);/.test(src));
+    ok('💲a3 ⚠️ 但殖利率 0% 是合法值 → ⛔ 不可一律改成 > 0(只擋 null/\'\')',
+       /const yld = _fv\(fc\?\.yield_rate\) \?\? _fv\(fen\?\.yield_rate\) \?\? null;/.test(src));
+    ok('💲a4 虧損股的本益比要印「—(虧損)」⛔ 不是 0.0x(海報 + 提示詞兩處都要)',
+       /'—\(虧損\)'/.test(src) && /—\(公司在虧損 → 沒有本益比/.test(src));
+}
+
 // ── 前端實跑 ─────────────────────────────────────────────────────
 const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -102,7 +140,37 @@ const R = await page.evaluate(() => {
     out.legacy = [g('xrayPayout'), g('xrayDividend')];
     return out;
 });
+
+// ── 🩸 V77.0.2 行為:虧損封頂真的會壓下去(⛔ 不是只驗「有那個欄位」)────
+//   ⭐ 決定性對照組:**同一組指標**、只換 fin 切片的 roe4/eps 正負,分數必須明顯不同。
+const LC = await page.evaluate(() => {
+    const A = app;
+    // 這組指標刻意「看起來很好」:營收年增 +120%(6706 真值)+ 三率三升 + 殖利率
+    const m = () => ({ sym: '__T', yoy: 120.5, triV: { txt: '三率三升' }, pe: 12, yield: 4 });
+    A._finSlimCache = A._finSlimCache || {};
+    const run = (fin) => { A._finSlimCache['__T'] = { ts: Date.now(), data: fin }; const R = A._xrayScoreOf(m()); return { pct: R.pct, verdict: R.verdict, neg: R.neg.join(' / '), cap: !!R.lossCap }; };
+    return {
+        // 6706 惠特的真實數字(data/fin/6706.json 實查)
+        loss: run({ roe4: -7.1, q: [{ p: '2026-06-30', eps: -1.89, nm: -83.7 }] }),
+        prof: run({ roe4: 18.2, q: [{ p: '2026-06-30', eps: 5.20, nm: 31.4 }] }),
+        epsOnly: run({ roe4: 3.1, q: [{ p: '2026-06-30', eps: -0.4, nm: -2.0 }] }),
+        none: run(null),   // 沒有 fin 切片 → ⛔ 不可亂封頂
+    };
+});
 await browser.close();
+
+ok('🩸c1 空過守門:對照組(獲利)真的算得出一個高分,⛔ 不是兩邊都 null',
+   LC.prof.pct != null && LC.prof.pct > 0.55, JSON.stringify(LC.prof));
+ok('🩸c2 🚨 虧損股(ROE −7.1% / EPS −1.89)→ 分數封頂 ≤0.30,而且 verdict 落到「體質偏弱」',
+   LC.loss.pct != null && LC.loss.pct <= 0.30 && /偏弱/.test(LC.loss.verdict), JSON.stringify(LC.loss));
+ok('🩸c3 ⭐ 決定性對照:同一組指標、只換正負 → 分數必須明顯不同(注入拿掉封頂 → 兩邊一樣 → 紅)',
+   LC.prof.pct - LC.loss.pct > 0.2, `${LC.prof.pct} vs ${LC.loss.pct}`);
+ok('🩸c4 卡上要寫出**為什麼**被封頂(⛔ 不可默默扣分)',
+   /ROE/.test(LC.loss.neg) && /封頂/.test(LC.loss.neg), LC.loss.neg);
+ok('🩸c5 只有 EPS 負(ROE 還是正的)也要封頂', LC.epsOnly.cap === true && LC.epsOnly.pct <= 0.30, JSON.stringify(LC.epsOnly));
+ok('🩸c6 ⚠️ 沒有財報切片時 ⛔ 不可亂封頂(不然冷門股會被誤殺)',
+   LC.none.cap === false && LC.none.pct === LC.prof.pct, JSON.stringify(LC.none));
+
 
 ok('① 🚨 拿不到值時 ⛔ 不可把已經有真值的格子洗成 `--`(這就是使用者截圖那個 bug)',
    R.keep.join('|') === '1.11%|8.3%|0.30 元', R.keep);
