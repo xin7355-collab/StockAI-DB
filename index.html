@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V76.3.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V76.3.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -805,7 +805,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V76.3.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8400,8 +8400,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V76.3.4',
+    _APP_VERSION: 'V76.3.5',
     _CHANGELOG: [
+        { v: 'V76.3.5', d: ['🚨 <b>我自己畫的那張圖用錯顏色了</b> —— 「距現價 +28.2% / −23.5%」那一欄被塗成紅綠,但它講的是<b>那個價位在現價上面還是下面</b>,⛔ 不是漲跌。塗紅會讀成「季線漲了 28%」。現在改成<b>灰字 + ▲(在上面)/ ▼(在下面)</b>;⭐ 這正是我上一版批評外部 AI 圖的同一個錯,做圖提示詞也補上這條教它別犯。',
+            '🧱 <b>關鍵價位補上「現在的價」那一列</b>(琥珀色插在中間)—— 一眼看得出哪幾道在上面、哪幾道在下面;<b>套牢區改成每一層都列</b>並標「佔幾 % 的量」(以前只列最近那一層)。',
+            '📊 <b>圖上多了三排數字</b>:估值(本益比/股價淨值比/殖利率/估值基期)・基本面(月營收/年增/毛利率/存貨天數)・籌碼(外資/投信近5日、千張大戶/散戶)。',
+            '📅 <b>新增「未來會震到你的事」</b>(你要的財經行事曆):把<b>本檔自己的</b>(財報/月營收/除息/法說會)跟<b>大盤的</b>(台指期結算/FOMC/日銀/央行)混在同一張表照日期排。🚨 只寫日期與事件,⛔ 一個字都不寫方向 —— 本站實測 37 種行事曆日,<b>能講的方向一個都不成立</b>,只有「那幾天波動比較大」是真的。',
+            '🎨 <b>做圖提示詞改成跟自己畫的同一個骨架</b>(8 段、順序一樣),而且把「五個面向」與「大盤行事曆」的數字一起餵給它 —— 以前沒給料,AI 就會自己編。',
+            '🚨 <b>大盤頁的財經行事曆:AI 寫的「👉 怎麼做」現在會標明「⛔ 沒有實測背書」</b>,底下並寫出實測結論。⛔ 那些「部位降至 3 成」「多單設好止損」是 AI 自己講的 —— 本站量不到方向,⛔ 別照抄。採礦端的提示詞也改了,以後不再產生方向與部位成數。'] },
         { v: 'V76.3.4', d: ['📅 <b>「今天可以買的」把日期與更新時間寫在標題旁</b>(使用者:「才不會錯亂」)—— 而且那是<b>兩件事</b>:<b>用哪一天的收盤算的</b> vs <b>採礦幾點跑完</b>。超過 4 天會自動變黃加 ⚠️。',
             '🎣 <b>釣魚池的說明整段換掉</b>:它從上一版起就已經改用<b>決策台「🎯 今天可以買的」那一套</b>,但卡上還在講舊漏斗的「照近 20 日漲幅排」「−1.44pp」= 講一個<b>已經不存在的東西</b>(你問「已經變成決策台的策略了嗎?」就是看到它)。',
             '⚠️ <b>順便講清楚為什麼兩邊名單可能不一樣</b>:決策台會把 👜 <b>你的庫存/自選排到最前面</b>(所以你看到鼎元/宏致),釣魚池刻意用<b>不含持股</b>的純推薦版(漁獲籃要量的是「這套推薦」的成績,混進自選股就量不到)。⛔ 兩邊都沒算錯,是問的問題不一樣。',
@@ -24075,6 +24081,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         L.push(`- 財報三表(最新季${fin ? ' ' + fin.p : ''}):存貨天數 ${fin && fin.doi != null ? fin.doi + ' 天' : '—'} ・自由現金流近4季 ${C && C.fin && C.fin.fcf4 != null ? F(C.fin.fcf4 / 1e8, 1) + ' 億' : '—'} ・ROE近4季 ${C && C.fin && C.fin.roe4 != null && !parQ ? F(C.fin.roe4, 1) + '%' : '—'} ・淨利率 ${fin && fin.nm != null && !parQ ? F(fin.nm, 1) + '%' : '—'}${parQ ? `(⚠️ ${parQ.slice(0, 7)} 起疑似面額變更,本站算不出淨利率/ROE)` : ''}`);
         L.push(`- 法人近5日:外資 ${C && C.s5 && C.s5.hasInst ? Math.round(C.s5.foreign) : '—'} 張 / 投信 ${C && C.s5 && C.s5.hasInst ? Math.round(C.s5.trust) : '—'} 張;近20日 外資 ${C && C.s20 && C.s20.hasInst ? Math.round(C.s20.foreign) : '—'} 張 / 投信 ${C && C.s20 && C.s20.hasInst ? Math.round(C.s20.trust) : '—'} 張`);
         L.push(`- 集保大戶散戶:${td ? `千張大戶 ${(+td[1]).toFixed(1)}% ・散戶 ${(+td[3]).toFixed(1)}%` : '—'}`);
+        const _G = this._lastGauge;
+        L.push(`- 五個面向(0~100,越高越有底氣;⛔ 不要自己加總成一個總分):${(_G && String(_G.sym) === String(sym) && Array.isArray(_G.dims) && _G.dims.length) ? _G.dims.map(d => `${d.name} ${Math.round(d.score)}`).join(' / ') : '—'}`);
+        const _me = (() => { try {
+            const a = (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || [];
+            const t0 = new Date().toISOString().slice(0, 10);
+            return a.filter(x => x && x.date >= t0 && !/法說|法人說明會/.test(String(x.event || '')))
+                    .slice(0, 5).map(x => `${x.date} ${String(x.event || '').replace(/\s*\([^)]*\)\s*/g, '').trim()}`);
+        } catch (_) { return []; } })();
+        L.push(`- 未來的大盤事件(⛔ 只講「那幾天波動大」,⛔ 不可講漲跌 —— 37 種行事曆日實測方向 0 個成立):${_me.length ? _me.join(' / ') : '—'}`);
         L.push(`- 下一個事件:${ev.join(' ・') || '—'}`);
         //   ⚠️ 欄位一律在、值誠實說「—」(⛔ 不可整個欄位消失 —— 消失了外部 AI 不知道本站有沒有這個數字,反而會自己編)
         L.push(`- 產業別:${ind} ・族群名次:${rk || '—'}`);
@@ -24146,6 +24161,10 @@ ${this._reportFacts(sym)}
 3b. 🚨 **刻度尺與長條也算在第 2 條裡面** —— ⛔ 不可以做「綠 → 黃 → 紅」那種漸層來表示
    「低估 → 高估」「便宜 → 貴」「安全 → 危險」。那會讓同一張圖上的綠色一邊是「跌」一邊是「便宜」。
    ⭐ 位階尺、估值尺一律用**單一顏色的灰階或藍階**(左淺右深),位置用 ▼ 或 ▲ 標。
+3c. 🚨🚨 **「距現價幾 %」那一欄⛔ 不可以用紅綠** —— 它講的是「那個價位在現價**上面還是下面**」,
+   ⛔ **不是漲跌**。把上方的塗紅、下方的塗綠,會讓人讀成「上面那個漲了 28%」或「在上面=好事」。
+   ⭐ 一律用**灰色**文字 + **▲(在現價上面)/ ▼(在下面)**,⛔ 不用顏色分。
+   (本站自己畫的那張圖第一版就是這樣錯的,已經改掉 —— 你別再犯一次。)
 4. ⛔ **不要畫任何動物、吉祥物或擬人角色**(牛、熊、公仔都不要)——
    那既佔版面又會用到歐美的紅綠語意。只用數字、長條、價格軸與圖示。
 
@@ -24178,17 +24197,22 @@ ${this._reportFacts(sym)}
     ・站上那道套牢區的上緣才算「突破」
     ⛔ 不可以寫成「建議賣出」「建議買進」這種指令句 —— 本站只描述,不下單。
 
-# 版面(直式,由上往下 7 段;⭐ 第 ⑤ 段是使用者最想看的,版面要給它最大)
-- 標題列:股票名稱(代號)+ 一句話結論 + 分析基準日期
-- ① 本站結論與股價位階(位階用一條橫向刻度尺,現價一個 ▼)
-- ② 一條**垂直價格軸**:由高到低標出 上方套牢區 → 各條均線 → 現價 → 你的出場線 → 融資追繳線,
-     每一格都標「距現價幾 %」。這一段是整張圖的骨架。
-- ③ 基本面(營收 / 毛利 / EPS / 存貨天數 / 自由現金流)
-- ④ 籌碼(法人近 5 日 / 近 20 日 ・集保大戶散戶 ・融資)
-- ⑤ **⚠️ 未來幾天要注意什麼**(3~5 條,每條一行):
-     事件(只講波動)・上方第一道套牢區在哪 ・你的出場線在哪 ・法人連買/連賣幾天 ・位階高不高。
-- ⑥ 📌 **接下來怎麼看**(照第 10~12 條寫成條件式,3 行以內)
-- ⑦ 估值對照(本益比 + 它自己近 3 年位階 + 對照價位尺)
+# 版面(直式,由上往下 8 段)
+# ⭐⭐ 這個骨架**跟本站自己畫的那張圖一模一樣**(報告頁最上面那張「🖼️ 本站自己畫的一頁圖」)——
+#    使用者要兩張對得起來,⛔ 不要自己換順序、⛔ 不要少一段。
+- ① 標題列:股票名稱(代號)・收盤日 ・右邊放**本站結論**(照抄,⛔ 不要自己下)
+- ② 現價大字 + 今日漲跌% + 近 20 日% ← **這裡才用紅漲綠跌**
+- ③ 價格位置(近一年):一條橫向灰階刻度尺 + 現價一個 ▼ + 右邊寫百分比 + 兩端標最低/最高
+- ④ **關鍵價位(由高到低)**:套牢區(每一層都列,含「佔幾 % 的量」)→ 各條均線 → **現在的價**(用琥珀色標出來)
+     → 你的出場線 → 融資追繳壓力區。每一列右邊標「▲/▼ 幾 %」(⛔ 見第 3c 條:不用紅綠)。
+     ⭐ **現價一定要插在中間那一列**,讀的人才一眼看出哪些在上面、哪些在下面。
+- ⑤ 五個面向(0~100,越高越有底氣):每一項一條橫條 + 分數。⛔ **不可以加總成一個總分**(權重是編的)。
+- ⑥ 三排各四格:**估值**(本益比 / 股價淨值比 / 殖利率 / 估值基期)・
+     **基本面**(最新月營收 / 年增 / 毛利率 / 存貨天數)・**籌碼**(外資近5日 / 投信近5日 / 千張大戶 / 散戶)
+- ⑦ 📅 **未來會震到你的事**:把「本檔自己的」(財報 / 月營收 / 除息 / 法說會)跟「大盤的」
+     (台指期結算 / FOMC / 央行 / 日銀…)**混在同一張表**、照日期排,每列標是「本檔」還是「大盤」。
+     🚨 **只寫日期與事件名,⛔ 一個字都不要寫方向**(見第 11 條)。
+- ⑧ 📌 接下來怎麼看(照第 10~12 條寫成條件式,3 行以內)+ 估值對照價位尺
 
 # ⛔ 不要出現的東西
 - 因子總分、★ 星等評分、三情境的「機率幾 %」——權重與機率都是編的。
@@ -24312,55 +24336,76 @@ ${this._reportFacts(sym)}
         const MA = this._rpMaLevels() || {};
         const rel = v => (C.pC > 0 && Number.isFinite(+v)) ? ((+v / C.pC - 1) * 100) : null;
         const lv = [];
-        const zone = (U && Math.abs(+U.pC - C.pC) < 0.01 && Array.isArray(U.list)) ? U.list.filter(x => +x.sup > 0)[0] : null;
-        if (zone) lv.push({ n: '上方套牢區下緣', v: +zone.lo, r: rel(zone.lo), t: 'up' });
-        for (const [n, nm] of [[20, '月線'], [60, '季線'], [240, '年線']]) if (MA[n] > 0) lv.push({ n: nm, v: +MA[n], r: rel(MA[n]), t: 'ma' });
-        if (K && String(K.sym) === String(sym) && +K.slPx > 0) lv.push({ n: '你的出場線', v: +K.slPx, r: rel(K.slPx), t: 'sl' });
-        if (C.mcs && Number.isFinite(+C.mcs.callLine)) lv.push({ n: '融資追繳壓力區', v: +C.mcs.callLine, r: rel(C.mcs.callLine), t: 'mc' });
+        // 🪤 套牢區**每一層都列**(⛔ 不是只取最近那一層 —— 使用者那張 AI 圖有三層,少列就看不出上面有多厚)
+        const zones = (U && Math.abs(+U.pC - C.pC) < 0.01 && Array.isArray(U.list)) ? U.list.filter(x => +x.sup > 0).slice(0, 3) : [];
+        for (const z of zones) lv.push({ n: `套牢區 ${Math.round(z.lo)}~${Math.round(z.hi)}`, sub: `佔 ${(+z.sup).toFixed(0)}% 的量`, v: (+z.lo + +z.hi) / 2, r: rel(z.lo), t: 'zone' });
+        for (const [n, nm] of [[20, '月線'], [60, '季線'], [120, '半年線'], [240, '年線']]) if (MA[n] > 0) lv.push({ n: nm, v: +MA[n], r: rel(MA[n]), t: 'ma' });
+        if (K && String(K.sym) === String(sym) && +K.slPx > 0) lv.push({ n: '你的出場線', sub: '你自己的紀律', v: +K.slPx, r: rel(K.slPx), t: 'sl' });
+        if (C.mcs && Number.isFinite(+C.mcs.callLine)) lv.push({ n: '融資追繳壓力區', sub: '推估', v: +C.mcs.callLine, r: rel(C.mcs.callLine), t: 'mc' });
+        lv.push({ n: '現在的價', v: +C.pC, r: 0, t: 'now' });                       // ⭐ 把現價插進去 —— 一眼看得出哪些在上面
         lv.sort((a, b) => b.v - a.v);
-        return { C, pp, lv, dims: (G && String(G.sym) === String(sym) && Array.isArray(G.dims)) ? G.dims : [] };
+        // 📅 未來會震到你的事 = 這一檔自己的 + 大盤層級的行事曆
+        //   🚨 只講「那幾天波動大」—— `calendar_stock_probe` 37 種行事曆日實測**方向 0 個成立**
+        const ev = [];
+        const push = (d, t, own) => { if (d && /^\d{4}-\d{2}-\d{2}/.test(String(d))) ev.push({ d: String(d).slice(0, 10), t, own }); };
+        try { const nf = this._rpNextFinDate(); if (nf) push(nf[0], `${nf[1]}財報(最晚)`, 1); } catch (_) {}
+        try { const up = C.div && C.div.up && C.div.up[0]; if (up) push(up[0], '除息', 1); } catch (_) {}
+        try { const e = this._findEarningsEvent(sym, 60); if (e) push(e.date, '法說會', 1); } catch (_) {}
+        try {
+            const me = (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || [];
+            for (const x of me) if (!/法說|法人說明會/.test(String(x.event || ''))) push(x.date, String(x.event || '').replace(/\s*\([^)]*\)\s*/g, '').trim(), 0);
+        } catch (_) {}
+        const today = new Date().toISOString().slice(0, 10);
+        const seen = new Set();
+        const evs = ev.filter(x => x.d >= today).sort((a, b) => (a.d < b.d ? -1 : 1))
+            .filter(x => { const k = x.d + x.t; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 5);
+        const td = (C.tdRaw && Array.isArray(C.tdRaw.h) && C.tdRaw.h.length) ? C.tdRaw.h[C.tdRaw.h.length - 1] : null;
+        const fin = (C.fin && Array.isArray(C.fin.q) && C.fin.q.length) ? C.fin.q[C.fin.q.length - 1] : null;
+        return { C, pp, lv, evs, td, fin, dims: (G && String(G.sym) === String(sym) && Array.isArray(G.dims)) ? G.dims : [] };
     },
     _rpDrawOwn(sym) {
         const cv = document.getElementById('rpOwnCv');
         const F = this._rpOwnFacts(sym);
         if (!cv || !F) return;
-        const { C, pp, lv, dims } = F;
+        const { C, pp, lv, dims, evs, td, fin } = F;
         const W = 1080, PAD = 44;
-        // 高度先照內容算(⛔ 不寫死 —— 關鍵價位與五維的行數會變)
-        const H = 300 + (pp ? 150 : 0) + (lv.length ? 60 + lv.length * 52 : 0) + (dims.length ? 60 + dims.length * 46 : 0) + 250;
+        const H = 300 + (pp ? 150 : 0) + (lv.length ? 62 + lv.length * 50 : 0)
+                + (dims.length ? 62 + dims.length * 46 : 0) + 300
+                + (evs.length ? 62 + evs.length * 44 + 34 : 0) + 130;
         const dpr = Math.min(2, window.devicePixelRatio || 1);
         cv.width = W * dpr; cv.height = H * dpr;
         cv.style.aspectRatio = `${W} / ${H}`;
         const g = cv.getContext('2d'); if (!g) return;
         g.setTransform(dpr, 0, 0, dpr, 0, 0);
         const FONT = '"PingFang TC","Microsoft JhengHei","Noto Sans TC",-apple-system,sans-serif';
-        const UP = '#f87171', DN = '#4ade80', GY = '#8b949e', FG = '#e6edf3', DIM = '#6e7681', AMB = '#f59e0b';
+        const UP = '#f87171', DN = '#4ade80', GY = '#8b949e', FG = '#e6edf3', DIM = '#6e7681', AMB = '#f59e0b', SKY = '#38bdf8';
         const txt = (s, x, y, size, col, weight = '700', align = 'left') => {
-            g.font = `${weight} ${size}px ${FONT}`; g.fillStyle = col; g.textAlign = align;
-            g.fillText(String(s), x, y);
+            g.font = `${weight} ${size}px ${FONT}`; g.fillStyle = col; g.textAlign = align; g.fillText(String(s), x, y);
         };
         const line = y => { g.strokeStyle = '#21262d'; g.lineWidth = 1; g.beginPath(); g.moveTo(PAD, y); g.lineTo(W - PAD, y); g.stroke(); };
         const num = (v, d = 2) => Number.isFinite(+v) ? (+v).toFixed(d) : '—';
         const pct = v => Number.isFinite(+v) ? `${+v >= 0 ? '+' : ''}${(+v).toFixed(1)}%` : '—';
+        const cells = (list, y0) => {                       // 一排四格(標題 + 大字)
+            const cw = (W - PAD * 2) / 4;
+            list.forEach(([k, v], i) => { txt(k, PAD + cw * i, y0, 21, DIM, '700'); txt(v, PAD + cw * i, y0 + 38, 30, FG, '900'); });
+            return y0 + 76;
+        };
         g.fillStyle = '#0d1117'; g.fillRect(0, 0, W, H);
         let y = 74;
-        // ── 標題列 ──
         txt(`${C.name}`, PAD, y, 46, FG, '900');
         g.font = '900 46px ' + FONT; const nw = g.measureText(String(C.name)).width;
         txt(`${C.sym}`, PAD + nw + 14, y, 26, GY, '700');
         txt(`收盤 ${C.kDate || '—'}`, W - PAD, y, 22, DIM, '700', 'right');
         y += 26; line(y); y += 56;
-        // ── 現價 + 漲跌 ──
+        // 現價 + 漲跌(⭐ 這裡用紅綠是對的 —— 它講的就是漲跌)
         const col = (+C.chg >= 0) ? UP : DN;
         txt(num(C.pC, 2), PAD, y, 72, col, '900');
         g.font = '900 72px ' + FONT; const pw = g.measureText(num(C.pC, 2)).width;
         txt(`${pct(C.chg)}  今日`, PAD + pw + 20, y - 26, 26, col, '900');
         txt(`${pct(C.chg20)}  近 20 日`, PAD + pw + 20, y + 6, 24, (+C.chg20 >= 0 ? UP : DN), '700');
-        // 本站結論(⛔ 只轉述 `_ovDecide` 的徽章,這裡不判斷方向)
         const badge = C.dec ? this._rpTxt(C.dec.badge) : '';
         if (badge) txt(badge.slice(0, 18), W - PAD, y - 10, 30, AMB, '900', 'right');
         y += 46; line(y); y += 56;
-        // ── 價格位置(一年區間)──
         if (pp && Number.isFinite(+pp.pos)) {
             txt('價格位置(近一年)', PAD, y, 24, GY, '700');
             txt(`${Math.round(pp.pos)}%`, W - PAD, y, 30, FG, '900', 'right');
@@ -24376,20 +24421,23 @@ ${this._reportFacts(sym)}
             txt(`最高 ${num(pp.hi, 1)}`, W - PAD, y, 22, DIM, '700', 'right');
             y += 36; line(y); y += 52;
         }
-        // ── 關鍵價位(由高到低)──
+        // 🧱 關鍵價位 —— 🚨 距現價 % ⛔ 不可用紅綠:它講的是「位置」不是「漲跌」
+        //   (燈號鐵則:同一個紅在 A 行是「在上面」、在 B 行是「上漲」,使用者會看反。
+        //    ⭐ 改成中性灰 + ▲/▼ 只表示上下方;現價那一列用琥珀標出來。)
         if (lv.length) {
-            txt('關鍵價位(由高到低 ・距現價)', PAD, y, 24, GY, '700');
+            txt('關鍵價位(由高到低)', PAD, y, 24, GY, '700');
+            txt('▲ 在現價上面 ・▼ 在下面', W - PAD, y, 20, DIM, '700', 'right');
             y += 42;
             for (const x of lv) {
-                const isUp = x.v > C.pC;
-                txt(x.n, PAD, y, 26, FG, '700');
-                txt(num(x.v, 2), W - PAD - 150, y, 28, FG, '900', 'right');
-                txt(pct(x.r), W - PAD, y, 26, isUp ? UP : DN, '900', 'right');
-                y += 52;
+                const now = x.t === 'now';
+                txt(x.n, PAD, y, now ? 27 : 25, now ? AMB : FG, now ? '900' : '700');
+                if (x.sub) { g.font = `700 ${now ? 27 : 25}px ${FONT}`; txt(x.sub, PAD + g.measureText(x.n).width + 12, y, 19, DIM, '700'); }
+                txt(num(x.v, 2), W - PAD - 165, y, 27, now ? AMB : FG, '900', 'right');
+                txt(now ? '—' : `${x.r >= 0 ? '▲' : '▼'} ${Math.abs(x.r).toFixed(1)}%`, W - PAD, y, 24, now ? AMB : GY, '700', 'right');
+                y += 50;
             }
-            y += 8; line(y); y += 52;
+            y += 6; line(y); y += 52;
         }
-        // ── 五個面向(⛔ 只轉述 `_lastGauge.dims`,⛔ 不顯融合總分 —— 陷阱 #38)──
         if (dims.length) {
             txt('五個面向(0~100 ・越高越有底氣)', PAD, y, 24, GY, '700');
             y += 42;
@@ -24397,24 +24445,45 @@ ${this._reportFacts(sym)}
                 txt(`${d.name}`, PAD, y, 26, FG, '700');
                 const bx = PAD + 150, bw = W - PAD * 2 - 150 - 90, bh = 14;
                 g.fillStyle = '#21262d'; g.fillRect(bx, y - 12, bw, bh);
-                g.fillStyle = '#38bdf8'; g.fillRect(bx, y - 12, bw * Math.max(0, Math.min(1, d.score / 100)), bh);
+                g.fillStyle = SKY; g.fillRect(bx, y - 12, bw * Math.max(0, Math.min(1, d.score / 100)), bh);
                 txt(Math.round(d.score), W - PAD, y, 26, FG, '900', 'right');
                 y += 46;
             }
-            y += 8; line(y); y += 52;
+            y += 6; line(y); y += 52;
         }
-        // ── 重點數字 ──
-        const cells = [['本益比', Number.isFinite(+C.pe) ? num(C.pe, 1) + 'x' : '—'],
-                       ['股價淨值比', num(C.pb, 2)],
-                       ['殖利率', Number.isFinite(+C.yld) ? num(C.yld, 2) + '%' : '—'],
-                       ['月營收年增', Number.isFinite(+C.yoy) ? pct(C.yoy) : '—']];
-        const cw = (W - PAD * 2) / 4;
-        cells.forEach(([k, v], i) => {
-            txt(k, PAD + cw * i, y, 22, DIM, '700');
-            txt(v, PAD + cw * i, y + 40, 32, FG, '900');
-        });
-        y += 88; line(y); y += 44;
-        // ── 免責(⛔ 不可省 —— 數字說得越清楚,限制越要寫)──
+        // 💰 估值 + 📊 基本面 + 🧊 籌碼(各一排四格)
+        txt('估值(現在)', PAD, y, 24, GY, '700'); y += 34;
+        y = cells([['本益比', Number.isFinite(+C.pe) ? num(C.pe, 1) + 'x' : '—'],
+                   ['股價淨值比', num(C.pb, 2)],
+                   ['殖利率', Number.isFinite(+C.yld) ? num(C.yld, 2) + '%' : '—'],
+                   ['估值基期', (C.band && Number.isFinite(+C.band.pct)) ? Math.round(+C.band.pct) + '%' : '—']], y);
+        y += 16;
+        txt('基本面', PAD, y, 24, GY, '700'); y += 34;
+        y = cells([['最新月營收', +C.mrev > 0 ? num(C.mrev / 1e8, 1) + ' 億' : '—'],
+                   ['年增', Number.isFinite(+C.yoy) ? pct(C.yoy) : '—'],
+                   ['毛利率', Number.isFinite(+C.gm) ? num(C.gm, 1) + '%' : '—'],
+                   ['存貨天數', (fin && fin.doi != null) ? fin.doi + ' 天' : '—']], y);
+        y += 16;
+        txt('籌碼', PAD, y, 24, GY, '700'); y += 34;
+        const I = (o, k) => (o && o.hasInst && Number.isFinite(+o[k])) ? Math.round(+o[k]).toLocaleString() + ' 張' : '—';
+        y = cells([['外資近5日', I(C.s5, 'foreign')],
+                   ['投信近5日', I(C.s5, 'trust')],
+                   ['千張大戶', td ? num(td[1], 1) + '%' : '—'],
+                   ['散戶', td ? num(td[3], 1) + '%' : '—']], y);
+        y += 12; line(y); y += 52;
+        // 📅 未來會震到你的事(⛔ 只講波動 —— 37 種行事曆日實測方向 0 個成立)
+        if (evs.length) {
+            txt('未來會震到你的事(⛔ 只講波動,不講漲跌)', PAD, y, 24, GY, '700');
+            y += 42;
+            for (const e of evs) {
+                txt(e.own ? '本檔' : '大盤', PAD, y, 21, e.own ? AMB : DIM, '900');
+                txt(e.d.slice(5).replace('-', '/'), PAD + 78, y, 25, FG, '900');
+                txt(String(e.t).slice(0, 26), PAD + 180, y, 24, FG, '700');
+                y += 44;
+            }
+            txt('本站實測 37 種行事曆日:能講的方向一個都不成立,只有「那幾天波動比較大」是真的。', PAD, y + 2, 20, DIM, '700');
+            y += 32; line(y); y += 44;
+        }
         txt('這張圖是「散戶救星」自己畫的,數字全部由本站計算 ・⛔ 沒有經過 AI', PAD, y, 21, DIM, '700');
         txt('⛔ 不是買賣建議 ・要不要進場看總覽「現在怎麼做」 ・歷史統計不等於未來', PAD, y + 30, 21, DIM, '700');
         txt(`${C.name} ${C.sym}`, W - PAD, y + 30, 21, '#30363d', '900', 'right');
@@ -31957,7 +32026,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                         <div class="border-l-2 ${lvCls(f.level)} pl-2 py-1 mt-1 first:mt-0">
                             <div class="text-[10px] font-bold text-gray-200">${f.level || '⚠️'} ${this._dW(f.date)} ${String(f.event || '').replace(/</g, '&lt;')}</div>
                             ${f.impact ? `<div class="text-[10px] text-gray-400 leading-snug mt-0.5">${String(f.impact).replace(/</g, '&lt;')}</div>` : ''}
-                            ${f.action ? `<div class="text-[10px] text-cyan-300/90 leading-snug mt-0.5">👉 ${String(f.action).replace(/</g, '&lt;')}</div>` : ''}
+                            ${f.action ? `<div class="text-[10px] text-cyan-300/90 leading-snug mt-0.5"><span class="text-gray-500">🤖 AI 建議(⛔ 沒有實測背書)</span> ${String(f.action).replace(/</g, '&lt;')}</div>` : ''}
                         </div>`).join('');
                     aiBox.className = 'mb-2 bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-2.5';
                     // 🧠 V71.4.0 深度分析(手動):夜間排程用便宜的 Groq 先給快速版,
@@ -31973,7 +32042,9 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                         <div class="text-[11px] text-gray-200 leading-relaxed">${String(ai.summary).replace(/</g, '&lt;')}</div>
                         ${rows ? `<div class="mt-1.5 bg-[#0d1117] rounded p-1.5">${rows}</div>` : ''}
                         <button id="macroDeepBtn" onclick="app._deepAnalyzeMacro()" class="mt-2 w-full px-3 py-2 bg-purple-900/40 hover:bg-purple-800/50 border border-purple-600/60 rounded text-[11px] font-bold text-purple-200 transition-colors">🧠 用深度 AI 再分析一次</button>
-                        <div class="text-[8px] text-gray-600 mt-1.5">🧮 事件與市場數字由系統精算後餵給 AI,AI 只做影響判讀;非投資建議</div>`;
+                        <div class="text-[9px] text-gray-500 mt-1.5 leading-snug">🧮 事件與日期是系統算好的;<b>上面那些「怎麼做」是 AI 寫的,⛔ 本站沒有實測背書</b>。
+                            <br>🔬 <b>本站實測 37 種財經行事曆日(逐檔 + 期外驗證):能講的『方向』<b class="text-amber-300">一個都不成立</b></b> ——
+                            唯一量得到的是「<b>那幾天波動比較大</b>」。⛔ 所以部位成數與多空⛔ 不要照抄,要進場看總覽「現在怎麼做」。</div>`;
                     try { this._restoreMacroDeep(); } catch (_) {}
                     aiBox.classList.remove('hidden');
                 } else { aiBox.classList.add('hidden'); aiBox.innerHTML = ''; }

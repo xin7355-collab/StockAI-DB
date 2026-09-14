@@ -68,7 +68,10 @@ const r = await page.evaluate(async () => {
         let h = 0; for (let i = 0; i < d.length; i += 4) h = (h * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) % 2147483647; return h; };
     A._rpLast.chg = 0; A._rpDrawOwn('2330'); const a1 = cv.toDataURL('image/png'), s1 = sig();
     A._rpLast.pC = (+A._rpLast.pC || 100) * 2 + 7; A._rpDrawOwn('2330'); const a2 = cv.toDataURL('image/png'), s2 = sig();
-    return { ...base, up, dn, same: a1 === a2, pxSame: s1 === s2, w: cv.width, h: cv.height };
+    const FT = A._rpOwnFacts('2330') || {};
+    return { ...base, up, dn, same: a1 === a2, pxSame: s1 === s2, w: cv.width, h: cv.height,
+             hasNow: (FT.lv || []).some(x => x.t === 'now'), nLv: (FT.lv || []).length,
+             nEv: (FT.evs || []).length, nDim: (FT.dims || []).length };
 });
 await browser.close();
 
@@ -81,11 +84,55 @@ if (!r.no) {
     ck(r.dn.G > r.dn.R * 2, `ⓒ2 下跌時現價不是綠的(紅 ${r.dn.R} / 綠 ${r.dn.G})→ ⛔ 違反台股紅漲綠跌`);
     ck(!r.same, 'ⓑ 改掉本站算好的收盤價之後圖完全沒變 → 數字是寫死在畫圖程式裡的(⛔ 那就會騙人)');
     ck(!r.pxSame, 'ⓑ2 改掉收盤價之後**現價那幾個字**沒變 → 它是寫死的(⛔ 圖上印一個跟本站不一樣的價格最會害人)');
+    // ⚠️ ⛔ 不可只用原始碼斷言 —— 第一版釘 `/'now'/.test(fn)`,而那個字串在畫圖那半也有,
+    //   把 `_rpOwnFacts` 裡真正 push 那一行刪掉照樣綠(注入⑦ 溜過去)。⭐ 改成**行為**斷言。
+    ck(r.hasNow, 'ⓖ3 關鍵價位裡沒有「現在的價」那一列 → 看不出哪些在上面、哪些在下面');
+    ck(r.nLv >= 3, `ⓖ4 關鍵價位只有 ${r.nLv} 列 → 太少,圖沒有骨架`);
 }
 
 // ── ⓕ 免責 ─────────────────────────────────────────────────
 ck(/不是買賣建議/.test(fn), 'ⓕ 圖上沒寫「⛔ 不是買賣建議」');
 ck(/沒有經過 AI|不是 AI 畫的/.test(fn + SRC), 'ⓕ2 沒有講清楚「這張圖不是 AI 畫的」(那正是它跟上面那張的差別)');
+
+
+// ── ⓖ 🚨「距現價 %」⛔ 不可用紅綠(它講的是位置不是漲跌)──────────────
+//   V76.3.4 第一版就是這樣錯的:季線 +28.2% 塗紅、年線 −23.5% 塗綠 → 讀起來像「季線漲了 28%」。
+//   ⭐ 燈號鐵則:紅綠只准表示漲跌方向。位置一律灰 + ▲/▼。
+{
+    const seg = fn.slice(fn.indexOf('關鍵價位'), fn.indexOf('五個面向'));
+    ck(seg.length > 200, 'ⓖ0 切不到關鍵價位那一段 → 這一條不算數');
+    ck(/▲|▼/.test(seg), 'ⓖ 關鍵價位沒有用 ▲/▼ 表示在現價上面還是下面');
+    ck(!/\bUP\b|\bDN\b/.test(seg), 'ⓖ2 關鍵價位那一段用到了紅(UP)/綠(DN)—— ⛔ 那是漲跌的顏色,距現價 % 是位置(燈號鐵則)');
+
+}
+
+// ── ⓗ 📅 事件段:只講波動,⛔ 不講方向 ─────────────────────────────
+{
+    const seg = fn.slice(fn.indexOf('未來會震到你的事'));
+    ck(seg.length > 100, 'ⓗ0 切不到事件那一段 → 這一條不算數');
+    ck(/只講波動|不講漲跌/.test(seg), 'ⓗ 事件段沒寫「只講波動、⛔ 不講漲跌」');
+    ck(/方向一個都不成立|方向 0 個/.test(seg), 'ⓗ2 事件段沒把實測結論寫上去(37 種行事曆日 → 方向 0 個成立)');
+}
+
+// ── ⓘ 🎨 做圖提示詞要跟本站自己畫的**同一個骨架**(使用者:「兩邊調成一樣」)──
+{
+    const pr = SRC.slice(SRC.indexOf('_reportChartPrompt(sym) {'), SRC.indexOf('_reportCopyChart(sym) {'));
+    ck(pr.length > 2000, 'ⓘ0 切不到做圖提示詞 → 這一條不算數');
+    for (const k of ['價格位置', '關鍵價位', '五個面向', '未來會震到你的事'])
+        ck(pr.includes(k), `ⓘ 做圖提示詞少了「${k}」這一段 → 兩張圖對不起來`);
+    ck(/3c\./.test(pr) && /距現價/.test(pr), 'ⓘ2 做圖提示詞沒把「距現價 % ⛔ 不可用紅綠」那條寫給 AI(本站自己犯過的錯要一起教它)');
+    ck(/不可以加總成一個總分|不要自己加總/.test(pr), 'ⓘ3 做圖提示詞沒禁止 AI 把五個面向加總成總分(陷阱 #38)');
+    // 提示詞吃的料也要有(⛔ 沒給料,AI 就會自己編)
+    const fa = SRC.slice(SRC.indexOf('_reportFacts(sym) {'), SRC.indexOf('_reportPrompt(sym) {'));
+    ck(/五個面向/.test(fa), 'ⓘ4 _reportFacts 沒給「五個面向」→ 提示詞叫 AI 畫它卻沒給數字(印「—」它就會自己編)');
+    ck(/未來的大盤事件/.test(fa), 'ⓘ5 _reportFacts 沒給大盤行事曆 → 同上');
+}
+
+// ── ⓙ 📅 財經行事曆的 AI「怎麼做」必須標明沒有實測背書 ─────────────
+{
+    ck(/AI 建議\(⛔ 沒有實測背書\)/.test(SRC), 'ⓙ 行事曆那段 AI 的「👉 怎麼做」沒有標明⛔ 沒有實測背書');
+    ck(/37 種財經行事曆日/.test(SRC), 'ⓙ2 行事曆區塊沒把實測結論寫上去(方向 0 個成立,只有波動是真的)');
+}
 
 if (fail.length) { console.log('❌ RPOWN_FAIL'); fail.forEach(f => console.log('   ・' + f)); process.exit(1); }
 console.log('✅ RPOWN_PASS(全部通過)');
