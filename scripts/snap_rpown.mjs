@@ -27,6 +27,10 @@ const r = await page.evaluate(async (sym) => {
     for (let i = 0; i < 16; i++) { await new Promise(r => setTimeout(r, 600)); if (document.getElementById('rpOwnCv')) break; }
     const cv = document.getElementById('rpOwnCv');
     if (!cv) return { no: 1 };
+    // 🚧 V77.0.3 空過守門:沙箱抓不到 `data/{sym}.json` 時 `analyze()` 會**靜默留在上一檔**
+    //   → 拍出來的是別檔的圖,而輸出看起來完全正常(實測要 6706 卻拍到 2330)。
+    //   ⛔ 「檢查者不可以跟被檢查者同生共死」:一定要問「現在畫的到底是哪一檔」。
+    if (String(A._rpLast && A._rpLast.sym) !== String(sym)) return { wrong: String(A._rpLast && A._rpLast.sym) };
     // ⚠️ 2330 上方常常沒有套牢區 → 合成一道,才看得到 ② 那一段最擠的樣子
     const pC = +A._rpLast.pC;
     A._upsideStash = { pC, list: [{ lo: pC * 1.05, hi: pC * 1.15, sup: 21 }, { lo: pC * 1.42, hi: pC * 1.59, sup: 9 }, { lo: pC * 1.75, hi: pC * 1.80, sup: 2 }] };
@@ -37,6 +41,7 @@ const r = await page.evaluate(async (sym) => {
 
 await browser.close();
 if (r.no) { console.log('❌ 找不到 canvas'); process.exit(0); }
+if (r.wrong) { console.log(`❌ 要拍 ${SYM} 卻載到 ${r.wrong} —— 本機 data/${SYM}.json 抓不到(先 git show origin/gh-pages:data/${SYM}.json > data/${SYM}.json)。⛔ 不拍假圖`); process.exit(0); }
 fs.writeFileSync(OUT, Buffer.from(r.url.split(',')[1], 'base64'));
 console.log(`✅ ${OUT}  ${r.w}×${r.h}px(畫布 ${r.W}、PAD ${r.pad}、內容 ${r.W - 2 * r.pad}px = ${((r.W - 2 * r.pad) / r.W * 100).toFixed(1)}%)`);
 for (const c of r.cards) console.log(`   ${c.t}  x ${c.x0}→${c.x1}  標題 y=${c.yT}`);
