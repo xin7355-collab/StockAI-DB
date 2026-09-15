@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.1.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -849,7 +849,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.1.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8446,8 +8446,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.0.9',
+    _APP_VERSION: 'V77.1.0',
     _CHANGELOG: [
+        { v: 'V77.1.0', d: [
+            '📈 <b>「符合進場」搬進決策台了</b>(你問的第 1 點)—— 以前那個徽章<b>只有個股頁看得到</b>,等於要你先猜到開哪一檔;而它今天全市場只在 <b>1 檔</b>亮,一檔一檔翻根本翻不到。現在決策台「今天可以買的」底下直接列出來,並寫明<b>它跟上面那張清單不是同一個問題</b>(上面是「這一檔自己最會賺的招今天觸發價多少」,這裡是「🧬 + 今天出現期望值為正的看多訊號」)。',
+            '💸 <b>而且每一列都幫你扣掉來回成本</b> —— 今天那一檔期望值只有 <b>0.08%</b>,扣掉手續費稅金 0.44% 之後是 <b>−0.36%</b>,所以卡上直接寫「這個訊號賺不到手續費」。⛔ 條件到了不等於值得做。⚠️ 這裡算不出「這一檔是不是空頭」(那要個股 K 線)→ 一律標成<b>候選</b>,點進去個股頁會再擋一次。',
+            '📊 <b>「今天盤前體檢 0 分對嘛?」→ 對的,而且比 0 分還糟</b>(你問的第 3 點)。查下去:19 個因子裡 <b>14 項扣分、只有 1 項加分</b>(費半 −5.86%、台積電 ADR −3.52%、日月光 ADR −6.06%、台指期夜盤 −1.01%、加權自己技術面偏空…),算出來是 <b>−22.5 分</b>,被量表夾到 0。',
+            '🔎 <b>但這裡有個問題:0 分看不出來「剛好到底」還是「遠遠超過」</b> —— 量表下限就在那,再空也只顯示 0。現在分數底下多一個「<b>📊 這 0 分是怎麼算出來的?</b>」,點開<b>逐項</b>列出每個因子扣了幾分、原始分多少,超出量表時會直接告訴你「今天比極度偏空還要再空」。',
+            '💼 <b>庫存股每一列上下變寬了</b>(你問的第 2 點),看起來不再擠成一團。',
+            '📅 <b>板塊輪動補上採礦時間</b>(你問的第 4 點)—— 以前只寫「資料 09/14」沒有時間,而那是<b>兩件事</b>:名次用哪一天的收盤算 vs 採礦幾點跑完。現在兩個都寫,而且資料超過 4 天會自動轉黃提醒。',
+        ] },
         { v: 'V77.0.9', d: [
             '🔎 <b>搜尋股票那個「奇怪符號」拿掉了</b> —— 那是一個<b>什麼都沒裝的空圓圈</b>(本來大概想放 logo,一直沒放),在深色底上就變成一個看不懂的空框。最近搜尋與搜尋結果兩個清單一起拿掉。',
             '🧭 <b>五個面向右邊那排符號(✅⚠️⛔ / 🔴🟢➖ / 強中弱)改成「格子置中」</b> —— 以前是靠符號自己去對齊,而 emoji 跟中文字的寬度、基準線都不一樣(大盤那格的 ⚠️ 最明顯),五列看起來就會歪。現在每一格都是固定寬度、上下左右都置中,不管是什麼符號都對得齊。',
@@ -16778,52 +16786,63 @@ const marginByDate = {};
         } catch (_) {}
 
         // ③ 開盤方向計分(純公式)
+        // 📊 V77.1.0 使用者問「今天 0 分對嘛」—— 以前**畫面上完全看不出是哪幾項扣的**,
+        //   而 `sPct = clamp(0..100, 50 + s*5)` 的下限在 `s = −10`,可是 s 的實際range 可到 ±20
+        //   → 「普通偏空」跟「史上最慘」在畫面上長得一模一樣。
+        //   ⭐ 這裡把**每一筆加減都記下來**(`_pp`),下面摺疊區照實印;⛔ 算術一個字都沒改。
+        const _pp = [];
+        const _add = (nm, v, note) => {
+            const d = (+v || 0);
+            s += d;
+            _pp.push({ nm, d: Math.round(d * 10) / 10, note: note || '' });
+        };
         let s = 0;
-        [djiChg, ndxChg, spxChg].forEach(c => s += sign(c));            // 美股三雄
-        s += sign(soxChg) * 1.5;                                        // 費半(半導體最連動)
-        s += sign(tsmChg) * 2;                                          // 台積電 ADR(權重最高)
+        _add('🇺🇸 道瓊', sign(djiChg), djiChg || '沒有資料');
+        _add('🇺🇸 那斯達克', sign(ndxChg), ndxChg || '沒有資料');
+        _add('🇺🇸 S&P500', sign(spxChg), spxChg || '沒有資料');
+        _add('💾 費半', sign(soxChg) * 1.5, soxChg || '沒有資料');
+        _add('🏭 台積電 ADR', sign(tsmChg) * 2, tsmChg || '沒有資料');
         const vixN = parseFloat((vix || '').replace(/[^0-9.]/g, ''));
-        if (Number.isFinite(vixN)) { if (vixN < 20) s += 1; else if (vixN > 30) s -= 2; else if (vixN > 25) s -= 1; }
+        if (Number.isFinite(vixN)) _add('😱 VIX', vixN < 20 ? 1 : vixN > 30 ? -2 : vixN > 25 ? -1 : 0, `${vixN}`);
         // 🏦 V71.1.6 相對水位(舊絕對門檻天天成立 → 這條等於固定 -2 分)
         { const _f5 = this._fiFutState();
-          if (_f5.chg5 != null) { if (_f5.chg5 <= -8000) s -= 2; else if (_f5.chg5 <= -3000) s -= 1; else if (_f5.chg5 >= 8000) s += 2; else if (_f5.chg5 >= 3000) s += 1; }
-          else if (_f5.pct != null) { if (_f5.pct <= 15) s -= 1; else if (_f5.pct >= 85) s += 1; } }
-        if (Number.isFinite(+fiSpot)) { if (+fiSpot > 0) s += 1; else if (+fiSpot < -200) s -= 1; }
-        if (asxChg != null) s += asxChg > 0 ? 0.5 : asxChg < 0 ? -0.5 : 0;   // 日月光 ADR
-        if (umcChg != null) s += umcChg > 0 ? 0.5 : umcChg < 0 ? -0.5 : 0;   // 聯電 ADR
+          if (_f5.chg5 != null) _add('🏦 外資台指期(5日增減)', _f5.chg5 <= -8000 ? -2 : _f5.chg5 <= -3000 ? -1 : _f5.chg5 >= 8000 ? 2 : _f5.chg5 >= 3000 ? 1 : 0, `${Math.round(_f5.chg5).toLocaleString()} 口`);
+          else if (_f5.pct != null) _add('🏦 外資台指期(20日位階)', _f5.pct <= 15 ? -1 : _f5.pct >= 85 ? 1 : 0, `${Math.round(_f5.pct)}%`); }
+        if (Number.isFinite(+fiSpot)) _add('🏦 外資現貨買賣超', +fiSpot > 0 ? 1 : +fiSpot < -200 ? -1 : 0, `${(+fiSpot).toFixed(0)} 億`);
+        if (asxChg != null) _add('🔌 日月光 ADR', asxChg > 0 ? 0.5 : asxChg < 0 ? -0.5 : 0, `${asxChg}%`);
+        if (umcChg != null) _add('🔌 聯電 ADR', umcChg > 0 ? 0.5 : umcChg < 0 ? -0.5 : 0, `${umcChg}%`);
         // 💡 V68.8.2 美股期貨(盤後即時,比昨收更新;那指最連動半導體)+ 美債 10Y 殖利率(飆升=科技股壓力)
         const _nqFutC = (mr.nq_fut_chg_pct != null && !isNaN(mr.nq_fut_chg_pct)) ? +mr.nq_fut_chg_pct : null;
-        if (_nqFutC != null) s += _nqFutC > 0.3 ? 1 : _nqFutC < -0.3 ? -1 : 0;
+        if (_nqFutC != null) _add('🔮 那指期夜盤', _nqFutC > 0.3 ? 1 : _nqFutC < -0.3 ? -1 : 0, `${_nqFutC}%`);
         const _ustC = (mr.ust10y_chg_pct != null && !isNaN(mr.ust10y_chg_pct)) ? +mr.ust10y_chg_pct : null;
-        if (_ustC != null) { if (_ustC >= 2) s -= 0.5; else if (_ustC <= -2) s += 0.5; }
-        if (Number.isFinite(+fiTotal)) { if (+fiTotal > 0) s += 1; else if (+fiTotal < -200) s -= 1; }   // 三大法人合計
-        if (tech) s += (tech.vColor === 'red' ? 2 : tech.vColor === 'green' ? -2 : 0);
+        if (_ustC != null) _add('📜 美債 10 年期', _ustC >= 2 ? -0.5 : _ustC <= -2 ? 0.5 : 0, `${_ustC}%`);
+        if (Number.isFinite(+fiTotal)) _add('🏛️ 三大法人合計', +fiTotal > 0 ? 1 : +fiTotal < -200 ? -1 : 0, `${(+fiTotal).toFixed(0)} 億`);
+        if (tech) _add('📈 加權自己的技術面', tech.vColor === 'red' ? 2 : tech.vColor === 'green' ? -2 : 0, tech.verdict || '');
         // 🌙 V42.0 台指期夜盤(15:00~次日5:00,台灣資金對隔夜美股+盤後事件的即時反應=最直接的隔日開盤風向球)
         //   僅在有「真實漲跌%」(非估算)時計分;夜盤重挫權重略高(夜盤大跌常代表盤後有突發利空)
         let nightChg = null;
         if (txNight && txNight.est !== true && txNight.chg != null && Number.isFinite(+txNight.chg)) {
             nightChg = +txNight.chg;
-            if (nightChg >= 1) s += 1.5; else if (nightChg >= 0.2) s += 1;
-            else if (nightChg <= -1) s -= 2; else if (nightChg <= -0.2) s -= 1;
+            _add('🌙 台指期夜盤', nightChg >= 1 ? 1.5 : nightChg >= 0.2 ? 1 : nightChg <= -1 ? -2 : nightChg <= -0.2 ? -1 : 0, `${nightChg}%`);
         }
         // 🌍 V50.2 亞股連動(台股同盤最直接的開盤風向)+ 恐懼貪婪極端值 → 納入開盤方向分數(權重適中,補全球面)
         const _nk = +mr.nikkei_chg_pct, _ks = +mr.kospi_chg_pct, _hs = +mr.hsi_chg_pct;
         const _asiaScore = c => Number.isFinite(c) ? (c >= 1 ? 1 : c >= 0.3 ? 0.5 : c <= -1 ? -1 : c <= -0.3 ? -0.5 : 0) : 0;
-        s += _asiaScore(_nk);            // 🇯🇵 日經(電子鏈高度同步)
-        s += _asiaScore(_ks);            // 🇰🇷 韓股(記憶體/半導體同步)
-        s += _asiaScore(_hs) * 0.5;      // 🇭🇰 恆指(中國政策盤,連動較弱→半權重)
+        _add('🇯🇵 日經', _asiaScore(_nk), Number.isFinite(_nk) ? `${_nk}%` : '沒有資料');
+        _add('🇰🇷 韓股', _asiaScore(_ks), Number.isFinite(_ks) ? `${_ks}%` : '沒有資料');
+        _add('🇭🇰 恆指(半權重)', _asiaScore(_hs) * 0.5, Number.isFinite(_hs) ? `${_hs}%` : '沒有資料');
         const _fgN = +mr.fear_greed;
-        if (Number.isFinite(_fgN)) { if (_fgN >= 80) s -= 0.5; else if (_fgN <= 20) s += 0.5; }   // 極貪(froth 偏空)/極恐(超跌偏多),輕權重反轉傾向
+        if (Number.isFinite(_fgN)) _add('🧭 恐懼貪婪', _fgN >= 80 ? -0.5 : _fgN <= 20 ? 0.5 : 0, `${Math.round(_fgN)}`);   // 極貪(froth 偏空)/極恐(超跌偏多),輕權重反轉傾向
         // 💱 V57.8 台幣匯率(使用者要求):USDTWD 上升=台幣貶值=外資匯出(提款機模式)。
         //   單日急貶 ≥0.4% 扣 1、小貶 ≥0.15% 扣 0.5;升值反向加分;5 日連貶 ≥1% 再扣 0.5(趨勢比單日重要)
         const _twdC = +mr.usdtwd_chg_pct, _twd5 = +mr.usdtwd_chg_5d;
-        if (Number.isFinite(_twdC)) { if (_twdC >= 0.4) s -= 1; else if (_twdC >= 0.15) s -= 0.5; else if (_twdC <= -0.4) s += 1; else if (_twdC <= -0.15) s += 0.5; }
-        if (Number.isFinite(_twd5) && _twd5 >= 1) s -= 0.5;
+        if (Number.isFinite(_twdC)) _add('💱 台幣(當日)', _twdC >= 0.4 ? -1 : _twdC >= 0.15 ? -0.5 : _twdC <= -0.4 ? 1 : _twdC <= -0.15 ? 0.5 : 0, `${_twdC}%`);
+        if (Number.isFinite(_twd5) && _twd5 >= 1) _add('💱 台幣(5 日連貶)', -0.5, `${_twd5.toFixed(2)}%`);
         // 💱 V57.9 亞幣競貶:台幣+韓元 5 日同貶 ≥0.8% = 外資整籃撤出亞洲(比單一貨幣更兇)再扣 1;人民幣 5 日急貶 ≥1.2%(中國資金外逃)扣 0.5
         const _krw5 = +mr.krw_chg_5d, _cny5 = +mr.cny_chg_5d;
         const _asiaFxDump = Number.isFinite(_twd5) && _twd5 >= 0.8 && Number.isFinite(_krw5) && _krw5 >= 0.8;
-        if (_asiaFxDump) s -= 1;
-        if (Number.isFinite(_cny5) && _cny5 >= 1.2) s -= 0.5;
+        if (_asiaFxDump) _add('💱 亞幣競貶', -1, `台幣 ${_twd5.toFixed(1)}% ・韓元 ${_krw5.toFixed(1)}%`);
+        if (Number.isFinite(_cny5) && _cny5 >= 1.2) _add('💱 人民幣急貶', -0.5, `${_cny5.toFixed(2)}%`);
 
         // 🐛 V40.0 外資台指期極空(≤-4萬口)時不可硬說「外資沒大空」(實測 -83,063 口卻顯偏多致矛盾)→ 動態加註
         // 🏦 V71.1.6 相對水位:舊寫法 ≤-4萬口 天天成立 → 永遠掛「仍極空」的但書,反而變雜訊
@@ -16835,6 +16854,11 @@ const marginByDate = {};
         s = Math.round(s * 10) / 10;   // 🐛 V57.7 順便修:0.5 權重連加的浮點誤差(避免顯示 -7.000000000000001)
         // 📊 V57.9 使用者要求「分數簡單一點」:內部 s(約 ±10)換算成「開盤風向 0~100」,50=中性,量條直接填到幾分,數字與條完全對得上
         const sPct = Math.max(0, Math.min(100, Math.round(50 + s * 5)));
+        // 📊 V77.1.0 存下來給下面的「怎麼算出來的」摺疊區讀(⛔ 顯示端不重算 = 第二份真相)。
+        //   `raw` 是**沒有夾過**的分數 —— 0 分那天要分得出「剛好到底」還是「遠遠超過下限」。
+        const _sRaw = Math.round((50 + s * 5) * 10) / 10;
+        const _sClamped = (_sRaw < 0 || _sRaw > 100);
+        this._preOpenCalc = { s, sPct, raw: _sRaw, clamped: _sClamped, parts: _pp.slice() };
         // 🌙 V68.8.0 美股週末休市判斷(台灣週六日整天、週一 21:30 前 = 美股停在上週五收盤)
         const _usClosed = (() => { const d = new Date(), wd = d.getDay(), h = d.getHours(), mi = d.getMinutes(); if (wd === 6 || wd === 0) return true; if (wd === 1 && (h < 21 || (h === 21 && mi < 30))) return true; return false; })();
         // 🎯 V68.8.0 盤中型態預判(不只開高/開低,加續航判斷 → 開高走低/開低走高)
@@ -17154,6 +17178,34 @@ const marginByDate = {};
                         </div>
                         <div class="flex justify-between mt-0.5 text-[8px]"><span class="text-green-400 font-bold">0 偏空</span><span class="text-gray-500">50 中性</span><span class="text-red-400 font-bold">偏多 100</span></div>
                     </div>`;
+                })()}
+                ${(() => {
+                    // 📊 V77.1.0 使用者問「今天 0 分對嘛」—— ⛔ 以前畫面上**完全看不出是哪幾項扣的**。
+                    //   ⭐ 只讀 `_preOpenCalc`(上面算分時存的),⛔ 這裡一個數字都不重算(= 第二份真相)。
+                    const C = this._preOpenCalc;
+                    if (!C || !Array.isArray(C.parts) || !C.parts.length) return '';
+                    const dn = C.parts.filter(x => x.d < 0).length, up = C.parts.filter(x => x.d > 0).length;
+                    const row = x => `<div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;column-gap:8px" class="py-0.5 border-b border-[#21262d] last:border-0" data-ppf="${this._escHtml(x.nm)}">
+                        <div class="text-[10px] text-gray-300" style="overflow-wrap:anywhere">${x.nm}</div>
+                        <div class="text-[10px] font-mono text-gray-500 text-right" style="white-space:nowrap">${this._escHtml(String(x.note))}</div>
+                        <div class="text-[10px] font-mono font-bold text-right" style="width:34px;${x.d < 0 ? 'color:#4ade80' : x.d > 0 ? 'color:#f87171' : 'color:#8b949e'}">${x.d > 0 ? '+' : ''}${x.d}</div></div>`;
+                    // ⚠️ 夾到上下限時**一定要說出來** —— 否則「剛好到底」跟「遠遠超過下限」在畫面上長得一模一樣
+                    const clampNote = C.clamped
+                        ? `<div class="text-[10px] text-amber-300 leading-snug mt-1" data-ppclamp="1">⚠️ <b>今天已經超出量表</b>:算出來是 <b class="font-mono">${C.raw}</b> 分,而量表只到 <b>${C.raw < 0 ? 0 : 100}</b> → 顯示 ${C.sPct}。也就是說今天<b>比「${C.raw < 0 ? '極度偏空' : '極度偏多'}」還要再${C.raw < 0 ? '空' : '多'}</b>,⛔ 但畫面上分不出來(這是量表的限制,不是資料有問題)。</div>`
+                        : '';
+                    return `<details class="mt-2 pt-2 border-t border-[#30363d]" data-ppdet="1">
+                        <summary class="text-[11px] font-bold text-gray-300 cursor-pointer">📊 這 ${C.sPct} 分是怎麼算出來的?<span class="text-[10px] text-gray-500 font-normal">(${C.parts.length} 個因子:扣分 ${dn} 項 / 加分 ${up} 項)展開 ▾</span></summary>
+                        <div class="mt-1.5">
+                            <div class="text-[10px] text-gray-500 leading-snug mb-1">中性是 <b>50</b> 分,每個因子加減之後 ×5 換算成 0~100。</div>
+                            ${C.parts.map(row).join('')}
+                            <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px" class="pt-1 mt-0.5 border-t border-[#30363d]">
+                                <div class="text-[10px] font-bold text-gray-200">加總</div>
+                                <div class="text-[10px] font-mono font-bold text-right ${C.s < 0 ? 'text-green-300' : C.s > 0 ? 'text-red-300' : 'text-gray-300'}">${C.s > 0 ? '+' : ''}${C.s} 分 → 50 ${C.s < 0 ? '−' : '+'} ${Math.abs(C.s)}×5 = <b>${C.raw}</b></div>
+                            </div>
+                            ${clampNote}
+                            <div class="text-[10px] text-gray-500 leading-snug mt-1">⛔ 這是<b>開盤方向的機率</b>,不是漲跌幅預測,也<b>不是買賣訊號</b>;個股怎麼做請看個股頁。</div>
+                        </div>
+                    </details>`;
                 })()}
                 <div class="mt-2 pt-2 border-t border-[#30363d] text-[11px] text-gray-300 leading-relaxed"><b class="${patCls}">📈 ${pattern}:</b>${patNote}</div>
                 <!-- 🧹 V69.8.0 原 💡 一句話總結已併入下方「🎙️ 分析師盤勢解讀」(使用者:兩段判斷重複) -->
@@ -32008,7 +32060,13 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         for (const [sym, k] of Object.entries(D.ind || {})) { if (k && D.rows && D.rows[sym]) cnt.set(k, (cnt.get(k) || 0) + 1); }
         const rows = [...S.imed.entries()].sort((a, b) => b[1] - a[1]);   // 20 日中位漲跌,由強到弱 = 名次
         const m = rows.length, top = rows.slice(0, 3), bot = rows.slice(-3).reverse();
-        const E = this._ROT_EDGE, dt = this._dW ? this._dW(D.data_date || (D.updated || '').slice(0, 10)) : (D.data_date || '');
+        // 📅 V77.1.0 使用者:「板塊輪動沒有寫取得資料日期時間」——
+        //   ⛔ 原本只有日期沒有時間,而那是**兩件事**(這份名次用哪一天的收盤算 vs 採礦幾點跑完),
+        //   同 V76.3.4 決策台那次。⚠️ 日期一律走 `_dChip`(≥4 天自動轉黃 + ⚠️),⛔ 不可自己拼字串。
+        const E = this._ROT_EDGE;
+        const _rotDay = D.data_date || (D.updated || '').slice(0, 10);
+        const dt = (this._dChip ? this._dChip(_rotDay, '收盤') : (this._dW ? this._dW(_rotDay) : (_rotDay || '')))
+                 + (D.updated ? ` <span class="text-gray-600">・採礦 ${this._escHtml(this._fmtNewsTime(D.updated))} 跑完</span>` : '');
         const nm = k => `<b>${k}</b>`;
         lead.innerHTML = this._pageLeadHtml('錢現在在哪一族、哪一族最弱(近 20 日,上市 ' + m + ' 個產業)',
             `🔺 最強 ${top.map(x => nm(x[0])).join('・')}<span class="text-gray-500 font-normal mx-1">／</span>🔻 最弱 ${bot.map(x => nm(x[0])).join('・')}`,
@@ -44289,7 +44347,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const _prevP = this._invPrevPrices[item.symbol];
             const priceFlash = (_prevP != null && price !== _prevP) ? (price > _prevP ? 'price-flash-up' : 'price-flash-down') : '';
             this._invPrevPrices[item.symbol] = price;
-            html += `<div data-inv-sym="${item.symbol}" class="inv-grid ${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-1" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
+            html += `<div data-inv-sym="${item.symbol}" class="inv-grid ${bgClass} border-b border-[#21262d] cursor-pointer hover:bg-[#21262d] transition-colors px-2 py-2.5" onclick="app.analyze('${item.symbol}'); app.switchAppTab('diag');">
                 <!-- 庫存股:現股 tag + 股名 + 代號 + 🚨 -->
                 <div class="flex flex-col gap-0 min-w-0">
                     <span class="text-white font-black ${nameFs} truncate leading-tight">${cname}</span>
@@ -46029,8 +46087,103 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                      sw: { base: 1933944, cash: 2057822, park: 2247695, etf: 2641000, bearDays: 168, allDays: 974 } },
 
     /** 🎯 決策台的資料(⛔ 純資料,不碰 DOM) */
+    /** 📈 V77.1.0 「符合進場」全市場候選 —— 使用者:「符合進場是否要放在決策裡面」
+     *  ⭐ 它跟「🎯 今天可以買的」**不是同一個問題**,⛔ 不可混在一起:
+     *     ・🎯 今天可以買的 = `playbook_edge`「**這一檔自己**最會賺的那一招,要漲過多少才觸發」
+     *     ・📈 符合進場     = 總覽那個徽章的條件:**🧬 高位階+高波動** 同時 **今天出現期望值為正的看多訊號**
+     *  🚨 這個徽章以前**只有個股頁看得到** → 使用者得先猜到要開哪一檔(陷阱 #32);
+     *     而實測今天全市場同時成立的**只有個位數**,一檔一檔翻根本翻不到。
+     *  ⛔ 門檻一律讀 `_EDGE_RULES.gene`、封鎖清單一律讀 `_ovBlockWhy`(⛔ 不在這裡另寫一份 = 第二份真相)。
+     *  ⚠️ **這裡算不出 `_bearGate`**(那要個股的 K 線)→ 一律講成「候選」,並寫明最終判定在個股頁。
+     */
+    /** 📈 V77.1.0 「符合進場」在決策台的那一段(⛔ 不新增卡片 —— 接在「今天可以買的」底下) */
+    _deckFitHtml(F) {
+        if (!F) return '';
+        const R = this._EDGE_RULES.gene;
+        const why = `<div class="text-[10px] text-gray-400 mt-0.5 mb-1.5 leading-relaxed">`
+            + `這跟上面的「🎯 今天可以買的」<b>不是同一個問題</b>:上面問「<b>這一檔自己</b>最會賺的那一招今天觸發價多少」,`
+            + `這裡問「<b>總覽那個 📈 符合進場徽章</b>今天在哪幾檔亮」= <b>🧬 位階 ≥${R.pos} 且振幅 ≥${R.amp}%</b> 同時 <b>今天出現期望值為正的看多訊號</b>。</div>`;
+        if (!F.ready) {
+            return `<div class="mt-2 pt-2 border-t border-[#30363d]" data-deckfit="na">
+                <div class="text-sm font-black text-yellow-300">📈 符合進場:<b>還沒辦法幫你看</b></div>
+                <div class="text-[11px] text-gray-300 mt-1">今日訊號或選股快照<b>還沒下載到</b> —— ⛔ 這<b>不代表今天沒有</b>,只代表現在算不出來。</div></div>`;
+        }
+        const n = F.list.length;
+        if (!n) {
+            return `<div class="mt-2 pt-2 border-t border-[#30363d]" data-deckfit="0">
+                <div class="text-sm font-black text-gray-300">📈 符合進場:<b class="text-gray-100">今天全市場 0 檔</b></div>${why}
+                <div class="text-[10px] text-gray-500 leading-snug">今天掃 <b>${F.scanned.toLocaleString()}</b> 檔:亮看多訊號的 <b>${F.bullSyms.toLocaleString()}</b> 檔、符合 🧬 的 <b>${F.geneN.toLocaleString()}</b> 檔,<b>兩個同時成立的 0 檔</b>。
+                ⭐ 這是<b>常態</b>(兩個條件各自就很嚴),⛔ 不是壞掉,也⛔ 不會為了填版面硬給你一檔。</div></div>`;
+        }
+        // 💸 來回成本一律讀產物(`playbook_edge.cost`),⛔ 不寫死 —— 回測改成本時這裡要跟著變
+        const COST = (this._pbEdge && Number.isFinite(+this._pbEdge.cost)) ? +this._pbEdge.cost : 0.44;
+        const net = x => Math.round(((+x.exp || 0) - COST) * 100) / 100;
+        const row = x => {
+            const sym = String(x.s);
+            const nv = net(x);
+            return `<div onclick="app.analyze('${sym}'); app.switchAppTab('diag'); app.vibrate(15);" data-deckfitrow="${sym}"
+                class="px-2 py-2 mb-1 rounded bg-[#0d1117] border border-[#30363d] cursor-pointer hover:bg-white/5">
+                <div class="flex items-baseline justify-between gap-2">
+                    <div class="min-w-0 flex-1">${this._nmPair ? this._nmPair(sym, 'text-[12px]') : `<span class="font-mono font-black text-[12px] text-gray-100">${sym}</span>`}</div>
+                    <span class="text-[10px] text-gray-400 font-mono flex-shrink-0">收盤 <b class="text-gray-100">${(+x.c).toFixed(2)}</b></span>
+                </div>
+                <div class="text-[10px] text-gray-400 mt-0.5 leading-snug">🎯 ${this._escHtml(x.t || '')}
+                    <span class="text-gray-600">・期望 ${(+x.exp).toFixed(2)}% ・勝率 ${(+x.w).toFixed(1)}% ・${(+x.n).toLocaleString()} 次</span></div>
+                <div class="text-[10px] mt-0.5 leading-snug"><span class="text-gray-500">扣掉來回成本 ${COST}% 之後:</span>
+                    <b class="font-mono ${nv >= 0 ? 'text-red-300' : 'text-green-300'}">${nv >= 0 ? '+' : ''}${nv.toFixed(2)}%</b>
+                    ${nv < 0 ? '<span class="text-gray-500">← ⛔ 這一檔的訊號<b>賺不到手續費</b></span>' : ''}</div>
+                <div class="text-[10px] text-gray-500 font-mono mt-0.5">🧬 位階 ${x._pos == null ? '—' : Math.round(+x._pos)} ・振幅 ${x._amp == null ? '—' : (+x._amp).toFixed(1)}%</div>
+            </div>`;
+        };
+        // 🚨 全部都賺不到成本時**要講出來** —— ⛔ 不可列一排股票卻不說「這些扣完成本都是負的」
+        const allNeg = F.list.every(x => net(x) < 0);
+        const costWarn = allNeg
+            ? `<div class="text-[10px] text-amber-300 leading-snug mb-1.5" data-deckfitcost="1">🚨 <b>今天這 ${n} 檔的訊號,扣掉來回成本 ${COST}% 之後<b>全部是負的</b></b> —— 條件是到了,但<b>這個訊號本身賺不到手續費</b>。⛔ 列出來是讓你知道今天亮在哪,⛔ 不是叫你買。</div>`
+            : '';
+        return `<div class="mt-2 pt-2 border-t border-[#30363d]" data-deckfit="${n}">
+            <div class="text-sm font-black text-cyan-300">📈 符合進場(${n} 檔)</div>${why}${costWarn}
+            ${F.list.map(row).join('')}
+            <div class="text-[10px] text-amber-300 leading-snug mt-1">⚠️ <b>這是候選,不是結論</b> —— 這裡算不出「這一檔自己是不是空頭」(那要個股 K 線)。
+                <b>點進去看個股頁</b>會再過一次空頭守門,⛔ 有可能在那邊被擋下來。</div>
+            <div class="text-[10px] text-gray-500 leading-snug mt-1">📅 用 ${this._dChip ? this._dChip(F.date, '收盤') : this._escHtml(F.date)} 算的
+                ・今天掃 ${F.scanned.toLocaleString()} 檔(亮看多訊號 ${F.bullSyms.toLocaleString()} 檔 ・符合 🧬 ${F.geneN.toLocaleString()} 檔)
+                ・⛔ 期望值<b>未扣</b>來回成本 0.44% ・基準勝率是 <b>36%</b> 不是 50%(台股中位數個股本來就跑輸大盤)。</div>
+        </div>`;
+    },
+    async _deckFitScan() {
+        const out = { list: [], scanned: 0, bullSyms: 0, geneN: 0, date: '', upd: '', ready: false };
+        let ts = null, D = null;
+        try { ts = await this._loadTodaySignals(); } catch (_) {}
+        try { if (this._scrData === undefined) await this._loadScreener(); D = this._scrData; } catch (_) {}
+        if (!ts || !Array.isArray(ts.bull) || !D || !D.rows) return out;   // ⛔ 載不到就回空並標 ready=false,別假裝「今天沒有」
+        out.ready = true;
+        out.scanned = +ts.scanned || 0; out.bullSyms = +ts.bull_syms || 0;
+        out.date = String(ts.data_date || '').slice(0, 10); out.upd = String(ts.updated || '');
+        const R = this._EDGE_RULES.gene;
+        const gene = new Set();
+        for (const [sym, row] of Object.entries(D.rows)) {
+            const p = this._scrV(row, 'pos252'), a = this._scrV(row, 'amp20');
+            if (p != null && a != null && +p >= R.pos && +a >= R.amp) gene.add(String(sym));
+        }
+        out.geneN = gene.size;
+        const best = new Map();
+        for (const x of ts.bull) {
+            const sym = String(x.s || '');
+            if (!gene.has(sym)) continue;
+            if (this._ovBlockWhy(x.t)) continue;              // ⛔ 黑名單(實測沒用 / 方向相反)一律不進
+            const cur = best.get(sym);
+            if (!cur || (+x.exp || 0) > (+cur.exp || 0)) best.set(sym, x);
+        }
+        out.list = [...best.values()].sort((a, b) => (+b.exp || 0) - (+a.exp || 0)
+            || (+b.a20 || 0) - (+a.a20 || 0));              // ⛔ 同期望值時用成交額,別退化成代號序
+        for (const x of out.list) {
+            const row = D.rows[String(x.s)];
+            x._pos = this._scrV(row, 'pos252'); x._amp = this._scrV(row, 'amp20');
+        }
+        return out;
+    },
     async _deckState() {
-        const st = { sell: [], skip: [], invN: 0, buy: [], pbNull: false, pbDate: '', hqN: 0, total: 0, bearN: 0 };
+        const st = { sell: [], skip: [], invN: 0, buy: [], pbNull: false, pbDate: '', hqN: 0, total: 0, bearN: 0, fit: null };
         try { st.sell = (await this._invExitScan()) || []; } catch (_) {}
         st.skip = this._invExitSkip || []; st.invN = this._invExitN || 0;
         let j = null;
@@ -46050,6 +46203,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const hq = uniq.filter(x => (+x.hq || 0) === 1 && !x.bear);
         st.hqN = hq.length;
         st.buy = hq.slice(0, this._DECK_TRACK49.picks);
+        try { st.fit = await this._deckFitScan(); } catch (_) { st.fit = null; }
         return st;
     },
 
@@ -46155,8 +46309,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 </div>`;
             }
 
+            // 📈 V77.1.0 「符合進場」接在同一區底下(⛔ 不新增卡片 —— 使用者鐵則:合併,不要加新卡)
+            try { const _f = this._deckFitHtml(st.fit); if (_f) buy.innerHTML += _f; } catch (_) {}
+
             // ── ✅ 今天沒事 ──
-            idle.innerHTML = (!st.sell.length && !st.buy.length && !st.pbNull)
+            //   ⚠️ 「符合進場」有東西時就**不算沒事**(⛔ 否則同一頁會一邊列股票、一邊說「今天不用做」= 打架)
+            idle.innerHTML = (!st.sell.length && !st.buy.length && !st.pbNull && !(st.fit && st.fit.list && st.fit.list.length))
                 ? `<div class="bg-[#161b22] border-l-4 border-gray-600 border-y border-r border-[#30363d] rounded-r p-3">
                      <div class="text-sm font-black text-gray-200">✅ 今天不用做</div>
                      <div class="text-[11px] text-gray-400 mt-1">手上沒有要賣的、也沒有值得買的。⭐ 這種日子占大多數 —— <b>忍住不做</b>本身就是紀律的一部分。</div>
