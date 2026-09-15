@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.0.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -849,7 +849,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4770,7 +4770,7 @@ const app = {
         const mins = (() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); })();
         if (mins < 420 || mins > 810) return;
         await new Promise(r => setTimeout(r, 2500));   // 等 live_quotes 載入
-        if (!this._liveQuotes || !Object.keys(this._liveQuotes).length) return;
+        if (!this._liveFresh() || !this._liveQuotes || !Object.keys(this._liveQuotes).length) return;   // 🕐 V77.0.4 加新鮮度
         try { localStorage.setItem('proTerminalLastOvernightSweep', today); } catch (_) {}
         const fav = this.favGroups?.[this.activeGroupName] || [];
         const inv = app._getInventory();
@@ -8446,8 +8446,17 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.0.3',
+    _APP_VERSION: 'V77.0.4',
     _CHANGELOG: [
+        { v: 'V77.0.4', d: [
+            '🕐 <b>「附圖資料對嘛」→ 不對,而且是一個藏很久的真 bug</b>:你截圖那一刻(09/15 09:24,盤中)App 顯示加權 45,862.52 ▼0.70%,但真值是 45,768.99 −0.20% —— ⭐ <b>數字沒有算錯,是整份即時快照是 9/14 的</b>,卻被標成「盤中即時 2336 檔」。45,862.52 其實就是<b>昨天的收盤價</b>。',
+            '🚨 <b>真因</b>:快照裡那個「這是幾點抓的」欄位,<b>從上線到今天存了但一次都沒有人去讀</b> —— 全 App 18 個用到即時報價的地方,判斷標準都是「有沒有資料 / 夠不夠多檔」,<b>沒有一個在問「這是哪一天的」</b>。',
+            '✅ <b>修好了</b>:快照不是今天的,一律改用<b>收盤價</b>,⛔ 絕不把昨天的價印成現價(那比空白更危險)。而且<b>會告訴你為什麼</b>(「快照停在 09/14 15:55」),⛔ 不是讓那一格安靜消失。',
+            '⚠️ <b>但還有一半要你動手</b>:即時快照採礦<b>今天一整天一次都沒跑</b>(上次是 09/14 17:50)—— 排程被 GitHub 餓死,而之前做好的「用 Cloudflare 叫醒它」那條路<b>還沒啟用</b>(缺一個金鑰)。設好之後盤中才會有真的即時價,步驟在 cloud-worker 的說明檔。',
+            '🕐 <b>「01:07 我盤後買不到」→ 功能沒壞,是標籤在說謊</b>:01:07 是<b>採礦跑完的時間</b>,⛔ 不是買進時間。實際節奏是「半夜算好名單 → <b>今天尾盤 13:00~13:28</b> 看它有沒有漲過觸發價,有才買」。已改成「清單 01:07 <b>備好</b>」+ 標題下一行大字直接寫<b>「🕐 什麼時候買:今天 13:00~13:28」</b>。',
+            '🏅 <b>四張分點卡補上「打掉它的那個實測數字」</b>(你上一題選的:保留卡片、不要刪):其中「🎯 今天多家分點同買的」最嚴重 —— 它在<b>主動推薦股票</b>,而<b>同一頁</b>的券商榜底部早就寫著「這是成績記錄不是買進名單」= 自己跟自己打架。已改成純描述「🎯 跟單精選 · 今日最值得跟」,並寫明那個「分」是<b>憑空訂的權重、沒有回測驗證過</b>。',
+            '⭐ <b>而且把唯一有用的那條也寫上去,因為方向跟直覺相反</b>:有用的是<b>「已經發動才跟」</b>(同一分點連買 ≥3 天 + 5 日已漲 ≥8% → 之後 20 日 +1.36pp),⛔ <b>不是</b>「趁還沒動偷偷跟」(那個實測只有 +0.06pp ≈ 零)。',
+            '📄 <b>順手更正兩處我自己寫錯的文件</b>:「外資買賣超只回溯到 2026/05、要等滿一年才能回測」—— <b>差 13 倍</b>,實跑印出來是 <b>2023/05/22 起、805 個交易日</b>。⚠️ 但重跑出來的新結論<b>還沒過八道關卡</b>(平均值算錯了,一次長行情被重複計算)→ ⛔ 預設一個字都沒改。'] },
         { v: 'V77.0.3', d: ['📼 <b>開始存 5 分 K 了</b>(你說的「開始存分k」)—— 以前本站<b>一根分 K 都沒有留下來</b>,所以那三條盤中口訣(下午時段 / 開盤 10 分鐘站回 / 第一根 5 分 K 上影)只能現抓現算,<b>每次重跑結果都不一樣</b>,而且「逐年同向」那一關天生過不了。','⏳ <b>第一次跑就有約 80 個交易日</b>(不是要等半年),但要做得動「逐年」那一關得滿一年 → 大約 <b>2027 年 2 月</b>。','⚠️ 存的是「<b>當天成交量前 80 名</b>」那批(你選的)—— 代價是名單每天會變,某一檔在歷史上會斷斷續續,而且天生只收「當天夠熱」的日子。檔案裡已經把每天的實際名單與這段警語一起存進去,回測時一定會先算「這檔在窗口裡有幾天」。','⛔ 它存在自己的分支、<b>不佔網站空間</b>,也不會讓你的 App 變慢。'] },
         { v: 'V77.0.2', d: ['💾 <b>「存成圖片」修好了</b> —— 而且它以前<b>失敗也照樣跟你說「已存成」</b>,所以看起來像壞掉但不知道哪裡壞。現在 iPhone 會直接跳「分享」(選「儲存影像」就進相簿),存不起來會誠實告訴你怎麼長按存。','🧭 <b>「五個面向」少一格的真相</b>:標題是<b>寫死</b>的「五個面向」,而 6706 惠特是虧損股 → 沒有本益比、月營收也只有 12 個月算不出兩個年增點 → 🎯 預期那一格<b>本來就該是空的</b>。現在標題會照實際幾格寫,而且<b>直接在圖上寫出「缺哪一格 + 為什麼」</b>。','🧬 <b>「為何沒有基本面」是三個 bug 疊在一起</b>:① 同一個「營收年增」全 App 有<b>兩條相反的優先序</b> —— 報告頁拿到最新的 +120.5%、基本面分數卻吃到 7 月的舊值 −26.1% → 被打成 0 分。現在統一成一份。','🩸 ② 但<b>只修那個會讓 6706 從 0 分變 57 分(「體質穩健」)</b>,而它近 4 季 ROE −7.1%、最新一季 EPS −1.89 元 → 那比 0 分更誤導。<b>新增「虧損封頂」</b>:真的在虧錢時分數最高 30 分,並在卡上寫出是哪個數字把它封住的。','💲 ③ 拿不到的數字會被印成 <b>0.0</b>(虧損股的本益比印成「0.0 倍」、股價淨值比明明有 3.2 卻印 0.00)—— 報告頁那條數字格式鏈已全部修掉,虧損股改印「—(虧損)」。','🌐 你給的「海外訊號篇」清單看過了:<b>6 項裡本站已經有 4 項</b>(台積 ADR / 費半 / 那斯達克 / 美債 10 年期 + 倒掛),而且已經算進盤前體檢分數。只補了「每天 3-5 分鐘」那一層的<b>指路</b>;DRAM 報價與雲端巨頭資本支出<b>台股沒有免費來源</b>,已記進實測總表免得日後重複評估。'] },
         { v: 'V77.0.1', d: ['🗣️ <b>你貼的 12 條盤中口訣,我一條一條查過了</b> —— 其中 <b>6 條本站早就測過,全部沒用</b>(開盤跳水就買、早盤急拉是假的、下午大跌次日買、量增價不漲、9:15 帶量突破…),⛔ 不用再測一次。','✅ <b>唯一站得住的是「不漲不跌就睡覺」</b>:盤整那一桶的邊際 +0.007 = 跟丟銅板一樣,而「橫盤<b>突破</b>」還是 −0.52 → <b>不交易比等突破更對</b>。','🏦 <b>「先看前一天籌碼軌跡」是唯一過關的一條</b>(1,754 檔・含 2022 空頭實測):昨天三大法人買超佔量比是它自己歷史最極端那 0.5% → 之後 10 天比其他股票好 <b>+0.65%</b>,六道關卡全過。⚠️ 但那一桶<b>自己還是輸大盤 0.48%</b> → 它只能拿來<b>排序</b>(在你已經要挑的幾檔裡優先挑它),⛔ <b>不是「看到就買」</b>。','⛔ <b>這一版一個提醒都沒有新增</b> —— 照你定的「不準就不用提醒」,沒過門檻的一律不主動推。','🐛 順手修:本益比拿不到的時候,報告頁的估值表會印成「現在(PE <b>0.0</b> 倍)」—— 現在改成「—」。'] },
@@ -15224,7 +15233,7 @@ const marginByDate = {};
         if (!info || !sub) return;
         try {
         // 📸 V63.2 最優先:永豐 Shioaji 全市場快照的「大台 TXF 近月即時價」(真報價、真漲跌%,非估算)
-        const li = this._liveIdx && this._liveIdx.txf;
+        const li = this._liveFresh() && this._liveIdx && this._liveIdx.txf;   // 🕐 V77.0.4 不是今天的快照⛔ 不可標「即時」
         if (li && li.p != null && isFinite(+li.p)) {
             const price = +li.p;
             const chg = (li.c != null && isFinite(+li.c)) ? +li.c : null;
@@ -21327,7 +21336,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     // ⚠️ 但「用來比對」要講清楚是比對**什麼**:
     //   ✅ 可以:當成「隔夜美股 + 盤後消息,台灣資金怎麼定價」的風向 —— 盤前體檢早就在用它計分。
     //   ⛔ 不可以:拿它決定「要不要追」。本專案實測過(V72.9.0):
-    //      「隔天開盤買」比「訊號日尾盤買」**少賺 54 萬**;而「跳空 >1% 就不追」**直接倒賠**
+    //      「隔天開盤買」比「訊號日尾盤買」**少賺 54 萬**(⚠️ 那是**舊出場**;V77.0.4 用現行的
+    //      唐奇安 20 日重跑是 **少賺 99 萬**,585 萬 → 486 萬);而「跳空 >1% 就不追」**直接倒賠**
     //      —— 因為跳空開高的那幾檔正是後來走最遠的。所以這條**只描述、不下指令**。
     //
     // ⛔ 三個設計:
@@ -21375,7 +21385,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const w = this._preOpenFutWindow();
         if (!w.on) return hide();
         let px = null, chg = null, src = '';
-        const li = this._liveIdx && this._liveIdx.txf;
+        const li = this._liveFresh() && this._liveIdx && this._liveIdx.txf;   // 🕐 V77.0.4 同上
         if (li && li.p != null && isFinite(+li.p) && +li.p > 0) {
             px = +li.p; chg = (li.c != null && isFinite(+li.c)) ? +li.c : null; src = '大台近月・即時';
         }
@@ -21407,7 +21417,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <div class="text-[10px] text-gray-400 mt-1 leading-snug">${w.pre
                 ? '期貨 <b>08:45</b> 就開了(現貨 09:00),夜盤 15:00~05:00 已經把隔夜美股反映過一輪 → 這是<b>開盤前唯一看得到的台灣資金定價</b>。'
                 : '現貨已開盤。期貨早 15 分鐘開、晚 15 分鐘收(08:45~13:45)。'}</div>
-            <div class="text-[9px] text-gray-600 mt-1 leading-snug">⚠️ 這是<b>期貨自己的漲跌</b>,⛔ 不是現貨開盤預測。<b>本站實測</b>:照打法「隔天開盤買」比「訊號日尾盤買」少賺 54 萬;而「跳空 &gt;1% 就不追」<b>反而倒賠</b>(開高跑最遠的常是那幾檔)→ ⛔ 別拿期貨方向決定要不要追。</div>
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">⚠️ 這是<b>期貨自己的漲跌</b>,⛔ 不是現貨開盤預測。<b>本站實測</b>(V77.0.4 用現行的唐奇安出場重跑):照打法「隔天開盤買」比「訊號日尾盤買」<b>少賺 99 萬</b>(舊出場那一輪是 54 萬);而「跳空 &gt;1% 就不追」<b>反而倒賠</b>(開高跑最遠的常是那幾檔)→ ⛔ 別拿期貨方向決定要不要追。</div>
         </div>`;
     },
 
@@ -28703,7 +28713,7 @@ ${this._reportFacts(sym)}
         }
         const top1Lots = buy[0] ? Math.round(Math.abs(buy[0].net) / 1000) : 0;
         const conc = sumBuyLots > 0 ? Math.round(top1Lots / sumBuyLots * 100) : 0;
-        if (conc >= 40 && buy[0]) insights.push({ c: 'conc', h: `🕵️ <b class="text-purple-300">神秘分點·籌碼高度集中</b> — <b>${shortName(buy[0])}</b> 單一分點吃下 ${conc}% 買超${(+buy[0].avg > 0) ? `,成本約 <b class="font-mono">@${(+buy[0].avg).toFixed(1)}</b>` : ''},量能被單一分點主導(疑似主力藏身處)。` });
+        if (conc >= 40 && buy[0]) insights.push({ c: 'conc', h: `🕵️ <b class="text-purple-300">神秘分點·籌碼高度集中</b> — <b>${shortName(buy[0])}</b> 單一分點吃下 ${conc}% 買超${(+buy[0].avg > 0) ? `,成本約 <b class="font-mono">@${(+buy[0].avg).toFixed(1)}</b>` : ''},量能被單一分點主導(疑似主力藏身處)。<br><span class="text-[9px] text-gray-500">⛔ <b class="text-orange-300">這只是描述,⛔ 不是買賣訊號</b>:分點集中度實測 106 萬(股·日)—— 買 <b>−0.60pp</b> / 賣 <b>−0.68pp</b>,<b>每一桶、每一年都輸對照組</b>,而且買賣兩端同號 = 那是<b>活躍度不是方向</b>。</span>` });
         // 💥 V69.8.1 Top1 分點爆量(對標付費 App「分點偵探」):今日買超王 vs 它自己近10日日均的倍數
         try {
             const b1 = ((P['1d'] || {}).buy || [])[0];
@@ -38139,7 +38149,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
     // 🏦 V69.0.7 券商 12 分類(仿專業 App 左欄直排)
     _BROKER_CATS: [
-        ['follow', '🎯', '跟單精選'], ['god', '🏅', '高手券商'], ['imp', '🏛️', '重要券商'],
+        ['follow', '🎯', '分點同買'], ['god', '🏅', '高手券商'], ['imp', '🏛️', '重要券商'],
         ['radar', '📊', '買賣排行'], ['ranks', '📇', '分點榜'],
         ['alliance', '🤝', '分點聯軍'], ['perf', '📈', '券商勝率'], ['pick', '🔍', '分點跟單'],
     ],
@@ -38160,7 +38170,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
     _renderBrokerCat(key) {
         switch (key) {
-            case 'follow': return this._followPicksHtml() || this._brokerEmpty('🎯 跟單精選整備中(採礦完成後顯示)。');
+            case 'follow': return this._followPicksHtml() || this._brokerEmpty('🎯 分點同買整備中(採礦完成後顯示)。');
             case 'god': return this._godBrokerHtml();
             case 'imp': return this._impBrokerHtml();
             case 'radar': return this._brokerStockRankHtml();
@@ -38215,9 +38225,26 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return `<div class="panel border border-[#30363d] bg-[#0d1117] rounded-lg p-2.5">
             <div class="text-[12px] font-black text-gray-100 mb-0.5">${title}</div>
             <div class="text-[9px] text-gray-500 mb-1.5">${sub} · 點看它布局什麼</div>
-            ${list}</div>`;
+            ${list}
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">${this._brokerNoEdgeHtml(mode === 'mystery' ? 'myst' : 'follow')}</div></div>`;
     },
     _bBestWin(b) { const vs = Object.values(b.win || {}).map(v => v && v.win).filter(v => v != null); return vs.length ? Math.max(...vs) : null; },
+    // 🚨 V77.0.4 「跟著分點做有沒有用」的實測結論 —— ⛔ 全 App 只有這一份(陷阱 #37:
+    //   同一句誠實話若各卡各寫一份,改一處就會漏掉其他處;本 repo 已經因此犯過 8 次)。
+    //   ⚠️ 這幾個數字是**打掉這些卡的那個實測**,⛔ 不是裝飾 —— 使用者選的是「保留卡片 + 寫上實測數字」
+    //   (同 V74.9.0 選股榜 23→10 的做法:卡留著、拿掉推薦口吻、把打掉它的數字直接寫在卡上)。
+    _BROKER_NOEDGE: {
+        conc:  '分點集中度實測 106 萬(股·日):買 <b>−0.60pp</b> / 賣 <b>−0.68pp</b>,<b>每一桶、每一年都輸對照組</b>;買賣兩端同號 = 那是<b>活躍度不是方向</b>。',
+        ally:  '分點同盟實測(467 天 × 7,140 對):正向那組看起來有 +1.52pp,但<b>反向驗證直接翻盤</b>,而且前後兩段學到的同盟<b>名單重疊率 0%</b> = 學到的是雜訊。',
+        myst:  '「神秘分點」實測(377 萬筆買超事件):+0.20pp,<b>比來回成本 0.44% 還小</b>;地緣分點 +0.01pp ≈ 零。',
+        follow:'本站四支探針(分點慣性 / 分點同盟 / 分點×產業 / 隱形吃貨)實測「跟著分點做」<b>都沒有</b>預測力 —— 其中「連買但還沒漲」(= 偷偷佈局)只有 <b>+0.06pp ≈ 零</b>。',
+    },
+    //   ⭐ 唯一成立的那一條也寫進來:方向跟直覺**相反** —— 有用的是「已經發動才跟」,⛔ 不是「趁還沒動偷偷跟」。
+    _BROKER_ONLY_EDGE: '✅ <b>唯一實測站得住的一條</b>:同一分點<b>連買 ≥3 天</b> 且該股<b>5 日已漲 ≥8%</b> → 之後 20 日比大盤 <b>+1.36pp</b>(n=34,505,前後半同向)。⭐ 注意方向:有用的是<b>「已經發動才跟」</b>,⛔ 不是「趁還沒動偷偷跟」。',
+    _brokerNoEdgeHtml(kind) {
+        const t = this._BROKER_NOEDGE[kind] || this._BROKER_NOEDGE.follow;
+        return `⛔ <b style="color:#fdba74">這是成績記錄,不是買進名單</b>:${t}窗口偏多頭、有倖存者偏誤。`;
+    },
     // 📇 分點榜:買超王/賣超王/勝率王/神秘黑馬/隔日沖 併成一頁小分頁切(左欄更短)
     _brokerRankMode: 'buy_today',
     _brokerRanksHtml() {
@@ -38280,7 +38307,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         </div>`).join('');
         return `<div class="panel border border-[#30363d] bg-[#0d1117] rounded-lg p-2.5">
             <div class="text-[12px] font-black text-gray-100 mb-0.5">🤝 分點聯軍</div>
-            <div class="text-[9px] text-gray-500 mb-1.5">常一起買同一檔=主力聯合作戰,火力更強</div>${rows}</div>`;
+            <div class="text-[9px] text-gray-500 mb-1.5">常一起買同一檔=主力聯合作戰,火力更強</div>${rows}
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">${this._brokerNoEdgeHtml('ally')}</div></div>`;
     },
     // 🔍 分點跟單:選/搜一家分點 → 看它完整檔案
     _brokerPickHtml() {
@@ -38453,7 +38481,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div>📅 窗口 ${days} 個交易日${cut > 0 ? ` ・已擋掉 ${cut} 家樣本不足 10 次的` : ''}${bf ? ` ・含 ${bf} 筆歷史回推近似值` : ''}。</div>
                 ${P === 'dt' ? `<div>⚠️ 「當沖」是用<b>同一家分點同一天既買又賣</b>推的<b>估計</b>,⛔ 不是官方當沖數字(可能是 A 客戶買、B 客戶賣)。</div>` : ''}
                 <div>⚠️ 未扣交易成本(${P === 'dt' ? '當沖來回約 0.25%' : '來回約 0.44%'})→ 上面的報酬要自己減掉。</div>
-                <div>⛔ <b style="color:#fdba74">這是成績記錄,不是買進名單</b>:本站三支探針(分點慣性 / 分點同盟 / 分點×產業)實測「跟著分點做」都<b>沒有</b>預測力,而且窗口偏多頭、有倖存者偏誤。</div>
+                <div>${this._brokerNoEdgeHtml()}</div>
               </div>`;
         }
 
@@ -38893,9 +38921,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </button>`;
         }).join('');
         return `<div class="bg-[#161b22] border border-amber-700/40 rounded-lg p-2.5 mb-3">
-            <div class="flex items-center justify-between mb-1.5"><div class="text-[12px] font-black text-amber-300">🎯 跟單精選 · 今日最值得跟</div><button onclick="app._helpBox('把「好分點(排掉隔日沖/避險/散戶)+ 好行為(布局加碼/新卡位/留倉)+ 歷史勝率 + 身分(官股/外資/投信)+ 集中度」加權合成。同一檔越多好分點吃貨、分數越高。只列真個股(不含 ETF)。純公式,非投資建議,務必自設停損。')" class="text-[10px] text-gray-500 hover:text-amber-300">📖</button></div>
+            <div class="flex items-center justify-between mb-1.5"><div class="text-[12px] font-black text-amber-300">🎯 今天多家分點同買的</div><button onclick="app._helpBox('【今天多家分點同買的】\n\n這張是「今天發生了什麼」的事實清單:把「好分點(排掉隔日沖/避險/散戶)+ 好行為(布局加碼/新卡位/留倉)+ 歷史勝率 + 身分(官股/外資/投信)+ 集中度」加權合成排序。只列真個股(不含 ETF)。\n\n🚨 那個「分」是憑空訂的權重、⛔ 從來沒有回測驗證過 —— 它只是排序用,⛔ 不是勝率、⛔ 不是期望值。\n\n⛔ 而且「跟著分點做」本站已經測到底:分點慣性 / 分點同盟 / 分點×產業 / 隱形吃貨四支探針全部沒有預測力,其中「連買但還沒漲」(偷偷佈局)只有 +0.06pp ≈ 零。\n\n✅ 唯一站得住的是反過來那條:同一分點連買 ≥3 天、而且該股 5 日已經漲 ≥8% → 之後 20 日比大盤 +1.36pp(n=34,505)。有用的是「已經發動才跟」,不是「趁還沒動偷偷跟」。')" class="text-[10px] text-gray-500 hover:text-amber-300">📖</button></div>
             ${rows}
-            <div class="text-[9px] text-gray-600 mt-1.5">多家好分點同買=主力共識強。點任一列看個股(內含每家分點細節)。</div>
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">📋 這是<b>今天發生了什麼</b>的事實清單,⛔ 不是買進名單。那個「分」是<b>憑空訂的權重、沒有回測驗證過</b>,只拿來排序 —— ⛔ 不是勝率也不是期望值。<br>${this._brokerNoEdgeHtml('follow')}<br>${this._BROKER_ONLY_EDGE}</div>
         </div>`;
     },
     _openBrokerFromName(name) {
@@ -38947,7 +38975,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <div class="flex items-center justify-between mb-1.5"><div class="text-[11px] font-bold text-purple-300">🏆 分點排行榜</div><div class="flex gap-1 flex-wrap">${tabBtn('buy_today', '買超王')}${tabBtn('win', '勝率王')}${tabBtn('mystery', '神秘黑馬')}${tabBtn('daytrade_fire', '隔日沖火力')}</div></div>
             ${grid}
             <div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 點任一分點看它的完整檔案(標籤/勝率/布局)。神秘黑馬=沒名氣但歷史勝率高的隱形主力。</div>
-            <div class="mt-3"><div class="text-[11px] font-bold text-amber-300 mb-1">🤝 分點聯軍(常一起買同一檔=主力聯合作戰)</div>${alHtml}</div>
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">${this._brokerNoEdgeHtml('myst')}</div>
+            <div class="mt-3"><div class="text-[11px] font-bold text-amber-300 mb-1">🤝 分點聯軍(常一起買同一檔=主力聯合作戰)</div>${alHtml}
+                <div class="text-[9px] text-gray-600 mt-1 leading-snug">${this._brokerNoEdgeHtml('ally')}</div></div>
             <div class="mt-3"><div class="text-[11px] font-bold text-gray-300 mb-1">⚔️ 對敲/作價警示 <span class="text-[9px] text-gray-600 font-normal">同分點同股當日買賣都大=可能作價,別跟</span></div>${chHtml}</div>
         </div>`;
     },
@@ -45869,12 +45899,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         <div class="text-sm font-black text-cyan-300">🎯 今天可以買的(最多 ${this._DECK_TRACK49.picks} 檔)</div>
                         <div class="text-[10px] text-gray-400 font-mono flex items-center gap-1">
                             ${this._dChip(st.pbDate, '收盤')}
-                            ${st.pbUpd ? `<span class="text-gray-600">・更新 ${this._escHtml(this._fmtNewsTime(st.pbUpd))}</span>` : ''}
+                            ${st.pbUpd ? `<span class="text-gray-600">・清單 ${this._escHtml(this._fmtNewsTime(st.pbUpd))} 備好</span>` : ''}
                         </div>
                     </div>
+                    <div class="text-[11px] text-cyan-200 mt-1 mb-1.5 font-bold leading-relaxed">
+                        🕐 什麼時候買:<b class="text-cyan-300">今天 ${eodTxt}</b>(台北,收盤前那半小時)。
+                    </div>
                     <div class="text-[10px] text-gray-400 mt-0.5 mb-2 leading-relaxed">
+                        🚨 <b>上面那個「清單備好」的時間⛔ 不是買進時間</b> —— 採礦是<b>半夜</b>跑的,那時候本來就買不到。
+                        它只是<b>先把名單備好</b>,真正的動作在<b>今天 ${eodTxt}</b>:那時看它有沒有漲過觸發價,有才買。<br>
                         🚨 <b>要漲過下面那個觸發價才算數</b> —— ⛔ 不是掛在下面等它跌回來(實測那樣只賺 12.4 萬、中途最多賠 −46.1%)。<br>
-                        🚨 ⛔ <b>不是開盤買</b> —— 進場時窗是<b>尾盤 ${eodTxt}</b>(實測隔天開盤買少賺一半以上)。<br>
+                        🚨 ⛔ <b>不是開盤買</b> —— 進場時窗是<b>尾盤 ${eodTxt}</b>(V77.0.4 用現行出場重測:隔天開盤買<b>少賺 99 萬</b>,49 個月 585 萬 → 486 萬)。<br>
                         ⭐ 一天最多 ${this._DECK_TRACK49.picks} 檔(實測 2 檔賺最多、中途賠最少);${st.hqN} 檔符合 🧬,只取前 ${this._DECK_TRACK49.picks} 名。
                     </div>
                     <div class="space-y-1">${st.buy.map((x, i) => this._pbRowHtml(x, mine, i + 1, 0)).join('')}</div>
@@ -46158,7 +46193,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //   ① **要 App 開著或放背景才收得到** —— 這是前端定時器,完全關掉就不會跑。
     //      ⛔ 不可含糊帶過,不然使用者會以為關了 App 也會響、然後錯過買點怪 App。
     //   ② **時窗是 13:00~13:28** —— 實測進場時機只有「訊號日尾盤」有效
-    //      (V72.9.0:隔天開盤買少賺 54 萬、跳空>1% 不追直接倒賠)。
+    //      (V72.9.0 舊出場:少賺 54 萬;V77.0.4 用現行唐奇安出場重跑:**少賺 99 萬**、跳空>1% 不追直接倒賠)。
     //   ③ **一天最多 2 檔** —— V73.0.0 實測 2 檔最好;⛔ 不是「漏推」。
     _pbAlertBarHtml() {
         const on = !!this.settings?.watchlistAlert;
@@ -46204,12 +46239,27 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             { k: '🍱 分散成 6 檔',              pl: 735938,  dd: -18.4, wr: 32.8, per: 1.07, n: 1381 },
             { k: '📉 只在大盤昨天大跌後做',      pl: 511112,  dd: -2.30, wr: 44.2, per: 6.55, n: 52, note: '勝率最高但只做 52 次' },
         ],
-        // 進場時機(V72.9.0)—— 這組是「同一批股票、同一套打法,只改買點」
+        // 進場時機 —— 這組是「同一批股票、同一套打法,只改買點」
+        // 🚨 V77.0.4 使用者問「改盤前買 + ATR 或唐奇安,績效如何」→ 用**現行出場(唐奇安 20 日)**重跑。
+        //   ⚠️ 舊的那四列是 V72.9.0 在**舊出場(跌破 5 日線)**下跑的 → ⛔ 不可跟新的直接相減
+        //      (同 _DECK_TRACK49.sw 那組的處置)。所以每一列都帶 `exit` 欄位
+        //      (V75.0.9 鐵則:換過出場之後,引用成績的地方一定要標明是哪一種出場)。
+        entryExit: '唐奇安 20 日(現行預設)',
         entry: [
-            { k: '訊號日尾盤買(現行)', pl: 1361088, dd: -9.4,  star: 1 },
-            { k: '隔天開盤買',          pl: 818734,  dd: -19.1 },
-            { k: '隔天收盤買',          pl: 731380,  dd: -14.8 },
-            { k: '隔天開盤・跳空>1% 不追', pl: -147644, dd: -36.4, note: '倒賠' },
+            { k: '訊號日尾盤買(現行)',  pl: 5852260, dd: -21.6, star: 1, exit: 'don20' },
+            { k: '隔天開盤買(= 盤前買)', pl: 4861540, dd: -23.0, exit: 'don20', note: '少賺 99 萬' },
+        ],
+        // 🕯️ 同一個問題的另一半:把出場換成 ATR 追蹤(chand2)
+        entryAtr: [
+            { k: '訊號日尾盤買 ・ ATR 出場', pl: 5942261, dd: -16.7, exit: 'chand2', note: '回撤最小' },
+            { k: '隔天開盤買 ・ ATR 出場',   pl: 4236244, dd: -17.0, exit: 'chand2', note: '少賺 162 萬' },
+        ],
+        // 📉 舊出場(跌破 5 日線)那一輪 —— ⛔ 留著當對照,⛔ 不可跟上面兩組相減
+        entryOld: [
+            { k: '訊號日尾盤買', pl: 1361088, dd: -9.4,  star: 1, exit: 'ma5' },
+            { k: '隔天開盤買',   pl: 818734,  dd: -19.1, exit: 'ma5' },
+            { k: '隔天收盤買',   pl: 731380,  dd: -14.8, exit: 'ma5' },
+            { k: '隔天開盤・跳空>1% 不追', pl: -147644, dd: -36.4, note: '倒賠', exit: 'ma5' },
         ],
     },
 
@@ -46272,10 +46322,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div class="text-gray-400 mt-1">📉 那行勝率 44.2% 最高,但<b class="text-gray-200">一年只做 52 次</b>、少賺 61.6 萬 ——
                     勝率幾乎總是用「少做」換來的。</div>
 
-                <div class="text-gray-400 mt-2.5">③ <b class="text-gray-200">只改買點</b>(同一批股票、同一套打法)</div>
+                <div class="text-gray-400 mt-2.5">③ <b class="text-gray-200">只改買點</b>(同一批股票、同一套打法,出場都是<b>${E.entryExit}</b>)</div>
                 ${tbl(E.entry, false, '買點')}
-                <div class="text-amber-300/90 mt-1.5">⛔ 所以「明天開盤再買」不是小事 —— 少賺一半以上;
-                    而「跳空太多就不追」聽起來很有紀律,實測<b>倒賠</b>。</div>
+                <div class="text-gray-400 mt-2">④ <b class="text-gray-200">把出場換成 ATR 追蹤</b>(⛔ 不是現行預設)</div>
+                ${tbl(E.entryAtr, false, '買點')}
+                <div class="text-amber-300/90 mt-1.5">⛔ <b>「明天開盤再買」兩種出場都少賺</b> —— 唐奇安少 <b>99 萬</b>、ATR 少 <b>162 萬</b>。
+                    ⭐ 而 ATR 出場的<b>回撤確實比較小</b>(−16.7% vs −21.6%),但<b>總獲利只多 9 萬</b>,
+                    而且拆到每一年看,<b>2022 跟 2026 兩年反而比現行差</b> → 沒過「逐年同向」那一關,<b>所以預設沒有換</b>。</div>
+                <details class="mt-1.5"><summary class="cursor-pointer text-gray-500 text-[10px]">📉 舊出場(跌破 5 日線)那一輪的同一組對照 展開 ▾</summary>
+                    ${tbl(E.entryOld, false, '買點')}
+                    <div class="text-gray-500 mt-1">⚠️ 這四列是<b>舊出場</b>跑的,⛔ 不可跟上面兩組直接相減。
+                        「跳空太多就不追」聽起來很有紀律,那一輪實測是<b>倒賠</b>的。</div></details>
 
                 <div class="mt-2.5 pt-2 border-t border-[#30363d] text-gray-500 leading-relaxed">
                     ⚠️ 三件一定要知道:<br>
@@ -49424,7 +49481,40 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
     _liveUpdated: null,     // ISO
     _liveTs: '',            // '07/13 10:32'
     _liveTimer: null,
-    _liveQuote(sym) { return (this._liveQuotes && this._liveQuotes[String(sym)]) || null; },
+    // 🕐 V77.0.4 即時快照「是不是今天的」—— 全 App 唯一一份判斷(⛔ 別在呼叫端各寫一套)
+    //   🚨 真因:`_liveUpdated` 從上線以來**存了但一次都沒有人讀**(實測 grep:寫 1 處、讀 0 處),
+    //      而 18 個消費點的判準全是「有沒有資料 / 夠不夠多檔」,⛔ 沒有一個在問「這是哪一天的」。
+    //   📸 使用者截圖(2026-09-15 09:24,盤中):App 顯示加權 45,862.52 ▼322.33(−0.70%),
+    //      同一時間外部看盤 App 是 45,768.99(−0.20%)—— 而它的「昨收」正好就是 45,862.52。
+    //      → 數字沒算錯,是**整份快照是 9/14 的**,卻被標成「盤中即時 2336 檔」。
+    //      當天 live_snapshot 一筆都沒跑(排程餓死),live_quotes.json 停在 09/14 15:55。
+    //   ⭐ 判準綁「**資料的日期**」不是「有沒有做過」—— 同陷阱 #10。
+    //   ⚠️ 用**台北日曆日**比:收盤後(如今天 15:55)那份仍算今天,因為那時它就是最新價;
+    //      ⛔ 不可改成「只有 09:00~13:30 才算」—— 那會讓盤後整段沒有現價可用。
+    _liveFresh() {
+        try {
+            const u = this._liveUpdated;
+            if (!u) return false;
+            const d = new Date(u);
+            if (isNaN(+d)) return false;
+            const day = x => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' }).format(x);
+            return day(d) === day(new Date());
+        } catch (_) { return false; }
+    },
+    // ⛔ 快照不是今天的就一律回 null —— 讓呼叫端走它既有的「沒有即時價」那條路(顯收盤),
+    //    ⛔ 不可回舊值:那會把昨天的價印成現價(比空白更危險,同陷阱 #34)。
+    _liveQuote(sym) { return (this._liveFresh() && this._liveQuotes && this._liveQuotes[String(sym)]) || null; },
+    // 🕐 V77.0.4 守門擋掉之後**要說出原因**(陷阱 #22:把值設成 null 卻不寫原因 = 對使用者隱形)。
+    //   ⛔ 不可只是讓那一格安靜地消失 —— 使用者會以為功能壞了,或更糟:以為「今天就是沒有行情」。
+    //   回空字串代表「快照是今天的,沒事」;呼叫端直接 `+= this._liveStaleNote()` 即可。
+    _liveStaleNote() {
+        if (this._liveFresh()) return '';
+        // ⛔ 「從來沒載到快照檔」(workflow 還沒跑過)⛔ 不算過期 —— 那沒有東西好解釋,
+        //    回空字串讓呼叫端走它原本的靜默路徑。要解釋的是「有快照、但不是今天的」。
+        if (!this._liveQuotes || !Object.keys(this._liveQuotes).length) return '';
+        const when = this._liveTs || (this._liveUpdated ? this._dW(String(this._liveUpdated).slice(0, 10)) : '');
+        return `<div class="text-[10px] text-yellow-300 mt-1">⚠️ 全市場即時快照停在 ${when || '更早之前'},不是今天的 → 這裡改用<b>收盤價</b>,⛔ 不拿舊快照當現價。</div>`;
+    },
     async _loadLiveQuotes() {
         try {
             const ghBase = window.location.href.split('?')[0].split('#')[0];
@@ -49594,7 +49684,9 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const hist = (Array.isArray(h) ? h : []).filter(x => x && typeof x.med === 'number' && typeof x.idx === 'number');
         let med = null, idx = null, live = false, n = 0;
         // 盤中:用即時快照現算中位數(比 breadth 收盤檔新)
-        const q = this._liveQuotes;
+        // 🕐 V77.0.4 ⛔ 先問「這份快照是不是今天的」—— 舊版只看 `cs.length >= 500`(有沒有夠多檔),
+        //    於是昨天收盤那份(2,336 檔)照樣讓 live=true,標題印「盤中即時 2336 檔」= 說謊。
+        const q = this._liveFresh() ? this._liveQuotes : null;
         if (q && typeof q === 'object') {
             const cs = [];
             for (const k in q) { const c = +(q[k] && q[k].c); if (Number.isFinite(c)) cs.push(c); }
@@ -49787,8 +49879,18 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const box = document.getElementById('marketBreadthCard');
         if (!box) return;
         try {
-            const q = this._liveQuotes;
-            if (!q || typeof q !== 'object') { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            const q = this._liveFresh() ? this._liveQuotes : null;   // 🕐 V77.0.4 不是今天的快照⛔ 不畫(⛔ 別把昨天的廣度當今天)
+            if (!q || typeof q !== 'object') {
+                // ⛔ 不可靜默消失(陷阱 #22):有舊快照時要說「為什麼這張卡今天沒有」,
+                //    ⛔ 不是讓使用者以為壞掉;完全沒有快照檔(workflow 還沒跑過)才整張藏起來。
+                const note = this._liveStaleNote();
+                if (note) {
+                    box.className = 'bg-[#161b22] border-l-4 border-yellow-500 pl-3 py-2 rounded-r';
+                    box.innerHTML = `<div class="text-[11px] font-bold text-yellow-300">📊 市場廣度</div>${note}`;
+                    box.classList.remove('hidden');
+                } else { box.classList.add('hidden'); box.innerHTML = ''; }
+                return;
+            }
             let up = 0, down = 0, flat = 0, limUp = 0, limDown = 0, strong = 0, weak = 0, total = 0;
             for (const k in q) {
                 const c = +(q[k]?.c);
@@ -49862,7 +49964,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         const hide = () => { if (bubble) { bubble.classList.add('hidden'); bubble.classList.remove('flex'); } };
         if (!bubble) return;
         try {
-            const q = this._liveQuotes;
+            const q = this._liveFresh() ? this._liveQuotes : null;   // 🕐 V77.0.4 同上
             const open = this.isMarketOpen ? this.isMarketOpen() : true;
             if (!open || !q || typeof q !== 'object') { this._volSurgeList = []; hide(); return; }
             const list = [];
@@ -50021,7 +50123,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         let groupSig = null;
         try {
             const pr = this._getIndustryPeers ? this._getIndustryPeers(sym) : null;
-            if (pr && Array.isArray(pr.peers) && pr.peers.length >= 3 && this._liveQuotes) {
+            if (pr && Array.isArray(pr.peers) && pr.peers.length >= 3 && this._liveFresh()) {   // 🕐 V77.0.4
                 const cs = pr.peers.map(p => this._liveQuote(p)).filter(q => q && q.c != null && isFinite(+q.c)).map(q => +q.c);
                 if (cs.length >= 3) {
                     const up = cs.filter(c => c > 0).length, upPct = up / cs.length * 100, avg = cs.reduce((a, c) => a + c, 0) / cs.length;
@@ -50473,7 +50575,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
     // 🔗 V68.7.5 族群連動當沖:同族群今日強弱 + 領漲股 + 補漲候選(主力常拉整族群,找還沒漲的補漲)
     _dtGroupLink(sym) {
         let pr = null; try { pr = this._getIndustryPeers(sym); } catch (_) {}
-        if (!pr || !Array.isArray(pr.peers) || pr.peers.length < 3 || !this._liveQuotes) return '';
+        if (!pr || !Array.isArray(pr.peers) || pr.peers.length < 3 || !this._liveFresh()) return '';   // 🕐 V77.0.4
         const rows = pr.peers.map(p => { const q = this._liveQuote(p); return (q && q.c != null && isFinite(+q.c)) ? { sym: String(p), c: +q.c } : null; }).filter(Boolean).filter(r => r.sym !== String(sym));
         if (rows.length < 3) return '';
         rows.sort((a, b) => b.c - a.c);
@@ -50587,7 +50689,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
         </div>`;
     },
     _dtRadar(curSym) {
-        const q = this._liveQuotes || {};
+        const q = (this._liveFresh() && this._liveQuotes) || {};   // 🕐 V77.0.4
         const all = Object.keys(q).map(k => {
             const d = q[k] || {};
             return { sym: String(k), c: (d.c != null ? +d.c : null), p: +d.p, vr: (d.vr != null ? +d.vr : null), amp: (d.amp != null ? +d.amp : null) };
