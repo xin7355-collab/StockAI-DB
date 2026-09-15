@@ -3,6 +3,10 @@ data/*.json
 # ⚠️ 上面那行只蓋 data/ 第一層,蓋不到子目錄 → 分點籌碼(約 37MB)會變成 untracked 一直被提醒。
 #    這些採礦產物屬於 data / gh-pages 分支,⛔ 不該進 main。
 data/chips/
+# 📦 V76.1.8 的財報三表切片(2,352 檔,scripts/fin_slice.mjs 產物,住在 data 分支)。
+#    ⚠️ 當初新增這個目錄時漏了補這一行 → `bash scripts/fetch_testdata.sh` 還原之後
+#    2,352 個檔會變成 untracked 一直被提醒。理由同上面 data/chips/。
+data/fin/
 # ⛔ 採礦中介檔(約 19MB)。V69.9.6(P3-7)已刻意把它移出 gh-pages 改存 data 分支以省空間,
 #    絕對不可再被提交進 main。跑探針時 git archive origin/data 還原到本機會產生它。
 inst_cache_stock.json
