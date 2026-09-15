@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.0.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -849,7 +849,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8446,8 +8446,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.0.5',
+    _APP_VERSION: 'V77.0.6',
     _CHANGELOG: [
+        { v: 'V77.0.6', d: [
+            '🕵️ <b>「板塊偷布局」那個徽章重新驗過了,而且結論是「現在用的本來就是最好的」</b>(809 個交易日)。',
+            '🚨 <b>而且要更正我上一版跟你講的話</b>:上一版我說「換一種算法(C 版)會更強」—— <b>那是錯的</b>,錯在同一個地方:當時是把<b>一次長行情拆成好幾筆</b>來算平均,走得越久的那幾波權重就越大,把數字撐高了。改成<b>一次行情算一票</b>之後,現在上線的版本 <b>+1.72</b> 反而是最高的,C 版只有 +1.48。',
+            '⛰️ <b>而且還多一個理由</b>:現在用的那個門檻是<b>一整片穩的</b>(左右各挪兩格都還是正的),而 C 版那個門檻是<b>一根孤峰</b> —— 往嚴格挪一格(6 天→7 天)就從 +1.48 直接掉到 −0.11。那種「剛好那一格有效」的東西⛔ 不能拿來換。',
+            '⛔ <b>五個版本沒有一個全過六道關卡</b>(全部卡在 2023 那一年是負的)→ 照既有規則<b>預設一個字都沒改</b>。',
+            '⚠️ 這次的窗口<b>沒有涵蓋 2022 年那種大空頭</b>(外資買賣超的資料最早只到 2023/05)→ 要等下一次空頭走完才能真正定論。'] },
         { v: 'V77.0.5', d: [
             '🚨 <b>分點買賣超的數字一直是灌水的 —— 而且每跑一輪就再灌一次</b>。實測佐證:全市場隨機 300 檔、6,286 個交易日,<b>「當天買方淨額加起來 ÷ 當天總成交量」中位是 5.43 倍</b>,<b>87.7% 的日子超過 1 倍</b> —— 而買方買的量<b>物理上不可能超過當天成交總量</b>。',
             '🔍 <b>真因</b>:採礦有兩條路會寫同一天的資料(當天新抓的 + 從本地舊檔還原的),而它們<b>用不同的方式去對應同一家分點</b>(一邊用券商代號、一邊用券商名字)→ 逃過了「同一家只留一筆」的檢查,<b>同一天被加了兩次</b>;加完又存回本地檔,<b>下一輪再還原、再加一次</b> → 越滾越大。',
