@@ -778,7 +778,17 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
                  rail: { copy: /等待買點|買進理由|第一買點|Bear Case|其餘 §2~§21/.test(cp), dec: /等待買點|買進理由/.test(dec) }, ord,
                  keyLv: JSON.stringify(A._keyLevels || {}).includes('530') };
     }, stale);
-    ok('📝b 存完顯示在 #rpPaste;第一眼只有 §1 結論 + §22 筆記,§4/§5 收在摺疊裡', V.has.s1 && V.has.s22 && !V.has.s5 && !V.has.s4 && V.first === 2 && V.secs === 20, JSON.stringify(V.has) + ` first=${V.first} secs=${V.secs}`);
+    // ⚠️ V77.0.8 這條原本釘 `V.first === 2`(§1 + **最後一節**)—— 那是釘**當時的實作**。
+    //    使用者明示要的是「§19 觀察清單 + §20 投資筆記」,而他那份報告的**最後一節是來源表**
+    //    → 規則改成「排除純來源節之後的**最後兩節**」→ 第一眼變成 3 節。
+    //    ⭐ 所以斷言改成釘**用意**:結論在、最後那幾節在、§4/§5 這種中段的要在摺疊裡、
+    //       而且⛔ 不可失控(第一眼節數要 ≤3)。
+    ok('📝b 存完顯示在 #rpPaste;第一眼 = §1 結論 + 最後兩節(⛔ 不含中段的 §4/§5,⛔ 節數不可失控)',
+    //    ⭐ 而「摺疊幾節」⛔ 不可寫死(2+20 → 3+19 只是切法變了)→ 改釘**總數沒少**:
+    //       第一眼 + 摺疊 = 22 節,也就是**一節都沒有被弄丟**(這才是真正要守的事)。
+       V.has.s1 && V.has.s22 && !V.has.s5 && !V.has.s4 && V.first >= 2 && V.first <= 3
+       && (V.first + V.secs) === 22,
+       JSON.stringify(V.has) + ` first=${V.first} secs=${V.secs} 合計=${V.first + V.secs}`);
     ok('📝b2 貼上區第一眼 ≤ 800 字(⛔ 整份 6k 全攤開就是資訊爆炸)', V.chars <= 800 && V.chars > 150, `${V.chars} 字`);
     ok('📝b3 §19 因子評分 / §20 星等 / §14 機率那三節標「AI 主觀」', V.subj.length === 3 && V.subj.every(Boolean), JSON.stringify(V.subj));
     ok('📝b4 重點詞真的被上色(≥5 個琥珀 mark),而且 ⛔ 不是紅綠', V.marks >= 5 && !V.markRG, `marks=${V.marks}`);
@@ -816,7 +826,12 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
                  howtoHidden: !/膨脹到 1 萬 6 千字元/.test(seen),
                  dateOnce: (seen.match(/基準日/g) || []).length };
     }, stale);
-    ok('📐a 已貼過報告時第一眼 ≤ 450 字(改版前 655:操作說明佔了一半)', LAY.chars <= 450 && LAY.chars > 120, `${LAY.chars} 字`);
+    // ⚠️ V77.0.8 上限 450 → 520:使用者**明示**第一眼要留兩節實質內容(§19 觀察清單 + §20 投資筆記),
+    //    ⛔ 這不是「放寬斷言去遷就程式」,是**需求變了**(舊的 450 是「§1 + 一節」時代訂的)。
+    //    ⭐ 而同一版把每行重複的來源引註剝掉,已經先把字數買回來一截 —— 沒有那個,兩節會爆很多。
+    //    ⛔ 上限仍然要有:第一眼失控正是這張卡當初要修的病。
+    ok('📐a 已貼過報告時第一眼 ≤ 520 字(⛔ 上限不可拿掉 —— 改版前 655 是操作說明佔一半)',
+       LAY.chars <= 520 && LAY.chars > 120, `${LAY.chars} 字`);
     ok('📐b 輸入框 + 「Perplexity 會空白」那段說明收進摺疊(⛔ 收起來不是刪掉)', LAY.panel && LAY.taInPanel && LAY.howtoHidden, JSON.stringify(LAY).slice(0, 200));
     ok('📋b ⭐ V76.2.6「📋 複製提示詞」要在摺疊**外面**常駐(使用者:一鍵複製才方便直接貼;⛔ 不可再收回摺疊)',
        LAY.btnOutside, JSON.stringify({ outside: LAY.btnOutside, inPanel: LAY.btnInPanel }));
