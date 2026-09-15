@@ -1,0 +1,207 @@
+{
+  "updated": "2026-09-15 15:04 UTC",
+  "count": 15,
+  "data": [
+    {
+      "source_name": "自由財經",
+      "title": "雙重壓力夾擊！新台幣盤中重貶逾2角 31字頭告急",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5575008",
+      "published_time": "Tue, 15 Sep 2026 18:53:37 +0800",
+      "matched_keywords": [
+        "資本支出"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利空",
+      "ai_reason": "AI研發降溫影響晶片股",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "台股8月反彈、股利進帳　6大壽險單月賺近400億",
+      "link": "https://www.cna.com.tw/news/afe/202609150301.aspx",
+      "published_time": "Tue, 15 Sep 2026 18:49:15 +0800",
+      "matched_keywords": [
+        "財報"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "壽險獲利大增，反映台股反彈與評價利益回升",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "聯發科推出旗艦晶片天璣9600 Pro　台積電2奈米打造",
+      "link": "https://www.cna.com.tw/news/afe/202609150298.aspx",
+      "published_time": "Tue, 15 Sep 2026 18:40:08 +0800",
+      "matched_keywords": [
+        "奈米"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "聯發科推出旗艦5G代理AI晶片Taiwan Semicond",
+      "title_zh": "標題為繁中文，內容涉及台股個股、供應鏈及半導體部分，因此評價為利多。",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "外資大舉撤退　新台幣重貶1.6角創逾半年最大跌幅",
+      "link": "https://www.cna.com.tw/news/afe/202609150288.aspx",
+      "published_time": "Tue, 15 Sep 2026 18:16:46 +0800",
+      "matched_keywords": [
+        "新台幣貶"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利空",
+      "ai_reason": "外資大量撤資致匯率下跌，提振避險情緒",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "油價續漲亞股收盤全倒　美債殖利率破5%衝上19年新高",
+      "link": "https://www.cna.com.tw/news/afe/202609150280.aspx",
+      "published_time": "Tue, 15 Sep 2026 18:07:29 +0800",
+      "matched_keywords": [
+        "油價",
+        "新高"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "外資狂買22日   台灣大創新高",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5574926",
+      "published_time": "Tue, 15 Sep 2026 18:06:25 +0800",
+      "matched_keywords": [
+        "新高"
+      ],
+      "cat": "📈 股價異動",
+      "ai_sentiment": "利多",
+      "ai_reason": "股價創歷史新高，成交量放大",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "三接2訴訟案若敗訴　中油：最壞情況為外堤停工",
+      "link": "https://www.cna.com.tw/news/afe/202609150274.aspx",
+      "published_time": "Tue, 15 Sep 2026 18:03:16 +0800",
+      "matched_keywords": [
+        "停工"
+      ],
+      "cat": "🔥 事故天災",
+      "ai_sentiment": "利多",
+      "ai_reason": "文章中提到了未有具體對台股市、供應鏈、半導體及大盤的影響。因",
+      "title_zh": "標題若非繁體中文則翻成繁中(30字內)",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "13家上市金控前8月獲利5789億元創高　全年挑戰新高",
+      "link": "https://www.cna.com.tw/news/afe/202609150273.aspx",
+      "published_time": "Tue, 15 Sep 2026 18:03:14 +0800",
+      "matched_keywords": [
+        "新高"
+      ],
+      "cat": "📈 股價異動",
+      "ai_sentiment": "利多",
+      "ai_reason": "13家上市金控於8月獲利達5789億元，是台股個股、供應鏈及",
+      "title_zh": "標題為繁體中文，內容與台股相關，有實質影響力。",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "財部認定中、韓冷軋電磁鋼品傾銷 韓國傾銷差率最高59.35％",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5574908",
+      "published_time": "Tue, 15 Sep 2026 17:35:14 +0800",
+      "matched_keywords": [
+        "反傾銷"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利多",
+      "ai_reason": "反傾銷利好台鋼股",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "最低工資拚連11漲 經長：協助中小微企業「責無旁貸」",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5574853",
+      "published_time": "Tue, 15 Sep 2026 17:22:42 +0800",
+      "matched_keywords": [
+        "突破"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "聯發科首款2奈米天璣9600 Pro正式亮相  新機最快10月在台上市",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5574850",
+      "published_time": "Tue, 15 Sep 2026 17:19:01 +0800",
+      "matched_keywords": [
+        "奈米"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "聯發科首款2奈米晶片發布，技術領先",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "蘋果要求開發者重塑 App 介面以適應 iPhone Duo 雙螢幕設計",
+      "link": "https://technews.tw/2026/09/15/apple-iphone-duo-makes-developers-think-in-folds/",
+      "published_time": "Tue, 15 Sep 2026 08:20:35 +0000",
+      "matched_keywords": [
+        "出貨"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "Apple將釋出雙螢幕iPhone Duo，開發者應該重新設",
+      "title_zh": "標題為繁體中文時，如果內容與台股相關，請翻譯為繁體中文，否則為空字串。",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "無懼 AI 退燒雜音，博通陳福陽霸氣預告：2028 營收上看 2,300 億美元",
+      "link": "https://finance.technews.tw/2026/09/15/broadcom-refutes-ai-demand-slowdown/",
+      "published_time": "Tue, 15 Sep 2026 08:10:17 +0000",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "博通執行長陳福陽預言2028年博通營收未必達到230億美元，",
+      "title_zh": "未翻譯",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "聯發科發表首款 2 奈米旗艦 5G Agentic AI 天璣 9600 Pro 晶片，AI 性能提升 51%",
+      "link": "https://technews.tw/2026/09/15/mediatek-unveils-its-first-2nm-flagship-5g-agent-ai-dimensity-9600-pro-chip/",
+      "published_time": "Tue, 15 Sep 2026 07:31:31 +0000",
+      "matched_keywords": [
+        "奈米"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "聯發科推出2奈米AI旗艦晶片",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "聯發科天璣 9600 Pro 多項降低佔用記憶體技術，終端裝置有望 10 月到手",
+      "link": "https://technews.tw/2026/09/15/mediatek-dimensity-9600-pro-features-multiple-technologies-to-reduce-memory-usage/",
+      "published_time": "Tue, 15 Sep 2026 07:31:27 +0000",
+      "matched_keywords": [
+        "奈米"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "採2奈米製程，提升競爭力。",
+      "important": true
+    }
+  ]
+}

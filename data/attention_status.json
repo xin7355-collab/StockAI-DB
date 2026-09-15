@@ -1,0 +1,111 @@
+{
+  "updated": "2026-09-15 15:02",
+  "stocks": {
+    "2305": {
+      "status": "⚠️ 注意股",
+      "threshold": "注意條款觸發"
+    },
+    "2455": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-09-15"
+    },
+    "3055": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-09-18"
+    },
+    "8021": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-09-15"
+    },
+    "8996": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-09-21"
+    },
+    "8227": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-09-21"
+    },
+    "4979": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-09-17"
+    },
+    "6538": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-09-17"
+    },
+    "7772": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-09-17"
+    },
+    "4304": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-09-16"
+    },
+    "6872": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-09-16"
+    },
+    "6620": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-09-15"
+    }
+  },
+  "diag": {
+    "tw_notice": {
+      "hit": "notetrans",
+      "n": 1,
+      "tried": [
+        {
+          "u": "notetrans",
+          "ok": true,
+          "n": 1
+        }
+      ]
+    },
+    "tw_punish": {
+      "hit": "punish",
+      "n": 4,
+      "tried": [
+        {
+          "u": "punish",
+          "ok": true,
+          "n": 4
+        }
+      ]
+    },
+    "otc_notice": {
+      "hit": null,
+      "n": 0,
+      "note": "TPEx 未開放上櫃注意 OpenAPI(V67.10 實測 11 slug 全 404),不再打"
+    },
+    "otc_punish": {
+      "hit": "tpex_disposal_information",
+      "n": 7,
+      "tried": [
+        {
+          "u": "tpex_disposal_information",
+          "ok": true,
+          "n": 7
+        }
+      ]
+    }
+  }
+}
