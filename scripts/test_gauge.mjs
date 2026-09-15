@@ -79,8 +79,13 @@ const snap = async (page) => page.evaluate(() => {
     const g = [...cc.querySelectorAll('[data-gauge]')].map(e => {
         const bar = e.querySelector('[data-bar]'), fl = e.querySelector('[data-fill]');
         const r = bar ? bar.getBoundingClientRect() : null;
+        // 🎨 V77.1.1 填色改成 inline 同色系漸變(不再是 Tailwind class)→ 量 **computed background**。
+        //   ⛔ 不可回頭去比 class 字串 —— 沙箱沒有 Tailwind,class 本來就量不到真顏色(陷阱 #40)。
+        const bg = fl ? getComputedStyle(fl).backgroundImage : '';
+        const rgb = h => { const m = h.replace('#', ''); return `rgb(${parseInt(m.slice(0, 2), 16)}, ${parseInt(m.slice(2, 4), 16)}, ${parseInt(m.slice(4, 6), 16)})`; };
+        const rp = app._gaugeRamp(e.dataset.kind, +e.dataset.pct);
         return { k: e.dataset.gauge, pct: +e.dataset.pct, kind: e.dataset.kind, html: e.innerHTML,
-                 fill: fl ? fl.getAttribute('class') : null, fw: fl ? +fl.dataset.fill : null,
+                 fill: bg, ramp: rp, rampRgb: rp.map(rgb), fw: fl ? +fl.dataset.fill : null,
                  bx: r ? [+r.left.toFixed(1), +r.right.toFixed(1)] : null };
     });
     const sr = cc.querySelector('[data-priceruler]');
@@ -260,12 +265,21 @@ await page.close();
     ok('⑰ 每一條都有填色,而且**畫出來的**寬度 == 分數(注入:寬度寫死 100% → 紅)',
        F.length >= 3 && F.every(x => x.rel != null && Math.abs(x.rel - x.pct) <= 2), JSON.stringify(F));
     ok('⑰b ⭐ 燈號鐵則:位置類(基本面/預期)與大盤那格的**填色**⛔ 不可是紅或綠(② 只驗了文字色)',
-       D.gauges.filter(x => ['fund', 'expect', 'mkt'].includes(x.k)).every(x => !/bg-red|bg-green/.test(x.fill || '')),
-       JSON.stringify(D.gauges.map(x => [x.k, x.fill])));
+       D.gauges.filter(x => ['fund', 'expect', 'mkt'].includes(x.k))
+           .every(x => !/f87171|4ade80|7f1d1d|14532d/i.test((x.ramp || []).join(',')))
+       && D.gauges.filter(x => x.k === 'mkt').every(x => /d97706|fbbf24|fde68a/i.test((x.ramp || []).join(','))),
+       JSON.stringify(D.gauges.map(x => [x.k, x.ramp])));
     ok('⑰c 方向類(技術/籌碼)的填色照 58/42 紅綠',
-       D.gauges.filter(x => x.kind === 'dir').every(x => /bg-(red|green|gray)-/.test(x.fill || '')
-           && (x.pct >= 58 ? /bg-red/ : x.pct <= 42 ? /bg-green/ : /bg-gray/).test(x.fill)),
-       JSON.stringify(D.gauges.filter(x => x.kind === 'dir').map(x => [x.pct, x.fill])));
+       D.gauges.filter(x => x.kind === 'dir').every(x =>
+           (x.pct >= 58 ? /f87171/i : x.pct <= 42 ? /4ade80/i : /8b949e/i).test((x.ramp || []).join(','))),
+       JSON.stringify(D.gauges.filter(x => x.kind === 'dir').map(x => [x.pct, x.ramp])));
+    // 🎨 V77.1.1 量條一律**同色系明暗漸變** —— 使用者:「所有量條顏色用顏色漸變方式呈現」。
+    //   ⛔ 不可只斷「有背景就算過」—— 要逐字比兩個色停跟 `_GAUGE_RAMP` 對不對得上
+    //   (注入「改回單色」或「換成綠→黃→紅跨色」都要叫得出來)。
+    ok('⑰d ⭐ 每一條的填色是同色系漸變,而且兩個色停 == _GAUGE_RAMP(注入:改回單色 → 紅)',
+       D.gauges.length >= 3 && D.gauges.every(x => /linear-gradient/.test(x.fill || '')
+           && x.rampRgb.every(c => String(x.fill).includes(c))),
+       JSON.stringify(D.gauges.map(x => [x.k, x.fill])));
     ok('⑱ ⭐ 價格尺沒有任何東西跑出卡片外(注入:把標籤放回軌道上 → 紅)。⛔ 不可用 scrollWidth 判 —— overflow-x:hidden 會把它救成假綠燈',
        D.prOver.length === 0, JSON.stringify(D.prOver));
     ok('⑱b 軌道上只有圖示、⛔ 沒有字(字全部搬到下面的圖例)', !/[0-9]/.test(D.rulerTrackHasText), D.rulerTrackHasText);

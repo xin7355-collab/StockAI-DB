@@ -107,7 +107,12 @@ const r = await page.evaluate(async () => {
     const promptGl = prRule.includes(A._RP_GLOSSARY['本益比']);
     const cardGap = dbg.cards.map(c => ({ t: c.title, gap: c.yFirst - c.yTitle }));
     const px = (x, y) => { const d = g.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data; return { r: d[0], gg: d[1], b: d[2] }; };
-    const bars = dbg.bars.map(b => ({ ...b, p: px(b.x + Math.max(4, b.w * 0.3), b.y + b.h / 2) }));
+    // 🎨 V77.1.1 量條改成**同色系明暗漸變** → 取兩點:
+    //   `p` 在 85%(亮端)驗色相、`pL` 在 8%(暗端)驗「右邊真的比左邊亮」。
+    //   ⛔ 只取一點的話,「改回單色」那種注入叫不出來。
+    const bars = dbg.bars.map(b => ({ ...b,
+        p: px(b.x + Math.max(4, b.w * 0.85), b.y + b.h / 2),
+        pL: px(b.x + Math.max(2, b.w * 0.08), b.y + b.h / 2) }));
     const valOk = !FT.val || !FT.val.length || (FT.val.every((x, i, a) => i === 0 || a[i - 1].v <= x.v) && FT.val.some(x => x.t === 'now'));
     const w1440 = await (async () => {
         const cvw = document.getElementById('rpOwnCv'); return cvw ? cvw.getBoundingClientRect().width : 0; })();
@@ -241,6 +246,12 @@ if (!r.no) {
         if (b.kind === 'dir') ck((b.score >= 58 && isRed) || (b.score <= 42 && isGreen) || (b.score > 42 && b.score < 58), `ⓢ 方向類「${b.name}」${b.score} 分的量條不是紅/綠(${JSON.stringify(p)})`);
         else if (b.kind === 'risk') ck(isAmber, `ⓢ 風險類「${b.name}」的量條不是琥珀(${JSON.stringify(p)})→ 燈號鐵則:安全/危險⛔ 不用紅綠`);
         else ck(isSky, `ⓢ 位置類「${b.name}」的量條不是天藍(${JSON.stringify(p)})`);
+        // 🎨 V77.1.1 同色系漸變 = **左深右亮**(⛔ 不是綠→黃→紅跨色 —— 燈號鐵則也管刻度尺)。
+        //   ⚠️ 量條太短(w < 24px)時兩個取樣點會撞在一起 → 那一列不算(空過守門)。
+        if (b.w >= 24) {
+            const L = b.pL.r + b.pL.gg + b.pL.b, R = p.r + p.gg + p.b;
+            ck(R > L + 30, `ⓢb 「${b.name}」的量條不是同色系明暗漸變(左 ${L} / 右 ${R})→ 改回單色了?`);
+        }
     }
     ck(r.valOk, 'ⓣ 估值對照價位沒有由小到大、或沒把現價插進去');
     // ── ⓥ 直式價格軸:價格越高畫得越上面,而且⛔ 不可疊字 ──

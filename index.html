@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.1.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.1.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -604,6 +604,21 @@
         background-color: revert; border-color: revert; border-radius: revert;
         padding-left: revert; padding-right: revert; border-bottom: revert;
     }
+    /* ═══ 🎨 V77.1.1 全站量條同色系明暗漸變 ═════════════════════════════
+       使用者:「新增所有量條顏色用顏色漸變方式呈現,可以需要用的就這樣顯示」。
+       ⭐ 跟 V77.0.0 全站無框同一個做法:**一條 CSS 管全部**,⛔ 不逐一去改那十幾處的 class 字串
+          —— 因為這批進度條的顏色很多是動態的(`${theme.bar}` / `${lvl.bar}` / `${barC}` / `${col}`),
+          只改看得到的那幾處 = 改一半(同 V77.0.0 量出來的 349 vs 111)。
+       ⭐ 做法是**疊一層透明的黑→白**(不碰 background-color)→ 不管底色是什麼,
+          出來的一定是**同一個色相的深→亮**,⛔ 在物理上就不可能變成綠→黃→紅跨色
+          (燈號鐵則也管刻度尺，V76.2.6 已明文寫過)。
+       ⚠️ 選到的是「軌道(rounded-full + overflow-hidden)裡面那條 h-full 填色」——
+          這正是全站 Progress Row Grid 樣板的形狀,⛔ 不會拖到別的元素。
+       ⚠️ `_gaugeRow` / `_priceRulerHtml` 走的是 inline `background:linear-gradient(...)`(讀 `_GAUGE_RAMP`),
+          inline 會贏過這條 → 兩者不打架。 */
+    [class~="rounded-full"][class~="overflow-hidden"] > [class~="h-full"] {
+        background-image: linear-gradient(90deg, rgba(0,0,0,.42), rgba(255,255,255,.20));
+    }
     [data-tidy="1"]{display:none !important}
     .tidyrow{background:#161b22;border:1px dashed #30363d;border-radius:8px;padding:7px 10px;
       font-size:11px;color:#8b949e;line-height:1.55;display:flex;gap:8px;align-items:center;margin:4px 0}
@@ -849,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.1.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.1.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8446,8 +8461,17 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.1.0',
+    _APP_VERSION: 'V77.1.1',
     _CHANGELOG: [
+        { v: 'V77.1.1', d: [
+            '🎨 <b>全站量條改成顏色漸變</b>(你要的第 1 點)—— <b>同一個顏色由深到亮</b>，⛔ <b>不是綠→黃→紅</b>：同一顆綠在 A 卡是「跌」、在 B 卡變成「安全」的話你會看反(那正是你以前叫我訂下的規則)。順手抳到一個真的違規：<b>「股價位階」那條迷你尺一直是綠→灰→紅</b>，但位階講的是「位置」不是「漲跌」→ 已改成天藍明暗。',
+            '🧭 <b>總覽的「5 個面向一眼看」改成跟報告頁那張圖一樣</b>(第 2 點)：琥珀節號 + 標題 + 一條分隔線、量條加粗，而且<b>每一列底下都有一句白話</b>(以前要滍滑才看得到)。',
+            '⚠️ <b>報告頁那顆沒對齊的驚嘆號修好了</b>—— 真因跟上一版修總覽那一次<b>是同一個病</b>：符號跟旁邊的數字共用同一條基線、而每個符號寬度又不一樣 → 現在改成<b>畫在一個固定寬的格子正中央</b>，不管什麼符號都對得齊。',
+            '🚦 <b>「📈 個股數據速覽」的基本面與籌碼開始上色</b>(第 3 點)：✅ 好 ・⚠️ 普通 ・⛔ 在衰退或虧錢；法人買賣超是<b>方向</b>所以照台股紅買綠賣。⚠️ <b>沒標色的那幾格是故意的</b> —— 本站<b>沒有實測過的好壞門檻</b>(毛利率、存貨天數、千張大戶…)，⛔ 不猜，卡底有寫。',
+            '📍 <b>關鍵價位裡新增「進場價 / 追買價」</b>(第 4 點)—— 要等到這個價才輪得到談進場。報告頁的價格牆表與那張圖<b>兩邊都補上了</b>(以前只有總覽那條尺有)。⚠️ 空頭時會改叫「觀察價」並寫明⛔ 不是叫你買，<b>但價位一個都不會被改掉</b>。',
+            '📖 <b>完整報告與短評報告的標題用顏色區隔了</b>(第 5 點)：結論 / 公司與財務 / 產業與價格 / 風險與事件 / 估值與筆記 五類，卡底有圖例。⛔ 這裡的顏色是「在講哪一類事」，<b>不是好壞也不是漲跌</b>，所以沒用紅綠。',
+            '⚠️ 誰實話：加了那五句白話之後，<b>總覽第一眼的字數從 693 變成 778</b>(你以前訂的上限是 600，而它在這一版之前就已經超過了)。要把白話收起來跟我說一聲就行。',
+        ] },
         { v: 'V77.1.0', d: [
             '📈 <b>「符合進場」搬進決策台了</b>(你問的第 1 點)—— 以前那個徽章<b>只有個股頁看得到</b>,等於要你先猜到開哪一檔;而它今天全市場只在 <b>1 檔</b>亮,一檔一檔翻根本翻不到。現在決策台「今天可以買的」底下直接列出來,並寫明<b>它跟上面那張清單不是同一個問題</b>(上面是「這一檔自己最會賺的招今天觸發價多少」,這裡是「🧬 + 今天出現期望值為正的看多訊號」)。',
             '💸 <b>而且每一列都幫你扣掉來回成本</b> —— 今天那一檔期望值只有 <b>0.08%</b>,扣掉手續費稅金 0.44% 之後是 <b>−0.36%</b>,所以卡上直接寫「這個訊號賺不到手續費」。⛔ 條件到了不等於值得做。⚠️ 這裡算不出「這一檔是不是空頭」(那要個股 K 線)→ 一律標成<b>候選</b>,點進去個股頁會再擋一次。',
@@ -23056,12 +23080,28 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ⭐ 所以改成**依重要性排序的候選清單,取前 4 個「真的有值」的**;沒被選上的收進摺疊。
     //      副作用是 ETF 不用再寫一套(它的 PE/營收/EPS 本來就是 null,自然落榜)。
     //   ⚠️ 摺疊區裡的每一格**仍要帶日期徽章**(測試 ⑧ 釘住),⛔ 別因為收起來就省掉
-    _gaugeFill(kind, pct) {
-        const v = +pct;
-        if (kind === 'dir') return v >= 58 ? 'bg-red-400/80' : v <= 42 ? 'bg-green-400/80' : 'bg-gray-500';
-        if (kind === 'risk') return v >= 60 ? 'bg-amber-200' : v >= 45 ? 'bg-amber-400' : 'bg-amber-600';
-        return 'bg-sky-500/80';
+    // 🎨 V77.1.1 量條一律**同色系明暗漸變**(深 → 亮)—— 使用者:「所有量條顏色用顏色漸變方式呈現」。
+    //   ⛔ **不可用綠→黃→紅跨色漸層**(燈號鐵則也管刻度尺,V76.2.6 已明文寫過):
+    //      同一顆綠在 A 卡是「跌」、在 B 卡是「安全」→ 使用者會看反。
+    //      同色系只講「多/少」,不會被讀成方向。
+    //   ⭐ 這張表是**唯一真相**:HTML(`_gaugeRow` / `_overallGaugeHtml` 的 dimCells / `_priceRulerHtml`)
+    //      與 canvas 海報(`_rpDrawOwn` ③)讀同一份 —— ⛔ 不可在 `_RP_STYLE` 另寫一組 hex
+    //      (V76.3.8 的教訓:兩邊各寫一組 → 使用者馬上就看出「配色還是有差」)。
+    //   ⚠️ 門檻 58/42 與 60/45 跟徐既有的完全一致,⛔ 一個都沒改。
+    _GAUGE_RAMP: {
+        dirUp: ['#7f1d1d', '#f87171'], dirDn: ['#14532d', '#4ade80'], dirFlat: ['#30363d', '#8b949e'],
+        riskHi: ['#b45309', '#fde68a'], riskMid: ['#92400e', '#fbbf24'], riskLo: ['#78350f', '#d97706'],
+        pos: ['#075985', '#38bdf8'],
     },
+    _gaugeRamp(kind, pct) {
+        const v = +pct, R = this._GAUGE_RAMP;
+        if (kind === 'dir') return v >= 58 ? R.dirUp : v <= 42 ? R.dirDn : R.dirFlat;
+        if (kind === 'risk') return v >= 60 ? R.riskHi : v >= 45 ? R.riskMid : R.riskLo;
+        return R.pos;
+    },
+    // ⚠️ 回的是 **CSS 字串**(不再是 Tailwind class)—— Tailwind 是 CDN、沙箱連不到,
+    //   用 class 上的色在測試裡**根本量不到**(陷阱 #40)。呼叫端一律塞進 inline style。
+    _gaugeFill(kind, pct) { const c = this._gaugeRamp(kind, pct); return `background:linear-gradient(90deg,${c[0]},${c[1]})`; },
     _gaugeRow(label, pct, o = {}) {
         if (pct == null || !Number.isFinite(+pct)) return '';
         const cl = v => Math.max(2, Math.min(98, +v));
@@ -23093,7 +23133,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                     ${t.val != null ? `<div class="text-[9px] font-mono text-gray-300 leading-none" style="margin-top:2px;white-space:nowrap">${t.val}</div>` : ''}</div>`; }).join('') : '';
         const markHtml = (o.marks || []).map(m => `<div style="${ABS}left:${cl(m.pct)}%;top:-1px;transform:translateX(-50%)"${m.title ? ` title="${m.title}"` : ''}><div class="text-[8px] ${m.cls || 'text-amber-300/90'} leading-none">${m.glyph || '◆'}</div></div>`).join('');
         // 兩種版面:有刻度(估值尺)→ 高 52px、▼ 連字在上;沒刻度(儀表列)→ 矮 14px、▼ 壓在條上
-        const box = hasTicks ? 'height:52px;margin-top:12px' : 'height:14px';
+        // 📐 V77.1.1 量條高度可調(`o.bh`)—— 總覽儀表列要跟報告頁海報一致(海報是 14/780 ≈ 手機上的 8px)。
+        //   ⚠️ 預設仍是 6 → 沒傳的呼叫端(估值尺…)行為零變化。
+        const BH = (+o.bh > 0) ? +o.bh : 6;
+        const box = hasTicks ? 'height:52px;margin-top:12px' : `height:${BH + 8}px`;
         const barTop = hasTicks ? 0 : 6;
         // 🔺 V76.0.9 risk 那格以前刻意不畫 ▼,但使用者看不到「它到底在哪一格」→ 改成照畫(灰色,⛔ 不上紅綠),
         //   「安不安全」仍然由右邊的 ✅⚠️⛔ 說 —— 兩者分工:▼ 講位置、徽章講意思。
@@ -23115,14 +23158,18 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             ${label ? `<div class="text-[8px] text-gray-400" style="flex:0 0 54px;width:54px;white-space:nowrap">${label}</div>` : ''}
             ${side(o.lo, 26, 'right')}
             <div data-bar="1" style="position:relative;flex:1 1 0;min-width:0;${box}">
-                <div class="bg-gradient-to-r from-[#21262d] via-[#3a4250] to-[#21262d]" style="${ABS}left:0;right:0;top:${barTop}px;height:6px;border-radius:9999px;background:linear-gradient(90deg,#21262d,#3a4250,#21262d)"></div>
-                <div class="${this._gaugeFill(kind, pct)}" data-fill="${Math.round(fw)}" style="${ABS}left:0;top:${barTop}px;height:6px;width:${fw.toFixed(1)}%;border-radius:9999px"></div>
+                <div class="bg-gradient-to-r from-[#21262d] via-[#3a4250] to-[#21262d]" style="${ABS}left:0;right:0;top:${barTop}px;height:${BH}px;border-radius:9999px;background:linear-gradient(90deg,#21262d,#3a4250,#21262d)"></div>
+                <div data-fill="${Math.round(fw)}" style="${ABS}left:0;top:${barTop}px;height:${BH}px;width:${fw.toFixed(1)}%;border-radius:9999px;${this._gaugeFill(kind, pct)}"></div>
                 ${pointer}${markHtml}${hasTicks ? `<div style="${ABS}left:0;right:0;top:8px">${tickHtml}</div>` : ''}
             </div>
             ${side(o.hi, 26, 'left')}
             ${fx ? `<div class="text-[11px]" data-badge="${kind}" style="${BADGECELL}flex:0 0 20px;width:20px">${badge}</div>` : (badge ? `<div class="text-[11px]" data-badge="${kind}" style="${BADGECELL}flex:0 0 auto;min-width:20px">${badge}</div>` : '')}
             ${o.val != null ? `<div class="text-[8px] font-mono text-gray-300" style="flex:0 0 ${fx ? 26 : 28}px;width:${fx ? 26 : 28}px;text-align:right">${o.val}</div>` : ''}
-        </div>`;
+        </div>${o.tipShow && o.tip ? `<div class="text-[9px] text-gray-500 leading-snug" data-gaugetip="1" style="margin:1px 0 0 60px">${o.tip}</div>` : ''}`;
+        // 📖 V77.1.1 `tipShow` 才會把白話**畫出來**(舊行為是只當 title 滍滑提示)——
+        //   使用者:「統一用報告頁面的方式呈現」,而海報那邊每列本來就有一句說明。
+        //   ⭐ 文字**逐字讀 `_GAUGE_SPEC[].tip`**(跟海報同一份),⛔ 不在呼叫端另寫一份。
+        //   ⚠️ 沒傳 `tipShow` 就完全不畫 → `_rpValRuler` 等舊呼叫端行為零變化。
     },
     _rpValRuler(C) {
         const b = C.band, eps = C.ae && C.ae.eps;
@@ -23698,17 +23745,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             //   ⚠️ AI 常在段落開頭放破折號/項目符號 → 剝掉(⛔ 只剝開頭那一個,內文的不動)
             const sec = t => `<div class="text-[11px] text-gray-200 leading-relaxed whitespace-pre-wrap" style="overflow-wrap:anywhere">${this._rpHi(this._rpStripCite(String(t || '')).replace(/^\s*[—–\-•・]\s*/, ''))}</div>`;
             const firstHtml = P.secs.length
-                ? P.secs.filter(isFirst).map(x => `<div style="margin-top:6px" data-rpsec-first="${x.n}"><div class="text-[11px] font-bold text-gray-100">§${x.n} ${this._escHtml(x.title)}</div>${sec(x.body)}</div>`).join('')
+                ? P.secs.filter(isFirst).map(x => { const tn = this._rpSecTone(x.n); return `<div style="margin-top:6px" data-rpsec-first="${x.n}"><div class="text-[11px] font-bold ${tn.cls}" data-rpsectone="${x.n}">● §${x.n} ${this._escHtml(x.title)}</div>${sec(x.body)}</div>`; }).join('')
                 : `<div data-rpsec-first="0">${sec(P.pre.slice(0, 500))}${P.pre.length > 500 ? '<div class="text-[10px] text-gray-500">…(全文在下面)</div>' : ''}</div>`;
             rest = P.secs.length ? P.secs.filter(x => !isFirst(x)) : (P.pre.length > 500 ? [{ n: 0, title: '全文', body: P.pre }] : []);
-            const restHtml = rest.map(x => `<details data-dk="sec${x.n}" class="border-t border-[#21262d]" data-rpsec="${x.n}"><summary class="cursor-pointer text-[11px] text-gray-300" style="padding:5px 0;list-style:none">${x.n ? `§${x.n} ` : ''}${this._escHtml(x.title)}${SUBJ[x.n] ? ` <span class="text-[10px] text-gray-500">(AI 主觀${SUBJ[x.n]} —— 本站實測這類權重沒有預測力,⛔ 別當數字用)</span>` : ''}<span class="text-[10px] text-gray-600"> ・展開 ▾</span></summary>${sec(x.body)}</details>`).join('');
+            const restHtml = rest.map(x => `<details data-dk="sec${x.n}" class="border-t border-[#21262d]" data-rpsec="${x.n}"><summary class="cursor-pointer text-[11px] font-bold ${this._rpSecTone(x.n).cls}" data-rpsectone="${x.n}" style="padding:5px 0;list-style:none">${x.n ? `● §${x.n} ` : '● '}${this._escHtml(x.title)}${SUBJ[x.n] ? ` <span class="text-[10px] text-gray-500">(AI 主觀${SUBJ[x.n]} —— 本站實測這類權重沒有預測力,⛔ 別當數字用)</span>` : ''}<span class="text-[10px] text-gray-600"> ・展開 ▾</span></summary>${sec(x.body)}</details>`).join('');
             const staleHtml = st.stale
                 ? `<div class="text-[11px] text-amber-300 leading-snug" style="padding:4px 0" data-rpstale="${st.reasons.length}">🔁 <b>建議重新產出</b>:${st.reasons.map(r => this._escHtml(r)).join(' ・')}</div>`
                 : `<div class="text-[10px] text-gray-500" style="padding:2px 0" data-rpstale="0">✅ 貼上之後沒有新的月營收 / 財報 / 除息,股價也沒偏離,還算新</div>`;
             //   📐 V76.2.2 版面:卡頭右邊已經寫了「基準日 X」→ 這行**不再重複講一次基準日**(同一個日期講兩次看起來像壞掉)
             saved = `<div data-rpnote="1" class="bg-[#0d1117] border-l-4 border-l-[#8b949e] border-y border-r border-[#30363d] rounded-r p-2 mb-1.5">
                 <div class="text-[10px] text-amber-300/90 font-bold leading-snug">📝 外部 AI 寫的,本站沒有驗證 ・⛔ 不參與任何買賣判斷</div>
-                ${this._rpCiteWarn(sym, n.t)}${staleHtml}${firstHtml}
+                ${this._rpCiteWarn(sym, n.t)}${staleHtml}${P.secs.length ? `<div class="text-[9px] leading-snug" style="margin-top:4px" data-rpsecleg="${this._RP_SECTONE.length}">🎨 標題顏色 = 這一節在講哪一類(⛔ 不是好壞、也不是漲跌)：${this._RP_SECTONE.map(t => `<span class="${t.cls} font-bold">● ${t.t}</span>`).join(' ')}</div>` : ''}${firstHtml}
                 ${restHtml ? `<details data-dk="rest" style="margin-top:6px" data-rpsec-rest="${rest.length}"><summary class="cursor-pointer text-[11px] font-bold text-gray-300" style="padding:5px 0;list-style:none">📚 其餘 ${P.secs.length ? `${rest.length} 節` : '全文'}<span class="text-[10px] text-gray-600 font-normal"> ・逐節點開 ▾</span></summary><div style="padding-left:4px">${restHtml}</div></details>` : ''}
                 ${P.secs.length ? '' : '<div class="text-[10px] text-gray-500 leading-snug" style="margin-top:4px">⚠️ 這份沒有 §1~§20 編號 → <b>沒切節</b>,整份照原樣顯示(用本站的提示詞重產會有編號,第一眼就只留結論與筆記)。</div>'}
 
@@ -24142,6 +24189,29 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     // 📏📉 §11・§16・§17 價格牆 + 壓力測試(⛔ 價位全部讀 stash:_keyLevels / _upsideStash / indicators / _marginCallState)
     // 🧱 牆的清單只有一份(V76.2.0 抽出來給 🆚 對照段共用,⛔ 不可再算第二份)
+    // 🎨 V77.1.1 報告標題分色 —— 使用者:「完整報告的標題應該要用顏色區隔,包含摘述報告」。
+    //   ⛔ **不用紅綠**(燈號鐵則:紅綠只准講漲跌)—— 這裡的顏色是「這一節在講哪一類事」,
+    //      不是「好還是壞」;用紅綠會讓使用者把「風險節」讀成「跟跌有關」。
+    //   ⭐ **全 App 只有這一份**:完整報告(HTML 的 §N)與短評/速覽海報(canvas 節標題)都讀它,
+    //      ⛔ 不可兩邊各寫一組(同 `_GAUGE_RAMP` / `_RP_GLOSSARY` 的理由)。
+    _RP_SECTONE: [
+        { t: '結論',     cls: 'text-amber-300',  hex: '#fcd34d', ss: [1] },
+        { t: '公司與財務', cls: 'text-sky-300',    hex: '#7dd3fc', ss: [2, 3, 4, 5, 6, 7, 8] },
+        { t: '產業與價格', cls: 'text-gray-100',   hex: '#e6edf3', ss: [9, 10, 11, 16, 17] },
+        { t: '風險與事件', cls: 'text-orange-300', hex: '#fdba74', ss: [12, 13, 18] },
+        { t: '估值與筆記', cls: 'text-gray-400',   hex: '#8b949e', ss: [0, 14, 15, 19, 20] },
+    ],
+    _rpSecTone(n) {
+        const k = +n;
+        return this._RP_SECTONE.find(x => x.ss.includes(k)) || this._RP_SECTONE[this._RP_SECTONE.length - 1];
+    },
+    // 🖼️ 海報(canvas)的節標題 → 對到同一張表的哪一組(⛔ 不另訂一套顏色)
+    _RP_CARDSEC: { '價格位置': 11, '關鍵價位': 11, '個面向': 1, '估值': 15, '基本面': 4, '籌碼': 10, '產業': 3, '未來會震': 12, '接下來怎麼看': 1 },
+    _rpCardHex(title) {
+        const t = String(title || '');
+        for (const k of Object.keys(this._RP_CARDSEC)) if (t.includes(k)) return this._rpSecTone(this._RP_CARDSEC[k]).hex;
+        return null;
+    },
     _rpWallList(C) {
         const sym = String(C.sym), pC = C.pC;
         if (!(pC > 0)) return [];
@@ -24157,6 +24227,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (K.pocLo > 0 && K.pocHi > 0) add(`量最密集 ${Math.round(K.pocLo)}~${Math.round(K.pocHi)}`, (K.pocLo + K.pocHi) / 2, '近 60 日成交量最大的一格');
             (Array.isArray(K.stuck) ? K.stuck : []).filter(z => z.below).slice(0, 2).forEach(z => add(`下方量堆積 ${Math.round(z.lo)}~${Math.round(z.hi)}`, (z.lo + z.hi) / 2, `${(+z.pct).toFixed(0)}% 的量卡在這,跌到這裡常有人接`));
             if (K.slPx > 0) add(K.exitMode ? '防線(你的出場線)' : '停損(你設的出場線)', K.slPx, K.slLb || '跌破 = 翻空的事實');
+            // 📍 V77.1.1 進場價 / 追買價 —— 使用者:「關鍵價位裡面新增進場價位、追買價位,
+            //   是要讓使用者知道要等到這時候才能買」。
+            //   ⭐ 總覽那條尺(`_priceRulerHtml`)**早就有** —— 漏的是這張表與海報(陷阱 #37)。
+            //   ⛔ 零新計算:只讀 `_keyLevels`(唯一產生者是 `_ovKeyLevelsHtml`);
+            //      `exitMode` 時 buyPx/addPx 本來就是 null → 自動不顯示。
+            //   ⚠️ 空頭(`_bearGate`)時**價位一個都不動**,只改名稱與說明(同價格尺的既有做法)。
+            const bearW = (() => { try { return !K.exitMode && !!this._bearGate(sym); } catch (_) { return false; } })();
+            if (K.buyPx > 0) add(bearW ? '轉強觀察價' : (K.bull ? '進場價' : '轉強價'), K.buyPx,
+                bearW ? '漲到這裡才值得重看,⛔ 不是叫你買(這檔主結論是空方)' : `${K.buyLb || '掛限價等它來'};⛔ 還沒到之前這檔沒有進場條件`);
+            if (K.addPx > 0) add(bearW ? '前一個波段高點' : '追買價(帶量過前高)', K.addPx,
+                bearW ? '⛔ 不是買點,只是上面那道最近的關' : '這是<b>前高</b>,⛔ 不是你可以直接掛的買價 —— 要帶量突破才算');
         }
         if (C.mcs && Number.isFinite(+C.mcs.callLine)) add('融資追繳壓力區(推估)', C.mcs.callLine, `近 ${C.mcs.win || 60} 日融資族群均價 × 追繳比例;⛔ 不是官方值${C.mcs.mktKnown ? '' : '(以上市六成推)'}`);
         lv.sort((a, b) => b.v - a.v);
@@ -24649,6 +24730,15 @@ ${this._reportFacts(sym)}
         for (const z of zones) lv.push({ n: `套牢區 ${Math.round(z.lo)}~${Math.round(z.hi)}`, sub: `佔 ${(+z.sup).toFixed(0)}% 的量・下緣`, v: +z.lo, r: rel(z.lo), t: 'zone' });
         for (const [n, nm] of [[20, '月線'], [60, '季線'], [120, '半年線'], [240, '年線']]) if (MA[n] > 0) lv.push({ n: nm, v: +MA[n], r: rel(MA[n]), t: 'ma' });
         if (K && String(K.sym) === String(sym) && +K.slPx > 0) lv.push({ n: '你的出場線', sub: '你自己的紀律', v: +K.slPx, r: rel(K.slPx), t: 'sl' });
+        // 📍 V77.1.1 進場價 / 追買價(與 §11 價格牆表同一組字)—— ⛔ 只讀 `_keyLevels`,零新計算。
+        //   ⚠️ 空頭時**價位不動**,只改名稱 → 才不會在空頭股的圖上冒出「進場價」三個字。
+        if (K && String(K.sym) === String(sym)) {
+            const bearW = (() => { try { return !K.exitMode && !!this._bearGate(sym); } catch (_) { return false; } })();
+            if (+K.buyPx > 0) lv.push({ n: bearW ? '轉強觀察價' : (K.bull ? '進場價' : '轉強價'),
+                sub: bearW ? '⛔ 不是買點' : (K.buyLb || '掛限價等它來'), v: +K.buyPx, r: rel(K.buyPx), t: 'buy' });
+            if (+K.addPx > 0) lv.push({ n: bearW ? '前一個波段高點' : '追買價',
+                sub: bearW ? '⛔ 不是買點' : '前高・帶量突破才算', v: +K.addPx, r: rel(K.addPx), t: 'add' });
+        }
         if (C.mcs && Number.isFinite(+C.mcs.callLine)) lv.push({ n: '融資追繳壓力區', sub: '推估', v: +C.mcs.callLine, r: rel(C.mcs.callLine), t: 'mc' });
         lv.push({ n: '現在的價', v: +C.pC, r: 0, t: 'now' });                       // ⭐ 把現價插進去 —— 一眼看得出哪些在上面
         lv.sort((a, b) => b.v - a.v);
@@ -24795,6 +24885,7 @@ ${this._reportFacts(sym)}
         //   ⭐ 卡片外框拿掉之後,內容左右界直接用 PAD(⛔ 不再 +18 內縮)→ 內容 672 → 724px,
         //      而且**跟頁首同一條邊**(頁首本來就用 PAD,舊版差 18px,截圖上看得出來標題比內文寬一截)。
         const S = this._RP_STYLE, FS = S.font, W = S.W, PAD = 28;
+        const BADGE_W = 44;   // 🔣 V77.1.1 徽章的固定寬格 —— ⭐ 位置由格子決定，⛔ 不讓 glyph 自己對齊
         const FONT = '"PingFang TC","Microsoft JhengHei","Noto Sans TC",-apple-system,sans-serif';
         const dpr = Math.max(2, Math.min(3, window.devicePixelRatio || 1));   // 🖼️ V76.3.9 存出來的圖**至少 2 倍**(780 → 1560px)—— ⛔ 畫質不該看使用者的螢幕臉色
         // 📏 兩段式:第一趟只量高度(paint=false),第二趟真的畫 —— ⛔ 不猜高度(猜少了字蓋到頁尾、猜多了底下一片黑)
@@ -24831,7 +24922,10 @@ ${this._reportFacts(sym)}
             if (paint) this._rpOwnDbg.cards.push({ title, sec: secN, yTitle: top + 26, yFirst: yy, yEnd: top + hAll, x0, x1 });
             const nw = mt(secN, FS.h, '900') + 14;
             txt(secN, x0, top + 26, FS.h, S.amb, '900');            // 節號 = 琥珀「文字」(⛔ 不再畫圓盤)
-            txt(title, x0 + nw, top + 26, FS.h, S.fg, '900');
+            // 🎨 V77.1.1 標題**照它在講哪一類上色**(跟「📖 完整報告」的 §N 讀同一份 `_RP_SECTONE`)——
+            //   使用者:「完整報告的標題應該要用顏色區隔,包含摘述報告」。
+            //   ⛔ 節號仍是琥珀(那是**編號**不是分類);⛔ 對不到就退回原本的灰白,不硬給顏色。
+            txt(title, x0 + nw, top + 26, FS.h, this._rpCardHex(title) || S.fg, '900');
             // ⚠️ 右上那句說明會壓到標題;量得下才印,裝不下就截(⛔ 不讓它疊字)
             if (hint) {
                 const room = x1 - (x0 + nw + mt(title, FS.h, '900')) - 14;
@@ -24845,16 +24939,35 @@ ${this._reportFacts(sym)}
         };
         // 📖 V76.3.9 一排最多四格(標題 + 大字 + **一句白話**)
         //   使用者:「產出來的資料另外還要敘述那是什麼意思」→ 白話一律讀 _RP_GLOSSARY(⛔ 不在這裡另寫一份)
+        // 🚦 V77.1.1 格子上色的門檻 —— ⭐⭐ **全部來自本站已經上線中的判準**,⛔ 一個都沒新編:
+        //   • 年增 / 累計年增 → `_xrayScoreOf` 的 30 / 10 / 0(高成長 ・穩成長 ・溫和 ・衰退)
+        //   • ROE近4季 / 淨利率 / 自由現金流 → `_lossCapOf` 的「< 0 就是在虧錢」
+        //   • 融資追繳壓力區 → `_marginCallState` 的 `level`(broken / near / watch / safe)
+        //   ⛔ 其餘格子(月營收、毛利率、存貨天數、千張大戶、散戶)**本站沒有實測過的好壞門檻**
+        //      → 維持灰白並在卡底說出來(陷阱 #22:不講原因等於沒講)。
+        //   ⚠️ 千張大戶 / 散戶 ⛔ **不可上色成「好」** —— `tdcc_probe` 實測「兩上兩下」第 1 名只是打平大盤。
+        //   ⭐ 風險類一律用**琥珀三階 + ✅⚠️⛔**(燈號鐵則:好壞/安危⛔ 不用紅綠);
+        //      法人買賣超是**方向**→ 台股紅買綠賣,⛔ 不配✅⚠️⛔(它不是「好壞」)。
+        const TN = { ok: { c: S.risk.hi, b: '✅' }, warn: { c: S.risk.mid, b: '⚠️' }, bad: { c: S.risk.lo, b: '⛔' } };
+        const tnYoy = v => !Number.isFinite(+v) ? null : (+v >= 10 ? TN.ok : +v >= 0 ? TN.warn : TN.bad);
+        const tnNeg = v => !Number.isFinite(+v) ? null : (+v < 0 ? TN.bad : null);
+        const tnLvl = l => ({ broken: TN.bad, near: TN.bad, watch: TN.warn, safe: TN.ok })[l] || null;
+        const tnDir = v => !Number.isFinite(+v) ? null : (+v > 0 ? { c: S.up } : +v < 0 ? { c: S.dn } : null);
         const GL = this._RP_GLOSSARY || {};
         const cells = (list, yy, x0, x1) => {
             const cw = (x1 - x0) / 4;
             // ⚠️ 第三個元素是「白話表的鍵」—— 標題可能帶月份(例「年增(08月)」),⛔ 不可拿它去查表
             const notes = list.map(([k, , gk]) => { const t = GL[gk || k]; return t ? wrapRows(t, 15, cw - 10).slice(0, 3) : []; });
             const maxR = notes.reduce((m, r) => Math.max(m, r.length), 0);
-            list.forEach(([k, v], i) => {
-                txt(k, x0 + cw * i, yy, FS.small, S.dim, '700');
-                txt(v, x0 + cw * i, yy + 36, 30, S.fg, '900');
-                notes[i].forEach((r, j) => { txt(r, x0 + cw * i, yy + 62 + j * 20, 15, S.dim, '700'); if (paint) this._rpOwnDbg.notes += 1; });
+            // 🎨 V77.1.1 第四個元素 = 色調 `{ c, b }`(使用者:「基本面及籌碼應該要用顏色告訴我
+            //   哪些是危險警告哪些是好的」)。⛔ 沒傳就維持灰白 `S.fg` ——
+            //   **本站沒有實測過好壞門檻的格子⛔ 不猜**(陷阱 #38:懑空權重)。
+            list.forEach(([k, v, , tn], i) => {
+                const cx = x0 + cw * i;
+                txt(k, cx, yy, FS.small, S.dim, '700');
+                txt(v, cx, yy + 36, 30, (tn && tn.c) || S.fg, '900');
+                if (tn && tn.b) { txt(tn.b, cx + mt(String(v), 30, '900') + 8, yy + 36, 18, (tn && tn.c) || S.fg, '900'); if (paint) this._rpOwnDbg.tones.push({ k, v: String(v), b: tn.b, c: tn.c }); }
+                notes[i].forEach((r, j) => { txt(r, cx, yy + 62 + j * 20, 15, S.dim, '700'); if (paint) this._rpOwnDbg.notes += 1; });
             });
             return 74 + maxR * 20;
         };
@@ -25013,17 +25126,30 @@ ${this._reportFacts(sym)}
                 for (const d of dims) {
                     const sp = this._GAUGE_SPEC[d.name] || { kind: 'pos', lo: '弱', hi: '強' };
                     const v = +d.score, k = sp.kind;
-                    const fill = k === 'dir' ? (v >= 58 ? S.up : v <= 42 ? S.dn : S.dim)
-                               : k === 'risk' ? (v >= 60 ? S.risk.hi : v >= 45 ? S.risk.mid : S.risk.lo) : S.pos;
+                    // 🎨 V77.1.1 色階讀**共用的** `_GAUGE_RAMP`(跟 App 的量條同一份)——
+                    //   ⛔ 不再拿 `_RP_STYLE` 的單色 hex 寫死(V76.3.8 的教訓:兩邊各寫一組 → 配色又有差)。
+                    //   同色系深→亮,⛔ 不是綠→黃→紅跨色(燈號鐵則也管刻度尺)。
+                    const ramp = this._gaugeRamp(k, v);
                     const sym2 = k === 'dir' ? (v >= 58 ? '🔴' : v <= 42 ? '🟢' : '➖') : k === 'risk' ? (v >= 60 ? '✅' : v >= 45 ? '⚠️' : '⛔') : (v >= 60 ? '強' : v >= 45 ? '中' : '弱');
                     txt(`${d.icon || ''} ${d.name}`, x0, yy + h, 24, S.fg, '700');
                     const bx = x0 + 170, bw = x1 - x0 - 170 - 150, bh = 14;
+                    const fw2 = bw * Math.max(0, Math.min(1, v / 100));
                     rect(bx, yy + h - 12, bw, bh, S.line, 7);
-                    rect(bx, yy + h - 12, bw * Math.max(0, Math.min(1, v / 100)), bh, fill, 7);
-                    if (paint) this._rpOwnDbg.bars.push({ name: d.name, kind: k, score: v, x: bx, y: yy + h - 12, w: bw * Math.max(0, Math.min(1, v / 100)), h: bh, fill });
+                    const grad = (() => { try { const gr = g.createLinearGradient(bx, 0, bx + Math.max(1, fw2), 0); gr.addColorStop(0, ramp[0]); gr.addColorStop(1, ramp[1]); return gr; } catch (_) { return ramp[1]; } })();
+                    rect(bx, yy + h - 12, fw2, bh, grad, 7);
+                    if (paint) this._rpOwnDbg.bars.push({ name: d.name, kind: k, score: v, x: bx, y: yy + h - 12, w: fw2, h: bh, fill: ramp[1], ramp });
                     txt(sp.lo || '', bx, yy + h + 20, 16, S.dim, '700'); txt(sp.hi || '', bx + bw, yy + h + 20, 16, S.dim, '700', 'right');
-                    txt(`${Math.round(v)}`, x1 - 44, yy + h, 26, S.fg, '900', 'right');
-                    txt(sym2, x1, yy + h, 22, S.fg, '900', 'right');
+                    txt(`${Math.round(v)}`, x1 - 44 - BADGE_W, yy + h, 26, S.fg, '900', 'right');
+                    // 🔣 V77.1.1 徽章改「固定寬的置中格」—— 使用者:「大盤右手邊那個三角型驚嘆號沒有對齊」。
+                    //   🚨 跟 V77.0.9 修 HTML 那次是**同一個病**:舊寫法 `txt(sym2, x1, …, 22, …, 'right')`
+                    //      是「22px 的 emoji 跟 26px 的數字共用 alphabetic 基線」+「右靠」→
+                    //      emoji(約 1.275em)跟 CJK(1.0em)advance 不同 → 五列高低左右都不一致。
+                    //   ⭐ 改成**畫在量條的垂直中心 + 固定寬格子的水平中心**(textBaseline='middle' + align='center')
+                    //      → 不管 glyph 多寬、字級多大都對得齊。
+                    //   ⚠️ 沙箱**沒有彩色 emoji 字型**(六個符號量到同一個寬度)→ 這條**重現不了**,
+                    //      所以做成「不依賴 glyph 度量」的結構修法,測試只釘幾何(陷阱 #40)。
+                    const bcy = yy + h - 12 + bh / 2, bcx = x1 - BADGE_W / 2;
+                    if (paint) { g.textBaseline = 'middle'; txt(sym2, bcx, bcy, 22, S.fg, '900', 'center'); g.textBaseline = 'alphabetic'; this._rpOwnDbg.badges.push({ name: d.name, kind: k, x: bcx, y: bcy, barCy: bcy, w: BADGE_W }); }
                     // 📖 V76.3.9 這個面向是什麼意思 —— ⛔ 讀 _GAUGE_SPEC 的 tip,不在這裡另寫一份
                     if (sp.tip) wrapRows(sp.tip, 14, 160).slice(0, 2).forEach((r, j) => txt(r, x0, yy + h + 18 + j * 17, 14, S.dim, '700'));
                     h += 68;
@@ -25051,26 +25177,33 @@ ${this._reportFacts(sym)}
                 // 📅 V76.3.9 標題帶「是哪一個月」—— ⛔ 只給數字說不清楚(同一個年增本站有兩份來源、月份不同)
                 const _mm = C.yoyM ? `(${String(C.yoyM).slice(5)}月)` : '';
                 let h = cells([['最新月營收' + _mm, +C.mrev > 0 ? num(C.mrev / 1e8, 1) + ' 億' : '—', '最新月營收'],
-                                ['年增' + _mm, Number.isFinite(+C.yoy) ? pct(C.yoy) : '—', '年增'],
-                                ['累計年增', Number.isFinite(+C.ytd) ? pct(C.ytd) : '—'], ['毛利率', Number.isFinite(+C.gm) ? num(C.gm, 1) + '%' : '—']], yy, x0, x1);
+                                ['年增' + _mm, Number.isFinite(+C.yoy) ? pct(C.yoy) : '—', '年增', tnYoy(C.yoy)],
+                                ['累計年增', Number.isFinite(+C.ytd) ? pct(C.ytd) : '—', null, tnYoy(C.ytd)], ['毛利率', Number.isFinite(+C.gm) ? num(C.gm, 1) + '%' : '—']], yy, x0, x1);
                 line(yy + h + 2, x0, x1); h += 30;
                 txt(`財報三表${fin ? `(最新季 ${fin.p})` : ''}`, x0, yy + h, FS.small, S.dim, '700'); h += 34;
                 h += cells([['存貨天數', (fin && fin.doi != null) ? fin.doi + ' 天' : '—'],
-                            ['自由現金流近4季', (C.fin && C.fin.fcf4 != null) ? num(C.fin.fcf4 / 1e8, 1) + ' 億' : '—'],
-                            ['ROE近4季', (C.fin && C.fin.roe4 != null && !parQ) ? num(C.fin.roe4, 1) + '%' : '—'],
-                            ['淨利率', (fin && fin.nm != null && !parQ) ? num(fin.nm, 1) + '%' : '—']], yy + h, x0, x1);
+                            ['自由現金流近4季', (C.fin && C.fin.fcf4 != null) ? num(C.fin.fcf4 / 1e8, 1) + ' 億' : '—', null, (C.fin && C.fin.fcf4 != null) ? tnNeg(C.fin.fcf4) : null],
+                            ['ROE近4季', (C.fin && C.fin.roe4 != null && !parQ) ? num(C.fin.roe4, 1) + '%' : '—', null, (C.fin && C.fin.roe4 != null && !parQ) ? tnNeg(C.fin.roe4) : null],
+                            ['淨利率', (fin && fin.nm != null && !parQ) ? num(fin.nm, 1) + '%' : '—', null, (fin && fin.nm != null && !parQ) ? tnNeg(fin.nm) : null]], yy + h, x0, x1);
                 if (parQ) { txt(`⚠️ ${String(parQ).slice(0, 7)} 起疑似面額變更,本站算不出淨利率 / ROE(⛔ 不猜)`, x0, yy + h + 6, FS.small, S.risk.mid, '700'); h += 30; }
+                // 🚦 V77.1.1 上色的規則要講出來 —— ⛔ 不可讓使用者以為「沒標色 = 沒問題」(陷阱 #22)
+                txt('✅ 好 ・⚠️ 普通 ・⛔ 在衰退或虧錢;沒標色的那幾格,本站沒有實測過的好壞門檻 → ⛔ 不猜', x0, yy + h + 6, FS.small, S.dim, '700'); h += 30;
                 return h;
             });
             // ── ⑥ 籌碼 ──
             card('籌碼', (yy, x0, x1) => {
                 const I = (o, k) => (o && o.hasInst && Number.isFinite(+o[k])) ? Math.round(+o[k]).toLocaleString() + ' 張' : '—';
-                let h = cells([['外資近5日', I(C.s5, 'foreign')], ['投信近5日', I(C.s5, 'trust')], ['外資近20日', I(C.s20, 'foreign')], ['投信近20日', I(C.s20, 'trust')]], yy, x0, x1);
+                const IV = (o, k) => (o && o.hasInst && Number.isFinite(+o[k])) ? +o[k] : null;
+                // 🎨 法人買賣超是**方向**(買/賣)→ 台股紅買綠賣;⛔ 不配 ✅⚠️⛔(它不是「好壞」)
+                let h = cells([['外資近5日', I(C.s5, 'foreign'), null, tnDir(IV(C.s5, 'foreign'))], ['投信近5日', I(C.s5, 'trust'), null, tnDir(IV(C.s5, 'trust'))],
+                               ['外資近20日', I(C.s20, 'foreign'), null, tnDir(IV(C.s20, 'foreign'))], ['投信近20日', I(C.s20, 'trust'), null, tnDir(IV(C.s20, 'trust'))]], yy, x0, x1);
+                // ⚠️ 千張大戶 / 散戶⛔ 不上色 —— `tdcc_probe` 實測「兩上兩下」第 1 名只是打平大盤,沒有好壞可言
+                const mcTn = (C.mcs && Number.isFinite(+C.mcs.callLine)) ? tnLvl(C.mcs.level) : null;
                 h += cells([['千張大戶', td ? num(td[1], 1) + '%' : '—'], ['散戶', td ? num(td[3], 1) + '%' : '—'],
-                            ['融資追繳壓力區', (C.mcs && Number.isFinite(+C.mcs.callLine)) ? num(C.mcs.callLine, 1) : '—'],
-                            ['距現價', (C.mcs && Number.isFinite(+C.mcs.callLine) && C.pC > 0) ? pct((C.mcs.callLine / C.pC - 1) * 100) : '—']], yy + h + 6, x0, x1);
+                            ['融資追繳壓力區', (C.mcs && Number.isFinite(+C.mcs.callLine)) ? num(C.mcs.callLine, 1) : '—', null, mcTn],
+                            ['距現價', (C.mcs && Number.isFinite(+C.mcs.callLine) && C.pC > 0) ? pct((C.mcs.callLine / C.pC - 1) * 100) : '—', null, mcTn]], yy + h + 6, x0, x1);
                 return h + 6;
-            }, '集保是週資料 ・追繳線是推估');
+            }, '紅=買超 綠=賣超 ・集保是週資料 ・追繳線是推估');
             // ── ⑦ 產業 ──
             card('產業', (yy, x0, x1) => {
                 const rows = [`產業別:${ind.ind}`, `題材標籤(本站自己貼的,⛔ 不是官方產業):${ind.themes.length ? ind.themes.join('、') : '—'}`,
@@ -25113,7 +25246,7 @@ ${this._reportFacts(sym)}
             txt(`${C.name} ${C.sym}`, W - PAD, y + 66, FS.small, S.border, '900', 'right');
             return y + 90;
         };
-        this._rpOwnDbg = { cards: [], bars: [], lad: [], notes: 0 };        // 只在畫的那一趟記(測試讀;⛔ 顯示端不用)
+        this._rpOwnDbg = { cards: [], bars: [], lad: [], badges: [], tones: [], notes: 0 };        // 只在畫的那一趟記(測試讀;⛔ 顯示端不用)
         const H = Math.ceil(run());                      // 第一趟:量
         cv.width = W * dpr; cv.height = H * dpr;
         cv.style.aspectRatio = `${W} / ${H}`;
@@ -29843,15 +29976,19 @@ ${lightExplain[queryType]}
             <span class="w-12 text-right">${t.dir == null ? '<span class="text-gray-600">—</span>' : arrow(t.dir)}</span>
         </div>`).join('');
         // 📊 股價位階迷你刻度尺(低←→高,標出目前位置)
+        // 🚨 V77.1.1 舊版是 `from-green-500/40 via-gray-600/40 to-red-500/40` ——
+        //   **位階是「位置」卻用紅綠 = 違反燈號鐵則**(紅綠只准講漲跌)。
+        //   V74.8.8 全 App 稽核過 29 處,這支是漏網的 → 改天藍明暗(同 `_gaugeFill('pos')`),
+        //   右邊那個分位標籤也一併拿掉紅綠。⛔ 數字一個都沒改。
         let posBar = '';
         if (posV && posV.pctRank != null) {
             const pr = Math.max(2, Math.min(98, posV.pctRank));
             posBar = `<div class="flex items-center gap-1.5 mb-1.5">
                 <span class="text-[9px] text-gray-500 flex-shrink-0">股價位階</span>
-                <div class="relative flex-1 h-1.5 rounded-full bg-gradient-to-r from-green-500/40 via-gray-600/40 to-red-500/40">
+                <div class="relative flex-1 h-1.5 rounded-full" style="${this._gaugeFill('pos', 50)}">
                     <div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-gray-100 border border-[#0d1117]" style="left:${pr}%"></div>
                 </div>
-                <span class="text-[9px] font-mono font-bold ${posV.pctRank >= 66 ? 'text-red-300' : posV.pctRank <= 33 ? 'text-green-300' : 'text-gray-300'} flex-shrink-0">${Math.round(posV.pctRank)}分位·${posV.posLbl}</span>
+                <span class="text-[9px] font-mono font-bold ${posV.pctRank >= 66 ? 'text-sky-300' : posV.pctRank <= 33 ? 'text-gray-500' : 'text-gray-300'} flex-shrink-0">${Math.round(posV.pctRank)}分位·${posV.posLbl}</span>
             </div>`;
         }
         el.innerHTML = `
@@ -34533,7 +34670,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             return `<div class="bg-[#161b22] border border-[#30363d] rounded px-0.5 py-1 flex flex-col items-center">
                 <div class="text-[8px] text-gray-500 leading-none whitespace-nowrap">${d.icon}${d.name}</div>
                 <div class="font-mono font-black text-sm ${dc} leading-none my-0.5">${d.score}${bg ? `<span class="text-[9px]"> ${bg}</span>` : ''}</div>
-                <div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden"><div class="h-full ${this._gaugeFill(kd, d.score)}" style="width:${d.score}%"></div></div>
+                <div class="w-full h-1 bg-[#21262d] rounded-full overflow-hidden"><div class="h-full" style="width:${d.score}%;${this._gaugeFill(kd, d.score)}"></div></div>
             </div>`;
         }).join('');
         // 🔮 V69.1.31 暫存給總覽第一層「綜合信心分 slim bar + 緊急警示」用(極簡版預設只顯 slim,完整儀表板收合)
@@ -34596,7 +34733,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (!g || String(g.sym) !== String(sym) || !Array.isArray(g.dims) || g.dims.length < 2) return '';
         const rows = g.dims.map(d => {
             const sp = this._GAUGE_SPEC[d.name] || { key: d.name, kind: 'pos' };
-            return this._gaugeRow(`${d.icon} ${d.name}`, d.score, { ...sp, fixed: 1, val: String(Math.round(d.score)) });
+            return this._gaugeRow(`${d.icon} ${d.name}`, d.score, { ...sp, fixed: 1, bh: 8, tipShow: 1, val: String(Math.round(d.score)) });
         }).join('');
         if (!rows) return '';
         const hot = this._riskHot(sym);
@@ -34608,9 +34745,16 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         //    一般股則是財報還在讀(讀完會自己補上,⛔ 不用手動重整)。
         const _mi = this._gaugeMiss(sym, g.dims);
         const missNote = _mi ? `<div class="text-[${_mi.etf ? 8 : 10}px] text-gray-500 leading-snug" style="margin-top:5px">${_mi.text}</div>` : '';
-        return `<div class="bg-[#0d1117] border border-[#30363d] rounded-lg" style="padding:8px 10px" data-gaugestrip="${sym}">
-            <div class="mb-1.5" style="display:flex;align-items:center;justify-content:space-between"><span class="text-[11px] font-black text-gray-200" data-gaugen="${g.dims.length}">🧭 ${g.dims.length} 個面向一眼看</span>${badge}</div>
-            <div style="display:flex;flex-direction:column;gap:7px">${rows}</div>${missNote}
+        // 🧭 V77.1.1 版面**改成跟報告頁那張海報一樣**(使用者:「我要統一用報告頁面的方式呈現」)。
+        //   ⭐ 三件:① 琥珀節號 + 標題 + 一條分隔線(同 `_rpDrawOwn` 的 `card()`,也就是 V77.0.0 無框)
+        //                ② 每列底下一句白話(`tipShow`)③ 量條 6 → 8px
+        //   ⛔ 仍然是**同一支**(總覽與重畫入口共用)—— ⛔ 不可為了版面拆成兩支,
+        //      那正是 V76.0.7 收掉的東西(測試 `test_gauge ⑤s` 釘住)。
+        //   ⚠️ 標題那個 `data-gaugen` ⛔ 不可拿掉(它是「數字跟著實際列數走」的斷言點)。
+        return `<div style="padding:2px 3px 6px" data-gaugestrip="${sym}">
+            <div class="pb-1 mb-1.5 border-b border-[#21262d]" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                <span class="text-[11px] font-black text-gray-200" data-gaugen="${g.dims.length}"><span class="text-amber-400">🧭</span> ${g.dims.length} 個面向一眼看</span>${badge}</div>
+            <div style="display:flex;flex-direction:column;gap:9px">${rows}</div>${missNote}
         </div>`;
         /* 🗑️ V76.1.2 底下那行說明("越右越好,50=中性…⛔ 不加總、不是買賣訊號")已刪(使用者明示)。
            ⚠️ 規則本身沒有改:紅綠仍只給技術/籌碼(方向)、大盤仍是 ✅⚠️⛔、基本面/預期仍是強中弱,
@@ -34812,7 +34956,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             </div>
             <div data-rulertrack="1" style="position:relative;height:26px">
                 <div style="position:absolute;left:0;right:0;top:10px;height:6px;border-radius:9999px;background:linear-gradient(90deg,#21262d,#3a4250,#21262d)"></div>
-                <div class="bg-sky-500/80" data-rulerfill="${Math.round(fillW)}" style="position:absolute;left:0;top:10px;height:6px;width:${fillW.toFixed(1)}%;border-radius:9999px"></div>
+                <div data-rulerfill="${Math.round(fillW)}" style="position:absolute;left:0;top:10px;height:6px;width:${fillW.toFixed(1)}%;border-radius:9999px;${this._gaugeFill('pos', 50)}"></div>
                 ${pocBand}${bands}${mk}
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:5px">${legend}</div>${flatNote}${exitNote}${bearNote}${farTxt}
