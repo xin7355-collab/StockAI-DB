@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -849,7 +849,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8446,8 +8446,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.0.4',
+    _APP_VERSION: 'V77.0.5',
     _CHANGELOG: [
+        { v: 'V77.0.5', d: [
+            '🚨 <b>分點買賣超的數字一直是灌水的 —— 而且每跑一輪就再灌一次</b>。實測佐證:全市場隨機 300 檔、6,286 個交易日,<b>「當天買方淨額加起來 ÷ 當天總成交量」中位是 5.43 倍</b>,<b>87.7% 的日子超過 1 倍</b> —— 而買方買的量<b>物理上不可能超過當天成交總量</b>。',
+            '🔍 <b>真因</b>:採礦有兩條路會寫同一天的資料(當天新抓的 + 從本地舊檔還原的),而它們<b>用不同的方式去對應同一家分點</b>(一邊用券商代號、一邊用券商名字)→ 逃過了「同一家只留一筆」的檢查,<b>同一天被加了兩次</b>;加完又存回本地檔,<b>下一輪再還原、再加一次</b> → 越滾越大。',
+            '🔍 <b>第二個</b>:同一個券商名字底下其實有<b>好幾個分行代號</b>(例如凱基-台北)→ 買超榜<b>164,881 格裡有 67,651 格(41.0%)是重複的名字</b>,等於每重複一次就擠掉一家真的分點;而讀的那一端只會留下<b>最後那一筆</b>(也就是最小的那個碎片)→ <b>中位少算 94.7%</b>。',
+            '✅ <b>兩邊都修好了</b>:採礦端「今天抓到的日子就以今天抓到的為準,不再把舊的加上去」+「同名分行先合併再排名次」;App 端也改成<b>先加總再判斷</b>(因為雲端上<b>既有的歷史天補不回來</b>,這層要一直留著)。',
+            '⏳ <b>要等下一輪採礦跑完</b>,分點的數字才會變乾淨(舊的天沒辦法回頭修)。在那之前,券商分點相關的張數<b>請先不要當真</b>。'] },
         { v: 'V77.0.4', d: [
             '🕐 <b>「附圖資料對嘛」→ 不對,而且是一個藏很久的真 bug</b>:你截圖那一刻(09/15 09:24,盤中)App 顯示加權 45,862.52 ▼0.70%,但真值是 45,768.99 −0.20% —— ⭐ <b>數字沒有算錯,是整份即時快照是 9/14 的</b>,卻被標成「盤中即時 2336 檔」。45,862.52 其實就是<b>昨天的收盤價</b>。',
             '🚨 <b>真因</b>:快照裡那個「這是幾點抓的」欄位,<b>從上線到今天存了但一次都沒有人去讀</b> —— 全 App 18 個用到即時報價的地方,判斷標準都是「有沒有資料 / 夠不夠多檔」,<b>沒有一個在問「這是哪一天的」</b>。',
@@ -28296,13 +28302,22 @@ ${this._reportFacts(sym)}
             const chg5 = (cL / c5 - 1) * 100;
             if (chg5 < 8) return null;
             // 同一分點三天都淨買 ≥ 當日量 0.5%(hist 淨額是股、rawDailyData volume 也是股 → 同單位)
+            // 🚨 V77.0.5 同一個分點名在同一天可能出現**好幾列**(採礦端 `by_date` 新抓的日子
+            //   以 broker_id 為鍵,同一個顯示名底下有多個 id)——⛔ 舊版 `m.set(name, net)` 會被
+            //   後面那列**覆蓋**,而列是淨額由大到小排的 → 留下的是最小的碎片。
+            //   📊 實跑 600 檔:買超榜 41.0% 的格子是重複名字,被覆蓋的分點**中位少算 94.7%**。
+            //   ⭐ 改成**先加總再比門檻**(⛔ 不可一列一列各自判 0.5%,那等於把一家拆成好幾家)。
+            //   ⚠️ 採礦端(miner.py 的 hist 寫入)同版也併好了,但 gh-pages 上**既有的歷史天補不回來**
+            //      → 這一層要一直留著,⛔ 別因為「採礦已經修了」就拿掉。
             const perDay = h3.map((h, k) => {
                 const vol = +((data[ii[k]].volume ?? data[ii[k]].v) || 0);
-                const m = new Map();
+                const sum = new Map();
                 if (vol > 0) for (const row of (h.b || [])) {
-                    const net = +row[1] || 0;
-                    if (net > 0 && net / vol * 100 >= 0.5) m.set(String(row[0]), net);
+                    const nm = String(row[0]), net = +row[1] || 0;
+                    if (net > 0) sum.set(nm, (sum.get(nm) || 0) + net);
                 }
+                const m = new Map();
+                for (const [nm, net] of sum) if (net / vol * 100 >= 0.5) m.set(nm, net);
                 return m;
             });
             const brokers = [];

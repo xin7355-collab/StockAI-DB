@@ -5269,10 +5269,25 @@ def fetch_broker_chips():
                 #   3/5/10 日週期才算得出來(否則只有 1 天資料,10d 會退化成 1d 完全失真)。
                 #   hist 每天存的是當日前 N 名買/賣分點 [名稱, net, 均價];
                 #   把 avg 還原成 pv/vol(以 |net| 當權重),下面既有的加權均價算式就能一體適用。
+                # 🚨🚨 V77.0.5 **本輪自己抓到的日子,⛔ 不可以再從 hist 還原一次**。
+                #   真因:逐檔模式有 `if _d in _have_dates: continue` 擋著,但**批次模式沒有**
+                #   (`data_rows` 直接取最近 `_need_days` 天,不管本地有沒有)→ 同一天會被寫進
+                #   `by_date[d]` **兩次**:還原那份以**名稱**為鍵、API 那份以 **broker_id** 為鍵
+                #   → 落在不同的 key、逃過覆蓋,`_agg_period` 再按名稱併起來 = **淨額加倍**。
+                #   ⛔ 而且 `_day_snaps` 會把加倍後的值寫回 hist → **下一輪再還原一次再加一次**
+                #      = 每跑一輪就再乘一次,幾何式膨脹。
+                #   📊 實跑佐證(300 檔 / 6,286 天):**買方淨額合計 ÷ 當日成交量 中位 5.43**、
+                #      **87.7% 的天 > 1(物理上不可能:買方淨額不可能超過全部成交量)**,
+                #      而且 P10 0.78 → P90 15.48 散得很開 = 跟「單位換算」無關,是**跑過幾輪**的差別。
+                #   ⭐ 修法:**本輪抓到的那幾天以 API 為準**,還原只補「本輪沒抓到」的舊日子。
+                #   ⚠️ 這也讓「當天資料被修正」時能真的更新(舊版是新舊相加,永遠洗不掉舊值)。
+                _fresh_dates = {str(r.get('date') or today_str) for r in data_rows}
                 for _h in (existing_obj.get('hist') or []):
                     if not isinstance(_h, dict) or not _h.get('d'):
                         continue
                     _hd = str(_h['d'])
+                    if _hd in _fresh_dates:
+                        continue
                     _slot = by_date.setdefault(_hd, {})
                     for _arr in list(_h.get('b') or []) + list(_h.get('s') or []):
                         try:
@@ -5342,16 +5357,38 @@ def fetch_broker_chips():
                     #   「同一分點連買」偵測、日後的深歷史回算全都靠它。
                     #   ⭐ 這些天本來就已經在記憶體裡(批次抓的 + 從舊 hist 還原的),零額外成本。
                     for _d2, _slot2 in by_date.items():
-                        _vals2 = []
+                        # 🚨 V77.0.5 同名分點**先併再截斷** —— ⛔ 不可一家一列直接丟進 top-15。
+                        #   真因:`by_date` 這一層,**新抓的日子以 broker_id 為鍵、還原的日子以名稱為鍵**
+                        #   (`_agg_period` 早就有一行註解講這件事並做了正規化,但 hist 這裡沒接到 = 陷阱 #37)。
+                        #   → 同一個顯示名底下有多個 broker_id 時(凱基-台北 的多個分行、戰術標籤把
+                        #     不同 id 收斂成同一個標籤),**新抓的日子會寫成好幾列、還原的日子只有一列**。
+                        #   📊 實跑 600 檔:買超榜 164,881 格裡 **67,651 格(41.0%)**被重複名字吃掉
+                        #     → 每多一列就把一家真的分點擠出 top-15。
+                        #   🚨 更嚴重的是下游:任何用**名稱**當鍵的消費端(前端 `_chipRunBuy` 的
+                        #     `m.set(name, net)`)只會留下**最後那一列**,而列是淨額由大到小排的
+                        #     → 留到的是最小的碎片,實測**中位少算 94.7%**。
+                        #   ⭐ 併起來同時修好三件:總額不變、top-15 不再被佔位、而且
+                        #     **新抓的日子與還原的日子形狀一致**(連買偵測要跨天比,不一致就白比了)。
+                        #   ⚠️ 均價要**加權**併(⛔ 不可直接取其中一列的)。
+                        _merge2: dict = {}
                         for _bid2, _e2 in _slot2.items():
                             _nm2 = _e2.get('broker_name') or _bid2
                             _net2 = int(_e2.get('net') or 0)
                             if not _nm2 or str(_nm2).isdigit() or not _net2:
                                 continue
-                            _av2 = None
+                            _m2 = _merge2.setdefault(str(_nm2), {'net': 0, 'pv': 0.0, 'vol': 0})
+                            _m2['net'] += _net2
                             if _e2.get('vol'):
+                                _m2['pv'] += float(_e2.get('pv') or 0.0); _m2['vol'] += int(_e2['vol'])
+                        _vals2 = []
+                        for _nm2, _m2 in _merge2.items():
+                            _net2 = int(_m2['net'])
+                            if not _net2:      # 併起來剛好抵銷 → 這一天它沒有淨額可言
+                                continue
+                            _av2 = None
+                            if _m2['vol']:
                                 try:
-                                    _av2 = round(_e2['pv'] / _e2['vol'], 2)
+                                    _av2 = round(_m2['pv'] / _m2['vol'], 2)
                                 except Exception:
                                     _av2 = None
                             _vals2.append([_nm2, _net2, _av2])
