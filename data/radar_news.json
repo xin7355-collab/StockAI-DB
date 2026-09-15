@@ -1,7 +1,33 @@
 {
-  "updated": "2026-09-15 15:04 UTC",
+  "updated": "2026-09-15 15:56 UTC",
   "count": 15,
   "data": [
+    {
+      "source_name": "自由財經",
+      "title": "緊追台積電！傳英特爾18A良率衝上80％  14A明年月產6千片晶圓",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5575220",
+      "published_time": "Tue, 15 Sep 2026 23:24:38 +0800",
+      "matched_keywords": [
+        "良率"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "英特爾良率提升，強化AI供應鏈競爭力",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "Honda ZR-V跑旅價格曝光 年銷量挑戰3000輛",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5575096",
+      "published_time": "Tue, 15 Sep 2026 20:27:50 +0800",
+      "matched_keywords": [
+        "降價"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "降價促銷、目標3000台，提升銷售前景",
+      "important": true
+    },
     {
       "source_name": "自由財經",
       "title": "雙重壓力夾擊！新台幣盤中重貶逾2角 31字頭告急",
@@ -11,8 +37,8 @@
         "資本支出"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "利空",
-      "ai_reason": "AI研發降溫影響晶片股",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
     },
     {
@@ -25,7 +51,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "壽險獲利大增，反映台股反彈與評價利益回升",
+      "ai_reason": "壽險獲利大增、股利入帳提振市場",
       "important": true
     },
     {
@@ -38,8 +64,8 @@
       ],
       "cat": "🧪 技術突破",
       "ai_sentiment": "利多",
-      "ai_reason": "聯發科推出旗艦5G代理AI晶片Taiwan Semicond",
-      "title_zh": "標題為繁中文，內容涉及台股個股、供應鏈及半導體部分，因此評價為利多。",
+      "ai_reason": "聯發科推出旗艦5G代理AI晶片天璣9600 Pro，台積電則",
+      "title_zh": "標題為繁體中文，如果不是繁體中文，則為空字串。",
       "important": true
     },
     {
@@ -52,7 +78,7 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利空",
-      "ai_reason": "外資大量撤資致匯率下跌，提振避險情緒",
+      "ai_reason": "外資撤資導致台股下跌",
       "important": true
     },
     {
@@ -65,8 +91,22 @@
         "新高"
       ],
       "cat": "💱 匯率成本",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利空",
+      "ai_reason": "美債殖利率創19年新高，投資人預期Fed調高利率",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "迎雙十國慶 台北101無人機加煙火表演14分鐘點亮台灣",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5574933",
+      "published_time": "Tue, 15 Sep 2026 18:07:15 +0800",
+      "matched_keywords": [
+        "點亮"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "新聞涉及台股業，對台灣經濟有實質影響，因此感情性分析為「利多",
+      "title_zh": "標題為繁體中文，如果太長則為空字符串",
       "important": true
     },
     {
@@ -79,7 +119,7 @@
       ],
       "cat": "📈 股價異動",
       "ai_sentiment": "利多",
-      "ai_reason": "股價創歷史新高，成交量放大",
+      "ai_reason": "外資買超，股價創歷史新高",
       "important": true
     },
     {
@@ -91,9 +131,8 @@
         "停工"
       ],
       "cat": "🔥 事故天災",
-      "ai_sentiment": "利多",
-      "ai_reason": "文章中提到了未有具體對台股市、供應鏈、半導體及大盤的影響。因",
-      "title_zh": "標題若非繁體中文則翻成繁中(30字內)",
+      "ai_sentiment": "利空",
+      "ai_reason": "可能導致外堤停工，影響中油及建設股",
       "important": true
     },
     {
@@ -106,8 +145,7 @@
       ],
       "cat": "📈 股價異動",
       "ai_sentiment": "利多",
-      "ai_reason": "13家上市金控於8月獲利達5789億元，是台股個股、供應鏈及",
-      "title_zh": "標題為繁體中文，內容與台股相關，有實質影響力。",
+      "ai_reason": "金控獲利創新高，利好股市",
       "important": true
     },
     {
@@ -120,7 +158,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利多",
-      "ai_reason": "反傾銷利好台鋼股",
+      "ai_reason": "反傾銷保護本土鋼業",
       "important": true
     },
     {
@@ -133,7 +171,7 @@
       ],
       "cat": "🧪 技術突破",
       "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_reason": "提升民眾購買力，同時增加企業勞務成本",
       "important": true
     },
     {
@@ -146,7 +184,7 @@
       ],
       "cat": "🧪 技術突破",
       "ai_sentiment": "利多",
-      "ai_reason": "聯發科首款2奈米晶片發布，技術領先",
+      "ai_reason": "2奈米旗艦AI晶片提升競爭力",
       "important": true
     },
     {
@@ -159,48 +197,8 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "Apple將釋出雙螢幕iPhone Duo，開發者應該重新設",
-      "title_zh": "標題為繁體中文時，如果內容與台股相關，請翻譯為繁體中文，否則為空字串。",
-      "important": true
-    },
-    {
-      "source_name": "科技新報",
-      "title": "無懼 AI 退燒雜音，博通陳福陽霸氣預告：2028 營收上看 2,300 億美元",
-      "link": "https://finance.technews.tw/2026/09/15/broadcom-refutes-ai-demand-slowdown/",
-      "published_time": "Tue, 15 Sep 2026 08:10:17 +0000",
-      "matched_keywords": [
-        "營收"
-      ],
-      "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "博通執行長陳福陽預言2028年博通營收未必達到230億美元，",
-      "title_zh": "未翻譯",
-      "important": true
-    },
-    {
-      "source_name": "科技新報",
-      "title": "聯發科發表首款 2 奈米旗艦 5G Agentic AI 天璣 9600 Pro 晶片，AI 性能提升 51%",
-      "link": "https://technews.tw/2026/09/15/mediatek-unveils-its-first-2nm-flagship-5g-agent-ai-dimensity-9600-pro-chip/",
-      "published_time": "Tue, 15 Sep 2026 07:31:31 +0000",
-      "matched_keywords": [
-        "奈米"
-      ],
-      "cat": "🧪 技術突破",
-      "ai_sentiment": "利多",
-      "ai_reason": "聯發科推出2奈米AI旗艦晶片",
-      "important": true
-    },
-    {
-      "source_name": "科技新報",
-      "title": "聯發科天璣 9600 Pro 多項降低佔用記憶體技術，終端裝置有望 10 月到手",
-      "link": "https://technews.tw/2026/09/15/mediatek-dimensity-9600-pro-features-multiple-technologies-to-reduce-memory-usage/",
-      "published_time": "Tue, 15 Sep 2026 07:31:27 +0000",
-      "matched_keywords": [
-        "奈米"
-      ],
-      "cat": "🧪 技術突破",
-      "ai_sentiment": "利多",
-      "ai_reason": "採2奈米製程，提升競爭力。",
+      "ai_reason": "蘋果首款摺疊手機iPhone Duo將亮相，需要開發者重新設",
+      "title_zh": "Apple iPhone Duo發布，開發者重新設計應用程式以適應雙螢幕摺疊使用",
       "important": true
     }
   ]
