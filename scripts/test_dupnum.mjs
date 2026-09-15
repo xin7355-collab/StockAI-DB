@@ -1,0 +1,262 @@
+#!/usr/bin/env node
+/**
+ * 🚨 V77.1.4 「同一畫面兩個數字 / 文案跟實測打架」—— 測試(使用者截圖 6894 衛司特)
+ *
+ *   A 今日漲跌幅     頂端 −3.16%(報價商前收 364)vs 海報 −4.2%(K線前一根 368)
+ *   B 緊急警示       拿行事曆下「部位先收、別裸壓」(⛔ 實測 37 種行事曆日方向 0 個成立)
+ *   C 毛利率/自由現金流  同一張卡兩個值、而且沒標期間(自由現金流那組是 V77.1.3 自己造成的)
+ *   D 產業別         印代碼「35」,而同一張卡第 3 行印得出「綠能環保」
+ *   E 全市場統計     寫「今天」,其實是 09/14 的掃描結果,而且整句沒標日期
+ *   F 技術 98 分     是 clamp 的天花板,畫面上沒說(V77.1.0 那條規則只接了盤前體檢)
+ *
+ * ⛔ 每一條先想「注入什麼它會叫」:
+ *   ⓐ 把 ctx 的前收改回 data[n-1].close ・ⓑ 把「部位先收、別裸壓」寫回去
+ *   ⓒ 趨勢那條改回「自由現金流」/ 毛利率改回讀 C.gm ・ⓓ ind 改回吃 sector.name 的純數字
+ *   ⓔ 把日期拿掉改寫「今天」・ⓕ 把 raw/clamped 拿掉
+ *
+ * 測資:本機 data/6894(沒有就誠實 exit 1,⛔ 不跑假測試)。
+ */
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+// ⚠️ 原始碼斷言一律**先剝掉註解**再比 —— 本 repo 已經被「自己寫的註解救活斷言」騙過 6 次
+const strip = x => x.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+const fails = [];
+const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : `  ${String(e).slice(0, 320)}`}`); if (!c) fails.push(n); };
+const seg = (a, b) => { const i = SRC.indexOf(a); const j = SRC.indexOf(b, i + 1); return (i < 0 || j < 0) ? '' : strip(SRC.slice(i, j)); };
+const SYM = '6894';
+if (!fs.existsSync(path.join(ROOT, 'data', `${SYM}.json`))) { console.log(`❌ 沒有 data/${SYM}.json(跑 bash scripts/fetch_testdata.sh)`); process.exit(1); }
+
+// ─────────────────────────── 靜態 ───────────────────────────
+{   // ⓐs 報告頁組 ctx 的前收要走報價商,⛔ 不可只拿 K 線前一根
+    const s = seg('    async renderReportTab(sym) {', '        this._rpLast = ctx;');
+    ok('ⓐs 空過守門:抓得到報告頁組 ctx 那一段', s.length > 2000, `len=${s.length}`);
+    ok('ⓐs2 今日漲跌幅的前收優先用報價商 `_fuglePrevClose`(⛔ 不可只拿 data[n-1].close)',
+       /_fuglePrevClose/.test(s) && /const chg = \(pC > 0 && pP > 0\)/.test(s)
+       && !/const pP = \+prev\.close \|\| 0/.test(s), s.match(/const pP[^\n]*/)?.[0] || '');
+    ok('ⓐs3 ctx 要把來源與前收一起帶出去(⛔ 只給結果查不出是哪一邊算的)',
+       /chgSrc/.test(s) && /prevC: pP/.test(seg('        const ctx = { sym,', '        this._rpLast = ctx;')), '');
+}
+{   // ⓑs 緊急警示⛔ 不可因為行事曆給部位/方向指令
+    const s = seg('        const emg = [];\n        const emgNote = [];', '        const nCol = dims.length;');
+    ok('ⓑs 空過守門:抓得到緊急警示那一段', s.length > 800, `len=${s.length}`);
+    // ⚠️ 斷言範圍只框「行事曆那一則」—— 同一段裡的 `riskS >= 68`(本站自己的風險指數)與
+    //   「反彈減碼」(你自己的停損紀律)**是合法的**,⛔ 不可因為含「減碼」兩個字就一起擋掉。
+    const one = (s.match(/_hasImminentMacroEvent\(\)\)[\s\S]{0,400}?\);/) || [''])[0];
+    ok('ⓑs2a 空過守門:抓得到行事曆那一則的 push', /重大事件迫近/.test(one), one.slice(0, 120));
+    const bad = (one.match(/部位先收|裸壓|減碼|出清|留倉|加碼|偏多|偏空/g) || []);
+    ok('ⓑs2 行事曆那一則⛔ 不可出現部位/方向指令(實測行事曆方向 0 個成立)', bad.length === 0, bad.join(','));
+    ok('ⓑs3 行事曆那則⛔ 不可放在 `emg` 紅框(它不是今天已經發生的事)→ 要走 `emgNote`',
+       /emgNote\.push\('📅/.test(s) && !/emg\.push\('📅/.test(s), '');
+    ok('ⓑs4 那則要明講「本站不預設漲跌」', /不預設漲跌/.test(s) && /方向 0 個成立/.test(s), '');
+}
+{   // ⓒs 毛利率 / 自由現金流
+    const g = seg('    _gmLatest(C) {', '    _rpIndustryFacts(sym) {');
+    ok('ⓒs 有唯一那份 `_gmLatest`,且以財報切片為主、採礦快取為備援',
+       /C\.fin\.q/.test(g) && /src: 'fin'/.test(g) && /src: 'cache'/.test(g) && /p: String/.test(g), '');
+    // 顯示端⛔ 不可再自己讀 C.gm(那是採礦快取,期間跟財報不同 → 同名不同值)
+    // ⛔ 範圍要**扣掉 `_gmLatest` 自己**(它就是那個唯一讀 `C.gm` 當備援的地方);
+    //   ⭐ 但**一定要含 `_reportFacts`** —— 那份是餵給外部 AI 的提示詞,漏掉就是陷阱 #37 的第二個出口。
+    const rp = seg('    async renderReportTab(sym) {', '    _rpIndustryFacts(sym) {').replace(g, '');
+    ok('ⓒs2a 空過守門:範圍要含餵給外部 AI 的 `_reportFacts`', /- 產業別/.test(rp) && /最新月營收/.test(rp), '');
+    const raw = (rp.match(/[^_a-zA-Z0-9.]C\.gm\b/g) || []);
+    ok('ⓒs2 顯示端與提示詞⛔ 不可再直接讀 `C.gm`(一律走 `_gmLatest`)', raw.length === 0, `還有 ${raw.length} 處`);
+    const cv = seg("            card('基本面'", "            card('籌碼'");
+    ok('ⓒs3 空過守門:抓得到海報的基本面卡', cv.length > 600, `len=${cv.length}`);
+    ok('ⓒs4 海報的毛利率也走 `_gmLatest`(⛔ 不可讀 C.gm)', /_gmLatest\(C\)/.test(cv) && !/C\.gm/.test(cv), '');
+    // 自由現金流:同一張卡有「近4季」與「單季」兩個,⛔ 名字不可一樣
+    ok('ⓒs5 海報的自由現金流兩格要分得出來(近4季 vs 單季)',
+       /自由現金流近4季/.test(cv) && /'自由現金流\(單季\)'/.test(cv), '');
+    const tr = seg('    _rpTrendHtml(C) {', '    _rpHiBold(t)');
+    ok('ⓒs6 報告頁 §4 的趨勢那條也要標「單季」(⛔ 兩處不可一個標一個不標)',
+       /自由現金流\(單季\)/.test(tr), '');
+}
+{   // ⓓs 產業別
+    const s = seg('    _rpIndustryFacts(sym) {', '    _rpNextLines(sym) {');
+    ok('ⓓs 空過守門:抓得到 `_rpIndustryFacts`', s.length > 400, `len=${s.length}`);
+    ok('ⓓs2 產業別⛔ 不可把純數字代碼直接印出去(要擋掉)', /!\/\^\\d\+\$\/\.test\(_sec\)/.test(s), '');
+    ok('ⓓs3 先用 screener 的中文產業名(`ind0`),它才是族群名次那行用的同一份',
+       /const ind = ind0 \? ind0/.test(s), '');
+    ok('ⓓs4 都沒有時要誠實說「本站沒有」(⛔ 不可留空白或印代碼)', /本站沒有它的官方產業分類/.test(s), '');
+}
+{   // ⓔs 全市場統計要標日期
+    const s = seg('    _ovRarityNote() {', '    _ovDecide(data, sym) {');
+    ok('ⓔs 那句要帶產物的 `data_date` 且走既有的 `_dW`(⛔ 禁止自己拼日期字串)',
+       /data_date/.test(s) && /this\._dW\(dd\)/.test(s), '');
+    ok('ⓔs2 ⛔ 不可再寫「今天」(產物實測比行情舊一天)', !/今天/.test(s), '');
+}
+{   // ⓕs 技術分夾到要說出來
+    const s = seg('            this._lastTechScore = {', '\n');
+    ok('ⓕs 技術分要把「沒夾過的原始分」跟「有沒有夾到」一起存下來',
+       /raw: _tRaw/.test(s) && /clamped: _tRaw !== _tScore/.test(s), s.slice(0, 200));
+    const d = seg("        if (okScore(this._lastTechScore)) dims.push(", '\n        if (okScore(this._lastChipScore))');
+    ok('ⓕs2 那兩個欄位要傳進儀表列的 dims', /raw: this\._lastTechScore\.raw/.test(d) && /clamped: !!this\._lastTechScore\.clamped/.test(d), '');
+    const g = seg('    _gaugeStripHtml(sym) {', '        if (!rows) return');
+    ok('ⓕs3 夾到時那一列要講出來(含原始分)', /d\.clamped/.test(g) && /已到量表上限/.test(g) && /Math\.round\(\+d\.raw\)/.test(g), '');
+}
+
+// ─────────────────────────── 實跑 ───────────────────────────
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
+const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+const errs = [];
+page.on('pageerror', e => { const m = String(e); if (!/Cache|file' is unsupported/.test(m)) errs.push(m.slice(0, 160)); });
+await page.route('**/*', r => (r.request().url().startsWith('file://') ? r.continue() : r.abort()));
+await page.goto(pathToFileURL(path.join(ROOT, 'index.html')).href, { waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.waitForFunction(() => typeof app !== 'undefined' && !!app.analyze, null, { timeout: 25000 });
+await page.waitForTimeout(2500);
+await page.evaluate(s => { app.switchAppTab('diag'); return app.analyze(s); }, SYM);
+await page.waitForTimeout(11000);
+await page.evaluate(() => { app.switchSubTab && app.switchSubTab('report'); });
+await page.waitForTimeout(2500);
+
+// ⓐ2 頂端與報告頁**同一個前收**(⭐ 決定性對照:改報價商前收 → 兩邊一起變)
+{
+    const r = await page.evaluate(async () => {
+        const o = { ref0: app._liveRefClose, prev0: app._rpLast ? app._rpLast.prevC : null, chg0: app._rpLast ? app._rpLast.chg : null };
+        app._fuglePrevClose = 999;                       // ← 注入一個不可能巧合的前收
+        // ⚠️ `renderReportTab` 是 **async** —— 不 await 的話讀到的還是上一輪的 `_rpLast`(注入等於沒生效)
+        await app.renderReportTab(app.currentSymbolId);
+        o.prev1 = app._rpLast ? app._rpLast.prevC : null;
+        o.chg1 = app._rpLast ? app._rpLast.chg : null;
+        o.pC = app._rpLast ? app._rpLast.pC : null;
+        app._fuglePrevClose = null; await app.renderReportTab(app.currentSymbolId);
+        return o;
+    });
+    ok('ⓐ2 空過守門:報告頁真的有算出前收與今日漲跌幅', r.prev0 > 0 && Number.isFinite(r.chg0), JSON.stringify(r));
+    ok('ⓐ2b 沒有即時報價時,兩條路的前收一致(頂端 `_liveRefClose` == 報告 `prevC`)',
+       r.ref0 > 0 && Math.abs(+r.ref0 - +r.prev0) < 0.005, `頂端 ${r.ref0} vs 報告 ${r.prev0}`);
+    ok('ⓐ2c ⭐ 決定性對照:改掉報價商前收 → 報告頁的前收與漲跌幅要跟著變(⛔ 證明不是各算各的)',
+       r.prev1 === 999 && Number.isFinite(r.chg1) && Math.abs(r.chg1 - ((r.pC - 999) / 999 * 100)) < 0.01,
+       JSON.stringify(r));
+}
+
+// ⓑ2 行事曆那則:⛔ 不可進紅框 `emg`,而且文字只講波動
+{
+    const r = await page.evaluate(() => {
+        const keep = app._hasImminentMacroEvent;
+        app._hasImminentMacroEvent = () => true;         // 強迫觸發那一則
+        // ⛔ 這裡刻意走 `_regaugeStrip` 的同一條路(用存下來的參數重算),⛔ 不另寫一份呼叫
+        const a = app._gaugeArgs;
+        if (a && String(a.sym) === String(app.currentSymbolId)) app._overallGaugeHtml(a.ind, a.last, a.C, a.trend, a.big, a.cost);
+        const html = app._ovEmergencyBar();
+        const emg = (app._lastGauge && Array.isArray(app._lastGauge.emg)) ? app._lastGauge.emg.slice() : null;
+        app._hasImminentMacroEvent = keep;
+        const d = document.createElement('div'); d.innerHTML = html;
+        const note = d.querySelector('[data-emgnote]');
+        const red = d.querySelector('.animate-pulse');
+        return { emg, noteTxt: note ? (note.innerText || '').replace(/\s+/g, ' ') : null,
+                 redTxt: red ? (red.innerText || '').replace(/\s+/g, ' ') : '' };
+    });
+    ok('ⓑ2 空過守門:那一則真的渲染得出來(而且是在「只講波動」那一區)',
+       !!r.noteTxt && /重大事件迫近/.test(r.noteTxt), JSON.stringify(r).slice(0, 220));
+    ok('ⓑ2b 畫面上⛔ 不可出現部位/方向指令', !!r.noteTxt && !/部位先收|裸壓|減碼|出清|留倉/.test(r.noteTxt), String(r.noteTxt).slice(0, 200));
+    ok('ⓑ2c 它只講「波動會變大」+「本站不預設漲跌」', !!r.noteTxt && /波動會變大/.test(r.noteTxt) && /不預設漲跌/.test(r.noteTxt), String(r.noteTxt).slice(0, 200));
+    ok('ⓑ2d ⭐ 決定性:⛔ 不可進 `_lastGauge.emg`,也⛔ 不可出現在 🚨 紅框裡',
+       Array.isArray(r.emg) && !r.emg.some(x => /重大事件迫近/.test(x)) && !/重大事件迫近/.test(r.redTxt),
+       JSON.stringify(r.emg));
+}
+
+// ⓒ2 同一張海報卡⛔ 不可有兩個同名不同值的標籤
+{
+    const r = await page.evaluate(() => {
+        const o = app._rpOwnFacts ? null : null;
+        const lab = [];
+        try {
+            const C = app._rpLast;
+            const G = app._gmLatest(C);
+            return { g: G, fcf4: (C.fin && C.fin.fcf4 != null) ? C.fin.fcf4 : null,
+                     tr: (() => { try { const T = app._finTrend(C); return T ? T.n : 0; } catch (_) { return 0; } })() };
+        } catch (e) { return { err: String(e) }; }
+    });
+    ok('ⓒ2 `_gmLatest` 對真實資料回得出值,而且**一定帶季別**', r.g && Number.isFinite(+r.g.v) && !!r.g.p, JSON.stringify(r.g));
+    const snap = await page.evaluate(() => new Promise(res => {
+        // 海報只畫在 canvas 上 → 改讀它畫進去的那份標籤清單(`_rpOwnDbg`)
+        app._rpDrawOwn(app.currentSymbolId);
+        setTimeout(() => res(app._rpOwnDbg || null), 2000);
+    }));
+    if (!snap || !Array.isArray(snap.labels)) {
+        ok('ⓒ2b 海報要把畫出來的標籤存進 `_rpOwnDbg.labels`(⛔ 沒有就查不出同名不同值)', false, JSON.stringify(snap).slice(0, 200));
+    } else {
+        const m = new Map();
+        for (const [k, v] of snap.labels) { if (!m.has(k)) m.set(k, new Set()); m.get(k).add(String(v)); }
+        const dup = [...m].filter(([k, s]) => s.size > 1).map(([k, s]) => `${k}=${[...s].join('/')}`);
+        ok('ⓒ2b 空過守門:海報真的畫出一批標籤(含 12 季趨勢那幾條)', snap.labels.length >= 14, `n=${snap.labels.length}`);
+        ok('ⓒ2c 同一張海報⛔ 不可有兩個同名不同值的標籤', dup.length === 0, dup.join(' | '));
+        // ⭐⭐ 真正的病是**前綴撞名**:「自由現金流」與「自由現金流近4季」不是同一個字串,
+        //   但使用者讀起來就是「兩個自由現金流,值還不一樣」。
+        //   ⚠️ 值**相同**時不算(如趨勢「毛利率 37.1%」vs 格子「毛利率(2026-06 季) 37.1%」——
+        //   那是同一件事的兩種寫法);任一邊是「—」也不比(資料沒有 ≠ 打架)。
+        const L = snap.labels.filter(([, v]) => v && v !== '—');
+        const clash = [];
+        for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
+            const [a, av] = L[i], [b, bv] = L[j];
+            if (a === b) continue;
+            if ((a.startsWith(b) || b.startsWith(a)) && av !== bv) clash.push(`${a}=${av} vs ${b}=${bv}`);
+        }
+        ok('ⓒ2d ⭐ 前綴撞名也不行(「自由現金流」vs「自由現金流近4季」值還不一樣)', clash.length === 0, clash.join(' | '));
+    }
+}
+
+// ⓓ2 產業別⛔ 不可是純數字代碼
+{
+    const r = await page.evaluate(sym => {
+        const a = app._rpIndustryFacts(sym);
+        const keep = app._scrData;
+        app._scrData = null;                                   // ← 注入:screener 沒載到,只剩 sector 代碼
+        const b = app._rpIndustryFacts(sym);
+        app._scrData = keep;
+        return { a, b, facts: (app._reportFacts ? app._reportFacts(sym) : '').slice(0, 4000) };
+    }, SYM);
+    ok('ⓓ2 產業別⛔ 不可是純數字代碼', !!r.a.ind && !/^\d+$/.test(String(r.a.ind)), JSON.stringify(r.a.ind));
+    ok('ⓓ2b ⭐ 決定性對照:連 screener 都沒載到時也⛔ 不可退化成代碼', !/^\d+$/.test(String(r.b.ind)), JSON.stringify(r.b.ind));
+    ok('ⓓ2c 餵給外部 AI 的提示詞裡也⛔ 不可出現「產業別:數字」',
+       !/產業別:\s*\d+\s/.test(r.facts), (r.facts.match(/產業別:[^\n・]*/) || [''])[0]);
+}
+
+// ⓔ2 全市場統計要帶日期
+{
+    const r = await page.evaluate(() => {
+        const keepP = app._pbEdge, keepT = app._todaySig;
+        app._pbEdge = { scanned: 2320, picks_syms: 6, data_date: '2026-09-14' };
+        app._todaySig = { scanned: 2320, bull_syms: 30, data_date: '2026-09-14' };
+        const withD = app._ovRarityNote();
+        app._pbEdge = { scanned: 2320, picks_syms: 6 };        // ← 產物沒有日期時
+        app._todaySig = { scanned: 2320, bull_syms: 30 };
+        const noD = app._ovRarityNote();
+        app._pbEdge = keepP; app._todaySig = keepT;
+        return { withD, noD };
+    });
+    ok('ⓔ2 有 data_date 時整句要帶日期', /09\/14/.test(r.withD), r.withD.slice(0, 160));
+    ok('ⓔ2b ⛔ 不可再出現「今天」兩個字', !/今天/.test(r.withD) && !/今天/.test(r.noD), `${r.withD} | ${r.noD}`);
+    ok('ⓔ2c 產物沒有日期時⛔ 不謊報日期(但數字照給)', !/\d\d\/\d\d/.test(r.noD) && /2,320/.test(r.noD), r.noD.slice(0, 160));
+}
+
+// ⓕ2 技術分夾到天花板時畫面要說
+{
+    const r = await page.evaluate(() => {
+        const keep = app._lastGauge;
+        const mk = (score, raw, clamped) => ({ sym: app.currentSymbolId, dims: [
+            { icon: '📈', name: '技術', score, weight: 34, raw, clamped },
+            { icon: '🧊', name: '籌碼', score: 50, weight: 33 }] });
+        app._lastGauge = mk(98, 116, true);
+        const d = document.createElement('div'); d.innerHTML = app._gaugeStripHtml(app.currentSymbolId);
+        const hit = (d.innerText || '').replace(/\s+/g, ' ');
+        app._lastGauge = mk(72, 72, false);
+        const d2 = document.createElement('div'); d2.innerHTML = app._gaugeStripHtml(app.currentSymbolId);
+        const miss = (d2.innerText || '').replace(/\s+/g, ' ');
+        app._lastGauge = keep;
+        return { hit, miss };
+    });
+    ok('ⓕ2 空過守門:儀表列真的畫得出來', /技術/.test(r.hit) && /技術/.test(r.miss), r.hit.slice(0, 120));
+    ok('ⓕ2b 夾到上限時要寫出「已到量表上限 + 原始分」', /已到量表上限/.test(r.hit) && /116/.test(r.hit), r.hit.slice(0, 260));
+    ok('ⓕ2c ⭐ 對照:沒夾到時⛔ 不可亂寫(不可出現那句)', !/已到量表上限/.test(r.miss), r.miss.slice(0, 200));
+}
+
+ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
+await browser.close();
+console.log(fails.length ? `\n❌ ${fails.length} 條沒過` : '\n✅ 全部通過');
+process.exit(fails.length ? 1 : 0);

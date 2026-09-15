@@ -99,7 +99,7 @@ const R = await page.evaluate(async () => {
         canvasNames: (() => { try { return (A._rpOwnDbg && A._rpOwnDbg.trendNames) || null; } catch (_) { return null; } })(),
         // ⛔ 決定性對照:把最新季 fcf 改掉 → 自由現金流那條的尾巴數字要跟著變
         fcfTail: (() => {
-            const g = h => { const m = /data-rptrend="自由現金流"[\s\S]{0,4000}?text-align:right">([^<]*)</.exec(String(h || '')); return m ? m[1].trim() : null; };
+            const g = h => { const m = /data-rptrend="自由現金流\(單季\)"[\s\S]{0,4000}?text-align:right">([^<]*)</.exec(String(h || '')); return m ? m[1].trim() : null; };
             const qq = A._rpLast.fin.q, LL = qq[qq.length - 1], f0 = LL.fcf;
             const a = g(A._rpTrendHtml(A._rpLast));
             LL.fcf = -98765000000; const b = g(A._rpTrendHtml(A._rpLast));
@@ -122,8 +122,11 @@ const R = await page.evaluate(async () => {
 ok('ⓐ0 抓得到 12 季趨勢(空過守門)', R.n >= 8, String(R.n));
 ok('ⓐ ⭐ 年增只有 i≥4 之後才有值(⛔ 前 4 季算不出「跟去年同季比」)', R.yoyN === R.n - 4, `${R.yoyN} vs ${R.n - 4}`);
 // 📈 V77.1.3 五條(⛔ 營益率算不出來 —— data/fin 的 q[] 只有營業成本、沒有營業費用)
-const WANT5 = ['季營收年增', '毛利率', '淨利率', '每股盈餘', '自由現金流'];
+const WANT5 = ['季營收年增', '毛利率', '淨利率', '每股盈餘', '自由現金流(單季)'];
 ok('ⓐ2 五條線都畫出來了,而且順序固定', R.names.length === 5 && WANT5.every((k, i) => R.names[i] === k), JSON.stringify(R.names));
+// 🚨 V77.1.4 它正上方那格是「自由現金流**近4季**」(TTM)→ 這條是單季,標籤⛔ 不可撞名(同名不同值)
+ok('ⓐ2c ⭐ 自由現金流那條要標「單季」(⛔ 不可跟上面那格「近4季」同名不同值)',
+   /自由現金流/.test(R.names[4]) && /單季/.test(R.names[4]), R.names[4]);
 ok('ⓐ2b ⭐ canvas 海報那份的線名**逐字一致**(⛔ 兩邊各排一份 = 同一份資料兩種說法)',
    !R.canvasNames || (R.canvasNames.length === 5 && WANT5.every((k, i) => R.canvasNames[i] === k)), JSON.stringify(R.canvasNames));
 ok('ⓐ3 sparkline 真的有點(⛔ 空 SVG 不算)', R.sparks.length >= 5 && R.sparks.every(x => x >= 2), JSON.stringify(R.sparks));
@@ -136,8 +139,8 @@ ok('ⓐ4 ⭐ 決定性對照:改來源的最新季自由現金流 → 那條的�
     const gapOf = nm => { const m = new RegExp(`line\\('${nm}'[^\\n]*`).exec(body); return m ? /gap:\s*gaps/.test(m[0]) : null; };
     ok('ⓐ5 淨利率 / 每股盈餘吃 gap(面額變更那段刻意斷線)', gapOf('淨利率') === true && gapOf('每股盈餘') === true, body.slice(0, 40));
     ok('ⓐ5b 營收年增 / 毛利率 / 自由現金流 ⛔ 不可斷線(面額變更不影響它們)',
-       gapOf('季營收年增') === false && gapOf('毛利率') === false && gapOf('自由現金流') === false, body.slice(0, 40));
-    ok('ⓐ5c 自由現金流吃 zero(它會是負的,沒有零線看不出正負)', /line\('自由現金流'[^\n]*zero:\s*1/.test(body), body.slice(0, 40));
+       gapOf('季營收年增') === false && gapOf('毛利率') === false && gapOf('自由現金流\\(單季\\)') === false, body.slice(0, 40));
+    ok('ⓐ5c 自由現金流吃 zero(它會是負的,沒有零線看不出正負)', /line\('自由現金流\(單季\)'[^\n]*zero:\s*1/.test(body), body.slice(0, 40));
 }
 ok('ⓐ6 ⛔ 營益率的說法不可跟同一張卡上方的「📈 三率(近三季)」自打嘴巴(⛔ 不可寫「資料源沒有」)',
    /營益率/.test(R.fundTxt) && /3 季/.test(R.fundTxt) && /營業費用/.test(R.fundTxt)
