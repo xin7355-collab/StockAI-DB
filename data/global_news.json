@@ -1,92 +1,92 @@
 {
-  "updated": "2026-09-15 15:56 UTC",
+  "updated": "2026-09-15 19:50 UTC",
   "items": [
     {
-      "source": "🧪 技術突破",
-      "title": "Digit 5 May Be the First Humanoid Robot Worker That’s Truly Safe - IEEE Spectrum",
-      "url": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE9rY1dfSDVTNzBEQmdaNzFLMFREZEZuYW4weTRnbWNGaEhEdF9FZGk5eFd5eGJCejRfNzJEZ1AwUGV4S0I1TUxYMk5CR2JYejYzOEVoczJxRUpSSTA?oc=5",
-      "published": "Tue, 15 Sep 2026 15:26:58 GMT",
-      "title_zh": "Digit 5 可能是真正安全的人工智能人工手機工作人員 - IEEE Spec",
-      "impact": "這樣的技術可能會改變台灣股市，因為對技術和自動化投資的期望。",
-      "impact_level": "bullish"
-    },
-    {
-      "source": "🌍 油價航運",
-      "title": "Iranian air defense shoots down third US drone over Strait of Hormuz, regime claims - report - The Jerusalem Post",
-      "url": "https://news.google.com/rss/articles/CBMiakFVX3lxTFBkR0phZFZ4WWFQeWI5WmRPYTZaVHhtbi12ZEx1ZnBYMk9EWmIzd3RjLUtfVUEtbHhLaVNzbmViNTdCQmd1Q0w1UldjRG5KSkYwbUxIdVZZSlYyNm5KenRReGUzSDlPbUUxdmc?oc=5",
-      "published": "Tue, 15 Sep 2026 15:22:54 GMT",
-      "title_zh": "伊朗防空擊落第三架美無人機",
-      "impact": "中東緊張升高，投資人避險情緒升溫，台股可能受壓。",
-      "impact_level": "bearish"
-    },
-    {
-      "source": "韓股記憶體",
-      "title": "What Stops the AI Memory Boom? It Might Have Nothing to Do With Chips. - 24/7 Wall St.",
-      "url": "https://news.google.com/rss/articles/CBMisgFBVV95cUxPNXROeHVpRGc1TUdIa3hDX3VZVDlBVFhSNnNQdVUxRElVbEJOWkx6RldidF9MRVMzcm9PeHltZmlvUlBfYVBvdzVwbWhBeWlvMzBScy1lMXVVRGNqdTF0LVN2ak1COFROZDFDcTdDb1IyYWZUZXJocE91RUJVZWQ4U2N0N3g3ZnQ4Qk5IWUNCdTVza2tXOEFiMXA5WHNYMWNtazFtOU9ZUzFPOEpDS1hWWkxR?oc=5",
-      "published": "Tue, 15 Sep 2026 15:12:00 GMT",
+      "source": "📊 巨頭財報",
+      "title": "Prediction: Nvidia's $108 Billion Q3 Guide Will Look Conservative by December - The Motley Fool",
+      "url": "https://news.google.com/rss/articles/CBMilwFBVV95cUxQTTdsd29rQXNVU2owRm52UEtFWlBPMF9wd25XVmhDVWdwOHlaaklyN293b0E1d3lYd1lGZWRuSEVpOXFYc2NFQTdvdG1DNHFrNXZzam95eEZfUTJIVUwyNDlSYTgzZWdvc1lESlJaVEU3c0JjNEpObFpTbmtPaEhkbG4yMjh3UWk2bGJCOEN3MWk2SDZseVlJ?oc=5",
+      "published": "Tue, 15 Sep 2026 19:35:11 GMT",
       "title_zh": "",
       "impact": "AI 回的內容看不懂(JSONDecodeError)",
       "impact_level": "neutral"
-    },
-    {
-      "source": "🌍 地緣突發",
-      "title": "Iranian strikes have damaged hundreds of structures at U.S. bases, watchdog says - The Washington Post",
-      "url": "https://news.google.com/rss/articles/CBMiywFBVV95cUxOWHVUdFB5Z1ZSVjdYUFp3NkJDNHdQa2M0ckdvWGNRb3E3dUVLVkp6djlUeXlvbVdGTHZZbnZVazZDOEw3dnFDTGVnQVRyV2VxZEhBWDdGS3JoTUFTMVVEcjg1dHlWQWFXbUJsOGtYQ21mZFVwLXByVWNLLXFWNWpMbm5HdElBRWZnRldTZVVlQ2lSN1dJYWxsSlE2VFRZblh2X2tjWjBqbklIQnFaSmVLZEZDZklzM0ZpYnJFYmlNRmo0Q3hlc2RrYWtHSQ?oc=5",
-      "published": "Tue, 15 Sep 2026 15:09:01 GMT",
-      "title_zh": "伊朗襲擊美軍基地損毀多處設施",
-      "impact": "地緣政治風險升溫引發市場避險情緒，利空台股。",
-      "impact_level": "bearish"
     },
     {
       "source": "🌍 地緣突發",
       "title": "Iran war caused destruction to U.S. bases, military aircraft: report - USA Today",
       "url": "https://news.google.com/rss/articles/CBMinAFBVV95cUxQS3V5cGNHQ3BNMTZBWmR1VGFmS2hkRHI5OVVDRzFCRUhjS3FLc0pmaDl1bkJBMUdiVXNsVzNIdzhCQmFBWlFJTVc3YWZjVzZpZDd5ZU81ZkFqWTIxWkZjb3ZiTDcxc1JUdHFLaFJmVlpIYUktQmNYM1dRN1lHWEUyaUJYZWF4NVA1emhSQ05LbXd0YjdXMk9nWERyWkE?oc=5",
-      "published": "Tue, 15 Sep 2026 15:06:00 GMT",
-      "title_zh": "伊朗戰爭導致美軍基地與飛機受損：報導",
-      "impact": "伊朗與美國的軍事衝突可能加劇全球不確定性，對台股形成負面壓力",
+      "published": "Tue, 15 Sep 2026 19:21:00 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "📊 巨頭財報",
+      "title": "Broadcom (AVGO) Could Be 47% Below Fair Value On Buybacks And Revenue Guidance - Yahoo Finance Singapore",
+      "url": "https://news.google.com/rss/articles/CBMigwFBVV95cUxQSTYwam1RVF9IMUJQcDFNNUpNclRYY2tzS3hXN2FkS2RGV25ZaG00ck1LeEFmNWl3MnJ3T29aWFU2Q3lTM3psb2FhbjZHaU1KWjJVQlNiLUZrSDlUOHZLS1hRUXpqZWtKd1VmMUxNMmFqQW04YnhFcDdLQ2FIdVh5WTRUUQ?oc=5",
+      "published": "Tue, 15 Sep 2026 19:18:26 GMT",
+      "title_zh": "博通因回購與營收指引或被低估47%",
+      "impact": "博通估值偏低可能提振半導體板塊情緒，利好台積電等供應鏈。",
+      "impact_level": "bullish"
+    },
+    {
+      "source": "⚡ 缺貨漲價",
+      "title": "Intel CEO Warns Memory Shortage Will Get Worse - Seoul Economic Daily",
+      "url": "https://news.google.com/rss/articles/CBMimgFBVV95cUxPQkd6VFVGYWFZVnJOY1ZCaDZGeFVvb0o2V1RDcWhLSjBNR1loenZzTVdtVEU5UUwzc3BzMWJzcXo4a3FXRWlnV2hHb3NfRHlKYzMyaGJZWFZlbGJ1Y0FyTVkyNno4QW4tT1VwNHBTVWluYjgwdmdIdTN0Z1pRR1VQZzlXSy01ejIwSkZ2RlBMV0EyOU9NeDd0Z0dB?oc=5",
+      "published": "Tue, 15 Sep 2026 18:59:40 GMT",
+      "title_zh": "英特爾CEO警告記憶體短缺將加劇",
+      "impact": "記憶體短缺加劇可能拖累台股中依賴記憶體晶片的公司，導致股價下",
       "impact_level": "bearish"
     },
     {
-      "source": "日股半導體",
-      "title": "Japan's Shimizu joins US developer on Atlanta apartment development - Nikkei Asia",
-      "url": "https://news.google.com/rss/articles/CBMiswFBVV95cUxNak5QbnBVOFQ5TGR0LVByUVN0Xzlub0FHWDcyWnktbWhMNVNJQUxQZ0pvZUl2aGhodU5ZZEJvN0w5bVd1UDFiOHFOeUhEcEFQa01YVW56Q3Qtd3FQZzFvV3ozbHkwcWpaQTN6OTZqU3V6bEJQVFljNVdzUUVGc01pbng5cGtMZWhDVEJ4Z1NVb09wcldqMnVGakdRYXdNZTNIM1JNMzhJQXpKTXdQZV9CcEJSZw?oc=5",
-      "published": "Tue, 15 Sep 2026 14:18:00 GMT",
-      "title_zh": "",
-      "impact": "AI 回的內容看不懂(JSONDecodeError)",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "⚡ 缺貨漲價",
-      "title": "EXCLUSIVE: AI Memory Shortage Could Last Until 2029, Yorkville CEO Says: What Does It Mean for Micron? - Yahoo Finance",
-      "url": "https://news.google.com/rss/articles/CBMinwFBVV95cUxNcFo0X3JEUHVKdVdOSTNEaUxwRmJXNzZuNW0zRHM1cjE0QWdZcjQtcUFnZ1Z6TmhXbjNpSDF5aHRqbXdKQkhfSEx4cnBfMjNqWEFCTWVxdkhXY2JCZDVJbkdXUUdCQ25UTklmdXltaFZ3SFpmYTg2enNUYmRjMl9aUEp3UW1OZjRYOFFQSERKeHdFekdvOFRmdHFfNFRHNmc?oc=5",
-      "published": "Tue, 15 Sep 2026 14:17:42 GMT",
-      "title_zh": "",
-      "impact": "AI 回的內容看不懂(JSONDecodeError)",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "⚡ 缺貨漲價",
-      "title": "EXCLUSIVE: AI Memory Shortage Could Last Until 2029, Yorkville CEO Says: What Does It Mean for Micron? - Benzinga",
-      "url": "https://news.google.com/rss/articles/CBMinAFBVV95cUxQVkZJRG5EQkVzZXdaRnM5OExRQlpoYjlmczVscTh6UHBQSlVEQ3lUdkRSa1o1QzRNQ1dOeWJHRjVkRElWcGVNSzNIT2U2QVUtamxEc1poUWdOTV85dmxFTzYwd1dXT21kY1Y2QkFkak1jUzIweUN1dlYweGFfTlpHc1dVSTVlX09VX2JHczRxNVdVb2FuVEd3Q1ZZbGM?oc=5",
-      "published": "Tue, 15 Sep 2026 14:17:42 GMT",
-      "title_zh": "AI記憶短缺可能持續至2029年，許岳展首席董事說，這有何意義於微特？",
-      "impact": "可能影響台灣股市的問題，尤其是微特。",
+      "source": "🌍 地緣突發",
+      "title": "Iran war driving up inflation for Americans, CBO report says - NBC News",
+      "url": "https://news.google.com/rss/articles/CBMitAFBVV95cUxNajZheUhzdWlQX0M5dnp5bnAteWMyZWNCbTdpUU1qWllFd2NxTkNYV29OVUNsT3VyRkVCUG8zdWpWdUU1ZXBzNW95RklLWUhwVUlvTlBUOWVnbVpyaTF2aF9QekJtWnJZOGlCS2djNkpVcEFCeDNZU3RneFRoNHg2VWJUZTdaQzNMcjc3RXVhbGlucnNlY09aZGJmY0kzLWJWMFpVVUl3SUExZ0d4bm1JRmdVU3g?oc=5",
+      "published": "Tue, 15 Sep 2026 18:49:00 GMT",
+      "title_zh": "伊朗戰事推升美國通膨",
+      "impact": "伊朗戰事推升通膨恐延遲降息，利空美股及台股風險資產。",
       "impact_level": "bearish"
     },
     {
       "source": "📊 巨頭財報",
-      "title": "Microsoft has decided against killing an Outlook Classic feature after all - Neowin",
-      "url": "https://news.google.com/rss/articles/CBMipgFBVV95cUxNWC05cEp3NkpXd1VVYTlBNUMxVU5TaFA4ekp2TG93UDV5RXR2RmRqcmJrYUl4cmxJajQyVUw3OUtRRzc1MmVmdm1wTzlISmo3NzdZZksySW5YajVTOEpOSG54T2UxbklfRUQ5QkNsNzlrRHdhMWVGMm8wbWpudHNuWmtPdE5BeHFTQ1l3dEhtcFhQcGlSQmJxN2traUhHdG0wN3JkRjF3?oc=5",
-      "published": "Tue, 15 Sep 2026 14:04:00 GMT",
-      "title_zh": "微軟決定保留Outlook經典功能",
-      "impact": "此舉對台股影響有限，屬於中性。",
+      "title": "Micron (MU) Stock Looks Reasonable On Its Very Large 3 Year Run - simplywall.st",
+      "url": "https://news.google.com/rss/articles/CBMi1wFBVV95cUxOY2Z1UTdmTmZBY3Zia0diRDB1QWoxSWdzb0t2OW9razdZVmZwcFpXRWVKME1FbXdYMDRVVUMyWWFpbE1uSlpkSFpOWG53bFpTbWlwRWFXQnBnWVdXVmdwVDRTTWZoVnpkNExVekxNZE0xN3pPOTRTZUcySVhXVjZXWlZ0ZHZtaUNxNDFZNmlsMWNRaC1WMHI2THZZVkJ2dzZ5WFIzYjZiYlgtRG9pVUNKUVZ0bVE0WEx0dDNNa2l3RWFGOW8yVDM3R3laUkV1Z19EY1dpWnBQRdIB3AFBVV95cUxNZnpKWGlNQlc3eHd2WF8tajVMQkp2cy12MUozZkdqdTh2ajBsWWYzZ2RlVV9rbi1BU3hXWWhqQUhHNGxEb2NLTERKaGUtUFVPT3VRU3FHQXFQZWN6cGdMdmpBZnp3WjJvemQyWHpTSjR3NzZhQkNVcHVPaFJIeVVoQmN5OTRIckRvWkFKNlI4cFE5VFRhbEZqcnE5S0xVSG1uWUVmRnlPbURkQV96WVN1clpBRDY4c2xXVGZfWTMtRklaeXBGSzBESUtvb1paR2RSZnVEdU9PeFNpREs3?oc=5",
+      "published": "Tue, 15 Sep 2026 18:44:26 GMT",
+      "title_zh": "美光股價三年大幅上漲仍具吸引力",
+      "impact": "美光股價大幅上漲後仍具吸引力，顯示記憶體需求持續，對台灣相關",
+      "impact_level": "bullish"
+    },
+    {
+      "source": "Trump Market",
+      "title": "Some companies are using a portion of tariff refunds to supplement employees' wages, 401(k)s - Fortune",
+      "url": "https://news.google.com/rss/articles/CBMiogFBVV95cUxNVUY2U3pPWEZUdC1NRVV2b2l6dVJDeHZ4VUlGbWtRUUg4SFQ0RjV5dHFkSmtoOXplY3lEVDg2TTNwOVNKUV9EellPZ3E5MndhUjRnS0U1SFBQQVZOTkpGeWVSVWlITXdVTzF1VWlpcGhqc2ppdC11MzhNSWQtanlzRFMza0hSajNiSEpvWVNhOUgxUE1zRkIyY0tVREtDdG8weUE?oc=5",
+      "published": "Tue, 15 Sep 2026 18:44:00 GMT",
+      "title_zh": "部分公司用關稅退稅補貼員工薪資與退休金",
+      "impact": "公司將關稅退稅用於員工薪資與退休金，提升消費與企業信心，對台",
+      "impact_level": "bullish"
+    },
+    {
+      "source": "🌍 油價航運",
+      "title": "Diesel prices hit new record in September 2026: What that means for inflation, shipping costs and your portfolio - J.P. Morgan",
+      "url": "https://news.google.com/rss/articles/CBMi4AFBVV95cUxQM3JZRXVFdTRrN2xBTnZ4SjhYejlzMjhyTjNIOHhObW5Sc3I3bFpQU0puM0lFR2gtMnF6R2pnOE9CTjR3V3lvN3I5dTlnWnFSSHIyRS1mZkx0bHg3LUFET0ZIMmxUOC1iTXNmazVpWmpPdzFTWEhmUW4xRFFFSnNSYkRkSjMzTzRCdzdOaHBXVEdxMWFNTENtOFZTTWh1WjIxTHBRVmhyS1JiWnBOZld1UVZiRHZ5X0lEUVVoc3JZaFVHYlI5QW9WaGE4UWp2V2RGQUZnUEl6XzQ5Q0pTaHdCRQ?oc=5",
+      "published": "Tue, 15 Sep 2026 18:39:11 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
       "impact_level": "neutral"
     },
     {
-      "source": "🏢 雲端巨頭",
-      "title": "OpenAI backs bipartisan House plan for third-party safety assessments - Politico",
-      "url": "https://news.google.com/rss/articles/CBMiuwFBVV95cUxNRG0wYkVaVjJNSzhkTU1VZFk5V09qZjJfN3RyS0tOUlBDXzU2OFVoWlYyMWQ1QV8zcFBZeWg5OWkxWm01WVNxcVVUZVdlTGNPTTBnMDR2WFlFelAyMngzcTU0MHl0UnF3cE5jRm1OakFJWnU2eFdibmJiS29YZ0tlT3Y4RzRyclMyeUJVVmxZaDZBYjRTNGc2dUphMDRvaEFYNVg2UlNXRnpYVlNaSmRYVUZhZFhhQ1BPSGRv?oc=5",
-      "published": "Tue, 15 Sep 2026 13:57:00 GMT",
+      "source": "🧪 技術突破",
+      "title": "Agility’s new humanoid robot will stop, squat to avoid harming human coworkers - Ars Technica",
+      "url": "https://news.google.com/rss/articles/CBMisgFBVV95cUxPeno1MVk4NGVOUGxwM2pKMXVHejJFRnQyRGo5VjRBQUp3VmlveTQ4SUtNVDZXaEFOV2d3VHV4TTZEWHJwZUhSNVowX3ZLZlVCeTJxVDVUdkJyMXBRb21ld1hmcXRTU2R1UU9aRVJsTHBub1JwTmdMZUJUejVobUM5T3ZiVEtoU2VKOE9Tdll3Q1J5MEhybEZqRkZoS18zZHl5SG1OOTdvbmdZUjhBUnNtRzZn?oc=5",
+      "published": "Tue, 15 Sep 2026 18:33:02 GMT",
+      "title_zh": "敏捷新機器人停蹲防傷同事",
+      "impact": "此項機器人安全功能屬於單一技術進展，對台股整體影響有限，屬中",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🌍 地緣突發",
+      "title": "Republican Thomas Massie proposes impeaching Pete Hegseth over Iran war - theguardian.com",
+      "url": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxQRTdjUE9zaWhsZ3Q2OU1nSlo5NmtzMlV4bzFyYTZLYXVZWU5KSlpQdjloS3Q0empiSnVsQmgzS0hWVmo1WVoxOF9vQmhPRE9HZnRWYXRtVzdvVG9sVUFLbzNmTThUeC1RQ3hkdk5IQlJpUkJuZnk5eVlfNGdyYmpiY0xJUFR3VS1tX0JV?oc=5",
+      "published": "Tue, 15 Sep 2026 18:21:00 GMT",
       "title_zh": "",
       "impact": "AI 回的內容看不懂(JSONDecodeError)",
       "impact_level": "neutral"
