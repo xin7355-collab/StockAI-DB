@@ -33,7 +33,11 @@ for (const s of ['2327', '2330', '0050', '009816']) if (!fs.existsSync(path.join
     const fnRuler2 = strip(SRC.slice(SRC.indexOf('    _priceRulerHtml() {'), SRC.indexOf('    _ovEmergencyBar() {')));
     ok('⑥s 價格尺只讀 _keyLevels / _upsideStash(⛔ 不可出現 _overheadSupply/_chuResistanceZones/peaks = 自己算價位)',
        /_keyLevels/.test(fnRuler2) && /_upsideStash/.test(fnRuler2) && !/_overheadSupply|_volProfile|_volStuckBands|_chuResistanceZones|this\.peaks|this\.troughs|\.ma20|\.ma5/.test(fnRuler2), '');
-    ok('⑤s 報告頁與總覽都呼叫同一支 _gaugeStripHtml(⛔ 不可另有 _rpGaugeStrip 之類)', (SRC.match(/this\._gaugeStripHtml\(sym\)/g) || []).length >= 2 && !/_rpGaugeStrip|_ovGaugeStrip/.test(SRC), '');
+    // 🗑️ V77.1.5 總覽那張已下架(使用者:「與報告頁面重複了」),報告頁那張 V76.2.5 就下架了
+    //   → 「被呼叫兩次」不再成立。⭐ 斷言改釘**用意**:五面向的 HTML 版**只能有這一支**,
+    //   ⛔ 不可冒出第二份實作(那才是這條原本要防的事)。
+    ok('⑤s 五面向的 HTML 版只有 `_gaugeStripHtml` 一支(⛔ 不可另有 _rpGaugeStrip / _ovGaugeStrip)',
+       /_gaugeStripHtml\(sym\) \{/.test(SRC) && !/_rpGaugeStrip|_ovGaugeStrip/.test(SRC), '');
     ok('⑭s ovWhyBox 在 analyze() 切股清空清單裡(陷阱 #19)', /'rpSrc',\s*\n\s*'ovWhyBox'/.test(SRC), '');
 }
 
@@ -72,11 +76,22 @@ async function boot(viewport) {
     await page.waitForTimeout(2500);
     return page;
 }
-const load = async (page, sym) => { await page.evaluate(s => { app.switchAppTab('diag'); return app.analyze(s); }, sym); await page.waitForTimeout(7000); };
+// 🗑️ V77.1.5 總覽的五面向儀表列**已下架**(使用者:「與報告頁面重複了」)→ 底下那幾條
+//   「儀表列」的斷言改成量 `_gaugeStripHtml()` 的**產物**(渲染到離屏容器 `#__gstrip`)。
+//   ⭐ 釘的是**那支函式的規格**(分數逐格對得上 / 顏色門檻 / 缺格說明),
+//   ⛔ 不是「它有沒有出現在總覽」—— 後者由 `test_dupnum ⓗ` 反過來釘「⛔ 不可再出現」。
+const mkStrip = async page => page.evaluate(() => {
+    let d = document.getElementById('__gstrip');
+    if (!d) { d = document.createElement('div'); d.id = '__gstrip'; document.body.appendChild(d); }
+    d.innerHTML = app._gaugeStripHtml(app.currentSymbolId) || '';
+});
+const load = async (page, sym) => { await page.evaluate(s => { app.switchAppTab('diag'); return app.analyze(s); }, sym); await page.waitForTimeout(7000); await mkStrip(page); };
 const snap = async (page) => page.evaluate(() => {
     const txt = el => (el && el.innerText || '').replace(/\s+/g, ' ').trim();
     const cc = document.getElementById('ovCommandCenter'), why = document.getElementById('ovWhyBox');
-    const g = [...cc.querySelectorAll('[data-gauge]')].map(e => {
+    // 🗑️ V77.1.5 五面向那條已經不在總覽了 → 從離屏容器 `#__gstrip` 讀(由 `mkStrip()` 先渲染好)
+    const gs = document.getElementById('__gstrip') || cc;
+    const g = [...gs.querySelectorAll('[data-gauge]')].map(e => {
         const bar = e.querySelector('[data-bar]'), fl = e.querySelector('[data-fill]');
         const r = bar ? bar.getBoundingClientRect() : null;
         // 🎨 V77.1.1 填色改成 inline 同色系漸變(不再是 Tailwind class)→ 量 **computed background**。
@@ -99,11 +114,11 @@ const snap = async (page) => page.evaluate(() => {
         K: app._keyLevels ? { sym: app._keyLevels.sym, sl: app._keyLevels.slPx, buy: app._keyLevels.buyPx, add: app._keyLevels.addPx, C: app._keyLevels.C } : null,
         stash: (app._upsideStash && Array.isArray(app._upsideStash.list)) ? app._upsideStash.list.filter(x => +x.sup > 0).slice(0, 2).map(x => `${Math.round(x.lo)}~${Math.round(x.hi)}`) : [],
         whyTxt: txt(why), whyParent: why.parentElement.id, whyInDetails: !!why.closest('#ovMoreWrap'),
-        stripOuter: (cc.querySelector('[data-gaugestrip]') || {}).outerHTML || '',
+        stripOuter: (document.querySelector('#__gstrip [data-gaugestrip]') || {}).outerHTML || '',
         // 🎨 V76.0.8:標題那個數字 / 少幾格的說明 / 價格尺圖例 / 有沒有跑出卡片外
-        stripN: (() => { const e = cc.querySelector('[data-gaugen]'); return e ? +e.dataset.gaugen : null; })(),
-        stripTitle: (() => { const e = cc.querySelector('[data-gaugen]'); return e ? e.innerText.trim() : ''; })(),
-        stripNote: (() => { const e = cc.querySelector('[data-gaugestrip]'); return e ? (e.innerText.match(/還在讀財報[^\n]*|ETF 是一籃子[^\n]*/) || [''])[0] : ''; })(),
+        stripN: (() => { const e = gs.querySelector('[data-gaugen]'); return e ? +e.dataset.gaugen : null; })(),
+        stripTitle: (() => { const e = gs.querySelector('[data-gaugen]'); return e ? e.innerText.trim() : ''; })(),
+        stripNote: (() => { const e = document.querySelector('#__gstrip [data-gaugestrip]'); return e ? (e.innerText.match(/還在讀財報[^\n]*|ETF 是一籃子[^\n]*/) || [''])[0] : ''; })(),
         legend: sr ? [...sr.querySelectorAll('[data-leg]')].map(e => e.innerText.trim()) : [],
         prOver: (() => { if (!sr) return []; const cb = sr.getBoundingClientRect(); const bad = [];
             sr.querySelectorAll('[data-leg],[data-mark],[data-supplyband]').forEach(e => { const b = e.getBoundingClientRect();
@@ -142,7 +157,7 @@ ok('② 位置類(基本面/預期)與大盤那格**不可**出現 text-red/text
         if (!app._gaugeArgs) { try { app.refreshStrategy(); } catch (_) {} }
         const sv = [app._lastXrayScore, app._lastExpectScore];
         app._lastXrayScore = null; app._lastExpectScore = null; app._regaugeStrip(app.currentSymbolId);
-        const e = document.getElementById('ovCommandCenter').querySelector('[data-gaugestrip]');
+        const e = document.querySelector('#__gstrip [data-gaugestrip]');
         const r = { ks: [...e.querySelectorAll('[data-gauge]')].map(x => x.dataset.gauge), out: e.outerHTML, n: +e.querySelector('[data-gaugen]').dataset.gaugen, ga: !!app._gaugeArgs };
         app._lastXrayScore = sv[0]; app._lastExpectScore = sv[1]; app._regaugeStrip(app.currentSymbolId); return r; });
     ok('④ 缺維 → 那一列**整列不存在**、不顯 --(stub 成 null 再重畫)', S.ga && !S.ks.some(k => ['fund', 'expect'].includes(k)) && !/--/.test(S.out) && S.n === S.ks.length, JSON.stringify(S));
@@ -178,7 +193,7 @@ ok('⑭c 「不是你設定的那條」那類預警排在預警清單**最後**'
 await page.evaluate(() => app.switchSubTab('report')); await page.waitForTimeout(3500);
 const R = await page.evaluate(() => {
     const rep = document.getElementById('subContentReport');
-    const o = document.getElementById('ovCommandCenter').querySelector('[data-gaugestrip]');
+    const o = document.querySelector('#__gstrip [data-gaugestrip]');
     return { inReport: !!(rep && rep.querySelector('[data-gaugestrip]')), ov: o ? o.outerHTML : '',
              gauge: !!(app._lastGauge && Array.isArray(app._lastGauge.dims) && app._lastGauge.dims.length >= 2) };
 });
@@ -297,7 +312,7 @@ await page.close();
         return { x: app._lastXrayScore, e: app._lastExpectScore, ga: app._gaugeArgs && app._gaugeArgs.sym }; });
     ok('㉓ 切股後 _lastXrayScore / _lastExpectScore / _gaugeArgs ⛔ 不可殘留上一檔(陷阱 #19)',
        (sw.x == null || String(sw.x.sym) === '0050') && (sw.e == null || String(sw.e.sym) === '0050') && (sw.ga == null || String(sw.ga) === '0050'), JSON.stringify(sw));
-    await p4.waitForTimeout(6000); const E = await snap(p4);
+    await p4.waitForTimeout(6000); await mkStrip(p4); const E = await snap(p4);   // ⚠️ 切股沒走 load() → 這裡要自己重畫一次 strip
     ok('⑳b ETF 只有 3 格,而且說的是「ETF 本來就沒有」不是「還在讀」(⛔ 不可讓使用者以為壞掉)',
        E.stripN === 3 && /ETF 是一籃子/.test(E.stripNote), JSON.stringify({ n: E.stripN, note: E.stripNote }));
     await p4.close();
@@ -308,7 +323,7 @@ await page.close();
     await load(p5, '2327');
     const V = await p5.evaluate(() => {
         const cc = document.getElementById('ovCommandCenter');
-        const st = cc.querySelector('[data-gaugestrip]');
+        const st = document.querySelector('#__gstrip [data-gaugestrip]');
         const rows = [...st.querySelectorAll('[data-gauge]')].map(e => {
             const kids = [...e.children];
             const bi = kids.findIndex(x => /^\s*\d+\s*$/.test(x.innerText || '')) - 1;   // 分數欄的前一欄 = 徽章欄
@@ -420,7 +435,11 @@ await page.close();
             // 🚨 最重要的一條:總評儀表板的**卡**下架了,但 _lastGauge 必須還活著
             hasGaugeCard: !!document.querySelector('[data-gaugecard]'),
             lastGaugeDims: (app._lastGauge && String(app._lastGauge.sym) === String(app.currentSymbolId)) ? app._lastGauge.dims.length : 0,
-            stripN: (() => { const e = cc.querySelector('[data-gaugen]'); return e ? +e.dataset.gaugen : 0; })(),
+            // 🗑️ V77.1.5 總覽不再有這條 → 改量 `_gaugeStripHtml()` 的產物(⭐ 這條要驗的是
+            //   「`_lastGauge` 還活著、而且那支函式吐得出同樣格數」,⛔ 不是「它在不在總覽」)
+            stripN: (() => { const d = document.createElement('div');
+                d.innerHTML = app._gaugeStripHtml(app.currentSymbolId) || '';
+                const e = d.querySelector('[data-gaugen]'); return e ? +e.dataset.gaugen : 0; })(),
             etfDom: !!document.getElementById('etfFollowCard'),
             keyLvlHtml: (() => { try { return app._ovKeyLevelsHtml(app.activeData, app._keyLevels.C, 0, {}); } catch (_) { return 'ERR'; } })(),
             kl: app._keyLevels ? { pocRel: app._keyLevels.pocRel !== undefined, buyLb: app._keyLevels.buyLb } : null,

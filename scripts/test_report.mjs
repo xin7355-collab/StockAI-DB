@@ -1069,7 +1069,12 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         return {
             chars: seen.length, seen, allHasProbe: /_probe|chips_deep|inst_leadlag/.test(all),
             seenHasProbe: /_probe|chips_deep|inst_leadlag/.test(seen),
-            foldOpen: d ? d.open : null, notes: q.querySelectorAll('[data-rpqnote]').length,
+            // 🚨 V77.1.5 整張收進 details 之後,`q.querySelector('details')` 抓到的是**外層那個**
+            //   → `foldOpen` 會變成在驗外層,§q7c「說明摺疊預設收起」就失去鑑別力。
+            //   ⭐ 分成兩個:`outerOpen`(整張)與 `foldOpen`(裡面那個「說明」摺疊)。
+            outerOpen: d ? d.open : null,
+            foldOpen: (() => { const inner = q.querySelector('details details'); return inner ? inner.open : null; })(),
+            notes: q.querySelectorAll('[data-rpqnote]').length,
             rows: q.querySelectorAll('[data-rpq]').length,
             // 字級:值那行 13px、說明收進摺疊後用 11px(V74.4.6:⛔ 別再往 10px 以下調)
             small: [...q.querySelectorAll('[class*="text-["]')].map(e => {
@@ -1077,10 +1082,17 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
             }).filter(x => x != null),
         };
     });
-    ok('§q6 ⚡ 第一眼 ≤ 600 字(V76.1.0 訂的上限;改版前實測 850 字)', QV.chars <= 600 && QV.chars > 120, `${QV.chars} 字`);
+    // 📂 V77.1.5 **整張收起來了**(使用者:「⚡ 快速判別,以下都折疊起來,已經有個股速覽了」)
+    //   → 第一眼從 557 掉到約 60 字。下界從 120 改成 20:那是**空過守門**(怕整張沒渲染),
+    //   ⛔ 不是「要有多少字」;⭐ 真正的內容守門是下一條(收起來也要看得到面向數與資料日期)
+    //   與 §q7b(展開之後 11 列一條不少)。
+    ok('§q6 ⚡ 第一眼很短(整張已折疊;⛔ 但不可是空的)', QV.chars <= 120 && QV.chars > 20, `${QV.chars} 字`);
+    ok('§q6b ⛔ 收起來也要看得到「幾個面向」與**資料日期**(資料日期鐵則:收起來就看不到日期 = 等於沒標)',
+       /\d+個面向/.test(QV.seen) && /📅/.test(QV.seen) && /\d\d\/\d\d/.test(QV.seen), QV.seen.slice(0, 140));
     ok('§q7 ⭐ 第一眼⛔ 不可出現英文探針檔名(禁在 UI 暴露內部函式名)', !QV.seenHasProbe, (QV.seen.match(/.{0,20}_probe.{0,10}/) || [])[0] || '');
     ok('§q7b 🚨 但那些說明**還在**(收起來 ≠ 刪掉;11 條一條不少)', QV.allHasProbe && QV.notes === QV.rows && QV.rows === 11, JSON.stringify({ notes: QV.notes, rows: QV.rows }));
     ok('§q7c 說明摺疊**預設收起**(⛔ 展開就等於沒瘦)', QV.foldOpen === false, String(QV.foldOpen));
+    ok('§q7d 整張也是預設收起(V77.1.5 使用者要求)', QV.outerOpen === false, String(QV.outerOpen));
     ok('§q8 ⛔ 快速表裡不可再有 10px 以下的字(V74.4.6:手機上看不清楚)', QV.small.every(x => x >= 10), JSON.stringify([...new Set(QV.small)].sort((a, b) => a - b)));
     // 📍 位階只有一個來源:總覽徽章 vs 報告頁 §11 必須是同一個數字
     const POS = await page.evaluate(() => {

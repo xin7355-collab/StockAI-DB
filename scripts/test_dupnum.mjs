@@ -256,6 +256,70 @@ await page.waitForTimeout(2500);
     ok('ⓕ2c ⭐ 對照:沒夾到時⛔ 不可亂寫(不可出現那句)', !/已到量表上限/.test(r.miss), r.miss.slice(0, 200));
 }
 
+// ─────────── V77.1.5 使用者四點 ───────────
+// ⓖ 海報徽章:⛔ 不可再用 emoji(度量與繪製不一致 → 對齊不了),一律兩個中文字
+{
+    const r = await page.evaluate(() => new Promise(res => {
+        app._rpDrawOwn(app.currentSymbolId);
+        setTimeout(() => {
+            const D = app._rpOwnDbg || {};
+            res({ b: (D.badges || []).map(x => ({ n: x.name, k: x.kind, x: +(+x.x).toFixed(2), adv: x.adv, w: x.word })) });
+        }, 2000);
+    }));
+    ok('ⓖ 空過守門:海報畫得出 ≥3 個面向徽章', r.b.length >= 3, JSON.stringify(r.b));
+    ok('ⓖ2 ⛔ 徽章不可是 emoji(要兩個中文字)',
+       r.b.length >= 3 && r.b.every(x => /^[\u4e00-\u9fff]{2}$/.test(String(x.w || ''))), JSON.stringify(r.b.map(x => x.w)));
+    // ⭐ 這條才是使用者那句「沒有排列整齊」的真正判準:**每一格的實際字寬要一樣**。
+    //   🚨 emoji 版在沙箱量起來也「一樣」(六個全是 27.45)但畫出來不一樣 → 所以還要 ⓖ2 一起釘。
+    ok('ⓖ3 每一格的字寬完全相同(⛔ 不可有一格比別人寬)',
+       r.b.length >= 3 && new Set(r.b.map(x => x.adv)).size === 1, JSON.stringify(r.b.map(x => [x.w, x.adv])));
+    ok('ⓖ4 每一格的水平中心相同', r.b.length >= 3 && new Set(r.b.map(x => x.x)).size === 1, JSON.stringify(r.b.map(x => x.x)));
+}
+// ⓗ 總覽的五面向已下架,⛔ 但 `_lastGauge` 這個產生者一個字都不可拿掉
+{
+    const r = await page.evaluate(() => {
+        app.switchAppTab('diag');
+        return { strip: !!document.querySelector('[data-gaugestrip]'),
+                 gauge: !!(app._lastGauge && Array.isArray(app._lastGauge.dims) && app._lastGauge.dims.length >= 2),
+                 emg: !!(app._lastGauge && Array.isArray(app._lastGauge.emg)) };
+    });
+    ok('ⓗ 總覽⛔ 不可再有五面向儀表列(使用者:跟報告頁重複)', !r.strip, '');
+    ok('ⓗ2 ⭐ 但 `_lastGauge.dims` 必須還在(海報/緊急列/`_riskHot` 全靠它)', r.gauge && r.emg, JSON.stringify(r));
+}
+// ⓘ ⚡ 快速判別表整張折疊,⛔ 但資料日期要留在第一眼
+{
+    const r = await page.evaluate(() => new Promise(res => {
+        app.switchSubTab && app.switchSubTab('report');
+        setTimeout(() => {
+            const q = document.getElementById('rpQuick');
+            const det = q && q.querySelector('details');
+            res({ txt: (q && q.innerText || '').replace(/\s+/g, ' '), open: det ? det.open : null,
+                  rows: q && q.querySelector('[data-rpquick]') ? +q.querySelector('[data-rpquick]').dataset.rpquick : 0 });
+        }, 2200);
+    }));
+    ok('ⓘ 快速判別表預設是收起來的', r.open === false, JSON.stringify(r).slice(0, 160));
+    ok('ⓘ2 第一眼字數 ≤ 120(收起來之前是 557)', r.txt.replace(/\s/g, '').length <= 120, `${r.txt.replace(/\s/g, '').length} 字`);
+    ok('ⓘ3 ⛔ 收起來也要看得到「幾個面向」與**資料日期**(資料日期鐵則)',
+       /\d+ 個面向/.test(r.txt) && /📅/.test(r.txt) && /\d\d\/\d\d/.test(r.txt), r.txt.slice(0, 140));
+    ok('ⓘ4 ⛔ 一列都沒少(折疊 ≠ 刪掉)', r.rows >= 10, `rows=${r.rows}`);
+}
+// ⓙ 非上市櫃(多為興櫃):⛔ 清單沒載好時不可亂標
+{
+    const r = await page.evaluate(() => {
+        const keep = app.allStockList;
+        app.allStockList = [];                                  // ① 清單沒載好 → 不知道
+        const none = app._offListed('9999');
+        app.allStockList = Array.from({ length: 1200 }, (_, i) => ({ stock_id: String(1000 + i) }));
+        const inList = app._offListed('1000');                  // ② 在名單裡
+        const off = app._offListed('9999');                     // ③ 不在名單裡
+        app.allStockList = keep; app._listedSetN = -1;
+        return { none, inList, off: off && off.off };
+    });
+    ok('ⓙ 清單沒載好時回 null(⛔ 不可說「它不在名單裡」)', r.none === null, JSON.stringify(r));
+    ok('ⓙ2 在名單裡 → null', r.inList === null, JSON.stringify(r));
+    ok('ⓙ3 不在名單裡 → 標出來', r.off === true, JSON.stringify(r));
+}
+
 ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
 await browser.close();
 console.log(fails.length ? `\n❌ ${fails.length} 條沒過` : '\n✅ 全部通過');

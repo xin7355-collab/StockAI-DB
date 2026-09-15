@@ -46,8 +46,28 @@ for (const s of ['2330', '2327']) if (!fs.existsSync(path.join(ROOT, 'data', `${
        /this\._gaugeRamp\(k, v\)/.test(draw) && !/const fill = k === 'dir'/.test(draw), '');
     ok('ⓐs2 海報的量條是 createLinearGradient(⛔ 單色 fill 叫「漸變」是說謊)',
        /createLinearGradient\(/.test(draw) && /addColorStop\(0, ramp\[0\]\)/.test(draw), '');
+    // 🔣 V77.1.5 徽章改印**兩個中文字**(⛔ 不可回到 emoji)——
+    //   實測 `measureText` 把 🔴🟢➖✅⚠️⛔ 六個量成**完全一樣**(27.45)但畫出來不一樣
+    //   → 靠 glyph 度量對齊的做法都是假修法。斷言改釘**用意**:固定寬格 + 置中 + middle 基線 + ⛔ 不是 emoji。
     ok('ⓑs ⭐ 海報徽章走「固定寬 + 置中 + textBaseline middle」(⛔ 不可回到 align 右靠 + alphabetic 基線)',
-       /BADGE_W/.test(draw) && /textBaseline = 'middle'/.test(draw) && /txt\(sym2, bcx, bcy, 22, S\.fg, '900', 'center'\)/.test(draw), '');
+       /BADGE_W/.test(draw) && /textBaseline = 'middle'/.test(draw) && /txt\(sym2, bcx, bcy, \d+, [^,]+, '900', 'center'\)/.test(draw), '');
+    // ⚠️ **先剝掉註解再比** —— 我在那段的註解裡引用了要禁止的舊寫法(🔴⚠️),
+    //   不剝的話這條會被**自己寫的註解**弄成假失敗(本 repo 這個坑已經踩過 6 次)。
+    // ⚠️ 範圍要**縮到五面向那一段** —— 整支 `_rpDrawOwn` 裡還有別的合法 `'⚠️'`
+    //   (數字格上色的 `TN` 表、循環股提醒、面額變更),不縮的話這條會假失敗
+    //   (同 CLAUDE.md:斷言的搜尋範圍要縮到「被改的那一塊」)。
+    // ⚠️ 範圍要**縮到五面向那一段** —— 整支 `_rpDrawOwn` 裡還有別的合法 `'⚠️'`
+    //   (數字格上色的 `TN` 表、循環股提醒、面額變更),不縮的話這條會假失敗。
+    // 🚨 **兩個錨點都要是「程式碼」,⛔ 不可用註解裡的字** —— `CODE` 在檔頭就把 `//` 註解剝掉了,
+    //   第一版拿「少於 5 格時」(註解)當結尾 → `indexOf` 回 **−1** → `slice(i1, −1)` 變成**整個後半段**,
+    //   而空過守門只驗「長度 > 800」→ **更長反而更容易過** = 沒有鑑別力(假失敗查了三輪)。
+    const _i1 = draw.indexOf('${dims.length} 個面向'), _i2 = draw.indexOf('h += 68;', _i1);
+    const _dimSeg = (_i1 >= 0 && _i2 > _i1) ? draw.slice(_i1, _i2) : '';
+    const _drawNC = _dimSeg.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '');
+    ok('ⓑs3a 空過守門:兩個錨點都找得到,而且切出來的是「那一段」不是整個後半段',
+       _i1 >= 0 && _i2 > _i1 && _dimSeg.length > 800 && _dimSeg.length < 6000, `i1=${_i1} i2=${_i2} len=${_dimSeg.length}`);
+    ok('ⓑs3 ⭐ 徽章的字從共用的 `_gaugeBadge` 來(⛔ 不可在這裡再寫一組 emoji 與門檻)',
+       /_gaugeBadge\(k, v\)/.test(_drawNC) && !/'🔴'/.test(_drawNC) && !/'⚠️'/.test(_drawNC), '');
     ok('ⓑs2 ⭐ 改過的 textBaseline 一定要復原(⛔ 不復原後面每一行字都會跑掉)',
        /textBaseline = 'middle'[\s\S]{0,200}textBaseline = 'alphabetic'/.test(draw), '');
     // ⑤ 標題分色:兩邊同一份表
@@ -83,9 +103,18 @@ ok('⓪b 版面 shim 全部生效(⛔ 沒生效就代表底下量到的幾何是
 await page.evaluate(s => { app.switchAppTab('diag'); return app.analyze(s); }, '2330');
 await page.waitForTimeout(8000);
 
-// ── ② 總覽儀表列:白話逐字 == _GAUGE_SPEC[].tip ──────────────────
+// ── ② 儀表列:白話逐字 == _GAUGE_SPEC[].tip ──────────────────
+// 🗑️ V77.1.5 **總覽那張卡已下架**(使用者:「與報告頁面重複了」)→ 這裡改成把
+//   `_gaugeStripHtml()` 的產物渲染到離屏容器再量。⭐ 釘的是**那支函式的規格**
+//   (白話逐字 / 8px / 分隔線 / 件數動態),⛔ 不是「它有沒有出現在總覽」——
+//   後者現在由 `test_dupnum ⓗ` 反過來釘「⛔ 不可再出現」。
+await page.evaluate(() => {
+    const d = document.createElement('div'); d.id = '__gstrip';
+    d.innerHTML = app._gaugeStripHtml(app.currentSymbolId) || '';
+    document.body.appendChild(d);
+});
 const R2 = await page.evaluate(() => {
-    const st = document.querySelector('[data-gaugestrip]');
+    const st = document.querySelector('#__gstrip [data-gaugestrip]');
     if (!st) return { no: 1 };
     const rows = [...st.querySelectorAll('[data-gauge]')].map(e => {
         const tip = e.nextElementSibling && e.nextElementSibling.dataset.gaugetip ? e.nextElementSibling.textContent.trim() : null;
@@ -106,7 +135,7 @@ ok('ⓗ4 標題的數字跟著實際列數走(⛔ 不可寫死「五個」)', R2
 
 // ── ① 漸變:每一條都是「左深右亮」的同色系 ─────────────────────
 const R1 = await page.evaluate(() => {
-    const st = document.querySelector('[data-gaugestrip]');
+    const st = document.querySelector('#__gstrip [data-gaugestrip]');
     const rows = [...st.querySelectorAll('[data-fill]')].map(f => getComputedStyle(f).backgroundImage);
     const ruler = document.querySelector('[data-rulerfill]');
     return { rows, ruler: ruler ? getComputedStyle(ruler).backgroundImage : '' };

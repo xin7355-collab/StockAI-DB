@@ -83,8 +83,16 @@ const load = async (sym) => { await page.evaluate(s => { app.switchAppTab('diag'
 await load('1815');
 
 // ⓑ2 五格徽章的幾何
+// 🗑️ V77.1.5 **總覽那條儀表列已下架**(使用者:「與報告頁面重複了」)→ 改成把 `_gaugeStripHtml()`
+//   的產物渲染到離屏容器再量。⭐ 釘的是**那支函式的徽章格規格**(置中的 flex + 幾何一致),
+//   ⛔ 不是「它有沒有出現在總覽」—— 後者由 `test_dupnum ⓗ` 反過來釘「⛔ 不可再出現」。
 {
-    const g = await page.evaluate(() => [...document.querySelectorAll('#ovCommandCenter [data-badge]')].map(e => {
+    await page.evaluate(() => {
+        const d = document.createElement('div'); d.id = '__gstrip';
+        d.innerHTML = app._gaugeStripHtml(app.currentSymbolId) || '';
+        document.body.appendChild(d);
+    });
+    const g = await page.evaluate(() => [...document.querySelectorAll('#__gstrip [data-badge]')].map(e => {
         const c = getComputedStyle(e), r = e.getBoundingClientRect();
         return { k: e.dataset.badge, t: (e.innerText || '').trim(), w: +r.width.toFixed(1), l: +r.left.toFixed(1), d: c.display, jc: c.justifyContent, ai: c.alignItems };
     }));
