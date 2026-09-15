@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.0.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.0.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -849,7 +849,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8446,8 +8446,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.0.6',
+    _APP_VERSION: 'V77.0.7',
     _CHANGELOG: [
+        { v: 'V77.0.7', d: [
+            '🏃 <b>你問的那件事,終於有一個「全市場都幫你看過」的版本了</b>。你問「有沒有關鍵分點偷偷佈局、跟著他做可不可以」—— 本站四支回測的答案是<b>不行</b>(偷偷佈局那個只有 +0.06 ≈ 零),<b>唯一有用的方向剛好相反:已經發動才跟</b>(同一家分點連買 ≥3 個連續交易日 + 那檔 5 日已經漲 ≥8% → 之後 20 日比大盤 +1.36)。',
+            '🚨 <b>但這條規則以前只在「單一檔股票的籌碼頁」裡算</b> —— 等於你要先猜到該看哪一檔才看得到,全市場 2,700 多檔根本翻不完。現在<b>採礦端每天幫你掃完全市場</b>,結果放在券商頁「📊 全市場主力買賣排行」<b>最上面</b>(⛔ 沒有新增卡片)。',
+            '⏱️ <b>而且只留「今天」的</b>:實跑發現有幾檔的連買其實<b>結束在 19 天前</b>,那種⛔ 不能當成今天的訊號,已經擋掉。',
+            '⚠️ <b>三句話一定要一起看</b>:未扣交易成本(來回約 0.44%)・回測窗口偏多頭・<b>+1.36 是 20 日平均不是保證</b>。沒中的日子整段不會顯示。'] },
         { v: 'V77.0.6', d: [
             '🕵️ <b>「板塊偷布局」那個徽章重新驗過了,而且結論是「現在用的本來就是最好的」</b>(809 個交易日)。',
             '🚨 <b>而且要更正我上一版跟你講的話</b>:上一版我說「換一種算法(C 版)會更強」—— <b>那是錯的</b>,錯在同一個地方:當時是把<b>一次長行情拆成好幾筆</b>來算平均,走得越久的那幾波權重就越大,把數字撐高了。改成<b>一次行情算一票</b>之後,現在上線的版本 <b>+1.72</b> 反而是最高的,C 版只有 +1.48。',
@@ -38314,9 +38319,48 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const tabs = `<div class="flex gap-2 mb-2">${sideBtn('buy', '🔴', '主力買超', buyN, 'bg-red-600/25 text-red-200 border-red-500/50')}${sideBtn('sell', '🟢', '主力賣超', sellN, 'bg-green-600/25 text-green-200 border-green-500/50')}</div>`;
         const list = side === 'buy' ? mk(d.buy_rank, true) : mk(d.sell_rank, false);
         return `<div class="panel border border-[#30363d] bg-[#0d1117] rounded-lg p-2.5">
+            ${this._runBuyHtml()}
             <div class="text-[12px] font-black text-gray-100 mb-1.5">📊 全市場主力買賣排行 <span class="text-[9px] text-gray-500 font-normal">哪些股被主力買/賣最多 · 點跳個股</span></div>
             ${tabs}
             <div>${list}</div></div>`;
+    },
+    // 🏃 V77.0.7 全市場「連買 ≥3 個連續交易日 + 5 日已漲 ≥8%」——
+    //   ⭐ 這是本站**唯一**通過六關的分點訊號(20 日 +1.36pp、n=34,505)。
+    //   🚨 它原本只在**單檔**籌碼頁的一個小方塊裡算 → 使用者得先猜到看哪一檔才看得到
+    //     (陷阱 #32 的極端版)。⛔ 前端沒辦法全市場掃(每檔 chips 約 108 KB × 2,719 檔)
+    //     → 採礦端 `build_broker_radar` 算好寫進 `broker_radar.json` 的 `runbuy`。
+    //   ⛔ **不新增卡片**(使用者鐵則:合併不要加新卡)—— 併進既有的「全市場主力買賣排行」最上面。
+    //   ⛔ 沒中的日子**整段不顯示**(不留空殼);而「這版採礦還沒產出」與「今天沒有」要分得出來。
+    _runBuyHtml() {
+        const d = this._radarData;
+        if (!d || !Array.isArray(d.runbuy)) return '';      // 舊產物沒有這個欄位 → 整段不顯(⛔ 不謊報「今天沒有」)
+        const rb = d.runbuy;
+        if (!rb.length) return '';                          // 今天真的沒有 → 不留空殼
+        const E = d.runbuy_edge || {};
+        const nm = (s) => (this.getStockName ? (this.getStockName(s) || s) : s);
+        const rows = rb.slice(0, 10).map(x => {
+            const bs = (x.brokers || []).slice(0, 2)
+                .map(b => `${this._shortBroker(b.nm)} ${(+b.lots || 0).toLocaleString()} 張`).join('・');
+            return `<div class="py-1 border-b border-[#21262d]">
+                <div class="flex items-center justify-between gap-1">
+                    <button onclick="app.openStockFromRadar('${x.sym}')" class="text-[12px] font-bold text-gray-100 hover:underline truncate min-w-0 flex-1 text-left">${this._nmPair ? this._nmPair(x.sym) : (x.sym + ' ' + nm(x.sym))}</button>
+                    <span class="text-[12px] font-black font-mono text-red-400 flex-shrink-0">5日 +${(+x.chg5 || 0).toFixed(1)}%</span>
+                </div>
+                <div class="text-[9px] text-gray-500 truncate mt-0.5">連買 ${x.days} 天:${bs || '—'}</div>
+            </div>`;
+        }).join('');
+        return `<div class="mb-3 pb-2 border-b border-[#30363d]">
+            <div class="text-[12px] font-black text-amber-300">🏃 連買 + 已經發動 <span class="text-[9px] text-gray-500 font-normal">${rb.length} 檔 ・ ${this._dW ? this._dW(rb[0].date) : (rb[0].date || '')}</span></div>
+            <div class="text-[10px] text-gray-400 mt-0.5 mb-1 leading-snug">
+                同一家分點<b>連買 ≥${rb[0].days} 個連續交易日</b>,而且那檔<b>5 日已經漲 ≥8%</b>。
+            </div>
+            <div>${rows}</div>
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">
+                ✅ <b class="text-gray-400">這是全站唯一有實測背書的分點訊號</b>:之後 20 日比大盤 <b>+${E.d20 ?? 1.36}pp</b>(n=${(E.n ?? 34505).toLocaleString()},前後半同向,對照組=同漲幅的單日買超)。<br>
+                ⚠️ <b>未扣成本</b>(來回約 ${E.cost ?? 0.44}%)・窗口偏多頭・<b>+${E.d20 ?? 1.36}pp 是 20 日平均不是保證</b>。<br>
+                ⭐ <b>注意方向</b>:有用的是「<b>已經發動才跟</b>」,⛔ 不是「趁還沒動偷偷跟」—— 後者實測只有 +0.06pp ≈ 零。
+            </div>
+        </div>`;
     },
     // 🤝 分點聯軍(獨立卡)
     _brokerAllianceHtml() {

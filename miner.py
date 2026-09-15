@@ -8302,6 +8302,110 @@ def build_broker_radar():
             bn = x.get('broker_name'); net = int(x.get('net') or 0)
             if bn and not str(bn).isdigit() and net < 0:
                 broker_map.setdefault(bn, {'buy': [], 'sell': []})['sell'].append({'sym': sym, 'net': net})
+    # ═══════════════════════════════════════════════════════════════════
+    # 🏃 V77.0.7 全市場掃「同一分點連買 ≥3 個連續交易日 + 5 日已漲 ≥8%」
+    # ═══════════════════════════════════════════════════════════════════
+    #   ⭐ 這是本站**唯一**通過六關的分點訊號(20 日 +1.36pp、n=34,505、前後半同向,
+    #     對照組 = 同漲幅的單日買超)。⛔ 其餘四支探針(分點慣性 / 同盟 / 券商×產業 /
+    #     隱形吃貨)實測「跟著分點做」都沒有預測力。
+    #   🚨 而它原本**只在單檔籌碼頁的一個小方塊裡算**(前端 `_chipRunBuy`,全 App 只被呼叫 1 次)
+    #     → 使用者得先猜到要看哪一檔才看得到 = 陷阱 #32 的極端版。
+    #   ⛔ **不能做成前端全市場掃描**:每檔 chips 約 108 KB × 2,719 檔,手機不可能 fetch
+    #     → 只能採礦端算。⭐ 併進**既有**的 `build_broker_radar`(它本來就讀全部 chips),
+    #     寫進**既有產物** `broker_radar.json` 的一個新 key —— ⛔ 不新開 workflow、不新增檔案。
+    #   ⚠️ 判定必須跟前端 `_chipRunBuy` **一字不差**(這是本 repo 第 N 次「同一條規則兩份實作」,
+    #     同 `_tickOf` 的三份)→ 靠 `scripts/test_runbuy_parity.py` **跨檔比對**擋住「只改一邊」。
+    #   ⚠️ 方向:有用的是「**已經發動才跟**」(所以要 chg5 ≥ 8),
+    #     ⛔ 不是「趁還沒動偷偷跟」(那個實測只有 +0.06pp ≈ 零)。
+    RUNBUY_DAYS, RUNBUY_RATIO, RUNBUY_CHG5 = 3, 0.5, 8.0
+    runbuy: list = []
+    for f in cdir.glob('*.json'):
+        sym = f.stem
+        if not _valid_stock(sym):
+            continue
+        try:
+            obj = json.loads(f.read_text(encoding='utf-8'))
+        except Exception:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        hist = obj.get('hist') or []
+        if len(hist) < RUNBUY_DAYS:
+            continue
+        kp = Path(DATA_DIR) / f'{sym}.json'
+        if not kp.exists():
+            continue
+        try:
+            kraw = json.loads(kp.read_text(encoding='utf-8'))
+        except Exception:
+            continue
+        krows = kraw if isinstance(kraw, list) else (kraw.get('data') or [])
+        if not isinstance(krows, list) or len(krows) < 10:
+            continue
+        kidx = {str(r.get('date') or '').replace('/', '-'): i for i, r in enumerate(krows) if isinstance(r, dict)}
+        h3 = hist[-RUNBUY_DAYS:]
+        ii = [kidx.get(str(h.get('d') or '').replace('/', '-')) for h in h3]
+        # 必須是**連續交易日**(⛔ 缺席不算連買 —— broker_skill_probe 的教訓)
+        if any(x is None for x in ii) or any(ii[k + 1] != ii[k] + 1 for k in range(len(ii) - 1)):
+            continue
+        iL = ii[-1]
+        if iL < 5:
+            continue
+        try:
+            cL = float(krows[iL].get('close') or 0); c5 = float(krows[iL - 5].get('close') or 0)
+        except (TypeError, ValueError):
+            continue
+        if not (cL > 0 and c5 > 0):
+            continue
+        chg5 = (cL / c5 - 1) * 100
+        if chg5 < RUNBUY_CHG5:
+            continue
+        per_day = []
+        for k, h in enumerate(h3):
+            try:
+                vol = float(krows[ii[k]].get('volume') or 0)
+            except (TypeError, ValueError):
+                vol = 0.0
+            m: dict = {}
+            if vol > 0:
+                # 🚨 V77.0.5 同名分點要**先加總再比門檻**(⛔ 不可一列一列各自判 —— 那等於把
+                #    一家拆成好幾家;而且用名稱當鍵直接覆寫會只留下最小的碎片)
+                agg: dict = {}
+                for row in (h.get('b') or []):
+                    try:
+                        nm = str(row[0]); net = float(row[1] or 0)
+                    except (TypeError, ValueError, IndexError):
+                        continue
+                    if net > 0:
+                        agg[nm] = agg.get(nm, 0.0) + net
+                for nm, net in agg.items():
+                    if net / vol * 100 >= RUNBUY_RATIO:
+                        m[nm] = net
+            per_day.append(m)
+        common = set(per_day[0])
+        for m in per_day[1:]:
+            common &= set(m)
+        if not common:
+            continue
+        bks = sorted(({'nm': nm, 'lots': int(min(m.get(nm, 0) for m in per_day) / 1000)} for nm in common),
+                     key=lambda x: -x['lots'])
+        runbuy.append({'sym': sym, 'chg5': round(chg5, 2), 'days': RUNBUY_DAYS,
+                       'date': str(h3[-1].get('d') or ''), 'brokers': bks[:5]})
+    # 🚨 只留「訊號結束在**全市場最新分點日**」的 —— ⛔ 不可把 19 天前結束的連買
+    #    當成今天的訊號(實跑抓到:7834 的 3 天窗口結束在 08-26,而基準日是 09-14)。
+    #    ⭐ 判準綁「**資料的日期**」不是「有沒有算出來」(同陷阱 #10);
+    #    基準取 **P95 不取 max** —— 單一髒檔寫了未來日期就會把全部濾掉(同分點採礦的做法)。
+    _rb_dates = sorted(x['date'] for x in runbuy if x.get('date'))
+    _rb_stale = 0
+    if _rb_dates:
+        _base_d = _rb_dates[int(len(_rb_dates) * 0.95)] if len(_rb_dates) > 1 else _rb_dates[-1]
+        _before = len(runbuy)
+        runbuy = [x for x in runbuy if x.get('date') and x['date'] >= _base_d]
+        _rb_stale = _before - len(runbuy)
+    # 同樣的 5 日漲幅時第二鍵用**買超張數**(⛔ 別讓它退化成代號序 = 1xxx 永遠排前面)
+    runbuy.sort(key=lambda x: (-x['chg5'], -(x['brokers'][0]['lots'] if x['brokers'] else 0)))
+    runbuy = runbuy[:40]
+
     buy_rank = sorted([x for x in stock_top if x['side'] == 'buy'], key=lambda x: -x['net'])[:30]
     sell_rank = sorted([x for x in stock_top if x['side'] == 'sell'], key=lambda x: x['net'])[:30]
     brokers: dict = {}
@@ -8312,11 +8416,17 @@ def build_broker_radar():
             brokers[bn] = d
     Path(DATA_DIR).mkdir(exist_ok=True)
     payload = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
-               'buy_rank': buy_rank, 'sell_rank': sell_rank, 'brokers': brokers}
+               'buy_rank': buy_rank, 'sell_rank': sell_rank, 'brokers': brokers,
+               # 🏃 唯一有實測背書的那條(見上方);⛔ 空的時候也要寫 []，前端才分得出
+               #    「今天沒有」與「這版採礦還沒產出」(陷阱 #22)
+               'runbuy': runbuy,
+               'runbuy_edge': {'d20': 1.36, 'n': 34505, 'cost': 0.44,
+                               'note': '同一分點連買≥3個連續交易日 + 5日已漲≥8%;對照組=同漲幅的單日買超'}}
     tgt = Path(DATA_DIR) / 'broker_radar.json'; tmp = tgt.with_suffix('.json.tmp')
     tmp.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     os.replace(str(tmp), str(tgt))
-    print(f"  ✅ 主力雷達:買超榜 {len(buy_rank)} / 賣超榜 {len(sell_rank)} / 分點 {len(brokers)} 家 → data/broker_radar.json")
+    print(f"  ✅ 主力雷達:買超榜 {len(buy_rank)} / 賣超榜 {len(sell_rank)} / 分點 {len(brokers)} 家 "
+          f"/ 🏃 連買+已發動 {len(runbuy)} 檔(另擋掉 {_rb_stale} 檔訊號日過舊)→ data/broker_radar.json")
 
 
 # ── 外資/官股/隔日沖 分點名稱樣式(供屬性標籤) ──────────────────────────────
