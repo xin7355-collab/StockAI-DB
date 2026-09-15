@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -849,7 +849,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.0.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8446,8 +8446,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.0.8',
+    _APP_VERSION: 'V77.0.9',
     _CHANGELOG: [
+        { v: 'V77.0.9', d: [
+            '🔎 <b>搜尋股票那個「奇怪符號」拿掉了</b> —— 那是一個<b>什麼都沒裝的空圓圈</b>(本來大概想放 logo,一直沒放),在深色底上就變成一個看不懂的空框。最近搜尋與搜尋結果兩個清單一起拿掉。',
+            '🧭 <b>五個面向右邊那排符號(✅⚠️⛔ / 🔴🟢➖ / 強中弱)改成「格子置中」</b> —— 以前是靠符號自己去對齊,而 emoji 跟中文字的寬度、基準線都不一樣(大盤那格的 ⚠️ 最明顯),五列看起來就會歪。現在每一格都是固定寬度、上下左右都置中,不管是什麼符號都對得齊。',
+            '📈 <b>報告頁多了「往上要看的兩個價位」</b>(你問的富喬 117.3 / 135.0)—— 以前這兩個只有總覽的價格位置圖看得到,報告裡一個字都沒有。現在寫在「§21 接下來要看的事」最前面兩行,而且<b>各自講清楚意思</b>:第一個是<b>站上才算轉強</b>(月線),第二個是<b>要帶量突破才算追買</b>(前高)—— <b>⛔ 後者不是你可以直接掛的買價</b>,直接掛在那裡買就是追高。兩個都有距現價幾 % 與一張差多少元。',
+            '📊 <b>「為什麼老是看到觀望、都沒看到可以買?」—— 是正常的,而且我把今天的數字寫在那句話裡了</b>。以前那句寫死「全市場 2,326 檔裡只有約 200 檔」,那個數字<b>早就跟採礦產物對不上</b>。現在改成讀當天的實測:9/14 那輪是「掃 <b>2,320</b> 檔、其中 <b>1,315</b> 檔連一招通過門檻的都沒有、明天有觸發價可盯的只有 <b>6</b> 檔、今天出現期望值為正的看多訊號只有 <b>29</b> 檔(1.3%)」。⭐ 也就是說<b>一檔一檔翻是翻不到買點的</b> —— 要看「今天全市場哪幾檔亮燈」請去<b>選股頁的「🎯 今日訊號」</b>與<b>決策台</b>,那兩個才是全市場掃過的。',
+        ] },
         { v: 'V77.0.8', d: [
             '🚨 <b>你貼在富喬(1815)那份報告,其實是「3441 聯一光電」的</b> —— 裡面每一行的來源網址都寫 <b>stock/3441</b>(出現 10 次以上)。難怪 §20 寫的出場線是 123.5,而本站算富喬是 108.57。現在 App 會<b>直接在報告最上面用紅框告訴你</b>:引用的代號不是這一檔,可能是貼錯、也可能是 AI 把來源整串編的,⛔ 在確認前別拿來判斷這一檔。',
             '📄 <b>第一眼不再被「來源表」佔滿</b>(你說的)—— 舊版是抓「§1 + <b>最後一節</b>」,而你那份 21 節的最後一節正好是整頁網址的來源表。現在會<b>先把純來源的那種節排除</b>,再留<b>最後兩節</b> → 你要的 <b>§19 觀察清單 + §20 投資筆記</b> 就在第一眼。⛔ 來源表沒有刪掉,只是收進摺疊。',
@@ -10000,7 +10006,6 @@ ${list}
             const name = this.getStockName(sym) || '';
             return `<li class="flex items-center justify-between px-3 py-3 border-b border-[#21262d] hover:bg-[#161b22] active:bg-[#21262d] transition-colors">
                 <button onclick="app._pickGlobalSearch('${sym}')" class="flex-1 text-left flex items-center gap-2 min-w-0">
-                    <span class="w-5 h-5 rounded-full border border-gray-600 flex-shrink-0"></span>
                     <span class="font-mono font-black text-white text-base">${sym}</span>
                     <span class="text-gray-300 text-base ml-1 truncate">${name}</span>
                 </button>
@@ -10050,7 +10055,6 @@ ${list}
         }
         sug.innerHTML = matches.map(m => `<li class="flex items-center justify-between px-3 py-3 border-b border-[#21262d] hover:bg-[#161b22] active:bg-[#21262d] transition-colors">
             <button onclick="app._pickGlobalSearch('${m.stock_id}')" class="flex-1 text-left flex items-center gap-2">
-                <span class="w-5 h-5 rounded-full border border-gray-600 flex-shrink-0"></span>
                 <span class="font-mono font-black text-white text-base">${m.stock_id}</span>
                 <span class="text-gray-300 text-base ml-1">${m.stock_name}</span>
             </button>
@@ -23043,6 +23047,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         //   「安不安全」仍然由右邊的 ✅⚠️⛔ 說 —— 兩者分工:▼ 講位置、徽章講意思。
         const pointer = `<div style="${ABS}left:${p}%;top:${hasTicks ? '-13px' : '-3px'};transform:translateX(-50%);display:flex;flex-direction:column;align-items:center">
                 ${o.top ? `<div class="text-[9px] font-black ${dirCls} leading-none" style="white-space:nowrap">${o.top}</div>` : ''}<div class="text-[9px] ${dirCls} leading-none">▼</div></div>`;
+        // 🔣 V77.0.9 徽章欄改「置中的 flex 格」,⛔ 不再用 text-align:center 靠 glyph 自己對齊。
+        //   🚨 真因是**行盒的 strut**:`pos` 那格的徽章是 `<span class="text-[9px]">強</span>` 包在 11px 的 div 裡
+        //      → 9px 的字要對齊 11px 的基線,**在格子裡會偏低**;而 ⚠️/🟢/➖ 是 11px 的裸文字,又各自
+        //      advance 不同(emoji 約 1.275em、CJK 1.0em)→ 五列的符號在真機上高低左右都不一致。
+        //   ⭐ `display:flex` + `align-items/justify-content:center` + `line-height:1` **沒有 strut**,
+        //      每個符號都是照「自己的盒子」置中 → 不管 glyph 多寬、字級多大都對得齊。
+        //   ⚠️ 沙箱**沒有彩色 emoji 字型**(所有 emoji 量到同一個寬度)→ 這條**重現不了**,
+        //      所以修法刻意做成「不依賴 glyph 度量」的結構修法,⛔ 不是針對某一個符號調偏移(陷阱 #40)。
+        const BADGECELL = 'display:flex;align-items:center;justify-content:center;line-height:1;';
         const side = (txt, w, align) => (fx
             ? `<div class="text-[8px] text-gray-500" style="flex:0 0 ${w}px;width:${w}px;white-space:nowrap;overflow:hidden;text-align:${align}">${txt || ''}</div>`
             : (txt ? `<div class="text-[8px] text-gray-500" style="flex:0 0 auto;white-space:nowrap">${txt}</div>` : ''));
@@ -23055,7 +23068,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 ${pointer}${markHtml}${hasTicks ? `<div style="${ABS}left:0;right:0;top:8px">${tickHtml}</div>` : ''}
             </div>
             ${side(o.hi, 26, 'left')}
-            ${fx ? `<div class="text-[11px]" style="flex:0 0 18px;width:18px;text-align:center">${badge}</div>` : (badge ? `<div class="text-[11px]" style="flex:0 0 auto">${badge}</div>` : '')}
+            ${fx ? `<div class="text-[11px]" data-badge="${kind}" style="${BADGECELL}flex:0 0 20px;width:20px">${badge}</div>` : (badge ? `<div class="text-[11px]" data-badge="${kind}" style="${BADGECELL}flex:0 0 auto;min-width:20px">${badge}</div>` : '')}
             ${o.val != null ? `<div class="text-[8px] font-mono text-gray-300" style="flex:0 0 ${fx ? 26 : 28}px;width:${fx ? 26 : 28}px;text-align:right">${o.val}</div>` : ''}
         </div>`;
     },
@@ -24151,16 +24164,45 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const cur = (dec && Array.isArray(dec.lines)) ? dec.lines.find(x => x.cur) : null;
         const ind0 = (this._scrData && this._scrData.ind) ? this._scrData.ind[sym] : null;
         const rk = ind0 ? (() => { try { return this._rpIndRank(ind0); } catch (_) { return null; } })() : null;
+        // 📈 V77.0.9 「往上要看的價位」—— 使用者:「富喬目前 114.5,要到 117.3 才轉強,這個加到報告裡面,還有 135.0」。
+        //   🚨 以前這兩個價位**只有總覽的價格位置圖看得到**,報告頁一個字都沒有(陷阱 #32)。
+        //   ⛔ 一律讀 `_keyLevels`(總覽算好的那一份),⛔ 不在這裡重算 = 第二份真相。
+        //   ⛔ 先過 `_bearGate`:空頭時**價位一個字都不改**(那是事實),只把「買」換成「觀察」(V76.1.0 的做法)。
+        const KL = (this._keyLevels && String(this._keyLevels.sym) === sym) ? this._keyLevels : null;
+        const bearW = (() => { try { return !!this._bearGate(sym); } catch (_) { return false; } })();
+        const upLine = (px, bullTxt, bearTxt) => {
+            const v = +px;
+            if (!(v > 0) || !(C.pC > 0) || v <= C.pC) return '';
+            const d = (v - C.pC) / C.pC * 100, lot = Math.round((v - C.pC) * 1000);
+            return `${bearW ? '👀' : '📈'} ${bearW ? bearTxt.n : bullTxt.n} <b class="font-mono">${f(v, 2)}</b> 元(距現價 <span class="text-gray-400">▲${this._rpPct(d).replace(/^\+/, '')}</span>、一張差 ${lot >= 0 ? '+' : ''}${lot.toLocaleString()} 元)—— ${bearW ? bearTxt.t : bullTxt.t}`;
+        };
+        // 📏 「快碰到月線」那句實測**只在真的快碰到時**才接上去(條件觸發),數字讀 `_NEAR_MA_EDGE`,⛔ 不寫死
+        const nearNote = (() => {
+            const v = KL && +KL.buyPx;
+            if (!(v > 0) || !(C.pC > 0) || !/月線/.test(String(KL.buyLb || ''))) return '';
+            const g = (v - C.pC) / C.pC * 100;   // ⭐ 分母跟同一行的「距現價」一致(⛔ 不可一個除 pC 一個除月線 → 同一行兩個數字對不起來)
+            if (!(g > 0 && g <= 3)) return '';
+            const E = this._NEAR_MA_EDGE;
+            return `<br><span class="text-gray-500">⛔ 快碰到月線(差 ${g.toFixed(1)}%)不等於「容易繼續飆」—— 實測 ${E.syms.toLocaleString()} 檔・${(E.n / 10000).toFixed(1)} 萬筆,之後 20 日比大盤 ${E.near20}pp,比「已經站上」的 ${E.above20 >= 0 ? '+' : ''}${E.above20}pp 還差。</span>`;
+        })();
+        const upTurn = KL ? upLine(KL.buyPx,
+            { n: '站上這裡才算轉強', t: `${this._escHtml(KL.buyLb || '站上才輪到談進場')};⛔ 還沒到之前這檔沒有進場條件。` },
+            { n: '轉強觀察價', t: '漲到這裡才值得重看,⛔ 不是叫你買(這檔主結論是空方)。' }) : '';
+        const upAdd = KL ? upLine(KL.addPx,
+            { n: '帶量過這裡才算追買', t: '這是<b>前高</b>,⛔ 不是你可以直接掛的買價 —— 要等<b>帶量突破</b>那根出現;直接掛在這裡買 = 追高。' },
+            { n: '前一個波段高點', t: '⛔ 不是買點,只是上面那道最近的關。' }) : '';
         const watch = [
+            upTurn ? upTurn + nearNote : '',
+            upAdd,
             cur ? `🚪 你設的出場線 <b class="font-mono">${(+cur.v).toFixed(2)}</b> 元 —— 跌破就是翻空的事實(⛔ 不是均線)` : '🚪 出場線還沒算出來(總覽「行動指令中心」)',
             `🗓️ ${this._dW(nr)} 前的月營收 —— 現在年增 ${C.yoy != null ? `<b class="${this._rpDir(C.yoy)}">${this._rpPct(C.yoy)}</b>` : '本站沒有'},看它有沒有轉向`,
             nf ? `📑 ${this._dW(nf[0])} 前的${nf[1]}財報 —— 現在毛利率 ${C.gm != null ? `<b>${f(C.gm, 1)}%</b>` : '本站沒有'},看 §4 旗標有沒有新增` : '📑 下一次財報',
             `🏛️ 法人 20 日方向 —— 現在外資 ${(C.s20 && C.s20.hasInst) ? `<b class="${this._rpDir(C.s20.foreign)}">${Math.round(C.s20.foreign).toLocaleString()} 張</b>` : '本站沒有'}`,
             rk ? `🏭 族群名次 —— 現在「${this._escHtml(ind0)}」在 ${rk.m} 個產業裡排第 <b>${rk.n}</b>(sector_rotation_probe:避開最弱的板塊比追最強的更有價值)` : '🏭 族群名次(本站沒有這一檔的產業分類)',
-        ];
+        ].filter(Boolean);
         return `<div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">🗓️ §12 接下來的事件</div>${rows.join('')}
             <div class="text-[10px] text-gray-500 mt-0.5 leading-snug">calendar_stock_probe(37 種行事曆日):<b>方向 0 個成立、波動成立</b> → 這幾天前後波動大,⛔ 不預設漲跌。</div>
-            <div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">👀 §21 接下來 30~90 天要看的 5 件事</div>
+            <div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">👀 §21 接下來 30~90 天要看的 ${watch.length} 件事</div>
             <div data-rpwatch="${watch.length}">${watch.map(t => `<div class="text-[10px] text-gray-300 leading-snug py-0.5">${t}</div>`).join('')}</div>`;
     },
 
@@ -33383,6 +33425,29 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     },
     // 🧠 決策核心(switch/case 框架 —— 之後要接自己的條件就加在對應的 case 裡)
     //   回 { badge, cls, why, held, cost, shares, pnlPct, pnlAmt, alerts[], plan[], summary, unknown }
+    // 📊 V77.0.9 「為什麼老是觀望?」—— 使用者:「總覽老是看到觀望,就是沒有看到現在可以買,這是正常的嗎?」
+    //   ⭐ 答案是**正常的,而且是設計的必然**,但⛔ 不可以用安慰句回答 —— 一律報**今天實際的數字**。
+    //   🚨 這一段以前寫死「全市場 2,326 檔裡…只有約 200 檔」 —— 那個數字**跟產物已經對不上了**
+    //      (2026-09-14 實測:掃 2,320 檔、`no_edge` 1,315 檔)。寫死的數字一定會過期 →
+    //      改成**讀採礦產物**(`playbook_edge.json` 與 `today_signals.json` 的 meta),⛔ 不再寫死。
+    //   ⚠️ 兩份檔是**不同的兩件事**(見 `_loadTodaySig` 上方那段):
+    //      today_signals = 今天「統計上有效的看多訊號」出現在哪幾檔(收盤後才知道,來不及買)
+    //      playbook_edge = 明天「這一檔自己最會賺的那一招」會在多少錢觸發(還來得及)
+    //      → 所以兩個數字要分開講,⛔ 不可相加、⛔ 不可互相取代。
+    _ovRarityNote() {
+        try {
+            const pb = this._pbEdge, ts = this._todaySig;
+            const n = (pb && +pb.scanned > 0) ? +pb.scanned : ((ts && +ts.scanned > 0) ? +ts.scanned : 0);
+            const picks = (pb && Number.isFinite(+pb.picks_syms)) ? +pb.picks_syms : null;
+            const bull = (ts && Number.isFinite(+ts.bull_syms)) ? +ts.bull_syms : null;
+            if (!n || (picks == null && bull == null)) return '';   // ⛔ 載不到就什麼都不說,⛔ 不可謊報一組數字(陷阱 #22)
+            const bits = [];
+            if (picks != null) bits.push(`<b>${picks}</b> 檔有觸發價`);
+            if (bull != null) bits.push(`<b>${bull.toLocaleString()}</b> 檔亮看多訊號`);
+            // ⚠️ 第一眼有字數上限 → 這句刻意壓到跟舊版差不多長,細節留給它指過去的那兩個榜
+            return `(今天全市場 ${n.toLocaleString()} 檔只有 ${bits.join('、')} → 看選股頁「🎯 今日訊號」)`;
+        } catch (_) { return ''; }
+    },
     _ovDecide(data, sym) {
         try {
             if (!Array.isArray(data) || data.length < 30) return null;
@@ -33525,6 +33590,11 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                     const _hasTrig = _pb && !_pb.loose && +_pb.trig > 0 && !bear;
                     badge = _hasTrig ? '⏳ 等它漲過去' : '➖ 觀望';
                     cls = _hasTrig ? 'border-yellow-600 text-yellow-200 bg-yellow-900/15' : 'border-gray-600 text-gray-300 bg-[#161b22]';
+                    // 🚨 V75.0.0 這句是最該講的:⛔ 少了它,使用者會讀成「是這一檔不夠格」,而不是「本來就大多數沒有」。
+                    // 📊 V77.0.9 改成讀採礦產物的實測數字(`_ovRarityNote`),⛔ 不再寫死;
+                    //    ⚠️ 第一眼有字數上限 → 這句壓到跟舊版差不多長(實測 694 → 692 字),
+                    //    ⛔ 不可為了塞新東西把第一眼撐爆(`test_gauge` ⑨/㉚/㉟ 釘的就是這條)。
+                    const _rar = (!_pb && !bear) ? this._ovRarityNote() : '';
                     why = held ? '沒有觸發出場,也沒有加碼條件 —— 按原定紀律抱著就好。'
                         : _hasTrig ? `這一檔<b>有一招實測有效</b>(${_pb.k || '—'}),但<b>今天還沒漲到那個價</b> —— `
                                    + `要漲過 <b class="font-mono">${(+_pb.trig).toFixed(2)}</b> 才算數。⛔ 沒漲過去就是<b>買點還沒到</b>,不用勉強。`
@@ -33532,9 +33602,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
                               ? `不符合 🧬(位階 ${gene.pos.toFixed(0)}、振幅 ${gene.amp.toFixed(1)}%,要 ≥${R.gene.pos} 且 ≥${R.gene.amp}%)—— 實測「不挑 🧬」整套會少賺一半以上。`
                               : '目前沒有實測有效的進場條件。')
                           + (_pb && bear ? '(這一檔本來有一招,但<b>中期趨勢是空頭</b> → 依規則不給進場價)' : '')
-                          // 🚨 V75.0.0 這句本來被 🧬 那個分支吃掉 —— 而它才是最該講的:
-                          //   ⛔ 少了它,使用者會讀成「是這一檔不夠格」,而不是「本來就大多數沒有」。
-                          + (!_pb && !bear ? '(全市場 2,326 檔裡,扣掉成本後還是正的只有約 200 檔 —— <b>大部分股票沒有值得做的招是常態</b>)' : '');
+                          + _rar;
                     break;
                 }
             }
@@ -33645,6 +33713,11 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         if (this._pbEdge === undefined && !this._pbEdgePend) {
             this._pbEdgePend = 1;
             this._loadPlaybookEdge().then(() => { this._pbEdgePend = 0; try { this._renderOvCommand(this.activeData); } catch (_) {} });
+        }
+        // 📊 V77.0.9 `_ovRarityNote()` 要報「今天全市場幾檔亮買訊」→ 這份也要載(同樣載完重畫一次)
+        if (this._todaySig === undefined && !this._todaySigPend) {
+            this._todaySigPend = 1;
+            this._loadTodaySignals().then(() => { this._todaySigPend = 0; try { this._renderOvCommand(this.activeData); } catch (_) {} });
         }
         const d = this._ovDecide(data, sym);
         // 📄 V76.0.2 報告頁剛才因為 dec 還沒算好而留白 → 現在算出來了,補畫一次(見 renderReportTab 的 _rpNeedsDec)
