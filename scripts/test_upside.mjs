@@ -43,7 +43,7 @@ const R = await pg.evaluate(() => {
 
     const out = {};
     const u = app._upsideRoom(pC, data, last);
-    out.u = u ? { list: u.list.map(x => ({ n: x.n, v: +x.v.toFixed(2), pct: +x.pct.toFixed(2), ntd: x.ntd })), rr: u.rr, stop: u.stop, risk: u.risk } : null;
+    out.u = u ? { list: u.list.map(x => ({ n: x.n, v: +x.v.toFixed(2), pct: +x.pct.toFixed(2), ntd: x.ntd })), rr: u.rr, stop: u.stop, risk: u.risk, pC: u.pC } : null;
     app._renderGuardRuler(pC, data, last);
     // 📈 V71.8.8 拆成兩張:上檔空間在 #upsideRoomCard(進場頁籤)、防守價在 #guardRuler(出場頁籤)
     const up = document.getElementById('upsideRoomCard');
@@ -87,6 +87,17 @@ ok('⑤ 防守價仍是另一張卡(出場頁籤)', R.guardTxt.includes('防守�
 ok('⑤ 防守價那張要指路到進場頁籤看上檔空間', R.guardTxt.includes('進場'), R.guardTxt.slice(-120));
 ok('⑤ 卡上有白話那句「現在買,先碰到的是」', R.ruler.includes('現在買,先碰到的是'), R.ruler.slice(0, 200));
 ok('⑤ 卡上有風報比', R.ruler.includes('風報比'), '');
+// ⚖️ V77.1.3 「假精準」的解藥:停損只距現價 1% 時風報比天生就漂亮 → 距離一定要跟數字一起出現
+{
+    const want = ((u.stop / u.pC - 1) * 100).toFixed(1);   // 停損 95 / 現價 100 → −5.0
+    const seg = (R.ruler.match(/⚖️ 風報比[^<]*/) || [''])[0];
+    ok('⑨ ⭐ 風報比那一行一定印「停損距現價 X%」,而且值要對(⛔ 不可只印絕對價)',
+       /距現價/.test(seg) && seg.includes(`${want}%`), `${seg} | want ${want}%`);
+    ok('⑨b ⭐ 而且要寫明它的口徑是「到第一道壓力 vs 出場總表停損」(⛔ 跟主卡那個「賺賠比」不是同一把尺)',
+       /到第一道壓力/.test(seg) && /出場總表停損/.test(seg), seg);
+    ok('⑨c 同一張卡要主動說「⛔ 兩個不可互相比較」(同名不同義 → 主動點出差異)',
+       /不可互相比較/.test(R.ruler), '');
+}
 ok('⑤ 金額有千分位逗號', /[+−]\d{1,3},\d{3} 元/.test(R.ruler), (R.ruler.match(/[+−][\d,]+ 元/g) || []).slice(0, 3).join(' '));
 ok('⑥ 「上方壓力區」那塊引用同一組數字(不重算)',
    R.zoneHtml.includes(`+${u.list[0].pct.toFixed(1)}%`) && R.zoneHtml.includes(u.list[0].v.toFixed(2)),

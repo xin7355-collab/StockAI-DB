@@ -82,6 +82,30 @@ const R = await page.evaluate(async () => {
         n: T && T.n, yoyN: T && T.yoy.filter(x => x != null).length,
         names, vdKey: vd ? vd.dataset.rptrendvd : null, vdTxt: vd ? vd.innerText.trim() : '',
         sparks: [...document.querySelectorAll('[data-spark]')].map(e => +e.dataset.spark),
+        // ⭐ 逐條抓自己的 svg:斷線 = polyline 段數 ≥2;零線 = 有虛線 <line>
+        fundTxt: (() => { const el = document.getElementById('rpFund'); return el ? el.innerText : ''; })(),
+        fundHtml: (() => { const el = document.getElementById('rpFund'); return el ? el.innerHTML : ''; })(),
+        // 📊 D:TTM 回溯必須跟採礦端 `scripts/fin_slice.mjs` 完全一致
+        ttm: (() => {
+            const F = A._rpLast && A._rpLast.fin; if (!F) return null;
+            const a = A._finTtmAt(F, 0), b = A._finTtmAt(F, 4);
+            return { a, b, real: { roe4: F.roe4, fcf4: F.fcf4, capex4: F.capex4 }, nq: (F.q || []).length };
+        })(),
+        rowSvg: Object.fromEntries([...document.querySelectorAll('[data-rptrend]')].map(e => {
+            const sv = e.querySelector('svg');
+            return [e.dataset.rptrend, sv ? { seg: sv.querySelectorAll('polyline').length, zero: !!sv.querySelector('line[stroke-dasharray]') } : null];
+        })),
+        // 🚨 canvas 海報那份的線名(⛔ 不可跟 HTML 各排一份)
+        canvasNames: (() => { try { return (A._rpOwnDbg && A._rpOwnDbg.trendNames) || null; } catch (_) { return null; } })(),
+        // ⛔ 決定性對照:把最新季 fcf 改掉 → 自由現金流那條的尾巴數字要跟著變
+        fcfTail: (() => {
+            const g = h => { const m = /data-rptrend="自由現金流"[\s\S]{0,4000}?text-align:right">([^<]*)</.exec(String(h || '')); return m ? m[1].trim() : null; };
+            const qq = A._rpLast.fin.q, LL = qq[qq.length - 1], f0 = LL.fcf;
+            const a = g(A._rpTrendHtml(A._rpLast));
+            LL.fcf = -98765000000; const b = g(A._rpTrendHtml(A._rpLast));
+            LL.fcf = f0;
+            return { a, b };
+        })(),
         flip: vd2 && vd2.verdict ? vd2.verdict.key : null,
         back: vd3 && vd3.verdict ? vd3.verdict.key : null,
         // B:事件
@@ -97,9 +121,42 @@ const R = await page.evaluate(async () => {
 // ── A ──
 ok('ⓐ0 抓得到 12 季趨勢(空過守門)', R.n >= 8, String(R.n));
 ok('ⓐ ⭐ 年增只有 i≥4 之後才有值(⛔ 前 4 季算不出「跟去年同季比」)', R.yoyN === R.n - 4, `${R.yoyN} vs ${R.n - 4}`);
-ok('ⓐ2 三條線都畫出來了(季營收年增 / 毛利率 / 每股盈餘)',
-   R.names.length === 3 && R.names[0] === '季營收年增' && R.names.includes('毛利率') && R.names.includes('每股盈餘'), JSON.stringify(R.names));
-ok('ⓐ3 sparkline 真的有點(⛔ 空 SVG 不算)', R.sparks.length >= 3 && R.sparks.every(x => x >= 2), JSON.stringify(R.sparks));
+// 📈 V77.1.3 五條(⛔ 營益率算不出來 —— data/fin 的 q[] 只有營業成本、沒有營業費用)
+const WANT5 = ['季營收年增', '毛利率', '淨利率', '每股盈餘', '自由現金流'];
+ok('ⓐ2 五條線都畫出來了,而且順序固定', R.names.length === 5 && WANT5.every((k, i) => R.names[i] === k), JSON.stringify(R.names));
+ok('ⓐ2b ⭐ canvas 海報那份的線名**逐字一致**(⛔ 兩邊各排一份 = 同一份資料兩種說法)',
+   !R.canvasNames || (R.canvasNames.length === 5 && WANT5.every((k, i) => R.canvasNames[i] === k)), JSON.stringify(R.canvasNames));
+ok('ⓐ3 sparkline 真的有點(⛔ 空 SVG 不算)', R.sparks.length >= 5 && R.sparks.every(x => x >= 2), JSON.stringify(R.sparks));
+ok('ⓐ4 ⭐ 決定性對照:改來源的最新季自由現金流 → 那條的尾巴數字要跟著變(⛔ 不可寫死)',
+   !!R.fcfTail.a && !!R.fcfTail.b && R.fcfTail.a !== R.fcfTail.b && /987/.test(R.fcfTail.b), JSON.stringify(R.fcfTail));
+// ⭐ 斷線規則:面額變更只影響**每股數**的東西 → 淨利率(舊切片是 EPS×股本/10 推的)與每股盈餘要斷,
+//   營收年增 / 毛利率 / 自由現金流⛔ 不可斷(注入:把 `{ gap: gaps }` 拿掉 → 這條會紅)
+{
+    const body = (SRC.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n').match(/const body = line\('季營收年增'[\s\S]{0,900}?;\n/) || [''])[0];
+    const gapOf = nm => { const m = new RegExp(`line\\('${nm}'[^\\n]*`).exec(body); return m ? /gap:\s*gaps/.test(m[0]) : null; };
+    ok('ⓐ5 淨利率 / 每股盈餘吃 gap(面額變更那段刻意斷線)', gapOf('淨利率') === true && gapOf('每股盈餘') === true, body.slice(0, 40));
+    ok('ⓐ5b 營收年增 / 毛利率 / 自由現金流 ⛔ 不可斷線(面額變更不影響它們)',
+       gapOf('季營收年增') === false && gapOf('毛利率') === false && gapOf('自由現金流') === false, body.slice(0, 40));
+    ok('ⓐ5c 自由現金流吃 zero(它會是負的,沒有零線看不出正負)', /line\('自由現金流'[^\n]*zero:\s*1/.test(body), body.slice(0, 40));
+}
+ok('ⓐ6 ⛔ 營益率的說法不可跟同一張卡上方的「📈 三率(近三季)」自打嘴巴(⛔ 不可寫「資料源沒有」)',
+   /營益率/.test(R.fundTxt) && /3 季/.test(R.fundTxt) && /營業費用/.test(R.fundTxt)
+   && !/營益率[^。]{0,12}資料源沒有/.test(R.fundTxt), R.fundTxt.slice(0, 200));
+ok('ⓐ6b ⭐ 而且那一段「📈 三率(近三季)」真的還在(空過守門:它不在 = 上面那條沒有鑑別力)',
+   /三率\(近三季\)/.test(R.fundTxt) && /營益率/.test(R.fundTxt), '');
+// ── D 變化量(V77.1.3)──
+ok('ⓑ0 抓得到 TTM(空過守門)', !!(R.ttm && R.ttm.a && R.ttm.nq >= 8), JSON.stringify(R.ttm && R.ttm.nq));
+ok('ⓑ ⭐⭐ `_finTtmAt(F,0)` **逐字等於** 採礦端算的 roe4/fcf4/capex4(公式一分叉這條當場紅)',
+   R.ttm.a.roe4 === R.ttm.real.roe4 && R.ttm.a.fcf4 === R.ttm.real.fcf4 && R.ttm.a.capex4 === R.ttm.real.capex4,
+   `${JSON.stringify(R.ttm.a)} vs ${JSON.stringify(R.ttm.real)}`);
+ok('ⓑ2 往前挪 4 季真的挪到**不同**的窗口(⛔ back 沒生效 = 一年前跟今天一樣)',
+   !!R.ttm.b && R.ttm.b.fcf4 !== R.ttm.a.fcf4 && R.ttm.b.capex4 !== R.ttm.a.capex4,
+   `${JSON.stringify(R.ttm.b)} vs ${JSON.stringify(R.ttm.a)}`);
+ok('ⓑ3 畫面上真的印出「一年前」與變化量(↑/↓ pp 或 %)',
+   /一年前/.test(R.fundTxt) && /[↑↓]/.test(R.fundTxt), (R.fundTxt.match(/[^\n]*一年前[^\n]*/g) || []).slice(0, 3).join(' | '));
+ok('ⓒ3 🚦 ↑↓ 那幾段⛔ 不可用紅綠(燈號鐵則:🔴🟢 只准講漲跌;ROE 上升是「好」不是「漲」)',
+   !(R.fundHtml.match(/<span class="[^"]*"[^>]*>\(一年前[^<]*/g) || []).some(x => /text-(red|green)-/.test(x)),
+   (R.fundHtml.match(/<span class="[^"]*"[^>]*>\(一年前[^<]*/g) || []).slice(0, 2).join(' | '));
 ok('ⓒ 判讀只描述,⛔ 沒有買賣指令', !!R.vdKey && !/該買|該賣|進場|加碼|停損|可以買/.test(R.vdTxt), R.vdTxt);
 ok('ⓒ2 卡上寫明「本站沒有回測過它能不能預測股價」(⛔ 不可讓人當訊號用)', /沒有回測過/.test(R.vdTxt) || /沒有回測過/.test(R.evHtml) || SRC.includes('沒有回測過它能不能預測股價'), '');
 ok('ⓓ ⭐ 決定性對照:把最新季毛利率壓到比去年同季低 9.9pp → 判讀要翻成「背離」(注入:顯示端自己算 → 紅)',
@@ -108,8 +165,10 @@ ok('ⓓ2 canvas 海報也拿得到同一份(⛔ 不可兩邊各算一份)', R.tr
 
 // ── B ──
 ok('ⓔ 事件有「會動到哪個數字」', /會動到/.test(R.evHtml), R.evHtml.slice(0, 200));
-ok('ⓔ2 而且同一句有寫「波動會變大」+「不講方向」(⛔ 只講會動到什麼還不夠)',
+ok('ⓔ2 這一節有寫「波動會變大」+「不講方向」(⛔ 只講會動到什麼還不夠)',
    /波動會變大/.test(R.evHtml) && /不講方向/.test(R.evHtml), '');
+ok('ⓔ3 🧹 而且整節**只講一次**(⛔ 每一行各印一遍 = 重述;注入:把它塞回 `_aff` → 這條會紅)',
+   (R.evHtml.match(/波動會變大/g) || []).length === 1, `出現 ${(R.evHtml.match(/波動會變大/g) || []).length} 次`);
 ok('ⓕ 對得到的回字串、對不到回 null(⛔ 不硬給)',
    typeof R.affFin === 'string' && typeof R.affRev === 'string' && R.affNone === null,
    JSON.stringify([R.affFin, R.affRev, R.affNone]));
