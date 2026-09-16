@@ -320,6 +320,145 @@ await page.waitForTimeout(2500);
     ok('ⓙ3 不在名單裡 → 標出來', r.off === true, JSON.stringify(r));
 }
 
+// ─────────── V77.1.6 外部 AI 建議的四個「真缺口」 ───────────
+// ⓚ 📊 §11 現在的盤面狀態(相對大盤 / 量能倍數 / 20 日振幅 / 距一年高)
+{
+    const r = await page.evaluate(() => new Promise(res => {
+        app.switchSubTab && app.switchSubTab('report');
+        setTimeout(() => {
+            const C = app._rpLast;
+            // 🧪 決定性對照:注入一條假的加權序列 → 相對大盤那一格一定要跟著出現而且算得對
+            const keep = app._macroTaiexSeries;
+            app._macroTaiexSeries = Array.from({ length: 30 }, (_, i) => ({ close: 10000 + i * 10 }));   // 20 日 +2.0%
+            const T2 = app._rpTapeFacts(C);
+            app._macroTaiexSeries = keep;
+            const T = app._rpTapeFacts(C);
+            document.querySelectorAll('#rpWalls details').forEach(d => { d.open = true; });
+            const el = document.querySelector('[data-rptapen]');
+            const D = app.rawDailyData, n = D.length;
+            // 手算量比基準(⛔ 不含今日)
+            let s2 = 0, k = 0;
+            for (let i = n - 6; i < n - 1; i++) { const v = +D[i].volume || 0; if (v > 0) { s2 += v; k++; } }
+            res({ has: !!el, n: el ? +el.dataset.rptapen : 0,
+                  txt: (el ? el.parentElement.innerText : '').replace(/\s+/g, ' '),
+                  rs2: T2 && T2.rs ? +T2.rs.mkt.toFixed(4) : null,
+                  rsWant: +(((10000 + 29 * 10) / (10000 + 9 * 10) - 1) * 100).toFixed(4),
+                  vr: T && T.vr ? +T.vr.x.toFixed(4) : null,
+                  want: k >= 3 ? +((+D[n - 1].volume || 0) / (s2 / k)).toFixed(4) : null,
+                  dd: T && T.dd != null ? +T.dd.toFixed(3) : null,
+                  bdd: (() => { const b = app._basePos(D); return b ? +b.dd.toFixed(3) : null; })() });
+        }, 2200);
+    }));
+    ok('ⓚ 空過守門:報告頁畫得出「現在的盤面狀態」而且 ≥2 格', r.has && r.n >= 2, JSON.stringify(r).slice(0, 200));
+    // ⭐ 期望值**當場算**(⛔ 不寫死 2.0 —— 等差序列的 20 日報酬不是 2.0%,我第一版就寫錯了)
+    ok('ⓚ2 ⭐ 決定性對照:換一條假的加權序列,相對大盤那一格要跟著算對',
+       r.rs2 != null && r.rsWant != null && Math.abs(r.rs2 - r.rsWant) < 0.001, `mkt=${r.rs2} want=${r.rsWant}`);
+    // 🚨 陷阱 #43:基準⛔ 不可把被判斷的那一根自己算進去
+    ok('ⓚ3 量能倍數的基準是「前 5 日」,⛔ 不含今日', r.vr != null && r.want != null && Math.abs(r.vr - r.want) < 1e-6,
+       `畫面 ${r.vr} vs 手算 ${r.want}`);
+    ok('ⓚ4 距一年高⛔ 不可自己算一份,要等於 `_basePos().dd`', r.dd != null && r.dd === r.bdd, `${r.dd} vs ${r.bdd}`);
+    ok('ⓚ5 距一年高是**位置**⛔ 不可用紅綠(燈號鐵則)→ 要有 ▼ 且該格是灰字',
+       /▼/.test(r.txt) && !/text-red|text-green/.test(r.txt), r.txt.slice(0, 120));
+    ok('ⓚ6 ⛔ 一定要寫「只描述、沒回測過」(⛔ 不可看起來像買賣訊號)',
+       /沒有回測過/.test(r.txt) && /不是買賣訊號/.test(r.txt), r.txt.slice(-180));
+    // 🚨 V75.1.0 那個坑:template literal ⛔ 不會幫你把 markdown 轉成 HTML
+    ok('ⓚ7 ⛔ 畫面上不可印出 markdown 的 `**`', !/\*\*/.test(r.txt), (r.txt.match(/\*\*[^*]{0,20}/) || [''])[0]);
+}
+// ⓛ 財報結構分歧(淨利 ↑ 但自由現金流 ↓)—— ⛔ 純事實 + 一定要附全市場基準率
+{
+    const s = seg('    _finTrend(C) {', '    _sparkSvg(vals, o = {}) {');
+    ok('ⓛs 空過守門:抓得到 `_finTrend`', s.length > 1500, `len=${s.length}`);
+    ok('ⓛs2 用**稅後淨利** `ni4`(⛔ 不可用 EPS —— 面額變更會讓 EPS ÷4,V76.2.0 的教訓)',
+       /T0\.ni4/.test(s) && /_finTtmAt/.test(s) && !/\.eps\b[^\n]*struct/.test(s), '');
+    ok('ⓛs3 跨越零⛔ 不給(去年賠今年賺算出來的 % 沒有意義)',
+       /\(T0\.ni4 > 0\) === \(T4\.ni4 > 0\)/.test(s) && /\(T0\.fcf4 > 0\) === \(T4\.fcf4 > 0\)/.test(s), '');
+    ok('ⓛs4 門檻讀 `_FIN_STRUCT_BASE.t`(⛔ 不可 inline 寫死數字)', /const B = this\._FIN_STRUCT_BASE, TH = B\.t/.test(s), '');
+    const r = await page.evaluate(() => {
+        const mk = (ni, fcf) => ({ p: '2026-06-30', ni, fcf, eq: 1e10, rev: 1e9, gm: 30, eps: 1, nm: 10, capex: -1e8 });
+        // 8 季:前 4 季 ni=100 fcf=100;後 4 季 ni=200(+100%)fcf=50(−50%) → 一定要亮
+        const q = [...Array(4)].map(() => mk(1e8, 1e8)).concat([...Array(4)].map(() => mk(2e8, 5e7)));
+        const T = app._finTrend({ fin: { q, updated: '2026-09-15' } });
+        // 同號守門:去年賠(−)今年賺(+)→ ⛔ 不可亮
+        const q2 = [...Array(4)].map(() => mk(-1e8, 1e8)).concat([...Array(4)].map(() => mk(2e8, 5e7)));
+        const T2 = app._finTrend({ fin: { q: q2, updated: '2026-09-15' } });
+        // 只差 10%(< 門檻 20%)→ ⛔ 不可亮
+        const q3 = [...Array(4)].map(() => mk(1e8, 1e8)).concat([...Array(4)].map(() => mk(1.1e8, 9e7)));
+        const T3 = app._finTrend({ fin: { q: q3, updated: '2026-09-15' } });
+        return { k: T && T.struct ? T.struct.key : null, cross: T2 && T2.struct ? T2.struct.key : null,
+                 small: T3 && T3.struct ? T3.struct.key : null, base: app._FIN_STRUCT_BASE };
+    });
+    ok('ⓛ 淨利 +100% / 自由現金流 −50% → 亮「賺的錢在成長,但現金在縮」', r.k === 'ni_up_fcf_dn', JSON.stringify(r));
+    ok('ⓛ2 ⛔ 跨越零(去年賠今年賺)不可亮', r.cross === null, JSON.stringify(r));
+    ok('ⓛ3 ⛔ 只差 10%(未達 ±20% 門檻)不可亮', r.small === null, JSON.stringify(r));
+    ok('ⓛ4 基準率常數要有 實測日期 + 分母(⭐ 陷阱 #36:沒有對照組不知道算不算異常)',
+       r.base && r.base.n > 500 && r.base.hit > 0 && /^\d{4}-\d{2}-\d{2}$/.test(String(r.base.d)), JSON.stringify(r.base));
+    const h = seg("        const st = T.struct ? (() => {", "        return `<div class=\"text-[10px] font-bold text-gray-300 mt-2 mb-0.5\">📈 近 ${T.n} 季趨勢");
+    ok('ⓛ5 畫面上⛔ 不可做成 ⚠️ 警示(23% 的股票都會亮),而且**一定要印出基準率**',
+       /這不是罕見事件/.test(h) && /data-rpstructbase/.test(h) && !/text-amber-200/.test(h) && /沒有回測過/.test(h), h.slice(0, 200));
+}
+// ⓜ 出貨徵兆:亮的攤開、沒亮的收摺疊(⛔ 一個字都沒刪)
+{
+    const r = await page.evaluate(() => new Promise(res => {
+        app.switchSubTab && app.switchSubTab('report');
+        setTimeout(() => {
+            const box = document.getElementById('rpRisk');
+            const det = box && box.querySelector('[data-rpdistoff]');
+            const before = det ? det.innerText.replace(/\s+/g, ' ') : '';
+            if (det) det.open = true;
+            res({ off: det ? +det.dataset.rpdistoff : 0, folded: before.length,
+                  opened: det ? det.innerText.replace(/\s+/g, ' ').length : 0,
+                  warn: box ? (box.innerText.match(/⚠️/g) || []).length : 0,
+                  hasWhy: det ? /張|%|沒有/.test(det.innerText) : false });
+        }, 2400);
+    }));
+    ok('ⓜ 空過守門:抓得到「沒亮的那幾條」摺疊', r.off >= 3, JSON.stringify(r));
+    ok('ⓜ2 收起來時比攤開短很多(這是去重的目的)', r.folded > 0 && r.opened > r.folded * 1.5, JSON.stringify(r));
+    ok('ⓜ3 ⛔ 一個字都沒刪:攤開後每一條的數字(why)還在', r.hasWhy, JSON.stringify(r));
+    const s = seg('    _rpRiskHtml(C) {', '        const distHead = C.dist');
+    ok('ⓜ4 ⛔ 亮的那幾條一律攤開不打折(使用者鐵則:警示寧可多提醒)',
+       /const on = C\.dist\.items\.filter\(x => x\.on\)/.test(s) && /items\.push\(on\.map\(_distRow\)\.join\(''\)\)/.test(s), s.slice(-300));
+}
+// ⓝ 「跟上次看的時候比」快照
+{
+    const r = await page.evaluate(() => {
+        const C = app._rpLast, key = app._rpSnapKey(C.sym);
+        const keep = localStorage.getItem(key);
+        try { localStorage.removeItem(key); } catch (_) {}
+        const first = app._rpSnapDiff(C);                       // ① 第一次看 → ⛔ 不可編一個「跟上次比」
+        const stored = app._lsJson(key, null);
+        // ② 同一個資料日期再開一次 → ⛔ 不可覆寫(否則上次的基準就沒了)
+        //   🚨 ⛔ 不可只比字串 —— 重寫出來的內容**幾乎一樣**(同一毫秒連 ts 都一樣)= 假綠燈。
+        //   ⭐ 蓋一個哨兵進去:被覆寫的話哨兵會消失。
+        const stamped = JSON.parse(localStorage.getItem(key));
+        stamped.__probe = 'v77_1_6';
+        try { localStorage.setItem(key, JSON.stringify(stamped)); } catch (_) {}
+        const before = localStorage.getItem(key);
+        app._rpSnapDiff(C);
+        const after = app._lsJson(key, {});
+        const sameDay = after.__probe === 'v77_1_6' && localStorage.getItem(key) === before;
+        // ③ 換一個資料日期 + 改幾個值 → 要列出來
+        const old = JSON.parse(before);
+        old.d = '2000/01/01'; old.v['收盤價'] = (+old.v['收盤價'] || 100) * 0.5;
+        try { localStorage.setItem(key, JSON.stringify(old)); } catch (_) {}
+        const diff = app._rpSnapDiff(C);
+        // 🚨 `_rpSnapDiff` 成功比完就**寫回**新快照 → 想量 HTML 要再擺一次舊的,
+        //   否則第二次呼叫變成「同一個資料日期」= 空字串(我第一版就這樣寫出假失敗)
+        try { localStorage.setItem(key, JSON.stringify(old)); } catch (_) {}
+        const html = app._rpSnapHtml(C);
+        if (keep != null) { try { localStorage.setItem(key, keep); } catch (_) {} } else { try { localStorage.removeItem(key); } catch (_) {} }
+        return { first, wrote: !!(stored && stored.d), sameDay,
+                 rows: diff && diff.rows ? diff.rows.map(x => x.k) : [], html: String(html).slice(0, 2500) };
+    });
+    ok('ⓝ 第一次看這一檔 → ⛔ 不編「跟上次比」,但要把快照存下來', r.first === null && r.wrote, JSON.stringify(r).slice(0, 200));
+    ok('ⓝ2 ⭐ 同一個資料日期再開 → ⛔ 不可覆寫(不然上次的基準就沒了)', r.sameDay === true, JSON.stringify(r.sameDay));
+    ok('ⓝ3 資料日期換了 + 收盤價改一半 → 要列出「收盤價」變了', r.rows.includes('收盤價'), JSON.stringify(r.rows));
+    ok('ⓝ4 ⛔ 要明講「不是訊號、不進評分」', /不是訊號/.test(r.html) && /不進任何評分/.test(r.html), r.html.slice(0, 200));
+    const s = seg('    _rpSnapDiff(C) {', '    _rpSnapRows(a, b) {');
+    ok('ⓝ5 快照綁**資料日期**不綁開啟時間(⛔ 綁時間這一格永遠是空的)',
+       /String\(old\.d\) === String\(now\.d\)/.test(s), '');
+    ok('ⓝ6 ⛔ 每檔一份的 localStorage 必接 `_lruTrim`(V76.2.7)', /_lruTrim\('rpSnap_'/.test(s), '');
+}
+
 ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
 await browser.close();
 console.log(fails.length ? `\n❌ ${fails.length} 條沒過` : '\n✅ 全部通過');
