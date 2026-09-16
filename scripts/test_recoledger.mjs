@@ -26,13 +26,25 @@ for (const f of ['data/pick_history.json', 'data/2330.json']) {
 const H = JSON.parse(readFileSync('data/pick_history.json', 'utf8'));
 const TW = existsSync('data/^TWII.json') ? JSON.parse(readFileSync('data/^TWII.json', 'utf8')) : null;
 const K2330 = JSON.parse(readFileSync('data/2330.json', 'utf8'));
-const syms = new Set(); for (const d of H.days || []) for (const x of d.pb || []) if (x && x.s) syms.add(String(x.s));
+const syms = new Set();
+for (const d of H.days || []) {
+  for (const x of d.pb || []) if (x && x.s) syms.add(String(x.s));
+  for (const x of d.sig || []) if (x && x.s) syms.add(String(x.s));   // 📈 V77.2.5「符合進場」那幾檔也要
+}
 const K = {}; for (const s of syms) { const f = `data/${s}.json`; if (existsSync(f)) K[s] = JSON.parse(readFileSync(f, 'utf8')); }
 ok((H.days || []).length >= 5 && Object.keys(K).length >= 20 && K2330.length > 300,
   '⓪ 空過守門:測資是真實產物', `${(H.days||[]).length} 天 / ${Object.keys(K).length} 檔 / 2330 ${K2330.length} 根`);
 
-const b = await chromium.launch({ args: ['--allow-file-access-from-files'] });
-const pg = await (await b.newContext()).newPage();
+// 🚨 V77.2.5 launch 參數與 **預設 context** 都不可改:
+//   「📈 符合進場」要靠 `PRO.loadIdx()` 去 `fetch('index.html')` 拿 🧬 門檻與黑名單,
+//   file:// 下那個 fetch 需要 `--allow-file-access-from-files`,而且**開新 context 會失敗**
+//   (實測 `newContext().newPage()` → `Failed to fetch`,`browser.newPage()` 才通)。
+//   ⛔ 改回去的話 fit / mix 兩張會全部走到「算不出來」= 假失敗(陷阱 #40)。
+const b = await chromium.launch({
+  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
+});
+const pg = await b.newPage();
 const errs = []; pg.on('pageerror', e => errs.push(String(e).slice(0, 160)));
 await pg.goto(pathToFileURL(resolve('pro.html')).href);
 await pg.waitForFunction(() => typeof PRO !== 'undefined' && !!PRO._recoLedgerRender, null, { timeout: 30000 });
@@ -66,6 +78,7 @@ await pg.evaluate(({ H, K, TW }) => {
     if (m && K[m[1]]) return K[m[1]];
     try { return await orig(u); } catch (_) { return null; }
   };
+  window.__H = H;      // 📈 V77.2.5 下面幾條決定性對照要拿真實快照當輸入
 }, { H, K, TW });
 await pg.evaluate(() => PRO.switchTab('fish'));
 await pg.waitForTimeout(9000);
@@ -142,6 +155,116 @@ const g = x => (x.match(/'(don|atr2|trail8|ma5)'/g) || []).map(v => v.slice(1, -
 ok(g(iBlk).length >= 2 && g(pBlk).length >= 2 && new Set([...g(iBlk), ...g(pBlk)]).size === 1,
   '🚪⑧ 🚨 pro.html 的出場預設要跟 index.html 一模一樣(⛔ 不一致 = 兩邊用不同規則,而且畫面看不出來)',
   `index=${g(iBlk)} pro=${g(pBlk)}`);
+
+
+// ══════════ 📈 V77.2.5 三張清單(使用者:「符合進場的也進到成績單裡面,重新回測,
+//   用唐奇安及 atr 計算,另外用分頁區隔開高波動高基期及符合進場…另外可以用混搭的方式回測」)══════════
+// ⛔ 五條不可違反(下面五種注入都要叫得出來):
+//   ⑨a 三張分頁都在,而且換分頁**真的換一批資料**(⛔ 快取鍵漏了來源 = 一直看到上一張)
+//   ⑨b 🧬 門檻與黑名單一律**現場讀 index.html 的 `_EDGE_RULES`**,⛔ pro.html 不可抄一份
+//   ⑨c 舊快照沒有位階/振幅 → 回 `null`(重建不出來),⛔ 不可回空陣列冒充「那天 0 檔」
+//   ⑨d 🧪 混搭 = 兩張聯集;任一張重建不出來就**整天不算**(⛔ 不可只算一半)
+//   ⑨e 快照端的位階/振幅一律走 `screener_miner.build_one`(⛔ 不可讀 screener.json —— 它在
+//       workflow 裡比這一步晚跑,那會拿**昨天**的位階配今天的訊號 = 跟畫面對不起來)
+const fitDays = (H.days || []).filter(d => (d.sig || []).some(x => x && x.p != null && x.m != null));
+ok(fitDays.length >= 1,
+  '⑨⓪ 空過守門:快照裡至少要有一天帶位階/振幅(⛔ 沒有的話下面全部沒有鑑別力)',
+  `${fitDays.length} 天 / 共 ${(H.days || []).length} 天`);
+
+const srcRes = {};
+for (const k of ['pb', 'fit', 'mix']) {
+  await pg.evaluate(x => PRO.selRecoSrc(x), k);
+  await pg.waitForFunction(y => PRO._rl && PRO._rl.src === y, k, { timeout: 40000 }).catch(() => {});
+  await pg.waitForTimeout(1200);
+  srcRes[k] = await pg.evaluate(() => {
+    const el = document.getElementById('recoLedger');
+    return {
+      tabs: [...el.querySelectorAll('[data-recosrc]')].map(e => e.dataset.recosrc),
+      on: [...el.querySelectorAll('[data-recosrc].on')].map(e => e.dataset.recosrc),
+      syms: ((PRO._rl || {}).trades || []).map(t => t.sym).sort().join(','),
+      n: ((PRO._rl || {}).trades || []).length,
+      geneErr: (PRO._rl || {}).geneErr || null,
+      since: (PRO._rl || {}).since || null,
+      txt: (el.textContent || '').replace(/\s+/g, ' '),
+    };
+  });
+}
+ok(srcRes.pb.tabs.join(',') === 'pb,fit,mix' && srcRes.fit.on.join(',') === 'fit',
+  '⑨a 三張分頁都在,而且點哪一張哪一張亮', `${srcRes.pb.tabs} / on=${srcRes.fit.on}`);
+ok(!srcRes.pb.geneErr && !srcRes.fit.geneErr,
+  '⑨a2 🧬 門檻要真的讀得到(⛔ 讀不到就會全部走「算不出來」= 下面沒有鑑別力)', String(srcRes.fit.geneErr));
+// ⭐ 決定性對照:三張的**交易清單必須不一樣**(⛔ 全部一樣 = 快取鍵漏了來源,或 src 沒傳到底)
+ok(srcRes.fit.n > 0 && srcRes.pb.syms !== srcRes.fit.syms,
+  '⑨a3 ⭐ 決定性對照:換到「📈 符合進場」要換一批股票(⛔ 跟上一張一模一樣 = 沒接通)',
+  `pb=${srcRes.pb.syms} ・fit=${srcRes.fit.syms}`);
+ok(srcRes.mix.n >= Math.max(srcRes.pb.n, srcRes.fit.n) && srcRes.mix.syms !== srcRes.fit.syms,
+  '⑨d 🧪 混搭筆數 ≥ 任一張,而且不等於其中一張', `pb=${srcRes.pb.n} fit=${srcRes.fit.n} mix=${srcRes.mix.n}`);
+ok(/三張分頁的筆數⛔ 不可以相加|筆數⛔ 不可以相加/.test(srcRes.mix.txt),
+  '⑨a4 ⛔ 要寫明「三張的筆數不可相加」(同一檔可能同時出現在兩張裡)');
+
+// ⑨b 🧬 門檻是**現場讀**的 —— 決定性對照:把門檻改掉,名單要跟著變
+const geneCtl = await pg.evaluate(() => {
+  const day = (PRO._rlHist || null);
+  const d = (window.__H.days || []).filter(x => (x.sig || []).some(y => y && y.p != null))[0];
+  const before = (PRO._recoFitPicks(d) || []).length;
+  const g = PRO._idxData.EDGE_RULES.gene, old = g.pos;
+  g.pos = 999; const after = (PRO._recoFitPicks(d) || []).length; g.pos = old;
+  return { before, after, pos: old };
+});
+ok(geneCtl.before > 0 && geneCtl.after === 0,
+  '⑨b ⭐ 決定性對照:把 `_EDGE_RULES.gene.pos` 改成 999,名單要變 0 檔(⛔ 沒變 = 門檻寫死在 pro.html)',
+  `門檻 ${geneCtl.pos} → ${geneCtl.before} 檔 ・改 999 → ${geneCtl.after} 檔`);
+
+// ⑨b2 黑名單要真的擋 —— 決定性對照:把第一檔的打法改成黑名單裡的招
+const blkCtl = await pg.evaluate(() => {
+  const d = (window.__H.days || []).filter(x => (x.sig || []).some(y => y && y.p != null))[0];
+  const picks = PRO._recoFitPicks(d) || [];
+  if (!picks.length) return { before: 0, after: 0 };
+  const row = (d.sig || []).find(x => String(x.s) === String(picks[0].s));
+  const old = row.k; row.k = '低檔布局(撿便宜)';
+  const after = (PRO._recoFitPicks(d) || []).length; row.k = old;
+  return { before: picks.length, after };
+});
+ok(blkCtl.before > 0 && blkCtl.after === blkCtl.before - 1,
+  '⑨b2 ⭐ 決定性對照:把一檔的打法換成黑名單裡的招,它要被擋掉(⛔ 沒擋 = 黑名單沒接)',
+  `${blkCtl.before} → ${blkCtl.after}`);
+
+// ⑨c 舊快照(沒有位階/振幅)必須回 null,⛔ 不可回空陣列
+const nullCtl = await pg.evaluate(() => {
+  const d = (window.__H.days || []).filter(x => (x.sig || []).some(y => y && y.p != null))[0];
+  const clone = JSON.parse(JSON.stringify(d));
+  for (const x of clone.sig) { x.p = null; x.m = null; }
+  return { r: PRO._recoFitPicks(clone), mix: PRO._recoFitPicks(clone) === null };
+});
+ok(nullCtl.r === null,
+  '⑨c 🚨 舊快照沒有位階/振幅 → 回 `null`(重建不出來),⛔ 不可回空陣列冒充「那天 0 檔」', String(nullCtl.r));
+
+// ⑨d2 混搭:任一張是 null → 整天不算
+const mixCtl = await pg.evaluate(() => {
+  const days = (window.__H.days || []).filter(x => (x.sig || []).some(y => y && y.p != null));
+  return { n: days.length, bothNeeded: /if \(!a \|\| !b\) return null;/.test(PRO._recoLedgerLoad.toString()) };
+});
+ok(mixCtl.bothNeeded,
+  '⑨d2 🧪 混搭:任一張重建不出來就整天跳過(⛔ 只算一半 = 名不副實)');
+// ⭐ 行為版(⛔ 上面那條只看原始碼,改寫成別的寫法就抓不到):混搭的**起算日**不可早於
+//   比較嚴的那一張 —— 早了就代表它把「只有一張算得出來」的日子也算進去了。
+ok(srcRes.mix.since && srcRes.fit.since && srcRes.mix.since >= srcRes.fit.since,
+  '⑨d3 ⭐ 決定性對照:混搭的起算日⛔ 不可早於「📈 符合進場」的起算日(早了 = 只買了一張)',
+  `mix ${srcRes.mix.since} ・fit ${srcRes.fit.since} ・pb ${srcRes.pb.since}`);
+
+// ⑨e 快照端:位階/振幅走 screener_miner.build_one,⛔ 不可讀 screener.json
+{
+  const PS = readFileSync('pick_snapshot.py', 'utf8').split('\n')
+    .filter(l => !l.trim().startsWith('#')).join('\n');       // 🚨 先剝註解(註解裡就寫著 screener.json)
+  ok(/import screener_miner/.test(PS) && /build_one\(/.test(PS),
+    '⑨e 快照端的位階/振幅走 `screener_miner.build_one`(⛔ 不可在 pick_snapshot 另寫一套公式)');
+  ok(!/screener\.json/.test(PS),
+    '⑨e2 🚨 ⛔ 不可讀 `screener.json` —— 它在 workflow 裡跑在這一步**之後**,會拿昨天的位階配今天的訊號');
+  ok(/x\.get\('t'\)/.test(PS),
+    '⑨e3 🐛 打法名稱要讀 `today_signals` 真正的欄名 `t`(⛔ 只試 title/k 會讓 `sig[].k` 全是 null → 黑名單整個擋不掉)');
+  ok(/SIG_N/.test(PS) && !/\[:TOP_N\]\s*:?\s*$/m.test(PS.split('today_signals')[1] || ''),
+    '⑨e4 看多訊號要存多一點(SIG_N)—— 🧬 那一檔可能排在第 30 名,只存前 20 會系統性漏掉');
+}
 
 await b.close();
 console.log(bad ? `\n❌ ${bad} 條沒過` : '\n✅ RECOLEDGER_PASS(全部通過)');

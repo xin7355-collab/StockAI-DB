@@ -597,7 +597,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
             **pro.html 去 fetch index.html,把 `_SIGNAL_EDGE`/`_TIDY`/`_NOISE_*`/`_CHANGELOG`
             原地解析出來再自己渲染**(同 `miner._themes_from_pro()` 讀 pro.html 那招)。
             → 資料只有一份(住在它描述的那個檔案裡),渲染在這裡。 -->
-    <button class="tab-btn" id="tabBtnNoise" onclick="PRO.switchTab('noise')" title="哪些訊號實測沒用、哪些已經刪掉了 + 更新紀錄">🧹 雜訊清單</button>
+    <button class="tab-btn" id="tabBtnNoise" onclick="PRO.switchTab('noise')" title="哪些訊號實測沒用、哪些已經刪掉了 + 更新紀錄">雜訊清單</button>
   </div>
 </div></div>
 
@@ -843,7 +843,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 
 <div id="tabNoise" class="hidden">
   <div class="panel">
-    <h2>🧹 雜訊清單 / 🆕 更新紀錄 <span class="sub">哪些實測沒用、哪些刪掉了、這一版改了什麼</span></h2>
+    <h2>雜訊清單 / 🆕 更新紀錄 <span class="sub">哪些實測沒用、哪些刪掉了、這一版改了什麼</span></h2>
     <div class="labbar" id="noiseBar"></div>
     <div id="noiseBody"></div>
   </div>
@@ -1480,7 +1480,11 @@ const PRO = {
       this._idxData = {
         SIGNAL_EDGE: pick('_SIGNAL_EDGE'), TIDY: pick('_TIDY'),
         NOISE_GONE: pick('_NOISE_GONE'), NOISE_KEEP: pick('_NOISE_KEEP'),
-        CHANGELOG: pick('_CHANGELOG'), ver,
+        CHANGELOG: pick('_CHANGELOG'),
+        // 📈 V77.2.5 成績單的「📈 符合進場」要用到 🧬 門檻與黑名單 ——
+        //   ⛔ 一律從 index.html 原地解析,⛔ 不可在 pro.html 抄一份門檻數字(那就是第二份真相)。
+        EDGE_RULES: pick('_EDGE_RULES'),
+        ver,
       };
       this._idxErr = null;
     } catch (e) {
@@ -1492,7 +1496,8 @@ const PRO = {
   async renderNoise() {
     const bar = document.getElementById('noiseBar'), body = document.getElementById('noiseBody');
     if (!bar || !body) return;
-    const TB = [['noise', '🧹 雜訊清單'], ['log', '🆕 更新紀錄']];
+    // 🧽 V77.2.5 使用者:「雜訊清單的掃把圖示移除」→ ⛔ 分頁鈕與標題都不留 emoji(註解可以留)
+    const TB = [['noise', '雜訊清單'], ['log', '🆕 更新紀錄']];
     bar.innerHTML = TB.map(([k, l]) =>
       `<span class="labbtn ${this._noiseSub === k ? 'on' : ''}" onclick="PRO.selNoise('${k}')">${l}</span>`).join('');
     if (!this._idxData && !this._idxErr) {
@@ -2923,18 +2928,81 @@ const PRO = {
     for (const x of sorted) { const k = String(x.s); if (seen.has(k)) continue; seen.add(k); uniq.push(x); }   // 同一檔只留排最前面那一招
     return uniq.filter(x => (+x.hq || 0) === 1 && !(+x.bear || 0)).slice(0, this._RECO_PICKS);
   },
-  async _recoLedgerLoad(ruleArg) {
+  /** 📈 V77.2.5 成績單的三張清單(使用者:「符合進場的也進到成績單裡面…用分頁區隔開…
+   *  另外可以用混搭的方式回測」)。⭐ 三張問的是**不同的問題**,⛔ 不可混成一個數字:
+   *    ・`pb`  🧬 高基期高波動 = 決策台「🎯 今天可以買的」(playbook_edge:這一檔自己最會賺的那一招)
+   *    ・`fit` 📈 符合進場     = 今天出現期望值為正的看多訊號 **且** 🧬 位階/振幅都夠(= 總覽那顆徽章)
+   *    ・`mix` 🧪 兩張都買     = 兩張聯集(同一檔只算一次)
+   *  ⛔ 每一張都獨立算「唐奇安 vs ATR」,⛔ 不可把三張的筆數加起來當成一份成績。 */
+  _RECO_SRCS: [
+    ['pb',  '🧬 高基期高波動', '決策台「今天可以買的」'],
+    ['fit', '📈 符合進場',     '看多訊號 + 🧬 都成立'],
+    ['mix', '🧪 兩張都買',     '兩張聯集,同一檔只算一次'],
+  ],
+  _recoSrc: 'pb',
+  selRecoSrc(k) { this.buzz(10); this._recoSrc = k; this._recoLedgerRender(); },
+
+  /** 🧬 門檻與黑名單一律讀 index.html 的 `_EDGE_RULES`(由 `loadIdx` 原地解析)。
+   *  ⛔ 讀不到就回 null → 呼叫端要誠實說「算不出來」,⛔ 不可用預設值猜(陷阱 #22)。 */
+  _geneRule() { const E = this._idxData && this._idxData.EDGE_RULES; return (E && E.gene && E.gene.pos != null) ? E.gene : null; },
+  _proBlockWhy(txt) {
+    try {
+      const E = this._idxData && this._idxData.EDGE_RULES;
+      if (!E || !Array.isArray(E.blocked)) return null;
+      return E.blocked.find(b => b && b.re && b.re.test(String(txt || ''))) || null;
+    } catch (_) { return null; }
+  },
+
+  /** 📈 重建某一天的「符合進場」名單 —— 跟 index.html `_deckFitScan` **同一套判準**:
+   *  ① 今天的看多訊號(快照的 `sig`,採礦端只收期望值為正的)
+   *  ② 🧬 位階 ≥ gene.pos 且振幅 ≥ gene.amp(⛔ 門檻讀 `_EDGE_RULES`,⛔ 不寫死)
+   *  ③ 黑名單(實測沒用 / 方向相反的招)不進
+   *  ④ 同一檔只留期望值最高那一招 → 依期望值由大到小
+   *  🚨 回 `null` 代表「**重建不出來**」(舊快照沒有位階/振幅,或門檻讀不到),
+   *     ⛔ 跟「那天 0 檔」是兩件事,⛔ 不可長得一樣。 */
+  _recoFitPicks(day) {
+    const arr = (day && Array.isArray(day.sig)) ? day.sig : null;
+    if (!arr || !arr.length) return null;
+    if (!arr.some(x => x && x.p != null && x.m != null)) return null;   // 舊快照沒有這兩欄 → ⛔ 不猜
+    const R = this._geneRule();
+    if (!R) return null;
+    const ok = arr.filter(x => x && x.p != null && x.m != null
+                            && +x.p >= +R.pos && +x.m >= +R.amp && !this._proBlockWhy(x.k));
+    const best = new Map();
+    for (const x of ok) { const k = String(x.s); const c = best.get(k); if (!c || (+x.e || 0) > (+c.e || 0)) best.set(k, x); }
+    return [...best.values()].sort((a, b) => (+b.e || 0) - (+a.e || 0));
+  },
+
+  async _recoLedgerLoad(ruleArg, srcArg) {
     // 🏆 V77.2.4 收 `ruleArg` —— 讓「哪個出場最強」可以用**同一批推薦**跑第二種出場。
     //   ⛔ 預設仍是 `_exitRule()`(你自己設的那條),既有呼叫端零影響。
+    // 📈 V77.2.5 再收 `srcArg` —— 三張清單各自獨立跑(⛔ 三張的筆數不可相加)。
     const rule = ruleArg || this._exitRule();
+    const src = srcArg || 'pb';
+    // 🧬 `fit` / `mix` 要用到 index.html 的門檻與黑名單 → 先把它載進來(⛔ 不在這裡抄一份)
+    if (src !== 'pb') { try { await this.loadIdx(); } catch (_) {} }
     const H = await this.fetchJson('data/pick_history.json', 12000);
-    const days = (H && Array.isArray(H.days) ? H.days : []).filter(d => d && d.d && Array.isArray(d.pb)).slice().sort((a, b) => (a.d < b.d ? -1 : 1));
+    const days = (H && Array.isArray(H.days) ? H.days : [])
+      .filter(d => d && d.d && (Array.isArray(d.pb) || Array.isArray(d.sig)))
+      .slice().sort((a, b) => (a.d < b.d ? -1 : 1));
     await this._twiiLoad();
-    const out = { rule, days: days.length, since: null, skipped: 0, trades: [], noK: [] };
+    const out = { rule, src, days: days.length, since: null, skipped: 0, trades: [], noK: [],
+                  geneErr: (src !== 'pb' && !this._geneRule()) ? (this._idxErr || '解析不到門檻') : null };
     const open = new Map();                       // sym → 那筆的出場日('9999' = 還持有中)
     const K = this._rlK = this._rlK || {};        // K 線快取(⛔ 同一檔不重抓)
+    // 🧪 混搭 = 兩張聯集。⛔ 任一張重建不出來就整天跳過 ——
+    //   只算得出來的那一半會讓它看起來像「兩張都買」,但其實只買了一張(同名不同義)。
+    const picksOf = (day) => {
+      if (src === 'pb') return this._recoPicks(day.pb);
+      if (src === 'fit') return this._recoFitPicks(day);
+      const a = this._recoPicks(day.pb), b = this._recoFitPicks(day);
+      if (!a || !b) return null;
+      const seen = new Set(), uniq = [];
+      for (const x of a.concat(b)) { const k = String(x.s); if (seen.has(k)) continue; seen.add(k); uniq.push(x); }
+      return uniq;
+    };
     for (const day of days) {
-      const picks = this._recoPicks(day.pb);
+      const picks = picksOf(day);
       if (!picks) { out.skipped++; continue; }
       out.since = out.since || day.d;
       for (const x of picks) {
@@ -2982,10 +3050,10 @@ const PRO = {
     return { n, win, wr: win / n * 100, avg, lot, dd, open: (R.trades || []).filter(t => t.st && t.st.open).length,
              exWin: exs.filter(v => v > 0).length, exN: exs.length };
   },
-  async _recoCmpLoad() {
+  async _recoCmpLoad(srcArg) {
     const out = {};
     for (const k of this._CMP_EXITS) {
-      try { out[k] = this._recoSummary(await this._recoLedgerLoad(k)); } catch (_) { out[k] = { n: 0 }; }
+      try { out[k] = this._recoSummary(await this._recoLedgerLoad(k, srcArg)); } catch (_) { out[k] = { n: 0 }; }
     }
     return out;
   },
@@ -3033,24 +3101,37 @@ const PRO = {
   },
   _recoLedgerRender() {
     const el = document.getElementById('recoLedger'); if (!el) return;
-    const sig = 'reco|' + this._exitRule();
+    // 📈 V77.2.5 快取鍵要含「哪一張清單」—— ⛔ 少了它換分頁會吃到上一張的結果
+    const SRC = this._recoSrc || 'pb';
+    const sig = 'reco|' + this._exitRule() + '|' + SRC;
+    // 🔖 分頁列(三張清單)—— 放在最上面,⛔ 不管載入到哪一步都要看得到(不然按不到)
+    const tabBar = `<div class="labbar" style="margin:6px 0 2px">${this._RECO_SRCS.map(([k, t, sub]) =>
+      `<span class="labbtn ${SRC === k ? 'on' : ''}" data-recosrc="${k}" title="${this._esc(sub)}" onclick="PRO.selRecoSrc('${k}')">${t}</span>`).join('')}</div>`;
     if (this._rlSig !== sig || !this._rl) {
       this._rlSig = sig; this._rl = null;
-      el.innerHTML = `<div class="fishcard" style="margin-top:10px"><div class="big">📒 決策台推薦成績單</div><div class="note">⏳ 正在讀每天的推薦快照並逐筆結算…</div></div>`;
-      this._recoLedgerLoad().then(r => { if (this._rlSig !== sig) return; this._rl = r; this._recoLedgerRender(); })
+      el.innerHTML = `<div class="fishcard" style="margin-top:10px"><div class="big">📒 決策台推薦成績單</div>${tabBar}<div class="note">⏳ 正在讀每天的推薦快照並逐筆結算…</div></div>`;
+      this._recoLedgerLoad(null, SRC).then(r => { if (this._rlSig !== sig) return; this._rl = r; this._recoLedgerRender(); })
         .catch(e => { if (this._rlSig !== sig) return; this._rl = { err: String(e).slice(0, 120) }; this._recoLedgerRender(); });
       return;
     }
     // 🏆 V77.2.4 主表畫好之後,背景再用另一種出場跑一次(K 線已在 `_rlK` 快取,⛔ 不重抓)
     if (this._rlCmpSig !== sig && this._rl && !this._rl.err) {
-      this._rlCmpSig = sig;
-      this._recoCmpLoad().then(c => { if (this._rlCmpSig !== sig) return; this._rlCmp = c; this._recoLedgerRender(); }).catch(() => {});
+      this._rlCmpSig = sig; this._rlCmp = null;
+      this._recoCmpLoad(SRC).then(c => { if (this._rlCmpSig !== sig) return; this._rlCmp = c; this._recoLedgerRender(); }).catch(() => {});
     }
     const R = this._rl;
     const money = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString() + ' 元';
-    const head = `<div class="big">📒 決策台推薦成績單 <span class="sigtag">${R.trades ? R.trades.length : 0} 筆</span></div>`;
+    const SRCDEF = this._RECO_SRCS.find(x => x[0] === SRC) || this._RECO_SRCS[0];
+    const head = `<div class="big">📒 決策台推薦成績單 <span class="sigtag">${SRCDEF[1]} ・${R.trades ? R.trades.length : 0} 筆</span></div>${tabBar}`;
     if (R.err) { el.innerHTML = `<div class="fishcard" style="margin-top:10px">${head}<div class="note">⚠️ 讀不到推薦快照(${R.err})—— 稍後再開一次;⛔ 這不是成績為零。</div></div>`; return; }
     if (!R.days) { el.innerHTML = `<div class="fishcard" style="margin-top:10px">${head}<div class="note">⏳ 還沒有任何一天的推薦快照(data/pick_history.json)—— 採礦每個交易日收盤後會自動存下決策台「今天可以買的」名單,⛔ 不用你開 App。</div></div>`; return; }
+    // 🚨 「重建不出來」與「那幾天真的 0 檔」是兩件事 —— ⛔ 不可長得一樣(陷阱 #22)
+    if (R.geneErr) {
+      el.innerHTML = `<div class="fishcard" style="margin-top:10px">${head}<div class="warnbox">⚠️ <b>這一張現在算不出來</b> ——
+        「📈 符合進場」的門檻(🧬 位階/振幅)與黑名單住在散戶救星那邊,這裡是<b>現場去讀</b>的(⛔ 刻意不抄一份),而這次讀不到(${this._esc(String(R.geneErr))})。<br>
+        ⛔ 這<b>不代表那幾天沒有符合進場的股票</b>,只代表現在判不出來。稍後再開一次,或先看「🧬 高基期高波動」那一張。</div></div>`;
+      return;
+    }
     const since = R.since || this._RECO_SINCE;
     const done = R.trades.filter(t => t.st && !t.st.open), hold = R.trades.filter(t => t.st && t.st.open), pend = R.trades.filter(t => !t.st);
     const row = t => {
@@ -3076,6 +3157,16 @@ const PRO = {
     //   ① 第一眼只留**一行狀態**(幾天 / 持有中 / 已結算)—— 長說明整段收進摺疊
     //   ② 顏色分三段:📌 持有中 = 天藍(會變) ・🧾 已結算 = 灰(定了) ・🏆 出場比較 = 青
     //      ⛔ 這三個顏色講的是「這一段是什麼」,⛔ 不是好壞(燈號鐵則:紅綠只准講漲跌)
+    // 📖 每一張清單的定義各講各的(⛔ 不可共用一句 —— 三張的判準不一樣)
+    const _gr = this._geneRule();
+    const _gtxt = _gr ? `位階 ≥${_gr.pos} 且振幅 ≥${_gr.amp}%` : '位階/振幅門檻';
+    const srcNote = SRC === 'pb'
+      ? `⭐ <b>🧬 高基期高波動 = 散戶救星決策台「🎯 今天可以買的(最多 ${this._RECO_PICKS} 檔)」</b>,採礦每天收盤後自動存名單(⛔ 不靠你開 App)。<br>`
+      : SRC === 'fit'
+      ? `⭐ <b>📈 符合進場 = 總覽那顆徽章今天在哪幾檔亮</b>:今天出現<b>期望值為正的看多訊號</b>,而且 🧬 <b>${_gtxt}</b> 同時成立(黑名單那幾招不算)。<br>
+         ⚠️ 這裡<b>沒有檔數上限</b>(決策台那張有,最多 ${this._RECO_PICKS} 檔)—— 實測大多數日子是 0~3 檔。<br>
+         ⚠️ 期望值<b>未扣</b>來回成本 0.44%;這張只過得了「條件到了」,<b>個股頁的空頭守門在這裡算不出來</b>,真的要買會再被擋一次。<br>`
+      : `⭐ <b>🧪 兩張都買 = 上面兩張的聯集</b>(同一檔只算一次)。⛔ 任何一天只要有一張重建不出來,<b>那一天整天不算</b> —— 只算得出來的那一半會讓它看起來像「兩張都買」,其實只買了一張。<br>`;
     const statLine = `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0 4px;font-size:10.5px;color:var(--dim2)">
         <span>📅 ${since} 起</span><span>・快照 ${R.days} 天</span>
         <span style="color:var(--cyan)">・📌 持有中 ${hold.length}</span>
@@ -3087,14 +3178,17 @@ const PRO = {
       <details style="margin:0 0 8px">
         <summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim2)">📖 這張表在算什麼 <span style="color:var(--dim2)">展開 ▾</span></summary>
         <div class="note" style="margin:5px 0 0;font-size:10.5px">
-          ⭐ <b>推薦 = 散戶救星決策台「🎯 今天可以買的(最多 ${this._RECO_PICKS} 檔)」</b>,採礦每天收盤後自動存名單(⛔ 不靠你開 App),
+          ${srcNote}
           進場 = 推薦那天的收盤,出場 = <b>${this._exitRuleName()}</b>(換規則整張表重算)。
-          ${R.skipped ? `📅 之前 ${R.skipped} 天的快照沒有旗標,重建不出決策台名單,⛔ 不硬湊。<br>` : ''}
+          ${R.skipped ? `📅 其中 ${R.skipped} 天重建不出這張清單(快照沒有那幾個欄位),⛔ 不硬湊。<br>` : ''}
           ⚠️ 決策台真正排序時會把<b>你自己持有的</b>排前面,這裡是<b>不含持股的純推薦版</b>;同一檔還持有中就不重複開倉。<br>
+          🚨 <b>三張分頁的筆數⛔ 不可以相加</b> —— 它們問的是不同的問題,而且同一檔可能同時出現在兩張裡。<br>
           🕐 <b>買進時機、挑選條件</b>那幾條寫在散戶救星決策台的「📖 使用說明」裡(⛔ 這裡不重複,免得兩邊講不一樣)。
         </div>
       </details>
-      ${R.trades.length ? '' : `<div class="note">📭 ${since} 之後還沒有任何一天有「可以買的」(決策台那幾天是空手 —— ⛔ 那不是壞掉,是 🧬 必要條件沒過或大盤空頭)。</div>`}
+      ${R.trades.length ? '' : (R.skipped >= R.days
+        ? `<div class="note">⏳ <b>這一張還沒有資料</b> —— 快照裡那 ${R.days} 天都缺這張清單需要的欄位(${SRC === 'pb' ? '🧬/空頭旗標' : '訊號的位階/振幅'}),⛔ 重建不出來也⛔ 不硬湊。<br>採礦下一輪跑完就會開始累積;⭐ 這<b>不是</b>「那幾天沒有股票」。</div>`
+        : `<div class="note">📭 ${since} 之後還沒有任何一天有符合的股票(⛔ 那不是壞掉 —— 條件本來就嚴)。</div>`)}
       ${hold.length ? `<div style="font-size:11px;color:var(--cyan);font-weight:700;margin:2px 0 5px;border-left:3px solid var(--cyan);padding-left:6px">📌 持有中 ${hold.length} 筆 <span style="font-weight:400;color:var(--dim2);font-size:10px">帳面浮動,會一直變</span></div>${hold.map(row).join('')}` : ''}
       ${done.length ? `<div style="font-size:11px;color:var(--dim);font-weight:700;margin:8px 0 5px;border-left:3px solid var(--line);padding-left:6px">🧾 已結算 ${done.length} 筆 <span style="font-weight:400;color:var(--dim2);font-size:10px">出場價已定,不會再變</span></div>${done.map(row).join('')}` : ''}
       ${pend.length ? pend.map(row).join('') : ''}
@@ -4541,7 +4635,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V77.2.4',
+  VER: 'V77.2.5',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

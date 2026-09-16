@@ -87,9 +87,15 @@ ok('⑤b ⛔ 不可出現操作指令(這頁是列管清單不是訊號)',
 // ⑥ 🧹 V74.5.6 使用者:「雜訊清單移到實測總表右手邊」
 const PRO_SRC = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 const tabs = (PRO_SRC.match(/<div class="tabs">[\s\S]*?<\/div>/) || [''])[0];
-ok('⑥ 產業作戰室的分頁列有「🧹 雜訊清單」入口', /🧹 雜訊清單/.test(tabs), tabs.slice(0, 200));
+// 🧽 V77.2.5 使用者:「雜訊清單的掃把圖示移除」→ 斷言改釘**用意**(入口在、排右邊),
+//   ⛔ 不再釘 emoji 那個字面(那釘的是實作);⭐ 順便釘住「⛔ 不可把掃把加回來」。
+ok('⑥ 產業作戰室的分頁列有「雜訊清單」入口', /雜訊清單/.test(tabs), tabs.slice(0, 200));
 ok('⑥b ⭐ 而且排在「實測總表」**右邊**',
-    tabs.indexOf('實測總表') > 0 && tabs.indexOf('🧹 雜訊清單') > tabs.indexOf('實測總表'));
+    tabs.indexOf('實測總表') > 0 && tabs.indexOf('雜訊清單') > tabs.indexOf('實測總表'));
+// 🚨 斷言原始碼之前**要先剝掉註解** —— 這一段的 HTML 註解裡就引用著舊的「🧹 雜訊清單」,
+//   不剝的話會被自己的註解判成「還沒移除」(本 repo 第 N 次踩到,已寫進 CLAUDE.md)。
+const tabsNoC = tabs.replace(/<!--[\s\S]*?-->/g, '');
+ok('⑥b2 🧽 分頁鈕⛔ 不可再有掃把圖示(使用者明示移除)', !/🧹\s*雜訊清單/.test(tabsNoC), tabsNoC.slice(0, 300));
 // 🚨 V74.6.2 ⑥c/⑥d 是**刻意推翻** V74.5.6 的(使用者要求它變成真的分頁)。
 //   ⛔ 但「不可以有第二份數據」那條鐵則沒有被推翻 —— 改成釘更強的東西:
 //      pro.html 必須是「fetch index.html 再解析」,⛔ 不可把那些文字抄過來。

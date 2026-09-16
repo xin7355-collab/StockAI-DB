@@ -34,7 +34,10 @@ from pathlib import Path
 DATA = Path(os.getenv('DATA_DIR', 'data'))
 OUT = DATA / 'pick_history.json'
 KEEP_DAYS = int(os.getenv('KEEP_DAYS', '400'))     # 保留幾天(約 1.5 年)
-TOP_N = int(os.getenv('TOP_N', '20'))              # 每天存前幾名(⛔ 不存全部,體積會爆)
+TOP_N = int(os.getenv('TOP_N', '20'))              # 明日作戰清單每天存前幾名(⛔ 不存全部,體積會爆)
+# 📈 V77.2.5 實測訊號要存多一點 —— 「📈 符合進場」是 bull ∩ 🧬,而 🧬 的那一檔
+#   可能排在 bull 的第 30 名 → 只存前 20 筆會**系統性漏掉**(同 pb 的 EXTRA_HQ 補位)。
+SIG_N = int(os.getenv('SIG_N', '60'))              # 每天存前幾筆看多訊號
 
 
 def _load(p, d=None):
@@ -80,19 +83,71 @@ def main():
             day['pb'] = picks
 
     # ── ② 今天出現的實測訊號(today_signals)──
+    # 📈 V77.2.5 使用者:「符合進場的也進到成績單裡面,重新回測」
+    #   決策台那個「📈 符合進場」= `today_signals.bull` ∩ 🧬(位階 ≥75 且振幅 ≥3.2%)− 黑名單。
+    #   要事後重建它,快照就得多存三個**事實欄**:`e` 期望值(排序用)・`p` 一年位階 ・`m` 20 日振幅。
+    #
+    # ⛔⛔ 只存 p / m 兩個**原始數字**,⛔ 不在這裡判斷「有沒有符合 🧬」——
+    #    門檻(index.html `_EDGE_RULES.gene`)寫進這裡就變成第二份真相;
+    #    而且門檻日後若調整,存原始數字的歷史可以**重新判定**,存結論的不行。
+    #    (= 本檔頂端鐵則 ①「只存事實,⛔ 不存任何結論或評分」。)
+    #
+    # 🚨 位階/振幅⛔ **不可以讀 `screener.json`** —— 在 `playbook_scan.yml` 裡
+    #    這一步跑在 `screener_miner.py` **之前**,那時候 `screener.json` 還是**昨天**那份
+    #    (從 data 分支還原回來的)→ 會拿昨天的位階去配今天的訊號,而 App 上顯示的是今天的
+    #    → 成績單跟畫面對不起來(使用者講最多次的「邏輯打架」)。
+    # ⭐ 正解:直接呼叫 `screener_miner.build_one()` —— **同一份實作、同一份 data/{sym}.json**,
+    #    ⛔ 不在這裡另寫一套公式(那就是第二份真相)。只算 bull 那幾十檔,很便宜。
+    try:
+        import screener_miner as _scr
+    except Exception as _e:                                  # pragma: no cover
+        _scr = None
+        print(f'   ⚠️ 匯入 screener_miner 失敗({_e})→ 這一天的訊號沒有位階/振幅')
+
+    def _posamp(sym):
+        """回 (一年位階 %, 20 日振幅 %);算不出來回 (None, None)。⛔ 公式只有一份。"""
+        if _scr is None:
+            return (None, None)
+        rows = _load(DATA / f'{sym}.json')
+        if not isinstance(rows, list) or not rows:
+            return (None, None)
+        try:
+            v = _scr.build_one(rows)
+        except Exception:
+            return (None, None)
+        if not v:
+            return (None, None)
+        return (v[_scr.CI['pos252']], v[_scr.CI['amp20']])
+
     ts = _load(DATA / 'today_signals.json')
     if isinstance(ts, dict):
         d2 = str(ts.get('data_date') or '')[:10]
         arr = ts.get('bull') or ts.get('picks') or ts.get('items') or []
         sig = []
-        for x in (arr if isinstance(arr, list) else [])[:TOP_N]:
+        for x in (arr if isinstance(arr, list) else [])[:SIG_N]:
             if isinstance(x, dict):
-                sig.append({'s': str(x.get('sym') or x.get('s') or ''),
+                sym = str(x.get('sym') or x.get('s') or '')
+                pos, amp = _posamp(sym)
+                sig.append({'s': sym,
                             'c': x.get('close') or x.get('c'),
-                            'k': x.get('title') or x.get('k')})
+                            # 🐛 V77.2.5 修掉既有 bug:`today_signals.bull` 的打法名稱欄位叫 **`t`**
+                            #   (`{'s','c','v','a20','d','t','g','n','w','exp','po'}`),而這裡從
+                            #   V73.4.1 起只試 `title`/`k` → **每一天的 `sig[].k` 都是 null**。
+                            #   🚨 後果不只是難看:「📈 符合進場」要靠打法名稱過**黑名單**
+                            #   (撿便宜/補漲/布林壓縮… 那幾招實測沒用甚至反向),名稱是 null 就整個擋不掉。
+                            'k': x.get('title') or x.get('t') or x.get('k'),
+                            'e': x.get('exp'),
+                            'p': pos, 'm': amp})
         if d2 and sig:
             day.setdefault('d', d2)
             day['sig'] = sig
+            _pm = sum(1 for z in sig if z.get('p') is not None)
+            # 🚧 空過守門:一筆都補不到 → 前端重建不出「📈 符合進場」,⛔ 不可靜默(陷阱 #22)
+            if _pm == 0:
+                print('   ⚠️ 位階/振幅一筆都算不出來(data/{sym}.json 還原了嗎?)'
+                      '→ 「📈 符合進場」這一天重建不出來,前端會誠實標出起算日')
+            else:
+                print(f'   🧬 位階/振幅補到 {_pm}/{len(sig)} 筆(screener_miner.build_one,⛔ 同一份公式)')
 
     if not day.get('d'):
         # 🚧 空過守門:兩個來源都讀不到 → ⛔ 不可寫出空快照假裝有存
