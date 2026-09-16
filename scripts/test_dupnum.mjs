@@ -571,6 +571,95 @@ await page.waitForTimeout(2500);
                 return !/樣本少/.test(m[1]); })(), r.th.lead.slice(0, 160));
 }
 
+// ─────── 💸📚📖 V77.1.8 省 AI 次數 / 多模型比較 / 法人級提示詞 ───────
+{   // ⓢ 會打 AI 的快取鍵⛔ 不可綁「時鐘」,也⛔ 不可被每一檔跳動打掉
+    const s = seg('    async analyzeStockPredict(opts = {}) {', '        const arr2 = ');
+    const s2 = s || seg('    async analyzeStockPredict(opts = {}) {', '        // 收集個股關鍵資料');
+    ok('ⓢs 空過守門:抓得到明日劇本那一段', s2.length > 400, `len=${s2.length}`);
+    ok('ⓢs2 ⛔ 不可再用「15 分鐘時鐘」當快取(那就是價格一跳就重打 OpenRouter 的真因)',
+       !/15 \* 60 \* 1000/.test(s2), (s2.match(/.{0,40}15 \* 60 \* 1000.{0,20}/) || [''])[0]);
+    ok('ⓢs3 ⭐ 改綁「資料日期 + 模型」,再跟**當初那個價**比(⛔ 不是拿掉價格敏感度 —— 那樣大漲後還顯示舊劇本)',
+       /_pkD/.test(s2) && /_aiPriceNear\(_pkP, c\.px\)/.test(s2) && /aiEngine/.test(s2), '');
+    ok('ⓢs3b ⭐ 存快取時要把**當初那個價**一起存(⛔ 沒有它就只能綁時鐘)',
+       /px: _pkP/.test(s2) || /px: _pkP/.test(SRC), '');
+    const h = seg('    _aiPriceNear(a, b, pct = 1) {', '    // 📦 首席 AI 當日快取');
+    ok('ⓢs4 用**比值**⛔ 不用固定元(10 元股跟 1000 元股的 1% 差 100 倍)',
+       /Math\.abs\(x \/ y - 1\) \* 100 < pct/.test(h), h.slice(0, 160));
+}
+{   // ⓣ 多模型:下拉 + 同欄位 + ⛔ 不給綜合品質分數
+    const g = seg('    _RP_GEN: [', '    _rpNoteKey(sym) {');
+    ok('ⓣs 空過守門:抓得到多模型那一段', g.length > 1500, `len=${g.length}`);
+    ok('ⓣs2 選單要同時有「會查網路」的外部與「App 內」的模型,而且 App 內的⛔ 要標明不會上網',
+       /web: 1/.test(g) && /chain: 'gemini-openrouter'/.test(g) && /chain: 'openrouter-gemini'/.test(g)
+       && /chain: 'groq-only'/.test(g) && /不會上網/.test(g), '');
+    ok('ⓣs3 ⛔ 不給綜合品質分數(陷阱 #38)—— 只列數得出來的東西',
+       /⛔ \*\*刻意不給「綜合品質分數」\*\*/.test(SRC) && /_rpQualBits/.test(g)
+       && !/qualScore|品質分數 *[:=] *\d/.test(g), '');
+    ok('ⓣs4 App 內模型的提示詞要**額外**告訴它「你不能上網,那幾節寫查不到」',
+       /沒有上網能力/.test(g) && /一個網址都不准寫/.test(g), '');
+    // 🆓 免費模型清單⛔ 不可寫死(V73.8.0:OpenRouter 會下架 slug)
+    const f = seg('    async _rpFreeModels() {', '    _rpNoteKey(sym) {');
+    ok('ⓣs5 🆓 免費模型是**當場問官方**拿的,⛔ 不是寫死的清單',
+       /openrouter\.ai\/api\/v1\/models/.test(f) && /pricing\?\.prompt/.test(f)
+       && !/':free'\s*,\s*'/.test(f), '');
+}
+{   // ⓤ 法人級提示詞:他規格裡真正新增的四件 + 我改掉的兩條
+    const P = seg('    _reportPrompt(sym) {', '    // 🎨 V76.2.3 做圖提示詞');
+    ok('ⓤs 空過守門:抓得到提示詞', P.length > 4000, `len=${P.length}`);
+    ok('ⓤ1 來源優先順序四級 + 第四級只能當線索',
+       /第四級只能當線索/.test(P) && /公開資訊觀測站/.test(P) && /Reuters/.test(P), '');
+    ok('ⓤ2 五關自我複查,而且⛔ 不可把複查過程印出來',
+       /五關自我複查/.test(P) && /不要把複查過程寫出來/.test(P), '');
+    ok('ⓤ3 A 事實 / B 合理推論 / C 未知 三級,C ⛔ 不可寫成 A',
+       /A 事實/.test(P) && /B 合理推論/.test(P) && /C 未知/.test(P) && /C 不可寫成 A/.test(P), '');
+    ok('ⓤ4 新聞敘事與管理層說法⛔ 不可改寫成事實(要保留誰在什麼時候說的)',
+       /保留來源屬性/.test(P) && /管理層說法同理/.test(P), '');
+    // 🚨 我**刻意改掉**他規格的兩條 —— 照抄會讓本站自己的實測成績被刪掉 / 免責消失
+    ok('ⓤ5 🚨 「禁止勝率」要限縮成「⛔ 你不可以**自己產生**」(⛔ 不可把本站實測成績也禁掉)',
+       /本站實測的勝率或期望值/.test(P) && /照抄即可/.test(P), '');
+    ok('ⓤ6 🚨 免責由本站自己印 → 提示詞叫 AI 別寫套話免責',
+       /不要寫「以上僅供參考/.test(P) && /免責由本站自己印/.test(P), '');
+    ok('ⓤ7 🚨 12 季那一組**沒有營益率**要明寫(資料源沒有營業費用,⛔ 不可叫它自己算)',
+       /12 季那一組\*\*沒有營益率\*\*/.test(P), '');
+    ok('ⓤ8 ⭐ 補上他規格沒有的「篇幅不夠時先保證哪幾節」(21 節會被 token 上限截斷)',
+       /篇幅不夠時/.test(P) && /節號一個都不可跳/.test(P), '');
+    ok('ⓤ9 行事曆那條實測結論照舊寫在提示詞裡(⛔ 不可因為改版掉了)',
+       /方向 0 個成立/.test(P) && /波動可能變大/.test(P), '');
+    ok('ⓤ10 ⛔ 綜合分數 / 星等 / 因子評分一個都不要',
+       /因子評分、§20 星等評等已經刪掉/.test(P) && /不給機率/.test(P), '');
+}
+
+{   // ⓥ **執行期**(⛔ 光靠原始碼斷言不夠):價格桶真的「微跳不換、走 1% 才換」+ 下拉真的在畫面上
+    const v = await page.evaluate(async () => {
+        const A = app;
+        const B = (x, y) => A._aiPriceNear(x, y);
+        await A.renderReportTab('6894').catch(() => {});
+        await new Promise(r => setTimeout(r, 300));
+        const sel = document.querySelector('#rpPaste #rpGenSel');
+        return {
+            same: B(100.4, 100),                // +0.4% → 算「沒走遠」,吃快取
+            near: B(100.9, 100),                // 🚨 +0.9% 也要吃快取(桶版本這裡會紅 —— 它有邊界)
+            diff: !B(102, 100),                 // +2%  → 重算
+            hi:   !B(1020, 1000),               // 高價股一樣 1% 才重算(⛔ 不是固定元)
+            //   ⚠️ 低價股這一格是**執行期的決定性對照**:改成「差 < 1 **元**」的話,
+            //     10 → 10.5(整整 +5%)會被當成「沒走遠」而吃到舊快取(⛔ 而 hi/same/near/diff 都抓不到)
+            lo:   !B(10.5, 10),
+            na:   !B(0, 100) && !B(null, 100),
+            opts: sel ? [...sel.options].map(o => o.value) : [],
+            genBtn: !!document.querySelector('#rpPaste [data-rpgenrun]'),
+            free:   !!document.querySelector('#rpPaste [data-rpfreebtn]'),
+        };
+    });
+    // ⭐⭐ ⓥ1 是**決定性**的那一條:第一版做成「量化成桶」時它就是紅的(桶有邊界,+0.9% 剛好跨過去)
+    ok('ⓥ1 微跳(+0.4% / +0.9%)⛔ 不重算 → 不會重打 AI', v.same && v.near, JSON.stringify(v));
+    ok('ⓥ2 真的走了 2% 才重算(⛔ 不是拿掉價格敏感度)', v.diff, JSON.stringify(v));
+    ok('ⓥ3 高價股用同樣的 1%(⛔ 不是固定元)', v.hi, JSON.stringify(v));
+    ok('ⓥ3b ⭐ 低價股 10 → 10.5(+5%)一定要重算(注入「差 < 1 元」時只有這一條叫得出來)', v.lo, JSON.stringify(v));
+    ok('ⓥ4 沒有價格時⛔ 不可當成「很接近」(那會讓所有股票都吃到別人的快取)', v.na, JSON.stringify(v));
+    ok('ⓥ5 下拉真的在畫面上,而且五個模型都在', v.opts.length === 5 && v.opts.includes('px') && v.opts.includes('or'), JSON.stringify(v.opts));
+    ok('ⓥ6 「產出」與「🆓 免費模型」兩顆按鈕都在這張卡裡', v.genBtn && v.free, JSON.stringify({ g: v.genBtn, f: v.free }));
+}
+
 ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
 await browser.close();
 console.log(fails.length ? `\n❌ ${fails.length} 條沒過` : '\n✅ 全部通過');

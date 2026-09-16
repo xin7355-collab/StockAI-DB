@@ -426,7 +426,11 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html.rpVal) && /rpRevOut/.test(R
        MAF.n >= 3 && /月線 \d/.test(MAF.line) && !/^- 均線:—$/.test(MAF.line), MAF.line);
     ok('⑫b4 🚨 提示詞要明寫「看到『—』⛔ 不可以自己算」+「出場線 ≠ 融資追繳線」(實測外部 AI 兩件都犯過)',
        /不可以自己算或自己編/.test(P) && /出場線 ≠ 融資追繳線/.test(P), '');
-    ok('⑫d 提示詞 <6,500 字且帶入年化 EPS / 位階', P.length < 6500 && P.includes(R.ctx.eps.toFixed(2)) && /估值基期.*\d+%/.test(P), `len ${P.length}`);
+    // ⚠️ V77.1.8 上限 6,500 → 11,000:使用者**明示**要「法人級」提示詞,併進了來源優先順序四級 /
+    //    五關自我複查 / A·B·C 三級 / 新聞與管理層說法不可當事實 / 各節額外規則。
+    //    ⛔ 這不是「放寬斷言去遷就程式」,是**需求變了**;⛔ 上限仍然要有(它防的是無限膨脹)。
+    //    ⭐ 而且長度變長**不影響**使用流程 —— 深連結本來就帶不進去(⑫f),一律先複製再貼。
+    ok('⑫d 提示詞 <11,000 字且帶入年化 EPS / 位階', P.length < 11000 && P.includes(R.ctx.eps.toFixed(2)) && /估值基期.*\d+%/.test(P), `len ${P.length}`);
     // 🎨 V76.2.3 做圖提示詞:顏色鐵則要寫死(使用者那張圖把「好」塗綠、「風險」塗紅,跟同圖上的漲跌顏色打架)
     const CH = await page.evaluate(() => { const A = app; return { q: A._reportChartPrompt('5483'), sameFacts: A._reportChartPrompt('5483').includes(A._reportFacts('5483')) }; });
     ok('🎨a 做圖提示詞寫死台股紅漲綠跌 + ⛔ 紅綠不可表示好壞 + 風險用 ✅⚠️⛔ 圖示 + ⛔ 不畫綠牛紅熊',
@@ -840,8 +844,13 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     //    ⛔ 這不是「放寬斷言去遷就程式」,是**需求變了**(舊的 450 是「§1 + 一節」時代訂的)。
     //    ⭐ 而同一版把每行重複的來源引註剝掉,已經先把字數買回來一截 —— 沒有那個,兩節會爆很多。
     //    ⛔ 上限仍然要有:第一眼失控正是這張卡當初要修的病。
-    ok('📐a 已貼過報告時第一眼 ≤ 520 字(⛔ 上限不可拿掉 —— 改版前 655 是操作說明佔一半)',
-       LAY.chars <= 520 && LAY.chars > 120, `${LAY.chars} 字`);
+    // ⚠️ V77.1.8 上限 520 → 580:使用者**明示**「完整報告新增各個模型按鈕…用下拉鍵式的方式」
+    //    → 模型下拉 + 一顆產出鈕必須看得見(⛔ 收進摺疊等於沒做到他要的事)。
+    //    ⭐ 已經先把能省的都省了:選單只印**模型名**(說明搬進 ⚙️ 摺疊 —— `<select>` 的 innerText
+    //      會把每一個 option 都算進來)、🆓 免費模型鈕也搬進摺疊、版本比較只有**兩份以上**才出現。
+    //    ⛔ 上限仍然要有,而且⛔ 不可再為了塞東西往上調 —— 第一眼失控正是這張卡當初要修的病。
+    ok('📐a 已貼過報告時第一眼 ≤ 580 字(⛔ 上限不可拿掉 —— 改版前 655 是操作說明佔一半)',
+       LAY.chars <= 580 && LAY.chars > 120, `${LAY.chars} 字`);
     ok('📐b 輸入框 + 「Perplexity 會空白」那段說明收進摺疊(⛔ 收起來不是刪掉)', LAY.panel && LAY.taInPanel && LAY.howtoHidden, JSON.stringify(LAY).slice(0, 200));
     ok('📋b ⭐ V76.2.6「📋 複製提示詞」要在摺疊**外面**常駐(使用者:一鍵複製才方便直接貼;⛔ 不可再收回摺疊)',
        LAY.btnOutside, JSON.stringify({ outside: LAY.btnOutside, inPanel: LAY.btnInPanel }));
@@ -900,10 +909,16 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         const ks = [...q.querySelectorAll('[data-rpq]')].map(d => d.getAttribute('data-rpq'));
         const no = k => { const m = String(k).match(/§\s*(\d+)/); return m ? +m[1] : 99; };
         return { ks, sorted: ks.every((k, i) => i === 0 || no(ks[i - 1]) <= no(k)),
-                 askBtns: document.querySelectorAll('#subContentReport [onclick*="_reportAsk"]').length };
+                 // 📚 V77.1.8 入口改成「模型下拉 + 一顆產出鈕」(`_rpGenRun` 內部才決定要開網頁還是叫 App 內模型)
+                 //   → ⛔ 不可再數 `_reportAsk`(那支現在是被包住的);要釘的**用意**沒變:
+                 //     「去問 AI」的入口整個報告頁只准有**一個**,複製提示詞也只准有**一個**。
+                 askBtns: document.querySelectorAll('#subContentReport [data-rpgenrun]').length,
+                 genSel: document.querySelectorAll('#subContentReport #rpGenSel').length,
+                 copyBtns: document.querySelectorAll('#subContentReport [data-rpcopyprompt]').length };
     });
     ok('🔢a ⚡ 快速表按 § 由小到大排(使用者:「§符號有順序,為何排序跳來跳去」)', ORD.sorted, ORD.ks.join(' / '));
-    ok('🗑️a 報告頁只剩**一個** 🔎 提示詞入口(以前重點數字卡與 §20 卡各一顆、同一支函式 = 重複)', ORD.askBtns === 1, `${ORD.askBtns} 顆`);
+    ok('🗑️a 報告頁只剩**一個**「去問 AI」入口 + 一個模型下拉 + 一顆複製提示詞(⛔ 不可又冒出第二組)',
+       ORD.askBtns === 1 && ORD.genSel === 1 && ORD.copyBtns === 1, JSON.stringify(ORD).slice(0, 200));
 }
 // ── 💳 V76.2.2 §13 融資壓力:窗口 60 日 + 分不出上市/上櫃也要給數字 ──
 {

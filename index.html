@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.1.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.1.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.1.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.1.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8464,8 +8464,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.1.7',
+    _APP_VERSION: 'V77.1.8',
     _CHANGELOG: [
+        { v: 'V77.1.8', d: [
+            '💸 <b>「價格跳一下就重新生成」修好了</b> —— 我把 App 裡會打 AI 的 9 個地方逐一查過,真正會這樣的<b>只有一支:🔮 明日劇本</b>(K線頁)。它以前的快取是綁「<b>15 分鐘時鐘</b>」,所以盤中每隔 15 分再點一次就真的重打一次 OpenRouter 的推理模型。⭐ 現在改成<b>記住當初算的那個價</b>,價格沒走到 <b>1%</b> 就直接顯示舊的;真的走了 1% 以上才重算(⛔ 不是把價格敏感度拿掉 —— 那樣大漲之後還會顯示早上那份劇本)。',
+            '📚 <b>「📖 完整報告」新增模型下拉選單</b>:🔎 Perplexity / 🤖 Gemini / 🧠 OpenRouter 推理 / ⚡ Groq / ✍️ 其他。產出或貼上<b>都在同一個欄位</b>,切下拉就換看哪一份;有兩份以上會多一塊「📚 比一比」列出每一份<b>切到幾節 ・帶網址幾條 ・帶數字幾行 ・廢話詞幾次 ・幾個字</b>。⛔ 刻意<b>不給綜合品質分數</b>(那種權重是憑空訂的,本站實測沒有預測力)—— 哪個好用你自己看。',
+            '⚠️ <b>一定要先講的限制</b>:App 內能叫的三個模型(Gemini / OpenRouter / Groq)<b>都不會上網</b>。所以產業近況、法人預估、法說會那幾節它們<b>查不到</b>,提示詞已經要求它們直接寫「查不到」;它要是寫出網址 ⛔ 不要相信。要有<b>真的來源網址</b>就選 🔎 Perplexity。',
+            '🆓 新增「<b>現在有哪些免費模型</b>」按鈕(在「⚙️ 換一份」裡面)—— 按下去會<b>當場去問 OpenRouter 官方</b>今天哪些是完全免費的,照「一次吃得下多少字」排。⛔ 不是寫死在程式裡的清單(免費模型隨時會被下架)。',
+            '📖 <b>完整報告的提示詞升級成「法人級」</b>:新增<b>來源優先順序四級</b>(官方 → Reuters/Bloomberg → 產業媒體 → 一般網站,第四級只能當線索)、<b>交稿前五關自我複查</b>(數字/日期/來源/推論/結論)、每句話先分<b>A 事實 / B 合理推論 / C 未知</b>、新聞與管理層說法⛔ 不可改寫成事實、§8 ⛔ 不可憑經驗寫「通常 3~6 個月後影響 EPS」、§9 ⛔ 不可講「第一名/最強」。',
+            '🚨 <b>你給的規格裡有兩條照抄會出事,我改掉了</b>:①「禁止勝率」會讓 AI 把<b>本站自己回測出來的勝率</b>一起刪掉 → 改成「⛔ 你不可以自己生一個勝率,本站算好的照抄」;②「不要寫免責聲明」跟本站鐵則衝突 → 報告內文不寫套話,但「外部 AI 寫的、本站沒有驗證」那行改由 <b>App 自己印</b>。另外補了兩件:12 季那組<b>沒有營益率</b>(資料源沒有營業費用,⛔ 不可叫它自己算)、<b>篇幅不夠時先保證哪幾節</b>寫完。',
+        ], dt: '2026-09-16' },
         { v: 'V77.1.7', d: [
             '🎯 <b>板塊輪動多了「概念股」分頁,而且是預設那一頁</b>(你要的「以概念股為首要」):21 個題材照近 20 日相對強弱排,旁邊還是可以切回「官方產業」33 族。⭐ 兩頁<b>同一把尺</b>(成員近 20 日漲跌的中位數),⛔ 不是兩套算法。🚨 但<b>證據強度完全不同</b>:官方產業那條「前3強−後3弱 +1.44pp」是回測過的,<b>題材這一頁本站從來沒有回測過</b> → 卡上直接寫出來,⛔ 不可以拿那個數字替題材背書。⚠️ 成員少於 5 檔的題材標「⏳ 樣本少」而且<b>不列進最強/最弱</b>。',
             '📅 <b>修:同一檔股票兩個月營收</b>(你截圖的中美晶 5483)。基本頁畫著「26/08 營收 67.17 億 ・年增 +11.7%」,而報告頁同時印「最新月營收 —」「年增 +7.6%」「累計年增 —」。真因是<b>兩條腿</b>:基本頁用你的金鑰<b>即時抓</b>,報告頁只讀<b>採礦快取</b>。→ 現在報告頁直接讀基本頁剛抓到的那一份(⛔ 不會多打一次 API),三個數字一起對上;抓不到才退回採礦值。',
@@ -11274,7 +11282,8 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                             //   這支的規則是「ts 超過 7 天 **或沒有 ts**」就刪,圖存進來一定會中。
                             //   ⛔ 新增任何「使用者資料」進這個 store,都要在這裡開白名單。
                             //   💾 V76.2.7 完整報告(rpNote_)也搬進來了 → 一起開白名單。
-                            if (/^(rpImg_|rpNote_)/.test(String(c.key || ''))) { c.continue(); return; }
+                            //   📚 V77.1.8 多模型版本庫(rpNoteV_)同理 —— 那是他自己產的好幾份報告。
+                            if (/^(rpImg_|rpNoteV?_)/.test(String(c.key || ''))) { c.continue(); return; }
                             const ts = c.value && c.value.ts;
                             if (!ts || (now - ts) > maxAgeMs) { try { c.delete(); removed++; } catch (_) {} }
                             c.continue();
@@ -17829,21 +17838,33 @@ ${f.retail ? `散戶持股 ${f.retail.ret.toFixed(2)}%(週變化 ${f.retail.retD
         if (!sym) return;
         const result = document.getElementById('stockPredictResult');
         if (!result) return;
-        const cacheKey = `aiCache_stockPredict_${sym}`;
-        if (!opts.force) {
-            try {
-                const c = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-                if (c && (Date.now() - c.at) < 15 * 60 * 1000) {
-                    result.innerHTML = c.html;
-                    this.showToast('💾 15 分鐘內快取(雙擊強制重抽)', 'info');
-                    return;
-                }
-            } catch(_){}
-        }
         const arr = this.activeData;
         if (!Array.isArray(arr) || arr.length < 20) {
             result.innerHTML = '<div class="mt-2 p-2 text-yellow-300 text-[11px]">⚠️ K 線資料不足(<20 筆),無法預判</div>';
             return;
+        }
+        // 💸 V77.1.8 使用者:「OpenRouter 推理會因價格跳一下就重新生成一次,太耗次數」——
+        //   實測全 App 9 處 AI,只有這一支的快取是綁「**15 分鐘時鐘**」:
+        //   盤中每隔 15 分再點一次就真的重打一次 OpenRouter,而它是**推理型模型**(最貴的那種)。
+        //   ⭐ 改成跟 🧠 深度診斷(V72.4.4)同一套:綁「**資料日期 + 模型**」,
+        //     再加一個 **1% 的價格桶** —— ⛔ **不是拿掉價格敏感度**(那樣盤中大漲 5% 之後
+        //     還會顯示早上那份劇本,同 V27.5「首席顯舊結論 vs 各卡即時不同步」那個問題);
+        //     而是把它**量化**:微跳不算、真的走了 1% 才重算。
+        //   ⚠️ 桶用 log 比值(⛔ 不是固定元)—— 10 元股跟 1000 元股的「1%」差 100 倍。
+        const _pkD = String(arr[arr.length - 1]?.date || arr[arr.length - 1]?.t || 'na').slice(0, 10);
+        const _pkP = +arr[arr.length - 1]?.close || 0;
+        const cacheKey = `aiCache_stockPredict_${sym}_${_pkD}_${this.settings.aiEngine || 'auto'}`;
+        if (!opts.force) {
+            try {
+                const c = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+                //   ⭐ 跟**當初算的那個價**比,差不到 1% 就直接吃快取(⛔ 不是量化成桶 —— 桶有邊界,
+                //     剛好跨過去的話 +0.4% 也會重算,等於沒修)。
+                if (c && c.html && (!(_pkP > 0) || !(c.px > 0) || this._aiPriceNear(_pkP, c.px))) {
+                    result.innerHTML = c.html;
+                    this.showToast('💾 這檔今天算過了(價格沒走到 1%,直接顯示;雙擊強制重抽)', 'info');
+                    return;
+                }
+            } catch(_){}
         }
         // 收集個股關鍵資料
         const last = arr[arr.length - 1];
@@ -17917,7 +17938,8 @@ ${(sectorEtf && sectorEtf.chg_pct != null && !isNaN(parseFloat(sectorEtf.chg_pct
                 </div>
             `;
             result.innerHTML = html;
-            try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), html })); } catch(_){}
+            //   💸 V77.1.8 把**當初那個價**一起存 —— 下次才比得出「跳了多少」(⛔ 沒有它就只能綁時鐘)
+            try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), html, px: _pkP })); } catch(_){}
         } catch(e) {
             result.innerHTML = `<div class="mt-2 p-2 bg-amber-900/30 rounded text-amber-300 text-[11px]">${this._humanizeError(e, 'AI 分析')}</div>`;
         } finally {
@@ -23139,6 +23161,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (String(this.currentSymbolId) !== sym) return;
         try { await this._rpImgLoad(sym); } catch (_) {}
         try { await this._rpNoteLoad(sym); } catch (_) {}   // 💾 V76.2.7 完整報告也在 IndexedDB(⛔ 顯示端仍同步讀 `_rpNote`)
+        try { await this._rpNoteVLoad(sym); } catch (_) {}  // 📚 V77.1.8 多模型版本庫(同上,顯示端同步讀 `_rpNoteV`)
         if (String(this.currentSymbolId) !== sym) return;
         this._rpSet('rpOwn', this._rpOwnHtml(ctx), sym);        // 📈 個股數據速覽(V76.3.9 改名前叫「本站自己畫的一頁圖」)
         try { this._rpDrawOwn(sym); } catch (_) {}              // ⚠️ 要在 _rpSet 把 canvas 放進 DOM **之後**才畫得到
@@ -23615,6 +23638,131 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return n;
         } catch (_) { return 0; }
     },
+    // ═══ 📚 V77.1.8 完整報告「多模型版本庫」 ═══════════════════════════════
+    //   使用者:「完整報告新增各個模型按鈕,生成後都是同個欄位,我要比較哪個模型比較好用,用下拉鍵式的方式」
+    //
+    //   🚨🚨 **先講一個會踩到他自己規則的限制**(⛔ 不可以做完不講):
+    //     提示詞明文要求「每一條附日期 + 來源網址」,而 **App 內能叫的三條鏈
+    //     (Gemini / OpenRouter / Groq)⛔ 一條都不會上網** —— 叫它們生成,§5 盈餘預期差、
+    //     §6 法人預估、§7 法說會、§8 領先指標這幾節**只會編出看起來很像的網址**。
+    //     ⭐ 所以下拉選單把兩類**分開標示**,App 內產的一律硬掛一行警語,
+    //       而且 `_rpCiteWarn` 那道既有的「有媒體名沒網址」守門照樣跑。
+    //
+    //   ⛔ **刻意不給「綜合品質分數」**(陷阱 #38:憑空權重)——
+    //     只把**可以數的東西**攤出來(切到幾節 / 幾條帶網址 / 幾條帶數字 / 幾句廢話 / 幾個字),
+    //     哪個模型好用由使用者自己看,⛔ 本站不加權。
+    _RP_GEN: [
+        { id: 'px',     web: 1, label: '🔎 Perplexity',   sub: '外部・會查網路(推薦)' },
+        { id: 'gemini', chain: 'gemini-openrouter', label: '🤖 Gemini',      sub: 'App 內・⛔ 不會上網' },
+        { id: 'or',     chain: 'openrouter-gemini', label: '🧠 OpenRouter 推理', sub: 'App 內・⛔ 不會上網' },
+        { id: 'groq',   chain: 'groq-only',         label: '⚡ Groq',        sub: 'App 內・最快・⛔ 不會上網' },
+        { id: 'other',  web: 1, label: '✍️ 其他(手貼)', sub: 'ChatGPT / Claude / 朋友給的' },
+    ],
+    _rpGenOf(id) { return this._RP_GEN.find(x => String(x.id) === String(id)) || this._RP_GEN[0]; },
+    _rpGenPick() {
+        try { const v = localStorage.getItem('proTerm_rpGen'); if (v && this._RP_GEN.some(x => x.id === v)) return v; } catch (_) {}
+        return 'px';
+    },
+    _rpGenSet(sym, id) {
+        try { localStorage.setItem('proTerm_rpGen', String(id)); } catch (_) {}
+        const V = this._rpNoteV(sym), hit = V[String(id)];
+        // ⭐ 下拉切到哪個模型,**同一個欄位**就顯示那一份(使用者要的「比較」就是這個動作)
+        if (hit && hit.t) { (this._rpNoteCache = this._rpNoteCache || {})[String(sym)] = hit; this._rpNoteVSync(sym); }
+        this._rpRefreshPaste(sym); this._rpRefreshInd(sym);
+    },
+    _rpNoteVKey(sym) { return `rpNoteV_${String(sym)}`; },
+    _rpNoteV(sym) { return (this._rpNoteVCache || {})[String(sym)] || {}; },
+    async _rpNoteVLoad(sym) {
+        sym = String(sym);
+        this._rpNoteVCache = this._rpNoteVCache || {};
+        let o = null;
+        try { o = await this.idb.get(this._rpNoteVKey(sym)); } catch (_) { o = null; }
+        this._rpNoteVCache[sym] = (o && typeof o === 'object') ? o : {};
+        return this._rpNoteVCache[sym];
+    },
+    // 目前顯示的那一份 → 寫回版本庫(⛔ 反過來不做:版本庫才是真相)
+    async _rpNoteVSync(sym) {
+        const cur = this._rpNote(sym); if (!cur || !cur.t) return;
+        const V = { ...this._rpNoteV(sym) };
+        V[String(cur.by || this._rpGenPick())] = cur;
+        (this._rpNoteVCache = this._rpNoteVCache || {})[String(sym)] = V;
+        try { await this.idb.put(this._rpNoteVKey(sym), V); } catch (_) {}
+    },
+    // 📏 只數「數得出來的」,⛔ 不加權成一個分數
+    _rpNoteQuality(t) {
+        const txt = String(t || '');
+        const lines = txt.split(/\n+/).map(x => x.trim()).filter(x => x.length > 3);
+        const FLUFF = ['值得關注', '有待觀察', '審慎評估', '密切留意', '建議持續', '不確定性較高', '仍需觀察'];
+        return {
+            chars: txt.length,
+            secs: (txt.match(/(^|\n)\s*§\s*\d+/g) || []).length,
+            urls: (txt.match(/https?:\/\/\S+/g) || []).length,
+            nd: lines.filter(x => /\d/.test(x)).length,
+            lines: lines.length,
+            fluff: FLUFF.reduce((a, w) => a + (txt.split(w).length - 1), 0),
+            nosrc: (txt.match(/查不到/g) || []).length,
+        };
+    },
+    _rpQualBits(q) {
+        if (!q) return '';
+        return `切到 <b>${q.secs}</b> 節 ・帶網址 <b>${q.urls}</b> 條 ・帶數字 <b>${q.nd}/${q.lines}</b> 行 ・廢話詞 <b>${q.fluff}</b> 次 ・寫「查不到」<b>${q.nosrc}</b> 次 ・共 ${q.chars.toLocaleString()} 字`;
+    },
+    // 🤖 用 App 內的模型直接生成(⛔ 它不會上網 → 警語硬掛)
+    async _rpGenRun(sym) {
+        sym = String(sym);
+        const id = this._rpGenPick(), G = this._rpGenOf(id);
+        if (G.web) { this._reportAsk(sym); return; }            // 外部的就照舊:先複製再開網頁
+        if (!this._hasDeepAIKey || !this._hasDeepAIKey()) { this.showToast?.('⚠️ 先到 ⚙️ 設定中心填 Gemini 或 OpenRouter 金鑰'); return; }
+        const box = document.getElementById('rpGenStat');
+        const q = this._reportPrompt(sym); if (!q) { this.showToast?.('⚠️ 這一檔的資料還在載入,稍後再試'); return; }
+        const offline = `\n\n【🚨 你是 App 內直接呼叫的模型,⛔ 沒有上網能力】\n`
+            + `所以 §5 盈餘預期差 ・§6 法人預估變化 ・§7 法說會訊號 ・§8 產業領先指標 這幾節,\n`
+            + `⛔ **一個網址都不准寫**(你查不到,寫出來就是編的)→ 一律寫「查不到(這個模型不能上網)」。\n`
+            + `其餘各節只用下面【個股客觀數據】那張表 + 你的產業常識,而常識性的敘述⛔ 不可附網址。\n`
+            + `「§21 來源表」就寫「(本次由 App 內模型產出,無法附來源)」。`;
+        if (box) box.innerHTML = `<span class="text-cyan-300">⏳ ${G.label} 產出中…(21 節,約 30~60 秒)</span>`;
+        try {
+            const text = await this._callDeepAI({ prompt: q + offline, max_tokens: 4000, temperature: 0.3, chain: G.chain });
+            const t = String(text || '').trim();
+            if (!t) throw new Error('模型沒有回傳內容');
+            const rec = { t: t.slice(0, 30000), ts: Date.now(), asof: this._rpNoteAsof(t), v: 2, by: id, offline: 1 };
+            (this._rpNoteCache = this._rpNoteCache || {})[sym] = rec;
+            let ok = false;
+            try { ok = await this.idb.put(this._rpNoteKey(sym), rec); } catch (_) { ok = false; }
+            await this._rpNoteVSync(sym);
+            if (box) box.innerHTML = ok ? '' : '<span class="text-amber-300">⚠️ 產出來了但存不下來(這台裝置空間滿了)—— 先複製走,或到 ⚙️ 設定中心清快取</span>';
+            this.vibrate?.(20);
+            this._rpRefreshPaste(sym); this._rpRefreshInd(sym);
+        } catch (e) {
+            if (box) box.innerHTML = `<span class="text-amber-300">${this._aiFriendlyError ? this._aiFriendlyError(e.message) : (e.message || '失敗')}</span>`;
+        }
+    },
+    // 🆓 V77.1.8 「近期有什麼新的免費模型值得申請?」——
+    //   ⛔ **不可以憑記憶列 slug**:V73.8.0 實測過 OpenRouter 會**下架模型**,
+    //     寫死的清單隔天就是 404,而且錯誤訊息完全看不出真因。
+    //   ⭐ 正解:當場去問官方 `/models`,篩 `pricing.prompt === '0'` —— 你看到的就是**今天真的免費**的。
+    async _rpFreeModels() {
+        const box = document.getElementById('rpGenStat');
+        const key = (this._getOpenRouterKeys?.() || [])[0] || '';
+        if (box) box.innerHTML = '<span class="text-cyan-300">⏳ 正在問 OpenRouter 現在有哪些免費模型…</span>';
+        try {
+            const r = await this.safeFetch('https://openrouter.ai/api/v1/models',
+                key ? { headers: { 'Authorization': `Bearer ${key}` } } : {}, { timeout: 12000, maxRetries: 1 });
+            const j = await r.json().catch(() => ({}));
+            const all = Array.isArray(j?.data) ? j.data : [];
+            const free = all.filter(m => String(m?.pricing?.prompt ?? '') === '0' && String(m?.pricing?.completion ?? '0') === '0');
+            if (!all.length) throw new Error('問不到清單');
+            // 上下文長的排前面(報告 21 節很吃 context),⛔ 不按「我覺得誰厲害」排
+            free.sort((a, b) => (+b.context_length || 0) - (+a.context_length || 0));
+            const rows = free.slice(0, 20).map(m => `<div class="flex justify-between gap-2 py-0.5 border-b border-[#21262d]">
+                <span class="font-mono text-[10px] text-gray-200" style="overflow-wrap:anywhere">${this._escHtml(String(m.id))}</span>
+                <span class="text-[10px] text-gray-500 flex-shrink-0">${((+m.context_length || 0) / 1000).toFixed(0)}k</span></div>`).join('');
+            if (box) box.innerHTML = `<div data-rpfree="${free.length}"><div class="text-[10px] text-gray-400 leading-snug mb-1">🆓 <b>${new Date().toLocaleDateString('zh-TW')}</b> OpenRouter 上共 ${all.length} 個模型,其中 <b class="text-gray-100">${free.length} 個完全免費</b>(進出都 $0)。下面照「一次吃得下多少字」由多到少排 —— 完整報告 21 節很吃長度,⛔ 別挑 8k 以下的。</div>${rows}<div class="text-[9px] text-gray-600 leading-snug mt-1">⛔ 這份是<b>當場問官方</b>拿到的,⛔ 不是寫死在程式裡的清單(免費模型隨時會被下架)。免費層通常有<b>每日次數上限</b>且排隊較久,⛔ 不保證跑得完 21 節。</div></div>`;
+        } catch (e) {
+            if (box) box.innerHTML = `<span class="text-amber-300">⚠️ 問不到清單(${this._escHtml(e.message || '網路異常')})—— 到 openrouter.ai/models 自己看也一樣,篩選 Prompt price = $0。</span>`;
+        }
+    },
+
     _rpNoteKey(sym) { return `rpNote_${String(sym)}`; },
     // 💾 V76.2.7 **搬到 IndexedDB**(使用者回報「這台裝置存不下來(儲存空間滿了)」)。
     //   🚨 真因⛔ 不是報告太大(他那份 6.5 KB)—— 實測 localStorage:**一檔股票的
@@ -23649,16 +23797,27 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         //   `asof` = 報告自己寫的「分析基準日期」(抓不到就用貼上時間)—— 更新提醒靠它比對月營收/財報日
         //   💾 V76.2.7 改存 IndexedDB(見 `_rpNoteLoad` 的說明);⛔ 訊息要說得出**真因與解法**,
         //      ⛔ 不可只講「滿了」讓使用者無從下手。
-        const rec = { t: t.slice(0, 30000), ts: Date.now(), asof: this._rpNoteAsof(t), v: 2 };
+        //   📚 V77.1.8 多存一個 `by`(哪個模型產的)—— 使用者要「比較哪個模型比較好用」,
+        //     ⛔ 沒有這個欄位就永遠不知道手上這份是誰寫的。
+        const rec = { t: t.slice(0, 30000), ts: Date.now(), asof: this._rpNoteAsof(t), v: 2, by: this._rpGenPick() };
         let ok = false;
         try { ok = await this.idb.put(this._rpNoteKey(sym), rec); } catch (_) { ok = false; }
         if (!ok) { this.showToast?.('⚠️ 存不下來 —— 這台裝置的儲存空間滿了。到 ⚙️ 設定中心 →「🧹 清理快取」清掉可重算的資料再試一次'); return; }
         (this._rpNoteCache = this._rpNoteCache || {})[String(sym)] = rec;
+        try { await this._rpNoteVSync(sym); } catch (_) {}
         this.vibrate?.(20);
         this.showToast?.('📝 已存成這一檔的報告 —— 本站沒有驗證,⛔ 不參與任何買賣判斷', 'info');
         this._rpRefreshPaste(sym); this._rpRefreshInd(sym);
     },
     async _rpNoteClear(sym) {
+        //   📚 V77.1.8 只刪「目前顯示的那個模型」那一份,其餘版本留著(⛔ 不整組清掉)
+        try {
+            const cur = this._rpNote(sym), V = { ...this._rpNoteV(sym) };
+            delete V[String(cur?.by || this._rpGenPick())];
+            (this._rpNoteVCache = this._rpNoteVCache || {})[String(sym)] = V;
+            if (Object.keys(V).length) await this.idb.put(this._rpNoteVKey(sym), V);
+            else await this.idb.del(this._rpNoteVKey(sym));
+        } catch (_) {}
         try { await this.idb.del(this._rpNoteKey(sym)); } catch (_) {}
         try { localStorage.removeItem(this._rpNoteKey(sym)); } catch (_) {}   // 舊版殘留(V76.2.7 前存這裡)
         (this._rpNoteCache = this._rpNoteCache || {})[String(sym)] = null;
@@ -23866,7 +24025,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 : `<div class="text-[10px] text-gray-500" style="padding:2px 0" data-rpstale="0">✅ 貼上之後沒有新的月營收 / 財報 / 除息,股價也沒偏離,還算新</div>`;
             //   📐 V76.2.2 版面:卡頭右邊已經寫了「基準日 X」→ 這行**不再重複講一次基準日**(同一個日期講兩次看起來像壞掉)
             saved = `<div data-rpnote="1" class="bg-[#0d1117] border-l-4 border-l-[#8b949e] border-y border-r border-[#30363d] rounded-r p-2 mb-1.5">
-                <div class="text-[10px] text-amber-300/90 font-bold leading-snug">📝 外部 AI 寫的,本站沒有驗證 ・⛔ 不參與任何買賣判斷</div>
+                <div class="text-[10px] text-amber-300/90 font-bold leading-snug" data-rpby="${this._escHtml(String(n.by || 'px'))}">📝 ${this._escHtml(this._rpGenOf(n.by || 'px').label)} 這個外部 AI 寫的,本站沒有驗證 ・⛔ 不參與買賣判斷${n.offline ? ' ・⚠️ 它<b>不會上網</b>' : ''}</div>
                 ${this._rpCiteWarn(sym, n.t)}${staleHtml}${P.secs.length ? `<div class="text-[9px] leading-snug" style="margin-top:4px" data-rpsecleg="${this._RP_SECTONE.length}">🎨 標題顏色 = 這一節在講哪一類(⛔ 不是好壞、也不是漲跌)：${this._RP_SECTONE.map(t => `<span class="${t.cls} font-bold">● ${t.t}</span>`).join(' ')}</div>` : ''}${firstHtml}
                 ${restHtml ? `<details data-dk="rest" style="margin-top:6px" data-rpsec-rest="${rest.length}"><summary class="cursor-pointer text-[11px] font-bold text-gray-300" style="padding:5px 0;list-style:none">📚 其餘 ${P.secs.length ? `${rest.length} 節` : '全文'}<span class="text-[10px] text-gray-600 font-normal"> ・逐節點開 ▾</span></summary><div style="padding-left:4px">${restHtml}</div></details>` : ''}
                 ${P.secs.length ? '' : '<div class="text-[10px] text-gray-500 leading-snug" style="margin-top:4px">⚠️ 這份沒有 §1~§20 編號 → <b>沒切節</b>,整份照原樣顯示(用本站的提示詞重產會有編號,第一眼就只留結論與筆記)。</div>'}
@@ -23885,25 +24044,50 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const ask = `<details data-dk="pasteHow" data-rppastehow="1" class="mb-1"><summary class="cursor-pointer text-[10px] text-gray-500" style="padding:2px 0;list-style:none">📖 這是什麼 / 怎麼做 <span class="text-gray-600">・展開 ▾</span></summary>
             <div class="text-[10px] text-gray-400 leading-snug" style="margin-top:4px">${n ? '重產一份貼回來存檔會<b>覆蓋</b>舊的。' : '商業模式 / 產業景氣 / 法說語氣 / 法人預估 —— 這些是<b>質化</b>資訊,台股<b>沒有免費的結構化來源</b>,本站⛔ 不編。做法:按「🔎 開 Perplexity」(提示詞已寫成 20 節規格、標題帶 §N、第一行寫基準日、結尾附來源網址),把回答<b>貼回這裡</b>存起來,下次開就在。'}</div>
             <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💡 <b>Perplexity 打開會是空白的</b> —— 提示詞 2,400 多字,做成網址會膨脹到 1 萬 6 千字元,手機 App 接手時帶不過去(不是壞掉)。<b>兩顆按鈕都會先幫你複製</b>,到那邊<b>長按輸入框「貼上」</b>再送出就好;複製不了會跳出視窗讓你自己選取。</div>
-            <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💾 只存在<b>你這台裝置</b>;⛔ <b>不</b>進本站任何結論或評分;AI 的價位只拿去跟 🧱 價格牆<b>對照</b>。</div></details>
+            <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💾 只存在<b>你這台裝置</b>;⛔ <b>不</b>進本站任何結論或評分;AI 的價位只拿去跟 🧱 價格牆<b>對照</b>。</div>
+            <div class="text-[10px] text-gray-400 mt-1.5 leading-snug" data-rpoffline="1">🤖 <b>上面那個下拉選單</b>:${this._RP_GEN.map(g => `${this._escHtml(g.label)} = ${this._escHtml(g.sub)}`).join(' ・')}。
+            ⚠️ <b>App 內的模型不會上網</b> —— §5 盈餘預期差 ・§6 法人預估 ・§7 法說會 ・§8 產業領先指標 那幾節它查不到,提示詞已經要求它直接寫「查不到」;它要是寫出網址⛔ 不要相信。⭐ 要有<b>真的來源網址</b>就用 🔎 Perplexity。</div>
+            <div style="margin-top:6px"><button onclick="app._rpFreeModels()" data-rpfreebtn="1" class="px-3 py-1.5 text-[11px] font-bold text-gray-300 bg-[#0d1117] hover:bg-[#1c2128] border border-[#30363d] rounded">🆓 現在有哪些免費模型</button></div></details>
             <textarea id="rpNoteIn" rows="3" placeholder="把外部 AI 產的整份報告貼進來…" class="w-full bg-[#0d1117] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 leading-relaxed"></textarea>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
                 <button onclick="app._rpNoteSave('${sym}')" class="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-bold rounded">💾 存成這一檔的報告</button>
-                <button onclick="app._reportCopyPrompt('${sym}')" data-rpcopyprompt="1" class="px-3 py-1.5 text-[11px] font-bold text-purple-200 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-700/50 rounded">📋 複製提示詞</button>
-                <button onclick="app._reportAsk('${sym}'); app.vibrate?.(20);" class="px-3 py-1.5 text-[11px] font-bold text-purple-300 bg-[#0d1117] hover:bg-purple-900/20 border border-purple-700/50 rounded">🔎 開 Perplexity</button>
-                ${n ? `<button onclick="app._rpNoteClear('${sym}')" class="px-3 py-1.5 text-[11px] text-gray-400 hover:text-red-300 bg-[#0d1117] border border-[#30363d] rounded">🗑️ 刪掉</button>` : ''}</div>
+                ${n ? `<button onclick="app._rpNoteClear('${sym}')" class="px-3 py-1.5 text-[11px] text-gray-400 hover:text-red-300 bg-[#0d1117] border border-[#30363d] rounded">🗑️ 刪掉這一份</button>` : ''}</div>
             ${n ? `<div class="text-[10px] text-gray-500 mt-1.5 leading-snug">🖍️ <mark class="rp-hi">琥珀底</mark> = 重點詞(自動)・<b class="font-mono text-gray-100">粗體</b> = 帶單位的數字;要自己標就用 ==兩個等號== 包住。${P && P.secs.length ? `第一眼只留 §1${keepTxtOut ? ' 與 ' + keepTxtOut : ''},其餘 ${rest.length} 節收在上面(⛔ 純「來源表」不會佔第一眼)。` : ''}</div>` : ''}
             `;
         //   📋 V76.2.6 使用者:「提示詞加上一鍵複製,這樣我直接貼上來比較方便」——
         //     那顆按鈕本來就有,但**已貼過之後被收進摺疊**(V76.2.2 為了瘦身第一眼)→ 要點兩下才看得到。
         //     ⭐ 只把**複製提示詞 / 開 Perplexity 那兩顆**拉到摺疊外面常駐;
         //       其餘(存檔 / 做圖提示詞 / 刪掉)留在裡面。
-        const copyBtn = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
-            <button onclick="app._reportCopyPrompt('${sym}')" data-rpcopyprompt="1" class="px-3 py-1.5 text-[11px] font-bold text-purple-200 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-700/50 rounded">📋 複製提示詞</button>
-            <button onclick="app._reportAsk('${sym}'); app.vibrate?.(20);" class="px-3 py-1.5 text-[11px] font-bold text-purple-300 bg-[#0d1117] hover:bg-purple-900/20 border border-purple-700/50 rounded">🔎 開 Perplexity</button></div>`;
+        //   📚 V77.1.8 模型下拉 + 版本庫(使用者:「新增各個模型按鈕,生成後都是同個欄位,我要比較哪個模型比較好用」)
+        //   ⛔ 產出/貼上一律寫進**同一個欄位**(上面 `saved` 那塊),下拉只是切「現在顯示哪一份」。
+        const pick = this._rpGenPick(), G = this._rpGenOf(pick), V = this._rpNoteV(sym);
+        //   📐 選單只印**模型名**(⛔ 不印說明)—— `<select>` 的 innerText 會把**每一個 option** 都算進第一眼字數,
+        //     五個選項各帶一句說明就直接把第一眼撐爆(測試 📐a 上限 520 字)。說明搬進下面的 ⚙️ 摺疊。
+        const opts = this._RP_GEN.map(g => `<option value="${g.id}"${g.id === pick ? ' selected' : ''}>${g.label}${V[g.id] ? ' ✓' : ''}</option>`).join('');
+        const vRows = this._RP_GEN.filter(g => V[g.id] && V[g.id].t).map(g => {
+            const r = V[g.id], q = this._rpNoteQuality(r.t), cur = pick === g.id;
+            return `<div class="py-1 border-b border-[#21262d]" data-rpver="${g.id}">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-[11px] font-bold ${cur ? 'text-amber-300' : 'text-gray-300'}">${g.label}${cur ? ' ・<span class="text-[10px] font-normal">現在顯示這份</span>' : ''}</span>
+                    ${cur ? '' : `<button onclick="app._rpGenSet('${sym}','${g.id}')" class="px-2 py-0.5 text-[10px] font-bold text-gray-300 bg-[#0d1117] border border-[#30363d] rounded flex-shrink-0">看這份</button>`}
+                </div>
+                <div class="text-[9px] text-gray-500 leading-snug">${this._dW(new Date(r.ts).toISOString().slice(0, 10))} ・${this._rpQualBits(q)}</div>
+                ${r.offline ? '<div class="text-[9px] text-amber-300/80 leading-snug">⚠️ App 內模型產的 —— 它<b>不會上網</b>,§5~§8 那幾節只能寫「查不到」;有寫出網址的話⛔ 不要相信。</div>' : ''}
+            </div>`;
+        }).join('');
+        const genRow = `<div style="margin-bottom:6px" data-rpgen="1">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                <select id="rpGenSel" onchange="app._rpGenSet('${sym}', this.value)" class="bg-[#0d1117] border border-[#30363d] rounded text-[11px] text-gray-200" style="padding:6px 8px;max-width:100%">${opts}</select>
+                <button onclick="app._reportCopyPrompt('${sym}')" data-rpcopyprompt="1" class="px-3 py-1.5 text-[11px] font-bold text-purple-200 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-700/50 rounded">📋 複製提示詞</button>
+                <button onclick="app._rpGenRun('${sym}'); app.vibrate?.(20);" data-rpgenrun="1" class="px-3 py-1.5 text-[11px] font-bold text-cyan-200 bg-cyan-900/30 hover:bg-cyan-900/50 border border-cyan-700/50 rounded">${G.web ? '🔎 開網頁去問' : '🚀 用這個模型產出'}</button>
+            </div>
+            <div id="rpGenStat" class="text-[10px] leading-snug" style="margin-top:4px"></div>
+            ${(vRows.match(/data-rpver=/g) || []).length >= 2 ? `<details data-dk="rpver" style="margin-top:4px" data-rpvercnt="${(vRows.match(/data-rpver=/g) || []).length}"><summary class="cursor-pointer text-[11px] font-bold text-gray-300" style="padding:4px 0;list-style:none">📚 這一檔已經有 ${(vRows.match(/data-rpver=/g) || []).length} 份 ・比一比<span class="text-[10px] text-gray-600 font-normal"> ・展開 ▾</span></summary><div style="padding-top:2px">${vRows}<div class="text-[9px] text-gray-600 leading-snug" style="margin-top:4px">⛔ 本站<b>不給綜合品質分數</b>(那種權重是憑空訂的,實測沒有預測力)—— 上面只列<b>數得出來的東西</b>,哪個好用你自己看。⭐ 一般來說「帶網址多、廢話詞少、帶數字的行多」比較有料。</div></div></details>` : ''}
+        </div>`;
+        const copyBtn = genRow;
         const body = n
             ? `${saved}${copyBtn}${P.secs.length && P.maxN > 20 ? `<div class="text-[10px] text-yellow-300/90 leading-snug" style="margin:4px 0">🔢 <b>這份是舊的 ${P.maxN} 節格式</b>(現行是 <b>§1~§20</b>)—— 舊 §21 觀察清單 → <b>§19</b>、舊 §22 筆記 → <b>§20 最後 200 字投資筆記</b>(買進理由 / 主要風險 / 失效條件 / 持有時間 / 3 個觀察指標);舊的 §19 因子評分・§20 星等<b>已砍掉</b>。⭐ 按「📋 複製提示詞」重產一次就對得上,⛔ 舊的這份不會自己變。</div>` : ''}<details data-dk="panel" data-rppanel="1"><summary class="cursor-pointer text-[11px] font-bold text-gray-300" style="padding:4px 0;list-style:none">⚙️ 換一份 / 複製提示詞<span class="text-[10px] text-gray-600 font-normal"> ・展開 ▾</span></summary><div style="padding-top:4px">${ask}</div></details>`
-            : ask;
+            : `${genRow}${ask}`;
         //   🏷️ V76.2.6 卡名跟上面那張「📄 短評報告」**成對**:一個是圖(短評)、一個是文字(完整)。
         //   ⛔ 不掛 § 編號(V76.2.5 的理由沒變:它裝的是整份報告,不是某一節)。
         //   ⚠️ ⛔ 不會誤導成「本站的報告」—— 內文第一行就寫著「外部 AI 寫的,本站沒有驗證」。
@@ -25010,49 +25194,128 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         L.push(`- 接下來怎麼看(⭐ 本站已經寫好,「接下來怎麼看」那一段**逐字照抄這三行**,⛔ 不要自己重寫、⛔ 不要換掉任何一個價位):${nextLines.length ? '\n' + nextLines.map((t, i) => `  ${i + 1}. ${t}`).join('\n') : '—'}`);
         return L.join('\n');
     },
+    // 📖 V77.1.8 **法人級**研究提示詞(使用者貼了一份 40 節規格,這裡是併進來之後的版本)
+    //   ⭐ 他那份最有價值、而本站原本**完全沒有**的四件:
+    //     ① **來源優先順序四級**(官方 > 國際財經 > 產業媒體 > 一般網站;第四級只能當線索)
+    //     ② **五關複查**(數字 / 日期 / 來源 / 推論 / 投資結論)—— 而且⛔ 不要把複查過程印出來
+    //     ③ **A 事實 / B 合理推論 / C 未知** 三級,C ⛔ 不可寫成 A
+    //     ④ **新聞敘事 / 管理層說法 ⛔ 不可改寫成事實**,要保留「誰在什麼時候說的」
+    //   🚨 他規格裡**兩條照抄會出事**,已經改掉並在下面註明:
+    //     ⓐ 「禁止勝率/機率」—— 本站 §1・§11 會給**實測勝率 X%・N 次**(歷史統計,⛔ 不是預測),
+    //        照字面抄會叫 AI 把本站算好的成績**刪掉** → 改成「⛔ 你不可以**自己產生**勝率/機率」。
+    //     ⓑ 「不要寫免責聲明」—— 本站鐵則是免責⛔ 不可省。折衷:**報告內文**不寫套話(照他),
+    //        而「外部 AI 寫的,本站沒有驗證」那行由 **App 自己印**(`_rpPasteHtml`),⛔ 不靠 AI 寫。
+    //     ⓒ 他要求 12 季要檢查**營益率** —— 🚨 本站 `data/fin` 沒有營業費用,**算不出營益率**
+    //        (V77.1.3 實測),叫它檢查一個本站給不出來的欄位 = 逼它編 → 已明寫「那一組沒有營益率」。
+    //     ⓓ 他整份**沒有一條管長度** —— 21 節 × 5 條會被 token 上限截斷 → 補「篇幅不夠時優先保證哪幾節」。
+    //   ⭐ 數字全部走 `_reportFacts`(同一份給做圖提示詞用,⛔ 不在這裡再組一次)
     _reportPrompt(sym) {
-        //   ⭐ 數字全部走 `_reportFacts`(同一份給做圖提示詞用,⛔ 不在這裡再組一次)
-        return `# 角色設定 (Role)
-你是一位擁有 20 年全球與台股市場經驗的資深產業分析師兼實戰操盤手。
+        return `# 角色
+你是法人研究部的資深產業分析師(20 年以上台股與全球產業經驗),同時具備 buy-side 研究員與風控研究員的習慣。
+你的第一優先**不是講得漂亮**,而是:資料正確 ・日期正確 ・來源可追溯 ・不混淆事實與推論 ・不製造不存在的數字 ・
+不把相關性寫成因果 ・不把市場敘事寫成已證明的事實 ・查不到就寫「查不到」。
 
-# 語氣與風格 (Style)
-請用「犀利直接、明確點出風險的操盤手風格」進行分析。一律使用「白話文」敘述,不說廢話、不講空泛的學術術語,一針見血地讓看報告的人秒懂潛在風險與股價位階。
+# 風格
+犀利、直接、白話、研究員式。每一句都要有資訊價值,讓數字自己說話(例:「營收↑、毛利率↓」「外資 20 日賣超」「本益比位於自身 3 年區間 89%」)。
+⛔ 禁用這些話(除非後面立刻接具體資料與條件):值得密切關注 ・後續仍需觀察 ・整體而言 ・綜合來看 ・
+在目前市場環境下 ・展望未來 ・有望 ・可望 ・可能成為 ・值得期待 ・審慎評估。
 
-# 任務背景與限制 (Context)
-我將提供一檔台股個股的客觀數據表。請補上我拿不到的「產業質化資訊」,並根據這些資訊撰寫一份實戰導向的短評。
+# 你的任務
+下面那張表是**本站已經算好的客觀數據**。你要補的是本站拿不到的「**產業質化資訊**」,
+⛔ 不是重算它的數字、⛔ 不是為了讓報告看起來完整而補不存在的資料。
 
-【⚠️ 防幻覺嚴格指令 (Crucial Constraints) - 違反即屬重大錯誤】
-1. 絕對禁止「主觀預測」未來股價或給出「具體目標價」、「買賣評等」。
-2. 估值與基期推算【必須且只能】使用公式:「年化EPS × 近3年 P5/中位/P95 PE」計算「隱含歷史對照區間」。⚠️ 表中 EPS 是**已公布近4季合計(年化)**,不是分析師預估 —— 敘述時不可寫成「市場預估」。
-3. 所有的推論、風險報酬比評估,都必須有數據表中的數字作為支撐,絕不可自行編造未提供的資訊;表中「—」代表無資料,直接說「無資料」,不可腦補。
-4. 「股價基期」與「估值基期」是兩件事:前者是股價在近一年區間的位置,後者是本益比在該股自己近三年的位置。兩者背離時必須點出來,不可混為一談。
-5. 循環股警語:若毛利率高但 PE 位階極低,必須提醒「循環股獲利頂峰時 PE 最低」的陷阱,不可直接判定「便宜」。
-6. ⛔ 不預測股價、不給進出場點;你補充的每一筆產業數字(報價、產能、出貨)都要附日期與來源網址,查不到就寫「查不到」。
+━━━ 🚨 防幻覺規則(違反即重大錯誤)━━━
+1. ⛔ **不預測股價**:絕對禁止「主觀預測」未來股價或給出「具體目標價」、「買賣評等」、漲跌機率、「跑贏大盤」。
+   可以描述「目前價格位置 / 歷史估值區間 / 市場已反映多少 / 什麼條件發生要重新評估」。
+   ⚠️ 表中若有**本站實測的勝率或期望值**(歷史統計),那是事實,照抄即可;
+      ⛔ 禁止的是**你自己生出**一個勝率、機率或信心水準。
+1b. **估值只能用一條公式**:「年化EPS × 近3年 P5/中位/P95 PE」算出來的**隱含歷史對照區間**。
+   ⚠️ 表中 EPS 是**已公布近 4 季合計(年化)**,⛔ 不是分析師預估 → 敘述時⛔ 不可寫成「市場預估」。
+   ⛔ 不可加別的估值公式、⛔ 不可說「合理價」(只能說「歷史估值對照」)。
+2. ⛔ **不重算本站已經算好的數字**(股價 / 本益比 / 股價淨值比 / 每股盈餘 / 均線 / 價格位置 / 套牢區 / 出場線 /
+   融資壓力區 / 法人籌碼 / 五面向 / 估值區間 / 自由現金流 / 股東權益報酬率 / 毛利率 / 營收)。
+   這些**全部是「本站已經算好的數字」,只能直接引用,⛔ 不要自己算**。
+   就算你覺得有問題,也⛔ 不可自行換算 → 寫「本站數據與其他資料存在差異,需回查原始資料」,並**兩邊都列出來**。
+3. 🚨 表中「**—**」= 本站算不出來 → 只能寫「本站沒有這個數字」或「查不到」。
+   ⛔ **不可以自己算或自己編**、⛔ 不可用別的網站代替、⛔ 不可用平均值或常識補、⛔ **不可腦補**。
+   (實測教訓:均線那格空著時,外部 AI 自己算了一組,跟畫面上的數字對不起來,使用者以為程式壞掉。)
+4. **本益比一律寫「現在的」**(已公布近 4 季 EPS 算的)。要講預估本益比必須寫出「**預估**」兩個字與**用哪一年的 EPS**。
+5. 「股價基期」與「估值基期」是兩件事:前者是股價在近一年區間的位置,後者是本益比在該股自己近三年的位置。
+   兩者背離時**必須明講**(「股價位階低,但估值位階高」),⛔ 不可寫成「股價低所以便宜」。
+6. **循環股**:毛利率高、獲利高但本益比位階低 → 必須提醒「**循環股獲利頂峰時 PE 最低**」的陷阱,⛔ 不可直接說便宜。
+7. 🚨 **出場線 ≠ 融資追繳線**:前者是使用者自己的紀律,後者是融資族群的推估壓力區。⛔ 不可互相代用、
+   ⛔ 不可把融資追繳區說成「你應該在這裡出場」。
+8. **風報比只能引用本站算好的**,⛔ 不可自己用 (目標−現價)÷(現價−停損) 產生新的;
+   而且**停損距離很近時要提醒**「數學上的風報比容易被放大,實際上也更容易被正常波動洗掉」(⛔ 但不預測會不會被洗掉)。
+9. ⛔⛔ **不給任何綜合分數、⛔ 不給機率**:0~100 總分、多空總分、AI 信心分數、可信度 %、★ 星等、權重評分、綜合排名、
+   三情境的「機率幾 %」—— 一個都不要。舊版的 §19 因子評分、§20 星等評等已經刪掉,⛔ 不要自己加回來
+   (本站實測過因子評分 / ★ 評等 / AI 五級 / 訊號共振 / 指標堆疊,**都沒有預測力**)。
 
-# 輸出格式 (Output)—— 20 節骨架(⭐ 本站程式會照 §N 切節,格式一定要照下面)
-- 第一行只寫:「分析基準日期:YYYY-MM-DD」(今天的日期)。
-- 每一節**自己一行**標題,格式「§N 標題」(例:§2 商業模式),N 從 1 到 20 **依序、不跳號**,⛔ 不用表情符號數字。
-- 每節最多 5 條,條列式;每一條要附**日期 + 來源網址**,查不到就寫「查不到」,⛔ 不可用常識補。
-- 最後加「§21 來源表」:每筆一行「日期 ・媒體 ・網址」(⛔ 內文只寫媒體名沒有網址的,視為沒有來源)。
+━━━ 🔎 外部資料規則 ━━━
+10. 產業鏈 / 供需 / 競爭 / 客戶 / 報價 / 產能 / 出貨 / 庫存 / 稼動率 / ASP / 市占 / 市場規模 —— 這些**必須先查證**,
+    ⛔ 不可靠模型記憶當最新資料。每一筆外部數字都要**附日期與來源網址**(格式「日期 ・來源 ・網址」);查不到就寫「查不到」。
+11. **來源優先順序**:①公司官方 / 法說 / 年報 / 財報 / 公開資訊觀測站 / 證交所 / 櫃買 / 政府統計 / 產業公會
+    → ②Reuters・Bloomberg・FT・CNBC・WSJ・Nikkei → ③大型財經媒體 / 產業媒體 / 研究機構 → ④一般網站 / 部落格 / 論壇。
+    **第四級只能當線索,⛔ 不可單獨支撐重大結論**。不同來源矛盾 → ⛔ 不要自己選一個,兩邊並列 + 「無法確認差異原因」。
+12. **新鮮度**:第一行的分析基準日期 = 今天。所有「最新 / 近期 / 目前」都以它為準;
+    只有舊資料就寫「最新可取得資料為 YYYY-MM-DD」,⛔ 不可把兩年前的寫成近期,⛔ 不可用晚於基準日的資料。
+13. **新聞敘事 ⛔ 不可改寫成你的事實判斷**:「市場認為 / 法人看好 / 業界傳出 / 有望」要保留來源屬性 ——
+    寫成「Reuters 於 YYYY-MM-DD 引述 XXX 表示…」。**管理層說法同理**(「公司於 YYYY-MM-DD 法說表示需求強勁」),
+    再拿營收 / 訂單 / 稼動率 / ASP / 庫存去交叉比對,⛔ 不可自行判定它一定對。
+14. **產業風險 ≠ 公司已發生的事**:「產業可能供給增加」⛔ 不可寫成「公司產能過剩」,除非有公司自己的資料。
+15. **每一句先自己分級**:A 事實(有原始資料)/ B 合理推論(至少兩項資料支持,語氣要保守)/ C 未知(資料不足)。
+    ⛔ **C 不可寫成 A**,C 一律寫「目前無法確認」。
 
-【🚨 本站已經算好的數字 —— 這幾節你只寫「質化解讀」,數字**一律照抄**下方客觀數據,⛔ 不要自己算、不要另外估】
-§1 結論 ・§4 財報品質 ・§10 法人籌碼 ・§11 技術面(均線 / 位階 / 上方套牢區 / 出場線 / 融資追繳線)・
-§14 三情境(只寫**假設與依據**,⛔ 不給機率、⛔ 不給價位)・§15 安全邊際 / §16 分批進場 / §17 壓力測試(只寫**條件**,⛔ 不給價位)。
-🚨🚨 **下方任何一格是「—」,代表本站算不出來 → 你也⛔ 絕對不可以自己算或自己編**,直接寫「本站沒有這個數字」。
-   (實測教訓:均線那格空著的時候,外部 AI 自己算了一組,跟畫面上的數字對不起來,使用者會以為程式壞掉。)
-🚨 **出場線 ≠ 融資追繳線**:前者是使用者自己設的紀律、後者是融資族群的推估壓力區 —— ⛔ 不可混為一談、不可互相代用。
-⭐ **本益比一律寫「現在的」**(近 4 季);要講預估本益比必須寫出「預估」兩個字與用哪一年的 EPS
-   (⛔ 不可把「預估 PE 20 倍」寫成「本益比約 20 倍」—— 實測外部 AI 犯過這個,差了快一倍)。
+━━━ 📋 輸出格式(本站程式會照 §N 切節,格式一定要對)━━━
+- 第一行只寫:「分析基準日期:YYYY-MM-DD」。
+- 每一節**自己一行**標題,格式「§N 標題」,N 從 1 到 21 **依序不跳號**,⛔ 不用表情符號數字。
+- 每節**最多 5 條**,條列;每條盡量「一句話 + 必要數字 + 來源」,⛔ 不要寫成長文。
+  來源格式:「2026-09-15 ・Reuters ・網址」。
+- §21 來源表:每筆一行「日期 ・媒體 ・網址」。⛔ 只寫媒體名沒有網址的視為沒有來源;⛔ 禁止編網址、猜網址。
+- ⚠️ **篇幅不夠時**(會被截斷):優先保證 §1・§4・§13・§18・§19・§20 寫完整,其餘可精簡,
+  ⛔ 但節號一個都不可跳、⛔ 不可中途停筆不寫 §21。
+- ⛔ 不要寫「以上僅供參考 / 非投資建議 / 請自行判斷」—— 免責由本站自己印,⛔ 別浪費篇幅。
 
-§1 一句話投資結論 ・§2 商業模式(靠什麼賺錢、最賺的產品、主要客戶、優勢、最大弱點)・§3 產業鏈位置(上下游、議價能力、供需與價格方向、循環階段)・
-§4 財報品質(異常原因、一次性項目、面額或股本變動)・§5 盈餘預期差(市場原本期待多少、實際多少、上修或下修展望)・§6 法人預估變化(近 1~6 個月 EPS 預估怎麼變,附報告日期)・
-§7 管理層與法說會訊號(需求/價格/毛利/產能的說法,語氣比上一季樂觀或保守)・§8 產業領先指標(3 個,轉弱後多久影響 EPS)・§9 同業比較(成長/毛利/風險誰好誰差)・
-§10 法人籌碼解讀 ・§11 技術面解讀(基本面改善前/中/已反映完)・§12 事件驅動(未來 90 天,只講波動不預設方向)・§13 市場可能忽略的風險(供應鏈/客戶/匯率/循環)・
-§14 三情境假設 ・§15 安全邊際的條件 ・§16 什麼情況不能因為便宜就加碼 ・§17 跌 10/20/30/40% 各代表什麼 ・§18 反向驗證(看多錯了的 5 個原因,哪個最可能)・
-§19 未來 30~90 天觀察清單(哪個指標變了就要重看)・§20 最後 200 字投資筆記(買進理由 / 主要風險 / 失效條件 / 持有時間 / 3 個觀察指標)。
+§1 一句話投資結論 ・§2 商業模式(靠什麼賺錢 / 最重要產品 / 客戶結構 / 主要競爭者 / 最大弱點)・
+§3 產業鏈位置(上游 / 公司 / 下游 / 議價能力 / 供需鬆緊 / 循環階段)・§4 財報品質 ・§5 盈餘預期差 ・§6 法人預估變化 ・
+§7 管理層與法說會訊號 ・§8 產業領先指標 ・§9 同業比較 ・§10 法人籌碼解讀 ・§11 技術面解讀 ・§12 事件驅動 ・
+§13 市場可能忽略的風險 ・§14 三情境假設 ・§15 安全邊際的條件 ・§16 什麼情況不能因為便宜就加碼 ・
+§17 跌 10/20/30/40% 各代表什麼 ・§18 反向驗證 ・§19 未來 30~90 天觀察清單 ・§20 最後 200 字投資筆記 ・§21 來源表。
 
-⛔ **刻意不要的兩節**(舊版的 §19 因子評分、§20 星等評等已經刪掉,⛔ 不要自己加回來):
-   權重是憑空訂的、本站實測那類評分沒有預測力;三情境的「機率幾 %」同理,沒有母體可估,硬給的是編的。
+【各節額外規則】
+・§1 — 本站已經給了「本站結論」,⛔ **不可推翻、⛔ 不可另外生一個買賣結論**;只寫「本站結論 + 最重要的客觀原因」。
+・§4 — 區分 營收 / 毛利率 / 營益率 / 淨利 / EPS / 自由現金流 / 存貨 / ROE / 一次性項目 / 股本或面額變動。
+  「營收↑但毛利率↓」「EPS↑但自由現金流↓」出現時**必須指出方向分歧**,⛔ 但不可推論股價一定跌。
+  ⚠️ 本站 12 季那一組**沒有營益率**(資料源沒有營業費用),⛔ 不可自己算;近三季的營益率另外有,以表上寫的為準。
+・§5・§6 — 必須分清 ①公司實際公布 ②法人預估 ③市場共識 ④媒體轉述 ⑤分析師個人觀點,⛔ 不可混在一起。
+  查不到歷史共識就寫「查不到足以確認市場原先共識的資料」,⛔ 不可用現在的預估倒推當時的期待。
+・§8 — 最多 3 個**真正有用**的領先指標,每個回答:是什麼 / 為什麼跟這家有關 / 現在的數據 / 轉弱先影響哪一項經營數字 / 有沒有歷史資料。
+  🚨 「多久之後影響 EPS」**只有拿得出歷史資料才能寫**;⛔ 禁止憑經驗寫「通常 3~6 個月」。
+・§9 — 只做客觀比較(成長 / 毛利率 / 營益率 / EPS / ROE / 本益比 / 產品 / 客戶 / 產業位置 / 循環風險)。
+  ⛔ 禁止「第一名 / 最強 / 最值得買 / 勝出」;要排序就明寫「以 XXX 指標排序」。
+・§11 — 只能用本站給的均線 / 價格位置 / 套牢區 / 出場線 / 融資壓力區。⛔ 不可自己算均線、⛔ 不可自己畫支撐壓力、
+  ⛔ 不可加新指標。突破價只能叫「本站定義的算突破價位」,⛔ 不可寫「突破後會上漲」。
+・§12 — 只回答「這件事會動到**哪個變數**」(例:FOMC → 利率 / 美元 / 外資買賣;月營收 → 營收年增與月增;財報 → EPS / 毛利率)。
+  ⛔ 禁止利多 / 利空 / 看漲 / 看跌 / ★ 重要度 / 影響程度分數 —— 本站實測 **37 種財經行事曆日逐檔 + 期外驗證,方向 0 個成立**,
+  能確定的只有「**前後波動可能變大**」。
+・§14 — 三情境固定為 ①基本面改善 ②基本面持平 ③基本面惡化,只寫「如果 A 發生,代表要重新檢查 B」。
+  ⛔ 不給機率、⛔ 不給新價位、⛔ 不說「合理價」(只能說「歷史估值對照」)。
+・§15 — 安全邊際⛔ 不是「跌很多就安全」:要談獲利支不支撐得住 / 現金流 / 產業循環 / 本益比位置 / 基本面有沒有惡化,⛔ 但不給新目標價。
+・§16 — 標題固定「什麼情況不能因為便宜就加碼」:本益比低 + 股價低 + 跌很多,但基本面惡化 / 毛利率下滑 /
+  供需轉弱 / 現金流惡化 / 循環高峰 → 那不叫便宜。
+・§17 — 只寫「跌到這個幅度代表要重新檢查什麼」(EPS 有沒有下修 / 毛利率 / 產業報價 / 法人籌碼),⛔ 不建立新的價格目標。
+・§18 — 「如果現在的判斷錯了,最可能是哪 5 件事」,來源必須落在 公司 / 產業 / 財報 / 籌碼 / 估值 / 客戶 / 匯率 / 供需。
+  ⛔ 不可寫「市場突然轉差」這種空泛的;沒有資料證明就標「需觀察,尚無資料確認」。
+・§19 — 最多 5 項,每項「日期 ・觀察指標 ・什麼變化要重新研究」(例:2026-10-09 ・月營收 ・檢查營收年增與月增)。
+・§20 — 最多 200 字,必須含 ①本站結論的客觀依據 ②主要風險 ③失效條件 ④持有期間要**觀察什麼**(⛔ 不是預測結果)⑤3 個最重要觀察指標。
+  ⛔ 不出現目標價 / 漲跌預測 / 機率 / 評等 / 「一定」/「必然」。
+
+━━━ ✅ 交稿前的五關自我複查(⛔ **不要把複查過程寫出來**,只要據此修正內文)━━━
+①**數字**:有沒有改動或重算本站數字?有沒有把「—」補成數字?有沒有把現在本益比寫成預估本益比?
+②**日期**:有沒有把舊資料當最新?有沒有用晚於分析基準日的資料?每筆外部事實有沒有標日期?
+③**來源**:每筆外部事實是不是都有 日期+來源+網址?有沒有假網址?查不到的有沒有老實寫「查不到」?
+④**推論**:有沒有把「產業改善 = 公司改善 = 股價會漲」串在一起?有的話刪掉或改成條件式。
+⑤**結論**:有沒有偷偷跑出目標價 / 買賣評等 / 勝率 / 機率 / 可信度 % / 綜合分數 / 星等 / 漲跌預測?有就全部刪掉。
 
 ---
 【個股客觀數據】(⛔ 以下數字已由程式算好,請直接引用,不要自己加減乘除)
@@ -41376,6 +41639,19 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const str = String(s || '');
         for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
         return (h >>> 0).toString(36);
+    },
+
+    // 💸 V77.1.8 「這個價位跟當初算的那個價位差得夠不夠多」—— 給會打 AI 的快取用。
+    //   🚨 第一版做成「把價格量化成每 1% 一格的桶」**是錯的**,而且是測試當場抓到的:
+    //     桶有**邊界**,只要剛好跨過去,+0.4% 也會換桶 → 「微跳不重算」根本沒做到。
+    //   ⭐ 正解:快取記下**當初那個價**,之後**跟它比**;差 < pct% 就直接吃快取。
+    //     這樣才真的保證「盤中小跳一律不重打」,而且大漲 1% 以上仍然會重算(⛔ 沒有拿掉價格敏感度)。
+    //   ⛔ 這支只給快取用,⛔ 不可拿去做任何顯示或判定。
+    //   ⚠️ 用**比值**⛔ 不用固定元:10 元股的 1% 是 0.1 元、1000 元股是 10 元。
+    _aiPriceNear(a, b, pct = 1) {
+        const x = +a, y = +b;
+        if (!(x > 0) || !(y > 0)) return false;
+        return Math.abs(x / y - 1) * 100 < pct;
     },
 
     // 📦 首席 AI 當日快取（localStorage，每股每成本每日獨立一份）
