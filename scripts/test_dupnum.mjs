@@ -705,6 +705,69 @@ await page.waitForTimeout(2500);
     ok('ⓦ6 ⭐ 決定性對照:同一批資料只換情境,兩邊必須不同', w.open.txt !== w.closed.txt && w.open.fact !== w.closed.fact, '');
 }
 
+{   // 🪓 ⓧ V77.2.1 分拆/減資/除權留下的「價格斷崖」+ 🏷️ 興櫃 —— 使用者:「不要計算錯誤讓使用者誤解」
+    //   ⭐ 實測 gh-pages 2,520 檔:41 次物理不可能的跳空 / 31 檔,其中 **19 檔是興櫃**(合法行情)。
+    //   ⛔ 所以判之前一定要先確定「它是不是上市櫃」,⛔ 不可對興櫃報斷崖(那會天天誤報)。
+    const x = await page.evaluate(async () => {
+        const out = {};
+        app.switchAppTab('diag');
+        await app.fetchStockList?.().catch(() => {});
+        await new Promise(r => setTimeout(r, 800));
+        out.listN = (app.allStockList || []).length;
+        for (const s of ['2603', '6696']) {
+            await app.analyze(s).catch(() => {});
+            await new Promise(r => setTimeout(r, 2500));
+            out[s] = { isTw: app._isTwListed(s), gap: app._splitGapWarn(app.rawDailyData, s),
+                       off: !!app._offListed(s),
+                       tag: ((document.getElementById('stockTags') || {}).innerText || '').replace(/\s+/g, ' ') };
+        }
+        // ⭐⭐ 決定性對照①:**同一批合成 K 線**只換代號。
+        //   🚨 第一版拿 6696 的真實資料當對照 → 紅燈,而它報的是真的:**6696 根本沒有跳空**
+        //   (807 根零斷崖,它是真的從 15.2 漲到 200)。⭐ 通用:決定性對照的「陽性那一半」
+        //   要**自己造得出來**,⛔ 不可假設某一檔真實資料剛好有那個情境(那會變成靠當天資料吃飯)。
+        const synth = []; let px = 100;
+        for (let i = 0; i < 40; i++) {
+            if (i === 20) px *= 2;                                // ← 注入一次 ×2(分割/減資的形狀)
+            const d = new Date(2026, 0, 5 + Math.floor(i / 5) * 7 + (i % 5));
+            synth.push({ date: `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`,
+                         open: px, high: px, low: px, close: px, volume: 1e6 });
+        }
+        out.synthTw  = app._splitGapWarn(synth, '2603');   // 上市櫃身分 → ×2 物理不可能 → 要報
+        out.synthOff = app._splitGapWarn(synth, '6696');   // 興櫃身分   → ⛔ 一律不報
+        out.crossAsOff = app._splitGapWarn(await (await fetch('data/6696.json')).json(), '6696');
+        // ⭐⭐ 決定性對照②:清單清空 = 「還不知道」→ ⛔ 不可猜
+        const keep = app.allStockList; app.allStockList = []; app._listedSetN = -1;
+        out.blindTw = app._isTwListed('2603');
+        out.blindOff = app._offListed('2603');
+        out.blindGap = app._splitGapWarn(app.rawDailyData, '2603');
+        app.allStockList = keep; app._listedSetN = -1;
+        return out;
+    });
+    ok('ⓧs 空過守門:股名清單真的載進來了(⛔ 否則下面全部空過)', x.listN > 1000, `listN=${x.listN}`);
+    ok('ⓧ1 上市櫃 + 歷史有斷崖 → 要報(2603 長榮 2023/06/30 155 → 93.5)',
+       x['2603']?.isTw === true && x['2603']?.gap?.date === '2023/06/30'
+       && Math.abs(x['2603'].gap.r - 0.6032) < 0.01, JSON.stringify(x['2603']?.gap));
+    ok('ⓧ2 而且徽章真的在個股頁頂端(⛔ 不是只有函式算得出來)',
+       /歷史價格斷崖/.test(x['2603']?.tag || ''), (x['2603']?.tag || '').slice(0, 120));
+    ok('ⓧ3 🏷️ 興櫃要標在頂端(6696:標題印「6696 (6696)」= 名字就是代號)',
+       x['6696']?.isTw === false && x['6696']?.off === true
+       && /非上市櫃/.test(x['6696']?.tag || ''), (x['6696']?.tag || '').slice(0, 120));
+    ok('ⓧ4 🚨 興櫃⛔ 不可報斷崖(它沒有 ±10% 漲跌幅限制,單日大跳是真實行情)',
+       x['6696']?.gap === null && x.crossAsOff === null, JSON.stringify(x['6696']?.gap));
+    // 🚨 這一條是**決定性**的:同一批資料借上市櫃身分就報得出來 → 證明「不報」是守門擋的,⛔ 不是偵測器沒作用
+    ok('ⓧ4b ⭐⭐ 決定性對照:**同一批**合成 K 線,上市櫃身分報得出來、興櫃身分⛔ 不報',
+       !!x.synthTw && x.synthTw.n === 1 && Math.abs(x.synthTw.r - 2) < 0.001 && x.synthOff === null,
+       JSON.stringify({ tw: x.synthTw, off: x.synthOff }));
+    ok('ⓧ5 清單還沒載好 → `_isTwListed` 回 null(不知道),而且⛔ 不猜斷崖',
+       x.blindTw === null && x.blindGap === null, JSON.stringify({ tw: x.blindTw, gap: x.blindGap }));
+    // ⭐⭐ ⓧ6 是這一版真正學到的事:`_offListed` 的 null 有三義(不知道 / 欄位空 / 確定上市櫃)
+    //   → ⛔ 不可拿它當「是不是上市櫃」的守門。第一版就是這樣寫,實跑時 2603 被自己的守門擋掉。
+    ok('ⓧ6 🚨 `_offListed` 對「不知道」與「確定上市櫃」都回同一個值 → ⛔ 不可拿它當守門',
+       x.blindOff === null && x['2603']?.off === false, JSON.stringify({ blind: x.blindOff, listed: x['2603']?.off }));
+    ok('ⓧ7 ⛔ 守門一律走三態的 `_isTwListed`(⛔ 不可退回 `_offListed(...) !== null`)',
+       /_isTwListed\(String\(sym\)\) !== true/.test(SRC) && !/_offListed\(String\(sym\)\) !== null/.test(SRC), '');
+}
+
 ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
 await browser.close();
 console.log(fails.length ? `\n❌ ${fails.length} 條沒過` : '\n✅ 全部通過');

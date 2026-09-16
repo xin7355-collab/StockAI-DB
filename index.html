@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.2.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.2.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.2.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.2.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3867,6 +3867,8 @@ const app = {
         '量縮窒息': '成交量萎縮到 5 日均量的 6 成以下 = 買賣雙方都觀望。盤整末端的量縮常是變盤前兆,要等放量表態才知道方向。',
         '量價背離': '價量必須同向才健康:漲要帶量(有人追)、跌可縮量(沒人想賣)。「價漲量縮」= 漲假的、主力沒進場,易回檔;「價跌量縮」= 殺盤賣壓衰竭,可能止跌。判讀以個股自身價量為主,大盤走勢當背景參考(個股逆大盤上漲 = 相對強勢)。',
         '高檔出貨': '股價衝到波段高點、當天卻爆大量(≥2 倍 5 日均量),但收一根「小實體變盤線」或「長上影線」= 主力趁高把貨倒給散戶。出現代表漲勢可能到頂:手上有貨分批停利,空手別追高。',
+        '非上市櫃': '這一檔**不在上市櫃名單裡**,多半是「興櫃」。\n\n三件事跟你直接有關:\n• 🚨 **沒有漲跌幅限制** —— 上市櫃一天最多 ±10%,興櫃沒有。實測 6696 在 2026/09/07 那天,一天之內最低 134、最高 200(振幅 49%)。\n• ⛔ **不能融資融券** —— 所以本站「融資追繳壓力區」那一格對它是空的,不是壞掉。\n• 💧 **成交量通常很小** —— 抽樣實測:沒有中文名那一組近 20 日成交量中位 **24 張**,上市櫃是 **151 張**,六成七的日子不到 50 張。本站回測的進場方式是「尾盤觸價買」,一天成交 24 張的股票,那個價你很可能**買不到**,或是你一買價格就被自己墊高。\n\n⚠️ **所以這一頁上那些門檻要打折看**:乖離、基期位階、追買價、套牢區,全都是拿上市櫃的規則調出來的。\n\n⭐ 本站**刻意不把它從任何榜單刪掉** —— 刪了那個榜就不是它真正的成績了;改成在每一列標出來讓你自己判斷。\n\n💡 為什麼連中文名都沒有:本站股名來自官方「上市櫃公司基本資料」與「每日收盤行情」兩份,興櫃天生不在那兩份上。',
+        '價格斷崖': '這一檔的歷史 K 線裡,有某一天的收盤價**跳得物理上不可能**(台股上市櫃一天最多 ±10%,但那天直接變成好幾倍或剩幾分之一)。\n\n三個常見原因:\n• 🔢 **股票分割 / 反分割**(例如 1 股拆成 4 股,價格變 1/4)\n• ✂️ **減資**(股數減少,價格等比例調高)\n• 💰 **除權息**(配股配息後,參考價往下調)\n\n🚨 **對你的影響**:那一天**以前**的價格是「另一把尺」量出來的 → 跨過那一天的**均線(季線/半年線/年線)、基期位階、回測成績**都會失真。\n\n⭐ **本站的處理方式(誠實講清楚)**:採礦時會自動還原「**整數倍**的分割/減資」(2~10 倍),因為那種一定是尺標變了。但**除權息**與**非整數比例的減資**(例如價格變成 1.63 倍)**刻意不動** —— 那些比例是任意的,硬要「修掉」會把**真正的除權與真正的大跌也一起亂乘**,反而製造出新的錯誤。\n\n💡 **你該怎麼做**:看這一檔的長天期均線與位階時,先確認資料有沒有跨過那一天;跨過了就只當參考,別拿它當進出場依據。近期(斷崖之後)的價格是乾淨的。\n\n⚠️ 興櫃股**不會**出現這個提醒 —— 它本來就沒有漲跌幅限制,單日大跳是真實行情,不是壞資料。',
         '基期位階': '把「近 1 年的最高價~最低價」當成一把尺,現價落在這把尺的第幾 %。\n\n🧊 低基期(≤35% 且距高點跌 ≥25%):股價在相對低檔,分析師說的「低基期」就是這個。好處是萬一利多來,漲幅空間大(基期低=比較基準低);風險是「便宜還有更便宜」,低基期不等於會漲。\n\n📊 中基期(35~80%):不上不下。\n\n⛰️ 高基期(≥80%):股價在相對高檔,追高要嚴設停損。\n\n💡 用法:低基期 + 打底跡象(月線翻揚/底部抬高/外資回補/量能回溫)才是真的有爆發力 → 選股頁「🧊 低基期爆發」榜已經幫你篩好。單看低基期就買,常買到還在跌的股票。',
         '突破棒防守': '起漲那根「爆量長紅」的中點(開盤+收盤)÷2,約是主力與大戶的成本區、也是這波多頭的結構防線。跌破 = 這波結構壞了,多單該守;回檔到這條線附近又量縮、低點不破,就是朱老師「回後買上漲」的加碼買點。比單純看 5MA/20MA 更貼近真實主力成本。',
         '盤前體檢': '朱老師「盤前分析」的純公式自動版 — 把今天開盤前該看的東西一次彙總,算出「今天大盤偏多/偏空」一句話總結:\n\n📊 計分材料(全部程式算,不靠 AI):\n  ・ 美股四雄(道瓊/NASDAQ/S&P500/費半)收紅收綠\n  ・ 台積電 ADR 漲跌(權重最高,最連動台積電開盤)\n  ・ VIX 恐慌指數(<20 安全 / >30 恐慌)\n  ・ 外資台指期淨未平倉(偏多/偏空)+ 外資現貨買賣超\n  ・ 🌙 台指期夜盤(15:00~次日5:00,台灣資金對隔夜美股+盤後事件的即時反應,最直接的隔日開盤風向球;有真實漲跌%才計分,夜盤重挫權重略高)\n  ・ 🌍 亞股連動(日經/韓股同盤最直接風向,恆指半權重)+ 恐懼貪婪情緒(≥80 過熱偏空/≤20 極恐偏多,輕權重)(V50.2 新增)\n  ・ 加權指數自己的「進場體檢」技術分數(對 ^TWII 跑同一套純公式)\n\n🎯 總結:🔴 開高偏多 / 🟡 中性震盪 / 🟢 開低偏空(紅漲綠跌)。\n\n🔧 仍「採集中」的(下次採礦自動補):大盤融資券餘額、台指期夜盤源(修復中時暫不計分)。投信/自營商/三大法人合計、日月光/聯電 ADR 已納入採礦,16:30 跑完即顯示。\n\n⚠️ 開盤方向是機率不是保證(美股常被提前反映),僅供盤前風向參考,實際進出仍以開盤量價為準。',
@@ -8446,8 +8448,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.2.0',
+    _APP_VERSION: 'V77.2.1',
     _CHANGELOG: [
+        { v: 'V77.2.1', d: [
+            '🏷️ <b>個股頁頂端會標「非上市櫃」了</b>(你截圖那檔 6696 就是 —— 標題印「6696 (6696)」,名字就是代號)。⭐ 這種多半是<b>興櫃</b>:<b>沒有漲跌幅限制</b>(它 09/07 那天一天之內最低 134、最高 200,振幅 49%)、<b>不能融資</b>、成交量很小。⚠️ 所以那一頁上的「乖離 / 高基期 / 追買價 / 套牢區」都是拿上市櫃規則調的,套在它身上要打折看 —— 點徽章有完整說明。(以前只在決策台/訊號榜/釣魚池標,<b>個股頁漏掉了</b>。)',
+            '⚠️ <b>新增「歷史價格斷崖」提醒</b>(你問的分拆)。全市場 2,520 檔實測掃過:有 <b>31 檔</b>歷史上出現過「一天之內不可能的跳價」,其中 19 檔是興櫃的真實行情,<b>真正要當心的是上市櫃那 12 檔</b>(長榮 2603、1538、1808、6949…)。現在只要這一檔有,頂端就會標出來,並告訴你<b>那一天以前的均線、位階、回測都是用另一把尺算的</b>。',
+            '✅ <b>而你截圖那檔 6696 我逐根查過了:807 根 K 線一個斷崖都沒有</b> —— 年線 46、季線 79.89 那些數字<b>是真的</b>,它是真的一年之內從 15.2 漲到 200,⛔ 不是分拆算錯。',
+            '🔍 順手修掉一個我自己上一版留下的坑:判斷「是不是上市櫃」的那支工具,對「還不知道」跟「確定是上市櫃」<b>回傳同一個值</b> → 新功能第一版因此把長榮的斷崖<b>自己擋掉了</b>(實跑才看到)。現在三種狀態分得清清楚楚。',
+        ] },
         { v: 'V77.2.0', d: [
             '🗑️ <b>六個 AI 功能/卡片整組刪除</b>(你點名的那幾個):🧠 深度診斷 ・🔮 此股預判 ・🤖 X光機 AI 解讀 ・✨ 技術面 AI 診斷 ・🚨 處置出獄 AI ・🧠 首席全盤分析。⭐ <b>刪之前先量過</b>誰是「別人的唯一產生者」—— 結果<b>其中四個本來就是死碼</b>(技術面 AI 全檔零呼叫端、首席 AI 早就沒有函式、處置出獄卡的容器根本不存在、X光機 AI 的 forceAI 沒有人會傳),真正還看得到的只有前兩個。🚨 而 <b>X光機那支函式本身不可刪</b>(它產生基本面體質總評與月營收即時那份),只砍掉它尾巴的 AI 段。index.html 少 <b>706 行</b>。',
             '🗓️ <b>板塊輪動加「1 / 3 / 5 / 20 日」天期選單</b>(概念股與官方產業共用)。🚨 但<b>只有 20 日那一頁可以引用實測背書</b>(前3強−後3弱 +1.44pp 是拿 20 日測的)—— 切到 1/3/5 日會直接寫「這個天期沒有回測過」,⛔ 不把別人的成績借過來。⏳ <b>3 日這一欄採礦本來沒有</b> → 已補進採礦,下一輪跑完才會亮(在那之前那顆鈕是暗的並寫「待採礦」,⛔ 不拿別的天期冒充)。',
@@ -11407,6 +11415,74 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
      *  🚨 所以真正該講的**不是名字**,是「**你可能買不到、也不能融資**」。
      *  ⛔ 回 `null` = **不知道**(清單還沒載好)—— ⛔ 不可把「還沒載好」說成「它不在名單裡」。
      *  ⛔ 也**不從任何榜單刪掉**(同處置股的處置方式:刪了就不是那個榜真正的成績)。 */
+    /** 🪓 V77.2.1 這一檔的歷史裡有沒有「價格斷崖」(分割 / 減資 / 除權)——
+     *  使用者問:「很多個股都有分拆,你這個部分你知道嗎?不要計算錯誤讓使用者誤解」。
+     *
+     *  ⭐ **先量再答**(2026-09-16 掃 gh-pages 全部 2,520 檔):
+     *    ・仍有**物理不可能**的單日跳空:41 次 / 31 檔
+     *    ・其中 **19 檔是興櫃**(⛔ 沒有 ±10% 漲跌幅限制 → 那是**真實行情**,不是壞資料)
+     *    ・真正要當心的只有**上市櫃 12 檔**:1538 / 3593 / 1808 / 2025 / 2603 /
+     *      3494 / 3710 / 6461 / 6885 / 6949 / 8059 / 8277
+     *
+     *  🚨 **為什麼不在採礦端「修掉」它**(⛔ 這條是明文禁止的,見 `miner._backadjust_splits` 的註解):
+     *    採礦端只還原「**整數倍** 2~10」的分割/減資(殘差要落在漲跌停內),因為那是**物理上不可能**
+     *    的真實漲跌。而上面那 12 檔多數是 **×1.63 / ×2.22 / ×2.33 / ÷2.5 / ÷20** 這種**非整數比**
+     *    (減資比例本來就是任意的),還有 2603 長榮 2023/06/30 的 ×0.603 那種**除權息**。
+     *    ⛔ 為了修它們去放寬倍率表或殘差門檻,會把**真實的除權與大跌亂乘** = 製造新的錯誤
+     *    (同 V74.9.4「gap > 120 天那 48 次是資料洞,放寬會亂乘」的教訓)。
+     *
+     *  ⭐ 所以正解是「**讓使用者看得到**」而不是猜:有斷崖就說出來,並講清楚**哪些數字會受影響**
+     *    (斷崖之前的均線 / 位階 / 回測都是用另一把尺算的)。⛔ 一個價格都不竄改。
+     *
+     *  ⛔ **興櫃一律不判**(`_offListed` 為真)—— 它沒有漲跌幅限制,單日 ×1.6 是合法行情;
+     *     對它報「斷崖」會變成天天誤報,而誤報會讓人養成忽略警示的習慣。
+     *  ⚠️ `_offListed` 回 `null`(清單還沒載好)時視同**不知道** → 保守起見照樣不判。 */
+    _splitGapWarn(data, sym) {
+        try {
+            const a = Array.isArray(data) ? data : [];
+            if (a.length < 30) return null;
+            if (this._isTwListed(String(sym)) !== true) return null;  // ⛔ 只有「確定是上市櫃」才判(興櫃沒有漲跌幅限制;不知道就不猜)
+            const HI = 1.6, LO = 0.625;        // 單日 ±10% 漲跌停 → 超出這個範圍物理上不可能
+            const hits = [];
+            for (let i = 1; i < a.length; i++) {
+                const c0 = +a[i - 1].close, c1 = +a[i].close;
+                if (!(c0 > 0) || !(c1 > 0)) continue;
+                // ⛔ 只比「相鄰交易日」—— 中間停牌很久的是缺資料不是分割(同採礦端那道守門)
+                const d0 = String(a[i - 1].date || '').replace(/\//g, '-');
+                const d1 = String(a[i].date || '').replace(/\//g, '-');
+                const gap = (new Date(d1) - new Date(d0)) / 86400000;
+                if (!(gap >= 0 && gap <= 5)) continue;
+                const r = c1 / c0;
+                if (r > HI || r < LO) hits.push({ date: a[i].date, r, from: c0, to: c1 });
+            }
+            if (!hits.length) return null;
+            const last = hits[hits.length - 1];
+            // 斷崖之後還剩幾根 = 「還沒被污染的」那一段有多長
+            const after = a.length - 1 - a.findIndex(x => x.date === last.date);
+            return { n: hits.length, date: last.date, r: last.r, from: last.from, to: last.to, after };
+        } catch (_) { return null; }
+    },
+
+    /** 🚨 V77.2.1 `_offListed` 的 `null` 其實有**三個**意思(清單沒載好 / 市場別欄位空的 / 確定是上市櫃)
+     *  —— 對「要不要標徽章」沒差(三種都不標),但對「**要不要對它套上市櫃的規則**」就會判錯:
+     *  `_splitGapWarn` 第一版寫 `if (this._offListed(sym) !== null) return null`,結果**上市櫃也被擋掉**
+     *  (2603 長榮明明有 2023/06/30 的 ×0.603 斷崖,實跑卻回 null)—— 是實跑當場抓到的,⛔ 不是推理出來的。
+     *  ⭐ 所以三態拆明白:`true` = 確定上市櫃 ・`false` = 確定不是 ・`null` = **還不知道**。
+     *  ⛔ `_offListed` 改成一行轉呼叫 —— 判斷邏輯**全 App 仍然只有這一份**。 */
+    _isTwListed(sym) {
+        const L = this.allStockList || [];
+        if (L.length < 1000) return null;                       // 清單沒載好 → 不知道
+        if (this._listedSetN !== L.length) {
+            this._listedSet = new Set(L.map(x => String(x.stock_id)));
+            this._listedMkt = new Map(L.map(x => [String(x.stock_id), String(x.type || '').toLowerCase()]));
+            this._listedSetN = L.length;
+        }
+        const k = String(sym);
+        if (!this._listedSet.has(k)) return false;              // 連名單都沒有 → 一定不是上市櫃
+        const mkt = this._listedMkt.get(k) || '';
+        if (!mkt) return null;                                  // 分不出來 → ⛔ 不可說成「非上市櫃」
+        return !!(mkt.includes('twse') || mkt.includes('tpex') || mkt.includes('otc'));
+    },
     _offListed(sym) {
         const L = this.allStockList || [];
         if (L.length < 1000) return null;                       // 清單沒載好 → 不知道
@@ -41405,6 +41481,28 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 tagsHtml += `<span onclick="app.showJargon('基期位階')" title="${_tip}" class="cursor-pointer inline-block text-[9px] px-1 py-0 rounded font-bold whitespace-nowrap border ${_base.cls}">${_base.t}</span>`;
             }
         } catch (_) {}
+        // 🏷️ V77.2.1 非上市櫃(多為興櫃)—— ⭐ 使用者截圖的 6696 就是這種:標題印「6696 (6696)」
+        //   = 名字就是代號。⛔ 以前只在決策台/訊號榜/釣魚池那三個榜的**每一列**標,
+        //   **個股頁頂端沒標**(陷阱 #37 又一次)—— 而個股頁才是他實際在看的地方。
+        //   🚨 為什麼一定要標:興櫃**沒有 ±10% 漲跌幅限制**(6696 實測 2026/09/07 單日振幅 49%)、
+        //   **不能融資**、成交量極小 → 這一頁上「乖離 / 高基期 / 追買價 / 套牢區」那些門檻
+        //   全是對上市櫃調的,套在它身上會失真。⛔ 但價位一個都不動(事實不竄改)。
+        try {
+            if (this._offListed(String(this.currentSymbolId))) {
+                tagsHtml += `<span onclick="app.showJargon('非上市櫃')" title="不在上市櫃名單裡(多為興櫃):沒有漲跌幅限制、不能融資、量很小" class="cursor-pointer inline-block text-[9px] px-1 py-0 rounded font-bold whitespace-nowrap border bg-slate-800 text-slate-300 border-slate-600">🏷️ 非上市櫃 ⓘ</span>`;
+            }
+        } catch (_) {}
+        // 🪓 V77.2.1 歷史價格斷崖(分割 / 減資 / 除權)—— 有的話,斷崖**之前**的均線/位階/回測
+        //   是用另一把尺算的。⛔ 不竄改價格,只是把它說出來(採礦端刻意只還原整數倍,見 `_splitGapWarn`)。
+        try {
+            const _sg = this._splitGapWarn(this.rawDailyData, this.currentSymbolId);
+            this._lastSplitGap = _sg ? { sym: this.currentSymbolId, ..._sg } : null;
+            if (_sg) {
+                const _mul = _sg.r >= 1 ? `×${_sg.r.toFixed(2)}` : `÷${(1 / _sg.r).toFixed(2)}`;
+                const _t = `${this._dW ? this._dW(_sg.date) : _sg.date} 收盤從 ${_sg.from} 變成 ${_sg.to}(${_mul})—— 單日不可能這樣走,多半是分割/減資/除權。那一天以前的價格是另一把尺,均線、位階、回測都會受影響${_sg.n > 1 ? `;這檔總共有 ${_sg.n} 次` : ''}`;
+                tagsHtml += `<span onclick="app.showJargon('價格斷崖')" title="${this._escHtml ? this._escHtml(_t) : _t}" class="cursor-pointer inline-block text-[9px] px-1 py-0 rounded font-bold whitespace-nowrap border bg-amber-900/30 text-amber-300 border-amber-700">⚠️ 歷史價格斷崖 ⓘ</span>`;
+            }
+        } catch (_) { this._lastSplitGap = null; }
         document.getElementById('stockTags').innerHTML = tagsHtml;
 
         // 預設防守：波段月線（季節 switch 內若速度因子打開會 override 回 5MA）
