@@ -154,6 +154,16 @@ def probe_all_etf():
                     rows.extend(x for x in inner if isinstance(x, dict))
                 elif any(k in node for k in ('a', 'c', 'ch')):
                     rows.append(node)
+                else:
+                    # 🚨 2026-09-10 修:少了這一段,**dict 分支就是死路** ——
+                    #   真實回應是 {"a1":[{"msgArray":[…]}]},頂層那個 dict 只有 'a1',
+                    #   既沒有 msgArray、也沒有 a/c/ch → 直接 return,連 j['a1'] 都不會進去。
+                    #   ⭐ 所以 2026-09-09 那次探針印「共挖出 0 個資料列」**是探針自己的錯**,
+                    #     ⛔ 不是那個端點沒資料(它上面一行印的原始樣本裡明明就有 a/b/e/f/g)。
+                    #   ⭐ 通用:遞迴挖掘器的每個型別分支都要有「往下走」的出口,
+                    #     ⛔ 否則它會安靜地回 0 筆,看起來像上游沒東西。
+                    for v in node.values():
+                        _harvest(v, depth + 1)
 
         _harvest(j)
         print(f"     🔎 共挖出 {len(rows)} 個資料列")

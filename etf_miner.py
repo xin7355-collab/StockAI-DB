@@ -604,6 +604,32 @@ def fetch_etf_premium():
             _PREMIUM_STATUS = f"結構不符(外層={list(j.keys())[:6] if isinstance(j,dict) else type(j).__name__})"
             print(f"  ⚠️ [折溢價] {_PREMIUM_STATUS}")
             return out
+
+        # 🚨 2026-09-10 修 mis.twse 回的是「**批次信封**」不是資料列 —— 少剝一層就整包全空。
+        #   真實結構(scripts/stockname_probe.py 2026-09-09 在 Actions 實跑印出來的,⛔ 不是猜的):
+        #     {"a1":[ {"msgArray":[{"a":"00693U","b":"…","e":23.76,"f":23.97,"g":-0.88,…}, …]},
+        #             …共 24 包… ]}
+        #   舊版只剝到 j['a1'] → `it` 拿到的是信封
+        #   ({'msgArray','refURL','userDelay','rtMessage','rtCode'})→ it.get('a') 永遠是空
+        #   → out 全空,而且**零錯誤訊息**;`_premium_status` 寫的
+        #     「命中0檔;arr長=24;首筆keys=['msgArray',…]」正是這個症狀。
+        #   ⛔ 後果:ETF 折溢價與淨值從那次改版起一直是空的(前端那格永遠 graceful 略過)。
+        # ⛔ **只攤一層** —— 再深會開始把不相干的巢狀 list 收進來。
+        # ⭐ 混合型態也要接得住(有的是信封、有的已經是資料列),⛔ 不可寫成只收信封的 comprehension。
+        if any(isinstance(x, dict) and isinstance(x.get("msgArray"), list) for x in arr):
+            _envelopes = len(arr)
+            _flat = []
+            for _env in arr:
+                if not isinstance(_env, dict):
+                    continue
+                _inner = _env.get("msgArray")
+                if isinstance(_inner, list):
+                    _flat.extend(x for x in _inner if isinstance(x, dict))
+                else:
+                    _flat.append(_env)
+            arr = _flat
+            print(f"  🔎 [折溢價] 剝掉批次信封:{_envelopes} 包 → {len(arr)} 列")
+
         for it in arr:
             if not isinstance(it, dict):
                 continue
