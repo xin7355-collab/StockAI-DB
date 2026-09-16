@@ -60,16 +60,19 @@ ok('⓪ 取樣守門:blk 真的只有 `_ovDigest` 這一支', blk.length > 1500 
        picks.length === 1, `找到 ${picks.length} 份`);
 }
 
-// ── ⑧ 雜訊:深度診斷要收進摺疊、但不可刪 ──
+// ── ⑧ 🗑️ V77.2.0 深度診斷已整張刪除(使用者明示沒有用)──
+//   ⚠️ 原本三條驗的是「要收進摺疊、但不可刪」→ 那張卡不存在了,改釘「⛔ 不可復活」。
+//   ⭐ 但「摺疊區裡本來就要有東西」與「卡片要待在某個 pane 裡」(陷阱 #32)這兩條規則**照舊**,
+//     所以下面換成對**還活著的**卡驗同一件事,⛔ 不是整組刪掉。
 {
-    ok('⑧ deepBriefCard 還在(⛔ 不可刪掉)', /id="deepBriefCard"/.test(src), '');
+    ok('⑧ 🗑️ deepBriefCard 已刪除,⛔ 不可復活', !/id="deepBriefCard"/.test(src), '');
     const i = src.indexOf('id="ovNowMore"');
     const j = src.indexOf('</details>', i);
-    ok('⑧b ⭐ deepBriefCard 已移進「📖 更多解讀」摺疊裡',
-       src.slice(i, j).includes('id="deepBriefCard"'), '');
+    ok('⑧b ⭐ 「📖 更多解讀」摺疊區裡仍有卡(⛔ 不可變成空殼)',
+       i > 0 && j > i && /id="(trendCommandCard|chuActionCard|positionSizerCard|dailyRecapCard)"/.test(src.slice(i, j)), '');
     const paneNow = src.slice(src.indexOf('data-ovpane="now"'), src.indexOf('data-ovpane="entry"'));
-    ok('⑧c 仍在「現在怎麼做」pane 內(⛔ 不可又跑到 pane 外,陷阱 #32)',
-       paneNow.includes('id="deepBriefCard"'), '');
+    ok('⑧c 摺疊區仍在「現在怎麼做」pane 內(⛔ 不可跑到 pane 外,陷阱 #32)',
+       paneNow.includes('id="ovNowMore"'), '');
     ok('⑧d 三個 pane 各有一個消化條容器',
        /id="ovDigestNow"/.test(src) && /id="ovDigestEntry"/.test(src) && /id="ovDigestExit"/.test(src), '');
 }
@@ -115,6 +118,11 @@ const R = await page.evaluate(async () => {
     // ⑥ 兩邊都沒訊號 → 空字串
     const fake = [{ date: '2026-01-01', open: 1, high: 1, low: 1, close: 1, volume: 0 }];
     out.emptyCase = app._ovDigest('now', fake, 'ZZZZ');
+    // 🚨 V77.2.0 ⑥c 陷阱 #19:`_chipEdgeState(sym)` 以前**完全沒用那個參數**,資料一律讀
+    //   `this.rawDailyData` → 拿別檔代號問它會回**當前這檔**的籌碼(⑥b 長期紅燈報的就是這件事)。
+    //   ⭐ 決定性對照:同一個呼叫,只換代號,一個要有值、一個一定要是 null。
+    out.chipSelf = !!app._chipEdgeState(String(app.currentSymbolId || ''));
+    out.chipOther = app._chipEdgeState('ZZZZ');
     return out;
 });
 
@@ -145,6 +153,8 @@ ok('④b ⭐ 空頭時要明說「只做短、不加碼」', /不加碼|只做�
 ok('④c ⭐ 出場狀態要明說「不是叫你進場」', /不是叫你進場|出場管理狀態/.test(R.exitEntry), R.exitEntry.slice(0, 140));
 ok('④d ⭐ 出場狀態優先於空頭(⛔ 兩個都成立時要講出場)', /出場管理狀態/.test(R.exitNow), R.exitNow.slice(0, 100));
 ok('⑥b 沒有 K 線也沒有籌碼 → 回空字串', R.emptyCase === '', String(R.emptyCase).slice(0, 80));
+ok('⑥c 🚨 拿別檔代號問籌碼 → ⛔ 一定要回 null(陷阱 #19 跨股污染)',
+   R.chipOther === null, JSON.stringify({ self: R.chipSelf, other: R.chipOther }));
 ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();

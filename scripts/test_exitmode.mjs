@@ -132,12 +132,11 @@ ok('④ ⭐ 四張次要卡都在摺疊區裡(⛔ 是收起不是刪掉)', R.mor
 // ── ⑤ V72.4.8 使用者三個回報 ──────────────────────────────────
 const R5 = await page.evaluate(async (sym) => {
     const out = {};
-    // (1) 深度診斷不可四頁都顯示(陷阱 #32:放在兩個 pane 中間)
-    const el = document.getElementById('deepBriefCard');
-    out.pane = el?.closest('[data-ovpane]')?.getAttribute('data-ovpane') || null;
-    el.classList.remove('hidden'); el.innerHTML = 'X';
-    out.vis = {};
-    for (const t of ['now', 'entry', 'exit']) { try { app.switchOvTab(t); } catch (_) { } out.vis[t] = !!el.offsetParent; }
+    // ⚠️ V77.2.0 起「深度診斷」(`deepBriefCard`)已整張刪除(使用者明示沒有用)
+    //   → 原本 (1) 驗它「不可四頁都顯示」的那一段跟著移除;⛔ 這不是放寬斷言,是那張卡不存在了。
+    //   ⭐ 「新增卡片要放在某個 `data-ovpane` 裡面」這條規則本身沒有變(陷阱 #32),
+    //     由 `test_ovdigest` 對還活著的卡繼續把關。
+    out.pane = 'n/a'; out.vis = { now: false, entry: false, exit: false };
     // ⚠️ V72.5.5 起 'inv' 那個 pane 已整個移除(switchOvTab 早就把它導向 'now'),⛔ 別再測它
 
     // (2) V72.5.5:原「今天最該看」常駐條(#todaySignalBar)已改成**選股頁的第一個榜單分頁**
@@ -159,12 +158,9 @@ const R5 = await page.evaluate(async (sym) => {
     return out;
 }, SYM);
 
-ok('⑤ ⭐⛔ 深度診斷必須在某個 ovpane 裡(⛔ 不可放在 pane 之間 → 四頁都顯示)',
-   R5.pane === 'now', `pane=${R5.pane}`);
-// ⚠️ `inv` 在 V68.7.2 就併進 `now`(switchOvTab 第一行直接改寫)→ 它顯示是**正確**的,
-//    第一版測試把它當成失敗是我搞錯。真正要擋的是「進場/出場」兩頁也跟著顯示。
-ok('⑤ ⭐ 只在「現在怎麼做」顯示(inv 已併入 now),⛔ 進場/出場頁不可出現',
-   R5.vis?.now === true && !R5.vis?.entry && !R5.vis?.exit, JSON.stringify(R5.vis));
+// 🗑️ V77.2.0 「深度診斷」整張卡已刪除 → 原本兩條(在哪個 pane / 只在哪一頁顯示)改成
+//    「⛔ 不可復活」。⭐ 這是釘**用意**:那兩條驗的規則(陷阱 #32)由 test_ovdigest 對還活著的卡顧。
+ok('⑤ 🗑️ 深度診斷已刪除,⛔ 不可復活', R5.pane === 'n/a' && !R5.vis?.now, JSON.stringify(R5.vis));
 ok('⑤ ⭐ 「今天最該看」是選股頁的第一個榜單(⛔ 不可被埋到後面)',
    R5.sigTabFirst === 'todaysig' && R5.sigViewExists === true, `first=${R5.sigTabFirst} view=${R5.sigViewExists}`);
 ok('⑤ ⭐⛔ 分點必須綁 _chipSym(⛔ 不可拿上一檔的分點算這一檔)',

@@ -62,7 +62,7 @@ const R = await page.evaluate(async () => {
     A._ovTrend = null; A._lastOvPlan = null; A._exitMode = null;
     try { A._renderTrendCommand(k, A.indicators, k.length - 1); } catch (e) { return { err: String(e) }; }
     return {
-        anc: Object.fromEntries(['ovCommandCenter', 'trendCommandCard', 'playbookRadarCard', 'chuActionCard', 'deepBriefCard'].map(i => [i, anc(i)])),
+        anc: Object.fromEntries(['ovCommandCenter', 'trendCommandCard', 'playbookRadarCard', 'chuActionCard'].map(i => [i, anc(i)])),
         folded: document.getElementById('ovMoreWrap')?.dataset.folded,
         hidden: document.getElementById('ovMoreWrap')?.classList.contains('hidden'),
         wrote: { t: !!A._ovTrend, p: !!A._lastOvPlan, e: !!A._exitMode },
@@ -80,9 +80,10 @@ const R = await page.evaluate(async () => {
 await browser.close();
 if (R.err) { console.log('❌ 實跑丟例外  ' + R.err); process.exit(1); }
 
-ok('④ 🚨 第一屏只有行動指令中心在下指令(⛔ 其餘 4 份都要在收合裡)',
+// ⚠️ V77.2.0 起 `deepBriefCard`(深度診斷)已整張刪除(使用者明示)→ 這裡剩 3 份,⛔ 不是放寬斷言
+ok('④ 🚨 第一屏只有行動指令中心在下指令(⛔ 其餘 3 份都要在收合裡)',
    !/ovMoreWrap/.test(R.anc.ovCommandCenter)
-   && ['trendCommandCard', 'playbookRadarCard', 'chuActionCard', 'deepBriefCard'].every(i => /ovMoreWrap/.test(R.anc[i])),
+   && ['trendCommandCard', 'playbookRadarCard', 'chuActionCard'].every(i => /ovMoreWrap/.test(R.anc[i])),
    JSON.stringify(R.anc));
 ok('④b 收合預設是收起來的', R.folded === '1' && R.hidden === true, JSON.stringify([R.folded, R.hidden]));
 ok('⑤ 🚨 收起⛔ 不可影響計算:三個結論都要被寫進去', R.wrote.t && R.wrote.p && R.wrote.e, JSON.stringify(R.wrote));

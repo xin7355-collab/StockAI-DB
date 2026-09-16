@@ -53,9 +53,6 @@ const R = await page.evaluate(() => {
         curShares: fromShares?.cur, curLots: fromLots?.cur, prev: fromShares?.prevVol,
         deltaShares: pct(fromShares), deltaLots: pct(fromLots),
         progSrc: app._chuVolumeProgress.toString(),
-        factsSrc: app._deepBriefFacts.toString(),
-        aiSrc: app.analyzeStockDeep.toString(),
-        briefSrc: app.renderDeepBrief.toString(),
     };
 });
 
@@ -76,21 +73,11 @@ ok('① 兩種來源算出的量增% 一致', Math.abs((R.deltaShares ?? 0) - (R
 ok('① ⭐ cur 與 prevVol 都走同一支 _volToLots(⛔ 不可各寫一份換算)',
    (R.progSrc.match(/_volToLots/g) || []).length >= 2, R.progSrc.slice(0, 200));
 
-// ── ② 資料來源標示(同畫面兩個現價的解法)────────────────────────
-ok('② ⭐ facts 有帶資料日期', /dataDate/.test(R.factsSrc || ''));
-ok('② ⭐ 提示詞把價格標成「官方收盤」而非「現價」',
-   /官方收盤/.test(R.aiSrc || ''), (R.aiSrc || '').slice(0, 120));
-ok('② ⭐ 有明講「頂部那個是即時報價商,兩邊可能差幾角」(⛔ 不可讓使用者以為打架)',
-   /即時報價商/.test(R.aiSrc || ''));
-ok('② ⭐⛔ 明令 AI 不准把它講成「現價」', /不要講成「現價」|不要講成"現價"/.test(R.aiSrc || ''));
-ok('② ⭐ 卡片標題要標出資料日期(V70.2.0 鐵則)', /dataDate/.test(R.briefSrc || ''));
-
-// ── ③ 基本面(使用者明確要求補的)──────────────────────────────────
-ok('③ ⭐ facts 改讀全市場基本面快取(⛔ 不再只靠開過基本頁才有的 _fundCache)',
-   /_fundAllCache/.test(R.factsSrc || ''), (R.factsSrc || '').slice(0, 120));
-ok('③ ⭐ renderDeepBrief 會預載全市場基本面快取',
-   /_loadFundCache/.test(R.briefSrc || ''));
-ok('③ 提示詞有本益比與殖利率欄位', /本益比/.test(R.aiSrc || '') && /殖利率/.test(R.aiSrc || ''));
+// 🗑️ V77.2.0 原本 ② ③ 兩組(共 8 條)驗的是「深度診斷」的 facts 與提示詞 ——
+//   那個功能這一版被使用者明示刪掉了 → 這兩組跟著移除。
+//   ⚠️ ⛔ 這不是放寬斷言:①「量的單位」那組(本檔的主題)一條都沒動,
+//     而「資料日期要標出來」「價格要標官方收盤」這兩條規則還活在報告頁,
+//     由 `test_dupnum` ⓐ / `test_report` 繼續把關。
 
 await browser.close();
 console.log();

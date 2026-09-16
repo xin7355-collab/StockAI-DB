@@ -80,7 +80,7 @@ const strip = s => s.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '
        /id="subTabBtnStrategy"[\s\S]{0,400}?id="subTabBtnReport"[\s\S]{0,400}?id="subTabBtnLive"/.test(SRC));
     ok('①b switchSubTab 有 report 分支呼叫 renderReportTab', /tab === 'report'[\s\S]{0,200}renderReportTab/.test(sw));
     ok('② _idxHiddenSubTabs 含 report 且 MAP 含 report: \'Report\'', /_idxHiddenSubTabs: \[[^\]]*'report'\]/.test(SRC) && /bullbear: 'BullBear', report: 'Report'/.test(SRC));
-    ok('⑪a analyze() 切股清單含每一個 rp*(⛔ 少一個 = 那一段顯上一檔;V76.2.5 移除已下架的 rpNum/rpAct)', ['rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpSrc', 'rpQuick', 'rpWalls', 'rpPaste', 'rpImg'].every(id => new RegExp(`'deepBriefCard', 'deepBriefAi',[\\s\\S]{0,400}'${id}'`).test(SRC)));
+    ok('⑪a analyze() 切股清單含每一個 rp*(⛔ 少一個 = 那一段顯上一檔;V76.2.5 移除已下架的 rpNum/rpAct;V77.2.0 錨點從已刪除的 deepBriefCard 改成 marginCallBox)', ['rpLead', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpSrc', 'rpQuick', 'rpWalls', 'rpPaste', 'rpImg'].every(id => new RegExp(`'marginCallBox',[\\s\\S]{0,400}'${id}'`).test(SRC)));
     ok('⑪a2 🗑️ V76.2.5 `rpNum`/`rpAct` 已下架 → ⛔ 容器與寫入都不可以還在(留著會顯示上一檔的殘留)',
        !/id="rpNum"/.test(SRC) && !/id="rpAct"/.test(SRC) && !/_rpSet\('rpNum'/.test(SRC) && !/_rpSet\('rpAct'/.test(SRC));
     //   🚨 注入驗證抓到:`/this\._regaugeStrip\(sym\)/` 會被**函式定義那一行**救活 = 假綠燈

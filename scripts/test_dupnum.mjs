@@ -310,14 +310,24 @@ await page.waitForTimeout(2500);
         app.allStockList = [];                                  // ① 清單沒載好 → 不知道
         const none = app._offListed('9999');
         app.allStockList = Array.from({ length: 1200 }, (_, i) => ({ stock_id: String(1000 + i) }));
-        const inList = app._offListed('1000');                  // ② 在名單裡
-        const off = app._offListed('9999');                     // ③ 不在名單裡
+        const inList = app._offListed('1000');                  // ② 在名單裡、但**沒有市場別** → 不知道
+        const off = app._offListed('9999');                     // ③ 連名單都沒有
+        // 🏷️ V77.2.0 ⭐ 決定性對照:採礦補了名字之後,「有名字」不再等於「買得到」——
+        //   同一份名單只換 `type`,興櫃那一檔必須**照樣**被標出來。
+        app._listedSetN = -1;
+        app.allStockList = Array.from({ length: 1200 }, (_, i) => ({
+            stock_id: String(1000 + i), type: i === 0 ? 'twse' : (i === 1 ? 'tpex' : 'emerging') }));
+        const twse = app._offListed('1000'), tpex = app._offListed('1001');
+        const emg = app._offListed('1002');                     // ④ 有名字、但市場別不是上市櫃
         app.allStockList = keep; app._listedSetN = -1;
-        return { none, inList, off: off && off.off };
+        return { none, inList, off: off && off.off, twse, tpex, emg: emg && emg.off, emgMkt: emg && emg.mkt };
     });
     ok('ⓙ 清單沒載好時回 null(⛔ 不可說「它不在名單裡」)', r.none === null, JSON.stringify(r));
-    ok('ⓙ2 在名單裡 → null', r.inList === null, JSON.stringify(r));
-    ok('ⓙ3 不在名單裡 → 標出來', r.off === true, JSON.stringify(r));
+    ok('ⓙ2 在名單裡但沒有市場別 → null(⛔ 分不出來時不可硬說非上市櫃)', r.inList === null, JSON.stringify(r));
+    ok('ⓙ3 連名單都沒有 → 標出來', r.off === true, JSON.stringify(r));
+    ok('ⓙ4 上市 / 上櫃 → ⛔ 不標', r.twse === null && r.tpex === null, JSON.stringify(r));
+    ok('ⓙ5 🚨 有名字但市場別不是上市櫃(興櫃)→ **照樣標**,而且要帶出市場別',
+       r.emg === true && r.emgMkt === 'emerging', JSON.stringify(r));
 }
 
 // ─────────── V77.1.6 外部 AI 建議的四個「真缺口」 ───────────
@@ -572,19 +582,36 @@ await page.waitForTimeout(2500);
 }
 
 // ─────── 💸📚📖 V77.1.8 省 AI 次數 / 多模型比較 / 法人級提示詞 ───────
-{   // ⓢ 會打 AI 的快取鍵⛔ 不可綁「時鐘」,也⛔ 不可被每一檔跳動打掉
-    const s = seg('    async analyzeStockPredict(opts = {}) {', '        const arr2 = ');
-    const s2 = s || seg('    async analyzeStockPredict(opts = {}) {', '        // 收集個股關鍵資料');
-    ok('ⓢs 空過守門:抓得到明日劇本那一段', s2.length > 400, `len=${s2.length}`);
-    ok('ⓢs2 ⛔ 不可再用「15 分鐘時鐘」當快取(那就是價格一跳就重打 OpenRouter 的真因)',
-       !/15 \* 60 \* 1000/.test(s2), (s2.match(/.{0,40}15 \* 60 \* 1000.{0,20}/) || [''])[0]);
-    ok('ⓢs3 ⭐ 改綁「資料日期 + 模型」,再跟**當初那個價**比(⛔ 不是拿掉價格敏感度 —— 那樣大漲後還顯示舊劇本)',
-       /_pkD/.test(s2) && /_aiPriceNear\(_pkP, c\.px\)/.test(s2) && /aiEngine/.test(s2), '');
-    ok('ⓢs3b ⭐ 存快取時要把**當初那個價**一起存(⛔ 沒有它就只能綁時鐘)',
-       /px: _pkP/.test(s2) || /px: _pkP/.test(SRC), '');
-    const h = seg('    _aiPriceNear(a, b, pct = 1) {', '    // 📦 首席 AI 當日快取');
-    ok('ⓢs4 用**比值**⛔ 不用固定元(10 元股跟 1000 元股的 1% 差 100 倍)',
-       /Math\.abs\(x \/ y - 1\) \* 100 < pct/.test(h), h.slice(0, 160));
+{   // 🗑️ ⓢ V77.2.0 使用者明示刪掉的六個 AI 功能/卡片 —— ⛔ 不可復活
+    //   ⭐ 刪之前**先量過**誰是「唯一產生者」(CLAUDE.md 兩次教訓:V76.1.2 `_overallGaugeHtml`、
+    //     V76.2.5 `_ovDecide`)→ 四個本來就是死碼、兩個是活的;而 `fetchFundamentalAnalysis`
+    //     **不可刪**(它產生 `_xrayMetrics` 與 `_revLive`)。
+    const DEAD = ['renderDeepBrief', 'analyzeStockDeep', '_deepBriefFacts', '_deepBriefQuality',
+                  'analyzeStockPredict', 'triggerTechAI', 'closeTechAIModal'];
+    //   🚨 斷言一律先剝掉註解(JS 的 `//` **與 HTML 的 `<!-- -->`**)—— 第一版就被我自己寫在
+    //     HTML 註解裡的「`triggerTechAI()` 全檔沒有任何呼叫端」救活了(本 repo 第 7 次)。
+    const CODE = strip(SRC).replace(/<!--[\s\S]*?-->/g, '');
+    for (const d of DEAD) {
+        ok(`ⓢ ⛔ \`${d}\` 不可再出現(使用者明示刪除)`,
+           !new RegExp(`(^|\\W)${d}\\s*[(:]`, 'm').test(CODE), '');
+    }
+    ok('ⓢ2 ⛔ 這幾個容器也不可再出現',
+       !/id="(deepBriefCard|deepBriefAi|stockPredictResult|techAIModal)"/.test(CODE), '');
+    // 🚨 但下面這幾個**留著是對的** —— 刪掉會靜默弄壞別的東西
+    ok('ⓢ3 🚨 `fetchFundamentalAnalysis` 必須留著(它是 `_xrayMetrics` / `_revLive` 的唯一產生者)',
+       /fetchFundamentalAnalysis\(sym, \{ skipAI: true \}\)/.test(SRC)
+       && /this\._xrayMetrics = \{ sym \}/.test(SRC), '');
+    ok('ⓢ4 🚨 `xrayAIBox` / `xrayAIResult` 容器要留著(ETF 的「不適用本益比」說明在用)',
+       /id="xrayAIBox"/.test(SRC) && /這是 ETF/.test(SRC), '');
+    ok('ⓢ5 🚨 `globalAIModal` 要留著(盤前速報 `runGlobalMarketAI` 在用)',
+       /id="globalAIModal"/.test(SRC) && /runGlobalMarketAI/.test(SRC), '');
+    ok('ⓢ6 🚨 `aiTranslatorCard` / `geminiResultBox` 要留著(`updateAITranslator` 在寫)',
+       /id="aiTranslatorCard"/.test(SRC) && /id="geminiResultBox"/.test(SRC)
+       && /this\.updateAITranslator\(/.test(SRC), '');
+    // ⭐ 已經存在使用者手機上的孤兒快取還是要清得掉 → 配額防爆的前綴清單⛔ 不可跟著刪
+    ok('ⓢ7 ⭐ 配額防爆的舊快取前綴要留著,而且要補上剛刪掉那支的',
+       /'aiCache_stockPredict_'/.test(SRC) && /'aiCache_dispExit_'/.test(SRC)
+       && /'aiCache_deepBrief_'/.test(SRC), '');
 }
 {   // ⓣ 多模型:下拉 + 同欄位 + ⛔ 不給綜合品質分數
     const g = seg('    _RP_GEN: [', '    _rpNoteKey(sym) {');
@@ -629,33 +656,19 @@ await page.waitForTimeout(2500);
        /因子評分、§20 星等評等已經刪掉/.test(P) && /不給機率/.test(P), '');
 }
 
-{   // ⓥ **執行期**(⛔ 光靠原始碼斷言不夠):價格桶真的「微跳不換、走 1% 才換」+ 下拉真的在畫面上
+{   // ⓥ **執行期**(⛔ 光靠原始碼斷言不夠):多模型下拉真的在畫面上
     const v = await page.evaluate(async () => {
         const A = app;
-        const B = (x, y) => A._aiPriceNear(x, y);
         await A.renderReportTab('6894').catch(() => {});
         await new Promise(r => setTimeout(r, 300));
         const sel = document.querySelector('#rpPaste #rpGenSel');
         return {
-            same: B(100.4, 100),                // +0.4% → 算「沒走遠」,吃快取
-            near: B(100.9, 100),                // 🚨 +0.9% 也要吃快取(桶版本這裡會紅 —— 它有邊界)
-            diff: !B(102, 100),                 // +2%  → 重算
-            hi:   !B(1020, 1000),               // 高價股一樣 1% 才重算(⛔ 不是固定元)
-            //   ⚠️ 低價股這一格是**執行期的決定性對照**:改成「差 < 1 **元**」的話,
-            //     10 → 10.5(整整 +5%)會被當成「沒走遠」而吃到舊快取(⛔ 而 hi/same/near/diff 都抓不到)
-            lo:   !B(10.5, 10),
-            na:   !B(0, 100) && !B(null, 100),
             opts: sel ? [...sel.options].map(o => o.value) : [],
             genBtn: !!document.querySelector('#rpPaste [data-rpgenrun]'),
             free:   !!document.querySelector('#rpPaste [data-rpfreebtn]'),
         };
     });
-    // ⭐⭐ ⓥ1 是**決定性**的那一條:第一版做成「量化成桶」時它就是紅的(桶有邊界,+0.9% 剛好跨過去)
-    ok('ⓥ1 微跳(+0.4% / +0.9%)⛔ 不重算 → 不會重打 AI', v.same && v.near, JSON.stringify(v));
-    ok('ⓥ2 真的走了 2% 才重算(⛔ 不是拿掉價格敏感度)', v.diff, JSON.stringify(v));
-    ok('ⓥ3 高價股用同樣的 1%(⛔ 不是固定元)', v.hi, JSON.stringify(v));
-    ok('ⓥ3b ⭐ 低價股 10 → 10.5(+5%)一定要重算(注入「差 < 1 元」時只有這一條叫得出來)', v.lo, JSON.stringify(v));
-    ok('ⓥ4 沒有價格時⛔ 不可當成「很接近」(那會讓所有股票都吃到別人的快取)', v.na, JSON.stringify(v));
+    ok('ⓥs 空過守門:報告頁真的渲染出來了', v.opts.length > 0, JSON.stringify(v.opts));
     ok('ⓥ5 下拉真的在畫面上,而且五個模型都在', v.opts.length === 5 && v.opts.includes('px') && v.opts.includes('or'), JSON.stringify(v.opts));
     ok('ⓥ6 「產出」與「🆓 免費模型」兩顆按鈕都在這張卡裡', v.genBtn && v.free, JSON.stringify({ g: v.genBtn, f: v.free }));
 }

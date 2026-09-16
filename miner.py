@@ -1571,7 +1571,53 @@ def build_stock_names(industry_map: dict) -> int:
         print(f"  ⚠️ ETF 名字保底讀取失敗:{type(e).__name__}: {e}")
     src['etf_tracking'] = n_etf
 
-    # ④ 合併舊檔:這輪某個來源掛掉時,舊的名字要留著(⛔ 不可讓它整份消失)
+    # ④ 🏷️ V77.2.0 FinMind `TaiwanStockInfo` 補「上面三層都沒有名字」的那批(使用者問第二次:
+    #    「興櫃為何還是沒有中文個股名稱」)。
+    #    ⭐ 先量過才做:實測 `data/` 2,368 檔個股裡 **381 檔(16.1%)**沒有名字,
+    #      而 `industry_map.json` 對這 381 檔**一檔都沒有** —— 上面兩個官方來源
+    #      (公司基本資料 + 每日收盤行情)天生只涵蓋**上市櫃**,興櫃不在那兩份上。
+    #    ⛔ **獨立一步,不掛在任何 if 底下**(陷阱 #44:一個閘門掛好幾個不相干的產物)。
+    #    🚨 **市場別存 FinMind 回的原字串**(⛔ 不硬塞成 twse/tpex)——
+    #      前端 `_offListed` 靠「不是 twse/tpex」判「你可能買不到」,硬塞會把**比名字更重要的
+    #      那個資訊**弄丟(V77.1.5 就是為了保住它才刻意沒補名字)。
+    #    ⚠️ 沙箱連不到 FinMind → 這一步**抓不到就照實印出來**(陷阱 #22),⛔ 不靜默。
+    n_fm, n_fm_mkt = 0, 0
+    _fm_types = {}
+    try:
+        _jj = fm_request('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo') or {}
+        _rows = _jj.get('data') or []
+        for _row in _rows:
+            _sy = str(_row.get('stock_id') or '').strip()
+            _nm = str(_row.get('stock_name') or '').strip()
+            _ty = str(_row.get('type') or '').strip().lower()
+            if not (_sy in _known and len(_nm) >= 2):
+                continue           # 🚧 一樣拿 data/*.json 當白名單濾權證
+            _fm_types[_ty or '?'] = _fm_types.get(_ty or '?', 0) + 1
+            if _sy not in names:
+                names[_sy] = [_nm, (industry_map or {}).get(_sy, ''), _ty]
+                n_fm += 1
+            else:
+                _r0 = names[_sy]   # ⭐ 名字保留官方的,只補市場別(⛔ 不覆蓋名字)
+                if isinstance(_r0, list) and len(_r0) < 3 and _ty:
+                    names[_sy] = [_r0[0], _r0[1] if len(_r0) > 1 else '', _ty]
+                    n_fm_mkt += 1
+        print(f"  🏷️ FinMind TaiwanStockInfo:回 {len(_rows)} 列 → 補名字 {n_fm} 檔、補市場別 {n_fm_mkt} 檔"
+              f"(白名單內的市場別分佈:{dict(sorted(_fm_types.items(), key=lambda x: -x[1])[:6])})")
+    except Exception as _e_nm:
+        print(f"  ⚠️ FinMind 股名備援失敗:{type(_e_nm).__name__}: {str(_e_nm)[:120]}")
+    src['finmind_name'] = n_fm
+    src['finmind_market'] = n_fm_mkt
+    # 🔍 誠實揭露:補完之後**還有幾檔沒有名字**(⛔ 不可只報「補了幾檔」就當事情做完了)
+    if _known:
+        _still = sorted(k for k in _known
+                        if k.isdigit() and len(k) == 4 and k not in names)
+        src['still_no_name'] = len(_still)
+        if _still:
+            print(f"  ⚠️ 補完仍有 {len(_still)} 檔沒有中文名(前 10:{_still[:10]})"
+                  f" —— 多半是**興櫃**:官方那兩份與 FinMind 都沒有。"
+                  f"⭐ 前端 `_offListed` 會把它們標成「🏷️ 非上市櫃」提醒流動性,⛔ 不是壞掉。")
+
+    # ⑤ 合併舊檔:這輪某個來源掛掉時,舊的名字要留著(⛔ 不可讓它整份消失)
     out_path = Path('data', 'stock_names.json')
     n_old = 0
     try:

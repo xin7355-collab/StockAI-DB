@@ -40,7 +40,7 @@ ok('②a 搬過去的 6 個 id 各出現一次(搬卡必驗唯一性)', MOVED.ev
     const strip = x => x.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '');
     const fn = strip(SRC.slice(SRC.indexOf('    _ROT_EDGE: {'), SRC.indexOf('    switchSccTab(tab) {')));   // 含 _ROT_EDGE(來源探針寫在那裡)
     ok('③a 🚨 名次只准讀 _regimeStats(),⛔ 不可自己從 sector_rot 排(注入:改讀 _loadSectorRot 排 → 必紅)',
-       /_regimeStats\(\)/.test(fn) && !/_loadSectorRot|sector_rot\.json|\bsector_rot\b|\.r20\b/.test(fn), '');   // ⚠️ \b:別把來源名 sector_rotation_probe 誤判成違規
+       /_regimeStats\(W\)/.test(fn) && !/_loadSectorRot|sector_rot\.json|\bsector_rot\b|\.r20\b/.test(fn), '');   // ⚠️ \b:別把來源名 sector_rotation_probe 誤判成違規  ⚠️ V77.2.0 起帶天期參數(`W`)
     ok('⑧ 實測數字帶來源探針與窗口', /sector_rotation_probe/.test(fn) && /2022/.test(fn));
     ok('⑤a 原始碼裡不寫操作指令詞', !/(可以進場|可進場|建議買進|建議賣出|可加碼|放心做多|買進這|進場買)/.test(fn));
 }
@@ -61,8 +61,13 @@ const page = await boot({ width: 390, height: 844 });
 const r = await page.evaluate(async () => {
     app.switchAppTab('market'); app.switchMarketSubTab('rot');
     await new Promise(r => setTimeout(r, 3500));
+    // 🏭 ③b/③c/⑧b 驗的是**官方產業 + 20 日**那一頁(實測背書只在這一格)——
+    //   V77.1.7 起預設是「概念股」、V77.2.0 起天期可切 → ⭐ 測試要**自己把情境擺回來**,
+    //   ⛔ 不是放寬斷言(那三條在 V77.1.7 之後一直是紅的 = 等於沒有測試)。
+    app.switchRotView('ind'); app.switchRotWin(20);
+    await new Promise(r => setTimeout(r, 1200));
     const vis = id => { const e = document.getElementById(id); return !!e && !e.classList.contains('hidden'); };
-    const S = app._regimeStats();
+    const S = app._regimeStats(20);
     const truth = S ? [...S.imed.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0]) : null;
     const shown = [...document.querySelectorAll('[data-rotrank]')].map(e => e.getAttribute('data-rotind'));
     const lead = document.getElementById('rotLead').innerText.replace(/\s+/g, ' ');
@@ -81,6 +86,46 @@ ok('②d 搬過去的美股對標卡就在這一格裡', r.hasGap);
 ok('④a 390px 不橫向溢出', r.scrollX <= 2, String(r.scrollX));
 ok('⑨ 無 pageerror', errs.length === 0, errs[0] || '');
 await page.close();
+
+// 🗓️ ⑨ V77.2.0 天期選單(1 / 3 / 5 / 20 日)—— 使用者:「概念股及官方產業日期改成 1、3、5 日選單」
+//   🚨 最重要的一條:`_ROT_EDGE` 的 +1.44pp 是**拿 20 日**測的 → ⛔ 不可被其他天期借用。
+const pw = await boot({ width: 390, height: 844 });
+const wv = await pw.evaluate(async () => {
+    const grab = () => ({
+        lead: document.getElementById('rotLead').innerText.replace(/\s+/g, ' '),
+        card: document.getElementById('rotRankCard').innerText.replace(/\s+/g, ' '),
+        btns: [...document.querySelectorAll('[data-rotwinbtn]')].map(b => ({
+            w: +b.getAttribute('data-rotwinbtn'), off: b.disabled, on: b.getAttribute('aria-pressed') === 'true' })),
+        first: (document.querySelector('[data-rotrank="1"]') || {}).getAttribute
+               ? document.querySelector('[data-rotrank="1"]').getAttribute('data-rotind') : null,
+    });
+    app.switchAppTab('market'); app.switchMarketSubTab('rot');
+    await new Promise(r => setTimeout(r, 3000));
+    app.switchRotView('ind'); app.switchRotWin(20);
+    await new Promise(r => setTimeout(r, 900));
+    const w20 = grab();
+    app.switchRotWin(5);
+    await new Promise(r => setTimeout(r, 900));
+    const w5 = grab();
+    app.switchRotWin(1);
+    await new Promise(r => setTimeout(r, 900));
+    const w1 = grab();
+    return { w20, w5, w1, has3: !!(app._scrC && app._scrC.chg3 !== undefined) };
+});
+ok('⑨s 空過守門:四顆天期鈕都在畫面上', wv.w20.btns.length === 4 && wv.w20.btns.some(b => b.w === 3), JSON.stringify(wv.w20.btns));
+ok('⑨a 20 日那一頁才可以引用 +1.44pp 的實測背書', /\+1\.44pp/.test(wv.w20.lead) && /避開最弱/.test(wv.w20.lead), wv.w20.lead.slice(0, 120));
+ok('⑨b 🚨 換成 5 日 → ⛔ 不可再出現 +1.44pp,而且要明寫「沒有回測過」',
+   /沒有回測過/.test(wv.w5.lead) && /不可以.{0,8}套到/.test(wv.w5.lead)
+   && !/避開最弱/.test(wv.w5.lead) && /近 5 日/.test(wv.w5.lead), wv.w5.lead.slice(0, 200));
+ok('⑨b2 1 日同理(⛔ 不是只擋 5 日)', /沒有回測過/.test(wv.w1.lead) && /近 1 日/.test(wv.w1.lead), wv.w1.lead.slice(0, 160));
+ok('⑨c ⭐ 決定性對照:換天期之後排名**真的跟著換**(⛔ 不是只換標題)',
+   !!wv.w20.first && !!wv.w1.first && (wv.w20.first !== wv.w1.first || wv.w20.card !== wv.w1.card),
+   `${wv.w20.first} vs ${wv.w1.first}`);
+ok('⑨d ⏳ 採礦還沒補到 chg3 時,3 日那顆要 disabled 並標「待採礦」(⛔ 不可拿別的天期冒充)',
+   wv.has3 ? !wv.w20.btns.find(b => b.w === 3).off
+           : (wv.w20.btns.find(b => b.w === 3).off && /待採礦/.test(wv.w20.card)),
+   `has3=${wv.has3}`);
+await pw.close();
 
 // ⑥ 空過守門:選股快照抓不到 → 誠實空狀態,⛔ 不留空殼、⛔ 不假造排名
 const p2 = await boot({ width: 390, height: 844 });
