@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.1.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.1.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.1.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.1.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8464,8 +8464,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.1.8',
+    _APP_VERSION: 'V77.1.9',
     _CHANGELOG: [
+        { v: 'V77.1.9', d: [
+            '📊 <b>「量能倍數 0.0×」修好了</b>(你貼的 2327 資料裡那個)—— ⭐ <b>它不是「量萎縮」,是本站自己把口徑搞錯了</b>:分子是「今天<b>到現在為止</b>」的量(你那張圖是早上 9:20,才開盤 20 分鐘),分母卻是「前 5 天<b>整天</b>」的均量 → 盤中一定趨近 0,<b>跟這檔今天熱不熱完全沒關係</b>。',
+            '⭐ 現在<b>盤中直接不給倍數</b>,改寫「盤中不比」並講清楚為什麼(現在成交幾張 vs 基準是整天幾張);<b>收盤後照常給</b>。⛔ 刻意<b>不做「按已經交易的時間換算成全日」</b> —— 那是一個沒有回測過的新推估,而且開盤的量本來就比較大,換算會系統性高估。',
+            '🚨 <b>餵給外部 AI 的提示詞也一起改口</b>,而且明寫「⛔ 你也不可以自己算一個」—— 不然它看到 0.0× 就會寫「量能極度萎縮」。(顯示點永遠比想像的多一個,同 V77.1.4 產業代碼那次。)',
+        ], dt: '2026-09-16' },
         { v: 'V77.1.8', d: [
             '💸 <b>「價格跳一下就重新生成」修好了</b> —— 我把 App 裡會打 AI 的 9 個地方逐一查過,真正會這樣的<b>只有一支:🔮 明日劇本</b>(K線頁)。它以前的快取是綁「<b>15 分鐘時鐘</b>」,所以盤中每隔 15 分再點一次就真的重打一次 OpenRouter 的推理模型。⭐ 現在改成<b>記住當初算的那個價</b>,價格沒走到 <b>1%</b> 就直接顯示舊的;真的走了 1% 以上才重算(⛔ 不是把價格敏感度拿掉 —— 那樣大漲之後還會顯示早上那份劇本)。',
             '📚 <b>「📖 完整報告」新增模型下拉選單</b>:🔎 Perplexity / 🤖 Gemini / 🧠 OpenRouter 推理 / ⚡ Groq / ✍️ 其他。產出或貼上<b>都在同一個欄位</b>,切下拉就換看哪一份;有兩份以上會多一塊「📚 比一比」列出每一份<b>切到幾節 ・帶網址幾條 ・帶數字幾行 ・廢話詞幾次 ・幾個字</b>。⛔ 刻意<b>不給綜合品質分數</b>(那種權重是憑空訂的,本站實測沒有預測力)—— 哪個好用你自己看。',
@@ -24894,7 +24899,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             let s2 = 0, k = 0;
             for (let i = n - 6; i < n - 1; i++) { const v = V(data[i]); if (v > 0) { s2 += v; k++; } }
             const base = k >= 3 ? s2 / k : 0, vt = V(data[n - 1]);
-            if (base > 0 && vt > 0) out.vr = { x: vt / base, open: !!this._lastBarIsToday(data), lots: vt / 1000 };
+            //   🚨🚨 V77.1.8 **盤中⛔ 不可以給這個倍數** —— 使用者截圖(台北 09:20)是「量能倍數 **0.0×**」。
+            //     ⛔ 那不是「量萎縮」,是**口徑錯了**:分子是「今天到現在為止」的量(開盤 20 分鐘),
+            //     分母是「前 5 日**整天**」的均量 → 盤中必然趨近 0,**跟這檔今天熱不熱完全無關**。
+            //     (同陷阱 #17 的精神:兩個不同期間的量⛔ 不可以放進同一個比值。)
+            //   ⭐ 所以 `open` 時只回 `open:true` + 已成交張數,⛔ 不給 `x` —— 顯示端與提示詞都會改口。
+            //   ⛔ **刻意不做「按已交易時間換算成全日」** —— 那是一個沒有回測過的新推估,
+            //     而且開盤量能天生前重後輕,換算會系統性高估(陷阱 #38:⛔ 不給沒驗證過的數字)。
+            if (base > 0 && vt > 0) {
+                const _open = !!this._lastBarIsToday(data);
+                out.vr = { x: _open ? null : vt / base, open: _open, lots: vt / 1000, base5: base / 1000 };
+            }
         }
         // ④ 20 日振幅(⛔ 只用收盤了的那幾根)
         const cl = this._closedTail(data);
@@ -24918,8 +24933,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         }
         if (T.dd != null) cells.push({ k: `距${T.yrs || '近1年'}高`, v: `▼ ${T.dd.toFixed(1)}%`, cls: 'text-gray-300',
                                        s: '這是**位置**不是跌幅 ・⛔ 不用紅綠' });
-        if (T.vr) cells.push({ k: '量能倍數', v: `${T.vr.x.toFixed(1)}×`, cls: 'text-gray-300',
-                               s: `${T.vr.open ? '盤中(這一根還沒收盤)' : '最新收盤'} ÷ 前 5 日均量(⛔ 基準不含今日)` });
+        if (T.vr) cells.push({ k: '量能倍數', v: T.vr.x == null ? '盤中不比' : `${T.vr.x.toFixed(1)}×`, cls: 'text-gray-300',
+                               s: T.vr.x == null
+                                  ? `這一根**還沒收盤** → ⛔ 不給倍數(現在只成交 ${this._lotTxt ? this._lotTxt(T.vr.lots * 1000) : Math.round(T.vr.lots) + ' 張'},而基準是前 5 日**整天**均量 ${Math.round(T.vr.base5).toLocaleString()} 張 —— 兩個期間不一樣,比了會騙人)`
+                                  : `最新收盤 ÷ 前 5 日均量(⛔ 基準不含今日)` });
         if (T.amp != null) cells.push({ k: '20 日振幅', v: `${T.amp.toFixed(1)}%`, cls: 'text-gray-300',
                                         s: '(最高−最低)÷收盤,近 20 日平均' });
         if (!cells.length) return '';
@@ -25141,7 +25158,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (!T) return '—';
             const b2 = [];
             if (T.rs) b2.push(`近20日相對大盤 ${F(T.rs.stk - T.rs.mkt)}pp(這檔 ${F(T.rs.stk)}% ・加權 ${F(T.rs.mkt)}%)`);
-            if (T.vr) b2.push(`量能倍數 ${F(T.vr.x)}×(${T.vr.open ? '盤中未收盤' : '最新收盤'} ÷ 前5日均量,基準不含今日)`);
+            if (T.vr) b2.push(T.vr.x == null
+                ? `量能倍數 —(⛔ 本站盤中不給:現在這根還沒收盤,只成交 ${Math.round(T.vr.lots).toLocaleString()} 張,而基準是前 5 日整天均量 ${Math.round(T.vr.base5).toLocaleString()} 張 —— 期間不同不可相比。⛔ 你也不可以自己算一個)`
+                : `量能倍數 ${F(T.vr.x)}×(最新收盤 ÷ 前5日均量,基準不含今日)`);
             if (T.amp != null) b2.push(`20日振幅 ${F(T.amp)}%`);
             return b2.length ? b2.join(' ・') : '—';
         })()}`);

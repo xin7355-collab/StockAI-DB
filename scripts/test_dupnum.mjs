@@ -660,6 +660,38 @@ await page.waitForTimeout(2500);
     ok('ⓥ6 「產出」與「🆓 免費模型」兩顆按鈕都在這張卡裡', v.genBtn && v.free, JSON.stringify({ g: v.genBtn, f: v.free }));
 }
 
+{   // ⓦ 🚨 盤中的「量能倍數」是**口徑錯了**(分子半天、分母整天)→ ⛔ 不給數字
+    //   ⭐ 決定性對照:**同一批資料**只換 `_lastBarIsToday` 的回答,兩邊必須不一樣。
+    const w = await page.evaluate(() => {
+        const A = app, real = A._lastBarIsToday;
+        const C = A._rpLast || { sym: A.currentSymbolId };
+        const grab = (open) => {
+            A._lastBarIsToday = () => open;
+            const T = A._rpTapeFacts(C);
+            const h = A._rpTapeHtml(C), f = A._reportFacts(String(C.sym));
+            const d = document.createElement('div'); d.innerHTML = h;
+            const cell = [...d.querySelectorAll('[data-rptape]')].find(x => x.dataset.rptape === '量能倍數');
+            return { x: T && T.vr ? T.vr.x : undefined, lots: T && T.vr ? T.vr.lots : null,
+                     txt: (cell?.innerText || '').replace(/\s+/g, ' '),
+                     fact: (f.match(/量能倍數[^\n]*/) || [''])[0] };
+        };
+        const closed = grab(false), open = grab(true);
+        A._lastBarIsToday = real;
+        return { closed, open };
+    });
+    ok('ⓦ 空過守門:兩種情境都抓得到「量能倍數」那一格', !!w.closed.txt && !!w.open.txt && w.closed.lots > 0,
+       JSON.stringify(w).slice(0, 260));
+    ok('ⓦ2 收盤後照樣給倍數(⛔ 不是整個功能拿掉)', typeof w.closed.x === 'number' && /×/.test(w.closed.txt), w.closed.txt);
+    ok('ⓦ3 🚨 盤中⛔ 不給倍數(分子是半天的量、分母是整天的均量)', w.open.x === null && !/\d×/.test(w.open.txt), w.open.txt);
+    ok('ⓦ4 ⭐ 而且要講出「為什麼不給」(⛔ 不可只留空白 —— 陷阱 #22)',
+       /還沒收盤/.test(w.open.txt) && /(期間|整天)/.test(w.open.txt), w.open.txt);
+    // 🚨 提示詞那一份是**第二個出口**(V77.1.4 的教訓:顯示點永遠比你以為的多一個)
+    ok('ⓦ5 🚨 餵給外部 AI 的提示詞也要一起改口,而且要明講⛔ 不可自己算',
+       /量能倍數 —/.test(w.open.fact) && /不可以自己算/.test(w.open.fact)
+       && /量能倍數 [\d.]+×/.test(w.closed.fact), `${w.open.fact} || ${w.closed.fact}`);
+    ok('ⓦ6 ⭐ 決定性對照:同一批資料只換情境,兩邊必須不同', w.open.txt !== w.closed.txt && w.open.fact !== w.closed.fact, '');
+}
+
 ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
 await browser.close();
 console.log(fails.length ? `\n❌ ${fails.length} 條沒過` : '\n✅ 全部通過');
