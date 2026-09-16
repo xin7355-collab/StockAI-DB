@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.2.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.2.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.2.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.2.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8585,8 +8585,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.2.3',
+    _APP_VERSION: 'V77.2.4',
     _CHANGELOG: [
+        { v: 'V77.2.4', d: ['🕶️ <b>決策台那四行說明改成折疊</b>(你說「刪除,我不想讓其他人知道我怎麼操作及為何挑選」)。⭐ <b>折疊起來截圖就看不到</b>,但你自己點「📖 使用說明」還是打得開 —— ⛔ 沒有真的刪掉,因為「不是開盤買」「要漲過觸發價」那兩條是<b>會賠錢</b>的護欄,你自己也需要。', '📒 <b>產業作戰室的「釣魚池」整組下架,改名「📒 成績單」</b>(你說「這幾次看起來我覺得沒有用」)。魚池動畫 / 拋竿 / 列表 / 點魚細節 / 漁獲籃<b>全部移除</b>,只留<b>決策台推薦成績單</b>,說明也搬到這裡。⚠️ 漁獲籃你自己存的那些紀錄<b>一個字都沒刪</b>(只是不顯示了),日後想復原資料還在。', '🏆 <b>新增「兩種出場,哪個比較強?」</b>(你說「出場規則除唐奇安還要有 ATR,我要最強績效實測」)。<b>同一批推薦、⛔ 只換出場</b>,唐奇安 20 日 與 ATR 追蹤各算一次,並排比 每趟平均 / 勝率 / 一張合計 / 中途最多賠;你現在用的那條會標出來。⚠️ <b>樣本不到 10 筆時⛔ 不會宣布誰比較強</b>。', '📊 摺疊區裡寫著 <b>49 個月正式回測</b>:唐奇安 20 日 <b>+590 萬</b>(中途最多賠 −25.2%)・ATR K=2 <b>+531 萬</b>(中途最多賠 <b>−20.0%</b>,全表最小)—— 兩條都六關全過,<b>賺比較多的是唐奇安、賠比較少的是 ATR</b>。', '🎨 <b>版面照你說的改</b>:長說明全部折疊(第一眼字數少了三成)、狀態濃縮成一行、三段用顏色分開 —— 📌 持有中<b>天藍</b>(會變)/ 🧾 已結算<b>灰</b>(定了)/ 🏆 出場比較<b>青</b>。⛔ 顏色講的是「這一段是什麼」,不是好壞。'] },
         { v: 'V77.2.3', d: ['🌳 <b>報告頁最上面多了「⚡ 短中線 / 🌳 長線」切換</b>(你問「我的報告是短中線的嗎?想新增長線,還是文字已經太長了」)。⭐ 你怕太長是對的 → 所以<b>不是再加一節</b>,是<b>換一句結論 + 換先看哪幾節</b>:切短中線先攤開「價格卡在哪」「誰在買誰在賣」;切長線先攤開「估值」並多出一段長線結論。📉 實測<b>第一眼從 2,011 字降到 1,035 字(少 49%)</b> —— 收起來的一節都沒少,點一下就開。', '🌳 <b>長線那一段只回答兩件事</b>:①體質(ROE 近4季 / 自由現金流近4季)②你買的價格在哪(本益比在它自己近 3 年第幾百分位 ・殖利率);循環股會多一行「位階要反著讀」。⛔ <b>數字一個都沒有新增</b>,全部是報告頁本來就算好的。', '🚨 <b>但它刻意不回答「該不該買」</b>,因為本站實測跟坊間長線說法<b>方向相反</b>:①「本益比低 = 便宜可以買」實測是<b>單調反向</b>(越便宜那組後面越差)②「越跌越買 / 跌破均線先賣再接回」實測<b>全部少賺,而且賣得越勤快越慘</b>。所以⛔ 不給「等到幾倍再買」這種數字 —— 給了就是同一個 App 兩個打架的結論。', '⏳ 而且<b>誠實列出長線還缺的三樣</b>:本益比分布只有近 3 年(循環股要看 10 年)・沒有負債比與利息保障倍數・沒有歷年配息率。有了才補。', '🐛 順手修掉一個真的顯示錯:沒有配息資料時會印成「<b>殖利率 0.00%</b>」—— 那會被讀成「這檔不配息」,但其實是「本站沒這筆資料」,兩件事。'] },
         { v: 'V77.2.2', d: ['🔔 <b>通知可以自己勾了</b>(你說「不要這樣子顯示,改成一般 app 通知,另外列出選單讓我勾選」)。設定中心 →「🔔 哪些通知要跳出來」,<b>8 類</b>:⚡當沖 ・👜你的部位 ・🔔到價 ・🚨處置注意股 ・🌡️大盤風險熔斷 ・🚪賣出風險訊號 ・📈進場買點訊號 ・📋其他。<b>勾掉的不會不見</b> —— 一樣收進 🔔 通知歷史與個股頁,只是不打斷你。💡 想一次少很多就先關「📈 進場/買點」(買點錯過還有下一次)。', '🔒 <b>「👜 你的部位」與「🔔 到價提醒」刻意不給關</b>:那是<b>你自己設的停損/停利/到價</b>,不是本站的預測 —— 按了會跟你說為什麼。', '📱 <b>通知樣式換掉了</b>:原本是螢幕中間那個置中的小方塊,現在是<b>一般 App 那種整條橫幅</b>(標題粗體 + 內文左對齊,點一下直接跳到那一檔)。', '📊 <b>「基期」改名成「股價基期」</b>(你問國巨「我的程式說中基期 37%、報告說高基期 89%,是錯的嗎」)。<b>兩個都是對的,是兩件事</b>:徽章那顆講<b>股價</b>在近一年區間的位置(37%),報告 §4 那個講<b>本益比</b>在它自己近三年的位置(89%)。國巨從 1220 跌到 536(所以股價位階低),但本益比 36.2 倍 vs 近三年中位 14.3 倍(所以估值貴)→ 意思是<b>獲利掉得比股價還快</b>,「跌了一大段」不等於「變便宜」。⛔ 也<b>不是分割造成的</b>:798 根 K 線實測 0 次異常跳空。點那顆徽章有完整說明。'] },
         { v: 'V77.2.1', d: [
@@ -47235,6 +47236,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 //   ⚠️ 日期一律走 _dChip(≥4 天自動轉黃 + ⚠️),⛔ 不可自己拼字串。
                 //   🚨 這段說明刻意寫成 JS 註解放在字串外面 —— 陷阱 #42:HTML 註解裡只要有一個反引號
                 //      就會把整個 template literal 切斷(這一版第一次寫就又踩到了,第五次)。
+                // 🕶️ V77.2.4 那四行操作說明改成**預設折疊的 details**
+                //   (使用者:「刪除,我不想讓其他人知道我怎麼操作及為何挑選」)。
+                //   ⭐ 折疊起來**截圖就看不到**(關著的 details 不會渲染內文),而同一則訊息他也說
+                //      「說明就折疊起來不要版面亂」→ 兩個訴求同時滿足;
+                //   ⛔ 真刪掉的話**他自己**也失去那幾條護欄(「不是開盤買」「要漲過觸發價」是會賠錢的)。
+                //   ⚠️ summary 那行刻意寫得**不透露方法**(⛔ 不可寫成「什麼時候買 / 幾檔 / 觸發價」)。
+                // 🚨🚨 **我寫這一段時就踩了正上方那條**(陷阱 #42 **第六次**):
+                //   第一版把它寫成 HTML 註解放進 template literal 裡,而註解內文有一對反引號
+                //   包住 details 兩個字 → 整個字串被切斷。
+                //   ⛔ 最陰的是 `node --check` 與 `smoke_test` **都是綠的**(那個分支只在資料載得到時才走),
+                //   是 `test_deckfit` 抓到的,而症狀是「符合進場」整段消失 —— 看起來跟折疊完全無關。
                 buy.innerHTML = `<div class="bg-[#161b22] border-l-4 border-cyan-500 border-y border-r border-[#30363d] rounded-r p-3">
                     <div class="flex items-baseline justify-between gap-2 flex-wrap">
                         <div class="text-sm font-black text-cyan-300">🎯 今天可以買的(最多 ${this._DECK_TRACK49.picks} 檔)</div>
@@ -47246,18 +47258,21 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     <div class="text-[11px] text-cyan-200 mt-1 mb-1.5 font-bold leading-relaxed">
                         🕐 什麼時候買:<b class="text-cyan-300">今天 ${eodTxt}</b>(台北,收盤前那半小時)。
                     </div>
-                    <div class="text-[10px] text-gray-400 mt-0.5 mb-2 leading-relaxed">
-                        🚨 <b>上面那個「清單備好」的時間⛔ 不是買進時間</b> —— 採礦是<b>半夜</b>跑的,那時候本來就買不到。
-                        它只是<b>先把名單備好</b>,真正的動作在<b>今天 ${eodTxt}</b>:那時看它有沒有漲過觸發價,有才買。<br>
-                        🚨 <b>要漲過下面那個觸發價才算數</b> —— ⛔ 不是掛在下面等它跌回來(實測那樣只賺 12.4 萬、中途最多賠 −46.1%)。<br>
-                        🚨 ⛔ <b>不是開盤買</b> —— 進場時窗是<b>尾盤 ${eodTxt}</b>(V77.0.4 用現行出場重測:隔天開盤買<b>少賺 99 萬</b>,49 個月 585 萬 → 486 萬)。<br>
-                        ⭐ 一天最多 ${this._DECK_TRACK49.picks} 檔(實測 2 檔賺最多、中途賠最少);${st.hqN} 檔符合 🧬,只取前 ${this._DECK_TRACK49.picks} 名。
-                    </div>
+                    <details class="mt-0.5 mb-2">
+                        <summary class="cursor-pointer list-none text-[10px] text-gray-500 select-none">📖 使用說明 <span class="text-gray-600">展開 ▾</span></summary>
+                        <div class="text-[10px] text-gray-400 mt-1 leading-relaxed border-l-4 border-l-[#30363d] pl-2">
+                            🚨 <b>上面那個「清單備好」的時間⛔ 不是買進時間</b> —— 採礦是<b>半夜</b>跑的,那時候本來就買不到。
+                            它只是<b>先把名單備好</b>,真正的動作在<b>今天 ${eodTxt}</b>:那時看它有沒有漲過觸發價,有才買。<br>
+                            🚨 <b>要漲過下面那個觸發價才算數</b> —— ⛔ 不是掛在下面等它跌回來(實測那樣只賺 12.4 萬、中途最多賠 −46.1%)。<br>
+                            🚨 ⛔ <b>不是開盤買</b> —— 進場時窗是<b>尾盤 ${eodTxt}</b>(V77.0.4 用現行出場重測:隔天開盤買<b>少賺 99 萬</b>,49 個月 585 萬 → 486 萬)。<br>
+                            ⭐ 一天最多 ${this._DECK_TRACK49.picks} 檔(實測 2 檔賺最多、中途賠最少);${st.hqN} 檔符合 🧬,只取前 ${this._DECK_TRACK49.picks} 名。
+                        </div>
+                    </details>
                     <div class="space-y-1">${st.buy.map((x, i) => this._pbRowHtml(x, mine, i + 1, 0)).join('')}</div>
                     <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">
                         📅 用 <b class="text-gray-500">${this._escHtml(st.pbDate || '—')}</b> 的收盤算的${st.pbUpd ? ` ・採礦 ${this._escHtml(this._fmtNewsTime(st.pbUpd))} 跑完` : ''}
                         ・全市場 ${st.total} 筆裡符合 🧬 且非空頭的有 ${st.hqN} 檔${st.bearN ? ` ・已排除空頭 ${st.bearN} 檔` : ''}
-                        ${st.buy.some(x => mine.has(String(x.s))) ? '<br>👜 = <b class="text-gray-500">你的庫存/自選</b> —— 它們會被<b>排到最前面</b>(⛔ 不代表比較強);⭐ 產業作戰室的 🎣 釣魚池用的是<b>不含持股</b>的純推薦版,所以那邊的名單可能不一樣。' : ''}
+                        ${st.buy.some(x => mine.has(String(x.s))) ? '<br>👜 = <b class="text-gray-500">你的庫存/自選</b> —— 它們會被<b>排到最前面</b>(⛔ 不代表比較強);⭐ 產業作戰室的 📒 成績單用的是<b>不含持股</b>的純推薦版,所以那邊的名單可能不一樣。' : ''}
                     </div>
                 </div>`;
             } else {

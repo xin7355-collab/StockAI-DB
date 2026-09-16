@@ -4,7 +4,8 @@
  *    匯出成 data/scr_edge.json,給 pro.html(獨立頁、沒辦法 import index.html)讀。
  *
  * ⛔ 唯一真相仍是 index.html —— 這個 JSON 是**產物**,⛔ 不可手改。
- *    scripts/test_fishtank.mjs 會重跑一次匯出並比對,兩邊不一致就紅(同版本號測試 ㊳ 的做法)。
+ *    scripts/test_prohtml.mjs 會重跑一次匯出並比對,兩邊不一致就紅(同版本號測試 ㊳ 的做法)。
+ *    ⚠️ V77.2.4 起 `test_fishtank.mjs` 已刪除(釣魚池下架)。
  * ⭐ 只匯出「k/op/v」型的條件(127 條純資料);43 條 `fn` 型的判斷邏輯留在 index.html,
  *    ⛔ 不在 pro.html 重寫一份(那就是第二份真相)。它們的成績仍會匯出(給顯示用),
  *    但 pro.html 算不出來就不算,⛔ 不硬猜。

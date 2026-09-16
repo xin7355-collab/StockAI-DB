@@ -588,7 +588,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <button class="tab-btn" id="tabBtnChain" onclick="PRO.switchTab('chain')">AI 產業鏈</button>
     <button class="tab-btn" id="tabBtnRot" onclick="PRO.switchTab('rot')">板塊輪動</button>
     <button class="tab-btn" id="tabBtnStar" onclick="PRO.switchTab('star')">關聯星圖</button>
-    <button class="tab-btn" id="tabBtnFish" onclick="PRO.switchTab('fish')">釣魚池</button>
+    <button class="tab-btn" id="tabBtnFish" onclick="PRO.switchTab('fish')">📒 成績單</button>
     <button class="tab-btn" id="tabBtnSig" onclick="PRO.switchTab('sig')">今日訊號</button>
     <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
     <!-- 🧹 V74.6.2 使用者:「把散戶救星裡面的 V74.6.1 及 🧹 雜訊清單搬移到產業作戰室裡面」
@@ -785,43 +785,11 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
         ・ 🚀🔥 = 關聯星圖的狀態 ・ 一群一起游 = 關聯星圖裡的同族。
      ⛔ 這頁不下多空、不計分、不給買賣價位。魚游得快 ≠ 會漲。 -->
 <div id="tabFish" class="hidden">
-  <!-- 🎣 兩個畫面:魚池(挑) ↔ 釣到(看)。⛔ 不可疊在同一頁 —— 使用者實測「頁面拉太長」。
-       ⭐ 漁獲籃在兩個畫面下方都要出現(它是你自己的紀錄,兩邊都要看得到)。 -->
-  <div class="panel" id="fishPoolPane">
-    <h2>🎣 釣魚池 <span class="sub">整個市場一眼看完:魚在哪一層、往哪游、誰跟誰一群</span>
-      <span class="sub" id="fishSub"></span></h2>
-    <div id="fishKeyWarn"></div>
-    <div class="starbar" style="margin-top:0">
-      <button class="lbtn on" id="castBtn" onclick="PRO.castRod()" style="font-weight:900">🎣 拋竿</button>
-      <span class="note" style="margin:0">幫你挑 —— <b>用的就是決策台「🎯 今天可以買的」那套</b>(每檔自己最會賺的招 + 🧬 + 一天最多 2 檔)。
-        ⭐ 所以 🧺 漁獲籃量到的,跟 📒 決策台推薦成績單<b>是同一件事</b>。
-        <span style="color:var(--dim2)">(V76.3.0 換掉舊的三層漏斗 —— 它實測六關 0 過)</span></span>
-    </div>
-    <div class="labbar" id="fishPool"></div>
-    <div class="starbar" style="justify-content:space-between;margin-top:0">
-      <div class="labbar" style="margin:0">
-        <button class="lbtn on" id="fishModeTank" onclick="PRO.fishMode('tank')">🐟 魚池</button>
-        <button class="lbtn" id="fishModeList" onclick="PRO.fishMode('list')">📊 列表</button>
-      </div>
-      <span class="sigtag" id="fishCount"></span>
-    </div>
-    <div id="fishMsg"></div>
-    <div id="fishTankWrap" class="fishwrap">
-      <canvas id="fishCanvas"></canvas>
-      <div id="fishLegend" class="fishlegend"></div>
-    </div>
-    <div id="fishList"></div>
-    <div id="fishNote"></div>
-  </div>
-  <!-- 🐟 釣到:點魚之後切到這一頁(⛔ 不跟魚池疊在一起) -->
-  <div class="panel hidden" id="fishPickPane">
-    <div class="starbar" style="margin:0 0 8px">
-      <button class="lbtn" onclick="PRO.fishBack()">← 回魚池</button>
-      <button class="lbtn" id="fishWhyBtn" style="border-color:var(--amber);color:var(--amber)" onclick="PRO._castWhyOpen()">📖 這一條的細節 🚨 回測怎麼說</button>
-    </div>
-    <div id="fishCard"></div>
-  </div>
-  <div class="panel" id="fishBasketPane"><div id="fishBasket"></div><div id="recoLedger"></div></div>
+  <!-- 📒 V77.2.4 只剩「決策台推薦成績單」——
+       ⛔ `fishPoolPane`(魚池 canvas + 拋竿 + 列表)・`fishPickPane`(點魚細節)・`fishBasket`(漁獲籃)
+          **整組移除**(使用者:「釣魚池這幾次看起來我覺得沒有用」)。
+       ⚠️ `recoLedger` 這個 id ⛔ 不可改名 —— `_recoLedgerRender()` 認它。 -->
+  <div class="panel"><div id="recoLedger"></div></div>
 </div>
 <div id="tabSig" class="hidden">
   <div class="panel">
@@ -2502,38 +2470,16 @@ const PRO = {
     return rows.map((_, i) => { const g = find(i); return size[g] > 1 ? g : -1; });   // 孤魚 = -1
   },
 
+  /** 📒 V77.2.4 **釣魚池整組下架,只留成績單**(使用者:「釣魚池這幾次看起來我覺得沒有用,
+   *  把它刪除,只保留決策台推薦成績單,說明改在這」)。
+   *  ⛔ **JS 沒有整段刪掉**,因為魚池那一串跟成績單**共用**了 `_exitRule` / `_settleReplay` /
+   *     `_stlEnrich` / `_stlCard` / `_twiiAt` / `_tickOf` —— 整段砍會把成績單一起弄壞。
+   *     改成「移除畫面 + 不再呼叫」(同 V70.3.1 處置股下架的做法):
+   *     `_fish*` / `_cast*` 那些函式仍在檔案裡但**永遠不會被執行**,⛔ 看到它們別以為功能壞了。
+   *  ⚠️ 🧺 漁獲籃也一起收起來(它要靠「拋竿」才加得進去)——
+   *     ⛔ 但 localStorage 的 `proWar_catch` **一個字都沒刪**,日後想復原資料還在。 */
   async renderFish() {
-    const msg = document.getElementById('fishMsg'), sub = document.getElementById('fishSub');
-    const D = await this._fishData();
-    this._fishD = D;
-    if (!D) {
-      msg.innerHTML = `<div class="warnbox">⏳ <b>選股快照還沒產出</b>(<code>data/screener.json</code>)——
-        它每個交易日收盤後由採礦機更新。⛔ 這不是這個功能壞掉。</div>`;
-      this.fishStop(); return;
-    }
-    // 🕐 V74.6.8 使用者:「魚是何時才會更新要寫出來,9/3 更新不會很怪嗎?不是 13:00 之後要給我魚」
-    //   ⭐ 誠實的答案:**選股要用當天收盤價才算得出來** → 這池子本來就是「收盤後才換新」。
-    //   ⛔ 所以它給的是「**明天**可以做的候選」,⛔ 不是「今天 13:00 輪到誰」——
-    //      後者是散戶救星的盤中到價提醒(用即時價重算觸發價),兩件事不同,⛔ 不可混談。
-    if (sub) sub.innerHTML = `資料日 ${D.date || '—'} ・${D.rows.length} 檔可下水 ${this._staleChip(D.date, '選股')}`
-      + `<div class="note" style="margin:4px 0 0">🕐 <b>魚什麼時候換新</b>:每個交易日<b>收盤後</b>由採礦機重算
-         (排程台北 19:00,實測常被排隊延到 <b>23:00~23:30</b>)→ 所以你在<b>盤中看到的一定是「上一個交易日」的魚</b>,
-         那不是壞掉。<br>
-         🚨 <b>這池子是「明天的候選」,⛔ 不是「今天 13:00 輪到誰」</b> ——
-         選股條件(位階、振幅、20 日強弱)全部要用<b>當天收盤價</b>才算得出來。
-         想在盤中知道「今天輪到誰」,要看<b>散戶救星的盤中到價提醒</b>:它在 13:00~13:28 用<b>即時價</b>
-         重算觸發價,站上去才通知你(要先在設定裡把提醒打開)。</div>`;
-    // 池子 chips(⭐ 查過星圖的話多一個「同族」池)
-    const pools = this.FISH_POOLS.slice();
-    if (this._starSym && D.J && D.J.r[this._starSym]) pools.push({ k: 'fam', n: `🕸️ 和 ${this._nmTxt(this._starSym)} 同族`, d: '關聯星圖那一族' });
-    if (this._cast && (this._cast.picked || []).length) pools.push({ k: 'cast', n: `🎣 拋竿釣到的 ${this._cast.picked.length} 條`, d: '按「拋竿」由程式依實測規則挑出來的(⛔ 不是買進訊號)' });
-    if (!pools.some(p => p.k === this._fishPoolK)) this._fishPoolK = 'amt';
-    document.getElementById('fishPool').innerHTML = pools.map(p =>
-      `<button class="rotchip fishpool${p.k === this._fishPoolK ? ' on' : ''}" title="${p.d}" onclick="PRO.fishPool('${p.k}')">${p.n}</button>`).join('');
-    this._fishNote(D);
-    this._fishBasketRender();
-    this._recoLedgerRender();   // 📒 V76.0.4 決策台推薦成績單(⛔ 不寫 localStorage,每次從 pick_history 重算)
-    this._fishRebuild();
+    this._recoLedgerRender();
   },
   fishPool(k) { this._fishPoolK = k; this.buzz(15); this.fishBack(true); this.renderFish(); },
   // 🐟 兩個畫面切換(⛔ 不可疊在同一頁:使用者實測「頁面拉太長」)
@@ -2977,8 +2923,10 @@ const PRO = {
     for (const x of sorted) { const k = String(x.s); if (seen.has(k)) continue; seen.add(k); uniq.push(x); }   // 同一檔只留排最前面那一招
     return uniq.filter(x => (+x.hq || 0) === 1 && !(+x.bear || 0)).slice(0, this._RECO_PICKS);
   },
-  async _recoLedgerLoad() {
-    const rule = this._exitRule();
+  async _recoLedgerLoad(ruleArg) {
+    // 🏆 V77.2.4 收 `ruleArg` —— 讓「哪個出場最強」可以用**同一批推薦**跑第二種出場。
+    //   ⛔ 預設仍是 `_exitRule()`(你自己設的那條),既有呼叫端零影響。
+    const rule = ruleArg || this._exitRule();
     const H = await this.fetchJson('data/pick_history.json', 12000);
     const days = (H && Array.isArray(H.days) ? H.days : []).filter(d => d && d.d && Array.isArray(d.pb)).slice().sort((a, b) => (a.d < b.d ? -1 : 1));
     await this._twiiLoad();
@@ -3011,6 +2959,78 @@ const PRO = {
     }
     return out;
   },
+  /** 🏆 V77.2.4 **哪個出場最強**(使用者:「出場規則除唐奇安還要有 atr,我要最強績效實測」)
+   *  ⭐ 同一批推薦、**只換出場**,兩種各算一次 → 這是本站回測一貫的做法(V74.4.8 那 28 種也是這樣比的)。
+   *  ⛔ 只比這兩種(`don` 唐奇安 20 日 / `atr2` ATR 追蹤 K=2)—— 49 個月實測**只有它們跟另兩種六關全過**,
+   *     而使用者指名的就是這兩條。⛔ 不把 `ma5` / `trail8` 也塞進來(那會變成「挑一個最好看的」= 多重比較)。
+   *  🚨 **⛔ 不動主表** —— 上面每一列仍用你自己設定的那條出場(⛔ 不可同一頁兩套數字)。
+   *     這條只是「如果換另一條會怎樣」的對照。
+   *  ⚠️ 樣本 <10 筆時⛔ 不准說誰比較強(全站 `_wrEnough` 規則)。 */
+  _CMP_EXITS: ['don', 'atr2'],
+  _recoSummary(R) {
+    const done = (R.trades || []).map(t => t.st).filter(t => t && !t.open);
+    const n = done.length;
+    if (!n) return { n: 0 };
+    const win = done.filter(t => t.net > 0).length;
+    const avg = done.reduce((a, t) => a + t.net, 0) / n;
+    const lot = done.reduce((a, t) => a + t.lot, 0);
+    let cum = 0, peak = 0, dd = 0;
+    for (const t of done.slice().sort((a, b) => (a.d1 > b.d1 ? 1 : -1))) {
+      cum += t.lot; if (cum > peak) peak = cum; if (peak - cum > dd) dd = peak - cum;
+    }
+    const exs = done.map(t => t.ex).filter(v => v !== null);
+    return { n, win, wr: win / n * 100, avg, lot, dd, open: (R.trades || []).filter(t => t.st && t.st.open).length,
+             exWin: exs.filter(v => v > 0).length, exN: exs.length };
+  },
+  async _recoCmpLoad() {
+    const out = {};
+    for (const k of this._CMP_EXITS) {
+      try { out[k] = this._recoSummary(await this._recoLedgerLoad(k)); } catch (_) { out[k] = { n: 0 }; }
+    }
+    return out;
+  },
+  _recoCmpHtml() {
+    const C = this._rlCmp;
+    if (!C) return `<div class="note" style="margin-top:8px">⏳ 正在用另一種出場重算…</div>`;
+    const money = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString() + ' 元';
+    const rows = this._CMP_EXITS.map(k => ({ k, n: this._EXIT_NAMES[k], s: C[k] || { n: 0 } }));
+    const ok = rows.filter(r => r.s.n >= 10);
+    // 🏆 判準 = **每趟平均**(⛔ 不是總金額 —— 總金額被「資金路徑」帶著跑,V74.4.8 明文寫過)
+    const best = ok.length === rows.length ? rows.slice().sort((a, b) => b.s.avg - a.s.avg)[0] : null;
+    const cur = this._exitRule();
+    const cell = r => {
+      const s = r.s, on = r.k === cur;
+      const crown = best && best.k === r.k ? ' 🏆' : '';
+      return `<div style="flex:1;min-width:0;border:1px solid ${on ? 'var(--cyan)' : 'var(--line)'};border-radius:9px;padding:8px 9px;background:${on ? 'rgba(56,189,248,.07)' : 'transparent'}">
+        <div style="font-size:11px;font-weight:900;color:${on ? 'var(--cyan)' : 'var(--dim)'}">${r.n}${crown}${on ? ' <span style="font-size:9px;font-weight:700">(你現在用的)</span>' : ''}</div>
+        ${s.n ? `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:3px 8px;margin-top:5px;font-size:11px">
+          <div><span style="font-size:9px;color:var(--dim2);display:block">每趟平均</span><b class="mono ${this.cls(s.avg)}">${this.fmt(s.avg, 2, true)}%</b></div>
+          <div><span style="font-size:9px;color:var(--dim2);display:block">勝率</span><b class="mono">${s.wr.toFixed(0)}% ・${s.win}/${s.n}</b></div>
+          <div><span style="font-size:9px;color:var(--dim2);display:block">一張合計</span><b class="mono ${this.cls(s.lot)}">${money(s.lot)}</b></div>
+          <div><span style="font-size:9px;color:var(--dim2);display:block">中途最多賠</span><b class="mono">${s.dd > 0 ? '−' + Math.round(s.dd).toLocaleString() + ' 元' : '—'}</b></div>
+        </div>` : `<div class="note" style="margin:5px 0 0">還沒有已結算的</div>`}
+      </div>`;
+    };
+    const verdict = best
+      ? `🏆 <b>目前這批推薦裡,「${best.n}」每趟平均比較高</b>(${this.fmt(best.s.avg, 2, true)}%)。`
+      : `⏳ <b>兩邊都還不到 10 筆已結算,⛔ 現在還不能說誰比較強</b>(全站規則:樣本 &lt;10 筆不下判斷)。`;
+    return `<div class="warnbox" style="margin-top:8px;border-color:${best ? 'var(--cyan)' : 'var(--amber)'}">
+      🏆 <b>兩種出場,哪個比較強?</b><span class="note" style="margin-left:6px">同一批推薦、⛔ 只換出場</span>
+      <div style="display:flex;gap:8px;margin-top:7px;flex-wrap:wrap">${rows.map(cell).join('')}</div>
+      <div class="note" style="margin-top:7px">${verdict}</div>
+      <details style="margin-top:5px">
+        <summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim2)">📖 這兩條是什麼、49 個月實測怎麼說 <span style="color:var(--dim2)">展開 ▾</span></summary>
+        <div class="note" style="margin-top:5px">
+          🐢 <b>唐奇安 20 日低點</b>:收盤跌破「前 20 個交易日最低價」就走。<br>
+          🕯️ <b>ATR 追蹤停利</b>:進場那天算 14 日 ATR,之後每天看「進場後最高收盤 − 2×ATR」,跌破就走。<br>
+          📊 <b>49 個月正式回測</b>(600 檔・每天 2 檔・每筆 15 萬・含 2022 跌勢,<b>只換出場</b>):
+          唐奇安 20 日 <b>+590 萬</b>(中途最多賠 −25.2%)・ATR K=2 <b>+531 萬</b>(中途最多賠 <b>−20.0%</b>,全表最小)——
+          <b>兩條都六關全過</b>,賺比較多的是唐奇安、賠比較少的是 ATR。<br>
+          🚨 <b>上面那兩格是「這幾天這批推薦」的紙上成績,樣本很小,⛔ 不可拿來推翻 49 個月的結論。</b><br>
+          ⚙️ 想換的話到<b>散戶救星 → 設定中心 → 出場規則</b>(⛔ 這裡只比較,不改設定 —— 那個設定同時牽動提醒與自動下單)。
+        </div>
+      </details></div>`;
+  },
   _recoLedgerRender() {
     const el = document.getElementById('recoLedger'); if (!el) return;
     const sig = 'reco|' + this._exitRule();
@@ -3020,6 +3040,11 @@ const PRO = {
       this._recoLedgerLoad().then(r => { if (this._rlSig !== sig) return; this._rl = r; this._recoLedgerRender(); })
         .catch(e => { if (this._rlSig !== sig) return; this._rl = { err: String(e).slice(0, 120) }; this._recoLedgerRender(); });
       return;
+    }
+    // 🏆 V77.2.4 主表畫好之後,背景再用另一種出場跑一次(K 線已在 `_rlK` 快取,⛔ 不重抓)
+    if (this._rlCmpSig !== sig && this._rl && !this._rl.err) {
+      this._rlCmpSig = sig;
+      this._recoCmpLoad().then(c => { if (this._rlCmpSig !== sig) return; this._rlCmp = c; this._recoLedgerRender(); }).catch(() => {});
     }
     const R = this._rl;
     const money = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString() + ' 元';
@@ -3047,20 +3072,34 @@ const PRO = {
           <b class="mono ${this.cls(st.ex)}">贏大盤 ${st.ex == null ? '—' : this.fmt(st.ex, 2, true) + 'pp'}</b></div>
         <div class="bkft">抱 ${st.days} 個交易日 ${fin ? '<span>出場價已定,⛔ 這個數字不會再變</span>' : '<span>還沒觸發出場 —— 上面是<b>帳面浮動</b>,會一直變</span>'}</div></div>`;
     };
+    // 🎨 V77.2.4 版面(使用者:「我要清楚明瞭的方式,說明就折疊起來不要版面亂,可以的話用顏色區分」):
+    //   ① 第一眼只留**一行狀態**(幾天 / 持有中 / 已結算)—— 長說明整段收進摺疊
+    //   ② 顏色分三段:📌 持有中 = 天藍(會變) ・🧾 已結算 = 灰(定了) ・🏆 出場比較 = 青
+    //      ⛔ 這三個顏色講的是「這一段是什麼」,⛔ 不是好壞(燈號鐵則:紅綠只准講漲跌)
+    const statLine = `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0 4px;font-size:10.5px;color:var(--dim2)">
+        <span>📅 ${since} 起</span><span>・快照 ${R.days} 天</span>
+        <span style="color:var(--cyan)">・📌 持有中 ${hold.length}</span>
+        <span style="color:var(--dim)">・🧾 已結算 ${done.length}</span>${pend.length ? `<span>・讀不到 K 線 ${pend.length}</span>` : ''}
+      </div>`;
     el.innerHTML = `<div class="fishcard" style="margin-top:10px;border-color:var(--cyan);background:rgba(56,189,248,.05)">
       ${head}
-      <div class="note" style="margin:6px 0 8px;font-size:10.5px">
-        ⭐ <b>推薦 = 散戶救星決策台「🎯 今天可以買的(最多 ${this._RECO_PICKS} 檔)」</b>,採礦每天收盤後自動存名單(⛔ 不靠你開 App),
-        進場 = 推薦那天的收盤,出場 = <b>${this._exitRuleName()}</b>(換規則整張表重算)。
-        📅 從 <b>${since}</b> 起累積${R.skipped ? `(之前 ${R.skipped} 天的快照沒有旗標,重建不出決策台名單,⛔ 不硬湊)` : ''}
-        ・快照 ${R.days} 天 ・持有中 ${hold.length} ・已結算 ${done.length}${pend.length ? ` ・讀不到 K 線 ${pend.length}` : ''}。<br>
-        ⚠️ 決策台真正排序時會把<b>你自己持有的</b>排前面,這裡是<b>不含持股的純推薦版</b>;同一檔還持有中就不重複開倉。
-      </div>
+      ${statLine}
+      <details style="margin:0 0 8px">
+        <summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim2)">📖 這張表在算什麼 <span style="color:var(--dim2)">展開 ▾</span></summary>
+        <div class="note" style="margin:5px 0 0;font-size:10.5px">
+          ⭐ <b>推薦 = 散戶救星決策台「🎯 今天可以買的(最多 ${this._RECO_PICKS} 檔)」</b>,採礦每天收盤後自動存名單(⛔ 不靠你開 App),
+          進場 = 推薦那天的收盤,出場 = <b>${this._exitRuleName()}</b>(換規則整張表重算)。
+          ${R.skipped ? `📅 之前 ${R.skipped} 天的快照沒有旗標,重建不出決策台名單,⛔ 不硬湊。<br>` : ''}
+          ⚠️ 決策台真正排序時會把<b>你自己持有的</b>排前面,這裡是<b>不含持股的純推薦版</b>;同一檔還持有中就不重複開倉。<br>
+          🕐 <b>買進時機、挑選條件</b>那幾條寫在散戶救星決策台的「📖 使用說明」裡(⛔ 這裡不重複,免得兩邊講不一樣)。
+        </div>
+      </details>
       ${R.trades.length ? '' : `<div class="note">📭 ${since} 之後還沒有任何一天有「可以買的」(決策台那幾天是空手 —— ⛔ 那不是壞掉,是 🧬 必要條件沒過或大盤空頭)。</div>`}
-      ${hold.length ? `<div style="font-size:11px;color:var(--dim2);font-weight:700;margin:2px 0 5px">📌 持有中 ${hold.length} 筆</div>${hold.map(row).join('')}` : ''}
-      ${done.length ? `<div style="font-size:11px;color:var(--dim2);font-weight:700;margin:8px 0 5px">🧾 已結算 ${done.length} 筆(數字不會再變)</div>${done.map(row).join('')}` : ''}
+      ${hold.length ? `<div style="font-size:11px;color:var(--cyan);font-weight:700;margin:2px 0 5px;border-left:3px solid var(--cyan);padding-left:6px">📌 持有中 ${hold.length} 筆 <span style="font-weight:400;color:var(--dim2);font-size:10px">帳面浮動,會一直變</span></div>${hold.map(row).join('')}` : ''}
+      ${done.length ? `<div style="font-size:11px;color:var(--dim);font-weight:700;margin:8px 0 5px;border-left:3px solid var(--line);padding-left:6px">🧾 已結算 ${done.length} 筆 <span style="font-weight:400;color:var(--dim2);font-size:10px">出場價已定,不會再變</span></div>${done.map(row).join('')}` : ''}
       ${pend.length ? pend.map(row).join('') : ''}
       ${R.trades.length ? this._stlCard(R.trades, '推薦') : ''}
+      ${R.trades.length ? this._recoCmpHtml() : ''}
     </div>`;
   },
   // 📊 成績單:只算**已結算**的(持有中的⛔ 不可混進來 —— 那會讓還在虧的部位不計入)
@@ -4502,7 +4541,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V77.2.1',
+  VER: 'V77.2.4',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
