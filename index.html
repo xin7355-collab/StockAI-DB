@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.2.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.2.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.2.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.2.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2483,6 +2483,8 @@
             <div id="subContentReport" class="hidden flex-col gap-0 mt-3 px-2 md:px-4 pb-10">
                 <!-- 📄 V75.3.2 順序 = 決策摘要:一句話 → 結論 → 4 格重點數字 → 風險(有事才自動展開) → 其餘背景收合
                      ⛔ 結論以前排在第 8 個(要捲到最下面才看得到)—— 別再搬回去 -->
+                <!-- 🌳 V77.2.3 視角切換(⚡ 短中線 / 🌳 長線)—— ⛔ 不新增任何數字,只換「先看哪幾節 + 底下那一句」 -->
+                <div id="rpView" class="hidden"></div>
                 <div id="rpLead" class="hidden"></div>
                 <!-- 🗑️ V76.2.5 `rpAct`(🧭 五個面向儀表列 + 🎯 結論與操作)**已下架** —— 使用者明示「跟總覽重複了」。
                      ⚠️ `_ovDecide()` 與 `_regaugeStrip()` 的呼叫**一行都沒拿掉**:
@@ -8583,8 +8585,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.2.2',
+    _APP_VERSION: 'V77.2.3',
     _CHANGELOG: [
+        { v: 'V77.2.3', d: ['🌳 <b>報告頁最上面多了「⚡ 短中線 / 🌳 長線」切換</b>(你問「我的報告是短中線的嗎?想新增長線,還是文字已經太長了」)。⭐ 你怕太長是對的 → 所以<b>不是再加一節</b>,是<b>換一句結論 + 換先看哪幾節</b>:切短中線先攤開「價格卡在哪」「誰在買誰在賣」;切長線先攤開「估值」並多出一段長線結論。📉 實測<b>第一眼從 2,011 字降到 1,035 字(少 49%)</b> —— 收起來的一節都沒少,點一下就開。', '🌳 <b>長線那一段只回答兩件事</b>:①體質(ROE 近4季 / 自由現金流近4季)②你買的價格在哪(本益比在它自己近 3 年第幾百分位 ・殖利率);循環股會多一行「位階要反著讀」。⛔ <b>數字一個都沒有新增</b>,全部是報告頁本來就算好的。', '🚨 <b>但它刻意不回答「該不該買」</b>,因為本站實測跟坊間長線說法<b>方向相反</b>:①「本益比低 = 便宜可以買」實測是<b>單調反向</b>(越便宜那組後面越差)②「越跌越買 / 跌破均線先賣再接回」實測<b>全部少賺,而且賣得越勤快越慘</b>。所以⛔ 不給「等到幾倍再買」這種數字 —— 給了就是同一個 App 兩個打架的結論。', '⏳ 而且<b>誠實列出長線還缺的三樣</b>:本益比分布只有近 3 年(循環股要看 10 年)・沒有負債比與利息保障倍數・沒有歷年配息率。有了才補。', '🐛 順手修掉一個真的顯示錯:沒有配息資料時會印成「<b>殖利率 0.00%</b>」—— 那會被讀成「這檔不配息」,但其實是「本站沒這筆資料」,兩件事。'] },
         { v: 'V77.2.2', d: ['🔔 <b>通知可以自己勾了</b>(你說「不要這樣子顯示,改成一般 app 通知,另外列出選單讓我勾選」)。設定中心 →「🔔 哪些通知要跳出來」,<b>8 類</b>:⚡當沖 ・👜你的部位 ・🔔到價 ・🚨處置注意股 ・🌡️大盤風險熔斷 ・🚪賣出風險訊號 ・📈進場買點訊號 ・📋其他。<b>勾掉的不會不見</b> —— 一樣收進 🔔 通知歷史與個股頁,只是不打斷你。💡 想一次少很多就先關「📈 進場/買點」(買點錯過還有下一次)。', '🔒 <b>「👜 你的部位」與「🔔 到價提醒」刻意不給關</b>:那是<b>你自己設的停損/停利/到價</b>,不是本站的預測 —— 按了會跟你說為什麼。', '📱 <b>通知樣式換掉了</b>:原本是螢幕中間那個置中的小方塊,現在是<b>一般 App 那種整條橫幅</b>(標題粗體 + 內文左對齊,點一下直接跳到那一檔)。', '📊 <b>「基期」改名成「股價基期」</b>(你問國巨「我的程式說中基期 37%、報告說高基期 89%,是錯的嗎」)。<b>兩個都是對的,是兩件事</b>:徽章那顆講<b>股價</b>在近一年區間的位置(37%),報告 §4 那個講<b>本益比</b>在它自己近三年的位置(89%)。國巨從 1220 跌到 536(所以股價位階低),但本益比 36.2 倍 vs 近三年中位 14.3 倍(所以估值貴)→ 意思是<b>獲利掉得比股價還快</b>,「跌了一大段」不等於「變便宜」。⛔ 也<b>不是分割造成的</b>:798 根 K 線實測 0 次異常跳空。點那顆徽章有完整說明。'] },
         { v: 'V77.2.1', d: [
             '🏷️ <b>個股頁頂端會標「非上市櫃」了</b>(你截圖那檔 6696 就是 —— 標題印「6696 (6696)」,名字就是代號)。⭐ 這種多半是<b>興櫃</b>:<b>沒有漲跌幅限制</b>(它 09/07 那天一天之內最低 134、最高 200,振幅 49%)、<b>不能融資</b>、成交量很小。⚠️ 所以那一頁上的「乖離 / 高基期 / 追買價 / 套牢區」都是拿上市櫃規則調的,套在它身上要打折看 —— 點徽章有完整說明。(以前只在決策台/訊號榜/釣魚池標,<b>個股頁漏掉了</b>。)',
@@ -23004,6 +23007,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         this._rpSet('rpChip', this._rpChipHtml(ctx), sym);
         this._rpSet('rpRisk', this._rpRiskHtml(ctx), sym);
         this._rpSet('rpSrc', this._rpSrcHtml(ctx), sym);
+        // 🌳 V77.2.3 視角切換 —— ⚠️ 必須排在**所有節都畫完之後**:
+        //   `_rpLongHtml` 讀 `this._rpLast`(上面才存好),而 `_rpApplyView` 要等 `<details>` 真的進 DOM。
+        this._rpSet('rpView', this._rpViewBarHtml(), sym);
+        try { this._rpApplyView(); } catch (_) {}
     },
 
     // A 數字卡(grid,每格:標籤 / 數值 / 日期)
@@ -23145,6 +23152,134 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <div class="text-[10px] text-gray-500 leading-snug mt-1">現價 ÷ 年化 EPS = <b class="font-mono text-gray-300">${f(mult, 1)}x</b>,落在它近 3 年的第 <b class="text-gray-200">${rk}</b> 百分位${over ? ' —— <b class="text-amber-300">已超過近 3 年 95% 的水位</b>' : (under ? ' —— <b class="text-amber-300">低於近 3 年最便宜的 5%</b>' : '')}${peerRk != null ? ` ・◆ 同業中位給法 = ${f(eps * C.peer, 1)} 元` : ''}。⛔ 這是「市場過去給過它幾倍」,不是預測。</div>
         </div>`;
     },
+    /** 🌳 V77.2.3 **報告視角切換**(使用者:「我的報告是短中線的嗎?想新增長線,還是文字已經太長了」)
+     *  ⭐⭐ 他擔心「文字太長」是對的 → 所以正解**不是再寫一節**,是**換一句結論 + 換哪幾節攤開**。
+     *     ⛔ 這一版**一個新數字都沒有**:長線那一句全部轉述 `_rpLast` 已經有的欄位
+     *     (`band` / `yld` / `fin.roe4` / `fin.fcf4` / `cyc`)—— ⛔ 不產生第二份真相。
+     *  📉 而且因為一次只顯示一半,**字數不增反減**。
+     *
+     *  🚨🚨 **⛔ 長線這一句永遠不給「可以買 / 不可以買」** —— 兩個理由缺一不可:
+     *    ① 本站**沒有任何回測過的長線進場規則**。使用者貼來的那份外部 AI 報告主張
+     *       「等本益比掉到 15 倍以下再買、越跌越買」,而本站兩支探針的結論**正好相反**:
+     *       `pe_probe.mjs`(本益比由低到高 → **單調反向**)、
+     *       `hold_switch_probe.mjs`(擇時**全部少賺**,而且賣得越勤快越慘)。
+     *       照抄 = 同一個 App 兩個打架的結論(使用者講最多次的那條鐵則)。
+     *    ② 不給指令就**不需要過 `_bearGate` / `_mktGate`** —— 那兩道守門管的是
+     *       「會講可以進場/加碼/抱好」的卡;這一段只描述位置與本站測過什麼,天生不觸發。
+     *       ⛔ 日後如果有人想在這裡加一句「可以分批布局」,**必須先把那兩道接上**。 */
+    _RP_VIEWS: [
+        { k: 'short', n: '⚡ 短中線', d: '幾天到幾個月:看價位、籌碼、事件' },
+        { k: 'long',  n: '🌳 長線',   d: '一年以上:看體質、估值位置' },
+    ],
+    /** 現在是哪個視角(⛔ 預設 short —— 這頁本來就是為短中線設計的)。 */
+    _rpView() {
+        const v = this.settings && this.settings.rpView;
+        return (this._RP_VIEWS || []).some(x => x.k === v) ? v : 'short';
+    },
+    setRpView(k) {
+        try {
+            if (!(this._RP_VIEWS || []).some(x => x.k === k)) return;
+            this.settings = this.settings || {};
+            this.settings.rpView = k;
+            this.saveSettings?.();
+            const sym = this._rpSym || this.currentSymbolId;
+            if (sym) this.renderReportTab(sym);
+        } catch (_) {}
+    },
+    /** 切換列本身(⛔ 不是卡片,是一條 bar;同 `_pageLeadHtml` 的做法)。 */
+    _rpViewBarHtml() {
+        const cur = this._rpView();
+        const btn = v => {
+            const on = v.k === cur;
+            return `<button onclick="app.setRpView('${v.k}')" class="flex-1 min-w-0 rounded px-2 py-1.5 text-[11px] font-bold border transition-colors ${
+                on ? 'bg-[#21262d] text-gray-100 border-[#4b5563]' : 'bg-transparent text-gray-500 border-[#30363d]'}">
+                ${v.n}<span class="block text-[9px] font-normal ${on ? 'text-gray-400' : 'text-gray-600'}">${v.d}</span></button>`;
+        };
+        return `<div class="border-b border-[#21262d] py-2">
+            <div class="flex gap-1.5">${(this._RP_VIEWS || []).map(btn).join('')}</div>
+            <div class="text-[9px] text-gray-600 leading-relaxed mt-1">同一份數字、兩種讀法 —— ⛔ 切換<b>不會改變任何數字</b>,只換「先看哪幾節」與底下那一句結論。</div>
+        </div>${cur === 'long' ? this._rpLongHtml() : ''}`;
+    },
+    /** 🌳 長線那一句 —— ⛔ 全部轉述 `_rpLast`,⛔ 零現算、⛔ 不給買賣指令(理由見 `_RP_VIEWS` 上面)。 */
+    _rpLongHtml() {
+        const C = this._rpLast;
+        if (!C) return '';
+        const f = this._rpFmt;
+        const L = [];
+        // ① 體質:本業賺不賺錢(ROE 近4季 / 自由現金流 近4季)—— 兩個都來自 `data/fin` 切片
+        const roe = C.fin && Number.isFinite(+C.fin.roe4) ? +C.fin.roe4 : null;
+        const fcf = C.fin && Number.isFinite(+C.fin.fcf4) ? +C.fin.fcf4 : null;
+        if (roe != null || fcf != null) {
+            const bits = [];
+            if (roe != null) bits.push(`ROE 近4季 <b class="font-mono text-gray-200">${f(roe, 1)}%</b>`);
+            if (fcf != null) bits.push(`自由現金流近4季 <b class="font-mono text-gray-200">${f(fcf / 1e8, 1)} 億</b>`);
+            L.push(`<div class="text-[10px] text-gray-300 leading-relaxed">🏗️ <b>體質</b>:${bits.join(' ・ ')}${
+                (roe != null && roe < 0) || (fcf != null && fcf < 0) ? ' ・<b class="text-amber-300">⚠️ 其中有負數</b>' : ''}</div>`);
+        } else {
+            L.push(`<div class="text-[10px] text-gray-500 leading-relaxed">🏗️ <b>體質</b>:${this._rpTxt(this._rpNa('本站沒有這一檔的財報三表切片(data/fin)'))}</div>`);
+        }
+        // ② 你買的價格在哪(估值位階 + 殖利率)—— ⛔ 位階用跟 §14 同一支 `_rpPeRank`,不另算一份
+        const b = C.band;
+        const rk = (b && C.ae && C.ae.eps > 0 && C.pC > 0) ? this._rpPeRank(C.pC / C.ae.eps, b) : (b && Number.isFinite(+b.pct) ? Math.round(+b.pct) : null);
+        // 🚨 V77.2.3 實跑抓到:`Number.isFinite(0)` 是 true → 沒有配息資料時印成「殖利率 0.00%」,
+        //   而那會被讀成「這檔不配息」(⛔ 是兩件事,CLAUDE.md:「沒有資料」≠「條件不成立」)。
+        const yl = (Number.isFinite(+C.yld) && +C.yld > 0) ? +C.yld : null;
+        if (rk != null || yl != null) {
+            const bits = [];
+            if (rk != null) bits.push(`本益比落在它自己近 3 年的第 <b class="font-mono text-gray-200">${rk}</b> 百分位${b && Number.isFinite(+b.med) ? `(中位 ${f(b.med, 1)}x)` : ''}`);
+            if (yl != null) bits.push(`殖利率 <b class="font-mono text-gray-200">${f(yl, 2)}%</b>`);
+            L.push(`<div class="text-[10px] text-gray-300 leading-relaxed mt-1">💰 <b>你買的價格在哪</b>:${bits.join(' ・ ')}</div>`);
+        } else {
+            L.push(`<div class="text-[10px] text-gray-500 leading-relaxed mt-1">💰 <b>你買的價格在哪</b>:${this._rpTxt(this._rpNa('本站沒有這檔的本益比分布,也沒有殖利率'))}</div>`);
+        }
+        // ③ 🔄 循環股(官方分類)—— 這條對長線特別要緊:獲利頂峰時本益比最低
+        if (C.cyc) L.push(`<div class="text-[10px] text-amber-300/90 leading-relaxed mt-1">🔄 這一族是<b>循環股</b>:獲利頂峰時本益比最低、谷底時最高 → 上面那個位階<b>要反著讀</b>。</div>`);
+        // ④ 🚨 本站實測(⛔ 這一段不可省 —— 坊間長線說法的兩條核心,本站實測都是相反的)
+        L.push(`<div class="text-[10px] text-gray-400 leading-relaxed mt-1.5 border-t border-[#21262d] pt-1.5">
+            🚨 <b class="text-gray-300">本站實測跟坊間長線說法相反的兩條</b>(⛔ 所以這裡<b>不給</b>「等到幾倍再買」這種數字):<br>
+            ・「本益比低 = 便宜可以買」→ 實測<b>單調反向</b>,越便宜那一組後面越差。<br>
+            ・「越跌越買 / 跌破均線先賣再接回」→ 實測<b>擇時全部少賺</b>,而且賣得越勤快越慘。<br>
+            ⭐ 所以長線這一頁只回答「<b>它體質如何、你現在買在哪個位置</b>」,⛔ 不回答「該不該買」。</div>`);
+        // ⑤ ⏳ 誠實講本站長線缺什麼(⛔ 不可假裝有:陷阱 #22「不講原因 = 沒講」)
+        L.push(`<div class="text-[10px] text-gray-600 leading-relaxed mt-1">⏳ <b>長線還缺三樣,本站目前沒有</b>:①本益比分布只有<b>近 3 年</b>(循環要看 10 年才夠)②<b>負債比 / 利息保障倍數</b>(財報切片沒有總資產與總負債欄)③<b>歷年配息率</b>。⛔ 有了才補,不憑印象寫。</div>`);
+        return `<div class="border-b border-[#21262d] py-2.5" data-rplong="1">
+            <div class="text-[11px] font-bold text-gray-200 mb-1.5">🌳 長線視角:這一檔體質如何、你現在買在哪個位置</div>
+            ${L.join('')}</div>`;
+    },
+    /** 🌳 切完視角之後,把「該先看哪幾節」攤開、其餘收起來。
+     *  ⭐ **收起來 ≠ 藏起來**(V77.1.7 那條):每一節都還在、點一下就開,
+     *     而且 summary 那行本來就把答案寫完了。
+     *  ⚠️ ⛔ 不動使用者**自己點開過**的那幾節(`data-utog`,`_rpSet` 用它還原展開狀態)。 */
+    _RP_VIEW_OPEN: {
+        short: [/§11|§16|§17|價格卡在哪/, /§10|誰在買/],          // 價格牆 + 籌碼
+        // ⭐ 長線**只攤開估值**(⛔ 不含基本面)—— 兩個理由:
+        //   ① 長線那一句已經把體質(ROE / 自由現金流)講完了,再攤開基本面就是**同一件事講兩次**;
+        //   ② 實測:攤開兩節時長線 7,032 字 > 短中線 6,717 字,而「怕文字太長」正是他提這件事的原因。
+        //   ⛔ 基本面**沒有不見** —— summary 那行仍寫著答案,點一下就開。
+        long:  [/§14|§15|估值/],
+    },
+    _rpApplyView() {
+        try {
+            const box = document.getElementById('subContentReport');
+            if (!box) return;
+            const want = this._RP_VIEW_OPEN[this._rpView()] || [];
+            for (const d of box.querySelectorAll('details[data-dk]')) {
+                if (d.dataset.utog === '1') continue;            // 使用者自己開的 ⛔ 不動
+                const dk = d.dataset.dk || '';
+                // ⭐ V77.2.3 **開跟關都做**(⛔ 不是只開不關)——
+                //   ⚠️ **誠實紀錄**:注入「改回只開不關」**測試叫不出來**,而那是**對的** ——
+                //      `setRpView` 每次都走完整重繪,重繪後所有 `<details>` 本來就回到預設(關),
+                //      於是「關」那一半目前**沒有 load-bearing**。
+                //   ⭐ 仍然這樣寫的理由:這支要**跟進入路徑無關**(冪等)。
+                //      日後若有人改成「切換不重繪、只套用視角」,只開不關就會讓
+                //      短中線那幾節留著攤開 + 長線那一段疊上去 = **字數反而變多**,
+                //      而「怕文字太長」正是使用者提這件事的原因。
+                //   ⛔ 收起來 ≠ 藏起來:每一節都還在、summary 那行也把答案寫完了,點一下就開。
+                d.open = want.some(re => re.test(dk));
+            }
+        } catch (_) {}
+    },
+
     _rpValHtml(C) {
         const f = this._rpFmt;
         let body;

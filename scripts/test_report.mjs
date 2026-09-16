@@ -899,8 +899,17 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     //   (主結論最大:外部 AI 畫的不可壓在本站自己的東西上面),而且那張**永遠都有**
     //   (外部 AI 那張常常是「還沒存」)→ 第一眼看到圖的體驗其實更好。
     //   ⭐ 改成釘**用意**:第 1 格必須是一張圖(rpOwn / rpImg 其一),而且兩張都要排在快速表之前。
-    ok('🖼️e ⭐ 使用者要「開啟報告頁直接看到圖」→ 第一格就是圖(rpLead 之後),兩張圖都在快速表之前',
-       ['rpOwn', 'rpImg'].includes(IMG.ord[1])
+    // 🔁 V77.2.3 斷言改成釘**用意**(⛔ 原本釘 `IMG.ord[1]` = 釘住當時的實作,
+    //   插一條視角切換列就會紅,但那並沒有違反使用者要的「開啟直接看到圖、不用滑很久」)。
+    //   ⭐ 用意有兩層,兩層都要守:
+    //     ① 兩張圖必須排在 ⚡ 快速表**之前**,而且自己畫的那張在外部 AI 那張之前;
+    //     ② 圖**之前只准有「非內容」的控制/狀態列** —— 白名單寫死,
+    //        ⛔ 任何真正的內容卡都不准插到圖前面(那才是「要滑很久」的來源)。
+    const NON_CONTENT = ['rpView', 'rpLead'];   // 視角切換列 ・「還在算」的暫時訊息
+    const iFirstImg = Math.min(...['rpOwn', 'rpImg'].map(k => IMG.ord.indexOf(k)).filter(i => i >= 0));
+    ok('🖼️e ⭐ 使用者要「開啟報告頁直接看到圖」→ 圖前面只准有控制列,兩張圖都在快速表之前',
+       Number.isFinite(iFirstImg)
+       && IMG.ord.slice(0, iFirstImg).every(k => NON_CONTENT.includes(k))
        && IMG.ord.indexOf('rpImg') >= 0 && IMG.ord.indexOf('rpImg') < IMG.ord.indexOf('rpQuick')
        && IMG.ord.indexOf('rpOwn') < IMG.ord.indexOf('rpImg'), IMG.ord.join(','));
     // 🔢 § 排序 + 🗑️ 重複入口
