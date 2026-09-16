@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.2.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.2.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.2.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.2.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1144,6 +1144,19 @@
                             <input type="checkbox" id="set_alertStrict" onchange="app.toggleAlertStrict(this.checked);" class="sr-only peer">
                             <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
                         </label>
+                    </div>
+                    <!-- 🔔 V77.2.2 通知種類勾選(使用者:「列出通知的選單,我想要變成我能控制勾選選擇的方式」)
+                         ⛔ 清單由 `app._ALERT_CATS` 產生,⛔ 別在這裡另外寫死一份(會有兩份真相)。 -->
+                    <div class="pt-3">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-bold text-sky-300">🔔 哪些通知要跳出來</label>
+                            <button onclick="document.getElementById('alertCatBox').classList.toggle('hidden'); app._renderAlertCatList();" class="text-[10px] text-sky-400 border border-sky-800 rounded px-2 py-0.5">展開 ▾</button>
+                        </div>
+                        <p class="text-[10px] text-gray-500 leading-relaxed mt-1">勾掉的<b class="text-gray-300">不會不見</b> —— 一樣收進 🔔 通知歷史與個股頁,只是<b class="text-gray-300">不打斷你</b>(不跳視窗、不跳橫幅、不發手機通知)。</p>
+                        <div id="alertCatBox" class="hidden mt-1.5 border-t border-[#21262d] pt-1.5">
+                            <div id="alertCatList"></div>
+                            <p class="text-[9px] text-gray-600 leading-relaxed mt-1.5">💡 想一次少很多:先關「📈 進場 / 買點訊號」 —— 買點錯過還有下一次,出場錯過就住套房。<br>⚠️ 「👜 你的部位」與「🔔 到價提醒」<b class="text-amber-300">刻意不給關</b>:那是你自己設的點,不是本站的預測。</p>
+                        </div>
                     </div>
                     <!-- 🚨 V32.8 大盤風險提醒門檻:風險指數 ≥ 此分數時推播(沿用上方推播開關+通知權限) -->
                     <div class="flex items-center justify-between pt-2">
@@ -3869,7 +3882,7 @@ const app = {
         '高檔出貨': '股價衝到波段高點、當天卻爆大量(≥2 倍 5 日均量),但收一根「小實體變盤線」或「長上影線」= 主力趁高把貨倒給散戶。出現代表漲勢可能到頂:手上有貨分批停利,空手別追高。',
         '非上市櫃': '這一檔**不在上市櫃名單裡**,多半是「興櫃」。\n\n三件事跟你直接有關:\n• 🚨 **沒有漲跌幅限制** —— 上市櫃一天最多 ±10%,興櫃沒有。實測 6696 在 2026/09/07 那天,一天之內最低 134、最高 200(振幅 49%)。\n• ⛔ **不能融資融券** —— 所以本站「融資追繳壓力區」那一格對它是空的,不是壞掉。\n• 💧 **成交量通常很小** —— 抽樣實測:沒有中文名那一組近 20 日成交量中位 **24 張**,上市櫃是 **151 張**,六成七的日子不到 50 張。本站回測的進場方式是「尾盤觸價買」,一天成交 24 張的股票,那個價你很可能**買不到**,或是你一買價格就被自己墊高。\n\n⚠️ **所以這一頁上那些門檻要打折看**:乖離、基期位階、追買價、套牢區,全都是拿上市櫃的規則調出來的。\n\n⭐ 本站**刻意不把它從任何榜單刪掉** —— 刪了那個榜就不是它真正的成績了;改成在每一列標出來讓你自己判斷。\n\n💡 為什麼連中文名都沒有:本站股名來自官方「上市櫃公司基本資料」與「每日收盤行情」兩份,興櫃天生不在那兩份上。',
         '價格斷崖': '這一檔的歷史 K 線裡,有某一天的收盤價**跳得物理上不可能**(台股上市櫃一天最多 ±10%,但那天直接變成好幾倍或剩幾分之一)。\n\n三個常見原因:\n• 🔢 **股票分割 / 反分割**(例如 1 股拆成 4 股,價格變 1/4)\n• ✂️ **減資**(股數減少,價格等比例調高)\n• 💰 **除權息**(配股配息後,參考價往下調)\n\n🚨 **對你的影響**:那一天**以前**的價格是「另一把尺」量出來的 → 跨過那一天的**均線(季線/半年線/年線)、基期位階、回測成績**都會失真。\n\n⭐ **本站的處理方式(誠實講清楚)**:採礦時會自動還原「**整數倍**的分割/減資」(2~10 倍),因為那種一定是尺標變了。但**除權息**與**非整數比例的減資**(例如價格變成 1.63 倍)**刻意不動** —— 那些比例是任意的,硬要「修掉」會把**真正的除權與真正的大跌也一起亂乘**,反而製造出新的錯誤。\n\n💡 **你該怎麼做**:看這一檔的長天期均線與位階時,先確認資料有沒有跨過那一天;跨過了就只當參考,別拿它當進出場依據。近期(斷崖之後)的價格是乾淨的。\n\n⚠️ 興櫃股**不會**出現這個提醒 —— 它本來就沒有漲跌幅限制,單日大跳是真實行情,不是壞資料。',
-        '基期位階': '把「近 1 年的最高價~最低價」當成一把尺,現價落在這把尺的第幾 %。\n\n🧊 低基期(≤35% 且距高點跌 ≥25%):股價在相對低檔,分析師說的「低基期」就是這個。好處是萬一利多來,漲幅空間大(基期低=比較基準低);風險是「便宜還有更便宜」,低基期不等於會漲。\n\n📊 中基期(35~80%):不上不下。\n\n⛰️ 高基期(≥80%):股價在相對高檔,追高要嚴設停損。\n\n💡 用法:低基期 + 打底跡象(月線翻揚/底部抬高/外資回補/量能回溫)才是真的有爆發力 → 選股頁「🧊 低基期爆發」榜已經幫你篩好。單看低基期就買,常買到還在跌的股票。',
+        '基期位階': '把「近 1 年的最高價~最低價」當成一把尺,現價落在這把尺的第幾 %。\n\n🧊 低基期(≤35% 且距高點跌 ≥25%):股價在相對低檔,分析師說的「低基期」就是這個。好處是萬一利多來,漲幅空間大(基期低=比較基準低);風險是「便宜還有更便宜」,低基期不等於會漲。\n\n📊 中基期(35~80%):不上不下。\n\n⛰️ 高基期(≥80%):股價在相對高檔,追高要嚴設停損。\n\n💡 用法:低基期 + 打底跡象(月線翻揚/底部抬高/外資回補/量能回溫)才是真的有爆發力 → 選股頁「🧊 低基期爆發」榜已經幫你篩好。單看低基期就買,常買到還在跌的股票。\n\n🚨 **不要跟「估值基期」搞混,那是另一個數字**(報告頁 §4 估值那一格):\n• 📊 **股價基期**(這一顆)= 股價在**近一年高低區間**的位置\n• 💰 **估值基期** = **本益比**在它自己**近三年**的位置\n\n⭐ **兩個常常相反,而且相反的時候最有意義**。實例(國巨 2327,2026/09/16):股價從 1220 跌到 536(股價基期只有 **37%**,跌了 56%),但本益比 36.2 倍落在近三年第 **89** 百分位(中位才 14.3 倍)→ 意思是**獲利掉得比股價還快**,所以「跌了一大段」不等於「變便宜了」。景氣循環股(被動元件/航運/面板/記憶體)在景氣高點過後常常長這樣。\n\n⛔ 所以看到「股價基期低」不要直接當成便宜,要同時看估值那一格。',
         '突破棒防守': '起漲那根「爆量長紅」的中點(開盤+收盤)÷2,約是主力與大戶的成本區、也是這波多頭的結構防線。跌破 = 這波結構壞了,多單該守;回檔到這條線附近又量縮、低點不破,就是朱老師「回後買上漲」的加碼買點。比單純看 5MA/20MA 更貼近真實主力成本。',
         '盤前體檢': '朱老師「盤前分析」的純公式自動版 — 把今天開盤前該看的東西一次彙總,算出「今天大盤偏多/偏空」一句話總結:\n\n📊 計分材料(全部程式算,不靠 AI):\n  ・ 美股四雄(道瓊/NASDAQ/S&P500/費半)收紅收綠\n  ・ 台積電 ADR 漲跌(權重最高,最連動台積電開盤)\n  ・ VIX 恐慌指數(<20 安全 / >30 恐慌)\n  ・ 外資台指期淨未平倉(偏多/偏空)+ 外資現貨買賣超\n  ・ 🌙 台指期夜盤(15:00~次日5:00,台灣資金對隔夜美股+盤後事件的即時反應,最直接的隔日開盤風向球;有真實漲跌%才計分,夜盤重挫權重略高)\n  ・ 🌍 亞股連動(日經/韓股同盤最直接風向,恆指半權重)+ 恐懼貪婪情緒(≥80 過熱偏空/≤20 極恐偏多,輕權重)(V50.2 新增)\n  ・ 加權指數自己的「進場體檢」技術分數(對 ^TWII 跑同一套純公式)\n\n🎯 總結:🔴 開高偏多 / 🟡 中性震盪 / 🟢 開低偏空(紅漲綠跌)。\n\n🔧 仍「採集中」的(下次採礦自動補):大盤融資券餘額、台指期夜盤源(修復中時暫不計分)。投信/自營商/三大法人合計、日月光/聯電 ADR 已納入採礦,16:30 跑完即顯示。\n\n⚠️ 開盤方向是機率不是保證(美股常被提前反映),僅供盤前風向參考,實際進出仍以開盤量價為準。',
         '進場體檢': '把這支股票所有「純公式」技術訊號(三星轉折=晨星/夜星、吞噬、橫盤突破、量能=攻擊/出貨/換手量、均線排列)一次彙總,算出一個 0-100「進場友善度」+ 紅綠燈總結,給初學者一眼判斷:\n\n• 🔴 偏多(分數≥65)= 多方訊號 + 站上 5 日線/月線多頭排列 → 可分批試單,務必設停損。\n• 🟡 觀望(38~65 或多空打架)= 訊號不明或正在換手 → 先別進,等明確型態。\n• 🟢 偏空(分數≤38)= 空方訊號 + 跌破均線 → 別接刀,有貨者顧好停損。\n\n⚠️ 台股慣例 🔴=漲、🟢=跌(跟紅綠燈相反,別看反)。這是型態統計、不是預言:偏多不代表一定漲、偏空也不保證跌,真正的安全來自「進場就設好停損、跌破就走」。全部 JS 計算,絕不丟給 AI 算(防幻覺)。',
@@ -5722,6 +5735,121 @@ const app = {
     //   ⛔ 仍然只有「賣出/風險」那一側 —— 進場/點火/共振類照舊 toast(多空不對稱鐵則)。
     _URGENT_ALERT: /停損|出場|平倉|跌破|熄火|轉偏空|處置|斷頭|追繳|警報|強制|背離|停利|減碼|出貨|賣訊|末段|過熱|轉弱|做頭|壓力沉重|逃命|第 ?\d ?擊/,
     _isUrgentAlert(title) { try { return this._URGENT_ALERT.test(String(title || '')); } catch (_) { return false; } },
+
+    /** 🔔 V77.2.2 **通知種類總表**(使用者:「列出通知的選單,我想要變成我能控制勾選選擇的方式」)
+     *  ⭐ 全 App 只有這一份 —— ⛔ 別在各個掃描器裡各寫一套「要不要推」的判斷(陷阱 #37)。
+     *  ⚠️ **順序不可換**:第一個對得上的就是它的分類。實跑掃過所有真實標題,
+     *     **真的會重疊、真的靠順序決定的有兩處**(⛔ 不是我一開始以為的那一處):
+     *       ・「🥊 第 2 擊｜跌破 月線」同時對上 `pos`(第2擊)與 `exit`(跌破)
+     *         → **`pos` 必須在前**,否則它會被當成一般風險訊號而**關得掉**(那是你的部位)。
+     *       ・「⛔ 逃頂共振·高危」同時對上 `exit`(逃頂)與 `entry`(共振)
+     *         → **`exit` 必須在前**,否則一則賣訊會被歸成買點。
+     *     ⭐ 誠實紀錄:`day` 排在 `pos` 前面**目前沒有重疊**(`pos` 的 regex 沒有「平倉」)
+     *        → 那是**預防性**的,⛔ 不是現在就 load-bearing;測試 ①b 把它釘住免得日後加字踩到。
+     *  🔒 `lock:1` = ⛔ **不給關**:那是「你自己的錢到了你自己設的點」,不是預測
+     *     (CLAUDE.md 既有鐵則:停損/停利/到價⛔ 不走任何統計守門)。 */
+    _ALERT_CATS: [
+        { k: 'day',    n: '⚡ 當沖',              re: /當沖|09:15|13:25|平倉倒數/,
+          d: '09:15 候選名單、13:25 平倉倒數。不做當沖就可以關掉。' },
+        { k: 'pos',    n: '👜 你的部位',          re: /停損|停利|抱滿|庫存|第 ?\d ?擊/, lock: 1,
+          d: '你手上那幾檔到了**你自己設的點**(停損/停利/抱滿 20 日/第 2 擊)。⛔ 不給關 —— 這是你的錢,不是預測。' },
+        { k: 'price',  n: '🔔 到價提醒',          re: /到價|盯價|觸價|獵殺/, lock: 1,
+          d: '你自己在盯價清單設的價格到了。⛔ 不給關,同上。' },
+        { k: 'dispo',  n: '🚨 處置 / 注意股',     re: /處置|注意股|斷頭|追繳/,
+          d: '官方名單裡有你手上或自選的股票(⛔ 這是事實不是預測)。' },
+        { k: 'market', n: '🌡️ 大盤風險 / 熔斷',   re: /大盤|熔斷|黑天鵝|風險指數|恐慌|警戒/,
+          d: '台股風險指數破你設的門檻、全球指數熔斷、全面黑天鵝。' },
+        { k: 'exit',   n: '🚪 賣出 / 風險訊號',   re: /出貨|背離|轉弱|轉偏空|做頭|壓力沉重|逃命|逃頂|熄火|減碼|賣訊|末段|過熱|長黑|跌破|新低/,
+          d: '不是你的部位,但那一檔出現偏空訊號。⚠️ 關掉之前想一下:本站回測勝率只有三成,**整套會賺靠的就是錯的時候早點跑** —— 少提醒一次出場的代價,比多提醒一次大。' },
+        { k: 'entry',  n: '📈 進場 / 買點訊號',   re: /買點|突破|點火|共振|回撤|止穩|起漲|新高|反彈|進場|轉強/,
+          d: '費波納契回撤買點、突破 5MA、六脈點火、A+ 共振這一類。⭐ 買點錯過還有下一次 → 這一類是最適合關掉的。' },
+        { k: 'other',  n: '📋 其他',              re: /./,
+          d: '沒歸到上面任何一類的(盤後盤點之類)。' },
+    ],
+    /** 這一則屬於哪一類(回 `_ALERT_CATS` 的那一筆)。 */
+    _alertCatOf(title) {
+        const t = String(title || '');
+        try { for (const c of this._ALERT_CATS) if (c.re.test(t)) return c; } catch (_) {}
+        return this._ALERT_CATS[this._ALERT_CATS.length - 1];
+    },
+    /** 這一類現在開著嗎?⭐ `lock` 的永遠回 true。預設**全開**(⛔ 沒設定過 = 開)。 */
+    _alertCatOn(title) {
+        try {
+            const c = this._alertCatOf(title);
+            if (c.lock) return true;
+            const off = this.settings && this.settings.alertOff;
+            return !(off && off[c.k] === true);
+        } catch (_) { return true; }
+    },
+    /** 設定中心那顆勾勾。⛔ `lock` 的按了不動並說明原因。 */
+    toggleAlertCat(k, checked) {
+        try {
+            const c = (this._ALERT_CATS || []).find(x => x.k === k);
+            if (!c) return;
+            if (c.lock) { this.showToast?.(`${c.n} ⛔ 不能關 —— 那是你自己設的點,不是預測`, 'info', 4000); this._renderAlertCatList?.(); return; }
+            this.settings = this.settings || {};
+            this.settings.alertOff = this.settings.alertOff || {};
+            this.settings.alertOff[k] = !checked;
+            this.saveSettings?.();
+            this.showToast?.(checked ? `✅ 已開啟「${c.n}」` : `🔕 已關閉「${c.n}」(仍會收進 🔔 通知歷史,不會不見)`, 'info', 4000);
+            this._renderAlertCatList?.();
+        } catch (_) {}
+    },
+    /** 把總表畫成勾選清單(設定中心)。 */
+    _renderAlertCatList() {
+        const box = document.getElementById('alertCatList');
+        if (!box) return;
+        const off = (this.settings && this.settings.alertOff) || {};
+        box.innerHTML = (this._ALERT_CATS || []).map(c => {
+            const on = c.lock ? true : off[c.k] !== true;
+            const dsc = String(c.d).replace(/\*\*([^*<>]+)\*\*/g, '<b class="text-gray-200">$1</b>');
+            return `<label class="flex items-start gap-2 py-1.5 ${c.lock ? 'opacity-90' : 'cursor-pointer'}">
+                <input type="checkbox" ${on ? 'checked' : ''} ${c.lock ? 'disabled' : ''}
+                    onchange="app.toggleAlertCat('${c.k}', this.checked)"
+                    class="mt-0.5 w-4 h-4 flex-shrink-0 accent-green-500 ${c.lock ? 'cursor-not-allowed' : 'cursor-pointer'}">
+                <span class="min-w-0">
+                    <span class="text-[11px] font-bold ${on ? 'text-gray-100' : 'text-gray-500'}">${c.n}</span>
+                    ${c.lock ? '<span class="text-[9px] text-amber-300 ml-1">🔒 不能關</span>' : ''}
+                    <span class="block text-[10px] text-gray-500 leading-relaxed">${dsc}</span>
+                </span>
+            </label>`;
+        }).join('');
+    },
+
+    /** 🔔 V77.2.2 **一般 App 通知樣式**的橫幅(使用者:「改成一般 app 通知的方式」)
+     *  ⛔ 刻意不共用 `showToast` —— 那支還有一票錯誤訊息在用,改它會動到不相干的地方。
+     *  差別:靠上置中的小方塊 → **整條橫幅、左對齊、標題粗體 + 內文一行**,點了跳那一檔。
+     *  📐 幾何一律 inline style(Tailwind 是 CDN,沙箱載不到 → 用 class 排的版在測試裡量不到)。 */
+    _alertToast(title, body, sym) {
+        try {
+            const el = document.createElement('div');
+            el.dataset.toast = '1'; el.dataset.alertToast = '1';
+            el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);z-index:9999;'
+                + 'width:min(94vw,440px);box-sizing:border-box;background:#1c2128;border:1px solid #30363d;'
+                + 'border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.55);padding:10px 12px;'
+                + 'transition:opacity .35s;cursor:pointer;text-align:left;';
+            const n = document.querySelectorAll('div[data-toast]').length;
+            el.style.top = `${80 + Math.min(n, 4) * 64}px`;
+            const t = document.createElement('div');
+            t.style.cssText = 'font-size:12px;font-weight:800;color:#e6edf3;line-height:1.35;';
+            t.textContent = String(title || '');
+            const b = document.createElement('div');
+            b.style.cssText = 'font-size:11px;color:#9da7b3;line-height:1.5;margin-top:2px;'
+                + 'display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;';
+            b.textContent = String(body || '');
+            el.appendChild(t); if (body) el.appendChild(b);
+            const kill = () => { el.style.opacity = '0'; setTimeout(() => el.remove(), 400); };
+            el.onclick = () => {
+                kill();
+                if (!sym) return;
+                try { const si = document.getElementById('symbolInput'); if (si) si.value = sym; } catch (_) {}
+                try { this.analyze(sym); this.switchAppTab('diag'); } catch (_) {}
+            };
+            document.body.appendChild(el);
+            setTimeout(kill, 6000);
+            return true;
+        } catch (_) { return false; }
+    },
     /** 👜 你手上的(庫存)+ 你在追的(自選)—— 全 App 唯一一份
      *  ⛔ 這段本來在 `_tomorrowWatchHtml` 與 `_eodTriggerSweep` 各抄一份(陷阱 #37:
      *     同一套規則寫兩份,遲早只改到一邊)。 */
@@ -6009,10 +6137,17 @@ const app = {
         // 🪟 V74.8.9 App 內也要有反應 —— 🚨 舊版在沒開通知權限時**直接 return**,
         //   事件觸發了畫面上零反應,使用者根本不知道(而且他多半沒開權限)。
         //   ⭐ 高優先級(出場/風險)→ 彈窗;其餘 → toast(不阻斷)。
+        // 🔔 V77.2.2 使用者關掉的那一類 → **只記不吵**(同 `_alertQuiet` 的精神)。
+        //   ⭐ 上面 `_recordNotifHistory` 已經記過了 → 這裡 return **一則都不會不見**,
+        //      鈴鐺與個股頁照樣查得到;使用者要的是「不被打擾」⛔ 不是「查不到」。
+        //   🔒 `pos`/`price`(你自己設的停損停利與到價)有 `lock` → 永遠過得了這一關。
+        if (!this._alertCatOn(title)) return;
         let popped = false;
         try {
             popped = !!this._alertPopup(title, body, sym);
-            if (!popped) this.showToast?.(`${title} — ${body}`, 'info', 6000);
+            // 🔔 V77.2.2 改走通知橫幅樣式(使用者:「不要那樣子顯示,改成一般 app 通知」);
+            //   ⛔ `showToast` 只留給錯誤訊息那類,別再混用。
+            if (!popped) this._alertToast(title, body, sym) || this.showToast?.(`${title} — ${body}`, 'info', 6000);
         } catch (_) {}
         // 🪟 V75.2.7 **App 在前景就⛔ 不發系統通知**(不論走大視窗還是 toast)。
         //   🚨 V74.9.2 只擋了「大視窗真的跳了」那條(`popped && visible`)→ **走 toast 的那些照樣發**,
@@ -8448,8 +8583,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.2.1',
+    _APP_VERSION: 'V77.2.2',
     _CHANGELOG: [
+        { v: 'V77.2.2', d: ['🔔 <b>通知可以自己勾了</b>(你說「不要這樣子顯示,改成一般 app 通知,另外列出選單讓我勾選」)。設定中心 →「🔔 哪些通知要跳出來」,<b>8 類</b>:⚡當沖 ・👜你的部位 ・🔔到價 ・🚨處置注意股 ・🌡️大盤風險熔斷 ・🚪賣出風險訊號 ・📈進場買點訊號 ・📋其他。<b>勾掉的不會不見</b> —— 一樣收進 🔔 通知歷史與個股頁,只是不打斷你。💡 想一次少很多就先關「📈 進場/買點」(買點錯過還有下一次)。', '🔒 <b>「👜 你的部位」與「🔔 到價提醒」刻意不給關</b>:那是<b>你自己設的停損/停利/到價</b>,不是本站的預測 —— 按了會跟你說為什麼。', '📱 <b>通知樣式換掉了</b>:原本是螢幕中間那個置中的小方塊,現在是<b>一般 App 那種整條橫幅</b>(標題粗體 + 內文左對齊,點一下直接跳到那一檔)。', '📊 <b>「基期」改名成「股價基期」</b>(你問國巨「我的程式說中基期 37%、報告說高基期 89%,是錯的嗎」)。<b>兩個都是對的,是兩件事</b>:徽章那顆講<b>股價</b>在近一年區間的位置(37%),報告 §4 那個講<b>本益比</b>在它自己近三年的位置(89%)。國巨從 1220 跌到 536(所以股價位階低),但本益比 36.2 倍 vs 近三年中位 14.3 倍(所以估值貴)→ 意思是<b>獲利掉得比股價還快</b>,「跌了一大段」不等於「變便宜」。⛔ 也<b>不是分割造成的</b>:798 根 K 線實測 0 次異常跳空。點那顆徽章有完整說明。'] },
         { v: 'V77.2.1', d: [
             '🏷️ <b>個股頁頂端會標「非上市櫃」了</b>(你截圖那檔 6696 就是 —— 標題印「6696 (6696)」,名字就是代號)。⭐ 這種多半是<b>興櫃</b>:<b>沒有漲跌幅限制</b>(它 09/07 那天一天之內最低 134、最高 200,振幅 49%)、<b>不能融資</b>、成交量很小。⚠️ 所以那一頁上的「乖離 / 高基期 / 追買價 / 套牢區」都是拿上市櫃規則調的,套在它身上要打折看 —— 點徽章有完整說明。(以前只在決策台/訊號榜/釣魚池標,<b>個股頁漏掉了</b>。)',
             '⚠️ <b>新增「歷史價格斷崖」提醒</b>(你問的分拆)。全市場 2,520 檔實測掃過:有 <b>31 檔</b>歷史上出現過「一天之內不可能的跳價」,其中 19 檔是興櫃的真實行情,<b>真正要當心的是上市櫃那 12 檔</b>(長榮 2603、1538、1808、6949…)。現在只要這一檔有,頂端就會標出來,並告訴你<b>那一天以前的均線、位階、回測都是用另一把尺算的</b>。',
@@ -8910,6 +9046,7 @@ ${list}
         if (wlEl) wlEl.checked = this.settings.watchlistAlert || false;
         const asEl = document.getElementById('set_alertStrict');
         if (asEl) asEl.checked = this.settings.alertStrict !== false;   // 🔕 V76.1.7 預設開
+        try { this._renderAlertCatList?.(); } catch (_) {}              // 🔔 V77.2.2 通知種類勾選清單
         // V41.2 — autoRunChiefAI 已停用(首席 AI 純手動),設定頁 checkbox 已移除
         this._applyFontSizeUI(this.settings.fontSize || 'medium');
         try { this._applyExitRuleUI(); } catch (_) {}   // 🚪 V74.5.4 出場規則選單反白
@@ -41471,13 +41608,18 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 const _b = this._basePos(this.rawDailyData);
                 if (!_b) return null;
                 const { pos, dd, yrs } = _b;
-                if (pos <= 35 && dd >= 25) return { t: `🧊 低基期 ${pos.toFixed(0)}%`, cls: 'bg-cyan-900/40 text-cyan-300 border-cyan-700', pos, dd, yrs, lv: 'low' };
-                if (pos >= 80) return { t: `⛰️ 高基期 ${pos.toFixed(0)}%`, cls: 'bg-orange-900/30 text-orange-300 border-orange-700', pos, dd, yrs, lv: 'high' };
-                return { t: `📊 中基期 ${pos.toFixed(0)}%`, cls: 'bg-gray-800 text-gray-400 border-gray-700', pos, dd, yrs, lv: 'mid' };
+                // 🏷️ V77.2.2 加「股價」兩個字 —— 使用者問「我的程式說中基期 37%、報告說高基期 89%,是錯的嗎?」
+                //   ⭐ 兩個都對,是**兩件事**:這顆講「股價在近一年區間的位置」,
+                //      報告 §4 的「估值基期」講「本益比在它自己近三年的位置」。
+                //   🚨 但兩個都只寫「基期」= 同名不同義(使用者講最多次的那條鐵則)→ 這裡補上「股價」。
+                //   ⚠️ 數字與門檻一個字都沒動,只改**名字**。
+                if (pos <= 35 && dd >= 25) return { t: `🧊 股價低基期 ${pos.toFixed(0)}%`, cls: 'bg-cyan-900/40 text-cyan-300 border-cyan-700', pos, dd, yrs, lv: 'low' };
+                if (pos >= 80) return { t: `⛰️ 股價高基期 ${pos.toFixed(0)}%`, cls: 'bg-orange-900/30 text-orange-300 border-orange-700', pos, dd, yrs, lv: 'high' };
+                return { t: `📊 股價中基期 ${pos.toFixed(0)}%`, cls: 'bg-gray-800 text-gray-400 border-gray-700', pos, dd, yrs, lv: 'mid' };
             })();
             this._baseLevel = _base;
             if (_base) {
-                const _tip = `${_base.yrs}股價區間位階 ${_base.pos.toFixed(0)}%(0=最低、100=最高),距高點回檔 ${_base.dd.toFixed(0)}%`;
+                const _tip = `${_base.yrs}股價區間位階 ${_base.pos.toFixed(0)}%(0=最低、100=最高),距高點回檔 ${_base.dd.toFixed(0)}% ｜⚠️ 這是「股價」的位置,報告頁還有一個「估值基期」(本益比的位置),兩個常常相反`;
                 tagsHtml += `<span onclick="app.showJargon('基期位階')" title="${_tip}" class="cursor-pointer inline-block text-[9px] px-1 py-0 rounded font-bold whitespace-nowrap border ${_base.cls}">${_base.t}</span>`;
             }
         } catch (_) {}
