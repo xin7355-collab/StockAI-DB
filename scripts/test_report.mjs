@@ -937,11 +937,53 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('💳a 🚨 融資成本只看近 60 個交易日(注入:吃整條 795 根 → 追繳線從 533 掉到 259、距現價 2% 變 52% = 永遠 safe 的常數)',
        M.cur && M.cur.win === 60 && M.cur.winTotal > 300 && Math.abs(M.cur.distPct - M.oldDist) > 20,
        JSON.stringify({ win: M.cur && M.cur.win, dist: M.cur && Math.round(M.cur.distPct), oldDist: Math.round(M.oldDist), rows: M.rows }));
-    ok('💳b 分不出上市/上櫃時**照樣給數字**(⛔ 不可再顯「融資資料不足」—— 融資 795 列一列不缺,陷阱 #28)',
-       M.cur && M.cur.known === true && M.cur.mktKnown === false && Number.isFinite(+M.cur.callLine), JSON.stringify(M.cur && { known: M.cur.known, mktKnown: M.cur.mktKnown, call: M.cur.callLine }));
-    const R9 = await render('2327');
-    ok('💳c 快速表 §13 那列有數字,而且標明「以上市六成推」(⛔ 不可靜默用假設值)',
-       /§13 融資壓力[^§]*追繳壓力區/.test(R9.txt.rpQuick) && /以上市六成推/.test(R9.txt.rpQuick) && !/融資資料不足/.test(R9.txt.rpQuick), (R9.txt.rpQuick.match(/§13 融資壓力[^§]{0,120}/) || [])[0]);
+    // ⚠️ V77.1.9 這兩條以前**靠環境剛好沒有市場別**才會走到那條分支 —— V76.4.0 把上櫃門牌修好之後
+    //   `allStockList` 有 `type` 了 → 前提消失、測試從此常紅(⭐ 而「永遠紅的測試等於沒有測試」)。
+    //   ⛔ 修法⛔ 不是放寬斷言,是**自己造出那個情境**(把 2327 那筆的 `type` 清掉)再量,
+    //   而且加一組**決定性對照**:有 type 時⛔ 不可以印「以上市六成推」。
+    const MK = await page.evaluate((k) => {
+        const A = app, d = Array.isArray(k) ? k : (k.data || k);
+        const row = (A.allStockList || []).find(x => x.stock_id === '2327');
+        const had = row ? row.type : undefined;
+        const seen = { hadType: !!String(had || '') };
+        if (row) row.type = '';                       // ← 造出「分不出上市/上櫃」
+        seen.unknown = A._marginCallState(d, '2327');
+        if (row) row.type = 'twse';                   // ← 對照組:明確是上市
+        seen.known = A._marginCallState(d, '2327');
+        if (row) row.type = had;                      // 還原
+        return seen;
+    }, FX.k2327);
+    ok('💳b 空過守門:兩種情境都算得出追繳線', Number.isFinite(+MK.unknown?.callLine) && Number.isFinite(+MK.known?.callLine),
+       JSON.stringify({ u: MK.unknown?.callLine, k: MK.known?.callLine }));
+    ok('💳b2 分不出上市/上櫃時**照樣給數字**(⛔ 不可再顯「融資資料不足」—— 融資 795 列一列不缺,陷阱 #28)',
+       MK.unknown && MK.unknown.known === true && MK.unknown.mktKnown === false && Number.isFinite(+MK.unknown.callLine),
+       JSON.stringify(MK.unknown && { known: MK.unknown.known, mktKnown: MK.unknown.mktKnown, call: MK.unknown.callLine }));
+    ok('💳b3 ⭐ 決定性對照:知道是上市時 `mktKnown` 要是 true(⛔ 不可永遠回 false)', MK.known && MK.known.mktKnown === true, JSON.stringify({ k: MK.known?.mktKnown }));
+    // 快速表那一列:同樣自己造情境(⛔ 不依賴環境)
+    const Q13 = await page.evaluate(async () => {
+        const A = app, sym = String(A.currentSymbolId || '2327');
+        const row = (A.allStockList || []).find(x => x.stock_id === sym);
+        const had = row ? row.type : undefined;
+        const grab = async (t) => {
+            if (row) row.type = t;
+            await A.renderReportTab(sym);
+            await new Promise(r => setTimeout(r, 250));
+            // ⚠️ V77.1.7 起 ⚡ 快速判別表**整張折疊** → 關著的 `<details>` 讀不到 innerText
+            //   (⛔ 別把「讀不到」當成「內容不見了」)
+            document.querySelectorAll('#subContentReport details').forEach(x => { x.open = true; });
+            const el = document.getElementById('rpQuick');
+            return (el?.innerText || '').replace(/\s+/g, ' ');
+        };
+        const unknown = await grab(''), known = await grab('twse');
+        if (row) row.type = had;
+        return { unknown, known };
+    });
+    ok('💳c 快速表 §13 那列有數字,而且**分不出市場別時**標明「以上市六成推」(⛔ 不可靜默用假設值)',
+       /§13 融資壓力[^§]*追繳壓力區/.test(Q13.unknown) && /以上市六成推/.test(Q13.unknown) && !/融資資料不足/.test(Q13.unknown),
+       (Q13.unknown.match(/§13 融資壓力[^§]{0,120}/) || [])[0]);
+    ok('💳c2 ⭐ 決定性對照:知道市場別時⛔ 不可以再印「以上市六成推」(那句是給推估用的)',
+       /§13 融資壓力[^§]*追繳壓力區/.test(Q13.known) && !/以上市六成推/.test(Q13.known),
+       (Q13.known.match(/§13 融資壓力[^§]{0,120}/) || [])[0]);
     ok('💳d 離線名字表要讀第三欄(市場別)—— 下一輪採礦帶上來就自動變準',
        /type: \(Array\.isArray\(v\) && v\[2\]\)/.test(SRC) && /names\[_sy\] = \[_nm, \(industry_map or \{\}\)\.get\(_sy, ''\), _mkt\]/.test(fs.readFileSync(path.join(ROOT, 'miner.py'), 'utf8')), '');
 }
@@ -1260,9 +1302,28 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         const html = A._rpFinDeepHtml(Object.assign({}, A._rpLast, { fin: G })); return { parQ: A._rpFinParQ(G), txt: html.replace(/<[^>]+>/g, ' ') }; }, FIN_SLICE['2327']);
     ok('§f10 ⭐ 舊切片(沒 par_chg_q、nm=5.3、roe4=4.3)→ 前端自己判出 2025-09-30,淨利率/ROE 都不印那個數字', OLDF.parQ === '2025-09-30' && /疑似面額變更/.test(OLDF.txt) && !/5\.3%/.test(OLDF.txt) && !/4\.3%/.test(OLDF.txt), OLDF.txt.slice(0, 300));
     } else console.log('⏭️ 沒有 fin_deep 分支/檔 → §f1~§f7 跳過(git show origin/fin_deep:fin_deep/fin_deep.json > fin_deep/fin_deep.json)');
-    // 沒切片的股(5483 不在 fixture)→ 誠實「本站尚未切出」+ 快速表 ⛔
-    const R7 = await render('5483');
-    ok('§f8 沒有切片的股:§4 寫「本站尚未切出這檔的財報三表」、快速表那列標 ⛔ 本站沒有', /尚未切出/.test(R7.txt.rpFund) && /§4 財報品質[^§]*⛔ 本站沒有/.test(R7.txt.rpQuick), R7.txt.rpQuick.slice(0, 200));
+    // 沒切片的股 → 誠實「本站尚未切出」+ 快速表 ⛔
+    // ⚠️ V77.1.9 以前是挑「5483 剛好沒被採到」—— 而 `data/fin/` 現在有 **2,352 檔**,前提早就沒了(常紅)。
+    //   ⛔ 修法⛔ 不是換一檔碰運氣,是**把那一檔的切片快取塞成 null**(強制走「沒有切片」那條),
+    //   ⭐ 並加一組決定性對照:有切片時⛔ 不可以印「尚未切出」。
+    const NS = await page.evaluate(async () => {
+        const A = app, sym = String(A.currentSymbolId || '2330');
+        const real = A._finSlimCache && A._finSlimCache[sym];
+        A._finSlimCache = A._finSlimCache || {};
+        A._finSlimCache[sym] = { ts: Date.now(), data: null };      // ← 造出「這檔沒有切片」
+        await A.renderReportTab(sym); await new Promise(r => setTimeout(r, 250));
+        document.querySelectorAll('#subContentReport details').forEach(x => { x.open = true; });
+            const none = { fund: (document.getElementById('rpFund')?.innerText || '').replace(/\s+/g, ' '),
+                       quick: (document.getElementById('rpQuick')?.innerText || '').replace(/\s+/g, ' ') };
+        if (real) A._finSlimCache[sym] = real; else delete A._finSlimCache[sym];
+        await A.renderReportTab(sym); await new Promise(r => setTimeout(r, 250));
+        document.querySelectorAll('#subContentReport details').forEach(x => { x.open = true; });
+            const some = { fund: (document.getElementById('rpFund')?.innerText || '').replace(/\s+/g, ' ') };
+        return { none, some, hadReal: !!(real && real.data) };
+    });
+    ok('§f8 沒有切片的股:§4 寫「本站尚未切出這檔的財報三表」、快速表那列標 ⛔ 本站沒有',
+       /尚未切出/.test(NS.none.fund) && /§4 財報品質[^§]*⛔ 本站沒有/.test(NS.none.quick), NS.none.quick.slice(0, 200));
+    ok('§f8b ⭐ 決定性對照:真的有切片時⛔ 不可以印「尚未切出」', !NS.hadReal || !/尚未切出/.test(NS.some.fund), `hadReal=${NS.hadReal}`);
     {
         const ordF = await page.evaluate(() => [...document.getElementById('subContentReport').children].map(d => d.id).filter(Boolean));
         const seq = ['rpImg', 'rpPaste', 'rpQuick', 'rpInd', 'rpFund', 'rpChip', 'rpWalls', 'rpRisk', 'rpVal', 'rpSrc'];
