@@ -324,7 +324,13 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html.rpVal) && /rpRevOut/.test(R
     const openOf = await page.evaluate(async () => {
         const A = app, sym = A.currentSymbolId;
         const real = A._ovDecide;
-        const shot = () => { const d = document.querySelector('#rpRisk details'); return d ? d.open : null; };
+        //   🔁 V77.1.7 使用者明示「§12・§13・§18・§19 折疊起來」→ 這一節**不再自動展開**。
+        //   ⭐ 但「收起來 ≠ 沒講」的要求仍在 → 改釘 **summary 的內容與 tone**:
+        //      有事 → 標題列寫「N 則預警」而且 tone 是 warn(琥珀);沒事 → 寫「目前沒有預警」。
+        const shot = () => { const d = document.querySelector('#rpRisk details');
+            const sm = d ? d.querySelector('summary') : null;
+            return { open: d ? d.open : null, txt: sm ? sm.innerText.replace(/\s+/g, ' ') : '',
+                     tone: d ? (d.getAttribute('data-rptone') || d.className) : '' }; };
         A._ovDecide = (...a) => { const r = real.apply(A, a); return Object.assign({}, r, { alerts: [{ ic: '⚠️', t: '測試用預警' }] }); };
         await A.renderReportTab(sym); const hot = shot();
         A._ovDecide = (...a) => { const r = real.apply(A, a); return Object.assign({}, r, { alerts: [] }); };
@@ -332,8 +338,12 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html.rpVal) && /rpRevOut/.test(R
         A._ovDecide = real; await A.renderReportTab(sym);
         return { hot, cold };
     });
-    ok('📄b ⭐⭐ 有預警 → 風險節自動展開(⛔ 沒有這個,收起來就等於沒講)', openOf.hot === true, JSON.stringify(openOf));
-    ok('📄b2 ⭐⭐ 沒預警 → 風險節不展開(只換「有沒有事」這一個維度)', openOf.cold === false, JSON.stringify(openOf));
+    ok('📄b ⭐⭐ 有預警 → **收起來也看得到**(標題列要寫出預警則數;⛔ 折疊不等於藏起來)',
+       /預警/.test(openOf.hot.txt) && /\d/.test(openOf.hot.txt), JSON.stringify(openOf.hot));
+    ok('📄b2 ⭐⭐ 決定性對照:沒預警時標題列要**不一樣**(只換「有沒有事」這一個維度)',
+       openOf.cold.txt !== openOf.hot.txt && /沒有預警/.test(openOf.cold.txt), JSON.stringify(openOf.cold));
+    ok('📄b3 V77.1.7 起⛔ 兩種情況都不自動展開(使用者明示折疊)',
+       openOf.hot.open === false && openOf.cold.open === false, JSON.stringify(openOf));
 
     const R2 = await render('5483');
     // 📊 V76.2.5 重點數字**已搬到「基本」分頁**(使用者明示)→ 這一組跟著搬過去驗。
@@ -1019,16 +1029,23 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         // 超出上端:直接餵一個離譜的現價給純函式(⛔ 不改真資料)
         const over = A._rpValRuler({ ...C, pC: C.pC * 20 });
         const overLeft = parseFloat((over.match(/left:\s*([\d.]+)%;top:-13px/) || [])[1]);
-        // 📏 V76.0.7 尺要在 <details> **外面**(收合也看得到)—— 注入:把尺塞回 body → rulerOutside 變 false → 必紅
+        // 🔁 V77.1.7 尺**搬進** <details> 裡面(使用者:下方要折疊的都折疊)。
+        //   ⭐ 改釘「尺還在」+「收起來時 summary 仍寫得出估值帶」,⛔ 不再釘它在哪一層。
         const rulerOutside = !!(ruler && !ruler.closest('details'));
-        return { open: !!(d && d.open), rulerOutside, sum: sum ? sum.innerText.replace(/\s+/g, ' ') : '', p25: f(pick(/偏便宜/)), med: f(pick(/中位\(PE/)), p75: f(pick(/^偏貴/)),
+        const rulerExists = !!ruler;
+        return { open: !!(d && d.open), rulerOutside, rulerExists, note: sum ? sum.innerText.replace(/\s+/g, ' ') : '', sum: sum ? sum.innerText.replace(/\s+/g, ' ') : '', p25: f(pick(/偏便宜/)), med: f(pick(/中位\(PE/)), p75: f(pick(/^偏貴/)),
                  hasRuler: !!ruler, dataRk: ruler ? +ruler.getAttribute('data-rk') : null, left, rk, overTxt: /已超過近 3 年 95%/.test(over), overLeft,
                  noTarget: !/目標價(?!,也不是預測)|預估價/.test(box.innerText) };
     });
     ok('💰v1 摺疊標題直接寫「估值帶 P25 ~ P75 ・中位」三個價,數字 = 對照表那三列(⛔ 不另算)',
        v.sum.includes(`${v.p25} ~ ${v.p75}`) && v.sum.includes(`中位 ${v.med}`) && /第 \d+ 百分位/.test(v.sum), v.sum.slice(0, 160));
     // 📏 V76.0.7 使用者:「報告頁資料很多」→ 改成「尺在摺疊區外面、6 列表預設收合」(⛔ 不再預設攤開)
-    ok('💰v1b 估值尺在 <details> 外面(收合也看得到),6 列表預設收合', v.rulerOutside && !v.open, JSON.stringify({ rulerOutside: v.rulerOutside, open: v.open }));
+    // 🔁 V77.1.7 使用者:「下方還有什麼要折疊的都折疊起來」→ 尺搬進摺疊區。
+    //   ⭐ 改釘**用意**:尺沒有被刪掉,而且**收起來時 summary 仍寫得出估值帶/中位/百分位**
+    //      (⛔ 折疊不等於看不到重點)。
+    ok('💰v1b 估值尺還在(⛔ 不是刪掉,是搬進摺疊區),而且整節預設收合',
+       v.rulerExists && !v.open, JSON.stringify({ rulerExists: v.rulerExists, rulerOutside: v.rulerOutside, open: v.open }));
+    ok('💰v1c ⭐ 收起來時標題列仍寫得出「估值帶 / 中位 / 百分位」', /估值帶|百分位|本益比/.test(v.note || ''), (v.note || '').slice(0, 120));
     ok('💰v2 尺上 ▼ 的位置 = _rpPeRank(現價÷年化EPS)(注入:改成線性用 PE 算 → 必紅)',
        v.hasRuler && v.dataRk === v.rk && v.left != null && Math.abs(v.left - Math.max(2, Math.min(98, v.rk))) < 0.01, JSON.stringify({ rk: v.rk, dataRk: v.dataRk, left: v.left }));
     ok('💰v3 現價超出 P95 → 貼右邊(98%)+ 明講「已超過近 3 年 95%」', v.overTxt && v.overLeft === 98, JSON.stringify({ overLeft: v.overLeft, overTxt: v.overTxt }));

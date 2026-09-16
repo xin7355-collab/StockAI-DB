@@ -402,6 +402,10 @@ await page.waitForTimeout(2500);
         app.switchSubTab && app.switchSubTab('report');
         setTimeout(() => {
             const box = document.getElementById('rpRisk');
+            // 🚨 V77.1.7 起這張卡**預設收起來** → 關著的 <details> 讀不到 innerText
+            //   (⛔ 不是內容不見了)→ 量之前要先把外層打開。
+            const outer = box && box.querySelector('details');
+            if (outer) outer.open = true;
             const det = box && box.querySelector('[data-rpdistoff]');
             const before = det ? det.innerText.replace(/\s+/g, ' ') : '';
             if (det) det.open = true;
@@ -457,6 +461,114 @@ await page.waitForTimeout(2500);
     ok('ⓝ5 快照綁**資料日期**不綁開啟時間(⛔ 綁時間這一格永遠是空的)',
        /String\(old\.d\) === String\(now\.d\)/.test(s), '');
     ok('ⓝ6 ⛔ 每檔一份的 localStorage 必接 `_lruTrim`(V76.2.7)', /_lruTrim\('rpSnap_'/.test(s), '');
+}
+
+// ─────────── V77.1.7 使用者三點 ───────────
+// ⓞ 月營收:「基本頁即時抓到的」要排第一(⛔ 否則同一個 App 兩個年增)
+{
+    const src = seg('    _revYoY(fy, fc, fen) {', "return { v: null, month: null, src: null };");
+    ok('ⓞs 空過守門:抓得到 `_revYoY`', src.length > 300, `len=${src.length}`);
+    ok('ⓞs2 即時那條(`_revLive`)排在採礦快取**之前**',
+       src.indexOf('_revLive') > 0 && src.indexOf('_revLive') < src.indexOf('fy?.yoy'), '');
+    const r = await page.evaluate(() => new Promise(res => {
+        const sym = app.currentSymbolId, keep = app._revLive;
+        // 🧪 決定性對照:餵一組不可能巧合的數字 → 報告頁三個欄位要**一起**變
+        app._revLive = { sym, ym: '2099-12', mrev: 8.88e8, yoy: 77.7, ytd: 66.6, ts: Date.now() };
+        app.renderReportTab(sym).then(() => setTimeout(() => {
+            const C = app._rpLast || {};
+            const got = { mrev: C.mrev, yoy: C.yoy, ytd: C.ytd, ym: C.yoyM };
+            app._revLive = keep;
+            res(got);
+        }, 900));
+    }));
+    ok('ⓞ 注入即時月營收 → 報告頁的 最新月營收 / 年增 / 累計年增 三個一起換',
+       r.mrev === 8.88e8 && Math.abs(r.yoy - 77.7) < 0.01 && Math.abs(r.ytd - 66.6) < 0.01, JSON.stringify(r));
+    ok('ⓞ2 而且要帶出「是哪一個月」(⛔ 沒有月份的年增查不出對不對)', r.ym === '2099-12', JSON.stringify(r));
+    const st = seg('    async fetchFundamentalAnalysis(', '        // YoY — FinMind 仍空就用採礦值。');
+    ok('ⓞ3 基本頁抓到之後要存成 `_revLive`(⛔ 報告頁不可自己再打一次 API)',
+       /this\._revLive = \{/.test(st) && /ytd/.test(st), '');
+    ok('ⓞ4 ⛔ 累計年增月份不齊就不給(不硬算)', /rows\.length === _mMax/.test(st), '');
+}
+// ⓟ canvas 結論徽章:⛔ 不可是 emoji ・要畫在 pill 的真中心
+{
+    const r = await page.evaluate(() => new Promise(res => {
+        app._rpDrawOwn(app.currentSymbolId);
+        setTimeout(() => res({ h: (app._rpOwnDbg || {}).headBadge || null,
+                               t1: app._rpBadgeText('🛡️ 持股續抱'), t2: app._rpBadgeText('➖ 觀望'),
+                               t3: app._rpBadgeText('🔴 別碰') }), 1800);
+    }));
+    ok('ⓟ 空過守門:海報畫得出結論徽章', !!(r.h && r.h.word), JSON.stringify(r));
+    ok('ⓟ2 ⛔ 徽章不可含 emoji(canvas 上量不準也對不齊,V77.1.5 同一個病)',
+       r.h && /^[一-鿿0-9A-Za-z%．.\-+／/ ·]+$/.test(r.h.word), JSON.stringify(r));
+    ok('ⓟ3 文字畫在 pill 的**垂直真中心**(⛔ 不是 alphabetic 基線)',
+       r.h && Math.abs(r.h.cy - (r.h.top + r.h.h / 2)) < 0.51, JSON.stringify(r.h));
+    ok('ⓟ4 `_rpBadgeText` 只剝符號、⛔ 一個中文字都不改',
+       r.t1 === '持股續抱' && r.t2 === '觀望' && r.t3 === '別碰', JSON.stringify(r));
+    const d = seg('        const txt = (t, x, yy, size, col,', '        const mt = (t, size,');
+    ok('ⓟ5 改過的 `textBaseline` 一定要復原(⛔ 不然後面每一行字都會跑掉)',
+       /textBaseline = 'alphabetic'/.test(d), d.slice(0, 200));
+}
+// ⓠ 報告頁全部折疊(使用者:「§12…折疊起來,下方要折疊的都折疊」)
+{
+    const r = await page.evaluate(() => new Promise(res => {
+        app.switchSubTab && app.switchSubTab('report');
+        setTimeout(() => {
+            const box = document.getElementById('subContentReport'), out = [];
+            box.querySelectorAll(':scope > div').forEach(c => {
+                const d = c.querySelector('details');
+                out.push({ id: c.id || '', open: d ? d.open : null, chars: (c.innerText || '').replace(/\s/g, '').length });
+            });
+            res({ cards: out, total: out.reduce((a, x) => a + x.chars, 0),
+                  riskSum: (document.querySelector('#rpRisk summary') || { innerText: '' }).innerText.replace(/\s+/g, ' ') });
+        }, 2400);
+    }));
+    ok('ⓠ 空過守門:報告頁畫得出 ≥8 張卡', r.cards.length >= 8, JSON.stringify(r.cards.map(x => x.id)));
+    const opened = r.cards.filter(x => x.open === true).map(x => x.id);
+    ok('ⓠ2 ⛔ 一張都不可預設展開(含 §12・§13・§18・§19)', opened.length === 0, opened.join(','));
+    ok('ⓠ3 第一眼字數 ≤ 1,100(折疊前實測 2,575)', r.total <= 1100, `${r.total} 字`);
+    // ⛔ 折疊 ≠ 把提醒藏起來:summary 仍然要寫幾則預警
+    ok('ⓠ4 ⭐ 風險那節收起來時,標題列仍要寫「N 則預警 / 出貨徵兆」', /預警|出貨徵兆/.test(r.riskSum), r.riskSum.slice(0, 120));
+}
+// ⓡ 板塊輪動:新增「概念股」分頁且**預設**是它;⛔ 官方產業的實測數字不可套到題材
+{
+    const r = await page.evaluate(async () => {
+        try { app.switchAppTab('market'); } catch (_) { }
+        try { app.switchMarketTab('rot'); } catch (_) { }
+        await new Promise(r => setTimeout(r, 900));
+        try { localStorage.removeItem('rotView'); } catch (_) { }
+        await app._renderRotTab();
+        await new Promise(r => setTimeout(r, 400));
+        const S = app._regimeStats(), card = document.getElementById('rotRankCard');
+        const th = { view: app._rotView(), lead: (document.getElementById('rotLead').innerText || '').replace(/\s+/g, ' '),
+                     n: card.querySelectorAll('[data-rotrank]').length,
+                     btns: [...card.querySelectorAll('[data-rotviewbtn]')].map(b => b.dataset.rotviewbtn) };
+        app.switchRotView('ind');
+        await new Promise(r => setTimeout(r, 700));
+        const ind = { view: app._rotView(), lead: (document.getElementById('rotLead').innerText || '').replace(/\s+/g, ' '),
+                      n: card.querySelectorAll('[data-rotrank]').length };
+        app.switchRotView('theme');
+        await new Promise(r => setTimeout(r, 700));
+        return { th, ind, themes: S ? S.tmed.size : 0, inds: S ? S.imed.size : 0,
+                 tcnt: S ? [...S.tcnt.values()] : [] };
+    });
+    ok('ⓡ 空過守門:題材與產業都算得出來', r.themes >= 10 && r.inds >= 20, JSON.stringify({ t: r.themes, i: r.inds }));
+    ok('ⓡ2 ⭐ 預設就是「概念股」那一頁(使用者:以概念股為首要)', r.th.view === 'theme', r.th.view);
+    ok('ⓡ3 兩個分頁鈕都在', r.th.btns.includes('theme') && r.th.btns.includes('ind'), JSON.stringify(r.th.btns));
+    ok('ⓡ4 列數 = 該視角的組數(⛔ 切換要真的換一批)', r.th.n === r.themes && r.ind.n === r.inds, JSON.stringify({ t: r.th.n, i: r.ind.n }));
+    // 🚨 這條最重要:官方產業那套實測背書⛔ 不可出現在題材頁
+    // ⚠️ 斷言釘**用意**不是釘字串:那個 +1.44pp 出現在題材頁是**刻意的**
+    //   —— 它是用來說「那是官方產業測的,⛔ 不可以套到題材上」。
+    //   要擋的是「拿它當題材的背書」,所以同一句一定要有「沒有回測過」+「不可以套到題材上」。
+    ok('ⓡ5 ⛔ 題材頁要明說「沒有回測過」且「不可以套到題材上」',
+       /沒有回測過/.test(r.th.lead) && /不可以套到題材上/.test(r.th.lead)
+       && !/避開最弱那幾族/.test(r.th.lead), r.th.lead.slice(0, 200));
+    ok('ⓡ6 ⭐ 官方產業頁**照舊**引用那組實測數字(⛔ 不可一起拿掉)',
+       /1\.44pp/.test(r.ind.lead), r.ind.lead.slice(0, 160));
+    ok('ⓡ7 ⛔ 畫面上不可印出 markdown 的 `**`', !/\*\*/.test(r.th.lead) && !/\*\*/.test(r.ind.lead), '');
+    // 陷阱 #27:樣本少的不進前 3 / 後 3
+    ok('ⓡ8 ⭐ 樣本少(<5 檔)的題材⛔ 不可進最強/最弱那一句',
+       (() => { const m = r.th.lead.match(/最強 ([^／]+)／/); if (!m) return false;
+                return !/樣本少/.test(m[1]); })(), r.th.lead.slice(0, 160));
 }
 
 ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));

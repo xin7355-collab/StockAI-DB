@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.1.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.1.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.1.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.1.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8464,8 +8464,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.1.6',
+    _APP_VERSION: 'V77.1.7',
     _CHANGELOG: [
+        { v: 'V77.1.7', d: [
+            '🎯 <b>板塊輪動多了「概念股」分頁,而且是預設那一頁</b>(你要的「以概念股為首要」):21 個題材照近 20 日相對強弱排,旁邊還是可以切回「官方產業」33 族。⭐ 兩頁<b>同一把尺</b>(成員近 20 日漲跌的中位數),⛔ 不是兩套算法。🚨 但<b>證據強度完全不同</b>:官方產業那條「前3強−後3弱 +1.44pp」是回測過的,<b>題材這一頁本站從來沒有回測過</b> → 卡上直接寫出來,⛔ 不可以拿那個數字替題材背書。⚠️ 成員少於 5 檔的題材標「⏳ 樣本少」而且<b>不列進最強/最弱</b>。',
+            '📅 <b>修:同一檔股票兩個月營收</b>(你截圖的中美晶 5483)。基本頁畫著「26/08 營收 67.17 億 ・年增 +11.7%」,而報告頁同時印「最新月營收 —」「年增 +7.6%」「累計年增 —」。真因是<b>兩條腿</b>:基本頁用你的金鑰<b>即時抓</b>,報告頁只讀<b>採礦快取</b>。→ 現在報告頁直接讀基本頁剛抓到的那一份(⛔ 不會多打一次 API),三個數字一起對上;抓不到才退回採礦值。',
+            '🔣 <b>修:黃色結論徽章的字沒置中</b>。兩個原因都不是「微調幾 px」:① 文字畫在基線上而不是圓角框的真中心,而 emoji 跟中文字在同一條基線上<b>本來就不等高</b>;② 圓角框的寬度是用<b>量 emoji</b> 算的,而 emoji 量不準。→ 海報上的徽章<b>改成純中文字</b>(「🛡️ 持股續抱」→「持股續抱」)並畫在框的正中心。⛔ App 裡其他地方的徽章一個字都沒動。',
+            '📂 <b>報告頁全部折疊</b>(你指名的「§12・§13・§18・§19」以及下面的估值尺、短評報告/完整報告的操作說明)。第一眼從 <b>2,575 字 → 750 字</b>。⭐ <b>折疊不等於藏起來</b>:風險那節收起來時,標題列照樣寫「⚠️ N 則預警 ・出貨徵兆 x/8」而且標題是琥珀色;估值那節收起來也照樣寫估值帶與百分位。按鈕(複製提示詞 / 開 Perplexity / 選圖存起來)全部留在外面。',
+        ] },
+
         { v: 'V77.1.6', d: [
             '📊 <b>報告頁 §11 多了「現在的盤面狀態」四個數字</b>:近 20 日<b>相對大盤</b>幾 pp、<b>量能倍數</b>(今天的量 ÷ 前 5 日均量)、<b>20 日振幅</b>、<b>距一年高</b>幾 %。⭐ 四個都是<b>轉述本站既有的算法</b>(相對強弱跟 RS 同一條式子、距一年高讀跟總覽徽章同一份),⛔ 一個新判定都沒有。⛔ 而且卡上明寫「只描述現在是什麼盤,量能與振幅本站<b>沒有回測過</b>能不能預測股價」。',
             '📦 <b>財報多一個「賺的錢在成長,但收得到的現金在縮」的事實旗標</b>(近 4 季稅後淨利 vs 自由現金流方向相反)。⭐ 用<b>稅後淨利</b>不是 EPS —— 面額變更會讓 EPS ÷4(國巨那次的教訓);去年賠今年賺這種<b>跨越零</b>的⛔ 不給(那個 % 沒有意義)。🚨 而且卡上一定會寫<b>全市場基準率</b>:算得出來的 1,082 檔裡有 <b>244 檔(23%)</b>現在也是這樣 → <b>這不是罕見事件</b>,所以⛔ 刻意不做成警示。',
@@ -11610,6 +11617,11 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             const d = Array.isArray(h) ? h[0] : (h && h.date);
             return d ? String(d).slice(0, 7) : null;
         };
+        // 📅 V77.1.7 **即時抓到的排第一** —— 基本頁用使用者自己的金鑰抓的那份最新,
+        //   ⛔ 放在採礦快取後面的話,同一個 App 會出現兩個年增(5483:+11.7% vs +7.6%)。
+        const L = this._revLive;
+        if (L && String(L.sym) === String(this.currentSymbolId) && Number.isFinite(+L.yoy))
+            return { v: +L.yoy, month: L.ym || null, src: '即時(你的金鑰)' };
         if (Number.isFinite(+fy?.yoy)) return { v: +fy.yoy, month: mOf(fy), src: '夜間全市場採礦' };
         if (Number.isFinite(+fc?.rev_yoy)) return { v: +fc.rev_yoy, month: mOf(fc), src: '每日熱門股採礦' };
         if (Number.isFinite(+fen?.revenue_yoy)) return { v: +fen.revenue_yoy, month: mOf(fen), src: '個股籌碼檔' };
@@ -20716,7 +20728,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 全市場橫斷面(每次 screener 換資料才重算一次)
         const D = this._scrData;
         if (!D || !D.rows || !D.ind) return null;
-        if (this._regCache && this._regCache.src === D) return this._regCache;
+        if (this._regCache && this._regCache.src === D && this._regCache.tsrc === this._tagsCache) return this._regCache;
         const all = [], byInd = new Map();
         for (const s of Object.keys(D.rows)) {
             const k = D.ind[s];
@@ -20736,8 +20748,29 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         meds.sort((p, q) => p[1] - q[1]);
         const rank = new Map(), imed = new Map();
         meds.forEach(([k, v], j) => { rank.set(k, meds.length > 1 ? j / (meds.length - 1) : 0.5); imed.set(k, v); });
+        // 🎯 V77.1.7 題材(概念股)也用**同一把尺**算一份 —— ⭐ 完全一樣的
+        //   「成員近 20 日漲跌的中位數」,只是換一個分組方式(官方產業 → 題材)。
+        //   ⛔ **不可**改讀 `sector_rot.json` 的 `themes[k].r20` —— 那是採礦端另一條公式
+        //     (每日中位數再滾動加總),跟這裡的 `chg20` 中位數**不是同一個數字** → 兩張表
+        //     並排時會出現「同一族兩個漲跌幅」(使用者講最多次的那條)。
+        //   ⚠️ 題材成員少(實測 3~34 檔)→ 少於 `TMIN` 的**照顯但標樣本少**,
+        //      而且**不進前 3 / 後 3**(陷阱 #27:占比/中位數都要先問樣本夠不夠)。
+        const tmed = new Map(), tcnt = new Map();
+        const TG = this._tagsCache;
+        if (TG && TG.by_stock) {
+            const byTh = new Map();
+            for (const [sym, v] of Object.entries(TG.by_stock)) {
+                if (!D.rows[sym]) continue;
+                const x = this._scrV(D.rows[sym], 'chg20');
+                if (x === null) continue;
+                const ks = new Set([...(v.s || []), ...((v.n || []).map(z => Array.isArray(z) ? z[0] : z))]);
+                for (const k of ks) { if (!k) continue; if (!byTh.has(k)) byTh.set(k, []); byTh.get(k).push(x); }
+            }
+            for (const [k, arr] of byTh) { if (arr.length >= 3) { tmed.set(k, md(arr)); tcnt.set(k, arr.length); } }
+        }
         return (this._regCache = {
-            src: D, n: all.length, rank, imed,
+            src: D, tsrc: TG, n: all.length, rank, imed,
+            tmed, tcnt, tname: (TG && TG.names) || {}, tdate: (TG && TG.data_date) || null,
             mktMed: A[A.length >> 1], mktP80: A[Math.floor(A.length * 0.8)],
         });
     },
@@ -23075,9 +23108,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const ae = this._rpAnnualEps(fy, fen, pC, pe);
         const valRows = ae ? this._rpValRows(ae.eps, b, peer) : null;
         // 月營收:C2 新欄(mrev/ytd/mrh)優先,沒有就退回 chips 檔的 latest_revenue(元)
-        const mrev = _fp(fy?.mrev) ?? _fp(fen?.latest_revenue);
+        //   📅 V77.1.7 「基本頁剛抓到的即時那份」排第一(⛔ 否則同一個 App 兩個月營收,見 `_revLive`)
+        const _rl = (this._revLive && String(this._revLive.sym) === String(sym)) ? this._revLive : null;
+        const mrev = _fp(_rl?.mrev) ?? _fp(fy?.mrev) ?? _fp(fen?.latest_revenue);
         const _ry = this._revYoY(fy, fc, fen), yoy = _ry.v, yoyM = _ry.month;   // 📅 V76.3.9 唯一真相 + 是哪一個月
-        const ytd = _fv(fy?.ytd);
+        const ytd = _fv(_rl?.ytd) ?? _fv(fy?.ytd);
         const gm = _fv(fy?.gm) ?? _fv(fc?.gross_margin);   // ⚠️ 毛利率可以是負的(6706 −14.2%)→ ⛔ 不可用 `> 0` 擋
         // 籌碼(全部轉述既有函式)
         const s1 = this._chipPeriodSums(data, 1), s5 = this._chipPeriodSums(data, 5), s20 = this._chipPeriodSums(data, 20);
@@ -23303,9 +23338,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         body = `${body}${cycLine}${sens}`;
         // 📏 V76.0.7 使用者:「報告頁資料很多…要量表」→ 那把尺**搬到摺疊區外面**(收合也看得到),
         //   6 列表留在裡面**預設收合**(V76.0.2 那次預設攤開讓這一節一張卡就 1,018 字,是報告頁攤開字數的 40%)。
+        //   🔁 V77.1.7 那把尺**搬回摺疊區裡面**(使用者:「下方還有什麼要折疊的都折疊起來」)——
+        //   ⛔ 不是刪掉:`note` 那行本來就把估值帶 / 中位 / 現價百分位講完了,收起來也看得到。
         const ruler = (C.valRows && C.band) ? (() => { try { return this._rpValRuler(C); } catch (_) { return ''; } })() : '';
-        return (ruler ? `<div class="bg-[#161b22] border border-[#30363d] rounded-lg px-3 pt-2 pb-1 mb-1.5">${ruler}</div>` : '')
-            + this._rpDetails(vtitle, note, body, false);
+        return this._rpDetails(vtitle, note, `${ruler}${body}`, false);
     },
 
     // D 公司基本面
@@ -23846,16 +23882,18 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         //   研究提示詞入口 —— 那次漏了這一顆(陷阱 #37)。
         //   ⚠️ 這段刻意寫成 JS 註解放在 template literal **外面**:HTML 註解會被輸出到 innerHTML,
         //   害「這張卡還有沒有那顆按鈕」的斷言被自己的註解救活(實跑踩到);順便也避開陷阱 #42。
-        const ask = `<div class="text-[10px] text-gray-400 leading-snug mb-1">${n ? '重產一份貼回來存檔會<b>覆蓋</b>舊的。' : '商業模式 / 產業景氣 / 法說語氣 / 法人預估 —— 這些是<b>質化</b>資訊,台股<b>沒有免費的結構化來源</b>,本站⛔ 不編。做法:按「🔎 開 Perplexity」(提示詞已寫成 20 節規格、標題帶 §N、第一行寫基準日、結尾附來源網址),把回答<b>貼回這裡</b>存起來,下次開就在。'}</div>
+        const ask = `<details data-dk="pasteHow" data-rppastehow="1" class="mb-1"><summary class="cursor-pointer text-[10px] text-gray-500" style="padding:2px 0;list-style:none">📖 這是什麼 / 怎麼做 <span class="text-gray-600">・展開 ▾</span></summary>
+            <div class="text-[10px] text-gray-400 leading-snug" style="margin-top:4px">${n ? '重產一份貼回來存檔會<b>覆蓋</b>舊的。' : '商業模式 / 產業景氣 / 法說語氣 / 法人預估 —— 這些是<b>質化</b>資訊,台股<b>沒有免費的結構化來源</b>,本站⛔ 不編。做法:按「🔎 開 Perplexity」(提示詞已寫成 20 節規格、標題帶 §N、第一行寫基準日、結尾附來源網址),把回答<b>貼回這裡</b>存起來,下次開就在。'}</div>
+            <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💡 <b>Perplexity 打開會是空白的</b> —— 提示詞 2,400 多字,做成網址會膨脹到 1 萬 6 千字元,手機 App 接手時帶不過去(不是壞掉)。<b>兩顆按鈕都會先幫你複製</b>,到那邊<b>長按輸入框「貼上」</b>再送出就好;複製不了會跳出視窗讓你自己選取。</div>
+            <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💾 只存在<b>你這台裝置</b>;⛔ <b>不</b>進本站任何結論或評分;AI 的價位只拿去跟 🧱 價格牆<b>對照</b>。</div></details>
             <textarea id="rpNoteIn" rows="3" placeholder="把外部 AI 產的整份報告貼進來…" class="w-full bg-[#0d1117] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 leading-relaxed"></textarea>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
                 <button onclick="app._rpNoteSave('${sym}')" class="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-bold rounded">💾 存成這一檔的報告</button>
                 <button onclick="app._reportCopyPrompt('${sym}')" data-rpcopyprompt="1" class="px-3 py-1.5 text-[11px] font-bold text-purple-200 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-700/50 rounded">📋 複製提示詞</button>
                 <button onclick="app._reportAsk('${sym}'); app.vibrate?.(20);" class="px-3 py-1.5 text-[11px] font-bold text-purple-300 bg-[#0d1117] hover:bg-purple-900/20 border border-purple-700/50 rounded">🔎 開 Perplexity</button>
                 ${n ? `<button onclick="app._rpNoteClear('${sym}')" class="px-3 py-1.5 text-[11px] text-gray-400 hover:text-red-300 bg-[#0d1117] border border-[#30363d] rounded">🗑️ 刪掉</button>` : ''}</div>
-            <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💡 <b>Perplexity 打開會是空白的</b> —— 提示詞 2,400 多字,做成網址會膨脹到 1 萬 6 千字元,手機 App 接手時帶不過去(不是壞掉)。<b>兩顆按鈕都會先幫你複製</b>,到那邊<b>長按輸入框「貼上」</b>再送出就好;複製不了會跳出視窗讓你自己選取。</div>
             ${n ? `<div class="text-[10px] text-gray-500 mt-1.5 leading-snug">🖍️ <mark class="rp-hi">琥珀底</mark> = 重點詞(自動)・<b class="font-mono text-gray-100">粗體</b> = 帶單位的數字;要自己標就用 ==兩個等號== 包住。${P && P.secs.length ? `第一眼只留 §1${keepTxtOut ? ' 與 ' + keepTxtOut : ''},其餘 ${rest.length} 節收在上面(⛔ 純「來源表」不會佔第一眼)。` : ''}</div>` : ''}
-            <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">💾 只存在<b>你這台裝置</b>;⛔ <b>不</b>進本站任何結論或評分;AI 的價位只拿去跟 🧱 價格牆<b>對照</b>。</div>`;
+            `;
         //   📋 V76.2.6 使用者:「提示詞加上一鍵複製,這樣我直接貼上來比較方便」——
         //     那顆按鈕本來就有,但**已貼過之後被收進摺疊**(V76.2.2 為了瘦身第一眼)→ 要點兩下才看得到。
         //     ⭐ 只把**複製提示詞 / 開 Perplexity 那兩顆**拉到摺疊外面常駐;
@@ -24000,7 +24038,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (C.earn) rb.push(`<b class="text-amber-300">法說會 ${C.earn.days === 0 ? '就是今天' : `${C.earn.days} 個交易日內`}</b>`);
         if (C.dist) rb.push(`出貨徵兆 ${nHit}/${C.dist.total} 條亮起`);
         const rnote = hot ? `⚠️ ${rb.join(' ・')}` : (C.dist ? `✅ 目前沒有預警 ・出貨徵兆 0/${C.dist.total} 條` : '⏳ K 線不足 60 根,出貨徵兆算不了');
-        return this._rpDetails('⚠️ §12・§13・§18・§19 有什麼會讓它翻掉、接下來看什麼', rnote, body, hot > 0, hot > 0 ? 'warn' : 'ok');
+        // 📂 V77.1.7 使用者明示:「⚠️ §12・§13・§18・§19 …折疊起來」——
+        //   ⚠️ 這**推翻**了 V76.2.5 訂的「唯一會自動展開的一節,判準是有沒有事」。
+        //   ⭐ 代價已經處理掉:**summary 仍然寫「⚠️ N 則預警 ・出貨徵兆 x/8」+ tone 仍是 warn**
+        //      → 有事的時候標題一樣是琥珀色、一眼看得到,只是內容要點一下才攤開
+        //      (⛔ 不是把提醒藏起來 —— 那會變成「不講原因」)。
+        //   📉 實測:這一節攤開 1,338 字,是報告頁唯一自動展開的一張。
+        return this._rpDetails('⚠️ §12・§13・§18・§19 有什麼會讓它翻掉、接下來看什麼', rnote, body, false, hot > 0 ? 'warn' : 'ok');
     },
 
     // H 結論與操作(⛔ 只轉述 _ovDecide,一個字的新判斷都沒有)
@@ -24218,6 +24262,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         return `<div class="text-[10px] leading-snug" style="padding:3px 0" data-rpsnap="${D.rows.length}">
             🔄 <b class="text-gray-300">跟你上次看(${this._dW(D.from) || D.from})比,${D.rows.length} 個數字不一樣</b>:${cells}
             <div class="text-[9px] text-gray-600 leading-snug">⛔ 只是「跟上次比」的<b>事實</b>,⛔ 不是訊號、⛔ 不進任何評分;只存在你這台裝置。</div></div>`;
+    },
+    // 🔣 V77.1.7 canvas 專用的徽章文字 —— **只把符號剝掉**,⛔ 一個中文字都不改。
+    //   理由見 `_rpDrawOwn` 那段:emoji 在 canvas 上量不準也對不齊(V77.1.5 同一個病)。
+    //   ⛔ HTML 端一律用原字串(有 emoji 是刻意的)。
+    _rpBadgeText(raw) {
+        const t = this._rpTxt(raw == null ? '' : raw);
+        // 只留中文 / 英數 / 少數標點;⛔ 不可用「砍掉前 N 個字元」那種寫法(emoji 長度不固定)
+        const clean = t.replace(/[^\u4e00-\u9fff0-9A-Za-z%．.\-+／/ ·]/g, '').replace(/\s+/g, ' ').trim();
+        return (clean || t).slice(0, 18);
     },
     _rpQuickHtml(C) {
         const f = this._rpFmt, sym = String(C.sym);
@@ -25423,8 +25476,12 @@ ${this._reportFacts(sym)}
         // 📏 兩段式:第一趟只量高度(paint=false),第二趟真的畫 —— ⛔ 不猜高度(猜少了字蓋到頁尾、猜多了底下一片黑)
         const _mg = document.createElement('canvas').getContext('2d');
         let g = _mg, paint = false, y = 0;
-        const txt = (t, x, yy, size, col, weight = '700', align = 'left') => {
-            if (!paint) return; g.font = `${weight} ${size}px ${FONT}`; g.fillStyle = col; g.textAlign = align; g.fillText(String(t), x, yy);
+        //   ⚠️ `base` 用完**一定要復原成 alphabetic**(⛔ 留著會讓後面每一行字都往上跑)
+        const txt = (t, x, yy, size, col, weight = '700', align = 'left', base = null) => {
+            if (!paint) return; g.font = `${weight} ${size}px ${FONT}`; g.fillStyle = col; g.textAlign = align;
+            if (base) g.textBaseline = base;
+            g.fillText(String(t), x, yy);
+            if (base) g.textBaseline = 'alphabetic';
         };
         const mt = (t, size, weight = '700') => { _mg.font = `${weight} ${size}px ${FONT}`; return _mg.measureText(String(t)).width; };
         const rect = (x, yy, w, h, col, r = 0) => { if (!paint) return; g.fillStyle = col; if (!r) { g.fillRect(x, yy, w, h); return; }
@@ -25632,8 +25689,21 @@ ${this._reportFacts(sym)}
             const pw = mt(num(C.pC, 2), FS.big, '900');
             txt(`${pct(C.chg)}  今日`, PAD + pw + 20, y - 26, 26, col, '900');
             txt(`${pct(C.chg20)}  近 20 日`, PAD + pw + 20, y + 6, 24, (+C.chg20 >= 0 ? S.up : S.dn), '700');
-            const badge = C.dec ? this._rpTxt(C.dec.badge).slice(0, 18) : '';
-            if (badge) { const bw = mt(badge, 28, '900') + 36; rect(W - PAD - bw, y - 38, bw, 50, S.amb, 10); txt(badge, W - PAD - bw / 2, y - 3, 28, S.bg, '900', 'center'); }
+            // 🔣 V77.1.7 使用者:「黃色持股那裡字體沒有置中怪怪的」。兩個真因,⛔ 都不是「微調幾 px」:
+            //   ① **垂直**:文字畫在 alphabetic 基線上,而 pill 的中心在別的地方 —— 而且 emoji(🛡️)
+            //      與 CJK 在同一條基線上**本來就不等高**(V77.1.5 已經在儀表列徽章上踩過一次)。
+            //      → `textBaseline:'middle'` 畫在 pill 的**真中心**(`y-38 + 50/2`)。
+            //   ② **水平**:`mt()` 量 emoji **量不準**(沙箱六個 emoji 量到同一個寬度,但畫出來不一樣)
+            //      → pill 寬度算錯、置中的字就偏掉。⭐ 修法照 V77.1.5:**canvas 上不印 emoji**
+            //      (「🛡️ 持股續抱」→「持股續抱」),純 CJK 的寬度量得準、天生對齊。
+            //   ⛔ HTML 那邊的徽章**一個字都不動**(它有 emoji 是對的,flex 置中沒有這個問題)。
+            const badge = C.dec ? this._rpBadgeText(C.dec.badge) : '';
+            if (badge) {
+                const bw = mt(badge, 28, '900') + 36, bh = 50, byT = y - 38;
+                rect(W - PAD - bw, byT, bw, bh, S.amb, 10);
+                txt(badge, W - PAD - bw / 2, byT + bh / 2, 28, S.bg, '900', 'center', 'middle');
+                if (this._rpOwnDbg) this._rpOwnDbg.headBadge = { word: badge, cx: +(W - PAD - bw / 2).toFixed(2), cy: +(byT + bh / 2).toFixed(2), w: +bw.toFixed(2), h: bh, top: byT };
+            }
             y += 30;
             if (att) { txt(`${att}(官方名單)`, PAD, y + 14, 22, S.risk.mid, '900'); y += 34; }
             if (why) { for (const r of wrapRows(why, 22, W - PAD * 2).slice(0, 5)) { txt(r, PAD, y + 14, 22, S.gy, '700'); y += 32; } }   // ⚠️ V76.3.9 畫布變窄 → 3 行會把理由切掉,放寬到 5
@@ -25939,11 +26009,12 @@ ${this._reportFacts(sym)}
                  <button onclick="document.getElementById('rpImgIn').click()" class="px-3 py-1.5 text-[11px] font-bold text-gray-200 bg-[#0d1117] hover:bg-[#21262d] border border-[#30363d] rounded">🔄 換一張</button>
                  <button onclick="app._reportCopyChart('${sym}')" data-rpchartbtn="1" class="px-3 py-1.5 text-[11px] font-bold text-purple-200 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-700/50 rounded">🎨 複製做圖提示詞</button>
                  <button onclick="app._rpImgClear('${sym}')" class="px-3 py-1.5 text-[11px] text-gray-400 hover:text-red-300 bg-[#0d1117] border border-[#30363d] rounded">🗑️ 刪掉</button></div></details>`
-            : `<div class="text-[10px] text-gray-400 leading-snug">把上面那份報告叫 AI <b>畫成一張圖</b>比較好懂 —— 按「🎨 複製做圖提示詞」(裡面已經寫死台股<b>紅漲綠跌</b>、風險用 ✅⚠️⛔ 圖示、數字一律照抄),貼給會畫圖的 AI,產出後回來按「🖼️ 選圖存起來」。</div>
+            : `<details data-dk="imgHow" data-rpimghow="1"><summary class="cursor-pointer text-[10px] text-gray-500" style="padding:2px 0;list-style:none">📖 這是什麼 / 怎麼做 <span class="text-gray-600">・展開 ▾</span></summary>
+               <div class="text-[10px] text-gray-400 leading-snug" style="margin-top:4px">把上面那份報告叫 AI <b>畫成一張圖</b>比較好懂 —— 按「🎨 複製做圖提示詞」(裡面已經寫死台股<b>紅漲綠跌</b>、風險用 ✅⚠️⛔ 圖示、數字一律照抄),貼給會畫圖的 AI,產出後回來按「🖼️ 選圖存起來」。</div>
+               <div class="text-[10px] text-gray-500 leading-snug" style="margin-top:6px">💾 只存在<b>你這台裝置</b>(壓成最寬 1400px);桌機也可以直接在這張卡上<b>貼上(Ctrl+V)</b>。⛔ 圖⛔ 不進本站任何結論或評分。</div></details>
                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
                  <button onclick="app._reportCopyChart('${sym}')" data-rpchartbtn="1" class="px-3 py-1.5 text-[11px] font-bold text-purple-200 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-700/50 rounded">🎨 複製做圖提示詞</button>
-                 <button onclick="document.getElementById('rpImgIn').click()" class="px-3 py-1.5 text-[11px] font-bold text-white bg-cyan-700 hover:bg-cyan-600 rounded">🖼️ 選圖存起來</button></div>
-               <div class="text-[10px] text-gray-500 leading-snug" style="margin-top:6px">💾 只存在<b>你這台裝置</b>(壓成最寬 1400px);桌機也可以直接在這張卡上<b>貼上(Ctrl+V)</b>。⛔ 圖⛔ 不進本站任何結論或評分。</div>`;
+                 <button onclick="document.getElementById('rpImgIn').click()" class="px-3 py-1.5 text-[11px] font-bold text-white bg-cyan-700 hover:bg-cyan-600 rounded">🖼️ 選圖存起來</button></div>`;
         return `<div onpaste="app._rpImgPaste(event, '${sym}')">
             <input type="file" accept="image/*" id="rpImgIn" style="display:none" onchange="app._rpImgPick(event, '${sym}')">
             ${this._rpCard(`📄 短評報告${o ? '' : ' <span class="text-gray-500 font-normal">・還沒存</span>'}`, body, o ? '點圖放大' : '')}</div>`;
@@ -31063,6 +31134,36 @@ ${lightExplain[queryType]}
                 latestYoy = ((latestRev.revenue - lastYearRev.revenue) / lastYearRev.revenue) * 100;
             }
         }
+        // 📅 V77.1.7 把「基本頁剛抓到的即時月營收」存起來給報告頁用 —— ⛔ 不是第二份真相,是**同一份**。
+        //   🚨 使用者截圖(5483 中美晶):基本頁畫著 26/08 營收 67.17 億 ・年增 +11.7%,
+        //      而報告頁 📈 速覽同時印「最新月營收 —」「年增 +7.6%」「累計年增 —」。
+        //      真因:報告頁的 `mrev`/`yoy`/`ytd` 只讀**採礦快取**(`fund_yoy_gm` / 籌碼檔),
+        //      而這一頁是用**使用者自己的金鑰即時抓 FinMind** → 兩條腿,報告頁少接了新的那條。
+        //   ⭐ 只在「基本頁真的抓到」時才有;沒開過基本頁就退回採礦值(= 舊行為,誠實)。
+        //   ⛔ 報告頁**不自己再打一次 API**(那要吃使用者的額度)。
+        try {
+            if (latestRev && +latestRev.revenue > 0) {
+                const _ym = `${latestRev.revenue_year}-${String(latestRev.revenue_month).padStart(2, '0')}`;
+                // 累計年增:今年 1 月~最新月 vs 去年同一段(⛔ 月份不齊就不給,不硬算)
+                let _ytd = null;
+                const _yNow = +latestRev.revenue_year, _mMax = +latestRev.revenue_month;
+                const _sum = yr => {
+                    const rows = revData.filter(x => +x.revenue_year === yr && +x.revenue_month <= _mMax && +x.revenue > 0);
+                    return rows.length === _mMax ? rows.reduce((a, x) => a + (+x.revenue), 0) : null;
+                };
+                const _a = _sum(_yNow), _b = _sum(_yNow - 1);
+                if (_a != null && _b > 0) _ytd = (_a / _b - 1) * 100;
+                this._revLive = { sym, ym: _ym, mrev: +latestRev.revenue,
+                                  yoy: Number.isFinite(+latestYoy) ? +latestYoy : null, ytd: _ytd,
+                                  n: revData.length, ts: Date.now() };
+                // 🔁 報告頁**先畫好了才等到這份資料** → 補畫一次(同 V76.0.2 `_rpNeedsDec` 的做法)。
+                //   ⛔ 一檔只補一次(`_revRepaint`),避免跟渲染互相觸發。
+                if (this._activeSubTab === 'report' && String(this.currentSymbolId) === String(sym) && this._revRepaint !== sym) {
+                    this._revRepaint = sym;
+                    setTimeout(() => { try { this.renderReportTab(sym); } catch (_) { } }, 0);
+                }
+            }
+        } catch (_) { }
         // YoY — FinMind 仍空就用採礦值。
         // 🚨 V77.0.2 這裡本來是 `latestYoy = localFund.revenue_yoy`(**個股籌碼檔**),
         //    但 `_revYoY` 把籌碼檔排在**最後**一位 → 觀察清單股會拿到比 `fund_yoy_gm` 舊的那個數字,
@@ -32801,6 +32902,16 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
     //     前 3 相對全產業 +0.63pp、後 3 是 −0.80pp → **避開最弱的比追最強的更有價值**;含 2022 空頭重跑一模一樣。
     //   ⛔ 不畫資金流(外資/投信/自營/融資四條實測排不出有效順序,只是描述用)。
     _ROT_EDGE: { spread: 1.44, top: 0.63, bot: -0.80, win: 20, src: 'sector_rotation_probe.mjs', days: 1214 },
+    // 🎯 V77.1.7 使用者:「我要新增概念股分頁,**以概念股為首要**」→ 預設就是題材那一頁。
+    //   ⭐ 兩頁**同一把尺**(成員近 20 日漲跌的中位數,見 `_regimeStats`),⛔ 不是兩套算法。
+    //   🚨 ⛔ **實測數字不可套用**:`_ROT_EDGE` 的 +1.44pp 是 `sector_rotation_probe` 拿
+    //      **官方 33 個產業**測出來的;題材是本站自己框的名單(種子人工 + 連動每天重算),
+    //      **從來沒有回測過** → 題材那一頁一律寫「沒有回測過」,⛔ 不給買賣指令。
+    _rotView() { try { return localStorage.getItem('rotView') === 'ind' ? 'ind' : 'theme'; } catch (_) { return 'theme'; } },
+    switchRotView(v) {
+        try { localStorage.setItem('rotView', v === 'ind' ? 'ind' : 'theme'); } catch (_) { }
+        try { this._renderRotTab(); } catch (_) { }
+    },
     async _renderRotTab() {
         const lead = document.getElementById('rotLead'), card = document.getElementById('rotRankCard');
         if (!lead || !card) return;
@@ -32808,6 +32919,7 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
             lead.innerHTML = `<div class="text-[10px] text-gray-500 px-1">⏳ 正在讀選股快照…</div>`;
             try { await this._loadScreener(); } catch (_) {}
         }
+        if (this._tagsCache === undefined) { try { await this._loadStockTags(); } catch (_) {} }
         const S = this._regimeStats();
         const D = this._scrData;
         // 空過守門:算不出來就誠實說,⛔ 不留空殼、⛔ 不假造名次
@@ -32820,8 +32932,15 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         // 成員數(⛔ 只算「有官方產業別而且在 screener 裡」的,跟 _regimeStats 的母體一致)
         const cnt = new Map();
         for (const [sym, k] of Object.entries(D.ind || {})) { if (k && D.rows && D.rows[sym]) cnt.set(k, (cnt.get(k) || 0) + 1); }
-        const rows = [...S.imed.entries()].sort((a, b) => b[1] - a[1]);   // 20 日中位漲跌,由強到弱 = 名次
-        const m = rows.length, top = rows.slice(0, 3), bot = rows.slice(-3).reverse();
+        // 🎯 V77.1.7 兩個視角(預設 theme):⛔ 同一把尺,只是換分組
+        const V = this._rotView(), isTh = V === 'theme' && S.tmed && S.tmed.size >= 5;
+        const TMIN = 5;   // ⚠️ 少於這個檔數的題材照顯,但**不進前3/後3**(陷阱 #27)
+        const rows = isTh
+            ? [...S.tmed.entries()].map(([k, v]) => [S.tname[k] || k, v, S.tcnt.get(k) || 0]).sort((a, b) => b[1] - a[1])
+            : [...S.imed.entries()].map(([k, v]) => [k, v, cnt.get(k) || 0]).sort((a, b) => b[1] - a[1]);
+        const m = rows.length;
+        const big = rows.filter(x => x[2] >= TMIN);   // ⭐ 頭尾三名只從「樣本夠」的裡面挑
+        const top = big.slice(0, 3), bot = big.slice(-3).reverse();
         // 📅 V77.1.0 使用者:「板塊輪動沒有寫取得資料日期時間」——
         //   ⛔ 原本只有日期沒有時間,而那是**兩件事**(這份名次用哪一天的收盤算 vs 採礦幾點跑完),
         //   同 V76.3.4 決策台那次。⚠️ 日期一律走 `_dChip`(≥4 天自動轉黃 + ⚠️),⛔ 不可自己拼字串。
@@ -32830,32 +32949,57 @@ const fullPrompt = `你是「權證小哥」風格的台股財報分析師,大�
         const dt = (this._dChip ? this._dChip(_rotDay, '收盤') : (this._dW ? this._dW(_rotDay) : (_rotDay || '')))
                  + (D.updated ? ` <span class="text-gray-600">・採礦 ${this._escHtml(this._fmtNewsTime(D.updated))} 跑完</span>` : '');
         const nm = k => `<b>${k}</b>`;
-        lead.innerHTML = this._pageLeadHtml('錢現在在哪一族、哪一族最弱(近 20 日,上市 ' + m + ' 個產業)',
-            `🔺 最強 ${top.map(x => nm(x[0])).join('・')}<span class="text-gray-500 font-normal mx-1">／</span>🔻 最弱 ${bot.map(x => nm(x[0])).join('・')}`,
+        //   🚨 兩頁的**證據強度完全不同**,⛔ 不可共用同一句實測文案:
+        //     ・官方產業 → `sector_rotation_probe` 六關背書(前3強−後3弱 +1.44pp、含 2022 空頭)
+        //     ・題材      → 本站自己框的名單,**從來沒有回測過** → 只能當觀察,⛔ 不給指令
+        const evid = isTh
+            ? `🚫 <b>題材這一頁沒有回測過</b> —— 上面那條 +${E.spread}pp 是拿<b class="text-gray-200">官方 ${S.imed.size} 個產業</b>測的(${E.src}),`
+              + `⛔ 不可以套到題材上。題材名單是本站自己框的(種子人工確認 + 連動每天用「扣掉大盤的殘差相關」重算)`
+              + `→ 這一頁只回答「錢最近往哪個概念跑」,⛔ 不是買賣訊號。`
+            : `📊 實測:前 3 強 − 後 3 弱 <b class="text-gray-200">+${E.spread}pp</b>(未來 ${E.win} 日,${E.days} 個交易日、含 2022 空頭)・前 3 相對全產業 +${E.top}pp、後 3 是 <b class="text-gray-200">${E.bot}pp</b> → <b>避開最弱那幾族,比追最強的更有價值</b>。`
+              + `⛔ 這頁只描述、不下買賣指令;名次跟個股頁 K 棒戰法卡 / 報告頁是同一份。`;
+        lead.innerHTML = this._pageLeadHtml(
+            isTh ? `錢現在在哪個概念、哪個最弱(近 20 日,${m} 個題材)` : '錢現在在哪一族、哪一族最弱(近 20 日,上市 ' + m + ' 個產業)',
+            top.length && bot.length
+                ? `🔺 最強 ${top.map(x => nm(x[0])).join('・')}<span class="text-gray-500 font-normal mx-1">／</span>🔻 最弱 ${bot.map(x => nm(x[0])).join('・')}`
+                : '⏳ 樣本夠(≥5 檔)的組還不夠多,先不給最強/最弱',
             'flat',
-            `📊 實測:前 3 強 − 後 3 弱 <b class="text-gray-200">+${E.spread}pp</b>(未來 ${E.win} 日,${E.days} 個交易日、含 2022 空頭)・前 3 相對全產業 +${E.top}pp、後 3 是 <b class="text-gray-200">${E.bot}pp</b> → <b>避開最弱那幾族,比追最強的更有價值</b>。`
-            + `⛔ 這頁只描述、不下買賣指令;名次跟個股頁 K 棒戰法卡 / 報告頁是同一份。<span class="text-gray-600">資料 ${dt}・${E.src}</span>`);
+            evid + `<span class="text-gray-600">資料 ${dt}・${isTh ? '題材名單 ' + (S.tdate || '—') : E.src}</span>`);
         const maxAbs = Math.max(0.5, ...rows.map(x => Math.abs(x[1])));
-        const rowHtml = rows.map(([k, v], i) => {
+        const topSet = new Set(top.map(x => x[0])), botSet = new Set(bot.map(x => x[0]));
+        const rowHtml = rows.map(([k, v, n], i) => {
             const rank = i + 1, w = Math.min(50, Math.abs(v) / maxAbs * 50);
-            const strong = rank <= 3, weak = rank > m - 3;
-            const tag = strong ? '<span class="text-red-300 text-[9px] font-bold">🔺 前 3</span>' : (weak ? '<span class="text-green-300 text-[9px] font-bold">🔻 後 3</span>' : '');
+            const strong = topSet.has(k), weak = botSet.has(k), thin = n < TMIN;
+            const tag = strong ? '<span class="text-red-300 text-[9px] font-bold">🔺 前 3</span>'
+                      : (weak ? '<span class="text-green-300 text-[9px] font-bold">🔻 後 3</span>'
+                      : (thin ? '<span class="text-gray-500 text-[9px]">⏳ 樣本少</span>' : ''));
             const col = v >= 0 ? 'bg-red-400' : 'bg-green-400';
-            return `<div class="grid grid-cols-[28px_1fr_auto] gap-2 items-center py-1 ${strong || weak ? '' : 'opacity-80'} border-b border-[#21262d] last:border-0" data-rotrank="${rank}" data-rotind="${k}">
+            return `<div class="grid grid-cols-[28px_1fr_auto] gap-2 items-center py-1 ${strong || weak ? '' : 'opacity-80'} border-b border-[#21262d] last:border-0" data-rotrank="${rank}" data-rotind="${this._escHtml(k)}">
                 <div class="text-[10px] font-mono text-gray-500 text-right">${rank}</div>
                 <div>
-                    <div class="flex items-center gap-1.5"><span class="text-[11px] ${strong || weak ? 'font-black text-gray-100' : 'text-gray-300'}">${k}</span><span class="text-[9px] text-gray-600">${cnt.get(k) || 0} 檔</span>${tag}</div>
+                    <div class="flex items-center gap-1.5"><span class="text-[11px] ${strong || weak ? 'font-black text-gray-100' : 'text-gray-300'}">${this._escHtml(k)}</span><span class="text-[9px] text-gray-600">${n} 檔</span>${tag}</div>
                     <div class="relative h-1 bg-[#21262d] rounded-full mt-0.5 overflow-hidden"><div class="absolute top-0 h-full ${col}" style="left:${v >= 0 ? 50 : 50 - w}%;width:${w}%"></div></div>
                 </div>
                 <div class="font-mono text-[11px] font-bold ${this._rpDir ? this._rpDir(v) : ''} text-right">${v >= 0 ? '+' : ''}${(+v).toFixed(1)}%</div>
             </div>`;
         }).join('');
+        //   🔘 分頁鈕:⛔ 用 `cursor-pointer` 讓全站無框那條 CSS 不要把它拉平(V77.0.0)
+        const btn = (v, t, sub) => {
+            const on = (isTh ? 'theme' : 'ind') === v;
+            return `<button onclick="app.switchRotView('${v}')" data-rotviewbtn="${v}" aria-pressed="${on}"
+                class="flex-1 cursor-pointer rounded-md py-1.5 text-[11px] font-black leading-tight transition-colors ${on ? 'bg-cyan-700/30 text-cyan-200 border border-cyan-500/40' : 'text-gray-500 border border-transparent'}">
+                ${t}<span class="block text-[8px] font-normal opacity-70">${sub}</span></button>`;
+        };
+        const thOK = !!(S.tmed && S.tmed.size >= 5);
         card.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
+            <div style="display:flex;gap:6px" class="mb-2" data-rotviews="${thOK ? 2 : 1}">
+                ${thOK ? btn('theme', '🎯 概念股', `${S.tmed.size} 個題材`) : ''}${btn('ind', '🏭 官方產業', `${S.imed.size} 個產業`)}
+            </div>
             <div class="flex items-center justify-between gap-2 mb-1">
-                <span class="text-[12px] font-black text-gray-100">📊 32 個產業近 20 日相對強弱</span>
+                <span class="text-[12px] font-black text-gray-100">📊 ${m} 個${isTh ? '題材' : '產業'}近 20 日相對強弱</span>
                 <span class="text-[9px] text-gray-500">中位數 ・全市場中位 ${S.mktMed >= 0 ? '+' : ''}${(+S.mktMed).toFixed(1)}%</span>
             </div>
-            <div class="text-[9px] text-gray-500 mb-1.5 leading-snug">每一族取成員近 20 日漲跌的<b>中位數</b>(⛔ 不是平均,免得一檔飆股把整族拉高);條形以 0 為中線,右紅左綠 = 漲跌方向。</div>
+            <div class="text-[9px] text-gray-500 mb-1.5 leading-snug">每一${isTh ? '個題材' : '族'}取成員近 20 日漲跌的<b>中位數</b>(⛔ 不是平均,免得一檔飆股把整族拉高);條形以 0 為中線,右紅左綠 = 漲跌方向。${isTh ? `⚠️ 題材成員少(${TMIN} 檔以下標「樣本少」),那幾個<b>不列進前 3 / 後 3</b>;一檔可以同時屬於好幾個題材,所以加起來會超過總檔數。` : ''}</div>
             ${rowHtml}
         </div>`;
         card.classList.remove('hidden');

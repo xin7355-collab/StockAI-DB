@@ -108,6 +108,9 @@ await load('1815');
     const r = await page.evaluate(() => new Promise(res => {
         app.switchSubTab && app.switchSubTab('report');
         setTimeout(() => {
+            // 🚨 V77.1.7 起報告頁**每一張卡都預設折疊**(使用者明示)→ 關著的 <details>
+            //   讀不到 innerText。量之前先全部打開(⛔ 別把「讀不到」當成「內容不見了」)。
+            document.querySelectorAll('#subContentReport details').forEach(d => { d.open = true; });
             const box = document.querySelector('[data-rpwatch]');
             const K = app._keyLevels;
             res({ n: box ? +box.dataset.rpwatch : 0, txt: box ? box.innerText.replace(/\s+/g, ' ') : '',
@@ -131,6 +134,7 @@ await load('1815');
         K.buyPx = 987.65; K.addPx = 1234.56; K.buyLb = '注入用';
         app.renderReportTab(app.currentSymbolId);
         setTimeout(() => {
+            document.querySelectorAll('#subContentReport details').forEach(d => { d.open = true; });
             const box = document.querySelector('[data-rpwatch]');
             res({ txt: box ? box.innerText.replace(/\s+/g, ' ') : '' });
         }, 1800);
