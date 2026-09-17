@@ -2901,9 +2901,23 @@ const PRO = {
     r.ret = (r.exitP / r.entry - 1) * 100;
     r.net = r.ret - this._STL_COST;                       // 扣來回成本
     r.ex = r.bench === null ? null : r.net - r.bench;      // 扣同期加權 = 真正的成績
-    r.lot = Math.round((r.exitP - r.entry) * 1000);
+    // 💰 V77.2.6 「一張賺賠多少元」必須跟同一列那個 % **同一個口徑**。
+    //   🚨 使用者截圖抓到:霖宏 5464 進場價 = 出場價,畫面寫「−0.44%」卻寫「一張 +0 元」
+    //      —— 因為舊版 `lot = (出場價 − 進場價) × 1000` 是**沒扣成本**的價差,
+    //      而 `net` 是**扣過** 0.44% 的 → 同一列自己跟自己打架。
+    //   ⭐ CLAUDE.md 明文:「顯示的 % 與由它換算的金額必須自洽」(使用者數學不好,會拿畫面數字驗算)。
+    //   ⛔ 反過來把 `net` 改成不扣成本是錯的 —— 扣成本才是這份成績單的意義。
+    r.lotRaw = Math.round((r.exitP - r.entry) * 1000);    // 純價差(⛔ 不顯示,留著對帳用)
+    r.lot = Math.round(r.entry * 1000 * r.net / 100);     // = 買一張的本金 × 扣完成本的 %
     return r;
   },
+  /** 📏 V77.2.6 價格一律印 2 位小數(使用者:「個股的現價的小數點怎麼這麼多?」)。
+   *  🚨 真因在資料裡:`data/*.json` 有 float32 殘留(`93.69999694824219` 這種),
+   *     實測隨機 300 檔有 **165 檔(55%)** 的近 60 根中招。
+   *  ⭐ 採礦端 V77.2.6 起已在匯出時 `round(…, 2)`,但**已經在 gh-pages 上的舊資料要等下一輪**
+   *     → 顯示端一律過這一關(⛔ 不可只修一邊)。
+   *  ⛔ 用 `+toFixed(2)` 去掉尾巴的 0(93.70 → 93.7),跟券商 App 的習慣一致。 */
+  _px(v) { const x = +v; return Number.isFinite(x) && x > 0 ? String(+x.toFixed(2)) : '—'; },
   _stlOf(x) { return (this._stl || {})[`${x.sym}|${x.d}|${this._exitRule()}`] || null; },
 
   // ═══ 📒 V76.0.4 決策台推薦成績單(使用者:「實測自動紀錄這套 App 推薦個股可以賺多少、勝率等等
@@ -3047,7 +3061,14 @@ const PRO = {
       cum += t.lot; if (cum > peak) peak = cum; if (peak - cum > dd) dd = peak - cum;
     }
     const exs = done.map(t => t.ex).filter(v => v !== null);
-    return { n, win, wr: win / n * 100, avg, lot, dd, open: (R.trades || []).filter(t => t.st && t.st.open).length,
+    // 🛑 V77.2.6 使用者:「ATR 計算為什麼跟唐奇安一樣?」—— 因為 `_settleReplay` 裡
+    //   **停損那一關排在所有出場規則之前**(先碰到 −5% 就走,還輪不到追蹤停利)
+    //   → 只要已結算的那幾筆都是停損出場,兩種規則**本來就會一模一樣**。
+    //   ⛔ 那不是 bug,但⛔ 也不可以讓使用者自己去猜 → 把「幾筆是停損出場」一起回出去,
+    //      畫面上直接講明白(⛔ 不可兩格印一樣的數字卻不解釋)。
+    const stop = done.filter(t => /停損/.test(String(t.why || ''))).length;
+    return { n, win, wr: win / n * 100, avg, lot, dd, stop,
+             open: (R.trades || []).filter(t => t.st && t.st.open).length,
              exWin: exs.filter(v => v > 0).length, exN: exs.length };
   },
   async _recoCmpLoad(srcArg) {
@@ -3074,18 +3095,29 @@ const PRO = {
         ${s.n ? `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:3px 8px;margin-top:5px;font-size:11px">
           <div><span style="font-size:9px;color:var(--dim2);display:block">每趟平均</span><b class="mono ${this.cls(s.avg)}">${this.fmt(s.avg, 2, true)}%</b></div>
           <div><span style="font-size:9px;color:var(--dim2);display:block">勝率</span><b class="mono">${s.wr.toFixed(0)}% ・${s.win}/${s.n}</b></div>
-          <div><span style="font-size:9px;color:var(--dim2);display:block">一張合計</span><b class="mono ${this.cls(s.lot)}">${money(s.lot)}</b></div>
+          <div><span style="font-size:9px;color:var(--dim2);display:block">一張合計(已扣成本)</span><b class="mono ${this.cls(s.lot)}">${money(s.lot)}</b></div>
           <div><span style="font-size:9px;color:var(--dim2);display:block">中途最多賠</span><b class="mono">${s.dd > 0 ? '−' + Math.round(s.dd).toLocaleString() + ' 元' : '—'}</b></div>
         </div>` : `<div class="note" style="margin:5px 0 0">還沒有已結算的</div>`}
       </div>`;
     };
+    // 🛑 V77.2.6 兩邊數字一模一樣時**一定要說出原因**(使用者:「ATR 為什麼跟唐奇安一樣?」)
+    const withN = rows.filter(r => r.s.n > 0);
+    const allSame = withN.length === rows.length
+      && withN.every(r => r.s.n === withN[0].s.n && Math.abs(r.s.avg - withN[0].s.avg) < 1e-9);
+    const stopN = withN.length ? withN[0].s.stop : 0;
+    const sameNote = (allSame && withN.length)
+      ? `<div class="note" style="margin-top:6px;color:var(--amber)">🛑 <b>兩邊數字一模一樣是對的,⛔ 不是壞掉</b> ——
+         目前 ${withN[0].s.n} 筆已結算裡有 <b>${stopN} 筆是「停損」出場</b>,
+         而<b>停損是兩種規則共用的那一條</b>(收盤先跌破停損價就走,<b>還輪不到</b>追蹤停利 / 唐奇安)。
+         ⭐ 要看出兩者的差別,得等有訊號是<b>靠追蹤條件</b>出場的(= 先漲上去、再回落)。</div>`
+      : '';
     const verdict = best
       ? `🏆 <b>目前這批推薦裡,「${best.n}」每趟平均比較高</b>(${this.fmt(best.s.avg, 2, true)}%)。`
       : `⏳ <b>兩邊都還不到 10 筆已結算,⛔ 現在還不能說誰比較強</b>(全站規則:樣本 &lt;10 筆不下判斷)。`;
     return `<div class="warnbox" style="margin-top:8px;border-color:${best ? 'var(--cyan)' : 'var(--amber)'}">
       🏆 <b>兩種出場,哪個比較強?</b><span class="note" style="margin-left:6px">同一批推薦、⛔ 只換出場</span>
       <div style="display:flex;gap:8px;margin-top:7px;flex-wrap:wrap">${rows.map(cell).join('')}</div>
-      <div class="note" style="margin-top:7px">${verdict}</div>
+      <div class="note" style="margin-top:7px">${verdict}</div>${sameNote}
       <details style="margin-top:5px">
         <summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim2)">📖 這兩條是什麼、49 個月實測怎麼說 <span style="color:var(--dim2)">展開 ▾</span></summary>
         <div class="note" style="margin-top:5px">
@@ -3137,17 +3169,17 @@ const PRO = {
     const row = t => {
       const st = t.st, fin = st && !st.open;
       if (!st) return `<div class="bkrow"><div class="bkhd">${this._nmc(t.sym, `PRO._fishPick('${t.sym}')`)}<span class="sigtag">⏳ 讀不到 K 線</span></div>
-        <div class="bkpx"><span class="mono" style="color:var(--dim)">${(t.d || '').slice(5)} ${t.px}</span><span style="color:var(--dim2)">・${t.k || ''}</span></div></div>`;
+        <div class="bkpx"><span class="mono" style="color:var(--dim)">${(t.d || '').slice(5)} ${this._px(t.px)}</span><span style="color:var(--dim2)">・${t.k || ''}</span></div></div>`;
       return `<div class="bkrow ${fin ? 'done' : 'hold'}">
         <div class="bkhd">${this._nmc(t.sym, `PRO._fishPick('${t.sym}')`)}
           ${fin ? `<span class="sigtag">🧾 已結算・${st.why}</span>` : `<span class="sigtag good">📌 持有中</span>`}
           <span style="margin-left:auto;font-size:10px;color:var(--dim2)">${t.k || ''}</span></div>
         <div class="bkpx">
-          <span class="mono" style="color:var(--dim)">${(t.d || '').slice(5)} ${st.entry}</span>
+          <span class="mono" style="color:var(--dim)">${(t.d || '').slice(5)} ${this._px(st.entry)}</span>
           <span style="color:var(--dim2)">→</span>
-          <span class="mono">${st.exitP}</span>
+          <span class="mono">${this._px(st.exitP)}</span>
           <span class="pct mono ${this.cls(st.net)}">${this.fmt(st.net, 2, true)}%</span>
-          <span class="mono ${this.cls(st.lot)}" style="margin-left:auto">一張 ${money(st.lot)}</span></div>
+          <span class="mono ${this.cls(st.lot)}" style="margin-left:auto" title="買一張(${this._px(st.entry)} × 1000 股)照上面那個已扣成本的 % 換算">一張 ${money(st.lot)}</span></div>
         <div class="bkvs">🆚 同期大盤 <span class="mono ${this.cls(st.bench)}">${st.bench == null ? '—' : this.fmt(st.bench, 2, true) + '%'}</span>
           <span style="color:var(--dim2)">→</span>
           <b class="mono ${this.cls(st.ex)}">贏大盤 ${st.ex == null ? '—' : this.fmt(st.ex, 2, true) + 'pp'}</b></div>
@@ -3229,7 +3261,7 @@ const PRO = {
         <div><b>每趟平均</b><span class="mono ${this.cls(avg)}">${this.fmt(avg, 2, true)}%</span></div>
         <div><b>贏大盤幾筆</b><span class="mono">${exs.length ? `${exWin}/${exs.length}` : '—'}</span></div>
         <div><b>超額中位(扣大盤)</b><span class="mono ${this.cls(exMed)}">${exMed === null ? '—' : this.fmt(exMed, 2, true) + 'pp'}</span></div>
-        <div><b>一張合計</b><span class="mono ${this.cls(totLot)}">${(totLot >= 0 ? '+' : '') + totLot.toLocaleString()} 元</span></div>
+        <div><b>一張合計(已扣成本)</b><span class="mono ${this.cls(totLot)}">${(totLot >= 0 ? '+' : '') + totLot.toLocaleString()} 元</span></div>
         <div><b>中途最多賠</b><span class="mono">${dd > 0 ? '−' + Math.round(dd).toLocaleString() + ' 元' : '—'}</span></div>
         <div><b>平均抱幾天</b><span class="mono">${dAvg.toFixed(1)} 個交易日</span></div>
         <div><b>出場規則</b><span class="mono">${this._exitRuleName()}</span></div>
@@ -4635,7 +4667,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V77.2.5',
+  VER: 'V77.2.6',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

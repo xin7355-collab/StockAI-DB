@@ -197,8 +197,16 @@ ok(!srcRes.pb.geneErr && !srcRes.fit.geneErr,
 ok(srcRes.fit.n > 0 && srcRes.pb.syms !== srcRes.fit.syms,
   '⑨a3 ⭐ 決定性對照:換到「📈 符合進場」要換一批股票(⛔ 跟上一張一模一樣 = 沒接通)',
   `pb=${srcRes.pb.syms} ・fit=${srcRes.fit.syms}`);
-ok(srcRes.mix.n >= Math.max(srcRes.pb.n, srcRes.fit.n) && srcRes.mix.syms !== srcRes.fit.syms,
-  '⑨d 🧪 混搭筆數 ≥ 任一張,而且不等於其中一張', `pb=${srcRes.pb.n} fit=${srcRes.fit.n} mix=${srcRes.mix.n}`);
+// 🚨 ⛔ **不可**寫成「混搭筆數 ≥ 兩張裡的最大值」—— 那是錯的,而且它一度靠測資剛好通過:
+//   混搭在「任一張重建不出來」的日子**整天不算**,而 `pb` 那張的可用天數比 `fit` 多
+//   → 混搭的**天數本來就比 pb 少**(實測 pb=7 / fit=5 / mix=6)。
+//   ⭐ 正確的用意:在混搭**真的涵蓋到**的那些日子裡,它要是兩張的**聯集** ——
+//      所以 ① 起算日跟比較嚴的那張一致 ② 它必須包含 fit 的每一檔 ③ 而且比 fit 多。
+const _mixSet = new Set(srcRes.mix.syms.split(',').filter(Boolean));
+const _fitArr = srcRes.fit.syms.split(',').filter(Boolean);
+ok(_fitArr.length > 0 && _fitArr.every(x => _mixSet.has(x)) && srcRes.mix.n > srcRes.fit.n,
+  '⑨d 🧪 混搭在它涵蓋的日子裡是**聯集**:含 fit 的每一檔,而且比 fit 多',
+  `pb=${srcRes.pb.n} fit=${srcRes.fit.n} mix=${srcRes.mix.n} ・fit=${srcRes.fit.syms} ・mix=${srcRes.mix.syms}`);
 ok(/三張分頁的筆數⛔ 不可以相加|筆數⛔ 不可以相加/.test(srcRes.mix.txt),
   '⑨a4 ⛔ 要寫明「三張的筆數不可相加」(同一檔可能同時出現在兩張裡)');
 
@@ -264,6 +272,67 @@ ok(srcRes.mix.since && srcRes.fit.since && srcRes.mix.since >= srcRes.fit.since,
     '⑨e3 🐛 打法名稱要讀 `today_signals` 真正的欄名 `t`(⛔ 只試 title/k 會讓 `sig[].k` 全是 null → 黑名單整個擋不掉)');
   ok(/SIG_N/.test(PS) && !/\[:TOP_N\]\s*:?\s*$/m.test(PS.split('today_signals')[1] || ''),
     '⑨e4 看多訊號要存多一點(SIG_N)—— 🧬 那一檔可能排在第 30 名,只存前 20 會系統性漏掉');
+}
+
+
+// ══════════ 🔍 V77.2.6 使用者截圖抓到的三件事 ══════════
+//   ⑩a 📏 畫面上⛔ 不可出現 4 位以上小數的價格(資料裡有 float32 殘留)
+//   ⑩b 💰 同一列的「%」與「一張幾元」必須**同一個口徑**(⛔ 一個扣成本、一個沒扣 = 自己跟自己打架)
+//   ⑩c 🛑 兩種出場算出一模一樣時,要**說出原因**(⛔ 不可印兩個一樣的數字卻不解釋)
+await pg.evaluate(x => PRO.selRecoSrc(x), 'pb');
+await pg.waitForFunction(() => PRO._rl && PRO._rl.src === 'pb', null, { timeout: 40000 }).catch(() => {});
+await pg.waitForTimeout(1500);
+
+const V = await pg.evaluate(() => {
+  const el = document.getElementById('recoLedger');
+  const txt = (el.textContent || '').replace(/\s+/g, ' ');
+  const trades = ((PRO._rl || {}).trades || []).filter(t => t.st);
+  return {
+    longDec: (txt.match(/\d+\.\d{4,}/g) || []).slice(0, 5),
+    // 💰 lot 必須 = 進場本金 × 扣完成本的 %(容許 1 元的四捨五入)
+    money: trades.map(t => ({ sym: t.sym, ok: Math.abs(t.st.lot - t.st.entry * 1000 * t.st.net / 100) <= 1,
+                              lot: t.st.lot, net: t.st.net, entry: t.st.entry })),
+    // 🚨 決定性對照:進場價 == 出場價時,「%」與「元」必須同號(舊版會出現 −0.44% 配 +0 元)
+    flat: trades.filter(t => t.st.entry === t.st.exitP).map(t => ({ sym: t.sym, net: t.st.net, lot: t.st.lot })),
+    hasPx: typeof PRO._px === 'function',
+    px: PRO._px(93.69999694824219),
+    pxKeep: PRO._px(42.15),
+  };
+});
+ok(V.hasPx && V.px === '93.7' && V.pxKeep === '42.15',
+  '⑩a 📏 價格顯示一律收到 2 位小數(⛔ 也不可把 42.15 這種合法價改掉)', `${V.px} / ${V.pxKeep}`);
+ok(V.longDec.length === 0,
+  '⑩a2 ⭐ 決定性對照:整張成績單的文字裡⛔ 不可再出現 4 位以上小數(float32 殘留)', V.longDec.join(' '));
+ok(V.money.length > 0 && V.money.every(m => m.ok),
+  '⑩b 💰 每一列的「一張幾元」= 進場本金 × 扣完成本的 %(⛔ 不可一個扣成本一個沒扣)',
+  V.money.filter(m => !m.ok).slice(0, 2).map(m => `${m.sym} lot=${m.lot} net=${m.net} entry=${m.entry}`).join(' | '));
+ok(V.flat.every(f => Math.abs(f.net) < 1e-9 ? f.lot === 0 : (f.net < 0 && f.lot < 0)),
+  '⑩b2 🚨 進場價 = 出場價那一列:% 是負的(扣了成本)→ 元也必須是負的(⛔ 舊版是 +0 元)',
+  V.flat.map(f => `${f.sym} ${f.net}% / ${f.lot}元`).join(' | '));
+
+// ⑩c 兩邊一樣 → 要講原因;兩邊不一樣 → ⛔ 不可亂講
+const C = await pg.evaluate(() => {
+  const el = document.getElementById('recoLedger');
+  const txt = (el.textContent || '').replace(/\s+/g, ' ');
+  const c = PRO._rlCmp || {};
+  const a = c.don || {}, t = c.atr2 || {};
+  const same = a.n > 0 && a.n === t.n && Math.abs((a.avg || 0) - (t.avg || 0)) < 1e-9;
+  return { same, note: /兩邊數字一模一樣是對的/.test(txt), stop: a.stop, n: a.n,
+           hasStop: Object.prototype.hasOwnProperty.call(a, 'stop') };
+});
+ok(C.hasStop, '⑩c0 `_recoSummary` 要回「幾筆是停損出場」(⛔ 沒有它就解釋不出為什麼兩邊一樣)');
+ok(C.same === C.note,
+  '⑩c 🛑 兩種出場算出一樣 → 必須說出原因;不一樣 → ⛔ 不可亂講',
+  `一樣=${C.same} ・畫面有解釋=${C.note} ・停損 ${C.stop}/${C.n} 筆`);
+ok(!C.same || C.stop === C.n,
+  '⑩c2 ⭐ 而且「一樣」的成因要對得上:一樣的時候,已結算的那幾筆應該全都是停損出場',
+  `停損 ${C.stop} / 共 ${C.n}`);
+
+// 📏 採礦端也要修(⛔ 只修顯示 = 資料還是髒的,下一個讀它的人照樣中招)
+{
+  const MN = readFileSync('miner.py', 'utf8').split('\n').filter(l => !l.trim().startsWith('#')).join('\n');
+  ok(/def _round_prices\(/.test(MN) && /_round_prices\(records\)/.test(MN),
+    '⑩a3 📏 採礦端匯出前也要收小數(⛔ 只修顯示端 = 資料還是髒的)');
 }
 
 await b.close();

@@ -175,6 +175,27 @@ ok('⑥ 量也不可以被再除一次',
    [r['volume'] for r in once] == [r['volume'] for r in twice],
    f"{[r['volume'] for r in once]} vs {[r['volume'] for r in twice]}")
 
+# ── 📏 V77.2.6 `_round_prices`(使用者:「個股的現價的小數點怎麼這麼多?」)
+#    真因:`data/*.json` 有 float32 殘留(49.0 的 float32 = 49.000633239746094),
+#    實測隨機 300 檔有 165 檔(55%)的近 60 根中招。
+R = M._round_prices
+_f32 = [{'open': 70.80000305175781, 'high': 76.5, 'low': 68.0,
+         'close': 71.5999984741211, 'volume': 12345, 'foreign_net': -7}]
+_r1 = R([dict(x) for x in _f32])
+ok('📏① float32 尾巴要被收乾淨',
+   _r1[0]['open'] == 70.8 and _r1[0]['close'] == 71.6, str(_r1[0]))
+ok('📏② ⛔ 只動 OHLC —— volume / 法人一個字都不可碰',
+   _r1[0]['volume'] == 12345 and _r1[0]['foreign_net'] == -7, str(_r1[0]))
+_r2 = R([dict(x) for x in _r1])
+ok('📏③ 冪等(seed_db_from_json 每輪會把 JSON 讀回去,不冪等就會越跑越歪)',
+   [x['close'] for x in _r1] == [x['close'] for x in _r2], f'{_r1} vs {_r2}')
+ok('📏④ ⛔ 不可動到「本來就只有 2 位」的合法價(0.05 級距)',
+   R([{'close': 42.15, 'open': 9.99, 'high': 9.99, 'low': 9.99}])[0]['close'] == 42.15)
+ok('📏⑤ 缺值 / 非數字要接得住(⛔ 不可整檔匯出失敗)',
+   R([{'close': None, 'open': '—'}])[0]['close'] is None)
+# ⚠️ ⛔ 這裡刻意**不**加「不可改成對到跳動單位」那條斷言 ——
+#    寫成 `... or True` 會永遠綠 = 假綠燈;那個約束寫在 `_round_prices` 的 docstring 裡。
+
 print()
 if fails:
     print(f'❌ BACKADJUST_TEST_FAIL: {fails}')

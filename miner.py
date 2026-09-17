@@ -2764,6 +2764,33 @@ def _backadjust_splits(records, sym='', verbose=False):
     return records
 
 
+def _round_prices(records):
+    """📏 V77.2.6 把 OHLC 對到「台股價格真正的精度」= 小數 2 位。
+
+    🚨 為什麼需要(使用者回報:「個股的現價的小數點怎麼這麼多?」):
+       `data/*.json` 裡有大量 `93.69999694824219` / `70.80000305175781` 這種尾巴
+       —— 那是 **float32 被放大成 float64** 的殘留(49.0 的 float32 就是 49.000633239746094)。
+       實測隨機 300 檔:**165 檔(55%)** 的近 60 根中招。
+       ⛔ 台股沒有任何一檔的報價會有 3 位以上小數(跳動單位最細是 0.01)
+          → 那些位數**沒有一位是真的**,只是把畫面弄髒、還會讓「進場價 = 出場價」看起來不相等。
+
+    ⛔ 三條不可改掉:
+      ① 只動 OHLC(`volume` / 法人 / 融資是整數,⛔ 不碰)
+      ② **冪等** —— `seed_db_from_json` 每輪把 JSON 讀回 SQLite,不冪等就會越跑越歪
+         (round 到 2 位本來就冪等:round(round(x,2),2) == round(x,2))
+      ③ 排在 `_backadjust_splits` **之後** —— 它自己也 round(…, 2),
+         這裡是收尾,順便蓋掉沒被調整過的那些列
+    ⚠️ ⛔ 不可改成「對到跳動單位」:除權息/減資回溯調整完的**歷史**價位本來就不會落在跳動單位上
+       (那是換算出來的尺標,不是當天掛得出去的價),硬對會竄改歷史。
+    """
+    for r in records:
+        for f in ('open', 'high', 'low', 'close'):
+            v = r.get(f)
+            if isinstance(v, float):
+                r[f] = round(v, 2)
+    return records
+
+
 def export_json(inst_cache: dict = None, margin_cache: dict = None):
     """
     從 SQLite stock_history 匯出每支股票的 JSON 檔案。
@@ -2849,6 +2876,12 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
             records = _backadjust_splits(records, sym, verbose=True)
         except Exception as e:
             print(f"  ⚠️ {sym} 分割調整失敗(不影響匯出): {e}")
+
+        # 📏 V77.2.6 價格小數收尾(float32 殘留)—— ⛔ 放在最後一步,全市場都會過
+        try:
+            records = _round_prices(records)
+        except Exception as e:
+            print(f"  ⚠️ {sym} 價格小數正規化失敗(不影響匯出): {e}")
 
         p = Path(DATA_DIR) / f'{sym}.json'
         p.write_text(
