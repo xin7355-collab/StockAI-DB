@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       which:
-        description: '跑哪一支:both / gap / margin / pe / split / warrant / fund / otc(櫃買指數歷史) / otcmargin(上櫃融資券端點) / stockname(股名來源·含ETF)'
+        description: '跑哪一支:both / gap / margin / pe / split / warrant / fund / otc(櫃買指數歷史) / otcmargin(上櫃融資券端點) / stockname(股名來源·含ETF) / confcall(法說會來源)'
         required: false
         default: 'both'
 
@@ -101,3 +101,13 @@ jobs:
           #    所以不必裝 urllib3、也不必還原 data 分支。
           pip install -q requests
           python3 scripts/stockname_probe.py
+
+      - name: 🎤 法說會來源探針(TWSE OpenAPI / TPEx / MOPS 哪個給得到、給什麼欄位)
+        if: ${{ github.event.inputs.which == 'confcall' }}
+        run: |
+          # 🚨 同上,`pip install` ⛔ 不可省 —— confcall_probe.py 直接 `import requests`。
+          # ⭐ 只讀:不寫檔、不推分支、不需要金鑰、不需要還原 data 分支。
+          #    現行 macro_miner 的法說會抓法實跑是「上市 0 場 / 上櫃回網頁」→ 這支把每個候選來源的
+          #    content-type、前 200 字、欄名、兩列原文、窗內列數全部印出來,miner 才有真實欄位可以對。
+          pip install -q requests
+          python3 scripts/confcall_probe.py
