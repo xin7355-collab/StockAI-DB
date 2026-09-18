@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-18 14:18 UTC",
+  "updated": "2026-09-18 14:53 UTC",
   "count": 15,
   "data": [
     {
@@ -12,7 +12,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "電價暫凍恐補漲，增加企業成本",
+      "ai_reason": "電價暫凍恐補漲，加重企業成本",
       "important": true
     },
     {
@@ -25,7 +25,7 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "利空出盡、油價回落、熱錢回流",
+      "ai_reason": "市場解讀利空出盡，國際油價回落",
       "important": true
     },
     {
@@ -37,9 +37,8 @@
         "罷工"
       ],
       "cat": "🌍 地緣管制",
-      "ai_sentiment": "利多",
-      "ai_reason": "工會決議支持罷工，公司沒有對工人提出就業或轉職機會，進一步對",
-      "title_zh": "標題為繁體中文，重點對台股有影響",
+      "ai_sentiment": "利空",
+      "ai_reason": "工會高票罷工，顯示勞資衝突",
       "important": true
     },
     {
@@ -53,7 +52,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "上市募資215億,提升資金與市場能見度",
+      "ai_reason": "上市募資215億，提升資金與市場能見度",
       "important": true
     },
     {
@@ -65,8 +64,21 @@
         "新高"
       ],
       "cat": "📈 股價異動",
-      "ai_sentiment": "利空",
-      "ai_reason": "升息提升資金成本，衝擊股市",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "只花 22 天，通用汽車交付首批愛國者三型飛彈零組件給洛馬",
+      "link": "https://technews.tw/2026/09/18/gm-defense-delevered-first-batch-of-pac-3-mse-compartments-to-lockheed-martin/",
+      "published_time": "Fri, 18 Sep 2026 09:04:04 +0000",
+      "matched_keywords": [
+        "戰爭"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利多",
+      "ai_reason": "美國防務需求上升，相關供應鏈受惠",
       "important": true
     },
     {
@@ -81,8 +93,8 @@
         "突破"
       ],
       "cat": "🌍 地緣管制",
-      "ai_sentiment": "利空",
-      "ai_reason": "中國突破美國封鎖，衝擊台積電等",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
     },
     {
@@ -95,7 +107,7 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "油價下跌減成本，提振股市",
+      "ai_reason": "油價下跌降低成本，提振股市",
       "important": true
     },
     {
@@ -107,21 +119,8 @@
         "奈米"
       ],
       "cat": "🧪 技術突破",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
-      "important": true
-    },
-    {
-      "source_name": "自由財經",
-      "title": "點破中國怪象 林憲銘：企業賠錢卻有辦法開出賺錢財報",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5578416",
-      "published_time": "Fri, 18 Sep 2026 16:22:13 +0800",
-      "matched_keywords": [
-        "財報"
-      ],
-      "cat": "📊 財務事件",
-      "ai_sentiment": "利空",
-      "ai_reason": "台企面臨不公平競爭",
+      "ai_sentiment": "利多",
+      "ai_reason": "台積電獲得蘋果與聯發科大單，擴大領先優勢",
       "important": true
     },
     {
@@ -135,6 +134,34 @@
         "突破"
       ],
       "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "提升AI晶片產能，帶動台灣封裝廠商需求",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "媽祖真的保佑？大甲狂飆三根漲停　專家揭飆漲原因",
+      "link": "https://tw.news.yahoo.com/%E5%AA%BD%E7%A5%96%E7%9C%9F%E7%9A%84%E4%BF%9D%E4%BD%91-%E5%A4%A7%E7%94%B2%E7%8B%82%E9%A3%86%E4%B8%89%E6%A0%B9%E6%BC%B2%E5%81%9C-%E5%B0%88%E5%AE%B6%E6%8F%AD%E9%A3%86%E6%BC%B2%E5%8E%9F%E5%9B%A0-144800351.html",
+      "published_time": "Fri, 18 Sep 2026 14:48:00 +0800",
+      "matched_keywords": [
+        "EPS",
+        "漲停",
+        "新高"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "連續四天漲停、EPS翻倍，市場預期佳",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "智寶《電競甜心2》東京首秀   業界估銷售上看20億元  內藏台灣哏",
+      "link": "https://tw.news.yahoo.com/%E6%99%BA%E5%AF%B6-%E9%9B%BB%E7%AB%B6%E7%94%9C%E5%BF%832-%E6%9D%B1%E4%BA%AC%E9%A6%96%E7%A7%80-%E6%A5%AD%E7%95%8C%E4%BC%B0%E9%8A%B7%E5%94%AE%E4%B8%8A%E7%9C%8B20%E5%84%84%E5%85%83-%E5%85%A7%E8%97%8F%E5%8F%B0%E7%81%A3%E5%93%8F-143100620.html",
+      "published_time": "Fri, 18 Sep 2026 14:31:00 +0800",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
       "ai_sentiment": "中立",
       "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
@@ -148,60 +175,35 @@
         "油價"
       ],
       "cat": "💱 匯率成本",
-      "ai_sentiment": "利空",
-      "ai_reason": "全球能源受衝擊，柴油價格飆升",
-      "important": true
-    },
-    {
-      "source_name": "科技新報",
-      "title": "IonQ 攜新思秀量子加速、工程模擬最多省時 14.6%",
-      "link": "https://technews.tw/2026/09/18/ionq-demonstrates-computer-aided-engineering-workload-acceleration-by-up-to-14-6-percent-with-quantum-technology/",
-      "published_time": "Fri, 18 Sep 2026 06:20:07 +0000",
-      "matched_keywords": [
-        "量子"
-      ],
-      "cat": "🧪 技術突破",
       "ai_sentiment": "利多",
-      "ai_reason": "量子加速技術提升工程模擬效率",
-      "important": true
-    },
-    {
-      "source_name": "科技新報",
-      "title": "日本今年第二度升息，因應油價與日圓貶值、調整速度創最短間隔",
-      "link": "https://finance.technews.tw/2026/09/18/japan-second-interest-rate-hike-this-year/",
-      "published_time": "Fri, 18 Sep 2026 06:10:59 +0000",
-      "matched_keywords": [
-        "油價"
-      ],
-      "cat": "💱 匯率成本",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
-      "important": true
-    },
-    {
-      "source_name": "科技新報",
-      "title": "AI 資安風險曝  白帽駭客利用 Claude 入侵 OpenAI",
-      "link": "https://infosecu.technews.tw/2026/09/18/hackers-used-anthropics-claude-to-break-into-openai/",
-      "published_time": "Fri, 18 Sep 2026 06:00:40 +0000",
-      "matched_keywords": [
-        "駭客"
-      ],
-      "cat": "🛡️ 資安法律",
-      "ai_sentiment": "利空",
-      "ai_reason": "AI 資安風險升高",
+      "ai_reason": "全球能源供應受到影響，台灣受到柴油供應相關消息，對台股個股/",
+      "title_zh": "標題為繁體中文，如果不是，則為空字串。",
       "important": true
     },
     {
       "source_name": "Yahoo 即時財經",
-      "title": "通膨黑暗期恐拖數年！謝富旭點名存股「隱形金雞母」：不能只求穩",
-      "link": "https://tw.news.yahoo.com/%E9%80%9A%E8%86%A8%E9%BB%91%E6%9A%97%E6%9C%9F%E6%81%90%E6%8B%96%E6%95%B8%E5%B9%B4-%E8%AC%9D%E5%AF%8C%E6%97%AD%E9%BB%9E%E5%90%8D%E5%AD%98%E8%82%A1-%E9%9A%B1%E5%BD%A2%E9%87%91%E9%9B%9E%E6%AF%8D-%E4%B8%8D%E8%83%BD%E5%8F%AA%E6%B1%82%E7%A9%A9-140000072.html",
-      "published_time": "Fri, 18 Sep 2026 14:00:00 +0800",
+      "title": "800VDC明年Q1量產！宏致AI營收明年再拚倍增　八大公股卻反手倒貨逾2千張、提款3.5億元",
+      "link": "https://tw.stock.yahoo.com/news/800vdc%E6%98%8E%E5%B9%B4q1%E9%87%8F%E7%94%A2-%E5%AE%8F%E8%87%B4ai%E7%87%9F%E6%94%B6%E6%98%8E%E5%B9%B4%E5%86%8D%E6%8B%9A%E5%80%8D%E5%A2%9E-%E5%85%AB%E5%A4%A7%E5%85%AC%E8%82%A1%E5%8D%BB%E5%8F%8D%E6%89%8B%E5%80%92%E8%B2%A8%E9%80%BE2%E5%8D%83%E5%BC%B5-%E6%8F%90%E6%AC%BE3-5%E5%84%84%E5%85%83-143000956.html",
+      "published_time": "Fri, 18 Sep 2026 14:30:00 +0800",
       "matched_keywords": [
-        "油價"
+        "營收"
       ],
-      "cat": "💱 匯率成本",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "宏致AI動能升溫，800VDC明年Q1量產",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "高仙桂：政府責任是加快擴散AI紅利到全產業",
+      "link": "https://tw.stock.yahoo.com/news/%E9%AB%98%E4%BB%99%E6%A1%82-%E6%94%BF%E5%BA%9C%E8%B2%AC%E4%BB%BB%E6%98%AF%E5%8A%A0%E5%BF%AB%E6%93%B4%E6%95%A3ai%E7%B4%85%E5%88%A9%E5%88%B0%E5%85%A8%E7%94%A2%E6%A5%AD-142009941.html",
+      "published_time": "Fri, 18 Sep 2026 14:20:09 +0800",
+      "matched_keywords": [
+        "突破"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI紅利推升經濟成長與出口，提振股市",
       "important": true
     }
   ]
