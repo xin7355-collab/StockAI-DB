@@ -111,7 +111,20 @@ ok(sumRows.join(',') === '2382,6488', '③d 「已開・有內容」只剩有擇
 const srch = await pg.evaluate(() => { PRO.confSel('all'); PRO.confSearch('HBM'); const el = document.getElementById('tabConf'); return { rows: [...el.querySelectorAll('[data-conf-row]')].map(e => e.dataset.confRow), mark: el.querySelectorAll('[data-conf-row] mark').length }; });
 ok(srch.rows.join(',') === '6488' && srch.mark >= 1, '③e 關鍵字搜尋會篩到擇要,而且有 <mark> 高亮', JSON.stringify(srch));
 const empty = await pg.evaluate(() => { PRO.confSearch('不存在的關鍵字zzz'); const el = document.getElementById('tabConf'); return { e: !!el.querySelector('[data-conf-empty]'), t: (el.innerText || '').replace(/\s+/g, ' ') }; });
-ok(empty.e && /這個篩選下沒有法說會/.test(empty.t) && !/讀不到 data\/confcall\.json/.test(empty.t), '②d 篩到 0 場 → 寫「這個篩選下沒有」,⛔ 不可跟「讀不到檔案」同一句');
+// ⚠️ V77.2.8 起空狀態有**兩種**(搜不到 vs 篩不到)—— 斷言釘的是「⛔ 不可跟『讀不到檔案』同一句」這個用意,
+//    ⛔ 不是釘某一句的字面(改字面就紅 = 釘實作不是釘用意)。
+ok(empty.e && /整份名單裡搜不到/.test(empty.t) && !/讀不到 data\/confcall\.json/.test(empty.t), '②d 搜不到 → 要說「整份名單裡搜不到」,⛔ 不可跟「讀不到檔案」同一句', empty.t.slice(0, 90));
+const emptyFilter = await pg.evaluate((F) => {
+  PRO.confSearch('');
+  PRO._confData = Object.assign({}, F, { upcoming: [], recent: [] });   // 沒有關鍵字、但這個範圍真的一場都沒有
+  PRO.confSel('today');
+  const el = document.getElementById('tabConf');
+  // 🚨 量測要**全部做完**再還原 —— 第一版把 `e` 寫在 return 裡(還原之後才算)→ 永遠 false = 假失敗。
+  const got = { e: !!el.querySelector('[data-conf-empty]'), t: (el.innerText || '').replace(/\s+/g, ' ') };
+  PRO._confData = F; PRO.confSel('all');                                // ⭐ 量完立刻還原(⛔ 別把後面的斷言弄髒)
+  return got;
+}, FIX);
+ok(emptyFilter.e && /這個篩選下沒有法說會/.test(emptyFilter.t) && !/讀不到 data\/confcall\.json/.test(emptyFilter.t), '②d2 篩到 0 場 → 「這個篩選下沒有」(跟搜不到是兩句話)', emptyFilter.t.slice(0, 90));
 await pg.evaluate(() => PRO.confSearch(''));
 
 // ⑤ 深度查詢:先複製再點、href 對應引擎
@@ -142,6 +155,179 @@ ok(href('chatgpt').startsWith('https://chatgpt.com/') && href('google').startsWi
 ok(href('gemini') === 'https://gemini.google.com/app' && href('meta') === 'https://www.meta.ai/', '⑤g Gemini / Meta AI 只開根網址(不吃帶字,⛔ 不可假裝帶得過去)', href('gemini') + ' ' + href('meta'));
 ok(ask.gemini.r && ask.gemini.r.carried === false && ask.perplexity.r && ask.perplexity.r.carried === true, '⑤h 回傳 carried 讓 toast 講清楚「要自己貼上」');
 ok(ask.meta.r && ask.meta.r.copied === true, '⑤i 複製要真的成功(execCommand 回 true)');
+
+// ═══════════ V77.2.8:搜尋跨範圍 / 📄 簡報 / 🏭 產業 / 🔔 倒數 / 📜 歷年 / 📊 統計 / 🔎 提示詞 ═══════════
+// 先把 fixture 升級成「有 src.file 樣板 + ind 產業碼 + react 統計 + 多筆 hist」的形狀
+// ⭐ src.file 逐字抄自探針 Actions #35406340327 印的官方 <form name='fm_fileDownload'>。
+const FIX2 = JSON.parse(JSON.stringify(FIX));
+FIX2.src.file = { host: 'https://mopsov.twse.com.tw', path: '/server-java/FileDownLoad',
+  q: { step: '9', filePath: '/home/html/nas/STR/', functionName: 't100sb02_1' }, arg: 'fileName', how: 'GET', from: 'form' };
+FIX2.src_error.names = null;
+FIX2.upcoming[0].ind = '24'; FIX2.upcoming[1].ind = '01';
+FIX2.recent[0].ind = '25'; FIX2.recent[0].pdf = ['238220260916M001.pdf', '238220260916E001.pdf'];
+FIX2.recent[1].ind = '25'; FIX2.recent[2].ind = '24';
+FIX2.hist = { '2382': [dOff(-2), '2026-03-14', '2025-11-08'], '6488': [dOff(-1)] };
+FIX2.react = { n: 700, med1: -0.31, med5: -1.26, med20: -4.25, win5: 41.0, syms: 677, events: 844,
+  base: { n: 522732, med1: -0.2, med5: -0.73, med20: -2.64, win5: 42.3 },
+  byStock: { '2382': { n: 3, med5: 1.8 } },
+  how: '法說會當天收盤 → +N 個交易日收盤,減同期加權;對照組 = 同一批股票的每一個交易日',
+  caveat: '⛔ 不是回測:沒扣交易成本、沒過六道關卡。本站實測 37 種財經行事曆日方向 0 個成立 → ⛔ 不是買賣訊號。' };
+await pg.evaluate((F) => {
+  PRO._cache['data/confcall.json'] = F; PRO._confData = undefined; PRO._confSel = 'all'; PRO._confQ = ''; PRO._confInd = ''; PRO._confSym = null; PRO._confHist = null;
+  PRO._cache['data/screener.json'] = { cols: ['c', 'chg', 'chg20', 'pos252', 'amp20', 'pe', 'yld', 'yoy', 'gm'],
+    rows: { '2382': [312.5, 1.2, 8.4, 88.0, 5.1, 21.3, 2.4, 36.0, 11.2] } };
+  return PRO.renderConf();
+}, FIX2);
+await pg.waitForTimeout(400);
+
+// ── 🔎 搜尋跨範圍(使用者選「打字就搜全部」)
+const cross = await pg.evaluate(() => {
+  PRO.confSel('mine');                      // 停在「👜 我的」(只有 2330/2382/3231)
+  PRO.confSearch('環球晶');                  // 6488 **不在**我的清單裡
+  const el = document.getElementById('tabConf');
+  return { rows: [...el.querySelectorAll('[data-conf-row]')].map(e => e.dataset.confRow),
+           scope: !!el.querySelector('[data-conf-scope="all"]'),
+           t: (el.innerText || '').replace(/\s+/g, ' ') };
+});
+ok(cross.rows.join(',') === '6488', '🔎⑭ 停在「👜 我的」打字,照樣搜得到不屬於我的那一檔(⛔ 不可鎖在目前篩選裡)', cross.rows.join(','));
+ok(cross.scope && /已跨所有範圍/.test(cross.t), '🔎⑭b 要明說「已跨所有範圍」+ 給一顆回去的鈕(⛔ 不可讓人以為篩選還在作用)');
+const byCode = await pg.evaluate(() => { PRO.confSearch('6488'); return [...document.querySelectorAll('#tabConf [data-conf-row]')].map(e => e.dataset.confRow); });
+ok(byCode.join(',') === '6488', '🔎⑭c 用代號也搜得到', byCode.join(','));
+const fullw = await pg.evaluate(() => { PRO.confSearch('６４８８'); return [...document.querySelectorAll('#tabConf [data-conf-row]')].map(e => e.dataset.confRow); });
+ok(fullw.join(',') === '6488', '🔎⑭d 全形數字也搜得到(⛔ 手機注音鍵盤打出來的就是全形)', fullw.join(','));
+// 🏷️ 名字表整個載不到時,列表**仍然要有中文名**(confcall 自帶官方簡稱)
+// 🚨 這裡**必須**用 1101 —— 2330/2382/3231/6488 都在 `PRO.CHAIN.stocks` 裡,`nameOf` 有第二個來源,
+//    拿它們做「名字表載不到」根本重現不了(第一版用 6488,注入「拿掉保底」照樣綠 = 沒有鑑別力)。
+const noName = await pg.evaluate(() => {
+  const bak = PRO._names; PRO._names = {};
+  PRO.confSearch('1101');
+  const t = (document.querySelector('#tabConf [data-conf-row] .bkhd').innerText || '').replace(/\s+/g, ' ');
+  PRO._names = bak; PRO.confSearch('');
+  return t;
+});
+ok(/台泥/.test(noName) && !/1101 1101/.test(noName), '🏷️⑭e 名字表載不到時,列表仍有中文名(⛔ 不可變成「1101 1101」)', noName);
+
+// ── 📄 一鍵開簡報(⛔ 網址一律從採礦樣板組,前端不可寫死)
+const pdf = await pg.evaluate(() => {
+  PRO.confSearch('廣達');
+  const a = [...document.querySelectorAll('#tabConf a.conf-pdf')];
+  return { n: a.length, href: a.map(x => x.getAttribute('href')), txt: a.map(x => x.innerText.trim()), tgt: a.map(x => x.target) };
+});
+ok(pdf.n === 2 && pdf.tgt.every(t => t === '_blank'), '📄⑮ 中文/英文簡報各一顆,開新分頁', JSON.stringify(pdf.txt));
+ok(pdf.href.every(h => h.startsWith('https://mopsov.twse.com.tw/server-java/FileDownLoad?'))
+   && pdf.href[0].includes('filePath=') && pdf.href[0].includes('fileName=238220260916M001.pdf'),
+  '📄⑮b 網址照官方樣板組(step/filePath/functionName + fileName)', pdf.href[0]);
+ok(pdf.txt.join(',') === '📄 中文簡報,📄 英文簡報', '📄⑮c M/E 要分得出中文版英文版', pdf.txt.join(','));
+// ⭐ 決定性對照:改採礦樣板 → href 必須跟著變(⛔ 前端寫死的話不會變)
+const pdfMoved = await pg.evaluate(() => {
+  PRO._confData.src.file.host = 'https://example.invalid'; PRO._confData.src.file.q.filePath = '/ZZZ/';
+  PRO._confPaint();
+  const h = document.querySelector('#tabConf a.conf-pdf').getAttribute('href');
+  PRO._confData.src.file.host = 'https://mopsov.twse.com.tw'; PRO._confData.src.file.q.filePath = '/home/html/nas/STR/'; PRO._confPaint();
+  return h;
+});
+ok(pdfMoved.startsWith('https://example.invalid/') && pdfMoved.includes('%2FZZZ%2F'), '📄⑮d ⭐ 決定性對照:改採礦端樣板,前端網址要跟著變(⛔ 不可寫死)', pdfMoved);
+// 樣板缺了 → 退回只印檔名,⛔ 不硬湊網址
+const noTpl = await pg.evaluate(() => {
+  const bak = PRO._confData.src.file; delete PRO._confData.src.file; PRO._confPaint();
+  const r = { a: document.querySelectorAll('#tabConf a.conf-pdf').length, t: (document.getElementById('confBody').innerText || '') };
+  PRO._confData.src.file = bak; PRO._confPaint(); return r;
+});
+ok(noTpl.a === 0 && /238220260916M001\.pdf/.test(noTpl.t), '📄⑮e 採礦沒給樣板 → 只印檔名,⛔ 不可自己湊一個網址出來');
+
+// ── 🏭 產業分組
+const ind = await pg.evaluate(() => {
+  PRO.confSearch(''); PRO.confSel('all');
+  const chips = [...document.querySelectorAll('#confInd [data-confind]')].map(e => e.dataset.confind);
+  PRO.confInd('24');
+  const rows = [...document.querySelectorAll('#tabConf [data-conf-row]')].map(e => e.dataset.confRow).sort();
+  PRO.confInd('');
+  return { chips, rows };
+});
+ok(ind.chips.includes('24') && ind.chips.includes('25') && ind.chips.includes('01') && !ind.chips.includes('99'),
+  '🏭⑯ chips 只列**結果裡真的有**的產業(⛔ 不列空的)', ind.chips.join(','));
+ok(ind.rows.join(',') === '2330,6488', '🏭⑯b 點半導體只剩那兩場', ind.rows.join(','));
+const indNone = await pg.evaluate(() => {
+  PRO._confData.upcoming[1] = Object.assign({}, PRO._confData.upcoming[1]); delete PRO._confData.upcoming[1].ind;
+  PRO._confPaint();
+  const t = (document.getElementById('confInd').innerText || '');
+  PRO._confData.upcoming[1].ind = '01'; PRO._confPaint(); return t;
+});
+ok(/未分類/.test(indNone), '🏭⑯c 沒有產業碼的要歸「未分類」並顯示出來(⛔ 不猜一個產業)', indNone);
+
+// ── 🔔 我的倒數提醒(2330 今天有一場)
+const alert = await pg.evaluate(() => {
+  const el = document.querySelector('#confAlert [data-conf-alert]');
+  return { n: el ? el.dataset.confAlert : null, t: el ? (el.innerText || '').replace(/\s+/g, ' ') : '' };
+});
+ok(alert.n === '1' && /台積電/.test(alert.t), '🔔⑰ 「你的清單裡未來 N 天有 M 場」只算庫存/自選/決策台', JSON.stringify(alert));
+ok(/波動/.test(alert.t) && !DIR.test(alert.t) && !/成部位|留倉|全出清/.test(alert.t),
+  '🔔⑰b 只講「波動會變大」,⛔ 不給方向、不給部位(行事曆日方向實測 0 個成立)', (alert.t.match(DIR) || [])[0]);
+
+// ── 📜 歷年法說會
+const hist = await pg.evaluate(() => {
+  PRO.confSearch('廣達');
+  const btn = document.querySelector('#tabConf [data-conf-hist="2382"]');
+  const label = btn ? btn.innerText.trim() : '';
+  PRO.confHist('2382');
+  const box = document.querySelector('#tabConf [data-conf-histbox="2382"]');
+  return { label, t: box ? (box.innerText || '').replace(/\s+/g, ' ') : '' };
+});
+ok(/2 場/.test(hist.label), '📜⑱ 「歷年」只算**這一場以外**的(⛔ 不可把今天這場也算進去)', hist.label);
+ok(/2026-03-14/.test(hist.t) && /2025-11-08/.test(hist.t) && /從本站開始採集/.test(hist.t),
+  '📜⑱b 展開列出歷年日期,並誠實說「不是公司的完整歷史」', hist.t.slice(0, 120));
+
+// ── 📊 會後股價統計(事實,⛔ 不是訊號)
+const react = await pg.evaluate(() => {
+  PRO.confSearch(''); PRO.confPick('2382');
+  const el = document.querySelector('#confReact [data-conf-react]');
+  if (el) el.open = true;
+  return (el ? el.innerText : '').replace(/\s+/g, ' ');
+});
+ok(/-1\.26 pp/.test(react) && /對照組/.test(react) && /-0\.73 pp/.test(react) && /522,732/.test(react),
+  '📊⑲ 事件組**與對照組**的數字都要印(⛔ 沒有對照組的統計不可用,陷阱 #36)', react.slice(0, 160));
+ok(/不是回測/.test(react) && /0 個成立/.test(react), '📊⑲b 固定免責:不是回測 + 37 種行事曆日方向 0 個成立');
+ok(/樣本不足/.test(react) && /3 場/.test(react), '📊⑲c 這一檔 n<10 要標「樣本不足,⛔ 不能當結論」(`_wrEnough` 同一把尺)', react.slice(-120));
+ok(!DIR.test(react), '📊⑲d 統計段⛔ 不可出現方向詞', (react.match(DIR) || [])[0]);
+
+// ── 🔎 法人視角提示詞
+const pr = await pg.evaluate(() => {
+  PRO.confPick('2382');
+  const ta = document.getElementById('confDeepQ'); ta.value = 'HBM 出貨';
+  return { full: PRO._confDeepPrompt('2382', 'HBM 出貨', false), short: PRO._confDeepPrompt('2382', 'HBM 出貨', true) };
+});
+for (const [k, re] of [['未來展望/財測', /未來展望\/財測/], ['產能與資本支出', /產能與資本支出/], ['訂單能見度', /訂單能見度/],
+                       ['價格與成本', /價格與成本/], ['量產時間表', /量產時間表/], ['庫存', /庫存水位/],
+                       ['Q&A 閃避', /管理層對哪些問題講得保守或避開/], ['風險', /公司自己講的風險/]])
+  ok(re.test(pr.full), `🔎⑳ 提示詞要有「${k}」這一項`);
+ok(/跟上一次法說會比,說法變了什麼/.test(pr.full), '🔎⑳b ⭐「跟上一次比說法變了什麼」是法人真正在看的那一句');
+ok(/⛔ 不要給買賣建議/.test(pr.full) && /⛔ 不要評分或星等/.test(pr.full) && /⛔ 不要講幾成部位/.test(pr.full),
+  '🔎⑳c ⛔ 不可叫外部 AI 給買賣建議/評分/部位');
+ok(/查不到就寫「查不到」/.test(pr.full) && /⛔ 不要留模板空格/.test(pr.full),
+  '🔎⑳d 查不到要寫查不到(⛔ 留空格給 AI 填,它就會編 —— V76.3.7 的教訓)');
+ok(/現價 312\.50/.test(pr.full) && /一年位階 88\.00%/.test(pr.full) && /⛔ 不要自己重算/.test(pr.full),
+  '🔎⑳e 本站算好的數字要塞進去(禁 AI 算數學鐵律)', pr.full.slice(0, 200));
+ok(/mopsov\.twse\.com\.tw\/server-java\/FileDownLoad/.test(pr.full),
+  '🔎⑳f 簡報 PDF 網址要附上去(探針實測 GET 就開得了 → 外部 AI 讀得到)');
+ok(pr.short.length < 200 && pr.full.length > 500, '🔎⑳g 精簡版給網址、完整版給剪貼簿(⛔ 完整版塞網址會在 iOS 交棒時帶不過去,V76.2.1)',
+  `short=${pr.short.length} full=${pr.full.length}`);
+// ⭐ 先複製(完整版)再開(精簡版)—— 順序反過來就白做了
+const promptOrder = await pg.evaluate(() => {
+  // 🚨 前面 ⑤g 把引擎切成 meta 並存進 localStorage → 不切回來的話,網址永遠是 meta 的根網址(20 字元),
+  //    ⑳j「網址帶的是精簡版」就變成**永遠會過**的假綠燈。一定要用會帶字的引擎量。
+  PRO.confEng('perplexity');
+  const seq = []; let copied = '';
+  const oc = document.execCommand; document.execCommand = function (c) { const ta = document.querySelector('textarea[readonly]'); copied = ta ? ta.value : ''; seq.push('copy'); return true; };
+  const ac = HTMLAnchorElement.prototype.click;
+  let href = '';
+  HTMLAnchorElement.prototype.click = function () { seq.push('click'); href = this.href; };
+  PRO.confAsk();
+  document.execCommand = oc; HTMLAnchorElement.prototype.click = ac;
+  return { seq, copiedLen: copied.length, hasEight: /管理層對哪些問題講得保守或避開/.test(copied), hrefLen: href.length };
+});
+ok(promptOrder.seq.join(',') === 'copy,click', '🔎⑳h 先複製再開(⛔ 順序反過來 = 還沒複製就跳走)', promptOrder.seq.join(','));
+ok(promptOrder.hasEight && promptOrder.copiedLen > 500, '🔎⑳i 剪貼簿拿到的是**完整版**(八個面向)', String(promptOrder.copiedLen));
+ok(promptOrder.hrefLen < 1500, '🔎⑳j 網址帶的是精簡版(⛔ 完整版編碼後上萬字元,iOS 帶不過去)', String(promptOrder.hrefLen));
 
 // ② 檔案沒產出 → 專屬文案(⛔ 不可跟「沒有法說會」一樣)
 const nofile = await pg.evaluate(() => { PRO._cache['data/confcall.json'] = null; PRO._confData = undefined; return PRO.renderConf().then(() => { const el = document.getElementById('tabConf'); return { nf: !!el.querySelector('[data-conf-nofile]'), t: (el.innerText || '').replace(/\s+/g, ' ') }; }); });
