@@ -1,0 +1,208 @@
+{
+  "updated": "2026-09-18 14:18 UTC",
+  "count": 15,
+  "data": [
+    {
+      "source_name": "自由財經",
+      "title": "10月電價「暫凍」！立院撥補落空12月電價恐補漲",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5578680",
+      "published_time": "Fri, 18 Sep 2026 19:28:50 +0800",
+      "matched_keywords": [
+        "戰爭"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "電價暫凍恐補漲，增加企業成本",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "熱錢回流股匯齊揚　新台幣盤中飆逾1.5角連2升",
+      "link": "https://www.cna.com.tw/news/afe/202609180251.aspx",
+      "published_time": "Fri, 18 Sep 2026 18:31:20 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利多",
+      "ai_reason": "利空出盡、油價回落、熱錢回流",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "不滿口頭承諾沒有白紙黑字  乖乖工會投票94.3％同意罷工",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5578602",
+      "published_time": "Fri, 18 Sep 2026 18:23:57 +0800",
+      "matched_keywords": [
+        "罷工"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利多",
+      "ai_reason": "工會決議支持罷工，公司沒有對工人提出就業或轉職機會，進一步對",
+      "title_zh": "標題為繁體中文，重點對台股有影響",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "漢測9/22掛牌上櫃 現增吸金215億元",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5578591",
+      "published_time": "Fri, 18 Sep 2026 18:18:21 +0800",
+      "matched_keywords": [
+        "增資",
+        "現金增資"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "上市募資215億,提升資金與市場能見度",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "日銀升息至1.25%　日銀總裁：不排除連續或擴大升息",
+      "link": "https://www.cna.com.tw/news/afe/202609180242.aspx",
+      "published_time": "Fri, 18 Sep 2026 18:15:00 +0800",
+      "matched_keywords": [
+        "新高"
+      ],
+      "cat": "📈 股價異動",
+      "ai_sentiment": "利空",
+      "ai_reason": "升息提升資金成本，衝擊股市",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "繞道突破美晶片封鎖：中科院藉 GAA 創新延壽 DUV，5 奈米密度成短期極限",
+      "link": "https://technews.tw/2026/09/18/china-duv-breakthrough-5nm-advance/",
+      "published_time": "Fri, 18 Sep 2026 09:00:36 +0000",
+      "matched_keywords": [
+        "封鎖",
+        "奈米",
+        "GAA",
+        "突破"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "中國突破美國封鎖，衝擊台積電等",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "油價回落緩解通膨疑慮  亞股追隨美股多收紅",
+      "link": "https://www.cna.com.tw/news/afe/202609180195.aspx",
+      "published_time": "Fri, 18 Sep 2026 16:50:17 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利多",
+      "ai_reason": "油價下跌減成本，提振股市",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "獨吞蘋果與聯發科大單！韓媒：2奈米賽道台積電擴大領先群倫",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5578432",
+      "published_time": "Fri, 18 Sep 2026 16:27:49 +0800",
+      "matched_keywords": [
+        "奈米"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "點破中國怪象 林憲銘：企業賠錢卻有辦法開出賺錢財報",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5578416",
+      "published_time": "Fri, 18 Sep 2026 16:22:13 +0800",
+      "matched_keywords": [
+        "財報"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利空",
+      "ai_reason": "台企面臨不公平競爭",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "AI 晶片封裝突破光罩極限，CoWoS-L 穩居先進封裝主流至 2028 年",
+      "link": "https://finance.technews.tw/2026/09/18/ai-chip-packaging-breaks-reticle-limits-cowos-l-remains-mainstream-advanced-packaging-until-2028/",
+      "published_time": "Fri, 18 Sep 2026 07:20:27 +0000",
+      "matched_keywords": [
+        "先進封裝",
+        "CoWoS",
+        "突破"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "每加侖飆 8.35 美元天價  加州柴油為何全美最貴？",
+      "link": "https://finance.technews.tw/2026/09/18/why-california-diesel-is-8-35-a-gallon/",
+      "published_time": "Fri, 18 Sep 2026 06:30:05 +0000",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利空",
+      "ai_reason": "全球能源受衝擊，柴油價格飆升",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "IonQ 攜新思秀量子加速、工程模擬最多省時 14.6%",
+      "link": "https://technews.tw/2026/09/18/ionq-demonstrates-computer-aided-engineering-workload-acceleration-by-up-to-14-6-percent-with-quantum-technology/",
+      "published_time": "Fri, 18 Sep 2026 06:20:07 +0000",
+      "matched_keywords": [
+        "量子"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "量子加速技術提升工程模擬效率",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "日本今年第二度升息，因應油價與日圓貶值、調整速度創最短間隔",
+      "link": "https://finance.technews.tw/2026/09/18/japan-second-interest-rate-hike-this-year/",
+      "published_time": "Fri, 18 Sep 2026 06:10:59 +0000",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "AI 資安風險曝  白帽駭客利用 Claude 入侵 OpenAI",
+      "link": "https://infosecu.technews.tw/2026/09/18/hackers-used-anthropics-claude-to-break-into-openai/",
+      "published_time": "Fri, 18 Sep 2026 06:00:40 +0000",
+      "matched_keywords": [
+        "駭客"
+      ],
+      "cat": "🛡️ 資安法律",
+      "ai_sentiment": "利空",
+      "ai_reason": "AI 資安風險升高",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "通膨黑暗期恐拖數年！謝富旭點名存股「隱形金雞母」：不能只求穩",
+      "link": "https://tw.news.yahoo.com/%E9%80%9A%E8%86%A8%E9%BB%91%E6%9A%97%E6%9C%9F%E6%81%90%E6%8B%96%E6%95%B8%E5%B9%B4-%E8%AC%9D%E5%AF%8C%E6%97%AD%E9%BB%9E%E5%90%8D%E5%AD%98%E8%82%A1-%E9%9A%B1%E5%BD%A2%E9%87%91%E9%9B%9E%E6%AF%8D-%E4%B8%8D%E8%83%BD%E5%8F%AA%E6%B1%82%E7%A9%A9-140000072.html",
+      "published_time": "Fri, 18 Sep 2026 14:00:00 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    }
+  ]
+}
