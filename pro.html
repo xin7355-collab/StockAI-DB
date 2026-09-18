@@ -590,6 +590,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <button class="tab-btn" id="tabBtnStar" onclick="PRO.switchTab('star')">關聯星圖</button>
     <button class="tab-btn" id="tabBtnFish" onclick="PRO.switchTab('fish')">📒 成績單</button>
     <button class="tab-btn" id="tabBtnSig" onclick="PRO.switchTab('sig')">今日訊號</button>
+    <button class="tab-btn" id="tabBtnConf" onclick="PRO.switchTab('conf')" title="法說會時間表 + 官方擇要;只描述,不下多空">法說會</button>
     <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
     <!-- 🧹 V74.6.2 使用者:「把散戶救星裡面的 V74.6.1 及 🧹 雜訊清單搬移到產業作戰室裡面」
          ⭐ 這**推翻了 V74.5.6** 的做法(當時只做一顆會跳走的鈕)。
@@ -846,6 +847,41 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <h2>雜訊清單 / 🆕 更新紀錄 <span class="sub">哪些實測沒用、哪些刪掉了、這一版改了什麼</span></h2>
     <div class="labbar" id="noiseBar"></div>
     <div id="noiseBody"></div>
+  </div>
+</div>
+
+<!-- 🎤 V77.2.7 法說會(使用者:「把法說會資訊收集起來,新增一個頁面;另外做深度查詢,貼關鍵字讓 AI 去搜」)
+     資料 = data/confcall.json(MOPS mopsov ajax_t100sb02_1,探針定案;confcall_miner.py 每天跟 playbook_scan 一起產)。
+     ⛔ 只描述「誰、哪天、講了什麼」——法說會前後波動常變大,但方向實測 0 個成立(calendar_stock_probe),⛔ 不給多空。
+     ⛔ 深度查詢是外部網頁深連結(使用者選的),⛔ 不叫 App 內 AI;先複製到剪貼簿再開(V76.2.1 的做法)。 -->
+<div id="tabConf" class="hidden">
+  <div class="panel">
+    <h2>法說會 <span class="sub">時間表 + 官方擇要 ・ 只描述,不下多空</span></h2>
+    <div class="labbar" id="confBar"></div>
+    <div style="display:flex;gap:6px;align-items:center;margin:6px 0">
+      <input id="confQ" type="search" placeholder="搜公司 / 代號 / 擇要關鍵字(例:HBM、毛利率、資本支出)" oninput="PRO.confSearch(this.value)" style="flex:1;min-width:0">
+      <button class="lbtn" id="confQx" onclick="PRO.confSearch('')" style="display:none">✕</button>
+    </div>
+    <div id="confMeta" class="note"></div>
+    <div id="confBody"></div>
+    <details class="sbnote" style="margin-top:8px"><summary>📖 這頁在算什麼 <span style="color:var(--dim2)">展開 ▾</span></summary>
+      <div class="note">
+        ⭐ 來源是公開資訊觀測站的「法人說明會一覽表」(上市 + 上櫃),每個交易日收盤後跟採礦一起更新,涵蓋前 60 天到後 45 天。<br>
+        📝 「擇要訊息」是公司自己填的官方摘要;簡報 PDF 多半<b>會後才上傳</b>,未開的場次會寫「公司尚未提供」。<br>
+        ⚠️ <b>財報公布截止日 ≠ 法說會</b>(那是兩件事,本站別處的「財報最晚 X 日」講的是前者)。<br>
+        🚨 法說會前後<b>波動常變大</b>,但「會漲還是會跌」本站實測 37 種行事曆日<b>方向 0 個成立</b> → 這頁只描述,⛔ 不給方向、不給部位。
+        該盯的是擇要裡的<b>營收、毛利率、資本支出、產能</b>這幾個數字有沒有兌現。
+      </div>
+    </details>
+  </div>
+  <div class="panel">
+    <h2>深度查詢 <span class="sub">貼關鍵字 → 帶去外部 AI 網站查(會上網;用他們的額度)</span></h2>
+    <div id="confDeepSym" class="note" style="margin:0 0 6px"></div>
+    <textarea id="confDeepQ" rows="3" placeholder="貼你想查的關鍵字或問題,例:HBM 產能擴充 2027 出貨量 / 這次法說會有沒有上修財測" oninput="PRO.confDraft(this.value)" style="width:100%;box-sizing:border-box"></textarea>
+    <div class="labbar" id="confEng" style="margin:6px 0"></div>
+    <button class="go-btn" onclick="PRO.confAsk()">🔎 帶去查</button>
+    <div class="note" style="margin-top:6px">會<b>先把整段問題複製到剪貼簿</b>再開網站;Perplexity / ChatGPT / Google 會直接帶字過去,
+      <b>Gemini 與 Meta AI 的網址不吃帶字</b> → 開了之後長按貼上就好。⛔ 這裡不呼叫 App 內的模型(那三條鏈都不會上網)。</div>
   </div>
 </div>
 
@@ -1634,7 +1670,7 @@ const PRO = {
     this.toast('✅ 已更新');
   },
 
-  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['sig', 'Sig'], ['lab', 'Lab'], ['noise', 'Noise']],
+  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['sig', 'Sig'], ['conf', 'Conf'], ['lab', 'Lab'], ['noise', 'Noise']],
   switchTab(t, silent) {
     this.closeStock();                    // 🔗 切頁一律收起快捷面板(⛔ 不可蓋在別頁上面)
     this.closeModal();                    // 📖 懸浮視窗同理
@@ -1652,6 +1688,7 @@ const PRO = {
     if (t === 'fish') this.renderFish();
     if (t === 'sig') this.renderSig();
     if (t === 'noise') this.renderNoise();
+    if (t === 'conf') this.renderConf();
     // 📊 'calc' 已併進實測總表(V74.5.0)—— 舊書籤/舊連結進來時自動導到那一欄,⛔ 不可整個失效
     if (t === 'calc') { this._tab = 'lab'; this._labSel = 'bt'; document.getElementById('tabLab').classList.remove('hidden'); document.getElementById('tabBtnLab').classList.add('on'); }
     if (this._tab === 'lab') this.renderLab();
@@ -4390,7 +4427,7 @@ const PRO = {
       { t: '📉 借券賣出餘額 / Unused SBL', n: '已在存 <b>37 天</b>・只有約 60 檔', d: '⚠️ <b>更正一段查證前寫的話</b>:這條原本寫「<b>本專案從來沒存過</b>」—— 2026-09-09 實測 <code>lending_hist.json</code> <b>已經有 37 天</b>(2026-07-21~09-09),V74.6.9 起每天自動累積。<br>⏳ 但還是驗不動,原因換成兩個:① 只有 <b>37 天</b>,連一個桶都湊不出來;② <b>每天只涵蓋約 57~68 檔</b>(觀察清單)—— ⛔ <b>不是全市場</b>,拿它下的任何結論都只能講那幾十檔。<br>⭐ 這是「<b>現在不存以後永遠沒有</b>」那一類,所以先存著不動它。約 <b>2027 年中</b>滿一年後才談門檻。<br>🔥 <b>券資比/軋空本身已經測完了</b>(2026-09-09 用三年資料重跑,六關 0 過)→ 見「⛔ 實測沒用」欄,⛔ 別再把它當成「等資料」。', s: 'lending_hist.json + short_probe.py・2026-09-09 查證' },
       { t: '🧮 MQI(融資買進「筆數」)', n: '台灣不公布', d: '公式是 Δ融資買進<b>筆數</b> ÷ Δ融資餘額張數,用來分辨「散戶湊熱鬧」還是「主力開槓桿」。⛔ TWSE <code>MI_MARGN</code> <b>只有張數沒有筆數</b> → 分子根本拿不到。', s: '評估紀錄⑮' },
       { t: '📅 月營收公布日的方向', n: '缺公布日來源', d: '⚠️ 原本標「資料現成」是**查證前寫的**。實測 `fund_yoy_gm.json` 的 `qeps` 只有**季**財報期別(2024-09-30 這種)+ 季營收,⛔ **沒有每月 10 日的月營收公布日**。→ 用財報公布日規則(3/31・5/15・8/14・11/14)測得動的是「**財報**公布日前後」,那是另一件事。要測月營收得先找到公布日來源。', s: '待確認資料源' },
-      { t: '🎤 法說會行事曆', n: '無免費結構化來源', d: '只能用「財報公布截止日」(3/31・5/15・8/14・11/14)近似,⛔ 但那不是法說會,文案不可混稱。同族缺口:庫藏股公告、MSCI 換股名單、除權息日、FOMC / 美國經濟數據行事曆。', s: 'V73.7.3' },
+      { t: '🎤 法說會行事曆', n: '✅ V77.2.7 起有來源(公開資訊觀測站)', d: '🚨 <b>原本寫「無免費結構化來源」是查證前寫的</b>:2026-09-18 探針證實證交所 OpenAPI 的 t187ap02 是<b>大股東名稱表</b>(舊採礦打錯三個月),真正給得到的是公開資訊觀測站 mopsov 的法人說明會一覽表(上市+上櫃,含日期/時間/地點/擇要/簡報檔/影音連結)→ 已做成「法說會」分頁 + data/confcall.json。⚠️ 擇要與簡報多半<b>會後才上傳</b>。⛔ 仍然只描述不給方向(行事曆日方向實測 0 個成立);⛔ 財報公布截止日 ≠ 法說會,文案不可混稱。同族缺口:庫藏股公告、MSCI 換股名單、FOMC / 美國經濟數據行事曆。', s: 'V77.2.7 confcall_probe' },
       { t: '🏪 上櫃的注意股歷史', n: 'TPEx 對機房 403', d: '處置歷史 FinMind 上市上櫃都有 ✅;但<b>注意股</b>歷史只有 TWSE 查詢端點(上市)——TPEx 整站對 GitHub runner 回 403(V73.6.1 實測連本站一直在用的端點也 403),而 FinMind 沒有注意股 資料集(4 個候選名稱全部回「查無此資料集」)。→ 注意股回測<b>只涵蓋上市</b>,上櫃誠實缺席。', s: 'dispo_probe.py・V74.4.2' },
       { t: '💧 自由流通股數(Free Float)', n: '無結構化來源', d: '要扣掉董監、政府基金、交叉持股。⛔ 別用「400 張以上比例」硬當代理 —— 那是兩回事。連帶影響:真正的週轉率、真正的籌碼集中度都算不準。', s: '評估紀錄(V72.5.2)' },
       { t: '🔮 分析師一致預期 EPS(ICC 估值)', n: '台股沒有', d: '隱含資本成本要「未來 1~3 年的分析師預期 EPS」,台股沒有免費結構化來源;「修正分析師偏誤」更需要歷史預測序列。⛔ 本站的「法人目標價」是<b>純公式</b>(年化 EPS × 同業中位本益比),⛔ 不可拿來充當 ICC 的輸入。', s: '評估紀錄⑨' },
@@ -4667,7 +4704,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V77.2.6',
+  VER: 'V77.2.7',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -6529,20 +6566,184 @@ ${M.news || '(無)'}
   },
   // 🟣 一鍵問 AI(Perplexity/ChatGPT/Google)—— 照散戶救星 `_freeAiOpen` 的做法
   // ⚠️ 用真實 <a target="_blank"> 點擊,⛔ 不用 window.open:iOS PWA 用 window.open 會留一個空白 Safari 分頁。
-  _askAi(q) {
-    if (!q || !q.trim()) return;
-    const eng = localStorage.getItem('proWar_ai') || 'perplexity';
+  /** 📋 同步複製(移植散戶救星 `_copyText` 的做法,V76.2.1):execCommand 排在 clipboard API **之前**,
+   *  ⛔ 不可 async/await —— await 之後的 `<a>.click()` 會被瀏覽器當成非使用者操作擋掉。 */
+  _copySync(txt) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = txt; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:-999px;left:-999px;opacity:0';
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, txt.length);
+      const okc = document.execCommand && document.execCommand('copy');
+      ta.remove();
+      if (okc) return true;
+    } catch (_) {}
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).catch(() => {}); return true; } } catch (_) {}
+    return false;
+  },
+  // 🟣 一鍵問 AI —— 照散戶救星 `_freeAiOpen` 的做法
+  // ⚠️ 用真實 <a target="_blank"> 點擊,⛔ 不用 window.open:iOS PWA 用 window.open 會留一個空白 Safari 分頁。
+  // 🎤 V77.2.7 收 `engOverride`(法說會深度查詢有自己的引擎選擇,⛔ 不共用 proWar_ai —— 免得改到產業估值頁的「問 AI」)
+  //    並加 gemini / meta:兩者**不吃網址帶字**(Gemini 無 ?q=;Meta AI 未驗證)→ 一律先複製再開根網址,回 carried 讓呼叫端講清楚。
+  _askAi(q, engOverride) {
+    if (!q || !q.trim()) return null;
+    const eng = engOverride || localStorage.getItem('proWar_ai') || 'perplexity';
     const today = (() => { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); } catch (_) { return new Date().toISOString().slice(0, 10); } })();
     const hint = `今天是 ${today}(台北時間)。請以「今天」為基準判斷「最近/最新」,只用截至今天為止的最新公開資訊。\n\n`;
-    const url = {
-      perplexity: 'https://www.perplexity.ai/search?q=',
-      chatgpt: 'https://chatgpt.com/?hints=search&q=',
-      google: 'https://www.google.com/search?q=',
-    }[eng] + encodeURIComponent(hint + q);
+    const full = hint + q;
+    const MAP = {
+      perplexity: ['https://www.perplexity.ai/search?q=', true],
+      chatgpt: ['https://chatgpt.com/?hints=search&q=', true],
+      google: ['https://www.google.com/search?q=', true],
+      gemini: ['https://gemini.google.com/app', false],
+      meta: ['https://www.meta.ai/', false],
+    };
+    const [base, carries] = MAP[eng] || MAP.perplexity;
+    const copied = this._copySync(full);          // ⭐ 先複製(同步),再開 —— 長問題在 iOS 交棒時帶不過去(V76.2.1)
+    const url = carries ? base + encodeURIComponent(full) : base;
     const a = document.createElement('a');
     a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
     document.body.appendChild(a); a.click(); setTimeout(() => a.remove(), 100);
     this.buzz(20);
+    return { eng, carried: carries, copied };
+  },
+
+  // ═══════════ 🎤 法說會分頁(V77.2.7)═══════════
+  // ⛔ 三條不可違反:① 只描述、⛔ 不給方向/部位 ② 「檔案沒產出」與「這幾天真的沒有」要分開講(陷阱 #22)
+  //   ③ 深度查詢是外部網頁(使用者選的),⛔ 不叫 App 內模型。
+  _confSel: 'all', _confQ: '', _confSym: null, _confData: undefined,
+  _CONF_SEL: [['all', '全部'], ['mine', '👜 我的'], ['today', '今天'], ['future', '未來'], ['sum', '已開・有內容']],
+  _CONF_ENG: [['perplexity', 'Perplexity'], ['chatgpt', 'ChatGPT'], ['google', 'Google'], ['gemini', 'Gemini'], ['meta', 'Meta AI']],
+  _confEngGet() { try { return localStorage.getItem('proWar_confEng') || 'perplexity'; } catch (_) { return 'perplexity'; } },
+  confEng(k) { this.buzz(10); try { localStorage.setItem('proWar_confEng', k); } catch (_) {} this._confEngBar(); },
+  confSel(k) { this.buzz(10); this._confSel = k; this._confPaint(); },
+  confSearch(v) {
+    this._confQ = String(v || '').trim();
+    const inp = document.getElementById('confQ'); if (inp && inp.value !== v) inp.value = v || '';
+    const x = document.getElementById('confQx'); if (x) x.style.display = this._confQ ? '' : 'none';
+    this._confPaint();
+  },
+  confDraft(v) { try { localStorage.setItem('proWar_confQ', String(v || '').slice(0, 2000)); } catch (_) {} },
+  confPick(sym) { this.buzz(10); this._confSym = sym ? String(sym) : null; this._confSymPaint(); window.scrollTo(0, document.getElementById('confDeepQ') ? document.getElementById('confDeepQ').offsetTop - 80 : 0); },
+  _confMine() {
+    // 👜 庫存 + 自選 + 決策台今日名單(全部走 try/catch,壞值回空;⛔ 不寫 localStorage)
+    const set = new Set();
+    try { for (const x of JSON.parse(localStorage.getItem('proTerminalInv') || '[]') || []) if (x && x.symbol) set.add(String(x.symbol)); } catch (_) {}
+    try { const g = JSON.parse(localStorage.getItem('proTerminalFavGroups') || '{}') || {}; for (const arr of Object.values(g)) if (Array.isArray(arr)) for (const c of arr) if (c) set.add(String(typeof c === 'object' ? (c.symbol || c.s || '') : c)); } catch (_) {}
+    try { const pe = this._cache['data/playbook_edge.json']; if (pe && Array.isArray(pe.picks)) for (const x of pe.picks) if (x && x.s) set.add(String(x.s)); } catch (_) {}
+    set.delete('');
+    return set;
+  },
+  _confToday() { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); } catch (_) { return new Date().toISOString().slice(0, 10); } },
+  _confRows() {
+    const D = this._confData; if (!D) return [];
+    const today = this._confToday();
+    let rows = [].concat(D.upcoming || [], D.recent || []).filter(r => r && r.s && r.d);
+    const sel = this._confSel;
+    if (sel === 'mine') { const m = this._confMine(); rows = rows.filter(r => m.has(String(r.s))); }
+    else if (sel === 'today') rows = rows.filter(r => r.d === today);
+    else if (sel === 'future') rows = rows.filter(r => r.d >= today);
+    else if (sel === 'sum') rows = rows.filter(r => r.d < today && (r.sum || (r.pdf && r.pdf.length) || r.vid));
+    const q = this._confQ.toLowerCase();
+    if (q) rows = rows.filter(r => `${r.s} ${r.name || ''} ${this.nameOf ? (this.nameOf(r.s) || '') : ''} ${r.place || ''} ${r.sum || ''} ${r.other || ''}`.toLowerCase().includes(q));
+    rows.sort((a, b) => (a.d === b.d ? (a.t || '').localeCompare(b.t || '') : (a.d < b.d ? -1 : 1)));
+    return rows;
+  },
+  _confWk(d) { try { return ['日', '一', '二', '三', '四', '五', '六'][new Date(d + 'T00:00:00+08:00').getDay()]; } catch (_) { return ''; } },
+  _confHtml(rows) {
+    const today = this._confToday(), q = this._confQ;
+    const hi = t => this._labHi ? this._labHi(this._esc(t), q) : this._esc(t);
+    if (!rows.length) {
+      const D = this._confData || {};
+      return `<div class="note" data-conf-empty="1">📭 這個篩選下沒有法說會(資料日 ${this._esc(D.data_date || '—')},涵蓋前 ${(D.window || {}).past || 60} 天到後 ${(D.window || {}).future || 45} 天)。${this._confSel === 'mine' ? '<br>👜 「我的」= 你的庫存 + 自選 + 決策台今天的名單;三個都空的話這裡就是空的。' : ''}${q ? '<br>🔎 換個關鍵字試試(擇要是公司自己寫的,用詞不一定跟你一樣)。' : ''}</div>`;
+    }
+    const groups = new Map();
+    for (const r of rows) { if (!groups.has(r.d)) groups.set(r.d, []); groups.get(r.d).push(r); }
+    let html = '';
+    for (const [d, list] of groups) {
+      const rel = d === today ? '<span class="sigtag good">今天</span>' : (d > today ? '<span class="sigtag">未來</span>' : '<span class="sigtag">已開</span>');
+      html += `<div style="font-size:11px;font-weight:700;color:var(--dim);margin:10px 0 4px;border-left:3px solid ${d === today ? 'var(--cyan)' : 'var(--line)'};padding-left:6px">${d.slice(5).replace('-', '/')}(${this._confWk(d)}) ${rel} <span style="font-weight:400;color:var(--dim2)">${list.length} 場</span></div>`;
+      for (const r of list) {
+        const past = r.d < today;
+        const sum = r.sum ? `<details data-dk="conf-${r.s}-${r.d}"><summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim)">📝 擇要訊息 <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note" style="margin-top:4px;white-space:pre-wrap">${hi(r.sum)}</div></details>`
+                          : `<div class="note" style="margin-top:2px">📝 擇要訊息:公司尚未提供${past ? '' : '(通常會後才貼)'}</div>`;
+        const files = [];
+        if (r.pdf && r.pdf.length) files.push(`📎 簡報 ${r.pdf.map(f => `<span class="mono" title="在公開資訊觀測站的法人說明會一覽表下載(⛔ MOPS 用表單下載,沒有可直接開的網址)">${this._esc(f)}</span>`).join('、')}`);
+        if (r.web) files.push(`<a href="${this._esc(r.web)}" target="_blank" rel="noopener noreferrer">🌐 公司網站</a>`);
+        if (r.vid) files.push(`<a href="${this._esc(r.vid)}" target="_blank" rel="noopener noreferrer">🎬 影音</a>`);
+        html += `<div class="bkrow ${past ? 'done' : 'hold'}" data-conf-row="${this._esc(r.s)}">
+          <div class="bkhd">${this._nmc(r.s, `PRO.openStock('${this._esc(r.s)}')`)}
+            <span class="sigtag">${this._esc(r.mkt || '')}</span>
+            <span style="margin-left:auto;font-size:11px" class="mono">${this._esc(r.t || '')}</span></div>
+          <div class="note" style="margin-top:2px">📍 ${hi(r.place || '—')}</div>
+          ${sum}
+          ${files.length ? `<div class="note" style="margin-top:3px">${files.join(' ・ ')}</div>` : ''}
+          ${r.other ? `<div class="note" style="margin-top:2px">ℹ️ ${hi(r.other)}</div>` : ''}
+          <div style="margin-top:4px"><button class="lbtn" onclick="PRO.confPick('${this._esc(r.s)}')">🔎 帶這一檔去深度查詢</button></div>
+        </div>`;
+      }
+    }
+    return html;
+  },
+  _confBar() {
+    const bar = document.getElementById('confBar'); if (!bar) return;
+    bar.innerHTML = this._CONF_SEL.map(([k, l]) => `<span class="labbtn ${this._confSel === k ? 'on' : ''}" data-confsel="${k}" onclick="PRO.confSel('${k}')">${l}</span>`).join('');
+  },
+  _confEngBar() {
+    const bar = document.getElementById('confEng'); if (!bar) return;
+    const cur = this._confEngGet();
+    bar.innerHTML = this._CONF_ENG.map(([k, l]) => `<span class="labbtn ${cur === k ? 'on' : ''}" data-confeng="${k}" onclick="PRO.confEng('${k}')">${l}</span>`).join('');
+  },
+  _confSymPaint() {
+    const el = document.getElementById('confDeepSym'); if (!el) return;
+    el.innerHTML = this._confSym
+      ? `📌 會帶上:<b>${this._nmc(this._confSym, `PRO.openStock('${this._esc(this._confSym)}')`)}</b> <button class="lbtn" onclick="PRO.confPick(null)">✕ 不帶</button>`
+      : `<span style="color:var(--dim2)">沒有指定公司 → 用關鍵字查整個市場;想查某一檔,在上面清單按「帶這一檔去深度查詢」。</span>`;
+  },
+  _confPaint() {
+    this._confBar();
+    const body = document.getElementById('confBody'); if (!body) return;
+    body.innerHTML = this._confHtml(this._confRows());
+  },
+  async renderConf() {
+    const body = document.getElementById('confBody'), meta = document.getElementById('confMeta');
+    if (!body || !meta) return;
+    this._confBar(); this._confEngBar(); this._confSymPaint();
+    try { const ta = document.getElementById('confDeepQ'); if (ta && !ta.value) ta.value = localStorage.getItem('proWar_confQ') || ''; } catch (_) {}
+    if (this._confData === undefined) {
+      body.innerHTML = `<div class="note">⏳ 正在讀法說會資料…</div>`;
+      const [D] = await Promise.all([this.fetchJson('data/confcall.json'), this.loadNames ? this.loadNames() : null, this.fetchJson('data/playbook_edge.json')]);
+      this._confData = D || null;
+    }
+    const D = this._confData;
+    if (!D) {
+      // 🚨 「檔案沒產出 / 網路失敗」⛔ 不可長得像「這幾天沒有法說會」(陷阱 #22)
+      meta.innerHTML = '';
+      body.innerHTML = `<div class="warnbox" data-conf-nofile="1">⚠️ <b>讀不到 data/confcall.json</b>(檔案還沒產出,或網路失敗)—— ⛔ 這<b>不代表這幾天真的沒有法說會</b>。
+        採礦每個交易日收盤後跟「明日作戰清單」一起產出;第一次要等它跑過一輪。</div>`;
+      return;
+    }
+    const stale = this._staleDays ? this._staleDays(D.data_date) : 0;
+    const errs = [];
+    if (D.src_error && D.src_error.sii) errs.push(`上市這輪抓不到:${this._esc(D.src_error.sii)}`);
+    if (D.src_error && D.src_error.otc) errs.push(`上櫃這輪抓不到:${this._esc(D.src_error.otc)}`);
+    const n = D.n || {};
+    meta.innerHTML = `📅 資料日 <b>${this._esc(D.data_date || '—')}</b>${stale >= 4 ? ` <span class="sigtag warn">⚠️ 已 ${stale} 天沒更新</span>` : ''}
+      ・未來 <b>${n.upcoming ?? (D.upcoming || []).length}</b> 場 ・已開 <b>${n.recent ?? (D.recent || []).length}</b> 場 ・有擇要 ${n.with_sum ?? '—'} ・有簡報/影音 ${n.with_files ?? '—'}
+      ${errs.length ? `<div class="warnbox" style="margin-top:6px" data-conf-srcerr="1">⚠️ ${errs.join('<br>')}<br>⛔ 那一邊的場次這輪是<b>舊的或缺的</b>,不是真的沒有。</div>` : ''}`;
+    this._confPaint();
+  },
+  confAsk() {
+    const ta = document.getElementById('confDeepQ');
+    const kw = String((ta && ta.value) || '').trim();
+    if (!kw) { this.toast('先貼關鍵字或問題'); return null; }
+    let who = '';
+    if (this._confSym) { const nm = this.nameOf ? (this.nameOf(this._confSym) || '') : ''; who = ` ${nm ? nm + '(' + this._confSym + ')' : this._confSym}`; }
+    const q = `台股 法說會${who}:${kw}\n請整理最新內容與重點(營收、毛利率、資本支出、產能、財測有沒有調整),每一點附日期與來源。`;
+    const r = this._askAi(q, this._confEngGet());
+    if (!r) return null;
+    const nm = (this._CONF_ENG.find(x => x[0] === r.eng) || [])[1] || r.eng;
+    this.toast(r.carried ? `🔎 已帶去 ${nm}(問題也複製到剪貼簿了)` : `📋 已複製問題;${nm} 不吃網址帶字 → 開了之後長按貼上`, 2600);
+    return r;
   },
   askIndustry() {
     if (!this._valRows || !this._valRows.length) { this.toast('請先按「抓取真實估值數據」'); return; }

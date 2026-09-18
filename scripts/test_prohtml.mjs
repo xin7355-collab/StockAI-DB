@@ -898,8 +898,8 @@ ok('㉛b 🏅 第一名要是排序分最高的(🧬 高位階+高波動,r=100)+
 // ㉚ V74.4.3 使用者截圖:實測總表上方一大塊空白 —— #tabLab 被留在 .wrap 外面,
 //    吃到 .wrap 的 80px+safe-area 底部 padding。⛔ 四個分頁容器都必須在 .wrap 裡。
 const NEST = await page.evaluate(() =>
-  ['tabVal', 'tabChain', 'tabRot', 'tabLab'].every(id => !!document.querySelector('.wrap #' + id)));
-ok('㉚ 四個分頁容器都要在 .wrap 裡(⛔ 在外面會吃到 80px 底部 padding = 分頁頂端一大塊空白)', NEST);
+  ['tabVal', 'tabChain', 'tabRot', 'tabLab', 'tabConf'].every(id => !!document.querySelector('.wrap #' + id)));
+ok('㉚ 分頁容器都要在 .wrap 裡(⛔ 在外面會吃到 80px 底部 padding = 分頁頂端一大塊空白;V77.2.7 加 tabConf)', NEST);
 // ㉟ 💧 板塊輪動重新設計(V74.4.9 使用者:「做得很亂…全部資料都塞在這一頁,
 //   我沒有辦法知道目前看了這些數據能做什麼事情」)
 //   ⛔ 六條釘死:

@@ -1,3 +1,56 @@
+## 🎤🔎 V77.2.7 「法說會」分頁 + 深度查詢(外部網頁)—— ⭐ 而三個月的「法說會 0 場」是**打錯資料集**
+
+使用者:「今天有法說會 → 把法說會資訊收集起來,在產業作戰室新增一個頁面;另外做深度查詢,我貼關鍵字讓 AI 去搜;要有 Meta / Gemini / GPT」。
+選項確認:收集 = **時間表 + 內容**;深度查詢 = **只要外部網頁**(⛔ 不叫 App 內 AI);Meta/Gemini/GPT = **外部網站**,並「另外加上 Meta」。
+
+### 🚨 先查現況:採礦早就有,但實跑 0 場 —— 真因是**資料集打錯**,不是配額也不是網路
+`macro_miner.fetch_earnings_calls` 打 TWSE OpenAPI `t187ap02_L/_O`,log 是「上市 0 場 / 上櫃 Expecting value」。
+沙箱連不到 twse/tpex/mops → 寫探針 `scripts/confcall_probe.py` 掛 `finmind_gap_probe.yml which=confcall`,在 Actions 跑兩輪(#35294351143 / #35294467879):
+
+| 來源 | 結果 |
+|---|---|
+| 對照組 `t187ap03_L` | ✅ 通(runner 沒被擋,下面的失敗可以解讀) |
+| `t187ap02_L`(現行 miner) | 🚨 是**大股東名稱表**(欄:出表日期/公司代號/公司名稱/大股東名稱)—— 從來不是法說會 |
+| `t187ap38_L` | 股東會/股利表 |
+| TWSE / TPEx OpenAPI 目錄(swagger) | **都沒有**法人說明會資料集(TWSE 只有一個 ESG「投資人溝通」,而且 404) |
+| TWSE 主機掛 `_O` | HTML 200(陷阱 #23,現行 miner 上櫃那一腿就是這樣死的) |
+| `mops.twse.com.tw` ajax | 「因為安全性考量,您所執行的頁面無法呈現」 |
+| ⭐ **`mopsov.twse.com.tw/mops/web/ajax_t100sb02_1`(POST,按月)** | ✅ **真表格**:上市 9 月 301 列、上櫃 112 列;12 欄 = 代號/名稱/日期/時間/地點/**擇要訊息**/中文簡報/英文簡報/公司網站/影音連結/其他/歷年 |
+
+⭐ 通用(第五次):**「0 場」跟「壞掉」長得一樣,但「0 場」的第一個問題是「你打的到底是不是那份資料」** —— 探針第一輪就把三個月的誤判翻掉。
+⚠️ `docs/DECISIONS.md` 早就登記「macro_risk.json 法說會 0 筆」與「法說會無免費結構化來源、⛔ 別再評估」——
+**後者是查證前寫的**(當時只試了 OpenAPI 與 FinMind),這次更正;`pro.html` LAB 條目同步改(邏輯不打架)。
+
+### 採礦 `confcall_miner.py` → `data/confcall.json`
+- 按月 POST mopsov(涵蓋 −60~+45 天要跨 3~4 個月),指數退避;**每個市場各自 try**(陷阱 #44),掛的那邊寫 `src_error`(陷阱 #22)。
+- 產物:`upcoming` / `recent` / `hist`(**累積型**,每檔 ≤40 場,從舊檔合併)/ `n` 統計。
+- 🚧 空過守門:兩市場皆 0 而舊檔有 → ⛔ 不覆寫。
+- ⚠️ 簡報 PDF **只存檔名**:MOPS 用 POST 表單下載(`fm_fileDownload`),⛔ 沒有可直接開的網址 → 畫面上標「在公開資訊觀測站下載」;公司網站與影音是直接連結。
+- 掛在 `playbook_scan.yml`(它本來就推 gh-pages + data 兩個分支,陷阱 #41;⛔ 不新增 cron):
+  步驟排在掃描**之前**、不掛 `scan_rc` 閘門;部署閘門改 `!cancelled()`,`playbook_edge` 只在 scan_rc==0 才 cp
+  → 掃描失敗那天法說會照樣更新(陷阱 #44:一個閘門⛔ 不可掛多個產物)。
+- `macro_miner.fetch_earnings_calls` 改成薄包裝(import 同一份 `fetch_market` / `to_macro_events`),
+  事件文字維持 `📞 {name}({code}) 法說會 {time}` → index.html `_findEarningsEvent` 終於對得到(報告頁 §12 / 個股頁提醒 / 行事曆卡)。
+- index.html `_loadEarningsCalls` 改讀 `data/confcall.json`(含 `hist`),**刪掉** t187ap02 直打 + allorigins 中繼。
+
+### pro.html 「法說會」分頁
+篩選 全部 / 👜 我的(庫存 ∪ 自選 ∪ 決策台今天名單)/ 今天 / 未來 / 已開・有內容 + 關鍵字搜尋(`_labHi` 高亮);
+每列:名稱代號、市場、時間、地點、擇要(折疊)、簡報檔名、公司網站、影音、「帶這一檔去深度查詢」。
+⛔ 三種狀態分開講:「讀不到檔案(不代表沒有)」/「這個篩選下沒有」/ 採礦端 `src_error`(那一邊是舊的或缺的)。
+⛔ 全頁不給方向、不給部位(37 種行事曆日方向 0 個成立);說明寫「該盯擇要裡的營收/毛利率/資本支出/產能」。
+
+### 🔎 深度查詢(外部網頁)
+貼關鍵字 + 可帶上某一檔 → Perplexity / ChatGPT / Google / **Gemini / Meta AI**。
+⭐ 一律**先同步複製到剪貼簿再開**(V76.2.1:長問題在 iOS 交棒時帶不過去;⛔ 不可 await 再 click);
+**Gemini 沒有 `?q=`、Meta AI 的網址參數未驗證** → 兩者只開根網址並 toast「開了之後貼上」,⛔ 不假裝帶得過去。
+引擎存 `proWar_confEng`(⛔ 不共用 `proWar_ai`,免得改到產業估值頁的問 AI)。⛔ 不呼叫 App 內模型(三條鏈都不會上網)。
+
+### 🧪 測試與踩到的
+- `scripts/test_confcall.py` 30 條:測資**逐字**抄探針 dump(六列);🚨 第一版三條斷言是**我的錯**:
+  ① 地點「一段…第一會議室」—— MOPS 原文用的是康熙部首字 `&#12038;`(⼆ U+2F06),解碼對、期望值錯(陷阱 #40 又一次);
+  ②③「不可出現 t187ap02」被**自己的 docstring** 救活/害死 → 斷言前要剝 `#` 註解**與**三引號 docstring。
+- `scripts/test_confcall.mjs` 25 條(真渲染):三種空狀態分開 / 「我的」不多不少 / 搜尋高亮 / **先複製再點**(覆寫 `HTMLAnchorElement.prototype.click` 與 `execCommand` 記順序)/ Gemini・Meta 根網址 / ⛔ 方向詞。
+
 ## 📏💰🛑 V77.2.6 使用者截圖三問(小數點 / ATR 跟唐奇安一樣 / 有沒有錯)
 
 ⭐ 三件都是真的,而且**只有一件不是 bug**。

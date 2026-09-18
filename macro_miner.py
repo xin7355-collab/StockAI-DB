@@ -634,52 +634,30 @@ def _parse_date_flexible(s):
 
 
 def fetch_earnings_calls(window_days=14):
-    """📞 抓 TWSE OpenAPI 法人說明會(法說會)一覽表 → 回未來 window 天內 [{date, event}]。
-    ⚠️ 端點/欄位名可能需依實際回應微調(候選端點,首次跑看 log)。任何失敗回 [],絕不影響主流程。"""
-    from datetime import date, timedelta
-    today, end = date.today(), date.today() + timedelta(days=window_days)
-    candidates = [
-        # TWSE OpenAPI 具名 JSON(無 307);_L=上市 _O=上櫃(候選 dataset code,首次跑確認)
-        ("https://openapi.twse.com.tw/v1/opendata/t187ap02_L", "上市"),
-        ("https://openapi.twse.com.tw/v1/opendata/t187ap02_O", "上櫃"),
-    ]
+    """📞 未來 window 天內的台股法說會 → [{date, event}]。任何失敗回 [],絕不影響主流程。
 
-    def _find_key(row, *musts):
-        for k in row.keys():
-            if all(m in k for m in musts):
-                return k
-        return None
-
+    🚨 V77.2.7 整段改走 `confcall_miner`(探針 Actions #35294351143 定案):
+       舊版打 TWSE OpenAPI `t187ap02_L/_O` —— 實跑證實 `t187ap02` 是**大股東名稱**表、
+       `t187ap38` 是股東會/股利表,TWSE / TPEx 的 OpenAPI 目錄**都沒有**法人說明會資料集
+       → 三個月來每天「法說會 上市: 0 場」不是配額、不是網路,是**打錯資料集**(陷阱 #23 的變形)。
+       ⭐ 真正給得到的是公開資訊觀測站 mopsov 的 `ajax_t100sb02_1`,抓取與解析**只有一份**住在
+       `confcall_miner.py`(它同時產 `data/confcall.json` 給產業作戰室的法說會分頁),這裡只是薄包裝。
+    ⛔ 事件文字格式 `📞 {name}({code}) 法說會 {time}` 不可改 —— index.html `_findEarningsEvent`
+       靠「文字含股名或代號」比對(陷阱 #37)。"""
+    from datetime import date
+    try:
+        from confcall_miner import fetch_market, to_macro_events
+    except Exception as e:
+        print(f"  ⚠️ 法說會:匯入 confcall_miner 失敗({e})→ 回空")
+        return []
+    today = date.today()
     out = []
-    for url, mk in candidates:
+    for mk, typek in (("上市", "sii"), ("上櫃", "otc")):
         try:
-            r = http.get(url, headers={**HEADERS, "Accept": "application/json"}, timeout=15)
-            if r.status_code != 200:
-                print(f"  ⚠️ 法說會 {mk} HTTP {r.status_code}(端點可能需調整)")
-                continue
-            rows = r.json()
-            if not isinstance(rows, list) or not rows:
-                print(f"  ⚠️ 法說會 {mk} 回非陣列/空")
-                continue
-            k_date = _find_key(rows[0], "說明會", "日期") or _find_key(rows[0], "法說", "日期") or _find_key(rows[0], "日期")
-            k_code = _find_key(rows[0], "公司", "代號") or _find_key(rows[0], "代號")
-            k_name = _find_key(rows[0], "公司", "名稱") or _find_key(rows[0], "公司", "簡稱") or _find_key(rows[0], "名稱")
-            k_time = _find_key(rows[0], "說明會", "時間") or _find_key(rows[0], "時間")
-            if not (k_date and k_code):
-                print(f"  ⚠️ 法說會 {mk} 找不到日期/代號欄位,keys={list(rows[0].keys())[:8]}")
-                continue
-            hit = 0
-            for row in rows:
-                d = _parse_date_flexible(row.get(k_date))
-                code = str(row.get(k_code) or "").strip()
-                name = str((row.get(k_name) if k_name else "") or "").strip()
-                if d is None or not code or not (today <= d <= end):
-                    continue
-                t = str((row.get(k_time) if k_time else "") or "").strip()
-                ev = f"📞 {name}({code}) 法說會" + (f" {t}" if t else "")
-                out.append({"date": d.isoformat(), "event": ev})
-                hit += 1
-            print(f"  📞 法說會 {mk}: {hit} 場(窗內 {window_days} 天)")
+            rows, err = fetch_market(typek, today)
+            ev = to_macro_events(rows, today, window_days)
+            print(f"  📞 法說會 {mk}: {len(ev)} 場(窗內 {window_days} 天)" + (f" ・⚠️ {err}" if err else ""))
+            out.extend(ev)
         except Exception as e:
             print(f"  ⚠️ 法說會 {mk} 例外:{str(e)[:70]}")
     # 去重 + 依日期排序

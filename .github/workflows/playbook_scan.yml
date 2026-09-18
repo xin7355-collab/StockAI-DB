@@ -11,6 +11,9 @@ name: 🎯 明日作戰清單 (playbook_scan)
 #    daily_miner 是 08:30 UTC 開跑、30-60 分跑完 → 這裡留 1.5 小時以上的餘裕,
 #    確保讀到的是**今天收盤後**的 data/*.json。
 #
+# 🎤 V77.2.7 同一趟也產 data/confcall.json(法說會時間表 + 官方擇要,MOPS mopsov)——
+#    掛在這裡是因為它本來就推 gh-pages + data 兩個分支(陷阱 #41),而且是實測跑得到的 host(⛔ 不新增 cron)。
+#
 # 📌 產物保留:先推 gh-pages(前端立即讀得到),再推 data 分支
 #    → 明天 daily_miner deploy 的 `git archive origin/data` 鋪底層時會自動保留,
 #      不會被 orphan force-push 洗掉(同 fund_sweep.py 的做法)。
@@ -75,6 +78,16 @@ jobs:
           echo "還原 data/*.json:$N 檔"
           [ "$N" -lt 500 ] && { echo "❌ 只有 $N 檔,資料不完整 → 不掃(免得產出殘缺清單)"; exit 1; } || true
 
+      # 🎤 V77.2.7 法說會快照(MOPS mopsov ajax_t100sb02_1 → data/confcall.json)
+      #   ⭐ 刻意排在掃描**之前**、而且不掛 scan_rc 閘門:掃描失敗那天法說會照樣更新(陷阱 #44)。
+      #   ⭐ 累積型(hist)→ 上一步已把舊的 data/confcall.json 從 data 分支還原回來,miner 會合併。
+      #   🚨 `pip install requests` ⛔ 不可省 —— 這支 workflow 其他步驟都是 node/純標準庫。
+      - name: 🎤 法說會快照(時間表 + 官方擇要)
+        continue-on-error: true      # ⛔ 它失敗不該擋掉明日作戰清單
+        run: |
+          pip install -q requests
+          python3 confcall_miner.py
+
       - name: 🌐 安裝 playwright + chromium
         run: |
           npm i -D playwright@1.49.1
@@ -121,24 +134,34 @@ jobs:
         continue-on-error: true      # ⛔ 它失敗不該擋掉明日作戰清單的部署
         run: python3 screener_miner.py
 
-      - name: 🚀 部署 playbook_edge.json 到 gh-pages + data
-        if: steps.scan.outputs.scan_rc == '0'
+      # 🎤 V77.2.7 閘門改成 `!cancelled()`:掃描失敗那天 **confcall.json 照樣要部署**(陷阱 #44:
+      #   一個閘門⛔ 不可掛多個產物)。playbook_edge 只在 scan_rc == 0 才 cp(掃描失敗 → /tmp 沒有它 →
+      #   restore_files 用 `[ -s ]` 守門跳過 → 不會拿還原回來的舊檔冒充新產出)。
+      - name: 🚀 部署 playbook_edge.json + confcall.json 到 gh-pages + data
+        if: ${{ !cancelled() }}
         run: |
           set -e
-          [ -s data/playbook_edge.json ] || { echo "❌ 找不到 data/playbook_edge.json,跳過部署"; exit 0; }
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # data/ 在 main 是 gitignore 的未追蹤檔 → 切分支前要清乾淨,先存到 /tmp
-          cp data/playbook_edge.json /tmp/playbook_edge.json
+          if [ "${{ steps.scan.outputs.scan_rc }}" = "0" ] && [ -s data/playbook_edge.json ]; then
+            cp data/playbook_edge.json /tmp/playbook_edge.json
+          else
+            echo "⚠️ 掃描沒成功(scan_rc=${{ steps.scan.outputs.scan_rc }})→ 這輪不推 playbook_edge.json,只推其他產物"
+          fi
           # ⛔ 快照也要一起推,否則存了等於沒存
           [ -s data/pick_history.json ] && cp data/pick_history.json /tmp/pick_history.json || true
           [ -s data/screener.json ] && cp data/screener.json /tmp/screener.json || echo "⚠️ 沒有 screener.json → 自訂選股這輪不更新(前端會顯示既有日期)"
+          [ -s data/confcall.json ] && cp data/confcall.json /tmp/confcall.json || echo "⚠️ 沒有 confcall.json → 法說會這輪不更新(前端會顯示既有日期)"
+          ls -s /tmp/playbook_edge.json /tmp/pick_history.json /tmp/screener.json /tmp/confcall.json 2>/dev/null || true
+          [ -s /tmp/playbook_edge.json ] || [ -s /tmp/confcall.json ] || [ -s /tmp/pick_history.json ] || { echo "❌ 沒有任何產物可推,跳過部署"; exit 0; }
 
           # ⭐ 三個產物一次放回,⛔ 別在 retry 分支只放回其中一個(那正是以前漏掉快照的原因)
           restore_files () {
-            cp /tmp/playbook_edge.json data/playbook_edge.json
+            [ -s /tmp/playbook_edge.json ] && cp /tmp/playbook_edge.json data/playbook_edge.json || true
             [ -s /tmp/pick_history.json ] && cp /tmp/pick_history.json data/pick_history.json || true
             [ -s /tmp/screener.json ] && cp /tmp/screener.json data/screener.json || true
+            [ -s /tmp/confcall.json ] && cp /tmp/confcall.json data/confcall.json || true
           }
 
           deploy_branch () {
@@ -150,9 +173,9 @@ jobs:
             git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
             mkdir -p data
             restore_files
-            git add -f data/playbook_edge.json data/pick_history.json data/screener.json 2>/dev/null || git add -f data/playbook_edge.json
+            git add -f data/playbook_edge.json data/pick_history.json data/screener.json data/confcall.json 2>/dev/null || git add -f data/playbook_edge.json data/confcall.json 2>/dev/null || true
             if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
-            git commit -q -m "🎯 明日作戰清單 + 榜單快照 + 選股快照 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json data/screener.json
+            git commit -q -m "🎯 明日作戰清單 + 榜單快照 + 選股快照 + 法說會 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json data/screener.json data/confcall.json
             for i in 1 2 3 4 5; do
               if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
               [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
@@ -161,8 +184,8 @@ jobs:
               git reset --hard -q "origin/$BR" 2>/dev/null || true
               mkdir -p data
               restore_files
-              git add -f data/playbook_edge.json data/pick_history.json data/screener.json 2>/dev/null || git add -f data/playbook_edge.json
-              git commit -q -m "🎯 明日作戰清單 + 榜單快照 + 選股快照 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json data/screener.json 2>/dev/null || true
+              git add -f data/playbook_edge.json data/pick_history.json data/screener.json data/confcall.json 2>/dev/null || git add -f data/playbook_edge.json data/confcall.json 2>/dev/null || true
+              git commit -q -m "🎯 明日作戰清單 + 榜單快照 + 選股快照 + 法說會 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/playbook_edge.json data/pick_history.json data/screener.json data/confcall.json 2>/dev/null || true
             done
           }
 

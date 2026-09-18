@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.2.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.2.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.2.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.2.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8585,8 +8585,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.2.6',
+    _APP_VERSION: 'V77.2.7',
     _CHANGELOG: [
+        { v: 'V77.2.7', d: ['🎤 <b>產業作戰室多了「法說會」分頁</b>(你說「把法說會資訊收集起來,新增一個頁面」):上市 + 上櫃的法人說明會時間表、地點、<b>公司自己寫的擇要訊息</b>、簡報檔名、影音連結;可以只看「👜 我的」(庫存 + 自選 + 決策台今天的名單)、今天、未來、已開有內容,也能搜關鍵字。⛔ 只描述,不給多空(法說會前後波動常變大,但方向實測 0 個成立)。', '🔎 <b>深度查詢</b>(你說「貼關鍵字讓 AI 去搜,要有 Meta / Gemini / GPT」):貼關鍵字、可帶上某一檔,選 Perplexity / ChatGPT / Google / Gemini / Meta AI 帶去<b>外部網站</b>查(會上網、用他們的額度)。會先把整段問題複製到剪貼簿再開;Gemini 與 Meta AI 的網址不吃帶字,開了之後貼上就好。', '🚨 <b>順手抓到藏了三個月的錯</b>:採礦一直「法說會 0 場」,真因是打錯資料集 —— 證交所 OpenAPI 那個代碼其實是<b>大股東名稱表</b>,從來不是法說會。現在改走公開資訊觀測站,所以個股頁的「幾天內有法說會」提醒與報告頁 §12 也終於有東西了。'] },
         { v: 'V77.2.6', d: ['📏 <b>個股價格的小數點收乾淨了</b>(你說「現價的小數點怎麼這麼多?」)。真因在<b>資料裡</b>:有一批價格是 <b>float32 殘留</b>(49.0 會變成 49.000633239746094),實測隨機 300 檔有 <b>165 檔(55%)</b>中招。⭐ 採礦端匯出前收到 2 位小數 + 顯示端再收一次(⛔ 只修一邊等於沒修)。⚠️ 除息金額本來就有 4 位小數(1.0746 元),那個<b>沒有動</b>。', '💰 <b>修掉一個會讓人算不出來的矛盾</b>:成績單同一列的「%」是<b>扣過</b>來回成本 0.44% 的,「一張幾元」卻是<b>沒扣</b>的價差 → 出現過「−0.44% 卻 +0 元」。現在兩個同一個口徑,欄名也寫明「一張合計(已扣成本)」。', '🛑 <b>「ATR 為什麼跟唐奇安算出一樣?」——那是對的,不是壞掉</b>,而且畫面現在會直接講:目前已結算的那幾筆<b>都是「停損」出場</b>,而<b>停損是兩種規則共用的那一條</b>(收盤先跌破停損價就走,還輪不到追蹤停利)。要看出差別,得等有訊號是靠<b>追蹤條件</b>出場的。'] },
         { v: 'V77.2.5', d: ['📒 <b>成績單多了兩張分頁</b>(你說「符合進場的也進到成績單裡面,重新回測,用分頁區隔開,另外可以用混搭的方式回測」)。現在是三張:<b>🧬 高基期高波動</b>(決策台「今天可以買的」)、<b>📈 符合進場</b>(看多訊號 + 🧬 同時成立)、<b>🧪 兩張都買</b>(聯集,同一檔只算一次)——每一張都各自比「唐奇安 vs ATR」哪個強。⛔ 三張的筆數不可以相加(問的是不同問題,同一檔可能同時出現在兩張裡)。', '⏳ <b>「📈 符合進場」要從今天這一輪採礦之後才開始累積</b> —— 它要用到每天訊號的「位階/振幅」,而快照以前沒存那兩欄;⛔ 以前的日子重建不出來,畫面會誠實寫出起算日,⛔ 不硬湊。', '🐛 <b>順手修掉一個藏很久的</b>:快照裡每天訊號的「打法名稱」<b>一直都是空的</b>(讀錯欄位名)—— 而「符合進場」要靠打法名稱把<b>實測沒用的那幾招</b>(撿便宜/補漲/布林壓縮…)擋掉,名稱是空的就整個擋不掉。', '🧽 <b>雜訊清單的掃把圖示拿掉了</b>(你要求的)。'] },
         { v: 'V77.2.4', d: ['🕶️ <b>決策台那四行說明改成折疊</b>(你說「刪除,我不想讓其他人知道我怎麼操作及為何挑選」)。⭐ <b>折疊起來截圖就看不到</b>,但你自己點「📖 使用說明」還是打得開 —— ⛔ 沒有真的刪掉,因為「不是開盤買」「要漲過觸發價」那兩條是<b>會賠錢</b>的護欄,你自己也需要。', '📒 <b>產業作戰室的「釣魚池」整組下架,改名「📒 成績單」</b>(你說「這幾次看起來我覺得沒有用」)。魚池動畫 / 拋竿 / 列表 / 點魚細節 / 漁獲籃<b>全部移除</b>,只留<b>決策台推薦成績單</b>,說明也搬到這裡。⚠️ 漁獲籃你自己存的那些紀錄<b>一個字都沒刪</b>(只是不顯示了),日後想復原資料還在。', '🏆 <b>新增「兩種出場,哪個比較強?」</b>(你說「出場規則除唐奇安還要有 ATR,我要最強績效實測」)。<b>同一批推薦、⛔ 只換出場</b>,唐奇安 20 日 與 ATR 追蹤各算一次,並排比 每趟平均 / 勝率 / 一張合計 / 中途最多賠;你現在用的那條會標出來。⚠️ <b>樣本不到 10 筆時⛔ 不會宣布誰比較強</b>。', '📊 摺疊區裡寫著 <b>49 個月正式回測</b>:唐奇安 20 日 <b>+590 萬</b>(中途最多賠 −25.2%)・ATR K=2 <b>+531 萬</b>(中途最多賠 <b>−20.0%</b>,全表最小)—— 兩條都六關全過,<b>賺比較多的是唐奇安、賠比較少的是 ATR</b>。', '🎨 <b>版面照你說的改</b>:長說明全部折疊(第一眼字數少了三成)、狀態濃縮成一行、三段用顏色分開 —— 📌 持有中<b>天藍</b>(會變)/ 🧾 已結算<b>灰</b>(定了)/ 🏆 出場比較<b>青</b>。⛔ 顏色講的是「這一段是什麼」,不是好壞。'] },
@@ -24994,7 +24995,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         rows.push(this._rpRow('🗓️ 月營收', `${this._dW(nr)} 前公布上個月${_aff('月營收')}`));
         rows.push(this._rpRow('💰 除權息', C.isEtf ? this._rpNa('ETF 配息另有頁') : (up ? `${this._dW(up[0])} 配 ${up[1]} 元(公司公告,可能變更)` : (lastDiv ? `目前沒有公告中的除息日;最近一次 ${this._dW(lastDiv[0])} 配 ${lastDiv[1]} 元` : this._rpNa(D ? '本站沒有這檔的除權息紀錄' : '本站除權息檔還沒載入')))
             + (up ? _aff('除息') : '')));
-        rows.push(this._rpRow('📢 法說會', earn ? `${this._dW(earn.date)}(${earn.days === 0 ? '就是今天' : `${earn.days} 個交易日內`})${_aff('法說')}` : `${this._rpNa('本站沒抓到(法說會沒有免費結構化來源)')} <button onclick="app._openFreeAiStock('earnings'); app.vibrate?.(20);" class="text-[10px] text-amber-300 border border-amber-700/50 rounded px-1">🔎 查</button>`));
+        rows.push(this._rpRow('📢 法說會', earn ? `${this._dW(earn.date)}(${earn.days === 0 ? '就是今天' : `${earn.days} 個交易日內`})${_aff('法說')}` : `${this._rpNa('本站沒抓到(法說會一覽表這 60 天內沒有這一檔)')} <button onclick="app._openFreeAiStock('earnings'); app.vibrate?.(20);" class="text-[10px] text-amber-300 border border-amber-700/50 rounded px-1">🔎 查</button>`));
         const dec = C.dec;
         const cur = (dec && Array.isArray(dec.lines)) ? dec.lines.find(x => x.cur) : null;
         const ind0 = (this._scrData && this._scrData.ind) ? this._scrData.ind[sym] : null;
@@ -27929,29 +27930,24 @@ ${this._reportFacts(sym)}
     },
     // 📞 法說會 K線標記:前端直抓 TWSE OpenAPI 法人說明會一覽(t187ap02,公開 API,零採礦),篩本股日期
     async _loadEarningsCalls(sym) {
+        // 🎤 V77.2.7 改讀採礦產物 `data/confcall.json`(MOPS mopsov 法人說明會一覽表,含 hist 累積)。
+        //   🚨 舊版前端直打 TWSE OpenAPI t187ap02_L/_O(+ allorigins 中繼)—— 探針證實 t187ap02 是
+        //   **大股東名稱表**,從來不是法說會 → 那段三個月來一筆都沒對到。⛔ 不再打第三方中繼。
         if (this._earnCallCache && this._earnCallCache.sym === sym) return this._earnCallCache.list;
-        const urls = ['https://openapi.twse.com.tw/v1/opendata/t187ap02_L', 'https://openapi.twse.com.tw/v1/opendata/t187ap02_O'];
-        const grab = async (u) => {
-            for (const f of [u, `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`]) {
-                try { const r = await fetch(f, { signal: AbortSignal.timeout(8000) }); if (r.ok) { const j = await r.json(); if (Array.isArray(j)) return j; } } catch (_) {}
-            }
-            return null;
-        };
         const list = [];
         try {
-            for (const u of urls) {
-                const rows = await grab(u);
-                if (!Array.isArray(rows) || !rows.length) continue;
-                const ks = Object.keys(rows[0]);
-                const kDate = ks.find(k => k.includes('說明會') && k.includes('日期')) || ks.find(k => k.includes('法說') && k.includes('日期')) || ks.find(k => k.includes('日期'));
-                const kCode = ks.find(k => k.includes('公司') && k.includes('代號')) || ks.find(k => k.includes('代號'));
-                const kTime = ks.find(k => k.includes('時間'));
-                if (!kDate || !kCode) continue;
-                for (const r of rows) {
-                    if (String(r[kCode] || '').trim() !== String(sym)) continue;
-                    const dt = this._parseTwseDate(r[kDate]);
-                    if (dt) list.push({ date: dt, time: String((kTime && r[kTime]) || '').trim() });
-                }
+            if (this._confcallCache === undefined) {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL('data/confcall.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(9000) });
+                this._confcallCache = r.ok ? await r.json() : null;
+            }
+            const D = this._confcallCache;
+            if (D) {
+                const seen = new Set();
+                const push = (d, t) => { const k = String(d || '').replace(/-/g, '/'); if (k && !seen.has(k)) { seen.add(k); list.push({ date: k, time: String(t || '') }); } };
+                for (const r of [].concat(D.upcoming || [], D.recent || [])) if (r && String(r.s) === String(sym)) push(r.d, r.t);
+                for (const d of ((D.hist || {})[String(sym)] || [])) push(d, '');
+                list.sort((a, b) => (a.date < b.date ? -1 : 1));
             }
         } catch (_) {}
         this._earnCallCache = { sym, list };
@@ -42423,8 +42419,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 }
             }
         }
-        // 📞 法說會 K線標記已移除:TWSE OpenAPI t187ap02 實測後端也抓不到逐檔法說會(生產 macro_risk 只有硬排的旺季/台積電),
-        //    MOPS 需 POST 表單爬取且無法在此環境實測 → 法說會改用個股頁「Perplexity 查好壞」鈕(_openFreeAiStock 'earnings')。
+        // 📞 法說會 K線標記已移除(V71.x)。⚠️ V77.2.7 更正當年的歸因:t187ap02 抓不到不是「後端也抓不到」,
+        //    是那個資料集根本是大股東名稱表;法說會現在走 data/confcall.json(MOPS mopsov,confcall_miner.py),
+        //    個股頁提醒 / 報告頁 §12 已接上;K 線旗標仍不畫(那次下架的理由 —— 版面 —— 沒變)。
 
         // 💰 現價右軸標籤(對標籌碼K線):最新收盤畫淡虛線,右端貼現價色塊(紅漲綠跌 vs 昨收)
         try {
