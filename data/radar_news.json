@@ -1,7 +1,34 @@
 {
-  "updated": "2026-09-18 14:53 UTC",
+  "updated": "2026-09-18 15:28 UTC",
   "count": 15,
   "data": [
+    {
+      "source_name": "自由財經",
+      "title": "美藍莓揮軍中國被偷光！台灣農業西進教訓太慘痛 立院紀錄歷歷在目",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5578756",
+      "published_time": "Fri, 18 Sep 2026 22:17:31 +0800",
+      "matched_keywords": [
+        "侵權"
+      ],
+      "cat": "🛡️ 資安法律",
+      "ai_sentiment": "利多",
+      "ai_reason": "美國莓果公司揮舞歐洲農業，台灣農業受到影響",
+      "title_zh": "繁體中文標題",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "仁寶每股18.5元收購鋐寶　溢價18.21%將私有化下市",
+      "link": "https://www.cna.com.tw/news/afe/202609180290.aspx",
+      "published_time": "Fri, 18 Sep 2026 21:03:47 +0800",
+      "matched_keywords": [
+        "收購"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "收購提升資源整合，預期營運效益提升",
+      "important": true
+    },
     {
       "source_name": "自由財經",
       "title": "10月電價「暫凍」！立院撥補落空12月電價恐補漲",
@@ -11,8 +38,8 @@
         "戰爭"
       ],
       "cat": "🌍 地緣管制",
-      "ai_sentiment": "利空",
-      "ai_reason": "電價暫凍恐補漲，加重企業成本",
+      "ai_sentiment": "中立",
+      "ai_reason": "電價暫凍但未來可能補漲",
       "important": true
     },
     {
@@ -25,7 +52,7 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "市場解讀利空出盡，國際油價回落",
+      "ai_reason": "熱錢回流、油價回落提振情緒，台股匯雙升",
       "important": true
     },
     {
@@ -38,7 +65,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "工會高票罷工，顯示勞資衝突",
+      "ai_reason": "員工對未來工作安排不滿意",
       "important": true
     },
     {
@@ -52,33 +79,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "上市募資215億，提升資金與市場能見度",
-      "important": true
-    },
-    {
-      "source_name": "中央社財經",
-      "title": "日銀升息至1.25%　日銀總裁：不排除連續或擴大升息",
-      "link": "https://www.cna.com.tw/news/afe/202609180242.aspx",
-      "published_time": "Fri, 18 Sep 2026 18:15:00 +0800",
-      "matched_keywords": [
-        "新高"
-      ],
-      "cat": "📈 股價異動",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
-      "important": true
-    },
-    {
-      "source_name": "科技新報",
-      "title": "只花 22 天，通用汽車交付首批愛國者三型飛彈零組件給洛馬",
-      "link": "https://technews.tw/2026/09/18/gm-defense-delevered-first-batch-of-pac-3-mse-compartments-to-lockheed-martin/",
-      "published_time": "Fri, 18 Sep 2026 09:04:04 +0000",
-      "matched_keywords": [
-        "戰爭"
-      ],
-      "cat": "🌍 地緣管制",
-      "ai_sentiment": "利多",
-      "ai_reason": "美國防務需求上升，相關供應鏈受惠",
+      "ai_reason": "現金增資收足股款，顯示市場需求強勁",
       "important": true
     },
     {
@@ -98,19 +99,6 @@
       "important": true
     },
     {
-      "source_name": "中央社財經",
-      "title": "油價回落緩解通膨疑慮  亞股追隨美股多收紅",
-      "link": "https://www.cna.com.tw/news/afe/202609180195.aspx",
-      "published_time": "Fri, 18 Sep 2026 16:50:17 +0800",
-      "matched_keywords": [
-        "油價"
-      ],
-      "cat": "💱 匯率成本",
-      "ai_sentiment": "利多",
-      "ai_reason": "油價下跌降低成本，提振股市",
-      "important": true
-    },
-    {
       "source_name": "自由財經",
       "title": "獨吞蘋果與聯發科大單！韓媒：2奈米賽道台積電擴大領先群倫",
       "link": "https://ec.ltn.com.tw/article/breakingnews/5578432",
@@ -120,7 +108,7 @@
       ],
       "cat": "🧪 技術突破",
       "ai_sentiment": "利多",
-      "ai_reason": "台積電獲得蘋果與聯發科大單，擴大領先優勢",
+      "ai_reason": "台積電獲蘋果、聯發科2奈米訂單",
       "important": true
     },
     {
@@ -135,7 +123,46 @@
       ],
       "cat": "🧪 技術突破",
       "ai_sentiment": "利多",
-      "ai_reason": "提升AI晶片產能，帶動台灣封裝廠商需求",
+      "ai_reason": "提升AI晶片產能，利好台積電與封裝廠",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "央行不升息、房貸再鬆綁！專家示警：政府補貼遮掩通膨，恐迎新一波漲價潮",
+      "link": "https://tw.news.yahoo.com/%E5%A4%AE%E8%A1%8C%E4%B8%8D%E5%8D%87%E6%81%AF-%E6%88%BF%E8%B2%B8%E5%86%8D%E9%AC%86%E7%B6%81-%E5%B0%88%E5%AE%B6%E7%A4%BA%E8%AD%A6-%E6%94%BF%E5%BA%9C%E8%A3%9C%E8%B2%BC%E9%81%AE%E6%8E%A9%E9%80%9A%E8%86%A8-%E6%81%90%E8%BF%8E%E6%96%B0-150353512.html",
+      "published_time": "Fri, 18 Sep 2026 15:03:53 +0800",
+      "matched_keywords": [
+        "漲價"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "央行維持低利率、放寬房貸，提振市場",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "AI伺服器拉貨狂潮 這檔ETF重倉韓股半導體",
+      "link": "https://tw.news.yahoo.com/ai%E4%BC%BA%E6%9C%8D%E5%99%A8%E6%8B%89%E8%B2%A8%E7%8B%82%E6%BD%AE-%E9%80%99%E6%AA%94etf%E9%87%8D%E5%80%89%E9%9F%93%E8%82%A1%E5%8D%8A%E5%B0%8E%E9%AB%94-150015669.html",
+      "published_time": "Fri, 18 Sep 2026 15:00:15 +0800",
+      "matched_keywords": [
+        "拉貨"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI伺服器拉貨推升半導體需求",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "美股「四巫日」4大指數僅費半漲1.2%！晟碟飆5％突破1700美元、台指期夜盤站穩47K",
+      "link": "https://tw.stock.yahoo.com/news/%E7%BE%8E%E8%82%A1-%E5%9B%9B%E5%B7%AB%E6%97%A5-4%E5%A4%A7%E6%8C%87%E6%95%B8%E5%83%85%E8%B2%BB%E5%8D%8A%E6%BC%B21-2-%E6%99%9F%E7%A2%9F%E9%A3%865-150000045.html",
+      "published_time": "Fri, 18 Sep 2026 15:00:00 +0800",
+      "matched_keywords": [
+        "突破"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "美股「四巫日」，其中4大指數僅費半漲1.2%。標題為「美股「",
       "important": true
     },
     {
@@ -150,7 +177,8 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "連續四天漲停、EPS翻倍，市場預期佳",
+      "ai_reason": "大甲股價飆漲，因其中獨立分析師葉育碩解釋為20字內具體原因，",
+      "title_zh": "大甲公司的8月EPS達0.83元，年增逾2倍，以及其供應鏈和半導體領導品牌影響。",
       "important": true
     },
     {
@@ -162,8 +190,8 @@
         "營收"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利多",
+      "ai_reason": "新作預估營收20億，提振股價",
       "important": true
     },
     {
@@ -176,34 +204,8 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "全球能源供應受到影響，台灣受到柴油供應相關消息，對台股個股/",
-      "title_zh": "標題為繁體中文，如果不是，則為空字串。",
-      "important": true
-    },
-    {
-      "source_name": "Yahoo 即時財經",
-      "title": "800VDC明年Q1量產！宏致AI營收明年再拚倍增　八大公股卻反手倒貨逾2千張、提款3.5億元",
-      "link": "https://tw.stock.yahoo.com/news/800vdc%E6%98%8E%E5%B9%B4q1%E9%87%8F%E7%94%A2-%E5%AE%8F%E8%87%B4ai%E7%87%9F%E6%94%B6%E6%98%8E%E5%B9%B4%E5%86%8D%E6%8B%9A%E5%80%8D%E5%A2%9E-%E5%85%AB%E5%A4%A7%E5%85%AC%E8%82%A1%E5%8D%BB%E5%8F%8D%E6%89%8B%E5%80%92%E8%B2%A8%E9%80%BE2%E5%8D%83%E5%BC%B5-%E6%8F%90%E6%AC%BE3-5%E5%84%84%E5%85%83-143000956.html",
-      "published_time": "Fri, 18 Sep 2026 14:30:00 +0800",
-      "matched_keywords": [
-        "營收"
-      ],
-      "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "宏致AI動能升溫，800VDC明年Q1量產",
-      "important": true
-    },
-    {
-      "source_name": "Yahoo 即時財經",
-      "title": "高仙桂：政府責任是加快擴散AI紅利到全產業",
-      "link": "https://tw.stock.yahoo.com/news/%E9%AB%98%E4%BB%99%E6%A1%82-%E6%94%BF%E5%BA%9C%E8%B2%AC%E4%BB%BB%E6%98%AF%E5%8A%A0%E5%BF%AB%E6%93%B4%E6%95%A3ai%E7%B4%85%E5%88%A9%E5%88%B0%E5%85%A8%E7%94%A2%E6%A5%AD-142009941.html",
-      "published_time": "Fri, 18 Sep 2026 14:20:09 +0800",
-      "matched_keywords": [
-        "突破"
-      ],
-      "cat": "🧪 技術突破",
-      "ai_sentiment": "利多",
-      "ai_reason": "AI紅利推升經濟成長與出口，提振股市",
+      "ai_reason": "全球能源供應受到影響，加上美國對俄羅斯制製柴油限制，導致柴油",
+      "title_zh": "標題為繁體中文時，則為繁體中文；如果標題已經是繁體中文，則為空字串。",
       "important": true
     }
   ]

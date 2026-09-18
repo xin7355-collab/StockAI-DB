@@ -1,95 +1,95 @@
 {
-  "updated": "2026-09-18 14:54 UTC",
+  "updated": "2026-09-18 15:28 UTC",
   "items": [
     {
-      "source": "🌍 地緣突發",
-      "title": "Opinion | The Iran war has disrupted oil markets. The fallout goes beyond that. - The Washington Post",
-      "url": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxQSUFTUEJEVTBQQ2VkUDVGcGx4bXUxdzZEZXk2Si05VEFySnpFYU1zZUZpRWtqYTRQdGZqX29QUGNuSFZlQm5UR1MtRW44RmJyaWwtQUhSYVhlMXVPSjBlclY0NW9yVUlzZFlyUHhXRHFhMGhVQ0daSjlKbm1fQUFNRTJ6c0hHT3NTeXRtRWo3bzU5MFlfMWljcDZfc0NrMTZ1WW43T2dyOXdNcC10QURzV3RBdkc1dHN2?oc=5",
-      "published": "Fri, 18 Sep 2026 14:46:58 GMT",
-      "title_zh": "伊朗戰爭擾亂石油市場，影響遠不止於此",
-      "impact": "伊朗戰爭可能推高原油價格，增加企業成本，對台股產生負面影響。",
+      "source": "🔥 停產事故",
+      "title": "Fire at Monterey County's Moss Landing power plant - KTVU",
+      "url": "https://news.google.com/rss/articles/CBMifEFVX3lxTE1BZDZ4b2txSzlaSFF3V1FYQnVuZ3YxYVhCZ2Ita1ViRWtXYUhRSlBNUTluS0gxUmI3a1ExR0RjWTBxWGpWRVI2akZhZXUzanpsWmdTOVJ4YlVCT0ZZWUxZTXRvc3JYMUlBNmdzSDhlUmg2MzVmYndiaDhiVljSAYIBQVVfeXFMT2RsTEtBSDE4Y0daNXJOdW9GSXFDcXlEbE9yVGE0bHpoWkJfYUNhTGZybnRWUkhaNE1EVlM5b0tWckdFWHpIZ1BhLWltclctdnJrLUhjdlVVdVp5WE9vNWlkYlZURFJKcE5wZjBIQk9JTHZWeE1LY3dYcG9rbVdXZDNqZw?oc=5",
+      "published": "Fri, 18 Sep 2026 15:18:34 GMT",
+      "title_zh": "蒙特雷縣莫斯登陸發電廠發生火災",
+      "impact": "此新聞因屬美國發電廠火災，對台股影響有限，屬中性。",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🔥 停產事故",
+      "title": "New fire breaks out at Moss Landing Power Plant; shelter-in-place order issued - CBS News",
+      "url": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxOc3JLU1Q1WWVQZHFvdjVVbFJUVnNqWkpBRDhQb0Mtc0FmMWU1RDFNaTlhVDZxcTJmSTJoUGRDcTZ0d3hkZmE4UVE1QnROMnVUaUpHQ19vR1didkF0WkF5YzJsTTVDckhZdXR6WWlkYXBidUVuQUhMNE5wYTVtTHEwc3lvS1BuLTFMcFpKZWFMeVpKb3J6VkdnVWI0emNPNDc1aDJveTRtMVdUWGM?oc=5",
+      "published": "Fri, 18 Sep 2026 15:11:52 GMT",
+      "title_zh": "莫斯登電廠新起火，停留令發布",
+      "impact": "美國電廠起火，對台股影響有限，市場波動性略升。",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🌍 油價航運",
+      "title": "London's marine insurers widen Black Sea high risk zone as shipping attacks surge - reuters.com",
+      "url": "https://news.google.com/rss/articles/CBMivwFBVV95cUxQeXlmVzdNeTJQLWVtVFFQendmQVlpclp5NjBfdWhoeTNGNGgzNnlQTG9iMThuUmd6RHJIejQ2a0JHNEsxVjQtcFg4QzVnbEFDVlAzcTQwS0VLeXFEZFhJNDJzWWt0SnN2c2ZvOVpDZHp6V1RybnhQb3Q0YnZYS2dhdzdVUkYyeldZWFRub1prMmJKSTNFNS1EVXNmQ0lCZ3Y5Z1BPTGYxUVNCVGJ2THc4YlA1dzllUVlSYzlBdmNzbw?oc=5",
+      "published": "Fri, 18 Sep 2026 15:08:21 GMT",
+      "title_zh": "倫敦海運保險商擴大黑海高風險區",
+      "impact": "黑海航運風險升高，可能拖累台灣航運與相關出口企業股價。",
       "impact_level": "bearish"
+    },
+    {
+      "source": "AMD Amazon",
+      "title": "Intel’s 14A Process Is Currently Being Evaluated By Amazon, Apple, AMD, Google, Tesla, Microsoft, NVIDIA, And Qualcomm, According To Piper Sandler - Wccftech",
+      "url": "https://news.google.com/rss/articles/CBMi8AFBVV95cUxOMkdpYlRLNTRjUVZOSHI5UFlsRHUxMDFlUFhwYU5NUy1mbU5VQkZmYW5ZdU1qdmJkMjJUZkE0LWFLRW8xM2Ytc09aZ0VEVEdERWhmcmdXU2p4QW15Wlo0eWt2cHduYjZhN1czZC1PblFsMWpxSGIybW9raFhFTnpXMnlRb1VzVmhzZlY1TVhHcTFodklCTkdHZU9WSkJvVDJ6NHpuWlJuOU81N21VOFEwelhqVEVJVUgzSnpzRkYwbFllQlZHVERaTXFLb3MyWGR0aHR1eTllaE5fcFQ0c053b2dSbzdXOVhuMmhobGdDZGrSAfYBQVVfeXFMTzlZSXIteHFYTWRtOHM5T19ZNENELU9wNldickozOXpDNGgzSjZzV0E2UzhrSnEycFNuNXdiNEJNSUlMN3BCc0JVSTR0dDhRdlNTdm5adkpsYklqTUwydXVRRGt4QnFMRkNfR2ZxUnJyclhycWYzNUw5Rm1wMk9LdUhkazdaVTktQ0RucS1DcUR0UXhBSGlrUFNkdk1kbl94cVBabERkY1BzS2pQSzZGWHIxR0QwZHBsRjZoZkxxWDhOWGJKaktYeHQ2NEloT0ZGUVdzbU92TmVsN0ZLLTJUYU5hazVTZ1dac2QxZjBDckhraHlJMWJn?oc=5",
+      "published": "Fri, 18 Sep 2026 15:06:54 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🔥 停產事故",
+      "title": "New fire erupts at Moss Landing battery power storage plant along Monterey Bay that burst aflame in 2025 - The Mercury News",
+      "url": "https://news.google.com/rss/articles/CBMi3AFBVV95cUxORFp5MEkzVlRoS1hsaENiMms4RWRNM3l3NXllYTZna3B3ZkNicGZnVGNZN2pQMU1IRmNHUTdRRFBEMTgzN0ZCY3lfWS0zWTUwX2k5Ul9HN0YxSjJVUFV3R2phWXJ5QlVVbXVLSF9ldm9FcEIyMjRCREtoLWppeDJVRGQ4SWdZX3I4TWQ0eTlLSWlCbVpVUkxVNnBwTTdPc08yVEQwMzdGdUJOb1h4UEZnRkxZbzFTYy0zQW1Ma3p2SnJiSnlaa0o5MmRmSTNjX0xDMmY1bTZZVDgyMzVC0gHiAUFVX3lxTE9CbEp5bzRXYkZydTFhSDF0NlVOZUNDcnhYOXNvRFJYWVBvVkpqdGJKMVY0Rkd2SmJDR0VZcEZZeDBFTmNJMkZrUVdSY1Jydm9QVEV1WXJ1bDR2MGJpcGgxLVFIWWgxdVJ1RnBNOHNuTW9wOTVpSTNoODNCVFItYUJxOXJNVHQ4ZzE1N1hTYmp4MGR6YVp1MXhXcXhaTGZKYkJwWG5uR3BDVVpYY3pmTm5icV9WeG1qXzVHZTBmbFBZbzRhMUlieFhuUER4ajFOUUdpLXA2X3BrMGFaUGFDOVJRblE?oc=5",
+      "published": "Fri, 18 Sep 2026 15:00:29 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🧪 技術突破",
+      "title": "A humanoid joins UM’s RoboCanes team - Refresh Miami",
+      "url": "https://news.google.com/rss/articles/CBMidEFVX3lxTE9aY2lGbXdHR3hPSzRiT2ZsZE0yTVA5MkhNeWJtMThCT25FOTVqd2FPVTRhZThuOVQwbmg4cjMwQ2ZHb0pncDByR0hjSEFYYjdrZnZia0pHTzludGdEbkdobWZUTmstWFdvU1pyYnpJaWdQbUhP?oc=5",
+      "published": "Fri, 18 Sep 2026 15:00:00 GMT",
+      "title_zh": "邁阿密大學機器人隊加入人形機器人",
+      "impact": "此為單一學術機構的體育或科研動態，與台股市場無直接關聯。",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🔥 停產事故",
+      "title": "Structure fire reported near Moss Landing battery storage facility; shelter-in-place issued - KSBW",
+      "url": "https://news.google.com/rss/articles/CBMijwFBVV95cUxPSkl0ZWE3eVh0YnM3ODNRWVBINVZqMC1zTWprX2t5ZDRaWkhVM3B3UkU3Wkc4ZmlQZnV1TzhveUF1NzY4ZVhCUlFIZ3lOY2dRc01UYmlYTlVJR25hQnRuazNnWFkwZXZPY2VDSVdwaE1WeEE5MXFfLXE2LWptZXRaS05XaExoSklmb0prbnJZWQ?oc=5",
+      "published": "Fri, 18 Sep 2026 14:38:00 GMT",
+      "title_zh": "摩斯蘭丁電池儲能設施附近火災",
+      "impact": "事件規模有限且未提及重大損失，對台股的整體影響極小。",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "📊 巨頭財報",
+      "title": "The Memory Market Could Be Entering a Golden Age for Micron - 24/7 Wall St.",
+      "url": "https://news.google.com/rss/articles/CBMi1AFBVV95cUxNX1EyY2VLdFpacWNva1F2WllsOVZHZFJpX2QtSVNxR0FKQXJnMTRuWnR5a2JWOVVaaUMxMWlNeU5HOHJBOG55SGFmZzdDZVdscUg0a0JDNmFiTElQTWFfZE9xcHdUMDFVTFM2WmE4ZjR0YmNaeGUzMlI2SnBsVDRSNmNXTmZOa3hlVHhIcmg2OFhWZVo1cU55dExPSjRmQ3EyWDZCajRjVU9ZTXR6ejhlMVlRaEI3SGhkQ1VlYUlDWW1FWVhxQm9jRldUa1czM28zQjZGRA?oc=5",
+      "published": "Fri, 18 Sep 2026 14:30:00 GMT",
+      "title_zh": "可能前往金時代的記憶市場 - 24/7 Wall St。",
+      "impact": "這樣的新聞可能會擴大台灣股市的波劃感，因為可能會提高台灣公司",
+      "impact_level": "bullish"
     },
     {
       "source": "🏢 雲端巨頭",
       "title": "New experts join Google’s AI & Economy team - blog.google",
       "url": "https://news.google.com/rss/articles/CBMikgFBVV95cUxNOHJIemhiNW1UUFU5UTFCNWktTlAxUXROaGZiZC03NjlLeFdTVHYyS0JmQVVGVXBScThnaHlWMTllX2xnc0pXTkxLLUx2aExkeHZPcXVEREVucE5zZ1dBMkdCTFFVaDBlWXJRaEFLWjZQcGQ3RHc0VlVrREh0UE9xNDBDZHJyTTE3YmFzTmRiZTdiUQ?oc=5",
       "published": "Fri, 18 Sep 2026 14:18:24 GMT",
-      "title_zh": "Google AI經濟團隊新增專家",
-      "impact": "強化AI技術佈局，利好科技股情緒。",
+      "title_zh": "新專家加入Google AI與經濟團隊",
+      "impact": "Google 強化 AI 與經濟研究，提升對 AI 應用需求",
       "impact_level": "bullish"
-    },
-    {
-      "source": "🔥 停產事故",
-      "title": "Flames visible near Moss Landing battery storage plant; shelter-in-place issued - KSBW",
-      "url": "https://news.google.com/rss/articles/CBMijwFBVV95cUxPSkl0ZWE3eVh0YnM3ODNRWVBINVZqMC1zTWprX2t5ZDRaWkhVM3B3UkU3Wkc4ZmlQZnV1TzhveUF1NzY4ZVhCUlFIZ3lOY2dRc01UYmlYTlVJR25hQnRuazNnWFkwZXZPY2VDSVdwaE1WeEE5MXFfLXE2LWptZXRaS05XaExoSklmb0prbnJZWQ?oc=5",
-      "published": "Fri, 18 Sep 2026 14:16:00 GMT",
-      "title_zh": "摩斯蘭丁儲能廠現火情，發布就地避難令",
-      "impact": "事件屬局部災情，未直接影響台股整體基本面，市場反應中性。",
-      "impact_level": "neutral"
     },
     {
       "source": "🌍 地緣突發",
       "title": "Hundreds of thousands attend Iran's biggest government-organized rally since the war began - AP News",
       "url": "https://news.google.com/rss/articles/CBMijgFBVV95cUxQelhtVHdQX01KdzBfMHR6ejFoWW55ZWhqbnZ1ZVJtSVR6NWo0dmNOTFVpbmZhQlFKRC11aDd6WnlsbmYzYjFsWUgtcWt2VW54Qmk4c08yQWotUXVTZXJpLURfSXVseGdmWlNhNHFUN3hwVmJSbzF5UjRCZm8weGNsZ2U5TE50V09hcGxXOFhR?oc=5",
       "published": "Fri, 18 Sep 2026 14:13:00 GMT",
-      "title_zh": "伊朗戰爭以來最大政府集會",
-      "impact": "對台股影響有限，屬中性。",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "📊 巨頭財報",
-      "title": "Micron Is Poised to Surge After Its Fiscal Year Ends - Yahoo Finance",
-      "url": "https://news.google.com/rss/articles/CBMinAFBVV95cUxQeU9UNzBCZlI5MzlSYTk0UWoyQlc0aUJMT1N3ZXJ4ZkFIVW1TWW5TTjUyMzU2T09RczV4cEstaEZZTExEMExtaU52UzlNa2hLMFI2WDBSaDhxSmQtNU5TUWp2Nk9ZSjF5Q1lsc1laUkNTMC05YzBsQ0pwODlzWDRVLU1wRk05QkNUQjFhaUZVTjZDR19OSTZSd29VanA?oc=5",
-      "published": "Fri, 18 Sep 2026 13:52:00 GMT",
-      "title_zh": "微科將後半年結束後翻倍 - 蘋果財報",
-      "impact": "微科將結束後的積累可能導致股價翻倍，這對台股有明顯的擴大意義",
+      "title_zh": "大會上千萬參加最大型政府組織的台灣活動 - AP News",
+      "impact": "台灣股市可能擁有歷史性的股市波動，因為參與者可能會擁抱歐洲市",
       "impact_level": "bullish"
-    },
-    {
-      "source": "韓股記憶體",
-      "title": "Micron Stock: China’s CXMT Memory-Chip Push Is More of a Problem for SK Hynix - Barron's",
-      "url": "https://news.google.com/rss/articles/CBMikgFBVV95cUxNT2U5MHV4WFJ5YUlTZnNxQVc0SUpRQXlQUVRoMS1hVEE3ejZBdi1Zbm5VUXFzZV9idmVZLTZTcWxYamxON0ltb0lUb053QkVkQlpiaWRMb2FwM25semNtTHBCSFBhT1NhUzRRaHUyZUVNd1k4ZTlyS1pRTmo0UExNOG5LSUd1b0FFQ0pRTWtPQ2p5UQ?oc=5",
-      "published": "Fri, 18 Sep 2026 13:51:00 GMT",
-      "title_zh": "美光：中國CXMT衝擊SK海力士大於美光",
-      "impact": "中國CXMT的競爭壓力主要針對SK海力士，對台股的直接影響有",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "📊 巨頭財報",
-      "title": "XLK, Oracle and AMD Forecast: Tech Stocks Eye Breakouts - FXEmpire",
-      "url": "https://news.google.com/rss/articles/CBMipwFBVV95cUxNZUNURXJwcTVpb3VVekpjU1dTQk1YSnREY19xajhKWHdzakplelN3Rl9UQ3A0U1VpQmhtWHVna3AxQ2J4RmFBZjU0R21rZHduUXlUZERPdmlXeVZGclRNR0s0aUo4Z2Y5X2VtN1prZHRkcUFFRUJPZFpQMWRydWhhT3VqRkpzcDB0SWxtZm5TR3V5M25ZbU82TkFhdjFmYzBuWl9KY2lFbw?oc=5",
-      "published": "Fri, 18 Sep 2026 13:36:46 GMT",
-      "title_zh": "台股目標前景：技術股票追求破壞 - FXEmpire",
-      "impact": "台股可能會因此而得到少量增長，預期市場反應正面。",
-      "impact_level": "bullish"
-    },
-    {
-      "source": "🧪 技術突破",
-      "title": "Figure introduces new humanoid robot neural network - Interesting Engineering",
-      "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNVXZCZzlpREZtd0ppSW1EQTJ4NXMtbUpqaHZzVDVsdS1tTXhPQm83RkI3SkNMaXRDRHFqSVpCZ2ZGSFp6RkhNRVNjTW5zN0tUXzJzY2lpQVB2TFFVcE9GZXl4dlgtS3pVTWZJVGFJaUxCMlpxQlRXWUMxaTE3V2R6SFAzOXByek5HalVFM2p0bmt1NTZPRHdZNQ?oc=5",
-      "published": "Fri, 18 Sep 2026 13:36:32 GMT",
-      "title_zh": "Figure推新人形機器人神經網絡",
-      "impact": "人形機器人技術突破可能帶動相關供應鏈及AI硬體需求，對台股科",
-      "impact_level": "bullish"
-    },
-    {
-      "source": "🌍 地緣突發",
-      "title": "Diesel prices at record highs amid Strait of Hormuz disruption, Russia-Ukraine war - ABC News - Breaking News, Latest News and Videos",
-      "url": "https://news.google.com/rss/articles/CBMipwFBVV95cUxQMWhrQktkWU9SZWhWejBvY3owTjZTbm1Kc2ZyMzVSR1loM0M5MnZYbHFwalhPRGk5QjBLZGRVeW1ERmpSc1J3ZUVJNDVURXlOdVk1Y1lzd3oxdG04Snd4WWVGRmtvdjlOb3JOZ194anh2Tlo1NHJjSWhfRmZYRU9wb3F4LUVSUVdXN01KQjR0LWg5V3ZzN3VSMUI2NWFWMHNwUUZfUDd4UdIBrAFBVV95cUxOSWNFSVg2VURmbm05bEFVeGYtUDFkYkt0RkNMZThQYXZhdUROTlVJM09kRm83OW5mWEVzUXZJRGRKRWhmVGIwaUVIdjN3V1puZlA4d3hHV2dlNF9TUmxfWGh0dVREb1FsS0tmMUt2N1NfbzJuN1o2cjNtVi1rZjlLNElSeWdlR05LOXV6YXZjLUN6SXhZTGJmckdWcGNTZnlkM3lkRzh6VW0zTVh4?oc=5",
-      "published": "Fri, 18 Sep 2026 13:24:13 GMT",
-      "title_zh": "霍爾木茲海峽動盪致柴油創新高",
-      "impact": "柴油創新高推升運輸成本，抑制出口與通膨壓力，對台股整體偏空。",
-      "impact_level": "bearish"
-    },
-    {
-      "source": "🌍 油價航運",
-      "title": "Diesel prices at record highs amid Strait of Hormuz disruption, Russia-Ukraine war - ABC News - Breaking News, Latest News and Videos",
-      "url": "https://news.google.com/rss/articles/CBMipwFBVV95cUxQMWhrQktkWU9SZWhWejBvY3owTjZTbm1Kc2ZyMzVSR1loM0M5MnZYbHFwalhPRGk5QjBLZGRVeW1ERmpSc1J3ZUVJNDVURXlOdVk1Y1lzd3oxdG04Snd4WWVGRmtvdjlOb3JOZ194anh2Tlo1NHJjSWhfRmZYRU9wb3F4LUVSUVdXN01KQjR0LWg5V3ZzN3VSMUI2NWFWMHNwUUZfUDd4UdIBrAFBVV95cUxOSWNFSVg2VURmbm05bEFVeGYtUDFkYkt0RkNMZThQYXZhdUROTlVJM09kRm83OW5mWEVzUXZJRGRKRWhmVGIwaUVIdjN3V1puZlA4d3hHV2dlNF9TUmxfWGh0dVREb1FsS0tmMUt2N1NfbzJuN1o2cjNtVi1rZjlLNElSeWdlR05LOXV6YXZjLUN6SXhZTGJmckdWcGNTZnlkM3lkRzh6VW0zTVh4?oc=5",
-      "published": "Fri, 18 Sep 2026 13:24:13 GMT",
-      "title_zh": "中東局勢緊繃，柴油價格創歷史新高",
-      "impact": "柴油價格創歷史新高將提升能源與運輸成本，對依賴進口油料的台灣",
-      "impact_level": "bearish"
     }
   ]
 }
