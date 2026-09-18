@@ -396,14 +396,14 @@ def probe_file_download():
     forms = re.findall(r'<form[^>]*>.*?</form>', html, flags=re.S | re.I)
     print(f"  📋 回應裡共 {len(forms)} 個 <form>")
     for i, f in enumerate(forms[:6]):
-        nm = re.search(r'name=[\'"]([^\'"]+)', f)
-        ac = re.search(r'action=[\'"]([^\'"]+)', f)
-        mth = re.search(r'method=[\'"]([^\'"]+)', f)
+        nm = re.search(r'name\s*=\s*[\'"]([^\'"]+)', f)
+        ac = re.search(r'action\s*=\s*[\'"]([^\'"]+)', f)
+        mth = re.search(r'method\s*=\s*[\'"]([^\'"]+)', f)
         ins = re.findall(r'<input[^>]*>', f, flags=re.I)
         print(f"    form{i + 1}: name={nm.group(1) if nm else None!r} action={ac.group(1) if ac else None!r} method={mth.group(1) if mth else None!r} ・input {len(ins)} 個")
         for tag in ins[:14]:
-            n = re.search(r'name=[\'"]([^\'"]*)', tag)
-            v = re.search(r'value=[\'"]([^\'"]*)', tag)
+            n = re.search(r'name\s*=\s*[\'"]([^\'"]*)', tag)
+            v = re.search(r'value\s*=\s*[\'"]([^\'"]*)', tag)
             print(f"        - name={n.group(1) if n else None!r} value={v.group(1) if v else None!r}")
         print(f"        原文(前 600 字):{f[:600]!r}")
 
@@ -422,18 +422,24 @@ def probe_file_download():
     base = {'step': '9', 'functionName': 'show_file', 'filePath': '/server-java/t100sb02_1',
             'fileName': name}
     # ⭐ 若 7-2 有撈到 fm_fileDownload 的 input,改用官方給的欄位(⛔ 官方 > 我的猜測)
+    # 🚨 V77.2.8 run#13 教訓:官方寫的是 `name = 'step'`(等號兩邊有空白),舊 regex 吃不到 →
+    #    `got` 全空 → **靜默退回我猜的 filePath** → 下面四筆全部「下載失敗」,
+    #    而那測的是我的猜測**不是**官方欄位(陷阱 #40:檢查工具本身沒有鑑別力)。
+    #    → 解析不到一律大聲說出來,⛔ 不可讓它看起來像「官方也不行」。
+    parsed_from_form = False
     for f in forms:
         if 'fm_fileDownload' in f or 'fileDownload' in f:
             got = {}
             for tag in re.findall(r'<input[^>]*>', f, flags=re.I):
-                n = re.search(r'name=[\'"]([^\'"]*)', tag)
-                v = re.search(r'value=[\'"]([^\'"]*)', tag)
+                n = re.search(r'name\s*=\s*[\'"]([^\'"]*)', tag)
+                v = re.search(r'value\s*=\s*[\'"]([^\'"]*)', tag)
                 if n:
                     got[n.group(1)] = v.group(1) if v else ''
             if got:
                 got['fileName'] = name
                 base = got
-                ac = re.search(r'action=[\'"]([^\'"]+)', f)
+                parsed_from_form = True
+                ac = re.search(r'action\s*=\s*[\'"]([^\'"]+)', f)
                 if ac:
                     base['__action__'] = ac.group(1)
             break
@@ -441,6 +447,11 @@ def probe_file_download():
     if not action.startswith('/'):
         action = '/' + action
     print(f"  🎯 要送的欄位:{json.dumps(base, ensure_ascii=False)} ・action={action!r}")
+    if not parsed_from_form:
+        print("  🚨 ⛔ 上面那組是**我猜的**,不是從官方 form 解析出來的 → 下面四筆若失敗,"
+              "⛔ 不可解讀成『官方不給下載』,先修解析。")
+    else:
+        print("  ✅ 上面那組是從官方 <form name='fm_fileDownload'> 逐欄抄來的。")
 
     get_ok = False
     for host in ('https://mopsov.twse.com.tw', 'https://mops.twse.com.tw'):
