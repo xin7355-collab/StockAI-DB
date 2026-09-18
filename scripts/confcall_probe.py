@@ -289,6 +289,38 @@ def probe_mops():
                         print(f"     首列(去標籤):{row[:300]!r}")
             except Exception as e:
                 print(f"  MOPS ajax {typek}@{host} ❌ {type(e).__name__}: {str(e)[:120]}")
+    # ⑥ 第二輪(run #1 已證實只有 mopsov 的 ajax 回真表格):把**原始列 HTML** 逐字印出來,
+    #    parser 與測試測資才有真東西可以對(陷阱 #40)。順便驗「前一個月 / 下一個月」查得到嗎(窗口要跨月)。
+    print("\n  ⑥ mopsov 原始列 dump(給 parser + 測資用)+ 跨月查詢")
+    for typek in ('sii', 'otc'):
+        for dm in (-1, 0, 1):
+            y, m = TODAY.year, TODAY.month + dm
+            if m < 1: y, m = y - 1, 12
+            if m > 12: y, m = y + 1, 1
+            form = {'encodeURIComponent': '1', 'step': '1', 'firstin': '1', 'off': '1',
+                    'TYPEK': typek, 'year': str(y - 1911), 'month': f'{m:02d}'}
+            try:
+                r = _post('https://mopsov.twse.com.tw/mops/web/ajax_t100sb02_1', data=form,
+                          headers={'Referer': 'https://mopsov.twse.com.tw/mops/web/t100sb02_1',
+                                   'Content-Type': 'application/x-www-form-urlencoded'})
+                txt = r.text or ''
+                trs = re.findall(r'<tr[^>]*>.*?</tr>', txt, flags=re.S | re.I)
+                data_trs = [t for t in trs if re.search(r'<td', t, flags=re.I)]
+                print(f"  {typek} {y}/{m:02d}: HTTP {r.status_code} ・{len(txt)} bytes ・<tr> {len(trs)} ・含 <td> 的 {len(data_trs)}")
+                if dm == 0:
+                    for i, t in enumerate(data_trs[:3]):
+                        print(f"     原始列{i + 1}(逐字,前 1500 字):{t[:1500]!r}")
+                    hrefs = re.findall(r'href=["\']([^"\']+)["\']', ' '.join(data_trs[:20]))
+                    print(f"     前 20 列裡的 href 樣本:{hrefs[:8]}")
+                    # 有些欄位是用 JS onclick / form 開檔,也印出來
+                    oc = re.findall(r'onclick=["\']([^"\']{0,160})', ' '.join(data_trs[:20]))
+                    print(f"     onclick 樣本:{oc[:5]}")
+                    # 擇要文字非空的比例
+                    cells = [re.sub(r'<[^>]+>', '', c) for t in data_trs for c in re.findall(r'<td[^>]*>(.*?)</td>', t, flags=re.S | re.I)]
+                    print(f"     每列 <td> 數(前 5 列):{[len(re.findall(r'<td', t, flags=re.I)) for t in data_trs[:5]]}")
+            except Exception as e:
+                print(f"  {typek} {y}/{m:02d} ❌ {type(e).__name__}: {str(e)[:120]}")
+
     # JSON API 候選(新版 MOPS 有 /mops/api/)
     for typek in ('sii', 'otc'):
         try:
