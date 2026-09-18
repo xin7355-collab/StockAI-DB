@@ -356,6 +356,120 @@ def probe_mops():
             print(f"  MOPS api {typek} ❌ {type(e).__name__}: {str(e)[:120]}")
 
 
+# ─────────────────────────────────────────────────────────────────────
+# ⑦ 簡報 PDF 到底怎麼下載(V77.2.8)
+#    🚨 這一段的存在理由:擇要訊息中位數只有 34 個字(「說明產業現況及本公司經營績效等」),
+#       **真正的內容全在簡報裡**,而 918 場有 884 場附檔 → 能不能一鍵開,決定這一頁有沒有用。
+#    ⛔ 不可猜網址(陷阱 #23:MOPS 對錯路徑會回 HTTP 200 + 網頁)→ 讓官方的 HTML 自己說要送什麼。
+#    ⭐ 最後印一行結論「GET 可直接開嗎?」—— 它同時決定兩件事:
+#       (a) 前端能不能用 <a href>;(b) 外部 AI 能不能讀那份 PDF(深度查詢要不要附網址)。
+# ─────────────────────────────────────────────────────────────────────
+def probe_file_download():
+    print("\n" + "=" * 72)
+    print("⑦ 簡報下載:先讓官方 HTML 自己說(form 原文),再拿『真實檔名』實際試")
+    print("=" * 72)
+
+    # ── 7-1 取一份有資料的 ajax 回應(上市;本月沒有就往回找)
+    html, used = '', ''
+    for back in range(0, 4):
+        y, m = TODAY.year, TODAY.month - back
+        while m <= 0:
+            y, m = y - 1, m + 12
+        form = {'encodeURIComponent': '1', 'step': '1', 'firstin': '1', 'off': '1',
+                'TYPEK': 'sii', 'year': str(y - 1911), 'month': f'{m:02d}'}
+        try:
+            r = _post('https://mopsov.twse.com.tw/mops/web/ajax_t100sb02_1', data=form,
+                      headers={'Referer': 'https://mopsov.twse.com.tw/mops/web/t100sb02_1',
+                               'Content-Type': 'application/x-www-form-urlencoded'})
+            if r.status_code == 200 and 'fileName' in (r.text or ''):
+                html, used = r.text, f'{y}/{m:02d}'
+                break
+            print(f"  ⏭️ {y}/{m:02d}:HTTP {r.status_code} ・{len(r.text or '')} bytes ・含 fileName={('fileName' in (r.text or ''))}")
+        except Exception as e:
+            print(f"  ❌ {y}/{m:02d} {type(e).__name__}: {str(e)[:120]}")
+    if not html:
+        print("  ❌ 四個月都沒拿到含檔名的回應 → ⑦ 整段不可解讀(先看 ⑥ 是不是被擋)。")
+        return
+    print(f"  ✅ 用 {used} 這份回應({len(html)} bytes)")
+
+    # ── 7-2 把所有 <form> 逐字印出來(⭐ 官方自己說要送什麼)
+    forms = re.findall(r'<form[^>]*>.*?</form>', html, flags=re.S | re.I)
+    print(f"  📋 回應裡共 {len(forms)} 個 <form>")
+    for i, f in enumerate(forms[:6]):
+        nm = re.search(r'name=[\'"]([^\'"]+)', f)
+        ac = re.search(r'action=[\'"]([^\'"]+)', f)
+        mth = re.search(r'method=[\'"]([^\'"]+)', f)
+        ins = re.findall(r'<input[^>]*>', f, flags=re.I)
+        print(f"    form{i + 1}: name={nm.group(1) if nm else None!r} action={ac.group(1) if ac else None!r} method={mth.group(1) if mth else None!r} ・input {len(ins)} 個")
+        for tag in ins[:14]:
+            n = re.search(r'name=[\'"]([^\'"]*)', tag)
+            v = re.search(r'value=[\'"]([^\'"]*)', tag)
+            print(f"        - name={n.group(1) if n else None!r} value={v.group(1) if v else None!r}")
+        print(f"        原文(前 600 字):{f[:600]!r}")
+
+    # ── 7-3 撈一個真實檔名 + 它那一列的公司代號(⛔ 不自己造檔名)
+    fn = re.findall(r'fileName\.value="([^"]+)"', html)
+    print(f"  📄 檔名樣本({len(fn)} 個):{fn[:5]}")
+    if not fn:
+        print("  ❌ 沒有檔名 → ⑦ 停在這。")
+        return
+    name = fn[0]
+    # 有些站的下載還要帶 step/filePath,把該列附近的 JS 逐字印出來
+    idx = html.find(name)
+    print(f"  🔍 該檔名前後 400 字(逐字):{html[max(0, idx - 400):idx + 200]!r}")
+
+    # ── 7-4 實際試:POST / GET × 兩台主機
+    base = {'step': '9', 'functionName': 'show_file', 'filePath': '/server-java/t100sb02_1',
+            'fileName': name}
+    # ⭐ 若 7-2 有撈到 fm_fileDownload 的 input,改用官方給的欄位(⛔ 官方 > 我的猜測)
+    for f in forms:
+        if 'fm_fileDownload' in f or 'fileDownload' in f:
+            got = {}
+            for tag in re.findall(r'<input[^>]*>', f, flags=re.I):
+                n = re.search(r'name=[\'"]([^\'"]*)', tag)
+                v = re.search(r'value=[\'"]([^\'"]*)', tag)
+                if n:
+                    got[n.group(1)] = v.group(1) if v else ''
+            if got:
+                got['fileName'] = name
+                base = got
+                ac = re.search(r'action=[\'"]([^\'"]+)', f)
+                if ac:
+                    base['__action__'] = ac.group(1)
+            break
+    action = base.pop('__action__', '/server-java/FileDownLoad')
+    if not action.startswith('/'):
+        action = '/' + action
+    print(f"  🎯 要送的欄位:{json.dumps(base, ensure_ascii=False)} ・action={action!r}")
+
+    get_ok = False
+    for host in ('https://mopsov.twse.com.tw', 'https://mops.twse.com.tw'):
+        for how in ('POST', 'GET'):
+            url = host + action
+            try:
+                if how == 'POST':
+                    r = _post(url, data=base, headers={'Referer': f'{host}/mops/web/t100sb02_1'}, timeout=30)
+                else:
+                    r = _get(url + '?' + '&'.join(f'{k}={v}' for k, v in base.items()),
+                             headers={'Referer': f'{host}/mops/web/t100sb02_1'}, timeout=30)
+                body = r.content or b''
+                ct = (r.headers.get('content-type') or '')[:45]
+                cd = (r.headers.get('content-disposition') or '')[:90]
+                ispdf = body[:8].startswith(b'%PDF-')
+                print(f"    {how:<4} {host:<32} HTTP {r.status_code} ・{ct} ・CD={cd!r} ・{len(body)} bytes ・前8bytes={body[:8]!r} ・是PDF={ispdf}")
+                if not ispdf and body[:400]:
+                    print(f"        ↳ 前 200 字:{body[:200]!r}")
+                if ispdf and how == 'GET':
+                    get_ok = True
+                    print(f"        ⭐ 這一條可直接當 <a href>:{url}?{'&'.join(f'{k}={v}' for k, v in base.items())}")
+            except Exception as e:
+                print(f"    {how:<4} {host:<32} ❌ {type(e).__name__}: {str(e)[:120]}")
+
+    print("\n  " + "─" * 66)
+    print(f"  ⭐ 決定性結論 ── GET 可直接開嗎?{'✅ 可以(前端用 <a href>,網址也可以餵給外部 AI)' if get_ok else '❌ 不行(只能隱藏表單 POST 開新分頁;外部 AI 讀不到這份 PDF)'}")
+    print("  " + "─" * 66)
+
+
 def main():
     print(f"🎤 confcall_probe 開跑(今天 {TODAY},窗口 −{PAST} ~ +{FUTURE} 天)")
     ctrl = probe_control()
@@ -363,6 +477,7 @@ def main():
     probe_twse_catalog()
     probe_tpex()
     probe_mops()
+    probe_file_download()
     print("\n" + "=" * 72)
     print("📋 決策表(給下一步寫 confcall_miner 用;⛔ 樣本列要逐字貼進測試)")
     print("=" * 72)
