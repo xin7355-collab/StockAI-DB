@@ -863,6 +863,9 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
       <button class="lbtn" id="confQx" onclick="PRO.confSearch('')" style="display:none">✕</button>
     </div>
     <div id="confMeta" class="note"></div>
+    <div id="confAlert"></div>
+    <div class="labbar" id="confInd"></div>
+    <div id="confReact"></div>
     <div id="confBody"></div>
     <details class="sbnote" style="margin-top:8px"><summary>📖 這頁在算什麼 <span style="color:var(--dim2)">展開 ▾</span></summary>
       <div class="note">
@@ -880,6 +883,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <textarea id="confDeepQ" rows="3" placeholder="貼你想查的關鍵字或問題,例:HBM 產能擴充 2027 出貨量 / 這次法說會有沒有上修財測" oninput="PRO.confDraft(this.value)" style="width:100%;box-sizing:border-box"></textarea>
     <div class="labbar" id="confEng" style="margin:6px 0"></div>
     <button class="go-btn" onclick="PRO.confAsk()">🔎 帶去查</button>
+    <button class="lbtn" onclick="PRO.confCopyPrompt()">📋 只複製提示詞</button>
     <div class="note" style="margin-top:6px">會<b>先把整段問題複製到剪貼簿</b>再開網站;Perplexity / ChatGPT / Google 會直接帶字過去,
       <b>Gemini 與 Meta AI 的網址不吃帶字</b> → 開了之後長按貼上就好。⛔ 這裡不呼叫 App 內的模型(那三條鏈都不會上網)。</div>
   </div>
@@ -951,21 +955,51 @@ const PRO = {
   },
   buzz(ms = 15) { try { navigator.vibrate && navigator.vibrate(ms); } catch (_) {} },
 
-  // ── 中文名:同散戶救星 fetchStockList 的來源(FinMind 匿名,localStorage 快取 3 天)──
-  _names: null,
+  // ── 中文名(V77.2.8 改三層)──
+  // 🚨 舊版**只有一條腿**(無 token 的 FinMind),掛掉就回 {} → 全站名字變一排純代號,
+  //    而且**沒有任何揭露**(陷阱 #22)。散戶救星早在 V75.1.5 就改讀 `data/stock_names.json`
+  //    (同源、零金鑰、gh-pages 實測 2,726 檔),pro.html 一個字都沒接(陷阱 #37)。
+  // ⭐ 順序:① 離線表 `data/stock_names.json` ② FinMind ③ 舊 cache(過期也比沒有好)
+  // ⛔ <500 檔不採用 —— 半份表比沒有更糟(會讓「查不到」看起來像「這檔不存在」,同 `_fetchNameTable`)。
+  // ⚠️ 每一層失敗都要寫進 `_namesWhy`,⛔ 不可靜默。
+  _names: null, _namesWhy: null, _namesSrc: '',
+  _namesCache() { try { return JSON.parse(localStorage.getItem('proWar_names') || 'null'); } catch (_) { try { localStorage.removeItem('proWar_names'); } catch (_) {} return null; } },
+  _namesSave(m, src) {
+    this._names = m; this._namesSrc = src;
+    if (Object.keys(m).length > 500) { try { localStorage.setItem('proWar_names', JSON.stringify({ t: Date.now(), m, src })); } catch (_) {} }
+    return m;
+  },
   async loadNames() {
     if (this._names) return this._names;
+    const why = t => { (this._namesWhy = this._namesWhy || []).push(t); return null; };
+    const c = this._namesCache();
+    if (c && c.t && Date.now() - c.t < 3 * 864e5 && c.m && Object.keys(c.m).length > 500) { this._names = c.m; this._namesSrc = c.src || 'cache'; return c.m; }
+    // ① 離線表(同源、零金鑰)
     try {
-      const c = JSON.parse(localStorage.getItem('proWar_names') || 'null');
-      if (c && c.t && Date.now() - c.t < 3 * 864e5 && c.m && Object.keys(c.m).length > 500) { this._names = c.m; return c.m; }
-    } catch (_) { try { localStorage.removeItem('proWar_names'); } catch (_) {} }
-    this._names = {};
+      const j = await this.fetchJson('data/stock_names.json');
+      const nm = (j && j.names) || null;
+      if (!nm) why('離線表格式不對(沒有 names 這一段)');
+      else {
+        const m = {};
+        for (const k in nm) { const v = nm[k]; const n = Array.isArray(v) ? v[0] : v; if (n) m[k] = String(n); }
+        if (Object.keys(m).length >= 500) return this._namesSave(m, `離線表 ${(j.updated || '').slice(0, 10)}`);
+        why(`離線表只有 ${Object.keys(m).length} 檔(<500 不採用)`);
+      }
+    } catch (e) { why(`離線表讀不到:${(e && e.name) || e}`); }
+    // ② FinMind(匿名)
     try {
       const r = await fetch('https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockInfo', { signal: AbortSignal.timeout(12000) });
-      const j = r.ok ? await r.json() : null;
-      for (const row of (j && j.data) || []) if (row.stock_id && row.stock_name) this._names[row.stock_id] = row.stock_name;
-      if (Object.keys(this._names).length > 500) { try { localStorage.setItem('proWar_names', JSON.stringify({ t: Date.now(), m: this._names })); } catch (_) {} }
-    } catch (_) {}
+      if (!r.ok) why(`FinMind HTTP ${r.status}`);
+      else {
+        const j = await r.json(); const m = {};
+        for (const row of (j && j.data) || []) if (row.stock_id && row.stock_name) m[row.stock_id] = row.stock_name;
+        if (Object.keys(m).length >= 500) return this._namesSave(m, 'FinMind');
+        why(`FinMind 只有 ${Object.keys(m).length} 檔`);
+      }
+    } catch (e) { why(`FinMind 讀不到:${(e && e.name) || e}`); }
+    // ③ 過期 cache(⛔ 比沒有好 —— 名字不會隔夜就變)
+    if (c && c.m && Object.keys(c.m).length > 500) { this._names = c.m; this._namesSrc = '舊快取(過期)'; return c.m; }
+    this._names = {}; this._namesSrc = '';
     return this._names;
   },
   nameOf(code) {
@@ -4704,7 +4738,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V77.2.7',
+  VER: 'V77.2.8',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -6584,7 +6618,11 @@ ${M.news || '(無)'}
   // ⚠️ 用真實 <a target="_blank"> 點擊,⛔ 不用 window.open:iOS PWA 用 window.open 會留一個空白 Safari 分頁。
   // 🎤 V77.2.7 收 `engOverride`(法說會深度查詢有自己的引擎選擇,⛔ 不共用 proWar_ai —— 免得改到產業估值頁的「問 AI」)
   //    並加 gemini / meta:兩者**不吃網址帶字**(Gemini 無 ?q=;Meta AI 未驗證)→ 一律先複製再開根網址,回 carried 讓呼叫端講清楚。
-  _askAi(q, engOverride) {
+  // 🎤 V77.2.8 第三參數 `copyFull`:**網址帶精簡版、剪貼簿放完整版**。
+  //    理由同 V76.2.1(散戶救星):長提示詞 `encodeURIComponent` 之後上萬字元,
+  //    iOS 用 universal link 交棒給 App 時那一串 query **帶不過去** → ⛔ 不可把完整版塞進網址,
+  //    ⛔ 也不可為了塞得進去把提示詞砍短(那等於把八個面向刪掉)。
+  _askAi(q, engOverride, copyFull) {
     if (!q || !q.trim()) return null;
     const eng = engOverride || localStorage.getItem('proWar_ai') || 'perplexity';
     const today = (() => { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); } catch (_) { return new Date().toISOString().slice(0, 10); } })();
@@ -6598,7 +6636,7 @@ ${M.news || '(無)'}
       meta: ['https://www.meta.ai/', false],
     };
     const [base, carries] = MAP[eng] || MAP.perplexity;
-    const copied = this._copySync(full);          // ⭐ 先複製(同步),再開 —— 長問題在 iOS 交棒時帶不過去(V76.2.1)
+    const copied = this._copySync(copyFull ? hint + copyFull : full);   // ⭐ 先複製(同步),再開 —— 長問題在 iOS 交棒時帶不過去(V76.2.1)
     const url = carries ? base + encodeURIComponent(full) : base;
     const a = document.createElement('a');
     a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
@@ -6607,15 +6645,16 @@ ${M.news || '(無)'}
     return { eng, carried: carries, copied };
   },
 
-  // ═══════════ 🎤 法說會分頁(V77.2.7)═══════════
+  // ═══════════ 🎤 法說會分頁(V77.2.7;V77.2.8 搜尋跨範圍 + 一鍵開簡報 + 四個加值)═══════════
   // ⛔ 三條不可違反:① 只描述、⛔ 不給方向/部位 ② 「檔案沒產出」與「這幾天真的沒有」要分開講(陷阱 #22)
-  //   ③ 深度查詢是外部網頁(使用者選的),⛔ 不叫 App 內模型。
-  _confSel: 'all', _confQ: '', _confSym: null, _confData: undefined,
+  //   ③ 深度查詢是外部網頁(使用者選的),⛔ 不叫 App 內模型(那三條鏈都不會上網)。
+  _confSel: 'all', _confQ: '', _confSym: null, _confData: undefined, _confInd: '', _confHist: null,
   _CONF_SEL: [['all', '全部'], ['mine', '👜 我的'], ['today', '今天'], ['future', '未來'], ['sum', '已開・有內容']],
   _CONF_ENG: [['perplexity', 'Perplexity'], ['chatgpt', 'ChatGPT'], ['google', 'Google'], ['gemini', 'Gemini'], ['meta', 'Meta AI']],
   _confEngGet() { try { return localStorage.getItem('proWar_confEng') || 'perplexity'; } catch (_) { return 'perplexity'; } },
   confEng(k) { this.buzz(10); try { localStorage.setItem('proWar_confEng', k); } catch (_) {} this._confEngBar(); },
-  confSel(k) { this.buzz(10); this._confSel = k; this._confPaint(); },
+  confSel(k) { this.buzz(10); this._confSel = k; this._confInd = ''; this._confPaint(); },
+  confInd(k) { this.buzz(10); this._confInd = (this._confInd === k) ? '' : k; this._confPaint(); },
   confSearch(v) {
     this._confQ = String(v || '').trim();
     const inp = document.getElementById('confQ'); if (inp && inp.value !== v) inp.value = v || '';
@@ -6623,7 +6662,14 @@ ${M.news || '(無)'}
     this._confPaint();
   },
   confDraft(v) { try { localStorage.setItem('proWar_confQ', String(v || '').slice(0, 2000)); } catch (_) {} },
-  confPick(sym) { this.buzz(10); this._confSym = sym ? String(sym) : null; this._confSymPaint(); window.scrollTo(0, document.getElementById('confDeepQ') ? document.getElementById('confDeepQ').offsetTop - 80 : 0); },
+  confPick(sym) {
+    this.buzz(10); this._confSym = sym ? String(sym) : null;
+    this._confSymPaint();
+    // 📊 挑了一檔之後,統計那一格要多出「這一檔自己過去 N 場」→ ⛔ 不可只重畫 confDeepSym(第一版就漏了)
+    const rc = document.getElementById('confReact'); if (rc) rc.innerHTML = this._confReactHtml(this._confSym);
+    window.scrollTo(0, document.getElementById('confDeepQ') ? document.getElementById('confDeepQ').offsetTop - 80 : 0);
+  },
+  confHist(sym) { this.buzz(10); this._confHist = (this._confHist === sym) ? null : String(sym); this._confPaint(); },
   _confMine() {
     // 👜 庫存 + 自選 + 決策台今日名單(全部走 try/catch,壞值回空;⛔ 不寫 localStorage)
     const set = new Set();
@@ -6634,31 +6680,115 @@ ${M.news || '(無)'}
     return set;
   },
   _confToday() { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); } catch (_) { return new Date().toISOString().slice(0, 10); } },
+  /** 🔎 搜尋用的正規化:全形→半形 + 小寫。`２３３０` / `ＨＢＭ` 都要搜得到。 */
+  _confNorm(s) {
+    return String(s || '').replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+      .replace(/　/g, ' ').toLowerCase();
+  },
+  _confAll() {
+    const D = this._confData; if (!D) return [];
+    return [].concat(D.upcoming || [], D.recent || []).filter(r => r && r.s && r.d);
+  },
+  /** 這一列拿去比對關鍵字的全文(代號 / 官方簡稱 / 股名表 / 產業 / 地點 / 擇要 / 其他)。
+   *  ⭐ `r.name` 是 confcall 自帶的**官方公司簡稱**(918 列全有)→ ⛔ 不可只靠 `nameOf()`
+   *     (它在名字表載不到時回空,那會讓「搜中文搜不到」看起來像「這檔沒有法說會」)。*/
+  _confHay(r) {
+    const ind = r.ind ? (this.IND_NAME[r.ind] || r.ind) : '';
+    return this._confNorm(`${r.s} ${r.name || ''} ${(this.nameOf && this.nameOf(r.s)) || ''} ${ind} ${r.mkt || ''} ${r.place || ''} ${r.sum || ''} ${r.other || ''}`);
+  },
   _confRows() {
     const D = this._confData; if (!D) return [];
     const today = this._confToday();
-    let rows = [].concat(D.upcoming || [], D.recent || []).filter(r => r && r.s && r.d);
-    const sel = this._confSel;
-    if (sel === 'mine') { const m = this._confMine(); rows = rows.filter(r => m.has(String(r.s))); }
-    else if (sel === 'today') rows = rows.filter(r => r.d === today);
-    else if (sel === 'future') rows = rows.filter(r => r.d >= today);
-    else if (sel === 'sum') rows = rows.filter(r => r.d < today && (r.sum || (r.pdf && r.pdf.length) || r.vid));
-    const q = this._confQ.toLowerCase();
-    if (q) rows = rows.filter(r => `${r.s} ${r.name || ''} ${this.nameOf ? (this.nameOf(r.s) || '') : ''} ${r.place || ''} ${r.sum || ''} ${r.other || ''}`.toLowerCase().includes(q));
+    let rows = this._confAll();
+    const q = this._confNorm(this._confQ);
+    // 🔎 V77.2.8 使用者選「打字就搜全部」→ **有關鍵字時忽略範圍篩選**(照 `_labRows` 的既有設計)。
+    // ⛔ 不可還鎖在「👜 我的」裡 —— 停在那個範圍打字會搜不到別檔,而「搜不到」看起來就像「這檔沒有法說會」。
+    if (q) {
+      rows = rows.filter(r => this._confHay(r).includes(q));
+    } else {
+      const sel = this._confSel;
+      if (sel === 'mine') { const m = this._confMine(); rows = rows.filter(r => m.has(String(r.s))); }
+      else if (sel === 'today') rows = rows.filter(r => r.d === today);
+      else if (sel === 'future') rows = rows.filter(r => r.d >= today);
+      else if (sel === 'sum') rows = rows.filter(r => r.d < today && (r.sum || (r.pdf && r.pdf.length) || r.vid));
+    }
+    if (this._confInd) rows = rows.filter(r => (r.ind || '__none__') === this._confInd);
     rows.sort((a, b) => (a.d === b.d ? (a.t || '').localeCompare(b.t || '') : (a.d < b.d ? -1 : 1)));
     return rows;
   },
   _confWk(d) { try { return ['日', '一', '二', '三', '四', '五', '六'][new Date(d + 'T00:00:00+08:00').getDay()]; } catch (_) { return ''; } },
+  /** 📄 簡報網址 —— ⭐ 一律從**採礦產物給的樣板**組(`src.file`),⛔ 前端不可寫死網址。
+   *  探針 Actions #35406340327 實測:GET 就回真 PDF(application/pdf ・%PDF-1.5 ・2.67MB)。
+   *  樣板缺了就回空字串 → 顯示端退回「只印檔名」,⛔ 不硬湊一個網址出來。 */
+  _confFileUrl(name) {
+    const f = ((this._confData || {}).src || {}).file;
+    if (!f || !f.host || !f.path || !f.arg || !name) return '';
+    const q = Object.entries(f.q || {}).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+    q.push(`${encodeURIComponent(f.arg)}=${encodeURIComponent(name)}`);
+    return `${f.host}${f.path}?${q.join('&')}`;
+  },
+  _confFileLabel(name) {
+    const s = String(name || '');
+    return /E\d*\.pdf$/i.test(s) ? '英文簡報' : (/M\d*\.pdf$/i.test(s) ? '中文簡報' : '簡報');
+  },
+  /** 🔔 你的清單裡，接下來幾天有幾場(⛔ 只講「那幾天波動常變大」,不給方向、不給部位)。 */
+  _confAlertHtml(days = 14) {
+    const D = this._confData; if (!D) return '';
+    const mine = this._confMine(); if (!mine.size) return '';
+    const today = this._confToday();
+    const end = (() => { const d = new Date(today + 'T00:00:00+08:00'); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); })();
+    const hits = this._confAll().filter(r => mine.has(String(r.s)) && r.d >= today && r.d <= end)
+      .sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0));
+    if (!hits.length) return `<div class="note" data-conf-alert="0">🔔 你的清單(庫存 + 自選 + 決策台)裡,未來 ${days} 天<b>沒有</b>法說會。</div>`;
+    const li = hits.map(r => {
+      const dd = Math.max(0, Math.round((new Date(r.d + 'T00:00:00+08:00') - new Date(today + 'T00:00:00+08:00')) / 864e5));
+      return `<span class="labbtn" onclick="PRO.confSearch('${this._esc(r.s)}')">${this._nmTxt(r.s)} <span class="mono">${dd === 0 ? '今天' : '還有 ' + dd + ' 天'}</span></span>`;
+    }).join(' ');
+    return `<div class="warnbox" data-conf-alert="${hits.length}"><b>🔔 你的清單裡,未來 ${days} 天有 ${hits.length} 場法說會</b><div style="margin-top:4px">${li}</div>
+      <div class="note" style="margin-top:4px">⚠️ 那幾天<b>波動常變大</b>;該盯的是擇要/簡報裡的<b>營收、毛利率、資本支出、產能</b>有沒有兌現。
+      ⛔ 這不是叫你買或賣 —— 本站實測 37 種行事曆日<b>方向 0 個成立</b>。</div></div>`;
+  },
+  /** 🏭 產業分組:只列**目前結果裡有的**產業(⛔ 不列空的),沒有產業碼的歸「未分類」並說出來。 */
+  _confIndBar() {
+    const bar = document.getElementById('confInd'); if (!bar) return;
+    const base = (() => {           // 算 chips 時不套產業篩選(否則點一個就只剩那一個)
+      const keep = this._confInd; this._confInd = ''; const r = this._confRows(); this._confInd = keep; return r;
+    })();
+    const cnt = new Map();
+    for (const r of base) { const k = r.ind || '__none__'; cnt.set(k, (cnt.get(k) || 0) + 1); }
+    if (cnt.size <= 1) { bar.innerHTML = ''; return; }
+    const arr = [...cnt.entries()].sort((a, b) => b[1] - a[1]);
+    bar.innerHTML = `<span class="labbtn ${this._confInd ? '' : 'on'}" onclick="PRO.confInd('')">全部產業 ${base.length}</span>` +
+      arr.map(([k, v]) => `<span class="labbtn ${this._confInd === k ? 'on' : ''}" data-confind="${this._esc(k)}" onclick="PRO.confInd('${this._esc(k)}')">${k === '__none__' ? '未分類' : this._esc(this.IND_NAME[k] || k)} ${v}</span>`).join('');
+  },
+  /** 📊 會後股價反應 —— ⛔ **事實統計不是訊號**(採礦端 `build_react` 算好的,顯示端⛔ 不重算)。 */
+  _confReactHtml(sym) {
+    const R = (this._confData || {}).react;
+    if (!R || R.error) return R && R.error ? `<div class="note">📊 會後股價統計:這一輪算不出來(${this._esc(R.error)})。</div>` : '';
+    const B = R.base || {};
+    const pp = x => (x == null ? '—' : (x > 0 ? '+' : '') + x + ' pp');
+    const one = sym && R.byStock && R.byStock[sym];
+    return `<details class="sbnote" data-conf-react="1"><summary>📊 過去法說會之後,股價通常怎麼走(⛔ 事實紀錄,不是買賣訊號) <span style="color:var(--dim2)">展開 ▾</span></summary>
+      <div class="note">
+        📐 算法:${this._esc(R.how || '')}。樣本 <b>${R.events || R.n} 場 / ${R.syms} 檔</b>。<br>
+        ・法說會後 <b>1 日</b> ${pp(R.med1)} ・<b>5 日</b> ${pp(R.med5)} ・<b>20 日</b> ${pp(R.med20)}(中位數,已減同期加權)<br>
+        ・<b>對照組(同一批股票、隨便挑一天)</b> 1 日 ${pp(B.med1)} ・5 日 ${pp(B.med5)} ・20 日 ${pp(B.med20)}(n=${(B.n || 0).toLocaleString()})<br>
+        ・5 日上漲比例 ${R.win5 == null ? '—' : R.win5 + '%'} vs 對照組 ${B.win5 == null ? '—' : B.win5 + '%'}
+        ${one ? `<br>・<b>${this._nmTxt(sym)}</b> 自己過去 ${one.n} 場:5 日中位 ${pp(one.med5)}${one.n < 10 ? ' <span class="sigtag warn">⏳ 樣本不足,⛔ 不能當結論</span>' : ''}` : ''}
+        <br>🚨 ${this._esc(R.caveat || '')}${R.stale ? '<br>⚠️ 這一輪沒重算,沿用上一次的統計。' : ''}
+      </div></details>`;
+  },
   _confHtml(rows) {
     const today = this._confToday(), q = this._confQ;
     const hi = t => this._labHi ? this._labHi(this._esc(t), q) : this._esc(t);
     if (!rows.length) {
       const D = this._confData || {};
-      return `<div class="note" data-conf-empty="1">📭 這個篩選下沒有法說會(資料日 ${this._esc(D.data_date || '—')},涵蓋前 ${(D.window || {}).past || 60} 天到後 ${(D.window || {}).future || 45} 天)。${this._confSel === 'mine' ? '<br>👜 「我的」= 你的庫存 + 自選 + 決策台今天的名單;三個都空的話這裡就是空的。' : ''}${q ? '<br>🔎 換個關鍵字試試(擇要是公司自己寫的,用詞不一定跟你一樣)。' : ''}</div>`;
+      return `<div class="note" data-conf-empty="1">📭 ${q ? `整份名單裡搜不到「${this._esc(q)}」` : '這個篩選下沒有法說會'}(資料日 ${this._esc(D.data_date || '—')},涵蓋前 ${(D.window || {}).past || 60} 天到後 ${(D.window || {}).future || 45} 天)。${!q && this._confSel === 'mine' ? '<br>👜 「我的」= 你的庫存 + 自選 + 決策台今天的名單;三個都空的話這裡就是空的。' : ''}${q ? '<br>🔎 已經<b>跨所有範圍</b>找過了(不是卡在目前的篩選)。擇要是公司自己寫的,用詞不一定跟你一樣 —— 也可以直接打代號。' : ''}${this._confInd ? '<br>🏭 目前還套著產業篩選,<span class="labbtn" onclick="PRO.confInd(\'\')">全部產業</span>' : ''}</div>`;
     }
     const groups = new Map();
     for (const r of rows) { if (!groups.has(r.d)) groups.set(r.d, []); groups.get(r.d).push(r); }
     let html = '';
+    if (q) html = `<div class="note" data-conf-scope="all">🔎 搜尋「<b>${this._esc(q)}</b>」・<b>${rows.length}</b> 筆(<b>已跨所有範圍</b>,不受上面的篩選限制) <span class="labbtn" onclick="PRO.confSearch('')">← 回到${this._esc((this._CONF_SEL.find(x => x[0] === this._confSel) || [, '全部'])[1])}</span></div>`;
     for (const [d, list] of groups) {
       const rel = d === today ? '<span class="sigtag good">今天</span>' : (d > today ? '<span class="sigtag">未來</span>' : '<span class="sigtag">已開</span>');
       html += `<div style="font-size:11px;font-weight:700;color:var(--dim);margin:10px 0 4px;border-left:3px solid ${d === today ? 'var(--cyan)' : 'var(--line)'};padding-left:6px">${d.slice(5).replace('-', '/')}(${this._confWk(d)}) ${rel} <span style="font-weight:400;color:var(--dim2)">${list.length} 場</span></div>`;
@@ -6667,18 +6797,30 @@ ${M.news || '(無)'}
         const sum = r.sum ? `<details data-dk="conf-${r.s}-${r.d}"><summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim)">📝 擇要訊息 <span style="color:var(--dim2)">展開 ▾</span></summary><div class="note" style="margin-top:4px;white-space:pre-wrap">${hi(r.sum)}</div></details>`
                           : `<div class="note" style="margin-top:2px">📝 擇要訊息:公司尚未提供${past ? '' : '(通常會後才貼)'}</div>`;
         const files = [];
-        if (r.pdf && r.pdf.length) files.push(`📎 簡報 ${r.pdf.map(f => `<span class="mono" title="在公開資訊觀測站的法人說明會一覽表下載(⛔ MOPS 用表單下載,沒有可直接開的網址)">${this._esc(f)}</span>`).join('、')}`);
+        for (const f of (r.pdf || [])) {
+          const u = this._confFileUrl(f);
+          files.push(u ? `<a class="conf-pdf" href="${this._esc(u)}" target="_blank" rel="noopener noreferrer" title="${this._esc(f)}">📄 ${this._confFileLabel(f)}</a>`
+                       : `📎 <span class="mono">${this._esc(f)}</span>`);
+        }
         if (r.web) files.push(`<a href="${this._esc(r.web)}" target="_blank" rel="noopener noreferrer">🌐 公司網站</a>`);
         if (r.vid) files.push(`<a href="${this._esc(r.vid)}" target="_blank" rel="noopener noreferrer">🎬 影音</a>`);
+        const hist = ((this._confData || {}).hist || {})[r.s] || [];
+        const older = hist.filter(x => x !== r.d);
+        const nm = this.nameOf && this.nameOf(r.s);
+        const shown = (nm && nm !== r.s) ? nm : (r.name || r.s);   // ⭐ 名字表載不到時退回官方簡稱,⛔ 不印「2330 2330」
         html += `<div class="bkrow ${past ? 'done' : 'hold'}" data-conf-row="${this._esc(r.s)}">
-          <div class="bkhd">${this._nmc(r.s, `PRO.openStock('${this._esc(r.s)}')`)}
-            <span class="sigtag">${this._esc(r.mkt || '')}</span>
+          <div class="bkhd"><span class="starnm" onclick="PRO.openStock('${this._esc(r.s)}')">${hi(shown)}</span> <span class="starcode">${hi(r.s)}</span>
+            <span class="sigtag">${this._esc(r.mkt || '')}</span>${r.ind ? `<span class="sigtag">${this._esc(this.IND_NAME[r.ind] || r.ind)}</span>` : ''}
             <span style="margin-left:auto;font-size:11px" class="mono">${this._esc(r.t || '')}</span></div>
           <div class="note" style="margin-top:2px">📍 ${hi(r.place || '—')}</div>
           ${sum}
           ${files.length ? `<div class="note" style="margin-top:3px">${files.join(' ・ ')}</div>` : ''}
           ${r.other ? `<div class="note" style="margin-top:2px">ℹ️ ${hi(r.other)}</div>` : ''}
-          <div style="margin-top:4px"><button class="lbtn" onclick="PRO.confPick('${this._esc(r.s)}')">🔎 帶這一檔去深度查詢</button></div>
+          <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">
+            <button class="lbtn" onclick="PRO.confPick('${this._esc(r.s)}')">🔎 帶這一檔去深度查詢</button>
+            ${older.length ? `<button class="lbtn" data-conf-hist="${this._esc(r.s)}" onclick="PRO.confHist('${this._esc(r.s)}')">📜 歷年 ${older.length} 場</button>` : ''}
+          </div>
+          ${this._confHist === r.s && older.length ? `<div class="note" style="margin-top:3px" data-conf-histbox="${this._esc(r.s)}">📜 這一檔過去的法說會:${older.slice().reverse().map(x => `<span class="mono">${this._esc(x)}</span>`).join(' ・ ')}<br><span style="color:var(--dim2)">⏳ 從本站開始採集(2026-07)之後才會累積,⛔ 不是公司的完整歷史。</span></div>` : ''}
         </div>`;
       }
     }
@@ -6686,7 +6828,7 @@ ${M.news || '(無)'}
   },
   _confBar() {
     const bar = document.getElementById('confBar'); if (!bar) return;
-    bar.innerHTML = this._CONF_SEL.map(([k, l]) => `<span class="labbtn ${this._confSel === k ? 'on' : ''}" data-confsel="${k}" onclick="PRO.confSel('${k}')">${l}</span>`).join('');
+    bar.innerHTML = this._CONF_SEL.map(([k, l]) => `<span class="labbtn ${(!this._confQ && this._confSel === k) ? 'on' : ''}" data-confsel="${k}" onclick="PRO.confSel('${k}')">${l}</span>`).join('');
   },
   _confEngBar() {
     const bar = document.getElementById('confEng'); if (!bar) return;
@@ -6701,8 +6843,11 @@ ${M.news || '(無)'}
   },
   _confPaint() {
     this._confBar();
+    const al = document.getElementById('confAlert'); if (al) al.innerHTML = this._confAlertHtml();
+    this._confIndBar();
     const body = document.getElementById('confBody'); if (!body) return;
     body.innerHTML = this._confHtml(this._confRows());
+    const rc = document.getElementById('confReact'); if (rc) rc.innerHTML = this._confReactHtml(this._confSym);
   },
   async renderConf() {
     const body = document.getElementById('confBody'), meta = document.getElementById('confMeta');
@@ -6711,7 +6856,8 @@ ${M.news || '(無)'}
     try { const ta = document.getElementById('confDeepQ'); if (ta && !ta.value) ta.value = localStorage.getItem('proWar_confQ') || ''; } catch (_) {}
     if (this._confData === undefined) {
       body.innerHTML = `<div class="note">⏳ 正在讀法說會資料…</div>`;
-      const [D] = await Promise.all([this.fetchJson('data/confcall.json'), this.loadNames ? this.loadNames() : null, this.fetchJson('data/playbook_edge.json')]);
+      const [D] = await Promise.all([this.fetchJson('data/confcall.json'), this.loadNames ? this.loadNames() : null,
+                                     this.fetchJson('data/playbook_edge.json'), this.fetchJson('data/screener.json')]);
       this._confData = D || null;
     }
     const D = this._confData;
@@ -6726,25 +6872,70 @@ ${M.news || '(無)'}
     const errs = [];
     if (D.src_error && D.src_error.sii) errs.push(`上市這輪抓不到:${this._esc(D.src_error.sii)}`);
     if (D.src_error && D.src_error.otc) errs.push(`上櫃這輪抓不到:${this._esc(D.src_error.otc)}`);
+    if (D.src_error && D.src_error.names) errs.push(`產業分類這輪沒補上:${this._esc(D.src_error.names)}(🏭 那一排會少掉,⛔ 不猜)`);
     const n = D.n || {};
     meta.innerHTML = `📅 資料日 <b>${this._esc(D.data_date || '—')}</b>${stale >= 4 ? ` <span class="sigtag warn">⚠️ 已 ${stale} 天沒更新</span>` : ''}
       ・未來 <b>${n.upcoming ?? (D.upcoming || []).length}</b> 場 ・已開 <b>${n.recent ?? (D.recent || []).length}</b> 場 ・有擇要 ${n.with_sum ?? '—'} ・有簡報/影音 ${n.with_files ?? '—'}
       ${errs.length ? `<div class="warnbox" style="margin-top:6px" data-conf-srcerr="1">⚠️ ${errs.join('<br>')}<br>⛔ 那一邊的場次這輪是<b>舊的或缺的</b>,不是真的沒有。</div>` : ''}`;
     this._confPaint();
   },
+  /** 🔎 法人視角的深度查詢提示詞(V77.2.8 使用者:「把重要東西挖出來、摘要重點、法人會看的、**未來展望**」)。
+   *  ⭐ 本站算好的數字直接塞進去(禁 AI 算數學鐵律);⛔ 不要求它評分/給部位/給買賣建議。
+   *  ⚠️ 完整版 700~900 字 → 網址只帶**精簡版**(V76.2.1:iOS 交棒帶不動長網址),完整版走剪貼簿。 */
+  _confDeepPrompt(sym, kw, short) {
+    const rows = sym ? this._confAll().filter(r => String(r.s) === String(sym)) : [];
+    const today = this._confToday();
+    const r = rows.filter(x => x.d <= today).slice(-1)[0] || rows[0] || null;
+    const who = sym ? `${this._nmTxt(sym)}(${sym})` : '(沒有指定公司)';
+    if (short) return `台股法說會 ${who}${r ? ` ${r.d}` : ''}:${kw || '重點整理'}\n請整理未來展望/財測、產能與資本支出、訂單能見度、價格與成本、Q&A 管理層的說法,每一點附日期與來源網址;查不到寫「查不到」,⛔ 不要給買賣建議。`;
+    const f = [];
+    const put = (k, v, u) => { if (v !== null && v !== undefined && v !== '' && Number.isFinite(+v)) f.push(`${k} ${(+v).toFixed(2)}${u || ''}`); };
+    if (sym) {
+      put('現價', this._scrV(sym, 'c')); put('今日', this._scrV(sym, 'chg'), '%');
+      put('近20日', this._scrV(sym, 'chg20'), '%'); put('一年位階', this._scrV(sym, 'pos252'), '%');
+      put('20日振幅', this._scrV(sym, 'amp20'), '%'); put('本益比', this._scrV(sym, 'pe'), '倍');
+      put('殖利率', this._scrV(sym, 'yld'), '%'); put('月營收年增', this._scrV(sym, 'yoy'), '%');
+      put('毛利率', this._scrV(sym, 'gm'), '%');
+    }
+    const pdfU = (r && (r.pdf || []).map(x => this._confFileUrl(x)).filter(Boolean)) || [];
+    return `台股法說會深度整理:${who}${r ? ` ・${r.d} ${r.t || ''} ・${r.place || ''}` : ''}
+${kw ? `【我想知道】${kw}\n` : ''}${r && r.sum ? `【官方擇要(公司自己填的)】${r.sum}\n` : ''}${pdfU.length ? `【官方簡報 PDF】${pdfU.join(' ')}\n` : ''}${r && r.vid ? `【影音】${r.vid}\n` : ''}${r && r.web ? `【公司 IR】${r.web}\n` : ''}${f.length ? `【本站已經算好的數字,⛔ 不要自己重算】${f.join(' ・ ')}\n` : ''}
+【請把這幾件挖出來並摘要重點 —— 這是法人真正在看的】
+① 未來展望/財測:下一季與全年的營收、毛利率區間;有沒有上修或下修;⭐ **跟上一次法說會比,說法變了什麼**
+② 產能與資本支出:新廠/擴產時程、資本支出金額、稼動率
+③ 訂單能見度:在手訂單、能見度幾個月、客戶集中度有沒有變化
+④ 價格與成本:平均售價走勢、原料、匯率、關稅
+⑤ 新產品/新製程的量產時間表
+⑥ 庫存水位與去化狀況
+⑦ Q&A:法人問了什麼、**管理層對哪些問題講得保守或避開**
+⑧ 公司自己講的風險與不確定性
+
+【規則】
+・每一點附上**日期**與**來源網址**;查不到就寫「查不到」,⛔ 不要猜、⛔ 不要留模板空格
+・數字照抄原文,⛔ 不要自己換算單位
+・⛔ 不要給買賣建議、⛔ 不要評分或星等、⛔ 不要講幾成部位
+・繁體中文、白話、條列`;
+  },
   confAsk() {
     const ta = document.getElementById('confDeepQ');
     const kw = String((ta && ta.value) || '').trim();
-    if (!kw) { this.toast('先貼關鍵字或問題'); return null; }
-    let who = '';
-    if (this._confSym) { const nm = this.nameOf ? (this.nameOf(this._confSym) || '') : ''; who = ` ${nm ? nm + '(' + this._confSym + ')' : this._confSym}`; }
-    const q = `台股 法說會${who}:${kw}\n請整理最新內容與重點(營收、毛利率、資本支出、產能、財測有沒有調整),每一點附日期與來源。`;
-    const r = this._askAi(q, this._confEngGet());
+    if (!kw && !this._confSym) { this.toast('先貼關鍵字,或在上面挑一檔'); return null; }
+    const full = this._confDeepPrompt(this._confSym, kw, false);
+    const short = this._confDeepPrompt(this._confSym, kw, true);
+    const r = this._askAi(short, this._confEngGet(), full);
     if (!r) return null;
     const nm = (this._CONF_ENG.find(x => x[0] === r.eng) || [])[1] || r.eng;
-    this.toast(r.carried ? `🔎 已帶去 ${nm}(問題也複製到剪貼簿了)` : `📋 已複製問題;${nm} 不吃網址帶字 → 開了之後長按貼上`, 2600);
+    this.toast(r.carried ? `🔎 已帶去 ${nm};⭐ **完整版**(八個面向)已複製到剪貼簿,貼上可問更深` : `📋 完整提示詞已複製;${nm} 不吃網址帶字 → 開了之後長按貼上`, 3000);
     return r;
   },
+  confCopyPrompt() {
+    const ta = document.getElementById('confDeepQ');
+    const kw = String((ta && ta.value) || '').trim();
+    const full = this._confDeepPrompt(this._confSym, kw, false);
+    this.toast(this._copySync(full) ? '📋 完整提示詞已複製(八個面向)' : '⚠️ 複製失敗,請長按下方文字自己選取', 2600);
+    return full;
+  },
+
   askIndustry() {
     if (!this._valRows || !this._valRows.length) { this.toast('請先按「抓取真實估值數據」'); return; }
     this._askAi(this.buildPrompt());
