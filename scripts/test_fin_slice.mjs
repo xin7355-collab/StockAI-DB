@@ -81,6 +81,30 @@ ok('⑥ inv/ocf 沒資料 → doi / fcf / ocf 一律 null,⛔ 不補 0', t6.q.ev
 ok('⑥b 每一季都帶法定公布日 pub(Q3 → 11/14)', t1.q.find(x => x.p === '2025-09-30').pub === '2025-11-14', '');
 const all = sliceAll(F);
 ok('⑥c sliceAll 每檔都切得出來', Object.keys(all.files).length === 6, String(Object.keys(all.files).length));
+
+// ── ⑧ V77.3.0 營業利益 opi → 營益率 oim ──────────────────────────────────
+//   注入:① 把 `opi` 從 FLOW 拿掉(累計版不會被還原 → ⑧b 紅)② 缺 opi 補 0(⑧c 紅)③ oim 分母寫成 cogs(⑧a 紅)
+{
+    const F8 = ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev', 'eq', 'cap', 'eps', 'ni', 'opi'];
+    const mk8 = (opiOf) => { const s = {}; Q.forEach((q, i) => { const k = i % 4;
+        const row = { inv: 150, cogs: 100, capex: CUMV.capex[k], dep: CUMV.dep[k], ocf: CUMV.ocf[k], rev: 200, eq: 1000, cap: 1e9, eps: 1.0, ni: 25, opi: opiOf(k) };
+        s[q] = F8.map(f => row[f]); }); return s; };
+    const F8d = { q: Q, f: F8, meta: { updated: '2026-09-19', n: 3, quarters: Q.length, src: 'test' },
+        s: { S1: mk8(k => 30),                       // 單季 30 → 營益率 15.0%
+             S2: mk8(k => [30, 60, 90, 120][k]),     // 🚨 累計(Q4/Q1 = 4)→ 還原後每季 30
+             S3: mk8(k => 30),                       // ⚠️ 第三檔也單季 —— 只有兩檔時中位數會落在 S2 的 4.0 → 整欄被判累計(第一版就這樣假失敗)
+             S4: mk8(k => null) } };                 // 沒這欄
+    // 三檔單季一檔累計 → 中位判「單季」;S2 的累計還原用手動 CUM 驗
+    const C8 = detectAll(F8d);
+    ok('⑧0 空過守門:這組測資的 opi 要被判成「單季」(中位 Q4÷Q1 = 1)', C8.opi === false, JSON.stringify(C8));
+    const s1 = sliceOne(F8d, C8, 'S1'), s3 = sliceOne(F8d, C8, 'S4');
+    const s2c = sliceOne(F8d, Object.assign({}, C8, { opi: true }), 'S2');
+    const q4 = p => p.q.find(x => x.p === '2025-12-31');
+    ok('⑧a 營益率 = 營業利益 ÷ 營收(30/200 = 15.0%),opi 原值也存', q4(s1).oim === 15 && q4(s1).opi === 30, JSON.stringify([q4(s1).opi, q4(s1).oim]));
+    ok('⑧b 🚨 opi 判成累計時要跟 ocf 一樣相減還原(Q4 120 − Q3 90 = 30 → 15.0%,⛔ 不是 60%)', q4(s2c).opi === 30 && q4(s2c).oim === 15, JSON.stringify([q4(s2c).opi, q4(s2c).oim]));
+    ok('⑧c 沒有 opi 那欄 → opi / oim 一律 null,⛔ 不補 0', s3.q.every(x => x.opi === null && x.oim === null), JSON.stringify(s3.q[0]));
+    ok('⑧d ⭐ 舊檔(只有 9~10 欄、沒有 opi)照樣切得出來而且 oim 是 null(回算跑完前 gh-pages 上就是這種)', t1.q.every(x => x.oim === null) && t1.nq === 12, JSON.stringify(t1.q[0]));
+}
 // ⑦ 真檔(有的話)
 const FIN = process.env.FIN || path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'fin_deep', 'fin_deep.json');
 if (fs.existsSync(FIN)) {

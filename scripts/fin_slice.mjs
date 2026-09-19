@@ -33,7 +33,7 @@ import { pubDate, doi, detectCumulative, quarterValue } from './lib_fundamentals
 
 export const N_Q = 12;
 export const MIN_OK = 500;
-const FLOW = ['cogs', 'rev', 'capex', 'ocf', 'dep'];
+const FLOW = ['cogs', 'rev', 'capex', 'ocf', 'dep', 'opi'];   // V77.3.0 opi(營業利益)也過累計偵測 —— 損益表實測是單季,但⛔ 不憑印象寫死
 const r0 = v => (v == null || !Number.isFinite(+v)) ? null : Math.round(+v);
 const r1 = v => (v == null || !Number.isFinite(+v)) ? null : Math.round(+v * 10) / 10;
 const r2 = v => (v == null || !Number.isFinite(+v)) ? null : Math.round(+v * 100) / 100;
@@ -52,6 +52,7 @@ export function sliceOne(F, CUM, sym, nq = N_Q) {
         const pt = k => (FI[k] == null || raw[FI[k]] == null) ? null : +raw[FI[k]];
         const rev = quarterValue(F, sym, q, 'rev', CUM), cogs = quarterValue(F, sym, q, 'cogs', CUM);
         const capex = quarterValue(F, sym, q, 'capex', CUM), dep = quarterValue(F, sym, q, 'dep', CUM), ocf = quarterValue(F, sym, q, 'ocf', CUM);
+        const opi = quarterValue(F, sym, q, 'opi', CUM);   // 📈 V77.3.0 營業利益(舊檔沒這欄 → null,⛔ 不補 0)
         const inv = pt('inv'), eq = pt('eq'), cap = pt('cap'), eps = pt('eps'), niOff = pt('ni');
         const shares = cap > 0 ? cap / 10 : null;
         const gm = (rev > 0 && cogs != null) ? (rev - cogs) / rev * 100 : null;
@@ -60,8 +61,11 @@ export function sliceOne(F, CUM, sym, nq = N_Q) {
         const niSrc = niOff != null ? 'fs' : (ni != null ? 'eps' : null);
         const nm = (ni != null && rev > 0) ? ni / rev * 100 : null;
         const fcf = (ocf != null && capex != null) ? ocf + capex : null;
+        // 營益率 = 營業利益 ÷ 營收(同 nm 的離譜值守門:|x| > 100% 就 null)
+        const oim = (rev > 0 && opi != null) ? opi / rev * 100 : null;
         return { p: q, pub: pubDate(q), rev: r0(rev), cogs: r0(cogs), inv: r0(inv), capex: r0(capex), dep: r0(dep), ocf: r0(ocf),
                  eq: r0(eq), cap: r0(cap), eps: r2(eps), gm: r1(gm), nm: (nm != null && Math.abs(nm) <= 100) ? r1(nm) : null,
+                 opi: r0(opi), oim: (oim != null && Math.abs(oim) <= 100) ? r1(oim) : null,
                  doi: (() => { const d = doi(inv, cogs); return (d != null && d < 2000) ? r0(d) : null; })(),
                  fcf: r0(fcf), ni: r0(ni), ni_src: niSrc };
     });

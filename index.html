@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.2.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8585,8 +8585,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.2.9',
+    _APP_VERSION: 'V77.3.0',
     _CHANGELOG: [
+        { v: 'V77.3.0', d: ['📈 <b>報告頁「基本面」多了近 8 季趨勢圖 + 三種事實標記</b>(你說「新增近八季的營收、毛利率、營業利益率做成趨勢圖,告訴我哪一季毛利率掉、哪一季現金流轉負、哪一季存貨突然拉高」):趨勢線改成 8 條 —— 營收(單季)/ 季營收年增 / 毛利率 / 淨利率 / 每股盈餘 / <b>營業現金流(單季)</b> / 自由現金流(單季)/ <b>存貨天數</b>,每條只畫最近 8 季;線上的<b>空心圓 ○</b> 就是「那一季發生了什麼」:毛利率掉 ≥3pp、營業現金流正→負、存貨天數 +30%,底下一行直接寫出「2025-06 毛利率 −4.2pp(40.0 → 36.0%)」這種句子。⚠️ 它是<b>事實紀錄不是警訊</b>:全市場實測(2,352 檔 ・24,927 個季對季)這三種情況分別有 <b>21.8% / 17% / 15.3%</b> 的季會出現 —— 五檔裡就有一檔,所以不用紅色也不用 ⚠️,基準率直接印在畫面上。', '⏳ <b>營益率那條線要等財報回算跑一次</b>:採礦端已加抓損益表的「營業利益」欄(跟基本面頁「📈 三率」同一個來源),但 gh-pages 上的切片要等你在 Actions 手動跑一次「📦 財報三表深歷史回算」(選 main)、隔天採礦帶上去之後才會出現;在那之前那條線不畫、畫面會說「等回算」。', '🖼️ 自己畫的海報(短評報告)同一段同步:8 季、同樣 8 條線、同樣的 ○ 標記與基準率;順手修掉每一節標題右邊那句說明「截字後補的 … 沒量進寬度」→ 會壓到標題的小毛病(§6 籌碼那節肉眼看抓到的)。'] },
         { v: 'V77.2.9', d: ['🎤 <b>法說會後的股價反應寫進實測總表了</b>(🔬 實測總表 →「推薦下一步」):844 場實測,法說會後 5 日中位 <b>−1.26 pp</b>,而「隨便挑一天」的對照組是 −0.73 pp → <b>法說會後反而略差一點</b>。⛔ 這是<b>事實紀錄不是買賣訊號</b>(沒扣交易成本、沒過六道關卡),正式回測還要等窗口長一點。', '🔁 <b>順手收掉一條「永遠紅」的測試</b> —— 查下去發現<b>它不是壞掉</b>:報告頁「短中線/長線」視角是<b>刻意</b>攤開價格牆與籌碼那兩節(你後來要的),而舊的檢查還在用更早那版「全部折疊」的標準。⛔ 一直紅的檢查等於沒有檢查,已改成釘現在的規則。'] },
         { v: 'V77.2.8', d: ['🔎 <b>法說會可以用代號也可以用中文搜了,而且打字就搜全部</b>(你說「新增可搜尋法說會個股」):以前停在「👜 我的」打字只會搜自己那幾檔,搜不到就像那一檔沒有法說會 —— 現在<b>一打字就跨所有範圍</b>,上面還會寫「已跨所有範圍」+ 一顆回去的鈕;全形數字(２３３０)也吃得下。', '📄 <b>簡報終於可以一鍵打開了</b>(你說「法說會資料如簡報,我沒看到可以下載的地方」)。每一場的中文/英文簡報各一顆鈕,點了直接開 PDF。⭐ 本來以為打不開 —— 是我自己的探針把官方欄位抄錯(官方寫 <code>name = \'step\'</code> 等號兩邊有空白),修好之後實測<b>一抓就是 2.67MB 的真 PDF</b>。', '🔎 <b>深度查詢換成「法人視角」的提示詞</b>(你說「把重要東西挖出來、摘要重點、法人會看的、<b>未來展望</b>是什麼」):八個面向 —— 未來展望/財測(⭐ 含<b>跟上一次法說比說法變了什麼</b>)、產能與資本支出、訂單能見度、價格與成本、新產品時間表、庫存、<b>Q&amp;A 管理層避開了哪些問題</b>、公司自己講的風險。本站算好的數字直接塞進去(⛔ 不讓 AI 自己算),而且明文禁止它給買賣建議/評分/部位。簡報 PDF 網址也一起附上去讓它去讀。', '🏭 <b>多了產業分組</b>、🔔 <b>「你的清單裡未來 14 天有幾場」</b>、📜 <b>每一檔的歷年法說會</b>、📊 <b>會後股價統計</b>。⚠️ 統計那格<b>是事實紀錄不是買賣訊號</b>:實測 844 場,法說會後 5 日中位 <b>−1.26 pp</b>,而「隨便挑一天」的對照組是 −0.73 pp → <b>法說會後反而略差一點</b>;沒扣交易成本、沒過六道關卡,⛔ 不可以拿來當進出場理由。', '🏷️ <b>順手修掉產業作戰室全站的一個老問題</b>:中文名以前<b>只有一條腿</b>(免金鑰的 FinMind),它一掛全站名字就變成一排代號、而且什麼都不會講。現在改成三層(本站離線股名表 → FinMind → 舊快取)。'] },
         { v: 'V77.2.7', d: ['🎤 <b>產業作戰室多了「法說會」分頁</b>(你說「把法說會資訊收集起來,新增一個頁面」):上市 + 上櫃的法人說明會時間表、地點、<b>公司自己寫的擇要訊息</b>、簡報檔名、影音連結;可以只看「👜 我的」(庫存 + 自選 + 決策台今天的名單)、今天、未來、已開有內容,也能搜關鍵字。⛔ 只描述,不給多空(法說會前後波動常變大,但方向實測 0 個成立)。', '🔎 <b>深度查詢</b>(你說「貼關鍵字讓 AI 去搜,要有 Meta / Gemini / GPT」):貼關鍵字、可帶上某一檔,選 Perplexity / ChatGPT / Google / Gemini / Meta AI 帶去<b>外部網站</b>查(會上網、用他們的額度)。會先把整段問題複製到剪貼簿再開;Gemini 與 Meta AI 的網址不吃帶字,開了之後貼上就好。', '🚨 <b>順手抓到藏了三個月的錯</b>:採礦一直「法說會 0 場」,真因是打錯資料集 —— 證交所 OpenAPI 那個代碼其實是<b>大股東名稱表</b>,從來不是法說會。現在改走公開資訊觀測站,所以個股頁的「幾天內有法說會」提醒與報告頁 §12 也終於有東西了。'] },
@@ -24592,6 +24593,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ⚠️ 門檻 ±20% 是照既有三個旗標的「重大」規格訂的(EPS 崩 ≥50% / 股本變 >20%),
     //      ⛔ **不是**為了湊出某個命中率挑的;各門檻實測:±5% 37.9% ・±10% 31.1% ・±20% 22.6% ・±30% 15.7% ・±50% 8.0%。
     _FIN_STRUCT_BASE: { t: 20, hit: 244, n: 1082, up: 193, d: '2026-09-15' },
+    // 📈 V77.3.0 近 8 季趨勢上的三種「事實標記」(毛利率掉 / 營業現金流轉負 / 存貨天數拉高)的**全市場基準率**
+    //   ⛔ 數字不可手改 —— 跑 `node scripts/fin_mark_base.mjs`(`--check` 會比對這一行,差 >1pp 就紅)。
+    //   ⭐ 三個都是 15~22% 的**常見事件**(V77.1.6 規則:先量再決定它是不是警示)→ 畫面上一律「事實紀錄」,⛔ 不用 ⚠️/紅色。
+    _FIN_MARK_BASE: { gm: { th: 3, base: 21.8 }, ocf: { base: 17 }, doi: { th: 30, base: 15.3 }, n: 24927, files: 2352, asof: '2026-09-19' },
+    _RP_TREND_N: 8,   // 使用者(2026-09-19):「近八季」—— `_finTrend` 仍算 12 季(QoQ 要有前一季可比),HTML 與 canvas 都只**顯示**最後 8 季
     _finTrend(C) {
         const F = C && C.fin;
         if (!F || !Array.isArray(F.q) || F.q.length < 5) return null;
@@ -24599,7 +24605,18 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const num = v => (v != null && v !== '' && Number.isFinite(+v)) ? +v : null;
         const Q = F.q.slice(-12);
         const rows = Q.map(q => ({ p: String(q.p || ''), rev: num(q.rev), gm: num(q.gm), eps: num(q.eps), nm: num(q.nm), fcf: num(q.fcf),
+                                   ocf: num(q.ocf), doi: num(q.doi), oim: num(q.oim),   // V77.3.0:營業現金流 / 存貨天數 / 營益率(回算前是 null)
                                    par: !!(parQ && String(q.p) >= String(parQ)) }));
+        // 📍 V77.3.0 三種事實標記(⛔ 純事實、⛔ 不進計分、⛔ 只在這一處算 —— HTML 與 canvas 只讀 `marks`):
+        //   gm:毛利率 QoQ 掉 ≥ th pp ・ocf:營業現金流(單季)正→負 ・doi:存貨天數 QoQ +th% 以上
+        //   門檻讀 `_FIN_MARK_BASE`(跟 `scripts/fin_mark_base.mjs` 同一份,⛔ 不 inline 寫死);`i` 是 rows 的索引。
+        const MB = this._FIN_MARK_BASE, marks = [];
+        for (let i = 1; i < rows.length; i++) {
+            const a = rows[i - 1], b = rows[i], q7 = b.p.slice(0, 7);
+            if (a.gm != null && b.gm != null && (b.gm - a.gm) <= -MB.gm.th) marks.push({ i, q: q7, k: 'gm', txt: `${q7} 毛利率 ${(b.gm - a.gm).toFixed(1)}pp(${a.gm.toFixed(1)} → ${b.gm.toFixed(1)}%)` });
+            if (a.ocf != null && b.ocf != null && a.ocf > 0 && b.ocf < 0) marks.push({ i, q: q7, k: 'ocf', txt: `${q7} 營業現金流轉負(${(a.ocf / 1e8).toFixed(1)} → ${(b.ocf / 1e8).toFixed(1)} 億)` });
+            if (a.doi != null && b.doi != null && a.doi > 0 && (b.doi / a.doi - 1) >= MB.doi.th / 100) marks.push({ i, q: q7, k: 'doi', txt: `${q7} 存貨天數 +${Math.round((b.doi / a.doi - 1) * 100)}%(${Math.round(a.doi)} → ${Math.round(b.doi)} 天)` });
+        }
         // ① 年增一律跟**去年同季**比(季營收有季節性)
         const yoy = rows.map((r, i) => (i >= 4 && r.rev != null && rows[i - 4].rev > 0) ? (r.rev / rows[i - 4].rev - 1) * 100 : null);
         const L = rows[rows.length - 1], P4 = rows.length >= 5 ? rows[rows.length - 5] : null;
@@ -24640,7 +24657,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             }
         } catch (_) { struct = null; }
         const parN = rows.filter(r => r.par).length;
-        return { rows, yoy, verdict, struct, parQ, parN, n: rows.length, updated: F.updated || '' };
+        const hasOim = rows.some(r => r.oim != null);
+        return { rows, yoy, verdict, struct, parQ, parN, marks, hasOim, n: rows.length, disp: Math.min(rows.length, this._RP_TREND_N), updated: F.updated || '' };
     },
     // 📉 極簡 sparkline(inline SVG,零依賴)—— ⛔ 不用 ECharts(V74.7.2:圖表元件載不到會把整個 App 帶走)
     //   ⚠️ `gap` 為 true 的那幾點**斷線**(面額變更 → EPS 不同尺,連起來會看成崩掉)。
@@ -24665,14 +24683,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const path = segs.map(sg => `<polyline points="${sg.map(pt => `${pt[0].toFixed(1)},${pt[1].toFixed(1)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>`).join('');
         const li = v.map((y, i) => (y == null ? -1 : i)).filter(i => i >= 0).pop();
         const zeroY = (lo < 0 && hi > 0) ? `<line x1="${PAD}" y1="${Y(0).toFixed(1)}" x2="${W - PAD}" y2="${Y(0).toFixed(1)}" stroke="#30363d" stroke-width="1" stroke-dasharray="2 2"/>` : '';
-        return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-spark="${v.filter(x => x != null).length}" style="display:block;flex:0 0 auto">${zeroY}${path}<circle cx="${X(li).toFixed(1)}" cy="${Y(v[li]).toFixed(1)}" r="2.2" fill="${col}"/></svg>`;
+        // 📍 V77.3.0 事實標記:空心圓(⛔ 不用紅/琥珀 —— 它是「那一季發生了什麼」不是警示;`data-mark` 給測試數)
+        const mk = (Array.isArray(o.marks) ? o.marks : []).filter(i => i >= 0 && i < v.length && v[i] != null)
+            .map(i => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v[i]).toFixed(1)}" r="3" fill="#0d1117" stroke="#c9d1d9" stroke-width="1.4" data-mark="${i}"/>`).join('');
+        return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" data-spark="${v.filter(x => x != null).length}" data-marks="${(mk.match(/data-mark=/g) || []).length}" style="display:block;flex:0 0 auto">${zeroY}${path}<circle cx="${X(li).toFixed(1)}" cy="${Y(v[li]).toFixed(1)}" r="2.2" fill="${col}"/>${mk}</svg>`;
     },
     // 📈 §4 的趨勢區塊(HTML)—— ⛔ 只轉述 `_finTrend`,一個數字都不重算
     _rpTrendHtml(C) {
         const T = this._finTrend(C);
         if (!T) return '';
         const f = this._rpFmt, S = this._RP_STYLE;
-        const gaps = T.rows.map((r, i) => !!(r.par && (i === 0 || !T.rows[i - 1].par)));   // 面額變更那一點起斷線
+        // 📅 V77.3.0 只**顯示**最後 `_RP_TREND_N`(8)季 —— `_finTrend` 仍算 12 季;`off` 把 12 季的索引換成 8 季的
+        const off = T.rows.length - T.disp, R8 = T.rows.slice(off), Y8 = T.yoy.slice(off);
+        const gaps = R8.map((r, i) => !!(r.par && (i === 0 || !R8[i - 1].par)));   // 面額變更那一點起斷線
+        const mkOf = k => T.marks.filter(m => m.k === k && m.i >= off).map(m => m.i - off);
         const line = (nm, vals, col, tail, opt) => {
             const sv = this._sparkSvg(vals, Object.assign({ col }, opt || {}));
             if (!sv) return '';
@@ -24681,31 +24705,42 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 ${sv}<div class="text-[11px] font-mono text-gray-200" style="flex:1 1 0;min-width:0;text-align:right">${tail}</div></div>`;
         };
         const lastOf = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i]; return null; };
-        const yL = lastOf(T.yoy), gL = lastOf(T.rows.map(r => r.gm)), eL = lastOf(T.rows.map(r => r.eps));
-        const nL = lastOf(T.rows.map(r => r.nm)), cL = lastOf(T.rows.map(r => r.fcf));
+        const col = k => R8.map(r => r[k]);
+        const rL = lastOf(col('rev')), yL = lastOf(Y8), gL = lastOf(col('gm')), oL = lastOf(col('oim')), eL = lastOf(col('eps'));
+        const nL = lastOf(col('nm')), cL = lastOf(col('fcf')), ocL = lastOf(col('ocf')), dL = lastOf(col('doi'));
         // 🏷️ 季別:毛利率去重之後這裡是**唯一**印毛利率的地方 → 一定要帶季別(V77.1.4 `_gmLatest` 那條規則)
-        const _gq = (() => { for (let i = T.rows.length - 1; i >= 0; i--) if (T.rows[i].gm != null) return String(T.rows[i].p || '').slice(0, 7); return ''; })();
+        const _gq = (() => { for (let i = R8.length - 1; i >= 0; i--) if (R8[i].gm != null) return String(R8[i].p || '').slice(0, 7); return ''; })();
         // ⚠️ 淨利率 / 每股盈餘要吃 `gap` —— 舊切片的 `nm` 是用「EPS × 股本/10」推的,面額變更那段不同尺(V76.2.0)。
-        //    營收年增 / 毛利率 / 自由現金流**不受面額影響** → ⛔ 不加 gap。
-        //    自由現金流會是負的 → `zero:1` 才畫得出零線。
-        const body = line('季營收年增', T.yoy, '#38bdf8', yL == null ? '—' : `${yL >= 0 ? '+' : ''}${f(yL, 1)}%`)
-            + line('毛利率', T.rows.map(r => r.gm), '#38bdf8', gL == null ? '—' : `${f(gL, 1)}%${_gq ? `<span class="text-gray-500">(${_gq} 季)</span>` : ''}`)
-            + line('淨利率', T.rows.map(r => r.nm), '#38bdf8', nL == null ? '—' : `${f(nL, 1)}%`, { gap: gaps })
-            + line('每股盈餘', T.rows.map(r => r.eps), '#38bdf8', eL == null ? '—' : `${f(eL, 2)} 元`, { gap: gaps, zero: 0 })
-            + line('自由現金流(單季)', T.rows.map(r => r.fcf), '#38bdf8', cL == null ? '—' : `${f(cL / 1e8, 1)} 億`, { zero: 1 });
+        //    營收 / 營收年增 / 毛利率 / 營益率 / 現金流 / 存貨天數**不受面額影響** → ⛔ 不加 gap。
+        //    現金流會是負的 → `zero:1` 才畫得出零線。
+        // ⚠️ 名字⛔ 不可跟海報格子撞前綴(test_dupnum ⓒ2d):「營收(單季)」≠「季營收年增」/「月營收」;「存貨天數」尾巴格式跟格子一模一樣(同值不算撞)。
+        const body = line('營收(單季)', col('rev'), '#38bdf8', rL == null ? '—' : `${f(rL / 1e8, 1)} 億`, { zero: 1 })
+            + line('季營收年增', Y8, '#38bdf8', yL == null ? '—' : `${yL >= 0 ? '+' : ''}${f(yL, 1)}%`)
+            + line('毛利率', col('gm'), '#38bdf8', gL == null ? '—' : `${f(gL, 1)}%${_gq ? `<span class="text-gray-500">(${_gq} 季)</span>` : ''}`, { marks: mkOf('gm') })
+            + (T.hasOim ? line('營益率', col('oim'), '#38bdf8', oL == null ? '—' : `${f(oL, 1)}%`) : '')
+            + line('淨利率', col('nm'), '#38bdf8', nL == null ? '—' : `${f(nL, 1)}%`, { gap: gaps })
+            + line('每股盈餘', col('eps'), '#38bdf8', eL == null ? '—' : `${f(eL, 2)} 元`, { gap: gaps, zero: 0 })
+            + line('營業現金流(單季)', col('ocf'), '#38bdf8', ocL == null ? '—' : `${f(ocL / 1e8, 1)} 億`, { zero: 1, marks: mkOf('ocf') })
+            + line('自由現金流(單季)', col('fcf'), '#38bdf8', cL == null ? '—' : `${f(cL / 1e8, 1)} 億`, { zero: 1 })
+            + line('存貨天數', col('doi'), '#38bdf8', dL == null ? '—' : `${f(dL, 0)} 天`, { marks: mkOf('doi') });
         if (!body) return '';
         // 🚨 只描述,⛔ 不給方向 —— 本站**本站沒有回測過**「毛利率背離」能不能預測股價
         const vd = T.verdict ? `<div class="text-[10px] leading-snug mt-0.5" data-rptrendvd="${T.verdict.key}">
                 ${T.verdict.key === 'diverge' ? '⚠️' : '📊'} ${this._rpHiBold(T.verdict.txt)}
                 <span class="text-gray-500">(最新季 vs 去年同季)</span></div>` : '';
+        // 📍 V77.3.0 事實標記那一行 —— 只列**顯示範圍內**的;⛔ 純事實(空心圓 ○),而且基準率一定要印出來(V77.1.6:23% 的股票都會亮的燈不是警示)
+        const MB = this._FIN_MARK_BASE, mkShown = T.marks.filter(m => m.i >= off);
+        const mkLine = `<div class="text-[10px] text-gray-300 leading-snug mt-0.5" data-rpmarks="${mkShown.length}">○ <b>近 ${T.disp} 季事實標記</b>:${mkShown.length ? mkShown.map(m => this._escHtml(m.txt)).join(' ‧ ') : `這 ${T.disp} 季沒有出現「毛利率掉 ≥${MB.gm.th}pp / 營業現金流轉負 / 存貨天數 +${MB.doi.th}%」`}<br><span class="text-gray-500" data-rpmarkbase="${MB.gm.base}">全市場任一季出現率:毛利率掉 ≥${MB.gm.th}pp <b>${MB.gm.base}%</b>、現金流轉負 <b>${MB.ocf.base}%</b>、存貨天數 +${MB.doi.th}% <b>${MB.doi.base}%</b>(${MB.files.toLocaleString()} 檔 ・${this._dW(MB.asof) || MB.asof} 實測)—— 都是<b>常見事件</b>,所以這是事實紀錄,⛔ 不是警訊。</span></div>`;
         const parNote = T.parN ? `<div class="text-[9px] text-amber-300/90 leading-snug">⚠️ ${String(T.parQ).slice(0, 7)} 起疑似面額變更 → 每股盈餘與淨利率不同尺,那一段<b>刻意斷線</b>(⛔ 連起來會看成崩掉)</div>` : '';
         // 🆕 V77.1.6 結構分歧(⛔ 純事實,跟既有三個旗標同一個規格 —— 只標事實、⛔ 不下結論)
         const st = T.struct ? (() => {
             const up = T.struct.key === 'ni_up_fcf_dn', B = this._FIN_STRUCT_BASE;
             return `<div class="text-[10px] text-gray-300 leading-snug mt-0.5" data-rpstruct="${T.struct.key}">📊 <b>${up ? '賺的錢在成長,但收得到的現金在縮' : '賺的錢在縮,但收得到的現金反而變多'}</b>(近 4 季稅後淨利 ${T.struct.dNi >= 0 ? '+' : ''}${f(T.struct.dNi, 0)}%、自由現金流 ${T.struct.dFcf >= 0 ? '+' : ''}${f(T.struct.dFcf, 0)}%,都跟一年前的近 4 季比)<br><span class="text-gray-500" data-rpstructbase="${B.hit}">⚠️ <b>這不是罕見事件</b>:全市場算得出來的 ${B.n.toLocaleString()} 檔裡有 <b>${B.hit} 檔(${Math.round(B.hit / B.n * 100)}%)</b>現在也是兩邊方向相反(${this._dW(B.d) || B.d} 實測)。${up ? '常見原因是應收帳款或存貨變多、資本支出拉高 —— ⛔ 本站沒有這幾欄,查不出是哪一個。' : '常見原因是資本支出退潮或存貨去化 —— 同樣⛔ 查不出是哪一個。'}⛔ 這只是事實,<b>本站沒有回測過</b>它能不能預測股價。</span></div>`;
         })() : '';
-        return `<div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">📈 近 ${T.n} 季趨勢(左舊 → 右新)</div>${body}${vd}${st}${parNote}
-            <div class="text-[9px] text-gray-500 leading-snug">⛔ 這是<b>事實描述</b>,<b>本站沒有回測過</b>它能不能預測股價 —— 拿它看「成長有沒有品質」,⛔ 別拿它當買賣訊號。<br>⚠️ <b>營益率</b>在上面「📈 三率(近三季)」有,但<b>只有 3 季</b>(來源不同);這份 12 季的切片只有營業成本、<b>沒有營業費用</b> → 畫不出 12 季的營益率。</div>`;
+        // 📈 營益率:V77.3.0 起採礦回算會抓損益表的營業利益(OperatingIncome)→ 回算跑完前那條線不畫、只說明(⛔ 不寫「資料源沒有」—— 上方「📈 三率(近三季)」就有 3 季)
+        const oimNote = T.hasOim ? '' : '<br>⏳ <b>營益率</b>那條線要等財報回算跑完才會出現(採礦端已加欄位);在那之前上面「📈 三率(近三季)」有 <b>3 季</b>的營益率可看。';
+        return `<div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">📈 近 ${T.disp} 季趨勢(左舊 → 右新)</div>${body}${mkLine}${vd}${st}${parNote}
+            <div class="text-[9px] text-gray-500 leading-snug">⛔ 這是<b>事實描述</b>,<b>本站沒有回測過</b>它能不能預測股價 —— 拿它看「成長有沒有品質」,⛔ 別拿它當買賣訊號。${oimNote}</div>`;
     },
     // ⭐ template literal 裡的 `**粗體**` 不會自己轉(pro.html `_labHi` 的同一個坑)→ 在唯一的顯示入口轉掉
     _rpHiBold(t) { return this._escHtml(String(t || '')).replace(/\*\*([^*<>]+)\*\*/g, '<b class="text-gray-100">$1</b>'); },
@@ -25154,6 +25189,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (!T) return '—';
             if (!T.struct) return '近 12 季沒有「淨利與自由現金流方向不一樣」的情況';
             return `${T.struct.key === 'ni_up_fcf_dn' ? '賺的錢在成長,但收得到的現金在縮' : '賺的錢在縮,但收得到的現金反而變多'}(近4季稅後淨利 ${F(T.struct.dNi, 0)}% ・自由現金流 ${F(T.struct.dFcf, 0)}%,都跟一年前的近4季比)`;
+        })()}`);
+        // 📍 V77.3.0 近 8 季事實標記(⭐ 第 N+1 個顯示點 —— 餵給外部 AI 的也要同一份,不然它會自己判「毛利率崩」)
+        L.push(`- 近 8 季事實標記(⛔ 純事實、本站沒有回測過;全市場任一季出現率 毛利率掉≥${this._FIN_MARK_BASE.gm.th}pp ${this._FIN_MARK_BASE.gm.base}% / 現金流轉負 ${this._FIN_MARK_BASE.ocf.base}% / 存貨天數+${this._FIN_MARK_BASE.doi.th}% ${this._FIN_MARK_BASE.doi.base}% = 常見事件):${(() => {
+            const T = (() => { try { return this._finTrend(C); } catch (_) { return null; } })();
+            if (!T) return '—';
+            const off = T.rows.length - T.disp, m = T.marks.filter(x => x.i >= off);
+            return m.length ? m.map(x => x.txt).join(' ‧ ') : '這 8 季都沒有出現';
         })()}`);
         L.push(`- 法人近5日:外資 ${C && C.s5 && C.s5.hasInst ? Math.round(C.s5.foreign) : '—'} 張 / 投信 ${C && C.s5 && C.s5.hasInst ? Math.round(C.s5.trust) : '—'} 張;近20日 外資 ${C && C.s20 && C.s20.hasInst ? Math.round(C.s20.foreign) : '—'} 張 / 投信 ${C && C.s20 && C.s20.hasInst ? Math.round(C.s20.trust) : '—'} 張(白話:${GL['外資近5日']})`);
         L.push(`- 集保大戶散戶:${td ? `千張大戶 ${(+td[1]).toFixed(1)}% ・散戶 ${(+td[3]).toFixed(1)}%` : '—'}(白話:千張大戶=${GL['千張大戶']};散戶=${GL['散戶']})`);
@@ -25766,8 +25808,11 @@ ${this._reportFacts(sym)}
             if (hint) {
                 const room = x1 - (x0 + nw + mt(title, FS.h, '900')) - 14;
                 let ht = String(hint);
-                while (ht.length > 4 && mt(ht, FS.small) > room) ht = ht.slice(0, -1);
-                if (room > 90 && ht.length > 4) txt(ht === String(hint) ? ht : ht + '…', x1, top + 26, FS.small, S.dim, '700', 'right');
+                // 🐛 V77.3.0 截字之後才補「…」,而量寬時沒把「…」算進去 → 右對齊之後左端會多吃一個字寬、壓到標題
+                //   (snapshot 肉眼看 §6 籌碼抓到的;⭐ 量寬一律量**最後真的畫出來的那個字串**)
+                const fits = t => mt(t, FS.small) <= room;
+                if (!fits(ht)) { while (ht.length > 4 && !fits(ht + '…')) ht = ht.slice(0, -1); ht = ht + '…'; }
+                if (room > 90 && ht.length > 4) txt(ht, x1, top + 26, FS.small, S.dim, '700', 'right');
             }
             line(top + 40, x0, x1);                                 // 分段靠這條線(⛔ 不是靠框)
             body(yy, x0, x1);
@@ -25811,7 +25856,7 @@ ${this._reportFacts(sym)}
             return 74 + maxR * 20;
         };
         // 📉 V77.1.2 canvas 版 sparkline —— ⚠️ `gap[i]` 為 true 的那一點**斷線**(面額變更 → EPS 不同尺)
-        const spark = (vals, sx, sy, sw, sh, gap) => {
+        const spark = (vals, sx, sy, sw, sh, gap, marks) => {
             if (!paint) return;
             const v = (vals || []).map(x => (x != null && Number.isFinite(+x)) ? +x : null);
             const okv = v.filter(x => x != null);
@@ -25832,6 +25877,11 @@ ${this._reportFacts(sym)}
             g.stroke();
             const li = v.map((y, i) => (y == null ? -1 : i)).filter(i => i >= 0).pop();
             g.fillStyle = S.pos; g.beginPath(); g.arc(PX(li), PY(v[li]), 3.4, 0, Math.PI * 2); g.fill();
+            // 📍 V77.3.0 事實標記:空心圓(跟 HTML `_sparkSvg` 同一種畫法;⛔ 不用紅/琥珀)
+            for (const i of (Array.isArray(marks) ? marks : [])) {
+                if (i < 0 || i >= v.length || v[i] == null) continue;
+                g.fillStyle = S.bg; g.strokeStyle = S.fg; g.lineWidth = 1.6; g.beginPath(); g.arc(PX(i), PY(v[i]), 4.2, 0, Math.PI * 2); g.fill(); g.stroke();
+            }
         };
         const rowLv = (x, yy, x0, x1, opt = {}) => {   // 關鍵價位 / 估值對照 的一列
             const now = x.t === 'now', col = now ? S.amb : S.fg;
@@ -26082,24 +26132,40 @@ ${this._reportFacts(sym)}
                 //   ⭐ 「營收 +50% 但毛利率往下」跟「兩個一起往上」是完全不同的公司 —— 單點看不出來
                 if (TR) {
                     line(yy + h + 2, x0, x1); h += 30;
-                    txt(`近 ${TR.n} 季趨勢(左舊 → 右新)`, x0, yy + h, FS.small, S.dim, '700'); h += 30;
-                    const gaps = TR.rows.map((r, i) => !!(r.par && (i === 0 || !TR.rows[i - 1].par)));
+                    txt(`近 ${TR.disp} 季趨勢(左舊 → 右新)`, x0, yy + h, FS.small, S.dim, '700'); h += 30;
+                    // 📅 V77.3.0 跟 HTML 一樣只顯示最後 `_RP_TREND_N` 季;`off` 把 12 季索引換成 8 季
+                    const off = TR.rows.length - TR.disp, R8 = TR.rows.slice(off), Y8 = TR.yoy.slice(off);
+                    const gaps = R8.map((r, i) => !!(r.par && (i === 0 || !R8[i - 1].par)));
+                    const mkOf = k => TR.marks.filter(m => m.k === k && m.i >= off).map(m => m.i - off);
                     const lastOf = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i]; return null; };
-                    // ⚠️ 順序 / 斷線規則要跟報告頁 §4 的 `_rpTrendHtml` **完全一致**(⛔ 兩邊各排一份 = 同一份資料兩種說法)
-                    const series = [['季營收年增', TR.yoy, v => v == null ? '—' : `${v >= 0 ? '+' : ''}${num(v, 1)}%`, null],
-                                    ['毛利率', TR.rows.map(r => r.gm), v => v == null ? '—' : `${num(v, 1)}%`, null],
-                                    ['淨利率', TR.rows.map(r => r.nm), v => v == null ? '—' : `${num(v, 1)}%`, gaps],
-                                    ['每股盈餘', TR.rows.map(r => r.eps), v => v == null ? '—' : `${num(v, 2)} 元`, gaps],
-                                    ['自由現金流(單季)', TR.rows.map(r => r.fcf), v => v == null ? '—' : `${num(v / 1e8, 1)} 億`, null]];
-                    try { this._rpOwnDbg.trendNames = series.map(x => x[0]); } catch (_) {}
-                    for (const [nm, vals, fmt, gp] of series) {
-                        spark(vals, x0 + 160, yy + h - 16, (x1 - x0) - 160 - 170, 26, gp);
+                    const colOf = k => R8.map(r => r[k]);
+                    // ⚠️ 順序 / 斷線 / 標記規則要跟報告頁 §4 的 `_rpTrendHtml` **完全一致**(⛔ 兩邊各排一份 = 同一份資料兩種說法)
+                    const series = [['營收(單季)', colOf('rev'), v => v == null ? '—' : `${num(v / 1e8, 1)} 億`, null, null],
+                                    ['季營收年增', Y8, v => v == null ? '—' : `${v >= 0 ? '+' : ''}${num(v, 1)}%`, null, null],
+                                    ['毛利率', colOf('gm'), v => v == null ? '—' : `${num(v, 1)}%`, null, mkOf('gm')],
+                                    ...(TR.hasOim ? [['營益率', colOf('oim'), v => v == null ? '—' : `${num(v, 1)}%`, null, null]] : []),
+                                    ['淨利率', colOf('nm'), v => v == null ? '—' : `${num(v, 1)}%`, gaps, null],
+                                    ['每股盈餘', colOf('eps'), v => v == null ? '—' : `${num(v, 2)} 元`, gaps, null],
+                                    ['營業現金流(單季)', colOf('ocf'), v => v == null ? '—' : `${num(v / 1e8, 1)} 億`, null, mkOf('ocf')],
+                                    ['自由現金流(單季)', colOf('fcf'), v => v == null ? '—' : `${num(v / 1e8, 1)} 億`, null, null],
+                                    ['存貨天數', colOf('doi'), v => v == null ? '—' : `${num(v, 0)} 天`, null, mkOf('doi')]];
+                    try { this._rpOwnDbg.trendNames = series.map(x => x[0]); this._rpOwnDbg.trendMarks = series.map(x => (x[4] || []).length); } catch (_) {}
+                    for (const [nm, vals, fmt, gp, mks] of series) {
+                        spark(vals, x0 + 160, yy + h - 16, (x1 - x0) - 160 - 170, 26, gp, mks);
                         txt(nm, x0, yy + h, FS.small, S.dim, '700');
                         txt(fmt(lastOf(vals)), x1, yy + h, FS.body, S.fg, '900', 'right');
                         // 🚨 V77.1.4 趨勢那幾條也要進 `labels` —— 「同一張海報有兩個自由現金流」正是在
                         //   **趨勢 vs 上面那格**之間發生的(⛔ 只收 `cells()` 的話那一類永遠抓不到)。
                         if (paint) this._rpOwnDbg.labels.push([String(nm), String(fmt(lastOf(vals)))]);
                         h += 40;
+                    }
+                    // 📍 V77.3.0 事實標記(⛔ 純事實 + 基準率;跟 HTML 那一行同一份 `TR.marks`)
+                    {
+                        const MB = this._FIN_MARK_BASE, mkS = TR.marks.filter(m => m.i >= off);
+                        const _mt = `○ 近 ${TR.disp} 季事實標記:${mkS.length ? mkS.map(m => m.txt).join(' ‧ ') : `沒有出現毛利率掉 ≥${MB.gm.th}pp / 現金流轉負 / 存貨天數 +${MB.doi.th}%`} ・全市場任一季出現率 ${MB.gm.base}% / ${MB.ocf.base}% / ${MB.doi.base}% = 常見事件,⛔ 不是警訊`;
+                        const _mr = wrapRows(_mt, FS.small, x1 - x0);
+                        _mr.slice(0, 3).forEach((r, j) => txt(r, x0, yy + h + j * 24, FS.small, S.dim, '700'));
+                        h += 4 + 24 * Math.min(3, _mr.length);
                     }
                     if (TR.verdict) {
                         const vt = String(TR.verdict.txt).replace(/\*\*/g, '');
@@ -26110,7 +26176,8 @@ ${this._reportFacts(sym)}
                     // 🐛 V77.1.4 這行跟下面那條圖例一樣是**沒換行的 `txt`** → 右邊被裁掉
                     //   (V77.1.3 我自己加的;⭐ 又是 snapshot 肉眼看抓到的,測試一條都沒紅)
                     {
-                        const _ft = '⛔ 事實描述,本站沒有回測過它能不能預測股價 ・營益率只有近 3 季(在 App 基本面頁),12 季的畫不出來';
+                        const _ft = TR.hasOim ? '⛔ 事實描述,本站沒有回測過它能不能預測股價'
+                            : '⛔ 事實描述,本站沒有回測過它能不能預測股價 ・營益率那條線要等財報回算跑完才會出現(近 3 季的在 App 基本面頁)';
                         const _fr = wrapRows(_ft, FS.small, x1 - x0);
                         _fr.slice(0, 2).forEach((r, j) => txt(r, x0, yy + h + j * 24, FS.small, S.dim, '700'));
                         h += 4 + 24 * Math.min(2, _fr.length);

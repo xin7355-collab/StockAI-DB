@@ -166,7 +166,13 @@ with tempfile.TemporaryDirectory() as tmp:
        rec is not None and rec[2] == 3.0 and rec[3] == 4.0 and rec[4] == 5.0, str(rec))
     ok('⑬d 新欄位要有值', rec is not None and rec[-1] is not None and rec[-3] is not None, str(rec))
     ok('⑬e 「要補欄位 N 檔」要印出來(⛔ 不靜默)', '要補欄位' in out)
-ok('⑬f ⛔ 新欄位一律加在 FIELDS 最後面(舊檔陣列靠位置對應)', FB.FIELDS[:6] == ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev'] and FB.FIELDS[-4:] == ['eq', 'cap', 'eps', 'ni'])
+# ⭐ V77.3.0 改釘**用意**:V76.2.0 那 10 個欄位的順序一個都不可動(舊檔陣列靠位置對應),新的只准往後接
+ok('⑬f ⛔ 新欄位一律加在 FIELDS 最後面(舊檔陣列靠位置對應)',
+   FB.FIELDS[:10] == ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev', 'eq', 'cap', 'eps', 'ni'] and len(FB.FIELDS) >= 11, str(FB.FIELDS))
+ok('⑬g 📈 V77.3.0 營業利益(opi ← OperatingIncome)要在損益表那個資料集裡(⛔ 不可另開資料集 = 多打一次)',
+   FB.WANT['TaiwanStockFinancialStatements'].get('opi') == 'OperatingIncome' and 'opi' in FB.FIELDS, str(FB.WANT['TaiwanStockFinancialStatements']))
+ok('⑬h ⭐ 舊檔只有 10 欄 → `_need_ds` 只回損益表那一個(⛔ 三個都重抓 = 多 30 分鐘)',
+   FB._need_ds({'2025-03-31': [1.0] * 10}) == ['TaiwanStockFinancialStatements'], str(FB._need_ds({'2025-03-31': [1.0] * 10})))
 
 # ⑤ 檔數不足 → 不覆寫
 with tempfile.TemporaryDirectory() as tmp:

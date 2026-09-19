@@ -402,7 +402,7 @@ await page.waitForTimeout(2500);
     ok('ⓛ3 ⛔ 只差 10%(未達 ±20% 門檻)不可亮', r.small === null, JSON.stringify(r));
     ok('ⓛ4 基準率常數要有 實測日期 + 分母(⭐ 陷阱 #36:沒有對照組不知道算不算異常)',
        r.base && r.base.n > 500 && r.base.hit > 0 && /^\d{4}-\d{2}-\d{2}$/.test(String(r.base.d)), JSON.stringify(r.base));
-    const h = seg("        const st = T.struct ? (() => {", "        return `<div class=\"text-[10px] font-bold text-gray-300 mt-2 mb-0.5\">📈 近 ${T.n} 季趨勢");
+    const h = seg("        const st = T.struct ? (() => {", "        return `<div class=\"text-[10px] font-bold text-gray-300 mt-2 mb-0.5\">📈 近 ${T.disp} 季趨勢");   // V77.3.0 起標題印 disp(8 季)
     ok('ⓛ5 畫面上⛔ 不可做成 ⚠️ 警示(23% 的股票都會亮),而且**一定要印出基準率**',
        /這不是罕見事件/.test(h) && /data-rpstructbase/.test(h) && !/text-amber-200/.test(h) && /沒有回測過/.test(h), h.slice(0, 200));
 }

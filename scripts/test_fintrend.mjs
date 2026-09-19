@@ -79,7 +79,25 @@ const R = await page.evaluate(async () => {
     L.gm = gm0;
     const vd3 = { verdict: { key: rendKey(A._rpTrendHtml(A._rpLast)) } };
     return {
-        n: T && T.n, yoyN: T && T.yoy.filter(x => x != null).length,
+        n: T && T.n, yoyN: T && T.yoy.filter(x => x != null).length, hasOim: !!(T && T.hasOim), disp: T && T.disp,
+        // 📍 V77.3.0 事實標記:合成 12 季 → 逼出三種標記各一次,再走**顯示路徑**數圓點
+        marks: (() => {
+            const mkC = (over) => { const q = []; for (let i = 0; i < 12; i++) q.push(Object.assign({ p: `202${3 + (i >> 2)}-${['03-31', '06-30', '09-30', '12-31'][i & 3]}`, rev: 100e8, gm: 40, eps: 1, nm: 10, fcf: 5e8, ocf: 8e8, doi: 60, oim: null }, over(i) || {})); return { fin: { q, updated: '2026-09-19' } }; };
+            const cnt = (h, k) => (String(h).match(/data-mark="/g) || []).length;
+            const trend = C => A._finTrend(C), html = C => A._rpTrendHtml(C);
+            const none = mkC(() => null);
+            const gm4 = mkC(i => i === 9 ? { gm: 36 } : null);            // 第 10 季毛利率 40 → 36 = −4pp
+            const gm29 = mkC(i => i === 9 ? { gm: 37.1 } : null);         // −2.9pp ⛔ 不可標
+            const ocfNeg = mkC(i => i === 10 ? { ocf: -1e8 } : null);     // 正 → 負
+            const doi30 = mkC(i => i === 11 ? { doi: 78 } : null);        // 60 → 78 = +30%
+            const doi29 = mkC(i => i === 11 ? { doi: 77 } : null);        // +28% ⛔ 不可標
+            const early = mkC(i => i === 2 ? { gm: 30 } : null);          // 第 3 季掉(在 8 季顯示範圍**外**)
+            const T4 = trend(gm4);
+            return { none: trend(none).marks.length, gm4: T4.marks.map(m => m.k + '@' + m.q), gm29: trend(gm29).marks.length,
+                     ocf: trend(ocfNeg).marks.map(m => m.k), doi30: trend(doi30).marks.map(m => m.k), doi29: trend(doi29).marks.length,
+                     earlyAll: trend(early).marks.length, earlyShown: (/data-rpmarks="(\d+)"/.exec(html(early)) || [])[1],
+                     dotsGm4: cnt(html(gm4)), dotsNone: cnt(html(none)), htmlGm4: html(gm4), txtGm4: T4.marks[0] && T4.marks[0].txt };
+        })(),
         names, vdKey: vd ? vd.dataset.rptrendvd : null, vdTxt: vd ? vd.innerText.trim() : '',
         sparks: [...document.querySelectorAll('[data-spark]')].map(e => +e.dataset.spark),
         // ⭐ 逐條抓自己的 svg:斷線 = polyline 段數 ≥2;零線 = 有虛線 <line>
@@ -121,32 +139,53 @@ const R = await page.evaluate(async () => {
 // ── A ──
 ok('ⓐ0 抓得到 12 季趨勢(空過守門)', R.n >= 8, String(R.n));
 ok('ⓐ ⭐ 年增只有 i≥4 之後才有值(⛔ 前 4 季算不出「跟去年同季比」)', R.yoyN === R.n - 4, `${R.yoyN} vs ${R.n - 4}`);
-// 📈 V77.1.3 五條(⛔ 營益率算不出來 —— data/fin 的 q[] 只有營業成本、沒有營業費用)
-const WANT5 = ['季營收年增', '毛利率', '淨利率', '每股盈餘', '自由現金流(單季)'];
-ok('ⓐ2 五條線都畫出來了,而且順序固定', R.names.length === 5 && WANT5.every((k, i) => R.names[i] === k), JSON.stringify(R.names));
+// 📈 V77.3.0 八條(+ 營益率那條**只在切片有 oim 時**出現 —— 回算跑完前是 null,線不畫)
+//   ⭐ 順序釘住是為了 HTML / canvas 兩邊逐字一致;營益率的位置固定在毛利率之後
+const WANT8 = ['營收(單季)', '季營收年增', '毛利率', '淨利率', '每股盈餘', '營業現金流(單季)', '自由現金流(單季)', '存貨天數'];
+const wantNames = R.hasOim ? [...WANT8.slice(0, 3), '營益率', ...WANT8.slice(3)] : WANT8;
+ok('ⓐ2 八條線都畫出來了(有 oim 時九條),而且順序固定', R.names.length === wantNames.length && wantNames.every((k, i) => R.names[i] === k), JSON.stringify(R.names));
 // 🚨 V77.1.4 它正上方那格是「自由現金流**近4季**」(TTM)→ 這條是單季,標籤⛔ 不可撞名(同名不同值)
-ok('ⓐ2c ⭐ 自由現金流那條要標「單季」(⛔ 不可跟上面那格「近4季」同名不同值)',
-   /自由現金流/.test(R.names[4]) && /單季/.test(R.names[4]), R.names[4]);
+ok('ⓐ2c ⭐ 現金流那兩條要標「單季」(⛔ 不可跟上面那格「近4季」同名不同值)',
+   R.names.filter(n => /現金流/.test(n)).length === 2 && R.names.filter(n => /現金流/.test(n)).every(n => /單季/.test(n)), JSON.stringify(R.names));
 ok('ⓐ2b ⭐ canvas 海報那份的線名**逐字一致**(⛔ 兩邊各排一份 = 同一份資料兩種說法)',
-   !R.canvasNames || (R.canvasNames.length === 5 && WANT5.every((k, i) => R.canvasNames[i] === k)), JSON.stringify(R.canvasNames));
-ok('ⓐ3 sparkline 真的有點(⛔ 空 SVG 不算)', R.sparks.length >= 5 && R.sparks.every(x => x >= 2), JSON.stringify(R.sparks));
+   !R.canvasNames || (R.canvasNames.length === R.names.length && R.names.every((k, i) => R.canvasNames[i] === k)), JSON.stringify(R.canvasNames));
+ok('ⓐ2d 📅 使用者要「近八季」:每條線正好 8 個點(⛔ 不是 12),而且標題寫「近 8 季」', R.sparks.length >= 8 && R.sparks.every(x => x === 8) && /近 8 季趨勢/.test(R.fundTxt), JSON.stringify(R.sparks));
+ok('ⓐ3 sparkline 真的有點(⛔ 空 SVG 不算)', R.sparks.length >= 8 && R.sparks.every(x => x >= 2), JSON.stringify(R.sparks));
 ok('ⓐ4 ⭐ 決定性對照:改來源的最新季自由現金流 → 那條的尾巴數字要跟著變(⛔ 不可寫死)',
    !!R.fcfTail.a && !!R.fcfTail.b && R.fcfTail.a !== R.fcfTail.b && /987/.test(R.fcfTail.b), JSON.stringify(R.fcfTail));
 // ⭐ 斷線規則:面額變更只影響**每股數**的東西 → 淨利率(舊切片是 EPS×股本/10 推的)與每股盈餘要斷,
 //   營收年增 / 毛利率 / 自由現金流⛔ 不可斷(注入:把 `{ gap: gaps }` 拿掉 → 這條會紅)
 {
-    const body = (SRC.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n').match(/const body = line\('季營收年增'[\s\S]{0,900}?;\n/) || [''])[0];
+    const body = (SRC.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n').match(/const body = line\('營收\(單季\)'[\s\S]{0,1600}?;\n/) || [''])[0];
+    ok('ⓐ5⓪ 空過守門:切得到 body 那一段', body.length > 400, String(body.length));
     const gapOf = nm => { const m = new RegExp(`line\\('${nm}'[^\\n]*`).exec(body); return m ? /gap:\s*gaps/.test(m[0]) : null; };
     ok('ⓐ5 淨利率 / 每股盈餘吃 gap(面額變更那段刻意斷線)', gapOf('淨利率') === true && gapOf('每股盈餘') === true, body.slice(0, 40));
-    ok('ⓐ5b 營收年增 / 毛利率 / 自由現金流 ⛔ 不可斷線(面額變更不影響它們)',
-       gapOf('季營收年增') === false && gapOf('毛利率') === false && gapOf('自由現金流\\(單季\\)') === false, body.slice(0, 40));
-    ok('ⓐ5c 自由現金流吃 zero(它會是負的,沒有零線看不出正負)', /line\('自由現金流\(單季\)'[^\n]*zero:\s*1/.test(body), body.slice(0, 40));
+    ok('ⓐ5b 營收 / 營收年增 / 毛利率 / 營益率 / 現金流 / 存貨天數 ⛔ 不可斷線(面額變更不影響它們)',
+       gapOf('營收\\(單季\\)') === false && gapOf('季營收年增') === false && gapOf('毛利率') === false && gapOf('營益率') === false
+       && gapOf('營業現金流\\(單季\\)') === false && gapOf('自由現金流\\(單季\\)') === false && gapOf('存貨天數') === false, body.slice(0, 40));
+    ok('ⓐ5c 兩條現金流都吃 zero(它會是負的,沒有零線看不出正負)', /line\('自由現金流\(單季\)'[^\n]*zero:\s*1/.test(body) && /line\('營業現金流\(單季\)'[^\n]*zero:\s*1/.test(body), body.slice(0, 40));
 }
+// 📈 V77.3.0 起營益率已加進採礦回算(OperatingIncome)→ 切片有 oim 就畫線;沒有就說「等回算」並指路 3 季那格(⛔ 不可寫「資料源沒有」)
 ok('ⓐ6 ⛔ 營益率的說法不可跟同一張卡上方的「📈 三率(近三季)」自打嘴巴(⛔ 不可寫「資料源沒有」)',
-   /營益率/.test(R.fundTxt) && /3 季/.test(R.fundTxt) && /營業費用/.test(R.fundTxt)
-   && !/營益率[^。]{0,12}資料源沒有/.test(R.fundTxt), R.fundTxt.slice(0, 200));
+   /營益率/.test(R.fundTxt) && !/營益率[^。]{0,12}資料源沒有/.test(R.fundTxt) && !/營業費用/.test(R.fundTxt)
+   && (R.hasOim ? R.names.includes('營益率') : (/回算/.test(R.fundTxt) && /3 季/.test(R.fundTxt))), R.fundTxt.slice(0, 200));
 ok('ⓐ6b ⭐ 而且那一段「📈 三率(近三季)」真的還在(空過守門:它不在 = 上面那條沒有鑑別力)',
    /三率\(近三季\)/.test(R.fundTxt) && /營益率/.test(R.fundTxt), '');
+// ── 📍 V77.3.0 事實標記(使用者:「告訴我哪一季毛利率掉、哪一季現金流轉負、哪一季存貨突然拉高」)──
+//   注入:① 把 marks 計算整段拿掉 → ⓐ7 紅 ② 門檻 −3 改 −2 → ⓐ7b 紅 ③ HTML 不畫圓點 → ⓐ8 紅 ④ 基準率那行拿掉 → ⓐ9 紅 ⑤ 標記行加 ⚠️ → ⓐ9b 紅
+{
+    const M = R.marks;
+    ok('ⓐ7 毛利率 40 → 36(−4pp)要在**那一季**標 gm(而且乾淨的 12 季一個都不標)', M.gm4.length === 1 && M.gm4[0] === 'gm@2025-06' && M.none === 0, JSON.stringify([M.gm4, M.none]));
+    ok('ⓐ7b 邊界:掉 2.9pp ⛔ 不標、存貨 +28% ⛔ 不標(門檻讀 `_FIN_MARK_BASE`)', M.gm29 === 0 && M.doi29 === 0, JSON.stringify([M.gm29, M.doi29]));
+    ok('ⓐ7c 營業現金流 正→負 標 ocf;存貨天數 +30% 標 doi', M.ocf.join() === 'ocf' && M.doi30.join() === 'doi', JSON.stringify([M.ocf, M.doi30]));
+    ok('ⓐ7d 標記文字要帶季別與前後數字(使用者要「哪一季」)', /2025-06/.test(M.txtGm4) && /40\.0 → 36\.0/.test(M.txtGm4), M.txtGm4);
+    ok('ⓐ8 ⭐ 走顯示路徑:HTML 的 sparkline 真的多了一顆空心圓(乾淨的 0 顆)', M.dotsGm4 === 1 && M.dotsNone === 0, JSON.stringify([M.dotsGm4, M.dotsNone]));
+    ok('ⓐ8b 📅 第 3 季(顯示範圍外)的標記:`_finTrend` 有算到,但 8 季畫面⛔ 不列(索引要換算)', M.earlyAll === 1 && M.earlyShown === '0', JSON.stringify([M.earlyAll, M.earlyShown]));
+    ok('ⓐ9 ⭐ 基準率一定印在畫面上(V77.1.6:21.8% 的股票都會亮的燈不是警示)', /data-rpmarkbase="21\.8"/.test(M.htmlGm4) && /21\.8%/.test(M.htmlGm4) && /17%/.test(M.htmlGm4) && /15\.3%/.test(M.htmlGm4) && /常見事件/.test(M.htmlGm4), '');
+    const mkRow = (/<div[^>]*data-rpmarks="1"[\s\S]*?<\/span><\/div>/.exec(M.htmlGm4) || [''])[0];
+    ok('ⓐ9b 🚦 標記那一行⛔ 不可用 ⚠️ / 紅色 / 警示措辭(它是事實紀錄)', mkRow.length > 100 && !/⚠️|🚨|text-red|text-amber|警示|警訊(?!。)/.test(mkRow.replace(/⛔ 不是警訊/g, '')), mkRow.slice(0, 160));
+    ok('ⓐ9c 真實資料(2330)那行也印得出來,而且餵給外部 AI 的 facts 有同一份標記(顯示點永遠多一個)', /事實標記/.test(R.fundTxt) && /近 8 季事實標記/.test(R.facts), (R.facts.match(/[^\n]*事實標記[^\n]*/) || [''])[0].slice(0, 120));
+}
 // ── D 變化量(V77.1.3)──
 ok('ⓑ0 抓得到 TTM(空過守門)', !!(R.ttm && R.ttm.a && R.ttm.nq >= 8), JSON.stringify(R.ttm && R.ttm.nq));
 ok('ⓑ ⭐⭐ `_finTtmAt(F,0)` **逐字等於** 採礦端算的 roe4/fcf4/capex4(公式一分叉這條當場紅)',
