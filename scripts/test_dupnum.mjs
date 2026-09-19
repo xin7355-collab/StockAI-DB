@@ -526,16 +526,33 @@ await page.waitForTimeout(2500);
             const box = document.getElementById('subContentReport'), out = [];
             box.querySelectorAll(':scope > div').forEach(c => {
                 const d = c.querySelector('details');
-                out.push({ id: c.id || '', open: d ? d.open : null, chars: (c.innerText || '').replace(/\s/g, '').length });
+                out.push({ id: c.id || '', dk: d ? (d.dataset.dk || '') : '', open: d ? d.open : null,
+                           chars: (c.innerText || '').replace(/\s/g, '').length });
             });
+            // ⭐ 「哪幾節該攤開」的**唯一真相來源**是 App 自己的 `_RP_VIEW_OPEN`(⛔ 測試不另抄一份清單)
+            const want = (app._RP_VIEW_OPEN || {})[app._rpView ? app._rpView() : 'short'] || [];
             res({ cards: out, total: out.reduce((a, x) => a + x.chars, 0),
+                  view: app._rpView ? app._rpView() : '',
+                  shouldOpen: out.filter(x => x.dk && want.some(re => re.test(x.dk))).map(x => x.id),
                   riskSum: (document.querySelector('#rpRisk summary') || { innerText: '' }).innerText.replace(/\s+/g, ' ') });
         }, 2400);
     }));
     ok('ⓠ 空過守門:報告頁畫得出 ≥8 張卡', r.cards.length >= 8, JSON.stringify(r.cards.map(x => x.id)));
-    const opened = r.cards.filter(x => x.open === true).map(x => x.id);
-    ok('ⓠ2 ⛔ 一張都不可預設展開(含 §12・§13・§18・§19)', opened.length === 0, opened.join(','));
-    ok('ⓠ3 第一眼字數 ≤ 1,100(折疊前實測 2,575)', r.total <= 1100, `${r.total} 字`);
+    // 🚨 V77.2.8 更正:這兩條從 **V77.2.3 起就一直是紅的**(已二分確認:V77.2.1 綠、V77.2.5 紅),
+    //    而真因**不是 bug** —— V77.2.3 的「短中線 / 長線」視角**刻意**攤開價格牆(§11・§16・§17)
+    //    與籌碼(§10),那是使用者後來要的。舊斷言釘的是 V77.1.7 的「全部折疊」= **釘住了過期的實作**。
+    //    ⭐ 改成釘**現在的用意**:「預設攤開的,只准是目前視角指定的那幾節,其餘一張都不行」,
+    //    判準直接讀 App 自己的 `_RP_VIEW_OPEN`(唯一真相來源)。
+    //    ⛔ 永遠紅的測試等於沒有測試 —— 看久了會養成忽略的習慣,真的壞掉那次也會被當成又一個誤報。
+    const opened = r.cards.filter(x => x.open === true).map(x => x.id).sort();
+    const should = (r.shouldOpen || []).slice().sort();
+    ok('ⓠ2 ⛔ 預設攤開的只准是目前視角指定的那幾節(其餘一張都不行)',
+       opened.join(',') === should.join(','), `視角=${r.view} 實際開=${opened.join(',') || '(無)'} 應該開=${should.join(',') || '(無)'}`);
+    ok('ⓠ2b 空過守門:`_RP_VIEW_OPEN` 要真的讀得到(⛔ 讀不到的話上面那條會退化成「都不准開」而剛好也過)',
+       Array.isArray(r.shouldOpen) && r.shouldOpen.length > 0, JSON.stringify(r.shouldOpen));
+    // ⚠️ 門檻從 1,100 放寬到 3,200 是**因為上面那個設計改了**,⛔ 不是為了讓測試變綠 ——
+    //    V77.1.7 全折疊時實測 750 字,V77.2.3 起短中線視角多攤開兩節 → 實測 2,850。
+    ok('ⓠ3 第一眼字數 ≤ 3,200(V77.1.7 全折疊 750 → V77.2.3 視角攤開兩節後實測 2,850)', r.total <= 3200, `${r.total} 字`);
     // ⛔ 折疊 ≠ 把提醒藏起來:summary 仍然要寫幾則預警
     ok('ⓠ4 ⭐ 風險那節收起來時,標題列仍要寫「N 則預警 / 出貨徵兆」', /預警|出貨徵兆/.test(r.riskSum), r.riskSum.slice(0, 120));
 }
