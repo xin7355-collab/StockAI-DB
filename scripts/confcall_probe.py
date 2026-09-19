@@ -476,6 +476,23 @@ def probe_file_download():
             except Exception as e:
                 print(f"    {how:<4} {host:<32} ❌ {type(e).__name__}: {str(e)[:120]}")
 
+    # ── 7-5 🚨 前端送的是 **encodeURIComponent** 過的值(`%2Fhome%2Fhtml%2Fnas%2FSTR%2F`),
+    #    而 7-4 試的是**未編碼**的 —— ⛔ 兩者不驗過⛔ 不可假設等價(陷阱 #23:回 200 不代表成功)。
+    #    這一格失敗 = 每一顆「📄 簡報」鈕都會開出「下載失敗」,而畫面上看起來完全正常。
+    import urllib.parse as _up
+    for tag, enc in (('未編碼(探針 7-4 用的)', False), ('encodeURIComponent(前端真的送的)', True)):
+        url = ('https://mopsov.twse.com.tw' + action + '?'
+               + (_up.urlencode(base) if enc else '&'.join(f'{k}={v}' for k, v in base.items())))
+        try:
+            r = _get(url, headers={'Referer': 'https://mopsov.twse.com.tw/mops/web/t100sb02_1'}, timeout=30)
+            body = r.content or b''
+            print(f"    GET {tag:<34} HTTP {r.status_code} ・{(r.headers.get('content-type') or '')[:30]} ・"
+                  f"{len(body)} bytes ・是PDF={body[:8].startswith(b'%PDF-')}")
+            if not body[:8].startswith(b'%PDF-'):
+                print(f"        ↳ 前 200 字:{body[:200]!r}")
+        except Exception as e:
+            print(f"    GET {tag:<34} ❌ {type(e).__name__}: {str(e)[:120]}")
+
     print("\n  " + "─" * 66)
     print(f"  ⭐ 決定性結論 ── GET 可直接開嗎?{'✅ 可以(前端用 <a href>,網址也可以餵給外部 AI)' if get_ok else '❌ 不行(只能隱藏表單 POST 開新分頁;外部 AI 讀不到這份 PDF)'}")
     print("  " + "─" * 66)
