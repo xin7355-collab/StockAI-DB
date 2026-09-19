@@ -24,6 +24,15 @@ POST/GET https://mopsov.twse.com.tw/server-java/FileDownLoad
 ```
 ⭐ **GET 就開得了** → 前端可以 `<a href>` 一鍵開,網址也可以附進深度查詢提示詞讓外部 AI 去讀。
 
+⚠️ **而這裡還藏著第二個「不可假設」**:上面那一輪試的是**未編碼**的 `filePath=/home/html/nas/STR/`,
+而前端 `_confFileUrl` 走 `encodeURIComponent` → 真正送出去的是 `%2Fhome%2Fhtml%2Fnas%2FSTR%2F`。
+兩者在多數伺服器上等價,但**沒驗過就是沒驗過** —— 若不等價,結果是
+**每一顆「📄 簡報」鈕都開出「下載失敗」,而畫面上完全正常**(又一個零錯誤訊息的失效)。
+⛔ 沙箱連不到 mopsov(agent proxy 回 403)→ 加進探針 7-5 上 runner 驗。
+✅ **run #15 實測兩種都回真 PDF**(`GET encodeURIComponent(前端真的送的)` → HTTP 200 ・application/pdf
+・2,672,926 bytes ・是PDF=True)→ **前端一行都不用改**。
+⭐ 通用:探針證實的那一條,跟**產品真的送出去的那一條**,要是字串上有差,就得各驗一次。
+
 ⭐⭐ **通用鐵則**:寫「讓官方自己說」的解析時,**一定要有一個旗標說「我到底有沒有解析到」**——
 ⛔ 解析失敗時靜默退回猜測,會讓「我猜錯」長得跟「官方不給」一模一樣,而兩者的下一步完全相反。
 
