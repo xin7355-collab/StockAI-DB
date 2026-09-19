@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.3.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8585,8 +8585,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.3.3',
+    _APP_VERSION: 'V77.3.4',
     _CHANGELOG: [
+        { v: 'V77.3.4', d: ['🧭 <b>報告頁 §10 改成「籌碼總表」</b>(你說「法人級籌碼分析」):每一列 = <b>數字</b>(外資/投信/自營 近 1/5/20 日、外資+投信同日都買、分點買賣超前 5、集保千張大戶/散戶、融資 20 日增減與追繳壓力區)+ <b>本站實測這個數字能不能拿來預測</b>:✅ 實測有效(外資+投信同日都買 +0.99pp、投信自己連買 ≥5 天 +0.79pp,六關全過)/ △ 證據偏弱(外資買且融資退場 +0.21pp)/ ❌ 實測無效(外資單獨連買、分點集中度、某分點突然大買、千張大戶↑散戶↓、券資比)/ ○ 只描述(自營商沒測過)。列上只留標籤 + 數字,每一列的依據收在卡底「📖 展開」。多一行「🎯 今天命中哪個實測過的籌碼型態」(讀既有的判定,⛔ 沒有新指標)。餵給外部 AI 的提示詞也帶同一份實測結論(⛔ AI 不可自己判籌碼多空)。⛔ 沒有新增任何指標。'] },
         { v: 'V77.3.3', d: ['🔄 <b>「哪個策略結合週轉率勝率提高?」—— 第四次測,這次直接疊在決策台那套 49 個月的組合回測上</b>(產業作戰室 → 🔬 實測總表 → 實測沒用 r:29;選股頁的週轉率提醒也補了這組數字):只做<b>高週轉那三分之一</b>:勝率 30.0%・每趟 +3.20%・累積 +409 萬;不濾:30.9%・+3.09%・+519 萬;<b>跟週轉率完全無關、隨機挑三分之一</b>:34.6%・+3.71%・+569 萬 → <b>高週轉沒有贏過隨機</b>。低週轉那桶勝率確實變高(不挑 🧬 時 31.4% → 34.8%),<b>但每趟從 +2.22% 掉到 +0.85%</b> —— 勝率提高、賺更少。⛔ 沒有加進決策台。⭐ 順便學到:本金有限的時候「隨便少挑一點」本身就會讓數字變好看,以後任何濾網都要跟這個「隨機組」比,不是跟「不濾」比。'] },
         { v: 'V77.3.2', d: ['🧙💥 <b>「某個分點突然大量買某檔,會漲嗎?排除隔日沖」—— 回測完了,答案是沒有</b>(產業作戰室 → 🔬 實測總表 → 實測沒用 r:31):484 天分點深歷史・2,150 檔・84,943 筆事件。「突然」試了兩種定義 —— 新面孔(那家分點 60 天沒出現在這檔)10 日比隨便挑一天 <b>−0.09pp</b>、自身爆量(那家分點在這檔自己歷史的前 5%)<b>+0.09pp</b>,賺錢機率 43.4~43.7% 跟隨便挑一天的 43.6% 一樣。「排除隔日沖」照每家券商的翻臉率切成五桶去看:<b>五桶不單調、最會隔日沖的那桶反而略好</b> → 這條線切不出來。⛔ 沒做成功能、沒做提醒,只記進總表。'] },
         { v: 'V77.3.1', d: ['🏦👩 <b>「外資連續買超 5 天以上,持有 10 天的勝率跟報酬率?加入投信同步」—— 回測完了,寫進 🔬 實測總表</b>(產業作戰室 → 實測有用 r:44 / 實測沒用 r:30):2,154 檔・事件 75,210 筆。① <b>外資連買本身沒有東西</b>:剛好連買 3/4/5/6/7 天,10 日只比隨便挑一天多 +0.15~+0.25pp、扣掉來回成本全部是負的(連買 5 天:賺錢機率 44.6% vs 對照 43.7%、10 日 +0.37%)。② <b>加上投信這 3 天也在買</b>才有東西:10 日 <b>+0.91pp</b>、賺錢機率 <b>48.2%</b>、絕對 +0.86%,六道關卡全過(N=3/5/7 都過)。③ 🚨 反過來問才知道<b>主角是投信</b>:投信自己連買 5 天就 +0.79pp 全過,外資只是加成 → ⛔ 不要讀成「外資連買會漲」。④ 外資買得佔成交量<b>越多反而越差</b>(單調)—— 「外資狂掃」= 已經擠了。⚠️ 窗口 2024-05~2026-08 三年全多頭、不含 2022;⛔ 沒做成提醒、沒進計分,先當排序條件,走完一次空頭再重跑。'] },
@@ -14699,7 +14700,42 @@ const marginByDate = {};
                   t: '外資買・同時融資5日減3%以上(散戶退場)' },
     },
     _CHIP_EDGE_META: { base: 34.6, files: 2002, ctrl: 70098, cost: 0.44, from: '2023-06', to: '2026-08' },
+    // 🏦👩 V77.3.1 `scripts/fstreak_probe.py`(外資**真連續**買超 N 天 / 投信同步):10 日超額 pp、勝率、n、六關(ok:1 全過 / 0 沒過)
+    //   ⛔ 數字不可手改 —— 重跑探針之後照它印的貼回來;⚠️ 窗口 2024-05~2026-08 三年全多頭、不含 2022
+    _FSTREAK_EDGE: {
+        f5:     { e: 0.25, w: 38.4, n: 13227, net: -0.19, ok: 0, t: '外資剛好連買 5 天(本身)' },
+        f5t:    { e: 0.91, w: 43.1, n: 1777,  net: 0.47,  ok: 1, t: '外資連買 5 天 ∧ 投信 3 日內也買' },
+        t5:     { e: 0.79, w: 43.7, n: 1132,  net: 0.35,  ok: 1, t: '投信自己連買 ≥5 天' },
+        base: 37.0, from: '2024-05', to: '2026-08', files: 2154,
+    },
+    // 🧭 V77.3.4 報告頁 §10「籌碼總表」每一列的**實測狀態**(使用者:「法人級籌碼分析」→ 先問「本站實測怎麼說」)。
+    //   ⛔ 不新增任何指標;每一列的數字仍由各自既有的取數函式來(三大法人 `_chipPeriodSums` / 分點 periods / 集保 tdRaw / 融資 s20)。
+    //   狀態三種:✅ 實測有效(六關全過,帶 pp)・❌ 實測無效(帶探針名)・○ 只描述(沒測過或測不動)。
+    //   ⛔ 一個「看多/看空/偏多/偏空」都不准出現 —— 這張表講的是「這個數字能不能拿來預測」,不是方向。
+    _CHIP_VERDICT: {
+        foreign: { st: 'no',  ref: ['_CHIP_EDGE.buy4', '_FSTREAK_EDGE.f5'], why: '外資單獨連買:連買 4 天 +{buy4.e}pp(證據偏弱)、真連續 5 天 +{f5.e}pp 扣成本 −0.19 → 六關 0 過(fstreak_probe)' },
+        trust:   { st: 'ok',  ref: ['_FSTREAK_EDGE.t5'], why: '投信自己連買 ≥5 天 +{t5.e}pp・勝率 {t5.w}% 六關全過(fstreak_probe);但單日投量比 ❌ 六關 0 過(trustvol_probe)—— 連續 5 天跟單日買很多是兩件事' },
+        both:    { st: 'ok',  ref: ['_CHIP_EDGE.both', '_FSTREAK_EDGE.f5t'], why: '外資+投信同一天都買 +{both.e}pp・勝率 {both.w}%(n={both.n})六關全過;外資連買 5 天 ∧ 投信同步 +{f5t.e}pp 也全過 —— ⭐ 主角是投信,外資是加成' },
+        dealer:  { st: 'na',  ref: [], why: '自營商買賣超本站沒有回測過 → 只描述' },
+        fen:     { st: 'no',  ref: [], why: '分點集中度無方向(chips_deep_probe)・某分點突然大買 ❌(broker_burst_probe:新面孔 −0.09pp / 自身爆量 +0.09pp)・跟著分點做 ❌(broker_habit / ally / ind)→ 只描述;唯一有東西的是「隔日沖分點的翻臉率」(當沖頁)' },
+        tdcc:    { st: 'no',  ref: [], why: '千張大戶↑散戶↓「兩上兩下」第 1 名只打平大盤(tdcc_probe)、大戶洗散戶量不出來(washout_probe)→ 只描述' },
+        margin:  { st: 'weak', ref: ['_CHIP_EDGE.marginOut'], why: '外資買 ∧ 融資 5 日減 3% 以上 +{marginOut.e}pp(證據偏弱,n={marginOut.n});融資追繳壓力區是推估、券資比/軋空 ❌ 六關 0 過(short_probe)' },
+    },
 
+    // 🧭 V77.3.4 把 `_CHIP_VERDICT` 的一列轉成文字:{key.e} 這種模板從 `_CHIP_EDGE` / `_FSTREAK_EDGE` 讀數字(⛔ 文案裡不寫死)
+    _chipVerdict(row) {
+        const V = this._CHIP_VERDICT[row]; if (!V) return null;
+        const pool = Object.assign({}, this._CHIP_EDGE, this._FSTREAK_EDGE);
+        const txt = String(V.why).replace(/\{(\w+)\.(\w+)\}/g, (_, k, f) => (pool[k] && pool[k][f] != null) ? String(pool[k][f]) : '?');
+        const tag = V.st === 'ok' ? '✅ 實測有效' : V.st === 'no' ? '❌ 實測無效' : V.st === 'weak' ? '△ 證據偏弱' : '○ 只描述';
+        // 列上只放「標籤 + 第一個數字」(第一眼有字數上限,§10 在短中線視角是預設攤開的);完整依據收進卡底的摺疊
+        const m = /([+\-−]?\d+(?:\.\d+)?pp)/.exec(txt);
+        return { st: V.st, tag, txt, short: m ? m[1] : '', cls: V.st === 'ok' ? 'text-gray-200' : 'text-gray-500' };
+    },
+    _chipVerdictLine() {
+        const E = this._CHIP_EDGE, F = this._FSTREAK_EDGE;
+        return `外資+投信同日都買 +${E.both.e}pp 六關全過、投信自己連買 ≥5 天 +${F.t5.e}pp 全過;外資單獨連買 ❌ 0 過、分點/集保/券資比 ❌ 無方向(基準勝率 ${this._CHIP_EDGE_META.base}%,未扣成本)`;
+    },
     // 判斷「今天這一根」命中哪個實測過的籌碼型態。⛔ 純公式,不下買賣指令。
     _chipEdgeState(sym) {
         try {
@@ -24104,44 +24140,62 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // ⚠️ `_chipPeriodSums` 回的**已經是張**(它自己 /1000);分點 periods 的 net 才是股 → 兩個換算分開寫
         const lots = v => `${v >= 0 ? '+' : ''}${Math.round(v).toLocaleString()} 張`;
         const shLots = v => lots(v / 1000);
-        const inst = (s, tag) => s && s.hasInst
-            ? this._rpRow(tag, `外資 <span class="${this._rpDir(s.foreign)}">${lots(s.foreign)}</span> ・投信 <span class="${this._rpDir(s.trust)}">${lots(s.trust)}</span> ・自營 <span class="${this._rpDir(s.dealer)}">${lots(s.dealer)}</span>`)
-            : this._rpRow(tag, this._rpNa('本站尚未採到法人資料'));
+        const sym = C.sym || this.currentSymbolId;
+        // 🧭 V77.3.4 籌碼總表:每一列 = 「數字」+「本站實測怎麼說」(⛔ 手機上欄位 ≥3 不用 table → 一列兩行)
+        //   數字的取數函式**一個都沒換**(三大法人 s1/s5/s20、分點 P['5d']、集保 tdRaw、融資 s20/mcs);只是把狀態接上來。
+        const whys = [];
+        const vrow = (row, title, valueHtml) => {
+            const v = this._chipVerdict(row);
+            if (v) whys.push(`<div class="py-0.5"><b class="${v.cls}">${v.tag}</b> <span class="text-gray-400">${this._escHtml(title.replace(/<[^>]+>/g, ''))}</span>:${this._escHtml(v.txt)}</div>`);
+            return `<div class="py-1 border-b border-[#21262d] last:border-0" data-chiprow="${row}" data-chipv="${v ? v.st : 'na'}">
+                <div class="flex items-baseline justify-between gap-2"><span class="text-[10px] text-gray-400 flex-shrink-0">${title}</span><span class="text-[11px] font-mono text-gray-100 text-right">${valueHtml}</span></div>
+                ${v ? `<div class="text-[9px] leading-snug ${v.cls}"><b>${v.tag}</b>${v.short ? ` ${v.short}` : ''}</div>` : ''}</div>`;
+        };
+        const instV = k => ['s1', 's5', 's20'].map((p, i) => { const x = C[p]; return (x && x.hasInst) ? `<span class="${this._rpDir(x[k])}">${lots(x[k])}</span>` : this._rpNa('—'); }).join(' <span class="text-gray-600">/</span> ');
+        const hasInst = ['s1', 's5', 's20'].some(p => C[p] && C[p].hasInst);
         const instDate = (C.s20 && C.s20.instDate) || (C.s5 && C.s5.instDate) || null;
         const instNote = instDate ? `<div class="text-[10px] text-gray-500 mt-0.5">當日法人多在隔日回填 → 以上截至 ${this._dW(instDate)}</div>` : '';
+        // 🎯 今天命中哪個實測過的籌碼型態(既有 `_chipEdgeState`,⛔ 不另寫判定)
+        const hit = (() => { try { return this._chipEdgeState(sym); } catch (_) { return null; } })();
+        const hitHtml = hit ? `<div class="text-[10px] text-gray-200 leading-snug mt-1" data-chiphit="${hit.key}">🎯 <b>今天命中:${this._escHtml(hit.t)}</b> —— 實測 20 日邊際 ${hit.e >= 0 ? '+' : ''}${hit.e}pp・勝率 ${hit.w}%(n=${(+hit.n).toLocaleString()};${hit.ok === 1 ? '六關全過' : hit.ok === 2 ? '證據偏弱' : '沒過'})。⛔ 這是統計不是指令,方向仍以總覽主結論為準。</div>`
+                             : `<div class="text-[10px] text-gray-500 leading-snug mt-1" data-chiphit="">🎯 今天沒有命中任何實測過的籌碼型態(外資+投信同日都買 / 外資連賣後轉買且投信買 / 外資買且融資退場…)。</div>`;
+        const inst = hasInst
+            ? vrow('foreign', '外資 近1 / 5 / 20 日', instV('foreign')) + vrow('trust', '投信 近1 / 5 / 20 日', instV('trust')) + vrow('dealer', '自營 近1 / 5 / 20 日', instV('dealer'))
+              + vrow('both', '外資+投信 同日都買', (C.s1 && C.s1.hasInst) ? ((C.s1.foreign > 0 && C.s1.trust > 0) ? '<span class="text-gray-100">今天 ✓</span>' : '<span class="text-gray-500">今天 ✗</span>') : this._rpNa('—'))
+            : vrow('foreign', '三大法人', this._rpNa('本站尚未採到法人資料'));
         let fen = '';
         if (C.P && C.P['5d'] && (C.P['5d'].buy || []).length) {
             const p = C.P['5d'];
             const li = (arr) => (arr || []).slice(0, 5).map(x => this._rpRow(this._escHtml(String(x.broker_name || x.broker_id || '').replace(/\(.*?\)/, '')), `<span class="${this._rpDir(x.net)}">${shLots(+x.net || 0)}</span> <span class="text-gray-500">均價 ${Number.isFinite(+x.avg) ? (+x.avg).toFixed(1) : '—'}</span>`)).join('');
-            fen = `<div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">🏦 分點近 5 日買超前 5 ${this._dChip(C.fenDate, '分點')}</div>${li(p.buy)}
-                <div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">🏦 分點近 5 日賣超前 5</div>${li(p.sell)}`;
-        } else fen = `<div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">🏦 券商分點</div>${this._rpNa('此股分點尚未輪到採礦(全市場滾動)')}`;
+            fen = vrow('fen', `🏦 分點近 5 日 ${this._dChip(C.fenDate, '分點')}`, `買超前 5 / 賣超前 5`) + `<div class="pl-2">${li(p.buy)}<div class="text-[9px] text-gray-500 mt-1">賣超前 5</div>${li(p.sell)}</div>`;
+        } else fen = vrow('fen', '🏦 券商分點', this._rpNa('此股分點尚未輪到採礦(全市場滾動)'));
         let tdcc = '';
         if (C.tdRaw && Array.isArray(C.tdRaw.h) && C.tdRaw.h.length) {
             const a = C.tdRaw.h[C.tdRaw.h.length - 1];
-            tdcc = this._rpRow('千張大戶持股', `${(+a[1]).toFixed(2)}%${C.td ? ` <span class="${this._rpDir(C.td.bigDelta)}">(週變化 ${this._rpPct(C.td.bigDelta, 2)})</span>` : ''}`)
-                 + this._rpRow('散戶(<10張)持股', `${(+a[3]).toFixed(2)}%${C.td ? ` <span class="${this._rpDir(C.td.retDelta)}">(${this._rpPct(C.td.retDelta, 2)})</span>` : ''}`)
-                 + (a.length > 4 && +a[4] > 0 ? this._rpRow('股東人數', `${(+a[4]).toLocaleString()} 人`) : '')
-                 + `<div class="mt-0.5">${this._dChip(String(a[0]).replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3'), '集保週')}</div>`;
-        } else tdcc = this._rpNa('本站集保未涵蓋此股');
+            tdcc = vrow('tdcc', `🧾 集保 千張大戶 / 散戶(<10張)${this._dChip(String(a[0]).replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3'), '集保週')}`,
+                        `${(+a[1]).toFixed(2)}%${C.td ? ` <span class="${this._rpDir(C.td.bigDelta)} text-[10px]">(${this._rpPct(C.td.bigDelta, 2)})</span>` : ''} <span class="text-gray-600">/</span> ${(+a[3]).toFixed(2)}%${C.td ? ` <span class="${this._rpDir(C.td.retDelta)} text-[10px]">(${this._rpPct(C.td.retDelta, 2)})</span>` : ''}`)
+                 + (a.length > 4 && +a[4] > 0 ? this._rpRow('股東人數', `${(+a[4]).toLocaleString()} 人`) : '');
+        } else tdcc = vrow('tdcc', '🧾 集保分佈', this._rpNa('本站集保未涵蓋此股'));
         let mg = '';
         if (C.s20 && C.s20.hasMargin) {
-            mg = this._rpRow('融資餘額 20 日增減', `<span class="${this._rpDir(C.s20.marginDelta)}">${C.s20.marginDelta >= 0 ? '+' : ''}${Math.round(C.s20.marginDelta).toLocaleString()} 張</span>`)
-               + (C.mcs && C.mcs.marginLots > 0 ? this._rpRow('融資餘額', `${Math.round(C.mcs.marginLots).toLocaleString()} 張`) : '')
+            mg = vrow('margin', `💳 融資餘額 20 日增減${this._dChip(C.s20.marginDate, '融資')}`, `<span class="${this._rpDir(C.s20.marginDelta)}">${C.s20.marginDelta >= 0 ? '+' : ''}${Math.round(C.s20.marginDelta).toLocaleString()} 張</span>${C.mcs && C.mcs.marginLots > 0 ? ` <span class="text-gray-500 text-[10px]">(餘額 ${Math.round(C.mcs.marginLots).toLocaleString()} 張)</span>` : ''}`)
                + (C.mcs && Number.isFinite(+C.mcs.callLine) ? this._rpRow('融資追繳壓力區(推估)', `${(+C.mcs.callLine).toFixed(1)} 元 <span class="text-gray-500">(距現價 ${this._rpPct(C.mcs.distPct)}${C.mcs.mktKnown ? '' : ' ・以上市六成推'})</span>`) : '')
-               + `<div class="mt-0.5">${this._dChip(C.s20.marginDate, '融資')}${C.s20.marginDate && String(C.s20.marginDate).replace(/\//g, '-') < String(C.kDate).replace(/\//g, '-') ? ` <span class="text-[10px] text-amber-300/80">⚠️ 融資餘額本站停在 ${this._dW(C.s20.marginDate)}(採礦缺口,不是這檔沒有融資)</span>` : ''}</div>`;
-        } else mg = this._rpNa('本站尚未採到這檔的融資券');
-        const body = `<div class="text-[10px] font-bold text-gray-300 mb-0.5">🏛️ 三大法人</div>${inst(C.s1, '近 1 日')}${inst(C.s5, '近 5 日')}${inst(C.s20, '近 20 日')}${instNote}
+               + (C.s20.marginDate && String(C.s20.marginDate).replace(/\//g, '-') < String(C.kDate).replace(/\//g, '-') ? `<div class="text-[10px] text-amber-300/80 mt-0.5">⚠️ 融資餘額本站停在 ${this._dW(C.s20.marginDate)}(採礦缺口,不是這檔沒有融資)</div>` : '');
+        } else mg = vrow('margin', '💳 融資券', this._rpNa('本站尚未採到這檔的融資券'));
+        const M = this._CHIP_EDGE_META, F = this._FSTREAK_EDGE;
+        const body = `<div class="text-[10px] text-gray-400 leading-snug mb-1">每一列:<b class="text-gray-200">數字</b>(照台股慣例紅買綠賣,那是<b>方向</b>)+ <b class="text-gray-200">本站實測這個數字能不能拿來預測</b>(✅ 六關全過 / △ 證據偏弱 / ❌ 實測無效 / ○ 沒測過)。⛔ 「有效」也只是統計邊際,不是買賣指令。</div>
+            ${inst}${instNote}${hitHtml}
             ${fen}
-            <div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">🧾 集保分佈</div>${tdcc}
-            <div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">💳 融資券</div>${mg}
-            <div class="text-[10px] text-gray-500 mt-1.5 leading-snug">⚠️ 本站實測:分點「當天的量」與法人買超佔量比都不帶方向資訊(chips_deep_probe / limitup_probe)—— 以上是事實描述,⛔ 不是多空訊號。</div>`;
+            ${tdcc}
+            ${mg}
+            <details class="mt-1" data-chipwhy="${whys.length}"><summary class="text-[10px] text-gray-400 cursor-pointer">📖 每一列「實測怎麼說」的依據(${whys.length} 條)展開 ▾</summary><div class="text-[9px] leading-snug mt-1">${whys.join('')}</div></details>
+            <div class="text-[9px] text-gray-500 mt-1.5 leading-snug" data-chipmeta="1">📐 實測範圍:籌碼型態 ${M.files.toLocaleString()} 檔・${M.from}~${M.to}・對照組 ${M.ctrl.toLocaleString()} 筆,基準勝率 <b>${M.base}%</b>(⛔ 不是 50%);連買天數 ${F.files.toLocaleString()} 檔・${F.from}~${F.to}(三年全多頭、不含 2022)。邊際 = 減同期加權再減隨便挑一天;<b>未扣來回成本 ${M.cost}%</b>。</div>`;
         const cb = [];
         if (C.s5 && C.s5.hasInst) cb.push(`外資近 5 日 <b class="${this._rpDir(C.s5.foreign)}">${lots(C.s5.foreign)}</b> ・投信 <b class="${this._rpDir(C.s5.trust)}">${lots(C.s5.trust)}</b>`);
         else cb.push('本站尚未採到法人買賣超');
-        if (C.P && C.P['5d'] && (C.P['5d'].buy || []).length) cb.push('有分點明細');
+        cb.push(hit ? `🎯 今天命中「${this._escHtml(hit.t)}」` : '今天沒命中實測型態');
         if (C.tdRaw && Array.isArray(C.tdRaw.h) && C.tdRaw.h.length) cb.push(`千張大戶 ${(+C.tdRaw.h[C.tdRaw.h.length - 1][1]).toFixed(1)}%`);
-        return this._rpDetails('🧭 §10 誰在買、誰在賣', cb.join(' ・'), body);
+        return this._rpDetails('🧭 §10 籌碼總表:誰在買、誰在賣,而且本站實測怎麼說', cb.join(' ・'), body);
     },
 
     // G 風險與反轉訊號(✅⚠️⛔ 只表風險,⛔ 不用 🔴🟢)
@@ -25200,7 +25254,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const off = T.rows.length - T.disp, m = T.marks.filter(x => x.i >= off);
             return m.length ? m.map(x => x.txt).join(' ‧ ') : '這 8 季都沒有出現';
         })()}`);
-        L.push(`- 法人近5日:外資 ${C && C.s5 && C.s5.hasInst ? Math.round(C.s5.foreign) : '—'} 張 / 投信 ${C && C.s5 && C.s5.hasInst ? Math.round(C.s5.trust) : '—'} 張;近20日 外資 ${C && C.s20 && C.s20.hasInst ? Math.round(C.s20.foreign) : '—'} 張 / 投信 ${C && C.s20 && C.s20.hasInst ? Math.round(C.s20.trust) : '—'} 張(白話:${GL['外資近5日']})`);
+        L.push(`- 法人近5日:外資 ${C && C.s5 && C.s5.hasInst ? Math.round(C.s5.foreign) : '—'} 張 / 投信 ${C && C.s5 && C.s5.hasInst ? Math.round(C.s5.trust) : '—'} 張;近20日 外資 ${C && C.s20 && C.s20.hasInst ? Math.round(C.s20.foreign) : '—'} 張 / 投信 ${C && C.s20 && C.s20.hasInst ? Math.round(C.s20.trust) : '—'} 張(白話:${GL['外資近5日']});本站實測(⛔ AI 不可自己判籌碼多空):${this._chipVerdictLine()}`);
         L.push(`- 集保大戶散戶:${td ? `千張大戶 ${(+td[1]).toFixed(1)}% ・散戶 ${(+td[3]).toFixed(1)}%` : '—'}(白話:千張大戶=${GL['千張大戶']};散戶=${GL['散戶']})`);
         const _G = this._lastGauge;
         L.push(`- 五個面向(0~100,越高越有底氣;⛔ 不要自己加總成一個總分):${(_G && String(_G.sym) === String(sym) && Array.isArray(_G.dims) && _G.dims.length) ? _G.dims.map(d => `${d.name} ${Math.round(d.score)}(${(this._GAUGE_SPEC[d.name] || {}).tip || ''})`).join(' / ') : '—'}`);
