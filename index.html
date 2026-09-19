@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.3.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8585,8 +8585,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.3.0',
+    _APP_VERSION: 'V77.3.1',
     _CHANGELOG: [
+        { v: 'V77.3.1', d: ['🏦👩 <b>「外資連續買超 5 天以上,持有 10 天的勝率跟報酬率?加入投信同步」—— 回測完了,寫進 🔬 實測總表</b>(產業作戰室 → 實測有用 r:44 / 實測沒用 r:30):2,154 檔・事件 75,210 筆。① <b>外資連買本身沒有東西</b>:剛好連買 3/4/5/6/7 天,10 日只比隨便挑一天多 +0.15~+0.25pp、扣掉來回成本全部是負的(連買 5 天:賺錢機率 44.6% vs 對照 43.7%、10 日 +0.37%)。② <b>加上投信這 3 天也在買</b>才有東西:10 日 <b>+0.91pp</b>、賺錢機率 <b>48.2%</b>、絕對 +0.86%,六道關卡全過(N=3/5/7 都過)。③ 🚨 反過來問才知道<b>主角是投信</b>:投信自己連買 5 天就 +0.79pp 全過,外資只是加成 → ⛔ 不要讀成「外資連買會漲」。④ 外資買得佔成交量<b>越多反而越差</b>(單調)—— 「外資狂掃」= 已經擠了。⚠️ 窗口 2024-05~2026-08 三年全多頭、不含 2022;⛔ 沒做成提醒、沒進計分,先當排序條件,走完一次空頭再重跑。'] },
         { v: 'V77.3.0', d: ['📈 <b>報告頁「基本面」多了近 8 季趨勢圖 + 三種事實標記</b>(你說「新增近八季的營收、毛利率、營業利益率做成趨勢圖,告訴我哪一季毛利率掉、哪一季現金流轉負、哪一季存貨突然拉高」):趨勢線改成 8 條 —— 營收(單季)/ 季營收年增 / 毛利率 / 淨利率 / 每股盈餘 / <b>營業現金流(單季)</b> / 自由現金流(單季)/ <b>存貨天數</b>,每條只畫最近 8 季;線上的<b>空心圓 ○</b> 就是「那一季發生了什麼」:毛利率掉 ≥3pp、營業現金流正→負、存貨天數 +30%,底下一行直接寫出「2025-06 毛利率 −4.2pp(40.0 → 36.0%)」這種句子。⚠️ 它是<b>事實紀錄不是警訊</b>:全市場實測(2,352 檔 ・24,927 個季對季)這三種情況分別有 <b>21.8% / 17% / 15.3%</b> 的季會出現 —— 五檔裡就有一檔,所以不用紅色也不用 ⚠️,基準率直接印在畫面上。', '⏳ <b>營益率那條線要等財報回算跑一次</b>:採礦端已加抓損益表的「營業利益」欄(跟基本面頁「📈 三率」同一個來源),但 gh-pages 上的切片要等你在 Actions 手動跑一次「📦 財報三表深歷史回算」(選 main)、隔天採礦帶上去之後才會出現;在那之前那條線不畫、畫面會說「等回算」。', '🖼️ 自己畫的海報(短評報告)同一段同步:8 季、同樣 8 條線、同樣的 ○ 標記與基準率;順手修掉每一節標題右邊那句說明「截字後補的 … 沒量進寬度」→ 會壓到標題的小毛病(§6 籌碼那節肉眼看抓到的)。'] },
         { v: 'V77.2.9', d: ['🎤 <b>法說會後的股價反應寫進實測總表了</b>(🔬 實測總表 →「推薦下一步」):844 場實測,法說會後 5 日中位 <b>−1.26 pp</b>,而「隨便挑一天」的對照組是 −0.73 pp → <b>法說會後反而略差一點</b>。⛔ 這是<b>事實紀錄不是買賣訊號</b>(沒扣交易成本、沒過六道關卡),正式回測還要等窗口長一點。', '🔁 <b>順手收掉一條「永遠紅」的測試</b> —— 查下去發現<b>它不是壞掉</b>:報告頁「短中線/長線」視角是<b>刻意</b>攤開價格牆與籌碼那兩節(你後來要的),而舊的檢查還在用更早那版「全部折疊」的標準。⛔ 一直紅的檢查等於沒有檢查,已改成釘現在的規則。'] },
         { v: 'V77.2.8', d: ['🔎 <b>法說會可以用代號也可以用中文搜了,而且打字就搜全部</b>(你說「新增可搜尋法說會個股」):以前停在「👜 我的」打字只會搜自己那幾檔,搜不到就像那一檔沒有法說會 —— 現在<b>一打字就跨所有範圍</b>,上面還會寫「已跨所有範圍」+ 一顆回去的鈕;全形數字(２３３０)也吃得下。', '📄 <b>簡報終於可以一鍵打開了</b>(你說「法說會資料如簡報,我沒看到可以下載的地方」)。每一場的中文/英文簡報各一顆鈕,點了直接開 PDF。⭐ 本來以為打不開 —— 是我自己的探針把官方欄位抄錯(官方寫 <code>name = \'step\'</code> 等號兩邊有空白),修好之後實測<b>一抓就是 2.67MB 的真 PDF</b>。', '🔎 <b>深度查詢換成「法人視角」的提示詞</b>(你說「把重要東西挖出來、摘要重點、法人會看的、<b>未來展望</b>是什麼」):八個面向 —— 未來展望/財測(⭐ 含<b>跟上一次法說比說法變了什麼</b>)、產能與資本支出、訂單能見度、價格與成本、新產品時間表、庫存、<b>Q&amp;A 管理層避開了哪些問題</b>、公司自己講的風險。本站算好的數字直接塞進去(⛔ 不讓 AI 自己算),而且明文禁止它給買賣建議/評分/部位。簡報 PDF 網址也一起附上去讓它去讀。', '🏭 <b>多了產業分組</b>、🔔 <b>「你的清單裡未來 14 天有幾場」</b>、📜 <b>每一檔的歷年法說會</b>、📊 <b>會後股價統計</b>。⚠️ 統計那格<b>是事實紀錄不是買賣訊號</b>:實測 844 場,法說會後 5 日中位 <b>−1.26 pp</b>,而「隨便挑一天」的對照組是 −0.73 pp → <b>法說會後反而略差一點</b>;沒扣交易成本、沒過六道關卡,⛔ 不可以拿來當進出場理由。', '🏷️ <b>順手修掉產業作戰室全站的一個老問題</b>:中文名以前<b>只有一條腿</b>(免金鑰的 FinMind),它一掛全站名字就變成一排代號、而且什麼都不會講。現在改成三層(本站離線股名表 → FinMind → 舊快取)。'] },
