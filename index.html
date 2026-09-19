@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.2.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.2.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.2.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8585,8 +8585,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.2.8',
+    _APP_VERSION: 'V77.2.9',
     _CHANGELOG: [
+        { v: 'V77.2.9', d: ['🎤 <b>法說會後的股價反應寫進實測總表了</b>(🔬 實測總表 →「推薦下一步」):844 場實測,法說會後 5 日中位 <b>−1.26 pp</b>,而「隨便挑一天」的對照組是 −0.73 pp → <b>法說會後反而略差一點</b>。⛔ 這是<b>事實紀錄不是買賣訊號</b>(沒扣交易成本、沒過六道關卡),正式回測還要等窗口長一點。', '🔁 <b>順手收掉一條「永遠紅」的測試</b> —— 查下去發現<b>它不是壞掉</b>:報告頁「短中線/長線」視角是<b>刻意</b>攤開價格牆與籌碼那兩節(你後來要的),而舊的檢查還在用更早那版「全部折疊」的標準。⛔ 一直紅的檢查等於沒有檢查,已改成釘現在的規則。'] },
         { v: 'V77.2.8', d: ['🔎 <b>法說會可以用代號也可以用中文搜了,而且打字就搜全部</b>(你說「新增可搜尋法說會個股」):以前停在「👜 我的」打字只會搜自己那幾檔,搜不到就像那一檔沒有法說會 —— 現在<b>一打字就跨所有範圍</b>,上面還會寫「已跨所有範圍」+ 一顆回去的鈕;全形數字(２３３０)也吃得下。', '📄 <b>簡報終於可以一鍵打開了</b>(你說「法說會資料如簡報,我沒看到可以下載的地方」)。每一場的中文/英文簡報各一顆鈕,點了直接開 PDF。⭐ 本來以為打不開 —— 是我自己的探針把官方欄位抄錯(官方寫 <code>name = \'step\'</code> 等號兩邊有空白),修好之後實測<b>一抓就是 2.67MB 的真 PDF</b>。', '🔎 <b>深度查詢換成「法人視角」的提示詞</b>(你說「把重要東西挖出來、摘要重點、法人會看的、<b>未來展望</b>是什麼」):八個面向 —— 未來展望/財測(⭐ 含<b>跟上一次法說比說法變了什麼</b>)、產能與資本支出、訂單能見度、價格與成本、新產品時間表、庫存、<b>Q&amp;A 管理層避開了哪些問題</b>、公司自己講的風險。本站算好的數字直接塞進去(⛔ 不讓 AI 自己算),而且明文禁止它給買賣建議/評分/部位。簡報 PDF 網址也一起附上去讓它去讀。', '🏭 <b>多了產業分組</b>、🔔 <b>「你的清單裡未來 14 天有幾場」</b>、📜 <b>每一檔的歷年法說會</b>、📊 <b>會後股價統計</b>。⚠️ 統計那格<b>是事實紀錄不是買賣訊號</b>:實測 844 場,法說會後 5 日中位 <b>−1.26 pp</b>,而「隨便挑一天」的對照組是 −0.73 pp → <b>法說會後反而略差一點</b>;沒扣交易成本、沒過六道關卡,⛔ 不可以拿來當進出場理由。', '🏷️ <b>順手修掉產業作戰室全站的一個老問題</b>:中文名以前<b>只有一條腿</b>(免金鑰的 FinMind),它一掛全站名字就變成一排代號、而且什麼都不會講。現在改成三層(本站離線股名表 → FinMind → 舊快取)。'] },
         { v: 'V77.2.7', d: ['🎤 <b>產業作戰室多了「法說會」分頁</b>(你說「把法說會資訊收集起來,新增一個頁面」):上市 + 上櫃的法人說明會時間表、地點、<b>公司自己寫的擇要訊息</b>、簡報檔名、影音連結;可以只看「👜 我的」(庫存 + 自選 + 決策台今天的名單)、今天、未來、已開有內容,也能搜關鍵字。⛔ 只描述,不給多空(法說會前後波動常變大,但方向實測 0 個成立)。', '🔎 <b>深度查詢</b>(你說「貼關鍵字讓 AI 去搜,要有 Meta / Gemini / GPT」):貼關鍵字、可帶上某一檔,選 Perplexity / ChatGPT / Google / Gemini / Meta AI 帶去<b>外部網站</b>查(會上網、用他們的額度)。會先把整段問題複製到剪貼簿再開;Gemini 與 Meta AI 的網址不吃帶字,開了之後貼上就好。', '🚨 <b>順手抓到藏了三個月的錯</b>:採礦一直「法說會 0 場」,真因是打錯資料集 —— 證交所 OpenAPI 那個代碼其實是<b>大股東名稱表</b>,從來不是法說會。現在改走公開資訊觀測站,所以個股頁的「幾天內有法說會」提醒與報告頁 §12 也終於有東西了。'] },
         { v: 'V77.2.6', d: ['📏 <b>個股價格的小數點收乾淨了</b>(你說「現價的小數點怎麼這麼多?」)。真因在<b>資料裡</b>:有一批價格是 <b>float32 殘留</b>(49.0 會變成 49.000633239746094),實測隨機 300 檔有 <b>165 檔(55%)</b>中招。⭐ 採礦端匯出前收到 2 位小數 + 顯示端再收一次(⛔ 只修一邊等於沒修)。⚠️ 除息金額本來就有 4 位小數(1.0746 元),那個<b>沒有動</b>。', '💰 <b>修掉一個會讓人算不出來的矛盾</b>:成績單同一列的「%」是<b>扣過</b>來回成本 0.44% 的,「一張幾元」卻是<b>沒扣</b>的價差 → 出現過「−0.44% 卻 +0 元」。現在兩個同一個口徑,欄名也寫明「一張合計(已扣成本)」。', '🛑 <b>「ATR 為什麼跟唐奇安算出一樣?」——那是對的,不是壞掉</b>,而且畫面現在會直接講:目前已結算的那幾筆<b>都是「停損」出場</b>,而<b>停損是兩種規則共用的那一條</b>(收盤先跌破停損價就走,還輪不到追蹤停利)。要看出差別,得等有訊號是靠<b>追蹤條件</b>出場的。'] },
