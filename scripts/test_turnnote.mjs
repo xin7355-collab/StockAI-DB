@@ -54,6 +54,9 @@ await browser.close();
 
 const strip = s => String(s).replace(/⛔[^<。]*/g, '').replace(/別把它當成[^<。]*/g, '');
 
+// ⓪ V77.3.3 第四次實測(疊在 49 個月組合回測上)要印出來,而且數字全部讀 `_SCR_TURN_EDGE.deck`(⛔ 不可 undefined、不可寫死)
+ok('⓪ 組合回測那段有印:安慰劑(sham)數字 + 高週轉沒贏隨機 + 勝率提高賺更少', /安慰劑/.test(R.hi) && new RegExp(`${R.E.deck.sham.win}%`).test(R.hi) && new RegExp(`\\+${R.E.deck.hi.cum} 萬`).test(R.hi) && /賺更少/.test(R.hi), R.hi.slice(-400));
+ok('⓪b ⛔ 不可有 undefined / NaN(常數路徑接錯就會印出來)', !/undefined|NaN/.test(R.hi), (R.hi.match(/.{30}(undefined|NaN).{10}/) || [''])[0]);
 // ① 條件觸發
 ok('① 沒用週轉率排序也沒勾 → ⛔ 整條不出現(不留空殼)', R.none === '', R.none.slice(0, 80));
 ok('①b 勾的是別的條件 → 也不出現', R.other === '', R.other.slice(0, 80));

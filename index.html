@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.3.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8585,8 +8585,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.3.2',
+    _APP_VERSION: 'V77.3.3',
     _CHANGELOG: [
+        { v: 'V77.3.3', d: ['🔄 <b>「哪個策略結合週轉率勝率提高?」—— 第四次測,這次直接疊在決策台那套 49 個月的組合回測上</b>(產業作戰室 → 🔬 實測總表 → 實測沒用 r:29;選股頁的週轉率提醒也補了這組數字):只做<b>高週轉那三分之一</b>:勝率 30.0%・每趟 +3.20%・累積 +409 萬;不濾:30.9%・+3.09%・+519 萬;<b>跟週轉率完全無關、隨機挑三分之一</b>:34.6%・+3.71%・+569 萬 → <b>高週轉沒有贏過隨機</b>。低週轉那桶勝率確實變高(不挑 🧬 時 31.4% → 34.8%),<b>但每趟從 +2.22% 掉到 +0.85%</b> —— 勝率提高、賺更少。⛔ 沒有加進決策台。⭐ 順便學到:本金有限的時候「隨便少挑一點」本身就會讓數字變好看,以後任何濾網都要跟這個「隨機組」比,不是跟「不濾」比。'] },
         { v: 'V77.3.2', d: ['🧙💥 <b>「某個分點突然大量買某檔,會漲嗎?排除隔日沖」—— 回測完了,答案是沒有</b>(產業作戰室 → 🔬 實測總表 → 實測沒用 r:31):484 天分點深歷史・2,150 檔・84,943 筆事件。「突然」試了兩種定義 —— 新面孔(那家分點 60 天沒出現在這檔)10 日比隨便挑一天 <b>−0.09pp</b>、自身爆量(那家分點在這檔自己歷史的前 5%)<b>+0.09pp</b>,賺錢機率 43.4~43.7% 跟隨便挑一天的 43.6% 一樣。「排除隔日沖」照每家券商的翻臉率切成五桶去看:<b>五桶不單調、最會隔日沖的那桶反而略好</b> → 這條線切不出來。⛔ 沒做成功能、沒做提醒,只記進總表。'] },
         { v: 'V77.3.1', d: ['🏦👩 <b>「外資連續買超 5 天以上,持有 10 天的勝率跟報酬率?加入投信同步」—— 回測完了,寫進 🔬 實測總表</b>(產業作戰室 → 實測有用 r:44 / 實測沒用 r:30):2,154 檔・事件 75,210 筆。① <b>外資連買本身沒有東西</b>:剛好連買 3/4/5/6/7 天,10 日只比隨便挑一天多 +0.15~+0.25pp、扣掉來回成本全部是負的(連買 5 天:賺錢機率 44.6% vs 對照 43.7%、10 日 +0.37%)。② <b>加上投信這 3 天也在買</b>才有東西:10 日 <b>+0.91pp</b>、賺錢機率 <b>48.2%</b>、絕對 +0.86%,六道關卡全過(N=3/5/7 都過)。③ 🚨 反過來問才知道<b>主角是投信</b>:投信自己連買 5 天就 +0.79pp 全過,外資只是加成 → ⛔ 不要讀成「外資連買會漲」。④ 外資買得佔成交量<b>越多反而越差</b>(單調)—— 「外資狂掃」= 已經擠了。⚠️ 窗口 2024-05~2026-08 三年全多頭、不含 2022;⛔ 沒做成提醒、沒進計分,先當排序條件,走完一次空頭再重跑。'] },
         { v: 'V77.3.0', d: ['📈 <b>報告頁「基本面」多了近 8 季趨勢圖 + 三種事實標記</b>(你說「新增近八季的營收、毛利率、營業利益率做成趨勢圖,告訴我哪一季毛利率掉、哪一季現金流轉負、哪一季存貨突然拉高」):趨勢線改成 8 條 —— 營收(單季)/ 季營收年增 / 毛利率 / 淨利率 / 每股盈餘 / <b>營業現金流(單季)</b> / 自由現金流(單季)/ <b>存貨天數</b>,每條只畫最近 8 季;線上的<b>空心圓 ○</b> 就是「那一季發生了什麼」:毛利率掉 ≥3pp、營業現金流正→負、存貨天數 +30%,底下一行直接寫出「2025-06 毛利率 −4.2pp(40.0 → 36.0%)」這種句子。⚠️ 它是<b>事實紀錄不是警訊</b>:全市場實測(2,352 檔 ・24,927 個季對季)這三種情況分別有 <b>21.8% / 17% / 15.3%</b> 的季會出現 —— 五檔裡就有一檔,所以不用紅色也不用 ⚠️,基準率直接印在畫面上。', '⏳ <b>營益率那條線要等財報回算跑一次</b>:採礦端已加抓損益表的「營業利益」欄(跟基本面頁「📈 三率」同一個來源),但 gh-pages 上的切片要等你在 Actions 手動跑一次「📦 財報三表深歷史回算」(選 main)、隔天採礦帶上去之後才會出現;在那之前那條線不畫、畫面會說「等回算」。', '🖼️ 自己畫的海報(短評報告)同一段同步:8 季、同樣 8 條線、同樣的 ○ 標記與基準率;順手修掉每一節標題右邊那句說明「截字後補的 … 沒量進寬度」→ 會壓到標題的小毛病(§6 籌碼那節肉眼看抓到的)。'] },
@@ -46522,6 +46523,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         inc: { lt1: 0.33, a13: 0.52, a38: -0.08, a820: 0.51, gt20: 0.08 },     // 疊在高位階+高波動之上的增量
         n: 86749, syms: 2229, cost: 0.44,
         luMid: 1.54, luHi: 0.78,                          // V72.0.1 漲停隔日:中(1~3%) vs 極高(≥8%)
+        // 🔄 V77.3.3 第四次:疊在 **49 個月組合回測**(決策台那套:🧬 濾網 / 每筆 15 萬 / 每天 2 檔 / 唐奇安 20 日出場)上
+        //   當日橫斷面三分位;⭐ sham = 跟週轉率無關的隨機三分之一(安慰劑)—— 任何候選濾網都要跟它比,⛔ 不是跟「不濾」比
+        deck: { win: 30.9, per: 3.09, cum: 519, dd: 25.8, n: 1117,
+                lo: { win: 30.2, per: 0.49, cum: 13, n: 172 }, mid: { win: 29.6, per: 2.20, cum: 122, n: 368 },
+                hi: { win: 30.0, per: 3.20, cum: 409, n: 853 }, sham: { win: 34.6, per: 3.71, cum: 569, n: 1022 },
+                plainLoWin: 34.8, plainLoPer: 0.85, plainWin: 31.4, plainPer: 2.22, cuts: 'P33 0.50% / P66 1.76%', months: 49 },
     },
     // 同業中位 PE / PB(⭐ 從**這一頁自己的資料**算,母體 = 有官方產業別的上市股)
     // ⚠️ 個股頁用的是 `industry_pe.json`,母體略有不同(實測最大差是半導體 31.8 vs 29.1)
@@ -46937,7 +46944,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
               (來回成本就要 ${E.cost}%)。<b>因為「高週轉」跟「高波動」講的本來就是同一件事。</b><br>
               ⭐ <b>週轉率唯一實測有效的用法是「漲停的隔一天」</b>:中等週轉(1~3%)次日 +${E.luMid}%,
               但<b>極高(≥8%)反而衰減到 +${E.luHi}%</b> ——「量太大」是出貨不是助力。
-              那張卡在<b>當沖頁</b>,⚠️ 而且<b>只有次日有效</b>,3 日就轉負。
+              那張卡在<b>當沖頁</b>,⚠️ 而且<b>只有次日有效</b>,3 日就轉負。<br>
+              🔄 <b>第四次(V77.3.3)疊在 ${E.deck.months} 個月組合回測上</b>:不濾 勝率 ${E.deck.win}%・每趟 +${E.deck.per}%・累積 +${E.deck.cum} 萬 →
+              只做<b>高週轉那三分之一</b> ${E.deck.hi.win}%・+${E.deck.hi.per}%・+${E.deck.hi.cum} 萬,
+              而<b>跟週轉率無關的隨機三分之一(安慰劑)</b>是 ${E.deck.sham.win}%・+${E.deck.sham.per}%・+${E.deck.sham.cum} 萬
+              → <b>高週轉沒有贏過隨機</b>;低週轉那桶勝率 ${E.deck.lo.win}%、每趟只剩 +${E.deck.lo.per}%(不挑 🧬 時勝率 ${E.deck.plainLoWin}% 看起來變高,但每趟從 +${E.deck.plainPer}% 掉到 +${E.deck.plainLoPer}% —— <b>勝率提高、賺更少</b>,V72.9.7 那六種方法的同型)。
             </div>
             <div class="text-[9px] text-gray-600 mt-1 leading-snug">📊 ${E.syms.toLocaleString()} 檔・${E.n.toLocaleString()} 個事件・同檔同桶 20 日去重・報酬已扣同期大盤。
               另兩次已測過:「低檔高週轉=起漲」不成立、「高檔高週轉=出貨」<b>方向剛好相反</b>。

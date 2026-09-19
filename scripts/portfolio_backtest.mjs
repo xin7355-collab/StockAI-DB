@@ -25,6 +25,7 @@
  */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { DEADLINES } from './lib_fundamentals.mjs';
+import { turnCuts, turnBucket } from './lib_turnover.mjs';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs';
 import path from 'path';
@@ -64,6 +65,13 @@ const ENTRY = process.env.ENTRY || 'close';   // close | nextopen | nextclose | 
 //     nofin  = 財報公布截止日前後 3 個交易日不進場(3/31・5/15・8/14・11/14)
 //     nohol  = 長假(休市 >= 4 天)前最後一個交易日不進場
 const CAL = (process.env.CAL || '').split('+').filter(Boolean);
+// 🔄 V77.3.3 週轉率濾網(使用者:「回測哪個策略結合週轉率勝率提高」)—— 疊在**候選階段**,⛔ 不進 CACHE_KEY(同 FILTER)
+//   TURN = lo | mid | hi | sham:5 日週轉率(5 日成交股數 ÷ 集保總股數,同 screener_miner 的 turn5)
+//     門檻 = **當天橫斷面** P33 / P66(⛔ 不寫死 %:週轉率隨行情整體起伏,寫死會變成「只在熱絡日進場」)
+//     sham = 固定種子隨機三分之一(**安慰劑**:增量必須 ≈0,否則流程本身有 bug,先停)
+//   ⚠️ 集保總股數是**快照常數**(增減資的股票歷史週轉率會偏);沒有 `t` 的檔一律**剔除並計數**(⛔ 不可當成通過)
+const TURN = process.env.TURN || '';
+if (TURN && !['lo', 'mid', 'hi', 'sham'].includes(TURN)) { console.error(`🚨 TURN=${TURN} 不認得(lo|mid|hi|sham)`); process.exit(1); }
 // 💾 掃描結果快取:同一組 ENTRY/EXIT/STOP/MAXD/GAPCAP 的交易完全一樣 →
 //    存起來重用,後面每試一個行事曆假設就從 3 分鐘變成 3 秒。
 //    ⛔ 參數不同一定要重掃(檔案內有 meta,對不上會拒絕載入)。
@@ -175,7 +183,7 @@ const cover = {};
 for (const s of syms) cover[s[0]] = (cover[s[0]] || 0) + 1;
 console.log(`💼 組合回測 ・${syms.length} 檔(分層抽樣,代號開頭分布 ${JSON.stringify(cover)})`);
 if (RANKBY !== 'self' || GATE !== 'pat') console.log(`🎯 增量檢定:RANKBY=${RANKBY} ・GATE=${GATE}(⛔ 不是正式配置)`);
-console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日${REENTRY > 0 ? ` ・買回=${REENTRY}日內站回5MA(最多${RE_MAX}次)` : ''} ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}\n`);
+console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日${REENTRY > 0 ? ` ・買回=${REENTRY}日內站回5MA(最多${RE_MAX}次)` : ''} ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}${TURN ? ` ・週轉率=${TURN}` : ''}\n`);
 
 // 💾 掃描結果快取(只跟這幾個參數有關;行事曆濾網完全不影響掃描結果)
 const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE });
@@ -685,7 +693,7 @@ const dIdx = new Map(days.map((d, i) => [d, i]));
 
 // 🧬 個股自身狀態表(⛔ 只用該日以前的資料 → 無前視偏誤)
 const selfFeat = new Map();
-if (SELF.length) {
+if (SELF.length || TURN) {
     for (const sym of syms) {
         let rows;
         try { rows = JSON.parse(fs.readFileSync(path.join(DATA, `${sym}.json`), 'utf8')); } catch (_) { continue; }
@@ -704,7 +712,8 @@ if (SELF.length) {
             let ma20 = null, ma60 = null;
             { let s20 = 0; for (let k = i - 19; k <= i; k++) s20 += dd[k].c; ma20 = s20 / 20; }
             if (i >= 59) { let s60 = 0; for (let k = i - 59; k <= i; k++) s60 += dd[k].c; ma60 = s60 / 60; }
-            m.set(dd[i].d, { ma20, ma60, c: dd[i].c, rank, volr: (cn && av) ? dd[i].v / (av / cn) : null, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100, b240 });
+            let v5 = 0; for (let k = Math.max(0, i - 4); k <= i; k++) v5 += dd[k].v;   // 🔄 5 日成交股數(TURN 用)
+            m.set(dd[i].d, { ma20, ma60, c: dd[i].c, rank, volr: (cn && av) ? dd[i].v / (av / cn) : null, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100, b240, v5 });
         }
         selfFeat.set(sym, m);
     }
@@ -731,6 +740,34 @@ const selfOk = t => {
         if (c === 'nobias100' && (f.b240 != null && f.b240 > 100)) return false;
     }
     return true;
+};
+
+// 🔄 週轉率:每檔每日 turn5 + 每日橫斷面三分位切點(只用當天以前的資料 → 零前視:turn5 用的是含當天的 5 日量,而候選是當天收盤後才決定)
+const turnOf = new Map();      // `${sym}|${d}` -> turn5(%)
+const turnCutByDay = new Map(); // d -> [P33, P66]
+let turnNoT = 0;
+if (TURN) {
+    let td = {};
+    try { td = JSON.parse(fs.readFileSync(path.join(DATA, 'tdcc_holders.json'), 'utf8')); } catch (_) { console.error('🚨 TURN 要用集保總股數,但讀不到 tdcc_holders.json → ⛔ 不靜默放行,直接停'); process.exit(1); }
+    const byDay = new Map();
+    for (const sym of syms) {
+        const tot = +((td[sym] || {}).t || 0);
+        if (!(tot > 0)) { turnNoT++; continue; }
+        const m = selfFeat.get(sym); if (!m) continue;
+        for (const [d, f] of m) { const v = f.v5 / tot * 100; turnOf.set(`${sym}|${d}`, v); let a = byDay.get(d); if (!a) byDay.set(d, a = []); a.push(v); }
+    }
+    for (const [d, a] of byDay) turnCutByDay.set(d, turnCuts(a));
+    const sample = [...turnCutByDay.values()].filter(Boolean);
+    console.log(`🔄 週轉率濾網 TURN=${TURN}:${syms.length - turnNoT} 檔有集保總股數(缺 ${turnNoT} 檔剔除)・${turnCutByDay.size} 個交易日 ・切點中位 P33 ${sample.length ? (sample.map(c => c[0]).sort((x, y) => x - y)[sample.length >> 1]).toFixed(2) : '—'}% / P66 ${sample.length ? (sample.map(c => c[1]).sort((x, y) => x - y)[sample.length >> 1]).toFixed(2) : '—'}%`);
+    if (turnOf.size < 1000) { console.error('🚨 週轉率算得出來的(股,日)不到 1,000 → 資料不對,停'); process.exit(1); }
+}
+const _shamHash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; };
+const turnOk = t => {
+    if (!TURN) return true;
+    const v = turnOf.get(`${t.sym}|${t.inD}`);
+    if (v == null) return false;                          // 沒有集保總股數 → 剔除(⛔ 不可當成通過)
+    if (TURN === 'sham') return _shamHash(`${t.sym}|${t.inD}|turn`) % 3 === 0;   // 安慰劑:跟週轉率無關的三分之一
+    return turnBucket(v, turnCutByDay.get(t.inD)) === TURN;
 };
 
 // 🔬 訊號對照表
@@ -845,7 +882,7 @@ for (let i = 0; i < days.length; i++) {
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
                   && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF)
                   && indCycOk(x.t.sym, d)
-                  && selfOk(x.t) && sigOk(x.t))
+                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t))
         .sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
     if (RANKBY === 'rand') { for (let k = cand.length - 1; k > 0; k--) { const j = Math.floor(_rnd() * (k + 1)); [cand[k], cand[j]] = [cand[j], cand[k]]; } }
     else if (RANKBY === 'mkt') cand.sort((a, b) => (b.m.sum / b.m.n) - (a.m.sum / a.m.n));
