@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.3.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.3.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8586,8 +8586,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.3.6',
+    _APP_VERSION: 'V77.3.7',
     _CHANGELOG: [
+        { v: 'V77.3.7', d: ['🎯 <b>老余交易夜 19 份逐字稿全部讀完、能測的都測了</b>(你說「可以優化我的程式嗎?策略需要回測就回測」):⭐ 先查登記表 —— 他 ~60 條主張裡<b>位置(區間下緣做多)/ 單根尖尖的 / 假跌破站回 / 互換 / 翻亞當出場 / 出一留一 / 拉不賠 / 賺賠比門檻 / 結算日 / 缺口 / 兇K隔壁 / 長上影隔壁 / K 棒變小</b> 本站早就測過(大多數打掉;「互換」= 本站六關全過的「創 60 日高後回測不破」,「該發生卻沒發生」的多方版 = 本站 9 個正期望訊號之一「站上長黑K高點」)。', '🔬 新探針 <code>laoyu_probe.mjs</code>(1,683 檔・2022~2026 含空頭・55 萬事件)只切他<b>沒被切過的條件</b>:🚨 <b>他最核心的兩條方向相反</b> —— 「區間下緣才做多」在日 K 上 ≈0、一年位階反而 &gt;67% 那桶最好(+0.35pp);「左邊要有人擋子彈」有擋的反而差 0.35pp。真破邊界後收回 −0.34pp、兩隻腳 −0.43pp、三問疊加四層沒有一層是正的。', '📐 <b>唯一站得住的:下降三角(上斜下平)</b> —— 他說「後面往下跌機率高」,實測 n=20,072、10 日 −0.48pp、五年逐年全負、門檻高原九格全過 → 下一版放進總覽「⭐ 重點判讀」當<b>避雷</b>(⛔ 不是放空訊號)。', '⏱️ <code>kbar5_tod_probe.mjs</code> 用 kbar5 88 天先量他的盤中時段口訣的長相(⛔ 不下結論):11 點轉折率跟別的時段一樣是 50%、49.5% 的全日最低在 09:00~09:30 那一段、尾盤 +0.01% —— 而且他講的是台指期,kbar5 以前沒有台指期。', '📼 <b>改挖礦:kbar5 從這一版起也存台指期近月的日盤 5 分 K</b>(<code>d[date].idx.TXF</code>,08:45~13:45,夜盤不收;股票母體與 bias 完全不動;要請你 Run 一次「📼 5 分 K 逐日累積」workflow,log 要看到「🔎 自我驗證 …525…820」)。', '📋 完整評估紀錄在 docs/EXTERNAL_REVIEWS.md ㉘;實測總表新增 1 條避雷 + 3 條實測沒用 + 1 條還測不了;推薦欄那條「📼 開始存 5 分 K」已經做完 → 歸類移除。'] },
         { v: 'V77.3.6', d: ['🧪 <b>自訂回測(自動回測系統的 App 內那一半)</b>(你說「新增自動回測系統」→ 你選「兩個都要」):設定中心原本的「📊 訊號成績單」升級成「🧪 自訂回測」—— 自己挑<b>母體</b>(自選＋庫存 / 全市場成交金額前 N 檔)、<b>進場型態</b>(多選)、<b>出場規則</b>(唐奇安 / ATR / 移動停利 / 5 日線,跟出場總表同一份)、要不要加 <b>🧬 濾網</b>、最多幾檔,按「▶ 跑回測」App 就逐檔用歷史 K 線跑,有進度、<b>可以隨時取消</b>(取消也會給你跑到一半的結果)。結果:每一招的勝率 / 每趟(已扣來回成本 0.44%)/ 賺賠比 / 幾檔賺,加上本站六關的<b>迷你版四關</b>(全期正 / 前後半同向 / 逐年同向 / 去最好年仍同向);少於 10 趟一律「樣本不足,不下結論」。⚠️ 畫面上寫明:這是「每一趟」的統計、<b>不是</b>決策台那套 49 個月的資金模擬(兩組數字不可互比)、窗口約 3 年不含 2022 空頭。'] },
         { v: 'V77.3.5', d: ['🔁 <b>自動回測系統(排程化那一半)上線</b>(你說「新增自動回測系統」):新 workflow「🔁 每週自動回測」掛在每日採礦後面(⛔ 不新增排程配額),<b>每週五</b>用同一套配置重跑兩件事 —— ① App 裡 129 個 K 線訊號的勝率/期望值表(以前是我跑完手抄進去的)② 決策台那套 49 個月成績單(🧬 / 不挑 🧬),產出 <code>backtest_edge.json</code>。App 讀到產物就用產物的訊號成績(格式一樣、沒有就用內嵌版);決策台「這套做法實測賺多少」那張卡底下多一行「📅 最新一次自動回測 …」,並列出<b>跟內嵌成績差在哪</b>(等級 A↔C 變動、累積差 >30%、回撤差 >5pp)。⛔ <b>沒有自動換預設</b> —— 要換仍要過八道關卡、由人判。⚠️ 第一次要你到 Actions 手動 Run「🔁 每週自動回測」(選 main、force=true)驗一次;之後每週五採礦完自動跑。', '🐛 順手:兩支回測腳本的瀏覽器路徑是寫死的本機路徑(CI 上一定炸)→ 改成「本機路徑 / CI 自帶」雙來源(跟明日作戰清單那支一樣)。'] },
         { v: 'V77.3.4', d: ['🧭 <b>報告頁 §10 改成「籌碼總表」</b>(你說「法人級籌碼分析」):每一列 = <b>數字</b>(外資/投信/自營 近 1/5/20 日、外資+投信同日都買、分點買賣超前 5、集保千張大戶/散戶、融資 20 日增減與追繳壓力區)+ <b>本站實測這個數字能不能拿來預測</b>:✅ 實測有效(外資+投信同日都買 +0.99pp、投信自己連買 ≥5 天 +0.79pp,六關全過)/ △ 證據偏弱(外資買且融資退場 +0.21pp)/ ❌ 實測無效(外資單獨連買、分點集中度、某分點突然大買、千張大戶↑散戶↓、券資比)/ ○ 只描述(自營商沒測過)。列上只留標籤 + 數字,每一列的依據收在卡底「📖 展開」。多一行「🎯 今天命中哪個實測過的籌碼型態」(讀既有的判定,⛔ 沒有新指標)。餵給外部 AI 的提示詞也帶同一份實測結論(⛔ AI 不可自己判籌碼多空)。⛔ 沒有新增任何指標。'] },
