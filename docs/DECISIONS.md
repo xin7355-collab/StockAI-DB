@@ -1,3 +1,25 @@
+## 🧪 V77.3.6 App 內自訂回測(④b)—— 升級既有的訊號成績單,⛔ 不抽共用核心、⛔ 不用 Worker、⛔ 不做資金模擬(三個刻意的決定)
+
+使用者(2026-09-19)「新增自動回測系統」→ AskUserQuestion 選「排程化 + App 內自選條件兩個都要」。V77.3.5 是排程化,這一版是 App 內。
+
+### ⭐ 先查:App 早就有一半
+`_patternFitBacktest`(V41.31,單檔 × 22 種型態、出場走 `_exitLevelAt`)與 `_runSignalScorecard`(V68.1.2,跨自選+庫存彙總)—— 差的只是**條件寫死**(母體 / 出場 / 型態 / 濾網)、沒有進度與取消、沒有前後半逐年。
+→ 做法 = 把它們升級成 `_customBacktest`,⛔ 不另起爐灶。
+
+### 三個刻意跟計畫不同的決定
+1. **⛔ 不抽 `lib_portfolio_core.mjs` 共用核心**:`portfolio_backtest.mjs` 的模擬核心有 28 種出場 / PARK / ADD / GRACE / CAL … 1,100 行,抽出來要重測 60+ 個變體;
+   而 App 這邊出場只有四種、全走 `_exitLevelAt`(出場總表 / 決策台 / 回測頁同一份)→ **出場真相已經只有一份**,回歸測試 ④ 直接比對「每一招趟數跟 `_patternFitBacktest` 一模一樣」。
+2. **⛔ 不用 Web Worker**:型態偵測器要 `app`(主執行緒才有),模擬本身每檔幾毫秒,時間全花在抓 `data/{sym}.json` → 逐檔 `await` + `setTimeout(0)` 讓 UI 能動、`_cbtCancel` 旗標能取消,夠了。
+3. **⛔ 不做資金模擬**(本金上限 / 每天幾檔 / 錢用完跳過):V77.3.3 才證明「少挑一點」本身就會讓勝率 +3.7pp、累積 +50 萬 → App 內若做一套簡化版資金模擬,數字會跟決策台那套對不上又說不清為什麼。
+   → 這裡只算「**每一趟**」的統計(勝率 / 每趟扣成本 / 賺賠比 / 前後半 / 逐年 / 去最好年),畫面明寫「⛔ 不可跟 49 個月那組互比」。
+
+### 落地
+- 設定中心「📊 訊號成績單」→「🧪 自訂回測」;modal 控制列 `_cbtControlsHtml`(母體 fav / top N by `screener.json` 的 amt;N ≤200;出場 = `_EXIT_RULE_OPTS`;🧬 = rank≥75 ∧ vola≥60,同 portfolio_backtest 的 RANK_MIN/VOLAT_MIN;型態多選讀 `_playbookPatternDefs` 的 key)。
+- `_cbtSym(data, cfg)` = `_patternFitBacktest` 的 bt 泛化(回每一趟 {key,i,d,ret,hold});`_cbtStats` 四關迷你版(`_wrEnough` 門檻,n<10 不給關卡);`_cbtRender`。
+- 舊入口 `_runSignalScorecard` 一行轉呼叫;localStorage `signalScorecard` 改 v2(帶 cfg)。
+- 🐛 自己犯的:`n >= this._wrEnough()` —— 它**回布林**,`n >= false` = 恆 true → 測試 ⑤ 抓到;門檻改成從 `_wrEnough` 自己推(⛔ 不寫第二份 10)。
+- 🧪 `test_custom_backtest.mjs` 14 條(合成 +1%/天 → 7 趟 × 抱 20 天 × +22.02%;🧬 濾網擋光;回歸 2330;取消;控制列;三個限制文案);4 種注入全叫得出來。
+
 ## 🔁 V77.3.5 「新增自動回測系統」(排程化那一半)—— 每週五自動重跑訊號表與決策台成績單,產物優先、⛔ 只標示不換預設
 
 使用者(2026-09-19)五件裡的第四件前半;AskUserQuestion 選「排程化 + App 內自選條件兩個都要」。這一版是**排程化**。

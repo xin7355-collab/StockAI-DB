@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.3.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.3.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -757,7 +757,7 @@
     <div id="signalScoreModal" class="modal-base hidden" style="z-index:500" onclick="this.classList.add('hidden'); this.style.display='none';">
         <div class="modal-content max-w-[30rem] max-h-[88vh] flex flex-col" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-2 flex-shrink-0">
-                <h3 class="text-white font-black text-base">📊 訊號成績單 <span class="text-[10px] text-gray-500 font-normal">哪種訊號在你的股票上最準</span></h3>
+                <h3 class="text-white font-black text-base">🧪 自訂回測 <span class="text-[10px] text-gray-500 font-normal">自己挑條件,App 逐檔跑歷史</span></h3>
                 <button onclick="document.getElementById('signalScoreModal').classList.add('hidden'); document.getElementById('signalScoreModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex-shrink-0">&times;</button>
             </div>
             <div id="signalScoreBody" class="overflow-y-auto pr-1 flex-1"></div>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -964,9 +964,9 @@
                     </div>
                     <!-- 📊 訊號成績單:跨自選+庫存回測,找出「哪種買進訊號在你的股票上真的準」(準確率工具) -->
                     <div class="flex flex-col gap-2 p-2.5 bg-[#161b22] border border-emerald-700/40 rounded">
-                        <label class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">📊 訊號成績單<span class="text-[9px] text-gray-500 font-normal">(跨自選回測·找最準的招)</span></label>
-                        <p class="text-[10px] text-gray-500 leading-snug">把你<b class="text-emerald-300">自選＋庫存</b>每檔的歷史逐根回測,算出<b class="text-emerald-300">哪幾種買進訊號真的會賺、哪幾種是雷</b>(勝率＋期望值),讓你只信有實績的招。純公式、零 API,結果當天記住。</p>
-                        <button onclick="app._openSignalScore()" class="mt-0.5 px-3 py-1.5 bg-emerald-900/40 border border-emerald-700/60 hover:bg-emerald-800/50 text-emerald-200 text-xs font-bold rounded transition-colors">📊 打開訊號成績單</button>
+                        <label class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">🧪 自訂回測 / 訊號成績單<span class="text-[9px] text-gray-500 font-normal">(自己挑條件跑)</span></label>
+                        <p class="text-[10px] text-gray-500 leading-snug">自己挑<b class="text-emerald-300">母體</b>(自選＋庫存 / 全市場成交金額前 N 檔)、<b class="text-emerald-300">進場型態</b>、<b class="text-emerald-300">出場規則</b>、要不要加 🧬 濾網,App 逐檔用歷史 K 線回測(訊號日收盤買、照你選的出場走、扣來回成本 0.44%),給你每一招的勝率 / 期望值 / 賺賠比 + 前後半・逐年這幾道關卡。純公式、零 API,可隨時取消。</p>
+                        <button onclick="app._openSignalScore()" class="mt-0.5 px-3 py-1.5 bg-emerald-900/40 border border-emerald-700/60 hover:bg-emerald-800/50 text-emerald-200 text-xs font-bold rounded transition-colors">🧪 打開自訂回測</button>
                     </div>
                     <!-- 🔎 V41.24 — 免費查公司引擎(不耗自家 AI 額度,開外部免費 AI 網頁帶問題) -->
                     <div class="flex flex-col gap-2 p-2.5 bg-[#161b22] border border-amber-700/40 rounded">
@@ -8586,8 +8586,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.3.5',
+    _APP_VERSION: 'V77.3.6',
     _CHANGELOG: [
+        { v: 'V77.3.6', d: ['🧪 <b>自訂回測(自動回測系統的 App 內那一半)</b>(你說「新增自動回測系統」→ 你選「兩個都要」):設定中心原本的「📊 訊號成績單」升級成「🧪 自訂回測」—— 自己挑<b>母體</b>(自選＋庫存 / 全市場成交金額前 N 檔)、<b>進場型態</b>(多選)、<b>出場規則</b>(唐奇安 / ATR / 移動停利 / 5 日線,跟出場總表同一份)、要不要加 <b>🧬 濾網</b>、最多幾檔,按「▶ 跑回測」App 就逐檔用歷史 K 線跑,有進度、<b>可以隨時取消</b>(取消也會給你跑到一半的結果)。結果:每一招的勝率 / 每趟(已扣來回成本 0.44%)/ 賺賠比 / 幾檔賺,加上本站六關的<b>迷你版四關</b>(全期正 / 前後半同向 / 逐年同向 / 去最好年仍同向);少於 10 趟一律「樣本不足,不下結論」。⚠️ 畫面上寫明:這是「每一趟」的統計、<b>不是</b>決策台那套 49 個月的資金模擬(兩組數字不可互比)、窗口約 3 年不含 2022 空頭。'] },
         { v: 'V77.3.5', d: ['🔁 <b>自動回測系統(排程化那一半)上線</b>(你說「新增自動回測系統」):新 workflow「🔁 每週自動回測」掛在每日採礦後面(⛔ 不新增排程配額),<b>每週五</b>用同一套配置重跑兩件事 —— ① App 裡 129 個 K 線訊號的勝率/期望值表(以前是我跑完手抄進去的)② 決策台那套 49 個月成績單(🧬 / 不挑 🧬),產出 <code>backtest_edge.json</code>。App 讀到產物就用產物的訊號成績(格式一樣、沒有就用內嵌版);決策台「這套做法實測賺多少」那張卡底下多一行「📅 最新一次自動回測 …」,並列出<b>跟內嵌成績差在哪</b>(等級 A↔C 變動、累積差 >30%、回撤差 >5pp)。⛔ <b>沒有自動換預設</b> —— 要換仍要過八道關卡、由人判。⚠️ 第一次要你到 Actions 手動 Run「🔁 每週自動回測」(選 main、force=true)驗一次;之後每週五採礦完自動跑。', '🐛 順手:兩支回測腳本的瀏覽器路徑是寫死的本機路徑(CI 上一定炸)→ 改成「本機路徑 / CI 自帶」雙來源(跟明日作戰清單那支一樣)。'] },
         { v: 'V77.3.4', d: ['🧭 <b>報告頁 §10 改成「籌碼總表」</b>(你說「法人級籌碼分析」):每一列 = <b>數字</b>(外資/投信/自營 近 1/5/20 日、外資+投信同日都買、分點買賣超前 5、集保千張大戶/散戶、融資 20 日增減與追繳壓力區)+ <b>本站實測這個數字能不能拿來預測</b>:✅ 實測有效(外資+投信同日都買 +0.99pp、投信自己連買 ≥5 天 +0.79pp,六關全過)/ △ 證據偏弱(外資買且融資退場 +0.21pp)/ ❌ 實測無效(外資單獨連買、分點集中度、某分點突然大買、千張大戶↑散戶↓、券資比)/ ○ 只描述(自營商沒測過)。列上只留標籤 + 數字,每一列的依據收在卡底「📖 展開」。多一行「🎯 今天命中哪個實測過的籌碼型態」(讀既有的判定,⛔ 沒有新指標)。餵給外部 AI 的提示詞也帶同一份實測結論(⛔ AI 不可自己判籌碼多空)。⛔ 沒有新增任何指標。'] },
         { v: 'V77.3.3', d: ['🔄 <b>「哪個策略結合週轉率勝率提高?」—— 第四次測,這次直接疊在決策台那套 49 個月的組合回測上</b>(產業作戰室 → 🔬 實測總表 → 實測沒用 r:29;選股頁的週轉率提醒也補了這組數字):只做<b>高週轉那三分之一</b>:勝率 30.0%・每趟 +3.20%・累積 +409 萬;不濾:30.9%・+3.09%・+519 萬;<b>跟週轉率完全無關、隨機挑三分之一</b>:34.6%・+3.71%・+569 萬 → <b>高週轉沒有贏過隨機</b>。低週轉那桶勝率確實變高(不挑 🧬 時 31.4% → 34.8%),<b>但每趟從 +2.22% 掉到 +0.85%</b> —— 勝率提高、賺更少。⛔ 沒有加進決策台。⭐ 順便學到:本金有限的時候「隨便少挑一點」本身就會讓數字變好看,以後任何濾網都要跟這個「隨機組」比,不是跟「不濾」比。'] },
@@ -8827,27 +8828,6 @@ ${list}
         { v: 'V76.2.2', d: ['🚨 <b>「§13 融資壓力沒有資料」其實資料一列都不缺 —— 而且它以前算出來的數字是錯的</b>。查下去兩層:①那格的守門條件是「知不知道這檔是上市還是上櫃」,而 V75.1.5 把股名改讀離線表之後那份表<b>沒有市場別</b> → 條件永遠不成立 → 一律顯「融資資料不足」(融資餘額其實 795 天全有)。②更糟的是它<b>吃整條 3 年 K 線</b>算融資族群成本 —— 融資是短期部位,拿三年平均等於假數字:國巨算出成本 331 元、追繳線 259 元、<b>距現價 52%</b>,永遠顯示「安全」,毫無意義。', '💳 <b>改成只看近 60 個交易日,國巨的數字整個翻過來</b>:融資族群成本 <b>683 元</b>、追繳壓力區 <b>533 元</b>、<b>距現價只剩 2%</b> —— 而且融資餘額還在增加(散戶接刀)。這才是這檔現在真正的融資風險。分不出上市/上櫃時改成<b>用上市六成推並標明</b>,⛔ 不再整格不給;採礦端的股名表<b>補上市場別</b>(零額外 API —— 它本來就分「上市收盤」「上櫃收盤」兩個來源抓,只是以前沒記下來),下一輪採礦後自動變準。', '🏢 <b>§4 財報品質的「本站尚未切出」</b>:2,351 檔的財報三表切片<b>已經產好、也推上 data 分支了</b>,只是還沒被帶到網站那一份;這次連同採礦一起跑完就會出現(存貨天數 / 自由現金流 / ROE / 淨利率)。', '📐 <b>貼上的報告版面瘦身</b>:已經貼過之後,輸入框、三顆按鈕、四段操作說明<b>全部收進「⚙️ 換一份 / 複製提示詞」摺疊</b> —— 第一眼要留給報告內容,不是留給操作說明(第一眼 655 → <b>334 字</b>)。另外卡片右上已經寫了「基準日」,底下那行就不再重複講一次(同一個日期講兩次看起來像壞掉);AI 段落開頭那個多餘的破折號也剝掉。', '🔬 順手修巡邏工具:版面巡邏以前在沙箱量到的寬度是<b>假的</b>(卡片只有 166px,正式環境 373px)→ 現在會自動補上最小版面規則再量,數字才有意義。'] },
         { v: 'V76.2.1', d: ['🚨 <b>你說「不是應該直接點開就能貼上嗎」—— 查出來了,而且不是程式壞掉</b>:提示詞 <b>2,400 多字</b>,做成網址(要把中文編碼)會膨脹到 <b>1 萬 6 千字元</b>;iOS 把連結交棒給 Perplexity App 時那串帶不過去,App 只收到「開搜尋頁」→ 所以輸入框是空的。⛔ 縮短提示詞不是辦法(縮到塞得進網址等於把 22 節砍光)。', '📋 <b>加了「複製提示詞」按鈕</b>(你要的),而且<b>兩顆按鈕都會先幫你複製</b> —— 按「🔎 開 Perplexity」也會在開之前把提示詞放進剪貼簿,過去長按輸入框<b>貼上</b>就好。', '🔲 <b>複製不了還有逃生門</b>:iOS PWA 有時不讓程式碰剪貼簿 → 會跳出一個視窗把提示詞整份列出來,按「全選」再長按拷貝。', '🧹 順手把報告頁兩處各自寫的複製程式碼合成一份(改一邊忘另一邊的老問題)。'] },
         { v: 'V76.2.0', d: ['📝 <b>報告頁多一格「§22 你貼上的 AI 報告」</b>,就在 ⚡ 快速判別表正下方(以前藏在「產業」節第 ⑤ 小段的摺疊裡 —— 你沒找到就是證據)。把外部 AI 產的 22 節報告整份貼進去存起來,<b>下次開就在,不用再產一次</b>;只存在你這台裝置。', '🖍️ <b>貼上的內容會自動上色</b>:結論 / 買點 / 停損 / 風險 / 上修 / 賣超 這類重點詞用<b>琥珀底</b>標出來、帶單位的數字加粗;想自己標就用兩個等號包住(==這一句==)。⛔ 不用紅綠 —— 紅綠只講漲跌。', '📑 <b>第一眼只留 §1 一句話結論 + §22 最後筆記</b>,其餘 §2~§21 逐節收起來點開看(跟本站的 § 編號對得上)。§19 因子評分 / §20 星等 / §14 機率那幾節照顯,但標「AI 主觀,本站實測這類權重沒有預測力」。', '🔁 <b>該重新產出了會告訴你</b>(只在報告頁內,不跳窗):貼上之後有新的<b>月營收 / 財報法定日 / 除息 / 法說會</b>,或<b>股價已偏離報告寫的價 8% 以上</b>、或超過 30 天,都會亮「🔁 建議重新產出:原因」;快速判別表第 11 列也會標「需更新」。', '🆚 <b>AI 講的價位拿去跟本站的價格牆對照</b>:「第一買點 530~540」「停損 500」「合理價 550」這類,逐一寫出本站在那附近有沒有牆(套牢區 / 均線 / 密集區 / 你的出場線),還會並排「AI 說 / 本站說」兩個結論。⛔ 只對照不裁決,AI 的價位不進本站任何計算。', '🔎 <b>問 Perplexity 的提示詞改成 22 節骨架</b>:標題一律 §N、第一行寫分析基準日期、結尾附來源表(有網址),並明說哪幾節本站已經算好⛔ 不要自己算、⛔ 不要給因子評分與星等、本益比一律寫現在的(要講預估要標「預估」)。', '🚨 <b>抓到本站自己一個錯 —— 財報三表的淨利率在「面額變更」的股票會算錯 4 倍</b>(國巨 2025Q3 面額 10 → 2.5 元:股本金額一毛不變、股數 ×4、EPS ÷4,本站用「EPS × 股本÷10」推淨利率就變成 5.3%,實際約 21%),而且旗標文案還把它寫成「業外/一次性」。<b>上一版我自己下的「國巨真因是業外不是股本」是錯的</b>,AI 報告那一點反而是對的。現在疑似面額變更的那一季起淨利率/ROE 改顯「算不出來(可能面額變更)」不給錯數字;採礦端補抓官方「稅後淨利」欄,下一次回算之後就不用假設面額。'] },
-        { v: 'V76.1.9', d: ['📐 <b>報告頁「⚡ 快速判別表」重排</b>(你說「版面修正」)。先量再改:原本每一列擠三行(面向/數字/實測說明)、11 列合起來<b>第一眼 850 字</b>,超過本站自己訂的 600 字上限;說明字又小。<b>現在第一眼只留「面向 + 數字」兩行、數字放大</b>,11 條實測說明<b>整批收進卡片底部的摺疊</b> —— ⛔ 一個字都沒刪,點開就看得到(改完第一眼 <b>385 字</b>)。', '🔤 <b>畫面上不再出現英文函式名</b>:原本印著 pe_band_probe、ma20_probe、overhead_probe 這類<b>程式檔名</b>(7 個),全部改成白話中文,檔名只留在摺疊區裡。', '🚨 <b>抓到一個數字放大 1000 倍的錯</b>:現價下面那顆徽章寫「法人連3賣 <b>−14,067,577 張</b>」—— 台積電總股本才 2,593 萬張,根本不可能。真因是那筆資料<b>單位是「股」卻直接當「張」印</b>,正確是 <b>1.4 萬張</b>。(全 App 其他 7 處都換算對了,只有這一顆漏掉。)', '🚨 <b>同一個「位階」以前有兩個數字</b>:總覽徽章寫「⛰️ 高基期 91%」、報告頁寫「93%」—— 一個用最高/最低價算、一個用收盤算。現在<b>統一成同一份</b>(91%),⛔ 以後不會再各講各的。', '🔠 <b>字放大了</b>:報告頁的說明字全部拉到看得清楚的級距;順便巡了個股 9 個分頁,把剩下 12 段過小的說明字一起修掉(當沖、籌碼、K線、總覽都有)。<b>而且你在設定中心切「大字/特大」時,這些新字級現在也會跟著放大</b>(以前那張放大表沒涵蓋到它們)。', '📏 <b>修掉三處會被切掉的版面</b>:價格牆表、下跌壓力測試那幾列、估值對照表,在窄螢幕上本來會被默默切掉一截(看不到錯誤訊息,就是少一塊)。估值尺最右邊那個價格標籤也會凸出去 21px,一起修。', '🧪 順手把測試自己的毛病修了:原本那條「390px 不可溢出」用錯判準,<b>從頭到尾是假綠燈</b> —— 換成本站文件規定的判法之後,<b>第一次跑就抓到上面那三處</b>。', '🔢 零股族看到的「你的 2.35 張」改成「你的 2,350 股」。'] },
-        { v: 'V76.1.8', d: ['📄 <b>報告頁對照你給的「法人級 22 節研究提示詞」重排</b>:先量過 —— 22 節裡 <b>8 節本站已有、9 節有一半、5 節填不了真實數據</b>(3 節是質化只能外包、2 節刻意不做)。所以⛔ 不是「取代」,是拿它當骨架:每一節標題帶 <b>§ 編號</b>,你拿外部 AI 的產出來對照時一眼對得上。', '⚡ <b>報告頁最上面多一張「快速判別表」</b>(11 個面向:結論 / 價格位階 / 估值位階 / 均線 / 價格牆 / 法人 / 集保 / 融資 / 財報品質 / 下一個事件 / 質化),每一格都轉述既有數字、⛔ 不另算,而且每一列都標來源:✅ 真實資料 / 🧮 純公式 / 🔎 要自己查 / ⛔ 本站沒有 / 🚫 實測打掉。', '🧱 <b>新增 §11 價格牆表 + §17 下跌壓力測試</b>:由高到低列出每一道牆是什麼(套牢區 / 均線 / 密集區 / 你的出場線 / 融資追繳線)、距現價幾 % 與一張差多少元;跌 10/20/30/40% 各是一張賠多少、有部位就算你的張數、途中撞到哪幾道牆。國巨 544 元:上方 569~650 與 772~865 兩堵牆(就是那個 800),跌 20% 就到年線附近。', '🧮 <b>§14 敏感度表</b>:獲利 ±20% × 它自己近 3 年給過的倍數(P25/中位/P75)= 9 個對照價。⛔ 沒有機率欄 —— 沒有母體可以估「樂觀幾 %」,硬給的機率是編的。', '📦 <b>§4 財報品質接上「財報三表」</b>(存貨天數 / 自由現金流 / 資本支出 / ROE / 淨利率 / 股本):34 季的深歷史以前只在回測用,現在切成每檔一個小檔進報告頁。⚠️ 現金流量表在資料源是<b>累計</b>的,切片時已還原成單季。兩道旗標只標事實:①「EPS 崩但營收毛利沒掉」(國巨 2025Q3:9.74 → 3.10,股本沒變 → 是業外/一次性,⛔ 不是股本、也不是本業)②「股本一季變 >20%」(國巨 2024Q3 現增 +20%)。⚠️ 要等 fin_backfill 用 slice_only 跑一次,切片才會出現。', '🗓️ <b>§12 事件表 + §21 觀察清單</b>:下一次財報法定日 / 月營收日 / 除息日(除權息檔以前只有產業作戰室讀)/ 法說會(本站沒抓到就誠實說 + 🔎);只講「前後波動大」⛔ 不講漲跌(37 種行事曆日實測方向 0 個成立)。', '🔄 循環股一行:官方產業標成循環股的,估值節會提醒「獲利頂峰時本益比最低,位階要反著讀」—— 這是法人真的在看、提示詞沒寫的那條。同業表補「淨值比」欄。', '🔎 問 Perplexity 的提示詞從 4 段擴成 8 段(商業模式 / 法人預估變化 / 客戶集中與匯率關稅 / 空方論點),每段都要附來源、查不到寫查不到。回來的文字仍只能貼成 §22 筆記,⛔ 不進任何判斷。', '⛔ 刻意不做並寫在畫面上:§19 因子總分、§20 ★ 評等(權重憑空訂的沒驗證過;AI 五級實測無預測力)、§14 三情境機率、§5/§6 市場預期與 EPS 上修下修(台股沒有免費共識,本站不編)。'] },
-        { v: 'V76.1.7', d: ['🔕 <b>你說「不準就不用提醒」—— 我先量了,你是對的,而且比想的嚴重</b>:提醒會發的 <b>56 種</b> K 棒訊號裡,實測<b>每趟期望值為正的只有 7 種</b>。你截圖那 6 則逐一對表 → <b>5 則該砍</b>:「K線橫盤突破」每趟 <b>−1.21%</b>(統計上 p=0.9995 完全沒鑑別力)、「費波納契回撤買點」<b>−1.26%</b>、「長紅遭遇一日封口」<b>−1.48%</b>、「K線橫盤跌破」警告了但之後<b>根本沒比大盤差</b>、「壓力沉重‧反覆過不了」更妙 —— 出現之後反而<b>比大盤好 0.11%</b>(警告方向是相反的)。只有「長黑遭遇(一日封口)」站得住(之後 10 日確實比大盤差 0.21%,2,496 次,A 級)。','🚨 <b>真因:提醒這條路從來沒查過實測成績</b>。K線分頁早就會查(好的置頂、沒用的收摺疊區),但「跳出來提醒你」那條路一行都沒問過。已加上<b>入場券</b>:<b>看多的</b>要「每趟期望值為正 + 樣本夠」、<b>看空的</b>要「之後真的比大盤差、而且不是雜訊」,<b>查不到成績的一律不推</b>(沒驗過 ≠ 有效)。','🔕 <b>三種「方法本身已經被實測打掉」的,整組不再主動推</b>(仍收在 🔔 通知歷史):①<b>🔮 明日劇本</b>(實測只能當事實標籤,不能拿來下判斷)②<b>🧙 跟單分點</b>(分點慣性/同盟/產業專精<b>三次回測全部不成立</b>)③<b>🎯 主打型態觸發</b>(「這檔最會賺的招」那份排名,實測<b>穩定度接近隨機</b>)。另外全市場盤點摘要那幾則也不再跳 toast。','⭐ <b>被擋下來的一則都不會消失</b> —— 照樣收在 🔔 通知歷史(標「（未達實測門檻）」並寫出實測數字),個股頁的 K線分頁也照看得到。你要的是<b>不被打擾</b>,不是查不到。','⛔ <b>跟你部位有關的一個都沒動</b>:庫存鐵血停損、停損到了、停利條件到了、第 2 擊跌破你設的出場線、到價提醒、13:25 當沖平倉倒數 —— 那些不是「訊號準不準」,是<b>你的錢到了你自己設的點</b>,照跳。','📉 實測:開 App 那 14 秒從「大視窗 2 則・toast 7 則」降到「<b>大視窗 0・toast 3</b>」。⚙️ 設定中心有開關「🔕 只提醒實測站得住的」,想回到舊行為(全部都推)關掉它就好。'] },
-        { v: 'V76.1.6', d: ['🚨 <b>上一版說修好的妖股雷達,其實一次都沒生效 —— 這次真的修了</b>(你選的「巡一次同型錯誤」):V76.1.5 我把爆量基準換成「那幾根之前的 5 日均量」,但上游只把<b>最近 3 天</b>的量傳下來,而新算法要<b>8 天</b> → 那個長度檢查<b>永遠過不了</b>,基準恆為 0,結果還是 0 檔。⭐ 更難堪的是:我當時是在<b>另一支模擬程式</b>上量到「修完有 8 檔」的,沒走真正的採礦路徑 —— 而「測試環境跟正式環境不一樣會得到假綠燈」這條教訓,正是我<b>同一版</b>寫進專案筆記的。已改成傳 8 天,走真路徑實測 <b>115 檔</b>通過爆量那一關。⚠️ 要等下一次採礦跑完才看得到。','🚨 <b>多空計分卡有兩條規則長期漏判,其中一條是空方的</b>:①「跌破前低」拿今天收盤去比「<b>含今天</b>的 20 日最低」—— 今天的最低本來就 ≤ 今天收盤,所以這條<b>數學上永遠不可能成立</b>,等於<b>死碼</b>(41 萬根 K 實測:少抓 <b>99.75%</b>)。②「爆量突破 60 日新高」同樣毛病,少抓 <b>67%</b>。兩條都是 3 分權重。⛔ 少報空方訊號比少報多方更嚴重(寧可多提醒),兩條都已修。','🔔 <b>「創 20 日新高/新低」的推播長期推不出來</b>:它拿的是快取裡的日 K,而其中 <b>95%</b> 的最後一根就是<b>今天那根還沒收盤的</b> → 等於拿今天比今天。已加共用守門,一律只用「已收盤」的那幾根當基準。','📉 <b>泡沫預警的「大盤 K 線型態」有一半從上線就沒在動</b>:它看「量」的那半讀的是加權指數的成交量,而<b>資料源根本不給指數成交量</b>(120 根全是 0)→ 量比永遠算成「1.0 倍」=「正常」,所以「爆量長上影」「上影警示」兩個警告<b>一次都不可能亮</b>。已改吃證交所官方的<b>成交金額</b>;真的算不出來時會<b>直接說「沒有資料」</b>,⛔ 不再用 1.0 假裝正常。','🚗 順手修:投信動能那格的基準<b>把今天自己算進去</b> → 今天只要是近 10 天買最多的一天,動能就必然顯示 <b>100 分</b>並直接建議「可試單 30% 跟車」,哪怕只買了幾張。已改成跟<b>前 9 天</b>比。'] },
-        { v: 'V76.1.5', d: ['🗑️ <b>選股頁的榜 23 → 10</b>(你說「把沒有用的榜刪除」):實測沒優勢的那 13 個(送分題/烏龜過河/主力鎖股/口袋支點/外資連買/投信連買/雙主力/營收動能/大戶吃貨/低基期/跌深績優/錯殺便宜/潛力黑馬)<b>整組移除</b>。⭐ 打掉它們的實測數字<b>留在程式裡當紀錄</b>,免得日後又做一次。', '🐲 <b>妖股雷達不是壞掉,是數學上不可能成立</b>(你問「都沒看到」):它要求「近 3 根裡有 2 根量 &gt; 3 倍<b>5 日均量</b>」,但 5 日均量<b>把爆量那幾根自己算進去了</b> → 第一根爆完就把門檻墊高,第二根永遠追不上。全市場 2,719 檔實測 <b>0 檔</b>通過,而「漲幅」那關本身有 43 檔。已把爆量基準改成<b>那幾根之前</b>的 5 日均量 → 同樣門檻下有 <b>8 檔</b>。⚠️ 要等下一次採礦跑完才看得到。', '⚠️ 順手修好文案跟程式不一致:說明寫「2 倍量」但程式是 <b>3 倍</b>。'] },
-        { v: 'V76.1.4', d: ['📋 <b>你問「選股頁的榜要不要砍」—— 我先量了,結論是「不是榜太多,是有幾個什麼都沒說」</b>。23 個榜裡<b>已經有 13 個</b>被標成「📉 實測沒優勢」收進摺疊區、3 個標成「查資料用」;真正的問題是中間那幾個(相對強度 / 渣男賽車 / 妖股雷達 / K棒轉多 / K棒轉空)<b>從來沒告訴你它到底有沒有實測背書</b>。', '🚨 <b>而且照出一個自打嘴巴的地方</b>:「🎯 會賺訊號」的說明寫著「這是唯一有實測成績的榜」,底下卻緊接著印「此戰區…<b>未納入歷史回測</b>」—— 同一畫面兩句話打架,已修。', '✅ 現在<b>每一個榜都會講清楚自己的實測狀態</b>,四種:✅ 有實測(附基準 36.4%,⛔ 不是 50%)/ ⚠️ 只有間接證據(會明說「<b>這個榜本身沒單獨測過</b>」,⛔ 不借別的成績當背書)/ 📚 查資料用 / 📉 實測沒優勢。⛔ 一個都不准沉默。'] },
-        { v: 'V76.1.3', d: ['🏛️ <b>「籌碼分頁怎麼不見了」有答案了,而且順手修好</b>:它<b>沒壞</b> —— 看<b>大盤指數</b>時程式會刻意把 基本・當沖・回測・即時・籌碼・多空・報告 這七頁藏起來(法人買賣超、券商分點、EPS 都是<b>逐檔股票</b>才有的資料,指數沒有自己的一份)。以前這個理由只寫在程式裡、<b>畫面上一個字都沒說</b>,所以你只看到分頁憑空消失。現在指數頁會直接告訴你少了哪幾頁、為什麼,還會指路(大盤法人看「大盤」頁、個股分點點進那一檔)。', '🗑️ <b>清掉三段死碼</b>(你說「依照建議做」):①「主力分點動向」每次都往一個<b>永遠隱藏</b>的框寫 455 字,2026-06 起就沒人看得到 ②總覽籌碼快照的函式(上次刪卡後零呼叫)③⚖️ 那張卡的函式(這次刪卡後零呼叫)。', '⚠️ 順手把兩處<b>指向已刪函式</b>的說明改掉,免得下次有人照著找找不到。'] },
-        { v: 'V76.1.2', d: ['🗑️ <b>依你指名刪掉四樣</b>:①「🧭 5 個面向」底下那行說明文字 ②「⚖️ 這一頁有 N 個系統在講方向」整張卡 ③「🧭 總評儀表板」整張卡 ④「🚦 ETF 跟車狀態」整張卡。<b>ETF 跟車那張本來就該刪</b> —— 實測跟車不成立,而且它靠的持股變動歷史 8 月才開始存,本來就還驗不動。', '🔗 <b>「🎯 關鍵價位・掛單就看這」併進「📏 價格位置圖」了</b>(你說排版很像):現在是<b>一張卡</b> —— 上面一條尺看位置,下面用原本關鍵價位那種<b>兩欄格子</b>把每個價位寫清楚(停損/現價/買進/追買/估值/套牢區/密集區,每格都有「這個價位在講什麼」)。底部原本逐項解釋的那段刪掉了,因為每一格自己就寫了。', '🐛 順手修一個會看錯的地方:空手時停損那格原本寫「<b>買進</b>後跌破前低就退出」→ 空頭股的尺上就會冒出「買進」兩個字。它本來就只是在講防線在哪,已改成「跌破前低就退出」。', '📉 個股頁總覽第一眼從 635 字降到 <b>571 字</b>,全站卡片總字數 11,360 → <b>10,197</b>。'] },
-        { v: 'V76.1.1', d: ['📰 <b>你問「新聞回測可以開始了嗎」—— 還不行,而且我去查了才知道原因</b>:之前測完的那一輪用的是<b>別人的新聞資料</b>(鉅亨網 5,409 則,結論是「有新聞」本身沒用、方向量不出來);本站<b>自己存的</b>只有 <b>11 天</b>(9/1~9/11、285 則)。而且時鐘<b>不是 8 月開始的</b> —— 抓新聞那支排程從 8/5 到 9/8 <b>一次都沒被觸發</b>(被 GitHub 的排程配額吃掉),9/9 改掛在別支後面才穩定 → 大約要到 <b>2026 年 12 月上旬</b>才夠測。', '🔌 <b>新裝的外掛幫不上這件事</b>:那類連接器只有「跟我對話時」用得到,你的網站跟採礦機都呼叫不到;而且它是搜尋不是全量傾印(實測一檔半年只回 6 段、一半是廣告稿),來源也是英文通訊社,跟我們抓的中文新聞不是同一批。', '🧪 回測工具已經先準備好:資料夠了會自動能跑,<b>不夠就直接告訴你還差幾天</b>,⛔ 絕不用不夠的樣本硬給結論。'] },
-        { v: 'V76.1.0', d: ['🚨 <b>你問對了一個 bug</b>:2327 上面寫「🟢 空方・避開」,價格尺卻印「🔺 追買 605」。現在空頭時那兩個會變成 <b>👀 轉強觀察 / 👀 前高</b>,底下直接寫「<b>這兩個不是叫你買</b>」。⭐ 價位一個都沒改(那是事實),只改叫你怎麼做的那句話。','📖 <b>價格位置圖右上多一顆「怎麼看」</b>,把你問的兩件事講清楚:① <b>追買不是你可以掛的買價</b> —— 它是「<b>前高</b>」,要等<b>帶量突破</b>那根出現才算起漲,直接掛在那買 = 追高;而且它沒有時間限制,大跌過的股票這個前高可能是好幾個月前的。② <b>密集區不是「60 天最多人買的價格」</b> —— 它是「近 60 天<b>成交量</b>最大的那一格」,而每一筆成交都同時有一個買方跟一個賣方,量大只代表那裡換手多,分不出買的人多還是賣的人多。','🎯 <b>新增「估值對照價」</b>(你說的目標價):畫在尺上,算法是<b>最近四季 EPS × 同業中位本益比</b>。⚠️ 它<b>本站沒有回測過準不準</b> → 刻意<b>不參與</b>「第一道壓力」與風報比的計算,只當對照。','❓ <b>外資喊的價格:做不到,我把量到的數字告訴你</b> —— 台股沒有免費、整理好的分析師共識資料源(證交所、FinMind 都沒有這種資料集)。我們唯一拿得到的只有<b>新聞標題的文字</b>,實測全部新聞檔加起來只找得到 <b>7 筆</b>、而且已經有抓錯的 → 做成功能等於 99% 的股票永遠空白、少數還是錯的。⭐ 改成在 📖 裡給你一顆「<b>🔎 查這檔最近的法人目標價</b>」,免費開新分頁看新聞原文,⛔ 我們不轉述、不加工。'] },
-        { v: 'V76.0.9', d: ['🔣 <b>五個面向每一格都有符號了</b>(你說「除了大盤外其它沒有符號」):技術/籌碼講漲跌方向 → 🔴 偏多 / 🟢 偏空 / ➖ 中性;大盤講安不安全 → ✅⚠️⛔;基本面/預期是位置高低 → <b>強/中/弱</b>(⛔ 刻意用字不用紅綠,否則同一顆顏色一下是「漲」一下是「好」)。而且<b>大盤那格也補上 ▼ 了</b> —— ▼ 只講「位置在哪」,安不安全還是看 ✅⚠️⛔。','📏 <b>價格尺改名「價格位置圖」,而且上色了</b>:藍色從最低一路畫到<b>現價</b>,一眼看出你在整段區間的哪裡。另外把 <b>🧲 量價密集區(60 日量最大那一格)</b> 也畫上去(虛線框),跟 🪤 套牢區(120 日、現價上方)<b>分開標示</b> —— 兩個不是同一件事。','🧲 <b>「幾 % 的量卡在哪個價位」列出來了</b>(你要的那個):點開價格尺下面那行,會列「X% 的量在 A~B 元」,並標在你上面還是下面。⚠️ 誠實話寫在卡上:那是<b>成交量</b>的分布,<b>不等於</b>「現在還有幾 % 的人套在那」(期間內買了又賣掉的也算)。','🗑️ <b>總覽再瘦一次</b>:① 刪掉「📊 主力籌碼快照」(它自己就有一顆「詳看分點/天秤 →」= 承認跟籌碼頁重複)② 摺疊區「總評儀表板」裡那排<b>五格分數拿掉</b> —— 跟頂端的儀表列是同一份數字,同一頁出現兩次就是雜訊;那張卡只留頂端<b>刻意不顯示</b>的三樣:總分 / 一句話 / 建議部位水位。'] },
-        { v: 'V76.0.8', d: ['🎨 <b>五條量條有顏色了</b>(你說「應該要有顏色」):技術/籌碼講的是<b>漲跌方向</b> → 用紅綠;🌍 大盤講的是<b>安不安全</b> → 用琥珀色的深淺 + ✅⚠️⛔(⛔ 刻意不用紅綠,否則同一顆顏色一下代表「漲」、一下代表「安全」,你會看反);🧬 基本面 / 🎯 預期 是<b>位置</b> → 天藍(「基本面強」不等於「會漲」)。','📐 <b>排版對齊了</b>(你說「排版要調整整齊」):五條的左右端點現在落在<b>同一條線</b>上(以前大盤那條多一顆徽章、左右的字又長短不一,每條長度都不一樣);<b>價格尺的字全部搬到下面一行</b>,兩端的「買進 xx」「+12.8%」不會再被切掉。','🧭 <b>「五個面向」真的有五個了</b>(你說「我只看到3個」):真因不是慢,是<b>根本沒去算</b> —— 你看的 2426 這種股票沒有券商分點資料,程式在那一步就直接跳出去了,基本面/預期兩格永遠不會出現(全市場 2,300 檔都是這樣)。現在改成一開股票就先用採礦資料算一次(<b>不花你的 API 額度</b>),財報回來再自動更新。','⭐ 而且標題那個數字<b>會跟著實際有幾格走</b>:ETF 只有 3 格,卡片會直接說「ETF 是一籃子股票,沒有自己的財報 → 這兩格本來就不會有,不是壞掉」—— ⛔ 不再讓你以為是壞掉。'] },
-        { v: 'V76.0.7', d: ['🧭 <b>總覽第一眼只留四件</b>(你說「資訊量太大…我不是很懂,要量表或圖」):① 一句結論 ② <b>🧭 五個面向一眼看</b>(技術/大盤/籌碼/基本面/預期,一格一條尺、▼ 越右越好)③ <b>📏 價格在哪、牆在哪</b>(停損 🛑・現價 ▼・轉強 🛒・追買 🔺・<b>套牢區 🪤 灰帶</b>,一條線看完)④ 🔔 盯價鈕。其餘「要注意的事／現在該做什麼／系統怎麼判的／4 個系統」<b>一個字都沒刪</b>,全收進下面那顆「📂」裡。國巨第一眼從 778 字降到 474 字。','⭐ 那五格尺<b>不是新算的</b> —— 那是 App 早就有的「總評儀表板」(V68.4.6),但一直藏在「看更多分析」第三層,你看不到。現在搬到第一眼,而且刻意<b>不顯示加總的總分</b>(那組權重沒驗證過),要怎麼做只看最上面那一句。','📄 <b>報告頁</b>:頂端放<b>同一條</b>儀表列(跟總覽同一支程式,數字永遠一樣);估值那節改成<b>尺在外面、6 列表收起</b>(上一版預設攤開讓一節就 1,018 字);「不是你設定的那條」那類預警一律排最後。','🚨 條件觸發不收:你<b>有部位</b>而且<b>你設定的出場線被跌破</b>時,那條 🚨 仍留在第一眼(空手時才全收)。全 App 的尺從此只有一種畫法(<code>_gaugeRow</code>),方向才用紅綠、安全與否用 ✅⚠️⛔、位置用灰階。'] },
-        { v: 'V76.0.6', d: ['🪤 <b>「散戶都卡在 800」那道牆,你的 App 其實早就算出來了</b>(你拿國巨問的)。它叫<b>上方套牢區</b>,看的是 K 線+成交量(⛔ 跟主力成本 554 那條完全是兩件事,那條是券商分點買超王的均價)。國巨現價 565 上面有三道:<b>591~706</b>(近 120 日 <b>14.8%</b> 的量卡在這)、<b>774~866</b>(8.8%,就是大家說的「800」)、957~980(2.3%)。⚠️ 最近而且最大的那道是 <b>591~706</b>,⛔ 不是 800 —— 要跑也是先看它。','🔬 <b>可不可以當來回操作依據?實測答案:可以拿來「把期待值放低」,⛔ 不能當買賣訊號。</b>全市場 2,259 檔、2021~2026(含 2022 空頭)、11.9 萬筆:牆越大越不容易穿過去(小層 <b>79% 穿過去</b> → 中層 73% → 大層只有 <b>47.6%</b>,被壓回 40.2%),這個趨勢是單調的、站得住。但<b>賺不到錢</b>:撞到牆 vs 沒撞到,之後 10 天的報酬只差 <b>0.19pp</b>,比來回成本 0.44% 還小,六道關卡一關都沒過。真正的原因是<b>還是有將近一半會穿過去,而穿過去那幾筆會走很遠</b> —— 在牆前面先賣掉等於把賺最多的那幾筆砍掉(跟之前測固定停利的結論一樣)。','📍 <b>不用再去翻了</b>:套牢區現在直接顯示在總覽「🎯 關鍵價位・掛單就看這」那張卡裡(以前埋在 總覽→進場→摺疊區,難怪找不到);「📈 上檔空間」那張則會告訴你這種大小的牆實測幾成會被壓回。'] },
-        { v: 'V76.0.5', d: ['📈 <b>加碼功能為什麼還是沒有 —— 用現行出場重測完了</b>(你說「沒看到加碼策略,但不要盲目加」)。正式配置(2021 起含 2022 空頭、每筆 15 萬、每天 2 檔、49 個月):不加碼 <b>+507 萬</b> → 只在比成本高 8% 以上才加一筆 <b>+744 萬</b>,中途最多賠還從 −21.2% 縮到 −19.6%;往上 3%／5%／8% 都是 +690~744 萬(一片高原),「不看價格亂加」只有 +607 萬(往上加真的比亂加好)。','🚨 <b>但 2022 空頭那年的增量是 −3,344 元</b>(那年只加到 47 筆,幾乎沒觸發)→ 「逐年同向」那一關沒過。標準跟之前拒掉別的候選一樣(don10 就是差 2022 那 2 萬被擋),⛔ 所以不做成功能、不換預設;總覽在你有部位又符合進場條件時,只把這組數字告訴你,要不要加你自己決定。','⚠️ 順手抓到一件要核對的事:同一組資料下,不加碼的基準是 +507 萬、2022 是負的,跟決策台成績單記的 +590 萬不一樣(資料多了 9 天、137 檔深歷史接縫失敗維持淺版)→ 下一輪重跑決策台那組核對。'] },
-        { v: 'V76.0.4', d: ['📒 <b>產業作戰室 → 釣魚池 → 漁獲籃下面新增「決策台推薦成績單」</b>(你說:「實測自動紀錄這套 App 推薦個股可以賺多少、勝率等等,推薦買就記下來、說要賣就結算」)。⭐ 推薦的定義只有一個 = 散戶救星決策台「🎯 今天可以買的(最多 2 檔)」;每天收盤後採礦自動存下當天名單(⛔ 不用你開 App),結算規則跟漁獲籃/回測<b>一字不差</b>(你設定的出場線・停損・最長 20 天・扣成本・扣同期大盤)。','⚠️ <b>從 2026-09-12 起累積</b> —— 之前的快照少了兩個旗標,重建不出決策台名單,⛔ 不硬湊;<b>不滿 10 筆不下結論</b>(全站同一條規則)。這是紙上成績(進場 = 推薦日收盤),⛔ 不是你的實際損益。','🚧 <b>加碼功能為什麼沒有</b>:其實早就回測過一次(每趟 0.72 → 1.00%、49 個月 193 → 263 萬),<b>但 2022 那年沒過關</b>,而且那是用舊出場算的 → 這輪用現行出場重跑,過八關才會做,沒過就寫進實測總表。','🧹 板塊輪動分頁那顆「→ 產業作戰室」連結鈕拿掉了(你明示 PRO 不掛在 App 內,我上一版漏了)。'] },
-        { v: 'V76.0.3', d: ['💧 <b>大盤頁多了第 4 格「板塊輪動」</b>,就在「盤前檢視」右邊(你指定的位置)。「市場板塊輪動」那張美股對標卡從「行情」搬過來了。','📊 <b>新增「32 個產業近 20 日相對強弱」排名</b>:一句話先講最強三族、最弱三族,下面 32 列排名條。⭐ 為什麼是這一條:它是本站板塊實測<b>唯一過六關</b>的 —— 前 3 強減後 3 弱 +1.44pp、含 2022 空頭重跑不變;而且<b>避開最弱那幾族(−0.80pp)比追最強的(+0.63pp)更有價值</b>,卡上有寫。名次跟個股頁「這一族排第幾」是同一份數字。','🛰️ 產業作戰室的泡泡圖/熱力圖/播放<b>沒有搬進來</b>(你說不要資料太亂)—— 留一顆鈕連過去。⛔ 這一頁只描述、不下買賣指令;資金流(外資/投信/自營/融資)實測排不出有效順序,所以沒畫。'] },
-        { v: 'V76.0.2', d: ['🐛 <b>報告分頁換股變黑畫面 —— 修好了</b>(你的截圖:凱基台灣TOP50 那頁整片黑)。真因:換股時九個區塊都有被清掉,但「換完要重畫」的清單漏了報告這一頁,所以要切到別的分頁再切回來才有東西。','📏 <b>報告頁的估值改成一把尺</b>(你要「一眼知道這隻股票的價位在哪、心裡有個底」):橫軸是它<b>自己近 3 年</b>被市場給過的本益比(最便宜 → 最貴)換算成股價,▼ 標出現價落在第幾百分位、◆ 標出「用同業中位本益比算會是幾元」。摺疊標題直接寫「估值帶 A ~ B 元 ・中位 C ・現價 = 第 N 百分位」,不用點開就看得到。⛔ 這是「市場過去給過它幾倍」,<b>不是目標價、不是預測</b>(卡上有寫)。','🗂️ <b>「多空」分頁收起來了</b>(你說沒有用)。程式還在、總覽的判斷不受影響;收了什麼寫在設定中心「已收起的卡片」那一節。','🧹 決策台標題底下那句「⛔ 這一頁不產生新結論…」刪掉了(你說沒用)。'] },
-        { v: 'V76.0.1', d: ['📄 <b>「報告」分頁搬到「總覽」右邊</b>(你要求的位置),⛔ 兩頁<b>不合併</b> —— 實際量過了:報告頁 459 行裡<b>只有 8.8% 跟總覽重複</b>,合併只會讓總覽從 10,622 字暴增到一萬五以上,正好是你最常說的「資訊爆炸」。','🎯 <b>「很雷同」的真因找到了,而且就一格</b>:報告頁第一眼那張「結論與操作」有 <b>73% 跟總覽逐字相同</b>(整串出場價位照抄一次)。現在只留大字結論 + 一句理由 + 你的庫存損益,<b>價位明細收進摺疊</b>(⛔ 沒有刪掉 —— 那是真的防守價),並註明「要照著下單以總覽為準」。','📋 <b>「複製整份報告」現在會把那幾個出場價位一起複製出去</b> —— 以前一行都沒複製到。畫面變輕、帶出去反而更完整。','🗂️ <b>回測頁「最佳打法」瘦身</b>(實測是全 App 最重的一張卡):排名表只攤開「值得做的 + 今天真的觸發的 + ⚠️避開的」,其餘沒有優勢的那些收進摺疊。⛔ 一列都沒刪,點開就看得到。','🔬 順手補一個藏很久的盲點:三支巡邏工具的分頁清單<b>從來沒有包含「報告」頁</b> → 那一頁從上線到現在一次都沒被自動巡邏過,現在補上了。'] },
-        { v: 'V76.0.0', d: ['🏭 <b>個股「報告」分頁改成真的產業報告</b>(你說「我要的是產業報告,現在這個感覺是總結」)—— 以前那一節只有兩行(產業別 + 代碼),難怪看起來像別的分頁的摘要。','① <b>同業對照表</b>:直接告訴你「你在這一族 N 檔裡,成交值第幾 ・近 20 日第幾 ・本益比第幾便宜 ・營收年增第幾 ・毛利率第幾」,並列出這一族成交值前 10 名(<b>你自己那一檔一定在表內</b>,點名字可以直接跳過去)。分群優先用<b>題材名單</b>(每天重算,比官方 33 大類精準);上櫃股沒有官方產業別,現在也有得比了。','② <b>這一族現在強不強</b>:這一族近 20 日在 32 個產業裡排第幾 + 近半年走勢圖 + 外資/投信/自營/融資近 5 日往哪流。⚠️ 資金流是<b>描述用</b>,本站實測它排不出有效順序,⛔ 不可拿來當買賣訊號(卡上有寫)。','③ <b>誰跟它一起動</b>:近 120 日走勢最像的前 5 檔 —— 用途是「我是不是重壓在同一族」(手上如果都有,那不是分散,是同一注下了好幾次)。','④ <b>這一族的實測成績</b>:同一族買最強的 +0.90%(六關全過)、買落後補漲的<b>逐年全負</b> —— 別因為「它還沒漲」就買它。','⑤ <b>📝 產業筆記</b>:產業景氣/漲價/法說這些質化的東西,按「🔎 問 Perplexity」問完可以把回答<b>貼回來存起來</b>。⛔ 它一定會標「外部 AI 寫的、本站沒有驗證」,而且<b>不會</b>被算進任何結論、評分或「📋 複製整份報告」。','🐛 順手修一個藏很久的:潛力/黑馬榜算「同業中位本益比」時,查表用的是中文產業名、但表格的鍵是數字代碼 → 那個值<b>一直都是空的</b>,而且被靜默吃掉完全看不出來。'] },
-        { v: 'V75.3.3', d: ['🏷️ <b>修掉一個會讓「股票名字變代號」的真問題</b>:離線工作程式(Service Worker)在快取沒命中時回的是「空的」而不是錯誤碼 —— 網路抖一下,名稱清單那支請求就會直接爆掉,而畫面上完全看不出原因。','🔎 名稱載不到時,警語卡現在會<b>直接寫出卡在哪一層</b>(離線表 HTTP 幾號 / 只抓到幾檔 / FinMind 回什麼),還多一顆「📋 複製診斷」可以貼給我。⛔ 診斷裡只寫金鑰「有填/沒填」,不會寫出金鑰本身。','🛟 <b>你自己庫存與自選那幾檔的名字,現在另外存了一份</b> —— 就算全市場兩千多檔的清單載不到,你手上那幾檔仍然看得到中文名。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -43189,6 +43169,62 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
     // 📊 V68.1.2 — 全域訊號成績單:跨自選+庫存逐檔回測,聚合每種買進訊號的真實勝率/期望值
     //   核心 = 校準閉環:不是加更多訊號,是「量出哪招在你的股票上真的準」→ 只信有實績的、雷的自動標別用
+    // 🧪 V77.3.6 自訂回測(使用者:「新增自動回測系統」的 App 內那一半)——
+    //   把 V68.1.2 的「訊號成績單」(母體寫死自選+庫存、出場寫死)改成**自己挑條件**:母體 / 進場型態 / 出場規則 / 🧬 濾網 / 檔數。
+    //   ⛔ 出場規則**只有一份**:走 `_exitLevelAt`(出場總表、決策台、回測頁全用它)—— ⛔ 不在這裡另寫一套。
+    //   ⛔ 這裡算的是「每一趟」的統計(勝率 / 期望值 / 賺賠比 / 前後半 / 逐年),**不是** 49 個月那套資金模擬
+    //      (那要本金上限、每天幾檔、錢用完就跳過 —— V77.3.3 才證明「少挑一點」本身就會讓數字變好看);兩者⛔ 不可互相比較,畫面上寫明。
+    //   ⛔ 不用 Web Worker:偵測器要 `app`(主執行緒才有),而模擬本身每檔只有幾毫秒、時間全花在抓 K 線 → 逐檔 await 讓 UI 能動、能取消就夠了。
+    //   ⚠️ 窗口 = 每檔 `data/{sym}.json` 那約 3 年(⛔ 不含 2022 空頭);全市場母體只掃「成交金額前 N 檔」(有流動性偏誤)。
+    _CBT_UNIVERSES: [
+        { k: 'fav', t: '自選＋庫存', d: '你正在追的那幾檔(最多 40)' },
+        { k: 'top', t: '全市場成交金額前 N 檔', d: '讀 screener.json(每晚採礦),⚠️ 偏向熱門股' },
+    ],
+    _cbtDefaultCfg() {
+        return { universe: 'fav', n: 60, exit: this._exitRuleKey(), gene: false, patterns: null };   // patterns null = 全部
+    },
+    _cbtPatternKeys() {
+        // 型態清單要 data 才建得起來 → 拿當前這一檔(或任一有 ≥80 根的快取)當樣本,只取 key
+        const d = (Array.isArray(this.activeData) && this.activeData.length >= 80) ? this.activeData : (Array.isArray(this.rawDailyData) && this.rawDailyData.length >= 80 ? this.rawDailyData : null);
+        if (!d) return [];
+        try { return this._playbookPatternDefs(d).map(p => p.key); } catch (_) { return []; }
+    },
+    _cbtControlsHtml(cfg) {
+        const keys = this._cbtPatternKeys();
+        const sel = (cfg.patterns && cfg.patterns.length) ? new Set(cfg.patterns) : null;
+        const pats = keys.length ? keys.map((k, i) => `<label class="inline-flex items-center gap-1 text-[10px] text-gray-300 mr-2 mb-1"><input type="checkbox" class="cbt-pat" value="${this._escHtml(k)}" ${(!sel || sel.has(k)) ? 'checked' : ''}> ${this._escHtml(k)}</label>`).join('')
+            : '<span class="text-[10px] text-gray-500">⏳ 先開任何一檔個股讓 App 載入 K 線,型態清單才建得起來(現在會用「全部型態」)</span>';
+        return `<div id="cbtControls" class="text-[11px] text-gray-300 leading-relaxed mb-2 pb-2 border-b border-[#21262d]">
+            <div class="flex flex-wrap items-center gap-2 mb-1">
+                <span class="text-gray-400">母體</span>
+                <select id="cbtUniverse" class="bg-[#21262d] border border-[#30363d] rounded text-[10px] text-gray-200 px-1.5 py-1">${this._CBT_UNIVERSES.map(u => `<option value="${u.k}"${u.k === cfg.universe ? ' selected' : ''}>${u.t}</option>`).join('')}</select>
+                <span class="text-gray-400">最多</span><input id="cbtN" type="number" min="5" max="200" value="${+cfg.n || 60}" class="w-14 bg-[#21262d] border border-[#30363d] rounded text-[10px] text-gray-200 px-1.5 py-1"><span class="text-gray-500">檔(上限 200,越多越久)</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 mb-1">
+                <span class="text-gray-400">出場</span>
+                <select id="cbtExit" class="bg-[#21262d] border border-[#30363d] rounded text-[10px] text-gray-200 px-1.5 py-1">${this._EXIT_RULE_OPTS.map(o => `<option value="${o.k}"${o.k === cfg.exit ? ' selected' : ''}>${o.t}</option>`).join('')}</select>
+                <label class="inline-flex items-center gap-1 text-[10px]"><input id="cbtGene" type="checkbox" ${cfg.gene ? 'checked' : ''}> 🧬 只做高位階(≥75%)+ 高波動(≥60%)</label>
+            </div>
+            <details class="mb-1"><summary class="text-[10px] text-gray-400 cursor-pointer">進場型態(預設全部)展開 ▾</summary><div class="mt-1" id="cbtPats">${pats}</div></details>
+            <div class="flex items-center gap-2">
+                <button id="cbtRunBtn" onclick="app._customBacktest()" class="px-3 py-1.5 bg-emerald-900/40 border border-emerald-700/60 text-emerald-200 text-xs font-bold rounded">▶ 跑回測</button>
+                <button id="cbtStopBtn" onclick="app._cbtCancel()" class="px-3 py-1.5 bg-[#21262d] border border-[#30363d] text-gray-300 text-xs font-bold rounded hidden">✖ 取消</button>
+                <span id="cbtProg" class="text-[10px] text-gray-500"></span>
+            </div>
+        </div>`;
+    },
+    _cbtCfgFromUI() {
+        const g = id => document.getElementById(id);
+        const cfg = this._cbtDefaultCfg();
+        if (g('cbtUniverse')) cfg.universe = g('cbtUniverse').value;
+        if (g('cbtN')) cfg.n = Math.max(5, Math.min(200, +g('cbtN').value || 60));
+        if (g('cbtExit')) cfg.exit = g('cbtExit').value;
+        if (g('cbtGene')) cfg.gene = !!g('cbtGene').checked;
+        const boxes = [...document.querySelectorAll('.cbt-pat')];
+        if (boxes.length) { const on = boxes.filter(b => b.checked).map(b => b.value); cfg.patterns = on.length === boxes.length ? null : on; }
+        return cfg;
+    },
+    _cbtCancel() { if (this._cbtState) this._cbtState.abort = true; },
     _openSignalScore() {
         const modal = document.getElementById('signalScoreModal');
         if (!modal) return;
@@ -43196,98 +43232,172 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         try { this.vibrate(20); } catch (_) {}
         const body = document.getElementById('signalScoreBody');
         if (!body) return;
-        const today = this.getTodayStr?.() || '';
-        try { const c = JSON.parse(localStorage.getItem('signalScorecard') || 'null'); if (c && c.date === today && c.html) { body.innerHTML = c.html; return; } } catch (_) {}
-        this._runSignalScorecard();
+        let cfg = this._cbtDefaultCfg(), last = null;
+        try { const c = this._lsJson('signalScorecard', null); if (c && c.v === 2 && c.cfg) { cfg = Object.assign(cfg, c.cfg); last = c; } } catch (_) {}
+        body.innerHTML = this._cbtControlsHtml(cfg) + `<div id="cbtResult">${last && last.html ? last.html : '<div class="text-center text-gray-500 text-[11px] py-6 leading-relaxed">挑好條件按「▶ 跑回測」。第一次會逐檔抓 K 線(自選 40 檔約 1 分鐘,全市場 200 檔約 5 分鐘),可以隨時取消。</div>'}</div>`;
     },
-    async _runSignalScorecard(force) {
-        const body = document.getElementById('signalScoreBody');
-        if (!body) return;
-        const today = this.getTodayStr?.() || '';
-        if (force) { try { localStorage.removeItem('signalScorecard'); } catch (_) {} }
-        body.innerHTML = '<div class="text-center text-gray-500 text-[11px] py-8 leading-relaxed">⏳ 逐檔回測中(第一次較久,之後當天記住)…</div>';
+    async _runSignalScorecard(force) { return this._customBacktest(); },   // 舊入口(V68.1.2)→ 全部走自訂回測
+    /** 一檔股票:照 cfg 跑每一個型態,回每一趟 {key, i, d, ret, hold, gene}(ret = 未扣成本的 %) */
+    _cbtSym(data, cfg) {
+        if (!Array.isArray(data) || data.length < 80) return [];
+        const last = data.length - 1;
+        const C = b => +((b?.close ?? b?.c) || 0), L = b => +((b?.low ?? b?.l) || 0);
+        const P = this._playbookPatternDefs(data).filter(p => !cfg.patterns || cfg.patterns.includes(p.key));
+        const exKey = cfg.exit || this._exitRuleKey();
+        // 🧬 位階(近 250 根)+ 波動(近 20 根年化)—— 同 portfolio_backtest 的 RANK_MIN / VOLAT_MIN 定義,只用 i 以前的資料
+        const geneAt = i => {
+            const w = []; for (let k = Math.max(0, i - 249); k <= i; k++) { const c = C(data[k]); if (c > 0) w.push(c); }
+            const c0 = C(data[i]); const rank = w.length ? w.filter(c => c <= c0).length / w.length * 100 : 0;
+            let s3 = 0, n3 = 0; for (let k = Math.max(1, i - 19); k <= i; k++) { const a = C(data[k - 1]), b = C(data[k]); if (a > 0 && b > 0) { s3 += ((b - a) / a) ** 2; n3++; } }
+            const vol = n3 ? Math.sqrt(s3 / n3) * Math.sqrt(252) * 100 : 0;
+            return rank >= 75 && vol >= 60;
+        };
+        const out = [];
+        for (const p of P) {
+            let i = 45;
+            while (i < last) {
+                let fired = false; try { fired = p.test(i); } catch (_) {}
+                if (fired) {
+                    const entry = C(data[i]);
+                    if (entry > 0 && (!cfg.gene || geneAt(i))) {
+                        const stop = Math.min(L(data[i]), entry * 0.95);
+                        let exitP = C(data[last]), exitIdx = last; const endJ = Math.min(last, i + 20);
+                        for (let j = i + 1; j <= endJ; j++) {
+                            const c = C(data[j]);
+                            const lv = this._exitLevelAt(data, i, j, exKey);   // ⭐ 唯一的出場真相
+                            if (c <= stop) { exitP = stop; exitIdx = j; break; }
+                            if (lv != null && c < lv) { exitP = c; exitIdx = j; break; }
+                            if (j === endJ) { exitP = c; exitIdx = j; }
+                        }
+                        out.push({ key: p.key, i, d: String(data[i].date || data[i].d || '').replace(/\//g, '-'), ret: (exitP - entry) / entry * 100, hold: exitIdx - i });
+                        i = exitIdx + 1; continue;
+                    }
+                }
+                i++;
+            }
+        }
+        return out;
+    },
+    async _cbtUniverse(cfg) {
+        if (cfg.universe === 'top') {
+            try {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL('data/screener.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(10000) });
+                const j = r.ok ? await r.json() : null;
+                const ai = j && Array.isArray(j.cols) ? j.cols.indexOf('amt') : -1;
+                if (j && j.rows && ai >= 0) {
+                    return Object.entries(j.rows).filter(([s]) => /^\d{4}$/.test(s) && !this._isEtfSym(s)).map(([s, v]) => [s, +v[ai] || 0]).sort((a, b) => b[1] - a[1]).slice(0, cfg.n).map(x => x[0]);
+                }
+            } catch (_) {}
+            return { err: '讀不到 screener.json(全市場特徵快照)→ 這個母體今天用不了,換「自選＋庫存」' };
+        }
+        const fav = Object.values(this.favGroups || {}).flat();
+        const inv = this._getInventory();
+        return [...new Set([...fav, ...inv.map(i => i.symbol)])].filter(s => s && !this._isEtfSym(String(s))).map(String).slice(0, Math.min(40, cfg.n));
+    },
+    /** 六關迷你版(⛔ 這裡沒有對照組,所以只做四道:全期正 / 前後半同向 / 逐年同向 / 去最好年;n<10 一律「樣本不足」) */
+    _cbtStats(trades) {
+        const COST = 0.44;
+        const n = trades.length;
+        if (!n) return { n: 0 };
+        const net = trades.map(t => t.ret - COST);
+        const wins = net.filter(x => x > 0), loss = net.filter(x => x < 0);
+        const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
+        const per = mean(net), win = wins.length / n * 100;
+        const pl = loss.length && wins.length ? Math.abs(mean(wins) / mean(loss)) : (wins.length ? 99 : 0);
+        const ds = trades.map(t => t.d).sort(); const mid = ds[ds.length >> 1];
+        const h1 = net.filter((_, k) => trades[k].d < mid), h2 = net.filter((_, k) => trades[k].d >= mid);
+        const q1 = h1.length >= 5 ? mean(h1) : null, q2 = h2.length >= 5 ? mean(h2) : null;
+        const yr = {}; trades.forEach((t, k) => { const y = t.d.slice(0, 4); (yr[y] ||= []).push(net[k]); });
+        const years = Object.fromEntries(Object.entries(yr).filter(([, a]) => a.length >= 5).map(([y, a]) => [y, +mean(a).toFixed(2)]));
+        const yv = Object.values(years);
+        const bestY = yv.length ? Object.entries(years).reduce((a, b) => b[1] > a[1] ? b : a)[0] : null;
+        const exBest = bestY ? mean(net.filter((_, k) => trades[k].d.slice(0, 4) !== bestY)) : null;
+        const enough = this._wrEnough(n);   // ⚠️ `_wrEnough(n)` 回布林(⛔ 第一版寫成 `n >= _wrEnough()` = n >= false = 恆 true,測試 ⑤ 抓到)
+        const gates = enough ? {
+            '全期扣成本為正': per > 0,
+            '前後半同向': q1 != null && q2 != null && (q1 > 0) === (q2 > 0) && (q1 > 0) === (per > 0),
+            '逐年同向': yv.length >= 2 && yv.every(v => (v > 0) === (per > 0)),
+            '去最好年仍同向': exBest != null && (exBest > 0) === (per > 0),
+        } : null;
+        return { n, win: +win.toFixed(1), per: +per.toFixed(2), pl: +pl.toFixed(2), q1: q1 == null ? null : +q1.toFixed(2), q2: q2 == null ? null : +q2.toFixed(2), years, bestY, exBest: exBest == null ? null : +exBest.toFixed(2), enough, gates, from: ds[0], to: ds[ds.length - 1], hold: +mean(trades.map(t => t.hold)).toFixed(1) };
+    },
+    async _customBacktest() {
+        const body = document.getElementById('signalScoreBody'), out = document.getElementById('cbtResult');
+        if (!body || !out) return;
+        if (this._cbtState && this._cbtState.running) return;
+        const cfg = this._cbtCfgFromUI();
+        const st = this._cbtState = { running: true, abort: false, done: 0, total: 0 };
+        const prog = document.getElementById('cbtProg'), runBtn = document.getElementById('cbtRunBtn'), stopBtn = document.getElementById('cbtStopBtn');
+        if (runBtn) runBtn.disabled = true; if (stopBtn) stopBtn.classList.remove('hidden');
+        const setProg = t => { if (prog) prog.textContent = t; };
         try {
+            const u = await this._cbtUniverse(cfg);
+            if (!Array.isArray(u)) { out.innerHTML = `<div class="text-[11px] text-amber-300 py-4">⚠️ ${this._escHtml(u.err || '母體讀不到')}</div>`; return; }
+            if (!u.length) { out.innerHTML = '<div class="text-center text-gray-500 text-[11px] py-6 leading-relaxed">自選清單和庫存都是空的 —<br>先加幾檔股票再回來,或母體改選「全市場成交金額前 N 檔」。</div>'; return; }
+            st.total = u.length;
             const ghBase = window.location.href.split('?')[0].split('#')[0];
-            const fav = Object.values(this.favGroups || {}).flat();
-            const inv = app._getInventory();
-            const syms = [...new Set([...fav, ...inv.map(i => i.symbol)])].filter(s => s && !this._isEtfSym(String(s))).map(String).slice(0, 40);
-            if (!syms.length) { body.innerHTML = '<div class="text-center text-gray-500 text-[11px] py-8 leading-relaxed">自選清單和庫存都是空的 —<br>先加幾檔股票(⭐ 加自選 或 記一筆庫存)再回來看成績單。</div>'; return; }
-            const agg = {};   // key -> {trades, wins, expW, stocks, posStocks, plW, plN}
-            let fetches = 0, scanned = 0;
-            for (let idx = 0; idx < syms.length; idx++) {
-                const s = syms[idx];
-                let k = null;
+            const all = []; let scanned = 0; const t0 = Date.now();
+            for (let idx = 0; idx < u.length; idx++) {
+                if (st.abort) break;
+                const s = u[idx]; let k = null;
                 try { const c = await this.idb.get(`proTerm_kline_${s}`); k = c?.data; } catch (_) {}
-                if ((!Array.isArray(k) || k.length < 80) && fetches < 30) {
-                    fetches++;
+                if (!Array.isArray(k) || k.length < 80) {
                     try { const r = await fetch(new URL(`data/${s}.json`, ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }); if (r.ok) { const j = await r.json(); if (Array.isArray(j)) k = j; } } catch (_) {}
                 }
                 if (Array.isArray(k) && k.length >= 80) {
-                    let ranked = null; try { ranked = this._patternFitBacktest(k); } catch (_) {}
-                    if (Array.isArray(ranked) && ranked.length) {
-                        scanned++;
-                        for (const r of ranked) {
-                            const a = agg[r.key] || (agg[r.key] = { trades: 0, wins: 0, expW: 0, stocks: 0, posStocks: 0, plW: 0, plN: 0 });
-                            a.trades += r.count; a.wins += r.winRate / 100 * r.count; a.expW += r.expectancy * r.count;
-                            a.stocks++; if (r.expectancy > 0) a.posStocks++;
-                            if (r.plRatio < 99) { a.plW += r.plRatio * r.count; a.plN += r.count; }
-                        }
-                    }
+                    let tr = []; try { tr = this._cbtSym(k, cfg); } catch (_) {}
+                    if (tr.length) { scanned++; for (const t of tr) all.push({ ...t, sym: s }); }
                 }
-                body.innerHTML = `<div class="text-center text-gray-500 text-[11px] py-8 leading-relaxed">⏳ 回測中… ${idx + 1}/${syms.length} 檔<br><span class="text-gray-600">(${scanned} 檔有足夠歷史)</span></div>`;
+                k = null;                                  // 逐檔釋放(手機記憶體)
+                st.done = idx + 1;
+                setProg(`⏳ ${idx + 1}/${u.length} 檔(${scanned} 檔有訊號・${all.length} 趟・${((Date.now() - t0) / 1000).toFixed(0)}s)`);
                 await new Promise(r => setTimeout(r, 0));
             }
-            const list = Object.entries(agg).map(([key, a]) => ({
-                key, trades: a.trades, stocks: a.stocks, posStocks: a.posStocks,
-                winRate: a.trades ? a.wins / a.trades * 100 : 0,
-                expectancy: a.trades ? a.expW / a.trades : 0,
-                plRatio: a.plN ? a.plW / a.plN : 0,
-            })).filter(x => x.trades >= 15 && x.stocks >= 2).sort((a, b) => b.expectancy - a.expectancy);
-            if (!scanned || !list.length) {
-                body.innerHTML = '<div class="text-center text-gray-500 text-[11px] py-8 leading-relaxed">資料還沒下載齊,或樣本太少算不出可靠成績 —<br>先點開幾檔股票看一下 K 線讓它下載,或稍後再試。</div>'
-                    + '<div class="text-center mt-2"><button onclick="app._runSignalScorecard(true)" class="text-[11px] text-emerald-300 border border-emerald-700/50 rounded px-3 py-1">↻ 重新計算</button></div>';
-                return;
-            }
-            const nf1 = v => (v >= 0 ? '+' : '') + v.toFixed(1);
-            const row = (r, rank) => {
-                const isBad = r.expectancy <= -0.3;
-                const isStar = rank < 3 && r.expectancy > 0.3;
-                const wr = r.winRate.toFixed(0), ev = nf1(r.expectancy), pl = (r.plRatio >= 0.1 && r.plRatio < 99) ? r.plRatio.toFixed(1) : '—';
-                const col = isBad ? 'text-gray-500' : isStar ? 'text-red-300' : r.expectancy > 0 ? 'text-yellow-300' : 'text-gray-400';
-                const nameCls = isBad ? 'text-gray-500 line-through' : 'text-gray-200';
-                const tag = isBad ? '<span class="text-[9px] font-bold bg-green-900/30 text-green-300 border border-green-700/40 rounded px-1">❌ 雷·別用</span>'
-                    : isStar ? '<span class="text-[9px] font-bold bg-red-900/40 text-red-300 border border-red-700/50 rounded px-1">⭐ 最準</span>'
-                    : (r.expectancy > 0 ? '<span class="text-[9px] font-bold text-yellow-300">會賺</span>' : '<span class="text-[9px] text-gray-500">普通</span>');
-                return `<div class="flex items-center justify-between gap-2 py-1.5 border-b border-[#21262d]">
-                    <div class="text-[12px] font-bold ${nameCls} flex-1 min-w-0"><span class="truncate">${r.key}</span> ${tag}</div>
-                    <div class="text-[10px] font-mono ${col} flex-shrink-0 text-right">勝率${wr}% · 期望${ev}%<br><span class="text-gray-500">賺賠比${pl} · ${r.posStocks}/${r.stocks}檔賺 · ${r.trades}趟</span></div>
-                </div>`;
-            };
-            const good = list.filter(x => x.expectancy > 0.3).slice(0, 3).map(x => x.key);
-            const bad = list.filter(x => x.expectancy <= -0.3).map(x => x.key);
-            const verdict = `<div class="bg-[#0d1117] border-l-4 border-emerald-500 rounded-r px-3 py-2 mb-2.5">
-                <div class="text-[12px] text-gray-100 leading-relaxed">📌 你這 <b class="text-emerald-300">${scanned}</b> 檔股票、回測下來:${good.length ? `最準的招是 <b class="text-red-300">${good.join('、')}</b>` : '目前沒有明顯最準的招'}${bad.length ? `;<b class="text-green-300">${bad.slice(0, 3).join('、')}</b> 這幾招在你的股票上是<b class="text-green-300">雷,別用</b>` : ''}。</div>
-                <div class="text-[10px] text-gray-500 mt-1 leading-snug">看到訊號別全信 —— 只跟上面「⭐最準／會賺」的,劃掉的略過。</div>
-            </div>`;
-            const html = verdict
-                + `<div class="text-[11px] font-bold text-emerald-300 mb-1 px-0.5">全部訊號排名(按每趟期望值)</div>`
-                + list.map((r, i) => row(r, i)).join('')
-                + `<div class="bg-[#0d1117] border border-[#30363d] rounded p-2.5 mt-2.5 text-[10px] text-gray-400 leading-relaxed">
-                    <div class="font-bold text-gray-300 mb-1">📖 這些數字白話講</div>
-                    <div>・<b class="text-gray-200">期望值</b> = 這招「每做一趟平均賺幾 %」(已含賺的+賠的一起平均);<b class="text-red-300">正的才值得做</b>,越大越好。這是最該看的一欄。</div>
-                    <div>・<b class="text-gray-200">勝率</b> = 做 10 趟大概幾趟賺。<b>單看勝率沒用</b> —— 勝率低但賺賠比高照樣賺(賺大賠小)。</div>
-                    <div>・<b class="text-gray-200">賺賠比</b> = 平均賺的是平均賠的幾倍(2 = 賺的是賠的 2 倍)。</div>
-                    <div>・<b class="text-gray-200">N/M 檔賺</b> = 這招在 M 檔測到、其中 N 檔是賺的(越多檔賺越可靠,不是靠單一檔僥倖)。</div>
-                    <div class="text-gray-600 mt-1">回測規則:訊號日收盤買進,跌破 5 日線或 -5% 停損出,最多抱 20 天。純公式歷史統計,過去不保證未來,進場都要設停損。</div>
-                </div>`
-                + `<div class="text-center mt-2.5"><button onclick="app._runSignalScorecard(true)" class="text-[11px] text-emerald-300 border border-emerald-700/50 rounded px-3 py-1 hover:bg-emerald-900/30">↻ 重新計算</button></div>`;
-            body.innerHTML = html;
-            try { localStorage.setItem('signalScorecard', JSON.stringify({ date: today, html })); } catch (_) {}
+            const res = { cfg, syms: u.length, scanned, aborted: st.abort, trades: all.length, overall: this._cbtStats(all), byKey: {} };
+            const byKey = {}; for (const t of all) (byKey[t.key] ||= []).push(t);
+            for (const [k2, a] of Object.entries(byKey)) res.byKey[k2] = Object.assign(this._cbtStats(a), { stocks: new Set(a.map(t => t.sym)).size, posStocks: [...new Set(a.map(t => t.sym))].filter(sy => a.filter(t => t.sym === sy).reduce((s2, t) => s2 + t.ret - 0.44, 0) > 0).length });
+            const html = this._cbtRender(res);
+            out.innerHTML = html;
+            if (!st.abort) { try { localStorage.setItem('signalScorecard', JSON.stringify({ v: 2, date: this.getTodayStr?.() || '', cfg, html })); } catch (_) {} }
+            this._cbtLast = res;
         } catch (e) {
-            console.warn('[signalScore]', e);
-            body.innerHTML = '<div class="text-center text-gray-500 text-[11px] py-8">計算失敗,稍後再點一次。</div>'
-                + '<div class="text-center mt-2"><button onclick="app._runSignalScorecard(true)" class="text-[11px] text-emerald-300 border border-emerald-700/50 rounded px-3 py-1">↻ 重新計算</button></div>';
+            console.warn('[customBacktest]', e);
+            out.innerHTML = '<div class="text-center text-gray-500 text-[11px] py-6">計算失敗,稍後再按一次。</div>';
+        } finally {
+            st.running = false;
+            if (runBtn) runBtn.disabled = false; if (stopBtn) stopBtn.classList.add('hidden');
+            if (st.abort) setProg(`✖ 已取消(跑了 ${st.done}/${st.total} 檔,下面是跑到一半的結果)`);
         }
+    },
+    _cbtRender(res) {
+        const nf1 = v => (v >= 0 ? '+' : '') + (+v).toFixed(1), nf2 = v => (v >= 0 ? '+' : '') + (+v).toFixed(2);
+        const O = res.overall, exN = this._exitRuleName(res.cfg.exit);
+        const minN = [...Array(100).keys()].find(k => this._wrEnough(k));   // 門檻從 `_wrEnough` 自己推(⛔ 不寫第二份 10)
+        const gateHtml = S => !S.gates ? `<span class="text-gray-500">⏳ 樣本不足(${S.n} 趟 < ${minN}),⛔ 不下結論</span>`
+            : Object.entries(S.gates).map(([k, v]) => `<span class="${v ? 'text-gray-200' : 'text-gray-500'}">${v ? '✅' : '❌'} ${k}</span>`).join(' ・') + `<span class="text-gray-500 ml-1">(${Object.values(S.gates).filter(Boolean).length}/4)</span>`;
+        const head = `<div class="bg-[#0d1117] border-l-4 border-emerald-500 rounded-r px-3 py-2 mb-2" data-cbt="overall" data-cbt-n="${O.n || 0}">
+            <div class="text-[11px] text-gray-100 leading-relaxed">📌 母體 <b>${res.syms}</b> 檔(${res.scanned} 檔有訊號)・出場 <b>${this._escHtml(exN)}</b>${res.cfg.gene ? '・🧬 濾網' : ''}${res.cfg.patterns ? `・只跑 ${res.cfg.patterns.length} 種型態` : ''}${res.aborted ? ' ・<span class="text-amber-300">跑到一半取消</span>' : ''}</div>
+            ${O.n ? `<div class="text-[11px] text-gray-200 mt-1">全部 <b>${O.n}</b> 趟:勝率 <b>${O.win}%</b> ・每趟 <b class="${O.per > 0 ? 'text-red-300' : 'text-green-300'}">${nf2(O.per)}%</b>(已扣來回成本 0.44%)・賺賠比 ${O.pl >= 99 ? '全贏' : O.pl}・平均抱 ${O.hold} 天 ・${O.from}~${O.to}</div>
+            <div class="text-[10px] text-gray-400 mt-0.5">前半 ${O.q1 == null ? '—' : nf2(O.q1)} / 後半 ${O.q2 == null ? '—' : nf2(O.q2)} ・逐年 ${Object.entries(O.years).map(([y, v]) => `${y.slice(2)}:${nf1(v)}`).join(' ') || '—'} ・去最好年(${O.bestY || '—'}) ${O.exBest == null ? '—' : nf2(O.exBest)}</div>
+            <div class="text-[10px] mt-0.5" data-cbt-gates="${O.gates ? Object.values(O.gates).filter(Boolean).length : -1}">${gateHtml(O)}</div>` : '<div class="text-[11px] text-gray-400 mt-1">一趟訊號都沒有(型態沒觸發或被 🧬 濾網擋光)。</div>'}
+        </div>`;
+        const rows = Object.entries(res.byKey).sort((a, b) => b[1].per - a[1].per).map(([k, S]) => {
+            const tag = !S.enough ? '<span class="text-[9px] text-gray-500">⏳ 樣本不足</span>' : S.per <= -0.3 ? '<span class="text-[9px] font-bold bg-green-900/30 text-green-300 border border-green-700/40 rounded px-1">❌ 雷·別用</span>' : (S.gates && Object.values(S.gates).every(Boolean) && S.per > 0.3) ? '<span class="text-[9px] font-bold bg-red-900/40 text-red-300 border border-red-700/50 rounded px-1">⭐ 四關全過</span>' : (S.per > 0 ? '<span class="text-[9px] font-bold text-yellow-300">會賺</span>' : '<span class="text-[9px] text-gray-500">普通</span>');
+            const col = S.per <= -0.3 ? 'text-gray-500' : S.per > 0.3 ? 'text-red-300' : S.per > 0 ? 'text-yellow-300' : 'text-gray-400';
+            return `<div class="py-1.5 border-b border-[#21262d]" data-cbt-key="${this._escHtml(k)}">
+                <div class="flex items-center justify-between gap-2"><div class="text-[12px] font-bold text-gray-200 flex-1 min-w-0"><span class="truncate">${this._escHtml(k)}</span> ${tag}</div>
+                <div class="text-[10px] font-mono ${col} flex-shrink-0 text-right">勝率${S.win}% · 每趟${nf2(S.per)}%<br><span class="text-gray-500">賺賠比${S.pl >= 99 ? '全贏' : S.pl} · ${S.posStocks}/${S.stocks}檔賺 · ${S.n}趟</span></div></div>
+                <div class="text-[9px] text-gray-500 mt-0.5">${gateHtml(S)}</div></div>`;
+        }).join('');
+        return head + (rows ? `<div class="text-[11px] font-bold text-emerald-300 mb-1 px-0.5">每一招(按每趟期望值排;⛔ 樣本不足的不下結論)</div>${rows}` : '')
+            + `<div class="bg-[#0d1117] border-l-4 border-gray-600 rounded-r p-2.5 mt-2.5 text-[10px] text-gray-400 leading-relaxed">
+                <div class="font-bold text-gray-300 mb-1">📖 這些數字白話講 + 三個限制</div>
+                <div>・<b class="text-gray-200">每趟</b> = 這招每做一趟平均賺幾 %(<b>已扣來回成本 0.44%</b>,賺賠一起平均);正的才值得做。・<b class="text-gray-200">勝率</b>單看沒用,賺賠比高的低勝率照樣賺。</div>
+                <div>・<b class="text-gray-200">四道關卡</b>(全期正 / 前後半同向 / 逐年同向 / 去最好年仍同向)是本站六關的<b>迷你版</b> —— 這裡沒有「隨便挑一天」的對照組,也沒扣同期大盤,⛔ 所以「四關全過」仍不等於六關全過。</div>
+                <div>・⚠️ <b class="text-gray-200">這是「每一趟」的統計,不是決策台那套 49 個月的資金模擬</b>(那套有本金上限、每天最多幾檔、錢用完就跳過)—— 兩組數字⛔ 不可互相比較。</div>
+                <div>・⚠️ 窗口 = 每檔 App 裡那約 3 年的 K 線,<b>不含 2022 空頭</b>;母體選「全市場前 N 檔」時偏向熱門股。回測規則:訊號日收盤買、跌破你選的出場線或 −5% 停損就走、最多抱 20 天。過去不保證未來。</div>
+            </div>`;
     },
 
     // 🎯 V41.31 — 個股打法適配儀:性格 + 型態回測排名(按鈕觸發,當日快取)
