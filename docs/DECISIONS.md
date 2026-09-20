@@ -1,3 +1,23 @@
+## 🎯📐 V77.3.8 盲測練習 + 下降三角避雷落地 —— 老余那套裡「訓練法」與「唯一站得住的一條」
+
+承 V77.3.7(評估紀錄㉘ D-1 / D-3)。⛔ 沒有新卡片:盲測練習只在設定中心一顆按鈕;避雷只是總覽「⭐ 重點判讀」多一行。
+
+### 🎯 盲測練習(`_openTrainer` / `_trainNext` / `_trainDraw` / `_trainAnswer` / `_trainReveal` / `_trainStats` / `_trainLogPush`)
+他 14.txt 的訓練法三件事:**未知行情下逐根推進、⛔ 不得先看右側 / 只記正確出手次數不記損益 / 分「標準圖 vs 猜」統計**。
+App 本來就有全部資料 + 13 類偵測器 + 實測成績 → 零採礦、零 API。
+- 出題:母體走既有 `_cbtUniverse`(自選＋庫存 ≥5 檔用你的,不夠用全市場成交額前 60);K 線走新抽出的 `_loadKline`(從 `_customBacktest` 抽 4 行,⛔ 兩邊共用);`_closedTail` 之後隨機切點 cut ∈ [120, len−21]。
+- 🚨 **正確性核心**:`_trainState.closed` 含未來 → **只准 `_trainReveal` 讀**;`_trainDraw(false)` 與所有 innerHTML 只准讀 `closed.slice(cut−59, cut+1)`;**y 軸只由畫得出來的算**(用整條算 = 未來的高低點會改變過去 60 根的長相 = 洩漏,測試 ③ 用「未來 ×3 後 toDataURL 逐字相同」釘死)。右 28% 未來帶揭曉前一個像素都不畫(測試 ④ 量非背景像素 = 0)。
+- 揭曉:+5/10/20 日**扣同期加權**(對不到日期 → null 並印「沒有加權可比」,那題不進統計)、那一根走 `_KBAR_DET_LIST`(V77.3.8 從 `_kbarTryFire` 抽出共用)亮了什麼 + `_sigEdge` 等級、你畫的邊界價事後守住 / 跌破(事實,不代表對錯)。⛔ 一題不下對錯。
+- 統計:勝率口徑 = **10 日超額為正**(跟 `_SIGNAL_EDGE_META.base_win` 36.4% 同口徑,已查 `signal_backtest.mjs` L221);`_wrEnough` 不足 → 「樣本不足」⛔ 無判語(門檻用 `[...Array(100).keys()].find(k => _wrEnough(k))`,⛔ 不寫死);分「那一根有本站 A 級多方訊號 / 沒有」= 他的「標準圖 / 猜」;✅⚠️⏳ 不用 🔴🟢。
+- 🚨 `_lruTrim` 對單一 key 是 **no-op**(它掃的是「每檔一把 key」的前綴)→ `trainLog` 單一 key 存陣列、`slice(-500)`;測試 ⑨ 用「520 筆 → 恰 500 且是最後 500」驗,⛔ 不是驗有沒有呼叫 `_lruTrim`。
+- 測試 `scripts/test_trainer.mjs` 17 條;六種注入(`_closedTail` 拿掉 / y 軸用整條 / 訊號吃整條 / 門檻寫死 / 改 `_lruTrim` / meta 印股號)全叫得出來。
+- ⚠️ 連動:`scripts/test_alertgate.mjs` 的 filter 檢查 anchor 從 `_kbarTryFire` 改成 `_KBAR_DET_LIST:`,並多釘「`_kbarTryFire` 必須真的用那份清單」。
+
+### 📐 下降三角避雷(`_TRI_EDGE` / `_descTriangle` / `_ovNewEdges` ⑤)
+- 定義與 `laoyu_probe.mjs` G3 一字不差(近 20 根高點回歸斜率 ≤ −0.05·ATR/根、最低 3 個低點全距 ≤ 0.5·ATR;ATR20 用 [t−20, t−1];先 `_closedTail`)。門檻從 `_TRI_EDGE` 讀,測試 ⑦ 跨檔比對探針與 App 的三個門檻。
+- ⛔ 放在 `_bearGate` 那個 if **外面**(它本來就講偏弱);⛔ 不進計分、不主動提醒、文案必含「不是放空」「別加碼」「含 2022」;數字全部讀 `_TRI_EDGE`(測試 ③ 換假表畫面要跟著變)。
+- 測試 `scripts/test_triedge.mjs` 9 條;三種注入(ATR 含今日 / ok 寫死 / 拿掉 `_closedTail`)全叫得出來。
+
 ## 🎯📼 V77.3.7 老余交易夜 19 份逐字稿 —— 先查登記表,測完只剩一條避雷;順手把 kbar5 加收台指期
 
 使用者上傳 19 份「老余交易夜」逐字稿:「可以優化我的程式嗎?策略需要回測就回測,還有什麼我沒有說到的你覺得好的幫我用,改挖礦就挖礦」。

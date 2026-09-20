@@ -120,8 +120,11 @@ const SRC = RAW.split('\n').map(l => {
      /this\._tagPush\(push, d, kdata\)/.test(seg) && !/\bpush\.push\(s\)/.test(seg),
      seg ? '那段還在用裸 push.push(s)' : '找不到 _kbarTryFire');
   ok('ⓗ _kbarTryFire 要過 _alertWorthIt', /this\._alertWorthIt\(s\._d, s\.title, s\.tone\)/.test(seg), '沒接上守門');
+  // V77.3.8 那 13 類清單抽成 `_KBAR_DET_LIST`(盲測練習共用)→ filter 的檢查改看清單本身,而 _kbarTryFire 必須真的用它
+  const j2 = SRC.indexOf('_KBAR_DET_LIST: [');
+  const seg2 = j2 > 0 ? SRC.slice(j2, j2 + 2200) : '';
   ok('ⓗ 原本的 filter ⛔ 不可被拿掉(拿掉會多放一堆訊號進來)',
-     /做多買點/.test(seg) && /停利\|爆量隔天\|過熱/.test(seg) && /出貨量\|攻擊量\|換手量/.test(seg), '');
+     /做多買點/.test(seg2) && /停利\|爆量隔天\|過熱/.test(seg2) && /出貨量\|攻擊量\|換手量/.test(seg2) && /this\._KBAR_DET_LIST\)/.test(seg), seg2 ? '' : '找不到 _KBAR_DET_LIST');
 }
 {
   // ⓔ ①「你的部位/你自己設的線」⛔ 完全不過守門 —— 那不是訊號準不準,是你的錢到了你設的點

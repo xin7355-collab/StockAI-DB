@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.3.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.3.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -764,6 +764,28 @@
         </div>
     </div>
 
+    <!-- 🎯 V77.3.8 盲測練習 modal(老余的訓練法:未知行情逐根推進、只記正確出手次數;⛔ 不是新卡片,只在設定中心開) -->
+    <div id="trainerModal" class="modal-base hidden" style="z-index:520" onclick="this.classList.add('hidden'); this.style.display='none';">
+        <div class="modal-content max-w-[30rem] max-h-[88vh] flex flex-col" style="max-width:30rem" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-2 flex-shrink-0">
+                <h3 class="text-white font-black text-base">🎯 盲測練習 <span class="text-[10px] text-gray-500 font-normal">只看過去 60 根,先決定再揭曉</span></h3>
+                <button onclick="document.getElementById('trainerModal').classList.add('hidden'); document.getElementById('trainerModal').style.display='none';" class="text-gray-400 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div id="trainerBody" class="overflow-y-auto pr-1 flex-1">
+                <div id="trainMeta" class="text-[11px] text-gray-300 mb-1.5 leading-snug"></div>
+                <canvas id="trainCv" style="display:block;width:100%;height:220px"></canvas>
+                <div id="trainAsk" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+                    <button id="trainBuy" onclick="app._trainAnswer('buy')" class="px-3 py-1.5 bg-red-900/40 border border-red-700/60 hover:bg-red-800/50 text-red-200 text-xs font-bold rounded">🛒 我會買</button>
+                    <button id="trainSkip" onclick="app._trainAnswer('skip')" class="px-3 py-1.5 bg-[#21262d] border border-[#30363d] hover:bg-[#30363d] text-gray-200 text-xs font-bold rounded">👀 不出手</button>
+                    <input id="trainLine" type="number" step="0.01" placeholder="我畫的邊界價(可不填)" class="bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 text-[11px] text-gray-200" style="width:150px">
+                </div>
+                <div id="trainReveal" class="mt-2"></div>
+                <div id="trainStats" class="mt-2"></div>
+                <button id="trainNextBtn" onclick="app._trainNext()" class="mt-2 w-full px-3 py-1.5 bg-emerald-900/40 border border-emerald-700/60 hover:bg-emerald-800/50 text-emerald-200 text-xs font-bold rounded">🎲 下一題</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ⚙️ V61.10 K線指標設定 modal(對標籌碼K線:均線 checkbox+色塊+可調週期拉桿 2-240 + 取消/確定;頁面頂層避 sticky z-index 陷阱) -->
     <div id="kchartSettingsModal" class="modal-base hidden" onclick="if(event.target===this){app.closeKchartSettings(true);}">
         <div class="modal-content max-w-[26rem] max-h-[88vh] flex flex-col p-0 overflow-hidden" onclick="event.stopPropagation()">
@@ -864,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -966,7 +988,10 @@
                     <div class="flex flex-col gap-2 p-2.5 bg-[#161b22] border border-emerald-700/40 rounded">
                         <label class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">🧪 自訂回測 / 訊號成績單<span class="text-[9px] text-gray-500 font-normal">(自己挑條件跑)</span></label>
                         <p class="text-[10px] text-gray-500 leading-snug">自己挑<b class="text-emerald-300">母體</b>(自選＋庫存 / 全市場成交金額前 N 檔)、<b class="text-emerald-300">進場型態</b>、<b class="text-emerald-300">出場規則</b>、要不要加 🧬 濾網,App 逐檔用歷史 K 線回測(訊號日收盤買、照你選的出場走、扣來回成本 0.44%),給你每一招的勝率 / 期望值 / 賺賠比 + 前後半・逐年這幾道關卡。純公式、零 API,可隨時取消。</p>
-                        <button onclick="app._openSignalScore()" class="mt-0.5 px-3 py-1.5 bg-emerald-900/40 border border-emerald-700/60 hover:bg-emerald-800/50 text-emerald-200 text-xs font-bold rounded transition-colors">🧪 打開自訂回測</button>
+                        <div class="flex gap-2 flex-wrap">
+                            <button onclick="app._openSignalScore()" class="mt-0.5 px-3 py-1.5 bg-emerald-900/40 border border-emerald-700/60 hover:bg-emerald-800/50 text-emerald-200 text-xs font-bold rounded transition-colors">🧪 打開自訂回測</button>
+                            <button onclick="app._openTrainer()" class="mt-0.5 px-3 py-1.5 bg-emerald-900/40 border border-emerald-700/60 hover:bg-emerald-800/50 text-emerald-200 text-xs font-bold rounded transition-colors" title="只看過去 60 根 K,先決定買不買,再揭曉之後怎麼走;累積你的出手勝率跟「隨便挑一天」比">🎯 盲測練習</button>
+                        </div>
                     </div>
                     <!-- 🔎 V41.24 — 免費查公司引擎(不耗自家 AI 額度,開外部免費 AI 網頁帶問題) -->
                     <div class="flex flex-col gap-2 p-2.5 bg-[#161b22] border border-amber-700/40 rounded">
@@ -5229,6 +5254,22 @@ const app = {
         try { localStorage.setItem(lsKey, JSON.stringify(obj)); } catch (_) {}
         return false;
     },
+    // 🧩 V77.3.8 K 棒偵測器清單(盤中提醒 `_kbarTryFire` 與 🎯 盲測練習 `_trainSigsAt` 共用 —— ⛔ 不複製第二份)
+    //   [偵測器名, 標題過濾 regex|null];⚠️ 原本的 filter ⛔ 不可拿掉(拿掉會多放一堆訊號進來)
+    _KBAR_DET_LIST: [
+        ['_detectStarPatterns', null],                       // 夜星/晨星(轉折最強)
+        ['_detect2BarReversal', /吞噬|遭遇/],                 // 長黑/長紅吞噬=主力出貨/進貨;⭐ V41.4 遭遇線(一日封口,爆量=出貨)
+        ['_detectBoxBreakout', null],                        // K線橫盤突破/跌破=進出場
+        ['_detectChuLongEntry', /做多買點/],                  // ⭐ V37.0 朱式等做多買點(回後站5MA)
+        ['_detectChuOverheat', /停利|爆量隔天|過熱/],          // ⭐ V37.2 多頭過熱停利(持倉者)
+        ['_detectChuShortTrend', /轉多訊號|轉強|急跌爆量/],     // ⭐ V37.3/37.4 空頭轉多/轉強(過前高)/急跌爆量
+        ['_detectBottomBreakout', null],                     // ⭐ V38.0 底部頸線突破(形態買點+目標價)
+        ['_detectPressureTest', null],                       // ⭐ V41.4 測壓有壓(多單別追)/測撐有撐(可承接)
+        ['_detectVolPriceDiverge', null],                    // ⭐ V41.6 量價背離(無量創高/高檔價漲量縮=出貨前兆)
+        ['_detectHeavyResistance', null],                    // ⭐ V41.9 壓力沉重反覆過不了(別選/多單先走)
+        ['_detectChuLongEntry', /做頭不建議/],                // ⭐ V41.9 回後買上漲做頭警示
+        ['_detectVolumeSignals', /出貨量|攻擊量|換手量/],
+    ],
     _kbarTryFire(sym, name, kdata, budget) {
         if (!Array.isArray(kdata) || kdata.length < 8) return;
         // 🔕 V76.1.7 這裡以前是裸 `push.push(s)` → **訊號身上沒有 `_d`(哪個偵測器)**
@@ -5240,18 +5281,7 @@ const app = {
             this._tagPush(push, d, kdata);
             if (re) push = push.slice(0, before).concat(push.slice(before).filter(s => re.test(s.title)));
         };
-        _tp('_detectStarPatterns');                       // 夜星/晨星(轉折最強)
-        _tp('_detect2BarReversal', /吞噬|遭遇/);           // 長黑/長紅吞噬=主力出貨/進貨;⭐ V41.4 遭遇線(一日封口,爆量=出貨)
-        _tp('_detectBoxBreakout');                        // K線橫盤突破/跌破=進出場
-        _tp('_detectChuLongEntry', /做多買點/);            // ⭐ V37.0 朱式等做多買點(回後站5MA)
-        _tp('_detectChuOverheat', /停利|爆量隔天|過熱/);    // ⭐ V37.2 多頭過熱停利(持倉者)
-        _tp('_detectChuShortTrend', /轉多訊號|轉強|急跌爆量/); // ⭐ V37.3/37.4 空頭轉多/轉強(過前高)/急跌爆量
-        _tp('_detectBottomBreakout');                     // ⭐ V38.0 底部頸線突破(形態買點+目標價)
-        _tp('_detectPressureTest');                       // ⭐ V41.4 測壓有壓(多單別追)/測撐有撐(可承接)
-        _tp('_detectVolPriceDiverge');                    // ⭐ V41.6 量價背離(無量創高/高檔價漲量縮=出貨前兆)
-        _tp('_detectHeavyResistance');                    // ⭐ V41.9 壓力沉重反覆過不了(別選/多單先走)
-        _tp('_detectChuLongEntry', /做頭不建議/);          // ⭐ V41.9 回後買上漲做頭警示
-        _tp('_detectVolumeSignals', /出貨量|攻擊量|換手量/);
+        for (const [d, re] of this._KBAR_DET_LIST) _tp(d, re);   // 清單在 _KBAR_DET_LIST(V77.3.8 抽出共用)
         for (const s of push) {
             if (this._kbarFiredToday(`${s.title}_${sym}`)) continue;
             // 🔕 V76.1.7 **入場券**:只提醒「宣稱的方向實測真的往那邊走」的(見 `_alertWorthIt`)。
@@ -8586,8 +8616,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.3.7',
+    _APP_VERSION: 'V77.3.8',
     _CHANGELOG: [
+        { v: 'V77.3.8', d: ['🎯 <b>盲測練習</b>(老余 14.txt 的訓練法:在<b>不知道後面怎麼走</b>的情況下練「出手 / 不出手」):設定中心「🧪 自訂回測」旁多一顆「🎯 盲測練習」→ 隨機抽一檔(自選＋庫存 ≥5 檔就用你的,不夠就用全市場成交額前 60)、隨機切一天,只畫最後 60 根 K(右邊未來 20 根整片留白,⛔ 股號與日期也不給);你答「買 / 不買」、可填「我畫的邊界價」→ 揭曉之後 5/10/20 天<b>扣同期加權</b>的報酬、那一根本站亮了哪些訊號與實測等級、你的邊界價事後有沒有被跌破。累積統計只算「10 日超額為正」的比例,對照 <b>隨便挑一天 36.4%</b>,⛔ 不到 10 題不下結論;並分「那一根有本站 A 級訊號 / 沒有」兩組(= 他說的「標準圖 vs 猜」)。⛔ 沒有新卡片,只在設定中心。', '📐 <b>總覽「⭐ 重點判讀」多一條避雷:下降三角(上斜下平)</b> —— V77.3.7 老余那 19 份裡唯一站得住的一條(1,683 檔・2022~2026 含空頭・n=20,072:之後 10 天平均比大盤<b>少 0.48 個百分點</b>、五年逐年全負、門檻高原九格全過)。定義跟探針一字不差(近 20 根高點回歸斜率 ≤ −0.05·ATR/根、最低 3 個低點全距 ≤ 0.5·ATR);⛔ 它是「手上有的別加碼、空手別接」,<b>不是放空訊號</b>,也不進計分、不主動提醒。', '🔧 K線分頁 / 盤中提醒 / 盲測練習用的那 13 類偵測器清單抽成一份 <code>_KBAR_DET_LIST</code>(以前寫在 <code>_kbarTryFire</code> 裡面,盲測練習要共用 → ⛔ 不複製第二份)。'] },
         { v: 'V77.3.7', d: ['🎯 <b>老余交易夜 19 份逐字稿全部讀完、能測的都測了</b>(你說「可以優化我的程式嗎?策略需要回測就回測」):⭐ 先查登記表 —— 他 ~60 條主張裡<b>位置(區間下緣做多)/ 單根尖尖的 / 假跌破站回 / 互換 / 翻亞當出場 / 出一留一 / 拉不賠 / 賺賠比門檻 / 結算日 / 缺口 / 兇K隔壁 / 長上影隔壁 / K 棒變小</b> 本站早就測過(大多數打掉;「互換」= 本站六關全過的「創 60 日高後回測不破」,「該發生卻沒發生」的多方版 = 本站 9 個正期望訊號之一「站上長黑K高點」)。', '🔬 新探針 <code>laoyu_probe.mjs</code>(1,683 檔・2022~2026 含空頭・55 萬事件)只切他<b>沒被切過的條件</b>:🚨 <b>他最核心的兩條方向相反</b> —— 「區間下緣才做多」在日 K 上 ≈0、一年位階反而 &gt;67% 那桶最好(+0.35pp);「左邊要有人擋子彈」有擋的反而差 0.35pp。真破邊界後收回 −0.34pp、兩隻腳 −0.43pp、三問疊加四層沒有一層是正的。', '📐 <b>唯一站得住的:下降三角(上斜下平)</b> —— 他說「後面往下跌機率高」,實測 n=20,072、10 日 −0.48pp、五年逐年全負、門檻高原九格全過 → 下一版放進總覽「⭐ 重點判讀」當<b>避雷</b>(⛔ 不是放空訊號)。', '⏱️ <code>kbar5_tod_probe.mjs</code> 用 kbar5 88 天先量他的盤中時段口訣的長相(⛔ 不下結論):11 點轉折率跟別的時段一樣是 50%、49.5% 的全日最低在 09:00~09:30 那一段、尾盤 +0.01% —— 而且他講的是台指期,kbar5 以前沒有台指期。', '📼 <b>改挖礦:kbar5 從這一版起也存台指期近月的日盤 5 分 K</b>(<code>d[date].idx.TXF</code>,08:45~13:45,夜盤不收;股票母體與 bias 完全不動;要請你 Run 一次「📼 5 分 K 逐日累積」workflow,log 要看到「🔎 自我驗證 …525…820」)。', '📋 完整評估紀錄在 docs/EXTERNAL_REVIEWS.md ㉘;實測總表新增 1 條避雷 + 3 條實測沒用 + 1 條還測不了;推薦欄那條「📼 開始存 5 分 K」已經做完 → 歸類移除。'] },
         { v: 'V77.3.6', d: ['🧪 <b>自訂回測(自動回測系統的 App 內那一半)</b>(你說「新增自動回測系統」→ 你選「兩個都要」):設定中心原本的「📊 訊號成績單」升級成「🧪 自訂回測」—— 自己挑<b>母體</b>(自選＋庫存 / 全市場成交金額前 N 檔)、<b>進場型態</b>(多選)、<b>出場規則</b>(唐奇安 / ATR / 移動停利 / 5 日線,跟出場總表同一份)、要不要加 <b>🧬 濾網</b>、最多幾檔,按「▶ 跑回測」App 就逐檔用歷史 K 線跑,有進度、<b>可以隨時取消</b>(取消也會給你跑到一半的結果)。結果:每一招的勝率 / 每趟(已扣來回成本 0.44%)/ 賺賠比 / 幾檔賺,加上本站六關的<b>迷你版四關</b>(全期正 / 前後半同向 / 逐年同向 / 去最好年仍同向);少於 10 趟一律「樣本不足,不下結論」。⚠️ 畫面上寫明:這是「每一趟」的統計、<b>不是</b>決策台那套 49 個月的資金模擬(兩組數字不可互比)、窗口約 3 年不含 2022 空頭。'] },
         { v: 'V77.3.5', d: ['🔁 <b>自動回測系統(排程化那一半)上線</b>(你說「新增自動回測系統」):新 workflow「🔁 每週自動回測」掛在每日採礦後面(⛔ 不新增排程配額),<b>每週五</b>用同一套配置重跑兩件事 —— ① App 裡 129 個 K 線訊號的勝率/期望值表(以前是我跑完手抄進去的)② 決策台那套 49 個月成績單(🧬 / 不挑 🧬),產出 <code>backtest_edge.json</code>。App 讀到產物就用產物的訊號成績(格式一樣、沒有就用內嵌版);決策台「這套做法實測賺多少」那張卡底下多一行「📅 最新一次自動回測 …」,並列出<b>跟內嵌成績差在哪</b>(等級 A↔C 變動、累積差 >30%、回撤差 >5pp)。⛔ <b>沒有自動換預設</b> —— 要換仍要過八道關卡、由人判。⚠️ 第一次要你到 Actions 手動 Run「🔁 每週自動回測」(選 main、force=true)驗一次;之後每週五採礦完自動跑。', '🐛 順手:兩支回測腳本的瀏覽器路徑是寫死的本機路徑(CI 上一定炸)→ 改成「本機路徑 / CI 自帶」雙來源(跟明日作戰清單那支一樣)。'] },
@@ -21294,6 +21325,33 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         //   它們是「一路慢慢漂」,⛔ 不是「10 天內會表態」。r5 = 前 5 天佔最高點的百分比。
         retest: { n: 27129, e10: 0.73, wr: 45.0, worst: 0.76, net: 0.29, yr: '+1.0/+0.6/+0.5/+0.8/+0.7', r5: 7 },
         gapHi:  { n: 10527, e10: 0.63, wr: 42.4, worst: 0.36, net: 0.19, yr: '+0.2/+0.6/+0.4/+1.7/+1.2', r5: 2 },
+    },
+    // 📐 V77.3.8 下降三角(上斜下平)—— `scripts/laoyu_probe.mjs` G3(老余 19 份逐字稿裡唯一站得住的一條)
+    //   1,683 檔・2022-01~2026-09(含 2022 空頭)・對照組 = 所有(股·日)・t+1 開盤・扣同期加權・20 日去重。
+    //   ⛔ 它是**避雷**(空方尺:10 日邊際 <0 且 p ≤0.25,同時六關 6/6、3×3 門檻高原九格全過),⛔ 不是放空訊號、
+    //      不進計分、不主動提醒。改了 _descTriangle 的判定就要重跑探針更新這張表。
+    _TRI_EDGE: { n: 20072, e10: -0.48, wr: 38.8, base: 40.4, abs: -1.09, yrs: '2022~2026',
+                 yr: '−0.21/−0.11/−0.51/−0.86/−0.83', half: '−0.24 / −0.75', k: 0.05, flat: 0.5, N: 20 },
+    /** 定義與探針一字不差:近 N 根(含今日)高點的線性回歸斜率 ≤ −k·ATR/根,且最低 3 個低點全距 ≤ flat·ATR。
+     *  ATR20 用 [t-20, t-1](⛔ 不含今日,陷阱 #43);一律先過 _closedTail(今天那根未收盤的不算)。 */
+    _descTriangle(data) {
+        try {
+            const E = this._TRI_EDGE, N = E.N;
+            const d = this._closedTail(data);
+            const n = d.length; if (n < N + 22) return null;
+            const H = i => +((d[i].high ?? d[i].h) || 0), L = i => +((d[i].low ?? d[i].l) || 0), C = i => +((d[i].close ?? d[i].c) || 0);
+            const t = n - 1;
+            let trs = 0, trc = 0;
+            for (let k = t - 20; k < t; k++) { if (!(C(k - 1) > 0 && H(k) >= L(k) && L(k) > 0)) continue; trs += Math.max(H(k) - L(k), Math.abs(H(k) - C(k - 1)), Math.abs(L(k) - C(k - 1))); trc++; }
+            if (trc < 16) return null;
+            const atr = trs / trc; if (!(atr > 0)) return null;
+            let sx = 0, sy = 0, sxy = 0, sxx = 0; const ls = [];
+            for (let i = 0; i < N; i++) { const k = t - N + 1 + i; if (!(H(k) > 0 && L(k) > 0)) return null; sx += i; sy += H(k); sxy += i * H(k); sxx += i * i; ls.push(L(k)); }
+            const slope = (N * sxy - sx * sy) / (N * sxx - sx * sx);
+            ls.sort((a, b) => a - b);
+            const flat = ls[2] - ls[0];
+            return { ok: slope <= -E.k * atr && flat <= E.flat * atr, slope, flat, atr, slopeAtr: slope / atr, flatAtr: flat / atr };
+        } catch (_) { return null; }
     },
     _ldRedKHtml(data, sym) {
         try {
@@ -36069,6 +36127,17 @@ ${this._reportFacts(sym)}
                     }
                 }
             }
+            // ⑤ 📐 V77.3.8 下降三角(上斜下平)—— 避雷(⛔ 不是放空訊號;數字一律讀 _TRI_EDGE)
+            const tri = this._descTriangle(data);
+            if (tri && tri.ok) {
+                const T = this._TRI_EDGE;
+                out.push({ ic: '📐', cls: 'text-amber-300',
+                    txt: `<b>近 ${T.N} 天走成「上面斜斜的、下面平平的」(下降三角:高點一路降、低點守在同一帶)</b> —— `
+                       + `${T.yrs} 全市場 ${T.n.toLocaleString()} 次實測(含 2022 空頭),之後 10 天平均比大盤<b>少 ${Math.abs(T.e10).toFixed(2)} 個百分點</b>、`
+                       + `上漲比例 <b>${T.wr}%</b>(隨便挑一天 ${T.base}%),<b>五年逐年都是負的</b>(${T.yr})。`
+                       + `💡 <b>手上有的照既有出場規則走、⛔ 別加碼;空手的別接</b>。⛔ 這是避雷不是放空訊號(放空另有風險、沒測過);`
+                       + `⛔ 也不可倒過來把「上平下斜」當買訊(沒測)。⚠️ 它贏的是「比隨便挑一天更差」(自己 10 日 ${T.abs}%),⛔ 不是「一定會跌」` });
+            }
         } catch (_) { }
         return out;
     },
@@ -43341,11 +43410,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const all = []; let scanned = 0; const t0 = Date.now();
             for (let idx = 0; idx < u.length; idx++) {
                 if (st.abort) break;
-                const s = u[idx]; let k = null;
-                try { const c = await this.idb.get(`proTerm_kline_${s}`); k = c?.data; } catch (_) {}
-                if (!Array.isArray(k) || k.length < 80) {
-                    try { const r = await fetch(new URL(`data/${s}.json`, ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }); if (r.ok) { const j = await r.json(); if (Array.isArray(j)) k = j; } } catch (_) {}
-                }
+                const s = u[idx]; let k = await this._loadKline(s);   // V77.3.8 抽成 _loadKline(盲測練習共用)
                 if (Array.isArray(k) && k.length >= 80) {
                     let tr = []; try { tr = this._cbtSym(k, cfg); } catch (_) {}
                     if (tr.length) { scanned++; for (const t of tr) all.push({ ...t, sym: s }); }
@@ -43399,6 +43464,177 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div>・⚠️ <b class="text-gray-200">這是「每一趟」的統計,不是決策台那套 49 個月的資金模擬</b>(那套有本金上限、每天最多幾檔、錢用完就跳過)—— 兩組數字⛔ 不可互相比較。</div>
                 <div>・⚠️ 窗口 = 每檔 App 裡那約 3 年的 K 線,<b>不含 2022 空頭</b>;母體選「全市場前 N 檔」時偏向熱門股。回測規則:訊號日收盤買、跌破你選的出場線或 −5% 停損就走、最多抱 20 天。過去不保證未來。</div>
             </div>`;
+    },
+
+    // ═══ 🎯 V77.3.8 盲測練習(評估紀錄㉘ D-3:老余 14.txt 的訓練法 —— 未知行情下逐根推進、⛔ 不得先看右側;
+    //     只記「正確出手幾次」不記損益;分「有標準圖 / 猜」統計)═══
+    //   ⛔ 三條鐵則:① `_trainState.closed` 含未來 → **只准 `_trainReveal` 讀**,畫面與 innerHTML 只准讀 cut 之前
+    //              ② 統計的勝率口徑 = 10 日**超額**為正(跟 `_SIGNAL_EDGE_META.base_win` 同口徑才能比)
+    //              ③ n < `_wrEnough` ⛔ 不下結論;燈號鐵則(答對答錯用 ✅⚠️⏳,⛔ 不用 🔴🟢)
+    _TRAIN_PAST: 60, _TRAIN_WARM: 120, _TRAIN_FUT: 20, _TRAIN_KEEP: 500, _TRAIN_KEY: 'trainLog',
+    _trainState: null,
+    _trainRnd() { return Math.random(); },        // 只為了讓測試能 stub 成固定序列
+    /** K 線:idb 快取 → 讀不到才 fetch(從 _customBacktest 抽出來,⛔ 兩邊共用) */
+    async _loadKline(sym) {
+        let k = null;
+        try { const c = await this.idb.get(`proTerm_kline_${sym}`); k = c?.data; } catch (_) {}
+        if (!Array.isArray(k) || k.length < 80) {
+            try {
+                const ghBase = window.location.href.split('?')[0].split('#')[0];
+                const r = await fetch(new URL(`data/${sym}.json`, ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+                if (r.ok) { const j = await r.json(); if (Array.isArray(j)) k = j; }
+            } catch (_) {}
+        }
+        return (Array.isArray(k) && k.length >= 80) ? k : null;
+    },
+    _openTrainer() {
+        const modal = document.getElementById('trainerModal');
+        if (!modal) return;
+        modal.classList.remove('hidden'); modal.style.display = 'flex';
+        try { this.vibrate(20); } catch (_) {}
+        this._trainStats();
+        this._trainNext();
+    },
+    async _trainNext() {
+        const g = id => document.getElementById(id);
+        if (!g('trainMeta')) return;
+        g('trainReveal').innerHTML = ''; g('trainAsk').style.display = 'flex'; g('trainLine').value = '';
+        g('trainMeta').innerHTML = '⏳ 抽題中…';
+        const fav = Object.values(this.favGroups || {}).flat().length + (this._getInventory() || []).length;
+        let uni = await this._cbtUniverse({ universe: fav >= 5 ? 'fav' : 'top', n: 60 });
+        let note = '';
+        if (!Array.isArray(uni)) { note = `(${uni && uni.err ? uni.err : '母體讀不到'} → 改用自選＋庫存)`; uni = await this._cbtUniverse({ universe: 'fav', n: 60 }); }
+        if (!Array.isArray(uni) || !uni.length) { g('trainMeta').innerHTML = '⚠️ 沒有可出題的股票:自選/庫存是空的,而且全市場快照讀不到。加幾檔自選再來。'; return; }
+        let st = null;
+        for (let tries = 0; tries < 6 && !st; tries++) {
+            const sym = String(uni[Math.floor(this._trainRnd() * uni.length)]);
+            const k = await this._loadKline(sym);
+            const closed = this._closedTail(k || []);
+            const room = closed.length - this._TRAIN_FUT - this._TRAIN_WARM;
+            if (room < 1) continue;
+            const cut = this._TRAIN_WARM + Math.floor(this._trainRnd() * room);
+            const no = ((this._lsJson(this._TRAIN_KEY, []) || []).length) + 1;
+            st = { sym, name: this.getStockName(sym), closed, cut, date: String(closed[cut].date || '').replace(/\//g, '-').slice(0, 10), ans: null, line: null, revealed: false, no };
+        }
+        if (!st) { g('trainMeta').innerHTML = '⚠️ 這批股票的 K 線都太短(要 ≥140 根),換個母體再來。'; return; }
+        this._trainState = st;
+        // ⛔ 揭曉前不印股號 / 日期 / 任何未來的價格
+        g('trainMeta').innerHTML = `🎲 第 ${st.no} 題 ・ <b>???</b> ・ 只看得到最後 ${this._TRAIN_PAST} 根收盤 K(右邊留白的是還沒發生的 ${this._TRAIN_FUT} 天)${note}<br><span class="text-[10px] text-gray-500">先決定「會不會買」,想畫邊界就填價位;答完才揭曉是哪一檔、哪一天、後面怎麼走。</span>`;
+        this._trainDraw(false);
+    },
+    /** 純 canvas:左 72% 畫過去 60 根、右 28% 是未來帶(揭曉前整片背景、一個像素都不畫);顏色只讀 _RP_STYLE,幾何 inline */
+    _trainDraw(reveal) {
+        const st = this._trainState, cv = document.getElementById('trainCv');
+        if (!st || !cv) return;
+        const S = this._RP_STYLE;
+        const cssW = Math.max(280, Math.min(520, (cv.parentElement && cv.parentElement.clientWidth) || 340)), cssH = 220;
+        const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+        cv.style.width = cssW + 'px'; cv.style.height = cssH + 'px';
+        cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
+        const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = S.bg; ctx.fillRect(0, 0, cssW, cssH);
+        const O = b => +((b.open ?? b.o) || 0), H = b => +((b.high ?? b.h) || 0), L = b => +((b.low ?? b.l) || 0), C = b => +((b.close ?? b.c) || 0);
+        const view = st.closed.slice(st.cut - this._TRAIN_PAST + 1, st.cut + 1);
+        const fut = reveal ? st.closed.slice(st.cut + 1, st.cut + 1 + this._TRAIN_FUT) : [];   // ⛔ 只有揭曉才碰未來
+        const pastW = cssW * 0.72, futW = cssW * 0.28, top = 14, bottom = cssH - 14;
+        let lo = Infinity, hi = -Infinity;
+        for (const b of view.concat(fut)) { if (L(b) > 0 && L(b) < lo) lo = L(b); if (H(b) > hi) hi = H(b); }   // y 軸只由畫得出來的算
+        if (st.line > 0 && reveal) { lo = Math.min(lo, st.line); hi = Math.max(hi, st.line); }
+        if (!(hi > lo)) return;
+        const y = p => bottom - (p - lo) / (hi - lo) * (bottom - top);
+        const candle = (b, x, w) => {
+            const up = C(b) >= O(b); ctx.strokeStyle = ctx.fillStyle = up ? S.up : S.dn; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(x + w / 2, y(H(b))); ctx.lineTo(x + w / 2, y(L(b))); ctx.stroke();
+            const y1 = y(Math.max(O(b), C(b))), y2 = y(Math.min(O(b), C(b)));
+            ctx.fillRect(x + 1, y1, Math.max(1, w - 2), Math.max(1, y2 - y1));
+        };
+        const sw = pastW / this._TRAIN_PAST;
+        view.forEach((b, i) => candle(b, i * sw, sw));
+        ctx.font = '10px -apple-system,sans-serif'; ctx.fillStyle = S.gy; ctx.textAlign = 'left';
+        ctx.fillText(String(hi.toFixed(2)), 2, top - 3); ctx.fillText(String(lo.toFixed(2)), 2, cssH - 3);
+        if (reveal) {
+            ctx.strokeStyle = S.gy; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(pastW, top); ctx.lineTo(pastW, bottom); ctx.stroke(); ctx.setLineDash([]);
+            const fw = futW / this._TRAIN_FUT;
+            fut.forEach((b, i) => candle(b, pastW + i * fw, fw));
+            if (st.line > 0) { ctx.strokeStyle = S.amb; ctx.beginPath(); ctx.moveTo(0, y(st.line)); ctx.lineTo(cssW, y(st.line)); ctx.stroke(); ctx.fillStyle = S.amb; ctx.textAlign = 'right'; ctx.fillText(`你的邊界 ${st.line}`, cssW - 2, y(st.line) - 3); }
+        }
+    },
+    _trainAnswer(a) {
+        const st = this._trainState; if (!st || st.revealed) return;
+        st.ans = a === 'buy' ? 'buy' : 'skip';
+        const v = +(document.getElementById('trainLine')?.value || 0); st.line = v > 0 ? v : null;
+        st.revealed = true;
+        const ask = document.getElementById('trainAsk'); if (ask) ask.style.display = 'none';
+        this._trainReveal();
+    },
+    /** 那一根本站亮了哪些訊號 —— 走 _KBAR_DET_LIST 那 13 類、用 _tagPush 收(補 _d 才查得到成績);⛔ 只餵到 T 為止的 K */
+    _trainSigsAt(view) {
+        let push = [];
+        for (const [d, re] of this._KBAR_DET_LIST) {
+            const before = push.length;
+            this._tagPush(push, d, view);
+            if (re) push = push.slice(0, before).concat(push.slice(before).filter(s => re.test(s.title)));
+        }
+        return push;
+    },
+    async _trainReveal() {
+        const st = this._trainState, g = id => document.getElementById(id);
+        if (!st || !g('trainReveal')) return;
+        const C = b => +((b.close ?? b.c) || 0), L = b => +((b.low ?? b.l) || 0);
+        const entry = C(st.closed[st.cut]);
+        const r = h => { const b = st.closed[st.cut + h]; return (b && entry > 0 && C(b) > 0) ? (C(b) / entry - 1) * 100 : null; };
+        // 同期加權(對不到日期 → null,而且要說出來,⛔ 不靜默)
+        let rows = null; try { rows = await this._getTwiiRows(); } catch (_) { rows = null; }
+        const nd = d => String(d || '').replace(/\//g, '-').slice(0, 10);
+        let i0 = -1;
+        if (Array.isArray(rows)) for (let i = 0; i < rows.length; i++) { const d = nd(rows[i].date); if (d <= st.date) i0 = i; else break; }
+        const x = h => { const a = r(h); if (a == null || i0 < 0 || !rows[i0 + h] || !(+rows[i0].close > 0)) return null; return a - (+rows[i0 + h].close / +rows[i0].close - 1) * 100; };
+        const R = { r5: r(5), r10: r(10), r20: r(20), x5: x(5), x10: x(10), x20: x(20) };
+        const sigs = this._trainSigsAt(st.closed.slice(0, st.cut + 1)).map(s2 => ({ d: s2._d, t: s2.title, tone: s2.tone, e: this._sigEdge(s2._d, s2.title) }));
+        const hasA = sigs.some(s2 => s2.e && s2.e.grade === 'A' && s2.tone === 'bull');
+        let futLo = Infinity; for (let h = 1; h <= this._TRAIN_FUT; h++) { const b = st.closed[st.cut + h]; if (b && L(b) > 0) futLo = Math.min(futLo, L(b)); }
+        const row = { ts: Date.now(), sym: st.sym, d: st.date, ans: st.ans, line: st.line, r5: R.r5, r10: R.r10, r20: R.r20, x5: R.x5, x10: R.x10, x20: R.x20, a: hasA,
+                      sg: sigs.slice(0, 6).map(s2 => ({ d: s2.d, t: s2.t, g: s2.e ? s2.e.grade : null })) };
+        this._trainLogPush(row);
+        const f = v => v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+        const twNote = (R.x10 == null && R.r10 != null) ? `<div class="text-[10px] text-amber-300 mt-0.5">⚠️ 這段沒有加權可比(對不到 ${st.date} 的大盤資料),只給絕對報酬,這一題不進勝率統計</div>` : '';
+        const sigHtml = sigs.length
+            ? sigs.slice(0, 6).map(s2 => `<div class="text-[10px] text-gray-300">・${s2.tone === 'bull' ? '🔺' : s2.tone === 'bear' ? '🔻' : '⚠️'} ${this._escHtml ? this._escHtml(String(s2.t)) : String(s2.t)}${s2.e ? ` <span class="text-gray-500">實測 ${s2.e.grade} 級 ・n=${s2.e.n} ・10 日 ${s2.e.e10 >= 0 ? '+' : ''}${s2.e.e10}pp${s2.e.exp != null ? ` ・期望 ${s2.e.exp >= 0 ? '+' : ''}${s2.e.exp}%` : ''}</span>` : ' <span class="text-gray-500">查不到成績(未驗證)</span>'}</div>`).join('')
+            : '<div class="text-[10px] text-gray-500">・那一根本站 13 類偵測器一個都沒亮 = 他說的「猜」</div>';
+        const lineTxt = st.line > 0 ? `<div class="text-[10px] text-gray-300 mt-0.5">📏 你畫的邊界 ${st.line}:之後 ${this._TRAIN_FUT} 天最低 ${isFinite(futLo) ? futLo.toFixed(2) : '—'} → ${isFinite(futLo) ? (futLo < st.line ? '<b>被跌破</b>' : '<b>守住</b>') : '—'}(事實,⛔ 不代表對錯)</div>` : '';
+        g('trainReveal').innerHTML = `<div class="border-l-4 border-l-transparent border-b border-[#21262d] pb-2">
+            <div class="text-[11px] text-gray-200"><b>揭曉:${this._escHtml ? this._escHtml(String(st.name || st.sym)) : st.sym} ${st.sym}</b> ・ ${st.date} 收盤 ${entry.toFixed(2)} ・ 你選了 <b>${st.ans === 'buy' ? '🛒 買' : '👀 不出手'}</b></div>
+            <div class="text-[11px] text-gray-300 mt-1 font-mono">之後 5 / 10 / 20 天:${f(R.r5)} / ${f(R.r10)} / ${f(R.r20)}<br><span class="text-gray-400">扣同期加權(超額):</span>${f(R.x5)} / ${f(R.x10)} / ${f(R.x20)}</div>${twNote}${lineTxt}
+            <div class="text-[10px] text-gray-400 mt-1.5">那一根本站亮了什麼:</div>${sigHtml}
+            <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">⛔ 一題不算數(勝率 30~40% 的體質本來就三次錯兩次),看下面累積的統計;報酬扣同期加權、未扣成本、不含股利。</div>
+        </div>`;
+        this._trainStats();
+        this._trainDraw(true);
+    },
+    /** 單一 key 存陣列、只留最後 _TRAIN_KEEP 筆。⛔ 不呼叫 _lruTrim —— 它是「每檔一把 key」式的修剪,對單一 key 是 no-op(= 假接上) */
+    _trainLogPush(row) {
+        const a = this._lsJson(this._TRAIN_KEY, []); const arr = Array.isArray(a) ? a : [];
+        arr.push(row);
+        try { localStorage.setItem(this._TRAIN_KEY, JSON.stringify(arr.slice(-this._TRAIN_KEEP))); } catch (_) {}
+    },
+    _trainStats() {
+        const el = document.getElementById('trainStats'); if (!el) return;
+        const a = this._lsJson(this._TRAIN_KEY, []); const rows = Array.isArray(a) ? a : [];
+        const base = +(this._SIGNAL_EDGE_META && this._SIGNAL_EDGE_META.base_win) || 0;
+        const minN = [...Array(100).keys()].find(k => this._wrEnough(k));
+        const scored = rows.filter(x => x.ans === 'buy' && x.x10 != null);
+        const n = scored.length, win = n ? scored.filter(x => x.x10 > 0).length / n * 100 : 0;
+        const grp = (pred, label) => { const s2 = scored.filter(pred); if (!this._wrEnough(s2.length)) return `${label}:n=${s2.length}(⏳ 不足 ${minN})`; return `${label}:n=${s2.length} ・${(s2.filter(x => x.x10 > 0).length / s2.length * 100).toFixed(1)}%`; };
+        const missed = rows.filter(x => x.ans === 'skip' && x.x10 != null && x.x10 > 0).length, skipped = rows.filter(x => x.ans === 'skip' && x.x10 != null).length;
+        let verdict;
+        if (!this._wrEnough(n)) verdict = `⏳ <b>樣本不足(${n}/${minN} 次出手)</b>,⛔ 不下結論 —— 再練幾題`;
+        else verdict = `${win >= base ? '✅' : '⚠️'} 你出手後 10 日超額為正的比例 <b>${win.toFixed(1)}%</b> vs 隨便挑一天 <b>${base.toFixed(1)}%</b>(n=${n})`;
+        el.innerHTML = `<div class="border-b border-[#21262d] pb-1.5">
+            <div class="text-[11px] text-gray-200">📊 累積:${rows.length} 題 ・出手 ${rows.filter(x => x.ans === 'buy').length} 次 ・不出手 ${rows.filter(x => x.ans === 'skip').length} 次</div>
+            <div class="text-[11px] text-gray-300 mt-0.5">${verdict}</div>
+            <div class="text-[10px] text-gray-400 mt-0.5">${grp(x => x.a, '那一根有本站 A 級多方訊號(= 他說的「標準圖」)')} ・ ${grp(x => !x.a, '沒有(= 「猜」)')}</div>
+            <div class="text-[10px] text-gray-500 mt-0.5">不出手但事後 10 日超額為正的:${missed}/${skipped}(錯過不算錯,他的訓練法只記「有沒有照規矩出手」)・基準 ${base.toFixed(1)}% 是全市場隨機一天 10 日扣同期加權為正的比例,⛔ 不是 50%</div>
+        </div>`;
     },
 
     // 🎯 V41.31 — 個股打法適配儀:性格 + 型態回測排名(按鈕觸發,當日快取)
