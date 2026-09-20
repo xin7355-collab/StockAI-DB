@@ -23,7 +23,10 @@
  *
  * 跑法:node scripts/signal_backtest.mjs [股票數上限]
  */
-import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+// ⚙️ V77.3.5 playwright 來源:本機開發是絕對路徑、CI(weekly_backtest.yml)是 node_modules —— 同 playbook_scan.mjs 的做法
+let chromium;
+try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); }
+catch (_) { ({ chromium } = await import('playwright')); }
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import path from 'path';
@@ -78,7 +81,8 @@ const TWII = Object.fromEntries(twiiRows.map(r => [r.date, r.close]));
 const files = fs.readdirSync(DATA).filter(f => /^\d{4}\.json$/.test(f)).sort();
 log(`📂 掃描 ${files.length} 檔,上限 ${MAX_SYMS >= 99999 ? "全市場(不設限)" : "前 " + MAX_SYMS + " 檔"}`);
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+const _exec = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const browser = await chromium.launch({ ...(fs.existsSync(_exec) ? { executablePath: _exec } : {}), args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });   // CI 沒這支 → 用 playwright 自帶的
 const page = await browser.newPage();
 page.on('pageerror', () => {});
 await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });

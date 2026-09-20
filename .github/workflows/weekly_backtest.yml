@@ -1,0 +1,174 @@
+name: 🔁 每週自動回測 (weekly_backtest)
+
+# 🔁 V77.3.5 使用者:「新增自動回測系統」→ 每週把兩套核心回測**用同一套配置**自動重跑一次,
+#    產出 data/backtest_edge.json(K 線訊號成績表 + 決策台 49 個月成績單 + 跟 App 內嵌版差在哪)。
+#    以前 `_SIGNAL_EDGE` / `_DECK_TRACK49` 全靠人工跑完再手抄進 index.html;現在 App 讀產物(有就用、沒有就用嵌入版)。
+#
+# ⛔ 三條不可改:
+#   ① **只標示不換預設**:產物裡的 `diff` 只是告訴你「等級/成績變了」,App 的預設不動(V75.0.9 五條件由人判)
+#   ② **不新增 cron**:掛在 daily_miner 的 `workflow_run` 後面(實測跑得到的 host;排程配額早就不夠,CLAUDE.md V75.2.0)
+#      → 只在**週五**那一輪真的跑(其他天 job 開頭就收工),手動 dispatch 用 force=true 跳過週五守門
+#   ③ **推兩個分支**(gh-pages + data,陷阱 #41):daily_miner 的 orphan force-push 會把只在 gh-pages 的檔洗掉
+#
+# ⏱️ 預算:還原 data ~3 分 + 合併深歷史 ~5 分 + playwright ~3 分 + signal_backtest ~17 分 + 組合回測 ×2 ~15 分 + 推 ~2 分 ≈ 45 分
+on:
+  workflow_run:
+    workflows: ["🤖 每日籌碼採礦機 (平行宇宙版)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '不是週五也照跑(手動驗證用)'
+        required: false
+        default: 'true'
+      max_syms:
+        description: '訊號回測最多掃幾檔(預設全市場;想快速驗證可填 200)'
+        required: false
+        default: '99999'
+
+# 與 deploy_pages / daily_miner deploy / playbook_scan 共用,避免同時 push gh-pages 打架
+concurrency:
+  group: gh-pages-push
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  backtest:
+    name: 🔁 訊號成績表 + 決策台成績單
+    runs-on: ubuntu-latest
+    # ⛔ 只跟 daily_miner **排程**那一輪(push 觸發的採礦一天可能好幾次);失敗的那輪資料不完整,不跑
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'schedule')
+    timeout-minutes: 120
+    steps:
+      - name: 📅 週五守門(每週只跑一次;手動 force=true 跳過)
+        id: gate
+        run: |
+          DOW=$(date -u +%u)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.force }}" = "true" ]; then
+            echo "run=1" >> "$GITHUB_OUTPUT"; echo "🔧 手動 force → 照跑"
+          elif [ "$DOW" = "5" ]; then
+            echo "run=1" >> "$GITHUB_OUTPUT"; echo "📅 週五 → 跑"
+          else
+            echo "run=0" >> "$GITHUB_OUTPUT"; echo "📅 今天 UTC 週 $DOW,不是週五 → 收工(這支每週只跑一次)"
+          fi
+
+      - name: 📥 下載程式碼 (main)
+        if: steps.gate.outputs.run == '1'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📂 還原全市場 OHLCV + 上一版產物 (origin/data → data/)
+        if: steps.gate.outputs.run == '1'
+        run: |
+          git fetch origin data 2>/dev/null || { echo "❌ 沒有 data 分支"; exit 1; }
+          git checkout origin/data -- data/ 2>/dev/null || { echo "❌ 還原 data/ 失敗"; exit 1; }
+          git reset -q
+          N=$(ls data/*.json 2>/dev/null | wc -l)
+          echo "還原 data/*.json:$N 檔"
+          [ "$N" -lt 500 ] && { echo "❌ 只有 $N 檔,資料不完整 → 不跑"; exit 1; } || true
+          [ -s data/backtest_edge.json ] && echo "✅ 上一版產物:$(python3 -c "import json;print(json.load(open('data/backtest_edge.json')).get('run_at'))")" || echo "ℹ️ 尚無上一版產物(第一次跑)"
+
+      # 📚 決策台成績單用 2021 起的深歷史(含 2022 空頭)—— 同 `_DECK_TRACK49` 的正式配置
+      - name: 📚 合併 K 線深歷史 (origin/klines_deep → /tmp/deep)
+        if: steps.gate.outputs.run == '1'
+        run: |
+          git fetch origin klines_deep 2>/dev/null || { echo "❌ 沒有 klines_deep 分支"; exit 1; }
+          mkdir -p /tmp/kd /tmp/deep
+          git archive origin/klines_deep | tar -x -C /tmp/kd
+          cp -r data/. /tmp/deep/
+          node scripts/merge_deep_klines.mjs /tmp/kd/klines_deep /tmp/deep | tail -8
+
+      - name: 🌐 安裝 playwright + chromium
+        if: steps.gate.outputs.run == '1'
+        run: |
+          npm i -D playwright@1.49.1
+          npx playwright install --with-deps chromium
+
+      # ① K 線訊號成績表(跑**真正的** JS 偵測器跑歷史,同 `_SIGNAL_EDGE` 的做法;吃 data/,窗口受 ^TWII 長度限制)
+      - name: 📊 訊號回測 (signal_backtest)
+        if: steps.gate.outputs.run == '1'
+        id: sig
+        run: |
+          set +e
+          node scripts/signal_backtest.mjs "${{ github.event.inputs.max_syms || '99999' }}"
+          rc=$?
+          echo "sig_rc=$rc" >> "$GITHUB_OUTPUT"
+          [ "$rc" -ne 0 ] && echo "⚠️ signal_backtest rc=$rc"
+          exit 0
+
+      # ② 決策台 49 個月成績單(正式配置:🧬 濾網 / 每筆 15 萬 / 每天 2 檔 / 唐奇安 20 日出場;第二趟不挑 🧬 重用交易快取)
+      - name: 💼 組合回測 (portfolio_backtest ×2)
+        if: steps.gate.outputs.run == '1' && steps.sig.outputs.sig_rc == '0'
+        id: deck
+        env:
+          DATA_DIR: /tmp/deep
+          LOT: '150000'
+          RANK_MIN: '75'
+          VOLAT_MIN: '60'
+          EXIT: don
+          TRADES_CACHE: /tmp/trades.json
+        run: |
+          set +e
+          set -o pipefail
+          SELF=high+hivolat SUMMARY_OUT=/tmp/summary_gene.json node scripts/portfolio_backtest.mjs 600 2 | tail -25
+          rc1=$?
+          SELF= SUMMARY_OUT=/tmp/summary_plain.json node scripts/portfolio_backtest.mjs 600 2 | tail -12
+          echo "deck_rc=$rc1" >> "$GITHUB_OUTPUT"
+          [ -s /tmp/summary_gene.json ] || { echo "❌ 沒有成績單 JSON"; echo "deck_rc=1" >> "$GITHUB_OUTPUT"; }
+          exit 0
+
+      # ③ 合成產物 + 空過守門(訊號總 n / 成績單筆數 < 上一版 80% → exit 1 不寫檔)
+      - name: 🧩 合成 backtest_edge.json(⛔ 只標示不換預設)
+        if: steps.gate.outputs.run == '1' && steps.sig.outputs.sig_rc == '0' && steps.deck.outputs.deck_rc == '0'
+        id: build
+        run: |
+          set +e
+          SUMMARY_GENE=/tmp/summary_gene.json SUMMARY_PLAIN=/tmp/summary_plain.json PREV=data/backtest_edge.json node scripts/build_backtest_edge.mjs /tmp/backtest_edge.json
+          rc=$?
+          echo "build_rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: 🚀 部署 backtest_edge.json + signal_edge.json 到 gh-pages + data
+        if: steps.gate.outputs.run == '1' && steps.build.outputs.build_rc == '0'
+        run: |
+          set -e
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          [ -s /tmp/backtest_edge.json ] || { echo "❌ 沒有產物,跳過部署"; exit 0; }
+          cp data/signal_edge.json /tmp/signal_edge.json 2>/dev/null || true
+          restore_files () {
+            cp /tmp/backtest_edge.json data/backtest_edge.json
+            [ -s /tmp/signal_edge.json ] && cp /tmp/signal_edge.json data/signal_edge.json || true
+          }
+          deploy_branch () {
+            local BR="$1"
+            git reset --hard -q 2>/dev/null || true
+            git clean -fdxq 2>/dev/null || true
+            git fetch origin "$BR" 2>/dev/null || true
+            git checkout -f -B "$BR" "origin/$BR" 2>/dev/null || { echo "⚠️ 無 $BR 分支,跳過"; return 0; }
+            mkdir -p data
+            restore_files
+            git add -f data/backtest_edge.json data/signal_edge.json 2>/dev/null || git add -f data/backtest_edge.json
+            if git diff --cached --quiet; then echo "ℹ️ $BR 無變更"; return 0; fi
+            git commit -q -m "🔁 每週自動回測 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/backtest_edge.json data/signal_edge.json
+            for i in 1 2 3 4 5; do
+              if git push origin "$BR"; then echo "✅ $BR push 成功 (attempt $i)"; return 0; fi
+              [ "$i" -eq 5 ] && { echo "❌ $BR push 連 5 次失敗"; return 1; }
+              echo "⚠️ $BR push attempt $i 失敗,sleep $((i*5))s 重試…"; sleep $((i*5))
+              git fetch origin "$BR" 2>/dev/null || true
+              git reset --hard -q "origin/$BR" 2>/dev/null || true
+              mkdir -p data
+              restore_files
+              git add -f data/backtest_edge.json data/signal_edge.json 2>/dev/null || git add -f data/backtest_edge.json
+              git commit -q -m "🔁 每週自動回測 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/backtest_edge.json data/signal_edge.json 2>/dev/null || true
+            done
+          }
+          deploy_branch gh-pages
+          deploy_branch data
+          echo "✅ 每週自動回測產物已部署"

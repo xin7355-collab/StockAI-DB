@@ -23,7 +23,10 @@
  * 跑法:node scripts/portfolio_backtest.mjs [檔數] [每天幾檔]
  *       node scripts/portfolio_backtest.mjs 600 3
  */
-import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+// ⚙️ V77.3.5 playwright 來源:本機開發是絕對路徑、CI(weekly_backtest.yml)是 node_modules —— 同 playbook_scan.mjs 的做法
+let chromium;
+try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); }
+catch (_) { ({ chromium } = await import('playwright')); }
 import { DEADLINES } from './lib_fundamentals.mjs';
 import { turnCuts, turnBucket } from './lib_turnover.mjs';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -206,8 +209,9 @@ if (TRADES_CACHE && fs.existsSync(TRADES_CACHE)) {
     } catch (e) { console.log(`⚠️ 交易快取讀不起來(${e.message})→ 重新掃描`); }
 }
 if (!cacheHit) {
+const _exec = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const browser = await chromium.launch({
-    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    ...(fs.existsSync(_exec) ? { executablePath: _exec } : {}),   // CI 沒這支 → 用 playwright 自帶的(陷阱 #40:本機測得過不算數)
     args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
 });
 const page = await browser.newPage();
@@ -1075,6 +1079,19 @@ const useCnt = {};
 for (const t of taken) (useCnt[t.key] ||= { n: 0, w: 0, sum: 0 }), useCnt[t.key].n++, useCnt[t.key].sum += net(t), (net(t) > 0 && useCnt[t.key].w++);
 for (const [k, v] of Object.entries(useCnt).sort((a, b) => b[1].n - a[1].n)) {
     console.log(`   ${k.padEnd(16)} ${String(v.n).padStart(4)} 筆 ・勝率 ${(v.w / v.n * 100).toFixed(0)}% ・每趟 ${pct(v.sum / v.n)}`);
+}
+// 📤 V77.3.5 機器可讀的成績單(給 weekly_backtest.yml → build_backtest_edge.mjs 用)—— ⛔ 數字跟上面印的是同一份,不另算
+if (process.env.SUMMARY_OUT) {
+    const byYear = {};
+    for (const m of mons) { const y = m.slice(0, 4); byYear[y] = Math.round((byYear[y] || 0) + byMon[m].pnl); }
+    const summary = {
+        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '' },
+        from, to, months: mons.length, n: taken.length, win: +(wins.length / taken.length * 100).toFixed(1),
+        per: +(taken.reduce((a, t) => a + net(t), 0) / taken.length).toFixed(2), cum: Math.round(totalPnL), ret: +(totalPnL / capital * 100).toFixed(2),
+        dd: +mdd.toFixed(2), skipped, twii: +twiiRet.toFixed(2), etf0050: ret50 == null ? null : +ret50.toFixed(2), byYear,
+    };
+    fs.writeFileSync(process.env.SUMMARY_OUT, JSON.stringify(summary));
+    console.log(`📤 成績單 JSON → ${process.env.SUMMARY_OUT}`);
 }
 console.log('\n' + '═'.repeat(74));
 console.log('⚠️ 這份回測誠實揭露的限制(⛔ 別把數字當保證):');

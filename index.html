@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.3.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.3.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -864,7 +864,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.3.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4511,6 +4511,7 @@ const app = {
         await this.fetchStockList();
         await this.fetchMacroData();
         this._loadStockFutures();   // 🔌 V62.9 個股期貨夜盤(非阻塞;無檔靜默)
+        this._loadBacktestEdge();   // 🔁 V77.3.5 每週自動回測產物(非阻塞;無檔 → 用嵌入版常數)
         this._startLiveQuotePoll(); // 📸 V63.2 全市場即時快照輪詢(現價基準 + 當沖強勢榜 + 台指期)
         this._loadDaytradePack();   // 📊 V63.6 當沖/大盤方向資料包(選擇權 P/C Ratio)
         setTimeout(() => { try { this._promptEnableAlerts(); } catch (_) {} }, 8000);   // 🔔 V68.8.5 盤中提醒未開 → 一鍵開啟引導
@@ -8585,8 +8586,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.3.4',
+    _APP_VERSION: 'V77.3.5',
     _CHANGELOG: [
+        { v: 'V77.3.5', d: ['🔁 <b>自動回測系統(排程化那一半)上線</b>(你說「新增自動回測系統」):新 workflow「🔁 每週自動回測」掛在每日採礦後面(⛔ 不新增排程配額),<b>每週五</b>用同一套配置重跑兩件事 —— ① App 裡 129 個 K 線訊號的勝率/期望值表(以前是我跑完手抄進去的)② 決策台那套 49 個月成績單(🧬 / 不挑 🧬),產出 <code>backtest_edge.json</code>。App 讀到產物就用產物的訊號成績(格式一樣、沒有就用內嵌版);決策台「這套做法實測賺多少」那張卡底下多一行「📅 最新一次自動回測 …」,並列出<b>跟內嵌成績差在哪</b>(等級 A↔C 變動、累積差 >30%、回撤差 >5pp)。⛔ <b>沒有自動換預設</b> —— 要換仍要過八道關卡、由人判。⚠️ 第一次要你到 Actions 手動 Run「🔁 每週自動回測」(選 main、force=true)驗一次;之後每週五採礦完自動跑。', '🐛 順手:兩支回測腳本的瀏覽器路徑是寫死的本機路徑(CI 上一定炸)→ 改成「本機路徑 / CI 自帶」雙來源(跟明日作戰清單那支一樣)。'] },
         { v: 'V77.3.4', d: ['🧭 <b>報告頁 §10 改成「籌碼總表」</b>(你說「法人級籌碼分析」):每一列 = <b>數字</b>(外資/投信/自營 近 1/5/20 日、外資+投信同日都買、分點買賣超前 5、集保千張大戶/散戶、融資 20 日增減與追繳壓力區)+ <b>本站實測這個數字能不能拿來預測</b>:✅ 實測有效(外資+投信同日都買 +0.99pp、投信自己連買 ≥5 天 +0.79pp,六關全過)/ △ 證據偏弱(外資買且融資退場 +0.21pp)/ ❌ 實測無效(外資單獨連買、分點集中度、某分點突然大買、千張大戶↑散戶↓、券資比)/ ○ 只描述(自營商沒測過)。列上只留標籤 + 數字,每一列的依據收在卡底「📖 展開」。多一行「🎯 今天命中哪個實測過的籌碼型態」(讀既有的判定,⛔ 沒有新指標)。餵給外部 AI 的提示詞也帶同一份實測結論(⛔ AI 不可自己判籌碼多空)。⛔ 沒有新增任何指標。'] },
         { v: 'V77.3.3', d: ['🔄 <b>「哪個策略結合週轉率勝率提高?」—— 第四次測,這次直接疊在決策台那套 49 個月的組合回測上</b>(產業作戰室 → 🔬 實測總表 → 實測沒用 r:29;選股頁的週轉率提醒也補了這組數字):只做<b>高週轉那三分之一</b>:勝率 30.0%・每趟 +3.20%・累積 +409 萬;不濾:30.9%・+3.09%・+519 萬;<b>跟週轉率完全無關、隨機挑三分之一</b>:34.6%・+3.71%・+569 萬 → <b>高週轉沒有贏過隨機</b>。低週轉那桶勝率確實變高(不挑 🧬 時 31.4% → 34.8%),<b>但每趟從 +2.22% 掉到 +0.85%</b> —— 勝率提高、賺更少。⛔ 沒有加進決策台。⭐ 順便學到:本金有限的時候「隨便少挑一點」本身就會讓數字變好看,以後任何濾網都要跟這個「隨機組」比,不是跟「不濾」比。'] },
         { v: 'V77.3.2', d: ['🧙💥 <b>「某個分點突然大量買某檔,會漲嗎?排除隔日沖」—— 回測完了,答案是沒有</b>(產業作戰室 → 🔬 實測總表 → 實測沒用 r:31):484 天分點深歷史・2,150 檔・84,943 筆事件。「突然」試了兩種定義 —— 新面孔(那家分點 60 天沒出現在這檔)10 日比隨便挑一天 <b>−0.09pp</b>、自身爆量(那家分點在這檔自己歷史的前 5%)<b>+0.09pp</b>,賺錢機率 43.4~43.7% 跟隨便挑一天的 43.6% 一樣。「排除隔日沖」照每家券商的翻臉率切成五桶去看:<b>五桶不單調、最會隔日沖的那桶反而略好</b> → 這條線切不出來。⛔ 沒做成功能、沒做提醒,只記進總表。'] },
@@ -20118,7 +20120,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     // 📖 V72.0.0 「實測勝率」教學 —— K 線頁與總覽共用同一份(⛔ 不寫兩份,免得日後改一邊忘另一邊)
     _showEdgeHelp() {
         const m = this._SIGNAL_EDGE_META || {};
-        app._helpBox('【這些勝率是怎麼來的?】\n\n'
+        app._helpBox('【這些勝率是怎麼來的?】\n\n' + this._btEdgeNote('text') + '\n\n'
             // ⚠️ V72.1.7 「3 年」是寫死的且**跟實際對不上** —— 回測窗口受 ^TWII 長度限制,
             //   實測只有 486 個交易日(約 2 年)。改成從 meta 帶入真實窗口,⛔ 別再寫死。
             + `我把 App 裡每一個 K 線訊號都拿去回測:${m.syms || 250} 檔股票、`
@@ -20343,7 +20345,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _sigEdge(detName, title) {
         try {
             const k = `${detName}｜${String(title || '').slice(0, 28)}`;
-            const v = this._SIGNAL_EDGE[k];
+            // 🔁 V77.3.5 產物優先(每週自動回測 `backtest_edge.json` 的表,格式跟嵌入版一模一樣)、嵌入版備援
+            const tbl = (this._btEdge && this._btEdge.signal && this._btEdge.signal.table) || this._SIGNAL_EDGE;
+            const v = tbl[k];
             if (!v) return null;
             // ⭐ V72.0.3 加 payoff(賺賠比)與 exp(期望值)——
             //   巨人傑逐字稿:「**賺賠比遠比勝率來得重要**,錯十次只要那一次大行情就夠了」。
@@ -47126,6 +47130,34 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //     (真因:跳空開高的那幾檔正是後來走最遠的,濾掉等於專挑爛的買)。
     //     → 打法的判定條件全部用**收盤價**算 → 有效進場點只有「觸發當天的尾盤」。
     _PB_ENTRY_NOTE: '有效進場時點是「觸發當天尾盤 13:00~13:28」,⛔ 不是隔天開盤(實測隔天開盤買會把賺頭吃光)',
+    // 🔁 V77.3.5 每週自動回測(`.github/workflows/weekly_backtest.yml` → `data/backtest_edge.json`)
+    //   ⭐ 「產物優先、常數備援」:`_sigEdge` 有產物就讀產物的訊號表(格式跟 `_SIGNAL_EDGE` 一模一樣),沒有就讀嵌入版。
+    //   ⛔ 決策台成績單的**預設**(`_DECK_TRACK49`)不自動換 —— 產物只把「最新一次跑出來的成績」與「跟嵌入版差在哪」印出來,
+    //      要不要換預設走 V75.0.9 那五個條件(由人判)。⛔ 前端只讀不算。
+    async _loadBacktestEdge() {
+        if (this._btEdge !== undefined) return this._btEdge;
+        try {
+            const ghBase = window.location.href.split('?')[0].split('#')[0];
+            const r = await fetch(new URL('data/backtest_edge.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+            const j = r.ok ? await r.json() : null;
+            // 🚧 形狀守門:訊號表要是 `_SIGNAL_EDGE` 那種 8 欄陣列,不是就當沒有(⛔ 不讓壞產物把 App 帶走)
+            this._btEdge = (j && j.signal && j.signal.table && Object.values(j.signal.table).every(v => Array.isArray(v) && v.length >= 6)) ? j : null;
+        } catch (_) { this._btEdge = null; }
+        return this._btEdge;
+    },
+    /** 給 K 線教學 / 決策台成績單用的一段話:成績是哪一版、最新一次自動回測跟嵌入版差在哪(⛔ 只標示不換預設) */
+    _btEdgeNote(kind = 'html') {
+        const B = this._btEdge, T = this._DECK_TRACK49;
+        const wan = v => `${v >= 0 ? '+' : '−'}${(Math.abs(v) / 1e4).toFixed(0)} 萬`;
+        if (!B) return kind === 'html' ? `<div class="text-[10px] text-gray-500 mt-1" data-btedge="embedded">📅 成績來源:App 內嵌入版(每週自動回測的產物還沒載到;有的話這裡會顯示最新一次的日期與差異)</div>` : '成績來源:App 內嵌入版。';
+        const g = B.deck && B.deck.gene;
+        const dl = (B.diff || []);
+        const dTxt = dl.length ? dl.slice(0, 6).map(d => d.what === 'grade' ? `「${String(d.k).split('｜')[1] || d.k}」${d.old} → ${d.new} 級` : d.what === 'cum' ? `🧬 累積 ${wan(d.old)} → ${wan(d.new)}` : d.what === 'dd' ? `回撤 ${d.old}% → ${d.new}%` : d.what === 'win_vs_prev' ? `勝率 ${d.old}% → ${d.new}%(跟上週比)` : `${d.k} ${d.what}`).join('、') : '';
+        if (kind !== 'html') return `成績來源:每週自動回測 ${B.run_at}(訊號 ${Object.keys(B.signal.table).length} 個、A 級 ${B.signal.grades.A})${dl.length ? `;跟嵌入版有 ${dl.length} 項不同:${dTxt}(⛔ 未自動換預設)` : ';跟嵌入版一致'}。`;
+        return `<div class="text-[10px] text-gray-400 mt-1 leading-snug" data-btedge="live" data-btdiff="${dl.length}">📅 <b class="text-gray-200">最新一次自動回測 ${this._dW(B.run_at) || B.run_at}</b>(每週,同一套配置重跑):${g ? `🧬 <b>${wan(g.cum)}</b>・勝率 ${g.win}%・中途最多賠 ${Math.abs(g.dd)}%・${g.n} 筆(${g.from}~${g.to})` : '成績單這輪沒跑'};K 線訊號 ${Object.keys(B.signal.table).length} 個、A 級 ${B.signal.grades.A} 個。
+            ${dl.length ? `<br>🔔 <b class="text-amber-300">跟 App 內嵌的成績有 ${dl.length} 項不同</b>:${this._escHtml(dTxt)} —— <b>⛔ 沒有自動換預設</b>(要換得過「八道關卡」那套,由人判)。` : '<br>✅ 跟 App 內嵌的成績一致(等級、累積、回撤都在容許範圍內)。'}
+            <span class="text-gray-500">上面那組數字仍是嵌入版(${T.from}~${T.to});兩組差一點是正常的 —— 資料每週多幾天、深歷史接縫也會動。</span></div>`;
+    },
     async _loadPlaybookEdge() {
         if (this._pbEdge !== undefined) return this._pbEdge;
         try {
@@ -47445,6 +47477,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         <div>照清單順序做(不挑 🧬)</div><div class="font-mono text-right">${m(T.plain)} 元 ・${T.plainDD}%</div>
                         <div class="text-amber-300">🆚 同期 0050 買了放著</div><div class="font-mono text-right text-amber-300"><b>${m(T.etf0050)} 元</b></div>
                     </div>
+                    ${this._btEdgeNote('html')}
                     <div class="mt-2 bg-[#0d1117] border-l-4 border-amber-500 pl-2.5 py-2 rounded-r">
                         <b class="text-amber-300">⭐ 真正決定輸贏的是「出場」,不是選股。</b><br>
                         同一批股票、同一套選股、同一段 ${T.months} 個月,<b>只把出場從「跌破 5 日線」換成「${T.exitName}」</b>:

@@ -31,6 +31,7 @@
 | `daily_miner.yml` | cron / 手動 / push `miner.py`·`macro_miner.py`·`radar_miner.py`·`chief_ai_batch.py`·`daily_miner.yml` | 完整採礦 + 部署 gh-pages/data | 30-60 分 |
 | `deploy_pages.yml` | push `index.html` / `sw.js` 到 main / 手動 | **只部署 index.html + sw.js 到 gh-pages,不採礦** | **~1 分鐘** |
 | `macro_probe.yml` | (自身用途) | 總經探針 | — |
+| `weekly_backtest.yml` | `workflow_run` ← daily_miner(**只在週五**那一輪真的跑;手動 force=true)/ ⛔ 無 cron | 🔁 **每週自動回測**:`signal_backtest`(129 個 K 線訊號)+ `portfolio_backtest` ×2(決策台 49 個月,🧬 / 不挑)→ `data/backtest_edge.json`(推 gh-pages + data)。App `_sigEdge` **產物優先、`_SIGNAL_EDGE` 備援**;`_btEdgeNote` 印最新日期 + 跟嵌入版的 diff;⛔ **只標示不換預設**(V75.0.9 五條件由人判);空過守門 訊號 n / 成績單筆數 < 上一版 80% 不推。測試 `scripts/test_backtest_edge.mjs` | ~45 分 |
 
 - **`daily_miner.yml` 執行策略**：採 **20 批次同步併發 (Matrix Parallel)**，打破時間限制，大幅縮短全市場採礦時間。
 - **無損合併**：每個子任務獨立抓取負責的股票後，`merge` 任務將 JSON 完美合併。
@@ -2196,6 +2197,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 🔁 V77.3.5 每週自動回測 workflow(④a)—— 掛 daily_miner `workflow_run` 只在週五跑(⛔ 無 cron)・產物 `backtest_edge.json` 訊號表格式跟 `_SIGNAL_EDGE` 一模一樣 → App **產物優先、常數備援**(`_sigEdge`)・**只標示不換預設**(diff:A↔C / 累積差 >30% / 回撤差 >5pp)・空過守門 80% ・🐛 兩支回測腳本 playwright 路徑寫死沙箱(CI 必炸,陷阱 #40)→ 雙來源 ・⚠️ 試跑 30 檔把 `data/signal_edge.json` 蓋掉,從 data 分支還原 ・4 種注入全叫得出來
 - 🧭 V77.3.4 報告頁 §10「籌碼總表」—— 每一列 = 數字 + **本站實測這個數字能不能拿來預測**(`_CHIP_VERDICT` 四種標籤 ✅/△/❌/○,文案的 {key.field} 從 `_CHIP_EDGE` / `_FSTREAK_EDGE` 讀,⛔ 不寫死)・⛔ 零新指標、取數函式一個都沒換 ・「🎯 今天命中」讀既有 `_chipEdgeState` ・列上只留標籤+數字、依據收摺疊(§10 短中線視角預設攤開 → 第一眼 3,607 字超標才收的,⛔ 沒放寬 3,200)・facts 也帶同一份結論 ・`test_rpchip.mjs` 5 種注入叫得出來(⚠️ 「命中寫死」第一版注入讓函式整個 throw,測試變成 crash 不是紅 → 改成「不讀判定」的注入)
 - 🔄 V77.3.3 「哪個策略結合週轉率勝率提高」—— 第四次測,疊在 49 個月組合回測上:⛔ **高週轉沒有贏過「隨機挑三分之一」的安慰劑**(hi +3.20%/30.0% vs sham +3.71%/34.6%)・低/中週轉**勝率 +3pp 但每趟砍一半**(V72.9.7 同型)・⭐⭐ **方法學:本金有限時「少挑一點」本身就會讓勝率 +3.7pp、累積 +50 萬 → 候選濾網的增量一律跟 sham 比,⛔ 不跟不濾比** ・`TURN=` 不進 CACHE_KEY、缺集保總股數剔除並計數、`test_turnfilter` 4 種注入全叫得出來
 - 🧙💥 V77.3.2 「某分點突然大量買某檔會漲嗎?排除隔日沖」—— ⛔ **兩種「突然」都六關 0 過**(新面孔 −0.09pp / 自身爆量 +0.09pp),絕對報酬跟隨便挑一天一樣 ・🔁 **翻臉率五分位兩邊都不單調、最隔日沖那桶反而略好** → 「排除隔日沖」切不出一條線 ・A∧B n=398「全過」但扣成本 +0.03 → 不採用 ・selftest 一課:「pct 含當天」的前視第一版**注入叫不出來**(歷史 69 筆 × 1,000 對 50,000 太懸殊)→ 測資改成「剛好 10 次歷史 + 只大一點點」才有鑑別力

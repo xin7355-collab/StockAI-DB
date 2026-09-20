@@ -1,3 +1,24 @@
+## 🔁 V77.3.5 「新增自動回測系統」(排程化那一半)—— 每週五自動重跑訊號表與決策台成績單,產物優先、⛔ 只標示不換預設
+
+使用者(2026-09-19)五件裡的第四件前半;AskUserQuestion 選「排程化 + App 內自選條件兩個都要」。這一版是**排程化**。
+⭐ 先查:全 repo 只有 `playbook_scan` 每天真回測;`_SIGNAL_EDGE`(129 個訊號)/ `_DECK_TRACK49`(49 個月成績單)/ 60+ 探針全靠人工跑完手抄進 index.html。
+
+### 做法
+- `.github/workflows/weekly_backtest.yml`:掛 daily_miner 的 `workflow_run`(⛔ 無 cron —— 排程配額 V75.2.0 早就不夠;host 名字逐字相同,`test_wf_quota` 過),
+  job 第一步 `date -u +%u == 5` 才跑(手動 `force=true` 跳過);還原 `origin/data` → 合併 `klines_deep` 到 /tmp/deep → playwright → `signal_backtest.mjs`(data/)
+  → `portfolio_backtest.mjs` ×2(DATA_DIR=/tmp/deep,正式配置,第二趟不挑 🧬 重用交易快取)→ `build_backtest_edge.mjs` → 推 gh-pages + data(陷阱 #41)。
+- `portfolio_backtest.mjs` 加 `SUMMARY_OUT=`(機器可讀成績單,數字跟印的是同一份);`build_backtest_edge.mjs`:訊號表 value 跟 `_SIGNAL_EDGE` **一模一樣的 8 欄**,
+  嵌入版從 index.html 讀(同 embed_signal_edge 的行號法),`diff` 只標示(A↔C / 累積差 >30% / 回撤差 >5pp / 勝率跟上週差 >5pp),空過守門 80%。
+- App:`_loadBacktestEdge()`(init 非阻塞;形狀守門)→ `_sigEdge` **產物優先、`_SIGNAL_EDGE` 備援**;`_btEdgeNote()` 印在決策台成績單卡底 + K 線教學;
+  ⛔ `_DECK_TRACK49` 一個字不動(測試 ⑤c 釘住)。
+- 🐛 `signal_backtest.mjs` / `portfolio_backtest.mjs` 的 playwright import 與 `executablePath` **寫死沙箱路徑** → CI 一定炸而本機永遠測得過(陷阱 #40)
+  → 照 `playbook_scan.mjs` 改雙來源;測試 ③g 釘住。
+- ⚠️ 自己踩到:試跑 `signal_backtest.mjs 30` 把 `data/signal_edge.json`(2,227 檔那份)蓋成 30 檔 → 從 `origin/data` 還原。⛔ 試跑要指到別的輸出(下次加 OUT=)。
+- 🧪 `test_backtest_edge.mjs` 19 條;4 種注入(diff 拿掉 grade / 守門 0.8→0 / `_sigEdge` 不讀產物 / workflow 加 cron)全叫得出來。
+
+### ⏭️ 使用者要做的
+Actions → 「🔁 每週自動回測 (weekly_backtest)」→ Run workflow(main,force=true)跑一次(約 45 分)→ gh-pages 與 data 都出現 `data/backtest_edge.json` → 決策台成績單卡底出現「📅 最新一次自動回測」。
+
 ## 🧭 V77.3.4 報告頁 §10「籌碼總表」—— 「法人級籌碼分析」的正解是把「本站實測怎麼說」接到每一個數字旁邊,⛔ 不是加指標
 
 使用者(2026-09-19)五件裡的第四件後半:「法人級籌碼分析」;AskUserQuestion 選「報告頁做一張『籌碼總表』」(⛔ 不加新指標)。
