@@ -4,8 +4,14 @@
 //            說明就折疊起來不要版面亂,還有可以的話用顏色區分」。
 //
 // ⛔ 六條不可違反(注入都要叫得出來):
-//   ① 釣魚池那三個畫面(魚池 canvas / 點魚 / 漁獲籃)⛔ 不可復活;分頁裡只剩成績單。
-//   ② ⛔ 但 `proWar_catch`(漁獲籃你自己存的紀錄)**不可被刪掉** —— 下架功能 ≠ 刪資料。
+//   ① 🔁 **V77.3.9 改寫**:使用者要求「釣魚系統救回…在產業作戰室裡面另外新開一個釣魚分頁」
+//      → 釣魚池**回來了,但住在 `#tabRod`**。這一條改成釘**真正的用意**:
+//      **兩個分頁各司其職** —— 釣魚池的畫面全部在 `#tabRod`、`#tabFish` 只有 📒 成績單,
+//      而且 `recoLedger` 全檔只能有一個(⛔ 舊版它跟漁獲籃同一個 panel,一起搬回來成績單就會消失)。
+//      ⛔ 舊斷言「釣魚池不可復活」已被使用者推翻,⛔ 不可因為改不過就放寬成「有字就算過」。
+//   ② ⛔ `proWar_catch`(漁獲籃你自己存的紀錄)**不可被非使用者主動的路徑清掉**。
+//      ⚠️ 下架期間這條寫成「活路徑不可出現 `_catchSave`」—— 復原後那會**誤殺**(那些函式活了),
+//      ⭐ 真正的用意一直是:**只有你自己按「清空」(帶 confirm)才會清**。
 //   ③ 🏆 比較條必須**真的用兩種出場各算一次**(⛔ 參數沒接通會兩邊印同一個數字 = 假綠燈)。
 //   ④ 樣本 <10 筆⛔ 不可宣布誰比較強(全站 `_wrEnough` 規則)。
 //   ⑤ 判準是**每趟平均**⛔ 不是總金額(總金額被資金路徑帶著跑,V74.4.8 明文)。
@@ -101,6 +107,15 @@ const R = await pg.evaluate(() => {
   return {
     tabName: (document.getElementById('tabBtnFish').textContent || '').trim(),
     ids: [...tab.querySelectorAll('[id]')].map(e => e.id),
+    // 🎣 V77.3.9 兩個分頁各司其職 —— 釣魚池的 8 個畫面 id 必須**全部在 #tabRod 底下**
+    panes: (() => {
+      const want = ['fishPoolPane', 'fishPickPane', 'fishBasketPane', 'fishCanvas', 'fishBasket', 'fishList', 'fishCard', 'fishPool'];
+      return { want: want.length,
+               inRod: want.filter(i => document.querySelector('#tabRod #' + i)).length,
+               inFish: want.filter(i => document.querySelector('#tabFish #' + i)),
+               ledgerInFish: !!document.querySelector('#tabFish #recoLedger'),
+               ledgerDup: document.querySelectorAll('#recoLedger').length };
+    })(),
     txt, firstEye: (clone.textContent || '').replace(/\s+/g, '').length,
     total: (el.textContent || '').replace(/\s+/g, '').length,
     details: [...el.querySelectorAll('details')].map(d => ({ s: (d.querySelector('summary')?.textContent || '').trim(), open: d.open })),
@@ -114,8 +129,10 @@ const R = await pg.evaluate(() => {
 });
 
 ok(R.tabName === '📒 成績單', '① 分頁已改名', R.tabName);
-ok(R.ids.length === 1 && R.ids[0] === 'recoLedger',
-  '①b 分頁裡只剩成績單(⛔ 魚池 / 點魚 / 漁獲籃三個畫面都不可復活)', R.ids.join(','));
+ok(R.ids.length === 1 && R.ids[0] === 'recoLedger' && R.panes.inFish.length === 0
+   && R.panes.inRod === R.panes.want && R.panes.ledgerInFish && R.panes.ledgerDup === 1,
+  '①a 兩個分頁各司其職:釣魚池 8 個畫面 id 全在 #tabRod、#tabFish 只有 📒 成績單(⛔ recoLedger 全檔只能有一個)',
+  `rod=${R.panes.inRod}/${R.panes.want} fish混進=[${R.panes.inFish}] ledger×${R.panes.ledgerDup}`);
 ok(R.hasCmp && R.hasDon && R.hasAtr, '③b 比較條同時列出 唐奇安 與 ATR 兩種出場');
 ok(R.guard, '④ 樣本不足時誠實說「還不能說誰比較強」/ 夠了才掛 🏆');
 ok(R.details.length >= 2 && R.details.every(d => !d.open),
@@ -130,10 +147,17 @@ const SRC = readFileSync('pro.html', 'utf8');
 //   那一處是 `_catchLoad` 的 **壞值清除**(陷阱 #18 的標準做法:JSON.parse 爆掉就刪掉重建),
 //   是合法的,而且它在死碼裡根本不會被執行。
 //   ⭐ 真正的用意是:**不可有「清空漁獲籃」的路徑從活的程式碼被走到**。
-const live = SRC.slice(SRC.indexOf('  async renderFish() {'));
-const liveBody = live.slice(0, live.indexOf('\n  fishPool('));
-ok(!/_catchSave\(|_fishClearCatch\(/.test(liveBody),
-  '② ⛔ 活的路徑不可清空漁獲籃(proWar_catch)—— 下架功能 ≠ 刪資料');
+const clrI = SRC.indexOf('  _fishClearCatch() {');
+const clr = SRC.slice(clrI, clrI + 300);
+ok(clrI > 0 && /confirm\(/.test(clr) && /_catchSave\(\[\]\)/.test(clr),
+  '②a 清空漁獲籃只有一條路徑,而且一定先 confirm(⛔ 不可靜默清掉你的紀錄)');
+const autoFns = ['  async renderRod() {', '  async renderFish() {', '  _recoLedgerRender(', '  _fishBasketRender(', '  async castRod('];
+// ⚠️ 誠實紀錄(第二次犯同一種錯):第一版寫成「這幾支裡不可出現 `_fishClearCatch(`」——
+//   ⛔ **太粗了**,`_fishBasketRender` 裡面有那顆「🗑 清空」按鈕的 onclick 字串,
+//   而那正是**使用者自己按的**路徑。⭐ 判準要分清楚:程式自己走的用 `this.` 呼叫,
+//   按鈕走的是 `PRO.` —— 所以只禁 `this.`。
+ok(autoFns.every(h => { const i = SRC.indexOf(h); return i < 0 || !/this\._catchSave\(\[\]\)|this\._fishClearCatch\(/.test(SRC.slice(i, SRC.indexOf('\n  },', i))); }),
+  '②c ⛔ 自動會跑的那幾支(render / 拋竿 / 重畫)一條都不可自己清空漁獲籃(⛔ 只有你按「🗑 清空」才會)');
 ok(/localStorage\.setItem\('proWar_catch'/.test(SRC) && !/localStorage\.removeItem\('proWar_catch'\);\s*\}\s*,/.test(SRC),
   '②b 讀取端的壞值清除仍在(那是陷阱 #18 的正確做法,⛔ 不可因為這條測試而拿掉)');
 const cmp = SRC.slice(SRC.indexOf('  _recoCmpHtml() {'));
@@ -142,9 +166,12 @@ ok(/sort\(\(a, b\) => b\.s\.avg - a\.s\.avg\)/.test(cmpBody),
   '⑤ 🏆 判準是**每趟平均**(⛔ 不是總金額 —— 那被資金路徑帶著跑)');
 ok(/_CMP_EXITS/.test(SRC) && /_CMP_EXITS: \['don', 'atr2'\]/.test(SRC),
   '⑤b 只比這兩條(⛔ 不把 ma5/trail8 也塞進來 = 多重比較)');
-const rf = SRC.slice(SRC.indexOf('  async renderFish() {'));
-ok(!/_fishRebuild\(|_fishBasketRender\(|_fishNote\(/.test(rf.slice(0, rf.indexOf('\n  fishPool('))),
-  '①c `renderFish` ⛔ 不可再呼叫魚池 / 漁獲籃那一串');
+// ①b `renderFish` 只做成績單 —— ⚠️ 切片要精確到**它自己的結尾**(`\n  },`),
+//   ⛔ 不靠「下一支函式叫什麼」(V77.3.9 在它前面插了 `renderRod`,靠名字切會變成僥倖過關)。
+const rfI = SRC.indexOf('  async renderFish() {');
+const rfB = SRC.slice(rfI, SRC.indexOf('\n  },', rfI));
+ok(!/_fishRebuild\(|_fishBasketRender\(|_fishNote\(|_rodWhyHtml\(|_fishSetup\(/.test(rfB) && /_recoLedgerRender\(/.test(rfB),
+  '①b `renderFish` = 只呼叫成績單(⛔ 不可混進魚池 / 漁獲籃那一串)', rfB.replace(/\s+/g, ' ').slice(0, 90));
 
 // 🚪⑧ 🚨 **從已刪除的 `test_fishtank.mjs` 搬過來的** —— 它跟釣魚池無關,是出場預設的跨檔守門:
 //   出場規則是**三份實作**(index.html / auto_trade.py / pro.html),改一邊而畫面上完全看不出來。

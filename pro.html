@@ -589,6 +589,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <button class="tab-btn" id="tabBtnRot" onclick="PRO.switchTab('rot')">板塊輪動</button>
     <button class="tab-btn" id="tabBtnStar" onclick="PRO.switchTab('star')">關聯星圖</button>
     <button class="tab-btn" id="tabBtnFish" onclick="PRO.switchTab('fish')">📒 成績單</button>
+    <button class="tab-btn" id="tabBtnRod" onclick="PRO.switchTab('rod')" title="🧬 強勢高波動的池子 + 🎣 拋竿(決策台那套);只描述,不下多空">🎣 釣魚</button>
     <button class="tab-btn" id="tabBtnSig" onclick="PRO.switchTab('sig')">今日訊號</button>
     <button class="tab-btn" id="tabBtnConf" onclick="PRO.switchTab('conf')" title="法說會時間表 + 官方擇要;只描述,不下多空">法說會</button>
     <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
@@ -776,21 +777,65 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <div id="starNote"></div>
   </div>
 </div>
-<!-- ═══ 🎣 釣魚池(V74.3.5)═══
-     使用者上傳「股王釣魚系統」規格(魚群動態 Canvas)。⛔ 規格裡的 Vite+Vue / IndexedDB /
-     fetch_daily.py / daily_stocks.json **全部不採用**:pro.html 是零建置的單檔、資料早就有
-     (screener.json 2,476 檔)、快取走既有 SW + 共用 _cache。採用的是它的**觀念**:
-     「資料與渲染解耦、前端零運算、遊戲模式 ↔ 列表模式一鍵切換」。
+<!-- ═══ 📒 決策台推薦成績單(V76.0.4 做 → V77.2.4 起獨佔這個分頁)═══
+     ⭐ 這一頁只回答一件事:「決策台每天推薦的那 2 檔,後來到底賺還是賠」。
+     ⛔ 釣魚池(魚缸 / 拋竿 / 點魚 / 漁獲籃)在隔壁的 #tabRod —— 兩個分頁各司其職,
+        ⛔ 不可把對方的畫面混進來(測試 test_recoledger ① 釘住)。
+     ⚠️ recoLedger 這個 id ⛔ 不可改名 —— _recoLedgerRender() 認它,而且全檔只能有一個。 -->
+<div id="tabFish" class="hidden">
+  <div class="panel"><div id="recoLedger"></div></div>
+</div>
+<!-- ═══ 🎣 釣魚(V74.3.5 做 → V77.2.4 下架 → V77.3.9 復原,搬進自己的分頁)═══
+     ⭐ 使用者原話:「釣魚系統救回,另外裡面的魚改為強勢高波動,並重新敘述是用何種辦法篩選出來的,
+        在產業作戰室裡面另外新開一個釣魚分頁」→ 這**推翻了 V77.2.4 的下架決定**(當時他說「沒有用」)。
+     ⭐ 池子裡的魚 = 🧬 強勢高波動(預設池 gene),其餘 5 池**一個都沒刪**、收進「換一池」並各自標實測狀態
+        (⛔ 一個池子都不准沉默 —— 同 V74.9.0「刪除改成收起來 + 把打掉它的那個實測數字寫上去」)。
      ⭐ 每一條魚的每一個視覺屬性都綁一個**實測有效**的維度(圖例上寫著數字),⛔ 沒有純裝飾:
         上下 = 一年位階 ・ 游向/游速 = 近 20 日動能 ・ 大小 = 成交額 ・ 顏色 = 今日漲跌(方向)
         ・ 🚀🔥 = 關聯星圖的狀態 ・ 一群一起游 = 關聯星圖裡的同族。
-     ⛔ 這頁不下多空、不計分、不給買賣價位。魚游得快 ≠ 會漲。 -->
-<div id="tabFish" class="hidden">
-  <!-- 📒 V77.2.4 只剩「決策台推薦成績單」——
-       ⛔ `fishPoolPane`(魚池 canvas + 拋竿 + 列表)・`fishPickPane`(點魚細節)・`fishBasket`(漁獲籃)
-          **整組移除**(使用者:「釣魚池這幾次看起來我覺得沒有用」)。
-       ⚠️ `recoLedger` 這個 id ⛔ 不可改名 —— `_recoLedgerRender()` 認它。 -->
-  <div class="panel"><div id="recoLedger"></div></div>
+     🚨 **兩套門檻是兩件事**:池子用 🧬 振幅代理(_EDGE_RULES.gene,現場去 index.html 解析)、
+        拋竿用 hq 年化波動(_HQ_RULE,採礦端 playbook_scan.mjs 標的)→ 名單本來就會不一樣,⛔ 不是壞掉。
+     ⛔ 這頁不下多空、不計分排名、不給買賣價位。魚游得快 ≠ 會漲。
+     ⛔ 所有數字一律讀常數(_geneRule / _HQ_RULE / _SIG_DEEP / _CAST_DEAD / _CAST_STICKY / _FISH_IC /
+        playbook_edge 的 cost),⛔ 一個都不寫死在 HTML 或文案裡。 -->
+<div id="tabRod" class="hidden">
+  <!-- 🎣 兩個畫面:魚池(挑) ↔ 釣到(看)。⛔ 不可疊在同一頁 —— 使用者實測「頁面拉太長」。 -->
+  <div class="panel" id="fishPoolPane">
+    <h2>🎣 釣魚 <span class="sub">池子裡的魚 = 🧬 強勢高波動</span>
+      <span class="sub" id="fishSub"></span></h2>
+    <div id="fishKeyWarn"></div>
+    <div class="starbar" style="margin-top:0">
+      <button class="lbtn on" id="castBtn" onclick="PRO.castRod()" style="font-weight:900">🎣 拋竿</button>
+      <span class="note" id="castNote" style="margin:0"></span>
+    </div>
+    <div class="labbar" id="fishPool"></div>
+    <div class="starbar" style="justify-content:space-between;margin-top:0">
+      <div class="labbar" style="margin:0">
+        <button class="lbtn on" id="fishModeTank" onclick="PRO.fishMode('tank')">🐟 魚池</button>
+        <button class="lbtn" id="fishModeList" onclick="PRO.fishMode('list')">📊 列表</button>
+      </div>
+      <span class="sigtag" id="fishCount"></span>
+    </div>
+    <div id="fishMsg"></div>
+    <div id="fishTankWrap" class="fishwrap">
+      <canvas id="fishCanvas"></canvas>
+      <div id="fishLegend" class="fishlegend"></div>
+    </div>
+    <div id="fishList"></div>
+    <div id="fishNote"></div>
+  </div>
+  <!-- 🐟 釣到:點魚之後切到這一頁(⛔ 不跟魚池疊在一起) -->
+  <div class="panel hidden" id="fishPickPane">
+    <div class="starbar" style="margin:0 0 8px">
+      <button class="lbtn" onclick="PRO.fishBack()">← 回魚池</button>
+      <button class="lbtn" id="fishWhyBtn" style="border-color:var(--amber);color:var(--amber)" onclick="PRO._castWhyOpen()">📖 這一條的細節 🚨 回測怎麼說</button>
+    </div>
+    <div id="fishCard"></div>
+  </div>
+  <!-- 🧺 漁獲籃(你自己的紀錄;localStorage 的 proWar_catch 下架期間一個字都沒刪過)
+       🚨 ⛔ 這裡**不可以**再放 recoLedger —— 舊版它跟漁獲籃同一個 panel,一起搬回來的話
+          📒 成績單會從 #tabFish 消失,而且 check_dom_ids 會叫。 -->
+  <div class="panel" id="fishBasketPane"><div id="fishBasket"></div></div>
 </div>
 <div id="tabSig" class="hidden">
   <div class="panel">
@@ -1465,7 +1510,7 @@ const PRO = {
       <div class="shbtns">
         <button class="lbtn on" onclick="PRO.closeStock();PRO.gotoStock('${code}')">→ 散戶救星看細節</button>
         <button class="lbtn" onclick="PRO.closeStock();PRO._starSym='${code}';PRO.switchTab('star');PRO.starGo('${code}')">🕸️ 誰跟它一起動${fam.length ? `(${fam.length})` : ''}</button>
-        ${fam.length ? `<button class="lbtn" onclick="PRO.closeStock();PRO._starSym='${code}';PRO._fishPoolK='fam';PRO.switchTab('fish')">🎣 把這一族放下水</button>` : ''}
+        ${fam.length ? `<button class="lbtn" onclick="PRO.closeStock();PRO._starSym='${code}';PRO._fishPoolK='fam';PRO.switchTab('rod')">🎣 把這一族放下水</button>` : ''}
         ${ind ? `<button class="lbtn" onclick="PRO.closeStock();PRO.switchTab('rot');PRO.rotOpen('${ind}')">💧 它的板塊</button>` : ''}
         ${inChain ? `<button class="lbtn" onclick="PRO.closeStock();PRO.switchTab('chain')">🤖 AI 鏈定位</button>` : ''}
       </div>
@@ -1699,12 +1744,13 @@ const PRO = {
     if (this._tab === 'chain') await this.renderChain();
     if (this._tab === 'rot') await this.renderRot();
     if (this._tab === 'star') { this._starData = undefined; await this.renderStar(); }
-    if (this._tab === 'fish') { this._starData = undefined; await this.renderFish(); }
+    if (this._tab === 'fish') await this.renderFish();
+    if (this._tab === 'rod') { this._starData = undefined; await (this._rodP = this.renderRod()); }
     if (this._valRows && this._valRows.length) await this.runValuation(true);
     this.toast('✅ 已更新');
   },
 
-  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['sig', 'Sig'], ['conf', 'Conf'], ['lab', 'Lab'], ['noise', 'Noise']],
+  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['sig', 'Sig'], ['conf', 'Conf'], ['lab', 'Lab'], ['noise', 'Noise']],
   switchTab(t, silent) {
     this.closeStock();                    // 🔗 切頁一律收起快捷面板(⛔ 不可蓋在別頁上面)
     this.closeModal();                    // 📖 懸浮視窗同理
@@ -1715,11 +1761,14 @@ const PRO = {
       document.getElementById('tabBtn' + C).classList.toggle('on', t === k);
     }
     if (t !== 'rot') this.rotStop();          // ⛔ 切走要停掉動畫,不然背景一直跑
-    if (t !== 'fish') this.fishStop();        // 🎣 同理:魚池的 rAF 迴圈切走就停
+    if (t !== 'rod') this.fishStop();         // 🎣 同理:魚池的 rAF 迴圈切走就停(V77.3.9 起魚池住 #tabRod)
     if (t === 'chain') this.renderChain();
     if (t === 'rot') this.renderRot();
     if (t === 'star') this.renderStar();
     if (t === 'fish') this.renderFish();
+    // 🎣 ⭐ 存 promise(⛔ 不是裸呼叫)—— `_fishPick` 從 📒 成績單跳過來時要 `await this._rodP`,
+    //    否則 `renderRod` 結尾的 `_fishRebuild()` 會把剛畫好的 `fishCard` 清成空白(競態)。
+    if (t === 'rod') this._rodP = this.renderRod();
     if (t === 'sig') this.renderSig();
     if (t === 'noise') this.renderNoise();
     if (t === 'conf') this.renderConf();
@@ -2085,7 +2134,7 @@ const PRO = {
   FISH_POOLS: [
     { k: 'amt',  n: '💧 成交額前 100', d: '今天錢最多的 100 檔(⛔ 不含 ETF)',
       f: (r, S) => true, sort: 'amt' },
-    { k: 'gene', n: '🧬 高位階+高波動', d: '一年位階 ≥75 且 20 日振幅 ≥3.2%(36 個月組合回測 +289.6 萬的那組條件)',
+    { k: 'gene', n: '🧬 高位階+高波動', d: '這一頁的主角:🧬 強勢高波動(門檻與實測成績由 _rodStatus 讀常數,⛔ 不寫死在這裡)',
       f: (r, S) => r.pos252 >= 75 && r.amp20 >= 3.2, sort: 'amt' },
     { k: 'st',   n: '🚀🔥 有狀態的', d: '關聯星圖標成「剛突破」或「過熱」的',
       f: (r, S) => (S[r.sym] || 0) > 0, sort: 'amt' },
@@ -2098,7 +2147,7 @@ const PRO = {
     // 🏆 V74.4.6 使用者:「把最厲害的招式加到釣魚區裡面」——
     //    ⭐ 本站實測最強的**不是**拋竿漏斗(它合起來是負的),是「每檔自己最會賺的招」那份清單。
     //    ⛔ 排序走共用的 `_pbSort`(🧬 優先 → 保守下界),不在這裡另寫一份。
-    { k: 'pb', n: '🏆 最強招式', d: '明日作戰清單:每一檔「自己歷史上最會賺的那一招」明天會觸發的。這是本站實測最強的做法(49 個月 +590 萬 vs 買 0050 放著 +264 萬;⚠️ 中途最多賠 −25%,而 0050 買了什麼都不用做)',
+    { k: 'pb', n: '🏆 最強招式', d: '明日作戰清單:每一檔「自己歷史上最會賺的那一招」明天會觸發的(實測數字由 _rodStatus 讀 _SIG_DEEP,⛔ 不寫死在這裡)',
       f: (r, S) => true, sort: 'pb' },
     { k: 'avoid', n: '⚠️ 避雷池', d: '符合「實測落後」條件比較多的(⛔ 不是放空訊號,是別在這裡挑)',
       f: (r, S) => r.sc && r.sc.minus.length >= 2 && r.sc.sum < -1, sort: 'amt' },
@@ -2174,7 +2223,7 @@ const PRO = {
     const btn = document.getElementById('castBtn');
     if (btn) { btn.disabled = true; btn.textContent = '🎣 拋竿中…'; }
     this.buzz(30);
-    if (!this._fishD) await this.renderFish();
+    if (!this._fishD) await (this._rodP = this.renderRod());
     const D = this._fishD;
     if (!D) { if (btn) { btn.disabled = false; btn.textContent = '🎣 拋竿'; } return; }
     const R = this._castPick(D);
@@ -2183,10 +2232,10 @@ const PRO = {
     if (btn) { btn.disabled = false; btn.textContent = '🎣 再拋一次'; }
     if (!R.picked.length) { this._castNone(R); return; }
     this._fishPoolK = 'cast';
-    await this.renderFish();
+    await (this._rodP = this.renderRod());
     this.buzz(60);
     // ⚠️ 自動展開的那一條**跳過被標警示的**(⛔ 但它仍然在名單裡,見 _castPick 的取捨說明)
-    this._fishPick((R.picked.find(x => !(x.warn || []).length) || R.picked[0]).sym);
+    await this._fishPick((R.picked.find(x => !(x.warn || []).length) || R.picked[0]).sym);
   },
 
   _castNone(R) {
@@ -2217,8 +2266,12 @@ const PRO = {
     if (!p) return `<div class="note">這一條是你<b>自己從池子裡點的</b>,⛔ 不是拋竿挑的 —— 所以沒有「為什麼釣到它」那份理由。
       想讓程式幫你挑,回魚池按 <b>🎣 拋竿</b>。<br>⛔ 不論哪一種,魚池都<b>不下多空、不給買賣價位</b>:
       要不要買、買幾張、停損在哪,一律以散戶救星的「現在怎麼做」為準。</div>`;
-    const D = this._DECK_TRACK49 || {};
-    const w = v => (v / 10000).toFixed(0);
+    // 🚨 V77.3.9 修:這裡原本讀 `this._DECK_TRACK49` —— 那個常數**只存在於 index.html**,
+    //    pro.html 對應的叫 `_SIG_DEEP`(test_deck ⓪ 跨檔比對兩者相等)→ 舊寫法會印「+0 萬」。
+    //    ⚠️ `_SIG_DEEP` 沒有 `cap` / `posPct` / `to` 三個欄位 → ⛔ 文案不可提本金與每筆幾成
+    //    (⛔ 也不可為此往 `_SIG_DEEP` 加欄位:test_deck 的 300 字元切片會切不到 etf0050)。
+    const D = this._SIG_DEEP || {}, H = this._HQ_RULE, g = this._geneRule();
+    const w = v => (v / 10000).toFixed(1);
     const x = p.pb || {};
     const num = (v, s2 = '') => (v == null || !Number.isFinite(+v)) ? '—' : (+v).toFixed(2) + s2;
     return `<div class="warnbox" style="margin:0 0 8px">🎯 <b>這條是「決策台今天可以買的」挑出來的</b>
@@ -2232,8 +2285,11 @@ const PRO = {
         ① 🏆 <b>這一檔自己歷史上最會賺的那一招:${x.k || '—'}</b> —— 勝率 <b>${x.w == null ? '—' : x.w + '%'}</b>
         ・打過 <b>${x.n == null ? '—' : x.n}</b> 次 ・每趟平均 <b>${num(x.exp, '%')}</b>
         (保守下界 <b>${num(x.lb, '%')}</b>,⭐ 排序用的是<b>下界</b>不是平均 —— 排平均會挑到僥倖股)。<br>
-        ② 🧬 <b>一年位階 ${p.pos252 == null ? '—' : Math.round(p.pos252)} ・20 日振幅 ${p.amp20 == null ? '—' : p.amp20.toFixed(1) + '%'}</b>
-        —— 過了「位階 ≥75 且振幅 ≥3.2%」。這一關是<b>必要條件不是加分</b>。<br>
+        ② 🧬 <b>位階 ${x.rank == null ? '—' : Math.round(x.rank)} ・年化波動率 ${x.vol == null ? '—' : Math.round(x.vol) + '%'}</b>
+        —— 過了採礦端的「位階 ≥${H.pos} 且<b>年化波動率</b> ≥${H.vol}%」。這一關是<b>必要條件不是加分</b>。<br>
+        <span style="color:var(--dim2)">🚨 ⛔ 這跟<b>池子</b>那一邊的 🧬 不是同一個數字 ——
+        池子用的是「20 日<b>振幅</b> ≥${g ? g.amp : '—'}%」(振幅代理),這裡用的是<b>年化標準差</b>。
+        這一檔在池子那邊的振幅是 ${p.amp20 == null ? '—' : p.amp20.toFixed(1) + '%'}、位階 ${p.pos252 == null ? '—' : Math.round(p.pos252)}。</span><br>
         ③ 🚧 <b>成交額 ${p.amt == null ? '—' : p.amt.toFixed(1)} 億</b> —— 過了「買得到」那一關。<br>
         ④ 📅 觸發價 <b>${x.trig == null ? '(沒有價格閘門,現在的價位就符合)' : x.trig}</b>
         ・停損 <b>${x.stop == null ? '—' : x.stop}</b>
@@ -2248,7 +2304,7 @@ const PRO = {
       ${(p.warn || []).includes('thin') ? `<div class="warnbox" style="margin-top:6px;border-color:var(--amber)">🚧 <b>這一檔成交額不到 ${this.CAST_MIN_AMT} 億 —— 買不到那個價</b>
         。回測裡的成交價在這種流動性上拿不到,⛔ 實際滑價會比回測差。</div>` : ''}
       <div class="note" style="margin-top:6px">🚨 <b>為什麼有警示還留在名單裡</b>:因為<b>決策台本身沒有這三道守門</b>
-      (它就是「🧬 過關 + 非空頭」取前 ${(this._DECK_TRACK49 || {}).picks || 2} 檔)。這裡如果先刪掉幾檔,
+      (它就是「🧬 過關 + 非空頭」取前 ${this._RECO_PICKS} 檔)。這裡如果先刪掉幾檔,
       你在 🧺 漁獲籃量到的<b>就不是決策台的成績</b> —— 而你要觀察的正是它。
       ⭐ 交換條件:被標到的那幾條<b>不會被自動選取</b>,而且警示寫在這裡。
       ${(R.disposed || []).length || (R.avoided || []).length || R.thin ? `<br>這次被標到的:${[
@@ -2256,10 +2312,12 @@ const PRO = {
         R.avoided.length ? `⚠️ 噴太多才進注意股 ${R.avoided.map(c => this._nmTxt(c)).join('、')}` : '',
         R.thin ? `🚧 買不到 ${R.thin} 檔` : ''].filter(Boolean).join(' ・')}。` : ''}</div>
       <div class="warnbox" style="margin:8px 0 0">📊 <b>這套的實測成績(⭐ 這就是你要觀察的那個)</b>
-        <div class="note" style="margin-top:4px">${D.months || 49} 個月(${D.from || ''}~${D.to || ''})、本金 ${((D.cap || 1000000) / 10000).toFixed(0)} 萬、
-        每天最多 ${D.picks || 2} 檔、出場 <b>${D.exitName || '唐奇安 20 日低點'}</b>:
-        <b>+${w(D.gene || 0)} 萬</b>(🆚 同期買 0050 放著 +${w(D.etf0050 || 0)} 萬)。
-        <br>⚠️ <b>代價要一起看</b>:中途最多賠 <b>−${D.geneDD || 25}%</b>,而且要<b>每天盯尾盤、嚴格停損</b>;
+        <div class="note" style="margin-top:4px">${D.months} 個月(${D.from} 起)、
+        每天最多 ${this._RECO_PICKS} 檔、出場 <b>${D.exitName}</b>:
+        <b>+${w(D.gene)} 萬</b>(🆚 同期買 0050 放著 +${w(D.etf0050)} 萬;不挑 🧬 只有 +${w(D.plain)} 萬)。
+        <br>⭐ <b>贏不贏大盤高度取決於出場,⛔ 不是選股</b> —— 同一批股票、同一套選股,
+        只把出場從「跌破 5 日線」換成 ${D.exitName},🧬 就從 +${w(D.ma5.gene)} 萬變成 +${w(D.gene)} 萬。
+        <br>⚠️ <b>代價要一起看</b>:中途最多賠 <b>−${D.geneDD}%</b>,而且要<b>每天盯尾盤、嚴格停損</b>;
         0050 買了什麼都不用做。這個取捨是你自己的,不是技術問題。
         <br>⚠️ 而且窗口偏多頭(加權自己就漲了)、有倖存者偏誤、勝率只有 <b>30~33%</b>
         —— 整套會賺<b>完全靠錯的時候小賠、對的時候抱住</b>,⛔ 連幾筆賠不代表壞掉。</div></div>
@@ -2437,6 +2495,16 @@ const PRO = {
   //   🚨 但有一件事必須講:**回測是「同一檔 20 個交易日內只算一次」** →
   //      連續幾天都買同一檔**不在回測涵蓋範圍內**,⛔ 不可拿那份成績替它背書。
   _CAST_STICKY: { days: 769, lag1: 54.7, same1: 41.7, runMed: 1, runP75: 2, runMax: 23, u5: 3.8, u10: 6.2, u20: 10.6, dedup: 20 },
+
+  // 🪦 V77.3.9 舊拋竿漏斗的**死因** —— ⭐ 它 V76.3.0 就被換掉了,但**必須寫在畫面上**,
+  //    否則使用者不知道「不是懶得做,是量過之後判它死刑」。⛔ 文案一律讀這裡,不寫死。
+  _CAST_DEAD: { days: 492, trials: 186, dedup: 20, relSector: -0.52, relGene: -1.44,
+                drop2: 1.11, pass: 0, gates: 6, src: 'scripts/cast_probe.mjs・V74.4.2' },
+  // 🧬 **拋竿那一邊**的門檻(採礦端 scripts/playbook_scan.mjs 標 hq 旗標時用的:位階 + 年化波動率)。
+  //   🚨🚨 跟**池子**那一邊(_EDGE_RULES.gene 的「20 日振幅」代理)⛔ **不是同一個數字**——
+  //      一個量振幅、一個量年化標準差,兩邊名單本來就會不一樣,⛔ 不可混講(這是這一頁最容易寫錯的事)。
+  //   ⚠️ 採礦端改門檻要跟著改這裡(scripts/test_fishrod.mjs ⑮ 跨檔比對會擋下來)。
+  _HQ_RULE: { pos: 75, vol: 60, src: 'scripts/playbook_scan.mjs' },
   _castStickyHtml(ps) {
     const K = this._CAST_STICKY;
     // 🧺 你已經釣過的那幾條(⛔ 這是最實際的一件事:拋竿本身不知道你已經有了)
@@ -2463,7 +2531,7 @@ const PRO = {
       </div></details>`;
   },
 
-  _fishPoolK: 'amt', _fishModeV: 'tank', _fish: [], _fishRaf: 0, _fishPick0: null,
+  _fishPoolK: 'gene', _fishModeV: 'tank', _fish: [], _fishRaf: 0, _fishPick0: null,
 
   // 📡 資料:screener 走共用 fetchJson(跟其他分頁**同一份**,⛔ 不另做 IndexedDB —— 兩份會不同步);
   //    關聯狀態走 starFetch(SW 已有 12 小時快取)。
@@ -2546,6 +2614,180 @@ const PRO = {
     return rows.map((_, i) => { const g = find(i); return size[g] > 1 ? g : -1; });   // 孤魚 = -1
   },
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🎣 V77.3.9 釣魚(#tabRod)—— 使用者:「釣魚系統救回,裡面的魚改為強勢高波動,
+  //    並重新敘述是用何種辦法篩選出來的,在產業作戰室裡面另外新開一個釣魚分頁」
+  //
+  // ⭐ 這**推翻了 V77.2.4 的下架決定**(當時他說「這幾次看起來我覺得沒有用」)。
+  //    ⭐ 救回來最強的論據:下架時砍掉的**已經不是那個被證偽的舊漏斗** ——
+  //    V76.3.0 起 `_castPick` 早就改成呼叫 `_recoPicks`(= 決策台那套,六關全過)。
+  //
+  // ⛔ 四條鐵則(scripts/test_fishrod.mjs 釘住):
+  //   ① 一個數字都不寫死 —— 門檻讀 `_geneRule()` / `_HQ_RULE`、成績讀 `_SIG_DEEP`、
+  //      舊漏斗死因讀 `_CAST_DEAD`、IC 讀 `_FISH_IC`、成本讀 playbook_edge 的 cost。
+  //   ② 🧬 是主角(預設池 + 排第一),但其餘 5 池**一個都不刪**,收進「換一池」
+  //      並各自標實測狀態 —— ⛔ 一個池子都不准沉默。
+  //   ③ 🚨 **池子的門檻 ≠ 拋竿的門檻**,要主動講開(振幅代理 vs 年化波動率)。
+  //   ④ ⛔ 不下多空、不計分排名、不給買賣價位。
+  //
+  // 🧪 每一池現在的實測狀態(⛔ 不可有任何一池沒有條目 —— 測試 ③ 會擋)
+  _rodStatus() {
+    const g = this._geneRule(), S = this._SIG_DEEP, F = this._FISH_IC, H = this._HQ_RULE;
+    const w = v => (v / 10000).toFixed(1);
+    return {
+      gene: { lv: '✅', t: '這一頁的主角', why: g
+        ? '一年位階 ≥' + g.pos + ' 且近 20 日振幅 ≥' + g.amp + '%。這組條件在 ' + S.months
+          + ' 個月組合回測裡是 +' + w(S.gene) + ' 萬,不挑它只有 +' + w(S.plain)
+          + ' 萬、同期 0050 買了放著 +' + w(S.etf0050) + ' 萬。⚠️ 窗口偏多頭,空頭沒驗過。'
+        : '⏳ 門檻現在讀不到(散戶救星那份沒載進來)—— ⛔ 這不代表沒有魚,是判不出來。' },
+      pb: { lv: '✅', t: '本站實測最強', why: '每一檔「自己歷史上最會賺的那一招」明天會觸發的。'
+        + S.months + ' 個月 +' + w(S.gene) + ' 萬(🆚 0050 買了放著 +' + w(S.etf0050)
+        + ' 萬)。⚠️ 代價:中途最多賠 −' + S.geneDD + '%,而且要每天盯尾盤、嚴格停損;0050 買了什麼都不用做。' },
+      cast: { lv: '✅', t: '決策台那套', why: '按 🎣 拋竿挑出來的(同一支 _recoPicks,📒 成績單也用它)。⛔ 是候選,不是買進訊號。' },
+      amt: { lv: '⚪', t: '沒有單獨實測過', why: '它只回答「今天錢在哪」。⛔ 不是選股條件,⛔ 不主張有邊際。' },
+      st: { lv: '⚪', t: '只描述', why: '來自關聯星圖的狀態。星圖量的是同期一起動(同一天),'
+        + '本站實測同期相關再高都⛔ 不能拿來預測明天。' },
+      top: { lv: '⚠️', t: '追強有邊際、但這個切法沒單獨測過', why: '「追強」那一族在全市場回測裡確實有邊際'
+        + '(見 🏅 那一池的說明),但「近 20 日漲最多」這個切法本站⛔ 沒有單獨測過,而且追強的優勢 2024 起逐年遞減。' },
+      edge: { lv: '🚨', t: '排不出順序', why: '加總的排序力 IC 只有 +' + F.ic + '(' + F.days
+        + ' 個交易日,95% 信賴區間 ' + F.lo + '~' + F.hi + ',含 0),而且沒贏過只看位階(+' + F.posIc
+        + ')→ ⭐ 只能當「符合幾條」的清單,⛔ 不可當排名。' },
+      avoid: { lv: '⚠️', t: '⛔ 不是放空訊號', why: '符合比較多「實測落後」條件的。意思是「別在這裡挑」,⛔ 不是叫你去空它。' },
+      fam: { lv: '⚪', t: '只描述', why: '關聯星圖裡跟你查的那一檔同族的。⛔ 同族 ≠ 會一起漲。' },
+    };
+  },
+
+  // 🐟 池子 chips:🧬 排第一且永遠看得到,其餘收進「換一池」——
+  //   ⛔ FISH_POOLS 陣列本身的順序不動(`_fishPoolRows` 拿 [0] 當通用 fallback,重排會靜默改掉語意)。
+  _rodPoolsHtml(pools) {
+    const ST = this._rodStatus(), cur = this._fishPoolK;
+    // ⚠️ title 是屬性值 → ⛔ 不可放 HTML 標籤與雙引號(會把屬性切斷)
+    const chip = p => {
+      const st = ST[p.k] || { lv: '⚪', t: '沒有說明', why: '⛔ 這一池還沒寫實測狀態(測試 ③ 會擋)。' };
+      const tip = (st.lv + ' ' + st.t + ':' + st.why + ' ｜ ' + (p.d || '')).replace(/"/g, '');
+      return '<button class="rotchip fishpool' + (p.k === cur ? ' on' : '') + '" title="' + tip
+        + '" onclick="PRO.fishPool(\'' + p.k + '\')">' + p.n + ' <span style="opacity:.75">' + st.lv + '</span></button>';
+    };
+    const gene = pools.filter(p => p.k === 'gene');
+    const rest = pools.filter(p => p.k !== 'gene');
+    const head = gene.concat(rest.filter(p => p.k === cur));          // 🧬 + 目前選的(免得選了卻看不到)
+    const fold = rest.filter(p => p.k !== cur);
+    return head.map(chip).join('')
+      + (fold.length ? '<details class="note" style="margin:0;width:100%">'
+        + '<summary style="cursor:pointer">🔄 <b>換一池</b>(其餘 ' + fold.length
+        + ' 種 —— ⛔ 一個都沒刪,但每一種都標了實測狀態)</summary>'
+        + '<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:5px">' + fold.map(chip).join('') + '</div>'
+        + '<div style="margin-top:6px">' + fold.concat(gene).map(p => {
+            const st = ST[p.k] || {}; return '・' + (st.lv || '') + ' <b>' + p.n + '</b>(' + (st.t || '') + '):' + (st.why || ''); }).join('<br>')
+        + '</div></details>' : '');
+  },
+
+  // 🎣 拋竿旁邊那句 —— ⭐ 它要講的是「拋竿跟池子不是同一套」,而且舊漏斗的死因要寫出來
+  _rodCastNoteHtml() {
+    const C = this._CAST_DEAD, S = this._SIG_DEEP, K = this._CAST_STICKY, H = this._HQ_RULE;
+    const cost = (this._pbJ && this._pbJ.cost != null) ? this._pbJ.cost : null;
+    const w = v => (v / 10000).toFixed(1);
+    return '幫你挑 —— <b>用的就是決策台「🎯 今天可以買的」那套</b>(同一支 <code>_recoPicks</code>,'
+      + '📒 成績單也用它)。⭐ 所以 🧺 漁獲籃量到的,跟 📒 決策台推薦成績單<b>是同一件事</b>。'
+      + '<details class="note" style="margin:4px 0 0"><summary style="cursor:pointer">🎣 <b>拋竿是怎麼挑的</b>(跟池子<b>不是</b>同一套)</summary>'
+      + '<div style="margin-top:5px">'
+      + '⛔ <b>舊的三層漏斗已經被自己的實測打掉,整組拿掉了</b>(V76.3.0)。重放 <b>' + C.days
+      + '</b> 個交易日、<b>' + C.trials + '</b> 次(同一檔 ' + C.dedup + ' 個交易日內只算一次)、'
+      + 't+1 <b>開盤</b>成交、扣同期加權之後:相對「強勢板塊裡隨便挑」<b>' + C.relSector
+      + 'pp</b>、相對「只用 🧬」<b>' + C.relGene + 'pp</b>、六道關卡 <b>' + C.pass + '/' + C.gates
+      + '</b>;而<b>把板塊那兩關拆掉反而 +' + C.drop2 + 'pp</b> = 那兩層是負貢獻。'
+      + '<br>⭐ 所以它不是「懶得做」,是<b>量過之後判它死刑</b>。<span style="color:var(--dim2)">(' + C.src + ')</span>'
+      + '<br>⭐ <b>現在拋竿 = 決策台那套</b>:每一檔自己最會賺的那招 → 帶 🧬 旗標(採礦端用「位階 ≥'
+      + H.pos + ' 且<b>年化波動率</b> ≥' + H.vol + '%」標的,🚨 <b>跟池子的振幅門檻不是同一個數字</b>)'
+      + ' → 非空頭 → 照<b>保守下界</b>排(⛔ 不是原始期望值 —— 排平均會挑到僥倖股)→ 一天最多 <b>'
+      + this._RECO_PICKS + '</b> 檔。'
+      + '<br>📊 <b>實測成績</b>:' + S.months + ' 個月(' + S.from + ' 起)、出場 <b>' + S.exitName
+      + '</b> → 🧬 <b>+' + w(S.gene) + ' 萬</b>(中途最多賠 <b>−' + S.geneDD + '%</b>);不挑 🧬 +'
+      + w(S.plain) + ' 萬(−' + S.plainDD + '%);同期 <b>0050 買了放著 +' + w(S.etf0050) + ' 萬</b>。'
+      + (cost == null ? '' : '💰 期望值已扣來回成本 <b>' + cost + '%</b>。')
+      + '<br>⚠️ <b>兩條限制,⛔ 一條都不可省</b>:'
+      + '<br>　① 這 ' + S.months + ' 個月<b>偏多頭(加權自己就漲了),空頭沒有驗證過</b> —— 還有倖存者偏誤,勝率只有三成。'
+      + '<br>　② <b>贏不贏大盤高度取決於出場規則,⛔ 不是選股</b> —— 同一批股票、同一套選股,'
+      + '只把出場從「跌破 5 日線」換成 ' + S.exitName + ',🧬 就從 +' + w(S.ma5.gene) + ' 萬變成 +'
+      + w(S.gene) + ' 萬。⛔ 不可解讀成「選股變厲害了」。'
+      + '<br>🚧 <b>名單刻意不刪、只標註</b>(處置中 / 成交額不到 ' + this.CAST_MIN_AMT
+      + ' 億買不到 / 前 5 日噴 ≥30% 又被掛注意股 / 非上市櫃)—— 理由:<b>決策台本身沒有這三道守門</b>,'
+      + '刪了就量不到它真正的成績,而那正是你要觀察的東西。⭐ 交換條件:被標到的<b>不會被自動選取</b>。'
+      + '<br>🔁 <b>為什麼好幾天都是同幾條</b>:重放 ' + K.days + ' 個交易日,隔 1 天有 ' + K.lag1
+      + '% 跟上次一樣、<b>' + K.same1 + '% 的日子完全沒換</b>,一條魚連續上榜中位 ' + K.runMed
+      + ' 天(最長 ' + K.runMax + ' 天)。⚠️ <b>那是舊漏斗量的</b>,新這套還沒單獨量過黏著度 → 只能當量級參考。'
+      + '⭐ 會重複是<b>設計的必然</b>(兩套用的窗口都 ≥20 日),⛔ 不會為了看起來新鮮硬換一批。'
+      + '🚨 但回測是「同一檔 ' + K.dedup + ' 個交易日內只算一次」→ <b>連續幾天一直買同一檔⛔ 不在回測涵蓋範圍內</b>。'
+      + '</div></details>';
+  },
+
+  // 🧬 第一眼那四句 + 摺疊①「這些魚是怎麼篩出來的」
+  //   🚨 `_geneRule()` 讀不到時要**誠實說讀不到**,⛔ 不可用預設值兜底(陷阱 #22)。
+  _rodWhyHtml(D) {
+    const g = this._geneRule(), H = this._HQ_RULE;
+    const head = g
+      ? '<b>這個池子裡的魚 = 🧬 強勢高波動</b>:一年位階 ≥<b>' + g.pos + '</b> 且近 20 日振幅 ≥<b>'
+        + g.amp + '%</b>。位階 = 現在的價格站在<b>過去一年區間</b>的百分位;振幅 = 近 20 日平均高低差 ÷ 價格,'
+        + '是「這檔平常晃得兇不兇」的代理。門檻是<b>現場去散戶救星讀</b>的,⛔ 這裡不抄第二份。'
+      : '⏳ <b>🧬 門檻現在讀不到</b>(散戶救星那份沒載進來)—— ⛔ 這不代表沒有魚,是<b>判不出來</b>。稍後再開一次。';
+    return '<div class="note" style="margin:4px 0 0">' + head
+      + '<br>🚨 <b>池子的門檻 ≠ 拋竿的門檻,兩套不是同一個數字</b>:「🎣 拋竿」用的是決策台那套,'
+      + '它的 🧬 旗標是採礦端用「位階 ≥' + H.pos + ' 且<b>年化波動率</b> ≥' + H.vol + '%」標的。'
+      + '<b>一個量振幅、一個量年化標準差</b> → 兩邊名單本來就會不一樣,⛔ 看到不一樣不是壞掉。'
+      + '<br>⛔ <b>這頁不下多空、不計分排名、不給買賣價位</b>。魚游得快 ≠ 會漲,池子只回答「可以看哪幾檔」。'
+      + '要不要買、買幾張、停損在哪,一律以散戶救星的「現在怎麼做」為準。'
+      + '<details style="margin-top:4px"><summary style="cursor:pointer">🔎 <b>這些魚是怎麼篩出來的</b>(逐步)</summary>'
+      + '<div style="margin-top:5px"><b>一句話</b>:全市場收盤快照 → 套 🧬 兩道門檻 → 照成交額排 → 取前 <b>'
+      + this.FISH_MAX + '</b> 檔畫成魚。⛔ 前端零運算、⛔ 零新採礦。'
+      + '<br><b>逐步</b>:① 來源 <code>data/screener.json</code>(每個交易日收盤後由採礦機重算)'
+      + '② ⛔ 不收 ETF(跟關聯星圖同一個理由)③ <b>資料不全的一律不下水</b>(null ⛔ 不補 0)'
+      + (g ? '④ 一年位階 ≥' + g.pos + ' ⑤ 近 20 日振幅 ≥' + g.amp + '%(那個門檻是從全市場的分布訂出來的,⛔ 不是拍腦袋)'
+           : '④⑤ 🧬 兩道門檻(⏳ 現在讀不到,見上面)')
+      + ' ⑥ 照成交額由大到小取前 ' + this.FISH_MAX + ' 檔。'
+      + '<br><b>為什麼是這兩個</b>:位階那一刀在全市場 127 個選股條件的回測裡是「追強 &gt; 抄底」那一族最強的成分之一;'
+      + '振幅那一刀是<b>波動的代理</b>,⛔ 它不是年化波動率(見上面那句)。'
+      + '<br>🕐 <b>魚什麼時候換新</b>:每個交易日<b>收盤後</b>由採礦機重算(排程台北 19:00,實測常被排隊延到 <b>23:00~23:30</b>)'
+      + '→ 所以你在<b>盤中看到的一定是「上一個交易日」的魚</b>,⛔ 那不是壞掉。'
+      + '<br>🚨 <b>這池子是「明天的候選」,⛔ 不是「今天 13:00 輪到誰」</b> —— 選股條件(位階、振幅、20 日強弱)'
+      + '全部要用<b>當天收盤價</b>才算得出來。想在盤中知道「今天輪到誰」,要看<b>散戶救星的盤中到價提醒</b>:'
+      + '它在 13:00~13:28 用<b>即時價</b>重算觸發價,站上去才通知你(要先在設定裡把提醒打開)。'
+      + '</div></details></div>';
+  },
+
+  /** 🎣 釣魚分頁的入口(V77.3.9)——
+   *  ⭐ body 沿用 V77.2.3 的 `renderFish`(git show 7eaf90fa7^:pro.html),只改 6 處:
+   *    ① 開頭先 `loadIdx()`(🧬 門檻要現場解析,⛔ 不抄第二份)
+   *    ② `#fishSub` 接 `_rodWhyHtml()`(新敘述)
+   *    ③ 池子 chips 走 `_rodPoolsHtml()`(🧬 排第一 + 每顆帶實測徽章)
+   *    ④ fallback 池 'amt' → 'gene'
+   *    ⑤ `#castNote` 填 `_rodCastNoteHtml()`
+   *    ⑥ ⛔ 拿掉 `_recoLedgerRender()` —— 📒 成績單留在它自己的分頁 #tabFish
+   *  ⚠️ 這一支**必須排在 `renderFish` 之前**(test_recoledger 的字串切片以 renderFish 起算)。 */
+  async renderRod() {
+    const msg = document.getElementById('fishMsg'), sub = document.getElementById('fishSub');
+    if (!msg || !sub) return;                       // ⛔ 還沒切到這一頁就別畫
+    try { await this.loadIdx(); } catch (_) {}      // 🧬 門檻來自 index.html 的 _EDGE_RULES
+    const D = await this._fishData();
+    this._fishD = D;
+    if (!D) {
+      msg.innerHTML = `<div class="warnbox">⏳ <b>選股快照還沒產出</b>(<code>data/screener.json</code>)——
+        它每個交易日收盤後由採礦機更新。⛔ 這不是這個功能壞掉。</div>`;
+      this.fishStop(); return;
+    }
+    msg.innerHTML = '';
+    sub.innerHTML = `資料日 ${D.date || '—'} ・${D.rows.length} 檔可下水 ${this._staleChip(D.date, '選股')}`
+      + this._rodWhyHtml(D);
+    const pools = this.FISH_POOLS.slice();
+    if (this._starSym && D.J && D.J.r[this._starSym]) pools.push({ k: 'fam', n: `🕸️ 和 ${this._nmTxt(this._starSym)} 同族`, d: '關聯星圖那一族' });
+    if (this._cast && (this._cast.picked || []).length) pools.push({ k: 'cast', n: `🎣 拋竿釣到的 ${this._cast.picked.length} 條`, d: '按「拋竿」由程式依實測規則挑出來的(⛔ 不是買進訊號)' });
+    if (!pools.some(p => p.k === this._fishPoolK)) this._fishPoolK = 'gene';
+    document.getElementById('fishPool').innerHTML = this._rodPoolsHtml(pools);
+    const cn = document.getElementById('castNote'); if (cn) cn.innerHTML = this._rodCastNoteHtml();
+    this._fishNote(D);
+    this._fishBasketRender();
+    this._fishRebuild();
+  },
+
   /** 📒 V77.2.4 **釣魚池整組下架,只留成績單**(使用者:「釣魚池這幾次看起來我覺得沒有用,
    *  把它刪除,只保留決策台推薦成績單,說明改在這」)。
    *  ⛔ **JS 沒有整段刪掉**,因為魚池那一串跟成績單**共用**了 `_exitRule` / `_settleReplay` /
@@ -2557,7 +2799,7 @@ const PRO = {
   async renderFish() {
     this._recoLedgerRender();
   },
-  fishPool(k) { this._fishPoolK = k; this.buzz(15); this.fishBack(true); this.renderFish(); },
+  fishPool(k) { this._fishPoolK = k; this.buzz(15); this.fishBack(true); this._rodP = this.renderRod(); },
   // 🐟 兩個畫面切換(⛔ 不可疊在同一頁:使用者實測「頁面拉太長」)
   _fishShow(v) {
     this._fishView = v;
@@ -2695,9 +2937,9 @@ const PRO = {
         for (const f of this._fish) { const d = Math.hypot(f.x - x, f.y - y); if (d < f.r + 14 && d < bd) { bd = d; best = f; } }
         if (best) this._fishPick(best.sym);
       });
-      document.addEventListener('visibilitychange', () => { if (document.hidden) this.fishStop(); else if (this._tab === 'fish' && this._fishModeV === 'tank' && this._fish.length) this._fishStart(); });
+      document.addEventListener('visibilitychange', () => { if (document.hidden) this.fishStop(); else if (this._tab === 'rod' && this._fishModeV === 'tank' && this._fish.length) this._fishStart(); });
       if (!this._fishResize) {
-        this._fishResize = () => { if (this._tab === 'fish' && this._fish.length && this._fishModeV === 'tank') this._fishSetup(this._fishPoolRows(this._fishD), this._fishD.J); };
+        this._fishResize = () => { if (this._tab === 'rod' && this._fish.length && this._fishModeV === 'tank') this._fishSetup(this._fishPoolRows(this._fishD), this._fishD.J); };
         window.addEventListener('resize', this._fishResize);
       }
     }
@@ -3541,7 +3783,14 @@ const PRO = {
       <div class="note">除息日那天股價會直接扣掉股利(參考價),之後<b>填不填息</b>本站還沒回測 —— 這張表只告訴你「誰、哪天、配多少」,⛔ 不是「除息前買」或「參加除息」的建議。${rows.length > 80 ? `(只列前 80 檔)` : ''}</div>`;
   },
 
-  _fishPick(sym) {
+  // 🐟 V77.3.9 改 async —— 📒 成績單每一列的股名也呼叫它(`_recoLedgerRender` 的 `_nmc`),
+  //   而那時候 `_fishD` 還沒載、分頁也不在 rod → 舊版第一行就 `return` = **靜默無反應**。
+  //   ⚠️ 切過去之後一定要 `await this._rodP`:`renderRod` 結尾的 `_fishRebuild()` 會把
+  //      `fishCard` 清成空白,不等它就會「閃一下然後空白」(競態)。
+  //   ⛔ 呼叫端全是 fire-and-forget 的 onclick,沒有人用回傳值 → 改 async 安全。
+  async _fishPick(sym) {
+    if (this._tab !== 'rod') { this.switchTab('rod'); try { await this._rodP; } catch (_) {} }
+    if (!this._fishD) { try { await (this._rodP = this.renderRod()); } catch (_) {} }
     const D = this._fishD; if (!D) return;
     const r = D.rows.find(x => x.sym === sym); if (!r) return;
     this._fishPickSym = sym;
@@ -3594,20 +3843,28 @@ const PRO = {
   _fishNote(D) {
     // 🧾 V74.4.2 使用者:「文字雜請用折疊的方式」→ 第一眼只留兩句(這頁在幹嘛 + 免責),
     //    其餘全部收進摺疊。⛔ 一個字都沒刪 —— 只是預設收起(同散戶救星的做法)。
+    // 🔢 V77.3.9:🏅 那段的數字改讀 `_FISH_IC`(⛔ 不寫死 —— 重跑探針要跟著變)。
+    const F = this._FISH_IC;
     document.getElementById('fishNote').innerHTML = `<div class="note">
       <b>這個池子在講什麼:</b>把「今天最值得看的一批」畫成魚 —— 上下=位階、游向=近 20 日動能、大小=成交額、一群=同族。
       🚨 <b>魚游得快 ≠ 會漲</b>,<b>⛔ 不是買進訊號</b> —— 這頁不下多空、不計分、不給買賣價位。
-      <details class="fishmore"><summary>更多說明(怎麼用 / 🏅 實測體質怎麼算 / 誰不在池子裡)</summary>
+      <details class="fishmore"><summary>更多說明(怎麼用 / 🏅 實測體質怎麼算 / 誰不在池子裡 / ⛔ 這頁不做什麼)</summary>
         <b>怎麼用:</b>① 手上那檔在哪一層、旁邊那群是誰 ② 想加碼時看看是不是整群都已經 🔥 ③ 點魚 → 釣起來看數字 → 再去散戶救星。
         <b>「📊 列表」是同一批魚的數字版</b>,認真看數字時切過去。<br>
         <b>🏅 實測體質怎麼算:</b>⛔ 不是憑空加權的綜合評分 —— 這檔目前符合哪些選股條件,每條在全市場回測裡
         「相對隨便挑一天」的 20 日邊際(pp)加總;權重就是實測數字本身,沒有人訂的係數。條件重疊會高估,只拿來排序。
-        實測最有用的一族是「追強」(創一年新高 +2.84pp・漲停 +2.09・位階≥75 +1.52),最沒用的是坊間最愛的
-        黃金交叉 / KD 金叉 / MACD 金叉(都在 +0.3pp 以內 = 跟平常一樣)。
-        🚨 <b>但加總之後實測排不出順序</b>(554 個交易日的排序相關 IC +0.0004,沒贏過只看位階)—— 每個零件都測過 ≠ 組合起來有用。
-        所以它只當「這檔符合哪幾條」的清單,⛔ 不當排名;真的要排,<b>看位階</b>(那是這分數裡唯一有區分度的成分)。<br>
-        <b>🧺 漁獲籃:</b>點魚 → 釣起 → 記下那天收盤價,之後每次開池子都算「一張賺賠幾元」與<b>跟大盤比</b>。是你的紀錄,不是推薦。<br>
+        實測最有用的一族是「追強」,最沒用的是坊間最愛的黃金交叉 / KD 金叉 / MACD 金叉(都跟平常一樣)。
+        🚨 <b>但加總之後實測排不出順序</b>(${F.days} 個交易日的排序相關 IC +${F.ic},95% 信賴區間
+        ${F.lo}~${F.hi} <b>含 0</b>,沒贏過只看位階的 +${F.posIc})—— 每個零件都測過 ≠ 組合起來有用。
+        所以它只當「這檔符合哪幾條」的清單,⛔ 不當排名;真的要排,<b>看位階</b>(那是這分數裡唯一有區分度的成分)。
+        <span style="color:var(--dim2)">(${F.src})</span><br>
+        <b>🧺 漁獲籃:</b>點魚 → 釣起 → 記下那天收盤價,之後每次開池子都算「一張賺賠幾元」與<b>跟大盤比</b>。
+        <b>是你自己的紀錄,⛔ 不是本站推薦</b>;它一律扣<b>同期加權</b>算輸贏,跟本站所有回測同一把尺。<br>
         <b>誰不在池子裡:</b>ETF(跟星圖同一理由)、資料不全的(null 一律不下水,⛔ 不補 0)。<br>
+        <b>⛔ 這頁不做什麼:</b>⛔ 不下多空、⛔ 不計分排名(🏅 那條分數自己的 IC ≈ 0)、⛔ 不給買賣價位、
+        ⛔ 不是買進訊號。要不要買、買幾張、停損在哪,一律以<b>散戶救星的「現在怎麼做」</b>為準。<br>
+        <b>📒 跟隔壁「成績單」分頁的差別:</b>這一頁是<b>挑</b>(今天可以看哪幾檔),
+        成績單是<b>驗</b>(決策台過去推薦的那些後來賺還是賠)——⛔ 兩件事,別混著看。<br>
         資料來自每個交易日收盤後的選股快照(${D.updated || D.date || '—'}),🚀🔥 來自關聯星圖(需要前一天資料才判得出「突破」,星圖沒涵蓋的只補 🔥)。
       </details></div>`;
   },
@@ -4378,6 +4635,7 @@ const PRO = {
       { t: '📆 行事曆與大盤環境當濾網', n: '26 種全部少賺', d: '13 種行事曆(週幾/月初月底/結算日/長假)+ 13 種大盤事件(不追高/廣度極弱/地板股)。⭐ 唯二「贏」的兩個,優勢<b>全部集中在 2026-04 那一個月</b>,拿掉就由正轉負。🚨 累計測了 86 種變體,採用的只有 2 個。', s: 'V73.2.0 / V73.2.1 / V73.2.2' },
     ],
     method: [
+      { t: '🪦 下架一個功能時,要問的是「它是哪一版的它」——' + ' 釣魚池被砍掉的時候,裡面早就不是那個被證偽的東西了', n: '舊漏斗六關 0 過 → V76.3.0 已換 → V77.2.4 才下架', d: '使用者 V77.2.4 說「釣魚池這幾次看起來我覺得沒有用」→ 整組下架;V77.3.9 又要求「釣魚系統救回」。' + '⭐ 復原時才看清楚一件事:<b>下架那天砍掉的,已經不是那個被 <code>cast_probe</code> 判死刑的舊漏斗了</b> ——' + 'V76.3.0 就把 <code>_castPick</code> 換成 <code>_recoPicks</code>(= 決策台那套,六關全過),' + '被證偽的三層漏斗在那時候就拿掉了。所以「沒有用」那個印象,很可能是<b>對前一版的印象延續下來的</b>。' + '<br>⭐⭐ 通用:<b>要下架一個功能之前,先確認「使用者不滿意的那個版本」跟「現在這個版本」是不是同一個</b> ——' + '中間換過芯的話,下架等於把還沒被評價過的東西一起丟掉。' + '<br>🐛 而且復原當場照出兩個藏著的 bug:① 「📖 這一條的細節」讀的是 <code>_DECK_TRACK49</code>,' + '而那個常數<b>只存在於 index.html</b>(pro.html 叫 <code>_SIG_DEEP</code>)→ 實測成績整段印成 <b>+0 萬</b>;' + '② 🧬 那一池的說明還寫著已經過期的舊回測數字。<b>兩個都是「下架期間沒人看得到 → 沒人發現」</b>。' + '<br>⭐ 所以這一版把畫面上每一個數字都改成<b>讀常數</b>(門檻讀 <code>_geneRule()</code>/<code>_HQ_RULE</code>、' + '成績讀 <code>_SIG_DEEP</code>、舊漏斗死因讀 <code>_CAST_DEAD</code>),並寫一條測試釘住「文案與常數不可脫鉤」。', s: 'pro.html renderRod・V77.3.9' },
       { t: '🚪 出場規則的對照組要有一條「什麼都不做」—— 只停損 + 抱滿 20 天就 +540 萬', d: '測寬限期時順手跑了一組對照:<b>不執行任何出場規則,只靠停損(前低 / −5%)+ 抱滿 20 個交易日</b> → 正式配置 49 個月 <b>+540 萬 / 回撤 −23.4%</b>。那已經是舊預設 5 日線(+193 萬)的 <b>2.8 倍</b>、離現行唐奇安 20 日(+590 萬)只差 50 萬。⭐⭐ 意思是:<b>28 種出場規則之間的差異,九成是「有沒有太早砍贏家」</b>,⛔ 不是哪一條線比較神 —— 任何比 +540 萬差的出場規則,都是在「幫倒忙」。以後評任何新出場規則,先跟這條「不出場」對照組比,⛔ 不是只跟 5 日線比。', s: 'scripts/portfolio_backtest.mjs(EXIT=none 等價:MAXD=20 + 只停損)・V75.1.1' },
       { t: '🔀 「停泊策略」的獲利要看每一段,⛔ 不可只看總額', d: '空頭把錢停在 0050 的那條腿總共 +15.1 萬,看起來是正的。⭐ 但把 <b>13 段</b>逐段印出來之後結論完全不同:<b>唯一一次真正的長空頭(53 個交易日)是賠的</b>,而七成的獲利來自 <b>8 段 ≤4 個交易日</b>的短暫進出。→ 那不是「空頭抱 0050」這個<b>想法</b>在賺,是「大盤在 60 日線附近上下穿」時的短線來回在賺,而那極度依賴門檻的抖動。<br>⭐⭐ 通用:任何「在某個狀態下把資金停到別的地方」的策略,<b>都要把每一段的進出日與損益列出來</b> —— 總額會把「一次大的長段」與「很多次短的抖動」混成同一個數字。', s: 'portfolio_backtest.mjs PARK_LOG=1' },
       { t: '🧭 狀態變數要雙向去均值 —— 不然差一個量級', d: '`trend` 不是事件、它<b>每一天每一檔都有值</b> → 兩個強共變量會把結論帶歪:①<b>股票組成</b>(高 beta 股待在多頭的天數本來就多)②<b>時間群聚</b>(2022 幾乎全市場空頭)。實測差多少:同一份資料、同一個空頭桶、20 日 —— raw <b>−1.63</b> / 逐檔去均值 −0.28 / 逐日去均值 −0.52 / <b>雙向(交替 3 輪)−0.16</b>,<b>差一個量級</b>。⭐ 頭條一律用雙向;而 raw 與雙向的<b>差</b>正好就是【擇時 vs 選股】那一段的答案(內部檢核:raw == 跨日 + 日內,對不上就直接 exit)。⚠️ `streak_probe` 只修了第一個共變量,它自己在註解裡承認「還沒對齊時間」。', s: 'ovtrend_probe.mjs' },
@@ -4418,8 +4676,8 @@ const PRO = {
       { t: '🖼️ 「只顯示第一名」等於用版面暗示一個不存在的強弱', n: '拋竿 2 條 / 排序 IC 無優勢', d: '使用者問「釣魚今天釣到鼎元與南亞,<b>每次點開都是鼎元,是代表它比較強嗎?</b>」—— ⛔ <b>不是</b>。picked[0] 只是照「近 20 日漲幅」排的,而 cast_probe 的結論正是「這套漏斗<b>連排序都沒有優勢</b>」(相對只用 🧬 −1.44pp)。<br>⭐ 通用:<b>當一個排序本身沒有實測背書時,「先顯示誰」就是在說謊</b> —— 使用者會把版面順序讀成強弱。→ 兩條都列出來、可直接點著切換,並在卡上明寫「⛔ 它們之間沒有強弱之分、先出現的不代表比較強」。⛔ 那段不可收進摺疊。', s: 'pro.html _castPicksBarHtml・V74.4.3' },
       { t: '🎞️ 「那張圖沒有播放動態」—— 先問「它讀的那份資料有沒有歷史」', n: '熱力圖:面積無歷史/顏色有', d: '使用者:「輪動總覽的那張沒有播放動態」。⭐ 真因跟 V74.1.3 泡泡圖<b>同一種</b>:產業熱力圖讀的是 <code>screener.json</code> —— <b>只有一天</b>,所以拉時間軸它當然不動。<br>⭐ 修法是<b>拆開哪一半有歷史</b>:磚<b>面積</b>(每日成交額)沒有存歷史 → 固定;磚<b>顏色</b>可以動 —— <code>sector_rot.json</code> 每個產業每一天都有「20 日相對強弱」,而且那正是本站實測有邊際(+1.44pp)的那個數字 → ⛔ 不另算一份,直接跟泡泡圖橫軸同源。<br>🚨 <b>面積不會回放這件事必須寫在卡上</b>(⛔ 不可讓人以為整張都在回放);而且<b>沒讀到輪動歷史時要退回原本的「今日加權漲跌」</b>,⛔ 不可整張變灰(第一版就退化成全灰,測試抓到)。<br>🚨 另一半是<b>版面</b>:播放<b>本來就會動</b>(排名賽跑那張),但它排在 300px 高的熱力圖<b>下面</b> → 手機上按了播放看不到任何東西。⭐ 通用:<b>「會動的東西要排在第一眼」</b> —— 使用者說「沒有動態」時,先確認他是不是根本沒看到會動的那張。', s: 'pro.html _rotTreeSeek・V74.4.4' },
       { t: '🚨 把免責搬進懸浮視窗的交換條件', n: '按鈕必須帶 🚨 且永遠看得到', d: '使用者要求把拋竿卡上的「合起來回測是負的」那塊搬進懸浮視窗、並刪掉卡上那顆按鈕。⚠️ 這推翻了 V74.4.3「免責必須在第一眼」的做法 —— 已先告知取捨,使用者仍要。<br>⛔ <b>交換條件</b>:開視窗那顆按鈕<b>必須帶 🚨、用警示色、永遠看得到</b>(⛔ 不可收進摺疊、不可條件顯示),否則 −0.52pp / −1.44pp 就等於消失了。測試 🎣⑧b/⑧c 已改成釘這條(注入驗過)。<br>⭐ 通用:<b>把警語從第一眼搬走時,必須有一個同樣顯眼的入口頂替</b>,⛔ 不可只是「藏起來」。', s: 'pro.html _castWhyFull・V74.4.4' },
-      { t: '🚪 釣魚池原本只教你「看哪幾檔」,完全沒有「進去之後怎麼走」', n: '勝率 3 成 ・靠小賠出場', d: '使用者:「釣到之後是都依紀律出場嗎?獲利之後要怎麼出場?用什麼方式出場?」—— 查了才發現<b>釣魚池一個字都沒寫</b>。⭐ 而本站實測的核心結論正是「<b>勝率只有三成,整套會賺完全靠錯的時候小賠出場</b>」→ <b>停損比進場重要</b>。<br>📍 落地:釣到的卡片加「🚪 釣到之後怎麼出場」——🛑 停損取「進場 −5%」與「近 10 日最低」<b>較近</b>的那個(算出實際價位 + 一張賠多少元)、🚪 收盤<b>跌破 5 日線</b>就走、最長抱 20 個交易日。⛔ 不是「賺多少才賣」。<br>⛔ <b>誠實限制寫在卡上</b>:這套出場是在「每檔自己最會賺的招」那套組合回測上驗的(36 個月 +292.8 萬),<b>拋竿漏斗自己合起來是負的</b> → 出場規則是<b>借過來的</b>,沒有替它單獨驗過。', s: 'pro.html _castExitHtml・V74.4.5' },
-      { t: '🏆 「最厲害的招式」放進釣魚池 —— ⭐ 但最強的不是拋竿,是「每檔自己最會賺的招」', n: '36個月 +289.6 萬(不挑只有 126.1 萬)', d: '使用者:「把最厲害的招式加到釣魚區裡面」。⭐ 誠實地說,<b>拋竿漏斗不是最強的</b>(它合起來回測 −0.52/−1.44pp);本站實測最強的是 <code>playbook_edge</code> ——「<b>每一檔自己歷史上最會賺的那一招</b>」+ 🧬 + 一天 2 檔 + 尾盤進場 + 跌破 5 日線出場。<br>📍 落地:新增 <b>🏆 最強招式</b>池,只留在作戰清單裡的,並且照<b>共用排序</b>(🧬 優先 → 保守下界 lb;⛔ 不排原始期望值 —— 那會挑到僥倖股)。點開會攤開那一招的招式名 / 觸發價 / 停損 / 勝率+次數 / 每趟平均。<br>⛔ 三條必寫:① <b>不是明天一開盤就買</b>(觸發價是「站上去才算數」的觸價單,尾盤 13:00~13:28 看)② 基準勝率 <b>36% 不是 50%</b>,次數 &lt;10 不能當結論 ③ <b>兩種都輸給買 0050 放著</b> —— 🧬 讓你少輸,⛔ 不是一定贏大盤。<br>⛔ 排序全 App 只有一份 <code>_pbSort</code>(測試 🏆⑰e 直接禁止第二份)。', s: 'pro.html _pbCardHtml・V74.4.6' },
+      { t: '🚪 釣魚池原本只教你「看哪幾檔」,完全沒有「進去之後怎麼走」', n: '勝率 3 成 ・靠小賠出場', d: '使用者:「釣到之後是都依紀律出場嗎?獲利之後要怎麼出場?用什麼方式出場?」—— 查了才發現<b>釣魚池一個字都沒寫</b>。⭐ 而本站實測的核心結論正是「<b>勝率只有三成,整套會賺完全靠錯的時候小賠出場</b>」→ <b>停損比進場重要</b>。<br>📍 落地:釣到的卡片加「🚪 釣到之後怎麼出場」——🛑 停損取「進場 −5%」與「近 10 日最低」<b>較近</b>的那個(算出實際價位 + 一張賠多少元)、🚪 收盤<b>跌破 5 日線</b>就走、最長抱 20 個交易日。⛔ 不是「賺多少才賣」。<br>⛔ <b>誠實限制寫在卡上</b>:這套出場是在「每檔自己最會賺的招」那套組合回測上驗的(36 個月 +292.8 萬),<b>拋竿漏斗自己合起來是負的</b> → 出場規則是<b>借過來的</b>,沒有替它單獨驗過。<br>⚠️ <b>V77.3.9 更正</b>:拋竿早在 V76.3.0 就<b>換成決策台那套</b>(舊漏斗整組拿掉),而出場規則也已改成讀<b>你自己在散戶救星設的那一條</b>(預設唐奇安 20 日低,⛔ 不再寫死 5 日線)。上面「36 個月 +292.8 萬」是舊窗口舊出場的數字。', s: 'pro.html _castExitHtml・V74.4.5(V77.3.9 更正)' },
+      { t: '🏆 「最厲害的招式」放進釣魚池 —— ⭐ 但最強的不是拋竿,是「每檔自己最會賺的招」', n: '36個月 +289.6 萬(不挑只有 126.1 萬)', d: '使用者:「把最厲害的招式加到釣魚區裡面」。⭐ 誠實地說,<b>拋竿漏斗不是最強的</b>(它合起來回測 −0.52/−1.44pp);本站實測最強的是 <code>playbook_edge</code> ——「<b>每一檔自己歷史上最會賺的那一招</b>」+ 🧬 + 一天 2 檔 + 尾盤進場 + 跌破 5 日線出場。<br>📍 落地:新增 <b>🏆 最強招式</b>池,只留在作戰清單裡的,並且照<b>共用排序</b>(🧬 優先 → 保守下界 lb;⛔ 不排原始期望值 —— 那會挑到僥倖股)。點開會攤開那一招的招式名 / 觸發價 / 停損 / 勝率+次數 / 每趟平均。<br>⛔ 三條必寫:① <b>不是明天一開盤就買</b>(觸發價是「站上去才算數」的觸價單,尾盤 13:00~13:28 看)② 基準勝率 <b>36% 不是 50%</b>,次數 &lt;10 不能當結論 ③ <b>兩種都輸給買 0050 放著</b> —— 🧬 讓你少輸,⛔ 不是一定贏大盤。<br>⛔ 排序全 App 只有一份 <code>_pbSort</code>(測試 🏆⑰e 直接禁止第二份)。<br>⚠️ <b>V77.3.9 更正上面第 ③ 點</b>:「兩種都輸給買 0050」是<b>換出場之前</b>的數字,V75.0.9 把預設出場換成唐奇安 20 日低之後,🧬 那一種<b>變成贏</b>(49 個月 +589.8 萬 vs 0050 +264.1 萬)。⭐ 而它真正的意思是「<b>贏不贏大盤取決於出場,⛔ 不是選股</b>」。', s: 'pro.html _pbCardHtml・V74.4.6(V77.3.9 更正)' },
       { t: '🚨 同一檔會在作戰清單裡出現多次(不同招)—— 不去重會讓「一天 2 檔」變成 1 檔', n: '206 筆裡 6949 出現 2 次', d: '做「🏆 最強招式」池時發現的:<code>playbook_edge.json</code> 的 picks 是「(股票 × 招式)」,同一檔可能中好幾招 —— 實測 206 筆裡 6949 就出現兩次。<br>🚨 兩個地方會被咬到:① 前端把 picks 攤成 <code>sym → 招</code> 時<b>直接覆寫</b> → 留到的是<b>排名較後面</b>那一招(卡上顯示的不是它最強的招)② <code>auto_trade.py</code> 的 <code>picks[:MAX_PICKS]</code> 名額被同一檔吃掉 → <b>「一天最多 2 檔」實際變成 1 檔</b>,而 2 檔正是實測最好的設定(2檔 +171.9 萬 / 3檔 +136.1 萬)。<br>⭐ 修法一致:清單本來就照 <code>_pbSort</code> 排好 → <b>保留第一筆</b>。⛔ 兩邊都要改(前端 + 會下真單的那支)。', s: 'auto_trade.fetch_picks・V74.4.7' },
       { t: '🧪 真實資料實跑才看得到的:名字載不到時「2882 2882」', n: '8 個顯示點', d: '關聯星圖/釣魚池上線後用<b>真實 gh-pages 產物</b>(而不是測資)實跑一次 —— 測資裡我手動塞了名字所以永遠是對的,真實情況是 <code>_names</code> 要去外部服務拿、拿不到就空的,而每個呼叫端都寫 <code>nameOf(x) || x</code> 當保底 → 名字欄與代號欄變成同一個數字。⭐ 最難察覺的是 <b>AI 鏈那 81 檔有內建名字</b> → 只有一部分列會重複,看起來像資料怪而不是程式錯。→ 抽成 <code>_nmc / _nmTxt / _nmFull</code> 三支唯一顯示點。⚠️ 連測試都踩同一個坑:第一版拿 <b>2408(在 AI 鏈裡)</b>驗標題 → 注入缺陷照樣綠,改用 <b>2882(不在名單裡)</b>才驗得到。', s: 'scripts/test_stargraph.mjs 🏷️・V74.3.9' },
       { t: '💸 資金設定會翻轉判定 —— 第二例:正式配置下 K=1.5 / K=3 輸 5 日線,寬鬆配置下四個 K 單調全贏', n: '同一個出場,總獲利 −37.6 萬 ~ +164.6 萬', d: 'Chandelier 出場網格(K=1.5/2/2.5/3)在<b>每筆 15 萬</b>下是「兩點高峰、兩側懸崖」(−37.6 / +147.9 / +164.6 / −15.5 萬),在<b>每筆 3 萬(錢用不完)</b>下卻是乾淨的單調上升(+22 / +40 / +45 / +60 萬)。⭐ 分辨法:<b>錯過的訊號數</b> —— 正式配置錯過 1,488 次,寬鬆 0 次;錯過的不同,買到的股票就不同,總獲利就被資金路徑決定。⛔ 兩個結論:① 看到「網格不是高原」先問「是不是錢用完了」,別急著判過度配適;② 但也⛔ 不可拿寬鬆配置的數字去改預設(使用者實際就是 15 萬/筆)。要真的改預設,得先把「資金卡住」的問題另外解(例如出場放寬時同步縮小每筆金額),那是另一個變體,還沒測。', s: 'scripts/portfolio_backtest.mjs・V74.3.8' },
@@ -4747,7 +5005,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V77.3.8',
+  VER: 'V77.3.9',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
