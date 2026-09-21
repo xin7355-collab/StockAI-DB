@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.4.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.4.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.4.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.4.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1167,6 +1167,18 @@
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
                             <input type="checkbox" id="set_alertStrict" onchange="app.toggleAlertStrict(this.checked);" class="sr-only peer">
+                            <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+                        </label>
+                    </div>
+                    <!-- 📦 V77.4.3 決策台候選濾網(取捨型 → ⛔ 預設關,V75.0.9 第 5 條:判準是總獲利最大)
+                         ⛔ 說明裡的數字**不可寫死** —— 由 `_fillDeckFinDesc()` 從 `_DECK_FIN` 填進去 -->
+                    <div class="flex items-center justify-between pt-2">
+                        <div class="flex-1 min-w-0 pr-2">
+                            <label class="text-xs font-bold text-amber-300">📦 決策台只挑「營收年增加速」的</label>
+                            <p id="set_deckFinAccelDesc" class="text-[10px] text-gray-500 leading-relaxed"></p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                            <input type="checkbox" id="set_deckFinAccel" onchange="app.toggleDeckFinAccel(this.checked);" class="sr-only peer">
                             <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
                         </label>
                     </div>
@@ -3770,7 +3782,7 @@ const masterWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode],
 masterWorker.onmessage = (e) => { try { app.onWorkerMessage(e.data); } catch (_) {} };
 
 const app = {
-    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', openrouterKey: '', geminiKey1: '', geminiKey2: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, alertStrict: true, riskAlertThreshold: 60, localApiUrl: '', fontSize: 'medium', workerUrl: '', botUsername: '', cloudCode: '' },
+    settings: { fugleToken1: '', fugleToken2: '', fugleToken3: '', fugleToken4: '', fugleToken5: '', groqKey: '', openrouterKey: '', geminiKey1: '', geminiKey2: '', finmindKey1: '', finmindKey2: '', finmindKey3: '', finmindKey4: '', massiveKey: '', aiPrompt: '', voiceAlert: false, watchlistAlert: false, alertStrict: true, deckFinAccel: false, riskAlertThreshold: 60, localApiUrl: '', fontSize: 'medium', workerUrl: '', botUsername: '', cloudCode: '' },
     MAX_FAV_PER_GROUP: 50,
     // 🚨 處置神器全域名單(radar_miner.py 生成 data/attention_status.json,前端啟動時 fetch 一次)
     attentionStatus: {},
@@ -5699,6 +5711,24 @@ const app = {
         this.settings.alertStrict = !!checked;
         try { this.saveSettings?.(); } catch (_) {}
         this.showToast?.(checked ? '🔕 只提醒實測站得住的(沒過的仍收在 🔔 通知歷史)' : '🔔 已改回全部都推(舊行為)', 'info', 4000);
+    },
+    /** 📦 V77.4.3 決策台「只挑營收年增加速的」開關 —— ⛔ 預設關。
+     *  ⭐ 目前全 App **只有這一處設定會重畫決策台**(其他設定都是重畫個股頁)——
+     *     ⛔ 少了那一行,使用者按完開關要切走再切回來才看得到差別。 */
+    toggleDeckFinAccel(checked) {
+        this.settings.deckFinAccel = !!checked;
+        try { this.saveSettings?.(); } catch (_) {}
+        try { this.renderDeck?.(); } catch (_) {}
+        const F = this._DECK_FIN;
+        this.showToast?.(checked
+            ? `📦 決策台只挑營收年增加速的(全市場 ${F.rate}% 會亮;實測會少賺 —— 換到的是中途賠比較少)`
+            : '📦 已關掉:決策台回到原本的名單(預設)', 'info', 4500);
+    },
+    /** 📦 設定頁那段說明 —— ⛔ 不可寫死數字(同畫面上那一塊,全部從 `_DECK_FIN` 帶) */
+    _fillDeckFinDesc() {
+        const el = document.getElementById('set_deckFinAccelDesc'); if (!el) return;
+        const F = this._DECK_FIN, w = n => (n / 10000).toFixed(0);
+        el.innerHTML = `開著:「🎯 今天可以買的」只留<b>最新已公布那一季營收年增 > 0、而且比上一季更高</b>的。<b>預設關</b>。<br>📉 <b>打開會少賺</b>:${F.months} 個月實測 不濾 +${w(F.off.gain)} 萬(中途最多賠 ${F.off.dd}%)・開了 +${w(F.on.gain)} 萬(${F.on.dd}%)・<b>同通過率隨機抽 +${w(F.sham.gain)} 萬</b>(${F.sham.dd}%)。<br>⭐ 回撤變小有一大半只是「<b>少挑一點</b>」;全市場 <b>${F.rate}%</b> 會亮(它是篩子不是警示),季報資料<b>一季才換一次</b>。`;
     },
     async toggleWatchlistAlert(checked) {
         if (checked) {
@@ -8616,8 +8646,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.4.2',
+    _APP_VERSION: 'V77.4.3',
     _CHANGELOG: [
+        { v: 'V77.4.3', d: ['📦 <b>「只挑營收年增加速的」做成決策台的開關了</b>(⚙️ 設定中心 →「📦 決策台只挑『營收年增加速』的」,<b>預設關</b>)。開著的話「🎯 今天可以買的」只留<b>最新已公布那一季營收年增 &gt; 0、而且比上一季更高</b>的。⚠️ <b>它是取捨型⛔ 不是更好</b>:49 個月實測 不濾 +519 萬(中途最多賠 −25.8%)・開了 +473 萬(−11.5%)・<b>同通過率隨機抽 +538 萬(−16.6%)</b> —— 也就是<b>打開會少賺</b>,而且<b>回撤變小有一大半只是「少挑一點」</b>(跟財報完全無關的隨機抽也把 −25.8% 變成 −16.6%)。⛔ 所以照你定的「賺最多才換」規則<b>預設維持不濾</b>,要不要開你自己決定。全市場有 <b>50.6% 會亮</b>(兩檔就有一檔)→ 它是<b>篩子不是警示</b>,亮了不代表那檔特別強;季報資料<b>一季才換一次</b>。', '⛔ <b>擋掉誰一定會寫出來</b> —— 被濾掉的代號、各自的年增幾 %、比上一季差幾 pp 全部列在卡上;如果今天符合 🧬 的都被擋光,那一格會寫「<b>都被你開的濾網擋掉了</b>」+ 一鍵去關掉,⛔ 不會假裝成「今天沒有可以買的」。本站沒有財報資料的那幾檔算「<b>不知道</b>」⛔ 不算「沒過」→ 仍然留在名單上,但會掛一顆 🏷️沒財報 提醒你它沒被這道濾網驗過。', '🧨 <b>新增一支公開資訊觀測站「重大訊息」探針</b>(Actions 手動跑,只看不存):要先確認端點、一天幾筆、<b>有沒有歷史可以一次回補</b>,再決定要不要開始每天存 —— ⛔ 這一版<b>一個字都還沒開始採礦</b>。⛔ 預設判定、計分、提醒一個字都沒動。'] },
         { v: 'V77.4.2', d: ['🚀 <b>你貼的那份「大漲股捕捉引擎」62 節規格,檢視完也回測完了</b>(產業作戰室 → 🔬 實測總表,新增 6 條):規格裡大部分本站早就做了或測過(六道門檻是回測關卡不是選股條件、成交額前 100 其實是前 50、10 年 walk-forward 資料不夠、Catalyst 沒有可回測的歷史),真正沒測過的「加速度」七個 flag 用 2,131 檔・4 年跑完 —— <b>只有「營收年增加速」站得住</b>(疊在 🧬 上 10 日多 +0.80 個百分點、贏同檔數隨機 +0.77、絕對超額由負轉正 +0.40%、門檻四格全正);RS 加速 / 量能擴張 / ATR 壓縮擴張 / 位階剛衝進 / 突破品質 / 產業前 5 <b>沒有一個</b>贏過隨機,flag 疊越多越差。⚠️ 而且 5,480 個大漲起點裡,<b>沒有任何 flag 的捕捉率贏過隨便挑一天</b>(🧬 本身 23.8% vs 22.2%)—— 大漲在起漲那一刻跟平常日子長得一樣。再把它丟進決策台那套 49 個月組合回測:勝率 33.4%(隨機抽 31.0%)、中途最多賠 −11.5%(隨機 −16.6%、不濾 −25.8%),<b>但總獲利 +473 萬比隨機抽的 +538 萬還少</b> → 照你定的「賺最多才換」規則⛔ 沒換預設,列成推薦欄的選項(少賺 65 萬換回撤減半,你決定)。⛔ 預設一個字都沒動、沒新增提醒。'] },
         { v: 'V77.4.1', d: ['🎣 <b>產業作戰室的釣魚分頁改成三步驟</b>(你說「依照附件的介面方式修改」):<b>01 建池 → 02 拋竿 → 03 驗證</b>直排,頂端三顆膠囊點了就捲到那一段;借的是附件的「結構」,⛔ 沒借它的框、橘色、評分欄(本站鐵則:無框、紅綠只講漲跌、不憑空評分)。點魚之後那張卡改在 02 底下展開、魚缸收起(⛔ 不再整段藏掉),按「← 收起這一條」回來。', '👑 <b>新池子「成交額前 50」</b>—— 就是上一版測出來、外部那套裡唯一站得住的那一層(徽章直接印實測數字:六關全過 +0.98pp、勝率 41% 對 36%,<b>但絕對超額仍 −0.29%、⛔ 不進拋竿</b>)。🧬 仍是預設。', '📋 <b>兩個一鍵複製</b>:「複製篩選規則」給你本站<b>真正在用</b>的規則純文字(⛔ 不是 XQ 語法,門檻現場讀,讀不到就說讀不到);「複製追蹤表」把 🧺 漁獲籃輸出成 8 欄表格,貼進試算表自動分欄。🔎 <b>問外部 AI</b>:把上鉤的名單帶去 Perplexity,<b>只問題材 / 事件 / 風險</b>,⛔ 明寫不要評分、不要預測、不要判斷隔天會不會表態(本站實測那三件都沒有預測力)。', '🧺 <b>漁獲籃每一列多三欄</b>:進池理由(拋竿挑的哪一招 / 自己從哪一池點的,⛔處置中 ⚠️噴太多 🚧買不到 也標)、隔日漲跌(只描述,⛔ 不當驗證 —— 碰得到 ≠ 賺得到)、📝 筆記(自己打字,只存這台;打字中不會被自動重畫踢掉)。03 段頂端三張紀律卡:進場 = 訊號日尾盤(開盤買少賺一半)/ 出場 = 你設的那條 + 硬底線(換出場才贏 0050)/ 資金 = 一天 2 檔每筆 15 萬,每張底下寫「外部那條(5 日線進 / 3 日收不回出 / 單檔 20%)本站實測怎麼說」。', '🎣 <b>拋竿有動畫了</b>:釣線從左上飛出 → 落水三圈漣漪 → 魚被拉向浮標(沒魚就浮標上下)→ 收線;減少動態 / 列表模式直接跳過;有 2.5 秒安全閥,分頁切走也不會卡住名單。⛔ 動畫不改變任何結果(測試用「拿掉動畫前後名單相同」釘住)。🐛 順手修:「今天沒有魚上鉤」那張卡以前寫進看不見的區塊。'] },
         { v: 'V77.4.0', d: ['👑 <b>你給的那套「股王釣魚」選股,拿真實資料測完了</b>(2,131 檔・2023-05~2026-09):它七層裡<b>真正在做事的只有「成交金額排全市場前 50」這一層</b> —— 這群 10 天比隨便挑一檔多 +0.98 個百分點、勝率 41% 對 36%、六道關卡全過。<b>其餘六層(收盤站上 5 日線 / 月線向上 / 股價>300 或成交>5 億 / 近 5 日法人買超 / 剔除放量跌)一起疊上去只多 +0.06</b>,拆掉任何一層都沒差 = 零。', '⛔ <b>不換掉現在的預設</b>:把「前 50」疊在你現在用的 🧬 強勢高波動上面,跟「從 🧬 裡隨機抽同樣檔數」比,扣掉來回成本 0.44% 後六格全部是負的。⚠️ 而且「前 50」這群自己的 10 日超額仍是 <b>−0.29%</b>(還是輸大盤)—— 它贏的是別的股票,不是大盤,⛔ 不是買進訊號。AI 評分、隔天表態、3 天收不回就出:本站以前就測過,一條都不成立(詳細寫在產業作戰室 🔬 實測總表)。', '📖 探針 <code>kingpool_probe.mjs</code> 自帶 9 條自我驗證(含拿真實選股產物逐檔對表 284 檔),下一版把「👑 成交額前 50」做成釣魚分頁的一個池子,並把釣魚分頁改成「建池 → 拋竿 → 驗證」三步驟 + 拋竿動畫。'] },
@@ -9078,6 +9109,9 @@ ${list}
         if (wlEl) wlEl.checked = this.settings.watchlistAlert || false;
         const asEl = document.getElementById('set_alertStrict');
         if (asEl) asEl.checked = this.settings.alertStrict !== false;   // 🔕 V76.1.7 預設開
+        const dfEl = document.getElementById('set_deckFinAccel');
+        if (dfEl) dfEl.checked = !!this.settings.deckFinAccel;          // 📦 V77.4.3 預設關
+        try { this._fillDeckFinDesc(); } catch (_) {}
         try { this._renderAlertCatList?.(); } catch (_) {}              // 🔔 V77.2.2 通知種類勾選清單
         // V41.2 — autoRunChiefAI 已停用(首席 AI 純手動),設定頁 checkbox 已移除
         this._applyFontSizeUI(this.settings.fontSize || 'medium');
@@ -24385,6 +24419,50 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         } catch (_) { d = null; }
         this._finSlimCache[sym] = { ts: Date.now(), data: d };
         return d;
+    },
+
+    /** 📦 V77.4.3 「營收年增加速」—— 最新**已公布**那一季:年增 > 0,而且比上一季的年增還高。
+     *  回 `true`(亮)/ `false`(沒亮)/ **`null` = 不知道**(沒有財報切片、或季數不足算不出來)。
+     *
+     *  ⛔⛔ 這是 `scripts/lib_finaccel.mjs` 的 `finSeries` + `finOnAt` 的**前端複製品**
+     *     (`index.html` 沒辦法 import `.mjs`)→ `scripts/test_finfilter.mjs ⑦` **跨檔逐季比對**,
+     *     改任何一邊沒改另一邊當場紅。三個必須一字不差的地方:
+     *       ① 去年同季用**陣列位置 k−4**(⛔ 不可改成「照日期找去年同季」—— 那會跟 lib 分叉)
+     *       ② `acc = yoy_k − yoy_{k−1}`,而 `yoy_{k−1}` 要 `k ≥ 5` 才算得出來
+     *       ③ 序列先按季別(p)算完,**再**按公布日(pub)排序
+     *  🚨 **可用日守門**:只認 `pub <= 今天`(法定截止日 3/31・5/15・8/14・11/14)。
+     *     ⛔ 拿季別當可用日就是前視 —— 2026-06-30 那一季要到 8/14 才算「知道」。
+     *
+     *  ⚠️⚠️ `null` 在這裡是「**不知道**」,呼叫端⛔ **不可以拿它當「沒過」去擋掉**。
+     *     這跟回測端 `portfolio_backtest.finOk` 對 `null` 回 `false`(剔除)**刻意相反**:
+     *     回測要的是乾淨的統計母體,所以缺資料就整筆不算;
+     *     畫面是**給人看的名單**,默默少一檔而使用者不知道為什麼,比多列一檔加個標記糟得多。 */
+    async _finAccelOn(sym) {
+        sym = String(sym || ''); if (!sym) return null;
+        this._finAccelWhy = this._finAccelWhy || {};
+        let d = null;
+        try { d = await this._loadFinSlim(sym); } catch (_) { d = null; }
+        if (!d || !Array.isArray(d.q) || !d.q.length) { this._finAccelWhy[sym] = null; return null; }
+        const qs = d.q.slice().sort((a, b) => String(a.p) < String(b.p) ? -1 : 1);
+        const num = v => (v == null || !Number.isFinite(+v)) ? NaN : +v;
+        const ser = [];
+        for (let k = 0; k < qs.length; k++) {
+            const pub = String(qs[k].pub || ''); if (!pub) continue;
+            const rev = num(qs[k].rev);
+            const rev4 = k >= 4 ? num(qs[k - 4].rev) : NaN, rev1 = k >= 1 ? num(qs[k - 1].rev) : NaN, rev5 = k >= 5 ? num(qs[k - 5].rev) : NaN;
+            const yoy = rev > 0 && rev4 > 0 ? (rev / rev4 - 1) * 100 : NaN;
+            const yoyP = rev1 > 0 && rev5 > 0 ? (rev1 / rev5 - 1) * 100 : NaN;
+            const acc = yoy - yoyP;
+            ser.push({ p: String(qs[k].p || ''), pub, yoy, acc, ok: Number.isFinite(yoy) && Number.isFinite(acc) });
+        }
+        ser.sort((a, b) => a.pub < b.pub ? -1 : 1);
+        let today; try { today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); } catch (_) { today = new Date().toISOString().slice(0, 10); }
+        let q = null;
+        for (const x of ser) { if (x.pub <= today) q = x; else break; }
+        if (!q || !q.ok) { this._finAccelWhy[sym] = null; return null; }
+        const on = q.yoy > 0 && q.acc > 0;
+        this._finAccelWhy[sym] = { on, yoy: q.yoy, acc: q.acc, p: q.p, pub: q.pub };
+        return on;
     },
     // 💰 除權息(data/dividends.json,dividend_sweep 每週產;⚠️ 以前只有 pro.html 讀它,index.html 從沒接過)
     async _loadDividendsFile() {
@@ -47565,6 +47643,36 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                      //      → ⛔ **不可跟上面那三個數字直接相減**,它只回答「切換 vs 不切換」這一個問題。
                      sw: { base: 1933944, cash: 2057822, park: 2247695, etf: 2641000, bearDays: 168, allDays: 974 } },
 
+    /** 📦 V77.4.3 「只挑營收年增加速的」—— 決策台候選的**選項濾網**(預設關)的實測數字。
+     *  ⛔ 畫面上**一個數字都不可寫字面值**,一律從這裡帶入(改成新的一輪回測只改這裡)。
+     *
+     *  🔬 來源 `scripts/accel_probe.mjs`(七個「加速度」flag 裡**唯一**六關全過的)+
+     *     `scripts/portfolio_backtest.mjs FIN=acc|sham`(同一套 49 個月、600 檔、每天 2 檔、每筆 15 萬)。
+     *
+     *  ⚠️⚠️ **它是取捨型,⛔ 不是「更好」** —— 照 V75.0.9 第 5 條(判準 = 總獲利最大)
+     *     這種「賺更少但回撤更小」的**一律不換預設**,只做成選項:
+     *        不濾   1,117 筆 ・勝率 30.9% ・+519 萬 ・中途最多賠 −25.8%
+     *        營收加速  909 筆 ・勝率 33.4% ・+473 萬 ・中途最多賠 −11.5%
+     *        隨機抽    928 筆 ・勝率 31.0% ・+538 萬 ・中途最多賠 −16.6%   ← 同通過率的安慰劑
+     *  ⭐⭐ **回撤變小有一大半只是「少挑一點」** —— 安慰劑(跟財報完全無關、只是隨機少挑三成)
+     *     也把 −25.8% 變成 −16.6%;營收加速**自己**的貢獻只有 −16.6% → −11.5%。
+     *     ⛔ 這句話畫面上必須寫出來(V77.3.3 的方法學:候選濾網一律跟安慰劑比,⛔ 不跟「不濾」比)。
+     *
+     *  🚨 `rate` = **全市場有幾 % 會亮**(V77.1.6 鐵則:新增旗標先量基準率)。
+     *     50.6% = 兩檔裡有一檔 → 它是**篩子不是警示**,畫面一定要印出來。
+     *  ⚠️ 這裡刻意用**內嵌常數**而不是讀採礦產物(V77.0.9 那條的前提是「有產物可讀」)——
+     *     `data/fin` 是**逐檔切片、沒有彙總檔**,前端不可能為了一個百分比去抓 2,352 個檔。
+     *     做法照 `_FIN_STRUCT_BASE`(V77.1.6):標**實測日期 + 分母 + 來源腳本**。 */
+    _DECK_FIN: {
+        off:  { n: 1117, win: 30.9, gain: 5190000, dd: 25.8 },
+        on:   { n:  909, win: 33.4, gain: 4730000, dd: 11.5 },
+        sham: { n:  928, win: 31.0, gain: 5380000, dd: 16.6 },
+        edge: { pp: 0.80, vsSham: 0.77, p: 0.003, net: 0.33, abs: 0.40 },
+        rate: 50.6, rateOn: 1075, rateN: 2126, asof: '2026-09-21',
+        src: 'accel_probe.mjs + portfolio_backtest.mjs FIN=acc|sham',
+        months: 49
+    },
+
     /** 🎯 決策台的資料(⛔ 純資料,不碰 DOM) */
     /** 📈 V77.1.0 「符合進場」全市場候選 —— 使用者:「符合進場是否要放在決策裡面」
      *  ⭐ 它跟「🎯 今天可以買的」**不是同一個問題**,⛔ 不可混在一起:
@@ -47662,7 +47770,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return out;
     },
     async _deckState() {
-        const st = { sell: [], skip: [], invN: 0, buy: [], pbNull: false, pbDate: '', hqN: 0, total: 0, bearN: 0, fit: null };
+        const st = { sell: [], skip: [], invN: 0, buy: [], pbNull: false, pbDate: '', hqN: 0, total: 0, bearN: 0, fit: null,
+                     finOn: !!(this.settings && this.settings.deckFinAccel), finBlocked: [], finUnknown: [] };
         try { st.sell = (await this._invExitScan()) || []; } catch (_) {}
         st.skip = this._invExitSkip || []; st.invN = this._invExitN || 0;
         let j = null;
@@ -47681,7 +47790,28 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 🧬 是**必要條件不是加分項**(V73.2.9:不挑它整套輸給買 0050);⛔ 空頭不給進場
         const hq = uniq.filter(x => (+x.hq || 0) === 1 && !x.bear);
         st.hqN = hq.length;
-        st.buy = hq.slice(0, this._DECK_TRACK49.picks);
+        // 📦 V77.4.3 選項濾網「只挑營收年增加速的」(預設關)——⛔ 只動這一段,⛔ 不碰排序、不碰計分。
+        //   ⚠️ 取捨型(賺更少、回撤更小)→ V75.0.9 第 5 條:⛔ 不換預設,做成選項。數字見 `_DECK_FIN`。
+        //   ⛔ **不可靜默過濾**(V74.8.8):擋掉誰、為什麼一律回傳給畫面(`st.finBlocked`)。
+        //   ⛔ `null`(沒有財報切片/季數不足)是「不知道」→ **不擋**,只記進 `st.finUnknown` 讓那一列掛標記。
+        //   ⚡ 逐檔 fetch 有上限:照排名順序判,收滿 picks 就停,硬上限 12 檔
+        //      (走 `_loadFinSlim` 的 6 小時快取;實測每天 `hq` 只有個位數,這個上限碰不到)。
+        st.finOn = !!(this.settings && this.settings.deckFinAccel);
+        st.finBlocked = []; st.finUnknown = [];
+        if (!st.finOn) {
+            st.buy = hq.slice(0, this._DECK_TRACK49.picks);
+        } else {
+            const need = this._DECK_TRACK49.picks, MAXQ = 12, pick = [];
+            for (let i = 0; i < hq.length && pick.length < need && i < MAXQ; i++) {
+                const x = hq[i], sym = String(x.s);
+                let v = null;
+                try { v = await this._finAccelOn(sym); } catch (_) { v = null; }
+                if (v === false) { const w = (this._finAccelWhy || {})[sym] || {}; st.finBlocked.push({ s: sym, yoy: w.yoy, acc: w.acc, p: w.p }); continue; }
+                if (v === null) st.finUnknown.push(sym);
+                pick.push(x);
+            }
+            st.buy = pick;
+        }
         try { st.fit = await this._deckFitScan(); } catch (_) { st.fit = null; }
         return st;
     },
@@ -47767,7 +47897,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 //   是 `test_deckfit` 抓到的,而症狀是「符合進場」整段消失 —— 看起來跟折疊完全無關。
                 buy.innerHTML = `<div class="bg-[#161b22] border-l-4 border-cyan-500 border-y border-r border-[#30363d] rounded-r p-3">
                     <div class="flex items-baseline justify-between gap-2 flex-wrap">
-                        <div class="text-sm font-black text-cyan-300">🎯 今天可以買的(最多 ${this._DECK_TRACK49.picks} 檔)</div>
+                        <div class="text-sm font-black text-cyan-300">🎯 今天可以買的(最多 ${this._DECK_TRACK49.picks} 檔)${st.finOn ? '<span class="ml-1 text-[9px] font-bold text-amber-300 border border-amber-700/60 rounded px-1 align-middle">📦 只挑營收加速</span>' : ''}</div>
                         <div class="text-[10px] text-gray-400 font-mono flex items-center gap-1">
                             ${this._dChip(st.pbDate, '收盤')}
                             ${st.pbUpd ? `<span class="text-gray-600">・清單 ${this._escHtml(this._fmtNewsTime(st.pbUpd))} 備好</span>` : ''}
@@ -47786,12 +47916,22 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                             ⭐ 一天最多 ${this._DECK_TRACK49.picks} 檔(實測 2 檔賺最多、中途賠最少);${st.hqN} 檔符合 🧬,只取前 ${this._DECK_TRACK49.picks} 名。
                         </div>
                     </details>
-                    <div class="space-y-1">${st.buy.map((x, i) => this._pbRowHtml(x, mine, i + 1, 0)).join('')}</div>
+                    <div class="space-y-1">${st.buy.map((x, i) => this._pbRowHtml(x, mine, i + 1, 0, st.finOn && (st.finUnknown || []).includes(String(x.s)))).join('')}</div>
                     <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">
                         📅 用 <b class="text-gray-500">${this._escHtml(st.pbDate || '—')}</b> 的收盤算的${st.pbUpd ? ` ・採礦 ${this._escHtml(this._fmtNewsTime(st.pbUpd))} 跑完` : ''}
                         ・全市場 ${st.total} 筆裡符合 🧬 且非空頭的有 ${st.hqN} 檔${st.bearN ? ` ・已排除空頭 ${st.bearN} 檔` : ''}
                         ${st.buy.some(x => mine.has(String(x.s))) ? '<br>👜 = <b class="text-gray-500">你的庫存/自選</b> —— 它們會被<b>排到最前面</b>(⛔ 不代表比較強);⭐ 產業作戰室的 📒 成績單用的是<b>不含持股</b>的純推薦版,所以那邊的名單可能不一樣。' : ''}
                     </div>
+                    ${this._deckFinNoteHtml(st)}
+                </div>`;
+            } else if (st.finOn && st.finBlocked.length) {
+                // 📦 V77.4.3 ⛔ 被**你自己開的濾網**擋光,跟「本來就沒有」是兩件事 —— ⛔ 不可長得一樣(同 `pbNull` 那條)
+                buy.innerHTML = `<div class="bg-[#161b22] border-l-4 border-amber-600 border-y border-r border-[#30363d] rounded-r p-3">
+                    <div class="text-sm font-black text-amber-300">📦 今天符合 🧬 的有 ${st.hqN} 檔,但<b class="text-gray-100">都被你開的濾網擋掉了</b></div>
+                    <div class="text-[11px] text-gray-300 mt-1 leading-relaxed">這<b>不是</b>「今天沒有可以買的」—— 是你開了「<b>只挑營收年增加速的</b>」,而這幾檔最新一季的營收年增<b>沒有比上一季更高</b>。
+                        <br>⭐ 關掉那個開關就會看到原本的名單(它<b>預設是關的</b>,實測打開會少賺)。
+                        <button onclick="app.openSettings();" class="ml-1 text-cyan-300 underline">去設定中心關掉 →</button></div>
+                    ${this._deckFinNoteHtml(st)}
                 </div>`;
             } else {
                 buy.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
@@ -47807,7 +47947,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
             // ── ✅ 今天沒事 ──
             //   ⚠️ 「符合進場」有東西時就**不算沒事**(⛔ 否則同一頁會一邊列股票、一邊說「今天不用做」= 打架)
-            idle.innerHTML = (!st.sell.length && !st.buy.length && !st.pbNull && !(st.fit && st.fit.list && st.fit.list.length))
+            //   📦 V77.4.3 同理:候選被**你自己開的濾網**擋光時也⛔ 不算沒事(上面那一格已經在講這件事了)
+            idle.innerHTML = (!st.sell.length && !st.buy.length && !st.pbNull && !(st.fit && st.fit.list && st.fit.list.length) && !(st.finOn && st.finBlocked.length))
                 ? `<div class="bg-[#161b22] border-l-4 border-gray-600 border-y border-r border-[#30363d] rounded-r p-3">
                      <div class="text-sm font-black text-gray-200">✅ 今天不用做</div>
                      <div class="text-[11px] text-gray-400 mt-1">手上沒有要賣的、也沒有值得買的。⭐ 這種日子占大多數 —— <b>忍住不做</b>本身就是紀律的一部分。</div>
@@ -47952,7 +48093,34 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         </details>`;
     },
 
-    _pbRowHtml(x, mine, rank, dupN) {
+    /** 📦 V77.4.3 「只挑營收年增加速的」的誠實揭露 —— 開了才顯示,⛔ 五件事一件都不可少:
+     *    ① 擋掉了誰(⛔ 不可靜默過濾)② 全市場亮燈率(它是篩子不是警示)
+     *    ③ 打開會**少賺** ④ 回撤變小有一大半只是「少挑一點」(安慰劑也一樣)⑤ 一季才換一次
+     *  ⛔ 數字一律從 `_DECK_FIN` 帶入,⛔ 畫面不寫字面值。
+     *  ⚠️ 「比上一季 ↑↓pp」刻意用灰字 + ↑↓(⛔ 不用紅綠)—— 燈號鐵則:紅綠只講漲跌,
+     *     而「年增加速」是**好**不是**漲**;`_ppTxt` 的文案寫死「一年前」,這裡比的是**上一季**,所以不共用。 */
+    _deckFinNoteHtml(st) {
+        if (!st || !st.finOn) return '';
+        const F = this._DECK_FIN, w = n => (n / 10000).toFixed(0);
+        const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? `${n} ${s}` : s; };
+        const pp = v => Number.isFinite(+v) ? `<span class="text-gray-400">${+v > 0 ? '↑' : '↓'}${Math.abs(+v).toFixed(1)}pp</span>` : '';
+        const blocked = st.finBlocked && st.finBlocked.length
+            ? `<br>⛔ <b>已擋掉 ${st.finBlocked.length} 檔</b>:` + st.finBlocked.map(b =>
+                `${this._escHtml(nm(b.s))}(${b.p ? this._escHtml(String(b.p).slice(0, 7)) + ' 季 ' : ''}年增 ${Number.isFinite(+b.yoy) ? (+b.yoy).toFixed(1) + '%' : '—'}・比上一季 ${pp(b.acc) || '—'})`).join('、')
+            : '';
+        const unknown = st.finUnknown && st.finUnknown.length
+            ? `<br>🏷️ <b>${st.finUnknown.length} 檔沒有財報資料</b>(${st.finUnknown.map(s => this._escHtml(nm(s))).join('、')})—— 那是「<b>不知道</b>」不是「沒過」,所以<b>仍然列在上面</b>並掛了標記,⛔ 沒被這道濾網驗過。`
+            : '';
+        return `<div class="text-[10px] text-gray-300 mt-2 leading-relaxed border-l-4 border-l-amber-600 pl-2">
+            📦 <b class="text-amber-300">你開了「只挑營收年增加速的」</b>(⚙️ 設定中心可以關掉)${blocked}${unknown}
+            <br>🚨 <b>全市場有 ${F.rate}% 會亮</b>(${F.rateOn.toLocaleString()} / ${F.rateN.toLocaleString()} 檔,${this._dW(F.asof)} 實測)—— 兩檔就有一檔,它是<b>篩子不是警示</b>,⛔ 亮了不代表這一檔特別強。
+            <br>📉 <b class="text-amber-300">打開會少賺</b>:同一套 ${F.months} 個月實測 —— 不濾 <b>+${w(F.off.gain)} 萬</b>(中途最多賠 ${F.off.dd}%)・開了 <b>+${w(F.on.gain)} 萬</b>(${F.on.dd}%)・<b>同通過率隨機抽 +${w(F.sham.gain)} 萬</b>(${F.sham.dd}%)。換到的是勝率 ${F.off.win}% → ${F.on.win}%。
+            <br>⭐ <b>回撤變小有一大半只是「少挑一點」</b> —— 跟財報完全無關的隨機抽也把 ${F.off.dd}% 變成 ${F.sham.dd}%;營收加速<b>自己</b>的貢獻只有 ${F.sham.dd}% → ${F.on.dd}%。
+            <br>⏳ 季報資料 → <b>一季才換一次</b>(⛔ 不是每天在變);來源 <span class="font-mono text-gray-500">${this._escHtml(F.src)}</span>。
+        </div>`;
+    },
+
+    _pbRowHtml(x, mine, rank, dupN, noFin) {
         const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? n : ''; };
         const isMine = mine.has(String(x.s));
         const c = +x.c, stop = +x.stop;
@@ -47976,6 +48144,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const dispTag = _disp
             ? '<span class="text-[9px] flex-shrink-0 font-bold text-orange-300 border border-orange-700/60 rounded px-1" title="🚨 官方處置中 —— 5 或 20 分鐘分盤撮合,而這套回測的進場方式是「尾盤 13:00~13:28 觸價買」:那個價你買不到。而且實測「進處置」之後 20 日中位 −4.81%、勝率 40.4%。⛔ 這是提醒不是放空訊號;名單刻意不刪(刪了就不是決策台真正的成績)。">⛔處置</span>'
             : '';
+        // 📦 V77.4.3 這一檔**沒有財報切片**(或季數不足)→ 「只挑營收加速」那道濾網對它是「不知道」。
+        //   ⛔ 不知道 ≠ 沒過 → 名單照留,但一定要**標出來**(⛔ 不可默默讓使用者以為它驗過了)。
+        const _noFinTag = noFin
+            ? '<span class="text-[9px] flex-shrink-0 font-bold text-gray-400 border border-gray-600 rounded px-1" title="🏷️ 你開了「只挑營收年增加速的」,但本站沒有這一檔的財報切片(或季數不足 6 季算不出「比上一季加速多少」)。⛔ 這是「不知道」不是「沒通過」 —— 所以它仍然留在名單上,但⛔ 沒有被那道濾網驗過。">🏷️沒財報</span>'
+            : '';
         // ⭐ V73.0.1 改用**等權**(⛔ 不是風險法)—— 理由見 `_lotsForPlaybook` 上方的實測數字
         const ps = this._lotsForPlaybook(trig, stop);
         // 📐 主數字用**保守下界**(期望值 − 1.28×標準差/√次數),⛔ 不可用原始期望值 ——
@@ -47992,7 +48165,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div class="min-w-0 flex-1 flex items-baseline gap-1.5">
                     ${rank ? `<span class="font-mono font-black text-[11px] flex-shrink-0 ${rank <= 3 ? 'text-amber-300' : 'text-gray-600'}" title="第 ${rank} 名(依「保守下界」排,樣本少的會被罰)">#${rank}</span>` : ''}
                     ${isMine ? '<span class="text-[10px] flex-shrink-0">👜</span>' : ''}
-                    ${dispTag}${_offTag}
+                    ${dispTag}${_offTag}${_noFinTag}
                     <span class="font-mono font-black text-[12px] text-gray-100 flex-shrink-0">${x.s}</span>
                     <span class="text-[11px] text-gray-200 truncate">${nm(x.s)}</span>
                     <span class="font-mono text-[10px] text-gray-500 flex-shrink-0">${c.toLocaleString()}</span>

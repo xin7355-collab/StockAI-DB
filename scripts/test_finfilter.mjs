@@ -60,5 +60,39 @@ ok('⑥b finFrac 由 byIn 全部候選算(on / n),空的話 0', /finFrac = n \? 
 ok('⑥c 候選過濾串上 finOk(x.t)', /turnOk\(x\.t\) && finOk\(x\.t\)\)/.test(PB), '');
 ok('⑥d FIN 只認 acc|gm|eps|sham,其他直接停', /\['acc', 'gm', 'eps', 'sham'\]\.includes\(FIN\)/.test(PB) && /process\.exit\(1\)/.test(PB), '');
 
+// ⑦ 🔁 跨檔比對:`index.html` 的 `_finAccelOn` 必須跟 lib 的 `finOnAt` **逐日相同**
+//    (前端沒辦法 import .mjs → 那支是複製品;同 `test_ticksize` 三份 `_tickOf`、`test_fintrend ⓑ`)
+//    ⭐ 做法:把 `_finAccelOn` 的函式體抽出來用 `new Function` 跑,並**把 `Date` 影子掉**當作那一天 →
+//       順便釘住「⛔ 只認 pub <= 今天」那道可用日守門(拿掉它 → 早於 pub 的那幾天會分叉 → 紅)。
+const IDX = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+const _i0 = IDX.indexOf('    async _finAccelOn(sym) {');
+const _i1 = _i0 >= 0 ? IDX.indexOf('\n    },\n', _i0) : -1;
+const FA_BODY = (_i0 >= 0 && _i1 > _i0) ? IDX.slice(IDX.indexOf('{', _i0) + 1, _i1) : '';
+ok('⑦0 空過守門:切得到 index.html 的 _finAccelOn', FA_BODY.length > 600 && /_loadFinSlim/.test(FA_BODY), String(FA_BODY.length));
+
+// ⚠️ ⑦ 用**自己的一組測資,而且要有季節性** —— 上面 ①~② 那組是固定成長(rev = 1000×1.1^k),
+//    拿它比對時「去年同季(k−4)」與「上一季(k−1)」算出來的**布林值剛好一樣** → 注入「k−4 改成 k−1」
+//    叫不出來(第一版實測就是這樣的假綠燈)。季節性係數讓兩者必然分叉。
+const SEAS = [0.8, 1.0, 1.35, 1.05];
+const S2 = {}; Q.forEach((p, k) => { const rev = 1000 * Math.pow(1.08, k) * SEAS[k % 4] * (k === 8 ? 1.4 : 1); S2[p] = [null, rev * 0.6, null, null, null, rev, null, null, 1 + k * 0.1, null]; });
+const ser2 = finSeries({ q: Q, f: F, s: { 8888: S2 } }, '8888');
+const SLICE = { sym: '9999', q: Q.map(p => ({ p, pub: ser2.find(x => x.p === p)?.pub || null, rev: S2[p][F.indexOf('rev')], cogs: S2[p][F.indexOf('cogs')], eps: S2[p][F.indexOf('eps')] })) };
+const mkFront = day => {
+    class FakeDate { toLocaleDateString() { return day; } toISOString() { return day + 'T00:00:00.000Z'; } static now() { return 0; } }
+    const fn = new Function('Date', `return async function (sym) {${FA_BODY}};`)(FakeDate);
+    return fn.bind({ _finSlimCache: {}, _finAccelWhy: {}, _loadFinSlim: async s2 => (s2 === '9999' ? SLICE : null) });
+};
+const shift = (d, n) => { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+const DAYS = [...new Set(ser2.flatMap(q => [shift(q.pub, -1), q.pub, shift(q.pub, 1)]).concat(['2021-01-01', '2030-01-01']))];
+let diff = null, sawT = 0, sawF = 0, sawN = 0;
+for (const d of DAYS) {
+    const a = finOnAt(ser2, d), b = await mkFront(d)('9999');
+    if (a !== b) { diff = `${d}: lib=${a} / index=${b}`; break; }
+    if (a === true) sawT++; else if (a === false) sawF++; else sawN++;
+}
+ok(`⑦ index.html 的 _finAccelOn 與 lib 的 finOnAt 逐日完全相同(${DAYS.length} 天)`, !diff, diff || '');
+ok(`⑦b 空過守門:三種結果都出現過(true ${sawT} / false ${sawF} / null ${sawN})—— ⛔ 全 null 的話比對沒有鑑別力`, sawT > 0 && sawF > 0 && sawN > 0, '');
+ok('⑦c 沒有切片 → null(⛔ 不是 false —— 呼叫端要當「不知道」)', (await mkFront('2030-01-01')('1234')) === null, '');
+
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ FINFILTER_PASS');
 process.exit(fails.length ? 1 : 0);
