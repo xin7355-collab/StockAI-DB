@@ -30,6 +30,7 @@ catch (_) { ({ chromium } = await import('playwright')); }
 import { DEADLINES } from './lib_fundamentals.mjs';
 import { turnCuts, turnBucket } from './lib_turnover.mjs';
 import { finSeries, finOnAt } from './lib_finaccel.mjs';
+import { valuePrep, valueSeries, valueOnAt, KINDS as VAL_KINDS, CYC_IND } from './lib_value.mjs';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs';
 import path from 'path';
@@ -83,6 +84,14 @@ if (TURN && !['lo', 'mid', 'hi', 'sham'].includes(TURN)) { console.error(`🚨 T
 const FIN = process.env.FIN || '';
 if (FIN && !['acc', 'gm', 'eps', 'sham'].includes(FIN)) { console.error(`🚨 FIN=${FIN} 不認得(acc|gm|eps|sham)`); process.exit(1); }
 const FIN_DEEP = process.env.FIN_DEEP || path.join(ROOT, 'fin_deep', 'fin_deep.json');
+// 💎 V77.4.4 價值 × 成長 × 週期濾網(value_probe 的三個模組)—— 同 FIN:疊在**候選階段**,⛔ 不進 CACHE_KEY;⛔ 不擴充 FIN=(sham 的對齊目標不同)
+//   VAL = asset|asset2|asset3|earn|earn2|earn4|earnLo|cycle|cycleY|trap|ab|ac|bc|multi | sham:<kind>:公式一律 lib_value(⛔ 這裡不寫第二份)
+//     sham **必須帶 kind**,通過率對齊那個 kind 在同一批候選上的實測(⛔ 不寫死);訊號日收盤走既有 selfFeat
+//   ⚠️ 還沒有任何一季可用 / 缺欄位 → null → **剔除並計數**(⛔ 不可當成通過);cycle/ac/bc/multi 候選不在循環產業 → 剔除並計數
+const VAL = process.env.VAL || '';
+const VAL_KIND = VAL.startsWith('sham:') ? VAL.slice(5) : VAL;
+if (VAL && !VAL_KINDS.includes(VAL_KIND)) { console.error(`🚨 VAL=${VAL} 不認得(${VAL_KINDS.join('|')}|sham:<kind>)`); process.exit(1); }
+const AUX_DIR = process.env.AUX_DIR || DATA;
 // 💾 掃描結果快取:同一組 ENTRY/EXIT/STOP/MAXD/GAPCAP 的交易完全一樣 →
 //    存起來重用,後面每試一個行事曆假設就從 3 分鐘變成 3 秒。
 //    ⛔ 參數不同一定要重掃(檔案內有 meta,對不上會拒絕載入)。
@@ -194,7 +203,7 @@ const cover = {};
 for (const s of syms) cover[s[0]] = (cover[s[0]] || 0) + 1;
 console.log(`💼 組合回測 ・${syms.length} 檔(分層抽樣,代號開頭分布 ${JSON.stringify(cover)})`);
 if (RANKBY !== 'self' || GATE !== 'pat') console.log(`🎯 增量檢定:RANKBY=${RANKBY} ・GATE=${GATE}(⛔ 不是正式配置)`);
-console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日${REENTRY > 0 ? ` ・買回=${REENTRY}日內站回5MA(最多${RE_MAX}次)` : ''} ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}${TURN ? ` ・週轉率=${TURN}` : ''}${FIN ? ` ・營收加速=${FIN}` : ''}\n`);
+console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日${REENTRY > 0 ? ` ・買回=${REENTRY}日內站回5MA(最多${RE_MAX}次)` : ''} ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}${TURN ? ` ・週轉率=${TURN}` : ''}${FIN ? ` ・營收加速=${FIN}` : ''}${VAL ? ` ・價值=${VAL}` : ''}\n`);
 
 // 💾 掃描結果快取(只跟這幾個參數有關;行事曆濾網完全不影響掃描結果)
 const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE });
@@ -705,7 +714,7 @@ const dIdx = new Map(days.map((d, i) => [d, i]));
 
 // 🧬 個股自身狀態表(⛔ 只用該日以前的資料 → 無前視偏誤)
 const selfFeat = new Map();
-if (SELF.length || TURN) {
+if (SELF.length || TURN || VAL) {
     for (const sym of syms) {
         let rows;
         try { rows = JSON.parse(fs.readFileSync(path.join(DATA, `${sym}.json`), 'utf8')); } catch (_) { continue; }
@@ -790,6 +799,35 @@ const finOk = t => {
     if (FIN === 'sham') {
         if (finFrac == null) { let on = 0, n = 0; for (const arr of byIn.values()) for (const x of arr) { const w = finOnAt(finSer.get(x.sym), x.inD, ''); if (w == null) continue; n++; if (w) on++; } finFrac = n ? on / n : 0; console.log(`🎲 FIN=sham 通過率對齊 FIN=acc:${(finFrac * 100).toFixed(1)}%(${on}/${n} 筆候選)`); }
         return (_shamHash(`${t.sym}|${t.inD}|fin`) % 10000) < finFrac * 10000;   // 安慰劑:跟財報無關、同通過率
+    }
+    return v === true;
+};
+// 💎 VAL 濾網:每檔季序列一次算好(lib_value);PB 用訊號日收盤(selfFeat 的 c)
+const valSer = new Map(); const valInd = new Map(); let valNoData = 0, valNotCyc = 0, valFrac = null;
+const VAL_CYC = /^(cycle|cycleY|ac|bc|multi)$/.test(VAL_KIND);
+if (VAL) {
+    let FD = null;
+    try { FD = JSON.parse(fs.readFileSync(FIN_DEEP, 'utf8')); } catch (_) { console.error(`🚨 VAL 要用 fin_deep.json,但讀不到 ${FIN_DEEP} → ⛔ 不靜默放行,直接停`); process.exit(1); }
+    const P = valuePrep(FD);
+    for (const sym of syms) { const ser = valueSeries(FD, sym, P); if (ser && ser.length) valSer.set(sym, ser); }
+    try { const m = JSON.parse(fs.readFileSync(path.join(AUX_DIR, 'industry_map.json'), 'utf8')); for (const [k, v] of Object.entries(m)) valInd.set(k, String(v)); }
+    catch (_) { if (VAL_CYC) { console.error(`🚨 VAL=${VAL} 要用 industry_map.json 判循環產業,但讀不到(AUX_DIR=${AUX_DIR})→ 停`); process.exit(1); } }
+    console.log(`💎 價值濾網 VAL=${VAL}:${valSer.size} 檔有季序列(缺 ${syms.length - valSer.size} 檔剔除)${VAL_CYC ? ` ・循環產業 ${syms.filter(s2 => CYC_IND.includes(valInd.get(s2))).length} 檔` : ''}・fin_deep ${FD.q[0]} ~ ${FD.q[FD.q.length - 1]}`);
+    if (valSer.size < 100) { console.error('🚨 有季序列的檔不到 100 → 資料不對,停'); process.exit(1); }
+}
+const valRaw = (sym, d) => {
+    if (VAL_CYC && !CYC_IND.includes(valInd.get(sym))) return 'notcyc';
+    const f = selfFeat.get(sym)?.get(d);
+    return valueOnAt(valSer.get(sym), d, VAL_KIND, { close: f ? f.c : null });
+};
+const valOk = t => {
+    if (!VAL) return true;
+    const v = valRaw(t.sym, t.inD);
+    if (v === 'notcyc') { valNotCyc++; return false; }
+    if (v == null) { valNoData++; return false; }              // 不知道 → 剔除(⛔ 不可當成通過)
+    if (VAL.startsWith('sham:')) {
+        if (valFrac == null) { let on = 0, n = 0; for (const arr of byIn.values()) for (const x of arr) { const w = valRaw(x.sym, x.inD); if (w == null || w === 'notcyc') continue; n++; if (w) on++; } valFrac = n ? on / n : 0; console.log(`🎲 VAL=sham 通過率對齊 VAL=${VAL_KIND}:${(valFrac * 100).toFixed(2)}%(${on}/${n} 筆候選)`); }
+        return (_shamHash(`${t.sym}|${t.inD}|val`) % 10000) < valFrac * 10000;   // 安慰劑:跟財報無關、同通過率
     }
     return v === true;
 };
@@ -913,7 +951,7 @@ for (let i = 0; i < days.length; i++) {
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
                   && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF)
                   && indCycOk(x.t.sym, d)
-                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t))
+                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t) && valOk(x.t))
         .sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
     if (RANKBY === 'rand') { for (let k = cand.length - 1; k > 0; k--) { const j = Math.floor(_rnd() * (k + 1)); [cand[k], cand[j]] = [cand[j], cand[k]]; } }
     else if (RANKBY === 'mkt') cand.sort((a, b) => (b.m.sum / b.m.n) - (a.m.sum / a.m.n));
@@ -1055,6 +1093,7 @@ console.log(`   每趟平均      ${pct(taken.reduce((a, t) => a + net(t), 0) / 
 console.log(`   累積損益      ${totalPnL >= 0 ? '+' : '−'}${nf(Math.abs(totalPnL))} 元`);
 console.log(`   對本金報酬    ${pct(totalPnL / capital * 100)}  ${yrs >= 0.5 ? `(年化約 ${pct((Math.pow(1 + totalPnL / capital, 1 / yrs) - 1) * 100)})` : ''}`);
 console.log(`   📉 最大回撤    ${mdd.toFixed(2)}%  ← 中途最難熬的時候(⚠️ 這是會不會半路砍在最低點的關鍵)`);
+if (VAL) console.log(`   💎 價值濾網 VAL=${VAL}:候選裡「不知道」(那天還沒有可用財報 / 缺欄位)剔除 ${valNoData.toLocaleString()} 筆${VAL_CYC ? ` ・非循環產業剔除 ${valNotCyc.toLocaleString()} 筆` : ''}(⛔ 不當成通過)`);
 if (PARK) {
     // 🚧 空過守門:設了 PARK 卻**一天都沒有進入空頭** → 輸出會跟基準一字不差,看起來像「沒差別」
     console.log(`\n🔀 停泊策略 PARK=${PARK}(空頭日不開新倉)`);
