@@ -1,3 +1,44 @@
+## 🎣 V77.4.1 釣魚分頁三步驟化 + 👑 池子 + 拋竿動畫 —— ⭐ 借外部介面的「結構」,一個框、一個橘色、一個評分欄都不借
+
+承 V77.4.0(探針結論:外部那套七層裡只有「成交額前 50」站得住)。使用者另外四問:「依照附件的介面方式修改」「不要帶入人名」「有更好的方式嗎」「釣魚介面能不能做動畫」。
+
+### 借什麼、不借什麼
+| 附件有的 | 本站怎麼做 | 為什麼 |
+|---|---|---|
+| 三步驟直排(初篩池 → 精挑 → 驗證) | ✅ `#tabRod` 改成 **01 建池 → 02 拋竿 → 03 驗證**,頂端三顆膠囊 `rodGo()` 捲到那一段;既有 8 個 id 一個不動(`test_recoledger ①a`) | 結構好:一眼看得出「先看哪裡、再按什麼、最後在哪驗」 |
+| XQ 語法一鍵複製 | ✅ `_rodRuleText()` / `_rodRuleCopy()`:本站**真正在用**的規則純文字(門檻讀 `_geneRule()` / `_HQ_RULE` / `_KINGPOOL_EDGE`,讀不到就寫「讀不到」⛔ 不兜預設) | ⛔ 不抄它的 XQ:那七層有六層本站實測是零 |
+| 雙 AI 提示詞(題材 / 法人 / 風險 / **爆發評分** / **是否隔日表態**) | ✅ `_rodAiPrompt()` 只問 **題材 / 30 天事件 / 30 天風險**,附日期與來源;**明寫「不要評分、不要預測漲跌、不要判斷明天會不會表態」**;走既有 `_askAi`(Perplexity 會上網) | AI 評分 `ailevel_probe` 無預測力、`_FISH_IC` IC≈0(陷阱 #38);隔日表態 `dtflip_probe` 碰得到≠賺得到;App 內三條 AI 鏈**不上網**,叫它評題材就是叫它編 |
+| 每日追蹤表(日期 / 代號 / 進池理由 / AI 評分 / 隔日漲跌 / 微調筆記) | ✅ 🧺 漁獲籃每列補 **進池理由 / 隔日漲跌 / 📝 筆記**,+「📋 複製追蹤表」8 欄 TSV;⛔ 沒有「AI 評分」欄 | 本站籃子早就**自動結算、扣同期加權**,比手填強;隔日漲跌只描述、⛔ 不當驗證 |
+| 紀律三條(5 日線進 / 3 日收不回出 / 單檔 ≤20%) | ✅ 03 段頂端三張 `.rodrule` 卡:進場 = 訊號日尾盤(`_SIG_EDGE.close` vs `.nextopen`)/ 出場 = `_exitRuleName()` + 硬底線 + `_STL_MAXD`(`_SIG_DEEP` 換出場才贏 0050)/ 資金 = `_RECO_PICKS` × `_CAP_RULE.lot`;每張底下寫「外部那條本站實測怎麼說」(`ma5up` / `BT.dims.exit.n` / `BT.dims.picks.n`) | 全部讀常數;`_CAP_RULE` 是新常數(⛔ 不往 `_SIG_DEEP` 加欄位 —— `test_deck` 的 300 字元切片會切不到 `etf0050`) |
+| 橘色主題、每段一個圓角卡、綜合評分 | ⛔ 不借 | 本站鐵則:全站無框(V77.0.0)、`--cyan/--amber`、紅綠只講漲跌、⛔ 憑空評分 |
+| 人名(附件出現 8 處,含 2 處在複製字串裡) | ⛔ 一律寫「外部那套」(`test_rod3 ④d` 釘住) | 使用者明示 |
+| 動畫 | 🚨 **附件本身沒有任何動畫**(只有 header 綠點 `animate-pulse`;toast 掛的 `animate-in` class 根本沒定義)→ 本站做的是**拋竿的操作回饋** | 魚缸早就有魚游、同族靠攏、光暈;缺的是 `castRod` 那 420ms 純 `setTimeout` 的畫面 |
+
+### 👑 池子
+`FISH_POOLS` 加 `king`(`f: r.rankAmt <= PRO._KINGPOOL_EDGE.top`,`rankAmt` 在 `_fishData` 用**當天** `amt` 排一次 —— `kingpool_probe` selftest ⑤ 的規矩:排名只能用訊號日當天的量)。
+徽章 `_rodStatus().king` 讀 `_KINGPOOL_EDGE`:六關全過 +0.98pp、勝率 41.4% 對 36.4%,**而且一定印「絕對超額 −0.29%」與「不換預設 / 不進拋竿」**(⛔ 不可只講好的那半)。🧬 仍是預設與主角。
+
+### 🎣 拋竿動畫(canvas 狀態機)
+`_castAnimRun(targets, none)` 回 Promise;`_fishTick` 尾端 `_castAnimDraw(ctx, now)` 疊在最上層。
+phase:`fly` 500ms(釣線從左上竿尖拋物線到目標魚上方)→ `splash` 400ms(三圈漣漪錯開淡出)→ 有目標 `pull` 350ms(魚往浮標靠 + 光暈)/ 沒目標 `bob` 1000ms → `reel` 300ms → `done`。
+⛔ 三條:① **名單先算完再動畫**,動畫不改變任何結果(`test_castanim ⓐ`:stub 掉前後 picked 相同)② reduce-motion / 列表模式 / 畫不了 → 直接 done ③ **安全閥 2.5s**(rAF 被 `visibilitychange` 停掉時名單⛔ 不可被卡住)。
+實測 headless:fly→splash→pull→reel→done 共 1.6 秒;沒魚時 fly→splash→bob→reel→done。
+
+### 🚨 這一版踩到的坑(要記住)
+1. **狀態機 `finish()` 第一版拿 `phase === 'done'` 當「已經 resolve 過」的判斷** —— 但推進到 done 的那一行是**先**把 `phase` 設成 `'done'` 再呼叫 `finish()` → `finish` 一進來就 early return,`resolve()` 永遠沒被呼叫;連安全閥的 timer 也走同一支 `finish` → 一樣 return。結果 `castRod` 卡死,**測試整支被 timeout 砍掉(exit 143)才看到**,而 debug 逐 300ms 印 phase 看到「done 了但 promise 沒回來」。
+   ⭐ 通用:**「已完成」要用獨立旗標(`A.resolved`),⛔ 不可借用會被別處先改掉的狀態欄位**。而且 **會 hang 的路徑,測試要用 `Promise.race` 包住** —— 卡住要變成紅燈,不是「沒有結果」(沒結果 = 假的「沒抓到」)。`test_castanim ⓖ` 改成 race 之後,注入「拿掉安全閥」才叫得出來。
+2. **兩個常數同值害斷言誤判**:`_HQ_RULE.pos`(拋竿)與 🧬 的 `pos` 都是 75 → 注入「`_geneRule` 讀不到」後,文字裡仍有「≥ 75」(來自拋竿那行,合法)→ 第一版斷言「不可含 75」假紅。⭐ 釘「🧬 那一行不見了」(`'一年位階 ≥ ' + g.pos`),⛔ 不釘裸數字。
+3. `_castNone` 以前把「今天沒有魚上鉤」那張卡寫進 **hidden** 的 `fishPickPane` → 使用者看不到(既有 bug,順手修:先 `_fishShow('pick')`)。
+4. `fishBack` 只 `_fishStart()` 不夠:魚缸收起期間 `clientWidth = 0`,寬度會用預設值畫 → 改 `_fishRebuild()`(保留舊魚位置)。
+5. 漁獲籃每 60 秒自動重畫會把 📝 輸入框的游標踢掉 → `_fishBasketRender` 開頭 **focus 守門**(`.bknote:focus` 存在就延後 1.5s);`test_rod3 ⑳` 釘住,注入拿掉守門會紅。
+
+### 🧪 測試
+`scripts/test_rod3.mjs`(⑯~㉕ + ④c/④d,17 條)、`scripts/test_castanim.mjs`(ⓐ~ⓘ,11 條);6 種注入全部叫得出來:
+拿掉 focus 守門 → ⑳ 紅 ・徽章寫死 e10 → ㉔b 紅 ・提示詞要求評分 → ⑱b 紅 ・動畫偷改名單 → ⓐ 紅 ・拿掉安全閥 → ⓖ 紅(⛔ 不卡住)・進場改回 setTimeout → ⓑ/ⓗ 紅。
+既有 `test_fishrod` / `test_recoledger` / `test_prohtml` / `test_noframe` / `test_deck` / 四驗證全綠;390px snapshot 橫向溢出 0。
+
+---
+
 ## 👑 V77.4.0 外部「股王釣魚選股」邏輯實測 —— ⭐ 七層裡真正做事的只有「成交額前 50」,而那一層單獨就六關全過
 
 使用者上傳一份 React 追蹤介面 + 一套外部釣魚選股邏輯(初篩:成交金額前 50 + 收盤>5 日線 + 30 日均線向上 + 淨值>0 +

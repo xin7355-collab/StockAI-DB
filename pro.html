@@ -354,6 +354,11 @@ pre.prompt{padding:14px;font-family:var(--mono);font-size:11px;color:#93a5bd;whi
 .bkvs{margin-top:4px;font-size:11.5px;color:var(--dim);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .bkvs b{font-size:13px}
 .bkft{margin-top:4px;font-size:10.5px;color:var(--dim2);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* 🧺 V77.4.1 追蹤表補的三欄:進池理由 / 隔日漲跌 / 📝 筆記(input 有框是合法的:框在講「這裡可以打字」)*/
+.bkwhy{margin-top:4px;font-size:11px;color:var(--dim);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.bknote{width:100%;box-sizing:border-box;margin-top:5px;background:var(--panel);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:5px 8px;font-size:12px}
+.rodrule{border-left:3px solid var(--line2);padding:6px 10px;margin:0 0 6px;font-size:12px;line-height:1.65}
+.rodrule b.h{display:block;font-size:12.5px;margin-bottom:2px}
 .fishcard .big{font-size:16px;font-weight:900}
 .fishcard .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px 10px;margin:8px 0;font-size:12px}
 .fishcard .kv b{display:block;font-size:10px;color:var(--dim2);font-weight:700}
@@ -799,20 +804,27 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
      ⛔ 所有數字一律讀常數(_geneRule / _HQ_RULE / _SIG_DEEP / _CAST_DEAD / _CAST_STICKY / _FISH_IC /
         playbook_edge 的 cost),⛔ 一個都不寫死在 HTML 或文案裡。 -->
 <div id="tabRod" class="hidden">
-  <!-- 🎣 兩個畫面:魚池(挑) ↔ 釣到(看)。⛔ 不可疊在同一頁 —— 使用者實測「頁面拉太長」。 -->
+  <!-- 🎣 V77.4.1 三步驟直排(01 建池 → 02 拋竿 → 03 驗證)—— 借外部那份介面的「結構」,⛔ 不借它的框與橘色。
+       ⛔ 既有 8 個 id 一個不動(fishPoolPane / fishPickPane / fishBasketPane / fishCanvas / fishBasket / fishList / fishCard / fishPool,
+          test_recoledger ①a 釘住)。🐟 釣到那一段改成「同段展開」:魚缸/列表/說明收起 + 一行提示,⛔ 不再整段藏掉。 -->
+  <div class="panel" id="rodHead" style="padding-top:8px">
+    <h2>🎣 釣魚 <span class="sub">建池 → 拋竿 → 驗證 ・⛔ 不下多空 / 不計分 / 不給買賣價位</span></h2>
+    <div class="labbar" id="rodSteps" style="margin:6px 0 0">
+      <button class="lbtn" onclick="PRO.rodGo('pool')">01 建池</button>
+      <button class="lbtn" onclick="PRO.rodGo('cast')">02 拋竿</button>
+      <button class="lbtn" onclick="PRO.rodGo('basket')">03 驗證</button>
+    </div>
+  </div>
   <div class="panel" id="fishPoolPane">
-    <h2>🎣 釣魚 <span class="sub">池子裡的魚 = 🧬 強勢高波動</span>
+    <h2>01 建池 <span class="sub">池子裡的魚 = 🧬 強勢高波動</span>
       <span class="sub" id="fishSub"></span></h2>
     <div id="fishKeyWarn"></div>
-    <div class="starbar" style="margin-top:0">
-      <button class="lbtn on" id="castBtn" onclick="PRO.castRod()" style="font-weight:900">🎣 拋竿</button>
-      <span class="note" id="castNote" style="margin:0"></span>
-    </div>
     <div class="labbar" id="fishPool"></div>
     <div class="starbar" style="justify-content:space-between;margin-top:0">
       <div class="labbar" style="margin:0">
         <button class="lbtn on" id="fishModeTank" onclick="PRO.fishMode('tank')">🐟 魚池</button>
         <button class="lbtn" id="fishModeList" onclick="PRO.fishMode('list')">📊 列表</button>
+        <button class="lbtn" id="rodRuleBtn" onclick="PRO._rodRuleCopy()" title="複製本站真正在用的篩選規則(純文字,⛔ 不是 XQ 語法)">📋 複製篩選規則</button>
       </div>
       <span class="sigtag" id="fishCount"></span>
     </div>
@@ -822,20 +834,34 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
       <div id="fishLegend" class="fishlegend"></div>
     </div>
     <div id="fishList"></div>
+    <div id="fishTankNote" class="note hidden" style="margin:4px 0 0">🐟 魚缸已收起(看完下面那一條按「← 收起這一條」就回來)。</div>
     <div id="fishNote"></div>
   </div>
-  <!-- 🐟 釣到:點魚之後切到這一頁(⛔ 不跟魚池疊在一起) -->
-  <div class="panel hidden" id="fishPickPane">
-    <div class="starbar" style="margin:0 0 8px">
-      <button class="lbtn" onclick="PRO.fishBack()">← 回魚池</button>
-      <button class="lbtn" id="fishWhyBtn" style="border-color:var(--amber);color:var(--amber)" onclick="PRO._castWhyOpen()">📖 這一條的細節 🚨 回測怎麼說</button>
+  <div class="panel" id="rodCastPane">
+    <h2>02 拋竿 <span class="sub">由程式依實測規則挑 —— 是候選,⛔ 不是買進訊號</span></h2>
+    <div class="starbar" style="margin-top:0">
+      <button class="lbtn on" id="castBtn" onclick="PRO.castRod()" style="font-weight:900">🎣 拋竿</button>
+      <button class="lbtn" id="rodAiBtn" onclick="PRO._rodAskAi()" title="把上鉤的名單拿去問外部 AI(只問題材 / 事件 / 風險,⛔ 不評分、不預測)">🔎 問外部 AI(只問質化)</button>
     </div>
-    <div id="fishCard"></div>
+    <div id="rodCastPicks"></div>
+    <div class="note" id="castNote" style="margin:0"></div>
+    <!-- 🐟 釣到:點魚之後在這一段展開(⛔ 不跟魚缸疊在一起 —— 魚缸那一段會收起) -->
+    <div class="hidden" id="fishPickPane" style="margin-top:8px">
+      <div class="starbar" style="margin:0 0 8px">
+        <button class="lbtn" onclick="PRO.fishBack()">← 收起這一條</button>
+        <button class="lbtn" id="fishWhyBtn" style="border-color:var(--amber);color:var(--amber)" onclick="PRO._castWhyOpen()">📖 這一條的細節 🚨 回測怎麼說</button>
+      </div>
+      <div id="fishCard"></div>
+    </div>
   </div>
   <!-- 🧺 漁獲籃(你自己的紀錄;localStorage 的 proWar_catch 下架期間一個字都沒刪過)
        🚨 ⛔ 這裡**不可以**再放 recoLedger —— 舊版它跟漁獲籃同一個 panel,一起搬回來的話
           📒 成績單會從 #tabFish 消失,而且 check_dom_ids 會叫。 -->
-  <div class="panel" id="fishBasketPane"><div id="fishBasket"></div></div>
+  <div class="panel" id="fishBasketPane">
+    <h2>03 驗證 <span class="sub">🧺 漁獲籃 = 你自己的紀錄,自動結算、扣同期加權</span></h2>
+    <div id="rodRules"></div>
+    <div id="fishBasket"></div>
+  </div>
 </div>
 <div id="tabSig" class="hidden">
   <div class="panel">
@@ -2136,6 +2162,10 @@ const PRO = {
       f: (r, S) => true, sort: 'amt' },
     { k: 'gene', n: '🧬 高位階+高波動', d: '這一頁的主角:🧬 強勢高波動(門檻與實測成績由 _rodStatus 讀常數,⛔ 不寫死在這裡)',
       f: (r, S) => r.pos252 >= 75 && r.amp20 >= 3.2, sort: 'amt' },
+    // 👑 V77.4.1 外部那套「股王釣魚」七層漏斗裡**唯一站得住的一層**(kingpool_probe:六關全過;其餘六層疊上去 +0.06pp = 零)。
+    //    ⛔ 只是排序濾網 —— 它自己的 10 日超額仍是負的;⛔ 不進拋竿、不計分、不提醒。門檻讀 _KINGPOOL_EDGE.top,名字在 renderRod 帶數字。
+    { k: 'king', n: '👑 成交額排名最前', d: '今天成交金額排全市場最前面的個股(⛔ 不含 ETF)。實測數字由 _rodStatus 讀 _KINGPOOL_EDGE,⛔ 不寫死在這裡',
+      f: (r, S) => r.rankAmt != null && r.rankAmt <= PRO._KINGPOOL_EDGE.top, sort: 'amt' },
     { k: 'st',   n: '🚀🔥 有狀態的', d: '關聯星圖標成「剛突破」或「過熱」的',
       f: (r, S) => (S[r.sym] || 0) > 0, sort: 'amt' },
     { k: 'top',  n: '📈 近 20 日最強', d: '近 20 日漲最多的 100 檔(⛔ 追強有實測邊際、但衰退中)',
@@ -2226,10 +2256,15 @@ const PRO = {
     if (!this._fishD) await (this._rodP = this.renderRod());
     const D = this._fishD;
     if (!D) { if (btn) { btn.disabled = false; btn.textContent = '🎣 拋竿'; } return; }
+    if (this._fishView === 'pick') this.fishBack(true);   // 🐟 魚缸收著就先放出來,動畫才看得到(⛔ 不改名單)
     const R = this._castPick(D);
     this._cast = R;
-    await new Promise(r => setTimeout(r, 420));            // 浮標沉下去的那一下(⛔ 只是體驗,不影響結果)
+    // 🎣 V77.4.1 拋竿動畫 —— ⛔ 只是操作回饋:名單在上一行就算好了,動畫**不改變任何結果**;
+    //    有 2.5 秒安全閥(rAF 被切分頁停掉時名單⛔ 不可被卡住);reduce-motion / 列表模式 → 直接結束。
+    const clean = R.picked.filter(x => !(x.warn || []).length);
+    await this._castAnimRun((clean.length ? clean : R.picked).map(x => x.sym), !R.picked.length);
     if (btn) { btn.disabled = false; btn.textContent = '🎣 再拋一次'; }
+    this._rodCastPicksRender();
     if (!R.picked.length) { this._castNone(R); return; }
     this._fishPoolK = 'cast';
     await (this._rodP = this.renderRod());
@@ -2239,6 +2274,7 @@ const PRO = {
   },
 
   _castNone(R) {
+    this._fishShow('pick');            // 🚨 V77.4.1 修:以前把卡寫進 hidden 的 fishPickPane → 使用者看不到「今天沒有魚」
     const why = R.srcNone === 'noFile'
       ? '<b>明日作戰清單還沒載進來</b>(盤後採礦完成後才有)——⛔ 這不是「今天沒有」,是還沒讀到。'
       : `全市場掃完,<b>決策台今天一檔「可以買的」都沒有</b>。<br>
@@ -2579,6 +2615,8 @@ const PRO = {
                   chg5: Number.isFinite(r[i5]) ? r[i5] : 0,          // ⚠️ 拋竿的避雷守門要用(噴 ≥30% 又被掛注意股)
                   sc: this._fishScore(r, C, E) });
     }
+    // 👑 V77.4.1 成交額**橫斷面**排名(全市場個股當天互比;⛔ 只用當天的 amt —— kingpool_probe selftest ⑤ 的規矩)
+    rows.slice().sort((a, b) => b.amt - a.amt).forEach((r, i) => { r.rankAmt = i + 1; });
     return { rows, S, J, E, date: scr.data_date || '', updated: scr.updated || '' };
   },
 
@@ -2642,9 +2680,13 @@ const PRO = {
   //
   // 🧪 每一池現在的實測狀態(⛔ 不可有任何一池沒有條目 —— 測試 ③ 會擋)
   _rodStatus() {
-    const g = this._geneRule(), S = this._SIG_DEEP, F = this._FISH_IC, H = this._HQ_RULE;
+    const g = this._geneRule(), S = this._SIG_DEEP, F = this._FISH_IC, H = this._HQ_RULE, K = this._KINGPOOL_EDGE;
     const w = v => (v / 10000).toFixed(1);
     return {
+      king: { lv: '✅', t: '六關全過,但只是排序濾網', why: '今天成交金額排全市場前 ' + K.top + ' 的個股 —— 外部那套「股王釣魚」七層漏斗裡'
+        + '唯一站得住的一層:10 日比隨便挑一檔多 +' + K.e10 + 'pp、勝率 ' + K.w + '% 對 ' + K.baseW + '%,六關 ' + K.pass + '/' + K.gates
+        + '。⛔ 但它自己的 10 日超額仍是 ' + K.abs + '%(還是輸大盤),而且外部那套再疊的六層合起來只多 +' + K.funnel.e10
+        + 'pp(p=' + K.funnel.p + ')= 零;疊在 🧬 上跟隨機抽同檔數比,扣成本全負 → ⛔ 不換預設、⛔ 不進拋竿。(' + K.src + ')' },
       gene: { lv: '✅', t: '這一頁的主角', why: g
         ? '一年位階 ≥' + g.pos + ' 且近 20 日振幅 ≥' + g.amp + '%。這組條件在 ' + S.months
           + ' 個月組合回測裡是 +' + w(S.gene) + ' 萬,不挑它只有 +' + w(S.plain)
@@ -2764,6 +2806,185 @@ const PRO = {
       + '</div></details></div>';
   },
 
+
+  // ═══ 🎣 V77.4.1 三步驟化(借外部那份介面的結構:建池 → 拋竿 → 驗證;⛔ 不借它的框、橘色、評分欄)═══
+  // 📋 本站**真正在用**的篩選規則,純文字一鍵複製(⛔ 不是 XQ 語法;⛔ 門檻讀常數,讀不到就說讀不到)
+  _rodRuleText() {
+    const g = this._geneRule(), H = this._HQ_RULE, K = this._KINGPOOL_EDGE, D = this._fishD || {};
+    const L = [];
+    L.push('🎣 本站釣魚池的篩選規則(資料日 ' + (D.date || '—') + ';⛔ 純文字描述,不是 XQ 語法)');
+    L.push('① 來源:data/screener.json —— 每個交易日收盤後由採礦機重算(盤中看到的一定是上一個交易日)');
+    L.push('② ⛔ 不收 ETF ③ 任一欄位 null 一律不下水(⛔ 不補 0)');
+    if (g) {
+      L.push('④ 🧬 一年位階 ≥ ' + g.pos + '(收盤在過去一年高低區間的百分位)');
+      L.push('⑤ 近 20 日平均振幅 ≥ ' + g.amp + '%((最高 − 最低)÷ 收盤,20 日平均)');
+    } else L.push('④⑤ 🧬 兩道門檻:⏳ 現在讀不到(散戶救星那份沒載進來)—— ⛔ 不兜預設值');
+    L.push('⑥ 照成交額由大到小取前 ' + this.FISH_MAX + ' 檔');
+    L.push('👑 另一池「成交額前 ' + K.top + '」:六關全過 +' + K.e10 + 'pp(勝率 ' + K.w + '% 對 ' + K.baseW + '%),但絕對 10 日 ' + K.abs
+      + '%;外部那套再疊的六層 +' + K.funnel.e10 + 'pp = 零 → 只當池子,⛔ 不進拋竿');
+    L.push('🎣 拋竿(另一套,跟池子不是同一個門檻):決策台「今天可以買的」—— 每檔自己最會賺的招 → 🧬 旗標(位階 ≥ ' + H.pos
+      + ' 且年化波動率 ≥ ' + H.vol + '%)→ 非空頭 → 照保守下界排 → 一天最多 ' + this._RECO_PICKS + ' 檔');
+    L.push('⛔ 不下多空、不計分排名、不給買賣價位;要不要買、買幾張、停損在哪以散戶救星「現在怎麼做」為準。');
+    return L.join('\n');
+  },
+  _rodRuleCopy() {
+    const t = this._rodRuleText();
+    const okc = this._copySync(t);
+    this.buzz(15);
+    this.toast(okc ? '📋 已複製本站的篩選規則(純文字)' : '⚠️ 這個瀏覽器不讓我複製 —— 開 📖 細節長按選取', 2400);
+    return okc;
+  },
+  // 🔎 拿上鉤的名單去問**外部**AI(Perplexity 那種會上網的)—— ⛔ 只問質化:題材 / 事件 / 風險。
+  //    🚨 三條不可省:⛔ 不要評分(ailevel_probe 五級無預測力、_FISH_IC 加總 IC≈0、陷阱 #38)
+  //    ⛔ 不要預測漲跌 / 隔天會不會表態(dtflip_probe:碰得到 ≠ 賺得到)⛔ 不走 App 內三條 AI 鏈(它們不上網,叫它評題材就是叫它編)。
+  _rodAiPrompt() {
+    const ps = (this._cast && this._cast.picked) || [];
+    if (!ps.length) return null;
+    const D = this._fishD || {};
+    const names = ps.map(x => x.sym + ' ' + this._nmTxt(x.sym)).join('、');
+    return ['請只做「質化」整理,⛔ 不要給評分、不要打分數、不要預測漲跌、不要判斷明天會不會表態、不要給買賣建議。',
+      '對下面每一檔各答三題,每一條都附日期與來源網址,查不到就寫「查不到」(⛔ 不要編):',
+      '① 現在的題材與所屬族群(一句話)',
+      '② 最近 30 天的利多 / 利空事件(附日期、來源)',
+      '③ 未來 30 天已知的風險事件(財報公布日 / 除權息 / 法說會 / 處置或注意股 / 現金增資)',
+      '名單(台股,資料日 ' + (D.date || '—') + '):' + names].join('\n');
+  },
+  _rodAskAi() {
+    const q = this._rodAiPrompt();
+    if (!q) { this.toast('先按 🎣 拋竿 —— 有上鉤的魚才有東西可問', 2200); return null; }
+    const r = this._askAi(q);
+    this.toast('🔎 已開外部 AI;提示詞也複製到剪貼簿了(只問題材 / 事件 / 風險,⛔ 不評分)', 2600);
+    return r;
+  },
+  // 🎣 上鉤幾條的 chips(點 → 展開那一條);沒拋過就整段不顯(⛔ 不留空殼)
+  _rodCastPicksRender() {
+    const el = document.getElementById('rodCastPicks'); if (!el) return;
+    const R = this._cast, ps = (R && R.picked) || [];
+    const WN = { disp: '⛔處置中', hot: '⚠️噴太多', thin: '🚧買不到' };
+    if (!R) { el.innerHTML = ''; return; }
+    if (!ps.length) { el.innerHTML = '<div class="note" style="margin:0 0 6px">🎣 這一次沒有魚上鉤(理由在下面那張卡)。</div>'; return; }
+    el.innerHTML = '<div class="note" style="margin:0 0 6px">🎣 上鉤 <b>' + ps.length + '</b> 條(候選,⛔ 不是買進訊號;點一條看細節):'
+      + ps.map(x => '<span class="sigtag" style="cursor:pointer;margin:2px 3px 0 0" onclick="PRO._fishPick(\'' + x.sym + '\')">'
+        + this._nmTxt(x.sym) + (x.warn || []).map(t => ' ' + (WN[t] || '')).join('') + '</span>').join('') + '</div>';
+  },
+  // 💰 正式配置(scripts/portfolio_backtest.mjs 的 LOT / CAPITAL;⚠️ 那支的 LOT 預設是 10 萬,正式回測跑的是 15 萬)
+  //   ⛔ 不往 _SIG_DEEP 加欄位(test_deck 的 300 字元切片會切不到 etf0050 = 假紅)。
+  _CAP_RULE: { lot: 150000, cap: 1000000, src: 'scripts/portfolio_backtest.mjs LOT/CAPITAL(正式配置每筆 15 萬)' },
+  // 📜 03 驗證段頂端的三張紀律卡 —— 進場 / 出場 / 資金,**全部讀常數**,每張底下寫「外部那條本站實測怎麼說」
+  _rodRulesHtml(D) {
+    const S = this._SIG_EDGE, P = this._SIG_DEEP, C = this._CAP_RULE, w = v => (v / 10000).toFixed(1);
+    const E = D && D.E && D.E.c, m5 = E && E.ma5up;
+    const exitDim = (((this.BT || {}).dims) || []).find(x => x.k === 'exit'), pickDim = (((this.BT || {}).dims) || []).find(x => x.k === 'picks');
+    const pct = Math.round(C.lot / C.cap * 100);
+    return '<div class="rodrule"><b class="h">🚪 ① 進場:訊號日<b>尾盤 13:00~13:28</b> 觸價買,⛔ 不是隔天開盤</b>'
+      + S.months + ' 個月同一套只換進場:尾盤 <b>+' + w(S.close) + ' 萬</b>(回撤 −' + S.closeDD + '%)vs 隔天開盤 +' + w(S.nextopen)
+      + ' 萬(−' + S.nextopenDD + '%)= <b>開盤買少賺一半、回撤還更大</b>。'
+      + '<br><span style="color:var(--dim2)">外部那條「收盤站上 5 日線就進」:本站選股條件回測 ma5up '
+      + (m5 ? (m5[4] >= 0 ? '+' : '') + m5[4] + 'pp(n=' + (+m5[2]).toLocaleString() + ')= 零' : '⏳ 成績表沒載到') + '。</span></div>'
+      + '<div class="rodrule"><b class="h">🛑 ② 出場:' + this._exitRuleName() + ' + 硬底線 min(訊號日最低, −5%),最長 ' + this._STL_MAXD + ' 個交易日</b>'
+      + '同一批股票、同一套選股,只把出場從「跌破 5 日線」換成 ' + P.exitName + ':🧬 從 +' + w(P.ma5.gene) + ' 萬變成 <b>+' + w(P.gene)
+      + ' 萬</b>(' + P.months + ' 個月)—— <b>贏不贏大盤取決於出場,⛔ 不是選股</b>;勝率只有三成,整套靠錯的時候小賠。'
+      + '<br><span style="color:var(--dim2)">外部那條「3 日收不回就出」= 時間停損:' + (exitDim ? this._esc(exitDim.n) : '本站實測 4 種全滅') + '</span></div>'
+      + '<div class="rodrule"><b class="h">💰 ③ 資金:一天最多 ' + this._RECO_PICKS + ' 檔、每筆 ' + (C.lot / 10000) + ' 萬(本金 ' + (C.cap / 10000) + ' 萬 = 每筆約 ' + pct + '%)</b>'
+      + '正式配置;⚠️ 這裡的 🧺 漁獲籃是「一張」的紙上成績,⛔ 不是資金模擬。'
+      + '<br><span style="color:var(--dim2">外部那條「單檔不超過 20%」方向一致;本站實測' + (pickDim ? ':' + this._esc(pickDim.n) : '每天 2 檔是甜蜜點') + '(' + this._esc(C.src) + ')</span></div>';
+  },
+  // 🧺 進池理由(釣起那一刻記下來;⛔ 之後不重算 —— 拋竿名單每天會變)
+  _catchWhy(sym) {
+    const R = this._cast, p = R && (R.picked || []).find(x => x.sym === sym);
+    if (p) return { src: 'cast', k: (p.pb && p.pb.k) || '', warn: (p.warn || []).slice() };
+    return { src: 'pool', pool: this._fishPoolK };
+  },
+  _catchWhyTxt(x) {
+    const w = x.why;
+    if (!w) return '<span style="color:var(--dim2)">進池理由 —(舊紀錄,那時還沒存)</span>';
+    const WN = { disp: ' ⛔處置中', hot: ' ⚠️噴太多', thin: ' 🚧買不到' };
+    if (w.src === 'cast') return '🎣 拋竿・' + (w.k ? this._esc(w.k) : '決策台') + (w.warn || []).map(t => WN[t] || '').join('');
+    const P = this.FISH_POOLS.find(p => p.k === w.pool);
+    return '🐟 自己從池子點的(' + this._esc(P ? P.n : (w.pool || '—')) + ')';
+  },
+  // 📝 筆記:寫回同一筆(⛔ 不重畫 —— 重畫會把游標踢掉;60 秒自動重畫也有 focus 守門)
+  _catchNote(sym, d, v) {
+    const list = this._catchLoad();
+    const x = list.find(y => y.sym === sym && String(y.d || '') === String(d || ''));
+    if (!x) return false;
+    x.note = String(v || '').slice(0, 200);
+    this._catchSave(list);
+    return true;
+  },
+  // 📋 追蹤表 TSV(貼進試算表會自動分欄)—— 欄位跟畫面上那張卡一一對應
+  _rodTrackTsv() {
+    const list = this._catchLoad();
+    const H = ['日期', '代號 名稱', '進池理由', '釣起價→出場/現價', '隔日漲跌%', '狀態', '贏大盤pp', '筆記'];
+    const strip = h => String(h).replace(/<[^>]*>/g, '').replace(/[\t\n]/g, ' ');
+    const rows = list.map(x => {
+      const st = this._stlOf(x), fin = st && !st.open;
+      const px1 = fin ? st.exitP : (this._lqPx(x.sym) ?? (this._fishD && (this._fishD.rows.find(r => r.sym === x.sym) || {}).c) ?? null);
+      return [x.d || '', x.sym + ' ' + this._nmTxt(x.sym), strip(this._catchWhyTxt(x)),
+        (x.px ?? '') + '→' + (px1 == null ? '—' : px1),
+        st && st.next1 != null ? st.next1.toFixed(2) : '—',
+        !st ? '未結算' : fin ? '已結算・' + strip(st.why) : '持有中',
+        st && st.ex != null ? st.ex.toFixed(2) : '—',
+        strip(x.note || '')].join('\t');
+    });
+    return [H.join('\t')].concat(rows).join('\n');
+  },
+  _rodTrackCopy() {
+    if (!this._catchLoad().length) { this.toast('🧺 漁獲籃是空的,沒有東西可複製', 2000); return false; }
+    const okc = this._copySync(this._rodTrackTsv());
+    this.buzz(15);
+    this.toast(okc ? '📋 已複製追蹤表(貼進試算表會自動分欄)' : '⚠️ 這個瀏覽器不讓我複製', 2400);
+    return okc;
+  },
+  // ═══ 🎣 拋竿動畫(canvas 狀態機)—— 理由:`castRod` 那 420ms 以前是純 setTimeout,畫面沒動 ═══
+  //   phase:fly 500ms(釣線從左上竿尖拋物線飛到目標魚上方)→ splash 400ms(三圈漣漪錯開淡出)
+  //         → 有目標 pull 350ms(魚往浮標靠 + 光暈)/ 沒目標 bob 1000ms(浮標上下)→ reel 300ms(收線)→ done
+  //   ⛔ 不做水波裝飾;顏色沿用 #22d3ee、無漸層。⛔ 動畫不改變名單(測試 ⓐ 決定性對照:stub 掉前後 picked 相同)。
+  //   🛟 安全閥 2.5 秒:rAF 被 visibilitychange 停掉時名單⛔ 不可被卡住。reduce-motion / 列表模式 / 畫不了 → 直接 done。
+  _castAnim: null,
+  _CAST_DUR: { fly: 500, splash: 400, pull: 350, bob: 1000, reel: 300 },
+  _castAnimRun(targets, none) {
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const cv = document.getElementById('fishCanvas');
+    const canDraw = !!(cv && cv.getContext && cv.getContext('2d')) && this._fishModeV !== 'list' && !!this._fishRaf && (this._fish || []).length > 0;
+    if (reduce || !canDraw) { this._castAnim = { phase: 'done', seq: ['done'], t0: performance.now(), targets: targets || [], none: !!none }; return Promise.resolve(); }
+    return new Promise(resolve => {
+      const A = { phase: 'fly', t0: performance.now(), seq: ['fly'], targets: targets || [], none: !!none,
+                  from: { x: 18, y: 14 }, timer: 0, finish: null };
+      // 🚨 用獨立的 resolved 旗標,⛔ 不可拿 phase 當判斷 —— 狀態機推進到 done 時 phase 已經是 'done',
+      //    第一版在這裡寫 `if (A.phase === 'done') return` → resolve 永遠不會被呼叫,castRod 卡死(實跑 8 秒才抓到)。
+      A.finish = () => { if (A.resolved) return; A.resolved = true; A.phase = 'done'; if (A.seq[A.seq.length - 1] !== 'done') A.seq.push('done'); clearTimeout(A.timer); resolve(); };
+      A.timer = setTimeout(A.finish, 2500);
+      this._castAnim = A;
+    });
+  },
+  _castAnimDraw(ctx, now) {
+    const A = this._castAnim; if (!A || A.phase === 'done') return;
+    const W = this._fishW, H = this._fishH, DUR = this._CAST_DUR;
+    const tg = A.targets.map(s => (this._fish || []).find(f => f.sym === s)).filter(Boolean);
+    const to = tg.length ? { x: tg.reduce((a, f) => a + f.x, 0) / tg.length, y: Math.min(...tg.map(f => f.y)) - 14 } : { x: W * 0.6, y: H * 0.45 };
+    let el = now - A.t0, ph = A.phase;
+    while (el >= DUR[ph]) {
+      el -= DUR[ph];
+      const next = ph === 'fly' ? 'splash' : ph === 'splash' ? (tg.length ? 'pull' : 'bob') : (ph === 'pull' || ph === 'bob') ? 'reel' : 'done';
+      A.phase = ph = next; A.t0 = now - el; A.seq.push(next);
+      if (ph === 'done') { A.finish(); return; }
+    }
+    const p = Math.max(0, Math.min(1, el / DUR[ph]));
+    ctx.save(); ctx.strokeStyle = '#22d3ee'; ctx.fillStyle = '#22d3ee'; ctx.lineWidth = 1.5;
+    const line = (bx, by) => { ctx.beginPath(); ctx.moveTo(A.from.x, A.from.y); ctx.lineTo(bx, by); ctx.stroke(); ctx.beginPath(); ctx.arc(bx, by, 3, 0, Math.PI * 2); ctx.fill(); };
+    if (ph === 'fly') { line(A.from.x + (to.x - A.from.x) * p, A.from.y + (to.y - A.from.y) * p - Math.sin(p * Math.PI) * 60); }
+    else if (ph === 'splash') {
+      line(to.x, to.y);
+      for (let k = 0; k < 3; k++) { const q = Math.max(0, p - k * 0.3); if (q <= 0) continue; ctx.globalAlpha = Math.max(0, 1 - q / 0.7); ctx.beginPath(); ctx.ellipse(to.x, to.y, 6 + q * 40, 3 + q * 14, 0, 0, Math.PI * 2); ctx.stroke(); }
+    } else if (ph === 'pull') {
+      line(to.x, to.y);
+      for (const f of tg) { f.x += (to.x - f.x) * 0.12; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r + 7 + Math.sin(p * Math.PI) * 5, f.r * 0.55 + 7 + Math.sin(p * Math.PI) * 5, 0, 0, Math.PI * 2); ctx.stroke(); }
+    } else if (ph === 'bob') { line(to.x, to.y + Math.sin(p * Math.PI * 4) * 4); }
+    else if (ph === 'reel') { line(to.x + (A.from.x - to.x) * p, to.y + (A.from.y - to.y) * p); }
+    ctx.restore();
+  },
+
   /** 🎣 釣魚分頁的入口(V77.3.9)——
    *  ⭐ body 沿用 V77.2.3 的 `renderFish`(git show 7eaf90fa7^:pro.html),只改 6 處:
    *    ① 開頭先 `loadIdx()`(🧬 門檻要現場解析,⛔ 不抄第二份)
@@ -2787,13 +3008,15 @@ const PRO = {
     msg.innerHTML = '';
     sub.innerHTML = `資料日 ${D.date || '—'} ・${D.rows.length} 檔可下水 ${this._staleChip(D.date, '選股')}`
       + this._rodWhyHtml(D);
-    const pools = this.FISH_POOLS.slice();
+    const pools = this.FISH_POOLS.map(p => p.k === 'king' ? { ...p, n: '👑 成交額前 ' + this._KINGPOOL_EDGE.top } : p);   // 👑 名字帶常數(⛔ 不寫死)
     if (this._starSym && D.J && D.J.r[this._starSym]) pools.push({ k: 'fam', n: `🕸️ 和 ${this._nmTxt(this._starSym)} 同族`, d: '關聯星圖那一族' });
     if (this._cast && (this._cast.picked || []).length) pools.push({ k: 'cast', n: `🎣 拋竿釣到的 ${this._cast.picked.length} 條`, d: '按「拋竿」由程式依實測規則挑出來的(⛔ 不是買進訊號)' });
     if (!pools.some(p => p.k === this._fishPoolK)) this._fishPoolK = 'gene';
     document.getElementById('fishPool').innerHTML = this._rodPoolsHtml(pools);
     const cn = document.getElementById('castNote'); if (cn) cn.innerHTML = this._rodCastNoteHtml();
     this._fishNote(D);
+    this._rodCastPicksRender();                                                   // 02 上鉤 chips(沒拋過就空)
+    { const rr = document.getElementById('rodRules'); if (rr) rr.innerHTML = this._rodRulesHtml(D); }   // 03 三張紀律卡
     this._fishBasketRender();
     this._fishRebuild();
   },
@@ -2813,18 +3036,28 @@ const PRO = {
   // 🐟 兩個畫面切換(⛔ 不可疊在同一頁:使用者實測「頁面拉太長」)
   _fishShow(v) {
     this._fishView = v;
-    const pool = document.getElementById('fishPoolPane'), pick = document.getElementById('fishPickPane');
-    if (!pool || !pick) return;
-    pool.classList.toggle('hidden', v === 'pick');
+    const pick = document.getElementById('fishPickPane'), hint = document.getElementById('fishTankNote');
+    if (!pick) return;
     pick.classList.toggle('hidden', v !== 'pick');
-    // ⛔ 切到釣到頁要捲到頂,否則會停在魚池捲到一半的位置
-    if (v === 'pick') window.scrollTo({ top: 0, behavior: 'smooth' });
+    // 🐟 V77.4.1 同段展開:01 建池那一段**不藏**(三步驟結構要看得到),只把魚缸 / 列表 / 說明收起 + 一行提示
+    //    → 頁面不會拉太長(使用者 V74.4.2 的抱怨),而「釣到」那張卡就在 02 拋竿底下展開。
+    for (const id of ['fishTankWrap', 'fishList', 'fishNote']) { const e = document.getElementById(id); if (e) e.classList.toggle('hidden', v === 'pick'); }
+    if (hint) hint.classList.toggle('hidden', v !== 'pick');
+    if (v === 'pick') { try { pick.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (_) {} }
   },
   fishBack(silent) {
     if (!silent) this.buzz(15);
     this._fishShow('pool');
-    // ⚠️ 回到魚池要把動畫接回去(切走時 rAF 被停掉了)
-    if (this._fishModeV !== 'list' && this._fishD) this._fishStart();
+    // ⚠️ 回到魚池要把動畫接回去;🚨 V77.4.1 魚缸收起期間 clientWidth = 0 → 必須**重新 _fishSetup**
+    //    (⛔ 只 `_fishStart` 的話,寬度還是收起時算的預設值,魚會擠在左邊)。`_fishRebuild` 會保留舊魚的位置。
+    if (this._fishModeV !== 'list' && this._fishD) this._fishRebuild();
+  },
+  // 🧭 三步驟膠囊:捲到那一段(⛔ 不切分頁、不重畫 —— 三段本來就都在同一頁)
+  rodGo(k) {
+    const id = { pool: 'fishPoolPane', cast: 'rodCastPane', basket: 'fishBasketPane' }[k];
+    const e = id && document.getElementById(id); if (!e) return;
+    this.buzz(10);
+    try { e.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (_) {}
   },
 
   // 🔑 這個視窗到底有沒有你的金鑰(V74.4.2 使用者:「連到散戶救星每次都沒抓到我的 key」)
@@ -3026,6 +3259,8 @@ const PRO = {
       ctx.fillStyle = '#dce8f5'; ctx.font = `${f.r >= 14 ? 11 : 10}px system-ui`; ctx.textAlign = 'center';
       ctx.fillText((f.st ? this.STAR_STATUS[f.st].e : '') + f.nm, f.x, f.y + f.r * 0.55 + 11);
     }
+    // 🎣 V77.4.1 拋竿動畫疊在最上層(⛔ 只畫,不動名單)
+    if (this._castAnim && this._castAnim.phase !== 'done') this._castAnimDraw(ctx, performance.now());
   },
 
   // ── 🏅 實測體質 ─────────────────────────────────────────────────────────
@@ -3088,7 +3323,7 @@ const PRO = {
     const D = this._fishD; const r = D && D.rows.find(x => x.sym === sym); if (!r) return;
     const list = this._catchLoad();
     if (list.some(x => x.sym === sym)) { this.toast('🧺 這條已經在漁獲籃裡了'); return; }
-    list.unshift({ sym, nm: r.nm, px: r.c, d: D.date || '' });
+    list.unshift({ sym, nm: r.nm, px: r.c, d: D.date || '', why: this._catchWhy(sym), note: '' });   // 🧺 V77.4.1 進池理由 + 筆記
     this._catchSave(list); this.buzz(30); this.toast(`🎣 釣起 ${r.nm}(${r.c})`);
     this._fishBasketRender(); this._fishPick(sym);
   },
@@ -3211,6 +3446,8 @@ const PRO = {
         const r = this._settleReplay(rows, i0, rule);
         if (!r) continue;
         this._stlEnrich(r);
+        // 📅 V77.4.1 隔日漲跌(釣起日收盤 → 隔一個交易日收盤)—— ⛔ 只描述:dtflip_probe「隔日表態碰得到 ≠ 賺得到」,不當驗證
+        r.next1 = (i0 + 1 < rows.length && +rows[i0].close > 0) ? (+rows[i0 + 1].close / +rows[i0].close - 1) * 100 : null;
         this._stl[key] = r;
       } catch (_) {}
     }
@@ -3639,6 +3876,8 @@ const PRO = {
   },
   _fishBasketRender() {
     const el = document.getElementById('fishBasket'); if (!el) return;
+    // 📝 V77.4.1 有筆記正在打字就延後重畫(這支每 60 秒會自動重畫,重畫會把游標踢掉、字吃掉)
+    if (el.querySelector('.bknote:focus')) { clearTimeout(this._bkDefer); this._bkDefer = setTimeout(() => this._fishBasketRender(), 1500); return; }
     if (this._twii === undefined) { this._twiiLoad().then(() => this._fishBasketRender()); }   // ⚠️ 載完重畫一次
     const list = this._catchLoad(), D = this._fishD;
     // 🧾 V74.6.7 自動結算:K 線是非同步抓的 → 抓完重畫一次。
@@ -3707,11 +3946,16 @@ const PRO = {
         <div class="bkft">${days == null ? '' : `抱 ${days} 個交易日`}
           ${!st ? '<span title="讀不到這一檔的 K 線">⏳ 還沒結算(讀不到 K 線)</span>'
                 : fin ? `<span>出場價已定,⛔ 這個數字不會再變</span>`
-                      : `<span>還沒觸發出場 —— 上面是<b>帳面浮動</b>,會一直變</span>`}</div></div>`;
+                      : `<span>還沒觸發出場 —— 上面是<b>帳面浮動</b>,會一直變</span>`}</div>
+        <div class="bkwhy"><span>${this._catchWhyTxt(r)}</span><span>・隔日 <span class="mono ${this.cls(st && st.next1)}">${st && st.next1 != null ? this.fmt(st.next1, 2, true) + '%' : '—'}</span>
+          <span style="color:var(--dim2)" title="dtflip_probe:隔日表態碰得到 ≠ 賺得到">(只描述,⛔ 不當驗證)</span></span></div>
+        <input class="bknote" maxlength="200" placeholder="📝 筆記(自己寫:為什麼釣它 / 隔天怎麼了;只存這台裝置)" value="${this._esc(r.note || '').replace(/"/g, '&quot;')}"
+          onchange="PRO._catchNote('${r.sym}','${this._esc(r.d || '').replace(/'/g, '')}',this.value)"></div>`;
     };
     el.innerHTML = `<div class="fishcard" style="border-color:var(--amber);background:rgba(245,185,66,.05)">
       <div class="big">🧺 漁獲籃 <span class="sigtag">${list.length} 條</span>
-        <button class="lbtn" style="margin-left:auto" onclick="PRO._fishClearCatch()">🗑 清空</button></div>
+        <button class="lbtn" style="margin-left:auto" onclick="PRO._rodTrackCopy()" title="8 欄 TSV,貼進試算表會自動分欄">📋 複製追蹤表</button>
+        <button class="lbtn" onclick="PRO._fishClearCatch()">🗑 清空</button></div>
       <div class="kv" style="margin:8px 0 4px">
         <div><b>📌 持有中(帳面浮動)</b><span class="mono ${this.cls(totOpen)}">${hold.length ? `${money(totOpen)} ・${hold.length} 條` : '—'}</span></div>
         <div><b>🧾 已結算(已實現)</b><span class="mono ${this.cls(totDone)}">${done.length ? `${money(totDone)} ・${done.length} 筆` : '—'}</span></div>
@@ -3732,7 +3976,7 @@ const PRO = {
           : `⏳ 即時報價還沒載到 → 現價用的是 ${D && D.date ? D.date : '—'} 的<b>收盤</b>。`; })()}
         🆚 <b>但「大盤」那欄仍是到最近收盤為止</b>(即時快照只有個股與台指期,沒有加權指數)
         → 盤中的「贏大盤」會差一個交易日,⛔ 別拿它做當下的決定。
-        只存在這台裝置(換手機不會跟著走)。<br>
+        只存在這台裝置(換手機不會跟著走);📝 筆記也是。<b>隔日漲跌</b>那一格只是紀錄 —— 本站實測「隔天有沒有表態」⛔ 不能拿來驗證這條魚有沒有用(碰得到 ≠ 賺得到)。<br>
         🆚 <b>「贏大盤」= 賺賠 − 同期加權指數</b> —— ⭐ 這一欄才是「這條魚到底有沒有用」:
         個股漲 5% 而大盤漲 8%,那其實是輸。本站所有回測都是這樣扣的,這裡用同一把尺。
         ${exs.length && exs.length < 10 ? `<br>⚠️ <b>目前只有 ${exs.length} 筆,⛔ 不能當結論</b>(全站規則:樣本 <10 筆不下判斷)。` : ''}</div>
@@ -5018,7 +5262,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V77.4.0',
+  VER: 'V77.4.1',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
