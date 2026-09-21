@@ -153,6 +153,47 @@ ck(bool(mskip) and 'ETF' in mskip.group(1),
    'ⓔ3 沒有把「本來就沒有產業別」(ETF 等)跟「真的對不到代碼」分開數 → 下次漏接會被淹掉')
 ck('skip_ok' in SEG_NC, 'ⓔ3b 沒有 skip_ok 計數 → log 上分不出「本來就沒有」跟「真的漏接」')
 
+# ── ⓕ V77.4.4 景氣循環旗標:值域必須是**代碼**,而且實跑要真的有產業被標成 True ──
+#   🚨 V74.6.8 起 `CYCLICAL_INDUSTRIES` 放的是中文名('航運業'),而 industry_map 存的是代碼('15')
+#      → `ind in CYCLICAL_INDUSTRIES` 對 33 個產業**全部 False**,前端「循環股 PE 要反著讀」的警語
+#      從上線到 V77.4.3 一次都沒亮過(`cyclical_probe.mjs:13` 記過沒修)。全綠、零訊息 = 陷阱 #37 型。
+#   ⭐ 兩層釘:①靜態 —— 每個元素都要是 `screener_miner.IND` 的 key(注入一個中文名要紅)
+#            ②行為 —— 用**真實** industry_map + fundamentals_cache 實跑 `aggregate_industry_pe`,
+#              至少 3 個產業要 `is_cyclical=True`(⛔ 只驗 ① 的話,改比對那一行退回中文名照樣綠)
+try:
+    import json as _json
+    import screener_miner as _sm
+    _mi = {}
+    _cyc_src = re.search(r'(?ms)^CYCLICAL_INDUSTRIES\s*=\s*(\{.*?\})', NOCOM)
+    ck(bool(_cyc_src), 'ⓕ0 找不到 CYCLICAL_INDUSTRIES → 這一條不算數')
+    if _cyc_src:
+        _cyc = eval(_cyc_src.group(1), {})
+        ck(isinstance(_cyc, (set, frozenset)) and len(_cyc) >= 5, f'ⓕ0b CYCLICAL_INDUSTRIES 形狀不對:{type(_cyc).__name__} / {len(_cyc)}')
+        _bad = sorted(x for x in _cyc if x not in _sm.IND)
+        ck(not _bad, f'ⓕ 這幾個不是 screener_miner.IND 的**代碼**(industry_map 存的是代碼,寫中文名永遠比不到):{_bad}')
+    _fc_p, _im_p = ROOT / 'data' / 'fundamentals_cache.json', ROOT / 'data' / 'industry_map.json'
+    if _fc_p.exists() and _im_p.exists():
+        _fc = {k: v for k, v in _json.load(open(_fc_p, encoding='utf-8')).items() if not str(k).startswith('__')}
+        _im = _json.load(open(_im_p, encoding='utf-8'))
+        _codes = {str(v) for v in _im.values() if v}
+        # ⚠️ 正式產物裡有 '91'(存託憑證)這種 IND 沒收的代碼 → 判「多數是代碼」不判「全部」
+        _hit = sum(1 for c in _codes if c in _sm.IND)
+        ck(_codes and _hit >= len(_codes) * 0.9,
+           f'ⓕ2-0 industry_map.json 的值大多不是 IND 代碼(測資形狀跟正式產物不同,陷阱 #40):{sorted(_codes)[:5]}')
+        import importlib
+        _miner = importlib.import_module('miner')
+        _inds = _miner.aggregate_industry_pe(_fc, _im) or {}   # 回的就是 {代碼: {...}}(寫檔時才包一層 industries)
+        _true = sorted(k for k, v in _inds.items() if v.get('is_cyclical'))
+        ck(len(_inds) >= 10, f'ⓕ2-1 aggregate_industry_pe 只算出 {len(_inds)} 個產業 → 空過守門(fundamentals_cache 太薄?)')
+        ck(len(_true) >= 3, f'ⓕ2 實跑 aggregate_industry_pe 只有 {len(_true)} 個產業 is_cyclical=True(要 ≥3;全 False = 旗標又沒作用了):{_true}')
+        ck(not _true or all(t in _sm.IND for t in _true), f'ⓕ3 被標成循環的鍵不是代碼:{_true[:5]}')
+    else:
+        ck(False, 'ⓕ2-0b 本地沒有 data/fundamentals_cache.json / industry_map.json → 先跑 bash scripts/fetch_testdata.sh(⛔ 不改測試蓋掉真因)')
+except SystemExit:
+    raise
+except Exception as _e:
+    ck(False, f'ⓕ 這一段跑不起來:{type(_e).__name__}: {_e}')
+
 print()
 if fails:
     print(f'❌ INDUSTRY_GATE_FAIL:{len(fails)} 條')
