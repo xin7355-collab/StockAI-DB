@@ -1,0 +1,67 @@
+name: 🧨 MOPS 重大訊息可行性探針
+
+# 純驗證用:只跑 scripts/mops_probe.py,實測「公開資訊觀測站的『重大訊息』端點到底是哪一個、
+# 一天幾筆、⭐ 有沒有歷史可以一次回補、GitHub IP 會不會被擋、要不要金鑰」。
+# ⛔ 不碰 gh-pages / data 分支,零部署風險(結果只上 artifact)。
+# 目的:確認可行性 → 可行再正式建 miner(同 orb_probe.yml 的前例)。
+# ⛔ 刻意**沒有 cron** —— V75.2.0 實測這個 repo 的排程配額會把低頻的那幾支餓死,
+#    一支探針⛔ 不該去搶那個配額;要跑就 Actions UI 手動 Run。
+on:
+  workflow_dispatch:
+    inputs:
+      back_days:
+        description: "往回試幾天(看昨天/前天的還查不查得到)"
+        required: false
+        default: "3"
+      deep_days:
+        description: "再往回試幾天(⭐ 決定「能不能一次回補」的那一條)"
+        required: false
+        default: "400"
+      sample:
+        description: "拿哪一檔試『單一公司歷史』"
+        required: false
+        default: "2330"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: 🧨 MOPS 重大訊息探針
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4.2.2
+
+      - name: 🐍 設定 Python 3.11
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.11"
+
+      - name: 📦 安裝相依套件
+        run: pip install requests --quiet
+
+      - name: 🧪 自我檢查(純函式;⛔ 它自己壞掉的話下面的結論不能信)
+        run: python scripts/mops_probe.py --selftest
+
+      - name: 📂 建 data 目錄
+        run: mkdir -p data
+
+      - name: 🧨 執行探針
+        env:
+          # ⚠️ workflow 的 inputs 在非手動觸發時是**空字串**不是不存在 → Python 端一律 `or 預設`
+          MOPS_BACK_DAYS: ${{ github.event.inputs.back_days }}
+          MOPS_DEEP_DAYS: ${{ github.event.inputs.deep_days }}
+          MOPS_SAMPLE: ${{ github.event.inputs.sample }}
+        run: python scripts/mops_probe.py || echo "⚠️ 非零退出(結論仍印在上面)"
+
+      - name: 📤 上傳探針結果 artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mops-probe-result
+          # ⚠️ 註解一律寫在 `path: |` 之上(block scalar 裡行尾 # 不是註解,陷阱 #11)
+          path: |
+            data/mops_probe_result.json
+          if-no-files-found: warn
