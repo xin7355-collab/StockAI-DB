@@ -57,7 +57,7 @@ ok('⑤b 缺季序列的檔要計數並印出來(finNoData)', /finNoData\+\+/.te
 // ⑥ sham
 ok('⑥a sham 走 _shamHash(跟財報無關),而且通過率 = finFrac(從候選實測,⛔ 不寫死 % 3)', /_shamHash\(`\$\{t\.sym\}\|\$\{t\.inD\}\|fin`\)\s*%\s*10000\)\s*<\s*finFrac \* 10000/.test(finOkSrc) && !/% 3 === 0/.test(finOkSrc), finOkSrc);
 ok('⑥b finFrac 由 byIn 全部候選算(on / n),空的話 0', /finFrac = n \? on \/ n : 0/.test(finOkSrc), '');
-ok('⑥c 候選過濾串上 finOk(x.t)', /turnOk\(x\.t\) && finOk\(x\.t\)\)/.test(PB), '');
+ok('⑥c 候選過濾串上 finOk(x.t)(V77.4.4 起後面還接 valOk)', /turnOk\(x\.t\) && finOk\(x\.t\)/.test(PB), '');
 ok('⑥d FIN 只認 acc|gm|eps|sham,其他直接停', /\['acc', 'gm', 'eps', 'sham'\]\.includes\(FIN\)/.test(PB) && /process\.exit\(1\)/.test(PB), '');
 
 // ⑦ 🔁 跨檔比對:`index.html` 的 `_finAccelOn` 必須跟 lib 的 `finOnAt` **逐日相同**

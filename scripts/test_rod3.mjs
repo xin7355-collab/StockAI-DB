@@ -180,6 +180,26 @@ ok(K.changed, '㉔b ⭐ 決定性:改 `_KINGPOOL_EDGE.e10` 徽章文字要跟著
 ok(K.ranked && K.n >= 10, '㉔c 👑 名單真的是「成交額排名 ≤ top」(讀 `rankAmt`,不含 ETF)', `n=${K.n}`);
 ok(/不換預設|不進拋竿/.test(K.why), '㉔d 👑 要明寫「不換預設 / 不進拋竿」(它只是排序濾網)');
 
+// ── ㉕ 💎 池子(V77.4.4 價值規格裡唯一站得住的:PB×ROE 交叉)────────────────
+const VV = await pg.evaluate(async () => {
+  const V = PRO._VALUE_EDGE, D = PRO._fishD;
+  const has = PRO.FISH_POOLS.some(p => p.k === 'val');
+  const st = PRO._rodStatus().val;
+  const saved = V.eH; V.eH = 9.87; const st2 = PRO._rodStatus().val; V.eH = saved;
+  const pk = PRO._fishPoolK; PRO._fishPoolK = 'val';
+  const rows = PRO._fishPoolRows(D);
+  const okRows = rows.every(r => r.pb > 0 && r.pb <= V.pb && r.roe4 > V.roe);
+  const nRoe = D.rows.filter(r => r.roe4 != null).length, nCheap = D.rows.filter(r => r.pb != null && r.pb > 0 && r.pb <= V.pb).length;
+  const nRoeRich = D.rows.filter(r => r.pb > V.pb && r.roe4 != null).length;   // ⛔ 不便宜的那幾檔不該去讀切片
+  PRO._fishPoolK = pk;
+  return { has, lv: st ? st.lv : '', why: st ? st.why : '', hasE60: !!st && st.why.includes('+' + V.eH + 'pp'), hasAbs: !!st && st.why.includes('+' + V.abs + '%'),
+           hasDedup: !!st && st.why.includes('5/6'), changed: !!st2 && st2.why.includes('+9.87pp'), n: rows.length, okRows, nRoe, nCheap, nRoeRich };
+});
+ok(VV.has && VV.hasE60 && VV.hasAbs && VV.hasDedup, '㉕ 💎 池子存在;徽章讀 `_VALUE_EDGE`(60 日邊際 / 對加權超額 / 去重敏感度 5/6 都要印,⛔ 不可只講好的那半)', VV.why.slice(0, 80));
+ok(VV.changed, '㉕b ⭐ 決定性:改 `_VALUE_EDGE.eH` 徽章文字要跟著變');
+ok(VV.okRows && VV.n >= 1 && VV.nRoe >= 20 && VV.nRoe <= VV.nCheap && VV.nRoeRich === 0, `㉕c 💎 名單真的是「PB ≤ 門檻 ∧ 近 4 季 ROE > 門檻」,而且切片只讀便宜那幾檔(讀了 ${VV.nRoe} / 便宜 ${VV.nCheap} 檔;不便宜卻讀了 ${VV.nRoeRich})`, `n=${VV.n}`);
+ok(/不進拋竿/.test(VV.why) && /不換預設/.test(VV.why) && VV.lv !== '✅', '㉕d 💎 要明寫「不換預設 / 不進拋竿」,徽章⛔ 不可是 ✅(去重一改就 5/6)', VV.lv);
+
 // ── ④c 靜態:新函式不寫死 ────────────────────────────────────
 const four = ['  _rodRulesHtml(D) {', '  _rodRuleText() {', '  _rodAiPrompt() {', '  _rodTrackTsv() {'].map(h => noComment(body(h))).join('\n');
 const stale = ['75', '3.2', '60', '589', '264', '0.98', '41.4'].filter(t => new RegExp('(?<![0-9.])' + t.replace('.', '\\.') + '(?![0-9])').test(four));
