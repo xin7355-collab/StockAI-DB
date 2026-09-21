@@ -29,6 +29,7 @@ try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/inde
 catch (_) { ({ chromium } = await import('playwright')); }
 import { DEADLINES } from './lib_fundamentals.mjs';
 import { turnCuts, turnBucket } from './lib_turnover.mjs';
+import { finSeries, finOnAt } from './lib_finaccel.mjs';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs';
 import path from 'path';
@@ -75,6 +76,13 @@ const CAL = (process.env.CAL || '').split('+').filter(Boolean);
 //   ⚠️ 集保總股數是**快照常數**(增減資的股票歷史週轉率會偏);沒有 `t` 的檔一律**剔除並計數**(⛔ 不可當成通過)
 const TURN = process.env.TURN || '';
 if (TURN && !['lo', 'mid', 'hi', 'sham'].includes(TURN)) { console.error(`🚨 TURN=${TURN} 不認得(lo|mid|hi|sham)`); process.exit(1); }
+// 📦 V77.4.2 營收 YoY 加速濾網(accel_probe 七個 flag 裡唯一六關全過 + 贏 sham 的)—— 同 TURN:疊在**候選階段**,⛔ 不進 CACHE_KEY
+//   FIN = acc | gm | eps | sham:公式一律 lib_finaccel(⛔ 這裡不寫第二份);可用日 = 法定截止日(保守,零前視)
+//     sham = 固定種子隨機,**通過率跟 FIN=acc 在同一批候選上一樣**(⛔ 不寫死三分之一 —— 安慰劑要同檔數才有意義)
+//   ⚠️ 那一天還沒有任何一季可用的檔一律**剔除並計數**(⛔ 不可當成通過);資料 = fin_deep 分支(FIN_DEEP=)
+const FIN = process.env.FIN || '';
+if (FIN && !['acc', 'gm', 'eps', 'sham'].includes(FIN)) { console.error(`🚨 FIN=${FIN} 不認得(acc|gm|eps|sham)`); process.exit(1); }
+const FIN_DEEP = process.env.FIN_DEEP || path.join(ROOT, 'fin_deep', 'fin_deep.json');
 // 💾 掃描結果快取:同一組 ENTRY/EXIT/STOP/MAXD/GAPCAP 的交易完全一樣 →
 //    存起來重用,後面每試一個行事曆假設就從 3 分鐘變成 3 秒。
 //    ⛔ 參數不同一定要重掃(檔案內有 meta,對不上會拒絕載入)。
@@ -186,7 +194,7 @@ const cover = {};
 for (const s of syms) cover[s[0]] = (cover[s[0]] || 0) + 1;
 console.log(`💼 組合回測 ・${syms.length} 檔(分層抽樣,代號開頭分布 ${JSON.stringify(cover)})`);
 if (RANKBY !== 'self' || GATE !== 'pat') console.log(`🎯 增量檢定:RANKBY=${RANKBY} ・GATE=${GATE}(⛔ 不是正式配置)`);
-console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日${REENTRY > 0 ? ` ・買回=${REENTRY}日內站回5MA(最多${RE_MAX}次)` : ''} ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}${TURN ? ` ・週轉率=${TURN}` : ''}\n`);
+console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日${REENTRY > 0 ? ` ・買回=${REENTRY}日內站回5MA(最多${RE_MAX}次)` : ''} ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}${TURN ? ` ・週轉率=${TURN}` : ''}${FIN ? ` ・營收加速=${FIN}` : ''}\n`);
 
 // 💾 掃描結果快取(只跟這幾個參數有關;行事曆濾網完全不影響掃描結果)
 const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE });
@@ -766,6 +774,25 @@ if (TURN) {
     if (turnOf.size < 1000) { console.error('🚨 週轉率算得出來的(股,日)不到 1,000 → 資料不對,停'); process.exit(1); }
 }
 const _shamHash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; };
+// 📦 FIN 濾網:每檔季序列一次算好;sham 的通過率 = FIN=acc 在全部候選交易上的實測通過率(第一次呼叫時量,固定種子)
+const finSer = new Map(); let finNoData = 0, finFrac = null;
+if (FIN) {
+    let FD = null;
+    try { FD = JSON.parse(fs.readFileSync(FIN_DEEP, 'utf8')); } catch (_) { console.error(`🚨 FIN 要用 fin_deep.json,但讀不到 ${FIN_DEEP} → ⛔ 不靜默放行,直接停(先 git show origin/fin_deep:fin_deep/fin_deep.json > …)`); process.exit(1); }
+    for (const sym of syms) { const ser = finSeries(FD, sym); if (ser && ser.some(q => q.ok)) finSer.set(sym, ser); else finNoData++; }
+    console.log(`📦 營收加速濾網 FIN=${FIN}:${finSer.size} 檔有 fin_deep 季序列(缺 ${finNoData} 檔剔除)・fin_deep ${FD.q[0]} ~ ${FD.q[FD.q.length - 1]}`);
+    if (finSer.size < 100) { console.error('🚨 有季序列的檔不到 100 → 資料不對,停'); process.exit(1); }
+}
+const finOk = t => {
+    if (!FIN) return true;
+    const v = finOnAt(finSer.get(t.sym), t.inD, FIN === 'gm' || FIN === 'eps' ? FIN : '');
+    if (v == null) return false;                          // 那天還沒有可用的季報 → 剔除(⛔ 不可當成通過)
+    if (FIN === 'sham') {
+        if (finFrac == null) { let on = 0, n = 0; for (const arr of byIn.values()) for (const x of arr) { const w = finOnAt(finSer.get(x.sym), x.inD, ''); if (w == null) continue; n++; if (w) on++; } finFrac = n ? on / n : 0; console.log(`🎲 FIN=sham 通過率對齊 FIN=acc:${(finFrac * 100).toFixed(1)}%(${on}/${n} 筆候選)`); }
+        return (_shamHash(`${t.sym}|${t.inD}|fin`) % 10000) < finFrac * 10000;   // 安慰劑:跟財報無關、同通過率
+    }
+    return v === true;
+};
 const turnOk = t => {
     if (!TURN) return true;
     const v = turnOf.get(`${t.sym}|${t.inD}`);
@@ -886,7 +913,7 @@ for (let i = 0; i < days.length; i++) {
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
                   && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF)
                   && indCycOk(x.t.sym, d)
-                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t))
+                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t))
         .sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
     if (RANKBY === 'rand') { for (let k = cand.length - 1; k > 0; k--) { const j = Math.floor(_rnd() * (k + 1)); [cand[k], cand[j]] = [cand[j], cand[k]]; } }
     else if (RANKBY === 'mkt') cand.sort((a, b) => (b.m.sum / b.m.n) - (a.m.sum / a.m.n));
@@ -1085,7 +1112,7 @@ if (process.env.SUMMARY_OUT) {
     const byYear = {};
     for (const m of mons) { const y = m.slice(0, 4); byYear[y] = Math.round((byYear[y] || 0) + byMon[m].pnl); }
     const summary = {
-        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '' },
+        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '' },
         from, to, months: mons.length, n: taken.length, win: +(wins.length / taken.length * 100).toFixed(1),
         per: +(taken.reduce((a, t) => a + net(t), 0) / taken.length).toFixed(2), cum: Math.round(totalPnL), ret: +(totalPnL / capital * 100).toFixed(2),
         dd: +mdd.toFixed(2), skipped, twii: +twiiRet.toFixed(2), etf0050: ret50 == null ? null : +ret50.toFixed(2), byYear,
