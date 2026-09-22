@@ -27,6 +27,7 @@
 import fs from 'fs';
 import path from 'path';
 import { signalsFor } from './lib_indicators.mjs';
+import { simExits as _simExits } from './lib_exitsim.mjs';   // 🚪 V77.4.6 抽成共用(⛔ 不留第二份出場公式)
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
@@ -38,43 +39,11 @@ const SELFTEST = process.argv.includes('--selftest');
 const RULES = ['ma5', 'don20', 'atr2', 'trail8'];
 const NAME = { ma5: '跌破 5 日線(現行)', don20: '唐奇安 20 日', atr2: 'ATR 追蹤 K=2', trail8: '移動停利 8%' };
 
-// ═══ 出場模擬:同一個進場點 → 四種出場各自的報酬 ═══
-//   ⛔ 一律只用「當天為止」的資訊(peak/atr/don 都是到 j 為止),零前視。
-function simExits(R, eIdx) {
-    const n = R.length, entry = R[eIdx].c;
-    if (!(entry > 0)) return null;
-    const stop0 = Math.min(R[eIdx].l, entry * (1 - HOLD_STOP / 100));   // App 同款:前一根低點與 −5% 取較近
-    const endJ = Math.min(n - 1, eIdx + MAXD);
-    const atrAt = j => { let s = 0, m = 0;
-        for (let q = Math.max(1, j - 13); q <= j; q++) { const pc = R[q - 1].c; if (!(pc > 0)) continue;
-            s += Math.max(R[q].h - R[q].l, Math.abs(R[q].h - pc), Math.abs(R[q].l - pc)); m++; }
-        return m ? s / m : 0; };
-    const out = {};
-    for (const rule of RULES) {
-        let peak = entry, exitP = null, exitIdx = endJ;
-        for (let j = eIdx + 1; j <= endJ; j++) {
-            const c = R[j].c;
-            if (c > peak) peak = c;
-            if (c <= stop0) { exitP = stop0; exitIdx = j; break; }          // 停損優先(跟 App 一致)
-            if (rule === 'ma5' && j >= 4) {
-                let s = 0; for (let q = j - 4; q <= j; q++) s += R[q].c;
-                if (c < s / 5) { exitP = c; exitIdx = j; break; }
-            } else if (rule === 'don20') {
-                let lo = Infinity; for (let q = Math.max(0, j - 20); q < j; q++) lo = Math.min(lo, R[q].l);
-                if (isFinite(lo) && c < lo) { exitP = c; exitIdx = j; break; }
-            } else if (rule === 'atr2') {
-                const at = atrAt(j);
-                if (at > 0 && c <= peak - 2 * at) { exitP = c; exitIdx = j; break; }
-            } else if (rule === 'trail8') {
-                if (c <= peak * 0.92) { exitP = c; exitIdx = j; break; }
-            }
-            if (j === endJ) { exitP = c; exitIdx = j; }
-        }
-        if (exitP == null) { exitP = R[endJ].c; exitIdx = endJ; }
-        out[rule] = { ret: (exitP - entry) / entry * 100, outIdx: exitIdx };
-    }
-    return out;
-}
+// ═══ 出場模擬 → 🚪 V77.4.6 起走共用的 `lib_exitsim.mjs` ═══
+//   ⛔ 本檔原本有一份逐字的 `simExits`,V77.4.6 因為 `breakout_exit_probe` 也要用同一個模擬器
+//   而抽了出去 —— ⛔ 複製第二份會讓出場公式在本 repo 變成第五份實作。
+//   ⭐ 行為**一個字都沒改**:下面的 `--selftest` 在抽出去前後都必須完全一樣(決定性對照)。
+const simExits = (R, eIdx) => _simExits(R, eIdx, { rules: RULES, maxD: MAXD, holdStop: HOLD_STOP });
 
 // ═══ 🧪 自我驗證:合成 K 線,每一種出場都要在**已知的那一天**觸發 ═══
 if (SELFTEST) {
