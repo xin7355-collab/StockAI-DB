@@ -40,7 +40,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
 const MAX_SYMS = +(process.argv[2] || 600);
 const PICKS_PER_DAY = +(process.argv[3] || 3);
-const WARMUP = 240;          // 暖身:前 N 個交易日只累積成績、不下單
+// 🧭 V77.4.9 做成可調(預設 240 不變):**起點穩健性檢定** —— 把回測起點往後挪幾週重跑,看排名穩不穩。
+//   ⭐ 為什麼需要:資金有限時「哪一天剛好有錢買哪一檔」是路徑相依的,同一套出場挪一週起點,
+//     總獲利可以差上百萬(V77.4.9 實測 don20 從 +585 → +428 萬)。⛔ 只比一條路徑就換預設 = 拿運氣當證據。
+//   ⚠️ 只影響模擬階段(交易快取照樣重用,⛔ 不進 CACHE_KEY)。
+const WARMUP = Math.max(60, +(process.env.WARMUP || 240) || 240);   // 暖身:前 N 個交易日只累積成績、不下單
 // 🚨 V2 改法(600 檔首跑抓到的真問題):第一版用「**全市場**型態平均期望值」排序,
 //   結果 576 筆裡有 **479 筆全押同一招**(站上長黑K壓力,每趟只有 +0.30%)——
 //   因為同一個型態當天可能 50 檔觸發,而它們的分數**完全一樣**,等於在亂挑。
@@ -139,7 +143,18 @@ const CONF = +(process.env.CONF || 2);     // 共振:同一天同一檔至少幾
 //   勝率只有 33%、全靠少數大賺 → 「跌破 5MA 就出」很可能把贏家太早洗掉。
 //   ma5(現行) | ma10 | ma20 | trailN(最高點回落 N%) | 純看停損+天數
 //   ⚠️ 出場一改,**排序用的 per-stock 成績也跟著改**(同一批交易算出來的)→ 是一整套的替換,前後可比。
-const EXIT = process.env.EXIT || 'ma5';
+// 🚨🚨 V77.4.9 **別名 + 空過守門**(實跑抓到的方法學 bug):
+//   App 的設定 key 是 `don`(`_exitRuleKey`),而這支的解析是 `/^don(\d+)w?$/` → **裸字 `EXIT=don` 從來沒被認得**,
+//   整支靜默退回「只有停損 + 抱滿 MAXD 天」(= V75.1.1 的「不執行出場」那條路徑),而 log 還照印「出場=don/20日」。
+//   受害的是 V76.0.5 ADD / V77.3.3 TURN / V77.4.2 FIN / V77.4.4 VAL 那幾輪的「現行配置」基準
+//   (以及 weekly_backtest.yml 的 `EXIT: don`);V75.0.9 的 +585 萬是正確的 `don20` run,不受影響。
+//   ⛔ 認不得的 EXIT 一律 exit 1 —— 「參數打錯」跟「刻意不執行出場」⛔ 不可長得一樣。
+const _EXIT_ALIAS = { don: 'don20', atr: 'chand2', atr2: 'chand2', trail: 'trail8' };
+const EXIT_RAW = process.env.EXIT || 'ma5';
+const EXIT = _EXIT_ALIAS[EXIT_RAW] || EXIT_RAW;
+const _EXIT_OK = /^(?:ma\d+(?:be\d+)?(?:tp\d+)?(?:rr\d+(?:\.\d+)?)?(?:half\d+)?|trail\d+|chand\d+(?:\.\d+)?|chandd\d+(?:\.\d+)?|atrt\d+(?:\.\d+)?|don\d+w?|plow|sar|x5_20|none|(?:ma\d+|trail\d+|none)?tm\d+_\d+)$/;
+if (!_EXIT_OK.test(EXIT)) { console.error(`🚨 EXIT=${EXIT_RAW} 不認得(別名 ${Object.keys(_EXIT_ALIAS).join('|')};合法樣式 ma5 / ma5tp10 / trail8 / chand2 / don20 / don10w / plow / sar / x5_20 / none / ma5tm5_0)`); process.exit(1); }
+if (EXIT !== EXIT_RAW) console.log(`🔁 EXIT=${EXIT_RAW} → 正規化成 ${EXIT}(App 的設定 key 對應回測的規則名)`);
 const MAXD = +(process.env.MAXD || 20);    // 最長持有幾個交易日
 // 🔁 V74.6.3「錯殺」的正解:出場之後條件恢復就買回(⛔ 不是「大跌時不出場」——那 12 種已實測全部沒用)
 //   REENTRY = 出場後幾個交易日內,只要**收盤重新站回 5 日線**就買回(0 = 關掉,維持現行)
@@ -399,7 +414,9 @@ for (const sym of syms) {
                             if (halfP > 0 && !halfDone && c >= entry * (1 + halfP / 100)) { halfDone = 1; halfRet = (c - entry) / entry * 100; }
                             // 🐢 唐奇安:收盤跌破前 N 日最低(⛔ 不含今天)
                             if (donN > 0 && (!donWait || j - donN >= eIdx)) {
-                                let lo = Infinity; for (let q = j - donN; q < j; q++) lo = Math.min(lo, data[q].low);
+                                // 🐛 V77.4.9 `j − donN` 可能 < 0(don55 在歷史前段)→ 以前直接 `data[-3].low` 崩掉;
+                                //   ⛔ 只測過 don10/don20 所以沒踩到。從 0 起算(=「能看到的全部前 N 日」)
+                                let lo = Infinity; for (let q = Math.max(0, j - donN); q < j; q++) lo = Math.min(lo, data[q].low);
                                 if (gx(c < lo)) { exitP = c; exitIdx = j; break; }
                             }
                             if (gx(plow && c < data[j - 1].low)) { exitP = c; exitIdx = j; break; }

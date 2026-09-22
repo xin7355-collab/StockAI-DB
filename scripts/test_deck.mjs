@@ -192,7 +192,8 @@ ok('⑥d 🚨 全部都沒檢查到 ⛔ 不可寫成「都還沒跌破」(那是
    !/都還沒跌破/.test(R.allSkipTxt) && /還沒辦法幫你看|都還沒下載到/.test(R.allSkipTxt) && /不代表沒事/.test(R.allSkipTxt),
    R.allSkipTxt.slice(0, 140));
 ok('⑥e 部分沒檢查到 → 主線的檔數要扣掉那幾檔(3 檔裡 1 檔沒檢查 → 說 2 檔)',
-   /你手上 2 檔都還沒跌破/.test(R.partSkipTxt), R.partSkipTxt.slice(0, 140));
+   // ⚠️ V77.4.9 措辭從「都還沒跌破(一條線)」改成「都還沒到三條出場條件」—— 釘的是**檔數有扣掉**,⛔ 不是那幾個字
+   /你手上 2 檔都還沒(跌破|到)/.test(R.partSkipTxt) && !/你手上 3 檔/.test(R.partSkipTxt), R.partSkipTxt.slice(0, 140));
 ok('⑦ 🚨 清單抓不到 ⛔ 不可顯示成「今天沒有可以買的」',
    /還沒下載到/.test(R.nullTxt) && /不是.{0,6}今天沒有可以買的/.test(R.nullTxt) && /重試/.test(R.nullTxt), R.nullTxt.slice(0, 160));
 ok('⑧ 一檔 🧬 都沒有 → 誠實說「沒有」+ 說明為什麼 + 指路', /沒有/.test(R.noneTxt) && /位階/.test(R.noneTxt) && /今天不用做.{0,10}常態/.test(R.noneTxt), R.noneTxt.slice(0, 200));
