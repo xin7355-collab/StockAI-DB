@@ -262,6 +262,92 @@ CROSS_CHECKS = [
 ]
 
 
+def _err_parts(v):
+    """把一個 `*_error` 欄位攤成「真的有內容的那幾項」;沒有內容就回空 list。
+
+    🐛 V77.4.5 —— C 類原本直接拿那個欄位當布林用,而 **非空 dict 恆為 truthy**
+      → `confcall.json` 的 `src_error = {'sii': None, 'otc': None, 'names': None}`
+      (三個市場都沒事)被當成「error 有值」,接著矛盾偵測又拿到有值的 `src`
+      → ❌ 誤報「src 有值但 src_error 說有問題」。
+    ⭐ 誤報留著會讓人養成忽略體檢輸出的習慣,真的壞掉那條就被淹掉了
+      (同 `SUPERSEDED` 清單、同 V72.1.2 那三個美股期貨的理由)。
+    ⛔ 但**不可**因此放過 V72.3.2 那種「錯誤包在 dict 裡」的情況 → dict 只往下走一層,
+      有值的子項逐一回報(`src_error.sii = 403 …`),⛔ 不是整包丟掉。
+    """
+    #   ⚠️ 先用 `not v` 把**純量**的 falsy(None / False / 0 / '' / 空容器)一次擋掉 ——
+    #   這樣純量的行為跟舊版 `and v` **完全一樣**(⛔ 不可趁機改掉它:`*_error = 0`
+    #   舊版不報,新版也不該報)。只有「**非空容器**」才是這次要修的那件事。
+    if not v:
+        return []
+    if isinstance(v, dict):
+        return [(str(kk), vv) for kk, vv in v.items() if vv]
+    if isinstance(v, (list, tuple)):
+        return [(f'[{i}]', vv) for i, vv in enumerate(v) if vv]
+    if isinstance(v, str) and not v.strip():
+        return []
+    return [('', v)]
+
+
+def c_findings(f, j):
+    """C 類:把一個檔的 `*_error` 掃成 [(圖示, 訊息)]。
+
+    ⭐ V77.4.5 抽成 module-level 純函式,才有辦法用**合成資料注入**驗它叫不叫得出來
+      —— ⛔ 以前整段長在 `audit()` 裡,而 `audit()` 要打 git 讀 gh-pages
+      → 注入驗證根本做不了 = 這個偵測器從來沒被驗過(它也因此誤報了很久)。
+    ⛔ 迴圈內文與原本**逐字相同**(只是把 `add()` 換成本地閉包),⛔ 不可趁機改判定。
+    """
+    out = []
+
+    def add(icon, _cls, msg):
+        out.append((icon, msg))
+
+    for k, v in j.items():
+        if str(k).endswith('_error') and _err_parts(v):
+            # ⭐ V77.4.5:dict 型的 error 只報**有值的子項**(全 None = 沒事,⛔ 不報)
+            for _sub, _sv in _err_parts(v):
+                _label = f'{k}.{_sub}' if _sub else str(k)
+                add('⚠️', 'C', f'data/{f} 的 {_label} = {str(_sv)[:70]}')
+            # 🐛 V72.1.2 ⭐ 新增「值與 error **自相矛盾**」偵測 ——
+            #   體檢原本只會分別報「這個 error 有值」,**看不出值本身還在**,
+            #   所以 taifex_backwardation = -156.0 配「不計價差」那次它漏報了。
+            #   ⛔ 這一類比「那格空著」危險得多:使用者會拿一個不該信的數字去做決定。
+            #   典型成因:守門把值設成 None,但斷崖防護(last-good)又把昨天的填回去
+            #   → 昨天的數字配今天的日期(陷阱 #34)。
+            base = str(k)[:-len('_error')]
+            bv = j.get(base)
+            # ⚠️ 但要先排除**刻意的**情況,否則會誤報(首跑就誤報了 3 個)——
+            #   有些 error 針對的是**衍生欄位**而不是值本身:
+            #   例如 es_fut_error =「不給漲跌%」→ **價位是可信的**,只是不給方向(V72.0.5),
+            #   那不叫矛盾。同理「內插/fallback/已保留舊值」都是有交代的降級,不是壞掉。
+            #   ⭐ 只有 error 針對「值本身不可信」時,值還在才是真矛盾。
+            _intentional = ('不給漲跌', '不給方向', '方向待確認', '內插',
+                            'fallback', '已保留', '沿用', '備援')
+            #   ⚠️ V77.4.5 再收一道:**只對字串型 error 做矛盾偵測**。
+            #   陷阱 #34 的實例(`taifex_backwardation_error` = 「不計價差」)全是字串;
+            #   而 dict 型的 error(如 `src_error` 分市場)講的是「哪一條腿掛了」,
+            #   那份值本身是**其他腿**湊出來的 → 有值⛔ 不算矛盾。
+            if (isinstance(v, str) and bv is not None
+                    and not (isinstance(bv, (list, dict, str)) and len(bv) == 0)
+                    and not any(t in str(v) for t in _intentional)):
+                add('❌', 'C', f'data/{f} 的 {base} 有值({str(bv)[:28]})但 {k} 說有問題'
+                               f' → 兩者矛盾,多半是守門清掉後又被 last-good 填回昨天的值(陷阱 #34)')
+        # 🆕 V72.3.2 ⭐ **巢狀** error:C 類原本只掃頂層 → 把錯誤包在 dict 裡的完全看不見。
+        #   實例:`macro_risk.json` 的 `business_signal` = {'light':None,'score':None,
+        #   'error':'Expecting value: line 1 column 1'} —— 景氣對策信號抓不到(陷阱 #23,
+        #   拿到 HTML 去 parse JSON),而頂層 `business_signal_error` 是 None
+        #   → **體檢從上線到 V72.3.2 一路放過它**。
+        #   ⛔ 只往下走一層(再深就會開始誤報,而誤報會讓人養成忽略體檢的習慣)。
+        elif isinstance(v, dict):
+            for kk, vv in v.items():
+                if not vv:
+                    continue
+                lk = str(kk).lower()
+                if lk == 'err' or lk.endswith('error'):
+                    add('⚠️', 'C', f'data/{f} 的 {k}.{kk} = {str(vv)[:70]}'
+                                   f'(⭐ 巢狀 error —— 頂層 {k}_error 是空的,所以以前掃不到)')
+    return out
+
+
 def dig(j, path):
     cur = j
     for k in path:
@@ -392,43 +478,8 @@ def audit(ref):
         j = cache.get(f)
         if not isinstance(j, dict):
             continue
-        for k, v in j.items():
-            if str(k).endswith('_error') and v:
-                add('⚠️', 'C', f'data/{f} 的 {k} = {str(v)[:70]}')
-                # 🐛 V72.1.2 ⭐ 新增「值與 error **自相矛盾**」偵測 ——
-                #   體檢原本只會分別報「這個 error 有值」,**看不出值本身還在**,
-                #   所以 taifex_backwardation = -156.0 配「不計價差」那次它漏報了。
-                #   ⛔ 這一類比「那格空著」危險得多:使用者會拿一個不該信的數字去做決定。
-                #   典型成因:守門把值設成 None,但斷崖防護(last-good)又把昨天的填回去
-                #   → 昨天的數字配今天的日期(陷阱 #34)。
-                base = str(k)[:-len('_error')]
-                bv = j.get(base)
-                # ⚠️ 但要先排除**刻意的**情況,否則會誤報(首跑就誤報了 3 個)——
-                #   有些 error 針對的是**衍生欄位**而不是值本身:
-                #   例如 es_fut_error =「不給漲跌%」→ **價位是可信的**,只是不給方向(V72.0.5),
-                #   那不叫矛盾。同理「內插/fallback/已保留舊值」都是有交代的降級,不是壞掉。
-                #   ⭐ 只有 error 針對「值本身不可信」時,值還在才是真矛盾。
-                _intentional = ('不給漲跌', '不給方向', '方向待確認', '內插',
-                                'fallback', '已保留', '沿用', '備援')
-                if (bv is not None
-                        and not (isinstance(bv, (list, dict, str)) and len(bv) == 0)
-                        and not any(t in str(v) for t in _intentional)):
-                    add('❌', 'C', f'data/{f} 的 {base} 有值({str(bv)[:28]})但 {k} 說有問題'
-                                   f' → 兩者矛盾,多半是守門清掉後又被 last-good 填回昨天的值(陷阱 #34)')
-            # 🆕 V72.3.2 ⭐ **巢狀** error:C 類原本只掃頂層 → 把錯誤包在 dict 裡的完全看不見。
-            #   實例:`macro_risk.json` 的 `business_signal` = {'light':None,'score':None,
-            #   'error':'Expecting value: line 1 column 1'} —— 景氣對策信號抓不到(陷阱 #23,
-            #   拿到 HTML 去 parse JSON),而頂層 `business_signal_error` 是 None
-            #   → **體檢從上線到 V72.3.2 一路放過它**。
-            #   ⛔ 只往下走一層(再深就會開始誤報,而誤報會讓人養成忽略體檢的習慣)。
-            elif isinstance(v, dict):
-                for kk, vv in v.items():
-                    if not vv:
-                        continue
-                    lk = str(kk).lower()
-                    if lk == 'err' or lk.endswith('error'):
-                        add('⚠️', 'C', f'data/{f} 的 {k}.{kk} = {str(vv)[:70]}'
-                                       f'(⭐ 巢狀 error —— 頂層 {k}_error 是空的,所以以前掃不到)')
+        for _icon, _msg in c_findings(f, j):
+            add(_icon, 'C', _msg)
     print(f'   完成,問題 {sum(1 for p in problems if p[1] == "C")} 件')
 
     # ── D. 前後端對接 ────────────────────────────────────────────────
@@ -472,8 +523,17 @@ def audit(ref):
         soft = sorted(x for x in (read_mc - have_mc)
                       if x in mr_have or f'{x}_chg_pct' in mr_have)
         for x in miss:
-            add('❌', 'D3', f'前端用巢狀形狀讀 macro_cache 的 {x},但**兩份總經檔都沒有這個欄位** '
-                            f'→ 那個因子永遠是 null(零錯誤訊息)')
+            # ⭐ V77.4.5:照 D2 那條既有原則 ——「**有寫 `*_error` → ⚠️;沒有 error → ❌**」。
+            #   前者代表採礦端刻意交代了原因(陷阱 #22 的正確做法),後者才是真的查不出
+            #   「算不出來」還是「根本沒跑到」。實例:`twoii` 三個來源全空,
+            #   V77.4.5 起 miner 會寫 `twoii_error` 講清楚 → 降級成 ⚠️。
+            _why = mc.get(f'{x}_error')
+            if _why:
+                add('⚠️', 'D3', f'前端用巢狀形狀讀 macro_cache 的 {x},那份檔沒有這個欄位,'
+                                f'**但採礦端有交代原因**:{str(_why)[:70]}')
+            else:
+                add('❌', 'D3', f'前端用巢狀形狀讀 macro_cache 的 {x},但**兩份總經檔都沒有這個欄位** '
+                                f'→ 那個因子永遠是 null(零錯誤訊息)')
         for x in soft:
             add('⚠️', 'D3', f'前端用巢狀形狀讀 macro_cache 的 {x},macro_cache 沒有但 **macro_risk 有** '
                             f'→ 應改走 `app._macroPick(\'{x}\')`(V75.2.4)')
@@ -597,10 +657,111 @@ def audit(ref):
     return 1 if bad else 0
 
 
+def selftest():
+    """🧪 C 類的注入驗證(V77.4.5)—— ⛔ 「沒有報錯」不等於「檢查過了」。
+
+    這支工具以前整段長在 `audit()` 裡、而 `audit()` 要打 git 讀 gh-pages
+    → 沒有任何方法用合成資料問它「你叫不叫得出來」,於是它誤報了很久都沒人發現。
+    """
+    fails = []
+
+    def ok(name, cond, got=None):
+        print(('  ✅ ' if cond else '  ❌ ') + name + ('' if cond else f'  → 實際:{got!r}'))
+        if not cond:
+            fails.append(name)
+
+    def msgs(j, f='confcall.json'):
+        return [m for _i, m in c_findings(f, j)]
+
+    def icons(j, f='confcall.json'):
+        return [i for i, _m in c_findings(f, j)]
+
+    print('🧪 _err_parts —— 什麼叫「error 真的有值」')
+    ok('① None / False / 空字串 / 空 dict / 空 list 都不算有值',
+       all(_err_parts(x) == [] for x in (None, False, '', '   ', {}, [])),
+       [(x, _err_parts(x)) for x in (None, False, '', '   ', {}, [])])
+    ok('② 🚨 dict 裡全是 None 不算有值(這就是 confcall.json 誤報的成因)',
+       _err_parts({'sii': None, 'otc': None, 'names': None}) == [])
+    ok('③ dict 裡任一項有值 → 只回那幾項',
+       _err_parts({'sii': '403', 'otc': None}) == [('sii', '403')],
+       _err_parts({'sii': '403', 'otc': None}))
+    ok('④ 字串照舊算有值', _err_parts('抓不到') == [('', '抓不到')])
+    ok('④b ⭐ 純量的 falsy 行為要跟舊版 `and v` 完全一樣(⛔ 不可趁機改掉)'
+       ' —— 0 / 0.0 不報、非 0 數字要報',
+       _err_parts(0) == [] and _err_parts(0.0) == [] and _err_parts(404) == [('', 404)],
+       [_err_parts(x) for x in (0, 0.0, 404)])
+    ok('④c 只有「非空容器」才是這次改的那件事(空白字串 / 只有空白 也照舊不報)',
+       _err_parts('') == [] and _err_parts('   ') == [] and _err_parts({'a': 0}) == [],
+       [_err_parts(x) for x in ('', '   ', {'a': 0})])
+
+    print('🧪 條件那一行:⛔ 不可退回裸 `and v`(靜態釘)')
+    #   ⚠️ **誠實紀錄(V77.4.5)**:注入「條件退回 `endswith('_error') and v`」時
+    #   下面 ⑤ 照樣綠 —— 因為修法有兩道,而 `_err_parts()` 單獨就足以壓掉那個誤報
+    #   (進了 if 也產不出任何一筆)。⭐ 所以 ⑤ 對「條件那一行」**沒有鑑別力**,
+    #   要另外用靜態斷言釘住;未來若有人在 if 分支裡加別的輸出,裸 `v` 就會讓誤報復活。
+    #   🚨 而且比對前**必須剝掉註解與 docstring** —— `_err_parts` 的 docstring 裡
+    #   就逐字引用了那個舊寫法,不剝的話這條會被自己的說明文字害成假紅燈(本 repo 第七次)。
+    import tokenize as _tk
+    with open(__file__, 'rb') as _fh:
+        #   ⛔ 只剝 COMMENT(⛔ 不剝 STRING —— 那會把 '_error' 這個字面量一起吃掉,
+        #   斷言就永遠找不到 = 假紅燈,我第一版就是這樣)。
+        #   ⚠️ 代價是「禁止出現的寫法」⛔ 不可逐字寫在任何字串/docstring 裡,
+        #   所以下面用字串相加組出來,而 docstring 那句話也已改寫過。
+        #   ⭐ token 是用 '' 接起來的 → 產出**完全沒有空白**,所以樣式也要寫成無空白版
+        #   (我第一版寫成帶空白的,在乾淨程式碼上就紅 = 假紅燈)。
+        _code = re.sub(r'\s+', '', ''.join(
+            '' if t.type == _tk.COMMENT else t.string
+            for t in _tk.tokenize(_fh.readline)))
+    _GOOD = "endswith('_error')" + "and_err_parts(v)"
+    _BAD = "endswith('_error')" + "andv:"
+    _lines = [l.strip() for l in open(__file__, encoding='utf-8') if "endswith('_error')" in l]
+    ok('⑤s 條件必須走 _err_parts(v)', _GOOD in _code, _lines)
+    ok('⑤s2 ⛔ 條件不可退回裸布林判斷', _BAD not in _code, _lines)
+
+    print('🧪 注入:confcall.json 的 src_error')
+    JC = {'src': {'host': 'https://mopsov.twse.com.tw'},
+          'src_error': {'sii': None, 'otc': None, 'names': None}}
+    ok('⑤ 全 None → 一筆都不報(修好的那件)', msgs(JC) == [], msgs(JC))
+    JC_BAD = {'src': {'host': 'https://mopsov.twse.com.tw'},
+              'src_error': {'sii': '403 forbidden', 'otc': None, 'names': None}}
+    ok('⑥ ⭐ 決定性對照:上市那條腿掛了 → 必須報,而且要指名是哪一條腿',
+       len(msgs(JC_BAD)) == 1 and 'src_error.sii' in msgs(JC_BAD)[0]
+       and '403 forbidden' in msgs(JC_BAD)[0], msgs(JC_BAD))
+    ok('⑥b 而且 ⛔ 不可因為 src 有值就報「矛盾」(dict 型 error 講的是哪條腿,不是值不可信)',
+       '❌' not in icons(JC_BAD), icons(JC_BAD))
+
+    print('🧪 陷阱 #34(字串型 error 配著有值)照舊要抓得到')
+    J34 = {'taifex_backwardation': -156.0,
+           'taifex_backwardation_error': '期貨(08-03)與現貨(08-04)不同交易日,不計價差'}
+    ok('⑦ ❌ 值與 error 自相矛盾', '❌' in icons(J34, 'macro_risk.json'), c_findings('macro_risk.json', J34))
+    J_OK = {'es_fut': 7829.25, 'es_fut_error': '盤中現價可信…刻意不給漲跌%'}
+    ok('⑦b 但「刻意不給漲跌%」那種降級⛔ 不算矛盾(只 ⚠️)',
+       icons(J_OK, 'macro_risk.json') == ['⚠️'], icons(J_OK, 'macro_risk.json'))
+    J_NONE = {'taifex_backwardation': None, 'taifex_backwardation_error': '不計價差'}
+    ok('⑦c 值已經清成 None → 只 ⚠️ 不 ❌', icons(J_NONE, 'macro_risk.json') == ['⚠️'],
+       icons(J_NONE, 'macro_risk.json'))
+
+    print('🧪 V72.3.2 巢狀 error(頂層 *_error 是空的)照舊要抓得到')
+    JN = {'business_signal': {'light': None, 'score': None,
+                              'error': 'Expecting value: line 1 column 1'},
+          'business_signal_error': None}
+    ok('⑧ 報得出 business_signal.error',
+       any('business_signal.error' in m for m in msgs(JN, 'macro_risk.json')),
+       msgs(JN, 'macro_risk.json'))
+    ok('⑧b 而且⛔ 不可重複報(頂層那筆是 None,不該同時走兩條路)',
+       len(msgs(JN, 'macro_risk.json')) == 1, msgs(JN, 'macro_risk.json'))
+
+    print(f"\n{'✅ 全過' if not fails else '❌ 失敗 ' + str(len(fails)) + ' 條:' + ', '.join(fails)}")
+    return 1 if fails else 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--ref', default='origin/gh-pages', help='要體檢哪個 ref(預設 origin/gh-pages)')
+    ap.add_argument('--selftest', action='store_true', help='🧪 用合成資料驗 C 類叫不叫得出來(不打 git)')
     args = ap.parse_args()
+    if args.selftest:
+        sys.exit(selftest())
     sys.exit(audit(args.ref))
 
 

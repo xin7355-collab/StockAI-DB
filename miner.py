@@ -3791,6 +3791,41 @@ def _fetch_twii_history_official(months_back=2):
     return uniq if uniq else None
 
 
+def _hist_stale_error(key, official_rows, long_rows):
+    """長歷史指數(twii / twoii)在「官方來源全空」時,要回一句寫得出原因的錯誤字串;沒事回 None。
+
+    🚨 V77.4.5 陷阱 #22 —— 實測 `macro_cache.json` 的 `twoii_history` **只有 1 筆、日期 2024/10/12**
+       (兩年前),而檔案裡**一個字都沒說**:`twoii` 這個 flat key 根本不存在、也沒有 `twoii_error`
+       → 前端只顯「採集中」、資料體檢 C 類完全掃不到,靠人去翻 Actions log 才看得到真相。
+       實測那一輪的 log 是**三個來源各壞一種**:
+         ・FinMind TPEx →「回空」(V73.6.1 說的 ✅ 已經不成立)
+         ・TPEx 官網 → **200 但 totalCount=0**(⛔ 不再是 403;V73.6.1 那個結論也過期了)
+         ・yfinance ^TWOII →「空」
+       → 然後磁碟 fallback 把那 1 筆舊的寫回去,**下一輪再讀回來**,自我延續。
+    ⛔ 措辭刻意避開「沿用 / 備援 / fallback / 已保留」那幾個詞 —— `data_audit` 的 C 類把它們
+       當成「有交代的降級」而不報 ❌,而**指數收盤是當日快照**,用兩年前的值是錯的(陷阱 #34)。
+    ⭐ 一定要把**判斷用的原始數字**(幾筆、最新哪一天)一起寫進去,否則永遠分不出
+       「今天剛好沒抓到」跟「這條線早就斷了」。
+    """
+    n = len(long_rows or [])
+    if official_rows and n >= 2:
+        return None
+    last = '?'
+    try:
+        last = str((long_rows or [])[-1].get('date') or '?')
+    except Exception:
+        pass
+    #   ⭐ 兩種原因要分開講 —— 下一步完全不同(一個是去查來源、一個是歷史檔本身壞了),
+    #   ⛔ 不可像 V76.4.2 那次把「連不上」跟「名字猜錯」混成同一句(都寫「抓不到」)。
+    if not official_rows:
+        why = (f'{key} 官方來源這一輪 0 筆'
+               f'(FinMind / 官網 / yfinance 三條都沒給新資料)')
+    else:
+        why = f'{key} 官方來源有給值,但長歷史只剩 {n} 筆(歷史檔可能被截斷)'
+    return (f'{why} → 目前畫面上用的是磁碟舊檔 {n} 筆、最新 {last};'
+            f'⛔ 別把這個日期當成收盤日,⛔ 也別當成「今天剛好沒抓到」')
+
+
 def _fetch_otc_history_finmind(days_back=400):
     """🏪 V73.6.1 櫃買指數歷史 —— **FinMind `TaiwanStockPrice` + data_id='TPEx'**。
 
@@ -3893,7 +3928,10 @@ def _fetch_otc_history_official(months_back=2):
         for url in url_candidates:
             if got:
                 break
-            tag = url.split('tpex.org.tw')[-1][:42]
+            # 🚨 V77.4.5:原本截 42 字 → log 印出來的是 `?date=2026`(日期參數被切掉一半),
+            #   於是「200 但 totalCount=0」到底是**參數格式錯**還是**真的沒資料**分不出來。
+            #   ⭐ 同本站鐵則「把判斷用的原始數字一起輸出」。TPEx ⛔ 不需要金鑰 → 印完整 query 是安全的。
+            tag = url.split('tpex.org.tw')[-1][:90]
             try:
                 r = requests.get(url, headers=HEADERS, timeout=10)
                 if r.status_code != 200:
@@ -4139,6 +4177,13 @@ def fetch_us_macro_cache():
                 # macro_cache 內保留 twii_history / twoii_history(120 日,泡沫預警 + 盤前大盤體檢櫃買用)
                 hist_key = 'twii_history' if key == 'twii' else 'twoii_history'
                 result[hist_key] = long_rows[-120:] if long_rows else []
+                # 🚨 V77.4.5 陷阱 #22:三條來源全空時要**說出原因**,⛔ 不可靜靜沿用磁碟舊檔
+                _stale = _hist_stale_error(key, official_rows, long_rows)
+                if _stale:
+                    result[f'{key}_error'] = _stale
+                    print(f"  🚨 {key}: {_stale}")
+                else:
+                    result.pop(f'{key}_error', None)
                 # 單值(date/close/prev/chg_pct):官方最準優先,否則 yfinance(已設),否則 long_rows 末兩根
                 src2 = official_rows if (official_rows and len(official_rows) >= 2) else (long_rows if len(long_rows) >= 2 else None)
                 if src2 and (official_rows or key not in result):
