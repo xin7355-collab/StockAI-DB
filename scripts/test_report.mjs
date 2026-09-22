@@ -1296,7 +1296,14 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
             return { t, flags: fl ? +fl.getAttribute('data-rpflags') : 0, q, src, pb: document.getElementById('rpInd').textContent.includes('淨值比') };
         });
         ok('§f1 📦 國巨:三表段有存貨天數 / 自由現金流 / ROE / 股本', /存貨天數/.test(FD.t) && /自由現金流/.test(FD.t) && /ROE/.test(FD.t) && /股本/.test(FD.t), FD.t.slice(0, 300));
-        ok('§f2 🚨 國巨兩道旗標都亮:2025Q3「EPS 崩但營收毛利沒掉 → 業外」+ 2024Q3「股本 +20%」', FD.flags === 2 && /業外/.test(FD.t) && /股本 .* 億元/.test(FD.t), `flags=${FD.flags} ${FD.t.slice(-400)}`);
+        // 🚨 V77.4.8 更正:舊版釘 `/業外/` —— 那是 **V76.2.0 自己推翻掉的歸因**
+        //   (「國巨 2025Q3 EPS 崩的真因是**面額變更**,不是業外」),而 V76.2.6 回算完之後
+        //   產物就改成 `par_chg` 旗標了 → 這條**從那時起永遠紅**(⛔ 永遠紅的測試等於沒有測試)。
+        //   ⭐ 改釘**用意**:兩道旗標都要亮,而且**兩道都要講「EPS ⛔ 不可直接比」**
+        //   (一道是股本變動、另一道是面額/股數 —— 措辭兩種都收,⛔ 不釘死是哪一種)。
+        ok('§f2 🚨 國巨兩道旗標都亮,而且都講出「前後的 EPS ⛔ 不可直接比」',
+            FD.flags === 2 && /股本 .* 億元/.test(FD.t) && /(面額變更|股數 ×|業外)/.test(FD.t)
+            && (FD.t.match(/⛔ 不可直接比/g) || []).length >= 2, `flags=${FD.flags} ${FD.t.slice(-400)}`);
         ok('§f3 快速表 §4 那列寫「2 個旗標」且標 ✅ 真實資料', /§4 財報品質.*2 個旗標.*✅ 真實資料/.test(FD.q), (FD.q.match(/§4 財報品質.{0,160}/) || [])[0]);
         ok('§f4 來源段列出「財報三表切片」日期', /財報三表切片/.test(FD.src) && !/財報三表切片[^0-9]*本站沒有/.test(FD.src), FD.src.slice(0, 300));
         ok('§f5 §4 誠實寫「應收帳款天數本站沒有」、§5/§6 寫「本站沒有」分析師共識(⛔ 不編)', /應收帳款天數(本站)?沒有/.test(FD.t) && /沒有免費的分析師共識/.test(FD.t), '');
@@ -1305,7 +1312,22 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
         // 累計 vs 單季:切片裡的 cum_fixed 要含 ocf(注入:切片器不還原 → 這裡的 fixture 就會少這個欄)
         ok('§f7 切片 fixture 標示現金流量表已從累計還原成單季(cum_fixed 含 ocf/capex)', FIN_SLICE['2327'].cum_fixed.includes('ocf') && FIN_SLICE['2327'].cum_fixed.includes('capex'), JSON.stringify(FIN_SLICE['2327'].cum_fixed));
     // 🚨 V76.2.0 面額變更:新切片 2025Q3 起 nm null + nm_error;畫面⛔ 不可再印 5.3% / 4.9%
-    ok('§f9 新切片:國巨 2025Q3 起淨利率 null、par_chg_q = 2025-09-30;畫面寫「疑似面額變更」而不是 5.3%', FIN_SLICE['2327'].par_chg_q === '2025-09-30' && /疑似面額變更/.test(R6.txt.rpFund) && !/淨利率\(最新季\)\s*5\.3%/.test(R6.txt.rpFund), R6.txt.rpFund.slice(0, 300));
+    // 🚨 V77.4.8 更正:舊版釘 `par_chg_q === '2025-09-30'` + 畫面要寫「疑似面額變更」——
+    //   那是**回算之前**的狀態。V76.2.6 之後切片拿得到官方「稅後淨利」(`ni_src:'fs'`)→
+    //   淨利率/ROE **算得出正確的值**(19~21%),守門自然不必再擋 → `par_chg_q` 變成 `null`,
+    //   措辭也從「疑似」升級成「由官方淨利 ÷ EPS 反推」。⭐ 改釘**用意**:
+    //   ⛔ 一律不可再印那個錯的 5.3% / 4.9%,而且面額變更這件事**要在畫面上講出來**。
+    {
+        const F = FIN_SLICE['2327'];
+        const parFlag = (F.flags || []).some(x => x.k === 'par_chg');
+        ok('§f9 國巨:面額變更那件事要講出來,而且⛔ 不可再印錯的淨利率 5.3% / 4.9%',
+            parFlag && /(面額變更|股數 ×)/.test(R6.txt.rpFund)
+            && !/淨利率[^%]{0,8}5\.3%/.test(R6.txt.rpFund) && !/淨利率[^%]{0,8}4\.9%/.test(R6.txt.rpFund),
+            JSON.stringify({ par_chg_q: F.par_chg_q, parFlag, ni_src: (F.q || []).slice(-1)[0]?.ni_src }) + ' ' + R6.txt.rpFund.slice(0, 200));
+        ok('§f9b ⭐ 守門放行的理由要成立:拿得到官方淨利(`ni_src:"fs"`)才可以 `par_chg_q = null`',
+            F.par_chg_q === '2025-09-30' || (F.q || []).slice(-1)[0]?.ni_src === 'fs',
+            JSON.stringify({ par_chg_q: F.par_chg_q, ni_src: (F.q || []).slice(-1)[0]?.ni_src }));
+    }
     // 🚨 gh-pages 上的**舊切片**(V76.1.8 產的:沒有 par_chg_q、nm 還是 5.3)→ 前端那道雙保險要自己判出來(注入:拿掉 _rpFinParQ 的迴圈 → 紅)
     const OLDF = await page.evaluate((F) => { const A = app; const G = JSON.parse(JSON.stringify(F)); delete G.par_chg_q; G.q.forEach(r => { delete r.nm_error; delete r.ni_src; if (r.p >= '2025-09-30') r.nm = 5.3; }); G.roe4 = 4.3;
         const html = A._rpFinDeepHtml(Object.assign({}, A._rpLast, { fin: G })); return { parQ: A._rpFinParQ(G), txt: html.replace(/<[^>]+>/g, ' ') }; }, FIN_SLICE['2327']);

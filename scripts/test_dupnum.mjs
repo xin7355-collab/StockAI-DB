@@ -520,24 +520,46 @@ await page.waitForTimeout(2500);
 }
 // ⓠ 報告頁全部折疊(使用者:「§12…折疊起來,下方要折疊的都折疊」)
 {
+    // 🚨 V77.4.8:原本是**固定等 2,400ms** → `rpLead`(沒有結論時才顯的那一條)偶爾還沒被結論蓋掉
+    //   → 總字數在 3,177 / 3,210 之間跳,ⓠ3 變成**偶爾紅**(實測兩個版本都會)。
+    //   ⭐ 改成本 repo 既有的「**連續兩次量到一樣才算站得住**」(同 `page_sweep` 等 diag 那條),
+    //   ⛔ 不是把門檻調鬆(那等於偷改判定)。
     const r = await page.evaluate(() => new Promise(res => {
         app.switchSubTab && app.switchSubTab('report');
-        setTimeout(() => {
+        const snap = () => {
             const box = document.getElementById('subContentReport'), out = [];
             box.querySelectorAll(':scope > div').forEach(c => {
                 const d = c.querySelector('details');
                 out.push({ id: c.id || '', dk: d ? (d.dataset.dk || '') : '', open: d ? d.open : null,
                            chars: (c.innerText || '').replace(/\s/g, '').length });
             });
+            return out;
+        };
+        // 🚨 而且要等 `rpLead`(「⏳ 正在計算技術指標…」那 33 字)被結論蓋掉 ——
+        //   ⭐ ⓠ3 量的是「**算完的**報告頁第一眼」,⛔ 不是「還在算的」那一瞬間。
+        //   (那 33 字正是 3,177 ↔ 3,210 在跳的原因;⛔ 不可為了它把門檻調鬆。)
+        const leading = () => ((document.getElementById('rpLead') || {}).innerText || '').trim().length > 0;
+        let prev = null, tries = 0;
+        const tick = () => {
+            const cur = JSON.stringify(snap());
+            if ((prev === cur && !leading()) || ++tries > 20) return done();
+            prev = cur; setTimeout(tick, 600);
+        };
+        const done = () => {
+            const out = snap();
             // ⭐ 「哪幾節該攤開」的**唯一真相來源**是 App 自己的 `_RP_VIEW_OPEN`(⛔ 測試不另抄一份清單)
             const want = (app._RP_VIEW_OPEN || {})[app._rpView ? app._rpView() : 'short'] || [];
             res({ cards: out, total: out.reduce((a, x) => a + x.chars, 0),
                   view: app._rpView ? app._rpView() : '',
                   shouldOpen: out.filter(x => x.dk && want.some(re => re.test(x.dk))).map(x => x.id),
+                  lead: ((document.getElementById('rpLead') || {}).innerText || '').trim(),
                   riskSum: (document.querySelector('#rpRisk summary') || { innerText: '' }).innerText.replace(/\s+/g, ' ') });
-        }, 2400);
+        };
+        setTimeout(tick, 2400);
     }));
     ok('ⓠ 空過守門:報告頁畫得出 ≥8 張卡', r.cards.length >= 8, JSON.stringify(r.cards.map(x => x.id)));
+    ok('ⓠ0 🚧 空過守門:報告頁真的算完了(`rpLead` 的「正在計算」已被結論蓋掉)—— ⛔ 量還在算的畫面不算數',
+       !r.lead, r.lead);
     // 🚨 V77.2.8 更正:這兩條從 **V77.2.3 起就一直是紅的**(已二分確認:V77.2.1 綠、V77.2.5 紅),
     //    而真因**不是 bug** —— V77.2.3 的「短中線 / 長線」視角**刻意**攤開價格牆(§11・§16・§17)
     //    與籌碼(§10),那是使用者後來要的。舊斷言釘的是 V77.1.7 的「全部折疊」= **釘住了過期的實作**。

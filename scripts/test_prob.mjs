@@ -2,7 +2,8 @@
 //
 // ⛔ 這支釘的是**用意**:
 //   ① 平盤 = 扣成本 ±0.44%(使用者選的口徑)
-//   ② 進場 = t+1 開盤、創新高基準⛔ 不含今天、鎖漲停剔除
+//   ② 進場 = **訊號日尾盤**(V77.4.8 統一;`h=1` 就是「明天收盤」)、創新高基準⛔ 不含今天、鎖漲停剔除
+//   ⑪ ⭐ **「明天」那一列要在第一眼看得到**,而且三件誠實話(漲跌對半 / 三成是平 / 量不到優勢)要一起印
 //   ③ **一定要同時顯示全市場基準率**(⛔ 少了它,44% 會被讀成「這檔很差」)
 //   ④ **一定要顯示「🆚 贏大盤」**(⛔ 少了它,空頭裡的跌深反彈會被讀成選股很強)
 //   ⑤ 樣本不足 → 說「樣本不足」,⛔ 不補值、⛔ 不跟隔壁格借
@@ -72,6 +73,20 @@ ok('① 平盤帶 = 來回成本 0.44%', FLAT_BAND === 0.44 && labelOf(0.44) ===
 ok('⑥s ⛔ 原始碼裡不可把三個機率加權成分數(陷阱 #38)',
     !/(prob|p)Score|機率.{0,6}總分|漲.{0,4}\*\s*\d.{0,20}跌.{0,4}\*/.test(SRC.slice(SRC.indexOf('_probBox(sym, o)'), SRC.indexOf('_probBox(sym, o)') + 9000)));
 ok('②s 72 格', N_CELLS === 72);
+// ⭐ 口徑:進場 = 訊號日收盤(尾盤買),⛔ 不是 t+1 開盤 —— 兩個方向各一個決定性對照
+{
+    const mk = a => a.map(c => ({ o: c, h: c * 1.01, l: c * 0.99, c, v: 1000 }));
+    const a = []; for (let i = 0; i < 300; i++) a.push(100);
+    const R = mk(a); R[201].c = 130;
+    const o1 = outcomeAt(R, 200, 1);
+    ok('②t ⭐ h=1 = 明天收盤(今收 100 → 明收 130 = +30%)', o1 && Math.abs(o1.ret - 30) < 0.01, o1);
+    R[201].o = 50;
+    const o2 = outcomeAt(R, 200, 1);
+    ok('②t2 ⭐ 決定性反向對照:改 t+1 開盤 → 報酬⛔ 不可變', o1 && o2 && o1.ret === o2.ret, [o1, o2]);
+    R[201].o = 130; R[200].c = 50;
+    const o3 = outcomeAt(R, 200, 1);
+    ok('②t3 ⭐ 改訊號日收盤 → 報酬必須跟著變(進場價真的是它)', o3 && Math.abs(o3.ret - o1.ret) > 10, o3);
+}
 
 // ═══ 前端渲染 ═══
 const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu'] });
@@ -111,12 +126,17 @@ const R = await pg.evaluate(() => {
     app._twiiKlineCache = kc;
     // ③④ 決定性對照:改基準率 → 畫面要跟著變
     const bk = JSON.parse(JSON.stringify(T.base));
-    const k20 = T.hz.indexOf(20);
-    T.base[k20][1] = 88.8; T.base[k20][11] = 77.7;
+    const k20 = T.hz.indexOf(20), k1 = T.hz.indexOf(1);
+    T.base[k20][1] = 88.8; T.base[k20][11] = 77.7; T.base[k1][2] = 22.2;
     out.full2 = app._probBox('2330', { mode: 'full', data });
     out.line2 = app._probBox('2330', { mode: 'line', data });
     T.base = bk;
-    out.tbl = { cells: Object.keys(T.cells).length, hz: T.hz, flat: T.flat, minN: T.minN, cols: T.schema.length, base: T.base[k20].length };
+    // ④b2 決定性對照:改「漲最高那一格」的贏大盤欄 → 警告段必須跟著變
+    let top = null; for (const kk in T.cells) { const rr = T.cells[kk][k20]; if (rr && (!top || rr[1] > top[1])) top = rr; }
+    const keep11 = top[11]; top[11] = 11.1;
+    out.warn2 = app._probBox('2330', { mode: 'full', data });
+    top[11] = keep11;
+    out.tbl = { cells: Object.keys(T.cells).length, hz: T.hz, flat: T.flat, minN: T.minN, cols: T.schema.length, base: T.base[k20].length, entry: T.entry };
     return out;
 });
 
@@ -134,13 +154,30 @@ ok('③d ⭐ 一行版的基準率也不可寫死', /77\.7|88\.8/.test(R.line2),
 ok('④ **每一個天期那一列都要印「贏大盤」**(⛔ 少了它,跌深反彈會被讀成選股很強)',
     (R.full.match(/贏大盤/g) || []).length >= 6 && /贏大盤/.test(R.line),
     (R.full.match(/贏大盤/g) || []).length);
-ok('④b 完整版要把那個陷阱講出來(63.1% vs 36.2%)', /63\.1/.test(R.full) && /36\.2/.test(R.full), '');
+//   🚨 ⛔ 不可再釘死 63.1 / 36.2 —— V77.4.7 那兩個數字在換口徑之後當場過期。
+//      改成**決定性對照**:改掉「漲最高那一格」的贏大盤欄 → 警告段的數字必須跟著變。
+ok('④b 完整版要把那個陷阱講出來(漲最高那格 vs 它的贏大盤)',
+    /漲」機率最高/.test(R.full) && /贏大盤的機率只有/.test(R.full), R.full.slice(0, 80));
+ok('④b2 ⭐ 決定性對照:改那一格的「贏大盤」→ 警告段跟著變(⛔ 不可寫死)',
+    /11\.1/.test(R.warn2) && !/11\.1/.test(R.full), (R.warn2.match(/贏大盤的機率只有[^<]*<b>[^<]*/) || [''])[0]);
 ok('⑤ 樣本不足 → 說「樣本不足」(⛔ 不補值、⛔ 不借隔壁格)', /樣本不足/.test(R.thin) && /樣本不足/.test(R.thinLine), R.thin.slice(0, 100));
 ok('⑤b K 線不足 → 說出原因(⛔ 不靜默空白)', /K 線不足/.test(R.short), R.short.slice(0, 100));
 ok('⑤c 大盤年線抓不到 → 也要說出來', /大盤年線/.test(R.noMkt), R.noMkt.slice(0, 100));
-ok('②b 完整版要寫明「進場 = 隔天開盤」與「平 = 扣成本」', /隔天開盤/.test(R.full) && new RegExp('扣.{0,4}來回成本').test(R.full), '');
+ok('②b 完整版要寫明「進場 = 今天尾盤」與「平 = 扣成本」', /今天尾盤/.test(R.full) && new RegExp('扣.{0,4}來回成本').test(R.full), '');
+ok('②b2 ⛔ 不可再出現舊口徑「隔天開盤」(換口徑之後那句話是錯的)', !/隔天開盤/.test(R.full), R.full.slice(0, 200));
 ok('②c 要寫明「⛔ 不含出場規則」與「歷史頻率不是預測」', /不含出場規則/.test(R.full) && /不是預測/.test(R.full), '');
-ok('⑨ 表本身自洽:天期 5 個 ・平盤帶 0.44 ・欄數 = schema 長度', R.tbl.hz.length === 5 && R.tbl.flat === 0.44 && R.tbl.cols === R.tbl.base, R.tbl);
+ok('⑨ 表本身自洽:天期 5 個 ・第一個是 1(明天)・平盤帶 0.44 ・欄數 = schema 長度',
+    R.tbl.hz.length === 5 && R.tbl.hz[0] === 1 && R.tbl.flat === 0.44 && R.tbl.cols === R.tbl.base, R.tbl);
+ok('⑨b ⭐ 產物要標明口徑 = 尾盤買(`entry:"close"`)—— ⛔ 沒有它就分不出是哪一版跑的', R.tbl.entry === 'close', R.tbl.entry);
+
+// ═══ ⑪ 「明天」那一列(使用者問的就是這個)═══
+ok('⑪ 完整版要有「明天」那一列(⛔ 不可只講 20 天)', /明天\(抱 1 天\)/.test(R.full), '');
+ok('⑪b 一行版要先講「明天」的漲/平/跌 + 全市場基準', /明天/.test(R.line) && /全市場/.test(R.line), R.line);
+ok('⑪c 🚨 三件誠實話要一起印:漲跌對半 / 幾成是平 / 量不到優勢',
+    /漲跌幾乎對半/.test(R.full) && /等於白做/.test(R.full) && /量不到優勢/.test(R.full), '');
+ok('⑪d ⛔ 「明天」那一段不可給買賣指令', !/(建議|可以買|進場|加碼|放空)/.test(
+    R.full.slice(R.full.indexOf('你問的「明天」'), R.full.indexOf('你問的「明天」') + 700)), '');
+ok('⑪e ⭐ 一行版的「明天」基準也不可寫死(改基準 → 跟著變)', /22\.2/.test(R.line2), R.line2.slice(0, 200));
 ok('⑩ 無 pageerror', errs.length === 0, errs.slice(0, 2));
 
 await b.close();

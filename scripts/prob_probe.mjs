@@ -46,20 +46,32 @@ if (SELFTEST) {
         labelOf(0.44) === 1 && labelOf(0.45) === 0 && labelOf(-0.45) === 2 && labelOf(0) === 1,
         [labelOf(0.44), labelOf(0.45), labelOf(-0.45)]);
 
-    // ② 進場是 t+1 開盤(⛔ 不是訊號日收盤)—— 決定性對照:只改 t+1 那根的開盤價,報酬必須變
+    // ② 進場是**訊號日收盤(尾盤買)**,⛔ 不是 t+1 開盤 —— 兩個決定性對照各一個方向
     {
         const a = []; for (let i = 0; i < 300; i++) a.push(100);
-        const R = mk(a); R[201].c = 110;
+        const R = mk(a); R[205].c = 110;
         const o1 = outcomeAt(R, 200, 5);
-        R[201].o = 50;
+        R[200].c = 50;                       // 改訊號日收盤 → 進場價必須跟著變
         const o2 = outcomeAt(R, 200, 5);
-        ok('② 進場價 = t+1 開盤(改那根開盤價,報酬必須跟著變)', o1 && o2 && Math.abs(o1.ret - o2.ret) > 10, [o1, o2]);
+        ok('② 進場價 = 訊號日收盤(改它,報酬必須跟著變)', o1 && o2 && Math.abs(o1.ret - o2.ret) > 10, [o1, o2]);
+        R[200].c = 100;
+        const o3 = outcomeAt(R, 200, 5);
+        R[201].o = 50;                       // ⭐ 反向對照:t+1 開盤⛔ 不可再影響結果
+        const o4 = outcomeAt(R, 200, 5);
+        ok('②b ⭐ 決定性反向對照:改 t+1 開盤 → 報酬⛔ 不可變(口徑真的換掉了)',
+            o3 && o4 && o3.ret === o4.ret, [o3, o4]);
+        R[201].o = 100;
+        // ⭐ h=1 就是「明天收盤」:今收 100 → 明收 130 = +30%
+        const b = []; for (let i = 0; i < 300; i++) b.push(100);
+        const R2 = mk(b); R2[201].c = 130;
+        const o5 = outcomeAt(R2, 200, 1);
+        ok('②c h=1 = 明天收盤(今收 100 → 明收 130 應為 +30%)', o5 && Math.abs(o5.ret - 30) < 0.01, o5);
     }
     // ③ 鎖漲停剔除
     {
         const a = []; for (let i = 0; i < 300; i++) a.push(100);
         const R = mk(a); R[200].c = 100 * LIMIT_UP;
-        ok('③ 訊號日鎖漲停 → 剔除(買不到)', outcomeAt(R, 200, 5) === null, outcomeAt(R, 200, 5));
+        ok('③ 訊號日鎖漲停 → 剔除(尾盤掛不到單)', outcomeAt(R, 200, 5) === null, outcomeAt(R, 200, 5));
         R[200].c = 100 * 1.09;
         ok('③b +9% 沒鎖 → 不剔除', outcomeAt(R, 200, 5) !== null);
     }
@@ -111,18 +123,18 @@ try {
     console.log(`📈 大盤 regime:${MKT.size} 天(年線之下 ${[...MKT.values()].filter(x => x === 1).length} 天)`);
 } catch { console.error('⛔ 讀不到 ^TWII.json → 算不出大盤 regime,⛔ 不硬給'); process.exit(1); }
 
-// 🆚 大盤同期報酬(⭐ 沒有它,「谷底 ・ 大盤在年線之下」那一格的 63% 會被讀成選股很強,
-//    而它其實大半是**大盤自己反彈**)。進出場口徑跟個股完全一樣:t+1 開盤 → t+1+h 收盤。
+// 🆚 大盤同期報酬(⭐ 沒有它,「谷底 ・ 大盤在年線之下」那一格的高機率會被讀成選股很強,
+//    而它其實大半是**大盤自己反彈**)。進出場口徑跟個股完全一樣:**今收 → h 天後收盤**。
 let TWI = null;
 try {
     const t = JSON.parse(fs.readFileSync(path.join(DATA, '^TWII.json'), 'utf8'));
-    TWI = { idx: new Map(), o: t.map(r => +r.open), c: t.map(r => +r.close) };
+    TWI = { idx: new Map(), c: t.map(r => +r.close) };
     t.forEach((r, i) => TWI.idx.set(String(r.date).replace(/\//g, '-').slice(0, 10), i));
 } catch { TWI = null; }
 const mktRet = (date, h) => {
     if (!TWI) return null;
     const i = TWI.idx.get(date); if (i == null) return null;
-    const a = TWI.o[i + 1], b = TWI.c[i + 1 + h];
+    const a = TWI.c[i], b = TWI.c[i + h];
     return (a > 0 && b > 0) ? (b - a) / a * 100 : null;
 };
 
@@ -231,19 +243,20 @@ const out = {
     flat: FLAT_BAND, hz: HORIZONS, minN: MIN_N, schema: SCHEMA,
     syms: nSym, bars: nBar, win: [_mkDates[0], _mkDates[_mkDates.length - 1]], split: SPLIT,
     base, cells, calib,
-    note: '進場 = t+1 開盤;平盤 = 毛報酬在 ±' + FLAT_BAND + '% 內(扣完來回成本等於沒賺沒賠);鎖漲停剔除;⛔ 歷史頻率不是預測',
+    entry: 'close',   // ⭐ V77.4.8 起:今天尾盤買 → h 天後收盤賣(h=1 = 明天)
+    note: '進場 = 訊號日尾盤(收盤價);出場 = h 天後收盤,h=1 就是明天;平盤 = 毛報酬在 ±' + FLAT_BAND + '% 內(扣完來回成本等於沒賺沒賠);訊號日鎖漲停剔除;⛔ 歷史頻率不是預測',
 };
 fs.writeFileSync(OUT, JSON.stringify(out));
 console.log(`\n💾 ${OUT}(${(fs.statSync(OUT).size / 1024).toFixed(0)} KB)・可用 ${nUsable} 格 ・樣本不足 ${nThin} 格`);
 
 // ═══ 4. 報告 ═══
 console.log('\n' + '═'.repeat(96));
-console.log(`【全市場基準率】隨便挑一檔台股、t+1 開盤買 —— ⭐ 這是每一格都必須一起顯示的對照`);
+console.log(`【全市場基準率】隨便挑一檔台股、**今天尾盤買** —— ⭐ 這是每一格都必須一起顯示的對照`);
 console.log('═'.repeat(96));
-console.log('天期    n          漲%    平%    跌%    P25     中位    P75     平均    獲利因子  贏大盤%  超額平均');
+console.log('抱幾天  n          漲%    平%    跌%    P25     中位    P75     平均    獲利因子  贏大盤%  超額平均');
 HORIZONS.forEach((h, i) => {
     const r = base[i]; if (!r) return;
-    console.log(`${String(h).padStart(3)} 日 ${String(r[0]).padStart(10)} ${r[1].toFixed(1).padStart(7)} ${r[2].toFixed(1).padStart(6)} ${r[3].toFixed(1).padStart(6)} ${r[4].toFixed(2).padStart(8)} ${r[5].toFixed(2).padStart(7)} ${r[6].toFixed(2).padStart(7)} ${r[7].toFixed(2).padStart(7)} ${String(r[8]).padStart(8)} ${(r[11] == null ? '—' : r[11].toFixed(1)).padStart(8)} ${(r[12] == null ? '—' : (r[12] >= 0 ? '+' : '') + r[12].toFixed(2)).padStart(8)}`);
+    console.log(`${(h === 1 ? '明天' : String(h) + ' 日').padStart(4)} ${String(r[0]).padStart(10)} ${r[1].toFixed(1).padStart(7)} ${r[2].toFixed(1).padStart(6)} ${r[3].toFixed(1).padStart(6)} ${r[4].toFixed(2).padStart(8)} ${r[5].toFixed(2).padStart(7)} ${r[6].toFixed(2).padStart(7)} ${r[7].toFixed(2).padStart(7)} ${String(r[8]).padStart(8)} ${(r[11] == null ? '—' : r[11].toFixed(1)).padStart(8)} ${(r[12] == null ? '—' : (r[12] >= 0 ? '+' : '') + r[12].toFixed(2)).padStart(8)}`);
 });
 
 const hi20 = HORIZONS.indexOf(20);
@@ -268,6 +281,21 @@ HORIZONS.forEach((h, i) => {
     if (!c) { console.log(`${String(h).padStart(3)} 日:格數不足,⛔ 不給校準`); return; }
     console.log(`${String(h).padStart(3)} 日:${String(c.cells).padStart(3)} 格 ・平均差 ${c.mae.toFixed(2)}pp ・偏誤 ${(c.bias >= 0 ? '+' : '') + c.bias.toFixed(2)}pp ${c.over ? '🚨 Overconfident(差 >10pp)' : '✅'}`);
 });
+
+// 🚨 使用者問的就是「明天」—— 把那三件必須跟數字一起講的事印出來
+const hi1 = HORIZONS.indexOf(1);
+if (base[hi1]) {
+    const b = base[hi1];
+    console.log('\n' + '═'.repeat(96));
+    console.log('【🚨 「明天」這個尺度上必須一起講的三件事】');
+    console.log('═'.repeat(96));
+    console.log(`  ① 漲跌幾乎對半:漲 ${b[1].toFixed(1)}% vs 跌 ${b[3].toFixed(1)}%(只差 ${Math.abs(b[1] - b[3]).toFixed(1)}pp)`);
+    console.log(`  ② ${b[2].toFixed(0)}% 的日子是「平」—— 扣完來回成本 ${FLAT_BAND}% 等於白做`);
+    console.log(`  ③ 超額平均 ${(b[12] >= 0 ? '+' : '') + b[12].toFixed(3)}% → 這個尺度上⛔ 量不到優勢,⛔ 不可下操作指令`);
+    const r1 = Object.entries(cells).filter(([, r]) => r[hi1]).map(([c, r]) => ({ c: +c, r: r[hi1] })).sort((a, b2) => b2.r[1] - a.r[1]);
+    console.log(`  ・最強格 漲 ${r1[0].r[1].toFixed(1)}%(n=${r1[0].r[0]},🆚 贏大盤 ${r1[0].r[11]}%)${cellName(r1[0].c)}`);
+    console.log(`  ・最弱格 漲 ${r1[r1.length - 1].r[1].toFixed(1)}%(n=${r1[r1.length - 1].r[0]})${cellName(r1[r1.length - 1].c)}`);
+}
 
 console.log('\n' + '═'.repeat(96));
 console.log('⚠️ 限制:倖存者偏誤(只有還活著的股票)・⛔ 這是歷史頻率不是預測 ・');

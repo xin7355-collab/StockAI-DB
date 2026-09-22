@@ -11,9 +11,14 @@
  * ⛔ 六條不可改掉的設計:
  *   ① **平盤 = 扣掉來回成本還是等於沒賺沒賠**(使用者選的口徑):|毛報酬| ≤ 0.44%。
  *      → 「漲」的意思是「**扣完成本真的有賺**」,⛔ 不是「收紅」。
- *   ② **零前視**:進場 = **t+1 開盤**(訊號當天收盤才知道特徵,隔天才買得到);
+ *   ② **零前視**:進場 = **訊號日尾盤**(收盤前最後那一盤,V72.9.0 鐵則:全站回測唯一的有效進場點);
  *      「創新高」的基準區間⛔ **不含今天**(陷阱 #43)。
  *      ⚠️ 位階 / 振幅 / 大盤 regime **含今天是對的** —— 那是「位置」不是「突破」。
+ *      🚨 **V77.4.8 口徑更正**:舊版是「t+1 開盤買 → t+1+h 收盤賣」= **跨 h+1 天**,
+ *         所以「1 日」其實是「明開買、後收賣」,⛔ **答不出使用者問的「明天是紅K還是黑K」**。
+ *         現在統一成**今收買 → h 天後收盤賣** → `h=1` 就是「明天」,而且跟
+ *         `playbook_edge` / `auto_trade.py` / `portfolio_backtest` / `breakout_exit_probe` **同一把尺**。
+ *         ⚠️ 尾盤買的既有近似:實際下單是 13:25 左右,跟 13:30 的收盤價有幾分鐘落差(全站共通)。
  *   ③ **一定要有全市場基準率**:實測 20 日「漲 43.5 / 平 5.2 / 跌 51.3」——
  *      隨便買一檔台股扣完成本,**跌本來就比漲多**。⛔ 沒有基準率,44% 會被讀成「這檔很差」。
  *   ④ **樣本不足要說「樣本不足」**,⛔ 不補值、⛔ 不外插、⛔ 不跟隔壁格借。
@@ -22,7 +27,7 @@
  */
 
 export const FLAT_BAND = 0.44;                 // ① 平盤帶(= 來回成本)
-export const HORIZONS = [1, 3, 5, 10, 20];     // 幾個交易日之後
+export const HORIZONS = [1, 3, 5, 10, 20];     // 今天尾盤買,抱幾個交易日(1 = 明天收盤)
 export const LIMIT_UP = 1.095;                 // ⑤ 鎖漲停判準(收盤 ≥ 昨收 ×1.095)
 
 // ── 桶的定義(⛔ 改任何一個門檻都要重跑) ──
@@ -84,17 +89,20 @@ export function featuresAt(R, i, mkt) {
 export const labelOf = ret => (ret > FLAT_BAND ? 0 : (ret < -FLAT_BAND ? 2 : 1));
 
 /**
- * ② 進場 = t+1 開盤;出場 = t+1+h 收盤。回 null = 這一根不能用(鎖漲停 / 資料不夠)。
+ * ② 進場 = **訊號日收盤**(尾盤買);出場 = h 天後的收盤。回 null = 這一根不能用(鎖漲停 / 資料不夠)。
+ *    ⭐ `h = 1` 就是「**明天收盤**」—— 使用者問的「下一個交易日漲跌」。
+ *    ⛔ 舊版是 `R[i+1].o → R[i+1+h].c`(跨 h+1 天),已於 V77.4.8 統一,見檔頭 ②。
  * @returns {{ret,mae,mfe}|null}
  */
 export function outcomeAt(R, i, h) {
     const n = R.length;
-    if (i + 1 + h >= n) return null;
-    // ⑤ 訊號當天鎖漲停 → 隔天開盤多半跳空,那個價買不到 → 剔除
+    if (i + h >= n) return null;
+    // ⑤ 訊號當天鎖漲停 → **尾盤根本買不到那個價**(掛不到單)→ 剔除
     if (i > 0 && R[i - 1].c > 0 && R[i].c >= R[i - 1].c * LIMIT_UP) return null;
-    const e = R[i + 1].o; if (!(e > 0)) return null;
-    const x = R[i + 1 + h].c; if (!(x > 0)) return null;
+    const e = R[i].c; if (!(e > 0)) return null;
+    const x = R[i + h].c; if (!(x > 0)) return null;
+    // ⚠️ MAE/MFE 從**買進之後那一根**算起(買在今收,今天剩下的盤中高低跟你無關)
     let mn = Infinity, mx = -Infinity;
-    for (let q = i + 1; q <= i + 1 + h; q++) { if (R[q].l < mn) mn = R[q].l; if (R[q].h > mx) mx = R[q].h; }
+    for (let q = i + 1; q <= i + h; q++) { if (R[q].l < mn) mn = R[q].l; if (R[q].h > mx) mx = R[q].h; }
     return { ret: (x - e) / e * 100, mae: (mn - e) / e * 100, mfe: (mx - e) / e * 100 };
 }

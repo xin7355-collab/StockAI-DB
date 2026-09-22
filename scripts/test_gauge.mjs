@@ -242,7 +242,13 @@ await page.close();
 {
     const p3 = await boot({ width: 390, height: 844 });
     await load(p3, '2330'); const B = await snap(p3);
-    ok('⑥b 2330 沒有上方套牢層 → 尺仍畫得出(停損/買進/現價 ≥3 個標記)、沒有假的套牢帶', B.marks.length >= 3 && B.bands.length === 0 && B.ccLen <= 600, JSON.stringify({ marks: B.marks, bands: B.bands, len: B.ccLen }));
+    // 🚨 V77.4.8 更正:舊版釘的是 `B.bands.length === 0`(「2330 **沒有**上方套牢層」)——
+    //   那是**當天的資料**,2330 漲上去之後自然又有了 → 這條從此永遠紅(⛔ 永遠紅的測試等於沒有測試)。
+    //   ⭐ 用意是「**⛔ 不可憑空生出假的套牢帶**」→ 改釘「有幾條都行,但每一條都必須**真的在現價上方**」。
+    const cp2 = B.K && B.K.C ? +B.K.C : null;
+    const bandOk = B.bands.every(t => { const m = String(t).match(/([\d.]+)\s*~/); return m && cp2 && +m[1] >= cp2 * 0.98; });
+    ok('⑥b 2330:尺畫得出(停損/買進/現價 ≥3 個標記)、⛔ 沒有假的套牢帶(每一帶都要在現價上方)',
+        B.marks.length >= 3 && bandOk && B.ccLen <= 600, JSON.stringify({ marks: B.marks, bands: B.bands, cp: cp2, len: B.ccLen }));
     ok('⑧b 2330 🔔 顆數 == _armTrigStash', (B.bell == null ? 0 : +B.bell) === B.stashN && B.stashN > 0, JSON.stringify({ bell: B.bell, stashN: B.stashN }));
     await p3.close();
 }
