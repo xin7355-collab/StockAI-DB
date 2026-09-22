@@ -223,6 +223,50 @@ def hist_update(hist, b1):
 
 
 
+
+# ⚡ V77.5.0 日K探針(`scripts/dt_daily_probe.mjs`)量到:**開在昨高之上 → 開盤空、開在昨低之下 → 開盤買**
+#   扣當沖成本後為正,但**幾乎全部集中在冷門股**(日均成交 <3 千萬)。
+#   ⛔ 那可能只是「開盤那一筆撮合價」的假象(冷門股開盤常常一筆就定價,你真的下單未必成交在那個價)。
+#   → 這裡用**真的 1 分 K** 比三種進場時點:開盤撮合價 / 09:01 收盤 / 09:05 收盤,抱到收盤;另一組停損 3%。
+#   ⭐ 越晚進場邊際掉越多 = 賺的是撮合價那一瞬間,⛔ 不是「開高會走低」的行情。
+GAP_TH = 2.0          # 跳空門檻 %(同日K探針的主設定)
+GAP_STOP = 3.0        # 停損 %
+
+
+def gap_fade_trades(days):
+    """days = [(date, b1), ...] 依日期排序(b1 = 當天 1 分 K,已排序)。
+    回 [(桶名, 淨損益%未扣成本)],桶名含進場時點與方向;另外回對照組(同時點、不看跳空)。⛔ 零前視:只用前一天的高低收。"""
+    out, ctrl = [], []
+    for k in range(1, len(days)):
+        _, b1 = days[k]; _, pb = days[k - 1]
+        if len(b1) < 60 or len(pb) < 60:
+            continue
+        pH = max(b['h'] for b in pb); pL = min(b['l'] for b in pb); pc = pb[-1]['c']
+        t0 = _hm(b1[0]['t']); last = b1[-1]['c']
+        ents = {'開盤撮合價': (0, b1[0]['o'])}
+        i1 = next((i for i, b in enumerate(b1) if _hm(b['t']) >= t0 + 1), None)
+        i5 = next((i for i, b in enumerate(b1) if _hm(b['t']) >= t0 + 4), None)
+        if i1 is not None: ents['09:01 進'] = (i1 + 1, b1[i1]['c'])
+        if i5 is not None: ents['09:05 進'] = (i5 + 1, b1[i5]['c'])
+        o = b1[0]['o']
+        gU = o > pH and (o / pc - 1) * 100 >= GAP_TH and o < pc * 1.095
+        gD = o < pL and (1 - o / pc) * 100 >= GAP_TH and o > pc * 0.905
+        for nm, (j, px) in ents.items():
+            if not (px > 0):
+                continue
+            rest = b1[j:] if j < len(b1) else []
+            for side in ('short', 'long'):
+                raw = (1 - last / px) * 100 if side == 'short' else (last / px - 1) * 100
+                sp = px * (1 + GAP_STOP / 100) if side == 'short' else px * (1 - GAP_STOP / 100)
+                hit = any((b['h'] >= sp) if side == 'short' else (b['l'] <= sp) for b in rest)
+                rs = -GAP_STOP if hit else raw
+                ctrl.append((f'{nm}|{side}', raw, rs))
+                if side == 'short' and gU:
+                    out.append((f'開在昨高之上≥{GAP_TH:g}% → 空・{nm}', raw, rs))
+                if side == 'long' and gD:
+                    out.append((f'開在昨低之下≥{GAP_TH:g}% → 買・{nm}', raw, rs))
+    return out, ctrl
+
 def selftest():
     """🧪 自我驗證:合成分 K,注入一個**必然賺得到**的訊號,確認這支探針抓得出來。
     ⛔ 沒有這條的話,「所有訊號都貼近對照組」分不出是「真的沒用」還是「程式根本沒觸發」。"""
@@ -349,6 +393,33 @@ def selftest():
     else:
         _line('✅ selftest④b 下午變體有自己的時間門(⛔ 不吃 12:30 那道)')
 
+    # ⚡ V77.5.0 跳空回歸:三種進場時點 + 零前視
+    try:
+        from datetime import datetime as _dt
+        def _mk(day, o, path):
+            base = _dt(2026, 1, day, 9, 0)
+            bs = []
+            for m, c in enumerate(path):
+                t = base.replace(hour=9 + (m // 60), minute=m % 60)
+                prev = o if m == 0 else path[m - 1]
+                bs.append({'t': t, 'o': prev, 'h': max(prev, c) + 0.01, 'l': min(prev, c) - 0.01, 'c': c, 'v': 10})
+            return bs
+        d1 = _mk(5, 100, [100] * 270)
+        d2 = _mk(6, 104, [104] + [103] * 4 + [101] * 265)   # 開在 104(>昨高 100.01、跳空 4%),收 101
+        tr, ct = gap_fade_trades([('d1', d1), ('d2', d2)])
+        got = {k: raw for k, raw, _ in tr}
+        ok1 = abs(got.get('開在昨高之上≥2% → 空・開盤撮合價', 99) - (1 - 101 / 104) * 100) < 1e-6
+        ok2 = abs(got.get('開在昨高之上≥2% → 空・09:05 進', 99) - (1 - 101 / 103) * 100) < 1e-6
+        _line(f"{'✅' if ok1 else '❌'} ⚡① 跳空空單以開盤撮合價 104 進、收盤 101 出")
+        _line(f"{'✅' if ok2 else '❌'} ⚡② 09:05 進場用的是第 5 分鐘收盤 103(⛔ 不是開盤價)")
+        tr0, _ = gap_fade_trades([('d2', d2)])
+        ok3 = not tr0
+        _line(f"{'✅' if ok3 else '❌'} ⚡③ 沒有前一天就不觸發(零前視)")
+        if not (ok1 and ok2 and ok3):
+            ok = False
+    except Exception as e:
+        _line(f'❌ ⚡ 跳空回歸 selftest 例外:{e}'); ok = False
+
     _line('✅ SELFTEST_PASS' if ok else '❌ SELFTEST_FAIL')
     return 0 if ok else 1
 
@@ -397,6 +468,7 @@ def main():
     _line('=' * 96)
 
     buckets = {}          # 「[週期] 事件名」→ [淨損益%]
+    GAP, GAPC = {}, {}    # ⚡ 跳空回歸:事件 / 對照組(同進場時點、不看跳空)
     ctrl = {}             # 週期 → 對照組 [淨損益%]
     scanned = 0
 
@@ -466,6 +538,13 @@ def main():
                          'pc': prev_close, 'op': op0, 'sh5': sh5, 'back10': back10}
             prev_close = b1[-1]['c']          # ⭐ 給**下一個**交易日當昨收(⛔ 不是今天自己的)
 
+        # ⚡ 跳空回歸(用全部天數,不受 perday 的 ORB 守門影響)
+        _gd = [(d, sorted(by_day[d], key=lambda x: x['t'])) for d in sorted(by_day)]
+        _gt, _gc = gap_fade_trades(_gd)
+        for k, raw, rs in _gt:
+            GAP.setdefault(k, []).append(raw - COST_PCT); GAP.setdefault(k + '・停損3%', []).append(rs - COST_PCT)
+        for k, raw, rs in _gc:
+            GAPC.setdefault(k, []).append(raw - COST_PCT); GAPC.setdefault(k + '・停損3%', []).append(rs - COST_PCT)
         if not perday:
             _line(f'[{sym}] ⚠️ 沒有可用交易日'); continue
         scanned += len(perday)
@@ -625,6 +704,24 @@ def main():
             if f'[{P:>2}分] {want}' not in buckets:
                 _line(f'🚨 【{P}分】「{want}」觸發 0 筆 = 這個變體根本沒生效,⛔ 別讀成「沒有差別」')
 
+    # ⚡ 跳空回歸報表
+    _line('')
+    _line('=' * 100)
+    _line(f'⚡ 跳空回歸(開高空 / 開低買)× 三種進場時點 ・扣 {COST_PCT}% ・vs 同時點同方向對照組')
+    _line('   ⭐ 看「開盤撮合價 → 09:01 → 09:05」邊際掉多少:掉光 = 賺的是撮合那一筆,⛔ 不是行情')
+    gap_rows = []
+    for k in sorted(GAP):
+        arr = GAP[k]; st = stat(arr)
+        nm = k.split('・', 1)[1]
+        side = 'short' if '→ 空' in k else 'long'
+        cm = nm.replace('・停損3%', '')
+        ck = f'{cm}|{side}' + ('・停損3%' if '停損3%' in k else '')
+        cs2 = stat(GAPC.get(ck, []))
+        if st is None or st['n'] < 30 or cs2 is None:
+            _line(f'  {k:<46} n={st["n"] if st else 0} 樣本太少,⛔ 不下結論'); continue
+        gap_rows.append({'k': k, **st, 'ctrl': cs2['avg'], 'vs': st['avg'] - cs2['avg']})
+        _line(f'  {k:<46} n={st["n"]:>5} ・淨每趟 {st["avg"]:+.3f}% ・勝率 {st["wr"]:.1f}% ・中位 {st["med"]:+.3f}% ・對照 {cs2["avg"]:+.3f}% ・vs對照 {st["avg"] - cs2["avg"]:+.3f}')
+    res['gap'] = gap_rows
     _line('')
     _line('=' * 100)
     _line('🧭 怎麼讀')
