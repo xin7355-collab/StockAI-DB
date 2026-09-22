@@ -876,6 +876,7 @@ const L = await page.evaluate(async () => {
     out.counts = Object.fromEntries(Object.entries(PRO.LAB).map(([k, v]) => [k, v.length]));
     out.counts.zoo = PRO.ZOO.reduce((a, g) => a + g.k.length, 0);   // 📚 zoo 數的是指標總數不是分類數
     out.counts.rm = (PRO.RM && PRO.RM.strats || []).length;          // 🌦️ rm 數的是策略數(資料在 PRO.RM 不在 LAB)
+    out.counts.prob = (PRO._PROB_TABLE && PRO._PROB_TABLE.cells) ? Object.keys(PRO._PROB_TABLE.cells).length : 0;   // 📊 V77.4.6 機率表數的是「可用的格數」
     out.btDims = PRO.BT.dims.length;
     return out;
 });
@@ -1620,7 +1621,7 @@ ok('㉔b 每一欄都有內容,切換真的換掉列表',
    && L.ok.txt !== L.trap.txt && L.trap.txt !== L.method.txt,
    [L.ok.n, L.trap.n, L.method.n, L.blocked.n, L.next.n]);
 ok('㉔c 頁籤數字要跟實際筆數一致(⛔ 不可寫死)',
-   L.tabs.slice(1).every((t, i) => t.includes('(' + L.counts[['ok', 'trap', 'method', 'blocked', 'next', 'rm', 'zoo'][i]] + ')'))
+   L.tabs.slice(1).every((t, i) => t.includes('(' + L.counts[['ok', 'trap', 'method', 'blocked', 'next', 'rm', 'prob', 'zoo'][i]] + ')'))
    && L.tabs[0].includes('(' + L.btDims + ')'), L.tabs);
 ok('㉔d 🚨 **每一欄**每一條都要附實測來源(⛔ 沒有數字的意見不准進來)', L.srcMissing === 0, L.srcMissing);
 // 📌 V74.5.0 使用者:「把 portfolio_backtest.mjs 等等這種資訊隱藏,不需要呈現」
