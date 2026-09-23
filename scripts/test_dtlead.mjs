@@ -28,9 +28,13 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 // ── 靜態:分流要正確(這頁的「第一眼 vs 摺疊」是靠陣列決定的)──
 {
     ok('② 🚨 漲停隔日動能(有實測 +1.54%)進 `cards` = 第一眼(⛔ 不可改成 dtMore)',
-        /const _lu = this\._limitUpMomentumHtml\(sym, baseRaw\); if \(_lu\) cards\.push\(_lu\)/.test(SRC));
+        /_luCard = this\._limitUpMomentumHtml\(sym, baseRaw\) \|\| ''; if \(_luCard\) cards\.push\(_luCard\)/.test(SRC));
+    // 🟥 V77.5.1 同一件事只講一次:🟥 那一行(扣成本、6/6)在的時候,這張要被拿掉
+    ok('②b 🟥 收盤鎖漲停那一行在時,⛔ 不再另外掛漲停隔日動能(兩組數字同框 = 打架)',
+        /if \(_luCard && \/data-dtlu\/\.test\(hero\)\)/.test(SRC));
     ok('③ 買盤竭盡(未驗證)收進 dtMore', /const _bx = this\._buyExhaustHtml\(sym\); if \(_bx\) dtMore\.push\(_bx\)/.test(SRC));
-    ok('③b 隔日沖 T+1(講明天)收進 dtMore', /if \(_ovnHtml\) dtMore\.unshift\(_ovnHtml\);/.test(SRC));
+    // 🗑️ V77.5.1 隔日沖 T+1 卡已刪(分點跟單三支探針都打掉 + 憑空權重)→ ⛔ 不可復活
+    ok('③b 🗑️ 隔日沖 T+1 卡⛔ 不可再被放回當沖頁', !/_overnightT1Card\(sym, q, baseRaw/.test(SRC.slice(SRC.indexOf('async renderDayTradeTab('), SRC.indexOf('_dtAdvancedHtml = detail'))));
     ok('③c 損益試算機(工具)收進 dtMore', /dtMore\.push\(`[\s\S]{0,200}當沖損益試算機/.test(SRC));
     ok('⑤ 沒東西可收 → 整個摺疊不顯示(⛔ 不留空殼橫條)',
         /const _dtMoreHtml = dtMore\.filter\(Boolean\)\.length \? `/.test(SRC) && /` : '';/.test(SRC));
@@ -38,8 +42,8 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
     ok('① 摺疊⛔ 不可掛 open', !!m && !/\bopen\b/.test(m[0]), m && m[0]);
     ok('① 第一眼在前、摺疊在後(組裝順序)', /box\.innerHTML = cards\.join\(''\) \+ _dtMoreHtml;/.test(SRC));
     // ⑦ 🚨 這檔的結論要排在「掃別檔的工具」前面 —— 一開頁先看到的必須是「這檔今天怎麼做」
-    ok('⑦ 🚨 作戰指令(dayTradeBody)要排在「當沖候選掃描」之上',
-        SRC.indexOf('id="dayTradeBody"') < SRC.indexOf('id="dtScanCard"'));
+    // 🗑️ V77.5.1 當沖候選掃描卡已刪(VWAP/開盤條件都實測不成立,還會自動推播)→ ⛔ 不可復活
+    ok('⑦ 🗑️ 當沖候選掃描卡⛔ 不可再出現在頁面上', SRC.indexOf('id="dtScanCard"') < 0);
 }
 
 // ── 動態:真的渲染一次 ──

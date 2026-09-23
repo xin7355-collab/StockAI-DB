@@ -30,7 +30,9 @@ ok('⓪ CSS 用屬性 + !important(⛔ class 壓不住 render 的 classList.remo
     const entries = [...seg.matchAll(/\['([A-Za-z]+)', '([^']+)', '([^']+)'\]/g)];
     // ⚠️ V74.2.0 使用者「沒用的就刪除」→ 三張從收起改成直接刪 → 清單只剩 2 張
     ok('⓪b 清單每一行都要有名稱與「為什麼」(⛔ 不寫依據的收起跟亂砍沒兩樣)',
-        entries.length >= 2 && entries.every(m => m[2].length >= 4 && m[3].length >= 10), entries.length);
+        // ⚠️ V77.5.1 更正:舊版釘「≥ 2 張」—— V76.1.2 把 etfFollowCard 直接刪掉之後清單只剩 1 張,這條就一直紅
+        //   (釘的是「當時的張數」不是用意)。⭐ 用意 = 清單不空 + 每一行都寫了為什麼。
+        entries.length >= 1 && entries.every(m => m[2].length >= 4 && m[3].length >= 10), entries.length);
     // 🚨 風險提醒類⛔ 不可入清單 —— 忽略風險的代價遠大於多看一眼(多空不對稱那條鐵則)
     ok('⓪c ⛔ 風險提醒/官方處置類的卡不可被收起',
         !/attentionDetailCard|marginCallCard|disposition|riskAlert/i.test(seg));
@@ -73,8 +75,8 @@ const R = await page.evaluate(async () => {
     o.cards = {};
     // ⚠️ V74.1.9 sixMeridianCard 已**加回**(全市場實測 🔴 強共振六關全過)→ 不在清單裡
     // 🗑️ V74.2.0 predictionAuditCard 已整張刪除 → 從這份驗收清單移除
-    for (const [tab, pane, id] of [['strategy', 'now', 'etfFollowCard'],
-                                   ['bullbear', null, 'bullBearCategoryCards']]) {
+    // 🗑️ V76.1.2 etfFollowCard 已整張刪除(不在 _TIDY)→ V77.5.1 從驗收清單移除(這支測試從那時起一直 crash)
+    for (const [tab, pane, id] of [['bullbear', null, 'bullBearCategoryCards']]) {
         try { app.switchSubTab(tab); } catch (_) { }
         if (pane) { try { app.switchOvTab(pane); } catch (_) { } }
         // ⚠️ V74.5.3 起總覽那幾個 pane 住在**收起的 `#ovMoreWrap`** 裡 → 收起狀態量不到 display
@@ -113,8 +115,11 @@ const R = await page.evaluate(async () => {
     // ⚠️ 有些卡平常會**自己藏起來** → 提示列也要跟著藏(⛔ 否則是幫看不到的卡道歉)。
     //    🗑️ V74.2.0 原本用法人成本卡驗這條 —— 它整張刪了 → 換 etfFollowCard(仍在清單、機制相同)
     {
-        const el = document.getElementById('etfFollowCard');
-        const row = document.querySelector('.tidyrow[data-tidyfor="etfFollowCard"]');
+        // 🗑️ V77.5.1 etfFollowCard 已刪 → 換清單裡唯一剩下的 bullBearCategoryCards(機制相同)
+        try { app.switchSubTab('bullbear'); } catch (_) { }
+        await new Promise(r => setTimeout(r, 300));
+        const el = document.getElementById('bullBearCategoryCards');
+        const row = document.querySelector('.tidyrow[data-tidyfor="bullBearCategoryCards"]');
         el.classList.add('hidden');
         await new Promise(r => setTimeout(r, 120));
         o.crHiddenRow = getComputedStyle(row).display;          // 該是 none
@@ -142,15 +147,14 @@ await browser.close();
 if (R.err) { console.log(`❌ analyze 失敗:${R.err}`); process.exit(1); }
 
 ok('④ 清單裡的 id 全部真的存在(⛔ 打錯字 = 那張卡靜默沒收)', R.missing.length === 0, R.missing);
-ok('🚧 空過守門:清單至少 2 張(⛔ 清單被清空這些測試就全是假通過)', R.n >= 2, R.n);
+ok('🚧 空過守門:清單至少 1 張(⛔ 清單被清空這些測試就全是假通過;V76.1.2 起只剩 1 張)', R.n >= 1, R.n);
 for (const [id, c] of Object.entries(R.cards)) {
     ok(`① ${id} 預設收起`, c.hidden);
     ok(`①b ${id} 原地要有一行「收了什麼、為什麼」`, c.row && /已收起/.test(c.rowTxt) && /——/.test(c.rowTxt),
         c.rowTxt.slice(0, 80));
 }
 ok('①c 提示列要講「為什麼」的依據(未驗證/明細),⛔ 不可只寫「已收起」',
-    /驗證/.test(R.cards.etfFollowCard.rowTxt)
-    && /計分條/.test(R.cards.bullBearCategoryCards.rowTxt));
+    /計分條/.test(R.cards.bullBearCategoryCards.rowTxt));
 ok('② 點開要真的顯示、再點要收回(⛔ render 的 classList 不可壓過它)',
     R.open === true && R.close === false && R.btnOpen === '收起', [R.open, R.close, R.btnOpen]);
 ok('③ ⛔ 收起 ≠ 刪除:卡還在 DOM、render 照跑(未來一行就能加回來)', R.domLen > 50, R.domLen);

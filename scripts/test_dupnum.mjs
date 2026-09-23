@@ -51,7 +51,7 @@ if (!fs.existsSync(path.join(ROOT, 'data', `${SYM}.json`))) { console.log(`❌ �
     const bad = (one.match(/部位先收|裸壓|減碼|出清|留倉|加碼|偏多|偏空/g) || []);
     ok('ⓑs2 行事曆那一則⛔ 不可出現部位/方向指令(實測行事曆方向 0 個成立)', bad.length === 0, bad.join(','));
     ok('ⓑs3 行事曆那則⛔ 不可放在 `emg` 紅框(它不是今天已經發生的事)→ 要走 `emgNote`',
-       /emgNote\.push\('📅/.test(s) && !/emg\.push\('📅/.test(s), '');
+       /emgNote\.push\(['`]📅/.test(s) && !/emg\.push\(['`]📅/.test(s), '');   // V77.5.1 改成 template literal(要寫出事件名稱)→ 兩種引號都收
     ok('ⓑs4 那則要明講「本站不預設漲跌」', /不預設漲跌/.test(s) && /方向 0 個成立/.test(s), '');
 }
 {   // ⓒs 毛利率 / 自由現金流

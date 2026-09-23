@@ -52,7 +52,8 @@ export function exitSim(bars, j, side, entry, stop, tgt, pc) {
 
 /** 📂 讀一份或多份 kbar5 目錄(`a:b`)。⭐ **寫在前面的優先**(同一天只採一份,⛔ 不混:
  *  同一天兩份的名單不同,混在一起會出現「半天是 A 母體、半天是 B 母體」)。
- *  慣例:`KBAR5_DIR=<kbar5>:<kbar5_deep>` → 實跑的每日那份優先(CLAUDE.md 回算鐵則第 2 條)。
+ *  ⭐ 分析時用 `KBAR5_DIR=<kbar5_deep>:<kbar5>` → **同一種母體**(每月初前 100)優先、每日那份只補 deep 沒有的日子
+ *     (兩份存在不同分支,⛔ 誰都沒覆蓋誰 —— 回算鐵則第 2 條管的是「寫入」,這裡只是讀的時候挑一份)。
  *  ⛔ 只讀 YYYY-MM.json.gz(`_meta.json` 之類不會被當成月檔)。 */
 export function loadKbar5(spec) {
     const days = {}, src = []; let bias = '';
@@ -224,6 +225,9 @@ async function main() {
                 (F6[`${T}|${S}`] = F6[`${T}|${S}`] || []).push(g); }
             // F7 熱門股跳空回歸 × 進場時點
             const gU = o > pH && (o / pc - 1) * 100 >= 2, gD = o < pL && (1 - o / pc) * 100 >= 2;
+            // F7 對照(V77.5.1):**同一個進場時點、同樣抱到收盤**,只是不看跳空 → 量的是「跳空」這個條件本身
+            { const c = bars[bars.length - 1][4];
+              put('F7 對照・09:05 做空到收盤(不看跳空)', (1 - c / c1) * 100 - COST); put('F7 對照・09:05 做多到收盤(不看跳空)', (c / c1 - 1) * 100 - COST); }
             if (gU || gD) { const side = gU ? -1 : 1, lab = gU ? '開高≥2%(在昨高之上)→ 空' : '開低≥2%(在昨低之下)→ 買';
                 const c = bars[bars.length - 1][4], ret = e => (side > 0 ? (c / e - 1) : (1 - c / e)) * 100 - COST;
                 put(`F7 ${lab}・開盤價`, ret(o)); put(`F7 ${lab}・09:05`, ret(c1)); if (i930 > 0) put(`F7 ${lab}・09:30`, ret(bars[i930][4])); }
@@ -236,6 +240,10 @@ async function main() {
         s.h = [+h1.toFixed(3), +h2.toFixed(3)];
         // 📅 逐年(⭐ 窗口 ≥ 2 年才印;V77.5.1 分K 回補之後才做得到)
         const ys = {}; for (const x of B[k]) (ys[x.d.slice(0, 4)] = ys[x.d.slice(0, 4)] || []).push(x.v);
+        // 🔟 拿掉最好的 10 天(⭐ 六關第 6 關:整體正是不是只靠少數幾天撐起來)
+        { const byD = new Map(); for (const x of B[k]) { const a = byD.get(x.d) || [0, 0]; a[0] += x.v; a[1]++; byD.set(x.d, a); }
+          const top = new Set([...byD.entries()].sort((a, b) => b[1][0] - a[1][0]).slice(0, 10).map(e => e[0]));
+          const rest = B[k].filter(x => !top.has(x.d)).map(x => x.v); s.drop10 = rest.length ? +mean(rest).toFixed(3) : null; }
         s.y = Object.fromEntries(Object.entries(ys).filter(([, a]) => a.length >= 10).map(([y, a]) => [y, +mean(a).toFixed(3)]));
         out.rows[k] = s; return s; };
     const line = (k, ctrlK) => { const s = show(k); if (!s) return; const c = ctrlK ? show(ctrlK) : null;
@@ -261,7 +269,10 @@ async function main() {
         for (const S of [0.5, 1, 2, 3]) { const s = stats(F6[`${T}|${S}`] || []); out.F6[`${T}|${S}`] = s; row += `  勝率${s.win}% ${s.net >= 0 ? '+' : ''}${s.net}%`.padStart(18); }
         console.log(row); }
     console.log('\n═══ F7 ⚡ 熱門股跳空回歸 × 進場時點(接日K 探針 D2c/D2d)═══');
-    for (const k of Object.keys(B).filter(k => k.startsWith('F7')).sort()) line(k);
+    line('F7 對照・09:05 做空到收盤(不看跳空)'); line('F7 對照・09:05 做多到收盤(不看跳空)');
+    for (const k of Object.keys(B).filter(k => k.startsWith('F7') && !k.includes('對照')).sort())
+        { line(k, /・09:05$/.test(k) ? (/空/.test(k) ? 'F7 對照・09:05 做空到收盤(不看跳空)' : 'F7 對照・09:05 做多到收盤(不看跳空)') : null);
+          const r = out.rows[k]; if (r && r.drop10 != null) console.log(`      └ 拿掉最好的 10 天 → ${r.drop10 >= 0 ? '+' : ''}${r.drop10}%`); }
     const OUT = process.argv[2] && !process.argv[2].startsWith('-') ? process.argv[2] : null;
     if (OUT) fs.writeFileSync(OUT, JSON.stringify(out, null, 1));
 }

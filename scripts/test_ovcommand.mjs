@@ -61,6 +61,9 @@ const R = await page.evaluate(async () => {
                  inFold: !!(w && w.closest('#ovMoreWrap')) };
     };
     A.inventory = [];
+    // ⏳ V77.5.1 買進日一律用「最後一根往前 5 根」—— 寫死 '2026-06-02' 會隨時間抱滿 20 天,
+    //   那時 state 會(正確地)變成「抱滿 20 天・今天尾盤賣」,而這幾個情境要測的是續抱/減碼。
+    const _ad = A.activeData; const BUY = String(_ad[_ad.length - 6].date).replace(/\//g, '-').slice(0, 10);
     out.flat = draw();
     // ⛔ V74.8.8 黑名單透明化:塞一個「實測沒用」的訊號進去,看它會不會被說出來
     {
@@ -93,9 +96,16 @@ const R = await page.evaluate(async () => {
              && !!document.querySelector('#ovMoreWrap [data-ovpane="now"]');
     out.dFlat = A._ovDecide(A.activeData, '2330');
     // 有庫存(成本很低 → 續抱)
-    A.inventory = [{ symbol: '2330', cost: 900, shares: 2, buyDate: '2026-06-02' }];
+    A.inventory = [{ symbol: '2330', cost: 900, shares: 2, buyDate: BUY }];
     out.hold = draw();
     out.dHold = A._ovDecide(A.activeData, '2330');
+    // ⏳ V77.5.1 抱滿 20 個交易日 → 必須是出場(⛔ 不可再寫「持股續抱 ・還剩 0 個交易日」)
+    {   const OLD = String(_ad[_ad.length - 30].date).replace(/\//g, '-').slice(0, 10);
+        A.inventory = [{ symbol: '2330', cost: 900, shares: 2, buyDate: OLD }];
+        out.due = draw(); out.dDue = A._ovDecide(A.activeData, '2330');
+        // 🔬 決定性對照:把上限改成 60 天 → 同一筆庫存要回到「持股續抱」
+        const D0 = A._EXIT_DIST.maxd; A._EXIT_DIST.maxd = 60; out.dDue60 = A._ovDecide(A.activeData, '2330'); A._EXIT_DIST.maxd = D0;
+        A.inventory = [{ symbol: '2330', cost: 900, shares: 2, buyDate: BUY }]; }
     // ⑤ 期望字串**從 `_EXIT_EDGE` 組**(⛔ 不寫死 590/531/193 —— V77.4.9 起那組數字會隨重跑移動)
     {
         const E = A._EXIT_EDGE, uk = A._exitRuleKey();
@@ -108,7 +118,7 @@ const R = await page.evaluate(async () => {
     }
     // 成本超高 + 現價已跌破 → 出場
     const px = A.activeData[A.activeData.length - 1].close;
-    A.inventory = [{ symbol: '2330', cost: px * 2, shares: 1, buyDate: '2026-06-02' }];
+    A.inventory = [{ symbol: '2330', cost: px * 2, shares: 1, buyDate: BUY }];
     const bak = A._exitLines;
     A._exitLines = (d, s) => ({ ...bak.call(A, d, s), don: px * 1.5, atr2: px * 1.4, ma5: px * 1.3 });
     out.exit = draw();
@@ -118,7 +128,7 @@ const R = await page.evaluate(async () => {
     //    而同一張卡上面三行用「你手上的實際股數」→ 兩種基準。零股族差最多(0.07 張 → 差 14 倍)。
     //    ⭐ 測資刻意用 **0.07 張(70 股)**,一半 = 35 股 → 金額必須落在「35 股」那個量級。
     {
-      A.inventory = [{ symbol: '2330', cost: px * 2, shares: 0.07, buyDate: '2026-06-02' }];
+      A.inventory = [{ symbol: '2330', cost: px * 2, shares: 0.07, buyDate: BUY }];
       A._exitLines = (d, sy) => ({ ...bak.call(A, d, sy), don: px * 1.5, atr2: px * 1.4, ma5: px * 1.3 });
       A._upsideStash = { pC: px, list: [{ v: px * 1.2, n: '測試壓力' }] };
       const dh = A._ovDecide(A.activeData, '2330');
@@ -154,7 +164,7 @@ const R = await page.evaluate(async () => {
     // ⚙️ V74.6.9 減碼時要講明「你設定的那條還沒破」(使用者:國巨破了另外兩條、他設的 ATR 沒破)
     {
       const px2 = A.activeData[A.activeData.length - 1].close;
-      A.inventory = [{ symbol: '2330', cost: px2 * 0.99, shares: 1, buyDate: '2026-06-02' }];
+      A.inventory = [{ symbol: '2330', cost: px2 * 0.99, shares: 1, buyDate: BUY }];
       A._ovTrend = { sym: '2330', trend: 'bear' };          // 空頭 → reduce
       // ⚠️ 測資要**跟著使用者設定的那一條走**(⛔ 不可寫死某一條 —— V75.0.9 預設從 atr2 換成 don
       //    的時候,寫死的版本會讓這條變成假失敗)。情境:他設定的那條**還沒破**、另外三條破了。
@@ -220,6 +230,11 @@ ok('① 第一眼 = 徽章;B 預警 → C 計畫 → D 判讀 三段在摺疊區
 })(), `cc=${N(R.hold.cc).slice(0, 80)} | why=${N(R.hold.why).slice(0, 120)}`);
 ok('② 徽章:有庫存沒破線 → 🛡️ 持股續抱', R.dHold && R.dHold.state === 'hold' && has(R.hold.cc, '🛡️ 持股續抱'), R.dHold && R.dHold.badge);
 ok('②b 徽章:跌破實測有效出場線 → 🚨 強烈建議出場', R.dExit && R.dExit.state === 'exit' && has(R.exit.cc, '🚨 強烈建議出場'), R.dExit && R.dExit.badge);
+ok('②d ⏳ 抱滿 20 個交易日 → state=exit、徽章講「今天尾盤賣」(V77.5.1 使用者截圖 2327)',
+   R.dDue && R.dDue.state === 'exit' && has(R.due.cc, '抱滿 20 天') && has(R.due.cc, '尾盤'), R.dDue && R.dDue.badge);
+ok('②e ⛔ 抱滿之後第一眼不可再出現「持股續抱」或「還剩 0 個交易日」', !has(R.due.cc, '持股續抱') && !/還剩 0 個交易日/.test(R.due.cc + R.due.why));
+ok('②f 🔬 決定性對照:上限改 60 天 → 同一筆庫存回到 🛡️ 持股續抱', R.dDue60 && R.dDue60.state === 'hold', R.dDue60 && R.dDue60.state);
+ok('②g 抱滿時行動計畫第一條就是「今天尾盤賣」', R.dDue && R.dDue.plan[0] && /尾盤賣/.test(R.dDue.plan[0].t || ''), R.dDue && R.dDue.plan[0] && R.dDue.plan[0].t);
 ok('②c 徽章:空手且不符條件 → ➖ 觀望(⛔ 不可硬給一個進場理由)', has(R.none.cc, '➖ 觀望'), N(R.none.cc).slice(0, 80));
 // 卡片底部那句免責本身就含「低檔布局/補漲」(本專案第 11 次踩「正確的句子含有被禁的字」)
 //   → 只驗**行動計畫那幾行**(📍 開頭的 li);「有沒有被擋掉」交給 _ovBlocked 的回傳值(R.blocked)驗。
