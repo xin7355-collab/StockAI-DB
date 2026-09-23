@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.5.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.5.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.5.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.5.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8625,8 +8625,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.5.3',
+    _APP_VERSION: 'V77.5.4',
     _CHANGELOG: [
+    { v: 'V77.5.4', d: ['🚪 <b>報告頁「接下來要看的事」裡的出場線</b>:你<b>沒有持股</b>的股票,以前也寫「你設的出場線・跌破就是翻空的事實」—— 其實那只是把你選的出場規則套在這一檔的參考值。現在改寫成「⛔ 你沒有這檔的部位,這只是參考;買進後會用你的買進日重新起算」,給外部 AI 的提示詞也同步註明。'] },
     { v: 'V77.5.3', d: ['📈 <b>報告頁的「進場價 / 追買價」換成這一檔自己的觸發價</b>(你說「照你推薦的直接執行」):§11 價格牆表、§21 接下來要看的事、自己畫的那張圖,三處以前還在用<b>回測 5 日線 / 月線承接</b>與<b>帶量過前高</b>(舊劇本、沒實測過)。現在跟總覽、決策台同一份:<b>漲過觸發價才算數、當天尾盤進場</b>,並附買到後的停損(同回測)。', '⛔ <b>這一檔沒有實測有效的招 → 直接寫「沒有進場價」</b>,不再退回均線或前高硬給一個價。持有中不講進場;中期是空頭時照舊只給 👀 觀察價(⛔ 不是買點),價位一個都沒改。'] },
     { v: 'V77.5.2', d: ['🧹 <b>總覽只留最強的那一套</b>:回測賺最多的就是「🧬 高位階+高波動 → 訊號日尾盤進場 → 三條出場先到先賣(硬停損 / 你設定的出場線 / 抱滿 20 天)」,總覽現在只講這一套。以前藏在「📂」裡的舊劇本(5 日線當防守、目標價與賺賠比、回後買上漲、朱老師四關卡、20MA 保衛價、島狀反轉逃命價、分批進場、明日劇本…)<b>全部拿掉</b> —— 它們跟現行出場規則打架,而且一個都沒實測過。', '🚨 <b>兩個會叫你做錯的地方修掉了</b>:① 以前只要<b>跌破 5 日線</b>,總覽就會亮「📉 建議減碼」(5 日線出場 49 個月只賺 193 萬,唐奇安 590 萬);② 「🔔 一鍵盯價」盯的是 5 日線 / 前高這些舊價位 → 現在有庫存只盯你的出場線與硬停損,空手只盯這一檔自己的觸發價。', '🛑 <b>硬停損改成跟回測、自動下單同一條</b>(你選的):「買進當天最低」與「成本 −5%」取較低的那個,進場後固定不動。以前 App 會跟著朱家泓的「發動K」往上移(沒回測過),常常比自動下單<b>更早</b>叫你賣。⚠️ 沒填買進日的話只能用成本 −5%,記得在庫存填買進日。', '📂 <b>摺疊區變短</b>:只剩 ⚠️ 要注意的事 / 📍 現在該做什麼(三條出場都列出來)/ 🧠 系統怎麼判的 / 🎯 今天有實測成績的訊號。空頭持股不再叫你「反彈先出一部分」(回測沒有這一步),改講「⛔ 別加碼、照三條出場走」。', '📊 <b>基本面全部展開</b>,X 光機拿掉<b>評分</b>、留下<b>事實</b>:刪掉投資屬性雷達、體質分、市場預期、「便宜 / 昂貴」標籤、數字的紅綠好壞色 —— 本益比便宜、比同業便宜、PEG 小於 1 實測都不能拿來選股。毛利率、EPS、營收、本益比、自己的本益比位階、殖利率、配息、填息紀錄全部照留。'] },
     { v: 'V77.5.1', d: ['🚪 <b>國巨那一題的答案:照「決策台」賣</b>。三條出場條件是<b>先到先賣</b>(硬停損 / 你設定的出場線 / 抱滿 20 個交易日),回測與自動下單都是這樣算的 —— 國巨已經抱滿 20 天,今天 13:00~13:28 尾盤賣。總覽之前寫「持股續抱・還剩 0 個交易日」是<b>總覽算錯</b>:它只看你設定的那一條,⛔ 沒看另外兩條。已修好,以後總覽跟決策台一定講同一件事。', '📝 <b>總覽文字修正</b>:決策台那一列以前寫「到了:硬停損 532.95」(其實價格沒到,是時間到)→ 改成「⏳ 時間到期 → 今天尾盤賣」,而且⛔ 不再給停損條件單(那會一直不觸發);報告海報把<b>硬停損</b>叫成「你的出場線」→ 兩條分開寫;盤中⛔ 不再寫「收盤」;頂端日期不再寫「昨日 盤中」;已經持有的人,價格尺⛔ 不再畫「買進 / 追買」;「重大事件迫近」會寫出<b>是哪一個、哪一天</b>。', '🗑️ <b>當沖頁刪掉實測沒用的</b>:掛單計畫(+「已達進場」閃爍)・VWAP ・開盤定調 ・開盤區間突破 ・相對大盤強弱 ・量能達標度 ・隔日沖 T+1 ・隔日沖判斷 ・打開漲停 ・族群補漲 ・當沖候選掃描(連同它的 09:15 推播)。⭐ 留下的都有依據:🚦 今天這檔怎麼做(排到最上面)→ 💰 成本關卡 → 📊 當沖實測 → 損益試算機。刪掉的每一項都寫在設定中心「🗑️ 已經刪掉的」,附打掉它的數字。', '📼 <b>5 分K 開始往回挖</b>(目標 2021 起,含 2022 空頭):原本說「只能回溯 81~120 天」<b>從來沒被量過</b> —— 那是我們自己要的窗口。名單照你選的「每月初、前 60 日平均成交值前 100」。挖完的部分當天就能拿來回測。'] },
@@ -25831,7 +25832,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const watch = [
             upTurn ? upTurn + (bearW ? nearNote : '') : noTrig,
             upAdd,
-            cur ? `🚪 你設的出場線 <b class="font-mono">${(+cur.v).toFixed(2)}</b> 元 —— 跌破就是翻空的事實(⛔ 不是均線)` : '🚪 出場線還沒算出來(總覽「行動指令中心」)',
+            // 🚪 V77.5.4 沒持有時⛔ 不可講「你設的出場線・跌破就是翻空的事實」—— 那是規則套在參考起點的值,不是你的部位
+            !cur ? '🚪 出場線還沒算出來(總覽「行動指令中心」)'
+                : heldW ? `🚪 你設的出場線 <b class="font-mono">${(+cur.v).toFixed(2)}</b> 元 —— 跌破就是翻空的事實(⛔ 不是均線)`
+                : `🚪 你選的出場規則(${this._escHtml(String(cur.lbl || '').replace('跌破', '').trim() || '—')})套在這一檔目前是 <b class="font-mono">${(+cur.v).toFixed(2)}</b> 元 —— ⛔ 你沒有這檔的部位,這只是參考;買進後會用你的買進日重新起算`,
             `🗓️ ${this._dW(nr)} 前的月營收 —— 現在年增 ${C.yoy != null ? `<b class="${this._rpDir(C.yoy)}">${this._rpPct(C.yoy)}</b>` : '沒有'},看它有沒有轉向`,
             nf ? `📑 ${this._dW(nf[0])} 前的${nf[1]}財報 —— 現在毛利率 ${(() => { const G = this._gmLatest(C); return G ? `<b>${f(G.v, 1)}%</b>${G.p ? `(${G.p.slice(0, 7)} 季)` : ''}` : '沒有'; })()},看 §4 旗標有沒有新增` : '📑 下一次財報',
             `🏛️ 法人 20 日方向 —— 現在外資 ${(C.s20 && C.s20.hasInst) ? `<b class="${this._rpDir(C.s20.foreign)}">${Math.round(C.s20.foreign).toLocaleString()} 張</b>` : '沒有'}`,
@@ -25943,7 +25947,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         //   而使用者真正設定的那條(唐奇安 511)根本沒出現。⭐ 三條出場條件(先到先賣)各自一行,名字跟總覽一樣。
         const _okK = K && C && String(K.sym) === String(C.sym);
         L.push(`- 硬停損(成本 −5% 與買進當天最低取較低、進場後固定;三條出場條件的第一條):${(_okK && K.slPx > 0) ? `${F(K.slPx, 1)} 元(距現價 ${rel(K.slPx)})` : '—'}`);
-        L.push(`- 你設的出場線(使用者自己選的那一條,⛔ 不是目標價、⛔ 不是融資追繳線;⛔ 別寫出它是用哪個指標算的):${(_okK && K.exitRulePx > 0) ? `${F(K.exitRulePx, 1)} 元(距現價 ${rel(K.exitRulePx)})` : '—'}`);
+        {
+            // 🚪 V77.5.4 沒持有時要講清楚:那是規則套在參考起點的值,⛔ 不是使用者的紀律線(否則 AI 會把它寫成「你的停損」)
+            const _heldF = (() => { try { return (this._getInventory() || []).some(i => i && String(i.symbol) === String(sym) && +i.cost > 0); } catch (_) { return false; } })();
+            L.push(`- 你設的出場線(使用者自己選的那一條,⛔ 不是目標價、⛔ 不是融資追繳線;⛔ 別寫出它是用哪個指標算的):${(_okK && K.exitRulePx > 0) ? `${F(K.exitRulePx, 1)} 元(距現價 ${rel(K.exitRulePx)})` : '—'}${_heldF ? '' : '(⛔ 使用者沒有這檔部位,這是規則套在參考起點的值,不是他的紀律線)'}`);
+        }
         try { const _ed = C ? this._exitDistance(this.rawDailyData, C.sym) : null;
               if (_ed && _ed.maxd) L.push(`- 抱滿 ${_ed.maxd.n} 個交易日(三條的第三條,時間到就尾盤賣):已抱 ${_ed.maxd.held} 天、還剩 ${_ed.maxd.left} 天`); } catch (_) {}
         //   🚨 V76.2.6 這裡以前用 `mcs.distPct` —— 它的定義是「**現價還能跌幾 %** 才碰到追繳線」(正值),

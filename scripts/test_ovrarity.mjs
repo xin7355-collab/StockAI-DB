@@ -155,6 +155,27 @@ await load('1815');
        /轉強觀察價/.test(r3.txt) && /1,234\.56/.test(r3.txt) && !/987\.65/.test(r3.rep), (r3.err || r3.txt || '').slice(0, 260));
 }
 
+// ⓒ3 🚪 V77.5.4 沒持有時 §21 ⛔ 不可講「你設的出場線・跌破就是翻空的事實」(那是規則套在參考起點的值,不是部位)
+{
+    const run = (held) => page.evaluate((held) => new Promise(res => {
+        const keepInv = app._getInventory, sym = String(app.currentSymbolId);
+        app._getInventory = () => held ? [{ symbol: sym, cost: 100, shares: 1000 }] : [];
+        app.renderReportTab(app.currentSymbolId);
+        setTimeout(() => {
+            document.querySelectorAll('#subContentReport details').forEach(d => { d.open = true; });
+            const box = document.querySelector('[data-rpwatch]');
+            const facts = (() => { try { return app._reportFacts(sym); } catch (e) { return 'ERR ' + e.message; } })();
+            res({ txt: box ? box.innerText.replace(/\s+/g, ' ') : '', facts: String(facts) });
+            app._getInventory = keepInv;
+        }, 1800);
+    }), held);
+    const nh = await run(false), hd = await run(true);
+    ok('ⓒ3 ⭐ 沒持有:⛔ 不可寫「跌破就是翻空的事實」,要明講「你沒有這檔的部位」',
+       nh.txt.length > 50 && !/跌破就是翻空的事實/.test(nh.txt) && /你沒有這檔的部位/.test(nh.txt), nh.txt.slice(0, 260));
+    ok('ⓒ3b ⭐ 決定性對照:有持有時原本那句要回來', /你設的出場線[^—]*—— 跌破就是翻空的事實/.test(hd.txt) && !/你沒有這檔的部位/.test(hd.txt), hd.txt.slice(0, 260));
+    ok('ⓒ3c 餵給外部 AI 的提示詞:沒持有時要註明「不是他的紀律線」,有持有時不可有', /不是他的紀律線/.test(nh.facts) && !/不是他的紀律線/.test(hd.facts), nh.facts.slice(0, 120));
+}
+
 // ⓔ2ⓕ 「老是觀望」那句:數字必須跟著產物變 / 產物沒載入時不可謊報
 {
     const r = await page.evaluate(() => {
