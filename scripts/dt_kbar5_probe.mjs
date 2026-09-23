@@ -50,6 +50,25 @@ export function exitSim(bars, j, side, entry, stop, tgt, pc) {
     return side > 0 ? (c / entry - 1) * 100 : (1 - c / entry) * 100;
 }
 
+/** 📂 讀一份或多份 kbar5 目錄(`a:b`)。⭐ **寫在前面的優先**(同一天只採一份,⛔ 不混:
+ *  同一天兩份的名單不同,混在一起會出現「半天是 A 母體、半天是 B 母體」)。
+ *  慣例:`KBAR5_DIR=<kbar5>:<kbar5_deep>` → 實跑的每日那份優先(CLAUDE.md 回算鐵則第 2 條)。
+ *  ⛔ 只讀 YYYY-MM.json.gz(`_meta.json` 之類不會被當成月檔)。 */
+export function loadKbar5(spec) {
+    const days = {}, src = []; let bias = '';
+    for (const dir of String(spec || '').split(':').filter(Boolean)) {
+        if (!fs.existsSync(dir)) { src.push({ dir, days: 0, used: 0, bias: '(目錄不存在)' }); continue; }
+        let n = 0, used = 0, b = '';
+        for (const f of fs.readdirSync(dir).filter(f => /^\d{4}-\d{2}\.json\.gz$/.test(f)).sort()) {
+            const j = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir, f))).toString());
+            b = j.bias || b;
+            for (const [d, v] of Object.entries(j.d || {})) { n++; if (!days[d]) { days[d] = v; used++; } }
+        }
+        bias = bias || b; src.push({ dir, days: n, used, bias: b });
+    }
+    return { days, bias, src };
+}
+
 /** 昨天 5 分K 趨勢:後半段的高低點 vs 前半段(⭐ 「高點過高、低點不破低」的量化代理) */
 export function prevTrend(bars) {
     if (!bars || bars.length < 20) return null;
@@ -125,18 +144,16 @@ function stats(a) {
 
 async function main() {
     if (process.argv.includes('--selftest')) return selftest();
-    const KD = process.env.KBAR5_DIR, DD = process.env.DATA_DIR || path.join(ROOT, 'data');
-    if (!KD || !fs.existsSync(KD)) { console.error('❌ 要 KBAR5_DIR(git archive origin/kbar5 | tar -x)'); process.exit(1); }
-    const days = {}; let bias = '';
-    for (const f of fs.readdirSync(KD).filter(f => /\.json\.gz$/.test(f)).sort()) {
-        const j = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(KD, f))).toString());
-        bias = j.bias || bias; Object.assign(days, j.d || {});
-    }
+    const DD = process.env.DATA_DIR || path.join(ROOT, 'data');
+    const { days, bias, src } = loadKbar5(process.env.KBAR5_DIR);
+    if (!Object.keys(days).length) { console.error('❌ 要 KBAR5_DIR(git archive origin/kbar5 | tar -x;多份用冒號分隔,⭐ 寫在前面的優先)'); process.exit(1); }
+    for (const x of src) console.log(`📂 ${x.dir}:${x.days} 天(其中 ${x.used} 天被採用)${x.bias ? ' ・' + x.bias.slice(0, 60) + '…' : ''}`);
     const dates = Object.keys(days).sort();
     if (dates.length < 40) { console.error(`❌ 只有 ${dates.length} 天 → 不下結論`); process.exit(1); }
     const split = dates[dates.length >> 1];
+    const nYears = new Set(dates.map(d => d.slice(0, 4))).size;
     console.log('═'.repeat(90));
-    console.log(`⚠️ 5 分K 只有 ${dates.length} 個交易日(${dates[0]} ~ ${dates[dates.length - 1]})→ ⛔ 逐年那關做不了,只能當方向提示`);
+    console.log(nYears >= 2 ? `📅 5 分K ${dates.length} 個交易日(${dates[0]} ~ ${dates[dates.length - 1]},${nYears} 個年度)→ 逐年那一關做得到了` : `⚠️ 5 分K 只有 ${dates.length} 個交易日(${dates[0]} ~ ${dates[dates.length - 1]})→ ⛔ 逐年那關做不了,只能當方向提示`);
     console.log(`⚠️ 母體偏誤:${bias || '當日量前 80(天生只收當天夠熱的日子)'};ETF(0 開頭)已排除`);
     console.log('═'.repeat(90));
     // 日K(昨收 / 昨高低 / 隔天開盤)
@@ -216,9 +233,13 @@ async function main() {
     const out = { at: new Date().toISOString(), days: dates.length, window: [dates[0], dates[dates.length - 1]], bias, rows: {} };
     const show = (k) => { const a = (B[k] || []).map(x => x.v); const s = stats(a); if (!s) return null;
         const h1 = mean(B[k].filter(x => x.d < split).map(x => x.v)), h2 = mean(B[k].filter(x => x.d >= split).map(x => x.v));
-        s.h = [+h1.toFixed(3), +h2.toFixed(3)]; out.rows[k] = s; return s; };
+        s.h = [+h1.toFixed(3), +h2.toFixed(3)];
+        // 📅 逐年(⭐ 窗口 ≥ 2 年才印;V77.5.1 分K 回補之後才做得到)
+        const ys = {}; for (const x of B[k]) (ys[x.d.slice(0, 4)] = ys[x.d.slice(0, 4)] || []).push(x.v);
+        s.y = Object.fromEntries(Object.entries(ys).filter(([, a]) => a.length >= 10).map(([y, a]) => [y, +mean(a).toFixed(3)]));
+        out.rows[k] = s; return s; };
     const line = (k, ctrlK) => { const s = show(k); if (!s) return; const c = ctrlK ? show(ctrlK) : null;
-        console.log(`  ${s.n < 30 ? '⏳' : ''}${k.padEnd(44)} n=${String(s.n).padStart(5)} ・淨每趟 ${s.net >= 0 ? '+' : ''}${s.net}% ・勝率 ${s.win}% ・中位 ${s.med}% ・前後半 ${s.h.join('/')}${c ? ` ・vs對照 ${(s.net - c.net >= 0 ? '+' : '')}${(s.net - c.net).toFixed(3)}` : ''}`); };
+        console.log(`  ${s.n < 30 ? '⏳' : ''}${k.padEnd(44)} n=${String(s.n).padStart(5)} ・淨每趟 ${s.net >= 0 ? '+' : ''}${s.net}% ・勝率 ${s.win}% ・中位 ${s.med}% ・前後半 ${s.h.join('/')}${c ? ` ・vs對照 ${(s.net - c.net >= 0 ? '+' : '')}${(s.net - c.net).toFixed(3)}` : ''}${Object.keys(s.y).length >= 2 ? ` ・逐年 ${Object.entries(s.y).map(([y, v]) => `${y.slice(2)}:${v >= 0 ? '+' : ''}${v}`).join(' ')}` : ''}`); };
     console.log('\n═══ F1 🕘 開盤四法(扣 0.25%;對照 = 不分類一律第一根收盤進、同方向、同出場)═══');
     line('對照・多・第一根收盤進(停損第一根低・停利2%)'); line('對照・空・第一根收盤進(停損第一根高・停利2%)');
     for (const k of Object.keys(B).filter(k => k.startsWith('F1')).sort()) line(k, / 做多|\(多\)/.test(k) ? '對照・多・第一根收盤進(停損第一根低・停利2%)' : '對照・空・第一根收盤進(停損第一根高・停利2%)');

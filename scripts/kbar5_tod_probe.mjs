@@ -96,8 +96,14 @@ function selftest() {
 if (SELFTEST) selftest();
 
 // ═══════════ 實跑 ═══════════
-const files = fs.existsSync(DIR) ? fs.readdirSync(DIR).filter(f => /^\d{4}-\d{2}\.json\.gz$/.test(f)).sort() : [];
+// 📂 V77.5.1:KBAR5_DIR 可以給多份(冒號分隔),⭐ 寫在前面的優先、同一天只採一份(⛔ 不混兩種母體)
+const files = [];
+for (const dir of DIR.split(':').filter(Boolean)) {
+    if (!fs.existsSync(dir)) { console.log(`⚠️ ${dir} 不存在 → 略過`); continue; }
+    for (const f of fs.readdirSync(dir).filter(f => /^\d{4}-\d{2}\.json\.gz$/.test(f)).sort()) files.push(path.join(dir, f));
+}
 if (!files.length) { console.log(`❌ ${DIR} 裡沒有 kbar5/*.json.gz(先 git archive origin/kbar5 | tar -x)`); process.exit(1); }
+const seenDay = new Set();
 const perSym = new Map();     // sym → 天數
 let days = 0, obs = 0, bias = '';
 const agg = { slotPath: SLOTS.map(() => ({ s: 0, n: 0 })), slotVol: SLOTS.map(() => ({ s: 0, n: 0 })), slotRetPos: SLOTS.map(() => ({ p: 0, n: 0 })),
@@ -105,10 +111,11 @@ const agg = { slotPath: SLOTS.map(() => ({ s: 0, n: 0 })), slotVol: SLOTS.map(()
               settle: { s: 0, n: 0, p: 0 }, nonSettle: { s: 0, n: 0, p: 0 }, dayLimit: 0 };
 const dayList = [];
 for (const f of files) {
-    const j = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(DIR, f))).toString('utf8'));
+    const j = JSON.parse(zlib.gunzipSync(fs.readFileSync(f)).toString('utf8'));
     bias = bias || j.bias || '';
     for (const d of Object.keys(j.d || {}).sort()) {
-        const D = j.d[d]; if (!D || !D.k) continue;
+        const D = j.d[d]; if (!D || !D.k || seenDay.has(d)) continue;
+        seenDay.add(d);
         days++; dayList.push(d);
         const settle = isSettle(d);
         for (const sym of Object.keys(D.k)) {
