@@ -91,9 +91,11 @@ const R = await page.evaluate(async () => {
         A._entryCheckup = realEc; A._ecCache = realCache;
     }
     // 8 collapsed-not-deleted: must be measured AFTER draw() (which runs _initOvFold)
-    out.moved = !!document.querySelector('#ovMoreWrap #ovTabBar')
-             && !!document.querySelector('#ovMoreWrap #strategyMainBox')
-             && !!document.querySelector('#ovMoreWrap [data-ovpane="now"]');
+    // 🧹 V77.5.2 舊劇本改搬進永遠不顯示的 #ovLegacyHold(⛔ 不在摺疊區;照算不顯示)
+    out.moved = !!document.querySelector('#ovLegacyHold #ovTabBar')
+             && !!document.querySelector('#ovLegacyHold #strategyMainBox')
+             && !!document.querySelector('#ovLegacyHold [data-ovpane="now"]')
+             && !document.querySelector('#ovMoreWrap #ovTabBar');
     out.dFlat = A._ovDecide(A.activeData, '2330');
     // 有庫存(成本很低 → 續抱)
     A.inventory = [{ symbol: '2330', cost: 900, shares: 2, buyDate: BUY }];
@@ -133,6 +135,7 @@ const R = await page.evaluate(async () => {
       A._upsideStash = { pC: px, list: [{ v: px * 1.2, n: '測試壓力' }] };
       const dh = A._ovDecide(A.activeData, '2330');
       const half = ((dh && dh.plan) || []).find(x => /先出一半/.test(x.t));
+      out.planTxt = ((dh && dh.plan) || []).map(x => x.t).join(' | ');
       out.halfMoney = half ? half.money : null;
       out.halfSub = half ? half.sub : '';
       out.half35 = A._netPL(px * 2, px * 1.2, 35);       // 手算對照(⛔ 不讓斷言去猜)
@@ -270,14 +273,13 @@ ok('⑥b 🚨 跌破你設定的那條 → 警示必須留在**第一眼**(⛔ �
 ok('⑦ 有庫存要給成本 + 報酬率 + 損益金額(% 要配元)',
    has(A_(R.hold), '你的成本') && has(A_(R.hold), '報酬率') && /\+[\d,]+/.test(A_(R.hold)) && has(A_(R.hold), '損益'));
 ok('⑦b 空手時誠實說「你目前空手」(⛔ 不留空白)', has(A_(R.flat), '空手'));
-ok('⑧ 原本三個頁籤與明細卡是**收起不是刪除**(DOM 仍在 #ovMoreWrap 裡)', R.moved);
+ok('⑧ 原本三個頁籤與明細卡**照算不顯示**(DOM 在 #ovLegacyHold 裡,⛔ 不在摺疊區)', R.moved);
 ok('⑨ 指數不顯示這一區(它沒有買賣價位可言)', R.idxEmpty);
-// 🩹 V74.6.8 零股族的「先出一半」(使用者截圖:上面三行用 70 股算、這一行用 1 張算,差 14 倍)
-ok('🩹⑩ 「先出一半」的金額用**實際股數的一半**(⛔ 不是寫死 1 張)',
-   R.halfMoney != null && Math.abs(R.halfMoney - R.half35) < 1 && Math.abs(R.halfMoney - R.half1000) > 100,
-   `half=${R.halfMoney} ・35股=${R.half35} ・1000股=${R.half1000}`);
-ok('🩹⑩b 金額改了,標籤要跟著寫出是幾股(⛔ 不可讓人以為是一張)',
-   /35/.test(R.halfSub) && /股/.test(R.halfSub), R.halfSub);
+// 🗑️ V77.5.2 「反彈到第一道壓力 → 先出一半」已拿掉(回測沒有分批出場;V74.4.8 提早出場會洗掉贏家)
+//   → 🩹⑩ 改釘「⛔ 不可復活」;金額用實際股數那條規則仍由 `_netPL` 的其他呼叫端守(test_exitdist)。
+ok('🩹⑩ ⛔ 持有時的行動計畫不可再有「先出一半」', R.halfMoney == null && !/先出一半/.test(R.planTxt || ''), R.planTxt);
+ok('🩹⑩b 持有時的行動計畫要有三條出場(你設定的線 / 抱滿 / 硬停損)',
+   /唐奇安|日最低|ATR|回落|日線/.test(R.planTxt || '') && /硬停損/.test(R.planTxt || ''), R.planTxt);
 // ═══ 🎯 V74.6.9 空手時給這一檔自己的觸發價(使用者:「都只看到觀望,應該新增購買價格」)═══
 ok('🎯⑪ 清單裡有這一檔 → 第一眼徽章「等它漲過去」+ 觸發價;摺疊區有觸發價 + 停損 + 尾盤時窗',
    has(R.pbHit.cc, '等它漲過去') && has(R.pbHit.cc, '232.50')
@@ -302,8 +304,9 @@ ok('🎯⑪f 不在清單裡 → 第一眼講「今天全市場實際有幾檔�
 ok('🎯⑪f2 ⛔ 寫死的「全市場 2,326 檔…是常態」不可復活(V77.0.9:安慰句不是答案)',
    !/2,326 檔裡|是常態/.test(A_(R.pbNone)), '');
 // ⚙️ V74.6.9 使用者問「破了 ATR 線是不是還是要離場」→ 查證後他看錯了(破的是另外兩條)
-ok('⚙️⑫ 減碼時要主動講明「你設定的那條還沒破」+ 減碼 ≠ 全出',
-   /你設定的那條/.test(R.reduceWhy) && /還沒破/.test(R.reduceWhy) && /不是「全出」|不是「?全出/.test(R.reduceWhy),
+// 🚪 V77.5.2 空頭持股改講「⛔ 別加碼、照三條出場走」(回測沒有「空頭就先減碼」這一步)
+ok('⚙️⑫ 空頭持股要主動講明「你設定的那條還沒破」+ 照出場規則走(⛔ 不叫你提早減碼)',
+   /你設定的那條/.test(R.reduceWhy) && /還沒破/.test(R.reduceWhy) && /三條出場規則/.test(R.reduceWhy) && !/先出一部分/.test(R.reduceWhy),
    R.reduceWhy.replace(/<[^>]+>/g, '').slice(0, 200));
 ok('⑨b ⛔ 不可用紅綠 emoji 當狀態燈(燈號鐵則)—— 第一眼**與摺疊區**都掃', !/[🔴🟢]/u.test(R.html), (R.html.match(/[🔴🟢]/gu) || []).join(''));
 

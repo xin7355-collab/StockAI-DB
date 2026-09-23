@@ -83,7 +83,10 @@ ok('⑦ ⛔ 不可給買賣價位 / 不可下進場指令(單一劇本原則)',
 ok('⑧ 🚨 跳空那條要點明「配低位階是負的」(⛔ 只講對自己有利的一半)',
    /低<\/?b>?位階|低.{0,4}位階/.test(b) && /−0\.15|-0\.15/.test(b));
 // 🚧 空過守門:定義要跟探針一字不差 → 原始碼裡要出現那幾個關鍵門檻
-const fn = SRC.slice(SRC.indexOf('_ovNewEdges(data, sym)'), SRC.indexOf('_ovTopEdge(data, sym)'));
+// ⚠️ 錨點用**定義**(`    _ovNewEdges(data, sym) {`)⛔ 不用呼叫字串 —— V77.5.2 新增的 `_ovFoldEdgesHtml` 先呼叫
+//    `_ovTopEdge(data, sym)` 再呼叫 `_ovNewEdges(data, sym)` → 用呼叫字串切會切到空字串(假紅燈;反過來也可能是假綠燈)
+const _i0 = SRC.indexOf('    _ovNewEdges(data, sym) {');
+const fn = SRC.slice(_i0, SRC.indexOf('    _ovTopEdge(data, sym) {', _i0) > 0 ? SRC.indexOf('    _ovTopEdge(data, sym) {', _i0) : _i0 + 8000);
 ok('⑨ 🚧 定義要跟 streak_probe 一字不差(0.95 / 0.98 / 缺口≥1 / 位階≥70)',
    /0\.95/.test(fn) && /0\.98/.test(fn) && /gp >= 1/.test(fn) && /pos >= 70/.test(fn));
 ok('⑩ 載入無 pageerror', errs.length === 0, errs.join(' | '));

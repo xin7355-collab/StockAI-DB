@@ -34,6 +34,7 @@ const lead = (tab, state) => page.evaluate(a => {
     app._lastPlaybook = a.st.pb || null;
     app._lastBBScan = a.st.bb || null;
     app._lastXrayVerdict = a.st.xr || null;
+    app._xrayMetrics = a.st.xm || null;
     const id = { backtest: 'pageLeadBacktest', bullbear: 'pageLeadBullBear', corp: 'pageLeadCorp' }[a.tab];
     app._renderPageLead(a.tab);
     const el = document.getElementById(id);
@@ -94,11 +95,13 @@ const PB_NEG = { ranked: [{ key: '📦 箱型突破', expectancy: -0.8, winRate:
     ok('⑥ ⛔ 不可直接當進場理由', /別直接當進場理由/.test(t), t.slice(0, 280));
     ok('⑥ ⭐ 命中數一定要跟著顯示(⛔ 百分比不可孤零零出現)', /命中 12\/29/.test(t), t.slice(0, 200));
 }
-// ── ⑦ 基本頁:體質 ≠ 時機 ────────────────────────────────────────────
+// ── ⑦ 基本頁(V77.5.2 改):只轉述事實數字,⛔ 不下體質結論 ─────────────────
 {
-    const t = txt((await lead('corp', { xr: { sym: 'T1', verdict: '🔥 體質強勁', tone: 'bull', act: '基本面站在你這邊。' } })).html);
-    ok('⑦ 顯示體質結論', /體質強勁/.test(t), t.slice(0, 200));
-    ok('⑦ ⭐⛔ 必須寫「體質好壞跟現在該不該買是兩件事」', /兩件事/.test(t), t.slice(-160));
+    const t = txt((await lead('corp', { xr: { sym: 'T1', verdict: '🔥 體質強勁', tone: 'bull', act: '基本面站在你這邊。' },
+                                        xm: { sym: 'T1', yoy: 12.34, pe: 18.2, yield: 3.1 } })).html);
+    ok('⑦ 顯示事實數字(營收年增 / 本益比 / 殖利率)', /營收年增 \+12\.3%/.test(t) && /本益比 18\.2 倍/.test(t) && /殖利率 3\.10%/.test(t), t.slice(0, 200));
+    ok('⑦ ⭐⛔ 不可再出現體質結論(自編權重的體質分已下架)', !/體質強勁|站在你這邊/.test(t), t.slice(0, 200));
+    ok('⑦ ⭐⛔ 必須寫「體質跟現在該不該買是兩件事」+ 為什麼不判好壞', /兩件事/.test(t) && /不判好壞/.test(t), t.slice(-200));
 }
 // ── ⑧ 算不出來 → 整條不顯(⛔ 不留空殼)──────────────────────────────
 {

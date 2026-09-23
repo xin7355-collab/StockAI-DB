@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 /**
- * 🧭 V74.2.6 基本面頁「總覽邏輯」(使用者:「基本面」)—— 個股六頁到齊
+ * 🧭 基本面頁「全部展開」(V77.5.2 改寫;原 V74.2.6「預設收起、算不出結論才展開」)
  *
- * ⭐ 這頁**本來就有**骨架(V72.6.0 的 `pageLeadCorp` 頁首一句話 + 🧬 體質總評 + 完整數據 `<details>`),
- *    ⛔ 但那個 details 掛著 `open` = **摺了等於沒摺**(同 test_prohtml ㊲h2 釘過的坑)。
+ * 使用者 2026-09-23:「基本面全部展開,另外把沒有用的 X 光機功能刪除」。
+ *   ⭐ 🧬 體質總評(第一眼那個結論)已下架 → 「有結論就收起」的理由不存在了 → 全部預設展開。
  *
- * ⛔ 釘死的五件事(②③④ 已用注入缺陷自我驗證):
- *   ① 完整數據摺疊⛔ 不可掛 open;內層(評分構成因子/填息歷史)也不可
- *   ② 🚨 打開時要 resize 裡面的 ECharts —— 收起狀態容器寬 0,不 resize 圖就是空的
- *   ③ 🚨 體質總評算不出來(⏳ 整備中)→ **自動展開** ——
- *      ⛔ 那段文案自己寫著「下方已顯示目前拿得到的訊號」,收起來就是說謊
- *   ④ 使用者手動動過之後,⛔ 程式不可再自動改它(別跟使用者搶)
- *   ⑤ 換股票要重置「使用者動過」的記憶(不同檔資料齊全度不同)
+ * ⛔ 釘死的五件事:
+ *   ① 完整數據 `corpMoreWrap` 預設 open;基本頁區段裡⛔ 不可有沒掛 open 的 <details>
+ *   ② 打開時要 resize 裡面的 ECharts(收起→打開那一刻容器才有寬度)
+ *   ③ `_syncCorpMore` ⛔ 不可再依結論把它收起來
+ *   ④ 使用者自己點 summary 收起 → 程式⛔ 不可再自動打開(別跟使用者搶)
+ *   ⑤ 換股票要重置「使用者動過」的記憶 → 回到全部展開
+ *   ⑥ ontoggle 要擋「app 還沒建好」(open 的 <details> 載入時就會觸發一次 toggle —— 實測踩到:app is not defined)
  */
 import fs from 'fs';
 import path from 'path';
@@ -26,19 +26,18 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 // ── 靜態 ──
 {
     const m = SRC.match(/<details id="corpMoreWrap"[^>]*>/);
-    ok('① 完整數據摺疊存在且⛔ 不可掛 open', !!m && !/\bopen\b/.test(m[0]), m && m[0]);
-    // 內層:整個基本面頁區段裡不可再有 `open>`(打開外層後不該又全部攤開)
-    const s = SRC.indexOf('id="subContentCorp"'), e = SRC.indexOf('id="subContentBullBear"');
-    const seg = SRC.slice(s, e);
-    ok('① 內層(評分構成因子 / 填息歷史)也不可預設展開', !/<details[^>]*\sopen[\s>]/.test(seg),
-        (seg.match(/<details[^>]*open[^>]*>/) || [''])[0]);
-    ok('② 摺疊有掛 toggle handler', /ontoggle="app\._onCorpMoreToggle\(this\)"/.test(SRC));
-    ok('② handler 打開時要 resize 內部 echarts(⛔ 收起容器寬 0,不 resize 圖是空的)',
+    ok('① 完整數據摺疊存在而且預設 open', !!m && /\sopen[\s>]/.test(m[0]), m && m[0]);
+    // ⚠️ 舊版用 subContentBullBear 當結尾,但它在 subContentCorp **前面** → 切到空字串 = 空過(假綠燈)
+    const s = SRC.indexOf('id="subContentCorp"'), e = SRC.indexOf('id="subContent', s + 20);
+    const seg = SRC.slice(s, e).replace(/<!--[\s\S]*?-->/g, '');
+    const closed = (seg.match(/<details(?![^>]*\sopen[\s>])[^>]*>/g) || []);
+    ok('① 基本頁區段裡⛔ 不可有沒掛 open 的 <details>', seg.length > 3000 && closed.length === 0, closed.join(' | '));
+    ok('⑥ ontoggle 要先判 app 存在(open 的 details 載入就會 toggle 一次)',
+        /ontoggle="typeof app !== 'undefined' && app\._onCorpMoreToggle\(this\)"/.test(SRC));
+    ok('② handler 打開時要 resize 內部 echarts',
         /_onCorpMoreToggle\(el\) \{[\s\S]{0,900}_echarts_instance_[\s\S]{0,120}resize\(\)/.test(SRC));
-    // 🚨 「使用者動過」⛔ 不可靠 toggle 判斷(瀏覽器會把連續的 toggle 合併成一次)
-    ok('④ 「使用者動過」是由 <summary> 的實際點擊記的(⛔ 不是在 toggle 裡猜)',
+    ok('④ 「使用者動過」由 <summary> 的實際點擊記',
         /onclick="app\._corpMoreUser\(\)"/.test(SRC) && /_corpMoreUser\(\) \{[^}]*userToggled = '1'/.test(SRC));
-    ok('③ 體質總評算完要呼叫 `_syncCorpMore`', /this\._syncCorpMore\(\); \} catch/.test(SRC));
 }
 
 // ── 動態 ──
@@ -77,49 +76,40 @@ const R = await page.evaluate(async () => {
     const el = document.getElementById('corpMoreWrap');
     o.exists = !!el;
 
-    // ③ 算不出結論(⏳ 整備中)→ 自動展開
-    app._lastXrayVerdict = { sym: '2330', verdict: '⏳ 財報資料整備中', tone: 'flat', act: '下方已顯示目前拿得到的訊號' };
-    app._syncCorpMore();
-    o.openWhenNoVerdict = el.open;
-    // 有結論 → 收起
+    // ③ 有結論 / 沒結論都要是打開的(⛔ 不可再依結論收起來)
     app._lastXrayVerdict = { sym: '2330', verdict: '✅ 體質穩健', tone: 'good', act: 'x' };
     app._syncCorpMore();
-    o.closedWhenVerdict = el.open === false;
-
-    // ② 打開 → resize 內部 echarts(用 stub 的計數驗;⛔ 先塞一個假的 echarts 容器進去)
+    o.openWithVerdict = el.open === true;
+    // ② 收起 → 打開 → resize
     const probe = document.createElement('div');
     probe.setAttribute('_echarts_instance_', 'x');
     el.querySelector('div')?.appendChild(probe);
+    el.open = false;
+    await new Promise(r => setTimeout(r, 60));
     const before = window.__resizeCount;
-    el.open = true;                       // 觸發 ontoggle
+    el.open = true;
     await new Promise(r => requestAnimationFrame(() => setTimeout(r, 80)));
     o.resized = window.__resizeCount > before;
-    // ④ 「使用者動過」是靠 <summary> 的**實際點擊**記的(⛔ 不是靠 toggle —— toggle 會被瀏覽器合併)
-    el.querySelector('summary').click();   // 真的點一次(這會同時把它關起來)
-    o.userToggledAfterManual = el.dataset.userToggled;
-    el.open = true;                        // 回到開啟狀態,驗下面「程式不再自動關」
-
-    // ④ 使用者動過之後,程式⛔ 不可再自動改
-    app._lastXrayVerdict = { sym: '2330', verdict: '✅ 體質穩健', tone: 'good', act: 'x' };
+    // ④ 使用者真的點 summary 收起 → 程式不可再打開
+    el.querySelector('summary').click();   // 開著 → 點一下 = 收起
+    await new Promise(r => setTimeout(r, 60));
+    o.userToggled = el.dataset.userToggled;
     app._syncCorpMore();
-    o.stillOpenAfterUser = el.open === true;
-
-    // ⑤ 換股票要重置記憶
-    app._lastXrayVerdict = { sym: '2317', verdict: '✅ 體質穩健', tone: 'good', act: 'x' };
+    o.stayClosedAfterUser = el.open === false;
+    // ⑤ 換股票 → 重置 → 全部展開
+    app._lastXrayVerdict = { sym: '2317', verdict: '', tone: 'flat', act: '' };
     app._syncCorpMore();
-    o.resetOnSymChange = el.open === false && el.dataset.userToggled !== '1';
+    o.reopenOnSymChange = el.open === true && el.dataset.userToggled !== '1';
     return o;
 });
 await browser.close();
 if (R.err) { console.log(`❌ analyze 失敗:${R.err}`); process.exit(1); }
 
 ok('🚧 空過守門:摺疊真的在 DOM 裡', R.exists === true);
-ok('③ 🚨 算不出體質總評(⏳ 整備中)→ 自動展開(⛔ 收起會讓文案說謊)', R.openWhenNoVerdict === true);
-ok('③b 有結論時 → 收起(第一眼只留結論)', R.closedWhenVerdict === true);
-ok('② 🚨 打開時真的 resize 了內部 ECharts(⛔ 不 resize 圖會是空的)', R.resized === true);
-ok('④ 使用者手動開過 → 記住,程式⛔ 不再自動改', R.userToggledAfterManual === '1' && R.stillOpenAfterUser === true,
-    JSON.stringify({ flag: R.userToggledAfterManual, open: R.stillOpenAfterUser }));
-ok('⑤ 換股票要重置「使用者動過」的記憶', R.resetOnSymChange === true);
+ok('③ 有結論也⛔ 不可收起(使用者:「全部展開」)', R.openWithVerdict === true);
+ok('② 🚨 收起→打開時真的 resize 了內部 ECharts', R.resized === true);
+ok('④ 使用者自己收起 → 程式⛔ 不再自動打開', R.userToggled === '1' && R.stayClosedAfterUser === true, JSON.stringify(R));
+ok('⑤ 換股票 → 重置記憶、回到全部展開', R.reopenOnSymChange === true);
 
 console.log(fails ? `❌ ${fails} 條失敗` : '✅ CORPLEAD_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

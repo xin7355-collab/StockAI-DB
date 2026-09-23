@@ -247,9 +247,13 @@ await page.close();
     //   ⭐ 用意是「**⛔ 不可憑空生出假的套牢帶**」→ 改釘「有幾條都行,但每一條都必須**真的在現價上方**」。
     const cp2 = B.K && B.K.C ? +B.K.C : null;
     const bandOk = B.bands.every(t => { const m = String(t).match(/([\d.]+)\s*~/); return m && cp2 && +m[1] >= cp2 * 0.98; });
-    ok('⑥b 2330:尺畫得出(停損/買進/現價 ≥3 個標記)、⛔ 沒有假的套牢帶(每一帶都要在現價上方)',
-        B.marks.length >= 3 && bandOk && B.ccLen <= 600, JSON.stringify({ marks: B.marks, bands: B.bands, cp: cp2, len: B.ccLen }));
-    ok('⑧b 2330 🔔 顆數 == _armTrigStash', (B.bell == null ? 0 : +B.bell) === B.stashN && B.stashN > 0, JSON.stringify({ bell: B.bell, stashN: B.stashN }));
+    // 🚪 V77.5.2 空手時⛔ 不再畫 🛒 買進 / 🔺 追買 / 「跌破前低就退出」(舊朱家泓劇本,沒實測過)——
+    //   空手又沒有自己的招(playbook_edge)時,尺上只剩現價 + 套牢帶 + 估值對照 → 改釘「有現價、⛔ 沒有舊劇本標記」。
+    ok('⑥b 2330:尺畫得出(有現價)、⛔ 沒有舊劇本標記、⛔ 沒有假的套牢帶(每一帶都要在現價上方)',
+        B.marks.some(m => m[0] === '現價') && !B.marks.some(m => /買進|追買|轉強$/.test(m[0])) && bandOk && B.ccLen <= 600,
+        JSON.stringify({ marks: B.marks, bands: B.bands, cp: cp2, len: B.ccLen }));
+    // 🔔 V77.5.2 空手 + 沒有自己的招 → 沒有可以盯的價(⛔ 不再盯 5 日線 / 前高)→ 0 顆也要跟 stash 一致
+    ok('⑧b 2330 🔔 顆數 == _armTrigStash', (B.bell == null ? 0 : +B.bell) === B.stashN, JSON.stringify({ bell: B.bell, stashN: B.stashN }));
     await p3.close();
 }
 // ── 🎨 V76.0.8 上色 / 對齊 / 五個面向真的有五個 ──

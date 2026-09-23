@@ -12,6 +12,11 @@
  *     ② 🚨 **補上誠實揭露** —— 收起來還不夠:使用者點開之後仍會看到 4 份各自下結論的卡,
  *        而它們**沒有各自的實測背書**;不明講「以上面為準」的話,收起來只是把矛盾藏起來。
  *
+ * 🧹 V77.5.2 更新(使用者:「把過時的策略移除,保留最強策略…折疊部分需要嗎?」,選「精簡折疊」):
+ *   那 3 份舊判讀**不再放進摺疊**,改搬進 `#ovLegacyHold`(永遠不顯示、照常渲染)——
+ *   摺疊區只剩主卡自己的 B/C/D(同一份來源)→ 「各自沒有實測背書、以上面為準」那段揭露已經沒有對象,拿掉。
+ *   ⛔ 但「收起 ≠ 拿掉計算」照舊(②⑤)。
+ *
  * ⛔ 三條不可改掉:
  * ① 第一屏**只有 `ovCommandCenter` 在下指令**,其餘 4 份都在 `ovMoreWrap` / `ovNowMore` 裡
  * ② 🚨 **收起 ≠ 拿掉計算** —— `_renderTrendCommand` 仍要寫入
@@ -28,19 +33,20 @@ let fails = 0;
 const ok = (n, c, e = '') => { if (c) console.log(`✅ ${n}`); else { fails++; console.log(`❌ ${n}${e ? '  ' + String(e).slice(0, 220) : ''}`); } };
 
 // ═══ 靜態 ═══
-const fold = SRC.slice(SRC.indexOf('_initOvFold() {'), SRC.indexOf('_initOvFold() {') + 700);
+const fold = SRC.slice(SRC.indexOf('_initOvFold() {'), SRC.indexOf('_initOvFold() {') + 1600);
 ok('⓪ 取樣守門:抓得到 `_initOvFold` 的定義', fold.includes('ovMoreWrap'));
-ok('① 三個容器都在收合清單裡(`ovTabBar` / now pane / `strategyMainBox`)',
-   /getElementById\('ovTabBar'\)/.test(fold) && /\[data-ovpane="now"\]/.test(fold) && /getElementById\('strategyMainBox'\)/.test(fold));
+ok('① 三個容器都搬進 #ovLegacyHold(`ovTabBar` / now pane / `strategyMainBox`)',
+   /getElementById\('ovTabBar'\)/.test(fold) && /\[data-ovpane="now"\]/.test(fold) && /getElementById\('strategyMainBox'\)/.test(fold)
+   && /getElementById\('ovLegacyHold'\)/.test(fold) && /hold\.appendChild/.test(fold));
 ok('①b 收合有接線(切到總覽 / 重繪時都會跑)', (SRC.match(/this\._initOvFold\(\)/g) || []).length >= 2);
 // ② 🚨 收起 ≠ 拿掉計算
 const tc = SRC.slice(SRC.indexOf('_renderTrendCommand(data, ind, last) {'), SRC.indexOf('_renderChuExitSop(data, ind, last) {'));
 ok('⓪b 取樣守門:抓得到 `_renderTrendCommand` 的定義', tc.length > 3000, String(tc.length));
 for (const [k, re] of [['_ovTrend', /this\._ovTrend = \{/], ['_lastOvPlan', /this\._lastOvPlan = \{/], ['_exitMode', /this\._exitMode = \{/]])
     ok('② 🚨 收起⛔ 不可拿掉計算:_renderTrendCommand 仍要寫入 ' + k, re.test(tc));
-// ③ 揭露文案
-ok('③ 🚨 必須明講「各自沒有獨立的實測背書」', /各自沒有獨立的實測背書/.test(SRC));
-ok('③b 🚨 必須明講「說法不一樣時以上面那張為準」', /說法不一樣時一律以上面那張為準/.test(SRC));
+// ③ #ovLegacyHold 永遠不顯示(inline display:none,⛔ 不靠 Tailwind class —— 沙箱載不到)
+ok('③ #ovLegacyHold 寫死 display:none', /<div id="ovLegacyHold" style="display:none"/.test(SRC));
+ok('③b 舊的「4 份判讀以上面為準」揭露已拿掉(沒有對象了,留著會誤導)', !/裡面那 4 份判讀/.test(SRC));
 
 // ═══ 實跑 ═══
 const browser = await chromium.launch({ args: ['--allow-file-access-from-files'] });
@@ -64,6 +70,7 @@ const R = await page.evaluate(async () => {
     return {
         anc: Object.fromEntries(['ovCommandCenter', 'trendCommandCard', 'playbookRadarCard', 'chuActionCard'].map(i => [i, anc(i)])),
         folded: document.getElementById('ovMoreWrap')?.dataset.folded,
+        holdHidden: getComputedStyle(document.getElementById('ovLegacyHold')).display === 'none',
         hidden: document.getElementById('ovMoreWrap')?.classList.contains('hidden'),
         wrote: { t: !!A._ovTrend, p: !!A._lastOvPlan, e: !!A._exitMode },
         // ⚠️ 沙箱連不到 Tailwind CDN → `.hidden` 沒有 CSS,`innerText` 對它照樣回傳全文
@@ -81,14 +88,11 @@ await browser.close();
 if (R.err) { console.log('❌ 實跑丟例外  ' + R.err); process.exit(1); }
 
 // ⚠️ V77.2.0 起 `deepBriefCard`(深度診斷)已整張刪除(使用者明示)→ 這裡剩 3 份,⛔ 不是放寬斷言
-ok('④ 🚨 第一屏只有行動指令中心在下指令(⛔ 其餘 3 份都要在收合裡)',
-   !/ovMoreWrap/.test(R.anc.ovCommandCenter)
-   && ['trendCommandCard', 'playbookRadarCard', 'chuActionCard'].every(i => /ovMoreWrap/.test(R.anc[i])),
+ok('④ 🚨 只有行動指令中心在下指令(⛔ 其餘 3 份都在永遠不顯示的 #ovLegacyHold 裡,⛔ 不在摺疊區)',
+   !/ovMoreWrap|ovLegacyHold/.test(R.anc.ovCommandCenter) && R.holdHidden
+   && ['trendCommandCard', 'playbookRadarCard', 'chuActionCard'].every(i => /ovLegacyHold/.test(R.anc[i]) && !/ovMoreWrap/.test(R.anc[i])),
    JSON.stringify(R.anc));
 ok('④b 收合預設是收起來的', R.folded === '1' && R.hidden === true, JSON.stringify([R.folded, R.hidden]));
 ok('⑤ 🚨 收起⛔ 不可影響計算:三個結論都要被寫進去', R.wrote.t && R.wrote.p && R.wrote.e, JSON.stringify(R.wrote));
-ok('⑥ 揭露文案看得見(⛔ 不可藏在收合裡 —— 那就是它要解決的問題)',
-   /各自沒有獨立的實測背書/.test(R.note) && /以上面那張為準/.test(R.note), R.note.slice(0, 200));
-
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ ONEVOICE_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

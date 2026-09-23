@@ -47,13 +47,11 @@ const R = await page.evaluate(async () => {
     // ── ① 重現殘留 bug:先把個股的欄位塞滿,再切到 ETF ──────────────
     const DIRTY = {
         xrayGmCompare: '↑ +3.0pp(從 2 季前 20.2%)',
-        xrayInvBest: '主屬性「短線價差」80分',
-        xrayInvSwing: '52', xrayInvHold: '75', xrayInvShort: '80',
-        xrayInvFactors: '評分構成因子',
+        // 🗑️ V77.5.2 投資屬性雷達(xrayInv*)已整段刪除 → 從這份清單拿掉(DOM 不存在,弄不髒)
         xrayGmSpark: '<canvas></canvas>',
         xrayEpsTrend: '<canvas>2.64</canvas>',
-        xrayInvRadar: '<canvas></canvas>',
         xrayGrossMargin: '23.2%', xrayPe: '18.5x',
+        xrayYoy: '+12.3%', xrayPeg: '0.8', xrayYield: '3.1%',
     };
     Object.entries(DIRTY).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.innerHTML = v; });
     out.dirtyBefore = Object.keys(DIRTY).filter(id => (document.getElementById(id)?.innerText || document.getElementById(id)?.innerHTML || '').trim().length > 0);
@@ -99,7 +97,7 @@ const R = await page.evaluate(async () => {
 });
 
 ok('⓪ 沒有 pageerror', pageErrs.length === 0, pageErrs.join(' | '));
-ok('⓪ 測試前真的先弄髒了(否則下面在驗空氣)', (R.dirtyBefore || []).length >= 8, JSON.stringify(R.dirtyBefore));
+ok('⓪ 測試前真的先弄髒了(否則下面在驗空氣)', (R.dirtyBefore || []).length >= 7, JSON.stringify(R.dirtyBefore));
 
 // ── ① 殘留 bug ────────────────────────────────────────────────────
 ok('① ⭐⛔ ETF 頁不可留下個股的毛利率/EPS/投資屬性殘留(陷阱 #19)',
