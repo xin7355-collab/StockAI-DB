@@ -40,8 +40,9 @@ for (const f of ['playbook_edge.json', 'today_signals.json']) if (!fs.existsSync
        /BADGECELL/.test(g) && /display:flex;align-items:center;justify-content:center;line-height:1/.test(g)
        && !/width:18px;text-align:center/.test(g), '');
     const ev = strip(SRC.slice(SRC.indexOf('    _rpEventsHtml(C) {'), SRC.indexOf('    _copyText(t) {')));
-    ok('ⓒs §21 的兩個價位一律讀 _keyLevels,⛔ 不可自己用均線/前高再算一份',
-       /_keyLevels/.test(ev) && /\.buyPx/.test(ev) && /\.addPx/.test(ev)
+    // 📈 V77.5.3 空手・非空頭改講觸發價(`trigPx`);buyPx/addPx 只剩空頭的 👀 觀察價
+    ok('ⓒs §21 的價位一律讀 _keyLevels(觸發價 trigPx + 空頭觀察價 buyPx/addPx),⛔ 不可自己用均線/前高/_pbEdgeOf 再算一份',
+       /_keyLevels/.test(ev) && /\.trigPx/.test(ev) && /\.buyPx/.test(ev) && /\.addPx/.test(ev) && !/_pbEdgeOf\(/.test(ev)
        && !/_rpMaLevels\(\)[\s\S]{0,200}buyPx/.test(ev) && !/Math\.max\(\.\.\.(highs|hi)/.test(ev), '');
     ok('ⓒs2 §21 上行價位要先過 _bearGate(空頭時不可寫成買點)', /_bearGate\(sym\)/.test(ev), '');
     ok('ⓓs §21 標題的件數⛔ 不可寫死', /§21 接下來 30~90 天要看的 \$\{watch\.length\} 件事/.test(ev)
@@ -115,32 +116,43 @@ await load('1815');
             const K = app._keyLevels;
             res({ n: box ? +box.dataset.rpwatch : 0, txt: box ? box.innerText.replace(/\s+/g, ' ') : '',
                   head: (document.getElementById('subContentReport')?.innerText || '').match(/§21 接下來 30~90 天要看的 (\d+) 件事/)?.[1] || null,
-                  buy: K ? K.buyPx : null, add: K ? K.addPx : null });
+                  buy: K ? K.buyPx : null, add: K ? K.addPx : null, trig: K ? K.trigPx : null });
         }, 1800);
     }));
-    const num = s => { const m = r.txt.match(new RegExp(s + ' ([\\d,]+\\.\\d\\d) 元')); return m ? +m[1].replace(/,/g, '') : null; };
-    const b = num('站上這裡才算轉強'), a = num('帶量過這裡才算追買');
-    ok('ⓒ2 §21 有「站上…才算轉強」而且價位 = _keyLevels.buyPx', b != null && r.buy > 0 && Math.abs(b - +(+r.buy).toFixed(2)) < 0.011, `畫面 ${b} vs K ${r.buy}`);
-    ok('ⓒ2b §21 有「帶量過…才算追買」而且價位 = _keyLevels.addPx', a != null && r.add > 0 && Math.abs(a - +(+r.add).toFixed(2)) < 0.011, `畫面 ${a} vs K ${r.add}`);
-    ok('ⓒ2c 追買那句要講清楚「這是前高、⛔ 不是可以直接掛的買價」', /前高/.test(r.txt) && /不是你可以直接掛的買價/.test(r.txt), r.txt.slice(0, 160));
+    const num = s => { const m = r.txt.match(new RegExp(s + '[^\\d]{0,40}?([\\d,]+\\.\\d\\d) 元')); return m ? +m[1].replace(/,/g, '') : null; };
+    // 📈 V77.5.3 使用者:「照你推薦的直接執行」—— §21 ⛔ 不再講「站上 5 日線/月線才算轉強」「帶量過前高才算追買」(舊劇本、沒實測)
+    ok('ⓒ2 ⛔ §21 不可再出現「站上這裡才算轉強」「帶量過這裡才算追買」(舊的 5 日線/月線/前高)',
+       r.txt.length > 50 && !/站上這裡才算轉強|帶量過這裡才算追買/.test(r.txt), r.txt.slice(0, 200));
+    ok('ⓒ2b 空手・這一檔沒有招 → 要明講「沒有進場價」(⛔ 不可靜默、⛔ 不可退回均線)',
+       r.trig > 0 || /沒有進場價/.test(r.txt), `trig=${r.trig} ${r.txt.slice(0, 160)}`);
     ok('ⓓ2 標題件數 = 實際列數(⛔ 不可寫死)', r.head != null && +r.head === r.n && r.n >= 6, `head=${r.head} rows=${r.n}`);
 
-    // ⓒ2d 🚨 決定性對照組 —— 上面那兩條會被「剛好相等」救活(buyPx 常常**就是**月線 → 自己算一份也對得上,
-    //   實測注入「改讀 _rpMaLevels()[20]」時 ⓒ2/ⓒ2b 照樣綠 = 假綠燈)。
-    //   ⭐ 這一條直接把 `_keyLevels` 改成不可能巧合的數字,畫面**必須**跟著變。
-    const r2 = await page.evaluate(() => new Promise(res => {
+    // ⓒ2d 🚨 決定性對照組 —— 把 `_keyLevels.trigPx` 改成不可能巧合的數字,畫面**必須**跟著變;
+    //   同時把 buyPx 改成另一個怪數字 → 非空頭時它⛔ 不可出現(證明沒有退回舊的進場價)
+    const inj = (bear) => page.evaluate((bear) => new Promise(res => {
         const K = app._keyLevels;
         if (!K) return res({ err: 'no _keyLevels' });
-        K.buyPx = 987.65; K.addPx = 1234.56; K.buyLb = '注入用';
+        K.trigPx = 987.65; K.trigK = '注入用'; K.trigStop = 900.5; K.buyPx = 1234.56; K.addPx = 1357.91; K.exitMode = false;
+        const keepBG = app._bearGate, keepInv = app._getInventory;
+        app._getInventory = () => [];
+        app._bearGate = () => bear;
         app.renderReportTab(app.currentSymbolId);
         setTimeout(() => {
             document.querySelectorAll('#subContentReport details').forEach(d => { d.open = true; });
             const box = document.querySelector('[data-rpwatch]');
-            res({ txt: box ? box.innerText.replace(/\s+/g, ' ') : '' });
+            res({ txt: box ? box.innerText.replace(/\s+/g, ' ') : '',
+                  rep: (document.getElementById('subContentReport')?.innerText || '').replace(/\s+/g, ' ') });
+            app._bearGate = keepBG; app._getInventory = keepInv;
         }, 1800);
-    }));
-    ok('ⓒ2d 改掉 _keyLevels 之後畫面要跟著變(⛔ 證明不是自己算一份)',
-       /987\.65/.test(r2.txt) && /1,234\.56/.test(r2.txt), (r2.err || r2.txt || '').slice(0, 220));
+    }), bear);
+    const r2 = await inj(false);
+    ok('ⓒ2d ⭐ 改掉 _keyLevels.trigPx 之後 §21 要跟著變,而且講「這一檔的招」+ 買到後停損',
+       /987\.65/.test(r2.txt) && /這一檔的招\(注入用\)/.test(r2.txt) && /900\.50/.test(r2.txt), (r2.err || r2.txt || '').slice(0, 260));
+    ok('ⓒ2e ⭐⛔ 非空頭時舊的 buyPx/addPx 不可出現在報告頁(§11 價格牆 + §21)',
+       !/1,234\.56|1234\.56|1,357\.91|1357\.91/.test(r2.rep) && /觸發價\(這一檔的招:注入用\)/.test(r2.rep), r2.rep.match(/.{0,60}(1,?234\.56|1,?357\.91).{0,20}/)?.[0] || '');
+    const r3 = await inj(true);
+    ok('ⓒ2f ⭐ 空頭對照:👀 觀察價 = buyPx(價位不動)、⛔ 不可出現觸發價',
+       /轉強觀察價/.test(r3.txt) && /1,234\.56/.test(r3.txt) && !/987\.65/.test(r3.rep), (r3.err || r3.txt || '').slice(0, 260));
 }
 
 // ⓔ2ⓕ 「老是觀望」那句:數字必須跟著產物變 / 產物沒載入時不可謊報

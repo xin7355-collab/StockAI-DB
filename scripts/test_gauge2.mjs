@@ -5,12 +5,12 @@
  *   ① 所有量條用**同色系明暗漸變**(⛔ 不是綠→黃→紅跨色 —— 燈號鐵則也管刻度尺)
  *   ② 總覽的「🧭 N 個面向一眼看」統一成報告頁海報那個樣子 + canvas 那顆 ⚠️ 要對齊
  *   ③ 📈 個股數據速覽的基本面/籌碼用顏色講「危險 / 好」——⛔ 門檻只能用既有的
- *   ④ 關鍵價位補上進場價 / 追買價(⛔ 只讀 _keyLevels,零新計算)
+ *   ④ 關鍵價位的進場那一格(V77.5.3 起 = 這一檔自己的招的觸發價 `_keyLevels.trigPx`;空頭只留 👀 觀察價)
  *   ⑤ 完整報告 / 摘述報告的標題用顏色區隔
  *
  * ⛔ 每一條先想「注入什麼它會叫」:
  *   ⓐ 漸變改回單色   ⓑ 徽章改回右靠      ⓒ 沒門檻的格子也上色
- *   ⓓ 關鍵價位自己算 buyPx                ⓔ 空頭時把價位改掉
+ *   ⓓ 非空頭仍畫 buyPx/addPx               ⓔ 空頭時把價位改掉
  *   ⓕ 完整報告標題全部同色                ⓖ 兩邊各寫一份色階表
  *
  * ⚠️ 幾何一律先注入 `scripts/lib_rwdshim.mjs`(沙箱沒有 Tailwind,量到的是假的 —— 陷阱 #40)。
@@ -80,11 +80,12 @@ for (const s of ['2330', '2327']) if (!fs.existsSync(path.join(ROOT, 'data', `${
     // ④ 關鍵價位:只讀 _keyLevels
     const facts = CODE.slice(CODE.indexOf('_rpOwnFacts(sym) {'), CODE.indexOf('_RP_STYLE: {'));
     ok('ⓓs0 切得到 _rpOwnFacts(空過守門)', facts.length > 1000, String(facts.length));
-    ok('ⓓs ⭐ 關鍵價位的進場/追買只讀 _keyLevels(⛔ 不可自己去算前高或均線)',
-       /K\.buyPx/.test(facts) && /K\.addPx/.test(facts) && !/_chuResistanceZones|this\.peaks|_rpMaLevels\(\)\[20\]/.test(facts), '');
+    // 📈 V77.5.3 進場那一格改讀 `_keyLevels.trigPx`(這一檔自己的招);buyPx/addPx 只剩空頭的 👀 觀察價
+    ok('ⓓs ⭐ 海報的進場價位只讀 _keyLevels(trigPx + 空頭觀察價),⛔ 不可自己算前高/均線/_pbEdgeOf',
+       /K\.trigPx/.test(facts) && /K\.buyPx/.test(facts) && !/_chuResistanceZones|this\.peaks|_rpMaLevels\(\)\[20\]|_pbEdgeOf\(/.test(facts), '');
     const wl = CODE.slice(CODE.indexOf('_rpWallList(C) {'), CODE.indexOf('_rpWallsHtml(C) {'));
     ok('ⓓs2 §11 價格牆表也補上了(⛔ 陷阱 #37:同一份資料三個消費端,不可只接兩個)',
-       /K\.buyPx > 0/.test(wl) && /K\.addPx > 0/.test(wl) && /_bearGate/.test(wl), '');
+       /K\.trigPx > 0/.test(wl) && /K\.buyPx > 0/.test(wl) && /_bearGate/.test(wl) && !/_pbEdgeOf\(/.test(wl), '');
 }
 
 // ═══ 執行期 ═════════════════════════════════════════════════════
@@ -172,29 +173,26 @@ ok('ⓒ0 速覽有上色的格子 ≥1(空過守門 —— 0 筆代表這一條�
     ok('ⓒ2 徽章只用 ✅⚠️⛔(⛔ 不可用 🔴🟢 —— 那是講漲跌的)', R3.tones.every(t => ['✅', '⚠️', '⛔'].includes(t.b)), JSON.stringify(R3.tones.map(t => t.b)));
 }
 
-// ── ④ 關鍵價位:值逐字 == _keyLevels ────────────────────────────
-const nm = R3.lv.map(x => String(x[0]));
-ok('ⓓ ⭐ 關鍵價位有「進場價 / 轉強價」與「追買價」(使用者:要知道等到這時候才能買)',
-   nm.some(n => /進場價|轉強價|轉強觀察價/.test(n)) && nm.some(n => /追買價|前一個波段高點/.test(n)), JSON.stringify(nm));
-ok('ⓓ2 值逐字 == _keyLevels.buyPx / addPx(⛔ 顯示端不自己算)',
-   !!R3.K && R3.lv.some(x => x[2] === 'buy' && Math.abs(x[1] - R3.K.buyPx) < 1e-9)
-         && R3.lv.some(x => x[2] === 'add' && Math.abs(x[1] - R3.K.addPx) < 1e-9),
-   JSON.stringify([R3.K, R3.lv.filter(x => x[2] === 'buy' || x[2] === 'add')]));
-// ⭐ 決定性對照:把 _keyLevels 換成**不可能巧合**的數字,畫面必須跟著變
-//   ⛔ 只比「有沒有那幾個字」會被「buyPx 剛好等於月線」救活(V77.0.9 踩過)
+// ── ④ 關鍵價位:進場那一格 = 這一檔自己的招的觸發價(V77.5.3)────────────
+//   ⭐ 決定性對照:把 _keyLevels 換成**不可能巧合**的數字,畫面必須跟著變;
+//   同時把 buyPx/addPx 也換成怪數字 → 非空頭時⛔ 不可出現(證明沒退回舊的 5 日線/前高)
 const R4 = await page.evaluate(() => {
-    const A = ((typeof window !== "undefined" && window.app) || app), K0 = A._keyLevels;
-    A._keyLevels = Object.assign({}, K0, { buyPx: 987.65, addPx: 1234.56 });
+    const A = ((typeof window !== "undefined" && window.app) || app), K0 = A._keyLevels, BG = A._bearGate, INV = A._getInventory;
+    A._keyLevels = Object.assign({}, K0, { sym: '2330', exitMode: false, trigPx: 987.65, trigK: '注入用', trigStop: 900.5, buyPx: 1234.56, addPx: 1357.91 });
+    A._bearGate = () => false; A._getInventory = () => [];
     const F = A._rpOwnFacts('2330') || {};
     const W = A._rpWallList(A._rpLast) || [];
-    A._keyLevels = K0;
-    return { lv: (F.lv || []).filter(x => x.t === 'buy' || x.t === 'add').map(x => x.v),
-             wall: W.filter(x => /進場價|轉強價|追買價|轉強觀察價|前一個波段高點/.test(x.n)).map(x => x.v) };
+    A._keyLevels = K0; A._bearGate = BG; A._getInventory = INV;
+    return { lv: (F.lv || []).map(x => [x.n, x.v, x.t]), wall: W.map(x => [x.n, x.v]) };
 });
-ok('ⓓ3 ⭐ 決定性對照:把 _keyLevels 換成 987.65 / 1234.56,海報要跟著變(注入:自己算 buyPx → 紅)',
-   R4.lv.includes(987.65) && R4.lv.includes(1234.56), JSON.stringify(R4.lv));
-ok('ⓓ4 ⭐ §11 價格牆表同樣跟著變(⛔ 兩個消費端不可只接一個)',
-   R4.wall.includes(987.65) && R4.wall.includes(1234.56), JSON.stringify(R4.wall));
+ok('ⓓ ⭐ 海報有「觸發價」而且值 == _keyLevels.trigPx(⛔ 顯示端不自己算)',
+   R4.lv.some(([n, v]) => /觸發價/.test(n) && v === 987.65), JSON.stringify(R4.lv.filter(x => x[2] === 'buy' || x[2] === 'add')));
+ok('ⓓ2 ⭐⛔ 非空頭時海報不可再出現舊的進場價/追買價(buyPx/addPx)',
+   !R4.lv.some(([n, v]) => v === 1234.56 || v === 1357.91 || /^進場價|^追買價/.test(n)), JSON.stringify(R4.lv));
+ok('ⓓ3 ⭐ §11 價格牆表同樣是觸發價(⛔ 兩個消費端不可只接一個)',
+   R4.wall.some(([n, v]) => /觸發價\(這一檔的招:注入用\)/.test(n) && v === 987.65), JSON.stringify(R4.wall));
+ok('ⓓ4 ⭐⛔ §11 價格牆表非空頭時也不可出現 buyPx/addPx',
+   !R4.wall.some(([n, v]) => v === 1234.56 || v === 1357.91), JSON.stringify(R4.wall));
 // ── ⓔ 空頭:價位一個都不動,只改名稱 ────────────────────────────
 const R5 = await page.evaluate(() => {
     const A = ((typeof window !== "undefined" && window.app) || app), T0 = A._ovTrend, K = A._keyLevels;

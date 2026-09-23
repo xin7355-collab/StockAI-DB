@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.5.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.5.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.5.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.5.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8625,8 +8625,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.5.2',
+    _APP_VERSION: 'V77.5.3',
     _CHANGELOG: [
+    { v: 'V77.5.3', d: ['📈 <b>報告頁的「進場價 / 追買價」換成這一檔自己的觸發價</b>(你說「照你推薦的直接執行」):§11 價格牆表、§21 接下來要看的事、自己畫的那張圖,三處以前還在用<b>回測 5 日線 / 月線承接</b>與<b>帶量過前高</b>(舊劇本、沒實測過)。現在跟總覽、決策台同一份:<b>漲過觸發價才算數、當天尾盤進場</b>,並附買到後的停損(同回測)。', '⛔ <b>這一檔沒有實測有效的招 → 直接寫「沒有進場價」</b>,不再退回均線或前高硬給一個價。持有中不講進場;中期是空頭時照舊只給 👀 觀察價(⛔ 不是買點),價位一個都沒改。'] },
     { v: 'V77.5.2', d: ['🧹 <b>總覽只留最強的那一套</b>:回測賺最多的就是「🧬 高位階+高波動 → 訊號日尾盤進場 → 三條出場先到先賣(硬停損 / 你設定的出場線 / 抱滿 20 天)」,總覽現在只講這一套。以前藏在「📂」裡的舊劇本(5 日線當防守、目標價與賺賠比、回後買上漲、朱老師四關卡、20MA 保衛價、島狀反轉逃命價、分批進場、明日劇本…)<b>全部拿掉</b> —— 它們跟現行出場規則打架,而且一個都沒實測過。', '🚨 <b>兩個會叫你做錯的地方修掉了</b>:① 以前只要<b>跌破 5 日線</b>,總覽就會亮「📉 建議減碼」(5 日線出場 49 個月只賺 193 萬,唐奇安 590 萬);② 「🔔 一鍵盯價」盯的是 5 日線 / 前高這些舊價位 → 現在有庫存只盯你的出場線與硬停損,空手只盯這一檔自己的觸發價。', '🛑 <b>硬停損改成跟回測、自動下單同一條</b>(你選的):「買進當天最低」與「成本 −5%」取較低的那個,進場後固定不動。以前 App 會跟著朱家泓的「發動K」往上移(沒回測過),常常比自動下單<b>更早</b>叫你賣。⚠️ 沒填買進日的話只能用成本 −5%,記得在庫存填買進日。', '📂 <b>摺疊區變短</b>:只剩 ⚠️ 要注意的事 / 📍 現在該做什麼(三條出場都列出來)/ 🧠 系統怎麼判的 / 🎯 今天有實測成績的訊號。空頭持股不再叫你「反彈先出一部分」(回測沒有這一步),改講「⛔ 別加碼、照三條出場走」。', '📊 <b>基本面全部展開</b>,X 光機拿掉<b>評分</b>、留下<b>事實</b>:刪掉投資屬性雷達、體質分、市場預期、「便宜 / 昂貴」標籤、數字的紅綠好壞色 —— 本益比便宜、比同業便宜、PEG 小於 1 實測都不能拿來選股。毛利率、EPS、營收、本益比、自己的本益比位階、殖利率、配息、填息紀錄全部照留。'] },
     { v: 'V77.5.1', d: ['🚪 <b>國巨那一題的答案:照「決策台」賣</b>。三條出場條件是<b>先到先賣</b>(硬停損 / 你設定的出場線 / 抱滿 20 個交易日),回測與自動下單都是這樣算的 —— 國巨已經抱滿 20 天,今天 13:00~13:28 尾盤賣。總覽之前寫「持股續抱・還剩 0 個交易日」是<b>總覽算錯</b>:它只看你設定的那一條,⛔ 沒看另外兩條。已修好,以後總覽跟決策台一定講同一件事。', '📝 <b>總覽文字修正</b>:決策台那一列以前寫「到了:硬停損 532.95」(其實價格沒到,是時間到)→ 改成「⏳ 時間到期 → 今天尾盤賣」,而且⛔ 不再給停損條件單(那會一直不觸發);報告海報把<b>硬停損</b>叫成「你的出場線」→ 兩條分開寫;盤中⛔ 不再寫「收盤」;頂端日期不再寫「昨日 盤中」;已經持有的人,價格尺⛔ 不再畫「買進 / 追買」;「重大事件迫近」會寫出<b>是哪一個、哪一天</b>。', '🗑️ <b>當沖頁刪掉實測沒用的</b>:掛單計畫(+「已達進場」閃爍)・VWAP ・開盤定調 ・開盤區間突破 ・相對大盤強弱 ・量能達標度 ・隔日沖 T+1 ・隔日沖判斷 ・打開漲停 ・族群補漲 ・當沖候選掃描(連同它的 09:15 推播)。⭐ 留下的都有依據:🚦 今天這檔怎麼做(排到最上面)→ 💰 成本關卡 → 📊 當沖實測 → 損益試算機。刪掉的每一項都寫在設定中心「🗑️ 已經刪掉的」,附打掉它的數字。', '📼 <b>5 分K 開始往回挖</b>(目標 2021 起,含 2022 空頭):原本說「只能回溯 81~120 天」<b>從來沒被量過</b> —— 那是我們自己要的窗口。名單照你選的「每月初、前 60 日平均成交值前 100」。挖完的部分當天就能拿來回測。'] },
     { v: 'V77.5.0', d: ['⚡ <b>你給的 22 份當沖教學全部測過了</b>(日K 全市場 5 年含 2022 + 5 分K 90 天 + 1 分K 抽驗)。結論很直接:<b>「今天做多 / 做空」的規則,扣完當沖成本沒有一條站得住</b> —— 開盤四法 −0.28%/趟、攻擊日 −0.29%、連續跌停打開搶反彈 −1.94%、昨天外資投信同買今天做多 −0.38%。', '⚖️ <b>「勝率 80%」的真相</b>:同一種進場只換停利停損,勝率可以從 19% 調到 74%,但<b>每一格扣完成本都是賠的</b> —— 停利設小、停損設大,贏的次數多,一次卻賠掉好幾次的錢。這張表放在當沖頁「成本關卡」下面的摺疊裡。', '🟥 <b>唯一站得住的一條</b>:手上的股票<b>收盤鎖漲停</b>,留到隔天比當天賣好(月線上彎時隔天開盤賣平均 +2.19%、賺的機率 70%)。收盤後當沖頁會自動跳出這一行;⛔ 它不是叫你去買漲停(鎖住的買不到)。', '⚠️ 「開高就空」看起來最賺(冷門股 +0.85%),但 1 分K 實測<b>晚 1 分鐘進場就沒了</b>,熱門股又有 13.6% 的機會收在漲停回補不了 → 不做。🧪 順手修好一直紅的總覽測試(內容早就搬進「📂 展開」,測試還在舊的地方找)。'] },
@@ -21773,7 +21774,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 ${B.volq.map(v => `≥${v.v.toFixed(1)}x ${v.e.toFixed(2)}`).join(' ・ ')} pp —— 幾乎是平的
                 (創新高當天本來就會放量,加這道門檻等於沒加)。<br>
                 ⏳ <b>抱越久差越多</b>:最長抱 ${B.maxd.map(m => `${m.d} 天 +${m.v.toFixed(2)}pp`).join(' ・ ')}。<br>
-                ⚠️ 限制:窗口約 4.4 年 ・倖存者偏誤(只有還活著的股票)・進場價 = 突破當天<b>尾盤</b>收盤價 ・
+                ⚠️ 限制:窗口約 4.4 年 ・倖存者偏誤(只有還活著的股票)・回測假設在突破當天<b>尾盤</b>收盤時買進 ・
                 ⛔ 這裡的「每趟幾 %」<b>不可以</b>跟上面那個「賺幾萬」互相比較(母體與單位都不同)。<br>
                 來源:<span class="font-mono">${B.src}</span>
             </div></details>`;
@@ -25603,17 +25604,19 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             //   ⚠️ 這一節在短中線視角是攤開的 → 報告頁第一眼有字數上限(`test_dupnum ⓠ3` ≤3,200),兩列都寫短
             if (K.slPx > 0) add(K.exitMode ? '防線(硬停損)' : '硬停損', K.slPx, '成本−5% / 買進當天低,取較低');
             if (K.exitRulePx > 0 && !(K.slPx > 0 && Math.abs(+K.exitRulePx - +K.slPx) < 0.01)) add(String(K.exitRuleLb || '出場線').replace('你設定的出場線', '出場線'), K.exitRulePx, '收盤跌破就出場');
-            // 📍 V77.1.1 進場價 / 追買價 —— 使用者:「關鍵價位裡面新增進場價位、追買價位,
-            //   是要讓使用者知道要等到這時候才能買」。
-            //   ⭐ 總覽那條尺(`_priceRulerHtml`)**早就有** —— 漏的是這張表與海報(陷阱 #37)。
-            //   ⛔ 零新計算:只讀 `_keyLevels`(唯一產生者是 `_ovKeyLevelsHtml`);
-            //      `exitMode` 時 buyPx/addPx 本來就是 null → 自動不顯示。
-            //   ⚠️ 空頭(`_bearGate`)時**價位一個都不動**,只改名稱與說明(同價格尺的既有做法)。
+            // 📈 V77.5.3 進場那一格改成**這一檔自己的招的觸發價**(使用者:「照你推薦的直接執行」)
+            //   🚨 以前是 `buyPx`(回測 5 日線/月線承接)與 `addPx`(帶量過前高)—— 舊朱家泓劇本,一個都沒實測過;
+            //      V77.5.2 總覽已經拿掉了,這張表漏接(陷阱 #37)。
+            //   ⛔ 零新計算:只讀 `_keyLevels.trigPx`(唯一產生者 `_ovKeyLevelsHtml`,條件同主卡:沒持有・⛔ 空頭・⛔ loose)。
+            //   ⚠️ 空頭時的 👀 觀察價照留(那是描述「漲到這才值得重看」,⛔ 不是買點,V76.1.0);**價位一個都不動**。
+            //   ⛔ 沒有觸發價就不給任何進場價(⛔ 不可退回 5 日線/前高)。
             const bearW = (() => { try { return !K.exitMode && !!this._bearGate(sym); } catch (_) { return false; } })();
-            if (K.buyPx > 0) add(bearW ? '轉強觀察價' : (K.bull ? '進場價' : '轉強價'), K.buyPx,
-                bearW ? '漲到這裡才值得重看,⛔ 不是叫你買(這檔主結論是空方)' : `${K.buyLb || '掛限價等它來'};⛔ 還沒到之前這檔沒有進場條件`);
-            if (K.addPx > 0) add(bearW ? '前一個波段高點' : '追買價(帶量過前高)', K.addPx,
-                bearW ? '⛔ 不是買點,只是上面那道最近的關' : '這是<b>前高</b>,⛔ 不是你可以直接掛的買價 —— 要帶量突破才算');
+            if (bearW) {
+                if (K.buyPx > 0) add('轉強觀察價', K.buyPx, '漲到這裡才值得重看,⛔ 不是叫你買(這檔主結論是空方)');
+                if (K.addPx > 0) add('前一個波段高點', K.addPx, '⛔ 不是買點,只是上面那道最近的關');
+            } else if (+K.trigPx > 0) {
+                add(`觸發價(這一檔的招:${this._escHtml(K.trigK || '—')})`, K.trigPx, '漲過才算數・當天尾盤進場;⛔ 還沒漲過之前沒有進場條件');
+            }
         }
         if (C.mcs && Number.isFinite(+C.mcs.callLine)) add('融資追繳壓力區(推估)', C.mcs.callLine, `近 ${C.mcs.win || 60} 日融資族群均價 × 追繳比例;⛔ 不是官方值${C.mcs.mktKnown ? '' : '(以上市六成推)'}`);
         lv.sort((a, b) => b.v - a.v);
@@ -25802,7 +25805,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const v = +px;
             if (!(v > 0) || !(C.pC > 0) || v <= C.pC) return '';
             const d = (v - C.pC) / C.pC * 100, lot = Math.round((v - C.pC) * 1000);
-            return `${bearW ? '👀' : '📈'} ${bearW ? bearTxt.n : bullTxt.n} <b class="font-mono">${f(v, 2)}</b> 元(距現價 <span class="text-gray-400">▲${this._rpPct(d).replace(/^\+/, '')}</span>、一張差 ${lot >= 0 ? '+' : ''}${lot.toLocaleString()} 元)—— ${bearW ? bearTxt.t : bullTxt.t}`;
+            const T = bearW ? bearTxt : bullTxt; if (!T) return '';
+            return `${bearW ? '👀' : '📈'} ${T.n} <b class="font-mono">${f(v, 2)}</b> 元(距現價 <span class="text-gray-400">▲${this._rpPct(d).replace(/^\+/, '')}</span>、一張差 ${lot >= 0 ? '+' : ''}${lot.toLocaleString()} 元)—— ${T.t}`;
         };
         // 📏 「快碰到月線」那句實測**只在真的快碰到時**才接上去(條件觸發),數字讀 `_NEAR_MA_EDGE`,⛔ 不寫死
         const nearNote = (() => {
@@ -25813,14 +25817,19 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const E = this._NEAR_MA_EDGE;
             return `<br><span class="text-gray-500">⛔ 快碰到月線(差 ${g.toFixed(1)}%)不等於「容易繼續飆」—— 實測 ${E.syms.toLocaleString()} 檔・${(E.n / 10000).toFixed(1)} 萬筆,之後 20 日比大盤 ${E.near20}pp,比「已經站上」的 ${E.above20 >= 0 ? '+' : ''}${E.above20}pp 還差。</span>`;
         })();
-        const upTurn = KL ? upLine(KL.buyPx,
-            { n: '站上這裡才算轉強', t: `${this._escHtml(KL.buyLb || '站上才輪到談進場')};⛔ 還沒到之前這檔沒有進場條件。` },
-            { n: '轉強觀察價', t: '漲到這裡才值得重看,⛔ 不是叫你買(這檔主結論是空方)。' }) : '';
-        const upAdd = KL ? upLine(KL.addPx,
-            { n: '帶量過這裡才算追買', t: '這是<b>前高</b>,⛔ 不是你可以直接掛的買價 —— 要等<b>帶量突破</b>那根出現;直接掛在這裡買 = 追高。' },
-            { n: '前一個波段高點', t: '⛔ 不是買點,只是上面那道最近的關。' }) : '';
+        // 📈 V77.5.3 空手・非空頭:改講**這一檔自己的招的觸發價**(`_keyLevels.trigPx`,決策台/主卡/價格尺同一份)。
+        //   🚨 以前是「站上 buyPx 才算轉強」「帶量過 addPx 才算追買」—— 那兩個價是 5 日線/月線/前高(舊劇本、沒實測過)。
+        //   ⚠️ 空頭時的 👀 觀察價照留(描述,⛔ 不是買點);持有中 ⛔ 不講進場(`KL.trigPx` 本來就是 null)。
+        const heldW = (() => { try { return (this._getInventory() || []).some(i => i && String(i.symbol) === String(sym) && +i.cost > 0); } catch (_) { return false; } })();
+        const upTurn = !KL ? '' : bearW ? upLine(KL.buyPx, null, { n: '轉強觀察價', t: '漲到這裡才值得重看,⛔ 不是叫你買(這檔主結論是空方)。' })
+            : upLine(KL.trigPx, { n: `漲過這裡才算這一檔的招(${this._escHtml(KL.trigK || '—')})觸發`,
+                t: `當天尾盤進場${+KL.trigStop > 0 ? `、買到後停損 <b class="font-mono">${f(KL.trigStop, 2)}</b>(同回測:當天最低與 −5% 取較低)` : ''};⛔ 還沒漲過之前這檔沒有進場條件。` }, null);
+        const upAdd = (KL && bearW) ? upLine(KL.addPx, null, { n: '前一個波段高點', t: '⛔ 不是買點,只是上面那道最近的關。' }) : '';
+        const noTrig = (!KL || bearW || heldW || KL.exitMode) ? ''
+            : !(+KL.trigPx > 0) ? '📈 這一檔目前沒有實測有效的招 → <b>沒有進場價</b>(要買,去決策台看今天有觸發價的那幾檔)。'
+            : `📈 這一檔的招(${this._escHtml(KL.trigK || '—')})觸發價 <b class="font-mono">${f(KL.trigPx, 2)}</b> 已經不在現價上方 —— 以決策台「今天可以買的」為準(⛔ 不追已經漲過頭的)。`;
         const watch = [
-            upTurn ? upTurn + nearNote : '',
+            upTurn ? upTurn + (bearW ? nearNote : '') : noTrig,
             upAdd,
             cur ? `🚪 你設的出場線 <b class="font-mono">${(+cur.v).toFixed(2)}</b> 元 —— 跌破就是翻空的事實(⛔ 不是均線)` : '🚪 出場線還沒算出來(總覽「行動指令中心」)',
             `🗓️ ${this._dW(nr)} 前的月營收 —— 現在年增 ${C.yoy != null ? `<b class="${this._rpDir(C.yoy)}">${this._rpPct(C.yoy)}</b>` : '沒有'},看它有沒有轉向`,
@@ -26348,15 +26357,17 @@ ${this._reportFacts(sym)}
         }
         if (K && String(K.sym) === String(sym) && +K.exitRulePx > 0 && !(+K.slPx > 0 && Math.abs(+K.exitRulePx - +K.slPx) < 0.01))
             lv.push({ n: '你設定的出場線', sub: String(K.exitRuleLb || '').replace(/^你設定的出場線[::]?/, '') || '你自己選的那一條', v: +K.exitRulePx, r: rel(K.exitRulePx), t: 'rule' });
-        // 📍 V77.1.1 進場價 / 追買價(與 §11 價格牆表同一組字)—— ⛔ 只讀 `_keyLevels`,零新計算。
-        //   ⚠️ 空頭時**價位不動**,只改名稱 → 才不會在空頭股的圖上冒出「進場價」三個字。
+        // 📈 V77.5.3 進場那一格 = 這一檔自己的招的觸發價(與 §11 價格牆表同一組字)—— ⛔ 只讀 `_keyLevels.trigPx`,零新計算。
+        //   🚨 以前畫 buyPx/addPx(5 日線/月線/前高,舊劇本);⚠️ 空頭時的 👀 觀察價照留,**價位不動**只改名稱。
         const heldW = (() => { try { return (this._getInventory() || []).some(i => i && String(i.symbol) === String(sym) && +i.cost > 0); } catch (_) { return false; } })();
-        if (K && String(K.sym) === String(sym) && !heldW) {   // 👜 V77.5.1 已持有 ⛔ 不畫進場價/追買價(同價格位置圖)
+        if (K && String(K.sym) === String(sym) && !heldW) {   // 👜 V77.5.1 已持有 ⛔ 不畫進場價(同價格位置圖)
             const bearW = (() => { try { return !K.exitMode && !!this._bearGate(sym); } catch (_) { return false; } })();
-            if (+K.buyPx > 0) lv.push({ n: bearW ? '轉強觀察價' : (K.bull ? '進場價' : '轉強價'),
-                sub: bearW ? '⛔ 不是買點' : (K.buyLb || '掛限價等它來'), v: +K.buyPx, r: rel(K.buyPx), t: 'buy' });
-            if (+K.addPx > 0) lv.push({ n: bearW ? '前一個波段高點' : '追買價',
-                sub: bearW ? '⛔ 不是買點' : '前高・帶量突破才算', v: +K.addPx, r: rel(K.addPx), t: 'add' });
+            if (bearW) {
+                if (+K.buyPx > 0) lv.push({ n: '轉強觀察價', sub: '⛔ 不是買點', v: +K.buyPx, r: rel(K.buyPx), t: 'buy' });
+                if (+K.addPx > 0) lv.push({ n: '前一個波段高點', sub: '⛔ 不是買點', v: +K.addPx, r: rel(K.addPx), t: 'add' });
+            } else if (+K.trigPx > 0) {
+                lv.push({ n: '觸發價', sub: `這一檔的招:${K.trigK || '—'}・漲過才算`, v: +K.trigPx, r: rel(K.trigPx), t: 'buy' });
+            }
         }
         if (C.mcs && Number.isFinite(+C.mcs.callLine)) lv.push({ n: '融資追繳壓力區', sub: '推估', v: +C.mcs.callLine, r: rel(C.mcs.callLine), t: 'mc' });
         lv.push({ n: '現價', v: +C.pC, r: 0, t: 'now' });                       // ⭐ 把現價插進去 —— 一眼看得出哪些在上面
@@ -36610,10 +36621,8 @@ ${this._reportFacts(sym)}
         //   空頭時的 👀 觀察價照留(那是描述「漲到這才值得重看」,⛔ 不是買點,V76.1.0)。
         if (!ex && !heldR && bear && K.buyPx > 0) marks.push({ v: +K.buyPx, g: '👀', n: '轉強觀察', cls: 'text-gray-300', lb: '漲到這才值得重看,⛔ 不是買點' });
         if (!ex && !heldR && bear && K.addPx > 0) marks.push({ v: +K.addPx, g: '👀', n: '前高', cls: 'text-gray-300', lb: '前一個波段高點,⛔ 不是買點' });
-        if (!ex && !heldR && !bear) {
-            const _pb = (() => { try { return this._pbEdgeOf(sym); } catch (_) { return null; } })();
-            if (_pb && !_pb.loose && +_pb.trig > 0) marks.push({ v: +_pb.trig, g: '📈', n: '觸發價', cls: 'text-red-300', lb: `這一檔的招(${_pb.k || '—'}):漲過才算數,尾盤進場` });
-        }
+        // 📈 V77.5.3 改讀 `_keyLevels.trigPx`(⛔ 不再自己呼叫 _pbEdgeOf —— 報告頁/海報讀的是同一份)
+        if (!ex && !heldR && !bear && +K.trigPx > 0) marks.push({ v: +K.trigPx, g: '📈', n: '觸發價', cls: 'text-red-300', lb: `這一檔的招(${K.trigK || '—'}):漲過才算數,尾盤進場` });
         // 🎯 估值對照價(⛔ 不是目標價、⛔ 不是外資喊的)—— 只讀 _instTargetStash,⛔ 這裡不算 EPS×PE
         const IT = this._instTargetStash;
         const val = (IT && String(IT.sym) === String(sym) && +IT.mid > 0) ? +IT.mid : null;
@@ -37077,7 +37086,7 @@ ${this._reportFacts(sym)}
             if (exitMode) {
                 // 📏 V76.0.7 存給第一眼的價格尺讀(出場狀態:⛔ 沒有買點,只有防線與現價)
                 // 🚪 V77.4.9 `slPx` 是**硬停損**(成本 −5% / 發動K低);你設定的出場線另存 `exitRulePx`(兩個是不同的線,⛔ 不可再宣稱它們一樣)
-                this._keyLevels = { sym: this.currentSymbolId, C, exitMode: true, buyPx: null, addPx: null, slPx: slFMain, slLb: '硬停損(成本−5% / 買進當天低,取較低)', exitRulePx: _rulePx, exitRuleLb: _ruleLb, pocLo, pocHi, pocRel, pocFlat: this._pocFlat, bull, stuck,
+                this._keyLevels = { sym: this.currentSymbolId, C, exitMode: true, buyPx: null, addPx: null, trigPx: null, trigK: '', trigStop: null, slPx: slFMain, slLb: '硬停損(成本−5% / 買進當天低,取較低)', exitRulePx: _rulePx, exitRuleLb: _ruleLb, pocLo, pocHi, pocRel, pocFlat: this._pocFlat, bull, stuck,
                     exitNote: `買進/加碼價位已收起 —— 這檔是**出場管理狀態**,先照上面的減碼/防線執行;${slFMain != null ? `等站回 ${nf(slFMain)} 解除警報後買點才會回來。` : '等解除警報後買點才會回來。'}` };
                 // 🔗 V76.1.2 這張卡已併進「📏 價格位置圖」(使用者:「排版很像…以價格位置圖為主」)。
                 //   ⛔ 這支**不可以整個刪掉** —— 它是 `_keyLevels` 的唯一產生者,而價格尺只負責畫。
@@ -37107,7 +37116,20 @@ ${this._reportFacts(sym)}
                 } catch (_) {}
             }
             // 📏 V76.0.7 存給第一眼的價格尺讀(⛔ 只是把上面算好的值存起來,價格尺一個價位都不自己算)
-            this._keyLevels = { sym: this.currentSymbolId, C, exitMode: false, buyPx, buyLb, addPx, slPx, slLb, exitRulePx: _rulePx, exitRuleLb: _ruleLb, pocLo, pocHi, pocRel, pocFlat: this._pocFlat, bull, stuck, exitNote: '' };
+            // 📈 V77.5.3 這一檔自己的招的觸發價(`playbook_edge.json`,決策台/主卡/價格尺同一份)——
+            //   使用者:「照你推薦的直接執行」→ 報告頁的「進場價 / 追買價」改讀這一份(舊的 5 日線/月線/前高沒實測過)。
+            //   ⛔ 條件跟主卡、價格尺一模一樣:沒持有 + ⛔ 空頭不給 + ⛔ loose 不給。
+            //   ⭐ 只算一次存起來,價格尺 / §11 價格牆 / §21 / 海報全部讀這裡(⛔ 各自再呼叫 _pbEdgeOf = 第二份真相)。
+            let trigPx = null, trigK = '', trigStop = null;
+            if (!(cost > 0)) {
+                try {
+                    const _pb = this._pbEdgeOf(this.currentSymbolId);
+                    if (_pb && !_pb.loose && +_pb.trig > 0 && !this._bearGate(this.currentSymbolId)) {
+                        trigPx = +_pb.trig; trigK = String(_pb.k || ''); trigStop = +_pb.stop > 0 ? +_pb.stop : null;
+                    }
+                } catch (_) {}
+            }
+            this._keyLevels = { sym: this.currentSymbolId, C, exitMode: false, buyPx, buyLb, addPx, trigPx, trigK, trigStop, slPx, slLb, exitRulePx: _rulePx, exitRuleLb: _ruleLb, pocLo, pocHi, pocRel, pocFlat: this._pocFlat, bull, stuck, exitNote: '' };
             // 🔗 V76.1.2 併進「📏 價格位置圖」—— 同上,只算不顯。
             return '';
         } catch (_) { return ''; }

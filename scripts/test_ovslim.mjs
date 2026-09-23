@@ -35,6 +35,13 @@ ok('⓪ 緊急列⛔ 不再推「高檔爆量收黑 → 明天不漲快跑」與
 const dec = fnSrc('    _ovDecide(');
 ok('⓪b 主卡⛔ 不再列「另一條出場線也破了」', dec.length > 3000 && !/另一條出場線也破了/.test(dec), '');
 ok('⓪c 主卡⛔ 不再叫你「反彈先出一半」(回測沒有分批出場)', !/先出一半/.test(dec), '');
+// 📈 V77.5.3 觸發價只算一次(`_ovKeyLevelsHtml` 存進 `_keyLevels.trigPx`),價格尺 ⛔ 不可自己再呼叫 _pbEdgeOf(第二份真相)
+const ruler = fnSrc('    _priceRulerHtml(');
+const klv = fnSrc('    _ovKeyLevelsHtml(');
+ok('⓪d 價格尺的觸發價讀 _keyLevels.trigPx(⛔ 不可自己呼叫 _pbEdgeOf)',
+   ruler.length > 2000 && /K\.trigPx/.test(ruler) && !/_pbEdgeOf\(/.test(ruler), ruler.length);
+ok('⓪e _keyLevels 的觸發價跟主卡同一個條件:⛔ 空頭不給、⛔ loose 不給、持有不給',
+   /trigPx = \+_pb\.trig/.test(klv) && /!_pb\.loose/.test(klv) && /!this\._bearGate\(/.test(klv) && /if \(!\(cost > 0\)\)/.test(klv), '');
 
 const B = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
 const run = async (sym, inv) => {
