@@ -150,6 +150,8 @@ export function scanStock(rows, mkt, emit, ctrl, exd, mktGap) {
         // ── D10 大盤開低那一天,買熱門股(日均成交 ≥5 億)開盤 → 收盤(⭐ 以「天」為樣本,見 main)
         const ig = mktGap && mktGap.get(D[i]);
         if (ig != null && ig <= -1 && tv20 >= 5e8 && !openDnLimit) emit('D10', { d: D[i], ig, net: rawL - COST });
+        // ── D11 盤前分數當大盤濾網(PREMKT_SCORES 有給才跑;以「天」為樣本,見 main)
+        if (tv20 >= 1e8 && !openDnLimit && !openUpLimit) emit('D11', { d: D[i], net: rawL - COST });
         const tvB = tv20 < 3e7 ? '日均成交<3千萬' : tv20 < 1e8 ? '3千萬~1億' : tv20 < 5e8 ? '1~5億' : '≥5億';
         // 🛑 停損版(⛔ 抱到收盤是理論值,真的當沖一定設停損):價格碰到停損價就出場(用當日高低判斷)
         const stopEv = (key, side, stp) => {
@@ -414,6 +416,32 @@ async function main() {
         if (th === -2) console.log('     ' + days.map(x => `${x.d.slice(2)} ${x.m >= 0 ? '+' : ''}${x.m.toFixed(1)}`).join(' ・'));
     }
     B.delete('D10');
+    // D11 盤前分數(App 顯示的 0~100 分)× 熱門股(日均≥1億)開盤買收盤賣 / 開盤空收盤補,以「天」為樣本
+    const PS = process.env.PREMKT_SCORES;
+    const D11 = {};
+    if (PS && fs.existsSync(PS)) {
+        const sc = new Map();
+        for (const ln of fs.readFileSync(PS, 'utf8').split('\n')) { const m = ln.indexOf('SCORES|'); if (m < 0) continue;
+            for (const kv of ln.slice(m + 7).trim().split(',')) { const [d, v] = kv.split(':'); if (d && v != null) sc.set(d, 50 + (+v) * 5); } }
+        const byDay = new Map();
+        for (const e of (B.get('D11') || [])) { const a = byDay.get(e.d) || []; a.push(e.net); byDay.set(e.d, a); }
+        const bk = x => x >= 65 ? '偏多 ≥65' : x >= 55 ? '55~65' : x > 45 ? '中性 45~55' : x > 35 ? '35~45' : '偏空 ≤35';
+        const G = {};
+        for (const [d, a] of byDay) { const v = sc.get(d); if (v == null) continue; const m = mean(a);
+            (G[bk(v)] = G[bk(v)] || []).push({ d, L: m, S: -m - 2 * COST }); (G['(對照)所有有分數的日子'] = G['(對照)所有有分數的日子'] || []).push({ d, L: m, S: -m - 2 * COST }); }
+        console.log(`\n═══ D11 🌅 盤前分數 × 熱門股(日均≥1億)當沖,每天先平均再統計(分數 ${sc.size} 天)═══`);
+        for (const k of ['偏多 ≥65', '55~65', '中性 45~55', '35~45', '偏空 ≤35', '(對照)所有有分數的日子']) {
+            const a = G[k] || []; if (!a.length) continue;
+            const f = side => { const v = a.map(x => x[side]); const srt = [...v].sort((x, y) => y - x);
+                return { m: +mean(v).toFixed(3), win: +(v.filter(x => x > 0).length / v.length * 100).toFixed(1),
+                    h: [mean(a.filter(x => x.d < split).map(x => x[side])), mean(a.filter(x => x.d >= split).map(x => x[side]))].map(x => +x.toFixed(3)),
+                    drop5: +mean(srt.slice(5)).toFixed(3) }; };
+            D11[k] = { days: a.length, long: f('L'), short: f('S') };
+            console.log(`  ${k.padEnd(14)} ${String(a.length).padStart(4)} 天 ・做多 ${D11[k].long.m}%(賺的天 ${D11[k].long.win}%・前後半 ${D11[k].long.h.join('/')}・拿掉最好5天 ${D11[k].long.drop5})`
+                + ` ・做空 ${D11[k].short.m}%(賺的天 ${D11[k].short.win}%・前後半 ${D11[k].short.h.join('/')}・拿掉最好5天 ${D11[k].short.drop5})`);
+        }
+    } else console.log('\n⏭️ D11 盤前分數:沒給 PREMKT_SCORES(premkt_probe 的 log)→ 略過');
+    B.delete('D11');
     for (const [k, evs] of [...B.entries()].sort()) {
         if (evs.length < 30) { console.log(`  ⏳ ${k}:n=${evs.length} 太少,不下結論`); continue; }
         const r = judge(k, evs, ctrl, split); res.push(r);
@@ -422,6 +450,6 @@ async function main() {
             + `\n      ${r.nDays} 個交易日 ・拿掉最好的 10 天 ${r.dropTop}% ・中位 ${r.med}% ・最差10% ${r.p10}% ・最差 ${r.worst}%${r.sqzPct ? ` ・收在漲停(回補不了)${r.sqzPct}% → 每筆多扣 7% 後 ${r.netSqz}%` : ''}`
             + `\n      毛利 ${r.gross}% ・回本要手續費 ≤${isFinite(r.beDisc) ? (r.beDisc * 10).toFixed(1) + ' 折' : '—'}${isFinite(r.noSeason) ? ` ・拿掉 6~8 月 ${r.noSeason}%` : ''}`);
     }
-    if (OUT) fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), used, split, window: [dates[0], dates[dates.length - 1]], D1, D6, D10, events: res }, null, 1));
+    if (OUT) fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), used, split, window: [dates[0], dates[dates.length - 1]], D1, D6, D10, D11, events: res }, null, 1));
 }
 if (import.meta.url === `file://${process.argv[1]}`) main();

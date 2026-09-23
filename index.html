@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.4.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.5.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.4.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.5.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8654,8 +8654,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.4.9',
+    _APP_VERSION: 'V77.5.0',
     _CHANGELOG: [
+    { v: 'V77.5.0', d: ['⚡ <b>你給的 22 份當沖教學全部測過了</b>(日K 全市場 5 年含 2022 + 5 分K 90 天 + 1 分K 抽驗)。結論很直接:<b>「今天做多 / 做空」的規則,扣完當沖成本沒有一條站得住</b> —— 開盤四法 −0.28%/趟、攻擊日 −0.29%、連續跌停打開搶反彈 −1.94%、昨天外資投信同買今天做多 −0.38%。', '⚖️ <b>「勝率 80%」的真相</b>:同一種進場只換停利停損,勝率可以從 19% 調到 74%,但<b>每一格扣完成本都是賠的</b> —— 停利設小、停損設大,贏的次數多,一次卻賠掉好幾次的錢。這張表放在當沖頁「成本關卡」下面的摺疊裡。', '🟥 <b>唯一站得住的一條</b>:手上的股票<b>收盤鎖漲停</b>,留到隔天比當天賣好(月線上彎時隔天開盤賣平均 +2.19%、賺的機率 70%)。收盤後當沖頁會自動跳出這一行;⛔ 它不是叫你去買漲停(鎖住的買不到)。', '⚠️ 「開高就空」看起來最賺(冷門股 +0.85%),但 1 分K 實測<b>晚 1 分鐘進場就沒了</b>,熱門股又有 13.6% 的機會收在漲停回補不了 → 不做。🧪 順手修好一直紅的總覽測試(內容早就搬進「📂 展開」,測試還在舊的地方找)。'] },
     { v: 'V77.4.9', d: ['🚪 <b>「距離要賣還剩多遠、今天會不會碰到」現在決策台看得到,而且可以一鍵複製智慧單</b>(你說「當天價格會到就要顯示出來,讓我直接掛智慧單賣出」)。手上每一檔都幫你算<b>三條出場線</b>(硬停損 / 你設定的唐奇安 / 抱滿 20 個交易日 —— 跟回測與自動下單同一把尺,三條先到先賣),看<b>最近那一條</b>離現價還有幾倍「今天的正常振幅」:<b>不到 1 倍 = 🚨 今天可能碰到</b>、1~2 倍 = ⚠️ 這兩天要盯。每一檔直接給<b>智慧單觸發價</b>(已對台股跳動單位,無條件捨去 —— 真的跌破才會觸發)× 你的張數,按 📋 複製就能貼到券商 App,或按 🔔 設到價提醒。', '🐛 <b>你截圖裡的「守住 511」跟「停損 533」是兩條不同的線</b> —— 511 是唐奇安 20 日低點(你設定的出場線)、533 是硬停損(成本 −5%),而旁邊那句說它們一致的字是寫死的,其實不一致。現在主卡講的是<b>三條裡最近的那一條</b>(先到的是 533),並把另一條也寫出來;價格位置圖兩條都畫、名字分開。', '🏆 <b>「有沒有比今天可以買的(強勢高波動)更厲害的?」—— 沒有</b>。這次用正確的基準重驗了 10 種候選(營收加速 / 高週轉 / 價值 / 成交額前 50 …),在 17 條起點不同的回測路徑下沒有一個贏過「隨機少挑幾檔」的安慰劑。決策台清單底部多一行寫出來。', '🚪 <b>「賣出有沒有比唐奇安 / ATR 更厲害的?」—— 也沒有</b>:唐奇安 30 日 / 55 日 / 55 日抱 40 天 / 完全不用出場線,在 17 條路徑下都分不出高下(總獲利中位 502~574 萬,差距在運氣範圍內)。⭐ <b>但 ATR 追蹤的中途最多賠,17 條路徑全部比唐奇安小</b>(中位 −13.9% vs −19.9%),而總獲利差不多 → 怕回撤可以到 ⚙️ 設定中心改選 ATR。預設沒換(判準是「賺最多」,而兩條分不出來)。', '🚨 <b>順手抓到回測本身的一個 bug</b>:回測腳本認不得 App 的設定名字「don」,好幾輪「現行配置」其實<b>沒有套唐奇安出場</b>。已修好並重跑,那幾組結論都沒變,但數字已更正。'] },
     { v: 'V77.4.8', d: ['📊 <b>「明天會漲還是會跌」現在總覽第一眼就看得到</b>(你說「個股下一個交易日漲跌機率請設計在明顯的地方」)。🚨 <b>查下去才發現:上一版那張表答不出你問的問題</b> —— 它的「1 日」其實是「<b>明天開盤買、後天收盤賣</b>」(跨兩天),而你要的是「<b>明天是紅K還是黑K</b>」。', '⭐ <b>所以整張表的買進時點統一改成「今天尾盤買」</b>(這本來就是本站全部回測共用的進場點:決策台 / 自動下單 / 49 個月組合回測都是尾盤買)→ 現在「抱 1 天」就<b>真的是明天收盤</b>,而且跟其他回測<b>同一把尺</b>。全市場 2,136 檔 ・191 萬個(股·日)重跑。', '🚨🚨 <b>但「明天」這個尺度必須先講三件事,不然會看錯</b>:① <b>漲跌幾乎對半</b> —— 全市場明天 漲 <b>33.6%</b> vs 跌 <b>36.5%</b>,只差 2.9pp ② <b>三成的日子是「平」</b>(<b>29.9%</b>)—— 動了也是扣完來回成本 0.44% 等於白做 ③ 一天之內的超額平均是 <b>−0.09%</b> → <b>這個尺度上本站量不到優勢</b>,所以那一段<b>只描述、⛔ 不給買賣指令</b>。要做還是照「🚪 出場防守價」那一條走。', '📍 看得到的地方:① <b>總覽第一眼</b>那一行現在先講「明天 漲/平/跌」再講 20 天 ② <b>個股頁「📄 報告」→「📊 這種狀態後來漲還是跌?」</b>第一列就是「明天(抱 1 天)」,而且上面多一塊把那三件事寫出來 ③ 到價監控 ④ 產業作戰室「📊 機率表」每一格也加了明天。', '🐛 順手修兩個「數字會過期」的地方:① 那句「漲的機率最高那一格 63.1%、贏大盤只有 36.2%」以前是<b>寫死</b>的,一換口徑就對不上 → 改成<b>從表裡現讀</b>(重跑探針會自動跟著變)② 有一條測試釘著「2330 沒有上方套牢層」,而台積電漲上去之後自然又有了 → 那條<b>從此永遠紅</b>,已改成釘真正的用意(⛔ 不可憑空生出假的套牢帶)。'] },
         { v: 'V77.4.7', d: ['📊 <b>「漲 / 平 / 跌」機率做好了</b>(你說「機率我還是想要,幫我做」)。把全市場 <b>2,136 檔 ・192 萬個(股·日)</b>(2022-01~2026-09,<b>含 2022 那次空頭</b>)按 <b>一年位階 × 振幅高低 × 有沒有創新高 × 大盤在不在年線上</b> 切成 <b>72 格</b>,數「同一格的日子後來 1/3/5/10/20 天漲多少」。四個地方都看得到:① 個股頁「📄 報告」完整表 ② 總覽<b>第一眼一行</b> ③ 到價監控 ④ 產業作戰室「實測總表 → 📊 機率表」。每一格都附 <b>樣本數 ・中位 ・最差10%~最好10% ・獲利因子 ・中途最多賠 / 最多賺</b>。', '🚨🚨 <b>最重要的一件事:「漲的機率」跟「賺不賺得到」是兩件事</b>。漲的機率最高那一格(谷底・很會跳・<b>大盤在年線之下</b>)有 <b>63.1%</b> 看起來超強,但它<b>贏大盤的機率只有 36.2%</b>、超額 <b>−1.78%</b> —— 那 63% 幾乎全是<b>大盤自己在反彈</b>,那一檔本身還輸大盤。所以每一列都同時印「🆚 贏大盤」,⛔ 只看左邊三個數字會看錯。', '🚦 <b>而且一定要先看基準</b>:隨便挑一檔台股、隔天開盤買、20 天後賣 —— 漲 <b>44.7%</b> ・平 5.8% ・跌 <b>49.4%</b>,🆚 贏大盤只有 <b>37.0%</b>。⭐ 扣完來回成本「跌」本來就比「漲」多、六成以上的股票跑輸大盤 —— 所以看到「漲 44%」<b>不是這一檔特別差,那就是常態</b>。', '⛔ 三件事講清楚:①「平」= <b>扣掉來回成本 0.44% 之後等於沒賺沒賠</b>(所以「漲」的意思是<b>真的有賺</b>,不是「收紅」)② 進場算<b>隔天開盤</b>(收盤才看得到今天的狀態,當天買不到),訊號日鎖漲停的剔除 ③ 它<b>不含出場規則</b>(假設抱滿 N 天)—— 真的做要照「🚪 出場防守價」那一條走。🪞 還做了<b>校準</b>:用前半段算的機率去驗後半段,20 天那一格平均差 6.6pp(偏樂觀 —— 前兩年比較好賺)。⚠️ 一格少於 200 筆一律顯示「<b>樣本不足</b>」,⛔ 不補值也不拿隔壁格的數字充數。'] },
@@ -20791,6 +20792,54 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <div class="text-[9px] text-gray-500 mt-0.5 font-mono">跳一檔 ${g.tick} 元 = ${g.tickPct.toFixed(2)}% ・ 來回成本 ${g.cost.toFixed(2)}%(手續費 ${(this._feeDisc() * 10).toFixed(1)} 折 + 當沖稅減半)</div>
             ${g.lvl === 'bad' ? '<div class="text-[9px] text-gray-400 mt-0.5 leading-snug">💡 想做這種價位,改用<b>股票期貨</b>成本低很多;或直接換一檔跳一檔就回本的。</div>' : ''}
         </div>`;
+    },
+    // ⚡ V77.5.0 當沖實測(使用者:「加強當沖勝率…附件 22 份逐字稿,不要漏掉了」)——
+    //   ⛔ 數字只准從這裡讀(重跑探針就改這一份),⛔ 顯示端不寫死、不現算。
+    //   ⭐ 兩件事一定要講:① 勝率可以用「停利小、停損大」任意調高,期望值才是真的(F6)
+    //   ② 22 份裡日K/分K量得到的全部測過,**沒有一條「今天做多/做空」的當沖訊號扣完成本站得住** ——
+    //      唯一站得住的是「手上的股票收盤鎖漲停 → 留到隔天」(給**已經有**的人,⛔ 不是叫人去買漲停)。
+    _DT_EDGE: {"src":"scripts/dt_daily_probe.mjs + scripts/dt_kbar5_probe.mjs + intraday_probe.py(V77.5.0)","win":"2021-09~2026-09","syms":2334,"k5days":90,"oc":{"gross":-0.097,"win":36.5},"ocShortWin":45.8,"on":{"gross":0.157},"f6":[[0.5,0.5,36.4,-0.382],[0.5,1,54.7,-0.399],[0.5,2,69.3,-0.363],[0.5,3,73.7,-0.354],[1,0.5,28.5,-0.319],[1,1,43.5,-0.339],[1,2,56.4,-0.329],[1,3,61.3,-0.317],[2,0.5,21.4,-0.262],[2,1,33.4,-0.284],[2,2,44.7,-0.284],[2,3,49,-0.293],[3,0.5,18.7,-0.239],[3,1,29.3,-0.263],[3,2,39.7,-0.271],[3,3,44,-0.276]],"lu":{"up":{"n":23323,"open":[2.188,69.7],"close":[1.595,56.5],"p10":-2.1},"dn":{"n":10800,"open":[0.826,54.4],"close":[1.044,53],"p10":-4.41},"base":32.2},"gap":{"ill":0.849,"liq":0.14,"liqSqz":13.64,"auc":0.16,"m1":0.02,"m5":-0.11},"f3":{"hi":74.4,"lo":68.2},"nope":{"four":-0.277,"smash":-0.289,"ld":-1.944,"dual":-0.382,"bull":-0.522,"bullIdx":0.283}},
+    /** 📊 當沖實測摺疊(接在成本關卡下面;⛔ 不是方向訊號)+ 🟥 收盤鎖漲停那一行(只在收盤後、真的鎖住才出現) */
+    _dtEdgeHtml(sym) {
+        const E = this._DT_EDGE; if (!E) return '';
+        const f = (x, d = 2) => `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(d)}%`;
+        // 🟥 條件觸發:收盤後、最後一根已收完的 K 鎖在漲停(⛔ 盤中不講 —— 還沒收盤不知道會不會打開)
+        let lu = '';
+        try {
+            // ⚠️ 只在「沒開盤」時才判斷 → 這時最後一根就是已收完的那一根(⛔ 不可用 _closedTail:它會把今天收完的那根也砍掉)
+            const d = this.rawDailyData || [];
+            const n = d.length;
+            if (!this.isMarketOpen() && n >= 26 && String(this.currentSymbolId) === String(sym)) {
+                const L = d[n - 1], P = d[n - 2];
+                if (+L.close >= +P.close * 1.09 && +L.close >= +L.high - 1e-9) {
+                    let ma = 0, ma5 = 0; for (let j = n - 20; j < n; j++) ma += +d[j].close; for (let j = n - 25; j < n - 5; j++) ma5 += +d[j].close;
+                    const up = ma > ma5, g = up ? E.lu.up : E.lu.dn;
+                    const best = g.open[0] >= g.close[0] ? ['隔天開盤賣', g.open] : ['抱到隔天收盤', g.close];
+                    lu = `<div data-dtlu="1" class="bg-[#0d1117] border-l-4 border-red-500 pl-2.5 py-1.5 rounded-r mt-1.5">
+                        <div class="text-[11px] text-red-300 font-bold leading-relaxed">🟥 今天收盤鎖漲停 —— 給<b>已經有</b>這檔的人看</div>
+                        <div class="text-[10px] text-gray-300 leading-relaxed mt-0.5">歷史上同樣鎖漲停、月線${up ? '上彎' : '下彎'}(${g.n.toLocaleString()} 次):隔天開盤賣平均 <b>${f(g.open[0])}</b>(賺的機率 ${g.open[1]}%)・抱到隔天收盤 ${f(g.close[0])}(${g.close[1]}%)。已扣 0.44% 成本;隨便挑一天收盤買、隔天開盤賣只有 ${E.lu.base}% 會賺。</div>
+                        <div class="text-[10px] text-gray-500 leading-snug mt-0.5">→ 歷史上比較好的是<b>${best[0]}</b>。⛔ 這<b>不是買進訊號</b>:鎖住的漲停現在去掛多半買不到;最差的一成會賠 ${Math.abs(g.p10).toFixed(1)}% 以上。</div>
+                    </div>`;
+                }
+            }
+        } catch (_) {}
+        const T = [0.5, 1, 2, 3];
+        const cell = (t, s) => { const r = E.f6.find(x => x[0] === t && x[1] === s); return r ? `<td style="padding:2px 4px;text-align:right" class="font-mono"><span class="text-gray-200">${r[2]}%</span><br><span class="text-gray-500">${f(r[3])}</span></td>` : '<td>—</td>'; };
+        const tbl = `<table style="width:100%;border-collapse:collapse" class="text-[10px] mt-1">
+            <tr class="text-gray-500"><td style="padding:2px 4px">停利＼停損</td>${T.map(s => `<td style="padding:2px 4px;text-align:right">${s}%</td>`).join('')}</tr>
+            ${T.map(t => `<tr style="border-top:1px solid #21262d"><td style="padding:2px 4px" class="text-gray-400">${t}%</td>${T.map(s => cell(t, s)).join('')}</tr>`).join('')}</table>`;
+        const N = E.nope;
+        return lu + `<details data-dtedge="1" class="mt-1.5"><summary class="text-[10px] text-gray-400 cursor-pointer">📊 當沖實測:勝率可以調高,<b>扣完成本的期望值</b>才是真的(22 份當沖教學逐條測過)<span class="text-gray-600"> 展開 ▾</span></summary>
+            <div class="bg-[#0d1117] border-l-2 border-[#30363d] pl-2 py-1.5 rounded-r mt-1 text-[10px] text-gray-300 leading-relaxed space-y-1.5">
+                <div>⚖️ <b>同一種進場(第一根 5 分K 收盤買),只換停利停損</b> —— 每一格上面是勝率、下面是扣 0.25% 後每趟平均:</div>
+                ${tbl}
+                <div class="text-gray-400">勝率從 ${Math.min(...E.f6.map(x => x[2]))}% 調到 ${Math.max(...E.f6.map(x => x[2]))}%,${E.f6.every(x => x[3] < 0) ? '<b>每一格的期望值都是負的</b>' : `期望值只在 ${E.f6.filter(x => x[3] > 0).length} 格是正的`}。「勝率 80%」的教學多半是停利設很小、停損設很大 —— 賺的次數多,但一次賠掉好幾次的錢。</div>
+                <div>🌗 <b>當沖做多本來就逆風</b>:全市場 ${E.syms.toLocaleString()} 檔、${E.win},每天開盤買收盤賣平均 ${f(E.oc.gross, 3)}(還沒扣成本),扣完 0.25% 只有 ${E.oc.win}% 的日子會賺;同一段「收盤買、隔天開盤賣」平均 ${f(E.on.gross, 3)}。</div>
+                <div>⛔ <b>測過、扣完成本站不住的</b>(每趟平均,已扣成本):開盤四法照做 ${f(N.four)}(不分類一律照第一根做也差不多)・攻擊日 ${f(N.smash)}・連續跌停打開搶反彈 ${f(N.ld)}・昨天外資投信同買今天做多 ${f(N.dual)}・盤前分數「偏多」那天做多熱門股 ${f(N.bull)}(⚠️ 那天加權指數開→收是 ${f(N.bullIdx, 2)},<b>指數的結論不能套到個股</b>)。</div>
+                <div>⚠️ <b>「開高就空」數字漂亮但做不到</b>:冷門股平均 ${f(E.gap.ill)},但幾乎全部來自<b>開盤那一筆撮合價</b> —— 1 分 K 實測晚 1 分鐘進場只剩 ${f(E.gap.m1)}、晚 5 分鐘 ${f(E.gap.m5)};熱門股 ${f(E.gap.liq)},可是 ${E.gap.liqSqz}% 的時候收在漲停(空單回補不了)。</div>
+                <div>⏰ 描述(⛔ 不是訊號):當天最高點 ${E.f3.hi}%、最低點 ${E.f3.lo}% 出現在 10:30 以前。</div>
+                <div class="text-gray-500">⚠️ 分K 那幾項只有 ${E.k5days} 個交易日、而且是「當天成交量前 80 檔」(天生偏熱門)→ 只能當方向參考。日K 那幾項含 2022 空頭。</div>
+            </div></details>`;
     },
     // 📅 V73.7.3 「今天這種日子顛不顛」—— ⭐⭐ 只講**波動**,⛔ 絕不講方向。
     //
@@ -54165,6 +54214,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 <div class="text-lg font-black ${vMap[vC].split(' ')[0]} leading-tight mt-1.5">${vTone}</div>
                 ${this._dtCostGateHtml(price)}
                 ${this._calDayVolHtml(this.rawDailyData)}
+                ${this._dtEdgeHtml(sym)}
                 ${showPlan ? (this._dtVerdictInner(sym, price, prevClose, chgPct, highP, lowP, openP, baseRaw) || '') : `<div class="bg-[#0d1117] border-l-4 ${vMap[vC].split(' ')[1]} pl-2.5 py-1 rounded-r mt-1.5"><div class="text-[11px] text-gray-200 leading-relaxed">${vNote}</div></div>`}
                 ${planHtml}
                 ${showPlan ? `<details class="mt-1.5"><summary class="text-[9px] text-gray-500 cursor-pointer">▾ 資格說明 / 量能提醒</summary><div class="bg-[#0d1117] border-l-2 ${vMap[vC].split(' ')[1]} pl-2 py-1 rounded-r mt-1"><div class="text-[10px] text-gray-300 leading-relaxed">${_foldNote}</div></div></details>` : ''}
