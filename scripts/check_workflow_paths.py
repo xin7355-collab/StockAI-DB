@@ -292,6 +292,43 @@ def check_workflow_run_names():
     return True
 
 
+def check_shared_lock_timeout():
+    """⏱️ 共用 `gh-pages-push` 鎖的 workflow,每個 job 都要有 `timeout-minutes`(V77.5.5)。
+
+    🚨 那個 group 是 `cancel-in-progress: false` → 任何一支卡住,**後面所有部署都排隊等**,
+       而 GitHub 預設逾時是 **6 小時**。app-guardrails-audit 首跑抓到 deploy_pages / news_express 兩支沒設。
+    ⛔ 只管在共用鎖裡的:不在鎖裡的卡住只擋自己,而 repo 公開不吃分鐘數。
+    """
+    import yaml
+    bad, seen = [], 0
+    for f in sorted(WF_DIR.glob('*.yml')) + sorted(WF_DIR.glob('*.yaml')):
+        try:
+            y = yaml.safe_load(f.read_text(encoding='utf-8', errors='ignore')) or {}
+        except Exception:
+            continue
+        top = (y.get('concurrency') or {}) if isinstance(y.get('concurrency'), dict) else {}
+        for jn, job in (y.get('jobs') or {}).items():
+            if not isinstance(job, dict):
+                continue
+            jc = job.get('concurrency') if isinstance(job.get('concurrency'), dict) else {}
+            grp = str(jc.get('group') or top.get('group') or '')
+            if grp != 'gh-pages-push':
+                continue
+            seen += 1
+            if not job.get('timeout-minutes'):
+                bad.append(f'{f.name} → job {jn}')
+    if seen == 0:
+        print('❌ ⏱️ 一個掛在 gh-pages-push 的 job 都沒掃到 → 解析壞了,⛔ 不可當成「都有設」')
+        return False
+    if bad:
+        print('❌ ⏱️ 共用部署鎖的 job 沒設 timeout-minutes(卡住會讓後面的部署等 6 小時):')
+        for b in bad:
+            print(f'   • {b}')
+        return False
+    print(f'✅ 共用部署鎖的 {seen} 個 job 都有 timeout-minutes')
+    return True
+
+
 if __name__ == '__main__':
     ok = check_inline_comments()
     ok = check_outputs_uploaded() and ok
@@ -299,4 +336,5 @@ if __name__ == '__main__':
     ok = check_no_trading_in_ci() and ok
     ok = check_finmind_token_normalize() and ok
     ok = check_workflow_run_names() and ok
+    ok = check_shared_lock_timeout() and ok
     sys.exit(0 if ok else 1)

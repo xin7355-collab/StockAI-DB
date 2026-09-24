@@ -57,6 +57,8 @@ jobs:
   news_express:
     name: 📰 抓即時新聞 + 更新 gh-pages
     runs-on: ubuntu-latest
+    # ⏱️ V77.5.5 共用 gh-pages-push 鎖且不砍舊的 → 卡住會讓後面所有部署等 6 小時;實測 4~7 分(check_workflow_paths 釘住)
+    timeout-minutes: 25
     # ⛔ 只跟「host 的**排程**那一輪」(同 playbook_scan 已驗證過的做法)——
     #   host 被手動 dispatch / push 觸發時⛔ 不跟,否則一天可能被帶跑好幾次。
     # ⚠️ 這裡**刻意不要求 host 成功** —— 這支採礦跟 host 的產物無關,

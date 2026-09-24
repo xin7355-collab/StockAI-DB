@@ -1,3 +1,48 @@
+# 🔐📊⏱️ V77.5.5 用新裝的三支技能實際優化(使用者:「給你 skill 後可以優化什麼?推薦的直接做」)
+
+## 🔐 app-guardrails-audit:84 條裡真的有三類(其餘人工驗過是誤報)
+| 類 | 條數 | 判定 |
+|---|---|---|
+| `log-secret` | 32 | ⛔ 誤報:全是「印了 token 這個字/把數」,⛔ 沒印值(`test_no_token_leak.py` 本來就在守) |
+| `http-no-retry` | 40 | 提醒;多數已走 `Session + Retry`,⏳ 未逐條驗 |
+| `unbounded-promise-all`(pro.html `_memSeries`)| 1 | ⛔ 誤報:上限 12 檔 |
+| `hardcoded-model`(macro_miner)| 1 | 不動 |
+| 🔐 **`secret-in-url`** | 1 → **實際 5 處** | ✅ 修:Gemini 金鑰改走 `x-goog-api-key` 標頭 |
+| ⏱️ **`workflow-no-timeout`** | 8 | ✅ 修其中 2 支(見下)|
+| `file-to-arraybuffer`(sw.js)| 2 | 記錄不動(見下)|
+
+- 🚨 **掃描器只抓到 1 處,實際 5 處** —— `index.html` 超過它的檔案上限被**跳過**(`testAllAiKeys` ×2、`_callGemini`)。
+  ⭐ 通用:**巡邏工具印出來的「略過 N 個檔」要當成盲區清單**,⛔ 不可把「0 筆」讀成「都沒問題」(同 `check_vol_baseline`)。
+- 🚨 最危險的是 `macro_miner.py`:`http` 掛了 urllib3 `Retry`,重試時 urllib3 用 logging 印**含 query 的網址**,
+  沒設 logging 就落到 stderr = **公開的 Actions log**。它自己的 except 只印型別名 —— 那道守門守不到 urllib3。
+- 🧪 `scripts/test_key_header.py`(進四驗證,`--selftest` 4 條):自己逐行掃,**⛔ 不依賴那支會跳過大檔的掃描器**;
+  拆成兩行的 f-string 網址也抓得到;空過守門「呼叫 Gemini 的檔 < 3 就紅」。注入 `?key=` → 紅。
+- ⏱️ `deploy_pages` / `news_express` 共用 `gh-pages-push` 且 `cancel-in-progress:false`,**卡住會讓後面所有部署等 6 小時** →
+  加 `timeout-minutes` 15 / 25(實測 ~1 分 / 4~7 分)。`check_workflow_paths.py` 新增「共用鎖的每個 job 都要有逾時」
+  (15 個 job;拿掉一支 → 紅)。⛔ 其餘 6 支不在共用鎖、repo 公開不吃分鐘數 → 不動。
+- `sw.js _isWholePage`:註解與陷阱 #20 寫「只讀尾巴」,**實際整份 `arrayBuffer()`**(~2.7MB)。
+  影響小(一次導覽一份)→ 這版不動,只把文件更正成實際行為。
+
+## 📊 senior-data-scientist:訊號分級沒做多重比較校正
+- `_SIGNAL_EDGE` 129 個訊號用「p ≤ 0.05 = A」→ 純雜訊也會有 ~6 個 A。
+  套 **Benjamini-Hochberg**(FDR 5%,`scripts/lib_fdr.mjs` 唯一一份):**A 54 → 48 ・B 11 → 17**。
+- 掉下來的 6 個(p 0.022~0.043、q 0.060~0.103、**期望值全負**):高勝率做多買點 / 量縮洗盤·回後買醞釀 /
+  夜星轉折 / 壓力沉重‧反覆過不了 / 長黑遭遇+爆量 / 高檔出貨量。
+- ⭐ **期望值為正的 8 個 A 全部存活** → 「值得參考的進場訊號」一個都沒變;影響只在徽章與看多計分權重(A 全額 → B 七折)。
+  提醒守門不受影響(空方那把尺看 p ≤ 0.25、多方看期望值)。
+- 落點:`signal_backtest.mjs` 分級走 `regrade()`(每週自動回測下週五起自動換)・`embed_signal_edge.mjs` 嵌入前重新分級 +
+  新增 `--regrade-embedded`(不重跑 18 分鐘回測)・meta 多存 `fdr`・教學寫出校正且「A 裡幾個期望值為負」改**從表裡現算**
+  (原本寫死「36 個」,早就過期)。
+- ⚠️ gh-pages 上的 `backtest_edge.json`(App 優先讀)是上週五產的**舊分級** → 下週五那輪才換成 BH。
+- 🧪 `test_sigedge ⑭` 8 條(手算對照 / 嵌入表 = BH 重新分級 / **決定性對照:裸 p 的 A 數必須 > BH**,相等代表測資沒有鑑別力);
+  注入「表退回裸 p」→ ① 與 ⑭ 一起紅。
+
+## 🧾 senior-prompt-engineer:量了兩份報告提示詞,⛔ 沒改
+- `_reportPrompt` 7,417 字元 / `_reportChartPrompt` 7,066 字元;逐句比對**重複 0 句**,兩份共用 28 句(`_reportFacts` 那段,刻意共用)。
+- 工具報的「第 134 行重複第 133 行」是**誤報**(兩個不同事件剛好都會動到毛利率)。
+- ⚠️ 它的 token 數(1,851)用**英文的「字元 ÷ 4」估算**,對中文**嚴重低估** → ⛔ 不可拿來當中文提示詞的成本依據。
+- 它的建議(改成 JSON 輸出、加 few-shot)**不適用**:這份產出是 20 節 Markdown 報告,骨架本來就寫在提示詞裡。
+
 # 📦 2026-09-24 從 skl 技能庫裝 3 支外部技能(34 支候選挑 2 支 + 安裝器必裝的 1 支)
 
 使用者:「從 skl 取得技能庫…從候選中只挑真正用得到的(寧缺勿濫),每個寫一句理由」。

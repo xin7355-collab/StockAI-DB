@@ -219,6 +219,37 @@ ok('⑬ exp 拿不到時要退回 e10(⛔ 不可整筆濾掉)', /exp != null\) \
 // ⑪ 教學只有一份(⛔ 別寫兩套文案)
 ok('⑪ ⭐ K線頁與總覽共用同一份教學', /_showEdgeHelp/.test(await page.evaluate(() => app.renderEntryCheckup.toString())));
 
+// ── ⑭ 📊 V77.5.5 多重比較校正(BH-FDR,scripts/lib_fdr.mjs)─────────────
+{
+    const { bhQ, regrade } = await import('./lib_fdr.mjs');
+    // 手算對照:p = [0.01, 0.04, 0.03, 0.5] → 排序後 q = min(p·m/rank) 由後往前取最小
+    const q = bhQ([0.01, 0.04, 0.03, 0.5]);
+    const exp = [0.04, 0.0533, 0.0533, 0.5];
+    ok('⑭ BH q 值跟手算一致', q.every((x, i) => Math.abs(x - exp[i]) < 1e-3), JSON.stringify(q));
+    ok('⑭ q ≥ p 且 ≤ 1', q.every((x, i) => x >= [0.01, 0.04, 0.03, 0.5][i] - 1e-12 && x <= 1), JSON.stringify(q));
+    // ⭐ 嵌入表必須是 BH 分級:用表裡的 p 重新分一次,A 數要跟表一模一樣
+    const tab = await page.evaluate(() => Object.entries(app._SIGNAL_EDGE).map(([k, v]) => ({ k, g: v[0], p: v[4] })));
+    const rows = tab.map(r => ({ ...r }));
+    const cnt = regrade(rows);
+    const mism = rows.filter(r => r.grade !== r.g).map(r => `${r.k} 表=${r.g} BH=${r.grade}`);
+    ok('⑭ ⭐ 嵌入表的分級 = BH 重新分級的結果(⛔ 不可退回裸 p≤0.05)', mism.length === 0, mism.slice(0, 3).join(' ・ '));
+    // 決定性對照:裸 p 會多出 A → 若表的 A 數等於裸 p 的 A 數而大於 BH,就是沒校正
+    const rawA = tab.filter(r => r.p <= 0.05).length;
+    ok('⑭ 裸 p 的 A 數 > BH 的 A 數(有校正才會不同;相等代表測資沒有鑑別力)', rawA > cnt.A, `rawA=${rawA} bhA=${cnt.A}`);
+    ok('⑭ meta 記下分級規則', /BH/.test(String(meta.fdr || '')), String(meta.fdr));
+    // ⭐ 期望值為正的 A 必須全部存活(那是「值得參考的進場訊號」名單)
+    const posLost = tab.filter(r => r.p <= 0.05).map(r => r.k).filter(k => {
+        const v = rows.find(x => x.k === k); return v.grade !== 'A';
+    });
+    const posA = await page.evaluate(() => Object.entries(app._SIGNAL_EDGE).filter(([, v]) => v[7] > 0 && v[4] <= 0.015).map(([k]) => k));
+    ok('⑭ 期望值為正、p 很小的 A 都還在', posA.every(k => !posLost.includes(k)), posLost.join(','));
+    // 分級門檻只准在 lib_fdr 一份
+    const sb = fs.readFileSync(path.join(ROOT, 'scripts/signal_backtest.mjs'), 'utf-8').replace(/\/\/.*$/gm, '');
+    ok('⑭ signal_backtest 走 lib_fdr 的 regrade(⛔ 不可自己寫 p ≤ 0.05)', /regrade\(withP\)/.test(sb) && !/r\.p <= 0\.05/.test(sb), '');
+    const help = await page.evaluate(() => app._showEdgeHelp.toString());
+    ok('⑭ 教學寫出多重比較校正、⛔ 不可再寫死「36 個」', /多重比較/.test(help) && !/36 個的/.test(help), '');
+}
+
 ok('⑧ 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();

@@ -25,6 +25,8 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # ⏱️ V77.5.5 共用 gh-pages-push 鎖且不砍舊的 → 卡住會讓後面所有部署等 6 小時;實測 ~1 分(check_workflow_paths 釘住)
+    timeout-minutes: 15
 
     steps:
       - name: 📥 下載程式碼

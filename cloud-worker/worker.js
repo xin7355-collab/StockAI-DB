@@ -1336,10 +1336,11 @@ async function gemini(env, prompt, systemInstruction = null) {
         };
         if (systemInstruction) body.systemInstruction = { parts: [{ text: systemInstruction }] };
         const r = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`,
+            // 🔐 金鑰走標頭 ⛔ 不放網址(test_key_header.py 釘住)
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
             {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
                 body: JSON.stringify(body),
                 signal: AbortSignal.timeout(8000),
             }

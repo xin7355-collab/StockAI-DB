@@ -126,10 +126,12 @@ def _gemini_chat_mm(sys_msg, user_msg, label="", max_tokens=1400, temperature=0.
     }
     for i, key in enumerate(GEMINI_KEYS_MM):
         try:
+            # 🔐 金鑰走 x-goog-api-key 標頭 ⛔ 不放網址:http 掛了 urllib3 Retry,重試時會用 logging
+            #    印出含 query 的網址 → 沒設 logging 就落到 stderr = 公開的 Actions log(test_key_header.py 釘住)
             url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-                   f"{GEMINI_MODEL_MM}:generateContent?key={key}")
+                   f"{GEMINI_MODEL_MM}:generateContent")
             r = http.post(url, json=payload,
-                          headers={"Content-Type": "application/json"}, timeout=60)
+                          headers={"Content-Type": "application/json", "x-goog-api-key": key}, timeout=60)
             if r.status_code == 429:
                 print(f"  ⏳ [Gemini] key#{i+1} 429,換下一把")
                 continue

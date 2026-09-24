@@ -12,18 +12,50 @@
  *   node scripts/signal_backtest.mjs          # 先跑回測(產 data/signal_edge.json)
  *   node scripts/embed_signal_edge.mjs        # 再嵌入
  *   node scripts/test_sigedge.mjs             # 驗證
+ *   node scripts/embed_signal_edge.mjs --regrade-embedded   # 📊 V77.5.5 只重新分級 index.html 現有那份(不重跑回測)
+ *
+ * 📊 V77.5.5 起分級一律走 lib_fdr(BH 多重比較校正)—— 嵌入時**重新分級一次**,舊的 json 也吃得到新規則。
  */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { regrade, FDR_A, P_B } from './lib_fdr.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = path.join(ROOT, 'data', 'signal_edge.json');
 const HTML = path.join(ROOT, 'index.html');
 
+const REGRADE_ONLY = process.argv.includes('--regrade-embedded');
+const FDR_TAG = `BH q≤${FDR_A} ・B p≤${P_B}`;
+
+// 📊 --regrade-embedded:只讀 index.html 現有的表,用 lib_fdr 重新分級後回寫兩行(⛔ 不動其他欄位)
+if (REGRADE_ONLY) {
+    const L = fs.readFileSync(HTML, 'utf-8').split('\n');
+    const iM = L.findIndex(l => l.trimStart().startsWith('_SIGNAL_EDGE_META:'));
+    const iD = L.findIndex(l => l.trimStart().startsWith('_SIGNAL_EDGE:'));
+    if (iM < 0 || iD < 0) { console.error('❌ 找不到嵌入點'); process.exit(1); }
+    const ind = l => l.slice(0, l.length - l.trimStart().length);
+    const meta0 = JSON.parse(L[iM].trim().replace(/^_SIGNAL_EDGE_META:\s*/, '').replace(/,$/, ''));
+    const tab0 = JSON.parse(L[iD].trim().replace(/^_SIGNAL_EDGE:\s*/, '').replace(/,$/, ''));
+    const rows = Object.entries(tab0).map(([k, v]) => ({ k, v, p: v[4] }));
+    const before = { A: 0, B: 0, C: 0 }; rows.forEach(r => before[r.v[0]]++);
+    const cnt = regrade(rows);
+    const changed = rows.filter(r => r.grade !== r.v[0]).map(r => `${r.v[0]}→${r.grade} ${r.k}(p=${r.p} q=${r.q})`);
+    rows.forEach(r => { r.v[0] = r.grade; });
+    const meta = { ...meta0, A: cnt.A, B: cnt.B, C: cnt.C, fdr: FDR_TAG };
+    L[iM] = `${ind(L[iM])}_SIGNAL_EDGE_META: ${JSON.stringify(meta)},`;
+    L[iD] = `${ind(L[iD])}_SIGNAL_EDGE: ${JSON.stringify(Object.fromEntries(rows.map(r => [r.k, r.v])))},`;
+    fs.writeFileSync(HTML, L.join('\n'), 'utf-8');
+    console.log(`✅ 重新分級:A ${before.A}→${cnt.A} ・B ${before.B}→${cnt.B} ・C ${before.C}→${cnt.C}(${FDR_TAG})`);
+    changed.forEach(s => console.log('   ' + s));
+    process.exit(0);
+}
+
 const j = JSON.parse(fs.readFileSync(SRC, 'utf-8'));
 const sigs = j.signals || [];
 if (!sigs.length) { console.error('❌ signal_edge.json 沒有訊號,不嵌入'); process.exit(1); }
+// 📊 嵌入前一律重新分級(舊 json 也吃得到 BH),計數以重新分級後為準
+j.grades = regrade(sigs);
 
 // 資料表:key = "偵測器｜標題",value = [grade, n, e10, w10, p, e20, payoff, exp]
 const table = {};
@@ -61,6 +93,7 @@ const meta = {
     ...(_win ? { win_from: _win.from, win_to: _win.to, win_bars: _win.bars } : {}),
     n_base: j.base.n, A: j.grades.A, B: j.grades.B, C: j.grades.C,
     ...(j.cover ? { cover: j.cover } : {}),
+    fdr: FDR_TAG,
 };
 
 // ⭐ 兩行都是**單獨一行** → 用行號整行替換,⛔ 不用跨行 regex(那正是上次只換一半的原因)

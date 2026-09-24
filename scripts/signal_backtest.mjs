@@ -30,6 +30,7 @@ catch (_) { ({ chromium } = await import('playwright')); }
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import path from 'path';
+import { regrade } from './lib_fdr.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = path.join(ROOT, 'data');
@@ -213,17 +214,17 @@ const p0 = baseWin[10] / 100;
 const withP = await page.evaluate(({ rs, p0 }) => rs.map(r => ({
     ...r, p: +(app._winRateP(Math.round(r.w10 / 100 * r.n), r.n, p0) || 1).toFixed(4),
 })), { rs: rows, p0 });
-// 排序:先看統計信心(p 值),同級再看邊際 —— 使用者要的是「勝率高且站得住腳」
-const grade = r => (r.p <= 0.05 ? 0 : r.p <= 0.25 ? 1 : 2);
-withP.sort((a, b) => (grade(a) - grade(b)) || (b.e10 - a.e10));
-for (const r of withP) {
-    r.grade = grade(r) === 0 ? 'A' : grade(r) === 1 ? 'B' : 'C';   // A=站得住腳 B=偏弱 C=跟隨機沒差
-    r.base_win = +baseWin[10].toFixed(1);
-}
+// 📊 V77.5.5 分級走 lib_fdr(A = BH 校正後 q ≤ 0.05 ・B = p ≤ 0.25 ・C 其他)——
+//    一次檢定 129 個訊號,不校正的話純雜訊也會有 ~6 個被評成 A。⛔ 別退回裸 p(test_sigedge 釘住)。
+regrade(withP);
+const _gi = g => (g === 'A' ? 0 : g === 'B' ? 1 : 2);
+// 排序:先看統計信心,同級再看邊際 —— 使用者要的是「勝率高且站得住腳」
+withP.sort((a, b) => (_gi(a.grade) - _gi(b.grade)) || (b.e10 - a.e10));
+for (const r of withP) r.base_win = +baseWin[10].toFixed(1);
 const nA = withP.filter(r => r.grade === 'A').length;
 const nB = withP.filter(r => r.grade === 'B').length;
 
-log(`🏅 分級:A(統計上站得住腳,p≤0.05)= ${nA} 個 ・B(偏弱,p≤0.25)= ${nB} 個 ・C(跟隨機沒差)= ${withP.length - nA - nB} 個`);
+log(`🏅 分級:A(多重比較校正後站得住腳,BH q≤0.05)= ${nA} 個 ・B(偏弱,p≤0.25)= ${nB} 個 ・C(跟隨機沒差)= ${withP.length - nA - nB} 個`);
 log('');
 const fmt = r => `${(r.grade + ' ' + r.key).slice(0, 46).padEnd(48)}`
     + `${String(r.n).padStart(5)}`
