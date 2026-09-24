@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.5.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.5.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.5.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.5.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8625,8 +8625,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.5.6',
+    _APP_VERSION: 'V77.5.7',
     _CHANGELOG: [
+    { v: 'V77.5.7', d: ['🐢 <b>ETF 用什麼訊號買賣最強?實測答案:不用訊號,買了放著(配息再投入)最強</b>。63 檔 ETF、2022 空頭到現在:唐奇安突破、近幾個月是正的才抱、每月換最強的 ETF,全部都輸「買了放著」。唯一看起來贏的「0050 站上 200 日線才抱」換個天數就沒了。想少一點回撤可以用唐奇安 20/10(0050 最大回撤 −30% → −11%),但 4.5 年每 100 萬少賺約 89 萬。App 判斷沒有改。'] },
     { v: 'V77.5.6', d: ['🐢 <b>你給的 17 份唐奇安通道/海龜逐字稿都看完了</b>。大部分是進場端的內容(CCI 反轉過濾、費波那契回撤進場、假突破反轉)或本站早就測過/已否證的東西(短出場、時間停損),跟本站現在「用唐奇安當出場」是不同的用法。', '🚪 <b>唯一一個真正新的點子:唐奇安「中軌」出場</b>(出場線改用「前 N 天最高最低的平均值」,比現行的下軌鬆、跑得更早)——已用 15,533 次真實突破事件測過:是真訊號(六關全過),但每趟只贏基準 +0.68%,<b>遠輸現行的唐奇安 20 日(+1.43%)</b>,平均只抱 13 天(現行抱 26 天)。跟本站早就發現的規律一樣:<b>砍得越早賺越少</b>。', '⛔ 預設沒有換,這一版也沒有新增可以選的出場規則 —— 這次測的東西每個方向都輸現行設定,不是「各有取捨」那種才值得多開一個選項。'] },
     { v: 'V77.5.5', d: ['🔐 <b>AI 金鑰不再放在網址裡</b>:用 Gemini 時金鑰改走「標頭」傳送(網址會出現在錯誤訊息與紀錄裡);雲端推播與採礦那兩處也一起改了。', '📊 <b>訊號分級改成「多重比較校正」</b>:一次檢定 129 個訊號,不校正的話純靠運氣也會有約 6 個被評成 A 級。校正後 A 級 54 → 48,掉下來的 6 個期望值本來就是負的;<b>「值得參考的進場訊號」一個都沒變</b>。', '⏱️ 兩支部署程式加上時間上限,卡住時不會讓後面的更新排隊等 6 小時。'] },
     { v: 'V77.5.4', d: ['🚪 <b>報告頁「接下來要看的事」裡的出場線</b>:你<b>沒有持股</b>的股票,以前也寫「你設的出場線・跌破就是翻空的事實」—— 其實那只是把你選的出場規則套在這一檔的參考值。現在改寫成「⛔ 你沒有這檔的部位,這只是參考;買進後會用你的買進日重新起算」,給外部 AI 的提示詞也同步註明。'] },
