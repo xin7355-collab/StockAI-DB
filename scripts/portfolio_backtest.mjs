@@ -1161,7 +1161,9 @@ const pct = v => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
 console.log('═'.repeat(74));
 console.log(`📅 期間:${from} ~ ${to}(${days.length - WARMUP} 個交易日 ・${mons.length} 個月)`);
 const yrs = (days.length - WARMUP) / 244;
-console.log(`💰 本金 ${nf(CAPITAL)} 元 ・每筆 ${nf(LOT)} 元 ・同時最多持有 ${maxOpen} 筆(平均 ${avgOpen.toFixed(1)} 筆 → 資金使用率 ${(avgOpen * LOT / CAPITAL * 100).toFixed(0)}%)`);
+// 🐛 V77.5.9:資金使用率以前一律用 LOT 乘 → risk / volpar 會印出 205% 這種不可能的數字;改用實際每筆平均投入(等權時 = LOT,輸出不變)
+const avgAmt = taken.reduce((a, t) => a + (t._amt || LOT), 0) / taken.length;
+console.log(`💰 本金 ${nf(CAPITAL)} 元 ・每筆 ${nf(LOT)} 元 ・同時最多持有 ${maxOpen} 筆(平均 ${avgOpen.toFixed(1)} 筆 → 資金使用率 ${(avgOpen * avgAmt / CAPITAL * 100).toFixed(0)}%)`);
 if (skipped) console.log(`⚠️ 有 ${skipped} 次訊號因為**錢已經用完**而錯過(本金再多一點結果會不同)`);
 console.log('═'.repeat(74));
 console.log(`\n📊 整體(扣掉來回成本 ${COST}%)`);
