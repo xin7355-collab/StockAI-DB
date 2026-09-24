@@ -18,6 +18,9 @@
  * 📐 規則字串(⛔ 認不得的 key 一律 throw —— 打錯字安靜地不出場是最糟的失敗):
  *   ・`ma{N}`     跌破 N 日均線(收盤 < MA_N)        例:ma5 / ma10 / ma20
  *   ・`don{N}`    跌破**前 N 日最低**(唐奇安/海龜)   例:don10 / don20 / don55
+ *   ・`donmid{N}` 跌破**前 N 日最高最低的中點**(唐奇安中軌,V77.5.6)例:donmid20
+ *                 ⭐ 比 `don{N}`(下軌)鬆、出場更早;來自「增強版唐奇安通道策略」逐字稿(評估紀錄㉝),
+ *                 本站首次測 —— ⛔ 高低點同樣**不含 j 自己**(陷阱 #43)
  *   ・`atr{K}`    進場後最高收盤 − K×ATR14           例:atr2 / atr3(K 可小數 atr2.5)
  *   ・`trail{N}`  進場後最高收盤回落 N%              例:trail8 / trail15
  *   ・`hold`      ⛔ 不設出場,只有停損 + MAXD 封頂 —— **對照組**,
@@ -27,6 +30,7 @@
 export const EXIT_NAME = {
     ma5: '跌破 5 日線', ma10: '跌破 10 日線', ma20: '跌破 20 日線(月線)',
     don10: '唐奇安 10 日', don20: '唐奇安 20 日', don55: '唐奇安 55 日',
+    donmid20: '唐奇安 20 日中軌',
     atr2: 'ATR 追蹤 K=2', atr3: 'ATR 追蹤 K=3',
     trail8: '移動停利 8%', trail15: '移動停利 15%',
     hold: '⛔ 不出場(只有停損+封頂)',
@@ -38,6 +42,7 @@ export function parseRule(rule) {
     let m;
     if (rule === 'hold') return { kind: 'hold' };
     if ((m = /^ma(\d+)$/.exec(rule))) return { kind: 'ma', n: +m[1] };
+    if ((m = /^donmid(\d+)$/.exec(rule))) return { kind: 'donmid', n: +m[1] };
     if ((m = /^don(\d+)$/.exec(rule))) return { kind: 'don', n: +m[1] };
     if ((m = /^atr(\d+(?:\.\d+)?)$/.exec(rule))) return { kind: 'atr', k: +m[1] };
     if ((m = /^trail(\d+(?:\.\d+)?)$/.exec(rule))) return { kind: 'trail', p: +m[1] };
@@ -89,6 +94,11 @@ export function simExits(R, eIdx, opt = {}) {
                 //   ① 前 N 日最低 **不含 j 自己**(陷阱 #43)
                 let lo = Infinity; for (let q = Math.max(0, j - P.n); q < j; q++) lo = Math.min(lo, R[q].l);
                 hit = isFinite(lo) && c < lo;
+            } else if (P.kind === 'donmid') {
+                //   唐奇安中軌 = 前 N 日最高與最低的平均值(同樣不含 j 自己,陷阱 #43)
+                let hi = -Infinity, lo = Infinity;
+                for (let q = Math.max(0, j - P.n); q < j; q++) { hi = Math.max(hi, R[q].h); lo = Math.min(lo, R[q].l); }
+                hit = isFinite(hi) && isFinite(lo) && c < (hi + lo) / 2;
             } else if (P.kind === 'atr') {
                 const at = atrAt(j); hit = at > 0 && c <= peak - P.k * at;
             } else if (P.kind === 'trail') {

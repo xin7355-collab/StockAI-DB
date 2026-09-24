@@ -46,7 +46,7 @@ const DEDUP = +(process.env.DEDUP || 20);
 const LIMIT = +(process.env.LIMIT || 0);
 const SELFTEST = process.argv.includes('--selftest');
 
-const RULES = ['hold', 'ma5', 'ma10', 'ma20', 'don10', 'don20', 'don55', 'atr2', 'atr3', 'trail8', 'trail15'];
+const RULES = ['hold', 'ma5', 'ma10', 'ma20', 'don10', 'don20', 'donmid20', 'don55', 'atr2', 'atr3', 'trail8', 'trail15'];
 const HORIZ = [20, 60, 120, 250];          // 突破門檻:創 N 日新高
 const VOLQ = [1.0, 1.2, 1.5, 2.0];         // 量比門檻(1.0 = 不設)
 
@@ -117,6 +117,14 @@ if (SELFTEST) {
             { don10: r.don10.outIdx, don20: r.don20.outIdx, don55: r.don55.outIdx });
         let threw = false; try { simExits(mk(a), 25, { rules: ['don20x'] }); } catch { threw = true; }
         ok('④b ⛔ 打錯字的規則要 throw(安靜地永不出場是最糟的失敗)', threw, threw);
+    }
+    // ④c 唐奇安中軌(donmid,V77.5.6 新增)⭐ 中軌 ≥ 下軌 → 觸發門檻更高 → 一定比 don{N} 更早出場
+    {
+        const a = []; for (let i = 0; i < 40; i++) a.push(100 + i * 0.5);
+        for (let i = 1; i <= 30; i++) a.push(120 - i * 0.6);
+        const r = simExits(mk(a), 25, { rules: ['don20', 'donmid20'], maxD: 60 });
+        ok('④c donmid20 的出場點 ≤ don20(中軌天生比下軌鬆,更早觸發)',
+            r.donmid20.outIdx <= r.don20.outIdx, { donmid20: r.donmid20.outIdx, don20: r.don20.outIdx });
     }
     // ⑤ 鎖漲停剔除:訊號日 +9.6% → 尾盤買不到
     {
