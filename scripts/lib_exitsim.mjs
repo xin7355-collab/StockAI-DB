@@ -53,13 +53,19 @@ export function parseRule(rule) {
  * 同一個進場點 → 每一種出場各自的報酬(⛔ 毛報酬,成本由呼叫端扣)。
  * @param {Array} R      K 線陣列,每根要有 {o,h,l,c}
  * @param {number} eIdx  進場那一根的 index(進場價 = 該根收盤 —— 訊號日尾盤進場,V72.9.0)
- * @param {object} opt   { rules, maxD, holdStop }
+ * @param {object} opt   { rules, maxD, holdStop, stopFill }
+ *   stopFill(V77.5.9,停損的**成交價**):
+ *     'stop'  收盤跌破 → 用停損價算(預設 = 舊版;⚠️ 收盤已經在停損下面,這個價其實賣不到)
+ *     'close' 收盤跌破 → 用收盤價(= auto_trade.py 的做法)
+ *     'touch' 盤中最低碰到 → min(開盤, 停損價)(= App 複製的觸價智慧單)
  * @returns {object|null} { [rule]: { ret, outIdx, why } }
  */
 export function simExits(R, eIdx, opt = {}) {
     const rules = opt.rules || ['ma5', 'don20', 'atr2', 'trail8'];
     const MAXD = opt.maxD ?? 20;
     const HOLD_STOP = opt.holdStop ?? 5;
+    const FILL = opt.stopFill || 'stop';
+    if (!['stop', 'close', 'touch'].includes(FILL)) throw new Error(`lib_exitsim: 認不得的 stopFill '${FILL}'`);
 
     const n = R.length, entry = R[eIdx].c;
     if (!(entry > 0)) return null;
@@ -85,7 +91,11 @@ export function simExits(R, eIdx, opt = {}) {
         for (let j = eIdx + 1; j <= endJ; j++) {
             const c = R[j].c;
             if (c > peak) peak = c;
-            if (c <= stop0) { exitP = stop0; exitIdx = j; why = '停損'; break; }   // ② 停損優先
+            // ② 停損優先(成交價三種口徑,V77.5.9)
+            if (FILL === 'touch' ? (R[j].l > 0 && R[j].l <= stop0) : c <= stop0) {
+                exitP = FILL === 'close' ? c : FILL === 'touch' ? Math.min(R[j].o > 0 ? R[j].o : stop0, stop0) : stop0;
+                exitIdx = j; why = '停損'; break;
+            }
             let hit = false;
             if (P.kind === 'ma' && j >= P.n - 1) {
                 let s = 0; for (let q = j - (P.n - 1); q <= j; q++) s += R[q].c;

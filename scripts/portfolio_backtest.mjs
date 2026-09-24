@@ -152,7 +152,7 @@ const CONF = +(process.env.CONF || 2);     // 共振:同一天同一檔至少幾
 const _EXIT_ALIAS = { don: 'don20', atr: 'chand2', atr2: 'chand2', trail: 'trail8' };
 const EXIT_RAW = process.env.EXIT || 'ma5';
 const EXIT = _EXIT_ALIAS[EXIT_RAW] || EXIT_RAW;
-const _EXIT_OK = /^(?:ma\d+(?:be\d+)?(?:tp\d+)?(?:rr\d+(?:\.\d+)?)?(?:half\d+)?|trail\d+|chand\d+(?:\.\d+)?|chandd\d+(?:\.\d+)?|atrt\d+(?:\.\d+)?|don\d+w?|plow|sar|x5_20|none|(?:ma\d+|trail\d+|none)?tm\d+_\d+)$/;
+const _EXIT_OK = /^(?:ma\d+(?:be\d+)?(?:tp\d+)?(?:rr\d+(?:\.\d+)?)?(?:half\d+)?|trail\d+|chand\d+(?:\.\d+)?(?:_p\d+)?|chandd\d+(?:\.\d+)?|atrt\d+(?:\.\d+)?|don\d+w?|plow|sar|x5_20|none|(?:ma\d+|trail\d+|none)?tm\d+_\d+)$/;
 if (!_EXIT_OK.test(EXIT)) { console.error(`🚨 EXIT=${EXIT_RAW} 不認得(別名 ${Object.keys(_EXIT_ALIAS).join('|')};合法樣式 ma5 / ma5tp10 / trail8 / chand2 / don20 / don10w / plow / sar / x5_20 / none / ma5tm5_0)`); process.exit(1); }
 if (EXIT !== EXIT_RAW) console.log(`🔁 EXIT=${EXIT_RAW} → 正規化成 ${EXIT}(App 的設定 key 對應回測的規則名)`);
 const MAXD = +(process.env.MAXD || 20);    // 最長持有幾個交易日
@@ -178,6 +178,20 @@ const STOP = process.env.STOP || 'lo5';
 //   ⛔ 也就是說:「買 N 張」這個 App 直接叫使用者照做的數字,**從來沒被回測過**。
 //   equal(等權,= 前面所有結果) | risk(風險法,= App 實際給的建議)
 const SIZING = process.env.SIZING || 'equal';
+// 📐 V77.5.9 ATR 反比部位(ATR 逐字稿「波動大就少買」+ V74.3.8 自己留下的待辦「出場放寬要同步縮小每筆金額」)
+//   volpar = LOT × clamp(參考 ATR% ÷ 這檔 ATR%, VP_LO, VP_HI)
+//            參考 ATR% = **今天以前**最近 VP_REF 筆通過篩選的候選 ATR% 的中位數(⛔ 不含今天、零前視)
+//            ⛔ 不用「今天候選的中位數」—— 一天常常只有 1~2 檔候選,中位數就是它自己 → 倍數恆為 1 = 沒有作用
+//   volsham = 安慰劑:倍數從**同一個歷史倍數分布**隨機抽(⛔ 跟這檔的 ATR 無關)→ 分開「部位有變化」本身的效果
+//   ⚠️ 跟 V73.0.1 的風險法(risk)不同:**平均投入金額維持在 LOT 附近**,只是高 ATR 少買、低 ATR 多買
+const VP_LO = +(process.env.VP_LO || 0.67), VP_HI = +(process.env.VP_HI || 1.5), VP_REF = +(process.env.VP_REF || 500);
+if (!['equal', 'risk', 'volpar', 'volsham'].includes(SIZING)) { console.error(`🚨 SIZING=${SIZING} 不認得(equal|risk|volpar|volsham)`); process.exit(1); }
+// 🛑 V77.5.9 停損的**成交價**(ATR 逐字稿檢視時照出來的:全站同一條停損有三種執行方式,從來沒量過差多少)
+//   stop  = 收盤跌破停損價 → 用**停損價**算賣出價(= 舊版所有回測;⚠️ 收盤已經在停損下面了,這個價其實賣不到)
+//   close = 收盤跌破停損價 → 用**收盤價**賣(= auto_trade.py 實際做法:現價 <= 停損就用現價賣)
+//   touch = 盤中最低碰到停損價就賣,成交 min(開盤, 停損價)(= App「📋 複製智慧單」的觸價停損單)
+const STOPFILL = process.env.STOPFILL || 'stop';
+if (!['stop', 'close', 'touch'].includes(STOPFILL)) { console.error(`🚨 STOPFILL=${STOPFILL} 不認得(stop|close|touch)`); process.exit(1); }
 const RISK_PCT = +(process.env.RISK_PCT || 1);
 const POS_CAP_PCT = +(process.env.POS_CAP_PCT || 25);   // 單檔上限:帳戶的幾 %(跟 App 一致)
 const GAPCAP = +(process.env.GAPCAP || 1);
@@ -221,7 +235,9 @@ if (RANKBY !== 'self' || GATE !== 'pat') console.log(`🎯 增量檢定:RANKBY=$
 console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日${REENTRY > 0 ? ` ・買回=${REENTRY}日內站回5MA(最多${RE_MAX}次)` : ''} ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}${TURN ? ` ・週轉率=${TURN}` : ''}${FIN ? ` ・營收加速=${FIN}` : ''}${VAL ? ` ・價值=${VAL}` : ''}\n`);
 
 // 💾 掃描結果快取(只跟這幾個參數有關;行事曆濾網完全不影響掃描結果)
-const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE });
+// ⚠️ STOPFILL 只在非預設時才進 key —— 預設值的 key 字串跟舊版一模一樣(既有快取照樣重用)
+const _ckStopFill = STOPFILL !== 'stop' ? { STOPFILL } : {};
+const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE, ..._ckStopFill });
 const allTrades = [];        // {sym, key, inD, outD, ret, amt, entry, stop}
 let graceBlocked = 0;        // ⏳ 有幾個(交易·日)真的被寬限期擋下過(空過守門用)
 let cacheHit = false;
@@ -269,6 +285,10 @@ for (const sym of syms) {
         if (data.length < 120) return [];
         const last = data.length - 1;
         const C = i => data[i].close, L = i => data[i].low, O = i => data[i].open;
+        // 📐 V77.5.9 訊號日的 ATR14 ÷ 收盤(%)—— volpar 用;只到訊號日為止(尾盤進場時那根已收完,零前視)
+        const _apAt = i => { if (i < 1) return null; let tr = 0, k = 0;
+            for (let q = Math.max(1, i - 13); q <= i; q++) { const h = data[q].high, l = data[q].low, pc = C(q - 1); tr += Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)); k++; }
+            return k && C(i) > 0 ? tr / k / C(i) * 100 : null; };
         let P;
         try { P = app._playbookPatternDefs(data); } catch (_) { return []; }
         const out = [];
@@ -335,11 +355,13 @@ for (const sym of syms) {
                         // 🕯️ V74.3.7 Chandelier 出場(twstock-research 的做法):進場後最高收盤 − K×ATR(14)。
                         //   跟 trailN 同族但用「該股自己的波動」當回落幅度,⛔ 不是固定 %。K 用 3(它的預設)。
                         //   ATR 只用進場日之前的資料算一次(零前視;動態逐日更新 ATR 的版本另測)。
-                        const chandK = /^chand(\d+(?:\.\d+)?)$/.test(a.exit) ? +RegExp.$1 : 0;   // 允許小數(chand1.5 / chand2.5 做敏感度網格)
+                        const chandK = /^chand(\d+(?:\.\d+)?)(?:_p\d+)?$/.test(a.exit) ? +RegExp.$1 : 0;   // 允許小數(chand1.5 / chand2.5 做敏感度網格)
                         let chandATR = 0;
+                        // 📐 V77.5.9 `chand2_p10` = ATR 期數改 10(預設 14,舊輸出不變)
+                        const chandP = /_p(\d+)$/.test(a.exit) && chandK > 0 ? +RegExp.$1 : 14;
                         if (chandK > 0) {
                             let tr = 0, k = 0;
-                            for (let q = Math.max(1, eIdx - 13); q <= eIdx; q++) {
+                            for (let q = Math.max(1, eIdx - (chandP - 1)); q <= eIdx; q++) {
                                 const h = data[q].high, l = data[q].low, pc = C(q - 1);
                                 tr += Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)); k++;
                             }
@@ -390,7 +412,7 @@ for (const sym of syms) {
                         // SAR 初始:從進場日的最低起算,EP = 進場日最高
                         let sarV = data[eIdx].low, sarEP = data[eIdx].high, sarAF = 0.02;
                         let halfDone = 0, halfRet = 0, dynStop = stop;
-                        let peak = entry, tmHit = 0;
+                        let peak = entry, tmHit = 0, sx = 0, sw = 0;
                         // ⏳ 寬限期閘門:`gx(cond)` = 「這個移動/趨勢類出場成立了嗎」
                         //   🚧 空過守門的關鍵:⛔ 不可只數「有幾天在寬限期內」(那只要 GRACE>0 幾乎必然 >0,
                         //      等於沒驗到)—— 要數「**真的有一個出場訊號被擋下來**」才算。
@@ -406,7 +428,13 @@ for (const sym of syms) {
                             if (beP > 0 && peak >= entry * (1 + beP / 100) && stop < entry) stop = entry;
                             // 📐 ATR 移動停損(只升不降)
                             if (atrtK > 0) { const s2 = c - atrtK * atrAt(j); if (s2 > dynStop) dynStop = s2; if (gx(c <= dynStop)) { exitP = c; exitIdx = j; break; } }
-                            if (c <= stop) { exitP = stop; exitIdx = j; break; }
+                            // 🛑 停損成交價三種口徑(V77.5.9;預設 stop = 舊版)
+                            if (a.stopFill === 'touch' ? (L(j) > 0 && L(j) <= stop) : c <= stop) {
+                                exitP = a.stopFill === 'close' ? c
+                                      : a.stopFill === 'touch' ? Math.min(O(j) > 0 ? O(j) : stop, stop)
+                                      : stop;
+                                exitIdx = j; sx = 1; sw = c > stop ? 1 : 0; break;
+                            }
                             // 🎯 固定停利 / 風報比停利:達標就走(⚠️ 用收盤價,不假設剛好碰到目標價)
                             if (tpP > 0 && c >= entry * (1 + tpP / 100)) { exitP = c; exitIdx = j; break; }
                             if (rrK > 0 && c >= entry + rrK * (entry - stop0)) { exitP = c; exitIdx = j; break; }
@@ -461,7 +489,8 @@ for (const sym of syms) {
                                    // 成交值(億):`volume` 是股 → ×收盤÷1e8
                                    amt: data[i].volume * data[i].close / 1e8,
                                    entry, stop: stop0,   // 💰 風險法算張數要用(⛔ 別在外面重算,基準會不一致)
-                                   ret: retAll, tm: tmHit, hf: halfDone, re: (i === forceEntry ? 1 : 0) });
+                                   ret: retAll, tm: tmHit, hf: halfDone, re: (i === forceEntry ? 1 : 0),
+                                   sx, sw, sg: sx ? (stop - exitP) / entry * 100 : 0, ap: _apAt(i) });
                         // 🔁 排下一次買回:原始訊號才重置次數,買回那一筆繼續用剩下的額度
                         if (i !== forceEntry) reLeft = a.reMax;
                         forceEntry = -1;
@@ -482,7 +511,7 @@ for (const sym of syms) {
         //    所以塞成一筆特殊列,外面收完立刻濾掉(⛔ 不可讓它混進交易清單)
         if (GR > 0) out.push({ __g: gBlocked });
         return out;
-    }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP, reentry: REENTRY, reMax: RE_MAX, grace: GRACE });
+    }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP, reentry: REENTRY, reMax: RE_MAX, grace: GRACE, stopFill: STOPFILL });
     for (const t of tr) { if (t.__g != null) { graceBlocked += t.__g; continue; } allTrades.push({ ...t, sym }); }
     if (++done % 50 === 0) {
         const el = (Date.now() - t0) / 1000;
@@ -902,6 +931,8 @@ let parkSh = 0, parkBasis = 0, parkPnL = 0, parkBuy = 0, parkSell = 0, parkDays 
 const parkLog = [];   // 🔀 每一段停泊 {in,out,basis,pnl} —— ⛔ 一定要留,否則停泊那條腿做不了穩健性檢定
 let parkInD = null;
 let realized = 0;            // 已實現損益
+// 📐 V77.5.9 volpar:之前幾天候選的 ATR%(參考中位數)+ 已算過的倍數(volsham 從這裡抽)
+const vpHist = [], vpK = []; let vpN = 0, vpSum = 0;
 const equity = [];           // 逐日權益(算最大回撤)
 for (let i = 0; i < days.length; i++) {
     const d = days[i];
@@ -974,6 +1005,11 @@ for (let i = 0; i < days.length; i++) {
     else if (RANKBY === 'mkt') cand.sort((a, b) => (b.m.sum / b.m.n) - (a.m.sum / a.m.n));
     const seen = new Set(live.map(x => x.sym));
     let picked = 0;
+    // 📐 參考 ATR% = 今天以前最近 VP_REF 筆候選的中位數(⛔ 今天的候選在迴圈後才放進去)
+    let vpRef = null;
+    if ((SIZING === 'volpar' || SIZING === 'volsham') && vpHist.length >= 50) {
+        const sv = vpHist.slice(-VP_REF).sort((a, b) => a - b); vpRef = sv[sv.length >> 1];
+    }
     for (const { t } of cand) {
         if (picked >= PICKS_PER_DAY) break;
         // 📈 加碼:ADD=off 時維持原本「同一檔不重複開倉」
@@ -1014,13 +1050,25 @@ for (let i = 0; i < days.length; i++) {
             if (lots <= 0) { continue; }          // 停損太寬 → App 也會顯「算出來 0 張」
             amt = lots * 1000 * t.entry;
         }
+        if (SIZING === 'volpar' || SIZING === 'volsham') {
+            if (t.ap == null) { console.error('🚨 SIZING=volpar 需要交易的 ATR%(ap)—— 舊的 TRADES_CACHE 沒有這欄,拿掉快取重跑'); process.exit(1); }
+            let k = 1;
+            if (vpRef != null && t.ap > 0) {
+                k = Math.max(VP_LO, Math.min(VP_HI, vpRef / t.ap));
+                vpK.push(k);
+                if (SIZING === 'volsham') k = vpK[Math.floor(_rnd() * vpK.length)];   // ⛔ 跟這檔的 ATR 無關
+            }
+            amt = Math.round(LOT * k);
+        }
         // ⛔ 錢不夠就買不了 —— 這條一定要有,不然等於假設無限資金(那個報酬率是假的)
         if (cash < amt) { skipped++; continue; }
         seen.add(t.sym); cash -= amt;
         t._amt = amt;
         t._d = d; t._i = i;   // 📤 TAKEN_OUT 用:記下實際成交那天(⛔ 事後才標環境會對不上)
         taken.push(t); live.push(t); picked++;
+        if (SIZING === 'volpar' || SIZING === 'volsham') { vpN++; vpSum += amt; }
     }
+    for (const { t } of cand) if (t.ap > 0) vpHist.push(t.ap);
     openCnt.push(live.length);
     equity.push(cash + (PARK && parkOf ? parkSh * (parkOf(i) || 0) : 0) + live.reduce((a, x) => a + (x._amt || LOT), 0));   // 持倉以成本計(保守,不逐日 mark-to-market)
 }
@@ -1032,6 +1080,17 @@ if (PARK && parkOf && parkSh > 0) {
 }
 
 if (!taken.length) { console.log('❌ 暖身後一筆都沒進場(門檻太嚴或樣本太小)'); process.exit(1); }
+if (SIZING === 'volpar' || SIZING === 'volsham') {
+    const _avg = vpN ? vpSum / vpN : 0;
+    console.log(`📐 部位=${SIZING}(倍數 ${VP_LO}~${VP_HI}・參考=前 ${VP_REF} 筆候選 ATR% 中位):平均每筆 ${Math.round(_avg).toLocaleString()} 元(LOT ${LOT.toLocaleString()})・算出倍數 ${vpK.length} 次`);
+    if (!vpK.length) { console.error('❌ volpar 一次倍數都沒算到 → 這個變體沒有生效(⛔ 不是「沒差別」)'); process.exit(1); }
+}
+if (process.env.STOPDIAG) {
+    const _s = taken.filter(t => t.sx);
+    const _sg = _s.length ? _s.reduce((a, t) => a + (t.sg || 0), 0) / _s.length : 0;
+    const _big = _s.filter(t => (t.sg || 0) >= 2).length;
+    console.log(`🛑 停損成交=${STOPFILL}:停損出場 ${_s.length}/${taken.length} 筆(${(_s.length / taken.length * 100).toFixed(1)}%)・比停損價多賠平均 ${_sg.toFixed(2)}%(佔進場價)・多賠 ≥2% 的 ${_big} 筆` + (STOPFILL === 'touch' ? ` ・盤中碰到但收盤站回 ${_s.filter(t => t.sw).length} 筆` : ''));
+}
 
 // 📤 把實際成交的交易(含當天市場環境)倒出來 —— 用來算「哪一種盤這套打法比較行」
 //    ⛔ 這是**事實統計**不是預測;要當成訊號用之前一定要過穩健性檢定。
@@ -1058,7 +1117,9 @@ if (process.env.TAKEN_OUT) {
 
 // ── ④ 結果:整體 / 每月 / vs 0050 ────────────────────────────────────────
 const net = t => t.ret - COST;                       // 扣成本後的單趟報酬 %
-const money = t => LOT * net(t) / 100;               // 每筆固定 10 萬 → 實際賺賠元
+// 🐛 V77.5.9:以前寫死 LOT —— SIZING=risk / SCALE 時每筆金額會浮動,累積損益卻照 LOT 算(= 那兩種變體的總獲利是錯的)。
+//   等權時 _amt 就是 LOT → 預設輸出一個字都不變。
+const money = t => (t._amt || LOT) * net(t) / 100;
 const totalPnL = taken.reduce((a, t) => a + money(t), 0);
 const wins = taken.filter(t => net(t) > 0);
 const avgOpen = openCnt.reduce((a, b) => a + b, 0) / openCnt.length;

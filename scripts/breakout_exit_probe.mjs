@@ -45,6 +45,18 @@ const MAXD = +(process.env.MAXD || 60);
 const DEDUP = +(process.env.DEDUP || 20);
 const LIMIT = +(process.env.LIMIT || 0);
 const SELFTEST = process.argv.includes('--selftest');
+// 🛑 V77.5.9 停損成交價(stop = 舊版 / close = auto_trade / touch = 觸價智慧單),見 lib_exitsim
+const STOPFILL = process.env.STOPFILL || 'stop';
+// 🕯️ V77.5.9 突破那根 K 的幅度 ÷ ATR14(ATR 逐字稿:「1~2 倍 ATR 的突破 K 才進場」)
+//   ⭐ ATR 只用**訊號日之前**的 14 根(陷阱 #43:基準⛔ 不可包含被判斷的那根)
+const TA_BINS = [[0, 1], [1, 1.5], [1.5, 2], [2, 3], [3, Infinity]];
+export function trAtr(R, i) {
+    if (i < 15) return null;
+    const tr = q => Math.max(R[q].h - R[q].l, Math.abs(R[q].h - R[q - 1].c), Math.abs(R[q].l - R[q - 1].c));
+    let s = 0; for (let q = i - 14; q < i; q++) s += tr(q);
+    const atr = s / 14;
+    return atr > 0 ? tr(i) / atr : null;
+}
 
 const RULES = ['hold', 'ma5', 'ma10', 'ma20', 'don10', 'don20', 'donmid20', 'don55', 'atr2', 'atr3', 'trail8', 'trail15'];
 const HORIZ = [20, 60, 120, 250];          // 突破門檻:創 N 日新高
@@ -144,6 +156,34 @@ if (SELFTEST) {
         for (let i = 0; i < want && p2.length; i++) pick.push(p2.splice(Math.floor(rnd() * p2.length), 1)[0]);
         ok('⑦ sham 抽同樣多的日子(37)且不重複', pick.length === want && new Set(pick).size === want, pick.length);
     }
+    // ⑧ 突破 K ÷ ATR:ATR⛔ 不含當根 —— 平平 20 根(幅度 2)後一根幅度 10 → 比值 = 5;含當根的錯寫法會算成 < 5
+    {
+        const R = []; for (let q = 0; q < 20; q++) R.push({ o: 100, h: 101, l: 99, c: 100 });
+        R.push({ o: 100, h: 110, l: 100, c: 110 });
+        const v = trAtr(R, 20);
+        ok('⑧ 突破 K ÷ ATR 的 ATR 不含當根(=5.0)', v != null && Math.abs(v - 5) < 1e-9, v);
+    }
+    // ⑨ 停損成交價:跳空開在停損下面 → stop 記停損價、close 記收盤、touch 記開盤
+    {
+        const a = []; for (let q = 0; q < 30; q++) a.push(100);
+        const R = a.map(x => ({ o: x, h: x * 1.002, l: x * 0.998, c: x }));
+        R.push({ o: 88, h: 90, l: 86, c: 87 });            // 停損 = min(99.8, 95) = 95 → 開盤 88、收 87
+        for (let q = 0; q < 5; q++) R.push({ o: 87, h: 88, l: 86, c: 87 });
+        const f = m => simExits(R, 29, { rules: ['hold'], maxD: 10, stopFill: m }).hold;
+        const s0 = f('stop'), s1 = f('close'), s2 = f('touch');
+        ok('⑨ stop 口徑 = 停損價(−5%,⚠️ 收盤其實在 87)', Math.abs(s0.ret - (-5)) < 0.01, s0.ret);
+        ok('⑨b close 口徑 = 收盤(−13%)', Math.abs(s1.ret - (-13)) < 0.01, s1.ret);
+        ok('⑨c touch 口徑 = 開盤(−12%)', Math.abs(s2.ret - (-12)) < 0.01, s2.ret);
+        // ⑨d touch:盤中碰到但收盤站回 → touch 要出場、close 不出場
+        const R2 = a.map(x => ({ o: x, h: x * 1.002, l: x * 0.998, c: x }));
+        R2.push({ o: 100, h: 100.5, l: 94, c: 100.2 });   // 盤中殺到 94(< 95)、收盤站回
+        for (let q = 0; q < 5; q++) R2.push({ o: 100, h: 100.5, l: 99.9, c: 100.2 });
+        const t1 = simExits(R2, 29, { rules: ['hold'], maxD: 5, stopFill: 'touch' }).hold;
+        const t0 = simExits(R2, 29, { rules: ['hold'], maxD: 5, stopFill: 'close' }).hold;
+        ok('⑨d 盤中碰到收盤站回:touch 出場、close 不出場', t1.why === '停損' && t0.why !== '停損', [t1.why, t0.why]);
+        let threw = false; try { simExits(R2, 29, { rules: ['hold'], stopFill: 'x' }); } catch { threw = true; }
+        ok('⑨e 認不得的 stopFill 要 throw', threw, threw);
+    }
     console.log(bad ? `\n❌ BREAKOUT_EXIT_SELFTEST_FAIL ${bad} 條` : '\n✅ BREAKOUT_EXIT_SELFTEST_PASS');
     process.exit(bad ? 1 : 0);
 }
@@ -208,14 +248,14 @@ for (const sym of syms) {
                 const k = `${N}|${v}`;
                 if (i - lastHit[k] < DEDUP) continue;
                 lastHit[k] = i;
-                sim = sim || simExits(R, i, { rules: RULES, maxD: MAXD });
+                sim = sim || simExits(R, i, { rules: RULES, maxD: MAXD, stopFill: STOPFILL });
                 if (!sim) continue;
-                EV[k].push({ sym, i, date: R[i].d, r: sim });
+                EV[k].push({ sym, i, date: R[i].d, r: sim, ta: trAtr(R, i) });
             }
         }
         // 對照組:每 DEDUP 根抽一根(⛔ 不挑日子;跟事件同一批股票、同一段時間)
         if (i % DEDUP === 0) {
-            const s2 = sim || simExits(R, i, { rules: RULES, maxD: MAXD });
+            const s2 = sim || simExits(R, i, { rules: RULES, maxD: MAXD, stopFill: STOPFILL });
             if (s2) BASE.push({ sym, i, date: R[i].d, r: s2 });
         }
     }
@@ -309,6 +349,39 @@ if (arr60.length >= 30) {
         console.log(`${exitName(r).padEnd(22)}${(all >= 0 ? '+' : '') + all.toFixed(2)} ${(h1 >= 0 ? '+' : '') + h1.toFixed(2)} ${(h2 >= 0 ? '+' : '') + h2.toFixed(2)}  ${yr.map(x => (x >= 0 ? '+' : '') + x.toFixed(1)).join(' ').padEnd(16)} ${drop ? '✅' : '❌'}      ${mean(netOf(arr60, r)) > 0 ? '✅' : '❌'}     ${Math.abs(z) >= 2 ? '✅' : '❌'}    ${pass}/6`);
     }
 } else console.log('⛔ 樣本不足');
+
+// ── 🕯️ 突破 K 的幅度(÷ ATR14)── V77.5.9
+console.log('\n' + '═'.repeat(112));
+console.log('【突破 K 幅度 ÷ ATR14】同一批突破,依訊號那根的真實波幅分桶 × 唐奇安 20 日 —— 對照 = 同一個門檻的**全部**突破(⛔ 不是全市場)');
+console.log('═'.repeat(112));
+const TA = {};
+for (const N of [20, 60, 120]) {
+    const all = EV[`${N}|1`].filter(e => e.ta != null); if (all.length < 100) continue;
+    const years = [...new Set(all.map(yearOf))].sort();
+    const exAll = exOf(all, 'don20'), mAll = mean(exAll);
+    console.log(`\n── 創 ${N} 日新高 ・n=${all.length.toLocaleString()} ・全部突破超額 ${mAll.toFixed(2)}pp ──`);
+    console.log('K÷ATR     n       佔比%   超額pp   增量pp  前半  後半  逐年同向            去最好年 扣成本絕對 |z|≥2 過幾關');
+    TA[N] = [];
+    for (const [lo, hi] of TA_BINS) {
+        const a = all.filter(e => e.ta >= lo && e.ta < hi);
+        const lab = `${lo}~${isFinite(hi) ? hi : ''}`.padEnd(8);
+        if (a.length < 30) { console.log(`${lab} 樣本不足(${a.length})`); continue; }
+        const ea = exOf(a, 'don20'), d = mean(ea) - mAll;
+        const mid = Math.floor(a.length / 2);
+        const h1 = mean(exOf(a.slice(0, mid), 'don20')) - mAll, h2 = mean(exOf(a.slice(mid), 'don20')) - mAll;
+        const yr = years.map(y => { const aa = a.filter(e => yearOf(e) === y), bb = all.filter(e => yearOf(e) === y);
+            return aa.length >= 20 ? mean(exOf(aa, 'don20')) - mean(exOf(bb, 'don20')) : null; }).filter(x => x != null);
+        // ⚠️ 關卡以「這一桶自己的方向」判(增量為負的桶 = 避雷,也要能判得出來)
+        const yrOK = yr.length >= 2 && (d > 0 ? yr.every(x => x > 0) : yr.every(x => x < 0));
+        const drop = yr.length >= 2 ? (() => { const k = yr.indexOf(d > 0 ? Math.max(...yr) : Math.min(...yr)); const rest = yr.filter((_, q) => q !== k); return rest.length ? (d > 0 ? mean(rest) > 0 : mean(rest) < 0) : false; })() : false;
+        const z = welch(ea, exAll), absNet = mean(netOf(a, 'don20'));
+        const g = [d > 0, (h1 > 0) === (h2 > 0) && (h1 > 0) === (d > 0), yrOK, drop, absNet > 0, Math.abs(z) >= 2];
+        const pass = g.filter(Boolean).length;
+        TA[N].push({ lo, hi: isFinite(hi) ? hi : null, n: a.length, ex: mean(ea), d, h1, h2, yr, z, absNet, pass });
+        console.log(`${lab}${String(a.length).padStart(7)} ${(a.length / all.length * 100).toFixed(1).padStart(7)} ${mean(ea).toFixed(2).padStart(8)} ${((d >= 0 ? '+' : '') + d.toFixed(2)).padStart(8)} ${((h1 >= 0 ? '+' : '') + h1.toFixed(2)).padStart(6)} ${((h2 >= 0 ? '+' : '') + h2.toFixed(2)).padStart(6)}  ${yr.map(x => (x >= 0 ? '+' : '') + x.toFixed(1)).join(' ').padEnd(20)} ${drop ? '✅' : '❌'}      ${absNet > 0 ? '✅' : '❌'}     ${Math.abs(z) >= 2 ? '✅' : '❌'}    ${pass}/6`);
+    }
+}
+if (process.env.TA_OUT) fs.writeFileSync(process.env.TA_OUT, JSON.stringify({ stopFill: STOPFILL, maxD: MAXD, bins: TA }));
 
 // ── sham 安慰劑 ──
 console.log('\n' + '═'.repeat(112));
