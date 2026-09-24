@@ -15,6 +15,12 @@
  *
  * 🚨 空過守門:若一個 Skill 都沒掃到、或一個腳本引用都沒抽到 → exit 1
  *    (這支工具最大的風險是「輸出看起來乾淨,其實根本沒掃到」)
+ *
+ * 📦 外部技能(skl 技能庫用 bootstrap_app.py 裝進來的,清單在 `.claude/skills/.skl-vendor.json`):
+ *    ⛔ 不套②④與 description 長度 —— 那是「本專案怎麼寫技能」的規範,第三方內容由上游維護,
+ *       改了下次 update 會被蓋回去;它們引用的 scripts/x.py 是技能自己資料夾內的路徑。
+ *    ✅ 仍套①name / ③相似度(防搶走專案技能的觸發)/ ⑤撞名。
+ *    ⛔ 專案自己的技能不可列進清單(否則等於用清單繞過規範)→ ⓥ 擋。
  */
 import fs from 'fs';
 import path from 'path';
@@ -24,6 +30,16 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const fails = [];
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : `  ${String(e).slice(0, 300)}`}`); if (!c) fails.push(n); };
 
+// ── 外部技能清單(skl 安裝器的 manifest)──────────────────────
+const VENDOR_FILE = process.env.SKL_VENDOR_FILE || path.join(ROOT, '.claude/skills/.skl-vendor.json');
+let vendor = new Set();
+if (fs.existsSync(VENDOR_FILE)) {
+    try { vendor = new Set(JSON.parse(fs.readFileSync(VENDOR_FILE, 'utf-8')).skills || []); }
+    catch (e) { ok('ⓥ .skl-vendor.json 可解析', false, e.message); }
+}
+// ⛔ 這幾支是本專案自己寫的,永遠要套完整規範
+const PROJECT_SKILLS = ['ship', 'probe', 'audit', 'mining', 'uicard'];
+
 // ── 收集所有定義檔 ────────────────────────────────────────────
 const docs = [];
 const skillsDir = path.join(ROOT, '.claude/skills');
@@ -31,7 +47,7 @@ if (fs.existsSync(skillsDir)) {
     for (const d of fs.readdirSync(skillsDir)) {
         const f = path.join(skillsDir, d, 'SKILL.md');
         if (fs.statSync(path.join(skillsDir, d)).isDirectory() && fs.existsSync(f))
-            docs.push({ kind: 'skill', dir: d, file: f, rel: path.relative(ROOT, f) });
+            docs.push({ kind: 'skill', dir: d, file: f, rel: path.relative(ROOT, f), vendor: vendor.has(d) });
     }
 }
 const agentsDir = path.join(ROOT, '.claude/agents');
@@ -40,8 +56,13 @@ if (fs.existsSync(agentsDir)) {
         docs.push({ kind: 'agent', dir: f.replace(/\.md$/, ''), file: path.join(agentsDir, f), rel: `.claude/agents/${f}` });
 }
 
-// 🚨 空過守門①:沒掃到東西 = 這支測試等於沒跑
-ok('⓪ 至少要掃到 5 支 Skill + 1 支代理', docs.length >= 6, `只掃到 ${docs.length} 支`);
+// 🚨 空過守門①:沒掃到東西 = 這支測試等於沒跑(⛔ 外部技能不算數)
+const own = docs.filter(d => !d.vendor);
+ok('⓪ 至少要掃到 5 支專案 Skill + 1 支代理', own.length >= 6, `只掃到 ${own.length} 支`);
+ok('ⓥ 專案自己的技能不可列進外部清單', PROJECT_SKILLS.every(x => !vendor.has(x)),
+    PROJECT_SKILLS.filter(x => vendor.has(x)).join(','));
+const ghost = [...vendor].filter(x => !docs.some(d => d.dir === x));
+ok('ⓥ 外部清單裡的技能資料夾都真的存在', ghost.length === 0, ghost.join(','));
 if (docs.length === 0) { console.error('❌ 一個定義檔都沒掃到,拒絕給綠燈'); process.exit(1); }
 
 // ── ① frontmatter ────────────────────────────────────────────
@@ -54,11 +75,11 @@ for (const d of docs) {
     const fm = {};
     for (const line of m[1].split(/\r?\n/)) {
         const kv = line.match(/^([a-zA-Z_]+):\s*(.*)$/);
-        if (kv) fm[kv[1]] = kv[2].trim();
+        if (kv) fm[kv[1]] = kv[2].trim().replace(/^(["'])(.*)\1$/, '$2');
     }
     ok(`① ${d.rel} name === 資料夾名「${d.dir}」`, fm.name === d.dir, `name=${fm.name}`);
     ok(`① ${d.rel} description 夠具體(30~600 字)`,
-        !!fm.description && fm.description.length >= 30 && fm.description.length <= 600,
+        !!fm.description && fm.description.length >= 30 && (d.vendor || fm.description.length <= 600),
         `長度 ${(fm.description || '').length}`);
     metas.push({ ...d, ...fm, body: raw.slice(m[0].length), lines: raw.split('\n').length });
 }
@@ -72,6 +93,7 @@ const PLACEHOLDER = /(?:\/x\.json|\bdata\/|^<|名字|SKILL\.md$|package\.json)/;
 let refTotal = 0;
 const missing = [];
 for (const m of metas) {
+    if (m.vendor) continue;
     const seen = new Set();
     let g;
     while ((g = FILE_RE.exec(m.body)) !== null) {
@@ -107,6 +129,7 @@ console.log(`   ℹ️ 最高重疊率 ${worst.v.toFixed(2)}(${worst.pair})`);
 
 // ── ④ 邊界與長度 ─────────────────────────────────────────────
 for (const m of metas) {
+    if (m.vendor) continue;
     if (m.kind === 'skill')
         ok(`④ ${m.dir} 有寫「⛔ 這支不做什麼」的邊界`, /這支不做|不可以|⛔/.test(m.body.slice(0, 1200)));
     ok(`④ ${m.dir} 長度 30~140 行(超過通常是在複製 CLAUDE.md)`,

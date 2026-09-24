@@ -1,3 +1,28 @@
+# 📦 2026-09-24 從 skl 技能庫裝 3 支外部技能(34 支候選挑 2 支 + 安裝器必裝的 1 支)
+
+使用者:「從 skl 取得技能庫…從候選中只挑真正用得到的(寧缺勿濫),每個寫一句理由」。
+
+- ✅ **裝了**:
+  - `senior-data-scientist`:回測的統計方法;
+  - `senior-prompt-engineer`:提示詞長度、冗詞量測,跟上一版比對;
+  - `app-guardrails-audit`:`bootstrap_app.py` 的 `ALWAYS` 清單,一定會裝;剛好就是使用者的 OOM / WAL / 限流準則。
+- ⛔ **跳過 32 支**,主要理由:
+  - 多代理編排跟 `scout` / 既有巡邏搶觸發;
+  - `autoresearch` 自動調參 = 六關在防的過度擬合;
+  - 記憶類要讀過往對話(雲端容器一次性),或另開記錄處(違反「⛔ 不開第三個記錄處」);
+  - `skill-tester` 跟 `test_skills.mjs` 重疊;
+  - ML / CV / RAG / MCP / Obsidian 與本 repo 無關。
+- `--no-hook`:開工 hook 只會多一行「技能幾天沒更新」,還要改 `.claude/settings.json`。
+- 🧪 `test_skills.mjs` 認得 `.skl-vendor.json`:
+  - 外部技能只檢查 name / 相似度 / 撞名(第三方內容不能改,改了下次 update 會被蓋);
+  - name 剝引號;
+  - 新增 ⓥ 兩條:專案 5 支不可列進清單、清單裡的資料夾要真的存在;
+  - 兩種注入都叫得出來:把 ship 列進清單 → 紅;外部 description 抄 `/probe` → ③ 紅。
+- 🔍 **guardrails 首跑的「必修 1」是真的**:`cloud-worker/worker.js:1339` Gemini 金鑰放在網址參數 `?key=`。
+  - 網址會進錯誤訊息與代理記錄,應改用 `x-goog-api-key` 標頭;
+  - ⏳ 這一輪沒動(範圍外,Worker 要使用者重新部署)。
+  - 另有建議修 44 / 提醒 40,⛔ 未逐條人工驗證,⛔ 不可當成 44 個 bug。
+
 # 🚪💳 V77.5.4 §21 出場線措辭(沒持有)+ 「FinMind 取消付費會怎樣 / 還能付費買什麼」
 
 使用者:「1.依照你推薦的做 2.我 1 隻 FinMind Token 是付費的,其餘免費…取消付費改回原本的會有影響什麼 3.除了 FinMind 還有什麼可以用付費的」。

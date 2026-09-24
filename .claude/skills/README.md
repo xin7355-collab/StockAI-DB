@@ -63,3 +63,25 @@
    ```
    它會擋下三件事：frontmatter 不合法 ・兩支 description 太像 ・
    **Skill 裡提到的腳本檔名根本不存在**（腳本改名後 Skill 會開始教錯的東西，而沒有人會發現）
+
+---
+
+## 📦 外部技能（從 skl 技能庫裝進來的，2026-09-24）
+
+用 `xin7355-collab/skl` 的 `bootstrap_app.py install --skills … --no-hook` 裝的，清單在 `.claude/skills/.skl-vendor.json`。
+⛔ **不要直接改這三支的內容** —— 下次 update 會被蓋回去；要改就去 skl 改。
+
+| 技能 | 為什麼留著 | ⛔ 不拿來做 |
+|---|---|---|
+| `senior-data-scientist` | 回測的統計方法：多重比較校正、信賴區間、資料洩漏 / 過度擬合檢查、基準對照 | 流程照 `/probe`；它教的 XGBoost / MLflow ⛔ 不套（`ml_probe` 已實測 ML 沒有樣本外預測力） |
+| `senior-prompt-engineer` | 餵給 AI 的提示詞（報告、做圖、新聞翻譯、純 JSON）：`scripts/prompt_optimizer.py` 量長度、冗詞，並跟上一版比對 | ⛔ 不拿來改 AI 模型分工（CLAUDE.md 已定案） |
+| `app-guardrails-audit` | 安裝器**一定會裝**；查 OOM、SQLite 鎖、API 限流與退避、金鑰進網址、工作流逾時 | 資料體檢與巡邏仍是 `/audit`；它是靜態掃描，每一條都要人工驗真偽 |
+
+`scripts/test_skills.mjs` 對這三支**只檢查** name / 描述相似度 / 撞名，
+不要求「⛔ 這支不做」與行數，因為那是本專案寫技能的規範；而專案自己的 5 支**不可**列進那份清單。
+
+**更新**：
+```bash
+(git -C /tmp/skl pull -q || git clone -q --depth 1 https://github.com/xin7355-collab/skl /tmp/skl)
+python3 /tmp/skl/xin-toolkit/skills/app-bootstrap/scripts/bootstrap_app.py update --target . --no-hook
+```

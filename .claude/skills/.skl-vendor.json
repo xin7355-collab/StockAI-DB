@@ -1,0 +1,15 @@
+{
+  "skills": [
+    "app-guardrails-audit",
+    "senior-data-scientist",
+    "senior-prompt-engineer"
+  ],
+  "source_repo": "https://github.com/xin7355-collab/skl",
+  "source_commit": "fc85fb0",
+  "updated_at": "2026-09-24T00:29:42Z",
+  "packs": [],
+  "extra_skills": [
+    "engineering-team/skills/senior-data-scientist",
+    "engineering-team/skills/senior-prompt-engineer"
+  ]
+}
