@@ -31,6 +31,7 @@ import { DEADLINES } from './lib_fundamentals.mjs';
 import { turnCuts, turnBucket } from './lib_turnover.mjs';
 import { finSeries, finOnAt } from './lib_finaccel.mjs';
 import { valuePrep, valueSeries, valueOnAt, KINDS as VAL_KINDS, CYC_IND } from './lib_value.mjs';
+import { trSeries } from './lib_totalreturn.mjs';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs';
 import path from 'path';
@@ -625,6 +626,25 @@ const indCycOk = (sym, d) => {
     return true;
 };
 const days = twii.map(r => r.d);
+// 📅 V77.6.1 逐年模式(使用者:「每年 1 月重新放 100 萬,2026、2025、2024…各別列出,包含空頭」)
+//   YEAR=2024 → 只有**買進日**落在那一年(從第 YEAR_OFFSET 個交易日起)的才開倉;現金 = CAPITAL 從那一天起算;
+//   跨年的部位照原規則出場、損益算回**買進那一年**(⛔ 不在 12/31 強迫賣 —— 那不是策略會做的事)。
+//   每檔門檻 / 🧬 照舊 walk-forward(那一年之前的歷史全部拿來累積成績)→ ⛔ 不用手算 WARMUP。
+//   ⚠️ YEAR / YEAR_OFFSET ⛔ 不進 CACHE_KEY(只影響模擬階段,交易快取照樣重用)。
+//   ⛔ 沒設 YEAR 時一個字都不變(`YR_FROM = WARMUP`)。
+const YEAR = String(process.env.YEAR || '');
+const YEAR_OFFSET = Math.max(0, +(process.env.YEAR_OFFSET || 0) || 0);
+let YR_FROM = WARMUP, YR_TO = days.length - 1;
+if (YEAR) {
+    if (!/^\d{4}$/.test(YEAR)) { console.error(`🚨 YEAR=${YEAR} 不認得(要四位數年份)`); process.exit(1); }
+    const _y0 = days.findIndex(d => d.startsWith(YEAR));
+    if (_y0 < 0) { console.error(`🚨 YEAR=${YEAR}:指數日期軸裡沒有這一年(${days[0]} ~ ${days[days.length - 1]})`); process.exit(1); }
+    let _y1 = _y0; while (_y1 + 1 < days.length && days[_y1 + 1].startsWith(YEAR)) _y1++;
+    YR_FROM = _y0 + YEAR_OFFSET; YR_TO = _y1;
+    if (YR_FROM > YR_TO) { console.error(`🚨 YEAR_OFFSET=${YEAR_OFFSET} 超過 ${YEAR} 年的交易日數`); process.exit(1); }
+    if (YR_FROM < 60) { console.error(`🚨 ${YEAR} 年太早:指數日期軸只有 ${YR_FROM} 天歷史(< 60),每檔門檻沒辦法累積`); process.exit(1); }
+    console.log(`📅 逐年模式:${YEAR} 年 ・${days[YR_FROM]} ~ ${days[YR_TO]} 之間買進 ・本金 ${CAPITAL.toLocaleString()} 元從 ${days[YR_FROM]} 起算`);
+}
 if (PARK === '0050') {
     const _raw = JSON.parse(fs.readFileSync(path.join(DATA, '0050.json'), 'utf8'))
         .map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close })).filter(r => r.c > 0);
@@ -953,7 +973,9 @@ for (let i = 0; i < days.length; i++) {
         const m = (mkt[t.key] ||= { n: 0, sum: 0 });
         m.n++; m.sum += t.ret;
     }
-    if (i < WARMUP) continue;
+    if (i < YR_FROM) continue;
+    // 📅 逐年模式:過了那一年就不再開新倉,只讓手上的部位照規則出場;全部出清就結束
+    if (YEAR && i > YR_TO) { if (!live.length) break; openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); continue; }
     // (b) 今天觸發的候選,依「當下已知的期望值」排序
     //   ⭐ 兩層門檻(缺一不可):
     //     ① **這一檔**在**這個型態**上,到昨天為止扣成本後仍是賺的(= App 說「這檔適合這招」)
@@ -1081,6 +1103,11 @@ if (PARK && parkOf && parkSh > 0) {
     parkPnL += _v - parkBasis; parkLog.push({ in: parkInD, out: days[days.length - 1], basis: parkBasis, pnl: _v - parkBasis }); cash += _v; parkSh = 0; parkBasis = 0; parkSell++;
 }
 
+if (!taken.length && YEAR && process.env.SUMMARY_OUT) {
+    // 📅 逐年模式:那一年一筆都沒做 = 一個誠實的結果(⛔ 不可當成錯誤、⛔ 不可靜默消失)
+    fs.writeFileSync(process.env.SUMMARY_OUT, JSON.stringify({ year: YEAR, offset: YEAR_OFFSET, from: days[YR_FROM], to: days[YR_TO], n: 0, pnl: 0, ret: 0, skipped, note: '這一年一筆都沒進場' }));
+    console.log(`📅 ${YEAR} 年一筆都沒進場 → 已寫出 n=0`); process.exit(0);
+}
 if (!taken.length) { console.log('❌ 暖身後一筆都沒進場(門檻太嚴或樣本太小)'); process.exit(1); }
 if (SIZING === 'volpar' || SIZING === 'volsham') {
     const _avg = vpN ? vpSum / vpN : 0;
@@ -1229,6 +1256,36 @@ for (const [k, v] of Object.entries(useCnt).sort((a, b) => b[1].n - a[1].n)) {
     console.log(`   ${k.padEnd(16)} ${String(v.n).padStart(4)} 筆 ・勝率 ${(v.w / v.n * 100).toFixed(0)}% ・每趟 ${pct(v.sum / v.n)}`);
 }
 // 📤 V77.3.5 機器可讀的成績單(給 weekly_backtest.yml → build_backtest_edge.mjs 用)—— ⛔ 數字跟上面印的是同一份,不另算
+// 📅 V77.6.1 逐年模式的成績單(白話欄位 —— 使用者要的「100 萬放一年,賺賠多少、每筆平均多少、同年 0050」)
+//   ⭐ 對照組的期間 = **那一年**(前一個交易日收盤 → 那一年最後一個交易日收盤),⛔ 不是第一筆成交日 ——
+//     使用者比的是「同一年放 0050 會怎樣」,一年一年要能直接對齊。
+function _yearSummary() {
+    const b = YR_FROM - 1, e = YR_TO;
+    const px = (arr, d) => { let hit = null; for (const r of arr) { if (r.d <= d) hit = r.c; else break; } return hit; };
+    const r50 = (() => { const p0 = px(f50, days[b]), p1 = px(f50, days[e]); return p0 && p1 ? (p1 - p0) / p0 * 100 - COST : null; })();
+    let r50tr = null;
+    try {
+        if (process.env.DIV) {
+            const raw = JSON.parse(fs.readFileSync(process.env.DIV, 'utf8')); const DV = raw.d || raw;
+            const bars = f50.filter(r => r.d <= days[e]);
+            const S = trSeries(bars, (DV['0050'] || {}).h || []);
+            const at = d => { let v = null; for (let k = 0; k < S.d.length; k++) { if (S.d[k] <= d) v = S.v[k]; else break; } return v; };
+            const v0 = at(days[b]), v1 = at(days[e]);
+            if (v0 && v1) r50tr = (v1 - v0) / v0 * 100 - COST;
+        }
+    } catch (_) { r50tr = null; }
+    const tw = (twii[e].c - twii[b].c) / twii[b].c * 100;
+    const ms = taken.map(money);
+    const lastOut = taken.map(t => t.outD).sort().pop();
+    return {
+        year: YEAR, offset: YEAR_OFFSET, yFrom: days[YR_FROM], yTo: days[YR_TO], lastOut,
+        pnl: Math.round(totalPnL), end: Math.round(CAPITAL + totalPnL),
+        perAmt: Math.round(totalPnL / taken.length),
+        worst: Math.round(Math.min(...ms)), best: Math.round(Math.max(...ms)),
+        y0050: r50 == null ? null : +r50.toFixed(2), y0050tr: r50tr == null ? null : +r50tr.toFixed(2), ytwii: +tw.toFixed(2),
+        crossYear: taken.filter(t => t.outD > days[YR_TO]).length,
+    };
+}
 if (process.env.SUMMARY_OUT) {
     const byYear = {};
     for (const m of mons) { const y = m.slice(0, 4); byYear[y] = Math.round((byYear[y] || 0) + byMon[m].pnl); }
@@ -1238,6 +1295,7 @@ if (process.env.SUMMARY_OUT) {
         per: +(taken.reduce((a, t) => a + net(t), 0) / taken.length).toFixed(2), cum: Math.round(totalPnL), ret: +(totalPnL / capital * 100).toFixed(2),
         dd: +mdd.toFixed(2), skipped, twii: +twiiRet.toFixed(2), etf0050: ret50 == null ? null : +ret50.toFixed(2), byYear,
     };
+    if (YEAR) Object.assign(summary, _yearSummary());
     fs.writeFileSync(process.env.SUMMARY_OUT, JSON.stringify(summary));
     console.log(`📤 成績單 JSON → ${process.env.SUMMARY_OUT}`);
 }

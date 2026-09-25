@@ -756,7 +756,9 @@ const CALC = await page.evaluate(async () => {
     PRO.switchTab('calc');
     out.onLab = !document.getElementById('tabLab').classList.contains('hidden') && PRO._labSel === 'bt';
     out.noCalcTab = !document.getElementById('tabCalc') && !document.getElementById('tabBtnCalc');
-    out.introVisible = document.getElementById('calcIntro').innerText;
+    // 📅 V77.6.1 第一眼是「逐年成績單」;舊情境庫收進 #calcOld 摺疊(⛔ 沒刪)→ 「不可收在摺疊裡」那兩條改看逐年那一塊
+    out.introVisible = document.getElementById('yearlyBody').innerText;
+    const _old = document.getElementById('calcOld'); if (_old) _old.open = true;
     document.querySelectorAll('#calcIntro details').forEach(e => { e.open = true; });
     out.intro = document.getElementById('calcIntro').innerText + '\n' + document.getElementById('labIntro').innerText;
     out.body0 = document.getElementById('calcBody').innerText;
@@ -810,14 +812,14 @@ ok('㉞g ⭐ 窗口長度對照組要在(13/36/49 個月會翻轉結論)', /窗�
 // 📖 V74.5.0 使用者:「用語重新調整讓一般散戶看得懂;要說明本金 100 萬、複利、獲利幾%、
 //    成本扣了沒、36 個月含不含空頭、每年平均、還有你是怎麼算的」
 ok('㉞i 💰 必須說明本金 100 萬 + 複利,而且**不可以收在摺疊裡**(收起來等於沒說)',
-   /本金 100 萬/.test(CALC.introVisible) && /複利|滾回去/.test(CALC.introVisible), CALC.introVisible.slice(0, 100));
+   /100 萬/.test(CALC.introVisible) && /複利|滾回去|重新放 100 萬/.test(CALC.introVisible), CALC.introVisible.slice(0, 100));
 ok('㉞i2 💸 必須說明「成本已經扣掉了」+ 扣多少(⛔ 不可讓人以為是毛利),同樣不可收摺疊',
-   /已經扣掉|已扣/.test(CALC.introVisible) && /0\.44%/.test(CALC.introVisible) && /不是毛利/.test(CALC.introVisible));
+   /已經扣掉|已扣/.test(CALC.introVisible) && /手續費和稅|0\.44%/.test(CALC.introVisible) && /不含本金|不是毛利/.test(CALC.introVisible));
 ok('㉞i3 📈 表格要同時給「等於幾%」與「年化」,而且要說年化不是每年都賺這麼多',
    /等於幾%/.test(CALC.body0) && /年化/.test(CALC.body0) && /\/年/.test(CALC.body0)
-   && /不是每年都賺這麼多/.test(CALC.introVisible), CALC.body0.slice(0, 120));
+   && /不是每年都賺這麼多/.test(CALC.intro), CALC.body0.slice(0, 120));
 ok('㉞i4 📉 要把「中途最多賠」跟專業說法「最大回撤」對起來(使用者看不懂那個詞)',
-   /最大回撤/.test(CALC.introVisible) && /中途最多賠/.test(CALC.body0));
+   /最大回撤/.test(CALC.intro) && /中途最多賠/.test(CALC.body0));
 ok('㉞i5 🧾 要寫清楚「怎麼買的」(一天 2 檔 / 每筆 15% / 尾盤買 / 破 5 日線賣)',
    /一天最多做 2 檔|每天最多 2 檔/.test(CALC.intro) && /尾盤/.test(CALC.intro) && /5 日線/.test(CALC.intro));
 // ㉞h V74.4.8 使用者:「用不一樣停損、停利、5 日線…把華爾街在用的出場策略加進來混搭,賺錢會提高嗎?」
