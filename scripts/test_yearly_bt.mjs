@@ -69,11 +69,20 @@ const R = await page.evaluate(async () => {
     PRO._ybSort = null; PRO.ybPick(other.id); o.pick = box().querySelector('#ybDetail').innerText.includes(other.t.slice(0, 6));
     PRO.ybPick('base');
     o.headers = [...box().querySelectorAll('th.ybsort')].length;
+    // 📚 V77.6.2 長歷史
+    const L = PRO._YEARLY_BT_LONG;
+    if (L && L.strats && L.strats.length) {
+        PRO.ybSet('long'); const lt = box().innerText;
+        o.longDbg = { y2011: lt.includes('2011'), proxy: lt.includes('等權代理'), lim: lt.includes('只有上市') && lt.includes('倖存者偏誤'), rows: box().querySelectorAll('tbody tr').length };
+        PRO.ybSet('main'); const mt = box().innerText;
+        o.longOk = o.longDbg.y2011 && o.longDbg.proxy && o.longDbg.lim && !mt.includes('長歷史是怎麼來的') && box().querySelectorAll('tbody tr').length === Y.strats.length + 3;
+    } else { o.longOk = false; o.longDbg = 'no _YEARLY_BT_LONG'; }
     return o;
 });
 await browser.close();
 ok('③ 沒有 pageerror', !errs.length, errs.join(' | '));
 ok('③b 總表列數 = 策略數 + 3 列對照(0050 不含息 / 含息 / 加權)', Y && R.rows === Y.strats.length + 3, `${R.rows}`);
+ok('③j 📚 長歷史切換:按鈕在、切過去是 2011 起、寫明「等權代理」與四個限制、切回來復原', R.longOk, JSON.stringify(R.longDbg));
 ok('③c 決定性對照:改常數,畫面要跟著變(⛔ 不寫死)', R.inj);
 ok('③d 表頭可排序(每一年 + 加起來 + 贏幾年),點了排對、有箭頭', R.headers === YEARS.length + 2 && R.sortOk && R.sortArrow, JSON.stringify({ h: R.headers, s: R.sortOk }));
 ok('③e 點一列 → 細節換成那一個策略', R.pick);

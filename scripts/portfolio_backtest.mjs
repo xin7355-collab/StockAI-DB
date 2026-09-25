@@ -790,8 +790,10 @@ if (SELF.length || TURN || VAL) {
                        .filter(r => r.d && r.c > 0);
         const m = new Map();
         for (let i = 60; i < dd.length; i++) {
-            const w = dd.slice(Math.max(0, i - 249), i + 1).map(r => r.c);
-            const rank = w.filter(c => c <= dd[i].c).length / w.length * 100;
+            // ⚡ V77.6.2 不配置陣列直接數(同一個算式;16 年資料時舊寫法每次 GC 吃掉好幾秒)
+            let _rk = 0; const _lo = Math.max(0, i - 249), _ci = dd[i].c;
+            for (let k = _lo; k <= i; k++) if (dd[k].c <= _ci) _rk++;
+            const rank = _rk / (i - _lo + 1) * 100;
             let av = 0, cn = 0; for (let k = Math.max(0, i - 19); k <= i; k++) { av += dd[k].v; cn++; }
             let s3 = 0; for (let k = i - 19; k <= i; k++) s3 += Math.pow((dd[k].c - dd[k - 1].c) / dd[k - 1].c, 2);
             // 📐 乖離年線(240MA)—— V72.x 實測:向上穿越 200% 後 60 日邊際 −6.24%(中期壓力)

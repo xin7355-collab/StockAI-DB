@@ -117,8 +117,28 @@ export const SKIPPED = [
     { t: '🧬 × 只做「加分偵測器訊號」', why: '要另外先產一份訊號對照檔(sig_x_playbook_probe),這一輪沒做' },
     { t: '窗口長度對照(13 → 36 → 49 個月)', why: '逐年成績單本身就是更清楚的版本(一年一格),不用再比窗口' },
 ];
-export const GROUPS = { now: '⭐ 決策台現行', exit: '🚪 出場:只換賣的規則', entry: '⏰ 進場:只換買的時間', pick: '🧬 選股:只換挑哪幾檔', size: '💰 部位:每天幾檔、每筆多少', mkt: '🏛️ 大盤狀態:哪種盤才做', cal: '📆 行事曆:哪幾天不做', x: '⚔️ 其他組合' };
+export const GROUPS = { combo: '🧪 組合:兩三個改動一起', now: '⭐ 決策台現行', exit: '🚪 出場:只換賣的規則', entry: '⏰ 進場:只換買的時間', pick: '🧬 選股:只換挑哪幾檔', size: '💰 部位:每天幾檔、每筆多少', mkt: '🏛️ 大盤狀態:哪種盤才做', cal: '📆 行事曆:哪幾天不做', x: '⚔️ 其他組合' };
 
+// 🧪 V77.6.2 長歷史組合(`SET=long`):2011~2026,只跑不需要 2021 以後才有的資料(財報 / 週轉 / 價值)的那些
+//   ⭐ 組合是**看 2011~2020 之前**就定好的(依 2022~2026 逐年表挑出來的方向)→ 2011~2020 是真的樣本外
+export const COMBOS = [
+    { g: 'combo', id: 'k_d10m40bear', t: '🧪 唐奇安 10 日・最長 40 天 + 嚴格空頭不做', env: { EXIT: 'don10', MAXD: '40', FILTER: 'bear60' } },
+    { g: 'combo', id: 'k_d20m40bear', t: '🧪 唐奇安 20 日・最長 40 天 + 嚴格空頭不做', env: { MAXD: '40', FILTER: 'bear60' } },
+    { g: 'combo', id: 'k_d10wm40bear', t: '🧪 唐奇安 10 日(10 天後才看)・最長 40 天 + 嚴格空頭不做', env: { EXIT: 'don10w', MAXD: '40', FILTER: 'bear60' } },
+    { g: 'combo', id: 'k_d10m40nc',  t: '🧪 唐奇安 10 日・最長 40 天 + 隔天收盤才買', env: { EXIT: 'don10', MAXD: '40', ENTRY: 'nextclose' } },
+    { g: 'combo', id: 'k_d10m40plain', t: '🧪 不挑 🧬 + 唐奇安 10 日・最長 40 天', env: { EXIT: 'don10', MAXD: '40', SELF: '' } },
+    { g: 'combo', id: 'k_d10m60',    t: '🧪 唐奇安 10 日・最長 60 天', env: { EXIT: 'don10', MAXD: '60' } },
+    { g: 'combo', id: 'k_d20m60',    t: '🧪 唐奇安 20 日・最長 60 天', env: { MAXD: '60' } },
+    { g: 'combo', id: 'k_d20m60bear', t: '🧪 唐奇安 20 日・最長 60 天 + 嚴格空頭不做', env: { MAXD: '60', FILTER: 'bear60' } },
+    // ⭐ 看完 2011~2026 的逐年表之後才加的(兩個各自兩段都站得住的成分合起來)→ ⛔ 不是樣本外,要看 17 條連續路徑與高原
+    { g: 'combo', id: 'k_d55m40bear', t: '🧪 唐奇安 55 日・最長 40 天 + 嚴格空頭不做', env: { EXIT: 'don55', MAXD: '40', FILTER: 'bear60' } },
+    { g: 'combo', id: 'k_d40m40bear', t: '⭐ 唐奇安 40 日・最長 40 天 + 嚴格空頭不做(16 年最穩的一組)', env: { EXIT: 'don40', MAXD: '40', FILTER: 'bear60' } },
+    { g: 'combo', id: 'k_d70m40bear', t: '🧪 唐奇安 70 日・最長 40 天 + 嚴格空頭不做', env: { EXIT: 'don70', MAXD: '40', FILTER: 'bear60' } },
+];
+const LONG_IDS = ['base', 's_plain', 's_high', 's_hivol', 'x_atr2', 'x_trail8', 'x_ma5', 'x_d10', 'x_d20m40', 'x_d10m40', 'x_d10w40', 'x_d55m40', 'x_atr2m40', 'x_none', 'e_nextclose', 'e_nextopen', 'm_bear60', 'm_regime'];
+const SET = process.env.SET || '';
+const RUN_STRATS = SET === 'long' ? [...LONG_IDS.map(id => STRATS.find(s => s.id === id)), ...COMBOS] : STRATS;
+const RUN_YEARS = process.env.YEARS_RUN ? process.env.YEARS_RUN.split(',') : (SET === 'long' ? Array.from({ length: 16 }, (_, k) => String(2011 + k)) : YEARS);
 const CACHE_KEYS = ['ENTRY', 'EXIT', 'MAXD', 'STOP', 'GAPCAP', 'STOPFILL'];
 export const envOf = s => ({ ...BASE, ...s.env });
 export const cacheName = s => { const e = envOf(s); return 'tr_' + CACHE_KEYS.map(k => `${k}-${(e[k] || 'd').replace(/[^\w.]/g, '_')}`).join('_') + '.json'; };
@@ -127,8 +147,8 @@ const _MAIN = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(
 if (_MAIN) await main();
 async function main() {
 if (process.argv.includes('--list')) {
-    for (const s of STRATS) console.log(`${s.g.padEnd(6)} ${s.id.padEnd(12)} ${cacheName(s).padEnd(70)} ${s.t}`);
-    console.log(`\n${STRATS.length} 個策略 ・${new Set(STRATS.map(cacheName)).size} 份交易快取 ・跳過 ${SKIPPED.length} 列`);
+    for (const s of RUN_STRATS) console.log(`${s.g.padEnd(6)} ${s.id.padEnd(12)} ${cacheName(s).padEnd(70)} ${s.t}`);
+    console.log(`\n${RUN_STRATS.length} 個策略 ・${RUN_YEARS.length} 年 ・${new Set(RUN_STRATS.map(cacheName)).size} 份交易快取 ・跳過 ${SKIPPED.length} 列`);
     process.exit(0);
 }
 
@@ -136,11 +156,11 @@ const OUT = process.env.OUT_DIR;
 const ci = process.argv.indexOf('--collect');
 if (ci > 0) {
     if (!OUT) { console.error('🚨 --collect 要 OUT_DIR'); process.exit(1); }
-    const res = { asof: new Date().toISOString().slice(0, 10), years: YEARS, offsets: OFFSETS, base: BASE, picks: BASE_PICKS, groups: GROUPS, skipped: SKIPPED, bench: {}, strats: [] };
+    const res = { asof: new Date().toISOString().slice(0, 10), set: SET || 'main', years: RUN_YEARS, offsets: OFFSETS, base: BASE, picks: BASE_PICKS, groups: GROUPS, skipped: SKIPPED, bench: {}, strats: [] };
     const miss = [];
-    for (const s of STRATS) {
+    for (const s of RUN_STRATS) {
         const row = { id: s.id, g: s.g, t: s.t, y: {} };
-        for (const y of YEARS) {
+        for (const y of RUN_YEARS) {
             const rs = OFFSETS.map(o => { const f = path.join(OUT, `${s.id}_${y}_${o}.json`); try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (_) { return null; } });
             const r0 = rs[0];
             if (!r0) { miss.push(`${s.id}_${y}_0`); continue; }
@@ -151,13 +171,14 @@ if (ci > 0) {
                 from: r0.yFrom || r0.from, to: r0.yTo || r0.to, lastOut: r0.lastOut || null, cross: r0.crossYear ?? 0,
                 lo: Math.min(...others), hi: Math.max(...others), paths: others.length,
             };
-            if (s.id === 'base' && r0.y0050 != null) res.bench[y] = { e0050: r0.y0050, e0050tr: r0.y0050tr, twii: r0.ytwii, from: r0.yFrom, to: r0.yTo };
+            // ⚠️ V77.6.2 修:以前只在「0050 有值」才記 → 2021 以前(沒有 0050)連大盤那一列都不見了(embed 的守門抓到)
+            if (s.id === 'base' && r0.ytwii != null) res.bench[y] = { e0050: r0.y0050 ?? null, e0050tr: r0.y0050tr ?? null, twii: r0.ytwii, from: r0.yFrom, to: r0.yTo };
         }
         res.strats.push(row);
     }
     if (miss.length) { console.error(`🚨 缺 ${miss.length} 格(例:${miss.slice(0, 5).join(', ')})→ ⛔ 不產出,先把 runner 跑完`); process.exit(1); }
     fs.writeFileSync(process.argv[ci + 1], JSON.stringify(res));
-    console.log(`✅ ${res.strats.length} 個策略 × ${YEARS.length} 年 → ${process.argv[ci + 1]}`);
+    console.log(`✅ ${res.strats.length} 個策略 × ${RUN_YEARS.length} 年 → ${process.argv[ci + 1]}`);
     process.exit(0);
 }
 
@@ -168,8 +189,8 @@ fs.mkdirSync(OUT, { recursive: true }); fs.mkdirSync(CACHE, { recursive: true })
 const LANES = Math.max(1, +(process.env.LANES || 4));
 // 同一份快取的策略排在同一條線,而且那一條線的第一個工作一定是「產生快取」那一個(⛔ 兩條線同時寫同一個檔會壞)
 const byCache = new Map();
-for (const s of STRATS) { const c = cacheName(s); if (!byCache.has(c)) byCache.set(c, []); byCache.get(c).push(s); }
-const groups = [...byCache.entries()].map(([c, ss]) => ({ c, jobs: ss.flatMap(s => YEARS.flatMap(y => OFFSETS.map(o => ({ s, y, o })))) }));
+for (const s of RUN_STRATS) { const c = cacheName(s); if (!byCache.has(c)) byCache.set(c, []); byCache.get(c).push(s); }
+const groups = [...byCache.entries()].map(([c, ss]) => ({ c, jobs: ss.flatMap(s => RUN_YEARS.flatMap(y => OFFSETS.map(o => ({ s, y, o })))) }));
 // 已經有快取的組排後面(先把要產快取的慢工作分出去)
 groups.sort((a, b) => fs.existsSync(path.join(CACHE, a.c)) - fs.existsSync(path.join(CACHE, b.c)));
 const runOne = ({ s, y, o }, c) => new Promise(res => {
@@ -180,10 +201,14 @@ const runOne = ({ s, y, o }, c) => new Promise(res => {
     let log = ''; p.stdout.on('data', d => { log += d; if (log.length > 20000) log = log.slice(-20000); }); p.stderr.on('data', d => { log += d; });
     p.on('close', code => { if (code !== 0) { fs.writeFileSync(f.replace(/\.json$/, '.err'), log); console.error(`❌ ${s.id} ${y} +${o} rc=${code}`); } res(code); });
 });
+// ⚖️ V77.6.2 兩階段:① 每份快取只由一個工作建(建好之前同快取的其他工作等著)② 建好之後所有工作進同一條隊伍平均分給每條線
+//   (V77.6.1 那一輪「共用同一份快取的 30 個策略全擠在同一條線」→ 最後 30 分鐘只剩一條線在跑)
 let done = 0; const total = groups.reduce((a, g) => a + g.jobs.length, 0); const t0 = Date.now();
-const lane = async q => { while (q.length) { const g = q.shift(); for (const j of g.jobs) { await runOne(j, g.c); done++; if (done % 50 === 0) console.log(`… ${done}/${total}(${((Date.now() - t0) / 60000).toFixed(1)} 分)`); } } };
-const q = groups.slice();
-await Promise.all(Array.from({ length: LANES }, () => lane(q)));
+const ready = new Map();
+for (const g of groups) { let res; const p = new Promise(r => { res = r; }); ready.set(g.c, { p, res, built: fs.existsSync(path.join(CACHE, g.c)) }); if (fs.existsSync(path.join(CACHE, g.c))) res(); }
+const queue = [...groups.map(g => ({ ...g.jobs[0], c: g.c, builder: true })), ...groups.flatMap(g => g.jobs.slice(1).map(j => ({ ...j, c: g.c })))];
+const lane = async () => { while (queue.length) { const j = queue.shift(); const R = ready.get(j.c); if (!j.builder) await R.p; await runOne(j, j.c); if (j.builder) R.res(); done++; if (done % 50 === 0) console.log(`… ${done}/${total}(${((Date.now() - t0) / 60000).toFixed(1)} 分)`); } };
+await Promise.all(Array.from({ length: LANES }, () => lane()));
 const errs = fs.readdirSync(OUT).filter(f => f.endsWith('.err'));
 console.log(`✅ 跑完 ${done}/${total} ・失敗 ${errs.length} 格${errs.length ? '(看 OUT_DIR/*.err)' : ''}・${((Date.now() - t0) / 60000).toFixed(1)} 分`);
 }
