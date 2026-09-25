@@ -55,6 +55,9 @@ const R = await page.evaluate(async () => {
     const clear = () => { try { Object.keys(localStorage).filter(k => k.startsWith('popAlert_')).forEach(k => localStorage.removeItem(k)); } catch (_) {} };
     // 攔 toast 看有沒有被呼叫
     let toasts = []; const realToast = A.showToast; A.showToast = (msg) => { toasts.push(String(msg)); };
+    // 🔁 V77.6.5 修長期紅燈:提醒的 toast 早就改走專用的 `_alertToast`(`showToast` 只留給錯誤訊息,見 `_fireAlert` 註解)
+    //   → 兩條都要攔,⛔ 只攔 showToast 會把「有 toast」量成 0(這條從那一版起一直是假紅)
+    A._alertToast = (t) => { toasts.push(String(t)); return true; };
 
     clear(); A._closeAlertPop();
     // ① 出場類 → 應該彈窗

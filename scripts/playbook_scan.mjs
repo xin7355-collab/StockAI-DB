@@ -244,6 +244,14 @@ for (const f of files) {
     for (const x of r.fired) firedToday.push({ s: sym, c: r.c, v: r.v, d: r.d, ...x });
     if (used % 200 === 0) log(`   …${used} 檔 / ${((Date.now() - t0) / 1000).toFixed(0)}s / 候選 ${picks.length}・今日已觸發 ${firedToday.length}`);
 }
+// 🐻 V77.6.5 大盤嚴格空頭(收盤 < 60 日線 且 20 日線 < 60 日線)—— ⛔ 不另寫公式,直接呼叫 App 的 `_bear60Of`
+//   (決策台與 auto_trade.py 都讀這一欄 → 三邊同一個判斷;回測那份 `notBear60` 由 test_beargate 逐日比對)
+let mkt = null;
+try {
+    const tw = JSON.parse(fs.readFileSync(path.join(DATA, '^TWII.json'), 'utf8'));
+    const b = await page.evaluate(rows => app._bear60Of(rows), tw);
+    if (b) mkt = { bear60: !!b.on, d: b.d, c: b.c, ma20: b.ma20, ma60: b.ma60 };
+} catch (e) { log(`⚠️ 大盤空頭判斷算不出來(${e.message})→ 清單照出,mkt 留空(決策台會自己抓 ^TWII 算)`); }
 await browser.close();
 
 // 🚧 空過守門(⛔ 別拿掉):這支最大的風險是「跑完了、rc=0、檔案也寫了,但內容其實是空的」
@@ -267,6 +275,9 @@ const out = {
     data_date: latest,
     scanned: used,
     min_n: MIN_N, cost: COST, near_pct: NEAR,
+    // 🐻 V77.6.5 大盤嚴格空頭 → 策略規定不開新倉(決策台 / auto_trade.py 讀這裡;null = 算不出來)
+    mkt,
+    mkt_note: '大盤嚴格空頭 = 收盤在 60 日線下且 20 日線也在 60 日線下 → 策略規定當天不開新倉(只擋買進,賣出照常)',
     // ⛔ 這兩句是這份資料的**使用說明**,前端必須顯示 —— 不然使用者會照著隔天開盤買(實測會倒賠)
     how: '這是「明天盤中要盯哪幾檔」的清單,⛔ 不是「明天開盤買這幾檔」。實測隔天開盤買會把邊際吃光。',
     entry_note: '有效的進場時點是「觸發當天的尾盤(13:00~13:25)」—— 打法的判定條件都是用收盤價算的。',
@@ -288,6 +299,7 @@ log(`\n✅ ${used} 檔 ・${((Date.now() - t0) / 1000).toFixed(0)}s`);
 log(`   🎯 明日候選:${picks.length} 筆 / ${out.picks_syms} 檔(輸出前 ${out.picks.length} 筆)`);
 log(`   🧬 其中高位階+高波動(hq):${picks.filter(x => x.hq).length} 筆`);
 log(`   🔥 今天已觸發:${firedToday.length} 筆(⛔ 明天買太晚,只當參考)`);
+log(`   🐻 大盤嚴格空頭:${mkt ? (mkt.bear60 ? `是(${mkt.d})→ 明天不開新倉` : `否(${mkt.d})`) : '算不出來'}`);
 log(`   ➖ 沒有任何一招扣成本後為正的:${noEdge} 檔`);
 if (picks.length > out.picks.length) log(`   ⚠️ 有截斷:${picks.length} → ${out.picks.length};picks_total/picks_syms 已寫進 JSON`);
 if (out.picks.length) {

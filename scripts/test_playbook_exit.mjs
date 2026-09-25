@@ -69,8 +69,9 @@ ok('🚪b2 ATR 也要是自己的一套(⛔ 不可跟其中任一種完全相同
        !/const ma5 = j >= 4 \?/.test(seg), seg.slice(0, 200));
     ok('🚪c2 ⭐ 必須走共用的 `_exitLevelAt`', /_exitLevelAt\(data, i, j, exKey\)/.test(seg));
     ok('🚪c3 ⭐ 出場鍵要跟全站唯一判斷點走', /_exitRuleKey\(\)/.test(seg));
-    ok('🚪c4 ⛔ 停損與 20 日上限**不隨設定變**(鐵則③)',
-       /entry \* 0\.95/.test(seg) && /i \+ 20/.test(seg));
+    // 🔁 V77.6.5 停損仍不隨設定變;最長天數改成**跟著出場規則走**(`_maxHold`,唐奇安 40 日 = 40 天)—— ⛔ 不可寫死
+    ok('🚪c4 ⛔ 停損不隨設定變 ・最長天數讀 `_maxHold(exKey)`',
+       /entry \* 0\.95/.test(seg) && /i \+ this\._maxHold\(exKey\)/.test(seg) && !/i \+ 20\)/.test(seg));
 }
 
 // ── 公式一致:`_exitLevelAt` 對「最後一根」要跟 `_exitLines` 算出同樣的價 ──

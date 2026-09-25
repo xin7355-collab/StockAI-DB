@@ -164,8 +164,10 @@ const cmp = SRC.slice(SRC.indexOf('  _recoCmpHtml() {'));
 const cmpBody = cmp.slice(0, cmp.indexOf('\n  _recoLedgerRender('));
 ok(/sort\(\(a, b\) => b\.s\.avg - a\.s\.avg\)/.test(cmpBody),
   '⑤ 🏆 判準是**每趟平均**(⛔ 不是總金額 —— 那被資金路徑帶著跑)');
-ok(/_CMP_EXITS/.test(SRC) && /_CMP_EXITS: \['don', 'atr2'\]/.test(SRC),
-  '⑤b 只比這兩條(⛔ 不把 ma5/trail8 也塞進來 = 多重比較)');
+// 🔁 V77.6.5 預設換成唐奇安 40 日 → 比「現行預設 + 舊預設 + ATR」三條(⛔ 仍不把 ma5/trail8 塞進來)
+{ const m = SRC.match(/_CMP_EXITS: \[([^\]]*)\]/); const ks = m ? m[1].match(/'(\w+)'/g).map(v => v.slice(1, -1)) : [];
+  ok(ks.includes('don40') && ks.includes('atr2') && !ks.includes('ma5') && !ks.includes('trail8') && ks.length <= 3,
+    '⑤b 只比現行預設 / 舊預設 / ATR(⛔ 不把 ma5/trail8 也塞進來 = 多重比較)', ks.join(',')); }
 // ①b `renderFish` 只做成績單 —— ⚠️ 切片要精確到**它自己的結尾**(`\n  },`),
 //   ⛔ 不靠「下一支函式叫什麼」(V77.3.9 在它前面插了 `renderRod`,靠名字切會變成僥倖過關)。
 const rfI = SRC.indexOf('  async renderFish() {');
@@ -178,7 +180,8 @@ ok(!/_fishRebuild\(|_fishBasketRender\(|_fishNote\(|_rodWhyHtml\(|_fishSetup\(/.
 const IDX = readFileSync('index.html', 'utf8');
 const iBlk = IDX.slice(IDX.indexOf('\n    _exitRuleKey() {'), IDX.indexOf('\n    _exitRuleKey() {') + 300);
 const pBlk = SRC.slice(SRC.indexOf('  _exitRule() {'), SRC.indexOf('  _exitRule() {') + 500);
-const g = x => (x.match(/'(don|atr2|trail8|ma5)'/g) || []).map(v => v.slice(1, -1));
+// ⚠️ V77.6.5 pro.html 那段多了一行「舊預設 don 搬家成 don40」→ 那一行講的是**舊值**,比預設時要排除
+const g = x => (x.split('\n').filter(l => !/exitMigr765/.test(l) && !/^\s*\/\//.test(l)).join('\n').match(/'(don40|don|atr2|trail8|ma5)'/g) || []).map(v => v.slice(1, -1));
 ok(g(iBlk).length >= 2 && g(pBlk).length >= 2 && new Set([...g(iBlk), ...g(pBlk)]).size === 1,
   '🚪⑧ 🚨 pro.html 的出場預設要跟 index.html 一模一樣(⛔ 不一致 = 兩邊用不同規則,而且畫面看不出來)',
   `index=${g(iBlk)} pro=${g(pBlk)}`);

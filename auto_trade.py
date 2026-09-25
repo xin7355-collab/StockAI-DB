@@ -132,19 +132,30 @@ def fetch_picks():
 # ═══════ 🚪 V74.5.4 出場(賣出)—— 使用者:「自動下單只管買不管賣,把賣出也接上」 ═══════
 # ⛔ 五條鐵則:
 #   ① **只賣這支程式自己買進、而且有記在狀態檔裡的部位** —— ⛔ 絕不碰你手動買的庫存。
-#   ② 出場規則跟 App 設定的那一條一致(`EXIT_RULE`,V75.0.9 起預設 **don**)。
+#   ② 出場規則跟 App 設定的那一條一致(`EXIT_RULE`,V77.6.5 起預設 **don40**;V75.0.9~V77.6.4 是 don)。
 #      ⚠️ 這是**同一條公式的第二份實作**(App 是 JS、這裡是 Python)——
 #      ⛔ 改任何一邊都要改另一邊,而且定義必須跟回測一字不差:
-#        ・don    = 收盤跌破「前 20 個交易日最低」(⛔ 不含今天)
+#        ・don40  = 收盤跌破「前 40 個交易日最低」(⛔ 不含今天)——預設,最長抱 40 天
+#        ・don    = 收盤跌破「前 20 個交易日最低」(⛔ 不含今天)——舊預設,最長抱 20 天
 #        ・atr2   = 進場後最高**收盤** − 2×ATR14(ATR = 進場那天的近 14 日 TR **簡單平均**)
 #        ・trail8 = 進場後最高收盤 × 0.92
 #        ・ma5    = 收盤跌破 5 日均價
-#   ③ 停損(進場 −5% 與前低較近者)與**最長 20 個交易日**不隨規則變 —— 回測沒動過那兩條。
+#   ③ 停損(min(訊號日最低, 進場 −5%))不隨規則變;**最長抱幾天跟著規則走**(`MAX_HOLD_BY_RULE`,
+#      唐奇安 40 日 = 40 天、其他 = 20 天)—— 每一條的回測成績都是在它自己那組天數下量的,⛔ 不可混搭。
+#   ③b 🐻 V77.6.5 **大盤嚴格空頭不開新倉**(`BEAR_GATE`,預設開):讀 playbook_edge.json 的 `mkt.bear60`
+#      (playbook_scan 直接呼叫 App 的 `_bear60Of` 算的 → ⛔ 這裡不另外算一份)。只擋買進,⛔ 不擋賣出。
 #   ④ 賣出一樣要過 DRY_RUN / LIVE 的煞車,而且**送出後立刻寫狀態檔**(寧可漏一次,⛔ 不可重複送)。
 #   ⑤ ⛔ 只在收盤前那個時窗動作(13:00~13:28)—— 這幾條全部是「**收盤**跌破」才算數。
-EXIT_RULE = os.getenv('EXIT_RULE', 'don')   # 🔁 V75.0.9:預設 atr2 → don(唐奇安 20 日低,同一段 49 個月 531 萬 → 590 萬)
+EXIT_RULE = os.getenv('EXIT_RULE') or 'don40'   # 🔁 V77.6.5:don → don40(唐奇安 40 日 + 最長 40 天 + 空頭不開新倉,17 條路徑中位 107 → 409 萬)
 SELL_ENABLE = os.getenv('SELL_ENABLE', '1') == '1'
-MAX_HOLD_DAYS = int(os.getenv('MAX_HOLD_DAYS', '20'))
+# ⏳ 最長抱幾天 = 跟著出場規則走(⛔ 跟 App `_MAX_HOLD_BY_RULE` 一字不差,test_beargate 跨檔比對)
+MAX_HOLD_BY_RULE = {'don40': 40}
+MAX_HOLD_OVERRIDE = int(os.getenv('MAX_HOLD_DAYS') or 0)   # 只有你自己設了才覆蓋(⛔ 那就不是回測那一組了)
+BEAR_GATE = (os.getenv('BEAR_GATE') or '1') == '1'
+
+
+def max_hold(rule):
+    return MAX_HOLD_OVERRIDE or MAX_HOLD_BY_RULE.get(rule, 20)
 
 
 def fetch_klines(sym):
@@ -172,7 +183,7 @@ def _atr_tr14(rows, i):
 def exit_line(rows, rule, entry_date):
     """今天的出場價(⛔ 定義跟 App/回測一字不差)。算不出來回 None。"""
     n = len(rows) - 1
-    if n < 25:
+    if n < (45 if rule == 'don40' else 25):
         return None
     ei = None
     for i, r in enumerate(rows):
@@ -181,8 +192,9 @@ def exit_line(rows, rule, entry_date):
             break
     if ei is None or ei >= n:
         ei = max(0, n - 19)                       # 沒有進場日 → 用近 20 日當代理(同 App)
-    if rule == 'don':
-        lows = [float(rows[i]['low'] or 0) for i in range(max(0, n - 20), n) if rows[i].get('low')]
+    if rule in ('don', 'don40'):
+        N = 40 if rule == 'don40' else 20
+        lows = [float(rows[i]['low'] or 0) for i in range(max(0, n - N), n) if rows[i].get('low')]
         return min(lows) if lows else None
     if rule == 'ma5':
         cl = [float(rows[i]['close']) for i in range(n - 4, n + 1)]
@@ -230,7 +242,8 @@ def main():
 
     # 🚨 V75.0.9:沒設 ACCOUNT_SIZE 的話 POS_PCT 完全不生效(shares_for_playbook 退成固定 1000 股)
     #    → 部位大小會跟 App 顯示的**不一樣**。⛔ 不可靜默 —— 這支會動真錢。
-    log(f"🚪 出場規則:{EXIT_RULE}(要跟 App 設定中心的那一條一致,⛔ 不同的話你看到的出場價不是它執行的)")
+    log(f"🚪 出場規則:{EXIT_RULE} ・最長抱 {max_hold(EXIT_RULE)} 天(要跟 App 設定中心的那一條一致,⛔ 不同的話你看到的出場價不是它執行的)")
+    log(f"🐻 大盤嚴格空頭不開新倉:{'開' if BEAR_GATE else '關(BEAR_GATE=0)'}")
     if ACCOUNT_SIZE <= 0:
         log("⚠️⚠️ 你沒有設 ACCOUNT_SIZE(帳戶總資金)→ POS_PCT 這個設定**完全沒有作用**,"
             "每筆一律買 1,000 股(再被 MAX_LOTS_PER_TRADE / MAX_AMT_PER_TRADE 壓一次)"
@@ -311,8 +324,8 @@ def main():
                         why = f"停損 {pos['sl']}"
                     elif line is not None and px < line:
                         why = f"跌破{rule} 出場線 {line:.2f}"
-                    elif held is not None and held >= MAX_HOLD_DAYS:
-                        why = f"抱滿 {held} 個交易日(上限 {MAX_HOLD_DAYS})"
+                    elif held is not None and held >= int(pos.get('mh') or max_hold(rule)):
+                        why = f"抱滿 {held} 個交易日(上限 {int(pos.get('mh') or max_hold(rule))})"
                     if not why:
                         log(f"   🛡️ {sym} {px} 續抱(出場線 {line and round(line, 2)}"
                             f"・停損 {pos.get('sl')}・已抱 {held} 天)")
@@ -344,6 +357,18 @@ def main():
                 except Exception as e:
                     log(f"   ❌ {sym} 出場處理失敗:{e}")
 
+        # 🐻 V77.6.5 大盤嚴格空頭 → 今天不開新倉(⛔ 賣出已經在上面處理完,這裡只擋買)
+        _mkt = (meta or {}).get('mkt') or {}
+        if BEAR_GATE and _mkt.get('bear60') is True:
+            if not st.get('bear_logged'):
+                log(f"🐻 大盤嚴格空頭({_mkt.get('d')} 收盤 {_mkt.get('c')} < 60 日線 {_mkt.get('ma60')},20 日線 {_mkt.get('ma20')} 也在下面)"
+                    " → 策略規定今天不開新倉(賣出照常)")
+                st['bear_logged'] = 1
+            time.sleep(POLL_SEC)
+            continue
+        if BEAR_GATE and 'bear60' not in _mkt and not st.get('mkt_warned'):
+            log("⚠️ 作戰清單裡沒有大盤空頭判斷(清單是舊版)→ 今天照常買;下一輪採礦後就會有")
+            st['mkt_warned'] = 1
         for p in picks[:MAX_PICKS]:
             sym, trig, stop = str(p.get('s')), p.get('trig'), p.get('stop')
             if sym in st['done']:
@@ -408,7 +433,7 @@ def main():
                 st['done'].append(sym)
                 # 🚪 記下部位,出場那段才知道「這是我買的」(⛔ 只賣自己買的,不碰手動庫存)
                 st.setdefault('pos', {})[sym] = {'e': px, 'sl': float(stop), 'd': day,
-                                                 'sh': shares, 'k': EXIT_RULE}
+                                                 'sh': shares, 'k': EXIT_RULE, 'mh': max_hold(EXIT_RULE)}
                 save_state(st)
             except Exception as e:
                 log(f"   ❌ 下單失敗:{e}")

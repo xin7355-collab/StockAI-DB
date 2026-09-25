@@ -84,8 +84,9 @@ const R = await page.evaluate(async () => {
     app._exitPrimary = _ep;
     // ⑥ 沒庫存 → 硬停損、抱滿都要寫原因
     out.edNoInv = app._exitDistance(rows, sym);
-    // ⑦ 抱滿:買在第 20 根 → 已抱 39 根
-    setInv([{ symbol: sym, cost: 90, shares: 1, buyDate: rows[20].date.replace(/\//g, '-') }]);
+    // ⑦ 抱滿:買在「上限 + 5 根」之前(🔁 V77.6.5 上限跟著出場規則走,預設 40 → ⛔ 不寫死第 20 根)
+    out.maxdN = app._EXIT_DIST.maxd;
+    setInv([{ symbol: sym, cost: 90, shares: 1, buyDate: rows[Math.max(0, rows.length - 1 - app._EXIT_DIST.maxd - 5)].date.replace(/\//g, '-') }]);
     out.edDue = app._exitDistance(rows, sym);
     // ⑦b 已跌破:最後一根收在 80
     const brk = rows.map(r => ({ ...r })); brk[59] = { ...brk[59], close: 80, low: 79, open: 80, high: 81 };
@@ -144,7 +145,7 @@ ok('⑤  觸發價 87.68 → 87.60(無條件捨去,⛔ 不是 87.70)', R.edTick 
 const miss = R.edNoInv && R.edNoInv.missing || [];
 ok('⑥  沒庫存:硬停損寫原因(⛔ 不靜默、不用代理值)', miss.some(m => m.k === 'hard' && /成本/.test(m.why)) && !R.edNoInv.lines.some(l => l.k === 'hard'), JSON.stringify(miss));
 ok('⑥b 沒買進日:抱滿那條寫原因', miss.some(m => m.k === 'maxd' && /買進日/.test(m.why)), JSON.stringify(miss));
-ok('⑦  抱滿 20 個交易日 → level=due', R.edDue && R.edDue.level === 'due' && R.edDue.maxd && R.edDue.maxd.due, JSON.stringify(R.edDue && R.edDue.maxd));
+ok('⑦  抱滿最長天數(跟著出場規則走)→ level=due', R.edDue && R.edDue.level === 'due' && R.edDue.maxd && R.edDue.maxd.due, JSON.stringify(R.edDue && R.edDue.maxd));
 ok('⑦b 收盤跌破 → level=broken', R.edBroken && R.edBroken.level === 'broken' && R.edBroken.broken.length > 0, R.edBroken && R.edBroken.level);
 ok('⑧0 決策台掃描:那一檔進了「今天要盯的」', R.near.length === 1 && R.near[0].level === 'today' && R.flags === 0, JSON.stringify(R.near));
 ok('⑧  決策台:列出「今天要盯的」+ 🚨 今天可能碰到', /今天要盯的/.test(R.sellTxt) && /今天可能碰到/.test(R.sellTxt), R.sellTxt.slice(0, 200));

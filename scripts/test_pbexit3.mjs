@@ -40,7 +40,8 @@ const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     ok('🚧 空過守門:抓得到 _pbExitSweep 的區塊', blk.length > 800, blk.length);
     ok('① 停損那條在', /px <= t\.sl/.test(blk));
     ok('①b 停利(跌破 5MA)那條在', /px < ma5/.test(blk));
-    ok('①c 🚨 **最長 20 個交易日**那條在(⛔ 這條原本漏了)', /_held >= 20/.test(blk), blk.slice(-400));
+    // 🔁 V77.6.5 上限跟著出場規則走(`_maxHold`)→ ⛔ 不可再寫死 20
+    ok('①c 🚨 **最長 N 個交易日**那條在(⛔ 這條原本漏了)・N 讀 `_maxHold()`', /const _mh = this\._maxHold\(\)/.test(blk) && /_held >= _mh/.test(blk), blk.slice(-400));
     ok('② 用 K 線根數數交易日(⛔ 不可用日曆天,連假會提早叫)',
        /rows\.length - 1 - _di/.test(blk));
     ok('③ 🚨 日期要正規化再比(K 線是 2026/08/26、記錄是 2026-08-26)',
@@ -66,6 +67,8 @@ const R = await page.evaluate(async () => {
     app._fireAlert = (title, body) => { fired.push({ title, body }); };
     app._kbarFiredToday = () => false;                 // 不要被「今天已響過」擋掉
     Object.defineProperty(window, 'Notification', { value: { permission: 'granted' }, configurable: true });
+    // 🔁 V77.6.5 這支測的是「抱滿上限就叫」的**機制**,測資是 26 根 K → 釘在上限 20 天的那條規則(舊預設 don)
+    app.settings.exitRule = 'don';
 
     // 造 K 線:26 根,進場那根在第 5 根 → 已持有 20 個交易日
     const mkRows = (n, price) => Array.from({ length: n }, (_, i) => ({

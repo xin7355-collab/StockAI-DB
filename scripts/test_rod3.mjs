@@ -145,7 +145,8 @@ const C = await pg.evaluate(() => {
            hasLot: h.includes((PRO._CAP_RULE.lot / 10000) + ' 萬'), has13: /13:00/.test(h), n: (h.match(/class="rodrule"/g) || []).length,
            onPage: !!el && el.innerHTML.length > 500, ma5: /ma5up/.test(h) };
 });
-ok(C.n === 3 && C.hasExit && C.hasPicks && C.hasLot && C.has13 && C.onPage && C.ma5,
+// 🔁 V77.6.5 修長期紅燈:V77.5.8 加了第四張「📏 ④ 準不準」(`_rodPondRule`),這條還釘著 3 → 改成 4(三張紀律卡 + 準不準)
+ok(C.n === 4 && C.hasExit && C.hasPicks && C.hasLot && C.has13 && C.onPage && C.ma5,
   '㉒ 03 段三張紀律卡:進場(尾盤 13:00)/ 出場(讀 `_exitRuleName`)/ 資金(`_RECO_PICKS`、`_CAP_RULE.lot`);外部那條「5 日線」要對到本站 ma5up 的實測',
   `n=${C.n} exit=${C.hasExit} picks=${C.hasPicks} lot=${C.hasLot}`);
 ok(C.changed, '㉒b ⭐ 決定性:改 `_SIG_EDGE.close` 紀律卡的數字要跟著變(⛔ 不寫死)');

@@ -566,6 +566,9 @@ const notBear60 = i => !(twiiMa60[i] != null && twii[i].c < twiiMa60[i] && twiiM
 //   ⚠️ 已知不對稱:既有部位是**以成本計**(保守、不逐日 mark),而停泊那筆是 mark-to-market
 //      → 回撤數字在兩臂之間**不是完全可比**,只有「賺多少」是可比的。這條要跟結論一起講。
 const PARK = (process.env.PARK || '').trim();
+// 🅿️ V77.6.5 `PARK=idle` → **閒置現金一直停在 0050**,要買股票時才賣掉需要的那一部分(核心 + 衛星的動態版)。
+//   跟 `PARK=0050`(只有空頭那幾天停)不同:這裡每天收盤把沒用到的錢買 0050,開新倉時先用現金、不夠再賣 0050。
+//   ⛔ 預設關閉;成本照 PARK_COST(來回)一邊一半;停泊的損益另外記在 summary 的 `park`(⛔ `cum` 仍只算打法本身)。
 const PARK_COST = +(process.env.PARK_COST || 0.27);   // ETF 來回:手續費 0.1425%×6折×2 + 證交稅 0.1%
 let parkOf = null;   // ⚠️ 真正的初始化在 `days` 之後(它要用 days 對齊)
 // 🏪 V74.6.3 **櫃買指數**環境(FILTER=otcflat / otcbull)—— 使用者:「加上其它指數當變因」
@@ -648,7 +651,7 @@ if (YEAR) {
     if (YR_FROM < 60) { console.error(`🚨 ${YEAR} 年太早:指數日期軸只有 ${YR_FROM} 天歷史(< 60),每檔門檻沒辦法累積`); process.exit(1); }
     console.log(`📅 逐年模式:${YEAR} 年 ・${days[YR_FROM]} ~ ${days[YR_TO]} 之間買進 ・本金 ${CAPITAL.toLocaleString()} 元從 ${days[YR_FROM]} 起算`);
 }
-if (PARK === '0050') {
+if (PARK === '0050' || PARK === 'idle') {
     const _raw = JSON.parse(fs.readFileSync(BENCH0050, 'utf8'))
         .map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close })).filter(r => r.c > 0);
     const _m = new Map(_raw.map(r => [r.d, r.c]));
@@ -990,7 +993,7 @@ for (let i = 0; i < days.length; i++) {
     if (FILTER.includes('regime') && !regimeOk(i)) { continue; }
     if (FILTER.includes('bear60') && !notBear60(i)) { continue; }
     // 🔀 停泊策略(PARK):空頭日把閒置現金放進 0050、轉非空頭就全部賣掉
-    if (PARK) {
+    if (PARK && PARK !== 'idle') {
         const _bear = !notBear60(i);
         const _px = parkOf ? parkOf(i) : null;
         if (parkOf && _px > 0) {
@@ -1089,8 +1092,15 @@ for (let i = 0; i < days.length; i++) {
             }
             amt = Math.round(LOT * k);
         }
+        // 🅿️ PARK=idle:現金不夠就先賣掉需要的那部分 0050(⛔ 不賣超過需要的)
+        if (PARK === 'idle' && cash < amt && parkSh > 0 && parkOf && parkOf(i) > 0) {
+            const _pps = parkOf(i) * (1 - PARK_COST / 200), _need = amt - cash;
+            const _sh = Math.min(parkSh, _need / _pps), _pro = _sh * _pps, _bp = parkBasis * _sh / parkSh;
+            parkPnL += _pro - _bp; parkBasis -= _bp; parkSh -= _sh; cash += _pro; parkSell++;
+            if (parkSh < 1e-9) { parkSh = 0; parkBasis = 0; }
+        }
         // ⛔ 錢不夠就買不了 —— 這條一定要有,不然等於假設無限資金(那個報酬率是假的)
-        if (cash < amt) { skipped++; continue; }
+        if (cash < (PARK === 'idle' ? amt - 1e-6 : amt)) { skipped++; continue; }   // ⛔ 沒開 idle 時一個字都不變
         seen.add(t.sym); cash -= amt;
         t._amt = amt;
         t._d = d; t._i = i;   // 📤 TAKEN_OUT 用:記下實際成交那天(⛔ 事後才標環境會對不上)
@@ -1098,6 +1108,11 @@ for (let i = 0; i < days.length; i++) {
         if (SIZING === 'volpar' || SIZING === 'volsham') { vpN++; vpSum += amt; }
     }
     for (const { t } of cand) if (t.ap > 0) vpHist.push(t.ap);
+    // 🅿️ PARK=idle:收盤把今天沒用到的現金買 0050
+    if (PARK === 'idle' && parkOf && parkOf(i) > 0 && cash > 1) {
+        if (!parkSh) parkInD = days[i];
+        parkSh += cash * (1 - PARK_COST / 200) / parkOf(i); parkBasis += cash; cash = 0; parkBuy++;
+    }
     openCnt.push(live.length);
     equity.push(cash + (PARK && parkOf ? parkSh * (parkOf(i) || 0) : 0) + live.reduce((a, x) => a + (x._amt || LOT), 0));   // 持倉以成本計(保守,不逐日 mark-to-market)
 }
@@ -1300,6 +1315,7 @@ if (process.env.SUMMARY_OUT) {
         per: +(taken.reduce((a, t) => a + net(t), 0) / taken.length).toFixed(2), cum: Math.round(totalPnL), ret: +(totalPnL / capital * 100).toFixed(2),
         dd: +mdd.toFixed(2), skipped, twii: +twiiRet.toFixed(2), etf0050: ret50 == null ? null : +ret50.toFixed(2), byYear,
     };
+    if (PARK) summary.park = Math.round(parkPnL);   // 🅿️ 停泊 0050 的損益(⛔ 不混進 cum)
     if (YEAR) Object.assign(summary, _yearSummary());
     fs.writeFileSync(process.env.SUMMARY_OUT, JSON.stringify(summary));
     console.log(`📤 成績單 JSON → ${process.env.SUMMARY_OUT}`);

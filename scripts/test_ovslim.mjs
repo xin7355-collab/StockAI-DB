@@ -121,8 +121,8 @@ const H = await run('2330', { symbol: '2330', cost: +(C0 * 0.97).toFixed(2), sha
 ok('②0 測資守門:現價真的在 5 日線下(⛔ 否則 ③ 空過)', H.ma5 > 0 && H.C < H.ma5, JSON.stringify([H.C, H.ma5]));
 ok('② 有庫存:總覽看得到的地方⛔ 沒有舊劇本字眼', H.seen.length > 300 && !BAD.test(H.seen), (H.seen.match(BAD) || [])[0]);
 const hard = H.ed && H.ed.lines.find(l => l.k === 'hard'), rule = H.ed && H.ed.lines.find(l => l.k === 'rule');
-ok('②b 摺疊區列出三條出場:你設定的線 / 抱滿 20 天 / 硬停損(數字 = _exitDistance)',
-   hard && rule && H.fold.includes(hard.v.toFixed(2)) && H.fold.includes(rule.v.toFixed(2)) && /抱滿 20 個交易日/.test(H.fold),
+ok('②b 摺疊區列出三條出場:你設定的線 / 抱滿 N 天 / 硬停損(數字 = _exitDistance)',
+   hard && rule && H.fold.includes(hard.v.toFixed(2)) && H.fold.includes(rule.v.toFixed(2)) && /抱滿 \d+ 個交易日/.test(H.fold),   // 🔁 V77.6.5 天數跟著出場規則走(預設 40)
    JSON.stringify({ hard: hard && hard.v, rule: rule && rule.v, fold: H.fold.slice(0, 400) }));
 ok('③ ⭐ 跌破 5 日線 ⛔ 不可讓 _exitMode.on 翻成出場', H.exitOn === false, H.exitOn);
 ok('④ 🔔 盯價只盯三條出場的價格線(⛔ 沒有 5 日線 / 前高 / 月線)',

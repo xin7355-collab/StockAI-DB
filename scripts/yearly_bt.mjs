@@ -35,12 +35,14 @@ export const BASE_PICKS = 2;
 
 // g = 分組 ・ id = 檔名用 ・ t = 白話名稱 ・ env = 只寫「跟基底不一樣的那一件事」 ・ picks = 每天幾檔(沒寫 = 2)
 export const STRATS = [
-    { g: 'now',  id: 'base',       t: '⭐ 決策台現行:🧬 高位階+高波動 ・唐奇安 20 日出場 ・最長抱 20 天', env: {} },
+    // 🔁 V77.6.5 預設換了:`base` 留著當「舊預設」基底(下面每一條都是在它上面只換一件事),`now765` 是現行那一組
+    { g: 'now',  id: 'now765',     t: '⭐ 決策台現行(V77.6.5 起):🧬 ・唐奇安 40 日出場 ・最長抱 40 天 ・大盤嚴格空頭不開新倉', env: { EXIT: 'don40', MAXD: '40', FILTER: 'bear60' } },
+    { g: 'prev', id: 'base',       t: '📤 舊預設(V77.6.5 以前):🧬 ・唐奇安 20 日出場 ・最長抱 20 天 —— 下面每一條都是在它上面只換一件事', env: {} },
     // 🚪 出場(只換賣的規則)
     { g: 'exit', id: 'x_atr2',     t: 'ATR 追蹤停利(最高收盤 − 2×ATR)', env: { EXIT: 'chand2' } },
     { g: 'exit', id: 'x_trail8',   t: '移動停利 8%(從最高收盤回落 8%)', env: { EXIT: 'trail8' } },
     { g: 'exit', id: 'x_ma5',      t: '跌破 5 日線', env: { EXIT: 'ma5' } },
-    { g: 'exit', id: 'x_d20m40',   t: '唐奇安 20 日・最長抱 40 天(等你決定的那個)', env: { MAXD: '40' } },
+    { g: 'exit', id: 'x_d20m40',   t: '唐奇安 20 日・最長抱 40 天', env: { MAXD: '40' } },
     { g: 'exit', id: 'x_d10w40',   t: '唐奇安 10 日・進場 10 天後才看・最長 40 天', env: { EXIT: 'don10w', MAXD: '40' } },
     { g: 'exit', id: 'x_d10w',     t: '唐奇安 10 日・進場 10 天後才看', env: { EXIT: 'don10w' } },
     { g: 'exit', id: 'x_d10',      t: '唐奇安 10 日', env: { EXIT: 'don10' } },
@@ -117,7 +119,8 @@ export const SKIPPED = [
     { t: '🧬 × 只做「加分偵測器訊號」', why: '要另外先產一份訊號對照檔(sig_x_playbook_probe),這一輪沒做' },
     { t: '窗口長度對照(13 → 36 → 49 個月)', why: '逐年成績單本身就是更清楚的版本(一年一格),不用再比窗口' },
 ];
-export const GROUPS = { combo: '🧪 組合:兩三個改動一起', now: '⭐ 決策台現行', exit: '🚪 出場:只換賣的規則', entry: '⏰ 進場:只換買的時間', pick: '🧬 選股:只換挑哪幾檔', size: '💰 部位:每天幾檔、每筆多少', mkt: '🏛️ 大盤狀態:哪種盤才做', cal: '📆 行事曆:哪幾天不做', x: '⚔️ 其他組合' };
+export const NOW_ID = 'now765';
+export const GROUPS = { combo: '🧪 組合:兩三個改動一起', now: '⭐ 決策台現行', prev: '📤 舊預設', exit: '🚪 出場:只換賣的規則', entry: '⏰ 進場:只換買的時間', pick: '🧬 選股:只換挑哪幾檔', size: '💰 部位:每天幾檔、每筆多少', mkt: '🏛️ 大盤狀態:哪種盤才做', cal: '📆 行事曆:哪幾天不做', x: '⚔️ 其他組合' };
 
 // 🧪 V77.6.2 長歷史組合(`SET=long`):2011~2026,只跑不需要 2021 以後才有的資料(財報 / 週轉 / 價值)的那些
 //   ⭐ 組合是**看 2011~2020 之前**就定好的(依 2022~2026 逐年表挑出來的方向)→ 2011~2020 是真的樣本外
@@ -132,10 +135,10 @@ export const COMBOS = [
     { g: 'combo', id: 'k_d20m60bear', t: '🧪 唐奇安 20 日・最長 60 天 + 嚴格空頭不做', env: { MAXD: '60', FILTER: 'bear60' } },
     // ⭐ 看完 2011~2026 的逐年表之後才加的(兩個各自兩段都站得住的成分合起來)→ ⛔ 不是樣本外,要看 17 條連續路徑與高原
     { g: 'combo', id: 'k_d55m40bear', t: '🧪 唐奇安 55 日・最長 40 天 + 嚴格空頭不做', env: { EXIT: 'don55', MAXD: '40', FILTER: 'bear60' } },
-    { g: 'combo', id: 'k_d40m40bear', t: '⭐ 唐奇安 40 日・最長 40 天 + 嚴格空頭不做(16 年最穩的一組)', env: { EXIT: 'don40', MAXD: '40', FILTER: 'bear60' } },
+    // ⭐ 唐奇安 40 日・最長 40 天 + 嚴格空頭不做 = V77.6.5 起的現行預設 → 用 `now765` 那一列(⛔ 不重複放一列)
     { g: 'combo', id: 'k_d70m40bear', t: '🧪 唐奇安 70 日・最長 40 天 + 嚴格空頭不做', env: { EXIT: 'don70', MAXD: '40', FILTER: 'bear60' } },
 ];
-const LONG_IDS = ['base', 's_plain', 's_high', 's_hivol', 'x_atr2', 'x_trail8', 'x_ma5', 'x_d10', 'x_d20m40', 'x_d10m40', 'x_d10w40', 'x_d55m40', 'x_atr2m40', 'x_none', 'e_nextclose', 'e_nextopen', 'm_bear60', 'm_regime'];
+const LONG_IDS = ['now765', 'base', 's_plain', 's_high', 's_hivol', 'x_atr2', 'x_trail8', 'x_ma5', 'x_d10', 'x_d20m40', 'x_d10m40', 'x_d10w40', 'x_d55m40', 'x_atr2m40', 'x_none', 'e_nextclose', 'e_nextopen', 'm_bear60', 'm_regime'];
 const SET = process.env.SET || '';
 const RUN_STRATS = SET === 'long' ? [...LONG_IDS.map(id => STRATS.find(s => s.id === id)), ...COMBOS] : STRATS;
 const RUN_YEARS = process.env.YEARS_RUN ? process.env.YEARS_RUN.split(',') : (SET === 'long' ? Array.from({ length: 16 }, (_, k) => String(2011 + k)) : YEARS);
@@ -156,7 +159,7 @@ const OUT = process.env.OUT_DIR;
 const ci = process.argv.indexOf('--collect');
 if (ci > 0) {
     if (!OUT) { console.error('🚨 --collect 要 OUT_DIR'); process.exit(1); }
-    const res = { asof: new Date().toISOString().slice(0, 10), set: SET || 'main', years: RUN_YEARS, offsets: OFFSETS, base: BASE, picks: BASE_PICKS, groups: GROUPS, skipped: SKIPPED, bench: {}, strats: [] };
+    const res = { asof: new Date().toISOString().slice(0, 10), set: SET || 'main', nowId: NOW_ID, years: RUN_YEARS, offsets: OFFSETS, base: BASE, picks: BASE_PICKS, groups: GROUPS, skipped: SKIPPED, bench: {}, strats: [] };
     const miss = [];
     for (const s of RUN_STRATS) {
         const row = { id: s.id, g: s.g, t: s.t, y: {} };

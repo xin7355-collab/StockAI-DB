@@ -23,7 +23,7 @@ const die = m => { console.error('🚨 ' + m); process.exit(1); };
 
 // ⭐ 只留畫面要用的欄位(控制大小)
 const slim = {
-    asof: J.asof, years: J.years, offsets: J.offsets, picks: J.picks, groups: J.groups, skipped: J.skipped, bench: J.bench,
+    asof: J.asof, nowId: J.nowId || 'base', years: J.years, offsets: J.offsets, picks: J.picks, groups: J.groups, skipped: J.skipped, bench: J.bench,
     strats: J.strats.map(s => ({ id: s.id, g: s.g, t: s.t, y: Object.fromEntries(Object.entries(s.y).map(([y, v]) => [y,
         [v.n, v.win, v.per, v.pnl, v.ret, v.perAmt, v.worst, v.best, v.dd, v.lo, v.hi, v.cross]])) })),
     cols: ['n', 'win', 'per', 'pnl', 'ret', 'perAmt', 'worst', 'best', 'dd', 'lo', 'hi', 'cross'],
@@ -34,8 +34,10 @@ if (LONG && (slim.strats.length < 20 || YRS.length < 15)) die(`長歷史那一�
 for (const s of slim.strats) for (const y of YRS) if (!s.y[y]) die(`${s.id} 缺 ${y}`);
 if (!(slim.bench['2022'] && slim.bench['2022'].twii < 0)) die('2022 的加權對照缺或不是負的(那一年應該是空頭)');
 if (LONG && !(slim.bench['2011'] && slim.bench['2011'].twii < 0)) die('2011 的大盤代理不是負的(那一年應該是空頭)');
-if (LONG) slim.proxyUntil = '2021-09-15';
-if (!slim.strats.some(s => s.id === 'base')) die('沒有「決策台現行」那一列');
+// 📚 V77.6.3 `--real`:大盤已換成真的加權指數(merge_k66_history --idx-long)→ ⛔ 不寫 proxyUntil,畫面就不會說「等權代理」
+if (LONG && !process.argv.includes('--real')) slim.proxyUntil = '2021-09-15';
+if (!slim.strats.some(s => s.id === 'base')) die('沒有「舊預設」那一列(base)');
+if (!slim.strats.some(s => s.id === slim.nowId)) die(`沒有「決策台現行」那一列(${slim.nowId})`);
 
 const P = path.join(ROOT, 'pro.html');
 const html = fs.readFileSync(P, 'utf8');

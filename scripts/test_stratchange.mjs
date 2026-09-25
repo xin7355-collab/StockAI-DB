@@ -64,10 +64,12 @@ ok('④ ⛔ 四個出場選項一個都不准刪', ['don', 'atr2', 'trail8', 'ma
 const erAt = noCmt.indexOf('\n    _exitRuleKey() {');
 const erBlk = erAt < 0 ? '' : noCmt.slice(erAt, noCmt.indexOf('\n    },', erAt));
 ok('⑥a 取樣守門:真的抓到 `_exitRuleKey` 的**定義**', erAt > 0 && /_EXIT_RULE_OPTS/.test(erBlk), erBlk.slice(0, 120));
-ok('⑥ 預設出場 = 唐奇安(`_exitRuleKey` **兩個** fallback 都是 don)',
-   (erBlk.match(/'don'/g) || []).length === 2, erBlk.replace(/\s+/g, ' '));
+// 🔁 V77.6.5 釘**用意**(⛔ 不寫死是哪一條):兩個 fallback 同一個值、而且 auto_trade.py 的預設跟它一模一樣
+const DEF = ((erBlk.match(/\|\| '(\w+)'/) || [])[1]) || '';
+ok('⑥ 預設出場:`_exitRuleKey` **兩個** fallback 是同一條,而且是最新一筆策略變更宣告的「現在」',
+   DEF && (erBlk.match(new RegExp(`'${DEF}'`, 'g')) || []).length === 2 && DEF !== 'don', erBlk.replace(/\s+/g, ' '));
 const AT = fs.readFileSync(path.join(ROOT, 'auto_trade.py'), 'utf8');
-ok("⑥b 🚨 `auto_trade.py` 的預設也要一起換(那支會動真錢)", /EXIT_RULE = os\.getenv\('EXIT_RULE', 'don'\)/.test(AT));
+ok("⑥b 🚨 `auto_trade.py` 的預設也要一起換(那支會動真錢)", new RegExp(`EXIT_RULE = os\\.getenv\\('EXIT_RULE'\\) or '${DEF}'`).test(AT), DEF);
 ok('⑥c 🚨 沒設 ACCOUNT_SIZE 要印警告(POS_PCT 會完全不生效,⛔ 不可靜默)',
    /ACCOUNT_SIZE <= 0/.test(AT) && /完全沒有作用/.test(AT));
 
@@ -144,13 +146,13 @@ ok('⑧b 🚨 跳出來的當下**還沒蓋章**(⛔ 不可 render 就蓋)', R.s
 ok('⑨ 按「知道了」才蓋章', R.stampAfterAck && R.stampAfterAck !== 'V70.0.0');
 ok('⑨b 按了之後視窗會關掉', R.hiddenAfterAck === true);
 ok('⑩ 已看過 → ⛔ 不再跳', R.seenShown === false);
-ok('⑪ 預設是唐奇安', R.defRule === 'don', R.defRule);
+ok('⑪ 預設 = `_exitRuleKey` 定義裡那一條(唐奇安 40 日)', R.defRule === DEF && /^don/.test(DEF), R.defRule);
 // ⭐ V75.3.0 起改成跟**資料本身**比對(⛔ 別再寫死 'atr2')——
 //   這條要釘的是「按了『換回舊的』會換成那一筆宣告的 `back`」,⛔ 不是「一定是 ATR」。
 //   🚨 上一版寫死 atr2,於是 V75.3.0 換了一筆進來就整排假紅(斷言釘住實作,不是用意)。
 ok('⑪b 「換回舊的」真的換得回**那一筆宣告的舊規則**',
    R.afterBack === R.chg.back, `afterBack=${R.afterBack} ・ 宣告 back=${R.chg.back}`);
-ok('⑪c 清掉設定會回到預設 don', R.backToDefault === 'don', R.backToDefault);
+ok('⑪c 清掉設定會回到預設', R.backToDefault === DEF, R.backToDefault);
 
 // 內容:五件事都要看得到(⛔ 只寫「換成更好的了」等於沒說)
 const B = String(R.body).replace(/\s+/g, ' ');
