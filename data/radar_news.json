@@ -1,0 +1,213 @@
+{
+  "updated": "2026-09-25 15:31 UTC",
+  "count": 15,
+  "data": [
+    {
+      "source_name": "自由財經",
+      "title": "生意慘到假裝客人！她靠1招翻身 如今營收挑戰3億樂翻天",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5586413",
+      "published_time": "Fri, 25 Sep 2026 22:42:32 +0800",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "公司從一天收入不到40美元，而且需要假裝客人與老板合作，這表",
+      "title_zh": "標題繁中轉換",
+      "important": true
+    },
+    {
+      "source_name": "Reddit r/stocks",
+      "title": "r/Stocks Daily Discussion & Fundamentals Friday Sep 25, 2026",
+      "link": "https://www.reddit.com/r/stocks/comments/1wprt0l/rstocks_daily_discussion_fundamentals_friday_sep/",
+      "published_time": "2026-09-25T09:30:22+00:00",
+      "matched_keywords": [
+        "EPS"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "美聯：川習會排場十足，對美中重大分歧著墨不多",
+      "link": "https://technews.tw/2026/09/25/trump-lays-out-the-pomp-for-xi-but-says-little-about-the-significant-tensions-in-us-china-relations/",
+      "published_time": "Fri, 25 Sep 2026 08:00:44 +0000",
+      "matched_keywords": [
+        "戰爭"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利多",
+      "ai_reason": "川普與習近平互相相信，並在沸熱商會上同意對中國加入全球海峽區",
+      "title_zh": "標題為繁體中文時，如果無法理解，則為空字符串。",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "高端腸病毒疫苗今在越南開打  打氣爆棚",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5586045",
+      "published_time": "Fri, 25 Sep 2026 15:05:07 +0800",
+      "matched_keywords": [
+        "氣爆"
+      ],
+      "cat": "🔥 事故天災",
+      "ai_sentiment": "利多",
+      "ai_reason": "越南開打提升營收前景",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "Costco隱藏版生意超狂！CEO大爆神秘客豪砸近700萬 爽玩154天",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5586009",
+      "published_time": "Fri, 25 Sep 2026 15:01:51 +0800",
+      "matched_keywords": [
+        "財報"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "Costco 公司公布銷售額和利潤達到去年同期增長率數值，表",
+      "title_zh": "Costco 公司公布銷售額和利潤達到去年同期增長率數值，表示財務情勢優勢。",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "上半年EPS狂衝46元！「記憶體模組廠」前8月營收大增384%　漲價帶動毛利率噴上77%",
+      "link": "https://tw.stock.yahoo.com/news/%E4%B8%8A%E5%8D%8A%E5%B9%B4eps%E7%8B%82%E8%A1%9D46%E5%85%83-%E8%A8%98%E6%86%B6%E9%AB%94%E6%A8%A1%E7%B5%84%E5%BB%A0-%E5%89%8D8%E6%9C%88%E7%87%9F%E6%94%B6%E5%A4%A7%E5%A2%9E384-%E6%BC%B2%E5%83%B9%E5%B8%B6%E5%8B%95%E6%AF%9B%E5%88%A9%E7%8E%87%E5%99%B4%E4%B8%8A77-144000949.html",
+      "published_time": "Fri, 25 Sep 2026 14:40:00 +0800",
+      "matched_keywords": [
+        "缺貨",
+        "漲價",
+        "營收",
+        "毛利率",
+        "EPS"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "營收大增且毛利率顯著提升",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "化工行情回溫！「這檔」8月獲利暴增271%、H1也大增146%　辛基酚新產品啟動試產",
+      "link": "https://tw.stock.yahoo.com/news/%E5%8C%96%E5%B7%A5%E8%A1%8C%E6%83%85%E5%9B%9E%E6%BA%AB-%E9%80%99%E6%AA%94-8%E6%9C%88%E7%8D%B2%E5%88%A9%E6%9A%B4%E5%A2%9E271-h1%E4%B9%9F%E5%A4%A7%E5%A2%9E146-%E8%BE%9B%E5%9F%BA%E9%85%9A%E6%96%B0%E7%94%A2%E5%93%81%E5%95%9F%E5%8B%95%E8%A9%A6%E7%94%A2-142000812.html",
+      "published_time": "Fri, 25 Sep 2026 14:20:00 +0800",
+      "matched_keywords": [
+        "調漲",
+        "報價",
+        "試產",
+        "營收"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "營收獲利大增，新產品啟動試產",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "美中貿易休戰延長2個月、原油價格回落　美股主要指數開盤小漲",
+      "link": "https://tw.stock.yahoo.com/news/%E7%BE%8E%E4%B8%AD%E8%B2%BF%E6%98%93%E4%BC%91%E6%88%B0%E5%BB%B6%E9%95%B72%E5%80%8B%E6%9C%88-%E5%8E%9F%E6%B2%B9%E5%83%B9%E6%A0%BC%E5%9B%9E%E8%90%BD-%E7%BE%8E%E8%82%A1%E4%B8%BB%E8%A6%81%E6%8C%87%E6%95%B8%E9%96%8B%E7%9B%A4%E5%B0%8F%E6%BC%B2-141828016.html",
+      "published_time": "Fri, 25 Sep 2026 14:18:28 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利多",
+      "ai_reason": "貿易休戰延長減少不確定性",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "美股四大指數小幅走高！油價、美債殖利率雙雙降溫　費半強漲逾1%",
+      "link": "https://tw.stock.yahoo.com/news/%E7%BE%8E%E8%82%A1%E5%9B%9B%E5%A4%A7%E6%8C%87%E6%95%B8%E5%B0%8F%E5%B9%85%E8%B5%B0%E9%AB%98-%E6%B2%B9%E5%83%B9-%E7%BE%8E%E5%82%B5%E6%AE%96%E5%88%A9%E7%8E%87%E9%9B%99%E9%9B%99%E9%99%8D%E6%BA%AB-%E8%B2%BB%E5%8D%8A%E5%BC%B7%E6%BC%B2%E9%80%BE1-141500573.html",
+      "published_time": "Fri, 25 Sep 2026 14:15:00 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利多",
+      "ai_reason": "美股上揚、油價下跌、半導體指數漲提振台股",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "川習會後美股開盤齊漲！AI科技股帶頭上攻",
+      "link": "https://tw.news.yahoo.com/%E5%B7%9D%E7%BF%92%E6%9C%83%E5%BE%8C%E7%BE%8E%E8%82%A1%E9%96%8B%E7%9B%A4%E9%BD%8A%E6%BC%B2-ai%E7%A7%91%E6%8A%80%E8%82%A1%E5%B8%B6%E9%A0%AD%E4%B8%8A%E6%94%BB-140317973.html",
+      "published_time": "Fri, 25 Sep 2026 14:03:17 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利多",
+      "ai_reason": "美股開盤齊漲，川習會期待及格成果，美國貿易代表格里爾表示，「",
+      "title_zh": "標題若為繁體中文，則為繁體中文；已經為繁體中文時，標題為空字串",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "伊朗戰爭航運大亂，刺激超級油輪造船訂單需求",
+      "link": "https://technews.tw/2026/09/25/middle-east-conflict-doubles-vlcc-demand/",
+      "published_time": "Fri, 25 Sep 2026 06:00:39 +0000",
+      "matched_keywords": [
+        "戰爭"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利多",
+      "ai_reason": "油輪需求上升，造船訂單增多",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "8月淨利狂增逾850%！「這銅箔基板廠」昨飆漲停、周漲17.8%　自營商連7買再加碼346張、斥資2億元",
+      "link": "https://tw.stock.yahoo.com/news/8%E6%9C%88%E6%B7%A8%E5%88%A9%E7%8B%82%E5%A2%9E%E9%80%BE850-%E9%80%99%E9%8A%85%E7%AE%94%E5%9F%BA%E6%9D%BF%E5%BB%A0-%E6%98%A8%E9%A3%86%E6%BC%B2%E5%81%9C-%E5%91%A8%E6%BC%B217-8-140000200.html",
+      "published_time": "Fri, 25 Sep 2026 14:00:00 +0800",
+      "matched_keywords": [
+        "漲停"
+      ],
+      "cat": "📈 股價異動",
+      "ai_sentiment": "利多",
+      "ai_reason": "淨利大增且自營商連續加碼",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "台積電2650億美元押美國！　投審司：預期還有新案",
+      "link": "https://tw.news.yahoo.com/%E5%8F%B0%E7%A9%8D%E9%9B%BB2650%E5%84%84%E7%BE%8E%E5%85%83%E6%8A%BC%E7%BE%8E%E5%9C%8B-%E6%8A%95%E5%AF%A9%E5%8F%B8-%E9%A0%90%E6%9C%9F%E9%82%84%E6%9C%89%E6%96%B0%E6%A1%88-133320566.html",
+      "published_time": "Fri, 25 Sep 2026 13:33:20 +0800",
+      "matched_keywords": [
+        "增資"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "台積電大額美國投資提升營收與產能",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "星巴克大揮刀！宣布北美「關250家店」　喊2028前砍636億支出",
+      "link": "https://tw.news.yahoo.com/%E6%98%9F%E5%B7%B4%E5%85%8B%E5%A4%A7%E6%8F%AE%E5%88%80-%E5%AE%A3%E5%B8%83%E5%8C%97%E7%BE%8E-%E9%97%9C250%E5%AE%B6%E5%BA%97-%E5%96%8A2028%E5%89%8D%E7%A0%8D636%E5%84%84%E6%94%AF%E5%87%BA-132500385.html",
+      "published_time": "Fri, 25 Sep 2026 13:25:00 +0800",
+      "matched_keywords": [
+        "下修"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "AI熱潮讓貿易逆差激增！美智庫報告警告白宮：不要用關稅找台灣麻煩",
+      "link": "https://tw.news.yahoo.com/ai%E7%86%B1%E6%BD%AE%E8%AE%93%E8%B2%BF%E6%98%93%E9%80%86%E5%B7%AE%E6%BF%80%E5%A2%9E-%E7%BE%8E%E6%99%BA%E5%BA%AB%E5%A0%B1%E5%91%8A%E8%AD%A6%E5%91%8A%E7%99%BD%E5%AE%AE-%E4%B8%8D%E8%A6%81%E7%94%A8%E9%97%9C%E7%A8%85%E6%89%BE%E5%8F%B0%E7%81%A3%E9%BA%BB%E7%85%A9-132000392.html",
+      "published_time": "Fri, 25 Sep 2026 13:20:00 +0800",
+      "matched_keywords": [
+        "關稅",
+        "新高"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    }
+  ]
+}
