@@ -4748,7 +4748,7 @@ const PRO = {
   _ybYearWord(y) {
     const b = (this._ybData().bench || {})[y] || {};
     const partial = b.to && b.to < `${y}-12-01`;
-    const px_ = this._ybSet === 'long' && y <= '2021';
+    const pu = this._ybSet === 'long' && this._ybData().proxyUntil, px_ = !!pu && `${y}-01-01` <= pu;   // 只有真的是代理那幾年才寫「代理」
     return `${y} 年${partial ? `(至今,只有 1~${+b.to.slice(5, 7)} 月)` : ''}${b.twii != null ? ` ・${px_ ? '大盤代理' : '加權'} ${b.twii >= 0 ? '+' : '−'}${Math.abs(b.twii).toFixed(1)}%${b.twii < 0 ? '(空頭)' : ''}` : ''}`;
   },
   ybSort(k) { const S = this._ybSort; this._ybSort = S && S.k === k ? { k, dir: -S.dir } : { k, dir: -1 }; this.renderYearly(); },
@@ -4780,7 +4780,7 @@ const PRO = {
       if (!ys.length) return '';   // 一整列都沒資料 → 不顯示(⛔ 不留一整排「—」)
       return `<tr class="sigbase"><td class="txtcell" style="white-space:normal">${t}</td>${yrs.map(y => { const v = B[y] ? f(B[y]) : null; return `<td class="mono" style="color:${col(v)}">${pc(v)}</td>`; }).join('')}
         <td class="mono" style="color:${col(tot)}">${ys.length ? wan(tot * 10000) : '—'}${ys.length && ys.length < yrs.length ? `<div class="sigfrom">只算 ${ys.length} 年</div>` : ''}</td><td class="mono">—</td></tr>`; };
-    const body = benchRow('🆚 0050 買了放著(不含息,跟策略同口徑)', b => b.e0050) + benchRow('🆚 0050 買了放著(含息)', b => b.e0050tr) + benchRow(LONG ? '🏛️ 大盤(2021-09 以前是<b>等權代理</b>,不是加權指數)' : '🏛️ 加權指數(當年漲跌,不能直接買)', b => b.twii)
+    const body = benchRow('🆚 0050 買了放著(不含息,跟策略同口徑)', b => b.e0050) + benchRow('🆚 0050 買了放著(含息)', b => b.e0050tr) + benchRow(LONG && Y.proxyUntil ? '🏛️ 大盤(2021-09 以前是<b>等權代理</b>,不是加權指數)' : '🏛️ 加權指數(當年漲跌,不能直接買)', b => b.twii)
       + rows.map(s => `<tr class="${s.id === 'base' ? 'sigbest' : ''}${s.id === this._ybSel ? ' ybpick' : ''}" style="cursor:pointer" onclick="PRO.ybPick('${s.id}')">
           <td class="txtcell" style="white-space:normal">${this._esc(s.t)}</td>${yrs.map(y => { const c = this._ybCell(s, y); return `<td class="mono" style="color:${col(c && c.ret)}">${c ? pc(c.ret) : '—'}</td>`; }).join('')}
           <td class="mono" style="color:${col(sumOf(s))}">${wan(sumOf(s))}</td><td class="mono">${beatOf(s)}/${n50}</td></tr>`).join('');
@@ -4809,7 +4809,8 @@ const PRO = {
     const setBtns = this._YEARLY_BT_LONG && this._YEARLY_BT_LONG.strats ? `<div class="ybchips"><button class="${!LONG ? 'on' : ''}" onclick="PRO.ybSet('main')">📅 2022~2026(本站資料・68 種)</button><button class="${LONG ? 'on' : ''}" onclick="PRO.ybSet('long')">📚 2011~2026 長歷史(${this._YEARLY_BT_LONG.strats.length} 種・含 4 次空頭)</button></div>` : '';
     const longNote = LONG ? `<div class="warnbox" style="margin:0 0 8px">📚 <b>長歷史是怎麼來的</b><div class="note" style="margin-top:4px">
         2010~2023 的日 K 來自外部公開資料集 <b>k66inthesky/tw-stock</b>(證交所原始價,上市 997 檔),接在本站資料前面;減資 / 除權這種超過漲跌停的跳動已回頭調整。<br>
-        ⚠️ 四個限制:① <b>只有上市</b>、沒有上櫃 ② 只有 2023 年底還活著的股票(倖存者偏誤,結果偏樂觀)③ 2021-09 以前<b>沒有加權指數</b>,「大盤」那一列與「嚴格空頭不做」用的是<b>等權代理</b>(每天所有上市股的平均漲跌)④ <b>2022 以前沒有 0050</b>,那幾年只能跟大盤代理比。<br>
+        ${Y.proxyUntil ? `⚠️ 四個限制:① <b>只有上市</b>、沒有上櫃 ② 只有 2023 年底還活著的股票(倖存者偏誤,結果偏樂觀)③ 2021-09 以前<b>沒有加權指數</b>,「大盤」那一列與「嚴格空頭不做」用的是<b>等權代理</b>(每天所有上市股的平均漲跌)④ <b>2022 以前沒有 0050</b>,那幾年只能跟大盤代理比。`
+          : `⚠️ 兩個限制:① <b>只有上市</b>、沒有上櫃 ② 只有 2023 年底還活著的股票(倖存者偏誤,結果偏樂觀)。<br>✅ <b>加權指數與 0050 是官方資料</b>(2010 起,另外補抓的):「大盤」那一列、「嚴格空頭不做」的判斷、0050 對照(含息 / 不含息)從 2011 年起都是真的。`}<br>
         ⭐ 這一份拿來驗「2022~2026 看起來好的做法,換到 2011~2020 還好不好」—— 那十年是<b>真的樣本外</b>(那些做法不是照它挑的)。</div></div>` : '';
     box.innerHTML = `${setBtns}${longNote}
       <div class="warnbox" style="margin:0 0 8px">📅 <b>每個策略的逐年成績單</b>
@@ -4817,7 +4818,7 @@ const PRO = {
           每一年都在 <b>1 月第一個交易日重新放 100 萬</b>,只買那一年的訊號(年底還沒賣的照規則抱到出場,算在買進那一年)。
           已扣買賣手續費和稅;停損用<b>收盤價</b>成交(= 自動下單的做法)。<br>
           ⭐ 每一條都疊在同一個基底上 = <b>決策台現行那套</b>(🧬 + 唐奇安 20 日 + 最長抱 20 天 + 每天 2 檔 × 15 萬),<b>只換它寫的那一件事</b> —— 所以每一格都能直接跟最上面那一列比。<br>
-          ${LONG ? '⚠️ 2011~2021 用的是外部資料(見上面那一段的四個限制)。' : '⚠️ 本站資料最早只到 <b>2022</b>(那一年是空頭);要看 2011 起的請點上面「📚 長歷史」。'}今年只到最近一個交易日,⛔ 不可跟整年比。0050 對照是不含息(跟策略同口徑),含息另列。
+          ${LONG ? `⚠️ 2011~2021 的個股用的是外部資料(見上面那一段的${Y.proxyUntil ? '四' : '兩'}個限制)。` : '⚠️ 本站資料最早只到 <b>2022</b>(那一年是空頭);要看 2011 起的請點上面「📚 長歷史」。'}今年只到最近一個交易日,⛔ 不可跟整年比。0050 對照是不含息(跟策略同口徑),含息另列。
           ⚠️ 用現在還在市場上的股票回測(倖存者偏誤),結果偏樂觀。資料日期:${this._esc(Y.asof)}。
         </div></div>
       ${chips}
@@ -5575,7 +5576,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V77.6.3',
+  VER: 'V77.6.4',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

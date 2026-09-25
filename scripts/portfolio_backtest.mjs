@@ -626,6 +626,9 @@ const indCycOk = (sym, d) => {
     return true;
 };
 const days = twii.map(r => r.d);
+// 📚 V77.6.3 對照組 / 停泊用的 0050 可以另外指定(長歷史:k66 那段沒有 ETF,真的 0050 2010 起放在另一個檔)。
+//   ⛔ 不動「股票池」裡的 0050.json —— 那會改變 0050 當候選股的交易,交易快取就不能重用。沒設就跟以前一樣。
+const BENCH0050 = process.env.BENCH0050 || path.join(DATA, '0050.json');
 // 📅 V77.6.1 逐年模式(使用者:「每年 1 月重新放 100 萬,2026、2025、2024…各別列出,包含空頭」)
 //   YEAR=2024 → 只有**買進日**落在那一年(從第 YEAR_OFFSET 個交易日起)的才開倉;現金 = CAPITAL 從那一天起算;
 //   跨年的部位照原規則出場、損益算回**買進那一年**(⛔ 不在 12/31 強迫賣 —— 那不是策略會做的事)。
@@ -646,7 +649,7 @@ if (YEAR) {
     console.log(`📅 逐年模式:${YEAR} 年 ・${days[YR_FROM]} ~ ${days[YR_TO]} 之間買進 ・本金 ${CAPITAL.toLocaleString()} 元從 ${days[YR_FROM]} 起算`);
 }
 if (PARK === '0050') {
-    const _raw = JSON.parse(fs.readFileSync(path.join(DATA, '0050.json'), 'utf8'))
+    const _raw = JSON.parse(fs.readFileSync(BENCH0050, 'utf8'))
         .map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close })).filter(r => r.c > 0);
     const _m = new Map(_raw.map(r => [r.d, r.c]));
     const _arr = new Array(days.length).fill(null);
@@ -1170,7 +1173,7 @@ const _tk = taken.map(t => t._d || t.inD).filter(Boolean).sort();
 const from = _tk[0] || days[WARMUP], to = days[days.length - 1];
 const i0 = dIdx.get(from), i1 = days.length - 1;
 // 0050 買進持有(同一段期間)
-const f50 = JSON.parse(fs.readFileSync(path.join(DATA, '0050.json'), 'utf8'))
+const f50 = JSON.parse(fs.readFileSync(BENCH0050, 'utf8'))
     .map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close })).filter(r => r.c > 0);
 const px50 = d => { let hit = null; for (const r of f50) { if (r.d <= d) hit = r.c; else break; } return hit; };
 const b50 = px50(from), e50 = px50(to);

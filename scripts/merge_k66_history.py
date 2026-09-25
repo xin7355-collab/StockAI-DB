@@ -16,6 +16,10 @@
      往回接到真的加權第一天。⚠️ 它**不是加權指數**(不是市值加權、沒有上櫃),只拿來當日期軸與「嚴格空頭」判斷;
      每一列都標 `proxy: 1`。實測年報酬:2011 −28.3% / 2015 −12.0% / 2018 −10.1% / 2020 +21.8%(方向跟真的加權一致)。
 
+⑤ V77.6.3 `--idx-long <data/idx_long.json>`:用真的加權 + 0050 取代 ④ 的代理(見 apply_idx_long)。
+   已經合併過的資料夾可以只換這一段:`--idx-long-only <DD> <OUT> --idx-long <file>`。
+   ⛔ 不帶這個參數時,輸出跟 V77.6.2 那一版逐位元組相同。
+
 ⚠️ 限制(回報時一定要寫):只有上市、沒有上櫃;只有 2023 年底還活著的股票(倖存者偏誤);
    2010~2020 沒有 0050(ETF 不在那份資料裡)→ 那幾年只能跟等權代理比。
 """
@@ -55,7 +59,7 @@ def adjust_corporate_actions(rows):
     return n
 
 
-def main(K, DD, OUT):
+def main(K, DD, OUT, idx_long=None):
     os.makedirs(OUT, exist_ok=True)
     stat = dict(joined=0, copied=0, noanchor=0, ca=0)
     for f in glob.glob(f'{DD}/*.json'):
@@ -86,6 +90,10 @@ def main(K, DD, OUT):
                 os.symlink(os.path.abspath(x), f'{OUT}/{b}')
         elif not os.path.exists(f'{OUT}/{b}'):
             shutil.copy(x, f'{OUT}/{b}')
+    if idx_long:
+        apply_idx_long(DD, OUT, idx_long)
+        print(stat)
+        return
     # ④ 加權等權代理
     T = json.load(open(f'{DD}/^TWII.json')); t0 = T[0]['date']; ret = {}
     for f in glob.glob(f'{OUT}/*.json'):
@@ -114,7 +122,40 @@ def main(K, DD, OUT):
     print(stat)
 
 
+def apply_idx_long(DD, OUT, idx_path):
+    """📚 V77.6.3 ⑤ 有 `data/idx_long.json`(idx_long.yml 抓的真加權 + 0050,2010 起)時,取代 ④ 的等權代理:
+      ・^TWII.json = 真的加權(本站那份第一天以前)+ 本站那份;接點價差 >0.5% 就停手(⛔ 不硬接)
+      ・_bench0050.json = 真的 0050(本站那份第一天以前)+ 本站那份 —— 給 portfolio_backtest 的 BENCH0050 用,
+        ⛔ 不動股票池裡的 0050.json(那會改變 0050 當候選股的交易、交易快取就不能重用)
+      ・_div0050.json = 0050 除息紀錄(dividends_hist 的格式),給 DIV 用(本站那份只從 2021 起)
+    """
+    J = json.load(open(idx_path))
+    T = json.load(open(f'{DD}/^TWII.json')); t0 = T[0]['date']
+    real = {r[0]: r for r in J['twii']}
+    if t0 not in real or abs(real[t0][4] / T[0]['close'] - 1) > 0.005:
+        sys.exit(f'❌ 加權接點對不上:{t0} 本站 {T[0]["close"]} vs 長歷史 {real.get(t0, ["", 0, 0, 0, None])[4]}')
+    pre = [dict(date=r[0], open=r[1], high=r[2], low=r[3], close=r[4], volume=0, amount=r[5]) for r in J['twii'] if r[0] < t0]
+    json.dump(pre + T, open(f'{OUT}/^TWII.json', 'w'))
+    E = json.load(open(f'{DD}/0050.json')); e0 = E[0]['date']
+    er = {r[0]: r for r in J['e0050']}
+    if e0 not in er or abs(er[e0][4] / E[0]['close'] - 1) > 0.005:
+        sys.exit(f'❌ 0050 接點對不上:{e0} 本站 {E[0]["close"]} vs 長歷史 {er.get(e0, ["", 0, 0, 0, None])[4]}')
+    pe = [dict(date=r[0], open=r[1], high=r[2], low=r[3], close=r[4], volume=r[5]) for r in J['e0050'] if r[0] < e0]
+    json.dump(pe + E, open(f'{OUT}/_bench0050.json', 'w'))
+    dv = [[r[0].replace('/', '-'), r[1], r[2], r[3], r[4]] for r in J.get('div0050') or []]
+    json.dump({'d': {'0050': {'h': dv}}}, open(f'{OUT}/_div0050.json', 'w'))
+    print({'twii_real_days': len(pre), 'twii_from': pre[0]['date'] if pre else None,
+           'e0050_days': len(pe), 'e0050_from': pe[0]['date'] if pe else None, 'div0050': len(dv)})
+
+
 if __name__ == '__main__':
-    if len(sys.argv) != 4:
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    idx = sys.argv[sys.argv.index('--idx-long') + 1] if '--idx-long' in sys.argv else None
+    if idx:
+        args = [a for a in args if a != idx]
+    if '--idx-long-only' in sys.argv and idx and len(args) == 2:
+        apply_idx_long(args[0], args[1], idx)      # 已合併過的輸出資料夾:只換大盤與 0050 對照
+    elif len(args) == 3:
+        main(*args, idx_long=idx)
+    else:
         print(__doc__); sys.exit(1)
-    main(*sys.argv[1:])
