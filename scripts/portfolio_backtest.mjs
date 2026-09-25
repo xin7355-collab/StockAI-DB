@@ -1194,6 +1194,17 @@ const px50 = d => { let hit = null; for (const r of f50) { if (r.d <= d) hit = r
 const b50 = px50(from), e50 = px50(to);
 const ret50 = (b50 && e50) ? (e50 - b50) / b50 * 100 - COST : null;
 const twiiRet = (twii[i1].c - twii[i0].c) / twii[i0].c * 100;
+// 💰 V77.6.6 整段 0050 含息(重用 trSeries,⛔ 不寫第二份;沒給 DIV 就不給)—— 逐年表「一個帳戶一路滾」那一欄的對照
+const ret50tr = (() => {
+    try {
+        if (!process.env.DIV) return null;
+        const raw = JSON.parse(fs.readFileSync(process.env.DIV, 'utf8')); const DV = raw.d || raw;
+        const S = trSeries(f50.filter(r => r.d <= to), (DV['0050'] || {}).h || []);
+        const at = d => { let v = null; for (let k = 0; k < S.d.length; k++) { if (S.d[k] <= d) v = S.v[k]; else break; } return v; };
+        const v0 = at(from), v1 = at(to);
+        return v0 && v1 ? (v1 - v0) / v0 * 100 - COST : null;
+    } catch (_) { return null; }
+})();
 
 // 每月
 const byMon = {};
@@ -1313,7 +1324,7 @@ if (process.env.SUMMARY_OUT) {
         cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '' },
         from, to, months: mons.length, n: taken.length, win: +(wins.length / taken.length * 100).toFixed(1),
         per: +(taken.reduce((a, t) => a + net(t), 0) / taken.length).toFixed(2), cum: Math.round(totalPnL), ret: +(totalPnL / capital * 100).toFixed(2),
-        dd: +mdd.toFixed(2), skipped, twii: +twiiRet.toFixed(2), etf0050: ret50 == null ? null : +ret50.toFixed(2), byYear,
+        dd: +mdd.toFixed(2), skipped, twii: +twiiRet.toFixed(2), etf0050: ret50 == null ? null : +ret50.toFixed(2), etf0050tr: ret50tr == null ? null : +ret50tr.toFixed(2), byYear,
     };
     if (PARK) summary.park = Math.round(parkPnL);   // 🅿️ 停泊 0050 的損益(⛔ 不混進 cum)
     if (YEAR) Object.assign(summary, _yearSummary());

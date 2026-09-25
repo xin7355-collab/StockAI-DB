@@ -88,7 +88,7 @@ export const STRATS = [
     { g: 'pick', id: 's_lovol',    t: '只做低波動(牛皮股)', env: { SELF: 'lovolat' } },
     { g: 'pick', id: 's_liq',      t: '🧬 + 只做成交值 ≥1 億', env: { FILTER: 'liq', LIQ: '1' } },
     { g: 'pick', id: 's_conf',     t: '🧬 + 至少 2 招同時觸發才做', env: { FILTER: 'conf', CONF: '2' } },
-    { g: 'pick', id: 's_finacc',   t: '🧬 + 只挑營收年增加速的', env: { FIN: 'acc' } },
+    { g: 'pick', id: 's_finacc',   t: '🧬 + 只挑營收年增加速的', env: { FIN: 'acc' }, dataFrom: '2020', dataWhy: '財報三表歷史從 2018 起,要先有 5 季才算得出「年增加速」→ 2020 年以前沒有資料' },
     // 💰 部位(每天幾檔、每筆多少)
     { g: 'size', id: 'z_p1',       t: '每天 1 檔 × 30 萬', env: { LOT: '300000' }, picks: 1 },
     { g: 'size', id: 'z_p3',       t: '每天 3 檔 × 10 萬', env: { LOT: '100000' }, picks: 3 },
@@ -138,9 +138,13 @@ export const COMBOS = [
     // ⭐ 唐奇安 40 日・最長 40 天 + 嚴格空頭不做 = V77.6.5 起的現行預設 → 用 `now765` 那一列(⛔ 不重複放一列)
     { g: 'combo', id: 'k_d70m40bear', t: '🧪 唐奇安 70 日・最長 40 天 + 嚴格空頭不做', env: { EXIT: 'don70', MAXD: '40', FILTER: 'bear60' } },
 ];
-const LONG_IDS = ['now765', 'base', 's_plain', 's_high', 's_hivol', 'x_atr2', 'x_trail8', 'x_ma5', 'x_d10', 'x_d20m40', 'x_d10m40', 'x_d10w40', 'x_d55m40', 'x_atr2m40', 'x_none', 'e_nextclose', 'e_nextopen', 'm_bear60', 'm_regime'];
+// 📚 V77.6.6 使用者:「把能合併就合併」→ 長歷史改成**全部策略都跑**(⛔ 不再只挑 19 種),App 只留這一張 16 年表
+//   ⚠️ 資料起點晚於 2011 的策略(`dataFrom`)那幾年**不跑**,collect 寫 null + 原因(⛔ 不可跑出「0 筆」冒充結果)
 const SET = process.env.SET || '';
-const RUN_STRATS = SET === 'long' ? [...LONG_IDS.map(id => STRATS.find(s => s.id === id)), ...COMBOS] : STRATS;
+export const RUN_STRATS = SET === 'long' ? [...STRATS, ...COMBOS] : STRATS;
+// 🏦 V77.6.6 「一個帳戶一路滾」:同一套規則、起點挪 17 次(每 5 個交易日一條,V77.4.9 第 6 條)
+export const CONT_WARMUPS = Array.from({ length: 17 }, (_, k) => 240 + k * 5);
+const _skipYear = (s, y) => !!(s.dataFrom && y < s.dataFrom);
 const RUN_YEARS = process.env.YEARS_RUN ? process.env.YEARS_RUN.split(',') : (SET === 'long' ? Array.from({ length: 16 }, (_, k) => String(2011 + k)) : YEARS);
 const CACHE_KEYS = ['ENTRY', 'EXIT', 'MAXD', 'STOP', 'GAPCAP', 'STOPFILL'];
 export const envOf = s => ({ ...BASE, ...s.env });
@@ -163,7 +167,9 @@ if (ci > 0) {
     const miss = [];
     for (const s of RUN_STRATS) {
         const row = { id: s.id, g: s.g, t: s.t, y: {} };
+        if (s.dataFrom) row.na = { from: s.dataFrom, why: s.dataWhy || '' };
         for (const y of RUN_YEARS) {
+            if (_skipYear(s, y)) { row.y[y] = null; continue; }
             const rs = OFFSETS.map(o => { const f = path.join(OUT, `${s.id}_${y}_${o}.json`); try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (_) { return null; } });
             const r0 = rs[0];
             if (!r0) { miss.push(`${s.id}_${y}_0`); continue; }
@@ -177,8 +183,20 @@ if (ci > 0) {
             // ⚠️ V77.6.2 修:以前只在「0050 有值」才記 → 2021 以前(沒有 0050)連大盤那一列都不見了(embed 的守門抓到)
             if (s.id === 'base' && r0.ytwii != null) res.bench[y] = { e0050: r0.y0050 ?? null, e0050tr: r0.y0050tr ?? null, twii: r0.ytwii, from: r0.yFrom, to: r0.yTo };
         }
+        // 🏦 一個帳戶一路滾(17 條起點)—— 給了 CONT_DIR 才收;少任何一條就整列不給(⛔ 不可拿 16 條冒充 17 條)
+        if (process.env.CONT_DIR) {
+            const cs = CONT_WARMUPS.map(w => { try { return JSON.parse(fs.readFileSync(path.join(process.env.CONT_DIR, `${s.id}_${w}.json`), 'utf8')); } catch (_) { return null; } });
+            if (cs.some(x => !x)) miss.push(`cont:${s.id}(${cs.filter(Boolean).length}/17)`);
+            else {
+                const med = a => { const b = a.slice().sort((x, y) => x - y); return b[b.length >> 1]; };
+                const cum = cs.map(x => x.cum), dd = cs.map(x => x.dd);
+                row.c = { med: med(cum), lo: Math.min(...cum), hi: Math.max(...cum), dd: med(dd), ddw: Math.min(...dd), win: med(cs.map(x => x.win)), n: med(cs.map(x => x.n)), paths: cs.length, from: cs[0].from, to: cs[0].to };
+                if (!res.benchCont && cs[0].etf0050tr != null) res.benchCont = { from: cs[0].from, to: cs[0].to, twii: cs[0].twii, e0050: cs[0].etf0050, e0050tr: cs[0].etf0050tr };
+            }
+        }
         res.strats.push(row);
     }
+    if (process.env.CONT_DIR && !res.benchCont) miss.push('benchCont(沒有任何一列帶 0050 含息 → 跑 --cont 要給 DIV)');
     if (miss.length) { console.error(`🚨 缺 ${miss.length} 格(例:${miss.slice(0, 5).join(', ')})→ ⛔ 不產出,先把 runner 跑完`); process.exit(1); }
     fs.writeFileSync(process.argv[ci + 1], JSON.stringify(res));
     console.log(`✅ ${res.strats.length} 個策略 × ${RUN_YEARS.length} 年 → ${process.argv[ci + 1]}`);
@@ -193,16 +211,23 @@ const LANES = Math.max(1, +(process.env.LANES || 4));
 // 同一份快取的策略排在同一條線,而且那一條線的第一個工作一定是「產生快取」那一個(⛔ 兩條線同時寫同一個檔會壞)
 const byCache = new Map();
 for (const s of RUN_STRATS) { const c = cacheName(s); if (!byCache.has(c)) byCache.set(c, []); byCache.get(c).push(s); }
-const groups = [...byCache.entries()].map(([c, ss]) => ({ c, jobs: ss.flatMap(s => RUN_YEARS.flatMap(y => OFFSETS.map(o => ({ s, y, o })))) }));
+const CONT = process.argv.includes('--cont');
+if (CONT && !process.env.CONT_DIR) { console.error('🚨 --cont 要 CONT_DIR'); process.exit(1); }
+if (CONT) fs.mkdirSync(process.env.CONT_DIR, { recursive: true });
+const groups = [...byCache.entries()].map(([c, ss]) => ({ c, jobs: CONT
+    ? ss.flatMap(s => CONT_WARMUPS.map(w => ({ s, w })))
+    : ss.flatMap(s => RUN_YEARS.filter(y => !_skipYear(s, y)).flatMap(y => OFFSETS.map(o => ({ s, y, o })))) }));
 // 已經有快取的組排後面(先把要產快取的慢工作分出去)
 groups.sort((a, b) => fs.existsSync(path.join(CACHE, a.c)) - fs.existsSync(path.join(CACHE, b.c)));
-const runOne = ({ s, y, o }, c) => new Promise(res => {
-    const f = path.join(OUT, `${s.id}_${y}_${o}.json`);
+const runOne = ({ s, y, o, w }, c) => new Promise(res => {
+    const f = w != null ? path.join(process.env.CONT_DIR, `${s.id}_${w}.json`) : path.join(OUT, `${s.id}_${y}_${o}.json`);
     if (fs.existsSync(f)) return res(0);
-    const env = { ...process.env, ...envOf(s), YEAR: y, YEAR_OFFSET: String(o), TRADES_CACHE: path.join(CACHE, c), SUMMARY_OUT: f };
+    const env = w != null
+        ? { ...process.env, ...envOf(s), WARMUP: String(w), TRADES_CACHE: path.join(CACHE, c), SUMMARY_OUT: f }
+        : { ...process.env, ...envOf(s), YEAR: y, YEAR_OFFSET: String(o), TRADES_CACHE: path.join(CACHE, c), SUMMARY_OUT: f };
     const p = spawn('node', ['--max-old-space-size=5000', path.join(ROOT, 'scripts/portfolio_backtest.mjs'), '600', String(s.picks || BASE_PICKS)], { env, cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     let log = ''; p.stdout.on('data', d => { log += d; if (log.length > 20000) log = log.slice(-20000); }); p.stderr.on('data', d => { log += d; });
-    p.on('close', code => { if (code !== 0) { fs.writeFileSync(f.replace(/\.json$/, '.err'), log); console.error(`❌ ${s.id} ${y} +${o} rc=${code}`); } res(code); });
+    p.on('close', code => { if (code !== 0) { fs.writeFileSync(f.replace(/\.json$/, '.err'), log); console.error(`❌ ${s.id} ${w != null ? 'W=' + w : y + ' +' + o} rc=${code}`); } res(code); });
 });
 // ⚖️ V77.6.2 兩階段:① 每份快取只由一個工作建(建好之前同快取的其他工作等著)② 建好之後所有工作進同一條隊伍平均分給每條線
 //   (V77.6.1 那一輪「共用同一份快取的 30 個策略全擠在同一條線」→ 最後 30 分鐘只剩一條線在跑)
@@ -212,6 +237,6 @@ for (const g of groups) { let res; const p = new Promise(r => { res = r; }); rea
 const queue = [...groups.map(g => ({ ...g.jobs[0], c: g.c, builder: true })), ...groups.flatMap(g => g.jobs.slice(1).map(j => ({ ...j, c: g.c })))];
 const lane = async () => { while (queue.length) { const j = queue.shift(); const R = ready.get(j.c); if (!j.builder) await R.p; await runOne(j, j.c); if (j.builder) R.res(); done++; if (done % 50 === 0) console.log(`… ${done}/${total}(${((Date.now() - t0) / 60000).toFixed(1)} 分)`); } };
 await Promise.all(Array.from({ length: LANES }, () => lane()));
-const errs = fs.readdirSync(OUT).filter(f => f.endsWith('.err'));
+const errs = fs.readdirSync(CONT ? process.env.CONT_DIR : OUT).filter(f => f.endsWith('.err'));
 console.log(`✅ 跑完 ${done}/${total} ・失敗 ${errs.length} 格${errs.length ? '(看 OUT_DIR/*.err)' : ''}・${((Date.now() - t0) / 60000).toFixed(1)} 分`);
 }
