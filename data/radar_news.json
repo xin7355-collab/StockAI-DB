@@ -1,32 +1,32 @@
 {
-  "updated": "2026-09-25 15:31 UTC",
+  "updated": "2026-09-25 16:10 UTC",
   "count": 15,
   "data": [
     {
       "source_name": "自由財經",
-      "title": "生意慘到假裝客人！她靠1招翻身 如今營收挑戰3億樂翻天",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5586413",
-      "published_time": "Fri, 25 Sep 2026 22:42:32 +0800",
+      "title": "阻洗產地歪風！歐盟促英國加入關稅同盟  升高對中國汽車關稅",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5586212",
+      "published_time": "Fri, 25 Sep 2026 18:01:23 +0800",
+      "matched_keywords": [
+        "關稅"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "Airbnb 執行長靠 AI 打造「企業大腦」，會議砍半更帶動 17% 營收成長",
+      "link": "https://finance.technews.tw/2026/09/25/airbnb-ceo-halves-meeting-time-ai/",
+      "published_time": "Fri, 25 Sep 2026 08:30:39 +0000",
       "matched_keywords": [
         "營收"
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "公司從一天收入不到40美元，而且需要假裝客人與老板合作，這表",
-      "title_zh": "標題繁中轉換",
-      "important": true
-    },
-    {
-      "source_name": "Reddit r/stocks",
-      "title": "r/Stocks Daily Discussion & Fundamentals Friday Sep 25, 2026",
-      "link": "https://www.reddit.com/r/stocks/comments/1wprt0l/rstocks_daily_discussion_fundamentals_friday_sep/",
-      "published_time": "2026-09-25T09:30:22+00:00",
-      "matched_keywords": [
-        "EPS"
-      ],
-      "cat": "📊 財務事件",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_reason": "Airbnb 執行長 Brian Chesky 使用 AI ",
+      "title_zh": "標題如果為繁體中文，則翻譯為繁中30字以內；如果為外國本土新聞或廣告業配，則為空字串。",
       "important": true
     },
     {
@@ -38,9 +38,8 @@
         "戰爭"
       ],
       "cat": "🌍 地緣管制",
-      "ai_sentiment": "利多",
-      "ai_reason": "川普與習近平互相相信，並在沸熱商會上同意對中國加入全球海峽區",
-      "title_zh": "標題為繁體中文時，如果無法理解，則為空字符串。",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
     },
     {
@@ -53,21 +52,20 @@
       ],
       "cat": "🔥 事故天災",
       "ai_sentiment": "利多",
-      "ai_reason": "越南開打提升營收前景",
+      "ai_reason": "越南接種提升銷售前景",
       "important": true
     },
     {
-      "source_name": "自由財經",
-      "title": "Costco隱藏版生意超狂！CEO大爆神秘客豪砸近700萬 爽玩154天",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5586009",
-      "published_time": "Fri, 25 Sep 2026 15:01:51 +0800",
+      "source_name": "Yahoo 即時財經",
+      "title": "美股25日開盤上漲！荷莫茲海峽迎轉機　費半漲逾100點",
+      "link": "https://tw.news.yahoo.com/%E7%BE%8E%E8%82%A125%E6%97%A5%E9%96%8B%E7%9B%A4%E4%B8%8A%E6%BC%B2-%E8%8D%B7%E8%8E%AB%E8%8C%B2%E6%B5%B7%E5%B3%BD%E8%BF%8E%E8%BD%89%E6%A9%9F-%E8%B2%BB%E5%8D%8A%E6%BC%B2%E9%80%BE100%E9%BB%9E-145006941.html",
+      "published_time": "Fri, 25 Sep 2026 14:50:06 +0800",
       "matched_keywords": [
-        "財報"
+        "油價"
       ],
-      "cat": "📊 財務事件",
+      "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "Costco 公司公布銷售額和利潤達到去年同期增長率數值，表",
-      "title_zh": "Costco 公司公布銷售額和利潤達到去年同期增長率數值，表示財務情勢優勢。",
+      "ai_reason": "荷莫茲海峽重啟降油價，提升市場情緒",
       "important": true
     },
     {
@@ -84,7 +82,21 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "營收大增且毛利率顯著提升",
+      "ai_reason": "EPS大增、營收與毛利率顯著提升",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "油價小跌、美股小漲、美債狂飆　殖利率逼近金融海嘯前高點",
+      "link": "https://tw.news.yahoo.com/%E6%B2%B9%E5%83%B9%E5%B0%8F%E8%B7%8C-%E7%BE%8E%E8%82%A1%E5%B0%8F%E6%BC%B2-%E7%BE%8E%E5%82%B5%E7%8B%82%E9%A3%86-%E6%AE%96%E5%88%A9%E7%8E%87%E9%80%BC%E8%BF%91%E9%87%91%E8%9E%8D%E6%B5%B7%E5%98%AF%E5%89%8D%E9%AB%98%E9%BB%9E-142624835.html",
+      "published_time": "Fri, 25 Sep 2026 14:26:24 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利多",
+      "ai_reason": "台股個股、供應鏈、半導體及大盤受到實質影響，美股小漲，美國公",
+      "title_zh": "標題若無關係於台股、生活消費、體育娛樂等外國本土新聞、廣告業配，則為false。如果只有台股個股、供",
       "important": true
     },
     {
@@ -99,8 +111,8 @@
         "營收"
       ],
       "cat": "⚡ 供需價格",
-      "ai_sentiment": "利多",
-      "ai_reason": "營收獲利大增，新產品啟動試產",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
     },
     {
@@ -112,8 +124,8 @@
         "油價"
       ],
       "cat": "💱 匯率成本",
-      "ai_sentiment": "利多",
-      "ai_reason": "貿易休戰延長減少不確定性",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
     },
     {
@@ -126,7 +138,8 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "美股上揚、油價下跌、半導體指數漲提振台股",
+      "ai_reason": "美股回落，美國主要四大指數小幅上漲，油價回落，美國債利率降低",
+      "title_zh": "標題為繁體中文時，如果非必要時，請留空白。",
       "important": true
     },
     {
@@ -139,8 +152,7 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "美股開盤齊漲，川習會期待及格成果，美國貿易代表格里爾表示，「",
-      "title_zh": "標題若為繁體中文，則為繁體中文；已經為繁體中文時，標題為空字串",
+      "ai_reason": "美股AI科技股上漲，帶動市場情緒",
       "important": true
     },
     {
@@ -153,7 +165,8 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利多",
-      "ai_reason": "油輪需求上升，造船訂單增多",
+      "ai_reason": "伊朗戰爭對油價造成高漲，這會對台灣的供應鏈和半導體股票有影響",
+      "title_zh": "標題為繁體中文時，如果長度少於30字，則為空字符串。",
       "important": true
     },
     {
@@ -166,7 +179,7 @@
       ],
       "cat": "📈 股價異動",
       "ai_sentiment": "利多",
-      "ai_reason": "淨利大增且自營商連續加碼",
+      "ai_reason": "淨利大增850%，股價漲停，自營商大量買進",
       "important": true
     },
     {
@@ -179,20 +192,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "台積電大額美國投資提升營收與產能",
-      "important": true
-    },
-    {
-      "source_name": "Yahoo 即時財經",
-      "title": "星巴克大揮刀！宣布北美「關250家店」　喊2028前砍636億支出",
-      "link": "https://tw.news.yahoo.com/%E6%98%9F%E5%B7%B4%E5%85%8B%E5%A4%A7%E6%8F%AE%E5%88%80-%E5%AE%A3%E5%B8%83%E5%8C%97%E7%BE%8E-%E9%97%9C250%E5%AE%B6%E5%BA%97-%E5%96%8A2028%E5%89%8D%E7%A0%8D636%E5%84%84%E6%94%AF%E5%87%BA-132500385.html",
-      "published_time": "Fri, 25 Sep 2026 13:25:00 +0800",
-      "matched_keywords": [
-        "下修"
-      ],
-      "cat": "📊 財務事件",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_reason": "台積電大規模美國投資提升營收與技術布局",
       "important": true
     },
     {
@@ -205,8 +205,9 @@
         "新高"
       ],
       "cat": "🌍 地緣管制",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利多",
+      "ai_reason": "文章中強調台灣對美國貿易關税對台股市有深刻影響，因此感情性標",
+      "title_zh": "台股受到美國貿易關稅影響，標題及內容強調台灣與美國互資關係，以及台灣對美國半導體市場的影響。",
       "important": true
     }
   ]
