@@ -1,0 +1,80 @@
+name: 📚 加權指數 + 0050 長歷史(2010 起,手動)
+
+# 📚 V77.6.3 給長歷史回測用(`merge_k66_history.py --idx-long`):
+#   2021-09 以前的大盤原本是「等權代理」,而「嚴格空頭不做」正是吃大盤判斷的 → 補真的加權;
+#   2022 以前沒有 0050 可比 → 補 0050 價格 + 除息紀錄。
+# ⭐ 只打 4 次 FinMind(一次呼叫可回 18 年),約 1 分鐘。
+# 🏛️ 推 data 分支的 data/idx_long.json(照 fin_backfill「✂️ 推 data 分支」那段):
+#   進了 data 分支,daily_miner 的 `git archive origin/data` 底層 + 🛟 撿回就會保住它,daily_miner 一行不改。
+# ⛔ 只有手動觸發(沒有 cron → 不吃排程配額);前端不讀這個檔。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: idx-long           # ⛔ 不可跟別人共用 group(V73.7.9)
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依
+        run: pip install requests
+
+      - name: 📂 取對表用的參考檔(本站 ^TWII / 0050)
+        run: |
+          set -e
+          git fetch origin "+refs/heads/data:refs/remotes/origin/data" --depth=1
+          mkdir -p /tmp/idx_ref
+          # ⛔ `>` 失敗會留下 0 bytes(陷阱 #18/#20)→ 取完驗大小,空的就紅燈
+          for f in '^TWII' 0050; do
+            git show "origin/data:data/$f.json" > "/tmp/idx_ref/$f.json"
+            [ -s "/tmp/idx_ref/$f.json" ] || { echo "❌ 參考檔 $f.json 是空的"; exit 1; }
+          done
+          ls -l /tmp/idx_ref
+
+      - name: 📚 抓 + 守門(第一根日期 / 根數 / 重疊期對表)
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: |
+          python3 scripts/idx_long_backfill.py --selftest
+          python3 scripts/idx_long_backfill.py --ref-dir /tmp/idx_ref --out /tmp/idx_long.json
+
+      - name: 🚀 推 data 分支(data/idx_long.json)
+        run: |
+          set -e
+          [ -s /tmp/idx_long.json ] || { echo "❌ 沒有產物 → 不推"; exit 1; }
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git reset --hard -q 2>/dev/null || true
+          git clean -fdq 2>/dev/null || true
+          git checkout -f -B data origin/data
+          mkdir -p data
+          cp /tmp/idx_long.json data/idx_long.json
+          git add -f data/idx_long.json
+          if git diff --cached --quiet; then
+            echo "ℹ️ data/idx_long.json 跟分支上一樣,沒東西可推"
+          else
+            git commit -q -m "📚 加權 + 0050 長歷史 → data 分支 ($(date -u '+%Y-%m-%d %H:%M UTC'))" -- data/idx_long.json
+            pushed=0
+            for i in 1 2 3 4 5; do
+              git push origin data && { pushed=1; echo "✅ data/idx_long.json 已推上 data 分支 (第 $i 次)"; break; }
+              sleep $((i * 3))
+              git pull --rebase origin data 2>/dev/null || true
+            done
+            [ "$pushed" -eq 1 ] || { echo "❌ push 連 5 次失敗"; exit 1; }
+          fi
