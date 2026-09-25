@@ -33,7 +33,8 @@ ok('⑦ 腳本守門字串在(第一根日期 / 根數 / 對表比例)',
 ok('⑧ 有錯就 exit 1 且不寫檔(寫檔在 errs 判斷之後)',
    CODE.index("if errs:") < CODE.index("json.dump(obj, f"))
 ok('⑨ token 輪動共用 dispo_probe.fm(⛔ 不寫第二份)', 'from dispo_probe import fm, TOKENS' in CODE and 'urlopen' not in CODE)
-ok('⑩ 分割還原共用 miner._backadjust_splits', 'miner._backadjust_splits(e5' in CODE)
+ok('⑩ 0050 錨在本站那份(⛔ 不靠 _backadjust_splits —— 它的 gap>5 守門不會動停牌 7 天的分割,run #1 實測 39.3%)',
+   'anchor_scale(e5, ref_0050)' in CODE and "obj['e0050_anchor']" in CODE)
 r = subprocess.run([sys.executable, os.path.join(ROOT, 'scripts/idx_long_backfill.py'), '--selftest'],
                    capture_output=True, text=True)
 ok('⑪ selftest 全綠', r.returncode == 0 and 'IDX_LONG_SELFTEST_PASS' in r.stdout)

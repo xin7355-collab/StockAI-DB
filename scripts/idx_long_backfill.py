@@ -8,7 +8,7 @@
 → 這支只抓 **4 次** FinMind(付費金鑰,一次呼叫可回 18 年,history_probe 實測):
     ① TaiwanStockPrice              TAIEX  (加權指數 OHLC + 成交金額)
     ② TaiwanStockTotalReturnIndex   TAIEX  (報酬指數;拿不到只寫 *_error,⛔ 不擋)
-    ③ TaiwanStockPrice              0050   (套 miner._backadjust_splits,2025 的 1:4 分割)
+    ③ TaiwanStockPrice              0050   (原始價 → 錨在本站那份第一天換成同一把尺;2025 的 1:4 分割在錨點之後)
     ④ TaiwanStockDividendResult     0050   (除息日 / 現金股利 / 除息前價 / 參考價)
 輸出**一個**檔 data/idx_long.json(前端不讀,只給回測)。
 
@@ -66,6 +66,28 @@ def overlap_check(new, ref, tol=TOL, min_ratio=MIN_RATIO, min_n=MIN_OVERLAP):
     return ratio >= min_ratio, ratio, n
 
 
+def anchor_scale(rows, ref, n_chk=20, tol=TOL, jump=0.115):
+    """rows(原始價,舊→新)錨到 ref 的第一個共同日期:回 {rows(≤錨點那天、已乘倍率), d, k, n} 或 {err}。
+    守門:① 前 n_chk 個共同日期的倍率都跟中位數差 <tol ② 輸出那段不可有單日 >11.5% 的跳動(= 還有沒還原的公司行動)"""
+    common = [x['date'] for x in rows if x['date'] in ref and ref[x['date']] > 0]
+    if len(common) < n_chk:
+        return {'err': f'跟本站那份只有 {len(common)} 個共同日期(<{n_chk}),錨不起來'}
+    bym = {x['date']: x['close'] for x in rows}
+    ks = sorted(ref[d] / bym[d] for d in common[:n_chk])
+    k = ks[len(ks) // 2]
+    bad = [d for d in common[:n_chk] if abs(ref[d] / bym[d] / k - 1) >= tol]
+    if bad:
+        return {'err': f'錨點倍率不一致({len(bad)}/{n_chk} 天偏離中位數 ≥{tol:.1%},例:{bad[0]})'}
+    d0 = common[0]
+    out = [dict(x, open=x['open'] * k, high=x['high'] * k, low=x['low'] * k, close=x['close'] * k,
+                volume=int(round(x['volume'] / k))) for x in rows if x['date'] <= d0]
+    for a, b in zip(out, out[1:]):
+        r = b['close'] / a['close']
+        if r > 1 + jump or r < 1 - jump:
+            return {'err': f'錨點之前還有沒還原的跳動:{a["date"]} {a["close"]:.2f} → {b["date"]} {b["close"]:.2f}'}
+    return {'rows': out, 'd': d0, 'k': k, 'n': n_chk}
+
+
 def to_price_rows(rows):
     out = []
     for r in rows or []:
@@ -82,7 +104,6 @@ def to_price_rows(rows):
 
 def build(fm, ref_twii, ref_0050, today=None):
     """純邏輯(fm 可注入)→ (obj, errors)。errors 非空 = 不可寫檔。"""
-    import miner
     errs = []
     end = today or date.today().isoformat()
     obj = {'updated': end, 'from': START, 'src': 'FinMind',
@@ -110,17 +131,24 @@ def build(fm, ref_twii, ref_0050, today=None):
 
     e5_raw, e = fm('TaiwanStockPrice', {'data_id': '0050', 'start_date': START, 'end_date': end})
     e5 = to_price_rows(e5_raw)
-    if e5:
-        miner._backadjust_splits(e5, sym='0050')
     print(f'③ 0050:{len(e5)} 根 ・{e5[0]["date"] if e5 else "—"} ~ {e5[-1]["date"] if e5 else "—"}' + (f' ・{e}' if e else ''))
+    # 🚨 第一次實跑(run #1)抓到:FinMind 的 0050 是**原始價**,2025-06 那次 1:4 分割中間停牌 7 天
+    #   → `miner._backadjust_splits` 的 `gap > 5` 守門(刻意的,見它的註解)不會動它 → 整段對不上(39.3%)。
+    #   ⭐ 改法:⛔ 不去放寬那道守門,改成**錨在本站那份的第一個共同日期**:
+    #     只輸出「本站那份第一天(含)以前」的部分,乘上那一天的倍率;而且前 20 個共同日期的倍率要一致(<0.5%)。
+    #     之後那一段本站自己就有(而且已經還原過),⛔ 不用 FinMind 的。
+    out5 = []
     if not e5 or e5[0]['date'] > d_slash(FIRST_MAX):
         errs.append(f'0050 不夠深({len(e5)} 根;{e or ""})')
     else:
-        ok, ratio, n = overlap_check({x['date']: x['close'] for x in e5}, ref_0050)
-        print(f'   對表 data/0050.json:{n} 天重疊,差 <0.5% 的 {ratio:.1%}')
-        if not ok:
-            errs.append(f'0050 對不上本站(重疊 {n} 天、只有 {ratio:.1%} 在 0.5% 內 —— 分割沒還原?)')
-    obj['e0050'] = [[x['date'], x['open'], x['high'], x['low'], x['close'], x['volume']] for x in e5]
+        a = anchor_scale(e5, ref_0050)
+        if a.get('err'):
+            errs.append('0050 ' + a['err'])
+        else:
+            out5 = a['rows']
+            obj['e0050_anchor'] = {'d': a['d'], 'k': a['k'], 'n': a['n']}
+            print(f'   錨在 {a["d"]}:倍率 {a["k"]:.6f}(前 {a["n"]} 個共同日期一致)・輸出 {len(out5)} 根(本站那份之前)')
+    obj['e0050'] = [[x['date'], x['open'], x['high'], x['low'], x['close'], x['volume']] for x in out5]
 
     dv_raw, e = fm('TaiwanStockDividendResult', {'data_id': '0050', 'start_date': START, 'end_date': end})
     dv = []
@@ -174,17 +202,23 @@ def selftest():
                      'before_price': 190, 'after_price': 189}], None
         return f
     o, errs = build(fake_fm(), ref_tw, ref_05, today='2026-09-25')
-    ok('⑤ 正常資料 → 沒有錯誤、分割已還原', not errs and abs(o['e0050'][0][4] - 40) < 1e-6)
+    ok('⑤ 正常資料 → 沒有錯誤、錨點之前的 0050 已換成本站的尺', not errs and abs(o['e0050'][0][4] - 40) < 1e-6)
     _, errs = build(fake_fm(shift=True), ref_tw, ref_05, today='2026-09-25')
     ok('⑥ 加權日期錯一格 → build 報錯(⛔ 不寫檔)', any('加權' in x for x in errs))
-    import miner
-    real = miner._backadjust_splits
-    miner._backadjust_splits = lambda recs, sym='', verbose=False: recs
-    try:
-        _, errs = build(fake_fm(), ref_tw, ref_05, today='2026-09-25')
-    finally:
-        miner._backadjust_splits = real
-    ok('⑦ 注入「拿掉分割還原」→ build 報錯', any('0050' in x for x in errs))
+    # ⑦ 錨點倍率不一致(本站那份前 20 天裡有一半是別的尺)→ 必須報錯
+    ref_bad = dict(ref_05); ks_ = sorted(ref_bad)[:10]
+    for d in ks_: ref_bad[d] *= 2
+    _, errs = build(fake_fm(), ref_tw, ref_bad, today='2026-09-25')
+    ok('⑦ 注入「錨點倍率不一致」→ build 報錯', any('0050' in x and '錨點' in x for x in errs))
+    # ⑦b 錨點之前還有沒還原的 1:2 跳動 → 必須報錯
+    e5_keep = list(e5)
+    for i_ in range(0, 1000): e5[i_] = dict(e5[i_], close=e5[i_]['close'] * 2)
+    _, errs = build(fake_fm(), ref_tw, ref_05, today='2026-09-25')
+    e5[:] = e5_keep
+    ok('⑦b 注入「錨點之前有沒還原的跳動」→ build 報錯', any('跳動' in x for x in errs))
+    # ⑦c 真實情境:原始價在錨點**之後**才分割(2025-06)→ 仍要能錨(⛔ 不可因為後面有分割就放棄)
+    o, errs = build(fake_fm(), ref_tw, ref_05, today='2026-09-25')
+    ok('⑦c 分割發生在錨點之後 → 照樣錨得起來、第一根 = 還原後的價', not errs and abs(o['e0050'][0][4] - 40) < 1e-6 and o['e0050_anchor']['k'] == 0.25)
     ok('⑧ 參考檔不在 → load_ref 回 None', load_ref('/nonexistent/x.json') is None)
     print(f'\n{"❌ " + str(len(fails)) + " 條沒過" if fails else "✅ IDX_LONG_SELFTEST_PASS"}')
     return 1 if fails else 0
