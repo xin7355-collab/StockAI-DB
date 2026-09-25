@@ -141,7 +141,7 @@ function simExit(R, eIdx, spec) {
   for (let j = eIdx + 1; j <= endJ; j++) {
     const c = R[j].c;
     if (c > peak) peak = c;
-    if (c <= stop0) { exitP = stop0; exitIdx = j; break; }      // 🚧 停損一律照走(⛔ 放寬不可動停損)
+    if (c <= stop0) { exitP = c; exitIdx = j; break; }      // 🚧 停損一律照走(⛔ 放寬不可動停損)・V77.6.0 收盤成交
     if (spec === 'wide') {
       const at = atrAt(j);
       if (at > 0 && c <= peak - 3 * at) { exitP = c; exitIdx = j; break; }

@@ -76,8 +76,10 @@ const R = await pg.evaluate(() => {
     //   🚨 斷言範圍要**只框住被改的那一塊** —— 「每一列」那段也印同一個數字,
     //      整份比對會被它救活(V77.4.6 注入驗證當場抓到的假綠燈)
     const slice = h => { const i = h.indexOf('一句話'); const j = h.indexOf('</div>', i); return i < 0 ? '' : h.slice(i, j); };
-    out.h1has = /0\.03pp/.test(slice(h1));
-    out.h2has = /9\.87pp/.test(slice(h2)) && !/0\.03pp/.test(slice(h2));
+    //   V77.6.0:⛔ 不釘字面值(重跑回測就會變)—— 跟常數本身比
+    const kTxt = keep.toFixed(2) + 'pp';
+    out.h1has = slice(h1).includes(kTxt);
+    out.h2has = /9\.87pp/.test(slice(h2)) && !slice(h2).includes(kTxt);
     out.h1len = h1.length;
     //   ⛔ 斷言⛔ 不可用 `||` 串 —— 底下的「限制」那行本來就有「倖存者偏誤」,
     //      用 `||` 會讓「把勝率/中位拿掉」的注入被它救活(CLAUDE.md `_ppTxt` 那條教訓)

@@ -46,7 +46,7 @@ const DEDUP = +(process.env.DEDUP || 20);
 const LIMIT = +(process.env.LIMIT || 0);
 const SELFTEST = process.argv.includes('--selftest');
 // 🛑 V77.5.9 停損成交價(stop = 舊版 / close = auto_trade / touch = 觸價智慧單),見 lib_exitsim
-const STOPFILL = process.env.STOPFILL || 'stop';
+const STOPFILL = process.env.STOPFILL || 'close';   // ⭐ V77.6.0 預設改收盤成交(stop 只留給重現舊數字)
 // 🕯️ V77.5.9 突破那根 K 的幅度 ÷ ATR14(ATR 逐字稿:「1~2 倍 ATR 的突破 K 才進場」)
 //   ⭐ ATR 只用**訊號日之前**的 14 根(陷阱 #43:基準⛔ 不可包含被判斷的那根)
 const TA_BINS = [[0, 1], [1, 1.5], [1.5, 2], [2, 3], [3, Infinity]];

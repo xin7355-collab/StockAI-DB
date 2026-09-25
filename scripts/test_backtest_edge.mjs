@@ -27,7 +27,8 @@ const emb = readEmbedded(HTML);
 ok('⓪ 讀得到嵌入版 _SIGNAL_EDGE / _DECK_TRACK49(空過守門)', emb.table && Object.keys(emb.table).length > 50 && emb.deck && emb.deck.gene > 0, JSON.stringify(emb.deck));
 const keys = Object.keys(emb.table);
 const mkSig = (mut = {}) => ({ syms: 2227, base: { win: { 10: 36.4 } }, signals: keys.map(k => { const v = emb.table[k]; const s = { key: k, grade: v[0], n: v[1], e10: v[2], w10: v[3], p: v[4], e20: v[5], payoff: v[6], exp: v[7] }; return Object.assign(s, mut[k] || {}); }) });
-const gene = { n: 1117, win: 30.9, per: 3.09, cum: 5185099, dd: -25.81, from: '2022-09-12', to: '2026-09-16' };
+// V77.6.0:⛔ 不寫死(嵌入版重跑就會變)—— 從嵌入的 `_DECK_TRACK49` 推一組「差 12% / 回撤差 0.6」的產物
+const gene = { n: 1117, win: 30.9, per: 3.09, cum: Math.round(emb.deck.gene * 1.12), dd: -(Math.abs(emb.deck.geneDD) + 0.6), from: '2022-09-12', to: '2026-09-16' };
 const same = build({ sig: mkSig(), gene, embedded: emb, prev: null });
 ok('①a 訊號表 value = 8 欄(跟 `_SIGNAL_EDGE` 一模一樣,App 才能直接換讀)', Object.values(same.signal.table).every(v => Array.isArray(v) && v.length === 8), '');
 ok('①a2 產物跟嵌入版一致時 diff = 0(累積差 12% < 30%、回撤差 0.6 < 5)', same.diff.length === 0, JSON.stringify(same.diff.slice(0, 3)));

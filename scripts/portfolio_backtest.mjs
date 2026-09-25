@@ -187,10 +187,12 @@ const SIZING = process.env.SIZING || 'equal';
 const VP_LO = +(process.env.VP_LO || 0.67), VP_HI = +(process.env.VP_HI || 1.5), VP_REF = +(process.env.VP_REF || 500);
 if (!['equal', 'risk', 'volpar', 'volsham'].includes(SIZING)) { console.error(`🚨 SIZING=${SIZING} 不認得(equal|risk|volpar|volsham)`); process.exit(1); }
 // 🛑 V77.5.9 停損的**成交價**(ATR 逐字稿檢視時照出來的:全站同一條停損有三種執行方式,從來沒量過差多少)
-//   stop  = 收盤跌破停損價 → 用**停損價**算賣出價(= 舊版所有回測;⚠️ 收盤已經在停損下面了,這個價其實賣不到)
-//   close = 收盤跌破停損價 → 用**收盤價**賣(= auto_trade.py 實際做法:現價 <= 停損就用現價賣)
+//   close = 收盤跌破停損價 → 用**收盤價**賣(= auto_trade.py 實際做法:現價 <= 停損就用現價賣)⭐ V77.6.0 起預設
 //   touch = 盤中最低碰到停損價就賣,成交 min(開盤, 停損價)(= App「📋 複製智慧單」的觸價停損單)
-const STOPFILL = process.env.STOPFILL || 'stop';
+//   stop  = 收盤跌破停損價 → 用**停損價**算賣出價(= V77.5.9 以前所有回測;⚠️ 收盤已經在停損下面了,這個價其實賣不到)
+//           ⛔ 只留給「重現舊數字」用 —— 49 個月唐奇安 526 萬(舊)vs 107 萬(收盤)就是這個差
+//   ⚠️ CACHE_KEY 仍以「!== 'stop'」判斷要不要帶 STOPFILL → 新預設 close 一定進 key,舊的停損價快取⛔ 不會被誤用
+const STOPFILL = process.env.STOPFILL || 'close';
 if (!['stop', 'close', 'touch'].includes(STOPFILL)) { console.error(`🚨 STOPFILL=${STOPFILL} 不認得(stop|close|touch)`); process.exit(1); }
 const RISK_PCT = +(process.env.RISK_PCT || 1);
 const POS_CAP_PCT = +(process.env.POS_CAP_PCT || 25);   // 單檔上限:帳戶的幾 %(跟 App 一致)

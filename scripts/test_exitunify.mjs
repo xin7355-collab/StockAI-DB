@@ -78,7 +78,8 @@ ok('⑥ 🚨 `stopFinal`(V72.0.7 時間守門)⛔ 不可被動到', /const slF =
 
 // ⑦ K 線圖疊圖是代理版 → 要說出來
 ok('⑦ 填了買進日時要說「圖上那兩條是代理版,以卡上為準」(⛔ 只寫在程式註解裡等於沒說)',
-   /K 線圖上疊的那兩條是<b>代理版<\/b>/.test(SRC) && /proxyNote/.test(SRC));
+   // V77.6.0:V75.0.8 把圖上的線改成兩段後,舊句子「以上面為準」變成假的而被改寫 → 改釘用意:兩種情況(有/沒有買進日)畫面上都要說出「代理版」
+   /const proxyNote = x\.proxy\s*\?\s*'[^']*代理版[^']*'\s*:\s*'[^']*代理版/.test(SRC) && /\$\{proxyNote\}/.test(SRC));
 
 // ═══ 實跑:同一檔同一時刻,三處數字必須相同 ═══
 const browser = await chromium.launch({ args: ['--allow-file-access-from-files'] });

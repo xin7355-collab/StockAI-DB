@@ -55,8 +55,8 @@ export function parseRule(rule) {
  * @param {number} eIdx  進場那一根的 index(進場價 = 該根收盤 —— 訊號日尾盤進場,V72.9.0)
  * @param {object} opt   { rules, maxD, holdStop, stopFill }
  *   stopFill(V77.5.9,停損的**成交價**):
- *     'stop'  收盤跌破 → 用停損價算(預設 = 舊版;⚠️ 收盤已經在停損下面,這個價其實賣不到)
- *     'close' 收盤跌破 → 用收盤價(= auto_trade.py 的做法)
+ *     'close' 收盤跌破 → 用收盤價(= auto_trade.py 的做法)⭐ V77.6.0 起預設
+ *     'stop'  收盤跌破 → 用停損價算(V77.5.9 以前;⚠️ 收盤已經在停損下面,這個價其實賣不到 —— 只留給重現舊數字)
  *     'touch' 盤中最低碰到 → min(開盤, 停損價)(= App 複製的觸價智慧單)
  * @returns {object|null} { [rule]: { ret, outIdx, why } }
  */
@@ -64,7 +64,7 @@ export function simExits(R, eIdx, opt = {}) {
     const rules = opt.rules || ['ma5', 'don20', 'atr2', 'trail8'];
     const MAXD = opt.maxD ?? 20;
     const HOLD_STOP = opt.holdStop ?? 5;
-    const FILL = opt.stopFill || 'stop';
+    const FILL = opt.stopFill || 'close';   // ⭐ V77.6.0 起預設收盤成交(⛔ 停損價那天其實賣不到)
     if (!['stop', 'close', 'touch'].includes(FILL)) throw new Error(`lib_exitsim: 認不得的 stopFill '${FILL}'`);
 
     const n = R.length, entry = R[eIdx].c;
