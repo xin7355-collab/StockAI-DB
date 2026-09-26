@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.6.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.6.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.6.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.6.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8642,8 +8642,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.6.5',
+    _APP_VERSION: 'V77.6.6',
     _CHANGELOG: [
+    { v: 'V77.6.6', d: ['📊 產業作戰室 → 實測總表 → 回測數字:兩份表合成<b>一張 2011~2026</b>(79 種全部用同一份資料重跑),新增「🏦 一個帳戶一路滾 16 年」三欄、<b>每一欄都能點排序</b>(舊版情境庫那張也可以)', '🚨 「16 年加起來」是每年重放 100 萬的加總,看不到會不會破產 —— 一路滾排第一的仍是決策台現行(648 萬),預設不換'] },
     { v: 'V77.6.5', d: ['🔁 <b>決策台換成回測最強的那一套</b>:出場線改成「跌破近 <b>40</b> 日最低」、最長抱 <b>40</b> 天、<b>大盤嚴格空頭(收盤在 60 日線下,而且 20 日線也在 60 日線下)那天不買新的</b>(賣出照常)。近 4 年 17 條路徑中位 107 → <b>409 萬</b>、回撤 −40% → −26%;16 年(官方加權)舊的會破產、新的 648 萬。開 App 會跳一次視窗說明,設定中心可以換回舊的。', '💰 <b>建議:沒用到的錢放 0050</b>(要買股票時再賣掉需要的部分)—— 回測近 4 年 409 → 445 萬、16 年 648 → 864 萬;⚠️ 自動下單不會幫你做。', '⚠️ 誠實話:16 年來看 <b>0050 含息買了放著(+1,035%)還是比這套多</b>;近 4 年這套贏。'] },
     { v: 'V77.6.4', d: ['📚 長歷史回測準備接上真的加權指數:產業作戰室「📚 長歷史」那頁的說明改成照資料寫 —— 大盤真的是代理才寫「等權代理」,換成官方資料後會自動改口。'] },
     { v: 'V77.6.3', d: ['📚 <b>補真的加權指數與 0050(2010 起)</b>:新增一支手動採礦,專門給 16 年長歷史回測用 —— 以前 2021 年以前的「大盤」是用上市股平均代替的,而「空頭不開新倉」正是看大盤判斷;補完才能重驗那一組策略(App 的預設一個都沒動)。'] },
