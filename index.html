@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.6.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.6.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.6.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.6.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8642,10 +8642,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.6.6',
+    _APP_VERSION: 'V77.6.7',
     _CHANGELOG: [
+    { v: 'V77.6.7', d: ['🎣 <b>釣魚系統修好了</b>:正式網站的散戶救星是壓縮版,產業作戰室去讀它的 🧬 門檻時一個都讀不到 → 釣魚池一直寫「門檻讀不到」(雜訊清單、更新紀錄也一起空)', '🧾 <b>「閒錢停在 0050」的數字更正</b>:近 4 年 417 萬(原寫 445)、16 年 656 萬(原寫 864)—— 多賺不多,好處是跌的時候少賠', '📊 決策台補上 16 年那一句:這套 648 萬 vs 0050 含息買了放著約 1,001 萬;總覽「量卡在哪些價位」現價在那一段裡面時不再寫「在你上面」'] },
     { v: 'V77.6.6', d: ['📊 產業作戰室 → 實測總表 → 回測數字:兩份表合成<b>一張 2011~2026</b>(79 種全部用同一份資料重跑),新增「🏦 一個帳戶一路滾 16 年」三欄、<b>每一欄都能點排序</b>(舊版情境庫那張也可以)', '🚨 「16 年加起來」是每年重放 100 萬的加總,看不到會不會破產 —— 一路滾排第一的仍是決策台現行(648 萬),預設不換'] },
-    { v: 'V77.6.5', d: ['🔁 <b>決策台換成回測最強的那一套</b>:出場線改成「跌破近 <b>40</b> 日最低」、最長抱 <b>40</b> 天、<b>大盤嚴格空頭(收盤在 60 日線下,而且 20 日線也在 60 日線下)那天不買新的</b>(賣出照常)。近 4 年 17 條路徑中位 107 → <b>409 萬</b>、回撤 −40% → −26%;16 年(官方加權)舊的會破產、新的 648 萬。開 App 會跳一次視窗說明,設定中心可以換回舊的。', '💰 <b>建議:沒用到的錢放 0050</b>(要買股票時再賣掉需要的部分)—— 回測近 4 年 409 → 445 萬、16 年 648 → 864 萬;⚠️ 自動下單不會幫你做。', '⚠️ 誠實話:16 年來看 <b>0050 含息買了放著(+1,035%)還是比這套多</b>;近 4 年這套贏。'] },
+    { v: 'V77.6.5', d: ['🔁 <b>決策台換成回測最強的那一套</b>:出場線改成「跌破近 <b>40</b> 日最低」、最長抱 <b>40</b> 天、<b>大盤嚴格空頭(收盤在 60 日線下,而且 20 日線也在 60 日線下)那天不買新的</b>(賣出照常)。近 4 年 17 條路徑中位 107 → <b>409 萬</b>、回撤 −40% → −26%;16 年(官方加權)舊的會破產、新的 648 萬。開 App 會跳一次視窗說明,設定中心可以換回舊的。', '💰 <b>建議:沒用到的錢放 0050</b>(要買股票時再賣掉需要的部分)—— 回測近 4 年 409 → 417 萬、16 年 648 → 656 萬(V77.6.7 更正,原寫 864 是記錯的);⚠️ 自動下單不會幫你做。', '⚠️ 誠實話:16 年來看 <b>0050 含息買了放著(+1,035%)還是比這套多</b>;近 4 年這套贏。'] },
     { v: 'V77.6.4', d: ['📚 長歷史回測準備接上真的加權指數:產業作戰室「📚 長歷史」那頁的說明改成照資料寫 —— 大盤真的是代理才寫「等權代理」,換成官方資料後會自動改口。'] },
     { v: 'V77.6.3', d: ['📚 <b>補真的加權指數與 0050(2010 起)</b>:新增一支手動採礦,專門給 16 年長歷史回測用 —— 以前 2021 年以前的「大盤」是用上市股平均代替的,而「空頭不開新倉」正是看大盤判斷;補完才能重驗那一組策略(App 的預設一個都沒動)。'] },
     { v: 'V77.6.2', d: ['📚 <b>回測拉長到 16 年(2011~2026,含 4 次空頭)</b>:接上外部公開的 2010~2023 上市股日 K,逐年成績單多一個「📚 長歷史」切換(產業作戰室 → 實測總表 → 回測數字)。',
@@ -21349,7 +21350,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _BEAR_GATE_EDGE: {
         rule: '大盤收盤在 60 日線下,而且 20 日線也在 60 日線下',
         main: { win: '2022-09 ~ 2026-09', paths: 17, on: 409, off: 339, onDD: 26.1, offDD: 29.5, wins: 16, ddBetter: 12, bearPct: 17.1 },
-        long: { win: '2011 ~ 2026(外部資料 + 官方加權指數)', paths: 17, on: 648, onLo: 587, off: 579, offLo: 389, onDD: 35.5, offDD: 42.3, ddBetter: 17, bearPct: 25.8 },
+        // 🔁 V77.6.7 加 0050 含息對照(同 17 條起點各自的起算日;`lib_totalreturn.trSeries` 算,扣來回成本 0.44%;最深回撤 −33.9%、最久 563 個交易日不回本)
+        long: { win: '2011 ~ 2026(外部資料 + 官方加權指數)', paths: 17, on: 648, onLo: 587, off: 579, offLo: 389, onDD: 35.5, offDD: 42.3, ddBetter: 17, bearPct: 25.8, etfTr: 1001, etfDD: 33.9 },
     },
     /** 🐻 純函式:一串大盤 K(舊→新,每根要有 close)→ 最後一根是不是嚴格空頭。不足 60 根回 null(⛔ 不猜) */
     _bear60Of(rows) {
@@ -21383,13 +21385,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ⛔ 自動下單**不會**幫你做(那會動真錢,要你自己決定)。0050 只算價格、沒算股利 → 數字偏保守。
     //   ⚠️ 回撤口徑:股票部位以成本計、停泊的 0050 逐日計價 → 回撤數字兩臂不是完全同一把尺,只有「賺多少」完全可比。
     _IDLE0050_EDGE: {
-        main: { win: '2022-09 ~ 2026-09', paths: 17, on: 445, off: 409, wins: 16, onDD: 24.6, offDD: 26.1, park: 37 },
-        long: { win: '2011 ~ 2026(外部資料 + 真加權)', paths: 17, on: 864, off: 648, wins: 17, onDD: 32.1, offDD: 35.5, park: 211 },
+        // 🚨 V77.6.7 重跑 17 條配對(同一份交易快取):中位 417 萬(原寫 445 / 贏 16 條是記錯的)、最差 349 vs 249、配對贏 13 條、回撤 14 條較小
+        main: { win: '2022-09 ~ 2026-09', paths: 17, on: 417, onLo: 349, off: 409, offLo: 249, wins: 13, onDD: 24.6, offDD: 26.1, park: 37 },
+        // 🚨 V77.6.7 更正:原本寫 864 萬 / 贏 17 條是**記錯的**(用真加權那份資料重跑 17 條:中位 656 萬、最差 644、配對贏 16 條、回撤 17 條都較小)
+        long: { win: '2011 ~ 2026(外部資料 + 真加權)', paths: 17, on: 656, onLo: 644, off: 648, offLo: 587, wins: 16, onDD: 32.2, offDD: 35.5, park: 211 },
     },
     _idle0050NoteHtml() {
         const E = this._IDLE0050_EDGE; if (!E) return '';
         const M = E.main, L = E.long;
-        return `<div class="text-[10px] text-gray-400 mt-1.5 leading-snug" data-idle0050="1">💰 <b class="text-gray-300">沒用到的錢建議停在 0050</b>,要買股票時才賣掉需要的那部分 —— 回測(${M.paths} 條路徑中位)本站 ${M.win} <b class="text-gray-300">${M.on} 萬</b> vs 放現金 ${M.off} 萬(贏 ${M.wins} 條)、16 年 <b class="text-gray-300">${L.on} 萬</b> vs ${L.off} 萬(贏 ${L.wins} 條)。<span class="text-gray-500">⚠️ 自動下單不會幫你做這件事;0050 沒算股利(偏保守)。</span></div>`;
+        return `<div class="text-[10px] text-gray-400 mt-1.5 leading-snug" data-idle0050="1">💰 <b class="text-gray-300">沒用到的錢建議停在 0050</b>,要買股票時才賣掉需要的那部分 —— 回測(${M.paths} 條路徑中位)本站 ${M.win} <b class="text-gray-300">${M.on} 萬</b> vs 放現金 ${M.off} 萬(贏 ${M.wins} 條)、16 年 <b class="text-gray-300">${L.on} 萬</b> vs ${L.off} 萬(贏 ${L.wins} 條)。<br>⭐ <b class="text-gray-300">多賺不多,主要好處是跌的時候少賠</b>:最差那一條 ${M.offLo}→${M.onLo} 萬(4 年)、${L.offLo}→${L.onLo} 萬(16 年),中途最多賠 −${M.offDD}%→−${M.onDD}%、−${L.offDD}%→−${L.onDD}%。<span class="text-gray-500">⚠️ 自動下單不會幫你做這件事;0050 沒算股利(偏保守)。</span></div>`;
     },
     toggleBearGate(checked, silent) {
         this.settings.bearGate = !!checked;
@@ -22453,11 +22457,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             .sort((a, b) => a.lo - b.lo).slice(0, 3);   // 由近到遠,最多 3 層(免得資訊爆炸)
     },
     // 🧲 「幾 % 的量卡在哪個價位」—— 上下都收,依佔比由大到小,最多 5 層
+    // 🔁 V77.6.7 「不挑 🧬 會少賺多少」—— ⛔ 不寫死(舊文案寫死一句「少賺一半」,跟 17 條中位對不起來);讀 `_DECK_TRACK49.rob`(17 條路徑中位)
+    _geneGapTxt() {
+        const R = (this._DECK_TRACK49 || {}).rob;
+        if (!(R && R.med > 0 && R.pmed != null)) return '實測「不挑 🧬」整套會少賺。';
+        const less = Math.round((1 - R.pmed / R.med) * 100);
+        return `實測「不挑 🧬」整套少賺約 ${less}%(${R.paths} 條起點中位:🧬 ${R.med} 萬 vs 不挑 ${R.pmed} 萬)。`;
+    },
     _volStuckBands(data, last, pC) {
         const P = this._volProfile(data, last);
         if (!P) return [];
         return this._volLayers(P, (lo, hi, share) => share >= 0.02)
-            .map(L => ({ ...L, dist: pC > 0 ? (L.mid - pC) / pC * 100 : null, below: pC > 0 && L.hi <= pC }))
+            .map(L => ({ ...L, dist: pC > 0 ? (L.mid - pC) / pC * 100 : null, below: pC > 0 && L.hi <= pC,
+                // 🔁 V77.6.7 現價落在這一段裡面 → ⛔ 不可標「在你上面」(舊寫法只有上/下兩態,2330 那段 2211~2505 包住 2380 卻寫在上面)
+                inside: pC > 0 && L.lo < pC && L.hi > pC }))
             .sort((a, b) => b.pct - a.pct).slice(0, 5);
     },
 
@@ -35627,7 +35640,7 @@ ${this._reportFacts(sym)}
                         : _hasTrig ? `這一檔<b>有一招實測有效</b>(${_pb.k || '—'}),但<b>今天還沒漲到那個價</b> —— `
                                    + `要漲過 <b class="font-mono">${(+_pb.trig).toFixed(2)}</b> 才算數。⛔ 沒漲過去就是<b>買點還沒到</b>,不用勉強。`
                         : ((gene && !gene.ok)
-                              ? `不符合 🧬(位階 ${gene.pos.toFixed(0)}、振幅 ${gene.amp.toFixed(1)}%,要 ≥${R.gene.pos} 且 ≥${R.gene.amp}%)—— 實測「不挑 🧬」整套會少賺一半以上。`
+                              ? `不符合 🧬(位階 ${gene.pos.toFixed(0)}、振幅 ${gene.amp.toFixed(1)}%,要 ≥${R.gene.pos} 且 ≥${R.gene.amp}%)—— ${this._geneGapTxt()}`
                               : '目前沒有實測有效的進場條件。')
                           + (_pb && bear ? '(這一檔本來有一招,但<b>中期趨勢是空頭</b> → 依規則不給進場價)' : '')
                           + _rar;
@@ -36850,12 +36863,12 @@ ${this._reportFacts(sym)}
         const stk = Array.isArray(K.stuck) ? K.stuck : [];
         const stuckHtml = stk.length ? `<details class="mt-1"><summary class="text-[10px] text-gray-300 cursor-pointer select-none">🧲 量卡在哪些價位 <span class="text-[9px] text-gray-500">(${stk.length} 段)</span></summary>
             <div class="mt-1" data-stucklist="${stk.length}">${stk.map(z => {
-                const d = z.dist == null ? '' : `<span class="text-[9px] text-gray-500">${z.dist >= 0 ? '+' : ''}${z.dist.toFixed(1)}%</span>`;
+                const d = (z.dist == null || z.inside) ? '' : `<span class="text-[9px] text-gray-500">${z.dist >= 0 ? '+' : ''}${z.dist.toFixed(1)}%</span>`;
                 return `<div class="flex items-center gap-1.5 text-[10px] leading-snug" data-stuck="${Math.round(z.lo)}~${Math.round(z.hi)}">
                     <b class="font-mono text-amber-300" style="width:34px;text-align:right">${z.pct.toFixed(0)}%</b>
                     <span class="text-gray-400">的量在</span>
                     <b class="font-mono text-gray-200">${fmt(z.lo)}~${fmt(z.hi)}</b> 元 ${d}
-                    <span class="text-[9px] ${z.below ? 'text-gray-500' : 'text-gray-400'}">${z.below ? '(在你下面)' : '(在你上面)'}</span>
+                    <span class="text-[9px] ${z.below ? 'text-gray-500' : 'text-gray-400'}">${z.inside ? '(現價就在這一段裡)' : z.below ? '(在你下面)' : '(在你上面)'}</span>
                 </div>`; }).join('')}
             <div class="text-[8px] text-gray-600 leading-snug mt-1">⚠️ 這是「近 120 日的<b>成交量</b>發生在哪個價位」,⛔ <b>不等於</b>「現在還有幾 % 的人套在那」—— 期間內買了又賣掉的也算在內。只能拿來把期待值放低(上面那段量越大,越別期待一口氣噴過去),⛔ 不是買賣訊號。</div>
             </details>` : '';
@@ -48998,6 +49011,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         <b class="text-gray-200">${_win ? '⚠️ 這個「贏」要打幾個折' : '⚠️ 這些數字還偏樂觀'}</b>:① 這段期間<b>加權指數自己就漲了 ${T.twii || 208}%</b>,是一段偏多頭的行情,
                         ⛔ 不可外推到長空頭;② 回測只用「現在還在市場上」的股票(倖存者偏誤),結果偏樂觀;
                         ③ 沒有算滑價;④ 中途最多賠 <b>${T.geneDD}%</b> —— 那個水位很多人會在最低點放棄,放棄就一毛都拿不到。
+                        ${(() => { const L = (this._BEAR_GATE_EDGE || {}).long; if (!(L && L.on && L.etfTr)) return '';
+                            // 🔁 V77.6.7 使用者問「最好的策略是不是買 0050 都不賣」→ 16 年那一句⛔ 必須跟 49 個月的數字一起講(V77.6.5 鐵則)
+                            return `<br>⑤ 🚨 <b>拉長到 ${L.win} 一個帳戶一路滾</b>(${L.paths} 條起點中位):這套 <b>${L.on} 萬</b>(最差一條 ${L.onLo} 萬・中途最多賠 −${L.onDD}%)vs
+                            <b class="text-amber-300">0050 含息買了放著約 ${L.etfTr.toLocaleString()} 萬</b>(中途最多賠 −${L.etfDD}%)—— <b>16 年來看這套輸 0050 含息</b>,只有近 4 年贏。完整 79 種做法在產業作戰室「📖 回測計算機 → 回測數字」。`; })()}
                     </div>
                     <div class="mt-2 bg-[#0d1117] border-l-4 border-gray-600 pl-2.5 py-2 rounded-r text-[10px] text-gray-300 leading-relaxed">
                         <b class="text-gray-200">🔀 「那多頭做這套、空頭改抱 0050」呢?—— 測過了,⛔ 還是輸。</b><br>
