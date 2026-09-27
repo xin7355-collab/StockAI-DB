@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.7.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.7.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.7.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.7.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8649,8 +8649,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.7.8',
+    _APP_VERSION: 'V77.7.9',
     _CHANGELOG: [
+        { v: 'V77.7.9', d: ['🗣️ <b>實測總表改成白話版</b>(照你給的附件做)—— 每一條先講三句:<b>一句話 → 對你的意思 → 白話數字</b>;原本的結論、數字、怎麼操作、完整說明一個字都沒刪,點開就看得到。','📂 <b>「✅ 實測有用」分成五組</b>:✅ 可以照做 ・📌 當參考 ・🚫 要避開 ・🐢 長期存股 ・🗄️ 已被新版取代(舊的排最後)。每條標環節(選股/進場/出場…)與可信度 ●●○;點環節 = 搜尋它。排名 🥇🥈🥉 照舊。','✏️ <b>附件有幾處我改了</b>:「美股隔夜對隔天台股有參考價值」改成「隔天開盤會跟著動(時差),但實測買不到優勢」;補上附件沒有的「0050 當主力、策略當小部位」;分組與可信度⛔ 不用紅綠(紅綠只講漲跌)。','🧾 <b>提示詞稽核</b>:App 內會叫 AI 寫東西的地方逐一查過,修掉 4 個違規 —— 盤前速報的「三劇本機率」是沒驗證過的係數湊的(已拿掉)、盤前速報會叫 AI 點名個股進場(大盤偏多那天熱門股實測反而 −0.27%)、總經深度分析會叫 AI 給「部位幾成」、事件影響會問利多利空並叫 AI 自己寫股票代號(它沒連網,代號可能是錯的)。'] },
         { v: 'V77.7.8', d: ['🇺🇸 <b>「美股隔夜異常 → 台股」測完了:⛔ 量不到可以買到的優勢</b>。美股 5 年日線第一份資料進來後跑完三層:加權(用 0050 當資產)35 格 0 個過關、14 板塊 98 格只有 1 個(而且是負的)、美股個股 → 台股個股的對應名單前後半<b>重疊 0%</b>;「美股很強、台股開盤還沒反映」4 年只出現 4 次(樣本不足)。疊在 🧬 選股上跟「同通過率的隨機日」比,也沒有多賺(數字在實測總表 k:us-tw-lead)。',
                              '🚨 <b>順手抓到一個會做出假結論的資料陷阱</b>:加權指數的「開盤價」是用還沒成交股票的昨收湊出來的,拿它「開盤買」會把跳空算成賺到的 —— 第一版就這樣量到 +1pp、六關全過、12 格高原全綠的<b>假 alpha</b>。改用 0050 自己當資產後全部消失。已寫進陷阱清單 #47 並做成探針的決定性對照。',
                              '📌 資料照存(每天採礦後自動更新),走完一次空頭後可重跑。'] },
@@ -8850,7 +8851,6 @@ ${list}
             '📄 <b>順手更正兩處我自己寫錯的文件</b>:「外資買賣超只回溯到 2026/05、要等滿一年才能回測」—— <b>差 13 倍</b>,實跑印出來是 <b>2023/05/22 起、805 個交易日</b>。⚠️ 但重跑出來的新結論<b>還沒過八道關卡</b>(平均值算錯了,一次長行情被重複計算)→ ⛔ 預設一個字都沒改。'] },
         { v: 'V77.0.3', d: ['📼 <b>開始存 5 分 K 了</b>(你說的「開始存分k」)—— 以前本站<b>一根分 K 都沒有留下來</b>,所以那三條盤中口訣(下午時段 / 開盤 10 分鐘站回 / 第一根 5 分 K 上影)只能現抓現算,<b>每次重跑結果都不一樣</b>,而且「逐年同向」那一關天生過不了。','⏳ <b>第一次跑就有約 80 個交易日</b>(不是要等半年),但要做得動「逐年」那一關得滿一年 → 大約 <b>2027 年 2 月</b>。','⚠️ 存的是「<b>當天成交量前 80 名</b>」那批(你選的)—— 代價是名單每天會變,某一檔在歷史上會斷斷續續,而且天生只收「當天夠熱」的日子。檔案裡已經把每天的實際名單與這段警語一起存進去,回測時一定會先算「這檔在窗口裡有幾天」。','⛔ 它存在自己的分支、<b>不佔網站空間</b>,也不會讓你的 App 變慢。'] },
         { v: 'V77.0.2', d: ['💾 <b>「存成圖片」修好了</b> —— 而且它以前<b>失敗也照樣跟你說「已存成」</b>,所以看起來像壞掉但不知道哪裡壞。現在 iPhone 會直接跳「分享」(選「儲存影像」就進相簿),存不起來會誠實告訴你怎麼長按存。','🧭 <b>「五個面向」少一格的真相</b>:標題是<b>寫死</b>的「五個面向」,而 6706 惠特是虧損股 → 沒有本益比、月營收也只有 12 個月算不出兩個年增點 → 🎯 預期那一格<b>本來就該是空的</b>。現在標題會照實際幾格寫,而且<b>直接在圖上寫出「缺哪一格 + 為什麼」</b>。','🧬 <b>「為何沒有基本面」是三個 bug 疊在一起</b>:① 同一個「營收年增」全 App 有<b>兩條相反的優先序</b> —— 報告頁拿到最新的 +120.5%、基本面分數卻吃到 7 月的舊值 −26.1% → 被打成 0 分。現在統一成一份。','🩸 ② 但<b>只修那個會讓 6706 從 0 分變 57 分(「體質穩健」)</b>,而它近 4 季 ROE −7.1%、最新一季 EPS −1.89 元 → 那比 0 分更誤導。<b>新增「虧損封頂」</b>:真的在虧錢時分數最高 30 分,並在卡上寫出是哪個數字把它封住的。','💲 ③ 拿不到的數字會被印成 <b>0.0</b>(虧損股的本益比印成「0.0 倍」、股價淨值比明明有 3.2 卻印 0.00)—— 報告頁那條數字格式鏈已全部修掉,虧損股改印「—(虧損)」。','🌐 你給的「海外訊號篇」清單看過了:<b>6 項裡本站已經有 4 項</b>(台積 ADR / 費半 / 那斯達克 / 美債 10 年期 + 倒掛),而且已經算進盤前體檢分數。只補了「每天 3-5 分鐘」那一層的<b>指路</b>;DRAM 報價與雲端巨頭資本支出<b>台股沒有免費來源</b>,已記進實測總表免得日後重複評估。'] },
-        { v: 'V77.0.1', d: ['🗣️ <b>你貼的 12 條盤中口訣,我一條一條查過了</b> —— 其中 <b>6 條本站早就測過,全部沒用</b>(開盤跳水就買、早盤急拉是假的、下午大跌次日買、量增價不漲、9:15 帶量突破…),⛔ 不用再測一次。','✅ <b>唯一站得住的是「不漲不跌就睡覺」</b>:盤整那一桶的邊際 +0.007 = 跟丟銅板一樣,而「橫盤<b>突破</b>」還是 −0.52 → <b>不交易比等突破更對</b>。','🏦 <b>「先看前一天籌碼軌跡」是唯一過關的一條</b>(1,754 檔・含 2022 空頭實測):昨天三大法人買超佔量比是它自己歷史最極端那 0.5% → 之後 10 天比其他股票好 <b>+0.65%</b>,六道關卡全過。⚠️ 但那一桶<b>自己還是輸大盤 0.48%</b> → 它只能拿來<b>排序</b>(在你已經要挑的幾檔裡優先挑它),⛔ <b>不是「看到就買」</b>。','⛔ <b>這一版一個提醒都沒有新增</b> —— 照你定的「不準就不用提醒」,沒過門檻的一律不主動推。','🐛 順手修:本益比拿不到的時候,報告頁的估值表會印成「現在(PE <b>0.0</b> 倍)」—— 現在改成「—」。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -34770,16 +34770,17 @@ ${this._reportFacts(sym)}
             // 🛑 禁 AI 算數鐵則:數字一律由前端算好再塞進 prompt
             const state = [
                 `加權指數 ${N(this._taiexToday) || '—'}`,
-                `VIX ${N(mr.vix)}`,
+                `VIX ${N(this._vixState()?.val)}`,   // 🧾 V77.7.9 ⛔ 不直接讀 mr.vix(兩份檔各一個 VIX,V75.2.3)
                 `韓股 ${N(mr.kospi_chg_pct)}%`,
                 `日經 ${N(mr.nikkei_chg_pct)}%`,
                 `外資現貨 ${N(mr.fi_spot_net)} 億`,
                 ...(this._fiMtdStr?.() ? [`外資${this._fiMtdStr().txt}`] : []),   // 📅 V71.6.1
-                `外資台指期 ${N(mr.fi_futures_net)} 口`,
+                // 🧾 V77.7.9 ⛔ 不給 AI 看絕對口數(小台/微台上市後天天 ≤ −40,000,餵進去 AI 每天都說「極空」)→ 給相對自己的判讀(V71.1.6 / V75.1.7)
+                `外資台指期 ${(() => { const f = this._fiFutState(); return f.label ? `${f.label}${f.pct != null ? `(近 20 日位階 ${f.pct}%)` : ''}` : '—'; })()}`,
                 `恐懼貪婪 ${N(mr.fear_greed)}`,
             ].join('、');
             const rb = this._reboundVerdict ? `反攻條件雷達:${this._reboundVerdict.txt}(${this._reboundVerdict.passN}/${this._reboundVerdict.total} 條通過)` : '';
-            const prompt = `你是台股資深策略分析師,講白話文。\n\n【未來兩週事件】\n${evs}\n\n【目前市場狀態(實測數字,直接引用,禁止自己計算或杜撰任何數字)】\n${state}${rb ? '\n' + rb : ''}\n\n請深度分析(比一般摘要更深入):\n1. 這些事件裡,以「現在這個市場狀態」來看,最該提防的是哪一件?為什麼(講清楚傳導路徑:事件→影響什麼→影響台股哪些族群)。\n2. 有沒有兩件以上的事件會疊加放大風險?時間點怎麼排?\n3. 具體操作:未來兩週的部位建議(幾成)、要盯什麼數字當轉折訊號、什麼情況要立刻降部位。\n\n用條列,每點 2-3 句,講具體不要空話。不確定就說不確定,不要編造市場預期數據。`;
+            const prompt = `你是台股資深策略分析師,講白話文。\n\n【未來兩週事件】\n${evs}\n\n【目前市場狀態(實測數字,直接引用,禁止自己計算或杜撰任何數字)】\n${state}${rb ? '\n' + rb : ''}\n\n請深度分析(比一般摘要更深入):\n1. 這些事件裡,以「現在這個市場狀態」來看,最該提防的是哪一件?為什麼(講清楚傳導路徑:事件→影響什麼→影響台股哪些族群)。\n2. 有沒有兩件以上的事件會疊加放大風險?時間點怎麼排?\n3. 那幾天波動會不會變大、要盯哪一個數字看它有沒有真的發生。\n\n用條列,每點 2-3 句,講具體不要空話。不確定就說不確定,不要編造市場預期數據。\n⛔ 規則:本 App 實測 37 種財經行事曆日「會漲還是會跌」一個都不成立,只有「波動會變大」是真的 → ⛔ 不要給部位成數(幾成)、⛔ 不要叫人加碼或降部位、⛔ 不要預測會漲會跌;只講波動與要盯的數字。`;
             const txt = await this._callDeepAI({ prompt, max_tokens: 1400, temperature: 0.4, chain: 'gemini-openrouter' });
             if (!txt) throw new Error('AI 回空');
             const ts = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
@@ -39104,7 +39105,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             return;
         }
         box.classList.remove('hidden');
-        const cacheKey = 'evImpact_' + eventName;
+        const cacheKey = 'evImpact2_' + eventName;   // 🧾 V77.7.9 換鍵:舊快取裡是「利多利空 + 代號」版,⛔ 不可再顯示
+        try { localStorage.removeItem('evImpact_' + eventName); } catch (_) {}
         try {
             const c = JSON.parse(localStorage.getItem(cacheKey) || 'null');
             if (c && c.html && (Date.now() - c.ts) < 24 * 3600e3) {
@@ -39114,8 +39116,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         } catch (_) {}
         box.innerHTML = '<div class="text-[10px] text-cyan-400 px-2 py-1.5 animate-pulse">🤖 推測影響族群中...</div>';
         try {
-            const fullPrompt = '事件:「' + eventName + '」\n\n請以台股研究員口吻,3 句話內回答:\n1. 這事件對台股最直接影響哪 1-2 個族群?\n2. 該族群代表股 2-3 檔(代號+名稱)?\n3. 多空方向(利多/利空/震盪)?\n規則:禁編造數字、禁長篇大論、用 → 串接、總字數 ≤ 60 字。';
-            const simplePrompt = '事件「' + eventName + '」→ 影響的台股族群?代表股 2-3 檔?利多利空?用 50 字內 1 段話回答。';
+            // 🧾 V77.7.9 提示詞稽核:⛔ 不再問「利多利空」(37 種行事曆日方向實測 0 個成立)、⛔ 不叫 App 內 AI 列股票代號(它沒連網,代號可能是錯的)
+            const fullPrompt = '事件:「' + eventName + '」\n\n請以台股研究員口吻,3 句話內回答:\n1. 這事件對台股最直接牽動哪 1-2 個族群?\n2. 傳導路徑一句話(事件 → 影響什麼 → 哪個族群)。\n3. 那幾天哪個族群的波動可能比較大?\n規則:⛔ 不要判斷利多利空、⛔ 不要寫股票代號、禁編造數字、禁長篇大論、用 → 串接、總字數 ≤ 60 字。';
+            const simplePrompt = '事件「' + eventName + '」→ 牽動哪個台股族群?那幾天哪裡波動會比較大?⛔ 不判斷利多利空、⛔ 不寫股票代號,50 字內 1 段話。';
             const text = await this._callDeepAI({
                 prompts: { full: fullPrompt, simple: simplePrompt },
                 max_tokens: 200, temperature: 0.3
@@ -39125,8 +39128,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 box.innerHTML = '<div class="text-[10px] text-red-400 px-2 py-1.5">⚠️ AI 推測失敗(可能 OpenRouter 額度用完)</div>';
                 return;
             }
-            box.innerHTML = '<div class="text-[10px] text-cyan-200/90 bg-cyan-950/30 border border-cyan-800/40 rounded px-2 py-1.5 leading-relaxed">' + html + '</div>';
-            try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), html: html })); } catch (_) {}
+            const tagged = '🤖 AI 推測(⛔ 沒有實測背書;行事曆日實測只有「波動變大」成立):' + html;
+            box.innerHTML = '<div class="text-[10px] text-cyan-200/90 bg-cyan-950/30 border border-cyan-800/40 rounded px-2 py-1.5 leading-relaxed">' + tagged + '</div>';
+            try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), html: tagged })); } catch (_) {}
         } catch (e) {
             const msg = (e && e.message) ? e.message : String(e);
             box.innerHTML = '<div class="text-[10px] text-red-400 px-2 py-1.5">⚠️ AI 例外:' + msg + '</div>';
@@ -52004,17 +52008,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const _today = new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
         const _nowTpe = new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
 
-        // 🧮 三劇本機率 JS 端真實計算(禁讓 AI 猜)— 依 _calcRiskScore + 外資期 + VIX 推導
+        // 🧾 V77.7.9 提示詞稽核:原本這裡用「風險分數 ×0.7 / ×0.5 + VIX<18 加 10」算三劇本「機率」再逼 AI 照抄 ——
+        //   ⛔ 那些係數從來沒驗證過,卻標成「機率」(陷阱 #38 同型)→ 拿掉,三劇本改成「看到什麼訊號才算成立」。
+        //   ⭐ 另外:盤前分數偏多那天熱門個股反而 −0.27%(V77.5.0)→ 盤前速報⛔ 不再叫 AI 點名個股進場。
         const _risk = this._calcRiskScore?.() ?? 50;
-        const _fi  = this.fiShortQty ?? 0;
-        const _vixVal = mr.vix ?? 20;
-        // 🏦 V75.1.7 `_fi < -25000` 在現在的量級下天天成立 → 這 15 分是**常數**(等於把基準墊高)。
-        //   改成只有「相對自己真的偏重/急遽加空」才加。
-        const _fsP = this._fiFutState();
-        let _pBear = Math.min(70, Math.max(10, Math.round(_risk * 0.7 + ((_fsP.level === 'danger' || _fsP.level === 'warn') ? 15 : 0))));
-        let _pBull = Math.min(70, Math.max(10, Math.round((100 - _risk) * 0.5 + (_vixVal < 18 ? 10 : 0))));
-        let _pNeutral = 100 - _pBear - _pBull;
-        if (_pNeutral < 10) { _pNeutral = 10; const _excess = (_pBear + _pBull + _pNeutral - 100); _pBear -= Math.ceil(_excess/2); _pBull -= Math.floor(_excess/2); }
 
         // 🦅 年線乖離率(^TWII 240MA)已停用:yfinance 對 GHA runner 持續抓不到 240 日 ^TWII 歷史,
         //    改由「外資期/VIX/恐慌貪婪/融資餘額/期現比」綜合判讀大盤位階(_marketPanorama 已涵蓋)
@@ -52070,7 +52067,7 @@ ${subLines}
 
 【台美族群同步檢驗(美股先行 vs 台股當日)】
 ${sectorSyncStr}
-判讀:同步偏多=熱錢從美傳到台(可加碼)/同步偏空=系統性風險(避險)/逆勢⚠️=主力可能在出貨或吸籌(留意)
+判讀:同步偏多=美股的熱度有傳到台股/同步偏空=系統性壓力/逆勢⚠️=台股自己的因素(只描述,⛔ 不要據此下加碼或減碼指令)
 
 【牛市泡沫 4 維】
 ${bubbleLines}
@@ -52089,7 +52086,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 
 ---
 
-🟢 隔夜定調與拉積盤
+🌙 隔夜定調與拉積盤
 
 🔹 美股四雄 + 費半: [2 句總結 SP500 ${spxChg}・那斯達克 ${ndxChg}・道瓊・費半 ${soxChg} 與 VIX ${vix},點名最關鍵的隔夜訊號]
 🔹 拉積盤精算: ${_tsmEstPts != null ? `台積電 ADR ${tsmChg} → 系統預估貢獻指數約 **${_tsmEstPts}** 點。${Math.abs(_tsmEstPts) >= 60 ? '若開盤 OTC 指數未同步轉強,慎防中小型股「賺指數賠價差」黑洞——權值拉、散戶股不漲。' : '影響中性,觀察開盤 OTC 是否跟上。'}` : '台積電 ADR 資料不足,拉積盤推估暫缺,以即時 TSM 走勢觀察。'}
@@ -52103,30 +52100,30 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
 👉 [若有事件:時機與台/美股連動 + 受影響台股族群;無則「靜待後續發言」]
 🔹 黃仁勳/NVIDIA: ${_huangRaw}
 🔹 📊 巨頭財報: ${_earnRaw}
-👉 [若有動態:對先進封裝/HBM/散熱/AI 伺服器牽動,點名台股代號;無則「靜待 GTC 或法說催化」]
+👉 [若有動態:對先進封裝/HBM/散熱/AI 伺服器牽動,點名受影響的族群(⛔ 不要自己寫股票代號 —— 你沒有連網,代號可能是錯的);無則「靜待 GTC 或法說催化」]
 🔹 SpaceX / Kuiper 衛星鏈: ${_spacexRaw} ・ ${_kuiperRaw}
-👉 [若有料:帶出低軌衛星台股代碼;無則「無」]
+👉 [若有料:帶出低軌衛星相關族群(⛔ 不要自己寫股票代號);無則「無」]
 
 ---
 
-🔍 今日鎖定 (從上方雷達掃描 + 4 戰區挑,禁自創代號)
+🔍 今日要盯的族群 (只從上方雷達掃描 + 4 戰區挑,禁自創代號;⛔ 這一段只描述,不給買賣指令)
 
-📍 關鍵位階: 壓力 [數值] / 支撐 [數值](結合外資台指期 ${fiLabel} 判讀,大空單時支撐易破)
-💰 偏多攻擊 (低基期/剛轉強): 👉 [挑 1-2 檔代碼 + 理由:打底完成/站上月線/法人回補]
-⚔️ 偏空提防 (破線/法人棄養): 👉 [挑 1-2 檔代碼 + 理由:高檔爆量/投信連賣]
+📍 關鍵位階: ⛔ 上面沒有給你壓力/支撐的數字 → 這一行只寫「以 App 大盤頁的價位為準」,⛔ 不可自己寫任何點數
+👀 族群熱度: 👉 [挑 1-2 個族群 + 為什麼今天值得盯(引用上面的數字)]
+⚠️ 要提防的: 👉 [挑 1-2 個族群 + 理由(引用上面的數字)]
 
 ---
 
-🎭 今日三劇本 (機率由系統依風險分數 ${_risk}/100、外資期、VIX 真實推導,禁改寫機率數字)
+🎭 今日三種情況 (⛔ 不要寫機率 —— 系統沒有驗證過的機率;只寫「看到什麼訊號才算是這種情況」)
 
-🟢 劇本 A 全面攻擊 [機率 ${_pBull}%]: 隔夜美股紅 + TSM ADR ${tsmChg || '--'} + 外資期 ${fiLabel} → 操作: [點名族群代碼的具體進場指令]
-🟡 劇本 B 拉積盤盤整 [機率 ${_pNeutral}%]: 權值拉、OTC 開高走低 → 操作: 切忌追高權值股,提防假突破,等中小型股表態。
-🔴 劇本 C 開高走低 [機率 ${_pBear}%]: 外資期 ${fiLabel} 空單壓盤 + 風險分數 ${_risk}/100 → 操作: [減碼/防禦/停損具體指令]
+📈 情況 A 全面走強: 隔夜美股紅 + TSM ADR ${tsmChg || '--'} + 外資期 ${fiLabel} → 要看到: [開盤後哪個數字確認]
+➖ 情況 B 拉積盤盤整: 權值拉、OTC 開高走低 → 要看到: [哪個數字確認;提醒別追高權值股]
+📉 情況 C 開高走低: 外資期 ${fiLabel} + 風險分數 ${_risk}/100 → 要看到: [哪個數字確認;提醒照自己原本的停損走]
 
 ---
 
 ⚡ 今日操作重點
-[收尾 1 句:今天「主攻方向 + 一個最該做的動作 + 一個最該避開的雷」,講人話、給命令]
+[收尾 1 句:今天「最該盯的一個數字 + 一個最該避開的雷」,講人話;⛔ 不要叫人買哪一檔 —— 大盤結論套到個股實測是反的]
 
 ---
 

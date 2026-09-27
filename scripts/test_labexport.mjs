@@ -36,10 +36,15 @@ const R = await page.evaluate(() => {
     const all = PRO.labExportText({ scope: 'all' });
     const brief = PRO.labExportText({ scope: 'all', full: false });
     const noAsk = PRO.labExportText({ scope: 'all', ask: false });
-    // ⑦ 排序:抓 ok 那一段的標題順序對照 r
-    const okSorted = PRO.LAB.ok.slice().sort((a, b) => (b.r ?? -1) - (a.r ?? -1)).map(x => PRO._labPlain(x.t));
+    // ⑦ 排序:V77.7.9 ✅ 改成「分組 → r」(白話層),⭐ 釘的是用意 =「匯出順序 = 畫面順序」—— 直接讀畫面上的原始標題
+    PRO.switchTab('lab'); PRO.labSearch(''); PRO.selLab('ok');
+    const norm = t => String(t).replace(/——|\*\*|\s/g, '');
+    const okSorted = [...document.querySelectorAll('#labList .labitem .lot')].map(e => e.textContent);
+    const okSortedN = okSorted.map(norm);
+    const okOrderFn = PRO._labOkOrder(PRO.LAB.ok).map(x => norm(PRO._labPlain(x.t)));
     const trapSorted = PRO.LAB.trap.slice().sort((a, b) => (b.u || '').localeCompare(a.u || '')).map(x => PRO._labPlain(x.t));
     const heads = all.split('\n').filter(l => l.startsWith('### ')).map(l => l.replace(/^### \d+\. /, ''));
+    const headsN = heads.map(norm);
     // ⑥ 搜尋
     PRO.switchTab('lab');
     PRO.labSearch('出場');
@@ -63,7 +68,7 @@ const R = await page.evaluate(() => {
     it.n = '注入值 12345.678';
     const inj = PRO.labExportText({ scope: 'all' });
     it.n = bak;
-    return { total, all, brief, noAsk, okSorted, trapSorted, heads, view, nRows, panelOpen, sel, btns, scopeVal, msg, inj };
+    return { total, all, brief, noAsk, okSorted, okSortedN, okOrderFn, headsN, nOk: PRO.LAB.ok.length, trapSorted, heads, view, nRows, panelOpen, sel, btns, scopeVal, msg, inj };
 });
 
 // ⚠️ 只認真的 HTML 標籤名(內文本來就有「ma5<ma20」這種比較式,⛔ 不可當成標籤)
@@ -78,7 +83,8 @@ ok('④b ask:false 就不帶提問範本(但方法段照帶)', !/## 我想請你
 ok('⑤ 精簡版比完整版短且不含「完整說明:」', R.brief.length < R.all.length && !/- 完整說明:/.test(R.brief) && /- 完整說明:/.test(R.all), `${R.brief.length}/${R.all.length}`);
 const nView = R.view.split('\n').filter(l => l.startsWith('### ')).length;
 ok(`⑥ 搜尋「出場」後目前畫面匯出 ${nView} 條 = 畫面上 ${R.nRows} 條`, nView === R.nRows && nView > 0 && nView < R.total, `${nView} vs ${R.nRows}`);
-ok('⑦ ✅有用 照 r 由大到小(匯出順序 = 排序後的前 5 條)', R.okSorted.slice(0, 5).every((t, i) => R.heads[i] === t), R.heads.slice(0, 3).join(' | '));
+ok('⑦ ✅有用 匯出順序 = 畫面順序(V77.7.9 分組 → r;56 條逐條比)', R.okSortedN.length === R.nOk && R.okSortedN.every((t, i) => R.headsN[i] === t), R.heads.slice(0, 3).join(' | '));
+ok('⑦a 畫面順序 = 共用排序函式 _labOkOrder(⛔ 兩邊各排一次會對不上)', R.okOrderFn.length === R.nOk && R.okOrderFn.every((t, i) => R.okSortedN[i] === t), R.okSorted.slice(0, 2).join(' | '));
 {
     const iTrap = R.heads.indexOf(R.trapSorted[0]);
     ok('⑦b 其他欄照 u 新→舊(實測沒用那欄的第一條 = u 最新的那條)', iTrap > 0 && R.heads[iTrap + 1] === R.trapSorted[1], iTrap);
