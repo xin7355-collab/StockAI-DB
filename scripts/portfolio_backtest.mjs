@@ -32,6 +32,7 @@ import { turnCuts, turnBucket } from './lib_turnover.mjs';
 import { finSeries, finOnAt } from './lib_finaccel.mjs';
 import { valuePrep, valueSeries, valueOnAt, KINDS as VAL_KINDS, CYC_IND } from './lib_value.mjs';
 import { trSeries } from './lib_totalreturn.mjs';
+import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs';
 import path from 'path';
@@ -195,6 +196,31 @@ if (!['equal', 'risk', 'volpar', 'volsham'].includes(SIZING)) { console.error(`�
 //   ⚠️ CACHE_KEY 仍以「!== 'stop'」判斷要不要帶 STOPFILL → 新預設 close 一定進 key,舊的停損價快取⛔ 不會被誤用
 const STOPFILL = process.env.STOPFILL || 'close';
 if (!['stop', 'close', 'touch'].includes(STOPFILL)) { console.error(`🚨 STOPFILL=${STOPFILL} 不認得(stop|close|touch)`); process.exit(1); }
+// 🐻 V77.6.8 「空頭時手上的也先賣掉?」—— 本站以前**沒測過**(FILTER=bear60 只擋新買、PARK 只動閒錢,沒有任何程式會因 regime 轉空而賣掉持倉)
+//   BEAR_EXIT=strict → 大盤嚴格空頭(收 < 60 日線 且 20 日線 < 60 日線,**同 `notBear60` 那一條**)的每一天,持倉一律用**收盤價**賣掉
+//   BEAR_EXIT=ma60   → 寬版:只要收盤 < 60 日線就賣(當門檻高原檢定)
+// 🚨 V77.6.8 FORCE_EXIT=<json 路徑>:`{sym:[事件日,…]}`(如「進處置公告日」)→ 持倉在事件日**之後第一個交易日開盤**賣掉
+//   (公告是收盤後才知道的 → 賣得到的第一個價是隔天開盤;⛔ 用公告日收盤是前視,`gap_probe` 記過那一次)
+//   ⛔ 兩個都**必須進 CACHE_KEY**(同 GRACE 的教訓:漏了會把不帶強制出場的舊快取靜默重用,跑出「完全沒差」的假結論)
+//   ⛔ 沒設就一個字都不變(CACHE_KEY 字串跟舊版一模一樣,既有快取照樣重用)
+const BEAR_EXIT = (process.env.BEAR_EXIT || '').trim();
+if (BEAR_EXIT && !['strict', 'ma60'].includes(BEAR_EXIT)) { console.error(`🚨 BEAR_EXIT=${BEAR_EXIT} 不認得(strict|ma60)`); process.exit(1); }
+const FORCE_EXIT = (process.env.FORCE_EXIT || '').trim();
+let FORCE_MAP = null, FORCE_HASH = '';
+if (FORCE_EXIT) {
+    let raw;
+    try { raw = fs.readFileSync(FORCE_EXIT, 'utf8'); } catch (e) { console.error(`🚨 FORCE_EXIT=${FORCE_EXIT} 讀不到(${e.message})`); process.exit(1); }
+    let j; try { j = JSON.parse(raw); } catch (_) { console.error(`🚨 FORCE_EXIT 不是合法 JSON`); process.exit(1); }
+    const m = (j && j.d && typeof j.d === 'object') ? j.d : j;
+    FORCE_MAP = {};
+    for (const [k, v] of Object.entries(m || {})) {
+        const ds = (Array.isArray(v) ? v : []).map(x => String(x).replace(/\//g, '-').slice(0, 10)).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x));
+        if (ds.length) FORCE_MAP[String(k)] = ds;
+    }
+    if (!Object.keys(FORCE_MAP).length) { console.error('🚨 FORCE_EXIT 裡一筆事件都沒有(格式 {sym:[YYYY-MM-DD,…]})'); process.exit(1); }
+    FORCE_HASH = createHash('md5').update(raw).digest('hex').slice(0, 12);
+    console.log(`🚨 強制出場 FORCE_EXIT:${Object.keys(FORCE_MAP).length} 檔 ・${Object.values(FORCE_MAP).reduce((a, x) => a + x.length, 0)} 個事件日(事件日之後第一個交易日**開盤**賣)`);
+}
 const RISK_PCT = +(process.env.RISK_PCT || 1);
 const POS_CAP_PCT = +(process.env.POS_CAP_PCT || 25);   // 單檔上限:帳戶的幾 %(跟 App 一致)
 const GAPCAP = +(process.env.GAPCAP || 1);
@@ -237,10 +263,33 @@ console.log(`💼 組合回測 ・${syms.length} 檔(分層抽樣,代號開頭�
 if (RANKBY !== 'self' || GATE !== 'pat') console.log(`🎯 增量檢定:RANKBY=${RANKBY} ・GATE=${GATE}(⛔ 不是正式配置)`);
 console.log(`   每天最多挑 ${PICKS_PER_DAY} 檔 ・本金 ${CAPITAL.toLocaleString()} 元 ・每筆 ${LOT.toLocaleString()} 元 ・暖身 ${WARMUP} 日 ・成本 ${COST}%/趟 ・部位=${SIZING}${SIZING === 'risk' ? `(虧${RISK_PCT}%/單檔上限${POS_CAP_PCT}%)` : ''} ・停損=${STOP} ・出場=${EXIT}/${MAXD}日${REENTRY > 0 ? ` ・買回=${REENTRY}日內站回5MA(最多${RE_MAX}次)` : ''} ・進場=${ENTRY}${FILTER.length ? ` ・濾網=${FILTER.join('+')}` : ''}${ENTRY === 'nextopen_lim' ? `(跳空>${GAPCAP}% 不追)` : ''}${TURN ? ` ・週轉率=${TURN}` : ''}${FIN ? ` ・營收加速=${FIN}` : ''}${VAL ? ` ・價值=${VAL}` : ''}\n`);
 
+// ── ② 時間軸:用加權指數的交易日 ────────────────────────────────────────
+const twii = JSON.parse(fs.readFileSync(path.join(DATA, '^TWII.json'), 'utf8'))
+    .map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close }))
+    .filter(r => r.d && r.c > 0);
+// 🏛️ 大盤月線(20MA):第 i 天只用 0..i 的資料 → ⛔ 零前視偏誤
+const twiiMa20 = twii.map((_, i) => i < 19 ? null
+    : twii.slice(i - 19, i + 1).reduce((s2, r) => s2 + r.c, 0) / 20);
+const regimeOk = i => twiiMa20[i] != null && twii[i].c > twiiMa20[i];
+// 🐻 V74.4.7 嚴格空頭守門(FILTER=bear60):只有「收 < 60 日線 且 20 日線 < 60 日線」才停做。
+//   ⭐ 動機:月線版 regime 在含 2022 跌勢的窗口實測**兩頭輸**(少賺 68 萬、回撤還更糟)——
+//   因為「跌破月線」大多是**多頭回檔**,而那正是這套打法最賺的時刻(V73.2.2)。
+//   嚴格空頭(三態拆解:空頭段每趟淨 −0.29% vs 多頭/盤整 +0.98%)才是真的沒優勢的環境。
+const twiiMa60 = twii.map((_, i) => i < 59 ? null
+    : twii.slice(i - 59, i + 1).reduce((s2, r) => s2 + r.c, 0) / 60);
+const notBear60 = i => !(twiiMa60[i] != null && twii[i].c < twiiMa60[i] && twiiMa20[i] < twiiMa60[i]);
+// 🐻 V77.6.8 空頭清倉要賣的那幾天(⛔ 直接用上面那條 `notBear60`,不另寫第二份定義)
+const BEAR_DAYS = !BEAR_EXIT ? null : new Set(twii.map((r, i) => (BEAR_EXIT === 'strict' ? !notBear60(i) : (twiiMa60[i] != null && r.c < twiiMa60[i])) ? r.d : null).filter(Boolean));
+if (BEAR_EXIT) {
+    console.log(`🐻 空頭清倉 BEAR_EXIT=${BEAR_EXIT}:全窗口 ${BEAR_DAYS.size} 個交易日是「要賣掉手上全部」的日子(${(BEAR_DAYS.size / twii.length * 100).toFixed(1)}%)`);
+    if (!BEAR_DAYS.size) { console.error('❌ BEAR_EXIT 設了但窗口內一天都不是空頭 → 這個變體沒有生效(⛔ 不是「沒差別」)'); process.exit(1); }
+}
 // 💾 掃描結果快取(只跟這幾個參數有關;行事曆濾網完全不影響掃描結果)
 // ⚠️ STOPFILL 只在非預設時才進 key —— 預設值的 key 字串跟舊版一模一樣(既有快取照樣重用)
 const _ckStopFill = STOPFILL !== 'stop' ? { STOPFILL } : {};
-const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE, ..._ckStopFill });
+// 🐻🚨 V77.6.8 兩個強制出場一定進 key(沒設就是空物件 → key 字串跟舊版一模一樣)
+const _ckForce = { ...(BEAR_EXIT ? { BEAR_EXIT } : {}), ...(FORCE_EXIT ? { FORCE_EXIT: FORCE_HASH } : {}) };
+const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE, ..._ckStopFill, ..._ckForce });
 const allTrades = [];        // {sym, key, inD, outD, ret, amt, entry, stop}
 let graceBlocked = 0;        // ⏳ 有幾個(交易·日)真的被寬限期擋下過(空過守門用)
 let cacheHit = false;
@@ -280,6 +329,14 @@ for (const sym of syms) {
         rows = JSON.parse(fs.readFileSync(path.join(DATA, `${sym}.json`), 'utf8'));
     } catch (_) { continue; }
     if (!Array.isArray(rows) || rows.length < 120) continue;
+    // 🚨 V77.6.8 這一檔的強制賣出日 = 每個事件日**之後第一個交易日**(用這檔自己的 K 線找,⛔ 不用大盤日曆 —— 個股可能停牌)
+    let fsell = null;
+    if (FORCE_MAP && FORCE_MAP[sym]) {
+        const ds = rows.map(r => String(r.date || '').replace(/\//g, '-').slice(0, 10));
+        const set = new Set();
+        for (const e of FORCE_MAP[sym]) { const k = ds.findIndex(d => d > e); if (k >= 0) set.add(ds[k]); }
+        fsell = [...set];
+    }
     const tr = await page.evaluate(a => {
         const data = a.rows.map(r => ({
             date: String(r.date || '').replace(/\//g, '-').slice(0, 10),
@@ -298,6 +355,8 @@ for (const sym of syms) {
         // ⏳ V75.1.1 寬限期:⛔ 一定要從 `a` 拿(這段跑在**瀏覽器**裡,讀不到 Node 端的 GRACE)
         const GR = Math.max(0, +(a.grace || 0) || 0);
         let gBlocked = 0;
+        // 🐻🚨 V77.6.8 強制出場日(⛔ 一定要從 `a` 拿 —— 這段跑在瀏覽器裡)
+        const BD = a.bearDays ? new Set(a.bearDays) : null, FS = a.forceSell ? new Set(a.forceSell) : null;
         for (const p of P) {
             let i = 45;
             // 🔁 買回:出場後 N 天內收盤站回 5 日線 → 把那一天當成「訊號又成立」丟進同一條路徑
@@ -415,7 +474,7 @@ for (const sym of syms) {
                         // SAR 初始:從進場日的最低起算,EP = 進場日最高
                         let sarV = data[eIdx].low, sarEP = data[eIdx].high, sarAF = 0.02;
                         let halfDone = 0, halfRet = 0, dynStop = stop;
-                        let peak = entry, tmHit = 0, sx = 0, sw = 0;
+                        let peak = entry, tmHit = 0, sx = 0, sw = 0, fx = 0;   // fx:1 = 空頭清倉 ・2 = 事件強制(處置等)
                         // ⏳ 寬限期閘門:`gx(cond)` = 「這個移動/趨勢類出場成立了嗎」
                         //   🚧 空過守門的關鍵:⛔ 不可只數「有幾天在寬限期內」(那只要 GRACE>0 幾乎必然 >0,
                         //      等於沒驗到)—— 要數「**真的有一個出場訊號被擋下來**」才算。
@@ -438,6 +497,10 @@ for (const sym of syms) {
                                       : stop;
                                 exitIdx = j; sx = 1; sw = c > stop ? 1 : 0; break;
                             }
+                            // 🐻 V77.6.8 空頭清倉:今天是空頭日 → 收盤價賣(⛔ 不受寬限期影響;停損先到就算停損,同一天同一個價)
+                            if (BD && BD.has(data[j].date)) { exitP = c; exitIdx = j; fx = 1; break; }
+                            // 🚨 V77.6.8 事件強制出場:今天是事件日之後第一個交易日 → **開盤價**賣(公告收盤後才知道)
+                            if (FS && FS.has(data[j].date)) { exitP = O(j) > 0 ? O(j) : c; exitIdx = j; fx = 2; break; }
                             // 🎯 固定停利 / 風報比停利:達標就走(⚠️ 用收盤價,不假設剛好碰到目標價)
                             if (tpP > 0 && c >= entry * (1 + tpP / 100)) { exitP = c; exitIdx = j; break; }
                             if (rrK > 0 && c >= entry + rrK * (entry - stop0)) { exitP = c; exitIdx = j; break; }
@@ -493,7 +556,7 @@ for (const sym of syms) {
                                    amt: data[i].volume * data[i].close / 1e8,
                                    entry, stop: stop0,   // 💰 風險法算張數要用(⛔ 別在外面重算,基準會不一致)
                                    ret: retAll, tm: tmHit, hf: halfDone, re: (i === forceEntry ? 1 : 0),
-                                   sx, sw, sg: sx ? (stop - exitP) / entry * 100 : 0, ap: _apAt(i) });
+                                   sx, sw, sg: sx ? (stop - exitP) / entry * 100 : 0, ap: _apAt(i), fx });
                         // 🔁 排下一次買回:原始訊號才重置次數,買回那一筆繼續用剩下的額度
                         if (i !== forceEntry) reLeft = a.reMax;
                         forceEntry = -1;
@@ -514,7 +577,8 @@ for (const sym of syms) {
         //    所以塞成一筆特殊列,外面收完立刻濾掉(⛔ 不可讓它混進交易清單)
         if (GR > 0) out.push({ __g: gBlocked });
         return out;
-    }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP, reentry: REENTRY, reMax: RE_MAX, grace: GRACE, stopFill: STOPFILL });
+    }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP, reentry: REENTRY, reMax: RE_MAX, grace: GRACE, stopFill: STOPFILL,
+         bearDays: BEAR_DAYS ? [...BEAR_DAYS] : null, forceSell: fsell });
     for (const t of tr) { if (t.__g != null) { graceBlocked += t.__g; continue; } allTrades.push({ ...t, sym }); }
     if (++done % 50 === 0) {
         const el = (Date.now() - t0) / 1000;
@@ -536,6 +600,17 @@ await browser.close();
 
 
 if (!allTrades.length) { console.log('❌ 一筆交易都沒有 → 回測無效'); process.exit(1); }
+// 🐻🚨 V77.6.8 空過守門:設了強制出場卻一筆都沒被強制賣掉 = 變體沒生效(⛔ 不是「沒差別」)
+if (BEAR_EXIT) {
+    const k = allTrades.filter(t => t.fx === 1).length;
+    console.log(`🐻 空頭清倉 BEAR_EXIT=${BEAR_EXIT}:候選裡有 ${k} 筆被空頭日強制賣掉(${(k / allTrades.length * 100).toFixed(1)}%)`);
+    if (!k) { console.error('❌ BEAR_EXIT 設了卻一筆都沒被強制賣掉 → 沒生效(⛔ 不是「沒差別」)'); process.exit(1); }
+}
+if (FORCE_EXIT) {
+    const k = allTrades.filter(t => t.fx === 2).length;
+    console.log(`🚨 事件強制出場 FORCE_EXIT:候選裡有 ${k} 筆被事件日強制賣掉(${(k / allTrades.length * 100).toFixed(1)}%)`);
+    if (!k) { console.error('❌ FORCE_EXIT 設了卻一筆都沒被強制賣掉 → 事件日跟候選交易沒有重疊(⛔ 不是「沒差別」)'); process.exit(1); }
+}
 // 🚧 空過守門:開了買回卻一筆都沒買回 = 這個變體根本沒生效,⛔ 不可把它的結果讀成「沒差別」
 if (REENTRY > 0) {
     const reN = allTrades.filter(t => t.re).length;
@@ -543,21 +618,7 @@ if (REENTRY > 0) {
         + (reN === 0 ? '  🚨 0 筆 = 沒生效,⛔ 別當成「沒差別」' : ` = ${(reN / allTrades.length * 100).toFixed(1)}%`));
 }
 
-// ── ② 時間軸:用加權指數的交易日 ────────────────────────────────────────
-const twii = JSON.parse(fs.readFileSync(path.join(DATA, '^TWII.json'), 'utf8'))
-    .map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close }))
-    .filter(r => r.d && r.c > 0);
-// 🏛️ 大盤月線(20MA):第 i 天只用 0..i 的資料 → ⛔ 零前視偏誤
-const twiiMa20 = twii.map((_, i) => i < 19 ? null
-    : twii.slice(i - 19, i + 1).reduce((s2, r) => s2 + r.c, 0) / 20);
-const regimeOk = i => twiiMa20[i] != null && twii[i].c > twiiMa20[i];
-// 🐻 V74.4.7 嚴格空頭守門(FILTER=bear60):只有「收 < 60 日線 且 20 日線 < 60 日線」才停做。
-//   ⭐ 動機:月線版 regime 在含 2022 跌勢的窗口實測**兩頭輸**(少賺 68 萬、回撤還更糟)——
-//   因為「跌破月線」大多是**多頭回檔**,而那正是這套打法最賺的時刻(V73.2.2)。
-//   嚴格空頭(三態拆解:空頭段每趟淨 −0.29% vs 多頭/盤整 +0.98%)才是真的沒優勢的環境。
-const twiiMa60 = twii.map((_, i) => i < 59 ? null
-    : twii.slice(i - 59, i + 1).reduce((s2, r) => s2 + r.c, 0) / 60);
-const notBear60 = i => !(twiiMa60[i] != null && twii[i].c < twiiMa60[i] && twiiMa20[i] < twiiMa60[i]);
+// ── ② 時間軸:用加權指數的交易日 —— 🐻 V77.6.8 這一塊搬到掃描之前了(BEAR_EXIT 要在掃描時就知道哪幾天是空頭),見 `BEAR_DAYS`
 
 // 🔀 V75.0.8 「多頭做打法、空頭停泊」切換策略(使用者:「多頭做高位階高波動、空頭就做 0050」)
 //   `PARK=0050` → 嚴格空頭那幾天**不開新倉**,而且把閒置現金放進 0050(逐日 mark-to-market);
@@ -1321,12 +1382,13 @@ if (process.env.SUMMARY_OUT) {
     const byYear = {};
     for (const m of mons) { const y = m.slice(0, 4); byYear[y] = Math.round((byYear[y] || 0) + byMon[m].pnl); }
     const summary = {
-        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '' },
+        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '', bearExit: BEAR_EXIT || '', forceExit: FORCE_EXIT ? FORCE_HASH : '' },
         from, to, months: mons.length, n: taken.length, win: +(wins.length / taken.length * 100).toFixed(1),
         per: +(taken.reduce((a, t) => a + net(t), 0) / taken.length).toFixed(2), cum: Math.round(totalPnL), ret: +(totalPnL / capital * 100).toFixed(2),
         dd: +mdd.toFixed(2), skipped, twii: +twiiRet.toFixed(2), etf0050: ret50 == null ? null : +ret50.toFixed(2), etf0050tr: ret50tr == null ? null : +ret50tr.toFixed(2), byYear,
     };
     if (PARK) summary.park = Math.round(parkPnL);   // 🅿️ 停泊 0050 的損益(⛔ 不混進 cum)
+    if (BEAR_EXIT || FORCE_EXIT) summary.forced = { bear: taken.filter(t => t.fx === 1).length, event: taken.filter(t => t.fx === 2).length };   // 🐻🚨 V77.6.8 實際成交裡被強制賣掉幾筆
     if (YEAR) Object.assign(summary, _yearSummary());
     fs.writeFileSync(process.env.SUMMARY_OUT, JSON.stringify(summary));
     console.log(`📤 成績單 JSON → ${process.env.SUMMARY_OUT}`);

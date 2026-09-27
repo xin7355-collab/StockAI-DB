@@ -21255,9 +21255,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (this._invExitAt && (now - this._invExitAt) < 300000) return this._invExitFlags || [];
             this._invExitAt = now;
             const inv = (this._getInventory() || []).filter(i => i && i.symbol && +i.cost > 0).slice(0, 30);
-            const out = [], skip = [], near = [], far = [], dist = {};
+            const out = [], skip = [], near = [], far = [], dist = {}, etf = [];
             for (const it of inv) {
                 const sym = String(it.symbol);
+                // 🐢 V77.6.8 ETF ⛔ 不套三條個股出場 → 另列「買了放著」一區(⛔ 不進 out/near/far,「今天要賣的(N 檔)」的 N 不算它)
+                if (this._etfHoldNote(sym)) { etf.push({ sym, name: this.getStockName(sym) || sym }); continue; }
                 let rows = null;
                 try { rows = (await this.idb.get(`proTerm_kline_${sym}`))?.data; } catch (_) {}
                 // 🚨 V75.0.0 算不出來的**要說出來**(⛔ 不可靜默跳過 —— 使用者會以為「沒警報 = 安全」,陷阱 #22)
@@ -21266,6 +21268,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 //   `ind` 傳 {}:這裡掃的是手上每一檔,`this.indicators` 只對齊當前個股(陷阱 #19)
                 const ed = this._exitDistance(rows, sym, { ind: {} });
                 if (!ed || (!ed.lines.length && !ed.maxd)) { skip.push(sym); continue; }
+                ed.att = this._heldAttention(sym);   // 🚨 V77.6.8 持股進處置/注意 → 賣出列要講(以前賣出列完全不讀 attentionStatus)
                 dist[sym] = ed;
                 const name = this.getStockName(sym) || sym;
                 if (ed.level === 'broken') out.push({ sym, name, v: ed.broken[0].v, px: ed.pC, rule: ed.broken[0].name, k: ed.broken[0].k, ed });
@@ -21277,7 +21280,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             near.sort((a, b) => (a.ed.level === b.ed.level ? (a.ed.dist - b.ed.dist) : (a.ed.level === 'today' ? -1 : 1)));
             far.sort((a, b) => (a.ed.dist ?? 99) - (b.ed.dist ?? 99));
             this._invExitFlags = out; this._invExitSkip = skip; this._invExitN = inv.length;
-            this._invExitNear = near; this._invExitFar = far; this._invExitDist = dist;
+            this._invExitNear = near; this._invExitFar = far; this._invExitDist = dist; this._invExitEtf = etf;
             return out;
         } catch (_) { return this._invExitFlags || []; }
     },
@@ -21380,6 +21383,93 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         } catch (_) { return null; }
     },
     _bearGateOn() { return !(this.settings && this.settings.bearGate === false); },
+    // 🐢 V77.6.8 手上的 ETF ⛔ 不套個股的三條出場(使用者:「我的庫存有 0050,他的出場怎麼不是你說的持續持有」)
+    //   三條出場(硬停損 / 唐奇安 40 / 抱滿 40 天)是替 🧬 高波動**個股**回測出來的;本站對 ETF 自己的實測是反的:
+    //   `etf_signal_probe`(63 檔股票型 ETF・含息)**沒有任何買賣訊號贏過「同一檔買了放著」**;16 年 0050 含息 > 這套(`_BEAR_GATE_EDGE.long`)。
+    //   ⚠️ `auto_trade.py` 本來就只賣它自己買進的部位(⛔ 不碰手動庫存)→ 以前是**畫面講錯**,錢沒有危險。
+    //   ⛔ 數字對照 pro.html LAB 那條(`etf_signal_probe.py・V77.5.7`);16 年那句直接讀 `_BEAR_GATE_EDGE.long`,⛔ 不另寫一份。
+    //   ⭐ 全 App 唯一判斷點 = `_etfHoldNote(sym)`;決策台 / 總覽主卡 / `_exitMode` / 報告 §11 都走它(陷阱 #37)。
+    // 🚨 V77.6.8 「持股進處置要不要先賣?」(使用者:「以大甲為例,進處置股不用先賣嗎?還要等唐奇安 40 日嗎?」)
+    //   `dispo_probe`(V74.4.2,官方名單 3.2 年)講的是**事件之後**:進處置 = 賠率型(中位 −4.8%)、出關行情前後半不同向 → 避雷不是訊號。
+    //   「手上已經有了、進處置那天要不要先賣」以前**沒測過** → V77.6.8 用 `portfolio_backtest FORCE_EXIT=`(事件日之後第一個交易日開盤賣)
+    //   疊在現行配置上跑 17 條起點;結果寫在 `hold`(⛔ null = 還沒測,畫面要說出來,陷阱 #22)。
+    _DISPO_HOLD_EDGE: {
+        probe: 'dispo_probe', win: '2023-06 ~ 2026-09', dispMed: -4.8, dispN: 1441, dispEdge: 1.62, dispWin: 40.4, noticeSpike: -1.81,
+        // 🧪 V77.6.8 三臂 17 條(現行 vs 進處置隔天開盤賣 vs 進注意隔天開盤賣)—— 跑完填;⛔ 沒填就顯示「還沒測」
+        hold: null,
+    },
+    _heldAttention(sym) {
+        try {
+            const a = (this.attentionStatus || {})[String(sym).trim()]; if (!a) return null;
+            const st = String(a.status || '');
+            const disp = st.startsWith('🚨'), notice = !disp && st.includes('注意');
+            if (!disp && !notice) return null;
+            return { disp, notice, interval: a.interval || null, end: a.end_date || null };
+        } catch (_) { return null; }
+    },
+    _dispoHoldNoteHtml(att) {
+        const E = this._DISPO_HOLD_EDGE, H = E.hold;
+        const head = att.disp ? `🚨 <b class="text-orange-200">官方處置中</b>${att.interval ? `(${att.interval} 分盤撮合)` : ''}${att.end ? `・${this._dW(att.end)} 出關` : ''}` : `⚠️ <b class="text-amber-200">官方注意股</b>`;
+        const fact = att.disp
+            ? `分盤撮合成交量會縮 → 出場那天<b>可能賣不到理想價</b>,⛔ 別用市價單。實測(${E.probe}・${E.win}):進處置之後 20 日<b>中位 ${E.dispMed}%</b>、勝率 ${E.dispWin}%(n=${E.dispN.toLocaleString()})—— 是賠率型,少數大漲把平均拉成 +${E.dispEdge}pp,⛔ 不能拿來預測方向。`
+            : `注意股本身 20 日超額只有 +0.67pp(弱);⚠️ <b>前 5 日噴 ≥30% 又被掛注意</b>那一組實測 ${E.noticeSpike}pp、中位 −7.2%(避雷)。`;
+        const ans = H
+            ? `<br>🧪 <b>持股進${att.disp ? '處置' : '注意'}那天要不要先賣?</b> 17 條起點實測(疊在現行配置上,事件日之後第一個交易日開盤賣):${att.disp ? `進處置就賣 <b>${H.dispo.med} 萬</b>` : `進注意就賣 <b>${H.att.med} 萬</b>`} vs 照三條出場 <b>${H.base.med} 萬</b>(配對贏 ${att.disp ? H.dispo.wins : H.att.wins}/${H.paths}、回撤 −${att.disp ? H.dispo.dd : H.att.dd}% vs −${H.base.dd}%)→ <b>${(att.disp ? H.dispo.verdict : H.att.verdict)}</b>`
+            : `<br>🧪 <b>持股進處置那天要不要先賣?</b>本站<b>還沒測</b>(需要事件史)—— 沒測之前照三條出場,⛔ 不編一個答案。`;
+        return `<div class="text-[10px] text-gray-300 mt-1 leading-snug" data-dispohold="${att.disp ? 'disp' : 'notice'}">${head}:${fact}${ans}</div>`;
+    },
+    // 🐻 V77.6.8 「股市空頭時,手上的要不要先全賣掉?」—— 本站以前**沒測過**(`FILTER=bear60` 只擋新買、`PARK` 只動閒錢)
+    //   → `portfolio_backtest BEAR_EXIT=strict|ma60`(嚴格空頭日收盤價賣掉所有持倉)疊在現行配置上跑 17 條起點。⛔ null = 還沒跑完,畫面要說出來。
+    _BEAR_EXIT_EDGE: null,
+    // 📚 「看錯要不要先跑」引用到、但沒有嵌成常數的幾支探針數字(⛔ 只准跟探針名一起出現;探針重跑要跟著改)
+    _CUTLOSS_FACTS: {
+        crash: { probe: 'crash_exit_probe', variants: 12, range: '−0.16 ~ +0.01', worst10: '−4.0% → −9.1%', idxDrop: 2 },
+        ma20: { probe: 'ma20_probe', n: 38923, after: -4.14, noBreak: -4.03, back10: 69.2 },
+        holdSwitch: { probe: 'hold_switch_probe', sym: '台積電', hold: 348, yr: 278, q: 137, m: 90 },
+        challengers: 10,
+    },
+    /** 📖 決策台「看錯要不要先跑?」—— 使用者的每一句對照本站實測(⛔ 數字全部讀常數,一個都不寫死) */
+    _cutlossFaqHtml() {
+        try {
+            const R = (this._EXIT_EDGE || {}).rob || {}, rows = R.rows || {}, d40 = rows.don40, ma5 = rows.ma5, d20 = rows.don, mx = R.maxd || [];
+            const B = this._BREAKOUT_EXIT_EDGE || {}, bRows = B.rows || [], bHold = bRows.find(x => x.k === 'hold'), bMa5 = bRows.find(x => x.k === 'ma5');
+            const P = (this._PROB_TABLE || {}).base || [], p1 = P[0], p20 = P[P.length - 1];
+            const G = this._BEAR_GATE_EDGE || {}, Gm = G.main || {}, Gl = G.long || {};
+            const X = this._BEAR_EXIT_EDGE, F = this._CUTLOSS_FACTS, H = (this._DISPO_HOLD_EDGE || {}).hold;
+            if (!d40 || !ma5 || !p1) return '';
+            const li = (q, a) => `<div class="mt-1.5"><div class="text-gray-200">❓ ${q}</div><div class="text-gray-300 leading-relaxed">${a}</div></div>`;
+            const mxTxt = mx.map(x => `${x.d} 天 ${x.med}`).join(' / ');
+            const bearExit = X
+                ? `實測(${X.paths} 條起點・${X.win}):嚴格空頭那天把手上全賣 <b>${X.strict.med} 萬</b>(最差 ${X.strict.lo}・回撤 −${X.strict.dd}%)vs 現行只擋新買 <b>${X.base.med} 萬</b>(最差 ${X.base.lo}・−${X.base.dd}%),配對贏 <b>${X.strict.wins}/${X.paths}</b>;寬版(跌破 60 日線就全賣)${X.ma60.med} 萬、贏 ${X.ma60.wins}/${X.paths}。→ <b>${X.verdict}</b>`
+                : `<b>本站正在補這一條回測</b>(以前只測過「空頭不開新倉」,沒測過「空頭把手上的全賣」)—— 跑完會寫在這裡,⛔ 沒跑完之前不編答案。`;
+            const dispo = H
+                ? `實測 ${H.paths} 條起點:進處置隔天開盤賣 <b>${H.dispo.med} 萬</b>(配對贏 ${H.dispo.wins}/${H.paths})、進注意隔天開盤賣 ${H.att.med} 萬(贏 ${H.att.wins}/${H.paths})vs 照三條出場 <b>${H.base.med} 萬</b> → ${H.dispo.verdict}`
+                : `持股進處置那天要不要先賣:<b>還沒測</b>(需要事件史)—— 先照三條出場。`;
+            return `<details class="mt-2 bg-[#0d1117] border-l-4 border-cyan-700 pl-2.5 py-2 rounded-r text-[10px]" data-cutlossfaq="1">
+                <summary class="cursor-pointer text-gray-200 font-bold" style="list-style:none">📖 看錯要不要先跑?先賣再說?空頭要不要全賣?—— 每一句對照實測 ▾</summary>
+                ${li('看錯股要趕快認錯換股、賠小錢賺大錢?', `✅ <b>已經在做</b>:硬停損 = min(買進日最低, 成本 −5%) 就是「賠小錢」。⛔ 但比它<b>更早跑全部更差</b>:跌破 5 日線 ${R.paths} 條起點中位 <b>${ma5.med} 萬</b>(回撤 −${ma5.dd}%)、舊預設唐奇安 20 日 ${d20.med} 萬,現行 ${d40.t} <b>${d40.med} 萬</b>(−${d40.dd}%);突破之後只換出場(${B.n ? B.n.toLocaleString() : ''} 次事件):跌破 5 日線每趟 <b>${bMa5 ? bMa5.net : '?'}%</b>(過 ${bMa5 ? bMa5.g : '?'}/6 關)vs 完全不砍 +${bHold ? bHold.net : '?'}%。太早出場砍掉的是<b>贏家</b>,不是輸家。`)}
+                ${li('那怎樣才不會被洗掉?', `這正是為什麼是 40 天:唐奇安 20 日 + 最長抱 ${mxTxt} 萬 —— <b>30 天以下是懸崖,40 天以上是高原</b>。`)}
+                ${li('回測不是已經知道何時會跌?那就先賣再說?', `⛔ <b>量不到</b>:全市場 ${(p1[0] / 1e4).toFixed(0)} 萬個股·日,明天 漲 ${p1[1]}% / 平 ${p1[2]}% / 跌 ${p1[3]}%、超額 ${p1[12]}%(丟銅板);抱 20 天 漲 ${p20[1]} / 跌 ${p20[3]}。大盤單日跌 ≥${F.crash.idxDrop}% 那天全賣的 ${F.crash.variants} 種變體 ${F.crash.range}pp、最差 10% 的交易反而從 ${F.crash.worst10}(${F.crash.probe});跌破月線之後 20 日 ${F.ma20.after}% vs 沒跌破 ${F.ma20.noBreak}%(只差 ${(F.ma20.after - F.ma20.noBreak).toFixed(2)}pp,${F.ma20.back10}% 十天內站回;${F.ma20.probe})。`)}
+                ${li('股市空頭時先不要買?', `✅ <b>已經是預設</b>(大盤嚴格空頭不開新倉):${Gm.win} ${Gm.paths} 條 <b>${Gm.on} 萬</b> vs 不擋 ${Gm.off} 萬(贏 ${Gm.wins}/${Gm.paths}、回撤 −${Gm.onDD}% vs −${Gm.offDD}%);16 年 ${Gl.on} vs ${Gl.off} 萬。`)}
+                ${li('那空頭時手上的也先全賣?', bearExit + ` 間接證據都是負的:個股跌破均線全賣(${F.holdSwitch.sym} 買了放著 ${F.holdSwitch.hold} → 年線 ${F.holdSwitch.yr} → 季線 ${F.holdSwitch.q} → 月線 ${F.holdSwitch.m} 萬,${F.holdSwitch.probe})。`)}
+                ${li('持股進處置要不要先賣?', dispo)}
+                ${li('有沒有比法人厲害的策略?不要藏私。', `全部 79 種做法都在產業作戰室「📊 回測數字」那張表(⛔ 沒有藏):現行這套 16 年一個帳戶一路滾 <b>${Gl.on} 萬</b>是第一;${F.challengers} 種選股濾網沒有一個贏過安慰劑;<b>16 年沒有任何一種贏 0050 含息(約 ${Gl.etfTr ? Gl.etfTr.toLocaleString() : '?'} 萬)</b> —— 近 4 年這套贏 0050,拉長就輸。所謂「比法人厲害」在本站的尺上 = 贏 0050 含息,目前做不到,⛔ 不假裝做得到。`)}
+            </details>`;
+        } catch (_) { return ''; }
+    },
+    _ETF_HOLD_EDGE: { probe: 'etf_signal_probe', n: 63, win: '2022-03 ~ 2026-09', donLo: 6.4, donHi: 9.2, momLo: 2.3, momHi: 4.2, ma200: '4/12', hold0050: 346, donDDFrom: 30, donDDTo: 11, donCost: 89 },
+    _etfHoldNote(sym) {
+        try {
+            if (!this._isEtfSym(sym)) return null;
+            const E = this._ETF_HOLD_EDGE, L = (this._BEAR_GATE_EDGE || {}).long || {};
+            const short = `🐢 ETF 買了放著 —— 本站實測 ${E.n} 檔 ETF 沒有任何買賣訊號贏過含息放著,⛔ 不套個股的三條出場`;
+            const html = `<b class="text-gray-200">🐢 這是 ETF,買了放著</b> —— 本站實測 <b>${E.n} 檔</b>股票型 ETF(${E.win},含息)<b>沒有任何買賣訊號贏過「同一檔買了放著」</b>:唐奇安每年少 ${E.donLo}~${E.donHi} 個百分點、動能少 ${E.momLo}~${E.momHi};`
+                + (L.etfTr ? `16 年 0050 含息約 <b>${L.etfTr} 萬</b>(中途最多賠 −${L.etfDD}%)> 這套 ${L.on} 萬。` : '')
+                + `<br>⛔ 三條個股出場(硬停損 / ${this._exitRuleName()} / 抱滿 ${this._maxHold()} 天)是替 🧬 高波動<b>個股</b>回測出來的,<b>⛔ 不適用 ETF</b>。`
+                + `<br><span class="text-gray-500">代價:買了放著要吃得下中途的回撤;唐奇安版把 0050 的回撤 −${E.donDDFrom}% 壓到 −${E.donDDTo}%,但 4.5 年少賺約 ${E.donCost} 萬 —— 要防守可以自己選,那是取捨不是紀律。</span>`;
+            return { etf: true, short, html };
+        } catch (_) { return null; }
+    },
     // 💰 V77.6.5 「閒錢停在 0050」(`portfolio_backtest.mjs PARK=idle`):每天收盤把沒用到的錢買 0050,要買股票時才賣掉需要的部分。
     //   ⭐ 沒有參數可調(⛔ 不是挑出來的最佳值),兩段窗口方向一致 → 當成**建議**寫在決策台;
     //   ⛔ 自動下單**不會**幫你做(那會動真錢,要你自己決定)。0050 只算價格、沒算股利 → 數字偏保守。
@@ -21715,6 +21805,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const n = data.length - 1, D = this._EXIT_DIST;
             const pC = +((data[n].close ?? data[n].c) || 0); if (!(pC > 0)) return null;
             const x = this._exitLines(data, sym); if (!x) return null;
+            // 🐢 V77.6.8 ETF ⛔ 不套個股出場 → 回「空的三條」+ `etf:true`(⛔ 不回 null:null 在 `_invExitScan` 是「還沒辦法幫你看」,陷阱 #22)
+            if (this._isEtfSym(sym)) return { sym: String(sym), pC, asOf: String(data[n].date || data[n].d || ''), etf: true, cost: x.cost || 0, shares: x.shares || 0, proxy: x.proxy, buyDate: x.buyDate,
+                lines: [], missing: [], broken: [], nearest: null, maxd: null, atrToday: null, atrPct: null, dist: null, level: 'etf', levelWhy: 'ETF 買了放著,⛔ 不套個股的三條出場', smart: null };
             const isCur = String(sym) === String(this.currentSymbolId);
             const ind = (opts && opts.ind) || (isCur ? this.indicators : null) || {};
             const r2 = v => Number((+v).toFixed(2));
@@ -26697,6 +26790,7 @@ ${this._reportFacts(sym)}
         // 🚪 V77.5.1 有庫存 → 一律讀 `_exitDistance`(三條先到先賣,跟總覽/決策台/自動下單同一把尺);
         //   ⛔ 以前只講 `slPx`(那是**硬停損**)還叫它「你的出場線」,而「抱滿 20 天」這條從來沒講過。
         let ed = null; try { ed = this._exitDistance(this.rawDailyData, sym); } catch (_) {}
+        if (ed && ed.etf && ed.cost > 0) { const _en = this._etfHoldNote(sym); if (_en) out.push(_en.short + '。'); }   // 🐢 V77.6.8
         if (ed && ed.cost > 0 && (ed.lines.length || ed.maxd)) {
             if (ed.broken.length) {
                 const b = ed.broken[0];
@@ -35545,10 +35639,12 @@ ${this._reportFacts(sym)}
             //     (held >= 20、13:00~13:28 尾盤賣)是**三條先到先賣** → 決策台是對的,這裡要跟著它。
             //   ⚠️ 「另一條**選用**出場線破了」仍然只是提醒(那條不是你設定的,⛔ 別亂喊出場)——
             //     硬停損與 20 天不是「另一條選用線」,它們三種設定底下都在。
-            const edH = held ? this._exitDistance(data, sym) : null;
+            // 🐢 V77.6.8 手上的 ETF ⛔ 不套個股三條出場(0050 被寫成「⏳ 抱滿 40 天・今天尾盤賣」就是這裡沒分流)
+            const etfNote = held ? this._etfHoldNote(sym) : null;
+            const edH = (held && !etfNote) ? this._exitDistance(data, sym) : null;
             const hardBroken = !!(edH && edH.broken.find(l => l.k === 'hard'));
             const due = !!(edH && edH.maxd && edH.maxd.due);
-            const state = held ? ((broken.length || hardBroken || due) ? 'exit' : (inExit || bear) ? 'reduce' : 'hold')
+            const state = held ? (etfNote ? 'etfhold' : (broken.length || hardBroken || due) ? 'exit' : (inExit || bear) ? 'reduce' : 'hold')
                                : ((gene && gene.ok && provenBull.length && !bear) ? 'add' : 'wait');
             switch (state) {
                 case 'exit': {
@@ -35565,6 +35661,11 @@ ${this._reportFacts(sym)}
                             + (_nr ? `(${this._escHtml(_nr.name)} ${_nr.v.toFixed(2)} 等線都還沒破)` : '') + '。'
                             + `<br>💡 為什麼要賣:實測「抱越久差越多」,但整套回測就是用 ${edH.maxd.n} 天這個上限算出來的 —— 想抱更久就是在做另一套沒驗證過的策略。`;
                     }
+                    break;
+                }
+                case 'etfhold': {
+                    badge = '🐢 ETF・買了放著'; cls = 'border-cyan-500 text-cyan-200 bg-cyan-900/20';
+                    why = etfNote.html;
                     break;
                 }
                 case 'reduce': {
@@ -35649,7 +35750,9 @@ ${this._reportFacts(sym)}
             }
             // ── 📍 Block C:行動計畫(只放白名單生成的具體點位)──
             const plan = [];
-            if (held) {
+            if (held && etfNote) {
+                plan.push({ t: '🐢 <b>買了放著</b> —— ⛔ 不套個股的三條出場', sub: etfNote.short, money: pnlAmt });
+            } else if (held) {
                 // ⚠️ 第一條一定是「你設定的那一條」(出場提醒/自動下單用的就是它),
                 //   ⛔ 少了它會變成「推播叫你走、總覽沒提」= 邏輯打架;另外兩條當參考。
                 const _cur = lines.find(x => x.cur);
@@ -36296,15 +36399,16 @@ ${this._reportFacts(sym)}
             //           空手 → 永遠 false(同舊版:空手的 big 本來就不含那幾個字)。
             //   ⚠️ `big` 字串照存 —— 19 個讀 `_exitMode` 的守門有的會引用它。
             let _exOn = false;
+            const _exEtf = this._isEtfSym(this.currentSymbolId);   // 🐢 V77.6.8 ETF ⛔ 不進出場狀態(買了放著)
             try {
-                if (cost > 0) {
+                if (cost > 0 && !_exEtf) {
                     const _ed = this._exitDistance(data, this.currentSymbolId);
                     _exOn = !!(_ed && ((_ed.broken || []).length || (_ed.maxd && _ed.maxd.due))) || trend === 'bear';
                 }
             } catch (_) {}
             this._exitMode = {
                 sym: this.currentSymbolId,
-                on: _exOn,
+                on: _exOn, etf: _exEtf,
                 big, slF: (typeof slF === 'number' && slF > 0) ? slF : null,
             };
             // 🩺 回檔健檢 / 套牢診斷(持有時;全純公式:大盤因素 twPct + 大戶動向 inst5 + 支撐/量縮)
@@ -48721,10 +48825,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return out;
     },
     async _deckState() {
-        const st = { sell: [], skip: [], invN: 0, buy: [], pbNull: false, pbDate: '', hqN: 0, total: 0, bearN: 0, fit: null,
+        const st = { sell: [], skip: [], invN: 0, etf: [], buy: [], pbNull: false, pbDate: '', hqN: 0, total: 0, bearN: 0, fit: null,
                      finOn: !!(this.settings && this.settings.deckFinAccel), finBlocked: [], finUnknown: [] };
         try { st.sell = (await this._invExitScan()) || []; } catch (_) {}
-        st.skip = this._invExitSkip || []; st.invN = this._invExitN || 0;
+        st.skip = this._invExitSkip || []; st.invN = this._invExitN || 0; st.etf = this._invExitEtf || [];
         let j = null;
         try { j = await this._loadPlaybookEdge(); } catch (_) {}
         // 🚨 「清單抓不到」與「今天沒有可以買的」是**兩件事**,⛔ 不可長得一樣
@@ -48800,6 +48904,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 const isDue = ed.level === 'due';   // ⏳ V77.5.1 時間到期 ⛔ 不可拿「最近那條價格線」當理由(截圖:「到了:硬停損 532.95」,價格根本沒到)
                 const tgt = ed.broken[0] || (isDue && mode === 'sell' ? null : ed.nearest);
                 const nm = this._escHtml(x.name === x.sym ? '' : x.name);
+                const attTag = ed.att ? `<span class="text-[9px] flex-shrink-0 font-bold ${ed.att.disp ? 'text-orange-300 border-orange-700/60' : 'text-amber-300 border-amber-700/60'} border rounded px-1">${ed.att.disp ? `🚨 處置${ed.att.interval ? ` ${ed.att.interval} 分盤` : ''}` : '⚠️ 注意'}</span>` : '';
+                const attLine = ed.att ? this._dispoHoldNoteHtml(ed.att) : '';
                 const line = (isDue && mode === 'sell')
                     ? `⏳ <b class="text-amber-200">時間到期</b>:已抱 <b>${ed.maxd.held}</b> 個交易日(回測最多抱 ${ed.maxd.n} 天)→ <b>今天 ${this._eodTxt()} 尾盤賣</b>。⛔ 不是價格破線${ed.nearest ? `(最近的價格線 ${this._escHtml(ed.nearest.name)} ${(+ed.nearest.v).toFixed(2)} 還沒破)` : ''}`
                     : tgt
@@ -48822,11 +48928,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     .concat(ed.missing.map(m => `<span class="text-amber-300/80">${this._escHtml(m.name)}:${this._escHtml(m.why)}</span>`));
                 return `<div class="px-2 py-1.5 mb-1 rounded bg-[#0d1117] border border-[#30363d]" data-exitrow="${x.sym}" data-exitlevel="${ed.level || ''}">
                     <div onclick="app.analyze('${x.sym}'); app.switchAppTab('diag'); app.vibrate(15);" class="cursor-pointer hover:bg-white/5 flex items-baseline justify-between gap-2">
-                        <div class="min-w-0 flex-1 flex items-baseline gap-1.5"><span class="font-mono font-black text-[12px] text-gray-100">${x.sym}</span><span class="text-[11px] text-gray-200 truncate">${nm}</span><span class="text-[10px] ${b.cls} font-bold flex-shrink-0">${b.ic} ${b.t}</span></div>
+                        <div class="min-w-0 flex-1 flex items-baseline gap-1.5"><span class="font-mono font-black text-[12px] text-gray-100">${x.sym}</span><span class="text-[11px] text-gray-200 truncate">${nm}</span><span class="text-[10px] ${b.cls} font-bold flex-shrink-0">${b.ic} ${b.t}</span>${attTag}</div>
                         <span class="text-[10px] text-gray-400 font-mono flex-shrink-0" title="決策台讀的是已採礦的日K(⛔ 不是即時報價)">價 <b class="text-gray-100">${(+ed.pC).toFixed(2)}</b>${ed.asOf ? `<span class="text-gray-500">(${this._dW(ed.asOf)})</span>` : ''}</span>
                     </div>
                     <div class="text-[10px] text-gray-300 mt-0.5 leading-snug">${line}</div>
-                    ${smart}
+                    ${smart}${attLine}
                     <details class="mt-0.5"><summary class="cursor-pointer text-[9px] text-gray-500" style="list-style:none">三條全部 ▾</summary><div class="text-[9px] text-gray-400 leading-snug pl-1">${all.join('<br>')}</div></details>
                 </div>`;
             };
@@ -48836,6 +48942,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     ${near.map(x => row(x, 'near')).join('')}
                     <div class="text-[9px] text-gray-500 mt-1 leading-snug" data-stopfilldeck="1">${this._stopFillNoteHtml('deck')}</div>
                 </div>` : '';
+            const etfL = Array.isArray(st.etf) ? st.etf : [];   // 🐢 V77.6.8(`_deckState` 被 stub 時可能沒有這一欄)
             if (st.sell.length) {
                 sell.innerHTML = `<div class="bg-[#161b22] border-l-4 border-amber-500 border-y border-r border-[#30363d] rounded-r p-3">
                     <div class="text-sm font-black text-amber-300">🚪 今天要賣的(${st.sell.length} 檔)</div>
@@ -48852,7 +48959,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     <div class="text-sm font-black text-gray-300">🚪 今天要賣的</div>
                     <div class="text-[11px] text-gray-400 mt-1">你還沒填庫存 → 這一區永遠是空的。<button onclick="app.switchAppTab('inv')" class="text-cyan-300 underline">去填庫存</button></div>
                 </div>`;
-            } else if (st.skip.length >= st.invN) {
+            } else if (st.invN - etfL.length === 0) {
+                sell.innerHTML = '';   // 🐢 V77.6.8 手上只有 ETF → 沒有「要賣的」可講(ETF 那一區在下面)
+            } else if (st.skip.length >= st.invN - etfL.length) {
                 // 🚨 V75.0.0 實跑讀輸出抓到的**邏輯打架**:一檔都沒檢查到,卻寫「都還沒跌破」——
                 //   那等於在說謊(而且旁邊還掛著「這 N 檔沒有幫你檢查」,自己跟自己打架)。
                 //   ⛔ 「沒有跌破」與「沒有檢查」是兩件事,絕不可長得一樣。
@@ -48868,7 +48977,26 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     : '';
                 sell.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3" data-exitnone="1">
                     <div class="text-sm font-black text-gray-300">🚪 今天要賣的:<b class="text-gray-100">沒有</b></div>
-                    <div class="text-[11px] text-gray-400 mt-1">你手上 ${st.invN - st.skip.length} 檔都還沒到<b>三條出場條件</b>(硬停損 / ${this._escHtml(rule)} / 抱滿 ${D.maxd} 個交易日)的任何一條,而且離最近那條都超過 ${D.watch} 倍今天的振幅 —— 按原定紀律抱著就好。${farTxt}</div>
+                    <div class="text-[11px] text-gray-400 mt-1">你手上 ${st.invN - st.skip.length - etfL.length} 檔都還沒到<b>三條出場條件</b>(硬停損 / ${this._escHtml(rule)} / 抱滿 ${D.maxd} 個交易日)的任何一條,而且離最近那條都超過 ${D.watch} 倍今天的振幅 —— 按原定紀律抱著就好。${farTxt}</div>
+                </div>`;
+            }
+            // 🚨 V77.6.8 持股在官方處置/注意名單、但離出場線還遠(far → 本來一列都不會畫)→ 另列一區,⛔ 不可讓它安靜地消失
+            //   (sell / near 那兩區的列本來就會帶 🚨/⚠️ 徽章與說明;這一區只收 far 的,⛔ 不重複)
+            const attFar = farL.filter(x => x.ed && x.ed.att);
+            if (attFar.length) {
+                sell.innerHTML += `<div class="bg-[#161b22] border-l-4 border-orange-600 border-y border-r border-[#30363d] rounded-r p-3 mt-1" data-exitatt="${attFar.length}">
+                    <div class="text-sm font-black text-orange-300">🚨 手上在官方處置/注意名單的(${attFar.length} 檔)</div>
+                    <div class="text-[10px] text-gray-400 mt-0.5 mb-2">離三條出場線都還遠,但這幾檔在官方名單上 —— 出場照三條規則,⚠️ 分盤撮合那幾天流動性會差,先看下面的實測再決定要不要提早。</div>
+                    ${attFar.map(x => row(x, 'near')).join('')}
+                </div>`;
+            }
+            // 🐢 V77.6.8 手上的 ETF 另列一區(⛔ 不是「要做的事」→ 排在賣/盯之後;文案只有 `_etfHoldNote` 一份)
+            if (etfL.length) {
+                const note = this._etfHoldNote(etfL[0].sym);
+                sell.innerHTML += `<div class="bg-[#161b22] border-l-4 border-cyan-700 border-y border-r border-[#30363d] rounded-r p-3 mt-1" data-exitetf="${st.etf.length}">
+                    <div class="text-sm font-black text-cyan-300">🐢 ETF 買了放著(${etfL.length} 檔)</div>
+                    <div class="flex flex-wrap gap-1.5 mt-1">${etfL.map(x => `<span onclick="app.analyze('${x.sym}'); app.switchAppTab('diag'); app.vibrate(15);" class="cursor-pointer text-[11px] px-1.5 py-0.5 rounded bg-[#0d1117] border border-[#30363d]"><b class="font-mono text-gray-100">${x.sym}</b> <span class="text-gray-300">${this._escHtml(x.name === x.sym ? '' : (x.name || ''))}</span></span>`).join('')}</div>
+                    <div class="text-[10px] text-gray-400 mt-1.5 leading-snug">${note ? note.html : ''}</div>
                 </div>`;
             }
             // 🚨 算不出來的要說出來(⛔ 不可讓使用者把「沒警報」當成「安全」)
@@ -49026,6 +49154,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         🚨 而且<b>唯一一次真正的長空頭(2022-09~11)停泊 0050 是賠的</b>;七成的「賺」來自 ≤4 個交易日的短暫進出
                         —— 那不是「空頭抱 0050」,是<b>在大盤 60 日線附近上下穿時做 0050 的短線來回</b>。
                     </div>
+                    ${this._cutlossFaqHtml()}
                     <div class="text-[10px] text-gray-500 mt-1.5">⛔ 勝率一定要配次數:次數不到 10 次的不能當結論;而且<b>基準勝率是 36% 不是 50%</b>(台股中位數個股本來就跑輸大盤)。</div>
                 </div>
             </details>`;

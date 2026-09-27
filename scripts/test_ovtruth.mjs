@@ -50,5 +50,29 @@ ok(!!(L && L.etfTr > L.on), '④ `_BEAR_GATE_EDGE.long` 有 0050 含息對照,�
 const deck = src.slice(src.indexOf('要打幾個折'), src.indexOf('要打幾個折') + 2500);
 ok(/L\.etfTr/.test(deck) && /16 年來看這套輸 0050 含息/.test(deck), '④b 決策台「打折」那一塊要講 16 年輸 0050 含息,數字讀常數');
 
+// ⑤ V77.6.8 決策台「看錯要不要先跑」:每一句讀常數(⛔ 不寫死),空頭清倉沒跑完要明說
+{
+  const Q = new Function('return ({' + grab('_cutlossFaqHtml') + '})')();
+  Q._EXIT_EDGE = lit('_EXIT_EDGE'); Q._BREAKOUT_EXIT_EDGE = lit('_BREAKOUT_EXIT_EDGE'); Q._BEAR_GATE_EDGE = lit('_BEAR_GATE_EDGE');
+  Q._CUTLOSS_FACTS = lit('_CUTLOSS_FACTS'); Q._DISPO_HOLD_EDGE = lit('_DISPO_HOLD_EDGE');
+  const pm = /\n    _PROB_TABLE: (\{.*?\}),\n/.exec(src); Q._PROB_TABLE = pm ? JSON.parse(pm[1]) : null;
+  const bx = /\n    _BEAR_EXIT_EDGE: (null|\{[\s\S]*?\n    \}),/.exec(src); Q._BEAR_EXIT_EDGE = bx ? new Function('return (' + bx[1] + ')')() : undefined;
+  ok('⑤0 空過守門:五份常數都讀得到', !!(Q._EXIT_EDGE && Q._BREAKOUT_EXIT_EDGE && Q._BEAR_GATE_EDGE && Q._CUTLOSS_FACTS && Q._PROB_TABLE && Q._BEAR_EXIT_EDGE !== undefined), '');
+  const h = Q._cutlossFaqHtml();
+  ok('⑤ FAQ 有七問、講「硬停損就是賠小錢」「太早出場砍掉的是贏家」「30 天以下是懸崖」', (h.match(/❓/g) || []).length === 7 && /賠小錢/.test(h) && /砍掉的是<b>贏家<\/b>/.test(h) && /30 天以下是懸崖/.test(h), h.slice(0, 200));
+  const ma5 = Q._EXIT_EDGE.rob.rows.ma5.med;
+  ok('⑤b 跌破 5 日線的數字讀 `_EXIT_EDGE.rob`', h.includes(`${ma5} 萬`), '');
+  Q._EXIT_EDGE.rob.rows.ma5.med = 7777; ok('⑤c 改常數畫面跟著變(⛔ 不寫死)', Q._cutlossFaqHtml().includes('7777 萬') && !Q._cutlossFaqHtml().includes(`${ma5} 萬`), ''); Q._EXIT_EDGE.rob.rows.ma5.med = ma5;
+  const p1 = Q._PROB_TABLE.base[0];
+  ok('⑤d 「明天漲/平/跌」讀 `_PROB_TABLE.base[0]`', h.includes(`漲 ${p1[1]}% / 平 ${p1[2]}% / 跌 ${p1[3]}%`), '');
+  const saveX = Q._BEAR_EXIT_EDGE; Q._BEAR_EXIT_EDGE = null;
+  ok('⑤e 空頭清倉沒跑完 → 明說「正在補這一條回測」、⛔ 不出現任何配對數字', /正在補這一條回測/.test(Q._cutlossFaqHtml()) && !/嚴格空頭那天把手上全賣/.test(Q._cutlossFaqHtml()), '');
+  Q._BEAR_EXIT_EDGE = { paths: 17, win: 'W', base: { med: 409, lo: 249, dd: 26.1 }, strict: { med: 111, lo: 22, dd: 33.3, wins: 2 }, ma60: { med: 222, wins: 5 }, verdict: '測試判定丙' };
+  ok('⑤f 跑完 → 印 strict/ma60 數字 + 判定', /全賣 <b>111 萬<\/b>/.test(Q._cutlossFaqHtml()) && /贏 <b>2\/17<\/b>/.test(Q._cutlossFaqHtml()) && /222 萬、贏 5\/17/.test(Q._cutlossFaqHtml()) && /測試判定丙/.test(Q._cutlossFaqHtml()), '');
+  Q._BEAR_EXIT_EDGE = saveX;
+  ok('⑤g 「不要藏私」那一問講 16 年輸 0050 含息、79 種都在表上', /79 種/.test(h) && /16 年沒有任何一種贏 0050 含息/.test(h), '');
+  ok('⑤h 決策台有掛 `_cutlossFaqHtml()`', /\$\{this\._cutlossFaqHtml\(\)\}/.test(src), '');
+}
+
 console.log(fail ? `\n❌ OVTRUTH_FAIL(${fail})` : '\n✅ OVTRUTH_PASS(全部通過)');
 process.exit(fail ? 1 : 0);
