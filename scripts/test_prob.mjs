@@ -133,7 +133,7 @@ const R = await pg.evaluate(() => {
     T.base = bk;
     // ④b2 決定性對照:改「漲最高那一格」的贏大盤欄 → 警告段必須跟著變
     let top = null; for (const kk in T.cells) { const rr = T.cells[kk][k20]; if (rr && (!top || rr[1] > top[1])) top = rr; }
-    const keep11 = top[11]; top[11] = 11.1;
+    const keep11 = top[11]; top[11] = 97.53;   // ⚠️ 哨兵值要選「真實表裡不會出現」的(11.1 在 V77.7.2 重跑後剛好出現在表裡 = 假失敗)
     out.warn2 = app._probBox('2330', { mode: 'full', data });
     top[11] = keep11;
     out.tbl = { cells: Object.keys(T.cells).length, hz: T.hz, flat: T.flat, minN: T.minN, cols: T.schema.length, base: T.base[k20].length, entry: T.entry };
@@ -159,7 +159,7 @@ ok('④ **每一個天期那一列都要印「贏大盤」**(⛔ 少了它,跌�
 ok('④b 完整版要把那個陷阱講出來(漲最高那格 vs 它的贏大盤)',
     /漲」機率最高/.test(R.full) && /贏大盤的機率只有/.test(R.full), R.full.slice(0, 80));
 ok('④b2 ⭐ 決定性對照:改那一格的「贏大盤」→ 警告段跟著變(⛔ 不可寫死)',
-    /11\.1/.test(R.warn2) && !/11\.1/.test(R.full), (R.warn2.match(/贏大盤的機率只有[^<]*<b>[^<]*/) || [''])[0]);
+    /97\.5/.test(R.warn2) && !/97\.5/.test(R.full), (R.warn2.match(/贏大盤的機率只有[^<]*<b>[^<]*/) || [''])[0]);
 ok('⑤ 樣本不足 → 說「樣本不足」(⛔ 不補值、⛔ 不借隔壁格)', /樣本不足/.test(R.thin) && /樣本不足/.test(R.thinLine), R.thin.slice(0, 100));
 ok('⑤b K 線不足 → 說出原因(⛔ 不靜默空白)', /K 線不足/.test(R.short), R.short.slice(0, 100));
 ok('⑤c 大盤年線抓不到 → 也要說出來', /大盤年線/.test(R.noMkt), R.noMkt.slice(0, 100));
