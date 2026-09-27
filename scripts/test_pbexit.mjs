@@ -41,7 +41,8 @@ ok('②b 打錯字 donn20 也要擋', bad2.status === 1, `status=${bad2.status}`
 // ③ 全 repo 用過的 EXIT 值都要被接受(⛔ 守門不可誤殺既有的實驗)
 const used = new Set();
 for (const f of ['docs/DECISIONS.md', 'CLAUDE.md', 'pro.html', '.github/workflows/weekly_backtest.yml']) {
-    try { const t = fs.readFileSync(path.join(ROOT, f), 'utf8'); for (const m of t.matchAll(/EXIT[=:]\s*([A-Za-z0-9_.]+)/g)) used.add(m[1]); } catch (_) {}
+    // ⚠️ V77.6.8:BEAR_EXIT= / FORCE_EXIT= 是別的選項 → 左邊界 (?<![A-Z_]),⛔ 不可被當成 EXIT 值
+    try { const t = fs.readFileSync(path.join(ROOT, f), 'utf8'); for (const m of t.matchAll(/(?<![A-Z_])EXIT[=:]\s*([A-Za-z0-9_.]+)/g)) used.add(m[1]); } catch (_) {}
 }
 ['ma5', 'ma10', 'ma20', 'trail8', 'chand2', 'chand2.5', 'chandd3', 'atrt3', 'don10', 'don10w', 'don20', 'don30', 'don55', 'plow', 'sar', 'x5_20', 'none', 'ma5tp10', 'ma5be5', 'ma5rr2', 'ma5half10', 'ma5tm5_0', 'nonetm5_2'].forEach(x => used.add(x));
 const reOK = (() => { const m = /const _EXIT_OK = (\/.*\/);/.exec(CODE); try { return m ? eval(m[1]) : null; } catch (_) { return null; } })();
