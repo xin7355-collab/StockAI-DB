@@ -49,7 +49,7 @@ const R = await page.evaluate(() => {
     out.lockTxt = strip(out.lock);
     // 決定性對照:改常數 → 畫面一定要跟著變
     const E = A._DT_EDGE, bak = JSON.stringify(E);
-    E.lu.up.open[0] = 9.87; E.lu.dn.open[0] = 9.87; E.f6[0][2] = 12.3;
+    E.lu.up.open[0] = 9.87; E.lu.dn.open[0] = 9.87; E.f6[0][2] = 12.3; if (E.f7) E.f7.lock = 77.7;
     out.patched = strip(A._dtEdgeHtml('9999'));
     // 讓一格變正 → 「每一格都是負的」那句不可以再出現
     E.f6[5][3] = 0.5;
@@ -70,6 +70,7 @@ ok('②c 盤中(還不知道會不會打開)→ ⛔ 不出現', !/data-dtlu/.tes
 ok('②d 別檔的 K 線 → ⛔ 不出現(切股殘留,陷阱 #19)', !/data-dtlu/.test(R.otherSym));
 ok('③ 一定要講「給已經有的人」+「⛔ 不是買進訊號」+ 買不到', /已經有/.test(R.lockTxt) && /不是買進訊號/.test(R.lockTxt) && /買不到/.test(R.lockTxt), R.lockTxt.slice(0, 240));
 ok('①b 🔬 決定性對照:改 _DT_EDGE → 畫面跟著變成 +9.87% 與 12.3%', /\+9\.87%/.test(R.patched) && /12\.3%/.test(R.patched), R.patched.slice(0, 200));
+ok('①c ⚡ F7 那句(V77.6.9)讀常數:鎖漲停比例改 77.7 → 畫面跟著變;而且一定寫「不做」', /77\.7%/.test(R.patched) && /不做/.test(R.lockTxt) && /回補不了/.test(R.lockTxt), R.patched.slice(0, 200));
 ok('④ 「每一格期望值都是負的」跟著資料:有一格變正 → 那句不可以再出現', /每一格的期望值都是負的/.test(R.lockTxt) && !/每一格的期望值都是負的/.test(R.onePos) && /只在 1 格是正的/.test(R.onePos));
 ok('⑤ 摺疊本身一定在(data-dtedge),而且不用 🔴🟢 當燈號', /data-dtedge/.test(R.noLock) && !/[🔴🟢]/u.test(R.lock + R.noLock));
 ok('⑤b 要講清楚限制:分K 天數 + 量前 80 的偏誤', /個交易日/.test(R.lockTxt) && /前 80/.test(R.lockTxt));

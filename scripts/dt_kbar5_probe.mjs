@@ -3,7 +3,8 @@
  * ⏱️ 當沖「非 5 分K 不可」的那幾條(V77.5.0)—— 讀 `kbar5` 分支(量前 80 + 台指期近月)
  *
  * ⚠️⚠️ 先講限制(⛔ 每一次輸出都會印):
- *   ・只有約 88 個交易日(2026-05 起)→ **逐年那關做不了**,結論只能當「方向提示」⛔ 不下操作指令
+ *   ・V77.6.9 起讀 `kbar5_deep:kbar5` 有 **1,319 個交易日(2021-05~2026-09,含 2022 空頭)** → 逐年那關做得到;只有 kbar5 那份時 ~90 天只能當方向提示
+ *   ・🚨 F7 的昨收/昨高/昨低**一律拿昨天的 5 分 K 自己算**,⛔ 不讀日 K —— 日 K 有四成的上櫃列是還原價(陷阱 #46),用它會灌進 56% 假事件
  *   ・母體 = 當天成交量前 80 = **天生只收「當天夠熱」的日子**(選樣偏誤),而且含 ETF(這裡排掉 0 開頭)
  *   ・扣當沖來回成本 0.25%;隔夜那組(F5)扣 0.44%
  *
@@ -114,6 +115,15 @@ export function fourOpen(trend, bars, pc) {
     return firstBlack();
 }
 
+/** ⚡ F7 的跳空判定 —— **只吃昨天的 5 分 K**(含 13:30 那根),⛔ 沒有日 K 參數(V77.6.9,陷阱 #46)。
+ *  prevAll = 昨天 09:00~13:30 全部 bars;回 {gU, gD, pc, pH, pL} 或 null(昨天沒資料 / 沒有 13:30 那根)。 */
+export function gapF7(o, prevAll, th = 2) {
+    if (!prevAll || !prevAll.length) return null;
+    const y810 = prevAll.find(b => b[0] === 810); if (!y810 || !(y810[4] > 0)) return null;
+    const pc = y810[4], pH = Math.max(...prevAll.map(b => b[2])), pL = Math.min(...prevAll.map(b => b[3]));
+    return { pc, pH, pL, gU: o > pH && (o / pc - 1) * 100 >= th, gD: o < pL && (1 - o / pc) * 100 >= th };
+}
+
 function selftest() {
     let fail = 0; const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : '  ' + e}`); if (!c) fail++; };
     // ① 出場:同一根碰停損也碰停利 → 算停損
@@ -133,6 +143,14 @@ function selftest() {
     ok('④ 空頭+開高收紅 → ⛔ 不做多(彈後空;這組兩根都紅 → 不進場)', s2 === null, JSON.stringify(s2));
     // ⑤ 零前視:第一根的收盤一定要用「第一根收完」的那個價,進場 j ≥ 1
     ok('⑤ 進場點一定在第一根收完之後(j≥1)', s.j >= 1);
+    // ⑥ F7 只看 5 分K:昨收 = 昨天 13:30 那根、昨高 = 昨天 bars 的 high;⛔ 函式沒有日 K 參數,日 K 怎麼錯都影響不到
+    const yA = [[540, 100, 101, 99, 100.5, 1], [545, 100.5, 100.8, 99.5, 100, 1], [810, 100, 100.2, 99.8, 100, 1]];
+    const g1 = gapF7(103.1, yA);
+    ok('⑥ 開 103.1 > 昨高 101 且 ≥ 昨收 100 的 2% → gU', g1 && g1.gU === true && g1.gD === false && g1.pc === 100 && g1.pH === 101, JSON.stringify(g1));
+    ok('⑥b 開 101.5 在昨高之上但只 +1.5% → ⛔ 不算', gapF7(101.5, yA).gU === false);
+    ok('⑥c 開 102.5 ≥2% 但沒過昨高(昨高改 103)→ ⛔ 不算', gapF7(102.5, [[540, 100, 103, 99, 100.5, 1], [810, 100, 100.2, 99.8, 100, 1]]).gU === false);
+    ok('⑥d 昨天沒有 13:30 那根 → null(不算、不猜)', gapF7(103, [[540, 100, 101, 99, 100.5, 1]]) === null);
+    ok('⑥e 決定性對照:gapF7 的簽名裡沒有日 K(參數只有 o / prevAll / th)', gapF7.length <= 3 && !/\bpc\b.*=.*P\.close/.test(gapF7.toString()));
     console.log(fail ? `\n❌ ${fail} 條失敗` : '\n✅ DT_KBAR5_SELFTEST_PASS');
     process.exit(fail ? 1 : 0);
 }
@@ -166,7 +184,7 @@ async function main() {
     let cur = '';
     const F3 = { hi: 0, lo: 0, n: 0 }, F4 = { poc: [], vwap: [], mid: [] };
     const F6 = {};
-    let prevDayBars = {};
+    let prevDayBars = {}; let F7noPrev = 0;   // F7:昨天不在名單 → 這一檔今天不算(計數印出來)
     for (let di = 0; di < dates.length; di++) { const d = dates[di];
         cur = d; const yday = dates[di - 1];
         const day = days[d]; const K = day.k || {};
@@ -186,7 +204,7 @@ async function main() {
             const dm = getD(sym); const rec = dm && dm.get(d); if (!rec || rec.i < 1) continue;
             const P = rec.r[rec.i - 1]; const pc = +P.close, pH = +P.high, pL = +P.low; if (!(pc > 0)) continue;
             const o = bars[0][1];
-            if (o >= pc * 1.095 || o <= pc * 0.905) { prevDayBars[sym] = { d, bars }; continue; }
+            if (o >= pc * 1.095 || o <= pc * 0.905) { prevDayBars[sym] = { d, bars, all: raw.filter(b => b[0] >= 540 && b[0] <= 810) }; continue; }
             // F3
             const hiI = bars.reduce((m, b, k) => b[2] > bars[m][2] ? k : m, 0), loI = bars.reduce((m, b, k) => b[3] < bars[m][3] ? k : m, 0);
             F3.n++; if (bars[hiI][0] < 630) F3.hi++; if (bars[loI][0] < 630) F3.lo++;
@@ -224,14 +242,20 @@ async function main() {
                 const g = exitSim(bars, 1, 1, c1, c1 * (1 - S / 100), c1 * (1 + T / 100), pc) - COST;
                 (F6[`${T}|${S}`] = F6[`${T}|${S}`] || []).push(g); }
             // F7 熱門股跳空回歸 × 進場時點
-            const gU = o > pH && (o / pc - 1) * 100 >= 2, gD = o < pL && (1 - o / pc) * 100 >= 2;
+            // 🚨 V77.6.9:昨收 / 昨高 / 昨低 **一律拿昨天的 5 分 K 自己算**(13:30 那根的收盤 = 官方收盤),⛔ 不讀日 K。
+            //    實測 2021-05~2026-09:上櫃日 K 有四成的列是還原過除權息的價格(比真價低 4~20%,見 CLAUDE.md 陷阱 #46)
+            //    → 用日 K 當昨收會把普通日子當成「跳空 ≥2%」,17,711 個事件裡 56% 是假的(乾淨版只有 7,781)。
+            //    昨天不在名單(月初換名單)→ 這一檔今天⛔ 不算 F7,計數印出來。
+            const g7 = gapF7(o, pb && pb.d === yday ? pb.all : null);
+            if (!g7) F7noPrev++;
+            const gU = !!(g7 && g7.gU), gD = !!(g7 && g7.gD);
             // F7 對照(V77.5.1):**同一個進場時點、同樣抱到收盤**,只是不看跳空 → 量的是「跳空」這個條件本身
             { const c = bars[bars.length - 1][4];
               put('F7 對照・09:05 做空到收盤(不看跳空)', (1 - c / c1) * 100 - COST); put('F7 對照・09:05 做多到收盤(不看跳空)', (c / c1 - 1) * 100 - COST); }
             if (gU || gD) { const side = gU ? -1 : 1, lab = gU ? '開高≥2%(在昨高之上)→ 空' : '開低≥2%(在昨低之下)→ 買';
                 const c = bars[bars.length - 1][4], ret = e => (side > 0 ? (c / e - 1) : (1 - c / e)) * 100 - COST;
                 put(`F7 ${lab}・開盤價`, ret(o)); put(`F7 ${lab}・09:05`, ret(c1)); if (i930 > 0) put(`F7 ${lab}・09:30`, ret(bars[i930][4])); }
-            prevDayBars[sym] = { d, bars };
+            prevDayBars[sym] = { d, bars, all: raw.filter(b => b[0] >= 540 && b[0] <= 810) };   // all 含 13:30 那根(F7 要它的收盤)
         }
     }
     const out = { at: new Date().toISOString(), days: dates.length, window: [dates[0], dates[dates.length - 1]], bias, rows: {} };
@@ -268,7 +292,7 @@ async function main() {
     for (const T of [0.5, 1, 2, 3]) { let row = `   停利${String(T).padEnd(4)}% |`;
         for (const S of [0.5, 1, 2, 3]) { const s = stats(F6[`${T}|${S}`] || []); out.F6[`${T}|${S}`] = s; row += `  勝率${s.win}% ${s.net >= 0 ? '+' : ''}${s.net}%`.padStart(18); }
         console.log(row); }
-    console.log('\n═══ F7 ⚡ 熱門股跳空回歸 × 進場時點(接日K 探針 D2c/D2d)═══');
+    console.log(`\n═══ F7 ⚡ 熱門股跳空回歸 × 進場時點(接日K 探針 D2c/D2d;昨收/昨高只用 5 分 K,昨天不在名單而跳過 ${F7noPrev} 個股·日)═══`);
     line('F7 對照・09:05 做空到收盤(不看跳空)'); line('F7 對照・09:05 做多到收盤(不看跳空)');
     for (const k of Object.keys(B).filter(k => k.startsWith('F7') && !k.includes('對照')).sort())
         { line(k, /・09:05$/.test(k) ? (/空/.test(k) ? 'F7 對照・09:05 做空到收盤(不看跳空)' : 'F7 對照・09:05 做多到收盤(不看跳空)') : null);

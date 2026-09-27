@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.6.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.6.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.6.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.6.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8642,8 +8642,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.6.8',
+    _APP_VERSION: 'V77.6.9',
     _CHANGELOG: [
+        { v: 'V77.6.9', d: ['📼 <b>5 分 K 歷史回補完成</b>(2021-05 起共 1,319 個交易日,含 2022 空頭),當沖的 5 分 K 規則全部用五年重測:開盤四法、停利停損 16 格、大盤順風、尾盤追漲停 —— 扣完成本仍然全部是負的。唯一統計上站得住的「開高 ≥2% 在昨高之上 → 09:05 放空」六關全過,<b>但 12.6% 會鎖漲停回補不了</b>,照隔天開盤回補只剩 +0.05% → ⛔ 不做(當沖頁「📊 當沖實測」摺疊區有數字)。', '🚨 <b>順手抓到:上櫃股的日 K 有四成的列不是官方成交價</b>(是還原過除權息的價格,比真價低 4~20%),接回官方價那天會出現假跳空。這一版只記錄、沒動任何資料,修法要先問你。'] },
         { v: 'V77.6.8', d: ['🐢 <b>手上的 ETF(0050、009816 …)不再被套上個股的三條出場</b>:決策台原本把 0050 寫成「抱滿 40 天今天尾盤賣」—— 那三條是替高波動個股回測出來的;本站對 ETF 的實測是「買了放著」最強(63 檔 ETF 沒有任何買賣訊號贏過含息放著、16 年 0050 含息比這套多)。自動下單本來就不碰你手動買的庫存,是畫面講錯。', '🚨 <b>持股進處置/注意股,決策台會標出來</b>(以前賣出列完全不看官方名單),並回答「要不要先賣」:17 條起點實測,進處置隔天開盤賣 193 萬、進注意隔天賣 175 萬 vs 照三條出場 409 萬 —— 兩種都更差(0/17、1/17)→ 照三條出場走,處置期間注意分盤流動性、別用市價單。', '🐻 <b>「股市空頭時手上的先全賣?」第一次實測</b>:嚴格空頭日全賣 151 萬(17 條 0 贏、回撤 −48% vs −26%)、跌破 60 日線就全賣 85 萬 —— 空頭該做的是「不買」(現行預設),不是「全賣」。', '📖 決策台新增「看錯要不要先跑?先賣再說?空頭要不要全賣?」七問,每一句對照本站實測數字(跌破 5 日線 100 萬 vs 現行 409 萬、明天漲跌 33.6/36.5% 丟銅板、大盤大跌全賣 12 種變體沒用、79 種策略沒有一種 16 年贏 0050 含息)。'] },
     { v: 'V77.6.7', d: ['🎣 <b>釣魚系統修好了</b>:正式網站的散戶救星是壓縮版,產業作戰室去讀它的 🧬 門檻時一個都讀不到 → 釣魚池一直寫「門檻讀不到」(雜訊清單、更新紀錄也一起空)', '🧾 <b>「閒錢停在 0050」的數字更正</b>:近 4 年 417 萬(原寫 445)、16 年 656 萬(原寫 864)—— 多賺不多,好處是跌的時候少賠', '📊 決策台補上 16 年那一句:這套 648 萬 vs 0050 含息買了放著約 1,001 萬;總覽「量卡在哪些價位」現價在那一段裡面時不再寫「在你上面」'] },
     { v: 'V77.6.6', d: ['📊 產業作戰室 → 實測總表 → 回測數字:兩份表合成<b>一張 2011~2026</b>(79 種全部用同一份資料重跑),新增「🏦 一個帳戶一路滾 16 年」三欄、<b>每一欄都能點排序</b>(舊版情境庫那張也可以)', '🚨 「16 年加起來」是每年重放 100 萬的加總,看不到會不會破產 —— 一路滾排第一的仍是決策台現行(648 萬),預設不換'] },
@@ -20745,7 +20746,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ⭐ 兩件事一定要講:① 勝率可以用「停利小、停損大」任意調高,期望值才是真的(F6)
     //   ② 22 份裡日K/分K量得到的全部測過,**沒有一條「今天做多/做空」的當沖訊號扣完成本站得住** ——
     //      唯一站得住的是「手上的股票收盤鎖漲停 → 留到隔天」(給**已經有**的人,⛔ 不是叫人去買漲停)。
-    _DT_EDGE: {"src":"scripts/dt_daily_probe.mjs + scripts/dt_kbar5_probe.mjs + intraday_probe.py(V77.5.0)","win":"2021-09~2026-09","syms":2334,"k5days":90,"oc":{"gross":-0.097,"win":36.5},"ocShortWin":45.8,"on":{"gross":0.157},"f6":[[0.5,0.5,36.4,-0.382],[0.5,1,54.7,-0.399],[0.5,2,69.3,-0.363],[0.5,3,73.7,-0.354],[1,0.5,28.5,-0.319],[1,1,43.5,-0.339],[1,2,56.4,-0.329],[1,3,61.3,-0.317],[2,0.5,21.4,-0.262],[2,1,33.4,-0.284],[2,2,44.7,-0.284],[2,3,49,-0.293],[3,0.5,18.7,-0.239],[3,1,29.3,-0.263],[3,2,39.7,-0.271],[3,3,44,-0.276]],"lu":{"up":{"n":23323,"open":[2.188,69.7],"close":[1.595,56.5],"p10":-2.1},"dn":{"n":10800,"open":[0.826,54.4],"close":[1.044,53],"p10":-4.41},"base":32.2},"gap":{"ill":0.849,"liq":0.14,"liqSqz":13.64,"auc":0.16,"m1":0.02,"m5":-0.11},"f3":{"hi":74.4,"lo":68.2},"nope":{"four":-0.277,"smash":-0.289,"ld":-1.944,"dual":-0.382,"bull":-0.522,"bullIdx":0.283}},
+    _DT_EDGE: {"src":"scripts/dt_daily_probe.mjs + scripts/dt_kbar5_probe.mjs + intraday_probe.py(V77.5.0)","win":"2021-09~2026-09","syms":2334,"k5days":1319,"k5win":"2021-05~2026-09","f7":{"th":"≥2%","ent":"09:05","n":7781,"net":0.282,"winp":53.3,"gates":"6/6","drop10":0.146,"ctrl":0.209,"lock":12.58,"real":0.046,"real10":-0.099,"src":"scripts/dt_kbar5_probe.mjs + f7_k5only(V77.6.9)"},"oc":{"gross":-0.097,"win":36.5},"ocShortWin":45.8,"on":{"gross":0.157},"f6":[[0.5,0.5,36.4,-0.382],[0.5,1,54.7,-0.399],[0.5,2,69.3,-0.363],[0.5,3,73.7,-0.354],[1,0.5,28.5,-0.319],[1,1,43.5,-0.339],[1,2,56.4,-0.329],[1,3,61.3,-0.317],[2,0.5,21.4,-0.262],[2,1,33.4,-0.284],[2,2,44.7,-0.284],[2,3,49,-0.293],[3,0.5,18.7,-0.239],[3,1,29.3,-0.263],[3,2,39.7,-0.271],[3,3,44,-0.276]],"lu":{"up":{"n":23323,"open":[2.188,69.7],"close":[1.595,56.5],"p10":-2.1},"dn":{"n":10800,"open":[0.826,54.4],"close":[1.044,53],"p10":-4.41},"base":32.2},"gap":{"ill":0.849,"liq":0.14,"liqSqz":13.64,"auc":0.16,"m1":0.02,"m5":-0.11},"f3":{"hi":74.4,"lo":68.2},"nope":{"four":-0.277,"smash":-0.289,"ld":-1.944,"dual":-0.382,"bull":-0.522,"bullIdx":0.283}},
     /** 📊 當沖實測摺疊(接在成本關卡下面;⛔ 不是方向訊號)+ 🟥 收盤鎖漲停那一行(只在收盤後、真的鎖住才出現) */
     _dtEdgeHtml(sym) {
         const E = this._DT_EDGE; if (!E) return '';
@@ -20785,7 +20786,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div>⛔ <b>測過、扣完成本站不住的</b>(每趟平均,已扣成本):開盤四法照做 ${f(N.four)}(不分類一律照第一根做也差不多)・攻擊日 ${f(N.smash)}・連續跌停打開搶反彈 ${f(N.ld)}・昨天外資投信同買今天做多 ${f(N.dual)}・盤前分數「偏多」那天做多熱門股 ${f(N.bull)}(⚠️ 那天加權指數開→收是 ${f(N.bullIdx, 2)},<b>指數的結論不能套到個股</b>)。</div>
                 <div>⚠️ <b>「開高就空」數字漂亮但做不到</b>:冷門股平均 ${f(E.gap.ill)},但幾乎全部來自<b>開盤那一筆撮合價</b> —— 1 分 K 實測晚 1 分鐘進場只剩 ${f(E.gap.m1)}、晚 5 分鐘 ${f(E.gap.m5)};熱門股 ${f(E.gap.liq)},可是 ${E.gap.liqSqz}% 的時候收在漲停(空單回補不了)。</div>
                 <div>⏰ 描述(⛔ 不是訊號):當天最高點 ${E.f3.hi}%、最低點 ${E.f3.lo}% 出現在 10:30 以前。</div>
-                <div class="text-gray-500">⚠️ 分K 那幾項只有 ${E.k5days} 個交易日、而且是「當天成交量前 80 檔」(天生偏熱門)→ 只能當方向參考。日K 那幾項含 2022 空頭。</div>
+                ${E.f7 ? `<div>⚡ <b>唯一統計上站得住的:「開高 ${E.f7.th} 在昨高之上 → ${E.f7.ent} 放空到收盤」</b> —— 假裝收盤回補時 ${f(E.f7.net)}/趟(${E.f7.n.toLocaleString()} 次・六關 ${E.f7.gates}・拿掉最好 10 天 ${f(E.f7.drop10)}・贏同時點對照 ${f(E.f7.ctrl)});⛔ 但 <b>${E.f7.lock}% 會鎖漲停,現股當沖的空單回補不了</b>,照「鎖死就隔天開盤回補」只剩 ${f(E.f7.real, 3)}、拿掉最好 10 天 ${f(E.f7.real10, 3)} → <b>⛔ 不做</b>(統計過關、執行不過關;⚠️ 0.25% 是 3 折手續費,全額 0.435% 更差)。</div>` : ''}
+                <div class="text-gray-500">⚠️ 分K 那幾項 ${E.k5days.toLocaleString()} 個交易日(${E.k5win || ''};名單 = 每月初前 60 日成交值前 100 檔,最近幾個月是「當天成交量前 80 檔」,天生偏熱門)。日K 那幾項含 2022 空頭。</div>
             </div></details>`;
     },
     // 📅 V73.7.3 「今天這種日子顛不顛」—— ⭐⭐ 只講**波動**,⛔ 絕不講方向。
