@@ -56,7 +56,7 @@ ok(/L\.etfTr/.test(deck) && /16 年來看這套輸 0050 含息/.test(deck), '④
   Q._EXIT_EDGE = lit('_EXIT_EDGE'); Q._BREAKOUT_EXIT_EDGE = lit('_BREAKOUT_EXIT_EDGE'); Q._BEAR_GATE_EDGE = lit('_BEAR_GATE_EDGE');
   Q._CUTLOSS_FACTS = lit('_CUTLOSS_FACTS'); Q._DISPO_HOLD_EDGE = lit('_DISPO_HOLD_EDGE');
   const pm = /\n    _PROB_TABLE: (\{.*?\}),\n/.exec(src); Q._PROB_TABLE = pm ? JSON.parse(pm[1]) : null;
-  const bx = /\n    _BEAR_EXIT_EDGE: (null|\{[\s\S]*?\n    \}),/.exec(src); Q._BEAR_EXIT_EDGE = bx ? new Function('return (' + bx[1] + ')')() : undefined;
+  const bx = /\n    _BEAR_EXIT_EDGE: (null|\{.*?\}),\n/.exec(src);   // ⚠️ 跑完是 fill.py 寫成的單行 JSON Q._BEAR_EXIT_EDGE = bx ? new Function('return (' + bx[1] + ')')() : undefined;
   ok('⑤0 空過守門:五份常數都讀得到', !!(Q._EXIT_EDGE && Q._BREAKOUT_EXIT_EDGE && Q._BEAR_GATE_EDGE && Q._CUTLOSS_FACTS && Q._PROB_TABLE && Q._BEAR_EXIT_EDGE !== undefined), '');
   const h = Q._cutlossFaqHtml();
   ok('⑤ FAQ 有七問、講「硬停損就是賠小錢」「太早出場砍掉的是贏家」「30 天以下是懸崖」', (h.match(/❓/g) || []).length === 7 && /賠小錢/.test(h) && /砍掉的是<b>贏家<\/b>/.test(h) && /30 天以下是懸崖/.test(h), h.slice(0, 200));
