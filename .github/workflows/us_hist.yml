@@ -1,0 +1,105 @@
+# 🇺🇸 美股 / 美股 ETF / 指數 5 年日線 → data/us_hist.json(V77.7.7)
+#
+# 為什麼要有這支:repo 正式產物**完全沒有美股逐日價格序列**(macro_cache / macro_risk 全是當天快照,
+#   risk_history 只有 59 天)→ 「美股隔夜異常 → 台股」(us_tw_lead_probe.mjs)沒東西可測。
+#   沙箱連不到 Yahoo(CONNECT 403),只有 Actions 能用 yfinance → 採礦只能在這裡跑。
+#
+# ⭐ 觸發 = workflow_run 掛 daily_miner(實測 100% 進得來的 host)+ 手動 dispatch;⛔ 不開 cron
+#   (CLAUDE.md V75.2.0:全 repo 排程配額被吃光,固定五支 0 筆;判準不是頻率而是「這一支實測進不進得來」)。
+#   host 名字要跟 daily_miner.yml 的 `name:` **逐字一致**,差一字永遠不觸發且零訊息(scripts/test_wf_quota.py 釘住)。
+#
+# ⭐ 為什麼推 data 分支而不是 gh-pages:daily_miner 的 gh-pages 是 orphan force-push,內容全部來自
+#   `git archive origin/data` 鋪的底層 + 🛟 撿回 → 進了 data 分支就會自動跟著上 gh-pages,**daily_miner 一行不改**
+#   (同 fin_backfill「切片 → 推 data 分支」、tick_flow「也推 data 分支」)。
+#
+# ⚠️ 不需要任何金鑰。守門在 Python 端:<30 檔 / <1000 天 / asof 落後 >5 天 → 不覆蓋舊檔(exit 0)。
+# ⚠️ 驗證⛔ 不可只看 Actions 綠燈(陷阱 #9)→ `git show origin/data:data/us_hist.json | head -c 300`。
+name: 🇺🇸 美股日線歷史 (us_hist)
+
+on:
+  workflow_run:
+    workflows: ["🤖 每日籌碼採礦機 (平行宇宙版)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      years:
+        description: 'yfinance period(留空 = 5y)'
+        required: false
+        default: ''
+
+# ⛔ 它推 data 分支(不是 gh-pages)→ 不跟 gh-pages-push 共用鎖;但要防自己疊在一起(手動 + workflow_run 同時來)。
+#    執行 3~5 分 ≪ 觸發間隔(一天 1~2 次)→ cancel-in-progress: true 安全(CLAUDE.md 鐵則)。
+concurrency:
+  group: us-hist-append
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  mine:
+    name: 🇺🇸 抓美股日線 → data 分支
+    runs-on: ubuntu-latest
+    # ⛔ 掛 workflow_run 之後要擋兩種情況(同 kbar5.yml):
+    #   ① 採礦失敗 → 那一輪不算數 ② 採礦是被 push 觸發的 → 只跟排程那一輪
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'schedule')
+    timeout-minutes: 20
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝 yfinance
+        run: pip install --quiet yfinance
+
+      # ⚠️ selftest 跟正式跑寫在同一個 step:selftest 沒過就⛔ 不該去動 data 分支
+      - name: 🇺🇸 selftest → 抓 5 年日線
+        env:
+          # 🔧 排程/workflow_run 觸發時 inputs.* 是**空字串**不是不存在 → Python 端一律 `or 預設`(check_env_default.py)
+          YEARS: ${{ github.event.inputs.years }}
+          OUT: /tmp/us_hist.json
+        run: |
+          python3 scripts/us_hist_miner.py --selftest
+          python3 scripts/us_hist_miner.py
+          [ -s /tmp/us_hist.json ] || { echo "⛔ 守門沒過或抓不到 → 這輪不推(舊檔保留)"; echo "SKIP=1" >> "$GITHUB_ENV"; }
+
+      - name: 🚀 推到 data 分支(data/us_hist.json)
+        if: env.SKIP != '1'
+        run: |
+          set -e
+          python3 - <<'PY'
+          import json; d = json.load(open('/tmp/us_hist.json'))
+          m = d['meta']; print(f"📊 {m['n_syms']} 檔 ・{m['n_days']} 天 ・asof {d['asof']} ・errors {len(d['errors'])}")
+          assert m['n_syms'] >= 30 and m['n_days'] >= 1000, '守門沒過卻寫了檔?'
+          PY
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git reset --hard -q 2>/dev/null || true
+          git clean -fdq 2>/dev/null || true
+          git fetch origin "+refs/heads/data:refs/remotes/origin/data"
+          git checkout -f -B data origin/data
+          mkdir -p data
+          cp /tmp/us_hist.json data/us_hist.json
+          git add -f data/us_hist.json
+          if git diff --cached --quiet; then
+            echo "ℹ️ data/us_hist.json 跟分支上一樣,沒東西可推"
+          else
+            git commit -q -m "🇺🇸 美股日線歷史 $(date -u '+%Y-%m-%d %H:%M UTC')" -- data/us_hist.json
+            pushed=0
+            # ⛔ 這個 retry 迴圈不可拿掉(唯一擋「同時 push」的東西;中間 pull --rebase)
+            for i in 1 2 3 4 5; do
+              git push origin data && { pushed=1; echo "✅ data/us_hist.json 已推上 data 分支 (第 $i 次)"; break; }
+              sleep $((i * 3))
+              git pull --rebase origin data 2>/dev/null || true
+            done
+            [ "$pushed" -eq 1 ] || { echo "❌ push 連 5 次失敗"; exit 1; }
+          fi
+          echo "📦 下一輪 daily_miner 部署會帶進 gh-pages;探針在沙箱用 git show origin/data:data/us_hist.json 讀"

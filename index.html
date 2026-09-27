@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.7.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.7.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.7.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.7.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8649,8 +8649,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.7.6',
+    _APP_VERSION: 'V77.7.7',
     _CHANGELOG: [
+        { v: 'V77.7.7', d: ['🇺🇸 <b>開始存美股 5 年日線</b>(37 檔:大盤 / 費半 / VIX / 輝達 / 台積 ADR / 美光 / 板塊 ETF…)—— 外部 AI 建議做「美股隔夜異常 → 台股」的引擎,但本站以前<b>一筆美股歷史都沒有</b>(只有當天快照)。新採礦掛在每日採礦後面自動跑,資料進 data 分支;探針 <code>us_tw_lead_probe</code> 寫好並 selftest 通過,等第一份資料進來就跑(加權 / 14 板塊 / 個股三層 + 「美股很強、台股開盤還沒反映」+ 疊在 🧬 上跟安慰劑比)。',
+                             '🐢🛰️ <b>0050 核心 × 本站策略衛星第一次真的回測</b>(固定比例 + 月/季再平衡、17 條起點):把策略當衛星只是「拿報酬換回撤」—— 70/30 月再平衡 365 萬 vs 0050 含息 350 萬(11/17)、回撤 17/17 較小;<b>月再平衡比不再平衡多 15~20 萬、回撤一樣</b>;⛔ 所有混合的滾動 24 月超額都是負的(0050 後段太強)→ 列成參考、⛔ 不換預設。',
+                             '💰 <b>更正「閒錢停 0050」的數字</b>:上一版寫「324 vs 324、多賺不多」是<b>漏算停泊本身的獲利</b>;新預設抱 20 天、閒錢更多,停泊實際多賺 <b>+110 萬</b>(434 vs 324 萬、17/17 條全贏、回撤 16/17 較小)。',
+                             '📈 回測引擎補「逐日市值淨值」輸出與「外部逐日訊號」候選層鉤子(⛔ 不設時一字不變,兩支測試釘住)。'] },
         { v: 'V77.7.6', d: ['🔁 <b>決策台預設換成「吊燈 ATR 2 倍・最長抱 20 天・大盤空頭不買」</b>(你說「以現在最厲害的執行」):用修好的日 K 重測,近 4 年 179 → 324 萬、16 年 285 → 494 萬,兩段都是 17 條全贏上一任;⚠️ 仍輸 0050 含息、而且 2011~2020 那十年反而比較差。開 App 會跳一次說明,可一鍵換回舊的。', '🔄 「情勢變了自動換規則」回測過了:贏得過隨機亂換,但<b>贏不了固定用最強那一套</b>(214~263 vs 324 萬)→ 沒有做成自動換。', '🛠️ 自動下單同步換成新出場;吊燈 ATR 的出場線改用<b>進場那天的 ATR</b>(跟回測、自動下單同一把尺)。'] },
         { v: 'V77.7.5', d: ['🧪 <b>用修好的日 K 重新檢查決策台那一套</b>:現行做法(唐奇安 40 日・最長抱 40 天・大盤空頭不買)4 年只有約 179 萬,輸 0050 含息;出場改快的做法(移動停利 8% 或 ATR 吊燈,最長 20 天)明顯比較好,但它的優勢集中在 2021 年以後。⚠️ 預設<b>還沒換</b>,等你決定。', '🔬 實測總表新增 5 條:換股 / 空頭只賣虧損 / 多檔 ETF 基準 / 每筆跟 0050 比 / 成本加倍;「空頭全賣」那條在修好的資料上結論翻了,已改寫。'] },
         { v: 'V77.7.4', d: ['📤 <b>實測總表匯出改成「好讀」的順序</b>:每一條先講<b>判定</b>(✅ 實測支持 / ⛔ 不支持 / 🧭 回測方法的坑 / ⏳ 還測不了),再講數字、怎麼用、完整說明,最後才是給程式維護用的技術備註;「做多」「配置」這類速記翻成白話,「六道關卡」「高原」「安慰劑」先解釋一次。', '🧪 回測工具新增:多檔 ETF 基準並排(0050 / 科技 / 半導體 / 中小 / 高股息)、每一筆跟 0050 比的機會成本、換股(錢不夠時賣掉最弱那檔)、成本加倍壓力測試。結論在下一版一起更新。'] },
@@ -8849,10 +8853,6 @@ ${list}
             '🔒 <b>框在講事情的全部留著</b>:⚠️ 警示用的左邊色條、按鈕、可以打字的框、量條底槽、一格一個數字的格子。判準就一句話:<b>框如果在講事情就留,只是把東西圍起來的就拿掉</b>。',
             '⭐ 先量過才動手:靜態看有 349 處框,<b>實際跑起來只有 111 個看得見</b>(其餘是條件式卡片)——所以做成「一條規則管全部」而不是逐一改,不然那些卡一被觸發又是有框的。',
             '📏 順手修掉價格位置圖最左邊那個標記會凸出去 1px。',
-        ] },
-        { v: 'V76.4.2', d: [
-            '🏭 <b>上櫃股的產業別再補 ~1,600 檔</b> —— 上一版的備援接上了,但只補進 327 檔。真因不是資料缺,是<b>同一個產業兩邊寫法不同</b>:資料源給「半導體<b>業</b>」「電腦<b>及週邊設備</b>業」,而本站的對照表存的是「半導體」「電腦週邊」→ 字串直接比當然對不上。現在會自動把「業/工業/事業」那種尾巴對齊。',
-            '📋 log 也改成分開數:「ETF 這種本來就沒有產業別的幾檔」跟「<b>真的</b>對不到代碼的幾檔」——以前混在一起,真的漏接會被 1,600 檔淹掉。',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -21505,9 +21505,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ⛔ 自動下單**不會**幫你做(那會動真錢,要你自己決定)。0050 只算價格、沒算股利 → 數字偏保守。
     //   ⚠️ 回撤口徑:股票部位以成本計、停泊的 0050 逐日計價 → 回撤數字兩臂不是完全同一把尺,只有「賺多少」完全可比。
     _IDLE0050_EDGE: {
-        // 🧱 V77.7.6 修好日 K、在新預設(吊燈 ATR 2 倍・20 天・空頭不開新倉)上重跑 17 條配對:中位一樣(324 vs 324、贏 7 條),
-        //   ⭐ 但最差一條 255 → 308、回撤 16/17 較小 → 好處仍然是「跌的時候少賠」,⛔ 不是多賺
-        main: { win: '2022-09 ~ 2026-09', paths: 17, on: 324, onLo: 308, off: 324, offLo: 255, wins: 7, onDD: 31.7, offDD: 32.8, ddBetter: 16 },
+        // 🧱 V77.7.6 修好日 K、在新預設(吊燈 ATR 2 倍・20 天・空頭不開新倉)上重跑 17 條配對。
+        // 🚨 V77.7.7 更正:上一版寫「324 vs 324、多賺不多」是**只看策略 cum、漏掉停泊本身的獲利**(summary 的 park 另計)。
+        //   新預設最長只抱 20 天 → 閒錢比唐奇安 40 那時多得多 → 停泊中位 +111 萬:總資產 434 vs 324 萬、17/17 全贏、
+        //   最差一條 255 → 394、回撤 16/17 較小。`on` = 策略 + 停泊(總資產),`off` = 放現金(只有策略)。
+        main: { win: '2022-09 ~ 2026-09', paths: 17, on: 434, onLo: 394, off: 324, offLo: 255, wins: 17, onDD: 31.7, offDD: 32.8, ddBetter: 16 },
         // 🕰️ 16 年那組修好資料後還沒重跑 → null(畫面要說出來);舊的 656 vs 648 萬是在唐奇安 40 日上跑的,⛔ 不可沿用
         long: null,
     },
@@ -21516,7 +21518,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const M = E.main, L = E.long;
         return `<div class="text-[10px] text-gray-400 mt-1.5 leading-snug" data-idle0050="1">💰 <b class="text-gray-300">沒用到的錢建議停在 0050</b>,要買股票時才賣掉需要的那部分 —— 回測(${M.paths} 條路徑中位)本站 ${M.win} <b class="text-gray-300">${M.on} 萬</b> vs 放現金 ${M.off} 萬(贏 ${M.wins} 條)`
             + (L ? `、16 年 <b class="text-gray-300">${L.on} 萬</b> vs ${L.off} 萬(贏 ${L.wins} 條)` : '')
-            + `。<br>⭐ <b class="text-gray-300">多賺不多,主要好處是跌的時候少賠</b>:最差那一條 ${M.offLo}→${M.onLo} 萬(4 年)${L ? `、${L.offLo}→${L.onLo} 萬(16 年)` : ''},中途最多賠 −${M.offDD}%→−${M.onDD}%${L ? `、−${L.offDD}%→−${L.onDD}%` : ''}${M.ddBetter != null ? `(${M.paths} 條裡 ${M.ddBetter} 條回撤較小)` : ''}。`
+            + `。<br>⭐ <b class="text-gray-300">${M.on - M.off >= M.off * 0.1 ? `多賺約 ${M.on - M.off} 萬(新預設最長只抱 20 天,閒錢比較多)、而且跌的時候少賠` : '多賺不多,主要好處是跌的時候少賠'}</b>:最差那一條 ${M.offLo}→${M.onLo} 萬(4 年)${L ? `、${L.offLo}→${L.onLo} 萬(16 年)` : ''},中途最多賠 −${M.offDD}%→−${M.onDD}%${L ? `、−${L.offDD}%→−${L.onDD}%` : ''}${M.ddBetter != null ? `(${M.paths} 條裡 ${M.ddBetter} 條回撤較小)` : ''}。`
             + (L ? '' : `<span class="text-gray-500">⏳ 16 年那組換新預設後還沒重跑。</span>`)
             + `<span class="text-gray-500">⚠️ 自動下單不會幫你做這件事;0050 沒算股利(偏保守)。</span></div>`;
     },

@@ -135,6 +135,15 @@ const SELF = (process.env.SELF || '').split('+').filter(Boolean);
 //      唯一防線是「前後半段同向」(探針已檢定)+ 這裡再看**賺到的錢**。
 const SIGX = (process.env.SIGX || '').split('+').filter(Boolean);
 const SIGMAP = process.env.SIGMAP || '';
+// 🇺🇸 V77.7.7 美股訊號濾網(對照表由 us_tw_lead_probe.mjs 的 EMIT_USSIG 產生)
+//   USSIG=<kind>        = 只做「那天美股訊號分數 ≥ USSIG_MIN」的候選(鍵 "sym|date";"*|date" 萬用鍵給加權/板塊層級)
+//   USSIG=sham:<kind>   = 安慰劑:跟美股無關、同通過率(照 FIN=sham 的做法)
+//   ⛔ 不進 CACHE_KEY(它是候選層濾網,不改交易本身);缺鍵 = 那天沒有美股資料 → 剔除並計數(⛔ 不放行)
+const USSIG = process.env.USSIG || '';
+const USSIG_MAP = process.env.USSIG_MAP || '';
+const USSIG_MIN_ENV = process.env.USSIG_MIN;
+// 📈 V77.7.7 EQUITY_OUT:逐日**市值**淨值曲線(cash + 停泊 + 持倉市價),給 core_sat_probe 用;不設時一字不變
+const EQUITY_OUT = process.env.EQUITY_OUT || '';
 // ⚠️ 門檻做成可調 —— 防過度配適的關鍵檢定:如果只有某個數字才有效,那就是配適出來的
 const RANK_MIN = +(process.env.RANK_MIN || 80);
 const VOLAT_MIN = +(process.env.VOLAT_MIN || 60);
@@ -1127,6 +1136,30 @@ const sigOk = t => {
     return true;
 };
 
+// 🇺🇸 美股訊號對照表(V77.7.7)
+let usMap = new Map(), usMin = 0, usNoData = 0, usFrac = null, usKind = '';
+if (USSIG) {
+    usKind = USSIG.replace(/^sham:/, '');
+    let uj = null;
+    try { uj = JSON.parse(fs.readFileSync(USSIG_MAP, 'utf8')); } catch (_) { console.error(`🚨 USSIG=${USSIG} 要用對照表,但讀不到 USSIG_MAP=${USSIG_MAP} → ⛔ 不靜默放行,直接停`); process.exit(1); }
+    for (const [k, v] of Object.entries(uj.map || {})) usMap.set(k, +v);
+    usMin = USSIG_MIN_ENV != null && USSIG_MIN_ENV !== '' ? +USSIG_MIN_ENV : +(uj.min ?? 1);
+    if (uj.kind && uj.kind !== usKind) console.log(`⚠️ USSIG=${usKind} 但對照表自稱 kind=${uj.kind}(照樣用,請確認沒拿錯檔)`);
+    if (usMap.size < 100) { console.error(`🚨 USSIG 對照表只有 ${usMap.size} 鍵(<100)→ 資料不對,停`); process.exit(1); }
+    console.log(`🇺🇸 美股訊號濾網 USSIG=${USSIG}:${usMap.size.toLocaleString()} 鍵 ・門檻 ≥${usMin}`);
+}
+const usScoreOf = t => { const v = usMap.get(`${t.sym}|${t.inD}`); return v != null ? v : usMap.get(`*|${t.inD}`); };
+const usOk = t => {
+    if (!USSIG) return true;
+    const v = usScoreOf(t);
+    if (v == null) { usNoData++; return false; }                 // 那天沒有美股資料(美股假日/窗口前)→ 剔除(⛔ 不可當成通過)
+    if (USSIG.startsWith('sham:')) {
+        if (usFrac == null) { let on = 0, n = 0; for (const arr of byIn.values()) for (const x of arr) { const w = usScoreOf(x); if (w == null) continue; n++; if (w >= usMin) on++; } usFrac = n ? on / n : 0; console.log(`🎲 USSIG=sham 通過率對齊 USSIG=${usKind}:${(usFrac * 100).toFixed(1)}%(${on}/${n} 筆候選)`); }
+        return (_shamHash(`${t.sym}|${t.inD}|us`) % 10000) < usFrac * 10000;   // 安慰劑:跟美股無關、同通過率
+    }
+    return v >= usMin;
+};
+
 // ── ③ Walk-forward 模擬 ────────────────────────────────────────────────
 //    第 T 天選股時,型態成績只用「**出場日 < T**」的已完成交易 ⇒ 零前視偏誤。
 const byIn = new Map();      // 進場日 → 候選交易
@@ -1156,6 +1189,22 @@ let realized = 0;            // 已實現損益
 // 📐 V77.5.9 volpar:之前幾天候選的 ATR%(參考中位數)+ 已算過的倍數(volsham 從這裡抽)
 const vpHist = [], vpK = []; let vpN = 0, vpSum = 0;
 const equity = [];           // 逐日權益(算最大回撤)
+// 📈 EQUITY_OUT 逐日市值淨值(⛔ 跟上面的 equity 分開:那條刻意用成本計、只在交易點跳動,mdd 沿用它 → 不設時一字不變)
+//   每一天(含被 regime/bear60/otc/CAL 擋掉不開新倉的日子)都要推一筆 —— 缺天的曲線做不了 Core/Satellite 再平衡
+const eqRows = [];
+const _lastPx = new Map();
+const pushEq = (i, d) => {
+    if (!EQUITY_OUT) return;
+    let mv = 0, cost = 0;
+    for (const x of live) {
+        const a0 = x._amt || LOT; cost += a0;
+        let px = pxAt(x.sym, d);
+        if (px > 0) _lastPx.set(x.sym, px); else px = _lastPx.get(x.sym) || 0;   // 那天沒價(停牌)→ 沿用最近一次;第一天就沒有 → 用成本
+        mv += px > 0 && x.entry > 0 ? a0 * px / x.entry : a0;
+    }
+    const park = (PARK && parkOf) ? parkSh * (parkOf(i) || 0) : 0;
+    eqRows.push({ d, cash: Math.round(cash), park: Math.round(park), mv: Math.round(mv), cost: Math.round(cost), n: live.length });
+};
 for (let i = 0; i < days.length; i++) {
     const d = days[i];
     // 今天到期的先出場 → 錢回來
@@ -1175,15 +1224,15 @@ for (let i = 0; i < days.length; i++) {
     }
     if (i < YR_FROM) continue;
     // 📅 逐年模式:過了那一年就不再開新倉,只讓手上的部位照規則出場;全部出清就結束
-    if (YEAR && i > YR_TO) { if (!live.length) break; openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); continue; }
+    if (YEAR && i > YR_TO) { if (!live.length) break; openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); pushEq(i, d); continue; }
     // (b) 今天觸發的候選,依「當下已知的期望值」排序
     //   ⭐ 兩層門檻(缺一不可):
     //     ① **這一檔**在**這個型態**上,到昨天為止扣成本後仍是賺的(= App 說「這檔適合這招」)
     //     ② 全市場該型態樣本夠(⛔ 擋掉「這檔剛好打中 4 次」的假強)
     //   排序用**這檔自己**的期望值 —— 這才是「每個個股最好的打法」。
     // 🏛️ 大盤環境濾網:大盤自己都在月線之下就整天不進場(⛔ 個股再強也不做)
-    if (FILTER.includes('regime') && !regimeOk(i)) { continue; }
-    if (FILTER.includes('bear60') && !notBear60(i)) { continue; }
+    if (FILTER.includes('regime') && !regimeOk(i)) { pushEq(i, d); continue; }
+    if (FILTER.includes('bear60') && !notBear60(i)) { pushEq(i, d); continue; }
     // 🔀 停泊策略(PARK):空頭日把閒置現金放進 0050、轉非空頭就全部賣掉
     if (PARK && PARK !== 'idle') {
         const _bear = !notBear60(i);
@@ -1196,6 +1245,7 @@ for (let i = 0; i < days.length; i++) {
             parkDays++;
             openCnt.push(live.length);
             equity.push(cash + parkSh * (_px || 0) + live.reduce((a2, x) => a2 + (x._amt || LOT), 0));
+            pushEq(i, d);
             continue;   // ⛔ 空頭日不開新倉(這就是「切換」本身)
         }
     }
@@ -1204,12 +1254,12 @@ for (let i = 0; i < days.length; i++) {
     if (otcReg) {
         const _r = otcReg.get(days[i]);
         if (_r) {
-            if (FILTER.includes('otcflat') && _r === 'flat') { continue; }
-            if (FILTER.includes('otcbull') && _r !== 'bull') { continue; }
+            if (FILTER.includes('otcflat') && _r === 'flat') { pushEq(i, d); continue; }
+            if (FILTER.includes('otcbull') && _r !== 'bull') { pushEq(i, d); continue; }
         }
     }
     // 📅 行事曆濾網:這一天不准開新倉(既有部位照原規則出場,⛔ 不受影響)
-    if (CAL.length && !calOk(d, i)) { openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); continue; }
+    if (CAL.length && !calOk(d, i)) { openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); pushEq(i, d); continue; }
     const todays = (EXIT_SCHED ? (byInR.get(schedRuleOf(d)) || new Map()).get(d) : byIn.get(d)) || [];
     // 🤝 同一檔今天有幾招同時觸發(共振)
     const hitCnt = {};
@@ -1223,7 +1273,7 @@ for (let i = 0; i < days.length; i++) {
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
                   && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF)
                   && indCycOk(x.t.sym, d)
-                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t) && valOk(x.t) && emOk(x.t))
+                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t) && valOk(x.t) && emOk(x.t) && usOk(x.t))
         .sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
     if (RANKBY === 'rand') { for (let k = cand.length - 1; k > 0; k--) { const j = Math.floor(_rnd() * (k + 1)); [cand[k], cand[j]] = [cand[j], cand[k]]; } }
     else if (RANKBY === 'mkt') cand.sort((a, b) => (b.m.sum / b.m.n) - (a.m.sum / a.m.n));
@@ -1326,6 +1376,11 @@ for (let i = 0; i < days.length; i++) {
     }
     openCnt.push(live.length);
     equity.push(cash + (PARK && parkOf ? parkSh * (parkOf(i) || 0) : 0) + live.reduce((a, x) => a + (x._amt || LOT), 0));   // 持倉以成本計(保守,不逐日 mark-to-market)
+    pushEq(i, d);
+}
+if (EQUITY_OUT) {
+    fs.writeFileSync(EQUITY_OUT, JSON.stringify({ capital: CAPITAL, lot: LOT, warmup: WARMUP, from: days[YR_FROM], to: days[days.length - 1], rows: eqRows }));
+    console.log(`📈 逐日市值淨值 ${eqRows.length} 天 → ${EQUITY_OUT}`);
 }
 
 // 🔀 收尾:窗口結束時還在停泊的,用最後一天收盤結清(⛔ 不可讓它憑空消失)
@@ -1550,6 +1605,7 @@ if (process.env.SUMMARY_OUT) {
     if (ROTATE) summary.rot = { mode: ROTATE, n: rotN, minHold: ROT_MIN };
     if (COST_X !== 1) summary.costX = COST_X;
     if (EXIT_SCHED) { const c = {}; for (const t of taken) c[t._r] = (c[t._r] || 0) + 1; summary.sched = { file: EXIT_SCHED.split('/').pop(), taken: c }; }   // 🔄 實際成交各用了哪一套
+    if (USSIG) summary.ussig = { kind: USSIG, min: usMin, noData: usNoData, keys: usMap.size };   // 🇺🇸 V77.7.7 缺美股資料而被剔除的候選數(⛔ 一定要報)
     if (BEAR_EXIT || FORCE_EXIT) summary.forced = { bear: taken.filter(t => t.fx === 1).length, event: taken.filter(t => t.fx === 2).length };   // 🐻🚨 V77.6.8 實際成交裡被強制賣掉幾筆
     if (YEAR) Object.assign(summary, _yearSummary());
     fs.writeFileSync(process.env.SUMMARY_OUT, JSON.stringify(summary));
