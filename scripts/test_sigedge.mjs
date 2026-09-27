@@ -101,8 +101,11 @@ ok('④ 摺疊區要說明「觀察用,別當進場理由」', /別當進場理�
 ok('④ 有「怎麼看」教學按鈕', /怎麼看/.test(html), html.slice(0, 600));
 
 // ⭐ ① 的延伸:教學裡一定要寫明基準不是 50%
+// 🔁 V77.7.2:以前讀「渲染出來的徽章」—— 但徽章只在測資剛好觸發 A/B 級訊號時才出現,
+//   重跑回測後分級一變,測資觸發的訊號可能全是 C 級 → 斷言假失敗。⭐ 改成直接問教學文字本身(它才是這條要釘的東西)。
+const helpTxt0 = await page.evaluate(() => { let t = ''; const o = app._helpBox; app._helpBox = x => { t = String(x); }; try { app._showEdgeHelp(); } finally { app._helpBox = o; } return t; });
 ok('④ ⭐ 教學必須寫明基準勝率(否則 41% 會被誤讀成輸)',
-   new RegExp(String(meta.base_win.toFixed(1))).test(html), html.slice(0, 1200));
+   helpTxt0.includes(`基準勝率是 ${meta.base_win.toFixed(1)}%`), helpTxt0.slice(0, 600));
 // ⭐ V72.0.4:K線頁那顆「ⓘ 怎麼看」原本是**第三份**內嵌 alert 文案,而且數字停在
 //    250 檔那版(說 122 個訊號 / A=29,實際已是 500 檔 / A=42)——正是 CLAUDE.md
 //    「教學兩頁共用同一份,別寫兩套」那條鐵則在講的東西。已改成呼叫 _showEdgeHelp()。
