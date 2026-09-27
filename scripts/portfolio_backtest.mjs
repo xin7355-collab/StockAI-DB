@@ -894,6 +894,21 @@ const calOk = (d, i) => {
 };
 
 const dIdx = new Map(days.map((d, i) => [d, i]));
+// 🐛 V77.7.2 出場日不在大盤日曆上 → 以前 `dIdx.get()` 回 undefined,部位**從權益曲線直接消失**(錢沒回來、live 也少一筆)。
+//   最常見:個股比大盤多一根(實測 dd2:349 檔最後一根 09/25、^TWII 停在 09/24)→ 最後 40 天進場的部位全部蒸發
+//   → 最大回撤被灌成 −55%、錢被鎖住少開倉。⭐ 改成「大盤日曆上 ≥ 出場日的第一天」,超過最後一天就算最後一天。
+const _lastDay = days[days.length - 1];
+let _outFix = 0;
+const outIdx = x => {
+    if (x._oi !== undefined) return x._oi;
+    let k = dIdx.get(x.outD);
+    if (k === undefined) {
+        _outFix++;
+        if (!(x.outD <= _lastDay)) k = days.length - 1;
+        else { let lo = 0, hi = days.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (days[m] < x.outD) lo = m + 1; else hi = m; } k = lo; }
+    }
+    return (x._oi = k);
+};
 
 // 🧬 個股自身狀態表(⛔ 只用該日以前的資料 → 無前視偏誤)
 const selfFeat = new Map();
@@ -1096,13 +1111,13 @@ const equity = [];           // 逐日權益(算最大回撤)
 for (let i = 0; i < days.length; i++) {
     const d = days[i];
     // 今天到期的先出場 → 錢回來
-    for (const x of live.filter(x => dIdx.get(x.outD) <= i)) {
+    for (const x of live.filter(x => outIdx(x) <= i)) {
         // 💰 用**這一筆自己的投入金額**還原(等權時 _amt 就等於 LOT,結果與舊版完全相同)
         const a0 = x._amt || LOT;
         cash += a0 + a0 * (x.ret + (x.dv || 0) - COST) / 100;
         realized += a0 * (x.ret - COST) / 100;
     }
-    live = live.filter(x => dIdx.get(x.outD) > i);
+    live = live.filter(x => outIdx(x) > i);
     // (a) 先把「今天之前已出場」的交易計入成績(⛔ 今天出場的還不能用 —— 那是今天才知道的)
     if (i > 0) for (const t of (byOut.get(days[i - 1]) || [])) {
         const s = (stat[`${t.sym}|${t.key}`] ||= { n: 0, sum: 0 });
@@ -1361,6 +1376,7 @@ console.log(`   勝率          ${(wins.length / taken.length * 100).toFixed(1)}
 console.log(`   每趟平均      ${pct(taken.reduce((a, t) => a + net(t), 0) / taken.length)}`);
 console.log(`   累積損益      ${totalPnL >= 0 ? '+' : '−'}${nf(Math.abs(totalPnL))} 元`);
 console.log(`   對本金報酬    ${pct(totalPnL / capital * 100)}  ${yrs >= 0.5 ? `(年化約 ${pct((Math.pow(1 + totalPnL / capital, 1 / yrs) - 1) * 100)})` : ''}`);
+if (_outFix) console.log(`   🗓️ 出場日不在大盤日曆上 ${_outFix} 筆 → 已挪到下一個大盤交易日(V77.7.2 以前這些部位會從權益曲線消失)`);
 console.log(`   📉 最大回撤    ${mdd.toFixed(2)}%  ← 中途最難熬的時候(⚠️ 這是會不會半路砍在最低點的關鍵)`);
 if (VAL) console.log(`   💎 價值濾網 VAL=${VAL}:候選裡「不知道」(那天還沒有可用財報 / 缺欄位)剔除 ${valNoData.toLocaleString()} 筆${VAL_CYC ? ` ・非循環產業剔除 ${valNotCyc.toLocaleString()} 筆` : ''}(⛔ 不當成通過)`);
 if (PARK) {
