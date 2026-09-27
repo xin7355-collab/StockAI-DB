@@ -141,7 +141,7 @@ const C = await pg.evaluate(() => {
   const saved = PRO._SIG_EDGE.close; PRO._SIG_EDGE.close = 1234567;
   const h2 = PRO._rodRulesHtml(D); PRO._SIG_EDGE.close = saved;
   const el = document.getElementById('rodRules');
-  return { h, changed: h !== h2 && /123\.5 萬/.test(h2), hasExit: h.includes(PRO._exitRuleName()), hasPicks: new RegExp('最多 ' + PRO._RECO_PICKS + ' 檔').test(h),
+  return { h, changed: h !== h2 && /\+123\.5(?!\d)/.test(h2) && !/\+123\.5(?!\d)/.test(h), hasExit: h.includes(PRO._exitRuleName()), hasPicks: new RegExp('最多 ' + PRO._RECO_PICKS + ' 檔').test(h),
            hasLot: h.includes((PRO._CAP_RULE.lot / 10000) + ' 萬'), has13: /13:00/.test(h), n: (h.match(/class="rodrule"/g) || []).length,
            onPage: !!el && el.innerHTML.length > 500, ma5: /ma5up/.test(h) };
 });
@@ -149,6 +149,7 @@ const C = await pg.evaluate(() => {
 ok(C.n === 4 && C.hasExit && C.hasPicks && C.hasLot && C.has13 && C.onPage && C.ma5,
   '㉒ 03 段三張紀律卡:進場(尾盤 13:00)/ 出場(讀 `_exitRuleName`)/ 資金(`_RECO_PICKS`、`_CAP_RULE.lot`);外部那條「5 日線」要對到本站 ma5up 的實測',
   `n=${C.n} exit=${C.hasExit} picks=${C.hasPicks} lot=${C.hasLot}`);
+// 🔁 V77.7.6 修長期紅燈:V77.6.7 起那個數字改放在括號「(… +X vs +Y 萬 …)」裡,後面接的是 vs 不是「萬」→ 只釘「數字有跟著變」
 ok(C.changed, '㉒b ⭐ 決定性:改 `_SIG_EDGE.close` 紀律卡的數字要跟著變(⛔ 不寫死)');
 
 // ── ㉓ 沒有魚那張卡 ─────────────────────────────────────────

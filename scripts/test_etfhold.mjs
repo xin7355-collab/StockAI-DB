@@ -13,7 +13,7 @@
  *   ⓑ 決策台:ETF 那一列⛔ 不可跟「抱滿」同一列;有 `[data-exitetf]` 且講「買了放著」;「今天要賣的(N 檔)」的 N 不算 ETF
  *   ⓒ `_ovDecide('0050')`:state `etfhold`、badge 含「ETF」,⛔ 不含「尾盤賣」「守住」
  *   ⓓ `_exitDistance('0050')` 回 `etf:true` 的空三條(⛔ 不回 null —— null 在呼叫端是「還沒辦法幫你看」)
- *   ⓔ 決定性對照:同一份 K 線把代號換成 '2330' → 必須出現「抱滿 40」(分流靠代號,不靠資料)
+ *   ⓔ 決定性對照:同一份 K 線把代號換成 '2330' → 必須出現「抱滿 N 天」(N = `_maxHold()`;分流靠代號,不靠資料)
  *   ⓕ 數字讀常數:改 `_ETF_HOLD_EDGE.n` 畫面要跟著變(⛔ 不寫死)
  *   ⓖ 靜態:`_exitMode` 對 ETF 不進出場狀態;文案只有 `_etfHoldNote` 一份(⛔ 消費端不可自己再寫一份「買了放著」數字)
  * 注入(逐一確認會紅):拿掉 `_invExitScan` 那行 continue → ⓐⓑ 紅;拿掉 `_ovDecide` 的 etfNote 分支 → ⓒ 紅
@@ -74,7 +74,7 @@ const R = await page.evaluate(async () => {
     // ⓓ / ⓔ
     const ed0 = app._exitDistance(rows, '0050'), ed2 = app._exitDistance(rows, '2330');
     out.ed0 = ed0 ? { etf: ed0.etf, level: ed0.level, lines: ed0.lines.length, maxd: ed0.maxd } : null;
-    out.ed2 = ed2 ? { etf: ed2.etf, level: ed2.level, due: ed2.maxd && ed2.maxd.due, n: ed2.maxd && ed2.maxd.n } : null;
+    out.ed2 = ed2 ? { etf: ed2.etf, level: ed2.level, due: ed2.maxd && ed2.maxd.due, n: ed2.maxd && ed2.maxd.n, mh: app._maxHold() } : null;
     // ⓒ
     const d0 = app._ovDecide(rows, '0050'), d2 = app._ovDecide(rows, '2330');
     out.d0 = d0 ? { state: d0.state, badge: d0.badge, why: String(d0.why || '').slice(0, 400), plan0: d0.plan && d0.plan[0] && d0.plan[0].t } : null;
@@ -102,7 +102,8 @@ ok('🚧 空過守門:掃到兩檔庫存(0050 + 2330),⛔ 沒有被「K 線不�
 ok('ⓐ 0050 ⛔ 不進 out/near/far,另列 `_invExitEtf`', !R.sellSyms.includes('0050') && !R.nearSyms.includes('0050') && !R.farSyms.includes('0050') && R.etf.includes('0050'), JSON.stringify({ sell: R.sellSyms, etf: R.etf }));
 ok('ⓐb 2330(同一份 K 線)照舊:抱了 55 天 → 進「今天要賣的」', R.sellSyms.includes('2330'), JSON.stringify(R.sellSyms));
 ok('ⓓ `_exitDistance(\'0050\')` 回 `etf:true` 的空三條(⛔ 不是 null)', !!(R.ed0 && R.ed0.etf === true && R.ed0.level === 'etf' && R.ed0.lines === 0 && !R.ed0.maxd), JSON.stringify(R.ed0));
-ok('ⓔ 決定性對照:同一份 K 線、代號 2330 → 抱滿 40 天到期(分流靠代號不靠資料)', !!(R.ed2 && !R.ed2.etf && R.ed2.due === true && R.ed2.n === 40), JSON.stringify(R.ed2));
+// 🔁 V77.7.6 最長天數跟著出場規則走(預設吊燈 ATR = 20)→ 釘「等於 `_maxHold()`」,⛔ 不寫死 40
+ok('ⓔ 決定性對照:同一份 K 線、代號 2330 → 抱滿上限到期(分流靠代號不靠資料)', !!(R.ed2 && !R.ed2.etf && R.ed2.due === true && R.ed2.n === R.ed2.mh && R.ed2.mh > 0), JSON.stringify(R.ed2));
 ok('ⓒ `_ovDecide(\'0050\')` state=etfhold、badge 含 ETF', !!(R.d0 && R.d0.state === 'etfhold' && /ETF/.test(R.d0.badge)), JSON.stringify(R.d0 && { s: R.d0.state, b: R.d0.badge }));
 ok('ⓒb 主卡文案⛔ 不含「尾盤賣」「守住」,而且講「買了放著」', !!(R.d0 && !/尾盤賣|守住/.test(R.d0.why + R.d0.badge) && /買了放著/.test(R.d0.why)), R.d0 && R.d0.why);
 ok('ⓒc 行動清單第一條是「買了放著」(⛔ 不是「今天尾盤賣」)', !!(R.d0 && /買了放著/.test(R.d0.plan0 || '')), R.d0 && R.d0.plan0);

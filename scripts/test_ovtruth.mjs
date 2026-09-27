@@ -40,8 +40,11 @@ ok(!/少賺一半以上/.test(src), '②b ⛔ 寫死的「少賺一半以上」�
 
 // ③
 const I = lit('_IDLE0050_EDGE');
-ok(!!I && I.long.on === 656 && I.long.wins === 16 && I.main.on === 417 && I.main.wins === 13,
-   '③ 閒錢停 0050:4 年 417 萬(13/17)・16 年 656 萬(16/17)', I ? JSON.stringify({ m: [I.main.on, I.main.wins], l: [I.long.on, I.long.wins] }) : 'null');
+// 🔁 V77.7.6 換預設後重跑(修好的日 K):釘**用意**(⛔ 不釘某一輪的值)—— 4 年那組一定要有配對勝場與回撤;16 年沒重跑就是 null,而畫面必須說出來
+const idleFn = src.slice(src.indexOf('_idle0050NoteHtml() {'), src.indexOf('_idle0050NoteHtml() {') + 1600);
+ok(!!I && I.main && I.main.on > 0 && I.main.off > 0 && I.main.wins >= 0 && I.main.wins <= I.main.paths && I.main.onDD > 0 && (I.long === null || (I.long.on > 0 && I.long.wins >= 0))
+   && (I.long !== null || /還沒重跑/.test(idleFn)),
+   '③ 閒錢停 0050:4 年有中位 / 配對勝場 / 回撤;16 年沒重跑時畫面要明說', I ? JSON.stringify({ m: [I.main.on, I.main.wins], l: I.long && [I.long.on, I.long.wins] }) : 'null');
 ok(!/on: 864|on: 445/.test(src), '③b ⛔ 記錯的 864 / 445 不可再出現在常數裡');
 
 // ④

@@ -306,7 +306,35 @@ const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPC
 const allTrades = [];        // {sym, key, inD, outD, ret, amt, entry, stop}
 let graceBlocked = 0;        // ⏳ 有幾個(交易·日)真的被寬限期擋下過(空過守門用)
 let cacheHit = false;
-if (TRADES_CACHE && fs.existsSync(TRADES_CACHE)) {
+// 🔄 V77.7.6 EXIT_SCHED=<json {日期:「出場:最長天數」}> + SCHED_CACHES=「出場:天數=快取路徑,…」
+//   使用者:「情勢改變時自動改成其它策略」→ 先回測「照排程換出場規則」會不會比固定用一套好。
+//   規則:**進場那天**排程指定哪一套,這一筆就用那一套的交易(出場日/報酬)—— 持有中⛔ 不中途換。
+//   每一套各自累積「這檔這招過去有沒有賺」(stat 鍵加上規則前綴),⛔ 不混用。
+//   ⛔ 不進 CACHE_KEY;不設時一個字都不變;排程裡出現沒給快取的規則 → exit 1。
+const EXIT_SCHED = process.env.EXIT_SCHED || '';
+let schedDays = null, schedRules = null;
+if (EXIT_SCHED) {
+    const sched = JSON.parse(fs.readFileSync(EXIT_SCHED, 'utf8'));
+    schedDays = Object.keys(sched).sort(); schedRules = schedDays.map(k => sched[k]);
+    const caches = new Map((process.env.SCHED_CACHES || '').split(',').filter(Boolean).map(s => { const i = s.indexOf('='); return [s.slice(0, i), s.slice(i + 1)]; }));
+    for (const r of new Set(schedRules)) {
+        if (!caches.has(r)) { console.error(`❌ EXIT_SCHED 用到規則 ${r} 但 SCHED_CACHES 沒給它的交易快取`); process.exit(1); }
+    }
+    for (const [r, path] of caches) {
+        const [ex, md] = r.split(':');
+        const want = JSON.stringify({ n: syms.length, ENTRY, EXIT: _EXIT_ALIAS[ex] || ex, MAXD: +md, STOP, GAPCAP, REENTRY, RE_MAX, GRACE, ..._ckStopFill, ..._ckForce });
+        const j = JSON.parse(fs.readFileSync(path, 'utf8'));
+        if (j.key !== want) { console.error(`❌ ${r} 的快取參數對不上(⛔ 拿別組參數的交易來套等於結論全錯)\n   要:${want}\n   是:${j.key}`); process.exit(1); }
+        let k = 0; for (const t of j.trades) { t._r = r; allTrades.push(t); k++; }
+        console.log(`🔄 EXIT_SCHED 載入 ${r}:${k.toLocaleString()} 筆`);
+    }
+    if (GATE === 'stock') { console.error('❌ EXIT_SCHED 還不支援 GATE=stock'); process.exit(1); }
+    cacheHit = true;
+    const cnt = {}; for (const r of schedRules) cnt[r] = (cnt[r] || 0) + 1;
+    console.log(`🔄 排程 ${schedDays.length} 段(${schedDays[0]} ~ ${schedDays[schedDays.length - 1]}):` + Object.entries(cnt).map(([r, n]) => `${r} ${n} 段`).join(' ・'));
+}
+const schedRuleOf = d => { if (!schedDays) return ''; let lo = 0, hi = schedDays.length - 1, a = 0; while (lo <= hi) { const m = (lo + hi) >> 1; if (schedDays[m] <= d) { a = m; lo = m + 1; } else hi = m - 1; } return schedRules[a]; };
+if (!EXIT_SCHED && TRADES_CACHE && fs.existsSync(TRADES_CACHE)) {
     try {
         const j = JSON.parse(fs.readFileSync(TRADES_CACHE, 'utf8'));
         // ⛔ 參數對不上一定要重掃 —— 拿別組參數的交易來套等於結論全錯
@@ -1103,6 +1131,10 @@ const sigOk = t => {
 //    第 T 天選股時,型態成績只用「**出場日 < T**」的已完成交易 ⇒ 零前視偏誤。
 const byIn = new Map();      // 進場日 → 候選交易
 for (const t of allTrades) { if (dIdx.has(t.inD)) (byIn.get(t.inD) || byIn.set(t.inD, []).get(t.inD)).push(t); }
+// 🔄 EXIT_SCHED:每一套規則各自一份「進場日 → 候選」(byIn 仍收全部,給 finFrac/valFrac 那類全體統計用)
+const byInR = new Map();
+if (EXIT_SCHED) for (const t of allTrades) { if (!dIdx.has(t.inD)) continue; let m = byInR.get(t._r); if (!m) byInR.set(t._r, m = new Map()); (m.get(t.inD) || m.set(t.inD, []).get(t.inD)).push(t); }
+const _rk = t => t._r ? t._r + '#' : '';   // 不設 EXIT_SCHED 時是空字串 → stat 鍵跟舊版一模一樣
 const byOut = new Map();     // 出場日 → 已完成交易(用來累積成績)
 for (const t of allTrades) { if (dIdx.has(t.outD)) (byOut.get(t.outD) || byOut.set(t.outD, []).get(t.outD)).push(t); }
 
@@ -1136,9 +1168,9 @@ for (let i = 0; i < days.length; i++) {
     live = live.filter(x => outIdx(x) > i);
     // (a) 先把「今天之前已出場」的交易計入成績(⛔ 今天出場的還不能用 —— 那是今天才知道的)
     if (i > 0) for (const t of (byOut.get(days[i - 1]) || [])) {
-        const s = (stat[`${t.sym}|${t.key}`] ||= { n: 0, sum: 0 });
+        const s = (stat[`${_rk(t)}${t.sym}|${t.key}`] ||= { n: 0, sum: 0 });
         s.n++; s.sum += t.ret;
-        const m = (mkt[t.key] ||= { n: 0, sum: 0 });
+        const m = (mkt[_rk(t) + t.key] ||= { n: 0, sum: 0 });
         m.n++; m.sum += t.ret;
     }
     if (i < YR_FROM) continue;
@@ -1178,14 +1210,14 @@ for (let i = 0; i < days.length; i++) {
     }
     // 📅 行事曆濾網:這一天不准開新倉(既有部位照原規則出場,⛔ 不受影響)
     if (CAL.length && !calOk(d, i)) { openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); continue; }
-    const todays = byIn.get(d) || [];
+    const todays = (EXIT_SCHED ? (byInR.get(schedRuleOf(d)) || new Map()).get(d) : byIn.get(d)) || [];
     // 🤝 同一檔今天有幾招同時觸發(共振)
     const hitCnt = {};
     for (const t of todays) hitCnt[t.sym] = (hitCnt[t.sym] || 0) + 1;
     // GATE=stock:這檔到昨天為止「任何一招」的成績(⛔ 不看今天觸發的是哪一招)
     const stockBest = GATE === 'stock' ? (sym => { let b = null; for (const k in stat) { if (k.startsWith(sym + '|')) { const s2 = stat[k]; if (s2.n >= MIN_N) { const v = s2.sum / s2.n; if (b === null || v > b.v) b = { n: s2.n, v }; } } } return b; }) : null;
     const cand = todays
-        .map(t => ({ t, s: (GATE === 'stock' ? (b => b ? { n: b.n, sum: b.v * b.n } : null)(stockBest(t.sym)) : stat[`${t.sym}|${t.key}`]), m: mkt[t.key] }))
+        .map(t => ({ t, s: (GATE === 'stock' ? (b => b ? { n: b.n, sum: b.v * b.n } : null)(stockBest(t.sym)) : stat[`${_rk(t)}${t.sym}|${t.key}`]), m: mkt[_rk(t) + t.key] }))
         .filter(x => x.s && x.s.n >= MIN_N && (x.s.sum / x.s.n) - COST > 0
                   && x.m && x.m.n >= MIN_MKT_N
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
@@ -1328,7 +1360,7 @@ if (process.env.TAKEN_OUT) {
         const i = t._i, d = t._d, b2 = yBr(i);
         return {
             d, sym: t.sym, key: t.key, ret: t.ret,
-            outD: t.outD, fx: t.fx || 0, dv: t.dv || 0,   // 🪜 V77.7.4 每筆機會成本 / 賣掉後錯失(trade_alpha_probe)要用
+            outD: t.outD, fx: t.fx || 0, dv: t.dv || 0, ...(t._r ? { r: t._r } : {}),   // 🪜 V77.7.4 每筆機會成本 / 賣掉後錯失(trade_alpha_probe)要用
             dow: new Date(d + 'T00:00:00Z').getUTCDay(),
             dom: +d.slice(8, 10),
             set: isSet(d) ? 1 : 0,
@@ -1517,6 +1549,7 @@ if (process.env.SUMMARY_OUT) {
     if (PARK) summary.park = Math.round(parkPnL);   // 🅿️ 停泊 0050 的損益(⛔ 不混進 cum)
     if (ROTATE) summary.rot = { mode: ROTATE, n: rotN, minHold: ROT_MIN };
     if (COST_X !== 1) summary.costX = COST_X;
+    if (EXIT_SCHED) { const c = {}; for (const t of taken) c[t._r] = (c[t._r] || 0) + 1; summary.sched = { file: EXIT_SCHED.split('/').pop(), taken: c }; }   // 🔄 實際成交各用了哪一套
     if (BEAR_EXIT || FORCE_EXIT) summary.forced = { bear: taken.filter(t => t.fx === 1).length, event: taken.filter(t => t.fx === 2).length };   // 🐻🚨 V77.6.8 實際成交裡被強制賣掉幾筆
     if (YEAR) Object.assign(summary, _yearSummary());
     fs.writeFileSync(process.env.SUMMARY_OUT, JSON.stringify(summary));

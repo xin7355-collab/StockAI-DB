@@ -44,7 +44,7 @@ ok('⓪e _keyLevels 的觸發價跟主卡同一個條件:⛔ 空頭不給、⛔ 
    /trigPx = \+_pb\.trig/.test(klv) && /!_pb\.loose/.test(klv) && /!this\._bearGate\(/.test(klv) && /if \(!\(cost > 0\)\)/.test(klv), '');
 
 const B = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
-const run = async (sym, inv) => {
+const run = async (sym, inv, rule) => {
     const page = await B.newPage({ viewport: { width: 390, height: 844 } });
     await page.addInitScript(() => {
         const inst = new Proxy({}, { get: (_t, k) => (k === 'getWidth' || k === 'getHeight') ? (() => 300) : (() => inst) });
@@ -53,8 +53,9 @@ const run = async (sym, inv) => {
     await page.route('**/*', r => (r.request().url().startsWith('file://') ? r.continue() : r.abort()));
     await page.goto(pathToFileURL(HTML).href, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForFunction(() => typeof app !== 'undefined' && !!app.analyze, null, { timeout: 30000 });
-    const r = await page.evaluate(async ([sym, inv]) => {
+    const r = await page.evaluate(async ([sym, inv, rule]) => {
         try { app.switchAppTab('diag'); } catch (_) { }
+        if (rule) app.settings.exitRule = rule;
         if (inv) app.inventory = [inv];
         await app.analyze(sym, true, false, true);
         await new Promise(r => setTimeout(r, 3500));
@@ -97,7 +98,7 @@ const run = async (sym, inv) => {
         o.peBand = !!document.getElementById('xrayPeBand');
         o.yld = (document.getElementById('xrayYield') || {}).textContent || '';
         return o;
-    }, [sym, inv]);
+    }, [sym, inv, rule]);
     await page.close();
     return r;
 };
@@ -117,13 +118,16 @@ ok('⑦ 事實數字還在(本益比 / 殖利率 / 自己的本益比位階)', /
 // ── 有庫存:現價在 5 日線下、但三條都沒破 ──
 const C0 = A.C;
 const bd = '2026-08-26';
-const H = await run('2330', { symbol: '2330', cost: +(C0 * 0.97).toFixed(2), shares: 2, buyDate: bd });
+// 🔁 V77.7.6 預設換成吊燈 ATR(線比較近)→ 這份真實 K 線上它剛好也破了,③ 就不再是「只破 5 日線」的情境。
+//   ③ 要測的是「5 日線⛔ 不可觸發出場」,⛔ 不是哪一條出場 → 釘一條離得遠的(唐奇安 40),再用 ③0 守門確認三條真的都沒破。
+const H = await run('2330', { symbol: '2330', cost: +(C0 * 0.97).toFixed(2), shares: 2, buyDate: bd }, 'don40');
 ok('②0 測資守門:現價真的在 5 日線下(⛔ 否則 ③ 空過)', H.ma5 > 0 && H.C < H.ma5, JSON.stringify([H.C, H.ma5]));
 ok('② 有庫存:總覽看得到的地方⛔ 沒有舊劇本字眼', H.seen.length > 300 && !BAD.test(H.seen), (H.seen.match(BAD) || [])[0]);
 const hard = H.ed && H.ed.lines.find(l => l.k === 'hard'), rule = H.ed && H.ed.lines.find(l => l.k === 'rule');
 ok('②b 摺疊區列出三條出場:你設定的線 / 抱滿 N 天 / 硬停損(數字 = _exitDistance)',
    hard && rule && H.fold.includes(hard.v.toFixed(2)) && H.fold.includes(rule.v.toFixed(2)) && /抱滿 \d+ 個交易日/.test(H.fold),   // 🔁 V77.6.5 天數跟著出場規則走(預設 40)
    JSON.stringify({ hard: hard && hard.v, rule: rule && rule.v, fold: H.fold.slice(0, 400) }));
+ok('③0 測資守門:三條出場線都在現價下面(⛔ 否則 ③ 量到的不是 5 日線)', !!(H.ed && H.ed.lines.length && H.ed.lines.filter(l => l.v != null).every(l => l.v < H.C)), JSON.stringify([H.C, H.ed && H.ed.lines]));
 ok('③ ⭐ 跌破 5 日線 ⛔ 不可讓 _exitMode.on 翻成出場', H.exitOn === false, H.exitOn);
 ok('④ 🔔 盯價只盯三條出場的價格線(⛔ 沒有 5 日線 / 前高 / 月線)',
    H.trig.length >= 1 && H.trig.every(t => /硬停損|唐奇安|ATR|回落|出場線|日線/.test(t.label) && !/5 日線|前高|月線/.test(t.label)),

@@ -5,8 +5,9 @@
  *   ② 最長天數三份實作一致(index.html `_MAX_HOLD_BY_RULE` / pro.html / auto_trade.py `MAX_HOLD_BY_RULE`)
  *   ③ 唐奇安 40 日三份實作一致(App `_exitLevelAt` / auto_trade.py `exit_line` / pro.html `_settleReplay`)
  *   ④ 決策台:大盤嚴格空頭 → 「不開新倉」,名單收進摺疊;關掉守門 → 回到原本清單(決定性對照)
- *   ⑤ 一次性搬家:存著舊預設 'don' → don40;已搬過而且自己選回 don 的 → 尊重
- *   ⑥ 策略變更彈窗:最新一筆有 backBear:false,「換回舊的」同時關掉空頭守門
+ *   ⑤ 一次性搬家(兩代):存著舊預設 'don' → don40(V77.6.5)→ atr2(V77.7.6);存著上一任 don40 → atr2;
+ *      已搬過而且自己選回舊的 → 尊重
+ *   ⑥ 策略變更彈窗:「換回舊的」= 最新那筆的 back;backBear:false 的那一代才同時關掉空頭守門
  *   ⑦ playbook_scan 直接呼叫 App 的 `_bear60Of`(⛔ 不另寫公式)、auto_trade 讀 `mkt.bear60` 擋買進
  * 注入(逐一確認會紅):_bear60Of 把 < 改成 <= / _MAX_HOLD_BY_RULE 改 30 / 決策台拿掉 gate 分支 / 搬家不設旗標
  */
@@ -62,15 +63,22 @@ const mig = async (saved) => {
     await pg.addInitScript(v => { try { localStorage.setItem('proTerminalSettings', JSON.stringify(v)); } catch (_) {} }, saved);
     await pg.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
     await pg.waitForFunction(() => typeof app !== 'undefined' && app.settings && app.settings.exitMigr765 !== undefined, null, { timeout: 30000 }).catch(() => {});
-    const r = await pg.evaluate(() => ({ k: app._exitRuleKey(), flag: app.settings.exitMigr765, mh: app._maxHold() }));
+    const r = await pg.evaluate(() => ({ k: app._exitRuleKey(), flag: app.settings.exitMigr765, flag2: app.settings.exitMigr776, mh: app._maxHold() }));
     await pg.close(); return r;
 };
 const M1 = await mig({ exitRule: 'don' });
 const M2 = await mig({ exitRule: 'don', exitMigr765: 1 });
-const M3 = await mig({ exitRule: 'atr2' });
-ok('⑤ 存著舊預設 don 的人 → 搬成 don40、最長 40 天、記旗標', M1.k === 'don40' && M1.flag === 1 && M1.mh === 40, JSON.stringify(M1));
+const M3 = await mig({ exitRule: 'trail8' });
+const M4 = await mig({ exitRule: 'don40', exitMigr765: 1 });
+const M5 = await mig({ exitRule: 'don40', exitMigr765: 1, exitMigr776: 1 });
+// ⭐ 用意:搬家只動「存著某一代預設」的人、而且每一代只動一次;最後落在「現行預設」(= 沒存設定的人拿到的那個)
+const DEF = (await mig({})).k;
+ok('⑤0 空過守門:現行預設讀得到', !!DEF && DEF !== 'don' && DEF !== 'don40', DEF);
+ok('⑤ 存著最舊預設 don 的人 → 兩代搬家都跑、落在現行預設、兩個旗標都記', M1.k === DEF && M1.flag === 1 && M1.flag2 === 1, JSON.stringify(M1));
 ok('⑤b 已搬過、自己選回 don 的人 → ⛔ 不再動(最長 20 天)', M2.k === 'don' && M2.mh === 20, JSON.stringify(M2));
-ok('⑤c 自己選 ATR 的人 → ⛔ 一個都不動', M3.k === 'atr2' && M3.mh === 20, JSON.stringify(M3));
+ok('⑤c 自己選移動停利的人 → ⛔ 一個都不動', M3.k === 'trail8' && M3.mh === 20, JSON.stringify(M3));
+ok('⑤d 存著上一任預設 don40 的人 → 換成現行預設、記旗標', M4.k === DEF && M4.flag2 === 1, JSON.stringify(M4));
+ok('⑤e 已搬過、自己選回 don40 的人 → ⛔ 不再動(最長 40 天)', M5.k === 'don40' && M5.mh === 40, JSON.stringify(M5));
 
 const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
 const errs = []; page.on('pageerror', e => errs.push(e.message));
@@ -123,7 +131,8 @@ ok('④e 💰「閒錢停 0050」那一行在(一般清單與空頭那格都有)
    /data-idle0050="1"/.test(R.gBull.buy) && /data-idle0050="1"/.test(R.gOn.buy) && /自動下單不會/.test(R.gBull.buy));
 ok('④f 🔬 那一行的數字讀 `_IDLE0050_EDGE`(改常數要跟著變)', /98765 萬/.test(R.idleInj));
 ok('④d ⛔ 空頭那一格只擋買進 —— 不可叫人賣', !/(全部賣|出清|減碼)/.test(R.gOn.buy));
-ok('⑥ 最新一筆策略變更:換回舊的 = don + 關掉空頭守門', R.chg.back === 'don' && R.chg.backBear === false && /toggleBearGate\(false, true\)/.test(R.modal), JSON.stringify(R.chg));
+ok('⑥ 最新一筆策略變更:「換回舊的」按鈕真的換回 back 那條;空頭守門只在 backBear:false 時才關',
+   !!R.chg.back && R.modal.includes(`setExitRule('${R.chg.back}')`) && (R.chg.backBear === false) === /toggleBearGate\(false, true\)/.test(R.modal), JSON.stringify(R.chg));
 ok('⑧ 無 pageerror', !errs.length, errs.join(' | '));
 console.log(fails.length ? `\n❌ ${fails.length} 條沒過` : '\n✅ BEARGATE_PASS');
 process.exit(fails.length ? 1 : 0);

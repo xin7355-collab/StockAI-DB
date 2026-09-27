@@ -146,7 +146,7 @@ ok('⑧b 🚨 跳出來的當下**還沒蓋章**(⛔ 不可 render 就蓋)', R.s
 ok('⑨ 按「知道了」才蓋章', R.stampAfterAck && R.stampAfterAck !== 'V70.0.0');
 ok('⑨b 按了之後視窗會關掉', R.hiddenAfterAck === true);
 ok('⑩ 已看過 → ⛔ 不再跳', R.seenShown === false);
-ok('⑪ 預設 = `_exitRuleKey` 定義裡那一條(唐奇安 40 日)', R.defRule === DEF && /^don/.test(DEF), R.defRule);
+ok('⑪ 預設 = `_exitRuleKey` 定義裡那一條(而且是 App 認得的規則)', R.defRule === DEF && /^(don|don40|atr2|trail8|ma5)$/.test(DEF), R.defRule);
 // ⭐ V75.3.0 起改成跟**資料本身**比對(⛔ 別再寫死 'atr2')——
 //   這條要釘的是「按了『換回舊的』會換成那一筆宣告的 `back`」,⛔ 不是「一定是 ATR」。
 //   🚨 上一版寫死 atr2,於是 V75.3.0 換了一筆進來就整排假紅(斷言釘住實作,不是用意)。

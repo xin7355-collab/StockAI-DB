@@ -111,7 +111,9 @@ const snap = async (page) => page.evaluate(() => {
         bands: sr ? [...sr.querySelectorAll('[data-supplyband]')].map(e => e.dataset.supplyband) : [],
         bell: (cc.querySelector('[data-bell]') || {}).dataset?.bell ?? null,
         stashN: (app._armTrigStash && String(app._armTrigStash.sym) === String(app.currentSymbolId)) ? app._armTrigStash.triggers.length : 0,
-        K: app._keyLevels ? { sym: app._keyLevels.sym, sl: app._keyLevels.slPx, buy: app._keyLevels.buyPx, add: app._keyLevels.addPx, C: app._keyLevels.C } : null,
+        K: app._keyLevels ? { sym: app._keyLevels.sym, sl: app._keyLevels.slPx, buy: app._keyLevels.buyPx, add: app._keyLevels.addPx, C: app._keyLevels.C,
+              // 🎯 V76.1.0 起尺上多一個「估值對照」,它的唯一來源是 `_instTargetStash.mid`(同樣⛔ 不現算)→ 一起進比對池
+              inst: (app._instTargetStash && String(app._instTargetStash.sym) === String(app.currentSymbolId)) ? app._instTargetStash.mid : null } : null,
         stash: (app._upsideStash && Array.isArray(app._upsideStash.list)) ? app._upsideStash.list.filter(x => +x.sup > 0).slice(0, 2).map(x => `${Math.round(x.lo)}~${Math.round(x.hi)}`) : [],
         whyTxt: txt(why), whyParent: why.parentElement.id, whyInDetails: !!why.closest('#ovMoreWrap'),
         stripOuter: (document.querySelector('#__gstrip [data-gaugestrip]') || {}).outerHTML || '',
@@ -167,7 +169,7 @@ ok('② 位置類(基本面/預期)與大盤那格**不可**出現 text-red/text
 //    → 改成比**數值集合**:尺上每一個價位都必須在 `_keyLevels` 那組數字裡找得到(跟叫什麼名字無關)。
 ok('⑥ 價格尺每個標記價位 == _keyLevels 的數字(⛔ 顯示端不自己算;注入:自己算前高 → 紅)',
    (() => { if (!A.K || A.marks.length < 3) return false;
-       const pool = [A.K.sl, A.K.C, A.K.buy, A.K.add].filter(x => Number.isFinite(+x)).map(x => +(+x).toFixed(2));
+       const pool = [A.K.sl, A.K.C, A.K.buy, A.K.add, A.K.inst].filter(x => Number.isFinite(+x)).map(x => +(+x).toFixed(2));
        return A.marks.every(([, v]) => pool.some(p => Math.abs(p - v) < 0.011)); })(),
    JSON.stringify({ marks: A.marks, K: A.K }));
 ok('⑦ ⭐ 套牢帶 == _upsideStash 同一層的 lo~hi(注入:自己呼叫 _overheadSupply → 紅)', A.bands.length >= 1 && A.bands.every(b => A.stash.includes(b)), JSON.stringify({ bands: A.bands, stash: A.stash }));

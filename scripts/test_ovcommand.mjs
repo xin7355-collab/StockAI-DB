@@ -61,6 +61,10 @@ const R = await page.evaluate(async () => {
                  inFold: !!(w && w.closest('#ovMoreWrap')) };
     };
     A.inventory = [];
+    // 🔁 V77.7.6 預設換成吊燈 ATR 2 倍(線比較近)→ 這份真實 K 線剛好在「成本 900・5 根前買」時就破線,
+    //   而這幾個情境要測的是版面與「續抱 / 減碼 / 抱滿」的分流,⛔ 不是哪一條出場 → 釘一條離得遠的(唐奇安 40)。
+    //   ⚠️ ⑤ 那條的期望字串照樣從 `_exitRuleKey()` 現讀,所以不受影響。
+    A.settings.exitRule = 'don40';
     // ⏳ V77.5.1 買進日一律用「最後一根往前 5 根」—— 寫死 '2026-06-02' 會隨時間抱滿 20 天,
     //   那時 state 會(正確地)變成「抱滿 20 天・今天尾盤賣」,而這幾個情境要測的是續抱/減碼。
     const _ad = A.activeData; const BUY = String(_ad[_ad.length - 6].date).replace(/\//g, '-').slice(0, 10);

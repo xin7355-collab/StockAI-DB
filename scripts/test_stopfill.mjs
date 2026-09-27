@@ -31,7 +31,7 @@ for (const [k, v] of [['STOPFILL', 'clsoe'], ['SIZING', 'volpr']]) {
 }
 const SRC = strip(readFileSync('scripts/portfolio_backtest.mjs', 'utf8'));
 // ⓒ
-ok(/const _ckStopFill = STOPFILL !== 'stop' \? \{ STOPFILL \} : \{\};/.test(SRC) && /CACHE_KEY = JSON\.stringify\(\{[^}]*GRACE, \.\.\._ckStopFill \}\)/.test(SRC), 'ⓒ STOPFILL 只在非預設時進 CACHE_KEY');
+ok(/const _ckStopFill = STOPFILL !== 'stop' \? \{ STOPFILL \} : \{\};/.test(SRC) && /CACHE_KEY = JSON\.stringify\(\{[^}]*GRACE, \.\.\._ckStopFill(, \.\.\._ckForce)? \}\)/.test(SRC), 'ⓒ STOPFILL 只在非預設時進 CACHE_KEY');
 // ⓓ
 ok(/const money = t => \(t\._amt \|\| LOT\) \* net\(t\) \/ 100;/.test(SRC) && !/const money = t => LOT \*/.test(SRC), 'ⓓ 累積損益用每一筆自己的投入金額');
 // ⓔ
@@ -46,7 +46,7 @@ ok(/const money = t => \(t\._amt \|\| LOT\) \* net\(t\) \/ 100;/.test(SRC) && !/
 ok(/a\.stopFill === 'touch' \? \(L\(j\) > 0 && L\(j\) <= stop\) : c <= stop/.test(SRC)
     && /exitP = a\.stopFill === 'close' \? c/.test(SRC)
     && /a\.stopFill === 'touch' \? Math\.min\(O\(j\) > 0 \? O\(j\) : stop, stop\)/.test(SRC), 'ⓕ 三種口徑分支都在(close 用收盤、touch 用 min(開盤, 停損))');
-ok(/stopFill: STOPFILL \}\);/.test(SRC), 'ⓕ2 STOPFILL 真的傳進掃描(沒傳 = 三種跑出來一模一樣)');
+ok(/stopFill: STOPFILL\s*[,}]/.test(SRC), 'ⓕ2 STOPFILL 真的傳進掃描(沒傳 = 三種跑出來一模一樣)');
 
 // ⓖ V77.6.0 全站改成收盤成交(使用者選「全站改算法重算」)
 ok(/const STOPFILL = process\.env\.STOPFILL \|\| 'close';/.test(SRC), 'ⓖ portfolio_backtest 預設 = close(stop 只留給重現舊數字)');
@@ -92,9 +92,14 @@ ok(/const STOPFILL = process\.env\.STOPFILL \|\| 'close';/.test(SRC), 'ⓖ portf
     ok(R.has, 'ⓗ 🚧 空過守門:`_STOPFILL_EDGE` 有唐奇安與 ATR 兩列');
     const E = R.E || { rows: { don: { close: {}, touch: {} }, atr2: { close: {}, touch: {} } } };
     ok(R.set0.includes(`${E.rows.don.close.med}</b>`) && R.set0.includes(`${E.rows.don.touch.med}</b>`) && R.set0.includes(`${E.rows.atr2.close.med}</b>`) && R.set0.includes(`${E.rows.atr2.touch.med}</b>`), 'ⓗ2 設定中心那段印出四格(兩種出場 × 兩種賣法)');
-    ok(R.setInj.includes('987654') && R.setInj.includes('876543') && R.setInj.includes('765432') && R.deckInj.includes('987654') && R.deckAtrInj.includes('876543'), 'ⓗ3 數字讀常數(決定性對照:改常數畫面要跟著變,⛔ 不可寫死)');
-    ok(/停損別掛觸價單/.test(R.deckAtr) && /選 ATR 的人停損別掛觸價單/.test(R.setAtr) && /你選的是 ATR 追蹤/.test(R.setAtr), 'ⓗ4 選 ATR 的人看得到「⛔ 停損別掛觸價單」(決策台一行 + 設定中心)');
-    ok(!/停損別掛觸價單/.test(R.deckDon) && /智慧單盤中碰到就賣/.test(R.deckDon), 'ⓗ5 唐奇安那行⛔ 不可講 ATR 的警告(兩種出場結論不同)');
+    // 🔁 V77.7.6 修好資料後只有「現行預設」那一列是新的,唐奇安那兩列收進「📜 修資料前」摺疊(⛔ 不可跟新的互比)
+    //   → 決策台一行只替「有新數字」的規則講結論;舊規則只指路到設定中心
+    ok(R.setInj.includes('987654') && R.setInj.includes('876543') && R.setInj.includes('765432') && R.deckAtrInj.includes('876543'), 'ⓗ3 數字讀常數(決定性對照:改常數畫面要跟著變,⛔ 不可寫死)');
+    const A2 = E.rows.atr2, worse = A2.touch.med < A2.close.med;
+    ok(R.deckAtr.includes(`${A2.close.med}</b>`) && R.deckAtr.includes(`${A2.touch.med}</b>`) && (worse ? /尾盤確認再賣/.test(R.deckAtr) : /智慧單比較好/.test(R.deckAtr)) && /你用的是現行預設/.test(R.setAtr),
+       'ⓗ4 選吊燈 ATR 的人:決策台一行印兩種賣法的數字,結論方向跟數字一致(設定中心也講)');
+    ok(!/吊燈/.test(R.deckDon) && /盤中碰到就賣/.test(R.deckDon) && !/\d+<\/b> 萬/.test(R.deckDon), 'ⓗ5 舊規則(唐奇安 20,只有修資料前的數字)⛔ 不可講吊燈的結論、⛔ 不給舊數字,只指路');
+    ok(/修資料前/.test(R.set0) && /<details/.test(R.set0), 'ⓗ5b 修資料前的兩列收進摺疊並標明');
     ok(/一行都沒改/.test(R.set0), 'ⓗ6 寫明「自動下單與智慧單的做法沒改」(使用者選的:只寫出差距)');
     const IX = readFileSync('index.html', 'utf8');
     ok((IX.match(/data-stopfilldeck="1">\$\{this\._stopFillNoteHtml\('deck'\)\}/g) || []).length === 2 && /id="stopFillNote"/.test(IX), 'ⓗ7 決策台兩處 + 設定中心容器都接上');

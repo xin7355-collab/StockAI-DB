@@ -56,6 +56,9 @@ const R = await page.evaluate(async () => {
         rows.push({ date: d, open: c, high: c + 1, low: c - 1, close: c, volume: 1000 });
     }
     const sym = '9999';
+    // 🔁 V77.7.6 預設換成吊燈 ATR(出場線本身就用 `_atrTR14`)→ 下面 ④⑧ 要「只換今天的振幅」就得釘一條不吃 ATR 的出場線,
+    //   否則改振幅會連出場線一起動,量到的不是門檻。⭐ 這裡測的是「距離 ÷ 今天振幅」的門檻,⛔ 不是哪一條出場。
+    app.settings.exitRule = 'don';
     app.currentSymbolId = '0000';               // ⚠️ 刻意不是這檔 → 驗 `ind` 走 {} 那條(陷阱 #19)
     const setInv = inv => { app._getInventory = () => inv; };
     const buyDate = rows[45].date.replace(/\//g, '-');

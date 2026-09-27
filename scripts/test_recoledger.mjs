@@ -180,8 +180,8 @@ ok(!/_fishRebuild\(|_fishBasketRender\(|_fishNote\(|_rodWhyHtml\(|_fishSetup\(/.
 const IDX = readFileSync('index.html', 'utf8');
 const iBlk = IDX.slice(IDX.indexOf('\n    _exitRuleKey() {'), IDX.indexOf('\n    _exitRuleKey() {') + 300);
 const pBlk = SRC.slice(SRC.indexOf('  _exitRule() {'), SRC.indexOf('  _exitRule() {') + 500);
-// ⚠️ V77.6.5 pro.html 那段多了一行「舊預設 don 搬家成 don40」→ 那一行講的是**舊值**,比預設時要排除
-const g = x => (x.split('\n').filter(l => !/exitMigr765/.test(l) && !/^\s*\/\//.test(l)).join('\n').match(/'(don40|don|atr2|trail8|ma5)'/g) || []).map(v => v.slice(1, -1));
+// ⚠️ V77.6.5 / V77.7.6 pro.html 那段多了「一次性搬家」的行(exitMigr765 / exitMigr776)→ 那些行講的是**舊值**,比預設時要排除
+const g = x => (x.split('\n').filter(l => !/exitMigr7\d\d/.test(l) && !/^\s*\/\//.test(l)).join('\n').match(/'(don40|don|atr2|trail8|ma5)'/g) || []).map(v => v.slice(1, -1));
 ok(g(iBlk).length >= 2 && g(pBlk).length >= 2 && new Set([...g(iBlk), ...g(pBlk)]).size === 1,
   '🚪⑧ 🚨 pro.html 的出場預設要跟 index.html 一模一樣(⛔ 不一致 = 兩邊用不同規則,而且畫面看不出來)',
   `index=${g(iBlk)} pro=${g(pBlk)}`);

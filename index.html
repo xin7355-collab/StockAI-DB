@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.7.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.7.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.7.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.7.6</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -912,9 +912,9 @@
                     <!-- 🛑 V77.6.0 這段說明⛔ 不再寫死數字 —— 由 `_exitRuleDescHtml()` 從 `_EXIT_EDGE.rob` 帶入(重跑回測只改常數) -->
                     <p id="exitRuleDesc" class="text-[10px] text-gray-500 leading-snug"></p>
                     <div class="grid grid-cols-1 gap-1.5" id="exitRuleBtns">
-                        <button onclick="app.setExitRule('don40')" id="btn_exit_don40" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">🐢 唐奇安 40 日低點・最長抱 40 天(預設)<span id="exitRuleSub_don40" class="block text-[9px] font-normal text-gray-500"></span></button>
-                        <button onclick="app.setExitRule('don')" id="btn_exit_don" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">🐇 唐奇安 20 日低點・最長抱 20 天(舊預設)<span id="exitRuleSub_don" class="block text-[9px] font-normal text-gray-500"></span></button>
-                        <button onclick="app.setExitRule('atr2')" id="btn_exit_atr2" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">🕯️ ATR 追蹤停利<span id="exitRuleSub_atr2" class="block text-[9px] font-normal text-gray-500"></span></button>
+                        <button onclick="app.setExitRule('atr2')" id="btn_exit_atr2" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">🕯️ 吊燈 ATR 2 倍・最長抱 20 天(預設)<span id="exitRuleSub_atr2" class="block text-[9px] font-normal text-gray-500"></span></button>
+                        <button onclick="app.setExitRule('don40')" id="btn_exit_don40" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">🐢 唐奇安 40 日低點・最長抱 40 天(舊預設)<span id="exitRuleSub_don40" class="block text-[9px] font-normal text-gray-500"></span></button>
+                        <button onclick="app.setExitRule('don')" id="btn_exit_don" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">🐇 唐奇安 20 日低點・最長抱 20 天<span id="exitRuleSub_don" class="block text-[9px] font-normal text-gray-500"></span></button>
                         <button onclick="app.setExitRule('trail8')" id="btn_exit_trail8" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">📉 移動停利 8%<span id="exitRuleSub_trail8" class="block text-[9px] font-normal text-gray-500"></span></button>
                         <button onclick="app.setExitRule('ma5')" id="btn_exit_ma5" class="text-left px-2.5 py-2 text-[11px] font-bold rounded border border-gray-600 bg-gray-800 text-gray-300">📏 跌破 5 日線(舊版)<span id="exitRuleSub_ma5" class="block text-[9px] font-normal text-gray-500"></span></button>
                     </div>
@@ -4436,6 +4436,13 @@ const app = {
             if (!this.settings.exitMigr765) {
                 if (this.settings.exitRule === 'don') this.settings.exitRule = 'don40';
                 this.settings.exitMigr765 = 1;
+                try { localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings)); } catch (_) {}
+            }
+            // 🔁 V77.7.6 預設換成「吊燈 ATR 2 倍・最長 20 天・大盤空頭不開新倉」(修好日 K 後 4 年 179 → 324 萬、16 年 285 → 494 萬):
+            //   存著上一任預設 'don40' 的人換一次;⛔ 只換一次、⛔ 自己選 唐奇安20 / 移動停利 / 5 日線的不動。pro.html `_exitRule()` 同一個旗標。
+            if (!this.settings.exitMigr776) {
+                if (this.settings.exitRule === 'don40') this.settings.exitRule = 'atr2';
+                this.settings.exitMigr776 = 1;
                 try { localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings)); } catch (_) {}
             }
         }
@@ -8642,8 +8649,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.7.5',
+    _APP_VERSION: 'V77.7.6',
     _CHANGELOG: [
+        { v: 'V77.7.6', d: ['🔁 <b>決策台預設換成「吊燈 ATR 2 倍・最長抱 20 天・大盤空頭不買」</b>(你說「以現在最厲害的執行」):用修好的日 K 重測,近 4 年 179 → 324 萬、16 年 285 → 494 萬,兩段都是 17 條全贏上一任;⚠️ 仍輸 0050 含息、而且 2011~2020 那十年反而比較差。開 App 會跳一次說明,可一鍵換回舊的。', '🔄 「情勢變了自動換規則」回測過了:贏得過隨機亂換,但<b>贏不了固定用最強那一套</b>(214~263 vs 324 萬)→ 沒有做成自動換。', '🛠️ 自動下單同步換成新出場;吊燈 ATR 的出場線改用<b>進場那天的 ATR</b>(跟回測、自動下單同一把尺)。'] },
         { v: 'V77.7.5', d: ['🧪 <b>用修好的日 K 重新檢查決策台那一套</b>:現行做法(唐奇安 40 日・最長抱 40 天・大盤空頭不買)4 年只有約 179 萬,輸 0050 含息;出場改快的做法(移動停利 8% 或 ATR 吊燈,最長 20 天)明顯比較好,但它的優勢集中在 2021 年以後。⚠️ 預設<b>還沒換</b>,等你決定。', '🔬 實測總表新增 5 條:換股 / 空頭只賣虧損 / 多檔 ETF 基準 / 每筆跟 0050 比 / 成本加倍;「空頭全賣」那條在修好的資料上結論翻了,已改寫。'] },
         { v: 'V77.7.4', d: ['📤 <b>實測總表匯出改成「好讀」的順序</b>:每一條先講<b>判定</b>(✅ 實測支持 / ⛔ 不支持 / 🧭 回測方法的坑 / ⏳ 還測不了),再講數字、怎麼用、完整說明,最後才是給程式維護用的技術備註;「做多」「配置」這類速記翻成白話,「六道關卡」「高原」「安慰劑」先解釋一次。', '🧪 回測工具新增:多檔 ETF 基準並排(0050 / 科技 / 半導體 / 中小 / 高股息)、每一筆跟 0050 比的機會成本、換股(錢不夠時賣掉最弱那檔)、成本加倍壓力測試。結論在下一版一起更新。'] },
         { v: 'V77.7.3', d: ['📤 <b>產業作戰室 → 實測總表 多一顆「匯出給 AI」</b>:把全部(或你搜尋到的那幾條)回測結論整理成一份文字,可以📋 複製或⬇️ 下載檔案,拿去問 ChatGPT / Claude / Gemini。開頭會自動附上「回測方法」與「提問範本」,避免 AI 把實測沒用的再推薦一次、或自己編數字。', '💡 最好的問法:<b>一次只問一個主題</b>(先搜「出場」再匯出),AI 回給你的新點子貼回來給我,先回測過關才上線。'] },
@@ -8845,13 +8853,6 @@ ${list}
         { v: 'V76.4.2', d: [
             '🏭 <b>上櫃股的產業別再補 ~1,600 檔</b> —— 上一版的備援接上了,但只補進 327 檔。真因不是資料缺,是<b>同一個產業兩邊寫法不同</b>:資料源給「半導體<b>業</b>」「電腦<b>及週邊設備</b>業」,而本站的對照表存的是「半導體」「電腦週邊」→ 字串直接比當然對不上。現在會自動把「業/工業/事業」那種尾巴對齊。',
             '📋 log 也改成分開數:「ETF 這種本來就沒有產業別的幾檔」跟「<b>真的</b>對不到代碼的幾檔」——以前混在一起,真的漏接會被 1,600 檔淹掉。',
-        ] },
-        { v: 'V76.4.1', d: [
-            '🧱 <b>報告頁與「📈 個股數據速覽」那張圖拿掉了卡片外框</b> —— 你問「設計上一定要有框框嗎?沒有框框可以放的東西比較多」,量過之後你是對的:那張圖左右被框吃掉 54px(內容只佔 86%),報告頁最深的一段左右被吃掉 40px(390 的手機只剩 310)。現在改成「標題 + 一條細分隔線」分段,<b>資料一個字都沒刪</b>,但那張圖每一行多 52px、報告頁每一行多 24~26px。',
-            '📐 <b>判準寫下來了:框如果在講事情就留,只是把東西圍起來的就拿掉</b> —— 所以 ⚠️ 警示用的左邊色條、按鈕、可以打字的框、量條的底槽、一格一筆的價位格<b>全部保留</b>;拿掉的只有「卡片底色 + 四周邊框 + 圓角」那一種。',
-            '🐛 <b>修掉「套牢區 957~980 佔 2%957.46」那個疊字</b>(你截圖裡三列都疊)—— 註記字以前沒有任何寬度限制,直接印到價格數字上面。現在名稱與註記一律切在數字之前。',
-            '🎨 給外部 AI 的做圖提示詞也同步改成無框 —— 不然你產出來的那張圖會跟本站這張長得不一樣。',
-            '⏭️ 其他頁面還沒改(你說先看這一頁)——看過覺得可以,再照同一套推過去。',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -21096,50 +21097,54 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _EXIT_EDGE: {
         n: 28,
         win: '2022-09 ~ 2026-09(49 個月,含 2022 那一段大跌)',
-        // 🛑 V77.6.0 全部用**收盤價成交**重跑(舊版記成「剛好賣在停損價」,收盤跌破那天其實賣不到,高估了)。
-        //   rows / base = 一條路徑(W=240);rob = 17 條路徑中位。b0050 = 17 條路徑各自同窗口 0050 的中位。
-        fill: 'close', asof: '2026-09-25',
-        cfg: '600 檔・每天最多 2 檔・每筆本金 15%・訊號日尾盤進場・停損取「進場 −5%」與訊號日低點<b>較低(較寬)</b>的・<b>停損用收盤價成交</b>・最長抱 20 個交易日・<b>已扣來回成本 0.44%</b>・本金 100 萬',
-        b0050: 286.5,
-        base: { k: 'ma5', t: '跌破 5 日線', p: 70.8, dd: 44.9, per: 0.29 },
+        // 🧱 V77.7.6 全部用**修好的日 K**(陷阱 #46)重跑:收盤成交・股利 + 二代健保・同一套 🧬 選股,只換出場。
+        //   rows / base = 一條路徑(W=240);rob = 17 條路徑中位。b0050 = 17 條路徑各自同窗口 0050(含息)的中位。
+        //   ⚠️ V77.7.5 以前的數字(唐奇安 40 日 409 萬等)是在**還原價混進日 K** 的資料上跑的,⛔ 不可跟這一組互比。
+        fill: 'close', asof: '2026-09-27',
+        cfg: '600 檔・每天最多 2 檔・每筆本金 15%・訊號日尾盤進場・停損取「進場 −5%」與訊號日低點<b>較低(較寬)</b>的・<b>停損用收盤價成交</b>・最長抱 20 個交易日(唐奇安 40 日那列 40 天)・大盤嚴格空頭不開新倉・含股利與二代健保・<b>已扣來回成本 0.44%</b>・本金 100 萬',
+        b0050: 349.5,
+        base: { k: 'ma5', t: '跌破 5 日線', p: 138.9, dd: 40.7, per: 0.54 },
         rows: [
-            // 🔁 V77.6.5 新預設那一組(⚠️ 它另外帶「最長 40 天 + 大盤嚴格空頭不開新倉」;其他三列是最長 20 天、空頭照買)
-            { k: 'don40',  t: '跌破近 40 日最低(唐奇安)+ 最長 40 天 + 空頭不開新倉', p: 441.6, dd: 28.5, per: 4.49 },
-            { k: 'don',    t: '跌破近 20 日最低(唐奇安)',  p: 152.4, dd: 40.1, per: 1.27 },
-            { k: 'atr2',   t: '最高收盤 − 2×ATR(ATR 追蹤)', p: 203.4, dd: 37.1, per: 1.48 },
-            { k: 'trail8', t: '從最高收盤回落 8%',           p: 266.6, dd: 29.9, per: 1.48 },
+            // 🔁 V77.7.6 新預設那一組
+            { k: 'atr2',   t: '吊燈 ATR 2 倍(進場後最高收盤 − 2×ATR)', p: 324.2, dd: 34.0, per: 2.11 },
+            { k: 'don40',  t: '跌破近 40 日最低(唐奇安)+ 最長 40 天', p: 218.3, dd: 41.8, per: 2.75 },
+            { k: 'don',    t: '跌破近 20 日最低(唐奇安)',  p: 329.7, dd: 28.2, per: 2.10 },
+            { k: 'trail8', t: '從最高收盤回落 8%',           p: 335.4, dd: 29.9, per: 1.86 },
         ],
-        // 🧭 V77.4.9 **起點穩健性**(使用者問「有沒有比唐奇安及 ATR 厲害的賣法」時補做的):
-        //   上面 `rows` 是**一條路徑**的成績(起點固定那一天)。資金有限時「哪天剛好有錢買哪一檔」是路徑相依的 →
-        //   同一份資料把起點往後挪 0~80 個交易日、每 5 天一條,共 17 條路徑,只換出場(`WARMUP=240~320`)。
-        //   ⭐ 結論:**沒有任何出場在總獲利上穩定贏**(配對勝場 6~12/17,差距中位 −31~+31 萬,範圍 ±200 萬)——
-        //     V75.0.9「唐奇安 590 > ATR 531」那一個排名本身就在路徑運氣裡。
-        //   ⭐ 唯一穩定的差異:**ATR 追蹤的中途最多賠 17 條路徑全部比唐奇安小**(中位 −13.9% vs −19.9%)。
-        //   ⛔ 所以**預設不換**(V75.0.9 第 5 條判準是總獲利最大,而總獲利分不出高下),只把事實寫在選單旁讓使用者選。
-        //   ⚠️ 絕對數字跟上面 `rows` 不同是因為資料往後多了幾週、App 偵測器也更新過 —— ⛔ 兩組不可混著比。
-        // 🛑 V77.6.0 收盤成交重跑:移動停利 8% 中位最高但 6/8/10% 是孤峰(209/268/142)、ATR K=1.5/2/2.5/3 高低不平(154/206/199/292)
-        //   → ⛔ 不換出場。⭐ 真正的槓桿是「最長抱幾天」:唐奇安 20 + 最長 40 天 17/17 贏現行、回撤 17/17 較小、贏 0050 15/17,
-        //   40/50/60 天是一片高原 —— 但**逐年沒過**(2024 在 11/17 條路徑為負;現行 20 天是 2025 17/17 為負)→ 依 V75.0.9 ⛔ 不自動換,交給使用者決定。
+        // 🧭 V77.4.9 **起點穩健性**:把起點往後挪 0~80 個交易日、每 5 天一條,共 17 條路徑,只換出場(`WARMUP=240~320`)。
+        //   ⛔ 單一路徑(上面 rows)的名次靠運氣 —— 看 17 條路徑贏幾條才算數。
+        // 🧱 V77.7.6 修好日 K 重跑(4 年 = 本站 2022-09~2026-09;16 年 = 外部 2011 起 + 本站,真的加權與 0050):
+        //   ⭐ 吊燈 ATR 2 倍・20 天・空頭不開新倉:4 年 324 萬(17/17 贏上一任唐奇安 40)、16 年 494 萬(17/17)
+        //   ⛰️ ATR 倍數 1.5 / 2 / 2.5 / 3 → 242 / 324 / 305 / 329 萬 = 2 倍以上一片高原
+        //   ⚠️ 移動停利 8% 近 4 年中位最高(334),但 6/8/10% 在 4 年 205/334/323、16 年 552/448/347 —— **兩個窗口方向相反**,16 年 8% 也輸吊燈 → ⛔ 不選
+        //   ⚠️ 吊燈 ATR 的優勢集中在 2021 以後:2011~2020 那十年只有 47 萬(唐奇安 40 日 115 萬)= 逐年同向沒過(V75.0.9 第 1 條)→ 使用者明示「以現行最厲害的執行」才換
         rob: {
-            paths: 17, asof: '2026-09-25', fill: 'close', src: 'portfolio_backtest.mjs WARMUP=240~320(每 5 日一條)・停損收盤成交',
+            paths: 17, asof: '2026-09-27', fill: 'close', src: 'portfolio_backtest.mjs WARMUP=240~320(每 5 日一條)・停損收盤成交・修好日 K・股利 + 二代健保',
+            prev: 'don40',
             rows: {
-                // ⭐ V77.6.5 新預設:唐奇安 40 日 + 最長 40 天 + 大盤嚴格空頭不開新倉(`FILTER=bear60`)。`don40nb` = 同一組但空頭照買
-                don40:  { t: '唐奇安 40 日 + 最長 40 天 + 空頭不開新倉', med: 409, lo: 249, hi: 442, dd: 26.1, ddw: 34.1, vsDon: 17, ddBetter: 17, beat0050: 16 },
-                don40nb: { t: '唐奇安 40 日 + 最長 40 天(空頭照買)', med: 339, lo: 230, hi: 402, dd: 29.5, ddw: 36.7, vsDon: 17, ddBetter: 15, beat0050: 13 },
-                don:    { t: '唐奇安 20 日', med: 107, lo: 45, hi: 328, dd: 40.2, ddw: 53.3, beat0050: 1 },
-                atr2:   { t: 'ATR 追蹤',     med: 206, lo: 203, hi: 334, dd: 38.8, ddw: 45.7, vsDon: 15, ddBetter: 11, beat0050: 2 },
-                trail8: { t: '移動停利 8%',  med: 268, lo: 266, hi: 294, dd: 30.0, ddw: 31.5, vsDon: 15, ddBetter: 16, beat0050: 0 },
-                ma5:    { t: '跌破 5 日線',  med: 100, lo: 71, hi: 110, dd: 41.1, ddw: 44.9, vsDon: 6, ddBetter: 9, beat0050: 0 },
-                don30:  { t: '唐奇安 30 日', med: 211, lo: 54, hi: 292, dd: 35.2, ddw: 51.4, vsDon: 13, ddBetter: 14, beat0050: 1 },
-                don55:  { t: '唐奇安 55 日', med: 214, lo: 49, hi: 365, dd: 31.4, ddw: 46.4, vsDon: 13, ddBetter: 13, beat0050: 3 },
-                don55m40: { t: '唐奇安 55 日 + 最多抱 40 天', med: 346, lo: 222, hi: 489, dd: 30.1, ddw: 33.7, vsDon: 17, ddBetter: 17, beat0050: 14 },
-                don20m40: { t: '唐奇安 20 日 + 最多抱 40 天', med: 343, lo: 219, hi: 524, dd: 27.0, ddw: 30.4, vsDon: 17, ddBetter: 17, beat0050: 15 },
-                none:   { t: '不用出場線(只靠停損 + 抱滿 20 天)', med: 141, lo: 32, hi: 344, dd: 40.4, ddw: 56.4, vsDon: 9, ddBetter: 10, beat0050: 2 },
+                // ⭐ V77.7.6 新預設。vsPrev = 17 條路徑贏上一任預設(唐奇安 40 日)幾條;ddBetter = 中途最多賠比它小幾條
+                atr2:    { t: '吊燈 ATR 2 倍 + 最長 20 天 + 空頭不開新倉', med: 324, lo: 255, hi: 354, dd: 32.8, ddw: 36.5, vsPrev: 17, ddBetter: 17, beat0050: 2 },
+                atr2nb:  { t: '吊燈 ATR 2 倍 + 最長 20 天(空頭照買)', med: 323, lo: 190, hi: 350, dd: 33.6, ddw: 45.7, vsPrev: 17, ddBetter: 15, beat0050: 0 },
+                don40:   { t: '唐奇安 40 日 + 最長 40 天 + 空頭不開新倉(上一任)', med: 179, lo: 171, hi: 218, dd: 43.4, ddw: 43.5, beat0050: 0 },
+                don40nb: { t: '唐奇安 40 日 + 最長 40 天(空頭照買)', med: 206, lo: 141, hi: 257, dd: 37.4, ddw: 41.6, vsPrev: 12, ddBetter: 16, beat0050: 0 },
+                don:     { t: '唐奇安 20 日 + 最長 20 天 + 空頭不開新倉', med: 301, lo: 253, hi: 354, dd: 29.5, ddw: 33.1, vsPrev: 17, ddBetter: 17, beat0050: 0 },
+                trail8:  { t: '移動停利 8% + 最長 20 天 + 空頭不開新倉', med: 334, lo: 307, hi: 344, dd: 29.5, ddw: 31.8, vsPrev: 17, ddBetter: 17, beat0050: 1 },
+                ma5:     { t: '跌破 5 日線(空頭照買)', med: 140, lo: 139, hi: 143, dd: 40.3, ddw: 40.8, vsPrev: 0, ddBetter: 13, beat0050: 0 },
+                none:    { t: '不用出場線(只靠停損 + 抱滿 20 天・空頭照買)', med: 217, lo: 156, hi: 317, dd: 33.3, ddw: 44.2, vsPrev: 11, ddBetter: 16, beat0050: 0 },
             },
-            // ⏳ 最長抱幾天(唐奇安 20 日):20 / 30 / 40 / 50 / 60 天的 17 條路徑中位(萬)
-            maxd: [{ d: 20, med: 107 }, { d: 30, med: 171 }, { d: 40, med: 343 }, { d: 50, med: 342 }, { d: 60, med: 389 }],
+            // ⛰️ 吊燈 ATR 的倍數(17 條路徑中位,萬):2 倍以上是一片高原
+            chandK: [{ k: 1.5, med: 242 }, { k: 2, med: 324 }, { k: 2.5, med: 305 }, { k: 3, med: 329 }],
+            // ⏳ 最長抱幾天(唐奇安 20 日・空頭照買):20 / 30 / 40 / 50 / 60 天 —— 修好日 K 之後⛔ 不再是高原
+            maxd: [{ d: 20, med: 235 }, { d: 30, med: 143 }, { d: 40, med: 221 }, { d: 50, med: 249 }, { d: 60, med: 338 }],
+            // 🕰️ 16 年(2011~2026,外部資料 + 本站,真的加權 + 0050 含息;17 條路徑中位,萬)
+            long: { win: '2011 ~ 2026(16 年)', b0050: 1068, rows: {
+                atr2:   { med: 494, lo: 420, hi: 503, dd: 34.6, vsPrev: 17 },
+                trail8: { med: 448, lo: 433, hi: 455, dd: 37.9, vsPrev: 17 },
+                don:    { med: 334, lo: 279, hi: 363, dd: 52.1, vsPrev: 14 },
+                don40:  { med: 285, lo: 285, hi: 353, dd: 36.3 },
+            }, decade: { atr2: 47, don40: 115, note: '2011~2020 那十年吊燈 ATR 反而比較差' } },
             // 為什麼中位最高的那條沒換成預設(V75.0.9 第 3 條:要是高原不是孤峰)
-            keepWhy: { trail8: '移動停利 6% / 10% 只有 209 / 142 萬 —— 是孤峰不是高原' },
+            keepWhy: { trail8: '移動停利 6% / 8% / 10% 在近 4 年是 205 / 334 / 323 萬、16 年是 552 / 448 / 347 萬 —— 兩個窗口方向相反,而且 16 年 8% 輸吊燈 ATR(448 vs 494)' },
         },
     },
     // ═══ 🛑 V77.6.0 停損「怎麼賣」的實測差距(使用者選「維持現狀,只寫出差異」)═══
@@ -21150,65 +21155,77 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ⛔ 畫面一個數字都不寫字面值,一律從這裡帶入(`_stopFillNoteHtml`)。
     //   ⚠️ 這是**同一套打法、只換賣法**的比較 → 回答「我該掛哪一種停損單」,⛔ 不回答「哪個出場比較好」。
     _STOPFILL_EDGE: {
-        paths: 17, asof: '2026-09-24', months: 49, b0050: 286.5,
-        src: 'scripts/portfolio_backtest.mjs STOPFILL=stop|close|touch・WARMUP=240~320',
+        paths: 17, asof: '2026-09-27', months: 49, b0050: 349.5, over: 2.42,
+        src: 'scripts/portfolio_backtest.mjs STOPFILL=close|touch・WARMUP=240~320・修好日 K・股利 + 二代健保',
+        // 🧱 V77.7.6 在新預設(吊燈 ATR 2 倍・20 天・空頭不開新倉)上、修好的日 K 重跑。
+        //   ⚠️ `legacy` 那兩列是**修資料前**、舊出場跑的,只留著當「為什麼以前說智慧單很差」的對照,⛔ 不可跟 atr2 那列互比。
         rows: {
-            // 🔁 V77.6.5 新預設(唐奇安 40 + 最長 40 天 + 空頭不開新倉)—— ⚠️ 跟唐奇安 20 相反:**智慧單比較差**(17 條只贏 1 條)
-            don40: { t: '唐奇安 40 日(新預設)', close: { med: 409, lo: 249, hi: 442, dd: 26.1, share: 68.0, over: 2.38 }, touch: { med: 253, lo: 227, hi: 327, dd: 37.5, share: 75.9, over: 0.32, wash: 224 }, touchVsClose: 1 },
-            don:  { t: '唐奇安 20 日', stop: { med: 526, dd: 19.9 }, close: { med: 107, lo: 45, hi: 328, dd: 40.2, share: 59.7, over: 2.42 }, touch: { med: 205, lo: 37, hi: 267, dd: 45.6, share: 67.6, over: 0.28, wash: 295 }, touchVsClose: 13 },
-            atr2: { t: 'ATR 追蹤',     stop: { med: 566, dd: 13.9 }, close: { med: 206, lo: 203, hi: 334, dd: 38.8, share: 55.3, over: 2.36 }, touch: { med: 17,  lo: 10, hi: 90,  dd: 48.8, share: 61.9, over: 0.32, wash: 197 }, touchVsClose: 0 },
+            atr2: { t: '吊燈 ATR 2 倍(現行預設)', close: { med: 324, lo: 255, hi: 354, dd: 32.8 }, touch: { med: 303, lo: 199, hi: 303, dd: 22.2 }, touchVsClose: 2, touchDDBetter: 13 },
+            don40: { t: '唐奇安 40 日(上一任,修資料前)', legacy: true, close: { med: 409, lo: 249, hi: 442, dd: 26.1 }, touch: { med: 253, lo: 227, hi: 327, dd: 37.5 }, touchVsClose: 1 },
+            don:  { t: '唐奇安 20 日(修資料前)', legacy: true, close: { med: 107, lo: 45, hi: 328, dd: 40.2 }, touch: { med: 205, lo: 37, hi: 267, dd: 45.6 }, touchVsClose: 13 },
         },
     },
     // 🛑 停損賣法差距的說明(設定中心完整版 / 決策台一行版)—— ⛔ 同一支、同一份常數,不產生第二份真相
     _stopFillNoteHtml(mode) {
         const E = this._STOPFILL_EDGE; if (!E) return '';
-        const k = this._exitRuleKey(), R = E.rows;
+        const k = this._exitRuleKey(), R = E.rows, r = R[k];
         const w = x => `<b class="font-mono">${x}</b> 萬`;
         if (mode === 'deck') {
-            if (k === 'atr2') return `🛑 你選 ATR 追蹤:回測裡停損<b>收盤前確認再賣</b> ${w(R.atr2.close.med)},<b>智慧單盤中碰到就賣</b>只剩 ${w(R.atr2.touch.med)} → ⛔ 停損別掛觸價單(${E.months} 個月・${E.paths} 條路徑中位)`;
-            if (k === 'don40' && R.don40) return `🛑 現行預設(唐奇安 40 日):回測裡停損<b>收盤前確認再賣</b> ${w(R.don40.close.med)},<b>智慧單盤中碰到就賣</b>只剩 ${w(R.don40.touch.med)}(${E.paths} 條只贏 ${R.don40.touchVsClose} 條)→ ⛔ <b>停損別掛觸價單</b>,尾盤看一次再賣(= 自動下單的做法)`;
-            if (k === 'don') return `🛑 停損怎麼賣差很多:唐奇安出場下,智慧單盤中碰到就賣 ${w(R.don.touch.med)}、收盤前確認再賣 ${w(R.don.close.med)}(${E.months} 個月・${E.paths} 條路徑中位;同期 0050 約 ${E.b0050} 萬)`;
+            if (r && !r.legacy) {
+                const better = r.touch.med > r.close.med;
+                return `🛑 你的出場(${r.t}):回測裡停損<b>收盤前確認再賣</b> ${w(r.close.med)}(中途最多賠 −${r.close.dd}%)、<b>智慧單盤中碰到就賣</b> ${w(r.touch.med)}(−${r.touch.dd}%)`
+                    + (better ? ` → 智慧單比較好(${E.paths} 條贏 ${r.touchVsClose} 條)` : ` → 賺比較多的是<b>尾盤確認再賣</b>(智慧單 ${E.paths} 條只贏 ${r.touchVsClose} 條)${r.touchDDBetter != null && r.touchDDBetter > E.paths / 2 ? `,但智慧單中途賠得比較少(${r.touchDDBetter} 條)—— 取捨,你自己選` : ''}`);
+            }
             return `🛑 停損「盤中碰到就賣」與「收盤前確認再賣」回測差很多 —— 數字在 ⚙️ 設定中心出場那一區`;
         }
-        const cell = (r, m) => `${w(r[m].med)}<span class="text-gray-500">(${r[m].lo}~${r[m].hi}・回撤 −${r[m].dd}%)</span>`;
-        const tr = r => `<tr class="border-t border-[#21262d]"><td class="py-1 pr-2 text-gray-300">${r.t}</td><td class="py-1 pr-2">${cell(r, 'close')}</td><td class="py-1">${cell(r, 'touch')}</td></tr>`;
+        const cell = (x) => `${w(x.med)}<span class="text-gray-500">(${x.lo}~${x.hi}・回撤 −${x.dd}%)</span>`;
+        const tr = x => `<tr class="border-t border-[#21262d]"><td class="py-1 pr-2 text-gray-300">${x.t}</td><td class="py-1 pr-2">${cell(x.close)}</td><td class="py-1">${cell(x.touch)}</td></tr>`;
+        const cur = Object.keys(R).filter(q => !R[q].legacy), leg = Object.keys(R).filter(q => R[q].legacy);
+        const A = R.atr2;
         return `<div class="text-[10px] text-gray-400 leading-snug" data-stopfill="1">
             <div class="font-bold text-gray-300 mb-1">🛑 停損「怎麼賣」差很多(同一條停損線,只換賣法)</div>
             <div class="mb-1">自動下單 = <b>收盤前看一次,跌破就用現價賣</b>;📋 複製的智慧單 = <b>盤中一碰到就賣</b>(跳空時吃開盤價)。
-                以前的回測都當成「剛好賣在停損價」—— 收盤跌破那天,收盤平均其實再低 <b>${R.don.close.over}%</b>,那個價賣不到,所以舊數字(唐奇安 ${R.don.stop.med} 萬 / ATR ${R.atr2.stop.med} 萬)<b>高估了</b>。</div>
-            <div class="overflow-x-auto"><table class="w-full text-[10px]"><tr class="text-gray-500"><td class="pr-2">${E.months} 個月・${E.paths} 條路徑中位</td><td class="pr-2">收盤前確認再賣</td><td>盤中碰到就賣(智慧單)</td></tr>${R.don40 ? tr(R.don40) : ''}${tr(R.don)}${tr(R.atr2)}</table></div>
-            ${R.don40 ? `<div class="mt-1">${k === 'don40' ? '<b class="text-amber-300">⛔ 你用的是現行預設(唐奇安 40 日):</b>' : '⛔ 唐奇安 40 日(現行預設):'}智慧單只剩 ${w(R.don40.touch.med)}(${E.paths} 條路徑只贏 ${R.don40.touchVsClose} 條)—— 抱得久,盤中碰到又站回的 ${R.don40.touch.wash} 筆被洗出去的代價比較大 → <b>停損尾盤確認再賣</b>。</div>` : ''}
-            <div class="mt-1">⭐ 唐奇安 20 日(舊預設):智慧單比較好(${E.paths} 條路徑贏 ${R.don.touchVsClose} 條)—— 跳空多賠只有 ${R.don.touch.over}%,但盤中碰到又站回的 ${R.don.touch.wash} 筆也被洗出去。
-                ${k === 'atr2' ? '<b class="text-amber-300">⛔ 你選的是 ATR 追蹤:</b>' : '⛔ ATR 追蹤:'}智慧單只剩 ${w(R.atr2.touch.med)}(${E.paths} 條路徑 0 條贏收盤賣)→ <b>選 ATR 的人停損別掛觸價單</b>,收盤前確認再賣。</div>
-            <div class="mt-0.5 text-gray-500">同期 0050 買了放著約 ${E.b0050} 萬 —— 兩種賣法下這套打法都未必贏它。⛔ 自動下單與智慧單的做法一行都沒改,只把差距寫出來(你選的)。</div>
+                V77.6.0 以前的回測都當成「剛好賣在停損價」—— 收盤跌破那天收盤平均其實再低 <b>${E.over}%</b>,那個價賣不到,所以更早的數字<b>高估了</b>。</div>
+            <div class="overflow-x-auto"><table class="w-full text-[10px]"><tr class="text-gray-500"><td class="pr-2">${E.months} 個月・${E.paths} 條路徑中位</td><td class="pr-2">收盤前確認再賣</td><td>盤中碰到就賣(智慧單)</td></tr>${cur.map(q => tr(R[q])).join('')}</table></div>
+            ${A ? `<div class="mt-1">${k === 'atr2' ? '<b class="text-amber-300">你用的是現行預設(吊燈 ATR 2 倍):</b>' : '吊燈 ATR 2 倍(現行預設):'}收盤前確認再賣賺比較多(智慧單 ${E.paths} 條只贏 ${A.touchVsClose} 條),
+                但智慧單<b>中途賠得比較少</b>(−${A.close.dd}% → −${A.touch.dd}%,${A.touchDDBetter} 條)—— 這是取捨;自動下單照收盤判斷。</div>` : ''}
+            ${leg.length ? `<details class="mt-1"><summary class="cursor-pointer text-gray-500 select-none">📜 修資料前、舊出場的對照(⛔ 不可跟上面互比) <span class="text-gray-600">展開 ▾</span></summary>
+                <div class="overflow-x-auto"><table class="w-full text-[10px] opacity-80">${leg.map(q => tr(R[q])).join('')}</table></div></details>` : ''}
+            <div class="mt-0.5 text-gray-500">同期 0050 買了放著(含息)約 ${E.b0050} 萬 —— 兩種賣法下這套打法都沒贏它。⛔ 自動下單與智慧單的做法一行都沒改,只把差距寫出來。</div>
         </div>`;
     },
     /** 🚪 V77.6.0 設定中心每一顆出場鈕底下那行 —— ⛔ 數字一律讀 `_EXIT_EDGE.rob`(17 條路徑中位),⛔ 不寫死 */
     _exitRuleSubHtml(k) {
         const o = this._EXIT_RULE_OPTS.find(x => x.k === k); if (!o) return '';
         const R = this._EXIT_EDGE && this._EXIT_EDGE.rob;
-        const rk = (k === 'don40' && this.settings && this.settings.bearGate === false) ? 'don40nb' : k;   // 🐻 空頭守門關掉時,數字換成「空頭照買」那一組
+        const nb = this.settings && this.settings.bearGate === false;
+        const rk = (nb && R && R.rows[k + 'nb']) ? k + 'nb' : k;   // 🐻 空頭守門關掉時,數字換成「空頭照買」那一組(有的話)
         const r = R && R.rows[rk];
         if (!r) return o.d;
-        const cmp = k === 'don' ? '' : `・跟唐奇安 20 日(舊預設)比:總獲利 ${R.paths} 條路徑贏 ${r.vsDon} 條、中途最多賠較小 ${r.ddBetter} 條`;
-        return `${o.d} —— ${R.paths} 條回測路徑總獲利中位 <b>${r.med} 萬</b>(${r.lo}~${r.hi})・中途最多賠中位 −${r.dd}%${cmp}`;
+        const pv = R.prev && R.rows[R.prev];
+        const cmp = (k === R.prev || r.vsPrev == null || !pv) ? '' : `・跟上一任預設(${pv.t.replace(/(上一任)/, '')})比:總獲利 ${R.paths} 條路徑贏 ${r.vsPrev} 條、中途最多賠較小 ${r.ddBetter} 條`;
+        const L = R.long && R.long.rows && R.long.rows[k];
+        const lg = L ? `;16 年(2011 起)中位 <b>${L.med} 萬</b>` : '';
+        return `${o.d} —— ${R.paths} 條回測路徑總獲利中位 <b>${r.med} 萬</b>(${r.lo}~${r.hi})・中途最多賠中位 −${r.dd}%${lg}${cmp}`;
     },
     /** 🚪 V77.6.0 設定中心出場區的說明段 —— ⛔ 名次、贏幾條、跟 0050 比全部從常數現算(下次重跑方向變了文字才不會說謊) */
     _exitRuleDescHtml() {
         const E = this._EXIT_EDGE, R = E && E.rob; if (!R) return '';
-        const ks = ['don40', 'don', 'atr2', 'trail8', 'ma5'].filter(k => R.rows[k]);
+        const ks = ['atr2', 'trail8', 'don', 'don40', 'ma5'].filter(k => R.rows[k]);
         const best = ks.slice().sort((a, b) => R.rows[b].med - R.rows[a].med)[0];
         const beat = ks.filter(k => R.rows[k].med > E.b0050);
         const cur = this._exitRuleKey();
         return `同一套打法、同一段 ${E.win} <b>只換這一條出場</b>,把回測起點挪 ${R.paths} 次取中位(本金 100 萬・已扣成本・<b>停損用收盤價成交</b>):`
             + ks.map(k => `${R.rows[k].t} <b class="text-gray-300">${R.rows[k].med} 萬</b>`).join('・')
-            + `;🆚 同期 0050 買了放著約 <b class="text-amber-300">${E.b0050} 萬</b>。<br>`
+            + `;🆚 同期 0050 買了放著(含息)約 <b class="text-amber-300">${E.b0050} 萬</b>。<br>`
             + (beat.length ? `贏 0050 的只有:${beat.map(k => R.rows[k].t).join('、')}。` : `<b class="text-amber-300">⚠️ 五種出場沒有一種贏 0050</b> —— 換出場救不了這一點。`)
             + ` 中位最高的是<b class="text-gray-300">${R.rows[best].t}</b>`
             + (best === cur ? '(就是你現在選的)。' : `${R.keepWhy && R.keepWhy[best] ? `,但 ${R.keepWhy[best]},所以預設沒換` : ''};你現在選的是「${this._exitRuleName(cur)}」。`)
-            + (R.rows.don40 && R.maxd ? `<br>⭐ <b class="text-gray-300">差最多的其實是「最長抱幾天」</b>:唐奇安 20 日只把上限從 20 天拉到 40 天 → 中位 ${R.rows.don20m40 ? R.rows.don20m40.med : '—'} 萬;`
-                + `抱 ${R.maxd.map(x => `${x.d} 天 ${x.med}`).join(' / ')} 萬(⚠️ 30 天以下是懸崖、40 天起是高原)。`
-                + `🔁 <b class="text-gray-300">V77.6.5 起預設就是「唐奇安 40 日 + 最長 40 天 + 大盤空頭不開新倉」</b>(你說「把最強的換上」)—— 16 年(2011~2026)外部資料上最穩的一組,本站 ${E.win} 也是 ${R.paths} 條全贏舊預設。` : '')
+            + (R.chandK ? `<br>⭐ <b class="text-gray-300">出場線別貼太近</b>:吊燈 ATR ${R.chandK.map(x => `${x.k} 倍 ${x.med}`).join(' / ')} 萬 —— 2 倍以上是一片高原,1.5 倍太近容易被洗掉。`
+                + (R.maxd ? `唐奇安 20 日的最長天數 ${R.maxd.map(x => `${x.d} 天 ${x.med}`).join(' / ')} 萬(修好日 K 之後<b>不再是高原</b>)。` : '')
+                + (R.long ? `<br>🕰️ <b class="text-gray-300">16 年(${R.long.win})</b>:${['atr2', 'trail8', 'don', 'don40'].filter(k => R.long.rows[k]).map(k => `${R.rows[k] ? R.rows[k].t.replace(/ \+ .*$/, '') : k} ${R.long.rows[k].med} 萬`).join('・')};0050 含息約 ${R.long.b0050} 萬(<b>這套打法 16 年都沒贏 0050</b>)。`
+                    + (R.long.decade ? `⚠️ ${R.long.decade.note}(${R.long.decade.atr2} vs 唐奇安 40 日 ${R.long.decade.don40} 萬)—— 優勢集中在 2021 年以後。` : '') : '')
+                + `<br>🔁 <b class="text-gray-300">V77.7.6 起預設是「吊燈 ATR 2 倍 + 最長 20 天 + 大盤空頭不開新倉」</b>(你說「以現在最厲害的執行」)—— 近 4 年與 16 年都是 ${R.paths} 條全贏上一任(唐奇安 40 日)。🔄 「情勢變了自動換規則」也回測過:<b>輸給固定用這一套</b>,所以沒有做成自動換。` : '')
             + ` ⚠️ 單一路徑的數字差很大(看括號裡的範圍),名次要看「${R.paths} 條路徑贏幾條」才算數。`;
     },
     // ═══ 📢🚪 V77.4.6 「突破之後,哪一種出場賺最多」—— 第二個**獨立**證據 ═══
@@ -21310,19 +21327,19 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //     ③ 停損(進場 −5% 與前低較近者)與最長 20 個交易日 **不隨這個設定變** —— 那兩條回測沒動過。
     _EXIT_RULE_OPTS: [
         // 🧭 V77.4.9 描述改讀多路徑結果(`_EXIT_EDGE.rob`)。🛑 V77.6.0 起 `d` ⛔ 不放數字 —— 數字一律由 `_exitRuleSubHtml` 從常數帶入
-        { k: 'don40',  t: '唐奇安 40 日低點(預設)', d: '收盤跌破「前 40 天最低價」才走・最長抱 40 天' },
-        { k: 'don',    t: '唐奇安 20 日低點(舊預設)', d: '收盤跌破「前 20 天最低價」才走・最長抱 20 天' },
-        { k: 'atr2',   t: 'ATR 追蹤停利',        d: '進場後最高收盤 − 2×ATR' },
+        { k: 'atr2',   t: '吊燈 ATR 2 倍(預設)', d: '進場後最高收盤 − 2×ATR(進場那天的 14 日平均振幅)・最長抱 20 天' },
+        { k: 'don40',  t: '唐奇安 40 日低點(舊預設)', d: '收盤跌破「前 40 天最低價」才走・最長抱 40 天' },
+        { k: 'don',    t: '唐奇安 20 日低點', d: '收盤跌破「前 20 天最低價」才走・最長抱 20 天' },
         { k: 'trail8', t: '移動停利 8%',         d: '從最高收盤回落 8% 就走(最單純)' },
         { k: 'ma5',    t: '跌破 5 日線(舊版)',  d: '出得最早(想要更早離場的人才選)' },
     ],
     _exitRuleKey() {
-        const k = String((this.settings && this.settings.exitRule) || 'don40');
-        return this._EXIT_RULE_OPTS.some(o => o.k === k) ? k : 'don40';
+        const k = String((this.settings && this.settings.exitRule) || 'atr2');
+        return this._EXIT_RULE_OPTS.some(o => o.k === k) ? k : 'atr2';
     },
     _exitRuleName(k) {
         const o = this._EXIT_RULE_OPTS.find(x => x.k === (k || this._exitRuleKey()));
-        return o ? o.t.replace('(預設)', '').replace('(舊預設)', '').replace('(舊版)', '') : '唐奇安 40 日低點';
+        return o ? o.t.replace('(預設)', '').replace('(舊預設)', '').replace('(舊版)', '') : '吊燈 ATR 2 倍';
     },
     // 🚪 今天這一檔「主要出場價」= 使用者選的那一條(⛔ 其他地方不要自己挑)
     _exitPrimary(data, sym) {
@@ -21361,9 +21378,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ⚠️ 只擋「開新倉」,⛔ 不擋出場(手上的照三條出場規則走)。
     _BEAR_GATE_EDGE: {
         rule: '大盤收盤在 60 日線下,而且 20 日線也在 60 日線下',
-        main: { win: '2022-09 ~ 2026-09', paths: 17, on: 409, off: 339, onDD: 26.1, offDD: 29.5, wins: 16, ddBetter: 12, bearPct: 17.1 },
-        // 🔁 V77.6.7 加 0050 含息對照(同 17 條起點各自的起算日;`lib_totalreturn.trSeries` 算,扣來回成本 0.44%;最深回撤 −33.9%、最久 563 個交易日不回本)
-        long: { win: '2011 ~ 2026(外部資料 + 官方加權指數)', paths: 17, on: 648, onLo: 587, off: 579, offLo: 389, onDD: 35.5, offDD: 42.3, ddBetter: 17, bearPct: 25.8, etfTr: 1001, etfDD: 33.9 },
+        // 🧱 V77.7.6 修好日 K 後,在新預設(吊燈 ATR 2 倍・最長 20 天)上重跑:⚠️ 近 4 年**開關幾乎沒差**(324 vs 323、17 條只贏 8 條)
+        //   → 留著(16 年那次回撤小、它只擋買進),但畫面要照實說「近 4 年分不出來」,⛔ 不可再寫成它賺比較多。
+        ex: '吊燈 ATR 2 倍・最長 20 天',
+        main: { win: '2022-09 ~ 2026-09', paths: 17, on: 324, off: 323, onDD: 32.8, offDD: 33.6, wins: 8, ddBetter: 11, bearPct: 17.1 },
+        // 🕰️ 16 年(外部資料 + 官方加權;0050 含息同 17 條起點各自的起算日・扣來回成本 0.44%)。off = 同一組空頭照買 —— ⏳ 修好資料後還沒重跑 → null(畫面要說出來)
+        long: { win: '2011 ~ 2026(外部資料 + 官方加權指數)', paths: 17, on: 494, onLo: 420, off: null, offLo: null, onDD: 34.6, offDD: null, ddBetter: null, bearPct: 25.8, etfTr: 1068, etfDD: 33.9 },
     },
     /** 🐻 純函式:一串大盤 K(舊→新,每根要有 close)→ 最後一根是不是嚴格空頭。不足 60 根回 null(⛔ 不猜) */
     _bear60Of(rows) {
@@ -21405,7 +21425,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _DISPO_HOLD_EDGE: {
         probe: 'dispo_probe', win: '2023-06 ~ 2026-09', dispMed: -4.8, dispN: 1441, dispEdge: 1.62, dispWin: 40.4, noticeSpike: -1.81,
         // 🧪 V77.6.8 三臂 17 條(現行 vs 進處置隔天開盤賣 vs 進注意隔天開盤賣)—— 跑完填;⛔ 沒填就顯示「還沒測」
-        hold: {"paths":17,"win":"2023-06 ~ 2026-09(處置/注意事件史從 2023-06 起;注意股只有上市)","asof":"2026-09-27","src":"portfolio_backtest.mjs FORCE_EXIT=<dispo_probe 事件>・事件日之後第一個交易日開盤賣・疊在現行配置上","base":{"med":409,"lo":249,"dd":26.1},"dispo":{"med":193,"lo":95,"hi":327,"dd":30.0,"ddw":35.2,"wins":0,"ddBetter":3,"diff":-216,"forced":58,"n":538,"verdict":"⛔ 進處置隔天開盤賣更差(17 條只贏 0 條、中位少 216 萬)→ 照三條出場"},"att":{"med":175,"lo":121,"hi":482,"dd":41,"ddw":41.8,"wins":1,"ddBetter":0,"diff":-234,"forced":114,"n":616,"verdict":"⛔ 進注意隔天開盤賣更差(17 條只贏 1 條、中位少 234 萬)→ 照三條出場"}},
+        hold: {"paths":17,"win":"2023-06 ~ 2026-09(處置/注意事件史從 2023-06 起;注意股只有上市)","asof":"2026-09-27","src":"portfolio_backtest.mjs FORCE_EXIT=<dispo_probe 事件>・事件日之後第一個交易日開盤賣・疊在現行配置(吊燈 ATR 2 倍・20 天・空頭不開新倉・修好日 K)上","base":{"med":324,"lo":255,"dd":32.8},"dispo":{"med":272,"lo":247,"hi":293,"dd":36.8,"ddw":37.2,"wins":1,"ddBetter":3,"diff":-52,"forced":82,"n":1046,"verdict":"⛔ 進處置隔天開盤賣更差(17 條只贏 1 條、中位少 52 萬)→ 照出場規則走"},"att":{"med":223,"lo":180,"hi":272,"dd":40.0,"ddw":43.1,"wins":0,"ddBetter":0,"diff":-101,"forced":159,"n":1096,"verdict":"⛔ 進注意隔天開盤賣更差(17 條 0 勝、中位少 101 萬)→ 照出場規則走"}},
     },
     _heldAttention(sym) {
         try {
@@ -21429,7 +21449,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     // 🐻 V77.6.8 「股市空頭時,手上的要不要先全賣掉?」—— 本站以前**沒測過**(`FILTER=bear60` 只擋新買、`PARK` 只動閒錢)
     //   → `portfolio_backtest BEAR_EXIT=strict|ma60`(嚴格空頭日收盤價賣掉所有持倉)疊在現行配置上跑 17 條起點。⛔ null = 還沒跑完,畫面要說出來。
-    _BEAR_EXIT_EDGE: {"paths":17,"win":"2022-09 ~ 2026-09","asof":"2026-09-27","src":"portfolio_backtest.mjs BEAR_EXIT=strict|ma60・WARMUP=240~320・疊在現行配置(don40/40 天/空頭不開新倉/收盤成交)上","base":{"med":409,"lo":249,"hi":442,"dd":26.1,"n":607},"strict":{"med":151,"lo":116,"hi":152,"dd":48.4,"ddw":52.4,"wins":0,"ddBetter":0,"diff":-258,"forced":75,"n":456,"yr":{"2022":-2,"2023":-32,"2024":-5,"2025":-42,"2026":-172}},"ma60":{"med":85,"lo":50,"hi":110,"dd":47.5,"ddw":52.4,"wins":0,"ddBetter":0,"diff":-324,"forced":204,"n":524,"yr":{"2022":1,"2023":-24,"2024":-44,"2025":-58,"2026":-183}},"verdict":"⛔ 空頭那天把手上全賣更差(17 條只贏 0 條、中位少 258 萬)→ 照三條出場"},
+    // 🧱 V77.7.6 在新預設上重跑(修好的日 K):⛔ 嚴格空頭全賣 160 / 跌破 60 日線全賣 203 vs 不賣 324 萬(都是 0/17)
+    _BEAR_EXIT_EDGE: {"paths":17,"win":"2022-09 ~ 2026-09","asof":"2026-09-27","src":"portfolio_backtest.mjs BEAR_EXIT=strict|ma60・WARMUP=240~320・疊在現行配置(吊燈 ATR 2 倍/20 天/空頭不開新倉/收盤成交・修好日 K・股利 + 二代健保)上","base":{"med":324,"lo":255,"hi":354,"dd":32.8,"n":1011},"strict":{"med":160,"lo":49,"hi":162,"dd":55.0,"ddw":58.1,"wins":0,"ddBetter":0,"diff":-164,"forced":77,"n":745},"ma60":{"med":203,"lo":118,"hi":206,"dd":43.0,"ddw":53.2,"wins":0,"ddBetter":0,"diff":-121,"forced":214,"n":900},"verdict":"⛔ 空頭那天把手上全賣更差(17 條 0 勝、中位少 164 萬、回撤反而變大)→ 照出場規則走","note":"修資料後:配出場慢的唐奇安 40 時全賣有用(179 → 248),配現行吊燈 ATR 反而大輸 —— 它補的是「虧損抱太久」,出場夠快就不需要"},
     // 📚 「看錯要不要先跑」引用到、但沒有嵌成常數的幾支探針數字(⛔ 只准跟探針名一起出現;探針重跑要跟著改)
     _CUTLOSS_FACTS: {
         crash: { probe: 'crash_exit_probe', variants: 12, range: '−0.16 ~ +0.01', worst10: '−4.0% → −9.1%', idxDrop: 2 },
@@ -21440,7 +21461,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     /** 📖 決策台「看錯要不要先跑?」—— 使用者的每一句對照本站實測(⛔ 數字全部讀常數,一個都不寫死) */
     _cutlossFaqHtml() {
         try {
-            const R = (this._EXIT_EDGE || {}).rob || {}, rows = R.rows || {}, d40 = rows.don40, ma5 = rows.ma5, d20 = rows.don, mx = R.maxd || [];
+            const R = (this._EXIT_EDGE || {}).rob || {}, rows = R.rows || {}, d40 = rows[this._exitRuleKey()] || rows.atr2, ma5 = rows.ma5, d20 = rows.don, mx = R.maxd || [];   // 🔁 V77.7.6 d40 = 「現行」那一列(名字沿用,⛔ 不再寫死唐奇安 40)
             const B = this._BREAKOUT_EXIT_EDGE || {}, bRows = B.rows || [], bHold = bRows.find(x => x.k === 'hold'), bMa5 = bRows.find(x => x.k === 'ma5');
             const P = (this._PROB_TABLE || {}).base || [], p1 = P[0], p20 = P[P.length - 1];
             const G = this._BEAR_GATE_EDGE || {}, Gm = G.main || {}, Gl = G.long || {};
@@ -21449,20 +21470,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const li = (q, a) => `<div class="mt-1.5"><div class="text-gray-200">❓ ${q}</div><div class="text-gray-300 leading-relaxed">${a}</div></div>`;
             const mxTxt = mx.map(x => `${x.d} 天 ${x.med}`).join(' / ');
             const bearExit = X
-                ? `實測(${X.paths} 條起點・${X.win}):嚴格空頭那天把手上全賣 <b>${X.strict.med} 萬</b>(最差 ${X.strict.lo}・回撤 −${X.strict.dd}%)vs 現行只擋新買 <b>${X.base.med} 萬</b>(最差 ${X.base.lo}・−${X.base.dd}%),配對贏 <b>${X.strict.wins}/${X.paths}</b>;寬版(跌破 60 日線就全賣)${X.ma60.med} 萬、贏 ${X.ma60.wins}/${X.paths}。→ <b>${X.verdict}</b>`
+                ? `實測(${X.paths} 條起點・${X.win}):嚴格空頭那天把手上全賣 <b>${X.strict.med} 萬</b>(最差 ${X.strict.lo}・回撤 −${X.strict.dd}%)vs 現行只擋新買 <b>${X.base.med} 萬</b>(最差 ${X.base.lo}・−${X.base.dd}%),配對贏 <b>${X.strict.wins}/${X.paths}</b>;寬版(跌破 60 日線就全賣)${X.ma60.med} 萬、贏 ${X.ma60.wins}/${X.paths}。→ <b>${X.verdict}</b>${X.note ? `<br><span class="text-gray-500">${X.note}</span>` : ''}`
                 : `<b>本站正在補這一條回測</b>(以前只測過「空頭不開新倉」,沒測過「空頭把手上的全賣」)—— 跑完會寫在這裡,⛔ 沒跑完之前不編答案。`;
             const dispo = H
                 ? `實測 ${H.paths} 條起點:進處置隔天開盤賣 <b>${H.dispo.med} 萬</b>(配對贏 ${H.dispo.wins}/${H.paths})、進注意隔天開盤賣 ${H.att.med} 萬(贏 ${H.att.wins}/${H.paths})vs 照三條出場 <b>${H.base.med} 萬</b> → ${H.dispo.verdict}`
                 : `持股進處置那天要不要先賣:<b>還沒測</b>(需要事件史)—— 先照三條出場。`;
             return `<details class="mt-2 bg-[#0d1117] border-l-4 border-cyan-700 pl-2.5 py-2 rounded-r text-[10px]" data-cutlossfaq="1">
                 <summary class="cursor-pointer text-gray-200 font-bold" style="list-style:none">📖 看錯要不要先跑?先賣再說?空頭要不要全賣?—— 每一句對照實測 ▾</summary>
-                ${li('看錯股要趕快認錯換股、賠小錢賺大錢?', `✅ <b>已經在做</b>:硬停損 = min(買進日最低, 成本 −5%) 就是「賠小錢」。⛔ 但比它<b>更早跑全部更差</b>:跌破 5 日線 ${R.paths} 條起點中位 <b>${ma5.med} 萬</b>(回撤 −${ma5.dd}%)、舊預設唐奇安 20 日 ${d20.med} 萬,現行 ${d40.t} <b>${d40.med} 萬</b>(−${d40.dd}%);突破之後只換出場(${B.n ? B.n.toLocaleString() : ''} 次事件):跌破 5 日線每趟 <b>${bMa5 ? bMa5.net : '?'}%</b>(過 ${bMa5 ? bMa5.g : '?'}/6 關)vs 完全不砍 +${bHold ? bHold.net : '?'}%。太早出場砍掉的是<b>贏家</b>,不是輸家。`)}
-                ${li('那怎樣才不會被洗掉?', `這正是為什麼是 40 天:唐奇安 20 日 + 最長抱 ${mxTxt} 萬 —— <b>30 天以下是懸崖,40 天以上是高原</b>。`)}
+                ${li('看錯股要趕快認錯換股、賠小錢賺大錢?', `✅ <b>已經在做</b>:硬停損 = min(買進日最低, 成本 −5%) 就是「賠小錢」。⛔ 但比它<b>更早跑全部更差</b>:跌破 5 日線 ${R.paths} 條起點中位 <b>${ma5.med} 萬</b>(回撤 −${ma5.dd}%)、唐奇安 20 日 ${d20.med} 萬,現行 ${d40.t} <b>${d40.med} 萬</b>(−${d40.dd}%);突破之後只換出場(${B.n ? B.n.toLocaleString() : ''} 次事件):跌破 5 日線每趟 <b>${bMa5 ? bMa5.net : '?'}%</b>(過 ${bMa5 ? bMa5.g : '?'}/6 關)vs 完全不砍 +${bHold ? bHold.net : '?'}%。太早出場砍掉的是<b>贏家</b>,不是輸家。`)}
+                ${li('那怎樣才不會被洗掉?', R.chandK ? `出場線跟現價要留距離:吊燈 ATR ${R.chandK.map(x => `${x.k} 倍 ${x.med}`).join(' / ')} 萬 —— <b>2 倍以上是高原,1.5 倍太近就被洗</b>。${mxTxt ? `(唐奇安 20 日拉長天數 ${mxTxt} 萬,修好資料後不是高原。)` : ''}` : `唐奇安 20 日 + 最長抱 ${mxTxt} 萬。`)}
                 ${li('回測不是已經知道何時會跌?那就先賣再說?', `⛔ <b>量不到</b>:全市場 ${(p1[0] / 1e4).toFixed(0)} 萬個股·日,明天 漲 ${p1[1]}% / 平 ${p1[2]}% / 跌 ${p1[3]}%、超額 ${p1[12]}%(丟銅板);抱 20 天 漲 ${p20[1]} / 跌 ${p20[3]}。大盤單日跌 ≥${F.crash.idxDrop}% 那天全賣的 ${F.crash.variants} 種變體 ${F.crash.range}pp、最差 10% 的交易反而從 ${F.crash.worst10}(${F.crash.probe});跌破月線之後 20 日 ${F.ma20.after}% vs 沒跌破 ${F.ma20.noBreak}%(只差 ${(F.ma20.after - F.ma20.noBreak).toFixed(2)}pp,${F.ma20.back10}% 十天內站回;${F.ma20.probe})。`)}
-                ${li('股市空頭時先不要買?', `✅ <b>已經是預設</b>(大盤嚴格空頭不開新倉):${Gm.win} ${Gm.paths} 條 <b>${Gm.on} 萬</b> vs 不擋 ${Gm.off} 萬(贏 ${Gm.wins}/${Gm.paths}、回撤 −${Gm.onDD}% vs −${Gm.offDD}%);16 年 ${Gl.on} vs ${Gl.off} 萬。`)}
+                ${li('股市空頭時先不要買?', `✅ <b>已經是預設</b>(大盤嚴格空頭不開新倉):${Gm.win} ${Gm.paths} 條 <b>${Gm.on} 萬</b> vs 不擋 ${Gm.off} 萬(贏 ${Gm.wins}/${Gm.paths}、回撤 −${Gm.onDD}% vs −${Gm.offDD}%)${Gm.wins < Math.ceil((Gm.paths || 17) * 0.75) ? ' —— <b>近 4 年開不開分不出高下</b>,留著是因為它只擋買進' : ''};16 年 ${Gl.on} 萬${Gl.off != null ? ` vs ${Gl.off} 萬` : '(關掉那一組修好資料後還沒重跑)'}。`)}
                 ${li('那空頭時手上的也先全賣?', bearExit + ` 間接證據都是負的:個股跌破均線全賣(${F.holdSwitch.sym} 買了放著 ${F.holdSwitch.hold} → 年線 ${F.holdSwitch.yr} → 季線 ${F.holdSwitch.q} → 月線 ${F.holdSwitch.m} 萬,${F.holdSwitch.probe})。`)}
                 ${li('持股進處置要不要先賣?', dispo)}
-                ${li('有沒有比法人厲害的策略?不要藏私。', `全部 79 種做法都在產業作戰室「📊 回測數字」那張表(⛔ 沒有藏):現行這套 16 年一個帳戶一路滾 <b>${Gl.on} 萬</b>是第一;${F.challengers} 種選股濾網沒有一個贏過安慰劑;<b>16 年沒有任何一種贏 0050 含息(約 ${Gl.etfTr ? Gl.etfTr.toLocaleString() : '?'} 萬)</b> —— 近 4 年這套贏 0050,拉長就輸。所謂「比法人厲害」在本站的尺上 = 贏 0050 含息,目前做不到,⛔ 不假裝做得到。`)}
+                ${li('有沒有比法人厲害的策略?不要藏私。', `全部做法都在產業作戰室「📊 回測數字」那張表(⛔ 沒有藏):修好日 K 之後,現行這套(${R.rows && R.rows.atr2 ? R.rows.atr2.t : '吊燈 ATR 2 倍'})16 年一個帳戶一路滾 <b>${Gl.on} 萬</b>、近 4 年 ${Gm.on} 萬,是重跑過的那幾種裡最高的;${F.challengers} 種選股濾網沒有一個贏過安慰劑;<b>兩段都沒贏 0050 含息</b>(16 年約 ${Gl.etfTr ? Gl.etfTr.toLocaleString() : '?'} 萬、近 4 年約 ${(this._EXIT_EDGE || {}).b0050 || '?'} 萬)。「情勢變了自動換規則」也測了,輸給固定用這一套。所謂「比法人厲害」在本站的尺上 = 贏 0050 含息,目前做不到,⛔ 不假裝做得到。`)}
             </details>`;
         } catch (_) { return ''; }
     },
@@ -21484,15 +21505,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ⛔ 自動下單**不會**幫你做(那會動真錢,要你自己決定)。0050 只算價格、沒算股利 → 數字偏保守。
     //   ⚠️ 回撤口徑:股票部位以成本計、停泊的 0050 逐日計價 → 回撤數字兩臂不是完全同一把尺,只有「賺多少」完全可比。
     _IDLE0050_EDGE: {
-        // 🚨 V77.6.7 重跑 17 條配對(同一份交易快取):中位 417 萬(原寫 445 / 贏 16 條是記錯的)、最差 349 vs 249、配對贏 13 條、回撤 14 條較小
-        main: { win: '2022-09 ~ 2026-09', paths: 17, on: 417, onLo: 349, off: 409, offLo: 249, wins: 13, onDD: 24.6, offDD: 26.1, park: 37 },
-        // 🚨 V77.6.7 更正:原本寫 864 萬 / 贏 17 條是**記錯的**(用真加權那份資料重跑 17 條:中位 656 萬、最差 644、配對贏 16 條、回撤 17 條都較小)
-        long: { win: '2011 ~ 2026(外部資料 + 真加權)', paths: 17, on: 656, onLo: 644, off: 648, offLo: 587, wins: 16, onDD: 32.2, offDD: 35.5, park: 211 },
+        // 🧱 V77.7.6 修好日 K、在新預設(吊燈 ATR 2 倍・20 天・空頭不開新倉)上重跑 17 條配對:中位一樣(324 vs 324、贏 7 條),
+        //   ⭐ 但最差一條 255 → 308、回撤 16/17 較小 → 好處仍然是「跌的時候少賠」,⛔ 不是多賺
+        main: { win: '2022-09 ~ 2026-09', paths: 17, on: 324, onLo: 308, off: 324, offLo: 255, wins: 7, onDD: 31.7, offDD: 32.8, ddBetter: 16 },
+        // 🕰️ 16 年那組修好資料後還沒重跑 → null(畫面要說出來);舊的 656 vs 648 萬是在唐奇安 40 日上跑的,⛔ 不可沿用
+        long: null,
     },
     _idle0050NoteHtml() {
         const E = this._IDLE0050_EDGE; if (!E) return '';
         const M = E.main, L = E.long;
-        return `<div class="text-[10px] text-gray-400 mt-1.5 leading-snug" data-idle0050="1">💰 <b class="text-gray-300">沒用到的錢建議停在 0050</b>,要買股票時才賣掉需要的那部分 —— 回測(${M.paths} 條路徑中位)本站 ${M.win} <b class="text-gray-300">${M.on} 萬</b> vs 放現金 ${M.off} 萬(贏 ${M.wins} 條)、16 年 <b class="text-gray-300">${L.on} 萬</b> vs ${L.off} 萬(贏 ${L.wins} 條)。<br>⭐ <b class="text-gray-300">多賺不多,主要好處是跌的時候少賠</b>:最差那一條 ${M.offLo}→${M.onLo} 萬(4 年)、${L.offLo}→${L.onLo} 萬(16 年),中途最多賠 −${M.offDD}%→−${M.onDD}%、−${L.offDD}%→−${L.onDD}%。<span class="text-gray-500">⚠️ 自動下單不會幫你做這件事;0050 沒算股利(偏保守)。</span></div>`;
+        return `<div class="text-[10px] text-gray-400 mt-1.5 leading-snug" data-idle0050="1">💰 <b class="text-gray-300">沒用到的錢建議停在 0050</b>,要買股票時才賣掉需要的那部分 —— 回測(${M.paths} 條路徑中位)本站 ${M.win} <b class="text-gray-300">${M.on} 萬</b> vs 放現金 ${M.off} 萬(贏 ${M.wins} 條)`
+            + (L ? `、16 年 <b class="text-gray-300">${L.on} 萬</b> vs ${L.off} 萬(贏 ${L.wins} 條)` : '')
+            + `。<br>⭐ <b class="text-gray-300">多賺不多,主要好處是跌的時候少賠</b>:最差那一條 ${M.offLo}→${M.onLo} 萬(4 年)${L ? `、${L.offLo}→${L.onLo} 萬(16 年)` : ''},中途最多賠 −${M.offDD}%→−${M.onDD}%${L ? `、−${L.offDD}%→−${L.onDD}%` : ''}${M.ddBetter != null ? `(${M.paths} 條裡 ${M.ddBetter} 條回撤較小)` : ''}。`
+            + (L ? '' : `<span class="text-gray-500">⏳ 16 年那組換新預設後還沒重跑。</span>`)
+            + `<span class="text-gray-500">⚠️ 自動下單不會幫你做這件事;0050 沒算股利(偏保守)。</span></div>`;
     },
     toggleBearGate(checked, silent) {
         this.settings.bearGate = !!checked;
@@ -21506,8 +21532,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const el = document.getElementById('set_bearGateDesc'); if (!el) return;
         const B = this._BEAR_GATE_EDGE, M = B.main, L = B.long;
         el.innerHTML = `判斷:<b>${B.rule}</b>(每天收盤後算一次)。那幾天<b>只擋買進</b>,賣出照三條規則走。<br>`
-            + `實測(唐奇安 40 日・最長 40 天):本站 ${M.win} ${M.paths} 條路徑中位 開著 <b>${M.on} 萬</b> vs 關掉 ${M.off} 萬(${M.paths} 條贏 ${M.wins} 條・中途最多賠 −${M.onDD}% vs −${M.offDD}%);`
-            + `16 年 開著 <b>${L.on} 萬</b>(最差一條 ${L.onLo})vs 關掉 ${L.off} 萬(最差一條 ${L.offLo})・中途最多賠 −${L.onDD}% vs −${L.offDD}%。`
+            + `實測(${B.ex || '現行出場'}):本站 ${M.win} ${M.paths} 條路徑中位 開著 <b>${M.on} 萬</b> vs 關掉 ${M.off} 萬(${M.paths} 條贏 ${M.wins} 條・中途最多賠 −${M.onDD}% vs −${M.offDD}%)`
+            + (M.wins >= Math.ceil(M.paths * 0.75) ? ';' : `<b>—— 近 4 年開不開分不出高下</b>;`)
+            + (L.off != null ? `16 年 開著 <b>${L.on} 萬</b>(最差一條 ${L.onLo})vs 關掉 ${L.off} 萬(最差一條 ${L.offLo})・中途最多賠 −${L.onDD}% vs −${L.offDD}%。`
+                : `16 年 開著 <b>${L.on} 萬</b>(最差一條 ${L.onLo}・中途最多賠 −${L.onDD}%);⏳ 關掉那一組修好資料後還沒重跑。`)
             + `<br>⚠️ 代價:空頭那段(近 4 年約 ${M.bearPct}% 的交易日、16 年約 ${L.bearPct}%)一檔都不買,會錯過空頭裡的反彈。`;
     },
     /** 🐻 決策台 / 總覽用的一句話(⛔ 只講「今天不開新倉」,⛔ 不叫人賣) */
@@ -21530,6 +21558,22 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //     ④ 首次安裝/舊用戶:**只蓋章不跳**(⛔ 否則新用戶第一次開就被歷史變更洗版)。
     //     ⑤ ⛔ 不用紅綠燈(講的是「規則換了」不是漲跌方向)。
     _STRAT_CHANGES: [
+        {
+            v: 'V77.7.6', dt: '2026-09-27', what: '出場規則 + 最長抱幾天(大盤空頭不開新倉照舊)',
+            from: '唐奇安 <b>40</b> 日低點出場 ・最長抱 <b>40</b> 個交易日',
+            to: '<b>吊燈 ATR 2 倍</b>(進場後最高收盤 − 2 倍「進場那天的 14 日平均振幅」)出場 ・最長抱 <b>20</b> 個交易日 ・大盤嚴格空頭照舊不開新倉',
+            why: '上一版之前我們發現<b>日 K 有四成上櫃的列不是官方成交價</b>(還原過除權息的價格),修好之後把所有做法重跑一次:'
+               + '唐奇安 40 日那套在近 4 年只剩 <b>179 萬</b>、16 年 <b>285 萬</b> —— 兩段都是最後幾名。'
+               + '吊燈 ATR 2 倍:近 4 年 <b>324 萬</b>、16 年(2011~2026)<b>494 萬</b>,把起點挪 17 次<b>兩段都 17 條全贏</b>,中途最多賠也比較小(−43% → −33%);'
+               + 'ATR 1.5 / 2 / 2.5 / 3 倍是 242 / 324 / 305 / 329 萬 = 一片高原,⛔ 不是剛好挑到。你說「以現在最厲害的執行」,所以直接換。',
+            cost: '① 它的優勢<b>全部在 2021 年以後</b>:2011~2020 那十年加起來只賺 47 萬,反而是唐奇安 40 日比較好(115 萬)—— 行情換回那種盤的話它會比較吃虧。'
+               + '② 出場比較快、交易次數多一倍(約 1,000 筆 vs 480 筆),手續費多;成本加倍時仍然贏,但差距會縮小。'
+               + '③ <b>仍然輸 0050 含息</b>:近 4 年 0050 含息約 350 萬、16 年約 +1,084%,這套都贏不了。'
+               + '④ 我也回測了「情勢變了自動換規則」(每月或每年看最近哪一套賺最多就換那套):近 4 年 214~263 萬,<b>輸給固定用這一套</b>(324 萬)(17 條最多只贏 2 條)—— 所以目前⛔ 不做自動切換。',
+            you: '你手上部位的<b>出場線會變近</b>(從最高收盤往下讓它跌 2 倍日常振幅就走)、<b>最長只抱 20 天</b> —— 會比以前更早賣、也更少讓賺的吐回去。'
+               + '決策台、總覽的「守住 X」、智慧單觸發價、<b>自動下單</b>全部同時換成新的線。⚙️ 設定中心可以換回唐奇安 40 日(按下面「換回舊的」)。',
+            back: 'don40', backName: '唐奇安 40 日・最長 40 天',
+        },
         {
             v: 'V77.6.5', dt: '2026-09-25', what: '出場規則 + 最長抱幾天 + 大盤空頭時要不要買',
             from: '唐奇安 <b>20</b> 日低點出場 ・最長抱 <b>20</b> 個交易日 ・大盤空頭照常買',
@@ -21745,7 +21789,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             let peak = 0; for (let i = from; i <= j; i++) peak = Math.max(peak, C(i));
             if (!(peak > 0)) return null;
             if (k === 'trail8') return peak * 0.92;
-            if (k === 'atr2') { const a = this._atrTR14(data, j); return (a > 0) ? peak - 2 * a : null; }
+            // 🔧 V77.7.6 ATR 用**進場那天**的(= 回測 chand2 / auto_trade.py / `_exitLines`);以前用第 j 天的 = 回測裡的 chandd(動態版),同名不同義
+            if (k === 'atr2') { const a = this._atrTR14(data, entryIdx == null ? j : entryIdx); return (a > 0) ? peak - 2 * a : null; }
             return null;
         } catch (_) { return null; }
     },
@@ -48677,17 +48722,18 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //      ⛔ 不可解讀成「選股變厲害了」(選股一模一樣)。
     //   🚨 舊數字保留在 `ma5` 欄位裡 —— 那個對照本身就是證據,⛔ 不可刪掉。
     _DECK_TRACK49: { months: 49, from: '2022-09', to: '2026-09', cap: 1000000, posPct: 15, picks: 2,
-                     exit: 'don40', exitName: '唐奇安 40 日低點', maxd: 40, bearGate: true,
-                     // 🔁 V77.6.5 換成「唐奇安 40 日 + 最長 40 天 + 大盤嚴格空頭不開新倉」重跑(W=240 那一條,2022-09-12 ~ 2026-09-16,收盤成交)
-                     gene: 4415663, geneDD: 28.5, plain: 2522767, plainDD: 19.1, etf0050: 2701000,
-                     // 📤 換掉之前的預設(唐奇安 20 日・最長 20 天・空頭照買)同一條路徑 —— 留著當「換了差多少」的對照
-                     prev: { exitName: '唐奇安 20 日低點・最長 20 天', gene: 1524374, geneDD: 40.1, plain: 1496620, plainDD: 26.1, robMed: 107 },
-                     // 📉 舊預設(跌破 5 日線)同一段的成績 —— 留著當「換出場差多少」的對照
-                     ma5: { gene: 708280, geneDD: 44.9, plain: 382365, plainDD: 47.7 },
-                     // 🛑 V77.6.0 停損改收盤成交重跑(W=240 那一條路徑,2022-09-12 ~ 2026-09-16);舊的停損價成交數字留在 old 當對照
-                     fill: 'close', twii: 209.6, old: { gene: 5898128, plain: 3080625 },
-                     // 🧭 17 條起點不同的路徑:🧬 贏不挑只有 6 條、贏自己同窗口 0050 只有 1 條 → 單一路徑的「🧬 比較好」只是運氣
-                     rob: { paths: 17, med: 409, lo: 249, hi: 442, dd: 26.1, pmed: 167, geneWins: 17, beat0050: 16 },
+                     exit: 'atr2', exitName: '吊燈 ATR 2 倍', maxd: 20, bearGate: true,
+                     // 🔁 V77.7.6 換成「吊燈 ATR 2 倍 + 最長 20 天 + 大盤嚴格空頭不開新倉」,**修好的日 K**(陷阱 #46)重跑
+                     //   W=240 那一條,2022-09-16 ~ 2026-09-24,收盤成交・股利 + 二代健保;0050 = 含息
+                     gene: 3242238, geneDD: 33.95, plain: 1922991, plainDD: 36.91, etf0050: 3423000, etfTr: true,
+                     // 📤 換掉之前的預設(唐奇安 40 日・最長 40 天・空頭不開新倉)同一條路徑、同一份修好的資料 —— 留著當「換了差多少」的對照
+                     prev: { ver: 'V77.7.6', exitName: '唐奇安 40 日低點・最長 40 天', bear: true, gene: 2183413, geneDD: 41.78, robMed: 179 },
+                     // 📉 跌破 5 日線(空頭照買)同一段的成績 —— 留著當「換出場差多少」的對照(⏳ 不挑 🧬 那組修好資料後沒重跑 → null)
+                     ma5: { gene: 1389452, geneDD: 40.69, plain: null, plainDD: null },
+                     // 🛑 V77.6.0 起停損改收盤成交;old = 停損價成交的舊數字(高估,留著當對照)
+                     fill: 'close', twii: 229.8, old: { gene: 5898128, plain: 3080625 },
+                     // 🧭 17 條起點不同的路徑(同一份修好的資料)
+                     rob: { paths: 17, med: 324, lo: 255, hi: 354, dd: 32.8, pmed: 212, geneWins: 17, beat0050: 2 },
                      // 🔀 V75.0.8「多頭做打法、空頭改抱 0050」切換策略實測(使用者提的)—— ⛔ 三關全滅。
                      //   🚨 ⚠️ 這一組是用**舊的 5 日線出場**跑的(換出場是 V75.0.9 才做的事)
                      //      → ⛔ **不可跟上面那三個數字直接相減**,它只回答「切換 vs 不切換」這一個問題。
@@ -48727,10 +48773,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         //   營收加速 **0/17 條路徑贏安慰劑**(中位少 122 萬),回撤也⛔ 沒有比安慰劑小 → 顯示端依數字自動改口。
         // 🛑 V77.6.0 停損改收盤成交重跑(舊的三組是停損價成交,高估):不濾反而最差(🧬 全選時錢常卡在賠錢的部位),
         //   營收加速帳面比不濾多,但**同通過率的隨機抽更多**(1/17)→ 功勞仍然是「少挑一點」,⛔ 不是營收加速。
-        off:  { n: 741, win: 30.0, gain: 1070000, dd: 40.2 },
-        on:   { n: 729, win: 32.7, gain: 2390000, dd: 24.5 },
-        sham: { n: 692, win: 30.5, gain: 2910000, dd: 24.4 },
-        paths: 17, vsShamWin: 1, fill: 'close',
+        // 🧱 V77.7.6 修好日 K、在新預設(吊燈 ATR 2 倍・20 天・空頭不開新倉)上重跑 17 條中位:
+        //   營收加速 234 萬 < 安慰劑 266 < 不濾 324 → 仍然是取捨型(回撤 20.3% 最小),**17 條只贏安慰劑 1 條** → ⛔ 不換預設
+        off:  { n: 1011, win: 32.9, gain: 3240000, dd: 32.8 },
+        on:   { n: 760, win: 34.7, gain: 2340000, dd: 20.3 },
+        sham: { n: 826, win: 33.9, gain: 2660000, dd: 27.4 },
+        paths: 17, vsShamWin: 1, fill: 'close', exit: '吊燈 ATR 2 倍・20 天・空頭不開新倉',
         edge: { pp: 0.80, vsSham: 0.77, p: 0.003, net: 0.33, abs: 0.40 },
         rate: 50.6, rateOn: 1075, rateN: 2126, asof: '2026-09-22',
         src: 'accel_probe.mjs + portfolio_backtest.mjs FIN=acc|sham',
@@ -49125,17 +49173,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <summary class="px-3 py-2 text-[11px] font-bold text-gray-300 cursor-pointer">📊 這套做法實測賺多少?(⛔ 含它跟 0050 的對照)</summary>
                 <div class="px-3 pb-3 text-[11px] text-gray-300 leading-relaxed">
                     <div class="text-[10px] text-gray-500 mb-1.5">${T.months} 個月(${T.from}~${T.to},<b>含 2022 那一段大跌</b>)・本金 ${(T.cap / 10000).toFixed(0)} 萬・每天最多 ${T.picks} 檔・每筆本金 ${T.posPct}%・出場用<b>${T.exitName}</b>・最長抱 ${T.maxd || 20} 天${T.bearGate ? '・<b>大盤嚴格空頭不開新倉</b>' : ''}・已扣來回成本 0.44%</div>
-                    ${T.prev ? `<div class="text-[10px] text-cyan-200/80 mb-1.5">🔁 V77.6.5 換預設前(${this._escHtml(T.prev.exitName)}・空頭照買)同一條路徑 🧬 ${m(T.prev.gene)} 元;17 條路徑中位 ${T.prev.robMed} 萬 → 現在 ${T.rob ? T.rob.med : '—'} 萬。</div>` : ''}
+                    ${T.prev ? `<div class="text-[10px] text-cyan-200/80 mb-1.5">🔁 ${T.prev.ver || ''} 換預設前(${this._escHtml(T.prev.exitName)}・${T.prev.bear ? '空頭不開新倉' : '空頭照買'})同一條路徑 🧬 ${m(T.prev.gene)} 元;17 條路徑中位 ${T.prev.robMed} 萬 → 現在 ${T.rob ? T.rob.med : '—'} 萬。</div>` : ''}
                     <div class="gap-x-2 gap-y-1" style="display:grid;grid-template-columns:minmax(0,1fr) auto">
                         <div>🧬 只做「高位階+高波動」</div><div class="font-mono text-right"><b class="text-gray-100">${m(T.gene)} 元</b> ・中途最多賠 ${T.geneDD}%</div>
                         <div>照清單順序做(不挑 🧬)</div><div class="font-mono text-right">${m(T.plain)} 元 ・${T.plainDD}%</div>
-                        <div class="text-amber-300">🆚 同期 0050 買了放著</div><div class="font-mono text-right text-amber-300"><b>${m(T.etf0050)} 元</b></div>
+                        <div class="text-amber-300">🆚 同期 0050 買了放著${T.etfTr ? '(含息)' : ''}</div><div class="font-mono text-right text-amber-300"><b>${m(T.etf0050)} 元</b></div>
                     </div>
                     ${this._btEdgeNote('html')}
                     <div class="mt-2 bg-[#0d1117] border-l-4 border-amber-500 pl-2.5 py-2 rounded-r">
                         <b class="text-amber-300">⭐ 真正決定輸贏的是「出場」,不是選股。</b><br>
                         同一批股票、同一套選股、同一段 ${T.months} 個月,<b>只把出場從「跌破 5 日線」換成「${T.exitName}」</b>:
-                        🧬 從 ${m(T.ma5.gene)} 變成 <b>${m(T.gene)}</b>、不挑 🧬 從 ${m(T.ma5.plain)} 變成 ${m(T.plain)}
+                        🧬 從 ${m(T.ma5.gene)} 變成 <b>${m(T.gene)}</b>${T.ma5.plain != null ? `、不挑 🧬 從 ${m(T.ma5.plain)} 變成 ${m(T.plain)}` : ''}
                         —— 5 日線那組${(T.ma5.gene > T.etf0050) ? '贏' : '<b>輸</b>'} 0050,${T.exitName}這組${_win && _winP ? '<b>兩種都贏</b>' : (_win ? '只有 🧬 贏' : (_winP ? '只有不挑 🧬 贏' : '<b>兩種都輸給買 0050 放著</b>'))}。
                         ⛔ 這<b>不代表選股變厲害了</b>(選股一模一樣),它代表的是「太早出場會把贏家洗掉」。<br>
                         ${T.gene > T.plain ? `這一條路徑挑 🧬 比不挑多賺 ${m(T.gene - T.plain)} 元` : `⚠️ 這一條路徑挑 🧬 反而比不挑<b>少賺 ${m(T.plain - T.gene)} 元</b>`}${T.rob ? `;把起點挪 ${T.rob.paths} 次,🧬 贏不挑 ${T.rob.geneWins} 條 —— ${T.rob.geneWins >= Math.ceil(T.rob.paths * 0.75) ? '挑 🧬 比較好' : (T.rob.geneWins <= Math.floor(T.rob.paths * 0.25) ? '<b>挑 🧬 反而比較差</b>' : '<b>分不出高下</b>')}` : ''}。<br>

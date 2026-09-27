@@ -80,7 +80,9 @@ ok('🚪b2 ATR 也要是自己的一套(⛔ 不可跟其中任一種完全相同
     const cmp = await page.evaluate(a => {
         const n = a.rows.length - 1;
         const L = app._exitLines(a.rows, '__TEST__');           // 無庫存 → proxy 模式(近 20 根)
-        const at = k => app._exitLevelAt(a.rows, Math.max(0, n - 19), n, k);
+        // 🔧 V77.7.6 吊燈 ATR 改用「進場那天」的 ATR → 無庫存(proxy,不知道進場日)時要傳 entryIdx=null(= 近 20 根 + 今天的 ATR),
+        //   ⛔ 不可假裝 n−19 那根就是進場日(那會拿那一天的 ATR,跟 `_exitLines` 的代理版不是同一件事)
+        const at = k => app._exitLevelAt(a.rows, null, n, k);
         const r2 = v => v == null ? null : Number(v.toFixed(2));
         return { lines: { don: L.don, ma5: L.ma5, trail8: L.trail8, atr2: L.atr2 },
                  atFn: { don: r2(at('don')), ma5: r2(at('ma5')), trail8: r2(at('trail8')), atr2: r2(at('atr2')) } };
