@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.6.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.6.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.6.7</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.6.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8642,8 +8642,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.6.7',
+    _APP_VERSION: 'V77.6.8',
     _CHANGELOG: [
+        { v: 'V77.6.8', d: ['🐢 <b>手上的 ETF(0050、009816 …)不再被套上個股的三條出場</b>:決策台原本把 0050 寫成「抱滿 40 天今天尾盤賣」—— 那三條是替高波動個股回測出來的;本站對 ETF 的實測是「買了放著」最強(63 檔 ETF 沒有任何買賣訊號贏過含息放著、16 年 0050 含息比這套多)。自動下單本來就不碰你手動買的庫存,是畫面講錯。', '🚨 <b>持股進處置/注意股,決策台會標出來</b>(以前賣出列完全不看官方名單),並回答「要不要先賣」:17 條起點實測,進處置隔天開盤賣 193 萬、進注意隔天賣 175 萬 vs 照三條出場 409 萬 —— 兩種都更差(0/17、1/17)→ 照三條出場走,處置期間注意分盤流動性、別用市價單。', '🐻 <b>「股市空頭時手上的先全賣?」第一次實測</b>:嚴格空頭日全賣 151 萬(17 條 0 贏、回撤 −48% vs −26%)、跌破 60 日線就全賣 85 萬 —— 空頭該做的是「不買」(現行預設),不是「全賣」。', '📖 決策台新增「看錯要不要先跑?先賣再說?空頭要不要全賣?」七問,每一句對照本站實測數字(跌破 5 日線 100 萬 vs 現行 409 萬、明天漲跌 33.6/36.5% 丟銅板、大盤大跌全賣 12 種變體沒用、79 種策略沒有一種 16 年贏 0050 含息)。'] },
     { v: 'V77.6.7', d: ['🎣 <b>釣魚系統修好了</b>:正式網站的散戶救星是壓縮版,產業作戰室去讀它的 🧬 門檻時一個都讀不到 → 釣魚池一直寫「門檻讀不到」(雜訊清單、更新紀錄也一起空)', '🧾 <b>「閒錢停在 0050」的數字更正</b>:近 4 年 417 萬(原寫 445)、16 年 656 萬(原寫 864)—— 多賺不多,好處是跌的時候少賠', '📊 決策台補上 16 年那一句:這套 648 萬 vs 0050 含息買了放著約 1,001 萬;總覽「量卡在哪些價位」現價在那一段裡面時不再寫「在你上面」'] },
     { v: 'V77.6.6', d: ['📊 產業作戰室 → 實測總表 → 回測數字:兩份表合成<b>一張 2011~2026</b>(79 種全部用同一份資料重跑),新增「🏦 一個帳戶一路滾 16 年」三欄、<b>每一欄都能點排序</b>(舊版情境庫那張也可以)', '🚨 「16 年加起來」是每年重放 100 萬的加總,看不到會不會破產 —— 一路滾排第一的仍是決策台現行(648 萬),預設不換'] },
     { v: 'V77.6.5', d: ['🔁 <b>決策台換成回測最強的那一套</b>:出場線改成「跌破近 <b>40</b> 日最低」、最長抱 <b>40</b> 天、<b>大盤嚴格空頭(收盤在 60 日線下,而且 20 日線也在 60 日線下)那天不買新的</b>(賣出照常)。近 4 年 17 條路徑中位 107 → <b>409 萬</b>、回撤 −40% → −26%;16 年(官方加權)舊的會破產、新的 648 萬。開 App 會跳一次視窗說明,設定中心可以換回舊的。', '💰 <b>建議:沒用到的錢放 0050</b>(要買股票時再賣掉需要的部分)—— 回測近 4 年 409 → 417 萬、16 年 648 → 656 萬(V77.6.7 更正,原寫 864 是記錯的);⚠️ 自動下單不會幫你做。', '⚠️ 誠實話:16 年來看 <b>0050 含息買了放著(+1,035%)還是比這套多</b>;近 4 年這套贏。'] },
@@ -21396,7 +21397,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _DISPO_HOLD_EDGE: {
         probe: 'dispo_probe', win: '2023-06 ~ 2026-09', dispMed: -4.8, dispN: 1441, dispEdge: 1.62, dispWin: 40.4, noticeSpike: -1.81,
         // 🧪 V77.6.8 三臂 17 條(現行 vs 進處置隔天開盤賣 vs 進注意隔天開盤賣)—— 跑完填;⛔ 沒填就顯示「還沒測」
-        hold: null,
+        hold: {"paths":17,"win":"2023-06 ~ 2026-09(處置/注意事件史從 2023-06 起;注意股只有上市)","asof":"2026-09-27","src":"portfolio_backtest.mjs FORCE_EXIT=<dispo_probe 事件>・事件日之後第一個交易日開盤賣・疊在現行配置上","base":{"med":409,"lo":249,"dd":26.1},"dispo":{"med":193,"lo":95,"hi":327,"dd":30.0,"ddw":35.2,"wins":0,"ddBetter":3,"diff":-216,"forced":58,"n":538,"verdict":"⛔ 進處置隔天開盤賣更差(17 條只贏 0 條、中位少 216 萬)→ 照三條出場"},"att":{"med":175,"lo":121,"hi":482,"dd":41,"ddw":41.8,"wins":1,"ddBetter":0,"diff":-234,"forced":114,"n":616,"verdict":"⛔ 進注意隔天開盤賣更差(17 條只贏 1 條、中位少 234 萬)→ 照三條出場"}},
     },
     _heldAttention(sym) {
         try {
