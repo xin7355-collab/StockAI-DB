@@ -642,6 +642,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
    + **`python3 scripts/test_intraday_relay.py`**(🛟 盤中即時檔「留不留得住」—— 2026-09-10 新增:兩支盤中 workflow 都要**也推 data 分支**,⭐ 開真的 git repo 實跑 yaml 裡抽出來的 `deploy()`,而且有**決定性對照組**(拿掉那段必須重現「daily_miner 洗版後消失」)
    + **`node scripts/test_idxparse.mjs`**(🎣 pro.html 從**正式網站的壓縮版** index.html 解析常數 —— V77.6.7 新增:讀 `origin/gh-pages:index.html`,舊 regex 在那份上六個全滅,而讀原檔的測試永遠綠)
    + **`node scripts/test_ovtruth.mjs`**(總覽/決策台講的話跟回測一致 —— V77.6.7:量堆積包住現價 / 不挑 🧬 少賺幾 % 讀常數 / 閒錢停 0050 數字 / 16 年輸 0050 含息那句;V77.6.8 ⑤ 決策台「看錯要不要先跑」七問全部讀常數、空頭清倉沒跑完要明說)
+   + **`node scripts/test_labexport.mjs`**(📤 V77.7.3 實測總表匯出給 AI:條數 = LAB 加總、沒有 HTML 標籤、一定帶回測方法段 + 提問範本、排序跟畫面同一套、複製失敗⛔ 不靜默;⭐ 決定性對照:改 LAB 一條數字匯出要跟著變)
    + **`node scripts/test_etfhold.mjs`**(🐢 V77.6.8 手上的 ETF ⛔ 不套個股三條出場:`_invExitScan` 另列 / 決策台 `[data-exitetf]` / `_ovDecide` state `etfhold` / `_exitDistance` 回 `etf:true` 的空三條 ⛔ 不回 null;⭐ 決定性對照:同一份 K 線換代號 2330 就要「抱滿 40」;2 種注入全紅)
    + **`node scripts/test_dispohold.mjs`**(🚨 V77.6.8 持股進處置/注意 → 決策台賣出列要有徽章 + 說明;⭐ 離線遠的持股本來一列都不畫 → 在名單上的另列一區 `[data-exitatt]`;`_DISPO_HOLD_EDGE.hold` 是 null 要明說「還沒測」⛔ 不編答案)
    + **`node scripts/test_forceexit.mjs`**(🐻🚨 V77.6.8 回測引擎 `BEAR_EXIT` / `FORCE_EXIT` 鉤子:真的跑引擎(repo `data/` 25 檔,約 3 分);空頭日賣收盤、事件日之後第一個交易日賣**開盤**(⛔ 事件日收盤是前視);兩個一定進 CACHE_KEY;不設時 key 一字不變;設了卻 0 筆 → exit 1;⚠️ 被提早賣掉的那一檔會多出**新**交易,斷言只比兩邊都有的那些筆)

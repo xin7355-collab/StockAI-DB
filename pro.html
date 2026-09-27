@@ -910,9 +910,14 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
         <input id="labQ" type="search" inputmode="search" placeholder="🔍 搜尋(例:分點、出場、空頭)"
                oninput="PRO.labSearch(this.value)" autocomplete="off">
         <button class="lbtn" id="labQx" style="display:none" onclick="PRO.labSearch('')">✕</button>
+        <button class="lbtn" id="labExBtn" onclick="PRO.labExportToggle()" title="把實測總表整理成一份文字,拿去問外部 AI">📤 匯出給 AI</button>
       </span>
     </h2>
     <div class="labbar" id="labBar"></div>
+    <!-- 📤 V77.7.3 使用者:「把實測總表做個可以匯出,我要拿去問 AI」
+         ⭐ 匯出內容一律從 PRO.LAB 現讀(⛔ 不另存第二份),開頭附「回測方法」與「提問範本」——
+         少了那兩段,外部 AI 會把已經實測沒用的做法再推薦一次、或自己編數字。 -->
+    <div id="labExport" class="note hidden" style="margin-top:8px"></div>
     <!-- 📌 V74.9.0 使用者:「主題標籤隱藏起來,我要的是搜尋時才列出來」
          ⭐ 主題標籤是**橫切**(籌碼/出場/板塊…),⛔ 不動既有的判定分類(有用/沒用/坑/測不了);
             平常它只是一整排數字、佔掉第一屏 → 改成**有在搜尋(或已選主題)時才出現**。
@@ -5400,8 +5405,119 @@ const PRO = {
     const x = document.getElementById('labQx');
     if (x) x.style.display = this._labQ ? '' : 'none';
     this.renderLab();
+    { const ex = document.getElementById('labExport'); if (ex && !ex.classList.contains('hidden')) this._labExportRender(); }
   },
   labTopic(k) { this._labTopic = (this._labTopic === k) ? '' : k; this.renderLab(); },
+
+  // ═══ 📤 V77.7.3 匯出給 AI ═══
+  //   ⛔ 數字一律從 LAB 現讀(不另存一份);⛔ 不幫使用者把整份丟給 API(要吃他的額度、而且 App 內 AI 不會上網)。
+  //   ⭐ 開頭一定帶「回測方法」+「提問範本」:外部 AI 沒有這兩段,會①把「實測沒用」的再推薦一次 ②自己編數字 ③用 50% 當勝率基準。
+  _LAB_EXPORT_NOTE: '⚠️ 2026-09-27(V77.7.0)修正了日 K 的還原價問題(上櫃 40.7% 的列不是官方成交價),並發現回測引擎有一個讓回撤被灌大的 bug;修正後重跑的條目會標 u=2026-09-27 以後的日期,更早的條目數字是修正前算的,⚠️ 方向參考、數字可能偏高。',
+  labExportToggle() {
+    const el = document.getElementById('labExport'); if (!el) return;
+    const open = el.classList.contains('hidden');
+    el.classList.toggle('hidden', !open);
+    if (open) this._labExportRender();
+  },
+  _labExportRows(scope) {
+    if (scope === 'view') {
+      const listCol = Array.isArray(this.LAB[this._labSel]);
+      if (this._labQ || this._labTopic || listCol) return this._labRows();
+    }
+    const out = [];
+    for (const t of this.LAB_TABS) if (Array.isArray(this.LAB[t[0]])) for (const it of this.LAB[t[0]]) out.push({ ...it, _col: t[0] });
+    return out;
+  },
+  _labPlain(html) {
+    return String(html == null ? '' : html)
+      .replace(/<br\s*\/?>/gi, '\n').replace(/<\/(div|p|li)>/gi, '\n').replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+      .replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  },
+  labExportText(o = {}) {
+    const scope = o.scope || 'all', full = o.full !== false, ask = o.ask !== false;
+    const rows = this._labExportRows(scope);
+    const colName = k => { const t = this.LAB_TABS.find(x => x[0] === k); return t ? this._labPlain(t[1]) : k; };
+    const today = (() => { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); } catch (_) { return new Date().toISOString().slice(0, 10); } })();
+    const L = [];
+    L.push(`# 台股回測實測總表(${rows.length} 條・匯出 ${today}・${this.VER})`);
+    L.push('');
+    if (ask) {
+      L.push('## 我想請你做的事');
+      L.push('以下是我自己用台股全市場資料實際回測的結果(不是網路說法)。請你:');
+      L.push('1. 找出**我還沒測過、但值得測**的假設 —— 每一個都要寫出**可以用日 K / 籌碼 / 財報量化的定義**(進場條件、出場條件、對照組)。');
+      L.push('2. 指出我的**回測方法**可能有什麼漏洞(前視偏誤、選樣偏誤、多重比較、成本、流動性……)。');
+      L.push('3. ⛔ 不要再推薦表裡已經標「⛔ 實測沒用」的做法,除非你能說出**跟我測的版本哪裡不一樣**。');
+      L.push('4. ⛔ 不要自己編數字或勝率;要引用數字一律以這份表為準,沒有的就寫「需要回測」。');
+      L.push('5. 每個建議標上:預期會影響的是「選股」「進場時點」「出場」「部位大小」哪一類。');
+      L.push('');
+    }
+    L.push('## 回測方法(看數字之前一定要讀)');
+    L.push('- 資料:台股上市櫃日 K(2021 起,長歷史 2011 起)+ 三大法人、融資券、集保、財報;⚠️ 倖存者偏誤(已下市的不在裡面)。');
+    L.push('- 報酬一律**扣同期加權指數**(超額報酬);**隨便挑一天**的勝率約 36%(中位數個股本來就輸大盤),⛔ 不是 50%。');
+    L.push('- 成本:買賣一趟 **0.44%**(手續費 + 證交稅);贏不過這個數字 = 白做。');
+    L.push('- 「六道關卡」:全期正 / 前後半同向 / 逐年同向 / 拿掉最好的一年仍正 / 扣成本仍正 / 疊在現有做法上仍有增量。');
+    L.push('- 組合回測:本金 100 萬、每筆 15 萬、一天最多 2 檔、停損用收盤價成交;同一套規則把起點挪 17 次(每 5 個交易日一條)看配對勝場,⛔ 不只看一條路徑。');
+    L.push('- ' + this._LAB_EXPORT_NOTE);
+    L.push('');
+    const order = this.LAB_TABS.map(t => t[0]);
+    const groups = {};
+    for (const r of rows) (groups[r._col] ||= []).push(r);
+    for (const k of order) {
+      const g = groups[k]; if (!g || !g.length) continue;
+      const sorted = k === 'ok' ? g.slice().sort((a, b) => (b.r ?? -1) - (a.r ?? -1)) : g.slice().sort((a, b) => (b.u || '').localeCompare(a.u || ''));
+      L.push(`## ${colName(k)}(${g.length} 條)`);
+      sorted.forEach((it, i) => {
+        L.push(`### ${i + 1}. ${this._labPlain(it.t)}`);
+        if (it.n) L.push(`- 數字:${this._labPlain(it.n)}`);
+        if (it.w) L.push(`- 結論:${this._labPlain(it.w)}`);
+        if (full && it.how) L.push(`- 怎麼用:${this._labPlain(it.how)}`);
+        if (full && it.d) L.push(`- 說明:${this._labPlain(it.d).replace(/\n+/g, ' ')}`);
+        L.push(`- 來源:${this._labPlain(it.s || '—')}${it.u ? `・最後更新 ${it.u}` : ''}`);
+      });
+      L.push('');
+    }
+    return L.join('\n');
+  },
+  _labExportOpt() {
+    const g = id => { const e = document.getElementById(id); return e ? e.value : ''; };
+    return { scope: g('labExScope') || 'all', full: g('labExFull') !== 'brief', ask: g('labExAsk') !== 'no' };
+  },
+  _labExportRender() {
+    const el = document.getElementById('labExport'); if (!el) return;
+    const prev = el.querySelector('#labExScope') ? this._labExportOpt() : { scope: (this._labQ || this._labTopic) ? 'view' : 'all', full: true, ask: true };
+    const txt = this.labExportText(prev);
+    const nView = this._labExportRows('view').length, nAll = this._labExportRows('all').length;
+    const kchar = (txt.length / 1000).toFixed(0);
+    el.innerHTML = `<b>📤 匯出給 AI</b>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0">
+        <select id="labExScope" onchange="PRO._labExportRender()"><option value="view" ${prev.scope === 'view' ? 'selected' : ''}>目前畫面(${nView} 條)</option><option value="all" ${prev.scope === 'all' ? 'selected' : ''}>全部(${nAll} 條)</option></select>
+        <select id="labExFull" onchange="PRO._labExportRender()"><option value="full" ${prev.full ? 'selected' : ''}>完整(含說明)</option><option value="brief" ${!prev.full ? 'selected' : ''}>精簡(標題+數字+來源)</option></select>
+        <select id="labExAsk" onchange="PRO._labExportRender()"><option value="yes" ${prev.ask ? 'selected' : ''}>附提問範本</option><option value="no" ${!prev.ask ? 'selected' : ''}>不附</option></select>
+        <button class="lbtn" onclick="PRO.labExportDo('copy', this)">📋 複製</button>
+        <button class="lbtn" onclick="PRO.labExportDo('file', this)">⬇️ 下載 .md 檔</button>
+      </div>
+      <div style="color:var(--dim2)">這份約 <b>${Number(kchar).toLocaleString()}K 字</b>${txt.length > 60000 ? ' —— ⚠️ 很長,貼進對話框可能被截斷:建議<b>下載 .md 檔當附件上傳</b>,或先<b>搜尋一個主題</b>再匯出「目前畫面」' : ''}。
+      ⭐ 最好的問法是<b>一次只問一個主題</b>(例:先搜「出場」再匯出),AI 才會針對它想,而不是泛泛而談。
+      ⛔ 它回給你的新點子<b>都還沒驗證</b> —— 貼回來給我,我先回測、過了六道關卡才會上線。</div>`;
+  },
+  labExportDo(kind, btn) {
+    const txt = this.labExportText(this._labExportOpt());
+    if (kind === 'copy') {
+      const ok = this._copySync(txt);
+      this.toast(ok ? `📋 已複製 ${txt.length.toLocaleString()} 字,貼到 AI 對話框` : '⚠️ 這台裝置不給複製 —— 請改用「下載 .md 檔」');
+      return;
+    }
+    try {
+      const d = (() => { try { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); } catch (_) { return 'export'; } })();
+      const blob = new Blob([txt], { type: 'text/markdown;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = `實測總表_${d}.md`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      this.toast('⬇️ 已送出下載(iPhone 會出現在「檔案」App 的下載項目;沒看到就改用 📋 複製)');
+    } catch (e) { this.toast('⚠️ 下載失敗:' + (e && e.message || e) + ' —— 請改用 📋 複製'); }
+  },
 
   /** 目前條件下要顯示哪些條目。搜尋時**跨全部判定欄**,並帶上它來自哪一欄。 */
   _labRows() {
@@ -5661,7 +5777,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V77.7.2',
+  VER: 'V77.7.3',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

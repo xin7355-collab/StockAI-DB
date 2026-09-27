@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.7.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.7.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.7.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.7.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8642,8 +8642,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.7.2',
+    _APP_VERSION: 'V77.7.3',
     _CHANGELOG: [
+        { v: 'V77.7.3', d: ['📤 <b>產業作戰室 → 實測總表 多一顆「匯出給 AI」</b>:把全部(或你搜尋到的那幾條)回測結論整理成一份文字,可以📋 複製或⬇️ 下載檔案,拿去問 ChatGPT / Claude / Gemini。開頭會自動附上「回測方法」與「提問範本」,避免 AI 把實測沒用的再推薦一次、或自己編數字。', '💡 最好的問法:<b>一次只問一個主題</b>(先搜「出場」再匯出),AI 回給你的新點子貼回來給我,先回測過關才上線。'] },
         { v: 'V77.7.2', d: ['📏 <b>日 K 修好之後重算了兩張表</b>:K 線訊號成績(2,241 檔・A 級 48 個・基準勝率 36.5%)與「漲/平/跌」機率表(明天 33.6 / 29.9 / 36.5 沒變)。「量能動能發動」第一次有成績:統計上站得住,但<b>平均每趟 −0.93%</b>(會賠),所以它不會被當成進場理由。', '🏭 題材頁多一格「營收在加速 X/Y 檔」(只描述,實測挑加速最多的族群跟隨機一樣)。', '⏳ 決策台「這套實測賺多少」那段數字<b>還在重算中</b>(修好資料 + 股利入帳 + 二代健保),下一版更新。'] },
         { v: 'V77.7.1', d: ['🔬 產業作戰室「實測總表」:同一個題目以後<b>只改那一張</b>、不再開新卡;非「有用」那幾欄改成<b>最近更新的排最上面</b>,每一條標更新日。', '📅 逐年成績單多兩欄:<b>AI 前(2011~2022)</b>與 <b>AI 時代(2023 起)</b>各自加總 —— 現行那套 AI 前 +74.8 萬(0050 含息 +110.9 萬),AI 時代 +262.2 萬(+177.4 萬)。', '🧪 新回測工具:OBV 五種用法、供應鏈「哪一層營收在加速」、持有期間股利入帳(結論與決策台重算等資料修好再一起公布)。'] },
         { v: 'V77.7.0', d: ['🧱 <b>修好日 K「不是官方成交價」的問題</b>(上一版抓到的:上櫃股四成的列是還原過除權息的價格,比真價低 4~20%)。採礦機現在會用 FinMind 的官方原始價把那些列整段換回來,並且擋掉之後再從 Yahoo 補進還原價。離線模擬:上櫃不在跳動單位格上的列 <b>29 萬 → 7,650</b>、接縫處的假跳空 <b>667 → 24</b>。', '⏳ 要等下一輪採礦跑完才會生效;生效後會把 🧬 選股、決策台 49 個月、逐年成績表整批重跑,數字變了會再告訴你。'] },
