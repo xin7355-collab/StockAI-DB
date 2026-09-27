@@ -32,6 +32,21 @@ for (const f of ['index.html', 'pro.html', 'scripts/playbook_scan.mjs']) {
     ck(LADDER.test(src), `①b ${f} 的階梯 = 0.01/0.05/0.1/0.5/1/5(⛔ 改一邊就會被擋)`);
 }
 
+// ── ①c V77.7.0 Python 採礦端 `miner._tick_of` 也要同一張階梯(陷阱 #46 的跳動單位守門)──
+{
+    const { execFileSync } = await import('child_process');
+    const probe = [0.5, 9.99, 10, 49.95, 50, 99.9, 100, 499.5, 500, 999, 1000, 5000];
+    const js = probe.map(v => (v < 10 ? 0.01 : v < 50 ? 0.05 : v < 100 ? 0.1 : v < 500 ? 0.5 : v < 1000 ? 1 : 5));
+    let py = null;
+    try {
+        py = JSON.parse(execFileSync('python3', ['-c',
+            `import json,sys; sys.argv=['x']; import miner; print(json.dumps([miner._tick_of(v) for v in ${JSON.stringify(probe)}]))`],
+            { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().split('\n').pop());
+    } catch (e) { py = null; }
+    ck(Array.isArray(py) && py.every((v, i) => Math.abs(v - js[i]) < 1e-9),
+       `①c miner._tick_of 跟 JS 階梯一致(${py ? py.join('/') : '讀不到'})`);
+}
+
 // ── ④ 觸發價的方向(原始碼釘住)────────────────────────────────────
 console.log('\n── ④ 觸發價仍然是無條件**進位**(⛔ 不可順手統一成捨去)──');
 const pbs = rd('scripts/playbook_scan.mjs');

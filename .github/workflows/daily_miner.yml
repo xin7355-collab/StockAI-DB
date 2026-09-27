@@ -99,6 +99,18 @@ jobs:
           (git show origin/data:inst_cache_stock.json > inst_cache_stock.json 2>/dev/null && [ -s inst_cache_stock.json ]) \
             || { rm -f inst_cache_stock.json; git checkout origin/gh-pages -- inst_cache_stock.json 2>/dev/null || true; }
 
+      # 🧱 V77.7.0 陷阱 #46:把 klines_deep(FinMind 原始價,2021 起)解給採礦機,匯出前把「還原價」列換回官方成交價。
+      #    ⛔ 拿不到就照舊跑(miner 會印「這一輪沒修」),⛔ 不可讓整個採礦節點失敗。零 API,約 42MB。
+      - name: 🧱 還原 klines_deep(修還原價用)
+        run: |
+          mkdir -p "$RUNNER_TEMP/kdeep"
+          if git fetch origin klines_deep --depth=1 2>/dev/null && git archive origin/klines_deep | tar -x -C "$RUNNER_TEMP/kdeep" 2>/dev/null; then
+            echo "KLINES_DEEP_DIR=$RUNNER_TEMP/kdeep" >> "$GITHUB_ENV"
+            echo "🧱 klines_deep 檔數:$(ls "$RUNNER_TEMP/kdeep/klines_deep" 2>/dev/null | wc -l)"
+          else
+            echo "⚠️ klines_deep 拿不到 → 這一輪不修還原價(陷阱 #46)"
+          fi
+
       - name: ⛏️ 執行採礦 (專屬節點 ${{ matrix.batch }})
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}

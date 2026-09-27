@@ -663,6 +663,36 @@ def _mark_delisted(symbol: str, reason: str = ''):
         print(f"  ⚠️ 寫 delisted blacklist 失敗:{e}")
 
 
+# 📏 V77.7.0 台股跳動單位(陷阱 #46)—— ⛔ 跟 index.html._tickOf / playbook_scan.mjs tickOf 同一張階梯,
+#    scripts/test_ticksize.mjs 會跨語言比對。ETF(00 開頭)另一套:<50 → 0.01、≥50 → 0.05。
+def _tick_of(p, etf=False):
+    p = float(p)
+    if etf:
+        return 0.01 if p < 50 else 0.05
+    if p < 10: return 0.01
+    if p < 50: return 0.05
+    if p < 100: return 0.1
+    if p < 500: return 0.5
+    if p < 1000: return 1.0
+    return 5.0
+
+
+def _on_tick(p, etf=False) -> bool:
+    """收盤價在不在跳動單位格上。容許 1% 個 tick 的浮點殘差(yfinance 給 float32)。"""
+    try:
+        p = float(p)
+    except (TypeError, ValueError):
+        return False
+    if not (p > 0):
+        return False
+    t = _tick_of(p, etf)
+    q = p / t
+    return abs(q - round(q)) < 0.01
+
+
+_YF_OFFGRID = {'rows': 0, 'syms': set()}   # 本輪被跳動單位守門擋掉的 yfinance 列(log 用)
+
+
 # ── yfinance OHLCV 補洞（TWSE/TPEX 回應不全時用 Yahoo Finance 補檔）─────────
 def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) -> list:
     """
@@ -696,9 +726,17 @@ def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) 
             if hist is None or hist.empty:
                 continue
             out = []
+            _etf = str(symbol).startswith('00')
+            _rej = 0
             for idx, row in hist.iterrows():
                 cls = float(row.get('Close', 0) or 0)
                 if cls <= 0:
+                    continue
+                # 🚨 V77.7.0 陷阱 #46:yfinance 給的台股 Close 就算 auto_adjust=False 仍常是**還原過除權息/配股**的價
+                #    (實測上櫃 40.7% 的歷史列是這樣進來的,偏差中位 4%、P90 23%)→ 收盤不在跳動單位格上 = 不是官方成交價
+                #    → ⛔ 不寫(留洞 > 寫錯);⛔ 不四捨五入湊格(那是竄改)。
+                if not _on_tick(cls, _etf):
+                    _rej += 1
                     continue
                 date_str = idx.strftime('%Y/%m/%d')
                 out.append({
@@ -709,6 +747,10 @@ def yfinance_ohlcv_fallback(symbol: str, market_type: str, days_back: int = 30) 
                     'close':  cls,
                     'volume': int(row.get('Volume', 0) or 0),
                 })
+            if _rej:
+                _YF_OFFGRID['rows'] += _rej
+                _YF_OFFGRID['syms'].add(symbol)
+                print(f"  📏 {symbol} yfinance {_rej} 列收盤不在跳動單位格上(還原價)→ ⛔ 不寫")
             return out
         except Exception as e:
             err = str(e)
@@ -2775,6 +2817,154 @@ def _backadjust_splits(records, sym='', verbose=False):
     return records
 
 
+# 🧱 V77.7.0 陷阱 #46 修復:用 FinMind 原始價(klines_deep 分支)把「還原價」列換回官方成交價
+#
+# 🚨 為什麼要這支:正式產物 data/*.json 上櫃股 40.7% 的列(2023~2025)是 yfinance 填進來的**還原價**
+#    (偏差中位 4%、P90 23%,在除權息日階梯狀跳一格)。官方月資料只回抓近 3 個月、TPEx 舊端點又已失效
+#    → 那些列**永遠不會被換掉**,而 seed_db_from_json 每輪把它讀回來 = 自我延續。
+# ⭐ 真值:klines_deep 分支 = FinMind TaiwanStockPrice 原始價(2021-01 起;實測 2023-05 起上櫃不在格上只有 0.1%,
+#    那 0.1% 是分割還原過的舊列)。**零 API**,workflow 在 batch job 把它解到 KLINES_DEEP_DIR。
+# ⛔ 判準不能只看跳動單位(分割還原過的舊列本來就不在格上;<10 元的還原價被 _round_prices 收到 2 位後又剛好在格上)
+#    → 用「我們的收盤 ÷ 深歷史收盤」:兩邊都過同一支 _backadjust_splits,合法列 ≈ 1。
+#    ① r ≈ 1 或 2~10 或其倒數 → 合法(後者 = 兩邊分割尺標不同),不動
+#    ② 其餘 → 換成「深歷史 × 前後合法列的倍數」,**籌碼欄一個都不動**;前後倍數不同(卡在分割邊界)⛔ 不換。
+#    冪等:換過的列下一輪 r 就是合法倍數,零動作。
+_DEEP_FIX = {'rows': 0, 'syms': 0, 'split_skip': [], 'nodeep': 0, 'dir': None}
+_DEEP_CACHE = {}
+
+
+def _deep_dir():
+    d = os.environ.get('KLINES_DEEP_DIR') or ''
+    if not d:
+        return None
+    for c in (os.path.join(d, 'klines_deep'), d):
+        if os.path.isdir(c):
+            return c
+    return None
+
+
+def _load_deep(sym):
+    d = _deep_dir()
+    if not d:
+        return None
+    f = os.path.join(d, f'{sym}.json.gz')
+    if not os.path.exists(f):
+        return None
+    try:
+        import gzip
+        with gzip.open(f, 'rt', encoding='utf-8') as fh:
+            j = json.load(fh)
+        return j.get('k') or []
+    except Exception as e:
+        print(f"  ⚠️ {sym} klines_deep 讀不到:{e}")
+        return None
+
+
+_SPLIT_FACTORS = [1.0] + [float(k) for k in range(2, 11)] + [1.0 / k for k in range(2, 11)]
+
+
+def _split_factor_of(r, tol=0.005):
+    """r 若 ≈ 1 或 2~10 或其倒數 → 回那個倍數;否則 None。"""
+    for f in _SPLIT_FACTORS:
+        if abs(r / f - 1) <= tol:
+            return f
+    return None
+
+
+def _repair_from_deep(records, sym='', deep=None):
+    """回 (records, 換了幾列, 原因字串或 None)。deep = [[YYYY-MM-DD, o, h, l, c, v], ...]
+
+    ⭐ 分段尺標:兩邊分割還原不一定同步(0050/2327 那種「分割 + 停牌 >5 天」一邊修得掉一邊修不掉)
+       → 每一列先問「r 是不是 1 或 2~10 倍」;是 = 合法列,記下它的倍數 f。
+       不是 = 還原價列 → 換成「深歷史 × f」,f 取**前後最近的合法列**;前後兩邊 f 不一樣(剛好卡在分割邊界)→ ⛔ 不換。
+    """
+    if deep is None:
+        deep = _load_deep(sym)
+    if not deep:
+        return records, 0, 'no-deep'
+    dmap = {}
+    for row in deep:
+        try:
+            if row and row[4] and float(row[4]) > 0:
+                dmap[str(row[0])[:10]] = row
+        except (TypeError, ValueError, IndexError):
+            continue
+    info = []          # (i, dk, f 或 None)
+    for i, r in enumerate(records):
+        ds = str(r.get('date', '')).replace('/', '-')[:10]
+        dk = dmap.get(ds)
+        c = r.get('close')
+        if not dk or not isinstance(c, (int, float)) or c <= 0:
+            continue
+        info.append((i, dk, _split_factor_of(c / float(dk[4]))))
+    n = len(info)
+    prev_f = [None] * n; nxt_f = [None] * n
+    last = None
+    for k in range(n):
+        prev_f[k] = last
+        if info[k][2] is not None:
+            last = info[k][2]
+    last = None
+    for k in range(n - 1, -1, -1):
+        nxt_f[k] = last
+        if info[k][2] is not None:
+            last = info[k][2]
+    # ⭐ 以「段」為單位換(⛔ 不逐列、⛔ 不挑):兩列合法列(r = 合法倍數)之間的**整段**都換成「深歷史 × 倍數」。
+    #    🚨 第一版逐列挑(「不在格上才換」「比值穩定才換」)實測**製造了 3,900 個假跳空** ——
+    #       同一段裡被挑剩的那幾列(剛好在格上、比值差一點點、那天深歷史沒資料)留著還原價,
+    #       跟換過的鄰居一比就是 20%~30% 的斷崖。還原價是**整段一起歪**的,修也要整段一起修。
+    #    深歷史那天沒資料的列:用段內最近那一列的換算比例縮放(⛔ 不可留原值)。
+    #    兩端合法列的倍數不一樣(剛好卡在分割邊界)→ ⛔ 整段不動。
+    fixed = 0; amb = 0; dirty = 0
+    legit_k = [k for k, x in enumerate(info) if x[2] is not None]
+    bounds = [-1] + legit_k + [n]
+    for bi in range(len(bounds) - 1):
+        k0, k1 = bounds[bi] + 1, bounds[bi + 1] - 1
+        if k0 > k1:
+            continue
+        a = info[bounds[bi]][2] if bounds[bi] >= 0 else None
+        b = info[bounds[bi + 1]][2] if bounds[bi + 1] < n else None
+        if a is not None and b is not None and a != b:
+            amb += k1 - k0 + 1
+            continue
+        g = a if a is not None else b
+        if g is None:
+            amb += k1 - k0 + 1
+            continue
+        i_lo, i_hi = info[k0][0], info[k1][0]
+        scale_at = {}
+        for k in range(k0, k1 + 1):
+            i, dk, _f = info[k]
+            r = records[i]
+            old_c = r['close']
+            r['open'], r['high'], r['low'], r['close'] = (round(float(dk[1]) * g, 4), round(float(dk[2]) * g, 4),
+                                                          round(float(dk[3]) * g, 4), round(float(dk[4]) * g, 4))
+            try:
+                if dk[5] is not None:
+                    r['volume'] = int(round(int(dk[5]) / g))
+            except (TypeError, ValueError, IndexError):
+                pass
+            scale_at[i] = r['close'] / old_c
+            fixed += 1
+        # 段內深歷史沒資料的列 → 用最近那一列的換算比例
+        idxs = sorted(scale_at)
+        for i in range(i_lo, i_hi + 1):
+            if i in scale_at:
+                continue
+            r = records[i]
+            if not isinstance(r.get('close'), (int, float)) or r['close'] <= 0:
+                continue
+            near = min(idxs, key=lambda x: abs(x - i))
+            f2 = scale_at[near]
+            for key in ('open', 'high', 'low', 'close'):
+                if isinstance(r.get(key), (int, float)):
+                    r[key] = round(r[key] * f2, 4)
+            fixed += 1
+    note = []
+    if amb: note.append(f'{amb} 列卡在分割邊界/沒有合法鄰居')
+    return records, fixed, ('、'.join(note) + ' → 沒換' if note else None)
+
+
 def _round_prices(records):
     """📏 V77.2.6 把 OHLC 對到「台股價格真正的精度」= 小數 2 位。
 
@@ -2881,6 +3071,22 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
         if not records:
             continue
 
+        # 🧱 V77.7.0 陷阱 #46:還原價列換回官方成交價(klines_deep = FinMind 原始價)。⛔ 要排在分割還原**之前**
+        #    (兩邊都要過同一支 _backadjust_splits 才是同一把尺)。沒設 KLINES_DEEP_DIR 就整段跳過。
+        if _deep_dir():
+            try:
+                records, _nfx, _why = _repair_from_deep(records, sym)
+                if _nfx:
+                    _DEEP_FIX['rows'] += _nfx; _DEEP_FIX['syms'] += 1
+                    print(f"  🧱 {sym} {_nfx} 列還原價 → 換回官方成交價(klines_deep)")
+                if _why == 'no-deep':
+                    _DEEP_FIX['nodeep'] += 1
+                elif _why:
+                    _DEEP_FIX['split_skip'].append(sym)
+                    print(f"  🧱 {sym} {_why}")
+            except Exception as e:
+                print(f"  ⚠️ {sym} 還原價修復失敗(不影響匯出): {e}")
+
         # 🔧 V71.7.9 分割/減資回溯調整(見 _backadjust_splits 的說明)。
         #    放在寫檔前的最後一步 → 全市場 2,700 檔都會過這關,而且最新那筆價格不會被動到。
         try:
@@ -2902,6 +3108,15 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
 
     conn.close()
     print(f"  ✅ JSON 匯出完成：{exported} 檔（供 gh-pages 靜態部署）")
+    # 🧱 V77.7.0 陷阱 #46 摘要(⛔ 沒設就要說出來,陷阱 #22)
+    if _deep_dir():
+        print(f"  🧱 還原價修復:{_DEEP_FIX['syms']} 檔 {_DEEP_FIX['rows']} 列換回官方價 ・"
+              f"深歷史沒有 {_DEEP_FIX['nodeep']} 檔 ・有列卡在分割邊界沒換 {len(_DEEP_FIX['split_skip'])} 檔"
+              + (f"({','.join(_DEEP_FIX['split_skip'][:10])})" if _DEEP_FIX['split_skip'] else ''))
+    else:
+        print("  🧱 還原價修復:⏭️ 沒有 KLINES_DEEP_DIR → 這一輪沒修(陷阱 #46)")
+    if _YF_OFFGRID['rows']:
+        print(f"  📏 yfinance 跳動單位守門:擋掉 {_YF_OFFGRID['rows']} 列 / {len(_YF_OFFGRID['syms'])} 檔(還原價 ⛔ 不寫)")
 
 
 # ── 動態監控清單（全市場批次版）────────────────────────────────────────────
@@ -3322,7 +3537,7 @@ def run():
                                 yr = yf_by_date.get(ds)
                                 if yr and ds not in existing_dates:
                                     new_rows.append(yr); existing_dates.add(ds)
-                            # (b) 校正殘留盤中快照(收盤差 ≥1.5%;auto_adjust=False 無除權息誤差,官方≈yfinance 通常 <0.1%)
+                            # (b) 校正殘留盤中快照(收盤差 ≥1.5%)。🚨 V77.7.0 更正:auto_adjust=False **仍可能是還原價**(陷阱 #46)→ 已在 fallback 裡用跳動單位擋掉
                             n_fix = 0
                             for ds in stale_recent:
                                 yr = yf_by_date.get(ds)

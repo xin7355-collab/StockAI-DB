@@ -348,6 +348,64 @@ def c_findings(f, j):
     return out
 
 
+# ── F. 日 K 不是官方成交價(陷阱 #46,V77.7.0)────────────────────────
+#   判準:收盤價不在台股跳動單位格上 = 不是官方成交價(還原價 / 盤中殘值)。
+#   ⚠️ 分割還原過的舊列本來就不在格上 → 只看 2023-05 起 + 只算上市/上櫃個股(⛔ ETF、興櫃另一套)。
+#   門檻用「比例」:修好之後上市約 0.4%、上櫃約 1%(分割前舊列 + 深歷史之後還沒修到的幾天)。
+def _tick_of(p):
+    return 0.01 if p < 10 else 0.05 if p < 50 else 0.1 if p < 100 else 0.5 if p < 500 else 1.0 if p < 1000 else 5.0
+
+
+def _on_tick(p):
+    try:
+        p = float(p)
+    except (TypeError, ValueError):
+        return False
+    if not p > 0:
+        return False
+    q = p / _tick_of(p)
+    return abs(q - round(q)) < 0.01
+
+
+F_WARN, F_BAD = 2.0, 5.0
+
+
+def f_findings(rows_by_sym, market_of, since='2023/05'):
+    """rows_by_sym = {sym: [K 線列]};market_of(sym) → 'twse'/'tpex'/其他。回 (findings, stats)。"""
+    tot = {}; off = {}; worst = []
+    for sym, rows in rows_by_sym.items():
+        m = market_of(sym)
+        if m not in ('twse', 'tpex') or str(sym).startswith('00') or not isinstance(rows, list):
+            continue
+        n = o = 0
+        for r in rows:
+            if not isinstance(r, dict) or str(r.get('date', '')) < since:
+                continue
+            c = r.get('close')
+            if not isinstance(c, (int, float)) or c <= 0:
+                continue
+            n += 1
+            if not _on_tick(c):
+                o += 1
+        tot[m] = tot.get(m, 0) + n; off[m] = off.get(m, 0) + o
+        if n >= 50 and o / n >= 0.3:
+            worst.append((o / n, sym))
+    out = []
+    for m in ('twse', 'tpex'):
+        if not tot.get(m):
+            continue
+        pct = off[m] / tot[m] * 100
+        name = '上市' if m == 'twse' else '上櫃'
+        msg = (f'{name} {off[m]:,}/{tot[m]:,} 列({pct:.1f}%)收盤不在跳動單位格上 = 不是官方成交價'
+               f'(陷阱 #46;修法:daily_miner 的 klines_deep 修復有沒有跑)')
+        if pct >= F_BAD:
+            out.append(('❌', msg))
+        elif pct >= F_WARN:
+            out.append(('⚠️', msg))
+    worst.sort(reverse=True)
+    return out, {'tot': tot, 'off': off, 'worst': [s for _p, s in worst[:10]]}
+
+
 def dig(j, path):
     cur = j
     for k in path:
@@ -641,6 +699,41 @@ def audit(ref):
             print(f"   ℹ️ 榜單有截斷:{ts['bull_total']} 筆 → 輸出 {len(ts['bull'])} 筆(上限 {ts.get('bull_cap')});"
                   f"不重複 {ts.get('bull_syms')} 檔 —— 顯示端要用 bull_total/bull_syms 講總數")
 
+    # ── F. 日 K 不是官方成交價(陷阱 #46)────────────────────────────
+    try:
+        import tarfile, io as _io
+        _names, _e = read_json(ref, 'data/stock_names.json')
+        _tbl = (_names or {}).get('names', _names) if isinstance(_names, dict) else {}
+        def _mk(sym):
+            v = _tbl.get(sym) if isinstance(_tbl, dict) else None
+            return v[2] if isinstance(v, list) and len(v) > 2 else None
+        _raw = subprocess.run(['git', 'archive', ref, 'data/'], capture_output=True).stdout
+        _rows = {}
+        if _raw:
+            with tarfile.open(fileobj=_io.BytesIO(_raw)) as _tf:
+                for _m in _tf:
+                    _nm = Path(_m.name).name
+                    if not (_m.isfile() and _nm.endswith('.json') and _nm[:1].isdigit() and '/' not in _m.name[5:]):
+                        continue
+                    try:
+                        _rows[_nm[:-5]] = json.loads(_tf.extractfile(_m).read())
+                    except Exception:
+                        continue
+        _fs, _st = f_findings(_rows, _mk)
+        print('\n── F. 日 K 是不是官方成交價(陷阱 #46)──────────────────────')
+        for _m in ('twse', 'tpex'):
+            if _st['tot'].get(_m):
+                print(f"   {'上市' if _m == 'twse' else '上櫃'}:{_st['off'][_m]:,}/{_st['tot'][_m]:,} 列不在格上"
+                      f"({_st['off'][_m] / _st['tot'][_m] * 100:.1f}%)")
+        if _st['worst']:
+            print(f"   最嚴重(≥30% 的列):{', '.join(_st['worst'])}")
+        for _lv, _msg in _fs:
+            add(_lv, 'F', _msg)
+        if not _st['tot']:
+            add('⚠️', 'F', '一檔個股 K 線都讀不到 → F 類沒檢查到(⛔ 不可讀成沒問題)')
+    except Exception as _ex:
+        add('⚠️', 'F', f'F 類跑不動:{_ex}')
+
     # ── 總結 ─────────────────────────────────────────────────────────
     print('\n' + '═' * 66)
     bad = [p for p in problems if p[0] == '❌']
@@ -750,6 +843,17 @@ def selftest():
        msgs(JN, 'macro_risk.json'))
     ok('⑧b 而且⛔ 不可重複報(頂層那筆是 None,不該同時走兩條路)',
        len(msgs(JN, 'macro_risk.json')) == 1, msgs(JN, 'macro_risk.json'))
+
+    print('🧪 F 類(陷阱 #46)—— 還原價叫不叫得出來')
+    _mkt = lambda s: {'1111': 'twse', '2222': 'tpex', '0050': 'twse'}.get(s)
+    _good = [{'date': f'2024/01/{d:02d}', 'close': round(60 + d * 0.1, 1)} for d in range(1, 29)] * 3
+    _bad = [{'date': f'2024/01/{d:02d}', 'close': round(98.1 * 0.898 + d * 0.013, 2)} for d in range(1, 29)] * 3
+    fs, st = f_findings({'1111': _good, '2222': _bad, '0050': _bad}, _mkt)
+    ok('⑨ 上櫃整檔還原價 → ❌', any(l == '❌' and '上櫃' in m for l, m in fs), fs)
+    ok('⑨b 上市乾淨 → 不報', not any('上市' in m for _l, m in fs), fs)
+    ok('⑨c ETF(00 開頭)⛔ 不算進來', st['tot'].get('twse') == len(_good), st)
+    fs2, _ = f_findings({'2222': [dict(r, date='2022/01/01') for r in _bad]}, _mkt)
+    ok('⑨d 2023-05 以前的列不算(分割還原過的舊列本來就不在格上)', fs2 == [], fs2)
 
     print(f"\n{'✅ 全過' if not fails else '❌ 失敗 ' + str(len(fails)) + ' 條:' + ', '.join(fails)}")
     return 1 if fails else 0
