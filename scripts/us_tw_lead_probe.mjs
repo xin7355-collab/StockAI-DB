@@ -20,7 +20,12 @@
  *   z = (rel[D] − mean(rel[D−W..D−1])) / sd(rel[D−W..D−1]);事件 = |z| ≥ Z(正負分開)
  *   volShock = v[D] / median(v[D−20..D−1])(只當附屬欄)
  * 台股映射:nextTW(D) = ^TWII 日曆裡**第一個 > D** 的交易日(美股 D 日收盤 = 台北 D+1 凌晨;⛔ 不可同日期 = 前視)
- * 可交易的口徑:T 日**開盤買**(美股收盤後台股才開)→ T+h 收盤賣;扣同期 0050(開盤→收盤,含窗口內除息)。
+ * 可交易的口徑:T 日**開盤買**(美股收盤後台股才開)→ T+h 收盤賣。
+ *   板塊 / 個股層級:扣同期 0050(開盤→收盤,含窗口內除息)。
+ *   🚨 加權層級**不用 ^TWII**:加權指數的「開盤價」是用還沒成交的股票的**昨收**湊出來的(09:00 只有一部分股票成交)→
+ *      開盤價被系統性壓向昨收,「開→收」會把跳空吃進去;拿它跟 0050(真的開盤價)相減會憑空多出 +1pp「超額」
+ *      (第一版就是這樣量到 6/6 全過的假結果)。⭐ 加權層級一律用 **0050 本身**(買得到的東西)當資產,
+ *      超額 = 0050 開→收(T+h)報酬 − 同天期全部交易日的平均(去掉多頭漂移),對照組 sham 同一套。
  *   T+0 跳空(gap0 = o[T]/c[T−1]−1)只當描述 —— 那是**買不到**的那一段(V74.4.5「開盤前掛前一日收盤價」實測最糟)。
  * 對照組:(a) 同批事件日**不加** gap 條件 (b) sham = 固定種子同數量隨機美股日走同一套映射 (c) 全部交易日
  * 六關:全期正 / 前後半同向 / 逐年同向 / 去最好年 / 扣成本 0.44 / vs sham 顯著(p ≤ 0.05);高原 Z×W;BH 分三 family。
@@ -235,14 +240,17 @@ export function run(opt) {
     log(`🇹🇼 ^TWII ${twDays.length} 天 ・0050 ${b50raw.length} 天(含息除息 ${divs.length} 筆)・板塊 ${Object.keys(sectors).length} 組 / 成分股 ${bars.size}/${stockSyms.length} 檔有資料`);
 
     // 有號超額:方向 sign(+1 事件 → 台股報酬;−1 事件 → 台股報酬取負)
-    const excess = (ret, k, h) => { const b = bench(twDays[k], h); return (ret == null || b == null) ? null : ret - b; };
+    const excessVs0050 = (ret, k, h) => { const b = bench(twDays[k], h); return (ret == null || b == null) ? null : ret - b; };
     let limitDropped = 0;
     // 對一個「台股報酬序列取法」跑全部天期(含 sham / all)
-    const evalLayer = (events, getBars, tag) => {
+    const evalLayer = (events, getBars, tag, mode = 'vs0050') => {
         const res = {};
         const kAll = [...Array(twDays.length).keys()].filter(k => k > 0 && k + MAX_H < twDays.length);
         const rnd = rng(seed + tag.length * 7919 + (events.length || 1));
         for (const h of HORIZONS) {
+            // dedrift 模式(加權層級用 0050 當資產):超額 = 報酬 − 全部交易日同天期平均(⛔ 不能再扣 0050,那是它自己)
+            let excess = excessVs0050;
+            if (mode === 'dedrift') { const raw = []; for (const k of kAll) { const b = getBars(k); if (!b || b.limitUp) continue; const r = b.ret(h); if (r != null) raw.push(r); } const mu = mean(raw) || 0; excess = (ret, k, h2) => ret == null ? null : ret - mu; }
             const rows = [];
             for (const e of events) {
                 const b = getBars(e.k); if (!b) continue;
@@ -264,6 +272,9 @@ export function run(opt) {
         return res;
     };
     const barsGetter = b => k => (k <= 0 || k + MAX_H >= b.length) ? null : ({ limitUp: twLimitUp(b, k), gap: twGap(b, k), ret: h => twRet(b, k, h) });
+    // 依日期對齊的取法(0050 / 個股的日曆跟 ^TWII 不一定一樣)
+    const dateGetter = (b, io) => k => { const j = io.get(twDays[k]); return (j == null || j <= 0 || j + MAX_H >= b.length) ? null : ({ limitUp: twLimitUp(b, j), gap: twGap(b, j), ret: h => twRet(b, j, h) }); };
+    const get50 = dateGetter(b50raw, i50);
     // 板塊籃子:成分股等權(每檔各自對齊日期;<3 檔有資料就 null)
     const basketGetter = members => k => {
         const d = twDays[k]; const ms = [];
@@ -279,7 +290,7 @@ export function run(opt) {
     for (const t of IDX_EVENT_SRC) {
         if (!F[t]) continue;
         const up = withSign(eventsOf(F, t, U, nextTw, { Z, sign: +1 }), +1), dn = withSign(eventsOf(F, t, U, nextTw, { Z, sign: -1 }), -1);
-        idx[t] = { nUp: up.length, nDn: dn.length, up: evalLayer(up, barsGetter(twii), 'idx-up-' + t), dn: evalLayer(dn, barsGetter(twii), 'idx-dn-' + t), both: evalLayer([...up, ...dn].sort((a, b) => a.k - b.k), barsGetter(twii), 'idx-both-' + t) };
+        idx[t] = { asset: '0050(開→收,超額 = 減全部交易日平均)', nUp: up.length, nDn: dn.length, up: evalLayer(up, get50, 'idx-up-' + t, 'dedrift'), dn: evalLayer(dn, get50, 'idx-dn-' + t, 'dedrift'), both: evalLayer([...up, ...dn].sort((a, b) => a.k - b.k), get50, 'idx-both-' + t, 'dedrift') };
     }
     log(`① 加權層級:${Object.keys(idx).map(t => `${t} ${idx[t].nUp}↑/${idx[t].nDn}↓`).join(' ・')}`);
 
@@ -298,7 +309,7 @@ export function run(opt) {
     log(`② 板塊層級:${Object.keys(sector).length} 組`);
 
     // ③ information gap(加權 + 板塊):expGap = β250 × rel_US(β 用 D−250..D−1 對的滾動迴歸,⛔ 不含 D)
-    const gapLayer = (src, getBars, tag) => {
+    const gapLayer = (src, getBars, tag, mode = 'vs0050') => {
         const f = F[src]; if (!f) return null;
         const pairs = []; // 台股日 k ↔ 美股前一日 rel
         for (let i = 0; i < U.days.length; i++) { if (f.rel[i] == null) continue; const k = nextTw(U.days[i]); if (k == null) continue; const b = getBars(k); if (!b || b.gap == null) continue; pairs.push({ i, k, x: f.rel[i], g: b.gap, z: f.z[i] }); }
@@ -312,9 +323,9 @@ export function run(opt) {
             const e = { k: p.k, sign: +1, z: p.z, exp, gap: p.g };
             nocond.push(e); if (p.g < exp - GAP_SLACK) cond.push(e);
         }
-        return { src, nCond: cond.length, nNoCond: nocond.length, cond: evalLayer(cond, getBars, 'gap-c-' + tag), nocond: evalLayer(nocond, getBars, 'gap-n-' + tag) };
+        return { src, nCond: cond.length, nNoCond: nocond.length, cond: evalLayer(cond, getBars, 'gap-c-' + tag, mode), nocond: evalLayer(nocond, getBars, 'gap-n-' + tag, mode) };
     };
-    const gap = { idx: gapLayer(BENCH, barsGetter(twii), 'idx'), idxSox: gapLayer('^SOX', barsGetter(twii), 'sox') };
+    const gap = { idx: gapLayer(BENCH, get50, 'idx', 'dedrift'), idxSox: gapLayer('^SOX', get50, 'sox', 'dedrift') };
     for (const [sk, members] of Object.entries(sectors)) { const src = (US_SECTOR[sk] || []).find(t => F[t]); if (src) gap[`sector:${sk}`] = gapLayer(src, basketGetter(members), sk); }
     log(`③ information gap:加權(${BENCH})有條件 ${gap.idx?.nCond} / 無條件 ${gap.idx?.nNoCond}`);
 
@@ -330,9 +341,7 @@ export function run(opt) {
     const jaccard = s1.size + s2.size - inter ? inter / (s1.size + s2.size - inter) : null;
     const pairs = top1.map(p => {
         const evs = bothSides(p.us).filter(e => twDays[e.k] >= mid);           // 後半的事件
-        const b = bars.get(p.tw), io = idxOf.get(p.tw);
-        const get = k => { const j = io.get(twDays[k]); return (j == null || j <= 0 || j + MAX_H >= b.length) ? null : ({ limitUp: twLimitUp(b, j), gap: twGap(b, j), ret: h => twRet(b, j, h) }); };
-        const r = evalLayer(evs, get, 'pair-' + key(p));
+        const r = evalLayer(evs, dateGetter(bars.get(p.tw), idxOf.get(p.tw)), 'pair-' + key(p));
         const t1 = r['T+1'], t5 = r['T+5'];
         return { us: p.us, tw: p.tw, beta: r3(p.beta), rho: r3(p.rho), t: r2(p.t), n2: evs.length, ok: evs.length >= MIN_PAIR_N, t1: { mean: t1.mean, pass: t1.pass, p: t1.p }, t5: { mean: t5.mean, pass: t5.pass, p: t5.p } };
     });
@@ -344,7 +353,7 @@ export function run(opt) {
         const Fp = usFeatures(U, { W: Wp });
         const t = BENCH; if (!Fp[t]) continue;
         const up = eventsOf(Fp, t, U, nextTw, { Z: Zp, sign: +1 }).map(e => ({ ...e, sign: +1 })), dn = eventsOf(Fp, t, U, nextTw, { Z: Zp, sign: -1 }).map(e => ({ ...e, sign: -1 }));
-        const r = evalLayer([...up, ...dn].sort((a, b) => a.k - b.k), barsGetter(twii), `pl-${Zp}-${Wp}`);
+        const r = evalLayer([...up, ...dn].sort((a, b) => a.k - b.k), get50, `pl-${Zp}-${Wp}`, 'dedrift');
         plateau.push({ Z: Zp, W: Wp, n: up.length + dn.length, t1: r['T+1'].mean, t5: r['T+5'].mean, t1pass: r['T+1'].pass, t5pass: r['T+5'].pass });
     }
 
@@ -358,7 +367,7 @@ export function run(opt) {
     return {
         meta: { win: [twDays[0], twDays[twDays.length - 1]], usWin: [U.days[0], U.days[U.days.length - 1]], nUS: Object.keys(F).length, nTWdays: twDays.length, Z, W, bench: BENCH, semiBench: SEMI_BENCH, cost: COST, entry: 'T 日開盤買(美股收盤後台股才開)', benchNote: divs.length ? '0050 開→收 + 窗口內除息' : '0050 原始價(⚠️ 沒給 DIV,不含息)', limitDropped, dedup: DEDUP, mid, sectorSrc: IDX_HTML, generated: new Date().toISOString().slice(0, 16) },
         idx, sector, gap, stock: { pairs, jaccard: r3(jaccard), inter, top2: top2.map(p => ({ us: p.us, tw: p.tw, beta: r3(p.beta), t: r2(p.t) })) }, plateau, bh,
-        _F: F, _nextTw: nextTw, _twDays: twDays, _sectors: sectors,
+        _F: F, _nextTw: nextTw, _twDays: twDays, _sectors: sectors, _b50: b50raw, _i50: i50,
     };
 }
 
@@ -374,9 +383,9 @@ export function emitUssig(R, U, kind, { Z = Z_DEF } = {}) {
         const f = F[R.meta.bench]; const twii = null;
         // 直接用 run() 裡同一套規則:這裡重跑一次 gapLayer 的條件邏輯(以 meta.bench 為源)
         const pairs = []; for (let i = 0; i < U.days.length; i++) { if (f.rel[i] == null) continue; const k = nextTw(U.days[i]); if (k == null) continue; pairs.push({ i, k, x: f.rel[i], z: f.z[i] }); }
-        // gap0 需要 ^TWII → 由呼叫端提供 R._twii
-        const b = R._twii; if (!b) throw new Error('emit gap 需要 R._twii');
-        const gapAt = k => (k > 0 && k < b.length) ? (b[k].o / b[k - 1].c - 1) * 100 : null;
+        // gap0 用 0050 自己的開盤(⛔ 不用 ^TWII —— 加權指數開盤價是湊的,見檔頭)
+        const b = R._b50, io = R._i50; if (!b) throw new Error('emit gap 需要 R._b50');
+        const gapAt = k => { const j = io.get(twDays[k]); return (j != null && j > 0) ? (b[j].o / b[j - 1].c - 1) * 100 : null; };
         const P = pairs.map(p => ({ ...p, g: gapAt(p.k) })).filter(p => p.g != null);
         let last = -Infinity;
         for (let j = 0; j < P.length; j++) { const p = P[j]; if (p.z == null || p.z < Z) continue; if (p.k - last < DEDUP) continue; last = p.k; const s = Math.max(0, j - 250), Q = P.slice(s, j); if (Q.length < 120) continue; const mx = mean(Q.map(q => q.x)), mg = mean(Q.map(q => q.g)); let sxy = 0, sxx = 0; for (const q of Q) { sxy += (q.x - mx) * (q.g - mg); sxx += (q.x - mx) ** 2; } if (!(sxx > 0)) continue; const exp = (sxy / sxx) * p.x; if (p.g < exp - GAP_SLACK) stamp(`*|${twDays[p.k]}`, 1); }
@@ -389,7 +398,7 @@ export function emitUssig(R, U, kind, { Z = Z_DEF } = {}) {
 }
 
 // ── selftest ─────────────────────────────────────────────────────────
-function synth(tmp, { nUS = 900, inject = null, injectSameDay = false, limitUpAt = null } = {}) {
+function synth(tmp, { nUS = 900, inject = null, injectSameDay = false, limitUpAt = null, gap0050 = false } = {}) {
     // 美股日曆:週一~五;台股日曆:同一批日期(美股 D → 台股 D+1 個交易日)
     const days = []; let d = new Date('2023-01-02T00:00:00Z');
     while (days.length < nUS) { if (d.getUTCDay() >= 1 && d.getUTCDay() <= 5) days.push(d.toISOString().slice(0, 10)); d = new Date(d.getTime() + 86400000); }
@@ -410,11 +419,13 @@ function synth(tmp, { nUS = 900, inject = null, injectSameDay = false, limitUpAt
         for (let i = 0; i < days.length; i++) {
             const prevC = px;
             let o = prevC * (1 + (R2() - 0.5) * 0.01); let c = o * (1 + (R2() - 0.5) * 0.02);
-            // 注入:shock 日「隔天」的台股(i-1 是 shock → 今天 i)開→收 +3%(⛔ 0050 不注,才量得到超額)
-            const hitNext = inject && !injectSameDay && shockSet.has(i - 1) && s !== '0050';
-            const hitSame = inject && injectSameDay && shockSet.has(i) && s !== '0050';
-            if (hitNext || hitSame) c = o * (1 + inject / 100);
-            if (limitUpAt && s === '^TWII' && shockSet.has(i - 1) && i === limitUpAt) { o = prevC * 1.1; c = o; }
+            // 注入:shock 日「隔天」(i-1 是 shock → 今天 i)開→收:0050 +inject%、板塊成分股 +2×inject%(籃子 − 0050 = +inject)
+            //   ^TWII 不注(加權層級已改用 0050 當資產;它只提供日曆)
+            const hitNext = inject && !injectSameDay && shockSet.has(i - 1) && s !== '^TWII';
+            const hitSame = inject && injectSameDay && shockSet.has(i) && s !== '^TWII';
+            if (hitNext || hitSame) c = o * (1 + (s === '0050' ? inject : 2 * inject) / 100);
+            if ((hitNext || hitSame) && gap0050 && s === '0050') { o = prevC * (1 + inject / 100); c = o; }   // 跳空式:漲幅全在開盤、盤中 0
+            if (limitUpAt && s === '0050' && shockSet.has(i - 1) && i === limitUpAt) { o = prevC * 1.1; c = o; }
             px = c;
             rows.push({ date: days[i].replace(/-/g, '/'), open: +o.toFixed(2), high: +Math.max(o, c).toFixed(2), low: +Math.min(o, c).toFixed(2), close: +c.toFixed(2), volume: 1000 });
         }
@@ -441,7 +452,8 @@ function selftest() {
     const A = synth(tmp, { inject: 3 });
     const RA = run({ U: A.U, DATA: A.dd, DIV: null, IDX_HTML, quiet: true });
     const upA = RA.idx['^IXIC'].up;
-    ok('① 注入 shock 隔天 +3% → 加權 T+0 超額 ≈ +3、事件數 = 注入數', upA && Math.abs(upA['T+0'].mean - 3) < 0.6 && RA.idx['^IXIC'].nUp === A.shockDays.length, `mean=${upA?.['T+0']?.mean} n=${RA.idx['^IXIC'].nUp} vs ${A.shockDays.length}`);
+    ok('① 注入 shock 隔天 0050 +3% → 加權層級(0050 去漂移)T+0 ≈ +3、事件數 = 注入數', upA && Math.abs(upA['T+0'].mean - 3) < 0.6 && RA.idx['^IXIC'].nUp === A.shockDays.length, `mean=${upA?.['T+0']?.mean} n=${RA.idx['^IXIC'].nUp} vs ${A.shockDays.length}`);
+    ok('①0 加權層級的資產是 0050 不是 ^TWII(加權開盤價是湊的)', /0050/.test(RA.idx['^IXIC'].asset || ''), RA.idx['^IXIC'].asset);
     ok('①b 板塊層級也量到(server T+0 ≈ +3)', RA.sector.server && Math.abs(RA.sector.server.up['T+0'].mean - 3) < 0.8, RA.sector.server?.up?.['T+0']?.mean);
     ok('①c 六關:注入夠大時 T+0 全過(含 vs sham 顯著)', upA['T+0'].pass === 6, JSON.stringify(upA['T+0'].gates));
     // ② 前視必紅:注入在**同日期**(美股 D = 台股 D)→ 正確映射(D+1)量到 ≈ 0
@@ -465,19 +477,24 @@ function selftest() {
     const E = synth(tmp + '_e', { inject: 3, limitUpAt: A.shockDays[1] + 1 }, fs.mkdirSync(tmp + '_e', { recursive: true }));
     const RE = run({ U: E.U, DATA: E.dd, DIV: null, IDX_HTML, quiet: true });
     ok('⑤ 開盤鎖漲停(買不到)→ 剔除並計數', RE.meta.limitDropped >= 1, RE.meta.limitDropped);
+    // ⑪ 決定性對照:把 0050 的開盤改成「昨收」(模擬加權指數那種湊出來的開盤)→ 開→收會把跳空吃進去、量到假超額
+    const G = synth(tmp + '_g', { inject: 3, gap0050: true }, fs.mkdirSync(tmp + '_g', { recursive: true }));
+    const RG1 = run({ U: G.U, DATA: G.dd, DIV: null, IDX_HTML, quiet: true });
+    { const f = path.join(G.dd, '0050.json'); const rows = JSON.parse(fs.readFileSync(f, 'utf8')); for (let i = 1; i < rows.length; i++) rows[i].open = rows[i - 1].close; fs.writeFileSync(f, JSON.stringify(rows)); }
+    const RG2 = run({ U: G.U, DATA: G.dd, DIV: null, IDX_HTML, quiet: true });
+    ok('⑪ 對照:漲幅全在跳空、盤中 0 → 真開盤量到 ≈0;開盤改成「昨收」湊的 → 憑空量到 ≈+3(這正是⛔ 不可用 ^TWII 的原因)', Math.abs(RG1.idx['^IXIC'].up['T+0'].mean) < 0.6 && Math.abs(RG2.idx['^IXIC'].up['T+0'].mean - 3) < 0.6, `${RG1.idx['^IXIC'].up['T+0'].mean} → ${RG2.idx['^IXIC'].up['T+0'].mean}`);
     // ⑦ β250 不含 D:gap 層對「條件日」那天的極端值不敏感 —— 用 nextTw 保證 pairs 不含當天(結構性);這裡驗 gap 條件日 ⊂ 無條件日
     ok('⑦ gap 條件日是無條件日的子集合、且 <= 無條件', RA.gap.idx && RA.gap.idx.nCond <= RA.gap.idx.nNoCond && RA.gap.idx.nNoCond === RA.idx['^IXIC'].nUp, `${RA.gap.idx?.nCond}/${RA.gap.idx?.nNoCond} vs ${RA.idx['^IXIC'].nUp}`);
     // ⑨ BH:沒注入的資料 rejected 應該很少(≤ 2 個 family 各 ≤ 1)
     ok('⑨ 沒注入時 BH 幾乎沒有 rejected', (RD.bh.idx.rejected.length + RD.bh.sector.rejected.length) <= 2, `${RD.bh.idx.rejected.length}/${RD.bh.sector.rejected.length}`);
     // ⑩ EMIT_USSIG:idx kind → 台股日鍵數 ≈ 台股日數、亮的天數 = 事件數
-    RA._twii = loadBars(A.dd, '^TWII');
     const M = emitUssig(RA, A.U, 'idx');
     ok('⑩ EMIT_USSIG idx:每個有美股前一日的台股日都有鍵(0 或 1)、亮的 = ^IXIC∪^SOX 事件數', M.nKeys >= A.twDays.length - 5 && M.nOn >= A.shockDays.length && M.nOn <= A.shockDays.length + RA.idx['^SOX'].nUp, `${M.nKeys} keys / ${M.nOn} on`);
     const Mg = emitUssig(RA, A.U, 'gap'); const Ms = emitUssig(RA, A.U, 'sector');
     ok('⑩b gap / sector 也產得出來、sector 鍵是 sym|date', Mg.nOn <= M.nOn && Object.keys(Ms.map).some(k => /^\d{4}\|\d{4}-/.test(k)), `${Mg.nOn} / ${Ms.nOn}`);
     let threw = false; try { emitUssig(RA, A.U, 'xyz'); } catch (_) { threw = true; }
     ok('⑩c 認不得的 USSIG_KIND → throw', threw);
-    for (const t of [tmp, tmp + '_b', tmp + '_c', tmp + '_d', tmp + '_e']) fs.rmSync(t, { recursive: true, force: true });
+    for (const t of [tmp, tmp + '_b', tmp + '_c', tmp + '_d', tmp + '_e', tmp + '_g']) fs.rmSync(t, { recursive: true, force: true });
     console.log(`\n${fails.length ? '❌ ' + fails.length + ' 條沒過' : '✅ selftest 全部通過'}`);
     process.exit(fails.length ? 1 : 0);
 }
@@ -493,7 +510,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         const U = loadUS(US_HIST);
         if ((U.meta?.n_days || U.days.length) < 500) { console.error(`❌ 美股序列只有 ${U.days.length} 天(<500)→ 樣本不夠,停`); process.exit(1); }
         const R = run({ U, DATA, DIV, IDX_HTML, Z: Z_DEF, W: W_DEF });
-        R._twii = loadBars(DATA, '^TWII');
         if (ENV.EMIT_USSIG) { const kind = ENV.USSIG_KIND || 'idx'; const M = emitUssig(R, U, kind); fs.writeFileSync(ENV.EMIT_USSIG, JSON.stringify(M)); console.log(`📤 USSIG 對照表 kind=${kind}:${M.nKeys} 鍵 / 亮 ${M.nOn} → ${ENV.EMIT_USSIG}`); }
         const { _F, _nextTw, _twDays, _sectors, _twii, ...pub } = R;
         fs.writeFileSync(out, JSON.stringify(pub, null, 1));
