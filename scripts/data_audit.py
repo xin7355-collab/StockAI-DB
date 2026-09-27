@@ -208,7 +208,12 @@ def macro_cache_fields_read():
         for m in re.finditer(r'\.\s*([a-z][a-z0-9_]{1,})\s*\??\.\s*(close|chg_pct)\b', ln):
             out.add(m.group(1))
     skip = {'data', 'value', 'val', 'item', 'row', 'last', 'prev', 'cur', 'bar', 'k', 'd'}
-    return {f for f in out if f not in skip}
+    # 🚨 V77.7.2 誤報:`_STOPFILL_EDGE.rows.don40.close`(停損「收盤成交」那組的成績)長得跟巢狀讀 macro_cache 一樣
+    #   → 出場規則的 key(don / don40 / atr2 / chand2 / trail8 / ma5)⛔ 不是總經欄位,排除。
+    return {f for f in out if f not in skip and not _EXIT_KEY.match(f)}
+
+
+_EXIT_KEY = re.compile(r'^(?:don\d*w?|atr\d+|chand\d+|trail\d+|ma\d+)$')
 
 
 # ── D2. 關鍵欄位缺漏(V72.2.6)────────────────────────────────────────
