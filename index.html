@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.7.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.7.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.7.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.7.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8642,8 +8642,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.7.0',
+    _APP_VERSION: 'V77.7.1',
     _CHANGELOG: [
+        { v: 'V77.7.1', d: ['🔬 產業作戰室「實測總表」:同一個題目以後<b>只改那一張</b>、不再開新卡;非「有用」那幾欄改成<b>最近更新的排最上面</b>,每一條標更新日。', '📅 逐年成績單多兩欄:<b>AI 前(2011~2022)</b>與 <b>AI 時代(2023 起)</b>各自加總 —— 現行那套 AI 前 +74.8 萬(0050 含息 +110.9 萬),AI 時代 +262.2 萬(+177.4 萬)。', '🧪 新回測工具:OBV 五種用法、供應鏈「哪一層營收在加速」、持有期間股利入帳(結論與決策台重算等資料修好再一起公布)。'] },
         { v: 'V77.7.0', d: ['🧱 <b>修好日 K「不是官方成交價」的問題</b>(上一版抓到的:上櫃股四成的列是還原過除權息的價格,比真價低 4~20%)。採礦機現在會用 FinMind 的官方原始價把那些列整段換回來,並且擋掉之後再從 Yahoo 補進還原價。離線模擬:上櫃不在跳動單位格上的列 <b>29 萬 → 7,650</b>、接縫處的假跳空 <b>667 → 24</b>。', '⏳ 要等下一輪採礦跑完才會生效;生效後會把 🧬 選股、決策台 49 個月、逐年成績表整批重跑,數字變了會再告訴你。'] },
         { v: 'V77.6.9', d: ['📼 <b>5 分 K 歷史回補完成</b>(2021-05 起共 1,319 個交易日,含 2022 空頭),當沖的 5 分 K 規則全部用五年重測:開盤四法、停利停損 16 格、大盤順風、尾盤追漲停 —— 扣完成本仍然全部是負的。唯一統計上站得住的「開高 ≥2% 在昨高之上 → 09:05 放空」六關全過,<b>但 12.6% 會鎖漲停回補不了</b>,照隔天開盤回補只剩 +0.05% → ⛔ 不做(當沖頁「📊 當沖實測」摺疊區有數字)。', '🚨 <b>順手抓到:上櫃股的日 K 有四成的列不是官方成交價</b>(是還原過除權息的價格,比真價低 4~20%),接回官方價那天會出現假跳空。這一版只記錄、沒動任何資料,修法要先問你。'] },
         { v: 'V77.6.8', d: ['🐢 <b>手上的 ETF(0050、009816 …)不再被套上個股的三條出場</b>:決策台原本把 0050 寫成「抱滿 40 天今天尾盤賣」—— 那三條是替高波動個股回測出來的;本站對 ETF 的實測是「買了放著」最強(63 檔 ETF 沒有任何買賣訊號贏過含息放著、16 年 0050 含息比這套多)。自動下單本來就不碰你手動買的庫存,是畫面講錯。', '🚨 <b>持股進處置/注意股,決策台會標出來</b>(以前賣出列完全不看官方名單),並回答「要不要先賣」:17 條起點實測,進處置隔天開盤賣 193 萬、進注意隔天賣 175 萬 vs 照三條出場 409 萬 —— 兩種都更差(0/17、1/17)→ 照三條出場走,處置期間注意分盤流動性、別用市價單。', '🐻 <b>「股市空頭時手上的先全賣?」第一次實測</b>:嚴格空頭日全賣 151 萬(17 條 0 贏、回撤 −48% vs −26%)、跌破 60 日線就全賣 85 萬 —— 空頭該做的是「不買」(現行預設),不是「全賣」。', '📖 決策台新增「看錯要不要先跑?先賣再說?空頭要不要全賣?」七問,每一句對照本站實測數字(跌破 5 日線 100 萬 vs 現行 409 萬、明天漲跌 33.6/36.5% 丟銅板、大盤大跌全賣 12 種變體沒用、79 種策略沒有一種 16 年贏 0050 含息)。'] },

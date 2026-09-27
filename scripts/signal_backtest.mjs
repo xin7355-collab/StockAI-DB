@@ -33,7 +33,7 @@ import path from 'path';
 import { regrade } from './lib_fdr.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DATA = path.join(ROOT, 'data');
+const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');   // V77.7.0:可指到修好的資料夾(陷阱 #46 重跑用)
 // 🐛 V72.1.7 預設改成**全市場**。舊版預設只取「代號排序的前 N 檔」——
 //   實測 500 檔那版**完全沒有 3xxx~9xxx**(佔全市場 1,744 檔 = 74%),
 //   大立光 3008 / 矽力 6415 / 緯創 3231 這些重要電子股全部缺席。
@@ -110,7 +110,18 @@ for (const f of files) {
     // 一次把整檔丟進瀏覽器跑完(避免每根 K 都跨 IPC)
     let fired;
     try {
-        fired = await page.evaluate(({ rows, dets, step }) => {
+        fired = await page.evaluate(async ({ rows, dets, step }) => {
+            // 🔧 V77.7.0:讀 `this.indicators` 的偵測器(量能動能發動 OBV×MACD×量、權值股反彈…)以前在這裡
+            //    **永遠拿到空物件 → 一次都不觸發**,於是 K 線頁置頂顯示的訊號從來沒有成績。
+            //    ⭐ 用 App **真的那支 worker**(masterWorkerCode)算一次整檔指標(⛔ 不複製公式);
+            //    指標全是因果的(MA/EMA/OBV/KD 只用到當天以前),偵測器用 `slice` 的最後一根索引去讀 → 零前視。
+            if (!window.__btWorker) window.__btWorker = new Worker(URL.createObjectURL(new Blob([masterWorkerCode], { type: 'application/javascript' })));
+            app.indicators = await new Promise(res => {
+                const t = setTimeout(() => res({}), 15000);
+                window.__btWorker.onmessage = e => { clearTimeout(t); res(e.data || {}); };
+                window.__btWorker.postMessage({ activeData: rows, marketCtx: null });
+            });
+            window.__btIndOk = (window.__btIndOk || 0) + (Array.isArray(app.indicators.dif) ? 1 : 0);
             const out = [];
             for (let i = 250; i < rows.length - 20; i += step) {
                 const slice = rows.slice(0, i + 1);
@@ -173,6 +184,11 @@ const baseMed = Object.fromEntries(HORIZONS.map(h => [h, med(base[h])]));
 const baseWin = Object.fromEntries(HORIZONS.map(h => [h, winPct(base[h])]));
 log('');
 log(`✅ ${used} 檔 ・訊號種類 ${acc.size} ・耗時 ${Math.round((Date.now() - t0) / 1000)}s`);
+{   // 🚧 V77.7.0 空過守門:worker 指標一檔都沒算出來 = 讀指標的偵測器又回到「永遠不觸發」(⛔ 不可讀成沒成績)
+    const indOk = await page.evaluate(() => window.__btIndOk || 0);
+    log(`🔧 worker 指標算得出來:${indOk}/${used} 檔`);
+    if (used > 0 && indOk === 0) { console.log('❌ worker 指標一檔都沒算出來 → 讀 this.indicators 的偵測器全部失效'); process.exit(1); }
+}
 log(`📐 對照組(所有掃到的交易日 = 隨便挑一天):n=${base[10].length} ・10日中位 ${baseMed[10].toFixed(2)}% ・勝率 ${baseWin[10].toFixed(1)}%`);
 log(`   ⭐ 沒有用「當天沒訊號」當對照 —— 實測那種日子少到個位數,因為 40 個偵測器讓幾乎每天都有東西在叫。`);
 log('   ⚠️ 每個訊號的「邊際」= 它的報酬 − 對照組報酬(⛔ 不是絕對報酬)');

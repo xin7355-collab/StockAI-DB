@@ -27,7 +27,7 @@ ok('① YEAR 取代 WARMUP 的那一行(`i < YR_FROM`),沒設 YEAR 時 YR_FROM =
 ok('①b 過了那一年就⛔ 不再開倉(只讓手上的照規則出場)', /if \(YEAR && i > YR_TO\) \{ if \(!live\.length\) break;[^}]*continue; \}/.test(PB));
 ok('①c YEAR / YEAR_OFFSET ⛔ 不進 CACHE_KEY', /CACHE_KEY = JSON\.stringify\(\{[^}]*\}\)/.test(PB) && !/CACHE_KEY = JSON\.stringify\(\{[^}]*YEAR/.test(PB));
 ok('①d 那一年一筆都沒做 → 寫出 n=0(⛔ 不可當成錯誤、⛔ 不可靜默消失)', /n: 0, pnl: 0, ret: 0, skipped, note: '這一年一筆都沒進場'/.test(PB));
-ok('①e 同年 0050 含息用共用的 trSeries(⛔ 不另寫一份)', /import \{ trSeries \} from '\.\/lib_totalreturn\.mjs'/.test(PB) && /trSeries\(bars,/.test(PB));
+ok('①e 同年 0050 含息用共用的 trSeries(⛔ 不另寫一份)', /import \{[^}]*\btrSeries\b[^}]*\} from '\.\/lib_totalreturn\.mjs'/.test(PB) && /trSeries\(bars,/.test(PB));
 
 // ② 嵌入
 const line = PRO.split('\n').find(l => /^\s*_YEARLY_BT: \{/.test(l)) || '';
@@ -126,7 +126,7 @@ ok('③ 沒有 pageerror', !errs.length, errs.join(' | '));
 ok('③b 總表列數 = 策略數 + 3 列對照(0050 不含息 / 含息 / 加權)', Y && R.rows === Y.strats.length + 3, `${R.rows}`);
 ok('③c 決定性對照:改常數,畫面要跟著變(⛔ 不寫死)', R.inj);
 ok('③c2 決定性對照:改「一路滾」中位,畫面要跟著變', R.injC);
-ok('③d 每一欄都可排序(名稱 + 一路滾 3 欄 + 每一年 + 加起來 + 贏幾年),點了排對、有箭頭、再點反向', Y && R.headers === 1 + 3 + Y.years.length + 2 && R.headClick && R.sortOk && R.sortArrow && R.sortRev && R.sortLo && R.sortName, JSON.stringify({ h: R.headers, s: R.sortOk, r: R.sortRev, lo: R.sortLo }));
+ok('③d 每一欄都可排序(名稱 + 一路滾 3 欄 + 每一年 + 加起來 + 🤖 AI 前/AI 時代兩段 + 贏幾年),點了排對、有箭頭、再點反向', Y && R.headers === 1 + 3 + Y.years.length + 2 + 2 && R.headClick && R.sortOk && R.sortArrow && R.sortRev && R.sortLo && R.sortName, JSON.stringify({ h: R.headers, s: R.sortOk, r: R.sortRev, lo: R.sortLo }));
 ok('③d2 🏦 預設照「一個帳戶一路滾」排(⛔ 不是每年重放的加總)', R.defaultC);
 ok('③d3 ⏳ 沒有資料的年份:排序兩個方向都排最後、加總寫「只算 N 年」(⛔ 不可當 0)', R.naLast && R.naSum, JSON.stringify({ l: R.naLast, s: R.naSum }));
 ok('③e 點一列 → 細節換成那一個策略', R.pick);

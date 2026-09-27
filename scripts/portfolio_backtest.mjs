@@ -31,7 +31,7 @@ import { DEADLINES } from './lib_fundamentals.mjs';
 import { turnCuts, turnBucket } from './lib_turnover.mjs';
 import { finSeries, finOnAt } from './lib_finaccel.mjs';
 import { valuePrep, valueSeries, valueOnAt, KINDS as VAL_KINDS, CYC_IND } from './lib_value.mjs';
-import { trSeries } from './lib_totalreturn.mjs';
+import { trSeries, scaleFor, loadPx } from './lib_totalreturn.mjs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs';
@@ -600,6 +600,49 @@ await browser.close();
 
 
 if (!allTrades.length) { console.log('❌ 一筆交易都沒有 → 回測無效'); process.exit(1); }
+// 💰 V77.7.0 DIV_TRADES=<dividends_hist.json>:持有期間碰到除息/除權 → 股利**入帳**(使用者問「除權息有沒有漏」)
+//   🚨 為什麼:以前每一筆交易都是**價格報酬**(除息那天的跳空算成賠錢、股利沒收到),
+//      而對照組 0050 用的是**含息**(DIV=)→「這套 vs 0050 含息」一直是拿價格報酬比含息報酬 = 對策略不公平。
+//   規則:除息日 d 落在 (訊號日, 出場日] 才算(訊號日尾盤買進 → 除息前一天收盤有持股;出場日當天賣也照領)。
+//     '息'/'除' → 現金股利 × 尺標(scaleFor 對 K 線那天的收盤,⛔ 對不上就排除);
+//     '權'(配股,本站 _backadjust_splits 只還原整數倍分割 → 配股的除權跳空還在)→ 股數 × (除權前 ÷ 除權參考價)。
+//   ⛔ 不進 CACHE_KEY(只改報酬,不改進出場);不設時一個字都不變。
+const DIV_TRADES = process.env.DIV_TRADES || '';
+if (DIV_TRADES) {
+    const raw = JSON.parse(fs.readFileSync(DIV_TRADES, 'utf8')); const DV = raw.d || raw;
+    const pxCache = new Map();
+    const pxOf = sym => { if (!pxCache.has(sym)) { const b = loadPx(DATA, sym); pxCache.set(sym, b ? new Map(b.map(x => [x.d, x.c])) : null); } return pxCache.get(sym); };
+    let nHit = 0, nCash = 0, nStock = 0, nBad = 0, addSum = 0;
+    for (const t of allTrades) {
+        const ev = (DV[t.sym] || {}).h || [];
+        if (!ev.length || !(t.entry > 0)) continue;
+        const a = String(t.inD).replace(/\//g, '-'), b = String(t.outD).replace(/\//g, '-');
+        let F = 1, cash = 0, hit = false;
+        for (const [dt, amt, typ, before, after] of ev) {
+            const D = String(dt).slice(0, 10);
+            if (!(D > a && D <= b)) continue;
+            if (typ === '權') {
+                if (before > 0 && after > 0 && before / after > 1.001 && before / after < 1.6) { F *= before / after; nStock++; hit = true; }
+                continue;
+            }
+            if (!(amt > 0)) continue;
+            const c = pxOf(t.sym)?.get(D);
+            const { k } = scaleFor(before, c);
+            if (k === null) { nBad++; continue; }
+            cash += amt * k * F; nCash++; hit = true;
+        }
+        if (!hit) continue;
+        // ⛔ 只記在 t.dv、⛔ 不改 t.ret —— t.ret 會被「這檔過去有沒有賺」那道選股門檻拿去用,
+        //    而 App 真的選股(playbook_edge)是**不含息**的;改 t.ret 會讓回測挑到跟 App 不一樣的股票
+        //    (第一版就是這樣:選股整個洗牌,17 條中位反而從 409 → 378 萬 = 量到的是洗牌不是股利)。
+        const r0 = t.ret;
+        t.dv = ((1 + r0 / 100) * F + cash / t.entry - 1) * 100 - r0;
+        nHit++; addSum += t.dv;
+    }
+    console.log(`💰 DIV_TRADES:${nHit.toLocaleString()} / ${allTrades.length.toLocaleString()} 筆交易持有期間碰到除權息`
+        + `(現金 ${nCash} 次、配股 ${nStock} 次、尺標對不上排除 ${nBad} 次),平均每筆多 ${nHit ? (addSum / nHit).toFixed(2) : 0}%`);
+    if (!nHit) { console.error('🚨 DIV_TRADES 設了卻一筆都沒碰到 → 檔案格式或日期對不上(⛔ 不是「沒差別」)'); process.exit(1); }
+}
 // 🐻🚨 V77.6.8 空過守門:設了強制出場卻一筆都沒被強制賣掉 = 變體沒生效(⛔ 不是「沒差別」)
 if (BEAR_EXIT) {
     const k = allTrades.filter(t => t.fx === 1).length;
@@ -1031,7 +1074,7 @@ for (let i = 0; i < days.length; i++) {
     for (const x of live.filter(x => dIdx.get(x.outD) <= i)) {
         // 💰 用**這一筆自己的投入金額**還原(等權時 _amt 就等於 LOT,結果與舊版完全相同)
         const a0 = x._amt || LOT;
-        cash += a0 + a0 * (x.ret - COST) / 100;
+        cash += a0 + a0 * (x.ret + (x.dv || 0) - COST) / 100;
         realized += a0 * (x.ret - COST) / 100;
     }
     live = live.filter(x => dIdx.get(x.outD) > i);
@@ -1226,7 +1269,7 @@ if (process.env.TAKEN_OUT) {
 }
 
 // ── ④ 結果:整體 / 每月 / vs 0050 ────────────────────────────────────────
-const net = t => t.ret - COST;                       // 扣成本後的單趟報酬 %
+const net = t => t.ret + (t.dv || 0) - COST;        // 扣成本後的單趟報酬 %(💰 DIV_TRADES 的股利只在這裡入帳)
 // 🐛 V77.5.9:以前寫死 LOT —— SIZING=risk / SCALE 時每筆金額會浮動,累積損益卻照 LOT 算(= 那兩種變體的總獲利是錯的)。
 //   等權時 _amt 就是 LOT → 預設輸出一個字都不變。
 const money = t => (t._amt || LOT) * net(t) / 100;

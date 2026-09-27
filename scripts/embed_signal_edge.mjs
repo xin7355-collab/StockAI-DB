@@ -22,7 +22,7 @@ import { fileURLToPath } from 'url';
 import { regrade, FDR_A, P_B } from './lib_fdr.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SRC = path.join(ROOT, 'data', 'signal_edge.json');
+const SRC = process.env.SRC || path.join(process.env.DATA_DIR || path.join(ROOT, 'data'), 'signal_edge.json');
 const HTML = path.join(ROOT, 'index.html');
 
 const REGRADE_ONLY = process.argv.includes('--regrade-embedded');
