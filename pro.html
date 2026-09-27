@@ -4956,7 +4956,7 @@ const PRO = {
     { c: '④ 成交量', k: [
       ['成交量 / 成交額', 'ok', '<b>成交額 &gt;20 億 +1.27pp</b>;但「只做成交值 ≥1 億」勝率 +3.4pp 卻<b>少賺 30 萬</b>', '選股條件 + 組合回測'],
       ['量價密集區 / 套牢區(Volume Profile)', 'desc', '現價上方的套牢層 —— 只當壓力描述,⛔ 不下多空', '已落地 `_overheadSupply`'],
-      ['OBV', 'no', '與價格同步創 20 日新高 +0.25pp ・量先價行 +0.02', '48 指標全掃'],
+      ['OBV', 'no', '與價格同步創 20 日新高 +0.25pp ・量先價行 +0.02 ・V77.7.1 再測 5 種(上穿自己均線/真假突破/橫盤突破/洗盤/疊高位階)全部沒過', '48 指標全掃 + obv_probe'],
       ['VWAP(20 日)', 'no', '上穿 −0.21pp', '48 指標全掃'],
       ['CMF / 蔡金擺動 / A/D 線', 'no', '+0.10 / −0.04 / +0.13pp', '48 指標全掃'],
       ['成交量比率 VR', 'no', '&gt;250(過熱)<b>+0.35pp = 48 個裡最強</b>,但成本是 0.44', '48 指標全掃'],
@@ -5089,6 +5089,9 @@ const PRO = {
       { r: 34, t: '📅 休市越久隔天越顛(波動,不是方向)', w: '只描述(調停損)', how: '長假 / 週末之後那一天<b>波動會放大</b>(長假 1.32 倍)→ <b>停損放寬一點或部位放小</b>,免得被雜訊掃出場。⛔ 它不講方向,⛔ 不可拿來決定要做多還是做空。', n: '長假 1.43x', d: '休市 1 天 1.639% → 2~3 天(週末)1.09x → 4~5 天 <b>1.43x</b>,<b>單調遞增</b>。⭐ 所以「週一比較顛」與「長假後比較顛」是<b>同一件事</b>,⛔ 不可當成兩個發現。⛔ 只講顛不顛,方向測不出來(見隔壁欄)。', s: 'calendar_stock_probe.mjs・V73.7.3' },
     ],
     trap: [
+      { k: 'obv', u: '2026-09-27', t: '💧 <b>OBV(能量潮)逐字稿的 5 種用法 —— 全部沒用,「真突破」跟「假突破」幾乎一樣</b>', n: '1,678 檔 ・2022-01~2026-09(含空頭)・事件 27 萬筆 ・t+1 開盤 ・扣同期加權 ・資料已修還原價', d: '使用者上傳 13 份 OBV 教學逐字稿。⭐ 先查:<b>背離兩條</b>(<code>_SIGNAL_EDGE</code> 底背離 −0.29pp / 頂背離 +0.06,C 級)、<b>同步創新高 +0.25 / 量先價行 +0.02</b>(48 指標全掃)本來就測過 → 這一輪只測沒切過的:<br>① OBV 上穿自己的 20/30/34 日均線:<b>−0.09 / −0.12 / −0.14pp</b>(0/6);<br>② ⭐ <b>真假突破</b>(創 60 日新高那天,OBV 有沒有<b>先</b>創新高):「真突破」<b>+0.03pp</b> vs「假突破」<b>+0.05pp</b> —— 分不出來;<br>③ OBV 橫盤 40/60/80 天後突破:−0.10 ~ +0.11pp;<br>④ 回檔到月線時 OBV 還在自己 30 日均線上(教學說「洗盤」)+0.03 vs 跌破(「出貨」)+0.02 —— 一樣;<br>⑤ <b>跟別的一起用</b>(疊在一年位階 ≥75% 上):最好 +0.28pp、3/6,扣成本仍負。<br>🔧 順手修:K 線頁置頂的「量能動能發動」(OBV×MACD×量)<b>以前從來沒被回測過</b>(回測環境沒給指標)→ signal_backtest 已改用 App 真的指標,重跑後會有成績。<br>⚠️ 逐字稿裡的「100 次手動回測勝率 58%」:沒有對照組、沒扣成本、是外匯。', s: 'obv_probe.mjs・V77.7.1' },
+      { k: 'layer-accel', u: '2026-09-27', t: '🏭 <b>「AI 供應鏈哪一層營收正在加速」→ 挑加速最多的 3 層,之後 20 天跟隨機挑 3 層一樣</b>', n: '21 層題材 ・55 個月 ・加速最多 3 層 <b>+0.00pp</b>(p=1.0)・隨機 3 層 +0.12 ・20 日動能前 3 層 +1.45pp(4/6)', d: '外部 AI 建議做「瓶頸引擎 / 產業傳導」(評估紀錄㊲)。產能、稼動率、報價沒有免費資料;<b>唯一做得到的</b>是把本站唯一六關全過的基本面(營收年增加速)從個股拉到「層」:每月初看每層成員幾成在加速、挑最多的 3 層。<br>結果:<b>+0.00pp,等於沒有</b>;反而是<b>價格動能</b>選層 +1.45pp(跟官方產業 +1.44pp 同一件事,本站板塊輪動早就在用),加速 ∧ 動能 +1.16pp 也沒比動能單獨好。<br>→ 題材頁那一格「營收在加速 X/Y 檔」只描述、⛔ 不排名。⚠️ 名單是 2026 年手選的(後見之明)、每層 3~7 檔、營收是季資料。', s: 'layer_accel_probe.mjs・V77.7.1' },
+      { k: 'split', u: '2026-09-27', t: '✂️ <b>股票分割(0050、0052、國巨…)之後會比較會漲嗎?—— 抓到 13 次,方向偏負,樣本太少不能下結論</b>', n: '2024~2026 ・13 次 ・復牌後 20 日超額平均 <b>−5.85pp</b>(中位 −7.72、贏大盤 3/12)・120 日 −8.72pp(4/8)・0050 自己:20 日 +2.9 / 120 日 +7.6', d: '⭐ 價格與成交量都已還原過分割,看不出來 → 用「<b>停止買賣 ≥3 天 + 復牌那天融資餘額跳整數倍</b>」偵測(融資張數沒還原)。抓到 0050(2025-06-18)、0052、國巨、材料-KY、寶雅、可寧衛…共 13 次。<br>結果:復牌後 5/20 日<b>多數輸大盤</b>;停牌前 60 日平均先漲了 +4.4pp(公告後就先漲了)。0050 那次是贏大盤,但只有一次、而且那段剛好是台積電權重大的行情。<br>⚠️ 只有復牌日、沒有公告日(公告效應量不到);抓不到沒融資的 ETF 與停牌不到 3 天的;13 次 ⛔ 不能下結論 → 只能說「<b>沒有證據說分割後比較會漲</b>」。', s: 'split_probe.py・V77.7.1' },
       { t: '⏱️ <b>老余的盤中時段口訣(11:00~11:30 轉折 / 10:30 後下殺反彈 / 12:30 尾盤拉抬 / 結算日尾盤)—— 用 5 年 5 分 K 重量,長相跟 88 天那次一樣:量不到</b>', n: '2021-05~2026-09 ・1,319 天 ・128,673 股·日 ・487 檔曾入榜(中位 106 天)', d: '<code>kbar5_tod_probe.mjs</code>(描述型,沒有對照組、沒有關卡、沒有成本 → ⛔ 仍然不下結論,只說「長這樣」)。① 45 分窗口方向翻轉率<b>每一個都在 48.9~52.8%</b>(隨機遊走 50%),11:15 那格 52.1% 跟別的窗口沒差;② 全日最低落在 10:30~11:30 只有 9.5%,反而 <b>45% 的全日最低、56% 的全日最高都在 09:00~09:30</b>;③ 12:30→收盤平均 <b>−0.04%</b>、13:00→收盤 −0.03%,結算日(第三個週三)−0.09% vs 非結算 −0.03% → 看不到「尾盤拉抬」;④ 量:09:00~10:00 佔 39.7%、13:00~13:30 佔 18.3%(這條他講對了)。⚠️ 他講的多半是<b>台指期</b>,kbar5 從 V77.3.7 才開始存近月日盤 5 分 K,要等滿一年。', s: 'kbar5_tod_probe.mjs・V77.6.9' },
       { t: '🚨 <b>「持股進處置/注意股,要不要先賣?」—— 提早賣兩種都更差,而且賣掉的是贏家</b>', n: '17 條起點:進處置隔天開盤賣 193 萬(0/17 贏)、進注意隔天開盤賣 175 萬(1/17)vs 照三條出場 409 萬', d: '使用者拿大甲(2221,+40% 抱 5 天就進處置、10/06 出關)問「不用先賣嗎?還要等唐奇安 40 日嗎?」。事件史(2,340 筆處置公告 + 12,108 筆注意股,2023-06 起,注意股只有上市)從官方名單探針收回來,疊在現行配置上:持倉在<b>公告日之後第一個交易日開盤</b>賣(公告是收盤後才知道的,⛔ 用公告日收盤是前視)。每條起點平均只被強制賣掉 58 筆(處置)/ 114 筆(注意),卻少賺 216 / 234 萬 —— 因為<b>會進處置的正是這套策略裡漲最多的那幾檔</b>,提早賣等於把贏家砍掉(跟 V74.4.8「太早出場洗掉贏家」同一件事,只是換了觸發條件)。2025、2026 兩年差最多(−94 / −116 萬)。⚠️ 處置期間分盤撮合、成交量會縮:出場那天可能賣不到理想價,⛔ 別用市價單;這是執行面的風險,⛔ 不是提早賣的理由。', s: 'portfolio_backtest.mjs FORCE_EXIT=<dispo_probe 事件>・V77.6.8' },
       { t: '🐻 <b>「股市空頭時,手上的也先全賣掉?」—— 17 條起點全輸,而且賣得越勤越慘</b>', n: '嚴格空頭日全賣:中位 151 萬 vs 現行 409 萬(17 條配對 0 贏、回撤 −48% vs −26%);跌破 60 日線就全賣:85 萬(0/17)', d: '以前本站只測過「空頭不開新倉」(那是對的,現行預設),沒有任何程式會因為大盤轉空而賣掉手上的部位 → 補測:大盤收盤 < 60 日線且 20 日線 < 60 日線的每一天,把持倉用收盤價全賣(跟現行同一份選股、出場、成本,只多這一條)。結果每一條起點都比現行少賺,中位少 258 萬;回撤反而<b>更大</b>(−48.4% vs −26.1%):賣在空頭日等於把跌下來的部分鎖成實現虧損,而反彈時因為「空頭不開新倉」沒有部位。寬版(只要跌破 60 日線就全賣)更慘:85 萬、每年都輸。逐年:2023 −32、2025 −42、2026 −172 萬。⭐ 結論:<b>空頭該做的是「不買」,不是「全賣」</b>;手上的照三條出場走(硬停損本來就在)。', s: 'portfolio_backtest.mjs BEAR_EXIT=strict|ma60・V77.6.8' },
@@ -5979,6 +5982,48 @@ const PRO = {
   //   ⛔ 三條:① 走勢是**整段 120 日**(⛔ 不隨時間軸裁掉 —— 要看得出「現在在這段的哪裡」)
   //           ② 兩條線**各自縮放**且都標最大最小值(相對強弱是 %、資金流是億,⛔ 不可共用一把尺)
   //           ③ 時間軸游標要畫出來 —— 那才是「這一天」跟整段的關係
+  // 📦 V77.7.1 題材「營收在加速幾檔」(評估紀錄㊲、layer_accel_probe 實測 ⛔ 沒有預測力 → 只描述)
+  //   ⛔⛔ 函式體是 index.html `_finAccelOn` 的**逐字複製**(pro.html 不能 import;lib_finaccel 是同一條公式)
+  //      → scripts/test_finfilter.mjs ⑦c 比對兩份函式體一字不差,改一邊沒改另一邊當場紅。
+  async _loadFinSlim(sym) {
+    const d = await this.fetchJson(`data/fin/${sym}.json`, 6000);
+    return (d && Array.isArray(d.q)) ? d : null;
+  },
+  async _finAccelOn(sym) {
+    sym = String(sym || ''); if (!sym) return null;
+    this._finAccelWhy = this._finAccelWhy || {};
+    let d = null;
+    try { d = await this._loadFinSlim(sym); } catch (_) { d = null; }
+    if (!d || !Array.isArray(d.q) || !d.q.length) { this._finAccelWhy[sym] = null; return null; }
+    const qs = d.q.slice().sort((a, b) => String(a.p) < String(b.p) ? -1 : 1);
+    const num = v => (v == null || !Number.isFinite(+v)) ? NaN : +v;
+    const ser = [];
+    for (let k = 0; k < qs.length; k++) {
+        const pub = String(qs[k].pub || ''); if (!pub) continue;
+        const rev = num(qs[k].rev);
+        const rev4 = k >= 4 ? num(qs[k - 4].rev) : NaN, rev1 = k >= 1 ? num(qs[k - 1].rev) : NaN, rev5 = k >= 5 ? num(qs[k - 5].rev) : NaN;
+        const yoy = rev > 0 && rev4 > 0 ? (rev / rev4 - 1) * 100 : NaN;
+        const yoyP = rev1 > 0 && rev5 > 0 ? (rev1 / rev5 - 1) * 100 : NaN;
+        const acc = yoy - yoyP;
+        ser.push({ p: String(qs[k].p || ''), pub, yoy, acc, ok: Number.isFinite(yoy) && Number.isFinite(acc) });
+    }
+    ser.sort((a, b) => a.pub < b.pub ? -1 : 1);
+    let today; try { today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }); } catch (_) { today = new Date().toISOString().slice(0, 10); }
+    let q = null;
+    for (const x of ser) { if (x.pub <= today) q = x; else break; }
+    if (!q || !q.ok) { this._finAccelWhy[sym] = null; return null; }
+    const on = q.yoy > 0 && q.acc > 0;
+    this._finAccelWhy[sym] = { on, yoy: q.yoy, acc: q.acc, p: q.p, pub: q.pub };
+    return on;
+  },
+  async _fillThAcc(c, syms) {
+    const el = document.querySelector(`[data-thacc="${c}"]`); if (!el) return;
+    const rs = await Promise.all((syms || []).map(s => this._finAccelOn(s).catch(() => null)));
+    const known = rs.filter(v => v !== null), on = known.filter(Boolean).length;
+    if (!document.body.contains(el)) return;
+    el.innerHTML = known.length ? `${on}/${known.length} 檔` : '—';
+    el.title = known.length ? `成員最新已公布那一季:營收年增 > 0 而且比上一季的年增更快 = 加速。${(syms || []).length - known.length ? `另有 ${(syms || []).length - known.length} 檔財報切片還沒有,不算。` : ''}⛔ 沒有預測力(layer_accel_probe:挑加速最多的 3 層 +0.00pp,跟隨機一樣)` : '成員的財報切片都還沒有';
+  },
   _rotOneHtml(c) {
     const J = this._rotData, G = this._rotSet(), o = G.grp[c];
     if (!o) return '<div class="note">⏳ 選一個板塊。</div>';
@@ -6041,7 +6086,9 @@ const PRO = {
         <div><span>近 20 日累計</span><b class="${this.cls(f20)}">${money(f20)}</b></div>
         <div><span>資金停留</span><b>${run ? `連續${sign > 0 ? '流入' : '流出'} ${run} 天` : '—'}</b></div>
         <div><span>買超寬度</span><b>${rows2.length ? `外資5日買超 ${rows2.filter(x => (x.f5 || 0) > 0).length}/${rows2.length} 檔` : '—'}</b></div>
+        ${G.th ? `<div><span>營收在加速<br><span style="font-weight:400;opacity:.7">最新一季・⛔ 只描述</span></span><b data-thacc="${c}">⏳</b></div>` : ''}
       </div>`;
+    if (G.th) setTimeout(() => this._fillThAcc(c, mem.syms), 0);
     const atLatest = k === J.days.length - 1;
     const SK = this._rotOneSortK || 'f5';
     // ⭐ 排序鍵一改就整張表重建 → 走向欄的 data-done 也跟著消失,`_fillStockFlows` 會重填

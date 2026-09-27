@@ -65,6 +65,15 @@ ok('⑥d FIN 只認 acc|gm|eps|sham,其他直接停', /\['acc', 'gm', 'eps', 'sh
 //    ⭐ 做法:把 `_finAccelOn` 的函式體抽出來用 `new Function` 跑,並**把 `Date` 影子掉**當作那一天 →
 //       順便釘住「⛔ 只認 pub <= 今天」那道可用日守門(拿掉它 → 早於 pub 的那幾天會分叉 → 紅)。
 const IDX = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+// ⑦c V77.7.1 pro.html 的 `_finAccelOn`(題材「營收在加速」那一格)⛔ 必須跟 index.html 的函式體一字不差(縮排不算)
+{
+    const PRO_ = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
+    const cut = (src, head, end) => { const a = src.indexOf(head); const b = a >= 0 ? src.indexOf(end, a) : -1; return a >= 0 && b > a ? src.slice(src.indexOf('{', a) + 1, b).replace(/\s+/g, ' ').trim() : ''; };
+    const I_ = cut(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'), '    async _finAccelOn(sym) {', '\n    },\n');
+    const P_ = cut(PRO_, '  async _finAccelOn(sym) {', '\n  },\n');
+    ok('⑦p pro.html 的 _finAccelOn 函式體 = index.html 那份(⛔ 第三份公式不可分叉)', I_.length > 600 && I_ === P_, `${I_.length} vs ${P_.length}`);
+}
+
 const _i0 = IDX.indexOf('    async _finAccelOn(sym) {');
 const _i1 = _i0 >= 0 ? IDX.indexOf('\n    },\n', _i0) : -1;
 const FA_BODY = (_i0 >= 0 && _i1 > _i0) ? IDX.slice(IDX.indexOf('{', _i0) + 1, _i1) : '';

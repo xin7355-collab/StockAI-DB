@@ -31,7 +31,7 @@ import { DEADLINES } from './lib_fundamentals.mjs';
 import { turnCuts, turnBucket } from './lib_turnover.mjs';
 import { finSeries, finOnAt } from './lib_finaccel.mjs';
 import { valuePrep, valueSeries, valueOnAt, KINDS as VAL_KINDS, CYC_IND } from './lib_value.mjs';
-import { trSeries, scaleFor, loadPx } from './lib_totalreturn.mjs';
+import { trSeries, scaleFor, loadPx, nhiRate } from './lib_totalreturn.mjs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs';
@@ -608,11 +608,12 @@ if (!allTrades.length) { console.log('❌ 一筆交易都沒有 → 回測無效
 //     '權'(配股,本站 _backadjust_splits 只還原整數倍分割 → 配股的除權跳空還在)→ 股數 × (除權前 ÷ 除權參考價)。
 //   ⛔ 不進 CACHE_KEY(只改報酬,不改進出場);不設時一個字都不變。
 const DIV_TRADES = process.env.DIV_TRADES || '';
+const NHI = process.env.NHI !== '0';        // 🏥 V77.7.1 預設扣二代健保(DIV_TRADES 與 0050 含息基準都扣);NHI=0 關掉
 if (DIV_TRADES) {
     const raw = JSON.parse(fs.readFileSync(DIV_TRADES, 'utf8')); const DV = raw.d || raw;
     const pxCache = new Map();
     const pxOf = sym => { if (!pxCache.has(sym)) { const b = loadPx(DATA, sym); pxCache.set(sym, b ? new Map(b.map(x => [x.d, x.c])) : null); } return pxCache.get(sym); };
-    let nHit = 0, nCash = 0, nStock = 0, nBad = 0, addSum = 0;
+    let nHit = 0, nCash = 0, nStock = 0, nBad = 0, addSum = 0, nNhi = 0, nhiAmt = 0;
     for (const t of allTrades) {
         const ev = (DV[t.sym] || {}).h || [];
         if (!ev.length || !(t.entry > 0)) continue;
@@ -629,7 +630,10 @@ if (DIV_TRADES) {
             const c = pxOf(t.sym)?.get(D);
             const { k } = scaleFor(before, c);
             if (k === null) { nBad++; continue; }
-            cash += amt * k * F; nCash++; hit = true;
+            let per = amt * k * F;
+            // 🏥 二代健保:照「這一筆實際領到幾元」判門檻(每筆 LOT 元 ÷ 進場價 = 股數);NHI=0 可關掉
+            if (NHI) { const r = nhiRate(D, per * (LOT / t.entry)); if (r) { nNhi++; nhiAmt += per * (LOT / t.entry) * r; per *= 1 - r; } }
+            cash += per; nCash++; hit = true;
         }
         if (!hit) continue;
         // ⛔ 只記在 t.dv、⛔ 不改 t.ret —— t.ret 會被「這檔過去有沒有賺」那道選股門檻拿去用,
@@ -640,7 +644,8 @@ if (DIV_TRADES) {
         nHit++; addSum += t.dv;
     }
     console.log(`💰 DIV_TRADES:${nHit.toLocaleString()} / ${allTrades.length.toLocaleString()} 筆交易持有期間碰到除權息`
-        + `(現金 ${nCash} 次、配股 ${nStock} 次、尺標對不上排除 ${nBad} 次),平均每筆多 ${nHit ? (addSum / nHit).toFixed(2) : 0}%`);
+        + `(現金 ${nCash} 次、配股 ${nStock} 次、尺標對不上排除 ${nBad} 次),平均每筆多 ${nHit ? (addSum / nHit).toFixed(2) : 0}%`
+        + (NHI ? ` ・🏥 二代健保被扣 ${nNhi} 次(候選交易合計 ${Math.round(nhiAmt).toLocaleString()} 元)` : ' ・🏥 NHI=0:沒扣二代健保'));
     if (!nHit) { console.error('🚨 DIV_TRADES 設了卻一筆都沒碰到 → 檔案格式或日期對不上(⛔ 不是「沒差別」)'); process.exit(1); }
 }
 // 🐻🚨 V77.6.8 空過守門:設了強制出場卻一筆都沒被強制賣掉 = 變體沒生效(⛔ 不是「沒差別」)
@@ -1011,6 +1016,26 @@ const valOk = t => {
     }
     return v === true;
 };
+// 🏷️ V77.7.1 EMERGING=exclude|sham:興櫃股(沒有漲跌幅限制、流動性差、實際常常買不到)要不要排除
+//   🚨 為什麼:修資料前的 4 年回測每條路徑約 61 筆興櫃交易、賺約 81 萬 → 要知道那一塊是不是撐起成績的關鍵。
+//   sham = 隨機丟掉**同比例**的候選(⛔ 沒有 sham 的話,「少挑一點」本身就會改變結果,V77.3.3 的教訓)。
+//   市場別讀 AUX_DIR/stock_names.json 第三欄(emerging / twse / tpex);讀不到 → 停(⛔ 不可靜默當成沒排除)。
+const EMERGING = process.env.EMERGING || '';
+const emSet = new Set();
+let emFrac = 0;
+if (EMERGING) {
+    if (!['exclude', 'sham'].includes(EMERGING)) { console.error(`🚨 EMERGING 只認 exclude|sham(收到 ${EMERGING})`); process.exit(1); }
+    try {
+        const nm = JSON.parse(fs.readFileSync(path.join(AUX_DIR, 'stock_names.json'), 'utf8'));
+        for (const [k, v] of Object.entries(nm.names || nm)) if (Array.isArray(v) && v[2] === 'emerging') emSet.add(k);
+    } catch (e) { console.error(`🚨 EMERGING 要 stock_names.json 的市場別,讀不到(AUX_DIR=${AUX_DIR})→ 停`); process.exit(1); }
+    if (!emSet.size) { console.error('🚨 stock_names.json 裡一檔興櫃都沒有 → 市場別欄位可能不存在,停'); process.exit(1); }
+    emFrac = allTrades.filter(t => emSet.has(t.sym)).length / allTrades.length;
+    console.log(`🏷️ EMERGING=${EMERGING}:興櫃 ${emSet.size} 檔 ・候選交易裡佔 ${(emFrac * 100).toFixed(1)}%`);
+}
+const emOk = t => !EMERGING ? true
+    : EMERGING === 'exclude' ? !emSet.has(t.sym)
+    : (_shamHash(`${t.sym}|${t.inD}|em`) % 10000) >= emFrac * 10000;   // 安慰劑:跟市場別無關、同比例
 const turnOk = t => {
     if (!TURN) return true;
     const v = turnOf.get(`${t.sym}|${t.inD}`);
@@ -1135,7 +1160,7 @@ for (let i = 0; i < days.length; i++) {
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
                   && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF)
                   && indCycOk(x.t.sym, d)
-                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t) && valOk(x.t))
+                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t) && valOk(x.t) && emOk(x.t))
         .sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
     if (RANKBY === 'rand') { for (let k = cand.length - 1; k > 0; k--) { const j = Math.floor(_rnd() * (k + 1)); [cand[k], cand[j]] = [cand[j], cand[k]]; } }
     else if (RANKBY === 'mkt') cand.sort((a, b) => (b.m.sum / b.m.n) - (a.m.sum / a.m.n));
@@ -1303,7 +1328,7 @@ const ret50tr = (() => {
     try {
         if (!process.env.DIV) return null;
         const raw = JSON.parse(fs.readFileSync(process.env.DIV, 'utf8')); const DV = raw.d || raw;
-        const S = trSeries(f50.filter(r => r.d <= to), (DV['0050'] || {}).h || []);
+        const S = trSeries(f50.filter(r => r.d <= to), (DV['0050'] || {}).h || [], { capital: CAPITAL, nhi: NHI });
         const at = d => { let v = null; for (let k = 0; k < S.d.length; k++) { if (S.d[k] <= d) v = S.v[k]; else break; } return v; };
         const v0 = at(from), v1 = at(to);
         return v0 && v1 ? (v1 - v0) / v0 * 100 - COST : null;
@@ -1403,7 +1428,7 @@ function _yearSummary() {
         if (process.env.DIV) {
             const raw = JSON.parse(fs.readFileSync(process.env.DIV, 'utf8')); const DV = raw.d || raw;
             const bars = f50.filter(r => r.d <= days[e]);
-            const S = trSeries(bars, (DV['0050'] || {}).h || []);
+            const S = trSeries(bars, (DV['0050'] || {}).h || [], { capital: CAPITAL, nhi: NHI });
             const at = d => { let v = null; for (let k = 0; k < S.d.length; k++) { if (S.d[k] <= d) v = S.v[k]; else break; } return v; };
             const v0 = at(days[b]), v1 = at(days[e]);
             if (v0 && v1) r50tr = (v1 - v0) / v0 * 100 - COST;
