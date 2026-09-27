@@ -75,7 +75,7 @@ ok('③ 帶回測方法段(基準 36%・成本 0.44%・六道關卡・17 條起�
    /## 回測方法/.test(R.all) && /36%/.test(R.all) && /0\.44%/.test(R.all) && /六道關卡/.test(R.all) && /17 次/.test(R.all) && /V77\.7\.0/.test(R.all));
 ok('④ 提問範本:⛔ 不要再推薦實測沒用的 + ⛔ 不要自己編數字', /## 我想請你做的事/.test(R.all) && /不要再推薦/.test(R.all) && /不要自己編數字/.test(R.all));
 ok('④b ask:false 就不帶提問範本(但方法段照帶)', !/## 我想請你做的事/.test(R.noAsk) && /## 回測方法/.test(R.noAsk));
-ok('⑤ 精簡版比完整版短且不含「說明:」', R.brief.length < R.all.length && !/- 說明:/.test(R.brief) && /- 說明:/.test(R.all), `${R.brief.length}/${R.all.length}`);
+ok('⑤ 精簡版比完整版短且不含「完整說明:」', R.brief.length < R.all.length && !/- 完整說明:/.test(R.brief) && /- 完整說明:/.test(R.all), `${R.brief.length}/${R.all.length}`);
 const nView = R.view.split('\n').filter(l => l.startsWith('### ')).length;
 ok(`⑥ 搜尋「出場」後目前畫面匯出 ${nView} 條 = 畫面上 ${R.nRows} 條`, nView === R.nRows && nView > 0 && nView < R.total, `${nView} vs ${R.nRows}`);
 ok('⑦ ✅有用 照 r 由大到小(匯出順序 = 排序後的前 5 條)', R.okSorted.slice(0, 5).every((t, i) => R.heads[i] === t), R.heads.slice(0, 3).join(' | '));
@@ -87,6 +87,12 @@ ok('⑧ 面板打開:3 個選單 + 📋 複製 + ⬇️ 下載', R.panelOpen && 
 ok('⑧b 搜尋中打開面板,預設就是「目前畫面」', R.scopeVal === 'view', R.scopeVal);
 ok('⑧c 📋 複製失敗 ⛔ 不可靜默 → 叫人改用下載', /下載/.test(R.msg), R.msg);
 ok('⑨ ⭐ 決定性對照:改 LAB 一條的數字 → 匯出跟著變', R.inj.includes('注入值 12345.678') && !R.all.includes('注入值 12345.678'));
+{
+    const blocks = R.all.split('\n### ').slice(1);
+    ok('⑩ 每一條都有「判定」與「技術備註」,而且技術備註排在最後', blocks.length === R.total && blocks.every(b => /\n- 判定:/.test(b) && /\n- 技術備註:[^\n]*$/.test(b.split('\n## ')[0].trimEnd())), blocks.find(b => !/\n- 判定:/.test(b))?.slice(0, 80));
+    ok('⑪ 研究速記「做多」「配置」匯出時翻成白話(判定那一行不可出現「(做多」)', !/- 判定:[^\n]*\(做多/.test(R.all) && /偏向可用/.test(R.all), '');
+    ok('⑫ 名詞先翻譯:六道關卡 / 高原 / 安慰劑 / pp 都在方法段', ['六項穩定性檢查', '孤峰', '安慰劑', '百分點'].every(w => R.all.split('## ✅')[0].includes(w)), '');
+}
 ok('⓪ 沒有 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();

@@ -28,8 +28,8 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 // ── 靜態 ──
 ok('ⓒs CACHE_KEY 帶 `_ckForce`(BEAR_EXIT / FORCE_EXIT 一定進 key)', /const CACHE_KEY = JSON\.stringify\(\{[^}]*\.\.\._ckForce \}\)/.test(CODE) && /const _ckForce = \{ \.\.\.\(BEAR_EXIT \? \{ BEAR_EXIT \} : \{\}\), \.\.\.\(FORCE_EXIT \? \{ FORCE_EXIT: FORCE_HASH \} : \{\}\) \}/.test(CODE), '');
 ok('ⓑs 事件強制出場用**開盤價**(`exitP = O(j) > 0 ? O(j) : c` + fx = 2)', /FS && FS\.has\(data\[j\]\.date\)\) \{ exitP = O\(j\) > 0 \? O\(j\) : c; exitIdx = j; fx = 2; break; \}/.test(CODE), '');
-ok('ⓐs 空頭清倉用**收盤價**(`exitP = c` + fx = 1)', /BD && BD\.has\(data\[j\]\.date\)\) \{ exitP = c; exitIdx = j; fx = 1; break; \}/.test(CODE), '');
-ok('ⓐs2 空頭日集合直接用 `notBear60`(⛔ 不寫第二份定義)', /const BEAR_DAYS = !BEAR_EXIT \? null : new Set\(twii\.map\(\(r, i\) => \(BEAR_EXIT === 'strict' \? !notBear60\(i\)/.test(CODE), '');
+ok('ⓐs 空頭清倉用**收盤價**(`exitP = c` + fx = 1)', /BD && BD\.has\(data\[j\]\.date\)(?: && \(a\.bearMode !== 'strictlose' \|\| c < entry\))?\) \{ exitP = c; exitIdx = j; fx = 1; break; \}/.test(CODE), '');
+ok('ⓐs2 空頭日集合直接用 `notBear60`(⛔ 不寫第二份定義)', /const BEAR_DAYS = !BEAR_EXIT \? null : new Set\(twii\.map\(\(r, i\) => \(BEAR_EXIT !== 'ma60' \? !notBear60\(i\)/.test(CODE), '');
 ok('ⓓs 空過守門:設了卻 0 筆 → exit 1(兩個都要)', /BEAR_EXIT 設了卻一筆都沒被強制賣掉[^\n]*process\.exit\(1\)/.test(CODE) && /FORCE_EXIT 設了卻一筆都沒被強制賣掉[^\n]*process\.exit\(1\)/.test(CODE), '');
 
 // ── 執行期 ──

@@ -30,7 +30,7 @@ const blk = PB.slice(PB.indexOf('if (DIV_TRADES) {'), PB.indexOf("DIV_TRADES 設
 ok(blk.length > 500, '③0 抓得到股利入帳那一段(空過守門)');
 ok(!/t\.ret\s*[+\-*]?=/.test(blk), '③a 股利 ⛔ 不可改 t.ret');
 ok(/t\.dv\s*=/.test(blk), '③b 股利記在 t.dv');
-ok(/const net = t => t\.ret \+ \(t\.dv \|\| 0\) - COST/.test(PB), '③c 每筆淨報酬加 dv');
+ok(/const net = t => \(t\._rot \? t\._rot\.ret \+ t\._rot\.dv : t\.ret \+ \(t\.dv \|\| 0\)\) - COST/.test(PB), '③c 每筆淨報酬加 dv(V77.7.4 起換股那筆用賣出前的股利 _rot.dv)');
 ok(/x\.ret \+ \(x\.dv \|\| 0\) - COST/.test(PB), '③d 現金模擬加 dv');
 ok(/process\.env\.NHI !== '0'/.test(PB) && /nhiRate\(D,/.test(blk), '③e 預設扣二代健保、NHI=0 可關');
 ok((PB.match(/\{ capital: CAPITAL, nhi: NHI \}/g) || []).length >= 2, '③f 0050 含息基準也扣二代健保(兩邊同一把尺)');

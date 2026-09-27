@@ -5428,6 +5428,9 @@ const PRO = {
     for (const t of this.LAB_TABS) if (Array.isArray(this.LAB[t[0]])) for (const it of this.LAB[t[0]]) out.push({ ...it, _col: t[0] });
     return out;
   },
+  // 🗣️ V77.7.4 條目的「結論」欄是研究時的速記(做多 / 配置 / 只描述…)→ 匯出時翻成白話(⛔ 不改 LAB 原文 —— 測試釘著)
+  _LAB_W_PLAIN: [[/^做多\(必要條件\)/, '篩選的必要條件'], [/^做多\(搶反彈\)/, '反彈條件成立時可用'], [/^做多\((.+)\)$/, '偏向可用・$1'], [/^做多/, '偏向可用'], [/^只描述/, '只描述、不下買賣指令'], [/^避雷/, '用來避開'], [/^長期配置/, '長期資金配置'], [/^部位配置|^配置|^調部位/, '部位 / 策略設定'], [/^等回測/, '只有初步結果,還沒正式回測'], [/^等資料/, '資料不足,暫不下結論'], [/^等空頭/, '要等下一次空頭再驗']],
+  _labWPlain(w) { for (const [re, to] of this._LAB_W_PLAIN) if (re.test(w)) return w.replace(re, to); return w; },
   _labPlain(html) {
     return String(html == null ? '' : html)
       .replace(/<br\s*\/?>/gi, '\n').replace(/<\/(div|p|li)>/gi, '\n').replace(/<[^>]+>/g, '')
@@ -5456,24 +5459,33 @@ const PRO = {
     L.push('- 資料:台股上市櫃日 K(2021 起,長歷史 2011 起)+ 三大法人、融資券、集保、財報;⚠️ 倖存者偏誤(已下市的不在裡面)。');
     L.push('- 報酬一律**扣同期加權指數**(超額報酬);**隨便挑一天**的勝率約 36%(中位數個股本來就輸大盤),⛔ 不是 50%。');
     L.push('- 成本:買賣一趟 **0.44%**(手續費 + 證交稅);贏不過這個數字 = 白做。');
-    L.push('- 「六道關卡」:全期正 / 前後半同向 / 逐年同向 / 拿掉最好的一年仍正 / 扣成本仍正 / 疊在現有做法上仍有增量。');
+    L.push('- **六道關卡** = 六項穩定性檢查:全期為正 / 前半段與後半段同方向 / 每一年同方向 / 拿掉最好的一年仍為正 / 扣掉成本仍為正 / 疊在現有做法上仍有增量。');
+    L.push('- **高原** = 不是只有一個神奇門檻有效,而是門檻左右挪幾格都還有效(只有一格有效叫「孤峰」= 多半是巧合)。');
+    L.push('- **對照組 / 安慰劑**:同一批股票隨便挑一天,或「隨機挑同樣多檔」;新條件一律要贏安慰劑,⛔ 不是只贏「不篩」。');
     L.push('- 組合回測:本金 100 萬、每筆 15 萬、一天最多 2 檔、停損用收盤價成交;同一套規則把起點挪 17 次(每 5 個交易日一條)看配對勝場,⛔ 不只看一條路徑。');
+    L.push('- **pp** = 百分點(兩個百分比相減);**中位** = 排中間那一個(不被極端值拉走)。');
     L.push('- ' + this._LAB_EXPORT_NOTE);
+    L.push('');
+    L.push('## 每一條怎麼讀');
+    L.push('- **標題就是一句話結論**(這條測試發現什麼)。');
+    L.push('- **判定**:✅ 實測支持(通過關卡)・⛔ 實測不支持 ・🧭 回測方法 / 程式的坑(不是策略結論)・⏳ 資料不足還測不了 ・🔬 還沒測。');
+    L.push('- **數字 → 怎麼用 → 完整說明 → 技術備註**(技術備註是探針檔名與日期,給程式維護用,可以略過)。');
     L.push('');
     const order = this.LAB_TABS.map(t => t[0]);
     const groups = {};
     for (const r of rows) (groups[r._col] ||= []).push(r);
+    const verdict = { ok: '✅ 實測支持', trap: '⛔ 實測不支持', method: '🧭 回測方法 / 程式的坑(不是策略結論)', blocked: '⏳ 資料不足,還測不了', next: '🔬 還沒測' };
     for (const k of order) {
       const g = groups[k]; if (!g || !g.length) continue;
       const sorted = k === 'ok' ? g.slice().sort((a, b) => (b.r ?? -1) - (a.r ?? -1)) : g.slice().sort((a, b) => (b.u || '').localeCompare(a.u || ''));
       L.push(`## ${colName(k)}(${g.length} 條)`);
       sorted.forEach((it, i) => {
         L.push(`### ${i + 1}. ${this._labPlain(it.t)}`);
+        L.push(`- 判定:${verdict[k] || colName(k)}${it.w ? `(${this._labWPlain(this._labPlain(it.w))})` : ''}`);
         if (it.n) L.push(`- 數字:${this._labPlain(it.n)}`);
-        if (it.w) L.push(`- 結論:${this._labPlain(it.w)}`);
-        if (full && it.how) L.push(`- 怎麼用:${this._labPlain(it.how)}`);
-        if (full && it.d) L.push(`- 說明:${this._labPlain(it.d).replace(/\n+/g, ' ')}`);
-        L.push(`- 來源:${this._labPlain(it.s || '—')}${it.u ? `・最後更新 ${it.u}` : ''}`);
+        if (it.how) L.push(`- 怎麼用:${this._labPlain(it.how)}`);
+        if (full && it.d) L.push(`- 完整說明:${this._labPlain(it.d).replace(/\n+/g, ' ')}`);
+        L.push(`- 技術備註:來源 ${this._labPlain(it.s || '—')}${it.u ? `・最後更新 ${it.u}` : ''}`);
       });
       L.push('');
     }
@@ -5777,7 +5789,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V77.7.3',
+  VER: 'V77.7.4',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

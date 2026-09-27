@@ -204,7 +204,8 @@ if (!['stop', 'close', 'touch'].includes(STOPFILL)) { console.error(`🚨 STOPFI
 //   ⛔ 兩個都**必須進 CACHE_KEY**(同 GRACE 的教訓:漏了會把不帶強制出場的舊快取靜默重用,跑出「完全沒差」的假結論)
 //   ⛔ 沒設就一個字都不變(CACHE_KEY 字串跟舊版一模一樣,既有快取照樣重用)
 const BEAR_EXIT = (process.env.BEAR_EXIT || '').trim();
-if (BEAR_EXIT && !['strict', 'ma60'].includes(BEAR_EXIT)) { console.error(`🚨 BEAR_EXIT=${BEAR_EXIT} 不認得(strict|ma60)`); process.exit(1); }
+if (BEAR_EXIT && !['strict', 'ma60', 'strictlose'].includes(BEAR_EXIT)) { console.error(`🚨 BEAR_EXIT=${BEAR_EXIT} 不認得(strict|ma60|strictlose)`); process.exit(1); }
+// 🐻 V77.7.4 strictlose = 同 strict 的空頭日,但**只賣帳面虧損的**(收盤 < 進場價),賺錢的照原規則抱(外部建議「空頭只保留浮盈股票」)
 const FORCE_EXIT = (process.env.FORCE_EXIT || '').trim();
 let FORCE_MAP = null, FORCE_HASH = '';
 if (FORCE_EXIT) {
@@ -234,7 +235,19 @@ const GAPCAP = +(process.env.GAPCAP || 1);
 const ADD = process.env.ADD || 'off';
 const ADD_UP = +(process.env.ADD_UP || 3);    // pyr:要比原本那筆高幾 % 才算「往上加」
 const ADD_MAX = +(process.env.ADD_MAX || 2);  // 同一檔最多幾筆(含第一筆)   // nextopen_lim:跳空開高超過幾 % 就不追
-const COST = 0.44;           // 來回交易成本 %(手續費 0.1425%×2 + 證交稅 0.3%,未打折)
+const COST0 = 0.44;          // 來回交易成本 %(手續費 0.1425%×2 + 證交稅 0.3%,未打折)
+// 💸 V77.7.4 成本壓力測試:COST_X=1.5 / 2 → 策略這一邊的成本乘倍數(⛔ 對照組 0050 那條仍用 COST0,只壓策略)
+const COST_X = +(process.env.COST_X || 1);
+if (!(COST_X >= 1 && COST_X <= 5)) { console.error(`🚨 COST_X=${process.env.COST_X} 不合理(1~5)`); process.exit(1); }
+const COST = COST0 * COST_X;
+// 🔁 V77.7.4 換股 ROTATE:錢不夠買今天的新候選時,先賣掉手上「最弱」的一檔(收盤賣、同一個收盤買)
+//   weak = 帳面報酬最低的那檔(不管賺賠)・lose = 只賣帳面虧損中最差的(都在賺就不換)
+//   sham = 隨機挑一檔賣(⛔ 跟強弱無關 —— 增量一律跟它比,V77.3.3 方法學)・shamlose = 在「帳面虧損」的那幾檔裡隨機挑(lose 的安慰劑)
+//   ROT_MIN = 持有滿幾個交易日才准被換掉(預設 5,避免剛買就換)
+//   ⛔ 不進 CACHE_KEY(只動資金層);不設時一個字都不變。
+const ROTATE = (process.env.ROTATE || '').trim();
+if (ROTATE && !['weak', 'lose', 'sham', 'shamlose'].includes(ROTATE)) { console.error(`🚨 ROTATE=${ROTATE} 不認得(weak|lose|sham|shamlose)`); process.exit(1); }
+const ROT_MIN = +(process.env.ROT_MIN || 5);
 const LOT = +(process.env.LOT || 100000);        // 每筆投入(等權)
 const CAPITAL = +(process.env.CAPITAL || 1000000); // 💰 你手上的總本金 —— 錢用完就買不了(這才貼近現實)
 
@@ -279,7 +292,7 @@ const twiiMa60 = twii.map((_, i) => i < 59 ? null
     : twii.slice(i - 59, i + 1).reduce((s2, r) => s2 + r.c, 0) / 60);
 const notBear60 = i => !(twiiMa60[i] != null && twii[i].c < twiiMa60[i] && twiiMa20[i] < twiiMa60[i]);
 // 🐻 V77.6.8 空頭清倉要賣的那幾天(⛔ 直接用上面那條 `notBear60`,不另寫第二份定義)
-const BEAR_DAYS = !BEAR_EXIT ? null : new Set(twii.map((r, i) => (BEAR_EXIT === 'strict' ? !notBear60(i) : (twiiMa60[i] != null && r.c < twiiMa60[i])) ? r.d : null).filter(Boolean));
+const BEAR_DAYS = !BEAR_EXIT ? null : new Set(twii.map((r, i) => (BEAR_EXIT !== 'ma60' ? !notBear60(i) : (twiiMa60[i] != null && r.c < twiiMa60[i])) ? r.d : null).filter(Boolean));
 if (BEAR_EXIT) {
     console.log(`🐻 空頭清倉 BEAR_EXIT=${BEAR_EXIT}:全窗口 ${BEAR_DAYS.size} 個交易日是「要賣掉手上全部」的日子(${(BEAR_DAYS.size / twii.length * 100).toFixed(1)}%)`);
     if (!BEAR_DAYS.size) { console.error('❌ BEAR_EXIT 設了但窗口內一天都不是空頭 → 這個變體沒有生效(⛔ 不是「沒差別」)'); process.exit(1); }
@@ -498,7 +511,7 @@ for (const sym of syms) {
                                 exitIdx = j; sx = 1; sw = c > stop ? 1 : 0; break;
                             }
                             // 🐻 V77.6.8 空頭清倉:今天是空頭日 → 收盤價賣(⛔ 不受寬限期影響;停損先到就算停損,同一天同一個價)
-                            if (BD && BD.has(data[j].date)) { exitP = c; exitIdx = j; fx = 1; break; }
+                            if (BD && BD.has(data[j].date) && (a.bearMode !== 'strictlose' || c < entry)) { exitP = c; exitIdx = j; fx = 1; break; }
                             // 🚨 V77.6.8 事件強制出場:今天是事件日之後第一個交易日 → **開盤價**賣(公告收盤後才知道)
                             if (FS && FS.has(data[j].date)) { exitP = O(j) > 0 ? O(j) : c; exitIdx = j; fx = 2; break; }
                             // 🎯 固定停利 / 風報比停利:達標就走(⚠️ 用收盤價,不假設剛好碰到目標價)
@@ -578,7 +591,7 @@ for (const sym of syms) {
         if (GR > 0) out.push({ __g: gBlocked });
         return out;
     }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP, reentry: REENTRY, reMax: RE_MAX, grace: GRACE, stopFill: STOPFILL,
-         bearDays: BEAR_DAYS ? [...BEAR_DAYS] : null, forceSell: fsell });
+         bearDays: BEAR_DAYS ? [...BEAR_DAYS] : null, bearMode: BEAR_EXIT, forceSell: fsell });
     for (const t of tr) { if (t.__g != null) { graceBlocked += t.__g; continue; } allTrades.push({ ...t, sym }); }
     if (++done % 50 === 0) {
         const el = (Date.now() - t0) / 1000;
@@ -633,7 +646,7 @@ if (DIV_TRADES) {
             let per = amt * k * F;
             // 🏥 二代健保:照「這一筆實際領到幾元」判門檻(每筆 LOT 元 ÷ 進場價 = 股數);NHI=0 可關掉
             if (NHI) { const r = nhiRate(D, per * (LOT / t.entry)); if (r) { nNhi++; nhiAmt += per * (LOT / t.entry) * r; per *= 1 - r; } }
-            cash += per; nCash++; hit = true;
+            cash += per; nCash++; hit = true; (t._dvEv ||= []).push([D, per]);   // 🔁 ROTATE 提早賣掉時只算賣出前的股利
         }
         if (!hit) continue;
         // ⛔ 只記在 t.dv、⛔ 不改 t.ret —— t.ret 會被「這檔過去有沒有賺」那道選股門檻拿去用,
@@ -1100,6 +1113,9 @@ const openCnt = [];          // 每天同時持有幾筆
 let live = [];               // 目前持有
 let addCnt = 0;              // 📈 加碼成交筆數(⛔ 一定要報 —— 0 筆代表這個變體根本沒生效)
 let skipped = 0;             // 💰 因為錢不夠而錯過的次數(⛔ 一定要報 —— 不然等於假設無限資金)
+let rotN = 0;                // 🔁 ROTATE 換掉幾筆
+const _pxc = new Map();
+const pxAt = (sym, d) => { if (!_pxc.has(sym)) { const b = loadPx(DATA, sym); _pxc.set(sym, b ? new Map(b.map(x => [x.d, x.c])) : null); } const m = _pxc.get(sym); return m ? (m.get(String(d).replace(/\//g, '-')) || 0) : 0; };
 let cash = CAPITAL;          // 現金
 let parkSh = 0, parkBasis = 0, parkPnL = 0, parkBuy = 0, parkSell = 0, parkDays = 0;   // 🔀 停泊部位
 const parkLog = [];   // 🔀 每一段停泊 {in,out,basis,pnl} —— ⛔ 一定要留,否則停泊那條腿做不了穩健性檢定
@@ -1244,6 +1260,25 @@ for (let i = 0; i < days.length; i++) {
             if (parkSh < 1e-9) { parkSh = 0; parkBasis = 0; }
         }
         // ⛔ 錢不夠就買不了 —— 這條一定要有,不然等於假設無限資金(那個報酬率是假的)
+        // 🔁 ROTATE:錢不夠 → 賣掉手上最弱的一檔(今天收盤)再買
+        if (ROTATE && cash < amt) {
+            const el = live.filter(x => x._i != null && i - x._i >= ROT_MIN && outIdx(x) > i && pxAt(x.sym, d) > 0);
+            let vic = null;
+            if (el.length) {
+                const u = x => pxAt(x.sym, d) / x.entry - 1;
+                if (ROTATE === 'sham') vic = el[Math.floor(_rnd() * el.length)];
+                else if (ROTATE === 'shamlose') { const ls = el.filter(x => u(x) < 0); vic = ls.length ? ls[Math.floor(_rnd() * ls.length)] : null; }
+                else { vic = el.reduce((a, b) => (u(b) < u(a) ? b : a)); if (ROTATE === 'lose' && !(u(vic) < 0)) vic = null; }
+            }
+            if (vic) {
+                const r = (pxAt(vic.sym, d) / vic.entry - 1) * 100;
+                const dvr = (vic._dvEv || []).filter(([D]) => D <= d).reduce((a, [, per]) => a + per, 0) / vic.entry * 100;
+                const a0 = vic._amt || LOT;
+                cash += a0 + a0 * (r + dvr - COST) / 100; realized += a0 * (r - COST) / 100;
+                vic._rot = { ret: r, dv: dvr, d, u: r - vic.ret };   // ⛔ 不改 vic.ret(那是選股門檻的歷史成績,改了會汙染 stat)
+                live = live.filter(x => x !== vic); seen.delete(vic.sym); rotN++;
+            }
+        }
         if (cash < (PARK === 'idle' ? amt - 1e-6 : amt)) { skipped++; continue; }   // ⛔ 沒開 idle 時一個字都不變
         seen.add(t.sym); cash -= amt;
         t._amt = amt;
@@ -1293,6 +1328,7 @@ if (process.env.TAKEN_OUT) {
         const i = t._i, d = t._d, b2 = yBr(i);
         return {
             d, sym: t.sym, key: t.key, ret: t.ret,
+            outD: t.outD, fx: t.fx || 0, dv: t.dv || 0,   // 🪜 V77.7.4 每筆機會成本 / 賣掉後錯失(trade_alpha_probe)要用
             dow: new Date(d + 'T00:00:00Z').getUTCDay(),
             dom: +d.slice(8, 10),
             set: isSet(d) ? 1 : 0,
@@ -1309,7 +1345,7 @@ if (process.env.TAKEN_OUT) {
 }
 
 // ── ④ 結果:整體 / 每月 / vs 0050 ────────────────────────────────────────
-const net = t => t.ret + (t.dv || 0) - COST;        // 扣成本後的單趟報酬 %(💰 DIV_TRADES 的股利只在這裡入帳)
+const net = t => (t._rot ? t._rot.ret + t._rot.dv : t.ret + (t.dv || 0)) - COST;   // 🔁 ROTATE 換掉的那筆用實際賣出價        // 扣成本後的單趟報酬 %(💰 DIV_TRADES 的股利只在這裡入帳)
 // 🐛 V77.5.9:以前寫死 LOT —— SIZING=risk / SCALE 時每筆金額會浮動,累積損益卻照 LOT 算(= 那兩種變體的總獲利是錯的)。
 //   等權時 _amt 就是 LOT → 預設輸出一個字都不變。
 const money = t => (t._amt || LOT) * net(t) / 100;
@@ -1336,7 +1372,7 @@ const f50 = JSON.parse(fs.readFileSync(BENCH0050, 'utf8'))
     .map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close })).filter(r => r.c > 0);
 const px50 = d => { let hit = null; for (const r of f50) { if (r.d <= d) hit = r.c; else break; } return hit; };
 const b50 = px50(from), e50 = px50(to);
-const ret50 = (b50 && e50) ? (e50 - b50) / b50 * 100 - COST : null;
+const ret50 = (b50 && e50) ? (e50 - b50) / b50 * 100 - COST0 : null;
 const twiiRet = (twii[i1].c - twii[i0].c) / twii[i0].c * 100;
 // 💰 V77.6.6 整段 0050 含息(重用 trSeries,⛔ 不寫第二份;沒給 DIV 就不給)—— 逐年表「一個帳戶一路滾」那一欄的對照
 const ret50tr = (() => {
@@ -1346,7 +1382,7 @@ const ret50tr = (() => {
         const S = trSeries(f50.filter(r => r.d <= to), (DV['0050'] || {}).h || [], { capital: CAPITAL, nhi: NHI });
         const at = d => { let v = null; for (let k = 0; k < S.d.length; k++) { if (S.d[k] <= d) v = S.v[k]; else break; } return v; };
         const v0 = at(from), v1 = at(to);
-        return v0 && v1 ? (v1 - v0) / v0 * 100 - COST : null;
+        return v0 && v1 ? (v1 - v0) / v0 * 100 - COST0 : null;
     } catch (_) { return null; }
 })();
 
@@ -1370,6 +1406,13 @@ const avgAmt = taken.reduce((a, t) => a + (t._amt || LOT), 0) / taken.length;
 console.log(`💰 本金 ${nf(CAPITAL)} 元 ・每筆 ${nf(LOT)} 元 ・同時最多持有 ${maxOpen} 筆(平均 ${avgOpen.toFixed(1)} 筆 → 資金使用率 ${(avgOpen * avgAmt / CAPITAL * 100).toFixed(0)}%)`);
 if (skipped) console.log(`⚠️ 有 ${skipped} 次訊號因為**錢已經用完**而錯過(本金再多一點結果會不同)`);
 console.log('═'.repeat(74));
+if (ROTATE) {
+    const R = taken.filter(t => t._rot);
+    const du = R.length ? R.reduce((a, t) => a + t._rot.u, 0) / R.length : 0;
+    console.log(`🔁 換股 ROTATE=${ROTATE}(持有 ≥${ROT_MIN} 日才可換):換掉 ${rotN} 筆 ・被換掉那幾筆「提早賣 − 原本照規則賣」平均 ${du >= 0 ? '+' : ''}${du.toFixed(2)}%`);
+    if (!rotN) { console.error('❌ ROTATE 設了卻一筆都沒換 → 沒生效(⛔ 不是「沒差別」)'); process.exit(1); }
+}
+if (COST_X !== 1) console.log(`💸 成本壓力 COST_X=${COST_X}:策略每趟成本 ${COST.toFixed(2)}%(0050 對照仍 ${COST0}%)`);
 console.log(`\n📊 整體(扣掉來回成本 ${COST}%)`);
 console.log(`   成交筆數      ${taken.length} 筆`);
 console.log(`   勝率          ${(wins.length / taken.length * 100).toFixed(1)}%`);
@@ -1438,7 +1481,7 @@ for (const [k, v] of Object.entries(useCnt).sort((a, b) => b[1].n - a[1].n)) {
 function _yearSummary() {
     const b = YR_FROM - 1, e = YR_TO;
     const px = (arr, d) => { let hit = null; for (const r of arr) { if (r.d <= d) hit = r.c; else break; } return hit; };
-    const r50 = (() => { const p0 = px(f50, days[b]), p1 = px(f50, days[e]); return p0 && p1 ? (p1 - p0) / p0 * 100 - COST : null; })();
+    const r50 = (() => { const p0 = px(f50, days[b]), p1 = px(f50, days[e]); return p0 && p1 ? (p1 - p0) / p0 * 100 - COST0 : null; })();
     let r50tr = null;
     try {
         if (process.env.DIV) {
@@ -1447,7 +1490,7 @@ function _yearSummary() {
             const S = trSeries(bars, (DV['0050'] || {}).h || [], { capital: CAPITAL, nhi: NHI });
             const at = d => { let v = null; for (let k = 0; k < S.d.length; k++) { if (S.d[k] <= d) v = S.v[k]; else break; } return v; };
             const v0 = at(days[b]), v1 = at(days[e]);
-            if (v0 && v1) r50tr = (v1 - v0) / v0 * 100 - COST;
+            if (v0 && v1) r50tr = (v1 - v0) / v0 * 100 - COST0;
         }
     } catch (_) { r50tr = null; }
     const tw = (twii[e].c - twii[b].c) / twii[b].c * 100;
@@ -1472,6 +1515,8 @@ if (process.env.SUMMARY_OUT) {
         dd: +mdd.toFixed(2), skipped, twii: +twiiRet.toFixed(2), etf0050: ret50 == null ? null : +ret50.toFixed(2), etf0050tr: ret50tr == null ? null : +ret50tr.toFixed(2), byYear,
     };
     if (PARK) summary.park = Math.round(parkPnL);   // 🅿️ 停泊 0050 的損益(⛔ 不混進 cum)
+    if (ROTATE) summary.rot = { mode: ROTATE, n: rotN, minHold: ROT_MIN };
+    if (COST_X !== 1) summary.costX = COST_X;
     if (BEAR_EXIT || FORCE_EXIT) summary.forced = { bear: taken.filter(t => t.fx === 1).length, event: taken.filter(t => t.fx === 2).length };   // 🐻🚨 V77.6.8 實際成交裡被強制賣掉幾筆
     if (YEAR) Object.assign(summary, _yearSummary());
     fs.writeFileSync(process.env.SUMMARY_OUT, JSON.stringify(summary));
