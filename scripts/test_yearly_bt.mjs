@@ -63,7 +63,7 @@ const R = await page.evaluate(async () => {
     PRO._labSel = 'bt'; PRO._ybSort = null; PRO.renderLab();
     const box = () => document.getElementById('yearlyBody');
     const o = {};
-    o.txt = box().innerText; o.rows = box().querySelectorAll('tbody tr').length;
+    o.txt = box().innerText; o.rows = [...box().querySelectorAll('tbody tr')].filter(tr => !tr.closest('#mbBox')).length;   // 🗓️ V77.8.4 逐月那個摺疊有自己的表格,⛔ 不算進逐年總表
     window.scrollTo(80, 0); o.sx = window.scrollX;
     const Y = PRO._YEARLY_BT, base = Y.strats.find(s => s.id === 'base'), now = Y.strats.find(s => s.id === Y.nowId);
     const firstId = () => { const tr = box().querySelector('tbody tr[onclick]'); return tr ? tr.getAttribute('onclick') : ''; };
