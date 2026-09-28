@@ -242,6 +242,11 @@ function runSet(ctx, name, cfg, startDate, paths = 17) {
         const r = simulate(ctx, s, cfg, 1000 + k);
         const trS = Array.from(ctx.etf.tr.slice(s, s + r.eq.length));
         res.push({ ...r, m: metrics(r.eq, trS), y: yearly(r.eq, trS, ctx.cal.slice(s, s + r.eq.length)) });
+        // 🗓️ V77.8.9 EQ_DIR:逐日淨值吐成 month_probe.mjs 讀的格式({warmup, rows:[{d,cash,park,mv}]},本金 100 萬)
+        if (process.env.EQ_DIR) {
+            fs.mkdirSync(process.env.EQ_DIR, { recursive: true });
+            fs.writeFileSync(`${process.env.EQ_DIR}/eq_${k}.json`, JSON.stringify({ warmup: k, rows: r.eq.map((v, i) => ({ d: ctx.cal[s + i], cash: v * 1e6, park: 0, mv: 0 })) }));
+        }
     }
     const med = f => r2(median(res.map(f)));
     const years = Object.keys(res[0].y);

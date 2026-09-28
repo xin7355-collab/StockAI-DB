@@ -24,6 +24,8 @@ ok('④ screener_miner COLS 有 chg10 與 amt20', /'chg10',/.test(PY) && /'amt20
 const _le0 = SRC.indexOf('_LEADER_EDGE: {'), _le1 = SRC.indexOf('/** 👑 純函式', _le0);
 const _outside = SRC.slice(0, _le0) + SRC.slice(_le1);
 ok('④b 實測數字只出現在 `_LEADER_EDGE` 裡面(⛔ 文案不可寫死)', _le0 > 0 && _le1 > _le0 && !/3176|3,176|\+760%|\+670%|\+341%/.test(_outside.slice(_outside.indexOf('_leaderCalc(D'), _outside.indexOf('_leaderHelp() {') + 3000)), '');
+const _hs = SRC.indexOf('_leaderHelp() {'), _hTxt = SRC.slice(_hs, _hs + 4000);
+ok('④c 🗓️ 逐月數字讀 `_LEADER_EDGE.mon`(⛔ 說明不寫死)', /mon: \{ n: \d+, beat: \d+/.test(SRC) && /\$\{E\.mon\.beat\}/.test(_hTxt) && /\$\{E\.mon\.worstAll\}/.test(_hTxt) && !/贏 0050 的月份 53%/.test(_hTxt));
 const AT = fs.readFileSync(path.join(ROOT, 'auto_trade.py'), 'utf8');
 const jsRule = (SRC.match(/rule: \{ U: (\d+), N: (\d+), R: (\d+), L: (\d+), hyst: (\d+) \}/) || []).slice(1).join(',');
 const pyRule = (AT.match(/LEADER_RULE = \{'U': (\d+), 'N': (\d+), 'R': (\d+), 'L': (\d+), 'hyst': (\d+)\}/) || []).slice(1).join(',');

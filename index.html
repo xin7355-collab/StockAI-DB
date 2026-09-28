@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.8.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.9.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.8.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.9.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8649,8 +8649,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.8.9',
+    _APP_VERSION: 'V77.9.0',
     _CHANGELOG: [
+        { v: 'V77.9.0', d: ['🗓️ <b>領頭羊的「每個月」成績算出來了</b>(AI 時代 46 個完整月):贏 0050 的月份 53%、抱 12 個月贏 59%(決策台預設是 49% / 34%)', '⚠️ 但它是<b>進攻型</b>:最壞一個月 −30%(最差那條起點 −43%),0050 跌的月份它跌得比 0050 還多;連虧最長 4 個月 —— 一兩個月看不出好壞', '📖 數字在決策台「👑 領頭羊」的說明裡;拿上個月預測下個月照樣量不到'] },
         { v: 'V77.8.9', d: ['🤖 <b>領頭羊接上自動下單了</b>(第二套,⛔ 預設關):電腦上的自動下單程式設「LEADER=1」+「LEADER_ACCOUNT=這套要用的錢」才會動,而且預設仍是<b>模擬單</b>;它只動「領頭羊」自己那一格的部位,⛔ 不碰你手動買的股票和決策台那套', '⏱️ 換倉日改成<b>大家同一天</b>(從 2026-09-24 起每 10 個交易日),手機跟自動下單對得上,⛔ 不用再按「開始」', '⏱️ 實測:自動下單是隔天<b>尾盤</b>照前一晚的名單買,比回測的「隔天開盤買」差一點(AI 時代 670% vs 760%)但仍贏 0050;想跟回測一模一樣可設「LEADER_WINDOW=open」改在開盤下', '🚨 <b>名單裡有注意股 / 處置股:⛔ 不要跳過</b> —— 實測跳過處置股只剩 341%(照常買 760%),會進注意 / 處置的正是漲最多的那幾檔', '🚧 決策台每一列加「量薄」標記(近 20 天平均一天成交不到 1 億)—— 一買就可能把價格墊高;⛔ 名單照留', '📐 選股頁「K棒轉多 / 轉空」榜每一列多了那個訊號的<b>實測成績</b>(A/B/C 級 + 每趟期望值);單根變盤線定義不同,標「未驗證」', '💳 修掉「融資 5 日增減 −100%」的假數字(61 檔):那是採礦沒抓到那天寫的 0,現在當成「不知道」'] },
         { v: 'V77.8.8', d: ['👑 <b>「領頭羊短線輪動」做進決策台了</b>(決策台最下面,第二套;⛔ 沒有換掉原本的預設):近 20 日平均成交額前 100 大裡,收盤站上 20 日線、20 日線又在 60 日線之上的,照近 10 日漲幅排前 10 名;前 5 名明天開盤買、你手上的掉出前 10 名就賣', '⏱️ 按「開始」把今天當第 1 天,之後每 10 個交易日才換一次倉(其他日子畫面會寫「今天不動」);大盤嚴格空頭時名單照列但不買', '⚠️ 採礦要補兩個欄位(10 日漲幅、20 日平均成交額),下一輪全市場掃描跑完才會有名單,在那之前畫面會寫「今天算不出名單」;自動下單⛔ 沒有接這一套,你看過名單再說'] },
         { v: 'V77.8.7', d: ['🌙 <b>自創「當沖 / 隔日沖」變種測完</b>(實測總表 ✅ 有用,排名很後面):拿領頭羊池子(成交額前 100)壓到一天、一夜 —— <b>當沖 5 種全部賠</b>(池子本身早上買收盤賣就 −0.46%)', '🌙 隔日沖唯一過關:<b>近 10 日最強的 20 檔裡,今天跌超過 2% 的,尾盤買、明天開盤賣 +0.14%/趟</b>(勝率 55%、5/6 年、9 格門檻全正);但抱到明天收盤就變賠', '⚠️ 錢很小:每天最多做 5 檔,5 年只有 +22%,同期 0050 +225% → 只當「已經想留倉」時的參考,⛔ 不是拿來賺錢的'] },
@@ -8798,12 +8799,6 @@ ${list}
             '⚖️ <b>風報比一定同時印「停損距現價幾 %」</b> —— 停損只距現價 1% 時,那個比值天生就會很漂亮,而那不是因為上檔空間大。⭐ 另外把<b>兩個「風報比 / 賺賠比」的口徑寫出來</b>(一個是到第一道壓力 vs 出場總表停損、另一個是到目標價 vs 防守線),並明講<b>⛔ 兩個不可互相比較</b>。數字與公式<b>一個字都沒動</b>。',
             '🧹 <b>贅詞收斂</b>:「現在的價」統一成「現價」;事件那一節的「那幾天波動會變大」原本每一條各印一次(重複 4 遍)→ 整節只講一次;空狀態的「本站沒有」精簡成「沒有」。⛔ <b>但「本站自己貼的 / 本站人工整理 / 外部 AI 寫的本站沒有驗證 / 我們自己算的」一個字都沒刪</b> —— 那是你分得出「這句話是誰說的」的唯一依據。',
         ], dt: '2026-09-15' },
-        { v: 'V77.1.2', d: [
-            '📈 <b>財報不再只印「最新一季」，改成 12 季的趨勢線</b>(季營收年增 / 毛利率 / 每股盈餘)。⭐ <b>「營收 +50% 但毛利率往下」跟「兩個一起往上」是完全不同的公司</b>，以前只看一個點看不出來。資料本來就在手上，<b>零採礦、零 API</b>。⚠️ 這是<b>事實描述</b>，<b>本站沒有回測過</b>它能不能預測股價 —— 拿它看「成長有沒有品質」，⛔ 別當買賣訊號。',
-            '🗓️ <b>事件不再只列日期，會寫「會動到哪個數字」</b>(財報→每股盈餘/毛利率、月營收→營收年增、FOMC→匯率跟外資買賣超…)。⛔ <b>但只講「那幾天波動會變大」</b>，不講方向、也不給★ 重要度 —— 本站實測過 <b>37 種行事曆日，能講方向的一個都不成立</b>。',
-            '🔀 <b>回了你那份外部 AI 評論裡的「多空分歧」—— 實測不成立，所以⛔ 沒做進去</b>。「基本面強、股價弱」那一種之後 20 日只比大盤好 <b>+0.17pp</b>(運氣的範圍內)，而且<b>鏡像的「基本面弱、股價強」也是正的</b> → 那量到的不是方向，是「有沒有極端」。完整數字在產業作戰室的「🔬 實測總表」。',
-            '🐛 順手修:速覽圖底下那行色說明<b>右邊被切掉</b>(沒有換行)、趨勢線右邊空一大片。',
-        ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -21408,6 +21403,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         fillOpen: { ai: 760, long: 3176, beatAi: 15, beatLong: 17 }, fillClose: { ai: 670, long: 2219, beatAi: 14, beatLong: 13 },
         // 🚨 V77.8.9 注意 / 處置(官方事件史 2023-06 起,決策日「之前」的公告才算):全部變差
         att: { base: 760, noAtt3: 501, noAtt10: 453, noDisp: 341, sellDisp: 468, noDispBeat: 6 },
+        // 🗓️ V77.8.9 AI 時代逐月(month_probe.mjs 吃 leader_probe EQ_DIR,17 條中位;開盤成交那一組)
+        mon: { n: 46, beat: 53, up: 62, hold12: 59, worst: 30, worstAll: 43, upCap: 153, downCap: 115, maxLose: 4, maxUw: 13 },
     },
     /** 👑 純函式:screener.json → 領頭羊名單(⛔ 只用採礦算好的欄位,⛔ 不現算 K 線)。回 {err} 或 {pool, ranked(前 2N), buy(前 N), n, date, all(池子全部含 rank)} */
     _leaderCalc(D, opt = {}) {
@@ -21485,7 +21482,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     _leaderHelp() {
         const E = this._LEADER_EDGE, R = E.rule;
-        alert(`👑 領頭羊短線輪動(${E.ver})\n\n規則:每 ${R.R} 個交易日收盤 → 在「近 20 日平均成交額前 ${R.U} 大」(不含 ETF)裡,留下收盤 > 20 日線 > 60 日線的,照近 ${R.L} 日漲幅排名,前 ${R.N} 檔隔天開盤等權買;下次換倉還在前 ${R.N * R.hyst} 名就續抱、掉出去隔天開盤賣;不設停損線;沒用到的錢放 0050;大盤嚴格空頭不開新倉。\n\n實測(${E.ai.paths} 條起點中位):${E.ai.win} +${E.ai.tot}%(0050 含息 +${E.ai.etfTr}%)・${E.long.win} +${E.long.tot}%(0050 +${E.long.etfTr}%)。同一個池子隨機挑只有 +${E.sham.ai}% / +${E.sham.long}% → 賺的是排名本身。\n\n代價:中途最多賠 ${E.ai.mdd}~${E.long.mdd}%;${E.long.yrs} 年只有 ${E.long.yrBeat} 年贏 0050;成本加倍時 16 年 +${E.costX2.long}%(輸 0050)。一半放 0050 的版本:16 年 +${E.core50.long}%、回撤 −${E.core50.longMdd}%、最差一年只輸 ${E.core50.worstYr}pp。\n\n換倉日:從 ${E.anchor} 起每 ${R.R} 個交易日(App 與自動下單同一個起點)。成交時點:隔天開盤 +${E.fillOpen.ai}%(回測那一組)、隔天尾盤 +${E.fillClose.ai}%(16 年 +${E.fillClose.long}%)。\n\n注意 / 處置股⛔ 不要跳過:跳過處置 +${E.att.noDisp}%、跳過注意 +${E.att.noAtt3}%、持股進處置就賣 +${E.att.sellDisp}%,全部變差。\n\n⛔ 這是第二套,沒有換掉決策台預設(每一年都要贏那關沒過)。自動下單要自己開:LEADER=1(見 auto_trade.py 說明)。`);
+        alert(`👑 領頭羊短線輪動(${E.ver})\n\n規則:每 ${R.R} 個交易日收盤 → 在「近 20 日平均成交額前 ${R.U} 大」(不含 ETF)裡,留下收盤 > 20 日線 > 60 日線的,照近 ${R.L} 日漲幅排名,前 ${R.N} 檔隔天開盤等權買;下次換倉還在前 ${R.N * R.hyst} 名就續抱、掉出去隔天開盤賣;不設停損線;沒用到的錢放 0050;大盤嚴格空頭不開新倉。\n\n實測(${E.ai.paths} 條起點中位):${E.ai.win} +${E.ai.tot}%(0050 含息 +${E.ai.etfTr}%)・${E.long.win} +${E.long.tot}%(0050 +${E.long.etfTr}%)。同一個池子隨機挑只有 +${E.sham.ai}% / +${E.sham.long}% → 賺的是排名本身。\n\n代價:中途最多賠 ${E.ai.mdd}~${E.long.mdd}%;${E.long.yrs} 年只有 ${E.long.yrBeat} 年贏 0050;成本加倍時 16 年 +${E.costX2.long}%(輸 0050)。一半放 0050 的版本:16 年 +${E.core50.long}%、回撤 −${E.core50.longMdd}%、最差一年只輸 ${E.core50.worstYr}pp。\n\n換倉日:從 ${E.anchor} 起每 ${R.R} 個交易日(App 與自動下單同一個起點)。成交時點:隔天開盤 +${E.fillOpen.ai}%(回測那一組)、隔天尾盤 +${E.fillClose.ai}%(16 年 +${E.fillClose.long}%)。\n\n逐月(${E.mon.n} 個完整月):贏 0050 的月份 ${E.mon.beat}%、抱 12 個月贏 ${E.mon.hold12}%;最壞一個月 −${E.mon.worst}%(最差那條起點 −${E.mon.worstAll}%);0050 跌的月份它跌得更多(跟跌 ${E.mon.downCap}%)、漲的月份拿到 ${E.mon.upCap}%;連虧最長 ${E.mon.maxLose} 個月、從高點回不來最長 ${E.mon.maxUw} 個月 → 一兩個月看不出好壞。\n\n注意 / 處置股⛔ 不要跳過:跳過處置 +${E.att.noDisp}%、跳過注意 +${E.att.noAtt3}%、持股進處置就賣 +${E.att.sellDisp}%,全部變差。\n\n⛔ 這是第二套,沒有換掉決策台預設(每一年都要贏那關沒過)。自動下單要自己開:LEADER=1(見 auto_trade.py 說明)。`);
     },
     /** 🐻 純函式:一串大盤 K(舊→新,每根要有 close)→ 最後一根是不是嚴格空頭。不足 60 根回 null(⛔ 不猜) */
     _bear60Of(rows) {
