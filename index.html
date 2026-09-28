@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.8.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.8.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.8.0</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.8.1</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8649,8 +8649,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.8.0',
+    _APP_VERSION: 'V77.8.1',
     _CHANGELOG: [
+        { v: 'V77.8.1', d: ['🧾 <b>App 內 AI 的回答會自動「核對數字」了</b>(上一版 go-stock 那一項,你說要做)—— 盤前速報、總經深度分析、新聞綜合分析、行事曆事件影響、報告頁 App 內模型那五個地方:AI 回答裡的每一個數字(價位、%、億、張、點…)都拿去跟本站<b>這一次真的給它的資料</b>比對,<b>找不到的會列在最下面</b>(⚠️ 可能是它自己算的或編的,別拿來下單)。全部對得上就不顯示。⛔ 回答本身一個字都不改。','✅ 用台積電真的報告提示詞實測:同一批數字換個寫法(四捨五入、千分位、億↔兆、「約」)⛔ 不會誤報;偷插一個編的「季線 707.4 元」(真值 704.4)一定抓得到。⚠️ 外部 AI(Perplexity 那種)貼回來的報告不核對 —— 它會上網,數字本來就不是本站給的。','😱 <b>「美股恐慌指數衝高之後 0050 會怎樣」量過了:⛔ 沒有穩定方向</b>(35 格只有 1 格像有東西,而且 VIX ≥25 那組 20 天反而比平常差 2.8%)。5 年裡 VIX ≥30 只有 6 次 = 樣本根本不夠。','🌪️ <b>加權跌 20% 之後多久回來</b>:16 年 5 次、全部回到前高,但中位要 393 個交易日(含股利約 251 天),最久約 2.8 年;而且跌到 −20% 那天通常不是底,中位還要再跌到 −28.7%。⛔ 只有 5 次,不能當「跌 20% 就加碼」的訊號。'] },
         { v: 'V77.8.0', d: ['🗽 <b>川普發文 → 台股,量過了:⛔ 方向量不到,只有「隔天開盤跳比較大」</b>(你問的 trump-code 那個專案)。拿它公開的 4.4 萬則發文,對到台股下一個能交易的盤、用 0050 自己的開→收算:就任後講關稅的日子 137 天(台股交易日的<b>一半</b>)開→收只比沒講的日子差 −0.04%,講中國 −0.11%、講晶片 −0.11%(13 天)、講「協議」+0.09% —— 全部遠小於來回成本 0.44%,也都不顯著。','⚠️ <b>唯一看得到的是跳空變大</b>:講中國那幾天的隔天開盤平均跳 1.11%(平常 0.84%)—— 但那一段開盤前就跳完了,<b>買不到</b>。跟上一版「美股隔夜異常」是同一個結論。','🚨 <b>那個專案說的「命中率 61.3%、566 筆驗證」要打折</b>:566 筆全部是 2026-03-14 同一天回頭補算過去的日子(0 筆真的事先預測),而且是從 3,150 萬種組合裡挑出來的;做多命中 62.8% 對比同期標普開→收本來就 52.8% 會漲,做空只有 47%(比丟銅板還差)。','🖥️ go-stock 那份的評估也一起記下來了:大部分本站早就有或測過,它的「AI 回測」有模型本身知道未來的問題。'] },
         { v: 'V77.7.9', d: ['🗣️ <b>實測總表改成白話版</b>(照你給的附件做)—— 每一條先講三句:<b>一句話 → 對你的意思 → 白話數字</b>;原本的結論、數字、怎麼操作、完整說明一個字都沒刪,點開就看得到。','📂 <b>「✅ 實測有用」分成五組</b>:✅ 可以照做 ・📌 當參考 ・🚫 要避開 ・🐢 長期存股 ・🗄️ 已被新版取代(舊的排最後)。每條標環節(選股/進場/出場…)與可信度 ●●○;點環節 = 搜尋它。排名 🥇🥈🥉 照舊。','✏️ <b>附件有幾處我改了</b>:「美股隔夜對隔天台股有參考價值」改成「隔天開盤會跟著動(時差),但實測買不到優勢」;補上附件沒有的「0050 當主力、策略當小部位」;分組與可信度⛔ 不用紅綠(紅綠只講漲跌)。','🧾 <b>提示詞稽核</b>:App 內會叫 AI 寫東西的地方逐一查過,修掉 4 個違規 —— 盤前速報的「三劇本機率」是沒驗證過的係數湊的(已拿掉)、盤前速報會叫 AI 點名個股進場(大盤偏多那天熱門股實測反而 −0.27%)、總經深度分析會叫 AI 給「部位幾成」、事件影響會問利多利空並叫 AI 自己寫股票代號(它沒連網,代號可能是錯的)。'] },
         { v: 'V77.7.8', d: ['🇺🇸 <b>「美股隔夜異常 → 台股」測完了:⛔ 量不到可以買到的優勢</b>。美股 5 年日線第一份資料進來後跑完三層:加權(用 0050 當資產)35 格 0 個過關、14 板塊 98 格只有 1 個(而且是負的)、美股個股 → 台股個股的對應名單前後半<b>重疊 0%</b>;「美股很強、台股開盤還沒反映」4 年只出現 4 次(樣本不足)。疊在 🧬 選股上跟「同通過率的隨機日」比,也沒有多賺(數字在實測總表 k:us-tw-lead)。',
@@ -8850,7 +8851,6 @@ ${list}
             '🏅 <b>四張分點卡補上「打掉它的那個實測數字」</b>(你上一題選的:保留卡片、不要刪):其中「🎯 今天多家分點同買的」最嚴重 —— 它在<b>主動推薦股票</b>,而<b>同一頁</b>的券商榜底部早就寫著「這是成績記錄不是買進名單」= 自己跟自己打架。已改成純描述「🎯 跟單精選 · 今日最值得跟」,並寫明那個「分」是<b>憑空訂的權重、沒有回測驗證過</b>。',
             '⭐ <b>而且把唯一有用的那條也寫上去,因為方向跟直覺相反</b>:有用的是<b>「已經發動才跟」</b>(同一分點連買 ≥3 天 + 5 日已漲 ≥8% → 之後 20 日 +1.36pp),⛔ <b>不是</b>「趁還沒動偷偷跟」(那個實測只有 +0.06pp ≈ 零)。',
             '📄 <b>順手更正兩處我自己寫錯的文件</b>:「外資買賣超只回溯到 2026/05、要等滿一年才能回測」—— <b>差 13 倍</b>,實跑印出來是 <b>2023/05/22 起、805 個交易日</b>。⚠️ 但重跑出來的新結論<b>還沒過八道關卡</b>(平均值算錯了,一次長行情被重複計算)→ ⛔ 預設一個字都沒改。'] },
-        { v: 'V77.0.3', d: ['📼 <b>開始存 5 分 K 了</b>(你說的「開始存分k」)—— 以前本站<b>一根分 K 都沒有留下來</b>,所以那三條盤中口訣(下午時段 / 開盤 10 分鐘站回 / 第一根 5 分 K 上影)只能現抓現算,<b>每次重跑結果都不一樣</b>,而且「逐年同向」那一關天生過不了。','⏳ <b>第一次跑就有約 80 個交易日</b>(不是要等半年),但要做得動「逐年」那一關得滿一年 → 大約 <b>2027 年 2 月</b>。','⚠️ 存的是「<b>當天成交量前 80 名</b>」那批(你選的)—— 代價是名單每天會變,某一檔在歷史上會斷斷續續,而且天生只收「當天夠熱」的日子。檔案裡已經把每天的實際名單與這段警語一起存進去,回測時一定會先算「這檔在窗口裡有幾天」。','⛔ 它存在自己的分支、<b>不佔網站空間</b>,也不會讓你的 App 變慢。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -12209,6 +12209,63 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             throw new Error('三鏈 AI 全忙(Gemini + Groq + OpenRouter 均已撞 429 或無 key)');
         }
         return null;
+    },
+
+    // 🧾 V77.8.1 AI 回答「數字核對」(go-stock agent_fact_check 的做法,評估紀錄㊴)
+    //   App 內三條 AI 鏈都不會上網 → 回答裡的數字只可能來自本站餵給它的提示詞,或它自己算 / 編的。
+    //   ⭐ 把回答裡每一個「數字主張」拿去比對「這一輪真的送出去的提示詞」,找不到的逐一列出來。
+    //   ⛔ 只提醒、不改正文(同 go-stock:提醒層不是評判器);⛔ 不判斷結論對不對。
+    //   ⛔ src 沒有(舊快取沒存提示詞)→ 回 null,不顯示 —— 「沒核對」跟「核對過沒問題」不可長得一樣。
+    _AI_NUM_SCALE: { '兆': 1e12, '億': 1e8, '萬': 1e4 },
+    _aiNumTokens(s, claimsOnly) {
+        let t = String(s || '').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/％/g, '%').replace(/[−–—]/g, '-');
+        if (claimsOnly) {
+            // 🗓️ 日期 / 時間 / 節號 / 編號 / 期數 / 天數這類「不是主張」的先遮掉(⛔ src 那邊不遮,收得越多越不會誤報)
+            t = t.replace(/\d{2,4}[\/\-]\d{1,2}(?:[\/\-]\d{1,2})?/g, ' ')
+                 .replace(/\d{1,2}:\d{2}/g, ' ')
+                 .replace(/\d{4}\s*(?:年|Q\d)/g, ' ')
+                 .replace(/\d{1,2}\s*月(?:\s*\d{1,2}\s*[日號])?/g, ' ')
+                 .replace(/(?:§|第|T\+|No\.?|#)\s*\d+|Q\d/gi, ' ')
+                 .replace(/(^|\n)\s*\d{1,2}\s*[.、)）]/g, '$1 ')
+                 .replace(/\d+\s*(?:天|日|週|周|個月|年|季|檔|則|項|條|次|名|根|分鐘|秒|小時|節|點鐘|家|個(?!百分點)|位|步)/g, ' ');
+        }
+        const out = [];
+        const re = /(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?\s*(兆|億|萬|%|pp|個百分點|倍|元|張|口|點)?/g;
+        let m;
+        while ((m = re.exec(t))) {
+            const intPart = m[1].replace(/,/g, ''), frac = m[2] || '', unit = m[3] || '';
+            const raw = +(intPart + frac);
+            if (!isFinite(raw)) continue;
+            const dec = frac ? frac.length - 1 : 0;
+            if (claimsOnly && !unit && !dec && intPart.length < 3) continue;   // 無單位的 1~2 位整數 = 多半是數量或序號,⛔ 不當主張
+            const pre = t.slice(Math.max(0, m.index - 3), m.index), post = t.slice(re.lastIndex, re.lastIndex + 3);
+            const approx = /約|大約|近|逾|超過|將近|~|～/.test(pre) || /左右|上下/.test(post);
+            const tz = (!dec && approx) ? (intPart.match(/0+$/) || [''])[0].length : 0;
+            const sc = this._AI_NUM_SCALE[unit] || 1;
+            out.push({ s: m[0].trim(), raw, sc, tol: 0.5 * Math.pow(10, tz - dec) + 1e-9 });
+        }
+        return out;
+    },
+    _aiNumGate(src, outText) {
+        if (!src || !outText) return null;
+        const S = this._aiNumTokens(src, false);
+        const pool = [];
+        for (const x of S) { pool.push(x.raw); if (x.sc !== 1) pool.push(x.raw * x.sc); }
+        const claims = this._aiNumTokens(outText, true);
+        const miss = [];
+        for (const c of claims) {
+            const cand = [[c.raw, c.tol]];
+            if (c.sc !== 1) cand.push([c.raw * c.sc, c.tol * c.sc]);
+            const hit = cand.some(([v, tol]) => pool.some(p => Math.abs(Math.abs(v) - Math.abs(p)) <= tol));
+            if (!hit && !miss.includes(c.s)) miss.push(c.s);
+        }
+        return { checked: claims.length, miss };
+    },
+    _aiNumGateHtml(r) {
+        if (!r || !Array.isArray(r.miss) || !r.miss.length) return '';
+        const esc = v => String(v).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        const show = r.miss.slice(0, 6).map(esc).join('、') + (r.miss.length > 6 ? '…' : '');
+        return `<div data-ainumgate="${r.miss.length}" class="text-[10px] text-amber-300 leading-snug" style="margin-top:6px">⚠️ 🧾 數字核對:這段有 <b>${r.miss.length}</b> 個數字(共核對 ${r.checked} 個)在本站給它的資料裡找不到:<span class="font-mono">${show}</span> —— 可能是它自己算的或編的,⛔ 別拿來下單。</div>`;
     },
 
     // 🚀 深度推理(能力優先):Gemini 2.5 Flash → OpenRouter DeepSeek R1(o1 級最強推理)→ Groq 70b 兜底
@@ -24707,7 +24764,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const text = await this._callDeepAI({ prompt: q + offline, max_tokens: 4000, temperature: 0.3, chain: G.chain });
             const t = String(text || '').trim();
             if (!t) throw new Error('模型沒有回傳內容');
-            const rec = { t: t.slice(0, 30000), ts: Date.now(), asof: this._rpNoteAsof(t), v: 2, by: id, offline: 1 };
+            const rec = { t: t.slice(0, 30000), ts: Date.now(), asof: this._rpNoteAsof(t), v: 2, by: id, offline: 1,
+                ng: this._aiNumGate(q + offline, t) };   // 🧾 V77.8.1 數字核對(只有 App 內模型才核對;外部 AI 會上網,數字本來就不是本站給的)
             (this._rpNoteCache = this._rpNoteCache || {})[sym] = rec;
             let ok = false;
             try { ok = await this.idb.put(this._rpNoteKey(sym), rec); } catch (_) { ok = false; }
@@ -25008,7 +25066,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             //   📐 V76.2.2 版面:卡頭右邊已經寫了「基準日 X」→ 這行**不再重複講一次基準日**(同一個日期講兩次看起來像壞掉)
             saved = `<div data-rpnote="1" class="bg-[#0d1117] border-l-4 border-l-[#8b949e] border-y border-r border-[#30363d] rounded-r p-2 mb-1.5">
                 <div class="text-[10px] text-amber-300/90 font-bold leading-snug" data-rpby="${this._escHtml(String(n.by || 'px'))}">📝 ${this._escHtml(this._rpGenOf(n.by || 'px').label)} 這個外部 AI 寫的,本站沒有驗證 ・⛔ 不參與買賣判斷${n.offline ? ' ・⚠️ 它<b>不會上網</b>' : ''}</div>
-                ${this._rpCiteWarn(sym, n.t)}${staleHtml}${P.secs.length ? `<div class="text-[9px] leading-snug" style="margin-top:4px" data-rpsecleg="${this._RP_SECTONE.length}">🎨 標題顏色 = 這一節在講哪一類(⛔ 不是好壞、也不是漲跌)：${this._RP_SECTONE.map(t => `<span class="${t.cls} font-bold">● ${t.t}</span>`).join(' ')}</div>` : ''}${firstHtml}
+                ${this._rpCiteWarn(sym, n.t)}${n.offline ? this._aiNumGateHtml(n.ng) : ''}${staleHtml}${P.secs.length ? `<div class="text-[9px] leading-snug" style="margin-top:4px" data-rpsecleg="${this._RP_SECTONE.length}">🎨 標題顏色 = 這一節在講哪一類(⛔ 不是好壞、也不是漲跌)：${this._RP_SECTONE.map(t => `<span class="${t.cls} font-bold">● ${t.t}</span>`).join(' ')}</div>` : ''}${firstHtml}
                 ${restHtml ? `<details data-dk="rest" style="margin-top:6px" data-rpsec-rest="${rest.length}"><summary class="cursor-pointer text-[11px] font-bold text-gray-300" style="padding:5px 0;list-style:none">📚 其餘 ${P.secs.length ? `${rest.length} 節` : '全文'}<span class="text-[10px] text-gray-600 font-normal"> ・逐節點開 ▾</span></summary><div style="padding-left:4px">${restHtml}</div></details>` : ''}
                 ${P.secs.length ? '' : '<div class="text-[10px] text-gray-500 leading-snug" style="margin-top:4px">⚠️ 這份沒有 §1~§20 編號 → <b>沒切節</b>,整份照原樣顯示(用本站的提示詞重產會有編號,第一眼就只留結論與筆記)。</div>'}
 
@@ -34631,7 +34689,7 @@ ${this._reportFacts(sym)}
         const d = new Date();
         return `proTerm_newsDeep_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
     },
-    _renderNewsDeep(txt, ts) {
+    _renderNewsDeep(txt, ts, ng) {
         const box = document.getElementById('newsDeepBox');
         if (!box || !txt) return;
         box.innerHTML = `
@@ -34640,7 +34698,7 @@ ${this._reportFacts(sym)}
                     <span class="text-[11px] font-black text-purple-200">🧠 新聞綜合判讀 <span class="text-[9px] text-gray-500 font-normal">你手動要求的·以此為主</span></span>
                     <span class="text-[9px] text-gray-600">${ts || ''}</span>
                 </div>
-                <div class="text-[11px] text-gray-100 leading-relaxed whitespace-pre-wrap">${String(txt).replace(/</g, '&lt;')}</div>
+                <div class="text-[11px] text-gray-100 leading-relaxed whitespace-pre-wrap">${String(txt).replace(/</g, '&lt;')}</div>${this._aiNumGateHtml(ng)}
             </div>`;
     },
     _restoreNewsDeep() {
@@ -34648,7 +34706,7 @@ ${this._reportFacts(sym)}
             const raw = localStorage.getItem(this._newsDeepKey());
             if (!raw) return;
             const o = JSON.parse(raw);
-            if (o && o.txt) this._renderNewsDeep(o.txt, o.ts);
+            if (o && o.txt) this._renderNewsDeep(o.txt, o.ts, o.ng);
         } catch (_) {}
     },
     // 把「當下盤面」整理成一段已算好的事實(給 prompt 用),全部取自既有快取,不重算
@@ -34716,8 +34774,9 @@ ${this._reportFacts(sym)}
             const txt = await this._callDeepAI({ prompt, max_tokens: 1400, temperature: 0.4, chain: 'gemini-openrouter' });
             if (!txt) throw new Error('AI 回空');
             const ts = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-            try { localStorage.setItem(this._newsDeepKey(), JSON.stringify({ txt, ts })); } catch (_) {}
-            this._renderNewsDeep(txt, ts);
+            const ng = this._aiNumGate(prompt, txt);   // 🧾 V77.8.1 數字核對(存進快取,重開也看得到)
+            try { localStorage.setItem(this._newsDeepKey(), JSON.stringify({ txt, ts, ng })); } catch (_) {}
+            this._renderNewsDeep(txt, ts, ng);
             this.vibrate?.(30);
         } catch (e) {
             this.showToast?.('⚠️ 綜合分析失敗:' + String(e?.message || e).slice(0, 40));
@@ -34736,7 +34795,7 @@ ${this._reportFacts(sym)}
         const d = new Date();
         return `proTerm_macroDeep_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
     },
-    _renderMacroDeep(txt, ts) {
+    _renderMacroDeep(txt, ts, ng) {
         const box = document.getElementById('macroDeepBox');
         if (!box || !txt) return;
         box.innerHTML = `
@@ -34745,7 +34804,7 @@ ${this._reportFacts(sym)}
                     <span class="text-[11px] font-black text-purple-200">🧠 深度分析 <span class="text-[9px] text-gray-500 font-normal">你手動要求的·以此為主</span></span>
                     <span class="text-[9px] text-gray-600">${ts || ''}</span>
                 </div>
-                <div class="text-[11px] text-gray-100 leading-relaxed whitespace-pre-wrap">${String(txt).replace(/</g, '&lt;')}</div>
+                <div class="text-[11px] text-gray-100 leading-relaxed whitespace-pre-wrap">${String(txt).replace(/</g, '&lt;')}</div>${this._aiNumGateHtml(ng)}
             </div>`;
     },
     _restoreMacroDeep() {
@@ -34753,7 +34812,7 @@ ${this._reportFacts(sym)}
             const raw = localStorage.getItem(this._macroDeepKey());
             if (!raw) return;
             const o = JSON.parse(raw);
-            if (o && o.txt) this._renderMacroDeep(o.txt, o.ts);
+            if (o && o.txt) this._renderMacroDeep(o.txt, o.ts, o.ng);
         } catch (_) {}
     },
     async _deepAnalyzeMacro() {
@@ -34784,8 +34843,9 @@ ${this._reportFacts(sym)}
             const txt = await this._callDeepAI({ prompt, max_tokens: 1400, temperature: 0.4, chain: 'gemini-openrouter' });
             if (!txt) throw new Error('AI 回空');
             const ts = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-            try { localStorage.setItem(this._macroDeepKey(), JSON.stringify({ txt, ts })); } catch (_) {}
-            this._renderMacroDeep(txt, ts);
+            const ng = this._aiNumGate(prompt, txt);   // 🧾 V77.8.1 數字核對(存進快取,重開也看得到)
+            try { localStorage.setItem(this._macroDeepKey(), JSON.stringify({ txt, ts, ng })); } catch (_) {}
+            this._renderMacroDeep(txt, ts, ng);
             this.vibrate?.(30);
         } catch (e) {
             this.showToast?.('⚠️ 深度分析失敗:' + String(e?.message || e).slice(0, 40));
@@ -39128,7 +39188,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 box.innerHTML = '<div class="text-[10px] text-red-400 px-2 py-1.5">⚠️ AI 推測失敗(可能 OpenRouter 額度用完)</div>';
                 return;
             }
-            const tagged = '🤖 AI 推測(⛔ 沒有實測背書;行事曆日實測只有「波動變大」成立):' + html;
+            const tagged = '🤖 AI 推測(⛔ 沒有實測背書;行事曆日實測只有「波動變大」成立):' + html
+                + this._aiNumGateHtml(this._aiNumGate(fullPrompt + '\n' + simplePrompt, text));   // 🧾 V77.8.1 數字核對
             box.innerHTML = '<div class="text-[10px] text-cyan-200/90 bg-cyan-950/30 border border-cyan-800/40 rounded px-2 py-1.5 leading-relaxed">' + tagged + '</div>';
             try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), html: tagged })); } catch (_) {}
         } catch (e) {
@@ -52140,9 +52201,11 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
                 .replace(/^(🟢|🟡|🔴|📊|🦅|🖥️|🛰️|🔍|🎭|⚡|⚠️ 免責)([^\n]+)$/gm, '<div class="mt-3 mb-1 text-blue-300 font-black text-sm border-l-2 border-blue-400 pl-2">$1$2</div>')
                 .replace(/^(🔹|👉|📍|💰|⚔️)([^\n]+)$/gm, '<div class="ml-2 text-gray-300 mt-0.5">$1$2</div>')
                 .replace(/\n/g, '<br>');
-            if (result) result.innerHTML = html;
+            // 🧾 V77.8.1 數字核對:回答裡的數字對不上這一輪的提示詞就列出來(⛔ 不改正文)
+            const html2 = html + this._aiNumGateHtml(this._aiNumGate(prompt, text));
+            if (result) result.innerHTML = html2;
             const legacyResult = document.getElementById('globalAIResult');
-            if (legacyResult && legacyResult !== result) legacyResult.innerHTML = html;
+            if (legacyResult && legacyResult !== result) legacyResult.innerHTML = html2;
         } catch(e) {
             if (result) result.innerHTML = `<span class="text-amber-300 text-sm">${this._aiFriendlyError(e.message)}</span>`;
         }
