@@ -830,6 +830,9 @@ def bar_is_complete(rec) -> bool:
 
 
 # ── TWSE MIS 快照補丁 (盤中防退回昨日) ──────────────────────────────────────
+_MIS_NO_D_WARNED = [False]
+
+
 def fetch_mis_closing_snapshot(sym: str) -> dict:
     """證交所 MIS 盤中/盤後快照補丁，填補歷史 API 尚未更新的真空期"""
     tw_now = datetime.now(timezone(timedelta(hours=8)))
@@ -848,6 +851,13 @@ def fetch_mis_closing_snapshot(sym: str) -> dict:
             #   自動涵蓋所有非交易日(不必維護節日/颱風行事曆)。週末已在上方擋掉,這裡再擋平日休市。
             if z == '-':
                 return {}
+            # 🎑 V77.9.2 假日 MIS 會回「上一個交易日」的成交 → 看它自己帶的日期,不是今天就不補。
+            _today = _mis_is_today(msg, tw_now)
+            if _today is False:
+                return {}
+            if _today is None and not _MIS_NO_D_WARNED[0]:
+                _MIS_NO_D_WARNED[0] = True
+                print("  ⚠️ MIS 回應沒有交易日期欄 d → 無法確認是不是今天的成交(照舊補快照)")
             try:
                 live_price = float(z)
             except (TypeError, ValueError):
@@ -2616,6 +2626,57 @@ def _orphan_head(records, max_head=60, min_gap_days=120, min_rest=200):
     return 0
 
 
+def _mis_is_today(msg, tw_now):
+    """🎑 V77.9.2 MIS 回的那一筆是不是「今天」的成交 —— True / False / None(沒有日期欄,判不出來)。
+
+    🚨 V16.7 的守門假設「非交易日 MIS 的成交價 z = '-'」**不成立**:2026-09-25(中秋)、
+       09-28(教師節)MIS 回的是**上一個交易日**的 z 與 v → 那一版照樣補了一根,
+       還蓋上今天的日期 → 約 1,240 檔多出兩根假 K(收盤 = 前一天、兩天的量一模一樣)。
+    ⭐ MIS 自己帶交易日期欄 `d`(YYYYMMDD)→ 跟台北今天比就好,⛔ 不必維護節日行事曆。
+    """
+    d = str((msg or {}).get('d') or '').strip()
+    if len(d) != 8 or not d.isdigit():
+        return None
+    return d == tw_now.strftime('%Y%m%d')
+
+
+def _twii_calendar(path=None):
+    """🎑 V77.9.2 讀 `^TWII.json` 當「真的有開盤的日子」—— 回 (dates:set, lo, hi, why)。
+    讀不到或不到 200 根 → dates=None + why(⛔ 呼叫端整段跳過,不猜)。"""
+    p = Path(path) if path else Path(DATA_DIR) / '^TWII.json'
+    try:
+        arr = json.loads(p.read_text(encoding='utf-8'))
+    except Exception as e:
+        return None, None, None, f'讀不到 {p.name}({type(e).__name__})'
+    ds = sorted({str(r.get('date') or '')[:10].replace('-', '/') for r in arr
+                 if isinstance(r, dict) and r.get('date')})
+    if len(ds) < 200:
+        return None, None, None, f'{p.name} 只有 {len(ds)} 根(< 200),不拿來當行事曆'
+    return set(ds), ds[0], ds[-1], ''
+
+
+def _holiday_ghost_dates(day_stats, cal, lo, hi, min_n=20, min_same=0.5):
+    """🎑 V77.9.2 找出「確定沒開盤、卻被寫了 K 棒」的日子。
+
+    day_stats = {'YYYY/MM/DD': (有幾檔在那天有一根, 其中幾根收盤 = 前一根收盤)}
+    一個日子要**兩個條件同時成立**才算:
+      ① 落在加權指數的日期範圍內(lo ≤ d < hi),而加權那天**沒有**一根
+      ② 那天的 K 棒有**過半**收盤跟前一天一模一樣(真的交易日實測只有約一成)
+    ⛔ ② 是防「加權自己漏一天」的保險:那種日子個股是真的有交易,收盤相同的比例很低 → 不會被刪。
+    ⛔ 那天不到 min_n 檔 → 樣本太少判不出來,⛔ 不刪(寧可不砍)。
+    ⛔ hi(加權最新那天)之後的日子一律不判 —— 加權還沒更新到,無法分辨。
+    """
+    out = set()
+    if not cal:
+        return out
+    for d, (n, same) in day_stats.items():
+        if not (lo <= d < hi) or d in cal:
+            continue
+        if n >= min_n and same / n >= min_same:
+            out.add(d)
+    return out
+
+
 def _drop_bad_bars(records, sym=''):
     """🧹 V74.9.5 濾掉三種「物理上不可能是連續歷史」的壞 K 棒 —— 回 (records, notes)。
 
@@ -3005,6 +3066,30 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
     symbols = [row[0] for row in
                conn.execute("SELECT DISTINCT symbol FROM stock_history")]
 
+    # 🎑 V77.9.2 假日幽靈 K:加權那天沒開盤、個股卻有一根而且過半收盤跟前一天一樣 → 整天刪掉。
+    #    實測 origin/data:06-19(端午)、07-10(颱風)、09-25(中秋)、09-28(教師節)都有(MIS 假日回舊成交)。
+    _ghost = set()
+    _cal, _clo, _chi, _cwhy = _twii_calendar()
+    if _cal is None:
+        print(f"  🎑 假日幽靈 K 清理跳過:{_cwhy}")
+    else:
+        try:
+            _stats = {}
+            for d, n, same in conn.execute("""
+                SELECT trade_date, COUNT(*), SUM(CASE WHEN close = prev THEN 1 ELSE 0 END)
+                FROM (SELECT trade_date, close,
+                             LAG(close) OVER (PARTITION BY symbol ORDER BY trade_date) AS prev
+                      FROM stock_history)
+                GROUP BY trade_date"""):
+                _stats[str(d).replace('-', '/')] = (n, same or 0)
+            _ghost = _holiday_ghost_dates(_stats, _cal, _clo, _chi)
+            if _ghost:
+                print(f"  🎑 假日幽靈 K:{sorted(_ghost)} 加權沒有開盤 → 匯出時整天刪掉")
+        except Exception as e:
+            print(f"  ⚠️ 假日幽靈 K 判斷失敗(不影響匯出,這輪不刪): {e}")
+            _ghost = set()
+    _ghost_rows = 0
+
     exported = 0
     for sym in symbols:
         rows = conn.execute("""
@@ -3060,6 +3145,13 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
         if not records:
             continue        # 🚧 全部都是壞列 → ⛔ 不可寫出空檔覆蓋掉原本的好資料
 
+        if _ghost:
+            _n1 = len(records)
+            records = [r for r in records if r['date'] not in _ghost]
+            _ghost_rows += _n1 - len(records)
+            if not records:
+                continue
+
         # 🧹 V74.9.5 再濾兩種「物理上不可能是交易日」的壞棒(掛牌前殘留 / 幽靈棒)。
         #    ⛔ 要排在分割還原**之前** —— 幽靈棒會干擾「相鄰交易日比值」的判斷。
         try:
@@ -3107,6 +3199,8 @@ def export_json(inst_cache: dict = None, margin_cache: dict = None):
         exported += 1
 
     conn.close()
+    if _ghost:
+        print(f"  🎑 假日幽靈 K 共刪 {_ghost_rows} 根")
     print(f"  ✅ JSON 匯出完成：{exported} 檔（供 gh-pages 靜態部署）")
     # 🧱 V77.7.0 陷阱 #46 摘要(⛔ 沒設就要說出來,陷阱 #22)
     if _deep_dir():
