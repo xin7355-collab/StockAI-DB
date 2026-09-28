@@ -172,6 +172,8 @@ def main(out_path):
             continue
         paths = swagger_paths(doc)
         print(f'      含「庫藏/買回」的端點 {len(paths)} 個:', paths[:12])
+        if not paths:
+            ts_log.append({'src': f'{name}:swagger', 'verdict': f'清單裡沒有含「庫藏/買回」的端點(共 {len(doc.get("paths") or {})} 個端點)'})
         for p, desc in paths[:12]:
             st2, ct2, b2 = http_get(base + p)
             v2 = classify(st2, ct2, b2)

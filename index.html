@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.8.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.8.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.8.2</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.8.3</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8649,8 +8649,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.8.2',
+    _APP_VERSION: 'V77.8.3',
     _CHANGELOG: [
+        { v: 'V77.8.3', d: ['✂️ <b>「減資後恢復買賣那天買進會反彈」量過了:⛔ 相反,是明顯輸大盤</b>(上一版說的選項,你說照做)—— 抓了官方 2011~2026 共 678 次減資紀錄,恢復買賣那天開盤買、抱 20 天,平均<b>輸 0050 4.1%</b>、只有三成贏大盤;<b>「彌補虧損」那種更慘,輸 6.9%</b>,5 天內就輸了。⛔ 所以手上的股票剛減資恢復買賣,不要把它當加碼理由。','🏦 庫藏股買回那一半<b>還測不了</b>:免費的來源都找不到它的歷史。','📡 iTick 看過了:美股歷史它有,但本站本來就每天免費存美股,而且「美股 → 台股」之前已經測過沒有可以照做的東西 → 不接。⛔ App 判定一行都沒改。'] },
         { v: 'V77.8.2', d: ['🎲 <b>外部策略平台 FinPilot 評估完了:它「自動找出來的高報酬策略」擋不住亂挑</b> —— 照它的抽法跑 300 組,再拿「每個月隨便抽股票」的 300 組走同一套門檻:它的門檻放行了 <b>51 組純亂挑</b>。','🚨 讀它的程式碼抓到兩個錯:① 「樣本外要贏 0050 + 5%」用的是<b>沒還原分割的價格</b>(0050 去年 1 拆 4)→ 門檻從 50% 掉到 5%,等於只要不賠就過 ② 統計顯著那一關公式多乘了 √12,形同虛設。兩個修好之後,300 組一組都過不了;樣本外贏 0050 的只有 1 組。','⭐ 學到的一條方法(已寫進實測總表「回測方法」):<b>任何「一直搜尋、過門檻就留」的做法,都要拿亂挑的走同一套門檻</b>,看它放行多少。⛔ App 判定一行都沒改。'] },
         { v: 'V77.8.1', d: ['🧾 <b>App 內 AI 的回答會自動「核對數字」了</b>(上一版 go-stock 那一項,你說要做)—— 盤前速報、總經深度分析、新聞綜合分析、行事曆事件影響、報告頁 App 內模型那五個地方:AI 回答裡的每一個數字(價位、%、億、張、點…)都拿去跟本站<b>這一次真的給它的資料</b>比對,<b>找不到的會列在最下面</b>(⚠️ 可能是它自己算的或編的,別拿來下單)。全部對得上就不顯示。⛔ 回答本身一個字都不改。','✅ 用台積電真的報告提示詞實測:同一批數字換個寫法(四捨五入、千分位、億↔兆、「約」)⛔ 不會誤報;偷插一個編的「季線 707.4 元」(真值 704.4)一定抓得到。⚠️ 外部 AI(Perplexity 那種)貼回來的報告不核對 —— 它會上網,數字本來就不是本站給的。','😱 <b>「美股恐慌指數衝高之後 0050 會怎樣」量過了:⛔ 沒有穩定方向</b>(35 格只有 1 格像有東西,而且 VIX ≥25 那組 20 天反而比平常差 2.8%)。5 年裡 VIX ≥30 只有 6 次 = 樣本根本不夠。','🌪️ <b>加權跌 20% 之後多久回來</b>:16 年 5 次、全部回到前高,但中位要 393 個交易日(含股利約 251 天),最久約 2.8 年;而且跌到 −20% 那天通常不是底,中位還要再跌到 −28.7%。⛔ 只有 5 次,不能當「跌 20% 就加碼」的訊號。'] },
         { v: 'V77.8.0', d: ['🗽 <b>川普發文 → 台股,量過了:⛔ 方向量不到,只有「隔天開盤跳比較大」</b>(你問的 trump-code 那個專案)。拿它公開的 4.4 萬則發文,對到台股下一個能交易的盤、用 0050 自己的開→收算:就任後講關稅的日子 137 天(台股交易日的<b>一半</b>)開→收只比沒講的日子差 −0.04%,講中國 −0.11%、講晶片 −0.11%(13 天)、講「協議」+0.09% —— 全部遠小於來回成本 0.44%,也都不顯著。','⚠️ <b>唯一看得到的是跳空變大</b>:講中國那幾天的隔天開盤平均跳 1.11%(平常 0.84%)—— 但那一段開盤前就跳完了,<b>買不到</b>。跟上一版「美股隔夜異常」是同一個結論。','🚨 <b>那個專案說的「命中率 61.3%、566 筆驗證」要打折</b>:566 筆全部是 2026-03-14 同一天回頭補算過去的日子(0 筆真的事先預測),而且是從 3,150 萬種組合裡挑出來的;做多命中 62.8% 對比同期標普開→收本來就 52.8% 會漲,做空只有 47%(比丟銅板還差)。','🖥️ go-stock 那份的評估也一起記下來了:大部分本站早就有或測過,它的「AI 回測」有模型本身知道未來的問題。'] },
@@ -8837,12 +8838,6 @@ ${list}
             '⛰️ <b>而且還多一個理由</b>:現在用的那個門檻是<b>一整片穩的</b>(左右各挪兩格都還是正的),而 C 版那個門檻是<b>一根孤峰</b> —— 往嚴格挪一格(6 天→7 天)就從 +1.48 直接掉到 −0.11。那種「剛好那一格有效」的東西⛔ 不能拿來換。',
             '⛔ <b>五個版本沒有一個全過六道關卡</b>(全部卡在 2023 那一年是負的)→ 照既有規則<b>預設一個字都沒改</b>。',
             '⚠️ 這次的窗口<b>沒有涵蓋 2022 年那種大空頭</b>(外資買賣超的資料最早只到 2023/05)→ 要等下一次空頭走完才能真正定論。'] },
-        { v: 'V77.0.5', d: [
-            '🚨 <b>分點買賣超的數字一直是灌水的 —— 而且每跑一輪就再灌一次</b>。實測佐證:全市場隨機 300 檔、6,286 個交易日,<b>「當天買方淨額加起來 ÷ 當天總成交量」中位是 5.43 倍</b>,<b>87.7% 的日子超過 1 倍</b> —— 而買方買的量<b>物理上不可能超過當天成交總量</b>。',
-            '🔍 <b>真因</b>:採礦有兩條路會寫同一天的資料(當天新抓的 + 從本地舊檔還原的),而它們<b>用不同的方式去對應同一家分點</b>(一邊用券商代號、一邊用券商名字)→ 逃過了「同一家只留一筆」的檢查,<b>同一天被加了兩次</b>;加完又存回本地檔,<b>下一輪再還原、再加一次</b> → 越滾越大。',
-            '🔍 <b>第二個</b>:同一個券商名字底下其實有<b>好幾個分行代號</b>(例如凱基-台北)→ 買超榜<b>164,881 格裡有 67,651 格(41.0%)是重複的名字</b>,等於每重複一次就擠掉一家真的分點;而讀的那一端只會留下<b>最後那一筆</b>(也就是最小的那個碎片)→ <b>中位少算 94.7%</b>。',
-            '✅ <b>兩邊都修好了</b>:採礦端「今天抓到的日子就以今天抓到的為準,不再把舊的加上去」+「同名分行先合併再排名次」;App 端也改成<b>先加總再判斷</b>(因為雲端上<b>既有的歷史天補不回來</b>,這層要一直留著)。',
-            '⏳ <b>要等下一輪採礦跑完</b>,分點的數字才會變乾淨(舊的天沒辦法回頭修)。在那之前,券商分點相關的張數<b>請先不要當真</b>。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
