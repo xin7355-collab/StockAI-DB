@@ -36,7 +36,7 @@ ok('② 最長天數三份實作一致(index / pro / auto_trade)', mhIdx && norm
 ok('⑦ playbook_scan 直接呼叫 App 的 `_bear60Of`,產物有 `mkt`', /app\._bear60Of\(rows\)/.test(SCAN) && /\n\s+mkt,\n/.test(SCAN));
 ok('⑦b auto_trade 讀 `mkt.bear60` 擋買進(賣出在它之前處理)、預設開',
    /_mkt\.get\('bear60'\) is True/.test(AT) && /BEAR_GATE = \(os\.getenv\('BEAR_GATE'\) or '1'\) == '1'/.test(AT)
-   && AT.indexOf("_mkt.get('bear60') is True") > AT.indexOf('先處理出場'));
+   && AT.indexOf("_mkt.get('bear60') is True", AT.indexOf('先處理出場')) > AT.indexOf('先處理出場'));   // ⚠️ V77.8.9 `leader_step` 也有一份同樣的守門(在前面)→ 找「出場之後」那一份
 ok('⑦c auto_trade 的持倉記下自己的上限(`mh`)—— 換規則前買的照舊規則走', /'mh': max_hold\(EXIT_RULE\)/.test(AT) && /pos\.get\('mh'\)/.test(AT));
 
 // ── ③ 唐奇安 40 日:auto_trade.py 跟 App 同一個價 ──

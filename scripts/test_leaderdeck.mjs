@@ -6,11 +6,14 @@
  *   ② `_leaderClock`:開始那天第 1 天、每 R 個交易日換倉(用 ^TWII 日期數)
  *   ③ 畫面:數字讀 `_LEADER_EDGE`(⭐ 決定性對照)、空頭時買鈕變「空頭不買」但名單照列、持股掉出前 2N 標賣、⛔ 無 🔴🟢、390px 不橫捲
  *   ④ 採礦:screener_miner COLS 有 chg10 / amt20
+ *   ⑤ V77.8.9 自動下單接線:auto_trade.py 的 `leader_calc` / `leader_clock` 是第二份實作 → 規則、錨點、名單、時鐘**跨語言逐項比對**
+ *      (合成 screener + 正式網站那一份);⭐ 決定性對照:把 Python 那份改成用 chg20 排 → 名單必須對不上
  * 注入(逐一確認會紅):池子改用 amt / 趨勢過濾拿掉 / 排名改 chg20 / 空頭照樣「🛒 買」/ 實測數字寫死 / 換倉日算錯
  */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { execSync, execFileSync } from 'child_process';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const PY = fs.readFileSync(path.join(ROOT, 'screener_miner.py'), 'utf8');
@@ -18,8 +21,17 @@ const fails = [];
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : '  ' + String(e).slice(0, 240)}`); if (!c) fails.push(n); };
 
 ok('④ screener_miner COLS 有 chg10 與 amt20', /'chg10',/.test(PY) && /'amt20',/.test(PY) && /\('chg10', 10\)/.test(PY) && /CI\['amt20'\]\] = rd\(sum\(cl\[i\] \* vo\[i\]/.test(PY));
-ok('④b index.html 的常數不寫死在文案:實測數字只出現在 `_LEADER_EDGE`', (SRC.match(/3176|3,176/g) || []).length <= 2 && /_LEADER_EDGE: \{/.test(SRC), (SRC.match(/3176|3,176/g) || []).length);
-ok('④c auto_trade.py ⛔ 沒有接領頭羊', !/leader|領頭羊/i.test(fs.readFileSync(path.join(ROOT, 'auto_trade.py'), 'utf8')));
+const _le0 = SRC.indexOf('_LEADER_EDGE: {'), _le1 = SRC.indexOf('/** 👑 純函式', _le0);
+const _outside = SRC.slice(0, _le0) + SRC.slice(_le1);
+ok('④b 實測數字只出現在 `_LEADER_EDGE` 裡面(⛔ 文案不可寫死)', _le0 > 0 && _le1 > _le0 && !/3176|3,176|\+760%|\+670%|\+341%/.test(_outside.slice(_outside.indexOf('_leaderCalc(D'), _outside.indexOf('_leaderHelp() {') + 3000)), '');
+const AT = fs.readFileSync(path.join(ROOT, 'auto_trade.py'), 'utf8');
+const jsRule = (SRC.match(/rule: \{ U: (\d+), N: (\d+), R: (\d+), L: (\d+), hyst: (\d+) \}/) || []).slice(1).join(',');
+const pyRule = (AT.match(/LEADER_RULE = \{'U': (\d+), 'N': (\d+), 'R': (\d+), 'L': (\d+), 'hyst': (\d+)\}/) || []).slice(1).join(',');
+ok('⑤ 規則 App == auto_trade.py(U,N,R,L,hyst)', jsRule && jsRule === pyRule, `${jsRule} vs ${pyRule}`);
+const jsAnc = (SRC.match(/anchor: '(\d{4}-\d{2}-\d{2})'/) || [])[1], pyAnc = (AT.match(/LEADER_ANCHOR = os\.getenv\('LEADER_ANCHOR'\) or '(\d{4}-\d{2}-\d{2})'/) || [])[1];
+ok('⑤b 換倉錨點 App == auto_trade.py(⛔ 不存在手機上)', jsAnc && jsAnc === pyAnc && !/proTerm_leaderStart/.test(SRC), `${jsAnc} vs ${pyAnc}`);
+ok('⑤c 領頭羊預設關(LEADER=1 才開)、⛔ 只動 lead 那一格的部位、空頭只擋買', /LEADER = os\.getenv\('LEADER'\) == '1'/.test(AT) && /held = st\.setdefault\('lead', \{\}\)/.test(AT) && /'lead': st\.get\('lead'\) or \{\}/.test(AT) && /BEAR_GATE and _mkt\.get\('bear60'\) is True:\n\s+log\("   👑 🐻/.test(AT));
+ok('⑤d 舊名單⛔ 不下單(用「今天之前最近的交易日」判,不用天數)', /if not dates or dd != prev:/.test(AT));
 
 let chromium; try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); } catch (_) { ({ chromium } = await import('playwright')); }
 const _exec = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
@@ -38,7 +50,7 @@ const R = await page.evaluate(async () => {
         const sym = String(1000 + i);
         const amt20 = 200 - i, amt = i;                             // 池子(前 100)= 1000~1099;amt 反向
         const chg10 = i < 100 ? (i % 2 ? 30 - i * 0.2 : -5) : 99;  // 池子外(1100~1119)chg10 最高 → 排名若不限池子會選到它們
-        const chg20 = 100 - i;                                     // 排名若用 chg20 會選到 1000
+        const chg20 = i;                                           // ⚠️ 必須跟 chg10 反向:排名若用 chg20 會選到 1099/1097…(V77.8.9 前寫成 100 − i,跟 chg10 同向 → ①c 與 ⑤g 都沒有鑑別力)
         const b20 = i % 2 ? 3 : -3, b60 = i % 2 ? 8 : 1;           // 奇數 = 過趨勢(b20>0 且 b20<b60)
         rows[sym] = [100, 1, 1, chg10, chg20, amt, amt20, b20, b60, 0, 0, 0];
     }
@@ -56,13 +68,15 @@ const R = await page.evaluate(async () => {
     // 畫面:注入 screener + 空頭 + 庫存
     app._scrData = D; app._loadScreener = async () => D; app._getTwiiRows = async () => tw;
     app.inventory = [{ symbol: '1001', cost: 100 }, { symbol: '1041', cost: 100 }, { symbol: '1000', cost: 100 }, { symbol: '2330', cost: 100 }];
-    localStorage.setItem('proTerm_leaderStart', JSON.stringify({ d: '2026-09-21' }));
     app._mktBear60 = async () => ({ on: false, c: 1, ma20: 1, ma60: 1 });
     const host = document.createElement('div'); host.style.width = '358px'; document.body.appendChild(host);
     host.innerHTML = await app._leaderDeckHtml();
+    out.D = D; out.rankedSyms = L.ranked.map(r => r.sym);
     out.txt = host.innerText; out.rows = [...host.querySelectorAll('[data-leaderrow]')].map(e => e.dataset.leaderrow);
     out.held = Object.fromEntries([...host.querySelectorAll('[data-leaderheld]')].map(e => [e.dataset.leaderheld, e.dataset.leaderkeep]));
     out.buyBtns = (host.innerText.match(/🛒 買/g) || []).length;
+    // 注意 / 處置:把 1003 標成處置
+    D.rows['1003'][10] = 2; host.innerHTML = await app._leaderDeckHtml(); out.attTxt = host.innerText; D.rows['1003'][10] = 0;
     // 決定性對照:實測數字讀常數
     const keep = app._LEADER_EDGE.ai.tot; app._LEADER_EDGE.ai.tot = 4321; host.innerHTML = await app._leaderDeckHtml(); out.constTxt = host.innerText; app._LEADER_EDGE.ai.tot = keep;
     // 空頭
@@ -77,7 +91,7 @@ ok('①c 排名 = chg10(前 5 = 1001/1003/1005/1007/1009;⛔ 不是 chg20 那組
 ok('①d 名單列前 2N = 10 檔', R.ranked === 10 && R.rows.length === 10, R.ranked);
 ok('①e 欄位缺 → notyet(⛔ 不可拿 chg5/chg20 湊)', R.notyet === 'notyet');
 ok('①f ⭐ 決定性對照:把一檔改成 ma20 < ma60 → 被濾掉', R.filteredOut === true);
-ok('② 時鐘:開始那天 = 第 1 天且是換倉日;第 5 天還剩 6 天;第 11 天又是換倉日;沒開始 → started false', R.c1.day === 1 && R.c1.isRebal && R.c5.day === 5 && !R.c5.isRebal && R.c5.left === 6 && R.c11.day === 11 && R.c11.isRebal && R.c0.started === false, JSON.stringify([R.c1, R.c5, R.c11, R.c0]));
+ok('② 時鐘:起點那天 = 第 1 天且是換倉日;第 5 天還剩 6 天;第 11 天又是換倉日;沒傳起點 → 用共用錨點(09-24 起,09-25 是第 2 天)', R.c1.day === 1 && R.c1.isRebal && R.c5.day === 5 && !R.c5.isRebal && R.c5.left === 6 && R.c11.day === 11 && R.c11.isRebal && R.c0.day === 2 && !R.c0.isRebal, JSON.stringify([R.c1, R.c5, R.c11, R.c0]));
 ok('③ 畫面:前 5 名有 🛒 買、庫存 1001 續抱、1041(第 21 名)掉出前 10 → 賣、1000(沒過趨勢)也標賣、2330 不在池子不列', R.buyBtns === 5 && R.held['1001'] === '1' && R.held['1041'] === '0' && R.held['1000'] === '0' && !('2330' in R.held), JSON.stringify([R.buyBtns, R.held]));
 ok('③b ⭐ 決定性對照:實測數字讀 `_LEADER_EDGE`(改成 4321 畫面要跟著變)', /4321/.test(R.constTxt) && !/4321/.test(R.txt));
 ok('③c 空頭:名單照列(10 列)、但一個「🛒 買」都沒有、寫「今天不開新倉」', R.bearRows === 10 && !/🛒 買/.test(R.bearTxt) && /今天不開新倉/.test(R.bearTxt) && /空頭不買/.test(R.bearTxt));
@@ -85,6 +99,77 @@ ok('③d 一定寫代價:中途最多賠 / 只有 N 年贏 / 別加停利 / 不�
 ok('③e ⛔ 無 🔴🟢', !/[🔴🟢]/u.test(R.txt) && !/[🔴🟢]/u.test(R.bearTxt));
 ok('③f 390px 不橫捲、不超出', R.sx <= 2 && R.over === 0, `${R.sx} ${R.over}`);
 ok('③g 無 pageerror', !errs.length, errs.join(' | '));
+ok('③h 名單裡有注意 / 處置股 → 寫「不要跳過」+ 實測數字(讀常數)', /不要跳過/.test(R.attTxt) && /\+341%/.test(R.attTxt), R.attTxt.slice(0, 200));
+
+// ⑤ 跨語言:同一份 screener → Python 與 JS 名單逐項相同
+const pyRun = (Dpath, mode = '') => JSON.parse(execFileSync('python3', ['-c', `
+import json,sys; sys.path.insert(0, ${JSON.stringify(ROOT)}); import auto_trade as A
+D = json.load(open(${JSON.stringify(Dpath)}))
+if ${JSON.stringify(mode)} == 'chg20':
+    ci = D['cols'].index('chg10'); cj = D['cols'].index('chg20')
+    for v in D['rows'].values(): v[ci] = v[cj]
+L = A.leader_calc(D)
+if L.get('err'): print(json.dumps({'err': L['err']})); sys.exit()
+dates = ['2026-09-21','2026-09-22','2026-09-23','2026-09-24','2026-09-25','2026-09-28','2026-09-29','2026-09-30','2026-10-01','2026-10-02','2026-10-05','2026-10-06']
+print(json.dumps({'buy': [r['sym'] for r in L['buy']], 'ranked': [r['sym'] for r in L['ranked']], 'passed': L['passed'], 'n': L['n'],
+  'clk': [A.leader_clock(dates, d, '2026-09-21') for d in ['2026-09-21','2026-09-25','2026-10-05']]}))
+`], { encoding: 'utf8' }));
+const TMP = '/tmp/_leader_syn.json'; fs.writeFileSync(TMP, JSON.stringify(R.D));
+const py = pyRun(TMP);
+ok('⑤e 合成 screener:Python == JS(前 5、前 10、過趨勢檔數、池子)', JSON.stringify(py.buy) === JSON.stringify(R.buy) && JSON.stringify(py.ranked) === JSON.stringify(R.rankedSyms) && py.passed === R.passed && py.n === R.n, JSON.stringify([py.buy, R.buy]));
+ok('⑤f 時鐘:Python == JS(第 1 / 5 / 11 天)', JSON.stringify(py.clk.map(c => [c[0], c[1]])) === JSON.stringify([[R.c1.day, R.c1.isRebal], [R.c5.day, R.c5.isRebal], [R.c11.day, R.c11.isRebal]]), JSON.stringify(py.clk));
+const pyBad = pyRun(TMP, 'chg20');
+ok('⑤g ⭐ 決定性對照:Python 那份改用 chg20 排 → 名單必須對不上(比對真的有鑑別力)', JSON.stringify(pyBad.buy) !== JSON.stringify(R.buy), JSON.stringify(pyBad.buy));
+let real = null; try { real = execSync(`git -C ${JSON.stringify(ROOT)} show origin/gh-pages:data/screener.json`, { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] }); } catch (_) {}
+if (!real) ok('⑤h 正式網站的 screener.json 讀得到', false, '先 git fetch origin gh-pages');
+else {
+    const RP = '/tmp/_leader_real.json'; fs.writeFileSync(RP, real);
+    const pyR = pyRun(RP);
+    const b2 = await chromium.launch({ ...(fs.existsSync(_exec) ? { executablePath: _exec } : {}), args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
+    const p2 = await b2.newPage(); await p2.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
+    await p2.waitForFunction(() => typeof app !== 'undefined' && typeof app._leaderCalc === 'function', null, { timeout: 60000 });
+    const js = await p2.evaluate(D => { const L = app._leaderCalc(D); return L.err ? { err: L.err } : { buy: L.buy.map(r => r.sym), ranked: L.ranked.map(r => r.sym), passed: L.passed, n: L.n }; }, JSON.parse(real));
+    await b2.close();
+    ok(`⑤h 正式網站那一份 screener(${JSON.parse(real).data_date}):Python == JS${js.err ? '(兩邊都 ' + js.err + ')' : `(前 5 = ${js.buy.join(' ')})`}`, JSON.stringify(pyR) .includes(JSON.stringify(js.buy || js.err)) && (js.err ? pyR.err === js.err : (JSON.stringify(pyR.ranked) === JSON.stringify(js.ranked) && pyR.passed === js.passed && pyR.n === js.n)), JSON.stringify([pyR.buy, js.buy]));
+}
+// ⑥ 🚧 決策台每一列「量薄」標註(V77.8.9;讀 screener amt20,⛔ 不刪名單)
+const TH = await page.evaluate(() => {
+    const x = { s: '1234', c: 50, stop: 45, trig: 52, exp: 1.2, lb: 0.8, k: '測試招', up: 4 };
+    const save = app._scrData;
+    const mk = a20 => { app._scrData = { cols: ['c', 'amt20'], rows: { '1234': [50, a20] } }; return app._pbRowHtml(x, new Set(), 1, 0, false); };
+    const thin = mk(0.3), fat = mk(5);
+    app._scrData = undefined; const none = app._pbRowHtml(x, new Set(), 1, 0, false);
+    app._scrData = { cols: ['c', 'amt20'], rows: { '1234': [50, null] } }; const nul = app._pbRowHtml(x, new Set(), 1, 0, false);
+    const old = app._DECK_THIN_AMT; app._DECK_THIN_AMT = 0.2; const moved = mk(0.3); app._DECK_THIN_AMT = old;
+    app._scrData = save;
+    return { thin: /data-deckthin/.test(thin), thinTxt: thin, fat: /data-deckthin/.test(fat), none: /data-deckthin/.test(none), nul: /data-deckthin/.test(nul), moved: /data-deckthin/.test(moved) };
+});
+ok('⑥ 決策台 amt20 < 1 億 → 🚧量薄;5 億 → 不標', TH.thin && !TH.fat, JSON.stringify(TH).slice(0, 200));
+ok('⑥b 快照還沒載到 / 欄位是 null → ⛔ 不標(不知道 ≠ 很薄)', !TH.none && !TH.nul);
+ok('⑥c ⭐ 決定性對照:門檻改成 0.2 億 → 同一檔 0.3 億就不標', !TH.moved);
+ok('⑥d 名單刻意不刪 + 寫明門檻不是回測出來的', /名單刻意不刪/.test(TH.thinTxt) && /不是回測出來的/.test(TH.thinTxt));
+// ⑦ 📐 K棒轉多/轉空榜每一列的實測成績(標題反查 `_SIGNAL_EDGE`,⛔ 單根變盤線不借成績)
+const KB = await page.evaluate(() => {
+    const keys = Object.keys(app._SIGNAL_EDGE);
+    const star = keys.find(k => k.endsWith('｜晨星轉折')), night = keys.find(k => k.endsWith('｜夜星轉折'));
+    const eS = app._sigEdge(star.split('｜')[0], '晨星轉折');
+    app.radarMatrix = { updated: 't', data: { kbar_bull: [{ sym: '2330', close: 1, turnover_e: 9, gain: 1, status: '晨星轉折 + 低檔十字變盤線(轉折警訊,次日確認)' }], kbar_bear: [{ sym: '2317', close: 1, turnover_e: 9, gain: -1, status: '夜星轉折' }] } };
+    app._radarIsDemo = true;
+    const body = document.getElementById('radarMatrixBody');
+    app.renderRadarMatrix('kbar_bull'); const bull = body ? body.innerHTML : '';
+    app.renderRadarMatrix('kbar_bear'); const bear = body ? body.innerHTML : '';
+    const L = app._kbarRadarEdge('晨星轉折 + 低檔十字變盤線(轉折警訊,次日確認)');
+    const save = app._SIGNAL_EDGE; const alt = JSON.parse(JSON.stringify(save)); alt[star] = ['A', 999, 1, 50, 0.01, 1, 1, 7.77];
+    app._SIGNAL_EDGE = alt; app._kbarTitleIdx = null; const moved = app._kbarRadarEdgeHtml('晨星轉折', true); app._SIGNAL_EDGE = save; app._kbarTitleIdx = null;
+    return { hasBody: !!body, bull, bear, L: L.map(x => [x.t, x.det, x.e && x.e.grade]), eS, moved, starDet: star.split('｜')[0], nightOk: !!night };
+});
+ok('⑦ 轉多榜:晨星對到偵測器並印實測等級 + 每趟期望值;單根變盤線 → 未驗證', KB.hasBody && KB.L[0][1] === KB.starDet && KB.L[0][2] === KB.eS.grade && KB.L[1][1] === null && /data-kbedge/.test(KB.bull) && /data-kbg="na"/.test(KB.bull) && new RegExp(`每趟${KB.eS.exp >= 0 ? '\\+' : ''}${(+KB.eS.exp).toFixed(2)}%`).test(KB.bull), JSON.stringify(KB.L));
+ok('⑦b 轉空榜看 10 日邊際(⛔ 不看期望值)', KB.nightOk && /data-kbg="[ABC]"[^>]*>[^<]*10日[+-]?\d/.test(KB.bear) && !/data-kbg="[ABC]"[^>]*>[^<]*每趟/.test(KB.bear));
+ok('⑦c ⭐ 決定性對照:成績表改成 7.77 → 標籤跟著變(⛔ 不是寫死)', /每趟\+7\.77%/.test(KB.moved) && /data-kbg="A"/.test(KB.moved), KB.moved.slice(0, 200));
+ok('⑦d 標籤⛔ 無 🔴🟢', !/[🔴🟢]/u.test(KB.bull + KB.bear));
+const PROH = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
+const proMin = (PROH.match(/CAST_MIN_AMT: ([\d.]+),/) || [])[1], idxMin = (SRC.match(/_DECK_THIN_AMT: ([\d.]+),/) || [])[1];
+ok('⑥e 門檻 index `_DECK_THIN_AMT` == pro `CAST_MIN_AMT`(同一條線)', proMin && proMin === idxMin, `${idxMin} vs ${proMin}`);
 await browser.close();
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ LEADERDECK_PASS');
 process.exit(fails.length ? 1 : 0);

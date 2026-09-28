@@ -83,7 +83,10 @@ function momSkip(S, i, L, k) { let j = i, c = 0; while (j > 0 && c < k) { j--; i
 function mom(S, i, L) { if (!(S.A[i] > 0)) return NaN; let j = i, c = 0; while (j > 0 && c < L) { j--; if (S.A[j] > 0) c++; } return c === L ? S.A[i] / S.A[j] - 1 : NaN; }
 
 // ⭐ 預設 = 兩個窗口網格(216 + 81 + 9 組)驗出來的中心點;⛔ 最初設計的「60 日動能 + 吊燈 2 倍 + 每週換」實測是輸的(見 DECISIONS V77.8.5)
-export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: true, trend: true, hyst: 2, pick: 'mom', core: 0, maExit: 0, tp: 0, skip: 0, riskadj: false };
+export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: true, trend: true, hyst: 2, pick: 'mom', core: 0, maExit: 0, tp: 0, skip: 0, riskadj: false, fill: 'open', noAtt: 0, noDisp: 0, sellDisp: false };
+// V77.8.9 自動下單接線前的兩個問題:fill = 'open'(隔天開盤成交,回測原設定)| 'nextclose'(隔天收盤成交 = 自動下單尾盤跑、名單是前一晚算的)
+//   noAtt = N:決策日之前 N 個交易日內有「注意股」公告就不買 ・noDisp = N:之前 N 個交易日內有「處置」公告就不買 ・sellDisp:持股被公告處置 → 下一個成交點賣
+//   ⚠️ 事件一律只認「決策日之前」的公告(官方公告在收盤後,當天收盤決策時還看不到 = ⛔ 前視)
 // V77.8.6 穩定度變體:core = 永遠留幾成在 0050 ・maExit = 收盤跌破 N 日線隔天開盤賣 ・tp = 收盤賺 x 就隔天開盤停利 ・skip = 動能不算最近幾天 ・riskadj = 動能 ÷ ATR 排名
 
 /**
@@ -104,28 +107,29 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     const value = i => { let v = cash + park * etf.tr[i]; for (const p of pos.values()) { const c = lastC(p.S, i); v += p.sh * c; } return v; };
     const sell = (p, px, i) => { const amt = p.sh * px; cash += amt * (1 - FEE - TAX); turnover += amt; const ret = px / p.cost - 1 - 2 * FEE - TAX; trades++; sumRet += ret; if (ret > 0) wins++; pos.delete(p.S.sym); };
     for (let i = s0; i < n; i++) {
-        // ① 開盤:執行昨天收盤決定的委託
-        if (pending) {
-            for (const sym of pending.sell) { const p = pos.get(sym); if (!p) continue; const o = p.S.O[i]; if (o > 0) sell(p, o, i); }
-            const eqNow = value(i - 1 >= 0 ? i - 1 : i);
+        // ① 成交點:執行上一次決策的委託 —— fill='open' 在今天開盤、'nextclose' 在今天收盤(見 ②b)
+        const execPending = (PX, ti) => {   // ti = 0050 用哪一天的價(開盤成交 ≈ 昨收;收盤成交 = 今天收盤)
+            for (const sym of pending.sell) { const p = pos.get(sym); if (!p) continue; const o = PX(p.S, i); if (o > 0) sell(p, o, i); }
+            const eqNow = value(ti);
             const slot = eqNow * (1 - P.core) / P.N;
             for (const S of pending.buy) {
                 if (pos.size >= P.N) break;
-                const o = S.O[i], pc = lastC(S, i - 1);
+                const o = PX(S, i), pc = lastC(S, i - 1);
                 if (!(o > 0 && pc > 0)) continue;
-                if (o / pc - 1 > limitOf(cal[i]) - 0.003) { skipLimit++; continue; }      // 開盤接近漲停:買不到
+                if (o / pc - 1 > limitOf(cal[i]) - 0.003) { skipLimit++; continue; }      // 成交價接近漲停:買不到(開盤 / 收盤同一條)
                 let need = slot;
                 if (cash < need && P.park && park > 0) {                                   // 賣 0050 補現金
-                    const units = Math.min(park, (need - cash) / (etf.tr[i - 1] * (1 - FEE - ETF_TAX)));
-                    cash += units * etf.tr[i - 1] * (1 - FEE - ETF_TAX); park -= units; turnover += units * etf.tr[i - 1];
+                    const units = Math.min(park, (need - cash) / (etf.tr[ti] * (1 - FEE - ETF_TAX)));
+                    cash += units * etf.tr[ti] * (1 - FEE - ETF_TAX); park -= units; turnover += units * etf.tr[ti];
                 }
                 need = Math.min(need, cash); if (need < slot * 0.2) continue;
                 const sh = need / (o * (1 + FEE)); cash -= need; turnover += need;
-                pos.set(S.sym, { sh, cost: o, atr: S.atr[i - 1], hc: o, S, entry: i });
+                pos.set(S.sym, { sh, cost: o, atr: S.atr[i - 1], hc: o, S, entry: P.fill === 'open' ? i : i + 0.5 });   // 收盤成交那天⛔ 不可再跑當天的吊燈 / 出場檢查
             }
-            if (P.park && cash > 0.01 * value(i - 1)) { const units = cash * (1 - FEE) / etf.tr[i - 1]; park += units; turnover += cash; cash = 0; }
+            if (P.park && cash > 0.01 * value(ti)) { const units = cash * (1 - FEE) / etf.tr[ti]; park += units; turnover += cash; cash = 0; }
             pending = null;
-        }
+        };
+        if (pending && P.fill === 'open') execPending((S, k) => S.O[k], i - 1);
         // ② 收盤:除權息、斷崖、吊燈
         for (const p of [...pos.values()]) {
             const S = p.S;
@@ -134,8 +138,11 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             if (S.jump[i] === i && i > p.entry) { const pc = lastC(S, i - 1); sell(p, pc, i); jumpExit++; continue; }   // 資料斷崖:用前一天收盤出場
             p.hc = Math.max(p.hc, S.C[i]);
             if (P.chand > 0 && i > p.entry && p.atr > 0 && S.C[i] < p.hc - P.chand * p.atr) sell(p, S.C[i], i);
+            else if (P.sellDisp && i > p.entry && ctx.disp && evWithin(ctx.disp.get(S.sym), i, 1)) dailySell.add(S.sym);
             else if (i > p.entry && ((P.maExit === 20 && S.C[i] < S.ma20[i]) || (P.maExit === 60 && S.C[i] < S.ma60[i]) || (P.tp > 0 && S.C[i] >= p.cost * (1 + P.tp)))) dailySell.add(S.sym);
         }
+        // ②b fill='nextclose':今天收盤執行上一次的決策(在今天的決策之前)
+        if (pending && P.fill === 'nextclose') execPending((S, k) => S.C[k], i);
         if (dailySell.size && i + 1 < n) { pending = pending || { sell: [], buy: [] }; for (const sym of dailySell) if (!pending.sell.includes(sym)) pending.sell.push(sym); dailySell.clear(); }
         eq.push(value(i));
         // ③ 換倉日收盤:決定明天開盤要做什麼
@@ -145,6 +152,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             univ.sort((a, b) => b.val20[i] - a.val20[i]);
             const pool = univ.slice(0, P.U);
             let ok = pool.filter(S => !P.trend || (S.C[i] > S.ma20[i] && S.ma20[i] > S.ma60[i]));
+            if (P.noAtt && ctx.att) ok = ok.filter(S => !evWithin(ctx.att.get(S.sym), i, P.noAtt));
+            if (P.noDisp && ctx.disp) ok = ok.filter(S => !evWithin(ctx.disp.get(S.sym), i, P.noDisp));
             let ranked;
             if (P.pick === 'sham') { ranked = ok.map(S => ({ S, k: rand() })).sort((a, b) => a.k - b.k).map(x => x.S); }
             else if (P.pick === 'all') { ranked = ok; }
@@ -160,6 +169,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     }
     return { eq, trades, win: trades ? wins / trades : null, avg: trades ? sumRet / trades : null, turnover, skipLimit, jumpExit, from: cal[s0] };
 }
+/** 決策日 i 之前(⛔ 不含 i)最近 k 個交易日內有沒有公告:arr = 升冪的日曆索引 */
+export function evWithin(arr, i, k) { if (!arr || !arr.length) return false; for (let j = arr.length - 1; j >= 0; j--) { const e = arr[j]; if (e >= i) continue; return i - e <= k; } return false; }
 function lastC(S, i) { let j = i; while (j >= 0 && !(S.C[j] > 0)) j--; return j >= 0 ? S.C[j] : NaN; }
 
 /** 指標:總報酬、年化、最大回撤、跟 0050 同窗口比 */
@@ -214,7 +225,10 @@ function loadCtx(DATA, DIV) {
         const S = prepStock(sym, rows, cal, (DV[sym] || {}).h || []);
         divSkip += S.divSkip; stocks.push(S);
     }
-    return { cal, stocks, etf: { tr }, bear, meta: { stocks: stocks.length, skipped, divSkip, d50: d50.length } };
+    const evMap = f => { if (!f || !fs.existsSync(f)) return null; const j = JSON.parse(fs.readFileSync(f, 'utf8')); const m = new Map(); let n = 0;
+        for (const [sym, ds] of Object.entries(j)) { const a = []; for (const d of ds) { const d10 = String(d).slice(0, 10); let k = idx.get(d10); if (k === undefined) { k = cal.findIndex(x => x > d10); if (k < 0) continue; k -= 0.5; } a.push(k); n++; } a.sort((x, y) => x - y); m.set(sym, a); } m.n = n; return m; };
+    const att = evMap(process.env.ATT_EVENTS), disp = evMap(process.env.DISP_EVENTS);
+    return { cal, stocks, etf: { tr }, bear, att, disp, meta: { stocks: stocks.length, skipped, divSkip, d50: d50.length, att: att ? att.n : 0, disp: disp ? disp.n : 0 } };
 }
 
 // ⚠️ 起點間距預設 3(⛔ 不是 5):換倉每 R 天一次,間距 5 碰上 R=10 只會有 2 種換倉相位,17 條其實只有 2 條獨立路徑(實測當場抓到)。
@@ -300,6 +314,17 @@ function selftest() {
     // ⑬ core=0.5:一半永遠在 0050 → 0050 漲 10% 股票不動時淨值約 +5%
     const r13 = simulate({ cal, stocks: [C1], etf: { tr: trUp }, bear: new Uint8Array(n) }, 100, { U: 1, N: 1, R: 1000, L: 20, chand: 0, park: true, trend: false, pick: 'all', core: 0.5 });
     t(r13.eq.at(-1) > 1.04 && r13.eq.at(-1) < 1.06, '⑬ core 0.5:永遠留一半在 0050(0050 +10%、股票不動 → 淨值約 +5%)');
+    // ⑭ 隔天收盤成交:第 100 天收盤決策 → 第 101 天收盤買(不是開盤)
+    const Q = mk('9993', i => 100 + i * 0.5); Q.O[101] = Q.C[100] * 0.95;   // 開盤特別低 → 開盤成交會比較便宜
+    const q1 = simulate({ cal, stocks: [Q], etf: flat, bear: new Uint8Array(n) }, 100, { U: 1, N: 1, R: 1000, L: 20, chand: 0, park: false, trend: false, pick: 'all', fill: 'open' });
+    const q2 = simulate({ cal, stocks: [Q], etf: flat, bear: new Uint8Array(n) }, 100, { U: 1, N: 1, R: 1000, L: 20, chand: 0, park: false, trend: false, pick: 'all', fill: 'nextclose' });
+    t(q1.eq.at(-1) > q2.eq.at(-1) && Math.abs(q2.eq[1] - 1 / (1 + FEE)) < 1e-9, '⑭ fill=nextclose:隔天收盤才成交(開盤那個便宜價拿不到;成交那天收盤淨值 = 1 ÷ 1.001425)');
+    // ⑮ 事件濾網:只認決策日「之前」的公告
+    t(evWithin([95], 100, 5) === true && evWithin([100], 100, 5) === false && evWithin([90], 100, 5) === false && evWithin([98, 100], 100, 3) === true, '⑮ evWithin:決策日當天的公告⛔ 不算(收盤後才公告);之前 k 天內才算');
+    const ctxE = { cal, stocks: [B], etf: flat, bear: new Uint8Array(n), att: new Map([['2222', [98]]]) };
+    const e1 = simulate(ctxE, 100, { U: 1, N: 1, R: 1000, L: 20, chand: 0, park: false, trend: false, noAtt: 3 });
+    const e2 = simulate({ ...ctxE, att: new Map([['2222', [100]]]) }, 100, { U: 1, N: 1, R: 1000, L: 20, chand: 0, park: false, trend: false, noAtt: 3 });
+    t(e1.eq.at(-1) === 1 && e2.eq.at(-1) !== 1, '⑯ noAtt:兩天前被公告注意 → 不買;決策日當天才公告 → 照買(那時還看不到)');
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }
@@ -309,6 +334,7 @@ function main() {
     if (!DATA) { console.error('要 DATA_DIR'); process.exit(1); }
     const t0 = Date.now();
     const ctx = loadCtx(DATA, DIV);
+    console.log(`📅 事件:注意 ${ctx.meta.att} 筆・處置 ${ctx.meta.disp} 筆`);
     console.log(`📂 ${ctx.meta.stocks} 檔・日曆 ${ctx.cal[0]}~${ctx.cal.at(-1)}・0050 股利 ${ctx.meta.d50} 筆・除權息對不上排除 ${ctx.meta.divSkip}・${((Date.now() - t0) / 1000).toFixed(0)}s`);
     if (ctx.meta.stocks < 1000) { console.error('🚨 檔數 < 1000,拒跑'); process.exit(1); }
     if (ctx.meta.d50 < 10) { console.error('🚨 0050 股利 < 10 筆 → 對照組不含息會讓策略看起來比較好,拒跑'); process.exit(1); }

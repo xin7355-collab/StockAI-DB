@@ -46,6 +46,20 @@
 
     # 真的下單(⛔ 確認模擬跑過再開)
     LIVE=1 MAX_LOTS_PER_TRADE=1 python3 auto_trade.py
+
+═══════════════════════════════════════════════════════════════════════════
+👑 V77.8.9 第二套:領頭羊短線輪動(⛔ 預設關,要自己開 LEADER=1)
+═══════════════════════════════════════════════════════════════════════════
+規則跟 App 決策台最下面那一區**一字不差**(`leader_calc` 是 App `_leaderCalc` 的第二份實作,
+test_leaderdeck.mjs 拿同一份 screener.json 跨語言比對):
+    近 20 日平均成交額前 100 大(不含 ETF)→ 收盤 > 20 日線 > 60 日線 → 近 10 日漲幅排名 →
+    前 5 名買、手上的掉出前 10 名就賣;每 10 個交易日換一次(起點 LEADER_ANCHOR,跟 App 同一個);
+    ⛔ 不設停損線;大盤嚴格空頭不買(賣照常);注意 / 處置股⛔ 不跳過(實測跳過反而輸 0050)。
+    LEADER=1 LEADER_ACCOUNT=1000000 python3 auto_trade.py           # 尾盤跑(預設,跟上面那套同一個時段)
+    LEADER=1 LEADER_WINDOW=open LEADER_ACCOUNT=1000000 python3 ...  # 09:00~09:10 開盤跑(= 回測那一組)
+⚠️ 實測(17 條起點中位):隔天開盤買 AI 時代 +760% / 16 年 +3,176%;尾盤買 +670% / +2,219%(0050 含息 +375% / +1,097%)。
+⚠️ 中途最多賠 50~61%、16 年只有 9 年贏 0050;沒用到的錢程式**不會**自動買 0050(回測有停 0050,自己手動放)。
+⚠️ 它只賣「這套自己買、記在狀態檔 lead 那一格」的部位 —— ⛔ 不碰你手動買的、⛔ 也不碰上面那套買的。
 """
 import json
 import os
@@ -105,6 +119,172 @@ def save_state(st):
             json.dump(st, f, ensure_ascii=False)
     except Exception as e:
         log(f"🚨 狀態檔寫入失敗({e})—— 重複下單的防護失效,請立刻停掉檢查")
+
+
+# ═══════ 👑 V77.8.9 領頭羊短線輪動 ═══════
+LEADER = os.getenv('LEADER') == '1'
+LEADER_ACCOUNT = int(os.getenv('LEADER_ACCOUNT') or 0)       # 分給這一套的錢(每檔 = 這筆 ÷ N);0 = 不買(⛔ 不猜)
+LEADER_WINDOW = (os.getenv('LEADER_WINDOW') or 'eod').lower()  # eod(尾盤,預設)| open(09:00~09:10)
+# ⛔ 下面兩個跟 App `_LEADER_EDGE.rule` / `.anchor` 一字不差(test_leaderdeck.mjs 跨檔比對)
+LEADER_RULE = {'U': 100, 'N': 5, 'R': 10, 'L': 10, 'hyst': 2}
+LEADER_ANCHOR = os.getenv('LEADER_ANCHOR') or '2026-09-24'
+
+
+def fetch_json(rel):
+    url = GH_BASE.rstrip('/') + f'/{rel}?t={int(time.time())}'
+    with urllib.request.urlopen(url, timeout=30) as r:
+        return json.loads(r.read().decode('utf-8'))
+
+
+def leader_calc(D, U=None, N=None):
+    """App `_leaderCalc` 的 Python 版(⛔ 改一邊要改另一邊)。回 dict 或 {'err': ...}"""
+    R = LEADER_RULE
+    U, N = U or R['U'], N or R['N']
+    if not D or not D.get('cols') or not D.get('rows'):
+        return {'err': 'nodata'}
+    CI = {c: i for i, c in enumerate(D['cols'])}
+    if 'chg10' not in CI or 'amt20' not in CI:
+        return {'err': 'notyet'}
+    g = lambda v, k: (v[CI[k]] if k in CI and CI[k] < len(v) else None)
+    rows = []
+    for sym, v in D['rows'].items():
+        if not (len(sym) == 4 and sym.isdigit()) or sym.startswith('00') or (g(v, 'etf') is not None and float(g(v, 'etf') or 0) == 1):
+            continue
+        try:
+            amt20, c = float(g(v, 'amt20') or 0), float(g(v, 'c') or 0)
+        except Exception:
+            continue
+        if not (amt20 > 0 and c > 0):
+            continue
+        f = lambda k: (None if g(v, k) is None else float(g(v, k)))
+        rows.append({'sym': sym, 'amt20': amt20, 'c': c, 'chg10': f('chg10'), 'b20': f('b20'), 'b60': f('b60'),
+                     'lim': int(g(v, 'lim') or 0), 'att': int(g(v, 'att') or 0)})
+    # ⚠️ 排序要跟 JS 一樣穩定:JS Array.sort 是穩定排序、Python sorted 也是 —— 同分時保持 rows 的原順序(= Object.entries 順序)
+    rows.sort(key=lambda r: -r['amt20'])
+    pool = rows[:U]
+    ok = [r for r in pool if r['b20'] is not None and r['b60'] is not None and r['chg10'] is not None and r['b20'] > 0 and r['b20'] < r['b60']]
+    ok.sort(key=lambda r: -r['chg10'])
+    for i, r in enumerate(ok):
+        r['rank'] = i + 1
+    return {'pool': pool, 'ranked': ok[:N * R['hyst']], 'buy': ok[:N], 'passed': len(ok), 'n': len(pool),
+            'date': D.get('data_date') or '', 'all': {r['sym']: r for r in ok}, 'poolset': {r['sym'] for r in pool}}
+
+
+def leader_clock(dates, data_date, anchor=None):
+    """App `_leaderClock` 的 Python 版:錨點那天 = 第 1 天(換倉日),每 R 個交易日一次。回 (day, is_rebal, left)"""
+    R = LEADER_RULE['R']
+    anchor = anchor or LEADER_ANCHOR
+    day = sum(1 for d in dates if anchor <= d <= data_date)
+    if not day:
+        return 0, False, None
+    k = (day - 1) % R
+    return day, k == 0, (0 if k == 0 else R - k)
+
+
+def _send(api, sj, contract, px, shares, buy):
+    """整張 + 零股拆兩筆送(同上面那套的寫法;⛔ 不動上面那套原本的程式碼)"""
+    lots, odd = divmod(int(shares), 1000)
+    act = sj.constant.Action.Buy if buy else sj.constant.Action.Sell
+    sent = []
+    for q, lot in ((lots, sj.constant.StockOrderLot.Common), (odd, sj.constant.StockOrderLot.IntradayOdd)):
+        if q > 0:
+            sent.append(api.place_order(contract, api.Order(
+                price=px, quantity=q, action=act, price_type=sj.constant.StockPriceType.LMT,
+                order_type=sj.constant.OrderType.ROD, order_lot=lot, account=api.stock_account)))
+    return sent
+
+
+def leader_step(api, sj, st, meta, today):
+    """一天只做一次:換倉日的下一個交易日 → 賣掉掉出前 2N 的、買進前 N 還沒有的。⛔ 只動 st['lead'] 裡的部位。"""
+    if st.get('lead_day') == today:
+        return
+    R = LEADER_RULE
+    try:
+        D = fetch_json('data/screener.json')
+        tw = fetch_json('data/^TWII.json')
+    except Exception as e:
+        log(f"👑 ⚠️ 領頭羊:抓不到 screener / 加權({e}),稍後重試"); return
+    L = leader_calc(D)
+    if L.get('err'):
+        log(f"👑 ⏭️ 領頭羊今天算不出名單({L['err']}:採礦還沒補欄位或檔案不在)")
+        st['lead_day'] = today; save_state(st); return
+    dd = str(L['date'])[:10]
+    dates = sorted({str(r.get('date', '')).replace('/', '-')[:10] for r in (tw if isinstance(tw, list) else [])})
+    prev = max((d for d in dates if d < today), default=None)
+    if not dates or dd != prev:
+        # ⛔ 名單必須是「今天之前最近一個交易日」收盤算的(用交易日判,⛔ 不用天數 —— 過年休 9 天也不會誤擋)
+        log(f"👑 ⏭️ 名單日期 {dd} 不是今天之前最近的交易日 {prev}(今天 {today})→ ⛔ 不用舊名單下單")
+        st['lead_day'] = today; save_state(st); return
+    day, is_rebal, left = leader_clock(dates, dd)
+    held = st.setdefault('lead', {})
+    if not is_rebal:
+        log(f"👑 {dd} 是第 {day} 個交易日({LEADER_ANCHOR} 起)→ 不是換倉日,還有 {left} 天。手上 {list(held) or '(無)'}")
+        st['lead_day'] = today; save_state(st); return
+    keep = {r['sym'] for r in L['ranked']}
+    log(f"👑 換倉!名單日 {dd}(第 {day} 天)・池子 {L['n']} 檔・過趨勢 {L['passed']} 檔・前 {R['N']}:"
+        + ' '.join(f"{r['sym']}({r['chg10']:+.1f}%{'・注意' if r['att'] == 1 else '・處置' if r['att'] == 2 else ''})" for r in L['buy']))
+    # ① 賣:掉出前 2N 名(含掉出池子 / 沒過趨勢)
+    for sym, pos in list(held.items()):
+        if sym in keep:
+            log(f"   👑 🛡️ {sym} 還在前 {R['N'] * R['hyst']} 名(第 {L['all'][sym]['rank']} 名)→ 續抱"); continue
+        try:
+            contract = api.Contracts.Stocks[sym]
+            px = float(getattr(api.snapshots([contract])[0], 'close', 0) or 0) if contract is not None else 0
+        except Exception as e:
+            log(f"   👑 ❌ {sym} 報價失敗:{e}"); continue
+        if px <= 0:
+            continue
+        sh = int(pos.get('sh') or 0)
+        log(f"   👑 🚪 {sym} 掉出前 {R['N'] * R['hyst']} 名 → 賣 {sh} 股 @ {px}(帳面 {(px - float(pos.get('e') or px)) * sh:+,.0f} 元)")
+        if DRY_RUN:
+            log("      🧪 DRY_RUN:不送單"); continue
+        try:
+            log(f"      ✅ 賣單 {_send(api, sj, contract, px, sh, False)}")
+            held.pop(sym, None); save_state(st)      # ⚠️ 送出後立刻移除(寧可漏一次,⛔ 不可重複送)
+        except Exception as e:
+            log(f"      ❌ 賣出失敗:{e}")
+    # ② 買:大盤嚴格空頭不買(讀作戰清單的 mkt.bear60,⛔ 這裡不另算)
+    _mkt = (meta or {}).get('mkt') or {}
+    if BEAR_GATE and _mkt.get('bear60') is True:
+        log("   👑 🐻 大盤嚴格空頭 → 今天不買新的(賣出已處理)")
+    elif LEADER_ACCOUNT <= 0:
+        log("   👑 ⚠️ 沒設 LEADER_ACCOUNT(分給這套的錢)→ 不買。要買請設 LEADER_ACCOUNT=<金額>")
+    else:
+        slot = LEADER_ACCOUNT / R['N']
+        for r in L['buy']:
+            sym = r['sym']
+            if sym in held:
+                continue
+            if len(held) >= R['N']:
+                break
+            try:
+                contract = api.Contracts.Stocks[sym]
+                if contract is None:
+                    log(f"   👑 ⚠️ 找不到合約 {sym}"); continue
+                snap = api.snapshots([contract])[0]
+                px = float(getattr(snap, 'close', 0) or 0)
+                chg = float(getattr(snap, 'change_rate', 0) or 0)
+            except Exception as e:
+                log(f"   👑 ❌ {sym} 報價失敗:{e}"); continue
+            if px <= 0:
+                continue
+            if chg >= 9.7:
+                log(f"   👑 ⏭️ {sym} 已接近漲停({chg:.1f}%)→ 買不到,不追(回測同一條)"); continue
+            shares = min(int(slot // px), MAX_LOTS_PER_TRADE * 1000, int(MAX_AMT_PER_TRADE // px))
+            if shares <= 0:
+                log(f"   👑 ⏭️ {sym} 算出 0 股(每檔 {slot:,.0f} 元,被 MAX_LOTS_PER_TRADE / MAX_AMT_PER_TRADE 壓到 0)"); continue
+            if shares < int(slot // px):
+                log(f"   👑 ⚠️ {sym} 被硬煞車壓成 {shares} 股(原本 {int(slot // px)} 股)—— 要照回測等權,請調高 MAX_LOTS_PER_TRADE / MAX_AMT_PER_TRADE")
+            tag = '(注意股)' if r['att'] == 1 else '(處置股:第二次處置要預收款券,可能被退單)' if r['att'] == 2 else ''
+            log(f"   👑 🛒 {sym} 第 {r['rank']} 名(10 日 {r['chg10']:+.1f}%)→ 買 {shares} 股 @ {px}{tag}")
+            if DRY_RUN:
+                log("      🧪 DRY_RUN:不送單"); continue
+            try:
+                log(f"      ✅ 買單 {_send(api, sj, contract, px, shares, True)}")
+                held[sym] = {'e': px, 'd': today, 'sh': shares}; save_state(st)   # ⚠️ 先記再說(⛔ 不可重複下單)
+            except Exception as e:
+                log(f"      ❌ 下單失敗:{e}")
+    st['lead_day'] = today; save_state(st)
 
 
 def fetch_picks():
@@ -244,6 +424,9 @@ def main():
     #    → 部位大小會跟 App 顯示的**不一樣**。⛔ 不可靜默 —— 這支會動真錢。
     log(f"🚪 出場規則:{EXIT_RULE} ・最長抱 {max_hold(EXIT_RULE)} 天(要跟 App 設定中心的那一條一致,⛔ 不同的話你看到的出場價不是它執行的)")
     log(f"🐻 大盤嚴格空頭不開新倉:{'開' if BEAR_GATE else '關(BEAR_GATE=0)'}")
+    if LEADER:
+        log(f"👑 領頭羊短線輪動:開(LEADER=1)・時段 {'開盤 09:00~09:10' if LEADER_WINDOW == 'open' else '尾盤(跟上面那套同一段)'}"
+            f"・分給它 {LEADER_ACCOUNT:,} 元(每檔 {LEADER_ACCOUNT / LEADER_RULE['N']:,.0f})・換倉起點 {LEADER_ANCHOR}")
     if ACCOUNT_SIZE <= 0:
         log("⚠️⚠️ 你沒有設 ACCOUNT_SIZE(帳戶總資金)→ POS_PCT 這個設定**完全沒有作用**,"
             "每筆一律買 1,000 股(再被 MAX_LOTS_PER_TRADE / MAX_AMT_PER_TRADE 壓一次)"
@@ -283,8 +466,25 @@ def main():
     _, _, today = tpe_now()
     if st.get('d') != today:
         # ⚠️ `done`(今天買過誰)每天重置,但 `pos`(還沒賣掉的部位)⛔ 絕不可跟著清掉
-        st = {'d': today, 'done': [], 'pos': st.get('pos') or {}}
+        st = {'d': today, 'done': [], 'pos': st.get('pos') or {}, 'lead': st.get('lead') or {}, 'lead_day': st.get('lead_day')}   # ⚠️ 領頭羊的部位也⛔ 不可跟著清
     log(f"📒 今天已下過:{st['done'] or '(無)'}")
+
+    # 👑 開盤時段(LEADER_WINDOW=open):09:00~09:10 做一次,之後照常等尾盤
+    if LEADER and LEADER_WINDOW == 'open':
+        while True:
+            now, mins, day = tpe_now()
+            if now.weekday() >= 5 or mins > 9 * 60 + 10:
+                if mins > 9 * 60 + 10 and st.get('lead_day') != day:
+                    log("👑 ⏰ 已過 09:10 → 今天開盤那一次錯過了(⛔ 不改到尾盤補做:那是另一組回測數字)")
+                break
+            if mins < 9 * 60:
+                time.sleep(min(POLL_SEC, max(10, (9 * 60 - mins) * 60))); continue
+            try:
+                meta, _ = fetch_picks()
+            except Exception:
+                meta = {}
+            leader_step(api, sj, st, meta, day)
+            break
 
     while True:
         now, mins, day = tpe_now()
@@ -356,6 +556,10 @@ def main():
                     st['pos'].pop(sym, None); save_state(st)
                 except Exception as e:
                     log(f"   ❌ {sym} 出場處理失敗:{e}")
+
+        # 👑 領頭羊(尾盤時段):一天一次,⛔ 不受上面那套的空頭 continue 影響(它自己只擋買)
+        if LEADER and LEADER_WINDOW != 'open':
+            leader_step(api, sj, st, meta, day)
 
         # 🐻 V77.6.5 大盤嚴格空頭 → 今天不開新倉(⛔ 賣出已經在上面處理完,這裡只擋買)
         _mkt = (meta or {}).get('mkt') or {}

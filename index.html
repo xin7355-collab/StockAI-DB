@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.8.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.8.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.8.8</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.8.9</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8649,8 +8649,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.8.8',
+    _APP_VERSION: 'V77.8.9',
     _CHANGELOG: [
+        { v: 'V77.8.9', d: ['🤖 <b>領頭羊接上自動下單了</b>(第二套,⛔ 預設關):電腦上的自動下單程式設「LEADER=1」+「LEADER_ACCOUNT=這套要用的錢」才會動,而且預設仍是<b>模擬單</b>;它只動「領頭羊」自己那一格的部位,⛔ 不碰你手動買的股票和決策台那套', '⏱️ 換倉日改成<b>大家同一天</b>(從 2026-09-24 起每 10 個交易日),手機跟自動下單對得上,⛔ 不用再按「開始」', '⏱️ 實測:自動下單是隔天<b>尾盤</b>照前一晚的名單買,比回測的「隔天開盤買」差一點(AI 時代 670% vs 760%)但仍贏 0050;想跟回測一模一樣可設「LEADER_WINDOW=open」改在開盤下', '🚨 <b>名單裡有注意股 / 處置股:⛔ 不要跳過</b> —— 實測跳過處置股只剩 341%(照常買 760%),會進注意 / 處置的正是漲最多的那幾檔', '🚧 決策台每一列加「量薄」標記(近 20 天平均一天成交不到 1 億)—— 一買就可能把價格墊高;⛔ 名單照留', '📐 選股頁「K棒轉多 / 轉空」榜每一列多了那個訊號的<b>實測成績</b>(A/B/C 級 + 每趟期望值);單根變盤線定義不同,標「未驗證」', '💳 修掉「融資 5 日增減 −100%」的假數字(61 檔):那是採礦沒抓到那天寫的 0,現在當成「不知道」'] },
         { v: 'V77.8.8', d: ['👑 <b>「領頭羊短線輪動」做進決策台了</b>(決策台最下面,第二套;⛔ 沒有換掉原本的預設):近 20 日平均成交額前 100 大裡,收盤站上 20 日線、20 日線又在 60 日線之上的,照近 10 日漲幅排前 10 名;前 5 名明天開盤買、你手上的掉出前 10 名就賣', '⏱️ 按「開始」把今天當第 1 天,之後每 10 個交易日才換一次倉(其他日子畫面會寫「今天不動」);大盤嚴格空頭時名單照列但不買', '⚠️ 採礦要補兩個欄位(10 日漲幅、20 日平均成交額),下一輪全市場掃描跑完才會有名單,在那之前畫面會寫「今天算不出名單」;自動下單⛔ 沒有接這一套,你看過名單再說'] },
         { v: 'V77.8.7', d: ['🌙 <b>自創「當沖 / 隔日沖」變種測完</b>(實測總表 ✅ 有用,排名很後面):拿領頭羊池子(成交額前 100)壓到一天、一夜 —— <b>當沖 5 種全部賠</b>(池子本身早上買收盤賣就 −0.46%)', '🌙 隔日沖唯一過關:<b>近 10 日最強的 20 檔裡,今天跌超過 2% 的,尾盤買、明天開盤賣 +0.14%/趟</b>(勝率 55%、5/6 年、9 格門檻全正);但抱到明天收盤就變賠', '⚠️ 錢很小:每天最多做 5 檔,5 年只有 +22%,同期 0050 +225% → 只當「已經想留倉」時的參考,⛔ 不是拿來賺錢的'] },
         { v: 'V77.8.6', d: ['👑 <b>領頭羊短線輪動第二輪:找「更穩、更高勝率」的版本</b>(實測總表同一條更新)—— 測了 14 種變體,<b>沒有又穩又賺更多的</b>,只有「報酬換回撤」', '🐢 <b>最穩的一個:永遠一半放 0050</b>:16 年 2,345% vs 0050 1,097%(17 條起點全贏、最差那條也多 643pp)、中途最多賠 42%(原版 61%)、最差一年只輸 0050 46pp(原版 79pp)', '⛔ <b>停利是陷阱</b>:賺 5% 就跑,勝率 50% → 63%,但賺的錢變成跟 0050 一樣(16 年還輸);跌破 20 日線賣、風險調整、分散 10 檔也都沒有比較好'] },
@@ -8802,15 +8803,6 @@ ${list}
             '🗓️ <b>事件不再只列日期，會寫「會動到哪個數字」</b>(財報→每股盈餘/毛利率、月營收→營收年增、FOMC→匯率跟外資買賣超…)。⛔ <b>但只講「那幾天波動會變大」</b>，不講方向、也不給★ 重要度 —— 本站實測過 <b>37 種行事曆日，能講方向的一個都不成立</b>。',
             '🔀 <b>回了你那份外部 AI 評論裡的「多空分歧」—— 實測不成立，所以⛔ 沒做進去</b>。「基本面強、股價弱」那一種之後 20 日只比大盤好 <b>+0.17pp</b>(運氣的範圍內)，而且<b>鏡像的「基本面弱、股價強」也是正的</b> → 那量到的不是方向，是「有沒有極端」。完整數字在產業作戰室的「🔬 實測總表」。',
             '🐛 順手修:速覽圖底下那行色說明<b>右邊被切掉</b>(沒有換行)、趨勢線右邊空一大片。',
-        ] },
-        { v: 'V77.1.1', d: [
-            '🎨 <b>全站量條改成顏色漸變</b>(你要的第 1 點)—— <b>同一個顏色由深到亮</b>，⛔ <b>不是綠→黃→紅</b>：同一顆綠在 A 卡是「跌」、在 B 卡變成「安全」的話你會看反(那正是你以前叫我訂下的規則)。順手抳到一個真的違規：<b>「股價位階」那條迷你尺一直是綠→灰→紅</b>，但位階講的是「位置」不是「漲跌」→ 已改成天藍明暗。',
-            '🧭 <b>總覽的「5 個面向一眼看」改成跟報告頁那張圖一樣</b>(第 2 點)：琥珀節號 + 標題 + 一條分隔線、量條加粗，而且<b>每一列底下都有一句白話</b>(以前要滍滑才看得到)。',
-            '⚠️ <b>報告頁那顆沒對齊的驚嘆號修好了</b>—— 真因跟上一版修總覽那一次<b>是同一個病</b>：符號跟旁邊的數字共用同一條基線、而每個符號寬度又不一樣 → 現在改成<b>畫在一個固定寬的格子正中央</b>，不管什麼符號都對得齊。',
-            '🚦 <b>「📈 個股數據速覽」的基本面與籌碼開始上色</b>(第 3 點)：✅ 好 ・⚠️ 普通 ・⛔ 在衰退或虧錢；法人買賣超是<b>方向</b>所以照台股紅買綠賣。⚠️ <b>沒標色的那幾格是故意的</b> —— 本站<b>沒有實測過的好壞門檻</b>(毛利率、存貨天數、千張大戶…)，⛔ 不猜，卡底有寫。',
-            '📍 <b>關鍵價位裡新增「進場價 / 追買價」</b>(第 4 點)—— 要等到這個價才輪得到談進場。報告頁的價格牆表與那張圖<b>兩邊都補上了</b>(以前只有總覽那條尺有)。⚠️ 空頭時會改叫「觀察價」並寫明⛔ 不是叫你買，<b>但價位一個都不會被改掉</b>。',
-            '📖 <b>完整報告與短評報告的標題用顏色區隔了</b>(第 5 點)：結論 / 公司與財務 / 產業與價格 / 風險與事件 / 估值與筆記 五類，卡底有圖例。⛔ 這裡的顏色是「在講哪一類事」，<b>不是好壞也不是漲跌</b>，所以沒用紅綠。',
-            '⚠️ 誰實話：加了那五句白話之後，<b>總覽第一眼的字數從 693 變成 778</b>(你以前訂的上限是 600，而它在這一版之前就已經超過了)。要把白話收起來跟我說一聲就行。',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -21410,6 +21402,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         core50: { ai: 595, aiMdd: 37, long: 2345, longMdd: 42, worstYr: 46 },
         sham: { ai: 361, long: 79 }, tp5: { win: 63, ai: 391, long: 703 },
         costX2: { ai: 478, long: 648 }, trades: 70,
+        // ⏱️ V77.8.9 換倉日錨點(App 與 auto_trade.py 共用同一個,⛔ 不存在手機上 —— 存各自裝置會讓兩邊換倉日對不上)
+        anchor: '2026-09-24',
+        // 🕐 V77.8.9 成交時點:回測是「換倉日收盤算名單 → 隔天開盤買」;自動下單預設在尾盤跑 = 隔天收盤買
+        fillOpen: { ai: 760, long: 3176, beatAi: 15, beatLong: 17 }, fillClose: { ai: 670, long: 2219, beatAi: 14, beatLong: 13 },
+        // 🚨 V77.8.9 注意 / 處置(官方事件史 2023-06 起,決策日「之前」的公告才算):全部變差
+        att: { base: 760, noAtt3: 501, noAtt10: 453, noDisp: 341, sellDisp: 468, noDispBeat: 6 },
     },
     /** 👑 純函式:screener.json → 領頭羊名單(⛔ 只用採礦算好的欄位,⛔ 不現算 K 線)。回 {err} 或 {pool, ranked(前 2N), buy(前 N), n, date, all(池子全部含 rank)} */
     _leaderCalc(D, opt = {}) {
@@ -21433,9 +21431,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const all = new Map(ranked.map(r => [r.sym, r]));
         return { pool, ranked: ranked.slice(0, N * R.hyst), buy: ranked.slice(0, N), passed: ranked.length, n: pool.length, date: D.data_date || '', all, poolSet: new Set(pool.map(r => r.sym)) };
     },
-    /** 👑 換倉節拍:從使用者按「開始」那天起算,每 R 個交易日一次(交易日用 ^TWII 的日期數)。回 {started, day, isRebal, next, left} */
+    /** 👑 換倉節拍:從固定錨點 `_LEADER_EDGE.anchor` 起算(第 1 天 = 換倉日),每 R 個交易日一次;交易日用 ^TWII 日期數。
+     *  ⛔ 錨點不存在手機上 —— auto_trade.py 用同一個錨點(test_leaderdeck 跨檔比對),兩邊換倉日才對得上。回 {started, day, isRebal, left} */
     _leaderClock(twiiRows, dataDate, startDate) {
         const R = this._LEADER_EDGE.rule.R;
+        startDate = startDate || this._LEADER_EDGE.anchor;
         if (!startDate) return { started: false };
         const days = (twiiRows || []).map(r => String(r.date || r.d || '').replace(/\//g, '-').slice(0, 10)).filter(d => d && d >= startDate && d <= dataDate);
         const day = days.length;                 // 開始那天 = 第 1 天
@@ -21457,8 +21457,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const bear = this._bearGateOn() ? await this._mktBear60(null) : null;
         const bearOn = !!(bear && bear.on);
         let twii = null; try { twii = await this._getTwiiRows(); } catch (_) {}
-        const start = this._lsJson ? (this._lsJson('proTerm_leaderStart', null)) : null;
-        const clk = this._leaderClock(twii, L.date, start && start.d);
+        const clk = this._leaderClock(twii, L.date, E.anchor);
         const inv = this._getInventory().map(i => String(i.symbol)).filter(Boolean);
         const held = inv.filter(s => L.poolSet.has(s)).map(s => { const r = L.all.get(s); return { sym: s, r, keep: !!(r && r.rank <= R.N * R.hyst) }; });
         const row = (r, i) => `<div class="flex items-baseline gap-2 py-1 border-b border-[#21262d]" data-leaderrow="${r.sym}" data-leaderrank="${r.rank}">
@@ -21469,31 +21468,24 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             ${r.rank <= R.N ? `<span class="text-[9px] font-bold ${bearOn ? 'text-gray-500' : 'text-amber-300'}">${bearOn ? '空頭不買' : '🛒 買'}</span>` : `<span class="text-[9px] text-gray-500">前 ${R.N * R.hyst} 續抱</span>`}
             ${r.lim === 1 ? `<span class="text-[9px] text-amber-300/80">今天漲停</span>` : ''}${r.att ? `<span class="text-[9px] text-orange-300">${r.att === 2 ? '處置' : '注意'}</span>` : ''}
         </div>`;
-        const clockTxt = !clk.started
-            ? `<div class="text-[10px] text-gray-400 mb-1">⏱️ 還沒開始:按「開始」把今天當第 1 天,之後<b>每 ${R.R} 個交易日</b>換一次倉。 <button onclick="app._leaderStart()" class="text-[10px] font-bold text-cyan-200 border border-cyan-700/50 rounded px-1.5 py-0.5">▶ 開始</button></div>`
-            : `<div class="text-[10px] ${clk.isRebal ? 'text-amber-300' : 'text-gray-400'} mb-1" data-leaderclock="${clk.isRebal ? 'rebal' : 'wait'}">⏱️ 第 <b class="font-mono">${clk.day}</b> 個交易日(${esc(start.d)} 起)→ ${clk.isRebal ? '<b>今天是換倉日</b>:明天開盤照下面做' : `還有 <b class="font-mono">${clk.left}</b> 個交易日才換倉,今天不動`} <button onclick="app._leaderStart(true)" class="text-[9px] text-gray-500 underline ml-1">重設</button></div>`;
+        const clockTxt = `<div class="text-[10px] ${clk.isRebal ? 'text-amber-300' : 'text-gray-400'} mb-1" data-leaderclock="${clk.isRebal ? 'rebal' : 'wait'}">⏱️ ${esc(L.date)} 是第 <b class="font-mono">${clk.day || '?'}</b> 個交易日(${esc(E.anchor)} 起算,自動下單用同一個起點)→ ${clk.isRebal ? `<b>這天收盤是換倉日</b>:下一個交易日照下面做(開盤買 = 回測那一組;自動下單在尾盤買也可以,實測 +${E.fillClose.ai}% vs 開盤 +${E.fillOpen.ai}%)` : `還有 <b class="font-mono">${clk.left ?? '?'}</b> 個交易日才換倉,這幾天不動`}</div>`;
         const heldHtml = held.length ? `<div class="mt-1.5 text-[11px]"><div class="text-[10px] text-gray-400 mb-0.5">👜 你手上在池子裡的(⚠️ 程式不知道哪幾檔是照這套買的,只對照規則)</div>${held.map(h => `<div class="flex items-baseline gap-2 py-0.5" data-leaderheld="${h.sym}" data-leaderkeep="${h.keep ? 1 : 0}">${this._nmPair(h.sym, 'text-[11px]')}<span class="text-[10px] font-mono text-gray-500">${h.r ? `第 ${h.r.rank} 名` : '沒過趨勢過濾'}</span><span class="text-[10px] font-bold ${h.keep ? 'text-gray-200' : 'text-amber-300'}">${h.keep ? '✅ 續抱' : `⛔ 掉出前 ${R.N * R.hyst} 名 → ${clk.isRebal || !clk.started ? '明天開盤賣' : '換倉日再賣'}`}</span></div>`).join('')}</div>` : '';
+        const attN = L.ranked.filter(r => r.att).length;
+        const attTxt = attN ? `<div class="text-[10px] text-gray-400 mb-1">🚨 名單裡有 ${attN} 檔在官方注意 / 處置名單上 → ⛔ <b>不要跳過</b>:實測跳過處置股 +${E.att.base}% → +${E.att.noDisp}%(輸 0050,17 條只贏 ${E.att.noDispBeat} 條)、跳過注意股 → +${E.att.noAtt3}%;會被公告的正是漲最多的那幾檔。⚠️ 第二次處置要預收款券,自動下單可能被券商退單。</div>` : '';
         const bearTxt = bearOn ? `<div class="text-[10px] text-amber-300 mb-1">🐻 大盤嚴格空頭(收盤 ${esc(bear.c)} < 60 日線 ${esc(bear.ma60)},且 20 日線 < 60 日線)→ <b>今天不開新倉</b>,手上的照規則。</div>` : '';
         const list = L.ranked.length ? L.ranked.map(row).join('') : `<div class="text-[11px] text-gray-400">今天池子裡沒有一檔同時「收盤 > 20 日線 > 60 日線」→ 名單是空的(${L.n} 檔全被趨勢過濾擋掉)</div>`;
         return `<div class="mt-2" data-leader="ok" data-leaderdate="${esc(L.date)}">${head}
             <div class="text-[10px] text-gray-500 mb-1">📅 ${esc(this._dW ? this._dW(L.date, { rel: 1 }) : L.date)} 收盤算的 ・池子 = 近 20 日平均成交額前 ${L.n} 大(不含 ETF)・過趨勢的 ${L.passed} 檔 ・排名 = 近 ${R.L} 日漲幅</div>
-            ${clockTxt}${bearTxt}
+            ${clockTxt}${bearTxt}${attTxt}
             <div class="text-[10px] text-gray-400">🛒 前 ${R.N} 名 <b>明天開盤</b>等權買(開盤已接近漲停就不追);已持有的還在前 ${R.N * R.hyst} 名就續抱;沒用到的錢放 0050。⛔ 不設停損線(實測加了反而差)。</div>
             <div class="mt-1">${list}</div>${heldHtml}
             <div class="text-[10px] text-gray-500 mt-1.5 leading-relaxed">📊 實測(${esc(E.ver)}・${E.ai.paths} 條起點中位):${esc(E.ai.win)} <b>+${E.ai.tot}%</b> vs 0050 含息 +${E.ai.etfTr}%(贏 ${E.ai.beat}/${E.ai.paths})・${esc(E.long.win)} <b>+${E.long.tot.toLocaleString()}%</b> vs +${E.long.etfTr.toLocaleString()}%(${E.long.beat}/${E.long.paths})。
             ⚠️ <b>中途最多賠 ${E.ai.mdd}~${E.long.mdd}%</b>(0050 約 ${E.ai.etfDD}~${E.long.etfDD}%)、${E.long.yrs} 年裡只有 ${E.long.yrBeat} 年贏 0050、一年約 ${E.trades} 筆。🐢 撐不住就把一半錢永遠放 0050:16 年 +${E.core50.long.toLocaleString()}%、回撤 −${E.core50.longMdd}%。⛔ 別加停利:勝率會到 ${E.tp5.win}% 但報酬變成跟 0050 一樣。</div>
         </div>`;
     },
-    _leaderStart(reset) {
-        try {
-            if (reset) { localStorage.removeItem('proTerm_leaderStart'); this.showToast && this.showToast('⏱️ 已重設,再按一次「開始」'); }
-            else { const d = (this._scrData && this._scrData.data_date) || new Date().toISOString().slice(0, 10); localStorage.setItem('proTerm_leaderStart', JSON.stringify({ d })); this.showToast && this.showToast(`▶ 領頭羊從 ${d} 起算,每 ${this._LEADER_EDGE.rule.R} 個交易日換倉`); }
-        } catch (_) {}
-        try { this.renderDeck(); } catch (_) {}
-    },
     _leaderHelp() {
         const E = this._LEADER_EDGE, R = E.rule;
-        alert(`👑 領頭羊短線輪動(${E.ver})\n\n規則:每 ${R.R} 個交易日收盤 → 在「近 20 日平均成交額前 ${R.U} 大」(不含 ETF)裡,留下收盤 > 20 日線 > 60 日線的,照近 ${R.L} 日漲幅排名,前 ${R.N} 檔隔天開盤等權買;下次換倉還在前 ${R.N * R.hyst} 名就續抱、掉出去隔天開盤賣;不設停損線;沒用到的錢放 0050;大盤嚴格空頭不開新倉。\n\n實測(${E.ai.paths} 條起點中位):${E.ai.win} +${E.ai.tot}%(0050 含息 +${E.ai.etfTr}%)・${E.long.win} +${E.long.tot}%(0050 +${E.long.etfTr}%)。同一個池子隨機挑只有 +${E.sham.ai}% / +${E.sham.long}% → 賺的是排名本身。\n\n代價:中途最多賠 ${E.ai.mdd}~${E.long.mdd}%;${E.long.yrs} 年只有 ${E.long.yrBeat} 年贏 0050;成本加倍時 16 年 +${E.costX2.long}%(輸 0050)。一半放 0050 的版本:16 年 +${E.core50.long}%、回撤 −${E.core50.longMdd}%、最差一年只輸 ${E.core50.worstYr}pp。\n\n⛔ 這是第二套,沒有換掉決策台預設(每一年都要贏那關沒過);自動下單也沒有接它。`);
+        alert(`👑 領頭羊短線輪動(${E.ver})\n\n規則:每 ${R.R} 個交易日收盤 → 在「近 20 日平均成交額前 ${R.U} 大」(不含 ETF)裡,留下收盤 > 20 日線 > 60 日線的,照近 ${R.L} 日漲幅排名,前 ${R.N} 檔隔天開盤等權買;下次換倉還在前 ${R.N * R.hyst} 名就續抱、掉出去隔天開盤賣;不設停損線;沒用到的錢放 0050;大盤嚴格空頭不開新倉。\n\n實測(${E.ai.paths} 條起點中位):${E.ai.win} +${E.ai.tot}%(0050 含息 +${E.ai.etfTr}%)・${E.long.win} +${E.long.tot}%(0050 +${E.long.etfTr}%)。同一個池子隨機挑只有 +${E.sham.ai}% / +${E.sham.long}% → 賺的是排名本身。\n\n代價:中途最多賠 ${E.ai.mdd}~${E.long.mdd}%;${E.long.yrs} 年只有 ${E.long.yrBeat} 年贏 0050;成本加倍時 16 年 +${E.costX2.long}%(輸 0050)。一半放 0050 的版本:16 年 +${E.core50.long}%、回撤 −${E.core50.longMdd}%、最差一年只輸 ${E.core50.worstYr}pp。\n\n換倉日:從 ${E.anchor} 起每 ${R.R} 個交易日(App 與自動下單同一個起點)。成交時點:隔天開盤 +${E.fillOpen.ai}%(回測那一組)、隔天尾盤 +${E.fillClose.ai}%(16 年 +${E.fillClose.long}%)。\n\n注意 / 處置股⛔ 不要跳過:跳過處置 +${E.att.noDisp}%、跳過注意 +${E.att.noAtt3}%、持股進處置就賣 +${E.att.sellDisp}%,全部變差。\n\n⛔ 這是第二套,沒有換掉決策台預設(每一年都要贏那關沒過)。自動下單要自己開:LEADER=1(見 auto_trade.py 說明)。`);
     },
     /** 🐻 純函式:一串大盤 K(舊→新,每根要有 close)→ 最後一根是不是嚴格空頭。不足 60 根回 null(⛔ 不猜) */
     _bear60Of(rows) {
@@ -49063,6 +49055,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div class="text-base font-black text-gray-100">🎯 今天要做的事</div>
             </div>`;
             const st = await this._deckState();
+            // 🚧 每一列「量薄」標註要讀全市場快照(領頭羊區本來就會載,這裡先載好免得第一次畫的時候還沒到)
+            if (this._scrData === undefined) { try { await this._loadScreener(); } catch (_) {} }
             const eodTxt = `${String(Math.floor(this._EOD_FROM / 60)).padStart(2, '0')}:${String(this._EOD_FROM % 60).padStart(2, '0')}~${String(Math.floor(this._EOD_TO / 60)).padStart(2, '0')}:${String(this._EOD_TO % 60).padStart(2, '0')}`;
 
             // ── 🚪 今天要賣的(⛔ 不限量 —— 勝率只有三成,整套會賺完全靠「錯的時候小賠出場」)──
@@ -49460,6 +49454,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         </div>`;
     },
 
+    _DECK_THIN_AMT: 1,   // 🚧 億元;= 產業作戰室那邊的 CAST_MIN_AMT(test_leaderdeck ⑥ 跨檔比對)
     _pbRowHtml(x, mine, rank, dupN, noFin) {
         const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? n : ''; };
         const isMine = mine.has(String(x.s));
@@ -49480,6 +49475,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         //      而這套回測的進場是「尾盤觸價買」→ 很可能**買不到、或一買就把價格墊高**。
         const _offTag = this._offListed(String(x.s))
             ? '<span class="text-[9px] flex-shrink-0 font-bold text-amber-300 border border-amber-700/60 rounded px-1" title="🏷️ 這一檔不在官方「上市櫃」名單裡(多為興櫃)。實測:這一類 ⛔ 不能融資、近 20 日中位成交量只有 24 張(上市櫃 151 張),67% 不到 50 張/日 —— 而這套回測的進場方式是「尾盤觸價買」,量這麼小很可能買不到,或你一買就把價格墊高。⛔ 名單刻意不刪(刪了就不是這個榜真正的成績),但⛔ 別把它當成一般個股看待。">🏷️非上市櫃</span>'
+            : '';
+        // 🚧 V77.8.9 量太薄(DECISIONS V76.3.0 那條「⏳ 流動性那一道還沒做」)—— `playbook_edge.json` 沒有成交額欄,
+        //   ⭐ 改讀全市場特徵快照 `screener.json` 的 `amt20`(近 20 日平均成交金額,億;零額外採礦)。
+        //   門檻 1 億 = 產業作戰室釣魚那道 `CAST_MIN_AMT` 同一個數字(⚠️ 那是市場微結構通則,⛔ 不是回測出來的)。
+        //   ⛔ 跟處置股同一個處置方式:只標註、⛔ 不從名單刪(刪了就不是決策台真正的成績);快照還沒載到 → 不標(不知道 ≠ 很薄)。
+        const _D = this._scrData, _r = (_D && _D.rows) ? _D.rows[String(x.s)] : null;
+        const _ai = (_r && Array.isArray(_D.cols)) ? _D.cols.indexOf('amt20') : -1;   // ⛔ 不靠 `_scrC`(只有 _loadScreener 會設,別處塞進來的快照會對不上)
+        const _a20 = _ai >= 0 ? _r[_ai] : null;
+        const _thin = _a20 !== null && _a20 !== undefined && Number.isFinite(+_a20) && +_a20 < this._DECK_THIN_AMT;
+        const thinTag = _thin
+            ? `<span class="text-[9px] flex-shrink-0 font-bold text-amber-300 border border-amber-700/60 rounded px-1" data-deckthin="1" title="🚧 這一檔近 20 天平均一天只成交約 ${(+_a20).toFixed(2)} 億元(不到 ${this._DECK_THIN_AMT} 億)。這套回測的進場是「尾盤觸價買」,量這麼薄你一買就可能把價格墊高、或掛不到那個價 → 實際成績會比回測差。⚠️ ${this._DECK_THIN_AMT} 億這條線是市場通則,⛔ 不是回測出來的;名單刻意不刪(刪了就不是決策台真正的成績)。">🚧量薄</span>`
             : '';
         const dispTag = _disp
             ? '<span class="text-[9px] flex-shrink-0 font-bold text-orange-300 border border-orange-700/60 rounded px-1" title="🚨 官方處置中 —— 5 或 20 分鐘分盤撮合,而這套回測的進場方式是「尾盤 13:00~13:28 觸價買」:那個價你買不到。而且實測「進處置」之後 20 日中位 −4.81%、勝率 40.4%。⛔ 這是提醒不是放空訊號;名單刻意不刪(刪了就不是決策台真正的成績)。">⛔處置</span>'
@@ -49505,7 +49511,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <div class="min-w-0 flex-1 flex items-baseline gap-1.5">
                     ${rank ? `<span class="font-mono font-black text-[11px] flex-shrink-0 ${rank <= 3 ? 'text-amber-300' : 'text-gray-600'}" title="第 ${rank} 名(依「保守下界」排,樣本少的會被罰)">#${rank}</span>` : ''}
                     ${isMine ? '<span class="text-[10px] flex-shrink-0">👜</span>' : ''}
-                    ${dispTag}${_offTag}${_noFinTag}
+                    ${dispTag}${thinTag}${_offTag}${_noFinTag}
                     <span class="font-mono font-black text-[12px] text-gray-100 flex-shrink-0">${x.s}</span>
                     <span class="text-[11px] text-gray-200 truncate">${nm(x.s)}</span>
                     <span class="font-mono text-[10px] text-gray-500 flex-shrink-0">${c.toLocaleString()}</span>
@@ -50617,10 +50623,40 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //     ⚠️ 只有間接證據 → 說「這個榜本身沒單獨測過」,⛔ 不可借用別的成績當背書
     //     📚 查資料用     → 本來就不下多空(_RADAR_INFO)
     //     📉 實測沒優勢   → 已由 `_radarWeakNote` 講完,這裡**不再重複**(⛔ 不可疊兩段)
+    /** 📐 V77.8.9 K棒轉多/轉空榜每一列的實測成績(DECISIONS ⑦1 那條「要動採礦加 `_d` 欄」)——
+     *  ⭐ 先量才知道⛔ 不用動採礦:採礦版的訊號名稱跟 `_SIGNAL_EDGE` 的標題**逐字相同**(晨星/夜星/吞噬/遭遇/測壓測撐/量價背離/母子),
+     *     而 131 個標題**沒有重名** → 用標題反查就對得到偵測器。實測 300 天抽樣:能對上的佔 32%(4.5 萬次裡 1.47 萬)。
+     *  ⛔ 對不到的是採礦版 `reversal_candle` 的**單根變盤線**(高/低檔紡錘、錘子、十字…)—— App 那邊是
+     *     `_detectKbarStrength` 的「高檔/低檔變盤線」,**門檻不同** → ⛔ 不可借它的成績(陷阱 #37/#38 的「借數字」)。
+     *  ⭐ 多方看 `exp`(扣完成本後每趟期望值)、空方看 10 日邊際 `e10`(警告之後有沒有真的比大盤差)—— 同 `_alertWorthIt` 的兩把尺。 */
+    _kbarRadarEdge(status) {
+        const tbl = (this._btEdge && this._btEdge.signal && this._btEdge.signal.table) || this._SIGNAL_EDGE || {};
+        if (!this._kbarTitleIdx || this._kbarTitleIdx.tbl !== tbl) {
+            const m = new Map();
+            for (const k of Object.keys(tbl)) { const j = k.indexOf('｜'); if (j > 0) m.set(k.slice(j + 1), k.slice(0, j)); }
+            this._kbarTitleIdx = { tbl, m };
+        }
+        return String(status || '').split(' + ').map(t => t.trim()).filter(Boolean).map(t => {
+            const det = this._kbarTitleIdx.m.get(t.slice(0, 28));
+            return { t, det: det || null, e: det ? this._sigEdge(det, t) : null };
+        });
+    },
+    _kbarRadarEdgeHtml(status, bull) {
+        const L = this._kbarRadarEdge(status);
+        if (!L.length) return '';
+        return `<span class="flex flex-wrap justify-end gap-0.5" data-kbedge="1">${L.map(({ t, e }) => {
+            if (!e) return `<span class="text-[9px] text-gray-500 border border-[#30363d] rounded px-1" data-kbg="na" title="「${this._escHtml(t)}」—— 採礦版的單根變盤線,跟 App 裡有實測的那一個定義不同,⛔ 不借它的成績。">未驗證</span>`;
+            const num = bull
+                ? (e.exp == null ? '' : `每趟${e.exp >= 0 ? '+' : ''}${(+e.exp).toFixed(2)}%`)
+                : (e.e10 == null ? '' : `10日${e.e10 >= 0 ? '+' : ''}${(+e.e10).toFixed(2)}pp`);
+            const tip = `「${this._escHtml(t)}」全市場實測:${e.grade} 級・${(+e.n).toLocaleString()} 次・10 日比大盤 ${(+e.e10).toFixed(2)}pp${e.exp == null ? '' : `・扣成本後每趟期望值 ${(+e.exp).toFixed(2)}%`}。${bull ? '⚠️ 期望值 ≤ 0 = 常對但不賺。' : '⚠️ 看空訊號要看「警告之後有沒有真的比大盤差」(10 日邊際為負才算數)。'}`;
+            return `<span class="text-[9px] font-mono text-gray-300 border border-[#30363d] rounded px-1" data-kbg="${e.grade}" title="${tip}">${e.grade}${num ? '・' + num : ''}</span>`;
+        }).join('')}</span>`;
+    },
     _RADAR_STATUS: {
         todaysig:  ['ok',   '每天收盤把全市場每一檔跑過所有 K 線訊號,只留**期望值為正、而且扣完來回成本 0.44% 還有得賺**的。⚠️ 基準勝率是 <b>36.4%</b> 不是 50%;是歷史平均不是保證,而且只看 K 線。'],
         daytrade:  ['ok',   '「今天怎麼做」那半是**純歷史統計**(同一條勝負定義掃過每一個交易日當對照組),⚠️ 環境訊號**沒有計入**上面那個勝率。當沖來回成本約 0.25%,扣完是負的就別做。'],
-        kbar_bull: ['part', '這些 K 棒訊號**單獨**都有實測成績(全市場 2,227 檔),⛔ 但這個榜**沒有逐檔標出來** —— 想看某一檔那個訊號實測賺不賺,點進去看「K線」分頁的戰法卡。'],
+        kbar_bull: ['part', '這些 K 棒訊號**單獨**都有實測成績(全市場 2,227 檔)→ 每一列右邊的小標籤就是那個訊號的實測(A/B/C 級、每趟期望值)。⚠️ 標「未驗證」的是採礦版的**單根變盤線**,定義跟 App 的不一樣 → ⛔ 不借別人的成績。'],
         kbar_bear: ['part', '同上,而且**看空訊號本來就不該用賺賠去篩** —— 它是風險提醒,忽略它的代價比多看一眼大。'],
         rs_strong: ['part', '「追強」這個**方向**本站實測站得住(創一年新高 / 位階高檔那幾條是全庫最好的),⛔ 但<b>這個榜本身沒有單獨回測過</b>,而且實測顯示追強的優勢 <b>2024 之後逐年遞減</b>。'],
         momentum:  ['part', '同上,追強方向有證據、<b>這個榜沒單獨測過</b>。⚠️ 它抓的是「5 日內噴過 7%」= 追高,而追高正是空頭最容易受傷的一類。'],
@@ -51156,6 +51192,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <td class="py-2.5 px-2 text-right align-middle">
                     <div class="flex flex-col items-end gap-0.5">
                         <span class="text-[10px] text-amber-300 font-bold leading-tight">${(m.status || '').replace('最高動能', '近5日最噴')}</span>
+                        ${(key === 'kbar_bull' || key === 'kbar_bear') ? this._kbarRadarEdgeHtml(m.status, key === 'kbar_bull') : ''}
                         ${gainStr}
                     </div>
                 </td>

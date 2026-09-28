@@ -174,6 +174,24 @@ def streak_of(seq):
     return n * sign
 
 
+def _margin_placeholder_to_none(rows):
+    """融資餘額:前一個已知值 > 0、這一天卻是 0 → 視為佔位(沒抓到)改成 None;連續的 0 也一起。回新的 list(⛔ 不改呼叫端的 rows)。"""
+    out, last_known = [], None
+    for r in rows:
+        m = r.get('margin_balance')
+        if m is not None:
+            try:
+                mf = float(m)
+            except Exception:
+                mf = None
+            if mf == 0 and last_known is not None and last_known > 0:
+                r = dict(r, margin_balance=None)
+            elif mf is not None:
+                last_known = mf
+        out.append(r)
+    return out
+
+
 def build_one(rows, twii_chg=None):
     """rows = data/{sym}.json 的列(舊→新)。回 (values, ok)。⛔ 只用到當天為止的資料。"""
     n = len(rows)
@@ -404,6 +422,10 @@ def build_one(rows, twii_chg=None):
     v[CI['d3']] = acc('dealer_net', 3)
     v[CI['dd']] = streak_of([r.get('dealer_net') for r in rows[-15:]])
 
+    # 🚨 V77.8.9 融資餘額「從正數一天掉到 0」= 還沒抓到(miner 用 0 當佔位,miner.py L1296 / L3030 / L3583),
+    #    ⛔ 不是「全部還款」—— 實測 2026-09-24 有 61 檔(台泥 1101 37,118 → 0)被算成融資 5 日 −100%。
+    #    存量不可能一天歸零 → 當成 None(不知道),⛔ 不當成 0。一直都是 0 的(不能融資的 ETF 等)照舊是 0。
+    rows = _margin_placeholder_to_none(rows)
     mb = [r.get('margin_balance') for r in rows[-6:]]
     mb = [x for x in mb if x is not None]
     if len(mb) >= 2:
