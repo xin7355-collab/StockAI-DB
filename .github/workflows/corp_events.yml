@@ -1,0 +1,64 @@
+name: 🏢 公司事件史(減資恢復買賣 / 庫藏股,手動)
+
+# 🏢 V77.8.3(外部評估 ㊷ FinPilot 那兩個事件,使用者「依照你說的做」)
+#   ① 減資恢復買賣:FinMind TaiwanStockCapitalReductionReferencePrice(Free),2010 起逐年抓
+#   ② 庫藏股:候選來源全部試一次(FinMind 猜名 / TWSE・TPEx OpenAPI 含「庫藏」的端點),結論印在 log
+# 🏛️ 推 data 分支的 data/corp_events.json(照 idx_long.yml):daily_miner 的 git archive 底層會保住它,daily_miner 一行不改。
+# ⛔ 只有手動觸發(沒有 cron → 不吃排程配額);前端不讀這個檔,只給 corp_event_probe.mjs 回測用。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: corp-events        # ⛔ 不可跟別人共用 group(V73.7.9)
+  cancel-in-progress: false
+
+jobs:
+  mine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🏢 抓 + 守門(減資 < 50 筆不寫檔)
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: |
+          python3 scripts/corp_events_miner.py --selftest
+          python3 scripts/corp_events_miner.py --out /tmp/corp_events.json
+
+      - name: 🚀 推 data 分支(data/corp_events.json)
+        run: |
+          set -e
+          [ -s /tmp/corp_events.json ] || { echo "❌ 沒有產物 → 不推"; exit 1; }
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin "+refs/heads/data:refs/remotes/origin/data" --depth=1
+          git reset --hard -q 2>/dev/null || true
+          git clean -fdq 2>/dev/null || true
+          git checkout -f -B data origin/data
+          mkdir -p data
+          cp /tmp/corp_events.json data/corp_events.json
+          git add -f data/corp_events.json
+          if git diff --cached --quiet; then
+            echo "ℹ️ data/corp_events.json 跟分支上一樣,沒東西可推"
+          else
+            git commit -q -m "🏢 公司事件史 → data 分支 ($(date -u '+%Y-%m-%d %H:%M UTC'))" -- data/corp_events.json
+            pushed=0
+            for i in 1 2 3 4 5; do
+              git push origin data && { pushed=1; echo "✅ data/corp_events.json 已推上 data 分支 (第 $i 次)"; break; }
+              sleep $((i * 3))
+              git pull --rebase origin data 2>/dev/null || true
+            done
+            [ "$pushed" -eq 1 ] || { echo "❌ push 連 5 次失敗"; exit 1; }
+          fi
