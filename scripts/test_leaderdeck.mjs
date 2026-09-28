@@ -77,6 +77,20 @@ const R = await page.evaluate(async () => {
     out.txt = host.innerText; out.rows = [...host.querySelectorAll('[data-leaderrow]')].map(e => e.dataset.leaderrow);
     out.held = Object.fromEntries([...host.querySelectorAll('[data-leaderheld]')].map(e => [e.dataset.leaderheld, e.dataset.leaderkeep]));
     out.buyBtns = (host.innerText.match(/🛒 買/g) || []).length;
+    // 👑 V77.9.1 收盤價 + 排序 + 持股標記
+    out.close1 = host.querySelector('[data-leaderrow="1001"] [data-leaderclose]')?.textContent || '';
+    out.hdr = [...host.querySelectorAll('[data-leadersort]')].map(e => e.dataset.leadersort);
+    out.firstDefault = out.rows[0];
+    app._leaderSort = { k: 'chg10', asc: true }; host.innerHTML = await app._leaderDeckHtml();
+    out.firstAsc = host.querySelector('[data-leaderrow]').dataset.leaderrow; out.ascMark = /10 日▲/.test(host.innerText);
+    out.buyAfterSort = (host.innerText.match(/🛒 買/g) || []).length;
+    app._leaderSort = null;
+    localStorage.removeItem('leaderMine_v1'); host.innerHTML = await app._leaderDeckHtml();
+    out.unmarked = host.querySelector('[data-leaderheld="1041"]')?.innerText || '';
+    localStorage.setItem('leaderMine_v1', JSON.stringify(['1041'])); host.innerHTML = await app._leaderDeckHtml();
+    out.marked = host.querySelector('[data-leaderheld="1041"]')?.innerText || '';
+    out.markedMine = host.querySelector('[data-leaderheld="1041"]')?.dataset.leadermine;
+    localStorage.removeItem('leaderMine_v1'); host.innerHTML = await app._leaderDeckHtml();
     // 注意 / 處置:把 1003 標成處置
     D.rows['1003'][10] = 2; host.innerHTML = await app._leaderDeckHtml(); out.attTxt = host.innerText; D.rows['1003'][10] = 0;
     // 決定性對照:實測數字讀常數
@@ -94,10 +108,14 @@ ok('①d 名單列前 2N = 10 檔', R.ranked === 10 && R.rows.length === 10, R.r
 ok('①e 欄位缺 → notyet(⛔ 不可拿 chg5/chg20 湊)', R.notyet === 'notyet');
 ok('①f ⭐ 決定性對照:把一檔改成 ma20 < ma60 → 被濾掉', R.filteredOut === true);
 ok('② 時鐘:起點那天 = 第 1 天且是換倉日;第 5 天還剩 6 天;第 11 天又是換倉日;沒傳起點 → 用共用錨點(09-24 起,09-25 是第 2 天)', R.c1.day === 1 && R.c1.isRebal && R.c5.day === 5 && !R.c5.isRebal && R.c5.left === 6 && R.c11.day === 11 && R.c11.isRebal && R.c0.day === 2 && !R.c0.isRebal, JSON.stringify([R.c1, R.c5, R.c11, R.c0]));
-ok('③ 畫面:前 5 名有 🛒 買、庫存 1001 續抱、1041(第 21 名)掉出前 10 → 賣、1000(沒過趨勢)也標賣、2330 不在池子不列', R.buyBtns === 5 && R.held['1001'] === '1' && R.held['1041'] === '0' && R.held['1000'] === '0' && !('2330' in R.held), JSON.stringify([R.buyBtns, R.held]));
+ok('③ 畫面:前 5 名有 🛒 買、庫存 1001 續抱、1041(第 21 名)掉出前 10 → 賣、1000(沒過趨勢)keep=0、2330 不在池子不列', R.buyBtns === 5 && R.held['1001'] === '1' && R.held['1041'] === '0' && R.held['1000'] === '0' && !('2330' in R.held), JSON.stringify([R.buyBtns, R.held]));
 ok('③b ⭐ 決定性對照:實測數字讀 `_LEADER_EDGE`(改成 4321 畫面要跟著變)', /4321/.test(R.constTxt) && !/4321/.test(R.txt));
 ok('③c 空頭:名單照列(10 列)、但一個「🛒 買」都沒有、寫「今天不開新倉」', R.bearRows === 10 && !/🛒 買/.test(R.bearTxt) && /今天不開新倉/.test(R.bearTxt) && /空頭不買/.test(R.bearTxt));
-ok('③d 一定寫代價:中途最多賠 / 只有 N 年贏 / 別加停利 / 不是決策台預設', /中途最多賠/.test(R.txt) && /年贏 0050/.test(R.txt) && /別加停利/.test(R.txt) && /不是決策台預設/.test(R.txt));
+ok('③d 一定寫代價:中途最多賠 / 只有 N 年贏 + 標明是預設', /中途最多賠/.test(R.txt) && /年贏 0050/.test(R.txt) && /預設・實測最強/.test(R.txt));
+ok('③i 每一列有收盤價(讀 screener 的 c)', R.close1 === '100.0', R.close1);
+ok('③j 表頭可排序:名次/收盤/10 日/今天/億/日 五欄', JSON.stringify(R.hdr) === JSON.stringify(['rank', 'c', 'chg10', 'chg', 'amt20']), JSON.stringify(R.hdr));
+ok('③k ⭐ 決定性對照:照 10 日由小到大排 → 第一列換人 + ▲;「🛒 買」仍只有前 5 名(⛔ 動作不跟排序變)', R.firstDefault === '1001' && R.firstAsc !== '1001' && R.ascMark && R.buyAfterSort === 5, JSON.stringify([R.firstDefault, R.firstAsc, R.ascMark, R.buyAfterSort]));
+ok('③l ⭐ 持股沒標「照這套買的」→ 只對照、⛔ 不下賣出指令;標了 → 講要賣', /只對照/.test(R.unmarked) && !/開盤賣|換倉日再賣/.test(R.unmarked) && /掉出前 10 名/.test(R.marked) && /開盤賣|換倉日再賣/.test(R.marked) && R.markedMine === '1', JSON.stringify([R.unmarked, R.marked]));
 ok('③e ⛔ 無 🔴🟢', !/[🔴🟢]/u.test(R.txt) && !/[🔴🟢]/u.test(R.bearTxt));
 ok('③f 390px 不橫捲、不超出', R.sx <= 2 && R.over === 0, `${R.sx} ${R.over}`);
 ok('③g 無 pageerror', !errs.length, errs.join(' | '));
@@ -135,6 +153,65 @@ else {
     ok(`⑤h 正式網站那一份 screener(${JSON.parse(real).data_date}):Python == JS${js.err ? '(兩邊都 ' + js.err + ')' : `(前 5 = ${js.buy.join(' ')})`}`, JSON.stringify(pyR) .includes(JSON.stringify(js.buy || js.err)) && (js.err ? pyR.err === js.err : (JSON.stringify(pyR.ranked) === JSON.stringify(js.ranked) && pyR.passed === js.passed && pyR.n === js.n)), JSON.stringify([pyR.buy, js.buy]));
 }
 // ⑥ 🚧 決策台每一列「量薄」標註(V77.8.9;讀 screener amt20,⛔ 不刪名單)
+// 🎯 V77.9.1 決策台區塊勾選
+const DS = await page.evaluate(() => {
+    const out = {};
+    app.settings.deckShow = null;
+    out.def = app._deckShow();
+    const buy = document.getElementById('deckBuy'), head = document.getElementById('deckHead');
+    buy.innerHTML = '<div data-deckpb="1">PB</div><div data-deckfit="1">FIT</div>'; head.innerHTML = '<div>H</div>';
+    app._deckShowApply();
+    out.pbHidden = buy.querySelector('[data-deckpb]').style.display === 'none';
+    out.leaderShown = document.getElementById('deckLeader').style.display !== 'none';
+    out.hidN = head.querySelector('[data-deckhidden]')?.dataset.deckhidden;
+    out.hidTxt = head.querySelector('[data-deckhidden]')?.innerText || '';
+    app.settings.deckShow = { pb: true };
+    app._deckShowApply();
+    out.pbShown2 = buy.querySelector('[data-deckpb]').style.display !== 'none';
+    out.hidN2 = head.querySelector('[data-deckhidden]')?.dataset.deckhidden;
+    out.oneLine = head.querySelectorAll('[data-deckhidden]').length;
+    app.settings.deckShow = { leader: true, sell: true, pb: true, fit: true, note: true };
+    app._deckShowApply(); out.none = head.querySelector('[data-deckhidden]')?.dataset.deckhidden;
+    out.idleBoth = document.getElementById('deckIdle').style.display !== 'none';
+    app.settings.deckShow = { leader: false, pb: true };
+    app._deckShowApply(); out.idleOnlyOld = document.getElementById('deckIdle').style.display !== 'none';
+    app.settings.deckShow = null;
+    const box = document.getElementById('deckShowList'); app._renderDeckShowList();
+    out.boxes = box ? box.querySelectorAll('input[type=checkbox]').length : -1;
+    out.checked = box ? box.querySelectorAll('input[type=checkbox]:checked').length : -1;
+    out.pbDesc = box ? (box.querySelector('[data-deckshowk="pb"]')?.innerText || '') : '';
+    return out;
+});
+ok('⑧ 預設:領頭羊 + 要賣的開、舊 🧬 買點 / 符合進場 / 長說明關', JSON.stringify(DS.def) === JSON.stringify({ leader: true, sell: true, pb: false, fit: false, note: false }), JSON.stringify(DS.def));
+ok('⑧b 收起來的真的藏了 + 頂端寫「已收起 3 塊」(⛔ 不靜默)', DS.pbHidden && DS.leaderShown && DS.hidN === '3' && /設定裡勾回來/.test(DS.hidTxt), JSON.stringify([DS.pbHidden, DS.hidN, DS.hidTxt]));
+ok('⑧c ⭐ 決定性對照:勾回 🧬 買點 → 顯示、收起數變 2、頂端那行只有一條', DS.pbShown2 && DS.hidN2 === '2' && DS.oneLine === 1, JSON.stringify([DS.pbShown2, DS.hidN2, DS.oneLine]));
+ok('⑧d 全開 → 沒有「已收起」;只開舊那套時「今天不用做」才出現', DS.none === undefined && DS.idleBoth === false && DS.idleOnlyOld === true, JSON.stringify([DS.none, DS.idleBoth, DS.idleOnlyOld]));
+ok('⑧e 設定裡 5 個勾選、預設勾 2 個;舊預設說明的數字讀常數(⛔ 不寫死)', DS.boxes === 5 && DS.checked === 2 && /324 萬/.test(DS.pbDesc) && /860 萬/.test(DS.pbDesc), JSON.stringify([DS.boxes, DS.checked, DS.pbDesc]));
+
+// 👑 V77.9.1 個股總覽一行
+const OV = await page.evaluate(async () => {
+    const out = {};
+    const box = document.getElementById('ovLeaderLine');
+    const run = async sym => { app.currentSymbolId = sym; await app._renderOvLeaderLine(sym); return { st: box.querySelector('[data-ovleader]')?.dataset.ovleader || null, hidden: box.classList.contains('hidden'), txt: box.innerText }; };
+    localStorage.removeItem('leaderMine_v1');
+    out.top = await run('1001');      // 第 1 名
+    out.keep = await run('1013');     // 第 7 名
+    out.out = await run('1041');      // 第 21 名
+    out.noTrend = await run('1000');  // 池子裡但沒過趨勢
+    out.outside = await run('1110');  // 池子外
+    localStorage.setItem('leaderMine_v1', JSON.stringify(['1041', '1110']));
+    out.outMine = await run('1041'); out.outsideMine = await run('1110');
+    localStorage.removeItem('leaderMine_v1');
+    // 切股競態:render 1001 但回來前換成 1003 → ⛔ 不可畫出 1001 的
+    const _ls = app._loadScreener; app._loadScreener = async () => { app.currentSymbolId = '1003'; return _ls.call(app); };
+    app.currentSymbolId = '1001'; await app._renderOvLeaderLine('1001'); out.race = box.innerText; app._loadScreener = _ls;
+    return out;
+});
+ok('⑨ 總覽一行:第 1 名 → 🛒 買;第 7 名 → 已有才續抱;第 21 名 → 不在名單', OV.top.st === 'buy' && /🛒/.test(OV.top.txt) && OV.keep.st === 'keep' && /已有才續抱/.test(OV.keep.txt) && OV.out.st === 'out' && /不在名單/.test(OV.out.txt), JSON.stringify([OV.top, OV.keep, OV.out]));
+ok('⑨b 沒過趨勢寫原因;不在前 100 大、也沒標 → 整行不顯(不留空殼)', /沒過趨勢過濾/.test(OV.noTrend.txt) && OV.outside.hidden === true && OV.outside.txt === '', JSON.stringify([OV.noTrend, OV.outside]));
+ok('⑨c ⭐ 決定性對照:同一檔標了「照這套買的」→ 從「不在名單」變成「⛔ …賣」;池子外的也要講賣', /⛔ .*賣/.test(OV.outMine.txt) && !/⛔ .*賣/.test(OV.out.txt) && OV.outsideMine.st === 'out' && /不在成交額前 100 大/.test(OV.outsideMine.txt) && /賣/.test(OV.outsideMine.txt), JSON.stringify([OV.outMine.txt, OV.outsideMine.txt]));
+ok('⑨d 切股競態:await 回來已換股 → ⛔ 不畫上一檔', OV.race === '', OV.race);
+
 const TH = await page.evaluate(() => {
     const x = { s: '1234', c: 50, stop: 45, trig: 52, exp: 1.2, lb: 0.8, k: '測試招', up: 4 };
     const save = app._scrData;
