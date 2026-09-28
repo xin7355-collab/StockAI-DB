@@ -3663,6 +3663,7 @@ const PRO = {
     ['pb',  '🧬 高基期高波動', '決策台「今天可以買的」'],
     ['fit', '📈 符合進場',     '看多訊號 + 🧬 都成立'],
     ['mix', '🧪 兩張都買',     '兩張聯集,同一檔只算一次'],
+    ['lead', '👑 領頭羊',      '成交額前 100 大挑近 10 日最強 5 檔,每 10 個交易日換一次'],
   ],
   _recoSrc: 'pb',
   selRecoSrc(k) { this.buzz(10); this._recoSrc = k; this._recoLedgerRender(); },
@@ -3707,11 +3708,15 @@ const PRO = {
     // 🧬 `fit` / `mix` 要用到 index.html 的門檻與黑名單 → 先把它載進來(⛔ 不在這裡抄一份)
     if (src !== 'pb') { try { await this.loadIdx(); } catch (_) {} }
     const H = await this.fetchJson('data/pick_history.json', 12000);
-    const days = (H && Array.isArray(H.days) ? H.days : [])
-      .filter(d => d && d.d && (Array.isArray(d.pb) || Array.isArray(d.sig)))
-      .slice().sort((a, b) => (a.d < b.d ? -1 : 1));
     await this._twiiLoad();
-    const out = { rule, src, days: days.length, since: null, skipped: 0, trades: [], noK: [],
+    // 🎑 V77.9.3 假日快照⛔ 不算:加權那天沒開盤(中秋 / 教師節 / 颱風)卻有一份名單 = 採礦把假日幽靈 K 當成交易日(陷阱 #48)。
+    //   ⛔ 只丟「加權已經有更晚的日子、而那天不在加權日曆裡」的;加權還沒更新到的最新那天照留(無法判斷,⛔ 不猜)。
+    const _T = this._twii, _tLast = _T && _T.days.length ? _T.days[_T.days.length - 1] : null;
+    const _isGhost = d => !!(_T && _tLast && d < _tLast && !_T.m.has(d));
+    const days0 = (H && Array.isArray(H.days) ? H.days : [])
+      .filter(d => d && d.d && (Array.isArray(d.pb) || Array.isArray(d.sig)));
+    const days = days0.filter(d => !_isGhost(d.d)).slice().sort((a, b) => (a.d < b.d ? -1 : 1));
+    const out = { rule, src, days: days.length, ghost: days0.length - days.length, since: null, skipped: 0, trades: [], noK: [],
                   geneErr: (src !== 'pb' && !this._geneRule()) ? (this._idxErr || '解析不到門檻') : null };
     const open = new Map();                       // sym → 那筆的出場日('9999' = 還持有中)
     const K = this._rlK = this._rlK || {};        // K 線快取(⛔ 同一檔不重抓)
@@ -3750,6 +3755,100 @@ const PRO = {
         out.trades.push(t);
       }
     }
+    return out;
+  },
+  // ═══ 👑 V77.9.3 領頭羊模擬帳(使用者:「領頭羊策略也加進去成績單裡面自動買賣」)═══
+  // ⛔ 五條鐵則(測試 scripts/test_leader_ledger.mjs 釘住):
+  //  ① 規則 = 散戶救星 `_LEADER_EDGE.rule` / `.anchor` = lib_leader.py(自動下單那一份)—— 測試跨檔比對,⛔ 改一邊會被擋。
+  //  ② 名單來源 = data/pick_history.json 每天的 `lead`(採礦存事實,⛔ 不靠使用者開 App);沒有那天的名單 → 那次換倉⛔ 不硬猜。
+  //  ③ 換倉日 = 加權日曆從錨點起第 1、11、21… 個交易日(= `_leaderClock`);成交 = **換倉訊號隔天的收盤**(= 自動下單)。
+  //  ④ 掉出前 N×hyst 名才賣、⛔ 不設停損、⛔ 不用 `_settleReplay`(那是另一套策略的出場);大盤嚴格空頭只擋買;隔天快漲停(≥9.7%)的買不到、⛔ 不遞補。
+  //  ⑤ 損益走 `_stlEnrich`(扣 0.44%、同期大盤、一張賺賠)—— 跟其他三頁同一把尺;樣本 <10 筆⛔ 不下結論。
+  _LEAD: { N: 5, R: 10, hyst: 2, anchor: '2026-09-24', limUp: 9.7 },
+  _leadBearAt(D) {
+    // 🐻 = index.html `_bear60Of`:收盤 < 60 日線 且 20 日線 < 60 日線(用到那一天為止的加權)
+    const T = this._twii; if (!T) return null;
+    const c = []; for (const d of T.days) { if (d > D) break; c.push(T.m.get(d)); }
+    if (c.length < 60) return null;
+    const n = c.length - 1, avg = (a, b) => { let t = 0; for (let i = a; i <= b; i++) t += c[i]; return t / (b - a + 1); };
+    const ma20 = avg(n - 19, n), ma60 = avg(n - 59, n);
+    return c[n] < ma60 && ma20 < ma60;
+  },
+  async _leaderLedgerLoad() {
+    const P = this._LEAD;
+    const H = await this.fetchJson('data/pick_history.json', 12000);
+    await this._twiiLoad();
+    const leadBy = new Map();
+    for (const day of (H && Array.isArray(H.days) ? H.days : [])) {
+      if (day && day.d && day.lead && Array.isArray(day.lead.rows) && day.lead.rows.length) leadBy.set(String(day.d).slice(0, 10), day.lead);
+    }
+    const out = { rule: 'lead', src: 'lead', days: leadBy.size, since: null, skipped: 0, trades: [], noK: [], rebs: [], bf: [] };
+    const T = this._twii;
+    if (!T) { out.err = '讀不到加權指數(換倉日曆要靠它)'; return out; }
+    const cal = T.days.filter(d => d >= P.anchor);
+    out.cal = cal.length;
+    const K = this._rlK = this._rlK || {};
+    const kOf = async sym => {
+      if (K[sym] === undefined) {
+        try { const raw = await this.fetchJson(`data/${sym}.json`, 9000); K[sym] = (Array.isArray(raw) ? raw : []).filter(r => r && +r.close > 0); }
+        catch (_) { K[sym] = []; }
+      }
+      return K[sym];
+    };
+    // 那一檔在 D(含)之前最近一根的收盤與前一根收盤(⛔ 假日幽靈 K 不算:只認加權日曆上的日子)
+    const barAt = (rows, D) => {
+      let hit = -1;
+      for (let i = rows.length - 1; i >= 0; i--) { const d = this._dstr(rows[i].date); if (d <= D && (T.m.has(d) || d < T.days[0])) { hit = i; break; } }
+      if (hit < 0) return null;
+      let prev = null;
+      for (let j = hit - 1; j >= 0; j--) { const d = this._dstr(rows[j].date); if (T.m.has(d) || d < T.days[0]) { prev = +rows[j].close; break; } }
+      return { d: this._dstr(rows[hit].date), c: +rows[hit].close, prev };
+    };
+    const held = new Map();                                  // sym → trade
+    for (let i = 0; i < cal.length; i += P.R) {
+      const D = cal[i], F = cal[i + 1] || null, L = leadBy.get(D);
+      const reb = { d: D, F, has: !!L, bear: null, buys: [], sells: [], skips: [], plan: null };
+      out.rebs.push(reb);
+      if (!L) { out.skipped++; continue; }
+      if (L.bf) out.bf.push(D);
+      out.since = out.since || D;
+      const rows = L.rows.slice().sort((a, b) => (+a.r || 99) - (+b.r || 99));
+      const keep = new Set(rows.slice(0, P.N * P.hyst).map(r => String(r.s)));
+      reb.bear = this._leadBearAt(D);
+      const sellList = [...held.keys()].filter(s => !keep.has(s));
+      const buyList = reb.bear === true ? [] : rows.slice(0, P.N).map(r => r).filter(r => !held.has(String(r.s)));
+      if (!F) { reb.plan = { sell: sellList, buy: buyList.slice(0, Math.max(0, P.N - (held.size - sellList.length))).map(r => r.s) }; continue; }
+      for (const sym of sellList) {                          // ① 賣:掉出前 N×hyst 名 → 隔天收盤
+        const t = held.get(sym), b = barAt(await kOf(sym), F);
+        if (b && b.d >= t.st.d0) { t.st.exitP = b.c; t.st.d1 = b.d; }
+        t.st.open = false; t.st.why = `掉出前 ${P.N * P.hyst} 名`;
+        held.delete(sym); reb.sells.push(sym);
+      }
+      for (const r of buyList) {                             // ② 買:前 N 名還沒有的(空頭那天整段不買)
+        if (held.size >= P.N) break;
+        const sym = String(r.s), b = barAt(await kOf(sym), F);
+        const t = { sym, d: F, px: b ? b.c : +r.c, k: `第 ${r.r} 名・10 日 ${this.fmt(+r.x, 1, true)}%`, st: null };
+        if (!b || b.d !== F) { out.noK.push(sym); t.st = null; out.trades.push(t); reb.skips.push(`${sym} 讀不到 ${F.slice(5)} 的 K`); continue; }
+        if (b.prev > 0 && (b.c / b.prev - 1) * 100 >= P.limUp) { reb.skips.push(`${sym} 那天快漲停買不到`); continue; }
+        t.st = { entry: b.c, stop: null, exitP: b.c, d0: F, d1: F, open: true, why: '' };
+        held.set(sym, t); out.trades.push(t); reb.buys.push(sym);
+      }
+    }
+    // ③ 還抱著的 → 用最新收盤算帳面(會一直變)
+    const lastD = cal[cal.length - 1];
+    for (const t of held.values()) {
+      const b = barAt(await kOf(t.sym), lastD);
+      if (b && b.d >= t.st.d0) { t.st.exitP = b.c; t.st.d1 = b.d; }
+    }
+    for (const t of out.trades) {
+      if (!t.st) continue;
+      const i0 = cal.indexOf(t.st.d0), i1 = cal.indexOf(t.st.d1);
+      t.st.days = (i0 >= 0 && i1 >= 0) ? i1 - i0 : 0;
+      this._stlEnrich(t.st);
+    }
+    // ④ 下一次換倉:第幾個交易日、還剩幾天(= `_leaderClock`)
+    const k = (cal.length - 1) % P.R;
+    out.next = { day: cal.length, left: k === 0 ? 0 : P.R - k, last: lastD };
     return out;
   },
   /** 🏆 V77.2.4 **哪個出場最強**(使用者:「出場規則除唐奇安還要有 atr,我要最強績效實測」)
@@ -3853,12 +3952,12 @@ const PRO = {
     if (this._rlSig !== sig || !this._rl) {
       this._rlSig = sig; this._rl = null;
       el.innerHTML = `<div class="fishcard" style="margin-top:10px"><div class="big">📒 決策台推薦成績單</div>${tabBar}<div class="note">⏳ 正在讀每天的推薦快照並逐筆結算…</div></div>`;
-      this._recoLedgerLoad(null, SRC).then(r => { if (this._rlSig !== sig) return; this._rl = r; this._recoLedgerRender(); })
+      (SRC === 'lead' ? this._leaderLedgerLoad() : this._recoLedgerLoad(null, SRC)).then(r => { if (this._rlSig !== sig) return; this._rl = r; this._recoLedgerRender(); })
         .catch(e => { if (this._rlSig !== sig) return; this._rl = { err: String(e).slice(0, 120) }; this._recoLedgerRender(); });
       return;
     }
     // 🏆 V77.2.4 主表畫好之後,背景再用另一種出場跑一次(K 線已在 `_rlK` 快取,⛔ 不重抓)
-    if (this._rlCmpSig !== sig && this._rl && !this._rl.err) {
+    if (SRC !== 'lead' && this._rlCmpSig !== sig && this._rl && !this._rl.err) {   // 👑 領頭羊⛔ 不比出場規則(它沒有出場線)
       this._rlCmpSig = sig; this._rlCmp = null;
       this._recoCmpLoad(SRC).then(c => { if (this._rlCmpSig !== sig) return; this._rlCmp = c; this._recoLedgerRender(); }).catch(() => {});
     }
@@ -3867,6 +3966,7 @@ const PRO = {
     const SRCDEF = this._RECO_SRCS.find(x => x[0] === SRC) || this._RECO_SRCS[0];
     const head = `<div class="big">📒 決策台推薦成績單 <span class="sigtag">${SRCDEF[1]} ・${R.trades ? R.trades.length : 0} 筆</span></div>${tabBar}`;
     if (R.err) { el.innerHTML = `<div class="fishcard" style="margin-top:10px">${head}<div class="note">⚠️ 讀不到推薦快照(${R.err})—— 稍後再開一次;⛔ 這不是成績為零。</div></div>`; return; }
+    if (!R.days && SRC === 'lead') { el.innerHTML = `<div class="fishcard" style="margin-top:10px">${head}<div class="note">⏳ <b>還沒有任何一天的領頭羊名單</b>(data/pick_history.json 的 lead)—— 採礦下一個交易日收盤後會開始存,並把 ${this._LEAD.anchor} 起錯過的換倉日用 K 線補回來;⛔ 不用你開 App。</div></div>`; return; }
     if (!R.days) { el.innerHTML = `<div class="fishcard" style="margin-top:10px">${head}<div class="note">⏳ 還沒有任何一天的推薦快照(data/pick_history.json)—— 採礦每個交易日收盤後會自動存下決策台「今天可以買的」名單,⛔ 不用你開 App。</div></div>`; return; }
     // 🚨 「重建不出來」與「那幾天真的 0 檔」是兩件事 —— ⛔ 不可長得一樣(陷阱 #22)
     if (R.geneErr) {
@@ -3909,41 +4009,62 @@ const PRO = {
       ? `⭐ <b>📈 符合進場 = 總覽那顆徽章今天在哪幾檔亮</b>:今天出現<b>期望值為正的看多訊號</b>,而且 🧬 <b>${_gtxt}</b> 同時成立(黑名單那幾招不算)。<br>
          ⚠️ 這裡<b>沒有檔數上限</b>(決策台那張有,最多 ${this._RECO_PICKS} 檔)—— 實測大多數日子是 0~3 檔。<br>
          ⚠️ 期望值<b>未扣</b>來回成本 0.44%;這張只過得了「條件到了」,<b>個股頁的空頭守門在這裡算不出來</b>,真的要買會再被擋一次。<br>`
+      : SRC === 'lead'
+      ? `⭐ <b>👑 領頭羊 = 散戶救星決策台最上面那一套</b>:成交額前 100 大(⛔ 不含 ETF)、收盤 &gt; 20 日線 &gt; 60 日線,照近 10 日漲幅排 → <b>每 ${this._LEAD.R} 個交易日換一次</b>(${this._LEAD.anchor} 起第 1、11、21… 天)。<br>
+         🛒 換倉日買前 ${this._LEAD.N} 名還沒有的(最多 ${this._LEAD.N} 檔、等權)・🚪 掉出前 ${this._LEAD.N * this._LEAD.hyst} 名才賣 ・⛔ 不設停損 ・🐻 大盤嚴格空頭那天不買(賣照常)・隔天快漲停的買不到、⛔ 不遞補。<br>
+         ⏱️ 成交 = <b>換倉訊號隔天的收盤</b>(= 自動下單 LEADER=1 的做法;回測數字見散戶救星決策台 👑 的 📖)。<br>
+         ${R.bf && R.bf.length ? `🔁 ${R.bf.join('、')} 那次的名單是<b>事後用 K 線補算的</b>(採礦那時還沒開始存;注意/處置股旗標查不到)。<br>` : ''}`
       : `⭐ <b>🧪 兩張都買 = 上面兩張的聯集</b>(同一檔只算一次)。⛔ 任何一天只要有一張重建不出來,<b>那一天整天不算</b> —— 只算得出來的那一半會讓它看起來像「兩張都買」,其實只買了一張。<br>`;
     const statLine = `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0 4px;font-size:10.5px;color:var(--dim2)">
         <span>📅 ${since} 起</span><span>・快照 ${R.days} 天</span>
         <span style="color:var(--cyan)">・📌 持有中 ${hold.length}</span>
         <span style="color:var(--dim)">・🧾 已結算 ${done.length}</span>${pend.length ? `<span>・讀不到 K 線 ${pend.length}</span>` : ''}
+        ${SRC === 'lead' && R.next ? `<span>・🔄 ${R.next.left ? `下次換倉還有 ${R.next.left} 個交易日` : `${R.next.last.slice(5)} 是換倉日`}</span>` : ''}
+        ${R.ghost ? `<span>・🎑 假日快照 ${R.ghost} 天不算</span>` : ''}
       </div>`;
+    // 👑 還沒成交的那次換倉(訊號出了、隔天收盤還沒到)—— 講清楚「會買什麼、會賣什麼」,⛔ 不假裝已成交
+    const _pl = SRC === 'lead' ? (R.rebs || []).filter(x => x.plan).slice(-1)[0] : null;
+    const planBox = _pl ? `<div class="warnbox" style="margin:4px 0 8px;border-color:var(--cyan)" data-leadplan="1">🔄 <b>${_pl.d.slice(5)} 換倉訊號 → 下一個交易日收盤成交</b>(還沒到,⛔ 還沒算進成績)<br>
+        🛒 會買:${_pl.plan.buy.length ? _pl.plan.buy.map(s => this._nmc(s, `PRO._fishPick('${s}')`)).join(' ') : (_pl.bear ? '🐻 大盤嚴格空頭,這次不買' : '(沒有要買的)')}
+        ${_pl.plan.sell.length ? `<br>🚪 會賣:${_pl.plan.sell.map(s => this._nmc(s, `PRO._fishPick('${s}')`)).join(' ')}` : ''}</div>` : '';
+    const _rebLine = SRC === 'lead' && (R.rebs || []).length ? `<details style="margin:0 0 8px"><summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim2)">🔄 每一次換倉做了什麼(${R.rebs.length} 次)<span style="color:var(--dim2)"> 展開 ▾</span></summary>
+        <div class="note" style="margin:5px 0 0;font-size:10.5px">${R.rebs.map(x => `${x.d.slice(5)}:${!x.has ? '⚠️ 沒有那天的名單(採礦沒存到)→ 這次沒動' : x.plan ? '⏳ 等下一個交易日收盤成交' : `${x.bear ? '🐻 空頭不買・' : ''}買 ${x.buys.length ? x.buys.join(' ') : '—'}・賣 ${x.sells.length ? x.sells.join(' ') : '—'}${x.skips.length ? '・' + x.skips.join('、') : ''}`}`).join('<br>')}</div></details>` : '';
     el.innerHTML = `<div class="fishcard" style="margin-top:10px;border-color:var(--cyan);background:rgba(56,189,248,.05)">
       ${head}
       ${statLine}
+      ${planBox}${_rebLine}
       <details style="margin:0 0 8px">
         <summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim2)">📖 這張表在算什麼 <span style="color:var(--dim2)">展開 ▾</span></summary>
         <div class="note" style="margin:5px 0 0;font-size:10.5px">
           ${srcNote}
-          進場 = 推薦那天的收盤,出場 = <b>${this._exitRuleName()}</b>(換規則整張表重算)。
+          ${SRC === 'lead' ? '進場 / 出場 = 換倉訊號隔天的收盤(規則見上面)。' : `進場 = 推薦那天的收盤,出場 = <b>${this._exitRuleName()}</b>(換規則整張表重算)。`}
           ${R.skipped ? `📅 其中 ${R.skipped} 天重建不出這張清單(快照沒有那幾個欄位),⛔ 不硬湊。<br>` : ''}
           ⚠️ 決策台真正排序時會把<b>你自己持有的</b>排前面,這裡是<b>不含持股的純推薦版</b>;同一檔還持有中就不重複開倉。<br>
           🚨 <b>三張分頁的筆數⛔ 不可以相加</b> —— 它們問的是不同的問題,而且同一檔可能同時出現在兩張裡。<br>
           🕐 <b>買進時機、挑選條件</b>那幾條寫在散戶救星決策台的「📖 使用說明」裡(⛔ 這裡不重複,免得兩邊講不一樣)。
         </div>
       </details>
-      ${R.trades.length ? '' : (R.skipped >= R.days
+      ${R.trades.length ? '' : SRC === 'lead'
+        ? (_pl ? '' : `<div class="note">📭 還沒有任何一次換倉成交(第一次換倉日 ${this._LEAD.anchor})。</div>`)
+        : (R.skipped >= R.days
         ? `<div class="note">⏳ <b>這一張還沒有資料</b> —— 快照裡那 ${R.days} 天都缺這張清單需要的欄位(${SRC === 'pb' ? '🧬/空頭旗標' : '訊號的位階/振幅'}),⛔ 重建不出來也⛔ 不硬湊。<br>採礦下一輪跑完就會開始累積;⭐ 這<b>不是</b>「那幾天沒有股票」。</div>`
         : `<div class="note">📭 ${since} 之後還沒有任何一天有符合的股票(⛔ 那不是壞掉 —— 條件本來就嚴)。</div>`)}
       ${hold.length ? `<div style="font-size:11px;color:var(--cyan);font-weight:700;margin:2px 0 5px;border-left:3px solid var(--cyan);padding-left:6px">📌 持有中 ${hold.length} 筆 <span style="font-weight:400;color:var(--dim2);font-size:10px">帳面浮動,會一直變</span></div>${hold.map(row).join('')}` : ''}
       ${done.length ? `<div style="font-size:11px;color:var(--dim);font-weight:700;margin:8px 0 5px;border-left:3px solid var(--line);padding-left:6px">🧾 已結算 ${done.length} 筆 <span style="font-weight:400;color:var(--dim2);font-size:10px">出場價已定,不會再變</span></div>${done.map(row).join('')}` : ''}
       ${pend.length ? pend.map(row).join('') : ''}
-      ${R.trades.length ? this._stlCard(R.trades, '推薦') : ''}
-      ${R.trades.length ? this._recoCmpHtml() : ''}
+      ${R.trades.length ? this._stlCard(R.trades, '推薦', SRC === 'lead') : ''}
+      ${R.trades.length && SRC !== 'lead' ? this._recoCmpHtml() : ''}
     </div>`;
   },
   // 📊 成績單:只算**已結算**的(持有中的⛔ 不可混進來 —— 那會讓還在虧的部位不計入)
-  _stlCard(rows, who = '釣起') {
+  _stlCard(rows, who = '釣起', lead = false) {
     const done = rows.map(r => r.st).filter(s => s && !s.open);
     const open = rows.filter(r => r.st && r.st.open).length;
     const pend = rows.filter(r => !r.st).length;
+    if (!done.length && lead) {
+      return `<div class="note" style="margin-top:8px">🧾 <b>自動結算</b>:目前<b>還沒有任何一檔賣出</b>${open ? `(${open} 檔持有中)` : ''}。
+        👑 領頭羊只在<b>換倉日掉出前 ${this._LEAD.N * this._LEAD.hyst} 名</b>才賣(⛔ 不設停損)—— 最快要到下一次換倉日才會有第一筆結算。</div>`;
+    }
     if (!done.length) {
       return `<div class="note" style="margin-top:8px">🧾 <b>自動結算</b>:目前<b>還沒有任何一條觸發出場</b>
         ${open ? `(${open} 條持有中` : '('}${pend ? `${open ? '、' : ''}${pend} 條讀不到 K 線` : ''})。
@@ -3975,18 +4096,18 @@ const PRO = {
         <div><b>一張合計(已扣成本)</b><span class="mono ${this.cls(totLot)}">${(totLot >= 0 ? '+' : '') + totLot.toLocaleString()} 元</span></div>
         <div><b>中途最多賠</b><span class="mono">${dd > 0 ? '−' + Math.round(dd).toLocaleString() + ' 元' : '—'}</span></div>
         <div><b>平均抱幾天</b><span class="mono">${dAvg.toFixed(1)} 個交易日</span></div>
-        <div><b>出場規則</b><span class="mono">${this._exitRuleName()}</span></div>
+        <div><b>出場規則</b><span class="mono">${lead ? `掉出前 ${this._LEAD.N * this._LEAD.hyst} 名` : this._exitRuleName()}</span></div>
       </div>
       <div class="note" style="margin-top:6px">
         ${enough ? '' : `⚠️ <b>只有 ${n} 筆,⛔ 還不能當結論</b>(全站規則:樣本 <10 筆不下判斷)。<br>`}
-        🧾 <b>怎麼算的</b>:進場 = ${who}那天的收盤;停損 = <b>min(${who}日最低, ${who}價 −5%)</b>;
+        ${lead ? `🧾 <b>怎麼算的</b>:換倉訊號隔天收盤買、掉出前 ${this._LEAD.N * this._LEAD.hyst} 名那次換倉的隔天收盤賣,⛔ 不設停損、⛔ 沒有最長天數 —— 跟自動下單(LEADER=1)同一套。` : `🧾 <b>怎麼算的</b>:進場 = ${who}那天的收盤;停損 = <b>min(${who}日最低, ${who}價 −5%)</b>;
         收盤跌破<b>${this._exitRuleName()}</b>就走,最長 ${this._stlMaxd()} 個交易日 ——
-        ⭐ 跟「📖 回測計算機」那份<b>一字不差</b>(改出場規則這裡會全部重算)。
+        ⭐ 跟「📖 回測計算機」那份<b>一字不差</b>(改出場規則這裡會全部重算)。`}
         每趟已扣<b>來回成本 0.44%</b>,「超額」再扣<b>同期加權指數</b>。<br>
         🚨 <b>這是紙上成績,⛔ 不是你的實際損益</b>:回測的進場是訊號日<b>尾盤 13:00~13:28</b>,
         這裡用的是<b>收盤價</b>,而且沒有滑價。要記真的成交價請用散戶救星的「🪞 勝率鏡子」。<br>
         📉 「中途最多賠」是<b>一次做一張、照結算順序</b>算的,
-        ⛔ 不是帳戶回撤(回測是同時抱 2 檔、每筆 15 萬 → ${this._SIG_DEEP.months} 個月最大回撤 −${this._SIG_DEEP.geneDD}%)。</div></div>`;
+        ${lead ? '⛔ 不是帳戶回撤(領頭羊回測的帳戶回撤很大,數字見散戶救星決策台 👑 的 📖)。' : `⛔ 不是帳戶回撤(回測是同時抱 2 檔、每筆 15 萬 → ${this._SIG_DEEP.months} 個月最大回撤 −${this._SIG_DEEP.geneDD}%)。`}</div></div>`;
   },
   // ═══ 📡 V74.6.8 即時報價(使用者:「漁獲籃裡面我想要即時價格,這樣才知道有沒有賺錢」)═══
   // ⭐ 走 gh-pages 的 `data/live_quotes.json` —— **零金鑰**:採礦端(永豐 Shioaji)盤中每 5 分鐘
@@ -5118,7 +5239,7 @@ const PRO = {
   LAB: {
     ok: [
       { r: 24, k: 'crash-recovery', u: '2026-09-28', t: '🌪️ <b>加權跌 20% 之後要多久回來:16 年 5 次、全部回來了,但中位要 1 年半(含息約 1 年)</b>', w: '只描述 ・⛔ 不是買進訊號', how: '跌到 −20% 那天不是「底」:到底中位還要再跌到 −28.7%(最深 −31.6%)。從觸發到回到前高,光看指數中位 393 個交易日(最久 691 天 ≈ 2.8 年);含股利中位 251 天(最久 491 天)。⭐ 所以長期抱的人要準備的是「一年多沒回本」的耐心,⛔ 不是「跌 20% 就加碼」—— 5 次樣本不夠當訊號。', n: '2010~2026 加權(4,101 天):回撤 ≥10% 11 段(全部回來,觸發→回前高中位 185 天、最久 702)・≥15% 8 段(中位 245.5 天)・<b>≥20% 5 段</b>(2011/2015/2020/2022/2025,中位 393 天、含息 251 天)・≥30% 只有 2022 那 1 段(321 天)。觸發後 250 天含息:−20% 那 5 次全部為正、平均 +44.8%(隨便挑一天 +16.3%、差 +28.5pp)但 t=1.65、n=5 → ⏳ 不下結論;−10% 那 11 次反而 −1.9pp(跟平常沒差)。', d: '外部 repo global_asset_history(評估紀錄㊶)的「暴跌統計」功能。本站以前只有「大跌後隔天站回機率」(crash_exit_probe --facts)跟逐年成績單,沒量過「每一段大跌多深、多久回來」。<br>⚠️ 用的是加權指數(沒有交易成本、不是任何一檔股票);含息那份是官方報酬指數。⚠️ 16 年只有 5 次 −20%,每一次的原因都不同(歐債 / 人民幣 / 疫情 / 升息 / 關稅)→ ⛔ 不可把「全部回來了」讀成「一定會回來」。', s: 'vix_crash_probe.mjs(B 段)・評估紀錄㊶・V77.8.1', pl: ['long', '長期', 1, '加權跌 20% 之後，16 年 5 次都有回來，但要等一年多', '長期抱的人要準備的是「一年多沒回本」的耐心，不是跌 20% 就加碼（只有 5 次，不夠當訊號）。', '5 次都回到前高：中位 393 天（含股利 251 天），最久約 2.8 年'] },
-      { r: 102, k: 'leader-rotation', u: '2026-09-28', t: '👑 <b>自創「領頭羊短線輪動」(V77.9.1 起<u>散戶救星決策台預設</u>,排最上面):成交額前 100 大裡挑近 10 日漲最多的 5 檔、每 10 天換一次 —— 兩個窗口都贏 0050 含息;想穩一點就「永遠一半放 0050」(回撤 −61% → −42%、16 年 17/17 贏);⛔ 停利能拉高勝率但報酬掉到跟 0050 一樣</b>', w: '✅ V77.9.1 決策台預設(使用者:「預設目前最強是領頭羊嗎?是就預設」)・名單附收盤價、表頭可排序 ・個股總覽有一行「領頭羊怎麼說」・持股要自己標「照這套買的」才會講賣 ・⚠️ 逐年同向沒過(代價寫在畫面)・自動下單仍要自己開「LEADER=1」(預設關、模擬單)・穩定版 = 五成 0050', how: '每 10 個交易日收盤:池子 = 近 20 日平均成交金額前 100 大的普通股(⛔ 不含 ETF);過濾 = 收盤 > 20 日線 > 60 日線;排名 = 近 10 個交易日漲幅(已還原除權息),取前 5 檔,隔天開盤等權買(開盤接近漲停不追);下次換倉還在前 10 名就續抱、掉出去隔天開盤賣;⛔ 不設停損線;閒錢停 0050;大盤嚴格空頭不開新倉。成本用全額手續費(來回 0.585%,比本站其他回測的 0.44% 嚴)。17 條起點(每 3 個交易日一條,涵蓋每一種換倉日)。', n: '<b>AI 時代 2022-09~2026-09</b>:<b>760%</b> vs 0050 含息 375%(17 條贏 15)・年化 73% ・回撤 −50%(0050 −27%)・<b>安慰劑(同池子隨機挑 5 檔)361%</b>、池子等權 287%。<b>2011~2026</b>:<b>3,176%</b> vs 0050 含息 1,097%(<b>17/17</b>,最差那條也多 447pp)・年化 25% ・回撤 −61%(0050 −34%)・安慰劑只有 79%;2011~2020 那段 +265% vs 0050 +176%(⚠️ 那段個股沒有股利資料,對策略不利)。<b>高原</b>:動能 8/10/12 日 × 池子 100/150/200 大 9 組兩個窗口中位全贏。⛔ 最初設計(60 日動能 + 吊燈 2 倍 + 每週換 + 前 50 大)17 條 0 條贏;加吊燈 3 倍 381%(=0050)。⚠️ 成本加倍:AI 時代仍 478%(12/17),16 年變 648% 輸 0050(6/17)。16 年只有 9 年贏 0050(2012/2014/2016/2019/2022/2024 都輸)。<br>🧭 <b>V77.8.6 穩定度變體(兩窗口・17 條)</b>:<b>永遠五成在 0050</b> AI 595%(15/17)/ 16 年 <b>2,345%(17/17,最差那條 +643pp)</b>、回撤 −37% / −42%、最差一年 −46pp(中心點 −79)、滾動 12 個月贏 0050 61% / 54%(中心點 59 / 51);三成 / 七成 0050 是單調高原(16 年 2,798 / 1,821%,回撤 −50 / −36%)。❌ <b>停利 5%:勝率 50% → 63%,但 AI 時代 391%(= 0050)、16 年 703%(輸)</b>;停利 10% 勝率 55%、16 年 914%(輸)。❌ 跌破 20 日線賣:AI 338%、16 年 1,011%(都輸 0050)。❌ 動能 ÷ ATR、分散 10 檔:回撤略小但 16 年 2,005 / 1,523%(輸中心點)。➖ 動能不算最近 1 天:AI 1,008% / 16 年 3,110%(跟中心點差不多,⛔ 不換)。⚠️ 五成 0050 成本 ×2:AI 470%(13/17)、16 年 1,036%(8/17,= 0050)。<br>⏱️ <b>V77.8.9 成交時點</b>:隔天開盤買(回測原設定)AI 760% / 16 年 3,176%;<b>隔天尾盤買</b>(自動下單照前一晚名單在尾盤下)AI <b>670%</b>(14/17)/ 16 年 <b>2,219%</b>(13/17)—— 差一點但仍贏 0050。🚨 <b>注意股 / 處置股:⛔ 不要跳過</b> —— 最近 3 天進過注意股就不買 501%、10 天內 453%、處置中不買 <b>341%</b>(只 6/17 贏 0050)、進處置就賣 468%,全部比「照常買」的 760% 差(會進注意/處置的正是漲最多的那幾檔,同 V77.6.8)。<br>🗓️ <b>V77.8.9 AI 時代逐月</b>(46 個完整月・17 條中位):贏 0050 的月份 <b>53%</b>(決策台預設 49%)、抱 12 個月贏 <b>59%</b>(預設 34%);⚠️ 最壞一個月 <b>−30%</b>(最差那條起點 −43%)、0050 跌的月份它<b>跌得更多</b>(跟跌 115%)、漲的月份拿到 153%;連虧最長 4 個月、水下最長 13 個月;拿上個月預測這個月三條都量不到。', d: '使用者:「自創適合 AI 選股法 + 出場,短線,我要贏 0050」→ 換模型後再問「更厲害更穩定的高勝率、快速增加財富」。⭐⭐ <b>第二輪的答案:沒有「又穩又高勝率又賺更多」的版本,只有一條「報酬 ↔ 回撤」的線</b> —— 每個穩定度變體都是用報酬換回撤;<b>「高勝率」在這套上是陷阱</b>:停利把勝率拉到 63% 的同時把贏家砍掉,報酬變成跟買 0050 一樣(跟 V72.0.3「勝率高 ≠ 會賺錢」、V74.4.8「太早出場洗掉贏家」同一個結論,第三次)。⭐ 為什麼長這樣:現行預設挑高波動小型股,AI 行情集中在大型權值股 → 池子改成當時看得到的成交額排名(⛔ 不用 AI 題材名單 —— 那份是事後手選的)。⭐ 真正在賺錢的是「10 日動能排名」:同一個池子隨機挑只有 361% / 79%。⭐ 出場最有效的是「掉出前 10 名就換掉」,⛔ 停損線反而害它(剛轉強的股票常常先回檔)。⚠️ 代價:中途最多賠一半以上、大約每 2~3 年有一年輸 0050、交易頻繁(一年約 70 筆)→ 成本與紀律都很重要。⚠️ 只有現存股票(倖存者偏誤);2021 前只有上市股、沒有股利。', s: 'leader_probe.mjs(網格 216 + 81 + 9 組 + 穩定度變體 14 組 + 成交時點 / 注意處置 7 組・兩個窗口・17 條・安慰劑・成本 ×2)・auto_trade.py leader_step・month_probe.mjs(EQ_DIR)・V77.8.5~V77.9.0', pl: ['do', '整套', 2, '現在的決策台預設:大型股裡挑近兩週最強的 5 檔、兩週換一次,4 年與 16 年都贏 0050;一半放 0050 就穩很多', '決策台最上面就是這份名單;撐不住賠一半就把一半錢放 0050(回撤 −42%、16 年每條起點都贏);⛔ 別加停利 —— 勝率會變好看但賺的錢變成跟 0050 一樣。名單在散戶救星決策台最上面(換倉日從 2026-09-24 起每 10 個交易日,手機與自動下單同一個日子;你手上照這套買的要按「這檔是照這套買的」標起來);自動下單要自己開 「LEADER=1」。進注意股 / 處置股⛔ 別跳過。', 'AI 時代 760% vs 0050 375%;16 年 3,176% vs 1,097%;五成 0050 版 595% / 2,345%、回撤 −37~−42%'] },
+      { r: 102, k: 'leader-rotation', u: '2026-09-28', t: '👑 <b>自創「領頭羊短線輪動」(V77.9.1 起<u>散戶救星決策台預設</u>,排最上面):成交額前 100 大裡挑近 10 日漲最多的 5 檔、每 10 天換一次 —— 兩個窗口都贏 0050 含息;想穩一點就「永遠一半放 0050」(回撤 −61% → −42%、16 年 17/17 贏);⛔ 停利能拉高勝率但報酬掉到跟 0050 一樣</b>', w: '✅ V77.9.1 決策台預設(使用者:「預設目前最強是領頭羊嗎?是就預設」)・名單附收盤價、表頭可排序 ・個股總覽有一行「領頭羊怎麼說」・持股要自己標「照這套買的」才會講賣 ・⚠️ 逐年同向沒過(代價寫在畫面)・自動下單仍要自己開「LEADER=1」(預設關、模擬單)・穩定版 = 五成 0050 ・📒 V77.9.3 起成績單第 4 頁自動模擬買賣(09-24 起)', how: '每 10 個交易日收盤:池子 = 近 20 日平均成交金額前 100 大的普通股(⛔ 不含 ETF);過濾 = 收盤 > 20 日線 > 60 日線;排名 = 近 10 個交易日漲幅(已還原除權息),取前 5 檔,隔天開盤等權買(開盤接近漲停不追);下次換倉還在前 10 名就續抱、掉出去隔天開盤賣;⛔ 不設停損線;閒錢停 0050;大盤嚴格空頭不開新倉。成本用全額手續費(來回 0.585%,比本站其他回測的 0.44% 嚴)。17 條起點(每 3 個交易日一條,涵蓋每一種換倉日)。', n: '<b>AI 時代 2022-09~2026-09</b>:<b>760%</b> vs 0050 含息 375%(17 條贏 15)・年化 73% ・回撤 −50%(0050 −27%)・<b>安慰劑(同池子隨機挑 5 檔)361%</b>、池子等權 287%。<b>2011~2026</b>:<b>3,176%</b> vs 0050 含息 1,097%(<b>17/17</b>,最差那條也多 447pp)・年化 25% ・回撤 −61%(0050 −34%)・安慰劑只有 79%;2011~2020 那段 +265% vs 0050 +176%(⚠️ 那段個股沒有股利資料,對策略不利)。<b>高原</b>:動能 8/10/12 日 × 池子 100/150/200 大 9 組兩個窗口中位全贏。⛔ 最初設計(60 日動能 + 吊燈 2 倍 + 每週換 + 前 50 大)17 條 0 條贏;加吊燈 3 倍 381%(=0050)。⚠️ 成本加倍:AI 時代仍 478%(12/17),16 年變 648% 輸 0050(6/17)。16 年只有 9 年贏 0050(2012/2014/2016/2019/2022/2024 都輸)。<br>🧭 <b>V77.8.6 穩定度變體(兩窗口・17 條)</b>:<b>永遠五成在 0050</b> AI 595%(15/17)/ 16 年 <b>2,345%(17/17,最差那條 +643pp)</b>、回撤 −37% / −42%、最差一年 −46pp(中心點 −79)、滾動 12 個月贏 0050 61% / 54%(中心點 59 / 51);三成 / 七成 0050 是單調高原(16 年 2,798 / 1,821%,回撤 −50 / −36%)。❌ <b>停利 5%:勝率 50% → 63%,但 AI 時代 391%(= 0050)、16 年 703%(輸)</b>;停利 10% 勝率 55%、16 年 914%(輸)。❌ 跌破 20 日線賣:AI 338%、16 年 1,011%(都輸 0050)。❌ 動能 ÷ ATR、分散 10 檔:回撤略小但 16 年 2,005 / 1,523%(輸中心點)。➖ 動能不算最近 1 天:AI 1,008% / 16 年 3,110%(跟中心點差不多,⛔ 不換)。⚠️ 五成 0050 成本 ×2:AI 470%(13/17)、16 年 1,036%(8/17,= 0050)。<br>⏱️ <b>V77.8.9 成交時點</b>:隔天開盤買(回測原設定)AI 760% / 16 年 3,176%;<b>隔天尾盤買</b>(自動下單照前一晚名單在尾盤下)AI <b>670%</b>(14/17)/ 16 年 <b>2,219%</b>(13/17)—— 差一點但仍贏 0050。🚨 <b>注意股 / 處置股:⛔ 不要跳過</b> —— 最近 3 天進過注意股就不買 501%、10 天內 453%、處置中不買 <b>341%</b>(只 6/17 贏 0050)、進處置就賣 468%,全部比「照常買」的 760% 差(會進注意/處置的正是漲最多的那幾檔,同 V77.6.8)。<br>🗓️ <b>V77.8.9 AI 時代逐月</b>(46 個完整月・17 條中位):贏 0050 的月份 <b>53%</b>(決策台預設 49%)、抱 12 個月贏 <b>59%</b>(預設 34%);⚠️ 最壞一個月 <b>−30%</b>(最差那條起點 −43%)、0050 跌的月份它<b>跌得更多</b>(跟跌 115%)、漲的月份拿到 153%;連虧最長 4 個月、水下最長 13 個月;拿上個月預測這個月三條都量不到。', d: '使用者:「自創適合 AI 選股法 + 出場,短線,我要贏 0050」→ 換模型後再問「更厲害更穩定的高勝率、快速增加財富」。⭐⭐ <b>第二輪的答案:沒有「又穩又高勝率又賺更多」的版本,只有一條「報酬 ↔ 回撤」的線</b> —— 每個穩定度變體都是用報酬換回撤;<b>「高勝率」在這套上是陷阱</b>:停利把勝率拉到 63% 的同時把贏家砍掉,報酬變成跟買 0050 一樣(跟 V72.0.3「勝率高 ≠ 會賺錢」、V74.4.8「太早出場洗掉贏家」同一個結論,第三次)。⭐ 為什麼長這樣:現行預設挑高波動小型股,AI 行情集中在大型權值股 → 池子改成當時看得到的成交額排名(⛔ 不用 AI 題材名單 —— 那份是事後手選的)。⭐ 真正在賺錢的是「10 日動能排名」:同一個池子隨機挑只有 361% / 79%。⭐ 出場最有效的是「掉出前 10 名就換掉」,⛔ 停損線反而害它(剛轉強的股票常常先回檔)。⚠️ 代價:中途最多賠一半以上、大約每 2~3 年有一年輸 0050、交易頻繁(一年約 70 筆)→ 成本與紀律都很重要。⚠️ 只有現存股票(倖存者偏誤);2021 前只有上市股、沒有股利。', s: 'leader_probe.mjs(網格 216 + 81 + 9 組 + 穩定度變體 14 組 + 成交時點 / 注意處置 7 組・兩個窗口・17 條・安慰劑・成本 ×2)・auto_trade.py leader_step・month_probe.mjs(EQ_DIR)・V77.8.5~V77.9.0', pl: ['do', '整套', 2, '現在的決策台預設:大型股裡挑近兩週最強的 5 檔、兩週換一次,4 年與 16 年都贏 0050;一半放 0050 就穩很多', '決策台最上面就是這份名單;撐不住賠一半就把一半錢放 0050(回撤 −42%、16 年每條起點都贏);⛔ 別加停利 —— 勝率會變好看但賺的錢變成跟 0050 一樣。名單在散戶救星決策台最上面(換倉日從 2026-09-24 起每 10 個交易日,手機與自動下單同一個日子;你手上照這套買的要按「這檔是照這套買的」標起來);自動下單要自己開 「LEADER=1」。進注意股 / 處置股⛔ 別跳過。', 'AI 時代 760% vs 0050 375%;16 年 3,176% vs 1,097%;五成 0050 版 595% / 2,345%、回撤 −37~−42%'] },
       { r: 95, k: 'deck-default', u: '2026-09-27', t: '🔁 <b>新預設:吊燈 ATR 2 倍 + 抱 20 天 + 大盤空頭不買(修好的日 K:近 4 年 179 → 324 萬、16 年 285 → 494 萬)</b>', w: '✅ 🧬 那套的預設出場(自動下單預設也是這套);⚠️ V77.9.1 起決策台預設顯示的是領頭羊(這套在設定裡勾回來)', how: '選股不動(🧬 高位階 + 高波動、每天 2 檔 × 15 萬、訊號日尾盤進場、停損收盤成交),只換出場:① 出場線 = <b>進場後最高收盤 − 2 × ATR14(進場那天的 ATR)</b>,只會往上移 ② 最長抱 <b>20 天</b> ③ 大盤收盤在 60 日線下、而且 20 日線也在 60 日線下那一天不開新倉(賣出照常)。', n: '<b>修好日 K(陷阱 #46)後</b>、含股利 + 二代健保、17 條路徑中位:本站 2022-09~2026-09 <b>324 萬</b>(255~354)vs 上一任唐奇安 40 日 179 萬 —— <b>17/17 條全贏、17/17 條回撤較小</b>(−43.4% → −32.8%)・外部 + 官方加權 2011~2026 <b>494 萬</b>(420~503)vs 285 萬(17/17)・⛰️ ATR 倍數 1.5 / 2 / 2.5 / 3 → 242 / <b>324</b> / 305 / 329 萬(2 倍以上一片高原)', d: '🚨 <b>誠實的另一半</b>:① <b>它的優勢全部在 2021 年以後</b> —— 2011~2020 那十年只賺 47 萬,唐奇安 40 日反而 115 萬(逐年同向這一關<b>沒過</b>;你明示「以現在最厲害的執行」才換)。② <b>兩個窗口都輸 0050 含息</b>(4 年約 350 萬、16 年約 1,068 萬)。③ 交易次數約兩倍(約 1,000 筆 vs 480 筆),勝率約 33%。④ 移動停利 8% 近 4 年中位更高(334 萬),但 6/8/10% 在 4 年 205/334/323、16 年 552/448/347 —— 兩個窗口方向相反、16 年也輸吊燈 → ⛔ 不選。⑤ 🐻 空頭不買這一條在新出場上幾乎沒差(324 vs 323、8/17)—— 留著是因為它只擋買進。<br>🔄 <b>「情勢變了自動換規則」也測了</b>(見「沒用」欄 k:exit-switch):輸給固定用這一套。<br>📜 歷次:V77.6.5(資料還沒修)唐奇安 40 日 + 抱 40 天 + 空頭不買 近 4 年 107 → 409 萬、16 年破產 → 648 萬、閒錢停 0050 417 / 656 萬 —— ⚠️ 那一組數字是日 K 混了還原價(陷阱 #46)+ 回測日曆 bug 撐出來的,修好後同一套只剩 179 / 285 萬。', s: 'portfolio_backtest.mjs EXIT=chand2 MAXD=20 FILTER=bear60 DIV_TRADES・WARMUP=240~320・V77.7.6', pl: ['do', '出場', 3, '目前預設的賣法：從最高點退一段就賣、最多抱 20 天、大盤轉弱不買新的', '買法不變，只換賣法：① 從買進後最高收盤往下退「2 倍平日波動」就賣，這條線只會往上移 ② 最多抱 20 個交易日 ③ 大盤明顯走弱那天不開新倉（賣照常）。', '100 萬放 4 年變 324 萬（舊賣法 179 萬）；同期 0050 含息約 350 萬'] },
       { r: 73, k: 'ai-monthly', u: '2026-09-28', t: '🗓️ <b>AI 時代逐月:現行預設每個月贏不贏 0050 跟丟銅板一樣(49%),持有 12 個月也只贏 34%;跌的月份少賠、漲的月份少賺</b>', w: '描述型 ・短中線要知道的機率分布 ・⛔ 不是訊號', how: '拿現行預設(吊燈 ATR 2 倍・最長 20 天・大盤嚴格空頭不開新倉・收盤成交・含股利)17 條起點的逐日市值淨值(2022-09~2026-09),每月最後一個交易日切月,跟 0050 含息(除息再投入 + 二代健保)同一天比;每個月取 17 條中位;持有 1/3/6/12 個月 = 任何一個月底開始連續 N 個完整月(複利)。預測檢定:一個月一個樣本,|t| ≥ 2 且前後半同向才算。', n: '45 個完整月:賺錢的月份 <b>52%</b>(0050 72%)・贏 0050 <b>49%</b>・0050 漲的 32 個月只拿到 66%(贏 38%)、跌的 13 個月只跟跌 -27%(贏 77%)・最壞一個月 <b>-12.0%</b>(100 萬賠約 12.0 萬)・連虧最長 6 個月・從高點回不來最長 <b>23 個月</b>。持有 1/3/6/12 個月贏 0050:49% / 50% / 51% / <b>34%</b>(0050 自己賺錢的機率 72% / 84% / 92% / 100%)。🔮 上月輸→本月補回 t=0.21、上月 0050 大漲→本月較差 t=0.17、月底加權在 60 日線上→本月較好 t=0.23 <b>三條都量不到</b>。閒錢停 0050 版:贏 0050 51%、跌的月份只跟跌 7%、連虧最長 4 個月。', d: '使用者:「你現在回測都是以年計算,對於 AI 後的每個月有做回測嗎?我想要的是做短中線」。⭐ 逐月<b>不是</b>「幾月比較好」(每個月份只有 4 個樣本,那個驗不了);它回答的是「持有 N 個月的機率分布」:① 1~3 個月贏不贏 0050 幾乎是丟銅板、差距可以到 ±20pp 以上 → ⛔ 不要用一兩個月判斷這套好不好;② 連虧 6 個月、水下 23 個月在實測範圍內 → 預期要先放好;③ 它是<b>防守型</b>(跌的月份少賠)但 AI 行情集中在大型權值股,漲的月份跟不上 → 12 個月贏 0050 只有 34%;④ 拿上個月的成績或大盤位置調部位,實測量不到。⚠️ 只有一段 AI 行情、45 個月;帳戶每筆固定 15 萬,錢越滾越多時 % 會被閒置現金稀釋。畫面在「回測數字」頁最下面「🗓️ AI 時代逐月」。', s: 'month_probe.mjs + embed_monthly_bt.mjs(eq 17 條・portfolio_backtest EQUITY_OUT)・V77.8.4', pl: ['ref', '整套', 2, '每個月贏不贏 0050 像丟銅板,一兩個月看不出好壞', '做短中線要先接受:連輸幾個月是正常的,不要因為上個月輸就加碼或換策略;這套是跌的時候少賠、漲的時候少賺。', '贏 0050 的月份 49%、連虧最長 6 個月、最壞一個月 100 萬賠約 12 萬'] },
       { r: 74, k: 'core-sat', u: '2026-09-27', t: '🐢🛰️ <b>0050 當核心、本站策略當衛星(70/30 這種固定比例 + 定期再平衡):報酬換回撤,月再平衡比不再平衡多 15~20 萬</b>', w: '取捨型 ・列成參考 ・⛔ 不換預設', how: '把回測帳戶(100 萬本金、每筆 15 萬、含閒置現金)的<b>逐日市值淨值</b>當衛星,0050 含息(除息再投入 + 二代健保)當核心,兩腿各自複利、依 100/0、90/10 … 50/50 的比重,每月 / 每季第一個交易日把總值重切一次(或不再平衡),17 條起點(2022-09 起每 5 個交易日一條)取中位。', n: '<b>衛星 = 現行預設帳戶</b>(吊燈 ATR 2 倍・抱 20・空頭不買):100% 0050 含息 <b>349.9%</b>(中途最多賠 −27.5%)・純策略 324.3%(−33.9%,贏 0050 2/17)・<b>70/30 月再平衡 365.0%</b>(−23.3%,贏 0050 11/17、回撤 17/17 較小、每年換手 17%)・90/10 月 357.6%(15/17)。<b>衛星 = 閒錢停 0050 的帳戶</b>:純策略 <b>435.3%</b>(17/17 贏、−31.0%)・50/50 月 418.0%(−21.8%,17/17、17/17)・70/30 月 395.0%(−23.4%)。⛔ <b>所有混合的滾動 24 個月超額都是負的</b>(中位 −5~−26pp、為正的比例只有 22~26%)—— 0050 在後半段太強。', d: '外部 AI 建議「0050 Core + 策略 Satellite,看 CAGR/Sharpe/Sortino/Calmar/回撤/週轉/滾動超額」。⭐ 結論跟 V74.3.2 那次近似版一樣:<b>混合是在「報酬 ↔ 回撤」那條線上挑位置,不是變強</b>;這次多學到兩件:① <b>定期再平衡有價值</b>(同樣 70/30,月再平衡比放著多 20 萬、回撤一樣,代價是每年換手約 17%)② <b>最強的不是混合,是「閒錢停 0050」本身</b>(435 萬 > 任何混合 > 0050)—— 那等於「策略在用錢時才離開 0050」。<br>⚠️ 兩個假設:策略腿可線性縮放(流動性忽略);Sharpe/Sortino 用日報酬、無風險利率 0。⚠️ 4 年窗口偏多頭、0050 含息年化 48.7% 是不可能長期持續的數字,⛔ 別拿這裡的 CAGR 當預期。', s: 'core_sat_probe.mjs + portfolio_backtest EQUITY_OUT(17 條)・V77.7.7', pl: ['long', '長期', 2, '0050 當主力、策略當小部位：回撤變小，但不會比較會賺', '想少一點大起大落，可以 7:3、每月把比例調回來；要賺最多就別混。', '70/30 每月調回 365 萬 vs 純 0050 350 萬（中途最多賠 −23% vs −28%）'] },
@@ -5969,7 +6090,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V77.9.2',
+  VER: 'V77.9.3',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

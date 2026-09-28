@@ -28,9 +28,11 @@ const _hs = SRC.indexOf('_leaderHelp() {'), _hTxt = SRC.slice(_hs, _hs + 4000);
 ok('④c 🗓️ 逐月數字讀 `_LEADER_EDGE.mon`(⛔ 說明不寫死)', /mon: \{ n: \d+, beat: \d+/.test(SRC) && /\$\{E\.mon\.beat\}/.test(_hTxt) && /\$\{E\.mon\.worstAll\}/.test(_hTxt) && !/贏 0050 的月份 53%/.test(_hTxt));
 const AT = fs.readFileSync(path.join(ROOT, 'auto_trade.py'), 'utf8');
 const jsRule = (SRC.match(/rule: \{ U: (\d+), N: (\d+), R: (\d+), L: (\d+), hyst: (\d+) \}/) || []).slice(1).join(',');
-const pyRule = (AT.match(/LEADER_RULE = \{'U': (\d+), 'N': (\d+), 'R': (\d+), 'L': (\d+), 'hyst': (\d+)\}/) || []).slice(1).join(',');
-ok('⑤ 規則 App == auto_trade.py(U,N,R,L,hyst)', jsRule && jsRule === pyRule, `${jsRule} vs ${pyRule}`);
-const jsAnc = (SRC.match(/anchor: '(\d{4}-\d{2}-\d{2})'/) || [])[1], pyAnc = (AT.match(/LEADER_ANCHOR = os\.getenv\('LEADER_ANCHOR'\) or '(\d{4}-\d{2}-\d{2})'/) || [])[1];
+// 👑 V77.9.3 規則 / 錨點搬到 lib_leader.py(auto_trade.py 與成績單的採礦端共用)→ 比對那一份,並釘住 auto_trade 真的用它
+const LIBL = fs.readFileSync(path.join(ROOT, 'lib_leader.py'), 'utf8');
+const pyRule = (LIBL.match(/LEADER_RULE = \{'U': (\d+), 'N': (\d+), 'R': (\d+), 'L': (\d+), 'hyst': (\d+)\}/) || []).slice(1).join(',');
+ok('⑤ 規則 App == lib_leader.py(U,N,R,L,hyst),auto_trade.py 從它 import', jsRule && jsRule === pyRule && /LEADER_RULE = _LL\.LEADER_RULE/.test(AT), `${jsRule} vs ${pyRule}`);
+const jsAnc = (SRC.match(/anchor: '(\d{4}-\d{2}-\d{2})'/) || [])[1], pyAnc = /LEADER_ANCHOR = os\.getenv\('LEADER_ANCHOR'\) or _LL\.LEADER_ANCHOR/.test(AT) ? (LIBL.match(/LEADER_ANCHOR = '(\d{4}-\d{2}-\d{2})'/) || [])[1] : null;
 ok('⑤b 換倉錨點 App == auto_trade.py(⛔ 不存在手機上)', jsAnc && jsAnc === pyAnc && !/proTerm_leaderStart/.test(SRC), `${jsAnc} vs ${pyAnc}`);
 ok('⑤c 領頭羊預設關(LEADER=1 才開)、⛔ 只動 lead 那一格的部位、空頭只擋買', /LEADER = os\.getenv\('LEADER'\) == '1'/.test(AT) && /held = st\.setdefault\('lead', \{\}\)/.test(AT) && /'lead': st\.get\('lead'\) or \{\}/.test(AT) && /BEAR_GATE and _mkt\.get\('bear60'\) is True:\n\s+log\("   👑 🐻/.test(AT));
 ok('⑤d 舊名單⛔ 不下單(用「今天之前最近的交易日」判,不用天數)', /if not dates or dd != prev:/.test(AT));

@@ -1,3 +1,23 @@
+# 📒👑 V77.9.3 領頭羊加進 📒 成績單,自動模擬買賣(使用者:「領頭羊策略也加進去成績單裡面自動買賣」)
+
+## 先量
+- 領頭羊**沒有任何成績紀錄**:名單只在當天的 `screener.json`(每天覆蓋),`auto_trade.py` 的持股寫在使用者自己電腦。
+- 既有成績單的結算 `_settleReplay` 是「停損 / 出場線 / 最長天數」→ ⛔ **套不上領頭羊**(它是「換倉日掉出前 10 名才賣、不設停損」),套上去會變成另一套策略。
+- ⚠️ `pick_snapshot.py` 在 `playbook_scan.yml` 裡排在 `screener_miner.py` **之前** → 那時讀到的 screener 是前一天的 → 領頭羊名單要另開一步排在後面。
+
+## 做法
+1. **`lib_leader.py`**:`LEADER_RULE` / `LEADER_ANCHOR` / `leader_calc` / `leader_clock` 從 `auto_trade.py` 搬出來共用(⛔ 行為一字不變,`test_auto_leader.py` 全綠)。`auto_trade.py` 改 import → ⚠️ 本機要把 `lib_leader.py` 放在同一個資料夾(`docs/AUTO_TRADE_SETUP.md` 已寫)。
+2. **採礦** `pick_snapshot.py --leader`(`playbook_scan.yml` 在 screener_miner 之後多一步,`continue-on-error`):把當天前 10 名存進 `pick_history.json` 那一天的 `lead`(只存事實)。
+   - 🔁 **回補 09-24 起**:用 K 線(只留加權日曆上的日子 = 幽靈 K 不算)跑 `screener_miner.build_one`,標 `bf:1`;已有實跑的日子⛔ 不覆蓋;`main()` 重跑同一天會保留 `lead`。
+3. **結算** `pro.html` `_leaderLedgerLoad`(成績單第 4 頁 👑):照 `^TWII` 日曆從錨點起每 10 個交易日換倉;**成交 = 換倉訊號隔天收盤**(= 自動下單,回測 670% 那個口徑);掉出前 10 名 → 賣;前 5 名沒有的 → 買到 5 檔;嚴格空頭不買;隔天漲幅 ≥9.7% 不買不遞補;還沒賣的用最新收盤算帳面。損益走既有 `_stlEnrich`(0.44% / 同期大盤 / 一張賺賠)。
+   - 頁首:下次換倉日 + 還剩幾天;換倉訊號日隔天還沒收盤時顯示「待成交」的買賣清單;每一次換倉列在摺疊裡。
+   - 🚨 成績單讀 `pick_history` 時**同樣剔掉加權日曆上沒有的日子**(09-25 / 09-29 那兩筆幽靈日的推薦)。
+
+## 誠實的一件事
+- 🚨 **App 決策台在 09-24 給的領頭羊名單被 09-25 幽靈 K 灌過**(3016 的 20 日均額 22.82 億 vs 乾淨 K 線 19.09 億 → 名次不同)。成績單的第一批用**乾淨 K 線回補**的那份;兩者前 5 名不完全一樣 → ⛔ 不是成績單算錯。
+
+- 測試 `scripts/test_leader_ledger.mjs`(注入「每天都換倉」「拿掉漲停檢查」「拿掉幽靈日過濾」「main 洗掉 lead」都紅)、`test_recoledger ⑨a/⑨e5`、`test_leaderdeck`(規則/錨點改讀 `lib_leader.py`)。
+
 # 🎑 V77.9.2 假日幽靈 K 棒(使用者以為「09-25 缺資料」,其實那天沒開盤)
 
 ## 先量

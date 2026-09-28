@@ -134,6 +134,15 @@ jobs:
         continue-on-error: true      # ⛔ 它失敗不該擋掉明日作戰清單的部署
         run: python3 screener_miner.py
 
+      # 👑 V77.9.3 領頭羊名單快照(📒 成績單「👑 領頭羊」那一頁的來源)
+      #   ⚠️ 一定要排在上面那步**之後** —— 要讀今天剛產出的 screener.json(排前面讀到的是昨天的)。
+      #   ⭐ 寫進同一個 pick_history.json(部署那步本來就會推它);規則走 lib_leader.py(= 自動下單那一份)。
+      #   ⭐ 錨點起還沒有名單的交易日,用 K 線重算回補(bf:1);⛔ 實跑寫過的不覆蓋。
+      - name: 👑 領頭羊名單快照(成績單用)
+        if: steps.scan.outputs.scan_rc == '0'
+        continue-on-error: true      # ⛔ 它失敗不該擋掉明日作戰清單的部署
+        run: python3 pick_snapshot.py --leader
+
       # 🎤 V77.2.7 閘門改成 `!cancelled()`:掃描失敗那天 **confcall.json 照樣要部署**(陷阱 #44:
       #   一個閘門⛔ 不可掛多個產物)。playbook_edge 只在 scan_rc == 0 才 cp(掃描失敗 → /tmp 沒有它 →
       #   restore_files 用 `[ -s ]` 守門跳過 → 不會拿還原回來的舊檔冒充新產出)。

@@ -155,6 +155,9 @@ def main():
         return 1
 
     # ⭐ 冪等:同一天重跑覆蓋,⛔ 不累加
+    _prev = next((x for x in hist['days'] if isinstance(x, dict) and x.get('d') == day['d']), None)
+    if _prev and _prev.get('lead') and 'lead' not in day:
+        day['lead'] = _prev['lead']                  # 👑 V77.9.3 同一天重跑 ⛔ 不可把領頭羊那份一起洗掉
     days = [x for x in hist['days'] if isinstance(x, dict) and x.get('d') != day['d']]
     days.append(day)
     days.sort(key=lambda x: x.get('d') or '')
@@ -172,5 +175,122 @@ def main():
     return 0
 
 
+# ═══ 👑 V77.9.3 領頭羊名單快照(使用者:「領頭羊策略也加進去成績單裡面自動買賣」)═══
+# ⭐ 跟上面一樣只存事實:每天的前 N×hyst 名(代號 / 收盤 / 名次 / 10 日漲幅 / 20 日均額 / 今天漲跌 / 漲停 / 注意處置)。
+#    買賣與損益 ⛔ 不在這裡算 —— 產業作戰室 📒 成績單讀的時候照 ^TWII 日曆重播(同 pb/sig 的做法)。
+# ⭐ 名單規則一律走 lib_leader.py(= auto_trade.py 用的那一份,⛔ 不複製第二份)。
+# 🚨 這一步要排在 screener_miner.py **之後**(playbook_scan.yml 另一步,帶 --leader)——
+#    排在前面讀到的是昨天的 screener(本檔上面那段已經寫過這個坑)。
+# 🔁 回補(回算鐵則):錨點起到這次之前、還沒有 lead 的交易日,用 data/*.json K 線 + screener_miner.build_one
+#    重算當天的欄位(⛔ 同一份公式),標 bf:1;已經有實跑紀錄的日子⛔ 不覆蓋。注意/處置在回補時查不到 → 記 0 並寫明。
+LEAD_BF_MAX = int(os.getenv('LEAD_BF_MAX', '15'))   # 一次最多回補幾天(⛔ 不無限往回算)
+
+
+def _lead_rows(L):
+    out = []
+    for r in L.get('ranked') or []:
+        out.append({'s': r['sym'], 'c': r['c'], 'r': r['rank'],
+                    'x': None if r.get('chg10') is None else round(float(r['chg10']), 2),
+                    'a': round(float(r['amt20']), 2),
+                    'chg': None if r.get('chg') is None else round(float(r['chg']), 2),
+                    'lim': int(r.get('lim') or 0), 'att': int(r.get('att') or 0)})
+    return out
+
+
+def _dnorm(v):
+    return str(v or '').replace('/', '-')[:10]
+
+
+def _lead_backfill_D(day, twset, twmin, scr):
+    """用 K 線重建某一天的 screener 形狀(只放領頭羊用得到的欄位)。⛔ 公式 = screener_miner.build_one。"""
+    rows_out = {}
+    for p in sorted(DATA.glob('*.json')):
+        sym = p.stem
+        if not (len(sym) == 4 and sym.isdigit()) or sym.startswith('00'):
+            continue
+        d = _load(p)
+        d = d if isinstance(d, list) else ((d or {}).get('data') or [])
+        # ⛔ 只用到那一天為止;加權沒開盤的日子(假日幽靈 K)不算進去
+        d = [r for r in d if isinstance(r, dict) and isinstance(r.get('close'), (int, float)) and r['close'] > 0
+             and _dnorm(r.get('date')) <= day and (_dnorm(r.get('date')) in twset or _dnorm(r.get('date')) < twmin)]
+        if not d or _dnorm(d[-1].get('date')) != day:
+            continue                                   # 那天沒有這一檔的 K(停牌 / 還沒上市)→ 不猜
+        try:
+            v = scr.build_one(d)
+        except Exception:
+            v = None
+        if not v:
+            continue
+        v[scr.CI['etf']] = 0
+        v[scr.CI['att']] = 0                           # ⚠️ 回補查不到當天的注意/處置名單
+        rows_out[sym] = v
+    return {'cols': scr.COLS, 'rows': rows_out, 'data_date': day}
+
+
+def leader_main():
+    import lib_leader as LL
+    hist = _load(OUT, None)
+    if not isinstance(hist, dict) or 'days' not in hist:
+        hist = {'note': '每天實際產出的榜單快照,用來事後驗證。⛔ 只存事實不存結論。', 'days': []}
+    bydate = {x.get('d'): x for x in hist['days'] if isinstance(x, dict) and x.get('d')}
+
+    # ① 今天(剛產出的 screener.json)
+    D = _load(DATA / 'screener.json')
+    L = LL.leader_calc(D) if isinstance(D, dict) else {'err': 'nodata'}
+    live_d = None
+    if L.get('err'):
+        print(f'   ⚠️ 領頭羊今天算不出名單({L["err"]})→ 這一天不存')
+    else:
+        live_d = _dnorm(L['date'])
+        rows = _lead_rows(L)
+        if live_d and rows:
+            day = bydate.setdefault(live_d, {'d': live_d})
+            day['lead'] = {'rows': rows, 'n': L['n'], 'passed': L['passed']}
+            print(f'👑 領頭羊 {live_d}:池子 {L["n"]} 檔・過趨勢 {L["passed"]} 檔・前 {len(rows)} 名 '
+                  + ' '.join(f'{r["s"]}({r["x"]:+.1f}%)' for r in rows[:5] if r['x'] is not None))
+
+    # ② 回補:錨點起、還沒有 lead 的交易日(⛔ 實跑寫過的不覆蓋)
+    tw = _load(DATA / '^TWII.json') or []
+    tw = tw if isinstance(tw, list) else (tw.get('data') or [])
+    tdays = sorted({_dnorm(r.get('date')) for r in tw if isinstance(r, dict) and r.get('date')})
+    if len(tdays) < 200:
+        print(f'   ⚠️ ^TWII 只有 {len(tdays)} 天 → 不回補(沒有可信的交易日曆,⛔ 不猜)')
+    else:
+        twset, twmin = set(tdays), tdays[0]
+        # ⚠️ 今天那一天用 screener 實跑的;今天算不出來(screener 缺)才連最後一個交易日也一起回補
+        need = [d for d in tdays if LL.LEADER_ANCHOR <= d and (live_d is None or d < live_d)
+                and not (bydate.get(d) or {}).get('lead')]
+        if len(need) > LEAD_BF_MAX:
+            print(f'   ⚠️ 要回補 {len(need)} 天 > 上限 {LEAD_BF_MAX} → 只補最近 {LEAD_BF_MAX} 天')
+            need = need[-LEAD_BF_MAX:]
+        if need:
+            try:
+                import screener_miner as _scr
+            except Exception as _e:                   # pragma: no cover
+                _scr = None
+                print(f'   ⚠️ 匯入 screener_miner 失敗({_e})→ 不回補')
+            for d in (need if _scr else []):
+                Lb = LL.leader_calc(_lead_backfill_D(d, twset, twmin, _scr))
+                if Lb.get('err') or not Lb.get('ranked'):
+                    print(f'   ⚠️ {d} 回補算不出名單({Lb.get("err") or "0 檔過趨勢"})→ 不存(⛔ 不寫空名單)')
+                    continue
+                day = bydate.setdefault(d, {'d': d})
+                day['lead'] = {'rows': _lead_rows(Lb), 'n': Lb['n'], 'passed': Lb['passed'], 'bf': 1}
+                print(f'   🔁 回補 {d}(K 線重算・bf:1):池子 {Lb["n"]} 檔・前 5 '
+                      + ' '.join(r['sym'] for r in Lb['buy']))
+
+    if not any((x or {}).get('lead') for x in bydate.values()):
+        print('❌ 領頭羊一天都沒存到 → 不寫檔')
+        return 1
+    days = sorted(bydate.values(), key=lambda x: x.get('d') or '')
+    hist['days'] = days[-KEEP_DAYS:]
+    hist['updated'] = max(hist.get('updated') or '', days[-1]['d'])
+    hist['n_days'] = len(hist['days'])
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    OUT.write_text(json.dumps(hist, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    print(f'📸 領頭羊快照寫入:有 lead 的 {sum(1 for x in days if x.get("lead"))} 天 ・{OUT.stat().st_size/1024:.1f} KB')
+    return 0
+
+
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(leader_main() if '--leader' in sys.argv[1:] else main())

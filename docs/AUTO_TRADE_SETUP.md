@@ -120,6 +120,8 @@ export MAX_LOTS_PER_TRADE=1        # 硬上限,先設 1
 DRY_RUN=1 python3 auto_trade.py
 ```
 
+⚠️ **V77.9.3 起 `auto_trade.py` 要跟 `lib_leader.py` 放在同一個資料夾**(領頭羊的名單規則搬到那支共用;整個 repo 下載下來就已經在一起)。
+
 它只會印「我現在會下什麼單」,**完全不送出**。
 
 **怎麼確認做對了**:它印出來的檔數與價位,跟 App 推播給你的**一模一樣**。

@@ -219,8 +219,8 @@ for (const k of ['pb', 'fit', 'mix']) {
     };
   });
 }
-ok(srcRes.pb.tabs.join(',') === 'pb,fit,mix' && srcRes.fit.on.join(',') === 'fit',
-  '⑨a 三張分頁都在,而且點哪一張哪一張亮', `${srcRes.pb.tabs} / on=${srcRes.fit.on}`);
+ok(srcRes.pb.tabs.join(',') === 'pb,fit,mix,lead' && srcRes.fit.on.join(',') === 'fit',
+  '⑨a 四張分頁都在(V77.9.3 加 👑 領頭羊),而且點哪一張哪一張亮', `${srcRes.pb.tabs} / on=${srcRes.fit.on}`);
 ok(!srcRes.pb.geneErr && !srcRes.fit.geneErr,
   '⑨a2 🧬 門檻要真的讀得到(⛔ 讀不到就會全部走「算不出來」= 下面沒有鑑別力)', String(srcRes.fit.geneErr));
 // ⭐ 決定性對照:三張的**交易清單必須不一樣**(⛔ 全部一樣 = 快取鍵漏了來源,或 src 沒傳到底)
@@ -292,8 +292,14 @@ ok(srcRes.mix.since && srcRes.fit.since && srcRes.mix.since >= srcRes.fit.since,
 
 // ⑨e 快照端:位階/振幅走 screener_miner.build_one,⛔ 不可讀 screener.json
 {
-  const PS = readFileSync('pick_snapshot.py', 'utf8').split('\n')
+  // 👑 V77.9.3 `leader_main`(--leader)**刻意**讀 screener.json —— 它在 workflow 裡排在 screener_miner **之後**(下面 ⑨e4 釘順序);
+  //   ⛔ 這條只管 pb/sig 那一段(main 與它上面的程式),所以切到 leader 區塊之前。
+  const _psAll = readFileSync('pick_snapshot.py', 'utf8');
+  const PS = _psAll.slice(0, _psAll.indexOf('def _lead_rows(')).split('\n')
     .filter(l => !l.trim().startsWith('#')).join('\n');       // 🚨 先剝註解(註解裡就寫著 screener.json)
+  const _wf = readFileSync('.github/workflows/playbook_scan.yml', 'utf8');
+  ok(_psAll.indexOf('def _lead_rows(') > 0 && _wf.indexOf('python3 pick_snapshot.py --leader') > _wf.indexOf('run: python3 screener_miner.py') && _wf.indexOf('run: python3 screener_miner.py') > 0,
+    '⑨e5 👑 領頭羊快照(--leader,讀當天 screener)排在 screener_miner 之後');
   ok(/import screener_miner/.test(PS) && /build_one\(/.test(PS),
     '⑨e 快照端的位階/振幅走 `screener_miner.build_one`(⛔ 不可在 pick_snapshot 另寫一套公式)');
   ok(!/screener\.json/.test(PS),
