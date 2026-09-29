@@ -5,15 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>產業作戰室 PRO</title>
-<!-- 🎣 V77.9.7 金鱗釣場(獨立 App)= 同一份 pro.html 帶 ?app=fish —— ⛔ 不複製第二份選股程式。
+<!-- 🎣 V77.9.7 股海釣手(獨立 App)= 同一份 pro.html 帶 ?app=fish —— ⛔ 不複製第二份選股程式。
      ⚠️ 這段必須在 <head> 最前面:主畫面圖示 / 名字 / manifest 是瀏覽器「加到主畫面」那一刻讀的。 -->
 <script>
 (function () { try {
   if (!/[?&]app=fish(&|$)/.test(location.search)) return;
-  var d = document, h = d.head; d.documentElement.classList.add('app-fish'); d.title = '金鱗釣場';
+  var d = document, h = d.head; d.documentElement.classList.add('app-fish'); d.title = '股海釣手';
   var m = function (n, c) { var e = d.createElement('meta'); e.name = n; e.content = c; h.appendChild(e); };
   var l = function (r, href, t) { var e = d.createElement('link'); e.rel = r; e.href = href; if (t) e.type = t; h.appendChild(e); };
-  m('apple-mobile-web-app-title', '金鱗釣場'); m('apple-mobile-web-app-capable', 'yes'); m('mobile-web-app-capable', 'yes');
+  m('apple-mobile-web-app-title', '股海釣手'); m('apple-mobile-web-app-capable', 'yes'); m('mobile-web-app-capable', 'yes');
   m('apple-mobile-web-app-status-bar-style', 'black-translucent'); m('theme-color', '#06121f');
   l('manifest', 'fish.webmanifest'); l('apple-touch-icon', 'fish-192.png'); l('icon', 'fish-192.png', 'image/png');
 } catch (_) {} })();
@@ -634,7 +634,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 @media(min-width:700px){#proModal{align-items:center}#proModal .mbox{border-radius:14px}}
 #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(14,20,31,.96);border:1px solid var(--line2);border-radius:10px;padding:9px 16px;font-size:12px;color:var(--txt);z-index:90;opacity:0;pointer-events:none;transition:opacity .2s}
 #toast.on{opacity:1}
-/* 🎣 V77.9.7 金鱗釣場(App 模式):只留舞台 + 上鉤卡 + 漁獲籃;⛔ 作戰室的分頁列 / 池子 / 規則說明一律不顯示 */
+/* 🎣 V77.9.7 股海釣手(App 模式):只留舞台 + 上鉤卡 + 漁獲籃;⛔ 作戰室的分頁列 / 池子 / 規則說明一律不顯示 */
 #fpvPane{display:none}
 html.app-fish .topbar, html.app-fish #rodHead, html.app-fish #fishPoolPane, html.app-fish #rodCastPane, html.app-fish #rodRules{display:none!important}
 html.app-fish #fpvPane{display:block}
@@ -678,7 +678,7 @@ html.app-fish #fishBasketPane h2 .sub{display:none}
     <button class="tab-btn" id="tabBtnRot" onclick="PRO.switchTab('rot')">板塊輪動</button>
     <button class="tab-btn" id="tabBtnStar" onclick="PRO.switchTab('star')">關聯星圖</button>
     <button class="tab-btn" id="tabBtnFish" onclick="PRO.switchTab('fish')">📒 成績單</button>
-    <button class="tab-btn" id="tabBtnRod" onclick="PRO.openFishApp()" title="釣魚已經獨立成一個 App —— 點了會開啟,可以加到主畫面">🎣 金鱗釣場 ↗</button>
+    <!-- 🎣 V77.9.8 釣魚已獨立成「股海釣手」—— 使用者:「其它程式都不能連進來」→ ⛔ 作戰室不放任何入口,只能從它自己的網址 / 主畫面圖示打開 -->
     <button class="tab-btn" id="tabBtnSig" onclick="PRO.switchTab('sig')">今日訊號</button>
     <button class="tab-btn" id="tabBtnConf" onclick="PRO.switchTab('conf')" title="法說會時間表 + 官方擇要;只描述,不下多空">法說會</button>
     <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
@@ -888,10 +888,10 @@ html.app-fish #fishBasketPane h2 .sub{display:none}
      ⛔ 所有數字一律讀常數(_geneRule / _HQ_RULE / _SIG_DEEP / _CAST_DEAD / _CAST_STICKY / _FISH_IC /
         playbook_edge 的 cost),⛔ 一個都不寫死在 HTML 或文案裡。 -->
 <div id="tabRod" class="hidden">
-  <!-- 🎣 V77.9.7 金鱗釣場舞台(只有 ?app=fish 才顯示)—— 名單一律來自 _castPick(⛔ 動畫不改變名單)。
+  <!-- 🎣 V77.9.7 股海釣手舞台(只有 ?app=fish 才顯示)—— 名單一律來自 _castPick(⛔ 動畫不改變名單)。
        ⛔ 這一塊不寫任何選股規則(使用者:「釣魚系統策略不用寫出來」)。 -->
   <div id="fpvPane">
-    <div class="fpvhead"><div class="fpvbrand">金鱗釣場</div><div class="fpvsub" id="fpvSub">水面平靜中…</div></div>
+    <div class="fpvhead"><div class="fpvbrand">股海釣手</div><div class="fpvsub" id="fpvSub">水面平靜中…</div></div>
     <div class="fpvwrap" id="fpvWrap"><canvas id="fpvCanvas"></canvas><span class="fpvskip hidden" id="fpvSkip" onclick="PRO.fpvSkip()">⏭ 略過</span></div>
     <div class="fpvbtns"><button class="lbtn on" id="fpvCastBtn" onclick="PRO.fpvCast()">🎣 拋竿</button></div>
     <div id="fpvCards"></div>
@@ -1295,7 +1295,7 @@ const PRO = {
       if (s.news) document.getElementById('inNews').value = s.news;
       this._lvSel = s.lv ?? null; this._layerSel = s.layer ?? null;
       if (s.sk) { this._sortK = s.sk; this._sortD = s.sd || -1; }
-      if (s.tab === 'rod') s.tab = 'val';     // 🎣 V77.9.7 釣魚已獨立成金鱗釣場 → 作戰室⛔ 不再停在釣魚頁
+      if (s.tab === 'rod') s.tab = 'val';     // 🎣 V77.9.7 釣魚已獨立成股海釣手 → 作戰室⛔ 不再停在釣魚頁
       if (s.tab && s.tab !== 'val') this.switchTab(s.tab, true);
       if (s.val) await this.runValuation(true);
       // 兩次 rAF:等 DOM 真的排版完再捲(⛔ 直接 scrollTo 會捲不到,因為內容還沒撐開)
@@ -1644,7 +1644,7 @@ const PRO = {
       <div class="shbtns">
         <button class="lbtn on" onclick="PRO.closeStock();PRO.gotoStock('${code}')">→ 散戶救星看細節</button>
         <button class="lbtn" onclick="PRO.closeStock();PRO._starSym='${code}';PRO.switchTab('star');PRO.starGo('${code}')">🕸️ 誰跟它一起動${fam.length ? `(${fam.length})` : ''}</button>
-        ${fam.length ? `<button class="lbtn" onclick="PRO.closeStock();PRO._starSym='${code}';PRO._fishPoolK='fam';PRO.switchTab('rod')">🎣 把這一族放下水</button>` : ''}
+        <!-- 🎣 V77.9.8「把這一族放下水」已拿掉:釣魚獨立成股海釣手,⛔ 作戰室不連進去 -->
         ${ind ? `<button class="lbtn" onclick="PRO.closeStock();PRO.switchTab('rot');PRO.rotOpen('${ind}')">💧 它的板塊</button>` : ''}
         ${inChain ? `<button class="lbtn" onclick="PRO.closeStock();PRO.switchTab('chain')">🤖 AI 鏈定位</button>` : ''}
       </div>
@@ -1905,7 +1905,7 @@ const PRO = {
     this._tab = t;
     for (const [k, C] of this.TABS) {
       document.getElementById('tab' + C).classList.toggle('hidden', t !== k);
-      document.getElementById('tabBtn' + C).classList.toggle('on', t === k);
+      const bt = document.getElementById('tabBtn' + C); if (bt) bt.classList.toggle('on', t === k);   // 🎣 rod 沒有按鈕了(V77.9.8)
     }
     if (t !== 'rot') this.rotStop();          // ⛔ 切走要停掉動畫,不然背景一直跑
     if (t !== 'rod') this.fishStop();         // 🎣 同理:魚池的 rAF 迴圈切走就停(V77.3.9 起魚池住 #tabRod)
@@ -3453,7 +3453,7 @@ const PRO = {
     else if (ph === 'reel') { line(to.x + (A.from.x - to.x) * p, to.y + (A.from.y - to.y) * p); }
     ctx.restore();
   },
-  // ══ 🎣 V77.9.7 金鱗釣場 —— 第一人稱(FPV)釣魚舞台(使用者附件「FPV Animation v2.0」)═══════════════
+  // ══ 🎣 V77.9.7 股海釣手 —— 第一人稱(FPV)釣魚舞台(使用者附件「FPV Animation v2.0」)═══════════════
   //   ⛔ 三條不可違反:
   //    ① 名單只來自 `_castPick`(跟作戰室 / 決策台同一套,而且跟「我的策略」同步)—— 動畫只是表演,⛔ 不改變名單
   //       (test_fishapp ⓒ 決定性對照:stub 掉動畫前後名單相同、App 模式 == 一般模式)。
@@ -3465,7 +3465,6 @@ const PRO = {
   _FPV_DUR: { cast: 650, bite: 520, reel: 1400, breach: 1150, show: 900 },   // 第一條完整演;之後每條 ×_FPV_FAST
   _FPV_FAST: 0.5,
   _fpvOn() { return document.documentElement.classList.contains('app-fish'); },
-  openFishApp() { location.href = 'pro.html?app=fish'; },
   /** 🐟 一檔股票 → 一條魚的外觀參數(⛔ 只用價格 / 漲跌 / 振幅,不帶任何選股規則) */
   _fpvFishOf(r) {
     const c = +r.c || 0, chg = Number.isFinite(r.chg) ? r.chg : 0, amp = Number.isFinite(r.amp20) ? r.amp20 : 3;
@@ -3605,7 +3604,7 @@ const PRO = {
       this._fpvLoop();
     });
   },
-  /** 🧺 金鱗釣場的漁獲籃(同一份計算,只換版面):名字 / 釣起價 → 現價 / 一張賺賠;⛔ 不寫出場規則 */
+  /** 🧺 股海釣手的漁獲籃(同一份計算,只換版面):名字 / 釣起價 → 現價 / 一張賺賠;⛔ 不寫出場規則 */
   _fpvBasketHtml(hold, done, totOpen, totDone, money) {
     const row = r => { const st = r.st, fin = st && !st.open;
       const pct = fin ? st.net : r.pct, lot = fin ? st.lot : r.lot, px1 = fin ? st.exitP : r.c;
@@ -5034,7 +5033,7 @@ const PRO = {
     const exMed = exs.length ? (exs.length % 2 ? exs[(exs.length - 1) / 2] : (exs[exs.length / 2 - 1] + exs[exs.length / 2]) / 2) : null;
     const exWin = hold.filter(r => r.ex > 0).length;
     const money = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString() + ' 元';
-    if (this._appFish) { el.innerHTML = this._fpvBasketHtml(hold, done, totOpen, totDone, money); return; }   // 🎣 金鱗釣場:只給數字,⛔ 不寫規則
+    if (this._appFish) { el.innerHTML = this._fpvBasketHtml(hold, done, totOpen, totDone, money); return; }   // 🎣 股海釣手:只給數字,⛔ 不寫規則
     // 🐟 一行一張卡(⛔ 不用 table,理由見 .bkrow 的註解)
     const rowHtml = r => {
       const st = r.st, fin = st && !st.open;
@@ -5159,6 +5158,8 @@ const PRO = {
   //      `fishCard` 清成空白,不等它就會「閃一下然後空白」(競態)。
   //   ⛔ 呼叫端全是 fire-and-forget 的 onclick,沒有人用回傳值 → 改 async 安全。
   async _fishPick(sym) {
+    // 🎣 V77.9.8 股海釣手獨立:作戰室(📒 成績單等)點股名 → 開個股快捷面板,⛔ 不再跳進釣魚頁
+    if (this._tab !== 'rod' && !this._appFish) { this.openStock(sym); return; }
     if (this._tab !== 'rod') { this.switchTab('rod'); try { await this._rodP; } catch (_) {} }
     if (!this._fishD) { try { await (this._rodP = this.renderRod()); } catch (_) {} }
     const D = this._fishD; if (!D) return;
@@ -9599,7 +9600,7 @@ ${kw ? `【我想知道】${kw}\n` : ''}${r && r.sum ? `【官方擇要(公司�
     addEventListener('resize', () => this._syncHdrVar());
     addEventListener('orientationchange', () => setTimeout(() => this._syncHdrVar(), 250));
     this.loadNames().catch(() => {});
-    if (this._fpvOn()) { await this._fpvBoot(); return; }   // 🎣 V77.9.7 金鱗釣場:⛔ 不還原作戰室的上次分頁
+    if (this._fpvOn()) { await this._fpvBoot(); return; }   // 🎣 V77.9.7 股海釣手:⛔ 不還原作戰室的上次分頁
     await this._restoreNav();
     // 🧹 V74.6.2 深連結:散戶救星設定中心那兩顆鈕帶 ?noise=1 / ?log=1 過來
     //   ⛔ 要排在 _restoreNav 之後(否則會被「回到上次那一頁」蓋掉)

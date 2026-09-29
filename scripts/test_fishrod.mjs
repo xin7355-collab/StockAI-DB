@@ -63,8 +63,8 @@ const T = await pg.evaluate(async () => {
            rod: vis('tabRod'), fish: vis('tabFish'), rot: vis('tabRot'), tab: PRO._tab,
            inTabs: !!document.querySelector('.tabs #tabBtnRod') };
 });
-ok(/釣魚|釣場/.test(T.btn) && T.inTabs && T.inWrap && T.rod && !T.fish && !T.rot && T.tab === 'rod',
-  '① 分頁接線:#tabRod 在 .wrap 裡、切過去只有它亮(🚨 tabRod / tabRot 只差一個字母)',
+ok(!T.btn && !T.inTabs && T.inWrap && T.rod && !T.fish && !T.rot && T.tab === 'rod',
+  '① 分頁接線:#tabRod 在 .wrap 裡、切過去只有它亮;⛔ 作戰室分頁列沒有釣魚鈕(V77.9.8 股海釣手獨立)',
   `btn=${T.btn.trim()} wrap=${T.inWrap} rod=${T.rod} fish=${T.fish} rot=${T.rot}`);
 ok(/\['rod', 'Rod'\]/.test(SRC) && /if \(t === 'rod'\) this\._rodP = this\.renderRod\(\);/.test(SRC),
   '①b TABS 有註冊、switchTab 有 lazy render(⭐ 而且存 promise —— `_fishPick` 要 await 它)');
@@ -156,16 +156,16 @@ const C = await pg.evaluate(async () => {
   PRO._fishD = null;                                   // 🚨 模擬「一進來就先開成績單」的真實情況
   await PRO._fishPick(sym);
   const pick = document.getElementById('fishPickPane');
-  return { sym, tab: PRO._tab, hidden: pick.classList.contains('hidden'),
+  return { sym, tab: PRO._tab, hidden: pick.classList.contains('hidden'), sheet: (document.getElementById('stkSheet') || {}).classList?.contains('on'),
            len: (document.getElementById('fishCard').innerText || '').replace(/\s+/g, '').length };
 });
-ok(C.tab === 'rod' && !C.hidden && C.len > 80,
-  '⑫ 📒 成績單點股票名稱 → 自動跳 🎣 釣魚並展開那一檔(⛔ 舊版靜默無反應)',
+ok(C.tab === 'fish' && C.sheet,
+  '⑫ 📒 成績單點股票名稱 → 開個股快捷面板(⛔ 不再跳進釣魚頁 —— V77.9.8 股海釣手獨立、其它程式不連進去)',
   `${C.sym} tab=${C.tab} 卡片 ${C.len} 字`);
 
 // ── ⑬⑮ 靜態 ────────────────────────────────────────────────
-ok(/PRO\._fishPoolK='fam';PRO\.switchTab\('rod'\)/.test(SRC) && !/PRO\._fishPoolK='fam';PRO\.switchTab\('fish'\)/.test(SRC),
-  '⑬ 個股彈窗「🎣 把這一族放下水」要跳 🎣 釣魚(⛔ 舊版跳到成績單 = 文案與行為打架)');
+ok(!/PRO\._fishPoolK='fam';PRO\.switchTab\(/.test(SRC) && !/id="tabBtnRod"/.test(SRC),
+  '⑬ ⛔ 作戰室沒有任何進釣魚的入口(個股彈窗「放下水」與分頁鈕都拿掉 —— V77.9.8 使用者:「其它程式都不能連進來」)');
 const PS = readFileSync('scripts/playbook_scan.mjs', 'utf8');
 const mR = /r\.rank\s*>=\s*(\d+)/.exec(PS), mV = /r\.vol\s*>=\s*(\d+)/.exec(PS);
 ok(mR && mV && +mR[1] === R.hq.pos && +mV[1] === R.hq.vol,

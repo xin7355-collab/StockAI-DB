@@ -1,6 +1,6 @@
 {
-  "name": "金鱗釣場",
-  "short_name": "金鱗釣場",
+  "name": "股海釣手",
+  "short_name": "股海釣手",
   "id": "./pro.html?app=fish",
   "start_url": "./pro.html?app=fish&source=pwa",
   "scope": "./",

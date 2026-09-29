@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// 🎣 V77.9.7 金鱗釣場(pro.html?app=fish)—— 使用者:「釣魚程式變成另一個獨立 app,策略不用寫出來,魚要更好看」
+// 🎣 V77.9.7 股海釣手(pro.html?app=fish)—— 使用者:「釣魚程式變成另一個獨立 app,策略不用寫出來,魚要更好看」
 // ⛔ 這支釘的「用意」:
-//   ⓐ App 模式:作戰室分頁列 / 池子 / 規則段看不到,舞台 + 拋竿鈕看得到;標題、manifest、主畫面圖示換成金鱗釣場
+//   ⓐ App 模式:作戰室分頁列 / 池子 / 規則段看不到,舞台 + 拋竿鈕看得到;標題、manifest、主畫面圖示換成股海釣手
 //   ⓑ ⭐ 策略不寫出來:整頁看得到的字⛔ 不可有選股規則用語(位階 / 振幅 / 成交額前 / 唐奇安 / 吊燈 / 領頭羊 / 🧬 / 👑 …)
 //   ⓒ ⭐ 決定性對照:App 模式的名單 == 同一份資料的 `_castPick`;把動畫 stub 掉名單也一樣(動畫⛔ 不改變名單)
 //   ⓓ 狀態機:cast → bite → reel → breach → show(每條魚)→ done;離屏真的有畫(非透明像素)
 //   ⓔ 🎨 台股配色:上漲的魚偏紅、下跌的魚偏綠;卡片漲跌字 = .up / .dn
 //   ⓕ ♿ reduced-motion → 直接出卡片(<600ms)   ⓖ 🛟 rAF 停掉也會在時限內結束
-//   ⓗ manifest 合法、start_url 指向 App 模式、圖示檔在   ⓘ 作戰室那顆鈕改成開金鱗釣場、`switchTab('rod')` 照樣能用
+//   ⓗ manifest 合法、start_url 指向 App 模式、圖示檔在   ⓘ 其它程式都連不進來(作戰室 / 散戶救星沒有任何入口)
 //   ⓙ App 模式⛔ 不記分頁;作戰室⛔ 不會停在沒有按鈕的釣魚頁
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
@@ -48,7 +48,7 @@ const L = await pg.evaluate(() => {
 });
 ok(!L.top && !L.pool && !L.cast && !L.rules, 'ⓐ 作戰室分頁列 / 池子 / 拋竿規則段 / 紀律卡都看不到', JSON.stringify(L));
 ok(L.stage && L.btn && L.app && L.tab === 'rod' && L.swim > 0 && L.raf, 'ⓐ2 舞台 + 拋竿鈕看得到、水下有魚在游(rAF 在跑)—— 🚧 空過守門', JSON.stringify(L));
-ok(L.title === '金鱗釣場' && L.mf === 'fish.webmanifest' && /fish-192\.png$/.test(L.icon), 'ⓐ3 標題 / manifest / 主畫面圖示換成金鱗釣場', JSON.stringify(L));
+ok(L.title === '股海釣手' && L.mf === 'fish.webmanifest' && /fish-192\.png$/.test(L.icon), 'ⓐ3 標題 / manifest / 主畫面圖示換成股海釣手', JSON.stringify(L));
 
 const BAN = /位階|振幅|成交額前|唐奇安|吊燈|領頭羊|換倉|高基期|高波動|🧬|👑|實測|回測|六關|期望值|出場規則|停損/;
 const txt0 = await pg.evaluate(() => document.body.innerText);
@@ -109,12 +109,13 @@ ok(G.done && G.ms <= G.total + 3000, 'ⓖ 🛟 rAF 停掉也會在時限內結�
 
 // ── ⓗ manifest / 圖示 ──────────────────────────────────
 let M = null; try { M = JSON.parse(readFileSync('fish.webmanifest', 'utf8')); } catch (_) {}
-ok(M && M.name === '金鱗釣場' && /pro\.html\?app=fish/.test(M.start_url) && M.display === 'standalone' && (M.icons || []).every(i => existsSync(i.src) && statSync(i.src).size > 2000),
+ok(M && M.name === '股海釣手' && /pro\.html\?app=fish/.test(M.start_url) && M.display === 'standalone' && (M.icons || []).every(i => existsSync(i.src) && statSync(i.src).size > 2000),
   'ⓗ fish.webmanifest 合法、start_url 指 App 模式、圖示檔都在', JSON.stringify(M));
 
 // ── ⓘ ⓙ 作戰室那顆鈕 / 不記分頁 ─────────────────────────
-ok(/id="tabBtnRod" onclick="PRO\.openFishApp\(\)"[^>]*>🎣 金鱗釣場/.test(SRC) && /openFishApp\(\) \{ location\.href = 'pro\.html\?app=fish'; \}/.test(SRC),
-  'ⓘ 作戰室的 🎣 鈕改成開金鱗釣場');
+const IDX = readFileSync('index.html', 'utf8');
+ok(!/id="tabBtnRod"/.test(SRC) && !/app=fish/.test(IDX) && !/PRO\._fishPoolK='fam';PRO\.switchTab\(/.test(SRC) && (SRC.match(/app=fish/g) || []).length <= 3,
+  'ⓘ ⭐ 其它程式都連不進來:作戰室沒有釣魚鈕 / 放下水鈕、散戶救星沒有連結(pro.html 裡的 app=fish 只准出現在偵測那幾行)', String((SRC.match(/app=fish/g) || []).length));
 ok(/_saveNav\(\) \{\n    if \(this\._appFish\) return;/.test(SRC) && /if \(s\.tab === 'rod'\) s\.tab = 'val';/.test(SRC), 'ⓙ App ⛔ 不記分頁;作戰室⛔ 還原到釣魚頁');
 ok(!errs.length, 'ⓚ 無 pageerror', errs.join(' | '));
 await b.close();

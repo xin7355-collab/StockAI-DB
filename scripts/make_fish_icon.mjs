@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 🎣 V77.9.7 金鱗釣場主畫面圖示:用 pro.html 自己的魚(`PRO._fpvIcon`)畫 → fish-192.png / fish-512.png
+// 🎣 V77.9.7 股海釣手主畫面圖示:用 pro.html 自己的魚(`PRO._fpvIcon`)畫 → fish-192.png / fish-512.png
 //   ⭐ 圖示跟 App 裡的魚是同一支函式畫的(⛔ 不另外手繪一份)。改了魚的外觀想換圖示就重跑這支。
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);

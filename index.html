@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.9.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.9.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.9.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.9.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8669,8 +8669,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.9.7',
+    _APP_VERSION: 'V77.9.8',
     _CHANGELOG: [
+        { v: 'V77.9.8', d: [
+            '🎣 釣魚 App 改名「<b>股海釣手</b>」,而且<b>只能從它自己的網址或主畫面圖示打開</b>:產業作戰室的釣魚按鈕、個股面板的「放下水」都拿掉了;📒 成績單點股名改成開個股面板。',
+        ], dt: '2026-09-29' },
         { v: 'V77.9.7', d: [
             '🎣 <b>釣魚變成獨立 App「金鱗釣場」</b>:第一人稱視角 —— 甩竿、魚咬鉤、拉扯、<b>破水飛向你</b>(慢動作 + 水花濺上鏡頭),最後一張張行情卡。魚的顏色照台股:漲 = 紅金、跌 = 翠綠;股價越高魚越大,平常越會跳的擺尾越猛。',
             '📲 打開方法:產業作戰室上方「🎣 金鱗釣場 ↗」→ 用瀏覽器「加到主畫面」,就會多一顆金魚圖示;釣到的魚按「🧺 放進漁獲籃」一樣自動算賺賠。📒 成績單與自動下單照舊留在產業作戰室。',
@@ -8786,11 +8789,6 @@ ${list}
             '⚠️ <b>新增「歷史價格斷崖」提醒</b>(你問的分拆)。全市場 2,520 檔實測掃過:有 <b>31 檔</b>歷史上出現過「一天之內不可能的跳價」,其中 19 檔是興櫃的真實行情,<b>真正要當心的是上市櫃那 12 檔</b>(長榮 2603、1538、1808、6949…)。現在只要這一檔有,頂端就會標出來,並告訴你<b>那一天以前的均線、位階、回測都是用另一把尺算的</b>。',
             '✅ <b>而你截圖那檔 6696 我逐根查過了:807 根 K 線一個斷崖都沒有</b> —— 年線 46、季線 79.89 那些數字<b>是真的</b>,它是真的一年之內從 15.2 漲到 200,⛔ 不是分拆算錯。',
             '🔍 順手修掉一個我自己上一版留下的坑:判斷「是不是上市櫃」的那支工具,對「還不知道」跟「確定是上市櫃」<b>回傳同一個值</b> → 新功能第一版因此把長榮的斷崖<b>自己擋掉了</b>(實跑才看到)。現在三種狀態分得清清楚楚。',
-        ] },
-        { v: 'V77.2.0', d: [
-            '🗑️ <b>六個 AI 功能/卡片整組刪除</b>(你點名的那幾個):🧠 深度診斷 ・🔮 此股預判 ・🤖 X光機 AI 解讀 ・✨ 技術面 AI 診斷 ・🚨 處置出獄 AI ・🧠 首席全盤分析。⭐ <b>刪之前先量過</b>誰是「別人的唯一產生者」—— 結果<b>其中四個本來就是死碼</b>(技術面 AI 全檔零呼叫端、首席 AI 早就沒有函式、處置出獄卡的容器根本不存在、X光機 AI 的 forceAI 沒有人會傳),真正還看得到的只有前兩個。🚨 而 <b>X光機那支函式本身不可刪</b>(它產生基本面體質總評與月營收即時那份),只砍掉它尾巴的 AI 段。index.html 少 <b>706 行</b>。',
-            '🗓️ <b>板塊輪動加「1 / 3 / 5 / 20 日」天期選單</b>(概念股與官方產業共用)。🚨 但<b>只有 20 日那一頁可以引用實測背書</b>(前3強−後3弱 +1.44pp 是拿 20 日測的)—— 切到 1/3/5 日會直接寫「這個天期沒有回測過」,⛔ 不把別人的成績借過來。⏳ <b>3 日這一欄採礦本來沒有</b> → 已補進採礦,下一輪跑完才會亮(在那之前那顆鈕是暗的並寫「待採礦」,⛔ 不拿別的天期冒充)。',
-            '🏷️ <b>興櫃中文股名:採礦補上第三條腿</b>(你問第二次)。實測 2,368 檔個股裡 <b>381 檔(16%)</b>沒有名字,而官方那兩份來源天生只有上市櫃 → 加上 FinMind 的股票基本資料去補。⭐ 關鍵是<b>同時存「市場別」</b>:補到名字之後,「🏷️ 非上市櫃(你可能買不到)」那個提醒<b>照樣會出現</b> —— 它現在看的是市場別,不是「有沒有名字」。',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
