@@ -645,7 +645,10 @@ html.app-fish .wrap{padding-top:calc(8px + env(safe-area-inset-top))}
 .fpvbrand{font-size:22px;font-weight:900;letter-spacing:2px;background:linear-gradient(90deg,#ffe29a,#f5b942 55%,#ff8a5c);-webkit-background-clip:text;background-clip:text;color:transparent}
 .fpvsub{font-size:11.5px;color:var(--sub)}
 .fpvwrap{position:relative;width:100%;height:min(64vh,540px);min-height:320px;border-radius:16px;overflow:hidden;background:#06121f;box-shadow:0 10px 30px rgba(0,0,0,.45)}
-.fpvwrap canvas{width:100%;height:100%;display:block;touch-action:manipulation}
+.fpvwrap canvas{width:100%;height:100%;display:block;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.fpvhint{position:absolute;left:50%;top:12px;transform:translateX(-50%);max-width:88%;text-align:center;font-size:12.5px;padding:6px 12px;border-radius:14px;background:rgba(4,10,18,.6);color:#e8eef7;border:1px solid rgba(255,255,255,.14);opacity:0;transition:opacity .2s;pointer-events:none}
+.fpvhint.on{opacity:1}.fpvhint.hot{border-color:#f5b942;color:#ffe29a}
+.fpvbuzz{margin-left:auto;font-size:11px;padding:4px 10px;border-radius:14px;background:rgba(255,255,255,.06);color:#dbe4f0;border:1px solid rgba(255,255,255,.18);min-height:30px}
 .fpvskip{position:absolute;right:10px;top:10px;font-size:11px;padding:4px 10px;border-radius:14px;background:rgba(4,10,18,.55);color:#dbe4f0;border:1px solid rgba(255,255,255,.18);cursor:pointer}
 .fpvbtns{display:flex;justify-content:center;margin:12px 0 4px}
 #fpvCastBtn{font-size:17px;font-weight:900;padding:12px 34px;border-radius:26px;min-height:50px;border:1px solid #f5b942;color:#1a1204;background:linear-gradient(180deg,#ffe29a,#f5b942)}
@@ -660,6 +663,9 @@ html.app-fish .wrap{padding-top:calc(8px + env(safe-area-inset-top))}
 .fpvcard .rar{position:absolute;right:9px;top:8px;font-size:10px;color:#f5d58a}
 .fpvcard .rk{position:absolute;left:9px;top:7px;font:700 11px/1 ui-monospace,monospace;color:#f5d58a;z-index:1}
 .fpvcard .lbtn{width:100%;margin-top:8px;min-height:38px}
+.fpvprof .kvp{display:grid;grid-template-columns:minmax(92px,auto) minmax(0,1fr);gap:10px;padding:8px 2px;border-bottom:1px solid var(--line);font-size:12.5px;line-height:1.55}
+.fpvprof .kvp span{color:var(--sub)}.fpvprof .kvp b{font-weight:600;color:var(--txt)}
+.fpvq{display:block;text-align:center;margin-top:12px;min-height:42px;line-height:42px;padding:0 10px;text-decoration:none}
 .fpvnone{grid-column:1/-1;text-align:center;padding:18px 10px;color:var(--sub);font-size:13px}
 @keyframes fpvIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){.fpvcard{animation:none}}
@@ -892,9 +898,12 @@ html.app-fish #fishBasketPane h2 .sub{display:none}
   <!-- 🎣 V77.9.7 股海釣手舞台(只有 ?app=fish 才顯示)—— 名單一律來自 _castPick(⛔ 動畫不改變名單)。
        ⛔ 這一塊不寫任何選股規則(使用者:「釣魚系統策略不用寫出來」)。 -->
   <div id="fpvPane">
-    <div class="fpvhead"><div class="fpvbrand">股海釣手</div><div class="fpvsub" id="fpvSub">水面平靜中…</div></div>
-    <div class="fpvwrap" id="fpvWrap"><canvas id="fpvCanvas"></canvas><span class="fpvskip hidden" id="fpvSkip" onclick="PRO.fpvSkip()">⏭ 略過</span></div>
+    <div class="fpvhead"><div class="fpvbrand">股海釣手</div><div class="fpvsub" id="fpvSub">水面平靜中…</div>
+      <button class="fpvbuzz" id="fpvBuzzBtn" onclick="PRO.fpvBuzzToggle()">📳 震動:開</button><span class="fpvsub" id="fpvBuzzNote"></span>
+      <label id="fpvHaptic" aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none"><input type="checkbox" switch tabindex="-1"></label></div>
+    <div class="fpvwrap" id="fpvWrap"><canvas id="fpvCanvas"></canvas><div class="fpvhint" id="fpvHint"></div><span class="fpvskip hidden" id="fpvSkip" onclick="PRO.fpvSkip()">⏭ 全部收網</span></div>
     <div class="fpvbtns"><button class="lbtn on" id="fpvCastBtn" onclick="PRO.fpvCast()">🎣 拋竿</button></div>
+    <div class="fpvsub" id="fpvLegend" style="text-align:center">🎨 魚越紅 = 股價在一年裡越高、越綠 = 越低(不是今天的漲跌)・📏 魚越大 = 公司越大 ・🎣 咬鉤後按住畫面收線</div>
     <div id="fpvCards"></div>
   </div>
   <!-- 🎣 V77.4.1 三步驟直排(01 建池 → 02 拋竿 → 03 驗證)—— 借外部那份介面的「結構」,⛔ 不借它的框與橘色。
@@ -1131,7 +1140,7 @@ const PRO = {
     t.textContent = msg; t.classList.add('on');
     clearTimeout(this._tt); this._tt = setTimeout(() => t.classList.remove('on'), ms);
   },
-  buzz(ms = 15) { try { navigator.vibrate && navigator.vibrate(ms); } catch (_) {} },
+  buzz(ms = 15) { if (this._appFish && !this._fpvBuzzOn()) return; try { navigator.vibrate && navigator.vibrate(ms); } catch (_) {} },   // 📳 V78.0.0 股海釣手的震動開關也管這支
 
   // ── 中文名(V77.2.8 改三層)──
   // 🚨 舊版**只有一條腿**(無 token 的 FinMind),掛掉就回 {} → 全站名字變一排純代號,
@@ -2843,7 +2852,7 @@ const PRO = {
     if (!scr || !scr.rows || !scr.cols) return null;
     const C = scr.cols, ix = k => C.indexOf(k);
     const iC = ix('c'), iChg = ix('chg'), i20 = ix('chg20'), iAmt = ix('amt'), iPos = ix('pos252'),
-          iAmp = ix('amp20'), iB20 = ix('b20'), iEtf = ix('etf'), iAtt = ix('att'), i5 = ix('chg5'), iPb = ix('pb');
+          iAmp = ix('amp20'), iB20 = ix('b20'), iEtf = ix('etf'), iAtt = ix('att'), i5 = ix('chg5'), iPb = ix('pb'), iMc = ix('mcap');
     // 👑 V77.9.4 領頭羊名單(同 index `_leaderCalc` / lib_leader.py,test_leaderdeck 跨檔比對)—— 由原始 screener 算,⛔ 不讀 index.html
     const LD = this._leaderCalc(scr), _LEAD = this._isLead();
     // 狀態:關聯星圖算好的為準(它有昨天的資料才判得出「突破」);
@@ -2864,7 +2873,8 @@ const PRO = {
                   amt, pos252: pos, amp20: Number.isFinite(amp) ? amp : 0, att: (r[iAtt] || 0), st: S[sym] || 0,
                   ind: (scr.ind || {})[sym] || '',                  // 🎣 拋竿的板塊那一層要用(⚠️ 只涵蓋上市)
                   chg5: Number.isFinite(r[i5]) ? r[i5] : 0,          // ⚠️ 拋竿的避雷守門要用(噴 ≥30% 又被掛注意股)
-                  pb: (iPb >= 0 && Number.isFinite(r[iPb])) ? r[iPb] : null,   // 💎 股價淨值比(採礦那份;null = 不知道,⛔ 不補 0)
+                  pb: (iPb >= 0 && Number.isFinite(r[iPb])) ? r[iPb] : null,
+                  mcap: (iMc >= 0 && Number.isFinite(r[iMc]) && r[iMc] > 0) ? r[iMc] : null,   // 🎣 V78.0.0 市值(億)→ 魚的大小;採礦還沒這欄 → 釣的時候由財報切片補   // 💎 股價淨值比(採礦那份;null = 不知道,⛔ 不補 0)
                   lpool: _LEAD ? ((LD.poolRank || {})[sym] || 0) : 0, lrank: _LEAD && LD.all && LD.all[sym] ? LD.all[sym].rank : 0,   // 🔒 V77.9.6 沒選 👑 → 一律 0(魚缸不戴冠、漁獲籃不記名次)   // 👑 池子名次 / 動能名次(0 = 不在)
                   sc: this._fishScore(r, C, E) });
     }
@@ -3458,30 +3468,54 @@ const PRO = {
   //   ⛔ 三條不可違反:
   //    ① 名單只來自 `_castPick`(跟作戰室 / 決策台同一套,而且跟「我的策略」同步)—— 動畫只是表演,⛔ 不改變名單
   //       (test_fishapp ⓒ 決定性對照:stub 掉動畫前後名單相同、App 模式 == 一般模式)。
-  //    ② 畫面⛔ 不寫任何選股規則(使用者:「釣魚系統策略不用寫出來」)—— 卡上只有名字 / 價格 / 漲跌 / 一張金額。
-  //    ③ 🎨 台股配色:上漲 = 紅寶石鱗 + 金色尾跡、下跌 = 翡翠綠 + 深藍水霧(⛔ 附件是綠漲,照抄會讓使用者看反)。
-  //   ♿ prefers-reduced-motion / 畫不了 → 直接展示卡片;🛟 安全閥:rAF 停掉(切到背景)也會在時限內結束。
+  //    ② 畫面⛔ 不寫任何選股規則(使用者:「釣魚系統策略不用寫出來」)—— 卡上只有名字 / 價格 / 漲跌 / 市值 / 一年高低位置。
+  //    ③ 🎨 V78.0.0 魚身顏色 = 一年高低位置(越高越紅、越低越綠,漸變;使用者核准的燈號鐵則例外,只限魚身),
+  //       今天漲跌只寫在卡片數字(紅漲綠跌照舊);魚的大小 / 種類 = 市值。
+  //   ♿ prefers-reduced-motion / 畫不了 → 直接展示卡片;V78.0.0 起一按只釣一條、按住收線(`_fpvOne` / `_fpvGameStep`)。
   //   ⚠️ iOS Safari 的 canvas ⛔ 不支援 ctx.filter → 模糊 / 景深一律用透明度與漸層做。
   _fpv: null,
-  _FPV_DUR: { cast: 650, bite: 520, reel: 1400, breach: 1150, show: 900 },   // 第一條完整演;之後每條 ×_FPV_FAST
-  _FPV_FAST: 0.5,
   _fpvOn() { return document.documentElement.classList.contains('app-fish'); },
-  /** 🐟 一檔股票 → 一條魚的外觀參數(⛔ 只用價格 / 漲跌 / 振幅,不帶任何選股規則) */
+  /** 🐟 一檔股票 → 一條魚的外觀參數(⛔ 只用市值 / 位階 / 漲跌 / 振幅,不帶任何選股規則)
+   *  🎨 V78.0.0 使用者:「越高基期越紅、低基期越綠,漸變」→ 魚身顏色 = 一年位階 `pos252`(綠 → 黃 → 橘 → 紅 連續內插)。
+   *     ⚠️ 這是燈號鐵則(紅綠只講漲跌)在**股海釣手魚身**的例外,使用者明確核准;今天漲跌仍只寫在卡片數字上(紅漲綠跌照舊)。
+   *  📏 使用者:「股價越高魚越大」→ 我建議改市值(1,000 元的小型股 ≠ 大公司),使用者選市值 →
+   *     大小與魚種都照市值(億):<50 小魚 / <300 鮪魚 / <2,000 旗魚 / ≥2,000 龍魚;長度 = 110 × (0.7 ~ 1.3,log 市值)。
+   *     市值算不出 → 中等(鮪魚、1.0 倍)並在卡上寫出來,⛔ 不拿股價硬猜。 */
+  _FPV_BASE_LEN: 110,
+  _fpvSizeK(mcap) { return Number.isFinite(mcap) && mcap > 0 ? 0.7 + 0.6 * Math.max(0, Math.min(1, (Math.log10(mcap) - 1) / 3)) : 1; },
+  _fpvTierOf(mcap) { return !(Number.isFinite(mcap) && mcap > 0) ? 2 : mcap >= 2000 ? 4 : mcap >= 300 ? 3 : mcap >= 50 ? 2 : 1; },
+  _fpvHsl(h, s, l) {
+    s /= 100; l /= 100; const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+    return [f(0), f(8), f(4)].map(v => Math.round(v * 255));
+  },
+  /** 🎨 位階 0~100 → 調色盤(0 = 翡翠綠、50 = 金黃、100 = 寶石紅;色相由 158° 一路轉到 −5°) */
+  _fpvPal(pos) {
+    const t = Math.max(0, Math.min(1, (Number.isFinite(pos) ? pos : 50) / 100));
+    const h = ((158 - 163 * t) % 360 + 360) % 360;
+    const c = (s, l) => { const [r, g, b] = this._fpvHsl(h, s, l); return `rgb(${r},${g},${b})`; };
+    return { b1: c(88, 66), b2: c(80, 40), b3: c(85, 14), fin: c(90, 78), belly: c(70, 90), glow: this._fpvHsl(h, 92, 62).join(','), h: Math.round(h), t };
+  },
   _fpvFishOf(r) {
     const c = +r.c || 0, chg = Number.isFinite(r.chg) ? r.chg : 0, amp = Number.isFinite(r.amp20) ? r.amp20 : 3;
-    const tier = c >= 1000 ? 4 : c >= 300 ? 3 : c >= 80 ? 2 : 1;
+    const mcap = Number.isFinite(r.mcap) && r.mcap > 0 ? +r.mcap : null, pos = Number.isFinite(r.pos252) ? +r.pos252 : null;
+    const tier = this._fpvTierOf(mcap), sizeK = this._fpvSizeK(mcap);
     const dir = chg > 0.05 ? 1 : chg < -0.05 ? -1 : 0;
-    const pal = dir > 0 ? { b1: '#ff8a70', b2: '#c8102e', b3: '#5a0612', fin: '#ffd27a', glow: '255,190,80', belly: '#ffd9c2' }
-              : dir < 0 ? { b1: '#58f0b0', b2: '#10866a', b3: '#062a44', fin: '#8fe3ff', glow: '60,170,255', belly: '#cffff0' }
-              :           { b1: '#dfe7f2', b2: '#8795a8', b3: '#2c3748', fin: '#c9d4e3', glow: '200,215,235', belly: '#f4f7fb' };
-    return { sym: r.sym, nm: r.nm || r.sym, c, chg, amp, tier, dir, pal,
-             len: [0, 70, 92, 118, 150][tier],
+    const pal = this._fpvPal(pos), sp = this._FPV_SP[tier];
+    return { sym: r.sym, nm: r.nm || r.sym, c, chg, amp, tier, dir, pal, mcap, pos, sizeK,
+             len: Math.round(this._FPV_BASE_LEN * sizeK),
              A: 0.07 + Math.min(1, Math.max(0, (amp - 1) / 7)) * 0.13,          // 擺幅 ← 20 日振幅(越會跳擺越大)
              w: 5.2 + Math.min(10, Math.max(-5, chg)) * 0.32,                 // 擺頻 ← 今日漲跌(漲越多游越輕快)
              ph: Math.random() * 6.28, rare: tier >= 3,
-             sp: this._FPV_SP[tier], front: this._FPV_SP[tier].front, back: 1 + this._FPV_SP[tier].tl * 0.95,
-             span: this._FPV_SP[tier].front + 1 + this._FPV_SP[tier].tl * 0.95, hgt: this._FPV_SP[tier].hgt,
-             tag: ['', '🐠 靈巧小魚', '🐟 鮪魚級', '🗡️ 旗魚級', '🐉 金鱗龍魚'][tier] };
+             sp, front: sp.front, back: 1 + sp.tl * 0.95,
+             span: sp.front + 1 + sp.tl * 0.95, hgt: sp.hgt,
+             tag: ['', '🐠 小魚', '🐟 鮪魚', '🗡️ 旗魚', '🐉 龍魚'][tier] };
+  },
+  /** 📐 大魚小魚要看得出差別:所有魚共用同一個畫面比例(以最大那條魚撐得下畫面來算),
+   *   ⛔ 不再每條各自放大到撐滿畫面(V77.9.9 以前就是這樣,才會「沒有大小之分」);只有放不下時才縮。 */
+  _fpvFit(F, W, cap) {
+    const maxLen = this._FPV_BASE_LEN * 1.3, uni = Math.min(cap, (W * 0.9) / (maxLen * 1.55));
+    return Math.min(uni, (W * 0.94) / (F.len * (F.span || 1.35)));
   },
   /** 🐟 四種魚各自的長相(V77.9.9 使用者:「旗魚及鮪魚長得很不像」)——
    *   以前四種共用同一個身體輪廓只差大小;現在每種有自己的身形 / 尾型 / 鰭 / 配件:
@@ -3653,7 +3687,7 @@ const PRO = {
     if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (!this._fpv) {
-      this._fpv = { swim: [], parts: [], drops: [], ghost: [], shake: 0, flash: 0, dip: 0, bend: 0.08, line: null, A: null, t0: performance.now(), raf: 0, lastPicked: null };
+      this._fpv = { swim: [], parts: [], drops: [], ghost: [], shake: 0, flash: 0, dip: 0, bend: 0.08, line: null, G: null, Q: null, t0: performance.now(), raf: 0, lastPicked: null };
       this._fpv.parts = Array.from({ length: 220 }, () => ({ on: false }));   // 粒子池(⛔ 不在迴圈裡 new)
     }
     Object.assign(this._fpv, { cv, ctx, W, H, hz: H * 0.32 });
@@ -3680,26 +3714,123 @@ const PRO = {
         r: 1 + Math.random() * 3.2, glow: Math.random() < 0.35, col: F ? F.pal.glow : '220,240,255' });
     }
   },
-  _fpvRun(picks) {
-    const S = this._fpvSetup();
+  /** 🎣 V78.0.0 手動一條一條釣(使用者:「為何一次全部釣起來?我要手動一條一條釣,你的釣法太機械化」)
+   *  名單仍一次算好(`_fpvTen`,⛔ 名單邏輯一行不動),存成佇列 `S.Q`;每按一次拋竿只釣下一條:
+   *    cast(拋出,落點隨機)→ wait(浮標晃,0.8~2.6 秒隨機 + 0~2 次假咬)→ bite(按住就上鉤,4 秒沒按就跑掉)
+   *    → fight(按住收線:進度↑ 張力↑;魚衝的時候張力漲很快 → 要放手;張力滿 = 斷線)→ breach → show(出卡片)
+   *  🐟 跑掉 / 斷線 → **同一條魚留在佇列最前面**(名次順序不變),再拋一次還是牠。
+   *  ⚡ 掙扎強度 ← 20 日振幅(越會跳越難拉)、收線時間 ← 市值(大魚久)——⛔ 只影響好不好拉,不改名單。
+   *  ♿ 減少動態 / 畫不了 → 直接出卡片(⛔ 不讓人卡在一個點不開的小遊戲裡)。 */
+  _fpvRnd() { return Math.random(); },
+  _fpvQueue(rows) {
+    const fish = rows.map(p => ({ ...this._fpvFishOf(p), rank: p.rank || 0, star: !!p.star, warn: p.warn || [], live: !!p.live, pxDate: p.pxDate || '', mcapSrc: p.mcapSrc || '' }));
+    return { rows, fish, i: 0, seq: ['idle'] };
+  },
+  _fpvCanPlay() {
     const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const fish = picks.map(p => ({ ...this._fpvFishOf(p), rank: p.rank || 0, star: !!p.star, warn: p.warn || [], live: !!p.live, pxDate: p.pxDate || '' }));
-    const DUR = this._FPV_DUR, FAST = this._FPV_FAST;
-    const plan = [];
-    fish.forEach((F, i) => { const f = !i ? 1 : i < 3 ? FAST : FAST / 2;   // 🎣 V77.9.9 10 條:第 1 條完整、2~3 條 ×0.5、之後 ×0.25
-      if (!i) plan.push({ ph: 'cast', d: DUR.cast, i });
-      for (const ph of ['bite', 'reel', 'breach', 'show']) plan.push({ ph, d: DUR[ph] * f, i }); });
-    const total = plan.reduce((a, x) => a + x.d, 0);
-    const A = { seq: ['idle'], plan, fish, k: -1, t0: performance.now(), total, done: false, resolved: false, shown: new Set() };
-    if (S) S.A = A;
-    return new Promise(resolve => {
-      A.finish = () => { if (A.resolved) return; A.resolved = true; A.done = true;
-        if (A.seq[A.seq.length - 1] !== 'done') A.seq.push('done');
-        clearTimeout(A.timer); fish.forEach((F, i) => this._fpvShowCard(F, i, picks[i])); resolve(A); };
-      if (reduce || !S || !fish.length) { if (!fish.length) A.seq.push('none'); A.finish(); return; }
-      A.timer = setTimeout(A.finish, total + 2500);           // 🛟 安全閥
-      this._fpvLoop();
-    });
+    return !reduce && !!(this._fpv && this._fpv.ctx);
+  },
+  /** 釣佇列裡的下一條;回傳 Promise(釣到 / 跑掉 / 直接出卡)。 */
+  _fpvOne() {
+    const S = this._fpvSetup(), Q = S && S.Q;
+    if (!Q || Q.i >= Q.fish.length) return Promise.resolve({ ok: false, none: true });
+    const F = Q.fish[Q.i], idx = Q.i;
+    if (!this._fpvCanPlay()) { this._fpvShowCard(F, idx, null); Q.i++; Q.seq.push('show'); this._fpvBtn(); return Promise.resolve({ ok: true, instant: true }); }
+    const r = this._fpvRnd, W = S.W, H = S.H, hz = S.hz;
+    const G = { F, idx, ph: '', el: 0, p: 0, prog: 0, ten: 0, holding: false, surge: 0, run: false, runT: 0, done: false,
+                waitMs: 800 + r.call(this) * 1800, nib: [], hook: { x: W * (0.3 + 0.36 * r.call(this)), y: hz + (H - hz) * (0.34 + 0.16 * r.call(this)) } };
+    const nN = Math.floor(r.call(this) * 3); for (let k = 0; k < nN; k++) G.nib.push(250 + r.call(this) * (G.waitMs - 400));
+    G.nib.sort((a, b) => a - b);
+    S.G = G; S.hook = null;
+    return new Promise(res => { G.res = res; this._fpvEnter(G, 'cast'); this._fpvLoop(); this._fpvBtn(); });
+  },
+  _FPV_T: { cast: 650, bite: 4000, breach: 1150, show: 900 },
+  _fpvEnter(G, ph) {
+    const S = this._fpv, Q = S.Q; G.ph = ph; G.el = 0; G.p = 0; if (Q) Q.seq.push(ph);
+    const F = G.F, h = S.hook || G.hook;
+    if (ph === 'wait') { this._fpvBurst(G.hook.x, G.hook.y, null, 25); this._fpvHint('⏳ 等魚咬鉤…'); }
+    if (ph === 'bite') { S.dip = 16; S.bend = 0.55; S.shake = 4; this._fpvBurst(G.hook.x, G.hook.y, null, 40); this._fpvBuzz([70, 50, 70]); this._fpvHint('⚡ 上鉤了!<b>按住畫面收線</b>', true); }
+    if (ph === 'fight') { this._fpvHint('🎣 按住收線 ・魚在衝的時候<b>先放手</b>,線會斷', true); }
+    if (ph === 'breach') { this._fpvBurst(h.x, h.y, F, 120); S.flash = 0.7; S.shake = 6 + F.A * 40; S.ghost = []; this._fpvBuzz([30, 30, 140]); this._fpvHint(''); }
+    if (ph === 'show') { this._fpvShowCard(F, G.idx, null); }
+  },
+  _fpvEnd(G, ok, why) {
+    if (G.done) return; G.done = true;
+    const S = this._fpv, Q = S.Q;
+    if (ok) { Q.i++; Q.seq.push('caught'); this._fpvHint(''); }
+    else { Q.seq.push('escape'); this._fpvBuzz(220); this._fpvHint(`🐟 <b>${this._esc(G.F.nm)}</b> 跑掉了(${why})—— 再拋一次,還是牠`); }
+    S.G = null; G.holding = false; this._fpvBtn();
+    if (G.res) G.res({ ok, why: why || '' });
+  },
+  /** 一步遊戲邏輯(dt 秒)—— 跟畫圖分開,測試可以直接驅動 */
+  _fpvGameStep(G, dt) {
+    if (!G || G.done) return;
+    const T = this._FPV_T, S = this._fpv, ms = dt * 1000, r = () => this._fpvRnd();
+    const slow = G.ph === 'breach' ? 0.5 : 1;
+    G.el += ms * slow;
+    if (G.ph === 'cast') { G.p = Math.min(1, G.el / T.cast); if (G.el >= T.cast) this._fpvEnter(G, 'wait'); return; }
+    if (G.ph === 'wait') {
+      while (G.nib.length && G.el >= G.nib[0]) { G.nib.shift(); S.dip = 5; this._fpvBuzz(18); }
+      if (G.el >= G.waitMs) this._fpvEnter(G, 'bite'); return;
+    }
+    if (G.ph === 'bite') { if (G.holding) this._fpvEnter(G, 'fight'); else if (G.el >= T.bite) this._fpvEnd(G, false, '太慢了,沒拉到'); return; }
+    if (G.ph === 'fight') {
+      const F = G.F, str = 0.75 + Math.min(1, Math.max(0, (F.amp - 1) / 7)) * 0.6, big = F.sizeK || 1;
+      G.runT -= ms;
+      if (G.runT <= 0) {
+        G.run = !G.run;
+        if (G.run) { G.surge = str * (0.6 + 0.4 * r()); G.dirX = r() < 0.5 ? -1 : 1; G.runT = 450 + r() * 750; this._fpvBuzz(Math.round(40 + 60 * G.surge)); }
+        else { G.surge = 0; G.runT = 700 + r() * 900; }
+      }
+      if (G.holding) { G.prog += dt * (G.run ? 0.07 : 0.34) / big; G.ten += dt * (G.run ? 1.05 * G.surge : 0.16); }
+      else { G.prog -= dt * (G.run ? 0.07 * G.surge : 0.015); G.ten -= dt * 0.85; }
+      G.prog = Math.max(0, Math.min(1, G.prog)); G.ten = Math.max(0, G.ten);
+      if (G.ten >= 1) return this._fpvEnd(G, false, '線斷了');
+      if (G.prog >= 1) this._fpvEnter(G, 'breach');
+      return;
+    }
+    if (G.ph === 'breach') { G.p = Math.min(1, G.el / T.breach); if (G.el >= T.breach) this._fpvEnter(G, 'show'); return; }
+    if (G.ph === 'show') { G.p = Math.min(1, G.el / T.show); if (G.el >= T.show) this._fpvEnd(G, true); }
+  },
+  fpvHold(on) {
+    const G = this._fpv && this._fpv.G; if (!G || G.done) return false;
+    if (G.ph === 'bite' || G.ph === 'fight') { G.holding = !!on; return true; }
+    return false;
+  },
+  _fpvHint(html, strong) {
+    const el = document.getElementById('fpvHint'); if (!el) return;
+    el.innerHTML = html || ''; el.classList.toggle('on', !!html); el.classList.toggle('hot', !!strong);
+  },
+  _fpvBtn() {
+    const btn = document.getElementById('fpvCastBtn'), skip = document.getElementById('fpvSkip'), S = this._fpv, Q = S && S.Q;
+    const busy = !!(S && S.G && !S.G.done), left = Q ? Q.fish.length - Q.i : 0;
+    if (btn) {
+      btn.disabled = busy;
+      btn.textContent = busy ? '🎣 釣魚中…' : (Q && left > 0) ? `🎣 拋竿(第 ${Q.i + 1} / ${Q.fish.length} 條)` : (Q ? '🎣 再拋一輪' : '🎣 拋竿');
+    }
+    if (skip) skip.classList.toggle('hidden', !(Q && left > 0));
+  },
+  /** 📳 震動開關(`fishBuzz_v1`,預設開)。Android 用 navigator.vibrate;
+   *  iPhone 沒有這個 API → iOS 18 起點一下 `<input type=checkbox switch>` 會有觸覺回饋(只能單下,節奏用幾下拼);更舊的 iPhone 沒辦法。 */
+  _fpvBuzzOn() { try { return localStorage.getItem('fishBuzz_v1') !== '0'; } catch (_) { return true; } },
+  fpvBuzzToggle() {
+    const on = !this._fpvBuzzOn(); try { localStorage.setItem('fishBuzz_v1', on ? '1' : '0'); } catch (_) {}
+    this._fpvBuzzUi(); if (on) this._fpvBuzz([40, 40, 40]);
+  },
+  _fpvBuzzUi() {
+    const b = document.getElementById('fpvBuzzBtn'); if (!b) return;
+    const on = this._fpvBuzzOn(), vib = !!navigator.vibrate, ios = /iP(hone|ad|od)/.test(navigator.userAgent || '') || (/Mac/.test(navigator.platform || '') && navigator.maxTouchPoints > 1);
+    b.textContent = on ? '📳 震動:開' : '📴 震動:關';
+    b.title = vib ? '' : ios ? 'iPhone 要 iOS 18 以上才會震' : '這台裝置不支援震動';
+    const n = document.getElementById('fpvBuzzNote'); if (n) n.textContent = on && !vib ? (ios ? '(iPhone 要 iOS 18 以上才會震)' : '(這台裝置不支援震動)') : '';
+  },
+  _fpvBuzz(pat) {
+    if (!this._fpvBuzzOn()) return false;
+    try { if (navigator.vibrate) { navigator.vibrate(pat); return true; } } catch (_) {}
+    const lab = document.getElementById('fpvHaptic'); if (!lab) return false;
+    const n = Array.isArray(pat) ? Math.ceil(pat.length / 2) : 1;
+    for (let k = 0; k < Math.min(3, n); k++) setTimeout(() => { try { lab.click(); } catch (_) {} }, k * 110);
+    return true;
   },
   /** 🧺 股海釣手的漁獲籃(同一份計算,只換版面):名字 / 釣起價 → 現價 / 一張賺賠;⛔ 不寫出場規則 */
   _fpvBasketHtml(hold, done, totOpen, totDone, money) {
@@ -3740,7 +3871,14 @@ const PRO = {
     this.toast(`🏠 已帶回家 ${list.length} 條 → 散戶救星「自選 → 🎣 魚池」` + (ok ? '(匯入碼也複製好了,另一台 / 主畫面 App 讀不到就到魚池按「📥 貼上匯入碼」)' : ''), 4200);
     return code;
   },
-  fpvSkip() { const A = this._fpv && this._fpv.A; if (A && !A.done) A.finish(); },
+  /** ⏭ 全部收網:目前這條 + 佇列剩下的,一次全部出卡片(名次順序不變) */
+  fpvSkip() {
+    const S = this._fpv, Q = S && S.Q; if (!Q) return;
+    const G = S.G;
+    if (G && !G.done) { this._fpvShowCard(G.F, G.idx, null); G.done = true; S.G = null; Q.i = Math.max(Q.i, G.idx + 1); if (G.res) G.res({ ok: true, skip: true }); }
+    while (Q.i < Q.fish.length) { this._fpvShowCard(Q.fish[Q.i], Q.i, null); Q.i++; }
+    Q.seq.push('all'); this._fpvHint(''); this._fpvBtn();
+  },
   _fpvLoop() {
     const S = this._fpv; if (!S || S.raf) return;
     let last = performance.now();
@@ -3753,66 +3891,63 @@ const PRO = {
     };
     S.raf = requestAnimationFrame(tick);
   },
-  /** 一格畫面:場景 → 水下魚 → 狀態機 → 粒子 → 濺屏 → 暈影 */
+  /** 一格畫面:場景 → 水下魚 → 狀態機(一次一條,手動)→ 粒子 → 濺屏 → 暈影 */
   _fpvFrame(now, dt) {
-    const S = this._fpv, { ctx, W, H } = S, A = S.A && !S.A.done ? S.A : null;
-    let t = (now - S.t0) / 1000;
-    // ── 狀態機推進
-    let cur = null, p = 0;
-    if (A) {
-      let el = now - A.t0, k = 0;
-      while (k < A.plan.length && el >= A.plan[k].d) { el -= A.plan[k].d; k++; }
-      if (k >= A.plan.length) { A.finish(); } else {
-        if (k !== A.k) {
-          A.k = k; const st = A.plan[k]; A.seq.push(st.ph);
-          const F = A.fish[st.i];
-          if (st.ph === 'bite') { S.dip = 16; S.bend = 0.55; this._fpvBurst(S.hook ? S.hook.x : W * 0.5, S.hz + (H - S.hz) * 0.35, null, 40); S.shake = 4; }
-          if (st.ph === 'breach') { this._fpvBurst(S.hook.x, S.hook.y, F, 120); S.flash = 0.7; S.shake = 6 + F.A * 40; S.ghost = []; }
-          if (st.ph === 'show') this._fpvShowCard(F, st.i, null);
-        }
-        cur = A.plan[k]; p = Math.min(1, el / cur.d);
-      }
-    }
-    const slow = cur && cur.ph === 'breach' ? 0.5 : 1;          // 🐢 破水慢動作 0.5×
-    t = S.tSlow = (S.tSlow || t) + dt * slow;
-    // ── 鏡頭:呼吸 + 咬鉤下沉 + 震動
+    const S = this._fpv, { ctx, W, H } = S;
+    const G0 = S.G && !S.G.done ? S.G : null;
+    if (G0) this._fpvGameStep(G0, dt);
+    const G = S.G && !S.G.done ? S.G : null, ph = G ? G.ph : '', p = G ? G.p : 0, F = G ? G.F : null;
+    const slow = ph === 'breach' ? 0.5 : 1;          // 🐢 破水慢動作 0.5×
+    let t = S.tSlow = (S.tSlow || (now - S.t0) / 1000) + dt * slow;
+    // ── 鏡頭:呼吸 + 咬鉤下沉 + 震動(魚衝的時候鏡頭跟著抖)
+    if (ph === 'fight' && G.run) S.shake = Math.max(S.shake, 2 + 3 * G.surge);
     S.dip *= 0.9; S.shake *= 0.9; S.flash *= 0.9;
     const sx = (Math.random() - 0.5) * S.shake, sy = (Math.random() - 0.5) * S.shake + S.dip + Math.sin(t * 1.1) * 2;
     ctx.save(); ctx.clearRect(0, 0, W, H); ctx.translate(sx, sy);
     const hz = S.hz;
     this._fpvScene(ctx, W, H, hz, t);
-    // ── 水下的魚
-    const reelF = cur && (cur.ph === 'bite' || cur.ph === 'reel') ? A.fish[cur.i] : null;
+    // ── 水下的魚(正在拉的那條不重複畫)
+    const onLine = ph === 'bite' || ph === 'fight' ? F : null;
     for (const s of S.swim) {
-      if (reelF && s.F.sym === reelF.sym) continue;
+      if (F && s.F.sym === F.sym && (onLine || ph === 'breach' || ph === 'show')) continue;
       s.x += s.v * dt; if (s.x > 1.15) s.x = -0.15; if (s.x < -0.15) s.x = 1.15;
       const y = hz + 18 + (H - hz - 40) * s.d, sc = 0.28 + 0.62 * s.d;
       this._fpvDrawFish(ctx, s.F, s.x * W, y + Math.sin(t * 1.3 + s.F.ph) * 4, sc, s.v > 0 ? 0 : Math.PI, t, { under: true, alpha: 0.88 });
     }
     // ── 釣竿 / 釣線 / 狀態演出
     const tipX = W * 0.62, tipY = H * 0.36 + Math.sin(t * 1.4) * 3;
-    S.bend += (((cur && (cur.ph === 'reel' || cur.ph === 'bite')) ? 0.6 + Math.sin(t * 13) * 0.06 : cur && cur.ph === 'breach' ? 0.35 : 0.08) - S.bend) * 0.15;
-    S.bend = Math.max(0.05, Math.min(0.7, S.bend));
-    let hook = S.hook || { x: W * 0.46, y: hz + (H - hz) * 0.42 };
-    if (!S.hook) S.hook = hook;
-    let tension = 0;
-    if (cur && cur.ph === 'cast') {
-      const q = p, tx = W * 0.46, ty = hz + (H - hz) * 0.42;
+    const bendTo = ph === 'fight' ? (G.holding ? 0.45 + 0.25 * Math.min(1, G.ten) : 0.2) + (G.run ? Math.sin(t * 13) * 0.06 : 0)
+                 : ph === 'bite' ? 0.5 + Math.sin(t * 9) * 0.08 : ph === 'breach' ? 0.35 : 0.08;
+    S.bend += (bendTo - S.bend) * 0.15; S.bend = Math.max(0.05, Math.min(0.75, S.bend));
+    let hook = S.hook || { x: W * 0.46, y: hz + 8 }, tension = 0;
+    if (ph === 'cast') {
+      const q = p, tx = G.hook.x, ty = hz + 6;
       hook = { x: tipX + (tx - tipX) * q, y: tipY + (ty - tipY) * q - Math.sin(q * Math.PI) * H * 0.2 };
-      if (q > 0.96 && !S.castSplash) { S.castSplash = 1; this._fpvBurst(tx, ty, null, 25); }
-    } else if (reelF) {
-      tension = cur.ph === 'reel' ? 1 : 0.6;
-      const q = cur.ph === 'reel' ? p : 0;
-      const bx = W * 0.46 + Math.sin(t * 7 + reelF.ph) * 18 * (1 + reelF.A * 3), by = hz + (H - hz) * (0.42 - 0.22 * q);
-      hook = { x: bx, y: by }; S.hook = hook;
-      this._fpvDrawFish(ctx, reelF, bx, by + 10, 0.55 + 0.3 * q, Math.sin(t * 11) * 0.5, t, { under: true, thrash: 2.2, fast: 2, alpha: 0.9 });
-      if (Math.random() < 0.5) this._fpvBurst(bx, by, null, 2);
-    } else if (cur && cur.ph === 'breach') {
-      const F = A.fish[cur.i], q = p, cx = W * 0.5, cy = H * 0.48;
-      const x = hook.x + (cx - hook.x) * q, y = hook.y + (cy - hook.y) * q - Math.sin(q * Math.PI) * H * 0.28;
+    } else if (ph === 'wait') {
+      const bob = Math.sin(t * 3.2) * 2.5 + S.dip * 0.4;
+      hook = { x: G.hook.x + Math.sin(t * 0.7) * 3, y: hz + 6 + bob };
+      this._fpvFloat(ctx, hook.x, hook.y, 0);
+      tension = 0.05;
+    } else if (ph === 'bite') {
+      hook = { x: G.hook.x + Math.sin(t * 17) * 3, y: hz + 14 + Math.abs(Math.sin(t * 8)) * 8 };
+      this._fpvFloat(ctx, hook.x, hook.y, 1);
+      this._fpvDrawFish(ctx, F, hook.x, hook.y + 26, 0.45, Math.sin(t * 11) * 0.5, t, { under: true, thrash: 2, fast: 2, alpha: 0.75 });
+      tension = 0.5;
+    } else if (ph === 'fight') {
+      // 魚在水下左右衝;收得越多越靠近水面、越大
+      G.fx = (G.fx == null ? G.hook.x : G.fx) + ((G.run ? G.dirX * W * 0.35 * G.surge : 0) * dt) + (W * 0.5 - (G.fx || W * 0.5)) * 0.4 * dt;
+      G.fx = Math.max(W * 0.12, Math.min(W * 0.88, G.fx));
+      const q = G.prog, by = hz + (H - hz) * (0.55 - 0.4 * q) + Math.sin(t * 7) * 5;
+      hook = { x: G.fx, y: by }; S.hook = hook;
+      this._fpvDrawFish(ctx, F, G.fx, by + 8, 0.45 + 0.35 * q, (G.run ? G.dirX * 0.4 : 0) + Math.sin(t * 11) * 0.3, t, { under: true, thrash: G.run ? 2.6 : 1.4, fast: G.run ? 2.4 : 1.3, alpha: 0.92 });
+      if (G.run && Math.random() < 0.6) this._fpvBurst(G.fx, hz + 4, null, 2);
+      tension = Math.min(1, 0.3 + G.ten);
+    } else if (ph === 'breach') {
+      const q = p, cx = W * 0.5, cy = H * 0.48, h0 = S.hook || G.hook;
+      const x = h0.x + (cx - h0.x) * q, y = h0.y + (cy - h0.y) * q - Math.sin(q * Math.PI) * H * 0.28;
       const scl = 0.3 + 1.5 * q * q, ang = -0.6 + q * 0.6 + Math.sin(t * 6) * 0.15;
-      const k2 = Math.min(scl * (F.len > 110 ? 1 : 1.2), (W * 0.9) / (F.len * (F.span || 1.35))), ox = this._fpvOx(F, k2);   // 以魚身中心對準軌跡(頭在原點 → 往右挪;旗魚吻部在頭前)
-      const yaw = Math.cos(q * Math.PI * 1.5) * 0.25 + 0.75;                   // 空中微微翻身(3D 偏航)
+      const k2 = Math.min(scl, this._fpvFit(F, W, 2.1)), ox = this._fpvOx(F, k2);   // 📏 同一個畫面比例 → 大魚大、小魚小
+      const yaw = Math.cos(q * Math.PI * 1.5) * 0.25 + 0.75;
       S.ghost.push([x, y, k2, ang]); if (S.ghost.length > 7) S.ghost.shift();
       S.ghost.forEach((g, j) => this._fpvDrawFish(ctx, F, g[0] + this._fpvOx(F, g[2]), g[1], g[2], g[3], t, { alpha: 0.1 + j * 0.05, thrash: 1.6 }));
       this._fpvGlow(ctx, x, y, F, 90 * scl);
@@ -3821,17 +3956,16 @@ const PRO = {
       ctx.restore();
       tension = 0.3; hook = { x, y };
       if (q > 0.55 && !S.lensDone) { S.lensDone = 1; for (let i = 0; i < 9; i++) S.drops.push({ x: Math.random() * W, y: Math.random() * H * 0.8, r: 6 + Math.random() * 16, life: 1 }); }
-    } else if (cur && cur.ph === 'show') {
-      const F = A.fish[cur.i], x = W * 0.5, y = H * 0.46 + Math.sin(t * 2) * 6;
-      this._fpvGlow(ctx, x, y, F, 150);
-      const k3 = Math.min(F.len > 110 ? 1.8 : 2.2, (W * 0.86) / (F.len * (F.span || 1.35)));
+    } else if (ph === 'show') {
+      const x = W * 0.5, y = H * 0.46 + Math.sin(t * 2) * 6, k3 = this._fpvFit(F, W, 2.1);
+      this._fpvGlow(ctx, x, y, F, 60 + 110 * (F.sizeK || 1));
       this._fpvDrawFish(ctx, F, x + this._fpvOx(F, k3), y, k3, Math.sin(t * 1.6) * 0.08, t, { thrash: 0.8 });
-      hook = { x: x - F.len * 0.2, y: y - 10 }; tension = 0.2;
-      S.lensDone = 0; S.castSplash = 0;
+      hook = { x: x - F.len * k3 * 0.2, y: y - 10 }; tension = 0.2; S.lensDone = 0;
     }
-    if (cur && cur.ph !== 'cast') S.hook = cur.ph === 'show' ? { x: W * 0.46, y: hz + (H - hz) * 0.42 } : S.hook;
-    this._fpvRod(ctx, W, H, tipX, tipY, S.bend, t, cur && cur.ph === 'reel');
-    this._fpvLine(ctx, tipX, tipY, hook.x, hook.y, tension, t, reelF);
+    if (!G) { hook = { x: W * 0.46, y: hz + 8 + Math.sin(t * 2) * 2 }; }
+    this._fpvRod(ctx, W, H, tipX, tipY, S.bend, t, ph === 'fight' && G.holding);
+    this._fpvLine(ctx, tipX, tipY, hook.x, hook.y, tension, t, onLine);
+    if (ph === 'fight') this._fpvMeters(ctx, W, H, G);
     // ── 粒子
     for (const pt of S.parts) {
       if (!pt.on) continue;
@@ -3853,6 +3987,28 @@ const PRO = {
     const vg = ctx.createRadialGradient(W / 2, H * 0.48, Math.min(W, H) * 0.35, W / 2, H * 0.5, Math.max(W, H) * 0.8);
     vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)');
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  },
+  /** 🎈 浮標(bite 時整個沉下去一半) */
+  _fpvFloat(ctx, x, y, bite) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(x, y + 3, 7, 2.2, 0, 0, 6.29); ctx.fill();
+    ctx.fillStyle = '#f5f1e6'; ctx.beginPath(); ctx.ellipse(x, y - 2 + bite * 5, 4.5, 6, 0, 0, 6.29); ctx.fill();
+    ctx.fillStyle = '#ff5a3c'; ctx.beginPath(); ctx.ellipse(x, y - 6 + bite * 5, 4.5, 3.5, 0, Math.PI, 6.29); ctx.fill();
+    ctx.restore();
+  },
+  /** 📊 收線進度 + 張力(琥珀單色系,⛔ 不用紅綠 —— 那是漲跌的顏色) */
+  _fpvMeters(ctx, W, H, G) {
+    const x = 16, w = W - 32, y1 = H - 44, y2 = H - 24;
+    ctx.save(); ctx.font = '700 11px system-ui,sans-serif'; ctx.textBaseline = 'middle';
+    const bar = (y, v, fill, label) => {
+      ctx.fillStyle = 'rgba(4,10,18,.62)'; ctx.fillRect(x, y - 7, w, 14);
+      ctx.fillStyle = fill; ctx.fillRect(x, y - 7, w * Math.max(0, Math.min(1, v)), 14);
+      ctx.fillStyle = '#eef3fa'; ctx.fillText(label, x + 6, y);
+    };
+    bar(y1, G.prog, 'rgba(120,200,255,.75)', `收線 ${Math.round(G.prog * 100)}%`);
+    const tv = Math.min(1, G.ten), a = 0.35 + 0.6 * tv;
+    bar(y2, tv, `rgba(255,${Math.round(200 - 110 * tv)},60,${a.toFixed(2)})`, tv > 0.72 ? '張力 ⚠️ 快斷了,放手!' : '張力');
+    ctx.restore();
   },
   _fpvGlow(ctx, x, y, F, r) {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
@@ -3942,10 +4098,71 @@ const PRO = {
       <div class="nm">${this._esc(F.nm)}</div><div class="cd">${F.sym}</div>
       <div class="px ${this.cls(F.chg)}">${this._px(F.c)}</div>
       <div class="row"><span>今日${when ? ` <span style="color:var(--dim);font-size:10px">${when}</span>` : ''}</span><b class="mono fpvchg ${this.cls(F.chg)}">${chgTxt}</b></div>
-      <div class="row"><span>一張約</span><b class="mono">${Math.round(F.c * 1000).toLocaleString()} 元</b></div>${warn}
+      <div class="row"><span>市值</span><b class="mono">${this._fpvMcapTxt(F.mcap)}</b></div>
+      <div class="row"><span>🎨 一年高低位置</span><b class="mono">${F.pos == null ? '—' : Math.round(F.pos) + '%'}</b></div>${warn}
+      <button class="lbtn" onclick="PRO._fpvProfile('${F.sym}')">🏢 公司簡介</button>
       <button class="lbtn on" onclick="PRO._fishCatch('${F.sym}')">🧺 放進漁獲籃</button>`;
     box.appendChild(el);
     this._fpvPortrait(el.querySelector('canvas'), F);
+  },
+  _fpvMcapTxt(m) {
+    if (!(Number.isFinite(m) && m > 0)) return '算不出(魚照中等大小)';
+    return m >= 10000 ? (m / 10000).toFixed(m >= 100000 ? 1 : 2) + ' 兆' : Math.round(m).toLocaleString() + ' 億';
+  },
+  /** 🏢 V78.0.0 公司簡介(使用者:「每隻魚可以點開,簡短敘述目前做什麼行業、未來目標,要專業」)
+   *   ⭐ 只放本站既有的真資料:產業 / 產業鏈位置 / 題材 / 總部 / AI 供應鏈角色與風險 / 最近一季營收與毛利 / 下次法說會。
+   *   「未來目標」本站沒有任何資料源、App 內 AI 也不上網 → ⛔ 不自己寫,給一顆 Perplexity 去查(會附來源)。
+   *   ⛔ 不寫任何選股規則 / 買賣建議(test_fishapp ⓑ 掃整頁)。第一次點才讀那幾個檔,讀過快取。 */
+  async _fpvProfile(sym) {
+    sym = String(sym || ''); if (!sym) return null;
+    const row = ((this._fishD && this._fishD.rows) || []).find(r => r.sym === sym) || {};
+    const nm = row.nm || this.nameOf(sym) || sym;
+    this.openModal(`🏢 ${this._esc(nm)} <span class="mono" style="color:var(--dim);font-weight:400">${sym}</span>`, '<div class="note">⏳ 讀取公司資料中…</div>');
+    const html = await this._fpvProfileHtml(sym, row, nm);
+    const el = document.getElementById('proModal');
+    if (el && !el.classList.contains('hidden')) { const box = el.querySelector('.mbox'); if (box) box.innerHTML = box.querySelector('.mh').outerHTML + html; }
+    return html;
+  },
+  async _fpvProfileHtml(sym, row, nm) {
+    const get = (u, ms) => this.fetchJson(u, ms || 9000).catch(() => null);
+    const [chain, tags, geo, fin, conf] = await Promise.all([get('data/industry_chain.json'), get('data/stock_tags.json'), get('data/company_geo.json'),
+      get(`data/fin/${sym}.json`), get('data/confcall.json', 12000)]);
+    const E = s => this._esc(String(s == null ? '' : s));
+    const L = [];
+    const kv = (k, v) => v ? `<div class="kvp"><span>${k}</span><b>${v}</b></div>` : '';
+    const ind = row.ind || '';
+    const cc = chain && chain.data && Array.isArray(chain.data[sym]) ? chain.data[sym] : [];
+    const chainTxt = cc.slice(0, 4).map(x => `${E(x[0])} → ${E(x[1])}`).join('<br>');
+    const T = tags || {}, bs = (T.by_stock || {})[sym] || {}, tn = T.names || {};
+    const themes = [...new Set([...(bs.s || []), ...((bs.n || []).map(x => x[0]))])].map(k => tn[k]).filter(Boolean);
+    const city = geo && geo.data ? geo.data[sym] : '';
+    const CH = (this.CHAIN && this.CHAIN.stocks || []).find(x => x[0] === sym);
+    L.push(`<div class="fpvprof">`);
+    L.push(kv('🏭 產業', E(ind) || (cc[0] ? E(cc[0][0]) : '')));
+    L.push(kv('🔗 在產業鏈做什麼', chainTxt));
+    if (CH) { L.push(kv('🤖 AI 供應鏈角色', `${E(CH[3])}(${E(this.CHAIN.seg[CH[2]] || '')})`)); L.push(kv('⚠️ 主要風險', E(CH[6]))); }
+    L.push(kv('🏷️ 市場題材', themes.map(E).join('、')));
+    L.push(kv('📍 總部', E(city)));
+    L.push(kv('💰 市值', this._fpvMcapTxt(row.mcap != null ? row.mcap : this._fpvMcapCache[sym])));
+    const q = fin && Array.isArray(fin.q) ? fin.q : [];
+    if (q.length) {
+      const k = q.length - 1, x = q[k], y = q[k - 4];
+      const yoy = y && Number.isFinite(x.rev) && Number.isFinite(y.rev) && y.rev > 0 ? (x.rev / y.rev - 1) * 100 : null;
+      const qn = String(x.p || '').slice(0, 7);
+      const bits = [];
+      if (Number.isFinite(x.rev)) bits.push(`營收 ${(x.rev / 1e8).toFixed(1)} 億${yoy == null ? '' : `(比去年同季 ${yoy >= 0 ? '+' : ''}${yoy.toFixed(1)}%)`}`);
+      if (Number.isFinite(x.gm)) bits.push(`毛利率 ${x.gm.toFixed(1)}%`);
+      if (Number.isFinite(x.oim)) bits.push(`營益率 ${x.oim.toFixed(1)}%`);
+      if (Number.isFinite(x.eps)) bits.push(`EPS ${x.eps.toFixed(2)} 元`);
+      L.push(kv(`📊 最近一季(${E(qn)})`, bits.join(' ・')));
+    }
+    const up = conf && Array.isArray(conf.upcoming) ? conf.upcoming.find(c => c && c.s === sym) : null;
+    if (up) L.push(kv('🗓️ 下次法說會', `${E(up.d)}${up.t ? ' ' + E(up.t) : ''}${up.place ? ' ・' + E(up.place) : ''}`));
+    L.push(`</div>`);
+    const qtxt = encodeURIComponent(`${nm}(${sym})主要產品與營收比重、主要客戶、未來1~3年營運目標與資本支出計畫、最近一次法說會重點。請附來源網址。`);
+    L.push(`<a class="lbtn on fpvq" target="_blank" rel="noopener" href="https://www.perplexity.ai/search?q=${qtxt}">🔎 查主要產品與未來計畫(Perplexity,附來源)</a>`);
+    L.push(`<div class="note" style="margin-top:8px">以上是本站整理的公開資料(官方產業分類、財報、法說會公告);「未來計畫」本站沒有資料來源,⛔ 不自己寫 —— 點上面那顆去查,會附出處。⛔ 不是買賣建議。</div>`);
+    return L.join('');
   },
   _fpvPortrait(cv, F, size) {
     if (!cv || !cv.getContext) return;
@@ -3955,7 +4172,7 @@ const PRO = {
     const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.6);
     g.addColorStop(0, `rgba(${F.pal.glow},.28)`); g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    const sc = Math.min((W * 0.9) / (F.len * (F.span || 1.35)), (H * 0.86) / (F.len * (F.hgt || 0.55)));
+    const sc = Math.min(this._fpvFit(F, W, 9), (H * 0.86) / (F.len * (F.hgt || 0.55)), size ? 9 : (H * 0.86) / (this._FPV_BASE_LEN * 1.3 * 0.55));   // 📏 卡片小圖也照同一個比例(大魚大、小魚小)
     this._fpvDrawFish(ctx, F, W / 2 + this._fpvOx(F, sc), H / 2 + (F.sp && F.sp.k === 'sword' ? F.len * sc * 0.1 : 0), sc, 0, 0.3, { thrash: 0.6 });
   },
   /** 🎨 主畫面圖示(scripts/make_fish_icon.mjs 用):一條金紅色的魚 */
@@ -3964,7 +4181,7 @@ const PRO = {
     const ctx = cv.getContext('2d');
     const bg = ctx.createLinearGradient(0, 0, 0, size); bg.addColorStop(0, '#0b2240'); bg.addColorStop(0.55, '#0f3d62'); bg.addColorStop(1, '#021426');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, size, size);
-    const F = this._fpvFishOf({ sym: 'icon', nm: '', c: 1200, chg: 3, amp20: 4 }); F.ph = 1.2;
+    const F = this._fpvFishOf({ sym: 'icon', nm: '', c: 1200, chg: 3, amp20: 4, mcap: 30000, pos252: 92 }); F.ph = 1.2;
     const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size * 0.55);
     g.addColorStop(0, 'rgba(255,200,90,.45)'); g.addColorStop(1, 'rgba(255,200,90,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
     ctx.strokeStyle = 'rgba(170,215,245,.35)'; ctx.lineWidth = size * 0.012;
@@ -3988,6 +4205,28 @@ const PRO = {
     return { ...r, c: lp, chg: Number.isFinite(+q.c) ? +q.c : r.chg, live: true, pxDate: ld };
   },
   _FPV_MAX: 10,
+  /** 📏 市值備援(採礦的 `mcap` 欄還沒產出時):只對要釣的這幾條讀 `data/fin/{sym}.json`(每檔約 4 KB,一次 4 個排隊)。
+   *   股數 = 最新一季「稅後淨利 ÷ EPS」(不用假設面額);沒有才「股本 ÷ 10」,⛔ 面額變更過的不用那條。算不出 = null(中等大小)。 */
+  _fpvMcapCache: {},
+  async _fpvMcapFill(rows) {
+    const need = rows.filter(r => !(Number.isFinite(r.mcap) && r.mcap > 0) && this._fpvMcapCache[r.sym] === undefined);
+    let i = 0;
+    const one = async r => {
+      let m = null;
+      try {
+        const j = await this.fetchJson(`data/fin/${r.sym}.json`, 8000);
+        const q = j && Array.isArray(j.q) ? j.q.slice().reverse() : [];
+        let sh = null;
+        for (const x of q) { if (Number.isFinite(x.ni) && Number.isFinite(x.eps) && Math.abs(x.eps) > 0.05) { const v = x.ni / x.eps; if (v > 0) { sh = v; break; } } }
+        if (!sh && j && !j.par_chg_q) { const x = q.find(y => Number.isFinite(y.cap) && y.cap > 0); if (x) sh = x.cap / 10; }
+        if (sh && +r.c > 0) m = Math.round(+r.c * sh / 1e8 * 10) / 10;
+      } catch (_) {}
+      this._fpvMcapCache[r.sym] = m;
+    };
+    const worker = async () => { while (i < need.length) await one(need[i++]); };
+    await Promise.all(Array.from({ length: Math.min(4, need.length) }, worker));
+    return rows.map(r => (Number.isFinite(r.mcap) && r.mcap > 0) ? r : { ...r, mcap: this._fpvMcapCache[r.sym] == null ? null : this._fpvMcapCache[r.sym], mcapSrc: this._fpvMcapCache[r.sym] == null ? '' : 'fin' });
+  },
   _fpvTen(D, R) {
     const byS = {}; for (const r of (D.rows || [])) byS[r.sym] = r;
     const out = [], seen = new Set();
@@ -4010,32 +4249,31 @@ const PRO = {
     for (const r of pool) add(r.sym);
     return out.map((r, i) => ({ ...r, rank: i + 1 }));
   },
-  /** 🎣 拋竿(App 模式):名單 = `_castPick`(⛔ 一行都不改)→ 演出 → 卡片 */
+  /** 🎣 拋竿(App 模式):名單 = `_castPick`(⛔ 一行都不改)。
+   *   V78.0.0 起一按只釣一條:佇列還有魚 → 釣下一條;佇列空了 / 第一次 → 重新算一輪名單再釣第 1 條。 */
   async fpvCast() {
+    const S0 = this._fpv;
+    if (S0 && S0.G && !S0.G.done) return null;                              // 正在釣,⛔ 不重複拋
+    if (S0 && S0.Q && S0.Q.i < S0.Q.fish.length) { this.buzz(20); return this._fpvOne(); }
     const btn = document.getElementById('fpvCastBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '🎣 拋竿中…'; }
+    if (btn) { btn.disabled = true; btn.textContent = '🎣 準備中…'; }
     this.buzz(30);
     const box = document.getElementById('fpvCards'); if (box) box.innerHTML = '';
+    let rows = [];
     try {
       if (!this._fishD) await (this._rodP = this.renderRod());
       const D = this._fishD;
-      if (!D) { if (box) box.innerHTML = '<div class="fpvnone">⏳ 今天的水還沒放好(收盤資料還沒產出),晚點再來。</div>'; return; }
+      if (!D) { if (box) box.innerHTML = '<div class="fpvnone">⏳ 今天的水還沒放好(收盤資料還沒產出),晚點再來。</div>'; return null; }
       try { await this._twiiLoad(); } catch (_) {}
       try { await this._lqLoad(); } catch (_) {}          // 📡 V77.9.9 卡片 / 釣起價用即時價(⛔ 不拿選股那天的收盤)
       const R = this._castPick(D); this._cast = R;
-      const rows = this._fpvTen(D, R).map(r => this._fpvLive(r, D));   // 🎣 V77.9.9 一次 10 條:前面 = _castPick 原樣,後面接同一套排序
-      this._fpv && (this._fpv.lastPicked = R.picked.map(x => x.sym));
-      if (this._fpv) { this._fpv.lastRows = rows.map(x => x.sym); this._fpvSwimFrom(D, rows); }
-      const skip = document.getElementById('fpvSkip'); if (skip) skip.classList.remove('hidden');
-      await this._fpvRun(rows);
-      if (skip) skip.classList.add('hidden');
-      if (!this._fpv) this._fpvSetup();
-      if (this._fpv) { this._fpv.lastPicked = R.picked.map(x => x.sym); this._fpv.lastRows = rows.map(x => x.sym); }
-      if (!rows.length && box) box.innerHTML = '<div class="fpvnone">🌊 今天沒有魚上鉤 —— 照規則今天空手,⛔ 不硬給你一條。</div>';
-      this.buzz(60);
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = '🎣 再拋一次'; }
-    }
+      rows = this._fpvTen(D, R).map(r => this._fpvLive(r, D));   // 🎣 V77.9.9 一次 10 條:前面 = _castPick 原樣,後面接同一套排序
+      try { rows = await this._fpvMcapFill(rows); } catch (_) {}    // 📏 V78.0.0 市值(採礦還沒這欄時由財報切片補)
+      const S = this._fpvSetup();
+      if (S) { S.lastPicked = R.picked.map(x => x.sym); S.lastRows = rows.map(x => x.sym); S.Q = this._fpvQueue(rows); this._fpvSwimFrom(D, rows); }
+      if (!rows.length) { if (box) box.innerHTML = '<div class="fpvnone">🌊 今天沒有魚上鉤 —— 照規則今天空手,⛔ 不硬給你一條。</div>'; if (S) S.Q = null; return null; }
+    } finally { this._fpvBtn(); }
+    return this._fpvOne();
   },
   /** 開 App:切到釣魚、停掉作戰室魚缸的迴圈、啟動舞台待機 */
   async _fpvBoot() {
@@ -4049,7 +4287,17 @@ const PRO = {
     addEventListener('resize', () => { if (this._fpv) this._fpvSetup(); });
     document.addEventListener('visibilitychange', () => { if (!document.hidden && this._fpv) this._fpvLoop(); });
     const cv = document.getElementById('fpvCanvas');
-    if (cv) cv.addEventListener('click', () => { const A = this._fpv && this._fpv.A; if (A && !A.done) this.fpvSkip(); else this.fpvCast(); });
+    // 🎣 V78.0.0 按住收線:按下 = 收、放開 = 放;沒在釣的時候點一下 = 拋竿
+    if (cv) {
+      const down = e => { const G = this._fpv && this._fpv.G;
+        if (G && !G.done) { if (this.fpvHold(true)) { e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (_) {} } }
+        else this.fpvCast(); };
+      const up = () => this.fpvHold(false);
+      cv.addEventListener('pointerdown', down);
+      for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) cv.addEventListener(ev, up);
+      cv.addEventListener('contextmenu', e => e.preventDefault());
+    }
+    this._fpvBuzzUi();
   },
 
   /** 🎣 釣魚分頁的入口(V77.3.9)——
@@ -6332,7 +6580,7 @@ const PRO = {
   LAB: {
     ok: [
       { r: 24, k: 'crash-recovery', u: '2026-09-28', t: '🌪️ <b>加權跌 20% 之後要多久回來:16 年 5 次、全部回來了,但中位要 1 年半(含息約 1 年)</b>', w: '只描述 ・⛔ 不是買進訊號', how: '跌到 −20% 那天不是「底」:到底中位還要再跌到 −28.7%(最深 −31.6%)。從觸發到回到前高,光看指數中位 393 個交易日(最久 691 天 ≈ 2.8 年);含股利中位 251 天(最久 491 天)。⭐ 所以長期抱的人要準備的是「一年多沒回本」的耐心,⛔ 不是「跌 20% 就加碼」—— 5 次樣本不夠當訊號。', n: '2010~2026 加權(4,101 天):回撤 ≥10% 11 段(全部回來,觸發→回前高中位 185 天、最久 702)・≥15% 8 段(中位 245.5 天)・<b>≥20% 5 段</b>(2011/2015/2020/2022/2025,中位 393 天、含息 251 天)・≥30% 只有 2022 那 1 段(321 天)。觸發後 250 天含息:−20% 那 5 次全部為正、平均 +44.8%(隨便挑一天 +16.3%、差 +28.5pp)但 t=1.65、n=5 → ⏳ 不下結論;−10% 那 11 次反而 −1.9pp(跟平常沒差)。', d: '外部 repo global_asset_history(評估紀錄㊶)的「暴跌統計」功能。本站以前只有「大跌後隔天站回機率」(crash_exit_probe --facts)跟逐年成績單,沒量過「每一段大跌多深、多久回來」。<br>⚠️ 用的是加權指數(沒有交易成本、不是任何一檔股票);含息那份是官方報酬指數。⚠️ 16 年只有 5 次 −20%,每一次的原因都不同(歐債 / 人民幣 / 疫情 / 升息 / 關稅)→ ⛔ 不可把「全部回來了」讀成「一定會回來」。', s: 'vix_crash_probe.mjs(B 段)・評估紀錄㊶・V77.8.1', pl: ['long', '長期', 1, '加權跌 20% 之後，16 年 5 次都有回來，但要等一年多', '長期抱的人要準備的是「一年多沒回本」的耐心，不是跌 20% 就加碼（只有 5 次，不夠當訊號）。', '5 次都回到前高：中位 393 天（含股利 251 天），最久約 2.8 年'] },
-      { r: 102, k: 'leader-rotation', u: '2026-09-29', t: '👑 <b>自創「領頭羊短線輪動」(V77.9.1 起<u>散戶救星決策台預設</u>,排最上面):成交額前 100 大裡挑近 10 日漲最多的 5 檔、每 10 天換一次 —— 兩個窗口都贏 0050 含息;想穩一點就「永遠一半放 0050」(回撤 −61% → −42%、16 年 17/17 贏);⛔ 停利能拉高勝率但報酬掉到跟 0050 一樣</b>', w: '✅ V77.9.1 決策台預設(使用者:「預設目前最強是領頭羊嗎?是就預設」)・名單附收盤價、表頭可排序 ・個股總覽有一行「領頭羊怎麼說」・持股要自己標「照這套買的」才會講賣 ・⚠️ 逐年同向沒過(代價寫在畫面)・自動下單仍要自己開「LEADER=1」(預設關、模擬單)・穩定版 = 五成 0050 ・📒 V77.9.3 起成績單第 4 頁自動模擬買賣(09-24 起)・🎣 V77.9.4 起釣魚預設池 + 拋竿都是它・💰 回測數字頁最上面那張表', how: '每 10 個交易日收盤:池子 = 近 20 日平均成交金額前 100 大的普通股(⛔ 不含 ETF);過濾 = 收盤 > 20 日線 > 60 日線;排名 = 近 10 個交易日漲幅(已還原除權息),取前 5 檔,隔天開盤等權買(開盤接近漲停不追);下次換倉還在前 10 名就續抱、掉出去隔天開盤賣;⛔ 不設停損線;閒錢停 0050;大盤嚴格空頭不開新倉。成本用全額手續費(來回 0.585%,比本站其他回測的 0.44% 嚴)。17 條起點(每 3 個交易日一條,涵蓋每一種換倉日)。', n: '<b>AI 時代 2022-09~2026-09</b>:<b>760%</b> vs 0050 含息 375%(17 條贏 15)・年化 73% ・回撤 −50%(0050 −27%)・<b>安慰劑(同池子隨機挑 5 檔)361%</b>、池子等權 287%。<b>2011~2026</b>:<b>3,176%</b> vs 0050 含息 1,097%(<b>17/17</b>,最差那條也多 447pp)・年化 25% ・回撤 −61%(0050 −34%)・安慰劑只有 79%;2011~2020 那段 +265% vs 0050 +176%(⚠️ 那段個股沒有股利資料,對策略不利)。<b>高原</b>:動能 8/10/12 日 × 池子 100/150/200 大 9 組兩個窗口中位全贏。⛔ 最初設計(60 日動能 + 吊燈 2 倍 + 每週換 + 前 50 大)17 條 0 條贏;加吊燈 3 倍 381%(=0050)。⚠️ 成本加倍:AI 時代仍 478%(12/17),16 年變 648% 輸 0050(6/17)。16 年只有 9 年贏 0050(2012/2014/2016/2019/2022/2024 都輸)。<br>🧭 <b>V77.8.6 穩定度變體(兩窗口・17 條)</b>:<b>永遠五成在 0050</b> AI 595%(15/17)/ 16 年 <b>2,345%(17/17,最差那條 +643pp)</b>、回撤 −37% / −42%、最差一年 −46pp(中心點 −79)、滾動 12 個月贏 0050 61% / 54%(中心點 59 / 51);三成 / 七成 0050 是單調高原(16 年 2,798 / 1,821%,回撤 −50 / −36%)。❌ <b>停利 5%:勝率 50% → 63%,但 AI 時代 391%(= 0050)、16 年 703%(輸)</b>;停利 10% 勝率 55%、16 年 914%(輸)。❌ 跌破 20 日線賣:AI 338%、16 年 1,011%(都輸 0050)。❌ 動能 ÷ ATR、分散 10 檔:回撤略小但 16 年 2,005 / 1,523%(輸中心點)。➖ 動能不算最近 1 天:AI 1,008% / 16 年 3,110%(跟中心點差不多,⛔ 不換)。⚠️ 五成 0050 成本 ×2:AI 470%(13/17)、16 年 1,036%(8/17,= 0050)。<br>⏱️ <b>V77.8.9 成交時點</b>:隔天開盤買(回測原設定)AI 760% / 16 年 3,176%;<b>隔天尾盤買</b>(自動下單照前一晚名單在尾盤下)AI <b>670%</b>(14/17)/ 16 年 <b>2,219%</b>(13/17)—— 差一點但仍贏 0050。🚨 <b>注意股 / 處置股:⛔ 不要跳過</b> —— 最近 3 天進過注意股就不買 501%、10 天內 453%、處置中不買 <b>341%</b>(只 6/17 贏 0050)、進處置就賣 468%,全部比「照常買」的 760% 差(會進注意/處置的正是漲最多的那幾檔,同 V77.6.8)。<br>🗓️ <b>V77.8.9 AI 時代逐月</b>(46 個完整月・17 條中位):贏 0050 的月份 <b>53%</b>(決策台預設 49%)、抱 12 個月贏 <b>59%</b>(預設 34%);⚠️ 最壞一個月 <b>−30%</b>(最差那條起點 −43%)、0050 跌的月份它<b>跌得更多</b>(跟跌 115%)、漲的月份拿到 153%;連虧最長 4 個月、水下最長 13 個月;拿上個月預測這個月三條都量不到。<br>🌱 <b>V77.9.4 小資金(真實股數、零股、手續費最低 20 元、17 條)</b>:AI 時代 10 萬 → <b>86 萬</b>、100 萬 → 860 萬(<b>錢少報酬率不會變差</b>);10 萬 + 每月再投 1 萬(共投 57 萬)→ <b>290 萬</b>(同樣的錢買 0050 179 萬、16/17 贏);<b>先衝再穩</b>(帳戶翻倍後改一半放 0050)10 萬 → 85 萬、回撤 −37%(全攻 −50%);16 年 10 萬 → 327 萬(0050 同錢 120 萬)。<br>🪜 <b>同一組 17 個起點的 ETF(含息,AI 時代)</b>:0050 475 萬 ・006208 477 ・0052 533 ・00881 525 ・00891 537 ・00892 546 ・00692 431 ・0056 329 ・00878 299 ・00713 232 ・00733 257(100 萬變成);科技 ETF 贏 0050 是 AI 行情事後才知道的產業押注。', d: '使用者:「自創適合 AI 選股法 + 出場,短線,我要贏 0050」→ 換模型後再問「更厲害更穩定的高勝率、快速增加財富」。⭐⭐ <b>第二輪的答案:沒有「又穩又高勝率又賺更多」的版本,只有一條「報酬 ↔ 回撤」的線</b> —— 每個穩定度變體都是用報酬換回撤;<b>「高勝率」在這套上是陷阱</b>:停利把勝率拉到 63% 的同時把贏家砍掉,報酬變成跟買 0050 一樣(跟 V72.0.3「勝率高 ≠ 會賺錢」、V74.4.8「太早出場洗掉贏家」同一個結論,第三次)。⭐ 為什麼長這樣:現行預設挑高波動小型股,AI 行情集中在大型權值股 → 池子改成當時看得到的成交額排名(⛔ 不用 AI 題材名單 —— 那份是事後手選的)。⭐ 真正在賺錢的是「10 日動能排名」:同一個池子隨機挑只有 361% / 79%。⭐ 出場最有效的是「掉出前 10 名就換掉」,⛔ 停損線反而害它(剛轉強的股票常常先回檔)。⚠️ 代價:中途最多賠一半以上、大約每 2~3 年有一年輸 0050、交易頻繁(一年約 70 筆)→ 成本與紀律都很重要。⚠️ 只有現存股票(倖存者偏誤);2021 前只有上市股、沒有股利。', s: 'leader_probe.mjs(網格 216 + 81 + 9 組 + 穩定度變體 14 組 + 成交時點 / 注意處置 7 組 + 小資金 CAPITAL/ADD/GLIDE 36 組 + ETFS 13 檔・兩個窗口・17 條・安慰劑・成本 ×2)・auto_trade.py leader_step・month_probe.mjs(EQ_DIR)・embed_profit_board.mjs・leader_exit_probe.mjs(手上的股票用哪種賣法)・V77.8.5~V77.9.6', pl: ['do', '整套', 2, '設定「我的策略」選 👑 才會用這一套:大型股裡挑近兩週最強的 5 檔、兩週換一次,4 年與 16 年都贏 0050;一半放 0050 就穩很多', '選了 👑 之後總覽、決策台、提醒、Telegram 全部照這套講;你手上的個股一律「換倉日掉出前 10 名才賣」(回測:五組持股這種賣法都比三條出場好,不在前 100 大那組算打平);撐不住賠一半就把一半錢放 0050(回撤 −42%、16 年每條起點都贏);⛔ 別加停利 —— 勝率會變好看但賺的錢變成跟 0050 一樣。換倉日從 2026-09-24 起每 10 個交易日,手機與自動下單同一個日子;自動下單要自己開 「LEADER=1」。進注意股 / 處置股⛔ 別跳過。', 'AI 時代 760% vs 0050 375%;16 年 3,176% vs 1,097%;五成 0050 版 595% / 2,345%、回撤 −37~−42%;手上的股票改用 👑 賣法:前 5 名 +2.0 / +1.6pp、前 100 大裡其他 +0.4~+0.9pp、池外 +0.1~+0.9pp(60 天,AI 時代 / 16 年)'] },
+      { r: 102, k: 'leader-rotation', u: '2026-09-29', t: '👑 <b>自創「領頭羊短線輪動」(V77.9.1 起<u>散戶救星決策台預設</u>,排最上面):成交額前 100 大裡挑近 10 日漲最多的 5 檔、每 10 天換一次 —— 兩個窗口都贏 0050 含息;想穩一點就「永遠一半放 0050」(回撤 −61% → −42%、16 年 17/17 贏);⛔ 停利能拉高勝率但報酬掉到跟 0050 一樣</b>', w: '✅ V77.9.1 決策台預設(使用者:「預設目前最強是領頭羊嗎?是就預設」)・名單附收盤價、表頭可排序 ・個股總覽有一行「領頭羊怎麼說」・持股要自己標「照這套買的」才會講賣 ・⚠️ 逐年同向沒過(代價寫在畫面)・自動下單仍要自己開「LEADER=1」(預設關、模擬單)・穩定版 = 五成 0050 ・📒 V77.9.3 起成績單第 4 頁自動模擬買賣(09-24 起)・🎣 V77.9.4 起釣魚預設池 + 拋竿都是它・💰 回測數字頁最上面那張表', how: '每 10 個交易日收盤:池子 = 近 20 日平均成交金額前 100 大的普通股(⛔ 不含 ETF);過濾 = 收盤 > 20 日線 > 60 日線;排名 = 近 10 個交易日漲幅(已還原除權息),取前 5 檔,隔天開盤等權買(開盤接近漲停不追);下次換倉還在前 10 名就續抱、掉出去隔天開盤賣;⛔ 不設停損線;閒錢停 0050;大盤嚴格空頭不開新倉。成本用全額手續費(來回 0.585%,比本站其他回測的 0.44% 嚴)。17 條起點(每 3 個交易日一條,涵蓋每一種換倉日)。', n: '<b>AI 時代 2022-09~2026-09</b>:<b>760%</b> vs 0050 含息 375%(17 條贏 15)・年化 73% ・回撤 −50%(0050 −27%)・<b>安慰劑(同池子隨機挑 5 檔)361%</b>、池子等權 287%。<b>2011~2026</b>:<b>3,176%</b> vs 0050 含息 1,097%(<b>17/17</b>,最差那條也多 447pp)・年化 25% ・回撤 −61%(0050 −34%)・安慰劑只有 79%;2011~2020 那段 +265% vs 0050 +176%(⚠️ 那段個股沒有股利資料,對策略不利)。<b>高原</b>:動能 8/10/12 日 × 池子 100/150/200 大 9 組兩個窗口中位全贏。⛔ 最初設計(60 日動能 + 吊燈 2 倍 + 每週換 + 前 50 大)17 條 0 條贏;加吊燈 3 倍 381%(=0050)。⚠️ 成本加倍:AI 時代仍 478%(12/17),16 年變 648% 輸 0050(6/17)。16 年只有 9 年贏 0050(2012/2014/2016/2019/2022/2024 都輸)。<br>🧭 <b>V77.8.6 穩定度變體(兩窗口・17 條)</b>:<b>永遠五成在 0050</b> AI 595%(15/17)/ 16 年 <b>2,345%(17/17,最差那條 +643pp)</b>、回撤 −37% / −42%、最差一年 −46pp(中心點 −79)、滾動 12 個月贏 0050 61% / 54%(中心點 59 / 51);三成 / 七成 0050 是單調高原(16 年 2,798 / 1,821%,回撤 −50 / −36%)。❌ <b>停利 5%:勝率 50% → 63%,但 AI 時代 391%(= 0050)、16 年 703%(輸)</b>;停利 10% 勝率 55%、16 年 914%(輸)。❌ 跌破 20 日線賣:AI 338%、16 年 1,011%(都輸 0050)。❌ 動能 ÷ ATR、分散 10 檔:回撤略小但 16 年 2,005 / 1,523%(輸中心點)。➖ 動能不算最近 1 天:AI 1,008% / 16 年 3,110%(跟中心點差不多,⛔ 不換)。⚠️ 五成 0050 成本 ×2:AI 470%(13/17)、16 年 1,036%(8/17,= 0050)。<br>⏱️ <b>V77.8.9 成交時點</b>:隔天開盤買(回測原設定)AI 760% / 16 年 3,176%;<b>隔天尾盤買</b>(自動下單照前一晚名單在尾盤下)AI <b>670%</b>(14/17)/ 16 年 <b>2,219%</b>(13/17)—— 差一點但仍贏 0050。🚨 <b>注意股 / 處置股:⛔ 不要跳過</b> —— 最近 3 天進過注意股就不買 501%、10 天內 453%、處置中不買 <b>341%</b>(只 6/17 贏 0050)、進處置就賣 468%,全部比「照常買」的 760% 差(會進注意/處置的正是漲最多的那幾檔,同 V77.6.8)。<br>🗓️ <b>V77.8.9 AI 時代逐月</b>(46 個完整月・17 條中位):贏 0050 的月份 <b>53%</b>(決策台預設 49%)、抱 12 個月贏 <b>59%</b>(預設 34%);⚠️ 最壞一個月 <b>−30%</b>(最差那條起點 −43%)、0050 跌的月份它<b>跌得更多</b>(跟跌 115%)、漲的月份拿到 153%;連虧最長 4 個月、水下最長 13 個月;拿上個月預測這個月三條都量不到。<br>🌱 <b>V77.9.4 小資金(真實股數、零股、手續費最低 20 元、17 條)</b>:AI 時代 10 萬 → <b>86 萬</b>、100 萬 → 860 萬(<b>錢少報酬率不會變差</b>);10 萬 + 每月再投 1 萬(共投 57 萬)→ <b>290 萬</b>(同樣的錢買 0050 179 萬、16/17 贏);<b>先衝再穩</b>(帳戶翻倍後改一半放 0050)10 萬 → 85 萬、回撤 −37%(全攻 −50%);16 年 10 萬 → 327 萬(0050 同錢 120 萬)。<br>🪜 <b>同一組 17 個起點的 ETF(含息,AI 時代)</b>:0050 475 萬 ・006208 477 ・0052 533 ・00881 525 ・00891 537 ・00892 546 ・00692 431 ・0056 329 ・00878 299 ・00713 232 ・00733 257(100 萬變成);科技 ETF 贏 0050 是 AI 行情事後才知道的產業押注。', d: '使用者:「自創適合 AI 選股法 + 出場,短線,我要贏 0050」→ 換模型後再問「更厲害更穩定的高勝率、快速增加財富」。⭐⭐ <b>第二輪的答案:沒有「又穩又高勝率又賺更多」的版本,只有一條「報酬 ↔ 回撤」的線</b> —— 每個穩定度變體都是用報酬換回撤;<b>「高勝率」在這套上是陷阱</b>:停利把勝率拉到 63% 的同時把贏家砍掉,報酬變成跟買 0050 一樣(跟 V72.0.3「勝率高 ≠ 會賺錢」、V74.4.8「太早出場洗掉贏家」同一個結論,第三次)。⭐ 為什麼長這樣:現行預設挑高波動小型股,AI 行情集中在大型權值股 → 池子改成當時看得到的成交額排名(⛔ 不用 AI 題材名單 —— 那份是事後手選的)。⭐ 真正在賺錢的是「10 日動能排名」:同一個池子隨機挑只有 361% / 79%。⭐ 出場最有效的是「掉出前 10 名就換掉」,⛔ 停損線反而害它(剛轉強的股票常常先回檔)。⚠️ 代價:中途最多賠一半以上、大約每 2~3 年有一年輸 0050、交易頻繁(一年約 70 筆)→ 成本與紀律都很重要。⚠️ 只有現存股票(倖存者偏誤);2021 前只有上市股、沒有股利。', s: 'leader_probe.mjs(網格 216 + 81 + 9 組 + 穩定度變體 14 組 + 成交時點 / 注意處置 7 組 + 小資金 CAPITAL/ADD/GLIDE 36 組 + ETFS 13 檔・兩個窗口・17 條・安慰劑・成本 ×2)・auto_trade.py leader_step・month_probe.mjs(EQ_DIR)・embed_profit_board.mjs・leader_exit_probe.mjs(手上的股票用哪種賣法)・V77.8.5~V77.9.6', pl: ['do', '整套', 2, '選 👑 才用:大型股挑近兩週最強 5 檔、兩週一換,4 年與 16 年都贏 0050', '選了 👑 之後總覽、決策台、提醒、Telegram 全部照這套講;你手上的個股一律「換倉日掉出前 10 名才賣」(回測:五組持股這種賣法都比三條出場好,不在前 100 大那組算打平);撐不住賠一半就把一半錢放 0050(回撤 −42%、16 年每條起點都贏);⛔ 別加停利 —— 勝率會變好看但賺的錢變成跟 0050 一樣。換倉日從 2026-09-24 起每 10 個交易日,手機與自動下單同一個日子;自動下單要自己開 「LEADER=1」。進注意股 / 處置股⛔ 別跳過。', 'AI 時代 760% vs 0050 375%;16 年 3,176% vs 1,097%;五成 0050 版 595% / 2,345%、回撤 −37~−42%;手上的股票改用 👑 賣法:前 5 名 +2.0 / +1.6pp、前 100 大裡其他 +0.4~+0.9pp、池外 +0.1~+0.9pp(60 天,AI 時代 / 16 年)'] },
       { r: 95, k: 'deck-default', u: '2026-09-27', t: '🔁 <b>新預設:吊燈 ATR 2 倍 + 抱 20 天 + 大盤空頭不買(修好的日 K:近 4 年 179 → 324 萬、16 年 285 → 494 萬)</b>', w: '✅ 🧬 那套的預設出場(自動下單預設也是這套;V77.9.6 起決策台 / 總覽 / 提醒照設定「我的策略」,預設就是 🧬)', how: '選股不動(🧬 高位階 + 高波動、每天 2 檔 × 15 萬、訊號日尾盤進場、停損收盤成交),只換出場:① 出場線 = <b>進場後最高收盤 − 2 × ATR14(進場那天的 ATR)</b>,只會往上移 ② 最長抱 <b>20 天</b> ③ 大盤收盤在 60 日線下、而且 20 日線也在 60 日線下那一天不開新倉(賣出照常)。', n: '<b>修好日 K(陷阱 #46)後</b>、含股利 + 二代健保、17 條路徑中位:本站 2022-09~2026-09 <b>324 萬</b>(255~354)vs 上一任唐奇安 40 日 179 萬 —— <b>17/17 條全贏、17/17 條回撤較小</b>(−43.4% → −32.8%)・外部 + 官方加權 2011~2026 <b>494 萬</b>(420~503)vs 285 萬(17/17)・⛰️ ATR 倍數 1.5 / 2 / 2.5 / 3 → 242 / <b>324</b> / 305 / 329 萬(2 倍以上一片高原)', d: '🚨 <b>誠實的另一半</b>:① <b>它的優勢全部在 2021 年以後</b> —— 2011~2020 那十年只賺 47 萬,唐奇安 40 日反而 115 萬(逐年同向這一關<b>沒過</b>;你明示「以現在最厲害的執行」才換)。② <b>兩個窗口都輸 0050 含息</b>(4 年約 350 萬、16 年約 1,068 萬)。③ 交易次數約兩倍(約 1,000 筆 vs 480 筆),勝率約 33%。④ 移動停利 8% 近 4 年中位更高(334 萬),但 6/8/10% 在 4 年 205/334/323、16 年 552/448/347 —— 兩個窗口方向相反、16 年也輸吊燈 → ⛔ 不選。⑤ 🐻 空頭不買這一條在新出場上幾乎沒差(324 vs 323、8/17)—— 留著是因為它只擋買進。<br>🔄 <b>「情勢變了自動換規則」也測了</b>(見「沒用」欄 k:exit-switch):輸給固定用這一套。<br>📜 歷次:V77.6.5(資料還沒修)唐奇安 40 日 + 抱 40 天 + 空頭不買 近 4 年 107 → 409 萬、16 年破產 → 648 萬、閒錢停 0050 417 / 656 萬 —— ⚠️ 那一組數字是日 K 混了還原價(陷阱 #46)+ 回測日曆 bug 撐出來的,修好後同一套只剩 179 / 285 萬。', s: 'portfolio_backtest.mjs EXIT=chand2 MAXD=20 FILTER=bear60 DIV_TRADES・WARMUP=240~320・V77.7.6', pl: ['do', '出場', 3, '目前預設的賣法：從最高點退一段就賣、最多抱 20 天、大盤轉弱不買新的', '買法不變，只換賣法：① 從買進後最高收盤往下退「2 倍平日波動」就賣，這條線只會往上移 ② 最多抱 20 個交易日 ③ 大盤明顯走弱那天不開新倉（賣照常）。', '100 萬放 4 年變 324 萬（舊賣法 179 萬）；同期 0050 含息約 350 萬'] },
       { r: 73, k: 'ai-monthly', u: '2026-09-28', t: '🗓️ <b>AI 時代逐月:現行預設每個月贏不贏 0050 跟丟銅板一樣(49%),持有 12 個月也只贏 34%;跌的月份少賠、漲的月份少賺</b>', w: '描述型 ・短中線要知道的機率分布 ・⛔ 不是訊號', how: '拿現行預設(吊燈 ATR 2 倍・最長 20 天・大盤嚴格空頭不開新倉・收盤成交・含股利)17 條起點的逐日市值淨值(2022-09~2026-09),每月最後一個交易日切月,跟 0050 含息(除息再投入 + 二代健保)同一天比;每個月取 17 條中位;持有 1/3/6/12 個月 = 任何一個月底開始連續 N 個完整月(複利)。預測檢定:一個月一個樣本,|t| ≥ 2 且前後半同向才算。', n: '45 個完整月:賺錢的月份 <b>52%</b>(0050 72%)・贏 0050 <b>49%</b>・0050 漲的 32 個月只拿到 66%(贏 38%)、跌的 13 個月只跟跌 -27%(贏 77%)・最壞一個月 <b>-12.0%</b>(100 萬賠約 12.0 萬)・連虧最長 6 個月・從高點回不來最長 <b>23 個月</b>。持有 1/3/6/12 個月贏 0050:49% / 50% / 51% / <b>34%</b>(0050 自己賺錢的機率 72% / 84% / 92% / 100%)。🔮 上月輸→本月補回 t=0.21、上月 0050 大漲→本月較差 t=0.17、月底加權在 60 日線上→本月較好 t=0.23 <b>三條都量不到</b>。閒錢停 0050 版:贏 0050 51%、跌的月份只跟跌 7%、連虧最長 4 個月。', d: '使用者:「你現在回測都是以年計算,對於 AI 後的每個月有做回測嗎?我想要的是做短中線」。⭐ 逐月<b>不是</b>「幾月比較好」(每個月份只有 4 個樣本,那個驗不了);它回答的是「持有 N 個月的機率分布」:① 1~3 個月贏不贏 0050 幾乎是丟銅板、差距可以到 ±20pp 以上 → ⛔ 不要用一兩個月判斷這套好不好;② 連虧 6 個月、水下 23 個月在實測範圍內 → 預期要先放好;③ 它是<b>防守型</b>(跌的月份少賠)但 AI 行情集中在大型權值股,漲的月份跟不上 → 12 個月贏 0050 只有 34%;④ 拿上個月的成績或大盤位置調部位,實測量不到。⚠️ 只有一段 AI 行情、45 個月;帳戶每筆固定 15 萬,錢越滾越多時 % 會被閒置現金稀釋。畫面在「回測數字」頁最下面「🗓️ AI 時代逐月」。', s: 'month_probe.mjs + embed_monthly_bt.mjs(eq 17 條・portfolio_backtest EQUITY_OUT)・V77.8.4', pl: ['ref', '整套', 2, '每個月贏不贏 0050 像丟銅板,一兩個月看不出好壞', '做短中線要先接受:連輸幾個月是正常的,不要因為上個月輸就加碼或換策略;這套是跌的時候少賠、漲的時候少賺。', '贏 0050 的月份 49%、連虧最長 6 個月、最壞一個月 100 萬賠約 12 萬'] },
       { r: 74, k: 'core-sat', u: '2026-09-27', t: '🐢🛰️ <b>0050 當核心、本站策略當衛星(70/30 這種固定比例 + 定期再平衡):報酬換回撤,月再平衡比不再平衡多 15~20 萬</b>', w: '取捨型 ・列成參考 ・⛔ 不換預設', how: '把回測帳戶(100 萬本金、每筆 15 萬、含閒置現金)的<b>逐日市值淨值</b>當衛星,0050 含息(除息再投入 + 二代健保)當核心,兩腿各自複利、依 100/0、90/10 … 50/50 的比重,每月 / 每季第一個交易日把總值重切一次(或不再平衡),17 條起點(2022-09 起每 5 個交易日一條)取中位。', n: '<b>衛星 = 現行預設帳戶</b>(吊燈 ATR 2 倍・抱 20・空頭不買):100% 0050 含息 <b>349.9%</b>(中途最多賠 −27.5%)・純策略 324.3%(−33.9%,贏 0050 2/17)・<b>70/30 月再平衡 365.0%</b>(−23.3%,贏 0050 11/17、回撤 17/17 較小、每年換手 17%)・90/10 月 357.6%(15/17)。<b>衛星 = 閒錢停 0050 的帳戶</b>:純策略 <b>435.3%</b>(17/17 贏、−31.0%)・50/50 月 418.0%(−21.8%,17/17、17/17)・70/30 月 395.0%(−23.4%)。⛔ <b>所有混合的滾動 24 個月超額都是負的</b>(中位 −5~−26pp、為正的比例只有 22~26%)—— 0050 在後半段太強。', d: '外部 AI 建議「0050 Core + 策略 Satellite,看 CAGR/Sharpe/Sortino/Calmar/回撤/週轉/滾動超額」。⭐ 結論跟 V74.3.2 那次近似版一樣:<b>混合是在「報酬 ↔ 回撤」那條線上挑位置,不是變強</b>;這次多學到兩件:① <b>定期再平衡有價值</b>(同樣 70/30,月再平衡比放著多 20 萬、回撤一樣,代價是每年換手約 17%)② <b>最強的不是混合,是「閒錢停 0050」本身</b>(435 萬 > 任何混合 > 0050)—— 那等於「策略在用錢時才離開 0050」。<br>⚠️ 兩個假設:策略腿可線性縮放(流動性忽略);Sharpe/Sortino 用日報酬、無風險利率 0。⚠️ 4 年窗口偏多頭、0050 含息年化 48.7% 是不可能長期持續的數字,⛔ 別拿這裡的 CAGR 當預期。', s: 'core_sat_probe.mjs + portfolio_backtest EQUITY_OUT(17 條)・V77.7.7', pl: ['long', '長期', 2, '0050 當主力、策略當小部位：回撤變小，但不會比較會賺', '想少一點大起大落，可以 7:3、每月把比例調回來；要賺最多就別混。', '70/30 每月調回 365 萬 vs 純 0050 350 萬（中途最多賠 −23% vs −28%）'] },
@@ -7189,7 +7437,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V77.9.9',
+  VER: 'V78.0.0',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

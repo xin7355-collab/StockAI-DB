@@ -121,6 +121,7 @@ COLS = [
     'att',      # 0 無 / 1 注意股 / 2 處置中
     'tse',      # 1=上市(有官方產業別);0=其他(上櫃/興櫃/ETF)
     'dr',       # 1=存託憑證(DR,代號 6 碼且 91 開頭)
+    'mcap',     # 市值(億元)= 收盤 × 集保總股數 ÷ 1e8(🎣 V78.0.0 股海釣手魚的大小;沒有總股數 → None,⛔ 不硬湊)
 ]
 CI = {k: i for i, k in enumerate(COLS)}
 
@@ -461,6 +462,17 @@ def build_one(rows, twii_chg=None):
     return v
 
 
+def _mcap_of(close, tot):
+    """🎣 V78.0.0 市值(億元)= 收盤 × 集保總股數 ÷ 1e8;任一邊不合理 → None(⛔ 不硬湊)。"""
+    try:
+        c, t = float(close), float(tot)
+    except (TypeError, ValueError):
+        return None
+    if not (math.isfinite(c) and math.isfinite(t)) or c <= 0 or t <= 0:
+        return None
+    return rd(c * t / 1e8, 1)
+
+
 def main():
     if not DATA.exists():
         print(f'❌ 找不到 {DATA}')
@@ -523,6 +535,7 @@ def main():
         except Exception:
             tot = 0.0
         if tot > 0:
+            v[CI['mcap']] = _mcap_of(v[CI['c']], tot)
             try:
                 d5 = d[-5:]
                 vol5 = sum(float(r.get('volume') or 0) for r in d5)
