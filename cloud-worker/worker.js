@@ -1193,14 +1193,25 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
 
         // 💼 V21.4 — 庫存盤中觸發:跌破成本 -5%(朱鐵律)/ 跌破 5MA / 獲利 +20%;收集進 invAlerts 結尾合成一則
         // 🎯 V77.9.6 只推你選的那一套(使用者:「我選什麼策略,通知也要同步,才不會有不一樣的通知讓使用者錯亂」):
-        //   🧬 → 只留 −5% 停損(= 三條出場的硬停損;跌破 5 日線 / +20% 停利⛔ 不是這一套的出場,已拿掉)
-        //   👑 → 個股⛔ 不推停損 / 停利(那一套沒有停損線,換倉日掉出前 10 名才賣 → 由 08:00 換倉日推播講)
+        //   🧬 → −5% 停損(= 三條出場的硬停損)
+        //   👑 → 個股⛔ 不推 −5% 停損(那一套沒有停損線,換倉日掉出前 10 名才賣 → 由 08:00 換倉日推播講)
+        // 🔁 V77.9.7 使用者:「5 日線跟 20% 停利推播恢復」→ 兩套都推,但**只是提醒**(⛔ 不是回測過的出場條件,文案寫明)
         const inv = (user.inventory || []).find(i => i.sym === sym);
-        if (inv?.cost > 0 && Number.isFinite(close) && close > 0 && !_leadStock(user.settings?.strategy, sym)) {
+        if (inv?.cost > 0 && Number.isFinite(close) && close > 0) {
             const ret = ((close - inv.cost) / inv.cost) * 100;
-            if (ret <= -5 && !(await wasPushed(env, user.chat_id, sym, 'sl5'))) {
+            const leadS = _leadStock(user.settings?.strategy, sym);
+            if (!leadS && ret <= -5 && !(await wasPushed(env, user.chat_id, sym, 'sl5'))) {
                 invAlerts.push(`🔴 ${label} 現價 *${close}*(成本 ${inv.cost}, *${ret.toFixed(1)}%*)→ 已破 -5% 停損線(🧬 三條出場的第一條)`);
                 await markPushed(env, user.chat_id, sym, 'sl5');
+            }
+            const b5 = volBaseCache ? await fetchVolumeBaseline(sym, volBaseCache) : null;
+            if (b5 && b5.ma5 > 0 && close < b5.ma5 && !(await wasPushed(env, user.chat_id, sym, 'below5ma'))) {
+                invAlerts.push(`⚠️ ${label} 現價 *${close}* 跌破 5日均價 *${b5.ma5.toFixed(2)}* → 短線提醒(⛔ 不是${leadS ? '👑 換倉' : '三條出場'}的條件,照你的規則決定)`);
+                await markPushed(env, user.chat_id, sym, 'below5ma');
+            }
+            if (ret >= 20 && !(await wasPushed(env, user.chat_id, sym, 'tp20'))) {
+                invAlerts.push(`💰 ${label} 獲利 *+${ret.toFixed(1)}%*(成本 ${inv.cost} → ${close})→ 已達 +20%,可考慮分批落袋(提醒)`);
+                await markPushed(env, user.chat_id, sym, 'tp20');
             }
         }
 

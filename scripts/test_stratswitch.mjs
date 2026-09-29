@@ -152,7 +152,7 @@ ok('⑥ worker 名單 == App `_leaderCalc`(合成 screener,前 10 名逐一比)'
 const ir = JSON.parse(R.rule);
 ok('⑥b worker 規則 / 錨點 == App', M.LEAD_ANCHOR === R.anchor && ['U', 'N', 'R', 'L', 'hyst'].every(k => M.LEAD_RULE[k] === ir[k]), JSON.stringify([M.LEAD_RULE, ir, M.LEAD_ANCHOR, R.anchor]));
 ok('⑥c worker 時鐘:錨點那天 = 換倉日、第 2 天不是、第 11 天又是', M.leadClock([{ date: '2026-09-24' }], '2026-09-24').isRebal && !M.leadClock([{ date: '2026-09-24' }, { date: '2026-09-29' }], '2026-09-29').isRebal && M.leadClock(Array.from({ length: 11 }, (_, i) => ({ date: '2026-10-' + String(i + 1).padStart(2, '0') })).concat([{ date: '2026-09-24' }]), '2026-10-10').isRebal);
-ok('⑥d worker:settings 收 strategy、個股停損 / 5 日線 / +20% 不再亂推、換倉日推播掛在 08:00', /strategy: payload\.settings\.strategy === 'lead' \? 'lead' : 'gene'/.test(W) && /!_leadStock\(user\.settings\?\.strategy, sym\)/.test(W) && !/below5ma'/.test(W) && !/'tp20'/.test(W) && /runLeaderRebalPush\(env\)/.test(W) && /if \(_leadStock\(rec\.strategy, it\.sym\)\) continue;/.test(W));
+ok('⑥d worker:settings 收 strategy、👑 個股不推 −5% 停損、5 日線 / +20% 提醒恢復(V77.9.7)、換倉日推播掛在 08:00', /strategy: payload\.settings\.strategy === 'lead' \? 'lead' : 'gene'/.test(W) && /const leadS = _leadStock\(user\.settings\?\.strategy, sym\)/.test(W) && /!leadS && ret <= -5/.test(W) && /'below5ma'/.test(W) && /'tp20'/.test(W) && /runLeaderRebalPush\(env\)/.test(W) && /if \(_leadStock\(rec\.strategy, it\.sym\)\) continue;/.test(W));
 ok('⑥e App 同步 Telegram 時帶 strategy', /strategy:\s+app\._strat\?\.\(\) \|\| 'gene'/.test(SRC) && /triggers: trig, strategy: this\._strat\(\)/.test(SRC));
 ok('⑦ 無 pageerror', !errs.length, errs.join(' | '));
 await browser.close();

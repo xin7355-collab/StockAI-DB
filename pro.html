@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>產業作戰室 PRO</title>
+<!-- 🎣 V77.9.7 金鱗釣場(獨立 App)= 同一份 pro.html 帶 ?app=fish —— ⛔ 不複製第二份選股程式。
+     ⚠️ 這段必須在 <head> 最前面:主畫面圖示 / 名字 / manifest 是瀏覽器「加到主畫面」那一刻讀的。 -->
+<script>
+(function () { try {
+  if (!/[?&]app=fish(&|$)/.test(location.search)) return;
+  var d = document, h = d.head; d.documentElement.classList.add('app-fish'); d.title = '金鱗釣場';
+  var m = function (n, c) { var e = d.createElement('meta'); e.name = n; e.content = c; h.appendChild(e); };
+  var l = function (r, href, t) { var e = d.createElement('link'); e.rel = r; e.href = href; if (t) e.type = t; h.appendChild(e); };
+  m('apple-mobile-web-app-title', '金鱗釣場'); m('apple-mobile-web-app-capable', 'yes'); m('mobile-web-app-capable', 'yes');
+  m('apple-mobile-web-app-status-bar-style', 'black-translucent'); m('theme-color', '#06121f');
+  l('manifest', 'fish.webmanifest'); l('apple-touch-icon', 'fish-192.png'); l('icon', 'fish-192.png', 'image/png');
+} catch (_) {} })();
+</script>
 <!--
   🛰️ 產業作戰室 PRO(V74.1.0)—— 獨立介面,⛔ 不掛在散戶救星(index.html)的任何入口。
   資料庫 = 散戶救星 gh-pages 既有產物(零新採礦):
@@ -621,6 +634,38 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
 @media(min-width:700px){#proModal{align-items:center}#proModal .mbox{border-radius:14px}}
 #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:rgba(14,20,31,.96);border:1px solid var(--line2);border-radius:10px;padding:9px 16px;font-size:12px;color:var(--txt);z-index:90;opacity:0;pointer-events:none;transition:opacity .2s}
 #toast.on{opacity:1}
+/* 🎣 V77.9.7 金鱗釣場(App 模式):只留舞台 + 上鉤卡 + 漁獲籃;⛔ 作戰室的分頁列 / 池子 / 規則說明一律不顯示 */
+#fpvPane{display:none}
+html.app-fish .topbar, html.app-fish #rodHead, html.app-fish #fishPoolPane, html.app-fish #rodCastPane, html.app-fish #rodRules{display:none!important}
+html.app-fish #fpvPane{display:block}
+html.app-fish body{background:#040b14}
+html.app-fish body::before{background:radial-gradient(900px 420px at 70% -10%, rgba(255,190,90,.07), transparent 60%)}
+html.app-fish .wrap{padding-top:calc(8px + env(safe-area-inset-top))}
+.fpvhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:4px 2px 8px}
+.fpvbrand{font-size:22px;font-weight:900;letter-spacing:2px;background:linear-gradient(90deg,#ffe29a,#f5b942 55%,#ff8a5c);-webkit-background-clip:text;background-clip:text;color:transparent}
+.fpvsub{font-size:11.5px;color:var(--sub)}
+.fpvwrap{position:relative;width:100%;height:min(64vh,540px);min-height:320px;border-radius:16px;overflow:hidden;background:#06121f;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.fpvwrap canvas{width:100%;height:100%;display:block;touch-action:manipulation}
+.fpvskip{position:absolute;right:10px;top:10px;font-size:11px;padding:4px 10px;border-radius:14px;background:rgba(4,10,18,.55);color:#dbe4f0;border:1px solid rgba(255,255,255,.18);cursor:pointer}
+.fpvbtns{display:flex;justify-content:center;margin:12px 0 4px}
+#fpvCastBtn{font-size:17px;font-weight:900;padding:12px 34px;border-radius:26px;min-height:50px;border:1px solid #f5b942;color:#1a1204;background:linear-gradient(180deg,#ffe29a,#f5b942)}
+#fpvCastBtn:disabled{opacity:.55}
+#fpvCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:10px}
+.fpvcard{position:relative;border-radius:14px;padding:10px 10px 12px;background:linear-gradient(180deg,rgba(20,32,50,.95),rgba(9,16,27,.95));border:1px solid rgba(255,255,255,.08);animation:fpvIn .5s ease both}
+.fpvcard canvas{width:100%;height:84px;display:block}
+.fpvcard .nm{font-size:15px;font-weight:900;margin-top:2px}
+.fpvcard .cd{font-size:11px;color:var(--dim);font-family:var(--mono)}
+.fpvcard .px{font-family:var(--mono);font-size:20px;font-weight:900;margin-top:2px}
+.fpvcard .row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--sub);margin-top:3px}
+.fpvcard .rar{position:absolute;right:9px;top:8px;font-size:10px;color:#f5d58a}
+.fpvcard .lbtn{width:100%;margin-top:8px;min-height:38px}
+.fpvnone{grid-column:1/-1;text-align:center;padding:18px 10px;color:var(--sub);font-size:13px}
+@keyframes fpvIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.fpvcard{animation:none}}
+html.app-fish #fishBasketPane h2 .sub{display:none}
+.fpvbk{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid var(--line);font-size:12.5px}
+.fpvbk .n{font-weight:800;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fpvbk .m{font-family:var(--mono);text-align:right}
 </style>
 </head>
 <body>
@@ -633,7 +678,7 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
     <button class="tab-btn" id="tabBtnRot" onclick="PRO.switchTab('rot')">板塊輪動</button>
     <button class="tab-btn" id="tabBtnStar" onclick="PRO.switchTab('star')">關聯星圖</button>
     <button class="tab-btn" id="tabBtnFish" onclick="PRO.switchTab('fish')">📒 成績單</button>
-    <button class="tab-btn" id="tabBtnRod" onclick="PRO.switchTab('rod')" title="🧬 強勢高波動的池子 + 🎣 拋竿(決策台那套);只描述,不下多空">🎣 釣魚</button>
+    <button class="tab-btn" id="tabBtnRod" onclick="PRO.openFishApp()" title="釣魚已經獨立成一個 App —— 點了會開啟,可以加到主畫面">🎣 金鱗釣場 ↗</button>
     <button class="tab-btn" id="tabBtnSig" onclick="PRO.switchTab('sig')">今日訊號</button>
     <button class="tab-btn" id="tabBtnConf" onclick="PRO.switchTab('conf')" title="法說會時間表 + 官方擇要;只描述,不下多空">法說會</button>
     <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
@@ -843,6 +888,14 @@ footer{margin-top:28px;font-size:10px;color:var(--dim2);line-height:1.8;border-t
      ⛔ 所有數字一律讀常數(_geneRule / _HQ_RULE / _SIG_DEEP / _CAST_DEAD / _CAST_STICKY / _FISH_IC /
         playbook_edge 的 cost),⛔ 一個都不寫死在 HTML 或文案裡。 -->
 <div id="tabRod" class="hidden">
+  <!-- 🎣 V77.9.7 金鱗釣場舞台(只有 ?app=fish 才顯示)—— 名單一律來自 _castPick(⛔ 動畫不改變名單)。
+       ⛔ 這一塊不寫任何選股規則(使用者:「釣魚系統策略不用寫出來」)。 -->
+  <div id="fpvPane">
+    <div class="fpvhead"><div class="fpvbrand">金鱗釣場</div><div class="fpvsub" id="fpvSub">水面平靜中…</div></div>
+    <div class="fpvwrap" id="fpvWrap"><canvas id="fpvCanvas"></canvas><span class="fpvskip hidden" id="fpvSkip" onclick="PRO.fpvSkip()">⏭ 略過</span></div>
+    <div class="fpvbtns"><button class="lbtn on" id="fpvCastBtn" onclick="PRO.fpvCast()">🎣 拋竿</button></div>
+    <div id="fpvCards"></div>
+  </div>
   <!-- 🎣 V77.4.1 三步驟直排(01 建池 → 02 拋竿 → 03 驗證)—— 借外部那份介面的「結構」,⛔ 不借它的框與橘色。
        ⛔ 既有 8 個 id 一個不動(fishPoolPane / fishPickPane / fishBasketPane / fishCanvas / fishBasket / fishList / fishCard / fishPool,
           test_recoledger ①a 釘住)。🐟 釣到那一段改成「同段展開」:魚缸/列表/說明收起 + 一行提示,⛔ 不再整段藏掉。 -->
@@ -1219,6 +1272,7 @@ const PRO = {
   //    跳之前把「捲動位置 + 分頁 + 篩選 + 估值輸入」存進 sessionStorage;
   //    回來時若瀏覽器 bfcache 生效就什麼都不用做,若整頁重載才用存檔還原。
   _saveNav() {
+    if (this._appFish) return;               // 🎣 App 模式⛔ 不記分頁(否則回作戰室會停在沒有按鈕的釣魚頁)
     try {
       sessionStorage.setItem('proWar_nav', JSON.stringify({
         y: window.scrollY, tab: this._tab, lv: this._lvSel, layer: this._layerSel,
@@ -1241,6 +1295,7 @@ const PRO = {
       if (s.news) document.getElementById('inNews').value = s.news;
       this._lvSel = s.lv ?? null; this._layerSel = s.layer ?? null;
       if (s.sk) { this._sortK = s.sk; this._sortD = s.sd || -1; }
+      if (s.tab === 'rod') s.tab = 'val';     // 🎣 V77.9.7 釣魚已獨立成金鱗釣場 → 作戰室⛔ 不再停在釣魚頁
       if (s.tab && s.tab !== 'val') this.switchTab(s.tab, true);
       if (s.val) await this.runValuation(true);
       // 兩次 rAF:等 DOM 真的排版完再捲(⛔ 直接 scrollTo 會捲不到,因為內容還沒撐開)
@@ -3398,6 +3453,444 @@ const PRO = {
     else if (ph === 'reel') { line(to.x + (A.from.x - to.x) * p, to.y + (A.from.y - to.y) * p); }
     ctx.restore();
   },
+  // ══ 🎣 V77.9.7 金鱗釣場 —— 第一人稱(FPV)釣魚舞台(使用者附件「FPV Animation v2.0」)═══════════════
+  //   ⛔ 三條不可違反:
+  //    ① 名單只來自 `_castPick`(跟作戰室 / 決策台同一套,而且跟「我的策略」同步)—— 動畫只是表演,⛔ 不改變名單
+  //       (test_fishapp ⓒ 決定性對照:stub 掉動畫前後名單相同、App 模式 == 一般模式)。
+  //    ② 畫面⛔ 不寫任何選股規則(使用者:「釣魚系統策略不用寫出來」)—— 卡上只有名字 / 價格 / 漲跌 / 一張金額。
+  //    ③ 🎨 台股配色:上漲 = 紅寶石鱗 + 金色尾跡、下跌 = 翡翠綠 + 深藍水霧(⛔ 附件是綠漲,照抄會讓使用者看反)。
+  //   ♿ prefers-reduced-motion / 畫不了 → 直接展示卡片;🛟 安全閥:rAF 停掉(切到背景)也會在時限內結束。
+  //   ⚠️ iOS Safari 的 canvas ⛔ 不支援 ctx.filter → 模糊 / 景深一律用透明度與漸層做。
+  _fpv: null,
+  _FPV_DUR: { cast: 650, bite: 520, reel: 1400, breach: 1150, show: 900 },   // 第一條完整演;之後每條 ×_FPV_FAST
+  _FPV_FAST: 0.5,
+  _fpvOn() { return document.documentElement.classList.contains('app-fish'); },
+  openFishApp() { location.href = 'pro.html?app=fish'; },
+  /** 🐟 一檔股票 → 一條魚的外觀參數(⛔ 只用價格 / 漲跌 / 振幅,不帶任何選股規則) */
+  _fpvFishOf(r) {
+    const c = +r.c || 0, chg = Number.isFinite(r.chg) ? r.chg : 0, amp = Number.isFinite(r.amp20) ? r.amp20 : 3;
+    const tier = c >= 1000 ? 4 : c >= 300 ? 3 : c >= 80 ? 2 : 1;
+    const dir = chg > 0.05 ? 1 : chg < -0.05 ? -1 : 0;
+    const pal = dir > 0 ? { b1: '#ff8a70', b2: '#c8102e', b3: '#5a0612', fin: '#ffd27a', glow: '255,190,80', belly: '#ffd9c2' }
+              : dir < 0 ? { b1: '#58f0b0', b2: '#10866a', b3: '#062a44', fin: '#8fe3ff', glow: '60,170,255', belly: '#cffff0' }
+              :           { b1: '#dfe7f2', b2: '#8795a8', b3: '#2c3748', fin: '#c9d4e3', glow: '200,215,235', belly: '#f4f7fb' };
+    return { sym: r.sym, nm: r.nm || r.sym, c, chg, amp, tier, dir, pal,
+             len: [0, 70, 92, 118, 150][tier],
+             A: 0.07 + Math.min(1, Math.max(0, (amp - 1) / 7)) * 0.13,          // 擺幅 ← 20 日振幅(越會跳擺越大)
+             w: 5.2 + Math.min(10, Math.max(-5, chg)) * 0.32,                 // 擺頻 ← 今日漲跌(漲越多游越輕快)
+             ph: Math.random() * 6.28, rare: tier >= 3,
+             tag: ['', '🐠 靈巧小魚', '🐟 鮪魚級', '🗡️ 旗魚級', '🐉 金鱗龍魚'][tier] };
+  },
+  /** 🐟 畫一條魚(頭朝 +x,原點 = 頭);t 秒;opt.alpha / opt.under(水下)/ opt.thrash(掙扎倍數) */
+  _fpvDrawFish(ctx, F, x, y, scale, ang, t, opt) {
+    opt = opt || {};
+    const L = F.len, N = 6, A = F.A * L * (opt.thrash || 1), w = F.w * (opt.fast || 1), phi = 0.72;
+    const sp = [];
+    for (let i = 0; i <= N; i++) {
+      const u = i / N, k = Math.pow(u, 1.35);
+      sp.push([-u * L, A * k * Math.sin(w * t + F.ph - i * phi)]);
+    }
+    const wid = i => { const u = i / N; return L * 0.22 * Math.pow(Math.sin(Math.PI * Math.min(1, (u + 0.08) / 1.02)), 0.75) * (1 - u * 0.55); };
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(scale, scale);
+    ctx.globalAlpha = opt.alpha == null ? 1 : opt.alpha;
+    const tail = sp[N], pre = sp[N - 1];
+    const ta = Math.atan2(tail[1] - pre[1], tail[0] - pre[0]), fl = Math.sin(w * t * 1.6 + F.ph) * 0.35;
+    // 尾鰭(兩片,獨立高頻擺動)
+    ctx.fillStyle = F.pal.fin; ctx.globalAlpha *= 0.9;
+    ctx.beginPath(); ctx.moveTo(tail[0], tail[1]);
+    const tl = L * (F.rare ? 0.42 : 0.34);
+    ctx.quadraticCurveTo(tail[0] + Math.cos(ta - 0.9 + fl) * tl * 0.7, tail[1] + Math.sin(ta - 0.9 + fl) * tl * 0.7, tail[0] + Math.cos(ta - 0.55 + fl) * tl, tail[1] + Math.sin(ta - 0.55 + fl) * tl);
+    ctx.quadraticCurveTo(tail[0] + Math.cos(ta + fl) * tl * 0.55, tail[1] + Math.sin(ta + fl) * tl * 0.55, tail[0] + Math.cos(ta + 0.55 + fl) * tl, tail[1] + Math.sin(ta + 0.55 + fl) * tl);
+    ctx.quadraticCurveTo(tail[0] + Math.cos(ta + 0.9 + fl) * tl * 0.7, tail[1] + Math.sin(ta + 0.9 + fl) * tl * 0.7, tail[0], tail[1]);
+    ctx.fill(); ctx.globalAlpha = opt.alpha == null ? 1 : opt.alpha;
+    // 背鰭
+    const d1 = sp[1], d3 = sp[3];
+    ctx.beginPath(); ctx.moveTo(d1[0], d1[1] - wid(1) * 0.9);
+    ctx.quadraticCurveTo((d1[0] + d3[0]) / 2 - L * 0.05, (d1[1] + d3[1]) / 2 - wid(2) - L * (F.rare ? 0.2 : 0.12) * (1 + Math.sin(t * 7 + F.ph) * 0.08), d3[0], d3[1] - wid(3) * 0.8);
+    ctx.closePath(); ctx.fill();
+    // 身體外形
+    const up = [], dn = [];
+    for (let i = 0; i <= N; i++) {
+      const a = i < N ? Math.atan2(sp[i + 1][1] - sp[i][1], sp[i + 1][0] - sp[i][0]) : Math.atan2(sp[i][1] - sp[i - 1][1], sp[i][0] - sp[i - 1][0]);
+      const nx = -Math.sin(a), ny = Math.cos(a), ww = wid(i);
+      up.push([sp[i][0] + nx * ww, sp[i][1] + ny * ww]); dn.push([sp[i][0] - nx * ww, sp[i][1] - ny * ww]);
+    }
+    const body = new Path2D();
+    body.moveTo(L * 0.06, 0);
+    body.quadraticCurveTo(L * 0.05, -wid(0) * 1.05, up[0][0], up[0][1]);
+    for (let i = 1; i <= N; i++) body.lineTo(up[i][0], up[i][1]);
+    for (let i = N; i >= 0; i--) body.lineTo(dn[i][0], dn[i][1]);
+    body.quadraticCurveTo(L * 0.05, wid(0) * 1.05, L * 0.06, 0);
+    body.closePath();
+    const g = ctx.createLinearGradient(0, -L * 0.2, 0, L * 0.2);
+    g.addColorStop(0, F.pal.b3); g.addColorStop(0.38, F.pal.b2); g.addColorStop(0.7, F.pal.b1); g.addColorStop(1, F.pal.belly);
+    ctx.fillStyle = g; ctx.fill(body);
+    ctx.save(); ctx.clip(body);
+    // 鱗片(半透明弧線網格)
+    ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 0.8;
+    const sc = L * 0.075;
+    for (let yy = -L * 0.22; yy < L * 0.22; yy += sc * 0.8) for (let xx = -L; xx < L * 0.02; xx += sc) {
+      ctx.beginPath(); ctx.arc(xx + ((yy / sc | 0) % 2) * sc * 0.5, yy, sc * 0.55, -0.35 * Math.PI, 0.35 * Math.PI); ctx.stroke();
+    }
+    // 動態高光(沿著身體滑動)
+    const hx = -L * (0.15 + 0.55 * (0.5 + 0.5 * Math.sin(t * 1.3 + F.ph)));
+    const hg = ctx.createRadialGradient(hx, -L * 0.07, 0, hx, -L * 0.07, L * 0.35);
+    hg.addColorStop(0, 'rgba(255,255,255,.55)'); hg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hg; ctx.fillRect(-L * 1.1, -L * 0.3, L * 1.3, L * 0.6);
+    // 側線(一條亮線,讓身體有立體感)
+    ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let i = 0; i <= N; i++) { const q = sp[i]; i ? ctx.lineTo(q[0], q[1] + wid(i) * 0.12) : ctx.moveTo(q[0], q[1]); } ctx.stroke();
+    ctx.restore();
+    if (F.rare) { ctx.strokeStyle = 'rgba(255,214,120,.8)'; ctx.lineWidth = 1.4; ctx.stroke(body); }
+    // 胸鰭
+    ctx.save(); ctx.translate(-L * 0.2, wid(1) * 0.55); ctx.rotate(0.6 + Math.sin(t * 9 + F.ph) * 0.35);
+    ctx.fillStyle = F.pal.fin; ctx.globalAlpha *= 0.85; ctx.beginPath(); ctx.ellipse(-L * 0.06, 0, L * 0.1, L * 0.035, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    // 眼睛
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-L * 0.06, -L * 0.035, L * 0.035, 0, 6.29); ctx.fill();
+    ctx.fillStyle = '#0a0f18'; ctx.beginPath(); ctx.arc(-L * 0.055, -L * 0.035, L * 0.021, 0, 6.29); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(-L * 0.05, -L * 0.043, L * 0.007, 0, 6.29); ctx.fill();
+    if (opt.under) { ctx.globalCompositeOperation = 'source-atop'; ctx.fillStyle = 'rgba(8,52,86,.2)'; ctx.fillRect(-L * 1.6, -L, L * 2, L * 2); }
+    ctx.restore();
+  },
+  _fpvSetup() {
+    const cv = document.getElementById('fpvCanvas'); if (!cv || !cv.getContext) return null;
+    const ctx = cv.getContext('2d'); if (!ctx) return null;
+    const dpr = Math.min(2, window.devicePixelRatio || 1), W = cv.clientWidth || 360, H = cv.clientHeight || 420;
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!this._fpv) {
+      this._fpv = { swim: [], parts: [], drops: [], ghost: [], shake: 0, flash: 0, dip: 0, bend: 0.08, line: null, A: null, t0: performance.now(), raf: 0, lastPicked: null };
+      this._fpv.parts = Array.from({ length: 220 }, () => ({ on: false }));   // 粒子池(⛔ 不在迴圈裡 new)
+    }
+    Object.assign(this._fpv, { cv, ctx, W, H, hz: H * 0.32 });
+    return this._fpv;
+  },
+  /** 🐠 待機時水下游的魚:目前這一池的前幾條(⛔ 只拿來畫,不顯示它是怎麼挑的) */
+  _fpvSwimFrom(D) {
+    const S = this._fpv; if (!S || !D) return;
+    let rows = []; try { rows = this._fishPoolRows(D) || []; } catch (_) { rows = D.rows.slice(0, 12); }
+    rows = rows.slice(0, 9);
+    const sub = document.getElementById('fpvSub');
+    if (sub) sub.textContent = `資料日 ${D.date || '—'} ・水面下游著 ${rows.length} 條`;
+    S.swim = rows.map((r, i) => { const F = this._fpvFishOf(r);
+      return { F, d: 0.25 + 0.7 * ((i * 0.37) % 1), x: Math.random(), v: (0.018 + Math.random() * 0.03) * (Math.random() < 0.5 ? -1 : 1) }; });
+  },
+  _fpvBurst(x, y, F, n) {
+    const S = this._fpv; let k = 0;
+    for (const p of S.parts) {
+      if (p.on) continue; if (k++ >= n) break;
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, sp = 60 + Math.random() * 260;
+      Object.assign(p, { on: true, x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0, max: 0.6 + Math.random() * 0.9,
+        r: 1 + Math.random() * 3.2, glow: Math.random() < 0.35, col: F ? F.pal.glow : '220,240,255' });
+    }
+  },
+  _fpvRun(picks) {
+    const S = this._fpvSetup();
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const fish = picks.map(p => this._fpvFishOf(p));
+    const DUR = this._FPV_DUR, FAST = this._FPV_FAST;
+    const plan = [];
+    fish.forEach((F, i) => { const f = i ? FAST : 1;
+      if (!i) plan.push({ ph: 'cast', d: DUR.cast, i });
+      for (const ph of ['bite', 'reel', 'breach', 'show']) plan.push({ ph, d: DUR[ph] * f, i }); });
+    const total = plan.reduce((a, x) => a + x.d, 0);
+    const A = { seq: ['idle'], plan, fish, k: -1, t0: performance.now(), total, done: false, resolved: false, shown: new Set() };
+    if (S) S.A = A;
+    return new Promise(resolve => {
+      A.finish = () => { if (A.resolved) return; A.resolved = true; A.done = true;
+        if (A.seq[A.seq.length - 1] !== 'done') A.seq.push('done');
+        clearTimeout(A.timer); fish.forEach((F, i) => this._fpvShowCard(F, i, picks[i])); resolve(A); };
+      if (reduce || !S || !fish.length) { if (!fish.length) A.seq.push('none'); A.finish(); return; }
+      A.timer = setTimeout(A.finish, total + 2500);           // 🛟 安全閥
+      this._fpvLoop();
+    });
+  },
+  /** 🧺 金鱗釣場的漁獲籃(同一份計算,只換版面):名字 / 釣起價 → 現價 / 一張賺賠;⛔ 不寫出場規則 */
+  _fpvBasketHtml(hold, done, totOpen, totDone, money) {
+    const row = r => { const st = r.st, fin = st && !st.open;
+      const pct = fin ? st.net : r.pct, lot = fin ? st.lot : r.lot, px1 = fin ? st.exitP : r.c;
+      return `<div class="fpvbk"><span class="n">${fin ? '🧾' : '🐟'} ${this._esc(r.nm || r.sym)} <span class="cd mono" style="color:var(--dim)">${r.sym}</span></span>
+        <span class="m" style="color:var(--dim)">${r.px} → ${px1 == null ? '—' : px1}</span>
+        <span class="m ${this.cls(pct)}">${pct == null ? '—' : this.fmt(pct, 1, true) + '%'}</span>
+        <span class="m ${this.cls(lot)}" style="min-width:86px">${lot == null ? '—' : money(lot)}</span>
+        <button class="lbtn" style="padding:2px 8px" onclick="PRO._fishRelease('${r.sym}')" title="放生">↩</button></div>`; };
+    return `<div class="kv" style="margin:4px 0 8px">
+        <div><b>🐟 還在籃子裡</b><span class="mono ${this.cls(totOpen)}">${hold.length ? `${money(totOpen)} ・${hold.length} 條` : '—'}</span></div>
+        <div><b>🧾 已經收網</b><span class="mono ${this.cls(totDone)}">${done.length ? `${money(totDone)} ・${done.length} 條` : '—'}</span></div></div>
+      ${hold.map(row).join('')}${done.map(row).join('')}
+      <div class="note" style="margin-top:6px;font-size:10.5px">一張 =(現價 − 釣起價)× 1,000,還沒扣手續費與稅;只存在這台裝置。⛔ 不是買賣建議。</div>`;
+  },
+  fpvSkip() { const A = this._fpv && this._fpv.A; if (A && !A.done) A.finish(); },
+  _fpvLoop() {
+    const S = this._fpv; if (!S || S.raf) return;
+    let last = performance.now();
+    const tick = now => {
+      S.raf = 0;
+      if (!this._fpvOn() || document.hidden) return;
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      try { this._fpvFrame(now, dt); } catch (e) { console.warn('fpv', e); }
+      S.raf = requestAnimationFrame(tick);
+    };
+    S.raf = requestAnimationFrame(tick);
+  },
+  /** 一格畫面:場景 → 水下魚 → 狀態機 → 粒子 → 濺屏 → 暈影 */
+  _fpvFrame(now, dt) {
+    const S = this._fpv, { ctx, W, H } = S, A = S.A && !S.A.done ? S.A : null;
+    let t = (now - S.t0) / 1000;
+    // ── 狀態機推進
+    let cur = null, p = 0;
+    if (A) {
+      let el = now - A.t0, k = 0;
+      while (k < A.plan.length && el >= A.plan[k].d) { el -= A.plan[k].d; k++; }
+      if (k >= A.plan.length) { A.finish(); } else {
+        if (k !== A.k) {
+          A.k = k; const st = A.plan[k]; A.seq.push(st.ph);
+          const F = A.fish[st.i];
+          if (st.ph === 'bite') { S.dip = 16; S.bend = 0.55; this._fpvBurst(S.hook ? S.hook.x : W * 0.5, S.hz + (H - S.hz) * 0.35, null, 40); S.shake = 4; }
+          if (st.ph === 'breach') { this._fpvBurst(S.hook.x, S.hook.y, F, 120); S.flash = 0.7; S.shake = 6 + F.A * 40; S.ghost = []; }
+          if (st.ph === 'show') this._fpvShowCard(F, st.i, null);
+        }
+        cur = A.plan[k]; p = Math.min(1, el / cur.d);
+      }
+    }
+    const slow = cur && cur.ph === 'breach' ? 0.5 : 1;          // 🐢 破水慢動作 0.5×
+    t = S.tSlow = (S.tSlow || t) + dt * slow;
+    // ── 鏡頭:呼吸 + 咬鉤下沉 + 震動
+    S.dip *= 0.9; S.shake *= 0.9; S.flash *= 0.9;
+    const sx = (Math.random() - 0.5) * S.shake, sy = (Math.random() - 0.5) * S.shake + S.dip + Math.sin(t * 1.1) * 2;
+    ctx.save(); ctx.clearRect(0, 0, W, H); ctx.translate(sx, sy);
+    const hz = S.hz;
+    this._fpvScene(ctx, W, H, hz, t);
+    // ── 水下的魚
+    const reelF = cur && (cur.ph === 'bite' || cur.ph === 'reel') ? A.fish[cur.i] : null;
+    for (const s of S.swim) {
+      if (reelF && s.F.sym === reelF.sym) continue;
+      s.x += s.v * dt; if (s.x > 1.15) s.x = -0.15; if (s.x < -0.15) s.x = 1.15;
+      const y = hz + 18 + (H - hz - 40) * s.d, sc = 0.28 + 0.62 * s.d;
+      this._fpvDrawFish(ctx, s.F, s.x * W, y + Math.sin(t * 1.3 + s.F.ph) * 4, sc, s.v > 0 ? 0 : Math.PI, t, { under: true, alpha: 0.88 });
+    }
+    // ── 釣竿 / 釣線 / 狀態演出
+    const tipX = W * 0.62, tipY = H * 0.36 + Math.sin(t * 1.4) * 3;
+    S.bend += (((cur && (cur.ph === 'reel' || cur.ph === 'bite')) ? 0.6 + Math.sin(t * 13) * 0.06 : cur && cur.ph === 'breach' ? 0.35 : 0.08) - S.bend) * 0.15;
+    S.bend = Math.max(0.05, Math.min(0.7, S.bend));
+    let hook = S.hook || { x: W * 0.46, y: hz + (H - hz) * 0.42 };
+    if (!S.hook) S.hook = hook;
+    let tension = 0;
+    if (cur && cur.ph === 'cast') {
+      const q = p, tx = W * 0.46, ty = hz + (H - hz) * 0.42;
+      hook = { x: tipX + (tx - tipX) * q, y: tipY + (ty - tipY) * q - Math.sin(q * Math.PI) * H * 0.2 };
+      if (q > 0.96 && !S.castSplash) { S.castSplash = 1; this._fpvBurst(tx, ty, null, 25); }
+    } else if (reelF) {
+      tension = cur.ph === 'reel' ? 1 : 0.6;
+      const q = cur.ph === 'reel' ? p : 0;
+      const bx = W * 0.46 + Math.sin(t * 7 + reelF.ph) * 18 * (1 + reelF.A * 3), by = hz + (H - hz) * (0.42 - 0.22 * q);
+      hook = { x: bx, y: by }; S.hook = hook;
+      this._fpvDrawFish(ctx, reelF, bx, by + 10, 0.55 + 0.3 * q, Math.sin(t * 11) * 0.5, t, { under: true, thrash: 2.2, fast: 2, alpha: 0.9 });
+      if (Math.random() < 0.5) this._fpvBurst(bx, by, null, 2);
+    } else if (cur && cur.ph === 'breach') {
+      const F = A.fish[cur.i], q = p, cx = W * 0.5, cy = H * 0.48;
+      const x = hook.x + (cx - hook.x) * q, y = hook.y + (cy - hook.y) * q - Math.sin(q * Math.PI) * H * 0.28;
+      const scl = 0.3 + 1.5 * q * q, ang = -0.6 + q * 0.6 + Math.sin(t * 6) * 0.15;
+      const k2 = scl * (F.len > 110 ? 1 : 1.2), ox = F.len * k2 * 0.5;      // 以魚身中心對準軌跡(頭在原點 → 往右挪半條)
+      const yaw = Math.cos(q * Math.PI * 1.5) * 0.25 + 0.75;                   // 空中微微翻身(3D 偏航)
+      S.ghost.push([x, y, k2, ang]); if (S.ghost.length > 7) S.ghost.shift();
+      S.ghost.forEach((g, j) => this._fpvDrawFish(ctx, F, g[0] + F.len * g[2] * 0.5, g[1], g[2], g[3], t, { alpha: 0.1 + j * 0.05, thrash: 1.6 }));
+      this._fpvGlow(ctx, x, y, F, 90 * scl);
+      ctx.save(); ctx.translate(x, y); ctx.scale(1, yaw); ctx.translate(-x, -y);
+      this._fpvDrawFish(ctx, F, x + ox, y, k2, ang, t, { thrash: 1.8, fast: 1.5 });
+      ctx.restore();
+      tension = 0.3; hook = { x, y };
+      if (q > 0.55 && !S.lensDone) { S.lensDone = 1; for (let i = 0; i < 9; i++) S.drops.push({ x: Math.random() * W, y: Math.random() * H * 0.8, r: 6 + Math.random() * 16, life: 1 }); }
+    } else if (cur && cur.ph === 'show') {
+      const F = A.fish[cur.i], x = W * 0.5, y = H * 0.46 + Math.sin(t * 2) * 6;
+      this._fpvGlow(ctx, x, y, F, 150);
+      const k3 = Math.min(F.len > 110 ? 1.8 : 2.2, (W * 0.8) / (F.len * 1.35));
+      this._fpvDrawFish(ctx, F, x + F.len * k3 * 0.5, y, k3, Math.sin(t * 1.6) * 0.08, t, { thrash: 0.8 });
+      hook = { x: x - F.len * 0.2, y: y - 10 }; tension = 0.2;
+      S.lensDone = 0; S.castSplash = 0;
+    }
+    if (cur && cur.ph !== 'cast') S.hook = cur.ph === 'show' ? { x: W * 0.46, y: hz + (H - hz) * 0.42 } : S.hook;
+    this._fpvRod(ctx, W, H, tipX, tipY, S.bend, t, cur && cur.ph === 'reel');
+    this._fpvLine(ctx, tipX, tipY, hook.x, hook.y, tension, t, reelF);
+    // ── 粒子
+    for (const pt of S.parts) {
+      if (!pt.on) continue;
+      pt.life += dt * slow; if (pt.life > pt.max) { pt.on = false; continue; }
+      pt.vy += 420 * dt * slow; pt.x += pt.vx * dt * slow; pt.y += pt.vy * dt * slow;
+      const a = 1 - pt.life / pt.max;
+      ctx.fillStyle = `rgba(${pt.glow ? pt.col : '225,242,255'},${(pt.glow ? 0.9 : 0.75) * a})`;
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r * (pt.glow ? 1.4 : 1), 0, 6.29); ctx.fill();
+    }
+    ctx.restore();
+    // ── 閃光 / 濺屏水滴 / 暈影(不跟著震動)
+    if (S.flash > 0.02) { ctx.fillStyle = `rgba(255,248,230,${S.flash * 0.6})`; ctx.fillRect(0, 0, W, H); }
+    S.drops = S.drops.filter(d => (d.life -= dt * 0.35) > 0);
+    for (const d of S.drops) {
+      const g = ctx.createRadialGradient(d.x - d.r * 0.3, d.y - d.r * 0.3, 0, d.x, d.y, d.r);
+      g.addColorStop(0, `rgba(255,255,255,${0.55 * d.life})`); g.addColorStop(0.6, `rgba(170,210,240,${0.18 * d.life})`); g.addColorStop(1, 'rgba(170,210,240,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.29); ctx.fill(); d.y += dt * 12;
+    }
+    const vg = ctx.createRadialGradient(W / 2, H * 0.48, Math.min(W, H) * 0.35, W / 2, H * 0.5, Math.max(W, H) * 0.8);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  },
+  _fpvGlow(ctx, x, y, F, r) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(${F.pal.glow},.45)`); g.addColorStop(1, `rgba(${F.pal.glow},0)`);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.29); ctx.fill();
+  },
+  /** 遠景天空 + 光束 + 遠山,中景水面(透視波紋 + 陽光碎光) */
+  _fpvScene(ctx, W, H, hz, t) {
+    const sky = ctx.createLinearGradient(0, -20, 0, hz);
+    sky.addColorStop(0, '#0a1a33'); sky.addColorStop(0.55, '#2b4f7e'); sky.addColorStop(1, '#f3b36a');
+    ctx.fillStyle = sky; ctx.fillRect(-20, -30, W + 40, hz + 30);
+    const sunX = W * 0.72, sunY = hz - 14;
+    const sg = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, W * 0.45);
+    sg.addColorStop(0, 'rgba(255,236,190,.95)'); sg.addColorStop(0.08, 'rgba(255,210,140,.55)'); sg.addColorStop(1, 'rgba(255,190,120,0)');
+    ctx.fillStyle = sg; ctx.fillRect(-20, -30, W + 40, hz + 30);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + (i - 2.5) * 0.28 + Math.sin(t * 0.2 + i) * 0.05;
+      ctx.fillStyle = `rgba(255,220,160,${0.035 + 0.02 * Math.sin(t * 0.7 + i)})`;
+      ctx.beginPath(); ctx.moveTo(sunX, sunY);
+      ctx.lineTo(sunX + Math.cos(a - 0.05) * W, sunY + Math.sin(a - 0.05) * W); ctx.lineTo(sunX + Math.cos(a + 0.05) * W, sunY + Math.sin(a + 0.05) * W); ctx.fill();
+    }
+    ctx.restore();
+    ctx.fillStyle = '#16233a';
+    ctx.beginPath(); ctx.moveTo(-20, hz);
+    for (let x = -20; x <= W + 20; x += 20) ctx.lineTo(x, hz - 10 - 16 * Math.abs(Math.sin(x * 0.011)) - 9 * Math.abs(Math.sin(x * 0.031 + 1)));
+    ctx.lineTo(W + 20, hz); ctx.fill();
+    const wg = ctx.createLinearGradient(0, hz, 0, H);
+    wg.addColorStop(0, '#2f6b95'); wg.addColorStop(0.25, '#0f3d62'); wg.addColorStop(1, '#021426');
+    ctx.fillStyle = wg; ctx.fillRect(-20, hz, W + 40, H - hz + 30);
+    for (let k = 1; k <= 16; k++) {
+      const u = k / 16, y = hz + (H - hz) * u * u, amp = 1 + u * 5, a = 0.05 + u * 0.12;
+      ctx.strokeStyle = `rgba(170,215,245,${a})`; ctx.lineWidth = 0.6 + u * 1.2;
+      ctx.beginPath();
+      for (let x = -10; x <= W + 10; x += 14) { const yy = y + Math.sin(x * (0.03 / (0.3 + u)) + t * (1.2 + u) + k) * amp; x === -10 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy); }
+      ctx.stroke();
+    }
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 40; i++) {
+      const u = ((i * 0.618) % 1), y = hz + 4 + (H - hz) * 0.5 * u * u;
+      const x = sunX + Math.sin(i * 12.9 + t * 0.8) * (8 + u * 70), on = 0.5 + 0.5 * Math.sin(t * 5 + i * 2.1);
+      ctx.fillStyle = `rgba(255,225,170,${0.5 * on * (1 - u)})`; ctx.fillRect(x, y, 3 + u * 10, 1.2 + u);
+    }
+    ctx.restore();
+  },
+  /** 前景:釣竿(彎曲 = 張力)+ 捲線器 + 手 */
+  _fpvRod(ctx, W, H, tipX, tipY, bend, t, reeling) {
+    const bx = W * 0.9, by = H * 1.04;
+    const cx = bx + (tipX - bx) * 0.55 + bend * 60, cy = by + (tipY - by) * 0.55 - 10 + bend * 70;
+    const seg = 18;
+    for (let i = 0; i < seg; i++) {
+      const u0 = i / seg, u1 = (i + 1) / seg;
+      const P = u => [(1 - u) * (1 - u) * bx + 2 * u * (1 - u) * cx + u * u * tipX, (1 - u) * (1 - u) * by + 2 * u * (1 - u) * cy + u * u * tipY];
+      const a = P(u0), b = P(u1);
+      ctx.strokeStyle = i < 5 ? '#1b1410' : i % 4 === 0 ? '#caa45c' : '#2a3342'; ctx.lineWidth = 11 - 9.5 * u0; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+    }
+    const rx = bx - 18, ry = by - 58;
+    ctx.fillStyle = '#20262f'; ctx.beginPath(); ctx.arc(rx, ry, 20, 0, 6.29); ctx.fill();
+    ctx.strokeStyle = '#8c97a8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(rx, ry, 14, 0, 6.29); ctx.stroke();
+    const sp = reeling ? t * 14 : t * 0.4;
+    for (let i = 0; i < 3; i++) { const a = sp + i * 2.09; ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx + Math.cos(a) * 13, ry + Math.sin(a) * 13); ctx.stroke(); }
+    ctx.fillStyle = '#c69c6d';
+    ctx.beginPath(); ctx.ellipse(bx - 4, by - 26, 26, 17, -0.5, 0, 6.29); ctx.fill();
+    ctx.fillStyle = '#b38658';
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(bx - 26 + i * 9, by - 40 + i * 3, 6, 10, -0.4, 0, 6.29); ctx.fill(); }
+  },
+  /** 釣線:三階貝茲,鬆的時候下垂、繃緊時打直並震動 */
+  _fpvLine(ctx, x0, y0, x1, y1, tension, t, F) {
+    const sag = (1 - tension) * 70, vib = tension > 0.5 ? Math.sin(t * 60) * 2.2 * tension * (F ? 1 + F.A * 4 : 1) : 0;
+    ctx.strokeStyle = `rgba(235,240,248,${0.55 + tension * 0.35})`; ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.moveTo(x0, y0);
+    ctx.bezierCurveTo(x0 + (x1 - x0) * 0.33 + vib, y0 + (y1 - y0) * 0.33 + sag, x0 + (x1 - x0) * 0.66 - vib, y0 + (y1 - y0) * 0.66 + sag * 0.8, x1, y1);
+    ctx.stroke();
+    ctx.fillStyle = '#ff5d5d'; ctx.beginPath(); ctx.arc(x1, y1, 2.6, 0, 6.29); ctx.fill();
+  },
+  /** 🎴 行情卡(⛔ 只有名字 / 價格 / 漲跌 / 一張金額;不寫任何選股規則) */
+  _fpvShowCard(F, i, pick) {
+    const box = document.getElementById('fpvCards'); if (!box || box.querySelector(`[data-fpv="${F.sym}"]`)) return;
+    const chgTxt = (F.chg >= 0 ? '+' : '') + F.chg.toFixed(2) + '%';
+    const warn = pick && (pick.warn || []).length ? `<div class="row" style="color:var(--amber)">⚠️ ${this._esc(String(pick.warn[0]).replace(/<[^>]+>/g, '').slice(0, 24))}</div>` : '';
+    const el = document.createElement('div'); el.className = 'fpvcard'; el.dataset.fpv = F.sym;
+    el.innerHTML = `<span class="rar">${F.tag}</span><canvas></canvas>
+      <div class="nm">${this._esc(F.nm)}</div><div class="cd">${F.sym}</div>
+      <div class="px ${this.cls(F.chg)}">${F.c.toLocaleString()}</div>
+      <div class="row"><span>今日</span><b class="mono fpvchg ${this.cls(F.chg)}">${chgTxt}</b></div>
+      <div class="row"><span>一張約</span><b class="mono">${Math.round(F.c * 1000).toLocaleString()} 元</b></div>${warn}
+      <button class="lbtn on" onclick="PRO._fishCatch('${F.sym}')">🧺 放進漁獲籃</button>`;
+    box.appendChild(el);
+    this._fpvPortrait(el.querySelector('canvas'), F);
+  },
+  _fpvPortrait(cv, F, size) {
+    if (!cv || !cv.getContext) return;
+    const W = size || cv.clientWidth || 160, H = size || cv.clientHeight || 84, dpr = size ? 1 : Math.min(2, window.devicePixelRatio || 1);
+    cv.width = W * dpr; cv.height = H * dpr; const ctx = cv.getContext('2d'); if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.6);
+    g.addColorStop(0, `rgba(${F.pal.glow},.28)`); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const sc = Math.min((W * 0.78) / (F.len * 1.3), (H * 0.8) / (F.len * 0.55));
+    this._fpvDrawFish(ctx, F, W / 2 + F.len * sc * 0.5, H / 2, sc, 0, 0.3, { thrash: 0.6 });
+  },
+  /** 🎨 主畫面圖示(scripts/make_fish_icon.mjs 用):一條金紅色的魚 */
+  _fpvIcon(size) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = size;
+    const ctx = cv.getContext('2d');
+    const bg = ctx.createLinearGradient(0, 0, 0, size); bg.addColorStop(0, '#0b2240'); bg.addColorStop(0.55, '#0f3d62'); bg.addColorStop(1, '#021426');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, size, size);
+    const F = this._fpvFishOf({ sym: 'icon', nm: '', c: 1200, chg: 3, amp20: 4 }); F.ph = 1.2;
+    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size * 0.55);
+    g.addColorStop(0, 'rgba(255,200,90,.45)'); g.addColorStop(1, 'rgba(255,200,90,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = 'rgba(170,215,245,.35)'; ctx.lineWidth = size * 0.012;
+    for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.ellipse(size * 0.5, size * 0.8, size * (0.18 + k * 0.1), size * (0.035 + k * 0.02), 0, 0, 6.29); ctx.stroke(); }
+    const sc = size * 0.86 / (F.len * 1.3);
+    this._fpvDrawFish(ctx, F, size * 0.5 + F.len * sc * 0.55, size * 0.46, sc, -0.3, 0.4, { thrash: 0.7 });
+    return cv.toDataURL('image/png');
+  },
+  /** 🎣 拋竿(App 模式):名單 = `_castPick`(⛔ 一行都不改)→ 演出 → 卡片 */
+  async fpvCast() {
+    const btn = document.getElementById('fpvCastBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '🎣 拋竿中…'; }
+    this.buzz(30);
+    const box = document.getElementById('fpvCards'); if (box) box.innerHTML = '';
+    try {
+      if (!this._fishD) await (this._rodP = this.renderRod());
+      const D = this._fishD;
+      if (!D) { if (box) box.innerHTML = '<div class="fpvnone">⏳ 今天的水還沒放好(收盤資料還沒產出),晚點再來。</div>'; return; }
+      try { await this._twiiLoad(); } catch (_) {}
+      const R = this._castPick(D); this._cast = R;
+      const clean = R.picked.filter(x => !(x.warn || []).length);
+      const order = clean.concat(R.picked.filter(x => (x.warn || []).length));
+      const rows = order.map(x => ({ ...(D.rows.find(r => r.sym === x.sym) || { sym: x.sym, c: x.c || 0, chg: 0 }), warn: x.warn }));
+      this._fpv && (this._fpv.lastPicked = R.picked.map(x => x.sym));
+      const skip = document.getElementById('fpvSkip'); if (skip) skip.classList.remove('hidden');
+      await this._fpvRun(rows);
+      if (skip) skip.classList.add('hidden');
+      if (!this._fpv) this._fpvSetup();
+      if (this._fpv) this._fpv.lastPicked = R.picked.map(x => x.sym);
+      if (!R.picked.length && box) box.innerHTML = '<div class="fpvnone">🌊 今天沒有魚上鉤 —— 照規則今天空手,⛔ 不硬給你一條。</div>';
+      this.buzz(60);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🎣 再拋一次'; }
+    }
+  },
+  /** 開 App:切到釣魚、停掉作戰室魚缸的迴圈、啟動舞台待機 */
+  async _fpvBoot() {
+    this._appFish = true;
+    this.switchTab('rod', true);
+    try { await this._rodP; } catch (_) {}
+    this.fishStop();                                   // 作戰室魚缸在 App 模式看不到 → ⛔ 不要在背景空轉
+    this._fpvSetup();
+    if (this._fishD) this._fpvSwimFrom(this._fishD);
+    this._fpvLoop();
+    addEventListener('resize', () => { if (this._fpv) this._fpvSetup(); });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && this._fpv) this._fpvLoop(); });
+    const cv = document.getElementById('fpvCanvas');
+    if (cv) cv.addEventListener('click', () => { const A = this._fpv && this._fpv.A; if (A && !A.done) this.fpvSkip(); else this.fpvCast(); });
+  },
 
   /** 🎣 釣魚分頁的入口(V77.3.9)——
    *  ⭐ body 沿用 V77.2.3 的 `renderFish`(git show 7eaf90fa7^:pro.html),只改 6 處:
@@ -4509,6 +5002,7 @@ const PRO = {
     if (list.length && this._twOpenNow()) {
       this._lqTimer = setTimeout(() => { this._lq = undefined; this._lqAt = 0; this._fishBasketRender(); }, 60000);
     }
+    if (!list.length && this._appFish) { el.innerHTML = `<div class="note" style="margin:0 0 8px">🧺 漁獲籃是空的 —— 拋竿釣到喜歡的,按「🧺 放進漁獲籃」就會一直幫你算賺賠。</div>`; return; }
     if (!list.length) { el.innerHTML = `<div class="note" style="margin:0 0 8px">🧺 漁獲籃是空的 —— 點魚 → 「🎣 收進漁獲籃」,之後每次開池子都會算出從釣起到現在賺賠多少。</div>`; return; }
     const rows = list.map(x => {
       const r = D && D.rows.find(y => y.sym === x.sym);
@@ -4540,6 +5034,7 @@ const PRO = {
     const exMed = exs.length ? (exs.length % 2 ? exs[(exs.length - 1) / 2] : (exs[exs.length / 2 - 1] + exs[exs.length / 2]) / 2) : null;
     const exWin = hold.filter(r => r.ex > 0).length;
     const money = v => (v >= 0 ? '+' : '') + Math.round(v).toLocaleString() + ' 元';
+    if (this._appFish) { el.innerHTML = this._fpvBasketHtml(hold, done, totOpen, totDone, money); return; }   // 🎣 金鱗釣場:只給數字,⛔ 不寫規則
     // 🐟 一行一張卡(⛔ 不用 table,理由見 .bkrow 的註解)
     const rowHtml = r => {
       const st = r.st, fin = st && !st.open;
@@ -9104,6 +9599,7 @@ ${kw ? `【我想知道】${kw}\n` : ''}${r && r.sum ? `【官方擇要(公司�
     addEventListener('resize', () => this._syncHdrVar());
     addEventListener('orientationchange', () => setTimeout(() => this._syncHdrVar(), 250));
     this.loadNames().catch(() => {});
+    if (this._fpvOn()) { await this._fpvBoot(); return; }   // 🎣 V77.9.7 金鱗釣場:⛔ 不還原作戰室的上次分頁
     await this._restoreNav();
     // 🧹 V74.6.2 深連結:散戶救星設定中心那兩顆鈕帶 ?noise=1 / ?log=1 過來
     //   ⛔ 要排在 _restoreNav 之後(否則會被「回到上次那一頁」蓋掉)

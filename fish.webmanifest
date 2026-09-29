@@ -1,0 +1,16 @@
+{
+  "name": "金鱗釣場",
+  "short_name": "金鱗釣場",
+  "id": "./pro.html?app=fish",
+  "start_url": "./pro.html?app=fish&source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#040b14",
+  "theme_color": "#06121f",
+  "description": "第一人稱釣魚:拋竿、看魚破水、收進漁獲籃自動算賺賠",
+  "icons": [
+    { "src": "fish-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "fish-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

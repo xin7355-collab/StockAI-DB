@@ -63,7 +63,7 @@ const T = await pg.evaluate(async () => {
            rod: vis('tabRod'), fish: vis('tabFish'), rot: vis('tabRot'), tab: PRO._tab,
            inTabs: !!document.querySelector('.tabs #tabBtnRod') };
 });
-ok(/釣魚/.test(T.btn) && T.inTabs && T.inWrap && T.rod && !T.fish && !T.rot && T.tab === 'rod',
+ok(/釣魚|釣場/.test(T.btn) && T.inTabs && T.inWrap && T.rod && !T.fish && !T.rot && T.tab === 'rod',
   '① 分頁接線:#tabRod 在 .wrap 裡、切過去只有它亮(🚨 tabRod / tabRot 只差一個字母)',
   `btn=${T.btn.trim()} wrap=${T.inWrap} rod=${T.rod} fish=${T.fish} rot=${T.rot}`);
 ok(/\['rod', 'Rod'\]/.test(SRC) && /if \(t === 'rod'\) this\._rodP = this\.renderRod\(\);/.test(SRC),
