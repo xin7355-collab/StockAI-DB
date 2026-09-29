@@ -81,8 +81,9 @@ const R = await pg.evaluate(() => {
     dead: PRO._CAST_DEAD, hq: PRO._HQ_RULE, fishN: PRO._fish.length,
   };
 });
-ok(R.poolK === 'gene' && R.chips.length && /🧬/.test(R.chips[0].t) && R.chips[0].on,
-  '② 🧬 強勢高波動是主角:預設池就是它,而且排第一顆並選中', `poolK=${R.poolK} 第一顆=${(R.chips[0] || {}).t}`);
+// 👑 V77.9.4 使用者:「釣魚要把領頭羊的魚加進去、拋竿要釣到最強的魚」→ 預設池改成 👑 領頭羊池,🧬 退到第二顆(⛔ 不刪)
+ok(R.poolK === 'lead' && R.chips.length && /👑/.test(R.chips[0].t) && R.chips[0].on && R.chips.some(c => /🧬/.test(c.t)),
+  '② 👑 領頭羊池是預設:排第一顆並選中,🧬 那一池仍在(⛔ 不刪)', `poolK=${R.poolK} 第一顆=${(R.chips[0] || {}).t}`);
 const needPools = [...R.pools, 'fam', 'cast'];
 ok(R.pools.length >= 7 && needPools.every(k => R.st[k] && R.st[k].lv && R.st[k].t && R.st[k].n >= 15),
   '③ ⛔ 一個池子都不准沉默:每一池都有實測狀態(徽章 + 一句話)',
@@ -100,18 +101,19 @@ ok(/IC/.test(edge.tip) && /別當排名/.test(edge.tip), '⑧ 🏅 那一池要�
 
 // ── ④ ⛔ 門檻與成績不寫死 ────────────────────────────────────
 const four = ['  _rodStatus() {', '  _rodPoolsHtml(pools) {', '  _rodWhyHtml(D) {', '  _rodCastNoteHtml() {'].map(h => noComment(body(h))).join('\n');
-const stale = ['75', '3.2', '60', '589', '264'].filter(t => new RegExp('(?<![0-9.])' + t.replace('.', '\\.') + '(?![0-9])').test(four));
+const stale = ['75', '3.2', '60', '589', '264', '1.52'].filter(t => new RegExp('(?<![0-9.])' + t.replace('.', '\\.') + '(?![0-9])').test(four));
 ok(four.length > 2000 && stale.length === 0
    && /_geneRule\(\)/.test(four) && /_HQ_RULE/.test(four) && /_SIG_DEEP/.test(four) && /_CAST_DEAD/.test(four),
   '④ ⛔ 門檻與成績一律讀常數,⛔ 不寫死(⭐ 重跑探針畫面要跟著變)', stale.length ? '殘留:' + stale.join(',') : `${four.length} 字`);
+ok(!/前 ?100 ?大/.test(four) && /P\.U/.test(four), '④c 👑 池子大小讀 `_LEAD.U`(⛔ 不寫死「前 100 大」)');
 const cw = noComment(body('  _castWhyFull(sym) {'));
-ok(/_SIG_DEEP/.test(cw) && /_HQ_RULE/.test(cw) && !/_DECK_TRACK49/.test(cw),
-  '④a `_castWhyFull` 讀 `_SIG_DEEP`(🚨 `_DECK_TRACK49` 只存在於 index.html,舊寫法會印「+0 萬」)');
+ok(/_PROFIT_BOARD/.test(cw) && /_LEAD\b/.test(cw) && !/_DECK_TRACK49/.test(cw),
+  '④a `_castWhyFull` 讀 `_PROFIT_BOARD` / `_LEAD`(👑 V77.9.4 拋竿改釣領頭羊;🚨 `_DECK_TRACK49` 只存在於 index.html)');
 const W = await pg.evaluate(() => {
   const D = PRO._fishD, r = (D.rows || [])[0];
-  PRO._cast = { picked: [{ ...r, sym: r.sym, pb: { k: 'X', w: 50, n: 20, exp: 1, lb: 0.5, rank: 80, vol: 70 }, warn: [] }], warnN: 0, thin: 0, avoided: [], disposed: [] };
+  PRO._cast = { picked: [{ ...r, sym: r.sym, lrank: 1, warn: [] }], warnN: 0, thin: 0, avoided: [], disposed: [] };
   const h = PRO._castWhyFull(r.sym);
-  return { w: [...h.matchAll(/\+([0-9.]+) 萬/g)].map(m => +m[1]), has0: /\+0 萬/.test(h) };
+  return { w: [...h.matchAll(/([0-9,]+) 萬/g)].map(m => +m[1].replace(/,/g, '')), has0: /(?<![0-9,])0 萬/.test(h) };
 });
 ok(W.w.length >= 2 && W.w.every(v => v > 0) && !W.has0,
   '④b ⭐ 決定性:「📖 這一條的細節」裡的實測成績要真的印得出數字(⛔ 不可是 +0 萬)', W.w.join(' / '));
@@ -121,10 +123,8 @@ const cp = noComment(body('  _castPick(D) {'));
 ok(/picked\.push\(/.test(cp) && !/if \(!w\.length\)\s*(\{)?\s*picked\.push/.test(cp),
   '⑨ `_castPick` 的 `picked.push` ⛔ 不在「沒有警示」的 if 裡面(名單只標註,不刪)');
 const P = await pg.evaluate(() => {
-  const orig = PRO._recoPicks;
-  PRO._recoPicks = () => [{ s: 'AAA' }, { s: 'BBB' }];
-  const R2 = PRO._castPick({ rows: [{ sym: 'AAA', att: 2, amt: 50 }, { sym: 'BBB', att: 0, amt: 50 }] });
-  PRO._recoPicks = orig;
+  const R2 = PRO._castPick({ rows: [{ sym: 'AAA', att: 2, amt: 50 }, { sym: 'BBB', att: 0, amt: 50 }],
+                             LD: { date: '2026-09-24', buy: [{ sym: 'AAA', rank: 1 }, { sym: 'BBB', rank: 2 }] } });
   return { n: R2.picked.length, warn: (R2.picked[0].warn || []).join(','), disp: R2.disposed.length };
 });
 ok(P.n === 2 && /disp/.test(P.warn) && P.disp === 1,

@@ -67,11 +67,11 @@ const R = await pg.evaluate(() => {
   const t0 = PRO._rodRuleText();
   PRO._geneRule = saved;
   return { g, t, t0, hasPos: !!g && t.includes('≥ ' + g.pos), hasAmp: !!g && t.includes('≥ ' + g.amp + '%'),
-           hasVol: t.includes('≥ ' + H.vol + '%'), hasTop: t.includes('前 ' + K.top), hasE10: t.includes('+' + K.e10 + 'pp'),
+           hasVol: t.includes('前 ' + PRO._LEAD.U + ' 大') && t.includes('取前 ' + PRO._LEAD.N), hasTop: t.includes('前 ' + K.top), hasE10: t.includes('+' + K.e10 + 'pp'),
            noHtml: !/<[a-z]/i.test(t), noXq: !/CROSS\(|MA\(|REF\(/.test(t), copyRet: typeof PRO._rodRuleCopy === 'function' };
 });
 ok(R.g && R.hasPos && R.hasAmp && R.hasVol && R.hasTop && R.hasE10 && R.noHtml && R.noXq,
-  '⑰ 規則文字含 🧬 兩道門檻(讀 `_geneRule`)、拋竿的年化波動門檻(`_HQ_RULE`)、👑 的 top 與 e10;純文字、⛔ 不是 XQ 語法',
+  '⑰ 規則文字含 🧬 兩道門檻(讀 `_geneRule`)、拋竿 = 👑 領頭羊規則(讀 `_LEAD`,V77.9.4)、👑 成交額池的 top 與 e10;純文字、⛔ 不是 XQ 語法',
   `pos=${R.hasPos} amp=${R.hasAmp} vol=${R.hasVol} top=${R.hasTop} e10=${R.hasE10} html=${!R.noHtml}`);
 // ⚠️ `_HQ_RULE.pos` 跟 🧬 的 pos 剛好同值(75)→ 要釘的是「🧬 那一行」不見了,⛔ 不可只查數字有沒有出現(拋竿那行合法地帶著同一個數字)
 ok(R.g && /讀不到/.test(R.t0) && !R.t0.includes('一年位階 ≥ ' + R.g.pos) && R.t.includes('一年位階 ≥ ' + R.g.pos),
@@ -171,7 +171,7 @@ const K = await pg.evaluate(async () => {
   const rows = PRO._fishPoolRows(D);
   const ranked = rows.length > 0 && rows.length <= K.top && rows.every(r => r.rankAmt <= K.top) && !rows.some(r => r.etf === 1);
   PRO.fishBack(true); await (PRO._rodP = PRO.renderRod());
-  const chip = [...document.querySelectorAll('#fishPool .fishpool')].find(e => /👑/.test(e.textContent));
+  const chip = [...document.querySelectorAll('#fishPool .fishpool')].find(e => /👑 成交額前/.test(e.textContent));   // ⚠️ V77.9.4 👑 領頭羊池也帶 👑 → 要認「成交額前」
   PRO._fishPoolK = pk; await (PRO._rodP = PRO.renderRod());
   return { has, why: st ? st.why : '', hasE10: !!st && st.why.includes('+' + K.e10 + 'pp'), hasTop: !!st && st.why.includes('前 ' + K.top),
            hasAbs: !!st && st.why.includes(K.abs + '%'), changed: !!st2 && st2.why.includes('+9.87pp'), n: rows.length, ranked,

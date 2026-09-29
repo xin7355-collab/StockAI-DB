@@ -27,11 +27,13 @@ const LIB = fs.readFileSync(path.join(ROOT, 'lib_leader.py'), 'utf8');
 const AT = fs.readFileSync(path.join(ROOT, 'auto_trade.py'), 'utf8');
 const ix = IDX.match(/rule: \{ U: (\d+), N: (\d+), R: (\d+), L: (\d+), hyst: (\d+) \}/) || [];
 const ixAnc = (IDX.match(/anchor: '(\d{4}-\d{2}-\d{2})'/) || [])[1];
-const pr = PROSRC.match(/_LEAD: \{ N: (\d+), R: (\d+), hyst: (\d+), anchor: '(\d{4}-\d{2}-\d{2})'/) || [];
+// ⚠️ V77.9.4 pro `_LEAD` 多了 U / L(釣魚要自己算名單)→ 逐欄取,⛔ 不依賴欄位順序
+const prLine = (PROSRC.match(/_LEAD: \{[^}]*\}/) || [''])[0], pf = k => (prLine.match(new RegExp('\\b' + k + ": '?([\\d-]+)'?")) || [])[1];
+const pr = prLine ? ['', pf('N'), pf('R'), pf('hyst'), pf('anchor'), pf('U'), pf('L')] : [];
 const lb = LIB.match(/LEADER_RULE = \{'U': (\d+), 'N': (\d+), 'R': (\d+), 'L': (\d+), 'hyst': (\d+)\}/) || [];
 const lbAnc = (LIB.match(/LEADER_ANCHOR = '(\d{4}-\d{2}-\d{2})'/) || [])[1];
 ok('① 規則三份一致(N / R / hyst / 錨點:pro == index == lib_leader)',
-  pr.length && ix.length && lb.length && pr[1] === ix[2] && pr[2] === ix[3] && pr[3] === ix[5] && pr[4] === ixAnc
+  pr.length && ix.length && lb.length && pr[1] === ix[2] && pr[2] === ix[3] && pr[3] === ix[5] && pr[4] === ixAnc && pr[5] === ix[1] && pr[6] === ix[4]
   && lb.slice(1).join() === ix.slice(1).join() && lbAnc === ixAnc, JSON.stringify([pr.slice(1), ix.slice(1), ixAnc, lb.slice(1), lbAnc]));
 ok('①b auto_trade.py 名單 / 時鐘走 lib_leader(⛔ 不另寫一份)',
   /import lib_leader as _LL/.test(AT) && /return _LL\.leader_calc\(/.test(AT) && /return _LL\.leader_clock\(/.test(AT) && !/rows\.sort\(key=lambda r: -r\['amt20'\]\)/.test(AT));

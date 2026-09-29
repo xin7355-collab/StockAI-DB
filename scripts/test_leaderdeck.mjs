@@ -241,7 +241,8 @@ const KB = await page.evaluate(() => {
     app.renderRadarMatrix('kbar_bear'); const bear = body ? body.innerHTML : '';
     const L = app._kbarRadarEdge('晨星轉折 + 低檔十字變盤線(轉折警訊,次日確認)');
     const save = app._SIGNAL_EDGE; const alt = JSON.parse(JSON.stringify(save)); alt[star] = ['A', 999, 1, 50, 0.01, 1, 1, 7.77];
-    app._SIGNAL_EDGE = alt; app._kbarTitleIdx = null; const moved = app._kbarRadarEdgeHtml('晨星轉折', true); app._SIGNAL_EDGE = save; app._kbarTitleIdx = null;
+    const saveBt = app._btEdge; app._btEdge = null;   // ⚠️ 每週回測產物(data/backtest_edge.json)優先 → 要先拿掉,否則改常數量不到(本地有抓 gh-pages 資料時假失敗)
+    app._SIGNAL_EDGE = alt; app._kbarTitleIdx = null; const moved = app._kbarRadarEdgeHtml('晨星轉折', true); app._SIGNAL_EDGE = save; app._btEdge = saveBt; app._kbarTitleIdx = null;
     return { hasBody: !!body, bull, bear, L: L.map(x => [x.t, x.det, x.e && x.e.grade]), eS, moved, starDet: star.split('｜')[0], nightOk: !!night };
 });
 ok('⑦ 轉多榜:晨星對到偵測器並印實測等級 + 每趟期望值;單根變盤線 → 未驗證', KB.hasBody && KB.L[0][1] === KB.starDet && KB.L[0][2] === KB.eS.grade && KB.L[1][1] === null && /data-kbedge/.test(KB.bull) && /data-kbg="na"/.test(KB.bull) && new RegExp(`每趟${KB.eS.exp >= 0 ? '\\+' : ''}${(+KB.eS.exp).toFixed(2)}%`).test(KB.bull), JSON.stringify(KB.L));
@@ -251,6 +252,32 @@ ok('⑦d 標籤⛔ 無 🔴🟢', !/[🔴🟢]/u.test(KB.bull + KB.bear));
 const PROH = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 const proMin = (PROH.match(/CAST_MIN_AMT: ([\d.]+),/) || [])[1], idxMin = (SRC.match(/_DECK_THIN_AMT: ([\d.]+),/) || [])[1];
 ok('⑥e 門檻 index `_DECK_THIN_AMT` == pro `CAST_MIN_AMT`(同一條線)', proMin && proMin === idxMin, `${idxMin} vs ${proMin}`);
+// ⑨ 🎣 V77.9.4 產業作戰室(pro.html)也有一份 `_leaderCalc`(釣魚拋竿 / 👑 池子用,⛔ 不讀 index.html —— 那是 4.9 MB)
+//    → 第三份實作,規則與名單要跟 index 一模一樣(合成 + 正式 screener);決定性對照:pro 那份改成 chg20 排必須對不上
+{
+    const synth = (() => {
+        const cols = ['c', 'chg', 'chg5', 'chg10', 'chg20', 'amt', 'amt20', 'b20', 'b60', 'lim', 'att', 'etf'], rows = {};
+        for (let i = 0; i < 120; i++) { const chg10 = i < 100 ? (i % 2 ? 30 - i * 0.2 : -5) : 99;
+            rows[String(1000 + i)] = [100, 1, 1, chg10, i, i, 200 - i, i % 2 ? 3 : -3, i % 2 ? 8 : 1, 0, 0, 0]; }
+        rows['0050'] = [100, 1, 1, 50, 50, 999, 999, 5, 9, 0, 0, 1];
+        return { data_date: '2026-09-28', cols, rows };
+    })();
+    const sets = [['合成', synth]]; if (real) sets.push(['正式 ' + JSON.parse(real).data_date, JSON.parse(real)]);
+    const pick = L => L.err ? { err: L.err } : { buy: L.buy.map(r => r.sym), ranked: L.ranked.map(r => r.sym), passed: L.passed, n: L.n };
+    const idxRes = [], proRes = [];
+    for (const [, D] of sets) idxRes.push(await page.evaluate(([D, f]) => { const L = app._leaderCalc(D); return eval(f)(L); }, [D, pick.toString()]));
+    const pp = await browser.newPage(); await pp.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domcontentloaded' });
+    await pp.waitForFunction(() => typeof PRO !== 'undefined' && typeof PRO._leaderCalc === 'function', null, { timeout: 60000 });
+    for (const [, D] of sets) proRes.push(await pp.evaluate(([D, f]) => eval(f)(PRO._leaderCalc(D)), [D, pick.toString()]));
+    const bad = await pp.evaluate(D => { const cols = D.cols.map(c => c === 'chg10' ? 'x' : c === 'chg20' ? 'chg10' : c); return PRO._leaderCalc({ ...D, cols }).buy.map(r => r.sym); }, synth);
+    const pRule = await pp.evaluate(() => { const P = PRO._LEAD; return [P.U, P.N, P.R, P.L, P.hyst, P.anchor].join(','); });
+    const iRule = await page.evaluate(() => { const P = app._LEADER_EDGE.rule; return [P.U, P.N, P.R, P.L, P.hyst].join(','); });
+    const iAnc = (SRC.match(/anchor: '(\d{4}-\d\d-\d\d)'/) || [])[1];
+    await pp.close();
+    sets.forEach(([nm], k) => ok(`⑨ pro.html \`_leaderCalc\` == index(${nm}:前 5 / 前 10 / 過趨勢 / 池子)`, JSON.stringify(proRes[k]) === JSON.stringify(idxRes[k]), JSON.stringify([proRes[k], idxRes[k]]).slice(0, 240)));
+    ok('⑨b ⭐ 決定性對照:pro 那份改用 chg20 排 → 名單必須對不上', JSON.stringify(bad) !== JSON.stringify(idxRes[0].buy), JSON.stringify(bad));
+    ok('⑨c 規則 pro `_LEAD` == index `_LEADER_EDGE.rule` + 錨點', pRule === iRule + ',' + iAnc, `${pRule} vs ${iRule},${iAnc}`);
+}
 await browser.close();
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ LEADERDECK_PASS');
 process.exit(fails.length ? 1 : 0);

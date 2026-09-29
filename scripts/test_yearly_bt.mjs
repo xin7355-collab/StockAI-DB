@@ -61,6 +61,7 @@ await page.waitForFunction(() => typeof PRO !== 'undefined' && !!PRO.renderYearl
 const R = await page.evaluate(async () => {
     try { await PRO.switchTab('calc'); } catch (_) {}
     PRO._labSel = 'bt'; PRO._ybSort = null; PRO.renderLab();
+    { const rs = document.getElementById('btResearch'); if (rs) rs.open = true; }   // 💰 V77.9.4 逐年表收進「研究用」摺疊(⛔ 關著讀不到 innerText)
     const box = () => document.getElementById('yearlyBody');
     const o = {};
     o.txt = box().innerText; o.rows = [...box().querySelectorAll('tbody tr')].filter(tr => !tr.closest('#mbBox')).length;   // 🗓️ V77.8.4 逐月那個摺疊有自己的表格,⛔ 不算進逐年總表

@@ -88,9 +88,9 @@ ok('⑤b 而且要寫「不下多空、不計分」',
 
 // ═══ ⑦ 資料載入器 ═══
 ok('⑦ starFetch ⛔ 不加 ?t=Date.now()(加了 SW 的 12 小時快取永遠命中不了)',
-   !/t=.*Date\.now\(\)/.test(seg('starFetch')) && !/fetchJson\(/.test(seg('starFetch')), seg('starFetch'));
+   !/t=.*Date\.now\(\)/.test(seg('starFetch') + seg('_starFetchOnce')) && !/fetchJson\(/.test(seg('starFetch') + seg('_starFetchOnce')), seg('starFetch'));
 ok('⑦b starFetch 讀的是 data/top_correlations.json',
-   /data\/top_correlations\.json/.test(seg('starFetch')));
+   /data\/top_correlations\.json/.test(seg('starFetch') + seg('_starFetchOnce')));   // ⚠️ V77.9.4 真正抓的那段搬進 _starFetchOnce(starFetch 只負責共用 promise)
 
 // ═══ ⑧ Service Worker ═══
 ok('⑧ SW 有 top_correlations.json 的 12 小時快取分支',

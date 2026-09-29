@@ -108,7 +108,8 @@ ok('⑥c2 🚨 pro.html ⛔ 不可抄一份資料過去 —— 必須 fetch inde
 ok('⑥c3 🚨 讀不到要誠實說出來 + 留一條路(⛔ 不可靜默空白)',
     /_idxErr/.test(PRO_SRC) && /讀不到散戶救星的資料/.test(PRO_SRC) && /index\.html\?noise=1/.test(PRO_SRC));
 ok('⑥d ⭐ 延遲載入(index.html 有 2.8MB,⛔ 不可開頁就抓)',
-    /if \(this\._idxData \|\| this\._idxLoading\) return;/.test(PRO_SRC)
+    // ⚠️ V77.9.4 loadIdx 改成「同時呼叫共用一個 promise」(舊寫法第二個呼叫者直接 return,拿不到資料)→ 仍是延遲載入
+    (/if \(this\._idxData \|\| this\._idxLoading\) return;/.test(PRO_SRC) || (/if \(this\._idxData\) return Promise\.resolve\(\);/.test(PRO_SRC) && /if \(this\._idxP\) return this\._idxP;/.test(PRO_SRC)))
     && /if \(t === 'noise'\) this\.renderNoise\(\);/.test(PRO_SRC));
 ok('⑥d2 分頁容器要在 .wrap 裡面(⛔ V74.4.3 那次 #tabLab 被留在外面 → 一大塊空白)',
     (() => { const i = PRO_SRC.indexOf('<div id="tabNoise"'); const w = PRO_SRC.indexOf('<div class="wrap">');

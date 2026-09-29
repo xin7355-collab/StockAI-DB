@@ -87,9 +87,10 @@ ok(E.ph === 'done' && E.dt < 300, 'ⓔ 列表模式(沒有魚缸)→ 直接 done
 // ── ⓕ 沒有魚上鉤 ────────────────────────────────────────────
 const F = await pg.evaluate(async () => {
   PRO.fishBack(true); PRO._fishPoolK = 'gene'; await (PRO._rodP = PRO.renderRod());
-  const saved = PRO._recoPicks; PRO._recoPicks = () => [];
+  // ⚠️ V77.9.4 拋竿改釣 👑 領頭羊(`_castPick` 讀 `D.LD.buy`)→ 直接讓 `_castPick` 回空名單(⛔ 不再經過 `_recoPicks`)
+  const saved = PRO._castPick; PRO._castPick = () => ({ picked: [], warnN: 0, thin: 0, avoided: [], disposed: [], srcNone: 'empty', lead: true });
   await PRO.castRod();
-  PRO._recoPicks = saved;
+  PRO._castPick = saved;
   const pick = document.getElementById('fishPickPane');
   return { seq: PRO._castAnim.seq.slice(), vis: !pick.classList.contains('hidden'), txt: document.getElementById('fishCard').innerText.slice(0, 60),
            chips: (document.getElementById('rodCastPicks') || {}).innerText || '' };

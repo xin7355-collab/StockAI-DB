@@ -757,10 +757,12 @@ const CALC = await page.evaluate(async () => {
     out.onLab = !document.getElementById('tabLab').classList.contains('hidden') && PRO._labSel === 'bt';
     out.noCalcTab = !document.getElementById('tabCalc') && !document.getElementById('tabBtnCalc');
     // 📅 V77.6.1 第一眼是「逐年成績單」;舊情境庫收進 #calcOld 摺疊(⛔ 沒刪)→ 「不可收在摺疊裡」那兩條改看逐年那一塊
-    out.introVisible = document.getElementById('yearlyBody').innerText;
+    // 💰 V77.9.4 第一眼改成「100 萬放進去變多少」(#profitBody);逐年表 + 情境庫一起收進 #btResearch「研究用」摺疊(⛔ 沒刪)
+    out.introVisible = document.getElementById('profitBody').innerText;
+    const _rs = document.getElementById('btResearch'); if (_rs) _rs.open = true;
     const _old = document.getElementById('calcOld'); if (_old) _old.open = true;
     document.querySelectorAll('#calcIntro details').forEach(e => { e.open = true; });
-    out.intro = document.getElementById('calcIntro').innerText + '\n' + document.getElementById('labIntro').innerText;
+    out.intro = document.getElementById('calcIntro').innerText + '\n' + document.getElementById('labIntro').innerText + '\n' + ((document.getElementById('btResearchIntro') || {}).innerText || '');
     out.body0 = document.getElementById('calcBody').innerText;
     out.rows0 = document.querySelectorAll('#calcBody tbody tr').length;
     out.dims = document.querySelectorAll('#calcBar .labbtn').length;

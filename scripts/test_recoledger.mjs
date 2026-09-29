@@ -75,17 +75,17 @@ ok(diff.n >= 20 && diff.d > 0, '③ ⭐ 決定性對照:兩種出場在同一批
 //   ⭐ 所以要**直接釘那條傳遞路徑**:餵進去哪一條,回來的 `rule` 就必須是哪一條。
 
 // 餵真實產物跑完整渲染
-await pg.evaluate(({ H, K, TW }) => {
+// ⚠️ V77.9.4:K 線⛔ 不再整包塞進頁面(pick_history 累積到 476 檔 ≈ 66 MB,一次 evaluate 會把分頁撐爆)——
+//   頁面本來就是 file:// + --allow-file-access-from-files,`orig(u)` 會直接讀同一份 data/{sym}.json(一樣是真實產物)。
+await pg.evaluate(({ H, TW }) => {
   const orig = PRO.fetchJson.bind(PRO);
   PRO.fetchJson = async (u) => {
     if (u.includes('pick_history')) return H;
     if (u.includes('^TWII')) return TW;
-    const m = u.match(/data\/([\w^-]+)\.json/);
-    if (m && K[m[1]]) return K[m[1]];
     try { return await orig(u); } catch (_) { return null; }
   };
   window.__H = H;      // 📈 V77.2.5 下面幾條決定性對照要拿真實快照當輸入
-}, { H, K, TW });
+}, { H, TW });
 await pg.evaluate(() => PRO.switchTab('fish'));
 await pg.waitForTimeout(9000);
 
