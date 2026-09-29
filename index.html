@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.9.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.9.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.9.4</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.9.5</span> <span id="envBadge" onclick="app._showEnvInfo()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8661,8 +8661,12 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.9.4',
+    _APP_VERSION: 'V77.9.5',
     _CHANGELOG: [
+        { v: 'V77.9.5', d: [
+            '👑 <b>成績單的「領頭羊」頁為什麼是 0 筆</b>:存名單的那一步是前一版才加的,而新程式<b>到現在還沒被採礦跑到過</b>(改版那一輪照規則被跳過)→ 已手動補跑,09-24 那次換倉的 5 檔會先顯示成「待成交」,今天收盤資料進來後就會變成真的買進紀錄。',
+            '🎑 順手修掉一個會「永遠記錯」的地方:中秋 / 教師節的假 K 線還沒清掉時,當天的領頭羊名單會被墊歪(09-24 前 5 名會錯 3 檔);現在遇到這種情況改用乾淨的 K 線重算,⛔ 不再把歪掉的那份存下來。',
+        ] },
         { v: 'V77.9.4', d: [
             '🎣 <b>產業作戰室的釣魚頁點進來不會再是空的</b>。以前它要先把全站的大檔、選股快照、還有 190 個財報小檔<b>全部下載完才開始畫</b>(手機要等幾十秒,而且畫面上什麼都沒寫)。現在選股快照一到就先畫魚,財報在背後慢慢補,💎 那一池沒讀完會寫「讀取財報中 x/y」。',
             '👑 <b>釣魚預設池改成「領頭羊池」= 近 20 日平均成交額前 100 大</b>:上層(一年高點附近)、中層、底層的魚全部都在,魚缸上下就是一年位階;今天前 5 名戴 👑、第 6~10 名有小金點。🎣 <b>拋竿改成釣領頭羊前 5 名</b> —— 跟散戶救星決策台現在的預設是同一份名單;不是換倉日會寫還要幾天,大盤空頭會寫「今天不買」。舊的 🧬 那一池還在,點「換一池」就看得到。',
@@ -8783,13 +8787,6 @@ ${list}
             '📖 <b>完整報告的提示詞升級成「法人級」</b>:新增<b>來源優先順序四級</b>(官方 → Reuters/Bloomberg → 產業媒體 → 一般網站,第四級只能當線索)、<b>交稿前五關自我複查</b>(數字/日期/來源/推論/結論)、每句話先分<b>A 事實 / B 合理推論 / C 未知</b>、新聞與管理層說法⛔ 不可改寫成事實、§8 ⛔ 不可憑經驗寫「通常 3~6 個月後影響 EPS」、§9 ⛔ 不可講「第一名/最強」。',
             '🚨 <b>你給的規格裡有兩條照抄會出事,我改掉了</b>:①「禁止勝率」會讓 AI 把<b>本站自己回測出來的勝率</b>一起刪掉 → 改成「⛔ 你不可以自己生一個勝率,本站算好的照抄」;②「不要寫免責聲明」跟本站鐵則衝突 → 報告內文不寫套話,但「外部 AI 寫的、本站沒有驗證」那行改由 <b>App 自己印</b>。另外補了兩件:12 季那組<b>沒有營益率</b>(資料源沒有營業費用,⛔ 不可叫它自己算)、<b>篇幅不夠時先保證哪幾節</b>寫完。',
         ], dt: '2026-09-16' },
-        { v: 'V77.1.7', d: [
-            '🎯 <b>板塊輪動多了「概念股」分頁,而且是預設那一頁</b>(你要的「以概念股為首要」):21 個題材照近 20 日相對強弱排,旁邊還是可以切回「官方產業」33 族。⭐ 兩頁<b>同一把尺</b>(成員近 20 日漲跌的中位數),⛔ 不是兩套算法。🚨 但<b>證據強度完全不同</b>:官方產業那條「前3強−後3弱 +1.44pp」是回測過的,<b>題材這一頁本站從來沒有回測過</b> → 卡上直接寫出來,⛔ 不可以拿那個數字替題材背書。⚠️ 成員少於 5 檔的題材標「⏳ 樣本少」而且<b>不列進最強/最弱</b>。',
-            '📅 <b>修:同一檔股票兩個月營收</b>(你截圖的中美晶 5483)。基本頁畫著「26/08 營收 67.17 億 ・年增 +11.7%」,而報告頁同時印「最新月營收 —」「年增 +7.6%」「累計年增 —」。真因是<b>兩條腿</b>:基本頁用你的金鑰<b>即時抓</b>,報告頁只讀<b>採礦快取</b>。→ 現在報告頁直接讀基本頁剛抓到的那一份(⛔ 不會多打一次 API),三個數字一起對上;抓不到才退回採礦值。',
-            '🔣 <b>修:黃色結論徽章的字沒置中</b>。兩個原因都不是「微調幾 px」:① 文字畫在基線上而不是圓角框的真中心,而 emoji 跟中文字在同一條基線上<b>本來就不等高</b>;② 圓角框的寬度是用<b>量 emoji</b> 算的,而 emoji 量不準。→ 海報上的徽章<b>改成純中文字</b>(「🛡️ 持股續抱」→「持股續抱」)並畫在框的正中心。⛔ App 裡其他地方的徽章一個字都沒動。',
-            '📂 <b>報告頁全部折疊</b>(你指名的「§12・§13・§18・§19」以及下面的估值尺、短評報告/完整報告的操作說明)。第一眼從 <b>2,575 字 → 750 字</b>。⭐ <b>折疊不等於藏起來</b>:風險那節收起來時,標題列照樣寫「⚠️ N 則預警 ・出貨徵兆 x/8」而且標題是琥珀色;估值那節收起來也照樣寫估值帶與百分位。按鈕(複製提示詞 / 開 Perplexity / 選圖存起來)全部留在外面。',
-        ] },
-
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },

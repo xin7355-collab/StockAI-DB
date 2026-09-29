@@ -3902,7 +3902,7 @@ const PRO = {
     for (const day of (H && Array.isArray(H.days) ? H.days : [])) {
       if (day && day.d && day.lead && Array.isArray(day.lead.rows) && day.lead.rows.length) leadBy.set(String(day.d).slice(0, 10), day.lead);
     }
-    const out = { rule: 'lead', src: 'lead', days: leadBy.size, since: null, skipped: 0, trades: [], noK: [], rebs: [], bf: [] };
+    const out = { rule: 'lead', src: 'lead', days: leadBy.size, since: null, skipped: 0, trades: [], noK: [], rebs: [], bf: [], hUpd: H && H.updated ? String(H.updated).slice(0, 10) : null };
     const T = this._twii;
     if (!T) { out.err = '讀不到加權指數(換倉日曆要靠它)'; return out; }
     const cal = T.days.filter(d => d >= P.anchor);
@@ -4086,7 +4086,7 @@ const PRO = {
     const SRCDEF = this._RECO_SRCS.find(x => x[0] === SRC) || this._RECO_SRCS[0];
     const head = `<div class="big">📒 決策台推薦成績單 <span class="sigtag">${SRCDEF[1]} ・${R.trades ? R.trades.length : 0} 筆</span></div>${tabBar}`;
     if (R.err) { el.innerHTML = `<div class="fishcard" style="margin-top:10px">${head}<div class="note">⚠️ 讀不到推薦快照(${R.err})—— 稍後再開一次;⛔ 這不是成績為零。</div></div>`; return; }
-    if (!R.days && SRC === 'lead') { el.innerHTML = `<div class="fishcard" style="margin-top:10px">${head}<div class="note">⏳ <b>還沒有任何一天的領頭羊名單</b>(data/pick_history.json 的 lead)—— 採礦下一個交易日收盤後會開始存,並把 ${this._LEAD.anchor} 起錯過的換倉日用 K 線補回來;⛔ 不用你開 App。</div></div>`; return; }
+    if (!R.days && SRC === 'lead') { el.innerHTML = `<div class="fishcard" style="margin-top:10px">${head}<div class="note">⏳ <b>還沒有任何一天的領頭羊名單</b>(data/pick_history.json 的 lead)—— ${R.hUpd ? `快照檔最後一次更新是 ${this._esc(R.hUpd)},那一輪還沒有存到領頭羊名單(⛔ 不是 0 筆成績);` : ''}採礦下一輪(交易日收盤後)會開始存,並把 ${this._LEAD.anchor} 起錯過的換倉日用 K 線補回來;⛔ 不用你開 App。</div></div>`; return; }
     if (!R.days) { el.innerHTML = `<div class="fishcard" style="margin-top:10px">${head}<div class="note">⏳ 還沒有任何一天的推薦快照(data/pick_history.json)—— 採礦每個交易日收盤後會自動存下決策台「今天可以買的」名單,⛔ 不用你開 App。</div></div>`; return; }
     // 🚨 「重建不出來」與「那幾天真的 0 檔」是兩件事 —— ⛔ 不可長得一樣(陷阱 #22)
     if (R.geneErr) {
@@ -6300,7 +6300,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V77.9.4',
+  VER: 'V77.9.5',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

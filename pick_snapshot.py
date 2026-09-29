@@ -227,6 +227,25 @@ def _lead_backfill_D(day, twset, twmin, scr):
     return {'cols': scr.COLS, 'rows': rows_out, 'data_date': day}
 
 
+GHOST_PROBE = ('2330', '2317', '2454', '2308', '2382')   # 天天有成交的大型股,拿來看 K 線有沒有跑到加權前面
+
+
+def _ghost_ahead(tdays):
+    """K 線最後幾根裡有加權日曆上沒有的日子 → 回那些日子(逗號串);沒有 → ''。
+    ⛔ 只看加權最新日之後的(那之前的幽靈 K 由 miner 清;這裡只擋「screener 被墊歪」那一種)。"""
+    if not tdays:
+        return ''
+    last, extra = tdays[-1], set()
+    for sym in GHOST_PROBE:
+        d = _load(DATA / f'{sym}.json')
+        d = d if isinstance(d, list) else ((d or {}).get('data') or [])
+        for r in d[-5:]:
+            dd = _dnorm((r or {}).get('date'))
+            if dd > last:
+                extra.add(dd)
+    return ','.join(sorted(extra))
+
+
 def leader_main():
     import lib_leader as LL
     hist = _load(OUT, None)
@@ -234,10 +253,21 @@ def leader_main():
         hist = {'note': '每天實際產出的榜單快照,用來事後驗證。⛔ 只存事實不存結論。', 'days': []}
     bydate = {x.get('d'): x for x in hist['days'] if isinstance(x, dict) and x.get('d')}
 
+    tw = _load(DATA / '^TWII.json') or []
+    tw = tw if isinstance(tw, list) else (tw.get('data') or [])
+    tdays = sorted({_dnorm(r.get('date')) for r in tw if isinstance(r, dict) and r.get('date')})
+
     # ① 今天(剛產出的 screener.json)
     D = _load(DATA / 'screener.json')
     L = LL.leader_calc(D) if isinstance(D, dict) else {'err': 'nodata'}
     live_d = None
+    # 🎑 V77.9.5 screener 是拿整條 K 線算的 —— K 線裡還有加權日曆上沒有的日子(假日幽靈 K)時,
+    #    近 10 日漲幅 / 20 日均額會被那幾根假 K 墊歪 → ⛔ 不當實跑存(實跑寫過的之後不會被覆蓋),
+    #    改走下面的 K 線回補(它只收加權有開盤的日子)。
+    gh = _ghost_ahead(tdays)
+    if not L.get('err') and gh:
+        print(f'   ⚠️ K 線比加權日曆多出 {gh}(假日幽靈 K / 加權還沒更新)→ 今天的 screener 不當實跑存,改用 K 線回補')
+        L = {'err': 'ghost:' + gh}
     if L.get('err'):
         print(f'   ⚠️ 領頭羊今天算不出名單({L["err"]})→ 這一天不存')
     else:
@@ -250,9 +280,6 @@ def leader_main():
                   + ' '.join(f'{r["s"]}({r["x"]:+.1f}%)' for r in rows[:5] if r['x'] is not None))
 
     # ② 回補:錨點起、還沒有 lead 的交易日(⛔ 實跑寫過的不覆蓋)
-    tw = _load(DATA / '^TWII.json') or []
-    tw = tw if isinstance(tw, list) else (tw.get('data') or [])
-    tdays = sorted({_dnorm(r.get('date')) for r in tw if isinstance(r, dict) and r.get('date')})
     if len(tdays) < 200:
         print(f'   ⚠️ ^TWII 只有 {len(tdays)} 天 → 不回補(沒有可信的交易日曆,⛔ 不猜)')
     else:
