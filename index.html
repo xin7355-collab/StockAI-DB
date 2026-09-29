@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V77.9.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V77.9.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.9.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V77.9.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8669,8 +8669,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V77.9.8',
+    _APP_VERSION: 'V77.9.9',
     _CHANGELOG: [
+        { v: 'V77.9.9', d: [
+            '🎣 股海釣手<b>一次釣 10 條</b>,照名次排(#1~#10);打 ⭐ 的是今天真正會買的那幾條,後面是同一份名單往下排的。第 2 條起動畫加快,一樣可以按「跳過」。',
+            '🐟 四種魚<b>長得不一樣了</b>:小魚圓胖有白條紋、鮪魚是魚雷身 + 新月尾 + 黃色小鰭、旗魚有長長的尖嘴和大帆背鰭、龍魚是金邊大鱗 + 兩根鬍鬚。主畫面圖示也換了。',
+            '💰 修掉「<b>釣到馬上就賺</b>」:以前釣起價用的是選股那天的收盤(可能是好幾天前),籃子卻拿今天的即時價去比。現在釣起價 = 釣到那一刻的價,剛放進去就是 0 元。',
+            '🏠 新增「<b>帶回家養</b>」:漁獲籃按一下,魚就搬到散戶救星「自選 → 🎣 魚池」,每一列寫釣起日、釣起價 → 現價、賺賠 % 和一張賺賠多少元(已扣手續費與稅)。魚池跟一般自選一樣會收 Telegram 買點提醒;⛔ 不會放進庫存。手機把股海釣手裝在主畫面時兩邊可能讀不到彼此,這時到魚池按「📥 貼上匯入碼」(按帶回家養時已經幫你複製好了)。',
+        ], dt: '2026-09-29' },
         { v: 'V77.9.8', d: [
             '🎣 釣魚 App 改名「<b>股海釣手</b>」,而且<b>只能從它自己的網址或主畫面圖示打開</b>:產業作戰室的釣魚按鈕、個股面板的「放下水」都拿掉了;📒 成績單點股名改成開個股面板。',
         ], dt: '2026-09-29' },
@@ -8784,12 +8790,6 @@ ${list}
         { v: 'V77.2.4', d: ['🕶️ <b>決策台那四行說明改成折疊</b>(你說「刪除,我不想讓其他人知道我怎麼操作及為何挑選」)。⭐ <b>折疊起來截圖就看不到</b>,但你自己點「📖 使用說明」還是打得開 —— ⛔ 沒有真的刪掉,因為「不是開盤買」「要漲過觸發價」那兩條是<b>會賠錢</b>的護欄,你自己也需要。', '📒 <b>產業作戰室的「釣魚池」整組下架,改名「📒 成績單」</b>(你說「這幾次看起來我覺得沒有用」)。魚池動畫 / 拋竿 / 列表 / 點魚細節 / 漁獲籃<b>全部移除</b>,只留<b>決策台推薦成績單</b>,說明也搬到這裡。⚠️ 漁獲籃你自己存的那些紀錄<b>一個字都沒刪</b>(只是不顯示了),日後想復原資料還在。', '🏆 <b>新增「兩種出場,哪個比較強?」</b>(你說「出場規則除唐奇安還要有 ATR,我要最強績效實測」)。<b>同一批推薦、⛔ 只換出場</b>,唐奇安 20 日 與 ATR 追蹤各算一次,並排比 每趟平均 / 勝率 / 一張合計 / 中途最多賠;你現在用的那條會標出來。⚠️ <b>樣本不到 10 筆時⛔ 不會宣布誰比較強</b>。', '📊 摺疊區裡寫著 <b>49 個月正式回測</b>:唐奇安 20 日 <b>+590 萬</b>(中途最多賠 −25.2%)・ATR K=2 <b>+531 萬</b>(中途最多賠 <b>−20.0%</b>,全表最小)—— 兩條都六關全過,<b>賺比較多的是唐奇安、賠比較少的是 ATR</b>。', '🎨 <b>版面照你說的改</b>:長說明全部折疊(第一眼字數少了三成)、狀態濃縮成一行、三段用顏色分開 —— 📌 持有中<b>天藍</b>(會變)/ 🧾 已結算<b>灰</b>(定了)/ 🏆 出場比較<b>青</b>。⛔ 顏色講的是「這一段是什麼」,不是好壞。'] },
         { v: 'V77.2.3', d: ['🌳 <b>報告頁最上面多了「⚡ 短中線 / 🌳 長線」切換</b>(你問「我的報告是短中線的嗎?想新增長線,還是文字已經太長了」)。⭐ 你怕太長是對的 → 所以<b>不是再加一節</b>,是<b>換一句結論 + 換先看哪幾節</b>:切短中線先攤開「價格卡在哪」「誰在買誰在賣」;切長線先攤開「估值」並多出一段長線結論。📉 實測<b>第一眼從 2,011 字降到 1,035 字(少 49%)</b> —— 收起來的一節都沒少,點一下就開。', '🌳 <b>長線那一段只回答兩件事</b>:①體質(ROE 近4季 / 自由現金流近4季)②你買的價格在哪(本益比在它自己近 3 年第幾百分位 ・殖利率);循環股會多一行「位階要反著讀」。⛔ <b>數字一個都沒有新增</b>,全部是報告頁本來就算好的。', '🚨 <b>但它刻意不回答「該不該買」</b>,因為本站實測跟坊間長線說法<b>方向相反</b>:①「本益比低 = 便宜可以買」實測是<b>單調反向</b>(越便宜那組後面越差)②「越跌越買 / 跌破均線先賣再接回」實測<b>全部少賺,而且賣得越勤快越慘</b>。所以⛔ 不給「等到幾倍再買」這種數字 —— 給了就是同一個 App 兩個打架的結論。', '⏳ 而且<b>誠實列出長線還缺的三樣</b>:本益比分布只有近 3 年(循環股要看 10 年)・沒有負債比與利息保障倍數・沒有歷年配息率。有了才補。', '🐛 順手修掉一個真的顯示錯:沒有配息資料時會印成「<b>殖利率 0.00%</b>」—— 那會被讀成「這檔不配息」,但其實是「本站沒這筆資料」,兩件事。'] },
         { v: 'V77.2.2', d: ['🔔 <b>通知可以自己勾了</b>(你說「不要這樣子顯示,改成一般 app 通知,另外列出選單讓我勾選」)。設定中心 →「🔔 哪些通知要跳出來」,<b>8 類</b>:⚡當沖 ・👜你的部位 ・🔔到價 ・🚨處置注意股 ・🌡️大盤風險熔斷 ・🚪賣出風險訊號 ・📈進場買點訊號 ・📋其他。<b>勾掉的不會不見</b> —— 一樣收進 🔔 通知歷史與個股頁,只是不打斷你。💡 想一次少很多就先關「📈 進場/買點」(買點錯過還有下一次)。', '🔒 <b>「👜 你的部位」與「🔔 到價提醒」刻意不給關</b>:那是<b>你自己設的停損/停利/到價</b>,不是本站的預測 —— 按了會跟你說為什麼。', '📱 <b>通知樣式換掉了</b>:原本是螢幕中間那個置中的小方塊,現在是<b>一般 App 那種整條橫幅</b>(標題粗體 + 內文左對齊,點一下直接跳到那一檔)。', '📊 <b>「基期」改名成「股價基期」</b>(你問國巨「我的程式說中基期 37%、報告說高基期 89%,是錯的嗎」)。<b>兩個都是對的,是兩件事</b>:徽章那顆講<b>股價</b>在近一年區間的位置(37%),報告 §4 那個講<b>本益比</b>在它自己近三年的位置(89%)。國巨從 1220 跌到 536(所以股價位階低),但本益比 36.2 倍 vs 近三年中位 14.3 倍(所以估值貴)→ 意思是<b>獲利掉得比股價還快</b>,「跌了一大段」不等於「變便宜」。⛔ 也<b>不是分割造成的</b>:798 根 K 線實測 0 次異常跳空。點那顆徽章有完整說明。'] },
-        { v: 'V77.2.1', d: [
-            '🏷️ <b>個股頁頂端會標「非上市櫃」了</b>(你截圖那檔 6696 就是 —— 標題印「6696 (6696)」,名字就是代號)。⭐ 這種多半是<b>興櫃</b>:<b>沒有漲跌幅限制</b>(它 09/07 那天一天之內最低 134、最高 200,振幅 49%)、<b>不能融資</b>、成交量很小。⚠️ 所以那一頁上的「乖離 / 高基期 / 追買價 / 套牢區」都是拿上市櫃規則調的,套在它身上要打折看 —— 點徽章有完整說明。(以前只在決策台/訊號榜/釣魚池標,<b>個股頁漏掉了</b>。)',
-            '⚠️ <b>新增「歷史價格斷崖」提醒</b>(你問的分拆)。全市場 2,520 檔實測掃過:有 <b>31 檔</b>歷史上出現過「一天之內不可能的跳價」,其中 19 檔是興櫃的真實行情,<b>真正要當心的是上市櫃那 12 檔</b>(長榮 2603、1538、1808、6949…)。現在只要這一檔有,頂端就會標出來,並告訴你<b>那一天以前的均線、位階、回測都是用另一把尺算的</b>。',
-            '✅ <b>而你截圖那檔 6696 我逐根查過了:807 根 K 線一個斷崖都沒有</b> —— 年線 46、季線 79.89 那些數字<b>是真的</b>,它是真的一年之內從 15.2 漲到 200,⛔ 不是分拆算錯。',
-            '🔍 順手修掉一個我自己上一版留下的坑:判斷「是不是上市櫃」的那支工具,對「還不知道」跟「確定是上市櫃」<b>回傳同一個值</b> → 新功能第一版因此把長榮的斷崖<b>自己擋掉了</b>(實跑才看到)。現在三種狀態分得清清楚楚。',
-        ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -46341,11 +46341,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
 
 
     async renderFavList() {
+        try { if (this._fishHomeSync()) { this.renderFavTabs(); return; } } catch (_) {}   // 🎣 V77.9.9 股海釣手帶回家的魚(新群組 → 重畫分頁列,它會再叫一次這支)
         const list = this.favGroups[this.activeGroupName] || [];
         const container = document.getElementById('favListContainer');
         const emptyState = document.getElementById('favEmptyState');
         if (!container) return;
-        if(list.length === 0) { container.innerHTML = this._nameWarnHtml(); emptyState?.classList.remove('hidden'); emptyState?.classList.add('flex'); return; }
+        if(list.length === 0) { container.innerHTML = this._nameWarnHtml() + this._fishPondBarHtml(); emptyState?.classList.remove('hidden'); emptyState?.classList.add('flex'); return; }
         emptyState?.classList.add('hidden'); emptyState?.classList.remove('flex');
 
         // Pass 1：同步畫出所有列。V62.7 使用者要求:主清單取消拖曳排序 + 左右滑刪(這些都移到「✏️ 編輯」頁);
@@ -46366,7 +46367,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         ${held}${this._renderFalconBadge(sym)}${this._renderAttentionBadge(sym)}
                     </div>
                     <div class="text-[10px] text-gray-500 font-mono mt-0.5">${this._nmDual(sym).sub}</div>
-                    <div data-fav-cf class="flex items-center gap-1 mt-1 flex-wrap"></div>
+                    <div data-fav-cf class="flex items-center gap-1 mt-1 flex-wrap"></div>${this._fishRowHtml(sym)}
                 </div>
                 <div data-fav-trend class="flex-shrink-0 w-[62px] text-center"><span class="text-[10px] text-gray-600 font-bold">--</span></div>
                 <div class="flex-shrink-0 w-[86px] text-right">
@@ -46377,7 +46378,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
         // 📅 V70.2.6 這批報價是什麼時候的(盤中即時 / 盤後收盤)
         const _favTs = `<div class="text-[9px] text-gray-500 px-2 pb-1">📅 ${this._dW(new Date())} ${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })} ${this.isMarketOpen?.() ? '盤中即時' : '收盤價'}</div>`;
-        container.innerHTML = _favTs + html;
+        container.innerHTML = _favTs + this._fishPondBarHtml() + html;
         if (this.sortableFav) { try { this.sortableFav.destroy(); } catch (_) {} this.sortableFav = null; }   // V62.7 主清單不再拖曳排序(移到編輯頁)
 
         // 📸 V63.2 先用全市場快照瞬間補上所有列的現價(免等 Fugle,開頁不再滿排「--」)
@@ -46482,6 +46483,77 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             } else dEl.textContent = '';
             dEl.className = `text-[10px] font-mono leading-tight mt-0.5 ${color}`;
         }
+        const fEl = row.querySelector('[data-fav-fish]');
+        if (fEl) fEl.innerHTML = this._fishRowTxt(sym, +price);
+    },
+    // ═══ 🎣 V77.9.9 魚池(使用者:「新增帶回家養的功能,其實是匯出到散戶 app 裡面新增魚池,還有裡面數值」)═══
+    //   股海釣手按「🏠 帶回家養」→ 寫 localStorage `fishHome_v1` = [{sym, px, d}](px = 釣起價、d = 釣起日)。
+    //   ⭐ 同一個網址底下兩邊讀得到同一份;iOS 把股海釣手裝到主畫面時是**另一個儲存空間** → 讀不到,
+    //      那邊會同時複製一段匯入碼,這裡按「📥 貼上匯入碼」補進來。
+    //   ⛔ 只放進自選群組「🎣 魚池」,⛔ 不碰庫存(不會觸發停損 / 出場提醒 / 自動下單);
+    //      使用者選了「跟一般自選一樣收 Telegram 買點提醒」→ 靠既有的 favGroups 自動同步,⛔ 不另寫一份。
+    //   ⛔ 這裡不放任何連去股海釣手的連結(使用者:其它程式不能連進來)。
+    _FISH_POND: '🎣 魚池',
+    _fishHomeLoad() { const v = this._lsJson('fishHome_v1', []); return Array.isArray(v) ? v.filter(x => x && x.sym && +x.px > 0) : []; },
+    _fishHomeOf(sym) { let best = null; for (const x of this._fishHomeLoad()) if (String(x.sym) === String(sym) && (!best || String(x.d) > String(best.d))) best = x; return best; },
+    /** 把還沒搬過的魚放進「🎣 魚池」群組;⭐ 每一筆(代號 + 釣起日)只搬一次 → 你從群組刪掉就不會自己跑回來 */
+    _fishHomeSync() {
+        const home = this._fishHomeLoad(); if (!home.length) return 0;
+        const done = this._lsJson('fishHomeMerged_v1', {}) || {}, g = this._FISH_POND;
+        let add = 0, touched = false;
+        for (const x of home) {
+            const k = `${x.sym}|${x.d}`; if (done[k]) continue; done[k] = 1; touched = true;
+            if (!this.favGroups[g]) this.favGroups[g] = [];
+            if (!this.favGroups[g].includes(String(x.sym))) { this.favGroups[g].push(String(x.sym)); add++; }
+        }
+        if (touched) { try { localStorage.setItem('fishHomeMerged_v1', JSON.stringify(done)); } catch (_) {} }
+        if (add) { try { localStorage.setItem('proTerminalFavGroups', JSON.stringify(this.favGroups)); } catch (_) {} }
+        return add;
+    },
+    /** 匯入碼 → 合併進 fishHome_v1(同一檔留最新一次釣起) */
+    _fishHomeDecode(txt) {
+        const m = String(txt || '').match(/SJFISH1\.([A-Za-z0-9+/=]+)/); if (!m) return null;
+        try {
+            const arr = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+            if (!Array.isArray(arr)) return null;
+            return arr.map(a => ({ sym: String(a[0] || ''), px: +a[1], d: String(a[2] || '') })).filter(x => /^[0-9A-Z]{4,8}$/.test(x.sym) && x.px > 0);
+        } catch (_) { return null; }
+    },
+    fishHomeImport(txt) {
+        if (txt == null) txt = prompt('貼上股海釣手「🏠 帶回家養」複製的匯入碼:', '');
+        if (txt == null) return 0;
+        const got = this._fishHomeDecode(txt);
+        if (!got || !got.length) { this.showToast?.('⚠️ 看不懂這段匯入碼(要從股海釣手按「🏠 帶回家養」複製)', 'info'); return 0; }
+        const home = this._fishHomeLoad(), by = {};
+        for (const x of home.concat(got)) { const o = by[x.sym]; if (!o || String(x.d) >= String(o.d)) by[x.sym] = x; }
+        try { localStorage.setItem('fishHome_v1', JSON.stringify(Object.values(by))); } catch (_) {}
+        this._fishHomeSync();
+        this.activeGroupName = this._FISH_POND;
+        try { this.renderFavTabs(); } catch (_) {}
+        this.showToast?.(`🎣 已放進魚池 ${got.length} 條`, 'success');
+        return got.length;
+    },
+    _fishPondBarHtml() {
+        if (this.activeGroupName !== this._FISH_POND) return '';
+        return `<div class="flex items-center gap-2 mx-2 px-3 py-1.5 border-b border-[#21262d] text-[10px] text-gray-400">
+            <span class="flex-1 leading-snug">🎣 從股海釣手帶回來的魚 ・每列是「釣起那天的價 → 現在」,一張 = 1,000 股、已扣手續費與稅 ・⛔ 不是庫存、不是買賣建議</span>
+            <button onclick="app.fishHomeImport(); app.vibrate?.(20);" class="flex-shrink-0 text-[11px] font-bold text-cyan-300 hover:text-cyan-200 px-2 py-1 rounded border border-[#30363d]">📥 貼上匯入碼</button>
+        </div>`;
+    },
+    _fishRowHtml(sym) {
+        if (this.activeGroupName !== this._FISH_POND) return '';
+        const x = this._fishHomeOf(sym); if (!x) return '';
+        return `<div data-fav-fish class="text-[10px] font-mono text-gray-400 mt-1">${this._fishRowTxt(sym, null)}</div>`;
+    },
+    _fishRowTxt(sym, price) {
+        const x = this._fishHomeOf(sym); if (!x) return '';
+        const d = String(x.d || '').replace(/-/g, '/').slice(5);
+        const head = `🎣 ${d} 釣起 <b class="text-gray-200">${(+x.px).toFixed(2).replace(/\.?0+$/, '')}</b>`;
+        if (!(price > 0)) return head;
+        const pct = (price / x.px - 1) * 100, pl = this._netPL(+x.px, price, 1000);
+        const c = pct > 0 ? 'text-red-400' : pct < 0 ? 'text-green-400' : 'text-gray-300';
+        const plTxt = pl == null ? '' : ` ・一張 <b class="${pl > 0 ? 'text-red-400' : pl < 0 ? 'text-green-400' : 'text-gray-300'}">${pl > 0 ? '+' : ''}${pl.toLocaleString()} 元</b>`;
+        return `${head} → ${(+price).toFixed(2).replace(/\.?0+$/, '')} <b class="${c}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</b>${plTxt}`;
     },
     // 純 DOM:用最新快照 patch 全部自選列(無網路,15s 一次不撞額度)
     _patchFavPrices() {
