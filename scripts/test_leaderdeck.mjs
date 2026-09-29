@@ -41,6 +41,7 @@ let chromium; try { ({ chromium } = await import('/opt/node22/lib/node_modules/p
 const _exec = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const browser = await chromium.launch({ ...(fs.existsSync(_exec) ? { executablePath: _exec } : {}), args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+await page.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); s.strategy = 'lead'; s.stratUnlock = true; localStorage.setItem('proTerminalSettings', JSON.stringify(s)); } catch (_) {} });   // 🎯 V77.9.6 這支測的是 👑 那一套 → 先切成 👑(🧬 預設另由 test_stratswitch 測)
 const errs = []; page.on('pageerror', e => errs.push(e.message));
 await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof app !== 'undefined' && typeof app._leaderCalc === 'function', null, { timeout: 60000 });   // 陷阱 #5:app 不掛 window
@@ -110,14 +111,14 @@ ok('①d 名單列前 2N = 10 檔', R.ranked === 10 && R.rows.length === 10, R.r
 ok('①e 欄位缺 → notyet(⛔ 不可拿 chg5/chg20 湊)', R.notyet === 'notyet');
 ok('①f ⭐ 決定性對照:把一檔改成 ma20 < ma60 → 被濾掉', R.filteredOut === true);
 ok('② 時鐘:起點那天 = 第 1 天且是換倉日;第 5 天還剩 6 天;第 11 天又是換倉日;沒傳起點 → 用共用錨點(09-24 起,09-25 是第 2 天)', R.c1.day === 1 && R.c1.isRebal && R.c5.day === 5 && !R.c5.isRebal && R.c5.left === 6 && R.c11.day === 11 && R.c11.isRebal && R.c0.day === 2 && !R.c0.isRebal, JSON.stringify([R.c1, R.c5, R.c11, R.c0]));
-ok('③ 畫面:前 5 名有 🛒 買、庫存 1001 續抱、1041(第 21 名)掉出前 10 → 賣、1000(沒過趨勢)keep=0、2330 不在池子不列', R.buyBtns === 5 && R.held['1001'] === '1' && R.held['1041'] === '0' && R.held['1000'] === '0' && !('2330' in R.held), JSON.stringify([R.buyBtns, R.held]));
+ok('③ 畫面(V77.9.6 選 👑 → 手上每一檔個股都照這套):前 5 名裡沒有的 4 檔 🛒 買(1001 已有)、1001 續抱、1041(第 21 名)/ 1000(沒過趨勢)/ 2330(池子外)都 keep=0', R.buyBtns === 4 && R.held['1001'] === '1' && R.held['1041'] === '0' && R.held['1000'] === '0' && R.held['2330'] === '0', JSON.stringify([R.buyBtns, R.held]));
 ok('③b ⭐ 決定性對照:實測數字讀 `_LEADER_EDGE`(改成 4321 畫面要跟著變)', /4321/.test(R.constTxt) && !/4321/.test(R.txt));
 ok('③c 空頭:名單照列(10 列)、但一個「🛒 買」都沒有、寫「今天不開新倉」', R.bearRows === 10 && !/🛒 買/.test(R.bearTxt) && /今天不開新倉/.test(R.bearTxt) && /空頭不買/.test(R.bearTxt));
-ok('③d 一定寫代價:中途最多賠 / 只有 N 年贏 + 標明是預設', /中途最多賠/.test(R.txt) && /年贏 0050/.test(R.txt) && /預設・實測最強/.test(R.txt));
+ok('③d 一定寫代價:中途最多賠 / 只有 N 年贏 + 標明是預設', /中途最多賠/.test(R.txt) && /年贏 0050/.test(R.txt) && /你選的策略/.test(R.txt) && !/預設・實測最強/.test(R.txt));
 ok('③i 每一列有收盤價(讀 screener 的 c)', R.close1 === '100.0', R.close1);
 ok('③j 表頭可排序:名次/收盤/10 日/今天/億/日 五欄', JSON.stringify(R.hdr) === JSON.stringify(['rank', 'c', 'chg10', 'chg', 'amt20']), JSON.stringify(R.hdr));
-ok('③k ⭐ 決定性對照:照 10 日由小到大排 → 第一列換人 + ▲;「🛒 買」仍只有前 5 名(⛔ 動作不跟排序變)', R.firstDefault === '1001' && R.firstAsc !== '1001' && R.ascMark && R.buyAfterSort === 5, JSON.stringify([R.firstDefault, R.firstAsc, R.ascMark, R.buyAfterSort]));
-ok('③l ⭐ 持股沒標「照這套買的」→ 只對照、⛔ 不下賣出指令;標了 → 講要賣', /只對照/.test(R.unmarked) && !/開盤賣|換倉日再賣/.test(R.unmarked) && /掉出前 10 名/.test(R.marked) && /開盤賣|換倉日再賣/.test(R.marked) && R.markedMine === '1', JSON.stringify([R.unmarked, R.marked]));
+ok('③k ⭐ 決定性對照:照 10 日由小到大排 → 第一列換人 + ▲;「🛒 買」仍只有前 5 名(⛔ 動作不跟排序變)', R.firstDefault === '1001' && R.firstAsc !== '1001' && R.ascMark && R.buyAfterSort === 4, JSON.stringify([R.firstDefault, R.firstAsc, R.ascMark, R.buyAfterSort]));
+ok('③l ⭐ V77.9.6 ⛔ 不再有「標了才算」:選 👑 時 1041 一律講要賣,舊的 leaderMine_v1 標記有沒有都一樣、也⛔ 沒有標記按鈕', /掉出前 10 名/.test(R.unmarked) && /開盤賣|換倉日再賣/.test(R.unmarked) && R.marked === R.unmarked && !/照這套買的/.test(R.unmarked) && R.markedMine === '1', JSON.stringify([R.unmarked, R.marked]));
 ok('③e ⛔ 無 🔴🟢', !/[🔴🟢]/u.test(R.txt) && !/[🔴🟢]/u.test(R.bearTxt));
 ok('③f 390px 不橫捲、不超出', R.sx <= 2 && R.over === 0, `${R.sx} ${R.over}`);
 ok('③g 無 pageerror', !errs.length, errs.join(' | '));
@@ -148,62 +149,58 @@ else {
     const RP = '/tmp/_leader_real.json'; fs.writeFileSync(RP, real);
     const pyR = pyRun(RP);
     const b2 = await chromium.launch({ ...(fs.existsSync(_exec) ? { executablePath: _exec } : {}), args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
-    const p2 = await b2.newPage(); await p2.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
+    const p2 = await b2.newPage(); await p2.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); s.strategy = 'lead'; s.stratUnlock = true; localStorage.setItem('proTerminalSettings', JSON.stringify(s)); } catch (_) {} });   // 🎯 V77.9.6 這支測的是 👑 那一套 → 先切成 👑(🧬 預設另由 test_stratswitch 測)
+    await p2.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
     await p2.waitForFunction(() => typeof app !== 'undefined' && typeof app._leaderCalc === 'function', null, { timeout: 60000 });
     const js = await p2.evaluate(D => { const L = app._leaderCalc(D); return L.err ? { err: L.err } : { buy: L.buy.map(r => r.sym), ranked: L.ranked.map(r => r.sym), passed: L.passed, n: L.n }; }, JSON.parse(real));
     await b2.close();
     ok(`⑤h 正式網站那一份 screener(${JSON.parse(real).data_date}):Python == JS${js.err ? '(兩邊都 ' + js.err + ')' : `(前 5 = ${js.buy.join(' ')})`}`, JSON.stringify(pyR) .includes(JSON.stringify(js.buy || js.err)) && (js.err ? pyR.err === js.err : (JSON.stringify(pyR.ranked) === JSON.stringify(js.ranked) && pyR.passed === js.passed && pyR.n === js.n)), JSON.stringify([pyR.buy, js.buy]));
 }
 // ⑥ 🚧 決策台每一列「量薄」標註(V77.8.9;讀 screener amt20,⛔ 不刪名單)
-// 🎯 V77.9.1 決策台區塊勾選
+// 🎯 V77.9.1 決策台區塊勾選 → V77.9.6 只列跟「我的策略」有關的區塊
 const DS = await page.evaluate(() => {
     const out = {};
-    app.settings.deckShow = null;
-    out.def = app._deckShow();
     const buy = document.getElementById('deckBuy'), head = document.getElementById('deckHead');
     buy.innerHTML = '<div data-deckpb="1">PB</div><div data-deckfit="1">FIT</div>'; head.innerHTML = '<div>H</div>';
-    app._deckShowApply();
-    out.pbHidden = buy.querySelector('[data-deckpb]').style.display === 'none';
-    out.leaderShown = document.getElementById('deckLeader').style.display !== 'none';
-    out.hidN = head.querySelector('[data-deckhidden]')?.dataset.deckhidden;
-    out.hidTxt = head.querySelector('[data-deckhidden]')?.innerText || '';
-    app.settings.deckShow = { pb: true };
-    app._deckShowApply();
-    out.pbShown2 = buy.querySelector('[data-deckpb]').style.display !== 'none';
-    out.hidN2 = head.querySelector('[data-deckhidden]')?.dataset.deckhidden;
-    out.oneLine = head.querySelectorAll('[data-deckhidden]').length;
-    app.settings.deckShow = { leader: true, sell: true, pb: true, fit: true, note: true };
-    app._deckShowApply(); out.none = head.querySelector('[data-deckhidden]')?.dataset.deckhidden;
-    out.idleBoth = document.getElementById('deckIdle').style.display !== 'none';
-    app.settings.deckShow = { leader: false, pb: true };
-    app._deckShowApply(); out.idleOnlyOld = document.getElementById('deckIdle').style.display !== 'none';
+    const box = document.getElementById('deckShowList');
+    const snap = () => { app._deckShowApply(); app._renderDeckShowList(); return {
+        def: app._deckShow(),
+        pb: buy.querySelector('[data-deckpb]').style.display !== 'none',
+        leader: document.getElementById('deckLeader').style.display !== 'none',
+        idle: document.getElementById('deckIdle').style.display !== 'none',
+        hidN: head.querySelector('[data-deckhidden]')?.dataset.deckhidden,
+        keys: box ? [...box.querySelectorAll('[data-deckshowk]')].map(e => e.dataset.deckshowk) : [],
+        checked: box ? box.querySelectorAll('input[type=checkbox]:checked').length : -1,
+        pbDesc: box ? (box.querySelector('[data-deckshowk="pb"]')?.innerText || '') : '' }; };
     app.settings.deckShow = null;
-    const box = document.getElementById('deckShowList'); app._renderDeckShowList();
-    out.boxes = box ? box.querySelectorAll('input[type=checkbox]').length : -1;
-    out.checked = box ? box.querySelectorAll('input[type=checkbox]:checked').length : -1;
-    out.pbDesc = box ? (box.querySelector('[data-deckshowk="pb"]')?.innerText || '') : '';
+    out.lead = snap();                                        // 這支測試開頭切成 👑
+    app.settings.deckShow = { pb: true }; out.leadPbOn = snap();   // ⭐ 決定性對照:👑 時勾 pb 也⛔ 不會跑出來
+    app.settings.strategy = 'gene'; app.settings.deckShow = null;
+    out.gene = snap();
+    app.settings.deckShow = { fit: true }; out.geneFit = snap();
+    app.settings.strategy = 'lead'; app.settings.deckShow = null;
     return out;
 });
-ok('⑧ 預設:領頭羊 + 要賣的開、舊 🧬 買點 / 符合進場 / 長說明關', JSON.stringify(DS.def) === JSON.stringify({ leader: true, sell: true, pb: false, fit: false, note: false }), JSON.stringify(DS.def));
-ok('⑧b 收起來的真的藏了 + 頂端寫「已收起 3 塊」(⛔ 不靜默)', DS.pbHidden && DS.leaderShown && DS.hidN === '3' && /設定裡勾回來/.test(DS.hidTxt), JSON.stringify([DS.pbHidden, DS.hidN, DS.hidTxt]));
-ok('⑧c ⭐ 決定性對照:勾回 🧬 買點 → 顯示、收起數變 2、頂端那行只有一條', DS.pbShown2 && DS.hidN2 === '2' && DS.oneLine === 1, JSON.stringify([DS.pbShown2, DS.hidN2, DS.oneLine]));
-ok('⑧d 全開 → 沒有「已收起」;只開舊那套時「今天不用做」才出現', DS.none === undefined && DS.idleBoth === false && DS.idleOnlyOld === true, JSON.stringify([DS.none, DS.idleBoth, DS.idleOnlyOld]));
-ok('⑧e 設定裡 5 個勾選、預設勾 2 個;舊預設說明的數字讀常數(⛔ 不寫死)', DS.boxes === 5 && DS.checked === 2 && /324 萬/.test(DS.pbDesc) && /860 萬/.test(DS.pbDesc), JSON.stringify([DS.boxes, DS.checked, DS.pbDesc]));
+ok('⑧ 👑:只有領頭羊 + 要賣的兩塊(🧬 那三塊不列也不顯)', JSON.stringify(DS.lead.def) === JSON.stringify({ leader: true, sell: true, pb: false, fit: false, note: false }) && DS.lead.leader && !DS.lead.pb && DS.lead.hidN === undefined && JSON.stringify(DS.lead.keys) === JSON.stringify(['leader', 'sell']), JSON.stringify(DS.lead));
+ok('⑧b ⭐ 決定性對照:👑 時就算勾了 🧬 買點也⛔ 不顯示', DS.leadPbOn.pb === false, JSON.stringify(DS.leadPbOn));
+ok('⑧c 🧬(預設):🧬 買點 + 要賣的開、領頭羊⛔ 不列也不顯;「今天不用做」只講 🧬', DS.gene.def.pb === true && DS.gene.def.leader === false && !DS.gene.leader && DS.gene.pb && DS.gene.idle && !DS.gene.keys.includes('leader') && DS.gene.keys.length === 4 && DS.gene.checked === 2, JSON.stringify(DS.gene));
+ok('⑧d 🧬 收起的要寫出來(⛔ 不靜默);說明數字讀常數、⛔ 不再拿領頭羊來比', DS.gene.hidN === '2' && DS.geneFit.hidN === '1' && /324 萬/.test(DS.gene.pbDesc) && !/860 萬|領頭羊/.test(DS.gene.pbDesc), JSON.stringify([DS.gene.hidN, DS.geneFit.hidN, DS.gene.pbDesc]));
 
 // 👑 V77.9.1 個股總覽一行
 const OV = await page.evaluate(async () => {
     const out = {};
     const box = document.getElementById('ovLeaderLine');
     const run = async sym => { app.currentSymbolId = sym; await app._renderOvLeaderLine(sym); return { st: box.querySelector('[data-ovleader]')?.dataset.ovleader || null, hidden: box.classList.contains('hidden'), txt: box.innerText }; };
-    localStorage.removeItem('leaderMine_v1');
+    const _inv = app.inventory; app.inventory = [];   // 🎯 V77.9.6 先測「手上沒有」
     out.top = await run('1001');      // 第 1 名
     out.keep = await run('1013');     // 第 7 名
     out.out = await run('1041');      // 第 21 名
     out.noTrend = await run('1000');  // 池子裡但沒過趨勢
     out.outside = await run('1110');  // 池子外
-    localStorage.setItem('leaderMine_v1', JSON.stringify(['1041', '1110']));
+    app.inventory = [{ symbol: '1041', cost: 100 }, { symbol: '1110', cost: 100 }];   // 手上有 → 照 👑 講要不要賣
     out.outMine = await run('1041'); out.outsideMine = await run('1110');
-    localStorage.removeItem('leaderMine_v1');
+    app.settings.strategy = 'gene'; out.geneHidden = await run('1001'); app.settings.strategy = 'lead';   // 🔒 🧬 時整行不出現
+    app.inventory = _inv;
     // 切股競態:render 1001 但回來前換成 1003 → ⛔ 不可畫出 1001 的
     const _ls = app._loadScreener; app._loadScreener = async () => { app.currentSymbolId = '1003'; return _ls.call(app); };
     app.currentSymbolId = '1001'; await app._renderOvLeaderLine('1001'); out.race = box.innerText; app._loadScreener = _ls;
@@ -211,7 +208,8 @@ const OV = await page.evaluate(async () => {
 });
 ok('⑨ 總覽一行:第 1 名 → 🛒 買;第 7 名 → 已有才續抱;第 21 名 → 不在名單', OV.top.st === 'buy' && /🛒/.test(OV.top.txt) && OV.keep.st === 'keep' && /已有才續抱/.test(OV.keep.txt) && OV.out.st === 'out' && /不在名單/.test(OV.out.txt), JSON.stringify([OV.top, OV.keep, OV.out]));
 ok('⑨b 沒過趨勢寫原因;不在前 100 大、也沒標 → 整行不顯(不留空殼)', /沒過趨勢過濾/.test(OV.noTrend.txt) && OV.outside.hidden === true && OV.outside.txt === '', JSON.stringify([OV.noTrend, OV.outside]));
-ok('⑨c ⭐ 決定性對照:同一檔標了「照這套買的」→ 從「不在名單」變成「⛔ …賣」;池子外的也要講賣', /⛔ .*賣/.test(OV.outMine.txt) && !/⛔ .*賣/.test(OV.out.txt) && OV.outsideMine.st === 'out' && /不在成交額前 100 大/.test(OV.outsideMine.txt) && /賣/.test(OV.outsideMine.txt), JSON.stringify([OV.outMine.txt, OV.outsideMine.txt]));
+ok('⑨e 🔒 選 🧬 時這一行整個不出現', OV.geneHidden.hidden === true && OV.geneHidden.txt === '', JSON.stringify(OV.geneHidden));
+ok('⑨c ⭐ 決定性對照:同一檔手上有 → 從「不在名單」變成「⛔ …賣」;池子外的也要講賣', /⛔ .*賣/.test(OV.outMine.txt) && !/⛔ .*賣/.test(OV.out.txt) && OV.outsideMine.st === 'out' && /不在成交額前 100 大/.test(OV.outsideMine.txt) && /賣/.test(OV.outsideMine.txt), JSON.stringify([OV.outMine.txt, OV.outsideMine.txt]));
 ok('⑨d 切股競態:await 回來已換股 → ⛔ 不畫上一檔', OV.race === '', OV.race);
 
 const TH = await page.evaluate(() => {
@@ -266,7 +264,8 @@ ok('⑥e 門檻 index `_DECK_THIN_AMT` == pro `CAST_MIN_AMT`(同一條線)', pro
     const pick = L => L.err ? { err: L.err } : { buy: L.buy.map(r => r.sym), ranked: L.ranked.map(r => r.sym), passed: L.passed, n: L.n };
     const idxRes = [], proRes = [];
     for (const [, D] of sets) idxRes.push(await page.evaluate(([D, f]) => { const L = app._leaderCalc(D); return eval(f)(L); }, [D, pick.toString()]));
-    const pp = await browser.newPage(); await pp.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domcontentloaded' });
+    const pp = await browser.newPage(); await pp.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); s.strategy = 'lead'; s.stratUnlock = true; localStorage.setItem('proTerminalSettings', JSON.stringify(s)); } catch (_) {} });   // 🎯 V77.9.6 這支測的是 👑 那一套 → 先切成 👑(🧬 預設另由 test_stratswitch 測)
+    await pp.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domcontentloaded' });
     await pp.waitForFunction(() => typeof PRO !== 'undefined' && typeof PRO._leaderCalc === 'function', null, { timeout: 60000 });
     for (const [, D] of sets) proRes.push(await pp.evaluate(([D, f]) => eval(f)(PRO._leaderCalc(D)), [D, pick.toString()]));
     const bad = await pp.evaluate(D => { const cols = D.cols.map(c => c === 'chg10' ? 'x' : c === 'chg20' ? 'chg10' : c); return PRO._leaderCalc({ ...D, cols }).buy.map(r => r.sym); }, synth);

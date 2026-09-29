@@ -51,6 +51,7 @@ const b = await chromium.launch({
   args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
 });
 const pg = await b.newPage();
+await pg.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); s.strategy = 'lead'; s.stratUnlock = true; localStorage.setItem('proTerminalSettings', JSON.stringify(s)); } catch (_) {} });   // 🎯 V77.9.6 這支測的是 👑 那一套 → 先切成 👑(🧬 預設另由 test_stratswitch 測)
 const errs = []; pg.on('pageerror', e => errs.push(String(e).slice(0, 160)));
 await pg.goto(pathToFileURL(resolve('pro.html')).href);
 await pg.waitForFunction(() => typeof PRO !== 'undefined' && !!PRO._recoLedgerRender, null, { timeout: 30000 });

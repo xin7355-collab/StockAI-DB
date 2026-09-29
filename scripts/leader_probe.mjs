@@ -80,7 +80,7 @@ export function prepStock(sym, rows, cal, divs) {
 
 /** 動能:近 L 個「有交易的」日子的調整後報酬(只用 ≤ i) */
 function momSkip(S, i, L, k) { let j = i, c = 0; while (j > 0 && c < k) { j--; if (S.A[j] > 0) c++; } return c === k ? mom(S, j, L) : NaN; }
-function mom(S, i, L) { if (!(S.A[i] > 0)) return NaN; let j = i, c = 0; while (j > 0 && c < L) { j--; if (S.A[j] > 0) c++; } return c === L ? S.A[i] / S.A[j] - 1 : NaN; }
+export function mom(S, i, L) { if (!(S.A[i] > 0)) return NaN; let j = i, c = 0; while (j > 0 && c < L) { j--; if (S.A[j] > 0) c++; } return c === L ? S.A[i] / S.A[j] - 1 : NaN; }
 
 // ⭐ 預設 = 兩個窗口網格(216 + 81 + 9 組)驗出來的中心點;⛔ 最初設計的「60 日動能 + 吊燈 2 倍 + 每週換」實測是輸的(見 DECISIONS V77.8.5)
 export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: true, trend: true, hyst: 2, pick: 'mom', core: 0, maExit: 0, tp: 0, skip: 0, riskadj: false, fill: 'open', noAtt: 0, noDisp: 0, sellDisp: false,
@@ -220,7 +220,7 @@ export function yearly(eq, trSlice, dates) {
     return out;
 }
 
-function loadCtx(DATA, DIV) {
+export function loadCtx(DATA, DIV) {
     const tw = loadPx(DATA, '^TWII'); if (!tw) throw new Error('DATA_DIR 沒有 ^TWII.json');
     const cal = tw.map(x => x.d);
     const idx = new Map(cal.map((d, i) => [d, i]));
@@ -445,5 +445,7 @@ function main() {
     console.log(`⏱️ ${((Date.now() - t0) / 1000).toFixed(0)}s`);
 }
 
-if (process.argv.includes('--selftest')) process.exit(selftest());
-else main();
+// ⭐ 被別的腳本 import(leader_exit_probe)時⛔ 不自己跑 main
+const _isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname);
+if (_isMain && process.argv.includes('--selftest')) process.exit(selftest());
+else if (_isMain) main();

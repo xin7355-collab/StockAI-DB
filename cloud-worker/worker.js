@@ -378,6 +378,7 @@ export default {
             ctx.waitUntil(ghDispatch(env, 'intraday-ticks'));
         } else if (event.cron === '0 0 * * 1-5') {
             ctx.waitUntil(runPreMarket(env));      // V21.4 盤前簡報(台北 08:00)
+            ctx.waitUntil(runLeaderRebalPush(env));   // 👑 V77.9.6 選 👑 的人:換倉日「今天開盤買 / 賣哪幾檔」
             // 🚀 順便把盤中快照的主迴圈叫起來(GitHub 排程實測整天不進來,見上面那段)。
             //    ⭐ 08:00 發沒問題 —— `intraday_window.py` 會自己 SLEEP 到 08:45 那一拍。
             ctx.waitUntil(ghDispatch(env, 'intraday-quotes'));
@@ -467,7 +468,7 @@ async function handlePushSub(request, env) {
         .map(t => ({ sym: String(t && t.sym || '').slice(0, 8), dir: (t && t.dir) === 'gte' ? 'gte' : 'lte', px: +(t && t.px) || 0, name: String(t && t.name || '').slice(0, 12) }))
         .filter(t => /^\d{4,6}[A-Z]?$/.test(t.sym) && t.px > 0);
     const key = await _psubKey(sub.endpoint);
-    await env.KV.put(key, JSON.stringify({ sub: { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }, inventory: inv, triggers: trig, updated: Date.now() }));
+    await env.KV.put(key, JSON.stringify({ sub: { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }, inventory: inv, triggers: trig, strategy: body.strategy === 'lead' ? 'lead' : 'gene', updated: Date.now() }));
     return json({ ok: true, inv: inv.length, trig: trig.length });
 }
 async function handlePushUnsub(request, env) {
@@ -491,6 +492,7 @@ async function scanPushUser(env, rec, liveQuotes) {
     for (const it of (rec.inventory || [])) {
         const q = liveQuotes.get(it.sym); const price = q && +q.price;
         if (!(price > 0) || !(+it.cost > 0)) continue;
+        if (_leadStock(rec.strategy, it.sym)) continue;   // 🎯 V77.9.6 你選 👑:個股沒有停損線(換倉日排名才是訊號)
         const nm = it.name || it.sym;
         if (price <= it.cost * 0.90) sends.push({ k: `abs10:${it.sym}:${today}`, title: `🛑 ${nm} 破絕對底線 -10%`, body: `現價 ${price},已低於成本 ${it.cost} 的 -10%(${(it.cost * 0.9).toFixed(2)})→ 任何理由都得走,別凹單。` });
         else if (price <= it.cost * 0.95) sends.push({ k: `hard5:${it.sym}:${today}`, title: `⚠️ ${nm} 破鐵血停損 -5%`, body: `現價 ${price},跌破成本 ${it.cost} 的 -5% 防守(${(it.cost * 0.95).toFixed(2)})→ 開 App 看「現在怎麼做」照劇本執行。` });
@@ -759,6 +761,87 @@ function isValidCode(code) {
     return typeof code === 'string' && /^[A-Z0-9]{6,12}$/.test(code);
 }
 
+// ═══════════════ 👑 V77.9.6 領頭羊換倉日推播(只推給在 App 選 👑 的人)═══════════════
+// ⛔ 規則同 index.html `_leaderCalc` / `_leaderClock` / lib_leader.py(scripts/test_stratswitch.mjs 跨檔比對)。
+export const LEAD_RULE = { U: 100, N: 5, R: 10, L: 10, hyst: 2 };
+export const LEAD_ANCHOR = '2026-09-24';
+function _leadStock(strategy, sym) { return strategy === 'lead' && /^\d{4}$/.test(String(sym)) && !String(sym).startsWith('00'); }
+export function leadCalc(D) {
+    if (!D || !D.cols || !D.rows) return { err: 'nodata' };
+    const CI = Object.fromEntries(D.cols.map((c, i) => [c, i]));
+    if (CI.chg10 == null || CI.amt20 == null) return { err: 'notyet' };
+    const rows = [];
+    for (const [sym, v] of Object.entries(D.rows)) {
+        if (!/^\d{4}$/.test(sym) || sym.startsWith('00') || (CI.etf != null && +v[CI.etf] === 1)) continue;
+        const amt20 = +v[CI.amt20], c = +v[CI.c], chg10 = v[CI.chg10], b20 = v[CI.b20], b60 = v[CI.b60];
+        if (!(amt20 > 0 && c > 0)) continue;
+        rows.push({ sym, amt20, c, chg10: chg10 == null ? null : +chg10, b20: b20 == null ? null : +b20, b60: b60 == null ? null : +b60 });
+    }
+    rows.sort((a, b) => b.amt20 - a.amt20);
+    const pool = rows.slice(0, LEAD_RULE.U);
+    const ok = pool.filter(r => r.b20 != null && r.b60 != null && r.chg10 != null && r.b20 > 0 && r.b20 < r.b60);
+    ok.sort((a, b) => b.chg10 - a.chg10);
+    const ranked = ok.map((r, i) => ({ ...r, rank: i + 1 }));
+    return { ranked: ranked.slice(0, LEAD_RULE.N * LEAD_RULE.hyst), buy: ranked.slice(0, LEAD_RULE.N), all: new Map(ranked.map(r => [r.sym, r])), date: D.data_date || '' };
+}
+export function leadClock(twiiRows, dataDate) {
+    const days = (twiiRows || []).map(r => String(r.date || r.d || '').replace(/\//g, '-').slice(0, 10)).filter(d => d && d >= LEAD_ANCHOR && d <= dataDate);
+    const day = days.length; if (!day) return { day: 0, isRebal: false };
+    const k = (day - 1) % LEAD_RULE.R;
+    return { day, isRebal: k === 0, left: k === 0 ? 0 : LEAD_RULE.R - k };
+}
+export function leadBear(twiiRows) {   // 大盤嚴格空頭:收盤 < 60 日線 且 20 日線 < 60 日線(同 App `_bear60Of`)
+    const c = (twiiRows || []).map(r => +(r.close ?? r.c) || 0).filter(v => v > 0);
+    if (c.length < 60) return null;
+    const avg = n => c.slice(-n).reduce((a, b) => a + b, 0) / n, m20 = avg(20), m60 = avg(60);
+    return c[c.length - 1] < m60 && m20 < m60;
+}
+async function runLeaderRebalPush(env) {
+    const t = Date.now();
+    const [sR, tR] = await Promise.all([
+        fetch(`${GH_PAGES_BASE}/data/screener.json?t=${t}`).catch(() => null),
+        fetch(`${GH_PAGES_BASE}/data/%5ETWII.json?t=${t}`).catch(() => null),
+    ]);
+    const D = sR?.ok ? await sR.json().catch(() => null) : null;
+    let tw = tR?.ok ? await tR.json().catch(() => null) : null;
+    tw = Array.isArray(tw) ? tw : (tw && tw.data) || [];
+    const L = leadCalc(D); if (L.err) return;
+    const date = String(L.date).replace(/\//g, '-').slice(0, 10);
+    const clk = leadClock(tw, date); if (!clk.isRebal) return;
+    const bear = leadBear(tw.filter(r => String(r.date || '').replace(/\//g, '-').slice(0, 10) <= date));
+    const H = LEAD_RULE.N * LEAD_RULE.hyst;
+    let cursor;
+    while (true) {
+        const list = await env.KV.list({ prefix: 'user:', cursor });
+        for (const key of list.keys) {
+            try {
+                const u = JSON.parse((await env.KV.get(key.name)) || '{}');
+                if (!u.chat_id || u.settings?.strategy !== 'lead') continue;
+                if (u.muted_until && u.muted_until > Date.now()) continue;
+                const sentKey = `leadpush:${u.chat_id}:${date}`;
+                if (await env.KV.get(sentKey)) continue;
+                const mine = (u.inventory || []).map(i => i.sym).filter(s => _leadStock('lead', s));
+                const sell = mine.filter(s => { const r = L.all.get(s); return !(r && r.rank <= H); });
+                const keep = mine.filter(s => !sell.includes(s));
+                const buy = bear ? [] : L.buy.map(r => r.sym).filter(s => !mine.includes(s)).slice(0, Math.max(0, LEAD_RULE.N - keep.length));
+                const lab = async a => (await Promise.all(a.map(s => stockLabel(env, s)))).join('、');
+                const text = [
+                    `👑 *換倉日* _${date} 收盤的名單 → 今天開盤照做_`, SEP,
+                    sell.length ? `🔻 賣:${await lab(sell)}(掉出前 ${H} 名)` : '🔻 賣:沒有',
+                    buy.length ? `🛒 買:${await lab(buy)}(前 ${LEAD_RULE.N} 名,等權)` : (bear ? '🐻 大盤嚴格空頭 → 今天不開新倉' : '🛒 買:沒有(前 5 名你都有了)'),
+                    keep.length ? `✅ 續抱:${await lab(keep)}` : '',
+                    '💰 沒用到的錢放 0050 ・⛔ 沒有停損線',
+                    `📱 [決策台](${GH_PAGES_BASE}/)`,
+                ].filter(Boolean).join('\n');
+                await tg(env, u.chat_id, text);
+                await env.KV.put(sentKey, '1', { expirationTtl: 3 * 86400 });
+            } catch (_) {}
+        }
+        if (list.list_complete) break;
+        cursor = list.cursor;
+    }
+}
+
 function isValidSym(s) {
     return typeof s === 'string' && /^[0-9A-Z]{4,8}$/.test(s);
 }
@@ -823,6 +906,8 @@ function sanitizePayload(payload) {
             tg_level: ['all', '2plus', '3only'].includes(payload.settings.tg_level)
                 ? payload.settings.tg_level
                 : 'all',
+            // 🎯 V77.9.6 全站策略(App 設定「我的策略」):'gene' 🧬(預設)/ 'lead' 👑 —— 推播只講你選的那一套
+            strategy: payload.settings.strategy === 'lead' ? 'lead' : 'gene',
         };
         const ft = String(payload.settings.fugleToken1 || '').trim();
         if (ft && ft.length >= 8 && ft.length <= 100) out.settings.fugleToken1 = ft;
@@ -1101,27 +1186,21 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
                 queue.push({ stars: 2, text: tplFalcon(label, sym, Math.round(fs || 0), close, [`當日漲幅 +${pct.toFixed(2)}% (≥${surgeTh}%)`]) });
                 await markPushed(env, user.chat_id, sym, 'surge');
             } else if (pct <= -dropTh && !(await wasPushed(env, user.chat_id, sym, 'drop'))) {
-                queue.push({ stars: 2, text: `📉 *【大跌警示 ★★】${label}*\n${SEP}\n💰 現價 *${close}* (${pct.toFixed(2)}%)\n\n🎯 *操作建議*\n  ▸ 確認是否破月線(20MA)\n  ▸ 庫存族:已虧 5% 以上先出半碼\n  ▸ 空手:別接刀,等紅 K 反包\n\n📱 [看完整分析](${tplDeepLink(sym)})` });
+                queue.push({ stars: 2, text: `📉 *【大跌警示 ★★】${label}*\n${SEP}\n💰 現價 *${close}* (${pct.toFixed(2)}%)\n\n${_leadStock(user.settings?.strategy, sym) ? '👑 你選的策略:⛔ 不因單日大跌賣,換倉日看排名' : '🎯 照你的出場規則(硬停損 / 你設定的線 / 抱滿天數),⛔ 別憑一天的跌幅做決定'}\n\n📱 [看完整分析](${tplDeepLink(sym)})` });
                 await markPushed(env, user.chat_id, sym, 'drop');
             }
         }
 
         // 💼 V21.4 — 庫存盤中觸發:跌破成本 -5%(朱鐵律)/ 跌破 5MA / 獲利 +20%;收集進 invAlerts 結尾合成一則
+        // 🎯 V77.9.6 只推你選的那一套(使用者:「我選什麼策略,通知也要同步,才不會有不一樣的通知讓使用者錯亂」):
+        //   🧬 → 只留 −5% 停損(= 三條出場的硬停損;跌破 5 日線 / +20% 停利⛔ 不是這一套的出場,已拿掉)
+        //   👑 → 個股⛔ 不推停損 / 停利(那一套沒有停損線,換倉日掉出前 10 名才賣 → 由 08:00 換倉日推播講)
         const inv = (user.inventory || []).find(i => i.sym === sym);
-        if (inv?.cost > 0 && Number.isFinite(close) && close > 0) {
+        if (inv?.cost > 0 && Number.isFinite(close) && close > 0 && !_leadStock(user.settings?.strategy, sym)) {
             const ret = ((close - inv.cost) / inv.cost) * 100;
             if (ret <= -5 && !(await wasPushed(env, user.chat_id, sym, 'sl5'))) {
-                invAlerts.push(`🔴 ${label} 現價 *${close}*(成本 ${inv.cost}, *${ret.toFixed(1)}%*)→ 已破 -5% 鐵血停損線`);
+                invAlerts.push(`🔴 ${label} 現價 *${close}*(成本 ${inv.cost}, *${ret.toFixed(1)}%*)→ 已破 -5% 停損線(🧬 三條出場的第一條)`);
                 await markPushed(env, user.chat_id, sym, 'sl5');
-            }
-            const b5 = await fetchVolumeBaseline(sym, volBaseCache);
-            if (b5 && b5.ma5 > 0 && close < b5.ma5 && !(await wasPushed(env, user.chat_id, sym, 'below5ma'))) {
-                invAlerts.push(`🟡 ${label} 現價 *${close}* 跌破 5日均價 *${b5.ma5.toFixed(2)}* → 朱:短線停利/停損`);
-                await markPushed(env, user.chat_id, sym, 'below5ma');
-            }
-            if (ret >= 20 && !(await wasPushed(env, user.chat_id, sym, 'tp20'))) {
-                invAlerts.push(`🟢 ${label} 獲利 *+${ret.toFixed(1)}%*(成本 ${inv.cost} → ${close})→ 達停利線,可分批落袋`);
-                await markPushed(env, user.chat_id, sym, 'tp20');
             }
         }
 

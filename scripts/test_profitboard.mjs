@@ -33,6 +33,7 @@ let chromium; try { ({ chromium } = await import('/opt/node22/lib/node_modules/p
 const _exec = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const browser = await chromium.launch({ ...(fs.existsSync(_exec) ? { executablePath: _exec } : {}), args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+await page.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); s.strategy = 'lead'; s.stratUnlock = true; localStorage.setItem('proTerminalSettings', JSON.stringify(s)); } catch (_) {} });   // 🎯 V77.9.6 這支測的是 👑 那一套 → 先切成 👑(🧬 預設另由 test_stratswitch 測)
 const errs = []; page.on('pageerror', e => errs.push(e.message));
 await page.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof PRO !== 'undefined' && !!PRO.renderProfit, null, { timeout: 30000 });
