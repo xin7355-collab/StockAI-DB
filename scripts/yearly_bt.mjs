@@ -36,7 +36,9 @@ export const BASE_PICKS = 2;
 // g = 分組 ・ id = 檔名用 ・ t = 白話名稱 ・ env = 只寫「跟基底不一樣的那一件事」 ・ picks = 每天幾檔(沒寫 = 2)
 export const STRATS = [
     // 🔁 V77.6.5 預設換了:`base` 留著當「舊預設」基底(下面每一條都是在它上面只換一件事),`now765` 是現行那一組
-    { g: 'now',  id: 'now765',     t: '⭐ 決策台現行(V77.6.5 起):🧬 ・唐奇安 40 日出場 ・最長抱 40 天 ・大盤嚴格空頭不開新倉', env: { EXIT: 'don40', MAXD: '40', FILTER: 'bear60' } },
+    // 🔁 V78.0.8 現行換成 V78.0.7 那一組(修好日 K 之後用 `ONLY=now807` 單獨重跑,再用 embed_yearly_bt.mjs --merge 併進去)
+    { g: 'now',  id: 'now807',     t: '⭐ 決策台現行(V78.0.7 起):🧬 位階 ≥85 ・吊燈 ATR 2 倍出場 ・最長抱 20 天 ・大盤嚴格空頭不開新倉', env: { EXIT: 'chand2', MAXD: '20', FILTER: 'bear60', RANK_MIN: '85' } },
+    { g: 'prev', id: 'now765',     t: '⏮️ 上一任(V77.6.5~V77.7.5):🧬 ・唐奇安 40 日出場 ・最長抱 40 天 ・大盤嚴格空頭不開新倉', env: { EXIT: 'don40', MAXD: '40', FILTER: 'bear60' } },
     { g: 'prev', id: 'base',       t: '📤 舊預設(V77.6.5 以前):🧬 ・唐奇安 20 日出場 ・最長抱 20 天 —— 下面每一條都是在它上面只換一件事', env: {} },
     // 🚪 出場(只換賣的規則)
     { g: 'exit', id: 'x_atr2',     t: 'ATR 追蹤停利(最高收盤 − 2×ATR)', env: { EXIT: 'chand2' } },
@@ -119,8 +121,8 @@ export const SKIPPED = [
     { t: '🧬 × 只做「加分偵測器訊號」', why: '要另外先產一份訊號對照檔(sig_x_playbook_probe),這一輪沒做' },
     { t: '窗口長度對照(13 → 36 → 49 個月)', why: '逐年成績單本身就是更清楚的版本(一年一格),不用再比窗口' },
 ];
-export const NOW_ID = 'now765';
-export const GROUPS = { combo: '🧪 組合:兩三個改動一起', now: '⭐ 決策台現行', prev: '📤 舊預設', exit: '🚪 出場:只換賣的規則', entry: '⏰ 進場:只換買的時間', pick: '🧬 選股:只換挑哪幾檔', size: '💰 部位:每天幾檔、每筆多少', mkt: '🏛️ 大盤狀態:哪種盤才做', cal: '📆 行事曆:哪幾天不做', x: '⚔️ 其他組合' };
+export const NOW_ID = 'now807';
+export const GROUPS = { lead: '👑 領頭羊短線輪動', combo: '🧪 組合:兩三個改動一起', now: '⭐ 決策台現行', prev: '📤 舊預設', exit: '🚪 出場:只換賣的規則', entry: '⏰ 進場:只換買的時間', pick: '🧬 選股:只換挑哪幾檔', size: '💰 部位:每天幾檔、每筆多少', mkt: '🏛️ 大盤狀態:哪種盤才做', cal: '📆 行事曆:哪幾天不做', x: '⚔️ 其他組合' };
 
 // 🧪 V77.6.2 長歷史組合(`SET=long`):2011~2026,只跑不需要 2021 以後才有的資料(財報 / 週轉 / 價值)的那些
 //   ⭐ 組合是**看 2011~2020 之前**就定好的(依 2022~2026 逐年表挑出來的方向)→ 2011~2020 是真的樣本外
@@ -141,7 +143,10 @@ export const COMBOS = [
 // 📚 V77.6.6 使用者:「把能合併就合併」→ 長歷史改成**全部策略都跑**(⛔ 不再只挑 19 種),App 只留這一張 16 年表
 //   ⚠️ 資料起點晚於 2011 的策略(`dataFrom`)那幾年**不跑**,collect 寫 null + 原因(⛔ 不可跑出「0 筆」冒充結果)
 const SET = process.env.SET || '';
-export const RUN_STRATS = SET === 'long' ? [...STRATS, ...COMBOS] : STRATS;
+const _ALL = SET === 'long' ? [...STRATS, ...COMBOS] : STRATS;
+// V78.0.8 ONLY=id1,id2:只跑 / 只收這幾列(搭配 embed_yearly_bt.mjs --merge 更新單列,⛔ 不用整張 79 種重跑)
+const _ONLY = process.env.ONLY ? new Set(process.env.ONLY.split(',')) : null;
+export const RUN_STRATS = _ONLY ? _ALL.filter(s => _ONLY.has(s.id)) : _ALL;
 // 🏦 V77.6.6 「一個帳戶一路滾」:同一套規則、起點挪 17 次(每 5 個交易日一條,V77.4.9 第 6 條)
 export const CONT_WARMUPS = Array.from({ length: 17 }, (_, k) => 240 + k * 5);
 const _skipYear = (s, y) => !!(s.dataFrom && y < s.dataFrom);
@@ -182,6 +187,8 @@ if (ci > 0) {
             };
             // ⚠️ V77.6.2 修:以前只在「0050 有值」才記 → 2021 以前(沒有 0050)連大盤那一列都不見了(embed 的守門抓到)
             if (s.id === 'base' && r0.ytwii != null) res.bench[y] = { e0050: r0.y0050 ?? null, e0050tr: r0.y0050tr ?? null, twii: r0.ytwii, from: r0.yFrom, to: r0.yTo };
+            // V78.0.8 ONLY=… 單列重跑:那一列自己帶當年的對照(資料可能比整張表新,⛔ 不可拿舊表的 0050 跟它比)
+            if (_ONLY && r0.ytwii != null) (row.yb = row.yb || {})[y] = { e0050: r0.y0050 ?? null, e0050tr: r0.y0050tr ?? null, twii: r0.ytwii, from: r0.yFrom, to: r0.yTo };
         }
         // 🏦 一個帳戶一路滾(17 條起點)—— 給了 CONT_DIR 才收;少任何一條就整列不給(⛔ 不可拿 16 條冒充 17 條)
         if (process.env.CONT_DIR) {
@@ -192,6 +199,7 @@ if (ci > 0) {
                 const cum = cs.map(x => x.cum), dd = cs.map(x => x.dd);
                 row.c = { med: med(cum), lo: Math.min(...cum), hi: Math.max(...cum), dd: med(dd), ddw: Math.min(...dd), win: med(cs.map(x => x.win)), n: med(cs.map(x => x.n)), paths: cs.length, from: cs[0].from, to: cs[0].to };
                 if (!res.benchCont && cs[0].etf0050tr != null) res.benchCont = { from: cs[0].from, to: cs[0].to, twii: cs[0].twii, e0050: cs[0].etf0050, e0050tr: cs[0].etf0050tr };
+                if (_ONLY && cs[0].etf0050tr != null) row.bc = { from: cs[0].from, to: cs[0].to, twii: cs[0].twii, e0050: cs[0].etf0050, e0050tr: cs[0].etf0050tr };
             }
         }
         res.strats.push(row);

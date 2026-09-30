@@ -35,7 +35,17 @@ let Y = null; try { Y = JSON.parse(line.replace(/^\s*_YEARLY_BT: /, '').replace(
 ok('② 🚧 空過守門:讀得到 `_YEARLY_BT` 而且有策略', !!(Y && Y.strats && Y.strats.length), line.slice(0, 80));
 if (Y && Y.strats) {
     const WANT = STRATS.length + COMBOS.length;
-    ok(`②b 策略數 == yearly_bt.mjs 的 STRATS+COMBOS(${WANT})`, Y.strats.length === WANT, Y.strats.length);
+    const NL = Y.strats.filter(s => s.g !== 'lead');
+    ok(`②b 🧬 那些列的數量 == yearly_bt.mjs 的 STRATS+COMBOS(${WANT})`, NL.length === WANT, NL.length);
+    // 👑 V78.0.8 領頭羊四列(leader_probe YEARLY_OUT → embed --merge)
+    const LD = Y.strats.filter(s => s.g === 'lead');
+    ok('②j 👑 領頭羊有四列(全攻 / 穩定版 / 先衝再穩 / 尾盤成交),每列都是修好日 K 之後跑的、帶自己的 0050 含息對照', LD.length === 4 && LD.every(s => s.dv === 2 && s.yb && s.bc && s.bc.e0050tr > 0 && (Y.v2 && Y.v2.ids.includes(s.id))), LD.map(s => s.id).join(','));
+    const pbLine = PRO.split('\n').find(l => /^\s*_PROFIT_BOARD: \{/.test(l)) || '';
+    let PBv = null; try { PBv = JSON.parse(pbLine.replace(/^\s*_PROFIT_BOARD: /, '').replace(/,$/, '')); } catch (_) {}
+    const pbLead = PBv && PBv.wins.long.rows.find(r => r.k === 'lead'), yLead = LD.find(s => s.id === 'lead');
+    ok('②j2 ⭐ 決定性對照:👑 全攻的一路滾 == 💰「100 萬變多少」16 年全攻(同一個引擎、同一組起點;差 ≤1,000 元)', !!(pbLead && yLead && Math.abs(pbLead.fin - 1e6 - yLead.c.med) <= 1000), `${pbLead && pbLead.fin - 1e6} vs ${yLead && yLead.c.med}`);
+    const NW = Y.strats.find(s => s.id === Y.nowId);
+    ok('②k ⭐ 現行那一列 = V78.0.7 那套(位階 ≥85・吊燈)、修好日 K 之後跑的,上一任(唐奇安 40)改標 ⏮️', !!NW && NW.dv === 2 && /V78\.0\.7/.test(NW.t) && /≥85/.test(NW.t) && Y.strats.some(s => s.id === 'now765' && s.g === 'prev' && /^⏮️/.test(s.t)), NW && NW.t);
     const YEARS = Y.years || [];
     ok('②b2 年份是 2011 起的 16 年(⛔ 不再有只到 2022 的那一份)', YEARS[0] === '2011' && YEARS.length >= 16, YEARS.join(','));
     const badY = []; for (const s of Y.strats) for (const y of YEARS) { const v = s.y[y]; if (Array.isArray(v) && v.length === Y.cols.length) continue; if (v === null && s.na && y < s.na.from && s.na.why && s.na.why.length > 10) continue; badY.push(`${s.id}:${y}`); }
@@ -70,7 +80,8 @@ const R = await page.evaluate(async () => {
     const firstId = () => { const tr = box().querySelector('tbody tr[onclick]'); return tr ? tr.getAttribute('onclick') : ''; };
     const rowIds = () => [...box().querySelectorAll('tbody tr[onclick]')].map(tr => (tr.getAttribute('onclick').match(/'([^']+)'/) || [])[1]);
     // 🏦 預設照「一路滾」排:第一列 = c.med 最大的那個
-    const bestC = Y.strats.slice().sort((a, b) => (b.c ? b.c.med : -1e18) - (a.c ? a.c.med : -1e18))[0];
+    const VIS = Y.strats.filter(s => s.g !== 'lead');   // 預設 🧬:👑 那幾列⛔ 不出現
+    const bestC = VIS.slice().sort((a, b) => (b.c ? b.c.med : -1e18) - (a.c ? a.c.med : -1e18))[0];
     o.defaultC = firstId().includes(`'${bestC.id}'`) && /一路滾/.test(box().querySelector('th.ybsort.on') ? box().querySelector('th.ybsort.on').innerText : '');
     // 決定性對照:改 base 2024 的賺賠,細節卡要跟著變
     const bk = JSON.stringify(base.y['2024']); const ip = Y.cols.indexOf('pnl');
@@ -86,16 +97,16 @@ const R = await page.evaluate(async () => {
     o.headers = ths.length; o.headClick = ths.every(th => /PRO\.ybSort\(/.test(th.getAttribute('onclick') || ''));
     const ir = Y.cols.indexOf('ret');
     PRO._ybSort = null; PRO.ybSort('2022');
-    const best22 = Y.strats.filter(s => s.y['2022']).sort((a, b) => b.y['2022'][ir] - a.y['2022'][ir])[0];
+    const best22 = VIS.filter(s => s.y['2022']).sort((a, b) => b.y['2022'][ir] - a.y['2022'][ir])[0];
     o.sortOk = firstId().includes(`'${best22.id}'`); o.sortArrow = box().innerText.includes('▼');
     PRO.ybSort('2022');
-    const worst22 = Y.strats.filter(s => s.y['2022']).sort((a, b) => a.y['2022'][ir] - b.y['2022'][ir])[0];
+    const worst22 = VIS.filter(s => s.y['2022']).sort((a, b) => a.y['2022'][ir] - b.y['2022'][ir])[0];
     o.sortRev = firstId().includes(`'${worst22.id}'`) && box().innerText.includes('▲');
     // 最差一條
     PRO._ybSort = null; PRO.ybSort('clo');
-    const bestLo = Y.strats.slice().sort((a, b) => b.c.lo - a.c.lo)[0]; o.sortLo = firstId().includes(`'${bestLo.id}'`);
+    const bestLo = VIS.slice().sort((a, b) => b.c.lo - a.c.lo)[0]; o.sortLo = firstId().includes(`'${bestLo.id}'`);
     // 名稱排序
-    PRO._ybSort = null; PRO.ybSort('name'); o.sortName = rowIds().length === Y.strats.length;
+    PRO._ybSort = null; PRO.ybSort('name'); o.sortName = rowIds().length === VIS.length;
     // ⏳ 空值排最後(不論方向):有 na 的那一列在最早那一年排序時,兩個方向都要在最後
     const naS = Y.strats.find(s => s.na);
     if (naS) {
@@ -111,6 +122,15 @@ const R = await page.evaluate(async () => {
     PRO.ybPick('base');
     o.noToggle = !/2022~2026\(本站資料/.test(box().innerText) && !box().querySelector('[onclick*="ybSet"]');
     // 📦 舊情境庫表頭可排序
+    // 🔒 V78.0.8 🧬(預設)看不到 👑;解鎖選 👑 之後才出現,而且 🆕 那幾列跟 0050 含息比
+    o.gLeadHidden = !/領頭羊|👑/.test(box().innerText) && !box().querySelector('[onclick*="ybPick(\'lead"]');
+    localStorage.setItem('proTerminalSettings', JSON.stringify({ strategy: 'lead', stratUnlock: true }));
+    PRO._ybGrp = 'all'; PRO._ybSort = null; PRO.renderYearly();
+    o.leadRows = rowIds().filter(id => /^lead/.test(id)).length; o.leadTag = box().querySelectorAll('[data-ybv2]').length;
+    PRO.ybPick('lead'); const det = box().querySelector('#ybDetail').innerText;
+    const L = Y.strats.find(s => s.id === 'lead'), y24 = L.y['2024'][Y.cols.indexOf('ret')], b24 = L.yb['2024'].e0050tr;
+    o.leadBeat = det.includes('同期 0050 含息') && det.includes('同一份資料') && (y24 > b24 ? det.includes('✅ 贏') : det.includes('⛔ 輸'));
+    localStorage.removeItem('proTerminalSettings'); PRO._ybSel = null; PRO.renderYearly();
     PRO._calcSort = null; PRO.renderCalc();
     const cths = [...document.querySelectorAll('#calcBody th.ybsort')];
     o.calcTh = cths.length; o.calcClick = cths.length >= 5 && cths.every(th => /PRO\.calcSort\(/.test(th.getAttribute('onclick') || ''));
@@ -124,7 +144,8 @@ const R = await page.evaluate(async () => {
 });
 await browser.close();
 ok('③ 沒有 pageerror', !errs.length, errs.join(' | '));
-ok('③b 總表列數 = 策略數 + 3 列對照(0050 不含息 / 含息 / 加權)', Y && R.rows === Y.strats.length + 3, `${R.rows}`);
+ok('③b 總表列數 = 🧬 策略數 + 3 列對照(0050 不含息 / 含息 / 加權);預設 🧬 ⛔ 不含 👑', Y && R.rows === Y.strats.filter(s => s.g !== 'lead').length + 3, `${R.rows}`);
+ok('③m 🔒 🧬 看不到任何 👑 字樣;選 👑 之後出現 4 列、都標 🆕、細節跟同一份資料的 0050 含息比', R.gLeadHidden && R.leadRows === 4 && R.leadTag >= 5 && R.leadBeat, JSON.stringify({ h: R.gLeadHidden, n: R.leadRows, t: R.leadTag, b: R.leadBeat }));
 ok('③c 決定性對照:改常數,畫面要跟著變(⛔ 不寫死)', R.inj);
 ok('③c2 決定性對照:改「一路滾」中位,畫面要跟著變', R.injC);
 ok('③d 每一欄都可排序(名稱 + 一路滾 3 欄 + 每一年 + 加起來 + 🤖 AI 前/AI 時代兩段 + 贏幾年),點了排對、有箭頭、再點反向', Y && R.headers === 1 + 3 + Y.years.length + 2 + 2 && R.headClick && R.sortOk && R.sortArrow && R.sortRev && R.sortLo && R.sortName, JSON.stringify({ h: R.headers, s: R.sortOk, r: R.sortRev, lo: R.sortLo }));
