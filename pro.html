@@ -656,6 +656,7 @@ html.app-fish .wrap{padding-top:calc(8px + env(safe-area-inset-top))}
 .fpvsort.hidden{display:none}
 .fpvsort button{font-size:11.5px;padding:4px 10px;border-radius:14px;min-height:30px;background:rgba(255,255,255,.05);color:#dbe4f0;border:1px solid rgba(255,255,255,.16)}
 .fpvsort button.on{border-color:#f5b942;color:#ffe29a;background:rgba(245,185,66,.12)}
+.fpvsort button.rel{margin-left:auto;border-color:rgba(120,190,255,.45);color:#bfe3ff}
 #fpvCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:10px}
 .fpvcard{position:relative;border-radius:14px;padding:10px 10px 12px;background:linear-gradient(180deg,rgba(20,32,50,.95),rgba(9,16,27,.95));border:1px solid rgba(255,255,255,.08);animation:fpvIn .5s ease both}
 .fpvcard canvas{width:100%;height:84px;display:block}
@@ -4049,7 +4050,8 @@ const PRO = {
       hook = { x: x - F.len * k3 * 0.2, y: y - 10 }; tension = 0.2; S.lensDone = 0;
     }
     const left = S.Q ? S.Q.fish.length - S.Q.i : 0, idle = !G && !N;
-    if (!G) { hook = { x: tipX - W * 0.12, y: hz + 8 + Math.sin(t * 2) * 2 }; }
+    // 🎣 V78.0.4 沒在釣 = 線收在竿尖,鉤子吊在空中(使用者:「拋竿的線永遠都顯示已拋出去」);海裡沒魚時收得更短
+    if (!G) { hook = { x: tipX + Math.sin(t * 1.3) * 3, y: tipY + (left > 0 ? 30 : 14) + Math.sin(t * 2) * 2 }; tension = 0.05; S.idleHook = hook; S.idleTip = { x: tipX, y: tipY }; }
     if (idle && left > 0) this._fpvCross(ctx, A.x, A.y, t);
     if (N) {                                              // 🕸️ V78.0.3 撒網時竿子收起來,換成雙手甩網 + 手拉繩(使用者:「撒網時魚竿要消失,要比較像真實撒網」)
       const hd = this._fpvHandsAt(N, W, H), top = this._fpvNetDraw(ctx, N, W, H, hz, t, hd.x, hd.y);
@@ -4206,7 +4208,8 @@ const PRO = {
       <div class="row"><span>市值</span><b class="mono">${this._fpvMcapTxt(F.mcap)}</b></div>
       <div class="row"><span>🎨 一年高低位置</span><b class="mono">${F.pos == null ? '—' : Math.round(F.pos) + '%'}</b></div>${warn}
       <button class="lbtn" onclick="PRO._fpvProfile('${F.sym}')">🎴 看這條魚的卡片</button>
-      <button class="lbtn on" onclick="PRO._fishCatch('${F.sym}')">🧺 放進漁獲籃</button>`;
+      <button class="lbtn on" onclick="PRO._fishCatch('${F.sym}')">🧺 放進漁獲籃</button>
+      <button class="lbtn fpvrel" onclick="PRO.fpvRelease('${F.sym}')">🌊 放回海裡</button>`;
     box.appendChild(el);
     this._fpvPortrait(el.querySelector('canvas'), F);
     this._fpvSortCards();
@@ -4233,10 +4236,11 @@ const PRO = {
   _fpvSortBar() {
     const bar = document.getElementById('fpvSort'); if (!bar) return;
     const n = document.querySelectorAll('#fpvCards .fpvcard').length;
-    bar.classList.toggle('hidden', n < 2); if (n < 2) return;
+    bar.classList.toggle('hidden', n < 1); if (n < 1) return;
     const [k, dir] = this._fpvSortK || ['rank', 1];
-    bar.innerHTML = '<span>排序:</span>' + this._FPV_SORT.map(([key, lab]) =>
-      `<button class="${key === k ? 'on' : ''}" data-k="${key}" onclick="PRO.fpvSort('${key}')">${lab}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</button>`).join('');
+    const all = `<button class="rel" id="fpvRelAll" onclick="PRO.fpvReleaseAll()">🌊 全部放回</button>`;   // 🌊 V78.0.4
+    bar.innerHTML = (n < 2 ? '' : '<span>排序:</span>' + this._FPV_SORT.map(([key, lab]) =>
+      `<button class="${key === k ? 'on' : ''}" data-k="${key}" onclick="PRO.fpvSort('${key}')">${lab}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</button>`).join('')) + all;
   },
   _fpvMcapTxt(m) {
     if (!(Number.isFinite(m) && m > 0)) return '算不出(魚照中等大小)';
@@ -4525,6 +4529,29 @@ const PRO = {
     const sea = S.sea; if (sea && !sea.caught.includes(F.sym)) { sea.caught.push(F.sym); this._fpvSeaSave(sea); }
     S.swim = (S.swim || []).filter(x => x.F.sym !== F.sym);
   },
+  /** 🌊 V78.0.4 放回海裡(使用者:「新增放魚回去」)—— 只動今天的海 `fpvSea_v1`:從已釣起拿掉 → 回到佇列(照原本洗好的順序)
+   *  → 回到水裡游,今天可以再釣。⛔ 不碰漁獲籃(`proWar_catch`);正在釣 / 拋網中不可放(那條還在線上)。 */
+  fpvRelease(sym) { return this._fpvReleaseMany([sym]); },
+  fpvReleaseAll() { const S = this._fpv; return this._fpvReleaseMany(S && S.sea ? S.sea.caught.slice() : []); },
+  _fpvReleaseMany(syms) {
+    const S = this._fpv; if (!S || !S.sea || !S.rowBy) return { ok: false };
+    if ((S.G && !S.G.done) || S.N) { this._fpvHint('🎣 先把線上這條處理完,再放魚回去'); return { ok: false, busy: true }; }
+    const sea = S.sea, go = syms.filter(x => sea.caught.includes(x) && S.rowBy[x]);
+    if (!go.length) return { ok: false };
+    sea.caught = sea.caught.filter(x => !go.includes(x)); this._fpvSeaSave(sea);
+    for (const x of go) { const el = document.querySelector(`#fpvCards [data-fpv="${x}"]`); if (el) el.remove(); }
+    const total = S.Q ? S.Q.total : sea.order.length;
+    S.Q = this._fpvQueue(sea.order.filter(x => !sea.caught.includes(x) && S.rowBy[x]).map(x => S.rowBy[x])); S.Q.total = total;
+    S.G = null;
+    this._fpvSwimFrom(this._fishD, S.Q.fish);
+    const back = new Set(go);
+    for (const s0 of S.swim) if (back.has(s0.F.sym)) { s0.x = 0.15 + Math.random() * 0.7; s0.d = 0.15 + Math.random() * 0.2; }   // 從水面附近游下去
+    if (S.W && S.parts) { const A = this._fpvAim(); this._fpvBurst(A.x, S.hz + 4, null, Math.min(120, 30 * go.length)); S.shake = 3; }
+    this._fpvBuzz([25]);
+    this._fpvHint(go.length > 1 ? `🌊 ${go.length} 條魚都游回海裡了` : '🌊 牠游回海裡了,今天還可以再釣');
+    this._fpvBtn();
+    return { ok: true, n: go.length };
+  },
   /** 🎯 瞄準點(沒動過 = 水面中間偏下) */
   _fpvAim() {
     const S = this._fpv || {}, W = S.W || 360, H = S.H || 420, hz = S.hz || H * 0.32;
@@ -4662,7 +4689,7 @@ const PRO = {
       sea = { date, order: keep.concat(add), caught: sea.caught.filter(x => bySym[x]) };
     }
     this._fpvSeaSave(sea);
-    S.sea = sea; S.dDate = date; S.lastPicked = R.picked.map(x => x.sym); S.lastRows = syms; S.G = null; S.N = null;
+    S.sea = sea; S.rowBy = bySym; S.dDate = date; S.lastPicked = R.picked.map(x => x.sym); S.lastRows = syms; S.G = null; S.N = null;
     const left = sea.order.filter(x => !sea.caught.includes(x)).map(x => bySym[x]);
     S.Q = this._fpvQueue(left); S.Q.total = rows.length;
     if (box) box.innerHTML = '';
@@ -7859,7 +7886,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V78.0.3',
+  VER: 'V78.0.4',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

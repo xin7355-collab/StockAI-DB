@@ -16,6 +16,7 @@
 //   ⓡ 📳 震動開關關掉 → 一次都不震   ⓢ 🎴 V78.0.1 遊戲卡:左上名字代號 / 五項能力⛔ 不加總 / 琥珀橫條 / 虧損 / reduced-motion
 //   🎣 V78.0.2(使用者九點):ⓒ App 一律 👑 前 10、⛔ 不補魚 ⓥ fpvSea_v1 每天記住 ⓦ 只能點捲線器拋 + 瞄準
 //   ⓧ 往左游 = 水平鏡像(⛔ 不轉 180°)ⓨ 🕸️ 拋網一次全抓 ⓩ 卡片排序 ⓢ8 遊戲卡避開瀏海
+//   🌊 V78.0.4 放回海裡(只動 fpvSea_v1、⛔ 不碰漁獲籃;釣魚中不可放)+ 沒在釣時線收在竿尖
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PW_MODULE || '/opt/node22/lib/node_modules/playwright');
@@ -356,6 +357,44 @@ const NR = await pg4.evaluate(async () => {
 });
 ok(NR.idleRod === 1 && NR.rod === 0 && NR.hands >= 8 && NR.rope >= 6, 'ⓨ3 🕸️ 撒網時竿子收起來(一次都沒畫)、換成雙手 + 手拉繩;平常待機才有竿子', JSON.stringify(NR));
 ok(NR.back && NR.fwdUp && NR.T.throw >= 800 && NR.T.haul >= 1200 && NR.done, 'ⓨ4 🕸️ 甩網動作:先往右後拉、再往前上甩出;整段動畫 ≥3 秒、拉完就全部上岸', JSON.stringify([NR.back, NR.fwdUp, NR.T]));
+
+// ── 🌊 V78.0.4 放回海裡 / 閒置線收在竿尖(使用者:「拋竿的線永遠都顯示已拋出去」「新增放魚回去」)─────
+for (let k = 0; k < 40; k++) { if (await pg4.evaluate(() => !PRO._fpv.N)) break; await pg4.waitForTimeout(50); }
+const RL = await pg4.evaluate(() => {
+  const S = PRO._fpv, cards = () => [...document.querySelectorAll('#fpvCards .fpvcard')].map(e => e.dataset.fpv);
+  const left = () => S.Q.fish.length - S.Q.i, bask = localStorage.getItem('proWar_catch');
+  const c0 = cards(), btn = !!document.querySelector('#fpvCards .fpvcard .fpvrel'), allBtn = !!document.getElementById('fpvRelAll'), total = S.Q.total, l0 = left();
+  const sym = c0[0];
+  const r1 = PRO.fpvRelease(sym), c1 = cards(), sea1 = JSON.parse(localStorage.getItem('fpvSea_v1'));
+  const one = { r1, cards: c1.length, gone: !c1.includes(sym), caught: sea1.caught.length, notCaught: !sea1.caught.includes(sym), left: left(),
+    q0: S.Q.fish[S.Q.i] && S.Q.fish[S.Q.i].sym, swim: S.swim.some(x => x.F.sym === sym), net: !document.getElementById('fpvNet').classList.contains('hidden'),
+    bask: localStorage.getItem('proWar_catch') === bask };
+  S.G = { done: false }; const busy = PRO.fpvRelease(c1[0]); const busyCards = cards().length; S.G = null;
+  const r2 = PRO.fpvReleaseAll(), sea2 = JSON.parse(localStorage.getItem('fpvSea_v1'));
+  const all = { r2, cards: cards().length, caught: sea2.caught.length, left: left(), swim: S.swim.length, sort: document.getElementById('fpvSort').classList.contains('hidden'),
+    bask: localStorage.getItem('proWar_catch') === bask, sub: document.getElementById('fpvSub').innerText };
+  return { total, l0, c0: c0.length, btn, allBtn, one, busy, busyCards, busyC1: c1.length, all };
+});
+ok(RL.total >= 3 && RL.c0 === RL.total && RL.l0 === 0 && RL.btn && RL.allBtn, '🌊a 全部釣起後每張卡都有「🌊 放回海裡」、上方有「🌊 全部放回」—— 🚧 空過守門', JSON.stringify(RL));
+ok(RL.one.r1.ok && RL.one.cards === RL.total - 1 && RL.one.gone && RL.one.caught === RL.total - 1 && RL.one.notCaught && RL.one.left === 1 && RL.one.q0 && RL.one.swim && RL.one.net,
+  '🌊b 放回一條:卡片少一張、今天的海記錄拿掉牠、牠回到水裡游、可以再釣(拋網鈕也回來了)', JSON.stringify(RL.one));
+ok(RL.one.bask && RL.all.bask, '🌊c ⭐ 放回海裡⛔ 不動漁獲籃(proWar_catch 前後一字不差)', JSON.stringify([RL.one.bask, RL.all.bask]));
+ok(RL.busy && RL.busy.busy && RL.busyCards === RL.busyC1, '🌊d 正在釣(線上有魚)時⛔ 不可放魚回去', JSON.stringify(RL.busy));
+ok(RL.all.r2.ok && RL.all.cards === 0 && RL.all.caught === 0 && RL.all.left === RL.total && RL.all.swim === RL.total && RL.all.sort && new RegExp('還有 ' + RL.total + ' 條').test(RL.all.sub),
+  '🌊e 全部放回:卡片清空、海裡回到全部的魚、排序列收起來', JSON.stringify(RL.all));
+await pg4.reload();
+await pg4.waitForFunction(() => typeof PRO !== 'undefined' && PRO._fpv && PRO._fpv.Q, null, { timeout: 60000 }).catch(() => {});
+const RL2 = await pg4.evaluate(() => ({ cards: document.querySelectorAll('#fpvCards .fpvcard').length, left: PRO._fpv.Q.fish.length - PRO._fpv.Q.i, total: PRO._fpv.Q.total }));
+ok(RL2.cards === 0 && RL2.left === RL2.total && RL2.total === RL.total, '🌊f 放回之後重新打開 App:還是在海裡(記得住)', JSON.stringify(RL2));
+const HK = await pg4.evaluate(() => { const S = PRO._fpv; S.G = null; S.N = null; const t = performance.now();
+  PRO._fpvFrame(t, 0.016); const a = { h: { ...S.idleHook }, tip: { ...S.idleTip } };
+  const i0 = S.Q.i; S.Q.i = S.Q.fish.length; PRO._fpvFrame(t + 16, 0.016); const b = { h: { ...S.idleHook }, tip: { ...S.idleTip } }; S.Q.i = i0;
+  return { a, b, W: S.W }; });
+const dy = o => o.h.y - o.tip.y, dx = o => Math.abs(o.h.x - o.tip.x);
+ok(dx(HK.a) <= 6 && dy(HK.a) > 10 && dy(HK.a) < 45 && dx(HK.b) <= 6 && dy(HK.b) < dy(HK.a),
+  '🌊g 🎣 沒在釣時線收在竿尖、鉤子吊在竿尖正下方(⛔ 不再畫成已經拋進水裡);海裡沒魚時收得更短', JSON.stringify(HK));
+const txtR = await pg4.evaluate(() => document.body.innerText);
+ok(!BAN.test(txtR), '🌊h 新按鈕 / 提示⛔ 沒有選股規則用語', (txtR.match(BAN) || [])[0]);
 
 // 📱 遊戲卡避開瀏海
 ok(/\.fpvcw\{[^}]*env\(safe-area-inset-top\)[^}]*env\(safe-area-inset-bottom\)/.test(SRC) && /\.fpvtcg\{[^}]*max-height:calc\(100dvh[^}]*safe-area-inset-top/.test(SRC),
