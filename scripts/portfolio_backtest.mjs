@@ -176,6 +176,14 @@ const REENTRY = +(process.env.REENTRY || 0);
 //   RANKBY = self(預設,這檔自己在這招的期望值)| rand(候選裡**隨機**排序,固定種子)| mkt(全市場該型態平均 = V1 舊法)
 //   GATE   = pat(預設:這檔在**這招**扣成本後為正)| stock(這檔在**任何一招**扣成本後為正 → 不看是哪一招)
 const RANKBY = process.env.RANKBY || 'self';
+if (!['self', 'rand', 'mkt', 'mom10'].includes(RANKBY)) { console.error(`🚨 RANKBY=${RANKBY} 不認得(self|rand|mkt|mom10)`); process.exit(1); }
+// 🚀👑 V78.0.7 從 👑 領頭羊借來試 🧬 的兩件事(候選層,⛔ 不進 CACHE_KEY、不設時逐位相同):
+//   RANKBY=mom10    = 候選照「訊號日收盤 vs 10 個交易日前收盤」漲幅排(⛔ 只用 ≤ 訊號日)
+//   POOL=N          = 訊號日「近 20 日平均成交金額」全市場(⛔ 不含 0 開頭的 ETF)排名前 N 才可進場
+//   POOL=sham:N     = 安慰劑:跟成交額無關、通過率對齊 POOL=N 在「🧬 通過的候選」上的實測(固定種子)
+const POOL = process.env.POOL || '';
+const POOL_N = +(POOL.replace(/^sham:/, '') || 0);
+if (POOL && !(POOL_N > 0)) { console.error(`🚨 POOL=${POOL} 不認得(N|sham:N)`); process.exit(1); }
 const GATE = process.env.GATE || 'pat';
 let _seed = 20260907; const _rnd = () => (_seed = (_seed * 1103515245 + 12345) % 2147483648) / 2147483648;
 const RE_MAX = +(process.env.RE_MAX || 1);
@@ -962,7 +970,7 @@ const outIdx = x => {
 
 // 🧬 個股自身狀態表(⛔ 只用該日以前的資料 → 無前視偏誤)
 const selfFeat = new Map();
-if (SELF.length || TURN || VAL) {
+if (SELF.length || TURN || VAL || RANKBY === 'mom10') {
     for (const sym of syms) {
         let rows;
         try { rows = JSON.parse(fs.readFileSync(path.join(DATA, `${sym}.json`), 'utf8')); } catch (_) { continue; }
@@ -984,7 +992,8 @@ if (SELF.length || TURN || VAL) {
             { let s20 = 0; for (let k = i - 19; k <= i; k++) s20 += dd[k].c; ma20 = s20 / 20; }
             if (i >= 59) { let s60 = 0; for (let k = i - 59; k <= i; k++) s60 += dd[k].c; ma60 = s60 / 60; }
             let v5 = 0; for (let k = Math.max(0, i - 4); k <= i; k++) v5 += dd[k].v;   // 🔄 5 日成交股數(TURN 用)
-            m.set(dd[i].d, { ma20, ma60, c: dd[i].c, rank, volr: (cn && av) ? dd[i].v / (av / cn) : null, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100, b240, v5 });
+            const m10 = (i >= 10 && dd[i - 10].c > 0) ? (dd[i].c / dd[i - 10].c - 1) * 100 : null;   // 🚀 RANKBY=mom10(⛔ 只用 ≤ i)
+            m.set(dd[i].d, { ma20, ma60, c: dd[i].c, rank, volr: (cn && av) ? dd[i].v / (av / cn) : null, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100, b240, v5, m10 });
         }
         selfFeat.set(sym, m);
     }
@@ -1101,6 +1110,37 @@ if (EMERGING) {
 const emOk = t => !EMERGING ? true
     : EMERGING === 'exclude' ? !emSet.has(t.sym)
     : (_shamHash(`${t.sym}|${t.inD}|em`) % 10000) >= emFrac * 10000;   // 安慰劑:跟市場別無關、同比例
+// 👑 POOL:全市場每天「近 20 日平均成交金額」的第 N 名門檻(⛔ 含當天:決策在收盤之後;⛔ 不含 0 開頭 ETF)
+const poolAmt = new Map();      // `${sym}|${d}` -> amt20
+const poolThr = new Map();      // d -> 第 N 名的 amt20
+let poolFrac = null;
+if (POOL) {
+    const byDay = new Map(); let nSym = 0;
+    for (const f of fs.readdirSync(DATA)) {
+        const mm = /^([1-9]\d{3})\.json$/.exec(f); if (!mm) continue;
+        let rows; try { rows = JSON.parse(fs.readFileSync(path.join(DATA, f), 'utf8')); } catch (_) { continue; }
+        const dd = rows.map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), a: (+r.close || 0) * (+r.volume || 0) })).filter(r => r.d);
+        let sum = 0; nSym++;
+        for (let i = 0; i < dd.length; i++) {
+            sum += dd[i].a; if (i >= 20) sum -= dd[i - 20].a;
+            if (i < 19) continue;
+            const v = sum / 20; poolAmt.set(`${mm[1]}|${dd[i].d}`, v);
+            let arr = byDay.get(dd[i].d); if (!arr) byDay.set(dd[i].d, arr = []); arr.push(v);
+        }
+    }
+    for (const [d, arr] of byDay) { if (arr.length < POOL_N) continue; arr.sort((x, y) => y - x); poolThr.set(d, arr[POOL_N - 1]); }
+    console.log(`👑 POOL=${POOL}:全市場 ${nSym} 檔(不含 ETF)・${poolThr.size} 個交易日有第 ${POOL_N} 名門檻`);
+    if (poolThr.size < 200) { console.error('🚨 算得出門檻的交易日不到 200 → 資料不對,停'); process.exit(1); }
+}
+const poolRaw = t => { const thr = poolThr.get(t.inD), v = poolAmt.get(`${t.sym}|${t.inD}`); return (thr == null || v == null) ? null : v >= thr; };
+const poolOk = t => {
+    if (!POOL) return true;
+    if (POOL.startsWith('sham:')) {
+        if (poolFrac == null) { let on = 0, n = 0; for (const arr of byIn.values()) for (const x of arr) { if (!selfOk(x)) continue; const w = poolRaw(x); if (w == null) continue; n++; if (w) on++; } poolFrac = n ? on / n : 0; console.log(`🎲 POOL=sham 通過率對齊 POOL=${POOL_N}(🧬 通過的候選):${(poolFrac * 100).toFixed(1)}%(${on}/${n} 筆)`); }
+        return (_shamHash(`${t.sym}|${t.inD}|pool`) % 10000) < poolFrac * 10000;   // 安慰劑:跟成交額無關、同通過率
+    }
+    return poolRaw(t) === true;                            // 沒有門檻 / 沒有成交額 → 剔除(⛔ 不可當成通過)
+};
 const turnOk = t => {
     if (!TURN) return true;
     const v = turnOf.get(`${t.sym}|${t.inD}`);
@@ -1273,10 +1313,11 @@ for (let i = 0; i < days.length; i++) {
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
                   && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF)
                   && indCycOk(x.t.sym, d)
-                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t) && valOk(x.t) && emOk(x.t) && usOk(x.t))
+                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t) && valOk(x.t) && emOk(x.t) && usOk(x.t) && poolOk(x.t))
         .sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
     if (RANKBY === 'rand') { for (let k = cand.length - 1; k > 0; k--) { const j = Math.floor(_rnd() * (k + 1)); [cand[k], cand[j]] = [cand[j], cand[k]]; } }
     else if (RANKBY === 'mkt') cand.sort((a, b) => (b.m.sum / b.m.n) - (a.m.sum / a.m.n));
+    else if (RANKBY === 'mom10') { const _m = x => { const f = selfFeat.get(x.t.sym)?.get(x.t.inD); return f && f.m10 != null ? f.m10 : -Infinity; }; cand.sort((a, b) => _m(b) - _m(a)); }
     const seen = new Set(live.map(x => x.sym));
     let picked = 0;
     // 📐 參考 ATR% = 今天以前最近 VP_REF 筆候選的中位數(⛔ 今天的候選在迴圈後才放進去)
@@ -1596,7 +1637,7 @@ if (process.env.SUMMARY_OUT) {
     const byYear = {};
     for (const m of mons) { const y = m.slice(0, 4); byYear[y] = Math.round((byYear[y] || 0) + byMon[m].pnl); }
     const summary = {
-        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '', bearExit: BEAR_EXIT || '', forceExit: FORCE_EXIT ? FORCE_HASH : '' },
+        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '', bearExit: BEAR_EXIT || '', forceExit: FORCE_EXIT ? FORCE_HASH : '', ...(POOL ? { pool: POOL } : {}), ...(RANKBY !== 'self' ? { rankby: RANKBY } : {}) },
         from, to, months: mons.length, n: taken.length, win: +(wins.length / taken.length * 100).toFixed(1),
         per: +(taken.reduce((a, t) => a + net(t), 0) / taken.length).toFixed(2), cum: Math.round(totalPnL), ret: +(totalPnL / capital * 100).toFixed(2),
         dd: +mdd.toFixed(2), skipped, twii: +twiiRet.toFixed(2), etf0050: ret50 == null ? null : +ret50.toFixed(2), etf0050tr: ret50tr == null ? null : +ret50tr.toFixed(2), byYear,
