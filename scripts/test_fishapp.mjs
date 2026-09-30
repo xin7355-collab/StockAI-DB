@@ -329,11 +329,34 @@ const FX = await pg4.evaluate(() => { const S = PRO._fpv, saveG = S.G; S.G = nul
   PRO._fpvFrame(performance.now(), 0.016); PRO._fpvDrawFish = orig; S.G = saveG;
   const cv = document.createElement('canvas'); cv.width = 200; cv.height = 120; const ctx = cv.getContext('2d'), F = S.swim[0].F;
   const top = flip => { ctx.clearRect(0, 0, 200, 120); orig.call(PRO, ctx, F, 100, 60, 0.5, 0, 0.3, { flip }); const d = ctx.getImageData(0, 0, 200, 120).data;
-    let y0 = 999, y1 = -1, x0 = 999; for (let y = 0; y < 120; y++) for (let x = 0; x < 200; x++) if (d[(y * 200 + x) * 4 + 3] > 120) { y0 = Math.min(y0, y); y1 = Math.max(y1, y); x0 = Math.min(x0, x); } return { y0, y1, x0 }; };
+    let y0 = 999, y1 = -1, x0 = 999, x1 = -1; for (let y = 0; y < 120; y++) for (let x = 0; x < 200; x++) if (d[(y * 200 + x) * 4 + 3] > 120) { y0 = Math.min(y0, y); y1 = Math.max(y1, y); x0 = Math.min(x0, x); x1 = Math.max(x1, x); } return { y0, y1, x0, x1 }; };
   return { calls, r: top(false), l: top(true) }; });
 ok(FX.calls.length > 1 && FX.calls.every(c => c[0] === 0) && FX.calls.some(c => c[1]) && FX.calls.some(c => !c[1])
-   && Math.abs(FX.r.y0 - FX.l.y0) <= 1 && Math.abs(FX.r.y1 - FX.l.y1) <= 1 && FX.l.x0 >= 90 && FX.r.x0 < 60,
+   && Math.abs(FX.r.y0 - FX.l.y0) <= 1 && Math.abs(FX.r.y1 - FX.l.y1) <= 1 && Math.abs((FX.l.x0 - 100) + (FX.r.x1 - 100)) <= 3 && FX.l.x1 - 100 > 100 - FX.l.x0,
   'ⓧ 🐟 往左游 = 水平鏡像:角度恆為 0、上下輪廓跟往右游一樣(⛔ 不會肚子朝上)', JSON.stringify(FX));
+// ── ⓨ3 撒網像真的:竿子收起來、換成雙手 + 手拉繩;四段(甩出 / 落水 / 下沉收口 / 拉上來)都有畫 ─────
+const NR = await pg4.evaluate(async () => {
+  const S = PRO._fpv; localStorage.removeItem('fpvSea_v1'); S.Q = null; S.G = null; S.N = null; await PRO._fpvPrep();
+  cancelAnimationFrame(S.raf); S.raf = -1;
+  const cnt = { rod: 0, hands: 0, rope: 0 }, o = { rod: PRO._fpvRod, hands: PRO._fpvHands, rope: PRO._fpvRope };
+  PRO._fpvRod = function () { cnt.rod++; return o.rod.apply(this, arguments); };
+  PRO._fpvHands = function () { cnt.hands++; return o.hands.apply(this, arguments); };
+  PRO._fpvRope = function () { cnt.rope++; return o.rope.apply(this, arguments); };
+  PRO._fpvFrame(performance.now(), 0.016); const idleRod = cnt.rod; cnt.rod = 0;
+  PRO.fpvNet(); const N = S.N, T = PRO._FPV_NET, phs = [];
+  for (const ph of ['throw', 'spread', 'sink', 'haul']) for (const p of [0.2, 0.7]) {
+    N.ph = ph; N.el = T[ph] * p; N.p = p; PRO._fpvFrame(performance.now(), 0.0001);
+    const d = S.ctx.getImageData(0, 0, S.cv.width, S.cv.height).data; let lit = 0; for (let i = 0; i < d.length; i += 16) if (d[i] > 220 && d[i + 1] > 225 && d[i + 2] > 230) lit++;
+    phs.push([ph, p, lit]);
+  }
+  const hands = PRO._fpvHandsAt({ ...N, ph: 'throw', p: 0.2 }, S.W, S.H), hands2 = PRO._fpvHandsAt({ ...N, ph: 'throw', p: 0.9 }, S.W, S.H);
+  Object.assign(PRO, { _fpvRod: o.rod, _fpvHands: o.hands, _fpvRope: o.rope });
+  N.ph = 'haul'; N.el = T.haul; PRO._fpvNetStep(N, 0.01);
+  return { idleRod, rod: cnt.rod, hands: cnt.hands, rope: cnt.rope, phs, back: hands.x > S.W * 0.55, fwdUp: hands2.y < hands.y, done: !S.N, T };
+});
+ok(NR.idleRod === 1 && NR.rod === 0 && NR.hands >= 8 && NR.rope >= 6, 'ⓨ3 🕸️ 撒網時竿子收起來(一次都沒畫)、換成雙手 + 手拉繩;平常待機才有竿子', JSON.stringify(NR));
+ok(NR.back && NR.fwdUp && NR.T.throw >= 800 && NR.T.haul >= 1200 && NR.done, 'ⓨ4 🕸️ 甩網動作:先往右後拉、再往前上甩出;整段動畫 ≥3 秒、拉完就全部上岸', JSON.stringify([NR.back, NR.fwdUp, NR.T]));
+
 // 📱 遊戲卡避開瀏海
 ok(/\.fpvcw\{[^}]*env\(safe-area-inset-top\)[^}]*env\(safe-area-inset-bottom\)/.test(SRC) && /\.fpvtcg\{[^}]*max-height:calc\(100dvh[^}]*safe-area-inset-top/.test(SRC),
   'ⓢ8 📱 遊戲卡上下留出瀏海 / 底部橫條的空間(safe-area)');
