@@ -13,7 +13,7 @@
 //   ⓜ V77.9.9 四種魚長得不一樣(旗魚有吻部、鮪魚有黃色離鰭、小魚有白直紋、四種輪廓互不重疊)
 //   ⓝ V77.9.9 釣起價 = 釣到那一刻的即時價 → 放進籃子當下賺賠 = 0   ⓞ 🏠 帶回家養:寫 fishHome_v1 + 匯入碼
 //   ⓟ V78.0.0 大小 = 市值(畫面上大魚真的比較大,⛔ 不再每條撐滿)   ⓠ 卡片⛔ 沒有「一張約」、有市值
-//   ⓡ 📳 震動開關關掉 → 一次都不震   ⓢ 🏢 公司簡介:本站真資料 + Perplexity(⛔ 沒有選股用語)
+//   ⓡ 📳 震動開關關掉 → 一次都不震   ⓢ 🎴 V78.0.1 遊戲卡:左上名字代號 / 五項能力⛔ 不加總 / 琥珀橫條 / 虧損 / reduced-motion
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PW_MODULE || '/opt/node22/lib/node_modules/playwright');
@@ -179,8 +179,11 @@ await pg3.waitForFunction(() => PRO._fishD, null, { timeout: 40000 }).catch(() =
 const R3 = await pg3.evaluate(async () => {
   const t0 = performance.now(); await PRO.fpvCast();
   const one = { ms: performance.now() - t0, seq: PRO._fpv.Q ? PRO._fpv.Q.seq.slice() : null, cards: document.querySelectorAll('#fpvCards .fpvcard, #fpvCards .fpvnone').length };
-  PRO.fpvSkip(); one.all = document.querySelectorAll('#fpvCards .fpvcard').length; one.n = PRO._fpv.Q ? PRO._fpv.Q.fish.length : 0; return one; });
+  PRO.fpvSkip(); one.all = document.querySelectorAll('#fpvCards .fpvcard').length; one.n = PRO._fpv.Q ? PRO._fpv.Q.fish.length : 0;
+  await PRO._fpvProfile(PRO._fpv.Q.fish[0].sym); const tc = document.querySelector('#fpvCardWrap .fpvtcg');
+  one.flip = tc ? getComputedStyle(tc).animationName : 'nocard'; PRO._fpvCardClose(); return one; });
 ok(R3.ms < 1500 && R3.cards === 1 && !(R3.seq || []).includes('breach') && R3.all === R3.n, 'ⓕ ♿ 減少動態 → 一按直接出一張卡、全部收網出全部', JSON.stringify(R3));
+ok(R3.flip === 'none', 'ⓢ6 ♿ 減少動態 → 遊戲卡直接出現、⛔ 沒有翻牌動畫', R3.flip);
 
 // ── ⓖ 斷線 / 太慢 → 同一條魚留在佇列最前面 ─────────────
 const G = await pg.evaluate(async () => {
@@ -207,14 +210,43 @@ const Z = await pg.evaluate(async () => {
   localStorage.setItem('fishBuzz_v1', '0'); PRO._fpvBuzz([50, 50]); PRO.buzz(30); const off = vib;
   localStorage.setItem('fishBuzz_v1', '1'); PRO._fpvBuzz([50, 50]); const on = vib - off; navigator.vibrate = save;
   const sym = (PRO._fishD.rows.find(r => r.sym === '2330') || PRO._fishD.rows[0]).sym;
-  await PRO._fpvProfile(sym); const prof = document.getElementById('proModal').innerText, link = (document.querySelector('#proModal a.fpvq') || {}).href || '';
-  PRO.closeModal();
-  return { sm: shown(sm), bg: shown(bg), lens, card, off, on, sym, prof, link };
+  await PRO._fpvProfile(sym); await new Promise(r => setTimeout(r, 500));   // 翻牌動畫 0.35 秒跑完再量位置
+  const w = document.getElementById('fpvCardWrap'), tc = w && w.querySelector('.fpvtcg');
+  const prof = w ? w.innerText : '', link = (w && w.querySelector('a.fpvq') || {}).href || '';
+  const nmEl = w && w.querySelector('.hd .nm'), cdEl = w && w.querySelector('.hd .cd');
+  const tcR = tc ? tc.getBoundingClientRect() : { left: 0, width: 1, top: 0 }, nmR = nmEl ? nmEl.getBoundingClientRect() : { left: 999, top: 999 };
+  const topLeft = !!nmEl && nmR.left < tcR.left + tcR.width * 0.3 && nmR.top < tcR.top + 60;
+  const cv = w && w.querySelector('canvas.art'); let colors = 0;
+  if (cv) { const d = cv.getContext('2d').getImageData(cv.width * 0.25, cv.height * 0.25, cv.width * 0.5, cv.height * 0.5).data, seen = new Set();
+    for (let i = 0; i < d.length; i += 16) seen.add((d[i] >> 3) + ',' + (d[i + 1] >> 3) + ',' + (d[i + 2] >> 3)); colors = seen.size; }
+  const stats = w ? [...w.querySelectorAll('.st')].map(e => [e.dataset.st, (e.querySelector('.h b') || {}).innerText || '']) : [];
+  const hue = (r, g, b) => { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), dd = mx - mn; if (!dd) return -1;
+    let h = mx === r ? ((g - b) / dd) % 6 : mx === g ? (b - r) / dd + 2 : (r - g) / dd + 4; h *= 60; return h < 0 ? h + 360 : h; };
+  const hues = w ? [...w.querySelectorAll('.st .fl')].flatMap(e => [...getComputedStyle(e).backgroundImage.matchAll(/rgb\((\d+), (\d+), (\d+)\)/g)].map(m => Math.round(hue(+m[1], +m[2], +m[3])))) : [];
+  PRO._fpvCardClose(); const closed = !w || w.classList.contains('hidden');
+  // 🎯 決定性對照:把這檔市值改成全市場最大 → 體型 100%、★★★★
+  const D = PRO._fishD, r = D.rows.find(x => x.sym === sym), saveM = D.rows.map(x => x.mcap);
+  D.rows.forEach((x, i) => { if (!(x.mcap > 0)) x.mcap = 10 + i; }); r.mcap = 1e7; D._rk = null;
+  await PRO._fpvProfile(sym);
+  const big = { ex: ((w.querySelector('.st[data-st="體型"] .ex') || {}).innerText || ''), stars: ((w.querySelector('.stars') || {}).childNodes || [{}])[0].textContent || '' };
+  PRO._fpvCardClose(); D.rows.forEach((x, i) => { x.mcap = saveM[i]; }); D._rk = null;
+  // 💎 虧損股:最近一季 EPS < 0 → 賺錢力寫「目前虧損中」且特性欄有 ⚠️
+  const orig = PRO.fetchJson; PRO.fetchJson = (u, ms) => /data\/fin\//.test(u) ? Promise.resolve({ q: [{ p: '2026-06-30', rev: 1e9, eps: -1.5, gm: 12 }] }) : orig.call(PRO, u, ms);
+  await PRO._fpvProfile(sym);
+  const loss = { gm: ((w.querySelector('.st[data-st="賺錢力"]') || {}).innerText || ''), tt: ((w.querySelector('.tt') || {}).innerText || '') };
+  PRO.fetchJson = orig; PRO._fpvCardClose();
+  return { sm: shown(sm), bg: shown(bg), lens, card, off, on, sym, prof, link, nm: nmEl ? nmEl.innerText : '', cd: cdEl ? cdEl.innerText : '', topLeft, colors, stats, hues, closed, big, loss };
 });
 ok(Z.lens.every((v, i) => !i || v >= Z.lens[i - 1]) && Z.lens[4] > Z.lens[0] * 1.6 && Z.bg > Z.sm * 1.5, 'ⓟ 📏 市值越大魚越長;畫面上大魚真的比小魚大(⛔ 不再每條撐滿畫面)', JSON.stringify(Z.lens.concat([Z.sm, Z.bg])));
-ok(!/一張約/.test(Z.card) && /市值/.test(Z.card) && /公司簡介/.test(Z.card), 'ⓠ 卡片⛔ 沒有「一張約」、有市值與公司簡介鈕', Z.card.slice(0, 200));
+ok(!/一張約/.test(Z.card) && /市值/.test(Z.card) && /看這條魚的卡片/.test(Z.card), 'ⓠ 卡片⛔ 沒有「一張約」、有市值與看卡片鈕', Z.card.slice(0, 200));
 ok(Z.off === 0 && Z.on >= 1, 'ⓡ 📳 震動開關關掉 → 一次都不震;打開才震', JSON.stringify([Z.off, Z.on]));
-ok(/產業/.test(Z.prof) && /perplexity\.ai\/search\?q=/.test(Z.link) && /未來計畫/.test(Z.prof) && !BAN.test(Z.prof), 'ⓢ 🏢 公司簡介:本站真資料 + Perplexity 查未來計畫、⛔ 沒有選股用語', (Z.prof.match(BAN) || [''])[0] + ' | ' + Z.prof.slice(0, 160));
+ok(/perplexity\.ai\/search\?q=/.test(Z.link) && /未來計畫/.test(Z.prof) && !BAN.test(Z.prof), 'ⓢ 🎴 遊戲卡:本站真資料 + Perplexity 查未來計畫、⛔ 沒有選股用語', (Z.prof.match(BAN) || [''])[0] + ' | ' + Z.prof.slice(0, 160));
+ok(Z.topLeft && Z.cd === Z.sym && Z.nm.length > 0 && Z.colors > 40 && Z.closed, 'ⓢ2 左上角 = 中文名 + 代號;卡圖真的有畫出魚;✕ 關得掉', JSON.stringify([Z.nm, Z.cd, Z.topLeft, Z.colors, Z.closed]));
+ok(Z.stats.map(x => x[0]).join() === '體型,熱度,活力,成長,賺錢力' && Z.stats.every(x => x[1].length > 0) && !/總分|戰力|推薦|值得買/.test(Z.prof),
+  'ⓢ3 五項能力值都在(數字或「沒有資料」)、⛔ 沒有總分 / 戰力 / 推薦', JSON.stringify(Z.stats));
+ok(Z.hues.length >= 2 && Z.hues.every(h => h >= 20 && h <= 60), 'ⓢ4 能力值橫條一律琥珀色(⛔ 不用紅綠)', JSON.stringify(Z.hues));
+ok(/100%/.test(Z.big.ex) && Z.big.stars === '★★★★', 'ⓢ5 決定性對照:市值改成全市場最大 → 體型比 100% 的公司大、★★★★', JSON.stringify(Z.big));
+ok(/目前虧損中/.test(Z.loss.gm) && /⚠️ 目前虧損中/.test(Z.loss.tt), 'ⓢ7 虧損股:賺錢力寫「目前虧損中」、特性欄有 ⚠️', JSON.stringify(Z.loss));
 
 // ── ⓗ manifest / 圖示 ──────────────────────────────────
 let M = null; try { M = JSON.parse(readFileSync('fish.webmanifest', 'utf8')); } catch (_) {}
