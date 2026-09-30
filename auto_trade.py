@@ -80,6 +80,11 @@ EOD_TO = int(os.getenv('EOD_TO', '13')) * 60 + int(os.getenv('EOD_TO_M', '28'))
 #   6 檔 +735,938 / 3 檔 +1,361,088 / ⭐2 檔 +1,718,529 / 1 檔 +1,720,402(回撤變大)
 #   → 單調趨勢,2 檔是甜蜜點(賺最多且回撤最小)。⛔ 別「順手放寬」成更多。
 MAX_PICKS = int(os.getenv('MAX_PICKS', '2'))              # 一天最多買幾檔
+# 🧬 V78.0.7 一年位階門檻 75 → 85(兩窗口 17/17 贏、贏同比例隨機、80/85/90 高原)
+#   採礦端 playbook_scan 已經照 85 標 hq 並排好;這裡用清單自帶的 rank / vol 再排一次,
+#   只是讓「換回舊的」有地方設(GENE_RANK=75)。⛔ 同一條在 index `_GENE_RULE` / pro `_HQ_RULE`,test_generank 跨檔比對。
+GENE_RANK = 75 if os.getenv('GENE_RANK', '85').strip() == '75' else 85
+GENE_VOL = 60
 MAX_LOTS_PER_TRADE = int(os.getenv('MAX_LOTS_PER_TRADE', '1'))   # 單筆張數上限(硬煞車)
 MAX_AMT_PER_TRADE = int(os.getenv('MAX_AMT_PER_TRADE', '100000'))  # 單筆金額上限(元)
 ACCOUNT_SIZE = int(os.getenv('ACCOUNT_SIZE', '0'))        # 帳戶總資金(算張數用;0 = 只買 1 張)
@@ -261,6 +266,17 @@ def leader_step(api, sj, st, meta, today):
     st['lead_day'] = today; save_state(st)
 
 
+def gene_hq(p):
+    """🧬 這一筆是不是強勢高波動(位階 ≥ GENE_RANK 且年化波動率 ≥ 60);清單沒帶 rank / vol 就退回採礦端的 hq。"""
+    r, v = p.get('rank'), p.get('vol')
+    try:
+        if r is not None and v is not None:
+            return 1 if (float(r) >= GENE_RANK and float(v) >= GENE_VOL) else 0
+    except (TypeError, ValueError):
+        pass
+    return 1 if p.get('hq') else 0
+
+
 def fetch_picks():
     """讀 App 每晚產的『明日作戰清單』(gh-pages 上的 playbook_edge.json)。"""
     url = GH_BASE.rstrip('/') + f'/data/playbook_edge.json?t={int(time.time())}'
@@ -271,6 +287,8 @@ def fetch_picks():
     #    ⛔ 不先去重的話,picks[:MAX_PICKS] 的名額會被同一檔吃掉 →
     #    「一天最多 2 檔」實際上變成 1 檔(而 2 檔正是實測最好的那個設定)。
     #    ⭐ 清單已經照「🧬 優先 → 保守下界」排好 → 保留**第一筆(最好的那一招)**。
+    # 🧬 用現行門檻重排(穩定排序:同一組裡保留採礦端的「保守下界」順序)
+    raw = sorted(raw, key=lambda p: -gene_hq(p))
     picks, seen = [], set()
     for p in raw:
         sy = str(p.get('s') or '')

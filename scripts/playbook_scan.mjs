@@ -228,9 +228,10 @@ for (const f of files) {
         //   明天的低點還不知道 → 保守用 ×0.95,盤中重算時會換成真的)
         // ⚠️ loose(沒有觸發價)一律用**現價**當基準,⛔ 不可拿 null 去算(會變 NaN)
         const base = x.trig != null ? x.trig : r.c;
-        // 🧬 hq = 高位階(>=75)且高波動(>=60):實測 +89% 且回撤更小(6 道關卡全過,24 格網格全贏)
+        // 🧬 hq = 高位階(>=85,V78.0.7 從 75 提高:兩窗口 17/17、贏同比例隨機、80/85/90 高原)且高波動(>=60)
+        //   ⚠️ 同一條在 index `_GENE_RULE` / pro `_HQ_RULE` / auto_trade `GENE_RANK`(test_generank 跨檔比對)
         //   ⛔ 不符合的**照樣輸出**(同 _SIGNAL_EDGE 對 C 級的處置)—— 只標記,由顯示端決定要不要收起來
-        const hq = (r.rank != null && r.rank >= 75 && r.vol != null && r.vol >= 60) ? 1 : 0;
+        const hq = (r.rank != null && r.rank >= 85 && r.vol != null && r.vol >= 60) ? 1 : 0;
         picks.push({ s: sym, c: r.c, v: r.v, d: r.d, ...x,
                      rank: r.rank, vol: r.vol, hq, bear: r.bear || 0,
                      up: x.trig != null ? +((x.trig - r.c) / r.c * 100).toFixed(2) : null,

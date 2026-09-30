@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.0.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.0.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.0.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.0.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -928,6 +928,17 @@
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
                             <input type="checkbox" id="set_bearGate" onchange="app.toggleBearGate(this.checked);" class="sr-only peer">
+                            <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                        </label>
+                    </div>
+                    <!-- 🧬 V78.0.7 選股門檻:一年位階 ≥85%(預設開)/ 關掉 = 舊的 ≥75% —— 數字由 `_fillGeneRankDesc()` 從 `_GENE_RULE` 帶入 -->
+                    <div class="flex items-center justify-between pt-2 border-t border-[#21262d]">
+                        <div class="flex-1 min-w-0 pr-2">
+                            <label class="text-xs font-bold text-cyan-300">🧬 選股門檻:一年位階 ≥ 85%(預設開;關掉 = 舊的 ≥ 75%)</label>
+                            <p id="set_geneRankDesc" class="text-[10px] text-gray-500 leading-relaxed"></p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                            <input type="checkbox" id="set_geneRank" onchange="app.setGeneRank(this.checked ? 85 : 75);" class="sr-only peer">
                             <div class="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
                         </label>
                     </div>
@@ -8670,8 +8681,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.0.6',
+    _APP_VERSION: 'V78.0.7',
     _CHANGELOG: [
+        { v: 'V78.0.7', d: [
+            '🧬 <b>🧬 選股門檻從「一年位階 ≥ 75%」提高到「≥ 85%」</b>(你問「🧬 那套也再回測看看有沒有更強的」)。我在現行規則上測了四種加法,只有這一條每一關都過:近 4 年 <b>324 萬 → 413 萬</b>、2011~2026 <b>494 萬 → 574 萬</b>(起點挪 17 次兩段都全贏);同樣比例<b>隨機</b>擋掉只有 258 / 508 萬 → 賺的是「更靠近一年高點」,不是少買;80 / 85 / 90 都贏 = 一片高原;手續費加倍也還是贏。⚠️ 16 年裡有 7 年比舊門檻差(2022 空頭那年也是)。出場規則、最長 20 天、空頭不買全部沒變;設定中心有開關可以換回 75%。自動下單跟著新清單走(GENE_RANK=75 = 舊的)。',
+            '💰 <b>「沒用到的錢停在 0050」16 年也測完了</b>:同一套 4 年 413 → <b>513 萬</b>、16 年 574 → <b>1,221 萬</b>(都 17/17 贏、中途最多賠更小,16 年還贏「全部買 0050 放著」)。⚠️ 自動下單目前<b>不會</b>幫你做這件事,要不要做成選項等你決定。',
+            '⛔ 另外兩個沒用:候選改照「近 10 日漲最多」排(一樣 324 萬)、只挑成交額前 50 / 100 / 200 大(掉到 106~157 萬)—— 👑 領頭羊那套的做法搬到 🧬 上不成立。',
+            '🐛 順手修:產業作戰室「100 萬變多少」那張表點過表頭排序之後,「最強招式」清單跟推薦順序會壞掉(兩個東西同名)。',
+        ] },
         { v: 'V78.0.6', d: ['👑 <b>領頭羊的說明文字跟上新規則了</b>(你問「最強的都換上去了嗎」):規則本身上一版就全部換好(自動下單、決策台、成績單、股海釣手、Telegram 同一份),但設定裡的選項說明、決策台區塊說明、換倉提醒、Telegram 換倉訊息、產業作戰室拋竿那句還寫「前 5 名」—— 現在都寫「一年位置 ≥85% 的前 5 名」;你按「換回舊規則」的話會自動變回舊說法。', '🎣 釣魚跟領頭羊<b>是同一份名單</b>,不是兩個策略:換一次兩邊一起變。另一套 🧬 這次沒有動(沒有新的回測贏過它)。'] },
         { v: 'V78.0.5', d: [
             '🐟 <b>魚會游過去咬餌了</b>(你說「魚要有跑去咬餌的動作」)。等咬鉤的時候,那條魚會慢慢轉頭、游到浮標下面,假咬時衝過去碰一下再退開,真的咬下去那一刻剛好在鉤子上(以前是突然出現在鉤子下)。',
@@ -8817,7 +8834,6 @@ ${list}
         { v: 'V77.3.2', d: ['🧙💥 <b>「某個分點突然大量買某檔,會漲嗎?排除隔日沖」—— 回測完了,答案是沒有</b>(產業作戰室 → 🔬 實測總表 → 實測沒用 r:31):484 天分點深歷史・2,150 檔・84,943 筆事件。「突然」試了兩種定義 —— 新面孔(那家分點 60 天沒出現在這檔)10 日比隨便挑一天 <b>−0.09pp</b>、自身爆量(那家分點在這檔自己歷史的前 5%)<b>+0.09pp</b>,賺錢機率 43.4~43.7% 跟隨便挑一天的 43.6% 一樣。「排除隔日沖」照每家券商的翻臉率切成五桶去看:<b>五桶不單調、最會隔日沖的那桶反而略好</b> → 這條線切不出來。⛔ 沒做成功能、沒做提醒,只記進總表。'] },
         { v: 'V77.3.1', d: ['🏦👩 <b>「外資連續買超 5 天以上,持有 10 天的勝率跟報酬率?加入投信同步」—— 回測完了,寫進 🔬 實測總表</b>(產業作戰室 → 實測有用 r:44 / 實測沒用 r:30):2,154 檔・事件 75,210 筆。① <b>外資連買本身沒有東西</b>:剛好連買 3/4/5/6/7 天,10 日只比隨便挑一天多 +0.15~+0.25pp、扣掉來回成本全部是負的(連買 5 天:賺錢機率 44.6% vs 對照 43.7%、10 日 +0.37%)。② <b>加上投信這 3 天也在買</b>才有東西:10 日 <b>+0.91pp</b>、賺錢機率 <b>48.2%</b>、絕對 +0.86%,六道關卡全過(N=3/5/7 都過)。③ 🚨 反過來問才知道<b>主角是投信</b>:投信自己連買 5 天就 +0.79pp 全過,外資只是加成 → ⛔ 不要讀成「外資連買會漲」。④ 外資買得佔成交量<b>越多反而越差</b>(單調)—— 「外資狂掃」= 已經擠了。⚠️ 窗口 2024-05~2026-08 三年全多頭、不含 2022;⛔ 沒做成提醒、沒進計分,先當排序條件,走完一次空頭再重跑。'] },
         { v: 'V77.3.0', d: ['📈 <b>報告頁「基本面」多了近 8 季趨勢圖 + 三種事實標記</b>(你說「新增近八季的營收、毛利率、營業利益率做成趨勢圖,告訴我哪一季毛利率掉、哪一季現金流轉負、哪一季存貨突然拉高」):趨勢線改成 8 條 —— 營收(單季)/ 季營收年增 / 毛利率 / 淨利率 / 每股盈餘 / <b>營業現金流(單季)</b> / 自由現金流(單季)/ <b>存貨天數</b>,每條只畫最近 8 季;線上的<b>空心圓 ○</b> 就是「那一季發生了什麼」:毛利率掉 ≥3pp、營業現金流正→負、存貨天數 +30%,底下一行直接寫出「2025-06 毛利率 −4.2pp(40.0 → 36.0%)」這種句子。⚠️ 它是<b>事實紀錄不是警訊</b>:全市場實測(2,352 檔 ・24,927 個季對季)這三種情況分別有 <b>21.8% / 17% / 15.3%</b> 的季會出現 —— 五檔裡就有一檔,所以不用紅色也不用 ⚠️,基準率直接印在畫面上。', '⏳ <b>營益率那條線要等財報回算跑一次</b>:採礦端已加抓損益表的「營業利益」欄(跟基本面頁「📈 三率」同一個來源),但 gh-pages 上的切片要等你在 Actions 手動跑一次「📦 財報三表深歷史回算」(選 main)、隔天採礦帶上去之後才會出現;在那之前那條線不畫、畫面會說「等回算」。', '🖼️ 自己畫的海報(短評報告)同一段同步:8 季、同樣 8 條線、同樣的 ○ 標記與基準率;順手修掉每一節標題右邊那句說明「截字後補的 … 沒量進寬度」→ 會壓到標題的小毛病(§6 籌碼那節肉眼看抓到的)。'] },
-        { v: 'V77.2.9', d: ['🎤 <b>法說會後的股價反應寫進實測總表了</b>(🔬 實測總表 →「推薦下一步」):844 場實測,法說會後 5 日中位 <b>−1.26 pp</b>,而「隨便挑一天」的對照組是 −0.73 pp → <b>法說會後反而略差一點</b>。⛔ 這是<b>事實紀錄不是買賣訊號</b>(沒扣交易成本、沒過六道關卡),正式回測還要等窗口長一點。', '🔁 <b>順手收掉一條「永遠紅」的測試</b> —— 查下去發現<b>它不是壞掉</b>:報告頁「短中線/長線」視角是<b>刻意</b>攤開價格牆與籌碼那兩節(你後來要的),而舊的檢查還在用更早那版「全部折疊」的標準。⛔ 一直紅的檢查等於沒有檢查,已改成釘現在的規則。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -9045,6 +9061,9 @@ ${list}
         const bgEl = document.getElementById('set_bearGate');
         if (bgEl) bgEl.checked = this.settings.bearGate !== false;       // 🐻 V77.6.5 預設開
         try { this._fillBearGateDesc(); } catch (_) {}
+        const grEl = document.getElementById('set_geneRank');
+        if (grEl) grEl.checked = this._geneRank() === this._GENE_RULE.rank;   // 🧬 V78.0.7 預設 85
+        try { this._fillGeneRankDesc(); } catch (_) {}
         const dfEl = document.getElementById('set_deckFinAccel');
         if (dfEl) dfEl.checked = !!this.settings.deckFinAccel;          // 📦 V77.4.3 預設關
         try { this._fillDeckFinDesc(); } catch (_) {}
@@ -22053,9 +22072,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 🚨 V77.7.7 更正:上一版寫「324 vs 324、多賺不多」是**只看策略 cum、漏掉停泊本身的獲利**(summary 的 park 另計)。
         //   新預設最長只抱 20 天 → 閒錢比唐奇安 40 那時多得多 → 停泊中位 +111 萬:總資產 434 vs 324 萬、17/17 全贏、
         //   最差一條 255 → 394、回撤 16/17 較小。`on` = 策略 + 停泊(總資產),`off` = 放現金(只有策略)。
-        main: { win: '2022-09 ~ 2026-09', paths: 17, on: 434, onLo: 394, off: 324, offLo: 255, wins: 17, onDD: 31.7, offDD: 32.8, ddBetter: 16 },
-        // 🕰️ 16 年那組修好資料後還沒重跑 → null(畫面要說出來);舊的 656 vs 648 萬是在唐奇安 40 日上跑的,⛔ 不可沿用
-        long: null,
+        // 🧬 V78.0.7 換成位階 ≥85 之後重跑(同一套 + 閒錢停 0050 vs 放現金,17 條配對);位階 75 那時是 434 vs 324 萬(4 年)/ 1,109 vs 494 萬(16 年)
+        main: { win: '2022-09 ~ 2026-09', paths: 17, on: 513, onLo: 447, off: 413, offLo: 370, wins: 17, onDD: 21.6, offDD: 25.1, ddBetter: 13 },
+        // 🕰️ V78.0.7 補上 16 年(修好的日 K + 官方加權 + 0050 含息):停泊的錢 16 年複利下來比策略本身還多 → 1,221 vs 574 萬,也贏 0050 買了放著(約 1,068 萬)
+        long: { win: '2011 ~ 2026', paths: 17, on: 1221, onLo: 1172, off: 574, offLo: 554, wins: 17, onDD: 30.6, offDD: 37.3, ddBetter: 17 },
     },
     _idle0050NoteHtml() {
         const E = this._IDLE0050_EDGE; if (!E) return '';
@@ -22064,7 +22084,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             + (L ? `、16 年 <b class="text-gray-300">${L.on} 萬</b> vs ${L.off} 萬(贏 ${L.wins} 條)` : '')
             + `。<br>⭐ <b class="text-gray-300">${M.on - M.off >= M.off * 0.1 ? `多賺約 ${M.on - M.off} 萬(新預設最長只抱 20 天,閒錢比較多)、而且跌的時候少賠` : '多賺不多,主要好處是跌的時候少賠'}</b>:最差那一條 ${M.offLo}→${M.onLo} 萬(4 年)${L ? `、${L.offLo}→${L.onLo} 萬(16 年)` : ''},中途最多賠 −${M.offDD}%→−${M.onDD}%${L ? `、−${L.offDD}%→−${L.onDD}%` : ''}${M.ddBetter != null ? `(${M.paths} 條裡 ${M.ddBetter} 條回撤較小)` : ''}。`
             + (L ? '' : `<span class="text-gray-500">⏳ 16 年那組換新預設後還沒重跑。</span>`)
-            + `<span class="text-gray-500">⚠️ 自動下單不會幫你做這件事;0050 沒算股利(偏保守)。</span></div>`;
+            + (L && L.on > 1068 ? `<br>🐢 16 年這樣做也贏了「全部買 0050 放著」(含息約 1,068 萬)—— 停在 0050 的錢自己也在長。` : '')
+            + `<span class="text-gray-500">⚠️ 自動下單不會幫你做這件事;4 年那組 0050 沒算股利(偏保守),16 年那組有算。</span></div>`;
     },
     toggleBearGate(checked, silent) {
         this.settings.bearGate = !!checked;
@@ -22104,6 +22125,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //     ④ 首次安裝/舊用戶:**只蓋章不跳**(⛔ 否則新用戶第一次開就被歷史變更洗版)。
     //     ⑤ ⛔ 不用紅綠燈(講的是「規則換了」不是漲跌方向)。
     _STRAT_CHANGES: [
+        {
+            v: 'V78.0.7', dt: '2026-09-30', gene: true, what: '🧬 選股門檻:一年位階 75% → 85%',
+            from: '🧬 = 一年位階 <b>≥ 75%</b> 且年化波動率 ≥ 60%',
+            to: '🧬 = 一年位階 <b>≥ 85%</b> 且年化波動率 ≥ 60%(其他全部不變:每檔自己最會賺的那招、吊燈 ATR 2 倍出場、最長 20 天、大盤空頭不開新倉)',
+            why: '你問「🧬 那套還有沒有更強的」。我在現行規則上測了四種加法,只有「位階門檻提高」每一關都過:'
+               + '近 4 年(2022-09 起)<b>324 萬 → 413 萬</b>、2011~2026 共 16 年 <b>494 萬 → 574 萬</b>,把起點挪 17 次<b>兩段都 17 條全贏</b>;'
+               + '同樣比例<b>隨機</b>擋掉候選只有 258 萬 / 508 萬 → 賺的是「更靠近一年高點」這件事,⛔ 不是少買幾檔;'
+               + '門檻 80 / 85 / 90 都贏(70 反而輸)= 一片高原,85 在中間也最高。',
+            cost: '① 16 年裡有 <b>7 年比舊門檻差</b>(2022 空頭那年少賺約 18 萬、2025 年少約 12 萬)—— 多出來的錢集中在 2014 / 2018 / 2021 / 2024 / 2026。'
+               + '② 16 年那段中途最多賠略大(−34.6% → −37.3%);近 4 年反而變小(−32.8% → −25.1%)。'
+               + '③ 16 年仍然<b>輸 0050 含息</b>(約 1,068 萬);近 4 年這套 413 萬贏 0050 含息(約 342 萬)。',
+            you: '決策台「今天可以買的」會少一些股票(位階 75~85% 那一段不再算 🧬),排在前面的會換人;手上已經有的<b>照舊</b>走出場規則。'
+               + '自動下單(auto_trade.py)跟著新的清單走;要用舊門檻請設 GENE_RANK=75。',
+            backGene: 75, backName: '位階 ≥ 75%(舊門檻)',
+        },
         {
             // 🔒 lead:true = 只跳給選了 👑 的人(使用者:「不想讓別人隨意知道這一套」);沒選 👑 的直接蓋章、⛔ 不跳
             v: 'V78.0.5', dt: '2026-09-30', lead: true, what: '👑 領頭羊:買進多一道「一年位置」',
@@ -22174,7 +22210,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const KEY = 'proTerm_lastSeenStrat';
             // 🔒 V78.0.5 領頭羊的變更(lead:true)只算給選了 👑 的人 —— 其他人看「最新一筆跟他有關的」(⛔ 不跳、⛔ 不洩漏這一套,
             //    也⛔ 不可幫他蓋掉還沒看過的出場規則變更;之後解鎖 👑 時,因為版本比較新,那一筆會自然跳出來)
-            const c = (this._STRAT_CHANGES || []).find(x => !x.lead || this._isLead());
+            //    🧬 V78.0.7 反過來:gene:true 那一筆(🧬 選股門檻)只跳給**沒選** 👑 的人(👑 不用 🧬 的選股)
+            const _L = this._isLead();
+            const c = (this._STRAT_CHANGES || []).find(x => x.lead ? _L : (x.gene ? !_L : true));
             if (!c) return;
             const seen = localStorage.getItem(KEY);
             if (!seen) {
@@ -22208,10 +22246,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="text-[11px] text-cyan-300 font-bold mb-0.5">👤 對你的影響</div>
                 <div class="text-[11px] text-gray-300 leading-relaxed">${c.you}</div>
             </div>
-            <div class="text-[10px] text-gray-500 leading-snug mb-3">${c.backLead ? '⛔ 舊的那條<b>沒有刪掉</b> —— 按下面「換回舊的」就回到不看一年位置;之後想再切換,決策台 👑 那區第一行旁邊有按鈕。' : '⛔ 舊的那條<b>沒有刪掉</b> —— 設定中心「🚪 出場規則」每個選項都還在,每一條旁邊都寫著實測賺多少,你隨時可以自己換回去。'}</div>
+            <div class="text-[10px] text-gray-500 leading-snug mb-3">${c.backGene ? '⛔ 舊的那條<b>沒有刪掉</b> —— 按下面「換回舊的」就回到位階 ≥ 75%;之後想再切換,⚙️ 設定中心「🧬 選股門檻」有按鈕。' : c.backLead ? '⛔ 舊的那條<b>沒有刪掉</b> —— 按下面「換回舊的」就回到不看一年位置;之後想再切換,決策台 👑 那區第一行旁邊有按鈕。' : '⛔ 舊的那條<b>沒有刪掉</b> —— 設定中心「🚪 出場規則」每個選項都還在,每一條旁邊都寫著實測賺多少,你隨時可以自己換回去。'}</div>
             <div class="grid grid-cols-2 gap-2">
                 <button onclick="app._ackStratChange('${e(c.v)}')" class="bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-black py-2.5 rounded">知道了</button>
-                <button onclick="app._ackStratChange('${e(c.v)}'); ${c.backLead ? 'app.setLeadPos(false);' : `app.setExitRule('${e(c.back)}');${c.backBear === false ? ' app.toggleBearGate(false, true);' : ''}`}" class="bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-bold py-2.5 rounded">↩️ 換回舊的(${e(c.backName || '')})</button>
+                <button onclick="app._ackStratChange('${e(c.v)}'); ${c.backGene ? `app.setGeneRank(${+c.backGene});` : c.backLead ? 'app.setLeadPos(false);' : `app.setExitRule('${e(c.back)}');${c.backBear === false ? ' app.toggleBearGate(false, true);' : ''}`}" class="bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-bold py-2.5 rounded">↩️ 換回舊的(${e(c.backName || '')})</button>
             </div>`;
             this._showRichModal('🔁 策略預設值換了', html);
         } catch (_) {}
@@ -45026,7 +45064,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <div class="flex flex-wrap items-center gap-2 mb-1">
                 <span class="text-gray-400">出場</span>
                 <select id="cbtExit" class="bg-[#21262d] border border-[#30363d] rounded text-[10px] text-gray-200 px-1.5 py-1">${this._EXIT_RULE_OPTS.map(o => `<option value="${o.k}"${o.k === cfg.exit ? ' selected' : ''}>${o.t}</option>`).join('')}</select>
-                <label class="inline-flex items-center gap-1 text-[10px]"><input id="cbtGene" type="checkbox" ${cfg.gene ? 'checked' : ''}> 🧬 只做高位階(≥75%)+ 高波動(≥60%)</label>
+                <label class="inline-flex items-center gap-1 text-[10px]"><input id="cbtGene" type="checkbox" ${cfg.gene ? 'checked' : ''}> 🧬 只做高位階(≥${this._geneRank()}%)+ 高波動(≥60%)</label>
             </div>
             <details class="mb-1"><summary class="text-[10px] text-gray-400 cursor-pointer">進場型態(預設全部)展開 ▾</summary><div class="mt-1" id="cbtPats">${pats}</div></details>
             <div class="flex items-center gap-2">
@@ -45073,7 +45111,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const c0 = C(data[i]); const rank = w.length ? w.filter(c => c <= c0).length / w.length * 100 : 0;
             let s3 = 0, n3 = 0; for (let k = Math.max(1, i - 19); k <= i; k++) { const a = C(data[k - 1]), b = C(data[k]); if (a > 0 && b > 0) { s3 += ((b - a) / a) ** 2; n3++; } }
             const vol = n3 ? Math.sqrt(s3 / n3) * Math.sqrt(252) * 100 : 0;
-            return rank >= 75 && vol >= 60;
+            return rank >= this._geneRank() && vol >= this._GENE_RULE.vol;
         };
         const out = [];
         for (const p of P) {
@@ -49383,15 +49421,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                      exit: 'atr2', exitName: '吊燈 ATR 2 倍', maxd: 20, bearGate: true,
                      // 🔁 V77.7.6 換成「吊燈 ATR 2 倍 + 最長 20 天 + 大盤嚴格空頭不開新倉」,**修好的日 K**(陷阱 #46)重跑
                      //   W=240 那一條,2022-09-16 ~ 2026-09-24,收盤成交・股利 + 二代健保;0050 = 含息
-                     gene: 3242238, geneDD: 33.95, plain: 1922991, plainDD: 36.91, etf0050: 3423000, etfTr: true,
-                     // 📤 換掉之前的預設(唐奇安 40 日・最長 40 天・空頭不開新倉)同一條路徑、同一份修好的資料 —— 留著當「換了差多少」的對照
-                     prev: { ver: 'V77.7.6', exitName: '唐奇安 40 日低點・最長 40 天', bear: true, gene: 2183413, geneDD: 41.78, robMed: 179 },
+                     // 🧬 V78.0.7 位階門檻 75 → 85 重跑(W=240):🧬 3,242,238 → 4,164,361 元、回撤 −33.95% → −24.36%
+                     gene: 4164361, geneDD: 24.36, plain: 1922991, plainDD: 36.91, etf0050: 3423000, etfTr: true, geneRank: 85,
+                     // 📤 換掉之前的預設(位階 ≥75,其他一樣)同一條路徑、同一份資料 —— 留著當「換了差多少」的對照
+                     prev: { ver: 'V78.0.7', exitName: '吊燈 ATR 2 倍・位階 ≥75(舊門檻)', bear: true, gene: 3242238, geneDD: 33.95, robMed: 324 },
                      // 📉 跌破 5 日線(空頭照買)同一段的成績 —— 留著當「換出場差多少」的對照(⏳ 不挑 🧬 那組修好資料後沒重跑 → null)
-                     ma5: { gene: 1389452, geneDD: 40.69, plain: null, plainDD: null },
+                     //   ⚠️ 這一組是位階 ≥75 跑的 → 對照用 cmp(同門檻的吊燈 ATR),⛔ 不跟 85 門檻的 gene 相減(那會把換門檻的功勞算給出場)
+                     ma5: { gene: 1389452, geneDD: 40.69, plain: null, plainDD: null, cmp: 3242238, cmpRank: 75 },
                      // 🛑 V77.6.0 起停損改收盤成交;old = 停損價成交的舊數字(高估,留著當對照)
                      fill: 'close', twii: 229.8, old: { gene: 5898128, plain: 3080625 },
                      // 🧭 17 條起點不同的路徑(同一份修好的資料)
-                     rob: { paths: 17, med: 324, lo: 255, hi: 354, dd: 32.8, pmed: 212, geneWins: 17, beat0050: 2 },
+                     rob: { paths: 17, med: 413, lo: 370, hi: 416, dd: 25.1, pmed: 212, geneWins: 17, beat0050: 17 },
                      // 🔀 V75.0.8「多頭做打法、空頭改抱 0050」切換策略實測(使用者提的)—— ⛔ 三關全滅。
                      //   🚨 ⚠️ 這一組是用**舊的 5 日線出場**跑的(換出場是 V75.0.9 才做的事)
                      //      → ⛔ **不可跟上面那三個數字直接相減**,它只回答「切換 vs 不切換」這一個問題。
@@ -49558,7 +49598,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         for (const x of ranked) { const k = String(x.s); if (seen.has(k)) continue; seen.add(k); uniq.push(x); }
         st.bearN = uniq.filter(x => x.bear).length;
         // 🧬 是**必要條件不是加分項**(V73.2.9:不挑它整套輸給買 0050);⛔ 空頭不給進場
-        const hq = uniq.filter(x => (+x.hq || 0) === 1 && !x.bear);
+        const hq = uniq.filter(x => this._hqOf(x) === 1 && !x.bear);
         st.hqN = hq.length;
         // 📦 V77.4.3 選項濾網「只挑營收年增加速的」(預設關)——⛔ 只動這一段,⛔ 不碰排序、不碰計分。
         //   ⚠️ 取捨型(賺更少、回撤更小)→ V75.0.9 第 5 條:⛔ 不換預設,做成選項。數字見 `_DECK_FIN`。
@@ -49849,7 +49889,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     <div class="mt-2 bg-[#0d1117] border-l-4 border-amber-500 pl-2.5 py-2 rounded-r">
                         <b class="text-amber-300">⭐ 真正決定輸贏的是「出場」,不是選股。</b><br>
                         同一批股票、同一套選股、同一段 ${T.months} 個月,<b>只把出場從「跌破 5 日線」換成「${T.exitName}」</b>:
-                        🧬 從 ${m(T.ma5.gene)} 變成 <b>${m(T.gene)}</b>${T.ma5.plain != null ? `、不挑 🧬 從 ${m(T.ma5.plain)} 變成 ${m(T.plain)}` : ''}
+                        🧬 從 ${m(T.ma5.gene)} 變成 <b>${m(T.ma5.cmp ?? T.gene)}</b>${T.ma5.cmpRank ? `(這一句兩組都是位階 ≥${T.ma5.cmpRank}% 時跑的)` : ''}${T.ma5.plain != null ? `、不挑 🧬 從 ${m(T.ma5.plain)} 變成 ${m(T.plain)}` : ''}
                         —— 5 日線那組${(T.ma5.gene > T.etf0050) ? '贏' : '<b>輸</b>'} 0050,${T.exitName}這組${_win && _winP ? '<b>兩種都贏</b>' : (_win ? '只有 🧬 贏' : (_winP ? '只有不挑 🧬 贏' : '<b>兩種都輸給買 0050 放著</b>'))}。
                         ⛔ 這<b>不代表選股變厲害了</b>(選股一模一樣),它代表的是「太早出場會把贏家洗掉」。<br>
                         ${T.gene > T.plain ? `這一條路徑挑 🧬 比不挑多賺 ${m(T.gene - T.plain)} 元` : `⚠️ 這一條路徑挑 🧬 反而比不挑<b>少賺 ${m(T.plain - T.gene)} 元</b>`}${T.rob ? `;把起點挪 ${T.rob.paths} 次,🧬 贏不挑 ${T.rob.geneWins} 條 —— ${T.rob.geneWins >= Math.ceil(T.rob.paths * 0.75) ? '挑 🧬 比較好' : (T.rob.geneWins <= Math.floor(T.rob.paths * 0.25) ? '<b>挑 🧬 反而比較差</b>' : '<b>分不出高下</b>')}` : ''}。<br>
@@ -49905,10 +49945,42 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
      *          前段班必然被「樣本少但剛好很賺」佔滿(V72.9.2 首跑實測)。 */
     _pbSort(list, mine) {
         const _lb = x => Number.isFinite(+x.lb) ? +x.lb : +x.exp;
-        const _hq = x => (this.settings?.pbHqOff ? 0 : (+x.hq || 0));
+        const _hq = x => (this.settings?.pbHqOff ? 0 : this._hqOf(x));
         const M = mine || this._mySyms();
         return (list || []).slice().sort((a, b) =>
             (M.has(String(b.s)) - M.has(String(a.s))) || (_hq(b) - _hq(a)) || (_lb(b) - _lb(a)));
+    },
+    /** 🧬 V78.0.7 一年位階門檻 75 → 85(兩窗口 17/17、贏同比例隨機、80/85/90 一片高原)。
+     *  ⛔ 全 App 唯一一份:決策台 / 排序 / 🧬 徽章 / 評級 / 自訂回測 / 提醒全部讀 `_hqOf`、`_geneRank`。
+     *  採礦端 playbook_scan 的 `hq` 也改 85;這裡用清單自帶的 rank / vol 重算 → 設定換回 75 時畫面立刻跟著變。
+     *  ⚠️ 同一條在 pro.html(`_HQ_RULE` / `_hqOf`)與 auto_trade.py(`GENE_RANK`)各一份,test_generank 跨檔比對。 */
+    _GENE_RULE: { rank: 85, vol: 60, prev: 75,
+        // 17 條起點中位(萬)・吊燈 ATR 2 倍・最長 20 天・大盤空頭不開新倉・收盤成交・修好的日 K;rks = 同比例隨機擋掉候選(安慰劑)
+        main: { win: '2022-09 ~ 2026-09', paths: 17, on: 413, onLo: 370, off: 324, offLo: 255, wins: 17, onDD: 25.1, offDD: 32.8, rks: 258, cost2: { on: 293, off: 222, wins: 17 } },
+        long: { win: '2011 ~ 2026', paths: 17, on: 574, onLo: 554, off: 494, offLo: 420, wins: 17, onDD: 37.3, offDD: 34.6, rks: 508, yrWorse: 7, yrs: 16 },
+        plateau: { 70: [272, null], 80: [386, 566], 85: [413, 574], 90: [407, 569] },
+        src: 'portfolio_backtest.mjs RANK_MIN=70~90 / RKSHAM=80~90 / COST_X=2・WARMUP=240~320' },
+    _geneRank() { const r = +this.settings?.geneRank; return (r === this._GENE_RULE.prev || r === this._GENE_RULE.rank) ? r : this._GENE_RULE.rank; },
+    _hqOf(x) {
+        const r = x?.rank, v = x?.vol;
+        if (r != null && v != null && Number.isFinite(+r) && Number.isFinite(+v)) return (+r >= this._geneRank() && +v >= this._GENE_RULE.vol) ? 1 : 0;
+        return +x?.hq || 0;   // 清單沒帶 rank / vol(舊版)→ 退回採礦端標的
+    },
+    _fillGeneRankDesc() {
+        const el = document.getElementById('set_geneRankDesc'); if (!el) return;
+        const G = this._GENE_RULE, M = G.main, L = G.long;
+        el.innerHTML = `🧬 = 這一檔收盤在自己近一年的<b>位階 ≥ ${G.rank}%</b> 且年化波動率 ≥ ${G.vol}%,決策台只買這一格。<br>`
+            + `實測(${M.paths} 條起點中位):近 4 年 <b>${M.on} 萬</b> vs 舊門檻 ${M.off} 萬(贏 ${M.wins} 條)、16 年 <b>${L.on} 萬</b> vs ${L.off} 萬(贏 ${L.wins} 條);同比例隨機擋掉只有 ${M.rks} / ${L.rks} 萬。`
+            + `<br>⚠️ 代價:16 年裡 <b>${L.yrWorse} 年比舊門檻差</b>(含 2022 空頭);16 年中途最多賠 −${L.offDD}% → −${L.onDD}%。`;
+    },
+    setGeneRank(r) {
+        this.settings.geneRank = (+r === this._GENE_RULE.prev) ? this._GENE_RULE.prev : this._GENE_RULE.rank;
+        this._deckAt = 0;
+        try { localStorage.setItem('proTerminalSettings', JSON.stringify(this.settings)); } catch (_) {}   // ⛔ 不走 saveSettings(那支會把整張設定表從畫面重讀)
+        try { this._fillGeneRankDesc(); } catch (_) {}
+        try { this.renderDeck?.(); } catch (_) {}
+        try { const el = document.getElementById('set_geneRank'); if (el) el.checked = this.settings.geneRank === this._GENE_RULE.rank; } catch (_) {}
+        try { this.showToast?.(this.settings.geneRank === this._GENE_RULE.rank ? `🧬 一年位階門檻:≥ ${this._GENE_RULE.rank}%(新規則)` : `↩️ 🧬 一年位階門檻:換回 ≥ ${this._GENE_RULE.prev}%(舊規則)`); } catch (_) {}
     },
     _pbEdgeOf(sym) {
         try {
@@ -50079,7 +50151,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                  並讓第一行的名稱有 flex-1 可用空間。 -->
             <div class="flex items-center flex-wrap gap-1 mt-0.5">
                 ${+x.bear ? `<span class="text-[9px] flex-shrink-0 px-1 rounded bg-[#21262d] border border-[#30363d] text-yellow-300" title="這檔收盤同時跌破 20 日線與 60 日線(全面破線)。實測「站上均線才做」單獨用 13 個月多賺 24.7 萬,但疊在『強勢高波動』之上反而少賺 → 沒有增量,所以⛔ 不排除它,只標記。它給的是「漲過某價才進」,沒漲過就不會成立。">⚠️ 破線中</span>` : ''}
-                ${+x.hq ? `<span class="text-[9px] flex-shrink-0 px-1 rounded bg-[#21262d] border border-[#30363d] text-gray-300" title="這檔自己的位階 ${x.rank}%(近一年)、波動率 ${x.vol}%(年化)——落在實測表現最好的那一格。實測 +89% 且回撤更小(6 道關卡全過、24 格門檻網格全贏基準)。⚠️ 回測窗口整段是大多頭,空頭沒有驗證過。">🧬 強勢高波動</span>` : ''}
+                ${this._hqOf(x) ? `<span class="text-[9px] flex-shrink-0 px-1 rounded bg-[#21262d] border border-[#30363d] text-gray-300" title="這檔自己的位階 ${x.rank}%(近一年)、波動率 ${x.vol}%(年化)——門檻:位階 ≥${this._geneRank()}%、波動率 ≥60%。V78.0.7 從 75 提高到 85:近 4 年 324 → 413 萬、2011~2026 494 → 574 萬(起點挪 17 次全贏;16 年有 7 年比舊門檻差)。">🧬 強勢高波動</span>` : ''}
                 ${dupN ? `<span class="text-[9px] flex-shrink-0 px-1 rounded bg-[#21262d] border border-[#30363d] text-cyan-300" title="同一檔股票可以有不只一種會賺的打法 —— 這是這檔的第 ${dupN} 招,兩招的觸發價與停損都不一樣,⛔ 不是重複列。">同檔第 ${dupN} 招</span>` : ''}
                 <span class="text-[10px] text-red-300/90 truncate">${x.k}</span>
             </div>
@@ -50237,7 +50309,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _pbGrade(x) {
         const w = +x.w, n = +x.n, po = +x.po;
         const lb = Number.isFinite(+x.lb) ? +x.lb : +x.exp;
-        const hq = !!(+x.hq);
+        const hq = !!this._hqOf(x);
         const base = this._VERIFIED_EDGE?.base?.winBase ?? 36.4;
         const enough = this._wrEnough ? this._wrEnough(n) : (n >= 10);
         let p = null;
@@ -50379,15 +50451,15 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         //     位階≥75 且 波動≥60 → +2,090,809 元 ・回撤 −9.09%(基準 +1,127,315 / −14.35%)
         //   反向:只做低位階 −27,439(回撤 −35.7%)・只做低波動 −210,967(回撤 −65.9%)
         //   ⚠️ 窗口整段是大多頭 → 空頭沒驗證過,而「追高+高波動」正是空頭最容易受傷的組合
-        const hqN = rows.filter(x => +x.hq).length;
+        const hqN = rows.filter(x => this._hqOf(x)).length;
         const hqLine = hqN
             ? `<div class="text-[10px] text-gray-200 bg-[#0d1117] border-l-4 border-[#30363d] rounded-r px-2 py-1 leading-snug mb-1.5">
-                🧬 標 <b>強勢高波動</b> 的有 <b class="text-gray-100">${hqN}</b> 檔(這檔自己的位階 ≥75%、波動率 ≥60%)——
-                實測這一格<b>賺 +89%、回撤還更小</b>;反過來只做低波動股是<b>倒賠</b>的。已排在前面。
-                <span class="text-gray-500">⚠️ 回測窗口整段是大多頭,<b>空頭沒有驗證過</b>;沒標的仍照顯示,不是不能做。</span>
+                🧬 標 <b>強勢高波動</b> 的有 <b class="text-gray-100">${hqN}</b> 檔(這檔自己的位階 ≥${this._geneRank()}%、波動率 ≥60%)——
+                這是決策台<b>唯一會買</b>的那一格(不挑它整套輸很多);反過來只做低波動股是<b>倒賠</b>的。已排在前面。
+                <span class="text-gray-500">⚠️ V78.0.7 門檻從 75 提高到 85:2011~2026 含 2022 等空頭,17 條起點全贏,但<b>16 年裡有 7 年比舊門檻差</b>(2022 空頭那年也是);沒標的仍照顯示,只是決策台不會買。</span>
                </div>`
             : `<div class="text-[10px] text-gray-400 bg-[#0d1117] border-l-4 border-[#30363d] rounded-r px-2 py-1 leading-snug mb-1.5">
-                🧬 今天沒有一檔同時符合「位階 ≥75% + 波動率 ≥60%」(實測表現最好的那一格)——
+                🧬 今天沒有一檔同時符合「位階 ≥${this._geneRank()}% + 波動率 ≥60%」(實測表現最好的那一格)——
                 <span class="text-gray-500">清單照給,但這種日子期望值本來就比較低。</span>
                </div>`;
         return `<div class="mb-2.5 bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">

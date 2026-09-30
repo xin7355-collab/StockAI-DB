@@ -103,7 +103,7 @@ const R = await page.evaluate(async (mk) => {
     A._pbEdge = { data_date: '2026-09-07', picks: [
         ...Array.from({ length: 15 }, (_, i) => P(String(1000 + i), { lb: 9 - i * 0.1 })),
         ...Array.from({ length: 3 }, (_, i) => P(String(2000 + i), { bear: 1, lb: 99 })),
-        P('3001', { hq: 0, lb: 99 }), P('3002', { hq: 0, lb: 98 }),
+        P('3001', { hq: 0, rank: 60, lb: 99 }), P('3002', { hq: 0, rank: 60, lb: 98 }),
     ] };
     reset(); await A.renderDeck();
     const buyEl = document.getElementById('deckBuy');
@@ -149,7 +149,7 @@ const R = await page.evaluate(async (mk) => {
     out.nullTxt = document.getElementById('deckBuy').innerText.replace(/\s+/g, ' ');
 
     // ── ⑧ 清單有、但一檔 hq 都沒有 → 這才是真的「今天沒有」
-    A._pbEdge = { data_date: '2026-09-07', picks: [P('3001', { hq: 0 }), P('3002', { hq: 0 })] };
+    A._pbEdge = { data_date: '2026-09-07', picks: [P('3001', { hq: 0, rank: 60 }), P('3002', { hq: 0, rank: 60 })] };
     reset(); A._invExitFlags = []; A._invExitN = 5; A._invExitAt = Date.now();
     await A.renderDeck();
     out.noneTxt = document.getElementById('deckBuy').innerText.replace(/\s+/g, ' ');

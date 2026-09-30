@@ -133,11 +133,11 @@ ok('⑤a2 下界公式是 期望值 − 1.28×sd/√n', /x\.expectancy - 1\.28 \
 ok('⑤a3 ⛔ 排序也要用下界(只改門檻等於沒改)', /sort\(\(a, b\) => lb\(b\) - lb\(a\)\)/.test(scan) && /picks\.sort\(\(a, b\) => \(b\.hq - a\.hq\) \|\| \(b\.lb - a\.lb\)/.test(scan));
 // 🧬 V73.2.4 高位階+高波動(六道關卡全過的唯一一組)
 ok('⑤a3b 掃描端要算這檔自己的位階與波動率', /selfRank = Math\.round/.test(scan) && /selfVol = cn >= 10/.test(scan));
-ok('⑤a3c hq 門檻寫死 75/60,且⛔ 不符合的仍要輸出(只標記不刪除)',
-   /rank >= 75 && r\.vol != null && r\.vol >= 60/.test(scan) && /picks\.push\(\{ s: sym/.test(scan));
+ok('⑤a3c hq 門檻 85/60(V78.0.7 從 75 提高),且⛔ 不符合的仍要輸出(只標記不刪除)',
+   /rank >= 85 && r\.vol != null && r\.vol >= 60/.test(scan) && /picks\.push\(\{ s: sym/.test(scan));
 ok('⑤a3d 尾盤推播 hq 優先,但只影響排序',
-   /const _hq = x => \(this\.settings\?\.pbHqOff \? 0 : \(\+x\.hq \|\| 0\)\)/.test(src) && /_hq\(b\) - _hq\(a\)/.test(src));
-ok('⑤a3e 卡上必須寫「空頭沒有驗證過」(⛔ 不可只報好消息)', /空頭沒有驗證過/.test(src));
+   /const _hq = x => \(this\.settings\?\.pbHqOff \? 0 : this\._hqOf\(x\)\)/.test(src) && /_hq\(b\) - _hq\(a\)/.test(src));
+ok('⑤a3e 卡上必須寫代價(⛔ 不可只報好消息):V78.0.7 起 16 年有 7 年比舊門檻差', /16 年裡有 7 年比舊門檻差/.test(src));
 ok('⑤a3f 徽章⛔ 不可用紅綠(燈號鐵則:紅綠只表示漲跌方向)',
    /🧬 強勢高波動/.test(src) && !/text-(red|green)-\d00[^>]*>🧬 強勢高波動/.test(src));
 ok('⑤a4 _patternFitBacktest 有回 sd', /const sd = n > 1 \? Math\.sqrt/.test(src) && /expectancy: mean, sd,/.test(src));

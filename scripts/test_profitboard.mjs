@@ -39,7 +39,7 @@ await page.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domconten
 await page.waitForFunction(() => typeof PRO !== 'undefined' && !!PRO.renderProfit, null, { timeout: 30000 });
 const R = await page.evaluate(async () => {
   try { await PRO.switchTab('calc'); } catch (_) {}
-  PRO._labSel = 'bt'; PRO._pbSort = null; PRO._pbWin = 'ai'; PRO.renderLab();
+  PRO._labSel = 'bt'; PRO._pfSort = null; PRO._pbWin = 'ai'; PRO.renderLab();
   const box = () => document.getElementById('profitBody'), o = {};
   o.txt = box().innerText;
   o.firstRow = (box().querySelector('#pbTbl tbody tr td') || {}).innerText || '';
@@ -50,7 +50,8 @@ const R = await page.evaluate(async () => {
   // 排序:照中途最多賠由小到大 → 第一列回撤最小;再點反向
   PRO.pbSortBy('mdd'); const f1 = box().querySelector('#pbTbl tbody tr td').innerText, a1 = box().querySelector('#pbTbl th.ybsort.on').innerText;
   PRO.pbSortBy('mdd'); const f2 = box().querySelector('#pbTbl tbody tr td').innerText, a2 = box().querySelector('#pbTbl th.ybsort.on').innerText;
-  o.sort = { f1, f2, a1, a2 }; PRO._pbSort = null;
+  o.sort = { f1, f2, a1, a2 }; PRO._pfSort = null;
+  o.pbFn = typeof PRO._pbSort === 'function';   // 🐛 V78.0.7 排序狀態以前也叫 _pbSort → 點表頭就把股票清單排序函式蓋掉
   const rows = [...box().querySelectorAll('#pbTbl tbody tr')].map(tr => tr.innerText);
   o.lateLast = (() => { const k = rows.findIndex(t => /上市晚於/.test(t)); return k < 0 || rows.slice(k).every(t => /上市晚於/.test(t)); })();
   PRO.pbTab('long'); o.long = box().innerText; o.longRows = box().querySelectorAll('#pbTbl tbody tr').length;
@@ -67,6 +68,7 @@ ok('② 畫面有 👑 / 0050 / 科技 ETF 各列', /領頭羊/.test(R.txt) && /
 ok('②b ⭐ 決定性對照:改 `_PROFIT_BOARD` 一格,畫面跟著變', R.inj);
 ok('②c 表頭每一欄都可排序(做法 / 變成 / 最差 / 中途最多賠 / 贏 0050)', JSON.stringify(R.hdr) === JSON.stringify(['n', 'fin', 'worst', 'mdd', 'beat']), JSON.stringify(R.hdr));
 ok('②d 排序再點反向、有 ▼/▲、第一列換人', R.sort.f1 !== R.sort.f2 && /[▼▲]/.test(R.sort.a1) && /[▼▲]/.test(R.sort.a2) && R.sort.a1 !== R.sort.a2, JSON.stringify(R.sort));
+ok('②d2 🐛 點過表頭之後 `_pbSort` 仍是函式(⛔ 排序狀態不可跟股票清單排序同名)', R.pbFn);
 ok('②e 預設照「100 萬變成」由大到小,第一列是 👑', /👑/.test(R.firstRow), R.firstRow);
 ok('②f 上市太晚的 ETF 排最後、寫「上市晚於」', R.lateLast && /上市晚於/.test(R.long) && R.longRows >= 10);
 ok('③ ⛔「中途最多賠」那一欄在,一句話結論寫代價', /中途\s*最多賠/.test(R.txt) && /代價/.test(R.txt) && /運氣最差的那個起點/.test(R.txt));

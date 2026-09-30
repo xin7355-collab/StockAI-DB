@@ -118,7 +118,7 @@ const P = await pro.evaluate(async () => {
     const o = {};
     const set = (st, un) => localStorage.setItem('proTerminalSettings', JSON.stringify({ strategy: st, stratUnlock: un }));
     const snap = () => {
-        const B = PRO._PROFIT_BOARD; PRO._labSel = 'bt'; PRO._pbWin = 'ai'; PRO._pbSort = null; PRO.renderLab();
+        const B = PRO._PROFIT_BOARD; PRO._labSel = 'bt'; PRO._pbWin = 'ai'; PRO._pfSort = null; PRO.renderLab();
         const pb = document.getElementById('profitBody').innerText;
         let n = 0; for (const t of PRO.LAB_TABS) n += (PRO._labOf(t[0]) || []).length;
         const labT = []; for (const t of PRO.LAB_TABS) for (const it of (PRO._labOf(t[0]) || [])) labT.push(String(it.t || ''));

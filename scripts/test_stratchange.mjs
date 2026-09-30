@@ -125,7 +125,7 @@ const R = await page.evaluate(() => {
     // ⑬ 🔒 V78.0.5 👑 那一筆(lead:true)只給選了 👑 的人:🧬 看過最新出場變更 → ⛔ 不跳;👑 同一個蓋章 → 要跳 👑 那一筆
     const cLead = A._STRAT_CHANGES.find(c => c.lead);
     if (cLead) {
-        const seenV = A._STRAT_CHANGES.find(c => !c.lead).v, _isL = A._isLead;
+        const seenV = A._STRAT_CHANGES.find(c => !c.lead && !c.gene).v, _isL = A._isLead;   // 🧬 V78.0.7 gene:true 那筆只給 🧬 的人 → 拿「兩邊都會看到」的最新一筆當蓋章
         A._isLead = () => false; localStorage.setItem(K, seenV); hide(); A._checkStratChange();
         out.geneLead = { shown: shown(), txt: (document.getElementById('richHelpModal') || {}).innerText || '' };
         A._isLead = () => true; localStorage.setItem(K, seenV); hide(); A._checkStratChange();
@@ -136,14 +136,15 @@ const R = await page.evaluate(() => {
     // ⑪ 「換回舊的」真的會換
     A.settings = A.settings || {};
     out.defRule = A._exitRuleKey();
-    A.setExitRule(A._STRAT_CHANGES.find(c => !c.lead || A._isLead()).back);
+    A.setExitRule(A._STRAT_CHANGES.find(c => !c.lead && c.back).back);   // ⭐ 出場規則那一類(🧬 門檻那筆另由 test_generank 測)
     out.afterBack = A._exitRuleKey();
     delete A.settings.exitRule;
     out.backToDefault = A._exitRuleKey();
     // ⭐ 把那一筆本身帶回去 —— 斷言跟**資料**比對,⛔ 不在測試裡寫死內容
     //   (寫死的話,下次再換一筆進來就整排假紅 = 斷言釘住實作不是用意)
-    const c0 = A._STRAT_CHANGES.find(c => !c.lead || A._isLead());
-    out.chg = { back: c0.back, from: c0.from, to: c0.to, why: c0.why, cost: c0.cost, you: c0.you };
+    const cB = A._STRAT_CHANGES.find(c => !c.lead && c.back);   // ⑪b:出場規則那一類的「換回舊的」
+    const c0 = A._STRAT_CHANGES.find(c => !c.lead);                // ⑫:🧬 使用者實際會看到的那一筆(視窗內容跟它比)
+    out.chg = { back: cB.back, from: c0.from, to: c0.to, why: c0.why, cost: c0.cost, you: c0.you };
     return out;
 });
 await browser.close();
@@ -184,7 +185,7 @@ ok('⑫e 🚨 視窗要寫「對你的影響」而且有具體內容', /對你�
 ok('⑫f 視窗要有「換回舊的」', /換回舊的/.test(B));
 ok('⑫g ⛔ 要明說舊的沒有刪掉', /沒有刪掉|都還在/.test(B));
 if (R.geneLead) {
-    ok('⑬ 🔒 👑 那一筆⛔ 不跳給 🧬(不洩漏這一套)', !R.geneLead.shown && !/領頭羊|👑/.test(R.geneLead.txt), R.geneLead.txt.slice(0, 120));
+    ok('⑬ 🔒 👑 那一筆⛔ 不跳給 🧬(不洩漏這一套;V78.0.7 起 🧬 會看到自己那筆 🧬 門檻變更,那是對的)', !/領頭羊|👑/.test(R.geneLead.txt), R.geneLead.txt.slice(0, 120));
     ok('⑬b 選了 👑 的人:同一個蓋章 → 會跳 👑 那一筆,「換回舊的」是位置規則', R.leadLead.shown && /一年位置/.test(R.leadLead.txt) && /換回舊的/.test(R.leadLead.txt), R.leadLead.txt.slice(0, 160));
 }
 
