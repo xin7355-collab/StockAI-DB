@@ -117,6 +117,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     const { cal, stocks, etf } = ctx;
     const P = { ...DEF, ...cfg };
     const n = cal.length;
+    // 📅 V78.0.8 endIdx:跑到這一天收盤就停(逐年成績單:每年 1 月重放 100 萬、年底以市值計)—— 不設 = 跑到最後一天(逐位相同)
+    const nEnd = P.endIdx != null ? Math.min(n, P.endIdx + 1) : n;
     const CAP = P.capital > 0;
     let cash = CAP ? P.capital : 1, park = 0;                 // park 用 0050 含息指數的「單位數」
     let contributed = cash, glideAt = null;
@@ -124,6 +126,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     const pos = new Map();                                    // sym → {sh, entry, atr, hc, S}
     const eq = [];
     let trades = 0, wins = 0, sumRet = 0, turnover = 0, skipLimit = 0, jumpExit = 0;
+    let sumAmt = 0, worstAmt = null, bestAmt = null;         // V78.0.8 逐筆賺賠(元 / 本金單位)—— 只給逐年成績單用,⛔ 不影響淨值
     const rand = rng(seed);
     let pending = null;                                       // 前一天收盤決定、今天開盤執行的委託
     const dailySell = new Set();
@@ -166,8 +169,9 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         return null;
     };
     const value = i => { let v = cash + park * etf.tr[i]; for (const p of pos.values()) { const c = lastC(p.S, i); v += p.sh * c; } return v; };
-    const sell = (p, px, i) => { const amt = p.sh * px; cash += CAP ? amt - feeOf(amt) - amt * TAX : amt * (1 - FEE - TAX); turnover += amt; const ret = px / p.cost - 1 - 2 * FEE - TAX; trades++; sumRet += ret; if (ret > 0) wins++; pos.delete(p.S.sym); };
-    for (let i = s0; i < n; i++) {
+    const sell = (p, px, i) => { const amt = p.sh * px; const got = CAP ? amt - feeOf(amt) - amt * TAX : amt * (1 - FEE - TAX); cash += got; turnover += amt; const ret = px / p.cost - 1 - 2 * FEE - TAX; trades++; sumRet += ret; if (ret > 0) wins++;
+        const pa = got - p.paid; sumAmt += pa; if (worstAmt === null || pa < worstAmt) worstAmt = pa; if (bestAmt === null || pa > bestAmt) bestAmt = pa; pos.delete(p.S.sym); };
+    for (let i = s0; i < nEnd; i++) {
         if (P.add > 0 && i > s0 && cal[i].slice(0, 7) !== cal[i - 1].slice(0, 7)) { cash += P.add; contributed += P.add; }   // 🌱 每月投入
         // ① 成交點:執行上一次決策的委託 —— fill='open' 在今天開盤、'nextclose' 在今天收盤(見 ②b)
         const execPending = (PX, ti) => {   // ti = 0050 用哪一天的價(開盤成交 ≈ 昨收;收盤成交 = 今天收盤)
@@ -175,7 +179,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             if (pending.trim) for (const p of pos.values()) {                              // 🌱 先衝再穩:翻倍那天之後的第一個成交點,每一檔賣掉一半
                 const o = PX(p.S, i); if (!(o > 0)) continue;
                 const shS = CAP ? Math.floor(p.sh / 2) : p.sh / 2; if (!(shS > 0)) continue;
-                const amt = shS * o; cash += CAP ? amt - feeOf(amt) - amt * TAX : amt * (1 - FEE - TAX); turnover += amt; p.sh -= shS;
+                const amt = shS * o; cash += CAP ? amt - feeOf(amt) - amt * TAX : amt * (1 - FEE - TAX); turnover += amt; p.paid *= (p.sh - shS) / p.sh; p.sh -= shS;
             }
             const eqNow = value(ti);
             const slot = eqNow * (1 - P.core) / P.N;
@@ -191,14 +195,14 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                     cash += CAP ? amt0 - feeOf(amt0) - amt0 * ETF_TAX : units * etf.tr[ti] * (1 - FEE - ETF_TAX); park -= units; turnover += amt0;
                 }
                 need = Math.min(need, cash); if (need < slot * 0.2) continue;
-                let sh;
+                let sh, paid;
                 if (CAP) {                                                                  // 🌱 整數股 + 最低手續費
                     sh = Math.floor(need / (o * (1 + FEE)));
                     while (sh > 0 && sh * o + feeOf(sh * o) > need) sh--;
                     if (sh < 1) continue;
-                    const cost = sh * o + feeOf(sh * o); cash -= cost; turnover += sh * o;
-                } else { sh = need / (o * (1 + FEE)); cash -= need; turnover += need; }
-                pos.set(S.sym, { sh, cost: o, atr: S.atr[i - 1], hc: o, S, entry: P.fill === 'open' ? i : i + 0.5 });   // 收盤成交那天⛔ 不可再跑當天的吊燈 / 出場檢查
+                    const cost = sh * o + feeOf(sh * o); cash -= cost; turnover += sh * o; paid = cost;
+                } else { sh = need / (o * (1 + FEE)); cash -= need; turnover += need; paid = need; }
+                pos.set(S.sym, { sh, cost: o, paid, atr: S.atr[i - 1], hc: o, S, entry: P.fill === 'open' ? i : i + 0.5 });   // 收盤成交那天⛔ 不可再跑當天的吊燈 / 出場檢查
             }
             if (P.park && cash > 0.01 * value(ti) && (!CAP || cash >= P.parkMin)) { const units = CAP ? (cash - feeOf(cash)) / etf.tr[ti] : cash * (1 - FEE) / etf.tr[ti]; park += units; turnover += cash; cash = 0; }
             pending = null;
@@ -271,7 +275,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             }
         }
     }
-    return { eq, trades, win: trades ? wins / trades : null, avg: trades ? sumRet / trades : null, turnover, skipLimit, jumpExit, from: cal[s0], contributed, glideAt, st };
+    return { eq, trades, win: trades ? wins / trades : null, avg: trades ? sumRet / trades : null, turnover, skipLimit, jumpExit, from: cal[s0], contributed, glideAt, st,
+        sumAmt, worstAmt, bestAmt, held: pos.size, openPnl: [...pos.values()].reduce((a, p) => a + p.sh * lastC(p.S, nEnd - 1) - p.paid, 0) };
 }
 /** 一年位置(近 252 個有交易日的調整後收盤,0~100)—— 用到才算(單調佇列 O(n)) */
 function pos252(S, i, raw = false) {
@@ -415,6 +420,50 @@ function runSet(ctx, name, cfg, startDate, paths = 17) {
         eqEnd: res.map(r => r2(r.m.tot)),
         trades: med(r => r.trades), win: med(r => r.win * 100), avg: med(r => r.avg * 100), turnYr: med(r => r.turnover / ((r.eq.length - 1) / 244)),
         years: Object.fromEntries(years.map(y => [y, { s: med(r => r.y[y]?.s ?? NaN), c: med(r => r.y[y]?.c ?? NaN) }])) };
+}
+
+/**
+ * 📅 V78.0.8 逐年成績單(給 pro.html `_YEARLY_BT`,跟 yearly_bt.mjs 同一組欄位):
+ *   每一年 1 月第 0/5/10/15/20 個交易日各放 100 萬(真實股數模式 capital=1e6)、跑到那一年最後一個交易日收盤,
+ *   年底還抱著的以**年底收盤市值**算(👑 沒有「抱到出場」這回事 → 跟 🧬 那些列的口徑不同,畫面要寫)。
+ *   主數字 = 起點 0;另外 4 個起點只給「換個起點最好 / 最差」。
+ */
+export function yearlyRuns(ctx, cfg, years, offsets = [0, 5, 10, 15, 20]) {
+    const out = {}, yb = {};
+    for (const y of years) {
+        const first = ctx.cal.findIndex(d => d >= `${y}-01-01`); let last = -1;
+        for (let k = ctx.cal.length - 1; k >= 0; k--) if (ctx.cal[k] <= `${y}-12-31`) { last = k; break; }
+        if (first < 0 || last < first) { out[y] = null; continue; }
+        const rs = offsets.map(o => {
+            const s = first + o; if (s > last) return null;
+            const r = simulate(ctx, s, { ...cfg, capital: 1e6, endIdx: last }, 1000 + o);
+            let pk = -Infinity, dd = 0; for (const v of r.eq) { pk = Math.max(pk, v); dd = Math.min(dd, v / pk - 1); }
+            const pnl = r.eq.at(-1) - 1e6;
+            return { pnl, dd: dd * 100, r, s };
+        });
+        const r0 = rs[0]; if (!r0) { out[y] = null; continue; }
+        const pn = rs.filter(Boolean).map(x => x.pnl), R = r0.r;
+        out[y] = { n: R.trades, win: R.win == null ? null : r2(R.win * 100), per: R.avg == null ? null : r2(R.avg * 100), pnl: Math.round(r0.pnl), ret: r2(r0.pnl / 1e4),
+            perAmt: R.trades ? Math.round(R.sumAmt / R.trades) : null, worst: R.worstAmt == null ? null : Math.round(R.worstAmt), best: R.bestAmt == null ? null : Math.round(R.bestAmt),
+            dd: r2(r0.dd), lo: Math.round(Math.min(...pn)), hi: Math.round(Math.max(...pn)), cross: 0, held: R.held, from: ctx.cal[r0.s], to: ctx.cal[last], paths: pn.length };
+        const tr = ctx.etf.tr, s0 = r0.s;
+        yb[y] = { e0050tr: r2((tr[last] / tr[s0] - 1) * 100), from: ctx.cal[s0], to: ctx.cal[last] };
+    }
+    return { y: out, yb };
+}
+/** 🏦 一個帳戶一路滾(17 條起點,同 runSet 的 STEP)→ 跟 yearly_bt 的 `c` 同一組欄位(賺賠 = 最後市值 − 100 萬) */
+export function contRuns(ctx, cfg, from, paths = 17) {
+    const s0 = ctx.cal.findIndex(d => d >= from);
+    const rs = [];
+    for (let k = 0; k < paths; k++) {
+        const s = s0 + STEP * k, r = simulate(ctx, s, { ...cfg, capital: 1e6 }, 1000 + k);
+        const trS = Array.from(ctx.etf.tr.slice(s, s + r.eq.length));
+        rs.push({ fin: r.eq.at(-1) - 1e6, m: metrics(r.eq, trS), win: r.win, n: r.trades });
+    }
+    const md = a => median(a);
+    return { med: Math.round(md(rs.map(x => x.fin))), lo: Math.round(Math.min(...rs.map(x => x.fin))), hi: Math.round(Math.max(...rs.map(x => x.fin))),
+        dd: r2(md(rs.map(x => x.m.mdd))), ddw: r2(Math.min(...rs.map(x => x.m.mdd))), win: r2(md(rs.map(x => x.win * 100))), n: Math.round(md(rs.map(x => x.n))),
+        paths, from: ctx.cal[s0], to: ctx.cal.at(-1), e0050tr: r2(md(rs.map(x => x.m.b0050))) };
 }
 
 /** 🪜 一檔 ETF 在 17 個起點(同 runSet 的 STEP)買了放著到最後一天的含息報酬中位;sym=0050 直接用 ctx.etf.tr(= 策略的 b0050,同一把尺) */
@@ -568,6 +617,18 @@ function selftest() {
     const w = calL.slice(289 - 251, 290).map((_, k) => Cr.C[289 - 251 + k]), exp = (Cr.C[289] - Math.min(...w)) / (Math.max(...w) - Math.min(...w)) * 100;
     t(Math.abs(pos252(Cr, 289, true) - exp) < 1e-9 && Math.abs(pos252(Up, 200, true) - 100) < 1e-9 && p0.eq.at(-1) > 1.2 && p85.eq.at(-1) < 1.05 && p85.st.fTot > 0,
         `㉗ 位置 ≥85(App 算法):動能第 1 名但位置只有 ${r2(pos252(Cr, 289, true))}% → 不買、改買第 2 名(淨值 ${r2(p0.eq.at(-1))} → ${r2(p85.eq.at(-1))});不滿一年用現有天數`);
+    // ㉘ V78.0.8 endIdx(逐年成績單):跑到第 e 天就停 → 淨值 = 不停那一條的前 e−s0+1 天(逐位相同)
+    const full = simulate(ctx5, 100, { U: 20, N: 3, R: 5, L: 20, chand: 0, park: false, trend: false }, 7);
+    const cut = simulate(ctx5, 100, { U: 20, N: 3, R: 5, L: 20, chand: 0, park: false, trend: false, endIdx: 150 }, 7);
+    t(cut.eq.length === 51 && cut.eq.every((v, k) => v === full.eq[k]) && full.eq.length === n - 100, `㉘ endIdx:停在第 150 天 → 淨值是完整那一條的前 51 天、一格不差(不設 = 跑到最後)`);
+    // ㉙ 逐筆賺賠加起來 = 最後市值 − 本金(全部賣光、閒錢不放 0050 時)
+    const cp = simulate(ctx5, 100, { U: 20, N: 3, R: 5, L: 20, chand: 0, park: false, trend: false, capital: 1e6, minFee: 20 }, 7);
+    const shift = mk('9999', i => i < 150 ? 100 + i * 2 : 500 - (i - 150) * 3);   // 先漲最多、後面跌 → 一定會被換掉(賣出)
+    const cS = { cal, stocks: [...many, shift], etf: flat, bear: new Uint8Array(n) };
+    const cp2 = simulate(cS, 100, { U: 21, N: 1, R: 5, L: 20, chand: 0, park: false, trend: false, capital: 1e6, minFee: 20, endIdx: 190 }, 7);
+    const gap = cp2.eq.at(-1) - 1e6 - cp2.sumAmt - cp2.openPnl;
+    t(cp.trades >= 0 && cp2.trades >= 1 && cp2.worstAmt <= cp2.bestAmt && Math.abs(gap) < 1e-6,
+        `㉙ 逐筆賺賠:${cp2.trades} 筆已賣(最差 ${Math.round(cp2.worstAmt)} ≤ 最好 ${Math.round(cp2.bestAmt)})+ 還抱著 ${cp2.held} 檔的帳面 = 最後市值 − 本金(差 ${gap.toExponential(1)})`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }
@@ -596,6 +657,27 @@ function main() {
     const need = (k, has, what) => { if (SETS.some(([, c]) => c[k]) && !has) { console.error(`🚨 有變體用到 ${k} 但沒給 ${what},拒跑`); process.exit(1); } };
     need('dispNow', ctx.dper, 'DISP_PERIODS'); need('dispOracle', ctx.dper, 'DISP_PERIODS'); need('attSell', ctx.att, 'ATT_EVENTS');
     need('indCap', ctx.ind, 'IND_MAP'); need('finAcc', ctx.fin, 'FIN_DEEP'); need('fsync', ctx.meta.flows, 'FLOWS=1');
+    // 📅 V78.0.8 YEARLY_OUT=檔:只產「逐年成績單」那幾列(👑 四種做法 × 2011~今年 × 5 起點 + 一路滾 17 條)→ embed_yearly_bt.mjs --merge
+    if (process.env.YEARLY_OUT) {
+        const YS = JSON.parse(process.env.YEARLY_SETS || 'null') || [
+            ['lead', '👑 領頭羊短線輪動(全攻):成交額前 100 大 ・10 日動能前 5 檔 ・每 10 天換 ・一年位置 ≥85% ・閒錢放 0050', {}],
+            ['lead_stable', '👑 領頭羊・穩定版(一半永遠放 0050)', { core: 0.5 }],
+            ['lead_glide', '👑 領頭羊・先衝再穩(帳戶翻倍後改穩定版)', { glide: 2 }],
+            ['lead_close', '👑 領頭羊・尾盤成交(= 自動下單的做法)', { fill: 'nextclose' }],
+        ];
+        const from = process.env.YEARLY_FROM || '2011-01-03';
+        const years = []; for (let y = +from.slice(0, 4); y <= +ctx.cal.at(-1).slice(0, 4); y++) years.push(String(y));
+        const rows = [];
+        for (const [id, t, cfg] of YS) {
+            const t1 = Date.now();
+            const Yr = yearlyRuns(ctx, cfg, years), c = contRuns(ctx, cfg, from);
+            const bc = { from: c.from, to: c.to, e0050tr: c.e0050tr }; delete c.e0050tr;
+            rows.push({ id, g: 'lead', t, cfg, c, y: Yr.y, yb: Yr.yb, bc });
+            console.log(`📅 ${id}:一路滾中位 ${(c.med / 1e4).toFixed(1)} 萬(最差 ${(c.lo / 1e4).toFixed(1)}・回撤 ${c.dd}%)・` + years.map(y => `${y} ${Yr.y[y] ? Yr.y[y].ret + '%' : '—'}`).join(' ') + `・${((Date.now() - t1) / 1000).toFixed(0)}s`);
+        }
+        fs.writeFileSync(process.env.YEARLY_OUT, JSON.stringify({ asof: new Date().toISOString().slice(0, 10), data_to: ctx.cal.at(-1), years, rows }));
+        return;
+    }
     const res = { asof: new Date().toISOString().slice(0, 10), meta: ctx.meta, def: DEF, sets: [], etf: {} };
     // 🪜 V77.9.4 ETFS=0050,006208,…:每一檔 ETF「買了放著(含息)」用**跟策略同一組 17 個起點**算中位(⛔ 不從窗口第一天單算一次 ——
     //    那就是 0050 同期出現 375 / 342.7 / 349.9 三個數字的原因)。上市晚於起點 → 原因,⛔ 不硬比。
