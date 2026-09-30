@@ -182,6 +182,9 @@ if (!['self', 'rand', 'mkt', 'mom10'].includes(RANKBY)) { console.error(`🚨 RA
 //   POOL=N          = 訊號日「近 20 日平均成交金額」全市場(⛔ 不含 0 開頭的 ETF)排名前 N 才可進場
 //   POOL=sham:N     = 安慰劑:跟成交額無關、通過率對齊 POOL=N 在「🧬 通過的候選」上的實測(固定種子)
 const POOL = process.env.POOL || '';
+//   RKSHAM=R       = 位階門檻的安慰劑:照 RANK_MIN 篩完之後,再**隨機**丟掉「位階 < R」那一段佔的比例(⛔ 跟位階無關、固定種子)
+//                    → 拿來跟 RANK_MIN=R 比:同樣少挑那麼多檔,贏的是「位階高」還是「少挑一點」
+const RKSHAM = +(process.env.RKSHAM || 0);
 const POOL_N = +(POOL.replace(/^sham:/, '') || 0);
 if (POOL && !(POOL_N > 0)) { console.error(`🚨 POOL=${POOL} 不認得(N|sham:N)`); process.exit(1); }
 const GATE = process.env.GATE || 'pat';
@@ -1132,6 +1135,12 @@ if (POOL) {
     console.log(`👑 POOL=${POOL}:全市場 ${nSym} 檔(不含 ETF)・${poolThr.size} 個交易日有第 ${POOL_N} 名門檻`);
     if (poolThr.size < 200) { console.error('🚨 算得出門檻的交易日不到 200 → 資料不對,停'); process.exit(1); }
 }
+let rkFrac = null;
+const rkShamOk = t => {
+    if (!RKSHAM) return true;
+    if (rkFrac == null) { let on = 0, n = 0; for (const arr of byIn.values()) for (const x of arr) { if (!selfOk(x)) continue; const f = selfFeat.get(x.sym)?.get(x.inD); if (!f) continue; n++; if (f.rank >= RKSHAM) on++; } rkFrac = n ? on / n : 0; console.log(`🎲 RKSHAM=${RKSHAM}:🧬 候選裡位階 ≥ ${RKSHAM} 的佔 ${(rkFrac * 100).toFixed(1)}%(${on}/${n})→ 隨機留同樣比例`); }
+    return (_shamHash(`${t.sym}|${t.inD}|rk`) % 10000) < rkFrac * 10000;   // 安慰劑:跟位階無關、同通過率
+};
 const poolRaw = t => { const thr = poolThr.get(t.inD), v = poolAmt.get(`${t.sym}|${t.inD}`); return (thr == null || v == null) ? null : v >= thr; };
 const poolOk = t => {
     if (!POOL) return true;
@@ -1313,7 +1322,7 @@ for (let i = 0; i < days.length; i++) {
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
                   && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF)
                   && indCycOk(x.t.sym, d)
-                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t) && valOk(x.t) && emOk(x.t) && usOk(x.t) && poolOk(x.t))
+                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t) && valOk(x.t) && emOk(x.t) && usOk(x.t) && poolOk(x.t) && rkShamOk(x.t))
         .sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
     if (RANKBY === 'rand') { for (let k = cand.length - 1; k > 0; k--) { const j = Math.floor(_rnd() * (k + 1)); [cand[k], cand[j]] = [cand[j], cand[k]]; } }
     else if (RANKBY === 'mkt') cand.sort((a, b) => (b.m.sum / b.m.n) - (a.m.sum / a.m.n));
@@ -1637,7 +1646,7 @@ if (process.env.SUMMARY_OUT) {
     const byYear = {};
     for (const m of mons) { const y = m.slice(0, 4); byYear[y] = Math.round((byYear[y] || 0) + byMon[m].pnl); }
     const summary = {
-        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '', bearExit: BEAR_EXIT || '', forceExit: FORCE_EXIT ? FORCE_HASH : '', ...(POOL ? { pool: POOL } : {}), ...(RANKBY !== 'self' ? { rankby: RANKBY } : {}) },
+        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '', bearExit: BEAR_EXIT || '', forceExit: FORCE_EXIT ? FORCE_HASH : '', ...(POOL ? { pool: POOL } : {}), ...(RKSHAM ? { rksham: RKSHAM } : {}), ...(RANKBY !== 'self' ? { rankby: RANKBY } : {}) },
         from, to, months: mons.length, n: taken.length, win: +(wins.length / taken.length * 100).toFixed(1),
         per: +(taken.reduce((a, t) => a + net(t), 0) / taken.length).toFixed(2), cum: Math.round(totalPnL), ret: +(totalPnL / capital * 100).toFixed(2),
         dd: +mdd.toFixed(2), skipped, twii: +twiiRet.toFixed(2), etf0050: ret50 == null ? null : +ret50.toFixed(2), etf0050tr: ret50tr == null ? null : +ret50tr.toFixed(2), byYear,
