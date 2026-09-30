@@ -27,11 +27,11 @@ ok('④b 實測數字只出現在 `_LEADER_EDGE` 裡面(⛔ 文案不可寫死)'
 const _hs = SRC.indexOf('_leaderHelp() {'), _hTxt = SRC.slice(_hs, _hs + 4000);
 ok('④c 🗓️ 逐月數字讀 `_LEADER_EDGE.mon`(⛔ 說明不寫死)', /mon: \{ n: \d+, beat: \d+/.test(SRC) && /\$\{E\.mon\.beat\}/.test(_hTxt) && /\$\{E\.mon\.worstAll\}/.test(_hTxt) && !/贏 0050 的月份 53%/.test(_hTxt));
 const AT = fs.readFileSync(path.join(ROOT, 'auto_trade.py'), 'utf8');
-const jsRule = (SRC.match(/rule: \{ U: (\d+), N: (\d+), R: (\d+), L: (\d+), hyst: (\d+) \}/) || []).slice(1).join(',');
+const jsRule = (SRC.match(/rule: \{ U: (\d+), N: (\d+), R: (\d+), L: (\d+), hyst: (\d+), pos: (\d+) \}/) || []).slice(1).join(',');
 // 👑 V77.9.3 規則 / 錨點搬到 lib_leader.py(auto_trade.py 與成績單的採礦端共用)→ 比對那一份,並釘住 auto_trade 真的用它
 const LIBL = fs.readFileSync(path.join(ROOT, 'lib_leader.py'), 'utf8');
-const pyRule = (LIBL.match(/LEADER_RULE = \{'U': (\d+), 'N': (\d+), 'R': (\d+), 'L': (\d+), 'hyst': (\d+)\}/) || []).slice(1).join(',');
-ok('⑤ 規則 App == lib_leader.py(U,N,R,L,hyst),auto_trade.py 從它 import', jsRule && jsRule === pyRule && /LEADER_RULE = _LL\.LEADER_RULE/.test(AT), `${jsRule} vs ${pyRule}`);
+const pyRule = (LIBL.match(/LEADER_RULE = \{'U': (\d+), 'N': (\d+), 'R': (\d+), 'L': (\d+), 'hyst': (\d+), 'pos': (\d+)\}/) || []).slice(1).join(',');
+ok('⑤ 規則 App == lib_leader.py(U,N,R,L,hyst,pos),auto_trade.py 從它 import', jsRule && jsRule === pyRule && /LEADER_RULE = _LL\.LEADER_RULE/.test(AT), `${jsRule} vs ${pyRule}`);
 const jsAnc = (SRC.match(/anchor: '(\d{4}-\d{2}-\d{2})'/) || [])[1], pyAnc = /LEADER_ANCHOR = os\.getenv\('LEADER_ANCHOR'\) or _LL\.LEADER_ANCHOR/.test(AT) ? (LIBL.match(/LEADER_ANCHOR = '(\d{4}-\d{2}-\d{2})'/) || [])[1] : null;
 ok('⑤b 換倉錨點 App == auto_trade.py(⛔ 不存在手機上)', jsAnc && jsAnc === pyAnc && !/proTerm_leaderStart/.test(SRC), `${jsAnc} vs ${pyAnc}`);
 ok('⑤c 領頭羊預設關(LEADER=1 才開)、⛔ 只動 lead 那一格的部位、空頭只擋買', /LEADER = os\.getenv\('LEADER'\) == '1'/.test(AT) && /held = st\.setdefault\('lead', \{\}\)/.test(AT) && /'lead': st\.get\('lead'\) or \{\}/.test(AT) && /BEAR_GATE and _mkt\.get\('bear60'\) is True:\n\s+log\("   👑 🐻/.test(AT));
@@ -49,7 +49,7 @@ await page.waitForFunction(() => typeof app !== 'undefined' && typeof app._leade
 const R = await page.evaluate(async () => {
     const out = {};
     // 合成 screener:120 檔;amt20 越前面越大;今天的 amt 故意反過來(池子若用 amt 會選錯)
-    const cols = ['c', 'chg', 'chg5', 'chg10', 'chg20', 'amt', 'amt20', 'b20', 'b60', 'lim', 'att', 'etf'];
+    const cols = ['c', 'chg', 'chg5', 'chg10', 'chg20', 'amt', 'amt20', 'b20', 'b60', 'lim', 'att', 'etf', 'pos252'];   // 📍 V78.0.5 pos252 全設 95(位置濾網由 ⑩ 單獨測)
     const rows = {};
     for (let i = 0; i < 120; i++) {
         const sym = String(1000 + i);
@@ -57,9 +57,9 @@ const R = await page.evaluate(async () => {
         const chg10 = i < 100 ? (i % 2 ? 30 - i * 0.2 : -5) : 99;  // 池子外(1100~1119)chg10 最高 → 排名若不限池子會選到它們
         const chg20 = i;                                           // ⚠️ 必須跟 chg10 反向:排名若用 chg20 會選到 1099/1097…(V77.8.9 前寫成 100 − i,跟 chg10 同向 → ①c 與 ⑤g 都沒有鑑別力)
         const b20 = i % 2 ? 3 : -3, b60 = i % 2 ? 8 : 1;           // 奇數 = 過趨勢(b20>0 且 b20<b60)
-        rows[sym] = [100, 1, 1, chg10, chg20, amt, amt20, b20, b60, 0, 0, 0];
+        rows[sym] = [100, 1, 1, chg10, chg20, amt, amt20, b20, b60, 0, 0, 0, 95];
     }
-    rows['0050'] = [100, 1, 1, 50, 50, 999, 999, 5, 9, 0, 0, 1];   // ETF 高成交額 ⛔ 不可進池子
+    rows['0050'] = [100, 1, 1, 50, 50, 999, 999, 5, 9, 0, 0, 1, 95];   // ETF 高成交額 ⛔ 不可進池子
     const D = { data_date: '2026-09-28', cols, rows };
     const L = app._leaderCalc(D);
     out.n = L.n; out.poolHas0050 = L.poolSet.has('0050'); out.poolHas1100 = L.poolSet.has('1100'); out.poolHas1000 = L.poolSet.has('1000');
@@ -122,7 +122,7 @@ ok('③l ⭐ V77.9.6 ⛔ 不再有「標了才算」:選 👑 時 1041 一律講
 ok('③e ⛔ 無 🔴🟢', !/[🔴🟢]/u.test(R.txt) && !/[🔴🟢]/u.test(R.bearTxt));
 ok('③f 390px 不橫捲、不超出', R.sx <= 2 && R.over === 0, `${R.sx} ${R.over}`);
 ok('③g 無 pageerror', !errs.length, errs.join(' | '));
-ok('③h 名單裡有注意 / 處置股 → 寫「不要跳過」+ 實測數字(讀常數)', /不要跳過/.test(R.attTxt) && /\+341%/.test(R.attTxt), R.attTxt.slice(0, 200));
+ok('③h 名單裡有注意 / 處置股 → 寫「不要跳過」+ 實測數字(讀常數)', /不要跳過/.test(R.attTxt) && /\+408%/.test(R.attTxt), R.attTxt.slice(0, 200));
 
 // ⑤ 跨語言:同一份 screener → Python 與 JS 名單逐項相同
 const pyRun = (Dpath, mode = '') => JSON.parse(execFileSync('python3', ['-c', `
@@ -254,10 +254,10 @@ ok('⑥e 門檻 index `_DECK_THIN_AMT` == pro `CAST_MIN_AMT`(同一條線)', pro
 //    → 第三份實作,規則與名單要跟 index 一模一樣(合成 + 正式 screener);決定性對照:pro 那份改成 chg20 排必須對不上
 {
     const synth = (() => {
-        const cols = ['c', 'chg', 'chg5', 'chg10', 'chg20', 'amt', 'amt20', 'b20', 'b60', 'lim', 'att', 'etf'], rows = {};
+        const cols = ['c', 'chg', 'chg5', 'chg10', 'chg20', 'amt', 'amt20', 'b20', 'b60', 'lim', 'att', 'etf', 'pos252'], rows = {};
         for (let i = 0; i < 120; i++) { const chg10 = i < 100 ? (i % 2 ? 30 - i * 0.2 : -5) : 99;
-            rows[String(1000 + i)] = [100, 1, 1, chg10, i, i, 200 - i, i % 2 ? 3 : -3, i % 2 ? 8 : 1, 0, 0, 0]; }
-        rows['0050'] = [100, 1, 1, 50, 50, 999, 999, 5, 9, 0, 0, 1];
+            rows[String(1000 + i)] = [100, 1, 1, chg10, i, i, 200 - i, i % 2 ? 3 : -3, i % 2 ? 8 : 1, 0, 0, 0, 95]; }
+        rows['0050'] = [100, 1, 1, 50, 50, 999, 999, 5, 9, 0, 0, 1, 95];
         return { data_date: '2026-09-28', cols, rows };
     })();
     const sets = [['合成', synth]]; if (real) sets.push(['正式 ' + JSON.parse(real).data_date, JSON.parse(real)]);
@@ -269,13 +269,38 @@ ok('⑥e 門檻 index `_DECK_THIN_AMT` == pro `CAST_MIN_AMT`(同一條線)', pro
     await pp.waitForFunction(() => typeof PRO !== 'undefined' && typeof PRO._leaderCalc === 'function', null, { timeout: 60000 });
     for (const [, D] of sets) proRes.push(await pp.evaluate(([D, f]) => eval(f)(PRO._leaderCalc(D)), [D, pick.toString()]));
     const bad = await pp.evaluate(D => { const cols = D.cols.map(c => c === 'chg10' ? 'x' : c === 'chg20' ? 'chg10' : c); return PRO._leaderCalc({ ...D, cols }).buy.map(r => r.sym); }, synth);
-    const pRule = await pp.evaluate(() => { const P = PRO._LEAD; return [P.U, P.N, P.R, P.L, P.hyst, P.anchor].join(','); });
-    const iRule = await page.evaluate(() => { const P = app._LEADER_EDGE.rule; return [P.U, P.N, P.R, P.L, P.hyst].join(','); });
+    const pRule = await pp.evaluate(() => { const P = PRO._LEAD; return [P.U, P.N, P.R, P.L, P.hyst, P.pos, P.anchor].join(','); });
+    const iRule = await page.evaluate(() => { const P = app._LEADER_EDGE.rule; return [P.U, P.N, P.R, P.L, P.hyst, P.pos].join(','); });
     const iAnc = (SRC.match(/anchor: '(\d{4}-\d\d-\d\d)'/) || [])[1];
     await pp.close();
     sets.forEach(([nm], k) => ok(`⑨ pro.html \`_leaderCalc\` == index(${nm}:前 5 / 前 10 / 過趨勢 / 池子)`, JSON.stringify(proRes[k]) === JSON.stringify(idxRes[k]), JSON.stringify([proRes[k], idxRes[k]]).slice(0, 240)));
     ok('⑨b ⭐ 決定性對照:pro 那份改用 chg20 排 → 名單必須對不上', JSON.stringify(bad) !== JSON.stringify(idxRes[0].buy), JSON.stringify(bad));
     ok('⑨c 規則 pro `_LEAD` == index `_LEADER_EDGE.rule` + 錨點', pRule === iRule + ',' + iAnc, `${pRule} vs ${iRule},${iAnc}`);
+}
+// ⑩ 📍 V78.0.5 買進多一道「一年位置 ≥ 85%」—— 四份實作(index / pro / lib_leader.py / worker)同一份合成資料名單要一樣;
+//    1003 位置 50%、1005 沒有位置資料 → 都不買、往下找(1001/1007/1009/1011/1013);續抱名單(前 10)⛔ 不看位置;換回舊的 = 前 5 名
+{
+    const D = JSON.parse(JSON.stringify(R.D)); const pi = D.cols.indexOf('pos252');
+    D.rows['1003'][pi] = 50; D.rows['1005'][pi] = null;
+    const WANT = ['1001', '1007', '1009', '1011', '1013'], OLD = ['1001', '1003', '1005', '1007', '1009'];
+    const iNew = await page.evaluate(D => { const L = app._leaderCalc(D); return { buy: L.buy.map(r => r.sym), ranked: L.ranked.map(r => r.sym), pos: L.pos }; }, D);
+    const iOld = await page.evaluate(D => app._leaderCalc(D, { pos: 0 }).buy.map(r => r.sym), D);
+    const iOff = await page.evaluate(D => { app.settings.leadPosOff = true; const b = app._leaderCalc(D).buy.map(r => r.sym); app.settings.leadPosOff = false; return b; }, D);
+    const pp = await browser.newPage(); await pp.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); s.strategy = 'lead'; s.stratUnlock = true; localStorage.setItem('proTerminalSettings', JSON.stringify(s)); } catch (_) {} });
+    await pp.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domcontentloaded' });
+    await pp.waitForFunction(() => typeof PRO !== 'undefined' && typeof PRO._leaderCalc === 'function', null, { timeout: 60000 });
+    const pNew = await pp.evaluate(D => PRO._leaderCalc(D).buy.map(r => r.sym), D);
+    const pOff = await pp.evaluate(D => { const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); s.leadPosOff = true; localStorage.setItem('proTerminalSettings', JSON.stringify(s)); return PRO._leaderCalc(D).buy.map(r => r.sym); }, D);
+    await pp.close();
+    const TP = '/tmp/_leader_pos.json'; fs.writeFileSync(TP, JSON.stringify(D));
+    const pyNew = pyRun(TP).buy;
+    const W = '/tmp/_worker_pos.mjs'; fs.writeFileSync(W, fs.readFileSync(path.join(ROOT, 'cloud-worker/worker.js'), 'utf8'));
+    const WK = await import(W + '?t=' + Date.now());
+    const wNew = WK.leadCalc(D).buy.map(r => r.sym), wOld = WK.leadCalc(D, 0).buy.map(r => r.sym);
+    const J = x => JSON.stringify(x);
+    ok('⑩ 一年位置 ≥85:index 跳過 1003(50%)與 1005(沒資料),往下買到 1013;續抱名單(前 10)照舊不看位置', J(iNew.buy) === J(WANT) && iNew.ranked.includes('1003') && iNew.ranked.includes('1005') && iNew.pos === 85, J(iNew));
+    ok('⑩b 四份實作一樣(index / pro / lib_leader.py / Telegram worker)', J(pNew) === J(WANT) && J(pyNew) === J(WANT) && J(wNew) === J(WANT), J([pNew, pyNew, wNew]));
+    ok('⑩c ⭐ 決定性對照:換回舊的(pos 0 / settings.leadPosOff / worker pos 0)→ 前 5 名(含 1003 / 1005)', J(iOld) === J(OLD) && J(iOff) === J(OLD) && J(pOff) === J(OLD) && J(wOld) === J(OLD), J([iOld, iOff, pOff, wOld]));
 }
 await browser.close();
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ LEADERDECK_PASS');

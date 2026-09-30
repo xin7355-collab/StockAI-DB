@@ -763,10 +763,10 @@ function isValidCode(code) {
 
 // ═══════════════ 👑 V77.9.6 領頭羊換倉日推播(只推給在 App 選 👑 的人)═══════════════
 // ⛔ 規則同 index.html `_leaderCalc` / `_leaderClock` / lib_leader.py(scripts/test_stratswitch.mjs 跨檔比對)。
-export const LEAD_RULE = { U: 100, N: 5, R: 10, L: 10, hyst: 2 };
+export const LEAD_RULE = { U: 100, N: 5, R: 10, L: 10, hyst: 2, pos: 85 };   // 📍 V78.0.5 pos = 買進要一年位置 ≥ pos%(只擋買,續抱照舊)
 export const LEAD_ANCHOR = '2026-09-24';
 function _leadStock(strategy, sym) { return strategy === 'lead' && /^\d{4}$/.test(String(sym)) && !String(sym).startsWith('00'); }
-export function leadCalc(D) {
+export function leadCalc(D, pos = LEAD_RULE.pos) {
     if (!D || !D.cols || !D.rows) return { err: 'nodata' };
     const CI = Object.fromEntries(D.cols.map((c, i) => [c, i]));
     if (CI.chg10 == null || CI.amt20 == null) return { err: 'notyet' };
@@ -775,14 +775,15 @@ export function leadCalc(D) {
         if (!/^\d{4}$/.test(sym) || sym.startsWith('00') || (CI.etf != null && +v[CI.etf] === 1)) continue;
         const amt20 = +v[CI.amt20], c = +v[CI.c], chg10 = v[CI.chg10], b20 = v[CI.b20], b60 = v[CI.b60];
         if (!(amt20 > 0 && c > 0)) continue;
-        rows.push({ sym, amt20, c, chg10: chg10 == null ? null : +chg10, b20: b20 == null ? null : +b20, b60: b60 == null ? null : +b60 });
+        rows.push({ sym, amt20, c, chg10: chg10 == null ? null : +chg10, b20: b20 == null ? null : +b20, b60: b60 == null ? null : +b60,
+                    pos: CI.pos252 != null && v[CI.pos252] != null ? +v[CI.pos252] : null });
     }
     rows.sort((a, b) => b.amt20 - a.amt20);
     const pool = rows.slice(0, LEAD_RULE.U);
     const ok = pool.filter(r => r.b20 != null && r.b60 != null && r.chg10 != null && r.b20 > 0 && r.b20 < r.b60);
     ok.sort((a, b) => b.chg10 - a.chg10);
-    const ranked = ok.map((r, i) => ({ ...r, rank: i + 1 }));
-    return { ranked: ranked.slice(0, LEAD_RULE.N * LEAD_RULE.hyst), buy: ranked.slice(0, LEAD_RULE.N), all: new Map(ranked.map(r => [r.sym, r])), date: D.data_date || '' };
+    const ranked = ok.map((r, i) => ({ ...r, rank: i + 1, posOk: !pos || (Number.isFinite(r.pos) && r.pos >= pos) }));
+    return { ranked: ranked.slice(0, LEAD_RULE.N * LEAD_RULE.hyst), buy: ranked.filter(r => r.posOk).slice(0, LEAD_RULE.N), all: new Map(ranked.map(r => [r.sym, r])), date: D.data_date || '', pos };
 }
 export function leadClock(twiiRows, dataDate) {
     const days = (twiiRows || []).map(r => String(r.date || r.d || '').replace(/\//g, '-').slice(0, 10)).filter(d => d && d >= LEAD_ANCHOR && d <= dataDate);
@@ -805,7 +806,8 @@ async function runLeaderRebalPush(env) {
     const D = sR?.ok ? await sR.json().catch(() => null) : null;
     let tw = tR?.ok ? await tR.json().catch(() => null) : null;
     tw = Array.isArray(tw) ? tw : (tw && tw.data) || [];
-    const L = leadCalc(D); if (L.err) return;
+    const L0 = leadCalc(D), L = L0; if (L.err) return;
+    const Lold = leadCalc(D, 0);   // 📍 V78.0.5 使用者在 App 按了「換回舊的」(leadPosOff)→ 用不看位置的舊名單
     const date = String(L.date).replace(/\//g, '-').slice(0, 10);
     const clk = leadClock(tw, date); if (!clk.isRebal) return;
     const bear = leadBear(tw.filter(r => String(r.date || '').replace(/\//g, '-').slice(0, 10) <= date));
@@ -820,6 +822,7 @@ async function runLeaderRebalPush(env) {
                 if (u.muted_until && u.muted_until > Date.now()) continue;
                 const sentKey = `leadpush:${u.chat_id}:${date}`;
                 if (await env.KV.get(sentKey)) continue;
+                const L = u.settings?.leadPosOff ? Lold : L0;
                 const mine = (u.inventory || []).map(i => i.sym).filter(s => _leadStock('lead', s));
                 const sell = mine.filter(s => { const r = L.all.get(s); return !(r && r.rank <= H); });
                 const keep = mine.filter(s => !sell.includes(s));
@@ -908,6 +911,8 @@ function sanitizePayload(payload) {
                 : 'all',
             // 🎯 V77.9.6 全站策略(App 設定「我的策略」):'gene' 🧬(預設)/ 'lead' 👑 —— 推播只講你選的那一套
             strategy: payload.settings.strategy === 'lead' ? 'lead' : 'gene',
+            // 📍 V78.0.5 領頭羊買進的一年位置門檻:App 按「換回舊的」→ true = 不看位置(舊規則)
+            leadPosOff: payload.settings.leadPosOff === true,
         };
         const ft = String(payload.settings.fugleToken1 || '').trim();
         if (ft && ft.length >= 8 && ft.length <= 100) out.settings.fugleToken1 = ft;

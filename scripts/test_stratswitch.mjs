@@ -25,9 +25,9 @@ await page.waitForFunction(() => typeof app !== 'undefined' && app._strat && app
 const R = await page.evaluate(async () => {
     const o = {};
     // ── 合成 screener(同 test_leaderdeck 的形狀)
-    const cols = ['c', 'chg', 'chg5', 'chg10', 'chg20', 'amt', 'amt20', 'b20', 'b60', 'lim', 'att', 'etf'];
+    const cols = ['c', 'chg', 'chg5', 'chg10', 'chg20', 'amt', 'amt20', 'b20', 'b60', 'lim', 'att', 'etf', 'pos252'];   // 📍 V78.0.5 一年位置全設 95(位置濾網由 test_leaderdeck ⑩ 測)
     const rows = {};
-    for (let i = 0; i < 120; i++) { const sym = String(1000 + i); const ok = i % 2 === 1; rows[sym] = [100, 1, 1, 60 - i * 0.5, 10, 50, 500 - i, ok ? 5 : -1, ok ? 9 : 3, 0, 0, 0]; }
+    for (let i = 0; i < 120; i++) { const sym = String(1000 + i); const ok = i % 2 === 1; rows[sym] = [100, 1, 1, 60 - i * 0.5, 10, 50, 500 - i, ok ? 5 : -1, ok ? 9 : 3, 0, 0, 0, 95]; }
     const D = { data_date: '2026-09-28', cols, rows };
     const tw = Array.from({ length: 80 }, (_, i) => ({ date: new Date(Date.UTC(2026, 6, 1) + i * 86400000).toISOString().slice(0, 10), close: 100 }));
     app._scrData = D; app._loadScreener = async () => D; app._getTwiiRows = async () => tw; app._mktBear60 = async () => ({ on: false });

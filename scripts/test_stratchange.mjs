@@ -114,7 +114,7 @@ const R = await page.evaluate(() => {
     out.body = (document.getElementById('richHelpModal') || {}).innerText || '';
 
     // ⑨ 按「知道了」才蓋章
-    A._ackStratChange(A._STRAT_CHANGES[0].v);
+    A._ackStratChange(A._STRAT_CHANGES.find(c => !c.lead || A._isLead()).v);
     out.stampAfterAck = localStorage.getItem(K);
     out.hiddenAfterAck = !shown();
 
@@ -122,16 +122,27 @@ const R = await page.evaluate(() => {
     hide(); A._checkStratChange();
     out.seenShown = shown();
 
+    // ⑬ 🔒 V78.0.5 👑 那一筆(lead:true)只給選了 👑 的人:🧬 看過最新出場變更 → ⛔ 不跳;👑 同一個蓋章 → 要跳 👑 那一筆
+    const cLead = A._STRAT_CHANGES.find(c => c.lead);
+    if (cLead) {
+        const seenV = A._STRAT_CHANGES.find(c => !c.lead).v, _isL = A._isLead;
+        A._isLead = () => false; localStorage.setItem(K, seenV); hide(); A._checkStratChange();
+        out.geneLead = { shown: shown(), txt: (document.getElementById('richHelpModal') || {}).innerText || '' };
+        A._isLead = () => true; localStorage.setItem(K, seenV); hide(); A._checkStratChange();
+        out.leadLead = { shown: shown(), txt: (document.getElementById('richHelpModal') || {}).innerText || '' };
+        A._isLead = _isL; localStorage.setItem(K, out.stampAfterAck || ''); hide();
+    }
+
     // ⑪ 「換回舊的」真的會換
     A.settings = A.settings || {};
     out.defRule = A._exitRuleKey();
-    A.setExitRule(A._STRAT_CHANGES[0].back);
+    A.setExitRule(A._STRAT_CHANGES.find(c => !c.lead || A._isLead()).back);
     out.afterBack = A._exitRuleKey();
     delete A.settings.exitRule;
     out.backToDefault = A._exitRuleKey();
     // ⭐ 把那一筆本身帶回去 —— 斷言跟**資料**比對,⛔ 不在測試裡寫死內容
     //   (寫死的話,下次再換一筆進來就整排假紅 = 斷言釘住實作不是用意)
-    const c0 = A._STRAT_CHANGES[0];
+    const c0 = A._STRAT_CHANGES.find(c => !c.lead || A._isLead());
     out.chg = { back: c0.back, from: c0.from, to: c0.to, why: c0.why, cost: c0.cost, you: c0.you };
     return out;
 });
@@ -172,6 +183,10 @@ ok('⑫d 🚨 視窗要寫「代價」而且有具體內容', /代價/.test(B) &
 ok('⑫e 🚨 視窗要寫「對你的影響」而且有具體內容', /對你的影響/.test(B) && Bt.includes(_kw(R.chg.you)));
 ok('⑫f 視窗要有「換回舊的」', /換回舊的/.test(B));
 ok('⑫g ⛔ 要明說舊的沒有刪掉', /沒有刪掉|都還在/.test(B));
+if (R.geneLead) {
+    ok('⑬ 🔒 👑 那一筆⛔ 不跳給 🧬(不洩漏這一套)', !R.geneLead.shown && !/領頭羊|👑/.test(R.geneLead.txt), R.geneLead.txt.slice(0, 120));
+    ok('⑬b 選了 👑 的人:同一個蓋章 → 會跳 👑 那一筆,「換回舊的」是位置規則', R.leadLead.shown && /一年位置/.test(R.leadLead.txt) && /換回舊的/.test(R.leadLead.txt), R.leadLead.txt.slice(0, 160));
+}
 
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ 全部通過');
 process.exit(fails ? 1 : 0);

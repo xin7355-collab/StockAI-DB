@@ -16,6 +16,7 @@
 //   ⓡ 📳 震動開關關掉 → 一次都不震   ⓢ 🎴 V78.0.1 遊戲卡:左上名字代號 / 五項能力⛔ 不加總 / 琥珀橫條 / 虧損 / reduced-motion
 //   🎣 V78.0.2(使用者九點):ⓒ App 一律 👑 前 10、⛔ 不補魚 ⓥ fpvSea_v1 每天記住 ⓦ 只能點捲線器拋 + 瞄準
 //   ⓧ 往左游 = 水平鏡像(⛔ 不轉 180°)ⓨ 🕸️ 拋網一次全抓 ⓩ 卡片排序 ⓢ8 遊戲卡避開瀏海
+//   🐟 V78.0.5 等咬鉤時魚游過去、假咬、最後一口咬住(_fpvApproach)
 //   🌊 V78.0.4 放回海裡(只動 fpvSea_v1、⛔ 不碰漁獲籃;釣魚中不可放)+ 沒在釣時線收在竿尖
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
@@ -74,7 +75,7 @@ const C = await pg.evaluate(async () => {
   const t0 = performance.now(); PRO.fpvCast(); for (let k = 0; k < 100 && !PRO._fpv.G; k++) await new Promise(r => setTimeout(r, 50)); const real = PRO._fpv.lastPicked.slice();
   const ten = PRO._fpvTen(D, PRO._castPick(D)).map(x => x.sym);
   // 🚫 不補魚:排行只剩 3 條 → 只有 3 條(⛔ 不拿魚池後段補)
-  const saveL = D.LD; D.LD = { ...saveL, ranked: saveL.ranked.slice(0, 3), buy: saveL.buy.slice(0, 3) }; const three = PRO._fpvTen(D, PRO._castPick(D)).length; D.LD = saveL;
+  const saveL = D.LD; const r3 = saveL.ranked.slice(0, 3); D.LD = { ...saveL, ranked: r3, buy: saveL.buy.filter(x => r3.some(y => y.sym === x.sym)) }; const three = PRO._fpvTen(D, PRO._castPick(D)).length; D.LD = saveL;
   // 🎣 手動釣第 1 條:等咬鉤 → 按住收線(魚衝或張力高就放手)→ 破水 → 出卡
   const S = PRO._fpv, seen = [];
   for (let k = 0; k < 400 && S.G; k++) {
@@ -395,6 +396,31 @@ ok(dx(HK.a) <= 6 && dy(HK.a) > 10 && dy(HK.a) < 45 && dx(HK.b) <= 6 && dy(HK.b) 
   '🌊g 🎣 沒在釣時線收在竿尖、鉤子吊在竿尖正下方(⛔ 不再畫成已經拋進水裡);海裡沒魚時收得更短', JSON.stringify(HK));
 const txtR = await pg4.evaluate(() => document.body.innerText);
 ok(!BAN.test(txtR), '🌊h 新按鈕 / 提示⛔ 沒有選股規則用語', (txtR.match(BAN) || [])[0]);
+
+// ── 🐟 V78.0.5 魚游過去咬餌(使用者:「魚要有跑去咬餌的動作」)────────────
+const AP = await pg4.evaluate(() => {
+  const hz = 170, G = { waitMs: 1700, nib0: [900], hook: { x: 200 }, el: 0 };
+  const at = (el, nx = 20) => { G.el = el; return PRO._fpvApproach(G, nx, 400, 0.8, hz); };
+  const a0 = at(0), aNib = at(900), aHover = at(1250), aEnd = at(1699);
+  G.ap = null; const R = { waitMs: 1700, nib0: [], hook: { x: 200 }, el: 0 }; R.el = 800; const r1 = PRO._fpvApproach(R, 360, 400, 0.8, hz);
+  let maxJump = 0; G.ap = null; let prev = null; for (let el = 0; el <= 1700; el += 16) { const q = at(el); if (prev) maxJump = Math.max(maxJump, Math.hypot(q.x - prev.x, q.y - prev.y)); prev = q; }
+  return { a0, aNib, aHover, aEnd, r1flip: r1.flip, maxJump, hy: hz + 32 };
+});
+ok(Math.abs(AP.a0.x - 20) < 1e-9 && Math.abs(AP.aEnd.x - 200) < 2 && Math.abs(AP.aEnd.y - AP.hy) < 2 && Math.abs(AP.aEnd.sc - 0.45) < 0.01,
+  '🐟a 等咬鉤:一開始照原路徑游、最後一刻嘴剛好在餌上(位置 / 大小接得上 bite 那一段)', JSON.stringify(AP));
+ok(Math.abs(AP.aNib.x - 200) < Math.abs(AP.aHover.x - 200) - 10 && AP.r1flip === true && AP.maxJump < 20,
+  '🐟b 假咬 = 往前衝碰到餌再退回;從右邊游來的魚頭朝左;每一格位移都小於 20px(⛔ 不會瞬移)', JSON.stringify(AP));
+const AF = await pg4.evaluate(() => {
+  const S = PRO._fpv; cancelAnimationFrame(S.raf); S.raf = -1; S.G = null; S.N = null;
+  if (!(S.Q && S.Q.fish.length - S.Q.i > 0)) return { none: true };
+  PRO._fpvOne(); cancelAnimationFrame(S.raf); S.raf = -1; const G = S.G;
+  PRO._fpvEnter(G, 'wait'); G.el = G.waitMs - 20; G.ap = null; S.dbgFish = [];
+  for (let k = 0; k < 3; k++) { G.el = G.waitMs - 20 + k * 2; PRO._fpvFrame(performance.now(), 0.0001); }
+  const f = S.dbgFish.at(-1);
+  return { f, hx: G.hook.x, hy: S.hz + 32, ph: G.ph };
+});
+ok(!AF.none && AF.f && Math.abs(AF.f.x - AF.hx) <= 40 && Math.abs(AF.f.y - AF.hy) <= 40,
+  '🐟c 實際畫面:等咬鉤的最後一刻,那條魚真的畫在浮標下面的餌旁邊(⛔ 不是還在遠處亂游)', JSON.stringify(AF));
 
 // 📱 遊戲卡避開瀏海
 ok(/\.fpvcw\{[^}]*env\(safe-area-inset-top\)[^}]*env\(safe-area-inset-bottom\)/.test(SRC) && /\.fpvtcg\{[^}]*max-height:calc\(100dvh[^}]*safe-area-inset-top/.test(SRC),

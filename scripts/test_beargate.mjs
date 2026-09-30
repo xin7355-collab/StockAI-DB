@@ -112,8 +112,11 @@ const R = await page.evaluate(async ({ TW, rows }) => {
     // 💰 閒錢停 0050 那一行:數字讀常數(決定性對照)
     const E = A._IDLE0050_EDGE, b0 = E.main.on; E.main.on = 98765; o.idleInj = (await draw()).buy; E.main.on = b0;
     // ⑥ 彈窗
-    const c0 = A._STRAT_CHANGES[0]; o.chg = { back: c0.back, backBear: c0.backBear, v: c0.v };
+    // 📍 V78.0.5 起最上面可能是 👑 領頭羊那一筆(lead:true,換回 = setLeadPos)→ 這條驗「出場規則」那一類,取最新一筆非 lead 的
+    const c0 = A._STRAT_CHANGES.find(c => !c.lead); o.chg = { back: c0.back, backBear: c0.backBear, v: c0.v };
     A._showStratChange(c0); o.modal = (document.getElementById('richHelpModal') || {}).innerHTML || '';
+    const cL = A._STRAT_CHANGES.find(c => c.lead);
+    if (cL) { A._showStratChange(cL); o.leadModal = (document.getElementById('richHelpModal') || {}).innerHTML || ''; }
     return o;
 }, { TW, rows });
 await browser.close();
@@ -133,6 +136,7 @@ ok('④f 🔬 那一行的數字讀 `_IDLE0050_EDGE`(改常數要跟著變)', /9
 ok('④d ⛔ 空頭那一格只擋買進 —— 不可叫人賣', !/(全部賣|出清|減碼)/.test(R.gOn.buy));
 ok('⑥ 最新一筆策略變更:「換回舊的」按鈕真的換回 back 那條;空頭守門只在 backBear:false 時才關',
    !!R.chg.back && R.modal.includes(`setExitRule('${R.chg.back}')`) && (R.chg.backBear === false) === /toggleBearGate\(false, true\)/.test(R.modal), JSON.stringify(R.chg));
+ok('⑥b 👑 領頭羊那一筆:「換回舊的」= setLeadPos(false)、⛔ 不動出場規則', !R.leadModal || (/setLeadPos\(false\)/.test(R.leadModal) && !/setExitRule\(/.test(R.leadModal)), (R.leadModal || '').slice(0, 200));
 ok('⑧ 無 pageerror', !errs.length, errs.join(' | '));
 console.log(fails.length ? `\n❌ ${fails.length} 條沒過` : '\n✅ BEARGATE_PASS');
 process.exit(fails.length ? 1 : 0);

@@ -53,12 +53,14 @@
 規則跟 App 決策台最下面那一區**一字不差**(`leader_calc` 是 App `_leaderCalc` 的第二份實作,
 test_leaderdeck.mjs 拿同一份 screener.json 跨語言比對):
     近 20 日平均成交額前 100 大(不含 ETF)→ 收盤 > 20 日線 > 60 日線 → 近 10 日漲幅排名 →
-    前 5 名買、手上的掉出前 10 名就賣;每 10 個交易日換一次(起點 LEADER_ANCHOR,跟 App 同一個);
+    前 5 名買(📍 V78.0.5 起只買「一年位置 ≥85%」的,不夠就往下一名找;LEADER_POS=0 換回舊的)、
+    手上的掉出前 10 名就賣;每 10 個交易日換一次(起點 LEADER_ANCHOR,跟 App 同一個);
     ⛔ 不設停損線;大盤嚴格空頭不買(賣照常);注意 / 處置股⛔ 不跳過(實測跳過反而輸 0050)。
     LEADER=1 LEADER_ACCOUNT=1000000 python3 auto_trade.py           # 尾盤跑(預設,跟上面那套同一個時段)
     LEADER=1 LEADER_WINDOW=open LEADER_ACCOUNT=1000000 python3 ...  # 09:00~09:10 開盤跑(= 回測那一組)
-⚠️ 實測(17 條起點中位):隔天開盤買 AI 時代 +760% / 16 年 +3,176%;尾盤買 +670% / +2,219%(0050 含息 +375% / +1,097%)。
-⚠️ 中途最多賠 50~61%、16 年只有 9 年贏 0050;沒用到的錢程式**不會**自動買 0050(回測有停 0050,自己手動放)。
+⚠️ 實測(17 條起點中位,V78.0.5 新規則):隔天開盤買 AI 時代 +953% / 16 年 +6,783%;尾盤買 +817% / +3,342%(0050 含息 +375% / +1,097%)。
+   (舊規則不看位置:+760% / +3,176%;尾盤 +670% / +2,219%)
+⚠️ 中途最多賠 49~57%、16 年只有 10 年贏 0050;沒用到的錢程式**不會**自動買 0050(回測有停 0050,自己手動放)。
 ⚠️ 它只賣「這套自己買、記在狀態檔 lead 那一格」的部位 —— ⛔ 不碰你手動買的、⛔ 也不碰上面那套買的。
 """
 import json
@@ -130,6 +132,8 @@ LEADER_WINDOW = (os.getenv('LEADER_WINDOW') or 'eod').lower()  # eod(尾盤,預�
 import lib_leader as _LL
 LEADER_RULE = _LL.LEADER_RULE
 LEADER_ANCHOR = os.getenv('LEADER_ANCHOR') or _LL.LEADER_ANCHOR
+# 📍 V78.0.5 買進的一年位置門檻(預設跟 App 同一個 = lib_leader 的 pos);LEADER_POS=0 = 換回舊規則(不看位置)
+LEADER_POS = None if (os.getenv('LEADER_POS') or '') == '' else float(os.getenv('LEADER_POS'))
 
 
 def fetch_json(rel):
@@ -140,7 +144,7 @@ def fetch_json(rel):
 
 def leader_calc(D, U=None, N=None):
     """→ lib_leader.leader_calc(App `_leaderCalc` 的 Python 版)"""
-    return _LL.leader_calc(D, U, N)
+    return _LL.leader_calc(D, U, N, LEADER_POS)
 
 
 def leader_clock(dates, data_date, anchor=None):
@@ -190,6 +194,9 @@ def leader_step(api, sj, st, meta, today):
     keep = {r['sym'] for r in L['ranked']}
     log(f"👑 換倉!名單日 {dd}(第 {day} 天)・池子 {L['n']} 檔・過趨勢 {L['passed']} 檔・前 {R['N']}:"
         + ' '.join(f"{r['sym']}({r['chg10']:+.1f}%{'・注意' if r['att'] == 1 else '・處置' if r['att'] == 2 else ''})" for r in L['buy']))
+    _skip = [r for r in L['ranked'][:R['N']] if not r.get('posOk', True)]
+    if _skip:
+        log(f"   👑 📍 一年位置不到 {L.get('pos')}% → 不買、往下一名找:" + ' '.join(f"{r['sym']}({r['pos'] if r['pos'] is not None else '—'}%)" for r in _skip))
     # ① 賣:掉出前 2N 名(含掉出池子 / 沒過趨勢)
     for sym, pos in list(held.items()):
         if sym in keep:

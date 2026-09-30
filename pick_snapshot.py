@@ -187,13 +187,21 @@ LEAD_BF_MAX = int(os.getenv('LEAD_BF_MAX', '15'))   # 一次最多回補幾天(�
 
 
 def _lead_rows(L):
-    out = []
-    for r in L.get('ranked') or []:
+    """前 N×hyst 名(續抱名單)+ 真正會買的那幾檔(📍 V78.0.5 位置不夠會往下找 → 可能在第 10 名以後,也要存)。
+    p = 一年位置 %、b = 1 代表這一檔在買進名單上(成績單照 b 買,⛔ 不再用「前 N 名」)"""
+    out, seen = [], set()
+    bset = {r['sym'] for r in (L.get('buy') or [])}
+    for r in list(L.get('ranked') or []) + [x for x in (L.get('buy') or []) if x['sym'] not in {y['sym'] for y in (L.get('ranked') or [])}]:
+        if r['sym'] in seen:
+            continue
+        seen.add(r['sym'])
         out.append({'s': r['sym'], 'c': r['c'], 'r': r['rank'],
                     'x': None if r.get('chg10') is None else round(float(r['chg10']), 2),
                     'a': round(float(r['amt20']), 2),
                     'chg': None if r.get('chg') is None else round(float(r['chg']), 2),
-                    'lim': int(r.get('lim') or 0), 'att': int(r.get('att') or 0)})
+                    'lim': int(r.get('lim') or 0), 'att': int(r.get('att') or 0),
+                    'p': None if r.get('pos') is None else round(float(r['pos']), 1),
+                    'b': 1 if r['sym'] in bset else 0})
     return out
 
 
@@ -275,7 +283,7 @@ def leader_main():
         rows = _lead_rows(L)
         if live_d and rows:
             day = bydate.setdefault(live_d, {'d': live_d})
-            day['lead'] = {'rows': rows, 'n': L['n'], 'passed': L['passed']}
+            day['lead'] = {'rows': rows, 'n': L['n'], 'passed': L['passed'], 'pos': L.get('pos')}
             print(f'👑 領頭羊 {live_d}:池子 {L["n"]} 檔・過趨勢 {L["passed"]} 檔・前 {len(rows)} 名 '
                   + ' '.join(f'{r["s"]}({r["x"]:+.1f}%)' for r in rows[:5] if r['x'] is not None))
 
@@ -302,7 +310,7 @@ def leader_main():
                     print(f'   ⚠️ {d} 回補算不出名單({Lb.get("err") or "0 檔過趨勢"})→ 不存(⛔ 不寫空名單)')
                     continue
                 day = bydate.setdefault(d, {'d': d})
-                day['lead'] = {'rows': _lead_rows(Lb), 'n': Lb['n'], 'passed': Lb['passed'], 'bf': 1}
+                day['lead'] = {'rows': _lead_rows(Lb), 'n': Lb['n'], 'passed': Lb['passed'], 'pos': Lb.get('pos'), 'bf': 1}
                 print(f'   🔁 回補 {d}(K 線重算・bf:1):池子 {Lb["n"]} 檔・前 5 '
                       + ' '.join(r['sym'] for r in Lb['buy']))
 

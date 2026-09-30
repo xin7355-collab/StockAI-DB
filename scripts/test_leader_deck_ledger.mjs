@@ -72,6 +72,17 @@ const P1 = await proRun(), I1 = await idxRun();
 const a1 = JSON.stringify(P1.trades.map(norm)), b1 = JSON.stringify(I1.trades.map(norm));
 ok(a1 === b1 && a1 !== a0 && P1.trades.length > 0, '④ ⭐ 決定性對照:換倉名單倒過來 → 兩邊買的一起換人,而且還是一筆一筆對得上', `${a0}\n${a1}\n${b1}`);
 
+// ④b 📍 V78.0.5 採礦從這一版起存 b(= 真的會買的,已套一年位置)→ 兩邊都照 b 買(⛔ 不再是「前 5 名」);舊的日子沒有 b 照舊
+const HB = (() => { const j = JSON.parse(JSON.stringify(H)); const d = j.days.find(x => x.lead && x.lead.rows && x.lead.rows.length >= 10);
+  const rs = d.lead.rows.slice().sort((a, c) => (+a.r || 99) - (+c.r || 99)); rs.forEach((r, i) => { r.b = i >= 5 && i < 10 ? 1 : 0; });
+  d.lead.rows = rs; d.lead.pos = 85; return { j, d: d.d, want: rs.slice(5, 10).map(r => String(r.s)) }; })();
+await injectPro(HB.j); await injectIdx(HB.j);
+const P3 = await proRun(), I3 = await idxRun();
+const firstBuys = T => T.filter(t => t.d0 === (T[0] || {}).d0).map(t => String(t.sym)).sort();
+const a3 = JSON.stringify(P3.trades.map(norm)), b3 = JSON.stringify(I3.trades.map(norm));
+ok(a3 === b3 && P3.trades.length > 0 && firstBuys(I3.trades).every(s => HB.want.includes(s)) && !firstBuys(I3.trades).some(s => !HB.want.includes(s)),
+  '④b 📍 名單有 b 旗標(第 6~10 名才是要買的)→ 兩邊都照 b 買、而且還是一筆一筆對得上', `want=${HB.want} idx=${firstBuys(I3.trades)} pro=${firstBuys(P3.trades)}`);
+
 // ⑤ 讀不到 → 說原因
 await injectIdx(404);
 const I2 = await idxRun();

@@ -17,12 +17,12 @@ def ok(name, c, extra=''):
     ok_n, bad_n = ok_n + bool(c), bad_n + (not c)
 
 # ── 假資料 ──
-cols = ['c', 'chg', 'chg10', 'amt20', 'b20', 'b60', 'lim', 'att', 'etf']
+cols = ['c', 'chg', 'chg10', 'amt20', 'b20', 'b60', 'lim', 'att', 'etf', 'pos252']
 def mkD(date):
     rows = {}
     for i in range(20):
         sym = str(2000 + i)
-        rows[sym] = [100.0, 1.0, 30.0 - i, 100.0 - i, 3.0, 8.0, 0, 0, 0]    # 全部過趨勢;chg10 由大到小 = 2000,2001,…
+        rows[sym] = [100.0, 1.0, 30.0 - i, 100.0 - i, 3.0, 8.0, 0, 0, 0, 95.0]    # 全部過趨勢、一年位置 95%;chg10 由大到小 = 2000,2001,…
     return {'data_date': date, 'cols': cols, 'rows': rows}
 TW = [{'date': d} for d in ['2026-09-24', '2026-09-25', '2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01',
                             '2026-10-02', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09']]
@@ -103,5 +103,20 @@ A.fetch_json = lambda rel: mkD('2026-09-24') if 'screener' in rel else TW
 A.MAX_LOTS_PER_TRADE, A.MAX_AMT_PER_TRADE, A.LEADER_ACCOUNT, A.DRY_RUN = 1, 10**9, 1_000_000, False
 A.leader_step(api5, sj, st5, {'mkt': {'bear60': False}}, '2026-09-25')
 ok('⑩b MAX_LOTS_PER_TRADE=1 → 每檔最多 1,000 股(硬煞車優先於等權)', all(st5['lead'][k]['sh'] == 1000 for k in st5['lead']) and len(st5['lead']) == 5, st5['lead'])
+# ⑪ V78.0.5 一年位置 ≥85 才買:2001 位置 50% → 跳過、改買第 6 名 2005;LEADER_POS=0 = 舊規則照買
+def mkDp(date):
+    D = mkD(date); D['rows']['2001'][9] = 50.0; D['rows']['2003'][9] = None; return D
+A.MAX_LOTS_PER_TRADE, A.LEADER_ACCOUNT, A.DRY_RUN = 99, 1_000_000, False
+A.fetch_json = lambda rel: mkDp('2026-09-24') if 'screener' in rel else TW
+api6 = FakeApi(); st6 = {'pos': {}, 'lead': {}}; A.leader_step(api6, sj, st6, {'mkt': {'bear60': False}}, '2026-09-25')
+ok('⑪ 位置 50%(2001)與沒有位置資料(2003)→ 不買、往下找 2005/2006', sorted(st6['lead']) == ['2000', '2002', '2004', '2005', '2006'], sorted(st6['lead']))
+A.LEADER_POS = 0
+api7 = FakeApi(); st7 = {'pos': {}, 'lead': {}}; A.leader_step(api7, sj, st7, {'mkt': {'bear60': False}}, '2026-09-25')
+A.LEADER_POS = None
+ok('⑫ LEADER_POS=0(換回舊規則)→ 照前 5 名買 2000~2004', sorted(st7['lead']) == ['2000', '2001', '2002', '2003', '2004'], sorted(st7['lead']))
+# ⑬ 續抱不看位置:手上 2001(位置 50%)還在前 10 → 續抱不賣
+A.fetch_json = lambda rel: mkDp('2026-10-08') if 'screener' in rel else TW
+api8 = FakeApi(); st8 = {'pos': {}, 'lead': {'2001': {'e': 100, 'd': '2026-09-25', 'sh': 2000}}}; A.leader_step(api8, sj, st8, {'mkt': {'bear60': False}}, '2026-10-09')
+ok('⑬ 續抱⛔ 不看位置:手上 2001 位置只有 50% 但還在前 10 名 → 不賣', '2001' not in [c for c, o in api8.orders if o['action'] == 'S'] and '2001' in st8['lead'], api8.orders)
 print(f"\n{'❌' if bad_n else '✅'} AUTO_LEADER {ok_n}/{ok_n + bad_n}")
 sys.exit(1 if bad_n else 0)

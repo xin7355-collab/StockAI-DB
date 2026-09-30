@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.0.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.0.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4224,6 +4224,7 @@ const app = {
                 // V21.3 ── Telegram 訊息優先級篩選(all = 全部 / 2plus = ★★ 以上 / 3only = 只接 ★★★)
                 tg_level:         app.settings?.tg_level || 'all',
                 strategy:         app._strat?.() || 'gene',   // 🎯 V77.9.6 Telegram 只推你選的那一套
+                leadPosOff:       !!app.settings?.leadPosOff,   // 📍 V78.0.5 領頭羊「換回舊的」(不看一年位置)—— Telegram 換倉推播跟 App 同一條
             };
 
             // V21.3 ── 股名對照表:從自選股 + 庫存 + 監控 + 限價單收集所有 sym,
@@ -8669,8 +8670,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.0.4',
+    _APP_VERSION: 'V78.0.5',
     _CHANGELOG: [
+        { v: 'V78.0.5', d: [
+            '🐟 <b>魚會游過去咬餌了</b>(你說「魚要有跑去咬餌的動作」)。等咬鉤的時候,那條魚會慢慢轉頭、游到浮標下面,假咬時衝過去碰一下再退開,真的咬下去那一刻剛好在鉤子上(以前是突然出現在鉤子下)。',
+            '👑 <b>領頭羊:買進多一道「一年位置 ≥ 85%」</b>(你問「還有辦法抓出更容易漲的方法嗎?」)。我測了 7 種沒測過的加法,只有這一種每一關都過:AI 時代 760% → <b>953%</b>、2011~2026 3,176% → <b>6,783%</b>(起點挪 17 次 15/17、17/17 條都贏;同樣比例隨機擋掉反而變差 → 賺的是「靠近一年最高」這件事)。⚠️ 16 年裡有 5 年比舊規則差。續抱 / 賣出規則不變;位置不夠的標「位置低」、往下一名找;決策台那區有按鈕可以換回舊的。自動下單同時換(LEADER_POS=0 = 舊的)。',
+            '👑 <b>處置股「先跟、處置前賣、大跌再買回」→ 回測不成立</b>(你問的)。公告前 10 天確實大漲(那就是被處置的條件),但<b>處置期間沒有大跌</b>(到出關平均還比同名次的股票好 3.6pp),可交易的做法全部輸「照常抱著」:公告當晚就知道隔天賣 781%、就算能提前一天猜到 905%、注意 3 次就賣再出關買回 756%(照常 953%)。→ 照常抱著。',
+            '🔧 順手修:背景提醒設定寫不進手機快取時,不會再冒出一個沒人接住的錯誤。',
+        ] },
         { v: 'V78.0.4', d: [
             '🎣 <b>沒在釣的時候,線收在竿尖了</b>(你說「拋竿的線永遠都顯示已拋出去」)。以前不管有沒有拋,鉤子都畫在遠遠的水面上,看起來像已經拋出去;現在沒在釣就是一小段線吊在竿尖下面,海裡沒魚時收得更短。',
             '🌊 <b>可以把魚放回海裡了</b>(你說「新增放魚回去」)。每張釣起來的卡片多一顆「🌊 放回海裡」,上方多一顆「🌊 全部放回」—— 放回去的魚會回到水裡游,今天可以再釣一次。⭐ <b>只動今天的海,⛔ 不碰漁獲籃</b>(已經放進 🧺 的照舊在);正在釣的時候不能放(線上那條要先處理完)。',
@@ -8811,7 +8818,6 @@ ${list}
         { v: 'V77.3.0', d: ['📈 <b>報告頁「基本面」多了近 8 季趨勢圖 + 三種事實標記</b>(你說「新增近八季的營收、毛利率、營業利益率做成趨勢圖,告訴我哪一季毛利率掉、哪一季現金流轉負、哪一季存貨突然拉高」):趨勢線改成 8 條 —— 營收(單季)/ 季營收年增 / 毛利率 / 淨利率 / 每股盈餘 / <b>營業現金流(單季)</b> / 自由現金流(單季)/ <b>存貨天數</b>,每條只畫最近 8 季;線上的<b>空心圓 ○</b> 就是「那一季發生了什麼」:毛利率掉 ≥3pp、營業現金流正→負、存貨天數 +30%,底下一行直接寫出「2025-06 毛利率 −4.2pp(40.0 → 36.0%)」這種句子。⚠️ 它是<b>事實紀錄不是警訊</b>:全市場實測(2,352 檔 ・24,927 個季對季)這三種情況分別有 <b>21.8% / 17% / 15.3%</b> 的季會出現 —— 五檔裡就有一檔,所以不用紅色也不用 ⚠️,基準率直接印在畫面上。', '⏳ <b>營益率那條線要等財報回算跑一次</b>:採礦端已加抓損益表的「營業利益」欄(跟基本面頁「📈 三率」同一個來源),但 gh-pages 上的切片要等你在 Actions 手動跑一次「📦 財報三表深歷史回算」(選 main)、隔天採礦帶上去之後才會出現;在那之前那條線不畫、畫面會說「等回算」。', '🖼️ 自己畫的海報(短評報告)同一段同步:8 季、同樣 8 條線、同樣的 ○ 標記與基準率;順手修掉每一節標題右邊那句說明「截字後補的 … 沒量進寬度」→ 會壓到標題的小毛病(§6 籌碼那節肉眼看抓到的)。'] },
         { v: 'V77.2.9', d: ['🎤 <b>法說會後的股價反應寫進實測總表了</b>(🔬 實測總表 →「推薦下一步」):844 場實測,法說會後 5 日中位 <b>−1.26 pp</b>,而「隨便挑一天」的對照組是 −0.73 pp → <b>法說會後反而略差一點</b>。⛔ 這是<b>事實紀錄不是買賣訊號</b>(沒扣交易成本、沒過六道關卡),正式回測還要等窗口長一點。', '🔁 <b>順手收掉一條「永遠紅」的測試</b> —— 查下去發現<b>它不是壞掉</b>:報告頁「短中線/長線」視角是<b>刻意</b>攤開價格牆與籌碼那兩節(你後來要的),而舊的檢查還在用更早那版「全部折疊」的標準。⛔ 一直紅的檢查等於沒有檢查,已改成釘現在的規則。'] },
         { v: 'V77.2.8', d: ['🔎 <b>法說會可以用代號也可以用中文搜了,而且打字就搜全部</b>(你說「新增可搜尋法說會個股」):以前停在「👜 我的」打字只會搜自己那幾檔,搜不到就像那一檔沒有法說會 —— 現在<b>一打字就跨所有範圍</b>,上面還會寫「已跨所有範圍」+ 一顆回去的鈕;全形數字(２３３０)也吃得下。', '📄 <b>簡報終於可以一鍵打開了</b>(你說「法說會資料如簡報,我沒看到可以下載的地方」)。每一場的中文/英文簡報各一顆鈕,點了直接開 PDF。⭐ 本來以為打不開 —— 是我自己的探針把官方欄位抄錯(官方寫 <code>name = \'step\'</code> 等號兩邊有空白),修好之後實測<b>一抓就是 2.67MB 的真 PDF</b>。', '🔎 <b>深度查詢換成「法人視角」的提示詞</b>(你說「把重要東西挖出來、摘要重點、法人會看的、<b>未來展望</b>是什麼」):八個面向 —— 未來展望/財測(⭐ 含<b>跟上一次法說比說法變了什麼</b>)、產能與資本支出、訂單能見度、價格與成本、新產品時間表、庫存、<b>Q&amp;A 管理層避開了哪些問題</b>、公司自己講的風險。本站算好的數字直接塞進去(⛔ 不讓 AI 自己算),而且明文禁止它給買賣建議/評分/部位。簡報 PDF 網址也一起附上去讓它去讀。', '🏭 <b>多了產業分組</b>、🔔 <b>「你的清單裡未來 14 天有幾場」</b>、📜 <b>每一檔的歷年法說會</b>、📊 <b>會後股價統計</b>。⚠️ 統計那格<b>是事實紀錄不是買賣訊號</b>:實測 844 場,法說會後 5 日中位 <b>−1.26 pp</b>,而「隨便挑一天」的對照組是 −0.73 pp → <b>法說會後反而略差一點</b>;沒扣交易成本、沒過六道關卡,⛔ 不可以拿來當進出場理由。', '🏷️ <b>順手修掉產業作戰室全站的一個老問題</b>:中文名以前<b>只有一條腿</b>(免金鑰的 FinMind),它一掛全站名字就變成一排代號、而且什麼都不會講。現在改成三層(本站離線股名表 → FinMind → 舊快取)。'] },
-        { v: 'V77.2.7', d: ['🎤 <b>產業作戰室多了「法說會」分頁</b>(你說「把法說會資訊收集起來,新增一個頁面」):上市 + 上櫃的法人說明會時間表、地點、<b>公司自己寫的擇要訊息</b>、簡報檔名、影音連結;可以只看「👜 我的」(庫存 + 自選 + 決策台今天的名單)、今天、未來、已開有內容,也能搜關鍵字。⛔ 只描述,不給多空(法說會前後波動常變大,但方向實測 0 個成立)。', '🔎 <b>深度查詢</b>(你說「貼關鍵字讓 AI 去搜,要有 Meta / Gemini / GPT」):貼關鍵字、可帶上某一檔,選 Perplexity / ChatGPT / Google / Gemini / Meta AI 帶去<b>外部網站</b>查(會上網、用他們的額度)。會先把整段問題複製到剪貼簿再開;Gemini 與 Meta AI 的網址不吃帶字,開了之後貼上就好。', '🚨 <b>順手抓到藏了三個月的錯</b>:採礦一直「法說會 0 場」,真因是打錯資料集 —— 證交所 OpenAPI 那個代碼其實是<b>大股東名稱表</b>,從來不是法說會。現在改走公開資訊觀測站,所以個股頁的「幾天內有法說會」提醒與報告頁 §12 也終於有東西了。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -21410,20 +21416,29 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   回測 leader_probe.mjs(V77.8.5~V77.8.6):數字全部從這裡讀,⛔ 畫面不寫死。✅ V77.9.1 起決策台預設顯示這一套(使用者:「預設目前最強是領頭羊嗎?是就預設」);⚠️ 逐年同向沒過,代價寫在畫面。
     //   ⛔ auto_trade.py 不接這一套(會動真錢,使用者看過名單再說)。
     _LEADER_EDGE: {
-        ver: 'V77.8.5', rule: { U: 100, N: 5, R: 10, L: 10, hyst: 2 },
-        ai: { win: '2022-09 ~ 2026-09', tot: 760, etfTr: 375, beat: 15, paths: 17, mdd: 50, etfDD: 27 },
-        long: { win: '2011 ~ 2026', tot: 3176, etfTr: 1097, beat: 17, paths: 17, mdd: 61, etfDD: 34, yrBeat: 9, yrs: 16 },
-        core50: { ai: 595, aiMdd: 37, long: 2345, longMdd: 42, worstYr: 46 },
-        sham: { ai: 361, long: 79 }, tp5: { win: 63, ai: 391, long: 703 },
-        costX2: { ai: 478, long: 648 }, trades: 70,
+        ver: 'V78.0.5', rule: { U: 100, N: 5, R: 10, L: 10, hyst: 2, pos: 85 },
+        // 📍 V78.0.5 買進多一道「一年位置 ≥ pos%」(screener pos252;⛔ 只擋買、續抱照前 N×hyst 名;位置不夠往下一名找)。下面數字全是新規則重跑的(leader_probe 17 條中位)
+        ai: { win: '2022-09 ~ 2026-09', tot: 953, etfTr: 375, beat: 17, paths: 17, mdd: 49, etfDD: 27 },
+        long: { win: '2011 ~ 2026', tot: 6783, etfTr: 1097, beat: 17, paths: 17, mdd: 57, etfDD: 34, yrBeat: 10, yrs: 16 },
+        core50: { ai: 659, aiMdd: 35, long: 3432, longMdd: 41, worstYr: 38 },
+        sham: { ai: 448, long: 255 }, tp5: { win: 63, ai: 437, long: 759 },
+        costX2: { ai: 628, long: 1622 }, trades: 68,
+        // 📍 V78.0.5 為什麼加「一年位置 ≥85」:同一套只加這一道(App 算得出來的那個算法)。old = 換之前(不看位置);sham = 同樣比例隨機擋掉候選
+        posEdge: { old: { ai: 760, long: 3176, y19: 1810 }, now: { ai: 953, long: 6783, y19: 2633 }, pairAi: 15, pairLong: 17, pairY19: 15,
+            sham: { ai: 621, long: 2471 }, oldCostX2: { ai: 478, long: 648 }, oldClose: { ai: 670, long: 2219 }, yrUp: 11, yrs: 16, worstYrDiff: -12.2,
+            plateau: '70 / 75 / 80 / 85 / 90 都贏(95 開始變差)' },
         // ⏱️ V77.8.9 換倉日錨點(App 與 auto_trade.py 共用同一個,⛔ 不存在手機上 —— 存各自裝置會讓兩邊換倉日對不上)
         anchor: '2026-09-24',
         // 🕐 V77.8.9 成交時點:回測是「換倉日收盤算名單 → 隔天開盤買」;自動下單預設在尾盤跑 = 隔天收盤買
-        fillOpen: { ai: 760, long: 3176, beatAi: 15, beatLong: 17 }, fillClose: { ai: 670, long: 2219, beatAi: 14, beatLong: 13 },
+        fillOpen: { ai: 953, long: 6783, beatAi: 17, beatLong: 17 }, fillClose: { ai: 817, long: 3342, beatAi: 17, beatLong: 17 },
         // 🚨 V77.8.9 注意 / 處置(官方事件史 2023-06 起,決策日「之前」的公告才算):全部變差
-        att: { base: 760, noAtt3: 501, noAtt10: 453, noDisp: 341, sellDisp: 468, noDispBeat: 6 },
+        att: { base: 953, noAtt3: 663, noAtt10: 711, noDisp: 408, sellDisp: 578, noDispBeat: 12,
+            // 🚨 V78.0.5 使用者:「處置前拉抬、快處置被大賣、出關又拉 → 先跟、處置前賣、大跌再買回?」—— 全部輸照常抱著
+            dispNow: 781, oracle1: 905, attSellRel: 756, oldShamSell: 722, oldDispNow: 655 },
+        // 🔬 V78.0.5 事件研究(leader_dispo_probe.mjs,2023-06 起 196 次處置;公告當天在領頭羊前 10 名;超額 = 減同期 0050、對照 = 同一天前 10 名裡沒被處置的)
+        disp: { n: 196, pre10: 39.5, pre10Ctl: 24.4, during: 1.3, duringCtl: -2.3, dip: -8.4, dip15: 23, post5: 1.2, post5t: 1.2, post20: 1.5, outPost20: -1.8 },
         // 🗓️ V77.8.9 AI 時代逐月(month_probe.mjs 吃 leader_probe EQ_DIR,17 條中位;開盤成交那一組)
-        mon: { n: 46, beat: 53, up: 62, hold12: 59, worst: 30, worstAll: 43, upCap: 153, downCap: 115, maxLose: 4, maxUw: 13 },
+        mon: { n: 46, beat: 56, up: 63, hold12: 60, worst: 27, worstAll: 43, upCap: 161, downCap: 125, maxLose: 4, maxUw: 12 },
         // 📒 V78.0.3 模擬帳(決策台「照這套自動買賣到今天」)—— 跟 pro.html 成績單 `_leaderLedgerLoad` 同一套:
         //   換倉日隔天收盤成交(= auto_trade.py 尾盤跑)、漲 ≥ limUp% 當天買不到、扣來回成本 cost%。⛔ 兩邊數字由 test_leader_deck_ledger 跨檔比對
         ledger: { limUp: 9.7, cost: 0.44 },
@@ -21498,10 +21513,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const X = this._leadCtx; if (!X || X.err) return X ? { err: X.err } : null;
         const R = this._LEADER_EDGE.rule, H = R.N * R.hyst, r = X.L.all.get(sym), inPool = X.L.poolSet.has(sym);
         const clk = X.clk || {}, left = clk.left ?? '?';
-        const where = r ? `第 ${r.rank} 名` : (inPool ? '沒過趨勢過濾(收盤 > 20 日線 > 60 日線)' : `不在成交額前 ${R.U} 大`);
+        const inBuy = !!(r && X.L.buy.some(b => b.sym === sym));
+        const where = r ? `第 ${r.rank} 名${!r.posOk && r.rank <= R.N ? `(一年位置 ${r.pos == null ? '沒資料' : r.pos.toFixed(0) + '%'} < ${X.L.pos}% → 不買)` : ''}` : (inPool ? '沒過趨勢過濾(收盤 > 20 日線 > 60 日線)' : `不在成交額前 ${R.U} 大`);
         let st;
         if (held) st = (r && r.rank <= H) ? 'keep' : (clk.isRebal ? 'sell' : 'outwait');
-        else st = (r && r.rank <= R.N) ? (X.bearOn ? 'bear' : (clk.isRebal ? 'buy' : 'buywait')) : 'none';
+        else st = inBuy ? (X.bearOn ? 'bear' : (clk.isRebal ? 'buy' : 'buywait')) : 'none';
         return { st, rank: r ? r.rank : null, where, isRebal: !!clk.isRebal, left, H, N: R.N, date: X.date, bearOn: X.bearOn };
     },
     /** 👑 總覽主卡的字(⛔ 只轉述 `_leadVerdict`,不另算)。回 {badge, cls, why, plan, state} */
@@ -21608,9 +21624,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { this.openSettings?.(); } catch (_) {}
         setTimeout(() => { const b = document.getElementById('deckShowBox'); if (b) { b.classList.remove('hidden'); this._renderDeckShowList(); b.scrollIntoView({ block: 'center' }); } }, 150);
     },
+    /** 📍 V78.0.5 領頭羊買進的一年位置門檻:預設 = `_LEADER_EDGE.rule.pos`;使用者按「換回舊的」(settings.leadPosOff)→ 0 = 不看位置 */
+    _leadPos() { return (this.settings && this.settings.leadPosOff) ? 0 : (this._LEADER_EDGE.rule.pos || 0); },
+    setLeadPos(on) {
+        this.settings.leadPosOff = !on;
+        this._leadCtx = null; this._deckAt = 0;
+        try { this.saveSettings?.(); } catch (_) {}
+        try { this.telegramCloud?.sync?.(); } catch (_) {}
+        try { this._rerenderLeader?.(); this.renderDeck?.(); } catch (_) {}
+        try { this.showToast?.(on ? `📍 領頭羊買進:一年位置 ≥ ${this._LEADER_EDGE.rule.pos}%(新規則)` : '↩️ 領頭羊買進:換回舊規則(不看一年位置)'); } catch (_) {}
+    },
     /** 👑 純函式:screener.json → 領頭羊名單(⛔ 只用採礦算好的欄位,⛔ 不現算 K 線)。回 {err} 或 {pool, ranked(前 2N), buy(前 N), n, date, all(池子全部含 rank)} */
     _leaderCalc(D, opt = {}) {
         const R = this._LEADER_EDGE.rule, U = opt.U || R.U, N = opt.N || R.N;
+        const P = opt.pos != null ? opt.pos : this._leadPos();   // 📍 V78.0.5 買進的一年位置門檻(0 = 舊規則不看位置)
         if (!D || !D.cols || !D.rows) return { err: 'nodata' };
         const CI = Object.fromEntries(D.cols.map((c, i) => [c, i]));
         if (CI.chg10 == null || CI.amt20 == null) return { err: 'notyet' };   // 採礦還沒補這兩欄(V77.8.8 起的 playbook_scan 才有)
@@ -21619,16 +21646,18 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (!/^\d{4}$/.test(sym) || (CI.etf != null && +v[CI.etf] === 1) || this._isEtfSym(sym)) continue;
             const amt20 = +v[CI.amt20], c = +v[CI.c], chg10 = v[CI.chg10], b20 = v[CI.b20], b60 = v[CI.b60];
             if (!(amt20 > 0 && c > 0)) continue;
-            rows.push({ sym, amt20, c, chg10: chg10 == null ? null : +chg10, b20: b20 == null ? null : +b20, b60: b60 == null ? null : +b60, chg: +v[CI.chg] || 0, lim: CI.lim != null ? +v[CI.lim] : 0, att: CI.att != null ? +v[CI.att] : 0 });
+            const pos = CI.pos252 != null && v[CI.pos252] != null ? +v[CI.pos252] : null;
+            rows.push({ sym, amt20, c, chg10: chg10 == null ? null : +chg10, b20: b20 == null ? null : +b20, b60: b60 == null ? null : +b60, chg: +v[CI.chg] || 0, lim: CI.lim != null ? +v[CI.lim] : 0, att: CI.att != null ? +v[CI.att] : 0, pos });
         }
         rows.sort((a, b) => b.amt20 - a.amt20);
         const pool = rows.slice(0, U).map((r, i) => ({ ...r, poolRank: i + 1 }));
         // 趨勢過濾:收盤 > 20 日線 且 20 日線 > 60 日線。⭐ 由乖離推:b20 > 0 ⇔ c > ma20;b20 < b60 ⇔ ma20 > ma60(同一個 c 除以不同均線)
         const ok = pool.filter(r => r.b20 != null && r.b60 != null && r.chg10 != null && r.b20 > 0 && r.b20 < r.b60);
         ok.sort((a, b) => b.chg10 - a.chg10);
-        const ranked = ok.map((r, i) => ({ ...r, rank: i + 1 }));
+        // 📍 V78.0.5 買進只挑「一年位置 ≥ P%」的(⛔ 沒有位置資料 = 不買,⛔ 不猜);續抱名單(前 N×hyst 名)照舊不看位置
+        const ranked = ok.map((r, i) => ({ ...r, rank: i + 1, posOk: !P || (Number.isFinite(r.pos) && r.pos >= P) }));
         const all = new Map(ranked.map(r => [r.sym, r]));
-        return { pool, ranked: ranked.slice(0, N * R.hyst), buy: ranked.slice(0, N), passed: ranked.length, n: pool.length, date: D.data_date || '', all, poolSet: new Set(pool.map(r => r.sym)) };
+        return { pool, ranked: ranked.slice(0, N * R.hyst), buy: ranked.filter(r => r.posOk).slice(0, N), passed: ranked.length, n: pool.length, date: D.data_date || '', all, poolSet: new Set(pool.map(r => r.sym)), pos: P };
     },
     /** 👑 換倉節拍:從固定錨點 `_LEADER_EDGE.anchor` 起算(第 1 天 = 換倉日),每 R 個交易日一次;交易日用 ^TWII 日期數。
      *  ⛔ 錨點不存在手機上 —— auto_trade.py 用同一個錨點(test_leaderdeck 跨檔比對),兩邊換倉日才對得上。回 {started, day, isRebal, left} */
@@ -21702,7 +21731,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return { sym: s, r, keep, mine: mine.has(s), inPool: L.poolSet.has(s) };
         }).sort((a, b) => (b.mine - a.mine) || ((a.r ? a.r.rank : 999) - (b.r ? b.r.rank : 999)));
         const sort = this._leaderSort || { k: 'rank', asc: true };
-        const rows = L.ranked.slice().sort((a, b) => {
+        const buySet = new Set(L.buy.map(r => r.sym));
+        // 📍 V78.0.5 位置不夠被跳過時,真正要買的可能在第 10 名以後 → 也列出來(⛔ 不可只列前 10 名,那樣會看不到買誰)
+        const rows = L.ranked.concat(L.buy.filter(r => !L.ranked.some(x => x.sym === r.sym))).sort((a, b) => {
             const va = a[sort.k], vb = b[sort.k];
             const d = (va == null ? -Infinity : +va) - (vb == null ? -Infinity : +vb);
             return (sort.asc ? d : -d) || (a.rank - b.rank);
@@ -21711,9 +21742,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const th = c => { const on = sort.k === c.k; return `<button onclick="app.leaderSortBy('${c.k}')" data-leadersort="${c.k}" class="text-right ${on ? 'text-cyan-300 font-bold' : 'text-gray-500'}">${c.n}${on ? (sort.asc ? '▲' : '▼') : ''}</button>`; };
         const C = Object.fromEntries(this._LEADER_SORT_COLS.map(c => [c.k, c]));
         const hdr = `<div class="text-[9px] py-0.5 border-b border-[#30363d] items-baseline" style="display:grid;${COLS};gap:4px" data-leaderhdr="1">${th(C.rank)}<span class="text-gray-500">股票</span>${th(C.c)}${th(C.chg10)}${th(C.chg)}${th(C.amt20)}<span class="text-gray-500 text-right">動作</span></div>`;
-        const act = r => r.rank <= R.N
-            ? `<span class="text-[9px] font-bold text-right ${bearOn ? 'text-gray-500' : (mine.has(r.sym) ? 'text-gray-300' : 'text-amber-300')}">${bearOn ? '空頭不買' : (mine.has(r.sym) ? '✅ 已有' : '🛒 買')}</span>`
-            : `<span class="text-[9px] text-gray-500 text-right">前${H}續抱</span>`;
+        const act = r => buySet.has(r.sym)
+            ? `<span class="text-[9px] font-bold text-right ${bearOn ? 'text-gray-500' : (mine.has(r.sym) ? 'text-gray-300' : 'text-amber-300')}" data-leaderact="buy">${bearOn ? '空頭不買' : (mine.has(r.sym) ? '✅ 已有' : '🛒 買')}</span>`
+            : (!r.posOk ? `<span class="text-[9px] text-gray-500 text-right" data-leaderact="pos" title="一年位置 ${r.pos == null ? '沒有資料' : r.pos.toFixed(0) + '%'} < ${L.pos}%:⛔ 不買(有的話續抱)">位置低</span>`
+            : `<span class="text-[9px] text-gray-500 text-right" data-leaderact="keep">前${H}續抱</span>`);
         const row = r => `<div class="py-1 border-b border-[#21262d] items-baseline" style="display:grid;${COLS};gap:4px" data-leaderrow="${r.sym}" data-leaderrank="${r.rank}">
             <span class="font-mono text-[10px] text-gray-500 text-right">${r.rank}</span>
             <span class="min-w-0 truncate cursor-pointer" onclick="app.analyze('${r.sym}'); app.switchAppTab('diag'); app.vibrate(15);">${this._nmPair(r.sym, 'text-[12px]')}${r.lim === 1 ? `<span class="text-[9px] text-amber-300/80"> 漲停</span>` : ''}${r.att ? `<span class="text-[9px] text-orange-300"> ${r.att === 2 ? '處置' : '注意'}</span>` : ''}</span>
@@ -21735,14 +21767,14 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         };
         const heldHtml = held.length ? `<div class="mt-1.5 text-[11px]" data-leaderheldbox="1"><div class="text-[10px] text-gray-400 mb-0.5">👜 你手上的個股 —— 你選的策略是 👑 → 一律照這套:換倉日還在前 ${H} 名就續抱、掉出去就賣,⛔ 沒有停損線(ETF 照舊買了放著)</div>${held.map(heldRow).join('')}</div>` : '';
         const attN = L.ranked.filter(r => r.att).length;
-        const attTxt = attN ? `<div class="text-[10px] text-gray-400 mb-1">🚨 名單裡 ${attN} 檔在注意 / 處置名單上 → ⛔ <b>不要跳過</b>(實測跳過處置 +${E.att.base}% → +${E.att.noDisp}%)。⚠️ 第二次處置要預收款券。</div>` : '';
+        const attTxt = attN ? `<div class="text-[10px] text-gray-400 mb-1">🚨 名單裡 ${attN} 檔在注意 / 處置名單上 → ⛔ <b>不要跳過</b>(實測跳過處置 +${E.att.base}% → +${E.att.noDisp}%),⛔ <b>也別在處置前先賣、等大跌或出關再買回</b>(公告當晚就賣 +${E.att.dispNow}%、就算提前一天猜到 +${E.att.oracle1}%、注意 3 次就賣再出關買回 +${E.att.attSellRel}%;處置期間⛔ 沒有大跌:到出關超額 +${E.disp.during}%)。⚠️ 第二次處置要預收款券。</div>` : '';
         const bearTxt = bearOn ? `<div class="text-[10px] text-amber-300 mb-1">🐻 大盤嚴格空頭(收盤 ${esc(bear.c)} < 60 日線 ${esc(bear.ma60)},且 20 日線 < 60 日線)→ <b>今天不開新倉</b>,手上的照規則。</div>` : '';
         const list = L.ranked.length ? hdr + rows.map(row).join('') : `<div class="text-[11px] text-gray-400">今天池子裡沒有一檔同時「收盤 > 20 日線 > 60 日線」→ 名單是空的(${L.n} 檔全被趨勢過濾擋掉)</div>`;
         setTimeout(() => { this._renderLeaderLedger().catch(() => {}); }, 0);   // 📒 V78.0.3 模擬帳另外補(要讀好幾檔 K 線,⛔ 不擋名單先出來)
         return `<div class="mt-2" data-leader="ok" data-leaderdate="${esc(L.date)}">${head}
             <div class="text-[10px] text-gray-500 mb-1">📅 ${esc(this._dW ? this._dW(L.date, { rel: 1 }) : L.date)} 收盤 ・成交額前 ${L.n} 大(不含 ETF)裡過趨勢的 ${L.passed} 檔,照近 ${R.L} 日漲幅排 ・收盤 = 這天收盤價(⛔ 不是即時)</div>
             ${clockTxt}${bearTxt}${attTxt}
-            <div class="text-[10px] text-gray-400">🛒 前 ${R.N} 名換倉日隔天<b>開盤</b>等權買;已有的還在前 ${H} 名就續抱;沒用到的錢放 0050;⛔ 不設停損線。👆 表頭可點排序(再點一次反向)</div>
+            <div class="text-[10px] text-gray-400">🛒 ${L.pos ? `一年位置 ≥ ${L.pos}%(收盤靠近一年最高)的` : ''}前 ${R.N} 名換倉日隔天<b>開盤</b>等權買${L.pos ? '(位置不夠的標「位置低」→ 跳過、往下一名找;手上有的照樣續抱)' : '(⚠️ 你換回了舊規則:不看一年位置)'} <button onclick="app.setLeadPos(${L.pos ? 'false' : 'true'})" class="text-[10px] text-cyan-300 underline" data-leadpostoggle="${L.pos ? 'on' : 'off'}">${L.pos ? '↩️ 換回舊規則' : `📍 改用新規則(位置 ≥ ${R.pos}%)`}</button>;已有的還在前 ${H} 名就續抱;沒用到的錢放 0050;⛔ 不設停損線。👆 表頭可點排序(再點一次反向)</div>
             <div class="mt-1">${list}</div>${heldHtml}
             <div id="deckLeaderLedger" class="mt-2" data-leaderledger="loading"><div class="text-[10px] text-gray-500">📒 照這套自動買賣到今天的成績計算中…</div></div>
             <div class="text-[10px] text-gray-500 mt-1.5 leading-relaxed">📊 實測 ${E.ai.paths} 條起點中位:${esc(E.ai.win)} <b>+${E.ai.tot}%</b> vs 0050 含息 +${E.ai.etfTr}%(贏 ${E.ai.beat}/${E.ai.paths})・${esc(E.long.win)} <b>+${E.long.tot.toLocaleString()}%</b> vs +${E.long.etfTr.toLocaleString()}%。⚠️ <b>中途最多賠 ${E.ai.mdd}~${E.long.mdd}%</b>、${E.long.yrs} 年只有 ${E.long.yrBeat} 年贏 0050 → 撐不住就一半錢永遠放 0050(16 年 +${E.core50.long.toLocaleString()}%、回撤 −${E.core50.longMdd}%)。</div>
@@ -21789,10 +21821,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (!L) continue;
             out.since = out.since || D;
             const rows = L.rows.slice().sort((a, b) => (+a.r || 99) - (+b.r || 99));
-            const keep = new Set(rows.slice(0, P.N * P.hyst).map(r => String(r.s)));
+            const keep = new Set(rows.filter(r => (+r.r || 99) <= P.N * P.hyst).map(r => String(r.s)));
             reb.bear = bearAt(D);
             const sellList = [...held.keys()].filter(s => !keep.has(s));
-            const buyList = reb.bear === true ? [] : rows.slice(0, P.N).filter(r => !held.has(String(r.s)));
+            // 📍 V78.0.5 採礦從這一版起存 b(= 真的會買的那幾檔,已套一年位置);舊的日子沒有 b → 照舊前 N 名(⚠️ 那幾天是舊規則)
+            const useB = rows.some(r => r.b != null) && this._leadPos() > 0;
+            reb.oldRule = !useB;
+            const buyList = reb.bear === true ? [] : (useB ? rows.filter(r => +r.b === 1) : rows.slice(0, P.N)).filter(r => !held.has(String(r.s)));
             if (!F) { reb.plan = { sell: sellList, buy: buyList.slice(0, Math.max(0, P.N - (held.size - sellList.length))).map(r => String(r.s)) }; continue; }
             for (const sym of sellList) {
                 const t = held.get(sym), b = barAt(await kOf(sym), F);
@@ -21882,15 +21917,16 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const clk = this._leaderClock(twii, L.date, E.anchor);
         const when = clk.isRebal ? '下一個交易日開盤' : `換倉日(還有 ${clk.left ?? '?'} 個交易日)`;
         let st, txt;
-        if (r && r.rank <= R.N) { st = 'buy'; txt = mine ? `第 <b>${r.rank}</b> 名 → ✅ 續抱` : `第 <b>${r.rank}</b> 名(前 ${R.N})→ 🛒 ${when}買`; }
-        else if (r && r.rank <= H) { st = 'keep'; txt = `第 <b>${r.rank}</b> 名(前 ${H})→ ${mine ? '✅ 續抱' : '已有才續抱,⛔ 不新買'}`; }
+        const inBuy = !!(r && L.buy.some(b => b.sym === sym));
+        if (inBuy) { st = 'buy'; txt = mine ? `第 <b>${r.rank}</b> 名 → ✅ 續抱` : `第 <b>${r.rank}</b> 名(買進名單)→ 🛒 ${when}買`; }
+        else if (r && r.rank <= H) { st = 'keep'; txt = `第 <b>${r.rank}</b> 名(前 ${H})${!r.posOk ? `・一年位置 ${r.pos == null ? '沒資料' : r.pos.toFixed(0) + '%'} < ${L.pos}%` : ''}→ ${mine ? '✅ 續抱' : '已有才續抱,⛔ 不新買'}`; }
         else { st = 'out'; const why = r ? `第 ${r.rank} 名,掉出前 ${H}` : (inPool ? '沒過趨勢過濾(收盤 > 20 日線 > 60 日線)' : `不在成交額前 ${R.U} 大`); txt = `${why} → ${mine ? `⛔ ${when}賣` : '不在名單'}`; }
         box.innerHTML = `<div class="text-[11px] text-gray-300 leading-relaxed border-b border-[#21262d] pb-1" data-ovleader="${st}" data-ovleadermine="${mine ? 1 : 0}">👑 領頭羊(你選的策略):${txt} <button onclick="app.switchAppTab('desk'); app.vibrate(15);" class="text-[10px] text-cyan-300 underline">看名單</button> <span class="text-[10px] text-gray-500">(${this._escHtml(this._dW ? this._dW(L.date) : L.date)} 收盤)</span></div>`;
         box.classList.remove('hidden');
     },
     _leaderHelp() {
         const E = this._LEADER_EDGE, R = E.rule;
-        alert(`👑 領頭羊短線輪動(${E.ver})\n\n規則:每 ${R.R} 個交易日收盤 → 在「近 20 日平均成交額前 ${R.U} 大」(不含 ETF)裡,留下收盤 > 20 日線 > 60 日線的,照近 ${R.L} 日漲幅排名,前 ${R.N} 檔隔天開盤等權買;下次換倉還在前 ${R.N * R.hyst} 名就續抱、掉出去隔天開盤賣;不設停損線;沒用到的錢放 0050;大盤嚴格空頭不開新倉。\n\n實測(${E.ai.paths} 條起點中位):${E.ai.win} +${E.ai.tot}%(0050 含息 +${E.ai.etfTr}%)・${E.long.win} +${E.long.tot}%(0050 +${E.long.etfTr}%)。同一個池子隨機挑只有 +${E.sham.ai}% / +${E.sham.long}% → 賺的是排名本身。\n\n代價:中途最多賠 ${E.ai.mdd}~${E.long.mdd}%;${E.long.yrs} 年只有 ${E.long.yrBeat} 年贏 0050;成本加倍時 16 年 +${E.costX2.long}%(輸 0050)。一半放 0050 的版本:16 年 +${E.core50.long}%、回撤 −${E.core50.longMdd}%、最差一年只輸 ${E.core50.worstYr}pp。\n\n換倉日:從 ${E.anchor} 起每 ${R.R} 個交易日(App 與自動下單同一個起點)。成交時點:隔天開盤 +${E.fillOpen.ai}%(回測那一組)、隔天尾盤 +${E.fillClose.ai}%(16 年 +${E.fillClose.long}%)。\n\n逐月(${E.mon.n} 個完整月):贏 0050 的月份 ${E.mon.beat}%、抱 12 個月贏 ${E.mon.hold12}%;最壞一個月 −${E.mon.worst}%(最差那條起點 −${E.mon.worstAll}%);0050 跌的月份它跌得更多(跟跌 ${E.mon.downCap}%)、漲的月份拿到 ${E.mon.upCap}%;連虧最長 ${E.mon.maxLose} 個月、從高點回不來最長 ${E.mon.maxUw} 個月 → 一兩個月看不出好壞。\n\n注意 / 處置股⛔ 不要跳過:跳過處置 +${E.att.noDisp}%、跳過注意 +${E.att.noAtt3}%、持股進處置就賣 +${E.att.sellDisp}%,全部變差。\n\n🎯 這是你在設定「我的策略」選的那一套:總覽、決策台、提醒、通知都照它;手上的個股一律換倉日掉出前 ${R.N * R.hyst} 名才賣(ETF 照舊買了放著)。⚠️ 每一年都贏 0050 那關沒過 —— 要撐得住大回撤。自動下單要自己開:LEADER=1(見 auto_trade.py 說明)。`);
+        alert(`👑 領頭羊短線輪動(${E.ver})\n\n規則:每 ${R.R} 個交易日收盤 → 在「近 20 日平均成交額前 ${R.U} 大」(不含 ETF)裡,留下收盤 > 20 日線 > 60 日線的,照近 ${R.L} 日漲幅排名,${R.pos ? `只挑「一年位置 ≥ ${R.pos}%」(收盤靠近一年最高)的,` : ''}前 ${R.N} 檔隔天開盤等權買(位置不夠的跳過、往下一名找);下次換倉還在前 ${R.N * R.hyst} 名就續抱、掉出去隔天開盤賣;不設停損線;沒用到的錢放 0050;大盤嚴格空頭不開新倉。\n\n實測(${E.ai.paths} 條起點中位):${E.ai.win} +${E.ai.tot}%(0050 含息 +${E.ai.etfTr}%)・${E.long.win} +${E.long.tot}%(0050 +${E.long.etfTr}%)。同一個池子隨機挑只有 +${E.sham.ai}% / +${E.sham.long}% → 賺的是排名本身。\n\n代價:中途最多賠 ${E.ai.mdd}~${E.long.mdd}%;${E.long.yrs} 年只有 ${E.long.yrBeat} 年贏 0050;成本加倍時 16 年 +${E.costX2.long}%(${E.costX2.long > E.long.etfTr ? '仍贏' : '輸'} 0050 的 +${E.long.etfTr}%)。一半放 0050 的版本:16 年 +${E.core50.long}%、回撤 −${E.core50.longMdd}%、最差一年只輸 ${E.core50.worstYr}pp。\n\n換倉日:從 ${E.anchor} 起每 ${R.R} 個交易日(App 與自動下單同一個起點)。成交時點:隔天開盤 +${E.fillOpen.ai}%(回測那一組)、隔天尾盤 +${E.fillClose.ai}%(16 年 +${E.fillClose.long}%)。\n\n逐月(${E.mon.n} 個完整月):贏 0050 的月份 ${E.mon.beat}%、抱 12 個月贏 ${E.mon.hold12}%;最壞一個月 −${E.mon.worst}%(最差那條起點 −${E.mon.worstAll}%);0050 跌的月份它跌得更多(跟跌 ${E.mon.downCap}%)、漲的月份拿到 ${E.mon.upCap}%;連虧最長 ${E.mon.maxLose} 個月、從高點回不來最長 ${E.mon.maxUw} 個月 → 一兩個月看不出好壞。\n\n注意 / 處置股⛔ 不要跳過:跳過處置 +${E.att.noDisp}%、跳過注意 +${E.att.noAtt3}%、持股進處置就賣 +${E.att.sellDisp}%,全部變差。\n\n🚨 「處置前拉抬、快處置被大賣、出關再拉 → 先跟、處置前賣、大跌再買回」回測(2023-06 起):公告當晚就知道、隔天開盤賣 +${E.att.dispNow}%;就算能提前一天猜到會被處置先賣 +${E.att.oracle1}%;注意 3 次就賣、出關再買回 +${E.att.attSellRel}% —— 全部輸照常抱著的 +${E.att.base}%。事件研究(${E.disp.n} 次處置):公告前 10 天確實大漲(超額 +${E.disp.pre10}%,但那是被處置的條件本身、事前不知道誰會被處置);處置期間⛔ 沒有大跌(到出關超額 +${E.disp.during}%,同名次沒被處置的 ${E.disp.duringCtl}%;期間最深跌幅中位 ${E.disp.dip}%、跌超過 15% 的只有 ${E.disp.dip15}%);出關後 5 天 +${E.disp.post5}%(t=${E.disp.post5t},量不到)。→ 照常抱著。\n\n📍 V78.0.5 加了「一年位置 ≥ ${R.pos}%」:同一套只加這一道,${E.ai.win} +${E.posEdge.old.ai}% → +${E.posEdge.now.ai}%、16 年 +${E.posEdge.old.long}% → +${E.posEdge.now.long}%(17 條配對 ${E.posEdge.pairAi}/17、${E.posEdge.pairLong}/17);同樣比例隨機擋掉 +${E.posEdge.sham.ai}% / +${E.posEdge.sham.long}% → 賺的是「靠近一年最高」這件事,不是少買。門檻 ${E.posEdge.plateau}。代價:${E.posEdge.yrs} 年裡 ${E.posEdge.yrUp} 年比舊規則好,最差一年少 ${Math.abs(E.posEdge.worstYrDiff)}pp。\n\n🎯 這是你在設定「我的策略」選的那一套:總覽、決策台、提醒、通知都照它;手上的個股一律換倉日掉出前 ${R.N * R.hyst} 名才賣(ETF 照舊買了放著)。⚠️ 每一年都贏 0050 那關沒過 —— 要撐得住大回撤。自動下單要自己開:LEADER=1(見 auto_trade.py 說明)。`);
     },
     /** 🐻 純函式:一串大盤 K(舊→新,每根要有 close)→ 最後一根是不是嚴格空頭。不足 60 根回 null(⛔ 不猜) */
     _bear60Of(rows) {
@@ -22068,6 +22104,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //     ⑤ ⛔ 不用紅綠燈(講的是「規則換了」不是漲跌方向)。
     _STRAT_CHANGES: [
         {
+            // 🔒 lead:true = 只跳給選了 👑 的人(使用者:「不想讓別人隨意知道這一套」);沒選 👑 的直接蓋章、⛔ 不跳
+            v: 'V78.0.5', dt: '2026-09-30', lead: true, what: '👑 領頭羊:買進多一道「一年位置」',
+            from: '成交額前 100 大 → 趨勢往上 → 近 10 日漲幅<b>前 5 名</b>就買',
+            to: '同上,但只買<b>「一年位置 ≥ 85%」</b>(收盤靠近近一年最高價)的;不夠的跳過、往下一名找,一樣買 5 檔。<b>續抱 / 賣出規則不變</b>(掉出前 10 名才賣)',
+            why: '你問「領頭羊還能更容易漲嗎?」我測了 7 種沒測過的加法,只有這一種每一關都過:AI 時代(2022-09 起)<b>760% → 953%</b>、2011~2026 <b>3,176% → 6,783%</b>,'
+               + '把起點挪 17 次<b>15/17 與 17/17 條都贏</b>;同樣比例<b>隨機</b>擋掉候選反而變差(621% / 2,471%)→ 賺的是「靠近一年最高」這件事,不是「少買幾檔」。'
+               + '門檻 70 / 75 / 80 / 85 / 90 都贏(95 開始變差 = 一片高原,不是剛好挑到);成本加倍、改成隔天尾盤成交(自動下單的做法)也都還是贏。',
+            cost: '① 16 年裡有 <b>5 年比舊規則差</b>(最差 2018 年少 12pp)—— 不是每一年都比較好。'
+               + '② 中途最多賠仍然很大(49~57%),只比舊規則少一點點。'
+               + '③ 位置夠不夠用的是<b>收盤價</b>算的一年位置,剛好在 85% 上下的股票可能今天進、明天出。',
+            you: '換倉日決策台的「🛒 買」可能不是剛好第 1~5 名 —— 位置不夠的會標「位置低」、改買後面的。手上已經有的<b>照舊</b>(還在前 10 名就續抱)。'
+               + '自動下單(auto_trade.py LEADER=1)同時換成新的;要用舊的請設 LEADER_POS=0。Telegram 換倉推播也一樣。',
+            backLead: true, backName: '不看一年位置(舊規則)',
+        },
+        {
             v: 'V77.7.6', dt: '2026-09-27', what: '出場規則 + 最長抱幾天(大盤空頭不開新倉照舊)',
             from: '唐奇安 <b>40</b> 日低點出場 ・最長抱 <b>40</b> 個交易日',
             to: '<b>吊燈 ATR 2 倍</b>(進場後最高收盤 − 2 倍「進場那天的 14 日平均振幅」)出場 ・最長抱 <b>20</b> 個交易日 ・大盤嚴格空頭照舊不開新倉',
@@ -22120,7 +22171,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _checkStratChange() {
         try {
             const KEY = 'proTerm_lastSeenStrat';
-            const c = (this._STRAT_CHANGES || [])[0];
+            // 🔒 V78.0.5 領頭羊的變更(lead:true)只算給選了 👑 的人 —— 其他人看「最新一筆跟他有關的」(⛔ 不跳、⛔ 不洩漏這一套,
+            //    也⛔ 不可幫他蓋掉還沒看過的出場規則變更;之後解鎖 👑 時,因為版本比較新,那一筆會自然跳出來)
+            const c = (this._STRAT_CHANGES || []).find(x => !x.lead || this._isLead());
             if (!c) return;
             const seen = localStorage.getItem(KEY);
             if (!seen) {
@@ -22154,10 +22207,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 <div class="text-[11px] text-cyan-300 font-bold mb-0.5">👤 對你的影響</div>
                 <div class="text-[11px] text-gray-300 leading-relaxed">${c.you}</div>
             </div>
-            <div class="text-[10px] text-gray-500 leading-snug mb-3">⛔ 舊的那條<b>沒有刪掉</b> —— 設定中心「🚪 出場規則」每個選項都還在,每一條旁邊都寫著實測賺多少,你隨時可以自己換回去。</div>
+            <div class="text-[10px] text-gray-500 leading-snug mb-3">${c.backLead ? '⛔ 舊的那條<b>沒有刪掉</b> —— 按下面「換回舊的」就回到不看一年位置;之後想再切換,決策台 👑 那區第一行旁邊有按鈕。' : '⛔ 舊的那條<b>沒有刪掉</b> —— 設定中心「🚪 出場規則」每個選項都還在,每一條旁邊都寫著實測賺多少,你隨時可以自己換回去。'}</div>
             <div class="grid grid-cols-2 gap-2">
                 <button onclick="app._ackStratChange('${e(c.v)}')" class="bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-black py-2.5 rounded">知道了</button>
-                <button onclick="app._ackStratChange('${e(c.v)}'); app.setExitRule('${e(c.back)}');${c.backBear === false ? ' app.toggleBearGate(false, true);' : ''}" class="bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-bold py-2.5 rounded">↩️ 換回舊的(${e(c.backName || '')})</button>
+                <button onclick="app._ackStratChange('${e(c.v)}'); ${c.backLead ? 'app.setLeadPos(false);' : `app.setExitRule('${e(c.back)}');${c.backBear === false ? ' app.toggleBearGate(false, true);' : ''}`}" class="bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-bold py-2.5 rounded">↩️ 換回舊的(${e(c.backName || '')})</button>
             </div>`;
             this._showRichModal('🔁 策略預設值換了', html);
         } catch (_) {}
@@ -53286,8 +53339,11 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             currentPrice: parseFloat(item.currentPrice) || 0,
             defPrice: parseFloat(item.cost) * 0.95
         })).filter(a => a.defPrice > 0 && !this._leaderMine().has(String(a.symbol)));   // 🎯 V77.9.6 👑 的個股沒有停損線 → ⛔ 不叫背景提醒喊 −5%
-        const cache = await caches.open('stockai-v2');
-        await cache.put('/sw-alert-config', new Response(JSON.stringify({ alerts, updatedAt: Date.now() }), { headers: { 'Content-Type': 'application/json' } }));
+        // ⛔ 寫不進去(空間滿 / 非 https 的 file://)⛔ 不可變成未處理的錯誤 —— 背景提醒設定只是加值,主畫面照常
+        try {
+            const cache = await caches.open('stockai-v2');
+            await cache.put('/sw-alert-config', new Response(JSON.stringify({ alerts, updatedAt: Date.now() }), { headers: { 'Content-Type': 'application/json' } }));
+        } catch (e) { console.warn('背景提醒設定寫不進快取:', e && e.message); }
     },
 
     saveMonitorList() {
