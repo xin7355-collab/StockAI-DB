@@ -14,6 +14,8 @@
 //   ⓝ V77.9.9 釣起價 = 釣到那一刻的即時價 → 放進籃子當下賺賠 = 0   ⓞ 🏠 帶回家養:寫 fishHome_v1 + 匯入碼
 //   ⓟ V78.0.0 大小 = 市值(畫面上大魚真的比較大,⛔ 不再每條撐滿)   ⓠ 卡片⛔ 沒有「一張約」、有市值
 //   ⓡ 📳 震動開關關掉 → 一次都不震   ⓢ 🎴 V78.0.1 遊戲卡:左上名字代號 / 五項能力⛔ 不加總 / 琥珀橫條 / 虧損 / reduced-motion
+//   🎣 V78.0.2(使用者九點):ⓒ App 一律 👑 前 10、⛔ 不補魚 ⓥ fpvSea_v1 每天記住 ⓦ 只能點捲線器拋 + 瞄準
+//   ⓧ 往左游 = 水平鏡像(⛔ 不轉 180°)ⓨ 🕸️ 拋網一次全抓 ⓩ 卡片排序 ⓢ8 遊戲卡避開瀏海
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PW_MODULE || '/opt/node22/lib/node_modules/playwright');
@@ -42,17 +44,17 @@ const open = async (q, reduce) => {
 
 // ── ⓐ ⓑ ────────────────────────────────────────────────
 const pg = await open('?app=fish');
-await pg.waitForFunction(() => PRO._fpv && PRO._fpv.swim.length > 0, null, { timeout: 40000 }).catch(() => {});
+await pg.waitForFunction(() => PRO._fpv && PRO._fpv.Q && PRO._fpv.swim.length > 0, null, { timeout: 60000 }).catch(() => {});
 const L = await pg.evaluate(() => {
   const vis = el => { if (!el) return false; for (let e = el; e && e.nodeType === 1; e = e.parentElement) { const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden') return false; } return true; };
   const mf = document.querySelector('link[rel=manifest]');
   return { top: vis(document.querySelector('.topbar')), pool: vis(document.getElementById('fishPoolPane')), cast: vis(document.getElementById('rodCastPane')),
-    rules: vis(document.getElementById('rodRules')), stage: vis(document.getElementById('fpvCanvas')), btn: vis(document.getElementById('fpvCastBtn')),
+    rules: vis(document.getElementById('rodRules')), stage: vis(document.getElementById('fpvCanvas')), btn: !document.getElementById('fpvCastBtn') && !!(PRO._fpv && PRO._fpv.reel),
     title: document.title, mf: mf && mf.getAttribute('href'), icon: (document.querySelector('link[rel=apple-touch-icon]') || {}).href || '',
     app: PRO._appFish === true, tab: PRO._tab, swim: PRO._fpv.swim.length, raf: !!PRO._fpv.raf };
 });
 ok(!L.top && !L.pool && !L.cast && !L.rules, 'ⓐ 作戰室分頁列 / 池子 / 拋竿規則段 / 紀律卡都看不到', JSON.stringify(L));
-ok(L.stage && L.btn && L.app && L.tab === 'rod' && L.swim > 0 && L.raf, 'ⓐ2 舞台 + 拋竿鈕看得到、水下有魚在游(rAF 在跑)—— 🚧 空過守門', JSON.stringify(L));
+ok(L.stage && L.btn && L.app && L.tab === 'rod' && L.swim > 0 && L.raf, 'ⓐ2 舞台看得到、⛔ 沒有另外的拋竿鈕(只有捲線器)、水下有魚在游(rAF 在跑)—— 🚧 空過守門', JSON.stringify(L));
 ok(L.title === '股海釣手' && L.mf === 'fish.webmanifest' && /fish-192\.png$/.test(L.icon), 'ⓐ3 標題 / manifest / 主畫面圖示換成股海釣手', JSON.stringify(L));
 
 const BAN = /位階|振幅|成交額前|唐奇安|吊燈|領頭羊|換倉|高基期|高波動|🧬|👑|實測|回測|六關|期望值|出場規則|停損/;
@@ -61,13 +63,17 @@ ok(!BAN.test(txt0), 'ⓑ 開 App 時整頁⛔ 沒有選股規則用語', (txt0.m
 
 // ── ⓒ 決定性對照 ────────────────────────────────────────
 const C = await pg.evaluate(async () => {
-  const expect = PRO._castPick(PRO._fishD).picked.map(x => x.sym);
+  localStorage.removeItem('fpvSea_v1');
+  const D = PRO._fishD, R0 = PRO._castPick(D), expect = R0.picked.map(x => x.sym), isLead = PRO._isLead();
+  const lead10 = ((D.LD && D.LD.ranked) || []).slice(0, 10).map(x => x.sym);
   const saved = PRO._fpvOne; let calls = 0;
   PRO._fpvOne = async () => { calls++; return { ok: true, stub: true }; };
-  await PRO.fpvCast(); const stub = PRO._fpv.lastPicked.slice();
-  PRO._fpvOne = saved; PRO._fpv.Q = null;
-  const t0 = performance.now(); PRO.fpvCast(); await new Promise(r => setTimeout(r, 400)); const real = PRO._fpv.lastPicked.slice();
-  const ten = PRO._fpvTen(PRO._fishD, PRO._castPick(PRO._fishD)).map(x => x.sym);
+  PRO._fpv.Q = null; await PRO.fpvCast(); const stub = PRO._fpv.lastPicked.slice();
+  PRO._fpvOne = saved; PRO._fpv.Q = null; localStorage.removeItem('fpvSea_v1');
+  const t0 = performance.now(); PRO.fpvCast(); for (let k = 0; k < 100 && !PRO._fpv.G; k++) await new Promise(r => setTimeout(r, 50)); const real = PRO._fpv.lastPicked.slice();
+  const ten = PRO._fpvTen(D, PRO._castPick(D)).map(x => x.sym);
+  // 🚫 不補魚:排行只剩 3 條 → 只有 3 條(⛔ 不拿魚池後段補)
+  const saveL = D.LD; D.LD = { ...saveL, ranked: saveL.ranked.slice(0, 3), buy: saveL.buy.slice(0, 3) }; const three = PRO._fpvTen(D, PRO._castPick(D)).length; D.LD = saveL;
   // 🎣 手動釣第 1 條:等咬鉤 → 按住收線(魚衝或張力高就放手)→ 破水 → 出卡
   const S = PRO._fpv, seen = [];
   for (let k = 0; k < 400 && S.G; k++) {
@@ -75,32 +81,43 @@ const C = await pg.evaluate(async () => {
     if (G.ph === 'bite' || G.ph === 'fight') PRO.fpvHold(!(G.run || G.ten > 0.55));
     await new Promise(r => setTimeout(r, 40));
   }
-  const cards1 = document.querySelectorAll('#fpvCards .fpvcard').length, i1 = S.Q ? S.Q.i : -1, btn = document.getElementById('fpvCastBtn').textContent;
-  PRO.fpvSkip();
+  const cards1 = document.querySelectorAll('#fpvCards .fpvcard').length, i1 = S.Q ? S.Q.i : -1, sub1 = document.getElementById('fpvSub').innerText;
+  const sea1 = JSON.parse(localStorage.getItem('fpvSea_v1') || '{}');
+  const netR = await PRO.fpvNet();
   const ranks = [...document.querySelectorAll('#fpvCards .fpvcard')].map(e => [e.dataset.fpv, e.querySelector('.rk') ? e.querySelector('.rk').textContent : '']);
-  return { expect, stub, real, calls, ms: performance.now() - t0, seq: S.Q ? S.Q.seq : [], seen, cards1, i1, btn, cards: document.querySelectorAll('#fpvCards .fpvcard').length,
-           rows: S.lastRows.slice(), ten, ranks };
+  const sea2 = JSON.parse(localStorage.getItem('fpvSea_v1') || '{}');
+  const again = await PRO.fpvCast();
+  return { expect, isLead, lead: R0.lead === true, lead10, stub, real, calls, ms: performance.now() - t0, seq: S.Q ? S.Q.seq : [], seen, cards1, i1, sub1, sea1, sea2, netR,
+           cards: document.querySelectorAll('#fpvCards .fpvcard').length, rows: S.lastRows.slice(), ten, three, ranks, again, gAfter: !!S.G,
+           hint: document.getElementById('fpvHint').innerText, netHidden: document.getElementById('fpvNet').classList.contains('hidden') };
 });
+ok(C.lead && !C.isLead, 'ⓒ ⭐ App 模式沒有任何設定也一律 👑(主畫面 App 讀不到作戰室的設定)', JSON.stringify([C.lead, C.isLead]));
 ok(C.calls === 1 && JSON.stringify(C.stub) === JSON.stringify(C.expect) && JSON.stringify(C.real) === JSON.stringify(C.expect),
-  'ⓒ ⭐ 名單 == _castPick;動畫 stub 掉前後名單一樣', JSON.stringify(C));
+  'ⓒ2 ⭐ 名單 == _castPick;動畫 stub 掉前後名單一樣', JSON.stringify([C.stub, C.real, C.expect, C.calls]));
 const exSet = new Set(C.expect);
-ok(C.expect.length === 0 ? C.rows.length === 0 : (JSON.stringify(C.rows.slice(0, C.expect.length).slice().sort()) === JSON.stringify(C.expect.slice().sort())
-   && C.rows.length <= 10 && C.rows.length >= Math.min(10, C.expect.length) && JSON.stringify(C.rows) === JSON.stringify(C.ten) && new Set(C.rows).size === C.rows.length),
-  'ⓛ 一次 10 條:前面 == _castPick 那幾條、後面 == _fpvTen 同一套排序、不重複、≤10', JSON.stringify([C.expect, C.rows]));
+ok(C.lead10.length > 0 && JSON.stringify(C.rows) === JSON.stringify(C.lead10) && JSON.stringify(C.ten) === JSON.stringify(C.lead10) && C.three === 3,
+  'ⓛ 海裡的魚 == 排行前 10 條(照名次)、⛔ 不補魚(排行只剩 3 條 → 3 條)', JSON.stringify([C.lead10, C.rows, C.three]));
 ok(C.ranks.length === C.rows.length && C.ranks.every(([s, r], i) => r.endsWith('#' + (i + 1)) && (/⭐/.test(r) === exSet.has(s))),
-  'ⓛ2 每張卡有名次 #1~#N,只有 _castPick 那幾條掛 ⭐', JSON.stringify(C.ranks));
+  'ⓛ2 每張卡有名次 #1~#N(預設照名次排)、只有今天會買的那幾條掛 ⭐', JSON.stringify(C.ranks));
 const txt1 = await pg.evaluate(() => document.body.innerText);
 ok(!BAN.test(txt1), 'ⓑ2 拋竿之後(卡片 + 漁獲籃)也⛔ 沒有選股規則用語', (txt1.match(BAN) || [])[0]);
 
 const pg2 = await open('');
-const C2 = await pg2.evaluate(async () => { PRO.switchTab('rod'); try { await PRO._rodP; } catch (_) {} return PRO._castPick(PRO._fishD).picked.map(x => x.sym); });
-ok(JSON.stringify(C2) === JSON.stringify(C.expect), 'ⓒ2 ⭐ App 模式名單 == 作戰室一般模式名單(同一支 _castPick)', JSON.stringify([C2, C.expect]));
+const C2 = await pg2.evaluate(async () => { PRO.switchTab('rod'); try { await PRO._rodP; } catch (_) {}
+  const gene = PRO._castPick(PRO._fishD);
+  localStorage.setItem('proTerminalSettings', JSON.stringify({ strategy: 'lead', stratUnlock: true }));
+  const lead = PRO._castPick(PRO._fishD);
+  return { gene: !!gene.lead, lead: lead.picked.map(x => x.sym) }; });
+ok(!C2.gene && JSON.stringify(C2.lead) === JSON.stringify(C.expect), 'ⓒ3 ⭐ 決定性對照:作戰室一般模式沒解鎖 → 🧬;解鎖 👑 後名單 == App 模式(同一支 _castPick)', JSON.stringify([C2, C.expect]));
 
 // ── ⓓ 狀態機 + 真的有畫 ─────────────────────────────────
 if (C.rows.length) {
   ok(JSON.stringify(C.seen) === JSON.stringify(['cast', 'wait', 'bite', 'fight', 'breach', 'show']), 'ⓓ ⭐ 手動釣一條:cast → wait → bite → fight(按住收線)→ breach → show', JSON.stringify([C.seen, C.seq]));
-  ok(C.cards1 === 1 && C.i1 === 1 && /第 2 \/ /.test(C.btn), 'ⓓ2 ⭐ 一按只釣一條(第 1 條上岸只有 1 張卡,按鈕變「第 2 / N 條」)', JSON.stringify([C.cards1, C.i1, C.btn]));
-  ok(C.cards === C.rows.length && C.seq.at(-1) === 'all', 'ⓓ3 ⏭ 全部收網 → 剩下的一次全部出卡', `${C.cards} vs ${C.rows.length}`);
+  ok(C.cards1 === 1 && C.i1 === 1 && new RegExp('還有 ' + (C.rows.length - 1) + ' 條').test(C.sub1) && (C.sea1.caught || []).length === 1,
+    'ⓓ2 ⭐ 一按只釣一條(第 1 條上岸只有 1 張卡、水面下剩 N−1 條、記進 fpvSea_v1)', JSON.stringify([C.cards1, C.i1, C.sub1, C.sea1]));
+  ok(C.cards === C.rows.length && C.seq.includes('net') && C.seq.at(-1) === 'all' && C.netR && C.netR.ok && (C.sea2.caught || []).length === C.rows.length,
+    'ⓨ 🕸️ 拋網 → 剩下的一次全抓(有動畫階段 net)、全部記進 fpvSea_v1', JSON.stringify([C.cards, C.rows.length, C.seq, C.sea2]));
+  ok(C.again && C.again.none && !C.gAfter && /釣完了/.test(C.hint) && C.netHidden, 'ⓨ2 釣完海裡就沒魚:再拋不會開始釣、寫「釣完了」、拋網鈕收起來', JSON.stringify([C.again, C.hint, C.netHidden]));
 } else ok(C.seq.length === 0 || C.seq.includes('none'), 'ⓓ 今天沒有魚 → 直接結束');
 const P = await pg.evaluate(() => {
   const cv = document.createElement('canvas'); cv.width = 240; cv.height = 120; const ctx = cv.getContext('2d');
@@ -177,17 +194,19 @@ ok(N.home.some(h => h.sym === N.sym && h.px === N.lp && h.d === '2099-01-02') &&
 const pg3 = await open('?app=fish', true);
 await pg3.waitForFunction(() => PRO._fishD, null, { timeout: 40000 }).catch(() => {});
 const R3 = await pg3.evaluate(async () => {
+  for (let k = 0; k < 100 && !(PRO._fpv && PRO._fpv.Q); k++) await new Promise(r => setTimeout(r, 100));
   const t0 = performance.now(); await PRO.fpvCast();
   const one = { ms: performance.now() - t0, seq: PRO._fpv.Q ? PRO._fpv.Q.seq.slice() : null, cards: document.querySelectorAll('#fpvCards .fpvcard, #fpvCards .fpvnone').length };
-  PRO.fpvSkip(); one.all = document.querySelectorAll('#fpvCards .fpvcard').length; one.n = PRO._fpv.Q ? PRO._fpv.Q.fish.length : 0;
+  const t1 = performance.now(); await PRO.fpvNet(); one.netMs = performance.now() - t1;
+  one.all = document.querySelectorAll('#fpvCards .fpvcard').length; one.n = PRO._fpv.Q ? PRO._fpv.Q.fish.length : 0;
   await PRO._fpvProfile(PRO._fpv.Q.fish[0].sym); const tc = document.querySelector('#fpvCardWrap .fpvtcg');
   one.flip = tc ? getComputedStyle(tc).animationName : 'nocard'; PRO._fpvCardClose(); return one; });
-ok(R3.ms < 1500 && R3.cards === 1 && !(R3.seq || []).includes('breach') && R3.all === R3.n, 'ⓕ ♿ 減少動態 → 一按直接出一張卡、全部收網出全部', JSON.stringify(R3));
+ok(R3.ms < 1500 && R3.cards === 1 && !(R3.seq || []).includes('breach') && R3.all === R3.n && R3.netMs < 500, 'ⓕ ♿ 減少動態 → 一按直接出一張卡、拋網直接全部出卡', JSON.stringify(R3));
 ok(R3.flip === 'none', 'ⓢ6 ♿ 減少動態 → 遊戲卡直接出現、⛔ 沒有翻牌動畫', R3.flip);
 
 // ── ⓖ 斷線 / 太慢 → 同一條魚留在佇列最前面 ─────────────
 const G = await pg.evaluate(async () => {
-  const S = PRO._fpv; S.Q = null; PRO.fpvCast(); for (let k = 0; k < 100 && !S.G; k++) await new Promise(r => setTimeout(r, 50)); const first = S.Q.fish[S.Q.i].sym;
+  const S = PRO._fpv; S.Q = null; localStorage.removeItem('fpvSea_v1'); PRO.fpvCast(); for (let k = 0; k < 100 && !S.G; k++) await new Promise(r => setTimeout(r, 50)); const first = S.Q.fish[S.Q.i].sym;
   for (let k = 0; k < 100 && S.G && S.G.ph !== 'bite'; k++) await new Promise(r => setTimeout(r, 50));
   PRO.fpvHold(true); PRO._fpvGameStep(S.G, 0.01);
   const G1 = S.G; G1.run = true; G1.surge = 1.2; G1.runT = 99999; for (let k = 0; k < 40 && S.G; k++) PRO._fpvGameStep(G1, 0.05);
@@ -201,7 +220,7 @@ ok(G.lateSeq === 'escape' && G.lateI === 0, 'ⓖ2 咬鉤 4 秒沒按 → 跑掉,
 
 // ── ⓟ 大小 = 市值 / ⓠ 卡片 / ⓡ 震動 / ⓢ 公司簡介 ───────────
 const Z = await pg.evaluate(async () => {
-  PRO.fpvSkip();                                    // ⓖ 最後一條跑掉了 → 收網把卡片叫出來再看
+  await PRO.fpvNet();                               // ⓖ 最後一條跑掉了 → 拋網把卡片叫出來再看
   const W = 360, sm = PRO._fpvFishOf({ sym: 's', c: 500, mcap: 15, pos252: 50 }), bg = PRO._fpvFishOf({ sym: 'b', c: 20, mcap: 8000, pos252: 50 });
   const lens = [5, 30, 200, 2000, 30000].map(m => PRO._fpvFishOf({ sym: 'x', c: 50, mcap: m }).len);
   const shown = F => PRO._fpvFit(F, W, 2.1) * F.len;
@@ -247,6 +266,77 @@ ok(Z.stats.map(x => x[0]).join() === '體型,熱度,活力,成長,賺錢力' && 
 ok(Z.hues.length >= 2 && Z.hues.every(h => h >= 20 && h <= 60), 'ⓢ4 能力值橫條一律琥珀色(⛔ 不用紅綠)', JSON.stringify(Z.hues));
 ok(/100%/.test(Z.big.ex) && Z.big.stars === '★★★★', 'ⓢ5 決定性對照:市值改成全市場最大 → 體型比 100% 的公司大、★★★★', JSON.stringify(Z.big));
 ok(/目前虧損中/.test(Z.loss.gm) && /⚠️ 目前虧損中/.test(Z.loss.tt), 'ⓢ7 虧損股:賺錢力寫「目前虧損中」、特性欄有 ⚠️', JSON.stringify(Z.loss));
+
+// ── ⓩ 卡片排序(接在 ⓟ 之後,pg 已經拋網全抓)───────────────
+const SO = await pg.evaluate(() => {
+  const read = k => [...document.querySelectorAll('#fpvCards .fpvcard')].map(e => e.dataset[k] === '' ? null : +e.dataset[k]);
+  PRO.fpvSort('mcap'); const desc = read('mcap'), bar = document.getElementById('fpvSort').innerText;
+  PRO.fpvSort('mcap'); const asc = read('mcap');
+  PRO.fpvSort('chg'); const chg = read('chg');
+  PRO.fpvSort('rank'); const rk = read('rank');
+  const mono = (a, d) => { const v = a.filter(x => x != null); return v.every((x, i) => !i || (d > 0 ? x >= v[i - 1] : x <= v[i - 1])) && a.slice(v.length).every(x => x == null); };
+  return { desc, asc, chg, rk, bar, ok1: mono(desc, -1), ok2: mono(asc, 1), ok3: mono(chg, -1), ok4: mono(rk, 1) };
+});
+ok(SO.desc.length >= 2 && SO.ok1 && SO.ok2 && SO.ok3 && SO.ok4 && /名次/.test(SO.bar) && /▼/.test(SO.bar),
+  'ⓩ 🔢 卡片可排序:市值由大到小、再按一次反向、今日漲跌、名次;沒資料的排最後', JSON.stringify(SO));
+
+// ── ⓥ 每天記住 / ⓦ 捲線器 + 瞄準 / ⓧ 往左游不顛倒 ───────────
+const pg4 = await open('?app=fish');
+await pg4.waitForFunction(() => PRO._fpv && PRO._fpv.Q, null, { timeout: 60000 }).catch(() => {});
+const V0 = await pg4.evaluate(() => { const S = PRO._fpv, sea = JSON.parse(localStorage.getItem('fpvSea_v1'));
+  const order = sea.order.slice(), caught = order.slice(0, 2); localStorage.setItem('fpvSea_v1', JSON.stringify({ date: sea.date, order, caught }));
+  return { order, caught, date: sea.date, total: S.Q.total }; });
+await pg4.reload();
+await pg4.waitForFunction(() => typeof PRO !== 'undefined' && PRO._fpv && PRO._fpv.Q, null, { timeout: 60000 }).catch(() => {});
+const V1 = await pg4.evaluate(() => { const S = PRO._fpv;
+  return { q: S.Q.fish.map(f => f.sym), cards: [...document.querySelectorAll('#fpvCards .fpvcard')].map(e => e.dataset.fpv), swim: S.swim.map(s => s.F.sym),
+           sub: document.getElementById('fpvSub').innerText }; });
+ok(V0.total >= 3 && JSON.stringify(V1.q) === JSON.stringify(V0.order.slice(2)) && V1.cards.length === 2 && V0.caught.every(x => V1.cards.includes(x))
+   && V1.swim.length === V0.total - 2 && !V1.swim.some(x => V0.caught.includes(x)) && new RegExp('還有 ' + (V0.total - 2) + ' 條').test(V1.sub),
+  'ⓥ 🗓️ 重新打開 App:釣過的直接出卡、海裡只剩沒釣的(照上次的隨機順序)', JSON.stringify([V0, V1]));
+await pg4.evaluate(() => { const v = JSON.parse(localStorage.getItem('fpvSea_v1')); v.date = '2000-01-01'; localStorage.setItem('fpvSea_v1', JSON.stringify(v)); });
+await pg4.reload();
+await pg4.waitForFunction(() => typeof PRO !== 'undefined' && PRO._fpv && PRO._fpv.Q, null, { timeout: 60000 }).catch(() => {});
+const V2 = await pg4.evaluate(() => ({ n: PRO._fpv.Q.fish.length, total: PRO._fpv.Q.total, cards: document.querySelectorAll('#fpvCards .fpvcard').length,
+  sea: JSON.parse(localStorage.getItem('fpvSea_v1')) }));
+ok(V2.n === V2.total && V2.cards === 0 && V2.sea.caught.length === 0 && V2.sea.date !== '2000-01-01', 'ⓥ2 換了資料日 → 整池重來', JSON.stringify(V2));
+// 🎲 釣起順序隨機:洗牌 30 次,至少有一次跟名次順序不同(⛔ 不可永遠照 #1 → #10)
+const SH = await pg4.evaluate(() => { const a = PRO._fpv.Q.fish.map(f => f.rank); let diff = 0;
+  for (let k = 0; k < 30; k++) if (JSON.stringify(PRO._fpvShuffle(a)) !== JSON.stringify(a)) diff++; return { diff, same: JSON.stringify(PRO._fpvShuffle(a).slice().sort((x, y) => x - y)) === JSON.stringify(a.slice().sort((x, y) => x - y)) }; });
+ok(SH.diff > 20 && SH.same, 'ⓥ3 🎲 釣起順序是洗牌過的(同一批魚、順序隨機)', JSON.stringify(SH));
+// 👆 捲線器 + 瞄準(真的滑鼠事件)
+const box4 = await (await pg4.$('#fpvCanvas')).boundingBox();
+const W4 = await pg4.evaluate(() => { const S = PRO._fpv; return { reel: S.reel, W: S.W, H: S.H, hz: S.hz }; });
+await pg4.mouse.click(box4.x + W4.W * 0.3, box4.y + W4.hz + (W4.H - W4.hz) * 0.3);
+await pg4.waitForTimeout(300);
+const K1 = await pg4.evaluate(() => ({ g: !!PRO._fpv.G, aim: PRO._fpv.aim }));
+await pg4.mouse.move(box4.x + W4.W * 0.2, box4.y + W4.hz + 60); await pg4.mouse.down();
+await pg4.mouse.move(box4.x + W4.W * 0.25, box4.y + W4.hz + 90, { steps: 4 }); await pg4.mouse.up();
+const K2 = await pg4.evaluate(() => ({ g: !!PRO._fpv.G, aim: PRO._fpv.aim }));
+await pg4.waitForTimeout(500);
+const bx0 = await pg4.evaluate(() => PRO._fpv.bx);
+const reel = await pg4.evaluate(() => PRO._fpv.reel);
+await pg4.mouse.click(box4.x + reel.x, box4.y + reel.y);
+for (let k = 0; k < 40; k++) { if (await pg4.evaluate(() => !!PRO._fpv.G)) break; await pg4.waitForTimeout(50); }
+const K3 = await pg4.evaluate(() => { const G = PRO._fpv.G; return { g: !!G, hook: G && G.hook, aim: PRO._fpv.aim, W: PRO._fpv.W }; });
+ok(!K1.g && !K2.g && K2.aim && Math.abs(K2.aim.x - W4.W * 0.25) < 3, 'ⓦ 👆 點水面 / 拖曳⛔ 不會拋竿,只會移動落點', JSON.stringify([K1, K2]));
+ok(K3.g && Math.abs(K3.hook.x - K3.aim.x) <= K3.W * 0.06 && !(await pg4.$('#fpvCastBtn')), 'ⓦ2 👆 點捲線器才拋;落點在你瞄的地方附近;⛔ 沒有黃色拋竿鈕', JSON.stringify(K3));
+ok(bx0 < W4.W * 0.8, 'ⓦ3 🎯 瞄到左邊 → 竿子跟著往左移', JSON.stringify([bx0, W4.W]));
+// 🐟 往左游:傳給畫魚的角度恆為 0、改用水平鏡像
+const FX = await pg4.evaluate(() => { const S = PRO._fpv, saveG = S.G; S.G = null;
+  S.swim.forEach((s, i) => { s.v = i % 2 ? -0.03 : 0.03; });
+  const orig = PRO._fpvDrawFish, calls = []; PRO._fpvDrawFish = function (ctx, F, x, y, sc, ang, t, opt) { if (opt && opt.under && opt.alpha === 0.88) calls.push([ang, !!opt.flip]); return orig.apply(this, arguments); };
+  PRO._fpvFrame(performance.now(), 0.016); PRO._fpvDrawFish = orig; S.G = saveG;
+  const cv = document.createElement('canvas'); cv.width = 200; cv.height = 120; const ctx = cv.getContext('2d'), F = S.swim[0].F;
+  const top = flip => { ctx.clearRect(0, 0, 200, 120); orig.call(PRO, ctx, F, 100, 60, 0.5, 0, 0.3, { flip }); const d = ctx.getImageData(0, 0, 200, 120).data;
+    let y0 = 999, y1 = -1, x0 = 999; for (let y = 0; y < 120; y++) for (let x = 0; x < 200; x++) if (d[(y * 200 + x) * 4 + 3] > 120) { y0 = Math.min(y0, y); y1 = Math.max(y1, y); x0 = Math.min(x0, x); } return { y0, y1, x0 }; };
+  return { calls, r: top(false), l: top(true) }; });
+ok(FX.calls.length > 1 && FX.calls.every(c => c[0] === 0) && FX.calls.some(c => c[1]) && FX.calls.some(c => !c[1])
+   && Math.abs(FX.r.y0 - FX.l.y0) <= 1 && Math.abs(FX.r.y1 - FX.l.y1) <= 1 && FX.l.x0 >= 90 && FX.r.x0 < 60,
+  'ⓧ 🐟 往左游 = 水平鏡像:角度恆為 0、上下輪廓跟往右游一樣(⛔ 不會肚子朝上)', JSON.stringify(FX));
+// 📱 遊戲卡避開瀏海
+ok(/\.fpvcw\{[^}]*env\(safe-area-inset-top\)[^}]*env\(safe-area-inset-bottom\)/.test(SRC) && /\.fpvtcg\{[^}]*max-height:calc\(100dvh[^}]*safe-area-inset-top/.test(SRC),
+  'ⓢ8 📱 遊戲卡上下留出瀏海 / 底部橫條的空間(safe-area)');
 
 // ── ⓗ manifest / 圖示 ──────────────────────────────────
 let M = null; try { M = JSON.parse(readFileSync('fish.webmanifest', 'utf8')); } catch (_) {}

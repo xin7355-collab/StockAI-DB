@@ -138,7 +138,7 @@ ok('⑤ 產業作戰室預設 🧬;存了 lead 沒解鎖 → 仍 🧬', P.def.le
 ok('⑤b 🧬:回測數字頁沒有 👑 的列、沒有「錢不多的話」;👑 時有(決定性對照)', !/領頭羊/.test(P.def.pb) && !/錢不多/.test(P.def.pb) && /領頭羊/.test(P.on.pb) && /錢不多/.test(P.on.pb), [P.def.pb.slice(0, 80)]);
 ok('⑤c 🧬:實測總表不列標題有 👑 / 領頭羊的條目;👑 時全部列出(⛔ 沒刪)', P.def.labLead === 0 && P.on.labLead > 0 && P.on.labN > P.def.labN, JSON.stringify([P.def.labN, P.on.labN, P.on.labLead]));
 ok('⑤d 🧬:成績單沒有 👑 分頁、選了也退回 🧬', !P.def.tabs.includes('lead') && P.on.tabs.includes('lead') && P.recoGene === 'pb', JSON.stringify([P.def.tabs, P.recoGene]));
-ok('⑤e 拋竿 🧬 走舊版本(_castPickGene),👑 才走領頭羊', /_isLead\(\)\) return this\._castPickGene/.test(P.castSrc));
+ok('⑤e 拋竿 🧬 走舊版本(_castPickGene),👑 才走領頭羊;🎣 V78.0.2 股海釣手(App 模式)一律 👑', /_isLead\(\) && !this\._fpvOn\(\)\) return this\._castPickGene/.test(P.castSrc));
 const PS = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 const judge = s => (s.match(/strategy === 'lead' && !?!?(?:s|st)\.stratUnlock/) || [''])[0];
 ok('⑤f 兩邊判斷式同一條(strategy === lead 且解鎖)', /s\.strategy === 'lead' && s\.stratUnlock/.test(SRC) && /st\.strategy === 'lead' && !!st\.stratUnlock/.test(PS), [judge(SRC), judge(PS)]);

@@ -651,8 +651,11 @@ html.app-fish .wrap{padding-top:calc(8px + env(safe-area-inset-top))}
 .fpvbuzz{margin-left:auto;font-size:11px;padding:4px 10px;border-radius:14px;background:rgba(255,255,255,.06);color:#dbe4f0;border:1px solid rgba(255,255,255,.18);min-height:30px}
 .fpvskip{position:absolute;right:10px;top:10px;font-size:11px;padding:4px 10px;border-radius:14px;background:rgba(4,10,18,.55);color:#dbe4f0;border:1px solid rgba(255,255,255,.18);cursor:pointer}
 .fpvbtns{display:flex;justify-content:center;margin:12px 0 4px}
-#fpvCastBtn{font-size:17px;font-weight:900;padding:12px 34px;border-radius:26px;min-height:50px;border:1px solid #f5b942;color:#1a1204;background:linear-gradient(180deg,#ffe29a,#f5b942)}
-#fpvCastBtn:disabled{opacity:.55}
+#fpvNet{top:auto;bottom:10px;right:auto;left:10px;font-size:13px;font-weight:800;padding:7px 14px;border-color:rgba(245,185,66,.7);color:#ffe29a;background:rgba(4,10,18,.7)}
+.fpvsort{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 0;font-size:11.5px;color:var(--sub)}
+.fpvsort.hidden{display:none}
+.fpvsort button{font-size:11.5px;padding:4px 10px;border-radius:14px;min-height:30px;background:rgba(255,255,255,.05);color:#dbe4f0;border:1px solid rgba(255,255,255,.16)}
+.fpvsort button.on{border-color:#f5b942;color:#ffe29a;background:rgba(245,185,66,.12)}
 #fpvCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:10px}
 .fpvcard{position:relative;border-radius:14px;padding:10px 10px 12px;background:linear-gradient(180deg,rgba(20,32,50,.95),rgba(9,16,27,.95));border:1px solid rgba(255,255,255,.08);animation:fpvIn .5s ease both}
 .fpvcard canvas{width:100%;height:84px;display:block}
@@ -665,9 +668,10 @@ html.app-fish .wrap{padding-top:calc(8px + env(safe-area-inset-top))}
 .fpvcard .lbtn{width:100%;margin-top:8px;min-height:38px}
 .fpvprof .kvp{display:grid;grid-template-columns:minmax(92px,auto) minmax(0,1fr);gap:10px;padding:8px 2px;border-bottom:1px solid var(--line);font-size:12.5px;line-height:1.55}
 .fpvprof .kvp span{color:var(--sub)}.fpvprof .kvp b{font-weight:600;color:var(--txt)}
-.fpvcw{position:fixed;inset:0;z-index:9000;background:rgba(2,8,16,.78);display:flex;align-items:center;justify-content:center;padding:12px;overflow:auto}
+.fpvcw{position:fixed;inset:0;z-index:9000;background:rgba(2,8,16,.78);display:flex;align-items:center;justify-content:center;overflow:auto;
+  padding:max(12px, calc(env(safe-area-inset-top) + 6px)) 12px max(12px, calc(env(safe-area-inset-bottom) + 6px))}
 .fpvcw.hidden{display:none}
-.fpvtcg{width:100%;max-width:360px;max-height:94vh;overflow:auto;border-radius:18px;padding:3px;background:var(--fr,#8995a3);box-shadow:0 18px 50px rgba(0,0,0,.6);animation:fpvFlip .35s ease both}
+.fpvtcg{width:100%;max-width:360px;max-height:94vh;max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;border-radius:18px;padding:3px;background:var(--fr,#8995a3);box-shadow:0 18px 50px rgba(0,0,0,.6);animation:fpvFlip .35s ease both}
 .fpvtcg.r4{background:conic-gradient(from 40deg,#f5d58a,#c9a0ff,#7fd6ff,#f5d58a);background-size:200% 200%}
 .fpvtcg .in{position:relative;border-radius:15px;background:linear-gradient(180deg,#132338,#0a121d);padding:12px 12px 14px}
 .fpvtcg .x{position:absolute;right:10px;top:8px;font-size:16px;color:var(--sub);cursor:pointer;padding:4px 6px;z-index:2}
@@ -929,9 +933,9 @@ html.app-fish #fishBasketPane h2 .sub{display:none}
     <div class="fpvhead"><div class="fpvbrand">股海釣手</div><div class="fpvsub" id="fpvSub">水面平靜中…</div>
       <button class="fpvbuzz" id="fpvBuzzBtn" onclick="PRO.fpvBuzzToggle()">📳 震動:開</button><span class="fpvsub" id="fpvBuzzNote"></span>
       <label id="fpvHaptic" aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none"><input type="checkbox" switch tabindex="-1"></label></div>
-    <div class="fpvwrap" id="fpvWrap"><canvas id="fpvCanvas"></canvas><div class="fpvhint" id="fpvHint"></div><span class="fpvskip hidden" id="fpvSkip" onclick="PRO.fpvSkip()">⏭ 全部收網</span></div>
-    <div class="fpvbtns"><button class="lbtn on" id="fpvCastBtn" onclick="PRO.fpvCast()">🎣 拋竿</button></div>
-    <div class="fpvsub" id="fpvLegend" style="text-align:center">🎨 魚越紅 = 股價在一年裡越高、越綠 = 越低(不是今天的漲跌)・📏 魚越大 = 公司越大 ・🎣 咬鉤後按住畫面收線</div>
+    <div class="fpvwrap" id="fpvWrap"><canvas id="fpvCanvas"></canvas><div class="fpvhint" id="fpvHint"></div><span class="fpvskip hidden" id="fpvNet" onclick="PRO.fpvNet()">🕸️ 拋網</span></div>
+    <div class="fpvsub" id="fpvLegend" style="text-align:center;margin-top:8px">👆 點右下角的捲線器拋竿 ・在水面上拖曳可以移動落點 ・🎣 咬鉤後按住畫面收線 ・🕸️ 拋網一次全抓<br>🎨 魚越紅 = 股價在一年裡越高、越綠 = 越低(不是今天的漲跌)・📏 魚越大 = 公司越大</div>
+    <div class="fpvsort hidden" id="fpvSort"></div>
     <div id="fpvCards"></div>
   </div>
   <!-- 🎣 V77.4.1 三步驟直排(01 建池 → 02 拋竿 → 03 驗證)—— 借外部那份介面的「結構」,⛔ 不借它的框與橘色。
@@ -2405,7 +2409,8 @@ const PRO = {
   //    ⛔ 空頭(加權收盤 < 60 日線且 20 日線 < 60 日線)→ 今天不買(名單照看);⛔ 不是換倉日 → 名單照給、寫明何時換。
   //    ⚠️ 三道守門仍然只**標註、不刪**(注意/處置股回測:跳過反而更差 760 → 341%)。
   _castPick(D) {
-    if (!this._isLead()) return this._castPickGene(...arguments);   // 🎯 V77.9.6 全站策略
+    // 🎯 V77.9.6 全站策略 ・🎣 V78.0.2 股海釣手(App 模式)一律走這一套 —— 主畫面 App 是另一份儲存空間,讀不到作戰室的設定
+    if (!this._isLead() && !this._fpvOn()) return this._castPickGene(...arguments);
     const rows = D.rows || [];
     const byS = {}; for (const r of rows) byS[r.sym] = r;
     const LD = D.LD || {};
@@ -3583,6 +3588,7 @@ const PRO = {
     };
     const M = (p) => ctx.moveTo(p[0], p[1]), Ln = (p) => ctx.lineTo(p[0], p[1]), Q = (c, p) => ctx.quadraticCurveTo(c[0], c[1], p[0], p[1]);
     ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(scale, scale);
+    if (opt.flip) ctx.scale(-1, 1);   // 🐟 V78.0.2 往左游 = 水平鏡像(⛔ 不再轉 180° —— 那會讓魚肚朝上)
     const A0 = opt.alpha == null ? 1 : opt.alpha;
     ctx.globalAlpha = A0;
     const finA = (a) => { ctx.globalAlpha = A0 * a; };
@@ -3722,17 +3728,15 @@ const PRO = {
     Object.assign(this._fpv, { cv, ctx, W, H, hz: H * 0.32 });
     return this._fpv;
   },
-  /** 🐠 待機時水下游的魚:目前這一池的前幾條(⛔ 只拿來畫,不顯示它是怎麼挑的) */
-  _fpvSwimFrom(D, ten) {
-    const S = this._fpv; if (!S || !D) return;
-    let rows = ten || [];
-    if (!rows.length) { try { rows = this._fpvTen(D, this._castPick(D)); } catch (_) { rows = []; } }
-    if (!rows.length) { try { rows = this._fishPoolRows(D) || []; } catch (_) { rows = (D.rows || []).slice(0, 10); } }
-    rows = rows.slice(0, 10);
-    const sub = document.getElementById('fpvSub');
-    if (sub) sub.textContent = `資料日 ${D.date || '—'} ・水面下游著 ${rows.length} 條`;
-    S.swim = rows.map((r, i) => { const F = this._fpvFishOf(r);
-      return { F, d: 0.25 + 0.7 * ((i * 0.37) % 1), x: Math.random(), v: (0.018 + Math.random() * 0.03) * (Math.random() < 0.5 ? -1 : 1) }; });
+  /** 🐠 水下游的魚 = 今天**還沒釣起來**的那幾條(🎣 V78.0.2:釣完海裡就沒魚了,⛔ 不拿別的魚補)。
+   *  ⛔ 只拿來畫,不顯示它是怎麼挑的。 */
+  _fpvSwimFrom(D, rows) {
+    const S = this._fpv; if (!S) return;
+    rows = (rows || (S.Q ? S.Q.fish.slice(S.Q.i) : [])).slice(0, this._FPV_MAX);
+    const old = {}; for (const s0 of (S.swim || [])) old[s0.F.sym] = s0;
+    S.swim = rows.map((r, i) => { const F = r.pal && r.len ? r : this._fpvFishOf(r);
+      return old[F.sym] || { F, d: 0.25 + 0.7 * ((i * 0.37) % 1), x: Math.random(), v: (0.018 + Math.random() * 0.03) * (Math.random() < 0.5 ? -1 : 1) }; });
+    this._fpvBtn();
   },
   _fpvBurst(x, y, F, n) {
     const S = this._fpv; let k = 0;
@@ -3752,9 +3756,10 @@ const PRO = {
    *  ♿ 減少動態 / 畫不了 → 直接出卡片(⛔ 不讓人卡在一個點不開的小遊戲裡)。 */
   _fpvRnd() { return Math.random(); },
   _fpvQueue(rows) {
-    const fish = rows.map(p => ({ ...this._fpvFishOf(p), rank: p.rank || 0, star: !!p.star, warn: p.warn || [], live: !!p.live, pxDate: p.pxDate || '', mcapSrc: p.mcapSrc || '' }));
+    const fish = rows.map(p => this._fpvFishRow(p));
     return { rows, fish, i: 0, seq: ['idle'] };
   },
+  _fpvFishRow(p) { return { ...this._fpvFishOf(p), rank: p.rank || 0, star: !!p.star, warn: p.warn || [], live: !!p.live, pxDate: p.pxDate || '', mcapSrc: p.mcapSrc || '' }; },
   _fpvCanPlay() {
     const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     return !reduce && !!(this._fpv && this._fpv.ctx);
@@ -3764,10 +3769,13 @@ const PRO = {
     const S = this._fpvSetup(), Q = S && S.Q;
     if (!Q || Q.i >= Q.fish.length) return Promise.resolve({ ok: false, none: true });
     const F = Q.fish[Q.i], idx = Q.i;
-    if (!this._fpvCanPlay()) { this._fpvShowCard(F, idx, null); Q.i++; Q.seq.push('show'); this._fpvBtn(); return Promise.resolve({ ok: true, instant: true }); }
-    const r = this._fpvRnd, W = S.W, H = S.H, hz = S.hz;
+    if (!this._fpvCanPlay()) { this._fpvShowCard(F, idx, null); Q.i++; Q.seq.push('show'); this._fpvCaught(F); this._fpvBtn(); return Promise.resolve({ ok: true, instant: true }); }
+    const r = this._fpvRnd, W = S.W, H = S.H, hz = S.hz, A = this._fpvAim();
+    // 🎯 V78.0.2 落點 = 你瞄的那一點 ± 一點點(⛔ 不再整片隨機)
+    const cl = (v, a, b) => Math.max(a, Math.min(b, v));
     const G = { F, idx, ph: '', el: 0, p: 0, prog: 0, ten: 0, holding: false, surge: 0, run: false, runT: 0, done: false,
-                waitMs: 800 + r.call(this) * 1800, nib: [], hook: { x: W * (0.3 + 0.36 * r.call(this)), y: hz + (H - hz) * (0.34 + 0.16 * r.call(this)) } };
+                waitMs: 800 + r.call(this) * 1800, nib: [],
+                hook: { x: cl(A.x + (r.call(this) - 0.5) * W * 0.08, W * 0.08, W * 0.92), y: cl(A.y + (r.call(this) - 0.5) * (H - hz) * 0.06, hz + 20, H - 30) } };
     const nN = Math.floor(r.call(this) * 3); for (let k = 0; k < nN; k++) G.nib.push(250 + r.call(this) * (G.waitMs - 400));
     G.nib.sort((a, b) => a - b);
     S.G = G; S.hook = null;
@@ -3786,8 +3794,8 @@ const PRO = {
   _fpvEnd(G, ok, why) {
     if (G.done) return; G.done = true;
     const S = this._fpv, Q = S.Q;
-    if (ok) { Q.i++; Q.seq.push('caught'); this._fpvHint(''); }
-    else { Q.seq.push('escape'); this._fpvBuzz(220); this._fpvHint(`🐟 <b>${this._esc(G.F.nm)}</b> 跑掉了(${why})—— 再拋一次,還是牠`); }
+    if (ok) { Q.i++; Q.seq.push('caught'); this._fpvCaught(G.F); this._fpvHint(Q.i >= Q.fish.length ? this._FPV_EMPTY : ''); }
+    else { Q.seq.push('escape'); this._fpvBuzz(220); this._fpvHint(`🐟 <b>${this._esc(G.F.nm)}</b> 跑掉了(${why})—— 再點捲線器拋一次,還是牠`); }
     S.G = null; G.holding = false; this._fpvBtn();
     if (G.res) G.res({ ok, why: why || '' });
   },
@@ -3830,14 +3838,15 @@ const PRO = {
     const el = document.getElementById('fpvHint'); if (!el) return;
     el.innerHTML = html || ''; el.classList.toggle('on', !!html); el.classList.toggle('hot', !!strong);
   },
+  _FPV_EMPTY: '🌊 今天的魚都釣完了 —— 明天收盤後海裡會有新的魚',
+  /** 狀態列:剩幾條 / 拋網鈕 / 排序列(🎣 V78.0.2 起拋竿只能點捲線器,⛔ 沒有另外的拋竿鈕) */
   _fpvBtn() {
-    const btn = document.getElementById('fpvCastBtn'), skip = document.getElementById('fpvSkip'), S = this._fpv, Q = S && S.Q;
-    const busy = !!(S && S.G && !S.G.done), left = Q ? Q.fish.length - Q.i : 0;
-    if (btn) {
-      btn.disabled = busy;
-      btn.textContent = busy ? '🎣 釣魚中…' : (Q && left > 0) ? `🎣 拋竿(第 ${Q.i + 1} / ${Q.fish.length} 條)` : (Q ? '🎣 再拋一輪' : '🎣 拋竿');
-    }
-    if (skip) skip.classList.toggle('hidden', !(Q && left > 0));
+    const S = this._fpv, Q = S && S.Q, net = document.getElementById('fpvNet');
+    const left = Q ? Q.fish.length - Q.i : 0;
+    if (net) net.classList.toggle('hidden', !(left > 0) || !!(S && S.N));
+    const sub = document.getElementById('fpvSub');
+    if (sub && S && S.dDate) sub.textContent = left > 0 ? `資料日 ${S.dDate} ・水面下還有 ${left} 條` : `資料日 ${S.dDate} ・今天的魚都釣完了`;
+    this._fpvSortBar();
   },
   /** 📳 震動開關(`fishBuzz_v1`,預設開)。Android 用 navigator.vibrate;
    *  iPhone 沒有這個 API → iOS 18 起點一下 `<input type=checkbox switch>` 會有觸覺回饋(只能單下,節奏用幾下拼);更舊的 iPhone 沒辦法。 */
@@ -3900,13 +3909,50 @@ const PRO = {
     this.toast(`🏠 已帶回家 ${list.length} 條 → 散戶救星「自選 → 🎣 魚池」` + (ok ? '(匯入碼也複製好了,另一台 / 主畫面 App 讀不到就到魚池按「📥 貼上匯入碼」)' : ''), 4200);
     return code;
   },
-  /** ⏭ 全部收網:目前這條 + 佇列剩下的,一次全部出卡片(名次順序不變) */
-  fpvSkip() {
-    const S = this._fpv, Q = S && S.Q; if (!Q) return;
+  /** 🕸️ V78.0.2 拋網(使用者:「新增拋網功能,一次性全抓,也要有動畫」)—— 取代「⏭ 全部收網」。
+   *  海裡剩下的(含正在拉的那條)一次全抓:丟出 → 張開 → 下沉(魚被圈進來)→ 收網拉出水面 → 全部出卡。
+   *  ♿ 減少動態 / 畫不了 → 直接全部出卡。⛔ 不改名單,只是「一次釣完」。 */
+  _FPV_NET: { throw: 520, spread: 460, sink: 560, haul: 950 },
+  async fpvNet() {
+    let S = this._fpv;
+    if (!S || !S.Q) { await this._fpvPrep(); S = this._fpv; }
+    const Q = S && S.Q; if (!Q || S.N) return { ok: false };
     const G = S.G;
-    if (G && !G.done) { this._fpvShowCard(G.F, G.idx, null); G.done = true; S.G = null; Q.i = Math.max(Q.i, G.idx + 1); if (G.res) G.res({ ok: true, skip: true }); }
-    while (Q.i < Q.fish.length) { this._fpvShowCard(Q.fish[Q.i], Q.i, null); Q.i++; }
-    Q.seq.push('all'); this._fpvHint(''); this._fpvBtn();
+    if (G && !G.done) { G.done = true; S.G = null; G.holding = false; if (G.res) G.res({ ok: true, net: true }); }
+    const left = Q.fish.slice(Q.i); if (!left.length) { this._fpvHint(this._FPV_EMPTY); return { ok: false, none: true }; }
+    this.buzz(30);
+    if (!this._fpvCanPlay()) { this._fpvNetDone(left); return { ok: true, instant: true, n: left.length }; }
+    const A = this._fpvAim(), W = S.W, H = S.H, hz = S.hz;
+    const cx = Math.max(W * 0.25, Math.min(W * 0.75, A.x)), cy = hz + (H - hz) * 0.3;
+    const pos = {}; for (const s0 of S.swim) pos[s0.F.sym] = [s0.x * W, hz + 18 + (H - hz - 40) * s0.d];
+    const N = { el: 0, ph: 'throw', p: 0, fish: left, cx, cy, R: W * 0.26,
+                from: left.map((F, k) => pos[F.sym] || [W * (0.15 + 0.7 * ((k * 0.37) % 1)), hz + (H - hz) * (0.3 + 0.5 * ((k * 0.61) % 1))]) };
+    S.N = N; Q.seq.push('net'); this._fpvHint('🕸️ 拋網!'); this._fpvBtn(); this._fpvLoop();
+    return new Promise(res => { N.res = res; });
+  },
+  /** 一步拋網邏輯(dt 秒)—— 跟畫圖分開,測試可以直接驅動 */
+  _fpvNetStep(N, dt) {
+    if (!N || N.done) return;
+    const T = this._FPV_NET, order = ['throw', 'spread', 'sink', 'haul'];
+    N.el += dt * 1000; N.p = Math.min(1, N.el / T[N.ph]);
+    if (N.el < T[N.ph]) return;
+    const k = order.indexOf(N.ph);
+    if (k < order.length - 1) {
+      N.ph = order[k + 1]; N.el = 0; N.p = 0;
+      const S = this._fpv;
+      if (N.ph === 'spread') { this._fpvBurst(N.cx, S.hz + 4, null, 40); S.dip = 8; this._fpvBuzz(40); }
+      if (N.ph === 'haul') { this._fpvBuzz([40, 40, 90]); }
+      return;
+    }
+    N.done = true; this._fpvNetDone(N.fish);
+    const S = this._fpv; S.flash = 0.6; S.shake = 8; this._fpvBurst(N.cx, S.hz, null, 120);
+    if (N.res) N.res({ ok: true, n: N.fish.length });
+  },
+  _fpvNetDone(list) {
+    const S = this._fpv, Q = S.Q;
+    for (const F of list) { this._fpvShowCard(F, 0, null); this._fpvCaught(F); }
+    Q.i = Q.fish.length; S.N = null; Q.seq.push('all');
+    this._fpvHint(this._FPV_EMPTY); this._fpvBtn();
   },
   _fpvLoop() {
     const S = this._fpv; if (!S || S.raf) return;
@@ -3937,14 +3983,22 @@ const PRO = {
     this._fpvScene(ctx, W, H, hz, t);
     // ── 水下的魚(正在拉的那條不重複畫)
     const onLine = ph === 'bite' || ph === 'fight' ? F : null;
+    const NT = S.N && !S.N.done ? S.N : null;
+    if (NT) this._fpvNetStep(NT, dt);
+    const N = S.N && !S.N.done ? S.N : null, inNet = N && N.ph !== 'throw' ? new Set(N.fish.map(x => x.sym)) : null;
     for (const s of S.swim) {
       if (F && s.F.sym === F.sym && (onLine || ph === 'breach' || ph === 'show')) continue;
+      if (inNet && inNet.has(s.F.sym)) continue;       // 🕸️ 被網子圈住的由拋網那段畫
       s.x += s.v * dt; if (s.x > 1.15) s.x = -0.15; if (s.x < -0.15) s.x = 1.15;
       const y = hz + 18 + (H - hz - 40) * s.d, sc = 0.28 + 0.62 * s.d;
-      this._fpvDrawFish(ctx, s.F, s.x * W, y + Math.sin(t * 1.3 + s.F.ph) * 4, sc, s.v > 0 ? 0 : Math.PI, t, { under: true, alpha: 0.88 });
+      // 🐟 V78.0.2 往左游用水平鏡像(⛔ 不轉 180°,那會讓魚肚朝上)
+      this._fpvDrawFish(ctx, s.F, s.x * W, y + Math.sin(t * 1.3 + s.F.ph) * 4, sc, 0, t, { under: true, alpha: 0.88, flip: s.v < 0 });
     }
-    // ── 釣竿 / 釣線 / 狀態演出
-    const tipX = W * 0.62, tipY = H * 0.36 + Math.sin(t * 1.4) * 3;
+    // ── 釣竿 / 釣線 / 狀態演出(🎯 V78.0.2 竿子跟著瞄準點左右移)
+    const A = this._fpvAim(), cl = (v, a, b) => Math.max(a, Math.min(b, v));
+    const bxTo = cl(W * 0.8 + (A.x - W * 0.5) * 0.35, W * 0.6, W * 0.95);
+    S.bx = S.bx == null ? bxTo : S.bx + (bxTo - S.bx) * Math.min(1, dt * 6);
+    const tipX = cl(S.bx - W * 0.3 + (A.x - W * 0.5) * 0.25, W * 0.18, W * 0.85), tipY = H * 0.36 + Math.sin(t * 1.4) * 3;
     const bendTo = ph === 'fight' ? (G.holding ? 0.45 + 0.25 * Math.min(1, G.ten) : 0.2) + (G.run ? Math.sin(t * 13) * 0.06 : 0)
                  : ph === 'bite' ? 0.5 + Math.sin(t * 9) * 0.08 : ph === 'breach' ? 0.35 : 0.08;
     S.bend += (bendTo - S.bend) * 0.15; S.bend = Math.max(0.05, Math.min(0.75, S.bend));
@@ -3991,8 +4045,11 @@ const PRO = {
       this._fpvDrawFish(ctx, F, x + this._fpvOx(F, k3), y, k3, Math.sin(t * 1.6) * 0.08, t, { thrash: 0.8 });
       hook = { x: x - F.len * k3 * 0.2, y: y - 10 }; tension = 0.2; S.lensDone = 0;
     }
-    if (!G) { hook = { x: W * 0.46, y: hz + 8 + Math.sin(t * 2) * 2 }; }
-    this._fpvRod(ctx, W, H, tipX, tipY, S.bend, t, ph === 'fight' && G.holding);
+    const left = S.Q ? S.Q.fish.length - S.Q.i : 0, idle = !G && !N;
+    if (!G) { hook = { x: tipX - W * 0.12, y: hz + 8 + Math.sin(t * 2) * 2 }; }
+    if (N) { hook = this._fpvNetDraw(ctx, N, W, H, hz, t, tipX, tipY); tension = N.ph === 'haul' ? 0.8 : 0.25; }
+    if (idle && left > 0) this._fpvCross(ctx, A.x, A.y, t);
+    this._fpvRod(ctx, W, H, tipX, tipY, S.bend, t, (ph === 'fight' && G.holding) || (N && N.ph === 'haul'), S.bx, idle && left > 0);
     this._fpvLine(ctx, tipX, tipY, hook.x, hook.y, tension, t, onLine);
     if (ph === 'fight') this._fpvMeters(ctx, W, H, G);
     // ── 粒子
@@ -4084,8 +4141,8 @@ const PRO = {
     ctx.restore();
   },
   /** 前景:釣竿(彎曲 = 張力)+ 捲線器 + 手 */
-  _fpvRod(ctx, W, H, tipX, tipY, bend, t, reeling) {
-    const bx = W * 0.9, by = H * 1.04;
+  _fpvRod(ctx, W, H, tipX, tipY, bend, t, reeling, bx0, glow) {
+    const bx = bx0 == null ? W * 0.9 : bx0, by = H * 1.04;
     const cx = bx + (tipX - bx) * 0.55 + bend * 60, cy = by + (tipY - by) * 0.55 - 10 + bend * 70;
     const seg = 18;
     for (let i = 0; i < seg; i++) {
@@ -4096,6 +4153,16 @@ const PRO = {
       ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
     }
     const rx = bx - 18, ry = by - 58;
+    if (this._fpv) this._fpv.reel = { x: rx, y: ry, r: 36 };      // 👆 V78.0.2 拋竿只能點這顆捲線器(命中範圍比畫出來的大一點)
+    if (glow) {                                                   // 待機時捲線器會呼吸發光 + 寫「拋竿」
+      const a = 0.35 + 0.3 * Math.sin(t * 3.2);
+      ctx.save(); ctx.strokeStyle = `rgba(255,214,120,${a.toFixed(2)})`; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(rx, ry, 27 + 3 * Math.sin(t * 3.2), 0, 6.29); ctx.stroke();
+      ctx.font = '800 12px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillStyle = 'rgba(4,10,18,.65)'; ctx.fillRect(rx - 30, ry - 52, 60, 18);
+      ctx.fillStyle = `rgba(255,226,154,${(0.7 + 0.3 * Math.sin(t * 3.2)).toFixed(2)})`; ctx.fillText('點我拋竿', rx, ry - 36);
+      ctx.restore();
+    }
     ctx.fillStyle = '#20262f'; ctx.beginPath(); ctx.arc(rx, ry, 20, 0, 6.29); ctx.fill();
     ctx.strokeStyle = '#8c97a8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(rx, ry, 14, 0, 6.29); ctx.stroke();
     const sp = reeling ? t * 14 : t * 0.4;
@@ -4122,6 +4189,7 @@ const PRO = {
     const WTXT = { thin: '量少,可能買不到', disp: '處置中', hot: '短線噴太多' };
     const warn = W.length ? `<div class="row" style="color:var(--amber)">⚠️ ${this._esc(W.map(w => WTXT[w] || String(w).replace(/<[^>]+>/g, '')).join('・').slice(0, 24))}</div>` : '';
     const el = document.createElement('div'); el.className = 'fpvcard'; el.dataset.fpv = F.sym; el.dataset.rank = F.rank || (i + 1);
+    el.dataset.chg = F.chg; el.dataset.mcap = Number.isFinite(F.mcap) ? F.mcap : ''; el.dataset.pos = F.pos == null ? '' : F.pos;
     const when = F.live ? '即時' : (F.pxDate ? F.pxDate.slice(5).replace('-', '/') + ' 收盤' : '');
     el.innerHTML = `<span class="rk">${F.star ? '⭐' : ''}#${F.rank || (i + 1)}</span><span class="rar">${F.tag}</span><canvas title="點魚看卡片" style="cursor:pointer" onclick="PRO._fpvProfile('${F.sym}')"></canvas>
       <div class="nm">${this._esc(F.nm)}</div><div class="cd">${F.sym}</div>
@@ -4133,6 +4201,34 @@ const PRO = {
       <button class="lbtn on" onclick="PRO._fishCatch('${F.sym}')">🧺 放進漁獲籃</button>`;
     box.appendChild(el);
     this._fpvPortrait(el.querySelector('canvas'), F);
+    this._fpvSortCards();
+  },
+  /** 🔢 V78.0.2 釣起來的卡片照你選的方式排(名次 / 今日漲跌 / 市值 / 一年位置;同一顆再按一次 = 反向)。
+   *  ⛔ 只是排畫面,不改名單、不改名次。 */
+  _FPV_SORT: [['rank', '名次', 1], ['chg', '今日漲跌', -1], ['mcap', '市值', -1], ['pos', '一年位置', -1]],
+  fpvSort(k) {
+    const cur = this._fpvSortK || ['rank', 1], def = (this._FPV_SORT.find(x => x[0] === k) || [k, '', 1])[2];
+    this._fpvSortK = cur[0] === k ? [k, -cur[1]] : [k, def];
+    this._fpvSortCards(); this._fpvSortBar();
+  },
+  _fpvSortCards() {
+    const box = document.getElementById('fpvCards'); if (!box) return;
+    const [k, dir] = this._fpvSortK || ['rank', 1];
+    const val = e => { const v = e.dataset[k]; return v === '' || v == null || !Number.isFinite(+v) ? null : +v; };
+    const els = [...box.querySelectorAll('.fpvcard')];
+    els.sort((a, b) => { const x = val(a), y = val(b);
+      if (x == null && y == null) return (+a.dataset.rank) - (+b.dataset.rank);
+      if (x == null) return 1; if (y == null) return -1;              // 沒資料的一律排最後(⛔ 不當成 0)
+      return (x - y) * dir || (+a.dataset.rank) - (+b.dataset.rank); });
+    for (const e of els) box.appendChild(e);
+  },
+  _fpvSortBar() {
+    const bar = document.getElementById('fpvSort'); if (!bar) return;
+    const n = document.querySelectorAll('#fpvCards .fpvcard').length;
+    bar.classList.toggle('hidden', n < 2); if (n < 2) return;
+    const [k, dir] = this._fpvSortK || ['rank', 1];
+    bar.innerHTML = '<span>排序:</span>' + this._FPV_SORT.map(([key, lab]) =>
+      `<button class="${key === k ? 'on' : ''}" data-k="${key}" onclick="PRO.fpvSort('${key}')">${lab}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</button>`).join('');
   },
   _fpvMcapTxt(m) {
     if (!(Number.isFinite(m) && m > 0)) return '算不出(魚照中等大小)';
@@ -4380,68 +4476,188 @@ const PRO = {
     };
     const pk = (R && R.picked) || [];
     if (!pk.length) return [];                        // 照規則今天空手 → ⛔ 不拿後段硬湊 10 條
+    if (R && R.lead) {
+      // 🎣 V78.0.2 👑 一律照排行原樣(第 1 名就是 #1,⛔ 不因為掛警示就往後挪);前幾名(= 今天會買的)掛 ⭐
+      const pkBy = {}; for (const x of pk) pkBy[x.sym] = x;
+      for (const r of ((D.LD && D.LD.ranked) || [])) { const x = pkBy[r.sym]; add(r.sym, x ? { warn: x.warn, star: true } : null); }
+      for (const x of pk) add(x.sym, { warn: x.warn, star: true });   // 排行裡找不到的(不該發生)也⛔ 不丟
+      return out.map((r, i) => ({ ...r, rank: i + 1 }));
+    }
     pk.filter(x => !(x.warn || []).length).concat(pk.filter(x => (x.warn || []).length))
       .forEach(x => add(x.sym, { warn: x.warn, star: true }));
-    if (R && R.lead) { for (const r of ((D.LD && D.LD.ranked) || [])) add(r.sym); }
-    else {
+    {
       const lb = x => Number.isFinite(+x.lb) ? +x.lb : -1e9;
       const pb = ((this._pbJ && this._pbJ.picks) || []).filter(x => x && x.s)
         .slice().sort((a, b) => ((+b.hq || 0) - (+a.hq || 0)) || (lb(b) - lb(a)));   // = _recoPicks 的排序(⛔ 不另寫)
       for (const x of pb) add(x.s);
     }
-    let pool = []; try { pool = this._fishPoolRows(D) || []; } catch (_) {}
-    for (const r of pool) add(r.sym);
+    // 🎣 V78.0.2 ⛔ 不再拿魚池後段補滿 10 條(那幾條沒回測過)—— 採礦給幾條就幾條,最多 10 條
     return out.map((r, i) => ({ ...r, rank: i + 1 }));
   },
-  /** 🎣 拋竿(App 模式):名單 = `_castPick`(⛔ 一行都不改)。
-   *   V78.0.0 起一按只釣一條:佇列還有魚 → 釣下一條;佇列空了 / 第一次 → 重新算一輪名單再釣第 1 條。 */
+  /** 🗓️ V78.0.2 每天記住釣到哪幾條(使用者:「我不要重新釣,應該是紀錄起來,每天沒有釣到的魚就重新釣」)
+   *  `fpvSea_v1` = { date: 資料日, order: [洗牌後的順序], caught: [已釣起的代號] }。
+   *  ⭐ 同一個資料日:沒釣的照原順序繼續、釣過的直接出卡;換資料日 → 整池重來(新的一批魚)。
+   *  🎲 釣起順序隨機(使用者第 7 點)—— 洗牌一次就存起來,重開 App 順序不變。 */
+  _FPV_SEA: 'fpvSea_v1',
+  _fpvSeaLoad() {
+    try { const v = JSON.parse(localStorage.getItem(this._FPV_SEA) || 'null');
+      if (v && typeof v.date === 'string' && Array.isArray(v.order) && Array.isArray(v.caught)) return v; } catch (_) {}
+    try { localStorage.removeItem(this._FPV_SEA); } catch (_) {}
+    return null;
+  },
+  _fpvSeaSave(v) { try { localStorage.setItem(this._FPV_SEA, JSON.stringify(v)); return true; } catch (_) { return false; } },
+  _fpvShuffle(a) {
+    a = a.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(this._fpvRnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  },
+  /** 釣起一條:記進 fpvSea_v1、從水裡拿掉 */
+  _fpvCaught(F) {
+    const S = this._fpv; if (!S || !F) return;
+    const sea = S.sea; if (sea && !sea.caught.includes(F.sym)) { sea.caught.push(F.sym); this._fpvSeaSave(sea); }
+    S.swim = (S.swim || []).filter(x => x.F.sym !== F.sym);
+  },
+  /** 🎯 瞄準點(沒動過 = 水面中間偏下) */
+  _fpvAim() {
+    const S = this._fpv || {}, W = S.W || 360, H = S.H || 420, hz = S.hz || H * 0.32;
+    return S.aim || { x: W * 0.5, y: hz + (H - hz) * 0.42 };
+  },
+  _fpvSetAim(x, y) {
+    const S = this._fpv; if (!S) return null;
+    const W = S.W, H = S.H, hz = S.hz;
+    S.aim = { x: Math.max(W * 0.1, Math.min(W * 0.9, x)), y: Math.max(hz + 24, Math.min(H - 40, y)) };
+    return S.aim;
+  },
+  _fpvCross(ctx, x, y, t) {
+    const a = 0.55 + 0.25 * Math.sin(t * 4), r = 13 + 2 * Math.sin(t * 4);
+    ctx.save(); ctx.strokeStyle = `rgba(255,226,154,${a.toFixed(2)})`; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.45, 0, 0, 6.29); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - r - 5, y); ctx.lineTo(x - r + 3, y); ctx.moveTo(x + r - 3, y); ctx.lineTo(x + r + 5, y); ctx.stroke();
+    ctx.restore();
+  },
+  /** 🕸️ 拋網的畫面(回傳網子位置 = 釣線末端) */
+  _fpvNetDraw(ctx, N, W, H, hz, t, tipX, tipY) {
+    const ease = u => u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2, p = N.p;
+    const mesh = (x, y, rx, ry, a) => {
+      ctx.save(); ctx.strokeStyle = `rgba(235,242,250,${a})`; ctx.lineWidth = 1;
+      for (let k = 1; k <= 3; k++) { ctx.beginPath(); ctx.ellipse(x, y, rx * k / 3, ry * k / 3, 0, 0, 6.29); ctx.stroke(); }
+      for (let k = 0; k < 12; k++) { const an = k * Math.PI / 6; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(an) * rx, y + Math.sin(an) * ry); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(255,214,120,.9)';
+      for (let k = 0; k < 12; k++) { const an = k * Math.PI / 6; ctx.beginPath(); ctx.arc(x + Math.cos(an) * rx, y + Math.sin(an) * ry, 2.2, 0, 6.29); ctx.fill(); }
+      ctx.restore();
+    };
+    const cx = N.cx, cy0 = hz + 6;
+    if (N.ph === 'throw') {
+      const q = ease(p), x = tipX + (cx - tipX) * q, y = tipY + (cy0 - tipY) * q - Math.sin(q * Math.PI) * H * 0.22;
+      mesh(x, y, 8 + 10 * q, 5 + 5 * q, 0.8);
+      return { x, y };
+    }
+    const R = N.R, fishAt = (k, q, bx, by, sh) => {
+      const f = N.fish[k], [sx, sy] = N.from[k] || [cx, N.cy], ang = (k / Math.max(1, N.fish.length)) * 6.29;
+      const tx = bx + Math.cos(ang) * R * 0.35 * sh, ty = by + Math.sin(ang) * R * 0.12 * sh;
+      const x = sx + (tx - sx) * q, y = sy + (ty - sy) * q, sc = (0.2 + 0.14 * (f.sizeK || 1)) * (0.45 + 0.55 * sh);
+      this._fpvDrawFish(ctx, f, x, y, sc, Math.sin(t * 12 + k) * 0.5, t, { under: y > hz, thrash: 2.4, fast: 2.2, flip: k % 2 === 1, alpha: 0.95 });
+    };
+    if (N.ph === 'spread') {
+      const q = ease(p); mesh(cx, cy0, R * q, R * 0.3 * q, 0.75);
+      N.fish.forEach((f, k) => fishAt(k, 0.15 * q, cx, N.cy, 1));
+      return { x: cx, y: cy0 };
+    }
+    if (N.ph === 'sink') {
+      const q = ease(p), y = cy0 + (N.cy - cy0) * q;
+      N.fish.forEach((f, k) => fishAt(k, 0.15 + 0.85 * q, cx, y, 1));
+      mesh(cx, y, R * (1 - 0.2 * q), R * 0.3, 0.7);
+      return { x: cx, y };
+    }
+    // haul:收口 → 整袋拉出水面
+    const q = ease(p), bxX = cx + (tipX - cx) * 0.35 * q, by = N.cy + (hz - 60 - N.cy) * q, sh = 1 - 0.55 * q;
+    N.fish.forEach((f, k) => fishAt(k, 1, bxX, by, sh));
+    ctx.save(); ctx.strokeStyle = 'rgba(235,242,250,.75)'; ctx.lineWidth = 1;
+    const rx = R * sh * 0.55, ry = R * 0.3 * sh + 10;
+    for (let k = 0; k < 9; k++) { const u = k / 8; ctx.beginPath(); ctx.moveTo(bxX - rx + 2 * rx * u, by + ry); ctx.quadraticCurveTo(bxX - rx * 0.3 + rx * 0.6 * u, by - ry * 1.2, bxX, by - ry * 1.8); ctx.stroke(); }
+    for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.ellipse(bxX, by + ry * (0.8 - k * 0.55), rx * (1 - k * 0.2), ry * 0.3, 0, 0, 6.29); ctx.stroke(); }
+    ctx.restore();
+    if (Math.abs(by - hz) < 14 && !N.splash) { N.splash = 1; this._fpvBurst(bxX, hz, null, 90); this._fpv.shake = 6; }
+    return { x: bxX, y: by - ry * 1.8 };
+  },
+  /** 🎣 準備今天這一池(名單 = `_castPick`,⛔ 一行都不改)+ 還原今天已經釣到的 */
+  async _fpvPrep() {
+    const box = document.getElementById('fpvCards');
+    if (!this._fishD) { try { await (this._rodP = this.renderRod()); } catch (_) {} }
+    const D = this._fishD, S = this._fpvSetup();
+    if (!D || !S) { if (box) box.innerHTML = '<div class="fpvnone">⏳ 今天的水還沒放好(收盤資料還沒產出),晚點再來。</div>'; return null; }
+    try { await this._twiiLoad(); } catch (_) {}
+    try { await this._lqLoad(); } catch (_) {}          // 📡 V77.9.9 卡片 / 釣起價用即時價(⛔ 不拿選股那天的收盤)
+    const R = this._castPick(D); this._cast = R;
+    let rows = this._fpvTen(D, R).map(r => this._fpvLive(r, D));
+    try { rows = await this._fpvMcapFill(rows); } catch (_) {}
+    const bySym = {}; for (const r of rows) bySym[r.sym] = r;
+    const date = String(D.date || D.data_date || ''), syms = rows.map(r => r.sym);
+    let sea = this._fpvSeaLoad();
+    if (!sea || sea.date !== date) sea = { date, order: this._fpvShuffle(syms), caught: [] };
+    else {                                               // 同一天但名單變了(採礦重跑):保留順序,新的洗牌接在後面
+      const keep = sea.order.filter(x => bySym[x]), add = this._fpvShuffle(syms.filter(x => !keep.includes(x)));
+      sea = { date, order: keep.concat(add), caught: sea.caught.filter(x => bySym[x]) };
+    }
+    this._fpvSeaSave(sea);
+    S.sea = sea; S.dDate = date; S.lastPicked = R.picked.map(x => x.sym); S.lastRows = syms; S.G = null; S.N = null;
+    const left = sea.order.filter(x => !sea.caught.includes(x)).map(x => bySym[x]);
+    S.Q = this._fpvQueue(left); S.Q.total = rows.length;
+    if (box) box.innerHTML = '';
+    for (const sym of sea.caught) this._fpvShowCard(this._fpvFishRow(bySym[sym]), 0, null);
+    if (!rows.length && box) box.innerHTML = '<div class="fpvnone">🌊 今天沒有魚 —— 照規則今天空手,⛔ 不硬給你一條。</div>';
+    this._fpvSwimFrom(D, S.Q.fish);
+    if (rows.length && !left.length) this._fpvHint(this._FPV_EMPTY);
+    this._fpvBtn();
+    return S.Q;
+  },
+  /** 🎣 拋竿(App 模式,🎣 V78.0.2 只能點捲線器):一按只釣一條;今天的魚釣完就沒了(⛔ 不再「再拋一輪」)。 */
   async fpvCast() {
-    const S0 = this._fpv;
-    if (S0 && S0.G && !S0.G.done) return null;                              // 正在釣,⛔ 不重複拋
-    if (S0 && S0.Q && S0.Q.i < S0.Q.fish.length) { this.buzz(20); return this._fpvOne(); }
-    const btn = document.getElementById('fpvCastBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '🎣 準備中…'; }
-    this.buzz(30);
-    const box = document.getElementById('fpvCards'); if (box) box.innerHTML = '';
-    let rows = [];
-    try {
-      if (!this._fishD) await (this._rodP = this.renderRod());
-      const D = this._fishD;
-      if (!D) { if (box) box.innerHTML = '<div class="fpvnone">⏳ 今天的水還沒放好(收盤資料還沒產出),晚點再來。</div>'; return null; }
-      try { await this._twiiLoad(); } catch (_) {}
-      try { await this._lqLoad(); } catch (_) {}          // 📡 V77.9.9 卡片 / 釣起價用即時價(⛔ 不拿選股那天的收盤)
-      const R = this._castPick(D); this._cast = R;
-      rows = this._fpvTen(D, R).map(r => this._fpvLive(r, D));   // 🎣 V77.9.9 一次 10 條:前面 = _castPick 原樣,後面接同一套排序
-      try { rows = await this._fpvMcapFill(rows); } catch (_) {}    // 📏 V78.0.0 市值(採礦還沒這欄時由財報切片補)
-      const S = this._fpvSetup();
-      if (S) { S.lastPicked = R.picked.map(x => x.sym); S.lastRows = rows.map(x => x.sym); S.Q = this._fpvQueue(rows); this._fpvSwimFrom(D, rows); }
-      if (!rows.length) { if (box) box.innerHTML = '<div class="fpvnone">🌊 今天沒有魚上鉤 —— 照規則今天空手,⛔ 不硬給你一條。</div>'; if (S) S.Q = null; return null; }
-    } finally { this._fpvBtn(); }
+    let S = this._fpv;
+    if (S && ((S.G && !S.G.done) || S.N)) return null;                    // 正在釣 / 正在拋網,⛔ 不重複拋
+    if (!S || !S.Q || S._prepAt !== (this._fishD && this._fishD.date)) {
+      this.buzz(30); await this._fpvPrep(); S = this._fpv; if (S) S._prepAt = this._fishD && this._fishD.date;
+    }
+    const Q = S && S.Q; if (!Q) return null;
+    if (Q.i >= Q.fish.length) { this._fpvHint(Q.total ? this._FPV_EMPTY : '🌊 今天沒有魚'); return { ok: false, none: true }; }
+    this.buzz(20);
     return this._fpvOne();
   },
-  /** 開 App:切到釣魚、停掉作戰室魚缸的迴圈、啟動舞台待機 */
+  /** 開 App:切到釣魚、停掉作戰室魚缸的迴圈、啟動舞台待機、還原今天釣到的 */
   async _fpvBoot() {
     this._appFish = true;
     this.switchTab('rod', true);
     try { await this._rodP; } catch (_) {}
     this.fishStop();                                   // 作戰室魚缸在 App 模式看不到 → ⛔ 不要在背景空轉
     this._fpvSetup();
-    if (this._fishD) this._fpvSwimFrom(this._fishD);
     this._fpvLoop();
+    try { await this._fpvPrep(); if (this._fpv) this._fpv._prepAt = this._fishD && this._fishD.date; } catch (e) { console.warn('fpvPrep', e); }
     addEventListener('resize', () => { if (this._fpv) this._fpvSetup(); });
     document.addEventListener('visibilitychange', () => { if (!document.hidden && this._fpv) this._fpvLoop(); });
     const cv = document.getElementById('fpvCanvas');
-    // 🎣 V78.0.0 按住收線:按下 = 收、放開 = 放;沒在釣的時候點一下 = 拋竿
+    // 🎣 按住收線:咬鉤後按下 = 收、放開 = 放。
+    // 👆 V78.0.2 沒在釣的時候:點捲線器 = 拋竿;在水面上按住拖曳 = 移動落點(竿子跟著左右移)。⛔ 點別的地方不會拋。
     if (cv) {
-      const down = e => { const G = this._fpv && this._fpv.G;
-        if (G && !G.done) { if (this.fpvHold(true)) { e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (_) {} } }
-        else this.fpvCast(); };
-      const up = () => this.fpvHold(false);
+      const pt = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+      const down = e => { const S = this._fpv, G = S && S.G;
+        if (G && !G.done) { if (this.fpvHold(true)) { e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (_) {} } return; }
+        if (!S || S.N) return;
+        const [x, y] = pt(e);
+        if (this._fpvHitReel(x, y)) { this.fpvCast(); return; }
+        if (y > S.hz) { S.aiming = true; this._fpvSetAim(x, y); e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch (_) {} }
+      };
+      const move = e => { const S = this._fpv; if (S && S.aiming) { const [x, y] = pt(e); this._fpvSetAim(x, y); } };
+      const up = () => { if (this._fpv) this._fpv.aiming = false; this.fpvHold(false); };
       cv.addEventListener('pointerdown', down);
+      cv.addEventListener('pointermove', move);
       for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) cv.addEventListener(ev, up);
       cv.addEventListener('contextmenu', e => e.preventDefault());
     }
     this._fpvBuzzUi();
+  },
+  _fpvHitReel(x, y) {
+    const S = this._fpv, R = S && S.reel; if (!R) return false;
+    return Math.hypot(x - R.x, y - R.y) <= R.r;
   },
 
   /** 🎣 釣魚分頁的入口(V77.3.9)——
@@ -7581,7 +7797,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V78.0.1',
+  VER: 'V78.0.2',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
