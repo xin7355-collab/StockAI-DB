@@ -45,16 +45,37 @@ const R = await page.evaluate(() => {
     PRO.switchTab('lab'); PRO.labSearch(''); PRO.selLab('ok');
     const list = document.getElementById('labList');
     const grpOrder = [...list.querySelectorAll('.lgrp b')].map(e => e.textContent.trim());
-    const seq = [...list.children].map(e => e.classList.contains('lgrp') ? 'H' : (e.className.match(/g-(\w+)/) || [])[1]);
-    // 每張卡所屬的分組要跟它上面那個標題一致
-    let cur = -1, mism = 0; const names = PRO.LAB_GRP.map(z => z[1]);
-    for (const el of list.children) {
-        if (el.classList.contains('lgrp')) { cur = names.indexOf(el.querySelector('b').textContent.trim()); continue; }
-        const g = (el.className.match(/g-(\w+)/) || [])[1]; if (G[cur] !== g) mism++;
+    // V78.0.9:每一組是一個 <details class="lsec">,組標題 = 它的 summary(.lgrp)
+    const secs = [...list.querySelectorAll(':scope > .lsec')];
+    const seq = secs.length ? ['H'] : [];
+    let mism = 0, inSec = 0; const names = PRO.LAB_GRP.map(z => z[1]);
+    for (const sec of secs) {
+        const cur = names.indexOf(sec.querySelector(':scope > summary b').textContent.trim());
+        for (const el of sec.querySelectorAll(':scope > .labitem')) { inSec++; const g = (el.className.match(/g-(\w+)/) || [])[1]; if (G[cur] !== g) mism++; }
     }
+    const nItems = list.querySelectorAll('.labitem').length;
     const first = list.querySelector('.labitem');
     const firstLt = first?.querySelector('.lt')?.textContent || '', firstRank = first?.querySelector('.lrank')?.textContent.trim();
-    const cardsHaveM = [...list.querySelectorAll('.labitem')].every(e => e.querySelector('.lm'));
+    // V78.0.9 使用者:「內容文字太多」→ 收起時只留一句話 + 數字;「對你的意思」在展開區(⛔ 不可在 summary 裡)
+    const cardsHaveM = [...list.querySelectorAll('.labitem')].every(e => e.querySelector(':scope > .lx .lm') && !e.querySelector(':scope > summary .lm'));
+    const sumOnlyShort = [...list.querySelectorAll('.labitem > summary')].every(e => !e.querySelector('.lmeta, .lm, .lorig, .ld'));
+    // ⑨ 無框(computed style)
+    const cs = getComputedStyle(first);
+    const noFrame = parseFloat(cs.borderLeftWidth) === 0 && parseFloat(cs.borderTopWidth) === 0 && parseFloat(cs.paddingLeft) === 0 && cs.backgroundColor.replace(/\s/g, '').match(/rgba\(0,0,0,0\)|transparent/) !== null;
+    // ⑫ 名次連號(🧬 / 👑 各自;渲染時照 r 算)
+    const ranks = [...list.querySelectorAll('.labitem .lrank')].map(e => e.textContent.trim());
+    const rankNums = ranks.map(t => ({ '🥇': 1, '🥈': 2, '🥉': 3 })[t] || +t.replace('#', '')).sort((a, b) => a - b);
+    const rankContig = rankNums.every((v, i) => v === i + 1);
+    const okMissR = PRO.LAB.ok.filter(x => typeof x.r !== 'number').length, trapMissR = PRO.LAB.trap.filter(x => typeof x.r !== 'number').length;
+    // ⑩⑪ ⛔ 沒用:第一眼只看得到「前 10 名」+ 組標題;各組條數加總 = 欄條數
+    PRO.selLab('trap');
+    const trapVisible = list.innerText.replace(/\s/g, '').length;
+    const trapSecs = [...list.querySelectorAll(':scope > .lsec')];
+    const trapOpen = trapSecs.filter(d => d.open).map(d => d.querySelector('summary b').textContent.trim());
+    const trapSum = trapSecs.reduce((a, d) => a + d.querySelectorAll(':scope > .labitem').length, 0);
+    const trapN = PRO._labOf('trap').length;
+    const trapTopR = [...trapSecs[0].querySelectorAll('.labitem')].map(e => e.querySelector('.lrank').textContent.trim()).slice(0, 3);
+    PRO.selLab('ok');
     // ④ 燈號
     const plainTxt = [...list.querySelectorAll('.lgrp, .lt, .lm, .lpn, .lmeta')].map(e => e.textContent).join(' ');
     const redGreen = (plainTxt.match(/[🔴🟢]/gu) || []).length;
@@ -84,7 +105,7 @@ const R = await page.evaluate(() => {
     const injScreen = list.innerText.includes('注入測試一句話ZZ'), injExport = PRO.labExportText({ scope: 'all' }).includes('- 一句話:注入測試一句話ZZ');
     tgt.pl[3] = keep; PRO.renderLab();
     const backClean = !list.innerText.includes('注入測試一句話ZZ');
-    return { n: PRO.LAB.ok.length, bad, oldNoRef, grpOrder, seqHead: seq.slice(0, 3), mism, firstLt, firstRank, cardsHaveM,
+    return { n: PRO.LAB.ok.length, bad, oldNoRef, grpOrder, seqHead: seq.slice(0, 3), mism, inSec, nItems, firstLt, firstRank, cardsHaveM, sumOnlyShort, noFrame, rankContig, ranksN: ranks.length, okMissR, trapMissR, trapVisible, trapOpen, trapSum, trapN, trapTopR,
              redGreen, trP, trHead, nx, word, qHits, segTxt, segQ, exOk, trapNoPl, injScreen, injExport, backClean,
              nGrp: document.querySelectorAll('#labList .lgrp').length };
 });
@@ -92,9 +113,13 @@ const R = await page.evaluate(() => {
 ok('① ✅ 每一條都有合法的白話欄 pl(分組 / 環節 / 可信度 1~3 / 一句話 / 對你的意思)', R.bad.length === 0 && R.n > 50, R.bad.slice(0, 4).join(' | '));
 ok('② 「已被新版取代」要說出被誰取代(⛔ 只寫「舊的」使用者不知道去看哪一條)', R.oldNoRef === 0, R.oldNoRef);
 ok('③ ✅ 分頁照「可以照做 → 當參考 → 要避開 → 長期存股 → 已被取代」分組', JSON.stringify(R.grpOrder) === JSON.stringify(['✅ 可以照做', '📌 當參考', '🚫 要避開', '🐢 長期存股', '🗄️ 已被新版取代']), R.grpOrder.join(' / '));
-ok('③b 每張卡都在自己分組的標題底下(⛔ 不可跑到別組)', R.mism === 0 && R.seqHead[0] === 'H', `mism=${R.mism} seq=${R.seqHead}`);
+ok('③b 每張卡都在自己分組的標題底下(⛔ 不可跑到別組、⛔ 不可漏在組外)', R.mism === 0 && R.seqHead[0] === 'H' && R.inSec === R.nItems && R.nItems > 50, `mism=${R.mism} in=${R.inSec}/${R.nItems}`);
 ok('③c 第一張 = 現行決策台預設(V77.9.1 起 👑 領頭羊,使用者:「排序也要處理」)+ 🥇', /👑/.test(R.firstLt) && R.firstRank === '🥇', `${R.firstLt.slice(0, 30)} ${R.firstRank}`);
-ok('③d 每一張卡在不展開時就看得到「對你的意思」', R.cardsHaveM, '');
+ok('③d V78.0.9 收起時只留「一句話 + 數字」;「對你的意思」在展開區(使用者:「內容文字太多」)', R.cardsHaveM && R.sumOnlyShort, [R.cardsHaveM, R.sumOnlyShort]);
+ok('⑨ 🧱 無框:.labitem 沒有外框 / 左右內距 / 底色(使用者:「不需要邊框把文字侷限住」)', R.noFrame, '');
+ok('⑩ ⛔ 沒用第一眼只攤開「🔝 前 10 名」,其餘照主題收起(攤開前 < 1,500 字)', R.trapOpen.length === 1 && /前 10 名/.test(R.trapOpen[0]) && R.trapVisible < 1500, `${R.trapOpen} ${R.trapVisible}`);
+ok('⑪ ⛔ 沒用 各組條數加總 = 欄條數(⛔ 分組不可漏條),前三名是 🥇🥈🥉', R.trapSum === R.trapN && R.trapN > 100 && R.trapTopR.join('') === '🥇🥈🥉', `${R.trapSum}/${R.trapN} ${R.trapTopR}`);
+ok('⑫ ✅ / ⛔ 每條都帶數字 r;名次 1..N 連號(渲染時算 —— 🧬 模式藏掉 👑 也不跳號)', R.okMissR === 0 && R.trapMissR === 0 && R.rankContig && R.ranksN === R.nItems, `missR ${R.okMissR}/${R.trapMissR} contig=${R.rankContig} ${R.ranksN}/${R.nItems}`);
 ok('④ ⛔ 白話層不可出現 🔴🟢(分組 / 可信度 / 環節不是漲跌)', R.redGreen === 0, R.redGreen);
 ok('⑤ 沒有 pl 的「實測沒用」:一句話 = 標題「——」前半、意思 = 「結果:…」', !!R.trP && R.trHead.endsWith(R.trP.p) && /^結果:/.test(R.trP.m), JSON.stringify(R.trP)?.slice(0, 160));
 ok('⑤b 推薦下一步兩條用附件 NEXT 的白話(資料 / 2027)', R.nx.own && /2027/.test(R.nx.p) && R.nx.e === '資料', JSON.stringify(R.nx).slice(0, 120));

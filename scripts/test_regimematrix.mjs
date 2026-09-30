@@ -60,6 +60,7 @@ const R = await page.evaluate(async () => {
     P.selLab('rm'); await new Promise(r => setTimeout(r, 600));
     const items = [...document.querySelectorAll('#labList .labitem.rm')];
     o.n = items.length; o.rmN = (P.RM && P.RM.strats || []).length;
+    document.querySelectorAll('#labIntro details').forEach(d => d.open = true);   // V78.0.9 頁首說明收進摺疊
     o.intro = document.getElementById('labIntro').innerText;
     o.head = (document.querySelector('#labList .note') || {}).innerText || '';
     items.forEach(d => d.open = true);

@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.0.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.0.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8681,8 +8681,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.0.8',
+    _APP_VERSION: 'V78.0.9',
     _CHANGELOG: [
+        { v: 'V78.0.9', d: ['🔬 產業作戰室「實測總表」改版:拿掉每一條的外框(文字寬度變大)・收起來只剩「名次 + 一句話 + 數字」,其他收進展開・頁籤分成「結論 / 數字表」兩排・⛔ 沒用那欄也排名(最多人以為有用、實測最差的排最前面),前 10 名攤開、其餘照主題收起・✅ 有用那欄全部重新排名'] },
         { v: 'V78.0.8', d: [
             '📅 <b>產業作戰室 → 實測總表 → 回測數字 → 逐年成績單,「⭐ 決策台現行」那一列換成現在的規則</b>(🧬 位階 ≥85 + 吊燈 ATR 2 倍 + 最長 20 天 + 空頭不開新倉),而且是用<b>修好的日 K</b> 重跑的:一個帳戶從 2011 一路滾 <b>+574.5 萬</b>(17 條起點最差 +554 萬、中途最多賠 −37%)vs 同一份資料的 0050 含息 +1,089 萬;每年重新放 100 萬的話 16 年裡贏 0050 含息 <b>10 年</b>,最慘 2025 −42.6%。舊的那列(唐奇安 40 日)改標「⏮️ 上一任」。',
             '👑 <b>領頭羊四種做法也進了這張表</b>(全攻 / 一半放 0050 / 先衝再穩 / 尾盤成交),一樣每年一格 + 一路滾 16 年:全攻一路滾 <b>+6,779 萬</b>(0050 含息 +1,097 萬),但每年重新放 100 萬的話只贏 0050 <b>8/16 年</b>、16 年加起來 +411 萬 —— 它的大賺集中在少數幾年(2017 +98%、2023 +84%、2025 +122%),一路滾把那幾年複利放大了。',
@@ -8837,7 +8838,6 @@ ${list}
         { v: 'V77.3.4', d: ['🧭 <b>報告頁 §10 改成「籌碼總表」</b>(你說「法人級籌碼分析」):每一列 = <b>數字</b>(外資/投信/自營 近 1/5/20 日、外資+投信同日都買、分點買賣超前 5、集保千張大戶/散戶、融資 20 日增減與追繳壓力區)+ <b>本站實測這個數字能不能拿來預測</b>:✅ 實測有效(外資+投信同日都買 +0.99pp、投信自己連買 ≥5 天 +0.79pp,六關全過)/ △ 證據偏弱(外資買且融資退場 +0.21pp)/ ❌ 實測無效(外資單獨連買、分點集中度、某分點突然大買、千張大戶↑散戶↓、券資比)/ ○ 只描述(自營商沒測過)。列上只留標籤 + 數字,每一列的依據收在卡底「📖 展開」。多一行「🎯 今天命中哪個實測過的籌碼型態」(讀既有的判定,⛔ 沒有新指標)。餵給外部 AI 的提示詞也帶同一份實測結論(⛔ AI 不可自己判籌碼多空)。⛔ 沒有新增任何指標。'] },
         { v: 'V77.3.3', d: ['🔄 <b>「哪個策略結合週轉率勝率提高?」—— 第四次測,這次直接疊在決策台那套 49 個月的組合回測上</b>(產業作戰室 → 🔬 實測總表 → 實測沒用 r:29;選股頁的週轉率提醒也補了這組數字):只做<b>高週轉那三分之一</b>:勝率 30.0%・每趟 +3.20%・累積 +409 萬;不濾:30.9%・+3.09%・+519 萬;<b>跟週轉率完全無關、隨機挑三分之一</b>:34.6%・+3.71%・+569 萬 → <b>高週轉沒有贏過隨機</b>。低週轉那桶勝率確實變高(不挑 🧬 時 31.4% → 34.8%),<b>但每趟從 +2.22% 掉到 +0.85%</b> —— 勝率提高、賺更少。⛔ 沒有加進決策台。⭐ 順便學到:本金有限的時候「隨便少挑一點」本身就會讓數字變好看,以後任何濾網都要跟這個「隨機組」比,不是跟「不濾」比。'] },
         { v: 'V77.3.2', d: ['🧙💥 <b>「某個分點突然大量買某檔,會漲嗎?排除隔日沖」—— 回測完了,答案是沒有</b>(產業作戰室 → 🔬 實測總表 → 實測沒用 r:31):484 天分點深歷史・2,150 檔・84,943 筆事件。「突然」試了兩種定義 —— 新面孔(那家分點 60 天沒出現在這檔)10 日比隨便挑一天 <b>−0.09pp</b>、自身爆量(那家分點在這檔自己歷史的前 5%)<b>+0.09pp</b>,賺錢機率 43.4~43.7% 跟隨便挑一天的 43.6% 一樣。「排除隔日沖」照每家券商的翻臉率切成五桶去看:<b>五桶不單調、最會隔日沖的那桶反而略好</b> → 這條線切不出來。⛔ 沒做成功能、沒做提醒,只記進總表。'] },
-        { v: 'V77.3.1', d: ['🏦👩 <b>「外資連續買超 5 天以上,持有 10 天的勝率跟報酬率?加入投信同步」—— 回測完了,寫進 🔬 實測總表</b>(產業作戰室 → 實測有用 r:44 / 實測沒用 r:30):2,154 檔・事件 75,210 筆。① <b>外資連買本身沒有東西</b>:剛好連買 3/4/5/6/7 天,10 日只比隨便挑一天多 +0.15~+0.25pp、扣掉來回成本全部是負的(連買 5 天:賺錢機率 44.6% vs 對照 43.7%、10 日 +0.37%)。② <b>加上投信這 3 天也在買</b>才有東西:10 日 <b>+0.91pp</b>、賺錢機率 <b>48.2%</b>、絕對 +0.86%,六道關卡全過(N=3/5/7 都過)。③ 🚨 反過來問才知道<b>主角是投信</b>:投信自己連買 5 天就 +0.79pp 全過,外資只是加成 → ⛔ 不要讀成「外資連買會漲」。④ 外資買得佔成交量<b>越多反而越差</b>(單調)—— 「外資狂掃」= 已經擠了。⚠️ 窗口 2024-05~2026-08 三年全多頭、不含 2022;⛔ 沒做成提醒、沒進計分,先當排序條件,走完一次空頭再重跑。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },

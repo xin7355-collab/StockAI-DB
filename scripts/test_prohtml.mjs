@@ -851,7 +851,7 @@ const L = await page.evaluate(async () => {
     // 🚨 <details> 收合時 innerText **不含內文** → 不先展開的話,
     //    底下所有「內文必須寫什麼 / 不可寫什麼」的斷言都只掃到標題 = 假通過。
     const grab = () => {
-        document.querySelectorAll('#labList .labitem').forEach(e => { e.open = true; });
+        document.querySelectorAll('#labList details, #labIntro details').forEach(e => { e.open = true; });   // V78.0.9 條目收在分組摺疊裡
         return {
             n: document.querySelectorAll('#labList .labitem').length,
             txt: document.getElementById('labList').innerText,
@@ -1246,7 +1246,7 @@ const LAY = await page.evaluate(() => {
              lines: Math.round(lt.getBoundingClientRect().height / lh) };
   });
   // 📌 「怎麼操作」與方向標籤(使用者:「區分做多及做空」「操作買賣都要講清楚」)
-  document.querySelectorAll('#labList .labitem').forEach(e => { e.open = true; });
+  document.querySelectorAll('#labList details, #labIntro details').forEach(e => { e.open = true; });   // V78.0.9 條目收在分組摺疊裡
   const n = PRO.LAB.ok.length;
   return { minW: Math.min(...rows.map(r => r.w)), maxLines: Math.max(...rows.map(r => r.lines)),
            noW: PRO.LAB.ok.filter(x => !x.w).length,
@@ -1278,7 +1278,7 @@ await page.setViewportSize({ width: 390, height: 844 });
 const ZO = await page.evaluate(async () => {
   PRO.switchTab('lab'); PRO.selLab('zoo');
   await new Promise(r => setTimeout(r, 60));
-  document.querySelectorAll('#labList .labitem').forEach(e => { e.open = true; });
+  document.querySelectorAll('#labList details, #labIntro details').forEach(e => { e.open = true; });   // V78.0.9 條目收在分組摺疊裡
   const rows = [...document.querySelectorAll('#labList .zoorow')];
   const st = k => rows.filter(r => r.classList.contains('z-' + k)).length;
   return {
@@ -1309,7 +1309,7 @@ const ZO = await page.evaluate(async () => {
     //      —— 外層只要有一個 overflow 就把它剪掉了(使用者看到的正是被剪掉的樣子)。
     ovf: (() => {
       PRO.selLab('zoo');
-      document.querySelectorAll('#labList .labitem').forEach(e => { e.open = true; });
+      document.querySelectorAll('#labList details, #labIntro details').forEach(e => { e.open = true; });   // V78.0.9 條目收在分組摺疊裡
       const rs = [...document.querySelectorAll('#labList .zoorow')];
       const boxes = [...document.querySelectorAll('#labList .zootbl')];
       const wide = el => el && el.scrollWidth > el.clientWidth + 2;
@@ -1326,7 +1326,7 @@ const ZO = await page.evaluate(async () => {
       .filter(e => e.getBoundingClientRect().height > 30).length,
     perStock: (() => {
       PRO.selLab('trap');
-      document.querySelectorAll('#labList .labitem').forEach(e => { e.open = true; });
+      document.querySelectorAll('#labList details, #labIntro details').forEach(e => { e.open = true; });   // V78.0.9 條目收在分組摺疊裡
       const it = [...document.querySelectorAll('#labList .labitem')]
         .find(e => /挑它自己最適合的指標/.test(e.querySelector('.lt').textContent));
       return it ? it.querySelector('.ld').innerText : '';
@@ -1615,10 +1615,10 @@ ok('㉗e 四象限計數:四格加起來 = 泡泡數,而且**不可**用「漲�
 ok('㉒l ⛔ 切走分頁要停掉動畫(不可留背景 timer)', T.playing && T.stoppedOnLeave, [T.playing, T.stoppedOnLeave]);
 // ㉔ 🔬 實測總表
 // ⭐ V74.9.1 改釘「用意」(每一個必要頁籤都在、順序對)⛔ 不釘死頁籤總數 —— 加一頁就假失敗
-ok('㉔ 頁籤:回測數字 / 有用 / 沒用 / 回測的坑 / 還測不了 / 推薦下一步 / 情境矩陣 / 指標分類表',
-   L.tabs.length >= 8 && /回測數字/.test(L.tabs[0]) && /實測有用/.test(L.tabs[1]) && /實測沒用/.test(L.tabs[2])
-   && /回測自己的坑/.test(L.tabs[3]) && /還測不了/.test(L.tabs[4]) && /推薦下一步/.test(L.tabs[5])
-   && L.tabs.some(t => /情境矩陣/.test(t)) && /指標分類表/.test(L.tabs.at(-1)), L.tabs);
+// 🧭 V78.0.9 頁籤分兩排:結論(有用 / 沒用 / 回測的坑 / 還沒測 = 還測不了 + 推薦下一步)+ 數字表(回測數字 / 情境 / 機率 / 指標)
+ok('㉔ 頁籤:結論 [有用 / 沒用 / 回測的坑 / 還沒測] + 數字表 [回測數字 / 情境 / 機率 / 指標]',
+   L.tabs.length === 8 && /有用/.test(L.tabs[0]) && /沒用/.test(L.tabs[1]) && /回測的坑/.test(L.tabs[2])
+   && /還沒測/.test(L.tabs[3]) && /回測數字/.test(L.tabs[4]) && /情境/.test(L.tabs[5]) && /機率/.test(L.tabs[6]) && /指標/.test(L.tabs[7]), L.tabs);
 ok('㉔a2 🚧 空過守門:展開後內文真的抓得到(⛔ <details> 收合時 innerText 不含內文 = 假通過)',
    L.all.length > 6000 && /六道關卡|來回成本/.test(L.all), L.all.length);
 ok('㉔b 每一欄都有內容,切換真的換掉列表',
@@ -1628,8 +1628,7 @@ ok('㉔b 每一欄都有內容,切換真的換掉列表',
    && L.ok.txt !== L.trap.txt && L.trap.txt !== L.method.txt,
    [L.ok.n, L.trap.n, L.method.n, L.blocked.n, L.next.n]);
 ok('㉔c 頁籤數字要跟實際筆數一致(⛔ 不可寫死)',
-   L.tabs.slice(1).every((t, i) => t.includes('(' + L.counts[['ok', 'trap', 'method', 'blocked', 'next', 'rm', 'prob', 'zoo'][i]] + ')'))
-   && L.tabs[0].includes('(' + L.btDims + ')'), L.tabs);
+   ['ok', 'trap', 'method', 'blocked', 'bt', 'rm', 'prob', 'zoo'].every((k, i) => L.tabs[i].includes('(' + (k === 'bt' ? L.btDims : k === 'blocked' ? L.counts.blocked + L.counts.next : L.counts[k]) + ')')), L.tabs);
 ok('㉔d 🚨 **每一欄**每一條都要附實測來源(⛔ 沒有數字的意見不准進來)', L.srcMissing === 0, L.srcMissing);
 // 📌 V74.5.0 使用者:「把 portfolio_backtest.mjs 等等這種資訊隱藏,不需要呈現」
 //   ⛔ 但資料裡的 `s:` 一個字都不刪(那是決策紀錄)→ 只是**顯示層**不給看檔名。

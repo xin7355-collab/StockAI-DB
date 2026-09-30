@@ -43,7 +43,8 @@ const R = await page.evaluate(() => {
     const okSorted = [...document.querySelectorAll('#labList .labitem .lot')].map(e => e.textContent);
     const okSortedN = okSorted.map(norm);
     const okOrderFn = PRO._labOkOrder(PRO.LAB.ok).map(x => norm(PRO._labPlain(x.t)));
-    const trapSorted = PRO.LAB.trap.slice().sort((a, b) => (b.u || '').localeCompare(a.u || '')).map(x => PRO._labPlain(x.t));
+    const trapSorted = PRO.LAB.trap.slice().sort((a, b) => (b.r ?? -1) - (a.r ?? -1)).map(x => PRO._labPlain(x.t));   // V78.0.9 ⛔ 沒用照名次
+    const methodSorted = PRO.LAB.method.slice().sort((a, b) => (b.u || '').localeCompare(a.u || '')).map(x => PRO._labPlain(x.t));
     const heads = all.split('\n').filter(l => l.startsWith('### ')).map(l => l.replace(/^### \d+\. /, ''));
     const headsN = heads.map(norm);
     // ⑥ 搜尋
@@ -69,7 +70,7 @@ const R = await page.evaluate(() => {
     it.n = '注入值 12345.678';
     const inj = PRO.labExportText({ scope: 'all' });
     it.n = bak;
-    return { total, all, brief, noAsk, okSorted, okSortedN, okOrderFn, headsN, nOk: PRO.LAB.ok.length, trapSorted, heads, view, nRows, panelOpen, sel, btns, scopeVal, msg, inj };
+    return { total, all, brief, noAsk, okSorted, okSortedN, okOrderFn, headsN, nOk: PRO.LAB.ok.length, trapSorted, methodSorted, heads, view, nRows, panelOpen, sel, btns, scopeVal, msg, inj };
 });
 
 // ⚠️ 只認真的 HTML 標籤名(內文本來就有「ma5<ma20」這種比較式,⛔ 不可當成標籤)
@@ -88,7 +89,9 @@ ok('⑦ ✅有用 匯出順序 = 畫面順序(V77.7.9 分組 → r;56 條逐條�
 ok('⑦a 畫面順序 = 共用排序函式 _labOkOrder(⛔ 兩邊各排一次會對不上)', R.okOrderFn.length === R.nOk && R.okOrderFn.every((t, i) => R.okSortedN[i] === t), R.okSorted.slice(0, 2).join(' | '));
 {
     const iTrap = R.heads.indexOf(R.trapSorted[0]);
-    ok('⑦b 其他欄照 u 新→舊(實測沒用那欄的第一條 = u 最新的那條)', iTrap > 0 && R.heads[iTrap + 1] === R.trapSorted[1], iTrap);
+    ok('⑦b ⛔ 沒用 照名次 r(V78.0.9;第一條 = r 最高的那條)', iTrap > 0 && R.heads[iTrap + 1] === R.trapSorted[1], iTrap);
+    const iM = R.heads.indexOf(R.methodSorted[0]);
+    ok('⑦c 🧭 坑 照 u 新→舊(不是好壞 → 不排名)', iM > 0 && R.heads[iM + 1] === R.methodSorted[1], iM);
 }
 ok('⑧ 面板打開:3 個選單 + 📋 複製 + ⬇️ 下載', R.panelOpen && R.sel === 3 && R.btns.some(b => /複製/.test(b)) && R.btns.some(b => /下載/.test(b)), JSON.stringify(R.btns));
 ok('⑧b 搜尋中打開面板,預設就是「目前畫面」', R.scopeVal === 'view', R.scopeVal);

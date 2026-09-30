@@ -42,8 +42,8 @@ const R = check(src);
 ck(Object.keys(R.cols).length === 5 && R.all.length > 250, `⓪ 讀得到五欄 ${R.all.length} 條(空過守門)`);
 ck(R.dup.length === 0, `① 主題鍵 k 全表唯一(${R.ks.length} 條有 k${R.dup.length ? ',重複:' + R.dup.join(',') : ''})`);
 ck(R.noU.length === 0, `② 帶 k 的都帶 u(缺:${R.noU.map(x => x.k).join(',') || '無'})`);
-ck(/_labSel === 'ok'/.test(src) && /sort\(\(a, b\) => \(b\.u \|\| ''\)\.localeCompare\(a\.u \|\| ''\)\)/.test(src),
-   '③ 渲染:✅有用 照 r;其他欄照 u 新→舊');
+ck(/col === 'ok' \|\| col === 'trap'/.test(src) && /sort\(\(a, b\) => \(b\.u \|\| ''\)\.localeCompare\(a\.u \|\| ''\)\)/.test(src),
+   '③ 渲染:✅有用 / ⛔ 沒用 照 r(V78.0.9);其他欄照 u 新→舊');
 const norm = t => t.replace(/<[^>]+>/g, '').replace(/[^\p{Script=Han}A-Za-z0-9]/gu, '').slice(0, 16);
 let near = [];
 for (const [c, arr] of Object.entries(R.cols)) {
