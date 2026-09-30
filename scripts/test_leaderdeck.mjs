@@ -301,6 +301,19 @@ ok('⑥e 門檻 index `_DECK_THIN_AMT` == pro `CAST_MIN_AMT`(同一條線)', pro
     ok('⑩ 一年位置 ≥85:index 跳過 1003(50%)與 1005(沒資料),往下買到 1013;續抱名單(前 10)照舊不看位置', J(iNew.buy) === J(WANT) && iNew.ranked.includes('1003') && iNew.ranked.includes('1005') && iNew.pos === 85, J(iNew));
     ok('⑩b 四份實作一樣(index / pro / lib_leader.py / Telegram worker)', J(pNew) === J(WANT) && J(pyNew) === J(WANT) && J(wNew) === J(WANT), J([pNew, pyNew, wNew]));
     ok('⑩c ⭐ 決定性對照:換回舊的(pos 0 / settings.leadPosOff / worker pos 0)→ 前 5 名(含 1003 / 1005)', J(iOld) === J(OLD) && J(iOff) === J(OLD) && J(pOff) === J(OLD) && J(wOld) === J(OLD), J([iOld, iOff, pOff, wOld]));
+    // ⑩d V78.0.6 說明文字跟著規則走(設定選項 / 決策台區塊說明 / 換倉提醒 / pro 拋竿 / Telegram)
+    const txt = await page.evaluate(() => {
+        const one = () => { app.settings.stratUnlock = true; const box = document.getElementById('stratBox'); let st = '';
+            if (box) { app._renderStratBox(); st = box.innerText; }
+            const dk = app._deckShowDesc(app._DECK_SECTIONS.find(c => c.k === 'leader').d); return { st, dk }; };
+        const on = one(); app.settings.leadPosOff = true; const off = one(); app.settings.leadPosOff = false; return { on, off };
+    });
+    const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'), wsrc = fs.readFileSync(path.join(ROOT, 'cloud-worker/worker.js'), 'utf8'), psrc = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
+    const reb = (src.match(/async _leadRebalAlert\(\)[\s\S]*?\n    \},/) || [''])[0];
+    ok('⑩d 說明文字跟著規則:開著寫「一年位置 ≥ 85%」、換回舊的就不寫(設定選項 / 決策台區塊說明)',
+        /一年位置 ≥ 85%/.test(txt.on.dk) && !/一年位置/.test(txt.off.dk) && (!txt.on.st || (/一年位置 ≥ 85%/.test(txt.on.st) && !/一年位置/.test(txt.off.st))), JSON.stringify(txt));
+    ok('⑩d2 換倉提醒 / Telegram / pro 拋竿⛔ 不再寫死「前 N 名」沒有位置條件',
+        /_leadPos\(\)[^\n]*前 \$\{R\.N\} 名,等權/.test(reb) && /LEAD_RULE\.pos\}% 的`\}前 \$\{LEAD_RULE\.N\} 名,等權/.test(wsrc) && !/前 5 名你都有了/.test(wsrc) && /今天會買的 ' \+ this\._LEAD\.N/.test(psrc), '');
 }
 await browser.close();
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ LEADERDECK_PASS');

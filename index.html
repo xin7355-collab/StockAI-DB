@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.0.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.0.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.0.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8670,8 +8670,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.0.5',
+    _APP_VERSION: 'V78.0.6',
     _CHANGELOG: [
+        { v: 'V78.0.6', d: ['👑 <b>領頭羊的說明文字跟上新規則了</b>(你問「最強的都換上去了嗎」):規則本身上一版就全部換好(自動下單、決策台、成績單、股海釣手、Telegram 同一份),但設定裡的選項說明、決策台區塊說明、換倉提醒、Telegram 換倉訊息、產業作戰室拋竿那句還寫「前 5 名」—— 現在都寫「一年位置 ≥85% 的前 5 名」;你按「換回舊規則」的話會自動變回舊說法。', '🎣 釣魚跟領頭羊<b>是同一份名單</b>,不是兩個策略:換一次兩邊一起變。另一套 🧬 這次沒有動(沒有新的回測贏過它)。'] },
         { v: 'V78.0.5', d: [
             '🐟 <b>魚會游過去咬餌了</b>(你說「魚要有跑去咬餌的動作」)。等咬鉤的時候,那條魚會慢慢轉頭、游到浮標下面,假咬時衝過去碰一下再退開,真的咬下去那一刻剛好在鉤子上(以前是突然出現在鉤子下)。',
             '👑 <b>領頭羊:買進多一道「一年位置 ≥ 85%」</b>(你問「還有辦法抓出更容易漲的方法嗎?」)。我測了 7 種沒測過的加法,只有這一種每一關都過:AI 時代 760% → <b>953%</b>、2011~2026 3,176% → <b>6,783%</b>(起點挪 17 次 15/17、17/17 條都贏;同樣比例隨機擋掉反而變差 → 賺的是「靠近一年最高」這件事)。⚠️ 16 年裡有 5 年比舊規則差。續抱 / 賣出規則不變;位置不夠的標「位置低」、往下一名找;決策台那區有按鈕可以換回舊的。自動下單同時換(LEADER_POS=0 = 舊的)。',
@@ -8817,7 +8818,6 @@ ${list}
         { v: 'V77.3.1', d: ['🏦👩 <b>「外資連續買超 5 天以上,持有 10 天的勝率跟報酬率?加入投信同步」—— 回測完了,寫進 🔬 實測總表</b>(產業作戰室 → 實測有用 r:44 / 實測沒用 r:30):2,154 檔・事件 75,210 筆。① <b>外資連買本身沒有東西</b>:剛好連買 3/4/5/6/7 天,10 日只比隨便挑一天多 +0.15~+0.25pp、扣掉來回成本全部是負的(連買 5 天:賺錢機率 44.6% vs 對照 43.7%、10 日 +0.37%)。② <b>加上投信這 3 天也在買</b>才有東西:10 日 <b>+0.91pp</b>、賺錢機率 <b>48.2%</b>、絕對 +0.86%,六道關卡全過(N=3/5/7 都過)。③ 🚨 反過來問才知道<b>主角是投信</b>:投信自己連買 5 天就 +0.79pp 全過,外資只是加成 → ⛔ 不要讀成「外資連買會漲」。④ 外資買得佔成交量<b>越多反而越差</b>(單調)—— 「外資狂掃」= 已經擠了。⚠️ 窗口 2024-05~2026-08 三年全多頭、不含 2022;⛔ 沒做成提醒、沒進計分,先當排序條件,走完一次空頭再重跑。'] },
         { v: 'V77.3.0', d: ['📈 <b>報告頁「基本面」多了近 8 季趨勢圖 + 三種事實標記</b>(你說「新增近八季的營收、毛利率、營業利益率做成趨勢圖,告訴我哪一季毛利率掉、哪一季現金流轉負、哪一季存貨突然拉高」):趨勢線改成 8 條 —— 營收(單季)/ 季營收年增 / 毛利率 / 淨利率 / 每股盈餘 / <b>營業現金流(單季)</b> / 自由現金流(單季)/ <b>存貨天數</b>,每條只畫最近 8 季;線上的<b>空心圓 ○</b> 就是「那一季發生了什麼」:毛利率掉 ≥3pp、營業現金流正→負、存貨天數 +30%,底下一行直接寫出「2025-06 毛利率 −4.2pp(40.0 → 36.0%)」這種句子。⚠️ 它是<b>事實紀錄不是警訊</b>:全市場實測(2,352 檔 ・24,927 個季對季)這三種情況分別有 <b>21.8% / 17% / 15.3%</b> 的季會出現 —— 五檔裡就有一檔,所以不用紅色也不用 ⚠️,基準率直接印在畫面上。', '⏳ <b>營益率那條線要等財報回算跑一次</b>:採礦端已加抓損益表的「營業利益」欄(跟基本面頁「📈 三率」同一個來源),但 gh-pages 上的切片要等你在 Actions 手動跑一次「📦 財報三表深歷史回算」(選 main)、隔天採礦帶上去之後才會出現;在那之前那條線不畫、畫面會說「等回算」。', '🖼️ 自己畫的海報(短評報告)同一段同步:8 季、同樣 8 條線、同樣的 ○ 標記與基準率;順手修掉每一節標題右邊那句說明「截字後補的 … 沒量進寬度」→ 會壓到標題的小毛病(§6 籌碼那節肉眼看抓到的)。'] },
         { v: 'V77.2.9', d: ['🎤 <b>法說會後的股價反應寫進實測總表了</b>(🔬 實測總表 →「推薦下一步」):844 場實測,法說會後 5 日中位 <b>−1.26 pp</b>,而「隨便挑一天」的對照組是 −0.73 pp → <b>法說會後反而略差一點</b>。⛔ 這是<b>事實紀錄不是買賣訊號</b>(沒扣交易成本、沒過六道關卡),正式回測還要等窗口長一點。', '🔁 <b>順手收掉一條「永遠紅」的測試</b> —— 查下去發現<b>它不是壞掉</b>:報告頁「短中線/長線」視角是<b>刻意</b>攤開價格牆與籌碼那兩節(你後來要的),而舊的檢查還在用更早那版「全部折疊」的標準。⛔ 一直紅的檢查等於沒有檢查,已改成釘現在的規則。'] },
-        { v: 'V77.2.8', d: ['🔎 <b>法說會可以用代號也可以用中文搜了,而且打字就搜全部</b>(你說「新增可搜尋法說會個股」):以前停在「👜 我的」打字只會搜自己那幾檔,搜不到就像那一檔沒有法說會 —— 現在<b>一打字就跨所有範圍</b>,上面還會寫「已跨所有範圍」+ 一顆回去的鈕;全形數字(２３３０)也吃得下。', '📄 <b>簡報終於可以一鍵打開了</b>(你說「法說會資料如簡報,我沒看到可以下載的地方」)。每一場的中文/英文簡報各一顆鈕,點了直接開 PDF。⭐ 本來以為打不開 —— 是我自己的探針把官方欄位抄錯(官方寫 <code>name = \'step\'</code> 等號兩邊有空白),修好之後實測<b>一抓就是 2.67MB 的真 PDF</b>。', '🔎 <b>深度查詢換成「法人視角」的提示詞</b>(你說「把重要東西挖出來、摘要重點、法人會看的、<b>未來展望</b>是什麼」):八個面向 —— 未來展望/財測(⭐ 含<b>跟上一次法說比說法變了什麼</b>)、產能與資本支出、訂單能見度、價格與成本、新產品時間表、庫存、<b>Q&amp;A 管理層避開了哪些問題</b>、公司自己講的風險。本站算好的數字直接塞進去(⛔ 不讓 AI 自己算),而且明文禁止它給買賣建議/評分/部位。簡報 PDF 網址也一起附上去讓它去讀。', '🏭 <b>多了產業分組</b>、🔔 <b>「你的清單裡未來 14 天有幾場」</b>、📜 <b>每一檔的歷年法說會</b>、📊 <b>會後股價統計</b>。⚠️ 統計那格<b>是事實紀錄不是買賣訊號</b>:實測 844 場,法說會後 5 日中位 <b>−1.26 pp</b>,而「隨便挑一天」的對照組是 −0.73 pp → <b>法說會後反而略差一點</b>;沒扣交易成本、沒過六道關卡,⛔ 不可以拿來當進出場理由。', '🏷️ <b>順手修掉產業作戰室全站的一個老問題</b>:中文名以前<b>只有一條腿</b>(免金鑰的 FinMind),它一掛全站名字就變成一排代號、而且什麼都不會講。現在改成三層(本站離線股名表 → FinMind → 舊快取)。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -21486,7 +21486,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <span class="min-w-0"><span class="text-[11px] font-bold ${cur === k ? 'text-gray-100' : 'text-gray-500'}">${n}</span>
             <span class="block text-[10px] text-gray-500 leading-relaxed">${d}</span></span></label>`;
         box.innerHTML = opt('gene', '🧬 高基期高波動(預設)', '決策台買點、總覽、提醒、通知都照這一套:三條出場(硬停損 / 你設定的線 / 抱滿天數)。')
-            + (s.stratUnlock ? opt('lead', '👑 領頭羊短線輪動', '成交額前 100 大裡挑近 10 日最強的 5 檔、每 10 個交易日換一次;手上的個股改成「換倉日掉出前 10 名才賣」、⛔ 沒有停損線(回測:五組持股都比三條出場好,見說明)。ETF 照舊買了放著。') : '');
+            + (s.stratUnlock ? opt('lead', '👑 領頭羊短線輪動', `成交額前 100 大裡挑近 10 日最強${this._leadPos() ? `、一年位置 ≥ ${this._leadPos()}%` : ''}的 5 檔、每 10 個交易日換一次;手上的個股改成「換倉日掉出前 10 名才賣」、⛔ 沒有停損線(回測:五組持股都比三條出場好,見說明)。ETF 照舊買了放著。`) : '');
     },
     /** 👑 全站策略 = 領頭羊時,總覽 / 決策台 / 提醒共用的名單快取(同一份 `_leaderCalc` + `_leaderClock`,⛔ 不另算) */
     async _leadCtxLoad(force) {
@@ -21558,7 +21558,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const buy = X.bearOn ? [] : X.L.buy.map(r => r.sym).filter(s => !mine.includes(s)).slice(0, slots);
         if (!sell.length && !buy.length) { try { localStorage.setItem('leadRebalFired', key); } catch (_) {} return; }
         const nm = a => a.map(s => `${this.getStockName(s) || s}(${s})`).join('、');
-        const body = (sell.length ? `賣:${nm(sell)}(掉出前 ${H} 名)。` : '') + (buy.length ? `買:${nm(buy)}(前 ${R.N} 名,等權)。` : '') + (X.bearOn ? '大盤嚴格空頭 → 不開新倉。' : '') + '明天開盤照做,沒用到的錢放 0050。';
+        const body = (sell.length ? `賣:${nm(sell)}(掉出前 ${H} 名)。` : '') + (buy.length ? `買:${nm(buy)}(${this._leadPos() ? `一年位置 ≥ ${this._leadPos()}% 的` : ''}前 ${R.N} 名,等權)。` : '') + (X.bearOn ? '大盤嚴格空頭 → 不開新倉。' : '') + '明天開盤照做,沒用到的錢放 0050。';
         this._fireAlert(`👑 換倉日(${X.date.slice(5)})`, body, null);
         try { localStorage.setItem('leadRebalFired', key); } catch (_) {}
     },
@@ -21567,7 +21567,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
      *  舊預設 🧬 買點 / 符合進場 / 實測說明 → 預設收起,⛔ 不刪(設定裡勾回來就有)。
      *  ⛔ 收起來的一定要在頂端寫一行(⛔ 不可靜默過濾,V74.8.8)。 */
     _DECK_SECTIONS: [
-        { k: 'leader', st: 'lead', n: '👑 領頭羊短線輪動(你選的策略)', d: '成交額前 100 大裡挑近 10 日最強的 5 檔、每 10 個交易日換一次;手上的個股照這套講要不要賣。', def: true },
+        { k: 'leader', st: 'lead', n: '👑 領頭羊短線輪動(你選的策略)', d: '成交額前 100 大裡挑近 10 日最強{LPOS}的 5 檔、每 10 個交易日換一次;手上的個股照這套講要不要賣。', def: true },
         { k: 'sell', n: '🚪 手上的要不要賣', d: '三條出場線(硬停損 / 你設定的線 / 抱滿天數)今天碰到或快碰到的;選 👑 時個股改由上面那塊講,這裡只剩 ETF。錢在你手上,建議開著。', def: true },
         { k: 'pb', st: 'gene', n: '🧬 今天可以買的(高基期高波動)', d: '這一套的買點。實測近 4 年 100 萬 → {PB} 萬(含 2022 空頭)。', def: true },
         { k: 'fit', st: 'gene', n: '📈 符合進場候選', d: '🧬 + 今天出現期望值為正的看多訊號;扣完來回成本常常是負的,⛔ 沒有組合回測。', def: false },
@@ -21597,7 +21597,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     _deckShowDesc(d) {
         const bg = (this._BEAR_GATE_EDGE || {}).main || {}, L = (this._LEADER_EDGE || {}).ai || {};
-        return String(d).replace('{PB}', bg.on != null ? String(bg.on) : '—');
+        const lp = this._leadPos();
+        return String(d).replace('{PB}', bg.on != null ? String(bg.on) : '—').replace('{LPOS}', lp ? `、一年位置 ≥ ${lp}%` : '');
     },
     /** 🎯 照設定把決策台各區塊藏 / 顯示 + 頂端一行說清楚收起了哪些(⛔ 不靜默) */
     _deckShowApply() {

@@ -831,7 +831,7 @@ async function runLeaderRebalPush(env) {
                 const text = [
                     `👑 *換倉日* _${date} 收盤的名單 → 今天開盤照做_`, SEP,
                     sell.length ? `🔻 賣:${await lab(sell)}(掉出前 ${H} 名)` : '🔻 賣:沒有',
-                    buy.length ? `🛒 買:${await lab(buy)}(前 ${LEAD_RULE.N} 名,等權)` : (bear ? '🐻 大盤嚴格空頭 → 今天不開新倉' : '🛒 買:沒有(前 5 名你都有了)'),
+                    buy.length ? `🛒 買:${await lab(buy)}(${u.settings?.leadPosOff ? '' : `一年位置 ≥ ${LEAD_RULE.pos}% 的`}前 ${LEAD_RULE.N} 名,等權)` : (bear ? '🐻 大盤嚴格空頭 → 今天不開新倉' : '🛒 買:沒有(要買的你都有了)'),
                     keep.length ? `✅ 續抱:${await lab(keep)}` : '',
                     '💰 沒用到的錢放 0050 ・⛔ 沒有停損線',
                     `📱 [決策台](${GH_PAGES_BASE}/)`,
