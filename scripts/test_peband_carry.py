@@ -11,6 +11,8 @@
   ④ 跑到上限沒輪到的 → 也沿用
   ⑤ `n` = 檔案總檔數、`fresh` = 這輪抓到、`kept` = 沿用
   ⑥ 決定性對照:把沿用那段拿掉(注入)→ ② 必須紅
+  ⑦ V78.1.3 輪動:沒舊值先抓,再照舊 d 由舊到新 ⑧ 連續 40 檔 402/403 → 收工
+  ⑨ 部分成功且總數不縮 → 寫檔 rc 0 ⑩ 0 檔成功 → rc 1 ⑪ 第一次跑 < MIN_OK → 不產出(⑦⑧⑨ 各有注入)
 """
 import importlib.util
 import json
@@ -90,6 +92,78 @@ assert inj != src, '注入沒注進去'
 mi = load(inj)
 _, outi = run(mi)
 ok('⑥ ⭐ 決定性對照:不讀上一輪(= 舊版)→ 2330 會消失(證明 ② 量得到)', '2330' not in outi['data'], list(outi['data']))
+
+# ── V78.1.3 輪動 / 額度收工 / 部分寫檔 ──────────────────────────────
+def run2(m, syms, old, fake, min_ok=300, quota=40):
+    d = pathlib.Path(tempfile.mkdtemp())
+    for s in syms:
+        (d / f'{s}.json').write_text('[]')
+    if old is not None:
+        (d / 'pe_band.json').write_text(json.dumps({'updated': 'x', 'data': old}))
+    m.DATA = d; m.OUT = d / 'pe_band.json'; m.TOKENS = ['T1']; m.SLEEP = 0; m.MIN_OK = min_ok
+    m.LIMIT = 99999; m.QUOTA_STOP = quota
+    m.fm = fake
+    rc = m.main()
+    out = json.loads(m.OUT.read_text()) if m.OUT.exists() else None
+    return rc, out
+
+
+def ent(d):
+    return {'pe': 1.0, 'pct': 50.0, 'lo': 1, 'hi': 2, 'p25': 1, 'med': 1.5, 'p75': 2, 'p5': 1, 'p95': 2, 'n': 300, 'd': d}
+
+
+def check_order(src_text=None):
+    calls = []
+    def f(ds, sym, st):
+        calls.append(sym); return rows_for(400), None
+    m = load(src_text)
+    run2(m, ['1101', '2330', '3008', '6415'], {'1101': ent('2026-09-20'), '2330': ent('2026-08-01'), '3008': ent('2026-09-01')}, f, min_ok=1)
+    return calls
+
+
+calls = check_order()
+ok('⑦ 輪動:沒有舊值的先抓(6415),再照舊 d 由舊到新(2330 → 3008 → 1101)', calls == ['6415', '2330', '3008', '1101'], calls)
+
+
+def check_quota(src_text=None):
+    calls = []
+    def f(ds, sym, st):
+        calls.append(sym); return None, 'http403'
+    m = load(src_text)
+    syms = [str(1000 + i) for i in range(200)]
+    rc, _ = run2(m, syms, {s: ent('2026-09-01') for s in syms}, f, quota=40)
+    return calls, rc
+
+
+calls_q, rc_q = check_quota()
+ok('⑧ 💳 全部 403 → 連續 40 檔就收工(⛔ 不空轉跑完 200 檔)', len(calls_q) == 40, len(calls_q))
+
+syms9 = [str(1000 + i) for i in range(10)]
+def f9(ds, sym, st):
+    return (rows_for(400), None) if sym in ('1000', '1001') else (None, 'http403')
+rc9, out9 = run2(load(), syms9, {s: ent('2026-09-01') for s in syms9}, f9, min_ok=300)
+ok('⑨ 部分成功(2 < MIN_OK)但總數不縮 → rc 0、寫出、fresh=2 kept=8',
+   rc9 == 0 and out9 and out9.get('fresh') == 2 and out9.get('kept') == 8 and out9.get('n') == 10,
+   (rc9, out9 and {k: out9.get(k) for k in ('n', 'fresh', 'kept')}))
+
+rc10, out10 = run2(load(), syms9, {s: ent('2026-09-01') for s in syms9}, lambda ds, s, st: (None, 'http403'))
+ok('⑩ 一檔都沒抓到 → rc 1、舊檔不動(updated 仍是 x)', rc10 == 1 and out10.get('updated') == 'x', (rc10, out10 and out10.get('updated')))
+
+rc11, out11 = run2(load(), syms9, None, f9, min_ok=300)
+ok('⑪ 第一次跑(沒舊檔)成功 < MIN_OK → rc 1、不產出', rc11 == 1 and out11 is None, (rc11, out11))
+
+# 注入:拿掉排序 / 拿掉收工 / 退回舊守門 → 對應那條要紅
+src2 = (ROOT / 'pe_band_miner.py').read_text(encoding='utf-8')
+i1 = src2.replace("    for sym in order:", "    for sym in syms:", 1)
+assert i1 != src2
+ok('⑦i 注入「不輪動」→ ⑦ 必須紅', check_order(i1) != ['6415', '2330', '3008', '1101'])
+i2 = src2.replace("        if quota_streak >= QUOTA_STOP:", "        if False:", 1)
+assert i2 != src2
+ok('⑧i 注入「不收工」→ ⑧ 必須紅', len(check_quota(i2)[0]) != 40)
+i3 = src2.replace("    if ok == 0:", "    if ok < MIN_OK:", 1)
+assert i3 != src2
+rc9i, _ = run2(load(i3), syms9, {s: ent('2026-09-01') for s in syms9}, f9, min_ok=300)
+ok('⑨i 注入「退回 ok < MIN_OK 就不寫」→ ⑨ 必須紅', rc9i == 1)
 
 print('\n' + ('❌ ' + str(len(fails)) + ' 條失敗' if fails else '✅ PEBAND_CARRY_PASS'))
 sys.exit(1 if fails else 0)

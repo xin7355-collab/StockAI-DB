@@ -43,7 +43,8 @@ MAX_MIN = int(os.getenv('MAX_MIN') or '180')
 SLEEP = float(os.getenv('SLEEP') or '0.08')
 WIN = 750           # 位階看「近 3 年」—— 跟探針驗證時用的窗口**必須一致**
 MIN_N = 200         # 這檔至少要有幾天 PE 才算得出位階(⛔ 不足就不給,別硬判)
-MIN_OK = 300        # 🚧 自我保護:成功不足這個數就不覆寫舊檔(同 fund_sweep 的做法)
+MIN_OK = 300        # 🚧 自我保護:**第一次跑(沒有舊檔)**成功不足這個數就不產出(同 fund_sweep 的做法)
+QUOTA_STOP = int(os.getenv('QUOTA_STOP') or '40')   # 💳 連續幾檔全部 402/403 就判定額度用完
 
 _ti = 0
 REASON = Counter()
@@ -99,19 +100,31 @@ def main():
         old = (json.loads(OUT.read_text(encoding='utf-8')) or {}).get('data') or {}
     except Exception:
         old = {}
+    # 🔁 V78.1.3 輪動:先抓「檔案裡沒有的」,再照舊那筆的資料日 `d` 由舊到新
+    #   (同 fund_sweep 滾動補齊)—— 額度不夠時每晚補最需要的那一批,而不是每次都從 1101 重頭燒。
+    order = sorted(syms, key=lambda s: (s in old, str((old.get(s) or {}).get('d') or ''), s))
     out, t0, done, ok, thin, kept = {}, time.time(), 0, 0, 0, 0
     _thin_set = set()
-    for sym in syms:
+    quota_streak, quota_stop = 0, False
+    for sym in order:
         if done >= LIMIT or (time.time() - t0) / 60 > MAX_MIN:
             print(f'⏹️ 到達上限,本輪處理 {done} 檔')
+            break
+        # 💳 V78.1.3 連續 QUOTA_STOP 檔「所有 token 都回 402/403」= 付費額度用完 → 收工
+        #   (2026-09-30 實測:額度用完後照樣空轉 55 分、打了 8,000 次失敗請求)
+        if quota_streak >= QUOTA_STOP:
+            print(f'💳 連續 {quota_streak} 檔所有金鑰都回 402/403 → 付費額度用完,收工(其餘沿用上一輪)')
+            quota_stop = True
             break
         done += 1
         rows, err = fm('TaiwanStockPER', sym, start)
         time.sleep(SLEEP)
         if not rows:
+            quota_streak = quota_streak + 1 if err in ('http402', 'http403') else 0
             if sym in old:
                 out[sym] = old[sym]; kept += 1
             continue
+        quota_streak = 0
         rows.sort(key=lambda x: str(x.get('date') or ''))
         vals = [(str(r.get('date') or '')[:10], r.get('PER')) for r in rows]
         pes = [v for _, v in vals if isinstance(v, (int, float)) and v > 0]
@@ -148,10 +161,22 @@ def main():
     if REASON:
         print('   失敗分類:' + ' ・'.join(f'{k}×{v}' for k, v in REASON.most_common(6)))
 
-    # 🚧 空過守門:成功太少就**不覆寫**舊檔(⛔ 寧可留舊的,也不要產出殘缺清單)
-    if ok < MIN_OK:
-        print(f'❌ 只成功 {ok} 檔(<{MIN_OK})→ ⛔ 不覆寫舊檔,這一輪視為無效')
+    # 🚧 空過守門(V78.1.3):
+    #   ① 一檔都沒抓到 → ⛔ 不覆寫、紅燈(看得見)
+    #   ② 第一次跑(沒有舊檔)成功太少 → ⛔ 不產出殘缺清單
+    #   ③ 有舊檔:抓不到的都沿用了,只要總檔數**不比上一份少**就寫出去 —— 部分更新也是進步;
+    #      而且寫了之後「今天已有產物」會擋掉同一晚的第二輪(⛔ 不再一晚燒兩次額度)
+    if ok == 0:
+        print('❌ 一檔都沒抓到 → ⛔ 不覆寫舊檔,這一輪視為無效')
         return 1
+    if not old and ok < MIN_OK:
+        print(f'❌ 第一次跑只成功 {ok} 檔(<{MIN_OK})→ ⛔ 不產出殘缺清單')
+        return 1
+    if old and len(out) < len(old) - thin:
+        print(f'❌ 寫出去會比上一份少({len(out)} < {len(old)} − 歷史太短 {thin})→ ⛔ 不覆寫舊檔')
+        return 1
+    if ok < MIN_OK or quota_stop:
+        print(f'⚠️ 這輪只更新了 {ok} 檔(其餘 {kept} 檔沿用上一輪);下一輪會先補資料最舊的那些')
 
     cover = Counter(k[0] for k in out)
     payload = {
