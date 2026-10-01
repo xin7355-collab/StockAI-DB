@@ -29,7 +29,23 @@ def _now_str():
     return datetime.now(TW).strftime('%m/%d %H:%M')
 
 
+def _is_day_session(dt=None):
+    """🚨 V78.1.4 平日台北 08:45~15:00 = 日盤(含 13:45~15:00 收盤後到夜盤開始前)。
+    這段時間抓到的漲跌是**日盤**的,⛔ 不可寫成「夜盤」。
+    實例(2026-10-01):這支跟在 theme_news 後面,而 theme_news 排程被延遲到台北 09:26 才跑
+    → stock_futures_night.json 的 ts 寫成「10/01 09:30」= 日盤資料標成夜盤(CLAUDE.md 早就警告過)。
+    週六日沒有日盤 → 不擋(最後一筆成交是週五夜盤)。"""
+    dt = dt or datetime.now(TW)
+    if dt.weekday() >= 5:
+        return False
+    hm = dt.hour * 60 + dt.minute
+    return 8 * 60 + 45 <= hm < 15 * 60
+
+
 def main():
+    if _is_day_session():
+        print(f'⏭️ 現在台北 {_now_str()} 是日盤時段(08:45~15:00)→ ⛔ 不可寫成夜盤,不登入、不產出(保留上一輪夜盤資料)')
+        sys.exit(1)
     key = os.environ.get('SHIOAJI_API_KEY', '').strip()
     sec = os.environ.get('SHIOAJI_SECRET_KEY', '').strip()
     if not key or not sec:

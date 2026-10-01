@@ -45,6 +45,7 @@ WIN = 750           # 位階看「近 3 年」—— 跟探針驗證時用的窗
 MIN_N = 200         # 這檔至少要有幾天 PE 才算得出位階(⛔ 不足就不給,別硬判)
 MIN_OK = 300        # 🚧 自我保護:**第一次跑(沒有舊檔)**成功不足這個數就不產出(同 fund_sweep 的做法)
 QUOTA_STOP = int(os.getenv('QUOTA_STOP') or '40')   # 💳 連續幾檔全部 402/403 就判定額度用完
+QUOTA_WAIT = int(os.getenv('QUOTA_WAIT') or '900')  # 💳 額度用完後每幾秒試一次(FinMind 以小時計)
 
 _ti = 0
 REASON = Counter()
@@ -105,26 +106,49 @@ def main():
     order = sorted(syms, key=lambda s: (s in old, str((old.get(s) or {}).get('d') or ''), s))
     out, t0, done, ok, thin, kept = {}, time.time(), 0, 0, 0, 0
     _thin_set = set()
-    quota_streak, quota_stop = 0, False
-    for sym in order:
+    quota_streak, quota_stop, waits = 0, False, 0
+    QERR = ('http402', 'http403')
+    queue, retry, qi = list(order), [], 0
+    while qi < len(queue):
+        sym = queue[qi]
         if done >= LIMIT or (time.time() - t0) / 60 > MAX_MIN:
             print(f'⏹️ 到達上限,本輪處理 {done} 檔')
             break
-        # 💳 V78.1.3 連續 QUOTA_STOP 檔「所有 token 都回 402/403」= 付費額度用完 → 收工
-        #   (2026-09-30 實測:額度用完後照樣空轉 55 分、打了 8,000 次失敗請求)
+        # 💳 連續 QUOTA_STOP 檔「所有 token 都回 402/403」= 付費額度用完(2026-09-30 實測:fund_sweep 剛用掉
+        #   那一小時的額度,這支照樣空轉 55 分、打了 8,000 次失敗請求)。
+        #   V78.1.4:⛔ 不再直接收工 → 每 QUOTA_WAIT 秒試一檔,額度回來就接著輪動,
+        #   並把「額度用完那段」沒抓到的放回隊伍最後;總時間仍受 MAX_MIN 管(⛔ 不無限等)。
         if quota_streak >= QUOTA_STOP:
-            print(f'💳 連續 {quota_streak} 檔所有金鑰都回 402/403 → 付費額度用完,收工(其餘沿用上一輪)')
-            quota_stop = True
-            break
+            resumed = False
+            while (time.time() - t0) / 60 + QUOTA_WAIT / 60 <= MAX_MIN:
+                waits += 1
+                print(f'💳 連續 {quota_streak} 檔所有金鑰都回 402/403 → 額度用完,等 {QUOTA_WAIT // 60} 分再試(第 {waits} 次)')
+                time.sleep(QUOTA_WAIT)
+                _r, _e = fm('TaiwanStockPER', sym, start)
+                if _r or _e not in QERR:
+                    resumed = True
+                    break
+            if not resumed:
+                print('💳 等到時間上限額度都沒回來 → 收工(其餘沿用上一輪)')
+                quota_stop = True
+                break
+            print(f'✅ 額度回來了 → 接著抓;剛才沒抓到的 {len(retry)} 檔放回隊伍最後')
+            quota_streak = 0
+            queue.extend(retry)
+            retry = []
+        qi += 1
         done += 1
         rows, err = fm('TaiwanStockPER', sym, start)
         time.sleep(SLEEP)
         if not rows:
-            quota_streak = quota_streak + 1 if err in ('http402', 'http403') else 0
-            if sym in old:
-                out[sym] = old[sym]; kept += 1
-            continue
+            if err in QERR:
+                quota_streak += 1
+                retry.append(sym)
+            else:
+                quota_streak = 0
+            continue      # 抓不到的一律在迴圈後沿用上一輪那一筆(⛔ 不可從檔案消失)
         quota_streak = 0
+        _thin_set.discard(sym)
         rows.sort(key=lambda x: str(x.get('date') or ''))
         vals = [(str(r.get('date') or '')[:10], r.get('PER')) for r in rows]
         pes = [v for _, v in vals if isinstance(v, (int, float)) and v > 0]

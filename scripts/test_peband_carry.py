@@ -12,6 +12,7 @@
   ⑤ `n` = 檔案總檔數、`fresh` = 這輪抓到、`kept` = 沿用
   ⑥ 決定性對照:把沿用那段拿掉(注入)→ ② 必須紅
   ⑦ V78.1.3 輪動:沒舊值先抓,再照舊 d 由舊到新 ⑧ 連續 40 檔 402/403 → 收工
+  ⑫ V78.1.4 額度用完會等、回來接著抓 ⑬ 不無限等
   ⑨ 部分成功且總數不縮 → 寫檔 rc 0 ⑩ 0 檔成功 → rc 1 ⑪ 第一次跑 < MIN_OK → 不產出(⑦⑧⑨ 各有注入)
 """
 import importlib.util
@@ -44,7 +45,30 @@ def rows_for(n, pe=10.0):
     return [{'date': f'2025-{(i // 28) % 12 + 1:02d}-{i % 28 + 1:02d}', 'PER': pe + (i % 7)} for i in range(n)]
 
 
+class FakeClock:
+    """假時鐘:sleep 只推進時間、不真的等(額度用完會等 15 分,測試不可真睡)。"""
+    def __init__(self):
+        self.t = 1_000_000.0
+        self.slept = 0.0
+
+    def time(self):
+        return self.t
+
+    def sleep(self, s):
+        self.t += s
+        self.slept += s
+
+    def strftime(self, *a):
+        import time as _t
+        return _t.strftime(*a)
+
+    def gmtime(self, *a):
+        import time as _t
+        return _t.gmtime(*a)
+
+
 def run(m, limit=None):
+    m.time = FakeClock()
     d = pathlib.Path(tempfile.mkdtemp())
     syms = ['1101', '2330', '3008', '6415', '9999']
     for s in syms:
@@ -94,7 +118,8 @@ _, outi = run(mi)
 ok('⑥ ⭐ 決定性對照:不讀上一輪(= 舊版)→ 2330 會消失(證明 ② 量得到)', '2330' not in outi['data'], list(outi['data']))
 
 # ── V78.1.3 輪動 / 額度收工 / 部分寫檔 ──────────────────────────────
-def run2(m, syms, old, fake, min_ok=300, quota=40):
+def run2(m, syms, old, fake, min_ok=300, quota=40, max_min=180):
+    m.time = FakeClock(); m.MAX_MIN = max_min
     d = pathlib.Path(tempfile.mkdtemp())
     for s in syms:
         (d / f'{s}.json').write_text('[]')
@@ -136,7 +161,8 @@ def check_quota(src_text=None):
 
 
 calls_q, rc_q = check_quota()
-ok('⑧ 💳 全部 403 → 連續 40 檔就收工(⛔ 不空轉跑完 200 檔)', len(calls_q) == 40, len(calls_q))
+# 全部 403、MAX_MIN 180 → 40 檔之後只「每 15 分試 1 次」:40 + 等待次數(≤ 180/15 = 12)
+ok('⑧ 💳 全部 403 → 連續 40 檔後不再逐檔空打(只每 15 分試 1 次,總呼叫 ≤ 40+12)', 40 < len(calls_q) <= 52, len(calls_q))
 
 syms9 = [str(1000 + i) for i in range(10)]
 def f9(ds, sym, st):
@@ -154,16 +180,41 @@ ok('⑪ 第一次跑(沒舊檔)成功 < MIN_OK → rc 1、不產出', rc11 == 1 
 
 # 注入:拿掉排序 / 拿掉收工 / 退回舊守門 → 對應那條要紅
 src2 = (ROOT / 'pe_band_miner.py').read_text(encoding='utf-8')
-i1 = src2.replace("    for sym in order:", "    for sym in syms:", 1)
+i1 = src2.replace("queue, retry, qi = list(order), [], 0", "queue, retry, qi = list(syms), [], 0", 1)
 assert i1 != src2
 ok('⑦i 注入「不輪動」→ ⑦ 必須紅', check_order(i1) != ['6415', '2330', '3008', '1101'])
 i2 = src2.replace("        if quota_streak >= QUOTA_STOP:", "        if False:", 1)
 assert i2 != src2
-ok('⑧i 注入「不收工」→ ⑧ 必須紅', len(check_quota(i2)[0]) != 40)
+ok('⑧i 注入「不收工」→ ⑧ 必須紅', not (40 < len(check_quota(i2)[0]) <= 52))
 i3 = src2.replace("    if ok == 0:", "    if ok < MIN_OK:", 1)
 assert i3 != src2
 rc9i, _ = run2(load(i3), syms9, {s: ent('2026-09-01') for s in syms9}, f9, min_ok=300)
 ok('⑨i 注入「退回 ok < MIN_OK 就不寫」→ ⑨ 必須紅', rc9i == 1)
+
+# ── V78.1.4 額度回來了要接著抓,⛔ 不可直接收工 ────────────────────
+def check_resume(src_text=None):
+    n = {'c': 0}
+    def f(ds, sym, st):
+        n['c'] += 1
+        return (None, 'http403') if n['c'] <= 45 else (rows_for(400), None)
+    m = load(src_text)
+    syms = [str(1000 + i) for i in range(100)]
+    rc, out = run2(m, syms, {s: ent('2026-09-01') for s in syms}, f, min_ok=1, max_min=150)
+    return rc, out, m.time.slept
+
+
+rc12, out12, slept12 = check_resume()
+ok('⑫ 額度用完 → 等(假時鐘 ≥ 15 分)→ 額度回來後 100 檔全部抓到(含剛才失敗那 40 檔)',
+   rc12 == 0 and out12 and out12.get('fresh') == 100 and slept12 >= 900, (rc12, out12 and out12.get('fresh'), slept12))
+rc13, _, slept13 = (lambda r: (r[1], None, None))(check_quota())
+m13 = load()
+syms13 = [str(1000 + i) for i in range(200)]
+run2(m13, syms13, {s: ent('2026-09-01') for s in syms13}, lambda d, s, st: (None, 'http403'), max_min=150)
+ok('⑬ 一直 403 → 等到 MAX_MIN 就收工(假時鐘不超過 150 分)', m13.time.slept <= 150 * 60, m13.time.slept)
+i12 = src2.replace("            resumed = False\n", "            resumed = False\n            break\n", 1)
+assert i12 != src2
+_rc, _o, _ = check_resume(i12)
+ok('⑫i 注入「不等、直接收工」(= V78.1.3)→ ⑫ 必須紅', not (_o and _o.get('fresh') == 100), _o and _o.get('fresh'))
 
 print('\n' + ('❌ ' + str(len(fails)) + ' 條失敗' if fails else '✅ PEBAND_CARRY_PASS'))
 sys.exit(1 if fails else 0)
