@@ -109,6 +109,8 @@ const R = await page.evaluate(async () => {
     // 🔁 V77.6.5 最長天數跟著出場規則走(預設 40)→ 買進日一律用「上限 + 10 根前」,⛔ 不寫死 30
     {   const OLD = String(_ad[_ad.length - (A._EXIT_DIST.maxd + 10)].date).replace(/\//g, '-').slice(0, 10);
         A.inventory = [{ symbol: '2330', cost: 900, shares: 2, buyDate: OLD }];
+        // ⏳ V78.1.4 文案會看時間(尾盤窗口過了 →「下一個交易日」)→ 釘在週三 11:00,⛔ 測試不可隨跑的時間變色
+        A._tpeMinutes = () => ({ wd: 'Wed', min: 11 * 60, ymd: '2026-10-01' });
         out.due = draw(); out.dDue = A._ovDecide(A.activeData, '2330'); out.dueN = A._EXIT_DIST.maxd;
         // 🔬 決定性對照:把上限改成 60 天 → 同一筆庫存要回到「持股續抱」
         const D0 = A._EXIT_DIST.maxd; A._EXIT_DIST.maxd = 60; out.dDue60 = A._ovDecide(A.activeData, '2330'); A._EXIT_DIST.maxd = D0;
@@ -239,8 +241,9 @@ ok('① 第一眼 = 徽章;B 預警 → C 計畫 → D 判讀 三段在摺疊區
 ok('② 徽章:有庫存沒破線 → 🛡️ 持股續抱', R.dHold && R.dHold.state === 'hold' && has(R.hold.cc, '🛡️ 持股續抱'), R.dHold && R.dHold.badge);
 ok('②b 徽章:跌破實測有效出場線 → 🚨 強烈建議出場', R.dExit && R.dExit.state === 'exit' && has(R.exit.cc, '🚨 強烈建議出場'), R.dExit && R.dExit.badge);
 // 🔁 V77.6.5 天數跟著出場規則走 → 徽章要寫**那個上限**(⛔ 不寫死 20)
-ok('②d ⏳ 抱滿最長天數 → state=exit、徽章講「抱滿 N 天・今天尾盤賣」(N = 規則的上限;V77.5.1 使用者截圖 2327)',
-   R.dDue && R.dDue.state === 'exit' && /抱滿 \d+ 天/.test(R.due.cc) && has(R.due.cc, '尾盤') && R.dueN && has(R.due.cc, `抱滿 ${R.dueN} 天`), R.dDue && R.dDue.badge);
+// ⏳ V78.1.4 這筆是「上限 + 9 天前」買的 → 已經**超過**上限 9 天:徽章寫「已超過 9 天・今天就賣」,內文寫「上限 N 天」(⛔ 不可說成「到了」)
+ok('②d ⏳ 超過最長天數 → state=exit、徽章「已超過 9 天・今天就賣」、內文寫上限 N 天與尾盤(N = 規則的上限;V77.5.1 / V78.1.4 使用者截圖 2327)',
+   R.dDue && R.dDue.state === 'exit' && has(R.due.cc, '已超過 9 天・今天就賣') && has(R.due.cc, '尾盤') && R.dueN && has(R.due.cc, `上限 ${R.dueN} 天`), R.dDue && R.dDue.badge);
 ok('②e ⛔ 抱滿之後第一眼不可再出現「持股續抱」或「還剩 0 個交易日」', !has(R.due.cc, '持股續抱') && !/還剩 0 個交易日/.test(R.due.cc + R.due.why));
 ok('②f 🔬 決定性對照:上限改 60 天 → 同一筆庫存回到 🛡️ 持股續抱', R.dDue60 && R.dDue60.state === 'hold', R.dDue60 && R.dDue60.state);
 ok('②g 抱滿時行動計畫第一條就是「今天尾盤賣」', R.dDue && R.dDue.plan[0] && /尾盤賣/.test(R.dDue.plan[0].t || ''), R.dDue && R.dDue.plan[0] && R.dDue.plan[0].t);

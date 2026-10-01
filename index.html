@@ -20815,6 +20815,22 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ② 22 份裡日K/分K量得到的全部測過,**沒有一條「今天做多/做空」的當沖訊號扣完成本站得住** ——
     //      唯一站得住的是「手上的股票收盤鎖漲停 → 留到隔天」(給**已經有**的人,⛔ 不是叫人去買漲停)。
     _DT_EDGE: {"src":"scripts/dt_daily_probe.mjs + scripts/dt_kbar5_probe.mjs + intraday_probe.py(V77.5.0)","win":"2021-09~2026-09","syms":2334,"k5days":1319,"k5win":"2021-05~2026-09","f7":{"th":"≥2%","ent":"09:05","n":7781,"net":0.282,"winp":53.3,"gates":"6/6","drop10":0.146,"ctrl":0.209,"lock":12.58,"real":0.046,"real10":-0.099,"src":"scripts/dt_kbar5_probe.mjs + f7_k5only(V77.6.9)"},"oc":{"gross":-0.097,"win":36.5},"ocShortWin":45.8,"on":{"gross":0.157},"f6":[[0.5,0.5,36.4,-0.382],[0.5,1,54.7,-0.399],[0.5,2,69.3,-0.363],[0.5,3,73.7,-0.354],[1,0.5,28.5,-0.319],[1,1,43.5,-0.339],[1,2,56.4,-0.329],[1,3,61.3,-0.317],[2,0.5,21.4,-0.262],[2,1,33.4,-0.284],[2,2,44.7,-0.284],[2,3,49,-0.293],[3,0.5,18.7,-0.239],[3,1,29.3,-0.263],[3,2,39.7,-0.271],[3,3,44,-0.276]],"lu":{"up":{"n":23323,"open":[2.188,69.7],"close":[1.595,56.5],"p10":-2.1},"dn":{"n":10800,"open":[0.826,54.4],"close":[1.044,53],"p10":-4.41},"base":32.2},"gap":{"ill":0.849,"liq":0.14,"liqSqz":13.64,"auc":0.16,"m1":0.02,"m5":-0.11},"f3":{"hi":74.4,"lo":68.2},"nope":{"four":-0.277,"smash":-0.289,"ld":-1.944,"dual":-0.382,"bull":-0.522,"bullIdx":0.283}},
+    /** 🟥 V78.1.4 「最後一根已收完的 K 鎖在漲停」唯一判斷(當沖頁那一行與總覽「時間到期」共用,⛔ 不另寫一份)。
+     *  鎖漲停定義 = `dt_daily_probe.lockUp`(收 ≥ 昨收×1.09 且收在最高);月線上彎 = 近 20 日均 > 5 天前的 20 日均。
+     *  ⚠️ 只在「沒開盤」時才判斷 → 這時最後一根就是已收完的那一根(⛔ 不可用 _closedTail:它會把今天收完的那根也砍掉;
+     *     盤中不講 —— 還沒收盤不知道會不會打開)。回 {up, g} 或 null(g = `_DT_EDGE.lu.up/dn`,⛔ 數字只讀常數)。 */
+    _luLock(d) {
+        try {
+            const E = this._DT_EDGE; d = d || [];
+            const n = d.length;
+            if (!E || !E.lu || this.isMarketOpen() || n < 26) return null;
+            const L = d[n - 1], P = d[n - 2];
+            if (!(+L.close >= +P.close * 1.09 && +L.close >= +L.high - 1e-9)) return null;
+            let ma = 0, ma5 = 0; for (let j = n - 20; j < n; j++) ma += +d[j].close; for (let j = n - 25; j < n - 5; j++) ma5 += +d[j].close;
+            const up = ma > ma5;
+            return { up, g: up ? E.lu.up : E.lu.dn };
+        } catch (_) { return null; }
+    },
     /** 📊 當沖實測摺疊(接在成本關卡下面;⛔ 不是方向訊號)+ 🟥 收盤鎖漲停那一行(只在收盤後、真的鎖住才出現) */
     _dtEdgeHtml(sym) {
         const E = this._DT_EDGE; if (!E) return '';
@@ -20822,14 +20838,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 🟥 條件觸發:收盤後、最後一根已收完的 K 鎖在漲停(⛔ 盤中不講 —— 還沒收盤不知道會不會打開)
         let lu = '';
         try {
-            // ⚠️ 只在「沒開盤」時才判斷 → 這時最後一根就是已收完的那一根(⛔ 不可用 _closedTail:它會把今天收完的那根也砍掉)
-            const d = this.rawDailyData || [];
-            const n = d.length;
-            if (!this.isMarketOpen() && n >= 26 && String(this.currentSymbolId) === String(sym)) {
-                const L = d[n - 1], P = d[n - 2];
-                if (+L.close >= +P.close * 1.09 && +L.close >= +L.high - 1e-9) {
-                    let ma = 0, ma5 = 0; for (let j = n - 20; j < n; j++) ma += +d[j].close; for (let j = n - 25; j < n - 5; j++) ma5 += +d[j].close;
-                    const up = ma > ma5, g = up ? E.lu.up : E.lu.dn;
+            const _L = String(this.currentSymbolId) === String(sym) ? this._luLock(this.rawDailyData) : null;
+            if (_L) {
+                {
+                    const { up, g } = _L;
                     const best = g.open[0] >= g.close[0] ? ['隔天開盤賣', g.open] : ['抱到隔天收盤', g.close];
                     lu = `<div data-dtlu="1" class="bg-[#0d1117] border-l-4 border-red-500 pl-2.5 py-1.5 rounded-r mt-1.5">
                         <div class="text-[11px] text-red-300 font-bold leading-relaxed">🟥 今天收盤鎖漲停 —— 給<b>已經有</b>這檔的人看</div>
@@ -22568,7 +22580,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const nm = name || this.getStockName(ed.sym) || ed.sym;
         const qty = ed.smart.shares > 0 ? this._lotTxt(ed.smart.shares * 1000) : '(張數填你的庫存)';
         // ⏳ V77.5.1 抱滿 20 天是「時間到」⛔ 不是價格 → ⛔ 不可給停損條件單(那會一直不觸發,等於沒賣)
-        if (ed.level === 'due') return `${nm}(${ed.sym}) 今天 ${this._eodTxt()} 尾盤賣出・委託 限價(掛現價)或市價・數量 ${qty}・依據 抱滿 ${ed.maxd.n} 個交易日(已抱 ${ed.maxd.held},時間到期,⛔ 不是價格破線)`;
+        if (ed.level === 'due') return `${nm}(${ed.sym}) ${this._dueWhen().when} ${this._eodTxt()} 尾盤賣出・委託 限價(掛現價)或市價・數量 ${qty}・依據 抱滿 ${ed.maxd.n} 個交易日(已抱 ${ed.maxd.held},時間到期,⛔ 不是價格破線)`;
         // 🛑 V77.6.5 現行預設(唐奇安 40)與 ATR:回測裡「盤中碰到就賣」明顯比「收盤前確認再賣」差(`_STOPFILL_EDGE`)→ 貼過去的字要講
         const _k = this._exitRuleKey(), _R = this._STOPFILL_EDGE && this._STOPFILL_EDGE.rows[_k];
         const _warn = (_R && _R.touch && _R.close && _R.touch.med < _R.close.med)
@@ -36368,12 +36380,31 @@ ${this._reportFacts(sym)}
                     if (broken.length) why = `已經${broken[0].lbl}(${broken[0].v.toFixed(2)})—— 這是實測有效的出場規則,<b>紀律就是照做</b>。`;
                     else if (_hl) why = `已經跌破<b>硬停損 ${_hl.v.toFixed(2)}</b>(${this._escHtml(_hl.why || '成本 −5%')})—— 三條出場條件的第一條,回測與自動下單都是這一條先到就賣,<b>紀律就是照做</b>。`;
                     else {
-                        badge = `⏳ 抱滿 ${edH.maxd.n} 天・今天尾盤賣`; cls = 'border-amber-500 text-amber-200 bg-amber-900/20';
+                        // ⏳ V78.1.4 使用者截圖(2327,台北 03:28):畫面寫「今天 13:00~13:28 尾盤賣」+「抱滿 20 天」,
+                        //   而他其實已經抱了 40 天、而且那時候早就收盤了 → 兩句都不對。
+                        //   ① 抱的天數 > 上限 → 寫「已超過 N 天」⛔ 不寫成「到了」 ② 今天的尾盤窗口已經過了(或週末)→「下一個交易日」
+                        //   ③ 最後一根收盤鎖漲停 → 加一行 `_DT_EDGE.lu` 實測(`_luLock`,⛔ 不另寫判斷、⛔ 數字不寫死)
+                        const _n = edH.maxd.n, _over = Math.max(0, edH.maxd.held - _n);
+                        const { late: _late, when: _when } = this._dueWhen();   // 今天能照收盤價賣的時間已經過了?
+                        badge = _over ? `⏳ 已超過 ${_over} 天・${_when}就賣` : `⏳ 抱滿 ${_n} 天・${_late ? '下一個交易日賣' : '今天尾盤賣'}`;
+                        cls = 'border-amber-500 text-amber-200 bg-amber-900/20';
                         const _nr = edH.nearest;
-                        why = `已經抱了 <b>${edH.maxd.held}</b> 個交易日 = 三條出場條件的第三條「<b>抱滿 ${edH.maxd.n} 個交易日</b>」到了 —— `
-                            + `回測與自動下單都是<b>今天 ${_eod} 尾盤照收盤價賣</b>。⛔ 這不是價格被跌破,是時間到`
+                        why = `已經抱了 <b>${edH.maxd.held}</b> 個交易日 = `
+                            + (_over ? `已經<b>超過</b>三條出場條件的第三條「抱滿 ${_n} 個交易日」<b>${_over} 天</b>(上限 ${_n} 天)—— `
+                                     : `三條出場條件的第三條「<b>抱滿 ${_n} 個交易日</b>」到了 —— `)
+                            + (_late ? `回測是到期那天收盤賣;今天能賣的時間已經過了 → <b>下一個交易日就賣</b>(自動下單是下一個交易日 ${_eod} 尾盤)`
+                                     : _over ? `回測是到期那天收盤賣,已經錯過了 → <b>今天就賣</b>(自動下單是今天 ${_eod} 尾盤)`
+                                     : `回測與自動下單都是<b>今天 ${_eod} 尾盤照收盤價賣</b>`)
+                            + `。⛔ 這不是價格被跌破,是時間到`
                             + (_nr ? `(${this._escHtml(_nr.name)} ${_nr.v.toFixed(2)} 等線都還沒破)` : '') + '。'
-                            + `<br>💡 為什麼要賣:實測「抱越久差越多」,但整套回測就是用 ${edH.maxd.n} 天這個上限算出來的 —— 想抱更久就是在做另一套沒驗證過的策略。`;
+                            + `<br>💡 為什麼要賣:實測「抱越久差越多」,但整套回測就是用 ${_n} 天這個上限算出來的 —— 想抱更久就是在做另一套沒驗證過的策略。`;
+                        const _lu = this._luLock(data);
+                        if (_lu) {
+                            const g = _lu.g, f = x => `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(2)}%`;
+                            why += `<br><span data-ovdue-lu="1">🟥 最後一根<b>收盤鎖漲停</b>(事實):歷史上同樣鎖漲停、月線${_lu.up ? '上彎' : '下彎'}(${g.n.toLocaleString()} 次),`
+                                + `隔天<b>開盤賣</b>平均 <b>${f(g.open[0])}</b>(賺的機率 ${g.open[1]}%)・抱到隔天收盤 ${f(g.close[0])}(${g.close[1]}%),已扣 0.44% 成本。`
+                                + `</span>`;
+                        }
                     }
                     break;
                 }
@@ -36472,8 +36503,8 @@ ${this._reportFacts(sym)}
                 const _cur = lines.find(x => x.cur);
                 // ⏳ V77.5.1 抱滿 20 天 → 第一條就是「今天尾盤賣」(⛔ 不可只列價格線,那會讓人以為還沒到)
                 if (due && !broken.length && !hardBroken) plan.push({
-                    t: `今天 <b>${String(Math.floor(this._EOD_FROM / 60)).padStart(2, '0')}:${String(this._EOD_FROM % 60).padStart(2, '0')}~${String(Math.floor(this._EOD_TO / 60)).padStart(2, '0')}:${String(this._EOD_TO % 60).padStart(2, '0')}</b> 尾盤賣 → 全部出場`,
-                    sub: `⏳ 抱滿 ${edH.maxd.n} 個交易日(已抱 ${edH.maxd.held})—— 回測與自動下單的第三條出場條件`,
+                    t: `${this._dueWhen().when} <b>${String(Math.floor(this._EOD_FROM / 60)).padStart(2, '0')}:${String(this._EOD_FROM % 60).padStart(2, '0')}~${String(Math.floor(this._EOD_TO / 60)).padStart(2, '0')}:${String(this._EOD_TO % 60).padStart(2, '0')}</b> 尾盤賣 → 全部出場`,
+                    sub: `⏳ 抱滿 ${edH.maxd.n} 個交易日(已抱 ${edH.maxd.held}${edH.maxd.held > edH.maxd.n ? `,已超過 ${edH.maxd.held - edH.maxd.n} 天` : ''})—— 回測與自動下單的第三條出場條件`,
                     money: (shares > 0) ? this._netPL(cost, pC, shares * 1000) : null,
                 });
                 // 🚪 V77.5.2 只列「你設定的那一條」(⛔ 不再附另外兩條沒選的當參考);硬停損與抱滿 20 天在下面各一條
@@ -49721,14 +49752,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 const attTag = ed.att ? `<span class="text-[9px] flex-shrink-0 font-bold ${ed.att.disp ? 'text-orange-300 border-orange-700/60' : 'text-amber-300 border-amber-700/60'} border rounded px-1">${ed.att.disp ? `🚨 處置${ed.att.interval ? ` ${ed.att.interval} 分盤` : ''}` : '⚠️ 注意'}</span>` : '';
                 const attLine = ed.att ? this._dispoHoldNoteHtml(ed.att) : '';
                 const line = (isDue && mode === 'sell')
-                    ? `⏳ <b class="text-amber-200">時間到期</b>:已抱 <b>${ed.maxd.held}</b> 個交易日(回測最多抱 ${ed.maxd.n} 天)→ <b>今天 ${this._eodTxt()} 尾盤賣</b>。⛔ 不是價格破線${ed.nearest ? `(最近的價格線 ${this._escHtml(ed.nearest.name)} ${(+ed.nearest.v).toFixed(2)} 還沒破)` : ''}`
+                    ? `⏳ <b class="text-amber-200">時間到期</b>:已抱 <b>${ed.maxd.held}</b> 個交易日(回測最多抱 ${ed.maxd.n} 天${ed.maxd.held > ed.maxd.n ? `,已超過 ${ed.maxd.held - ed.maxd.n} 天` : ''})→ <b>${this._dueWhen().when} ${this._eodTxt()} 尾盤賣</b>。⛔ 不是價格破線${ed.nearest ? `(最近的價格線 ${this._escHtml(ed.nearest.name)} ${(+ed.nearest.v).toFixed(2)} 還沒破)` : ''}`
                     : tgt
                     ? `${mode === 'sell' ? '到了' : '最近的線'}:<b class="text-gray-100">${this._escHtml(tgt.name)} ${(+tgt.v).toFixed(2)}</b>`
                       + (mode === 'sell' ? '' : `(距 <b class="font-mono">${tgt.pct >= 0 ? '+' : '−'}${Math.abs(tgt.pct).toFixed(1)}%</b> = <b class="font-mono">${ed.dist != null ? ed.dist.toFixed(1) : '?'}</b> 倍今天振幅${ed.atrToday ? `,1 倍 = ${ed.atrToday.toFixed(2)} 元` : ''})`)
                     : (ed.level === 'due' ? `已經抱了 <b>${ed.maxd.held}</b> 個交易日(回測最多抱 ${ed.maxd.n} 天)` : this._escHtml(ed.levelWhy || '算不出來'));
                 const smart = (isDue && mode === 'sell' && ed.smart)
                     ? `<div class="flex items-center gap-1.5 mt-1 flex-wrap">
-                        <span class="text-[10px] text-amber-200">🧾 今天尾盤賣 × ${ed.smart.shares > 0 ? this._lotTxt(ed.smart.shares * 1000) : '<span class="text-gray-500">張數看你的庫存</span>'}<span class="text-gray-500">(限價掛現價或市價;⛔ 不是停損條件單)</span></span>
+                        <span class="text-[10px] text-amber-200">🧾 ${this._dueWhen().when}尾盤賣 × ${ed.smart.shares > 0 ? this._lotTxt(ed.smart.shares * 1000) : '<span class="text-gray-500">張數看你的庫存</span>'}<span class="text-gray-500">(限價掛現價或市價;⛔ 不是停損條件單)</span></span>
                         <button onclick="event.stopPropagation(); app._exitDistCopy('${x.sym}')" class="text-[10px] font-bold text-cyan-200 border border-cyan-700/50 rounded px-1.5 py-0.5">📋 複製</button>
                       </div>`
                     : ed.smart
@@ -50648,6 +50679,13 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _EOD_FROM: 13 * 60 + 0,     // 13:00 開始盯
     _EOD_TO: 13 * 60 + 28,      // 13:28 之後就來不及下單了
     _eodTxt() { const f = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; return `${f(this._EOD_FROM)}~${f(this._EOD_TO)}`; },
+    // ⏳ V78.1.4 「時間到期」要在哪一天賣 —— 總覽 / 行動清單 / 決策台 / 📋 複製 共用這一支(⛔ 不各寫一份)。
+    //   今天的尾盤窗口(`_EOD_TO`)已經過了、或週末 → 「下一個交易日」;否則「今天」(含半夜 / 盤前:那天就是下一個交易日)。
+    //   ⚠️ 國定假日不知道(本站沒有行事曆)→ 只會說「下一個交易日」,⛔ 不說哪一天。
+    _dueWhen() {
+        try { const t = this._tpeMinutes(); const late = /Sat|Sun/.test(t.wd) || t.min > this._EOD_TO; return { late, when: late ? '下一個交易日' : '今天' }; }
+        catch (_) { return { late: false, when: '今天' }; }
+    },
     _tpeMinutes() {
         const p = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', hour12: false,
             weekday: 'short', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date());

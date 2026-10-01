@@ -224,6 +224,9 @@ if (!['stop', 'close', 'touch'].includes(STOPFILL)) { console.error(`🚨 STOPFI
 //   ⛔ 兩個都**必須進 CACHE_KEY**(同 GRACE 的教訓:漏了會把不帶強制出場的舊快取靜默重用,跑出「完全沒差」的假結論)
 //   ⛔ 沒設就一個字都不變(CACHE_KEY 字串跟舊版一模一樣,既有快取照樣重用)
 const BEAR_EXIT = (process.env.BEAR_EXIT || '').trim();
+// 🟥 V78.1.4 LUDEFER=1:「抱滿 MAXD 天」那天剛好收盤鎖漲停 → 延到隔天開盤賣
+//   (鎖漲停定義照 dt_daily_probe.lockUp:收盤 ≥ 昨收 × 1.09 且收在最高;只動時間到期那一條,停損 / 出場線不受影響)
+const LUDEFER = process.env.LUDEFER === '1';
 if (BEAR_EXIT && !['strict', 'ma60', 'strictlose'].includes(BEAR_EXIT)) { console.error(`🚨 BEAR_EXIT=${BEAR_EXIT} 不認得(strict|ma60|strictlose)`); process.exit(1); }
 // 🐻 V77.7.4 strictlose = 同 strict 的空頭日,但**只賣帳面虧損的**(收盤 < 進場價),賺錢的照原規則抱(外部建議「空頭只保留浮盈股票」)
 const FORCE_EXIT = (process.env.FORCE_EXIT || '').trim();
@@ -321,7 +324,7 @@ if (BEAR_EXIT) {
 // ⚠️ STOPFILL 只在非預設時才進 key —— 預設值的 key 字串跟舊版一模一樣(既有快取照樣重用)
 const _ckStopFill = STOPFILL !== 'stop' ? { STOPFILL } : {};
 // 🐻🚨 V77.6.8 兩個強制出場一定進 key(沒設就是空物件 → key 字串跟舊版一模一樣)
-const _ckForce = { ...(BEAR_EXIT ? { BEAR_EXIT } : {}), ...(FORCE_EXIT ? { FORCE_EXIT: FORCE_HASH } : {}) };
+const _ckForce = { ...(BEAR_EXIT ? { BEAR_EXIT } : {}), ...(FORCE_EXIT ? { FORCE_EXIT: FORCE_HASH } : {}), ...(LUDEFER ? { LUDEFER: 1 } : {}) };
 const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE, ..._ckStopFill, ..._ckForce });
 const allTrades = [];        // {sym, key, inD, outD, ret, amt, entry, stop}
 let graceBlocked = 0;        // ⏳ 有幾個(交易·日)真的被寬限期擋下過(空過守門用)
@@ -535,7 +538,7 @@ for (const sym of syms) {
                         // SAR 初始:從進場日的最低起算,EP = 進場日最高
                         let sarV = data[eIdx].low, sarEP = data[eIdx].high, sarAF = 0.02;
                         let halfDone = 0, halfRet = 0, dynStop = stop;
-                        let peak = entry, tmHit = 0, sx = 0, sw = 0, fx = 0;   // fx:1 = 空頭清倉 ・2 = 事件強制(處置等)
+                        let peak = entry, tmHit = 0, sx = 0, sw = 0, fx = 0, ld = 0;   // fx:1 = 空頭清倉 ・2 = 事件強制(處置等)
                         // ⏳ 寬限期閘門:`gx(cond)` = 「這個移動/趨勢類出場成立了嗎」
                         //   🚧 空過守門的關鍵:⛔ 不可只數「有幾天在寬限期內」(那只要 GRACE>0 幾乎必然 >0,
                         //      等於沒驗到)—— 要數「**真的有一個出場訊號被擋下來**」才算。
@@ -604,7 +607,12 @@ for (const sym of syms) {
                             if (gx(trailPct2 > 0 && c <= peak * (1 - trailPct2 / 100))) { exitP = c; exitIdx = j; break; }
                             if (gx(chandK > 0 && chandATR > 0 && c <= peak - chandK * chandATR)) { exitP = c; exitIdx = j; break; }
                             // 🚪 移動停利:從進場後的最高收盤回落 N% 就走(讓贏家跑,輸家照樣被 stop 砍)
-                            if (j === endJ) { exitP = c; exitIdx = j; }
+                            if (j === endJ) {
+                                // 🟥 LUDEFER:時間到期那天收盤鎖漲停 → 隔天開盤賣(⛔ 資料最後一天 / 不是因為 MAXD 到期的 endJ 不延)
+                                if (a.luDefer && endJ === eIdx + a.maxD && j < last && c >= C(j - 1) * 1.09 && c >= data[j].high - 1e-9) {
+                                    exitIdx = j + 1; exitP = O(j + 1) > 0 ? O(j + 1) : C(j + 1); ld = 1;
+                                } else { exitP = c; exitIdx = j; }
+                            }
                         }
                         // ⚠️ inD 一律記「**訊號日**」—— 選股是那天晚上做的決定,
                         //   實際成交日在 eIdx。⛔ 若記成 eIdx,walk-forward 的時間軸會偏一天。
@@ -617,7 +625,7 @@ for (const sym of syms) {
                                    amt: data[i].volume * data[i].close / 1e8,
                                    entry, stop: stop0,   // 💰 風險法算張數要用(⛔ 別在外面重算,基準會不一致)
                                    ret: retAll, tm: tmHit, hf: halfDone, re: (i === forceEntry ? 1 : 0),
-                                   sx, sw, sg: sx ? (stop - exitP) / entry * 100 : 0, ap: _apAt(i), fx });
+                                   sx, sw, sg: sx ? (stop - exitP) / entry * 100 : 0, ap: _apAt(i), fx, ...(ld ? { ld } : {}) });
                         // 🔁 排下一次買回:原始訊號才重置次數,買回那一筆繼續用剩下的額度
                         if (i !== forceEntry) reLeft = a.reMax;
                         forceEntry = -1;
@@ -638,7 +646,7 @@ for (const sym of syms) {
         //    所以塞成一筆特殊列,外面收完立刻濾掉(⛔ 不可讓它混進交易清單)
         if (GR > 0) out.push({ __g: gBlocked });
         return out;
-    }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP, reentry: REENTRY, reMax: RE_MAX, grace: GRACE, stopFill: STOPFILL,
+    }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP, reentry: REENTRY, reMax: RE_MAX, grace: GRACE, stopFill: STOPFILL, luDefer: LUDEFER,
          bearDays: BEAR_DAYS ? [...BEAR_DAYS] : null, bearMode: BEAR_EXIT, forceSell: fsell });
     for (const t of tr) { if (t.__g != null) { graceBlocked += t.__g; continue; } allTrades.push({ ...t, sym }); }
     if (++done % 50 === 0) {
@@ -708,6 +716,12 @@ if (DIV_TRADES) {
         + `(現金 ${nCash} 次、配股 ${nStock} 次、尺標對不上排除 ${nBad} 次),平均每筆多 ${nHit ? (addSum / nHit).toFixed(2) : 0}%`
         + (NHI ? ` ・🏥 二代健保被扣 ${nNhi} 次(候選交易合計 ${Math.round(nhiAmt).toLocaleString()} 元)` : ' ・🏥 NHI=0:沒扣二代健保'));
     if (!nHit) { console.error('🚨 DIV_TRADES 設了卻一筆都沒碰到 → 檔案格式或日期對不上(⛔ 不是「沒差別」)'); process.exit(1); }
+}
+// 🟥 V78.1.4 空過守門:LUDEFER 設了卻一筆都沒延 = 沒生效
+if (LUDEFER) {
+    const k = allTrades.filter(t => t.ld).length;
+    console.log(`🟥 LUDEFER:候選裡有 ${k} 筆「抱滿 ${MAXD} 天那天收盤鎖漲停 → 延到隔天開盤賣」(${(k / allTrades.length * 100).toFixed(2)}%)`);
+    if (!k) { console.error('❌ LUDEFER 設了卻一筆都沒延 → 沒生效(⛔ 不是「沒差別」)'); process.exit(1); }
 }
 // 🐻🚨 V77.6.8 空過守門:設了強制出場卻一筆都沒被強制賣掉 = 變體沒生效(⛔ 不是「沒差別」)
 if (BEAR_EXIT) {
@@ -1656,6 +1670,7 @@ if (process.env.SUMMARY_OUT) {
     if (COST_X !== 1) summary.costX = COST_X;
     if (EXIT_SCHED) { const c = {}; for (const t of taken) c[t._r] = (c[t._r] || 0) + 1; summary.sched = { file: EXIT_SCHED.split('/').pop(), taken: c }; }   // 🔄 實際成交各用了哪一套
     if (USSIG) summary.ussig = { kind: USSIG, min: usMin, noData: usNoData, keys: usMap.size };   // 🇺🇸 V77.7.7 缺美股資料而被剔除的候選數(⛔ 一定要報)
+    if (LUDEFER) summary.luDefer = taken.filter(t => t.ld).length;   // 🟥 實際成交裡被延的筆數
     if (BEAR_EXIT || FORCE_EXIT) summary.forced = { bear: taken.filter(t => t.fx === 1).length, event: taken.filter(t => t.fx === 2).length };   // 🐻🚨 V77.6.8 實際成交裡被強制賣掉幾筆
     if (YEAR) Object.assign(summary, _yearSummary());
     fs.writeFileSync(process.env.SUMMARY_OUT, JSON.stringify(summary));
