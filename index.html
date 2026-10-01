@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.1.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.1.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.1.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.1.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8675,8 +8675,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.1.2',
+    _APP_VERSION: 'V78.1.4',
     _CHANGELOG: [
+        { v: 'V78.1.4', d: ['⏳ <b>「時間到期」那張卡不再講錯</b>(國巨截圖):已經抱 40 天卻寫「抱滿 20 天」、半夜還寫「今天尾盤賣」→ 現在超過會寫「已超過 N 天」、收盤後寫「下一個交易日」;那天收盤<b>鎖漲停</b>時多一行本站實測:隔天開盤賣平均 +2.19%、賺的機率 69.7%。', '🧪 回測「抱滿那天剛好鎖漲停 → 延到隔天開盤賣」:每一筆平均多 +3.27%(4 年 989 次、76.6% 比較高),但整套 17 條起點只贏 7 條 → <b>規則沒改</b>,自動下單照舊;手動的你可以自己決定要不要等到隔天開盤。', '🌙 個股期貨夜盤採礦:排程被延遲到白天才跑時,⛔ 不再把日盤寫成「夜盤」(10/01 就寫成了 09:30 的日盤資料)。', '📐 本益比區間採礦:付費金鑰那一小時用完時,改成<b>等到下一小時接著抓</b>(以前直接收工,一晚只抓到兩三百檔);上一版也改成沒抓到的先沿用、沒舊值的先抓。'] },
         { v: 'V78.1.2', d: ['🧪 <b>21 支長期紅燈的測試全部修好(267 支全綠)</b>,而且每一支都先分類再修:3 支是這台機器少裝套件、11 支是測試釘住「當時的資料或寫法」(改成釘用意,⛔ 一條斷言都沒放寬)、2 支是測試工具自己有洞(剝註解的寫法把 <code>image/*</code> 當成註解開頭,一口氣吞掉 21 萬字 —— 另外 9 支用同一寫法的測試也一起換掉,重跑都還是綠的 = 沒有藏著的假綠燈)。',
             '🐛 <b>順手抓到 4 個真的問題並修好</b>:① 📐 <b>PE 自身位階</b>今天那一輪 FinMind 額度用完(403×4,495、402×2,011),只成功 618 檔就把整份 1,625 檔的檔案覆蓋掉 → 代號 6~9 開頭全部不見;改成「這輪抓不到的沿用上一輪那一筆(帶自己的資料日)」,下一輪起就不會再縮水 ② 報告頁沒有自己本益比分布的股票,「同業中位 PE」那一行會<b>整行消失</b>(既沒顯示也沒說沒有)→ 現在照樣印 ③ 每週自動回測讀不到嵌入的決策台成績(多了幾行註解就超過它的 400 字限制)→ 修好 ④ 👑 領頭羊的教學還在用小視窗,改成跟其他教學一樣的大視窗。'] },
         { v: 'V78.1.1', d: ['🧹 <b>設定瘦身</b>:最常用的四件(我的策略 / 出場規則 / 手續費與本金 / 字體)攤開,其餘收成四組(🔔 通知與推播 / 🔑 金鑰與 AI / 📦 資料備份 / 🛠️ 進階與工具),每組標題寫一行現況;第一眼 6,670 → 1,242 字,⛔ 能用的功能一個都沒刪',
@@ -20815,6 +20816,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     //   ② 22 份裡日K/分K量得到的全部測過,**沒有一條「今天做多/做空」的當沖訊號扣完成本站得住** ——
     //      唯一站得住的是「手上的股票收盤鎖漲停 → 留到隔天」(給**已經有**的人,⛔ 不是叫人去買漲停)。
     _DT_EDGE: {"src":"scripts/dt_daily_probe.mjs + scripts/dt_kbar5_probe.mjs + intraday_probe.py(V77.5.0)","win":"2021-09~2026-09","syms":2334,"k5days":1319,"k5win":"2021-05~2026-09","f7":{"th":"≥2%","ent":"09:05","n":7781,"net":0.282,"winp":53.3,"gates":"6/6","drop10":0.146,"ctrl":0.209,"lock":12.58,"real":0.046,"real10":-0.099,"src":"scripts/dt_kbar5_probe.mjs + f7_k5only(V77.6.9)"},"oc":{"gross":-0.097,"win":36.5},"ocShortWin":45.8,"on":{"gross":0.157},"f6":[[0.5,0.5,36.4,-0.382],[0.5,1,54.7,-0.399],[0.5,2,69.3,-0.363],[0.5,3,73.7,-0.354],[1,0.5,28.5,-0.319],[1,1,43.5,-0.339],[1,2,56.4,-0.329],[1,3,61.3,-0.317],[2,0.5,21.4,-0.262],[2,1,33.4,-0.284],[2,2,44.7,-0.284],[2,3,49,-0.293],[3,0.5,18.7,-0.239],[3,1,29.3,-0.263],[3,2,39.7,-0.271],[3,3,44,-0.276]],"lu":{"up":{"n":23323,"open":[2.188,69.7],"close":[1.595,56.5],"p10":-2.1},"dn":{"n":10800,"open":[0.826,54.4],"close":[1.044,53],"p10":-4.41},"base":32.2},"gap":{"ill":0.849,"liq":0.14,"liqSqz":13.64,"auc":0.16,"m1":0.02,"m5":-0.11},"f3":{"hi":74.4,"lo":68.2},"nope":{"four":-0.277,"smash":-0.289,"ld":-1.944,"dual":-0.382,"bull":-0.522,"bullIdx":0.283}},
+    // 🟥 V78.1.4 「抱滿上限那天剛好收盤鎖漲停 → 延到隔天開盤賣」在**這套策略自己**的回測裡(portfolio_backtest LUDEFER=1)
+    //   ⭐ 每一筆被延的多賺(gap = 隔天開盤 ÷ 到期那天收盤 −1),但整套 17 條起點沒有穩定贏 → ⛔ 規則沒換(V75.0.9 第 6 條)。
+    //   ⛔ 數字只准從這裡讀(重跑就改這一份)。
+    _LUDEFER_EDGE: { src: 'scripts/portfolio_backtest.mjs LUDEFER=1(V78.1.4)', w4: { n: 989, gap: 3.27, med: 2.88, win: 76.6, p10: -1.55, paths: '7/17', tot: 393.9, base: 412.7 }, w16: null },
     /** 🟥 V78.1.4 「最後一根已收完的 K 鎖在漲停」唯一判斷(當沖頁那一行與總覽「時間到期」共用,⛔ 不另寫一份)。
      *  鎖漲停定義 = `dt_daily_probe.lockUp`(收 ≥ 昨收×1.09 且收在最高);月線上彎 = 近 20 日均 > 5 天前的 20 日均。
      *  ⚠️ 只在「沒開盤」時才判斷 → 這時最後一根就是已收完的那一根(⛔ 不可用 _closedTail:它會把今天收完的那根也砍掉;
@@ -36403,6 +36408,9 @@ ${this._reportFacts(sym)}
                             const g = _lu.g, f = x => `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(2)}%`;
                             why += `<br><span data-ovdue-lu="1">🟥 最後一根<b>收盤鎖漲停</b>(事實):歷史上同樣鎖漲停、月線${_lu.up ? '上彎' : '下彎'}(${g.n.toLocaleString()} 次),`
                                 + `隔天<b>開盤賣</b>平均 <b>${f(g.open[0])}</b>(賺的機率 ${g.open[1]}%)・抱到隔天收盤 ${f(g.close[0])}(${g.close[1]}%),已扣 0.44% 成本。`
+                                + (() => { const L = this._LUDEFER_EDGE && this._LUDEFER_EDGE.w4; if (!L) return '';
+                                    return `<br>🧪 這套策略自己的回測(4 年):抱滿那天剛好鎖漲停共 ${L.n.toLocaleString()} 次,隔天開盤平均比那天收盤高 <b>${f(L.gap)}</b>(${L.win}% 比較高、最差一成低 ${Math.abs(L.p10).toFixed(2)}% 以上)`
+                                         + ` —— 但整套 17 條起點只贏 ${L.paths}(每條只影響十幾筆,被其他差異蓋掉)→ <b>規則沒改</b>,自動下單照到期那天尾盤賣;手動的你要不要等到隔天開盤,自己決定。`; })()
                                 + `</span>`;
                         }
                     }

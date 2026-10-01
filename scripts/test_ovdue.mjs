@@ -81,6 +81,7 @@ const R = await page.evaluate(() => {
     const g = app._DT_EDGE.lu.up.open[0]; app._DT_EDGE.lu.up.open[0] = 7.77; app._DT_EDGE.lu.dn.open[0] = 7.77;
     out.d99 = run({ held: N, lock: true, min: 14 * 60 });
     app._DT_EDGE.lu.up.open[0] = g; app._DT_EDGE.lu.dn.open[0] = g;
+    const L0 = app._LUDEFER_EDGE.w4.gap; app._LUDEFER_EDGE.w4.gap = 9.99; out.dLud = run({ held: N, lock: true, min: 14 * 60 }); app._LUDEFER_EDGE.w4.gap = L0;
     out.e = run({ held: N, lock: true, min: 11 * 60, open: true });  // 盤中
     return out;
 });
@@ -95,6 +96,7 @@ ok('ⓒ2 週末 → 「下一個交易日」', /下一個交易日/.test(R.c2.ba
 ok('ⓒ3 使用者那個情境(週四 03:28・超過・鎖漲停)→ 「已超過」+「今天就賣」+ 有漲停那一行,⛔ 不寫「回測與自動下單都是今天」', /已超過 20 天・今天就賣/.test(R.c3.badge) && /錯過了/.test(R.c3.why) && !/回測與自動下單都是/.test(R.c3.why) && R.c3.lu, s(R.c3));
 ok('ⓓ 收盤鎖漲停 → 有 `[data-ovdue-lu]` 那一行,且寫次數 + 開盤賣', R.d.lu && /鎖漲停/.test(R.d.why) && /開盤賣/.test(R.d.why) && /\d{1,3}(,\d{3})+ 次/.test(R.d.why), s(R.d));
 ok('ⓓb 決定性對照:`_DT_EDGE.lu.*.open[0]` 改 7.77 → 畫面跟著變', /\+7\.77%/.test(R.d99.why) && !/\+7\.77%/.test(R.d.why), s(R.d99));
+ok('ⓓc 這套自己的回測數字讀 `_LUDEFER_EDGE`(⛔ 寫死)且明講「規則沒改」', /規則沒改/.test(R.d.why) && /989 次/.test(R.d.why) && /\+9\.99%/.test(R.dLud.why), s(R.dLud));
 ok('ⓔ 沒鎖漲停 → ⛔ 沒有那一行', !R.a.lu && !R.b.lu && !R.c.lu, '');
 ok('ⓔb 盤中(isMarketOpen)→ ⛔ 沒有那一行(還沒收盤)', R.e && !R.e.lu, s(R.e));
 ok('無 pageerror', errs.length === 0, errs.join(' | '));
