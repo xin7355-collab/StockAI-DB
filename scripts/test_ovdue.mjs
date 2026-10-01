@@ -82,6 +82,7 @@ const R = await page.evaluate(() => {
     out.d99 = run({ held: N, lock: true, min: 14 * 60 });
     app._DT_EDGE.lu.up.open[0] = g; app._DT_EDGE.lu.dn.open[0] = g;
     const L0 = app._LUDEFER_EDGE.w4.gap; app._LUDEFER_EDGE.w4.gap = 9.99; out.dLud = run({ held: N, lock: true, min: 14 * 60 }); app._LUDEFER_EDGE.w4.gap = L0;
+    const H0 = app._LUNEXT_EDGE.S.S1.hold.d; app._LUNEXT_EDGE.S.S1.hold.d = 8.88; out.dTree = run({ held: N, lock: true, min: 14 * 60 }); app._LUNEXT_EDGE.S.S1.hold.d = H0;
     out.e = run({ held: N, lock: true, min: 11 * 60, open: true });  // 盤中
     return out;
 });
@@ -97,6 +98,9 @@ ok('ⓒ3 使用者那個情境(週四 03:28・超過・鎖漲停)→ 「已超�
 ok('ⓓ 收盤鎖漲停 → 有 `[data-ovdue-lu]` 那一行,且寫次數 + 開盤賣', R.d.lu && /鎖漲停/.test(R.d.why) && /開盤賣/.test(R.d.why) && /\d{1,3}(,\d{3})+ 次/.test(R.d.why), s(R.d));
 ok('ⓓb 決定性對照:`_DT_EDGE.lu.*.open[0]` 改 7.77 → 畫面跟著變', /\+7\.77%/.test(R.d99.why) && !/\+7\.77%/.test(R.d.why), s(R.d99));
 ok('ⓓc 這套自己的回測數字讀 `_LUDEFER_EDGE`(⛔ 寫死)且明講「規則沒改」', /規則沒改/.test(R.d.why) && /989 次/.test(R.d.why) && /\+9\.99%/.test(R.dLud.why), s(R.dLud));
+ok('ⓖ 收盤鎖漲停 → 有「明天開盤看到哪一種」決策表(三種開盤 + 後天)', /data-lunext/.test(R.d.why) && /開盤就在漲停/.test(R.d.why) && /開盤就賣/.test(R.d.why) && /別在開盤殺/.test(R.d.why) && /後天/.test(R.d.why), s(R.d));
+ok('ⓖb 決策表數字讀 `_LUNEXT_EDGE`(決定性對照:改 8.88 → 畫面跟著變)', /\+8\.88%/.test(R.dTree.why) && !/\+8\.88%/.test(R.d.why), s(R.dTree));
+ok('ⓖc 沒鎖漲停 → ⛔ 沒有決策表', !/data-lunext/.test(R.a.why + R.b.why + R.c.why), '');
 ok('ⓔ 沒鎖漲停 → ⛔ 沒有那一行', !R.a.lu && !R.b.lu && !R.c.lu, '');
 ok('ⓔb 盤中(isMarketOpen)→ ⛔ 沒有那一行(還沒收盤)', R.e && !R.e.lu, s(R.e));
 ok('無 pageerror', errs.length === 0, errs.join(' | '));
