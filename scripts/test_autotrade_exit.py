@@ -19,6 +19,8 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+# auto_trade.py 從 repo 根目錄 `import lib_leader`(V77.9.3);用 spec 載入時 sys.path[0] 是 scripts/ → 要自己補根目錄
+sys.path.insert(0, str(ROOT))
 spec = importlib.util.spec_from_file_location('at', ROOT / 'auto_trade.py')
 at = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(at)

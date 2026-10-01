@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.1.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.1.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -886,7 +886,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.1.1</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.1.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8675,8 +8675,10 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.1.1',
+    _APP_VERSION: 'V78.1.2',
     _CHANGELOG: [
+        { v: 'V78.1.2', d: ['🧪 <b>21 支長期紅燈的測試全部修好(267 支全綠)</b>,而且每一支都先分類再修:3 支是這台機器少裝套件、11 支是測試釘住「當時的資料或寫法」(改成釘用意,⛔ 一條斷言都沒放寬)、2 支是測試工具自己有洞(剝註解的寫法把 <code>image/*</code> 當成註解開頭,一口氣吞掉 21 萬字 —— 另外 9 支用同一寫法的測試也一起換掉,重跑都還是綠的 = 沒有藏著的假綠燈)。',
+            '🐛 <b>順手抓到 4 個真的問題並修好</b>:① 📐 <b>PE 自身位階</b>今天那一輪 FinMind 額度用完(403×4,495、402×2,011),只成功 618 檔就把整份 1,625 檔的檔案覆蓋掉 → 代號 6~9 開頭全部不見;改成「這輪抓不到的沿用上一輪那一筆(帶自己的資料日)」,下一輪起就不會再縮水 ② 報告頁沒有自己本益比分布的股票,「同業中位 PE」那一行會<b>整行消失</b>(既沒顯示也沒說沒有)→ 現在照樣印 ③ 每週自動回測讀不到嵌入的決策台成績(多了幾行註解就超過它的 400 字限制)→ 修好 ④ 👑 領頭羊的教學還在用小視窗,改成跟其他教學一樣的大視窗。'] },
         { v: 'V78.1.1', d: ['🧹 <b>設定瘦身</b>:最常用的四件(我的策略 / 出場規則 / 手續費與本金 / 字體)攤開,其餘收成四組(🔔 通知與推播 / 🔑 金鑰與 AI / 📦 資料備份 / 🛠️ 進階與工具),每組標題寫一行現況;第一眼 6,670 → 1,242 字,⛔ 能用的功能一個都沒刪',
             '🗑️ 刪掉三件沒用的:📊 預測歷史快照(早就沒有程式在寫入,永遠「尚未累積」)/ 🎯 朱家泓 5MA 早上推播(每天推沒實測過的買點)/ 🖥️ 本地 API 伺服器(要電腦開 api.py,沒在用)',
             '🅿️ 隱藏進階選項多一個「高檔飆股+停車 0050」:選股、賣法、提醒都跟 🔥 一樣,決策台多算「今天該停多少錢在 0050」;⚠️ 自動下單不會幫你做',
@@ -8835,7 +8837,6 @@ ${list}
         { v: 'V77.3.7', d: ['🎯 <b>老余交易夜 19 份逐字稿全部讀完、能測的都測了</b>(你說「可以優化我的程式嗎?策略需要回測就回測」):⭐ 先查登記表 —— 他 ~60 條主張裡<b>位置(區間下緣做多)/ 單根尖尖的 / 假跌破站回 / 互換 / 翻亞當出場 / 出一留一 / 拉不賠 / 賺賠比門檻 / 結算日 / 缺口 / 兇K隔壁 / 長上影隔壁 / K 棒變小</b> 本站早就測過(大多數打掉;「互換」= 本站六關全過的「創 60 日高後回測不破」,「該發生卻沒發生」的多方版 = 本站 9 個正期望訊號之一「站上長黑K高點」)。', '🔬 新探針 <code>laoyu_probe.mjs</code>(1,683 檔・2022~2026 含空頭・55 萬事件)只切他<b>沒被切過的條件</b>:🚨 <b>他最核心的兩條方向相反</b> —— 「區間下緣才做多」在日 K 上 ≈0、一年位階反而 &gt;67% 那桶最好(+0.35pp);「左邊要有人擋子彈」有擋的反而差 0.35pp。真破邊界後收回 −0.34pp、兩隻腳 −0.43pp、三問疊加四層沒有一層是正的。', '📐 <b>唯一站得住的:下降三角(上斜下平)</b> —— 他說「後面往下跌機率高」,實測 n=20,072、10 日 −0.48pp、五年逐年全負、門檻高原九格全過 → 下一版放進總覽「⭐ 重點判讀」當<b>避雷</b>(⛔ 不是放空訊號)。', '⏱️ <code>kbar5_tod_probe.mjs</code> 用 kbar5 88 天先量他的盤中時段口訣的長相(⛔ 不下結論):11 點轉折率跟別的時段一樣是 50%、49.5% 的全日最低在 09:00~09:30 那一段、尾盤 +0.01% —— 而且他講的是台指期,kbar5 以前沒有台指期。', '📼 <b>改挖礦:kbar5 從這一版起也存台指期近月的日盤 5 分 K</b>(<code>d[date].idx.TXF</code>,08:45~13:45,夜盤不收;股票母體與 bias 完全不動;要請你 Run 一次「📼 5 分 K 逐日累積」workflow,log 要看到「🔎 自我驗證 …525…820」)。', '📋 完整評估紀錄在 docs/EXTERNAL_REVIEWS.md ㉘;實測總表新增 1 條避雷 + 3 條實測沒用 + 1 條還測不了;推薦欄那條「📼 開始存 5 分 K」已經做完 → 歸類移除。'] },
         { v: 'V77.3.6', d: ['🧪 <b>自訂回測(自動回測系統的 App 內那一半)</b>(你說「新增自動回測系統」→ 你選「兩個都要」):設定中心原本的「📊 訊號成績單」升級成「🧪 自訂回測」—— 自己挑<b>母體</b>(自選＋庫存 / 全市場成交金額前 N 檔)、<b>進場型態</b>(多選)、<b>出場規則</b>(唐奇安 / ATR / 移動停利 / 5 日線,跟出場總表同一份)、要不要加 <b>🧬 濾網</b>、最多幾檔,按「▶ 跑回測」App 就逐檔用歷史 K 線跑,有進度、<b>可以隨時取消</b>(取消也會給你跑到一半的結果)。結果:每一招的勝率 / 每趟(已扣來回成本 0.44%)/ 賺賠比 / 幾檔賺,加上本站六關的<b>迷你版四關</b>(全期正 / 前後半同向 / 逐年同向 / 去最好年仍同向);少於 10 趟一律「樣本不足,不下結論」。⚠️ 畫面上寫明:這是「每一趟」的統計、<b>不是</b>決策台那套 49 個月的資金模擬(兩組數字不可互比)、窗口約 3 年不含 2022 空頭。'] },
         { v: 'V77.3.5', d: ['🔁 <b>自動回測系統(排程化那一半)上線</b>(你說「新增自動回測系統」):新 workflow「🔁 每週自動回測」掛在每日採礦後面(⛔ 不新增排程配額),<b>每週五</b>用同一套配置重跑兩件事 —— ① App 裡 129 個 K 線訊號的勝率/期望值表(以前是我跑完手抄進去的)② 決策台那套 49 個月成績單(🧬 / 不挑 🧬),產出 <code>backtest_edge.json</code>。App 讀到產物就用產物的訊號成績(格式一樣、沒有就用內嵌版);決策台「這套做法實測賺多少」那張卡底下多一行「📅 最新一次自動回測 …」,並列出<b>跟內嵌成績差在哪</b>(等級 A↔C 變動、累積差 >30%、回撤差 >5pp)。⛔ <b>沒有自動換預設</b> —— 要換仍要過八道關卡、由人判。⚠️ 第一次要你到 Actions 手動 Run「🔁 每週自動回測」(選 main、force=true)驗一次;之後每週五採礦完自動跑。', '🐛 順手:兩支回測腳本的瀏覽器路徑是寫死的本機路徑(CI 上一定炸)→ 改成「本機路徑 / CI 自帶」雙來源(跟明日作戰清單那支一樣)。'] },
-        { v: 'V77.3.4', d: ['🧭 <b>報告頁 §10 改成「籌碼總表」</b>(你說「法人級籌碼分析」):每一列 = <b>數字</b>(外資/投信/自營 近 1/5/20 日、外資+投信同日都買、分點買賣超前 5、集保千張大戶/散戶、融資 20 日增減與追繳壓力區)+ <b>本站實測這個數字能不能拿來預測</b>:✅ 實測有效(外資+投信同日都買 +0.99pp、投信自己連買 ≥5 天 +0.79pp,六關全過)/ △ 證據偏弱(外資買且融資退場 +0.21pp)/ ❌ 實測無效(外資單獨連買、分點集中度、某分點突然大買、千張大戶↑散戶↓、券資比)/ ○ 只描述(自營商沒測過)。列上只留標籤 + 數字,每一列的依據收在卡底「📖 展開」。多一行「🎯 今天命中哪個實測過的籌碼型態」(讀既有的判定,⛔ 沒有新指標)。餵給外部 AI 的提示詞也帶同一份實測結論(⛔ AI 不可自己判籌碼多空)。⛔ 沒有新增任何指標。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -21968,7 +21969,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     _leaderHelp() {
         const E = this._LEADER_EDGE, R = E.rule;
-        alert(`👑 領頭羊短線輪動(${E.ver})\n\n規則:每 ${R.R} 個交易日收盤 → 在「近 20 日平均成交額前 ${R.U} 大」(不含 ETF)裡,留下收盤 > 20 日線 > 60 日線的,照近 ${R.L} 日漲幅排名,${R.pos ? `只挑「一年位置 ≥ ${R.pos}%」(收盤靠近一年最高)的,` : ''}前 ${R.N} 檔隔天開盤等權買(位置不夠的跳過、往下一名找);下次換倉還在前 ${R.N * R.hyst} 名就續抱、掉出去隔天開盤賣;不設停損線;沒用到的錢放 0050;大盤嚴格空頭不開新倉。\n\n實測(${E.ai.paths} 條起點中位):${E.ai.win} +${E.ai.tot}%(0050 含息 +${E.ai.etfTr}%)・${E.long.win} +${E.long.tot}%(0050 +${E.long.etfTr}%)。同一個池子隨機挑只有 +${E.sham.ai}% / +${E.sham.long}% → 賺的是排名本身。\n\n代價:中途最多賠 ${E.ai.mdd}~${E.long.mdd}%;${E.long.yrs} 年只有 ${E.long.yrBeat} 年贏 0050;成本加倍時 16 年 +${E.costX2.long}%(${E.costX2.long > E.long.etfTr ? '仍贏' : '輸'} 0050 的 +${E.long.etfTr}%)。一半放 0050 的版本:16 年 +${E.core50.long}%、回撤 −${E.core50.longMdd}%、最差一年只輸 ${E.core50.worstYr}pp。\n\n換倉日:從 ${E.anchor} 起每 ${R.R} 個交易日(App 與自動下單同一個起點)。成交時點:隔天開盤 +${E.fillOpen.ai}%(回測那一組)、隔天尾盤 +${E.fillClose.ai}%(16 年 +${E.fillClose.long}%)。\n\n逐月(${E.mon.n} 個完整月):贏 0050 的月份 ${E.mon.beat}%、抱 12 個月贏 ${E.mon.hold12}%;最壞一個月 −${E.mon.worst}%(最差那條起點 −${E.mon.worstAll}%);0050 跌的月份它跌得更多(跟跌 ${E.mon.downCap}%)、漲的月份拿到 ${E.mon.upCap}%;連虧最長 ${E.mon.maxLose} 個月、從高點回不來最長 ${E.mon.maxUw} 個月 → 一兩個月看不出好壞。\n\n注意 / 處置股⛔ 不要跳過:跳過處置 +${E.att.noDisp}%、跳過注意 +${E.att.noAtt3}%、持股進處置就賣 +${E.att.sellDisp}%,全部變差。\n\n🚨 「處置前拉抬、快處置被大賣、出關再拉 → 先跟、處置前賣、大跌再買回」回測(2023-06 起):公告當晚就知道、隔天開盤賣 +${E.att.dispNow}%;就算能提前一天猜到會被處置先賣 +${E.att.oracle1}%;注意 3 次就賣、出關再買回 +${E.att.attSellRel}% —— 全部輸照常抱著的 +${E.att.base}%。事件研究(${E.disp.n} 次處置):公告前 10 天確實大漲(超額 +${E.disp.pre10}%,但那是被處置的條件本身、事前不知道誰會被處置);處置期間⛔ 沒有大跌(到出關超額 +${E.disp.during}%,同名次沒被處置的 ${E.disp.duringCtl}%;期間最深跌幅中位 ${E.disp.dip}%、跌超過 15% 的只有 ${E.disp.dip15}%);出關後 5 天 +${E.disp.post5}%(t=${E.disp.post5t},量不到)。→ 照常抱著。\n\n📍 V78.0.5 加了「一年位置 ≥ ${R.pos}%」:同一套只加這一道,${E.ai.win} +${E.posEdge.old.ai}% → +${E.posEdge.now.ai}%、16 年 +${E.posEdge.old.long}% → +${E.posEdge.now.long}%(17 條配對 ${E.posEdge.pairAi}/17、${E.posEdge.pairLong}/17);同樣比例隨機擋掉 +${E.posEdge.sham.ai}% / +${E.posEdge.sham.long}% → 賺的是「靠近一年最高」這件事,不是少買。門檻 ${E.posEdge.plateau}。代價:${E.posEdge.yrs} 年裡 ${E.posEdge.yrUp} 年比舊規則好,最差一年少 ${Math.abs(E.posEdge.worstYrDiff)}pp。\n\n🎯 這是你在設定「我的策略」選的那一套:總覽、決策台、提醒、通知都照它;手上的個股一律換倉日掉出前 ${R.N * R.hyst} 名才賣(ETF 照舊買了放著)。⚠️ 每一年都贏 0050 那關沒過 —— 要撐得住大回撤。自動下單要自己開:LEADER=1(見 auto_trade.py 說明)。`);
+        // 📖 V78.1.2 教學一律走大視窗 _helpBox(V75.2.7 統一;⛔ 原生 alert = 小視窗,test_popup_unify ② 抓到)
+        this._helpBox(`👑 領頭羊短線輪動(${E.ver})\n\n規則:每 ${R.R} 個交易日收盤 → 在「近 20 日平均成交額前 ${R.U} 大」(不含 ETF)裡,留下收盤 > 20 日線 > 60 日線的,照近 ${R.L} 日漲幅排名,${R.pos ? `只挑「一年位置 ≥ ${R.pos}%」(收盤靠近一年最高)的,` : ''}前 ${R.N} 檔隔天開盤等權買(位置不夠的跳過、往下一名找);下次換倉還在前 ${R.N * R.hyst} 名就續抱、掉出去隔天開盤賣;不設停損線;沒用到的錢放 0050;大盤嚴格空頭不開新倉。\n\n實測(${E.ai.paths} 條起點中位):${E.ai.win} +${E.ai.tot}%(0050 含息 +${E.ai.etfTr}%)・${E.long.win} +${E.long.tot}%(0050 +${E.long.etfTr}%)。同一個池子隨機挑只有 +${E.sham.ai}% / +${E.sham.long}% → 賺的是排名本身。\n\n代價:中途最多賠 ${E.ai.mdd}~${E.long.mdd}%;${E.long.yrs} 年只有 ${E.long.yrBeat} 年贏 0050;成本加倍時 16 年 +${E.costX2.long}%(${E.costX2.long > E.long.etfTr ? '仍贏' : '輸'} 0050 的 +${E.long.etfTr}%)。一半放 0050 的版本:16 年 +${E.core50.long}%、回撤 −${E.core50.longMdd}%、最差一年只輸 ${E.core50.worstYr}pp。\n\n換倉日:從 ${E.anchor} 起每 ${R.R} 個交易日(App 與自動下單同一個起點)。成交時點:隔天開盤 +${E.fillOpen.ai}%(回測那一組)、隔天尾盤 +${E.fillClose.ai}%(16 年 +${E.fillClose.long}%)。\n\n逐月(${E.mon.n} 個完整月):贏 0050 的月份 ${E.mon.beat}%、抱 12 個月贏 ${E.mon.hold12}%;最壞一個月 −${E.mon.worst}%(最差那條起點 −${E.mon.worstAll}%);0050 跌的月份它跌得更多(跟跌 ${E.mon.downCap}%)、漲的月份拿到 ${E.mon.upCap}%;連虧最長 ${E.mon.maxLose} 個月、從高點回不來最長 ${E.mon.maxUw} 個月 → 一兩個月看不出好壞。\n\n注意 / 處置股⛔ 不要跳過:跳過處置 +${E.att.noDisp}%、跳過注意 +${E.att.noAtt3}%、持股進處置就賣 +${E.att.sellDisp}%,全部變差。\n\n🚨 「處置前拉抬、快處置被大賣、出關再拉 → 先跟、處置前賣、大跌再買回」回測(2023-06 起):公告當晚就知道、隔天開盤賣 +${E.att.dispNow}%;就算能提前一天猜到會被處置先賣 +${E.att.oracle1}%;注意 3 次就賣、出關再買回 +${E.att.attSellRel}% —— 全部輸照常抱著的 +${E.att.base}%。事件研究(${E.disp.n} 次處置):公告前 10 天確實大漲(超額 +${E.disp.pre10}%,但那是被處置的條件本身、事前不知道誰會被處置);處置期間⛔ 沒有大跌(到出關超額 +${E.disp.during}%,同名次沒被處置的 ${E.disp.duringCtl}%;期間最深跌幅中位 ${E.disp.dip}%、跌超過 15% 的只有 ${E.disp.dip15}%);出關後 5 天 +${E.disp.post5}%(t=${E.disp.post5t},量不到)。→ 照常抱著。\n\n📍 V78.0.5 加了「一年位置 ≥ ${R.pos}%」:同一套只加這一道,${E.ai.win} +${E.posEdge.old.ai}% → +${E.posEdge.now.ai}%、16 年 +${E.posEdge.old.long}% → +${E.posEdge.now.long}%(17 條配對 ${E.posEdge.pairAi}/17、${E.posEdge.pairLong}/17);同樣比例隨機擋掉 +${E.posEdge.sham.ai}% / +${E.posEdge.sham.long}% → 賺的是「靠近一年最高」這件事,不是少買。門檻 ${E.posEdge.plateau}。代價:${E.posEdge.yrs} 年裡 ${E.posEdge.yrUp} 年比舊規則好,最差一年少 ${Math.abs(E.posEdge.worstYrDiff)}pp。\n\n🎯 這是你在設定「我的策略」選的那一套:總覽、決策台、提醒、通知都照它;手上的個股一律換倉日掉出前 ${R.N * R.hyst} 名才賣(ETF 照舊買了放著)。⚠️ 每一年都贏 0050 那關沒過 —— 要撐得住大回撤。自動下單要自己開:LEADER=1(見 auto_trade.py 說明)。`);
     },
     /** 🐻 純函式:一串大盤 K(舊→新,每根要有 close)→ 最後一根是不是嚴格空頭。不足 60 根回 null(⛔ 不猜) */
     _bear60Of(rows) {
@@ -24947,7 +24949,14 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         let body;
         if (C.isEtf) body = this._rpNa('ETF 沒有 EPS,估值對照不適用(看它的成分股)');
         else if (!C.ae) body = this._rpNa('本站沒有這檔的季 EPS,也沒有官方本益比 → 算不出年化 EPS');
-        else if (!C.valRows) body = `<div class="text-[10px] text-gray-400">年化 EPS ${f(C.ae.eps, 2)}(${C.ae.src}),但 ${this._rpNa('本站沒有這檔近 3 年的本益比分布(pe_band 未涵蓋或虧損)')}</div>`;
+        else if (!C.valRows) {
+            // 🏭 V78.1.2 沒有自己的分布時,「同業中位」那一行⛔ 不可跟著一起消失(以前整行被丟掉,既沒顯示也沒說沒有 = 陷阱 #22)。
+            //   ⭐ 只用既有的 `_rpValRows` 那一列的算法(年化 EPS × 同業中位 PE),⛔ 不另算一份
+            const pr = (C.peer > 0 && C.ae.eps > 0) ? [['同業中位 PE ' + (+C.peer).toFixed(1) + 'x', C.ae.eps * C.peer]] : null;
+            body = `<div class="text-[10px] text-gray-400">年化 EPS ${f(C.ae.eps, 2)}(${C.ae.src}),但 ${this._rpNa('本站沒有這檔近 3 年的本益比分布(pe_band 未涵蓋或虧損)')}</div>`
+                + (pr ? `<div class="mt-1.5">${this._rpPxTableHtml(pr, C.pC, C.pe)}</div>` : '')
+                + `<div class="text-[10px] text-gray-500 mt-1">${C.peer ? `同業中位 PE 來自 industry_pe(33 大類)${C.otc ? ' ・⚠️ 這一檔是上櫃:分類對得上,但那個中位數<b>只用上市股算的</b>' : ''}` : `同業中位 PE:${C.indK ? '本站沒有這一類的中位數' : '本站沒有這一檔的產業分類'}`}</div>`;
+        }
         else {
             const b = C.band;
             const bandPe = Number.isFinite(+b.pe) ? +b.pe : null;

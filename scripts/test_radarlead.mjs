@@ -79,7 +79,9 @@ const R = await page.evaluate(async () => {
             noOpen: !!mine && !mine.open,
         },
         hqShown: /強勢高波動/.test(foldTxt),      // 🧬 那條有出現才驗它的免責(hqN=0 走另一個分支)
-        bearNote: /空頭沒有驗證過/.test(foldTxt),
+        // ⚠️ V78.1.2 V78.0.7 之後 🧬 已經用 2011~2026(含 2022 空頭)驗過 → 舊句「空頭沒有驗證過」**變成不實**、改寫是對的;
+        //   用意(🧬 那條⛔ 不可只講好的,要帶跟空頭有關的代價)改成兩種寫法都收:舊的未驗證 / 新的「空頭那年比較差」。
+        bearNote: /空頭沒有驗證過/.test(foldTxt) || /⚠️[^\n]{0,160}空頭[^\n]{0,80}(差|輸|沒過)/.test(foldTxt),
     };
 });
 await browser.close();

@@ -80,8 +80,10 @@ ok('⑥d VAL 只認 lib 的 KINDS(+ sham:<kind>),其他直接停', /!VAL_KINDS\.
 ok('⑥e ⛔ 不擴充 FIN= 白名單(sham 的對齊目標不同)', /\['acc', 'gm', 'eps', 'sham'\]\.includes\(FIN\)/.test(PB), '');
 
 // ⑦ 候選鏈
-ok('⑦ 候選過濾串上 valOk(x.t)(在 finOk 之後)', /finOk\(x\.t\) && valOk\(x\.t\)\)/.test(PB), '');
-ok('⑦b selfFeat 在 VAL 時也要建(PB 要訊號日收盤)', /if \(SELF\.length \|\| TURN \|\| VAL\) \{/.test(PB), '');
+// ⚠️ V78.1.2 鏈尾後來接了 emOk / usOk / poolOk(V77.7.7、V78.0.7)→ 只釘「緊接 finOk」,⛔ 不釘它是最後一個
+ok('⑦ 候選過濾串上 valOk(x.t)(在 finOk 之後)', /finOk\(x\.t\) && valOk\(x\.t\)(\)| &&)/.test(PB), '');
+// ⚠️ V78.1.2 條件後來多了 `|| RANKBY === 'mom10'`(V78.0.7)→ 釘「VAL 在建表條件裡」,⛔ 不釘條件的全文
+ok('⑦b selfFeat 在 VAL 時也要建(PB 要訊號日收盤)', /if \(SELF\.length \|\| TURN \|\| VAL( \|\|[^)]*\)?)?\) \{/.test(PB) && /const selfFeat = new Map\(\);\nif \([^\n]*\bVAL\b/.test(PB), '');
 
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ VALUE_PASS');
 process.exit(fails.length ? 1 : 0);

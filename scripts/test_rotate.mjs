@@ -50,8 +50,17 @@ else {
         ok('ⓓ ROTATE=lose 真的有換(本金 30 萬 → 錢不夠)', L.s && L.s.rot && L.s.rot.n > 0 && L.s.rot.mode === 'lose', JSON.stringify(L.s?.rot));
         ok('ⓓ2 有換股時成績跟不設不一樣(= 真的生效)', L.s && A.s && L.s.cum !== A.s.cum, `${L.s?.cum} vs ${A.s?.cum}`);
     } else ok('ⓓ ROTATE=lose 若 0 筆要 exit 1 並說原因', /一筆都沒換/.test(L.r.stderr || ''), (L.r.stderr || '').slice(-200));
-    const X = run('x2', { COST_X: '2' });
-    ok('ⓔ COST_X=2:成本壓力生效(總報酬比不設低)且 summary 記下倍數', X.r.status === 0 && X.s && X.s.costX === 2 && X.s.cum < A.s.cum, `${X.s?.cum} vs ${A.s?.cum}`);
+    // ⚠️ V78.1.2 舊版斷言「COST_X=2 總報酬一定比不設低」—— 本金只有 30 萬時**路徑相依**:成本變了、現金變了、
+    //   之後買到的是**不同的幾筆**,總報酬可能反而高(實測 −117,735 vs −121,332 = 假紅燈)。
+    //   ⭐ 用意是「每一筆都多扣一份成本」→ 改成跟路徑無關的檢查:同一次執行裡 per == 平均(ret+dv) − 0.44×倍數。
+    const perOf = (tag, extra) => { const f = path.join(tmp, `t_${tag}.json`); const o = run(tag, { ...extra, TAKEN_OUT: f });
+        let rows = []; try { rows = JSON.parse(fs.readFileSync(f, 'utf8')); } catch (_) {}
+        const g = rows.length ? rows.reduce((a, t) => a + t.ret + (t.dv || 0), 0) / rows.length : null; return { ...o, g, n: rows.length }; };
+    const X = perOf('x2', { COST_X: '2' }), A2 = perOf('a2', {});
+    const near = (a, b) => a != null && b != null && Math.abs(a - b) < 0.011;
+    ok('ⓔ COST_X=2:每一筆多扣一份成本(per == 平均毛報酬 − 0.88;對照組 − 0.44)且 summary 記下倍數',
+       X.r.status === 0 && X.s && X.s.costX === 2 && X.n > 5 && near(X.s.per, +(X.g - 0.88).toFixed(2)) && A2.s && near(A2.s.per, +(A2.g - 0.44).toFixed(2)),
+       JSON.stringify({ xPer: X.s?.per, xG: X.g, aPer: A2.s?.per, aG: A2.g }));
     const bad = spawnSync(process.execPath, [FILE, '25', '2'], { env: { ...base, ROTATE: 'xyz' }, encoding: 'utf8', timeout: 60000 });
     ok('ⓖ 認不得的 ROTATE → exit 1', bad.status === 1 && /ROTATE=xyz 不認得/.test(bad.stderr || ''), bad.stderr);
     fs.rmSync(tmp, { recursive: true, force: true });

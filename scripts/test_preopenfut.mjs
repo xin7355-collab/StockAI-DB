@@ -42,6 +42,9 @@ const R = await page.evaluate(async () => {
     const out = {};
     const el = () => document.getElementById('preOpenFutBar');
     const realWin = app._preOpenFutWindow;
+    // ⚠️ V78.1.2 V77.0.4 起 `_liveIdx` 要「今天的快照」才讀(`_liveFresh` 看 `_liveUpdated`)——
+    //   舊測資沒蓋時間戳 → 每個情境都退回去抓網路(沙箱連不到)→ 整條不顯 = 7 條假紅燈。
+    app._liveUpdated = new Date().toISOString();
     // 真實時間窗函式:直接驗它對各種時刻的判斷(⛔ 不改系統時間)
     out.winFnSrc = String(realWin);
 

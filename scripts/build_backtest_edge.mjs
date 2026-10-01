@@ -27,8 +27,19 @@ export function readEmbedded(html) {
     const lines = html.split('\n');
     const grab = (prefix) => { const l = lines.find(x => x.trimStart().startsWith(prefix)); if (!l) return null; try { return JSON.parse(l.trim().replace(new RegExp('^' + prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*'), '').replace(/,$/, '')); } catch (_) { return null; } };
     const table = grab('_SIGNAL_EDGE:'), meta = grab('_SIGNAL_EDGE_META:');
-    const dm = /_DECK_TRACK49:\s*\{\s*months:\s*(\d+),\s*from:\s*'([^']+)',\s*to:\s*'([^']+)'[\s\S]{0,400}?gene:\s*(\d+),\s*geneDD:\s*([\d.]+),\s*plain:\s*(\d+),\s*plainDD:\s*([\d.]+)/.exec(html);
-    const deck = dm ? { months: +dm[1], from: dm[2], to: dm[3], gene: +dm[4], geneDD: +dm[5], plain: +dm[6], plainDD: +dm[7] } : null;
+    // ⚠️ V78.1.2 舊版一條 regex 要求 `to:` 到 `gene:` 之間 ≤400 字 —— V77.7.6 / V78.0.7 在中間加了幾行註解就超過,
+    //   deck 恆為 null(每週回測「跟嵌入版比」那一步跟著失效,test_backtest_edge ⓪ 長期紅燈)。
+    //   → 先切出 `_DECK_TRACK49: {` 那一段(到下一個頂層成員為止),再逐欄取**第一次**出現的值
+    //     (gene/geneDD/plain/plainDD 的頂層那行排在 prev:/ma5: 之前,⛔ 不會誤抓到巢狀那份);逐行剝掉 // 註解。
+    const i0 = html.indexOf('_DECK_TRACK49:');
+    let deck = null;
+    if (i0 >= 0) {
+        const blk = html.slice(i0, i0 + 6000).split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n');
+        const m1 = /_DECK_TRACK49:\s*\{\s*months:\s*(\d+),\s*from:\s*'([^']+)',\s*to:\s*'([^']+)'/.exec(blk);
+        const num = k => { const m = new RegExp('[{,\\s]' + k + ':\\s*([\\d.]+)').exec(blk); return m ? +m[1] : null; };
+        const g = num('gene'), gd = num('geneDD'), pl = num('plain'), pd = num('plainDD');
+        if (m1 && g != null && gd != null) deck = { months: +m1[1], from: m1[2], to: m1[3], gene: g, geneDD: gd, plain: pl, plainDD: pd };
+    }
     return { table, meta, deck };
 }
 

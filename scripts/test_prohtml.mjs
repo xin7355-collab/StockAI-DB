@@ -73,7 +73,7 @@ ok('①c deploy_pages 的 push paths 有 pro.html(改它才會觸發部署)',
 //   並加**空過守門**(剝完不可以只剩一點點,否則這條等於沒驗)。
 {
     const raw = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-    const live = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const live = raw.replace(/(?<![\w\"'\/])\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     ok('②z 🚧 空過守門:剝掉註解後仍要留著大部分內容(⛔ 否則下面那條是假通過)',
        live.length > raw.length * 0.6, `${live.length}/${raw.length}`);
     ok('② ⛔ index.html 不可出現 pro.html 連結(使用者明示不掛在 App 內)',

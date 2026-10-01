@@ -22,7 +22,10 @@ RES = [{'date': '2026-06-11', 'stock_id': '2330', 'before_price': 2255.0, 'after
        {'date': '2025-12-11', 'stock_id': '2330', 'before_price': 1500.0, 'stock_and_cache_dividend': 5.0,
         'stock_or_cache_dividend': '息', 'reference_price': 1495.0},
        {'date': '2025-09-11', 'stock_id': '2330', 'stock_and_cache_dividend': None, 'stock_or_cache_dividend': '息'}]  # 沒股利數字 → 丟
-POL = [{'date': '2026-09-22', 'CashExDividendTradingDate': '2026-09-11', 'CashEarningsDistribution': 6.0, 'CashStatutorySurplus': 0.0},
+# ⚠️ 未來除息日一律相對「今天」算 —— ③d 走 DM.main(真的今天),寫死 2026-09-11 會在跨過那天後自己變紅
+import datetime as _dt
+FUT = (_dt.date.today() + _dt.timedelta(days=60)).isoformat()
+POL = [{'date': '2026-09-22', 'CashExDividendTradingDate': FUT, 'CashEarningsDistribution': 6.0, 'CashStatutorySurplus': 0.0},
        {'date': '2026-06-01', 'CashExDividendTradingDate': '2026-06-11', 'CashEarningsDistribution': 6.0},   # 已經在 h 裡 → 不重複列進 up
        {'date': '2026-03-01', 'CashExDividendTradingDate': '2026-03-12', 'CashEarningsDistribution': 5.0},   # 過去的 → 不進 up
        {'date': '2026-09-01', 'CashExDividendTradingDate': '', 'CashEarningsDistribution': 1.0}]              # 沒日期 → 丟
@@ -31,7 +34,7 @@ POL = [{'date': '2026-09-22', 'CashExDividendTradingDate': '2026-09-11', 'CashEa
 c = DM.compact(RES, POL, '2026-09-01')
 ok('① 歷史列由舊到新、沒股利數字的丟掉', [x[0] for x in c['h']] == ['2025-12-11', '2026-06-11'], c['h'])
 ok('①b 歷史列格式 [日期, 股利, 類型, 除息前價, 參考價]', c['h'][-1] == ['2026-06-11', 6.0, '息', 2255.0, 2248.99], c['h'][-1])
-ok('①c 未來除息日只留「今天之後、不在歷史裡」的', c['up'] == [['2026-09-11', 6.0]], c['up'])
+ok('①c 未來除息日只留「今天之後、不在歷史裡」的', c['up'] == [[FUT, 6.0]], c['up'])
 
 # ② 探路守門:免費層 → exit 1、⛔ 不寫檔
 with tempfile.TemporaryDirectory() as d:
@@ -63,7 +66,7 @@ with tempfile.TemporaryDirectory() as d:
     ok('③ 第 1 把壞會換第 2 把(探路後鎖定第 2 把)', rc == 0 and DM._paid_k == 1, (rc, DM._paid_k))
     ok('③b 成功的股票以新為準、失敗的保留舊資料、舊檔裡別的股票不丟', hist['d']['2330']['h'][-1][0] == '2026-06-11' and hist['d']['2317']['h'][0][0] == '2024-07-01' and '9999' in hist['d'], list(hist['d']))
     ok('③c ETF(0050)也有抓(含息回測要用)', hist['d']['0050']['h'][0][1] == 0.6)
-    ok('③d 精簡檔每檔最多 12 筆且有 up;深檔不截斷', all(len(v['h']) <= 12 for v in lite['d'].values()) and lite['d']['2330']['up'] == [['2026-09-11', 6.0]])
+    ok('③d 精簡檔每檔最多 12 筆且有 up;深檔不截斷', all(len(v['h']) <= 12 for v in lite['d'].values()) and lite['d']['2330']['up'] == [[FUT, 6.0]], lite['d']['2330']['up'])
     ok('③e 分類統計:失敗 1(保留舊 1)', DM.STAT['fail'] == 1 and DM.STAT['kept_old'] == 1, DM.STAT)
     ok('③f 每檔 2 次呼叫(Result + 政策),探路只多 1 次', len([u for u in calls if 'token=BBBB' in u]) == 1 + 3 * 2, len(calls))
     # ④ 有效檔數不足 → 不覆寫

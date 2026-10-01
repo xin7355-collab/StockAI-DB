@@ -40,6 +40,9 @@ const hist = (n, gapPP, flipN = 0) => Array.from({ length: n }, (_, i) => ({
 const run = ({ h = hist(60, 0.4), live = null, taiex = null }) => page.evaluate(a => {
     app._breadthHist = a.h;
     app._liveQuotes = a.live;
+    // ⚠️ V78.1.2 V77.0.4 起即時快照要「是今天的」才算數(`_liveFresh` 看 `_liveUpdated`)——
+    //   舊測資沒給時間戳 → 盤中那幾條全被當成「昨天的快照」退回收盤檔 = 假紅燈。有給快照就蓋今天的戳。
+    app._liveUpdated = a.live ? new Date().toISOString() : null;
     app._taiexTodayPct = a.taiex;
     return { s: app._medGapState(), html: app._medGapHtml() };
 }, { h, live, taiex });

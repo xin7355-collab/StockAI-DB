@@ -71,6 +71,9 @@ const R = await page.evaluate(async () => {
     const el = () => document.getElementById('ovCommandCenter');
     out.ovLen = (el().innerHTML || '').length;
     out.ovTxt = (el().innerText || '').slice(0, 200);
+    // ⭐ V78.1.2 主卡的第一行就是 `_ovDecide().badge`(V76/V77 改版後「現在該做什麼 / 系統怎麼判」都收進摺疊了)
+    //   → 「不是佔位」改成跟**唯一真相**比:第一眼要出現 `_ovDecide` 算出來的那個 badge
+    try { const d = A._ovDecide(A.activeData || A.rawDailyData, A.currentSymbolId); out.badge = d ? d.badge : null; } catch (e) { out.badge = 'ERR:' + e.message; }
     // ④ 指標還沒回來時的佔位(⭐ 直接把 indicators 清掉重現)
     // ⚠️ 這個沙箱的 `_chartDead` 天生就是 true(真的載不到)→ 要先關掉才驗得到「還在算」那一種
     const keep = A.indicators, keepDead = A._chartDead;
@@ -90,7 +93,8 @@ await browser.close();
 ok('⓪ 空過守門:這個環境真的載不到圖表元件(⛔ 載得到的話下面那條等於沒驗)', R.echartsMissing);
 ok('④ 🚨🚨 圖表元件載不到時,總覽仍要算得出指標並畫出內容(⛔ 這正是使用者截圖的空白畫面)',
    R.hasMa20 && R.ovLen > 500, `hasMa20=${R.hasMa20} len=${R.ovLen}`);
-ok('④b 而且要真的是「現在該做什麼」不是佔位', /現在該做什麼|要注意的事|系統怎麼判/.test(R.ovTxt), R.ovTxt);
+ok('④b 而且要真的是「現在該做什麼」不是佔位(第一眼 == _ovDecide 的 badge,⛔ 不是「正在計算 / 圖表元件沒有載入」)',
+   !!R.badge && !/^ERR/.test(R.badge) && R.ovTxt.includes(R.badge) && !/正在計算技術指標|圖表元件沒有載入成功/.test(R.ovTxt), JSON.stringify({ badge: R.badge, t: R.ovTxt }));
 ok('⑤ 指標還沒算好 → 要說「正在計算」(⛔ 不可留白)', /正在計算技術指標/.test(R.waitTxt), R.waitTxt);
 ok('⑥ 🚨 圖表元件掛掉 → 要說的是**不一樣的話**(重整才會好,⛔ 不可叫人乾等)',
    /圖表元件沒有載入成功/.test(R.deadTxt) && /重新整理/.test(R.deadTxt), R.deadTxt);

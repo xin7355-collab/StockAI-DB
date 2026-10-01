@@ -138,8 +138,15 @@ ok('ⓗ4 標題的數字跟著實際列數走(⛔ 不可寫死「五個」)', R2
 const R1 = await page.evaluate(() => {
     const st = document.querySelector('#__gstrip [data-gaugestrip]');
     const rows = [...st.querySelectorAll('[data-fill]')].map(f => getComputedStyle(f).backgroundImage);
-    const ruler = document.querySelector('[data-rulerfill]');
-    return { rows, ruler: ruler ? getComputedStyle(ruler).backgroundImage : '' };
+    // ⚠️ V78.1.2 這一檔當天尺上可能只剩現價(依規格不畫)→ 量不到 = 假紅燈;反過來也不可「沒畫就算過」。
+    //   → stub `_bearGate`(空頭時一定有兩個觀察價)把尺畫進離屏容器再量,量完還原。
+    const sv = app._bearGate; let ruler = '';
+    try { app._bearGate = () => true;
+        const d = document.createElement('div'); d.style.cssText = 'width:358px;position:absolute;left:0;top:0';
+        d.innerHTML = app._priceRulerHtml() || ''; document.body.appendChild(d);
+        const f = d.querySelector('[data-rulerfill]'); ruler = f ? getComputedStyle(f).backgroundImage : ''; d.remove();
+    } finally { app._bearGate = sv; }
+    return { rows, ruler };
 });
 ok('ⓐ ⭐ 每一條量條的填色都是 linear-gradient(注入:改回單色 → 紅)',
    R1.rows.length >= 3 && R1.rows.every(x => /linear-gradient/.test(x)), JSON.stringify(R1.rows).slice(0, 220));

@@ -53,7 +53,7 @@ const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
 // ── 🧬 V77.0.2 靜態:營收年增只准有一份優先序 + 虧損封頂 ────────────
 {
-    const strip = t => t.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    const strip = t => t.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '').replace(/(?<![\w\"'\/])\/\*[\s\S]*?\*\//g, '');
     // ⚠️ 終點⛔ 不可用 `_applyFundamentalsToXray`(它排在**前面**)也⛔ 不可用寫死的字元數
     //   —— 第一版兩個都踩到:切片提早結束 → 月營收圖那行根本沒被掃到 = 假綠燈。
     const i = src.indexOf('    async fetchFundamentalAnalysis('), j = src.indexOf('async fetchCorpEvents(', i);

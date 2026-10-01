@@ -13,7 +13,7 @@ import fs from 'node:fs';
 const ROOT = '/home/user/StockAI-DB';
 const SRC = fs.readFileSync(ROOT + '/index.html', 'utf8');
 // ⚠️ 原始碼斷言一律**先剝掉註解**再比(本 repo 已被「自己寫的註解救活斷言」騙過 6 次)
-const strip = x => x.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+const strip = x => x.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '').replace(/(?<![\w\"'\/])\/\*[\s\S]*?\*\//g, '');
 const S = strip(SRC);
 const fails = [];
 const ok = (n, c, x = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : '  ' + String(x).slice(0, 200)}`); if (!c) fails.push(n); };

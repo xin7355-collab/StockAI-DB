@@ -90,7 +90,17 @@ def main():
     start = time.strftime('%Y-%m-%d', time.gmtime(time.time() - 3.2 * 365 * 86400))
     print(f'📐 PE 自身位階採礦 ・{len(syms)} 檔 ・token {len(TOKENS)} 把 ・start={start}')
 
-    out, t0, done, ok, thin = {}, time.time(), 0, 0, 0
+    # 🚨 V78.1.2 這一輪「抓不到」的⛔ 不可從檔案裡消失 —— 2026-10-01 實測:FinMind 回 403×4,495 / 402×2,011
+    #   (付費額度用完),2,369 檔只成功 618 檔,舊版直接用這 618 檔整份覆蓋 → 1,625 → 618,代號 6~9 開頭全沒了,
+    #   而 workflow 全綠(618 ≥ MIN_OK)。→ 抓不到的沿用上一輪那一筆(它自帶 `d` = 那筆的資料日,前端看得出是舊的);
+    #   「歷史太短」是**資料本身**的結論 → 照舊拿掉。
+    old = {}
+    try:
+        old = (json.loads(OUT.read_text(encoding='utf-8')) or {}).get('data') or {}
+    except Exception:
+        old = {}
+    out, t0, done, ok, thin, kept = {}, time.time(), 0, 0, 0, 0
+    _thin_set = set()
     for sym in syms:
         if done >= LIMIT or (time.time() - t0) / 60 > MAX_MIN:
             print(f'⏹️ 到達上限,本輪處理 {done} 檔')
@@ -99,12 +109,15 @@ def main():
         rows, err = fm('TaiwanStockPER', sym, start)
         time.sleep(SLEEP)
         if not rows:
+            if sym in old:
+                out[sym] = old[sym]; kept += 1
             continue
         rows.sort(key=lambda x: str(x.get('date') or ''))
         vals = [(str(r.get('date') or '')[:10], r.get('PER')) for r in rows]
         pes = [v for _, v in vals if isinstance(v, (int, float)) and v > 0]
         if len(pes) < MIN_N:
             thin += 1
+            _thin_set.add(sym)
             continue
         w = pes[-WIN:]
         cur_d, cur = next(((d, v) for d, v in reversed(vals)
@@ -127,7 +140,11 @@ def main():
         if done % 300 == 0:
             print(f'   … {done}/{len(syms)} ・{(time.time()-t0)/60:.0f} 分 ・成功 {ok} ・歷史太短 {thin}')
 
-    print(f'\n📊 處理 {done} 檔 ・✅ 成功 {ok} ・⏭️ 歷史太短 {thin} ・{(time.time()-t0)/60:.0f} 分')
+    # 跑到上限沒輪到的那些也沿用(⛔ 不可因為時間到就消失)
+    for sym in syms:
+        if sym not in out and sym in old and sym not in _thin_set:
+            out[sym] = old[sym]; kept += 1
+    print(f'\n📊 處理 {done} 檔 ・✅ 成功 {ok} ・⏭️ 歷史太短 {thin} ・♻️ 這輪抓不到、沿用上一輪 {kept} ・{(time.time()-t0)/60:.0f} 分')
     if REASON:
         print('   失敗分類:' + ' ・'.join(f'{k}×{v}' for k, v in REASON.most_common(6)))
 
@@ -139,7 +156,8 @@ def main():
     cover = Counter(k[0] for k in out)
     payload = {
         'updated': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-        'n': ok, 'win': WIN, 'cover': dict(sorted(cover.items())),
+        # `n` = 檔案裡的總檔數;`fresh` = 這一輪真的抓到的;`kept` = 沿用上一輪的(各自的 `d` 是它的資料日)
+        'n': len(out), 'fresh': ok, 'kept': kept, 'win': WIN, 'cover': dict(sorted(cover.items())),
         # ⭐ 實測成績一起寫進去,前端顯示時直接引用(⛔ 別在前端另外寫死一份)
         'edge': {'lo10': 0.68, 'lo25': 0.63, 'mid': -0.31, 'hi25': -0.43, 'hi10': -0.49,
                  'horizon': 60, 'cost': 0.44, 'files': 300, 'years': 11,

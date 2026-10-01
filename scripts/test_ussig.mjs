@@ -27,7 +27,8 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 // ── 靜態 ──
 const ck = (CODE.match(/const CACHE_KEY = JSON\.stringify\(\{[^}]*\}\)/) || [''])[0];
 ok('ⓐs CACHE_KEY ⛔ 沒有 USSIG(候選層濾網,既有快取照樣重用)', ck && !/USSIG/.test(ck), ck);
-ok('ⓑs usOk 接在候選過濾鏈上(emOk 之後)', /emOk\(x\.t\) && usOk\(x\.t\)\)/.test(CODE), '');
+// ⚠️ V78.1.2 鏈尾後來又接了 poolOk / rkShamOk(V78.0.7)→ ⛔ 不釘「usOk 是最後一個」(結尾的 `)`),只釘「在候選鏈上、緊接 emOk」
+ok('ⓑs usOk 接在候選過濾鏈上(emOk 之後)', /emOk\(x\.t\) && usOk\(x\.t\)(\)| &&)/.test(CODE), '');
 ok('ⓒs 缺鍵 = 剔除並計數(⛔ 不放行)', /if \(v == null\) \{ usNoData\+\+; return false; \}/.test(CODE), '');
 ok('ⓔs sham 通過率從候選實測量、固定種子 _shamHash', /usFrac = n \? on \/ n : 0/.test(CODE) && /_shamHash\(`\$\{t\.sym\}\|\$\{t\.inD\}\|us`\)/.test(CODE), '');
 ok('ⓕs 對照表讀不到 / <100 鍵 → exit 1', /讀不到 USSIG_MAP[^\n]*process\.exit\(1\)/.test(CODE) && /usMap\.size < 100\)[^\n]*process\.exit\(1\)/.test(CODE), '');

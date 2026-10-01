@@ -62,6 +62,15 @@ const FX = {
     scr: gh('screener.json'), tags: gh('stock_tags.json'), rot: gh('sector_rot.json'), corr: gh('top_correlations.json'),
     fmx: gh('fmx_pack.json'),
 };
+// ⚠️ V78.1.2 2026-10-01 那一輪 pe_band 採礦額度用完,線上檔從 1,625 掉到 618 檔、5483 不見了(採礦端已修成「抓不到沿用上一輪」)。
+//   這支測試有十幾條釘的是 **5483 的估值表** → 線上暫時沒有時,退回本機 data/pe_band.json 那一筆(同樣是真實產物,只是較舊),
+//   並印出來源;兩邊都沒有就照舊誠實不驗(⑤0 空過守門會叫)。
+try {
+    if (FX.band && FX.band.data && !FX.band.data['5483']) {
+        const loc = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'pe_band.json'), 'utf8'));
+        if (loc && loc.data && loc.data['5483']) { FX.band.data['5483'] = loc.data['5483']; console.log(`ℹ️ 線上 pe_band 沒有 5483 → 用本機 data/pe_band.json 那一筆(資料日 ${loc.data['5483'].d})`); }
+    }
+} catch (_) {}
 const missing = Object.entries(FX).filter(([, v]) => !v).map(([k]) => k);
 if (missing.length) { console.log(`❌ 測資抓不到(origin/gh-pages 與 data/ 都沒有):${missing.join(', ')} —— ⛔ 不跑假測試`); process.exit(1); }
 // 🚧 測資守門:5483 要有「融資餘額停在較早日期」這個情境(⑦ 靠它),沒有就直接說
@@ -70,7 +79,7 @@ const lastK = FX.k5483[FX.k5483.length - 1];
 console.log(`ℹ️ 5483 K 線末日 ${lastK.date}・最後一筆融資 ${lastMg ? lastMg.date : '無'}・chips data_date ${FX.chips5483.data_date}`);
 
 // ── 靜態斷言(⛔ 先剝註解,本專案第 16 次踩「說明 bug 的註解含被禁字串」)──
-const strip = s => s.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');   // 整行註解 + 行尾註解都剝
+const strip = s => s.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '').replace(/(?<![\w\"'\/])\/\*[\s\S]*?\*\//g, '');   // 整行註解 + 行尾註解都剝
 {
     const sw = SRC.slice(SRC.indexOf('    switchSubTab(tab) {'), SRC.indexOf('    switchSubTab(tab) {') + 9000);
     // ⚠️ V76.0.1 報告分頁搬到「總覽」右邊 → ⛔ 這條**不可以**釘「Report 排在陣列最後」,
@@ -266,8 +275,27 @@ ok('④a 同業中位那一行只有兩種合法輸出:給得出來(上櫃要標
        : /本站沒有這一類的中位數|本站沒有這一檔的產業分類/.test(R.txt.rpVal))
    && !/同業中位 PE[^。]*\b0\.0+x/.test(R.txt.rpVal),   // ⚠️ 第一版寫成 `0\.0` → 被「同業中位給法 = 200.0 元」誤判(自己的假失敗)
    `peer=${R.ctx && R.ctx.peer} otc=${R.ctx && R.ctx.otc} :: ` + R.txt.rpVal.slice(0, 300));
-// ⑤ 估值表數字 = 手算
+// ④b V78.1.2 沒有自己的本益比分布時,「同業中位」那一行⛔ 不可跟著消失(以前整行被丟掉,既沒顯示也沒說沒有)
 {
+    const NB = await page.evaluate(() => {
+        const base = { sym: '9999', isEtf: false, ae: { eps: 10, src: '測試' }, valRows: null, band: null, pC: 100, pe: 10, peSrc: 'x', otc: true, indK: '24' };
+        const strip = h => String(h).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+        return { has: strip(app._rpValHtml({ ...base, peer: 20 })), none: strip(app._rpValHtml({ ...base, peer: null })) };
+    });
+    ok('④b ⭐ 沒有分布但有同業中位 → 仍印「同業中位 PE 20.0x」與對照價 200.0 元(上櫃要說只用上市股算)',
+       /同業中位 PE 20\.0x/.test(NB.has) && /200\.0/.test(NB.has) && /只用上市股算/.test(NB.has), NB.has.slice(0, 300));
+    ok('④b2 沒有分布也沒有同業中位 → 誠實說「本站沒有這一類的中位數」', /本站沒有這一類的中位數/.test(NB.none) && !/同業中位 PE \d/.test(NB.none), NB.none.slice(0, 300));
+}
+// ⑤ 估值表數字 = 手算
+// ⚠️ V78.1.2 5483 某天會不在 pe_band 裡(2026-10-01 那一輪採礦額度用完,檔案從 1,625 掉到 618 檔)→
+//   舊版直接讀 `b.p5` 炸掉整支測試(後面幾十條一條都沒跑到)。⛔ 不可「沒有就跳過」(空過);
+//   改成:5483 沒分布時換一檔**有分布的**來驗同一張表,驗完切回 5483(後面的斷言都以它為準)。
+const _bandSym = (R.ctx && R.ctx.band) ? null : ['2330', '2327'].find(s => FX.band.data && FX.band.data[s]);
+const RV = _bandSym ? await render(_bandSym) : R;
+if (_bandSym) { console.log(`ℹ️ 5483 今天不在 pe_band → ⑤⑥ 改用 ${_bandSym} 驗估值表`); await render('5483'); }
+ok('⑤0 空過守門:驗估值表的那一檔真的有自己的本益比分布', !!(RV.ctx && RV.ctx.band), JSON.stringify({ sym: _bandSym || '5483' }));
+if (RV.ctx && RV.ctx.band) {
+    const R = RV;
     const C = R.ctx, b = C.band;
     const raw = [b.p5, b.p25, b.med, b.p75, b.p95].map(m => C.eps * m);
     const exp = raw.map(v => +v.toFixed(1));

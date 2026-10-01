@@ -130,6 +130,37 @@ const snap = async (page) => page.evaluate(() => {
     };
 });
 const page = await boot({ width: 390, height: 844 });
+// ⭐ V78.1.2 價格尺一律在「寬度已知」的容器裡量,情境用 stub 決定(⛔ 不靠當天資料)——
+//   舊版靠「2327 剛好是空頭」「剛好有一道 +35% 以外的套牢區」:資料一變,那幾條整排紅,
+//   而且空頭那條分支其實**根本沒被走到**;頁面上的卡在沙箱沒有 Tailwind 時只有 64px 寬,
+//   量到的「跑出卡片外」也是假的(陷阱 #40)。→ 這支 helper:stub `_bearGate` / 在 `_upsideStash`
+//   最前面塞一道遠牆 → 畫進 358px 容器 → 量完一定還原。
+const rulerIn = (pg, o = {}) => pg.evaluate(o => {
+    const sv = { bg: app._bearGate, U: app._upsideStash }; let r = null;
+    try {
+        if (o.bear != null) app._bearGate = () => o.bear;
+        const K = app._keyLevels || {}, C = +K.C;
+        let far = null;
+        if (o.far && app._upsideStash) {
+            far = { lo: +(C * 1.5).toFixed(1), hi: +(C * 1.6).toFixed(1), sup: 6 };
+            app._upsideStash = { ...app._upsideStash, list: [far].concat(app._upsideStash.list || []) };
+        }
+        const d = document.createElement('div'); d.style.cssText = 'width:358px;position:absolute;left:0;top:0';
+        d.innerHTML = app._priceRulerHtml() || ''; document.body.appendChild(d);
+        const pr = d.querySelector('[data-priceruler]'), cb = pr ? pr.getBoundingClientRect() : null;
+        r = { w: cb ? +cb.width.toFixed(1) : 0, txt: pr ? pr.innerText : '',
+              marks: pr ? [...pr.querySelectorAll('[data-mark]')].map(e => [e.dataset.mark, +e.dataset.v]) : [],
+              bands: pr ? [...pr.querySelectorAll('[data-supplyband]')].map(e => e.dataset.supplyband) : [],
+              cells: pr ? [...pr.querySelectorAll('[data-cell]')].map(e => ({ n: e.dataset.cell, lines: e.innerText.trim().split('\n').length })) : [],
+              over: pr ? [...pr.querySelectorAll('[data-leg],[data-mark],[data-supplyband]')].filter(e => { const b = e.getBoundingClientRect(); return b.left < cb.left - 1 || b.right > cb.right + 1; })
+                    .map(e => e.getAttribute('data-leg') || e.getAttribute('data-mark') || e.getAttribute('data-supplyband')) : [],
+              farStr: far ? `${Math.round(far.lo)}~${Math.round(far.hi)}` : null,
+              K: { sl: K.slPx, buy: K.buyPx, add: K.addPx, C, trig: K.trigPx, ex: K.exitRulePx,
+                   inst: (app._instTargetStash && String(app._instTargetStash.sym) === String(app.currentSymbolId)) ? app._instTargetStash.mid : null } };
+        d.remove();
+    } finally { app._bearGate = sv.bg; app._upsideStash = sv.U; }
+    return r;
+}, o);
 
 // ── 2327:有套牢帶、有追買 ──
 await load(page, '2327'); const A = await snap(page);
@@ -167,16 +198,19 @@ ok('② 位置類(基本面/預期)與大盤那格**不可**出現 text-red/text
 // ⚠️ V76.1.0 這條原本把 `data-mark` 的**名字**寫死(停損/買進/轉強/追買)—— 空頭時名字改成
 //    「轉強觀察 / 前高」就整條紅了。⭐ 它要釘的**用意**是「價位全部來自 `_keyLevels`,⛔ 顯示端不自己算」
 //    → 改成比**數值集合**:尺上每一個價位都必須在 `_keyLevels` 那組數字裡找得到(跟叫什麼名字無關)。
+const R6 = await rulerIn(page, { bear: true });   // 空頭 stub → 尺上會有 👀 兩個觀察價(≥3 個標記才比得出東西)
 ok('⑥ 價格尺每個標記價位 == _keyLevels 的數字(⛔ 顯示端不自己算;注入:自己算前高 → 紅)',
-   (() => { if (!A.K || A.marks.length < 3) return false;
-       const pool = [A.K.sl, A.K.C, A.K.buy, A.K.add, A.K.inst].filter(x => Number.isFinite(+x)).map(x => +(+x).toFixed(2));
-       return A.marks.every(([, v]) => pool.some(p => Math.abs(p - v) < 0.011)); })(),
-   JSON.stringify({ marks: A.marks, K: A.K }));
+   (() => { if (!R6 || R6.marks.length < 3) return false;
+       const pool = [R6.K.sl, R6.K.C, R6.K.buy, R6.K.add, R6.K.inst, R6.K.trig, R6.K.ex].filter(x => x != null && Number.isFinite(+x)).map(x => +(+x).toFixed(2));
+       return R6.marks.every(([, v]) => pool.some(p => Math.abs(p - v) < 0.011)); })(),
+   JSON.stringify(R6 && { marks: R6.marks, K: R6.K }));
 ok('⑦ ⭐ 套牢帶 == _upsideStash 同一層的 lo~hi(注入:自己呼叫 _overheadSupply → 紅)', A.bands.length >= 1 && A.bands.every(b => A.stash.includes(b)), JSON.stringify({ bands: A.bands, stash: A.stash }));
 // ⚠️ V76.1.0 文案瘦身過(「更遠還有套牢區 X—— 超過 +35%…」→「↑ 更遠 X 也有套牢量」)→ 斷言改釘**用意**:
 //    那個區間要出現在文字裡、而且⛔ 不可被畫成尺上的帶子。
-ok('⑦b 更遠的那道(774~866,超過 +35%)用一句話交代,⛔ 不硬畫進尺裡把尺壓扁',
-   /更遠[^\n]*774~866/.test(A.ccTxt) && !A.bands.includes('774~866'), A.ccTxt.slice(-300));
+// ⚠️ V78.1.2 原本釘 2327 那天真的有的「774~866」—— 資料一變就沒有那道牆了 → 改成**塞一道 +50% 的牆**(決定性)
+const R7 = await rulerIn(page, { far: true });
+ok('⑦b 更遠的那道(超過 +35%)用一句話交代,⛔ 不硬畫進尺裡把尺壓扁',
+   R7 && R7.farStr && new RegExp('更遠[^\\n]*' + R7.farStr).test(R7.txt) && !R7.bands.includes(R7.farStr), JSON.stringify(R7 && { far: R7.farStr, bands: R7.bands, t: R7.txt.slice(-200) }));
 ok('⑧ 🔔 顆數 == _armTrigStash.triggers.length(2327 這一天沒有觸發價 → 沒有鈕也對)', (A.bell == null ? 0 : +A.bell) === A.stashN, JSON.stringify({ bell: A.bell, stashN: A.stashN }));
 ok('⑨ ⭐ 第一眼字數 ≤ 600(舊版 778;三檔實測 474~487 +20%)(注入:把 ⚖️ 4 個系統搬回第一眼 → 紅)', A.ccLen <= 600, String(A.ccLen));
 ok('⑨b 第一眼**不再出現**規則說明句(刻意不給點位 / 只採用實測有效 / 個系統在講方向)', !/刻意不給點位|只採用實測有效|個系統在講方向|系統怎麼判的/.test(A.ccTxt), '');
@@ -252,7 +286,9 @@ await page.close();
     // 🚪 V77.5.2 空手時⛔ 不再畫 🛒 買進 / 🔺 追買 / 「跌破前低就退出」(舊朱家泓劇本,沒實測過)——
     //   空手又沒有自己的招(playbook_edge)時,尺上只剩現價 + 套牢帶 + 估值對照 → 改釘「有現價、⛔ 沒有舊劇本標記」。
     ok('⑥b 2330:尺畫得出(有現價)、⛔ 沒有舊劇本標記、⛔ 沒有假的套牢帶(每一帶都要在現價上方)',
-        B.marks.some(m => m[0] === '現價') && !B.marks.some(m => /買進|追買|轉強$/.test(m[0])) && bandOk && B.ccLen <= 600,
+        // ⚠️ V78.1.2 多頭 + 空手 + 沒有自己的招 + 沒有估值 → 尺上只剩現價一個點,函式依規格不畫(`marks < 2` 就回空)——
+        //   「畫得出就要有現價」;畫不出時 _keyLevels 必須在(= 是「沒東西可比」不是「壞掉」;⑱ 用 2327 另外確定尺真的畫得出來)
+        (B.marks.length ? B.marks.some(m => m[0] === '現價') : !!(B.K && +B.K.C > 0)) && !B.marks.some(m => /買進|追買|轉強$/.test(m[0])) && bandOk && B.ccLen <= 600,
         JSON.stringify({ marks: B.marks, bands: B.bands, cp: cp2, len: B.ccLen }));
     // 🔔 V77.5.2 空手 + 沒有自己的招 → 沒有可以盯的價(⛔ 不再盯 5 日線 / 前高)→ 0 顆也要跟 stash 一致
     ok('⑧b 2330 🔔 顆數 == _armTrigStash', (B.bell == null ? 0 : +B.bell) === B.stashN, JSON.stringify({ bell: B.bell, stashN: B.stashN }));
@@ -307,8 +343,11 @@ await page.close();
        D.gauges.length >= 3 && D.gauges.every(x => /linear-gradient/.test(x.fill || '')
            && x.rampRgb.every(c => String(x.fill).includes(c))),
        JSON.stringify(D.gauges.map(x => [x.k, x.fill])));
+    // ⚠️ V78.1.2 改在 358px 容器量:頁面上那張卡在沙箱(沒有 Tailwind)只有 64px 寬 → 3% 的邊界只剩 2px,任何圖示都「跑出去」= 假紅燈;
+    //   反過來容器寬度量成 0 也會假綠燈 → 先斷言寬度真的 ≥350。
+    const R18 = await rulerIn(p4, { bear: true });
     ok('⑱ ⭐ 價格尺沒有任何東西跑出卡片外(注入:把標籤放回軌道上 → 紅)。⛔ 不可用 scrollWidth 判 —— overflow-x:hidden 會把它救成假綠燈',
-       D.prOver.length === 0, JSON.stringify(D.prOver));
+       R18 && R18.w >= 350 && R18.marks.length >= 3 && R18.over.length === 0, JSON.stringify(R18 && { w: R18.w, over: R18.over, n: R18.marks.length }));
     ok('⑱b 軌道上只有圖示、⛔ 沒有字(字全部搬到下面的圖例)', !/[0-9]/.test(D.rulerTrackHasText), D.rulerTrackHasText);
     const pocN = await p4.evaluate(() => (document.getElementById('ovCommandCenter').querySelectorAll('[data-pocband]') || []).length);
     ok('⑱c 圖例把每個價位都講完(標記 + 套牢層 + 量價密集區,一個都不能少)',
@@ -383,14 +422,19 @@ await page.close();
             addPx: K.addPx, buyPx: K.buyPx, ccLen: (cc.innerText || '').replace(/\s+/g, ' ').trim().length };
     });
     console.log(`   2327 trend=${W.trend} ・圖例 ${W.legs.join(' / ')}`);
+    // ⚠️ V78.1.2 2327 已經不是空頭了(trend=flat)→ 舊版這三條等於在量「多頭的尺」。改成 stub `_bearGate` = true,
+    //   空頭分支**一定**被走到;再 stub false 當對照(多頭時⛔ 不可冒出觀察價 = 那兩個標記真的是空頭分支畫的)。
+    const R31 = await rulerIn(p6, { bear: true }), R31n = await rulerIn(p6, { bear: false });
     ok('㉛ ⭐ 空頭股的價格尺⛔ 不可出現「追買 / 買進」,要改成觀察價(注入:拿掉 _bearGate → 紅)',
-       W.bear && !/追買|買進/.test(W.txt) && /觀察/.test(W.txt), JSON.stringify(W.legs));
+       R31 && !/追買|買進/.test(R31.txt) && /觀察/.test(R31.txt) && R31n && !/觀察/.test(R31n.txt), JSON.stringify(R31 && R31.marks));
     ok('㉛b ⭐ 但**價位一個都沒變**(事實不竄改,只改叫人怎麼做的那句話)',
-       (() => { const a = W.marks.find(m => m[0] === '前高'), b = W.marks.find(m => m[0] === '轉強觀察');
-                return (!W.addPx || (a && Math.abs(a[1] - W.addPx) < 0.01)) && (!W.buyPx || (b && Math.abs(b[1] - W.buyPx) < 0.01)); })(),
-       JSON.stringify({ marks: W.marks, addPx: W.addPx, buyPx: W.buyPx }));
+       (() => { if (!R31 || !(R31.K.add > 0) || !(R31.K.buy > 0)) return false;   // 空過守門:兩個價都要有,才比得出東西
+                const a = R31.marks.find(m => m[0] === '前高'), b = R31.marks.find(m => m[0] === '轉強觀察');
+                return a && b && Math.abs(a[1] - R31.K.add) < 0.01 && Math.abs(b[1] - R31.K.buy) < 0.01; })(),
+       JSON.stringify(R31 && { marks: R31.marks, add: R31.K.add, buy: R31.K.buy }));
     ok('㉛c 空頭時要直接說「不是叫你買」(⛔ 不可只在後面補一句但書 —— V75.1.9 的教訓)',
-       /不是叫你買/.test(W.txt), '');
+       R31 && /不是叫你買/.test(R31.txt), '');
+    globalThis.__R31 = R31;
     // 📖 說明彈窗
     const H = await p6.evaluate(() => { app._rulerHelp(); const m = document.getElementById('richHelpModal');
         return { t: m ? m.innerText : '', btn: !!(m && m.querySelector('[data-ruleraskbtn]')) }; });
@@ -472,8 +516,9 @@ await page.close();
     ok('㊴b ⭐ 但它仍然是 _keyLevels 的產生者(⛔ 刪掉整支 = 價格尺沒東西可畫)',
        !!(V2.kl && V2.kl.pocRel === true), JSON.stringify(V2.kl));
     ok('㊴c ⭐ 每一格都有「這個價位在講什麼」(三行:名稱 / 價格 / 說明;現價那格可以只有兩行)',
-       V2.cells.length >= 3 && V2.cells.filter(c => c.lines >= 3).length >= V2.cells.length - 1,
-       JSON.stringify(V2.cells.map(c => [c.n, c.lines])));
+       // ⚠️ V78.1.2 2330 這天尺上只剩現價(依規格不畫)→ 改量 2327 空頭 stub 那把尺(格子最多,⛔ 不靠當天資料)
+       (() => { const cs = (globalThis.__R31 || {}).cells || []; return cs.length >= 3 && cs.filter(c => c.lines >= 3).length >= cs.length - 1; })(),
+       JSON.stringify(((globalThis.__R31 || {}).cells || []).map(c => [c.n, c.lines])));
     ok('㊴d 🗑️ 底部那行逐項解釋已刪(每一格自己寫了,⛔ 不講第二遍)',
        !/灰帶 = 上方套牢區/.test(V2.body), '');
     await p7.close();

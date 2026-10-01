@@ -20,7 +20,10 @@ const ok = (n, c, extra = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '
 
 // ═══ 靜態 ═══════════════════════════════════════════════════════
 {
-    const fn = SRC.slice(SRC.indexOf('_rpDateBarHtml(C) {'), SRC.indexOf('_rpQuickHtml(C) {'));
+    // ⚠️ V78.1.2 結束錨點改成下一個成員 `_RP_SNAP_KEEP:` —— V77.1.6 在兩者中間插了 `_rpSnapOf`(它本來就該讀 rawDailyData),
+    //   舊錨點把它切進來 → 「⛔ 不可讀 rawDailyData」誤判成這支違規(假紅燈)。
+    const _i0 = SRC.indexOf('_rpDateBarHtml(C) {');
+    const fn = SRC.slice(_i0, SRC.indexOf('_RP_SNAP_KEEP:', _i0));
     ok('⓪a 切得到 _rpDateBarHtml(空過守門)', fn.length > 400, String(fn.length));
     ok('ⓐs 日期走既有的 `_dChip`(⛔ 禁止自己拼日期字串 —— 過期提醒是它做的)',
        /this\._dChip\(C\.kDate/.test(fn) && /this\._dChip\(C\.fenDate/.test(fn), '');
@@ -86,7 +89,9 @@ const R = await page.evaluate(async () => {
         has: !!el, n: el ? +el.dataset.rpdate : 0, txt: el ? el.innerText.replace(/\s+/g, ' ').trim() : '',
         // 日期列必須是 rpQuick 卡頭的**下一個**元素(⛔ 不可飄到別的卡)
         inQuick: !!(el && qk && qk.contains(el)),
-        headFirst: !!(el && el.previousElementSibling && /快速判別表/.test(el.previousElementSibling.innerText || '')),
+        // ⚠️ V78.1.2 V77.1.5 整張改成預設收起來,日期列刻意搬進 **summary**(收起來也看得到日期 = 資料日期鐵則)
+        //   → 用意改釘「在快速判別表的 summary 裡,而且 summary 有那個標題」(⛔ 不再是「卡頭的下一個兄弟」)
+        headFirst: !!(el && el.closest('summary') && /快速判別表/.test(el.closest('summary').innerText || '')),
         ctx: { kDate: C && C.kDate, yoyM: C && C.yoyM, q, fenDate: C && C.fenDate },
         ctl,
         quickTxt: qk ? qk.innerText.replace(/\s+/g, ' ').trim().slice(0, 400) : '',
@@ -98,7 +103,7 @@ await browser.close();
 
 // ── C ──
 ok('ⓐ0 日期列渲染得出來(空過守門)', R.has && R.n >= 2, `has=${R.has} n=${R.n}`);
-ok('ⓐ 在 ⚡ 快速判別表卡內,而且緊接在卡頭那一列下面(⛔ 不塞進 flex row:390px 會擠爆)',
+ok('ⓐ 在 ⚡ 快速判別表卡內,而且在收起來也看得到的 summary 裡(資料日期鐵則:收起來看不到日期 = 沒標)',
    R.inQuick && R.headFirst, `inQuick=${R.inQuick} headFirst=${R.headFirst} | ${R.txt}`);
 ok('ⓐ2 四格的值逐字對得上 ctx(⛔ 不是另算一份)', (() => {
     const t = R.txt;

@@ -57,13 +57,16 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
 const errs = []; page.on('pageerror', e => errs.push(String(e)));
 await page.route('**/*', r => (r.request().url().startsWith('file://') ? r.continue() : r.abort()));
+// ⚠️ V78.1.2 舊版靠「沙箱抓不到檔」來造「沒有產物」的情境 —— 本機一旦有 data/backtest_edge.json(每週回測產物)就整段紅了。
+//   → 「沒產物」改成**這支測試自己擋掉**那個檔(決定性),有產物的情境下面另外 stub。
+await page.route('**/backtest_edge.json*', r => r.abort());
 await page.goto(pathToFileURL(path.join(ROOT, 'index.html')).href, { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForFunction(() => typeof app !== 'undefined' && !!app._loadBacktestEdge, null, { timeout: 25000 });
 await page.waitForTimeout(3000);
 const R = await page.evaluate(async (aKey) => {
     const A = app;
     await A._loadBacktestEdge();
-    const loaded = A._btEdge;                       // 沙箱抓不到檔 → 一定是 null
+    const loaded = A._btEdge;                       // 這支測試擋掉了那個檔 → 一定是 null
     const [det, title] = aKey.split('｜');
     const noteOff = A._btEdgeNote('html'), txtOff = A._btEdgeNote('text');
     const embG = A._sigEdge(det, title);

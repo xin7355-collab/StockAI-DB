@@ -81,22 +81,32 @@ const W = await page.evaluate(async (r) => {
     const out = {};
     // ⭐ 先真的 analyze 一次 —— `_calcBullBearScan` 要吃籌碼/基本面快取,
     //   只塞 rawDailyData 會落到「局部優勢」那條(命中數不夠)= 驗不到要驗的分支。
-    try { await app.analyze('2330'); await new Promise(r2 => setTimeout(r2, 2500)); } catch (_) {}
-    const run = async (adv) => {
+    // ⚠️ V78.1.2 原本寫死 2330 —— 它某天只命中 3 條(<4 條 = 訊號不足)→ 空過守門紅了一整段時間。
+    //   ⛔ 不放寬命中門檻;改成「依序試幾檔,挑第一檔今天真的走到多方分支的」,並把挑到誰印出來。
+    let sym = null;
+    const run = async (adv, s) => {
         app._chuPositionAdvice = () => adv;
-        app.currentSymbolId = '2330';
+        app.currentSymbolId = s;
         let bb = '';
-        try { bb = (app._calcBullBearScan('2330') || {}).oneLiner || ''; } catch (e) { bb = 'THROW:' + e.message; }
+        try { bb = (app._calcBullBearScan(s) || {}).oneLiner || ''; } catch (e) { bb = 'THROW:' + e.message; }
         return { bb };
     };
-    out.hot = await run({ regime: 'bull', regimeLabel: '多頭(過熱)', pct: '3~5 成(只留強勢股)' });
-    out.ok = await run({ regime: 'bull', regimeLabel: '多頭', pct: '8 成' });
+    const HOT = { regime: 'bull', regimeLabel: '多頭(過熱)', pct: '3~5 成(只留強勢股)' };
+    for (const s of ['2330', '2317', '2454', '2382', '3231', '2308', '2327', '2881', '2303']) {
+        try { await app.analyze(s); await new Promise(r2 => setTimeout(r2, 2500)); } catch (_) { continue; }
+        const t = (await run(HOT, s)).bb.replace(/<[^>]+>/g, '');
+        if (/同步攻擊|局部優勢/.test(t)) { sym = s; break; }
+    }
+    out.sym = sym;
+    out.hot = await run(HOT, sym || '2330');
+    out.ok = await run({ regime: 'bull', regimeLabel: '多頭', pct: '8 成' }, sym || '2330');
     app._chuPositionAdvice = real; app._bearGate = realBear;
     return out;
 }, rows);
 const strip = h => String(h).replace(/<[^>]+>/g, '');
 // 🚧 空過守門:這檔今天要真的落在「多方優勢」那條,否則下面在驗一個沒走到的分支
 const bbHot = strip(W.hot.bb), bbOk = strip(W.ok.bb);
+console.log(`   多空計分卡用 ${W.sym || '(沒有一檔走到多方分支)'}`);
 ok('🚧 空過守門:多空計分卡真的給出「多方優勢」那句(⛔ 否則下面空過)',
    /同步攻擊|局部優勢/.test(bbHot), bbHot.slice(0, 200));
 if (/同步攻擊/.test(bbHot)) {
@@ -108,7 +118,7 @@ if (/同步攻擊/.test(bbHot)) {
     // ⚠️ 「四面向同步攻擊」要 4 個面向裡 3 個同向 **且** 命中 ≥8 條 —— 那取決於當天的籌碼/基本面
     //    有沒有到齊(實測今天 2330 只有 6 條)。⛔ 不可為了讓測試好過就放寬那個門檻。
     //    ⭐ 改用原始碼釘住措辭(跟 ④c 同做法),動態那半只保證「不炸、數字不變」。
-    console.log('   ⏭️ 今天 2330 命中數不到 8 → 落在「局部優勢」分支,措辭改用原始碼驗');
+    console.log(`   ⏭️ 今天 ${W.sym} 命中數不到 8 → 落在「局部優勢」分支,措辭改用原始碼驗`);
 }
 ok('④ ⭐ 大盤過熱時,多空計分卡的那句要講出大盤狀況 +「空手的別追高」(原始碼)',
    /_mg \? `四面向同步攻擊,<b>但大盤\$\{_mg\.regimeLabel\}、建議總部位 \$\{_mg\.pct\}<\/b> → 有貨的續抱,<b>空手的別追高<\/b>`/.test(SRC),

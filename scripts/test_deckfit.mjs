@@ -21,7 +21,7 @@ import { rwdShim } from './lib_rwdshim.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 // ⚠️ 原始碼斷言一律先剝註解(本 repo 被「自己寫的註解救活斷言」騙過 6 次)
-const strip = x => x.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+const strip = x => x.replace(/^\s*\/\/.*$/gm, '').replace(/[ \t]+\/\/[^\n]*/g, '').replace(/(?<![\w\"'\/])\/\*[\s\S]*?\*\//g, '');
 const fails = [];
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : `  ${String(e).slice(0, 300)}`}`); if (!c) fails.push(n); };
 for (const f of ['screener.json', 'today_signals.json', 'macro_risk.json', 'playbook_edge.json'])

@@ -37,7 +37,9 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 // 🚨 但 `\/\/[^\n]*` 會**誤傷 URL**:`https://api.finmindtrade.com` 的 `//` 也被當成註解起點,
 //    整個網址被剝掉 → 「FinMind 有沒有帶 token」那條斷言會拿到 -1,看起來像程式沒改到。
 //    ⭐ 這次就是這樣浪費了一輪 → 用 lookbehind 排除 `:`(協定)與引號內的情況。
-const NOCOM = SRC.replace(/(?<![:'"\w])\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+// ⚠️ V78.1.2 區塊註解的開頭⛔ 不可緊跟在英數字後面 —— `accept="image/*"` 會被當成 `/*` 起點,
+//   一口氣吞掉 21 萬字元(含一個 `${_nd.sub}`)→ ④b 假紅燈。註解的 `/*` 前面一定是空白或行首。
+const NOCOM = SRC.replace(/(?<![:'"\w])\/\/[^\n]*/g, '').replace(/(?<![\w"'\/])\/\*[\s\S]*?\*\//g, '');
 
 const fsl = (NOCOM.match(/async fetchStockList\(\)[\s\S]{0,3200}?\n    \},/) || [''])[0];
 ok('① 離線表是第一順位(在 FinMind 之前)',

@@ -28,7 +28,7 @@ const ok = (n, c, e = '') => { if (c) console.log(`✅ ${n}`); else { fails++; c
 
 // ═══ 靜態 ═══
 // ⛔ 註解本身會寫到那些欄位名 → 掃描前先剝掉註解(本專案已踩過 15 次)
-const noCmt = SRC.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+const noCmt = SRC.replace(/(?<![\w\"'\/])\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
 
 const scAt = noCmt.indexOf('_STRAT_CHANGES:');
 const scBlk = scAt < 0 ? '' : noCmt.slice(scAt, noCmt.indexOf('\n    ]', scAt) + 6);
