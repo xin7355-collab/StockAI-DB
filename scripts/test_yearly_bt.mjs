@@ -118,7 +118,7 @@ const R = await page.evaluate(async () => {
     } else { o.naLast = true; o.naSum = true; }
     // 點另一列 → 細節換成那一個
     const other = Y.strats.find(s => s.id !== 'base');
-    PRO._ybSort = null; PRO.ybPick(other.id); o.pick = box().querySelector('#ybDetail').innerText.includes(other.t.slice(0, 6));
+    PRO._ybSort = null; PRO.ybPick(other.id); { const nm = PRO._stratName(PRO._stratOfYb(other.id)); o.pick = box().querySelector('#ybDetail').innerText.includes(nm || other.t.slice(0, 6)); }   // 🏷️ V78.1.0 有對到名字表的列改顯示名字
     PRO.ybPick('base');
     o.noToggle = !/2022~2026\(本站資料/.test(box().innerText) && !box().querySelector('[onclick*="ybSet"]');
     // 📦 舊情境庫表頭可排序

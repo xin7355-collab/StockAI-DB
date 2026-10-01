@@ -2,7 +2,8 @@
 /**
  * 💰 V77.9.4 「100 萬放進去變多少」—— 把 leader_probe 的三份產物嵌成 pro.html 的 `_PROFIT_BOARD`
  *
- *   node scripts/embed_profit_board.mjs <board.json> <board2.json> <small.json> [--to 2026-09-24]
+ *   node scripts/embed_profit_board.mjs <board.json> <board2.json> <small.json> [--to 2026-09-24] [--gene gene.json]
+ *   node scripts/embed_profit_board.mjs --gene gene.json   ← 只換 🧬 那幾列(V78.1.0,gene_board.mjs 產物)
  *     board.json  = ETFS=… 那一輪(`etf[窗口]` 每檔 17 個起點的含息中位 / 最差)
  *     board2.json = CAPITAL=1000000 的四種領頭羊做法(`cap.fin / worstFin`)
  *     small.json  = 10萬/30萬/100萬 × 每月加碼 × 三種打法(`cap`)
@@ -13,8 +14,39 @@
  */
 import fs from 'fs';
 
-const [bf, b2f, sf] = process.argv.slice(2).filter(a => !a.startsWith('--'));
 const toArg = (() => { const i = process.argv.indexOf('--to'); return i > 0 ? process.argv[i + 1] : null; })();
+const geneArg = (() => { const i = process.argv.indexOf('--gene'); return i > 0 ? process.argv[i + 1] : null; })();
+const [bf, b2f, sf] = process.argv.slice(2).filter((a, i, A) => !a.startsWith('--') && !['--to', '--gene'].includes(A[i - 1]));
+const RE_LINE = /^  _PROFIT_BOARD: \{.*\},$/m;
+// 🔥 V78.1.0 把 🧬 那幾套(scripts/gene_board.mjs 產物)加進看板:grp 'gene'
+//   ⭐ 交叉驗證:gene 那邊每個起點的 0050 中位 == 看板的 0050(同一組起點),差超過 0.3% → exit 1(⛔ 不嵌半套)
+function geneRows(G, wk, from, e50fin, die) {
+  const sets = G.sets.filter(s => s.from === from);
+  if (sets.length !== 3) die(`${wk} 🧬 做法應為 3 種,實際 ${sets.length}`);
+  return sets.map(s => {
+    if (Math.abs(s.b0050fin - e50fin) / e50fin > 0.003) die(`${wk} ${s.k} 的 0050 ${s.b0050fin} ≠ 看板 ${e50fin}(起點不同?)`);
+    return { k: s.k, n: s.name, grp: 'gene', fin: s.fin, worst: s.worst, mdd: s.mdd, beat: s.beat, yrBeat: s.yrBeat, yrs: s.yrs };
+  });
+}
+// 只換 🧬 那幾列(⛔ 不重跑 leader_probe):node scripts/embed_profit_board.mjs --gene gene.json
+if (geneArg && !bf) {
+  const P0 = 'pro.html', h0 = fs.readFileSync(P0, 'utf8'), m0 = h0.match(RE_LINE);
+  const die0 = m => { console.error('❌ ' + m); process.exit(1); };
+  if (!m0) die0('pro.html 沒有 _PROFIT_BOARD 那一行');
+  const cur = JSON.parse(m0[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, ''));
+  const G = JSON.parse(fs.readFileSync(geneArg, 'utf8'));
+  for (const [wk, W] of Object.entries(cur.wins)) {
+    const e50 = W.rows.find(r => r.k === '0050'); if (!e50 || e50.late) die0(wk + ' 沒有 0050');
+    W.rows = W.rows.filter(r => r.grp !== 'gene').concat(geneRows(G, wk, W.from, e50.fin, die0));
+  }
+  cur.geneSrc = G.src;
+  const ln = '  _PROFIT_BOARD: ' + JSON.stringify(cur) + ',';
+  fs.writeFileSync(P0, h0.replace(RE_LINE, () => ln));
+  const back = JSON.parse(fs.readFileSync(P0, 'utf8').match(RE_LINE)[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, ''));
+  if (JSON.stringify(back) !== JSON.stringify(cur)) die0('讀回來不一樣');
+  console.log('✅ 🧬 列已嵌入:' + Object.entries(cur.wins).map(([k, W]) => `${k} ${W.rows.filter(r => r.grp === 'gene').map(r => r.k + ' ' + Math.round(r.fin / 1e4) + '萬').join(' / ')}`).join(' | '));
+  process.exit(0);
+}
 if (!bf || !b2f || !sf) { console.error('用法: embed_profit_board.mjs board.json board2.json small.json [--to YYYY-MM-DD]'); process.exit(2); }
 const B = JSON.parse(fs.readFileSync(bf, 'utf8')), B2 = JSON.parse(fs.readFileSync(b2f, 'utf8')), SM = JSON.parse(fs.readFileSync(sf, 'utf8'));
 const die = m => { console.error('❌ ' + m); process.exit(1); };
@@ -52,6 +84,7 @@ for (const [wk, from] of Object.entries(WIN)) {
     if (Math.abs(want - e50.fin) > 1000) die(`${wk} ${r.k} 的 0050 ${want} ≠ ETF 那邊 ${e50.fin}(起點不同?)`);
     delete r.b0050;
   }
+  if (geneArg) rows.push(...geneRows(JSON.parse(fs.readFileSync(geneArg, 'utf8')), wk, from, e50.fin, die));
   wins[wk] = { from, rows };
 }
 

@@ -47,6 +47,7 @@ await page.waitForTimeout(1200);
 const R = await page.evaluate(async () => {
     const P = window.PRO;
     P.switchTab('lab'); await new Promise(r => setTimeout(r, 900));
+    P.selLab('ok'); await new Promise(r => setTimeout(r, 200));   // 🏆 V78.1.0 一進來是「選哪一套」→ 這支測的是「有用」清單
     const n = () => document.querySelectorAll('#labList .labitem').length;
     const o = {};
     // 總條數(⛔ 一個字都不准刪 → 這個數字是守門)

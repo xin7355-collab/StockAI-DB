@@ -858,7 +858,10 @@ const L = await page.evaluate(async () => {
             intro: document.getElementById('labIntro').innerText,
         };
     };
-    const out = { tabs: [...document.querySelectorAll('#labBar .labbtn')].map(e => e.textContent.trim()) };
+    // 🏆 V78.1.0 頁籤改三層(選哪一套 / 為什麼 / 原始數字),子頁籤只在所屬那一層出現 → 兩層各收一次
+    const _tb = () => [...document.querySelectorAll('#labBar .labbtn')].map(e => e.textContent.trim());
+    PRO.selLab('ok'); const _t1 = _tb(); PRO.selLab('bt'); const _t2 = _tb();
+    const out = { tabs: _t1.concat(_t2) };
     // ⚠️ V74.5.0 起第一欄是「📊 回測數字」(原回測計算機併進來)→ ⛔ 不可假設預設停在「實測有用」
     PRO.selLab('ok');
     out.ok = grab();
