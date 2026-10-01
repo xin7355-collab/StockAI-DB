@@ -304,7 +304,7 @@ ok('⑥e 門檻 index `_DECK_THIN_AMT` == pro `CAST_MIN_AMT`(同一條線)', pro
     // ⑩d V78.0.6 說明文字跟著規則走(設定選項 / 決策台區塊說明 / 換倉提醒 / pro 拋竿 / Telegram)
     const txt = await page.evaluate(() => {
         const one = () => { app.settings.stratUnlock = true; const box = document.getElementById('stratBox'); let st = '';
-            if (box) { app._renderStratBox(); st = box.innerText; }
+            if (box) { app._renderStratBox(); st = (box.querySelector('[data-stratopt="lead"]') || {}).innerText || ''; }   // ⚠️ V78.1.1 只看 👑 那一個選項(🔥 的說明本來就寫「一年位置高」,整格比會被它救活/害死)
             const dk = app._deckShowDesc(app._DECK_SECTIONS.find(c => c.k === 'leader').d); return { st, dk }; };
         const on = one(); app.settings.leadPosOff = true; const off = one(); app.settings.leadPosOff = false; return { on, off };
     });

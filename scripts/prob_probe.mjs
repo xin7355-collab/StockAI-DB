@@ -21,7 +21,7 @@
 import fs from 'fs';
 import path from 'path';
 import {
-    FLAT_BAND, HORIZONS, N_CELLS, cellName, featuresAt, labelOf, outcomeAt, LIMIT_UP,
+    FLAT_BAND, HORIZONS, N_CELLS, cellName, featuresAt, labelOf, outcomeAt, LIMIT_UP, pctOf, rowOf,
 } from './lib_prob.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -31,9 +31,6 @@ const MIN_N = +(process.env.MIN_N || 200);      // ② 一格至少要這麼多�
 const LIMIT = +(process.env.LIMIT || 0);
 const SELFTEST = process.argv.includes('--selftest');
 
-const med = a => { if (!a.length) return 0; const b = Float64Array.from(a).sort(); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
-const qtl = (a, p) => { if (!a.length) return 0; const b = Float64Array.from(a).sort(); return b[Math.min(b.length - 1, Math.max(0, Math.round((b.length - 1) * p)))]; };
-const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
 
 // ═══ 🧪 自我驗證 ═══
 if (SELFTEST) {
@@ -193,20 +190,6 @@ console.log(`\r   ✅ ${nSym} 檔 ・${nBar.toLocaleString()} 股·日 ・🚧 �
 
 
 // ═══ 3. 整理成表 ═══
-const pctOf = T => { const s = T.lab[0] + T.lab[1] + T.lab[2]; return s ? T.lab.map(x => +(x / s * 100).toFixed(1)) : [0, 0, 0]; };
-const pfOf = a => { let up = 0, dn = 0; for (const x of a) { if (x > 0) up += x; else dn -= x; } return dn > 0 ? +(up / dn).toFixed(2) : (up > 0 ? 99 : 0); };
-const rowOf = T => {
-    const n = T.ret.length;
-    if (!n) return null;
-    const p = pctOf(T);
-    const ex = T.ex;
-    return [n, p[0], p[1], p[2],
-        +qtl(T.ret, 0.25).toFixed(2), +med(T.ret).toFixed(2), +qtl(T.ret, 0.75).toFixed(2),
-        +mean(T.ret).toFixed(2), pfOf(T.ret), +med(T.mae).toFixed(2), +med(T.mfe).toFixed(2),
-        // 🆚 ⭐ 這兩欄是「這一格到底有沒有比大盤強」—— ⛔ 少了它,空頭裡的跌深反彈會被讀成選股很強
-        ex.length ? +(ex.filter(x => x > 0).length / ex.length * 100).toFixed(1) : null,
-        ex.length ? +mean(ex).toFixed(2) : null];
-};
 const SCHEMA = ['n', '漲%', '平%', '跌%', 'P25', '中位', 'P75', '平均', '獲利因子', 'MAE中位', 'MFE中位', '贏大盤%', '超額平均'];
 
 const cells = {};

@@ -106,3 +106,24 @@ export function outcomeAt(R, i, h) {
     for (let q = i + 1; q <= i + h; q++) { if (R[q].l < mn) mn = R[q].l; if (R[q].h > mx) mx = R[q].h; }
     return { ret: (x - e) / e * 100, mae: (mn - e) / e * 100, mfe: (mx - e) / e * 100 };
 }
+
+// ── 一格 → 表裡那一列(V78.1.1 從 prob_probe.mjs 搬進來:prob_factor_probe 也要產同一個 schema,⛔ 不可複製第二份) ──
+//   T = { lab:[漲,平,跌], ret:[], mae:[], mfe:[], ex:[] }
+//   回 [n, 漲%, 平%, 跌%, P25, 中位, P75, 平均, 獲利因子, MAE中位, MFE中位, 贏大盤%, 超額平均]
+export const med = a => { if (!a.length) return 0; const b = Float64Array.from(a).sort(); const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+export const qtl = (a, p) => { if (!a.length) return 0; const b = Float64Array.from(a).sort(); return b[Math.min(b.length - 1, Math.max(0, Math.round((b.length - 1) * p)))]; };
+export const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
+export const pctOf = T => { const s = T.lab[0] + T.lab[1] + T.lab[2]; return s ? T.lab.map(x => +(x / s * 100).toFixed(1)) : [0, 0, 0]; };
+export const pfOf = a => { let up = 0, dn = 0; for (const x of a) { if (x > 0) up += x; else dn -= x; } return dn > 0 ? +(up / dn).toFixed(2) : (up > 0 ? 99 : 0); };
+export const rowOf = T => {
+    const n = T.ret.length;
+    if (!n) return null;
+    const p = pctOf(T);
+    const ex = T.ex;
+    return [n, p[0], p[1], p[2],
+        +qtl(T.ret, 0.25).toFixed(2), +med(T.ret).toFixed(2), +qtl(T.ret, 0.75).toFixed(2),
+        +mean(T.ret).toFixed(2), pfOf(T.ret), +med(T.mae).toFixed(2), +med(T.mfe).toFixed(2),
+        // 🆚 ⭐ 這兩欄是「這一格到底有沒有比大盤強」—— ⛔ 少了它,空頭裡的跌深反彈會被讀成選股很強
+        ex.length ? +(ex.filter(x => x > 0).length / ex.length * 100).toFixed(1) : null,
+        ex.length ? +mean(ex).toFixed(2) : null];
+};

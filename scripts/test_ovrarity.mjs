@@ -189,8 +189,9 @@ await load('1815');
         app._pbEdge = keepP; app._todaySig = keepT;
         return { real, fake, none };
     });
+    // 🐛 V78.1.1 舊版釘死 2,320(當天的資料)→ 採礦一跑就紅;改釘用意,⛔ 不釘數字
     ok('ⓔ2 真實產物:掃描檔數 + 有觸發價 + 亮看多訊號 三個數字都印得出來',
-       /2,320/.test(r.real) && /觸發價/.test(r.real) && /看多訊號/.test(r.real) && /\d/.test(r.real), r.real.slice(0, 200));
+       /全市場 [\d,]{3,} 檔/.test(r.real) && /觸發價/.test(r.real) && /看多訊號/.test(r.real) && /\d/.test(r.real), r.real.slice(0, 200));
     ok('ⓔ2b 換一份產物 → 三個數字全部跟著換(⛔ 證明不是寫死)',
        /1,111/.test(r.fake) && />3</.test(r.fake) && />7</.test(r.fake) && !/2,320/.test(r.fake), r.fake.slice(0, 200));
     // ⭐ 載不到時的正解是「**什麼都不說**」(呼叫端會退回原本那句)—— ⛔ 不可編一組數字(陷阱 #22)

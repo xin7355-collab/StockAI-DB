@@ -372,7 +372,8 @@ export default {
         if (event.cron === '0 9 * * 1-5') {
             ctx.waitUntil(runDailySummary(env));
         } else if (event.cron === '0 1 * * 1-5') {
-            ctx.waitUntil(runMonitorChuMorningScan(env));
+            // 🧹 V78.1.1 朱家泓 5MA 早上推播已刪除(使用者:設定裡沒用/過時的刪掉;它推的是沒實測過的買點)。
+            //   App 端 V78.1.1 起一律送 chuMorningPush:false,舊版 worker 也會跳過;函式保留以免舊 KV 誤觸。
             ctx.waitUntil(runEtfFollowMorningPush(env));  // V17.18
             // 🚀 逐筆內外盤的窗口是 09:03 起 → 用台北 09:00 這一輪叫它(⛔ 別跟 quotes 同一輪發)
             ctx.waitUntil(ghDispatch(env, 'intraday-ticks'));
