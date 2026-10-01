@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.1.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.1.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -593,6 +593,9 @@
         padding-right: 0 !important;
         border-bottom: 1px solid #21262d !important;
     }
+    /* ⏳ V78.1.6 總覽「時間到期」精簡卡:手機上下疊,≥768px 才左右兩欄(⛔ 不用 Tailwind 斷點 —— 沙箱載不到) */
+    .ov-due-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    @media (min-width: 768px) { .ov-due-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); } }
     /* 巢狀:框裡的框已經被拉平了,再畫一條線會變成「線 + 線」→ 只留最外那一條 */
     div[class~="border"][class*="border-[#30363d]"] div[class~="border"][class*="border-[#30363d]"]:not(.keepbox),
     div[class~="border"][class*="border-[#30363d]"] details[class~="border"][class*="border-[#30363d]"]:not(.keepbox),
@@ -886,7 +889,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.1.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.1.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8675,8 +8678,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.1.5',
+    _APP_VERSION: 'V78.1.6',
     _CHANGELOG: [
+        { v: 'V78.1.6', d: ['⏳ 總覽最上面那張卡(持股時間到期)改成精簡版:四行講完「抱了幾天 / 什麼時候賣 / 不是跌破是時間到 / 為什麼要賣」,右邊是成本・報酬率・損益;收盤鎖漲停時多一張「明天開盤看到哪一種就照哪一條」4 條規則 + 後天怎麼做。原本那一大段說明一個字沒刪,收進「📖 為什麼・實測數字」。收盤後的日子改講「明天 / 下週一」。'] },
         { v: 'V78.1.5', d: ['🧪 「抱滿那天剛好鎖漲停 → 延到隔天開盤賣」16 年那組跑完:每一筆平均多 +3.28%(1,396 次),整套 17 條全贏(593 vs 575 萬);但近 4 年只贏 7 條 —— 兩段不一致 → <b>規則照舊不換</b>,總覽那行把兩個數字都寫出來。用這套自己 16 年 926 次重跑「明天開盤看到哪一種」那張表,四種情境方向全部一樣。'] },
         { v: 'V78.1.4', d: ['⏳ <b>「時間到期」那張卡不再講錯</b>(國巨截圖):已經抱 40 天卻寫「抱滿 20 天」、半夜還寫「今天尾盤賣」→ 現在超過會寫「已超過 N 天」、收盤後寫「下一個交易日」;那天收盤<b>鎖漲停</b>時多一行本站實測:隔天開盤賣平均 +2.19%、賺的機率 69.7%。', '📋 <b>收盤鎖漲停之後,明天 / 後天怎麼賣</b>(16 年全市場 68,536 次):明天<b>開盤就在漲停 → 先抱著</b>(比開盤賣多 3.34%)、<b>開高 → 開盤就賣</b>、<b>開平或開低 → 別在開盤殺,尾盤賣</b>;後天只有明天收盤又鎖漲停才值得留。總覽與當沖頁那張卡會直接列出來。', '🧪 回測「抱滿那天剛好鎖漲停 → 延到隔天開盤賣」:每一筆平均多 +3.3%(4 年 989 次 / 16 年 1,396 次,約 77% 比較高),但整套 17 條起點近 4 年只贏 7 條、16 年贏 17 條 —— 兩段不一致 → <b>規則沒改</b>,自動下單照舊;手動的你照上面那張表決定。', '🌙 個股期貨夜盤採礦:排程被延遲到白天才跑時,⛔ 不再把日盤寫成「夜盤」(10/01 就寫成了 09:30 的日盤資料)。', '📐 本益比區間採礦:付費金鑰那一小時用完時,改成<b>等到下一小時接著抓</b>(以前直接收工,一晚只抓到兩三百檔);上一版也改成沒抓到的先沿用、沒舊值的先抓。'] },
         { v: 'V78.1.2', d: ['🧪 <b>21 支長期紅燈的測試全部修好(267 支全綠)</b>,而且每一支都先分類再修:3 支是這台機器少裝套件、11 支是測試釘住「當時的資料或寫法」(改成釘用意,⛔ 一條斷言都沒放寬)、2 支是測試工具自己有洞(剝註解的寫法把 <code>image/*</code> 當成註解開頭,一口氣吞掉 21 萬字 —— 另外 9 支用同一寫法的測試也一起換掉,重跑都還是綠的 = 沒有藏著的假綠燈)。',
@@ -8836,7 +8840,6 @@ ${list}
         { v: 'V77.4.0', d: ['👑 <b>你給的那套「股王釣魚」選股,拿真實資料測完了</b>(2,131 檔・2023-05~2026-09):它七層裡<b>真正在做事的只有「成交金額排全市場前 50」這一層</b> —— 這群 10 天比隨便挑一檔多 +0.98 個百分點、勝率 41% 對 36%、六道關卡全過。<b>其餘六層(收盤站上 5 日線 / 月線向上 / 股價>300 或成交>5 億 / 近 5 日法人買超 / 剔除放量跌)一起疊上去只多 +0.06</b>,拆掉任何一層都沒差 = 零。', '⛔ <b>不換掉現在的預設</b>:把「前 50」疊在你現在用的 🧬 強勢高波動上面,跟「從 🧬 裡隨機抽同樣檔數」比,扣掉來回成本 0.44% 後六格全部是負的。⚠️ 而且「前 50」這群自己的 10 日超額仍是 <b>−0.29%</b>(還是輸大盤)—— 它贏的是別的股票,不是大盤,⛔ 不是買進訊號。AI 評分、隔天表態、3 天收不回就出:本站以前就測過,一條都不成立(詳細寫在產業作戰室 🔬 實測總表)。', '📖 探針 <code>kingpool_probe.mjs</code> 自帶 9 條自我驗證(含拿真實選股產物逐檔對表 284 檔),下一版把「👑 成交額前 50」做成釣魚分頁的一個池子,並把釣魚分頁改成「建池 → 拋竿 → 驗證」三步驟 + 拋竿動畫。'] },
         { v: 'V77.3.9', d: ['🎣 <b>釣魚系統救回來了,而且住進自己的分頁</b>(你說「釣魚系統救回,裡面的魚改為強勢高波動,重新敘述是用何種辦法篩選出來的,在產業作戰室裡面另外新開一個釣魚分頁」):產業作戰室頂端多一顆 <b>🎣 釣魚</b> —— 魚缸動畫、🎣 拋竿、點魚細節、🧺 漁獲籃<b>原封不動回來</b>(下架期間 JS 一個字都沒刪,你的漁獲紀錄也還在);隔壁的 <b>📒 成績單</b>一個字都沒動,兩個分頁各司其職:<b>釣魚是「挑」、成績單是「驗」</b>。', '🧬 <b>池子裡的魚改成「強勢高波動」</b>(預設就是它、排第一)。其餘 5 個池子<b>一個都沒刪</b>,收進「🔄 換一池」而且<b>每一個都標了實測狀態</b> —— ✅ 有實測背書 / ⚠️ 有但這個切法沒單獨測過 / 🚨 實測排不出順序(🏅 那池的 IC ≈ 0)/ ⚪ 只描述。⛔ 一個池子都不准沉默。', '📖 <b>重新寫了「這些魚是怎麼篩出來的」</b>:逐步六條、為什麼是這兩個條件、什麼時候換新;🎣 拋竿旁邊也寫明<b>舊的三層漏斗是被自己的實測打掉的</b>(492 個交易日、六關 0 過、拆掉板塊那兩關反而更好),現在用的是決策台那套(49 個月 +589.8 萬 vs 0050 買了放著 +264.1 萬)。🚨 而且主動講開一件最容易搞混的事:<b>池子的門檻(20 日振幅)跟拋竿的門檻(年化波動率)不是同一個數字</b>,兩邊名單不一樣⛔ 不是壞掉。⛔ 畫面上一個數字都不寫死,全部讀常數。', '🐛 順手修三個<b>一復原就會看到</b>的舊問題:① 「📖 這一條的細節」裡的實測成績本來會印成 <b>+0 萬</b>(它讀的那個常數只存在於散戶救星那邊)② 🧬 那一池的說明還寫著已經過期的舊回測數字 ③ 📒 成績單點股票名稱<b>完全沒反應</b>(現在會自動跳到 🎣 釣魚 並展開那一檔)。'] },
         { v: 'V77.3.8', d: ['🎯 <b>盲測練習</b>(老余 14.txt 的訓練法:在<b>不知道後面怎麼走</b>的情況下練「出手 / 不出手」):設定中心「🧪 自訂回測」旁多一顆「🎯 盲測練習」→ 隨機抽一檔(自選＋庫存 ≥5 檔就用你的,不夠就用全市場成交額前 60)、隨機切一天,只畫最後 60 根 K(右邊未來 20 根整片留白,⛔ 股號與日期也不給);你答「買 / 不買」、可填「我畫的邊界價」→ 揭曉之後 5/10/20 天<b>扣同期加權</b>的報酬、那一根本站亮了哪些訊號與實測等級、你的邊界價事後有沒有被跌破。累積統計只算「10 日超額為正」的比例,對照 <b>隨便挑一天 36.4%</b>,⛔ 不到 10 題不下結論;並分「那一根有本站 A 級訊號 / 沒有」兩組(= 他說的「標準圖 vs 猜」)。⛔ 沒有新卡片,只在設定中心。', '📐 <b>總覽「⭐ 重點判讀」多一條避雷:下降三角(上斜下平)</b> —— V77.3.7 老余那 19 份裡唯一站得住的一條(1,683 檔・2022~2026 含空頭・n=20,072:之後 10 天平均比大盤<b>少 0.48 個百分點</b>、五年逐年全負、門檻高原九格全過)。定義跟探針一字不差(近 20 根高點回歸斜率 ≤ −0.05·ATR/根、最低 3 個低點全距 ≤ 0.5·ATR);⛔ 它是「手上有的別加碼、空手別接」,<b>不是放空訊號</b>,也不進計分、不主動提醒。', '🔧 K線分頁 / 盤中提醒 / 盲測練習用的那 13 類偵測器清單抽成一份 <code>_KBAR_DET_LIST</code>(以前寫在 <code>_kbarTryFire</code> 裡面,盲測練習要共用 → ⛔ 不複製第二份)。'] },
-        { v: 'V77.3.7', d: ['🎯 <b>老余交易夜 19 份逐字稿全部讀完、能測的都測了</b>(你說「可以優化我的程式嗎?策略需要回測就回測」):⭐ 先查登記表 —— 他 ~60 條主張裡<b>位置(區間下緣做多)/ 單根尖尖的 / 假跌破站回 / 互換 / 翻亞當出場 / 出一留一 / 拉不賠 / 賺賠比門檻 / 結算日 / 缺口 / 兇K隔壁 / 長上影隔壁 / K 棒變小</b> 本站早就測過(大多數打掉;「互換」= 本站六關全過的「創 60 日高後回測不破」,「該發生卻沒發生」的多方版 = 本站 9 個正期望訊號之一「站上長黑K高點」)。', '🔬 新探針 <code>laoyu_probe.mjs</code>(1,683 檔・2022~2026 含空頭・55 萬事件)只切他<b>沒被切過的條件</b>:🚨 <b>他最核心的兩條方向相反</b> —— 「區間下緣才做多」在日 K 上 ≈0、一年位階反而 &gt;67% 那桶最好(+0.35pp);「左邊要有人擋子彈」有擋的反而差 0.35pp。真破邊界後收回 −0.34pp、兩隻腳 −0.43pp、三問疊加四層沒有一層是正的。', '📐 <b>唯一站得住的:下降三角(上斜下平)</b> —— 他說「後面往下跌機率高」,實測 n=20,072、10 日 −0.48pp、五年逐年全負、門檻高原九格全過 → 下一版放進總覽「⭐ 重點判讀」當<b>避雷</b>(⛔ 不是放空訊號)。', '⏱️ <code>kbar5_tod_probe.mjs</code> 用 kbar5 88 天先量他的盤中時段口訣的長相(⛔ 不下結論):11 點轉折率跟別的時段一樣是 50%、49.5% 的全日最低在 09:00~09:30 那一段、尾盤 +0.01% —— 而且他講的是台指期,kbar5 以前沒有台指期。', '📼 <b>改挖礦:kbar5 從這一版起也存台指期近月的日盤 5 分 K</b>(<code>d[date].idx.TXF</code>,08:45~13:45,夜盤不收;股票母體與 bias 完全不動;要請你 Run 一次「📼 5 分 K 逐日累積」workflow,log 要看到「🔎 自我驗證 …525…820」)。', '📋 完整評估紀錄在 docs/EXTERNAL_REVIEWS.md ㉘;實測總表新增 1 條避雷 + 3 條實測沒用 + 1 條還測不了;推薦欄那條「📼 開始存 5 分 K」已經做完 → 歸類移除。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -36378,7 +36381,7 @@ ${this._reportFacts(sym)}
                 }
             } catch (_) {}
             // ── 🎯 Block A:行動徽章(switch/case 框架:要加自己的條件就插在對應 case)──
-            let badge, cls, why;
+            let badge, cls, why, dueCard = null;
             // 🚪 V77.5.1 使用者截圖(2327):總覽寫「🛡️ 持股續抱 ・抱滿 20 天還剩 0 個交易日,沒破就抱著」,
             //   決策台卻把它列在「今天要賣的」—— **兩個都在同一個畫面上叫使用者做相反的事**。
             //   ⭐ 真因:這裡的 state 只看「你設定的那一條」有沒有破,⛔ 從來沒看另外兩條出場條件
@@ -36406,20 +36409,23 @@ ${this._reportFacts(sym)}
                         //   ① 抱的天數 > 上限 → 寫「已超過 N 天」⛔ 不寫成「到了」 ② 今天的尾盤窗口已經過了(或週末)→「下一個交易日」
                         //   ③ 最後一根收盤鎖漲停 → 加一行 `_DT_EDGE.lu` 實測(`_luLock`,⛔ 不另寫判斷、⛔ 數字不寫死)
                         const _n = edH.maxd.n, _over = Math.max(0, edH.maxd.held - _n);
-                        const { late: _late, when: _when } = this._dueWhen();   // 今天能照收盤價賣的時間已經過了?
-                        badge = _over ? `⏳ 已超過 ${_over} 天・${_when}就賣` : `⏳ 抱滿 ${_n} 天・${_late ? '下一個交易日賣' : '今天尾盤賣'}`;
+                        const { late: _late, openWhen: _ow, eodWhen: _ew } = this._dueWhen();   // 今天能照收盤價賣的時間已經過了?
+                        const _lu = this._luLock(data);
+                        // ⏳ V78.1.6 使用者:「改明日開盤」—— 鎖漲停時隔天**不是一律開盤賣**(`_LUNEXT_EDGE`:一字鎖抱、開高賣、開平開低尾盤)
+                        //   → 徽章講「開盤看規則」,規則列在卡上;沒鎖照舊講尾盤(日子用 `_dueWhen` 的 明天/下週一/今天)
+                        badge = _lu ? `⏳ ${_over ? `已超過 ${_over} 天` : `抱滿 ${_n} 天`}・${_ow}開盤照規則`
+                              : _over ? `⏳ 已超過 ${_over} 天・${_ew}就賣` : `⏳ 抱滿 ${_n} 天・${_ew}尾盤賣`;
                         cls = 'border-amber-500 text-amber-200 bg-amber-900/20';
                         const _nr = edH.nearest;
                         why = `已經抱了 <b>${edH.maxd.held}</b> 個交易日 = `
                             + (_over ? `已經<b>超過</b>三條出場條件的第三條「抱滿 ${_n} 個交易日」<b>${_over} 天</b>(上限 ${_n} 天)—— `
                                      : `三條出場條件的第三條「<b>抱滿 ${_n} 個交易日</b>」到了 —— `)
-                            + (_late ? `回測是到期那天收盤賣;今天能賣的時間已經過了 → <b>下一個交易日就賣</b>(自動下單是下一個交易日 ${_eod} 尾盤)`
+                            + (_late ? `回測是到期那天收盤賣;今天能賣的時間已經過了 → <b>${_ew}就賣</b>(自動下單是${_ew} ${_eod} 尾盤)`
                                      : _over ? `回測是到期那天收盤賣,已經錯過了 → <b>今天就賣</b>(自動下單是今天 ${_eod} 尾盤)`
                                      : `回測與自動下單都是<b>今天 ${_eod} 尾盤照收盤價賣</b>`)
                             + `。⛔ 這不是價格被跌破,是時間到`
                             + (_nr ? `(${this._escHtml(_nr.name)} ${_nr.v.toFixed(2)} 等線都還沒破)` : '') + '。'
                             + `<br>💡 為什麼要賣:實測「抱越久差越多」,但整套回測就是用 ${_n} 天這個上限算出來的 —— 想抱更久就是在做另一套沒驗證過的策略。`;
-                        const _lu = this._luLock(data);
                         if (_lu) {
                             const g = _lu.g, f = x => `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(2)}%`;
                             why += `<br><span data-ovdue-lu="1">🟥 最後一根<b>收盤鎖漲停</b>(事實):歷史上同樣鎖漲停、月線${_lu.up ? '上彎' : '下彎'}(${g.n.toLocaleString()} 次),`
@@ -36430,6 +36436,24 @@ ${this._reportFacts(sym)}
                                          + ` —— 但整套 17 條起點近 4 年只贏 ${L.paths}${L16 ? `、16 年贏 ${L16.paths}(兩段不一致)` : ''}(每條只影響十幾筆)→ <b>規則沒改</b>,自動下單照到期那天尾盤賣;手動的你照下面那張表決定。`; })()
                                 + `</span>` + this._luNextHtml();
                         }
+                        // 🧾 V78.1.6 卡片精簡版要的結構化欄位(⛔ 不重算:全部是上面已經算好的值;`why` 照留給報告頁與摺疊)
+                        const E = this._LUNEXT_EDGE, f2 = x => `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(2)}%`;
+                        dueCard = {
+                            held: edH.maxd.held, n: _n, over: _over, lu: !!_lu, openWhen: _ow, eodWhen: _ew,
+                            rows: [
+                                ['持有狀態', `已抱 <b>${edH.maxd.held}</b> 個交易日(上限 ${_n} 天${_over ? `,超過 <b>${_over}</b> 天` : ''})`],
+                                ['交易執行', _lu ? `<b>${_ow}開盤</b>看下面的規則賣` : `<b>${_ew} ${_eod}</b> 尾盤照收盤價賣`],
+                                ['提示', `⛔ 不是價格被跌破,是<b>時間到</b>` + (_nr ? `(${this._escHtml(_nr.name)} ${_nr.v.toFixed(2)} 還沒破)` : '')],
+                                ['賣出原因', `整套回測就是用 ${_n} 天算的 —— 抱更久是另一套沒驗證過的策略`],
+                            ],
+                            rules: (_lu && E && E.S) ? [
+                                ['開盤就在漲停', `<b>先抱著</b>(比開盤賣多 ${f2(E.S.S1.hold.d)});收盤沒鎖就尾盤賣`],
+                                ['開高 ≥5%', `<b>開盤就賣</b>(抱到收盤少 ${f2(E.S.S2.hold.d)})`],
+                                ['開高 0~5%', `<b>09:30 前賣</b>(比開盤賣多 ${f2(E.S.S3.k930.d)})`],
+                                ['開平 / 開低', `⛔ 別在開盤殺,<b>尾盤賣</b>(比開盤賣多 ${f2(E.S.S4.hold.d)})`],
+                            ] : null,
+                            next2: (_lu && E && E.next2) ? `後天:隔天收盤<b>又鎖漲停</b>才留到後天開盤(再多 ${f2(E.next2.C1.o)});沒鎖就隔天賣完` : '',
+                        };
                     }
                     break;
                 }
@@ -36605,7 +36629,7 @@ ${this._reportFacts(sym)}
                 const lv = this._leadOvText(v, held, pnlAmt);
                 return { badge: lv.badge, cls: lv.cls, why: lv.why, held, cost, shares, pnlPct, pnlAmt, pC, alerts, plan: lv.plan, summary, unknown: false, state: lv.state, lines: [], gene, blocked, exitDist: null, lead: v };
             }
-            return { badge, cls, why, held, cost, shares, pnlPct, pnlAmt, pC, alerts, plan, summary, unknown, state, lines, gene, blocked, exitDist };
+            return { badge, cls, why, held, cost, shares, pnlPct, pnlAmt, pC, alerts, plan, summary, unknown, state, lines, gene, blocked, exitDist, due: dueCard };
         } catch (_) { return null; }
     },
     // ⏳ V74.7.2 指標還沒算好時的誠實佔位 —— ⛔ 不可留白畫面
@@ -36671,12 +36695,31 @@ ${this._reportFacts(sym)}
             <div class="text-2xl font-black font-mono ${_chgCls}">${_px.toFixed(2)}</div>
             <div class="text-[10px] font-mono ${_chgCls}">${_chg == null ? '—' : `${_chg >= 0 ? '▲ +' : '▼ '}${_chg.toFixed(2)}%`}</div>
         </div>`;
+        // ⏳ V78.1.6 時間到期 → 精簡版(使用者附圖:「你那套講太多文字了」)——
+        //   四行(持有狀態 / 交易執行 / 提示 / 賣出原因)+ 成本三格 + 鎖漲停時的明日規則;
+        //   原本整段 `why`(回測數字、自動下單幾點、完整決策表、後天)⛔ 一個字不刪,收進 `📖 為什麼・實測數字`。
+        //   ⛔ 提示那行用灰左條(紅色在本站 = 漲,不拿來框提示);⛔ 機率不放卡裡(個股頁頂端那一行已經有,同一畫面不可兩份)。
+        const _dueHtml = (() => {
+            const u = d.due; if (!u) return '';
+            const rows = u.rows.map(([k, v]) => `<div class="flex gap-2 items-baseline" data-ovdue-row="${k}">
+                <span class="text-[10px] text-gray-500 flex-shrink-0" style="width:4.2em">${k}</span>
+                <span class="text-[11px] text-gray-200 leading-snug min-w-0${k === '提示' ? ' border-l-2 border-gray-500 pl-1.5' : ''}">${v}</span></div>`).join('');
+            const tip = u.openWhen === '今天' ? '' : ` title="遇休市就順延到下一個交易日"`;
+            const rules = u.rules ? `<div data-ovdue-rules="1" class="mt-2">
+                <div class="text-[11px] font-black text-gray-100"${tip}>📋 ${u.openWhen}開盤看到哪一種,就照哪一條</div>
+                <div class="mt-0.5 space-y-0.5">${u.rules.map(([k, v], i) => `<div data-ovdue-rule="1" class="text-[11px] text-gray-200 leading-snug"><span class="text-gray-500 font-mono">${i + 1}.</span> ${k} → ${v}</div>`).join('')}</div>
+                ${u.next2 ? `<div class="text-[10px] text-gray-400 leading-snug mt-0.5">📅 ${u.next2}</div>` : ''}</div>` : '';
+            return `<div class="ov-due-grid mt-2" data-ovdue-card="1" style="display:grid;gap:8px">
+                <div class="space-y-1 min-w-0">${rows}</div><div class="min-w-0">${inv.replace('mt-2', '')}</div></div>${rules}
+                <details data-ovdue-more="1" class="mt-2"><summary class="text-[10px] text-gray-500 cursor-pointer list-none">📖 為什麼・實測數字 <span class="text-gray-600">展開 ▾</span></summary>
+                <div class="text-[11px] text-gray-300 leading-relaxed mt-1">${d.why}</div></details>`;
+        })();
         const A = `<div class="border-l-4 ${d.cls} border rounded-lg p-3">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0 flex-1"><div class="text-[15px] font-black leading-tight">${d.badge}</div></div>
               ${_priceHtml}
             </div>
-            <div class="text-[11px] text-gray-200 leading-relaxed mt-1">${d.why}</div>${inv}</div>`;
+            ${_dueHtml || `<div class="text-[11px] text-gray-200 leading-relaxed mt-1">${d.why}</div>${inv}`}</div>`;
         // ── B 預警 ──
         const B = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-2.5">
             <div class="text-[11px] font-black text-gray-200 mb-1">⚠️ 要注意的事</div>`
@@ -50708,8 +50751,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //   今天的尾盤窗口(`_EOD_TO`)已經過了、或週末 → 「下一個交易日」;否則「今天」(含半夜 / 盤前:那天就是下一個交易日)。
     //   ⚠️ 國定假日不知道(本站沒有行事曆)→ 只會說「下一個交易日」,⛔ 不說哪一天。
     _dueWhen() {
-        try { const t = this._tpeMinutes(); const late = /Sat|Sun/.test(t.wd) || t.min > this._EOD_TO; return { late, when: late ? '下一個交易日' : '今天' }; }
-        catch (_) { return { late: false, when: '今天' }; }
+        // ⏳ V78.1.6 多回 `openWhen` / `eodWhen`:收盤後週一~四 = 明天、週五收盤後 / 週末 = 下週一、交易日收盤前 = 今天
+        //   (⛔ 不維護節日行事曆 —— 遇休市順延,畫面上用 title 註明;`when` 照舊給決策台與 📋 複製文字)
+        try {
+            const t = this._tpeMinutes(), wkend = /Sat|Sun/.test(t.wd), late = wkend || t.min > this._EOD_TO;
+            const nxt = !late ? '今天' : (wkend || /Fri/.test(t.wd)) ? '下週一' : '明天';
+            return { late, when: late ? '下一個交易日' : '今天', openWhen: (!wkend && t.min < 540) ? '今天' : nxt, eodWhen: nxt };
+        }
+        catch (_) { return { late: false, when: '今天', openWhen: '今天', eodWhen: '今天' }; }
     },
     _tpeMinutes() {
         const p = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Taipei', hour12: false,
