@@ -658,7 +658,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
    + **`node scripts/test_labexport.mjs`**(📤 V77.7.3 實測總表匯出給 AI:條數 = LAB 加總、沒有 HTML 標籤、一定帶回測方法段 + 提問範本、排序跟畫面同一套、複製失敗⛔ 不靜默;⭐ 決定性對照:改 LAB 一條數字匯出要跟著變)
    + **`node scripts/test_leaderdeck.mjs`**(👑 V77.8.8~V77.8.9 決策台「領頭羊短線輪動」第二套:池子 = `amt20` 前 100 ⛔ 不是今天的 `amt`、趨勢過濾用乖離推 `b20 > 0 且 b20 < b60`、排名 = `chg10` ⛔ 不拿 chg5/chg20 湊、欄位缺 → notyet、空頭只擋買不藏名單、換倉日 = 共用錨點 `_LEADER_EDGE.anchor`(⛔ 不存手機)、實測數字讀 `_LEADER_EDGE`(決定性對照);⑤ **規則 / 錨點 App == `auto_trade.py`**、Python `leader_calc` == JS(合成 + 正式 screener,chg20 決定性對照)、舊名單⛔ 不下單;⑥ 決策台每列 🚧量薄(`amt20` < `_DECK_THIN_AMT` = pro `CAST_MIN_AMT`);⑦ K棒轉多/轉空榜每列實測成績(標題反查 `_SIGNAL_EDGE`,單根變盤線⛔ 不借成績))
    + **`node scripts/test_generank.mjs`**(🧬 V78.0.7 位階門檻四份實作同一個數字:`playbook_scan` hq / index `_GENE_RULE` / pro `_HQ_RULE` / `auto_trade.py GENE_RANK`;⭐ 決定性對照:設定換回 75 → 位階 80 那筆變成 🧬、排序跟著變;pro `_recoPicks` 重建過去刻意讀當時的 hq)
-   + **`node scripts/test_leader_deck_ledger.mjs`**(📒 V78.0.3 決策台領頭羊模擬帳 == 產業作戰室成績單,逐筆比對 + 名單倒過來的決定性對照;讀不到每日名單要說原因)
+   + **`node scripts/test_leader_deck_ledger.mjs`**(📒 V78.0.3 決策台領頭羊模擬帳 == 產業作戰室成績單,逐筆比對 + 名單倒過來的決定性對照;讀不到每日名單要說原因;📌 V78.3.1 ⑦ 決策台「買進價」== 成績單還抱著那幾筆)
    + **`node scripts/test_rodload.mjs`**(🎣 V77.9.4 釣魚頁:財報慢 8 秒 3 秒內仍有魚、💎 讀取中、預設 👑 池、戴冠 = 前 N、拋竿 = 前 N;2 種注入全紅)
    + **`node scripts/test_settings_slim.mjs`**(🧹 V78.1.1 設定瘦身:三件刪掉的⛔ 不可復活、搬家 33 個 id 都在、常用四件在摺疊外 + 四組收起來、第一眼 ≤1,600 字;🅿️ 只在解鎖時出現且 `_strat()` 仍是 gene、停車金額決定性對照;機率 chip 頂端一行綁 sym、成交額前 100 用 amt1 決定性對照)
    + **`node scripts/test_pickboard.mjs`**(🏆 V78.1.0 實測總表「選哪一套」:🔥/🅿️/🐢 跟 0050 同一組 17 起點(`gene_board.mjs` 對齊看板,0050 交叉驗證)・一句答案金額 == 看板・0050 及格線、線下變淡・名字表不重複且⛔ 不用版本號當名字・🧬 看不到 👑・預設頁籤 = 選哪一套)
@@ -2360,6 +2360,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 📌 V78.3.1 決策台 👑 名單「10 日」欄換成「買進價」= 換倉隔天開盤(`_leaderEntries` = 成績單 `_leaderLedgerLoad` 的複製品,`test_leader_deck_ledger ⑦` 逐檔比)・中途進榜寫「還沒買」
 - 🐻🎯 V78.3.0 空頭換招(全現金 / 半防守 / 只抱 1~2 檔 / 只追第 1 名)四招都沒兩段都贏現行(嚴格空頭被判定後 0050 平均反而漲 16~20%)・題材輪動輸給「全部題材不輪動」、而全部題材贏是名單事後挑的 → 都不換 ・「必跌先賣再買回」早就測過全輸 ・「還沒測的 25 項」幾乎都是沒資料
 - 🎰 V78.2.8~V78.2.9 P/C 比・大額交易人 10 年(2,615 天):當沖 🚦 那兩票對隔天大盤沒有方向資訊(偏空兩條反而略漲)→ 使用者選整個拿掉並停抓(🚦 只剩外資台指期、App 不再載 daytrade_pack);🚨 更正:當沖限制名單 App 從來沒讀過
 - 🎤🎰 V78.2.7 法說會補挖 5 年:開完隔天買比同一天其他股票差 0.2~0.7pp、每年都負(對照要用同一天橫斷面,同年平均擋不掉 12 月效應)→ ⛔ 不當買點也不當放空;期交所下載頁其實有 CSV,是 content-type 標 html 害程式誤判 → 修好重跑

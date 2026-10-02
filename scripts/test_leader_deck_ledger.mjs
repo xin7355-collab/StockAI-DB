@@ -36,6 +36,17 @@ const injectPro = (body) => pp.evaluate(B => { const o = PRO._fjOrig || (PRO._fj
 const proRun = async () => pp.evaluate(async () => { PRO._rlK = {}; const o = await PRO._leaderLedgerLoad();
   return { trades: o.trades.filter(t => t.st).map(t => ({ sym: t.sym, d0: t.st.d0, entry: t.st.entry, exitP: t.st.exitP, open: t.st.open, net: t.st.net, lot: t.st.lot })), P: PRO._LEAD, cost: PRO._STL_COST, since: o.since }; });
 const P0 = await proRun();
+// ── index.html(📌 V78.3.1 決策台「買進價」= 成績單還抱著那幾筆的買進價,逐檔比)
+const ip = await b.newPage(); ip.on('pageerror', e => errs.push('idx ' + String(e).slice(0, 160)));
+await ip.goto(pathToFileURL(resolve('index.html')).href, { waitUntil: 'domcontentloaded' });
+await ip.waitForFunction(() => typeof app !== 'undefined' && typeof app._leaderEntries === 'function', null, { timeout: 60000 });
+const idxRun = async (body) => ip.evaluate(async B => { const o = app._legOrig || (app._legOrig = app._leadEntGet);
+  app._leadEntGet = (f, ms) => /pick_history\.json/.test(f) && B ? Promise.resolve(B) : o.call(app, f, ms); app._leadEnt = null;
+  const tw = await app._getTwiiRows(); const r = await app._leaderEntries(tw);
+  return { err: r.err, held: [...r.map].map(([s, v]) => ({ sym: s, d0: v.d, entry: +(+v.px).toFixed(2) })).sort((a, c) => a.sym < c.sym ? -1 : 1) }; }, body);
+const openOf = T => T.filter(t => t.open).map(t => ({ sym: String(t.sym), d0: t.d0, entry: +(+t.entry).toFixed(2) })).sort((a, c) => a.sym < c.sym ? -1 : 1);
+const I0 = await idxRun(null);
+ok(!I0.err && I0.held.length > 0 && JSON.stringify(I0.held) === JSON.stringify(openOf(P0.trades)), '⑦ 📌 決策台買進價 == 成績單還抱著那幾筆的買進價(檔 / 日 / 價逐筆)', `${JSON.stringify(I0)}\n${JSON.stringify(openOf(P0.trades))}`);
 
 
 // ① 決策台沒有模擬帳
@@ -50,6 +61,8 @@ ok(+IE[2] === P0.P.N && +IE[3] === P0.P.R && +IE[5] === P0.P.hyst && IA === P0.P
 // ④ 決定性對照
 await injectPro(HREV);
 const P1 = await proRun();
+const I1 = await idxRun(HREV);
+ok(JSON.stringify(I1.held) === JSON.stringify(openOf(P1.trades)) && JSON.stringify(I1.held) !== JSON.stringify(I0.held), '⑦b ⭐ 決定性對照:名單倒過來 → 決策台買進價跟著換、仍 == 成績單', `${JSON.stringify(I1.held)}\n${JSON.stringify(openOf(P1.trades))}`);
 const a1 = JSON.stringify(P1.trades.map(norm)), a0 = JSON.stringify(P0.trades.map(norm));
 ok(a1 !== a0 && P1.trades.length > 0, '④ ⭐ 決定性對照:換倉名單倒過來 → 買的一起換人', `${a0}\n${a1}`);
 // ⑤ b 旗標
@@ -58,6 +71,8 @@ const HB = (() => { const j = JSON.parse(JSON.stringify(H)); const d = j.days.fi
   d.lead.rows = rs; d.lead.pos = 85; return { j, d: d.d, want: rs.slice(5, 10).map(r => String(r.s)) }; })();
 await injectPro(HB.j);
 const P3 = await proRun();
+const I3 = await idxRun(HB.j);
+ok(JSON.stringify(I3.held) === JSON.stringify(openOf(P3.trades)) && I3.held.length > 0, '⑦c 有 b 旗標 → 決策台買進價照 b、仍 == 成績單', `${JSON.stringify(I3.held)}\n${JSON.stringify(openOf(P3.trades))}`);
 const firstBuys = T => T.filter(t => t.d0 === (T[0] || {}).d0).map(t => String(t.sym)).sort();
 ok(P3.trades.length > 0 && firstBuys(P3.trades).every(s => HB.want.includes(s)), '⑤ 📍 名單有 b 旗標(第 6~10 名才是要買的)→ 照 b 買', `want=${HB.want} pro=${firstBuys(P3.trades)}`);
 ok(!errs.length, '⑥ 無 pageerror', errs.join(' | '));
