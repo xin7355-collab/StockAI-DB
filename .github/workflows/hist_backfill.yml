@@ -1,0 +1,103 @@
+# 📚 歷史補挖(V78.2.5)—— ⛔ 只能手動 Run,沒有排程、沒有跟車
+#
+# 兩件「回測要用、但每天的採礦只存當天」的歷史,一次挖回來推 data 分支:
+#   🎰 taifex:期交所 選擇權 P/C 比 + 台指期大額交易人(當沖 🚦 那張卡拿它們投票,權重從來沒回測過)
+#              → data/taifex_hist.json(scripts/taifex_hist_miner.py)
+#   🎤 confcall:法說會場次往回補到約 5 年前,只合併進 data/confcall.json 的 hist
+#              (⛔ 不動 upcoming / recent → 檔案不會變大到拖慢手機)
+#
+# ⭐ 推 data 分支就會被 daily_miner 的 `git archive origin/data` 帶上 gh-pages(同 us_hist / fin_backfill)。
+# ⚠️ 驗證⛔ 不可只看綠燈(陷阱 #9)→ `git show origin/data:data/taifex_hist.json | head -c 300`。
+# 🚨 期交所下載頁的網址是候選(沙箱連不到期交所)→ 失敗時 log 會分「連不上 / 被擋 / 名字猜錯」三種(陷阱 #23)。
+name: 📚 歷史補挖 (期交所 P/C・大額交易人 / 法說會)
+
+on:
+  workflow_dispatch:
+    inputs:
+      which:
+        description: '補哪一個:taifex / confcall / both'
+        required: false
+        default: 'both'
+      from:
+        description: '期交所最早補到哪個月(YYYY-MM,留空 = 2016-01)'
+        required: false
+        default: ''
+      confcall_days:
+        description: '法說會往回補幾天(留空 = 1900 ≈ 5 年)'
+        required: false
+        default: ''
+
+concurrency:
+  group: hist-backfill
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    name: 📚 補挖 → data 分支
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝 requests
+        run: pip install --quiet requests
+
+      - name: 🎰 期交所 P/C + 大額交易人
+        if: github.event.inputs.which != 'confcall'
+        env:
+          # 🔧 inputs.* 可能是空字串 → Python 端一律 `or 預設`(check_env_default.py)
+          FROM: ${{ github.event.inputs.from }}
+          OUT: /tmp/taifex_hist.json
+        run: |
+          python3 scripts/taifex_hist_miner.py --selftest
+          python3 scripts/taifex_hist_miner.py || echo "⚠️ 期交所補挖沒過守門(原因在上面)→ 這一份不推"
+
+      - name: 🎤 法說會往回補(只合併 hist)
+        if: github.event.inputs.which != 'taifex'
+        env:
+          CONFCALL_BACKFILL: ${{ github.event.inputs.confcall_days || '1900' }}
+          DATA_DIR: data
+        run: |
+          set -e
+          git fetch origin data
+          # 只還原需要的:舊 confcall.json + 股名表 + K 線(會後統計要用)
+          git archive origin/data data | tar -x
+          N=$(ls data/*.json 2>/dev/null | wc -l); echo "還原 data/*.json:$N 檔"
+          [ -s data/confcall.json ] || { echo "❌ data 分支沒有 confcall.json → ⛔ 不補"; exit 1; }
+          cp data/confcall.json /tmp/confcall_before.json
+          python3 confcall_miner.py && cp data/confcall.json /tmp/confcall.json || echo "⚠️ 法說會補挖沒過守門(原因在上面)→ 這一份不推"
+
+      - name: 🚀 推到 data 分支
+        run: |
+          set -e
+          FILES=""
+          [ -s /tmp/taifex_hist.json ] && FILES="$FILES taifex_hist.json"
+          [ -s /tmp/confcall.json ] && FILES="$FILES confcall.json"
+          [ -n "$FILES" ] || { echo "❌ 兩份都沒產出 → 沒東西可推"; exit 1; }
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git reset --hard -q 2>/dev/null || true
+          git clean -fdq 2>/dev/null || true
+          git checkout -f -B data origin/data
+          for f in $FILES; do cp "/tmp/$f" "data/$f"; git add -f "data/$f"; done
+          if git diff --cached --quiet; then echo "ℹ️ 跟分支上一樣,沒東西可推"; exit 0; fi
+          git commit -q -m "📚 歷史補挖:$FILES $(date -u '+%Y-%m-%d %H:%M UTC')"
+          pushed=0
+          # ⛔ 這個 retry 迴圈不可拿掉(擋「同時 push」;中間 pull --rebase)
+          for i in 1 2 3 4 5; do
+            git push origin data && { pushed=1; echo "✅ 已推上 data 分支:$FILES(第 $i 次)"; break; }
+            sleep $((i * 3))
+            git pull --rebase origin data 2>/dev/null || true
+          done
+          [ "$pushed" -eq 1 ] || { echo "❌ push 連 5 次失敗"; exit 1; }
+          echo "⚠️ 法說會:若同一時間 playbook_scan 也在跑,它可能用補挖前的版本蓋回去 → 跑完用 git show 確認 backfill 欄位還在"

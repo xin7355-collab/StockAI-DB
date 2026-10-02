@@ -96,11 +96,28 @@ jobs:
           # ⛔ 檔案不存在 / updated 解析不出來 → **不跳過**(寧可多跑一輪,不可靜默不動)。
           skip=no
           # 🚨 V75.2.2 `workflow_run` 也要吃這個守門(⛔ 不然 cron 與跟車同一天都跑到 = 白燒付費額度)
+          # 🚨 V78.2.5 兩個修正(那兩晚 pe_band 停在 618 檔就是這裡):
+          #   ① 比**台北日期**,⛔ 不比 UTC —— 10-01 00:10Z(台北 08:10)寫的檔,會讓 10-01 22:49Z
+          #      (台北已經是 10-02 06:49)那一輪被誤判成「今天跑過了」。
+          #   ② 只抓到半成品(n < PEB_FULL_N)⛔ 不算跑過 → 同一晚下一輪還能補。
+          PEB_FULL_N=${PEB_FULL_N:-1500}
           if [ "${{ github.event_name }}" != "workflow_dispatch" ] && [ -s data/pe_band.json ]; then
-            u=$(python3 -c "import json;print((json.load(open('data/pe_band.json')).get('updated') or '')[:10])" 2>/dev/null || echo '')
-            t=$(date -u +%F)
-            echo "線上 updated=${u:-無} ・今天(UTC)=$t"
-            if [ "$u" = "$t" ]; then skip=yes; echo "⏭️ 今天已經有產物 → 跳過本輪"; fi
+            read -r u n < <(python3 -c "
+          import json, datetime as D
+          j = json.load(open('data/pe_band.json'))
+          u, n = str(j.get('updated') or ''), j.get('n')
+          try:
+              t = D.datetime.fromisoformat(u.replace('Z', '+00:00'))
+              if t.tzinfo is None: t = t.replace(tzinfo=D.timezone.utc)
+              d = t.astimezone(D.timezone(D.timedelta(hours=8))).strftime('%Y-%m-%d')
+          except Exception:
+              d = ''
+          if not isinstance(n, int): n = len(j.get('data') or {})
+          print(d or '-', n)" 2>/dev/null || echo '- 0')
+            t=$(TZ=Asia/Taipei date +%F)
+            echo "線上 updated(台北)=${u} ・n=${n} ・今天(台北)=$t ・完整門檻 n≥${PEB_FULL_N}"
+            if [ "$u" = "$t" ] && [ "${n:-0}" -ge "$PEB_FULL_N" ]; then skip=yes; echo "⏭️ 今天已經有完整產物 → 跳過本輪"
+            elif [ "$u" = "$t" ]; then echo "↻ 今天有產物但只有 ${n} 檔(半成品)→ 照跑補齊"; fi
           else
             echo "觸發方式=${{ github.event_name }} → 照跑(手動 dispatch ⛔ 不受此守門影響)"
           fi

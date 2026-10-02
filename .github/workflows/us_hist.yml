@@ -16,10 +16,9 @@
 # ⚠️ 驗證⛔ 不可只看 Actions 綠燈(陷阱 #9)→ `git show origin/data:data/us_hist.json | head -c 300`。
 name: 🇺🇸 美股日線歷史 (us_hist)
 
+# 🛑 V78.2.5 拿掉跟車(workflow_run),只留手動 Run:它每次都重抓完整 5 年(⛔ 不需要每天累積)、
+#   App 不讀它、美股→台股三層實測都沒優勢(V77.7.8);VIX 探針要等下一次空頭才重跑 → 到時手動 Run 一次即可。
 on:
-  workflow_run:
-    workflows: ["🤖 每日籌碼採礦機 (平行宇宙版)"]
-    types: [completed]
   workflow_dispatch:
     inputs:
       years:

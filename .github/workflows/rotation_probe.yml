@@ -15,14 +15,13 @@ name: 🔄 全市場基本面輪動採礦
 #   ⛔ 連「一天只要 1 次」的 insider_cron 也是 0 → CLAUDE.md 舊寫的
 #      「每天 1~3 次在這個 repo 100% 可靠」**被這個反例推翻**(fund_sweep 同樣 1 次/天卻正常)。
 #   ⚠️ cron 一行都沒刪 —— 萬一哪天配額鬆了它自己會跑;`workflow_run` 只是多一條進得來的路。
+# 🛑 V78.2.5 自動觸發全部拿掉,只留手動 Run(使用者:「實測沒用就取消挖礦」)。理由:
+#   ① 資料重複:本益比 97%(1,538/1,591 檔)已在 fundamentals_cache、營收年增 81% 已在 fund_yoy_gm(+ data/fin 切片)
+#   ② 搶付費金鑰:它跟 pe_band 都在 fund_sweep 跑完後同一小時被叫醒 → 付費那把 6,000/小時見底(V78.1.4 查到)
+#   ③ 最近一輪 last_batch_hit=0(什麼都沒抓到)
+#   ⛔ 檔案不刪:前端 _loadFundCache 照樣讀 fundamentals_rotation.json 當最後一層備援(只是不再更新)。
+#   要恢復:把 workflow_run(fund_sweep)加回來,並記得處理額度衝突(錯開到 pe_band 之後)。
 on:
-  # ⭐ 跟車:下面這幾支是實測「排程真的進得來」的(⛔ 改它們的名字要同步改這裡)
-  workflow_run:
-    workflows:
-      - "🌙 夜間全市場基本面補齊 (fund_sweep)"
-    types: [completed]
-  schedule:
-    - cron: '23 1,4,7,13 * * 1-5'   # ⚡ V69.8.6 P3-1:原每小時 24/7(月營收月更/財報季更卻每小時輪詢,每週 ~75,600 次 FinMind 呼叫);改交易日 4 輪仍 3 天滾完全市場,額度降 ~85%
   workflow_dispatch:
     inputs:
       batch:

@@ -337,6 +337,23 @@ ok('📊⑬f 對照組⛔ 不可只挑「跟事件同一天」—— 要掃那�
    'for d, i in si.items()' in RS, RS[:120])
 
 
+# ── 📚 V78.2.5 補挖模式:只合併 hist,⛔ 不動 upcoming / recent ──
+_old = {'upcoming': [{'s': '2330', 'd': '2026-10-20'}], 'recent': [{'s': '2330', 'd': '2026-09-01'}],
+        'hist': {'2330': ['2026-07-17']}, 'react': {'n': 1}}
+_rows = [{'s': str(2000 + i % 50), 'd': f'2023-{1 + i % 12:02d}-15', 't': '14:00'} for i in range(150)]
+_rows += [{'s': '2330', 'd': '2027-01-01', 't': '14:00'}]   # 未來的 ⛔ 不可進 hist
+_fake = lambda typek: (_rows if typek == 'sii' else [], None)
+_out, _msg = C.backfill(1900, date(2026, 10, 2), _fake, json.loads(json.dumps(_old)))
+ok('📚a 補挖:upcoming / recent 原封不動', _out and _out['upcoming'] == _old['upcoming'] and _out['recent'] == _old['recent'], _msg)
+ok('📚b 補挖:hist 併進舊的場次(2330 舊的那筆還在)', _out and '2026-07-17' in _out['hist'].get('2330', []) and len(_out['hist']) > 10, _msg)
+ok('📚c 補挖:未來的場次 ⛔ 不進 hist', _out and '2027-01-01' not in _out['hist'].get('2330', []))
+ok('📚d 補挖:帶 backfill 紀錄(before / after)', _out and _out['backfill']['hist_after'] > _out['backfill']['hist_before'])
+_o2, _m2 = C.backfill(1900, date(2026, 10, 2), lambda t: ([], 'HTTP 403'), json.loads(json.dumps(_old)))
+ok('📚e 抓到 <100 場 → ⛔ 不寫(回 None 並說原因)', _o2 is None and '403' in _m2, _m2)
+_o3, _m3 = C.backfill(1900, date(2026, 10, 2), _fake, {})
+ok('📚f 沒有舊檔 → ⛔ 不補', _o3 is None, _m3)
+C.PAST, C.FUTURE = 60, 45   # 還原(backfill 改過 global)
+
 print()
 if fails:
     print(f'❌ CONFCALL_TEST_FAIL: {fails}')

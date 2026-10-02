@@ -216,5 +216,60 @@ assert i12 != src2
 _rc, _o, _ = check_resume(i12)
 ok('⑫i 注入「不等、直接收工」(= V78.1.3)→ ⑫ 必須紅', not (_o and _o.get('fresh') == 100), _o and _o.get('fresh'))
 
+# ── ⑭ V78.2.5 workflow 守門「今天已經跑過就跳過」:比台北日期 + 半成品不算 ──
+#   ⭐ 從 yaml 抽出那段原始 shell 實跑(⛔ 測試裡不複製一份判斷),`date` 用假的(FAKE_NOW 給 UTC 時間)
+import os, shutil, subprocess
+try:
+    import yaml as _yaml
+except Exception:
+    _yaml = None
+
+
+def _guard_script():
+    if _yaml is None:
+        return None
+    wf = _yaml.safe_load(open(ROOT / '.github/workflows/pe_band.yml', encoding='utf-8'))
+    for st in wf['jobs']['peband']['steps']:
+        if st.get('id') == 'guard':
+            return st['run'].replace('${{ github.event_name }}', 'schedule')
+    return None
+
+
+def run_guard(script, updated, n, now_utc):
+    d = pathlib.Path(tempfile.mkdtemp())
+    (d / 'data').mkdir()
+    json.dump({'updated': updated, 'n': n, 'data': {}}, open(d / 'data/pe_band.json', 'w'))
+    fb = d / 'bin'
+    fb.mkdir()
+    real = shutil.which('date')
+    (fb / 'date').write_text('#!/bin/sh\nexec ' + real + ' -d "$FAKE_NOW" "$@"\n')   # 假 date:吃 TZ 與 -u
+    os.chmod(fb / 'date', 0o755)
+    out = d / 'gh_out'
+    env = dict(os.environ, PATH=f'{fb}:{os.environ["PATH"]}', FAKE_NOW=now_utc + ' UTC', GITHUB_OUTPUT=str(out))
+    r = subprocess.run(['bash', '-c', script], cwd=d, env=env, capture_output=True, text=True)
+    res = (out.read_text() if out.exists() else '') + r.stdout + r.stderr
+    shutil.rmtree(d, ignore_errors=True)
+    return 'skip=yes' in res, res
+
+
+G = _guard_script()
+if G is None:
+    ok('⑭ 讀得到 pe_band.yml 的守門那一步(要 PyYAML)', False, 'yaml 模組或 id=guard 的步驟不見了')
+else:
+    s1, o1 = run_guard(G, '2026-10-01T00:10:54Z', 1625, '2026-10-01 22:49')
+    ok('⑭a 10-01 00:10Z 寫的、10-01 22:49Z(台北 10-02)開跑 → 照跑(⛔ 不可被 UTC 同日騙過)', not s1, o1[-300:])
+    s2, o2 = run_guard(G, '2026-10-01T18:40:00Z', 1625, '2026-10-01 19:30')
+    ok('⑭b 同一個台北日、完整(1,625 檔)→ 跳過', s2, o2[-300:])
+    s3, o3 = run_guard(G, '2026-10-01T18:40:00Z', 618, '2026-10-01 19:30')
+    ok('⑭c 同一個台北日但只有 618 檔(半成品)→ 照跑補齊', not s3, o3[-300:])
+    s4, o4 = run_guard(G, '2026-10-02T03:30:00+08:00', 1625, '2026-10-01 20:00')
+    ok('⑭d 產物時間帶 +08:00 也換算得對 → 跳過', s4, o4[-300:])
+    G_utc = G.replace('TZ=Asia/Taipei date +%F', 'date -u +%F').replace('hours=8', 'hours=0')
+    s5, _ = run_guard(G_utc, '2026-10-01T00:10:54Z', 1625, '2026-10-01 22:49')
+    ok('⑭i 注入「退回 UTC」→ ⑭a 的情境會被誤判跳過(必須紅)', s5)
+    G_full = G.replace('-ge "$PEB_FULL_N"', '-ge 0')
+    s6, _ = run_guard(G_full, '2026-10-01T18:40:00Z', 618, '2026-10-01 19:30')
+    ok('⑭i2 注入「半成品也算」→ ⑭c 的情境會被跳過(必須紅)', s6)
+
 print('\n' + ('❌ ' + str(len(fails)) + ' 條失敗' if fails else '✅ PEBAND_CARRY_PASS'))
 sys.exit(1 if fails else 0)

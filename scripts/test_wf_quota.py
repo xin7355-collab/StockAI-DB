@@ -58,7 +58,7 @@ GOOD_HOSTS = {
     '🤖 每日籌碼採礦機 (平行宇宙版)', '📸 全市場即時快照 (Shioaji)',
     '🗞️ 盤前新聞晨採 (news_premarket)', '🎯 明日作戰清單 (playbook_scan)',
 }
-STARVED = ['insider_cron.yml', 'rotation_probe.yml', 'macro_cron.yml',
+STARVED = ['insider_cron.yml', 'macro_cron.yml',   # 🛑 V78.2.5 rotation_probe 已改成只能手動(見 ⑦)
            'news_express.yml', 'stock_futures.yml',
            # V75.2.2 追加:cron 是「每個交易日」但實測只跑到「每週一次」(4 次全在週日)
            'pe_band.yml']
@@ -110,6 +110,13 @@ _pb = (ROOT_TXT := open('.github/workflows/pe_band.yml', encoding='utf-8').read(
 ok('⑥ pe_band 的冪等守門要擋掉 schedule 與 workflow_run(只放行手動 dispatch)',
    'github.event_name }}" != "workflow_dispatch" ] && [ -s data/pe_band.json' in _pb,
    [l for l in _pb.split(chr(10)) if 'pe_band.json ]; then' in l][:1])
+
+# ⑦ 🛑 V78.2.5 關掉的兩支自動採礦:⛔ 不可再被自動叫起來(只留手動 Run)
+#    rotation_probe:資料重複 + 搶付費金鑰;us_hist:每次重抓完整 5 年、App 不讀、實測沒優勢
+for base in ('rotation_probe.yml', 'us_hist.yml'):
+    on = on_of(WF.get(f'.github/workflows/{base}') or {})
+    ok(f'⑦ {base} 只剩手動 Run(⛔ 沒有 workflow_run / schedule)',
+       'workflow_dispatch' in on and 'workflow_run' not in on and 'schedule' not in on, list(on.keys()))
 
 print()
 print(f'❌ WF_QUOTA_FAIL({len(fails)}):{fails[:6]}' if fails else '✅ WF_QUOTA_PASS(全部通過)')

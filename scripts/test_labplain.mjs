@@ -83,7 +83,7 @@ const R = await page.evaluate(() => {
     const tr = PRO.LAB.trap.find(x => !x.pl && / —— /.test(PRO._labPlain(x.t)));
     const trP = tr ? PRO._labPlainOf({ ...tr, _col: 'trap' }) : null;
     const trHead = tr ? PRO._labPlain(tr.t).replace(/\*\*/g, '').split(/\s*——\s*/)[0] : '';
-    const nx = PRO._labPlainOf({ ...PRO.LAB.next[1], _col: 'next' });
+    const nx = PRO._labPlainOf({ ...PRO.LAB.next.find(x => /三類新資料/.test(x.t)), _col: 'next' });
     // ⑥ 搜尋:拿「對你的意思」裡的字(只在 pl 出現、⛔ 不在原文)
     const probeM = PRO.LAB.ok.map(x => x.pl?.[4] || '').join('');
     const hay = PRO.LAB.ok.map(x => `${x.t} ${x.d} ${x.how} ${x.n} ${x.w} ${x.s}`).join(' ');

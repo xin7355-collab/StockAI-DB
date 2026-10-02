@@ -38,9 +38,11 @@ from pathlib import Path
 DATA = Path(os.getenv('DATA_DIR', 'data'))
 OUT = DATA / 'confcall.json'
 HOST = os.getenv('CONFCALL_HOST', 'https://mopsov.twse.com.tw')
-PAST = int(os.getenv('CONFCALL_PAST', '60'))
-FUTURE = int(os.getenv('CONFCALL_FUTURE', '45'))
-HIST_MAX = 40               # 每檔最多留幾場(≈ 3 年)
+PAST = int(os.getenv('CONFCALL_PAST') or 60)
+FUTURE = int(os.getenv('CONFCALL_FUTURE') or 45)
+# 📚 V78.2.5 補挖模式:>0 = 往回抓這麼多天,只合併進 hist(⛔ 不動 upcoming / recent,否則 confcall.json 會撐到幾 MB,手機每次都要下載)
+BACKFILL = int(os.getenv('CONFCALL_BACKFILL') or 0)
+HIST_MAX = 40               # 每檔最多留幾場(≈ 5~10 年;一年約 2~4 場)
 SUM_MAX = 400
 UA = {'User-Agent': 'Mozilla/5.0 confcall_miner/1.0',
       'Accept': 'text/html, */*', 'Content-Type': 'application/x-www-form-urlencoded'}
@@ -435,8 +437,52 @@ def build(rows_sii, err_sii, rows_otc, err_otc, today, old=None):
     }
 
 
+def backfill(days, today=None, fetch=None, old=None):
+    """📚 只補 hist:抓 [today−days, today−1] 每個月 → 已開過的場次併進舊檔 hist → 重算 react。
+    ⛔ 舊檔不存在 → 不做(補挖是加在既有產物上,⛔ 不可憑空生一份少了 upcoming 的檔)。
+    ⛔ 抓到 <100 場 → 不寫(多半是被擋)。回 (out 或 None, 訊息)。"""
+    global PAST, FUTURE
+    today = today or datetime.now(TW).date()
+    old = _load_old() if old is None else old
+    if not old or not isinstance(old.get('hist'), dict):
+        return None, '❌ 找不到舊的 data/confcall.json(要先還原 data 分支那一份)→ ⛔ 不補'
+    PAST, FUTURE = days, 0
+    if fetch is None:
+        import requests
+        s = requests.Session()
+        fetch = lambda typek: fetch_market(typek, today, s)
+    rs, es = fetch('sii')
+    ro, eo = fetch('otc')
+    t = today.isoformat()
+    rows = [r for r in rs + ro if r.get('d') and r['d'] < t]
+    if len(rows) < 100:
+        return None, f'❌ 只抓到 {len(rows)} 場(上市 err={es} / 上櫃 err={eo})→ ⛔ 不寫'
+    n0 = sum(len(v) for v in old['hist'].values())
+    out = dict(old)
+    out['hist'] = merge_hist(old.get('hist'), rows, today)
+    n1 = sum(len(v) for v in out['hist'].values())
+    react = build_react(out['hist'], today)
+    if not react.get('error'):
+        out['react'] = react
+    out['backfill'] = {'days': days, 'rows': len(rows), 'hist_before': n0, 'hist_after': n1,
+                       'at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                       'err': {'sii': es, 'otc': eo}}
+    return out, f'✅ 補挖 {len(rows)} 場 → hist {n0} → {n1} 筆(⛔ upcoming / recent 沒動)'
+
+
 def main():
     today = datetime.now(TW).date()
+    if BACKFILL > 0:
+        print(f"📚 confcall 補挖模式:往回 {BACKFILL} 天(只合併 hist)")
+        out, msg = backfill(BACKFILL, today)
+        print('  ' + msg)
+        if out is None:
+            return 1
+        OUT.write_text(json.dumps(out, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        R = out.get('react') or {}
+        print(f"  📊 會後統計:{R.get('events')} 場 ・+5 日超額中位 {R.get('med5')} vs 對照 {(R.get('base') or {}).get('med5')}"
+              f" ・{OUT.stat().st_size / 1024:.1f} KB")
+        return 0
     print(f"🎤 confcall_miner 開跑(台北 {today},窗口 −{PAST}~+{FUTURE} 天,主機 {HOST})")
     import requests
     s = requests.Session()
