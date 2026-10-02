@@ -165,15 +165,10 @@ def main():
         pack['dtRestrict'] = dtr
         ok += 1
 
-    pc = get_pc_ratio()
-    if pc and (pc.get('volRatio') is not None or pc.get('oiRatio') is not None):
-        pack['pcRatio'] = pc
-        ok += 1
-
-    lt = get_large_trader()
-    if lt:
-        pack['largeTrader'] = lt
-        ok += 1
+    # 🗑️ V78.2.9 停抓「選擇權 P/C」「台指期大額交易人」(使用者選「整個拿掉並停抓」):
+    #   pcr_probe 10 年 2,615 天實測對隔天大盤沒有方向資訊,App 已拿掉那兩票。
+    #   ⭐ 要重測用 scripts/taifex_hist_miner.py(手動 hist_backfill.yml),⛔ 別在這裡接回來。
+    #   get_pc_ratio / get_large_trader 函式留著(探針格式參考),只是不再呼叫。
 
     if ok == 0:
         print('❌ 所有來源都失敗 → 不產出 JSON(保留舊檔)', flush=True)

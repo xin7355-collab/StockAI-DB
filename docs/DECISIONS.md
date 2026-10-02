@@ -8,7 +8,9 @@
 - 資料:`hist_backfill`(which=taifex)修好判斷式後重跑 → `data/taifex_hist.json` 2016-01-04~2026-10-02 共 2,619 天(下載頁 2,619 + OpenAPI 補最後幾天)。
 - `pcr_probe.mjs`:訊號日數字只用在下一個交易日(零前視);0050 改讀 `_bench0050.json`(2010 起、已對齊分割)—— ⚠️ 第一次只讀 `0050.json` 從 2021 才開始,期交所前 5 年白白浪費。
 - 結果(2,615 個可配對交易日):🚦 P/C ≥115 +0.01pp(1/6)・≤85 +0.05pp(方向相反)・🚦 大額淨 >+2000 +0.01pp ・<−2000 +0.04pp(方向相反、4/6、t=1.4)・自身位階前 / 後 20% 四條全部 |t|<2;扣當沖成本後每一條 −0.19~−0.25%。
-- 影響:`_dtVerdictInner`(🚦 今日方向)與 `_dtMktGap`(推估開盤情境)兩處都拿這兩個數字投票(+0.5/−0.5、+1/−1)。⏳ 要不要停止計分 → **先問使用者**(改判定)。⚠️ `daytrade_pack.json` 還有「當沖限制名單」(`dtRestrict`)在用 → ⛔ 不可整支採礦停掉,最多只拿掉那兩個抓取。
+- 影響:`_dtVerdictInner`(🚦 今日方向)與 `_dtMktGap`(推估開盤情境)兩處都拿這兩個數字投票(+0.5/−0.5、+1/−1)。
+- ✅ **V78.2.9 使用者選「整個拿掉並停抓」**:兩處投票拿掉(🚦 只剩外資台指期)、App 不再載 `daytrade_pack.json`、`daytrade_data_miner.py` 不再呼叫 `get_pc_ratio` / `get_large_trader`(函式留著);workflow 一行沒改。`test_fifut_gate ②` 改釘「⛔ 不可再讀 pcRatio / largeTrader」。
+- 🚨 **更正我自己**:上一版寫「`dtRestrict`(當沖限制名單)還在用,⛔ 不可整支停」—— 查過 App **從來沒讀過 dtRestrict**。現在 `daytrade_pack.json` 只剩這一塊、沒人讀 → 那步採礦(掛在 `daytrade_probe.yml`)可以整支關掉,⏳ 改 workflow 要先問使用者。
 
 ## 🎤🎰 V78.2.7 歷史補挖結果:法說會後隔天買平均略差(5 年 1.6 萬場)・期交所下載頁其實有給資料,是程式誤判
 

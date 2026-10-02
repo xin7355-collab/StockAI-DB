@@ -44,9 +44,10 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
        `${(SRC.match(/_fiFutState\??\.?\(\)/g) || []).length} 處`);
 }
 // ── ② 靜態:新鮮度判斷只能有一份 ──
+// 🗑️ V78.2.9 那兩票拿掉後,`_dtPackFresh` 已經沒有呼叫端(⛔ 不是漏接 —— 是 daytrade_pack 整份不再進判定);
+//   定義仍只能有一份,哪天有人把 pack 接回來就會被下面那條「⛔ 不可再讀 pcRatio」擋住
 ok('② ⛔ `daytrade_pack` 的新鮮度判斷只能有一份(共用 `_dtPackFresh`)',
-   (SRC.match(/_dtPackFresh\(d\) \{/g) || []).length === 1
-   && (SRC.match(/this\._dtPackFresh\(/g) || []).length >= 3, '');
+   (SRC.match(/_dtPackFresh\(d\) \{/g) || []).length === 1, '');
 
 // ── 動態 ──
 const browser = await chromium.launch({
@@ -103,10 +104,15 @@ ok('① ⭐ 同一個 −80,000:一直都這麼空 → ⛔ 不可判「急遽加
    R.stateFlat.level !== 'danger', JSON.stringify(R.stateFlat));
 ok('① ⭐ 同一個量級但 5 日內急遽加空 → 才是 danger(證明它看的是「相對自己」)',
    R.stateSurge.level === 'danger', JSON.stringify(R.stateSurge));
-ok('② ⭐ 新鮮的 pack 會影響推估開盤情境(🚧 空過守門)',
-   R.gapFresh && R.gapFresh.key === 'up', JSON.stringify(R.gapFresh));
-ok('② ⭐⛔ 過期的 pack 不可再投票(`_dtMktGap` 也要守,⛔ 不是只有畫面那條)',
-   R.gapStale && R.gapStale.key !== 'up', JSON.stringify(R.gapStale));
+// 🗑️ V78.2.9 P/C 與大額交易人兩票已拿掉(pcr_probe 10 年實測沒有方向)→ 新鮮的 pack 也⛔ 不可再投票
+ok('② ⭐ V78.2.9 新鮮的 P/C + 大額 pack ⛔ 不再影響推估開盤情境(兩票已拿掉)',
+   R.gapFresh && R.gapFresh.key === 'flat', JSON.stringify(R.gapFresh));
+ok('② ⛔ 過期的 pack 也不投票', R.gapStale && R.gapStale.key === 'flat', JSON.stringify(R.gapStale));
+const _src = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\/\/[^\n]*/g, '');
+ok('② ⛔ index.html 不可再讀 pcRatio / largeTrader、也不再載 daytrade_pack(V78.2.9)',
+   !/pcRatio|largeTrader/.test(_src) && !/this\._loadDaytradePack\(\)/.test(_src), '');
+const _mn = fs.readFileSync(new URL('../daytrade_data_miner.py', import.meta.url), 'utf8').split('def main')[1] || '';
+ok('② ⛔ daytrade_data_miner 的 main 不可再抓 P/C / 大額交易人', !/get_pc_ratio\(|get_large_trader\(/.test(_mn.replace(/#[^\n]*/g, '')), '');
 
 console.log(fails ? `❌ ${fails} 條失敗` : '✅ FIFUT_GATE_PASS(全部通過)');
 process.exit(fails ? 1 : 0);
