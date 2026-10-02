@@ -1,13 +1,49 @@
 {
-  "updated": "2026-10-02 15:46 UTC",
+  "updated": "2026-10-02 16:24 UTC",
   "items": [
+    {
+      "source": "📊 巨頭財報",
+      "title": "Micron forecasts record revenue and $32B backlog amid AI demand - idahobusinessreview.com",
+      "url": "https://news.google.com/rss/articles/CBMipwFBVV95cUxOTXh6aE4ybTdiYm4wOGdoamJ2X0NHa0VISzlWMEI4Z1hwZU5QcEN6clU3YUM4X2pNNlROaU5hcFFoM1h5MWlfbmc2dF9ZMFBfYUY1b19aS2lzZ1BjaE8xQnBYTTlQZlZhUm0tekJuVmN0V1BJaUtPNkNpX2ZJRk9vMG1va2Jzb2ZNaW5yMThLSTRLR2pTRGVDTUVMb1N3Z3FlWW1uTUdFVQ?oc=5",
+      "published": "Fri, 02 Oct 2026 16:13:23 GMT",
+      "title_zh": "微科預期AI資料需求激發紀錄產量和320億美元待訂貨品",
+      "impact": "增長性影響（bullish）",
+      "impact_level": "bullish"
+    },
+    {
+      "source": "🌍 油價航運",
+      "title": "Saudis plan assault on Houthis to break Red Sea chokehold - Reuters",
+      "url": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPUVJialJyWHg0VzlHXzBiaTU3elZhbWEtQzd0TjhNOGNsWFFZNTYyMGFqODJGcVc3aVBaYVY3QkRzWWpEZDlQNEpJeVp6ZjMxYkZKYi1nZ0FUenFUSFRFRTNCb3NaTmdCaTJ1WWV1RmlqcmhSZGtsZWZobE5jSHp3RkJiVXpueWdVOHJmbDhzUEEzVXB6OF9jYkJHcnpfQklTNDVHZ20yS1J6QQ?oc=5",
+      "published": "Fri, 02 Oct 2026 16:05:43 GMT",
+      "title_zh": "沙烏地策動攻擊胡塞 打破紅海封鎖",
+      "impact": "有望緩解紅海航運瓶頸，提升出口股及整體市場情緒",
+      "impact_level": "bullish"
+    },
+    {
+      "source": "🔥 停產事故",
+      "title": "Gas plant fire east of Calgary leaves 1 in life-threatening condition - CBC",
+      "url": "https://news.google.com/rss/articles/CBMilwFBVV95cUxPUDk2dFJZSTEzeVNQYzZVSEZPQ21JRV9NTkdnMnEwajBKckwxQjk1RThNSDhKUTJUeXotQmNaOWtid192NGJUUFRwb3NOdkZXNFFaclhKQk43Wm9YTlN3aXpsTU1hLWlRN2QwZE5WX0JlV2pySDlrQzcwSEx0MFItam9iZEZ3eUhMc1BhXzVqejV4a05ILWNV?oc=5",
+      "published": "Fri, 02 Oct 2026 15:55:13 GMT",
+      "title_zh": "卡爾加里東部燃氣廠起火 1人危急",
+      "impact": "此事件屬於區域性事故，對台股影響有限，屬中性。",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🧪 技術突破",
+      "title": "Uncut two-hour video shows Nucleus humanoid robot doing factory tasks - Interesting Engineering",
+      "url": "https://news.google.com/rss/articles/CBMihwFBVV95cUxPYy04Y0ZNcjZRcXZ3UHNSelRCQ3U1bk94ZmtPdzhxLWRvX1R0MXpId2l5OGEtTnFqcXkwX1RhX3RnZFdsTWUzb0ZVUldqTGkzVXFfVWY4S05WTEJkbDg4MEdJU0MxRjJyWmtoQkkwNVBlUHVPcXUyNUQ3WHlDM1d5TjZGSWRsdTA?oc=5",
+      "published": "Fri, 02 Oct 2026 15:54:00 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
     {
       "source": "🏢 雲端巨頭",
       "title": "Analysis | When you should use Google’s AI for search — and when you should skip it - The Washington Post",
       "url": "https://news.google.com/rss/articles/CBMitgFBVV95cUxNUUxoSmFjZ3BDaWd5R19PNEU5WVdfdXhIeE9JTTZTdHNFQ0xINld4aEE2VFNiZ28yVEJyMFBxVlloeGZxb1FnODNZSTlWNmlhUUFxSlMtbFhqRVFfVnFfUDNaUktqdFZOaDduaW9CeEQ5bHEwTUZIWG1UUlBFd2NaYy1YWnBickdKYXhaZzExM3RIZk0zandyQTQ1MWxtbF9jTTQ0T2Ytby1wdVFYbnBqX3pHYnVJQQ?oc=5",
       "published": "Fri, 02 Oct 2026 15:44:13 GMT",
-      "title_zh": "",
-      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "title_zh": "何時使用Google AI搜尋，何時不宜",
+      "impact": "此議題對台股影響有限，屬中性。",
       "impact_level": "neutral"
     },
     {
@@ -15,78 +51,42 @@
       "title": "State regulators approve 20-year DTE contracts for Google data center in Wayne County - ClickOnDetroit | WDIV Local 4",
       "url": "https://news.google.com/rss/articles/CBMiywFBVV95cUxQU3N4ZWp0RmhLcnVEYTZ0UF9ZVHc0aEp0SndfVGVBYUpTWWxDdzVvdFJHTDhPaVpVdXdzODVkM2dNTXAyQmdueU9tcG1henI2bGxIREFPOTRYbkF0bUtKYU54Zi1LNnlORkJiUVRxVTlNTlQ5WHJOZE1LSGF4eUZyVVFaQ1IySHFobWtHdzhJTzB3Nm9GM05kNTZ2U182QURUQThXUkx4RVFCdzBWUGtDbXVPVWRPU19OcG1PeGtqSWR2MTV1RC1QcVNWWQ?oc=5",
       "published": "Fri, 02 Oct 2026 15:39:31 GMT",
-      "title_zh": "",
-      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "title_zh": "州監管機關批准Google廣島機房20年契約 - 点電報導（WDIV內地4）",
+      "impact": "台灣股市可能會因此獲得平穩或擴散影響，因為這次投資有助於台灣",
       "impact_level": "neutral"
     },
     {
       "source": "🌍 油價航運",
       "title": "Probiotics prevented coral bleaching during a Red Sea heat wave: Study - Mongabay News",
       "url": "https://news.google.com/rss/articles/CBMipwFBVV95cUxOMWgtN21rb3NYbUd6WEZjOXVObnd6akctbGhwNmJvelJBM3dzS01BTTNHSWwwVG1pQVVydkFXTllCU0hTUmQ5S2FkRnlISlJ2d1BXeHJiRjRXd0tKb2dHc2FBdjRLbC1EUzB0Um43Z1A5bHlsY2kzeDgtcUtubkV4VFBlZGZEUFFxVy05U0szU25aR1J5ZXliOEZuTkZuR05PLUhtWTRGa9IBrAFBVV95cUxOTFYtRERmTHhZaUZMd2NyX2Z4OXFiMG1qYzZaVThNejMzM3hGTmR0S2R1QWstQ2xNeUdyTXJXOWRwZjdRUTRqWW92ZVJFUGJjVjRTcjQyWWVFU3FiTHBxYmQ2dkZ2d003Z0JkanFQR2xKZ3FhUG4wOTY4M3g3MHpXNzdZNkNENEszY05iZWhWZG5wQ3hLTEczMUZqX01paXA3Z2NlaFVnSGhrYTRf?oc=5",
-      "published": "Fri, 02 Oct 2026 15:33:45 GMT",
-      "title_zh": "食用菌可防止海綿吞沒於沙灘熱潮中",
-      "impact": "此研究對海綿及環境的保護有重要影響，而且表示市場潮濕性可能會",
-      "impact_level": "bullish"
+      "published": "Fri, 02 Oct 2026 15:38:05 GMT",
+      "title_zh": "益生菌助紅海珊瑚抵禦熱浪",
+      "impact": "該研究屬生態科學領域，與台股主要產業鏈無直接關聯，市場影響極",
+      "impact_level": "neutral"
     },
     {
       "source": "Musk Tesla",
-      "title": "Elon Musk to return to the White House to co-lead study on the future of war: report - WKEF",
-      "url": "https://news.google.com/rss/articles/CBMi5wFBVV95cUxQeVJGWHUteDFfSE5SV19QZ2RFejdMeDlaV1kwWjhKZnljT0RQZ0VFLXQ2U2hwQVlCVy1BNURJc2RzQS0yaFN6U3RlRTFNUHBnSkIyblBHY3hVWFlaTUJ2akxobDdDb19RTzRxZGtyY3NlVkdXbDhuLVF3NnRoQXRYMWFUVzZPUGozYkZxWHdnU2diTTYwWWFRdFBzVEduS0VESzVNSHFiYnVncTU4R3N0YjhtTW9RVk44WEdfS2x6aE9nVFY1Z0hQUXoyeU94ajJKZWdONzRKaXIwRFA0LUd6My1TcmJvTnM?oc=5",
-      "published": "Fri, 02 Oct 2026 15:10:08 GMT",
-      "title_zh": "伊爾恩·馬斯召回白宮合作研究戰爭未來：報導 - WKEF",
-      "impact": "可能提高台灣股市情緒，因為此研究可能有助於推動和平和台灣在經",
+      "title": "Elon Musk to return to the White House to co-lead study on the future of war: report - fox56.com",
+      "url": "https://news.google.com/rss/articles/CBMi3gFBVV95cUxOUUpwVkNER3RyNkwyQVhXRWZQX2ozM0ZBNXZRU0lCQ0tSQ3pCdmJwZGoyV1dPTmpQOW54bWdUd3ZfZ1pDLWNyVWFQYUVEdk5nSkxmdWMybXNEblNsZlVzam5XbEVKOGVqTjdXNFl4cEVGOGM1YnV0ODRFOThUMnkxaWZRaHRrZ3BZdWRhcHhzSFBOQVZOa255Ty13SFJxREEwLWhjTWZxa1JtNzBrcFBiNUUzSEJHaUVucEs5c212OFlrSGstZXNBZ1NYaE12RWxHdVNVVzVtSy1Bd3pFekE?oc=5",
+      "published": "Fri, 02 Oct 2026 15:37:49 GMT",
+      "title_zh": "佛羅里達州報導：Elon Musk將回到白宮合作調查戰爭未來的將軍業務",
+      "impact": "報導提及Elon Musk將合作調查戰爭未來，這可能會提高美",
       "impact_level": "bullish"
+    },
+    {
+      "source": "📊 巨頭財報",
+      "title": "Physician Views Preview: Can Kodiak's Zenkuda shake up the AMD treatment landscape? - FirstWord Pharma",
+      "url": "https://news.google.com/rss/articles/CBMiU0FVX3lxTE4tT3VHNEFidlY1b0NrWVVCOHFpY0FXd1pPRmtPWHBvNVF2d2VyT0IxeHIxRHNDbVpVeU1QT3JqQ3ZyaVZmX3I2LVN2UE5JV2lRaVRn?oc=5",
+      "published": "Fri, 02 Oct 2026 15:08:58 GMT",
+      "title_zh": "醫師看：Zenkuda能顛覆AMD治療？",
+      "impact": "此新藥若獲醫師肯定，將提升相關生技股情緒，但對台股整體影響有",
+      "impact_level": "neutral"
     },
     {
       "source": "🏢 雲端巨頭",
       "title": "The latest AI news we announced in September 2026 - blog.google",
       "url": "https://news.google.com/rss/articles/CBMijgFBVV95cUxNXzhIUnNPaFVfR0U3TGVCM1AwRnY0Rk15UnVkM1Y5ajNPYUtXWE1mOE5OMjNNM1ZsN2czZS1iOUY5VVRkTnc3ZWhVVUdPUFZHTngtTFl0VjZjREpFbGRWV2VhV19ucVZhN2hra21IcFZISHNZcF81bHQ1Ti1kbnhhcll5a3dzNTl2aGpuZDhB?oc=5",
       "published": "Fri, 02 Oct 2026 15:06:01 GMT",
-      "title_zh": "谷歌發布2026年9月最新AI動態",
-      "impact": "谷歌持續推進AI技術可能帶動相關供應鏈需求，對台股科技板塊形",
-      "impact_level": "bullish"
-    },
-    {
-      "source": "Huang Nvidia",
-      "title": "Amazon Looks to Offload $8B of Nvidia AI Chips From Its Balance Sheet - investopedia.com",
-      "url": "https://news.google.com/rss/articles/CBMiygFBVV95cUxQNHphc3o4Y0dGRnBTaE5jUTd0S1dJWFA1OUppaXBsY1hhb0pkRHZZbUUwSWZYQnYyRTl2WDF6d084bnpLSFNZV3ZRRW5jcllFQ1dQWjFIMmZMTkZsYWZrNkNVM3FJazNxTEFfMHJBbzJxeVM4TU9iS1FBWFppYXNhNHh6OV80Rjg0dy0wVkVNOTg4eVJ5cEZva3l6b0J3S1k0QmlnbXZhOHh5S1JYMDFRREhuZ19SOXJ0WTBWTGFkYzZIVE1qcTdZM29R?oc=5",
-      "published": "Fri, 02 Oct 2026 14:59:46 GMT",
-      "title_zh": "亞馬遜擬出清80億美元輝達AI晶片",
-      "impact": "顯示科技巨頭加速AI資本支出，利好台積電及相關供應鏈。",
-      "impact_level": "bullish"
-    },
-    {
-      "source": "韓股記憶體",
-      "title": "Semiconductor Tightrope: 40,000-Dollar Era's Anxiety - 조선일보",
-      "url": "https://news.google.com/rss/articles/CBMihwFBVV95cUxPR1RQaHBta2JWTUtDZV9nZTdLVzlUUHZDS0NPdU1HdlQ4QnN5bll2a25nTlNVMzFYSDBwa1l4VmtjQk1pNFkyVkQwaUZMZmVBX1VUZmdqVENka2ZzN2dRU2o4YkNyUkpia1VEbHRxUVVwcFhWZEVhUVp6NG8zMFJTQ0kzRVoydGc?oc=5",
-      "published": "Fri, 02 Oct 2026 14:55:31 GMT",
-      "title_zh": "半導體緊繃：四萬美元時代的焦慮",
-      "impact": "反映市場對半導體高估值與地緣政治風險的擔憂，可能引發台積電等",
-      "impact_level": "bearish"
-    },
-    {
-      "source": "🧪 技術突破",
-      "title": "Horde of Obsolete Humanoid Robots Made to Hurl Themselves Into Vat of Liquid Steel for Total Obliteration - Futurism",
-      "url": "https://news.google.com/rss/articles/CBMikgFBVV95cUxOSU1nRmxGSnRxZFo0QS10bHlLMDE4QU5tWDlWZmFlLUNILUxpemt2VHQwU1pnRXVpc2dTYkZ1cXR5cW0zbTVMTjd2VzJOTFVFOHk2Qk45ZEw1UnNuNHVyVm9PN3p5U2NHaFRhVWVMVEY2VHBjbTZzRXhWWHA1UGNORl94SG9DU0F1cThJOHVOQ2hpQQ?oc=5",
-      "published": "Fri, 02 Oct 2026 14:52:37 GMT",
-      "title_zh": "舊機器人自投熔鋼爐",
-      "impact": "此事件與台股關聯有限，對相關產業影響微乎其微。",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "🌍 地緣突發",
-      "title": "US sends third aircraft carrier to Middle East amid stalemate in Iran war - theguardian.com",
-      "url": "https://news.google.com/rss/articles/CBMikgFBVV95cUxOeG1vM25faW5LcklvY082VWw2bHJ2MFdzR1NRekV1TzI2SzloOTFrZGhPTEVyWlY4bGpiRXprNWVhTUxqbF8zc3pxNGFFZzJIalNteWs5UV9oWkI3V1dBX2hjckVwejBiZmtSVnFTUUVVeFdGS19nZE9kOVB4OTUwUUcxOWZzY25FWXJPNXg3WGprdw?oc=5",
-      "published": "Fri, 02 Oct 2026 14:39:00 GMT",
-      "title_zh": "",
-      "impact": "AI 回的內容看不懂(JSONDecodeError)",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "📊 巨頭財報",
-      "title": "Can Pricier AI Chip Rentals Accelerate Amazon’s AWS Revenue Growth? - Trefis",
-      "url": "https://news.google.com/rss/articles/CBMixAFBVV95cUxPUi1uVnd5eHdvX0ZCQXNJS0UxNWUxblhTNnR2cmhRT254VEtnOHliVGdTNnF4M1cxWW5xT2Z2dXo2akl5OHQ0M094VGU3Q0FSbkJpaWhVYm9OUVp3NWJuMncwZGliU2ltS0FGSk50OWZlRmVIeWpuZW53NlBIeWVfOXYzZ3c0dnQzTlZPSHYwTlpHWHZfN0RhUEF6UkxIMl8tUmpKQzAzdVdJbVZXYnhBRXZ1TUl1UjZJYWJnMDh4VDhRd3pf?oc=5",
-      "published": "Fri, 02 Oct 2026 14:36:41 GMT",
       "title_zh": "",
       "impact": "AI 回的內容看不懂(JSONDecodeError)",
       "impact_level": "neutral"

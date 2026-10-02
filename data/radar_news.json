@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-02 15:46 UTC",
+  "updated": "2026-10-02 16:24 UTC",
   "count": 15,
   "data": [
     {
@@ -11,8 +11,9 @@
         "HBM"
       ],
       "cat": "🧪 技術突破",
-      "ai_sentiment": "利多",
-      "ai_reason": "HBM4價格漲逾3倍，利多加值型記憶體供應鏈",
+      "ai_sentiment": "中立",
+      "ai_reason": "價格上漲提升下游成本",
+      "title_zh": "沒有最貴只有更貴！三星主力換代至HBM4 價格漲逾3倍",
       "important": true
     },
     {
@@ -24,9 +25,8 @@
         "營收"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "台積電投資一家新創公司，並在其合作過程中揭露重要資訊。這對台",
-      "title_zh": "台積電投資一家新創公司，揭露重要資訊。這對台股市具有實質影響，因為台積電是台灣大盤公司，而且它在供應",
+      "ai_sentiment": "中立",
+      "ai_reason": "舊事件不影響現況",
       "important": true
     },
     {
@@ -38,9 +38,8 @@
         "罷工"
       ],
       "cat": "🌍 地緣管制",
-      "ai_sentiment": "中立",
-      "ai_reason": "中國公司台股擔保及其影響台股未具體詳細說明，只提到公司將帶入",
-      "title_zh": "標題應是繁體中文，如果不是，則為空字符串",
+      "ai_sentiment": "利空",
+      "ai_reason": "罷工導致產能受阻",
       "important": true
     },
     {
@@ -53,8 +52,7 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "美國就業數據出嚴重失敗，市場因此進行股價暴跌。而此次暴跌對台",
-      "title_zh": "台股、供應鏈、半導體和大盤將受到嚴重影響，美國就業數據出嚴重失敗，市場因此進行股價暴跌。",
+      "ai_reason": "美股科技股大漲，台指期夜盤暴漲",
       "important": true
     },
     {
@@ -67,7 +65,8 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "油價下跌降低運輸成本",
+      "ai_reason": "G7將協調降燃料價格，美國油價進入危機。",
+      "title_zh": "G7協調降燃料價格，美國油價大跌",
       "important": true
     },
     {
@@ -81,7 +80,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "台積電2奈米訂單全數拿下，產能吃緊",
+      "ai_reason": "台積電獨佔2奈米訂單，產能吃緊利好",
       "important": true
     },
     {
@@ -94,7 +93,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "收購美國品牌、拓展北美市場、提升營收",
+      "ai_reason": "收購美國品牌、開拓好市多通路，提升營收",
       "important": true
     },
     {
@@ -107,7 +106,8 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "9月營收月增3.2%，年增63%表現優異",
+      "ai_reason": "牧德9月營收3.73億元，達9月營收，較8月成長3.2%，較",
+      "title_zh": "牧德9月營收3.73億元，達9月營收，較8月成長3.2%，較去年同期成長63%。",
       "important": true
     },
     {
@@ -121,7 +121,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "光寶擴充AI電源產能，看好需求成長",
+      "ai_reason": "擴產AI電源滿足需求，提升營收",
       "important": true
     },
     {
@@ -134,7 +134,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "台船獲海巡署訂單，營收確立",
+      "ai_reason": "安龍船建造提升台船營收",
       "important": true
     },
     {
@@ -146,8 +146,9 @@
         "矽晶圓"
       ],
       "cat": "🧪 技術突破",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利多",
+      "ai_reason": "台股夜盤漲幅高達12.25%，結束晚上市場漲幅高達122.2",
+      "title_zh": "台股夜盤漲幅高達12.25%，結束晚上市場漲幅高達122.25點，相當盛表。",
       "important": true
     },
     {
@@ -160,7 +161,7 @@
       ],
       "cat": "📈 股價異動",
       "ai_sentiment": "利多",
-      "ai_reason": "指數創新高，市值再增",
+      "ai_reason": "本週指數上漲、公司市值創新高",
       "important": true
     },
     {
@@ -172,8 +173,9 @@
         "營收"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "中立",
-      "ai_reason": "營收較上月下降18.7%，短期表現不佳",
+      "ai_sentiment": "利多",
+      "ai_reason": "義隆9月營收6.02億元，營收週期增長率下降，可能表示市場需",
+      "title_zh": "繁體中文標題：義隆9月營收6.02億元",
       "important": true
     },
     {
@@ -186,7 +188,7 @@
       ],
       "cat": "📈 股價異動",
       "ai_sentiment": "利多",
-      "ai_reason": "台股創高，市場情緒正面",
+      "ai_reason": "台股創新高，提振大盤",
       "important": true
     },
     {
