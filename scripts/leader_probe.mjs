@@ -87,7 +87,10 @@ export function mom(S, i, L) { if (!(S.A[i] > 0)) return NaN; let j = i, c = 0; 
 export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: true, trend: true, hyst: 2, pick: 'mom', core: 0, maExit: 0, tp: 0, skip: 0, riskadj: false, fill: 'open', noAtt: 0, noDisp: 0, sellDisp: false,
     dispNow: false, dispOracle: 0, attSell: 0, attWin: 5, rebuy: 'none', rebuyDrop: 0.15, blockDays: 10, shamSell: 0,
     indCap: 0, wRank: null, posMin: 85, posRaw: true, volUp: 0, finAcc: false, fsync: 0, rankUp: false, shamKeep: 0,
-    capital: 0, minFee: 20, add: 0, glide: 0, parkMin: 5000, luExit: '' };
+    capital: 0, minFee: 20, add: 0, glide: 0, parkMin: 5000, luExit: '', phase: 0, join: '' };
+// 🕐 V78.2.1 晚進場(使用者:「第一天沒買,後面還可以進嗎?」)⛔ 不設時逐位相同:
+//   phase = k:換倉節奏的起點在 s0 之前 k 天(= 你在兩次換倉中間第 k 天才開始)
+//   join  = 'now' 當天收盤就照當下名單買(之後跟著換倉日)・'wait' 錢先停 0050、等下一個換倉日才買
 // 🟥 V78.2.0 luExit(使用者:「國巨收盤鎖漲停,隔天要照那四條賣嗎?」—— 那四條是 🔥 的,👑 從來沒測過)⛔ 不設時逐位相同:
 //   持股前一天收盤鎖漲停(定義同 dt_daily_probe.lockUp:收盤 ≥ 前收 ×(1+漲跌幅−1%)且收在最高)、今天:
 //   開盤一字鎖(開=高=低、仍在漲停)→ 抱 ・'gap5' 開高 ≥5% 開盤賣 ・'gap0' 開高 >0% 開盤賣(09:30 前賣的日 K 代理)
@@ -253,7 +256,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         if (dailySell.size && i + 1 < n) { pending = pending || { sell: [], buy: [] }; for (const sym of dailySell) if (!pending.sell.includes(sym)) pending.sell.push(sym); dailySell.clear(); }
         eq.push(value(i));
         // ③ 換倉日收盤:決定明天開盤要做什麼
-        if ((i - s0) % P.R === 0 && i + 1 < n) {
+        if (P.join === 'wait' && P.phase > 0 && i === s0 && (i - s0 + P.phase) % P.R !== 0 && i + 1 < n) pending = { sell: [], buy: [] };   // 🕐 等的那幾天錢停 0050
+        if (((i - s0 + P.phase) % P.R === 0 || (P.join === 'now' && i === s0)) && i + 1 < n) {
             let trimNow = false;
             if (P.glide > 0 && glideAt === null && value(i) >= P.glide * contributed) { glideAt = i; P.core = 0.5; trimNow = pos.size > 0; }   // 🌱 先衝再穩:之後只用一半錢,手上的也砍一半
             const { ranked, ok } = rankAt(i);
@@ -667,6 +671,14 @@ function selftest() {
     const none = simulate(u3, 100, cfgL);
     t(a3g0.luOpen === 1 && a3g5.luOpen === 0 && a3all.luOpen === 1 && d2g0.luOpen === 0 && d2all.luClose === 1 && w1all.luHold === 1 && w1all.luOpen + w1all.luClose === 0 && none.st.luLock === 0 && a3g0.luLock === 1,
         `㉚ luExit:開高 3% → gap0/all 開盤賣、gap5 不賣;開低 → all 收盤賣;一字鎖 → 抱;不設 → 連判斷都不跑`);
+    // ㉛ V78.2.1 晚進場:phase=0 / join 不設 → 逐位相同;phase=3 'wait' 第一筆股票在第 7 天才買(之前錢在 0050);'now' 第 0 天收盤就決定
+    const cfgJ = { U: 20, N: 3, R: 10, L: 20, chand: 0, park: true, trend: false };
+    const j0 = simulate(ctx5, 100, cfgJ, 7), j00 = simulate(ctx5, 100, { ...cfgJ, phase: 0, join: '' }, 7);
+    const jw = simulate(ctx5, 100, { ...cfgJ, phase: 3, join: 'wait' }, 7), jn = simulate(ctx5, 100, { ...cfgJ, phase: 3, join: 'now' }, 7);
+    const jx = simulate(ctx5, 100, { ...cfgJ, phase: 3, join: '' }, 7);
+    t(j0.eq.every((v, k) => v === j00.eq[k]) && jw.eq.length === j0.eq.length && jn.eq.length === j0.eq.length
+        && jn.eq[2] !== jw.eq[2] && jw.eq.slice(0, 8).join() !== jn.eq.slice(0, 8).join() && jx.eq[1] === 1,
+        `㉛ 晚進場:不設逐位相同;phase 3 'now' 當天就買、'wait' 前幾天錢停 0050(第 2 天淨值 ${r2(jw.eq[2])} vs ${r2(jn.eq[2])});沒設 join 前幾天是現金`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }

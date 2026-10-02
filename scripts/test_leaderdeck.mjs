@@ -207,9 +207,9 @@ const OV = await page.evaluate(async () => {
     return out;
 });
 ok('⑨ 總覽一行:第 1 名 → 🛒 買;第 7 名 → 已有才續抱;第 21 名 → 不在名單', OV.top.st === 'buy' && /🛒/.test(OV.top.txt) && OV.keep.st === 'keep' && /已有才續抱/.test(OV.keep.txt) && OV.out.st === 'out' && /不在名單/.test(OV.out.txt), JSON.stringify([OV.top, OV.keep, OV.out]));
-ok('⑨b 沒過趨勢寫原因;不在前 100 大、也沒標 → 整行不顯(不留空殼)', /沒過趨勢過濾/.test(OV.noTrend.txt) && OV.outside.hidden === true && OV.outside.txt === '', JSON.stringify([OV.noTrend, OV.outside]));
+ok('⑨b 沒過趨勢寫原因(V78.2.1 寫明條件方向);不在前 100 大、也沒標 → 整行不顯(不留空殼)', /沒過趨勢條件\(要 收盤 > 20日線 > 60日線 才算\)/.test(OV.noTrend.txt) && OV.outside.hidden === true && OV.outside.txt === '', JSON.stringify([OV.noTrend, OV.outside]));
 ok('⑨e 🔒 選 🧬 時這一行整個不出現', OV.geneHidden.hidden === true && OV.geneHidden.txt === '', JSON.stringify(OV.geneHidden));
-ok('⑨c ⭐ 決定性對照:同一檔手上有 → 從「不在名單」變成「⛔ …賣」;池子外的也要講賣', /⛔ .*賣/.test(OV.outMine.txt) && !/⛔ .*賣/.test(OV.out.txt) && OV.outsideMine.st === 'out' && /不在成交額前 100 大/.test(OV.outsideMine.txt) && /賣/.test(OV.outsideMine.txt), JSON.stringify([OV.outMine.txt, OV.outsideMine.txt]));
+ok('⑨c ⭐ 決定性對照:同一檔手上有 → 從「不在名單」變成要賣(V78.2.1 非換倉日寫「⏳ 今天續抱;換倉日還在 10 名外才賣」);池子外的也要講賣', /(⛔|⏳) .*賣/.test(OV.outMine.txt) && !/(⛔|⏳) .*賣/.test(OV.out.txt) && OV.outsideMine.st === 'out' && /不在成交額前 100 大/.test(OV.outsideMine.txt) && /賣/.test(OV.outsideMine.txt), JSON.stringify([OV.outMine.txt, OV.outsideMine.txt]));
 ok('⑨d 切股競態:await 回來已換股 → ⛔ 不畫上一檔', OV.race === '', OV.race);
 
 const TH = await page.evaluate(() => {

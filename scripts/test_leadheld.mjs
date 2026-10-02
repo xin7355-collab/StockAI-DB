@@ -12,6 +12,7 @@
  *   ⓓ 決定性對照:同一檔切回 🔥 → 硬停損 / 出場線回來
  *   ⓔ 最近一根收盤鎖漲停 → why 有「🔥 高檔飆股的規則,👑 不用」+ 回測數字讀 `_LEAD_LU_EDGE`;沒鎖 → 沒有
  *   ⓕ `_LEAD_LU_EDGE` == leader_probe 實跑結果(三種都輸現行)
+ *   ⓖ V78.2.1 卡片「⛔ 不要提早賣」的 % 讀常數 ・ⓗ 決策台持股清單「不在 / 掉出」分清楚
  */
 import fs from 'fs';
 import path from 'path';
@@ -28,7 +29,7 @@ const errs = [];
 page.on('pageerror', e => errs.push(String(e)));
 await page.goto('file://' + HTML);
 await page.waitForFunction(() => typeof app !== 'undefined' && app._ovDecide && app._leadOvText, null, { timeout: 30000 });
-const R = await page.evaluate(() => {
+const R = await page.evaluate(async () => {
     const A = app, o = {};
     // 300 根緩漲 K 線,最後一根收盤鎖漲停(+10%、收在最高)
     const mk = lock => { const rows = []; for (let i = 0; i < 300; i++) { const c = +(500 + i * 0.4).toFixed(2); rows.push({ date: new Date(Date.UTC(2025, 6, 1) + i * 86400000).toISOString().slice(0, 10).replace(/-/g, '/'), open: c - 1, high: c + 2, low: c - 3, close: c, volume: 5000 }); }
@@ -45,7 +46,22 @@ const R = await page.evaluate(() => {
     let d = run(mk(false), ctx(null, true));
     o.a = { badge: d && d.badge, why: d && d.why };
     d = run(mk(false), ctx(15, true));
-    o.b = { badge: d && d.badge };
+    o.b = { badge: d && d.badge, why: d && d.why };
+    // ⓖ 決定性對照:改 _LEAD_LU_EDGE → ⛔ 不提早賣那行的 % 跟著變
+    const _E0 = JSON.parse(JSON.stringify(A._LEAD_LU_EDGE));
+    A._LEAD_LU_EDGE = { ..._E0, ai: { ..._E0.ai, now: 300, all: 200 }, long: { ..._E0.long, now: 1100, all: 600 } };
+    d = run(mk(false), ctx(null, true)); o.g = d && d.why;
+    A._LEAD_LU_EDGE = _E0;
+    // ⓗ 決策台持股清單:沒過趨勢 → ⛔ 不寫「掉出」;曾第 15 名 → 「掉出」
+    try {
+        const L0 = { date: '2026-10-01', all: new Map([['2330', { rank: 1, sym: '2330', c: 1000, chg10: 5, chg: 1, amt20: 500 }]]), ranked: [{ rank: 1, sym: '2330', c: 1000, chg10: 5, chg: 1, amt20: 500 }], buy: [], poolSet: new Set(['2327', '5483']), pos: 85 };
+        A._loadScreener = async () => ({}); A._leaderCalc = () => L0; A._getTwiiRows = async () => null;
+        A._leaderClock = () => ({ left: 7, isRebal: false, day: 4 });
+        A._getInventory = () => [{ symbol: '2327', cost: 561, shares: 0.07 }, { symbol: '5483', cost: 100, shares: 1 }]; A.inventory = A._getInventory();
+        L0.all.set('5483', { rank: 15, sym: '5483', c: 100, chg10: 1, chg: 0, amt20: 50 });
+        const host = document.createElement('div'); host.innerHTML = await A._leaderDeckHtml();
+        o.h = { a: host.querySelector('[data-leaderheld="2327"]')?.innerText || '', b: host.querySelector('[data-leaderheld="5483"]')?.innerText || '' };
+    } catch (e) { o.h = { err: String(e) }; }
     // ⓒ 價位:👑 持有
     const rows = mk(false), C = rows.at(-1).close;
     A.currentSymbolId = '2327'; A.activeData = rows; A.rawDailyData = rows; A._leadCtx = ctx(null, true);
@@ -77,9 +93,13 @@ const R = await page.evaluate(() => {
 });
 await browser.close();
 
-ok('ⓐ 持有 + 不在名單 → 「⏳ 不在前 10 名・等換倉日」(⛔ 不是「掉出」)', /不在前 10 名・等換倉日/.test(R.a.badge || '') && !/掉出/.test(R.a.badge || ''), R.a.badge);
-ok('ⓐ2 why 開頭講「今天不用賣」+ 隔天開盤才賣', /今天不用賣/.test(R.a.why || '') && /隔天開盤/.test(R.a.why || ''), (R.a.why || '').slice(0, 200));
-ok('ⓑ 曾是第 15 名 → 「掉出前 10 名」', /掉出前 10 名・等換倉日/.test(R.b.badge || ''), R.b.badge);
+ok('ⓐ V78.2.1 標題「⏳ 今日續抱・等換倉日(剩 7 個交易日)」', /今日續抱・等換倉日\(剩 7 個交易日\)/.test(R.a.badge || ''), R.a.badge);
+ok('ⓐ2 不在名單 → 「不在前 10 名」⛔ 不是「掉出」;今天不用賣 + 續抱條件 + 賣出條件 + 隔天開盤', /不在前 10 名/.test(R.a.why || '') && !/掉出/.test(R.a.why || '') && /今天不用賣/.test(R.a.why) && /續抱條件/.test(R.a.why) && /賣出條件/.test(R.a.why) && /隔天開盤/.test(R.a.why), (R.a.why || '').slice(0, 400));
+ok('ⓐ3 趨勢條件方向對:「要 收盤 > 20日線 > 60日線 才算」、⛔ 沒有「收盤價 < 20日線」', /要 收盤 &gt; 20日線 &gt; 60日線 才算|要 收盤 > 20日線 > 60日線 才算/.test(R.a.why || '') && !/收盤價? *<|收盤價? *&lt;/.test(R.a.why || ''), (R.a.why || '').slice(0, 300));
+ok('ⓑ 曾是第 15 名 → 「掉出前 10 名」', /掉出前 10 名/.test(R.b.why || '') && /今日續抱/.test(R.b.badge || ''), R.b.badge);
+const cut = w => Math.round((1 - (w.all - 100) / (w.now - 100)) * 100);
+ok('ⓖ ⛔ 不提早賣那行的兩個 % 讀 _LEAD_LU_EDGE(實際數字 + 決定性對照)、⛔ 不寫死 70%', new RegExp(`少 <b[^>]*>${cut(R.E.ai)}%</b>.*少 <b[^>]*>${cut(R.E.long)}%</b>`).test(R.a.why || '') && /少 <b[^>]*>50%<\/b>.*少 <b[^>]*>50%<\/b>/.test(R.g || '') && !/70%/.test(R.a.why || ''), (R.g || '').slice(-400));
+ok('ⓗ 決策台持股:沒過趨勢 → ⛔ 不寫「掉出」、寫「不在前 10 名」;第 15 名 → 「掉出前 10 名」;非換倉日用 ⏳', /不在前 10 名/.test(R.h.a || '') && !/掉出/.test(R.h.a || '') && /掉出前 10 名/.test(R.h.b || '') && /⏳/.test(R.h.a || '') && !/⛔ 掉出|⛔ 不在/.test(R.h.a + R.h.b), JSON.stringify(R.h));
 ok('ⓒ 👑 持有 → _keyLevels 沒有硬停損 / 出場線、標 lead', R.K.sl == null && R.K.rule == null && R.K.lead === true, JSON.stringify(R.K));
 ok('ⓒ2 價格位置圖⛔ 沒有 🛑 / 🚪,有「沒有停損線」', !R.ruler.sl && !R.ruler.rule && R.ruler.note, JSON.stringify(R.ruler));
 ok('ⓒ3 提示詞⛔ 沒有「硬停損(成本 −5%」那一行、有「沒有停損線」+「請不要自己替他編停損價」', !/- 硬停損\(成本/.test(R.facts) && /沒有停損線/.test(R.facts) && /不要自己替他編停損價/.test(R.facts), R.facts.slice(0, 120));
