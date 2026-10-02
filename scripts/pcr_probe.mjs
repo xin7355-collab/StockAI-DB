@@ -118,7 +118,10 @@ function main() {
     if (!F || !fs.existsSync(F)) { console.error('❌ 要 TAIFEX_HIST=data/taifex_hist.json(git show origin/data:data/taifex_hist.json > …)'); process.exit(1); }
     const T = JSON.parse(fs.readFileSync(F, 'utf8'));
     const DD = process.env.DATA_DIR || path.join(ROOT, 'data');
-    let K = JSON.parse(fs.readFileSync(path.join(DD, '0050.json'), 'utf8')); K = Array.isArray(K) ? K : K.data;
+    // ⭐ V78.2.7 優先讀 _bench0050.json(長歷史 2010 起、已對齊分割尺標)—— 只讀 0050.json 會從 2021 才開始,期交所 2016~2020 那 5 年白白浪費
+    const bf = path.join(DD, '_bench0050.json'), useB = fs.existsSync(bf);
+    let K = JSON.parse(fs.readFileSync(useB ? bf : path.join(DD, '0050.json'), 'utf8')); K = Array.isArray(K) ? K : K.data;
+    console.log(`0050 來源:${useB ? '_bench0050.json(長歷史)' : '0050.json'}`);
     const px = new Map(K.map(r => [String(r.date).replace(/\//g, '-'), { o: +r.open, c: +r.close }]));
     const pdates = [...px.keys()].sort();
     console.log(`📅 期交所 ${T.from} ~ ${T.to} ・P/C ${T.n?.pc} 天 ・大額 ${T.n?.lt} 天 ・0050 ${pdates[0]} ~ ${pdates[pdates.length - 1]}`);
