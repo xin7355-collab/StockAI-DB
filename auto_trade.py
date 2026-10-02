@@ -56,8 +56,8 @@ test_leaderdeck.mjs 拿同一份 screener.json 跨語言比對):
     前 5 名買(📍 V78.0.5 起只買「一年位置 ≥85%」的,不夠就往下一名找;LEADER_POS=0 換回舊的)、
     手上的掉出前 10 名就賣;每 10 個交易日換一次(起點 LEADER_ANCHOR,跟 App 同一個);
     ⛔ 不設停損線;大盤嚴格空頭不買(賣照常);注意 / 處置股⛔ 不跳過(實測跳過反而輸 0050)。
-    LEADER=1 LEADER_ACCOUNT=1000000 python3 auto_trade.py           # 尾盤跑(預設,跟上面那套同一個時段)
-    LEADER=1 LEADER_WINDOW=open LEADER_ACCOUNT=1000000 python3 ...  # 09:00~09:10 開盤跑(= 回測那一組)
+    LEADER=1 LEADER_ACCOUNT=1000000 python3 auto_trade.py           # 09:01~09:10 開盤跑(預設,V78.2.4 起 = 回測最好那一組)
+    LEADER=1 LEADER_WINDOW=eod LEADER_ACCOUNT=1000000 python3 ...   # 尾盤跑(舊預設,跟上面那套同一個時段)
 ⚠️ 實測(17 條起點中位,V78.0.5 新規則):隔天開盤買 AI 時代 +953% / 16 年 +6,783%;尾盤買 +817% / +3,342%(0050 含息 +375% / +1,097%)。
    (舊規則不看位置:+760% / +3,176%;尾盤 +670% / +2,219%)
 ⚠️ 中途最多賠 49~57%、16 年只有 10 年贏 0050;沒用到的錢程式**不會**自動買 0050(回測有停 0050,自己手動放)。
@@ -131,7 +131,8 @@ def save_state(st):
 # ═══════ 👑 V77.8.9 領頭羊短線輪動 ═══════
 LEADER = os.getenv('LEADER') == '1'
 LEADER_ACCOUNT = int(os.getenv('LEADER_ACCOUNT') or 0)       # 分給這一套的錢(每檔 = 這筆 ÷ N);0 = 不買(⛔ 不猜)
-LEADER_WINDOW = (os.getenv('LEADER_WINDOW') or 'eod').lower()  # eod(尾盤,預設)| open(09:00~09:10)
+LEADER_WINDOW = (os.getenv('LEADER_WINDOW') or 'open').lower()  # open(09:01~09:10,預設;V78.2.4 起)| eod(尾盤)
+LEADER_OPEN_FROM, LEADER_OPEN_TO = 9 * 60 + 1, 9 * 60 + 10   # ⛔ 09:00 那一分鐘不下單:開盤撮合可能還沒出來,快照會是昨收
 # ⛔ 規則 / 錨點 / 名單 / 時鐘 V77.9.3 起搬到 lib_leader.py(成績單的採礦端也要用,⛔ 不複製第二份)。
 #    App `_LEADER_EDGE.rule` / `.anchor` 跟 lib_leader 一字不差(test_leaderdeck.mjs 跨檔比對)。
 import lib_leader as _LL
@@ -264,6 +265,32 @@ def leader_step(api, sj, st, meta, today):
             except Exception as e:
                 log(f"      ❌ 下單失敗:{e}")
     st['lead_day'] = today; save_state(st)
+
+
+def leader_open_window(api, sj, st, now_fn=None, sleep_fn=None, picks_fn=None):
+    """👑 開盤時段:09:01 起做一次;抓不到資料(leader_step 沒蓋 lead_day)就在 09:10 前重試。
+    ⛔ 過了 09:10 還沒做 → 那天跳過,⛔ 不改到尾盤補做(那是另一組回測數字)。"""
+    now_fn, sleep_fn, picks_fn = now_fn or tpe_now, sleep_fn or time.sleep, picks_fn or fetch_picks
+    while True:
+        now, mins, day = now_fn()
+        if st.get('lead_day') == day:
+            return True
+        if now.weekday() >= 5:
+            return False
+        if mins > LEADER_OPEN_TO:
+            log("👑 ⏰ 已過 09:10 → 今天開盤那一次錯過了(⛔ 不改到尾盤補做:那是另一組回測數字)")
+            return False
+        if mins < LEADER_OPEN_FROM:
+            sleep_fn(min(POLL_SEC, max(10, (LEADER_OPEN_FROM - mins) * 60))); continue
+        try:
+            meta, _ = picks_fn()
+        except Exception:
+            meta = {}
+        leader_step(api, sj, st, meta, day)
+        if st.get('lead_day') == day:
+            return True
+        log(f"👑 ⚠️ 開盤這一次沒做成(資料抓不到),{POLL_SEC}s 後重試(到 09:10 為止)")
+        sleep_fn(POLL_SEC)
 
 
 def gene_hq(p):
@@ -417,7 +444,7 @@ def main():
     log(f"🚪 出場規則:{EXIT_RULE} ・最長抱 {max_hold(EXIT_RULE)} 天(要跟 App 設定中心的那一條一致,⛔ 不同的話你看到的出場價不是它執行的)")
     log(f"🐻 大盤嚴格空頭不開新倉:{'開' if BEAR_GATE else '關(BEAR_GATE=0)'}")
     if LEADER:
-        log(f"👑 領頭羊短線輪動:開(LEADER=1)・時段 {'開盤 09:00~09:10' if LEADER_WINDOW == 'open' else '尾盤(跟上面那套同一段)'}"
+        log(f"👑 領頭羊短線輪動:開(LEADER=1)・時段 {'開盤 09:01~09:10(預設)' if LEADER_WINDOW == 'open' else '尾盤(跟上面那套同一段)'}"
             f"・分給它 {LEADER_ACCOUNT:,} 元(每檔 {LEADER_ACCOUNT / LEADER_RULE['N']:,.0f})・換倉起點 {LEADER_ANCHOR}")
     if ACCOUNT_SIZE <= 0:
         log("⚠️⚠️ 你沒有設 ACCOUNT_SIZE(帳戶總資金)→ POS_PCT 這個設定**完全沒有作用**,"
@@ -461,22 +488,9 @@ def main():
         st = {'d': today, 'done': [], 'pos': st.get('pos') or {}, 'lead': st.get('lead') or {}, 'lead_day': st.get('lead_day')}   # ⚠️ 領頭羊的部位也⛔ 不可跟著清
     log(f"📒 今天已下過:{st['done'] or '(無)'}")
 
-    # 👑 開盤時段(LEADER_WINDOW=open):09:00~09:10 做一次,之後照常等尾盤
+    # 👑 開盤時段(LEADER_WINDOW=open,V78.2.4 起預設):09:01~09:10 做一次,之後照常等尾盤
     if LEADER and LEADER_WINDOW == 'open':
-        while True:
-            now, mins, day = tpe_now()
-            if now.weekday() >= 5 or mins > 9 * 60 + 10:
-                if mins > 9 * 60 + 10 and st.get('lead_day') != day:
-                    log("👑 ⏰ 已過 09:10 → 今天開盤那一次錯過了(⛔ 不改到尾盤補做:那是另一組回測數字)")
-                break
-            if mins < 9 * 60:
-                time.sleep(min(POLL_SEC, max(10, (9 * 60 - mins) * 60))); continue
-            try:
-                meta, _ = fetch_picks()
-            except Exception:
-                meta = {}
-            leader_step(api, sj, st, meta, day)
-            break
+        leader_open_window(api, sj, st)
 
     while True:
         now, mins, day = tpe_now()

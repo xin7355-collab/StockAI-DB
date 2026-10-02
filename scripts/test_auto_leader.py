@@ -118,5 +118,44 @@ ok('⑫ LEADER_POS=0(換回舊規則)→ 照前 5 名買 2000~2004', sorted(st7[
 A.fetch_json = lambda rel: mkDp('2026-10-08') if 'screener' in rel else TW
 api8 = FakeApi(); st8 = {'pos': {}, 'lead': {'2001': {'e': 100, 'd': '2026-09-25', 'sh': 2000}}}; A.leader_step(api8, sj, st8, {'mkt': {'bear60': False}}, '2026-10-09')
 ok('⑬ 續抱⛔ 不看位置:手上 2001 位置只有 50% 但還在前 10 名 → 不賣', '2001' not in [c for c, o in api8.orders if o['action'] == 'S'] and '2001' in st8['lead'], api8.orders)
+# ⑭ V78.2.4 預設改成開盤買(使用者點頭;回測隔天開盤 953% / 6,783% vs 尾盤 817% / 3,342%)
+import subprocess, datetime as _dt
+_env = {k: v for k, v in os.environ.items() if k != 'LEADER_WINDOW'}
+_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+_w = lambda env: subprocess.run([sys.executable, '-c', 'import auto_trade as A; print(A.LEADER_WINDOW)'], cwd=_root, env=env, capture_output=True, text=True).stdout.strip()
+ok('⑭a 沒設 LEADER_WINDOW → 預設 open(開盤買)', _w(_env) == 'open', _w(_env))
+ok('⑭b 設 LEADER_WINDOW=eod → 照舊尾盤', _w(dict(_env, LEADER_WINDOW='eod')) == 'eod')
+# ⑮ 開盤時段:09:00 不下單、09:01 才做;第一次抓不到 → 重試;過 09:10 跳過
+def clock(mins_list):
+    it = iter(mins_list)
+    def f():
+        m = next(it); d = _dt.datetime(2026, 9, 25, m // 60, m % 60)
+        return d, m, '2026-09-25'
+    return f
+def open_run(mins_list, fail_first=0):
+    A.LEADER_ACCOUNT, A.DRY_RUN, A.MAX_LOTS_PER_TRADE, A.MAX_AMT_PER_TRADE = 1_000_000, False, 99, 10**9
+    A.save_state = lambda s: None
+    n = {'c': 0, 'sleep': 0}
+    def fj(rel):
+        if 'screener' in rel:
+            n['c'] += 1
+            if n['c'] <= fail_first: raise IOError('boom')
+            return mkD('2026-09-24')
+        return TW
+    A.fetch_json = fj
+    api = FakeApi(); st = {'pos': {}, 'lead': {}}
+    def sl(x): n['sleep'] += 1
+    r = A.leader_open_window(api, sj, st, now_fn=clock(mins_list), sleep_fn=sl, picks_fn=lambda: ({'mkt': {'bear60': False}}, []))
+    return r, api, st, n
+r, api, st, n = open_run([540, 541])
+ok('⑮a 09:00 那一分鐘⛔ 不下單(等到 09:01 才做)', r and n['sleep'] == 1 and len(st['lead']) == 5, (r, n, sorted(st['lead'])))
+r, api, st, n = open_run([541, 542], fail_first=1)
+ok('⑮b ⭐ 第一次抓不到資料 → 09:10 前重試成功(拿掉重試就紅)', r and len(st['lead']) == 5 and n['c'] == 2, (r, n, sorted(st['lead'])))
+r, api, st, n = open_run([551])
+ok('⑮c 過了 09:10 → 那天跳過、一單都不送', r is False and not api.orders and st['lead'] == {}, (r, api.orders))
+r, api, st, n = open_run([541, 542, 543, 551], fail_first=99)
+ok('⑮d 一直抓不到 → 09:10 後放棄、⛔ 不下單', r is False and not api.orders, (r, n))
+_src = open(os.path.join(_root, 'auto_trade.py'), encoding='utf-8').read()
+ok('⑮e 尾盤那段只在 LEADER_WINDOW != open 時做領頭羊(⛔ 開盤錯過不在尾盤補)', "if LEADER and LEADER_WINDOW != 'open':" in _src and 'leader_open_window(api, sj, st)' in _src)
 print(f"\n{'❌' if bad_n else '✅'} AUTO_LEADER {ok_n}/{ok_n + bad_n}")
 sys.exit(1 if bad_n else 0)
