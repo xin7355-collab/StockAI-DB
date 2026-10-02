@@ -21,7 +21,7 @@ if (!B) process.exit(1);
 ok('①b 產生者註明是 embed_profit_board.mjs(⛔ 手改)', /embed_profit_board\.mjs/.test(PRO.slice(PRO.indexOf(line) - 300, PRO.indexOf(line))));
 for (const w of ['ai', 'long']) {
   const R = B.wins[w].rows, e = R.find(r => r.k === '0050'), L = R.filter(r => r.grp === 'lead');
-  ok(`①c ${w}:👑 四種做法 + 0050,每一列有 100 萬變成 / 最差 / 中途最多賠`, L.length === 4 && e && !e.late && R.filter(r => !r.late).every(r => r.fin > 0 && r.worst > 0 && r.worst <= r.fin && r.mdd < 0), JSON.stringify(L.map(r => r.k)));
+  ok(`①c ${w}:👑 四種做法 + 💵 錢放現金對照(V78.1.9)+ 0050,每一列有 100 萬變成 / 最差 / 中途最多賠`, L.length === 5 && L.some(r => r.k === 'leadcash') && e && !e.late && R.filter(r => !r.late).every(r => r.fin > 0 && r.worst > 0 && r.worst <= r.fin && r.mdd < 0), JSON.stringify(L.map(r => r.k)));
   ok(`①d ${w}:👑 贏 0050 的起點數 ≤ ${B.paths}`, L.every(r => r.beat >= 0 && r.beat <= B.paths));
 }
 ok('①e 16 年那一格:上市晚於 2011 的 ETF 標 late(⛔ 不硬比)', B.wins.long.rows.filter(r => r.grp === 'etf' && r.k !== '0050').every(r => r.late));

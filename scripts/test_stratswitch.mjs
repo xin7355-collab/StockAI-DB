@@ -93,7 +93,7 @@ const R = await page.evaluate(async () => {
 });
 ok('① 預設 🧬;存了 lead 但沒解鎖 → 仍是 🧬', R.def === 'gene' && R.lockedLead === 'gene');
 ok('①b 點一下版本號 → 環境資訊(原本的功能)、⛔ 不解鎖', R.oneTapEnv === 1 && R.oneTapUnlock === false, JSON.stringify([R.oneTapEnv, R.oneTapUnlock]));
-ok('①c 連點 5 次 → 解鎖(⛔ 不跳環境資訊)、設定出現 👑 選項(V78.1.1 起還多一個 🅿️ 停車 0050 → 共 3 個)', R.unlocked && R.afterUnlock === 'lead' && R.envAfter5 === 1 && R.boxLead === 3, JSON.stringify([R.unlocked, R.afterUnlock, R.envAfter5, R.boxLead]));
+ok('①c 連點 5 次 → 解鎖(⛔ 不跳環境資訊)、設定出現 👑 選項(V78.1.9 起 👑+停車 / 💵 錢放現金 / 🅿️ / 🔥 共 4 個)', R.unlocked && R.afterUnlock === 'lead' && R.envAfter5 === 1 && R.boxLead === 4, JSON.stringify([R.unlocked, R.afterUnlock, R.envAfter5, R.boxLead]));
 ok('①d 🔒 沒解鎖 → 設定只列 🧬、畫面上⛔ 看不到「領頭羊」四個字', R.boxGene === 1 && !/領頭羊|👑/.test(R.boxGeneTxt), R.boxGeneTxt);
 ok('② 🧬:_leaderMine 是空的(⛔ 沒有混搭)', R.mineGene === 0);
 ok('②b 🧬:更新紀錄看不到 👑 那幾行;👑 時看得到(決定性對照)', !/領頭羊/.test(R.logGene) && /領頭羊/.test(R.logLead) && R.logGene.length > 200, [R.logGene.length, /領頭羊/.test(R.logLead)]);
@@ -140,8 +140,8 @@ ok('⑤c 🧬:實測總表不列標題有 👑 / 領頭羊的條目;👑 時全�
 ok('⑤d 🧬:成績單沒有 👑 分頁、選了也退回 🧬', !P.def.tabs.includes('lead') && P.on.tabs.includes('lead') && P.recoGene === 'pb', JSON.stringify([P.def.tabs, P.recoGene]));
 ok('⑤e 拋竿 🧬 走舊版本(_castPickGene),👑 才走領頭羊;🎣 V78.0.2 股海釣手(App 模式)一律 👑', /_isLead\(\) && !this\._fpvOn\(\)\) return this\._castPickGene/.test(P.castSrc));
 const PS = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
-const judge = s => (s.match(/strategy === 'lead' && !?!?(?:s|st)\.stratUnlock/) || [''])[0];
-ok('⑤f 兩邊判斷式同一條(strategy === lead 且解鎖)', /s\.strategy === 'lead' && s\.stratUnlock/.test(SRC) && /st\.strategy === 'lead' && !!st\.stratUnlock/.test(PS), [judge(SRC), judge(PS)]);
+const judge = s => (s.match(/\/\^lead\(park\)\?\$\/\.test\((?:s|st)\.strategy\) && !?!?(?:s|st)\.stratUnlock/) || [''])[0];
+ok('⑤f 兩邊判斷式同一條(strategy 是 lead 或 leadpark 且解鎖,V78.1.9)', /\/\^lead\(park\)\?\$\/\.test\(s\.strategy\) && s\.stratUnlock/.test(SRC) && /\/\^lead\(park\)\?\$\/\.test\(st\.strategy\) && !!st\.stratUnlock/.test(PS), [judge(SRC), judge(PS)]);
 
 // ⑥ Telegram worker
 const W = fs.readFileSync(path.join(ROOT, 'cloud-worker/worker.js'), 'utf8');

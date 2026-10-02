@@ -110,7 +110,7 @@ ok('④d 逐年成績單也改用名字表(🔥 / 🐢)', /🔥 高檔飆股/.te
 // ⑤ 策略開關
 ok('⑤ 🧬 模式:選哪一套 / 回測數字 / 逐年表都看不到 👑 / 領頭羊', !/👑|領頭羊/.test(G.txt + G.pf + G.yb), (G.txt + G.pf + G.yb).match(/.{0,40}(👑|領頭羊).{0,40}/)?.[0]);
 const leadA = f(aiRows, 'lead');
-ok('⑤b 👑 模式:答案換成 👑 領頭羊全攻、金額 == 看板(決定性對照)', /👑 領頭羊全攻/.test(L.hero) && L.hero.includes(wan(leadA.fin)), L.hero);
+ok('⑤b 👑 模式:答案換成 👑 領頭羊+停車 0050、金額 == 看板(決定性對照)', /👑 領頭羊\+停車 0050/.test(L.hero) && L.hero.includes(wan(leadA.fin)), L.hero);
 
 // ⑥ 版面
 ok('⑥ 一進來預設是 🏆 選哪一套', G.defSel === 'pick' && G.big[0] === '🏆 選哪一套*', JSON.stringify(G.big) + G.defSel);

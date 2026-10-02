@@ -31,7 +31,7 @@ const M = HTML.slice(a, b);
 ok('② 抓得到設定 modal(空過守門)', a > 0 && b > a && M.length > 20000, M.length);
 const MUST = ['set_bearGate', 'set_geneRank', 'set_backupPwd', 'set_aiEngine', 'set_freeAiEngine', 'set_feeDiscount', 'set_accountSize', 'set_riskPct',
     'set_liveBtc', 'set_liveTwIndex', 'set_massiveKey', 'set_workerUrl', 'set_botUsername', 'set_tgLevel', 'set_voiceAlert', 'set_watchlistAlert',
-    'set_alertStrict', 'set_deckFinAccel', 'stratBox', 'deckShowBox', 'alertCatBox', 'set_riskAlertThreshold', 'pushSubscribeBtn', 'aiKeyStatsBox',
+    'set_alertStrict', 'stratBox', 'deckShowBox', 'alertCatBox', 'set_riskAlertThreshold', 'pushSubscribeBtn', 'aiKeyStatsBox',
     'keyRows_groq', 'keyRows_openrouter', 'keyRows_gemini', 'keyRows_fugle', 'keyRows_finmind', 'exitRuleBtns', 'fontSizeBtns', 'tgCloudBindBtn', 'exportAreaContainer'];
 const miss = MUST.filter(id => !M.includes(`id="${id}"`));
 ok('②b 搬家⛔ 不可弄丟設定:原本的 ' + MUST.length + ' 個 id 都還在', !miss.length, miss);
@@ -121,7 +121,8 @@ ok('③f 常用順序:我的策略 → 出場 → 手續費/本金 → 字體', 
 ok(`③g 第一眼字數有上限(實測 ${R.firstGlance},上限 1600;改版前 6,670)`, R.firstGlance > 300 && R.firstGlance <= 1600, R.firstGlance);
 ok('④a 沒解鎖:只有 🔥 一個選項', JSON.stringify(R.optsLocked) === '["gene"]', R.optsLocked);
 ok('④b 沒解鎖時就算存著 park 也當 🔥(_park false)', R.parkLocked[0] === false && R.parkLocked[1] === 'gene', R.parkLocked);
-ok('④c 解鎖後:🔥 / 🅿️ / 👑 三個', JSON.stringify(R.optsUnlocked) === '["gene","park","lead"]', R.optsUnlocked);
+// 🏆 V78.1.9 解鎖後四個、照實測由強到弱(16 年中位):👑+停車 → 👑 錢放現金 → 🅿️ → 🔥
+ok('④c 解鎖後:四個、照實測由強到弱排', JSON.stringify(R.optsUnlocked) === '["leadpark","lead","park","gene"]', R.optsUnlocked);
 ok('④d 選 🅿️:_strat() 仍是 gene(選股/出場/提醒/Telegram 同 🔥)', R.parkOn[0] === true && R.parkOn[1] === 'gene' && R.parkOn[2] === false && R.parkOn[3] === 'park' && R.parkChecked, R.parkOn);
 const wanOf = h => (h.match(/該停在 0050 約 <b[^>]*>([\d.,]+) 萬/) || [])[1];
 ok('④e 停車金額 = 帳戶 − 個股市值(100 萬 − 30 萬 = 70 萬)', wanOf(R.parkH1) === '70', wanOf(R.parkH1));

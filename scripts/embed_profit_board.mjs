@@ -16,7 +16,7 @@ import fs from 'fs';
 
 const toArg = (() => { const i = process.argv.indexOf('--to'); return i > 0 ? process.argv[i + 1] : null; })();
 const geneArg = (() => { const i = process.argv.indexOf('--gene'); return i > 0 ? process.argv[i + 1] : null; })();
-const [bf, b2f, sf] = process.argv.slice(2).filter((a, i, A) => !a.startsWith('--') && !['--to', '--gene'].includes(A[i - 1]));
+const [bf, b2f, sf] = process.argv.slice(2).filter((a, i, A) => !a.startsWith('--') && !['--to', '--gene', '--leadcash'].includes(A[i - 1]));
 const RE_LINE = /^  _PROFIT_BOARD: \{.*\},$/m;
 // 🔥 V78.1.0 把 🧬 那幾套(scripts/gene_board.mjs 產物)加進看板:grp 'gene'
 //   ⭐ 交叉驗證:gene 那邊每個起點的 0050 中位 == 看板的 0050(同一組起點),差超過 0.3% → exit 1(⛔ 不嵌半套)
@@ -45,6 +45,35 @@ if (geneArg && !bf) {
   const back = JSON.parse(fs.readFileSync(P0, 'utf8').match(RE_LINE)[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, ''));
   if (JSON.stringify(back) !== JSON.stringify(cur)) die0('讀回來不一樣');
   console.log('✅ 🧬 列已嵌入:' + Object.entries(cur.wins).map(([k, W]) => `${k} ${W.rows.filter(r => r.grp === 'gene').map(r => r.k + ' ' + Math.round(r.fin / 1e4) + '萬').join(' / ')}`).join(' | '));
+  process.exit(0);
+}
+// 💵 V78.1.9 只加「👑 領頭羊・閒錢放現金」那一列(使用者:「領頭羊+停車 0050 跟 🅿️ 哪個強」→ 要有 👑 不停車的對照)
+//   node scripts/embed_profit_board.mjs --leadcash lead_park_cap.json
+//   ⭐ 交叉驗證:同一份產物裡的「👑 全攻」== 看板的 lead(±0.5%)、0050 == 看板 0050 → 起點一致才嵌(⛔ 不嵌半套)
+const cashArg = (() => { const i = process.argv.indexOf('--leadcash'); return i > 0 ? process.argv[i + 1] : null; })();
+if (cashArg) {
+  const P0 = 'pro.html', h0 = fs.readFileSync(P0, 'utf8'), m0 = h0.match(RE_LINE);
+  const die0 = m => { console.error('❌ ' + m); process.exit(1); };
+  if (!m0) die0('pro.html 沒有 _PROFIT_BOARD 那一行');
+  const cur = JSON.parse(m0[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, ''));
+  const C = JSON.parse(fs.readFileSync(cashArg, 'utf8'));
+  for (const [wk, W] of Object.entries(cur.wins)) {
+    const sets = C.sets.filter(s => s.from === W.from);
+    const full = sets.find(s => /全攻/.test(s.name)), cash = sets.find(s => /閒錢放現金/.test(s.name));
+    if (!full || !cash || !full.cap || !cash.cap) die0(wk + ' 產物缺 全攻 / 閒錢放現金(要 capital:1000000)');
+    const lead = W.rows.find(r => r.k === 'lead'), e50 = W.rows.find(r => r.k === '0050');
+    if (!lead || !e50) die0(wk + ' 看板沒有 lead / 0050');
+    if (Math.abs(full.cap.fin - lead.fin) / lead.fin > 0.005) die0(`${wk} 全攻 ${Math.round(full.cap.fin)} ≠ 看板 ${lead.fin}(起點或資料不同)`);
+    if (Math.abs(cash.cap.b0050fin - e50.fin) / e50.fin > 0.003) die0(`${wk} 0050 ${Math.round(cash.cap.b0050fin)} ≠ 看板 ${e50.fin}`);
+    W.rows = W.rows.filter(r => r.k !== 'leadcash').concat([{ k: 'leadcash', n: '👑 領頭羊(閒錢放現金)', grp: 'lead', fin: Math.round(cash.cap.fin), worst: Math.round(cash.cap.worstFin),
+      mdd: cash.mdd, beat: cash.cap.beatFin, yrBeat: cash.yrBeat, yrs: Object.keys(cash.years).length }]);
+  }
+  cur.cashSrc = 'leader_probe SETS park:false capital:1000000・' + (C.asof || '');
+  const ln = '  _PROFIT_BOARD: ' + JSON.stringify(cur) + ',';
+  fs.writeFileSync(P0, h0.replace(RE_LINE, () => ln));
+  const back = JSON.parse(fs.readFileSync(P0, 'utf8').match(RE_LINE)[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, ''));
+  if (JSON.stringify(back) !== JSON.stringify(cur)) die0('讀回來不一樣');
+  console.log('✅ leadcash 列已嵌入:' + Object.entries(cur.wins).map(([k, W]) => `${k} ${Math.round(W.rows.find(r => r.k === 'leadcash').fin / 1e4)} 萬`).join(' | '));
   process.exit(0);
 }
 if (!bf || !b2f || !sf) { console.error('用法: embed_profit_board.mjs board.json board2.json small.json [--to YYYY-MM-DD]'); process.exit(2); }
@@ -85,6 +114,12 @@ for (const [wk, from] of Object.entries(WIN)) {
     delete r.b0050;
   }
   if (geneArg) rows.push(...geneRows(JSON.parse(fs.readFileSync(geneArg, 'utf8')), wk, from, e50.fin, die));
+  // 💵 V78.1.9 整張重嵌時 ⛔ 不可把 leadcash 那列弄丟(它來自另一份產物)→ 從現在的 pro.html 帶過來並提醒要重跑 --leadcash
+  try {
+    const old = JSON.parse(fs.readFileSync('pro.html', 'utf8').match(RE_LINE)[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, ''));
+    const oc = old.wins && old.wins[wk] && old.wins[wk].rows.find(r => r.k === 'leadcash');
+    if (oc) { rows.push(oc); console.log(`⚠️ ${wk} leadcash 沿用舊的那列 —— 起點若變了請再跑 --leadcash`); }
+  } catch (_) {}
   wins[wk] = { from, rows };
 }
 
