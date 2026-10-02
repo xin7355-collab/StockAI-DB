@@ -92,16 +92,30 @@ const R = await page.evaluate(async () => {
     host.querySelectorAll('details').forEach(d => d.open = true);
     out.txt = host.innerText; out.rows = [...host.querySelectorAll('[data-leaderrow]')].map(e => e.dataset.leaderrow);
     out.held = Object.fromEntries([...host.querySelectorAll('[data-leaderheld]')].map(e => [e.dataset.leaderheld, e.dataset.leaderkeep]));
-    out.buyBtns = (host.innerText.match(/🛒 買/g) || []).length;
+    out.buyBtns = [...host.querySelectorAll('[data-leaderact="buy"]')].filter(e => /換倉日買/.test(e.textContent)).length; out.cartNonRebal = (host.innerText.match(/🛒 買/g) || []).length;
     // 👑 V77.9.1 收盤價 + 排序 + 持股標記
     out.close1 = host.querySelector('[data-leaderrow="1001"] [data-leaderclose]')?.textContent || '';
     out.hdr = [...host.querySelectorAll('[data-leadersort]')].map(e => e.dataset.leadersort);
     out.firstDefault = out.rows[0];
+    // 📌 V78.3.2 抱著段:1000(沒過趨勢、不在名單)也是 09-24 買的 → 必須列出來、寫「不在前 10 名」、收盤讀 K 線
+    { const PH2 = JSON.parse(JSON.stringify(PH)); PH2.days[0].lead.rows = ['1000', '1001', '1003', '1005', '1007'].map((s, i) => ({ s, r: i + 1 }));
+      KD['1000'] = [{ date: '2026-09-24', open: 100, close: 100 }, { date: '2026-09-25', open: 95, close: 100 }, { date: '2026-09-28', open: 110, close: 120 }];
+      app._leadEntGet = async f => /pick_history/.test(f) ? PH2 : (KD[(f.match(/data\/(\d+)\.json/) || [])[1]] || null);
+      app._leadEnt = null; host.innerHTML = await app._leaderDeckHtml();
+      out.ownN = +(host.querySelector('[data-leaderown]')?.dataset.leaderown || 0);
+      out.own1000 = host.querySelector('[data-leaderownrow="1000"]')?.innerText || ''; out.own1000keep = host.querySelector('[data-leaderownrow="1000"]')?.dataset.leaderownkeep;
+      out.own1001keep = host.querySelector('[data-leaderownrow="1001"]')?.dataset.leaderownkeep;
+      out.noneTxt = host.querySelector('[data-leaderrow="1009"] [data-leaderent]')?.innerText || '';
+      // 換倉日(09-24 = 第 1 天):動作欄才是 🛒 買
+      const Dr = { ...D, data_date: '2026-09-24' }; const keepLoad = app._loadScreener; app._loadScreener = async () => Dr; app._leadEnt = null;
+      host.innerHTML = await app._leaderDeckHtml(); out.cartRebal = (host.innerText.match(/🛒 買/g) || []).length; out.waitRebal = [...host.querySelectorAll('[data-leaderact="buy"]')].filter(e => /換倉日買/.test(e.textContent)).length;
+      app._loadScreener = keepLoad; app._leadEntGet = async f => /pick_history/.test(f) ? PH : (KD[(f.match(/data\/(\d+)\.json/) || [])[1]] || null); app._leadEnt = null;
+      host.innerHTML = await app._leaderDeckHtml(); }
     out.ent1001 = host.querySelector('[data-leaderrow="1001"] [data-leaderent]')?.innerText || ''; out.ent1003 = host.querySelector('[data-leaderrow="1003"] [data-leaderent]')?.innerText || '';
     out.entNote = host.querySelector('[data-leaderentnote]')?.dataset.leaderentnote || '';
     app._leaderSort = { k: 'ent', asc: true }; host.innerHTML = await app._leaderDeckHtml();
     out.firstAsc = host.querySelector('[data-leaderrow]').dataset.leaderrow; out.ascMark = /買進價▲/.test(host.innerText);
-    out.buyAfterSort = (host.innerText.match(/🛒 買/g) || []).length;
+    out.buyAfterSort = [...host.querySelectorAll('[data-leaderact="buy"]')].filter(e => /換倉日買/.test(e.textContent)).length;
     app._leaderSort = null;
     localStorage.removeItem('leaderMine_v1'); host.innerHTML = await app._leaderDeckHtml();
     out.unmarked = host.querySelector('[data-leaderheld="1041"]')?.innerText || '';
@@ -126,17 +140,19 @@ ok('①d 名單列前 2N = 10 檔', R.ranked === 10 && R.rows.length === 10, R.r
 ok('①e 欄位缺 → notyet(⛔ 不可拿 chg5/chg20 湊)', R.notyet === 'notyet');
 ok('①f ⭐ 決定性對照:把一檔改成 ma20 < ma60 → 被濾掉', R.filteredOut === true);
 ok('② 時鐘:起點那天 = 第 1 天且是換倉日;第 5 天還剩 6 天;第 11 天又是換倉日;沒傳起點 → 用共用錨點(09-24 起,09-25 是第 2 天)', R.c1.day === 1 && R.c1.isRebal && R.c5.day === 5 && !R.c5.isRebal && R.c5.left === 6 && R.c11.day === 11 && R.c11.isRebal && R.c0.day === 2 && !R.c0.isRebal, JSON.stringify([R.c1, R.c5, R.c11, R.c0]));
-ok('③ 畫面(V77.9.6 選 👑 → 手上每一檔個股都照這套):前 5 名裡沒有的 4 檔 🛒 買(1001 已有)、1001 續抱、1041(第 21 名)/ 1000(沒過趨勢)/ 2330(池子外)都 keep=0', R.buyBtns === 4 && R.held['1001'] === '1' && R.held['1041'] === '0' && R.held['1000'] === '0' && R.held['2330'] === '0', JSON.stringify([R.buyBtns, R.held]));
+ok('③ 畫面(V77.9.6 選 👑 → 手上每一檔個股都照這套):前 5 名裡沒有的 4 檔「⏳ 換倉日買」(非換倉日;1001 已有)、1001 續抱、1041(第 21 名)/ 1000(沒過趨勢)/ 2330(池子外)都 keep=0', R.buyBtns === 4 && R.held['1001'] === '1' && R.held['1041'] === '0' && R.held['1000'] === '0' && R.held['2330'] === '0', JSON.stringify([R.buyBtns, R.held]));
 ok('⑪a 🎯 V78.2.2 今天要做的事 3~5 行(今天 / 怎麼買 / 怎麼賣 / 錢放哪)', R.todoN >= 3 && R.todoN <= 5 && /09:00 開盤買前 5 名/.test(R.todo) && /掉出前 10 名/.test(R.todo) && R.todo.replace(/<[^>]+>/g, '').length <= 220, R.todo.replace(/<[^>]+>/g, '').length);
 ok('⑪b 長說明(規則 / 實測 / 怎麼買回測)收在 <details>,第一眼不印「實測 17 條起點中位」', R.hasInfo && R.buyHowInDetails && !/條起點中位/.test(R.txtClosed));
 ok('⑪c 決策台⛔ 沒有模擬帳(搬到產業作戰室成績單),只留一行指路', !R.hasLedger && R.ptr && !/<a [^>]*pro\.html/.test(SRC.slice(SRC.indexOf('async _leaderDeckHtml'), SRC.indexOf('_deckTodoLead({'))));
 ok('③b ⭐ 決定性對照:實測數字讀 `_LEADER_EDGE`(改成 4321 畫面要跟著變)', /4321/.test(R.constTxt) && !/4321/.test(R.txt));
+ok('⑫f 📌 這套抱著的全部列出來(4 檔;1003 開盤快漲停沒買到):1000 今天不在前 10 → 寫「不在前 10 名」+ 換倉日再賣、收盤讀 K 線 120(+26.3%);1001 在前 10 → 續抱', R.ownN === 4 && /不在前 10 名/.test(R.own1000) && /換倉日再賣/.test(R.own1000) && /120\.0/.test(R.own1000) && /\+26\.3%/.test(R.own1000) && R.own1000keep === '0' && R.own1001keep === '1', JSON.stringify([R.ownN, R.own1000, R.own1000keep, R.own1001keep]));
+ok('⑫g 非換倉日:動作欄⛔ 不寫「🛒 買」、價格欄寫「換倉日才買」;換倉日當天才是 🛒 買', R.cartNonRebal === 0 && /換倉日才買/.test(R.noneTxt) && R.cartRebal === 4 && R.waitRebal === 0, JSON.stringify([R.cartNonRebal, R.noneTxt, R.cartRebal, R.waitRebal]));
 ok('③c 空頭:名單照列(10 列)、但一個「🛒 買」都沒有、寫「今天不開新倉」', R.bearRows === 10 && !/🛒 買/.test(R.bearTxt) && /今天不開新倉/.test(R.bearTxt) && /空頭不買/.test(R.bearTxt));
 ok('③d 一定寫代價:中途最多賠 / 只有 N 年贏 + 標明是預設', /中途最多賠/.test(R.txt) && /年贏 0050/.test(R.txt) && /你選的策略/.test(R.txt) && !/預設・實測最強/.test(R.txt));
 ok('③i 每一列有收盤價(讀 screener 的 c)', R.close1 === '100.0', R.close1);
 ok('③j 表頭可排序:名次/收盤/買進價/今天/億/日 五欄(📌 V78.3.1 10 日 → 買進價)', JSON.stringify(R.hdr) === JSON.stringify(['rank', 'c', 'ent', 'chg', 'amt20']), JSON.stringify(R.hdr));
 ok('⑫a 📌 買進價 = 換倉隔天開盤(1001 開 90)、開盤快漲停的 1003 買不到、⛔ 不往下補第 6 名(= 成績單)', JSON.stringify(R.entMap) === JSON.stringify({ '1001': [90, '2026-09-25'], '1005': [95, '2026-09-25'], '1007': [95, '2026-09-25'], '1009': [95, '2026-09-25'] }), JSON.stringify(R.entMap));
-ok('⑫b 表上 1001 印「90.00 / +11.1%」(到今天收盤 100)、1003 寫「還沒買」、表下有說明', /90\.00/.test(R.ent1001) && /\+11\.1%/.test(R.ent1001) && /還沒買/.test(R.ent1003) && R.entNote === 'ok', JSON.stringify([R.ent1001, R.ent1003, R.entNote]));
+ok('⑫b 表上 1001 印「90.00 / +11.1%」(到今天收盤 100)、1003 寫「換倉日才買」(非換倉日)、表下有說明', /90\.00/.test(R.ent1001) && /\+11\.1%/.test(R.ent1001) && /換倉日才買/.test(R.ent1003) && R.entNote === 'ok', JSON.stringify([R.ent1001, R.ent1003, R.entNote]));
 ok('⑫c 今天就是換倉日(明天才成交)→ 前 5 名寫「明天開盤買」、⛔ 不編買進價', R.pendN === 0 && JSON.stringify(R.pend) === JSON.stringify(['1001', '1003', '1005', '1007', '1009']), JSON.stringify([R.pend, R.pendN]));
 ok('⑫e 🐻 換倉那天大盤嚴格空頭 → ⛔ 不買(買進價一檔都沒有,= 成績單)', R.bearEnt === 0, R.bearEnt);
 ok('⑫d 漲停門檻 index == pro(9.7)', /limUp: 9\.7,/.test(SRC) && /limUp: 9\.7 \}/.test(fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8')));
