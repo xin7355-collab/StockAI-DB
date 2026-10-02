@@ -77,6 +77,10 @@ const R = await page.evaluate(async () => {
     const host = document.createElement('div'); host.style.width = '358px'; document.body.appendChild(host);
     host.innerHTML = await app._leaderDeckHtml();
     out.D = D; out.rankedSyms = L.ranked.map(r => r.sym);
+    out.txtClosed = host.innerText; out.hasInfo = !!host.querySelector('details[data-leaderinfo]'); out.hasLedger = !!host.querySelector('[data-leaderledger]') || typeof app._leaderLedger === 'function'; out.ptr = !!host.querySelector('[data-leaderledgerptr]');
+    out.buyHowInDetails = !!host.querySelector('details[data-leaderinfo] [data-leaderbuyhow]');
+    out.todo = app._leadTodo || ''; out.todoN = (out.todo.match(/data-todo=/g) || []).length;
+    host.querySelectorAll('details').forEach(d => d.open = true);
     out.txt = host.innerText; out.rows = [...host.querySelectorAll('[data-leaderrow]')].map(e => e.dataset.leaderrow);
     out.held = Object.fromEntries([...host.querySelectorAll('[data-leaderheld]')].map(e => [e.dataset.leaderheld, e.dataset.leaderkeep]));
     out.buyBtns = (host.innerText.match(/🛒 買/g) || []).length;
@@ -95,9 +99,9 @@ const R = await page.evaluate(async () => {
     out.markedMine = host.querySelector('[data-leaderheld="1041"]')?.dataset.leadermine;
     localStorage.removeItem('leaderMine_v1'); host.innerHTML = await app._leaderDeckHtml();
     // 注意 / 處置:把 1003 標成處置
-    D.rows['1003'][10] = 2; host.innerHTML = await app._leaderDeckHtml(); out.attTxt = host.innerText; D.rows['1003'][10] = 0;
+    D.rows['1003'][10] = 2; host.innerHTML = await app._leaderDeckHtml(); out.attTxt = (host.querySelectorAll('details').forEach(d => d.open = true), host.innerText); D.rows['1003'][10] = 0;
     // 決定性對照:實測數字讀常數
-    const keep = app._LEADER_EDGE.ai.tot; app._LEADER_EDGE.ai.tot = 4321; host.innerHTML = await app._leaderDeckHtml(); out.constTxt = host.innerText; app._LEADER_EDGE.ai.tot = keep;
+    const keep = app._LEADER_EDGE.ai.tot; app._LEADER_EDGE.ai.tot = 4321; host.innerHTML = await app._leaderDeckHtml(); out.constTxt = (host.querySelectorAll('details').forEach(d => d.open = true), host.innerText); app._LEADER_EDGE.ai.tot = keep;
     // 空頭
     app._mktBear60 = async () => ({ on: true, c: 100, ma20: 105, ma60: 110 }); host.innerHTML = await app._leaderDeckHtml(); out.bearTxt = host.innerText; out.bearRows = host.querySelectorAll('[data-leaderrow]').length;
     window.scrollTo(80, 0); out.sx = window.scrollX;
@@ -112,6 +116,9 @@ ok('①e 欄位缺 → notyet(⛔ 不可拿 chg5/chg20 湊)', R.notyet === 'noty
 ok('①f ⭐ 決定性對照:把一檔改成 ma20 < ma60 → 被濾掉', R.filteredOut === true);
 ok('② 時鐘:起點那天 = 第 1 天且是換倉日;第 5 天還剩 6 天;第 11 天又是換倉日;沒傳起點 → 用共用錨點(09-24 起,09-25 是第 2 天)', R.c1.day === 1 && R.c1.isRebal && R.c5.day === 5 && !R.c5.isRebal && R.c5.left === 6 && R.c11.day === 11 && R.c11.isRebal && R.c0.day === 2 && !R.c0.isRebal, JSON.stringify([R.c1, R.c5, R.c11, R.c0]));
 ok('③ 畫面(V77.9.6 選 👑 → 手上每一檔個股都照這套):前 5 名裡沒有的 4 檔 🛒 買(1001 已有)、1001 續抱、1041(第 21 名)/ 1000(沒過趨勢)/ 2330(池子外)都 keep=0', R.buyBtns === 4 && R.held['1001'] === '1' && R.held['1041'] === '0' && R.held['1000'] === '0' && R.held['2330'] === '0', JSON.stringify([R.buyBtns, R.held]));
+ok('⑪a 🎯 V78.2.2 今天要做的事 3~5 行(今天 / 怎麼買 / 怎麼賣 / 錢放哪)', R.todoN >= 3 && R.todoN <= 5 && /09:00 開盤買前 5 名/.test(R.todo) && /掉出前 10 名/.test(R.todo) && R.todo.replace(/<[^>]+>/g, '').length <= 220, R.todo.replace(/<[^>]+>/g, '').length);
+ok('⑪b 長說明(規則 / 實測 / 怎麼買回測)收在 <details>,第一眼不印「實測 17 條起點中位」', R.hasInfo && R.buyHowInDetails && !/條起點中位/.test(R.txtClosed));
+ok('⑪c 決策台⛔ 沒有模擬帳(搬到產業作戰室成績單),只留一行指路', !R.hasLedger && R.ptr && !/<a [^>]*pro\.html/.test(SRC.slice(SRC.indexOf('async _leaderDeckHtml'), SRC.indexOf('_deckTodoLead({'))));
 ok('③b ⭐ 決定性對照:實測數字讀 `_LEADER_EDGE`(改成 4321 畫面要跟著變)', /4321/.test(R.constTxt) && !/4321/.test(R.txt));
 ok('③c 空頭:名單照列(10 列)、但一個「🛒 買」都沒有、寫「今天不開新倉」', R.bearRows === 10 && !/🛒 買/.test(R.bearTxt) && /今天不開新倉/.test(R.bearTxt) && /空頭不買/.test(R.bearTxt));
 ok('③d 一定寫代價:中途最多賠 / 只有 N 年贏 + 標明是預設', /中途最多賠/.test(R.txt) && /年贏 0050/.test(R.txt) && /你選的策略/.test(R.txt) && !/預設・實測最強/.test(R.txt));

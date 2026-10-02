@@ -87,7 +87,12 @@ export function mom(S, i, L) { if (!(S.A[i] > 0)) return NaN; let j = i, c = 0; 
 export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: true, trend: true, hyst: 2, pick: 'mom', core: 0, maExit: 0, tp: 0, skip: 0, riskadj: false, fill: 'open', noAtt: 0, noDisp: 0, sellDisp: false,
     dispNow: false, dispOracle: 0, attSell: 0, attWin: 5, rebuy: 'none', rebuyDrop: 0.15, blockDays: 10, shamSell: 0,
     indCap: 0, wRank: null, posMin: 85, posRaw: true, volUp: 0, finAcc: false, fsync: 0, rankUp: false, shamKeep: 0,
-    capital: 0, minFee: 20, add: 0, glide: 0, parkMin: 5000, luExit: '', phase: 0, join: '' };
+    capital: 0, minFee: 20, add: 0, glide: 0, parkMin: 5000, luExit: '', phase: 0, join: '', limitRepl: false, limitRetry: '', pickFrom: 0 };
+// 🛒 V78.2.2 「怎麼買」(使用者:「前 5 名還是 6~10 也可以?開盤買還是 13:00~13:30?漲停要不要換第 6 名?」)⛔ 不設時逐位相同:
+//   limitRepl  = 成交價接近漲停買不到 → 換候選名單上的下一名(仍要過位置門檻、沒持有)
+//   limitRetry = 'close':開盤接近漲停買不到 → 當天收盤沒鎖就用收盤價買(只在 fill='open' 有意義)
+//   fill='sameclose' = 換倉日**當天收盤**就成交(= 13:00 看名單、13:25 下單的近似;⚠️ 名次用收盤算 → 偏樂觀,只當上限)
+//   pickFrom   = k:只從候選第 k+1 名起買(pickFrom 5 = 只買第 6~10 名)
 // 🕐 V78.2.1 晚進場(使用者:「第一天沒買,後面還可以進嗎?」)⛔ 不設時逐位相同:
 //   phase = k:換倉節奏的起點在 s0 之前 k 天(= 你在兩次換倉中間第 k 天才開始)
 //   join  = 'now' 當天收盤就照當下名單買(之後跟著換倉日)・'wait' 錢先停 0050、等下一個換倉日才買
@@ -140,7 +145,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     // V78.0.5 新功能一律用另一顆亂數(⛔ 不可動到 pick='sham' 用的那顆 → 舊結果逐位相同)
     const rand2 = rng(seed * 7919 + 13);
     const blocked = new Map();                                // sym → {S, px, i, rel}
-    const st = { forced: 0, rebought: 0, fTot: 0, fPass: 0, finMiss: 0, posDays: 0, luOpen: 0, luClose: 0, luHold: 0, luLock: 0 };
+    let retryBuy = null, retryNow = false;
+    const st = { repl: 0, retried: 0, forced: 0, rebought: 0, fTot: 0, fPass: 0, finMiss: 0, posDays: 0, luOpen: 0, luClose: 0, luHold: 0, luLock: 0 };
     const CAND = P.posMin > 0 || P.volUp > 0 || P.finAcc || P.fsync > 0 || P.rankUp || P.shamKeep > 0;
     const FORCE = P.dispNow || P.dispOracle > 0 || P.attSell > 0 || P.shamSell > 0;
     const rankAt = i => {
@@ -190,11 +196,19 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             }
             const eqNow = value(ti);
             const slot = eqNow * (1 - P.core) / P.N;
-            for (const S of pending.buy) {
+            const queue = pending.buy.slice(), alt = (pending.alt || []).slice();
+            for (let qi = 0; qi < queue.length; qi++) {
+                const S = queue[qi];
                 if (pos.size >= P.N) break;
+                if (pos.has(S.sym)) continue;
                 const o = PX(S, i), pc = lastC(S, i - 1);
                 if (!(o > 0 && pc > 0)) continue;
-                if (o / pc - 1 > limitOf(cal[i]) - 0.003) { skipLimit++; continue; }      // 成交價接近漲停:買不到(開盤 / 收盤同一條)
+                if (o / pc - 1 > limitOf(cal[i]) - 0.003) {                                  // 成交價接近漲停:買不到(開盤 / 收盤同一條)
+                    skipLimit++;
+                    if (P.limitRepl) { while (alt.length) { const A = alt.shift(); if (!pos.has(A.sym) && !queue.includes(A)) { queue.push(A); st.repl++; break; } } }
+                    else if (P.limitRetry === 'close' && P.fill === 'open') (retryBuy = retryBuy || []).push(S);
+                    continue;
+                }
                 let need = pending.w ? slot * (pending.w.get(S.sym) ?? 1) : slot;
                 if (cash < need && P.park && park > 0) {                                   // 賣 0050 補現金
                     const units = Math.min(park, (CAP ? need - cash + P.minFee : need - cash) / (etf.tr[ti] * (1 - FEE - ETF_TAX)));
@@ -209,7 +223,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                     if (sh < 1) continue;
                     const cost = sh * o + feeOf(sh * o); cash -= cost; turnover += sh * o; paid = cost;
                 } else { sh = need / (o * (1 + FEE)); cash -= need; turnover += need; paid = need; }
-                pos.set(S.sym, { sh, cost: o, paid, atr: S.atr[i - 1], hc: o, S, entry: P.fill === 'open' ? i : i + 0.5 });   // 收盤成交那天⛔ 不可再跑當天的吊燈 / 出場檢查
+                pos.set(S.sym, { sh, cost: o, paid, atr: S.atr[i - 1], hc: o, S, entry: (P.fill === 'open' && !retryNow) ? i : i + 0.5 });   // 收盤成交那天⛔ 不可再跑當天的吊燈 / 出場檢查
             }
             if (P.park && cash > 0.01 * value(ti) && (!CAP || cash >= P.parkMin)) { const units = CAP ? (cash - feeOf(cash)) / etf.tr[ti] : cash * (1 - FEE) / etf.tr[ti]; park += units; turnover += cash; cash = 0; }
             pending = null;
@@ -253,6 +267,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         if (luClose) { let sold = 0; for (const sym of luClose) { const p = pos.get(sym); if (p && p.S.C[i] > 0) { sell(p, p.S.C[i], i); st.luClose++; sold++; } } if (sold) parkCash(i); }
         // ②b fill='nextclose':今天收盤執行上一次的決策(在今天的決策之前)
         if (pending && P.fill === 'nextclose') execPending((S, k) => S.C[k], i);
+        // 🛒 V78.2.2 limitRetry:開盤漲停買不到的,收盤沒鎖就用收盤價買(⛔ 名次不重算)
+        if (retryBuy) { const rb = retryBuy; retryBuy = null; const before = pos.size; pending = { sell: [], buy: rb }; retryNow = true; execPending((S, k) => S.C[k], i); retryNow = false; st.retried += pos.size - before; }
         if (dailySell.size && i + 1 < n) { pending = pending || { sell: [], buy: [] }; for (const sym of dailySell) if (!pending.sell.includes(sym)) pending.sell.push(sym); dailySell.clear(); }
         eq.push(value(i));
         // ③ 換倉日收盤:決定明天開盤要做什麼
@@ -280,8 +296,9 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 for (const [sym] of pos) if (!sold.has(sym)) { const g = ctx.ind[sym] || '?'; cnt.set(g, (cnt.get(g) || 0) + 1); }
                 buyL = [];
                 for (const S of cand) { if (buyL.length >= room) break; if (pos.has(S.sym)) continue; const g = ctx.ind[S.sym] || '?'; if ((cnt.get(g) || 0) >= P.indCap) continue; cnt.set(g, (cnt.get(g) || 0) + 1); buyL.push(S); }
-            } else buyL = cand.filter(S => !pos.has(S.sym)).slice(0, room);
-            if (sellL.length || buyL.length || (P.park && cash > 0) || pending || trimNow) pending = { sell: [...new Set([...(pending ? pending.sell : []), ...sellL])], buy: buyL, trim: trimNow };
+            } else buyL = (P.pickFrom > 0 ? cand.slice(P.pickFrom) : cand).filter(S => !pos.has(S.sym)).slice(0, room);
+            const altL = (P.limitRepl && !bearNow) ? (P.pickFrom > 0 ? cand.slice(P.pickFrom) : cand).filter(S => !pos.has(S.sym) && !buyL.includes(S)).slice(0, 10) : null;
+            if (sellL.length || buyL.length || (P.park && cash > 0) || pending || trimNow) pending = { sell: [...new Set([...(pending ? pending.sell : []), ...sellL])], buy: buyL, trim: trimNow, alt: altL };
             if (P.wRank && pending) { pending.w = new Map(); for (const S of buyL) { const k = ranked.indexOf(S); pending.w.set(S.sym, P.wRank[Math.min(k, P.wRank.length - 1)] ?? 1); } }
             if (P.pick === 'all') P.N = N;
         }
@@ -302,6 +319,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 if (!pending.buy.some(x => x.sym === sym) && !pending.sell.includes(sym)) { pending.buy.push(S); st.rebought++; }
             }
         }
+        // 🛒 V78.2.2 fill='sameclose':決定完當天收盤就成交(⚠️ 名次用收盤算 = 偏樂觀的上限)
+        if (P.fill === 'sameclose' && pending) { execPending((S, k) => S.C[k], i); eq[eq.length - 1] = value(i); }
     }
     return { eq, trades, win: trades ? wins / trades : null, avg: trades ? sumRet / trades : null, turnover, skipLimit, jumpExit, from: cal[s0], contributed, glideAt, st,
         sumAmt, worstAmt, bestAmt, held: pos.size, openPnl: [...pos.values()].reduce((a, p) => a + p.sh * lastC(p.S, nEnd - 1) - p.paid, 0) };
@@ -679,6 +698,19 @@ function selftest() {
     t(j0.eq.every((v, k) => v === j00.eq[k]) && jw.eq.length === j0.eq.length && jn.eq.length === j0.eq.length
         && jn.eq[2] !== jw.eq[2] && jw.eq.slice(0, 8).join() !== jn.eq.slice(0, 8).join() && jx.eq[1] === 1,
         `㉛ 晚進場:不設逐位相同;phase 3 'now' 當天就買、'wait' 前幾天錢停 0050(第 2 天淨值 ${r2(jw.eq[2])} vs ${r2(jn.eq[2])});沒設 join 前幾天是現金`);
+    // ㉜ V78.2.2 怎麼買:A 第 1 名、隔天開盤漲停(收盤打開 +3%)、B 第 2 名 —— 預設跳過不補;limitRepl 換買 B;limitRetry 收盤買 A;sameclose 當天收盤買 A;pickFrom 1 只買 B
+    const mkB = () => { const A2 = mk('7001', i => 100 + i * 0.6), B2 = mk('7002', i => 100 + i * 0.3); A2.O[116] = A2.C[115] * 1.099; A2.C[116] = A2.C[115] * 1.03; return { cal, stocks: [A2, B2], etf: flat, bear: new Uint8Array(n) }; };
+    const cfgB = { U: 2, N: 1, R: 1000, L: 20, chand: 0, park: false, trend: false };
+    const b0 = simulate(mkB(), 115, cfgB), b00 = simulate(mkB(), 115, { ...cfgB, limitRepl: false, limitRetry: '', pickFrom: 0 });
+    const bR = simulate(mkB(), 115, { ...cfgB, limitRepl: true }), bT = simulate(mkB(), 115, { ...cfgB, limitRetry: 'close' });
+    const cB = mkB(), bS = simulate(cB, 115, { ...cfgB, fill: 'sameclose' }), bP = simulate(mkB(), 115, { ...cfgB, pickFrom: 1 });
+    const A2 = cB.stocks[0], B2 = cB.stocks[1], endR = r => r.eq.at(-1);   // 起點 = 1(sameclose 會在第一天就買,eq[0] 已扣手續費)
+    t(b0.skipLimit === 1 && b0.eq.at(-1) === 1 && b0.eq.every((v, k) => v === b00.eq[k])
+        && bR.st.repl === 1 && Math.abs(endR(bR) - B2.C[n - 1] / B2.O[116] / (1 + FEE)) < 1e-6
+        && bT.st.retried === 1 && Math.abs(endR(bT) - A2.C[n - 1] / A2.C[116] / (1 + FEE)) < 1e-6
+        && bS.skipLimit === 0 && Math.abs(endR(bS) - A2.C[n - 1] / A2.C[115] / (1 + FEE)) < 1e-6
+        && Math.abs(endR(bP) - B2.C[n - 1] / B2.O[116] / (1 + FEE)) < 1e-6,
+        `㉜ 怎麼買:漲停預設跳過不補(不設逐位相同)・換下一名買到 B・等收盤買到 A・當天收盤買 A・只買第 2 名起 = B`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }

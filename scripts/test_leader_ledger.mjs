@@ -2,7 +2,7 @@
 //
 // ⛔ 釘住(注入都要叫得出來):
 //   ① 規則三份一致:pro `_LEAD` == index `_LEADER_EDGE.rule/.anchor` == lib_leader.py(會動真錢的那份)
-//   ② 換倉日 = 加權日曆從錨點起第 1、11… 天;成交 = 隔天收盤;⭐ 不是換倉日的名單變動⛔ 不可觸發買賣
+//   ② 換倉日 = 加權日曆從錨點起第 1、11… 天;成交 = 隔天開盤(V78.2.2 回測最好的買法);⭐ 不是換倉日的名單變動⛔ 不可觸發買賣
 //   ③ 掉出前 N×hyst 名才賣(還在前 10 名續抱)、最多 N 檔、⛔ 不設停損
 //   ④ 大盤嚴格空頭 → 不買、賣照常;隔天快漲停 → 不買、⛔ 不遞補;沒有那天的名單 → 那次⛔ 不硬猜
 //   ⑤ 訊號出了、隔天還沒到 → 畫面列「會買 / 會賣」,⛔ 不算進成績
@@ -44,15 +44,15 @@ const CAL = wk('2026-05-01', '2026-10-09');              // 09-24 = 第 1 天、
 const cal = CAL.filter(d => d >= '2026-09-24');
 const [D1, F1, D11, F11] = [cal[0], cal[1], cal[10], cal[11]];
 const tw = (dir) => CAL.map((d, i) => ({ date: d.replace(/-/g, '/'), close: dir > 0 ? 10000 + i * 10 : 20000 - i * 30 }));
-const kl = (px = {}) => CAL.map(d => ({ date: d.replace(/-/g, '/'), close: px[d] ?? 100, open: 100, high: 101, low: 99, volume: 1000 }));
+const kl = (px = {}, opx = {}) => CAL.map(d => ({ date: d.replace(/-/g, '/'), close: px[d] ?? 100, open: opx[d] ?? 100, high: 101, low: 99, volume: 1000 }));
 const lead = (syms) => ({ rows: syms.map((s, i) => ({ s, c: 100, r: i + 1, x: 30 - i, a: 50, chg: 1, lim: 0, att: 0 })), n: 100, passed: 40 });
 const A10 = ['1101', '1102', '1103', '1104', '1105', '1106', '1107', '1108', '1109', '1110'];
 // 第 11 天:1101 掉出前 10;1102 掉到第 8 名(續抱);新第 1 名 2001
 const B10 = ['2001', '1103', '1104', '1105', '1106', '1107', '1108', '1102', '1109', '1110'];
 const K = {};
 for (const s of [...A10, '2001', '2002', '9999']) K[s] = kl();
-K['1101'] = kl({ [F11]: 123 });                            // 賣在 F11 收盤 123
-K['2001'] = kl({ [F11]: 110 });                             // 2001 在 F11 從 100 → 110 = +10% → 快漲停買不到
+K['1101'] = kl({}, { [F11]: 123 });                        // 🛒 V78.2.2 賣在 F11 開盤 123(收盤仍 100 → 用收盤就會錯)
+K['2001'] = kl({}, { [F11]: 110 });                         // 2001 在 F11 開盤 100 → 110 = +10% → 開盤就快漲停買不到
 
 let chromium; try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); } catch (_) { ({ chromium } = await import('playwright')); }
 const _exec = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
@@ -83,13 +83,13 @@ const D5 = cal[4];
 const days = [{ d: D1, lead: lead(A10) }, { d: D5, lead: lead(['9999', ...A10.slice(1)]) }, { d: D11, lead: lead(B10) }];
 const r = await run(days, tw(1));
 const buy1 = r.rebs[0] && r.rebs[0].buys;
-ok('② 錨點那天換倉 → 隔天收盤買前 5 名', JSON.stringify(buy1) === JSON.stringify(A10.slice(0, 5)) && r.trades.filter(t => t.d === F1).length === 5, JSON.stringify(r.rebs[0]));
+ok('② 錨點那天換倉 → 隔天開盤買前 5 名', JSON.stringify(buy1) === JSON.stringify(A10.slice(0, 5)) && r.trades.filter(t => t.d === F1).length === 5, JSON.stringify(r.rebs[0]));
 ok('②b ⭐ 不是換倉日的名單變動(第 5 天 9999 衝上第 1)⛔ 不觸發買賣', !r.trades.some(t => t.s === '9999') && r.rebs.length === 2, JSON.stringify(r.rebs.map(x => x.d)));
 const t1101 = r.trades.find(t => t.s === '1101'), t1102 = r.trades.find(t => t.s === '1102');
-ok('③ 掉出前 10 名 → 下一次換倉隔天收盤賣(1101 賣在 123)', t1101 && t1101.st && !t1101.st.open && t1101.st.x === 123 && t1101.st.d1 === F11 && /掉出前 10 名/.test(t1101.st.why), JSON.stringify(t1101));
+ok('③ 掉出前 10 名 → 下一次換倉隔天開盤賣(1101 賣在開盤 123,⛔ 不是收盤 100)', t1101 && t1101.st && !t1101.st.open && t1101.st.x === 123 && t1101.st.d1 === F11 && /掉出前 10 名/.test(t1101.st.why), JSON.stringify(t1101));
 ok('③b 還在前 10 名(第 8 名)→ 續抱', t1102 && t1102.st && t1102.st.open, JSON.stringify(t1102));
 ok('③c 最多 5 檔 ・⛔ 不設停損(持有中的沒有 stop 出場)', r.trades.filter(t => t.st && t.st.open).length <= 5 && !r.trades.some(t => t.st && /停損/.test(t.st.why || '')));
-ok('④ 隔天快漲停(+10%)→ 不買、⛔ 不遞補第 6 名(只補前 5 名裡還沒有的 1106)', !r.trades.some(t => t.s === '2001') && r.rebs[1].skips.some(x => /2001/.test(x) && /漲停/.test(x)) && JSON.stringify(r.rebs[1].buys) === '["1106"]' && !r.trades.some(t => t.s === '1107'), JSON.stringify(r.rebs[1]));
+ok('④ 隔天開盤就快漲停(+10%)→ 不買、⛔ 不遞補第 6 名(只補前 5 名裡還沒有的 1106)', !r.trades.some(t => t.s === '2001') && r.rebs[1].skips.some(x => /2001/.test(x) && /漲停/.test(x)) && JSON.stringify(r.rebs[1].buys) === '["1106"]' && !r.trades.some(t => t.s === '1107'), JSON.stringify(r.rebs[1]));
 ok('⑤ 扣成本:1101 100 → 123 = +23% − 0.44%', t1101 && Math.abs(t1101.st.net - 22.56) < 1e-6, t1101 && t1101.st.net);
 
 // ④ 空頭 → 不買、賣照常

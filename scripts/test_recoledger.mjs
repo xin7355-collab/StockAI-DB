@@ -107,7 +107,7 @@ const R = await pg.evaluate(() => {
   for (const d of clone.querySelectorAll('details')) if (!d.open) for (const c of [...d.children]) if (c.tagName !== 'SUMMARY') c.remove();
   return {
     tabName: (document.getElementById('tabBtnFish').textContent || '').trim(),
-    ids: [...tab.querySelectorAll('[id]')].map(e => e.id),
+    ids: [...tab.querySelectorAll('[id]')].map(e => e.id).filter(i => i !== 'recoCmpAll'),   // 🏁 V78.2.2 同一起點比一比是成績單的一部分
     // 🎣 V77.3.9 兩個分頁各司其職 —— 釣魚池的 8 個畫面 id 必須**全部在 #tabRod 底下**
     panes: (() => {
       const want = ['fishPoolPane', 'fishPickPane', 'fishBasketPane', 'fishCanvas', 'fishBasket', 'fishList', 'fishCard', 'fishPool'];
@@ -348,6 +348,7 @@ ok(V.flat.every(f => Math.abs(f.net) < 1e-9 ? f.lot === 0 : (f.net < 0 && f.lot 
   V.flat.map(f => `${f.sym} ${f.net}% / ${f.lot}元`).join(' | '));
 
 // ⑩c 兩邊一樣 → 要講原因;兩邊不一樣 → ⛔ 不可亂講
+await pg.waitForFunction(() => PRO._rlCmp && PRO._rlCmp.don, null, { timeout: 90000 }).catch(() => {});
 const C = await pg.evaluate(() => {
   const el = document.getElementById('recoLedger');
   const txt = (el.textContent || '').replace(/\s+/g, ' ');
@@ -370,6 +371,29 @@ ok(!C.same || C.stop === C.n,
   const MN = readFileSync('miner.py', 'utf8').split('\n').filter(l => !l.trim().startsWith('#')).join('\n');
   ok(/def _round_prices\(/.test(MN) && /_round_prices\(records\)/.test(MN),
     '⑩a3 📏 採礦端匯出前也要收小數(⛔ 只修顯示端 = 資料還是髒的)');
+}
+
+// 🏁 V78.2.2 同一起點比一比(使用者:「給我同一個起點資訊,之前的可以刪除」)
+{
+  const Q = await pg.evaluate(async () => {
+    const C = await PRO._recoCmpAllLoad();
+    const pb = await PRO._recoLedgerLoad(null, 'pb');
+    const st = pb.trades.map(t => t.st).filter(Boolean);
+    const avgPb = st.length ? st.reduce((a, x) => a + x.net, 0) / st.length : null;
+    const minD = Math.min(...pb.trades.map(t => +String(t.d).replace(/-/g, '')));
+    // 決定性對照:把起點往後挪 → 筆數只會變少或一樣
+    const keep = PRO._RECO_COMMON; PRO._RECO_COMMON = '2099-01-01'; const late = await PRO._recoLedgerLoad(null, 'pb'); PRO._RECO_COMMON = keep;
+    PRO._cmpAllSig = null; PRO._recoCmpAllRender(); for (let i = 0; i < 120 && !(document.querySelector('[data-cmpall="ok"]')); i++) await new Promise(r => setTimeout(r, 250));
+    const el = document.getElementById('recoCmpAll');
+    return { start: C.start, ks: C.rows.map(r => r.k), lead: PRO._isLead(), etfErr: (C.rows.find(r => r.k === 'etf') || {}).err || null, avgRow: (C.rows.find(r => r.k === 'pb') || {}).avg, avgPb, nRow: (C.rows.find(r => r.k === 'pb') || {}).n, nPb: st.length,
+             minD, lateN: late.trades.length, ok: el && el.querySelector('[data-cmpall="ok"]') ? 1 : 0, sorts: el ? el.querySelectorAll('[data-cmpsort]').length : 0,
+             today: el ? el.querySelectorAll('[data-cmptoday]').length : 0, txt: el ? el.innerText : '' };
+  });
+  ok(Q.start === '2026-09-24' && (!Number.isFinite(Q.minD) || Q.minD >= 20260924), '🏁a 四頁共用起點 09-24(之前的推薦不算)', `${Q.start} 最早 ${Q.minD}`);
+  ok(Q.lateN === 0, '🏁b ⭐ 決定性對照:起點挪到 2099 → 0 筆(起點真的有作用)', Q.lateN);
+  ok(Q.nRow === Q.nPb && (Q.avgRow == null ? Q.avgPb == null : Math.abs(Q.avgRow - Q.avgPb) < 1e-9), '🏁c 比較表每一列 == 那一頁自己的結算(⛔ 不另算)', JSON.stringify([Q.nRow, Q.nPb, Q.avgRow, Q.avgPb]));
+  ok(Q.ks.includes('pb') && Q.ks.includes('fit') && Q.ks.includes('mix') && Q.ks.includes('etf') && Q.ks.includes('lead') === Q.lead, '🏁d 🔥/📈/🧪 + 📏 0050 都在;👑 只在選 👑 時出現', Q.ks.join(',') + ' lead=' + Q.lead + ' etfErr=' + Q.etfErr);
+  ok(Q.ok && Q.sorts === 6 && Q.today >= 3 && !/[🔴🟢]/u.test(Q.txt), '🏁e 表頭 6 欄可排序、每一套有「今天推薦」那一行、⛔ 無 🔴🟢', JSON.stringify([Q.ok, Q.sorts, Q.today]));
 }
 
 await b.close();
