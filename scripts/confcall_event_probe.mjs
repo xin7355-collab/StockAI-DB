@@ -6,7 +6,7 @@
  * 而且窗口只從 2026-07 起)。`hist_backfill.yml` 把場次往回補到約 5 年前之後,這支才測得動。
  *
  * ⭐ 口徑:法說會常在盤後 → 一律**隔天開盤**買(零前視),抱 h 天收盤賣,扣 0.44%;同期 0050 同一段(開盤→收盤)扣掉
- * ⭐ 對照組 = **同一檔的每一個交易日**用一模一樣的做法(量的是「法說會」這件事,⛔ 不是那檔本來就會漲)
+ * ⭐ 對照組 = **同一檔、同一年的每一個交易日**用一模一樣的做法(量的是「法說會」這件事,⛔ 不是那檔那幾年本來就強 / 弱)
  * ⭐ 同一檔 20 個交易日內只算一次;隔天開盤鎖漲停(買不到)剔除並計數
  * ⭐ 方向事前不知道 → 兩個方向都報;六關照「量到的那個方向」判(⚠️ 這樣做比較寬鬆,結論寫在畫面時要講)
  *
@@ -38,15 +38,17 @@ export function run(hist, loadK, mk, h) {
     for (const [sym, dates] of Object.entries(hist)) {
         const K = loadK(sym); if (!K) { cnt.noK += dates.length; continue; }
         const idx = new Map(K.map((r, i) => [r.date, i]));
-        const base = []; for (let i = 0; i < K.length; i++) { const x = excessAt(K, mk, i, h); if (typeof x === 'number') base.push(x); }
-        if (base.length < 100) { cnt.noK += dates.length; continue; }
-        const bm = mean(base); let last = -1e9;
+        // ⭐ V78.2.6 對照改成「同一檔、同一年」的平均(第一版用整段歷史平均 → 結果跟著年份翻正負 = 量到的是那檔股票那幾年強不強,⛔ 不是法說會)
+        const by = {}; let nb = 0; for (let i = 0; i < K.length; i++) { const x = excessAt(K, mk, i, h); if (typeof x === 'number') { (by[K[i].date.slice(0, 4)] = by[K[i].date.slice(0, 4)] || []).push(x); nb++; } }
+        if (nb < 100) { cnt.noK += dates.length; continue; }
+        const bmY = Object.fromEntries(Object.entries(by).filter(([, a]) => a.length >= 60).map(([y, a]) => [y, mean(a)])); let last = -1e9;
         for (const d of [...dates].sort()) {
             const i = idx.get(d); if (i == null) continue;
             if (i - last < DEDUP) { cnt.dedup++; continue; }
             const x = excessAt(K, mk, i, h);
             if (x === 'lock') { cnt.lock++; continue; }
             if (x == null) continue;
+            const bm = bmY[d.slice(0, 4)]; if (bm == null) { cnt.noK++; continue; }
             last = i; ev.push({ d, sym, v: x - bm, raw: x });
         }
     }
@@ -103,7 +105,7 @@ function main() {
     let M = JSON.parse(fs.readFileSync(path.join(DD, '0050.json'), 'utf8')); M = Array.isArray(M) ? M : M.data;
     const mk = new Map(M.map(r => [String(r.date).replace(/\//g, '-'), { o: +r.open, c: +r.close }]));
     const L = loader(DD), out = { generated: new Date().toISOString(), rows: {} };
-    console.log('增量 = 這一場的超額(扣 0.44%、減 0050)− 同一檔每一個交易日用同樣做法的平均;方向看量到的正負');
+    console.log('增量 = 這一場的超額(扣 0.44%、減 0050)− 同一檔同一年每一個交易日用同樣做法的平均;方向看量到的正負');
     for (const h of HS) {
         const { ev, cnt } = run(hist, L, mk, h);
         if (ev.length < 30) { console.log(`⏳ 抱 ${h} 天:${ev.length} 場 → 不下結論`); continue; }
@@ -112,6 +114,20 @@ function main() {
         out.rows[h] = { sign, ...g, cnt };
         console.log(`${g.pass === 6 ? '✅' : g.pass >= 4 ? '⚠️' : '⛔'} 抱 ${h} 天 ・n=${g.n} ・增量 ${g.inc >= 0 ? '+' : ''}${g.inc}pp(t=${g.t})・方向 ${sign > 0 ? '比平常好' : '比平常差'} ・六關 ${g.pass}/6 ・開盤鎖漲停剔除 ${cnt.lock} ・去重 ${cnt.dedup} ・沒 K 線 ${cnt.noK}`);
         console.log(`     逐年 ${JSON.stringify(g.years)} ・沒過:${Object.entries(g.gates || {}).filter(([, v]) => !v).map(([n]) => n).join('、') || '—'}`);
+    }
+    // ⭐ 對照 B(V78.2.6):同一天**所有股票**的平均(擋掉月份 / 季節效應 —— 對照 A 量到 12 月 −3.4pp、3 月 ≈0,那是日曆不是法說會)
+    console.log('\n── 對照 B:同一天所有股票(≥300 檔)用同樣做法的平均');
+    const allSyms = fs.readdirSync(DD).filter(f => /^\d{4}\.json$/.test(f)).map(f => f.slice(0, 4)); out.rowsB = {};
+    for (const h of HS) {
+        const day = new Map();
+        for (const sym of allSyms) { const K = L(sym); if (!K) continue; for (let i = 0; i < K.length; i++) { if (K[i].date < '2021-06-01') continue; const x = excessAt(K, mk, i, h); if (typeof x !== 'number') continue; const a = day.get(K[i].date) || [0, 0]; a[0] += x; a[1]++; day.set(K[i].date, a); } }
+        const ev = [];
+        for (const [sym, dates] of Object.entries(hist)) { const K = L(sym); if (!K) continue; const idx = new Map(K.map((r, i) => [r.date, i])); let last = -1e9;
+            for (const d of [...dates].sort()) { const i = idx.get(d); if (i == null || i - last < DEDUP) continue; const x = excessAt(K, mk, i, h); if (typeof x !== 'number') continue; const a = day.get(d); if (!a || a[1] < 300) continue; last = i; ev.push({ d, v: x - a[0] / a[1], raw: x }); } }
+        if (ev.length < 30) continue;
+        const sign = mean(ev.map(e => e.v)) >= 0 ? 1 : -1, g = gates(ev, ev.map(e => sign > 0 ? e.raw : -e.raw - 2 * COST), sign);
+        out.rowsB[h] = { sign, ...g };
+        console.log(`${g.pass === 6 ? '✅' : g.pass >= 4 ? '⚠️' : '⛔'} 抱 ${h} 天 ・n=${g.n} ・增量 ${g.inc >= 0 ? '+' : ''}${g.inc}pp(t=${g.t})・六關 ${g.pass}/6 ・逐年 ${JSON.stringify(g.years)}`);
     }
     if (process.argv[2]) { fs.writeFileSync(process.argv[2], JSON.stringify(out, null, 1)); console.log('💾 ' + process.argv[2]); }
 }

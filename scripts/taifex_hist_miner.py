@@ -183,7 +183,10 @@ def classify(status, ctype, head, exc=None):
         return f'被擋(HTTP {status})'
     if status != 200:
         return f'HTTP {status}'
-    if 'html' in (ctype or '').lower() or head.lstrip().startswith('<'):
+    # ⚠️ 期交所下載頁回 CSV 時 content-type 照樣標 text/html(2026-10-02 #1 實跑:開頭就是「日期,賣權成交量,…」卻被判成網頁)
+    #    → 一律看內容本身:開頭是 < 或含 <html 才算網頁,⛔ 不看 content-type
+    h = head.lstrip().lower()
+    if h.startswith('<') or '<html' in h[:400]:
         return '名字猜錯或要別的參數(回 200 但是網頁)'
     return None
 
@@ -301,8 +304,9 @@ def selftest():
            'Top10Buy': '40000', 'Top10Sell': '35465', 'OIOfMarket': '116944'}]
     ok('③ OpenAPI 大額 → 跟下載頁同一個形狀', parse_openapi_lt(oa) == {'2026-09-30': {'all': [17928, 4535, 116944]}})
     ok('③b OpenAPI P/C', parse_openapi_pc([{'Date': '20260930', 'PutCallVolumeRatio%': '99.2', 'PutCallOIRatio%': '80.57'}]) == {'2026-09-30': [99.2, 80.57]})
-    ok('④ 分類:連不上 / 被擋 / 回網頁 三種分開', classify(0, '', '', OSError()).startswith('連不上')
-       and classify(403, '', '').startswith('被擋') and '網頁' in classify(200, 'text/html', '<html>') and classify(200, 'text/csv', '日期') is None)
+    ok('④ 分類:連不上 / 被擋 / 回網頁 三種分開;content-type 標 html 但內容是 CSV → 照收(實跑踩到)', classify(0, '', '', OSError()).startswith('連不上')
+       and classify(403, '', '').startswith('被擋') and '網頁' in classify(200, 'text/html', '<html>') and classify(200, 'text/csv', '日期') is None
+       and classify(200, 'text/html;charset=MS950', '日期,賣權成交量,買權成交量\r\n2016/01/30,1,2') is None)
     ok('⑤ 月份清單含頭尾', _months('2025-11', date(2026, 2, 3)) == [(2025, 11), (2025, 12), (2026, 1), (2026, 2)])
     print('❌ ' + str(len(fails)) + ' 條失敗' if fails else '✅ TAIFEX_HIST_SELFTEST_PASS')
     return 1 if fails else 0
