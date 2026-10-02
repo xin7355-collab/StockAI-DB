@@ -87,7 +87,11 @@ export function mom(S, i, L) { if (!(S.A[i] > 0)) return NaN; let j = i, c = 0; 
 export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: true, trend: true, hyst: 2, pick: 'mom', core: 0, maExit: 0, tp: 0, skip: 0, riskadj: false, fill: 'open', noAtt: 0, noDisp: 0, sellDisp: false,
     dispNow: false, dispOracle: 0, attSell: 0, attWin: 5, rebuy: 'none', rebuyDrop: 0.15, blockDays: 10, shamSell: 0,
     indCap: 0, wRank: null, posMin: 85, posRaw: true, volUp: 0, finAcc: false, fsync: 0, rankUp: false, shamKeep: 0,
-    capital: 0, minFee: 20, add: 0, glide: 0, parkMin: 5000 };
+    capital: 0, minFee: 20, add: 0, glide: 0, parkMin: 5000, luExit: '' };
+// 🟥 V78.2.0 luExit(使用者:「國巨收盤鎖漲停,隔天要照那四條賣嗎?」—— 那四條是 🔥 的,👑 從來沒測過)⛔ 不設時逐位相同:
+//   持股前一天收盤鎖漲停(定義同 dt_daily_probe.lockUp:收盤 ≥ 前收 ×(1+漲跌幅−1%)且收在最高)、今天:
+//   開盤一字鎖(開=高=低、仍在漲停)→ 抱 ・'gap5' 開高 ≥5% 開盤賣 ・'gap0' 開高 >0% 開盤賣(09:30 前賣的日 K 代理)
+//   ・'all' 照四條:開高開盤賣、開平開低收盤賣 ・賣掉的錢停 0050 到下一次換倉(⛔ 換倉日排名照舊)
 // 🌱 V77.9.4 小資金(使用者:「錢沒那麼多是否可以先快速賺到資金」)—— 不設時(capital=0)逐位相同:
 //   capital = 真實本金(元):股票一律整數股(零股),每筆手續費 max(minFee, 金額 × 0.1425%)(⛔ 以前是分數股、沒有最低手續費 = 對小錢太樂觀)
 //   add     = 每個月第一個交易日再投入幾元(先放現金,下一次換倉日一起處理)
@@ -133,7 +137,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     // V78.0.5 新功能一律用另一顆亂數(⛔ 不可動到 pick='sham' 用的那顆 → 舊結果逐位相同)
     const rand2 = rng(seed * 7919 + 13);
     const blocked = new Map();                                // sym → {S, px, i, rel}
-    const st = { forced: 0, rebought: 0, fTot: 0, fPass: 0, finMiss: 0, posDays: 0 };
+    const st = { forced: 0, rebought: 0, fTot: 0, fPass: 0, finMiss: 0, posDays: 0, luOpen: 0, luClose: 0, luHold: 0, luLock: 0 };
     const CAND = P.posMin > 0 || P.volUp > 0 || P.finAcc || P.fsync > 0 || P.rankUp || P.shamKeep > 0;
     const FORCE = P.dispNow || P.dispOracle > 0 || P.attSell > 0 || P.shamSell > 0;
     const rankAt = i => {
@@ -208,6 +212,25 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             pending = null;
         };
         if (pending && P.fill === 'open') execPending((S, k) => S.O[k], i - 1);
+        // 🟥 V78.2.0 luExit:昨天收盤鎖漲停的持股,今天開盤照規則賣(⛔ 不設時整段不跑)
+        const parkCash = ti => { if (P.park && cash > 0.01 * value(ti) && (!CAP || cash >= P.parkMin)) { const units = CAP ? (cash - feeOf(cash)) / etf.tr[ti] : cash * (1 - FEE) / etf.tr[ti]; park += units; turnover += cash; cash = 0; } };
+        let luClose = null;
+        if (P.luExit && i > s0) {
+            let sold = 0;
+            for (const p of [...pos.values()]) {
+                const S = p.S, k = i - 1;
+                if (!(p.entry <= k)) continue;                                              // 昨天收盤還沒抱著(今天才買的)
+                const c = S.C[k], pc = lastC(S, k - 1), o = S.O[i];
+                if (!(c > 0 && pc > 0 && o > 0) || S.F[k] !== 1 || S.F[i] !== 1) continue;  // 除權息日不判(比例會歪)
+                if (!(c >= pc * (1 + limitOf(cal[k]) - 0.01) && c >= S.H[k] - 1e-9)) continue;
+                st.luLock++;
+                const gap = o / c - 1;
+                if (gap > limitOf(cal[i]) - 0.01 && S.L[i] >= S.H[i] - 1e-9) { st.luHold++; continue; }   // 一字鎖 → 抱
+                if (P.luExit === 'gap5' ? gap >= 0.05 : gap > 0) { sell(p, o, i); st.luOpen++; sold++; }
+                else if (P.luExit === 'all') (luClose = luClose || []).push(S.sym);
+            }
+            if (sold) parkCash(i - 1);
+        }
         // ② 收盤:除權息、斷崖、吊燈
         for (const p of [...pos.values()]) {
             const S = p.S;
@@ -224,6 +247,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 if (why) { dailySell.add(S.sym); st.forced++; blocked.set(S.sym, { S, px: S.C[i], i, rel: i + P.blockDays, why }); }
             }
         }
+        if (luClose) { let sold = 0; for (const sym of luClose) { const p = pos.get(sym); if (p && p.S.C[i] > 0) { sell(p, p.S.C[i], i); st.luClose++; sold++; } } if (sold) parkCash(i); }
         // ②b fill='nextclose':今天收盤執行上一次的決策(在今天的決策之前)
         if (pending && P.fill === 'nextclose') execPending((S, k) => S.C[k], i);
         if (dailySell.size && i + 1 < n) { pending = pending || { sell: [], buy: [] }; for (const sym of dailySell) if (!pending.sell.includes(sym)) pending.sell.push(sym); dailySell.clear(); }
@@ -418,6 +442,7 @@ function runSet(ctx, name, cfg, startDate, paths = 17) {
         forced: med(r => r.st.forced), rebought: med(r => r.st.rebought), sellRate: r2(res.reduce((a, r) => a + r.st.forced, 0) / Math.max(1, res.reduce((a, r) => a + r.st.posDays, 0)) * 1e4),
         passRate: (() => { const T = res.reduce((a, r) => a + r.st.fTot, 0); return T ? r2(res.reduce((a, r) => a + r.st.fPass, 0) / T * 100) : null; })(), finMiss: med(r => r.st.finMiss),
         eqEnd: res.map(r => r2(r.m.tot)),
+        lu: cfg.luExit ? { lock: med(r => r.st.luLock), hold: med(r => r.st.luHold), open: med(r => r.st.luOpen), close: med(r => r.st.luClose) } : null,
         trades: med(r => r.trades), win: med(r => r.win * 100), avg: med(r => r.avg * 100), turnYr: med(r => r.turnover / ((r.eq.length - 1) / 244)),
         years: Object.fromEntries(years.map(y => [y, { s: med(r => r.y[y]?.s ?? NaN), c: med(r => r.y[y]?.c ?? NaN) }])) };
 }
@@ -629,6 +654,19 @@ function selftest() {
     const gap = cp2.eq.at(-1) - 1e6 - cp2.sumAmt - cp2.openPnl;
     t(cp.trades >= 0 && cp2.trades >= 1 && cp2.worstAmt <= cp2.bestAmt && Math.abs(gap) < 1e-6,
         `㉙ 逐筆賺賠:${cp2.trades} 筆已賣(最差 ${Math.round(cp2.worstAmt)} ≤ 最好 ${Math.round(cp2.bestAmt)})+ 還抱著 ${cp2.held} 檔的帳面 = 最後市值 − 本金(差 ${gap.toExponential(1)})`);
+    // ㉚ V78.2.0 luExit:第 130 天收盤鎖漲停 → 第 131 天開高 3%:gap0 開盤賣、gap5 不賣、all 開盤賣;開低 → all 收盤賣、gap0 不賣;一字鎖 → 都不賣
+    const luCase = (o131, oneWord) => { const X = mk('5555', i => 100 + i * 0.1); const c129 = X.C[129];
+        X.C[130] = c129 * 1.10; X.H[130] = X.C[130]; X.O[130] = c129; X.L[130] = c129;
+        X.O[131] = X.C[130] * o131; X.H[131] = oneWord ? X.O[131] : X.O[131] * 1.01; X.L[131] = oneWord ? X.O[131] : X.O[131] * 0.97; X.C[131] = X.O[131] * 0.98;
+        return { cal, stocks: [X], etf: flat, bear: new Uint8Array(n) }; };
+    const cfgL = { U: 1, N: 1, R: 1000, L: 20, chand: 0, park: false, trend: false, pick: 'all' };
+    const lu = (c, m) => simulate(c, 100, { ...cfgL, luExit: m }).st;
+    const u3 = luCase(1.03), a3g5 = lu(u3, 'gap5'), a3g0 = lu(u3, 'gap0'), a3all = lu(u3, 'all');
+    const d2 = luCase(0.98), d2g0 = lu(d2, 'gap0'), d2all = lu(d2, 'all');
+    const w1 = luCase(1.10, true), w1all = lu(w1, 'all');
+    const none = simulate(u3, 100, cfgL);
+    t(a3g0.luOpen === 1 && a3g5.luOpen === 0 && a3all.luOpen === 1 && d2g0.luOpen === 0 && d2all.luClose === 1 && w1all.luHold === 1 && w1all.luOpen + w1all.luClose === 0 && none.st.luLock === 0 && a3g0.luLock === 1,
+        `㉚ luExit:開高 3% → gap0/all 開盤賣、gap5 不賣;開低 → all 收盤賣;一字鎖 → 抱;不設 → 連判斷都不跑`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }
@@ -694,6 +732,7 @@ function main() {
         res.sets.push(R);
         console.log(`[${w}] ${name}:總報酬 ${R.tot}% vs 0050 含息 ${R.b0050}%(超額 ${R.ex}pp,17 條贏 ${R.beat},最差 ${R.worstEx})・年化 ${R.cagr}% ・回撤 ${R.mdd}%(0050 ${R.mdd0050}%)・交易 ${R.trades} 筆 勝率 ${R.win}% 每筆 ${R.avg}% ・年換手 ${r2(R.turnYr)}x ・📈 滾動 12 月贏 0050 ${R.roll12}% ・贏 ${R.yrBeat}/${Object.keys(R.years).length} 年 最差年 ${R.worstYr}pp`);
         if (R.forced || R.passRate != null) console.log(`    🧪 強制賣 ${R.forced} 次(每萬持股日 ${R.sellRate})・買回 ${R.rebought} 次・候選通過率 ${R.passRate}%${R.finMiss ? `・財報沒資料剔除 ${R.finMiss}` : ''}`);
+        if (R.lu) console.log(`    🟥 持股鎖漲停 ${R.lu.lock} 次(中位):一字鎖抱 ${R.lu.hold}・開盤賣 ${R.lu.open}・收盤賣 ${R.lu.close}`);
         console.log('    逐年 ' + Object.entries(R.years).map(([y, v]) => `${y} ${r2(v.s)}/${r2(v.c)}`).join(' ・'));
     }
     if (out) fs.writeFileSync(out, JSON.stringify(res));

@@ -40,7 +40,7 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 // ── ⓕ 靜態 ──
 {
     const n109 = CODE.split('\n').filter(l => /close >= \+?P\.close \* 1\.09/.test(l)).length;
-    ok('ⓕ 鎖漲停判斷只有一份(`_luLock`)', n109 === 1 && /_luLock\(d\) \{/.test(CODE), `出現 ${n109} 次`);
+    ok('ⓕ 鎖漲停判斷只有一份(`_luLock`)', n109 === 1 && /_luLock\(d(, o)?\) \{/.test(CODE), `出現 ${n109} 次`);
     const i = CODE.indexOf('    _dtEdgeHtml(sym) {'), j = CODE.indexOf('\n    },\n', i);
     ok('ⓕb 當沖頁那一行也走 `_luLock`', /this\._luLock\(this\.rawDailyData\)/.test(CODE.slice(i, j)), '');
 }
