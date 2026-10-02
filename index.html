@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.2.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.3.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -889,7 +889,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.2.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.3.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8657,8 +8657,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.2.9',
+    _APP_VERSION: 'V78.3.0',
     _CHANGELOG: [
+        { v: 'V78.3.0', d: ['🔬 <b>回答「題材 / 空頭換招」兩題(只有回測,畫面規則沒改)</b>:① 照「漲最多的題材」輪動,不如題材全部都看,而全部題材贏是因為名單是事後挑的 → ⛔ 不做 ② 空頭時把錢收成現金、只抱 1~2 檔、只追第 1 名,四招都沒有兩段都贏現行 —— 空頭被判定時 0050 之後平均反而是漲的,現行(空頭不買、閒錢停 0050)本來就最穩 ③ 「必跌事件先賣再買回」以前就測過,全部少賺 ④ 實測總表「還測不了」那 21 條多半是沒有資料,法說會那條已測完搬走、在存的資料更新天數'] },
         { v: 'V78.2.9', d: ['🗑️ <b>當沖頁 🚦 拿掉「選擇權 P/C 比」「台指期大額交易人」兩票,也不再抓這兩項資料</b>(你選的;10 年實測對隔天大盤沒有方向)。🚦 的大盤方向現在只看外資台指期;「今日開盤情境推估」同步只看外資台指期。'] },
         { v: 'V78.2.8', d: ['🎰 <b>當沖頁 🚦 用的「選擇權 P/C 比」「台指期大額交易人」,10 年回測完了:對隔天大盤沒有方向</b>(2016~2026 共 2,615 天,四條門檻全部量不到;「偏空」那兩條隔天反而略漲)。🚦 那張卡目前還照舊投票 —— 要不要拿掉會先問你(實測總表 → ⛔ 沒用)。'] },
         { v: 'V78.2.7', d: ['🎤 <b>法說會開完隔天就買,實測是略差的</b>:往回補了 5 年(1.6 萬場),開完隔天開盤買,比同一天其他股票平均差 0.2%(抱 1 天)到 0.7%(抱 20 天),2021~2026 每一年都是負的 → 「剛開完法說會」⛔ 不是買進理由(差得不多,也不值得放空)。', '🎰 期交所 P/C 比與大額交易人的歷史第一次沒補到,查 log 發現期交所其實有給資料,是程式判斷寫錯把它丟掉 → 已修,重新補挖中,補到後再測當沖 🚦 那兩條準不準。'] },

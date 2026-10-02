@@ -35,13 +35,8 @@ const erf = x => { const s = x < 0 ? -1 : 1; x = Math.abs(x); const t = 1 / (1 +
 const pTwo = z => 1 - erf(Math.abs(z) / Math.SQRT2);
 let seed = 12345; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 
-export function parseThemes(src) {
-    const a = src.indexOf('  THEMES: ['), b = src.indexOf('\n  ],', a);
-    const out = [];
-    for (const m of src.slice(a, b).matchAll(/\{ k: '([^']+)', n: '([^']+)', syms: \[([^\]]*)\] \}/g))
-        out.push({ k: m[1], n: m[2], syms: [...m[3].matchAll(/'([^']+)'/g)].map(x => x[1]) });
-    return out;
-}
+export { parseThemes } from './lib_themes.mjs';
+import { parseThemes } from './lib_themes.mjs';
 
 // 每一個「換倉日」→ 每一層:{acc: 加速比例, mom: 20 日動能, fwd: 之後 20 日超額(成員等權)}
 export function buildPanel(themes, px, TW, finOf, days) {
