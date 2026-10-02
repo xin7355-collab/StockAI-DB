@@ -396,6 +396,32 @@ ok(!C.same || C.stop === C.n,
   ok(Q.ok && Q.sorts === 6 && Q.today >= 3 && !/[🔴🟢]/u.test(Q.txt), '🏁e 表頭 6 欄可排序、每一套有「今天推薦」那一行、⛔ 無 🔴🟢', JSON.stringify([Q.ok, Q.sorts, Q.today]));
 }
 
+// 🏆 V78.2.3 「已賣掉」≥10 筆才給 🏆(使用者看帳面問「📈 是不是比較厲害」)
+{
+  const Q = await pg.evaluate(async () => {
+    const keep = PRO._cmpAll, keepSig = PRO._cmpAllSig;
+    const sig = 'cmpAll|' + PRO._exitRule() + '|' + (PRO._isLead() ? 1 : 0);
+    const mk = (done) => ({ start: '2026-09-24', rows: [
+      { k: 'pb', name: '🔥 高檔飆股', n: 12, done, hold: 12 - done, avg: 1, money: 1, beat: 1, beatN: 1, beatR: 1, today: { t: '', s: [] } },
+      { k: 'fit', name: '📈 符合進場', n: 30, done, hold: 30 - done, avg: 5, money: 5, beat: 1, beatN: 1, beatR: 1, today: { t: '', s: [] } },
+      { k: 'mix', name: '🧪 兩張都買', n: 35, done, hold: 35 - done, avg: 3, money: 3, beat: 1, beatN: 1, beatR: 1, today: { t: '', s: [] } },
+    ] });
+    const el = document.getElementById('recoCmpAll');
+    PRO._cmpAllSig = sig; const rowsTxt = () => [...el.querySelectorAll('[data-cmprow]')].map(e => e.innerText).join('|') + '|' + (/目前平均每筆最高/.test(el.innerText) ? '🏆冠軍句' : '');
+    PRO._cmpAll = mk(1); PRO._recoCmpAllRender(); const t1 = rowsTxt() + el.innerText.slice(-400);
+    PRO._cmpAll = mk(10); PRO._recoCmpAllRender(); const t2 = rowsTxt();
+    const bt = k => (el.querySelector(`[data-cmpbt="${k}"]`) || {}).innerText || '';
+    const B = PRO._PROFIT_BOARD, hot = B.wins.ai.rows.find(r => r.k === 'hot');
+    const r = { t1, t2, fit: bt('fit'), mix: bt('mix'), pb: bt('pb'), hotWan: Math.round(hot.fin / 10000).toLocaleString(), corr: !!el.querySelector('[data-cmpcorr]') };
+    PRO._cmpAll = keep; PRO._cmpAllSig = keepSig;
+    return r;
+  });
+  ok(!/🏆/u.test(Q.t1.split('筆數夠了')[0].replace(/只賣掉[^]*$/, '')) && !/🏆冠軍句/.test(Q.t1) && /只賣掉 1 筆/.test(Q.t1), '🏁f 筆數 ≥10 但已賣 <10 → ⛔ 不給 🏆(帳面不算)', Q.t1.slice(0, 200));
+  ok(/🏆/u.test(Q.t2), '🏁f2 ⭐ 決定性對照:已賣改成 10 筆 → 才出現 🏆', Q.t2.slice(0, 120));
+  ok(/沒有組合回測/.test(Q.fit) && /合在一起/.test(Q.mix) && Q.pb.includes(Q.hotWan + ' 萬') && Q.corr,
+    '🏁g 📈「沒有組合回測」・🧪「合在一起」・🔥 數字 == _PROFIT_BOARD ・有「一起漲跌」那句', JSON.stringify([Q.fit, Q.pb, Q.hotWan]));
+}
+
 await b.close();
 console.log(bad ? `\n❌ ${bad} 條沒過` : '\n✅ RECOLEDGER_PASS(全部通過)');
 process.exit(bad ? 1 : 0);

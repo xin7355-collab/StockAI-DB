@@ -5764,6 +5764,20 @@ const PRO = {
     } catch (e) { rows.push({ k: 'etf', name: '📏 0050 買了放著', err: String(e).slice(0, 60), n: 0, done: 0, hold: 0, avg: null, money: null, beat: 0, beatN: 0, beatR: null, today: { t: '', s: [] } }); }
     return { rows, start: this._RECO_COMMON, last: last ? String(last.d).slice(0, 10) : null };
   },
+  // 📊 V78.2.3 每一套「有沒有回測過」(讀 `_PROFIT_BOARD`,⛔ 不寫死)—— 使用者看帳面問「📈 是不是比較厲害」
+  _cmpBtTag(k) {
+    const B = this._PROFIT_BOARD, w = B && B.wins;
+    const g = (win, key) => w && w[win] && (w[win].rows || []).find(r => r.k === key);
+    const wan = v => Math.round(v / 10000).toLocaleString() + ' 萬';
+    const line = key => { const a = g('ai', key), l = g('long', key), ea = g('ai', '0050'), el = g('long', '0050');
+      if (!a || !l || !ea || !el) return '⏳ 回測數字沒載到';
+      return `📊 回測 100 萬:近 4 年 ${wan(a.fin)}(0050 ${wan(ea.fin)})・16 年 ${wan(l.fin)}(0050 ${wan(el.fin)})`; };
+    if (k === 'pb') return line('hot');
+    if (k === 'lead') return line(this._isPark() ? 'lead' : 'leadcash');
+    if (k === 'fit') return '⛔ 沒有組合回測(一天可以列十幾檔、沒有上限;扣完來回成本常是負的)→ 只當候選';
+    if (k === 'mix') return '📈 + 🔥 合在一起(跟上面兩列重疊)・⛔ 沒有組合回測';
+    return '';
+  },
   _recoCmpAllRender() {
     const el = document.getElementById('recoCmpAll'); if (!el) return;
     const sig = 'cmpAll|' + this._exitRule() + '|' + (this._isLead() ? 1 : 0);
@@ -5780,7 +5794,9 @@ const PRO = {
     if (C.err && !C.rows.length) { el.innerHTML = `<div class="fishcard" style="margin-top:10px" data-cmpall="err"><div class="big">🏁 同一起點比一比</div><div class="note">⚠️ 算不出來(${this._esc(C.err)}),⛔ 不是 0 筆。</div></div>`; return; }
     const rows = C.rows.slice().sort((a, b) => { const va = a[srt.k], vb = b[srt.k]; const d = (va == null ? -Infinity : va) - (vb == null ? -Infinity : vb); return srt.asc ? d : -d; });
     const strat = C.rows.filter(r => r.k !== 'etf');
-    const enough = strat.length && strat.every(r => r.n >= 10);
+    // 🏆 V78.2.3 判準改成「已賣掉」≥10 筆(⛔ 不算還抱著的 —— 同幾天買的帳面會一起漲跌,6 天的漲勢挑不出冠軍)
+    const enough = strat.length && strat.every(r => r.done >= 10);
+    const minDone = strat.length ? Math.min(...strat.map(r => r.done)) : 0;
     const best = enough ? strat.slice().sort((a, b) => b.avg - a.avg)[0] : null;
     const money = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(v).toLocaleString() + ' 元';
     const COLS = 'grid-template-columns:minmax(0,1fr) 34px 34px 34px 58px 74px 46px';
@@ -5788,18 +5804,20 @@ const PRO = {
     const hdr = `<div style="display:grid;${COLS};gap:4px;font-size:9.5px;color:var(--dim2);border-bottom:1px solid var(--line);padding:2px 0"><span>策略</span>${this._CMP_ALL_COLS.map(th).join('')}</div>`;
     const row = r => `<div data-cmprow="${r.k}" style="padding:4px 0;border-bottom:1px solid var(--line)">
         <div style="display:grid;${COLS};gap:4px;align-items:baseline;font-size:11px">
-          <span style="min-width:0;font-weight:700">${r.name}${best && best.k === r.k ? ' 🏆' : ''}${r.k !== 'etf' && r.n < 10 ? ' <span style="font-size:9px;color:var(--dim2)">⏳少</span>' : ''}</span>
+          <span style="min-width:0;font-weight:700">${r.name}${best && best.k === r.k ? ' 🏆' : ''}${r.k !== 'etf' && r.done < 10 ? ' <span style="font-size:9px;color:var(--dim2)">⏳少</span>' : ''}</span>
           <span class="mono" style="text-align:right">${r.n}</span><span class="mono" style="text-align:right">${r.done}</span><span class="mono" style="text-align:right">${r.hold}</span>
           <span class="mono ${this.cls(r.avg)}" style="text-align:right" data-cmpavg="${r.avg == null ? '' : r.avg.toFixed(2)}">${r.avg == null ? '—' : this.fmt(r.avg, 2, true) + '%'}</span>
           <span class="mono ${this.cls(r.money)}" style="text-align:right">${money(r.money)}</span>
           <span class="mono" style="text-align:right">${r.beatN ? `${r.beat}/${r.beatN}` : '—'}</span></div>
+        ${this._cmpBtTag(r.k) ? `<div style="font-size:10px;color:var(--dim2);margin-top:1px" data-cmpbt="${r.k}">${this._cmpBtTag(r.k)}</div>` : ''}
         ${r.err ? `<div class="note" style="margin:2px 0 0;font-size:10px">⚠️ 這一套算不出來(${this._esc(String(r.err))})</div>` : ''}
         ${r.today && r.today.t ? `<div style="font-size:10px;color:var(--dim2);margin-top:2px" data-cmptoday="${r.k}">${r.today.t}:${r.today.s.length ? r.today.s.map(x => this._nmc(x, `PRO._fishPick('${x}')`)).join(' ') : '沒有'}</div>` : ''}</div>`;
     el.innerHTML = `<div class="fishcard" style="margin-top:10px" data-cmpall="ok">
       <div class="big">🏁 同一起點比一比 <span class="sigtag">${C.start} 起</span></div>
       <div class="note" style="margin:3px 0 5px">每一套都從 <b>${C.start}</b> 起算(之前的推薦不算)・報酬已扣來回成本 0.44%、抱著的用最新收盤算帳面 ・👆 表頭可點排序</div>
       ${hdr}${rows.map(row).join('')}
-      <div class="note" style="margin-top:6px">${enough ? `🏆 <b>目前平均每筆最高:${best.name}</b>(${this.fmt(best.avg, 2, true)}%)。` : `⏳ <b>還有策略不到 10 筆,⛔ 現在還不能說誰比較厲害</b> —— 先看方向,筆數夠了這裡會自動標 🏆。`}「每筆10萬合計」= 每一筆都投 10 萬加起來賺賠多少(⛔ 不是你的帳戶);🚨 同一檔可能同時在兩套裡,筆數⛔ 不可相加。</div></div>`;
+      <div class="note" style="margin-top:6px">${enough ? `🏆 <b>目前平均每筆最高:${best.name}</b>(${this.fmt(best.avg, 2, true)}%)。` : `⏳ <b>最少的一套只賣掉 ${minDone} 筆(要每一套都賣掉 10 筆),⛔ 現在還不能說誰比較厲害</b> —— 筆數夠了這裡會自動標 🏆;在那之前先看每列底下的回測。`}
+      <span data-cmpcorr>🚨 同一段時間買的會<b>一起漲跌</b>(大盤一漲全部一起賺)→ 帳面上幾十筆 ⛔ 不等於幾十次獨立的證據。</span>「每筆10萬合計」= 每一筆都投 10 萬加起來賺賠多少(⛔ 不是你的帳戶);🚨 同一檔可能同時在兩套裡,筆數⛔ 不可相加。</div></div>`;
   },
   _recoLedgerRender() {
     const el = document.getElementById('recoLedger'); if (!el) return;
@@ -8227,7 +8245,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V78.2.2',
+  VER: 'V78.2.3',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
