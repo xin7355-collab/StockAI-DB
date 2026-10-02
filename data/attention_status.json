@@ -1,0 +1,167 @@
+{
+  "updated": "2026-10-02 15:45",
+  "stocks": {
+    "2305": {
+      "status": "⚠️ 注意股",
+      "threshold": "注意條款觸發"
+    },
+    "3167": {
+      "status": "⚠️ 注意股",
+      "threshold": "注意條款觸發"
+    },
+    "6957": {
+      "status": "⚠️ 注意股",
+      "threshold": "注意條款觸發"
+    },
+    "8996": {
+      "status": "⚠️ 注意股",
+      "threshold": "注意條款觸發"
+    },
+    "2030": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-08"
+    },
+    "2455": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-05"
+    },
+    "2468": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-02"
+    },
+    "3016": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-12"
+    },
+    "3055": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-12"
+    },
+    "3443": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-05"
+    },
+    "6168": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-02"
+    },
+    "6526": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-06"
+    },
+    "4174": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-12"
+    },
+    "8084": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 10,
+      "end_date": "2026-10-08"
+    },
+    "8227": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-08"
+    },
+    "2221": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-06"
+    },
+    "3219": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-07"
+    },
+    "7792": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-06"
+    },
+    "3374": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-05"
+    },
+    "4542": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-05"
+    },
+    "4979": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-05"
+    },
+    "7772": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-02"
+    },
+    "6218": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-05"
+    }
+  },
+  "diag": {
+    "tw_notice": {
+      "hit": "notetrans",
+      "n": 4,
+      "tried": [
+        {
+          "u": "notetrans",
+          "ok": true,
+          "n": 4
+        }
+      ]
+    },
+    "tw_punish": {
+      "hit": "punish",
+      "n": 8,
+      "tried": [
+        {
+          "u": "punish",
+          "ok": true,
+          "n": 8
+        }
+      ]
+    },
+    "otc_notice": {
+      "hit": null,
+      "n": 0,
+      "note": "TPEx 未開放上櫃注意 OpenAPI(V67.10 實測 11 slug 全 404),不再打"
+    },
+    "otc_punish": {
+      "hit": "tpex_disposal_information",
+      "n": 11,
+      "tried": [
+        {
+          "u": "tpex_disposal_information",
+          "ok": true,
+          "n": 11
+        }
+      ]
+    }
+  }
+}

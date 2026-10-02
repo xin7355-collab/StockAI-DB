@@ -1,0 +1,206 @@
+{
+  "updated": "2026-10-02 15:46 UTC",
+  "count": 15,
+  "data": [
+    {
+      "source_name": "自由財經",
+      "title": "沒有最貴只有更貴！三星主力換代至HBM4 價格漲逾3倍",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5593826",
+      "published_time": "Fri, 02 Oct 2026 23:23:33 +0800",
+      "matched_keywords": [
+        "HBM"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "HBM4價格漲逾3倍，利多加值型記憶體供應鏈",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "台積電鮮為人知往事大曝光！0營收也敢押  美晶片大咖親揭「一直贏」2關鍵",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5593722",
+      "published_time": "Fri, 02 Oct 2026 23:02:00 +0800",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "台積電投資一家新創公司，並在其合作過程中揭露重要資訊。這對台",
+      "title_zh": "台積電投資一家新創公司，揭露重要資訊。這對台股市具有實質影響，因為台積電是台灣大盤公司，而且它在供應",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "乖乖中壢廠無限期罷工  網嚇爛喊「國安危機」",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5593591",
+      "published_time": "Fri, 02 Oct 2026 22:10:00 +0800",
+      "matched_keywords": [
+        "罷工"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "中立",
+      "ai_reason": "中國公司台股擔保及其影響台股未具體詳細說明，只提到公司將帶入",
+      "title_zh": "標題應是繁體中文，如果不是，則為空字符串",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "台股下週一會噴？3利多助攻  美股喜洋洋 台指期夜盤暴漲逾800點",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5593786",
+      "published_time": "Fri, 02 Oct 2026 22:09:56 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利多",
+      "ai_reason": "美國就業數據出嚴重失敗，市場因此進行股價暴跌。而此次暴跌對台",
+      "title_zh": "台股、供應鏈、半導體和大盤將受到嚴重影響，美國就業數據出嚴重失敗，市場因此進行股價暴跌。",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "G7會商壓低燃料價格　美國油價重挫5%",
+      "link": "https://www.cna.com.tw/news/aopl/202610020338.aspx",
+      "published_time": "Fri, 02 Oct 2026 21:51:24 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利多",
+      "ai_reason": "油價下跌降低運輸成本",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "欲藉 2 奈米盼重返高通供應鏈，台積電一單不漏全數拿下讓三星盼了個寂寞",
+      "link": "https://finance.technews.tw/2026/10/02/samsung-hopes-to-rejoin-qualcomms-supply-chain-by-leveraging-its-2nm-technology/",
+      "published_time": "Fri, 02 Oct 2026 12:40:23 +0000",
+      "matched_keywords": [
+        "良率",
+        "奈米"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "台積電2奈米訂單全數拿下，產能吃緊",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "保瑞集團與好市多深化合作　布局北美保健品市場",
+      "link": "https://www.cna.com.tw/news/afe/202610020311.aspx",
+      "published_time": "Fri, 02 Oct 2026 20:26:21 +0800",
+      "matched_keywords": [
+        "收購"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "收購美國品牌、拓展北美市場、提升營收",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "牧德9月營收3.73 億元",
+      "link": "https://finance.technews.tw/2026/10/02/machvision-3563-202609-financial-report/",
+      "published_time": "Fri, 02 Oct 2026 12:10:06 +0000",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "9月營收月增3.2%，年增63%表現優異",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "光寶擴大 AI 電源產能，砸 88.5 億元擴產高雄",
+      "link": "https://finance.technews.tw/2026/10/02/lite-on-expands-ai-power-supply-capacity-investing-nt8-85-billion-kaohsiung/",
+      "published_time": "Fri, 02 Oct 2026 12:08:33 +0000",
+      "matched_keywords": [
+        "擴產",
+        "營收"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "光寶擴充AI電源產能，看好需求成長",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "台船第2艘高緯度遠洋巡護船安龍　海上巡弋可達30天",
+      "link": "https://www.cna.com.tw/news/afe/202610020302.aspx",
+      "published_time": "Fri, 02 Oct 2026 19:51:02 +0800",
+      "matched_keywords": [
+        "滿載"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "台船獲海巡署訂單，營收確立",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "4萬9真的來了  台指期夜盤一度觸及49005點",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5593619",
+      "published_time": "Fri, 02 Oct 2026 19:25:07 +0800",
+      "matched_keywords": [
+        "矽晶圓"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "台股本週上漲451點　上市公司總市值158.56兆創新高",
+      "link": "https://www.cna.com.tw/news/afe/202610020282.aspx",
+      "published_time": "Fri, 02 Oct 2026 18:53:19 +0800",
+      "matched_keywords": [
+        "新高"
+      ],
+      "cat": "📈 股價異動",
+      "ai_sentiment": "利多",
+      "ai_reason": "指數創新高，市值再增",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "義隆9月營收6.02 億元",
+      "link": "https://finance.technews.tw/2026/10/02/elan-2458-202609-financial-report/",
+      "published_time": "Fri, 02 Oct 2026 10:40:05 +0000",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "中立",
+      "ai_reason": "營收較上月下降18.7%，短期表現不佳",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "台股創高難帶動匯價　新台幣收31.83元週線翻貶",
+      "link": "https://www.cna.com.tw/news/afe/202610020269.aspx",
+      "published_time": "Fri, 02 Oct 2026 18:18:51 +0800",
+      "matched_keywords": [
+        "新高"
+      ],
+      "cat": "📈 股價異動",
+      "ai_sentiment": "利多",
+      "ai_reason": "台股創高，市場情緒正面",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "高雄路竹廠傳工安意外 華邦電：全力協助、配合調查",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5593551",
+      "published_time": "Fri, 02 Oct 2026 18:17:11 +0800",
+      "matched_keywords": [
+        "工安"
+      ],
+      "cat": "🔥 事故天災",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    }
+  ]
+}
