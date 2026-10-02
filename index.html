@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.1.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.1.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -889,7 +889,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.1.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.1.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8678,8 +8678,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.1.7',
+    _APP_VERSION: 'V78.1.8',
     _CHANGELOG: [
+        { v: 'V78.1.8', d: ['🤖 AI 股神「你可能還想問」重整:拿掉「目前該買該賣」(該怎麼做看上面那張卡,外部 AI 不該再給一份)、三句重複的競爭類併成兩句、新增「接下來的重要日期」。', '🔎 點下去送出的問題會帶本站算好的數字(收盤價、當天 / 近 5 日 / 近 20 日漲跌、近 5 日外資投信張數),外部 AI 只負責找原因與消息;目標價要它逐家列出、⛔ 不准自己平均,日期查不到要寫「查不到」。', '💡 時間到期那一塊的「提示」改用 💡(⛔ 是「危險」的意思,這裡不是)。位階改用全 App 同一個算法(距一年高,不是距歷史高),而且不用紅綠色;質押、大戶減碼改成只描述。', '📊 白話解析不再寫「延續強勢機會高」這種沒回測過的預測,改成數幾項偏多偏空;盤中不比成交量(半天跟整天不能比)。'] },
         { v: 'V78.1.7', d: ['🤖 <b>AI 股神「個股」以前跟總覽講相反的話</b>(你截圖的國巨:機器人寫「續抱・守好停損」,總覽寫「已超過 20 天・今天開盤照規則」)—— 真因是機器人用的是舊的自己一套判斷,沒看三條出場。現在機器人<b>只轉述總覽那張卡的結論</b>,兩邊一定一樣;時間到期那一塊是同一支程式畫的。', '🧹 一起拿掉的舊東西:🔴 當「續抱」用(🔴 只准講漲跌)、「跌破 X 賣一半」「−10% 絕對停損」「破 5 日線先落袋一半」(都沒回測過)、「AI 總評分 /100」(融合分數,總覽早就下架)。', '🔢 數字改對:停損價對到跳動單位(532.95 → 532,掛得出去)、0.07 張改寫 70 股、持有天數改成「交易日」(跟總覽同一個數字)。', '💼 庫存模式每一檔多一行出場狀態(跌破 / 抱滿 / 快碰到 / 續抱 / ETF 買了放著);分點、融資那幾句改成只描述(實測沒預測力)。'] },
         { v: 'V78.1.6', d: ['⏳ 總覽最上面那張卡(持股時間到期)改成精簡版:四行講完「抱了幾天 / 什麼時候賣 / 不是跌破是時間到 / 為什麼要賣」,右邊是成本・報酬率・損益;收盤鎖漲停時多一張「明天開盤看到哪一種就照哪一條」4 條規則 + 後天怎麼做。原本那一大段說明一個字沒刪,收進「📖 為什麼・實測數字」。收盤後的日子改講「明天 / 下週一」。'] },
         { v: 'V78.1.5', d: ['🧪 「抱滿那天剛好鎖漲停 → 延到隔天開盤賣」16 年那組跑完:每一筆平均多 +3.28%(1,396 次),整套 17 條全贏(593 vs 575 萬);但近 4 年只贏 7 條 —— 兩段不一致 → <b>規則照舊不換</b>,總覽那行把兩個數字都寫出來。用這套自己 16 年 926 次重跑「明天開盤看到哪一種」那張表,四種情境方向全部一樣。'] },
@@ -8839,7 +8840,6 @@ ${list}
         { v: 'V77.4.2', d: ['🚀 <b>你貼的那份「大漲股捕捉引擎」62 節規格,檢視完也回測完了</b>(產業作戰室 → 🔬 實測總表,新增 6 條):規格裡大部分本站早就做了或測過(六道門檻是回測關卡不是選股條件、成交額前 100 其實是前 50、10 年 walk-forward 資料不夠、Catalyst 沒有可回測的歷史),真正沒測過的「加速度」七個 flag 用 2,131 檔・4 年跑完 —— <b>只有「營收年增加速」站得住</b>(疊在 🧬 上 10 日多 +0.80 個百分點、贏同檔數隨機 +0.77、絕對超額由負轉正 +0.40%、門檻四格全正);RS 加速 / 量能擴張 / ATR 壓縮擴張 / 位階剛衝進 / 突破品質 / 產業前 5 <b>沒有一個</b>贏過隨機,flag 疊越多越差。⚠️ 而且 5,480 個大漲起點裡,<b>沒有任何 flag 的捕捉率贏過隨便挑一天</b>(🧬 本身 23.8% vs 22.2%)—— 大漲在起漲那一刻跟平常日子長得一樣。再把它丟進決策台那套 49 個月組合回測:勝率 33.4%(隨機抽 31.0%)、中途最多賠 −11.5%(隨機 −16.6%、不濾 −25.8%),<b>但總獲利 +473 萬比隨機抽的 +538 萬還少</b> → 照你定的「賺最多才換」規則⛔ 沒換預設,列成推薦欄的選項(少賺 65 萬換回撤減半,你決定)。⛔ 預設一個字都沒動、沒新增提醒。'] },
         { v: 'V77.4.1', d: ['🎣 <b>產業作戰室的釣魚分頁改成三步驟</b>(你說「依照附件的介面方式修改」):<b>01 建池 → 02 拋竿 → 03 驗證</b>直排,頂端三顆膠囊點了就捲到那一段;借的是附件的「結構」,⛔ 沒借它的框、橘色、評分欄(本站鐵則:無框、紅綠只講漲跌、不憑空評分)。點魚之後那張卡改在 02 底下展開、魚缸收起(⛔ 不再整段藏掉),按「← 收起這一條」回來。', '👑 <b>新池子「成交額前 50」</b>—— 就是上一版測出來、外部那套裡唯一站得住的那一層(徽章直接印實測數字:六關全過 +0.98pp、勝率 41% 對 36%,<b>但絕對超額仍 −0.29%、⛔ 不進拋竿</b>)。🧬 仍是預設。', '📋 <b>兩個一鍵複製</b>:「複製篩選規則」給你本站<b>真正在用</b>的規則純文字(⛔ 不是 XQ 語法,門檻現場讀,讀不到就說讀不到);「複製追蹤表」把 🧺 漁獲籃輸出成 8 欄表格,貼進試算表自動分欄。🔎 <b>問外部 AI</b>:把上鉤的名單帶去 Perplexity,<b>只問題材 / 事件 / 風險</b>,⛔ 明寫不要評分、不要預測、不要判斷隔天會不會表態(本站實測那三件都沒有預測力)。', '🧺 <b>漁獲籃每一列多三欄</b>:進池理由(拋竿挑的哪一招 / 自己從哪一池點的,⛔處置中 ⚠️噴太多 🚧買不到 也標)、隔日漲跌(只描述,⛔ 不當驗證 —— 碰得到 ≠ 賺得到)、📝 筆記(自己打字,只存這台;打字中不會被自動重畫踢掉)。03 段頂端三張紀律卡:進場 = 訊號日尾盤(開盤買少賺一半)/ 出場 = 你設的那條 + 硬底線(換出場才贏 0050)/ 資金 = 一天 2 檔每筆 15 萬,每張底下寫「外部那條(5 日線進 / 3 日收不回出 / 單檔 20%)本站實測怎麼說」。', '🎣 <b>拋竿有動畫了</b>:釣線從左上飛出 → 落水三圈漣漪 → 魚被拉向浮標(沒魚就浮標上下)→ 收線;減少動態 / 列表模式直接跳過;有 2.5 秒安全閥,分頁切走也不會卡住名單。⛔ 動畫不改變任何結果(測試用「拿掉動畫前後名單相同」釘住)。🐛 順手修:「今天沒有魚上鉤」那張卡以前寫進看不見的區塊。'] },
         { v: 'V77.4.0', d: ['👑 <b>你給的那套「股王釣魚」選股,拿真實資料測完了</b>(2,131 檔・2023-05~2026-09):它七層裡<b>真正在做事的只有「成交金額排全市場前 50」這一層</b> —— 這群 10 天比隨便挑一檔多 +0.98 個百分點、勝率 41% 對 36%、六道關卡全過。<b>其餘六層(收盤站上 5 日線 / 月線向上 / 股價>300 或成交>5 億 / 近 5 日法人買超 / 剔除放量跌)一起疊上去只多 +0.06</b>,拆掉任何一層都沒差 = 零。', '⛔ <b>不換掉現在的預設</b>:把「前 50」疊在你現在用的 🧬 強勢高波動上面,跟「從 🧬 裡隨機抽同樣檔數」比,扣掉來回成本 0.44% 後六格全部是負的。⚠️ 而且「前 50」這群自己的 10 日超額仍是 <b>−0.29%</b>(還是輸大盤)—— 它贏的是別的股票,不是大盤,⛔ 不是買進訊號。AI 評分、隔天表態、3 天收不回就出:本站以前就測過,一條都不成立(詳細寫在產業作戰室 🔬 實測總表)。', '📖 探針 <code>kingpool_probe.mjs</code> 自帶 9 條自我驗證(含拿真實選股產物逐檔對表 284 檔),下一版把「👑 成交額前 50」做成釣魚分頁的一個池子,並把釣魚分頁改成「建池 → 拋竿 → 驗證」三步驟 + 拋竿動畫。'] },
-        { v: 'V77.3.9', d: ['🎣 <b>釣魚系統救回來了,而且住進自己的分頁</b>(你說「釣魚系統救回,裡面的魚改為強勢高波動,重新敘述是用何種辦法篩選出來的,在產業作戰室裡面另外新開一個釣魚分頁」):產業作戰室頂端多一顆 <b>🎣 釣魚</b> —— 魚缸動畫、🎣 拋竿、點魚細節、🧺 漁獲籃<b>原封不動回來</b>(下架期間 JS 一個字都沒刪,你的漁獲紀錄也還在);隔壁的 <b>📒 成績單</b>一個字都沒動,兩個分頁各司其職:<b>釣魚是「挑」、成績單是「驗」</b>。', '🧬 <b>池子裡的魚改成「強勢高波動」</b>(預設就是它、排第一)。其餘 5 個池子<b>一個都沒刪</b>,收進「🔄 換一池」而且<b>每一個都標了實測狀態</b> —— ✅ 有實測背書 / ⚠️ 有但這個切法沒單獨測過 / 🚨 實測排不出順序(🏅 那池的 IC ≈ 0)/ ⚪ 只描述。⛔ 一個池子都不准沉默。', '📖 <b>重新寫了「這些魚是怎麼篩出來的」</b>:逐步六條、為什麼是這兩個條件、什麼時候換新;🎣 拋竿旁邊也寫明<b>舊的三層漏斗是被自己的實測打掉的</b>(492 個交易日、六關 0 過、拆掉板塊那兩關反而更好),現在用的是決策台那套(49 個月 +589.8 萬 vs 0050 買了放著 +264.1 萬)。🚨 而且主動講開一件最容易搞混的事:<b>池子的門檻(20 日振幅)跟拋竿的門檻(年化波動率)不是同一個數字</b>,兩邊名單不一樣⛔ 不是壞掉。⛔ 畫面上一個數字都不寫死,全部讀常數。', '🐛 順手修三個<b>一復原就會看到</b>的舊問題:① 「📖 這一條的細節」裡的實測成績本來會印成 <b>+0 萬</b>(它讀的那個常數只存在於散戶救星那邊)② 🧬 那一池的說明還寫著已經過期的舊回測數字 ③ 📒 成績單點股票名稱<b>完全沒反應</b>(現在會自動跳到 🎣 釣魚 並展開那一檔)。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -29461,13 +29461,15 @@ ${this._reportFacts(sym)}
         } catch (_) {}
         const extraHtml = (() => { try { return this._chiefExtraSignals(sym); } catch (_) { return ''; } })();
         // V46.1 — 擴充問題(全質化,走免費 AI;數字仍看 App 內自算卡,禁外部 AI 算)
+        // 🔎 V78.1.8 提問清單重整:⛔ 拿掉「目前該買該賣」(外部 AI 給買賣 = 第二份劇本,本站的答案在上面那張卡)、
+        //   三句重複的競爭類併成兩句、補「接下來的重要日期」;前兩句帶本站算好的數字,外部 AI 只找原因(⛔ 不讓它自己算)
         const asks = [
-            '最近為什麼漲跌', '最新消息與法人動向', '本季財報與營收表現',
-            '產業前景與競爭態勢', '同業競爭對手有哪些、誰較強', '除權息與股利政策',
-            '近期法說會/重大訊息重點', '分析師目標價與投資評等',
-            '這檔的護城河與競爭優勢', '目前該買該賣'
+            ['最近為什麼漲跌', 'why'], ['最新消息與重大事件', 'news'], ['本季財報與月營收', 'fin'],
+            ['接下來的重要日期(法說・營收・除息・股東會)', 'dates'], ['法說會 / 重大訊息重點', 'conf'],
+            ['產業前景,同業對手是誰、誰比較強', 'peer'], ['這檔的護城河與競爭優勢', 'moat'],
+            ['除權息與股利政策', 'div'], ['券商目標價與評等(逐家列出)', 'tp']
         ];
-        const askBtns = asks.map(q => `<button onclick="app.aiGodStockAsk('${q}'); app.vibrate(20);" class="w-full text-left text-[12px] font-bold text-gray-200 bg-[#161b22] border border-[#30363d] hover:border-cyan-600 rounded-lg px-3 py-2.5 transition-colors flex items-center justify-between gap-2"><span>${q}</span><span class="text-cyan-400 text-[11px] flex-shrink-0">🔎 查</span></button>`).join('');
+        const askBtns = asks.map(([q, k]) => `<button data-aigod-ask="${k}" onclick="app.aiGodStockAsk('${k}'); app.vibrate(20);" class="w-full text-left text-[12px] font-bold text-gray-200 bg-[#161b22] border border-[#30363d] hover:border-cyan-600 rounded-lg px-3 py-2.5 transition-colors flex items-center justify-between gap-2"><span>${q}</span><span class="text-cyan-400 text-[11px] flex-shrink-0">🔎 查</span></button>`).join('');
         chat.innerHTML = `
             <div class="flex gap-2">
                 <div class="text-3xl flex-shrink-0 leading-none mt-1">🤖</div>
@@ -29482,7 +29484,7 @@ ${this._reportFacts(sym)}
                 <div class="text-[11px] font-bold text-gray-400 px-1 mb-1.5">💡 你可能還想問<span class="text-gray-600 font-normal">（點一下用免費 AI 查,不耗額度）</span></div>
                 <div class="flex flex-col gap-1.5">${askBtns}</div>
             </div>
-            <div class="text-[9px] text-gray-600 text-center leading-relaxed px-4 pt-2">以上純公式判讀,非投資建議 ・ 點問題用免費 AI 查最新消息面。</div>`;
+            <div class="text-[9px] text-gray-600 text-center leading-relaxed px-4 pt-2">上面的結論跟總覽同一份(本站實測規則)・ 點問題會開外部 AI 查消息面,它的回答本站沒驗證過 ・ 非投資建議。</div>`;
         // 🤖 V68.6.5 使用者要求:底部輸入框預設帶入個股名稱(直接接著打問題就好)
         try { const inp = document.getElementById('aiGodInput'); if (inp) { inp.value = `${name}(${sym}) `; inp.placeholder = '接著打你想問的…(已帶入股名)'; } } catch (_) {}
         this.vibrate?.(20);
@@ -29493,7 +29495,9 @@ ${this._reportFacts(sym)}
         const rows = [];
         sym = String(sym || '');
         // 📊 位階溫度計 %
-        try { const pr = this._priceRankData && this._priceRankData(); if (pr) rows.push([pr.tone === 'red' ? 'text-red-300' : pr.tone === 'green' ? 'text-green-300' : 'text-yellow-300', `📊 位階 ${pr.pos.toFixed(0)}%`, `${pr.tag}・距高 −${pr.discount.toFixed(0)}%`]); } catch (_) {}
+        // 📍 V78.1.8 位階一律走 `_basePos`(全 App 唯一算法,同總覽 / 報告頁);⛔ 位置不准用紅綠(那是漲跌的顏色,V76.3.5)
+        //   舊版「距高 −51%」是距**歷史**最高,而報告頁講的是距**一年**高 → 同一個「距高」兩個數字
+        try { const bp = this._basePos(this.rawDailyData); if (bp) rows.push(['text-gray-300', `📍 ${bp.yrs}位階 ${bp.pos.toFixed(0)}%`, `距${bp.yrs}最高 −${bp.dd.toFixed(0)}%(只描述)`]); } catch (_) {}
         // 💪 聰明融資 vs 多殺多(純公式,同 _renderMarginBars 邏輯)
         try {
             const arr = this.rawDailyData || [];
@@ -29511,9 +29515,9 @@ ${this._reportFacts(sym)}
         // 🕵️ 內部人籌碼(董監質押 / 千張大戶連續減碼)
         try {
             const ins = this._insiderCache && this._insiderCache.data ? this._insiderCache.data[sym] : null;
-            if (ins && Number.isFinite(+ins.pledge_pct) && +ins.pledge_pct >= 30) rows.push(['text-orange-300', `🕵️ 董監質押 ${(+ins.pledge_pct).toFixed(0)}%`, +ins.pledge_pct >= 50 ? '高質押,大跌恐斷頭賣壓' : '偏高,配合位階看']);
+            if (ins && Number.isFinite(+ins.pledge_pct) && +ins.pledge_pct >= 30) rows.push(['text-gray-300', `⚠️ 董監質押 ${(+ins.pledge_pct).toFixed(0)}%`, '質押越高,股價大跌時越可能被迫賣(只描述,本站沒實測)']);
             const h = this._holdersCache && this._holdersCache.data ? this._holdersCache.data[sym] : null;
-            if (h && Array.isArray(h.hist) && h.hist.length >= 4) { let dw = 0; for (let i = h.hist.length - 1; i > 0; i--) { if (+h.hist[i] < +h.hist[i - 1] - 0.05) dw++; else break; } if (dw >= 3) rows.push(['text-green-300', `🕵️ 大戶減碼 ${dw}週`, '大咖籌碼流出、散戶接手']); }
+            if (h && Array.isArray(h.hist) && h.hist.length >= 4) { let dw = 0; for (let i = h.hist.length - 1; i > 0; i--) { if (+h.hist[i] < +h.hist[i - 1] - 0.05) dw++; else break; } if (dw >= 3) rows.push(['text-gray-300', `🕵️ 千張大戶連減 ${dw} 週`, '集保實測沒預測力(只描述)']); }
         } catch (_) {}
         // 🧙 神分點(高勝率/波段型大戶分點近5日買超本檔)
         try {
@@ -29613,9 +29617,34 @@ ${this._reportFacts(sym)}
     aiGodStockAsk(q) {
         const sym = this._aiGodSelectedSym || this.currentSymbolId;
         if (!sym) { this._freeAiOpen(`台股 ${q}`); return; }
-        const name = this.getStockName(sym) || sym;
-        this._freeAiOpen(`${name}(${sym}) ${q}?請附日期與來源`);
+        const name = this.getStockName(sym) || sym, tag = `${name}(${sym})`;
+        // 🔎 V78.1.8 前兩句帶「本站已經算好的數字」(禁 AI 算數):外部 AI 只負責找原因 / 消息,⛔ 不讓它自己估漲跌或法人張數
+        const facts = (() => {
+            try {
+                const d = (String(this.currentSymbolId) === String(sym) && Array.isArray(this.activeData)) ? this.activeData : null;
+                if (!d || d.length < 21) return null;
+                const n = d.length - 1, C = i => +d[i].close || 0, pc = (a, b) => (b > 0 ? (a / b - 1) * 100 : NaN);
+                const f = x => (Number.isFinite(x) ? `${x >= 0 ? '+' : ''}${x.toFixed(1)}%` : '—');
+                const lot = k => Math.round(d.slice(-5).reduce((a, r) => a + (+r[k] || 0), 0) / 1000);   // 股 → 張
+                return { date: String(d[n].date || '').replace(/-/g, '/'), c: C(n), d1: f(pc(C(n), C(n - 1))), d5: f(pc(C(n), C(n - 5))), d20: f(pc(C(n), C(n - 20))), fl: lot('foreign_net'), tl: lot('trust_net') };
+            } catch (_) { return null; }
+        })();
+        const L = x => `${x >= 0 ? '+' : ''}${(+x).toLocaleString()} 張`;
+        const NOBS = '⛔ 不要給買賣建議';
+        const Q = {
+            why: `${tag} 最近為什麼漲跌?` + (facts ? `(本站資料:${facts.date} 收 ${facts.c}・當天 ${facts.d1}・近5日 ${facts.d5}・近20日 ${facts.d20})` : '') + `只找消息面原因,逐條附日期與來源;⛔ 不要預測後市、${NOBS}`,
+            news: `${tag} 最近一個月的重要新聞與重大事件,逐條附日期與來源。` + (facts ? `法人買賣以本站為準(近5日 外資 ${L(facts.fl)}・投信 ${L(facts.tl)}),⛔ 不要另外估法人數字;` : '') + NOBS,
+            fin: `${tag} 最近一季財報(EPS、營收、毛利率)與最新月營收(年增、月增),數字以公開資訊觀測站為準並附公布日期;⛔ 不要自己推算或預估`,
+            dates: `${tag} 未來 2 個月的重要日期:法說會、月營收公布、財報公布、除權息、股東會。只列日期與事件,查不到的寫「查不到」,⛔ 不要編日期`,
+            conf: `${tag} 最近一次法說會與重大訊息的重點(管理層說了什麼、跟上一次比改了什麼),附日期與來源;${NOBS}`,
+            peer: `${tag} 所屬產業前景如何?主要同業對手是誰、各自強在哪?附來源;${NOBS}`,
+            moat: `${tag} 的護城河與競爭優勢是什麼?有哪些風險會削弱它?附來源`,
+            div: `${tag} 近幾年配息與股利政策、填息紀錄,附日期與來源`,
+            tp: `${tag} 近 3 個月各家券商的目標價與評等,逐家列出券商、日期、目標價、評等;⛔ 不要自己平均或給推薦`,
+        };
+        this._freeAiOpen(Q[q] || `${tag} ${q}?請附日期與來源;${NOBS}`);
     },
+
 
     // 🤖 逐檔純公式判讀(技術面均線多空 + 量能 + 位階 + 籌碼面法人近5日買賣超)→ 組一段白話
     _aiGodStockVerdict(rows) {
@@ -29629,7 +29658,9 @@ ${this._reportFacts(sym)}
             const bear = ma5 && ma20 && price < ma5 && ma5 < ma20;
             const above20 = ma20 && price > ma20;
             const vArr = rows.slice(-6, -1).map(V), avgV = vArr.length ? vArr.reduce((a, x) => a + x, 0) / vArr.length : 0;
-            const vCur = V(rows[last]), volUp = avgV > 0 && vCur >= avgV * 1.3, volDn = avgV > 0 && vCur <= avgV * 0.6;
+            // 📊 V78.1.8 盤中⛔ 不比量(今天到現在 vs 前幾天整天 = 期間不同,V77.1.9)—— 會把早盤講成「量能萎縮」
+            const _intra = this._lastBarIsToday(rows) && (typeof this.isMarketOpen !== 'function' || this.isMarketOpen());
+            const vCur = V(rows[last]), volUp = !_intra && avgV > 0 && vCur >= avgV * 1.3, volDn = !_intra && avgV > 0 && vCur <= avgV * 0.6;
             const ath = Math.max(...rows.map(H).filter(v => v > 0)), nearAth = ath > 0 && price >= ath * 0.95;
             const fSum = rows.slice(-5).reduce((a, b) => a + (+b.foreign_net || 0), 0);
             const tSum = rows.slice(-5).reduce((a, b) => a + (+b.trust_net || 0), 0);
@@ -29644,15 +29675,12 @@ ${this._reportFacts(sym)}
                 S.push(instBull ? `籌碼面法人近 5 日買超約 ${lots.toLocaleString()} 張、資金偏多` : `籌碼面法人近 5 日賣超約 ${Math.abs(lots).toLocaleString()} 張、資金偏空`);
             }
             if (volUp) S.push('成交量放大、量價配合'); else if (volDn) S.push('量能萎縮、觀望氣氛濃');
-            if (nearAth && bull) S.push('股價逼近歷史高、動能強勢'); else if (nearAth && !bull) S.push('位階偏高、留意追高風險');
-            let concl;
+            if (nearAth) S.push('股價在歷史最高的 5% 以內');
+            // 🧾 V78.1.8 結尾只數「幾項偏多 / 偏空」—— ⛔ 不再寫「延續強勢機會高」「賣壓沉重」這種沒回測過的預測(該怎麼做看上面那張卡)
             const bullN = (bull ? 1 : 0) + (instBull ? 1 : 0) + (volUp ? 1 : 0);
-            const bearN = (bear ? 1 : 0) + (instBear ? 1 : 0);
-            if (bullN >= 2) concl = '短中期延續強勢格局機會高。';
-            else if (bearN >= 2) concl = '短線賣壓沉重,留意支撐與估值修正風險。';
-            else if (above20) concl = '短中期維持偏多整理(站在月線上)。';
-            else concl = '方向未明,等帶量突破或跌破再表態。';
-            return S.join('，') + '，' + concl;
+            const bearN = (bear ? 1 : 0) + (instBear ? 1 : 0) + (volDn && bear ? 1 : 0);
+            const concl = `均線・法人・量三項裡 ${bullN} 項偏多、${bearN} 項偏空(只描述${_intra ? ',盤中不比量' : ''})。`;
+            return S.join('，') + '。' + concl;
         } catch (_) { return '判讀時發生問題,可點下方「深入查」看消息面。'; }
     },
 
@@ -36434,9 +36462,9 @@ ${this._reportFacts(sym)}
                         dueCard = {
                             held: edH.maxd.held, n: _n, over: _over, lu: !!_lu, openWhen: _ow, eodWhen: _ew,
                             rows: [
-                                ['持有狀態', `已抱 <b>${edH.maxd.held}</b> 個交易日(上限 ${_n} 天${_over ? `,超過 <b>${_over}</b> 天` : ''})`],
+                                ['持有狀態', `已抱 <b>${edH.maxd.held}</b> 個交易日(上限 ${_n} 天${_over ? `,多抱了 <b>${_over}</b> 天` : ''})`],
                                 ['交易執行', _lu ? `<b>${_ow}開盤</b>看下面的規則賣` : `<b>${_ew} ${_eod}</b> 尾盤照收盤價賣`],
-                                ['提示', `⛔ 不是價格被跌破,是<b>時間到</b>` + (_nr ? `(${this._escHtml(_nr.name)} ${(+this._floorTick(_nr.v)).toLocaleString(undefined, { maximumFractionDigits: 2 })} 還沒破)` : '')],   // V78.1.7 價位對到跳動單位(跟機器人 chip 同一個數字)
+                                ['提示', `💡 不是價格被跌破,是<b>時間到</b>` + (_nr ? `(${this._escHtml(_nr.name)} ${(+this._floorTick(_nr.v)).toLocaleString(undefined, { maximumFractionDigits: 2 })} 還沒破)` : '')],   // V78.1.7 價位對到跳動單位(跟機器人 chip 同一個數字)
                                 ['賣出原因', `整套回測就是用 ${_n} 天算的 —— 抱更久是另一套沒驗證過的策略`],
                             ],
                             rules: (_lu && E && E.S) ? [

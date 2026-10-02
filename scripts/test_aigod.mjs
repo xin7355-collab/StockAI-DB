@@ -82,6 +82,25 @@ const R = await page.evaluate(async () => {
     app.fetchHistoricalData = async () => rows;
     try { await app.openAiGod('stock'); } catch (e) { out.openErr = String(e); }
     out.modalText = (document.getElementById('aiGodChat') || {}).textContent || '';
+    // ⓗ V78.1.8 提問清單 + 帶本站數字的提示詞
+    out.h = { asks: [...document.querySelectorAll('#aiGodChat [data-aigod-ask]')].map(b => b.getAttribute('data-aigod-ask')), q: {} };
+    const _fo = app._freeAiOpen; let _last = '';
+    app._freeAiOpen = x => { _last = x; };
+    for (const k of ['why', 'news', 'tp', 'dates']) { app.aiGodStockAsk(k); out.h.q[k] = _last; }
+    app._freeAiOpen = _fo;
+    out.h.close = rows[rows.length - 1].close;
+    // ⓘ 延伸訊號:位階走 _basePos、⛔ 不用紅綠
+    const _long = mk(false, 0.4, 200), _rd = app.rawDailyData; app.rawDailyData = _long;
+    out.i = { html: app._chiefExtraSignals('2327'), pos: (app._basePos(_long) || {}).pos };
+    app.rawDailyData = _rd;
+    // ⓙ 白話解析⛔ 不預測;盤中⛔ 不比量
+    out.j = { v: app._aiGodStockVerdict(rows) };
+    const _gt = app.getTodayStr, _mo = app.isMarketOpen;
+    app.getTodayStr = () => rows[rows.length - 1].date.replace(/-/g, '/'); app.isMarketOpen = () => true;
+    const thin = rows.map((r, i) => i === rows.length - 1 ? { ...r, volume: 10 } : r);
+    out.j.intra = app._aiGodStockVerdict(thin);
+    out.j.intraBig = app._aiGodStockVerdict(rows.map((r, i) => i === rows.length - 1 ? { ...r, volume: 1e9 } : r));
+    app.getTodayStr = _gt; app.isMarketOpen = _mo;
     // ⓔ 空手、空頭
     const bear = mk(false, -0.5);
     app._getInventory = () => [];
@@ -122,6 +141,15 @@ ok('ⓔ 空手:大字 == `_ovDecide().badge`、⛔ 沒有「可以布局 / 買�
 ok('ⓕ 庫存模式:2327 到期那檔「⏳ 已抱」', R.f['2327'] && R.f['2327'][0] === 'due' && /⏳ 已抱/.test(R.f['2327'][1]), JSON.stringify(R.f));
 ok('ⓕ2 ETF「🐢」', R.f['0050'] && R.f['0050'][0] === 'etf', JSON.stringify(R.f));
 ok('ⓕ3 剛買、離線遠那檔不是「已跌破 / 到期」', R.f['2330'] && /far|watch|today/.test(R.f['2330'][0]), JSON.stringify(R.f));
+const H = R.h;
+ok('ⓗ 提問清單⛔ 沒有「該買該賣」,九句都在', H.asks.length === 9 && !H.asks.includes('buy') && !/該買該賣/.test(R.modalText), JSON.stringify(H.asks));
+ok('ⓗ2「為什麼漲跌」帶本站的收盤價與漲跌幅,⛔ 不給買賣建議', H.q.why.includes(`收 ${H.close}`) && /近20日/.test(H.q.why) && /不要給買賣建議/.test(H.q.why), H.q.why);
+ok('ⓗ3「最新消息」法人張數以本站為準', /法人買賣以本站為準/.test(H.q.news) && /外資 [+−-]?[\d,]+ 張/.test(H.q.news), H.q.news);
+ok('ⓗ4 目標價逐家列、⛔ 不平均;重要日期⛔ 不編', /不要自己平均/.test(H.q.tp) && /不要編日期/.test(H.q.dates), H.q.tp + ' | ' + H.q.dates);
+ok('ⓘ 延伸訊號位階 == `_basePos`、⛔ 不用紅綠', H && R.i.pos != null && R.i.html.includes(`位階 ${R.i.pos.toFixed(0)}%`) && !/text-(red|green)-/.test(R.i.html), R.i.html.slice(0, 300));
+ok('ⓙ 白話解析⛔ 不預測(機會高 / 賣壓沉重)', !/機會高|賣壓沉重|延續強勢/.test(R.j.v) && /項偏多/.test(R.j.v), R.j.v);
+ok('ⓙ2 盤中⛔ 不比量(⛔ 量能萎縮)', !/量能萎縮|量價配合/.test(R.j.intra) && /盤中不比量/.test(R.j.intra), R.j.intra);
+ok('ⓙ3 盤中爆量也⛔ 不比(⛔ 量價配合)', !/量能萎縮|量價配合|成交量放大/.test(R.j.intraBig), R.j.intraBig);
 ok('無 pageerror', errs.length === 0, errs.join(' | '));
 console.log(fails.length ? `\n❌ AIGOD_FAIL(${fails.length}):${fails.join(' / ')}` : '\n✅ AIGOD_PASS(全部通過)');
 process.exit(fails.length ? 1 : 0);
