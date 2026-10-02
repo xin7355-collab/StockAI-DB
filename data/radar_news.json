@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-02 16:24 UTC",
+  "updated": "2026-10-02 17:03 UTC",
   "count": 15,
   "data": [
     {
@@ -11,9 +11,8 @@
         "HBM"
       ],
       "cat": "🧪 技術突破",
-      "ai_sentiment": "中立",
-      "ai_reason": "價格上漲提升下游成本",
-      "title_zh": "沒有最貴只有更貴！三星主力換代至HBM4 價格漲逾3倍",
+      "ai_sentiment": "利多",
+      "ai_reason": "HBM4價格飆漲，利多加值型記憶體供應鏈",
       "important": true
     },
     {
@@ -25,8 +24,9 @@
         "營收"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "中立",
-      "ai_reason": "舊事件不影響現況",
+      "ai_sentiment": "利多",
+      "ai_reason": "台積電公司曾經投資了一家名為Cerebras的新創公司，並且",
+      "title_zh": "台積電曾投資著名智能計算公司Cerebras，創始人Andrew Feldman公開共同前總統總理同",
       "important": true
     },
     {
@@ -39,7 +39,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "罷工導致產能受阻",
+      "ai_reason": "乖乖中壢廠無限期罷工恐影響產能",
       "important": true
     },
     {
@@ -52,7 +52,22 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "美股科技股大漲，台指期夜盤暴漲",
+      "ai_reason": "美國就業數據出嚴重負面消息，台股個股、供應鏈、半導體和大盤受",
+      "title_zh": "台股個股、供應鏈、半導體和大盤受到影響，美國債券和油價回應，美股暴涨，台指期暴涨。",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "歐盟呼籲G7共同合作  反對美柴油出口禁令威脅",
+      "link": "https://www.cna.com.tw/news/aopl/202610020340.aspx",
+      "published_time": "Fri, 02 Oct 2026 21:56:28 +0800",
+      "matched_keywords": [
+        "禁令"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利多",
+      "ai_reason": "文章中強調了歐盟反對美國實施柴油出口禁令，並呼籲G7共同行動",
+      "title_zh": "標題若為繁體中文，則為繁體中文；否則為空字串",
       "important": true
     },
     {
@@ -65,8 +80,7 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "G7將協調降燃料價格，美國油價進入危機。",
-      "title_zh": "G7協調降燃料價格，美國油價大跌",
+      "ai_reason": "油價下跌降低成本，提振獲利",
       "important": true
     },
     {
@@ -80,7 +94,8 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "台積電獨佔2奈米訂單，產能吃緊利好",
+      "ai_reason": "台積電因 AI 晶片需求增加，產能困難，加上三星的 2 孔小",
+      "title_zh": "標題為繁體中文時，如果內容涉及台股個股/供應鏈/半導體/大盤，則將回傳為 true，否則回傳為 fa",
       "important": true
     },
     {
@@ -93,7 +108,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "收購美國品牌、開拓好市多通路，提升營收",
+      "ai_reason": "收購美國品牌、開拓好市多通路，增營收",
       "important": true
     },
     {
@@ -106,8 +121,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "牧德9月營收3.73億元，達9月營收，較8月成長3.2%，較",
-      "title_zh": "牧德9月營收3.73億元，達9月營收，較8月成長3.2%，較去年同期成長63%。",
+      "ai_reason": "營收月增3.2%且年增63%",
       "important": true
     },
     {
@@ -121,7 +135,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "擴產AI電源滿足需求，提升營收",
+      "ai_reason": "擴產AI電源滿足需求，營收可望提升",
       "important": true
     },
     {
@@ -134,7 +148,7 @@
       ],
       "cat": "⚡ 供需價格",
       "ai_sentiment": "利多",
-      "ai_reason": "安龍船建造提升台船營收",
+      "ai_reason": "台船公司獲得新訂單，利好營收",
       "important": true
     },
     {
@@ -147,8 +161,7 @@
       ],
       "cat": "🧪 技術突破",
       "ai_sentiment": "利多",
-      "ai_reason": "台股夜盤漲幅高達12.25%，結束晚上市場漲幅高達122.2",
-      "title_zh": "台股夜盤漲幅高達12.25%，結束晚上市場漲幅高達122.25點，相當盛表。",
+      "ai_reason": "指數突破49,000點顯示多頭情緒強勁",
       "important": true
     },
     {
@@ -161,7 +174,7 @@
       ],
       "cat": "📈 股價異動",
       "ai_sentiment": "利多",
-      "ai_reason": "本週指數上漲、公司市值創新高",
+      "ai_reason": "大盤創收盤新高，總市值同步登頂",
       "important": true
     },
     {
@@ -174,8 +187,8 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "義隆9月營收6.02億元，營收週期增長率下降，可能表示市場需",
-      "title_zh": "繁體中文標題：義隆9月營收6.02億元",
+      "ai_reason": "義隆9月營收6.02億元，較8月成長-18.7%，較去年同期",
+      "title_zh": "義隆9月營收6.02億元，較8月成長-18.7%，較去年同期成長。",
       "important": true
     },
     {
@@ -187,21 +200,8 @@
         "新高"
       ],
       "cat": "📈 股價異動",
-      "ai_sentiment": "利多",
-      "ai_reason": "台股創新高，提振大盤",
-      "important": true
-    },
-    {
-      "source_name": "自由財經",
-      "title": "高雄路竹廠傳工安意外 華邦電：全力協助、配合調查",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5593551",
-      "published_time": "Fri, 02 Oct 2026 18:17:11 +0800",
-      "matched_keywords": [
-        "工安"
-      ],
-      "cat": "🔥 事故天災",
       "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_reason": "台股創高但匯率未隨動，市場情緒穩定",
       "important": true
     }
   ]
