@@ -1868,7 +1868,7 @@ const PRO = {
       // 🚨 抓不到就誠實說,並留一條路過去(⛔ 不可靜默空白)
       body.innerHTML = `<div class="warnbox">⚠️ 讀不到散戶救星的資料(${this._esc(this._idxErr)})。<br>
         這一頁的數字是從散戶救星<b>現算</b>的 —— 這裡刻意不另存一份,所以讀不到就真的沒有。<br>
-        <button class="lbtn" style="margin-top:8px" onclick="location.href='index.html?noise=1'">→ 直接到散戶救星看</button></div>`;
+        <button class="lbtn" style="margin-top:8px" onclick="location.href='index.html?lab=1&noise=1'">→ 直接到散戶救星看</button></div>`;
       return;
     }
     body.innerHTML = this._noiseSub === 'log' ? this._logHtml() : this._noiseHtml();
@@ -8280,7 +8280,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V78.3.7',
+  VER: 'V78.3.8',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
