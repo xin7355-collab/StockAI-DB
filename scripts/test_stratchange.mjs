@@ -178,9 +178,11 @@ ok('⑫ 視窗要寫「原本是什麼」,而且內容要對得上那一筆的 `
    `找 ${_kw(R.chg.from)} ・ ${B.slice(0, 160)}`);
 ok('⑫b 視窗要寫「現在是什麼」,而且對得上 `to`',
    /現在[：:]?/.test(B) && Bt.includes(_kw(R.chg.to)), _kw(R.chg.to));
-ok('⑫c 視窗要寫「為什麼換」而且**有數字**(⛔ 只寫「換成更好的」不算)',
-   /為什麼換/.test(B) && /\d/.test(String(R.chg.why)) && Bt.includes(_kw(R.chg.why)));
-ok('⑫d 🚨 視窗要寫「代價」而且有具體內容', /代價/.test(B) && Bt.includes(_kw(R.chg.cost)));
+// 🧹 V78.3.4 使用者:「散戶 App 不放實測數字」→ 視窗⛔ 不再印 why / cost(回測數字搬到產業作戰室實測總表),
+//   但「換了不保證比較好、可以換回舊的」那句白話一定要在(⛔ 不可變成推銷)。
+ok('⑫c 🧹 視窗⛔ 不印回測數字(why 那段不出現、沒有實測 / 回測 / 起點字樣)',
+   !/為什麼換/.test(B) && !Bt.includes(_kw(R.chg.why)) && !/實測|回測|條起點|含息/.test(B), B.slice(0, 200));
+ok('⑫d 🚨 視窗仍要講代價(白話:不保證每年都比較好、中途可能大賠)', /中途一樣可能大賠/.test(B) && !Bt.includes(_kw(R.chg.cost)));
 ok('⑫e 🚨 視窗要寫「對你的影響」而且有具體內容', /對你的影響/.test(B) && Bt.includes(_kw(R.chg.you)));
 ok('⑫f 視窗要有「換回舊的」', /換回舊的/.test(B));
 ok('⑫g ⛔ 要明說舊的沒有刪掉', /沒有刪掉|都還在/.test(B));

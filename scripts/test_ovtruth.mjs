@@ -35,7 +35,8 @@ G._DECK_TRACK49 = { rob: { paths: 17, med: 409, pmed: 167 } };
 const t1 = G._geneGapTxt();
 G._DECK_TRACK49 = { rob: { paths: 17, med: 400, pmed: 300 } };
 const t2 = G._geneGapTxt();
-ok(/59%/.test(t1) && /409/.test(t1) && /25%/.test(t2) && t1 !== t2, '② 少賺幾 % 跟著 `rob` 變(⛔ 不寫死)', t1 + ' | ' + t2);
+// 🧹 V78.3.4 散戶 App ⛔ 不印回測數字 → 改釘「換了 rob 畫面也不會冒出數字」
+ok(!/409|59%|25%|萬/.test(t1 + t2) && /只買 🧬/.test(t1), '② 🧹 不挑 🧬 那句⛔ 不印回測數字(換 rob 也一樣)', t1 + ' | ' + t2);
 ok(!/少賺一半以上/.test(src), '②b ⛔ 寫死的「少賺一半以上」不可再出現');
 
 // ③
@@ -50,32 +51,12 @@ ok(!/on: 864|on: 445/.test(src), '③b ⛔ 記錯的 864 / 445 不可再出現�
 // ④
 const L = (lit('_BEAR_GATE_EDGE') || {}).long;
 ok(!!(L && L.etfTr > L.on), '④ `_BEAR_GATE_EDGE.long` 有 0050 含息對照,而且它比這套多(16 年輸 0050 含息 = 事實)', L ? `${L.on} vs ${L.etfTr}` : 'null');
-const deck = src.slice(src.indexOf('要打幾個折'), src.indexOf('要打幾個折') + 2500);
-ok(/L\.etfTr/.test(deck) && /16 年來看這套輸 0050 含息/.test(deck), '④b 決策台「打折」那一塊要講 16 年輸 0050 含息,數字讀常數');
+// 🧹 V78.3.4 「這套做法實測賺多少」整塊搬到產業作戰室 → 散戶 App 決策台⛔ 不再有那一塊
+ok(src.indexOf('要打幾個折') < 0 && !/16 年來看這套輸 0050 含息/.test(src), '④b 🧹 決策台⛔ 不再有「打折 / 輸 0050 含息」那一塊(在產業作戰室)');
 
-// ⑤ V77.6.8 決策台「看錯要不要先跑」:每一句讀常數(⛔ 不寫死),空頭清倉沒跑完要明說
-{
-  const Q = new Function('return ({' + grab('_cutlossFaqHtml') + '})')();
-  Q._EXIT_EDGE = lit('_EXIT_EDGE'); Q._BREAKOUT_EXIT_EDGE = lit('_BREAKOUT_EXIT_EDGE'); Q._BEAR_GATE_EDGE = lit('_BEAR_GATE_EDGE');
-  Q._CUTLOSS_FACTS = lit('_CUTLOSS_FACTS'); Q._DISPO_HOLD_EDGE = lit('_DISPO_HOLD_EDGE');
-  const pm = /\n    _PROB_TABLE: (\{.*?\}),\n/.exec(src); Q._PROB_TABLE = pm ? JSON.parse(pm[1]) : null;
-  const bx = /\n    _BEAR_EXIT_EDGE: (null|\{.*?\}),\n/.exec(src);   // ⚠️ 跑完是 fill.py 寫成的單行 JSON Q._BEAR_EXIT_EDGE = bx ? new Function('return (' + bx[1] + ')')() : undefined;
-  ok('⑤0 空過守門:五份常數都讀得到', !!(Q._EXIT_EDGE && Q._BREAKOUT_EXIT_EDGE && Q._BEAR_GATE_EDGE && Q._CUTLOSS_FACTS && Q._PROB_TABLE && Q._BEAR_EXIT_EDGE !== undefined), '');
-  const h = Q._cutlossFaqHtml();
-  ok('⑤ FAQ 有七問、講「硬停損就是賠小錢」「太早出場砍掉的是贏家」「30 天以下是懸崖」', (h.match(/❓/g) || []).length === 7 && /賠小錢/.test(h) && /砍掉的是<b>贏家<\/b>/.test(h) && /30 天以下是懸崖/.test(h), h.slice(0, 200));
-  const ma5 = Q._EXIT_EDGE.rob.rows.ma5.med;
-  ok('⑤b 跌破 5 日線的數字讀 `_EXIT_EDGE.rob`', h.includes(`${ma5} 萬`), '');
-  Q._EXIT_EDGE.rob.rows.ma5.med = 7777; ok('⑤c 改常數畫面跟著變(⛔ 不寫死)', Q._cutlossFaqHtml().includes('7777 萬') && !Q._cutlossFaqHtml().includes(`${ma5} 萬`), ''); Q._EXIT_EDGE.rob.rows.ma5.med = ma5;
-  const p1 = Q._PROB_TABLE.base[0];
-  ok('⑤d 「明天漲/平/跌」讀 `_PROB_TABLE.base[0]`', h.includes(`漲 ${p1[1]}% / 平 ${p1[2]}% / 跌 ${p1[3]}%`), '');
-  const saveX = Q._BEAR_EXIT_EDGE; Q._BEAR_EXIT_EDGE = null;
-  ok('⑤e 空頭清倉沒跑完 → 明說「正在補這一條回測」、⛔ 不出現任何配對數字', /正在補這一條回測/.test(Q._cutlossFaqHtml()) && !/嚴格空頭那天把手上全賣/.test(Q._cutlossFaqHtml()), '');
-  Q._BEAR_EXIT_EDGE = { paths: 17, win: 'W', base: { med: 409, lo: 249, dd: 26.1 }, strict: { med: 111, lo: 22, dd: 33.3, wins: 2 }, ma60: { med: 222, wins: 5 }, verdict: '測試判定丙' };
-  ok('⑤f 跑完 → 印 strict/ma60 數字 + 判定', /全賣 <b>111 萬<\/b>/.test(Q._cutlossFaqHtml()) && /贏 <b>2\/17<\/b>/.test(Q._cutlossFaqHtml()) && /222 萬、贏 5\/17/.test(Q._cutlossFaqHtml()) && /測試判定丙/.test(Q._cutlossFaqHtml()), '');
-  Q._BEAR_EXIT_EDGE = saveX;
-  ok('⑤g 「不要藏私」那一問講 16 年輸 0050 含息、79 種都在表上', /79 種/.test(h) && /16 年沒有任何一種贏 0050 含息/.test(h), '');
-  ok('⑤h 決策台有掛 `_cutlossFaqHtml()`', /\$\{this\._cutlossFaqHtml\(\)\}/.test(src), '');
-}
+// ⑤ 🧹 V78.3.4 決策台「看錯要不要先跑」七問(_cutlossFaqHtml)整支刪除(它是研究對照,搬到產業作戰室)。
+//   ⚠️ 舊版這一段的 ok() 參數順序寫反了(ok(名稱, 條件))→ 名稱字串恆為 truthy,七條一直是假綠燈。
+ok(!/_cutlossFaqHtml/.test(src.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n')), '⑤ 🧹 `_cutlossFaqHtml` 已刪除、⛔ 沒有任何地方再呼叫');
 
 console.log(fail ? `\n❌ OVTRUTH_FAIL(${fail})` : '\n✅ OVTRUTH_PASS(全部通過)');
 process.exit(fail ? 1 : 0);

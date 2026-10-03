@@ -88,7 +88,8 @@ ok('④b ⭐ 決定性對照:產物把那個訊號改成 C → `_sigEdge` 回 C;
 ok('⑤a 沒產物:註記寫「嵌入版」(⛔ 不可假裝有日期)', /data-btedge="embedded"/.test(R.noteOff) && /嵌入版/.test(R.txtOff), R.noteOff.slice(0, 120));
 ok('⑤b 有產物:註記印日期 + 差異數 + 「沒有自動換預設」', /data-btedge="live"/.test(R.noteOn) && /data-btdiff="1"/.test(R.noteOn) && /沒有自動換預設/.test(R.noteOn) && /2026/.test(R.noteOn), R.noteOn.slice(0, 200));
 ok('⑤c ⛔ 產物載入後 `_DECK_TRACK49` 一個字都沒變', R.deckSame === true, '');
-ok('⑤d 決策台成績單那張卡接上 `_btEdgeNote`、K 線教學也接上', /\$\{this\._btEdgeNote\('html'\)\}/.test(CODE) && /this\._btEdgeNote\('text'\)/.test(CODE.slice(CODE.indexOf('_showEdgeHelp() {'), CODE.indexOf('_showEdgeHelp() {') + 600)), '');
+// 🧹 V78.3.4 決策台「這套做法實測賺多少」整塊搬到產業作戰室 → 決策台⛔ 不再掛 `_btEdgeNote`(K 線教學那處另由 C 批處理)
+ok('⑤d 🧹 決策台⛔ 不再掛 `_btEdgeNote`;K 線教學也接上', !/\$\{this\._btEdgeNote\('html'\)\}/.test(CODE) && /this\._btEdgeNote\('text'\)/.test(CODE.slice(CODE.indexOf('_showEdgeHelp() {'), CODE.indexOf('_showEdgeHelp() {') + 600)), '');
 
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗:${fails.join(' / ')}` : '\n✅ BACKTEST_EDGE_PASS');
 process.exit(fails.length ? 1 : 0);

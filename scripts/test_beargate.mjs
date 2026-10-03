@@ -132,7 +132,7 @@ ok('④b 🔬 決定性對照:關掉守門 → 回到原本清單', !/data-bearg
 ok('④c 不是空頭 → 照常列出', !/data-beargate/.test(R.gBull.buy) && /2330/.test(R.gBull.buy));
 ok('④e 💰「閒錢停 0050」那一行在(一般清單與空頭那格都有),而且寫明自動下單不會做',
    /data-idle0050="1"/.test(R.gBull.buy) && /data-idle0050="1"/.test(R.gOn.buy) && /自動下單不會/.test(R.gBull.buy));
-ok('④f 🔬 那一行的數字讀 `_IDLE0050_EDGE`(改常數要跟著變)', /98765 萬/.test(R.idleInj));
+ok('④f 🧹 V78.3.4 那一行⛔ 不印回測數字(改常數畫面⛔ 不可跟著出現)', !/98765|萬/.test(R.idleInj) && /停在 0050/.test(R.idleInj));
 ok('④d ⛔ 空頭那一格只擋買進 —— 不可叫人賣', !/(全部賣|出清|減碼)/.test(R.gOn.buy));
 ok('⑥ 最新一筆策略變更:「換回舊的」按鈕真的換回 back 那條;空頭守門只在 backBear:false 時才關',
    !!R.chg.back && R.modal.includes(`setExitRule('${R.chg.back}')`) && (R.chg.backBear === false) === /toggleBearGate\(false, true\)/.test(R.modal), JSON.stringify(R.chg));

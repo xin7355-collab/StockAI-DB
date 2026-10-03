@@ -100,7 +100,7 @@ try {
     ok('②b ⭐ 決定性對照:換回 75 → 位階 80 變成 🧬,而且存進設定', JSON.stringify(I.old) === '[1,1,1,0,75]' && I.saved === 75, JSON.stringify(I.old) + ' saved=' + I.saved);
     ok('②c 排序跟著門檻變(75:兩檔都 🧬 照下界 → A 先;85:只有 B 是 🧬 → B 先)', I.sort === 'AB' && I.sort2 === 'BA', `${I.sort} / ${I.sort2}`);
     ok('②d 設定壞值一律回預設 85', I.bad === 85, String(I.bad));
-    ok('②e 設定說明讀常數(數字 + 代價)', /413 萬/.test(I.desc) && /574 萬/.test(I.desc) && /7 年比舊門檻差/.test(I.desc), I.desc.slice(0, 200));
+    ok('②e 🧹 V78.3.4 設定說明只講門檻(⛔ 不印回測數字)', /位階 ≥ 85%/.test(I.desc) && /75%/.test(I.desc) && !/萬|實測|回測/.test(I.desc), I.desc.slice(0, 200));
 
     const pp = await browser.newPage();
     pp.on('pageerror', e => errs.push('pro: ' + e.message));

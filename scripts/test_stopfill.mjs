@@ -91,16 +91,13 @@ ok(/const STOPFILL = process\.env\.STOPFILL \|\| 'close';/.test(SRC), 'ⓖ portf
     await browser.close();
     ok(R.has, 'ⓗ 🚧 空過守門:`_STOPFILL_EDGE` 有唐奇安與 ATR 兩列');
     const E = R.E || { rows: { don: { close: {}, touch: {} }, atr2: { close: {}, touch: {} } } };
-    ok(R.set0.includes(`${E.rows.don.close.med}</b>`) && R.set0.includes(`${E.rows.don.touch.med}</b>`) && R.set0.includes(`${E.rows.atr2.close.med}</b>`) && R.set0.includes(`${E.rows.atr2.touch.med}</b>`), 'ⓗ2 設定中心那段印出四格(兩種出場 × 兩種賣法)');
-    // 🔁 V77.7.6 修好資料後只有「現行預設」那一列是新的,唐奇安那兩列收進「📜 修資料前」摺疊(⛔ 不可跟新的互比)
-    //   → 決策台一行只替「有新數字」的規則講結論;舊規則只指路到設定中心
-    ok(R.setInj.includes('987654') && R.setInj.includes('876543') && R.setInj.includes('765432') && R.deckAtrInj.includes('876543'), 'ⓗ3 數字讀常數(決定性對照:改常數畫面要跟著變,⛔ 不可寫死)');
-    const A2 = E.rows.atr2, worse = A2.touch.med < A2.close.med;
-    ok(R.deckAtr.includes(`${A2.close.med}</b>`) && R.deckAtr.includes(`${A2.touch.med}</b>`) && (worse ? /尾盤確認再賣/.test(R.deckAtr) : /智慧單比較好/.test(R.deckAtr)) && /你用的是現行預設/.test(R.setAtr),
-       'ⓗ4 選吊燈 ATR 的人:決策台一行印兩種賣法的數字,結論方向跟數字一致(設定中心也講)');
-    ok(!/吊燈/.test(R.deckDon) && /盤中碰到就賣/.test(R.deckDon) && !/\d+<\/b> 萬/.test(R.deckDon), 'ⓗ5 舊規則(唐奇安 20,只有修資料前的數字)⛔ 不可講吊燈的結論、⛔ 不給舊數字,只指路');
-    ok(/修資料前/.test(R.set0) && /<details/.test(R.set0), 'ⓗ5b 修資料前的兩列收進摺疊並標明');
-    ok(/一行都沒改/.test(R.set0), 'ⓗ6 寫明「自動下單與智慧單的做法沒改」(使用者選的:只寫出差距)');
+    // 🧹 V78.3.4 使用者:「散戶 App 不放實測數字」→ 兩種賣法的回測數字搬到產業作戰室;這裡只講「怎麼賣」。
+    //   ⛔ 決定性對照反過來:把常數改成不可能巧合的數字,畫面⛔ 不可跟著出現。
+    const _noNum = t => !/\d+<\/b> 萬|萬\b|實測|回測|含息/.test(t);
+    ok(_noNum(R.set0) && /收盤前看一次/.test(R.set0) && /盤中一碰到就賣/.test(R.set0), 'ⓗ2 🧹 設定中心只講兩種賣法怎麼賣,⛔ 不印回測數字');
+    ok(!/987654|876543|765432/.test(R.setInj + R.deckInj + R.deckAtrInj), 'ⓗ3 🧹 決定性對照:改常數,散戶 App 畫面⛔ 不可跟著出現數字');
+    ok(_noNum(R.deckAtr) && /收盤前確認再賣/.test(R.deckAtr) && _noNum(R.setAtr), 'ⓗ4 🧹 決策台一行只講怎麼賣(建議跟自動下單一樣收盤前確認)');
+    ok(_noNum(R.deckDon) && !/吊燈/.test(R.deckDon), 'ⓗ5 🧹 舊規則也一樣⛔ 不給數字、⛔ 不講吊燈的結論');
     const IX = readFileSync('index.html', 'utf8');
     ok((IX.match(/data-stopfilldeck="1">\$\{this\._stopFillNoteHtml\('deck'\)\}/g) || []).length === 2 && /id="stopFillNote"/.test(IX), 'ⓗ7 決策台兩處 + 設定中心容器都接上');
 }
@@ -124,8 +121,9 @@ ok(/const STOPFILL = process\.env\.STOPFILL \|\| 'close';/.test(SRC), 'ⓖ portf
         return o;
     });
     await browser.close();
-    ok(R.desc.includes(`${R.rob.rows.don.med} 萬`) && R.sub.includes(`${R.rob.rows.atr2.med} 萬`), 'ⓘ 設定中心說明與出場鈕印出 17 條路徑中位');
-    ok(R.descInj.includes('98765') && R.subInj.includes('87654'), 'ⓘ2 決定性對照:改 `_EXIT_EDGE.rob` 畫面要跟著變(⛔ 不寫死)');
+    // 🧹 V78.3.4 出場說明與出場鈕只講規則怎麼走,⛔ 不印 17 條路徑中位(那些在產業作戰室)
+    ok(!/萬|實測|回測|含息/.test(R.desc + R.sub) && /三條先到先賣/.test(R.desc) && /2×ATR/.test(R.sub), 'ⓘ 🧹 設定中心出場說明與出場鈕⛔ 不印回測數字');
+    ok(!/98765|87654/.test(R.descInj + R.subInj), 'ⓘ2 🧹 決定性對照:改 `_EXIT_EDGE.rob`,散戶 App 畫面⛔ 不可跟著出現');
     const IXs = readFileSync('index.html', 'utf8');
     ok(!/ATR 追蹤 <b class="text-gray-300">531 萬<\/b>/.test(IXs) && !/總獲利中位 <b>526 萬<\/b>/.test(IXs), 'ⓘ3 舊的寫死數字(531 / 526 萬)不可再出現在設定中心');
     const PR = readFileSync('pro.html', 'utf8');

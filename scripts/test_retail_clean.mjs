@@ -1,0 +1,103 @@
+#!/usr/bin/env node
+/**
+ * 🧹 V78.3.4 散戶救星(index.html)畫面上⛔ 不可出現實測 / 回測研究文字
+ *   使用者:「散戶 app 裡面太多實測資訊、還有 xx 版本實測資料,不想給別人看到」
+ *   → 散戶 App 只留「怎麼做」;數字、勝率、期望值、對照組、贏 0050、探針名、版本號字樣一律在產業作戰室。
+ *   ⭐ 判斷邏輯一行不改:這支只看「畫面上的字」。
+ *
+ *   跑法:node scripts/test_retail_clean.mjs            → 全部頁面都要乾淨(SCOPE 沒設 = 全部)
+ *         SCOPE=desk,ov node scripts/test_retail_clean.mjs  → 只驗某幾區(分批做的時候用)
+ *         REPORT=1 …                                    → 只列出每頁的違規行,不判紅綠
+ *   注入驗證:INJECT=1 → 在決策台塞一句「實測 17 條起點」,必須紅。
+ */
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+let chromium; try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); } catch (_) { ({ chromium } = await import('playwright')); }
+const _exec = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+
+// ⛔ 研究字樣(交易術語「回測月線 / 回測不破」那種是「股價回頭測試」,不是回測研究 → 白名單)
+const BAD = [
+    /實測/, /探針/, /六關/, /六道關卡/, /起點中位/, /\d+\s*條起點/, /對照組/, /安慰劑/, /樣本外/, /_probe\b/, /\.mjs\b/,
+    /\bV\d{2}\.\d\.\d\b/, /含息/, /贏\s*0050/, /輸\s*0050/, /勝率\s*[\d.]+\s*%/, /期望值?\s*[+\-−]?[\d.]+\s*%/,
+    /回測(?!月線|季線|年線|半年線|支撐|不破|頸線|均線|\d+\s*日線|前高|前低|缺口|低點|高點|底部|守住|成功|失敗|5MA|10MA|20MA|60MA|突破點|平台)/,
+    /逐年(?:同向|全正|全負)/, /模擬(?:成績|帳|買賣)/, /前後半/, /基準勝率/, /條路徑/,
+    // ⚠️ 不收裸的「pp」—— 毛利率 ↑5.4pp、大戶 +0.05pp 是財報 / 集保的事實變化,⛔ 不是研究數字
+];
+const ALLOW_LINE = [/^⚙️ 設定中心/];      // 版本徽章那一行
+const badOf = s => BAD.filter(r => r.test(s)).map(r => String(r));
+
+const STRATS = (process.env.STRATS || 'gene,lead').split(',');
+const SCOPE = process.env.SCOPE ? new Set(process.env.SCOPE.split(',')) : null;
+const REPORT = !!process.env.REPORT;
+const AREA = k => k === 'desk' ? 'desk' : k.startsWith('ov_') ? 'ov' : k.startsWith('diag_report') ? 'report'
+    : k.startsWith('diag_') ? 'diag' : k.startsWith('help_') ? 'help' : k === 'settings' ? 'settings' : k === 'jargon' ? 'help' : 'pages';
+
+const browser = await chromium.launch({ ...(fs.existsSync(_exec) ? { executablePath: _exec } : {}), args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
+const errs = [];
+const all = {};          // key → [{line, bad}]
+for (const strat of STRATS) {
+    const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
+    page.on('pageerror', e => errs.push(`${strat}: ${e.message}`));
+    await page.addInitScript((st) => {
+        try {
+            const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}');
+            s.strategy = st; s.stratUnlock = st !== 'gene';
+            localStorage.setItem('proTerminalSettings', JSON.stringify(s));
+            localStorage.setItem('inventory', JSON.stringify([{ symbol: '2330', cost: 900, shares: 1000, date: '2026-09-01' }, { symbol: '0050', cost: 150, shares: 1000 }]));
+        } catch (_) {}
+    }, strat);
+    await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof app !== 'undefined' && typeof app.renderDeck === 'function', null, { timeout: 60000 });
+    await page.waitForTimeout(8000);
+    if (process.env.INJECT) await page.evaluate(() => { const o = app._leaderDeckHtml, o2 = app.renderDeck; app.renderDeck = async function (...a) { const r = await o2.apply(this, a); const b = document.getElementById('tabContentDesk') || document.body; b.insertAdjacentHTML('afterbegin', '<div>實測 17 條起點中位 +953%</div>'); return r; }; });
+    const grab = async (key, fn, arg, wait = 3000) => {
+        if (SCOPE && !SCOPE.has(AREA(key))) return;
+        try { await page.evaluate(fn, arg); } catch (e) { all[`${strat}:${key}`] = [{ line: 'ERR ' + e.message, bad: ['ERR'] }]; return; }
+        await page.waitForTimeout(wait);
+        // ⭐ 滑鼠停上去才看得到的 title 也算畫面(使用者:「整份資料我都要查」)
+        const txt = await page.evaluate(() => { document.querySelectorAll('details').forEach(d => { d.open = true; });
+            const tt = [...document.querySelectorAll('[title]')].filter(e => e.offsetParent !== null).map(e => '[title] ' + e.getAttribute('title').replace(/\n/g, ' '));
+            return document.body.innerText + '\n' + tt.join('\n'); });
+        const hits = [];
+        for (const raw of txt.split('\n')) { const s = raw.trim(); if (!s || ALLOW_LINE.some(r => r.test(s))) continue; const b = badOf(s); if (b.length) hits.push({ line: s.slice(0, 200), bad: b }); }
+        all[`${strat}:${key}`] = hits;
+    };
+    const closeAll = () => { document.querySelectorAll('#richHelpModal,#jargonModal,#updateLogModal,#settingsModal').forEach(m => { m.classList.add('hidden'); m.style.display = 'none'; }); };
+    await grab('desk', () => app.switchAppTab('desk'));
+    for (const t of ['inv', 'fav', 'market', 'radar', 'etf', 'broker', 'potential', 'hunt']) await grab(t, t => app.switchAppTab(t), t);
+    await grab('ov_now', async () => { app.switchAppTab('diag'); await app.analyze('2330', true, false, true); app.switchSubTab('strategy'); app.switchOvTab('now'); }, null, 6000);
+    await grab('ov_entry', () => app.switchOvTab('entry'));
+    await grab('ov_exit', () => app.switchOvTab('exit'));
+    for (const st of ['report', 'live', 'daytrade', 'chart', 'chip', 'corp', 'backtest', 'bullbear']) await grab('diag_' + st, st => app.switchSubTab(st), st);
+    await grab('settings', () => { app.openSettings(); });
+    await page.evaluate(closeAll);
+    // 📖 說明彈窗(每一支都呼叫一次,讀 richHelpModal / jargon / updateLog)
+    const HELPS = ['_leaderHelp', '_rulerHelp', '_showEdgeHelp', '_showPbHelp', '_showTodaySigHelp', '_showScrHelp', 'showScrEdgeHelp', 'showPlaybookPatternHelp',
+        'showPlaybookConceptHelp', '_showFloorCountHelp', '_helpOvernight', '_dtBeginnerGuide', '_showDtGuide', '_showDtAdvanced', '_showExitHelp', '_showMarginHelp',
+        '_showMedGapHelp', '_showPeBandHelp', '_showTrendCommandHelp', '_showTradeMirror', 'showKbarSignalHelp', 'showKbarTacticsHelp', 'showLuOddsHelp', 'showGuardianHelp',
+        '_showAttentionRulesHelp', '_showChuPlanFull', '_showIdxWhy'];
+    for (const h of HELPS) await grab('help_' + h, async h => {
+        document.querySelectorAll('#richHelpModal,#jargonModal').forEach(m => { m.classList.add('hidden'); m.style.display = 'none'; });
+        const f = app[h]; if (typeof f !== 'function') return; const r = f.call(app); if (r && r.then) await r;
+    }, h, 800);
+    await grab('jargon', () => { const d = document.createElement('div'); d.id = '__jg'; d.textContent = Object.values(app.jargonDict || {}).join('\n'); document.body.appendChild(d); }, null, 200);
+    await page.close();
+}
+await browser.close();
+
+let total = 0; const seenLine = new Set();
+for (const [k, hits0] of Object.entries(all)) {
+    const hits = hits0.filter(h => !seenLine.has(h.line)); hits.forEach(h => seenLine.add(h.line));
+    if (!hits.length) continue;
+    total += hits.length;
+    console.log(`\n=== ${k}  (${hits.length})`);
+    for (const h of hits.slice(0, REPORT ? 400 : 12)) console.log(`  ${h.line}   ⟵ ${h.bad.join(' ')}`);
+}
+console.log(`\n頁面數 ${Object.keys(all).length} ・違規行 ${total} ・pageerror ${errs.length}`);
+if (errs.length) console.log(errs.slice(0, 5).join('\n'));
+if (Object.keys(all).length < 5) { console.log('❌ 掃到的頁面太少(空過守門)'); process.exit(1); }
+if (REPORT) process.exit(0);
+if (total || errs.length) { console.log('❌ RETAIL_CLEAN_FAIL'); process.exit(1); }
+console.log('✅ RETAIL_CLEAN_PASS');

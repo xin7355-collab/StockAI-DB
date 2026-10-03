@@ -144,11 +144,12 @@ ok('③b ⛔ 不下操作指令(買進/加碼/停損價/目標價都不可出現
     !/買進|加碼|停損價|目標價|掛單/.test(R.hit) && /現在怎麼做/.test(R.hit));
 ok('③c 要寫「不是進場指令」與回測進場點(隔天開盤)', /不是進場指令/.test(R.hit) && /隔天開盤/.test(R.hit));
 
-ok('⑦a 總覽提醒:跌停後紅K 命中要出現,且帶「大盤有沒有一起跌」的差距',
-    /昨天跌停/.test(R.ovHit) && R.ovHit.includes(String(E.sys)) && R.ovHit.includes(String(E.idio)), R.ovHit.slice(0, 100));
+// 🧹 V78.3.4 散戶 App ⛔ 不印回測數字(+x% 的差距搬到產業作戰室),但「先看大盤有沒有一起跌」這個做法要講
+ok('⑦a 總覽提醒:跌停後紅K 命中要出現,講「先看大盤有沒有一起跌」,⛔ 不印回測數字',
+    /昨天跌停/.test(R.ovHit) && /大盤有沒有一起跌/.test(R.ovHit) && !R.ovHit.includes(String(E.sys)) && !/實測/.test(R.ovHit), R.ovHit.slice(0, 100));
 ok('⑦b 總覽提醒:沒到跌停(−8%)⛔ 不可觸發', R.ovNo === 0, String(R.ovNo));
 ok('⑦c 總覽提醒:噴 ≥30% 且在官方注意股名單 → 減碼提醒(⛔ 不是放空訊號)',
-    /考慮減碼/.test(R.ovAtt) && /1\.81/.test(R.ovAtt) && /不是放空訊號/.test(R.ovAtt), R.ovAtt.slice(0, 100));
+    /考慮減碼/.test(R.ovAtt) && !/1\.81|實測/.test(R.ovAtt) && /不是放空訊號/.test(R.ovAtt), R.ovAtt.slice(0, 100));
 ok('⑦d ⛔ 沒在官方注意股名單就不可以提醒(⛔ 不可自己推估誰會被列注意)', R.ovAttNo === 0, String(R.ovAttNo));
 ok('⑦e 接線:總覽的重點判讀真的有呼叫 _ovNewEdges',
     /for \(const r of \(this\._ovNewEdges\(data, sym\) \|\| \[\]\)\) rows\.push\(r\);/.test(SRC));

@@ -39,8 +39,8 @@ const P0 = await proRun();
 
 
 // ① 決策台沒有模擬帳
-ok(!/_leaderLedger\(\)|_renderLeaderLedger|deckLeaderLedger|data-leaderledger=/.test(IDX) && /data-leaderledgerptr/.test(IDX) && /產業作戰室 → 📒 成績單 → 👑/.test(IDX),
-  '① 決策台⛔ 不再有模擬帳(函式 / 容器都刪了),只留一行指路');
+ok(!/_leaderLedger\(\)|_renderLeaderLedger|deckLeaderLedger|data-leaderledger=/.test(IDX) && !/data-leaderledgerptr/.test(IDX) && !/產業作戰室 → 📒 成績單 → 👑/.test(IDX),
+  '① 決策台⛔ 不再有模擬帳;🧹 V78.3.4 連指路那行也拿掉(散戶 App 不提模擬成績)');
 // ② 成交 = 隔天開盤(獨立答案:node 讀 K 線)
 const kOpen = (sym, d) => { try { const k = JSON.parse(readFileSync(`data/${sym}.json`, 'utf8')); const r = k.find(x => String(x.date).replace(/\//g, '-').slice(0, 10) === d); return r ? +(+r.open).toFixed(2) : null; } catch (_) { return null; } };
 const chk = P0.trades.map(t => ({ sym: t.sym, d0: t.d0, entry: +(+t.entry).toFixed(2), want: kOpen(t.sym, t.d0) })).filter(x => x.want != null);

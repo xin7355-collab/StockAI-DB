@@ -68,20 +68,17 @@ await browser.close();
 const a = R.A.join(' '), b = R.B.join(' ');
 ok('① 🏔️「創60日高後回測不破」今天命中就要跳出來', /🏔️/.test(a), R.A.length ? R.A[0].slice(0, 60) : R.A);
 ok('② 🕳️「向上跳空 × 高位階」今天命中就要跳出來', /🕳️/.test(b), R.B.length ? R.B[0].slice(0, 60) : R.B);
-ok('③ 🚨 數字要讀 `_STREAK_EDGE`,⛔ 不可寫死(換一份假表畫面要跟著變)',
-   /8\.88/.test(R.fakeA.join(' ')) && /7\.77/.test(R.fakeB.join(' ')) && !/8\.88/.test(a),
-   [R.fakeA.length, R.fakeB.length]);
-ok('④ 🚨 勝率旁邊一定要寫基準 41.1%(⛔ 不是 50%)',
-   /41\.1%/.test(a) && /41\.1%/.test(b) && /不是 50%|基準/.test(a));
-ok('⑤ 🚨 一定要寫「扣成本後只剩多少」(⛔ 不寫就變成在推薦重壓)',
-   /扣.{0,4}成本/.test(a) && /扣.{0,4}成本/.test(b) && /0\.29/.test(a) && /0\.19/.test(b));
+// 🧹 V78.3.4 使用者:「散戶 App 不放實測數字」→ 決定性對照反過來:換假表,畫面⛔ 不可出現表裡的數字;
+//   基準勝率 / 扣成本 / 個百分點 這些研究數字一律在產業作戰室
+ok('③ 🧹 換假表,畫面⛔ 不可出現表裡的數字', !/8\.88|7\.77|66\.6|55\.5/.test(R.fakeA.join(' ') + R.fakeB.join(' ')), [R.fakeA.length, R.fakeB.length]);
+ok('④ 🧹 ⛔ 不印基準勝率 / 次數', !/41\.1%|基準|次實測/.test(a + b));
+ok('⑤ 🧹 仍要說「不是叫你重壓 / 不是進場指令」(⛔ 不印扣成本後的數字)', /不是叫你重壓|不是進場指令/.test(a) && /不是進場指令/.test(b) && !/0\.29|0\.19|實測/.test(a + b));
 ok('⑥ ⛔ 空頭時兩個都不可顯示(`_bearGate` 鐵則)',
    !/🏔️/.test(R.Abear.join(' ')) && !/🕳️/.test(R.Bbear.join(' ')), [R.Abear.length, R.Bbear.length]);
 ok('⑦ ⛔ 不可給買賣價位 / 不可下進場指令(單一劇本原則)',
    !/(掛單|買進價|進場價|目標價|停損價)/.test(a + b) && /(不是進場指令|不是叫你重壓|以總覽)/.test(a + b),
    (`${a} ${b}`.match(/掛單|買進價|進場價|目標價|停損價/) || [])[0]);
-ok('⑧ 🚨 跳空那條要點明「配低位階是負的」(⛔ 只講對自己有利的一半)',
-   /低<\/?b>?位階|低.{0,4}位階/.test(b) && /−0\.15|-0\.15/.test(b));
+ok('⑧ 跳空那條要點明「要配高位階才算數」(🧹 ⛔ 不印低位階的回測數字)', /配高位階/.test(b) && !/−0\.15|-0\.15/.test(b));
 // 🚧 空過守門:定義要跟探針一字不差 → 原始碼裡要出現那幾個關鍵門檻
 // ⚠️ 錨點用**定義**(`    _ovNewEdges(data, sym) {`)⛔ 不用呼叫字串 —— V77.5.2 新增的 `_ovFoldEdgesHtml` 先呼叫
 //    `_ovTopEdge(data, sym)` 再呼叫 `_ovNewEdges(data, sym)` → 用呼叫字串切會切到空字串(假紅燈;反過來也可能是假綠燈)
@@ -92,16 +89,8 @@ ok('⑨ 🚧 定義要跟 streak_probe 一字不差(0.95 / 0.98 / 缺口≥1 / �
 ok('⑩ 載入無 pageerror', errs.length === 0, errs.join(' | '));
 console.log();
 // ⏱️ V74.8.7:這兩個實測**沒有反應時點**(前 5 天只走完 7% / 2%)→ 文案要說出來
-ok('⑪ ⏱️ 🏔️ 要寫「慢慢漂、別期待幾天內表態」+ 前 5 天的比例(讀 r5,⛔ 不寫死)', (() => {
-      const i = SRC.indexOf('const R = E.retest;');
-      const seg = SRC.slice(i, i + 1400);
-      return /慢慢漂/.test(seg) && /別期待/.test(seg) && /\$\{R\.r5\}/.test(seg);
-    })());
-ok('⑪a ⏱️ 🕳️ 同上(讀 G.r5)', (() => {
-      const i = SRC.indexOf('const G = E.gapHi;');
-      const seg = SRC.slice(i, i + 1400);
-      return /慢慢漂/.test(seg) && /別期待/.test(seg) && /\$\{G\.r5\}/.test(seg);
-    })());
+ok('⑪ ⏱️ 🏔️ 要寫「慢慢漂、別期待幾天內表態」(🧹 ⛔ 不印前 5 天比例)', /慢慢漂/.test(a) && /別期待/.test(a) && !/前 5 天只走完/.test(a));
+ok('⑪a ⏱️ 🕳️ 同上', /慢慢漂/.test(b) && /別期待/.test(b) && !/前 5 天只走完/.test(b));
 // ⚠️ 這時 browser 已關 → 直接從原始碼讀(⛔ 不可再 page.evaluate)
 const _r5 = k => { const m = SRC.match(new RegExp(k + ':\\s*\\{[^}]*r5:\\s*(\\d+)')); return m ? +m[1] : NaN; };
 ok('⑪b 常數要真的有 r5 這一欄(⛔ 不可只改文案不改資料)',

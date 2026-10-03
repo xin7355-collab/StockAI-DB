@@ -312,12 +312,12 @@ ok('⑨o 這條規則有納入 push 前四驗證(⛔ 光靠人記會忘)',
     const h1 = A._pbRowHtml(mk('9999'), new Set(), 1, 0);
     const h2 = A._pbRowHtml(mk('8888'), new Set(), 2, 0);
     return { disp: /⛔處置/.test(h1), clean: !/⛔處置/.test(h2),
-             why: /分盤撮合/.test(h1), notDeleted: /9999/.test(h1), keepNote: /名單刻意不刪/.test(h1) };
+             why: /分盤撮合/.test(h1), notDeleted: /9999/.test(h1), keepNote: !/實測|回測|名單刻意不刪/.test(h1) };   // 🧹 V78.3.4 理由不再提回測
   });
   ok('⛔① 處置中的那一檔要標 ⛔處置(使用者 V74.5.6 明示:推薦處置股不對)', D.disp, JSON.stringify(D));
   ok('⛔② 🚧 決定性對照:沒有處置的⛔ 不可被亂標', D.clean, JSON.stringify(D));
   ok('⛔③ 要說出為什麼(分盤撮合 → 尾盤觸價那個價買不到)', D.why);
-  ok('⛔④ ⭐ 名單⛔ 不刪 —— 刪了推薦成績單量到的就不是決策台真正的成績,而且卡上要講明',
+  ok('⛔④ ⭐ 名單⛔ 不刪(🧹 V78.3.4 卡上⛔ 不再寫回測理由)',
      D.notDeleted && D.keepNote, JSON.stringify(D));
 }
 

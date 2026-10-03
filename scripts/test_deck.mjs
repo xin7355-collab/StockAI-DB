@@ -203,29 +203,14 @@ ok('⑨ 庫存為空 → 說「你還沒填庫存」(⛔ 不可跟「今天沒�
    /還沒填庫存/.test(R.emptyInvTxt), R.emptyInvTxt.slice(0, 120));
 ok('⑩ 同一檔的兩招⛔ 不可吃掉兩個名額(要是 4001 + 4002 兩個不同的)',
    JSON.stringify(R.dupSyms) === '["4001","4002"]', JSON.stringify(R.dupSyms));
-// ⑪ 🚨 三個數字要出現在畫面上(⛔ 從常數現算,不寫死 —— 重跑回測時測試不可變成假失敗)
+// ⑪ 🧹 V78.3.4 使用者:「散戶 App 裡面太多實測資訊,不想給別人看到」→「這套做法實測賺多少」整塊搬到產業作戰室。
+//   ⛔ 以前這裡釘「三個數字 / 打折理由 / 切換策略結論 必須在畫面上」—— 那些內容現在在 pro.html 實測總表,
+//   散戶 App 決策台的 #deckNote 必須是空的(⛔ 不可再出現任何回測數字)。
 const _n = v => Math.round(v).toLocaleString();
 const _T = { gene: grab(dt, 'gene'), plain: grab(dt, 'plain'), etf: grab(dt, 'etf0050') };
-ok('⑪ 🚨 誠實揭露:三個數字都要在畫面上',
-   [_T.gene, _T.plain, _T.etf].every(v => R.noteTxt.includes(_n(v))), R.noteTxt.slice(0, 260));
-// ⑪a 🚨🚨 **文案方向必須跟數字一致** —— 這是這一段最容易說謊的地方
-ok('⑪a 🚨 跟 0050 的比較方向不可寫反(數字說贏就 ⛔ 不可寫「都輸」,說輸就必須寫出來)',
-   _T.gene > _T.etf ? !/兩種都輸給買 0050|都輸給買 0050 放著/.test(R.noteTxt)
-                    : /都輸給買 0050/.test(R.noteTxt), R.noteTxt.slice(0, 300));
-// ⑪a2 🚨 贏的時候更要寫限制(⛔ 不可變成推銷)
-ok('⑪a2 🚨 贏 0050 的時候必須同時寫出「這個贏要打折」的理由(窗口偏多頭 / 倖存者偏誤 / 中途最多賠)',
-   _T.gene <= _T.etf || (/偏多頭|加權指數自己就漲/.test(R.noteTxt) && /倖存者偏誤/.test(R.noteTxt) && /中途最多賠/.test(R.noteTxt)));
-ok('⑪b 🚨 必須寫「勝率只有三成、十次會錯七次」', /勝率只有約 3\d%/.test(R.noteTxt) && /十次會錯七次/.test(R.noteTxt));
-ok('⑪c 🚨 必須寫「基準勝率 36% 不是 50%」', /基準勝率是 36% 不是 50%/.test(R.noteTxt));
-// 🔀 V75.0.8 使用者提的「多頭做這套、空頭改抱 0050」—— 測完三關全滅而且仍然輸,
-//   ⛔ 那個結論**必須寫在畫面上**(⛔ 只寫進 pro.html 的實測總表 = 散戶救星的使用者看不到,陷阱 #32)。
-ok('⑪d 🔀 切換策略的結論要寫出來:四個數字 + 「還是輸」',
-   /1,933,944/.test(R.noteTxt) && /2,057,822/.test(R.noteTxt) && /2,247,695/.test(R.noteTxt)
-   && /2,641,000/.test(R.noteTxt) && /還是輸/.test(R.noteTxt), R.noteTxt.slice(-420));
-ok('⑪e 🚨 必須寫「三道穩健性檢定全滅」+ 唯一一次長空頭停泊是賠的',
-   /穩健性檢定全滅/.test(R.noteTxt) && /長空頭/.test(R.noteTxt) && /是賠的/.test(R.noteTxt), R.noteTxt.slice(-420));
-ok('⑪f 🚨 ⛔ 不可把「多賺 31 萬」講成可以照做(要點出那是 ≤4 天的短線來回)',
-   /短線來回/.test(R.noteTxt) && /≤4 個交易日/.test(R.noteTxt), R.noteTxt.slice(-420));
+ok('⑪ 🧹 決策台⛔ 不再有「這套做法實測賺多少」那一塊(數字在產業作戰室)',
+   R.noteTxt.trim() === '' && ![_T.gene, _T.plain, _T.etf].some(v => R.all.includes(_n(v))), R.noteTxt.slice(0, 260));
+ok('⑪b 🧹 決策台全文⛔ 沒有實測 / 回測 / 起點 / 含息字樣', !/實測|回測|條起點|含息|基準勝率/.test(R.all), (R.all.match(/.{0,40}(實測|回測|條起點|含息|基準勝率).{0,40}/) || [''])[0]);
 ok('⑫ 空過守門:三塊真的都渲染出來了', R.all.length > 1200, String(R.all.length));
 
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ DECK_PASS(全部通過)');

@@ -24,8 +24,8 @@ ok('④ screener_miner COLS 有 chg10 與 amt20', /'chg10',/.test(PY) && /'amt20
 const _le0 = SRC.indexOf('_LEADER_EDGE: {'), _le1 = SRC.indexOf('/** 👑 純函式', _le0);
 const _outside = SRC.slice(0, _le0) + SRC.slice(_le1);
 ok('④b 實測數字只出現在 `_LEADER_EDGE` 裡面(⛔ 文案不可寫死)', _le0 > 0 && _le1 > _le0 && !/3176|3,176|\+760%|\+670%|\+341%/.test(_outside.slice(_outside.indexOf('_leaderCalc(D'), _outside.indexOf('_leaderHelp() {') + 3000)), '');
-const _hs = SRC.indexOf('_leaderHelp() {'), _hTxt = SRC.slice(_hs, _hs + 4000);
-ok('④c 🗓️ 逐月數字讀 `_LEADER_EDGE.mon`(⛔ 說明不寫死)', /mon: \{ n: \d+, beat: \d+/.test(SRC) && /\$\{E\.mon\.beat\}/.test(_hTxt) && /\$\{E\.mon\.worstAll\}/.test(_hTxt) && !/贏 0050 的月份 53%/.test(_hTxt));
+const _hs = SRC.indexOf('_leaderHelp() {'), _hTxt = SRC.slice(_hs, SRC.indexOf('\n    },', _hs)).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');   // 只看函式本體、剝掉 // 註解
+ok('④c 🧹 V78.3.4 說明只講規則:⛔ 不印任何回測數字(逐月 / 起點 / 0050 / 怎麼買比較)', /怎麼選/.test(_hTxt) && /怎麼賣/.test(_hTxt) && !/\$\{E\.(mon|ai|long|sham|costX2|core50|buyHow|att|disp)\./.test(_hTxt) && !/實測|回測|含息/.test(_hTxt));
 const AT = fs.readFileSync(path.join(ROOT, 'auto_trade.py'), 'utf8');
 const jsRule = (SRC.match(/rule: \{ U: (\d+), N: (\d+), R: (\d+), L: (\d+), hyst: (\d+), pos: (\d+) \}/) || []).slice(1).join(',');
 // 👑 V77.9.3 規則 / 錨點搬到 lib_leader.py(auto_trade.py 與成績單的採礦端共用)→ 比對那一份,並釘住 auto_trade 真的用它
@@ -146,11 +146,11 @@ ok('①f ⭐ 決定性對照:把一檔改成 ma20 < ma60 → 被濾掉', R.filte
 ok('② 時鐘:起點那天 = 第 1 天且是換倉日;第 5 天還剩 6 天;第 11 天又是換倉日;沒傳起點 → 用共用錨點(09-24 起,09-25 是第 2 天)', R.c1.day === 1 && R.c1.isRebal && R.c5.day === 5 && !R.c5.isRebal && R.c5.left === 6 && R.c11.day === 11 && R.c11.isRebal && R.c0.day === 2 && !R.c0.isRebal, JSON.stringify([R.c1, R.c5, R.c11, R.c0]));
 ok('③ 畫面(V77.9.6 選 👑 → 手上每一檔個股都照這套):前 5 名 5 檔都是 🛒 買(V78.3.3 動作只剩 🛒 / 續抱,⛔ 不再寫「✅ 已有」)、1001 續抱、1041(第 21 名)/ 1000(沒過趨勢)/ 2330(池子外)都 keep=0', R.buyBtns === 5 && R.held['1001'] === '1' && R.held['1041'] === '0' && R.held['1000'] === '0' && R.held['2330'] === '0', JSON.stringify([R.buyBtns, R.held]));
 ok('⑪a 🎯 V78.2.2 今天要做的事 3~5 行(今天 / 怎麼買 / 怎麼賣 / 錢放哪)', R.todoN >= 3 && R.todoN <= 5 && /09:00 開盤買前 5 名/.test(R.todo) && /掉出前 10 名/.test(R.todo) && R.todo.replace(/<[^>]+>/g, '').length <= 220, R.todo.replace(/<[^>]+>/g, '').length);
-ok('⑪b 長說明(規則 / 實測 / 怎麼買回測)收在 <details>,第一眼不印「實測 17 條起點中位」', R.hasInfo && R.buyHowInDetails && !/條起點中位/.test(R.txtClosed));
-ok('⑪c 決策台⛔ 沒有模擬帳(搬到產業作戰室成績單),只留一行指路', !R.hasLedger && R.ptr && !/<a [^>]*pro\.html/.test(SRC.slice(SRC.indexOf('async _leaderDeckHtml'), SRC.indexOf('_deckTodoLead({'))));
-ok('③b ⭐ 決定性對照:實測數字讀 `_LEADER_EDGE`(改成 4321 畫面要跟著變)', /4321/.test(R.constTxt) && !/4321/.test(R.txt));
+ok('⑪b 規則收在 <details>;🧹 V78.3.4 整塊(含展開)⛔ 沒有實測 / 回測 / 起點中位 / 含息字樣', R.hasInfo && !R.buyHowInDetails && !/實測|回測|條起點|含息/.test(R.txt) && !/實測|回測/.test(R.txtClosed), R.txt.slice(0, 200));
+ok('⑪c 決策台⛔ 沒有模擬帳,🧹 V78.3.4 連指路那行也拿掉(散戶 App 不提模擬成績)', !R.hasLedger && !R.ptr && !/<a [^>]*pro\.html/.test(SRC.slice(SRC.indexOf('async _leaderDeckHtml'), SRC.indexOf('_deckTodoLead({'))));
+ok('③b ⭐ 決定性對照(🧹 V78.3.4 反過來):把 `_LEADER_EDGE` 的數字改成 4321,散戶 App 畫面⛔ 不可跟著出現', !/4321/.test(R.constTxt) && !/4321/.test(R.txt));
 ok('③c 空頭:名單照列(10 列)、但一個「🛒 買」都沒有、寫「今天不開新倉」', R.bearRows === 10 && !/🛒 買/.test(R.bearTxt) && /今天不開新倉/.test(R.bearTxt) && /前10續抱/.test(R.bearTxt) && !/空頭不買/.test(R.bearTxt));
-ok('③d 一定寫代價:中途最多賠 / 只有 N 年贏 + 標明是預設', /中途最多賠/.test(R.txt) && /年贏 0050/.test(R.txt) && /你選的策略/.test(R.txt) && !/預設・實測最強/.test(R.txt));
+ok('③d 一定寫代價(只講白話,⛔ 不給數字)+ 標明是你選的策略', /中途可能賠掉一半/.test(R.txt) && /你選的策略/.test(R.txt) && !/年贏 0050|預設・實測最強/.test(R.txt));
 ok('③i 每一列有收盤價(讀 screener 的 c)', R.close1 === '100.0', R.close1);
 ok('③j 表頭可排序:名次/現價/換倉價/今天/億/日 五欄(V78.3.3)', JSON.stringify(R.hdr) === JSON.stringify(['rank', 'c', 'reb', 'chg', 'amt20']), JSON.stringify(R.hdr));
 ok('③k ⭐ 決定性對照:照 億/日 由小到大排 → 第一列換人 + ▲;「🛒 買」仍只有前 5 名(⛔ 動作不跟排序變)', R.firstDefault === '1001' && R.firstAsc !== '1001' && R.ascMark && R.buyAfterSort === 5, JSON.stringify([R.firstDefault, R.firstAsc, R.ascMark, R.buyAfterSort]));
@@ -166,7 +166,7 @@ ok('⑫e 舊快照(不是今天)⛔ 不可當現價', R.stale === '100.0', R.sta
 ok('⑫f _leaderRebPx 讀那一天(⛔ 不是前一天)的 lead.rows.c;沒存到 / 讀不到 → 寫原因(⛔ 不靜默)', JSON.stringify(R.rpx) === JSON.stringify([77, 55, false]) && /沒有存到/.test(R.rpMiss) && /讀不到/.test(R.rpErr), JSON.stringify([R.rpx, R.rpMiss, R.rpErr]));
 ok('⑫g 表下說明寫現價 / 換倉價的定義', /換倉價 = 2026-09-24 換倉那天的收盤/.test(R.rebNote), R.rebNote);
 ok('⑫h ⛔ 決策台沒有模擬成交 / 模擬成績(只在產業作戰室成績單)', !/_leaderEntries|data-leaderown|data-leaderent=|這套現在抱著/.test(SRC.slice(SRC.indexOf('async _leaderDeckHtml'), SRC.indexOf('_deckTodoLead({'))));
-ok('③h 名單裡有注意 / 處置股 → 寫「不要跳過」+ 實測數字(讀常數)', /不要跳過/.test(R.attTxt) && /\+408%/.test(R.attTxt), R.attTxt.slice(0, 200));
+ok('③h 名單裡有注意 / 處置股 → 寫「不要跳過」(🧹 V78.3.4 ⛔ 不附回測數字)', /不要跳過/.test(R.attTxt) && !/\+408%|實測/.test(R.attTxt), R.attTxt.slice(0, 200));
 
 // ⑤ 跨語言:同一份 screener → Python 與 JS 名單逐項相同
 const pyRun = (Dpath, mode = '') => JSON.parse(execFileSync('python3', ['-c', `
@@ -225,10 +225,10 @@ const DS = await page.evaluate(() => {
     app.settings.strategy = 'lead'; app.settings.deckShow = null;
     return out;
 });
-ok('⑧ 👑:只有領頭羊 + 要賣的兩塊(🧬 那三塊不列也不顯)', JSON.stringify(DS.lead.def) === JSON.stringify({ leader: true, sell: true, pb: false, fit: false, note: false }) && DS.lead.leader && !DS.lead.pb && DS.lead.hidN === undefined && JSON.stringify(DS.lead.keys) === JSON.stringify(['leader', 'sell']), JSON.stringify(DS.lead));
+ok('⑧ 👑:只有領頭羊 + 要賣的兩塊(🧬 那三塊不列也不顯)', JSON.stringify(DS.lead.def) === JSON.stringify({ leader: true, sell: true, pb: false, fit: false }) && DS.lead.leader && !DS.lead.pb && DS.lead.hidN === undefined && JSON.stringify(DS.lead.keys) === JSON.stringify(['leader', 'sell']), JSON.stringify(DS.lead));
 ok('⑧b ⭐ 決定性對照:👑 時就算勾了 🧬 買點也⛔ 不顯示', DS.leadPbOn.pb === false, JSON.stringify(DS.leadPbOn));
-ok('⑧c 🧬(預設):🧬 買點 + 要賣的開、領頭羊⛔ 不列也不顯;「今天不用做」只講 🧬', DS.gene.def.pb === true && DS.gene.def.leader === false && !DS.gene.leader && DS.gene.pb && DS.gene.idle && !DS.gene.keys.includes('leader') && DS.gene.keys.length === 4 && DS.gene.checked === 2, JSON.stringify(DS.gene));
-ok('⑧d 🧬 收起的要寫出來(⛔ 不靜默);說明數字讀常數、⛔ 不再拿領頭羊來比', DS.gene.hidN === '2' && DS.geneFit.hidN === '1' && /324 萬/.test(DS.gene.pbDesc) && !/860 萬|領頭羊/.test(DS.gene.pbDesc), JSON.stringify([DS.gene.hidN, DS.geneFit.hidN, DS.gene.pbDesc]));
+ok('⑧c 🧬(預設):🧬 買點 + 要賣的開、領頭羊⛔ 不列也不顯;「今天不用做」只講 🧬', DS.gene.def.pb === true && DS.gene.def.leader === false && !DS.gene.leader && DS.gene.pb && DS.gene.idle && !DS.gene.keys.includes('leader') && DS.gene.keys.length === 3 && DS.gene.checked === 2, JSON.stringify(DS.gene));
+ok('⑧d 🧬 收起的要寫出來(⛔ 不靜默);🧹 V78.3.4 說明⛔ 不印回測數字、⛔ 不拿領頭羊來比', DS.gene.hidN === '1' && !DS.geneFit.hidN && !/萬|實測|回測/.test(DS.gene.pbDesc) && !/領頭羊/.test(DS.gene.pbDesc) && /觸發價/.test(DS.gene.pbDesc), JSON.stringify([DS.gene.hidN, DS.geneFit.hidN, DS.gene.pbDesc]));
 
 // 👑 V77.9.1 個股總覽一行
 const OV = await page.evaluate(async () => {
@@ -270,7 +270,7 @@ const TH = await page.evaluate(() => {
 ok('⑥ 決策台 amt20 < 1 億 → 🚧量薄;5 億 → 不標', TH.thin && !TH.fat, JSON.stringify(TH).slice(0, 200));
 ok('⑥b 快照還沒載到 / 欄位是 null → ⛔ 不標(不知道 ≠ 很薄)', !TH.none && !TH.nul);
 ok('⑥c ⭐ 決定性對照:門檻改成 0.2 億 → 同一檔 0.3 億就不標', !TH.moved);
-ok('⑥d 名單刻意不刪 + 寫明門檻不是回測出來的', /名單刻意不刪/.test(TH.thinTxt) && /不是回測出來的/.test(TH.thinTxt));
+ok('⑥d 量薄要講「可能買不到 / 墊高價格」,🧹 V78.3.4 ⛔ 不提回測', /量這麼薄/.test(TH.thinTxt) && !/回測|實測/.test(TH.thinTxt));
 // ⑦ 📐 K棒轉多/轉空榜每一列的實測成績(標題反查 `_SIGNAL_EDGE`,⛔ 單根變盤線不借成績)
 const KB = await page.evaluate(() => {
     const keys = Object.keys(app._SIGNAL_EDGE);

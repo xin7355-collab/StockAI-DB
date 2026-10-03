@@ -68,9 +68,10 @@ ck(b.length === 4 && b[0] > b[1] && b[1] > b[2] && b[2] > b[3],
 
 // ── ⓑ 顯示:誠實話 + 數字來自常數 ───────────────────────────────
 ck(/不是買進順序|不代表最該買/.test(r.txt), 'ⓑ1 卡上沒寫「⛔ 不是買進順序 / 排第一不代表最該買」');
-ck(r.txt.includes(String(r.E.brk[0])), 'ⓑ2 卡上沒印「站上壓力」的比例(那是它唯一測得到的東西)');
-ck(/成本/.test(r.txt), 'ⓑ3 卡上沒提交易成本 —— 這張卡的關鍵正是「扣成本後是負的」');
-ck(r.faked !== r.real && r.faked.includes('11.1'), 'ⓑ4 換掉 _BREAKOUT_EDGE 之後畫面沒變 → 數字被寫死在文案裡(改探針就會對不上)');
+// 🧹 V78.3.4 散戶 App ⛔ 不印回測數字 → 只講白話(越近越容易站上、站上不等於賺得到),數字在產業作戰室
+ck(!r.txt.includes(String(r.E.brk[0])) && /越靠近壓力/.test(r.txt), 'ⓑ2 🧹 卡上⛔ 不印回測比例,只講「越靠近越容易站上去」');
+ck(/站上去不等於賺得到/.test(r.txt) && /觀察清單/.test(r.txt), 'ⓑ3 卡上要講「站上去不等於賺得到」+ 這是觀察清單');
+ck(!r.faked.includes('11.1'), 'ⓑ4 🧹 換掉 _BREAKOUT_EDGE,散戶 App 畫面⛔ 不可冒出表裡的數字');
 
 if (fail.length) { console.log('❌ BREAKOUTCARD_FAIL'); fail.forEach(f => console.log('   ・' + f)); process.exit(1); }
 console.log('✅ BREAKOUTCARD_PASS(全部通過)');

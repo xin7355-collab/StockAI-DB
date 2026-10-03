@@ -56,7 +56,7 @@ const R = await page.evaluate(() => {
     A._TRI_EDGE = Object.assign({}, real, { n: 12345, e10: -8.88, wr: 66.6, base: 11.1, yr: '−9/−9' });
     const txt2 = (A._ovNewEdges(tri, 'TEST').find(x => x.ic === '📐') || {}).txt || '';
     A._TRI_EDGE = real;
-    out.fake = /12,345/.test(txt2) && /8\.88/.test(txt2) && /66\.6/.test(txt2) && /11\.1/.test(txt2) && /−9\/−9/.test(txt2);
+    out.fake = /12,345|8\.88|66\.6|11\.1|−9\/−9/.test(txt2);   // 🧹 V78.3.4 任何一個出現就算洩漏
     // ④ 今天那根未收盤:加一根日期 = 今天、離譜值 → 結果要跟沒加一樣
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }).replace(/-/g, '/');
     const withToday = tri.concat([{ date: today, open: 100, close: 300, high: 400, low: 10, volume: 1 }]);
@@ -68,9 +68,10 @@ const R = await page.evaluate(() => {
 });
 ok('① 合成下降三角 → ok、總覽有 📐 那一條', R.tri === true && R.hasLine, JSON.stringify({ tri: R.tri, hasLine: R.hasLine }));
 ok('② 上漲 / 對稱收斂 ⛔ 不觸發', R.up === false && R.symm === false && R.noLineUp, JSON.stringify({ up: R.up, symm: R.symm }));
-ok('③ 數字一律讀 _TRI_EDGE(換假表畫面跟著變)', R.fake === true, '');
+// 🧹 V78.3.4 散戶 App ⛔ 不印回測數字 → 決定性對照反過來:換假表,畫面⛔ 不可跟著出現假數字
+ok('③ 🧹 換假表,畫面⛔ 不可出現表裡的數字(散戶 App 不印實測)', R.fake === false, '');
 ok('④ 今天那根未收盤的 ⛔ 不算(結果與沒加一樣)', R.todayIgnored && R.lastIsToday, JSON.stringify({ t: R.todayIgnored, l: R.lastIsToday }));
-ok('⑤ 文案:無 🔴🟢、有「不是放空」、有「別加碼」、有「含 2022」', !/🔴|🟢/.test(R.txt) && /不是放空/.test(R.txt) && /別加碼/.test(R.txt) && /2022/.test(R.txt), R.txt.slice(0, 200));
+ok('⑤ 文案:無 🔴🟢、有「不是放空」、有「別加碼」、⛔ 沒有實測字樣', !/🔴|🟢/.test(R.txt) && /不是放空/.test(R.txt) && /別加碼/.test(R.txt) && !/實測|2022|個百分點/.test(R.txt), R.txt.slice(0, 200));
 await browser.close();
 console.log('\n' + (fails.length ? `❌ ${fails.length} 條失敗` : '✅ TRIEDGE_PASS'));
 process.exit(fails.length ? 1 : 0);

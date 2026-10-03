@@ -264,8 +264,8 @@ ok('③c 🚨🚨 符合 🧬 但訊號在黑名單 → ⛔ 不可判成加碼;�
    && R.dNegExp && R.dNegExp.state !== 'add'
    && R.dAdd && R.dAdd.state === 'add',
    `黑名單=${R.dOnlyBlocked && R.dOnlyBlocked.state} 負期望=${R.dNegExp && R.dNegExp.state} 白名單=${R.dAdd && R.dAdd.state}`);
-ok('④ 🚨 沒有實測有效訊號 → 指定的預設文字(摺疊區),第一眼 ➖ 觀望,⛔ 不給點位',
-   has(R.none.why, '無明確實測有效之進出場訊號') && has(R.none.why, '依原定紀律操作或觀望')
+ok('④ 🚨 沒有訊號 → 指定的預設文字(摺疊區,🧹 ⛔ 不提實測),第一眼 ➖ 觀望,⛔ 不給點位',
+   has(R.none.why, '沒有明確的進出場訊號') && has(R.none.why, '依原定紀律操作或觀望') && !has(R.none.why, '實測')
    && has(R.none.cc, '➖ 觀望') && !/以上才算數|→ 全部出場/.test(R.none.why), N(R.none.why).slice(-200));
 ok('⑤ 出場數字讀 `_EXIT_EDGE`(期望字串由表組出來,⛔ 不寫死)',
    R.edgeWant.every(w => has(N(R.hold.why), w)), `want=${R.edgeWant} why=${N(R.hold.why).slice(0, 200)}`);
@@ -296,11 +296,12 @@ ok('🎯⑪ 清單裡有這一檔(而且在決策台前 N 名)→ 第一眼「�
    && has(R.pbHit.why, '232.50') && has(R.pbHit.why, '220.88') && has(R.pbHit.why, '13:00~13:28'),
    `cc=${N(R.pbHit.cc).slice(0, 120)} | why=${N(R.pbHit.why).slice(0, 160)}`);
 // 🚨 這條最重要:使用者說「掛到就代表買點到」—— ⛔ 掛在下面等實測是最糟的做法
-ok('🎯⑪b 🚨 必須寫「漲過去才算數,⛔ 不是掛在下面等」+ 那組實測數字',
-   has(N(R.pbHit.why), '不是掛在下面等') && has(N(R.pbHit.why), '12.4 萬') && has(N(R.pbHit.why), '46.1'),
+// 🧹 V78.3.4 散戶 App ⛔ 不印回測數字(12.4 萬 / 46.1% / 勝率 / 次數 / 每趟)→ 只講怎麼掛單
+ok('🎯⑪b 🚨 必須寫「漲過去才算數,⛔ 不是掛在下面等」(🧹 ⛔ 不附回測數字)',
+   has(N(R.pbHit.why), '不是掛在下面等') && !has(N(R.pbHit.why), '12.4 萬') && !has(N(R.pbHit.why), '46.1'),
    (N(R.pbHit.why).match(/🚨.{0,120}/) || [''])[0]);
-ok('🎯⑪c 招的成績要配次數(勝率 62% ・24 次 ・每趟 +3.04%)',
-   has(N(R.pbHit.why), '24 次') && has(R.pbHit.why, '3.04'), (N(R.pbHit.why).match(/最會賺的招.{0,90}/) || [''])[0]);
+ok('🎯⑪c 🧹 招名照寫,⛔ 不印勝率 / 次數 / 每趟',
+   has(N(R.pbHit.why), '這一檔用的招') && !has(N(R.pbHit.why), '24 次') && !has(R.pbHit.why, '3.04') && !/勝率/.test(N(R.pbHit.why)), (N(R.pbHit.why).match(/用的招.{0,90}/) || [''])[0]);
 ok('🎯⑪d ⛔ 空頭時不給進場價(講反話鐵則)—— 第一眼**與摺疊區**都不可以',
    !has(A_(R.pbBear), '232.50') && !has(R.pbBear.cc, '等它漲過去'), N(A_(R.pbBear)).slice(0, 160));
 ok('🎯⑪e 不靠價位的招(loose)⛔ 不可硬給一個價',
