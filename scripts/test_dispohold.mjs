@@ -70,11 +70,17 @@ await browser.close();
 ok('🚧 空過守門:在名單時 2221 那一列渲染得出來(離線遠的持股本來一列都不畫 → 靠新的那一區)', !!(R.disp && R.disp.row && R.disp.attBox === true), JSON.stringify(R.disp));
 ok('ⓒ 決定性對照:不在名單 → 離線遠的持股照舊不畫、⛔ 沒有處置那一區、沒有說明', !!(R.none && R.none.row === null && R.none.attBox === false && R.none.note === null), JSON.stringify(R.none));
 ok('ⓐ 處置中 → 徽章「🚨 處置 5 分盤」+ `[data-dispohold="disp"]`', !!(R.disp && /🚨 處置 5 分盤/.test(R.disp.row) && R.disp.note === 'disp'), R.disp && R.disp.row);
-ok('ⓐb 說明講分盤流動性 + 出關日 + dispo_probe 中位數(−4.8%)', !!(R.disp && /分盤撮合/.test(R.disp.noteTxt) && /10\/06/.test(R.disp.noteTxt) && /−4\.8%|-4\.8%/.test(R.disp.noteTxt)), R.disp && R.disp.noteTxt);
-ok('ⓑ `hold` 是 null → 明說「還沒測」,⛔ 不印任何「… 萬」的比較數字', !!(R.disp && /還沒測/.test(R.disp.noteTxt) && !/配對贏/.test(R.disp.noteTxt)), R.disp && R.disp.noteTxt);
-ok('ⓔ 數字讀常數:dispMed 改 −77.7 → 畫面跟著變', !!(R.disp77 && /−77\.7%|-77\.7%/.test(R.disp77.noteTxt)), R.disp77 && R.disp77.noteTxt);
-ok('ⓑ2 `hold` 有值 → 印「進處置就賣 123 萬 vs 照三條出場 409 萬(配對贏 4/17 …)」+ 判定', !!(R.dispH && /進處置就賣 123 萬/.test(R.dispH.noteTxt) && /409 萬/.test(R.dispH.noteTxt) && /4\/17/.test(R.dispH.noteTxt) && /測試判定甲/.test(R.dispH.noteTxt) && !/還沒測/.test(R.dispH.noteTxt)), R.dispH && R.dispH.noteTxt);
-ok('ⓓ 注意股 → ⚠️ 注意 徽章、`data-dispohold="notice"`、⛔ 不寫成處置', !!(R.notice && /⚠️ 注意/.test(R.notice.row) && R.notice.note === 'notice' && !/處置中/.test(R.notice.noteTxt) && /測試判定乙/.test(R.notice.noteTxt)), R.notice && (R.notice.row + ' || ' + R.notice.noteTxt));
+// 🧹 V78.3.6 散戶 App 不印 dispo_probe 數字 → 改釘:講分盤流動性 + 出關日 + 別用市價單,⛔ 不可出現實測/探針數字
+const _RES = /實測|回測|還沒測|dispo_probe|配對|\\d+\\s*萬|−4\\.8%|-4\\.8%|中位/;
+ok('ⓐb 說明講分盤流動性 + 出關日 + 別用市價單,⛔ 不印 dispo_probe 中位數(🧹 V78.3.6)', !!(R.disp && /分盤撮合/.test(R.disp.noteTxt) && /10\/06/.test(R.disp.noteTxt) && /市價單/.test(R.disp.noteTxt) && !_RES.test(R.disp.noteTxt)), R.disp && R.disp.noteTxt);
+// 🧹 V78.3.6 一般模式不講「還沒測」(研究狀態)→ 改釘:回答「要不要先賣」= 照你原本的出場規則走,⛔ 不印「… 萬」比較數字
+ok('ⓑ `hold` 是 null → 回答「照你原本的出場規則走」,⛔ 不印研究狀態與任何「… 萬」數字(🧹 V78.3.6)', !!(R.disp && /要不要先賣/.test(R.disp.noteTxt) && /照你原本的出場規則走/.test(R.disp.noteTxt) && !_RES.test(R.disp.noteTxt)), R.disp && R.disp.noteTxt);
+// 🧹 V78.3.6 數字已不印 → 決定性對照改成「改常數 → 畫面仍不出現那個數字」
+ok('ⓔ dispMed 改 −77.7 → 一般模式畫面仍⛔ 不出現那個數字(🧹 V78.3.6)', !!(R.disp77 && R.disp77.noteTxt.length > 20 && !/77\.7/.test(R.disp77.noteTxt) && /分盤撮合/.test(R.disp77.noteTxt)), R.disp77 && R.disp77.noteTxt);
+// 🧹 V78.3.6 有測過時一般模式只講結論「⛔ 不用,照原本出場」,⛔ 不印 123 萬 / 409 萬 / 4/17 / 判定文字
+ok('ⓑ2 `hold` 有值 → 講「⛔ 不用,照你原本的出場規則走」,⛔ 不印萬元比較 / 配對勝場 / 判定文字(🧹 V78.3.6)', !!(R.dispH && /不用,照你原本的出場規則走/.test(R.dispH.noteTxt) && !/123|409|4\/17|測試判定甲/.test(R.dispH.noteTxt) && !_RES.test(R.dispH.noteTxt)), R.dispH && R.dispH.noteTxt);
+// 🧹 V78.3.6 注意股不再印判定文字(測試判定乙)→ 改釘「注意股⛔ 不能拿來預測方向」+ ⛔ 不印研究數字
+ok('ⓓ 注意股 → ⚠️ 注意 徽章、`data-dispohold="notice"`、⛔ 不寫成處置、⛔ 不印研究數字(🧹 V78.3.6)', !!(R.notice && /⚠️ 注意/.test(R.notice.row) && R.notice.note === 'notice' && !/處置中/.test(R.notice.noteTxt) && /注意股⛔ 不能拿來預測方向/.test(R.notice.noteTxt) && !/測試判定乙/.test(R.notice.noteTxt) && !_RES.test(R.notice.noteTxt)), R.notice && (R.notice.row + ' || ' + R.notice.noteTxt));
 ok('ⓕ 抱滿到期那一列(sell 區)也帶 🚨 處置 20 分盤 徽章,而且⛔ 不重複列進 far 那一區', !!(R.due && /🚨 處置 20 分盤/.test(R.due.row) && /抱滿|時間到期/.test(R.due.row) && R.due.note === 'disp' && R.dueBox === false), R.due && (R.due.row + ' box=' + R.dueBox));
 ok('無 pageerror', errs.length === 0, errs.join(' | '));
 console.log(fails.length ? `\n❌ DISPOHOLD_FAIL(${fails.length}):${fails.join(' / ')}` : '\n✅ DISPOHOLD_PASS(全部通過)');

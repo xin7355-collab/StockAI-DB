@@ -16,6 +16,7 @@
  *   ③ 🚨 「空頭沒有驗證過」這條免責⛔ 不可消失
  *   ④ 🚨 風險提醒(大盤風險分數)⛔ 不可進摺疊
  *   ⑤ 前言長度守門:看到第一檔股票前 < 450 字
+ * 🧹 V78.3.6 散戶 App 拿掉「實測根據」摺疊 → ②③ 改釘「一般模式整張卡⛔ 不出現那些實測數字 / 研究字樣」
  */
 import fs from 'fs';
 import path from 'path';
@@ -33,9 +34,11 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
     const seg = SRC.slice(i, SRC.indexOf('\n    _showPbHelp()', i));
     ok('🚧 空過守門:抓得到 _tomorrowWatchHtml 區段', seg.length > 2000, seg.length);
     // riskLine / mktLine 必須直接插在卡片本體(⛔ 不在新加的 details 內)
-    const det = seg.slice(seg.indexOf('<details class="mb-1.5">'), seg.indexOf('</details>', seg.indexOf('<details class="mb-1.5">')));
-    ok('④ 🚨 大盤風險提醒(riskLine)⛔ 不可被放進摺疊', !det.includes('riskLine') && seg.includes('${mktLine}${riskLine}'));
-    ok('④b 🚨 推播 CTA(買點提醒)⛔ 不可被放進摺疊', !det.includes('_pbAlertBarHtml'));
+    // 🧹 V78.3.6「實測根據」摺疊已從散戶 App 拿掉 → 改成檢查**區段內每一個** <details>…</details> 都不含它們
+    //    (⛔ 舊寫法 indexOf 找不到時 slice(-1,…) 會變空字串 = 永遠會過的假綠燈)
+    const dets = seg.match(/<details[\s\S]*?<\/details>/g) || [];
+    ok('④ 🚨 大盤風險提醒(riskLine)⛔ 不可被放進摺疊', dets.every(d => !d.includes('riskLine')) && seg.includes('${mktLine}${riskLine}'), dets.length);
+    ok('④b 🚨 推播 CTA(買點提醒)⛔ 不可被放進摺疊', dets.every(d => !d.includes('_pbAlertBarHtml')) && seg.includes('${this._pbAlertBarHtml()}'));
 }
 
 const browser = await chromium.launch({
@@ -82,6 +85,11 @@ const R = await page.evaluate(async () => {
         // ⚠️ V78.1.2 V78.0.7 之後 🧬 已經用 2011~2026(含 2022 空頭)驗過 → 舊句「空頭沒有驗證過」**變成不實**、改寫是對的;
         //   用意(🧬 那條⛔ 不可只講好的,要帶跟空頭有關的代價)改成兩種寫法都收:舊的未驗證 / 新的「空頭那年比較差」。
         bearNote: /空頭沒有驗證過/.test(foldTxt) || /⚠️[^\n]{0,160}空頭[^\n]{0,80}(差|輸|沒過)/.test(foldTxt),
+        // 🧹 V78.3.6 一般模式:整個卡(含所有摺疊)都⛔ 不可出現實測數字 / 研究字樣
+        allTxt: (v.textContent || '').replace(/\s+/g, ' '),
+        // 只框「🎯 明天要盯這 N 檔」那張卡(⛔ 別被同頁其他卡的字救活或誤殺)
+        cardTxt: (([...v.querySelectorAll('div')].filter(d => /^\s*🎯 明天要盯這/.test(d.firstElementChild?.textContent || ''))[0] || {}).textContent || '').replace(/\s+/g, ' '),
+        openTxt,
     };
 });
 await browser.close();
@@ -100,12 +108,15 @@ const _WIN = (() => {
 ok('🚧 空過守門:index.html 裡找得到尾盤時窗字串', !!_WIN, _WIN);
 ok('① 🚨 第一眼要留「不是開盤買」+ 尾盤時窗(⛔ 這是防止做錯事的指令,不可收)',
     /不是開盤買/.test(P) && !!_WIN && P.includes(_WIN), `窗口=${_WIN} / ${P.slice(0, 200)}`);
-ok('🚧 空過守門:找得到「實測根據」那個摺疊,而且它是收起的', R.foldFound === true && R.foldHas.noOpen === true,
-    JSON.stringify({ found: R.foldFound, closed: R.foldHas.noOpen }));
-ok('② ⛔ 實測數字沒有消失,只是搬進摺疊(2 檔 / 3 檔 / 6 檔各賺多少)',
-    R.foldHas.n2 && R.foldHas.n3 && R.foldHas.n6, JSON.stringify(R.foldHas));
-ok('③ 🚨 🧬 那條的「空頭沒有驗證過」免責⛔ 不可消失',
-    !R.hqShown || R.bearNote === true, JSON.stringify({ hq: R.hqShown, bear: R.bearNote }));
+// 🧹 V78.3.6 散戶 App 不放「實測根據」摺疊(2/3/6 檔各賺多少搬去產業作戰室)→ 改釘:
+//    ② 那個摺疊與那三個數字在一般模式**整張卡(含所有摺疊)**都⛔ 不可出現
+//    ③ 🧬 那一行改成講「決策台會買的那一格」(怎麼做),⛔ 不帶研究字樣
+ok('② ⛔ 一般模式沒有「實測根據」摺疊,2/3/6 檔回測數字整張卡都不出現(🧹 V78.3.6)',
+    R.foldFound === false && !/1,718,529|1,361,088|735,938|實測根據/.test(R.allTxt), JSON.stringify({ found: R.foldFound }));
+ok('🚧 空過守門:框得到「🎯 明天要盯這 N 檔」那張卡', R.cardTxt.length > 200 && /一天最多做前 2 檔/.test(R.cardTxt), R.cardTxt.length);
+ok('③ 🧬 那一行講「決策台會買的那一格」(或今天沒有),⛔ 這張卡不帶實測/回測研究字樣(🧹 V78.3.6)',
+    /決策台(唯一)?會買的那一格/.test(R.cardTxt) && !/實測|回測|期望值|勝率\s*\d|對照組|探針/.test(R.cardTxt),
+    (R.cardTxt.match(/實測|回測|勝率\s*\d|對照組|探針/) || [''])[0]);
 ok('⑤ 前言瘦身:看到第一檔股票前 < 450 字(改版前是 593)', R.firstStockAt > 0 && R.firstStockAt < 450,
     `firstStockAt=${R.firstStockAt}`);
 console.log(`   ↳ 前言 ${R.firstStockAt} 字 ・攤開合計 ${R.openLen} 字`);

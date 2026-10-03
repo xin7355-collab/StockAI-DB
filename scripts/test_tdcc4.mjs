@@ -64,26 +64,28 @@ ok('① hits=3(⛔ 股東人數不再計分)', r.f && r.f.hits === 3, JSON.strin
 ok('① 三項全過時三個 ✅', (r.html.match(/✅/g) || []).length >= 3, r.html.slice(0, 200));
 
 // ⭐ 最重要的一條:結論必須帶實測數字,而且⛔不可講成「會賺」
-ok('② 結論帶實測數字(+0.00% / 50.1%)', /\+0\.00%/.test(r.html) && /50\.1%/.test(r.html), r.html);
+// 🧹 V78.3.6 散戶 App ⛔ 不印實測數字(+0.00% / 50.1% / 1.85 / 13 週 / 已下市…這些研究說明搬到產業作戰室)→ 改釘:數字⛔ 不出現、結論講「怎麼做」
+const RESEARCH4 = /\+0\.00%|50\.1%|1\.85|13\s*週|已下市|2\.21|2\.60|0\.88|0\.21|實測|回測|勝率|重測/;
+const txt4 = h => String(h || '').replace(/<[^>]+>/g, ' ');
+ok('② 🧹 V78.3.6 結論⛔ 不帶實測數字 / 研究字樣', !RESEARCH4.test(txt4(r.html)), (txt4(r.html).match(RESEARCH4) || [''])[0]);
 // ⚠️ 卡片上「不是『會賺』」「不是保證」是**否定句**,那是對的寫法 → 比對前先把否定式拿掉,
 //    只抓真正的正面宣稱。⛔ 別把測試放寬成不檢查(那條正是這張卡最容易被改壞的地方)。
 const positive = h => h.replace(/(?:不是|並非|而非|絕非)\s*[「『]?\s*(?:會賺|保證|必漲|穩賺|一定漲)\s*[」』]?/g, '');
 ok('② ⛔ 不可正面宣稱「會賺 / 保證 / 必漲 / 穩賺」',
    !/會賺|保證|必漲|穩賺|一定漲/.test(positive(r.html)),
    (positive(r.html).match(/會賺|保證|必漲|穩賺|一定漲/g) || []).join(','));
-ok('② 要講明是「打平」不是贏', /打平/.test(r.html), r.html.slice(0, 300));
-ok('② 要揭露同期中位數個股輸大盤 1.85%', /1\.85/.test(r.html), r.html.slice(0, 400));
+ok('② 🧹 V78.3.6 三項全過要講明「只是籌碼結構,⛔ 不是買進訊號」(取代舊的「打平不是贏」)', /只是籌碼結構/.test(r.html) && /不是買進訊號/.test(r.html), r.html.slice(0, 300));
+ok('② 🧹 V78.3.6 三項全過仍叫你「照你的進出場規則做」(⛔ 不因籌碼好就改規則)', /照你的進出場規則做/.test(r.html), r.html.slice(0, 400));
 ok('③ 必須點名融資是最關鍵那項', /最關鍵/.test(r.html), r.html.slice(0, 400));
-ok('④ 必須揭露 13 週硬限制', /13\s*週/.test(r.html), r.html.slice(0, 600));
-ok('④ 必須揭露倖存者偏誤(不含已下市)', /已下市/.test(r.html), r.html.slice(0, 600));
+ok('④ 🧹 V78.3.6 必須講「集保每週更新一次,只能當方向參考」(取代 13 週研究限制)', /每週更新一次/.test(r.html) && /方向參考/.test(r.html), r.html.slice(0, 600));
+ok('④ 🧹 V78.3.6 「不是保證」要寫出來(取代倖存者偏誤那段研究說明)', /不是保證/.test(r.html), r.html.slice(0, 600));
 ok('④ 必須寫非投資建議', /非投資建議/.test(r.html));
 
 // ── ⑤ 融資還在增 → 最差那組,文案要講「基本上無效」──────────────
 r = await run(mkTdcc(60.0, 61.5, 25.0, 23.8), mkDaily(1100, 1000));
 ok('⑤ 融資增加 → mgDir=up、hits=2(只剩大戶/散戶)', r.f.mgDir === 'up' && r.f.hits === 2, JSON.stringify(r.f));
-ok('⑤ 融資↑ 要帶實測墊底數字(−2.21~−2.60)',
-   /2\.21/.test(r.html) && /2\.60/.test(r.html), r.html.slice(0, 500));
-ok('⑤ 融資↑ 要明說這套選股法無效', /無效/.test(r.html), r.html.slice(0, 500));
+ok('⑤ 🧹 V78.3.6 融資↑ ⛔ 不印實測墊底數字(−2.21~−2.60)/ 研究字樣', !RESEARCH4.test(txt4(r.html)), (txt4(r.html).match(RESEARCH4) || [''])[0]);
+ok('⑤ 🧹 V78.3.6 融資↑ 要明說這套看法「先不用參考」(白話取代「無效」)', /先不用參考/.test(r.html), r.html.slice(0, 500));
 
 // ── ⑥ 大戶↓散戶↑ 但融資↓ → 中間那檔,不可顯示成三項全過 ────────
 r = await run(mkTdcc(61.5, 60.0, 23.8, 25.0), mkDaily(900, 1000));
@@ -122,12 +124,13 @@ r = await run(mkTdcc(60.0, 61.5, 25.0, 23.8, 500000, 499000), mkDaily(900, 1000)
 ok('⑪ 股東人數減少 → pplDown=true', r.f.pplDown === true, JSON.stringify(r.f));
 ok('⑪ 要顯示人數與變化%', /499,000 人/.test(r.html) && /-0\.2%/.test(r.html), r.html.slice(0, 900));
 // ⭐ 這條是本專案「重跑後邊際消失就降級」鐵則的實例 —— ⛔ 別把它改回「加分不多」
-ok('⑪ ⭐ 第 4 項要標「重測無效」(⛔ 不可再寫成加分項)',
-   /重測無效/.test(r.html) && !/加分不多/.test(r.html), r.html.slice(0, 900));
-ok('⑪ ⭐ 免責要寫出重測前後的數字(+0.88 → −0.21)',
-   /\+0\.88/.test(r.html) && /−0\.21|-0\.21/.test(r.html), r.html.slice(-700));
+// 🧹 V78.3.6 「重測無效 / +0.88 → −0.21」是研究說明 → 已不印;改釘:第 4 項仍標「只顯示不計分」、⛔ 不寫成加分項、⛔ 不印重測數字
+ok('⑪ ⭐ 第 4 項那列標「只顯示不計分」(⛔ 不可再寫成加分項;🧹 V78.3.6 ⛔ 不寫「重測無效」研究字樣)',
+   /股東人數[^]*只顯示不計分/.test(txt4(r.html)) && !/加分不多/.test(r.html) && !/重測/.test(r.html), r.html.slice(0, 900));
+ok('⑪ 🧹 V78.3.6 免責⛔ 不印重測前後的數字(+0.88 → −0.21)',
+   !/0\.88/.test(r.html) && !/0\.21/.test(r.html), r.html.slice(-700));
 ok('⑪ ⭐ 要寫明「只顯示、不計分」', /只顯示.{0,3}不計分/.test(r.html.replace(/<[^>]+>/g, '')), r.html.slice(-700));
-ok('⑪ 要帶第 4 因子的實測數字', /0\.88/.test(r.html), r.html.slice(-600));
+ok('⑪ 🧹 V78.3.6 第 4 項⛔ 不帶實測數字 / 研究字樣', !RESEARCH4.test(txt4(r.html)), (txt4(r.html).match(RESEARCH4) || [''])[0]);
 r = await run(mkTdcc(60.0, 61.5, 25.0, 23.8, 490000, 500000), mkDaily(900, 1000));
 ok('⑪ 股東人數增加 → pplDown=false', r.f.pplDown === false, JSON.stringify(r.f));
 // ⭐ 最關鍵:第 4 項沒過,但前三項全過 → 仍然要判「三項全過」
@@ -142,7 +145,8 @@ r = await page.evaluate(() => {
 ok('⑫ 沒有股東人數欄 → pplDown=null(不是 false)', r.f.pplDown === null, JSON.stringify(r.f));
 ok('⑫ 仍要判三項全過(⛔ 缺資料不等於沒通過)', /三項全過/.test(r.html), r.html.slice(0, 300));
 // ⑬ 位階守門:實測不成立,⛔ 不可加
-ok('⑬ ⭐ 要寫明「高檔才算數」驗過但不成立', /不成立/.test(r.html) || /不加位階限制/.test(r.html), r.html.slice(-700));
+// 🧹 V78.3.6 「高檔才算數驗過不成立」是研究說明 → 已不印;仍釘用意:⛔ 不可加位階限制(高檔才算)
+ok('⑬ ⭐ ⛔ 不可加位階限制(🧹 V78.3.6 ⛔ 不再印「驗過但不成立」研究字樣)', !/高檔才算|位階/.test(r.html) && !/不成立/.test(r.html), r.html.slice(-700));
 
 await browser.close();
 console.log('');

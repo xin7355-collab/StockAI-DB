@@ -74,6 +74,14 @@ const R = await page.evaluate(async () => {
     o.advBad = (o.adv.match(/分時均價|開盤定調|🚀 開盤區間突破|相對大盤強弱|量能達標度/) || [])[0] || '';
     o.fired = fired;
     o.scan = !!document.getElementById('dtScanCard');
+    // 🔬 V78.3.6 當沖實測摺疊(data-dtedge)只在實驗室模式 → 順序那一條改在 lab 模式再量一次(量完移除 lab)
+    o.normE = o.iE;
+    document.documentElement.classList.add('lab');
+    try { await app.renderDayTradeTab(app.currentSymbolId); } catch (_) { }
+    await new Promise(r => setTimeout(r, 2500));
+    { const h2 = (document.getElementById('dayTradeBody') || {}).innerHTML || ''; const t2 = strip(h2);
+      o.lab = { iV: t2.indexOf('🚦'), iC: t2.indexOf('成本關卡'), iCh: h2.indexOf('成本關卡'), iE: h2.indexOf('data-dtedge') }; }
+    document.documentElement.classList.remove('lab');
     return o;
 });
 await browser.close();
@@ -81,7 +89,9 @@ if (R.err) { console.log('❌ analyze 失敗:' + R.err); process.exit(1); }
 ok('⑤0 空過守門:當沖頁真的渲染出作戰指令', R.hero && R.len > 1000, R.len);
 ok('⑤ 渲染後第一眼⛔ 沒有掛單計畫 / 已達進場 / 劇本成真度 / 隔日沖 T+1', !R.bad, R.bad);
 ok('⑤b 📊 進階視窗⛔ 沒有 VWAP / 開盤定調 / ORB / 相對大盤 / 量能達標度', !R.advBad, R.advBad);
-ok('⑤c 渲染後順序:🚦 在成本關卡之前,成本關卡在當沖實測之前', R.iV >= 0 && R.iV < R.iC && R.iCh < R.iE, [R.iV, R.iC, R.iCh, R.iE]);
+// 🧹 V78.3.6 當沖實測只在實驗室模式:一般模式⛔ 不可出現 data-dtedge;順序改在 lab 模式量
+ok('⑤c 渲染後順序(一般模式):🚦 在成本關卡之前,⛔ 當沖實測摺疊不出現(🧹 V78.3.6)', R.iV >= 0 && R.iV < R.iC && R.normE === -1, [R.iV, R.iC, R.normE]);
+ok('⑤c2 🔬 實驗室模式:🚦 → 成本關卡 → 當沖實測(data-dtedge)順序不變', R.lab && R.lab.iV >= 0 && R.lab.iV < R.lab.iC && R.lab.iE > 0 && R.lab.iCh < R.lab.iE, JSON.stringify(R.lab));
 ok('⑤d 進當沖頁⛔ 不會觸發任何主動推播', R.fired === 0, R.fired);
 ok('⑤e 頁面上沒有當沖候選掃描卡', !R.scan);
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ DTPRUNE_PASS(全部通過)');

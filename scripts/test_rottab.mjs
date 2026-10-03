@@ -9,7 +9,7 @@
  *   ① 按鈕位置錯(不在盤前檢視右邊)              ② 搬卡漏 id / id 重複(陷阱:搬卡必驗唯一性)
  *   ③ 🚨 名次自己算一份(⛔ 唯一真相 = _regimeStats)  ④ 390px / 橫版溢出
  *   ⑤ 這一頁下操作指令(它只准描述)              ⑥ 選股快照沒載到 → 空殼(要誠實空狀態)
- *   ⑦ 切到 rot 時別格還露出來                     ⑧ 實測數字沒帶來源
+ *   ⑦ 切到 rot 時別格還露出來                     ⑧ 實測數字沒帶來源(🧹 V78.3.6 起依據只在常數,畫面⛔ 不印數字/探針名)
  *
  * 測資:真實 gh-pages 的 screener.json(本機 data/ 退回);抓不到就誠實 exit 1(陷阱 #40)。
  */
@@ -41,7 +41,8 @@ ok('②a 搬過去的 6 個 id 各出現一次(搬卡必驗唯一性)', MOVED.ev
     const fn = strip(SRC.slice(SRC.indexOf('    _ROT_EDGE: {'), SRC.indexOf('    switchSccTab(tab) {')));   // 含 _ROT_EDGE(來源探針寫在那裡)
     ok('③a 🚨 名次只准讀 _regimeStats(),⛔ 不可自己從 sector_rot 排(注入:改讀 _loadSectorRot 排 → 必紅)',
        /_regimeStats\(W\)/.test(fn) && !/_loadSectorRot|sector_rot\.json|\bsector_rot\b|\.r20\b/.test(fn), '');   // ⚠️ \b:別把來源名 sector_rotation_probe 誤判成違規  ⚠️ V77.2.0 起帶天期參數(`W`)
-    ok('⑧ 實測數字帶來源探針與窗口', /sector_rotation_probe/.test(fn) && /2022/.test(fn));
+    // 🧹 V78.3.6 散戶 App⛔ 不印實測數字 / 探針名 → 依據只留在常數裡(背後判斷用),畫面另由 ⑧c 驗
+    ok('⑧ 🧹 V78.3.6 實測依據留在 `_ROT_EDGE` 常數(來源探針 + 20 日窗口),⛔ 不靠畫面文字', /src: 'sector_rotation_probe/.test(fn) && /win: 20\b/.test(fn));
     ok('⑤a 原始碼裡不寫操作指令詞', !/(可以進場|可進場|建議買進|建議賣出|可加碼|放心做多|買進這|進場買)/.test(fn));
 }
 
@@ -80,7 +81,10 @@ const r = await page.evaluate(async () => {
 ok('⑦ 切到 rot:只有 subContent_rot 露出來', r.vis.rot && !r.vis.idx && !r.vis.ad && !r.vis.tw && !r.vis.g, JSON.stringify(r.vis));
 ok('③b ⭐⭐ 32 列的順序 = _regimeStats().imed 由強到弱(一字不差)', r.truth && r.shown.length === r.truth.length && r.shown.every((k, i) => k === r.truth[i]), `${r.shown.slice(0, 4)} vs ${r.truth && r.truth.slice(0, 4)}`);
 ok('③c 一句話寫的最強/最弱 3 族 = 排名的頭尾 3', r.truth && r.truth.slice(0, 3).every(k => r.lead.includes(k)) && r.truth.slice(-3).every(k => r.lead.includes(k)), r.lead.slice(0, 160));
-ok('⑧b 一句話帶實測 +1.44pp 與「避開最弱」那句', /\+1\.44pp/.test(r.lead) && /避開最弱/.test(r.lead), r.lead.slice(0, 200));
+// 🧹 V78.3.6 +1.44pp 不再印給散戶;20 日官方產業那一頁只留「怎麼做」那句(避開最弱)
+const _RES = /1\.44pp|實測|回測|探針|_probe|\.mjs|勝率|期望值|對照組/;
+ok('⑧b 🧹 V78.3.6 一句話留「避開最弱」(⛔ 不印 +1.44pp)', !/\+1\.44pp/.test(r.lead) && /避開最弱/.test(r.lead), r.lead.slice(0, 200));
+ok('⑧c 🧹 V78.3.6 一般模式頁首⛔ 不可出現實測數字 / 探針名 / 研究字樣', !_RES.test(r.lead), (r.lead.match(_RES) || [''])[0] + ' … ' + r.lead.slice(-160));
 ok('⑤b 畫面上不出現操作指令', !/(可以進場|可進場|建議買進|建議賣出|可加碼|放心做多)/.test(r.lead + r.card));
 ok('②d 搬過去的美股對標卡就在這一格裡', r.hasGap);
 ok('④a 390px 不橫向溢出', r.scrollX <= 2, String(r.scrollX));
@@ -113,11 +117,13 @@ const wv = await pw.evaluate(async () => {
     return { w20, w5, w1, has3: !!(app._scrC && app._scrC.chg3 !== undefined) };
 });
 ok('⑨s 空過守門:四顆天期鈕都在畫面上', wv.w20.btns.length === 4 && wv.w20.btns.some(b => b.w === 3), JSON.stringify(wv.w20.btns));
-ok('⑨a 20 日那一頁才可以引用 +1.44pp 的實測背書', /\+1\.44pp/.test(wv.w20.lead) && /避開最弱/.test(wv.w20.lead), wv.w20.lead.slice(0, 120));
-ok('⑨b 🚨 換成 5 日 → ⛔ 不可再出現 +1.44pp,而且要明寫「沒有回測過」',
-   /沒有回測過/.test(wv.w5.lead) && /不可以.{0,8}套到/.test(wv.w5.lead)
-   && !/避開最弱/.test(wv.w5.lead) && /近 5 日/.test(wv.w5.lead), wv.w5.lead.slice(0, 200));
-ok('⑨b2 1 日同理(⛔ 不是只擋 5 日)', /沒有回測過/.test(wv.w1.lead) && /近 1 日/.test(wv.w1.lead), wv.w1.lead.slice(0, 160));
+// 🧹 V78.3.6 數字不印了,但「避開最弱」這句怎麼做**只有 20 日有實測背書** → 仍然只准出現在 20 日那一頁
+ok('⑨a 🧹 V78.3.6 20 日那一頁才可以給「避開最弱」那句(⛔ 不印 +1.44pp)', !/\+1\.44pp/.test(wv.w20.lead) && /避開最弱/.test(wv.w20.lead), wv.w20.lead.slice(0, 120));
+// 🧹 V78.3.6 一般模式不可再寫「沒有回測過」(研究字樣),但 🚨 用意不變:非 20 日那幾頁⛔ 不可借 20 日的結論「避開最弱」,
+//   而且要說清楚這只是描述(不是買賣訊號)。
+ok('⑨b 🚨 換成 5 日 → ⛔ 不可借「避開最弱」那句、⛔ 沒有研究字樣,要說「不是買賣訊號 / 只描述」',
+   !/避開最弱/.test(wv.w5.lead) && !_RES.test(wv.w5.lead) && /不是買賣訊號|只描述/.test(wv.w5.lead) && /近 5 日/.test(wv.w5.lead), wv.w5.lead.slice(0, 200));
+ok('⑨b2 1 日同理(⛔ 不是只擋 5 日)', !/避開最弱/.test(wv.w1.lead) && !_RES.test(wv.w1.lead) && /近 1 日/.test(wv.w1.lead), wv.w1.lead.slice(0, 160));
 ok('⑨c ⭐ 決定性對照:換天期之後排名**真的跟著換**(⛔ 不是只換標題)',
    !!wv.w20.first && !!wv.w1.first && (wv.w20.first !== wv.w1.first || wv.w20.card !== wv.w1.card),
    `${wv.w20.first} vs ${wv.w1.first}`);

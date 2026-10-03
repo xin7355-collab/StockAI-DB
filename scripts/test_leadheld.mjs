@@ -10,9 +10,9 @@
  *   ⓒ 👑 持有 → `_keyLevels.slPx/exitRulePx` = null、`lead`;價格位置圖⛔ 沒有 🛑 / 🚪、有「沒有停損線」;
  *      提示詞 `_reportFacts` ⛔ 沒有硬停損那一行、有「沒有停損線」;`_rpNextLines` 講 👑
  *   ⓓ 決定性對照:同一檔切回 🔥 → 硬停損 / 出場線回來
- *   ⓔ 最近一根收盤鎖漲停 → why 有「🔥 高檔飆股的規則,👑 不用」+ 回測數字讀 `_LEAD_LU_EDGE`;沒鎖 → 沒有
+ *   ⓔ 最近一根收盤鎖漲停 → why 有「🔥 高檔飆股的規則,👑 不用」(🧹 V78.3.6 ⛔ 不印回測數字);沒鎖 → 沒有
  *   ⓕ `_LEAD_LU_EDGE` == leader_probe 實跑結果(三種都輸現行)
- *   ⓖ V78.2.1 卡片「⛔ 不要提早賣」的 % 讀常數 ・ⓗ 決策台持股清單「不在 / 掉出」分清楚
+ *   ⓖ V78.2.1 卡片「⛔ 不要提早賣」(🧹 V78.3.6 改講「少賺很多」⛔ 不印 %) ・ⓗ 決策台持股清單「不在 / 掉出」分清楚
  */
 import fs from 'fs';
 import path from 'path';
@@ -98,14 +98,15 @@ ok('ⓐ2 不在名單 → 「不在前 10 名」⛔ 不是「掉出」;今天不
 ok('ⓐ3 趨勢條件方向對:「要 收盤 > 20日線 > 60日線 才算」、⛔ 沒有「收盤價 < 20日線」', /要 收盤 &gt; 20日線 &gt; 60日線 才算|要 收盤 > 20日線 > 60日線 才算/.test(R.a.why || '') && !/收盤價? *<|收盤價? *&lt;/.test(R.a.why || ''), (R.a.why || '').slice(0, 300));
 ok('ⓑ 曾是第 15 名 → 「掉出前 10 名」', /掉出前 10 名/.test(R.b.why || '') && /今日續抱/.test(R.b.badge || ''), R.b.badge);
 const cut = w => Math.round((1 - (w.all - 100) / (w.now - 100)) * 100);
-ok('ⓖ ⛔ 不提早賣那行的兩個 % 讀 _LEAD_LU_EDGE(實際數字 + 決定性對照)、⛔ 不寫死 70%', new RegExp(`少 <b[^>]*>${cut(R.E.ai)}%</b>.*少 <b[^>]*>${cut(R.E.long)}%</b>`).test(R.a.why || '') && /少 <b[^>]*>50%<\/b>.*少 <b[^>]*>50%<\/b>/.test(R.g || '') && !/70%/.test(R.a.why || ''), (R.g || '').slice(-400));
+// 🧹 V78.3.6 散戶 App 不印回測 % → 改釘「會少賺很多」白話 + ⛔ 不可有 %;決定性對照:改 _LEAD_LU_EDGE 之後一般模式畫面仍不出現那些數字
+ok('ⓖ ⛔ 不提早賣那行講「會少賺很多」、⛔ 不印回測 %(🧹 V78.3.6;改常數也⛔ 不出現數字)', /不要提早賣/.test(R.a.why || '') && /少賺很多/.test(R.a.why || '') && !/少 <b[^>]*>\d+%/.test(R.a.why || '') && !/少 <b[^>]*>\d+%/.test(R.g || '') && !/70%|50%/.test(R.g || '') && !/70%/.test(R.a.why || ''), (R.g || '').slice(-400));
 ok('ⓗ 決策台持股:沒過趨勢 → ⛔ 不寫「掉出」、寫「不在前 10 名」;第 15 名 → 「掉出前 10 名」;非換倉日用 ⏳', /不在前 10 名/.test(R.h.a || '') && !/掉出/.test(R.h.a || '') && /掉出前 10 名/.test(R.h.b || '') && /⏳/.test(R.h.a || '') && !/⛔ 掉出|⛔ 不在/.test(R.h.a + R.h.b), JSON.stringify(R.h));
 ok('ⓒ 👑 持有 → _keyLevels 沒有硬停損 / 出場線、標 lead', R.K.sl == null && R.K.rule == null && R.K.lead === true, JSON.stringify(R.K));
 ok('ⓒ2 價格位置圖⛔ 沒有 🛑 / 🚪,有「沒有停損線」', !R.ruler.sl && !R.ruler.rule && R.ruler.note, JSON.stringify(R.ruler));
 ok('ⓒ3 提示詞⛔ 沒有「硬停損(成本 −5%」那一行、有「沒有停損線」+「請不要自己替他編停損價」', !/- 硬停損\(成本/.test(R.facts) && /沒有停損線/.test(R.facts) && /不要自己替他編停損價/.test(R.facts), R.facts.slice(0, 120));
 ok('ⓒ4 「接下來怎麼看」講 👑 換倉日、⛔ 不講 🔥 出場線', /👑 你選的是領頭羊/.test(R.next) && !/三條出場/.test(R.next), R.next.slice(0, 240));
 ok('ⓓ 決定性對照:切回 🔥 → 硬停損 533 回來、價格位置圖有 🛑、提示詞有硬停損', R.Kg.sl === 533 && !R.Kg.lead && R.rulerG.sl && !R.rulerG.note && /- 硬停損\(成本/.test(R.factsG), JSON.stringify([R.Kg, R.rulerG]));
-ok('ⓔ 最近一根收盤鎖漲停 → why 講「🔥 高檔飆股的規則,👑 不用」+ 回測數字', /🔥 高檔飆股<\/b>的規則,👑 不用/.test(R.e1 || '') && new RegExp(R.E.ai.all.toLocaleString('en-US')).test(R.e1 || ''), (R.e1 || '').slice(-300));
+ok('ⓔ 最近一根收盤鎖漲停 → why 講「🔥 高檔飆股的規則,👑 不用」(🧹 V78.3.6 ⛔ 不印回測數字)', /🔥 高檔飆股<\/b>的規則,👑 不用/.test(R.e1 || '') && !new RegExp(R.E.ai.all.toLocaleString('en-US')).test(R.e1 || '') && !/\d[\d,]* 萬|回測|實測/.test(R.e1 || ''), (R.e1 || '').slice(-300));
 ok('ⓔ2 續抱那一種也會講;沒鎖漲停 → ⛔ 不講', /👑 不用/.test(R.e2.why || '') && /續抱/.test(R.e2.badge || '') && !/👑 不用/.test(R.e0 || ''), (R.e0 || '').slice(-200));
 const E = R.E;
 ok('ⓕ `_LEAD_LU_EDGE`:三種都輸現行(兩個窗口)、贏的條數 < 一半', ['gap5', 'gap0', 'all'].every(k => E.ai[k] < E.ai.now && E.long[k] < E.long.now && E.ai.beat[k] < 9 && E.long.beat[k] < 9), JSON.stringify(E));

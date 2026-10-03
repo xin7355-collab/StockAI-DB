@@ -14,7 +14,7 @@
  *   ⓒ `_ovDecide('0050')`:state `etfhold`、badge 含「ETF」,⛔ 不含「尾盤賣」「守住」
  *   ⓓ `_exitDistance('0050')` 回 `etf:true` 的空三條(⛔ 不回 null —— null 在呼叫端是「還沒辦法幫你看」)
  *   ⓔ 決定性對照:同一份 K 線把代號換成 '2330' → 必須出現「抱滿 N 天」(N = `_maxHold()`;分流靠代號,不靠資料)
- *   ⓕ 數字讀常數:改 `_ETF_HOLD_EDGE.n` 畫面要跟著變(⛔ 不寫死)
+ *   ⓕ 🧹 V78.3.6 散戶 App⛔ 不印實測數字:改 `_ETF_HOLD_EDGE.n` 畫面仍不出現該數字(研究成績在產業作戰室)
  *   ⓖ 靜態:`_exitMode` 對 ETF 不進出場狀態;文案只有 `_etfHoldNote` 一份(⛔ 消費端不可自己再寫一份「買了放著」數字)
  * 注入(逐一確認會紅):拿掉 `_invExitScan` 那行 continue → ⓐⓑ 紅;拿掉 `_ovDecide` 的 etfNote 分支 → ⓒ 紅
  */
@@ -91,7 +91,10 @@ const R = await page.evaluate(async () => {
     out.hdr = hdr;
     // ⓕ 數字讀常數
     const n0 = app._ETF_HOLD_EDGE.n; app._ETF_HOLD_EDGE.n = 99;
-    out.note99 = app._etfHoldNote('0050').html.includes('99 檔');
+    // 🧹 V78.3.6 散戶 App 不再印實測數字 → 改釘:常數改成 99 之後一般模式文案**仍然不出現** 99 檔 / 研究字樣,且「買了放著」那句還在
+    const h99 = app._etfHoldNote('0050').html;
+    out.note99 = !h99.includes('99 檔') && !/實測|回測|勝率|期望值|\dpp|含息|贏.{0,3}0050|輸.{0,3}0050|探針|etf_signal_probe/.test(h99) && /買了放著/.test(h99);
+    out.note99txt = h99.slice(0, 200);
     app._ETF_HOLD_EDGE.n = n0;
     out.noteStock = app._etfHoldNote('2330');
     return out;
@@ -112,7 +115,7 @@ ok('ⓑ 決策台有 `[data-exitetf="1"]` 且講「買了放著」與檔數', !!
 ok('ⓑb 0050 ⛔ 不可出現在賣出列(`[data-exitrow="0050"]` 不存在)', R.row0050 == null, R.row0050);
 ok('ⓑc 2330 在賣出列而且寫「時間到期 / 抱滿」', !!(R.row2330 && /抱滿|時間到期/.test(R.row2330)), R.row2330);
 ok('ⓑd 「今天要賣的(N 檔)」的 N 不算 ETF(= 1)', /今天要賣的\(1 檔\)/.test(R.hdr), R.hdr);
-ok('ⓕ 數字讀常數:`_ETF_HOLD_EDGE.n` 改 99 → 文案跟著變', R.note99 === true, '');
+ok('ⓕ 🧹 V78.3.6 一般模式⛔ 不印實測數字:`_ETF_HOLD_EDGE.n` 改 99 → 文案仍沒有 99 檔 / 研究字樣,「買了放著」還在', R.note99 === true, R.note99txt);
 ok('ⓕb 個股⛔ 不會拿到 ETF 文案(`_etfHoldNote(\'2330\')` 是 null)', R.noteStock === null, JSON.stringify(R.noteStock));
 ok('無 pageerror', errs.length === 0, errs.join(' | '));
 if (R.deckErr) ok('renderDeck 沒有 throw', false, R.deckErr);

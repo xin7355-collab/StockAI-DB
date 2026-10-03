@@ -164,8 +164,9 @@ ok('②b 有買進日 → 改用你的進場日起算(proxy=false + 天數對得
     R.x2proxy === false && R.x2days > 1 && /用你的買進日/.test(T(R.htmlPos)), `proxy=${R.x2proxy} days=${R.x2days}`);
 ok('②c 有庫存 → 要把「賣在這裡是賺是賠」算成**元**(使用者鐵則:% 要配元)',
     /賣在這裡/.test(T(R.htmlPos)) && /元(獲利|虧損)|元\(/.test(T(R.htmlPos)) && !/賣在這裡/.test(T(R.htmlNo)));
-ok('③b 數字現算自 _EXIT_EDGE(換假表畫面要跟著變 —— 三條列與**基準**都要變)',
-    R.htmlFake !== R.htmlNo && /1234|1235/.test(T(R.htmlFake)) && /11 萬/.test(T(R.htmlFake)) && !/193 萬/.test(T(R.htmlFake)),
+// 🧹 V78.3.6 散戶 App 不印 _EXIT_EDGE 的回測成績 → 決定性對照改成「換假表 → 一般模式畫面一字不變、仍不出現那些數字」
+ok('③b 換一張假 _EXIT_EDGE → 一般模式畫面⛔ 不出現回測成績(🧹 V78.3.6)',
+    R.htmlFake === R.htmlNo && !/1234|1235|11 萬|193 萬/.test(T(R.htmlFake)) && !/\d+(\.\d+)?\s*萬/.test(T(R.htmlNo)),
     T(R.htmlFake).slice(-260));
 const T4 = T(R.htmlNo).replace(/買點推播/g, '');
 ok('④a ⛔ 不可出現進場指令(進場價/買點/可以買)',
@@ -174,10 +175,11 @@ ok('④b ⛔ 不可用紅綠 emoji 標「哪條比較好」(燈號鐵則)', !/[�
 ok('⑤a 🚨 必須寫明「你現在用的是哪一條」+ 出場提醒/自動下單都用它(V74.5.4 起可切換)',
     /你目前設定的出場規則是/.test(T(R.htmlNo)) && /出場提醒、自動下單都用這一條/.test(T(R.htmlNo))
     && /⭐ 你在用的/.test(T(R.htmlNo)), T(R.htmlNo).slice(0, 200));
-ok('⑤b 要寫「已扣成本」與窗口(⛔ 沒扣成本的勝率是假的)',
-    /只換出場規則跑/.test(T(R.htmlNo)) && /49 個月|2022/.test(T(R.htmlNo)));
-ok('⑤c 要解釋「為什麼 5 日線比較差」(砍太早 / 靠少數大賺)',
-    /砍太早/.test(T(R.htmlNo)) && /少數/.test(T(R.htmlNo)));
+// 🧹 V78.3.6 回測口徑(已扣成本 / 49 個月窗口)搬去產業作戰室 → 改釘:一般模式⛔ 不可出現回測研究字樣
+ok('⑤b 一般模式⛔ 不可出現回測口徑/研究字樣(已扣成本・49 個月・勝率・實測)(🧹 V78.3.6)',
+    !/只換出場規則跑|49 個月|已扣成本|勝率|實測|回測|期望值|對照組/.test(T(R.htmlNo)), T(R.htmlNo).slice(0, 200));
+ok('⑤c 要白話解釋「別太早出場」(小回檔就砍 / 靠少數大賺)(🧹 V78.3.6 文案改白話)',
+    /別太早出場/.test(T(R.htmlNo)) && /小回檔就砍/.test(T(R.htmlNo)) && /少數/.test(T(R.htmlNo)));
 ok('⑥e 疊圖序列:最後一根對得上、前 20 根是 null(暖身不足不可畫)',
     Math.abs(R.serDon - R.expDon) < 0.01 && R.serEarlyNull && R.serAtr != null, `don=${R.serDon} atr=${R.serAtr}`);
 // 🚪 V75.0.4 真值段

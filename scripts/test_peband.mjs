@@ -84,10 +84,12 @@ ok('① DOM 格子存在', await page.evaluate(() => !!document.getElementById('
     const st = help.replace(/⛔[^\n]*/g, '').replace(/別[^\n。]*/g, '').replace(/不[是可要能代][^\n。]*/g, '');
     ok('④ ⛔ 說明不可下買賣指令', !/(買進|該買|進場理由|加碼|快去)/.test(st), st.slice(0, 300));
     ok('④b 必須寫「跟 vs 同業不一樣」', /vs 同業/.test(help) && /vs 自己/.test(help), help.slice(0, 400));
-    ok('④c 必須給實測數字', /0\.68/.test(help) && /單調/.test(help), help.slice(0, 900));
-    ok('④d 必須寫扣成本後只剩多少', /0\.24/.test(help), help.slice(0, 1400));
+    // 🧹 V78.3.6 散戶 App 說明不印實測數字(0.68/單調/扣成本後 0.24)→ 改釘:講「便宜不代表會漲」+ 當背景參考,⛔ 不出現研究字樣
+    ok('④c 必須講「便宜不代表會漲,貴也不代表會跌」(🧹 V78.3.6 取代實測數字)', /便宜不代表會漲/.test(help) && /背景參考/.test(help), help.slice(0, 900));
+    ok('④d ⛔ 說明不可出現實測數字 / 回測研究字樣(0.68・0.24・單調・扣成本)(🧹 V78.3.6)', !/0\.68|0\.24|單調|扣成本|實測|回測|pp\b/.test(help), help.slice(0, 1400));
     ok('④e 必須提醒景氣循環股 PE 低≠便宜', /景氣循環股/.test(help), help.slice(0, 1600));
-    ok('④f ⭐ 必須說明 P/B 刻意沒做 + 原因', /P\/B/.test(help) && /方向完全相反/.test(help), help.slice(-500));
+    // 🧹 V78.3.6「P/B 刻意沒做(方向完全相反)」是研究決策 → 搬去產業作戰室;改釘:散戶說明⛔ 不再提那段研究
+    ok('④f ⛔ 說明不再出現「P/B 方向完全相反」研究說明,指路總覽「現在怎麼做」(🧹 V78.3.6)', !/方向完全相反/.test(help) && /現在怎麼做/.test(help), help.slice(-500));
 }
 
 // ⑤ 切股競態守門:await 回來時已經換股 → ⛔ 不可畫上去

@@ -10,6 +10,7 @@
  *      ⛔ 不可用「星期一 = 休市 3 天」硬算 —— 週一放假時第一個交易日是週二。
  *   ③ 沒命中 → **整條不顯示**(⛔ 不留空殼、不寫「無」佔版面)。
  *   ④ 必須附**樣本數**與「方向沒有邊際」的免責(否則使用者會拿去賭方向)。
+ *      (🧹 V78.3.6 散戶 App 不印研究字樣 → 改釘:一般模式⛔ 不出現樣本/研究字樣、連假研究只在實驗室模式)
  *   ⑤ 「星期一」與「長假後」⛔ 不可寫成兩個獨立發現 —— 實測是同一個機制(休市累積消息),
  *      所以文案一律用「休市 N 天」表達。
  */
@@ -62,6 +63,11 @@ const R = await page.evaluate(() => {
         tueAfterHol: app._calDayVol(mk(['2026-03-19', '2026-03-24'])),
         htmlGap3: app._calDayVolHtml(mk([back(20), back(3)])),
         htmlNone: app._calDayVolHtml(mk([back(20), back(19)])),
+        // 🧹 V78.3.6 長假(gap≥4)那段連假方向研究只在實驗室模式顯示
+        htmlGap6: app._calDayVolHtml(mk([back(20), back(6)])),
+        htmlGap6Lab: (() => { document.documentElement.classList.add('lab');
+            try { return app._calDayVolHtml(mk([back(20), back(6)])); }
+            finally { document.documentElement.classList.remove('lab'); } })(),
         // 🚨 資料過期(最後一根是幾個月前)→ ⛔ 不可算成「休市 151 天」
         stale: app._calDayVol(mk(['2026-03-19', '2026-03-20'])),
         staleHol: app._calDayVol(mk(['2026-03-14', '2026-03-20'])),
@@ -95,7 +101,9 @@ ok('③b K 線不足 / 空陣列 / null 一律回 null(⛔ 不可 throw)',
 {
     const H = R.htmlGap3 || '';
     const txt = H.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-    ok('① 有講「波動比平常大 N%」', /波動比平常大/.test(txt) && /\d+%/.test(txt), txt.slice(0, 120));
+    // 🧹 V78.3.6 散戶 App 不印實測倍數 → 改釘白話「這種日子通常比較顛」+ ⛔ 不可再出現「大 N%」
+    ok('① 有講「這種日子通常比較顛」(🧹 V78.3.6 改白話,⛔ 不印實測倍數)',
+       /通常比較顛/.test(txt) && !/波動比平常大\s*\d+%/.test(txt), txt.slice(0, 120));
     // ⚠️ 先 strip 掉否定句再驗(本專案踩過 6 次:正確的免責句本身含有被禁的字)
     const stripped = txt
         .replace(/波動大不等於會漲、也不等於會跌/g, '')
@@ -108,12 +116,18 @@ ok('③b K 線不足 / 空陣列 / null 一律回 null(⛔ 不可 throw)',
     ok('①e 要給可操作的一句(部位放小)', /部位放小/.test(txt), '');
 }
 
-// ── ④ 免責:樣本數 + 方向沒有邊際 + 成本 ───────────────────────────
+// ── ④ 🧹 V78.3.6 一般模式⛔ 不印研究字樣(樣本數 / 37 種 / 0.44% / 方向沒有邊際);連假方向研究只在實驗室模式 ──
 {
     const txt = (R.htmlGap3 || '').replace(/<[^>]+>/g, ' ');
-    ok('④ 要附樣本數(N 天)', /樣本 \d+ 天/.test(txt), txt.slice(-160));
-    ok('④b 要明說「方向沒有邊際」+ 測了幾種 + 成本 0.44%',
-       /方向沒有邊際/.test(txt) && /37 種/.test(txt) && /0\.44%/.test(txt), txt.slice(-200));
+    const RESEARCH = /樣本 ?\d|實測|回測|37 種|0\.44%|方向沒有邊際|\bp=|\dpp|基準|對照組/;
+    ok('④ 🧹 V78.3.6 一般模式(週末)⛔ 不可出現樣本數 / 研究字樣', !RESEARCH.test(txt), txt.slice(-200));
+    ok('④b 🧹 V78.3.6 「怎麼做」那句還在(部位放小 + 停損拉遠)', /部位放小/.test(txt) && /停損拉遠/.test(txt), txt.slice(-200));
+    const t6 = (R.htmlGap6 || '').replace(/<[^>]+>/g, ' ');
+    ok('④c 🧹 V78.3.6 一般模式(長假)⛔ 不可出現連假研究(p= / pp / 樣本)', !!t6 && !RESEARCH.test(t6), t6.slice(-240));
+    ok('④d 🧹 V78.3.6 一般模式(長假)改講白話「不用特別掛單或押方向」', /不用特別掛單或押方向/.test(t6), t6.slice(-200));
+    const t6L = (R.htmlGap6Lab || '').replace(/<[^>]+>/g, ' ');
+    ok('④e 🧹 V78.3.6 實驗室模式(長假)原本的連假研究照顯(兩個都量不到 + p=)',
+       /兩個都量不到/.test(t6L) && /p=/.test(t6L), t6L.slice(-240));
 }
 
 // ── ⑤ ⛔ 星期一 / 長假後 不可寫成兩個獨立發現 ──────────────────────

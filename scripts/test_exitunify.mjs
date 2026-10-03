@@ -50,8 +50,10 @@ ok('②b 🚨 dedupe key 要跟 `_pbExitSweep` **共用**(⛔ 各自去重 = 同
 // ③ 換規則要講落差(⛔ 只換名字 = 成績跟規則對不上)
 const cond = blk('_copyCondOrder(sym) {', '// 🔔 V73.8.4');
 ok('③ 🚨 條件單文字要講「你設定的那條」', /_exNm/.test(cond));
-ok('③b 🚨 而且要講「歷史成績是用 5 日線算的」那個落差(⛔ 只換名字等於在說謊)',
-   /是用\*\*跌破 5 日線\*\*出場算的|用\*\*跌破 5 日線\*\*/.test(cond) || /跌破 5 日線\*\*出場算的/.test(cond), cond.slice(cond.indexOf('_exIsMa5'), cond.indexOf('_exIsMa5') + 300));
+// 🧹 V78.3.6 散戶 App 不印研究字樣 → 條件單⛔ 不再寫「成績是用 5 日線算的」那句(那是回測說明);
+//    改釘:條件單只講「怎麼出場」(你設定的那條),⛔ 不可出現「出場算的 / 實測 / 每趟」這類研究字樣
+ok('③b 🧹 V78.3.6 條件單⛔ 不可再印回測落差說明(出場算的 / 實測差距 / 每趟多少)',
+   cond.length > 300 && !/出場算的|實測差距|每趟多少|打過幾次/.test(cond), cond.slice(cond.indexOf('_exIsMa5'), cond.indexOf('_exIsMa5') + 300));
 const trackBlk = blk('_pbTrackRecordHtml() {', '// 🔔 V73.8.4');
 ok('③c 🚨 歷史成績那張卡也要講落差(數字從 `_EXIT_EDGE` 讀,⛔ 不寫死)',
    /_EXIT_EDGE\.rows\.find/.test(trackBlk) && /_EXIT_EDGE\.base\.p/.test(trackBlk), trackBlk.length ? 'block ok' : 'no block');
@@ -131,9 +133,9 @@ ok('⑧b 四種規則算出來的價位**互不相同**(⛔ 空過守門:全都�
 ok('⑨ 換設定 → 卡片上「⭐ 你在用的」跟著換',
    /⭐ 你在用的 ・ 唐奇安/.test(R.htmlDon) && /⭐ 你在用的 ・ 移動停利/.test(R.htmlTrail),
    `${R.htmlDon.slice(0, 90)} || ${R.htmlTrail.slice(0, 90)}`);
-ok('⑩ 🚨 條件單:設成唐奇安 → 文字要寫唐奇安,而且要講「成績是用 5 日線算的」落差',
-   /唐奇安/.test(R.condDon) && /用\*\*跌破 5 日線\*\*出場算的|跌破 5 日線.{0,10}出場算的/.test(R.condDon),
-   R.condDon.split('\n').filter(l => /唐奇安|5 日線/.test(l)).join(' | ').slice(0, 220));
+ok('⑩ 🚨 條件單:設成唐奇安 → 文字要寫唐奇安(🧹 V78.3.6 ⛔ 不再印「成績是用 5 日線算的」研究說明)',
+   /收盤跌破唐奇安/.test(R.condDon) && !/出場算的|實測|回測|每趟/.test(R.condDon),
+   R.condDon.split('\n').filter(l => /唐奇安|5 日線|實測|回測/.test(l)).join(' | ').slice(0, 220));
 ok('⑩b 設回 5 日線 → ⛔ 不可再道歉一次(那句只在「你設的不是 5 日線」時才出現)',
    /5 日線/.test(R.condMa5) && !/出場算的/.test(R.condMa5),
    R.condMa5.split('\n').filter(l => /5 日線/.test(l)).join(' | ').slice(0, 200));

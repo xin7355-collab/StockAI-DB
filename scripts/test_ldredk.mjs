@@ -128,21 +128,24 @@ ok('①b −8%(沒到跌停)/ 收黑 / 隔了一根才紅 → 都不觸發(⛔ �
     R.no1 === '' && R.no2 === '' && R.no3 === '', `${R.no1.length}/${R.no2.length}/${R.no3.length}`);
 // ⚠️ V74.2.8 起數字一律**從 `_LD_REDK` 帶入**,⛔ 測試不可寫死
 //    (含 2022 空頭重跑之後整張表都變了;寫死等於每次重跑都要改測試,而且會誤以為程式壞了)。
-ok('④b 大紅那組的數字與勝率都要顯示(讀 _LD_REDK,⛔ 不寫死)',
-    R.hit.includes(`+${E.big}%`) && R.hit.includes(`${E.wrBig}%`) && R.hit.includes(`${E.base}%`),
+// 🧹 V78.3.6 散戶 App ⛔ 不印回測數字(+x% / 勝率 / 基準搬到產業作戰室)→ 改釘:數字⛔ 不出現 + 白話「之後多半會彈」還在
+ok('④b 🧹 V78.3.6 大紅那組⛔ 不印實測數字與勝率(_LD_REDK.big / wrBig / base),只講「之後多半會彈」',
+    !R.hit.includes(`+${E.big}%`) && !R.hit.includes(`${E.wrBig}%`) && !R.hit.includes(`${E.base}%`) && /之後多半會彈/.test(R.hit),
     R.hit.slice(0, 120));
 ok('③a 小紅要講「參考價值低很多」而且⛔不可顯大紅那組數字',
     /參考價值低/.test(R.small) && !R.small.includes(`+${E.big}%`));
-ok('②a 系統性分支:那天大盤 −2.1% → 顯「系統性」與那組的實測數字',
-    /系統性/.test(R.sysTxt) && R.sysTxt.includes(`+${E.sys}%`), R.sysTxt.slice(0, 60));
-ok('②b 個股利空分支:顯那組數字 +「別急著接」(⛔ 不講的話使用者會拿好的那組數字去接刀)',
-    /個股自己出事/.test(R.idioTxt) && R.idioTxt.includes(`+${E.idio}%`) && /別急著接/.test(R.idioTxt), R.idioTxt.slice(0, 60));
+ok('②a 系統性分支:那天大盤 −2.1% → 顯「系統性」+ 白話「跌完多半會彈」(🧹 V78.3.6 ⛔ 不印那組實測數字)',
+    /系統性/.test(R.sysTxt) && /多半會彈/.test(R.sysTxt) && !R.sysTxt.includes(`+${E.sys}%`), R.sysTxt.slice(0, 60));
+ok('②b 個股利空分支:顯「別急著接」(⛔ 不講的話使用者會去接刀;🧹 V78.3.6 ⛔ 不印那組實測數字)',
+    /個股自己出事/.test(R.idioTxt) && /別急著接/.test(R.idioTxt) && !R.idioTxt.includes(`+${E.idio}%`), R.idioTxt.slice(0, 60));
 ok('⑤ 切股殘留守門:sym 對不上不可以填(還是 ⏳)', R.staleTxt === '⏳', R.staleTxt);
-ok('②c 查不到那天 → 誠實說 + 仍給兩組差距',
-    /查不到/.test(R.missTxt) && R.missTxt.includes(`+${E.sys}%`) && R.missTxt.includes(`+${E.idio}%`), R.missTxt.slice(0, 60));
+ok('②c 🧹 V78.3.6 查不到那天 → 誠實說 + 講兩種情況差很多,⛔ 不印數字',
+    /查不到/.test(R.missTxt) && /差很多/.test(R.missTxt) && !R.missTxt.includes(`+${E.sys}%`) && !R.missTxt.includes(`+${E.idio}%`), R.missTxt.slice(0, 60));
 ok('③b ⛔ 不下操作指令(買進/加碼/停損價/目標價都不可出現)+ 要指路總覽',
     !/買進|加碼|停損價|目標價|掛單/.test(R.hit) && /現在怎麼做/.test(R.hit));
-ok('③c 要寫「不是進場指令」與回測進場點(隔天開盤)', /不是進場指令/.test(R.hit) && /隔天開盤/.test(R.hit));
+// 🧹 V78.3.6 「回測進場點(隔天開盤)」是研究說明 → 已不印;改釘「不是進場指令」+ ⛔ 不出現回測/實測字樣
+ok('③c 要寫「不是進場指令」(🧹 V78.3.6 ⛔ 不再寫回測進場點,⛔ 不可出現回測/實測/勝率字樣)',
+    /不是進場指令/.test(R.hit) && !/回測|實測|勝率|期望值|基準/.test(R.hit + R.small + R.sysTxt + R.idioTxt));
 
 // 🧹 V78.3.4 散戶 App ⛔ 不印回測數字(+x% 的差距搬到產業作戰室),但「先看大盤有沒有一起跌」這個做法要講
 ok('⑦a 總覽提醒:跌停後紅K 命中要出現,講「先看大盤有沒有一起跌」,⛔ 不印回測數字',
@@ -161,8 +164,9 @@ ok('⑧ ⏱️ 大紅那組要寫出「前 5 天走完幾成 / 幾天到頂 / 60
 ok('⑧a ⏱️ 小紅(系統性口徑)要用**它自己那組**的比例,⛔ 不可套大紅那組',
     R.small.includes(`${E.tm.r5sys} 成`) && R.small.includes(`${E.tm.keepSys}%`)
     && !R.small.includes(`${E.tm.r5big} 成`));
-ok('⑧b 🚨 必須講明那是**比例**、跟上面那個 +% 不是同一個口徑(⛔ 否則就是同名不同義)',
-    /不是同一個口徑/.test(R.hit));
+// 🧹 V78.3.6 上面那個 +% 已不印 → 畫面只剩「幾成 / 剩幾 %」比例,⛔ 不可再出現 +N% 的報酬數字(同名不同義的來源消失了)
+ok('⑧b 🧹 V78.3.6 卡上只剩比例(幾成),⛔ 不可再出現 +N% 的報酬數字跟它混在一起',
+    /成/.test(R.hit) && !/\+\d+(\.\d+)?%/.test(R.hit.replace(/<[^>]+>/g, ' ')), R.hit.replace(/<[^>]+>/g, ' ').match(/\+\d+(\.\d+)?%/g));
 ok('⑧c ⛔ 數字不可寫死在文案 —— 只准透過 E.tm.* 取值', (() => {
       const i = SRC.indexOf('_ldRedKHtml(');
       const src = SRC.slice(i, SRC.indexOf('\n    },', i));

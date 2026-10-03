@@ -15,6 +15,7 @@
  *   ⑤ ⛔ **不可下操作指令**(不可出現「可以買/進場/追」),它只是提醒不是訊號。
  *   ⑥ ⛔ **不可用紅綠**:講的是「有沒有用」不是漲跌(燈號鐵則)。
  *   ⑦ 顯示的數字必須**來自 `_SCR_TURN_EDGE`**,⛔ 不可在文案裡寫死第二份(陷阱 #37)。
+ *   🧹 V78.3.6:③④⑦ 與 ⓪ 的研究文字只在實驗室模式顯示(改在 lab 量);一般模式另釘 ⓪n「⛔ 不印研究字樣 + 白話怎麼做」。
  */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { fileURLToPath } from 'url';
@@ -46,6 +47,10 @@ const R = await page.evaluate(() => {
     out.lo = app._scrTurnNote([{ id: 'turn5lo' }]);
     app._scrSort = 'turn5';
     out.bySort = app._scrTurnNote([]);                                 // 只用排序 → 要出現
+    // 🧹 V78.3.6 週轉率實測說明只在實驗室模式顯示 → 研究那幾條在 lab 模式量,量完一定移除 class
+    document.documentElement.classList.add('lab');
+    try { app._scrSort = 'score'; out.hiLab = app._scrTurnNote([{ id: 'turn5hi' }]); }
+    finally { document.documentElement.classList.remove('lab'); }
     app._scrSort = save;
     out.E = app._SCR_TURN_EDGE;
     return out;
@@ -54,9 +59,18 @@ await browser.close();
 
 const strip = s => String(s).replace(/⛔[^<。]*/g, '').replace(/別把它當成[^<。]*/g, '');
 
+// 🧹 V78.3.6 一般模式:⛔ 不印任何實測數字 / 研究字樣,只講「週轉率只代表交易熱不熱,⛔ 不是買進理由」
+{
+    const norm = [R.hi, R.lo, R.bySort].map(h => String(h).replace(/<[^>]+>/g, ' ')).join(' ');
+    ok('⓪n 🧹 V78.3.6 一般模式⛔ 不可出現實測數字 / 研究字樣(pp / 安慰劑 / 勝率 / 前後半段 / 偏多頭)',
+       !/\dpp|安慰劑|勝率|實測|回測|前後半|偏多頭|對照組|增量/.test(norm), (norm.match(/\dpp|安慰劑|勝率|實測|回測|前後半|偏多頭|對照組|增量/) || [''])[0]);
+    ok('⓪n2 🧹 V78.3.6 一般模式仍講怎麼做(交易熱不熱・⛔ 不是買進理由・挑股看決策台)',
+       /交易熱不熱/.test(norm) && /不是買進理由/.test(norm) && /決策台/.test(norm), norm.slice(0, 200));
+}
+// ⬇ 研究文字在實驗室模式量(斷言內容不變)
 // ⓪ V77.3.3 第四次實測(疊在 49 個月組合回測上)要印出來,而且數字全部讀 `_SCR_TURN_EDGE.deck`(⛔ 不可 undefined、不可寫死)
-ok('⓪ 組合回測那段有印:安慰劑(sham)數字 + 高週轉沒贏隨機 + 勝率提高賺更少', /安慰劑/.test(R.hi) && new RegExp(`${R.E.deck.sham.win}%`).test(R.hi) && new RegExp(`\\+${R.E.deck.hi.cum} 萬`).test(R.hi) && /賺更少/.test(R.hi), R.hi.slice(-400));
-ok('⓪b ⛔ 不可有 undefined / NaN(常數路徑接錯就會印出來)', !/undefined|NaN/.test(R.hi), (R.hi.match(/.{30}(undefined|NaN).{10}/) || [''])[0]);
+ok('⓪ 組合回測那段有印:安慰劑(sham)數字 + 高週轉沒贏隨機 + 勝率提高賺更少', /安慰劑/.test(R.hiLab) && new RegExp(`${R.E.deck.sham.win}%`).test(R.hiLab) && new RegExp(`\\+${R.E.deck.hi.cum} 萬`).test(R.hiLab) && /賺更少/.test(R.hiLab), R.hiLab.slice(-400));
+ok('⓪b ⛔ 不可有 undefined / NaN(常數路徑接錯就會印出來)', !/undefined|NaN/.test(R.hiLab), (R.hiLab.match(/.{30}(undefined|NaN).{10}/) || [''])[0]);
 // ① 條件觸發
 ok('① 沒用週轉率排序也沒勾 → ⛔ 整條不出現(不留空殼)', R.none === '', R.none.slice(0, 80));
 ok('①b 勾的是別的條件 → 也不出現', R.other === '', R.other.slice(0, 80));
@@ -69,29 +83,29 @@ ok('②c 只用週轉率排序 → 也要出現(⛔ 別只綁條件)', R.bySort.
 // ⚠️ 這條第一版寫成 `/前後半段.{0,6}不同向|前半.{0,40}後半/` —— **太鬆**:
 //    把警告句拿掉之後,第二個 alternative 還是會在別處配到 → 注入缺陷時測試照樣綠。
 //    ⭐ 那正是「注入已知缺陷」自我驗證擋下來的;釘就要釘**那個關鍵字本身**。
-ok('③ 🚨 要寫出「不同向」這個關鍵警告(⛔ 只列漂亮數字會誤導)',
-    R.hi.includes('不同向') && /只存在於|只在.{0,8}這一段/.test(R.hi), R.hi.slice(0, 220));
+ok('③ 🚨 (lab) 要寫出「不同向」這個關鍵警告(⛔ 只列漂亮數字會誤導)',
+    R.hiLab.includes('不同向') && /只存在於|只在.{0,8}這一段/.test(R.hiLab), R.hiLab.slice(0, 220));
 ok('③b 而且要把前半那個負數印出來',
-    R.hi.includes(String(R.E.h1.a820)) || R.hi.includes(R.E.h1.a820.toFixed(2)), '');
+    R.hiLab.includes(String(R.E.h1.a820)) || R.hiLab.includes(R.E.h1.a820.toFixed(2)), '');
 
 // ④ 增量歸零
-ok('④ 🚨 要寫出「疊在高位階+高波動之上增量幾乎歸零」',
-    /高位階.{0,6}高波動/.test(R.hi) && /增量/.test(R.hi), R.hi.slice(0, 200));
-ok('④b 要提到來回成本', R.hi.includes(String(R.E.cost)));
+ok('④ 🚨 (lab) 要寫出「疊在高位階+高波動之上增量幾乎歸零」',
+    /高位階.{0,6}高波動/.test(R.hiLab) && /增量/.test(R.hiLab), R.hiLab.slice(0, 200));
+ok('④b 要提到來回成本', R.hiLab.includes(String(R.E.cost)));
 
 // ⑤ 不可下操作指令
 const CMD = /(可以買|可以追|建議買|進場價|掛單|停損|可進場|值得買)/;
-ok('⑤ ⛔ 不可下操作指令', !CMD.test(strip(R.hi)) && !CMD.test(strip(R.lo)), (strip(R.hi).match(CMD) || [''])[0]);
+ok('⑤ ⛔ 不可下操作指令', !CMD.test(strip(R.hi)) && !CMD.test(strip(R.lo)) && !CMD.test(strip(R.hiLab)), (strip(R.hi).match(CMD) || [''])[0]);
 
 // ⑥ 不可用紅綠(燈號鐵則)
 const RG = /text-(red|green)-\d/;
-ok('⑥ ⛔ 不可用紅綠上色(講的是有沒有用,不是漲跌)', !RG.test(R.hi) && !RG.test(R.lo), (R.hi.match(RG) || [''])[0]);
+ok('⑥ ⛔ 不可用紅綠上色(講的是有沒有用,不是漲跌)', !RG.test(R.hi) && !RG.test(R.lo) && !RG.test(R.hiLab), (R.hi.match(RG) || [''])[0]);
 
 // ⑦ 數字來自常數
-ok('⑦ 顯示的數字來自 _SCR_TURN_EDGE(⛔ 不可在文案寫死第二份)',
-    R.hi.includes(R.E.n.toLocaleString()) && R.hi.includes(String(R.E.d.a820)), '');
-ok('⑦b ⭐ 要指路「唯一有效的用法在當沖頁」', /當沖頁/.test(R.hi) && /只有次日/.test(R.hi));
-ok('⑦c 要標明窗口偏多頭的限制', /偏多頭/.test(R.hi));
+ok('⑦ (lab)顯示的數字來自 _SCR_TURN_EDGE(⛔ 不可在文案寫死第二份)',
+    R.hiLab.includes(R.E.n.toLocaleString()) && R.hiLab.includes(String(R.E.d.a820)), '');
+ok('⑦b ⭐ 要指路「唯一有效的用法在當沖頁」', /當沖頁/.test(R.hiLab) && /只有次日/.test(R.hiLab));
+ok('⑦c 要標明窗口偏多頭的限制', /偏多頭/.test(R.hiLab));
 
 // 靜態:⛔ 不可有第二份寫死的成績表
 const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');

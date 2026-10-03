@@ -92,8 +92,8 @@ ok('④ 有渲染出東西', html && html.length > 200 && !html.startsWith('ERR:
 // ⭐ V72.1.3 分區標題改了:「實測有效」→「值得參考的進場訊號(實測期望值為正)」。
 //   原因:實測 2327 時三個被標成「實測有效」的看多訊號**期望值全是負的**,
 //   標「有效」等於誤導(V72.0.3 已在總覽定調「看多必須 exp>0」,K線頁那時沒跟上)。
-ok('④ ⭐ 有進場訊號分區標題,或誠實說今天沒有',
-   /值得參考的進場訊號|沒有.{0,20}進場訊號/.test(html), html.slice(0, 400));
+ok('④ ⭐ 有進場訊號分區標題,或誠實說今天沒有(🧹 V78.3.6 措辭「沒有值得進場的訊號」)',
+   /值得參考的進場訊號|沒有.{0,20}進場的?訊號/.test(html), html.slice(0, 400));
 ok('④ ⭐⛔ 不可再用「實測有效」當標題(那批期望值是負的)',
    !/實測有效的訊號/.test(html), html.slice(0, 400));
 ok('④ ⭐ 其餘訊號收在 <details> 摺疊區(不是全部攤開)', /<details/.test(html), html.slice(0, 300));
@@ -104,8 +104,10 @@ ok('④ 有「怎麼看」教學按鈕', /怎麼看/.test(html), html.slice(0, 6
 // 🔁 V77.7.2:以前讀「渲染出來的徽章」—— 但徽章只在測資剛好觸發 A/B 級訊號時才出現,
 //   重跑回測後分級一變,測資觸發的訊號可能全是 C 級 → 斷言假失敗。⭐ 改成直接問教學文字本身(它才是這條要釘的東西)。
 const helpTxt0 = await page.evaluate(() => { let t = ''; const o = app._helpBox; app._helpBox = x => { t = String(x); }; try { app._showEdgeHelp(); } finally { app._helpBox = o; } return t; });
-ok('④ ⭐ 教學必須寫明基準勝率(否則 41% 會被誤讀成輸)',
-   helpTxt0.includes(`基準勝率是 ${meta.base_win.toFixed(1)}%`), helpTxt0.slice(0, 600));
+// 🧹 V78.3.6 散戶 App 教學不印勝率(連帶不需要基準勝率)→ 改釘:講清楚三區怎麼看,⛔ 不出現勝率/基準數字
+ok('④ ⭐ 教學要講三區怎麼看(值得參考 / 風險提醒不打折 / 摺疊區觀察用),⛔ 不印勝率與基準勝率(🧹 V78.3.6)',
+   /值得參考的進場訊號/.test(helpTxt0) && /不打折/.test(helpTxt0) && /觀察用/.test(helpTxt0)
+   && !helpTxt0.includes(meta.base_win.toFixed(1)) && !/基準勝率|勝率\s*\d/.test(helpTxt0), helpTxt0.slice(0, 600));
 // ⭐ V72.0.4:K線頁那顆「ⓘ 怎麼看」原本是**第三份**內嵌 alert 文案,而且數字停在
 //    250 檔那版(說 122 個訊號 / A=29,實際已是 500 檔 / A=42)——正是 CLAUDE.md
 //    「教學兩頁共用同一份,別寫兩套」那條鐵則在講的東西。已改成呼叫 _showEdgeHelp()。
@@ -117,15 +119,16 @@ const helpTxt = await page.evaluate(() => {
 });
 ok('④ ⭐ K線頁的教學鈕必須呼叫共用的 _showEdgeHelp(⛔ 不可再內嵌第二份文案)',
    /_showEdgeHelp\(\)/.test(html) && !/我拿 \d+ 檔股票/.test(html), html.slice(0, 600));
-ok('④ 教學要說明沒扣交易成本', /沒有扣交易成本|未扣交易成本|沒有.{0,4}扣.{0,4}交易成本/.test(helpTxt), helpTxt.slice(-300));
+ok('④ 教學要說明交易成本另計(🧹 V78.3.6 白話「手續費和稅另計」)', /沒有扣交易成本|未扣交易成本|沒有.{0,4}扣.{0,4}交易成本|手續費和稅另計/.test(helpTxt), helpTxt.slice(-300));
 ok('④ ⭐ 教學要說明「不是保證」', /不是保證/.test(helpTxt), helpTxt.slice(-300));
 // ⭐ 內嵌那份的數字曾經對不上 meta → 共用版一律從 meta 帶入,這裡交叉驗一次
 // ⭐ V72.1.7:回測窗口受 ^TWII 長度限制(實測 486 根 ≈ 2 年),
 //   但教學一直寫死「3 年歷史」→ 對不上。改成從 meta 帶入。
 ok('④ ⭐⛔ 教學不可再寫死「3 年」(實際窗口受 ^TWII 長度限制)',
    !/3 年歷史|檔股票、3 年|× 3 年/.test(helpTxt), helpTxt.slice(0, 300));
-ok('④ ⭐ 教學的檔數/分級數必須跟 _SIGNAL_EDGE_META 一致(⛔ 別寫死)',
-   new RegExp(`${meta.syms} 檔`).test(helpTxt) && new RegExp(`A 級只有 ${meta.A} 個`).test(helpTxt),
+// 🧹 V78.3.6 回測檔數 / 分級數是研究資訊 → 搬去產業作戰室;改釘:散戶教學⛔ 不印 _SIGNAL_EDGE_META 的檔數/分級數
+ok('④ ⭐ 教學⛔ 不印回測檔數 / A 級個數(_SIGNAL_EDGE_META)與研究字樣(🧹 V78.3.6)',
+   !new RegExp(`${meta.syms} 檔`).test(helpTxt) && !/A 級只有|實測|回測|期望值|對照組/.test(helpTxt) && /要買要賣的具體價位/.test(helpTxt),
    helpTxt.slice(0, 700));
 
 // ── ⑤ ⛔ C 級不可被刪掉(裡面有風險提醒)────────────────────
@@ -164,10 +167,11 @@ const ec = await page.evaluate(() => {
 });
 ok('⑨ _entryCheckup 有回 proven 清單', ec.res && Array.isArray(ec.res.proven), JSON.stringify(ec.res && Object.keys(ec.res || {})));
 ok('⑨ 渲染成功', !ec.err && ec.html && ec.html.length > 300, String(ec.err || '').slice(0, 120));
-ok('⑨ ⭐ 有「實測有效」專區或誠實說今天沒有',
-   /實測有效|沒有.{0,3}出現實測有效/.test(ec.html), ec.html.slice(0, 500));
-ok('⑨ 沒有時要勸阻「別硬找理由進場」或有清單', /別硬找理由進場|勝率 /.test(ec.html), ec.html.slice(0, 600));
-ok('⑨ ⭐ 要標明基準勝率', new RegExp(String(meta.base_win.toFixed(1))).test(ec.html), ec.html.slice(0, 900));
+// 🧹 V78.3.6 散戶 App 改叫「值得參考的訊號」、⛔ 不印勝率 / 基準勝率
+ok('⑨ 🧹 V78.3.6 有「值得參考的訊號」專區或誠實說今天沒有',
+   /值得參考的訊號/.test(ec.html) && !/實測有效/.test(ec.html), ec.html.slice(0, 500));
+ok('⑨ 沒有時要勸阻「別硬找理由進場」或有清單', /別硬找理由進場|值得參考的訊號\(\d+\)/.test(ec.html), ec.html.slice(0, 600));
+ok('⑨ 🧹 V78.3.6 一般模式⛔ 不印勝率與基準勝率', !/勝率 \d/.test(ec.html) && !new RegExp(String(meta.base_win.toFixed(1)) + '%').test(ec.html), ec.html.slice(0, 900));
 ok('⑨ 有共用教學按鈕 _showEdgeHelp', /_showEdgeHelp/.test(ec.html));
 
 // ⑩ ⭐ 多空不對稱:看多打折、看空⛔不打折(風險寧可多提醒)
@@ -250,7 +254,8 @@ ok('⑪ ⭐ K線頁與總覽共用同一份教學', /_showEdgeHelp/.test(await p
     const sb = fs.readFileSync(path.join(ROOT, 'scripts/signal_backtest.mjs'), 'utf-8').replace(/\/\/.*$/gm, '');
     ok('⑭ signal_backtest 走 lib_fdr 的 regrade(⛔ 不可自己寫 p ≤ 0.05)', /regrade\(withP\)/.test(sb) && !/r\.p <= 0\.05/.test(sb), '');
     const help = await page.evaluate(() => app._showEdgeHelp.toString());
-    ok('⑭ 教學寫出多重比較校正、⛔ 不可再寫死「36 個」', /多重比較/.test(help) && !/36 個的/.test(help), '');
+    // 🧹 V78.3.6 多重比較校正是研究方法 → 散戶教學不講(分級仍走 lib_fdr,上面幾條照釘);改釘⛔ 不寫死「36 個」、⛔ 不出現研究方法字樣
+    ok('⑭ 散戶教學⛔ 不講多重比較 / BH 研究方法、⛔ 不寫死「36 個」(🧹 V78.3.6)', !/多重比較|BH|36 個的/.test(help) && help.length > 200, '');
 }
 
 ok('⑧ 無 pageerror', errs.length === 0, errs.join(' | '));

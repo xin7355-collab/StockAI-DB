@@ -90,7 +90,7 @@ ck(Object.values(C).every(x => x.txt.length > 120), '①d 每一格都有內容(
 
 console.log('\n── ② 單一真相(⛔ 不做第二份) ──');
 ck(R.godSame, '②a 券商頁「🏅 高手券商」= 選股頁那一支的同一份輸出');
-ck(R.godTxt === R.godTxt && /對照組|整備中/.test(R.godTxt), '②b _renderBrokerCat(\'god\') 走的也是同一支');
+ck(R.godTxt === R.godTxt && /平均水準|整備中/.test(R.godTxt), '②b _renderBrokerCat(\'god\') 走的也是同一支(🧹 V78.3.6「對照組」改叫「平均水準」)');
 const src = readFileSync('index.html', 'utf8');
 ck(/_godBrokerHtml\(\)\s*\{\s*return this\._brokerLeagueHtml\(\);\s*\}/.test(src),
    '②c ⭐ `_godBrokerHtml` 只是轉呼叫 —— ⛔ 不可再寫一份挑法(舊版自己挑 top-1,跟榜對不上)');
@@ -108,16 +108,17 @@ ck(Object.values(C).every(x => !x.names.includes('D樣本少') && !x.names.inclu
 ck(/已擋掉 \d+ 家樣本不足/.test(C['daytrade/ret'].txt), '④b 擋掉幾家要說出來(⛔ 不可靜默過濾)');
 
 console.log('\n── ⑤ 對照組(⛔ 基準不是 50%) ──');
-ck(/對照組\(隨便挑一家券商\)/.test(C['daytrade/ret'].txt), '⑤a 有基準時要把基準印出來');
+ck(/平均水準\(隨便挑一家券商\)/.test(C['daytrade/ret'].txt) && !/對照組/.test(C['daytrade/ret'].txt), '⑤a 有基準時要把基準印出來(🧹 V78.3.6 白話叫「平均水準」,⛔ 不再出現「對照組」研究字樣)');
 ck(/基準[+-]/.test(C['daytrade/ret'].txt), '⑤b 每一列都要標「贏基準多少」');
-ck(/對照組基準累積中/.test(C['short/ret'].txt) && !/✅/.test(C['short/ret'].txt),
+ck(/平均水準累積中/.test(C['short/ret'].txt) && /沒有比較對象/.test(C['short/ret'].txt) && !/✅/.test(C['short/ret'].txt),
    '⑤c ⭐ 沒有基準時⛔ 不可拿 50% 判 —— 那格(short)不可出現 ✅ 徽章');
 ck(/⏳ 待基準/.test(C['short/ret'].txt), '⑤d 沒有基準時要誠實說「待基準」');
 
 console.log('\n── ⑥ 誠實免責(⛔ 一句都不可少) ──');
 const t = C['dt/ret'].txt;
 ck(/成績記錄,不是買進名單/.test(t), '⑥a ⛔ 要寫明「這是成績記錄不是買進名單」');
-ck(/沒有.{0,3}預測力/.test(t), '⑥b ⭐ 要寫出本站三支探針實測「跟著分點做」沒有預測力');
+// 🧹 V78.3.6 散戶 App 不提探針/實測 → 改釘:講明「跟著分點買賣不是本 App 的做法」,⛔ 不可出現探針/實測/預測力研究字樣
+ck(/不是本 App 的做法/.test(t) && !/探針|實測|預測力|六關/.test(t), '⑥b ⭐ 要寫明「跟著分點做」不是本 App 的做法,⛔ 不印探針實測字樣(🧹 V78.3.6)');
 ck(/未扣交易成本/.test(t), '⑥c 要寫未扣成本');
 ck(/估計/.test(t) && /不是官方當沖/.test(t), '⑥d ⭐ 當沖是「同日雙向成交」的估計,⛔ 不可講成官方當沖');
 ck(/窗口 \d+ 個交易日/.test(t), '⑥e 要寫窗口幾天');

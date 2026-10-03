@@ -13,6 +13,7 @@
  *   ⑥ 「只看實測領先」要真的過濾,而且⛔ 不可漏掉別的分組
  *   ⑦ 教學要誠實交代「沒有成績的那些是因為沒有歷史,不是它們沒用」
  *   ⑧ 🚧 空過守門:徽章/總結真的渲染出來了
+ *   ⑩ 🧹 V78.3.6:以上研究文字只在實驗室模式顯示(①~⑨ 在 lab 跑),一般模式⛔ 一個都不印
  */
 import fs from 'fs';
 import path from 'path';
@@ -62,6 +63,9 @@ ok('①c 🚨 對照組必須是「負的」(中位數個股本來就輸大盤,�
 ok('①d 🚨 勝率基準必須遠低於 50%(⛔ 不可用丟銅板當基準)',
     meta.base[1] > 25 && meta.base[1] < 45, String(meta.base[1]));
 
+// 🧹 V78.3.6 散戶 App 一般模式⛔ 不顯示條件成績(徽章 / 總結 / 教學 / 只看實測領先)—— 只在實驗室模式(產業作戰室內嵌)。
+//    ⬇ ④~⑨ 的研究斷言一律在 lab 模式跑(斷言內容不變);最後 ⑩ 再拿掉 class,釘「一般模式什麼都不印」。
+await page.evaluate(() => document.documentElement.classList.add('lab'));
 // ── ④⑤ 徽章 ─────────────────────────────────────────────────
 const tags = await page.evaluate((b) => ({
     lead: app._scrEdgeTag(b[0]),
@@ -186,6 +190,29 @@ ok('⑨f 換一份假衰退資料 → 畫面跟著變',
     /2099年/.test(fakeD) && /測試招式/.test(fakeD) && /-9\.99/.test(fakeD), fakeD.slice(0, 200));
 ok('⑨g 教學也要寫衰退(⛔ 兩處都要,別只改一邊)',
     /正在變小/.test(help) && help.includes(decay.D.eg[0][0]), help.slice(-400));
+
+// ── ⑩ 🧹 V78.3.6 一般模式(拿掉 lab):⛔ 不可出現任何條件成績 ─────────────
+const norm = await page.evaluate(b => {
+    document.documentElement.classList.remove('lab');
+    let cap = ''; const bak = window.alert, bh = app._helpBox;
+    window.alert = m => { cap = m; }; app._helpBox = m => { cap = String(m); };
+    try { app.showScrEdgeHelp(); } finally { window.alert = bak; app._helpBox = bh; }
+    const tagAll = app._SCR_CONDS.map(c => app._scrEdgeTag(c.id)).join('');
+    const note = app._scrEdgeNote([b[0]]);
+    const gBak = app._scrGroup, sBak = app._scrSub;
+    app._scrGroup = app._SCR_CONDS[0].g; app._scrSub = app._SCR_CONDS[0].s;   // 讓分組清單確定有東西(⛔ 否則兩邊都空 = 空過)
+    const plain = app._scrCondList().map(c => c.id).join(',');
+    app._scrEdgeOnly = true;
+    const onlyOn = app._scrCondList().map(c => c.id).join(',');
+    app._scrEdgeOnly = false;
+    app._scrGroup = gBak; app._scrSub = sBak;
+    return { help: cap, tagAll, note, plain, onlyOn };
+}, meta.best);
+ok('⑩a 🧹 V78.3.6 一般模式:條件按鈕⛔ 不掛實測徽章(全部空字串)', norm.tagAll === '', norm.tagAll.slice(0, 120));
+ok('⑩b 🧹 V78.3.6 一般模式:勾選後⛔ 不出實測總結', norm.note === '', norm.note.slice(0, 120));
+ok('⑩c 🧹 V78.3.6 一般模式:「ⓘ 怎麼看」⛔ 不跳研究教學', norm.help === '', String(norm.help).slice(0, 120));
+ok('⑩d 🧹 V78.3.6 一般模式:就算 _scrEdgeOnly 被打開,清單仍照分組(⛔ 不可偷偷依實測成績過濾)',
+    !!norm.plain && norm.onlyOn === norm.plain, `${norm.onlyOn.slice(0, 80)} vs ${norm.plain.slice(0, 80)}`);
 
 ok('⑧d 🚧 無 pageerror', errs.length === 0, errs.join(' | '));
 

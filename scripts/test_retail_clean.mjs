@@ -19,7 +19,7 @@ const _exec = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
 // ⛔ 研究字樣(交易術語「回測月線 / 回測不破」那種是「股價回頭測試」,不是回測研究 → 白名單)
 const BAD = [
-    /實測/, /探針/, /六關/, /六道關卡/, /起點中位/, /\d+\s*條起點/, /對照組/, /安慰劑/, /樣本外/, /_probe\b/, /\.mjs\b/,
+    /實測/, /(?<!測試\s?\/\s?)探針(?!卡)/, /六關/, /六道關卡/, /起點中位/, /\d+\s*條起點/, /對照組/, /安慰劑/, /樣本外/, /_probe\b/, /\.mjs\b/,
     /\bV\d{2}\.\d\.\d\b/, /含息/, /贏\s*0050/, /輸\s*0050/, /勝率\s*[\d.]+\s*%/, /期望值?\s*[+\-−]?[\d.]+\s*%/,
     /回測(?!月線|季線|年線|半年線|支撐|不破|頸線|均線|\d+\s*日線|前高|前低|缺口|低點|高點|底部|守住|成功|失敗|5MA|10MA|20MA|60MA|突破點|平台)/,
     /逐年(?:同向|全正|全負)/, /模擬(?:成績|帳|買賣)/, /前後半/, /基準勝率/, /條路徑/,
@@ -31,7 +31,7 @@ const badOf = s => BAD.filter(r => r.test(s)).map(r => String(r));
 const STRATS = (process.env.STRATS || 'gene,lead').split(',');
 const SCOPE = process.env.SCOPE ? new Set(process.env.SCOPE.split(',')) : null;
 const REPORT = !!process.env.REPORT;
-const AREA = k => k === 'desk' ? 'desk' : k.startsWith('ov_') ? 'ov' : k.startsWith('diag_report') ? 'report'
+const AREA = k => k === 'desk' ? 'desk' : k.startsWith('ov_') ? 'ov' : k.startsWith('diag_report') ? 'report' : k === 'pa' ? 'diag'
     : k.startsWith('diag_') ? 'diag' : k.startsWith('help_') ? 'help' : k === 'settings' ? 'settings' : k === 'jargon' ? 'help' : 'pages';
 
 const browser = await chromium.launch({ ...(fs.existsSync(_exec) ? { executablePath: _exec } : {}), args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
@@ -51,6 +51,8 @@ for (const strat of STRATS) {
     await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof app !== 'undefined' && typeof app.renderDeck === 'function', null, { timeout: 60000 });
     await page.waitForTimeout(8000);
+    // ⚠️ 沙箱沒有 Tailwind → whitespace-pre-wrap 不生效,整個說明會擠成一行(看不出是哪一句違規)
+    await page.addStyleTag({ content: '.whitespace-pre-wrap{white-space:pre-wrap!important}.whitespace-pre-line{white-space:pre-line!important}' });
     if (process.env.INJECT) await page.evaluate(() => { const o = app._leaderDeckHtml, o2 = app.renderDeck; app.renderDeck = async function (...a) { const r = await o2.apply(this, a); const b = document.getElementById('tabContentDesk') || document.body; b.insertAdjacentHTML('afterbegin', '<div>實測 17 條起點中位 +953%</div>'); return r; }; });
     const grab = async (key, fn, arg, wait = 3000) => {
         const skip = SCOPE && !SCOPE.has(AREA(key));
@@ -61,30 +63,48 @@ for (const strat of STRATS) {
         // ⭐ 滑鼠停上去才看得到的 title 也算畫面(使用者:「整份資料我都要查」)
         const txt = await page.evaluate(() => { document.querySelectorAll('details').forEach(d => { d.open = true; });
             const tt = [...document.querySelectorAll('[title]')].filter(e => e.offsetParent !== null).map(e => '[title] ' + e.getAttribute('title').replace(/\n/g, ' '));
-            return document.body.innerText + '\n' + tt.join('\n'); });
+            // ⭐ 按了才跳出來的說明(onclick 裡直接寫 alert / _helpBox 的文字)也算畫面
+            const oc = [...document.querySelectorAll('[onclick]')].filter(e => e.offsetParent !== null)
+                .map(e => e.getAttribute('onclick')).filter(t => /alert\(|_helpBox\(|_showRichModal\(/.test(t))
+                .flatMap(t => t.split(/\\n|\n/)).map(t => '[onclick] ' + t.slice(0, 300));
+            return document.body.innerText + '\n' + tt.join('\n') + '\n' + oc.join('\n'); });
         const hits = [];
         for (const raw of txt.split('\n')) { const s = raw.trim(); if (!s || ALLOW_LINE.some(r => r.test(s))) continue; const b = badOf(s); if (b.length) hits.push({ line: s.slice(0, 200), bad: b }); }
         all[`${strat}:${key}`] = hits;
     };
-    const closeAll = () => { document.querySelectorAll('#richHelpModal,#jargonModal,#updateLogModal,#settingsModal').forEach(m => { m.classList.add('hidden'); m.style.display = 'none'; }); };
+    const closeAll = () => { document.querySelectorAll('#richHelpModal,#jargonModal,#updateLogModal,#settingsModal').forEach(m => { m.classList.add('hidden'); m.style.display = ''; }); };
     await grab('desk', () => app.switchAppTab('desk'));
     for (const t of ['inv', 'fav', 'market', 'radar', 'etf', 'broker', 'potential', 'hunt']) await grab(t, t => app.switchAppTab(t), t);
+    // ⭐ 每一頁的子分頁也要走過(只掃預設那一格 = 其他格的文字永遠看不到)
+    for (const t of ['global', 'tw', 'idx', 'rot', 'advice']) await grab('mkt_' + t, async t => { app.switchAppTab('market'); app.switchMarketSubTab(t); }, t, 2500);
+    for (const t of ['strategy', 'etf', 'custom', 'broker']) await grab('radarmode_' + t, async t => { app.switchAppTab('radar'); app.switchRadarMode(t); }, t, 2500);
+    const RK = await page.evaluate(() => Object.keys(app._RADAR_TABS || {}));
+    for (const k of RK) await grab('radar_' + k, async k => { app.switchAppTab('radar'); app.switchRadarMode('strategy'); app.switchRadarStrategy(k); }, k, 2000);
+    const CK = await page.evaluate(() => Object.keys(app._CHU_TABS || {}));
+    for (const k of CK) await grab('chu_' + k, async k => { try { await app.openChuMasterModal(); } catch (_) {} app.switchChuTab(k); }, k, 1200);
+    await page.evaluate(() => { document.getElementById('chuMasterModal')?.classList.add('hidden'); });
     await grab('ov_now', async () => { app.switchAppTab('diag'); await app.analyze('2330', true, false, true); app.switchSubTab('strategy'); app.switchOvTab('now'); }, null, 6000);
     await grab('ov_entry', () => app.switchOvTab('entry'));
     await grab('ov_exit', () => app.switchOvTab('exit'));
     for (const st of ['report', 'live', 'daytrade', 'chart', 'chip', 'corp', 'backtest', 'bullbear']) await grab('diag_' + st, st => app.switchSubTab(st), st);
+    for (const t of ['broker', 'dist']) await grab('diag_chip_' + t, async t => { app.switchSubTab('chip'); app.switchChipTab(t); }, t, 2500);
+    await grab('pa', async () => { app.openPriceAlertModal('2330'); }, null, 2500);
+    await page.evaluate(() => { const m = document.getElementById('priceAlertModal'); if (m) m.classList.add('hidden'); });
     await grab('settings', () => { app.openSettings(); });
     await page.evaluate(closeAll);
     // 📖 說明彈窗(每一支都呼叫一次,讀 richHelpModal / jargon / updateLog)
     const HELPS = ['_leaderHelp', '_rulerHelp', '_showEdgeHelp', '_showPbHelp', '_showTodaySigHelp', '_showScrHelp', 'showScrEdgeHelp', 'showPlaybookPatternHelp',
         'showPlaybookConceptHelp', '_showFloorCountHelp', '_helpOvernight', '_dtBeginnerGuide', '_showDtGuide', '_showDtAdvanced', '_showExitHelp', '_showMarginHelp',
         '_showMedGapHelp', '_showPeBandHelp', '_showTrendCommandHelp', '_showTradeMirror', 'showKbarSignalHelp', 'showKbarTacticsHelp', 'showLuOddsHelp', 'showGuardianHelp',
-        '_showAttentionRulesHelp', '_showChuPlanFull', '_showIdxWhy'];
+        '_showAttentionRulesHelp', '_showChuPlanFull', '_showIdxWhy', 'showGranvilleFull', '_showVolSurgeSheet', '_showEnvInfo', 'showMinerInfoPopup'];
     for (const h of HELPS) await grab('help_' + h, async h => {
-        document.querySelectorAll('#richHelpModal,#jargonModal').forEach(m => { m.classList.add('hidden'); m.style.display = 'none'; });
+        // ⚠️ 只加 hidden、⛔ 不可設 style.display='none' —— 開彈窗的函式只拿掉 hidden,inline none 會讓後面每一個說明都量成看不見(假綠燈)
+        document.querySelectorAll('#richHelpModal,#jargonModal').forEach(m => { m.classList.add('hidden'); m.style.display = ''; });
         const f = app[h]; if (typeof f !== 'function') return; const r = f.call(app); if (r && r.then) await r;
+        const vis = [...document.querySelectorAll('#richHelpModal,#jargonModal')].some(m => !m.classList.contains('hidden') && getComputedStyle(m).display !== 'none');
+        if (!vis && !document.querySelector('[id$="Modal"]:not(.hidden)')) window.__helpNoModal = (window.__helpNoModal || []).concat(h);
     }, h, 800);
-    await grab('jargon', () => { const d = document.createElement('div'); d.id = '__jg'; d.textContent = Object.values(app.jargonDict || {}).join('\n'); document.body.appendChild(d); }, null, 200);
+    await grab('jargon', () => { const d = document.createElement('div'); d.id = '__jg'; d.style.whiteSpace = 'pre-line'; d.textContent = Object.values(app.jargonDict || {}).join('\n'); document.body.appendChild(d); }, null, 200);
     await page.close();
 }
 await browser.close();

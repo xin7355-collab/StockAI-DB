@@ -93,11 +93,19 @@ ok('⑨ `_SUPPLY_EDGE` 三段齊全且**穿過去的機率單調遞減**(牆越�
 ok('⑩ `_supplyOdds` 依「佔量 %」查得到對的那一段;0 回 null(⛔ 不假裝有成績)',
    R.odds.big.lbl === '大' && R.odds.mid.lbl === '中' && R.odds.small.lbl === '小' && R.odds.zero === null,
    JSON.stringify(R.odds));
-ok('⑪ 上檔空間卡有寫出實測賠率,而且數字**來自 `_SUPPLY_EDGE`**(注入:把數字**寫死在文案裡** → 必紅。⛔ 注意「改常數」不是有效注入 —— 兩邊都讀同一個常數,那樣改只會一起變、照樣綠)',
-   R.html.includes(`${R.odds.big.thru.toFixed(0)}% 穿過去`) && R.html.includes(`${R.odds.big.back.toFixed(0)}% 被壓回`),
-   R.html.slice(-420));
-ok('⑫ 🚨 那段文案**必須寫明不是賣出訊號 + 邊際比成本小**(⛔ 不可變成「彈到這就跑」)',
-   /不是賣出訊號/.test(R.html) && /比來回成本/.test(R.html) && /把期待值放低/.test(R.html), '');
+// 🧹 V78.3.6 散戶 App 不印實測賠率(N% 穿過去 / N% 被壓回 / 邊際比成本小)→ 改釘:
+//    ⑪ 仍要講「那道牆佔多少量 + 屬於哪一層(大/中/小,由 `_supplyOdds` 判)」,⛔ 不印穿過去/被壓回的機率
+//    ⑫ 仍要寫明「把期待值放低、⛔ 不是賣出訊號」,⛔ 不出現回測研究字樣
+{
+    const z0 = R.up.list.filter(x => +x.sup > 0)[0];
+    const band = z0 && E ? E.band.find(x => z0.sup < x.max) : null;   // 層級仍由 `_SUPPLY_EDGE` 判(判斷邏輯沒改)
+    ok('⑪ 上檔空間卡要講最近那道套牢區佔多少量 + 第幾層(層級讀 `_SUPPLY_EDGE`),⛔ 不印實測穿過去/被壓回機率(🧹 V78.3.6)',
+       !!z0 && !!band && R.html.includes(`${z0.sup.toFixed(0)}%</b>`) && R.html.includes(`(${band.lbl}層)`)
+       && !R.html.includes(`${R.odds.big.thru.toFixed(0)}% 穿過去`) && !/穿過去|被壓回\s*\d|\d+%\s*被壓回/.test(R.html),
+       R.html.slice(-420));
+}
+ok('⑫ 🚨 那段文案**必須寫明不是賣出訊號 + 把期待值放低**,⛔ 不出現回測研究字樣(🧹 V78.3.6 拿掉「邊際比成本小」)',
+   /不是賣出訊號/.test(R.html) && /把期待值放低/.test(R.html) && !/比來回成本|實測|回測|探針|pp\b/.test(R.html.replace(/<[^>]+>/g, '')), '');
 ok('⑬ ⛔ 文案不可出現賣出/進場**指令**詞',
    !/(就跑|該賣|停利出場|可以賣|建議賣出|放空|彈到這就)/.test(R.html), (R.html.match(/就跑|該賣|停利出場|可以賣|建議賣出|放空|彈到這就/) || [''])[0]);
 {

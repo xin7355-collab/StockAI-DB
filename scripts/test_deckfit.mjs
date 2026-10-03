@@ -125,7 +125,15 @@ await page.evaluate(rwdShim);
                  costWarn: !!document.querySelector('[data-deckfitcost]'),
                  txt: d ? d.innerText.replace(/\s+/g, ' ') : '',
                  buyTxt: (buy && buy.innerText || '').replace(/\s+/g, ' '),
-                 idleLen: (idle && idle.innerHTML || '').length };
+                 idleLen: (idle && idle.innerHTML || '').length,
+                 // 🧹 V78.3.6 一般模式每列只寫「⛔ 扣完手續費不划算」(數字只在實驗室模式)
+                 negMarked: [...document.querySelectorAll('[data-deckfitrow]')].filter(e => /扣完手續費不划算/.test(e.innerText)).length,
+                 labTxt: await (async () => {
+                     const de = document.documentElement; de.classList.add('lab');
+                     try { for (let i = 0; i < 100 && app._deckBusy; i++) await new Promise(r => setTimeout(r, 100));
+                           await app.renderDeck(); const d2 = document.querySelector('[data-deckfit]'); return d2 ? d2.innerText.replace(/\s+/g, ' ') : ''; }
+                     finally { de.classList.remove('lab'); for (let i = 0; i < 100 && app._deckBusy; i++) await new Promise(r => setTimeout(r, 100)); await app.renderDeck(); }
+                 })() };
     });
     ok('ⓓ 空過守門:掃到的母體要合理(≥1000 檔、🧬 ≥10 檔)', r.F.ready && r.F.scanned >= 1000 && r.F.gene >= 10, JSON.stringify(r.F));
     ok('ⓓ2 決策台要有「符合進場」那一段', r.has, r.buyTxt.slice(-150));
@@ -134,7 +142,11 @@ await page.evaluate(rwdShim);
     ok('ⓓ5 要寫明這是候選、最終判定在個股頁(⛔ 這裡算不出空頭守門)', /候選/.test(r.txt) && /個股頁/.test(r.txt), r.txt.slice(-250));
     // 💸 扣成本後為負的一定要講(⛔ 不可列一排股票卻不說它賺不到手續費)
     const allNeg = r.exps.length > 0 && r.exps.every(e => e - 0.44 < 0);
-    ok('ⓓ6 每一列都要寫「扣掉來回成本之後」', r.rows === 0 || /扣掉來回成本/.test(r.txt), r.txt.slice(0, 250));
+    // 🧹 V78.3.6 散戶 App 不印期望值/勝率/成本數字 → 一般模式釘「賺不到手續費的那幾列要標出來」+ ⛔ 不可有數字;數字在 lab 模式照舊
+    const negN = r.exps.filter(e => e - 0.44 < 0).length;
+    ok('ⓓ6 一般模式:扣完成本為負的每一列都要寫「扣完手續費不划算」(🧹 V78.3.6)', r.negMarked === negN, `標了 ${r.negMarked} / 應標 ${negN}`);
+    ok('ⓓ6b 🧹 V78.3.6 一般模式⛔ 不可出現期望值/勝率/扣掉來回成本 X% 這類研究數字', !/期望 -?\d|勝率 \d|扣掉來回成本/.test(r.txt), r.txt.slice(0, 250));
+    ok('ⓓ6c 實驗室模式每一列仍要寫「扣掉來回成本之後」', r.rows === 0 || /扣掉來回成本/.test(r.labTxt), r.labTxt.slice(0, 250));
     ok('ⓓ7 全部賺不到成本時要明說', !allNeg || r.costWarn, `allNeg=${allNeg} warn=${r.costWarn}`);
     ok('ⓔ 有候選時⛔ 不可同時顯示「今天不用做」', r.F.n === 0 || r.idleLen === 0, `fit=${r.F.n} idle=${r.idleLen}`);
 }

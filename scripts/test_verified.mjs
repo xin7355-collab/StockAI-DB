@@ -12,7 +12,7 @@
  * ⛔ 這支要釘死的八件事:
  *   ① 成績表的數字要跟 CLAUDE.md 記錄的實測值**完全一致**(⛔ 不可憑印象填)。
  *   ② 🚨 一定要同時出現「勝率高卻少賺」那組反例 —— 那是整段最重要的一句。
- *   ③ 基準勝率要寫 **36.4%** 而不是 50%,而且要講「沒扣滑價」「沒經歷空頭」。
+ *   ③ 基準勝率要寫 **36.4%** 而不是 50%,而且要講「沒扣滑價」「沒經歷空頭」(🧹 V78.3.6 起整張表只在實驗室模式,②b~③c 在 lab 模式量)。
  *   ④ A 級門檻**五關全部來自實測**,⛔ 不可自己訂一個好看的數字。
  *   ⑤ 樣本門檻要走 `_wrEnough`(⛔ 不可在這裡寫死 10)。
  *   ⑥ 沒過 A 級要**說得出卡在哪一關**(⛔ 只回 false 查不出原因)。
@@ -60,12 +60,16 @@ await page.waitForFunction(() => typeof app !== 'undefined' && !!app._pbGrade &&
 
 const R = await page.evaluate(() => {
     const E = app._VERIFIED_EDGE;
+    // 🧹 V78.3.6 驗證成績表只在實驗室模式(`_labMode()`)→ 一般模式先量「整塊不出現」,再切 lab 量原本那幾條
+    const htmlNormal = app._verifiedEdgeHtml();
+    document.documentElement.classList.add('lab');
     const html = app._verifiedEdgeHtml();
+    document.documentElement.classList.remove('lab');
     const d = document.createElement('div'); d.innerHTML = html;
     const txt = (d.innerText || d.textContent || '').replace(/\s+/g, '');
     const good = { s: '1', k: 'x', w: 64.3, po: 4.13, lb: 2.1, n: 14, hq: 1 };
     return {
-        E, html, txt,
+        E, html, txt, htmlNormal,
         good: app._pbGrade(good),
         noHq: app._pbGrade({ ...good, hq: 0 }),
         fewN: app._pbGrade({ ...good, n: 8 }),
@@ -99,7 +103,10 @@ ok('②b 文案要明講「提高勝率不是對的目標」',
 ok('②c 勝率最高那組(44.2%)要標「只做 52 次」',
    V.vars.some(r => r.wr === 44.2 && r.n === 52) && /52次/.test(R.txt), R.txt.slice(-200));
 
-// ③ 三個限制
+// 🧹 V78.3.6 一般模式(散戶 App)⛔ 整塊不出現(②b~③c 在 lab 模式量)
+ok('②0 🧹 V78.3.6 一般模式:驗證成績表整塊不出現(只在實驗室模式)', R.htmlNormal === '' && R.html.length > 500, String(R.htmlNormal).slice(0, 120));
+
+// ③ 三個限制(lab 模式)
 ok('③ 基準勝率寫 36.4%(⛔ 不是 50%)', V.base.winBase === 36.4 && /36\.4%/.test(R.txt));
 ok('③b 要講「沒扣滑價」', /沒扣.{0,2}滑價|沒扣滑價/.test(R.txt), R.txt.slice(-260));
 ok('③c 🚨 要講「期間沒有一年是空頭」', /沒有一年是空頭/.test(R.txt), R.txt.slice(-260));

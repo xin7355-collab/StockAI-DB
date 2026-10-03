@@ -217,8 +217,9 @@ const R = await page.evaluate(async () => {
 await browser.close();
 
 ok('① 出場/停損類 → **彈窗**(那是錯過會住套房的事)', R.exitShown && /鐵血停損/.test(R.exitTitle), R.exitTitle);
-ok('①b 彈窗要附**實測數字**說明為什麼值得打斷(⛔ 不是只喊快跑)',
-   /30~33%/.test(R.exitEdge) && /小賠出場/.test(R.exitEdge), R.exitEdge.slice(0, 90));
+// 🧹 V78.3.6 散戶 App 不印實測數字(30~33% 勝率)→ 改釘:仍要說明「為什麼值得打斷」(小賠出場)且⛔ 不可出現勝率/實測數字
+ok('①b 彈窗要說明為什麼值得打斷(⛔ 不是只喊快跑),⛔ 不可印實測勝率數字(🧹 V78.3.6)',
+   /小賠出場/.test(R.exitEdge) && /少提醒一次/.test(R.exitEdge) && !/30~33%|勝率|實測|回測|\d+(\.\d+)?\s*%/.test(R.exitEdge), R.exitEdge.slice(0, 90));
 ok('①c 已經彈窗就⛔ 不要再 toast 一次(⛔ 同一件事講兩遍)', R.exitToast === 0, `toast=${R.exitToast}`);
 ok('② 同一件事一天只跳一次(⛔ 否則門檻上下震盪會連跳)', R.dupShown === false, `dupShown=${R.dupShown}`);
 ok('②b 但沒彈窗時⛔ 不可靜默 —— 一定要有 toast', R.dupToast === 1, `toast=${R.dupToast}`);
@@ -264,7 +265,8 @@ ok('⑫b 第 2 擊 = 你設定的出場線(設定改成唐奇安 → 名字與�
     ok('⑫b2 靜態:_comboPlan 讀 this._exitRuleKey()(⛔ 不可寫死某一條)', fn.length > 100 && /this\._exitRuleKey\(\)/.test(fn) && !/key = '(ma5|atr2|don|trail8)'/.test(fn));
 }
 ok('⑫c 零股族股數要對(0.07 張 = 70 股 → 一半 35 股,⛔ 不是 1 張)', !!R.plan && R.plan.sh === 70 && R.plan.half === 35 && /35 股/.test(R.comboTxt), JSON.stringify(R.plan));
-ok('⑫d 🚨 必須寫「串起來沒有另外回測」+「不是自動下單」', /串起來沒有另外回測/.test(R.comboTxt) && /不是自動下單/.test(R.comboTxt), R.comboTxt.slice(-120));
+// 🧹 V78.3.6 散戶 App 不放回測研究字樣 →「串起來沒有另外回測」那句拿掉;改釘:仍寫「不是自動下單」+ ⛔ 不可出現研究字樣
+ok('⑫d 🚨 必須寫「不是自動下單」+ 以個股頁為準,⛔ 不可出現實測/回測研究字樣(🧹 V78.3.6)', /不是自動下單/.test(R.comboTxt) && /現在該做什麼/.test(R.comboTxt) && !/實測|回測|勝率\s*\d|期望值|對照組|基準/.test(R.comboTxt), R.comboTxt.slice(-120));
 ok('⑫e 有貨才顯示「幫我盯第 2 擊」', R.armShown === true);
 ok('⑫f 按下去 → 到價提醒 + 連續技清單都要有(⛔ 只記一邊等於沒接力)', R.armedPA === 1 && !!R.armedWatch && R.armedWatch.step === 2, `pa=${R.armedPA} watch=${JSON.stringify(R.armedWatch)}`);
 ok('⑬ 第 2 擊接力:沒跌破⛔ 不跳', R.hit0 === false && R.hit0Shown === false);

@@ -271,7 +271,7 @@ ok('⑥ 決策台 amt20 < 1 億 → 🚧量薄;5 億 → 不標', TH.thin && !TH
 ok('⑥b 快照還沒載到 / 欄位是 null → ⛔ 不標(不知道 ≠ 很薄)', !TH.none && !TH.nul);
 ok('⑥c ⭐ 決定性對照:門檻改成 0.2 億 → 同一檔 0.3 億就不標', !TH.moved);
 ok('⑥d 量薄要講「可能買不到 / 墊高價格」,🧹 V78.3.4 ⛔ 不提回測', /量這麼薄/.test(TH.thinTxt) && !/回測|實測/.test(TH.thinTxt));
-// ⑦ 📐 K棒轉多/轉空榜每一列的實測成績(標題反查 `_SIGNAL_EDGE`,⛔ 單根變盤線不借成績)
+// ⑦ 📐 K棒轉多/轉空榜每一列的實測成績(標題反查 `_SIGNAL_EDGE`,⛔ 單根變盤線不借成績)(🧹 V78.3.6 只在實驗室模式顯示 → ⑦~⑦c 在 lab 模式量,⑦e 釘一般模式不印)
 const KB = await page.evaluate(() => {
     const keys = Object.keys(app._SIGNAL_EDGE);
     const star = keys.find(k => k.endsWith('｜晨星轉折')), night = keys.find(k => k.endsWith('｜夜星轉折'));
@@ -279,18 +279,28 @@ const KB = await page.evaluate(() => {
     app.radarMatrix = { updated: 't', data: { kbar_bull: [{ sym: '2330', close: 1, turnover_e: 9, gain: 1, status: '晨星轉折 + 低檔十字變盤線(轉折警訊,次日確認)' }], kbar_bear: [{ sym: '2317', close: 1, turnover_e: 9, gain: -1, status: '夜星轉折' }] } };
     app._radarIsDemo = true;
     const body = document.getElementById('radarMatrixBody');
+    // 🧹 V78.3.6 訊號成績標籤只在實驗室模式(`_labMode()`)→ 一般模式先量「⛔ 不可出現」,再切 lab 量原本那幾條
+    app.renderRadarMatrix('kbar_bull'); const bullN = body ? body.innerHTML : '';
+    app.renderRadarMatrix('kbar_bear'); const bearN = body ? body.innerHTML : '';
+    document.documentElement.classList.add('lab');
     app.renderRadarMatrix('kbar_bull'); const bull = body ? body.innerHTML : '';
     app.renderRadarMatrix('kbar_bear'); const bear = body ? body.innerHTML : '';
     const L = app._kbarRadarEdge('晨星轉折 + 低檔十字變盤線(轉折警訊,次日確認)');
     const save = app._SIGNAL_EDGE; const alt = JSON.parse(JSON.stringify(save)); alt[star] = ['A', 999, 1, 50, 0.01, 1, 1, 7.77];
     const saveBt = app._btEdge; app._btEdge = null;   // ⚠️ 每週回測產物(data/backtest_edge.json)優先 → 要先拿掉,否則改常數量不到(本地有抓 gh-pages 資料時假失敗)
-    app._SIGNAL_EDGE = alt; app._kbarTitleIdx = null; const moved = app._kbarRadarEdgeHtml('晨星轉折', true); app._SIGNAL_EDGE = save; app._btEdge = saveBt; app._kbarTitleIdx = null;
-    return { hasBody: !!body, bull, bear, L: L.map(x => [x.t, x.det, x.e && x.e.grade]), eS, moved, starDet: star.split('｜')[0], nightOk: !!night };
+    app._SIGNAL_EDGE = alt; app._kbarTitleIdx = null; const moved = app._kbarRadarEdgeHtml('晨星轉折', true);
+    document.documentElement.classList.remove('lab');
+    const movedN = app._kbarRadarEdgeHtml('晨星轉折', true);   // 一般模式:改了常數也⛔ 不印
+    app._SIGNAL_EDGE = save; app._btEdge = saveBt; app._kbarTitleIdx = null;
+    if (body) app.renderRadarMatrix('kbar_bull');
+    return { hasBody: !!body, bull, bear, bullN, bearN, movedN, L: L.map(x => [x.t, x.det, x.e && x.e.grade]), eS, moved, starDet: star.split('｜')[0], nightOk: !!night };
 });
 ok('⑦ 轉多榜:晨星對到偵測器並印實測等級 + 每趟期望值;單根變盤線 → 未驗證', KB.hasBody && KB.L[0][1] === KB.starDet && KB.L[0][2] === KB.eS.grade && KB.L[1][1] === null && /data-kbedge/.test(KB.bull) && /data-kbg="na"/.test(KB.bull) && new RegExp(`每趟${KB.eS.exp >= 0 ? '\\+' : ''}${(+KB.eS.exp).toFixed(2)}%`).test(KB.bull), JSON.stringify(KB.L));
 ok('⑦b 轉空榜看 10 日邊際(⛔ 不看期望值)', KB.nightOk && /data-kbg="[ABC]"[^>]*>[^<]*10日[+-]?\d/.test(KB.bear) && !/data-kbg="[ABC]"[^>]*>[^<]*每趟/.test(KB.bear));
 ok('⑦c ⭐ 決定性對照:成績表改成 7.77 → 標籤跟著變(⛔ 不是寫死)', /每趟\+7\.77%/.test(KB.moved) && /data-kbg="A"/.test(KB.moved), KB.moved.slice(0, 200));
 ok('⑦d 標籤⛔ 無 🔴🟢', !/[🔴🟢]/u.test(KB.bull + KB.bear));
+ok('⑦e 🧹 V78.3.6 一般模式:K棒轉多/轉空榜⛔ 不印實測成績標籤(等級 / 每趟 / 10日 / 未驗證),改常數也一樣',
+   KB.hasBody && !/data-kbedge|data-kbg|每趟[+-]|10日[+-]?\d|未驗證/.test(KB.bullN + KB.bearN) && KB.movedN === '' && /2330/.test(KB.bullN), KB.bullN.slice(0, 200));
 const PROH = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 const proMin = (PROH.match(/CAST_MIN_AMT: ([\d.]+),/) || [])[1], idxMin = (SRC.match(/_DECK_THIN_AMT: ([\d.]+),/) || [])[1];
 ok('⑥e 門檻 index `_DECK_THIN_AMT` == pro `CAST_MIN_AMT`(同一條線)', proMin && proMin === idxMin, `${idxMin} vs ${proMin}`);

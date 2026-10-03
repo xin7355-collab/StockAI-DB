@@ -52,7 +52,9 @@ if (!fs.existsSync(path.join(ROOT, 'data', `${SYM}.json`))) { console.log(`❌ �
     ok('ⓑs2 行事曆那一則⛔ 不可出現部位/方向指令(實測行事曆方向 0 個成立)', bad.length === 0, bad.join(','));
     ok('ⓑs3 行事曆那則⛔ 不可放在 `emg` 紅框(它不是今天已經發生的事)→ 要走 `emgNote`',
        /emgNote\.push\(['`]📅/.test(s) && !/emg\.push\(['`]📅/.test(s), '');   // V77.5.1 改成 template literal(要寫出事件名稱)→ 兩種引號都收
-    ok('ⓑs4 那則要明講「本站不預設漲跌」', /不預設漲跌/.test(s) && /方向 0 個成立/.test(s), '');
+    // 🧹 V78.3.6 「實測 37 種行事曆日方向 0 個成立」那句研究說明不再印給散戶 → 只留白話「不預設漲跌」
+    const oneAll = (() => { const i = s.indexOf('emgNote.push(`📅'); if (i < 0) return ''; const j = s.indexOf('\n', i); return j > i ? s.slice(i, j) : s.slice(i, i + 900); })();   // 整則 push(那一整行;內含巢狀 template literal,⛔ 不可用第一個 `); 當結尾)
+    ok('ⓑs4 那則要明講「本站不預設漲跌」(🧹 V78.3.6 ⛔ 不再附實測說明)', /重大事件迫近/.test(oneAll) && /不預設漲跌/.test(oneAll) && !/實測|0 個成立|calendar_stock_probe|回測/.test(oneAll), oneAll.slice(-160));
 }
 {   // ⓒs 毛利率 / 自由現金流
     const g = seg('    _gmLatest(C) {', '    _rpIndustryFacts(sym) {');
@@ -404,7 +406,9 @@ await page.waitForTimeout(2500);
        r.base && r.base.n > 500 && r.base.hit > 0 && /^\d{4}-\d{2}-\d{2}$/.test(String(r.base.d)), JSON.stringify(r.base));
     const h = seg("        const st = T.struct ? (() => {", "        return `<div class=\"text-[10px] font-bold text-gray-300 mt-2 mb-0.5\">📈 近 ${T.disp} 季趨勢");   // V77.3.0 起標題印 disp(8 季)
     ok('ⓛ5 畫面上⛔ 不可做成 ⚠️ 警示(23% 的股票都會亮),而且**一定要印出基準率**',
-       /這不是罕見事件/.test(h) && /data-rpstructbase/.test(h) && !/text-amber-200/.test(h) && /沒有回測過/.test(h), h.slice(0, 200));
+       /這不是罕見事件/.test(h) && /data-rpstructbase/.test(h) && !/text-amber-200/.test(h)
+       // 🧹 V78.3.6 「沒有回測過」那句研究字樣改成白話「⛔ 這只是事實,不是買賣訊號」(基準率是事實,照印)
+       && /不是買賣訊號/.test(h) && !/回測|實測|勝率|期望值/.test(h), h.slice(0, 200));
 }
 // ⓜ 出貨徵兆:亮的攤開、沒亮的收摺疊(⛔ 一個字都沒刪)
 {
@@ -608,11 +612,14 @@ await page.waitForTimeout(2500);
     // ⚠️ 斷言釘**用意**不是釘字串:那個 +1.44pp 出現在題材頁是**刻意的**
     //   —— 它是用來說「那是官方產業測的,⛔ 不可以套到題材上」。
     //   要擋的是「拿它當題材的背書」,所以同一句一定要有「沒有回測過」+「不可以套到題材上」。
-    ok('ⓡ5 ⛔ 題材頁要明說「沒有回測過」且「不可以套到題材上」',
-       /沒有回測過/.test(r.th.lead) && /不可以套到題材上/.test(r.th.lead)
-       && !/避開最弱那幾族/.test(r.th.lead), r.th.lead.slice(0, 200));
-    ok('ⓡ6 ⭐ 官方產業頁**照舊**引用那組實測數字(⛔ 不可一起拿掉)',
-       /1\.44pp/.test(r.ind.lead), r.ind.lead.slice(0, 160));
+    // 🧹 V78.3.6 散戶 App 不印實測/回測字樣 → 題材頁改釘:白話講「名單是本站自己框的、不是買賣訊號」,
+    //   ⛔ 不可借官方產業那句「避開最弱」的結論,也⛔ 不可出現 +1.44pp / 研究字樣
+    ok('ⓡ5 🧹 V78.3.6 題材頁:明說「本站自己框的、不是買賣訊號」,⛔ 不借「避開最弱」、⛔ 沒有研究字樣',
+       /本站自己框的/.test(r.th.lead) && /不是買賣訊號/.test(r.th.lead)
+       && !/避開最弱那幾族/.test(r.th.lead) && !/1\.44pp|實測|回測|探針|_probe/.test(r.th.lead), r.th.lead.slice(0, 200));
+    // 🧹 V78.3.6 官方產業頁:+1.44pp 那個數字不再印(只在背後當依據),但那句「怎麼做」(避開最弱)⛔ 不可一起拿掉
+    ok('ⓡ6 🧹 V78.3.6 官方產業頁照舊給「避開最弱」那句怎麼做(⛔ 不印 +1.44pp)',
+       /避開最弱/.test(r.ind.lead) && !/1\.44pp/.test(r.ind.lead), r.ind.lead.slice(0, 160));
     ok('ⓡ7 ⛔ 畫面上不可印出 markdown 的 `**`', !/\*\*/.test(r.th.lead) && !/\*\*/.test(r.ind.lead), '');
     // 陷阱 #27:樣本少的不進前 3 / 後 3
     ok('ⓡ8 ⭐ 樣本少(<5 檔)的題材⛔ 不可進最強/最弱那一句',

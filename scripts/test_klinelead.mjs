@@ -12,7 +12,7 @@
  *   ④ 頁首條⛔ 不可下指令(單一劇本原則:指令只在總覽「現在怎麼做」)
  *   ⑤ 沒訊號時頁首照樣給「➖ 不做等表態」(⛔ 不可留白讓人以為壞掉)
  *   ⑥ 風險收進摺疊的交換條件:頁首要列出風險**標題**(只寫「有 N 條」= 沒提醒)
- *   ⑦ 六脈亮「強共振」(唯一六關全過的複合訊號)→ 頁首露一行;⛔ 空頭時不露(_bearGate)
+ *   ⑦ 六脈亮「強共振」(唯一六關全過的複合訊號)→ 頁首露一行;⛔ 空頭時不露(_bearGate);🧹 V78.3.6 ⛔ 不附實測數字
  */
 import fs from 'fs';
 import path from 'path';
@@ -44,8 +44,10 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
         /klineLead/.test(fnSeg) && /_leadSet\(_headline \+ _leadRisk \+ _leadSix/.test(fnSeg));
     ok('⑤ 沒訊號的分支也要給頁首一句話(➖ 不做等表態)',
         /_leadSet\(`[^`]*一個型態訊號都沒偵測到/.test(fnSeg));
-    ok('⑦ 六脈頁首那行要過 _bearGate(空頭不露)且附實測數字、⛔ 不下指令',
-        /startsWith\('🔴'\) && !this\._bearGate/.test(fnSeg) && /\+0\.80 個百分點/.test(fnSeg));
+    // 🧹 V78.3.6 散戶 App 不印實測數字 → 改釘「過 _bearGate」+ 那行⛔ 不可有實測數字/研究字樣
+    const sixLine = (fnSeg.match(/_leadSix = `[^`]*`/) || [''])[0];
+    ok('⑦ 六脈頁首那行要過 _bearGate(空頭不露)、⛔ 不下指令、⛔ 不附實測數字(🧹 V78.3.6)',
+        /startsWith\('🔴'\) && !this\._bearGate/.test(fnSeg) && /強共振/.test(sixLine) && !/個百分點|pp|實測|勝率/.test(sixLine), sixLine.slice(0, 160));
 }
 
 // ── 動態(真引擎 headless)──
@@ -101,7 +103,9 @@ const R = await page.evaluate(async () => {
     app._sixMeridianCalc = () => ({ verdict: '🔴 強共振・買點', okN: 5, tone: 'red', cond: [] });
     app._bearGate = () => false;
     app.renderKbarTactics(dataR);
-    o.sixOn = /(強共振)[\s\S]*\+0\.80 個百分點/.test((document.getElementById('klineLead') || { innerText: '' }).innerText);
+    { const t6 = (document.getElementById('klineLead') || { innerText: '' }).innerText;
+      o.sixOn = /六脈共振亮/.test(t6) && /強共振/.test(t6);
+      o.sixNoNum = !/個百分點|\d+(\.\d+)?pp|實測|勝率/.test(t6); }
     app._bearGate = () => true;
     app.renderKbarTactics(dataR);
     o.sixOffBear = !/六脈共振亮/.test((document.getElementById('klineLead') || { innerText: '' }).innerText);
@@ -120,7 +124,8 @@ ok('④ ⛔ 頁首不下指令、不給價位(單一劇本:指令在總覽),而�
     !/可進場|買進 \d|掛單|停損 \d|目標價 \d/.test(R.leadTxt) && /總覽/.test(R.leadTxt), R.leadTxt.slice(0, 160));
 ok('① 摺疊實跑也是收起的、卡在裡面', R.wrapClosed && R.inWrap, JSON.stringify({ c: R.wrapClosed, i: R.inWrap }));
 ok("⑥ ⭐ 風險提醒的**標題**要列在頁首(⛔ 只寫「有 N 條」= 沒提醒)", R.riskListed, R.riskLead.slice(0, 200));
-ok('⑦ 六脈亮「強共振」→ 頁首露一行(附實測 +0.80)', R.sixOn === true, '');
+ok('⑦ 六脈亮「強共振」→ 頁首露一行(🧹 V78.3.6 不附實測 +0.80)', R.sixOn === true, '');
+ok('⑦c 🧹 V78.3.6 一般模式頁首⛔ 不可出現實測數字/研究字樣', R.sixNoNum === true, '');
 ok('⑦b ⛔ 空頭(_bearGate)時六脈那行不露(講反話鐵則)', R.sixOffBear === true, '');
 ok('⑤b 資料不足時頁首收掉(⛔ 不殘留上一檔)', R.leadGone === true, '');
 

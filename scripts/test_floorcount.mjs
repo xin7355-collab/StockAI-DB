@@ -60,9 +60,10 @@ ok('① 空陣列也不爆', x.s === null && x.html === '');
 x = await run(hist(120, 520, 60));
 ok('② n=520 → hot=true', x.s && x.s.hot === true, JSON.stringify(x.s));
 ok('② 家數/爆量數都要顯示', /520/.test(x.html) && /60/.test(x.html), x.html.slice(0, 500));
-ok('② 要端出實測數字(+1.55 / +1.44 / +1.45)',
-    /\+1\.55/.test(x.html) && /\+1\.44/.test(x.html) && /\+1\.45/.test(x.html), x.html);
-ok('② 要寫出樣本天數 51 天', /51 天/.test(x.html), x.html);
+// 🧹 V78.3.6 散戶 App 不印實測數字(+1.55/+1.44/+1.45、51 天)→ 改釘:講「怎麼用」(分批撿的參考),⛔ 不可出現研究字樣
+const RES = /實測|回測|探針|勝率|期望值|對照組|樣本|\+1\.\d\d|\d+ 天|pp\b|未扣交易成本/;
+ok('② 極端時要講「大盤跌到可以開始分批撿」的參考(🧹 V78.3.6)', /可以開始分批撿/.test(x.html), x.html);
+ok('② ⛔ 不可印實測數字 / 樣本天數 / 研究字樣(🧹 V78.3.6)', !RES.test(x.html.replace(/<[^>]+>/g, '')), x.html);
 const hotHtml = x.html;
 
 // ── ③ ⛔ 不可下進場指令(單一劇本原則 + 接刀實測輸大盤)────────────
@@ -84,16 +85,17 @@ ok('④ ⛔ 家數/位階數字不可上紅綠(text-red-*/text-green-*)',
 // ── ⑤ 中間段(50~299)不可被說成好事 —— 實測反而略差 ────────────
 x = await run(hist(120, 250, 20));
 ok('⑤ n=250 → hot=false', x.s && x.s.hot === false, JSON.stringify(x.s));
-ok('⑤ 要明說「還沒到實測有邊際的那一區」', /還沒到實測有邊際/.test(x.html), x.html.slice(0, 600));
+ok('⑤ 要明說「還沒到一起被殺的程度(300 檔以上)」(🧹 V78.3.6 拿掉「實測有邊際」研究字樣)', /還沒到「一起被殺」的程度/.test(x.html) && /300 檔以上/.test(x.html) && !RES.test(x.html.replace(/<[^>]+>/g, '')), x.html.slice(0, 600));
 ok('⑤ ⛔ 中間段不可宣稱有優勢', !/\+1\.55/.test(x.html), x.html.slice(0, 600));
 ok('⑤ ⭐ 不熱時也要提醒「不代表可以放心做多」', /放心做多/.test(x.html), x.html.slice(0, 900));
 
 // ── ⑥ 非單調的警語必須留著(⛔ 別為了好看拿掉)──────────────────
 for (const [nm, h] of [['極端', hist(120, 520, 60)], ['中間', hist(120, 250, 20)]]) {
     const r = await run(h);
-    ok(`⑥ ${nm}段都要有「非連續指標」警語`,
-        /只有在極端多的時候才有邊際/.test(r.html) && /50～299|50~299/.test(r.html), r.html.slice(-400));
-    ok(`⑥ ${nm}段都要寫「未扣交易成本」`, /未扣交易成本/.test(r.html), r.html.slice(-300));
+    // 🧹 V78.3.6 警語改白話(⛔ 別當成「越大越好」的連續指標 + 只有 300 檔以上才有參考意義);「未扣交易成本」是回測口徑 → 改釘⛔ 不出現研究字樣
+    ok(`⑥ ${nm}段都要有「非連續指標」警語(🧹 V78.3.6 白話版)`,
+        /連續指標/.test(r.html) && /數字越大越好/.test(r.html) && /300 檔以上/.test(r.html), r.html.slice(-400));
+    ok(`⑥ ${nm}段⛔ 不可出現回測研究字樣(🧹 V78.3.6)`, !RES.test(r.html.replace(/<[^>]+>/g, '')), r.html.slice(-300));
 }
 
 // ── ⑦ 位階要用「自己的歷史」算,⛔ 不是寫死門檻 ────────────────
@@ -112,11 +114,12 @@ const help = await page.evaluate(() => {
     try { app._showFloorCountHelp(); } finally { window.alert = orig; app._helpBox = oh; }
     return cap;
 });
-ok('⑧ 教學要說明門檻改用 300(而不是他口述的 100)', /300/.test(help) && /100/.test(help), help.slice(0, 300));
-ok('⑧ 教學要點出「只出現 11 天、樣本太少」', /11 天/.test(help), help);
-ok('⑧ 教學要區分個股版(接刀平均輸大盤)', /接刀/.test(help) && /輸大盤/.test(help), help);
-ok('⑧ 教學要寫「回測窗口整段是多頭」', /多頭/.test(help), help);
-ok('⑧ 教學要寫「不是 51 個獨立樣本」', /獨立樣本/.test(help), help);
+// 🧹 V78.3.6 教學只留「怎麼看 / 怎麼用」:門檻來源(100→300)、11 天、51 個樣本、多頭窗口、接刀輸大盤的實測都搬去產業作戰室
+ok('⑧ 教學要講地板股怎麼定義(跟自己比、最慘的 5%)', /跟自己比/.test(help) && /5%/.test(help), help.slice(0, 300));
+ok('⑧ 教學要講「極端才有意義,⛔ 不是越多越好的連續指標」', /極端/.test(help) && /連續指標/.test(help), help);
+ok('⑧ 教學要區分大盤層級 vs 個股(⛔ 不是叫你買某一檔,接刀看個股頁)', /大盤層級/.test(help) && /接刀/.test(help) && /不是叫你去買某一檔/.test(help), help);
+ok('⑧ 教學要寫歷史規律不是保證', /不是保證/.test(help), help);
+ok('⑧ 教學⛔ 不可出現實測研究字樣(11 天 / 51 個獨立樣本 / 回測窗口 / 輸大盤)(🧹 V78.3.6)', !/11 天|獨立樣本|回測|實測|輸大盤|樣本/.test(help), help);
 
 // ── ⑨ 採礦端:breadth.json 真的有 flr/flrv,而且**歷史列都補齊**(⛔ 不是從今天開始累積)──
 const bd = path.join(ROOT, 'data', 'breadth.json');

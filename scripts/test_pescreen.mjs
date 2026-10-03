@@ -98,6 +98,15 @@ const R = await page.evaluate((D) => {
     out.noteByCond = app._scrValNote([app._SCR_CONDS.find(x => x.id === 'relcheap')]);
     out.noteTrap = app._scrValNote([app._SCR_CONDS.find(x => x.id === 'valtrap')]);
     out.noteSafe = app._scrValNote([app._SCR_CONDS.find(x => x.id === 'peval')]);
+    // 🧹 V78.3.6 估值實測說明只在實驗室模式顯示 → 研究文字那幾條在 lab 模式量,量完一定移除 class
+    document.documentElement.classList.add('lab');
+    try {
+        app._scrSort = 'pe_a';
+        out.noteBySortLab = app._scrValNote([]);
+        app._scrSort = 'amt';
+        out.noteTrapLab = app._scrValNote([app._SCR_CONDS.find(x => x.id === 'valtrap')]);
+        out.noteSafeLab = app._scrValNote([app._SCR_CONDS.find(x => x.id === 'peval')]);
+    } finally { document.documentElement.classList.remove('lab'); }
     return out;
 }, scr);
 
@@ -142,7 +151,14 @@ ok('③c 勾估值條件 → 顯示', R.noteByCond.length > 200, String(R.noteBy
 
 // ── ④⑤⑥ 文案 ──────────────────────────────────────────────────────
 {
-    const txt = (R.noteBySort || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    // 🧹 V78.3.6 一般模式:⛔ 不印任何實測數字 / 研究字樣,只講「估值只拿來避雷」怎麼做
+    const norm = [R.noteBySort, R.noteByCond, R.noteTrap, R.noteSafe].map(h => (h || '').replace(/<[^>]+>/g, ' ')).join(' ');
+    ok('④0 🧹 V78.3.6 一般模式⛔ 不可出現實測數字 / 研究字樣(pp / 勝率 / 實測 / 六關 / 事件數)',
+       !/\dpp|勝率|實測|回測|六關|個事件|前後半段|0\.44%/.test(norm), (norm.match(/\dpp|勝率|實測|回測|六關|個事件|前後半段|0\.44%/) || [''])[0]);
+    ok('④0b 🧹 V78.3.6 一般模式仍講怎麼做:估值只拿來避雷 + 便宜又跌深 / 低本益比+營收衰退 別碰',
+       /只拿來避雷/.test(norm) && /便宜又跌深/.test(norm) && /營收衰退/.test(norm) && /別碰/.test(norm), norm.slice(0, 200));
+    // ⬇ 以下研究文字在實驗室模式量(斷言內容不變)
+    const txt = (R.noteBySortLab || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
     ok('④ 🚨 必須明說「本益比由低到高實測是輸的」', /由低到高.{0,10}實測是.{0,3}輸/.test(txt), txt.slice(0, 200));
     ok('④b 要附五等分的單調數字(最便宜 −0.69 → 最貴 +0.79)',
        /-0\.69pp/.test(txt) && /\+0\.79pp/.test(txt) && /越便宜反而越差/.test(txt), txt.slice(0, 300));
@@ -161,11 +177,11 @@ ok('③c 勾估值條件 → 顯示', R.noteByCond.length > 200, String(R.noteBy
        !/(會賺|穩賺|保證|必漲|一定漲)/.test(stripped), stripped.slice(0, 200));
 }
 {
-    const t = (R.noteTrap || '').replace(/<[^>]+>/g, ' ');
-    ok('⑤ 🚨 勾「價值陷阱」時要明說這張清單是**要避開的**',
+    const t = (R.noteTrapLab || '').replace(/<[^>]+>/g, ' ');
+    ok('⑤ 🚨 (lab)勾「價值陷阱」時要明說這張清單是**要避開的**',
        /要避開的/.test(t) && /不是拿來買的/.test(t), t.slice(-200));
-    const t2 = (R.noteSafe || '').replace(/<[^>]+>/g, ' ');
-    ok('⑤b 勾「低 PE + 營收成長」時要說扣完成本仍是負的',
+    const t2 = (R.noteSafeLab || '').replace(/<[^>]+>/g, ' ');
+    ok('⑤b (lab)勾「低 PE + 營收成長」時要說扣完成本仍是負的',
        /扣掉來回成本 0\.44% 後仍是負的/.test(t2), t2.slice(-200));
 }
 

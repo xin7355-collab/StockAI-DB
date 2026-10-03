@@ -116,14 +116,20 @@ const _ALL = Object.keys(R.perTab);
 const _silent = _ALL.filter(k => !R.weakKeys.includes(k) && !R.statusKeys.includes(k));
 ok('⑨ 🚨 每一個榜都要有實測狀態(📉 沒優勢 / ✅ 有實測 / ⚠️ 間接證據 / 📚 查資料用),⛔ 一個都不可沉默',
    _silent.length === 0, '沉默的:' + JSON.stringify(_silent));
-ok('⑨b 🚨 `todaysig` ⛔ 不可再出現「未納入歷史回測」(它是唯一有實測的那個 —— 以前這兩句同時印,自相矛盾)',
-   !/未納入歷史回測/.test(R.perTab.todaysig || '') && /有實測成績/.test(R.perTab.todaysig || ''),
+// 🧹 V78.3.6 散戶 App 只講「這個榜怎麼用」,實測成績搬到產業作戰室 → 徽章改成白話三種
+//    (✅ 可以參考 / ⚠️ 只當觀察 / 📚 查資料用,不下多空);⑨b~⑨d 改釘新用意(仍不可沉默、仍不可借別人的成績)
+// ⚠️ 「勝率最高的挑法」「爆量基準」這種**描述做法**的字不算研究成績 → 只抓帶數字的勝率/基準勝率與研究用語
+const _RESEARCH = /勝率\s*\d|基準勝率|實測|回測|期望值|對照組|\dpp|36\.4|樣本\s*\d/;
+ok('⑨b 🚨 `todaysig` ⛔ 不可再出現「未納入歷史回測」,而且徽章是「✅ 可以參考」(🧹 V78.3.6 白話)',
+   !/未納入歷史回測/.test(R.perTab.todaysig || '') && /✅ 可以參考/.test(R.perTab.todaysig || ''),
    (R.perTab.todaysig || '').slice(-160));
-ok('⑨c ⭐ 有實測的要附**基準**(36.4% 不是 50%;⛔ 不可只給勝率)', /36\.4|36%/.test(R.perTab.todaysig || ''), '');
-ok('⑨d ⚠️ 只有間接證據的要明說「**這個榜本身沒單獨測過**」,⛔ 不可借別的成績當背書',
-   ['rs_strong', 'momentum', 'monster'].every(k => /沒(有)?單獨(回)?測過|沒有回測過/.test(R.perTab[k] || '')),
+ok('⑨c 🧹 V78.3.6 一般模式每個留下的榜⛔ 不印實測成績 / 基準 / 勝率(⛔ 只講怎麼用)',
+   _ALL.filter(k => !R.weakKeys.includes(k)).every(k => !_RESEARCH.test(R.perTab[k] || '')),
+   JSON.stringify(_ALL.filter(k => _RESEARCH.test(R.perTab[k] || '')).map(k => [k, (R.perTab[k].match(_RESEARCH) || [''])[0]])));
+ok('⑨d ⚠️ 只有間接證據的榜要標「⚠️ 只當觀察」,⛔ 不可借別的成績當背書(🧹 V78.3.6 白話)',
+   ['rs_strong', 'momentum', 'monster'].every(k => /⚠️ 只當觀察/.test(R.perTab[k] || '') && !_RESEARCH.test(R.perTab[k] || '')),
    JSON.stringify(['rs_strong', 'momentum', 'monster'].map(k => (R.perTab[k] || '').slice(-80))));
-const _BADGE = /✅ 這個榜有實測成績|⚠️ 只有間接證據|📚 查資料用,不下多空/;
+const _BADGE = /✅ 可以參考|⚠️ 只當觀察|📚 查資料用,不下多空/;
 ok('⑨e ⛔ 降級榜不可同時掛兩段(📉 沒優勢 + 另一個徽章)—— 同一件事講兩遍',
    R.weakKeys.every(k => !_BADGE.test(R.perTab[k] || '')),
    JSON.stringify(R.weakKeys.filter(k => _BADGE.test(R.perTab[k] || ''))));

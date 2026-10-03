@@ -66,10 +66,15 @@ ok('⑦ 前端有 _runBuyHtml', '_runBuyHtml()' in js_raw)
 ok('⑦a 舊產物沒有這個欄位 → 整段不顯(⛔ 不可謊報「今天沒有」)',
    re.search(r'!Array\.isArray\(d\.runbuy\)', js2c) is not None and "return ''" in js2c)
 ok('⑦b 今天沒中 → 不留空殼', re.search(r'rb\.length\)?\s*return', js2c) is not None or '!rb.length' in js2c)
-for w, lab in (('未扣成本', '未扣成本'), ('窗口偏多頭', '窗口偏多頭'), ('不是保證', '不是保證')):
-    ok(f'⑦c 免責「{lab}」在卡上', w in js2c)
+# 🧹 V78.3.6 散戶 App 不印實測成績與回測口徑免責(未扣成本 / 窗口偏多頭 / 不是保證 都是在講「那個實測數字」)→ 改釘:
+#    ⑦c 這支函式的卡片⛔ 不可出現研究字樣 ・⑦e 採礦端的 runbuy_edge 數字⛔ 不印在卡上(只在產業作戰室看)
+_i = js_raw.find('    _runBuyHtml() {'); _j = js_raw.find('\n    },', _i)
+_fn = '\n'.join(l.split('//')[0] for l in js_raw[_i:_j].split('\n')) if _i >= 0 else ''
+ok('⑦c0 🚧 空過守門:切得到 _runBuyHtml 的函式本體', len(_fn) > 800 and 'd.runbuy' in _fn)
+for w in ('未扣成本', '窗口偏多頭', '實測', '回測', '勝率', '期望值', '對照組', '探針'):
+    ok(f'⑦c ⛔ 卡上不可出現研究字樣「{w}」(🧹 V78.3.6)', w not in _fn)
 ok('⑦d 而且要寫出**方向**(已經發動才跟)', '已經發動才跟' in js2c)
-ok('⑦e 數字讀採礦端的 runbuy_edge(⛔ 不寫死)', 'runbuy_edge' in js2c and 'E.d20' in js2c)
+ok('⑦e ⛔ runbuy_edge 的實測數字不印在卡上(⛔ 模板裡不可有 ${E.…})(🧹 V78.3.6)', 'runbuy_edge' in _fn and '${E.' not in _fn and 'E.d20' not in _fn)
 # ⛔ 不可新增卡片 —— 它必須掛在既有的「全市場主力買賣排行」裡面
 ok('⑦f ⛔ 不新增卡片:掛在既有的主力買賣排行卡內',
    re.search(r'\$\{this\._runBuyHtml\(\)\}', js_raw) is not None

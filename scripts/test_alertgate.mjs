@@ -144,8 +144,12 @@ const SRC = RAW.split('\n').map(l => {
   const seg = i > 0 ? SRC.slice(i, i + 300) : '';
   ok('ⓕ _alertQuiet 必須寫 🔔 通知歷史', /_recordNotifHistory/.test(seg), '');
   const j = SRC.indexOf('if (!_w.ok) {');
-  ok('ⓕ _kbarTryFire 擋下來的那則也要記進歷史',
-     j > 0 && /_recordNotifHistory\(`（未達實測門檻）/.test(SRC.slice(j, j + 260)), '');
+  // 🧹 V78.3.6 散戶 App 不印研究字樣 → 歷史那則的前綴改成白話「（只記錄、不跳提醒）」;釘「有記進歷史 + ⛔ 前綴不可再寫實測」
+  const segF = j > 0 ? SRC.slice(j, j + 260) : '';
+  ok('ⓕ _kbarTryFire 擋下來的那則也要記進歷史(🧹 V78.3.6 前綴改白話)',
+     j > 0 && /_recordNotifHistory\(`（只記錄、不跳提醒）/.test(segF), '');
+  ok('ⓕ2 🧹 V78.3.6 歷史那則的前綴⛔ 不可出現「實測」字樣',
+     j > 0 && !/_recordNotifHistory\(`（[^）]*實測/.test(segF), '');
 }
 {
   // ③ 方法已被實測打掉的三類 ⛔ 不可再主動推

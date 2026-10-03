@@ -8,6 +8,8 @@
  *     A 連賣3天↑後轉買 = **−0.04pp**(n=35,242,前半 +0.02 / 後半 −0.05,方向相反)→ **不成立**
  *     G 外資+投信同買   = **+0.99pp**(n=10,761,前半 +0.38 / 後半 +1.59,拿掉最好月份 +0.90)→ 成立
  *
+ * 🧹 V78.3.6:成績段只在實驗室模式顯示 → ①~⑦ 在 lab 模式跑;⑩ 釘一般模式⛔ 不可有成績字樣。
+ *
  * ⛔ 這支要擋住三件事(每一件都在 CLAUDE.md 犯過):
  *   ① 把「實測沒用」的訊號寫成看起來有用(⑤⑥)
  *   ② 在這張卡下買賣指令 —— 單一劇本原則,指令只有「現在怎麼做」能下(③)
@@ -40,12 +42,17 @@ const mk = (tail) => {
     tail.forEach((t, k) => Object.assign(rows[rows.length - tail.length + k], t));
     return rows;
 };
-const run = (rows, bear) => page.evaluate(([rows, bear]) => {
+// 🧹 V78.3.6 散戶 App(一般模式)只印「今天出現了什麼」,成績在實驗室模式 → 既有斷言一律在 lab 模式跑(lab=true 預設),
+//    一般模式另外釘「⛔ 不可出現實測字樣」(⑩)。
+const run = (rows, bear, lab = true) => page.evaluate(([rows, bear, lab]) => {
     app.rawDailyData = rows;
     app.currentSymbolId = '9999';
     app._ovTrend = bear ? { sym: '9999', trend: 'bear', txt: '' } : null;
-    return { html: app._chipEdgeHtml('9999'), st: app._chipEdgeState('9999') };
-}, [rows, bear]);
+    const de = document.documentElement;
+    if (lab) de.classList.add('lab'); else de.classList.remove('lab');
+    try { return { html: app._chipEdgeHtml('9999'), st: app._chipEdgeState('9999') }; }
+    finally { de.classList.remove('lab'); }
+}, [rows, bear, lab]);
 
 // ① 沒有法人資料 → 不可假裝有成績
 {
@@ -127,6 +134,20 @@ let bothHtml = '';
     // 邊際小於成本的,⛔ 不可標成 ok=1
     const cheap = Object.entries(E).filter(([, v]) => v.ok === 1 && v.e <= M.cost).map(([k]) => k);
     ok('⑧f ⛔ 邊際沒超過交易成本的不可標成立', !cheap.length, cheap.join(','));
+}
+
+// ⑩ 🧹 V78.3.6 一般模式:只講今天出現什麼,⛔ 不可有成績/研究字樣;沒出現 → 整段不顯
+{
+    const LABW = /pp|勝率|樣本|基準|實測|前半段|後半段|邊際|對照組|成本/;
+    const both = await run(mk([{ foreign_net: 500 }, { foreign_net: 500 }, { foreign_net: 1000, trust_net: 500 }]), false, false);
+    const t1 = txt(both.html);
+    ok('⑩ 一般模式命中 both → 寫「今天出現」+ 不是買賣指令', /今天出現/.test(t1) && /外資\+投信/.test(t1) && /不是買賣指令/.test(t1), t1.slice(0, 200));
+    ok('⑩b 一般模式 ⛔ 不可出現成績/研究字樣(+0.99 / 勝率 / 樣本…)', !LABW.test(t1) && !/0\.99|10,761/.test(t1), t1.slice(0, 200));
+    const re3 = await run(mk([{ foreign_net: -500 }, { foreign_net: -500 }, { foreign_net: -500 }, { foreign_net: 1000, trust_net: 0 }]), false, false);
+    const t2 = txt(re3.html);
+    ok('⑩c 一般模式 re3 也只是事實描述、⛔ 不可說「實測沒有用」', /今天出現/.test(t2) && !LABW.test(t2), t2.slice(0, 200));
+    const none = await run(mk([{ foreign_net: null, trust_net: null }]), false, false);
+    ok('⑩d 一般模式沒出現任何型態 → 回空字串(不留空殼)', none.html === '', none.html.slice(0, 120));
 }
 
 ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));

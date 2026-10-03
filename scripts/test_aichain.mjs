@@ -7,7 +7,7 @@
  *   ① `_AI_CHAIN` 資料完整性:代號唯一、段/層級/毛利欄位合法、每檔都有風險欄。
  *   ② 🚨 ⛔ 不可把上傳包的「動能分數」(YoY×60%+法人×40%,憑空權重)接回來 ——
  *      畫面上不可出現「動能分數」,程式裡不可有那條加權公式(陷阱 #38)。
- *   ③ 免責必須在:人工整理 / 不是買進名單 / 預測力未實測。
+ *   ③ 免責必須在:人工整理 / 不是買進名單(🧹 V78.3.6:「預測力未實測」是研究文字,一般模式⛔ 不可出現)。
  *   ④ 動態數字缺值要顯 '—',⛔ 不可顯 0 或 NaN(null-sort/null-display 陷阱)。
  *   ⑤ 層級篩選要真的有作用(點 L5 後名單變少、且每檔都含該層)。
  *   ⑥ tab 有註冊(_RADAR_TABS.aichain + 按鈕存在 + 切過去 view 會顯示)。
@@ -93,7 +93,7 @@ const R = await page.evaluate(async () => {
     // ⑧ 燈號:整個 dashboard 文字裡不可出現 🔴🟢(層級/熱度/毛利都不是方向)
     // ⚠️ 一定要加 u flag —— 沒加的話字元類別拆成 surrogate 半碼,🔄 也會被誤判成 🔴
     const lamp = /[🔴🟢]/u.test(html1);
-    return { integrity, rowN1, dash4585, html1len: html1.length, disclaimer: /不是買進名單/.test(html1) && /人工整理/.test(html1) && /未實測/.test(html1),
+    return { integrity, rowN1, dash4585, html1len: html1.length, disclaimer: /不是買進名單/.test(html1) && /人工整理/.test(html1), noLabWord: !/未實測|預測力|回測|實測/.test(html1),
              rowsL5, shown2, chipIn, chipOut, lamp,
              medShown: /近20日中位/.test(html1), nan: /NaN|undefined/.test(html1),
              momWord: /動能分數/.test(html1),
@@ -109,7 +109,8 @@ ok('① 檔數 ≥64 且代號唯一', I.n >= 64 && I.dup === 0, I);
 ok('①b 段/層級/毛利欄位全部合法、每檔都有風險欄', I.badSeg === 0 && I.badLv === 0 && I.badGm === 0 && I.noRisk === 0, I);
 ok('①c 轉折 win/lose 裡的代號都在名單裡(⛔ 防孤兒代號)', I.transWinCodes.length === 0, I.transWinCodes);
 ok('⑨ 🚧 空過守門:渲染出 ≥60 檔可點的列', R.rowN1 >= 60, R.rowN1);
-ok('③ 免責齊全(人工整理 / 不是買進名單 / 未實測)', R.disclaimer);
+ok('③ 免責齊全(人工整理 / 不是買進名單)(🧹 V78.3.6 散戶 App 不印「未實測」)', R.disclaimer);
+ok('③b 🧹 V78.3.6 一般模式不可出現實測/回測/預測力字樣', R.noLabWord);
 ok('②b ⛔ 渲染輸出不可出現「動能分數」', !R.momWord);
 ok('④ 缺值顯 —(4585 被 stub 成 null)', R.dash4585);
 ok('④b 畫面不可出現 NaN/undefined', !R.nan);

@@ -108,31 +108,37 @@ const grabHelp = () => page.evaluate(() => {
     return s;
 });
 
-const render = d => page.evaluate(async j => {
+const render = (d, lab = false) => page.evaluate(async ([j, lab]) => {
     app._todaySig = j;
-    await app._renderTodaySignalView();
-    const el = document.getElementById('radarTodaySigView');
-    return { hidden: el.classList.contains('hidden'), html: el.innerHTML };
-}, d);
+    const de = document.documentElement;
+    if (lab) de.classList.add('lab');
+    try {
+        await app._renderTodaySignalView();
+        const el = document.getElementById('radarTodaySigView');
+        return { hidden: el.classList.contains('hidden'), html: el.innerHTML };
+    } finally { de.classList.remove('lab'); }
+}, [d, lab]);
+// 🧹 V78.3.6 散戶 App(一般模式)每列只留「代號 / 名字 / 價 / 訊號名」,期望值與勝率只在實驗室模式 →
+//    研究數字的斷言改在 lab 模式跑(⑧b),一般模式釘「⛔ 不可出現」(②)。
+const LABW = /期望值 ?[+-]?\d|勝率 \d|基準勝率|\dpp|實測|回測/;   // ⚠️ 「期望值」三個字本身允許(摺疊區白話說明有用到),帶數字才算研究數字
 
 // ── ② 有資料 → 顯示,且免責齊全 ────────────────────────────
 const R = await render(real || { bull: [{ s: '8464', c: 382.5, t: '換手量(洗籌續攻)', g: 'A', n: 1309, w: 42.4, exp: 0.68 }], scanned: 2315, base_win: 36.4, data_date: '2026-08-03', cost_note: '期望值未扣交易成本(來回約 0.44%,當沖 0.25%)', risk_n: 6158, risk_syms: 2079 });
 const t = txt(R.html);
 ok('② 有資料時要顯示', t.length > 80, `len=${t.length}`);
-ok('② ⭐ 標題要講「扣完成本還會賺」的檔數(⛔ 不是毛期望值為正的檔數)',
-   /扣完成本還會賺 \d+ 檔/.test(t), t.slice(0, 200));
-ok('② ⭐ 必須標基準勝率(否則 42% 會被誤讀成輸)', /基準勝率 \d+%/.test(t), t.slice(-320));
-// 💸 V72.3.1 改成「已經扣掉了」—— 只寫免責、卻讓賠錢訊號排最前面,等於沒講
-ok('② ⭐⛔ 必須把來回成本寫成數字(而且是已扣掉的)',
-   /已扣來回成本 [\d.]+%/.test(t), t.slice(-360));
+ok('② ⭐ 標題講「今天值得看的 N 檔」(🧹 V78.3.6 取代「扣完成本還會賺 N 檔」;N 仍只算扣完成本還會賺的)',
+   /今天值得看的 \d+ 檔/.test(t), t.slice(0, 200));
+ok('② 🧹 V78.3.6 一般模式⛔ 不可出現基準勝率 / 期望值 / 勝率數字 / 實測字樣', !LABW.test(t), (t.match(LABW) || [])[0]);
+ok('② 🧹 V78.3.6 一般模式每列⛔ 不印期望值 %(取代「已扣來回成本 X%」)', !/[+-]\d+\.\d{2}%/.test(t), (t.match(/[+-]\d+\.\d{2}%/) || [])[0]);
 ok('② ⭐⛔ 賺不回成本的**不可刪掉**,要收在摺疊區並說明',
    !/另有 \d+ 筆/.test(t) || (/扣完成本不夠賺/.test(t) && /不是叫你做/.test(t)), t.slice(-420));
 ok('② ⭐ 必須寫明「不是保證」', /不是保證/.test(t), t.slice(-320));
 ok('② 要標資料日期(⛔ 別讓人以為是即時)', /收盤資料/.test(t), t.slice(-320));
 // 🧹 V72.5.0 風險總數那段搬進 alert(卡上留三個免責就好);⛔ 但**不可以刪掉**
 const _hlp = await grabHelp();
-ok('② ⭐ 風險只給檔數、⛔ 不逐檔列(V72.5.0 起在教學裡)',
-   !R.html.includes('risk') && (/檔出現風險訊號/.test(_hlp) || !(real && real.risk_syms)), _hlp.slice(0, 400));
+// 🧹 V78.3.6 教學不再印全榜統計(含風險檔數)→ 改釘「卡片與教學都⛔ 不逐檔列風險股」
+ok('② ⭐ 風險股⛔ 不逐檔列(卡片與教學都沒有)(🧹 V78.3.6)',
+   !R.html.includes('risk') && !/風險訊號[::]?\s*\d{4}/.test(_hlp), _hlp.slice(0, 400));
 // 🧹 V72.5.0 使用者:「文字太多、沒辦法一次顯示完」→ 每列改兩行式,股名不可被截成「太.」
 ok('② ⭐⛔ 每列不可再擠成一行(股名會被 truncate 成看不出是哪一檔)',
    !/扣成本 [+-]/.test(t), t.slice(0, 300));
@@ -150,16 +156,16 @@ const R2 = await render({ ...(real || {}), scanned: 2316, bull_total: 137, bull_
 const t2 = txt(R2.html);
 // 🧹 V72.5.0 全榜統計搬進「ⓘ 怎麼看」(卡上太吵)—— ⛔ 是**搬**不是刪,一樣要驗得到
 const h2 = await grabHelp();
-ok('②b ⭐ 全榜的「檔/筆」要用採礦端的真值(⛔ 不是截斷後的陣列長度)',
-   /共 96 檔 \/ 137 筆/.test(h2), h2.slice(0, 400));
-ok('②b ⭐⛔ 有截斷就要看得出來(silent cap = 假裝「這就是全部」)',
-   /其餘收在/.test(h2), h2.slice(0, 400));
+// 🧹 V78.3.6 教學不再印全榜統計(共 N 檔 / M 筆 / 其餘收在…)→ 改釘「⛔ 不可把截斷後的陣列長度說成今天有幾檔」+ 教學⛔ 不印研究統計
+ok('②b ⭐ 教學⛔ 不可拿截斷後的陣列長度講「今天有幾檔」(🧹 V78.3.6 全榜統計已移出散戶 App)',
+   !/共 5 檔|只有 5 檔/.test(h2) && !/共 \d+ 檔 \/ \d+ 筆/.test(h2), h2.slice(0, 400));
+ok('②b 🧹 V78.3.6 教學⛔ 不可出現研究統計(期望值為正的共 / 129 個訊號 / 基準勝率)', !/期望值為正|129 個訊號|基準勝率|實測/.test(h2), h2.slice(0, 400));
 // ⭐ exp=0.1 全都賺不回成本 → 主區要誠實說「今天沒有一檔賺得回交易成本」,⛔ 不可留白
 const R3 = await render({ ...(real || {}), bull_total: 3, bull_syms: 3,
     bull: [{ s: '1', c: 1, t: 'x', g: 'A', n: 100, w: 42, exp: 0.1 }, { s: '2', c: 1, t: 'x', g: 'A', n: 100, w: 42, exp: 0.1 }, { s: '3', c: 1, t: 'x', g: 'A', n: 100, w: 42, exp: 0.1 }],
     scanned: 2316, base_win: 36.4, data_date: '2026-08-04', cost_note: '未扣交易成本', risk_n: 1, risk_syms: 1 });
-ok('②b ⭐ 全部賺不回成本時要誠實講,並勸阻硬找理由進場',
-   /沒有一檔的訊號賺得回交易成本/.test(txt(R3.html)) && /別硬找理由進場/.test(txt(R3.html)), txt(R3.html).slice(0, 300));
+ok('②b ⭐ 全部賺不回成本時要誠實講「今天沒有值得做的」,並勸阻硬找理由進場(🧹 V78.3.6 文案改白話)',
+   /今天沒有值得做的/.test(txt(R3.html)) && /不划算/.test(txt(R3.html)) && /別硬找理由進場/.test(txt(R3.html)), txt(R3.html).slice(0, 300));
 ok('②b ⛔ 那些訊號**不可以刪掉**,要收在摺疊區', /另有 3 筆/.test(txt(R3.html)), txt(R3.html).slice(0, 400));
 const scanSrc2 = fs.readFileSync(path.join(ROOT, 'scripts/daily_signal_scan.mjs'), 'utf8');
 ok('②b ⭐ 採礦端要輸出 bull_total / bull_syms(截斷前的真值)',
@@ -177,11 +183,11 @@ for (const [name, d] of [['bull 是空陣列', { bull: [], scanned: 2315 }], ['�
 
 // ── ④ 教學要說清楚「為什麼只有十幾檔」────────────────────────
 const help = await grabHelp();
-ok('④ ⭐ 教學要解釋「為什麼通常只有十幾檔」', /為什麼通常只有十幾檔/.test(help), help.slice(0, 300));
-ok('④ ⭐ 要說明「大部分訊號常對但輸更大」', /輸的時候輸更大/.test(help), help.slice(0, 500));
-ok('④ ⭐ 三個免責都要在(基準不是 50% / 成本 / 不是保證)',
-   /不是 50%/.test(help) && /手續費.{0,6}證交稅/.test(help) && /不是保證/.test(help), help.slice(-500));
-ok('④ ⭐ 教學要解釋「為什麼要扣完成本才算數」', /為什麼要「扣完成本」才算數/.test(help), help.slice(0, 600));
+// 🧹 V78.3.6 教學只講「怎麼看」:研究依據(129 個訊號 / 期望值 / 基準不是 50% / 297 筆實測)移到產業作戰室
+ok('④ ⭐ 教學要說「通常只有十幾檔」(🧹 V78.3.6 不再附研究依據)', /通常只有十幾檔/.test(help), help.slice(0, 300));
+ok('④ 🧹 V78.3.6 教學⛔ 不可出現研究數字/字樣(期望值 / 輸更大 / 不是 50% / 實測 / 回測)', !/期望值|輸的時候輸更大|不是 50%|實測|回測|\d+ 筆/.test(help), (help.match(/期望值|輸的時候輸更大|不是 50%|實測|回測|\d+ 筆/) || [])[0]);
+ok('④ ⭐ 免責仍在:歷史規律不是保證', /不是保證/.test(help), help.slice(-500));
+ok('④ ⭐ 「買不買得到」的判法仍要講清楚(1% / 10% 是經驗法則)', /買不買得到/.test(help) && /經驗法則/.test(help), help.slice(0, 600));
 ok('④ 要說明只看 K 線、沒看籌碼基本面', /沒有看籌碼/.test(help), help.slice(-300));
 
 // ── ⑤ 接線:選股頁進入時要載入,ETF 模式要隱藏 ────────────────
@@ -191,7 +197,7 @@ const wired = await page.evaluate(() => ({
     etfSkip: /this\._radarMode !== 'etf'/.test(app.switchAppTab.toString()),
     inTabs: !!app._RADAR_TABS.todaysig,
     first: Object.keys(app._RADAR_TABS)[0] === 'todaysig',
-    hint: /扣完/.test(app._RADAR_HINT.todaysig || ''),
+    hint: /值得參考/.test(app._RADAR_HINT.todaysig || '') && !/實測|回測|勝率|期望值/.test(app._RADAR_HINT.todaysig || ''),
     // ⚠️ 兩個「自動選 tab」的機制不可打架(擂台冠軍 vs 今日訊號榜)
     arenaYields: /_todaySigAutoDone/.test(app._applyArenaChampion.toString()),
     sw: /key === 'todaysig'/.test(app.switchRadarStrategy.toString()),
@@ -202,7 +208,7 @@ ok('⑤ 切換策略/ETF 模式也會處理', wired.mode, '');
 ok('⑤ ⭐ ETF 模式不搶著自動切榜', wired.etfSkip, '');
 ok('⑤ ⭐ todaysig 要在榜單清單裡', wired.inTabs, '');
 ok('⑤ ⭐ 而且要排**第一個**(唯一有實測成績的榜)', wired.first, Object.keys(''));
-ok('⑤ 說明條要有 todaysig 這一項', wired.hint, '');
+ok('⑤ 說明條要有 todaysig 這一項(🧹 V78.3.6 講「值得參考」、⛔ 不可有實測/勝率字樣)', wired.hint, '');
 ok('⑤ ⭐⛔ 擂台冠軍自動選 tab 不可蓋掉今日訊號榜', wired.arenaYields, '');
 ok('⑤ switchRadarStrategy 有接 todaysig 分支', wired.sw, '');
 ok('⑤ ⭐⛔ 舊的常駐條 DOM 要真的移除(⛔ 別留殭屍容器)', wired.noBar, '');
@@ -232,7 +238,9 @@ ok('⑥ ⛔ 不可在採礦端重複存股票名稱(前端已有 getStockName)',
 
 
 // ── ⑧b 勝率必須配樣本,而且基準是回測實測值不是 50%(陷阱 #36/#37)──
-ok('⑧b ⭐ 每列要顯示勝率', /勝率 \d+(\.\d+)?%/.test(t), t.slice(0, 260));
+// 🧹 V78.3.6 勝率只在實驗室模式顯示 → 這條改在 lab 模式跑(一般模式⛔ 不印,見 ②)
+const tLab = txt((await render(real || { bull: [{ s: '8464', c: 382.5, t: '換手量(洗籌續攻)', g: 'A', n: 1309, w: 42.4, exp: 0.68 }], scanned: 2315, base_win: 36.4, data_date: '2026-08-03', cost_note: '期望值未扣交易成本(來回約 0.44%,當沖 0.25%)', risk_n: 6158, risk_syms: 2079 }, true)).html);
+ok('⑧b ⭐ 實驗室模式每列要顯示勝率(🧹 V78.3.6)', /勝率 \d+(\.\d+)?%/.test(tLab), tLab.slice(0, 260));
 const barSrc = await page.evaluate(() => app._renderTodaySignalView.toString());
 ok('⑧b ⭐⛔ 要走共用的 `_wrTag`(⛔ 別另寫一套樣本判斷)', /_wrTag\(x\.w, x\.n,/.test(barSrc),
    (barSrc.match(/_wrTag\([^\n]*/) || [''])[0]);
@@ -415,8 +423,9 @@ ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
        !!rowOf(R, '1111') && !/量偏薄|買不太到|填了本金/.test(rowOf(R, '1111')), rowOf(R, '1111'));
     ok('💧d2 ⭐ 量偏薄的那一列要**自己**帶著佔比數字(⛔ 不是靠別列的字救活)',
        /7\.5%|佔它一天成交金額/.test(rowOf(R, '2222')), rowOf(R, '2222'));
-    ok('💧e 摺疊區要寫明理由(期望值沒扣滑價 → 這種量做不到)',
-       /沒有扣滑價|沒扣滑價/.test(T) && /不是叫你去買|不是叫你/.test(T));
+    // 🧹 V78.3.6 散戶 App⛔ 不講期望值 → 改釘白話理由「成交量撐不起你的部位」
+    ok('💧e 🧹 V78.3.6 摺疊區要寫明理由(成交量撐不起你的部位 → 掛不到單),⛔ 不提期望值',
+       /撐不起你的部位/.test(T) && /不是叫你去買|不是叫你/.test(T) && !/期望值/.test(T));
 
     // 🚧 沒填本金 → ⛔ 不可下判定,只講事實
     const R0 = await render(mkSig(), 0);

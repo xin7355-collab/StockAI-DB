@@ -45,35 +45,47 @@ const R = await page.evaluate(() => {
     A.currentSymbolId = '9999';
     A.isMarketOpen = () => false;
     A.rawDailyData = mk(true);
+    // 🧹 V78.3.6 當沖實測摺疊(data-dtedge)只在實驗室模式顯示 → 研究那幾條在 lab 模式量,另釘一般模式⛔ 不出現
+    const lab = fn => { document.documentElement.classList.add('lab'); try { return fn(); } finally { document.documentElement.classList.remove('lab'); } };
     out.lock = A._dtEdgeHtml('9999');
     out.lockTxt = strip(out.lock);
+    out.lockLab = lab(() => A._dtEdgeHtml('9999'));
+    out.lockLabTxt = strip(out.lockLab);
     // 決定性對照:改常數 → 畫面一定要跟著變
     const E = A._DT_EDGE, bak = JSON.stringify(E);
     E.lu.up.open[0] = 9.87; E.lu.dn.open[0] = 9.87; E.f6[0][2] = 12.3; if (E.f7) E.f7.lock = 77.7;
-    out.patched = strip(A._dtEdgeHtml('9999'));
+    out.patched = strip(lab(() => A._dtEdgeHtml('9999')));
+    out.patchedNorm = strip(A._dtEdgeHtml('9999'));
     // 讓一格變正 → 「每一格都是負的」那句不可以再出現
     E.f6[5][3] = 0.5;
-    out.onePos = strip(A._dtEdgeHtml('9999'));
+    out.onePos = strip(lab(() => A._dtEdgeHtml('9999')));
     Object.assign(A._DT_EDGE, JSON.parse(bak));
     // 沒鎖 / 盤中 / 別檔 → ⛔ 不可出現那一行
-    A.rawDailyData = mk(false); out.noLock = A._dtEdgeHtml('9999');
+    A.rawDailyData = mk(false); out.noLock = lab(() => A._dtEdgeHtml('9999')); out.noLockNorm = A._dtEdgeHtml('9999');
     A.rawDailyData = mk(true); A.isMarketOpen = () => true; out.intraday = A._dtEdgeHtml('9999');
     A.isMarketOpen = () => false; out.otherSym = A._dtEdgeHtml('1234');
     A.isMarketOpen = openBak;
     return out;
 });
 await browser.close();
+const strip0 = h => String(h || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 
 ok('② 收盤鎖漲停 → 出現 🟥 那一行(data-dtlu)', /data-dtlu/.test(R.lock), R.lockTxt.slice(0, 160));
 ok('②b 沒鎖漲停 → ⛔ 不出現', !/data-dtlu/.test(R.noLock));
 ok('②c 盤中(還不知道會不會打開)→ ⛔ 不出現', !/data-dtlu/.test(R.intraday));
 ok('②d 別檔的 K 線 → ⛔ 不出現(切股殘留,陷阱 #19)', !/data-dtlu/.test(R.otherSym));
 ok('③ 一定要講「給已經有的人」+「⛔ 不是買進訊號」+ 買不到', /已經有/.test(R.lockTxt) && /不是買進訊號/.test(R.lockTxt) && /買不到/.test(R.lockTxt), R.lockTxt.slice(0, 240));
-ok('①b 🔬 決定性對照:改 _DT_EDGE → 畫面跟著變成 +9.87% 與 12.3%', /\+9\.87%/.test(R.patched) && /12\.3%/.test(R.patched), R.patched.slice(0, 200));
-ok('①c ⚡ F7 那句(V77.6.9)讀常數:鎖漲停比例改 77.7 → 畫面跟著變;而且一定寫「不做」', /77\.7%/.test(R.patched) && /不做/.test(R.lockTxt) && /回補不了/.test(R.lockTxt), R.patched.slice(0, 200));
-ok('④ 「每一格期望值都是負的」跟著資料:有一格變正 → 那句不可以再出現', /每一格的期望值都是負的/.test(R.lockTxt) && !/每一格的期望值都是負的/.test(R.onePos) && /只在 1 格是正的/.test(R.onePos));
-ok('⑤ 摺疊本身一定在(data-dtedge),而且不用 🔴🟢 當燈號', /data-dtedge/.test(R.noLock) && !/[🔴🟢]/u.test(R.lock + R.noLock));
-ok('⑤b 要講清楚限制:分K 天數 + 量前 80 的偏誤', /個交易日/.test(R.lockTxt) && /前 80/.test(R.lockTxt));
+// 🧹 V78.3.6 鎖漲停那一行(一般模式也有)已改成「明天開盤看哪一種就照哪一條」的做法,⛔ 不印 _DT_EDGE.lu 的實測數字;
+//    下面的研究摺疊只在實驗室模式量(斷言內容不變),另釘一般模式⛔ 不出現。
+ok('①b 🔬 決定性對照(lab):改 _DT_EDGE → 摺疊跟著變成 12.3%(🧹 V78.3.6 lu 那組數字已不印)', /12\.3%/.test(R.patched), R.patched.slice(0, 200));
+ok('①b2 🧹 V78.3.6 一般模式:改常數後畫面⛔ 仍不出現 +9.87% / 12.3% / 77.7%', !/9\.87%|12\.3%|77\.7%/.test(R.patchedNorm), R.patchedNorm.slice(0, 200));
+ok('①c ⚡ F7 那句(V77.6.9)讀常數(lab):鎖漲停比例改 77.7 → 畫面跟著變;而且一定寫「不做」', /77\.7%/.test(R.patched) && /不做/.test(R.lockLabTxt) && /回補不了/.test(R.lockLabTxt), R.patched.slice(0, 200));
+ok('④ (lab)「每一格期望值都是負的」跟著資料:有一格變正 → 那句不可以再出現', /每一格的期望值都是負的/.test(R.lockLabTxt) && !/每一格的期望值都是負的/.test(R.onePos) && /只在 1 格是正的/.test(R.onePos));
+ok('⑤ (lab)摺疊本身一定在(data-dtedge),而且不用 🔴🟢 當燈號', /data-dtedge/.test(R.noLock) && !/[🔴🟢]/u.test(R.lockLab + R.noLock + R.lock + R.noLockNorm));
+ok('⑤b (lab)要講清楚限制:分K 天數 + 量前 80 的偏誤', /個交易日/.test(R.lockLabTxt) && /前 80/.test(R.lockLabTxt));
+ok('⑥ 🧹 V78.3.6 一般模式⛔ 不出現實測摺疊(data-dtedge)與研究字樣(勝率/期望值/實測/pp)',
+   !/data-dtedge/.test(R.noLockNorm + R.lock) && !/勝率|期望值|實測|\dpp|六關/.test(strip0(R.lock + R.noLockNorm)), strip0(R.lock).slice(0, 200));
+ok('⑥b 🧹 V78.3.6 一般模式鎖漲停那一行仍講「怎麼做」(明天開盤看哪一種就照哪一條)', /照哪一條/.test(R.lockTxt), R.lockTxt.slice(0, 200));
 
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ DTEDGE_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

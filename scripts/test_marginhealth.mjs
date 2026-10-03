@@ -52,7 +52,8 @@ ok('① 194.7% → 11 年來最高的 5%', /最高的 5%/.test(x.html), x.html.s
 x = await run(127.3);
 ok('② ⭐ 推估時標題要標「推估・非官方」', /推估・非官方/.test(x.html), x.html.slice(0, 400));
 ok('② ⭐ 必須說明偏誤方向是**偏低**(⛔ 舊版寫成偏高是錯的)', /系統性偏低/.test(x.html), x.html.slice(0, 1600));
-ok('② ⭐ 要給出推估 vs 官方的實際落差當證據', /127\.9/.test(x.html) && /194\.7/.test(x.html), x.html.slice(0, 1600));
+// 🧹 V78.3.6 散戶 App 不印「推估 127.9 vs 官方 194.7」那組研究對照 → 改釘「⛔ 別拿推估值對照門檻」+ 對照數字不可出現
+ok('② ⭐ 推估時要叫人⛔ 別拿它對照門檻(🧹 V78.3.6 取代 127.9 vs 194.7 對照數字)', /別拿這個數字跟上面那些門檻對照/.test(x.html) && !/127\.9|差 67/.test(x.html), x.html.slice(0, 1600));
 ok('② ⛔ 推估時不可自稱官方值', !/證交所公布的官方值/.test(x.html), x.html.slice(0, 600));
 
 // ②b 官方值時反過來:⛔ 不可再標推估
@@ -67,13 +68,15 @@ const BAD = /85%|27\.4%|勝率高達|聖杯|跌破就(該|要)買/;
 ok('③ ⭐⛔ 卡片不可引用未驗證的勝率宣稱', !BAD.test(strip(x.html)), (strip(x.html).match(BAD) || []).join(','));
 // ⭐ 舊版只要求「說一句不是跌破就該買」;現在有實測了 → 要求給出**證據**
 ok('③ ⭐ 必須明說 11 年一次都沒跌破過 130%', /一次都沒有跌破 130%/.test(x.html), x.html.slice(0, 1400));
-ok('③ ⭐ 必須點出實測方向跟流行說法相反', /跟流行說法相反/.test(x.html), x.html.slice(0, 1600));
+// 🧹 V78.3.6 改釘白話:「這招別用」+「不能拿來判斷之後會漲會跌」,⛔ 不可出現實測/回測字樣
+ok('③ ⭐ 必須講「跌破 130% 抄底這招別用」+「不能拿來判斷漲跌」(🧹 V78.3.6 取代「實測方向跟流行說法相反」)', /這招別用/.test(x.html) && /不能拿來判斷之後會漲會跌/.test(x.html) && !/實測|回測/.test(x.html), x.html.slice(0, 1600));
 
 const help = await page.evaluate(() => { let t = ''; const o = window.alert, oh = app._helpBox; window.alert = s => { t = s; }; app._helpBox = s => { t = String(s); }; app._showMarginHelp(); window.alert = o; app._helpBox = oh; return t; });
 ok('③ ⭐ 教學⛔ 不可再說「常常跟著一波反彈」當賣點', !/常常跟著一波反彈/.test(help.replace(/⛔[^\n]*/g, '')), help.slice(0, 900));
 ok('③ ⭐ 教學要給實測天數當證據', /2,821|2821/.test(help), help.slice(0, 900));
 ok('③ ⭐ 教學要說明「那條線幾乎永遠不會觸發」', /永遠不會觸發/.test(help), help.slice(0, 1200));
-ok('③ ⭐ 教學要坦承之前顯示的推估是錯的', /差 67 個百分點/.test(help), help.slice(0, 2000));
+// 🧹 V78.3.6 教學不再印「差 67 個百分點」的研究對照 → 改釘「推估值會偏低、以官方為準」
+ok('③ ⭐ 教學要講推估值會偏低、以官方公布值為準(🧹 V78.3.6 取代「差 67 個百分點」)', /系統性偏低/.test(help) && /以證交所官方公布值為準/.test(help) && !/差 67|實測|回測/.test(help), help.slice(0, 2000));
 ok('③ ⭐ 教學仍要說「不是買賣訊號」', /不是買賣訊號/.test(help), help.slice(0, 2000));
 
 // ④ 趨勢

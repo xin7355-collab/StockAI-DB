@@ -46,8 +46,10 @@ const body = bodyM ? bodyM[0] : '';
 const bodyNoCost = body.replace(/0\.44%/g, '');
 ok('①c 顯示端沒有寫死的機率數字(一律讀 _LU_ODDS)',
     !/[^0-9.]\d\.\d\d?%/.test(bodyNoCost), bodyNoCost.match(/[^0-9.]\d\.\d\d?%/g) || '');
-ok('①f 換假表時「隔天開盤買」那個數字也要跟著變(⛔ 它曾經是寫死的)',
-    /\$\{O\.lockOpen\}%/.test(body));
+// 🧹 V78.3.6 散戶 App ⛔ 不印「隔天開盤買平均 X%」那個回測數字 → 改白話「隔天開盤追進去多半是賠的」;
+//    改釘:⛔ 不讀 O.lockOpen 印出來(也不寫死)+ 白話那句還在
+ok('①f 🧹 V78.3.6 鎖死那段⛔ 不再印「隔天開盤買」的回測數字,改白話「多半是賠的」',
+    !/O\.lockOpen/.test(body) && /多半是賠的/.test(body));
 ok('②a 命中多個時讀聯合表 hits,⛔ 不是相乘',
     /_LU_ODDS\.hits\[key\]/.test(SRC) && !/p\s*\*\s*p|reduce\([^)]*\*/.test(body));
 ok('⑥a ⛔ 不下操作指令 / 不給買賣價位',
@@ -118,10 +120,11 @@ ok('②b 顯示的機率 == _LU_ODDS.hits 那一格(⛔ 不是相乘出來的)',
         const html = app._luOddsHtml(d);
         return html.includes(`>${row[0]}%<`) && html.includes(`>${row[1]}%<`);
     }, hot.r.hits));
-ok('④a 🚨 有寫「賺不到 / 扣成本後是負的」', /賺不到錢/.test(hot.html) && /扣掉來回成本/.test(hot.html));
+// 🧹 V78.3.6 散戶 App⛔ 不印扣成本後的平均數字 → 改釘白話「賺不到錢」+ 數字不可出現
+ok('④a 🧹 V78.3.6 有寫「賺不到錢」,⛔ 不印扣成本後平均', /賺不到錢/.test(hot.html) && !/扣掉來回成本/.test(hot.html));
 ok('④b 🚨 有寫「機率高 ≠ 期望值正」的白話解釋',
     /容易漲停.*同樣容易跌停|機率高\s*≠/.test(hot.html));
-ok('④c 有標樣本數', /次\)/.test(hot.html));
+ok('④c 🧹 V78.3.6 一般模式⛔ 不印樣本數', !/次\)/.test(hot.html));
 ok('⑥b 顯示內容⛔ 不含買賣價位/指令',
     !/(買進|進場|掛單|停損|停利|目標價|建議買|可以追)/.test(hot.html));
 
@@ -129,7 +132,7 @@ ok('⑥b 顯示內容⛔ 不含買賣價位/指令',
 const lk = await run({ amp: 5, chg: 10, vr: 3, lock: true });
 ok('⑨d 🚧 空過守門:測資真的觸發鎖死', lk.r && lk.r.lock === true, JSON.stringify(lk.r));
 ok('⑤a 🚨 鎖死時一定要講「買不到」', /買不到/.test(lk.html));
-ok('⑤b 🚨 鎖死時要講「追進去是賠的」', /追進去反而是賠的/.test(lk.html));
+ok('⑤b 🚨 鎖死時要講「追進去是賠的」(🧹 V78.3.6 白話:多半是賠的)', /追進去[^。]{0,6}多半是賠的|追進去反而是賠的/.test(lk.html), lk.html.replace(/<[^>]+>/g, '').slice(0, 200));
 ok('⑤c 鎖死時⛔ 不可出現追價指令', !/(可以追|建議買|進場|掛單)/.test(lk.html));
 ok('⑤d 鎖死時數字讀 _LU_ODDS.lock',
     await page.evaluate(() => {
@@ -151,8 +154,8 @@ const fake = await page.evaluate(() => {
     app._LU_ODDS = bak;
     return html;
 });
-ok('①d 換一份假成績表 → 畫面數字跟著變(⛔ 沒有寫死的第二份)',
-    /99\.9%/.test(fake) && /88\.8%/.test(fake) && /12,345/.test(fake), fake.slice(0, 200));
+ok('①d 換一份假成績表 → 機率跟著變(⛔ 沒有寫死的第二份);🧹 V78.3.6 樣本數⛔ 不印',
+    /99\.9%/.test(fake) && /88\.8%/.test(fake) && !/12,345/.test(fake), fake.slice(0, 200));
 
 // 教學:數字也要現算
 const help = await page.evaluate(() => {
@@ -162,8 +165,9 @@ const help = await page.evaluate(() => {
 });
 ok('④d 教學也要寫「機率高 ≠ 賺得到」', /機率高\s*≠\s*賺得到/.test(help));
 ok('②c 教學要寫「⛔ 不可相乘」', /不可以把機率相乘/.test(help));
-ok('①e 教學數字現算(含實際樣本數與窗口)',
-    help.includes(String(app => 0) ? '2024-04-18' : '') && /534,563/.test(help) && /2,243/.test(help));
+// 🧹 V78.3.6 散戶 App 教學⛔ 不印研究樣本數 / 回測窗口(534,563 筆・2,243 檔・2024-04-18 起)→ 改釘:⛔ 不出現 + 仍講「這是頻率⛔ 不是預測」
+ok('①e 🧹 V78.3.6 教學⛔ 不印樣本數與回測窗口(研究字樣),仍講「頻率・不是預測」',
+    !/534,563|2,243|2024-04-18|樣本|實測|回測/.test(help) && /頻率/.test(help) && /不是預測/.test(help), help.slice(0, 200));
 ok('⑤e 教學要提「鎖死那種買不到」', /買不到/.test(help));
 
 // ⑨e 🚧 全域空過守門:真的有跑到動態測試(⛔ 防「瀏覽器沒開起來也全綠」)

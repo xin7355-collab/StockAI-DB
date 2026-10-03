@@ -88,8 +88,14 @@ ok('④b ⭐ 決定性對照:產物把那個訊號改成 C → `_sigEdge` 回 C;
 ok('⑤a 沒產物:註記寫「嵌入版」(⛔ 不可假裝有日期)', /data-btedge="embedded"/.test(R.noteOff) && /嵌入版/.test(R.txtOff), R.noteOff.slice(0, 120));
 ok('⑤b 有產物:註記印日期 + 差異數 + 「沒有自動換預設」', /data-btedge="live"/.test(R.noteOn) && /data-btdiff="1"/.test(R.noteOn) && /沒有自動換預設/.test(R.noteOn) && /2026/.test(R.noteOn), R.noteOn.slice(0, 200));
 ok('⑤c ⛔ 產物載入後 `_DECK_TRACK49` 一個字都沒變', R.deckSame === true, '');
-// 🧹 V78.3.4 決策台「這套做法實測賺多少」整塊搬到產業作戰室 → 決策台⛔ 不再掛 `_btEdgeNote`(K 線教學那處另由 C 批處理)
-ok('⑤d 🧹 決策台⛔ 不再掛 `_btEdgeNote`;K 線教學也接上', !/\$\{this\._btEdgeNote\('html'\)\}/.test(CODE) && /this\._btEdgeNote\('text'\)/.test(CODE.slice(CODE.indexOf('_showEdgeHelp() {'), CODE.indexOf('_showEdgeHelp() {') + 600)), '');
+// 🧹 V78.3.4 決策台「這套做法實測賺多少」整塊搬到產業作戰室 → 決策台⛔ 不再掛 `_btEdgeNote`
+// 🧹 V78.3.6 K 線教學(`_showEdgeHelp`)也改成只講「怎麼看、怎麼做」→ 散戶 App 畫面⛔ 任何地方都不再呼叫 `_btEdgeNote`
+//   (函式本身留著,⑤a/⑤b 仍直接驗它的內容;成績與差異改在產業作戰室看)。現在釘:① 沒有呼叫端 ② 教學彈窗沒有研究字樣 ③ 「怎麼看」的關鍵句還在
+const _EH = CODE.slice(CODE.indexOf('_showEdgeHelp() {'), CODE.indexOf('_showEdgeHelp() {') + 1200);
+ok('⑤d 🧹 V78.3.6 散戶 App⛔ 不再呼叫 `_btEdgeNote`(決策台與 K 線教學都不掛)',
+   CODE.indexOf('_showEdgeHelp() {') > 0 && !/this\._btEdgeNote\(/.test(CODE), '');
+ok('⑤d2 🧹 V78.3.6 K 線教學只講怎麼看:⛔ 沒有 成績來源 / 自動回測 / 實測 / 勝率 / 期望值 / A 級,且「起漲點怎麼看」還在',
+   /起漲點怎麼看/.test(_EH) && /風險提醒/.test(_EH) && !/成績來源|自動回測|實測|回測|勝率|期望值|A 級/.test(_EH.slice(0, _EH.indexOf('this.vibrate'))), _EH.slice(0, 200));
 
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗:${fails.join(' / ')}` : '\n✅ BACKTEST_EDGE_PASS');
 process.exit(fails.length ? 1 : 0);

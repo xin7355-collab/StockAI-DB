@@ -48,9 +48,10 @@ ok('② 資料太短 → 不硬判', R.short.length===0, JSON.stringify(R.short)
 ok('③ 壞輸入不 throw', R.bad.every(x=>Array.isArray(x)&&x.length===0), JSON.stringify(R.bad));
 
 const m = R.bigVol[0].msg;
-ok('④ ⭐ 一定要把實測勝率寫出來(不可只說「高機率反彈」)', m.includes('45.5%'), m.slice(0,120));
+// 🧹 V78.3.6 散戶 App 不印實測勝率 45.5% / 「已扣同期大盤」→ 改釘白話「抱越久越輸」+ ⛔ 研究數字不可出現(也⛔ 不可說「高機率反彈」)
+ok('④ ⭐ 一定要講「抱越久越輸」(🧹 V78.3.6 取代實測勝率 45.5%)', m.includes('抱越久越輸') && !m.includes('高機率'), m.slice(0,160));
+ok('④ 🧹 V78.3.6 一般模式⛔ 不可出現勝率 / 實測 / pp 等研究字樣', !/勝率|實測|回測|\d+(\.\d+)?pp|45\.5%/.test(m), m.slice(0,200));
 ok('④ ⭐ 一定要講「接刀平均會輸大盤」', m.includes('輸大盤'), '');
-ok('④ 要註明已扣同期大盤(否則數字會被誤讀)', m.includes('已扣同期大盤'), '');
 ok('④ 要說明「量是必要條件,不是進場理由」', m.includes('不是進場理由'), '');
 ok('④ 要給出場紀律(沒彈起來也要走)', m.includes('沒彈起來也要走'), '');
 ok('⑤ ⛔ 不可寫成看多訊號(tone 必須是 warn)', R.bigVol[0].tone==='warn' && R.noVol[0].tone==='warn', R.bigVol[0].tone);

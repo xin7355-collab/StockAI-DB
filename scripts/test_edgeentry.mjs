@@ -18,6 +18,7 @@
  *   ⑥ 必須寫出「**訊號當天尾盤買**」的時機限制(V72.9.0:隔天開盤買少賺一大半)。
  *   ⑦ 必須寫出「沒扣交易成本」。
  *   ⑧ 已接進 `_showEdgeHelp`(⛔ 寫了沒接上等於沒做,陷阱 #37)。
+ *      🧹 V78.3.6:散戶 App 教學改白話 → ⑦⑧ 改釘「教學⛔ 不含研究字樣 + 白話三件還在 + ⛔ 不呼叫研究版」
  */
 import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
 import { fileURLToPath } from 'url';
@@ -108,13 +109,20 @@ ok('⑤ 有指路到某個分頁', !!m, t.slice(-300));
 
 // ⑥⑦ 時機與成本限制
 ok('⑥ 要寫出「訊號當天尾盤買」的時機限制', /尾盤買/.test(t) && /隔天開盤/.test(t));
-ok('⑦ 教學要寫「沒有扣交易成本」', /沒有扣交易成本|沒扣交易成本/.test(R.help), R.help.slice(-160));
-
-// ⑧ 已接上
-ok('⑧ 已接進 _showEdgeHelp(⛔ 寫了沒接上等於沒做)',
-    R.help.includes('起漲點') && R.help.length > t.length, String(R.help.length));
-ok('⑧b 靜態:_showEdgeHelp 有呼叫 _edgeEntryHelpText',
-    /_edgeEntryHelpText\(\)/.test(src) && (src.match(/_edgeEntryHelpText\(\)/g) || []).length >= 1);
+// 🧹 V78.3.6 散戶 App 的 _showEdgeHelp 改成白話(⛔ 不再呼叫 _edgeEntryHelpText —— 那段是一串期望值與樣本數);
+//    上面 ①~⑥ 仍釘 _edgeEntryHelpText 本身(研究文字的產生器,要拿來用時數字仍須現算)。
+//    ⑦⑧ 改釘新用意:一般模式教學⛔ 不含研究字樣,但「起漲點怎麼看 / 尾盤決定 / 成本另計」三件怎麼做還在。
+{
+    const HS = R.help.replace(/^THREW:.*/, '');
+    const RESEARCH = /實測|回測|期望值|勝率\s*\d|\dpp|樣本|基準|對照組|探針|六關|\d+ 個訊號|[+−-]\d+\.\d+%/;
+    ok('⑦ 🧹 V78.3.6 教學仍講成本(手續費和稅另計)', /手續費和稅另計|沒有扣交易成本|沒扣交易成本/.test(HS), HS.slice(-160));
+    ok('⑦b 🧹 V78.3.6 一般模式教學⛔ 不可出現研究字樣(實測/期望值/勝率 N/樣本/pp…)', !!HS && !RESEARCH.test(HS), (HS.match(RESEARCH) || [''])[0]);
+    ok('⑧ 🧹 V78.3.6 教學有「起漲點怎麼看」的白話答案(追強比抄底 + 當天尾盤決定)',
+        /起漲點/.test(HS) && /追強比抄底/.test(HS) && /尾盤/.test(HS), HS.slice(0, 300));
+    ok('⑧b 🧹 V78.3.6 靜態:_showEdgeHelp ⛔ 不可再呼叫 _edgeEntryHelpText(那段是研究數字)',
+        (() => { const a = src.indexOf('    _showEdgeHelp() {'); const b = src.indexOf('\n    },', a);
+                 return a > 0 && b > a && !/_edgeEntryHelpText\(/.test(src.slice(a, b)); })());
+}
 
 ok('⑨ 載入無 pageerror', errs.length === 0, errs.join(' | '));
 

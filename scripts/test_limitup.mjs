@@ -44,32 +44,37 @@ const run = (chgPct, turnPct, hasShares = true) => page.evaluate(a => {
     return { r: app._limitUpMomentum('2330', d), html: app._limitUpMomentumHtml('2330', d) };
 }, { chg: chgPct, turn: turnPct, tot: TOT, hasShares });
 
-// ── ① 漲停 × 各週轉率分級,數字要對得上實測 ────────────────────
+// ── ① 漲停 × 各週轉率分級:分級邏輯(r.z)仍要對得上實測,但數字⛔ 不印給散戶看 ──
+// 🧹 V78.3.6 散戶 App 不印實測數字(+1.54%/56.7%、實測最強、基準 44.3%、227,412 筆)→
+//    分級數字改驗**邏輯物件** r.z(判斷一行沒改),畫面改驗「白話分級標籤 + ⛔ 不出現研究數字」
+const RES = /實測|回測|勝率|期望值|基準|對照組|樣本|\d+(\.\d+)?%\s*\/|44\.3|227,412|pp\b/;   // ⚠️ 不擋「+10.0%」—— 那是今天的漲幅(事實),研究數字另外逐一比
+const plain = h => h.replace(/<[^>]+>/g, '');
 let x = await run(10, 2);           // 漲停 + 中週轉(1~3%)= 實測最強
 ok('① 漲停+中週轉 → 判 limitup', x.r && x.r.kind === 'limitup', JSON.stringify(x.r));
-ok('① ⭐ 中週轉要帶實測最強數字 +1.54% / 56.7%',
-   /\+1\.54%/.test(x.html) && /56\.7%/.test(x.html), x.html.slice(0, 500));
-ok('① 要標「實測最強」', /實測最強/.test(x.html), x.html.slice(0, 400));
+ok('① ⭐ 中週轉的分級仍是實測最強那格(r.z.e=1.54 / w=56.7),畫面標「(中)」(🧹 V78.3.6)',
+   x.r && x.r.z && x.r.z.e === 1.54 && x.r.z.w === 56.7 && /週轉率 2\.0%\(中\)/.test(plain(x.html)), JSON.stringify(x.r && x.r.z));
+ok('① ⛔ 畫面不印實測數字 / 「實測最強」字樣(🧹 V78.3.6)', !RES.test(plain(x.html)) && !/1\.54|56\.7/.test(x.html), plain(x.html).slice(0, 400));
 
 x = await run(10, 0.5);             // 低週轉
-ok('① 低週轉 → +0.82% / 53.5%', /\+0\.82%/.test(x.html) && /53\.5%/.test(x.html), x.html.slice(0, 400));
+ok('① 低週轉 → 分級 0.82/53.5、畫面標「(低)」⛔ 不印數字', x.r?.z?.e === 0.82 && x.r?.z?.w === 53.5 && /\(低\)/.test(plain(x.html)) && !/0\.82|53\.5/.test(x.html), plain(x.html).slice(0, 400));
 x = await run(10, 5);               // 高週轉
-ok('① 高週轉 → +1.13% / 56.1%', /\+1\.13%/.test(x.html) && /56\.1%/.test(x.html), x.html.slice(0, 400));
+ok('① 高週轉 → 分級 1.13/56.1、畫面標「(高)」⛔ 不印數字', x.r?.z?.e === 1.13 && x.r?.z?.w === 56.1 && /\(高\)/.test(plain(x.html)) && !/1\.13|56\.1/.test(x.html), plain(x.html).slice(0, 400));
 x = await run(10, 12);              // 極高週轉 → 衰減
-ok('① 極高週轉 → +0.78% / 53.9%', /\+0\.78%/.test(x.html) && /53\.9%/.test(x.html), x.html.slice(0, 400));
+ok('① 極高週轉 → 分級 0.78/53.9、⛔ 不印數字', x.r?.z?.e === 0.78 && x.r?.z?.w === 53.9 && !/0\.78|53\.9/.test(x.html), plain(x.html).slice(0, 400));
 ok('① ⭐ 極高週轉要標「換手太兇會衰減」(他那半句是對的)',
    /換手太兇/.test(x.html), x.html.slice(0, 400));
 
-// ── ② ⭐ 必須寫明「只有隔天有效」──────────────────────────
+// ── ② ⭐ 必須寫明「只看隔天」──────────────────────────
 x = await run(10, 2);
-ok('② ⭐ 必須寫明只有隔天有效', /只有.{0,3}隔天有效/.test(x.html), x.html.slice(0, 700));
-ok('② ⭐ 必須寫明 3/5 日會轉負', /3 日、5 日邊際就轉負|3 日.{0,6}5 日.{0,6}轉負/.test(x.html), x.html.slice(0, 700));
+ok('② ⭐ 必須寫明只看隔天(🧹 V78.3.6 白話「只看隔天」)', /只看隔天|只有.{0,3}隔天有效/.test(plain(x.html)), plain(x.html).slice(0, 700));
+// 🧹 V78.3.6「3/5 日邊際轉負」是回測研究結論 → 改釘:⛔ 不可出現那句研究字樣
+ok('② ⛔ 不印「3 日、5 日邊際轉負」研究字樣(🧹 V78.3.6)', !/邊際|轉負/.test(plain(x.html)), plain(x.html).slice(0, 700));
 ok('② ⭐ ⛔ 必須明說別當波段理由', /別拿它當波段理由|不可拿來當波段/.test(x.html), x.html.slice(0, 700));
-ok('② 要提到當沖來回成本', /0\.25%/.test(x.html), x.html.slice(0, 700));
+// 🧹 V78.3.6「當沖來回成本 0.25%」改成指路當沖頁的賣法規則
+ok('② 鎖漲停的持股要指路「隔天照當沖頁那幾條規則賣」(🧹 V78.3.6 取代 0.25% 成本句)', /當沖頁那幾條規則賣/.test(plain(x.html)), plain(x.html).slice(0, 700));
 
-// ── ③ ⭐ 基準勝率要寫出來(否則 56.7% 會被誤讀)────────────────
-ok('③ ⭐ 必須寫明基準 44.3%', /44\.3%/.test(x.html), x.html.slice(0, 700));
-ok('③ 要寫明樣本數 227,412', /227,412/.test(x.html), x.html.slice(0, 500));
+// ── ③ ⛔ 不印基準勝率 / 樣本數(🧹 V78.3.6)────────────────
+ok('③ ⛔ 不印基準 44.3% / 樣本數 227,412 / 任何研究字樣(🧹 V78.3.6)', !RES.test(plain(x.html)), plain(x.html).slice(0, 700));
 ok('③ 要寫明「非保證」', /非保證/.test(x.html), x.html.slice(0, 900));
 ok('③ 要說明週轉率怎麼算 + 用總股數的偏差', /總發行股數/.test(x.html) && /略低估/.test(x.html), x.html.slice(0, 900));
 

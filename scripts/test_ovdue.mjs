@@ -18,7 +18,7 @@
  *   ⓒ 收盤後的日子改講「明天 / 下週一」(⛔ 不再寫抽象的「下一個交易日」);鎖漲停 → 徽章「開盤照規則」
  *   ⓗ 鎖漲停 → 卡上有 4 條明日規則 + 後天一行,數字讀 `_LUNEXT_EDGE`(決定性對照 8.88)
  *   ⓘ `_dueWhen().openWhen`:週四 15:00 明天 / 週五 15:00 下週一 / 週四 03:28 今天 / 週六 下週一
- *   ⓙ 卡片第一眼(摺疊關著)字數 ≤ 完整說明的 60%,完整說明在 `[data-ovdue-more]` 裡(⛔ 沒被刪)
+ *   ⓙ 卡片第一眼(摺疊關著)≤ 360 字且比完整說明短(🧹 V78.3.6 原本是 ≤ 完整說明 60%),完整說明在 `[data-ovdue-more]` 裡(⛔ 沒被刪)
  *   ⓚ 提示那行 ⛔ 不是紅框;現價正值紅字
  *   ⓛ 390px 不溢出;≥768px 兩欄(lib_rwdshim)
  *   注入:規則寫死 / 提示改紅框 / 拿掉摺疊 → 都要紅
@@ -137,11 +137,14 @@ ok('ⓒ 週三 14:00(尾盤過了)→ 「明天尾盤賣」,⛔ 不寫「今天 
 ok('ⓒ2 週末 → 「下週一」', /下週一尾盤賣/.test(R.c2.badge), s(R.c2));
 ok('ⓒ3 使用者那個情境(週四 03:28・超過・鎖漲停)→ 「已超過 20 天・今天開盤照規則」+ 有漲停那一行,⛔ 不寫「回測與自動下單都是今天」', /已超過 20 天・今天開盤照規則/.test(R.c3.badge) && /錯過了/.test(R.c3.why) && !/回測與自動下單都是/.test(R.c3.why) && R.c3.lu, s(R.c3));
 ok('ⓒ4 收盤後鎖漲停(週三 14:00)→ 徽章「明天開盤照規則」(使用者:改明日開盤)', /明天開盤照規則/.test(R.d.badge), R.d.badge);
-ok('ⓓ 收盤鎖漲停 → 有 `[data-ovdue-lu]` 那一行,且寫次數 + 開盤賣', R.d.lu && /鎖漲停/.test(R.d.why) && /開盤賣/.test(R.d.why) && /\d{1,3}(,\d{3})+ 次/.test(R.d.why), s(R.d));
-ok('ⓓb 決定性對照:`_DT_EDGE.lu.*.open[0]` 改 7.77 → 畫面跟著變', /\+7\.77%/.test(R.d99.why) && !/\+7\.77%/.test(R.d.why), s(R.d99));
-ok('ⓓc 這套自己的回測數字讀 `_LUDEFER_EDGE`(⛔ 寫死)且明講「規則沒改」', /規則沒改/.test(R.d.why) && /989 次/.test(R.d.why) && /\+9\.99%/.test(R.dLud.why), s(R.dLud));
+// 🧹 V78.3.6 散戶 App⛔ 不印歷史次數 / 平均 / 賺的機率 → 改釘:有那一行、講「照下面那張表」、⛔ 沒有數字
+ok('ⓓ 🧹 V78.3.6 收盤鎖漲停 → 有 `[data-ovdue-lu]` 那一行、指路到規則表,⛔ 不印次數/平均/機率', R.d.lu && /鎖漲停/.test(R.d.why) && /照下面那張表/.test(R.d.why) && !/\d{1,3}(,\d{3})+ 次|賺的機率|已扣 0\.44%/.test(R.d.why), s(R.d));
+ok('ⓓb 🧹 V78.3.6 反向對照:`_DT_EDGE.lu.*.open[0]` 改 7.77 → 一般模式畫面⛔ 仍不可出現', R.d99 && R.d99.why && /鎖漲停/.test(R.d99.why) && !/7\.77/.test(R.d99.why), s(R.d99));
+// 🧹 V78.3.6 散戶 App 不印 _LUDEFER_EDGE 回測數字(989 次 / +3.27%)→ 改釘「自動下單照舊、手動看表」+ 決定性對照:改常數一般模式也⛔ 不出現
+ok('ⓓc 這套自己的回測數字⛔ 不印(🧹 V78.3.6),改講「自動下單照到期那天尾盤賣、手動照表」;改 _LUDEFER_EDGE 也⛔ 不出現', /自動下單照到期那天尾盤賣/.test(R.d.why) && !/989 次|3\.27%/.test(R.d.why) && !/9\.99/.test(R.dLud.why), s(R.dLud));
 ok('ⓖ 收盤鎖漲停 → 有「明天開盤看到哪一種」決策表(三種開盤 + 後天)', /data-lunext/.test(R.d.why) && /開盤就在漲停/.test(R.d.why) && /開盤就賣/.test(R.d.why) && /別在開盤殺/.test(R.d.why) && /後天/.test(R.d.why), s(R.d));
-ok('ⓖb 決策表數字讀 `_LUNEXT_EDGE`(決定性對照:改 8.88 → 畫面跟著變)', /\+8\.88%/.test(R.dTree.why) && !/\+8\.88%/.test(R.d.why), s(R.dTree));
+// 🧹 V78.3.6 決策表(_luNextHtml)只講怎麼做、⛔ 不印 _LUNEXT_EDGE 數字 → 決定性對照改成「改 8.88 → why 也⛔ 不出現」(卡上規則那份仍讀常數,見 ⓗb)
+ok('ⓖb 決策表⛔ 不印 _LUNEXT_EDGE 數字(🧹 V78.3.6:改 8.88 → why 仍不出現),但規則句還在', !/8\.88/.test(R.dTree.why) && /先別賣、抱著/.test(R.dTree.why) && !/實測|回測|勝率/.test(R.dTree.why.replace(/<[^>]+>/g, '')), s(R.dTree));
 ok('ⓖc 沒鎖漲停 → ⛔ 沒有決策表', !/data-lunext/.test(R.a.why + R.b.why + R.c.why), '');
 ok('ⓔ 沒鎖漲停 → ⛔ 沒有那一行', !R.a.lu && !R.b.lu && !R.c.lu, '');
 ok('ⓔb 盤中(isMarketOpen)→ ⛔ 沒有那一行(還沒收盤)', R.e && !R.e.lu, s(R.e));
@@ -149,12 +152,13 @@ ok('ⓔb 盤中(isMarketOpen)→ ⛔ 沒有那一行(還沒收盤)', R.e && !R.e
 const C = k => (R[k] && R[k].card) || {};
 ok('🚧 卡片真的畫出來了(三個情境都有 [data-ovdue-card])', ['a', 'd', 'c3'].every(k => /data-ovdue-card/.test(C(k).html || '')), JSON.stringify(C('d')).slice(0, 300));
 ok('ⓗ 鎖漲停 → 4 條明日規則(一字鎖抱 / 開高 ≥5% 開盤賣 / 開高 0~5% 09:30 / 開平開低尾盤)+ 後天', C('d').rules === 4 && /先抱著/.test(C('d').rulesTxt) && /開盤就賣/.test(C('d').rulesTxt) && /09:30/.test(C('d').rulesTxt) && /尾盤賣/.test(C('d').rulesTxt) && /後天/.test(C('d').rulesTxt), C('d').rulesTxt);
-ok('ⓗb 決定性對照:`_LUNEXT_EDGE.S.S1.hold.d` 改 8.88 → 卡上規則跟著變', /\+8\.88%/.test(C('dTree').rulesTxt) && !/\+8\.88%/.test(C('d').rulesTxt), C('dTree').rulesTxt);
+ok('ⓗb 🧹 V78.3.6 卡上規則只講怎麼做:四種開盤都在、改 `_LUNEXT_EDGE.S.S1.hold.d` 8.88 ⛔ 不出現、⛔ 沒有實測 %', /開盤就在漲停/.test(C('dTree').rulesTxt) && /開平/.test(C('dTree').rulesTxt) && !/8\.88/.test(C('dTree').rulesTxt) && !/\d\.\d+%/.test(C('d').rulesTxt), C('dTree').rulesTxt);
 ok('ⓗc 沒鎖漲停 → ⛔ 沒有規則', C('a').rules === 0 && C('c').rules === 0, '');
 ok('ⓘ openWhen:週四 15:00 明天 / 週五 15:00 下週一 / 週四 03:28 今天 / 週六 下週一 / 週三 11:00 今天',
    R.ow.thu15 === '明天' && R.ow.fri15 === '下週一' && R.ow.thu0328 === '今天' && R.ow.sat === '下週一' && R.ow.wed11 === '今天', JSON.stringify(R.ow));
-ok('ⓙ 第一眼(摺疊關著)字數 ≤ 完整說明的 60%,而且完整說明在 [data-ovdue-more] 裡(⛔ 沒被刪)',
-   C('d').moreLen > 300 && C('d').firstLen <= C('d').moreLen * 0.6 && C('d').moreOpen === false && /data-ovdue-lu/.test(C('d').html) && /data-lunext/.test(C('d').html), `first ${C('d').firstLen} / more ${C('d').moreLen}`);
+// 🧹 V78.3.6 完整說明拿掉回測數字後變短(why 少了約 200 字)→ 比例門檻失去意義;改釘「第一眼 ≤ 360 字(V78.3.6 實測 329)且比完整說明短」+ 完整說明仍在摺疊裡
+ok('ⓙ 第一眼(摺疊關著)≤ 360 字且比完整說明短,而且完整說明在 [data-ovdue-more] 裡(⛔ 沒被刪)(🧹 V78.3.6)',
+   C('d').moreLen > 300 && C('d').firstLen <= 360 && C('d').firstLen < C('d').moreLen && C('d').moreOpen === false && /data-ovdue-lu/.test(C('d').html) && /data-lunext/.test(C('d').html), `first ${C('d').firstLen} / more ${C('d').moreLen}`);
 ok('ⓚ 提示那行 ⛔ 不是紅框(紅色在本站 = 漲)', C('d').tipCls && !/red/.test(C('d').tipCls), C('d').tipCls);
 ok('🚧 版面 shim 全部生效(否則幾何不可信)', Array.isArray(shimBad) && shimBad.length === 0, JSON.stringify(shimBad));
 ok('ⓛ 390px:卡片單欄、沒有東西超出容器', L390.w >= 350 && L390.cols === 1 && L390.over <= 1, JSON.stringify(L390));

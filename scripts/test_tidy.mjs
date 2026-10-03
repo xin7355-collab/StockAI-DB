@@ -168,9 +168,19 @@ ok('⑥ 🚨 卡自己藏起來時,提示列也要跟著藏(⛔ 否則是幫看�
 // ⚔️ V74.1.9 六脈全市場實測後**加回來**(🔴 強共振六關全過)—— 「驗到有用就加回來」的第一個實例
 ok('⑦ 六脈卡已加回(⛔ 不在 _TIDY、K線頁看得到)', R.sixBack === true && R.sixInTidy === false,
     `back=${R.sixBack} inTidy=${R.sixInTidy}`);
-ok('⑦b 卡上要有實測成績:🔴 級 +0.80pp/六關全過;🟡 級⛔ 不可再叫人「先試單」(實測 ≈ 0)',
-    // ⚠️ 括號要用**全形**(跟原文一樣)—— 半形括號在 regex 是捕獲組,那條否定等於沒驗
-    /\+0\.80 個百分點/.test(SRC) && /沒有邊際/.test(SRC) && !SRC.includes('先試單(半量)'));
+// 🧹 V78.3.6 散戶 App 卡上不印實測成績(+0.80 個百分點 / 沒有邊際 +0.02)→ 改釘「怎麼做」:
+//    🔴 那句是右側加碼區 + 守 5 日線;🟡 那句「⛔ 別單憑這個進場、等補齊到 🔴」;⛔ 兩句都不帶實測數字;⛔ 仍不可叫人「先試單」
+{
+    const sopRed = (SRC.match(/強共振・買點`; sop = '([^']*)'/) || [])[1] || '';
+    const sopYel = (SRC.match(/右側第1點・觀察`; sop = '([^']*)'/) || [])[1] || '';
+    ok('⑦b 六脈 🔴/🟡 兩句講怎麼做、⛔ 不帶實測成績;🟡 級⛔ 不可叫人「先試單」(🧹 V78.3.6)',
+        sopRed.length > 20 && sopYel.length > 20
+        && /守 5 日線/.test(sopRed) && /別單憑這個進場/.test(sopYel) && /等補齊到 🔴 強共振/.test(sopYel)
+        && !/實測|個百分點|pp|邊際|六道關卡|萬次/.test(sopRed + sopYel)
+        // ⚠️ 括號要用**全形**(跟原文一樣)—— 半形括號在 regex 是捕獲組,那條否定等於沒驗
+        && !SRC.includes('先試單(半量)'),
+        JSON.stringify({ sopRed: sopRed.slice(0, 80), sopYel: sopYel.slice(0, 80) }));
+}
 
 console.log(fails ? `❌ ${fails} 條失敗` : '✅ TIDY_PASS(全部通過)');
 process.exit(fails ? 1 : 0);
