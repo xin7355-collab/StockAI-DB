@@ -106,7 +106,7 @@ ok('⑥c2 🚨 pro.html ⛔ 不可抄一份資料過去 —— 必須 fetch inde
     && !/_NOISE_KEEP:\s*\[/.test(PRO_SRC) && !/_NOISE_GONE:\s*\[/.test(PRO_SRC)
     && !/_CHANGELOG:\s*\[/.test(PRO_SRC) && !/_TIDY:\s*\[/.test(PRO_SRC));
 ok('⑥c3 🚨 讀不到要誠實說出來 + 留一條路(⛔ 不可靜默空白)',
-    /_idxErr/.test(PRO_SRC) && /讀不到散戶救星的資料/.test(PRO_SRC) && /index\.html\?noise=1/.test(PRO_SRC));
+    /_idxErr/.test(PRO_SRC) && /讀不到散戶救星的資料/.test(PRO_SRC) && /index\.html\?lab=1&noise=1/.test(PRO_SRC));   // 🔬 V78.3.8 雜訊清單只在實驗室模式開 → 退路要帶 lab=1
 ok('⑥d ⭐ 延遲載入(index.html 有 2.8MB,⛔ 不可開頁就抓)',
     // ⚠️ V77.9.4 loadIdx 改成「同時呼叫共用一個 promise」(舊寫法第二個呼叫者直接 return,拿不到資料)→ 仍是延遲載入
     (/if \(this\._idxData \|\| this\._idxLoading\) return;/.test(PRO_SRC) || (/if \(this\._idxData\) return Promise\.resolve\(\);/.test(PRO_SRC) && /if \(this\._idxP\) return this\._idxP;/.test(PRO_SRC)))
