@@ -31,7 +31,8 @@ const PERF = {
 const b = await chromium.launch({ args: ['--allow-file-access-from-files', '--disable-web-security'] });
 const pg = await b.newPage({ viewport: { width: 390, height: 844 } });
 const errs = []; pg.on('pageerror', e => errs.push(String(e)));
-await pg.goto(pathToFileURL(resolve('index.html')).href, { waitUntil: 'load', timeout: 60000 });
+// 🔬 V78.3.9 券商成績榜是研究資料 → 只在實驗室模式顯示;成績榜本身的測試一律在 ?lab=1 下跑
+await pg.goto(pathToFileURL(resolve('index.html')).href + '?lab=1', { waitUntil: 'load', timeout: 60000 });
 await pg.waitForTimeout(4000);
 
 const R = await pg.evaluate(async (PERF) => {
@@ -146,6 +147,25 @@ ck(!/\*\*/.test(Object.values(C).map(x => x.txt).join('')),
 ck(/整備中/.test(R.noData), '⑦c 資料還沒到時要誠實說整備中(⛔ 不可空白)');
 ck(!/🔴|🟢/.test(Object.values(C).map(x => x.txt).join('')),
    '⑦d 燈號鐵則:這張榜講的是成績不是漲跌方向 → ⛔ 不可出現 🔴🟢');
+
+// 🔬 ⑨ 一般模式(⛔ 沒有 ?lab=1):券商成績榜看不到 —— 按鈕藏起來、切過去退回策略頁、券商頁左欄沒有勝率類
+{
+    const pg2 = await b.newPage({ viewport: { width: 390, height: 844 } });
+    pg2.on('pageerror', e => errs.push(String(e)));
+    await pg2.goto(pathToFileURL(resolve('index.html')).href, { waitUntil: 'load', timeout: 60000 });
+    await pg2.waitForTimeout(4000);
+    const N = await pg2.evaluate(() => {
+        app.switchAppTab('radar'); app.switchRadarMode('broker');
+        const btn = document.getElementById('radarModeBrokerBtn');
+        app.switchAppTab('broker'); app.switchBrokerCat('god');
+        const cats = [...document.querySelectorAll('#brokerCatCol button')].map(x => x.id);
+        return { mode: app._radarMode, labonly: !!(btn && btn.hasAttribute('data-labonly')), btnShown: !!(btn && btn.offsetParent), cat: app._brokerCat, cats };
+    });
+    ck(N.mode === 'strategy', `⑨a 一般模式切到券商榜會退回策略頁(實際 ${N.mode})`);
+    ck(N.labonly && !N.btnShown, '⑨b 一般模式看不到「🏅 券商」按鈕');
+    ck(N.cat === 'follow' && !N.cats.includes('bcat_god') && !N.cats.includes('bcat_perf'), `⑨c 券商頁左欄沒有高手券商 / 券商勝率(${N.cats.join(',')})`);
+    await pg2.close();
+}
 
 console.log('\npageerror:', errs.length, errs.slice(0, 2).join(' | '));
 ck(errs.length === 0, '⑧ 無 pageerror');

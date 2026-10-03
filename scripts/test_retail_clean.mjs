@@ -78,6 +78,14 @@ for (const strat of STRATS) {
     // ⭐ 每一頁的子分頁也要走過(只掃預設那一格 = 其他格的文字永遠看不到)
     for (const t of ['global', 'tw', 'idx', 'rot', 'advice']) await grab('mkt_' + t, async t => { app.switchAppTab('market'); app.switchMarketSubTab(t); }, t, 2500);
     for (const t of ['strategy', 'etf', 'custom', 'broker']) await grab('radarmode_' + t, async t => { app.switchAppTab('radar'); app.switchRadarMode(t); }, t, 2500);
+    // 🏦 V78.3.9 券商頁每一個左欄分類 + 分點榜每一個小分頁都要走過(以前只掃預設那一格)
+    const BC = await page.evaluate(() => (app._BROKER_CATS || []).map(c => c[0]));
+    for (const k of BC) await grab('bcat_' + k, async k => { app.switchAppTab('broker'); app.switchBrokerCat(k); }, k, 1500);
+    for (const k of ['buy_today', 'sell_today', 'win', 'mystery', 'daytrade_fire']) await grab('brank_' + k, async k => {
+        app.switchAppTab('broker'); app._brokerRankMode = k; app.switchBrokerCat('ranks'); }, k, 1200);
+    // 🧪 條件式卡片:畫面巡邏不一定觸發得到 → 直接餵條件(大盤風險偏高)
+    await grab('cond_riskline', async () => { app._calcRiskScore = () => 80; const h = await app._tomorrowWatchHtml();
+        const d = document.createElement('div'); d.innerHTML = h || ''; document.body.appendChild(d); }, null, 300);
     const RK = await page.evaluate(() => Object.keys(app._RADAR_TABS || {}));
     for (const k of RK) await grab('radar_' + k, async k => { app.switchAppTab('radar'); app.switchRadarMode('strategy'); app.switchRadarStrategy(k); }, k, 2000);
     const CK = await page.evaluate(() => Object.keys(app._CHU_TABS || {}));
@@ -105,6 +113,24 @@ for (const strat of STRATS) {
         if (!vis && !document.querySelector('[id$="Modal"]:not(.hidden)')) window.__helpNoModal = (window.__helpNoModal || []).concat(h);
     }, h, 800);
     await grab('jargon', () => { const d = document.createElement('div'); d.id = '__jg'; d.style.whiteSpace = 'pre-line'; d.textContent = Object.values(app.jargonDict || {}).join('\n'); document.body.appendChild(d); }, null, 200);
+    // 🔎 V78.3.9 靜態段:條件式卡片的原始碼裡,研究字只能出現在有 _labMode 判斷的那一行
+    //   (分點集中 ≥40% / 夜盤先漲 / 分點檔案勝率 —— 巡邏時剛好沒觸發就看不到,所以直接讀函式本身)
+    if (!SCOPE || SCOPE.has('pages')) {
+        const COND_FNS = ['_renderBrokerFenDian', '_tomorrowWatchHtml', '_dtBattleExtras', '_brokerProfileHtml', '_brokerBookExtraHtml', '_brokerRanksHtml', '_brokerRankListHtml', '_brokerGodTag'];
+        const srcs = await page.evaluate(fs => fs.map(f => [f, typeof app[f] === 'function' ? app[f].toString() : '']), COND_FNS);
+        if (process.env.INJECT) srcs.push(['__inject', "x = `<div>實測 20 日 +1.2pp</div>`;"]);
+        for (const [f, src] of srcs) {
+            if (!src) { all[`${strat}:src_${f}`] = [{ line: `找不到函式 ${f}(空過守門)`, bad: ['MISSING'] }]; continue; }
+            const hits = [];
+            // ⚠️ template 裡的 HTML 註解不會畫在畫面上(同原始碼註解)→ 先整段剝掉
+            for (const raw of src.replace(/<!--[\s\S]*?-->/g, '').split('\n')) {
+                const s = raw.replace(/^\s*\/\/.*$/, '').replace(/\s\/\/\s.*$/, '');
+                if (!s.trim() || /_labMode/.test(s)) continue;
+                const b = badOf(s); if (b.length) hits.push({ line: `[src ${f}] ` + s.trim().slice(0, 180), bad: b });
+            }
+            all[`${strat}:src_${f}`] = hits;
+        }
+    }
     await page.close();
 }
 await browser.close();

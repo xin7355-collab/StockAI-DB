@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.3.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.3.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.3.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.3.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1200,7 +1200,7 @@
                 </details>
                 <!-- 🧹 V78.1.1 設定瘦身:🛠️ 進階與工具 收起來(⛔ 裡面的 id 一個都沒改,openSettings / saveSettings 照舊讀寫) -->
                 <details class="border-b border-[#21262d]" data-setgrp="tools">
-                    <summary class="cursor-pointer select-none py-2.5 flex items-center justify-between gap-2"><span class="min-w-0"><span class="text-sm font-bold text-gray-200">🛠️ 進階與工具</span><span id="setGrpSum_tools" class="block text-[10px] text-gray-500 leading-snug">決策台顯示哪些・營收加速濾網・自訂回測・盲測練習・即時指數・AI 用量</span></span><span class="text-[10px] text-sky-400 flex-shrink-0">展開 ▾</span></summary>
+                    <summary class="cursor-pointer select-none py-2.5 flex items-center justify-between gap-2"><span class="min-w-0"><span class="text-sm font-bold text-gray-200">🛠️ 進階與工具</span><span id="setGrpSum_tools" class="block text-[10px] text-gray-500 leading-snug">決策台顯示哪些・即時指數・AI 用量</span></span><span class="text-[10px] text-sky-400 flex-shrink-0">展開 ▾</span></summary>
                     <div class="flex flex-col gap-3 pb-4 pt-1">
                     <!-- 🎯 V77.9.1 決策台顯示哪些區塊(使用者:「今天要做的太多…放在設定裡面用勾選的」)。清單由 app._DECK_SECTIONS 產生,這裡不另寫一份 -->
                     <div class="pt-3">
@@ -3302,7 +3302,7 @@
                 <!-- 🏅 V76.2.8 使用者要求:選股策略裡要有券商頁籤(當沖/隔日沖/短線/波段 × 報酬王/常勝軍/交易狂 共 12 項)。
                      ⚠️ V71.2.4 曾把**整套**券商(8 個分類)搬出選股頁,理由是「擠在二選一裡」——
                      ⛔ 這裡**不是**把那整套搬回來,只放那 12 項排行榜一張(跟券商頁的 🏅 高手券商 共用同一支 _brokerLeagueHtml)。 -->
-                <button id="radarModeBrokerBtn" onclick="app.switchRadarMode('broker')" class="flex-1 min-w-0 py-2 px-0.5 rounded-lg text-[12px] font-black border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏅 券商</button>
+                <button data-labonly="1" id="radarModeBrokerBtn" onclick="app.switchRadarMode('broker')" class="flex-1 min-w-0 py-2 px-0.5 rounded-lg text-[12px] font-black border transition-all bg-[#161b22] text-gray-400 border-[#30363d]">🏅 券商</button>
             </div>
             <!-- 🗑️ V72.5.0 `#todaySignalBar` 常駐條已移除(使用者:「佔太大、太亂」)。
                  ⚠️ V72.2.0 當時寫「⛔ 刻意不做成第 16 個榜,做成分頁會被埋掉」——
@@ -8670,10 +8670,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.3.8',
+    _APP_VERSION: 'V78.3.9',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.3.9', d: ['🧹 散戶救星第二輪全文檢查:券商的勝率排行(高手券商、券商勝率、勝率王、神秘黑馬、分點歷史勝率)搬到產業作戰室;分點集中、大盤風險偏高、夜盤先漲那幾句只講怎麼看'] },
         { v: 'V78.3.8', d: ['🔒 散戶救星網址後面加參數也打不開研究清單了(只有產業作戰室打得開)'] },
         { v: 'V78.3.7', d: ['🔬 <b>這一檔自己的回測成績搬到產業作戰室</b>:新分頁「🔬 個股實測」輸入代號就能看回測排名、K 線訊號成績,還有自訂回測與盲測練習;散戶救星一般畫面不再有任何「看完整回測」的按鈕'] },
         { v: 'V78.3.6', d: ['🧹 <b>散戶 App 拿掉回測研究文字(第三批)</b>:K 線、當沖、籌碼、選股、ETF、大盤、券商、提醒與所有說明視窗只講「怎麼看、怎麼做」;勝率、期望值、樣本數、對照組一律收到產業作戰室', '⏳ 抱滿天數那張卡與「鎖漲停隔天」只留怎麼賣的規則,不再列歷史平均'] },
@@ -31605,7 +31606,7 @@ ${this._reportFacts(sym)}
         }
         const top1Lots = buy[0] ? Math.round(Math.abs(buy[0].net) / 1000) : 0;
         const conc = sumBuyLots > 0 ? Math.round(top1Lots / sumBuyLots * 100) : 0;
-        if (conc >= 40 && buy[0]) insights.push({ c: 'conc', h: `🕵️ <b class="text-purple-300">神秘分點·籌碼高度集中</b> — <b>${shortName(buy[0])}</b> 單一分點吃下 ${conc}% 買超${(+buy[0].avg > 0) ? `,成本約 <b class="font-mono">@${(+buy[0].avg).toFixed(1)}</b>` : ''},量能被單一分點主導(疑似主力藏身處)。<br><span class="text-[9px] text-gray-500">⛔ <b class="text-orange-300">這只是描述,⛔ 不是買賣訊號</b>:分點集中度實測 106 萬(股·日)—— 買 <b>−0.60pp</b> / 賣 <b>−0.68pp</b>,<b>每一桶、每一年都輸對照組</b>,而且買賣兩端同號 = 那是<b>活躍度不是方向</b>。</span>` });
+        if (conc >= 40 && buy[0]) insights.push({ c: 'conc', h: `🕵️ <b class="text-purple-300">神秘分點·籌碼高度集中</b> — <b>${shortName(buy[0])}</b> 單一分點吃下 ${conc}% 買超${(+buy[0].avg > 0) ? `,成本約 <b class="font-mono">@${(+buy[0].avg).toFixed(1)}</b>` : ''},量能被單一分點主導(疑似主力藏身處)。<br><span class="text-[9px] text-gray-500">⛔ <b class="text-orange-300">這只是描述,⛔ 不是買賣訊號</b>:單一分點集中只代表這檔交易很熱,<b>不代表會漲或會跌</b>${this._labMode() ? '(分點集中度實測 106 萬股·日:買 −0.60pp / 賣 −0.68pp,買賣兩端同號 = 活躍度不是方向)' : ''}。</span>` });
         // 💥 V69.8.1 Top1 分點爆量(對標付費 App「分點偵探」):今日買超王 vs 它自己近10日日均的倍數
         try {
             const b1 = ((P['1d'] || {}).buy || [])[0];
@@ -41186,6 +41187,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     _radarMode: 'strategy',
     // 🔀 V71.2.4 第二格由「券商」改「ETF」(券商已獨立成底部 tab)
     switchRadarMode(mode) {
+        // 🔬 V78.3.9 🏅 券商成績榜是研究資料 → 只在實驗室模式(一般模式退回策略頁)
+        if (mode === 'broker' && !this._labMode()) mode = 'strategy';
         this._radarMode = mode;
         const st = document.getElementById('radarModeStrategy'), ef = document.getElementById('radarModeEtf');
         const cu = document.getElementById('radarModeCustom'), bk = document.getElementById('radarModeBroker');
@@ -41243,14 +41246,17 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         ['alliance', '🤝', '分點聯軍'], ['perf', '📈', '券商勝率'], ['pick', '🔍', '分點跟單'],
     ],
     _brokerCat: 'follow',
+    // 🔬 V78.3.9 券商「勝率 / 成績」類是研究資料 → 只在實驗室模式(一般模式左欄不出現、切過去退回分點同買)
+    _BROKER_LAB_CATS: ['god', 'perf'],
     _buildBrokerCatCol() {
         const col = document.getElementById('brokerCatCol'); if (!col) return;
-        col.innerHTML = this._BROKER_CATS.map(([k, ic, lbl]) => {
+        col.innerHTML = this._BROKER_CATS.filter(([k]) => this._labMode() || !this._BROKER_LAB_CATS.includes(k)).map(([k, ic, lbl]) => {
             const on = k === this._brokerCat;
             return `<button onclick="app.switchBrokerCat('${k}')" id="bcat_${k}" class="w-full px-0.5 py-2 rounded-lg text-[10px] font-bold text-center border leading-tight transition-all ${on ? 'bg-purple-600/30 text-purple-200 border-purple-500/50' : 'bg-[#161b22] text-gray-400 border-[#30363d]'}"><span class="block text-[13px] leading-none mb-0.5">${ic}</span>${lbl}</button>`;
         }).join('');
     },
     switchBrokerCat(key) {
+        if (!this._labMode() && this._BROKER_LAB_CATS.includes(key)) key = 'follow';
         this._brokerCat = key;
         this._buildBrokerCatCol();
         const body = document.getElementById('brokerCatBody');
@@ -41337,7 +41343,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     // 📇 分點榜:買超王/賣超王/勝率王/神秘黑馬/隔日沖 併成一頁小分頁切(左欄更短)
     _brokerRankMode: 'buy_today',
     _brokerRanksHtml() {
-        const modes = [['buy_today', '🔴買超王'], ['sell_today', '🟢賣超王'], ['win', '🏆勝率王'], ['mystery', '🕵️神秘黑馬'], ['daytrade_fire', '🔥隔日沖']];
+        const modes = [['buy_today', '🔴買超王'], ['sell_today', '🟢賣超王'], ['win', '🏆勝率王'], ['mystery', '🕵️神秘黑馬'], ['daytrade_fire', '🔥隔日沖']]
+            .filter(m => this._labMode() || (m[0] !== 'win' && m[0] !== 'mystery'));   // 🔬 V78.3.9 勝率類只在實驗室模式
         const cur = modes.some(m => m[0] === this._brokerRankMode) ? this._brokerRankMode : 'buy_today';
         const tabs = modes.map(([k, l]) => `<button onclick="app._brokerRankMode='${k}';var b=document.getElementById('brokerRanksBody');if(b)b.innerHTML=app._brokerRankListHtml('${k}');app._brokerRanksHiliteTabs();" data-rk="${k}" class="rk-tab px-2 py-1 rounded text-[11px] font-bold whitespace-nowrap ${k === cur ? 'bg-purple-600/30 text-purple-200 border border-purple-500/50' : 'text-gray-500 border border-transparent'}">${l}</button>`).join('');
         return `<div><div class="flex gap-1 flex-wrap mb-2">${tabs}</div><div id="brokerRanksBody">${this._brokerRankListHtml(cur)}</div></div>`;
@@ -41457,7 +41464,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const opts = names.map(n => { const g = this._brokerGodTag(n); return `<option value="${String(n).replace(/"/g, '')}">${g ? '⭐ ' : ''}${this._shortBroker(n)}${g ? ' · ' + g : ''}</option>`; }).join('');
         return `<div class="panel border border-[#30363d] bg-[#0d1117] rounded-lg p-2.5">
             <div class="text-[12px] font-black text-gray-100 mb-1">🔍 分點跟單</div>
-            <div class="text-[9px] text-gray-500 mb-1.5">選一家分點,看它的完整檔案:身分標籤 / 歷史勝率 / 今日·5日·10日在買什麼 / 布局vs隔日沖 / 認養股 / 跟單建議</div>
+            <div class="text-[9px] text-gray-500 mb-1.5">選一家分點,看它的完整檔案:身分標籤 / 今日·5日·10日在買什麼 / 布局vs隔日沖 / 認養股 / 跟單建議</div>
             <input id="radarBrokerSearch" type="search" inputmode="search" placeholder="🔍 打券商名找,例如:永豐、凱基、元大" oninput="app._filterBrokerSel(this.value)" class="w-full bg-[#161b22] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 mb-1.5 outline-none focus:border-purple-500">
             <select id="radarBrokerSel" onchange="app._renderRadarBroker(this.value)" class="w-full bg-[#161b22] border border-[#30363d] rounded p-2 text-[11px] text-gray-200 mb-2"><option value="">— 選分點(共 ${names.length} 家)—</option>${opts}</select>
             <div id="radarBrokerDetail"><div class="text-[10px] text-gray-600 py-4 text-center">👆 選一家分點,或從其他榜點券商名進來</div></div>
@@ -41799,8 +41806,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // ① 實測優先:真效果 ≥10pp 且樣本足夠才敢講(低於門檻代表「沒有慣性」,不給標籤)
         const f = this._flipEdge?.(name);
         if (f && f.n >= 20) {
-            if (f.edge >= 20) return `⚡隔日沖強 +${f.edge}`;
-            if (f.edge >= 10) return `⚡隔日沖 +${f.edge}`;
+            if (f.edge >= 20) return `⚡隔日沖強${this._labMode() ? ' +' + f.edge : ''}`;
+            if (f.edge >= 10) return `⚡隔日沖${this._labMode() ? ' +' + f.edge : ''}`;
             return '';           // 實測沒慣性 → **不給標籤**(不可拿人工標籤蓋過實測)
         }
         // ② 沒量到才退回人工標籤,並標「?」提醒未經實測
@@ -41925,7 +41932,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 歷史勝率(隔日沖/短線/波段)
         const w = book.win || {};
         const wCell = (k, lbl) => { const v = w[k]; if (!v || v.win == null) return `<div class="text-center"><div class="text-[8px] text-gray-600">${lbl}</div><div class="text-[10px] text-gray-600">—</div></div>`; const c = v.win >= 60 ? 'text-red-300' : v.win >= 50 ? 'text-yellow-300' : 'text-gray-400'; return `<div class="text-center"><div class="text-[8px] text-gray-500">${lbl}</div><div class="text-[11px] font-mono font-black ${c}">${v.win}%</div></div>`; };
-        const winRow = (w.daytrade || w.short || w.swing) ? `<div class="grid grid-cols-3 gap-1 bg-[#161b22] rounded p-1.5 my-1.5">${wCell('daytrade', '隔日沖')}${wCell('short', '短線')}${wCell('swing', '波段')}</div>` : '';
+        // 🔬 V78.3.9 分點歷史勝率是研究資料 → 只在實驗室模式
+        const winRow = this._labMode() && (w.daytrade || w.short || w.swing) ? `<div class="grid grid-cols-3 gap-1 bg-[#161b22] rounded p-1.5 my-1.5">${wCell('daytrade', '隔日沖')}${wCell('short', '短線')}${wCell('swing', '波段')}</div>` : '';
         // 💵 資金流向:今日買超金額 + 板塊
         const secStr = (book.sectors || []).map(s => `${s.name}`).join(' · ');
         const flowRow = (book.tot_buy_val > 0) ? `<div class="flex items-center justify-between bg-[#161b22] rounded px-2 py-1 my-1.5 text-[10px]"><span class="text-gray-500">💵 今日買超金額</span><span class="font-mono font-bold text-red-300">${this._fmtEok(book.tot_buy_val)}${secStr ? ` <span class="text-gray-500 font-normal">· ${secStr}</span>` : ''}</span></div>` : '';
@@ -42069,7 +42077,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             <div class="text-[10px] font-bold text-gray-200 truncate">${tagMini(b.tags)}${this._shortBroker(b.name)}</div>
             <div class="text-[9px] text-gray-500 truncate">${extra}</div></button>`;
         const rk = bk.rank;
-        const mode = ['buy_today', 'win', 'mystery', 'daytrade_fire'].includes(this._brokerRankMode) ? this._brokerRankMode : 'buy_today';
+        const mode = (this._labMode() ? ['buy_today', 'win', 'mystery', 'daytrade_fire'] : ['buy_today', 'daytrade_fire']).includes(this._brokerRankMode) ? this._brokerRankMode : 'buy_today';   // 🔬 V78.3.9 勝率類只在實驗室模式
         const tabBtn = (k, l) => `<button onclick="app._brokerRankMode='${k}'; app._rerenderRadarExtra();" class="text-[10px] font-bold px-2 py-0.5 rounded ${mode === k ? 'bg-purple-600/30 text-purple-200 border border-purple-500/50' : 'text-gray-500 border border-transparent'}">${l}</button>`;
         const rows = rk[mode] || [];
         const bestWin = (b) => { const vs = Object.values(b.win || {}).map(v => v && v.win).filter(v => v != null); return vs.length ? Math.max(...vs) : null; };
@@ -42098,9 +42106,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <span class="text-[9px] text-gray-500 flex-shrink-0">買${lots(c.buy)}/賣${lots(c.sel)}張</span></div>`;
         }).join('') : '<div class="text-[10px] text-gray-600 py-1">今日無明顯對敲</div>';
         return `<div id="radarBookExtra" class="mt-3 pt-3 border-t border-[#30363d]">
-            <div class="flex items-center justify-between mb-1.5"><div class="text-[11px] font-bold text-purple-300">🏆 分點排行榜</div><div class="flex gap-1 flex-wrap">${tabBtn('buy_today', '買超王')}${tabBtn('win', '勝率王')}${tabBtn('mystery', '神秘黑馬')}${tabBtn('daytrade_fire', '隔日沖火力')}</div></div>
+            <div class="flex items-center justify-between mb-1.5"><div class="text-[11px] font-bold text-purple-300">🏆 分點排行榜</div><div class="flex gap-1 flex-wrap">${tabBtn('buy_today', '買超王')}${this._labMode() ? tabBtn('win', '勝率王') + tabBtn('mystery', '神秘黑馬') : ''}${tabBtn('daytrade_fire', '隔日沖火力')}</div></div>
             ${grid}
-            <div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 點任一分點看它的完整檔案(標籤/勝率/布局)。神秘黑馬=沒名氣但歷史勝率高的隱形主力。</div>
+            <div class="text-[9px] text-gray-600 mt-1 leading-snug">💡 點任一分點看它的完整檔案(標籤/布局)。${this._labMode() ? '神秘黑馬=沒名氣但歷史勝率高的隱形主力。' : ''}</div>
             <div class="text-[9px] text-gray-600 mt-1 leading-snug">${this._brokerNoEdgeHtml('myst')}</div>
             <div class="mt-3"><div class="text-[11px] font-bold text-amber-300 mb-1">🤝 分點聯軍(常一起買同一檔=主力聯合作戰)</div>${alHtml}
                 <div class="text-[9px] text-gray-600 mt-1 leading-snug">${this._brokerNoEdgeHtml('ally')}</div></div>
@@ -50335,7 +50343,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         let riskLine = '';
         try {
             const rs = this._calcRiskScore();
-            if (Number.isFinite(+rs) && +rs >= 60) riskLine = `<div class="mt-1.5 bg-[#0d1117] border-l-4 border-orange-500 rounded-r px-2 py-1 text-[10px] text-orange-200 leading-snug">⚠️ <b>今天大盤風險 ${Math.round(+rs)} 分(偏高)</b> —— 清單照給,但這種盤建議<b>減量或空手</b>;實測 2026-07 那種月份整組是虧的。</div>`;
+            if (Number.isFinite(+rs) && +rs >= 60) riskLine = `<div class="mt-1.5 bg-[#0d1117] border-l-4 border-orange-500 rounded-r px-2 py-1 text-[10px] text-orange-200 leading-snug">⚠️ <b>今天大盤風險 ${Math.round(+rs)} 分(偏高)</b> —— 清單照給,但這種盤建議<b>減量或空手</b>${this._labMode() ? ';實測 2026-07 那種月份整組是虧的' : ''}。</div>`;
         } catch (_) { }
         // 🧬 V73.2.4 高位階+高波動 —— 唯一「六道關卡全過」的條件(⛔ 只排序不刪除)
         //   實測(600 檔・13 個月・本金 100 萬・每天 2 檔):
@@ -54395,7 +54403,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             }
             parts.push(`<div class="bg-[#161b22] border-l-4 ${catchUp ? 'border-red-500' : 'border-gray-600'} border-y border-r border-[#30363d] rounded-r p-2">
                 <div class="text-[11px] font-bold ${catchUp ? 'text-red-300' : 'text-gray-300'} mb-0.5">🏀 個股期貨夜盤 ${nc >= 0 ? '+' : ''}${nc.toFixed(2)}% vs 現貨 ${sc >= 0 ? '+' : ''}${sc.toFixed(2)}%</div>
-                <div class="text-[10px] text-gray-300 leading-snug">${catchUp ? `夜盤期貨比現貨多漲 +${gap.toFixed(1)}%(只描述)。⛔ 「夜盤先漲 → 現貨會補漲 → 跟一小張」<b>本站沒回測過</b>,不給操作指令;期貨量小也常被拉抬。` : '期貨與現貨差距不大。'}</div>
+                <div class="text-[10px] text-gray-300 leading-snug">${catchUp ? `夜盤期貨比現貨多漲 +${gap.toFixed(1)}%(只描述)。⛔ 「夜盤先漲 → 現貨會補漲 → 跟一小張」<b>不給操作指令</b>;期貨量小也常被拉抬。` : '期貨與現貨差距不大。'}</div>
                 ${basisHtml}
             </div>`);
         }
