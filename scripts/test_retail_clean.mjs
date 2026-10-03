@@ -76,7 +76,7 @@ for (const strat of STRATS) {
     await grab('desk', () => app.switchAppTab('desk'));
     for (const t of ['inv', 'fav', 'market', 'radar', 'etf', 'broker', 'potential', 'hunt']) await grab(t, t => app.switchAppTab(t), t);
     // ⭐ 每一頁的子分頁也要走過(只掃預設那一格 = 其他格的文字永遠看不到)
-    for (const t of ['global', 'tw', 'idx', 'rot', 'advice']) await grab('mkt_' + t, async t => { app.switchAppTab('market'); app.switchMarketSubTab(t); }, t, 2500);
+    for (const t of ['global', 'tw', 'idx', 'rot', 'advice', 'eve']) await grab('mkt_' + t, async t => { app.switchAppTab('market'); app.switchMarketSubTab(t); }, t, 2500);
     for (const t of ['strategy', 'etf', 'custom', 'broker']) await grab('radarmode_' + t, async t => { app.switchAppTab('radar'); app.switchRadarMode(t); }, t, 2500);
     // 🏦 V78.3.9 券商頁每一個左欄分類 + 分點榜每一個小分頁都要走過(以前只掃預設那一格)
     const BC = await page.evaluate(() => (app._BROKER_CATS || []).map(c => c[0]));

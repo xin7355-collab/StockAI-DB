@@ -1863,6 +1863,20 @@ async function runDailySummary(env) {
     const falconMap = buildFalconMap(radar);
     if (!falconMap.size) return;
 
+    // 📰 V78.4.0 大盤三行(參考 signova 盤後晚報)—— 全部轉述採礦產物,⛔ 不經 Gemini 改寫數字
+    //   ⛔ 不抓 screener.json 算族群名次(1~2MB,免費版 Worker 的 CPU 上限會爆)→ 族群看 App「📰 收盤」
+    let mktBlock = '', weekBlock = '';
+    try {
+        const [bRes, mRes] = await Promise.all([
+            fetch(`${GH_PAGES_BASE}/data/breadth.json?t=${t}`).catch(() => null),
+            fetch(`${GH_PAGES_BASE}/data/macro_risk.json?t=${t}`).catch(() => null),
+        ]);
+        const bd = bRes?.ok ? await bRes.json().catch(() => null) : null;
+        const mr = mRes?.ok ? await mRes.json().catch(() => null) : null;
+        mktBlock = buildMarketBlock(bd, mr);
+        weekBlock = isTaipeiFriday() ? buildWeekBlock(bd) : '';
+    } catch (_) { /* 大盤段拿不到就略過,⛔ 不擋個人摘要 */ }
+
     let cursor = undefined;
     while (true) {
         const list = await env.KV.list({ prefix: 'user:', cursor });
@@ -1871,7 +1885,7 @@ async function runDailySummary(env) {
                 const userData = JSON.parse((await env.KV.get(key.name)) || '{}');
                 if (!userData.chat_id) continue;
                 if (userData.muted_until && userData.muted_until > Date.now()) continue;
-                await sendDailySummary(env, userData, falconMap, topPicks, radarMatrix);
+                await sendDailySummary(env, userData, falconMap, topPicks, radarMatrix, mktBlock, weekBlock);
             } catch (_) { /* continue */ }
         }
         if (list.list_complete) break;
@@ -1879,7 +1893,30 @@ async function runDailySummary(env) {
     }
 }
 
-async function sendDailySummary(env, user, falconMap, topPicks, radarMatrix) {
+/** 📰 V78.4.0 大盤三行:加權漲跌 + 漲跌家數(breadth.json 最後一天)・三大法人(macro_risk.json)。資料不到就回空字串。 */
+function buildMarketBlock(bd, mr) {
+    const h = Array.isArray(bd?.history) ? bd.history : [];
+    const B = h.length ? h[h.length - 1] : null;
+    const lines = [];
+    const pct = v => (v == null || !Number.isFinite(+v)) ? '—' : `${+v > 0 ? '+' : ''}${(+v).toFixed(2)}%`;
+    const yi = v => (v == null || v === '' || !Number.isFinite(+v)) ? '—' : `${+v > 0 ? '+' : ''}${(+v).toFixed(1)}億`;
+    if (B) lines.push(`  ▸ 加權 ${pct(B.idx)}・上漲 ${B.up ?? '—'} / 下跌 ${B.dn ?? '—'} 家(${String(B.d || '').slice(5)})`);
+    if (mr && mr.fi_total_net != null) lines.push(`  ▸ 法人 外資 ${yi(mr.fi_spot_net)}・投信 ${yi(mr.fi_trust_net)}・自營 ${yi(mr.fi_dealer_net)}`);
+    return lines.length ? `*🏛️ 今天大盤*\n${lines.join('\n')}` : '';
+}
+/** 📅 V78.4.0 週五附加:近 5 個交易日加權(每天漲跌複利)+ 上漲家數比下跌多的天數。⛔ 法人不做週合計(每天是快照,加起來會重複算)。 */
+function buildWeekBlock(bd) {
+    const h = Array.isArray(bd?.history) ? bd.history.slice(-5) : [];
+    if (h.length < 3) return '';
+    let c = 1; for (const b of h) if (b.idx != null && Number.isFinite(+b.idx)) c *= 1 + (+b.idx) / 100;
+    const r = (c - 1) * 100, up = h.filter(b => +b.up > +b.dn).length;
+    return `*📅 本週回顧*\n  ▸ 加權近 ${h.length} 個交易日 ${r > 0 ? '+' : ''}${r.toFixed(2)}%・漲多於跌 ${up} 天 / 跌多於漲 ${h.length - up} 天`;
+}
+function isTaipeiFriday() {
+    try { return new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Taipei', weekday: 'short' }) === 'Fri'; } catch (_) { return false; }
+}
+
+async function sendDailySummary(env, user, falconMap, topPicks, radarMatrix, mktBlock = '', weekBlock = '') {
     const symbols = new Set();
     (user.watchlist || []).forEach(s => symbols.add(s));
     (user.inventory || []).forEach(i => { if (i?.sym) symbols.add(i.sym); });
@@ -1971,6 +2008,8 @@ async function sendDailySummary(env, user, falconMap, topPicks, radarMatrix) {
     const parts = [];
     parts.push(`🌆 *【盤後總結 ★】${new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}*`);
     parts.push(SEP);
+    if (mktBlock) parts.push(mktBlock);
+    if (weekBlock) parts.push(weekBlock);
     if (upTop.length) parts.push(`*🚀 自選漲幅 Top*\n${upTop.map(r => `  ▸ ${r.label} ${formatPct(r.pct)}`).join('\n')}`);
     if (dnTop.length) parts.push(`*📉 自選跌幅 Top*\n${dnTop.map(r => `  ▸ ${r.label} ${formatPct(r.pct)}`).join('\n')}`);
     if (invLines.length) parts.push(`*💼 庫存今日*\n${invLines.map(l => '  ▸ ' + l).join('\n')}` + (portReturn !== null ? `\n\n總部位對成本: *${formatPct(portReturn)}*` : ''));

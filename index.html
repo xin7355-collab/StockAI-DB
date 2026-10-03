@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.3.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.4.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.3.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.4.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2586,14 +2586,17 @@
                     違反使用者自己定的「資訊不爆炸」。所以是把原本的兩格擴成三格。 -->
             <div class="flex gap-1 bg-[#0d1117]/95 backdrop-blur-md rounded-lg p-1 border border-[#30363d] sticky top-0 z-30 shadow-md mb-2">
                 <button onclick="app.switchMarketSubTab('idx')" id="subTab_idx"
-                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-amber-300 border border-transparent">📈 行情</button>
+                        class="flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors text-gray-500 hover:text-amber-300 border border-transparent">📈 行情</button>
                 <button onclick="app.switchMarketSubTab('tw')" id="subTab_tw2"
-                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-purple-300 border border-transparent">🌅 盤前檢視</button>
+                        class="flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors text-gray-500 hover:text-purple-300 border border-transparent" title="盤前檢視">🌅 盤前</button>
                 <!-- 💧 V76.0.3 第 4 格「板塊輪動」(使用者:放在盤前檢視右手邊)—— 市場板塊輪動卡從「行情」搬來 + 20 日相對強弱排名 -->
+                <!-- 📰 V78.4.0 盤後晚報 / 週報(參考 signova「AI 解盤晚報」;只轉述既有資料) -->
+                <button onclick="app.switchMarketSubTab('eve')" id="subTab_eve"
+                        class="flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors text-gray-500 hover:text-sky-300 border border-transparent">📰 收盤</button>
                 <button onclick="app.switchMarketSubTab('rot')" id="subTab_rot"
-                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-emerald-300 border border-transparent">💧 板塊輪動</button>
+                        class="flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors text-gray-500 hover:text-emerald-300 border border-transparent" title="板塊輪動">💧 輪動</button>
                 <button onclick="app.switchMarketSubTab('global')" id="subTab_global2"
-                        class="flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors text-gray-500 hover:text-cyan-300 border border-transparent">🗞️ 消息面</button>
+                        class="flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors text-gray-500 hover:text-cyan-300 border border-transparent">🗞️ 消息面</button>
             </div>
 
             <!-- ════════ 📈 行情:三大指數 + 市場廣度 + 狀態機 + 板塊輪動(盤中在發生什麼)════════ -->
@@ -2604,6 +2607,11 @@
                 <!-- 🔄 V67.4 市場狀態機 Regime(趨勢盤/盤整盤/崩跌盤) -->
                 <div id="marketRegimeCard" class="hidden"></div>
             <!-- 📊 V76.0.3 「市場板塊輪動」卡已搬到第 4 格「💧 板塊輪動」(使用者要求;所有 id 不變,JS 零改動)-->
+            </div>
+
+            <!-- ════════ 📰 收盤:盤後晚報 / 本週回顧(V78.4.0)════════ -->
+            <div id="subContent_eve" class="hidden flex-col gap-3">
+                <div id="eveBox"></div>
             </div>
 
             <!-- ════════ 🌅 盤前檢視:盤前體檢 + 反攻雷達 + 指揮中心(會下判斷的都在這)════════ -->
@@ -8670,10 +8678,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.3.9',
+    _APP_VERSION: 'V78.4.0',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.4.0', d: ['📰 大盤分頁新增「收盤」:今天大盤、三大法人、哪幾族漲跌最多、主動式 ETF 換了什麼、你的持股今天賺賠一頁看完;切「本週回顧」看這週', '👀 決策台多一段「差一點沒入選」:哪幾檔卡在哪一關(位階、波動、名次、空頭)', '📲 收盤後的 Telegram 摘要多三行大盤,週五多一段本週回顧'] },
         { v: 'V78.3.9', d: ['🧹 散戶救星第二輪全文檢查:券商的勝率排行(高手券商、券商勝率、勝率王、神秘黑馬、分點歷史勝率)搬到產業作戰室;分點集中、大盤風險偏高、夜盤先漲那幾句只講怎麼看'] },
         { v: 'V78.3.8', d: ['🔒 散戶救星網址後面加參數也打不開研究清單了(只有產業作戰室打得開)'] },
         { v: 'V78.3.7', d: ['🔬 <b>這一檔自己的回測成績搬到產業作戰室</b>:新分頁「🔬 個股實測」輸入代號就能看回測排名、K 線訊號成績,還有自訂回測與盲測練習;散戶救星一般畫面不再有任何「看完整回測」的按鈕'] },
@@ -34514,22 +34523,26 @@ ${this._reportFacts(sym)}
         const ix = document.getElementById('subContent_idx');
         const ad = document.getElementById('subContent_advice');
         const ro = document.getElementById('subContent_rot');   // 💧 V76.0.3 第 4 格
+        const ev = document.getElementById('subContent_eve');   // 📰 V78.4.0 盤後晚報
         if (!g || !t) return;
         const show = (el, on) => { if (!el) return; el.classList.toggle('hidden', !on); el.classList.toggle('flex', !!on); };
         show(ix, tab === 'idx');
         show(ad, tab === 'tw');
         show(t,  tab === 'tw');
         show(ro, tab === 'rot');
+        show(ev, tab === 'eve');
         show(g,  tab === 'global');
         const styleBtn = (id, on, color) => {
             const b = document.getElementById(id);
-            if (b) b.className = `flex-1 py-2 text-xs font-black tracking-wide rounded-md transition-colors ${on ? `bg-${color}-700/40 text-${color}-200 border border-${color}-500/50` : `text-gray-500 hover:text-${color}-300 border border-transparent`}`;
+            if (b) b.className = `flex-1 min-w-0 whitespace-nowrap py-2 text-xs font-black rounded-md transition-colors ${on ? `bg-${color}-700/40 text-${color}-200 border border-${color}-500/50` : `text-gray-500 hover:text-${color}-300 border border-transparent`}`;
         };
         styleBtn('subTab_idx', tab === 'idx', 'amber');
         styleBtn('subTab_tw2', tab === 'tw', 'purple');
         styleBtn('subTab_rot', tab === 'rot', 'emerald');
+        styleBtn('subTab_eve', tab === 'eve', 'sky');
         styleBtn('subTab_global2', tab === 'global', 'cyan');
         if (tab === 'rot') { this._renderRotTab().catch(() => {}); }
+        if (tab === 'eve') { this.renderEvening().catch(() => {}); }
         if (tab === 'idx') { try { this._renderIndexRow(); } catch (_) {} try { this.renderMarketBreadth(); } catch (_) {} try { this.renderMarketRegime(); } catch (_) {} }
         // 🗞️ V72.6.2 進「消息面」時把三格分頁初始化(記住上次選的;預設新聞焦點)
         if (tab === 'global') { try { this.switchNewsPane(this._newsPane || localStorage.getItem('newsPane') || 'news'); } catch (_) {} }
@@ -34538,6 +34551,167 @@ ${this._reportFacts(sym)}
         //    但原本寫反了(進消息面才刷體檢、進盤前檢視才拉新聞)。分頁改名後一併校正。
         if (tab === 'tw') { try { this.renderMarketBriefing(); } catch(_){} try { this.switchSccTab(localStorage.getItem('sccTab') || 'weather'); this._initSccSwipe(); } catch(_){} }
         if (tab === 'global') { this.loadNewsHeadlines(); }   // _newsCache 1 分鐘內走快取,不會狂打
+    },
+
+    // 📰 V78.4.0 盤後晚報 / 週報(參考 signova「AI 解盤晚報」,使用者選「做」)——
+    //   ⭐ 每一行都是**轉述既有**,⛔ 這裡不新增任何判定:
+    //     加權漲跌 / 漲跌家數 = breadth.json(`_loadBreadthHist`,⛔ 不另抓)・法人 = macro_risk.json(同 `renderMarketBriefing`)・
+    //     外資期貨 = `_fiFutState().label` ・板塊 = `_regimeStats(1|5)`(名次唯一真相)・主動式 ETF = etf_tracking 的 `chg_hist` ・
+    //     持股 = `_invRowMetrics`(報價還沒到就用 screener 的收盤 + 漲跌%)・決策台 = `_deckBuyOf`(同一支)。
+    //   ⛔ 不給買賣指令、⛔ 不放任何回測數字(V78.3.4 散戶 App 鐵則,`test_retail_clean` 守門)。
+    //   ⛔ 三大法人**週合計不做** —— macro_risk 是每天的快照,上游沒更新時會沿用前一天(陷阱 #16),加總會重複算。
+    _eveMode: 'day',
+    switchEveMode(m) { this._eveMode = m === 'week' ? 'week' : 'day'; this.renderEvening(); },
+    async renderEvening() {
+        const box = document.getElementById('eveBox'); if (!box) return;
+        if (!box.innerHTML) box.innerHTML = '<div class="text-[11px] text-gray-500 py-3">⏳ 整理中…</div>';
+        const ghBase = window.location.href.split('?')[0].split('#')[0];
+        const jobs = [];
+        jobs.push(this._loadBreadthHist().catch(() => {}));
+        if (this._scrData === undefined) jobs.push(this._loadScreener().catch(() => {}));
+        jobs.push(this._loadEtfTracking().catch(() => {}));
+        jobs.push(this._loadPlaybookEdge().catch(() => {}));
+        if (!this._macroRiskCache || this._macroRiskCache.fi_total_net == null) {
+            jobs.push(fetch(new URL('data/macro_risk.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) })
+                .then(r => r.ok ? r.json() : null).then(j => { if (j) this._macroRiskCache = { ...(this._macroRiskCache || {}), ...j }; }).catch(() => {}));
+        }
+        if (this._eveMode === 'week' && this._eveHist === undefined) {
+            jobs.push(fetch(new URL('data/pick_history.json', ghBase).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(10000) })
+                .then(r => r.ok ? r.json() : null).then(j => { this._eveHist = (j && Array.isArray(j.days)) ? j : null; }).catch(() => { this._eveHist = null; }));
+        }
+        await Promise.all(jobs);
+        const wk = this._eveMode === 'week';
+        const tab = (k, t) => `<button onclick="app.switchEveMode('${k}')" data-evetab="${k}" class="flex-1 py-1.5 text-[11px] font-bold rounded ${(k === 'week') === wk ? 'bg-[#21262d] text-gray-100' : 'text-gray-500'}">${t}</button>`;
+        let body = '';
+        try { body = wk ? this._weekHtml() : this._eveHtml(); } catch (e) { body = `<div class="text-[11px] text-yellow-300 py-2">⚠️ 整理時出錯(${this._escHtml(String(e && e.message || e))}),稍後再點一次。</div>`; }
+        box.innerHTML = `<div class="flex gap-1 mb-2">${tab('day', '📰 今天收盤')}${tab('week', '📅 本週回顧')}</div>${body}`;
+    },
+    /** 一段:標題 + 內容(無框,同 V77.0.0 去框判準:標題 + 一條分隔線) */
+    _eveSec(title, inner, attr = '') {
+        if (!inner) return '';
+        return `<div class="py-2 border-b border-[#21262d]" ${attr}><div class="text-[11px] font-bold text-gray-400 mb-0.5">${title}</div><div class="text-[12px] text-gray-200 leading-relaxed">${inner}</div></div>`;
+    },
+    _evePct(v, d = 2) { if (v == null || !isFinite(+v)) return '—'; const x = +v; return `<b class="font-mono ${x > 0 ? 'text-red-300' : x < 0 ? 'text-green-300' : 'text-gray-300'}">${x > 0 ? '+' : ''}${x.toFixed(d)}%</b>`; },
+    _eveYi(v) { if (v == null || v === '' || !isFinite(+v)) return '<span class="text-gray-500">—</span>'; const x = +v; return `<b class="font-mono ${x > 0 ? 'text-red-300' : x < 0 ? 'text-green-300' : 'text-gray-300'}">${x > 0 ? '+' : ''}${x.toFixed(1)} 億</b>`; },
+    _eveMoney(v) { if (v == null || !isFinite(+v)) return '—'; const x = Math.round(+v); return `<b class="font-mono ${x > 0 ? 'text-red-300' : x < 0 ? 'text-green-300' : 'text-gray-300'}">${x > 0 ? '+' : ''}${x.toLocaleString()} 元</b>`; },
+    /** 板塊最強/最弱 3 族(讀 `_regimeStats(win)`,⛔ 不另排) */
+    _eveSectors(win) {
+        const R = this._regimeStats(win); if (!R || !R.imed || !R.imed.size) return '';
+        const arr = [...R.imed.entries()].sort((a, b) => b[1] - a[1]);
+        const fmt = ([k, v]) => `${this._escHtml(String(k))} ${this._evePct(v, 1)}`;
+        return `<div>最強:${arr.slice(0, 3).map(fmt).join('・')}</div><div>最弱:${arr.slice(-3).reverse().map(fmt).join('・')}</div>`;
+    },
+    /** 持股:報價到了用 `_invRowMetrics`,沒到用 screener 收盤 × 漲跌%(col='chg' 今天 / 'chg5' 近 5 日) */
+    _eveHold(col) {
+        const inv = this._getInventory().filter(i => i && i.symbol);
+        if (!inv.length) return { html: '', n: 0 };
+        const D = this._scrData; let sum = 0, cnt = 0; const rows = [];
+        for (const it of inv) {
+            const sym = String(it.symbol);
+            let pct = null, pnl = null, sh = isFinite(+it.shares) && +it.shares > 0 ? +it.shares : 1;
+            if (col === 'chg') { try { const m = this._invRowMetrics(it); if (m.hasPrev && m.price > 0) { pct = m.todayChgPct; pnl = m.todayPnL; } } catch (_) {} }
+            if (pct == null && D && D.rows && D.rows[sym]) {
+                const c = +this._scrV(D.rows[sym], 'c'), g = this._scrV(D.rows[sym], col);
+                if (c > 0 && g != null && isFinite(+g)) { pct = +g; pnl = c * (+g) / (100 + (+g)) * sh * 1000; }
+            }
+            if (pct == null) { rows.push({ sym, pct: null }); continue; }
+            sum += pnl; cnt++; rows.push({ sym, pct, pnl });
+        }
+        rows.sort((a, b) => (b.pnl ?? -1e18) - (a.pnl ?? -1e18));
+        const list = rows.slice(0, 8).map(r => `<div class="flex items-baseline gap-2" data-evehold="${this._escHtml(r.sym)}">${this._nmPair(r.sym, 'text-[11px]')}<span class="ml-auto">${r.pct == null ? '<span class="text-gray-500 text-[10px]">沒有報價</span>' : `${this._evePct(r.pct)} ${this._eveMoney(r.pnl)}`}</span></div>`).join('');
+        return { html: `${cnt ? `<div class="mb-0.5">合計 ${this._eveMoney(sum)}(${cnt} 檔)</div>` : ''}${list}${rows.length > 8 ? `<div class="text-[10px] text-gray-500">…另外 ${rows.length - 8} 檔看庫存頁</div>` : ''}`, n: cnt, sum };
+    },
+    _eveHtml() {
+        const B = Array.isArray(this._breadthHist) && this._breadthHist.length ? this._breadthHist[this._breadthHist.length - 1] : null;
+        const mr = this._macroRiskCache || {};
+        const out = [];
+        // ① 大盤
+        if (B) {
+            let fut = '';
+            try { const f = this._fiFutState(); if (f && f.label && f.level !== 'unknown') fut = `<div>外資台指期:${this._escHtml(String(f.label))}</div>`; } catch (_) {}
+            out.push(this._eveSec(`🏛️ 大盤 ${this._dChip(B.d, '資料')}`,
+                `<div>加權 ${this._evePct(B.idx)} ・ 上漲 <b class="text-red-300 font-mono">${(+B.up || 0).toLocaleString()}</b> 家 / 下跌 <b class="text-green-300 font-mono">${(+B.dn || 0).toLocaleString()}</b> 家 / 平盤 ${(+B.flat || 0).toLocaleString()}</div>`
+                + `<div>漲停 <b class="font-mono">${B.lu ?? '—'}</b> ・ 跌停 <b class="font-mono">${B.ld ?? '—'}</b>${B.amt ? ` ・ 全市場成交約 <b class="font-mono">${(+B.amt / 10000).toFixed(2)}</b> 兆` : ''}</div>${fut}`, 'data-evesec="mkt"'));
+        } else {
+            out.push(this._eveSec('🏛️ 大盤', '<span class="text-gray-500">⏳ 漲跌家數還沒下載到(收盤後採礦跑完才有)。</span>', 'data-evesec="mkt"'));
+        }
+        // ② 三大法人(大盤)
+        if (mr.fi_total_net != null) {
+            out.push(this._eveSec(`🏦 三大法人 ${mr.updated ? `<span class="text-[9px] text-gray-500 font-normal">採礦 ${this._escHtml(String(mr.updated).slice(5, 16))}</span>` : ''}`,
+                `外資 ${this._eveYi(mr.fi_spot_net)} ・ 投信 ${this._eveYi(mr.fi_trust_net)} ・ 自營 ${this._eveYi(mr.fi_dealer_net)} ・ 合計 ${this._eveYi(mr.fi_total_net)}`, 'data-evesec="inst"'));
+        }
+        // ③ 板塊
+        const sec = this._eveSectors(1);
+        out.push(this._eveSec('💧 今天哪幾族漲最多 / 跌最多', sec || '<span class="text-gray-500">⏳ 全市場快照還沒下載到。</span>', 'data-evesec="sect"'));
+        // ④ 主動式 ETF 四檔
+        out.push(this._eveSec('🧩 主動式 ETF 四檔今天換了什麼', this._eveEtf(1), 'data-evesec="etf"'));
+        // ⑤ 你的持股
+        const H = this._eveHold('chg');
+        if (H.html) out.push(this._eveSec('👜 你的持股今天', H.html, 'data-evesec="hold"'));
+        // ⑥ 決策台
+        out.push(this._eveSec('🎯 決策台', this._eveDeck(), 'data-evesec="deck"'));
+        return `<div data-eve="day">${out.join('')}<div class="text-[10px] text-gray-500 pt-2">⛔ 這一頁只整理今天發生什麼,不是買賣建議。</div></div>`;
+    },
+    /** 主動式 ETF:最近 `days` 個有異動的日子,新增 / 出清哪幾檔(讀 chg_hist,⛔ 不另算) */
+    _eveEtf(days) {
+        const E = this._etfCache; if (!E || !Array.isArray(E.etfs)) return '<span class="text-gray-500">⏳ ETF 資料還沒下載到。</span>';
+        const lines = [];
+        for (const sy of (this.ETF_PIN || [])) {
+            const f = E.etfs.find(x => x && x.symbol === sy); if (!f || !Array.isArray(f.chg_hist) || !f.chg_hist.length) continue;
+            const last = f.chg_hist.slice(-days);
+            const a = [...new Set(last.flatMap(h => h.a || []))], r = [...new Set(last.flatMap(h => h.r || []))];
+            const dd = last[last.length - 1].d;
+            const nm = c => this._nmOnly(String(c));
+            const txt = (a.length || r.length)
+                ? `${a.length ? `新增 ${a.slice(0, 5).map(nm).join('、')}` : ''}${a.length && r.length ? ' ・ ' : ''}${r.length ? `出清 ${r.slice(0, 5).map(nm).join('、')}` : ''}`
+                : '<span class="text-gray-500">沒有新增或出清(只有調權重)</span>';
+            lines.push(`<div data-eveetf="${sy}"><span class="font-mono text-gray-400">${sy}</span> ${this._dW(dd)}:${txt}</div>`);
+        }
+        return lines.length ? lines.join('') : '<span class="text-gray-500">這四檔最近沒有異動紀錄。</span>';
+    },
+    _eveDeck() {
+        if (this._isLead()) return `👑 你選的是領頭羊,名單與換倉看決策台。<button onclick="app.switchAppTab('desk')" class="ml-1 text-cyan-300 underline">去決策台 →</button>`;
+        const j = this._pbEdge;
+        if (!j || !Array.isArray(j.picks)) return '<span class="text-gray-500">⏳ 作戰清單還沒下載到(每晚 19:00 備好)。</span>';
+        const D = this._deckBuyOf(j);
+        const dd = String(j.data_date || j.updated || '').slice(0, 10);
+        if (D.bearGate) return `${this._dChip(dd, '清單')} 大盤空頭,今天不開新倉。<button onclick="app.switchAppTab('desk')" class="ml-1 text-cyan-300 underline">去決策台 →</button>`;
+        return `${this._dChip(dd, '清單')} ${D.buy.length ? `明天可以留意:${D.buy.map(x => this._nmOnly(String(x.s))).join('、')}(要漲過觸發價才算)` : '明天沒有可以買的。'}<button onclick="app.switchAppTab('desk')" class="ml-1 text-cyan-300 underline">去決策台看完整 →</button>`;
+    },
+    /** 📅 本週回顧(近 5 個交易日;⛔ 法人週合計不做 —— 見上方註解) */
+    _weekHtml() {
+        const BH = Array.isArray(this._breadthHist) ? this._breadthHist : [];
+        const last5 = BH.slice(-5);
+        const out = [];
+        if (last5.length) {
+            let comp = 1, ok = 0; for (const b of last5) if (b.idx != null && isFinite(+b.idx)) { comp *= 1 + (+b.idx) / 100; ok++; }
+            const upD = last5.filter(b => +b.up > +b.dn).length;
+            out.push(this._eveSec(`🏛️ 大盤近 ${last5.length} 個交易日 <span class="text-[9px] text-gray-500 font-normal">${this._dW(last5[0].d)} ~ ${this._dW(last5[last5.length - 1].d)}</span>`,
+                `<div>加權 ${ok ? this._evePct((comp - 1) * 100) : '—'} ・ 上漲家數比下跌多的有 <b class="font-mono">${upD}</b> 天、少的 <b class="font-mono">${last5.length - upD}</b> 天</div>`
+                + `<div class="text-[11px] text-gray-400 font-mono">${last5.map(b => `${this._dW(b.d).slice(0, 5)} ${b.idx != null ? (+b.idx > 0 ? '+' : '') + (+b.idx).toFixed(2) + '%' : '—'}`).join(' ・ ')}</div>`, 'data-evesec="wmkt"'));
+        } else {
+            out.push(this._eveSec('🏛️ 大盤', '<span class="text-gray-500">⏳ 漲跌家數還沒下載到。</span>', 'data-evesec="wmkt"'));
+        }
+        out.push(this._eveSec('💧 近 5 日哪幾族漲最多 / 跌最多', this._eveSectors(5) || '<span class="text-gray-500">⏳ 全市場快照還沒下載到。</span>', 'data-evesec="wsect"'));
+        out.push(this._eveSec('🧩 主動式 ETF 四檔近 5 次異動', this._eveEtf(5), 'data-evesec="wetf"'));
+        const H = this._eveHold('chg5');
+        if (H.html) out.push(this._eveSec('👜 你的持股近 5 日', H.html, 'data-evesec="whold"'));
+        out.push(this._eveSec('🎯 這週決策台出現過的', this._weekDeck(), 'data-evesec="wdeck"'));
+        return `<div data-eve="week">${out.join('')}<div class="text-[10px] text-gray-500 pt-2">⛔ 這一頁只整理這週發生什麼,不是買賣建議。三大法人不做週合計(每天的數字是快照,加起來會重複算)。</div></div>`;
+    },
+    _weekDeck() {
+        const H = this._eveHist;
+        if (H === undefined) return '<span class="text-gray-500">⏳ 讀取中…</span>';
+        if (!H) return '<span class="text-gray-500">⚠️ 讀不到每日名單快照,這一段先略過。</span>';
+        const days = H.days.slice(-5), seen = new Map();
+        for (const d of days) {
+            let list = [];
+            if (this._isLead()) list = ((d.lead && d.lead.rows) || []).filter(x => x && x.b).map(x => String(x.s));
+            else if (Array.isArray(d.pb)) list = this._deckBuyOf({ picks: d.pb }).buy.map(x => String(x.s));
+            for (const s of list) if (!seen.has(s)) seen.set(s, d.d);
+        }
+        if (!seen.size) return '這週沒有出現過可以買的。';
+        return [...seen.entries()].map(([s, d]) => `<div class="flex items-baseline gap-2" data-evewdeck="${this._escHtml(s)}">${this._nmPair(s, 'text-[11px]')}<span class="text-[10px] text-gray-500">第一次出現 ${this._dW(d)}</span></div>`).join('');
     },
 
     // 💧 V76.0.3 「板塊輪動」分頁:一句話 + 32 個產業的 20 日相對強弱排名(⛔ 只描述,不下指令)
@@ -49538,6 +49712,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const ranked = this._pbSort(j.picks, this._mySyms());
         const seen = new Set(), uniq = [];
         for (const x of ranked) { const k = String(x.s); if (seen.has(k)) continue; seen.add(k); uniq.push(x); }
+        out.uniq = uniq;   // 👀 V78.4.0 差一點沒入選讀同一份(⛔ 不另排一次)
         out.bearN = uniq.filter(x => x.bear).length;
         // 🧬 是**必要條件不是加分項**(V73.2.9:不挑它整套輸給買 0050);⛔ 空頭不給進場
         out.hq = uniq.filter(x => this._hqOf(x) === 1 && !x.bear);
@@ -49553,8 +49728,40 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return { rank: bi + 1, hqRank: hi + 1, x: bi >= 0 ? D.buy[bi] : (hi >= 0 ? D.hq[hi] : null), bearGate: D.bearGate, n: this._DECK_TRACK49.picks,
                  date: String(j.data_date || j.updated || '').slice(0, 10) };
     },
+    /** 👀 V78.4.0 差一點沒入選(參考 signova「透明漏斗」)—— 只讀清單、⛔ 不新增判定:
+     *  每一列寫**卡在哪一關**(門檻一律讀 `_geneRank()` / `_GENE_RULE`,⛔ 不寫死)。
+     *  三種:① 🧬 也符合、⛔ 名次排第 N(一天只買 `_DECK_TRACK49.picks` 檔)② 一年位階 / 波動差一點 ③ 🧬 符合但這一檔自己空頭。
+     *  回 [{x, why, kind}],最多 5 列(名次 → 差一點 → 空頭,同類照清單原本的排序)。 */
+    _deckNearOf(j, max = 5) {
+        if (!j || !Array.isArray(j.picks)) return [];
+        const uniq = this._deckBuyOf(j).uniq || [];   // ⛔ 排序與去重只有 `_deckBuyOf` 一份(test_deck ②b)
+        const G = this._GENE_RULE, R = this._geneRank(), N = this._DECK_TRACK49.picks;
+        const hqOk = uniq.filter(x => this._hqOf(x) === 1 && !x.bear);
+        const out = [];
+        hqOk.slice(N, N + 3).forEach((x, i) => out.push({ x, kind: 'rank', why: `🧬 也符合,但排第 ${N + i + 1} 名(一天只買 ${N} 檔)` }));
+        const near = [];
+        for (const x of uniq) {
+            if (x.bear || this._hqOf(x) === 1) continue;
+            const r = +x.rank, v = +x.vol;
+            if (!Number.isFinite(r) || !Number.isFinite(v)) continue;
+            const rGap = R - r, vGap = G.vol - v;
+            if (rGap > 0 && rGap <= 10 && vGap <= 0) near.push({ x, kind: 'pos', gap: rGap / 10, why: `一年位階 ${Math.round(r)}%(要 ≥${R}%)` });
+            else if (vGap > 0 && vGap <= 10 && rGap <= 0) near.push({ x, kind: 'vol', gap: vGap / 10, why: `波動 ${Math.round(v)}%(要 ≥${G.vol}%)` });
+        }
+        near.sort((a, b) => a.gap - b.gap);
+        out.push(...near.slice(0, 3));
+        uniq.filter(x => x.bear && this._hqOf(x) === 1).slice(0, 2)
+            .forEach(x => out.push({ x, kind: 'bear', why: '🧬 也符合,但這一檔跌破月線和季線(空頭不買)' }));
+        return out.slice(0, max);
+    },
+    _deckNearHtml(list) {
+        if (!Array.isArray(list) || !list.length) return '';
+        return `<details class="mt-2" data-decknear="${list.length}"><summary class="cursor-pointer list-none text-[10px] text-gray-500 select-none">👀 差一點沒入選(${list.length})—— ⛔ 今天不買 <span class="text-gray-600">展開 ▾</span></summary>
+            <div class="mt-1 space-y-0.5">${list.map(o => `<div class="flex items-baseline gap-2 flex-wrap" data-nearkind="${o.kind}" data-nearsym="${this._escHtml(String(o.x.s))}">${this._nmPair(String(o.x.s), 'text-[11px]')}<span class="text-[10px] text-gray-400">卡在:${o.why}</span></div>`).join('')}</div>
+        </details>`;
+    },
     async _deckState() {
-        const st = { sell: [], skip: [], invN: 0, etf: [], buy: [], pbNull: false, pbDate: '', hqN: 0, total: 0, bearN: 0, fit: null,
+        const st = { sell: [], skip: [], invN: 0, etf: [], buy: [], pbNull: false, pbDate: '', hqN: 0, total: 0, bearN: 0, fit: null, near: [],
                      finOn: false, finBlocked: [], finUnknown: [] };
         try { st.sell = (await this._invExitScan()) || []; } catch (_) {}
         st.skip = this._invExitSkip || []; st.invN = this._invExitN || 0; st.etf = this._invExitEtf || [];
@@ -49567,6 +49774,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         st.total = j.picks.length;
         const D = this._deckBuyOf(j);
         st.bearN = D.bearN; st.hqN = D.hq.length; st.buy = D.buy;
+        try { st.near = this._deckNearOf(j); } catch (_) { st.near = []; }   // 👀 V78.4.0 差一點沒入選
         // 🗑️ V78.1.9 「📦 只挑營收年增加速的」濾網已移除(使用者:「沒有用的不是說要移除嗎」)——
         //   實測 不濾 +324 萬 vs 開了 +234 萬、同通過率隨機抽 +266 萬(17 條只贏隨機 1 條)= 少賺、而且贏不了亂挑 → ⛔ 不可復活(test_deckfin)
         st.finOn = false; st.finBlocked = []; st.finUnknown = [];
@@ -49782,6 +49990,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                         ${st.buy.some(x => mine.has(String(x.s))) ? '<br>👜 = <b class="text-gray-500">你的庫存/自選</b> —— 它們會被<b>排到最前面</b>(⛔ 不代表比較強);⭐ 產業作戰室的 📒 成績單用的是<b>不含持股</b>的純推薦版,所以那邊的名單可能不一樣。' : ''}
                     </div>
                     ${this._deckFinNoteHtml(st)}
+                    ${this._deckNearHtml(st.near)}
                     ${this._idle0050NoteHtml()}${this._parkAmountHtml()}
                 </div>`;
             } else if (st.finOn && st.finBlocked.length) {
@@ -49796,9 +50005,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             } else {
                 buy.innerHTML = `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3">
                     <div class="text-sm font-black text-gray-300">🎯 今天可以買的:<b class="text-gray-100">沒有</b></div>
-                    <div class="text-[11px] text-gray-400 mt-1 leading-relaxed">全市場 ${st.total} 筆候選裡,今天<b>沒有一檔同時符合 🧬(位階 ≥${this._EDGE_RULES.gene.pos} 且振幅 ≥${this._EDGE_RULES.gene.amp}%)又不是空頭</b>。
+                    <div class="text-[11px] text-gray-400 mt-1 leading-relaxed">全市場 ${st.total} 筆候選裡,今天<b>沒有一檔同時符合 🧬(一年位階 ≥${this._geneRank()}% 且波動 ≥${this._GENE_RULE.vol}%)又不是空頭</b>。
                         <br>⭐ <b>今天不用做,是常態</b> —— ⛔ 這裡不會為了填版面硬給你一檔。
                         <br><button onclick="app.switchAppTab('radar'); app.switchRadarStrategy('todaysig');" class="mt-1 text-cyan-300 underline">還是想看看今天有什麼訊號 →</button></div>
+                    ${this._deckNearHtml(st.near)}
                 </div>`;
             }
 

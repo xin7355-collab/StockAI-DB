@@ -108,8 +108,11 @@ const R = await page.evaluate(async (mk) => {
     reset(); await A.renderDeck();
     const buyEl = document.getElementById('deckBuy');
     out.buyN = buyEl.querySelectorAll('[onclick*="app.analyze"]').length;
-    out.buyHasBear = /2000|2001|2002/.test(buyEl.innerHTML);
-    out.buyHasNonHq = /3001|3002/.test(buyEl.innerHTML);
+    // 👀 V78.4.0 「差一點沒入選」摺疊區刻意列出卡關的股票(標 ⛔ 今天不買)→ 只驗真的買進那幾列
+    const _bc = buyEl.cloneNode(true); _bc.querySelectorAll('[data-decknear]').forEach(e => e.remove());
+    out.buyHasBear = /2000|2001|2002/.test(_bc.innerHTML);
+    out.buyHasNonHq = /3001|3002/.test(_bc.innerHTML);
+    out.nearHasBear = /2000|2001|2002/.test((buyEl.querySelector('[data-decknear]') || {}).innerHTML || '');
     out.buyTxt = buyEl.innerText.replace(/\s+/g, ' ');
     out.noteTxt = document.getElementById('deckNote').innerHTML.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 
