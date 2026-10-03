@@ -1063,8 +1063,8 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
        /const ST = \(K && K\.status_enum\)/.test(SRC), '');
     ok('🏭c3 關聯段要原文顯示檔內 caveat「⛔ 不是預測」', T.includes('不是預測'), T.slice(0, 300));
     ok('🏭c4 ⭐ 關聯段要講出用途(我是不是重壓在同一族)', /重壓在同一族/.test(T.replace(/\s+/g, ' ')), T.slice(0, 300));
-    ok('🏭f 實測成績段要帶數字與來源探針(⛔ 沒有數字的意見不准進來)',
-       /\+0\.90%/.test(T) && /sector_pick_probe/.test(T) && /空頭還沒驗證過/.test(T), T.slice(-400));
+    ok('🏭f 🧹 V78.3.4 產業節⛔ 不再有「這一族的實測成績」段(數字與探針名在產業作戰室)',
+       !/\+0\.90%/.test(T) && !/sector_pick_probe/.test(T) && !/實測/.test(T), T.slice(-400));
     ok('🏭g 產業節不可出現操作指令(⛔ 這一節只描述,不下單)',
        !/(可以進場|可進場|建議買進|建議賣出|可加碼|放心做多)/.test(T), (T.match(/(可以進場|可進場|建議買進|建議賣出|可加碼|放心做多)/) || [])[0]);
     ok('🏭h 產業節不可出現 `--` 或空白格', !/(^|[^-])--([^-]|$)/.test(T));
@@ -1201,8 +1201,8 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('§q6b ⛔ 收起來也要看得到「幾個面向」與**資料日期**(資料日期鐵則:收起來就看不到日期 = 等於沒標)',
        /\d+個面向/.test(QV.seen) && /📅/.test(QV.seen) && /\d\d\/\d\d/.test(QV.seen), QV.seen.slice(0, 140));
     ok('§q7 ⭐ 第一眼⛔ 不可出現英文探針檔名(禁在 UI 暴露內部函式名)', !QV.seenHasProbe, (QV.seen.match(/.{0,20}_probe.{0,10}/) || [])[0] || '');
-    ok('§q7b 🚨 但那些說明**還在**(收起來 ≠ 刪掉;11 條一條不少)', QV.allHasProbe && QV.notes === QV.rows && QV.rows === 11, JSON.stringify({ notes: QV.notes, rows: QV.rows }));
-    ok('§q7c 說明摺疊**預設收起**(⛔ 展開就等於沒瘦)', QV.foldOpen === false, String(QV.foldOpen));
+    ok('§q7b 🧹 V78.3.4 那些實測說明整段拿掉(⛔ 不可再出現探針名)', !QV.allHasProbe && !QV.notes && QV.rows === 11, JSON.stringify({ notes: QV.notes, rows: QV.rows }));
+    ok('§q7c 🧹 說明摺疊已刪(foldOpen 讀不到)', QV.foldOpen == null || QV.foldOpen === false, String(QV.foldOpen));
     ok('§q7d 整張也是預設收起(V77.1.5 使用者要求)', QV.outerOpen === false, String(QV.outerOpen));
     ok('§q8 ⛔ 快速表裡不可再有 10px 以下的字(V74.4.6:手機上看不清楚)', QV.small.every(x => x >= 10), JSON.stringify([...new Set(QV.small)].sort((a, b) => a - b)));
     // 📍 位階只有一個來源:總覽徽章 vs 報告頁 §11 必須是同一個數字

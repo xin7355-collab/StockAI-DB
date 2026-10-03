@@ -106,18 +106,16 @@ for (const c of R.cases) {
     if (!c.k.startsWith('ind_') && c.k !== 'solo') continue;
     const txt = (c.html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
     const tag = `${c.k}(${c.sym} ${c.ind})`;
-    ok(`③ ${tag} 要附樣本數與實測數字`, /\d[\d,]* 次/.test(txt) && /勝率 \d/.test(txt), txt.slice(0, 140));
+    ok(`③ ${tag} 🧹 V78.3.4 ⛔ 不印樣本數 / 勝率 / 實測`, !/\d[\d,]* 次/.test(txt) && !/勝率 \d|實測/.test(txt) && /現在是什麼盤/.test(txt), txt.slice(0, 140));
     if (c.k === 'solo') {
         // 🚨 V74.2.8 補上 2022 空頭重跑之後,獨走那格**不再全關通過**(2022 是 −0.34pp)
         //    → 斷言從「要說它唯一通過」改成「要說它只在多頭成立」。⛔ 數字不寫死(重跑會變)。
-        ok('③b 🎯 獨走:要誠實說「補上空頭之後不成立」+ 扣成本那句仍在',
-           /空頭/.test(txt) && /扣掉來回成本 0\.44%/.test(txt), txt.slice(0, 260));
-        ok('④ 🎯 獨走:⭐ 必須明說是「賠率型不是勝率型」+ 右尾數字',
-           /賠率型/.test(txt) && /勝率型/.test(txt) && /最好的 10%/.test(txt) && /中位數跟平常一樣/.test(txt), txt.slice(0, 300));
+        ok('③b 🎯 獨走:⛔ 不印空頭重跑 / 扣成本的回測數字', !/扣掉來回成本 0\.44%|−0\.34pp/.test(txt), txt.slice(0, 260));
+        ok('④ 🎯 獨走:⛔ 不印右尾回測數字(只講漲跌很大)', /漲跌都很大/.test(txt) && !/最好的 10%/.test(txt), txt.slice(0, 300));
         ok('④b 🎯 獨走:要給可操作的一句(不能重壓)', /不能重壓/.test(txt), '');
     } else {
-        ok(`③c ${tag} ⛔ 沒通過的一律要寫「扣完成本後是負的」`,
-           /實測沒有可用的邊際/.test(txt) && /拿掉最好的那一年/.test(txt), txt.slice(0, 200));
+        ok(`③c ${tag} 🧹 V78.3.4 ⛔ 不印「實測沒有可用的邊際」那串數字`,
+                   !/實測沒有可用的邊際|拿掉最好的那一年/.test(txt), txt.slice(0, 200));
         ok(`③d ${tag} ⭐ 要明說「只是告訴你現在是什麼盤,不是叫你買或賣」`,
            /不是叫你買或賣/.test(txt), '');
     }

@@ -53,9 +53,11 @@ for (const strat of STRATS) {
     await page.waitForTimeout(8000);
     if (process.env.INJECT) await page.evaluate(() => { const o = app._leaderDeckHtml, o2 = app.renderDeck; app.renderDeck = async function (...a) { const r = await o2.apply(this, a); const b = document.getElementById('tabContentDesk') || document.body; b.insertAdjacentHTML('afterbegin', '<div>實測 17 條起點中位 +953%</div>'); return r; }; });
     const grab = async (key, fn, arg, wait = 3000) => {
-        if (SCOPE && !SCOPE.has(AREA(key))) return;
+        const skip = SCOPE && !SCOPE.has(AREA(key));
+        if (skip && key !== 'ov_now') return;          // ⚠️ ov_now 負責 analyze('2330') —— 報告 / 個股分頁都靠它,範圍外也要跑(只是不收)
         try { await page.evaluate(fn, arg); } catch (e) { all[`${strat}:${key}`] = [{ line: 'ERR ' + e.message, bad: ['ERR'] }]; return; }
         await page.waitForTimeout(wait);
+        if (skip) return;
         // ⭐ 滑鼠停上去才看得到的 title 也算畫面(使用者:「整份資料我都要查」)
         const txt = await page.evaluate(() => { document.querySelectorAll('details').forEach(d => { d.open = true; });
             const tt = [...document.querySelectorAll('[title]')].filter(e => e.offsetParent !== null).map(e => '[title] ' + e.getAttribute('title').replace(/\n/g, ' '));
@@ -97,7 +99,7 @@ for (const [k, hits0] of Object.entries(all)) {
 }
 console.log(`\n頁面數 ${Object.keys(all).length} ・違規行 ${total} ・pageerror ${errs.length}`);
 if (errs.length) console.log(errs.slice(0, 5).join('\n'));
-if (Object.keys(all).length < 5) { console.log('❌ 掃到的頁面太少(空過守門)'); process.exit(1); }
+if (Object.keys(all).length < (SCOPE ? 1 : 5)) { console.log('❌ 掃到的頁面太少(空過守門)'); process.exit(1); }
 if (REPORT) process.exit(0);
 if (total || errs.length) { console.log('❌ RETAIL_CLEAN_FAIL'); process.exit(1); }
 console.log('✅ RETAIL_CLEAN_PASS');

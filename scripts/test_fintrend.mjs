@@ -181,7 +181,7 @@ ok('ⓐ6b ⭐ 而且那一段「📈 三率(近三季)」真的還在(空過守�
     ok('ⓐ7d 標記文字要帶季別與前後數字(使用者要「哪一季」)', /2025-06/.test(M.txtGm4) && /40\.0 → 36\.0/.test(M.txtGm4), M.txtGm4);
     ok('ⓐ8 ⭐ 走顯示路徑:HTML 的 sparkline 真的多了一顆空心圓(乾淨的 0 顆)', M.dotsGm4 === 1 && M.dotsNone === 0, JSON.stringify([M.dotsGm4, M.dotsNone]));
     ok('ⓐ8b 📅 第 3 季(顯示範圍外)的標記:`_finTrend` 有算到,但 8 季畫面⛔ 不列(索引要換算)', M.earlyAll === 1 && M.earlyShown === '0', JSON.stringify([M.earlyAll, M.earlyShown]));
-    ok('ⓐ9 ⭐ 基準率一定印在畫面上(V77.1.6:21.8% 的股票都會亮的燈不是警示)', /data-rpmarkbase="21\.8"/.test(M.htmlGm4) && /21\.8%/.test(M.htmlGm4) && /17%/.test(M.htmlGm4) && /15\.3%/.test(M.htmlGm4) && /常見事件/.test(M.htmlGm4), '');
+    ok('ⓐ9 🧹 V78.3.4 卡上講「常見事件、不是警訊」,⛔ 不印全市場實測的出現率', /常見事件/.test(M.htmlGm4) && !/21\.8%|15\.3%|實測/.test(M.htmlGm4), M.htmlGm4.slice(0, 200));
     const mkRow = (/<div[^>]*data-rpmarks="1"[\s\S]*?<\/span><\/div>/.exec(M.htmlGm4) || [''])[0];
     ok('ⓐ9b 🚦 標記那一行⛔ 不可用 ⚠️ / 紅色 / 警示措辭(它是事實紀錄)', mkRow.length > 100 && !/⚠️|🚨|text-red|text-amber|警示|警訊(?!。)/.test(mkRow.replace(/⛔ 不是警訊/g, '')), mkRow.slice(0, 160));
     ok('ⓐ9c 真實資料(2330)那行也印得出來,而且餵給外部 AI 的 facts 有同一份標記(顯示點永遠多一個)', /事實標記/.test(R.fundTxt) && /近 8 季事實標記/.test(R.facts), (R.facts.match(/[^\n]*事實標記[^\n]*/) || [''])[0].slice(0, 120));
@@ -200,7 +200,7 @@ ok('ⓒ3 🚦 ↑↓ 那幾段⛔ 不可用紅綠(燈號鐵則:🔴🟢 只准�
    !(R.fundHtml.match(/<span class="[^"]*"[^>]*>\(一年前[^<]*/g) || []).some(x => /text-(red|green)-/.test(x)),
    (R.fundHtml.match(/<span class="[^"]*"[^>]*>\(一年前[^<]*/g) || []).slice(0, 2).join(' | '));
 ok('ⓒ 判讀只描述,⛔ 沒有買賣指令', !!R.vdKey && !/該買|該賣|進場|加碼|停損|可以買/.test(R.vdTxt), R.vdTxt);
-ok('ⓒ2 卡上寫明「本站沒有回測過它能不能預測股價」(⛔ 不可讓人當訊號用)', /沒有回測過/.test(R.vdTxt) || /沒有回測過/.test(R.evHtml) || SRC.includes('沒有回測過它能不能預測股價'), '');
+ok('ⓒ2 卡上寫明「事實描述、不是買賣訊號」(🧹 ⛔ 不提回測)', (/事實描述/.test(R.vdTxt) || /事實描述/.test(R.evHtml) || SRC.includes('⛔ 事實描述,不是買賣訊號')) && !SRC.includes('沒有回測過它能不能預測股價'), '');
 ok('ⓓ ⭐ 決定性對照:把最新季毛利率壓到比去年同季低 9.9pp → 判讀要翻成「背離」(注入:顯示端自己算 → 紅)',
    R.flip === 'diverge' && R.back === R.vdKey, `${R.vdKey} → ${R.flip} → ${R.back}`);
 ok('ⓓ2 canvas 海報也拿得到同一份(⛔ 不可兩邊各算一份)', R.tr === true, String(R.tr));
