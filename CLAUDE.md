@@ -686,6 +686,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
    + **`node scripts/test_fishapp.mjs`**(🎣 V77.9.7 股海釣手 = `pro.html?app=fish`:作戰室分頁/池子/規則段藏起來、⛔ 整頁不可有選股規則用語、⭐ 名單 == `_castPick`(一般模式同一支,動畫 stub 前後相同)、台股配色、reduced-motion、安全閥、manifest/圖示;V77.9.9 一次 10 條前面 == `_castPick`、四魚種外形不同、釣起價 = 即時價、帶回家養;V78.0.0 一按只釣一條(cast→wait→bite→fight→breach→show)、斷線同一條留佇列最前、魚色 = 一年高低位置且⛔ 不受今天漲跌影響、大小 = 市值、震動開關、公司簡介無選股用語)
    + **`python3 scripts/test_futures_night_gate.py`**(🌙 V78.1.4 個股期貨夜盤採礦:平日台北 08:45~15:00 ⛔ 不登入、不寫(排程被延到白天時會把日盤寫成夜盤);注入「拿掉守門」必紅)
    + **`node scripts/test_leadheld.mjs`**(👑 V78.2.0 選 👑 的持股:不在名單寫「不在前 10 名」⛔ 不是「掉出」、`_keyLevels` 不存 🔥 的硬停損 / 出場線(價格尺・提示詞・接下來怎麼看)、切回 🔥 決定性對照、鎖漲停那行讀 `_LEAD_LU_EDGE`;3 種注入全紅)
+   + **`node scripts/test_expframe.mjs`**(🔬 V78.3.7 產業作戰室「個股實測」分頁內嵌 `index.html?lab=1`:真的切到回測分頁、一般模式帶 `?sub=` ⛔ 不切、index ⛔ 無 pro 入口、pro ⛔ 不複製偵測器)
    + **`node scripts/test_stratrank.mjs`**(🏆 V78.1.9 設定的策略數字 == pro `_PROFIT_BOARD`、策略 / 出場規則照 16 年 → 4 年排(獨立重算)、靜態按鈕順序、leadpark / lead / park 三種判斷、總覽讀 `_deckRankOf`(沒固定觸發價的也⛔ 不寫觀望)、決定性對照與空頭守門;4 種注入全紅)+ **`node scripts/test_deckfin.mjs`**(🗑️ 營收加速開關⛔ 不可復活;決策台與總覽同一份名單)
    + **`node scripts/test_aigod.mjs`**(🤖 V78.1.7 AI 股神個股模式只轉述 `_ovDecide`:大字 == badge(決定性對照)、⛔ 沒有 🔴 續抱 / 賣一半 / AI 總評分、停損 floorTick、`_lotTxt`、持有寫交易日、庫存每檔有出場行;7 種注入全紅;V78.1.8 ⓗ~ⓙ3 提問清單⛔ 該買該賣・提示詞帶本站數字・位階 == `_basePos` ⛔ 紅綠・白話解析⛔ 預測・盤中⛔ 比量,5 種注入全紅)
    + **`node scripts/test_ovdue.mjs`**(⏳ V78.1.6 精簡卡:四行 / 明日 4 條規則讀 `_LUNEXT_EDGE` / 長說明在摺疊 / 提示⛔ 紅框 / 390 單欄・768 兩欄 / `openWhen` 明天・下週一・今天;V78.1.4 總覽「時間到期」文案:超過上限寫「已超過 N 天」⛔ 不寫「到了」、尾盤窗口過了 / 週末寫「下一個交易日」(共用 `_dueWhen`)、收盤鎖漲停那一行讀 `_DT_EDGE.lu` + `_LUDEFER_EDGE`(決定性對照)、鎖漲停判斷只有 `_luLock` 一份;3 種注入全紅)
@@ -2373,6 +2374,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 🔬 V78.3.7 產業作戰室「🔬 個股實測」分頁(內嵌 index.html?lab=1,⛔ 不複製偵測器)・?sub= / ?open= 只在實驗室模式認 ・一般畫面「看完整回測」按鈕改 lab-only
 - 🧹 V78.3.6 散戶 App 拿掉回測研究文字(第三批:K 線・當沖・籌碼・選股・ETF・大盤・券商・說明彈窗・提醒;168 頁 0 行)・條件式卡片(抱滿 + 鎖漲停 / 追蹤卡)巡邏看不到要讀原始碼 ・板塊輪動非 20 日分支補回
 - 🧹 V78.3.5 散戶 App 拿掉回測研究文字(第二批:個股報告頁・提示詞・海報;報告頁 13 → 0 行)・機率框照留、§10 籌碼總表只剩事實
 - 🧹 V78.3.4 散戶 App 拿掉回測研究文字(第一批:決策台・總覽・設定・策略變更視窗;327 → 0 行)・🔬 實驗室模式 ?lab=1 收自訂回測 / 盲測 / 個股回測分頁 ・`test_retail_clean.mjs` 守門 ・🚨 test_ovtruth ⑤ 七條原本是假綠燈(ok 參數寫反)

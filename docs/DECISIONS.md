@@ -3,6 +3,12 @@
 
 
 
+## 🔬 V78.3.7 產業作戰室新分頁「🔬 個股實測」—— 這一檔自己的成績搬過去(散戶 App 第四批)
+- 📍 pro.html 新分頁 `exp`:輸入代號 → 內嵌 `index.html?lab=1&sym=XXXX&sub=backtest|chart`;另兩顆開 `?lab=1&open=sigscore|trainer`(自訂回測 / 訊號成績單、盲測練習)。
+- ⛔ **不複製偵測器**(那會變成第二份真相):iframe 直接跑 index.html 的實驗室模式,同一份程式、同一份資料。
+- index.html:`?sub=` / `?open=` **只在實驗室模式才認**;一般畫面「完整排名 →」「看完整回測 →」兩顆鈕改 lab-only(以前點了會被導回總覽 = 一顆沒作用的按鈕)。⛔ index.html 仍然沒有任何連到 pro / lab 的入口(V74.0.1 鐵則)。
+- 🧪 `scripts/test_expframe.mjs`:分頁鈕 + TABS ・內嵌真的切到 2330 回測分頁且有內容 ・一般模式帶 `?sub=backtest` ⛔ 不切 ・index ⛔ 無 pro 入口 ・pro ⛔ 不複製偵測器。注入「拿掉 lab 守門」→ 紅(行為那條仍綠,因為回測分頁自己還有第二道守門)。
+
 ## 🧹 V78.3.6 散戶 App 拿掉實測文字(第三批:K線・當沖・籌碼・選股・ETF・大盤・券商・說明彈窗・提醒)
 - 📏 `test_retail_clean.mjs` 擴大掃描範圍:大盤子分頁 `mkt_*`、選股模式 `radarmode_*`、`_RADAR_TABS` 每一個榜、朱家泓各分頁、券商分點 / 集保、到價提醒視窗、每一個說明彈窗、`jargonDict`、看得到的 `title`、onclick 內嵌 alert。**168 頁 → 0 行**(🧬 / 👑)。
   - 🚨 巡邏工具自己的假綠燈:說明彈窗抓完一個就 `display:none` → 後面每一個彈窗都是「看不到」= 一行都沒掃到。改成只加 `hidden` class、display 清空。

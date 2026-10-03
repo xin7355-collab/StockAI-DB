@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.3.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.3.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.3.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.3.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4597,12 +4597,25 @@ const app = {
         this.switchAppTab(this._deepLinkSym ? 'diag' : 'desk');
         if (this._deepLinkSym) {
             await this.analyze(initialSym, true);
+            // 🔬 V78.3.7 產業作戰室「🔬 個股實測」內嵌:只有實驗室模式才認 ?sub= / ?open=(一般模式一律忽略,⛔ 不給入口)
+            try {
+                const qp = new URLSearchParams(window.location.search);
+                if (this._labMode()) {
+                    const sub = qp.get('sub');
+                    if (sub && /^[a-z]+$/.test(sub)) this.switchSubTab(sub);
+                }
+            } catch (_) {}
         } else {
             this.analyze(initialSym, true).catch(() => {});   // 背景預熱,不擋首屏
         }
         this.refreshInventoryPrices();
         this.renderFavTabs();
         this.loadRadarMatrix();
+        // 🔬 V78.3.7 實驗室模式 ?open=sigscore / trainer → 直接開自訂回測 / 盲測練習(產業作戰室按鈕用)
+        try {
+            const op = new URLSearchParams(window.location.search).get('open');
+            if (this._labMode() && op) setTimeout(() => { try { if (op === 'sigscore') this._openSignalScore(); else if (op === 'trainer') this._openTrainer(); } catch (_) {} }, 600);
+        } catch (_) {}
 
         // V17.4 — 早上 9-14 點開 App,若 monitorList 不空就自動掃一輪 5MA 觸發
         //         解決使用者「等隔日 5MA 我都忘了」痛點 — 一打開 App 自動跑,免手動點立即掃描
@@ -8656,10 +8669,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.3.6',
+    _APP_VERSION: 'V78.3.7',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.3.7', d: ['🔬 <b>這一檔自己的回測成績搬到產業作戰室</b>:新分頁「🔬 個股實測」輸入代號就能看回測排名、K 線訊號成績,還有自訂回測與盲測練習;散戶救星一般畫面不再有任何「看完整回測」的按鈕'] },
         { v: 'V78.3.6', d: ['🧹 <b>散戶 App 拿掉回測研究文字(第三批)</b>:K 線、當沖、籌碼、選股、ETF、大盤、券商、提醒與所有說明視窗只講「怎麼看、怎麼做」;勝率、期望值、樣本數、對照組一律收到產業作戰室', '⏳ 抱滿天數那張卡與「鎖漲停隔天」只留怎麼賣的規則,不再列歷史平均'] },
         { v: 'V78.3.5', d: ['🧹 <b>散戶 App 拿掉回測研究文字(第二批:個股報告頁)</b>:快速判別表、籌碼總表、產業節、機率框、價格牆、財報趨勢、事件、圖與提示詞只講事實與怎麼看 —— 成績與對照數字一律在產業作戰室'] },
         { v: 'V78.3.4', d: ['🧹 <b>散戶 App 拿掉回測研究文字(第一批)</b>:決策台、總覽、設定、策略變更視窗只講「怎麼做」 —— 怎麼選、什麼時候買、怎麼賣、錢放哪;成績與對照數字一律在產業作戰室', '🔬 自訂回測、盲測練習、個股「回測」分頁收進實驗室模式(一般畫面看不到)'] },
@@ -24016,7 +24030,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             el.innerHTML = `
                 <div class="flex items-center justify-between mb-0.5">
                     <div class="text-[11px] font-black text-gray-400">🃏 打法雷達 <span class="text-[9px] text-amber-300/80 font-normal">⚡短線(最多抱20天)</span><span class="text-[9px] text-gray-500 font-normal">・回測同源</span></div>
-                    <button onclick="app.switchSubTab('backtest'); app.vibrate(20);" class="text-[9px] text-amber-300 border border-amber-700/40 rounded px-1.5 py-0.5">完整排名 →</button>
+                    ${this._labMode() ? `<button onclick="app.switchSubTab('backtest'); app.vibrate(20);" class="text-[9px] text-amber-300 border border-amber-700/40 rounded px-1.5 py-0.5">完整排名 →</button>` : ''}
                 </div>
                 <div class="text-base font-black ${tc} mb-1 leading-snug">${big}</div>
                 ${inner}`;
@@ -29036,7 +29050,7 @@ ${this._reportFacts(sym)}
         return `<div class="mt-2.5 bg-[#0d1117] border border-amber-700/40 rounded-lg p-2.5">
             <div class="flex items-center justify-between mb-1">
                 <div class="text-[11px] font-bold text-amber-300">🎯 今日觸發型態 × 本股回測勝率</div>
-                <button onclick="app.switchSubTab('backtest'); app.vibrate(20);" class="text-[9px] text-cyan-300/80 hover:text-cyan-200 border border-cyan-700/40 rounded px-1.5 py-0.5">看完整回測 →</button>
+                ${this._labMode() ? `<button onclick="app.switchSubTab('backtest'); app.vibrate(20);" class="text-[9px] text-cyan-300/80 hover:text-cyan-200 border border-cyan-700/40 rounded px-1.5 py-0.5">看完整回測 →</button>` : ''}
             </div>
             ${rows}
             ${badCount ? `<div class="text-[10px] text-green-300/90 mt-1 leading-snug">🔇 上面劃掉的 ${badCount} 招在<b>這檔股票</b>歷史是負期望(賠多賺少),同樣的招在別檔可能有效,但在這檔<b>建議略過</b>——別被「看起來對」的訊號騙。</div>` : ''}

@@ -756,6 +756,7 @@ html.app-fish #fishBasketPane h2 .sub{display:none}
     <button class="tab-btn" id="tabBtnSig" onclick="PRO.switchTab('sig')">今日訊號</button>
     <button class="tab-btn" id="tabBtnConf" onclick="PRO.switchTab('conf')" title="法說會時間表 + 官方擇要;只描述,不下多空">法說會</button>
     <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
+    <button class="tab-btn" id="tabBtnExp" onclick="PRO.switchTab('exp')" title="這一檔自己的回測、K 線訊號成績、自訂回測(散戶救星一般畫面看不到的)">🔬 個股實測</button>
     <!-- 🧹 V74.6.2 使用者:「把散戶救星裡面的 V74.6.1 及 🧹 雜訊清單搬移到產業作戰室裡面」
          ⭐ 這**推翻了 V74.5.6** 的做法(當時只做一顆會跳走的鈕)。
          ⛔ 但「不可以複製第二份數據」那條鐵則沒有被推翻 —— 解法是
@@ -1095,6 +1096,26 @@ html.app-fish #fishBasketPane h2 .sub{display:none}
     </details>
     </details>
     <div id="labList"></div>
+  </div>
+</div>
+
+<!-- ═══════════ 🔬 個股實測(V78.3.7)═══════════
+     散戶救星一般畫面已經拿掉所有回測研究文字(V78.3.4~V78.3.6)→ 這一檔自己的成績搬到這裡看。
+     ⛔ 不複製偵測器程式(那會變成第二份真相):直接內嵌 index.html 的實驗室模式(?lab=1),同一份程式、同一份資料。 -->
+<div id="tabExp" class="hidden">
+  <div class="panel">
+    <h2>🔬 個股實測 <span class="sub">這一檔自己的回測・K 線訊號成績・自訂回測</span></h2>
+    <div class="inrow">
+      <div><label>股票代號</label><input type="text" id="expSym" value="2330" inputmode="text" autocomplete="off" onkeydown="if(event.key==='Enter')PRO.expOpen('backtest')"></div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
+      <button class="lbtn" onclick="PRO.expOpen('backtest')">📊 這檔的回測</button>
+      <button class="lbtn" onclick="PRO.expOpen('chart')">🕯️ K 線訊號成績</button>
+      <button class="lbtn" onclick="PRO.expOpen('sigscore')">🧪 自訂回測 / 訊號成績單</button>
+      <button class="lbtn" onclick="PRO.expOpen('trainer')">🎯 盲測練習</button>
+    </div>
+    <div id="expNote" style="font-size:12px;color:var(--mut,#8b949e);margin-bottom:6px">輸入代號後按上面任一顆。下面是散戶救星的「實驗室模式」(跟一般畫面同一份程式,多了成績與回測)。</div>
+    <iframe id="expFrame" title="個股實測" style="width:100%;height:80vh;border:0;background:#0d1117;display:none" loading="lazy"></iframe>
   </div>
 </div>
 
@@ -1976,7 +1997,19 @@ const PRO = {
     this.toast('✅ 已更新');
   },
 
-  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['sig', 'Sig'], ['conf', 'Conf'], ['lab', 'Lab'], ['noise', 'Noise']],
+  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['sig', 'Sig'], ['conf', 'Conf'], ['lab', 'Lab'], ['exp', 'Exp'], ['noise', 'Noise']],
+  // 🔬 V78.3.7 個股實測:內嵌 index.html?lab=1(⛔ 不複製偵測器;同一份程式)
+  expOpen(what) {
+    const el = document.getElementById('expSym'), fr = document.getElementById('expFrame'), note = document.getElementById('expNote');
+    const sym = String((el && el.value) || '').trim().toUpperCase();
+    const tool = what === 'sigscore' || what === 'trainer';
+    if (!tool && !/^[0-9A-Z]{4,8}$/.test(sym)) { if (note) note.textContent = '⚠️ 代號格式不對(4~8 碼數字或英文)'; return; }
+    const q = tool ? `lab=1&open=${what}` : `lab=1&sym=${encodeURIComponent(sym)}&sub=${what}`;
+    fr.src = `index.html?${q}&t=${Date.now()}`;
+    fr.style.display = 'block';
+    if (note) note.textContent = tool ? '載入中…(第一次要幾秒)' : `載入 ${sym} 中…(第一次要幾秒)`;
+    fr.onload = () => { if (note) note.textContent = tool ? '✅ 已開啟' : `✅ ${sym}(實驗室模式)`; };
+  },
   switchTab(t, silent) {
     this.closeStock();                    // 🔗 切頁一律收起快捷面板(⛔ 不可蓋在別頁上面)
     this.closeModal();                    // 📖 懸浮視窗同理
@@ -8247,7 +8280,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V78.3.6',
+  VER: 'V78.3.7',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
