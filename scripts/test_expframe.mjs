@@ -3,6 +3,7 @@
 //   ② 內嵌 index.html?lab=1&sym=2330&sub=backtest → 實驗室模式、真的切到回測分頁、有內容
 //   ③ ⛔ 一般模式帶同樣的 ?sub=backtest → 不可切過去(散戶 App 沒有入口)
 //   ④ ⛔ index.html 一般模式不可有任何連到 pro.html / lab 的入口(V74.0.1 鐵則照舊)
+//   ⑥ ⛔ 一般模式帶 ?noise=1 不開雜訊清單(V78.3.8)
 //   ⑤ ⛔ 不複製偵測器:pro.html 只能用 iframe 內嵌,⛔ 不可出現 _patternFitBacktest / _SIGNAL_EDGE 的實作
 import fs from 'fs';
 let chromium; try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); } catch (_) { ({ chromium } = await import('playwright')); }
@@ -48,6 +49,13 @@ try {
     let s = null;
     for (let i = 0; i < 40; i++) { await q.waitForTimeout(1000); s = await q.evaluate(() => (typeof app !== 'undefined' && app.currentSymbolId === '2330') ? { lab: document.documentElement.classList.contains('lab'), sub: app._activeSubTab } : null); if (s && s.sub) break; }
     ok('③ 一般模式帶 ?sub=backtest ⛔ 不切過去', s && !s.lab && s.sub !== 'backtest', JSON.stringify(s));
+    // 🔬 V78.3.8 ?noise=1(雜訊清單 = 研究內容)一般模式⛔ 不開
+    const w = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    w.on('pageerror', e => errs.push(String(e)));
+    await w.goto('file://' + new URL('../index.html', import.meta.url).pathname + '?noise=1');
+    await w.waitForTimeout(6000);
+    const nz = await w.evaluate(() => { const m = document.getElementById('updateLogModal'); const t = document.getElementById('updateLogTitle'); return { open: !!m && !m.classList.contains('hidden') && m.style.display !== 'none', title: t ? t.textContent : '' }; });
+    ok('⑥ 一般模式帶 ?noise=1 ⛔ 不開雜訊清單', !(nz.open && /雜訊清單/.test(nz.title)), JSON.stringify(nz));
 } finally { await browser.close(); }
 ok('pageerror 0', errs.length === 0, errs.slice(0, 3).join(' | '));
 if (fails.length) { console.log(`❌ EXPFRAME_FAIL(${fails.length}):${fails.join(' / ')}`); process.exit(1); }
