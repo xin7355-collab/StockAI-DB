@@ -15,7 +15,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.3.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -889,7 +889,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.3.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.3.3</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8657,8 +8657,9 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.3.2',
+    _APP_VERSION: 'V78.3.3',
     _CHANGELOG: [
+        { v: 'V78.3.3', d: ['👑 <b>決策台領頭羊名單改回 V78.2.9 那版,再照你說的調</b>:「收盤」→ <b>現價</b>(盤中用即時快照,沒有就用收盤)・「10 日」→ <b>換倉價</b>(上次換倉那天的收盤,底下是到現價漲跌多少;換倉時不在名單的寫「—」)・動作只剩 <b>🛒 買 / 前10續抱</b>・股名下面放代號。上兩版加的「這套現在抱著的 N 檔」「換倉日才買」那些模擬買賣的東西拿掉 —— 模擬成績只放產業作戰室 → 📒 成績單。'] },
         { v: 'V78.3.2', d: ['📌 <b>決策台 👑 名單下方多一段「這套現在抱著的 5 檔」</b>(你問「換倉 5 天了怎麼沒有買進價」):上次 09-24 換倉、09-29 開盤買的是宏致 / 創意 / 光頡 / 貿聯 / 聯一光,今天只有創意、貿聯還在前 10 名,所以表上只有它們兩個有買進價;另外三檔還抱著、等下次換倉日賣,現在也列出來(買價 / 現價 / 一張賺賠)。今天前 5 名是換倉之後才衝上來的,這套只在換倉日買 → 改寫「換倉日才買」,非換倉日的動作欄也不再寫「🛒 買」。'] },
         { v: 'V78.3.1', d: ['📌 <b>決策台 👑 名單的「10 日」欄換成「買進價」</b>(你說的:改成當初抓到的價格):= 這套照規則在換倉隔天開盤買的價(跟 📒 成績單同一套模擬),底下是到今天收盤的漲跌;中途才進前 10 名、這套還沒買的寫「還沒買」,今天換倉的寫「明天開盤買」。10 日漲幅還是排名依據,按住名次那格看得到。'] },
         { v: 'V78.3.0', d: ['🔬 <b>回答「題材 / 空頭換招」兩題(只有回測,畫面規則沒改)</b>:① 照「漲最多的題材」輪動,不如題材全部都看,而全部題材贏是因為名單是事後挑的 → ⛔ 不做 ② 空頭時把錢收成現金、只抱 1~2 檔、只追第 1 名,四招都沒有兩段都贏現行 —— 空頭被判定時 0050 之後平均反而是漲的,現行(空頭不買、閒錢停 0050)本來就最穩 ③ 「必跌事件先賣再買回」以前就測過,全部少賺 ④ 實測總表「還測不了」那 21 條多半是沒有資料,法說會那條已測完搬走、在存的資料更新天數'] },
@@ -21478,7 +21479,6 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             plateau: '70 / 75 / 80 / 85 / 90 都贏(95 開始變差)' },
         // ⏱️ V77.8.9 換倉日錨點(App 與 auto_trade.py 共用同一個,⛔ 不存在手機上 —— 存各自裝置會讓兩邊換倉日對不上)
         anchor: '2026-09-24',
-        limUp: 9.7,   // 📌 V78.3.1 換倉隔天開盤漲 ≥ 這個 % 視為買不到(= pro `_LEAD.limUp`)
         // 🕐 V77.8.9 成交時點:回測是「換倉日收盤算名單 → 隔天開盤買」;V78.2.4 起自動下單預設也是隔天開盤買(LEADER_WINDOW=eod 才是尾盤)
         fillOpen: { ai: 953, long: 6783, beatAi: 17, beatLong: 17 }, fillClose: { ai: 817, long: 3342, beatAi: 17, beatLong: 17 },
         // 🚨 V77.8.9 注意 / 處置(官方事件史 2023-06 起,決策日「之前」的公告才算):全部變差
@@ -21778,7 +21778,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const day = days.length;                 // 開始那天 = 第 1 天
         if (!day) return { started: true, day: 0, isRebal: false, left: null };
         const k = (day - 1) % R;
-        return { started: true, day, isRebal: k === 0, left: k === 0 ? 0 : R - k };
+        // 📌 V78.3.3 reb = 最近一次換倉日(換倉價欄讀那天 pick_history 的收盤)
+        return { started: true, day, isRebal: k === 0, left: k === 0 ? 0 : R - k, reb: days[day - 1 - k] || null };
     },
     /** 👑 V77.9.1「這檔是照領頭羊買的」標記(使用者:「程式不知道哪幾檔是照這套買的」→ 自己標)。
      *  ⛔ 只存這台手機;標了的:決策台照領頭羊規則講要不要賣、⛔ 不再套上面三條出場(同一檔不可兩套規則打架)。 */
@@ -21799,7 +21800,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     /** 👑 V77.9.1 名單表頭排序(使用者明示:表格一律可點排序;同一欄再點一次反向)。⛔ 換倉動作(買/續抱)不跟著排序變 */
     _LEADER_SORT_COLS: [
-        { k: 'rank', n: '名次', asc: true }, { k: 'c', n: '收盤', asc: false }, { k: 'ent', n: '買進價', asc: false },
+        { k: 'rank', n: '名次', asc: true }, { k: 'c', n: '現價', asc: false }, { k: 'reb', n: '換倉價', asc: false },
         { k: 'chg', n: '今天', asc: false }, { k: 'amt20', n: '億/日', asc: false },
     ],
     leaderSortBy(k) {
@@ -21813,72 +21814,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { b.innerHTML = await this._leaderDeckHtml(); } catch (e) { b.innerHTML = `<div class="text-[10px] text-amber-300 mt-2" data-leader="err">👑 領頭羊名單算不出來:${this._escHtml(String(e && e.message || e))}</div>`; }
         try { this._deckShowApply(); } catch (_) {}
     },
-    /** 📌 V78.3.1 「當初抓到的價格」(使用者:「領頭羊短線輪動裡面的 10 日改成當初抓到的價格」→ 選「換倉隔天的開盤成交價」)
-     *  ⭐ 單一真相 = pro.html `_leaderLedgerLoad`(📒 成績單 👑 模擬帳)。index 讀不到 pro.html → 這裡是**逐行照抄的最小複製品**,
-     *     `scripts/test_leader_deck_ledger.mjs` ⑥ 拿真的 pick_history 逐檔比對兩邊的買進價(⛔ 改一邊忘另一邊會紅)。
-     *  規則(同成績單):錨點起每 R 個交易日換倉;換倉日的名單(pick_history 的 lead)→ 掉出前 N×hyst 名的賣、
-     *     有 b 旗標照 b 買 / 舊的日子照前 N 名、空頭那天不買、隔天開盤快漲停買不到 → 成交價 = **隔天開盤**(⛔ 假日幽靈 K 不算)。
-     *  回 { map: sym → {px, d, reb}(這套現在還抱著的), pending: Set(今天換倉、明天開盤才買的), err }。中途才進前 10 名的 → 不在 map = 「還沒買」。 */
-    async _leadEntGet(f, ms) {
-        const gb = window.location.href.split('?')[0].split('#')[0];
-        const r = await fetch(new URL(f, gb).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(ms || 9000) });
-        return r.ok ? r.json() : null;
-    },
-    async _leaderEntries(twii) {
-        const E = this._LEADER_EDGE, P = E.rule, LIMUP = E.limUp;
-        const out = { map: new Map(), pending: new Set(), err: null };
-        const dstr = x => String(x || '').replace(/\//g, '-').slice(0, 10);
-        const tRows = (twii || []).filter(r => r && +(r.close ?? r.c) > 0);
-        const tDays = tRows.map(r => dstr(r.date || r.d)), tSet = new Set(tDays);
-        if (!tDays.length) { out.err = '讀不到加權指數(換倉日曆要靠它)'; return out; }
-        const key = `${tDays[tDays.length - 1]}|${this._leadPos()}`;
-        if (this._leadEnt && this._leadEnt.key === key) return this._leadEnt.v;
-        let H = null; try { H = await this._leadEntGet('data/pick_history.json', 10000); } catch (_) {}
-        if (!H || !Array.isArray(H.days)) { out.err = '讀不到每日名單快照(pick_history.json)'; return out; }
-        const leadBy = new Map();
-        for (const day of H.days) if (day && day.d && day.lead && Array.isArray(day.lead.rows) && day.lead.rows.length) leadBy.set(dstr(day.d), day.lead);
-        const K = this._leadEntK = this._leadEntK || {};
-        const kOf = async sym => {
-            if (K[sym] === undefined) { try { const raw = await this._leadEntGet(`data/${sym}.json`, 9000); K[sym] = (Array.isArray(raw) ? raw : []).filter(r => r && +r.close > 0); } catch (_) { K[sym] = []; } }
-            return K[sym];
-        };
-        const barAt = (rows, D) => {        // = 成績單 barAt:D(含)之前最近一根(⛔ 只認加權有開盤的日子)
-            let hit = -1;
-            for (let i = rows.length - 1; i >= 0; i--) { const d = dstr(rows[i].date); if (d <= D && (tSet.has(d) || d < tDays[0])) { hit = i; break; } }
-            if (hit < 0) return null;
-            let prev = null;
-            for (let j = hit - 1; j >= 0; j--) { const d = dstr(rows[j].date); if (tSet.has(d) || d < tDays[0]) { prev = +rows[j].close; break; } }
-            const o = +rows[hit].open;
-            return { d: dstr(rows[hit].date), c: +rows[hit].close, o: o > 0 ? o : +rows[hit].close, prev };
-        };
-        const bearAt = D => { const i = tDays.indexOf(D); const v = i >= 0 ? this._bear60Of(tRows.slice(0, i + 1)) : null; return !!(v && v.on); };
-        const cal = tDays.filter(d => d >= E.anchor);
-        const held = new Map();
-        for (let i = 0; i < cal.length; i += P.R) {
-            const D = cal[i], F = cal[i + 1] || null, L = leadBy.get(D);
-            if (!L) continue;
-            const rows = L.rows.slice().sort((a, b) => (+a.r || 99) - (+b.r || 99));
-            const keep = new Set(rows.filter(r => (+r.r || 99) <= P.N * P.hyst).map(r => String(r.s)));
-            const sellList = [...held.keys()].filter(s => !keep.has(s));
-            const useB = rows.some(r => r.b != null) && this._leadPos() > 0;
-            const buyList = bearAt(D) ? [] : (useB ? rows.filter(r => +r.b === 1) : rows.slice(0, P.N)).filter(r => !held.has(String(r.s)));
-            if (!F) { buyList.slice(0, Math.max(0, P.N - (held.size - sellList.length))).forEach(r => out.pending.add(String(r.s))); continue; }
-            for (const sym of sellList) held.delete(sym);
-            for (const r of buyList) {
-                if (held.size >= P.N) break;
-                const sym = String(r.s), b = barAt(await kOf(sym), F);
-                if (!b || b.d !== F) continue;
-                if (b.prev > 0 && (b.o / b.prev - 1) * 100 >= LIMUP) continue;
-                held.set(sym, { px: b.o, d: F, reb: D });
-            }
-            out.lastReb = D; out.lastFill = F;
-        }
-        // 📌 V78.3.2 還抱著的每一檔附上「最新一根收盤」(今天掉出前 10 的,screener 名單裡沒有它 → 讀 K 線;⛔ 假日幽靈 K 不算)
-        const lastD = cal[cal.length - 1] || tDays[tDays.length - 1];
-        for (const [sym, h] of held) { const b = barAt(await kOf(sym), lastD); if (b && b.d >= h.d) { h.c = b.c; h.cd = b.d; } }
-        out.map = held;
-        this._leadEnt = { key, v: out };
-        return out;
+    /** 📌 V78.3.3 換倉價 = 最近一次換倉日那天 pick_history 👑 名單上的收盤(`lead.rows[].c`)。
+     *  ⛔ 不重播成交、⛔ 不抓個股 K 線(模擬成交只在產業作戰室 📒 成績單)。回 {map: sym → 收盤, err}。 */
+    async _leaderRebPx(D) {
+        if (!D) return { map: null, err: '算不出換倉日(加權指數讀不到)' };
+        if (this._leadRebPx && this._leadRebPx.D === D && this._leadRebPx.v.map) return this._leadRebPx.v;
+        let H = null;
+        try { const gb = window.location.href.split('?')[0].split('#')[0]; const r = await fetch(new URL('data/pick_history.json', gb).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(10000) }); H = r.ok ? await r.json() : null; } catch (_) {}
+        if (!H || !Array.isArray(H.days)) return { map: null, err: '讀不到每日名單快照(pick_history.json)' };
+        const day = H.days.find(x => x && String(x.d || '').replace(/\//g, '-').slice(0, 10) === D);
+        const rows = day && day.lead && Array.isArray(day.lead.rows) ? day.lead.rows : null;
+        if (!rows || !rows.length) return { map: null, err: `${D} 換倉那天的名單沒有存到` };
+        const v = { map: new Map(rows.filter(r => +r.c > 0).map(r => [String(r.s), +r.c])), err: null };
+        this._leadRebPx = { D, v };
+        return v;
     },
     async _leaderDeckHtml() {
         const E = this._LEADER_EDGE, R = E.rule;
@@ -21900,10 +21849,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const clk = this._leaderClock(twii, L.date, E.anchor);
         this._leaderState = { isRebal: !!clk.isRebal, buyN: bearOn ? 0 : L.buy.length, date: L.date };
         const H = R.N * R.hyst;
-        // 📌 V78.3.1 買進價(換倉隔天開盤)+ 至今 %;算不出來⛔ 不靜默(表下寫原因)
-        let EN = { map: new Map(), pending: new Set(), err: null };
-        try { EN = await this._leaderEntries(twii); } catch (e) { EN.err = String(e && e.message || e).slice(0, 80); }
-        for (const r of L.ranked.concat(L.buy)) { const en = EN.map.get(r.sym); r.entPx = en ? en.px : null; r.entD = en ? en.d : null; r.ent = en && en.px > 0 && r.c > 0 ? (r.c / en.px - 1) * 100 : null; }
+        // 📌 V78.3.3 使用者:「收盤價就是現價,買進價改成換倉的時候價格,動作就是購物車及前10續抱」
+        //   現價 = 全市場即時快照(今天的才算,_liveQuote 已守門)→ 沒有就用 screener 收盤;換倉價 = 最近一次換倉日 pick_history 名單那天的收盤
+        //   ⛔ 模擬成交 / 模擬成績一律只在產業作戰室 📒 成績單(使用者:「模擬成績單都一率不放在散戶 app」)
+        if (!this._liveQuotes) { try { await this._loadLiveQuotes(); } catch (_) {} }
+        const rb = await this._leaderRebPx(clk.reb);
+        for (const r of L.ranked.concat(L.buy)) {
+            if (r._c0 == null) { r._c0 = r.c; r._chg0 = r.chg; }
+            const lq = this._liveQuote(r.sym);
+            r.live = !!(lq && Number(lq.p) > 0);
+            r.c = r.live ? +lq.p : r._c0;
+            r.chg = r.live && lq.c != null && isFinite(+lq.c) ? +lq.c : r._chg0;
+            r.reb = rb.map ? (rb.map.get(r.sym) ?? null) : null;
+            r.rebPct = r.reb > 0 && r.c > 0 ? (r.c / r.reb - 1) * 100 : null;
+        }
         const mine = this._leaderMine();
         const invSyms = [...new Set(this._getInventory().map(i => String(i.symbol)).filter(Boolean))];
         // 🎯 V77.9.6 全站策略 = 👑 → 手上每一檔個股都照這套講(ETF 除外)
@@ -21922,20 +21881,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const COLS = 'grid-template-columns:18px minmax(0,1fr) 54px 56px 46px 40px 44px';
         const th = c => { const on = sort.k === c.k; return `<button onclick="app.leaderSortBy('${c.k}')" data-leadersort="${c.k}" class="text-right ${on ? 'text-cyan-300 font-bold' : 'text-gray-500'}">${c.n}${on ? (sort.asc ? '▲' : '▼') : ''}</button>`; };
         const C = Object.fromEntries(this._LEADER_SORT_COLS.map(c => [c.k, c]));
-        const hdr = `<div class="text-[9px] py-0.5 border-b border-[#30363d] items-baseline" style="display:grid;${COLS};gap:4px" data-leaderhdr="1">${th(C.rank)}<span class="text-gray-500">股票</span>${th(C.c)}${th(C.ent)}${th(C.chg)}${th(C.amt20)}<span class="text-gray-500 text-right">動作</span></div>`;
-        const act = r => buySet.has(r.sym)
-            ? `<span class="text-[9px] font-bold text-right ${bearOn ? 'text-gray-500' : (mine.has(r.sym) ? 'text-gray-300' : 'text-amber-300')}" data-leaderact="buy">${bearOn ? '空頭不買' : (mine.has(r.sym) ? '✅ 已有' : (clk.isRebal ? '🛒 買' : '⏳ 換倉日買'))}</span>`
-            : (!r.posOk ? `<span class="text-[9px] text-gray-500 text-right" data-leaderact="pos" title="一年位置 ${r.pos == null ? '沒有資料' : r.pos.toFixed(0) + '%'} < ${L.pos}%:⛔ 不買(有的話續抱)">位置低</span>`
-            : `<span class="text-[9px] text-gray-500 text-right" data-leaderact="keep">前${H}續抱</span>`);
-        const entCell = r => r.entPx != null
-            ? `<span class="text-right leading-tight" data-leaderent="${r.sym}" title="${esc(r.entD)} 開盤買進(這套照規則的模擬成交,= 📒 成績單)"><span class="font-mono text-[11px] text-gray-100 block">${px(r.entPx)}</span><span class="font-mono text-[9px] ${r.ent >= 0 ? 'text-red-400' : 'text-green-400'}">${pct(r.ent)}</span></span>`
-            : (EN.pending.has(r.sym) ? `<span class="text-[9px] text-amber-300 text-right" data-leaderent="pend">明天開盤買</span>`
-            : `<span class="text-[9px] text-gray-500 text-right" data-leaderent="none">${EN.err ? '—' : (clk.isRebal ? '還沒買' : '換倉日才買')}</span>`);
-        const row = r => `<div class="py-1 border-b border-[#21262d] items-baseline" style="display:grid;${COLS};gap:4px" data-leaderrow="${r.sym}" data-leaderrank="${r.rank}">
+        const hdr = `<div class="text-[9px] py-0.5 border-b border-[#30363d] items-baseline" style="display:grid;${COLS};gap:4px" data-leaderhdr="1">${th(C.rank)}<span class="text-gray-500">股票</span>${th(C.c)}${th(C.reb)}${th(C.chg)}${th(C.amt20)}<span class="text-gray-500 text-right">動作</span></div>`;
+        // 📌 V78.3.3 動作只有兩種:🛒 買 / 前N續抱(空頭那天不買 → 全部續抱,bearTxt 已講「今天不開新倉」)
+        const act = r => (buySet.has(r.sym) && !bearOn)
+            ? `<span class="text-[9px] font-bold text-right text-amber-300" data-leaderact="buy">🛒 買</span>`
+            : `<span class="text-[9px] text-gray-500 text-right" data-leaderact="keep">前${H}續抱</span>`;
+        const nameCell = r => { const nm = this._nmDual(r.sym); const tag = `${r.lim === 1 ? `<span class="text-[9px] text-amber-300/80"> 漲停</span>` : ''}${r.att ? `<span class="text-[9px] text-orange-300"> ${r.att === 2 ? '處置' : '注意'}</span>` : ''}`;
+            return `<span class="min-w-0 cursor-pointer leading-tight" onclick="app.analyze('${r.sym}'); app.switchAppTab('diag'); app.vibrate(15);" data-leadername="${r.sym}"><span class="block truncate text-[12px] text-gray-100">${esc(nm.n)}${tag}</span>${nm.sub ? `<span class="block text-[9px] text-gray-500 font-mono" data-leadercode="${r.sym}">${esc(nm.sub)}</span>` : ''}</span>`; };
+        const rebCell = r => r.reb > 0
+            ? `<span class="text-right leading-tight" data-leaderreb="${r.reb}" title="${esc(clk.reb)} 換倉那天的收盤"><span class="font-mono text-[11px] text-gray-100 block">${px(r.reb)}</span><span class="font-mono text-[9px] ${r.rebPct >= 0 ? 'text-red-400' : 'text-green-400'}">${pct(r.rebPct)}</span></span>`
+            : `<span class="text-[11px] text-gray-500 text-right" data-leaderreb="none" title="${rb.err ? esc(rb.err) : `${esc(clk.reb || '')} 換倉時不在名單`}">—</span>`;
+        const row = r => `<div class="py-1 border-b border-[#21262d] items-center" style="display:grid;${COLS};gap:4px" data-leaderrow="${r.sym}" data-leaderrank="${r.rank}">
             <span class="font-mono text-[10px] text-gray-500 text-right" title="近 10 日 ${pct(r.chg10)}(排名依據)">${r.rank}</span>
-            <span class="min-w-0 truncate cursor-pointer" onclick="app.analyze('${r.sym}'); app.switchAppTab('diag'); app.vibrate(15);">${this._nmPair(r.sym, 'text-[12px]')}${r.lim === 1 ? `<span class="text-[9px] text-amber-300/80"> 漲停</span>` : ''}${r.att ? `<span class="text-[9px] text-orange-300"> ${r.att === 2 ? '處置' : '注意'}</span>` : ''}</span>
-            <span class="font-mono text-[11px] text-gray-100 text-right" data-leaderclose="${r.c}">${px(r.c)}</span>
-            ${entCell(r)}
+            ${nameCell(r)}
+            <span class="font-mono text-[11px] text-gray-100 text-right" data-leaderclose="${r.c}" data-leaderlive="${r.live ? 1 : 0}">${px(r.c)}</span>
+            ${rebCell(r)}
             <span class="font-mono text-[10px] text-right ${r.chg >= 0 ? 'text-red-400/80' : 'text-green-400/80'}">${pct(r.chg)}</span>
             <span class="font-mono text-[10px] text-gray-500 text-right">${r.amt20.toFixed(0)}</span>
             ${act(r)}
@@ -21954,23 +21914,14 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const attN = L.ranked.filter(r => r.att).length;
         const attTxt = attN ? `<div class="text-[10px] text-gray-400 mb-1">🚨 名單裡 ${attN} 檔在注意 / 處置名單上 → ⛔ <b>不要跳過</b>(實測跳過處置 +${E.att.base}% → +${E.att.noDisp}%),⛔ <b>也別在處置前先賣、等大跌或出關再買回</b>(公告當晚就賣 +${E.att.dispNow}%、就算提前一天猜到 +${E.att.oracle1}%、注意 3 次就賣再出關買回 +${E.att.attSellRel}%;處置期間⛔ 沒有大跌:到出關超額 +${E.disp.during}%)。⚠️ 第二次處置要預收款券。</div>` : '';
         const bearTxt = bearOn ? `<div class="text-[10px] text-amber-300 mb-1">🐻 大盤嚴格空頭(收盤 ${esc(bear.c)} < 60 日線 ${esc(bear.ma60)},且 20 日線 < 60 日線)→ <b>今天不開新倉</b>,手上的照規則。</div>` : '';
-        const entNote = `<div class="text-[9px] ${EN.err ? 'text-amber-300' : 'text-gray-500'} mt-0.5" data-leaderentnote="${EN.err ? 'err' : 'ok'}">${EN.err ? `⚠️ 買進價算不出來:${esc(EN.err)}` : `買進價 = 這套照規則在換倉隔天開盤買的價(跟 📒 成績單同一套模擬),下面是到今天收盤的漲跌。⚠️ 這套<b>只在換倉日買</b>:換倉之後才衝進前 ${H} 名的,要等下一次換倉日(寫「換倉日才買」)`}</div>`;
-        // 📌 V78.3.2 使用者:「不是已經換倉 5 天了嗎?怎麼沒有買進價」—— 表只列今天前 ${H} 名,這套真正抱著、但今天掉出去的看不到 → 全部列出來(讀 _leaderEntries,⛔ 不另算)
-        const ownRows = [...EN.map].map(([sym, h]) => { const r = L.all.get(sym); const c = r ? +r.c : h.c; return { sym, h, r, c, pct: c > 0 && h.px > 0 ? (c / h.px - 1) * 100 : null, pl: c > 0 ? this._netPL(h.px, c, 1000) : null }; })
-            .sort((a, b) => (a.r ? a.r.rank : 999) - (b.r ? b.r.rank : 999));
-        const md = d => d ? String(d).slice(5).replace('-', '/') : '?';
-        const ownHtml = ownRows.length ? `<div class="mt-2 text-[11px]" data-leaderown="${ownRows.length}"><div class="text-[10px] text-gray-400 mb-0.5 border-b border-[#21262d] pb-0.5">📌 這套現在抱著的 ${ownRows.length} 檔 —— 最近一次 ${md(EN.lastReb)} 換倉、${md(EN.lastFill)} 開盤成交(模擬,= 📒 成績單);${clk.isRebal ? '今天就是換倉日' : `下次換倉還有 ${clk.left ?? '?'} 個交易日`}</div>${ownRows.map(o => {
-                const keep = !!(o.r && o.r.rank <= H);
-                const where = o.r ? (o.r.rank <= H ? `第 ${o.r.rank} 名` : `第 ${o.r.rank} 名(掉出前 ${H})`) : `不在前 ${H} 名`;
-                return `<div class="flex items-baseline gap-2 py-0.5 flex-wrap" data-leaderownrow="${o.sym}" data-leaderownkeep="${keep ? 1 : 0}">${this._nmPair(o.sym, 'text-[11px]')}<span class="font-mono text-[10px] text-gray-400">${md(o.h.d)} 買 ${px(o.h.px)} → ${px(o.c)}</span><span class="font-mono text-[10px] ${o.pct == null ? 'text-gray-500' : (o.pct >= 0 ? 'text-red-400' : 'text-green-400')}">${pct(o.pct)}${o.pl == null ? '' : `・一張 ${o.pl >= 0 ? '+' : '−'}${Math.abs(o.pl).toLocaleString()} 元`}</span><span class="text-[10px] ${keep ? 'text-gray-400' : 'text-amber-300'}">${where} → ${keep ? '續抱' : sellWhen}</span></div>`;
-            }).join('')}</div>` : '';
-        const list = L.ranked.length ? hdr + rows.map(row).join('') + entNote : `<div class="text-[11px] text-gray-400">今天池子裡沒有一檔同時「收盤 > 20 日線 > 60 日線」→ 名單是空的(${L.n} 檔全被趨勢過濾擋掉)</div>`;
+        const rebNote = `<div class="text-[9px] ${rb.err ? 'text-amber-300' : 'text-gray-500'} mt-0.5" data-leaderrebnote="${rb.err ? 'err' : 'ok'}">${rb.err ? `⚠️ 換倉價讀不到:${esc(rb.err)}` : `現價 = ${L.ranked.some(r => r.live) ? '盤中即時快照' : `${esc(L.date)} 收盤`};換倉價 = ${esc(clk.reb || '?')} 換倉那天的收盤,底下是到現價的漲跌(換倉時不在名單的寫「—」)`}</div>${this._liveStaleNote()}`;
+        const list = L.ranked.length ? hdr + rows.map(row).join('') + rebNote : `<div class="text-[11px] text-gray-400">今天池子裡沒有一檔同時「收盤 > 20 日線 > 60 日線」→ 名單是空的(${L.n} 檔全被趨勢過濾擋掉)</div>`;
         // 🎯 V78.2.2 「今天要做的事」那幾行(使用者:「決策頁面裡面我只要你告訴我怎麼做,不用講太多敘述」)—— ⛔ 只轉述上面算好的,⛔ 不另算
         try { this._leadTodo = this._deckTodoLead({ clk, bearOn, L, held, H }); const tb = document.getElementById('deckTodoLead'); if (tb) { tb.innerHTML = this._leadTodo; tb.dataset.decktodo = 'ok'; } } catch (_) {}
         const B = E.buyHow, w = x => `${x.wAi}/${E.ai.paths}、${x.wLong}/${E.long.paths}`;
         return `<div class="mt-2" data-leader="ok" data-leaderdate="${esc(L.date)}">${head}
             ${clockTxt}${bearTxt}
-            <div class="mt-1">${list}</div>${ownHtml}${heldHtml}${this._parkAmountHtml()}
+            <div class="mt-1">${list}</div>${heldHtml}${this._parkAmountHtml()}
             <div class="text-[10px] text-gray-500 mt-1.5" data-leaderledgerptr="1">📒 照這套買賣的模擬成績在<b>產業作戰室 → 📒 成績單 → 👑</b>(跟其他策略同一天起算比一比)</div>
             <details class="mt-1.5" data-leaderinfo="1"><summary class="text-[10px] text-gray-400 cursor-pointer select-none">📖 規則與實測 <span class="text-gray-500">展開 ▾</span></summary>
             <div class="text-[10px] text-gray-400 leading-relaxed mt-1">
