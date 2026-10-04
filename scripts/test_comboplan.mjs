@@ -42,6 +42,10 @@ const R = await page.evaluate(() => {
         return { fire, quiet };
     };
     o.lead = run('leadpark'); o.gene = run('gene');
+    // ✂️ V78.4.9 決定性對照:不在庫存(只是自選)→ 🔥 會跳
+    A._getInventory = () => []; A.inventory = [];
+    o.watch = run('gene');
+    A._getInventory = () => [{ symbol: '5483', cost: 224.47, shares: 1 }]; A.inventory = A._getInventory();
     // ②③ 連續技:_exitLines stub 成截圖的數字
     A._exitLines = () => ({ cost: 224.47, shares: 1, pC: 221.5, atr2: 252.71, don40: 165, don: 170, trail8: 255.76, ma5: 203.3 });
     A._exitRuleKey = () => 'atr2';
@@ -56,13 +60,15 @@ const R = await page.evaluate(() => {
 });
 const txt = h => String(h || '').replace(/<[^>]+>/g, '');
 ok('① 👑 持股 + 風險訊號 → ⛔ 不跳大視窗、進 🔔 歷史', R.lead.fire === 0 && R.lead.quiet > 0, JSON.stringify(R.lead));
-ok('① 決定性對照:🔥 同一則 → 會跳', R.gene.fire > 0 && R.gene.fire === R.lead.quiet, JSON.stringify(R.gene));
+ok('①b ✂️ V78.4.9 🔥 手上有的也⛔ 不跳(回測先賣一半全輸)', R.gene.fire === 0 && R.gene.quiet === R.lead.quiet, JSON.stringify(R.gene));
+ok('① 決定性對照:只是自選(沒持有)→ 會跳', R.watch.fire > 0 && R.watch.fire === R.lead.quiet, JSON.stringify(R.watch));
 ok('② 👑 連續技⛔ 不出現先出一半 / 吊燈 / 你設定的出場規則', !/先出一半|吊燈|你設定的出場規則|賣在這裡/.test(txt(R.leadHtml)), txt(R.leadHtml));
 ok('② 👑 連續技講換倉日排名 + 剩幾天(讀 _leadVerdict)', /換倉日/.test(txt(R.leadHtml)) && /6 個交易日/.test(txt(R.leadHtml)), txt(R.leadHtml));
 ok('③ 🔥 線 252.71 > 現價 221.5 → 標 above', R.above === true);
 ok('③ 線已破:⛔ 不印「賣在這裡」「先出一半」,要講已經在現價上面', !/賣在這裡|先出一半/.test(txt(R.aboveHtml)) && /已經在現價上面/.test(txt(R.aboveHtml)), txt(R.aboveHtml));
 ok('③ 參考線在現價上方要標出來(移動停利 255.76)', /255\.76\(已在現價上方\)/.test(txt(R.aboveHtml)), txt(R.aboveHtml));
-ok('③ 決定性對照:線 210.4 < 現價 → 照舊先出一半 + 賣在這裡', /先出一半/.test(txt(R.belowHtml)) && /賣在這裡/.test(txt(R.belowHtml)) && !/已經在現價上面/.test(txt(R.belowHtml)), txt(R.belowHtml));
+ok('③ 決定性對照:線 210.4 < 現價 → 第 2 擊照舊「跌破 → 賣在這裡」', /賣在這裡/.test(txt(R.belowHtml)) && !/已經在現價上面/.test(txt(R.belowHtml)), txt(R.belowHtml));
+ok('③c ✂️ V78.4.9 第 1 擊⛔ 不再叫你先出一半', /不用先賣一半/.test(txt(R.belowHtml)) && !/先出一半 ≈/.test(txt(R.belowHtml)), txt(R.belowHtml));
 const SRC = fs.readFileSync(HTML, 'utf8');
 ok('④ 題材龍頭徽章⛔ 不用 👑', /🏅 \$\{leader\}/.test(SRC) && !/👑 \$\{leader\}/.test(SRC));
 ok('無 pageerror', errs.length === 0, errs.join(' | '));

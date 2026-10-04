@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.4.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.4.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.4.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.4.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -5366,6 +5366,12 @@ const app = {
                 this._alertQuiet(`（👑 只記錄）${s.title}`, `${name}(${sym}) 你選的是領頭羊:照換倉日排名賣,這則只記錄、不叫你先賣。`, sym);
                 continue;
             }
+            // ✂️ V78.4.9 手上有的(🔥 也一樣):這類警示⛔ 不跳視窗 —— 回測「出現就先賣一半」兩段 17 條全輸照規則走(使用者:「不準就不用提醒」)。
+            //   ⛔ 不消失:照樣進 🔔 歷史;你自己設的出場線 / 停損照常提醒(那不走這支)。
+            if ((s.tone === 'bear' || s.tone === 'warn') && (this._getInventory() || []).some(it => String(it && it.symbol) === String(sym))) {
+                this._alertQuiet(`（只記錄）${s.title}`, `${name}(${sym}) 手上有的照你的出場規則走就好,這則只記錄、不叫你先賣一半。`, sym);
+                continue;
+            }
             const emo = s.tone === 'bull' ? '🔺' : (s.tone === 'bear' ? '🔻' : (s.tone === 'warn' ? '⚠️' : '⚪'));
             // 🚧 V75.2.7 預算:這支是**唯一**沒有「最多 3 則」上限的 sweep(其他六支都有)——
             //   實測 60 檔 × 13 類偵測器,開 App 第 6 秒一口氣發 14 則。⛔ 超過就只計數,最後出一則摘要。
@@ -6146,7 +6152,7 @@ const app = {
 
     // ═══ 🥊 V74.9.2 連續技(使用者:「我想要的是連續技」)═══════════════════════════
     //   一個賣訊來了之後,⛔ 不是只講「小心」就沒了 —— 直接排出接下來 2~3 步,而且每一步都是本站已經實測過的規則:
-    //     第 1 擊(現在)= 這則警示 → 有貨先出一半 / 空手別追
+    //     第 1 擊(現在)= 這則警示 → 有貨照出場規則走(✂️ V78.4.9 ⛔ 不先出一半)/ 空手別追
     //     第 2 擊     = 跌破**你設定的出場線**(_exitPrimary,49 個月回測過)→ 全部出場
     //     第 3 擊     = 其他兩條出場線(參考)
     //   ⭐ 「幫我盯第 2 擊」= 把那條線設成到價提醒 + 記進 _comboWatch,盤中掃描碰到就再跳一次大視窗(接力)。
@@ -6191,9 +6197,10 @@ const app = {
             // 🚨 V78.4.8 線已經在現價上面 = 早就跌破 → 第 1 擊直接講「全部出場」(⛔ 不先出一半、⛔ 不印賣不到的價)
             if (plan.prim.above) h += step(1, `<span data-comboabove="1">你設定的 ${plan.prim.nm} <span class="font-mono">${nf(plan.prim.px)}</span> 已經在現價上面 = 已經跌破了 → 照規則全部出場</span>`,
                       `現價 ${nf(plan.pC)} 賣:${money(plan.pl(plan.pC))}(已扣費,你的成本 ${nf(plan.cost)})・⚙️ 這是你設定的出場規則`);
-            else h += step(1, `現在:${String(title || '').replace(/^[^\w一-鿿]+/, '')} → 先出一半 ≈ ${plan.halfSh.toLocaleString()} 股`,
-                      `賣在現價 ${nf(plan.pC)}:${money(plan.plHalf)}(已扣費,你的成本 ${nf(plan.cost)})`);
-            if (!plan.prim.above) h += step(2, `跌破 ${plan.prim.nm} <span class="font-mono">${nf(plan.prim.px)}</span> → 剩下全部出場`,
+            // ✂️ V78.4.9 ⛔ 不再叫你先出一半(回測兩段 17 條全輸「照出場規則走」)
+            else h += step(1, `<span data-combonohalf="1">現在:${String(title || '').replace(/^[^\w一-鿿]+/, '')} → 照你的出場規則走,⛔ 不用先賣一半</span>`,
+                      `現價 ${nf(plan.pC)}(你的成本 ${nf(plan.cost)}・現在全賣:${money(plan.pl(plan.pC))},已扣費)`);
+            if (!plan.prim.above) h += step(2, `跌破 ${plan.prim.nm} <span class="font-mono">${nf(plan.prim.px)}</span> → 全部出場`,
                       `賣在這裡 ${money(plan.pl(plan.prim.px))}・⚙️ 這是你設定的出場規則,出場提醒與自動下單也用這一條`);
             if (plan.others.length) h += step(plan.prim.above ? 2 : 3, `參考:${plan.others.map(o => `${o.nm} <span class="font-mono">${nf(o.px)}</span>${o.above ? '(已在現價上方)' : ''}`).join(' ・ ')}`,
                       `⛔ 不是你設定的那條,列出來只是讓你知道還有哪幾條線在附近`);
@@ -6255,7 +6262,7 @@ const app = {
             if (this._leaderMine().has(String(sym))) return false;   // 🎯 V77.9.6 👑 的個股⛔ 不喊出場線(換倉日排名才是訊號)
             delete w[sym]; this._comboWatchSet(w);
             const name = this.getStockName?.(sym) || sym;
-            this._fireAlert(`🥊 第 2 擊｜跌破 ${it.nm}`, `${name}(${sym}) 現價 ${(+nowPrice).toFixed(2)} 已跌破你設定的出場線 ${it.px} → 剩下的全部出場(第 1 擊時已先出一半)。⛔ 這是提醒不是自動下單。`, sym);
+            this._fireAlert(`🥊 第 2 擊｜跌破 ${it.nm}`, `${name}(${sym}) 現價 ${(+nowPrice).toFixed(2)} 已跌破你設定的出場線 ${it.px} → 照規則全部出場。⛔ 這是提醒不是自動下單。`, sym);
             return true;
         } catch (_) { return false; }
     },
@@ -8703,10 +8710,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.4.8',
+    _APP_VERSION: 'V78.4.9',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.4.9', d: ['🔧 小修正'] },
         { v: 'V78.4.8', d: ['🔧 小修正'] },
         { v: 'V78.4.7', d: ['🔧 小修正'] },
         { v: 'V78.4.6', d: ['🔧 小修正'] },
