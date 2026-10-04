@@ -46,6 +46,8 @@ import kbar5_miner as K   # ⛔ fetch_k5 / agg5 / split_days / pack 只有一份
 
 TW = timezone(timedelta(hours=8))
 OUT_DIR = 'kbar5_deep'
+LEAD_DIR = 'kbar5_lead'  # V78.4.6 領頭羊母體(top100 沒收到的那幾檔)→ 另一個分支
+LEAD_N, LEAD_LB, LEAD_PRE = 100, 20, 40   # 每天 20 日平均成交額前 100 的聯集;往前多含 40 個交易日
 DEEP_DIR = 'klines_deep'
 TOP_N = 100
 LOOKBACK = 60           # 月初之前幾個交易日的平均成交值
@@ -113,6 +115,41 @@ def build_universe(tv, n=TOP_N, lookback=LOOKBACK):
     return out
 
 
+def build_universe_lead(tv, base_u, n=LEAD_N, lb=LEAD_LB, pre=LEAD_PRE):
+    """V78.4.6 {YYYY-MM: [sym…]} = 該月每個交易日「前 lb 日(含當天)平均成交額前 n」的聯集,
+    再往前多含 pre 個交易日(池內買進、掉出池後才賣的那幾檔),⛔ 減掉 base_u(kbar5_deep 那個月已有的)。
+    ⚠️ 這是**事後聯集**(同一個月後面的日子也算進來)→ 只拿來替領頭羊**既有成交**取 5 分 K 價,
+    ⛔ 不可當母體做選股回測(bias 寫在月檔)。只算 base_u 有的月份(klines_deep 之前算不出來)。"""
+    cal = sorted({d for m in tv.values() for d in m})
+    idx = {d: i for i, d in enumerate(cal)}
+    syms = sorted(tv)
+    top = [None] * len(cal)
+    run = {s: 0.0 for s in syms}
+    for i, d in enumerate(cal):
+        for s in syms:
+            m = tv[s]
+            run[s] += m.get(d, 0.0)
+            if i >= lb:
+                run[s] -= m.get(cal[i - lb], 0.0)
+        if i >= lb - 1:
+            sc = sorted(((v, s) for s, v in run.items() if v > 0), key=lambda x: (-x[0], x[1]))
+            top[i] = {s for _, s in sc[:n]}
+    out = {}
+    for mon, base in sorted(base_u.items()):
+        a, b = month_range(mon)
+        ins = [i for i, d in enumerate(cal) if a <= d <= b]
+        if not ins:
+            continue
+        u = set()
+        for i in range(max(0, ins[0] - pre), ins[-1] + 1):
+            if top[i]:
+                u |= top[i]
+        extra = sorted(u - set(base))
+        if extra:
+            out[mon] = extra
+    return out
+
+
 def month_range(mon):
     y, m = int(mon[:4]), int(mon[5:7])
     a = date(y, m, 1)
@@ -170,8 +207,8 @@ def save_month(month, out_dir=OUT_DIR):
         'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
         'month': month['month'],
         'bar_min': K.BAR_MIN,
-        'universe': 'monthly_top100_by_turnover60',
-        'bias': ('名單 = 每月第一個交易日、只用「前 60 個交易日平均成交值」取前 100 檔上市櫃個股,整個月固定'
+        'universe': month.get('universe') or 'monthly_top100_by_turnover60',
+        'bias': month.get('bias') or ('名單 = 每月第一個交易日、只用「前 60 個交易日平均成交值」取前 100 檔上市櫃個股,整個月固定'
                  '(⛔ 沒有偷看未來)。⚠️ 只收夠熱的股票;名單每月變;Shioaji 已沒有合約的下市股抓不到'
                  '(清單在 miss)→ 殘留一部分倖存者偏誤。回測時一律先算「這檔在窗口內有幾天」。'),
         'fmt': 'k[sym] = [[hm(台北牆鐘分鐘,09:00=540), open, high, low, close, volume], …];bf=1 = 歷史回補',
@@ -256,6 +293,31 @@ def _selftest():
             bad_ok = True
         ok('④e 壞檔要炸,⛔ 不可靜默當成沒有(陷阱 #18)', bad_ok)
 
+    # ⑥ V78.4.6 lead 母體(每天前 n 的聯集 + 往前 pre 天,減掉 top100 已有的)
+    cal6, d = [], date(2021, 1, 4)
+    while len(cal6) < 120:
+        if d.weekday() < 5:
+            cal6.append(d.isoformat())
+        d += timedelta(days=1)
+    tv6 = {f'{2000 + i}': {x: float(100 - i) for x in cal6} for i in range(10)}   # 常駐前段
+    m5 = [x for x in cal6 if x[:7] == '2021-05']
+    pre_day = cal6[cal6.index(m5[0]) - 10]           # 月初前 10 天(在 pre=40 內)
+    far_day = cal6[cal6.index(m5[0]) - 70]           # 月初前 70 天(在 pre 外)
+    tv6['3001'] = {pre_day: 1e9}                      # 只在月初前爆量 → 要進(池內買進、掉出池後才賣)
+    tv6['3002'] = {far_day: 1e9}                      # 很久以前爆量 → ⛔ 不進
+    tv6['3003'] = {m5[-1]: 1e9}                       # 月底才進池 → 要進(事後聯集)
+    L6 = build_universe_lead(tv6, {'2021-05': ['2000', '2001']}, n=5, lb=3, pre=40)
+    got = set(L6.get('2021-05', []))
+    ok('⑥ lead:月初前 40 天內進過池的要收', '3001' in got, sorted(got))
+    ok('⑥b lead:pre 窗口外的 ⛔ 不收(決定性對照)', '3002' not in got, sorted(got))
+    ok('⑥c lead:top100 已有的要扣掉(⛔ 重抓浪費流量)', '2000' not in got and '2001' not in got and '2002' in got, sorted(got))
+    ok('⑥d lead:同月後面才進池的也收(事後聯集)', '3003' in got)
+    ok('⑥e lead:base 沒有的月份不算', set(L6) <= {'2021-05'}, list(L6))
+    mL = blank_month('2021-05', ['3001']); mL['universe'], mL['bias'] = 'lead_union_amt20', 'X'
+    with tempfile.TemporaryDirectory() as td:
+        pL = save_month(mL, td)
+    ok('⑥f lead 月檔標 universe / bias(⛔ 不可沿用 top100 的說明)', pL['universe'] == 'lead_union_amt20' and pL['bias'] == 'X')
+
     ok('⑤ month_range 跨年正確', month_range('2021-12') == ('2021-12-01', '2021-12-31') and month_range('2024-02')[1] == '2024-02-29')
     print('✅ SELFTEST_PASS' if not fails else f'❌ {fails} 條失敗')
     return 1 if fails else 0
@@ -326,6 +388,10 @@ def main():
         sys.exit(1)
     # 🔧 inputs.* 在某些觸發下是空字串 → 一律 `or 預設`(check_env_default.py)
     frm = (os.environ.get('KBAR5B_FROM') or '2021-04').strip()
+    univ_mode = (os.environ.get('KBAR5B_UNIV') or 'auto').strip().lower()
+    if univ_mode not in ('auto', 'top100', 'lead'):
+        print(f'❌ KBAR5B_UNIV 認不得:{univ_mode}(auto / top100 / lead)')
+        sys.exit(1)
     budget_min = float(os.environ.get('KBAR5B_BUDGET_MIN') or 300)
     depth_only = (os.environ.get('KBAR5B_DEPTH_ONLY') or '0').strip() in ('1', 'true', 'yes')
     t0 = time.time()
@@ -368,9 +434,25 @@ def main():
     tv = load_turnover()
     U = build_universe(tv)
     cur_mon = datetime.now(TW).strftime('%Y-%m')
-    mons = sorted([m for m in U if frm <= m <= cur_mon], reverse=True)     # ⭐ 由新到舊
-    if floor:
-        mons = [m for m in mons if month_range(m)[1] >= floor]
+
+    def _mons(UU):
+        ms = sorted([m for m in UU if frm <= m <= cur_mon], reverse=True)     # ⭐ 由新到舊
+        return [m for m in ms if month_range(m)[1] >= floor] if floor else ms
+    mons = _mons(U)
+    # 🧭 V78.4.6 母體模式:top100(舊)/ lead(領頭羊池子裡 top100 沒收到的)/ auto(top100 補完才換 lead)
+    out_dir, univ_name, bias = OUT_DIR, None, None
+    if univ_mode == 'auto':
+        left0 = sum(len(todo_syms(load_month(m) or blank_month(m, U[m]))) for m in mons)
+        univ_mode = 'lead' if left0 == 0 else 'top100'
+        _line(f'🧭 auto:top100 還剩 {left0} 個(月×檔)→ 這輪用 {univ_mode}')
+    if univ_mode == 'lead':
+        U = build_universe_lead(tv, U)
+        mons = _mons(U)
+        out_dir, univ_name = LEAD_DIR, 'lead_union_amt20'
+        bias = ('名單 = 該月每個交易日「前 20 日平均成交額前 100」的聯集,再往前多含 40 個交易日,'
+                '⛔ 減掉 kbar5_deep 那個月已有的。⚠️ 事後聯集(同月後面的日子也算進來)→ 只拿來替'
+                '領頭羊既有成交取 5 分 K 價,⛔ 不可當母體做選股回測。')
+        _line(f'👑 lead 母體:{len(U)} 個月、共 {sum(len(v) for v in U.values())} 個(月×檔)')
     _line(f'🧭 母體:{len(tv)} 檔有成交值 → {len(U)} 個月有名單;這輪範圍 {mons[-1] if mons else "-"} ~ {mons[0] if mons else "-"}({len(mons)} 個月)')
     if not mons:
         _line('❌ 沒有可以抓的月份(klines_deep 沒還原?)')
@@ -379,8 +461,12 @@ def main():
     b_start, lim = _usage(api)
     reason, n_req, n_new_days, last = 'done', 0, 0, 0.0
     for mon in mons:
-        month = load_month(mon) or blank_month(mon, U[mon])
-        if month.get('univ') != U[mon] and not month.get('done'):
+        month = load_month(mon, out_dir) or blank_month(mon, U[mon])
+        if univ_name:
+            month['universe'], month['bias'] = univ_name, bias
+            if month.get('univ') != U[mon]:      # 聯集只會變大(新的日子)→ 加上去,⛔ 不丟已抓的
+                month['univ'] = sorted(set(month.get('univ') or []) | set(U[mon]))
+        elif month.get('univ') != U[mon] and not month.get('done'):
             month['univ'] = U[mon]
         todo = todo_syms(month)
         if not todo:
@@ -422,11 +508,11 @@ def main():
             got_m += 1
         n_done = len(month['done'])
         if n_done >= MIN_STOCKS or not todo_syms(month):
-            p = save_month(month)
+            p = save_month(month, out_dir)
             _line(f'  💾 {mon}:{n_done} 檔 / {p["days"]} 天 ・miss {len(month["miss"])} ・'
-                  f'{"✅ 完成" if p["complete"] else "⏸ 未完成"} ・{os.path.getsize(_mpath(mon)) / 1024:.0f}KB')
+                  f'{"✅ 完成" if p["complete"] else "⏸ 未完成"} ・{os.path.getsize(_mpath(mon, out_dir)) / 1024:.0f}KB')
         elif got_m:
-            p = save_month(month)
+            p = save_month(month, out_dir)
             _line(f'  💾 {mon}:只有 {n_done} 檔(< {MIN_STOCKS}),先存著接續用(complete=False)')
         if reason != 'done':
             break
@@ -436,13 +522,13 @@ def main():
         api.logout()
     except Exception:
         pass
-    left = sum(len(todo_syms(load_month(m) or blank_month(m, U[m]))) for m in mons)
-    allf = sorted(glob.glob(os.path.join(OUT_DIR, '*.json.gz')))
+    left = sum(len(todo_syms(load_month(m, out_dir) or blank_month(m, U[m]))) for m in mons)
+    allf = sorted(glob.glob(os.path.join(out_dir, '*.json.gz')))
     _line(f'✅ 這輪 {n_req} 次請求、新增 {n_new_days} 個(日×檔)・流量 {_mb(b_start)} → {_mb(b_end)} / {_mb(lim)} ・'
           f'花 {(time.time() - t0) / 60:.1f} 分 ・停下原因 {reason} ・還剩 {left} 個(月×檔)・分支共 {len(allf)} 個月檔')
     if n_req and b_start is not None and b_end is not None:
         _line(f'📏 平均每次請求 {(b_end - b_start) / n_req / 1024:.0f}KB(用來估剩下要幾天)')
-    _gh_out(more=1 if left > 0 else 0, reason=reason, left=left)
+    _gh_out(more=1 if left > 0 else 0, reason=reason, left=left, univ=univ_mode)
 
 
 if __name__ == '__main__':

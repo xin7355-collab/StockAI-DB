@@ -131,7 +131,7 @@ async function main() {
     console.log('📂 載入 K 線…'); const ctx = loadCtx(DATA, DIV); const { cal } = ctx;
     const cIdx = new Map(cal.map((d, i) => [d, i])), bySym = new Map(ctx.stocks.map(S => [S.sym, S]));
     console.log(`   ${ctx.stocks.length} 檔 ・${cal[0]} ~ ${cal.at(-1)}`);
-    console.log('📂 載入 5 分 K…'); const K5 = loadKbar5(process.env.KBAR5_DIR);
+    console.log('📂 載入 5 分 K…'); const K5 = loadKbar5(process.env.KBAR5_DIR, { mergeSyms: true });   // V78.4.6 kbar5_lead 補 kbar5_deep 沒收到的檔
     const kDays = Object.keys(K5.days).sort(); console.log(`   ${kDays.length} 天 ・${kDays[0]} ~ ${kDays.at(-1)} ・母體:${K5.bias}`);
     const prevK = new Map(); for (let q = 1; q < kDays.length; q++) prevK.set(kDays[q], kDays[q - 1]);
     const barsOf = (sym, d) => { const D = K5.days[d]; return D && D.k ? D.k[sym] : null; };

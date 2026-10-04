@@ -23,6 +23,7 @@
  *       node scripts/dt_kbar5_probe.mjs --selftest
  */
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import zlib from 'zlib';
 import { fileURLToPath } from 'url';
@@ -56,7 +57,9 @@ export function exitSim(bars, j, side, entry, stop, tgt, pc) {
  *  ⭐ 分析時用 `KBAR5_DIR=<kbar5_deep>:<kbar5>` → **同一種母體**(每月初前 100)優先、每日那份只補 deep 沒有的日子
  *     (兩份存在不同分支,⛔ 誰都沒覆蓋誰 —— 回算鐵則第 2 條管的是「寫入」,這裡只是讀的時候挑一份)。
  *  ⛔ 只讀 YYYY-MM.json.gz(`_meta.json` 之類不會被當成月檔)。 */
-export function loadKbar5(spec) {
+/** opt.mergeSyms(V78.4.6):同一天兩個來源**按檔合併**(前面的優先;kbar5_lead 補 kbar5_deep 沒收到的檔)。
+ *  ⛔ 預設 false = 舊行為(同一天只用第一個來源)→ 既有探針的母體一個字都不動。 */
+export function loadKbar5(spec, opt = {}) {
     const days = {}, src = []; let bias = '';
     for (const dir of String(spec || '').split(':').filter(Boolean)) {
         if (!fs.existsSync(dir)) { src.push({ dir, days: 0, used: 0, bias: '(目錄不存在)' }); continue; }
@@ -64,7 +67,14 @@ export function loadKbar5(spec) {
         for (const f of fs.readdirSync(dir).filter(f => /^\d{4}-\d{2}\.json\.gz$/.test(f)).sort()) {
             const j = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(dir, f))).toString());
             b = j.bias || b;
-            for (const [d, v] of Object.entries(j.d || {})) { n++; if (!days[d]) { days[d] = v; used++; } }
+            for (const [d, v] of Object.entries(j.d || {})) {
+                n++;
+                if (!days[d]) { days[d] = v; used++; continue; }
+                if (!opt.mergeSyms || !v.k) continue;
+                const D = days[d]; D.k = D.k || {}; let add = 0;
+                for (const [sy, bars] of Object.entries(v.k)) if (!D.k[sy]) { D.k[sy] = bars; add++; }
+                if (add) { D.syms = Object.keys(D.k).sort(); used++; }
+            }
         }
         bias = bias || b; src.push({ dir, days: n, used, bias: b });
     }
@@ -151,6 +161,18 @@ function selftest() {
     ok('⑥c 開 102.5 ≥2% 但沒過昨高(昨高改 103)→ ⛔ 不算', gapF7(102.5, [[540, 100, 103, 99, 100.5, 1], [810, 100, 100.2, 99.8, 100, 1]]).gU === false);
     ok('⑥d 昨天沒有 13:30 那根 → null(不算、不猜)', gapF7(103, [[540, 100, 101, 99, 100.5, 1]]) === null);
     ok('⑥e 決定性對照:gapF7 的簽名裡沒有日 K(參數只有 o / prevAll / th)', gapF7.length <= 3 && !/\bpc\b.*=.*P\.close/.test(gapF7.toString()));
+    // ⑦ V78.4.6 loadKbar5 mergeSyms:預設同一天只用第一個來源(舊母體不動);開了才按檔補
+    {
+        const td = fs.mkdtempSync(path.join(os.tmpdir(), 'k5m-')), A = path.join(td, 'a'), B = path.join(td, 'b');
+        fs.mkdirSync(A); fs.mkdirSync(B);
+        const wr = (dir, k) => fs.writeFileSync(path.join(dir, '2021-05.json.gz'), zlib.gzipSync(JSON.stringify({ d: { '2021-05-03': { syms: Object.keys(k), k } } })));
+        wr(A, { '2330': [[540, 1, 1, 1, 1, 1]] }); wr(B, { '2330': [[540, 9, 9, 9, 9, 9]], '1101': [[540, 2, 2, 2, 2, 2]] });
+        const d0 = loadKbar5(`${A}:${B}`).days['2021-05-03'];
+        ok('⑦ 預設:同一天只用第一個來源(⛔ 不混,舊探針母體不變)', !d0.k['1101'] && d0.k['2330'][0][1] === 1);
+        const d1 = loadKbar5(`${A}:${B}`, { mergeSyms: true }).days['2021-05-03'];
+        ok('⑦b mergeSyms:第二個來源的新檔補進來、同一檔仍以前面為準', d1.k['1101'] && d1.k['2330'][0][1] === 1 && d1.syms.join() === '1101,2330', JSON.stringify(d1.syms));
+        fs.rmSync(td, { recursive: true, force: true });
+    }
     console.log(fail ? `\n❌ ${fail} 條失敗` : '\n✅ DT_KBAR5_SELFTEST_PASS');
     process.exit(fail ? 1 : 0);
 }

@@ -32,6 +32,10 @@ on:
         description: '這一輪最多跑幾分鐘(到了就存檔接力)'
         required: false
         default: '300'
+      universe:
+        description: '母體:auto(top100 補完才換 lead)/ top100 / lead(領頭羊池子裡 top100 沒收到的 → kbar5_lead 分支)'
+        required: false
+        default: 'auto'
       chain:
         description: '(內部用)第幾棒接力'
         required: false
@@ -69,9 +73,9 @@ jobs:
         run: pip install "shioaji<1.7"   # 📌 同 kbar5 / live_snapshot:1.7 移除 login(fetch_contract=)
 
       # ⚠️ 用 git archive | tar(⛔ 不用 git checkout —— 會把整批 stage 進 index 弄髒工作區,V49.4)
-      - name: 📂 還原 klines_deep(算母體用)與 kbar5_deep(接續用)
+      - name: 📂 還原 klines_deep(算母體用)與 kbar5_deep / kbar5_lead(接續用)
         run: |
-          for b in klines_deep kbar5_deep; do
+          for b in klines_deep kbar5_deep kbar5_lead; do
             git fetch origin "$b" --depth=1 2>/dev/null || echo "ℹ️ $b 分支還不存在"
             mkdir -p "$b"
             if git rev-parse --verify -q "origin/$b" >/dev/null; then
@@ -81,7 +85,9 @@ jobs:
           done
           N=$(ls klines_deep/*.json.gz 2>/dev/null | wc -l)
           [ "$N" -ge 500 ] || { echo "❌ klines_deep 只有 $N 檔(<500)→ 算不出母體,⛔ 不可拿半份湊"; exit 1; }
-          du -sb kbar5_deep 2>/dev/null | cut -f1 > /tmp/kbar5_deep.old_bytes || echo 0 > /tmp/kbar5_deep.old_bytes
+          for b in kbar5_deep kbar5_lead; do
+            du -sb "$b" 2>/dev/null | cut -f1 > "/tmp/$b.old_bytes" || echo 0 > "/tmp/$b.old_bytes"
+          done
 
       # ⚠️ selftest 跟正式跑寫在同一個 step(check_script_secrets:同一支腳本同一個機密不可一邊給一邊不給)
       - name: 📼⏪ selftest → 回補
@@ -93,33 +99,42 @@ jobs:
           KBAR5B_DEPTH_ONLY: ${{ github.event.inputs.depth_only }}
           KBAR5B_FROM: ${{ github.event.inputs.from }}
           KBAR5B_BUDGET_MIN: ${{ github.event.inputs.budget_min }}
+          KBAR5B_UNIV: ${{ github.event.inputs.universe }}
         run: |
           python3 kbar5_backfill.py --selftest
           python3 kbar5_backfill.py
 
-      - name: 🚀 推上 kbar5_deep 分支
+      # V78.4.6 兩個分支各推各的(kbar5_lead = 領頭羊池子裡 top100 沒收到的);沒變動的那個不推
+      - name: 🚀 推上 kbar5_deep / kbar5_lead 分支
         run: |
           set -e
-          ls kbar5_deep/* >/dev/null 2>&1 || { echo "ℹ️ 沒有任何產物(depth_only 且第一次)→ 不推"; exit 0; }
-          NEW=$(du -sb kbar5_deep | cut -f1); OLD=$(cat /tmp/kbar5_deep.old_bytes 2>/dev/null || echo 0)
-          # 🚧 orphan force-push 會整個取代 → 新的不可比舊的小(⛔ 不可用半份蓋掉)
-          if [ "$NEW" -lt "$OLD" ]; then echo "❌ 產物 $NEW bytes < 分支上的 $OLD → 拒絕推送"; exit 1; fi
-          echo "📦 $OLD → $NEW bytes ・$(ls kbar5_deep/*.json.gz 2>/dev/null | wc -l) 個月檔"
-          cp -r kbar5_deep /tmp/kbar5_deep_out
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -q --orphan _k5d_deploy
-          git rm -rfq --cached . 2>/dev/null || true
-          git clean -fdq -e kbar5_deep 2>/dev/null || true
-          rm -rf kbar5_deep && cp -r /tmp/kbar5_deep_out kbar5_deep
-          git add -f kbar5_deep/
-          git commit -q -m "📼⏪ 5 分K 歷史回補 $(date -u '+%Y-%m-%d %H:%M UTC')"
-          for i in 1 2 3 4 5; do
-            git push origin HEAD:kbar5_deep --force && { echo "✅ push 成功 (第 $i 次)"; break; }
-            [ "$i" -eq 5 ] && { echo "❌ push 連 5 次失敗"; exit 1; }
-            sleep $((i * 5))
+          HERE=$(git rev-parse HEAD)
+          # ⚠️ 先把兩份都複製出去(切 orphan 時 git clean 會把另一份也清掉)
+          for x in kbar5_deep kbar5_lead; do rm -rf "/tmp/${x}_out"; [ -d "$x" ] && cp -r "$x" "/tmp/${x}_out"; done
+          for b in kbar5_deep kbar5_lead; do
+            [ -d "/tmp/${b}_out" ] || { echo "ℹ️ $b 沒有任何產物 → 不推"; continue; }
+            NEW=$(du -sb "/tmp/${b}_out" | cut -f1); OLD=$(cat "/tmp/$b.old_bytes" 2>/dev/null || echo 0)
+            # 🚧 orphan force-push 會整個取代 → 新的不可比舊的小(⛔ 不可用半份蓋掉)
+            if [ "$NEW" -lt "$OLD" ]; then echo "❌ $b 產物 $NEW bytes < 分支上的 $OLD → 拒絕推送"; exit 1; fi
+            if [ "$NEW" -eq "$OLD" ]; then echo "ℹ️ $b 沒有變動 → 不推"; continue; fi
+            echo "📦 $b:$OLD → $NEW bytes ・$(ls "/tmp/${b}_out"/*.json.gz 2>/dev/null | wc -l) 個月檔"
+            git checkout -q -f "$HERE"
+            git checkout -q --orphan "_${b}_deploy"
+            git rm -rfq --cached . 2>/dev/null || true
+            git clean -fdq 2>/dev/null || true
+            rm -rf "$b" && cp -r "/tmp/${b}_out" "$b"
+            git add -f "$b/"
+            git commit -q -m "📼⏪ 5 分K 歷史回補 $b $(date -u '+%Y-%m-%d %H:%M UTC')"
+            for i in 1 2 3 4 5; do
+              git push origin "HEAD:$b" --force && { echo "✅ $b push 成功 (第 $i 次)"; break; }
+              [ "$i" -eq 5 ] && { echo "❌ $b push 連 5 次失敗"; exit 1; }
+              sleep $((i * 5))
+            done
+            git checkout -q -f "$HERE"
           done
-          echo "⏭️ 驗證⛔ 不可只看綠燈:git show origin/kbar5_deep:kbar5_deep/_meta.json"
+          echo "⏭️ 驗證⛔ 不可只看綠燈:git show origin/kbar5_lead:kbar5_lead/<月>.json.gz | gunzip | head -c 300"
 
       # 🔁 只有「時間預算用完」才接力;流量用完 → 等明天 kbar5 跑完的 workflow_run
       - name: 🔁 接力(時間用完且還有沒補的)
@@ -128,8 +143,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CHAIN: ${{ github.event.inputs.chain }}
           FROM: ${{ github.event.inputs.from }}
+          UNIV: ${{ steps.run.outputs.univ }}
         run: |
           C=$(( ${CHAIN:-0} + 1 ))
           if [ "$C" -gt 8 ]; then echo "⛔ 已經接力 8 棒 → 停(防無限迴圈);剩 ${{ steps.run.outputs.left }} 個(月×檔)等明天"; exit 0; fi
-          gh workflow run kbar5_backfill.yml --ref main -f chain="$C" -f from="${FROM:-2021-04}" -f budget_min=300
+          gh workflow run kbar5_backfill.yml --ref main -f chain="$C" -f from="${FROM:-2021-04}" -f budget_min=300 -f universe="${UNIV:-auto}"
           echo "🔁 已觸發第 $C 棒(剩 ${{ steps.run.outputs.left }} 個 月×檔)"
