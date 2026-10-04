@@ -44,6 +44,8 @@ const COST = 0.44;
 const MAXD = +(process.env.MAXD || 60);
 const DEDUP = +(process.env.DEDUP || 20);
 const LIMIT = +(process.env.LIMIT || 0);
+// ⏱️ V78.4.4 GATE_H:六關那一段用「創幾日新高」(預設 60 = 舊輸出逐字相同;250 = 一年新高 = 上方沒有套牢區)
+const GATE_H = +(process.env.GATE_H || 60);
 const SELFTEST = process.argv.includes('--selftest');
 // 🛑 V77.5.9 停損成交價(stop = 舊版 / close = auto_trade / touch = 觸價智慧單),見 lib_exitsim
 const STOPFILL = process.env.STOPFILL || 'close';   // ⭐ V77.6.0 預設改收盤成交(stop 只留給重現舊數字)
@@ -324,9 +326,9 @@ for (const v of VOLQ) {
 
 // ── 六關(拿「創 60 日新高」那一組的最佳出場 vs 對照組) ──
 console.log('\n' + '═'.repeat(112));
-console.log('【六關】創 60 日新高 × 每一種出場 —— 對照組 = 同一批股票隨便挑一天(同一種出場)');
+console.log(`【六關】創 ${GATE_H} 日新高 × 每一種出場 —— 對照組 = 同一批股票隨便挑一天(同一種出場)`);
 console.log('═'.repeat(112));
-const arr60 = EV['60|1'];
+const arr60 = EV[`${GATE_H}|1`];
 if (arr60.length >= 30) {
     const years = [...new Set(BASE.map(yearOf))].sort();
     console.log('出場規則'.padEnd(22) + ' 全期  前半  後半  逐年同向        去最好年  扣成本  |z|≥2  過幾關');

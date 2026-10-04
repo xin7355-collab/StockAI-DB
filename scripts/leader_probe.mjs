@@ -258,13 +258,17 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         return null;
     };
     const value = i => { let v = cash + park * etf.tr[i]; for (const p of pos.values()) { const c = lastC(p.S, i); v += p.sh * c; } return v; };
-    const sell = (p, px, i) => { const amt = p.sh * px; const got = CAP ? amt - feeOf(amt) - amt * TAX : amt * (1 - FEE - TAX); cash += got; turnover += amt; const ret = px / p.cost - 1 - 2 * FEE - TAX; trades++; sumRet += ret; if (ret > 0) wins++;
+    // ⏱️ V78.4.4 log / intraPx(⛔ 不設時逐位相同):log = 陣列 → 每一筆成交記 {s, side, d(成交日), dd(決策日), px, why, e(進場日)};
+    //   intraPx = Map('代號|日期|S或B' → 盤中成交價):fill='open' 的委託改用這個價(對不到就照開盤並計數)= leader_intraday_probe 的組合驗證
+    const LOG = Array.isArray(P.log) ? P.log : null;
+    const ipx = (S, i, side, base) => { if (!P.intraPx || P.fill !== 'open' || retryNow) return base; const v = P.intraPx.get(`${S.sym}|${cal[i]}|${side}`); if (v > 0) { st.ipxHit = (st.ipxHit || 0) + 1; return v; } st.ipxMiss = (st.ipxMiss || 0) + 1; return base; };
+    const sell = (p, px, i, why) => { if (LOG) LOG.push({ s: p.S.sym, side: 'S', d: cal[i], dd: cal[i - 1], px, why: why || 'other', e: cal[Math.floor(p.entry)], cost: p.cost }); const amt = p.sh * px; const got = CAP ? amt - feeOf(amt) - amt * TAX : amt * (1 - FEE - TAX); cash += got; turnover += amt; const ret = px / p.cost - 1 - 2 * FEE - TAX; trades++; sumRet += ret; if (ret > 0) wins++;
         const pa = got - p.paid; sumAmt += pa; if (worstAmt === null || pa < worstAmt) worstAmt = pa; if (bestAmt === null || pa > bestAmt) bestAmt = pa; pos.delete(p.S.sym); };
     for (let i = s0; i < nEnd; i++) {
         if (P.add > 0 && i > s0 && cal[i].slice(0, 7) !== cal[i - 1].slice(0, 7)) { cash += P.add; contributed += P.add; }   // 🌱 每月投入
         // ① 成交點:執行上一次決策的委託 —— fill='open' 在今天開盤、'nextclose' 在今天收盤(見 ②b)
         const execPending = (PX, ti) => {   // ti = 0050 用哪一天的價(開盤成交 ≈ 昨收;收盤成交 = 今天收盤)
-            for (const sym of pending.sell) { const p = pos.get(sym); if (!p) continue; const o = PX(p.S, i); if (o > 0) sell(p, o, i); }
+            for (const sym of pending.sell) { const p = pos.get(sym); if (!p) continue; const o = ipx(p.S, i, 'S', PX(p.S, i)); if (o > 0) sell(p, o, i, 'pend'); }
             if (pending.trim) for (const p of pos.values()) {                              // 🌱 先衝再穩:翻倍那天之後的第一個成交點,每一檔賣掉一半
                 const o = PX(p.S, i); if (!(o > 0)) continue;
                 const shS = CAP ? Math.floor(p.sh / 2) : p.sh / 2; if (!(shS > 0)) continue;
@@ -277,7 +281,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 const S = queue[qi];
                 if (pos.size >= P.N) break;
                 if (pos.has(S.sym)) continue;
-                const o = PX(S, i), pc = lastC(S, i - 1);
+                const o = ipx(S, i, 'B', PX(S, i)), pc = lastC(S, i - 1);
                 if (!(o > 0 && pc > 0)) continue;
                 if (o / pc - 1 > limitOf(cal[i]) - 0.003) {                                  // 成交價接近漲停:買不到(開盤 / 收盤同一條)
                     skipLimit++;
@@ -299,7 +303,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                     if (sh < 1) continue;
                     const cost = sh * o + feeOf(sh * o); cash -= cost; turnover += sh * o; paid = cost;
                 } else { sh = need / (o * (1 + FEE)); cash -= need; turnover += need; paid = need; }
-                pos.set(S.sym, { sh, cost: o, paid, atr: S.atr[i - 1], hc: o, S, entry: (P.fill === 'open' && !retryNow) ? i : i + 0.5 });   // 收盤成交那天⛔ 不可再跑當天的吊燈 / 出場檢查
+                pos.set(S.sym, { sh, cost: o, paid, atr: S.atr[i - 1], hc: o, S, entry: (P.fill === 'open' && !retryNow) ? i : i + 0.5 });
+                if (LOG) LOG.push({ s: S.sym, side: 'B', d: cal[i], dd: cal[i - 1], px: o, why: retryNow ? 'retry' : 'buy' });   // 收盤成交那天⛔ 不可再跑當天的吊燈 / 出場檢查
             }
             if (P.park && !(BC && bearMode) && cash > 0.01 * value(ti) && (!CAP || cash >= P.parkMin)) { const units = CAP ? (cash - feeOf(cash)) / etf.tr[ti] : cash * (1 - FEE) / etf.tr[ti]; park += units; turnover += cash; cash = 0; }
             pending = null;
@@ -860,6 +865,16 @@ function selftest() {
     const tSh = [1, 2, 3, 4, 5].map(sd => simulate(ctxT, 100, { ...cfgT, pool: 'theme', themeK: 1, themeSham: true }, sd));
     t(tA.st.themes.every(x => x === 'T0') && t0.eq.every((v, k) => v === t00.eq[k]) && !t0.st.themes && tSh.some(r => r.st.themes.some(x => x !== 'T0')) && tSh.every(r => r.eq.at(-1) <= tA.eq.at(-1) + 1e-12),
         `㉟ 題材輪動:動能最強的題材每次都被挑到(T0)・安慰劑會挑到別的題材且不比它好・不設逐位相同`);
+    // ㊱ V78.4.4 log / intraPx:不設逐位相同・log 記到買與賣(賣 = 換倉掉出)・intraPx 換成盤中價 → 賣價 +2% 淨值跟著變・對不到退回開盤並計數
+    const cfgLg = { U: 20, N: 3, R: 5, L: 20, chand: 0, park: false, trend: false };
+    const ctxRot = { cal, stocks: Array.from({ length: 10 }, (_, k) => mk(String(6100 + k), i => 100 * (1 + 0.2 * Math.sin(i / 8 + k)) + i * 0.1)), etf: flat, bear: new Uint8Array(n) };
+    const lg = [], l0 = simulate(ctxRot, 100, cfgLg, 7), l1 = simulate(ctxRot, 100, { ...cfgLg, log: lg }, 7);
+    const sells = lg.filter(x => x.side === 'S'), buys = lg.filter(x => x.side === 'B');
+    const mp = new Map(); for (const x of sells) mp.set(`${x.s}|${x.d}|S`, x.px * 1.02);
+    const l2 = simulate(ctxRot, 100, { ...cfgLg, intraPx: mp }, 7), l3 = simulate(ctxRot, 100, { ...cfgLg, intraPx: new Map() }, 7);
+    t(l0.eq.every((v, k) => v === l1.eq[k]) && buys.length > 0 && sells.length === l1.trades && sells.every(x => x.why === 'pend' && x.dd < x.d)
+        && l2.st.ipxHit === sells.length && l2.eq.at(-1) > l0.eq.at(-1) && l3.st.ipxMiss > 0 && l3.eq.every((v, k) => v === l0.eq[k]),
+        `㊱ log / intraPx:不設逐位相同・記到 ${buys.length} 買 ${sells.length} 賣・賣價換成 +2% → 淨值變高・對不到就照開盤(miss ${l3.st.ipxMiss})`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }

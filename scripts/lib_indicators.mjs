@@ -23,6 +23,13 @@ const xUp = (a, b, i) => a[i - 1] != null && b[i - 1] != null && a[i - 1] <= b[i
 const xDn = (a, b, i) => a[i - 1] != null && b[i - 1] != null && a[i - 1] >= b[i - 1] && a[i] < b[i];
 
 
+/** 💧 OBV(能量潮):漲加量、跌減量、平不動(V78.4.4 從 obv_probe 搬來,obv_probe / squeeze_obv_probe 共用) */
+export function obvSeries(c, vol) {
+    const n = c.length, obv = new Float64Array(n);
+    for (let i = 1; i < n; i++) obv[i] = obv[i - 1] + (c[i] > c[i - 1] ? vol[i] : c[i] < c[i - 1] ? -vol[i] : 0);
+    return obv;
+}
+
 export function signalsFor(R) {
   const N = R.length;
   const C = R.map(r => r.c), H = R.map(r => r.h), L = R.map(r => r.l), V = R.map(r => r.v);

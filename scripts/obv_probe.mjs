@@ -25,6 +25,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { obvSeries } from './lib_indicators.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
@@ -86,11 +87,8 @@ const margin = (a, b) => {
 };
 
 // ═══════════ 每一根的條件(抽出來給 selftest 直接測)═══════════
-export function obvSeries(c, vol) {
-    const n = c.length, obv = new Float64Array(n);
-    for (let i = 1; i < n; i++) obv[i] = obv[i - 1] + (c[i] > c[i - 1] ? vol[i] : c[i] < c[i - 1] ? -vol[i] : 0);
-    return obv;
-}
+// V78.4.4 搬進 lib_indicators.mjs(squeeze_obv_probe 也要用,⛔ 不複製第二份)
+export { obvSeries };
 const maAt = (a, t, N) => { if (t < N - 1) return NaN; let s = 0; for (let k = t - N + 1; k <= t; k++) s += a[k]; return s / N; };
 const maxPrev = (a, t, N) => { let m = -Infinity; for (let k = t - N; k < t; k++) if (a[k] > m) m = a[k]; return m; };   // ⛔ 不含今日
 const minPrev = (a, t, N) => { let m = Infinity; for (let k = t - N; k < t; k++) if (a[k] < m) m = a[k]; return m; };
