@@ -17,6 +17,10 @@
  *   ⑯ 👑 模式:多出 👑 領頭羊 分類、也⛔ AI 才懂的字;🧬 模式沒有那個分類
  * 注入(逐一確認會紅):INJECT=nocol(把一篇的 col.warn 拿掉)/ INJECT=pp(在一篇裡塞「+0.9pp」)/ INJECT=copy(數字改成抄 col.num)
  *   / INJECT=range(拿掉一篇的 range)/ INJECT=badge(封面章寫死)
+ *   🆕 V78.4.2 觸發式專欄(使用者:「觸發專欄有的條件就跳出來…爾後都記住,不要我想到才做」):
+ *   ⑰ 每一篇 col 都寫了 `trig`(條件陣列)或 `'none'` + `trigWhy`;條件 id 都在 index.html `_COL_TRIG_IDS`
+ *   ⑱ index.html 的 `_COL_TRIG` 抄本 == pro.html 現在的專欄(scripts/embed_col_trig.mjs)
+ *   注入:INJECT=notrig(拿掉一篇的 trig)/ INJECT=nowhy(一篇 'none' 但沒寫為什麼)
  */
 import fs from 'fs';
 import path from 'path';
@@ -30,6 +34,8 @@ if (INJ === 'pp') SRC = SRC.replace('"q": "一天要買幾檔?"', '"q": "一天�
 if (INJ === 'copy') SRC = SRC.replace("const a = C.a || pl[3] || '', num = C.num || pl[5] || ''", "const a = C.a || pl[3] || '', num = C.num || '固定的數字'");
 if (INJ === 'range') SRC = SRC.replace(/"range": "36 個月・600 檔", /, '');
 if (INJ === 'badge') SRC = SRC.replace("return all[0] || '';", "return '+99%';");
+if (INJ === 'notrig') SRC = SRC.replace('"trig": ["lu_held"], ', '');
+if (INJ === 'nowhy') SRC = SRC.replace(/"trigWhy": "[^"]*", /, '');
 if (INJ && SRC === ORIG) { console.log('❌ 注入沒有注進去'); process.exit(1); }
 const TMP = path.join(ROOT, '.test_column.html');
 fs.writeFileSync(TMP, SRC);
@@ -138,6 +144,15 @@ ok('⑮ ⛔ 沒有瀏覽 / 按讚 / 留言數', !/瀏覽|按讚|留言|👁|❤�
 ok('⑯ 🧬 沒有 👑 領頭羊分類、👑 模式有', !R.serGene.includes('👑 領頭羊') && R.serLead.includes('👑 領頭羊') && R.leadN > R.n, `${R.serLead.join(',')} n=${R.leadN}/${R.n}`);
 ok('⑯b 👑 模式也⛔ AI 才懂的字', !AIW.test(R.leadText), (R.leadText.match(AIW) || [])[0]);
 ok('⑨ 390px 不橫捲 + 無 pageerror', R.scrollX <= 2 && !errs.length, `scrollX=${R.scrollX} ${errs.join(' | ')}`);
+// ⑰⑱ 觸發式專欄(V78.4.2)
+{
+    const { buildColTrig } = await import('./embed_col_trig.mjs');
+    const IDX = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const b = buildColTrig(SRC, IDX);
+    ok('⑰ 每一篇專欄都寫了觸發條件(或「沒有」+ 為什麼),條件都在 _COL_TRIG_IDS', !b.errs.length && b.obj.cols.length + b.none.length === R.items.length, b.errs.join(' / ') || `${b.obj.cols.length}+${b.none.length} vs ${R.items.length}`);
+    const cur = (IDX.match(/^    _COL_TRIG: (\{.*\}),$/m) || [])[1];
+    ok('⑱ 散戶 App 的 _COL_TRIG 抄本 == pro.html 專欄(跑 embed_col_trig.mjs)', cur === JSON.stringify(b.obj), cur ? 'index 跟 pro 不一致' : 'index 找不到 _COL_TRIG');
+}
 await browser.close();
 try { fs.unlinkSync(TMP); } catch (_) {}
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ 全部通過');

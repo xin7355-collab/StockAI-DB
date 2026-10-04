@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.4.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.4.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.4.1</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.4.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3199,6 +3199,7 @@
             <div id="deckHead"></div>
             <div id="deckLeader"></div>
             <div id="deckSell"></div>
+            <div id="deckCol"></div>
             <div id="deckBuy"></div>
             <div id="deckIdle"></div>
             <div id="deckNote"></div>
@@ -8678,10 +8679,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.4.1',
+    _APP_VERSION: 'V78.4.2',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.4.2', d: ['🧹 內部整理與小修正'] },
         { v: 'V78.4.1', d: ['🧹 內部整理與小修正(畫面與判斷不變)'] },
         { v: 'V78.4.0', d: ['📰 大盤分頁新增「收盤」:今天大盤、三大法人、哪幾族漲跌最多、主動式 ETF 換了什麼、你的持股今天賺賠一頁看完;切「本週回顧」看這週', '👀 決策台多一段「差一點沒入選」:哪幾檔卡在哪一關(位階、波動、名次、空頭)', '📲 收盤後的 Telegram 摘要多三行大盤,週五多一段本週回顧'] },
         { v: 'V78.3.9', d: ['🧹 散戶救星第二輪全文檢查:券商的勝率排行(高手券商、券商勝率、勝率王、神秘黑馬、分點歷史勝率)搬到產業作戰室;分點集中、大盤風險偏高、夜盤先漲那幾句只講怎麼看'] },
@@ -21493,7 +21495,22 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         };
         const keys = s.stratUnlock ? this._stratOrder(['leadpark', 'lead', 'park', 'gene']) : ['gene'];
         box.innerHTML = (s.stratUnlock ? `<div class="text-[10px] text-gray-500 mb-1" data-stratrankhead="1">🏆 排越前面越推薦;賺得多的中途也賠得多,⛔ 過去不代表未來</div>` : '')
-            + keys.map(k => opt(k, D[k][0], D[k][1])).join('');
+            + keys.map(k => opt(k, D[k][0], D[k][1])).join('')
+            + (s.stratUnlock ? this._advBoxHtml() : '');
+    },
+    /** 🔓 V78.4.2 「進階功能」統一收納區(只在連點版本號 5 次解鎖後出現)—— 清單 = `_DECK_SECTIONS` 裡 `unlock:true` 那幾項,
+     *  照登記表順序排(順序 = 重要度,⛔ 不照新增時間)。⛔ 不另開第二個開關區、⛔ 不另存一份清單。 */
+    _advBoxHtml() {
+        const L = this._DECK_SECTIONS.filter(c => c.unlock);
+        if (!L.length) return '';
+        const sh = this._deckShow();
+        return `<div class="mt-2 pt-2 border-t border-[#21262d]" data-advbox="1">
+            <div class="text-[11px] font-bold text-amber-300">🔓 進階功能(只有你看得到)</div>
+            ${L.map(c => `<label class="flex items-start gap-2 py-1.5 cursor-pointer" data-advk="${c.k}">
+                <input type="checkbox" ${sh[c.k] ? 'checked' : ''} onchange="app.toggleDeckShow('${c.k}', this.checked)" class="mt-0.5 w-4 h-4 flex-shrink-0 accent-amber-500 cursor-pointer">
+                <span class="min-w-0"><span class="text-[11px] font-bold ${sh[c.k] ? 'text-gray-100' : 'text-gray-500'}">${c.n}</span>
+                <span class="block text-[10px] text-gray-500 leading-relaxed">${this._deckShowDesc(c.d)}</span></span></label>`).join('')}
+        </div>`;
     },
 
     /** 👑 全站策略 = 領頭羊時,總覽 / 決策台 / 提醒共用的名單快取(同一份 `_leaderCalc` + `_leaderClock`,⛔ 不另算) */
@@ -21586,7 +21603,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
      *  ⛔ 收起來的一定要在頂端寫一行(⛔ 不可靜默過濾,V74.8.8)。 */
     _DECK_SECTIONS: [
         { k: 'leader', st: 'lead', n: '👑 領頭羊短線輪動(你選的策略)', d: '成交額前 100 大裡挑近 10 日最強{LPOS}的 5 檔、每 10 個交易日換一次;手上的個股照這套講要不要賣。', def: true },
+        // 🔓 V78.4.2 `unlock:true` = 只在「連點版本號 5 次」解鎖後才有(設定裡「🔓 進階功能」那一區開關,⛔ 不進一般勾選清單)
+        //   ⭐ 使用者明示:有價值的研究型功能**統一放這裡**,而且要排好順序、⛔ 不盲目一直新增 —— 新增前先問「能不能併進既有那一項」
         { k: 'sell', n: '🚪 手上的要不要賣', d: '三條出場線(硬停損 / 你設定的線 / 抱滿天數)今天碰到或快碰到的;選 👑 時個股改由上面那塊講,這裡只剩 ETF。錢在你手上,建議開著。', def: true },
+        { k: 'col', unlock: true, n: '📰 今天碰到的專欄', d: '你的庫存、自選、大盤或日子碰到某種情況時(鎖漲停、跌停後收紅、進注意股、除息、連假前後、結算日…),把那一篇「怎麼做」拿出來;沒碰到就整區不出現。', def: true },
         { k: 'pb', st: 'gene', n: '🧬 今天可以買的(🔥 高檔飆股)', d: '這一套的買點:今天尾盤漲過觸發價才買。', def: true },
         { k: 'fit', st: 'gene', n: '📈 符合進場候選', d: '🧬 + 今天出現看多訊號的候選;⛔ 不是買進名單,點進個股頁再確認。', def: false },
     ],
@@ -21594,20 +21614,21 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const s = (this.settings && this.settings.deckShow) || {};
         const out = {};
         const strat = this._strat();
-        for (const c of this._DECK_SECTIONS) out[c.k] = (c.st && c.st !== strat) ? false : ((s[c.k] === undefined || s[c.k] === null) ? c.def : !!s[c.k]);
+        const unl = !!(this.settings && this.settings.stratUnlock);
+        for (const c of this._DECK_SECTIONS) out[c.k] = ((c.st && c.st !== strat) || (c.unlock && !unl)) ? false : ((s[c.k] === undefined || s[c.k] === null) ? c.def : !!s[c.k]);
         return out;
     },
     toggleDeckShow(k, on) {
         const cur = this._deckShow(); cur[k] = !!on;
         this.settings.deckShow = cur;
         try { this.saveSettings?.(); } catch (_) {}
-        try { this._renderDeckShowList(); } catch (_) {}
+        try { this._renderDeckShowList(); this._renderStratBox(); } catch (_) {}
         try { this.renderDeck?.(); } catch (_) {}
     },
     _renderDeckShowList() {
         const box = document.getElementById('deckShowList'); if (!box) return;
         const sh = this._deckShow();
-        box.innerHTML = this._DECK_SECTIONS.filter(c => !c.st || c.st === this._strat()).map(c => `<label class="flex items-start gap-2 py-1.5 cursor-pointer" data-deckshowk="${c.k}">
+        box.innerHTML = this._DECK_SECTIONS.filter(c => !c.unlock && (!c.st || c.st === this._strat())).map(c => `<label class="flex items-start gap-2 py-1.5 cursor-pointer" data-deckshowk="${c.k}">
             <input type="checkbox" ${sh[c.k] ? 'checked' : ''} onchange="app.toggleDeckShow('${c.k}', this.checked)" class="mt-0.5 w-4 h-4 flex-shrink-0 accent-green-500 cursor-pointer">
             <span class="min-w-0"><span class="text-[11px] font-bold ${sh[c.k] ? 'text-gray-100' : 'text-gray-500'}">${c.n}</span>
             <span class="block text-[10px] text-gray-500 leading-relaxed">${this._deckShowDesc(c.d)}</span></span></label>`).join('');
@@ -21623,6 +21644,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const vis = (el, on) => { if (el) el.style.display = on ? '' : 'none'; };
         vis($('deckLeader'), sh.leader);
         vis($('deckSell'), sh.sell);
+        vis($('deckCol'), sh.col);
         const buy = $('deckBuy');
         if (buy) {
             buy.querySelectorAll('[data-deckpb]').forEach(el => vis(el, sh.pb));
@@ -21631,12 +21653,182 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         vis($('deckNote'), sh.note);
         // 「今天不用做」只講舊預設那一套 → 領頭羊開著時⛔ 不可同時說沒事(同一頁不可一邊列股票一邊說沒事)
         vis($('deckIdle'), sh.pb && !sh.leader);
-        const off = this._DECK_SECTIONS.filter(c => !sh[c.k] && (!c.st || c.st === this._strat()));
+        const off = this._DECK_SECTIONS.filter(c => !sh[c.k] && !c.unlock && (!c.st || c.st === this._strat()));
         const head = $('deckHead');
         if (head) {
             head.querySelectorAll('[data-deckhidden]').forEach(el => el.remove());
             if (off.length) head.insertAdjacentHTML('beforeend', `<div class="text-[10px] text-gray-500 mt-1 leading-relaxed" data-deckhidden="${off.length}">⚙️ 已收起 ${off.length} 塊:${off.map(c => this._escHtml(c.n.replace(/\(.*?\)/g, ''))).join('・')} → <button onclick="app._openDeckShow()" class="text-cyan-300 underline">設定裡勾回來</button></div>`);
         }
+    },
+    // ═══ 📰 V78.4.2 觸發式專欄(使用者:「個股或日期、連假前後、結算等觸發專欄的條件就跳出來,這樣才有價值」)═══
+    //   ⭐ 只在「連點版本號 5 次」解鎖之後才有(使用者:放散戶 App、在設定裡開;產業作戰室不用)。沒解鎖時畫面一個字都不加。
+    //   ⛔ 三條鐵則:
+    //     ① 專欄內容唯一來源 = pro.html LAB 的 col —— `_COL_TRIG` 那一行由 scripts/embed_col_trig.mjs 抄過來,⛔ 不手改;
+    //        只抄「問題 + 怎麼做 + 什麼時候不靈」⛔ 不抄數字(散戶 App 畫面不放研究數字,V78.3.4)。
+    //     ② 每個條件一律呼叫既有判斷(`_luLock` / `_ovNewEdges` / `_heldAttention` / `_bear60Of` / `_floorCountState` / `_calDayVol`),⛔ 不另寫一份。
+    //     ③ K 線日期追不上大盤最新收盤的那一檔 ⛔ 不判斷(舊資料不冒充今天);⛔ 不彈窗,只在決策台那一區列出來。
+    //   ⭐ 永久規則(test_column 釘住):pro.html 每一篇 col 都要寫 `trig`(或 'none' + 為什麼),新專欄沒寫就紅。
+    // ⛔ 下一行由 scripts/embed_col_trig.mjs 產生
+    _COL_TRIG: {"asof":"2026-10-04","cols":[{"k":"crash-recovery","r":38,"myth":false,"q":"加權跌 20%,要多久才回來?","do":["準備好一年多沒回本的耐心","跌到 -20% 那天不是底,中間值還會再跌到 -29% 左右","不要因為跌 20% 就加碼,只有 5 次不夠當訊號"],"warn":"16 年只有 5 次,每次原因都不同;「全部回來了」不代表下次一定會。","trig":["crash20"],"lead":false},{"k":"limitup-hold","r":66,"myth":false,"q":"手上的股票收盤鎖漲停,明天怎麼賣?","do":["當天先不要賣,留到明天","明天開盤就在漲停 → 繼續抱,收盤沒鎖住就尾盤賣","明天開高但沒漲停 → 開盤就賣;開平或開低 → 別在開盤殺,尾盤再賣"],"warn":"這只給已經持有的人,鎖住的漲停現在去掛買多半買不到;最差的一成還是會賠 2~4%。","trig":["lu_held"],"lead":false},{"k":"rev-accel","r":69,"myth":false,"q":"營收在成長,要看什麼才算真的好?","do":["看「這一季營收年增率」有沒有比上一季更高(在加速)","已經符合 🧬 的股票裡,營收在加速的排前面;每股盈餘也在成長更好","財報一公布就能用,不用等下一季"],"warn":"它提高的是平均,不是比較會抓到飆股;放進整套買賣去算,總共賺的錢沒有比「隨便刪掉同樣多的股票」多,所以沒有變成預設,好處只是中途少賠一些。","trig":["rev_day"],"lead":false},{"k":"avoid-desctri","r":59,"myth":false,"q":"高點越來越低、低點卻持平,代表什麼?","do":["這叫下降三角形,之後通常偏弱","手上有的別加碼,照原本的賣法走;空手的別接","個股總覽「重點判讀」符合時會跳出來"],"warn":"這不是放空訊號,也不能反過來把「高點持平、低點墊高」當買點(那個沒測過);意思是比隨便挑一天差,不是一定會跌。","trig":["desc_tri"],"lead":false},{"k":"exdiv-hold","r":45,"myth":false,"q":"要不要參加除息?","do":["殖利率不到 2% 的不用在意","要股利:除息前一天收盤前買進(除息當天買領不到)","不想繳股利的稅:除息前賣掉"],"warn":"抱過除息賺到的幾乎全是股利本身,股價通常不會額外補漲;那筆股利還要繳稅和二代健保。","trig":["exdiv"],"lead":false},{"k":"regime-ldred","r":77,"myth":false,"q":"大盤空頭的時候,有什麼能做?","do":["空頭時決策台不開新倉,大部分招式先停","唯一例外:大盤一起跌造成的跌停,隔天收大紅,再隔天開盤買、抱 20 天","其餘的錢停在 0050 或現金,等大盤轉好"],"warn":"空頭時能做的機會很少,一個月可能只有幾次;不要為了「有事做」硬找。","trig":["bear_on"],"lead":false},{"k":"nh60-retest","r":71,"myth":false,"q":"創新高之後回檔,還能不能追?","do":["條件:最近創了 60 天新高,回檔沒有跌破,今天又收紅站回來","看到就當作「這檔偏強」的佐證","買賣價位仍以總覽或決策台為準,不要因為這條加大金額"],"warn":"效果不大,扣掉手續費後平均只剩約 0.3%;它的價值是「五年每年都成立」,很穩但很小。","trig":["nh60_retest"],"lead":false},{"k":"gap-highpos","r":60,"myth":false,"q":"向上跳空要不要追?","do":["單純看到跳空就追沒用","只有股價已經在一年高檔(位置 70% 以上)的跳空才有一點用","有用的那種扣完手續費也很薄,只能當佐證"],"warn":"股價在低檔或中段的跳空反而是負的;扣完成本只剩大約 0.2%。","trig":["gap_hi"],"lead":false},{"k":"avoid-attn30","r":61,"myth":false,"q":"股票被列「注意股」,要賣嗎?","do":["看進注意股之前 5 天漲了多少:漲 30% 以上才是警訊","手上有就分批減碼,沒有的別追","其他情況進注意股影響很小,不用為了它賣"],"warn":"這不是放空訊號(容易被軋);「跌著進注意股」看起來會反彈,但那是從四組裡挑出來的,不可當買點。","trig":["attn"],"lead":false},{"k":"ld-redk","r":80,"myth":false,"q":"跌停之後可以撿嗎?","do":["跌停當天不要接","等隔一天收一根漲 3% 以上的紅 K","再隔一天開盤買"],"warn":"只有小紅 K(漲不到 3%)的不算;而且要先看是不是大盤一起跌造成的(見「怎麼分辨能不能碰」那篇)。","trig":["ld_redk"],"lead":false},{"k":"ld-market","r":79,"myth":false,"q":"跌停的股票,怎麼分辨能不能碰?","do":["先看跌停那天大盤有沒有也大跌","大盤一起跌造成的:可以照「跌停之後可以撿嗎」那篇的方法等紅 K","大盤沒跌、只有它自己跌停(通常是公司出事):不要碰"],"warn":"「大盤一起跌」要看加權指數當天也明顯下跌,不是只有小跌。","trig":["ld_redk"],"lead":false},{"k":"mkt-floor300","r":58,"myth":false,"q":"全市場一堆股票跌停,是不是該逃?","do":["當天跌到接近跌停的股票超過 300 檔,大盤短線常常是低點","可以開始找買點、把部位慢慢加回來","這是看大盤用的,不能拿來挑個股"],"warn":"","trig":["floor300"],"lead":false},{"k":"lu-nextday","r":45,"myth":false,"q":"昨天漲停,今天可以追嗎?","do":["昨天漲停、今天成交量中等(週轉率 1~3%)才算","只做今天,收盤前一定要賣","量太大的反而比較差"],"warn":"抱到 3~5 天就變成虧損,別當波段抱;這個數字還沒扣當沖成本。","trig":["lu_fav"],"lead":false},{"k":"holiday-vol","r":38,"myth":false,"q":"連假後第一天要注意什麼?","do":["連假、週末之後第一天波動比較大","那天停損放寬一點或部位小一點","不代表會漲或會跌"],"warn":"只講會不會晃,不講方向;方向試過量不出來。","trig":["holiday_post"],"lead":false},{"k":"myth-nearma20","r":89,"myth":true,"q":"差一點就站上月線,是不是快噴了?","do":["看到「差 1% 就站上月線」不要讀成快噴了","兩種情況都不能當買點","買點照決策台那套"],"warn":"這段時間偏多頭,走完下一次空頭會再驗一次。","trig":["near_ma20"],"lead":false},{"k":"myth-lockprofit","r":93,"myth":true,"q":"賺了要先賣一半「落袋為安」嗎?","do":["不要設「賺 10% 就賣」","不要「賺了先賣一半」","把保住獲利的工作交給「從最高點退一段就賣」那條"],"warn":"看著獲利縮水很難受,這是這套方法最難做到的一點。","trig":["gain20"],"lead":false},{"k":"myth-beartocash","r":91,"myth":true,"q":"遇到空頭,是不是該先賣掉換現金?","do":["長期部位就抱著","真的怕,就一開始少買一點","短線部位照決策台的賣法,不用全賣"],"warn":"它唯一的好處是中途賠得少,但那大部分是因為錢根本不在市場裡。","trig":["bear_on"],"lead":false},{"k":"myth-ma20stop","r":95,"myth":true,"q":"跌破月線就要停損?","do":["不要把「跌破月線」當成賣出理由","照決策台那三條賣出條件走","反過來「低檔跌破月線是買點」也不成立,不要去接"],"warn":"如果你用的是別的賣出規則(例如跌破 20 天最低),照那條走即可。","trig":["ma20_break"],"lead":false},{"k":"calendar-filter","r":76,"myth":true,"q":"結算日、連假前,要不要先賣掉或先不買?","do":["結算日、連假前不用特別先賣或停買","照你原本的賣出條件走","那幾天如果比較晃,部位小一點、停損別設太近"],"warn":"這只說「不用避開」;那幾天可能比較晃,但會漲還是會跌量不出來,⛔ 別拿來押方向。","trig":["holiday_pre","settle"],"lead":false}]},
+    // sc = 誰碰到:held 你的庫存 / fav 你的自選 / mkt 大盤 / date 日子(畫面照這個順序排,同一層再照專欄名次)
+    _COL_TRIG_IDS: [
+        { id: 'lu_held', sc: 'held' }, { id: 'ld_redk', sc: 'held' }, { id: 'attn', sc: 'held' }, { id: 'ma20_break', sc: 'held' },
+        { id: 'desc_tri', sc: 'held' }, { id: 'exdiv', sc: 'held' }, { id: 'gain20', sc: 'held' },
+        { id: 'nh60_retest', sc: 'held' }, { id: 'gap_hi', sc: 'held' },
+        { id: 'lu_fav', sc: 'fav' }, { id: 'near_ma20', sc: 'fav' },
+        { id: 'bear_on', sc: 'mkt' }, { id: 'crash20', sc: 'mkt' }, { id: 'floor300', sc: 'mkt' },
+        { id: 'holiday_pre', sc: 'date' }, { id: 'holiday_post', sc: 'date' }, { id: 'settle', sc: 'date' }, { id: 'rev_day', sc: 'date' },
+    ],
+    _COL_SC: { held: ['👜', '你的庫存', 0], fav: ['⭐', '你的自選', 1], mkt: ['🌡️', '大盤', 2], date: ['📅', '日子', 3] },
+    /** 台北今天的日期 + 是不是平日(週末不判日子類) */
+    _colToday() {
+        const tdy = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
+        const wk = new Date(tdy + 'T00:00:00Z').getUTCDay();
+        return { tdy, wk, weekday: wk >= 1 && wk <= 5 };
+    },
+    _colAddDays(iso, n) { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); },
+    /** 每個月第三個星期三(台指期結算日) */
+    _colSettleDay(iso) { const d = new Date(iso.slice(0, 8) + '01T00:00:00Z'); const off = (3 - d.getUTCDay() + 7) % 7; return this._colAddDays(iso.slice(0, 8) + '01', off + 14); },
+    /** 只回「碰到了哪些條件」(純判斷,方便測試直接餵資料);ctx = { tw, today, held:Map(sym→{cost}), bars:Map(sym→K), fav:[sym], div, events, floor } */
+    _colTrigEval(ctx) {
+        const hits = [], add = (id, why, sym, sc) => hits.push({ id, why, sym: sym || null, sc: sc || null });
+        const iso = x => String(x || '').replace(/\//g, '-').slice(0, 10);
+        const tw = Array.isArray(ctx.tw) ? ctx.tw : [];
+        const lastD = tw.length ? iso(tw[tw.length - 1].date) : '';
+        const T = ctx.today || this._colToday();
+        // 👜⭐ 個股類(⛔ ETF 不判 K 線型態;⛔ K 線日期追不上大盤最新收盤的不判)
+        for (const [sym, b] of (ctx.bars || new Map())) {
+            const isH = !!(ctx.held && ctx.held.has(sym)), etf = !!this._isEtfSym?.(sym);
+            const sc = isH ? 'held' : 'fav';
+            if (isH && ctx.div) {
+                const up = (((ctx.div.d || {})[sym] || {}).up) || [];
+                const end = this._colAddDays(T.tdy, 7);
+                for (const u of up) { const d0 = iso(u && u[0]); if (d0 > T.tdy && d0 <= end) { add('exdiv', `${this._dW(d0)} 除息`, sym); break; } }
+            }
+            if (isH && this._heldAttention(sym)) add('attn', String(((this.attentionStatus || {})[sym] || {}).status || '被列為注意股').replace(/[⚠️🚨]/gu, '').trim() || '被列為注意股', sym);
+            if (etf || !Array.isArray(b) || b.length < 30 || !lastD || iso(b[b.length - 1].date) < lastD) continue;
+            const n = b.length, C = i => +b[i].close, dW = this._dW(b[n - 1].date);
+            if (this._luLock(b, { anyTime: 1 })) add(isH ? 'lu_held' : 'lu_fav', `${dW} 收盤鎖漲停`, sym, sc);
+            let ks = []; try { ks = (this._ovNewEdges(b, sym) || []).map(x => x.k).filter(Boolean); } catch (_) {}
+            if (ks.includes('ld_redk')) add('ld_redk', `${dW} 前一天跌停、這天收紅`, sym, sc);
+            if (isH && ks.includes('desc_tri')) add('desc_tri', '最近走成下降三角(高點越來越低、低點守在同一帶)', sym);
+            if (isH && ks.includes('nh60_retest')) add('nh60_retest', '創 60 日新高後回檔沒破、收紅站回', sym);
+            if (isH && ks.includes('gap_hi')) add('gap_hi', `${dW} 向上跳空、而且在一年的高檔`, sym);
+            const ma = e => { let t = 0; for (let j = e - 19; j <= e; j++) t += C(j); return t / 20; };
+            const m0 = ma(n - 1), m1 = ma(n - 2);
+            if (isH && C(n - 1) < m0 && C(n - 2) >= m1) add('ma20_break', `${dW} 收盤跌破月線(20 日線)`, sym);
+            if (!isH && C(n - 1) < m0 && C(n - 1) >= m0 * 0.97) add('near_ma20', '收在月線(20 日線)下方 3% 以內', sym);
+            const cost = isH ? +((ctx.held.get(sym) || {}).cost) : 0;
+            if (cost > 0 && C(n - 1) / cost - 1 >= 0.2) add('gain20', `帳面賺 ${((C(n - 1) / cost - 1) * 100).toFixed(0)}%`, sym);
+        }
+        // 🌡️ 大盤
+        if (tw.length >= 70) {
+            const b0 = this._bear60Of(tw);
+            if (b0 && b0.on) { for (let j = 1; j <= 5; j++) { const bj = this._bear60Of(tw.slice(0, -j)); if (bj && !bj.on) { add('bear_on', '大盤這幾天剛轉成空頭(收盤在季線下、月線也在季線下)'); break; } } }
+            const c = tw.map(r => +r.close).filter(v => v > 0), last = c[c.length - 1], hi = Math.max(...c.slice(-252));
+            if (hi > 0 && last <= hi * 0.8) add('crash20', `加權指數離一年最高點跌了 ${((1 - last / hi) * 100).toFixed(0)}%`);
+        }
+        const fc = ctx.floor;
+        if (fc && fc.hot && lastD && iso(fc.d) >= lastD) add('floor300', `${this._dW(fc.d)} 全市場很多股票跌到地板(${fc.n} 檔)`);
+        // 📅 日子(週末不判;今天本身是休市日也不判)
+        const evs = (Array.isArray(ctx.events) ? ctx.events : []).filter(e => e && /休市/.test(String(e.event || '')));
+        const closedOn = d => evs.some(e => iso(e.date) === d);
+        if (T.weekday && !closedOn(T.tdy)) {
+            let nx = this._colAddDays(T.tdy, 1); while ([0, 6].includes(new Date(nx + 'T00:00:00Z').getUTCDay())) nx = this._colAddDays(nx, 1);
+            const ev = evs.find(e => iso(e.date) === nx);
+            if (ev) add('holiday_pre', `${this._dW(nx)} 休市(${String(ev.event).replace(/\s*\(.*$/, '').trim()})—— 今天是休市前最後一個交易日`);
+            const v = tw.length >= 2 ? this._calDayVol(tw) : null;
+            if (v && v.gap >= 4 && v.date === T.tdy) add('holiday_post', `今天是休市 ${v.gap} 天後的第一個交易日`);
+            if (this._colSettleDay(T.tdy) === T.tdy) add('settle', '今天是台指期結算日(每個月第三個星期三)');
+            const dom = +T.tdy.slice(8, 10);
+            if (dom >= 9 && dom <= 11) add('rev_day', '這幾天上市櫃公司陸續公布上個月營收(每月 10 日前)');
+        }
+        return hits;
+    },
+    /** 碰到的條件 → 那幾篇專欄(同一篇只列一次,把碰到它的每一檔 / 每個原因都收進去) */
+    _colTrigGroups(hits) {
+        const cols = ((this._COL_TRIG && this._COL_TRIG.cols) || []).filter(c => !c.lead || this._isLead());
+        const scOf = {}; for (const x of this._COL_TRIG_IDS) scOf[x.id] = x.sc;
+        const G = new Map();
+        for (const h of (hits || [])) for (const c of cols) {
+            if (!(c.trig || []).includes(h.id)) continue;
+            const hs = h.sc || scOf[h.id] || 'date';
+            const g = G.get(c.k) || { col: c, sc: hs, why: [] };
+            if ((this._COL_SC[hs] || [0, 0, 9])[2] < (this._COL_SC[g.sc] || [0, 0, 9])[2]) g.sc = hs;
+            if (!g.why.some(w => w.id === h.id && w.sym === h.sym && w.why === h.why)) g.why.push(h);
+            G.set(c.k, g);
+        }
+        // 排序:誰碰到(庫存 > 自選 > 大盤 > 日子)→ 先「怎麼做」的,再「破解迷思」的 → 同一類照專欄名次
+        return [...G.values()].sort((a, b) => ((this._COL_SC[a.sc] || [])[2] - (this._COL_SC[b.sc] || [])[2]) || ((a.col.myth ? 1 : 0) - (b.col.myth ? 1 : 0)) || ((b.col.r || 0) - (a.col.r || 0)));
+    },
+    async _colTrigScan(force) {
+        if (!force && this._colTrigCache && (Date.now() - this._colTrigCache.at) < 600000) return this._colTrigCache;
+        if (this._colTrigP) return this._colTrigP;
+        this._colTrigP = (async () => {
+            try {
+                const iso = x => String(x || '').replace(/\//g, '-').slice(0, 10);
+                const cut = rows => (Array.isArray(rows) && this.isMarketOpen() && this._lastBarIsToday(rows)) ? rows.slice(0, -1) : (rows || []);
+                const base = window.location.href.split('?')[0].split('#')[0];
+                let tw = []; try { tw = cut(await this._getTwiiRows()); } catch (_) {}
+                const lastD = tw.length ? iso(tw[tw.length - 1].date) : '';
+                const held = new Map(); for (const i of (this._getInventory() || [])) if (i && i.symbol) held.set(String(i.symbol), i);
+                const fav = [];
+                for (const arr of Object.values(this.favGroups || {})) for (const c of (Array.isArray(arr) ? arr : [])) {
+                    const s = String(typeof c === 'object' ? (c && (c.symbol || c.s)) || '' : c);
+                    if (s && !held.has(s) && !fav.includes(s)) fav.push(s);
+                }
+                const syms = [...held.keys(), ...fav].filter(s => /^\d{4,6}[A-Z]?$/.test(s)).slice(0, 40);
+                const bars = new Map();
+                for (const sym of syms) {   // ⛔ 一檔一檔抓(不一次打 40 個請求)
+                    let k = null;
+                    try { k = (await this.idb.get(`proTerm_kline_${sym}`))?.data; } catch (_) {}
+                    if (lastD && (!Array.isArray(k) || !k.length || iso(k[k.length - 1].date) < lastD)) {
+                        try { const r = await fetch(new URL(`data/${sym}.json`, base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }); if (r.ok) { const j = await r.json(); if (Array.isArray(j)) k = j; } } catch (_) {}
+                    }
+                    bars.set(sym, cut(k));
+                }
+                let div = null; try { div = await this._loadDividendsFile(); } catch (_) {}
+                let events = (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || null;
+                if (!events) { try { const r = await fetch(new URL('data/macro_risk.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }); if (r.ok) events = ((await r.json()) || {}).upcoming_macro_events || []; } catch (_) {} }
+                let floor = null; try { await this._loadBreadthHist(); floor = this._floorCountState(); } catch (_) {}
+                const hits = this._colTrigEval({ tw, held, bars, fav, div, events, floor });
+                this._colTrigCache = { at: Date.now(), lastD, hits, groups: this._colTrigGroups(hits), n: syms.length };
+                return this._colTrigCache;
+            } finally { this._colTrigP = null; }
+        })();
+        return this._colTrigP;
+    },
+    async _renderDeckCol() {
+        const box = document.getElementById('deckCol'); if (!box) return;
+        if (!this._deckShow().col) { box.innerHTML = ''; return; }
+        const R = await this._colTrigScan().catch(() => null);
+        if (!this._deckShow().col) { box.innerHTML = ''; return; }
+        box.innerHTML = this._deckColHtml(R && R.groups);
+    },
+    _deckColHtml(groups) {
+        const G = Array.isArray(groups) ? groups : [];
+        if (!G.length) return '';   // ⛔ 今天什麼都沒碰到 → 整區不畫(不留空殼)
+        const esc = t => this._escHtml(String(t || ''));
+        const item = g => {
+            const sc = this._COL_SC[g.sc] || ['📅', '', 9], c = g.col;
+            const who = g.why.slice(0, 5).map(h => h.sym
+                ? `<span onclick="app.analyze('${h.sym}'); app.switchAppTab('diag'); app.vibrate(15);" class="cursor-pointer text-gray-200 underline decoration-dotted">${this._nmPair(h.sym)}</span> ${esc(h.why)}`
+                : esc(h.why)).join('<br>') + (g.why.length > 5 ? `<br><span class="text-gray-500">…還有 ${g.why.length - 5} 個</span>` : '');
+            return `<div class="py-2 border-b border-[#21262d]" data-colhit="${esc(c.k)}" data-colsc="${g.sc}">
+                <div class="text-[10px] text-gray-400 leading-snug"><span class="text-gray-500">${sc[0]} ${sc[1]}</span>・${who}</div>
+                <div class="text-[12px] font-bold text-gray-100 mt-1 leading-snug">📰 ${esc(c.q)}</div>
+                <details class="mt-0.5"><summary class="cursor-pointer select-none text-[10px] text-sky-300" style="list-style:none">怎麼做 ▾</summary>
+                    <ul class="mt-1 text-[11px] text-gray-300 leading-relaxed list-disc pl-4">${(c.do || []).map(d => `<li>${esc(d)}</li>`).join('')}</ul>
+                    ${c.warn ? `<div class="text-[10px] text-gray-500 mt-1 leading-snug">⚠️ ${esc(c.warn)}</div>` : ''}
+                </details></div>`;
+        };
+        const top = G.slice(0, 6), rest = G.slice(6);
+        return `<div class="bg-[#161b22] border-l-4 border-sky-700 border-y border-r border-[#30363d] rounded-r p-3" data-deckcol="${G.length}">
+            <div class="text-sm font-black text-sky-200">📰 今天碰到的專欄(${G.length})</div>
+            <div class="text-[10px] text-gray-500 mt-0.5 leading-snug">你的股票、大盤或日子碰到某種情況時,那一篇「怎麼做」。⛔ 不是買賣訊號,買賣照上面那幾塊。</div>
+            ${top.map(item).join('')}
+            ${rest.length ? `<details class="mt-1"><summary class="cursor-pointer select-none text-[10px] text-gray-400" style="list-style:none">還有 ${rest.length} 則 ▾</summary>${rest.map(item).join('')}</details>` : ''}
+        </div>`;
     },
     _openDeckShow() {
         try { this.openSettings?.(); } catch (_) {}
@@ -37971,7 +38163,7 @@ ${this._reportFacts(sym)}
                 const chgLast = (c(n - 1) / c(n - 2) - 1) * 100, chgPrev = (c(n - 2) / c(n - 3) - 1) * 100;
                 if (chgPrev <= -9.2 && chgLast > 0) {
                     const E = this._LD_REDK, big = chgLast >= 3;
-                    out.push({ ic: '🕯️', cls: 'text-amber-300',
+                    out.push({ k: 'ld_redk', ic: '🕯️', cls: 'text-amber-300',
                         txt: `<b>昨天跌停、今天收${big ? '大紅' : '紅'}</b> —— ${big ? '大紅(≥3%)這種之後常比大盤強' : '小紅的參考價值低'}。⚠️ <b>要先看當初大盤有沒有一起跌</b>:大家一起跌的那種才彈得動,它自己出事的別接。` });
                 }
             }
@@ -37979,7 +38171,7 @@ ${this._reportFacts(sym)}
             const att = (this.attentionStatus || {})[sym];
             if (att && n >= 6 && c(n - 6) > 0) {
                 const chg5 = (c(n - 1) / c(n - 6) - 1) * 100;
-                if (chg5 >= 30) out.push({ ic: '⚠️', cls: 'text-amber-300',
+                if (chg5 >= 30) out.push({ k: 'attn30', ic: '⚠️', cls: 'text-amber-300',
                     txt: `<b>5 天漲了 ${chg5.toFixed(0)}%,而且已經被列為${String(att.status || '注意股').replace(/[⚠️🚨]/g, '')}</b> —— 這種「噴很大才被掛注意」的之後常比大盤弱。💡 <b>手上有的可以考慮減碼</b>;⛔ 這不是放空訊號` });
             }
             // ③④ V74.6.0 兩個六關全過的型態 —— ⛔ 空頭時不顯示(講的是偏多的事,`_bearGate` 鐵則)
@@ -37994,7 +38186,7 @@ ${this._reportFacts(sym)}
                     for (let q = i - 5; q < i; q++) { if (c(q) >= nh) made = true; if (lo_(q) < low) low = lo_(q); }
                     if (nh > 0 && made && low >= nh * 0.95 && c(i) > c(i - 1) && c(i) >= nh * 0.98) {
                         const R = E.retest;
-                        out.push({ ic: '🏔️', cls: 'text-amber-300',
+                        out.push({ k: 'nh60_retest', ic: '🏔️', cls: 'text-amber-300',
                             txt: `<b>創 60 日新高之後回檔沒破、今天收紅站回</b> —— 偏強的佐證,⛔ 不是叫你重壓;它是慢慢漂不是馬上反應 → ⛔ 別期待它幾天內表態。買賣價位以總覽「現在怎麼做」為準` });
                     }
                 }
@@ -38007,7 +38199,7 @@ ${this._reportFacts(sym)}
                         const pos = hh > ll ? (c(i) - ll) / (hh - ll) * 100 : 50;
                         if (pos >= 70) {
                             const G = E.gapHi;
-                            out.push({ ic: '🕳️', cls: 'text-amber-300',
+                            out.push({ k: 'gap_hi', ic: '🕳️', cls: 'text-amber-300',
                                 txt: `<b>今天向上跳空 ${gp.toFixed(1)}%,而且股價在一年的高檔(位階 ${pos.toFixed(0)})</b> —— 偏強的佐證(要配高位階才算數),⛔ 不是進場指令;它是慢慢漂不是馬上反應 → ⛔ 別期待它幾天內表態。` });
                         }
                     }
@@ -38017,7 +38209,7 @@ ${this._reportFacts(sym)}
             const tri = this._descTriangle(data);
             if (tri && tri.ok) {
                 const T = this._TRI_EDGE;
-                out.push({ ic: '📐', cls: 'text-amber-300',
+                out.push({ k: 'desc_tri', ic: '📐', cls: 'text-amber-300',
                     txt: `<b>近 ${T.N} 天走成「上面斜斜的、下面平平的」(下降三角:高點一路降、低點守在同一帶)</b> —— 這種之後常比大盤弱。💡 <b>手上有的照既有出場規則走、⛔ 別加碼;空手的別接</b>。⛔ 這是避雷不是放空訊號,也⛔ 不是「一定會跌」` });
             }
         } catch (_) { }
@@ -50036,6 +50228,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             // 👑 V77.8.8 領頭羊(第二套)—— 掛在說明摺疊底下,⛔ 不動上面「今天要做的事」那三格
             try { const _lb = $('deckLeader'); if (_lb) _lb.innerHTML = this._isLead() ? await this._leaderDeckHtml() : ''; } catch (e) { { const _lb2 = $('deckLeader'); if (_lb2) _lb2.innerHTML = `<div class="text-[10px] text-amber-300 mt-2" data-leader="err">👑 領頭羊名單算不出來:${this._escHtml(String(e && e.message || e))}</div>`; } }   // 🔒 V77.9.6 🧬 時⛔ 連 DOM 都不放
             try { this._deckShowApply(); } catch (_) {}
+            this._renderDeckCol().catch(() => {});   // 📰 V78.4.2 觸發式專欄(只在解鎖後;⛔ 不擋決策台其他區塊)
             // 🔔 導覽紅點:今天有幾件事要做
             try {
                 const _sh = this._deckShow(), _ls = this._leaderState || {};

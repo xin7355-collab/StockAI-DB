@@ -17,16 +17,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let chromium; try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); } catch (_) { ({ chromium } = await import('playwright')); }
 const _exec = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
-// ⛔ 研究字樣(交易術語「回測月線 / 回測不破」那種是「股價回頭測試」,不是回測研究 → 白名單)
-const BAD = [
-    /實測/, /(?<!測試\s?\/\s?)探針(?!卡)/, /六關/, /六道關卡/, /起點中位/, /\d+\s*條起點/, /對照組/, /安慰劑/, /樣本外/, /_probe\b/, /\.mjs\b/,
-    /\bV\d{2}\.\d\.\d\b/, /含息/, /贏\s*0050/, /輸\s*0050/, /勝率\s*[\d.]+\s*%/, /期望值?\s*[+\-−]?[\d.]+\s*%/,
-    /回測(?!月線|季線|年線|半年線|支撐|不破|頸線|均線|\d+\s*日線|前高|前低|缺口|低點|高點|底部|守住|成功|失敗|5MA|10MA|20MA|60MA|突破點|平台)/,
-    /逐年(?:同向|全正|全負)/, /模擬(?:成績|帳|買賣)/, /前後半/, /基準勝率/, /條路徑/,
-    // ⚠️ 不收裸的「pp」—— 毛利率 ↑5.4pp、大戶 +0.05pp 是財報 / 集保的事實變化,⛔ 不是研究數字
-];
+// ⛔ 研究字樣:清單只有一份(scripts/lib_retailbad.mjs,embed_col_trig 也用它)
+import { BAD, badOf } from './lib_retailbad.mjs';
 const ALLOW_LINE = [/^⚙️ 設定中心/];      // 版本徽章那一行
-const badOf = s => BAD.filter(r => r.test(s)).map(r => String(r));
 
 const STRATS = (process.env.STRATS || 'gene,lead').split(',');
 const SCOPE = process.env.SCOPE ? new Set(process.env.SCOPE.split(',')) : null;
@@ -45,7 +38,7 @@ for (const strat of STRATS) {
             const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}');
             s.strategy = st; s.stratUnlock = st !== 'gene';
             localStorage.setItem('proTerminalSettings', JSON.stringify(s));
-            localStorage.setItem('inventory', JSON.stringify([{ symbol: '2330', cost: 900, shares: 1000, date: '2026-09-01' }, { symbol: '0050', cost: 150, shares: 1000 }]));
+            localStorage.setItem('proTerminalInv', JSON.stringify([{ symbol: '2330', cost: 900, shares: 1000, date: '2026-09-01' }, { symbol: '0050', cost: 150, shares: 1000 }]));
         } catch (_) {}
     }, strat);
     await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });

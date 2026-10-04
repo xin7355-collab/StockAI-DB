@@ -225,7 +225,7 @@ const DS = await page.evaluate(() => {
     app.settings.strategy = 'lead'; app.settings.deckShow = null;
     return out;
 });
-ok('⑧ 👑:只有領頭羊 + 要賣的兩塊(🧬 那三塊不列也不顯)', JSON.stringify(DS.lead.def) === JSON.stringify({ leader: true, sell: true, pb: false, fit: false }) && DS.lead.leader && !DS.lead.pb && DS.lead.hidN === undefined && JSON.stringify(DS.lead.keys) === JSON.stringify(['leader', 'sell']), JSON.stringify(DS.lead));
+ok('⑧ 👑:只有領頭羊 + 要賣的兩塊(🧬 那三塊不列也不顯)', JSON.stringify((({ col, ...r }) => r)(DS.lead.def)) === JSON.stringify({ leader: true, sell: true, pb: false, fit: false })   /* 🔓 V78.4.2 `col` 是解鎖後的進階功能(另一區開關),⛔ 不算決策台一般區塊 */ && DS.lead.leader && !DS.lead.pb && DS.lead.hidN === undefined && JSON.stringify(DS.lead.keys) === JSON.stringify(['leader', 'sell']), JSON.stringify(DS.lead));
 ok('⑧b ⭐ 決定性對照:👑 時就算勾了 🧬 買點也⛔ 不顯示', DS.leadPbOn.pb === false, JSON.stringify(DS.leadPbOn));
 ok('⑧c 🧬(預設):🧬 買點 + 要賣的開、領頭羊⛔ 不列也不顯;「今天不用做」只講 🧬', DS.gene.def.pb === true && DS.gene.def.leader === false && !DS.gene.leader && DS.gene.pb && DS.gene.idle && !DS.gene.keys.includes('leader') && DS.gene.keys.length === 3 && DS.gene.checked === 2, JSON.stringify(DS.gene));
 ok('⑧d 🧬 收起的要寫出來(⛔ 不靜默);🧹 V78.3.4 說明⛔ 不印回測數字、⛔ 不拿領頭羊來比', DS.gene.hidN === '1' && !DS.geneFit.hidN && !/萬|實測|回測/.test(DS.gene.pbDesc) && !/領頭羊/.test(DS.gene.pbDesc) && /觸發價/.test(DS.gene.pbDesc), JSON.stringify([DS.gene.hidN, DS.geneFit.hidN, DS.gene.pbDesc]));
