@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.4.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.4.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.4.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.4.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -5360,6 +5360,12 @@ const app = {
             //   ⛔ 被擋下來的**不會消失** —— 照樣進 🔔 通知歷史、個股頁 K線分頁也照顯。
             const _w = this._alertWorthIt(s._d, s.title, s.tone);
             if (!_w.ok) { try { this._recordNotifHistory(`（只記錄、不跳提醒）${s.title}`, `${name}(${sym})`, sym); } catch (_) {} continue; }
+            // 👑 V78.4.8 選領頭羊時,手上的個股⛔ 不跳賣出 / 風險類大視窗(使用者截圖:中美晶「急漲過熱 → 先出一半」跟總覽「今天不用賣」打架)。
+            //   同一支 sweep 裡的 −5% 停損(_kbarDailySweep)、_comboCheck 早就排了,只有這裡漏掉(陷阱 #37)。⛔ 不消失:照樣進 🔔 歷史。
+            if ((s.tone === 'bear' || s.tone === 'warn') && this._leaderMine().has(String(sym))) {
+                this._alertQuiet(`（👑 只記錄）${s.title}`, `${name}(${sym}) 你選的是領頭羊:照換倉日排名賣,這則只記錄、不叫你先賣。`, sym);
+                continue;
+            }
             const emo = s.tone === 'bull' ? '🔺' : (s.tone === 'bear' ? '🔻' : (s.tone === 'warn' ? '⚠️' : '⚪'));
             // 🚧 V75.2.7 預算:這支是**唯一**沒有「最多 3 則」上限的 sweep(其他六支都有)——
             //   實測 60 檔 × 13 類偵測器,開 App 第 6 秒一口氣發 14 則。⛔ 超過就只計數,最後出一則摘要。
@@ -6149,12 +6155,18 @@ const app = {
     _comboPlan(sym, kdata) {
         try {
             const L = this._exitLines(kdata, sym); if (!L) return null;
+            // 👑 V78.4.8 選領頭羊時手上的個股:⛔ 不排三擊(那是 🔥 的出場線),只講換倉日排名(轉述 _leadVerdict,⛔ 不另算)
+            if (this._leaderMine().has(String(sym))) {
+                let v = null; try { v = this._leadVerdict(sym, true); } catch (_) {}
+                return { lead: true, held: true, left: v && v.left != null ? v.left : null, isRebal: !!(v && v.isRebal), H: (v && v.H) || 10, cost: L.cost, pC: L.pC };
+            }
             const key = this._exitRuleKey();
             const val = { atr2: L.atr2, don40: L.don40, don: L.don, trail8: L.trail8, ma5: L.ma5 };
             const nm = k => this._exitRuleName(k);
             const prim = { k: key, nm: nm(key), px: val[key] };
             if (!(prim.px > 0)) return null;
-            const others = Object.keys(val).filter(k => k !== key && val[k] > 0).map(k => ({ k, nm: nm(k), px: val[k] }));
+            const others = Object.keys(val).filter(k => k !== key && val[k] > 0).map(k => ({ k, nm: nm(k), px: val[k], above: val[k] >= L.pC }));
+            prim.above = prim.px >= L.pC;   // 🚨 V78.4.8 線在現價上面 = 已經跌破(⛔ 不可再寫「跌破 X → 賣在這裡 +N 元」,現價賣不到那個價)
             const held = L.cost > 0 && L.shares > 0;
             const sh = held ? Math.round(L.shares * 1000) : 0;               // 張 → 股(⛔ 零股族差 14 倍,V74.6.8)
             const pl = px => held ? this._netPL(L.cost, px, sh) : null;
@@ -6169,12 +6181,21 @@ const app = {
         if (!plan) return `<div class="text-[10px] text-gray-500">🥊 連續技:${name} 的 K 線還沒載入,先進個股頁再看「現在該做什麼」。</div>`;
         const step = (n, tt, dd) => `<div class="flex gap-1.5 items-start py-1 border-t border-[#21262d]"><span class="text-[10px] font-black text-amber-300 whitespace-nowrap">第 ${n} 擊</span><div class="text-[10.5px] text-gray-200 leading-snug"><b>${tt}</b>${dd ? `<div class="text-[10px] text-gray-400">${dd}</div>` : ''}</div></div>`;
         let h = `<div class="text-[11px] font-black text-amber-200 mb-0.5">🥊 連續技(這一擊之後怎麼接)</div>`;
+        if (plan.lead) {
+            const when = plan.isRebal ? '今天就是換倉日' : (plan.left != null && plan.left !== '?' ? `下一次換倉日還有 ${plan.left} 個交易日` : '等下一次換倉日');
+            return `<div class="text-[11px] font-black text-amber-200 mb-0.5" data-combolead="1">👑 你選的是領頭羊:這一檔照換倉日排名賣</div>`
+                + `<div class="text-[10.5px] text-gray-200 leading-snug">${when} —— 那天還在前 ${plan.H} 名就續抱、掉出去隔天開盤賣。⛔ 這則提醒不用照做:領頭羊沒有停損線,也⛔ 不先賣一半。</div>`
+                + `<div class="text-[9px] text-gray-500 mt-1 leading-snug">⛔ 這不是自動下單,以個股頁「現在該做什麼」為準。</div>`;
+        }
         if (plan.held) {
-            h += step(1, `現在:${String(title || '').replace(/^[^\w一-鿿]+/, '')} → 先出一半 ≈ ${plan.halfSh.toLocaleString()} 股`,
+            // 🚨 V78.4.8 線已經在現價上面 = 早就跌破 → 第 1 擊直接講「全部出場」(⛔ 不先出一半、⛔ 不印賣不到的價)
+            if (plan.prim.above) h += step(1, `<span data-comboabove="1">你設定的 ${plan.prim.nm} <span class="font-mono">${nf(plan.prim.px)}</span> 已經在現價上面 = 已經跌破了 → 照規則全部出場</span>`,
+                      `現價 ${nf(plan.pC)} 賣:${money(plan.pl(plan.pC))}(已扣費,你的成本 ${nf(plan.cost)})・⚙️ 這是你設定的出場規則`);
+            else h += step(1, `現在:${String(title || '').replace(/^[^\w一-鿿]+/, '')} → 先出一半 ≈ ${plan.halfSh.toLocaleString()} 股`,
                       `賣在現價 ${nf(plan.pC)}:${money(plan.plHalf)}(已扣費,你的成本 ${nf(plan.cost)})`);
-            h += step(2, `跌破 ${plan.prim.nm} <span class="font-mono">${nf(plan.prim.px)}</span> → 剩下全部出場`,
+            if (!plan.prim.above) h += step(2, `跌破 ${plan.prim.nm} <span class="font-mono">${nf(plan.prim.px)}</span> → 剩下全部出場`,
                       `賣在這裡 ${money(plan.pl(plan.prim.px))}・⚙️ 這是你設定的出場規則,出場提醒與自動下單也用這一條`);
-            if (plan.others.length) h += step(3, `參考:${plan.others.map(o => `${o.nm} <span class="font-mono">${nf(o.px)}</span>`).join(' ・ ')}`,
+            if (plan.others.length) h += step(plan.prim.above ? 2 : 3, `參考:${plan.others.map(o => `${o.nm} <span class="font-mono">${nf(o.px)}</span>${o.above ? '(已在現價上方)' : ''}`).join(' ・ ')}`,
                       `⛔ 不是你設定的那條,列出來只是讓你知道還有哪幾條線在附近`);
         } else {
             h += step(1, `現在:${String(title || '').replace(/^[^\w一-鿿]+/, '')} → 你沒有部位:這是<b>賣訊</b>,⛔ 不是進場點`,
@@ -6201,7 +6222,7 @@ const app = {
             const arm = document.getElementById('alertPopArm');
             if (arm) {
                 const armed = !!(this._comboWatchGet()[sym]);
-                arm.classList.toggle('hidden', !(plan && plan.held));
+                arm.classList.toggle('hidden', !(plan && plan.held && !plan.lead && !(plan.prim && plan.prim.above)));   // 👑 / 線已破 → ⛔ 不設到價提醒(會立刻觸發)
                 arm.textContent = armed ? '🔔 已在盯第 2 擊' : '🔔 幫我盯第 2 擊';
                 arm.onclick = () => this._armComboWatch(sym);
             }
@@ -6211,6 +6232,7 @@ const app = {
     _comboWatchSet(o) { try { localStorage.setItem('proTerm_comboWatch', JSON.stringify(o || {})); } catch (_) {} },
     _armComboWatch(sym) {
         const p = this._comboPlanCur; if (!p || p.sym !== sym || !(p.prim && p.prim.px > 0)) { this.showToast?.('這一檔還沒算出出場線'); return; }
+        if (p.prim.above) { this.showToast?.('出場線已經在現價上面 = 已經跌破了,不用再盯'); return; }
         const price = +p.prim.px.toFixed(2);
         // ① 跟既有到價提醒同一份清單(雲端推播那條路也會盯)
         const list = Array.isArray(this.priceAlerts) ? this.priceAlerts.slice() : [];
@@ -8681,10 +8703,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.4.7',
+    _APP_VERSION: 'V78.4.8',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.4.8', d: ['🔧 小修正'] },
         { v: 'V78.4.7', d: ['🔧 小修正'] },
         { v: 'V78.4.6', d: ['🔧 小修正'] },
         { v: 'V78.4.5', d: ['🔧 小修正'] },
@@ -10425,7 +10448,7 @@ ${list}
         }
         const { leader, industry, tags } = this._getStockConcepts(sym);
         const parts = [];
-        if (leader)   parts.push(`<span class="text-[10px] font-black text-amber-300 bg-amber-900/30 border border-amber-700/50 rounded px-1.5 py-0.5 whitespace-nowrap">👑 ${leader}</span>`);
+        if (leader)   parts.push(`<span class="text-[10px] font-black text-amber-300 bg-amber-900/30 border border-amber-700/50 rounded px-1.5 py-0.5 whitespace-nowrap">🏅 ${leader}</span>`);   // 🏅 V78.4.8 題材龍頭⛔ 不用 👑(跟領頭羊策略同符號會打架)
         if (industry) parts.push(`<span class="text-[10px] font-bold text-gray-300 bg-white/5 border border-[#30363d] rounded px-1.5 py-0.5 whitespace-nowrap">🏭 ${industry}</span>`);
         // 🎯 三種標籤**長得不一樣**(⛔ 不可統一):
         //   種子(人工確認過它就是這個題材)= 實心青;連動(每天自動算出來「走得像」)= 虛線 + 相關數字;
@@ -21456,7 +21479,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _leadEarlyTxt() {
         const E = this._LEAD_LU_EDGE; if (!E) return '';
         const cut = w => Math.round((1 - (w.all - 100) / (w.now - 100)) * 100);
-        return `漲停隔天就照四條賣,會少賺很多`;
+        return `漲了一段(連漲停也一樣)就先賣,會少賺很多`;
     },
     _LEADER_EDGE: {
         ver: 'V78.0.5', rule: { U: 100, N: 5, R: 10, L: 10, hyst: 2, pos: 85 },
