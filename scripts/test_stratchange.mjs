@@ -188,7 +188,7 @@ ok('⑫f 視窗要有「換回舊的」', /換回舊的/.test(B));
 ok('⑫g ⛔ 要明說舊的沒有刪掉', /沒有刪掉|都還在/.test(B));
 if (R.geneLead) {
     ok('⑬ 🔒 👑 那一筆⛔ 不跳給 🧬(不洩漏這一套;V78.0.7 起 🧬 會看到自己那筆 🧬 門檻變更,那是對的)', !/領頭羊|👑/.test(R.geneLead.txt), R.geneLead.txt.slice(0, 120));
-    ok('⑬b 選了 👑 的人:同一個蓋章 → 會跳 👑 那一筆,「換回舊的」是位置規則', R.leadLead.shown && /一年位置/.test(R.leadLead.txt) && /換回舊的/.test(R.leadLead.txt), R.leadLead.txt.slice(0, 160));
+    ok('⑬b 選了 👑 的人:同一個蓋章 → 會跳最新那一筆 👑 變更(V78.4.4 起是「換倉那天幾點買賣」),而且有「換回舊的」', R.leadLead.shown && /👑/.test(R.leadLead.txt) && /(一年位置|09:00 開盤)/.test(R.leadLead.txt) && /換回舊的/.test(R.leadLead.txt), R.leadLead.txt.slice(0, 160));
 }
 
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ 全部通過');

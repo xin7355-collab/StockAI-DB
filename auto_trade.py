@@ -56,8 +56,12 @@ test_leaderdeck.mjs 拿同一份 screener.json 跨語言比對):
     前 5 名買(📍 V78.0.5 起只買「一年位置 ≥85%」的,不夠就往下一名找;LEADER_POS=0 換回舊的)、
     手上的掉出前 10 名就賣;每 10 個交易日換一次(起點 LEADER_ANCHOR,跟 App 同一個);
     ⛔ 不設停損線;大盤嚴格空頭不買(賣照常);注意 / 處置股⛔ 不跳過(實測跳過反而輸 0050)。
-    LEADER=1 LEADER_ACCOUNT=1000000 python3 auto_trade.py           # 09:01~09:10 開盤跑(預設,V78.2.4 起 = 回測最好那一組)
-    LEADER=1 LEADER_WINDOW=eod LEADER_ACCOUNT=1000000 python3 ...   # 尾盤跑(舊預設,跟上面那套同一個時段)
+    LEADER=1 LEADER_ACCOUNT=1000000 python3 auto_trade.py           # ⏱️ V78.4.4 預設 split:看開盤情況分時段(見下)
+    LEADER=1 LEADER_WINDOW=open LEADER_ACCOUNT=1000000 python3 ...  # 換回舊的:全部 09:01~09:10 開盤買賣(V78.2.4~V78.4.3)
+    LEADER=1 LEADER_WINDOW=eod LEADER_ACCOUNT=1000000 python3 ...   # 更舊的:全部尾盤
+⏱️ split(V78.4.4 預設,leader_intraday_probe 5 分 K 回測:17 條 611→783% 15/17、953→1,091% 14/17):
+    要賣的 → 09:01~09:10 開盤就賣;只有「開盤比昨收跌 ≥3%」的等到 09:30~10:00 再賣(過 10:00 還沒賣成 → 尾盤補賣)
+    要買的 → 只有「開盤比昨收跌 ≥3%」的開盤就買;其他等 13:25 再買(13:25 已接近漲停 → 買不到不追)
 ⚠️ 實測(17 條起點中位,V78.0.5 新規則):隔天開盤買 AI 時代 +953% / 16 年 +6,783%;尾盤買 +817% / +3,342%(0050 含息 +375% / +1,097%)。
    (舊規則不看位置:+760% / +3,176%;尾盤 +670% / +2,219%)
 ⚠️ 中途最多賠 49~57%、16 年只有 10 年贏 0050;沒用到的錢程式**不會**自動買 0050(回測有停 0050,自己手動放)。
@@ -131,7 +135,10 @@ def save_state(st):
 # ═══════ 👑 V77.8.9 領頭羊短線輪動 ═══════
 LEADER = os.getenv('LEADER') == '1'
 LEADER_ACCOUNT = int(os.getenv('LEADER_ACCOUNT') or 0)       # 分給這一套的錢(每檔 = 這筆 ÷ N);0 = 不買(⛔ 不猜)
-LEADER_WINDOW = (os.getenv('LEADER_WINDOW') or 'open').lower()  # open(09:01~09:10,預設;V78.2.4 起)| eod(尾盤)
+LEADER_WINDOW = (os.getenv('LEADER_WINDOW') or 'split').lower()  # split(V78.4.4 預設,看開盤情況分時段)| open(全部開盤,V78.2.4~V78.4.3)| eod(全部尾盤)
+LEADER_GAPDN = -0.03                                          # ⏱️ split:開盤比昨收跌到這裡(含)以下 → 賣的延到 09:30~10:00、買的開盤就買
+LEADER_DEFER_SELL_FROM, LEADER_DEFER_SELL_TO = 9 * 60 + 30, 10 * 60
+LEADER_DEFER_BUY_FROM = 13 * 60 + 25
 LEADER_OPEN_FROM, LEADER_OPEN_TO = 9 * 60 + 1, 9 * 60 + 10   # ⛔ 09:00 那一分鐘不下單:開盤撮合可能還沒出來,快照會是昨收
 # ⛔ 規則 / 錨點 / 名單 / 時鐘 V77.9.3 起搬到 lib_leader.py(成績單的採礦端也要用,⛔ 不複製第二份)。
 #    App `_LEADER_EDGE.rule` / `.anchor` 跟 lib_leader 一字不差(test_leaderdeck.mjs 跨檔比對)。
@@ -171,6 +178,17 @@ def _send(api, sj, contract, px, shares, buy):
     return sent
 
 
+def _snap_gap(snap):
+    """開盤比昨收(參考價 = 現價 − 漲跌)差幾 %;拿不到開盤或參考價 → None(⛔ 不猜,當作「沒有開低」照開盤做)"""
+    try:
+        o = float(getattr(snap, 'open', 0) or 0)
+        c = float(getattr(snap, 'close', 0) or 0)
+        ref = c - float(getattr(snap, 'change_price', 0) or 0)
+        return o / ref - 1 if o > 0 and ref > 0 else None
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+
+
 def leader_step(api, sj, st, meta, today):
     """一天只做一次:換倉日的下一個交易日 → 賣掉掉出前 2N 的、買進前 N 還沒有的。⛔ 只動 st['lead'] 裡的部位。"""
     if st.get('lead_day') == today:
@@ -198,6 +216,8 @@ def leader_step(api, sj, st, meta, today):
         log(f"👑 {dd} 是第 {day} 個交易日({LEADER_ANCHOR} 起)→ 不是換倉日,還有 {left} 天。手上 {list(held) or '(無)'}")
         st['lead_day'] = today; save_state(st); return
     keep = {r['sym'] for r in L['ranked']}
+    SPLIT = LEADER_WINDOW == 'split'
+    defer = {'d': today, 'sell': [], 'buy': []}
     log(f"👑 換倉!名單日 {dd}(第 {day} 天)・池子 {L['n']} 檔・過趨勢 {L['passed']} 檔・前 {R['N']}:"
         + ' '.join(f"{r['sym']}({r['chg10']:+.1f}%{'・注意' if r['att'] == 1 else '・處置' if r['att'] == 2 else ''})" for r in L['buy']))
     _skip = [r for r in L['ranked'][:R['N']] if not r.get('posOk', True)]
@@ -214,6 +234,11 @@ def leader_step(api, sj, st, meta, today):
             log(f"   👑 ❌ {sym} 報價失敗:{e}"); continue
         if px <= 0:
             continue
+        if SPLIT:
+            g = _snap_gap(api.snapshots([contract])[0])
+            if g is not None and g <= LEADER_GAPDN:
+                defer['sell'].append(sym)
+                log(f"   👑 ⏱️ {sym} 掉出前 {R['N'] * R['hyst']} 名,但開盤跌 {g * 100:.1f}% → 等到 09:30~10:00 再賣(回測平均多拿約 1.5%)"); continue
         sh = int(pos.get('sh') or 0)
         log(f"   👑 🚪 {sym} 掉出前 {R['N'] * R['hyst']} 名 → 賣 {sh} 股 @ {px}(帳面 {(px - float(pos.get('e') or px)) * sh:+,.0f} 元)")
         if DRY_RUN:
@@ -235,7 +260,7 @@ def leader_step(api, sj, st, meta, today):
             sym = r['sym']
             if sym in held:
                 continue
-            if len(held) >= R['N']:
+            if len(held) + len(defer['buy']) >= R['N']:
                 break
             try:
                 contract = api.Contracts.Stocks[sym]
@@ -250,21 +275,91 @@ def leader_step(api, sj, st, meta, today):
                 continue
             if chg >= 9.7:
                 log(f"   👑 ⏭️ {sym} 已接近漲停({chg:.1f}%)→ 買不到,不追(回測同一條)"); continue
-            shares = min(int(slot // px), MAX_LOTS_PER_TRADE * 1000, int(MAX_AMT_PER_TRADE // px))
-            if shares <= 0:
-                log(f"   👑 ⏭️ {sym} 算出 0 股(每檔 {slot:,.0f} 元,被 MAX_LOTS_PER_TRADE / MAX_AMT_PER_TRADE 壓到 0)"); continue
-            if shares < int(slot // px):
-                log(f"   👑 ⚠️ {sym} 被硬煞車壓成 {shares} 股(原本 {int(slot // px)} 股)—— 要照回測等權,請調高 MAX_LOTS_PER_TRADE / MAX_AMT_PER_TRADE")
-            tag = '(注意股)' if r['att'] == 1 else '(處置股:第二次處置要預收款券,可能被退單)' if r['att'] == 2 else ''
-            log(f"   👑 🛒 {sym} 第 {r['rank']} 名(10 日 {r['chg10']:+.1f}%)→ 買 {shares} 股 @ {px}{tag}")
-            if DRY_RUN:
-                log("      🧪 DRY_RUN:不送單"); continue
-            try:
-                log(f"      ✅ 買單 {_send(api, sj, contract, px, shares, True)}")
-                held[sym] = {'e': px, 'd': today, 'sh': shares}; save_state(st)   # ⚠️ 先記再說(⛔ 不可重複下單)
-            except Exception as e:
-                log(f"      ❌ 下單失敗:{e}")
+            if SPLIT:
+                g = _snap_gap(snap)
+                if g is None or g > LEADER_GAPDN:
+                    defer['buy'].append({'sym': sym, 'rank': r['rank'], 'chg10': r['chg10'], 'att': r['att']})
+                    log(f"   👑 ⏱️ {sym} 第 {r['rank']} 名 → 開盤{'' if g is None else f'{g * 100:+.1f}%'}先不買,13:25 再買(回測平均便宜 0.4~1.0%)"); continue
+                log(f"   👑 ⏱️ {sym} 開盤跌 {g * 100:.1f}% → 開盤就買(這種情況等到尾盤反而比較貴)")
+            if _buy_one(api, sj, st, held, r, px, slot, today) == 'stop':
+                break
+    if SPLIT and (defer['sell'] or defer['buy']):
+        st['lead_defer'] = defer
+        log(f"   👑 ⏱️ 稍後要做:賣 {defer['sell'] or '(無)'}(09:30~10:00)・買 {[x['sym'] for x in defer['buy']] or '(無)'}(13:25)")
     st['lead_day'] = today; save_state(st)
+
+
+def _buy_one(api, sj, st, held, r, px, slot, today):
+    """👑 買一檔(開盤那次與 13:25 那次共用,⛔ 不寫兩份):張數 = 每檔金額 ÷ 價,再被硬煞車壓"""
+    sym = r['sym']
+    shares = min(int(slot // px), MAX_LOTS_PER_TRADE * 1000, int(MAX_AMT_PER_TRADE // px))
+    if shares <= 0:
+        log(f"   👑 ⏭️ {sym} 算出 0 股(每檔 {slot:,.0f} 元,被 MAX_LOTS_PER_TRADE / MAX_AMT_PER_TRADE 壓到 0)"); return 'skip'
+    if shares < int(slot // px):
+        log(f"   👑 ⚠️ {sym} 被硬煞車壓成 {shares} 股(原本 {int(slot // px)} 股)—— 要照回測等權,請調高 MAX_LOTS_PER_TRADE / MAX_AMT_PER_TRADE")
+    tag = '(注意股)' if r['att'] == 1 else '(處置股:第二次處置要預收款券,可能被退單)' if r['att'] == 2 else ''
+    log(f"   👑 🛒 {sym} 第 {r['rank']} 名(10 日 {r['chg10']:+.1f}%)→ 買 {shares} 股 @ {px}{tag}")
+    if DRY_RUN:
+        log("      🧪 DRY_RUN:不送單"); return 'dry'
+    try:
+        log(f"      ✅ 買單 {_send(api, sj, api.Contracts.Stocks[sym], px, shares, True)}")
+        held[sym] = {'e': px, 'd': today, 'sh': shares}; save_state(st)   # ⚠️ 先記再說(⛔ 不可重複下單)
+        return 'ok'
+    except Exception as e:
+        log(f"      ❌ 下單失敗:{e}")
+        return 'fail'
+
+
+def leader_defer_step(api, sj, st, today, phase):
+    """⏱️ split 的第二段:phase='sell'(09:30~10:00 / 尾盤補賣)賣掉開盤跌 ≥3% 延後的;phase='buy'(13:25)買進延後的。
+    ⛔ 只動 st['lead'];賣的跨日也要賣(⛔ 不可留著不賣),買的只買當天那一份(隔天就是舊名單)。"""
+    df = st.get('lead_defer') or {}
+    held = st.setdefault('lead', {})
+    if phase == 'sell':
+        for sym in list(df.get('sell') or []):
+            pos = held.get(sym)
+            if not pos:
+                df['sell'].remove(sym); continue
+            try:
+                contract = api.Contracts.Stocks[sym]
+                px = float(getattr(api.snapshots([contract])[0], 'close', 0) or 0)
+            except Exception as e:
+                log(f"   👑 ❌ {sym} 報價失敗:{e}"); continue
+            if px <= 0:
+                continue
+            sh = int(pos.get('sh') or 0)
+            log(f"   👑 🚪 {sym}(開盤跌 ≥3% 延後的那筆)→ 賣 {sh} 股 @ {px}")
+            if DRY_RUN:
+                log("      🧪 DRY_RUN:不送單"); df['sell'].remove(sym); continue
+            try:
+                log(f"      ✅ 賣單 {_send(api, sj, contract, px, sh, False)}")
+                held.pop(sym, None); df['sell'].remove(sym); save_state(st)
+            except Exception as e:
+                log(f"      ❌ 賣出失敗:{e}")
+    elif phase == 'buy':
+        if df.get('d') != today:
+            if df.get('buy'):
+                log(f"   👑 ⏭️ 延後要買的是 {df.get('d')} 那一份(不是今天)→ ⛔ 不用舊名單下單")
+            df['buy'] = []
+        R = LEADER_RULE
+        slot = LEADER_ACCOUNT / R['N'] if LEADER_ACCOUNT > 0 else 0
+        for r in list(df.get('buy') or []):
+            sym = r['sym']
+            df['buy'].remove(r)
+            if sym in held or len(held) >= R['N'] or slot <= 0:
+                continue
+            try:
+                snap = api.snapshots([api.Contracts.Stocks[sym]])[0]
+                px = float(getattr(snap, 'close', 0) or 0)
+                chg = float(getattr(snap, 'change_rate', 0) or 0)
+            except Exception as e:
+                log(f"   👑 ❌ {sym} 報價失敗:{e}"); continue
+            if px <= 0:
+                continue
+            if chg >= 9.7:
+                log(f"   👑 ⏭️ {sym} 13:25 已接近漲停({chg:.1f}%)→ 買不到,不追"); continue
+            _buy_one(api, sj, st, held, r, px, slot, today)
+    st['lead_defer'] = df; save_state(st)
 
 
 def leader_open_window(api, sj, st, now_fn=None, sleep_fn=None, picks_fn=None):
@@ -291,6 +386,21 @@ def leader_open_window(api, sj, st, now_fn=None, sleep_fn=None, picks_fn=None):
             return True
         log(f"👑 ⚠️ 開盤這一次沒做成(資料抓不到),{POLL_SEC}s 後重試(到 09:10 為止)")
         sleep_fn(POLL_SEC)
+
+
+def leader_defer_sell_window(api, sj, st, now_fn=None, sleep_fn=None):
+    """⏱️ split:09:30~10:00 把開盤跌 ≥3% 延後的賣掉(沒有延後的就直接回)"""
+    now_fn, sleep_fn = now_fn or tpe_now, sleep_fn or time.sleep
+    while (st.get('lead_defer') or {}).get('sell'):
+        now, mins, day = now_fn()
+        if now.weekday() >= 5 or mins > LEADER_DEFER_SELL_TO:
+            log("👑 ⏰ 已過 10:00,延後要賣的還沒賣成 → 尾盤那段補賣"); return False
+        if mins < LEADER_DEFER_SELL_FROM:
+            sleep_fn(min(POLL_SEC, max(10, (LEADER_DEFER_SELL_FROM - mins) * 60))); continue
+        leader_defer_step(api, sj, st, day, 'sell')
+        if (st.get('lead_defer') or {}).get('sell'):
+            sleep_fn(POLL_SEC)
+    return True
 
 
 def gene_hq(p):
@@ -444,7 +554,7 @@ def main():
     log(f"🚪 出場規則:{EXIT_RULE} ・最長抱 {max_hold(EXIT_RULE)} 天(要跟 App 設定中心的那一條一致,⛔ 不同的話你看到的出場價不是它執行的)")
     log(f"🐻 大盤嚴格空頭不開新倉:{'開' if BEAR_GATE else '關(BEAR_GATE=0)'}")
     if LEADER:
-        log(f"👑 領頭羊短線輪動:開(LEADER=1)・時段 {'開盤 09:01~09:10(預設)' if LEADER_WINDOW == 'open' else '尾盤(跟上面那套同一段)'}"
+        log(f"👑 領頭羊短線輪動:開(LEADER=1)・時段 {'⏱️ 看開盤情況分時段(預設):賣 = 開盤(開低 ≥3% 等 09:30~10:00)・買 = 13:25(開低 ≥3% 開盤買)' if LEADER_WINDOW == 'split' else '全部開盤 09:01~09:10(舊)' if LEADER_WINDOW == 'open' else '全部尾盤(更舊)'}"
             f"・分給它 {LEADER_ACCOUNT:,} 元(每檔 {LEADER_ACCOUNT / LEADER_RULE['N']:,.0f})・換倉起點 {LEADER_ANCHOR}")
     if ACCOUNT_SIZE <= 0:
         log("⚠️⚠️ 你沒有設 ACCOUNT_SIZE(帳戶總資金)→ POS_PCT 這個設定**完全沒有作用**,"
@@ -485,12 +595,15 @@ def main():
     _, _, today = tpe_now()
     if st.get('d') != today:
         # ⚠️ `done`(今天買過誰)每天重置,但 `pos`(還沒賣掉的部位)⛔ 絕不可跟著清掉
-        st = {'d': today, 'done': [], 'pos': st.get('pos') or {}, 'lead': st.get('lead') or {}, 'lead_day': st.get('lead_day')}   # ⚠️ 領頭羊的部位也⛔ 不可跟著清
+        st = {'d': today, 'done': [], 'pos': st.get('pos') or {}, 'lead': st.get('lead') or {}, 'lead_day': st.get('lead_day'), 'lead_defer': st.get('lead_defer') or {}}   # ⏱️ 延後要賣的跨日也要賣   # ⚠️ 領頭羊的部位也⛔ 不可跟著清
     log(f"📒 今天已下過:{st['done'] or '(無)'}")
 
-    # 👑 開盤時段(LEADER_WINDOW=open,V78.2.4 起預設):09:01~09:10 做一次,之後照常等尾盤
-    if LEADER and LEADER_WINDOW == 'open':
+    # 👑 開盤時段(LEADER_WINDOW=open / split):09:01~09:10 做一次,之後照常等尾盤
+    if LEADER and LEADER_WINDOW in ('open', 'split'):
         leader_open_window(api, sj, st)
+    # ⏱️ split:開盤跌 ≥3% 延後要賣的 → 09:30~10:00 賣(過了 10:00 還沒賣成 → 尾盤那段補賣)
+    if LEADER and LEADER_WINDOW == 'split':
+        leader_defer_sell_window(api, sj, st)
 
     while True:
         now, mins, day = tpe_now()
@@ -564,8 +677,15 @@ def main():
                     log(f"   ❌ {sym} 出場處理失敗:{e}")
 
         # 👑 領頭羊(尾盤時段):一天一次,⛔ 不受上面那套的空頭 continue 影響(它自己只擋買)
-        if LEADER and LEADER_WINDOW != 'open':
+        if LEADER and LEADER_WINDOW == 'eod':
             leader_step(api, sj, st, meta, day)
+        # ⏱️ split:補賣沒賣成的 + 13:25 買進延後的(買只買今天那一份)
+        if LEADER and LEADER_WINDOW == 'split':
+            _df = st.get('lead_defer') or {}
+            if _df.get('sell'):
+                log("👑 ⏱️ 早上延後要賣的還沒賣成 → 尾盤補賣"); leader_defer_step(api, sj, st, day, 'sell')
+            if _df.get('buy') and mins >= LEADER_DEFER_BUY_FROM:
+                leader_defer_step(api, sj, st, day, 'buy')
 
         # 🐻 V77.6.5 大盤嚴格空頭 → 今天不開新倉(⛔ 賣出已經在上面處理完,這裡只擋買)
         _mkt = (meta or {}).get('mkt') or {}

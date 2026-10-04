@@ -94,7 +94,7 @@ const R = await page.evaluate(async () => {
 await browser.close();
 
 ok('ⓐ V78.2.1 標題「⏳ 今日續抱・等換倉日(剩 7 個交易日)」', /今日續抱・等換倉日\(剩 7 個交易日\)/.test(R.a.badge || ''), R.a.badge);
-ok('ⓐ2 不在名單 → 「不在前 10 名」⛔ 不是「掉出」;今天不用賣 + 續抱條件 + 賣出條件 + 隔天開盤', /不在前 10 名/.test(R.a.why || '') && !/掉出/.test(R.a.why || '') && /今天不用賣/.test(R.a.why) && /續抱條件/.test(R.a.why) && /賣出條件/.test(R.a.why) && /隔天開盤/.test(R.a.why), (R.a.why || '').slice(0, 400));
+ok('ⓐ2 不在名單 → 「不在前 10 名」⛔ 不是「掉出」;今天不用賣 + 續抱條件 + 賣出條件 + 隔天開盤', /不在前 10 名/.test(R.a.why || '') && !/掉出/.test(R.a.why || '') && /今天不用賣/.test(R.a.why) && /續抱條件/.test(R.a.why) && /賣出條件/.test(R.a.why) && /隔天\s*(<b>)?(09:00 )?開盤賣/.test(R.a.why), (R.a.why || '').slice(0, 400));
 ok('ⓐ3 趨勢條件方向對:「要 收盤 > 20日線 > 60日線 才算」、⛔ 沒有「收盤價 < 20日線」', /要 收盤 &gt; 20日線 &gt; 60日線 才算|要 收盤 > 20日線 > 60日線 才算/.test(R.a.why || '') && !/收盤價? *<|收盤價? *&lt;/.test(R.a.why || ''), (R.a.why || '').slice(0, 300));
 ok('ⓑ 曾是第 15 名 → 「掉出前 10 名」', /掉出前 10 名/.test(R.b.why || '') && /今日續抱/.test(R.b.badge || ''), R.b.badge);
 const cut = w => Math.round((1 - (w.all - 100) / (w.now - 100)) * 100);

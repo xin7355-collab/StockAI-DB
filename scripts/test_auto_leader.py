@@ -9,6 +9,8 @@
 import copy, os, sys, types
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 import auto_trade as A
+# ⏱️ V78.4.4 預設改 split;①~⑮ 測的是「全部開盤」那個模式(換回舊的 LEADER_WINDOW=open 仍要能用)→ 先固定成 open,split 在 ⑯ 另測
+A.LEADER_WINDOW = 'open'
 
 ok_n = bad_n = 0
 def ok(name, c, extra=''):
@@ -28,16 +30,16 @@ TW = [{'date': d} for d in ['2026-09-24', '2026-09-25', '2026-09-28', '2026-09-2
                             '2026-10-02', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09']]
 # 錨點 09-24 = 第 1 天(換倉日);第 11 個交易日 10-08 = 下一個換倉日
 class Snap:
-    def __init__(self, px, cr=0.0): self.close, self.change_rate = px, cr
+    def __init__(self, px, cr=0.0, op=None, chp=0.0): self.close, self.change_rate, self.open, self.change_price = px, cr, (px if op is None else op), chp
 class FakeApi:
-    def __init__(self, px=None, cr=None):
-        self.orders = []; self.px = px or {}; self.cr = cr or {}
+    def __init__(self, px=None, cr=None, op=None, chp=None):
+        self.orders = []; self.px = px or {}; self.cr = cr or {}; self.op = op or {}; self.chp = chp or {}
         self.stock_account = 'ACC'
         outer = self
         class Stocks(dict):
             def __getitem__(s, k): return k
         self.Contracts = types.SimpleNamespace(Stocks=Stocks())
-    def snapshots(self, cs): return [Snap(self.px.get(cs[0], 100.0), self.cr.get(cs[0], 0.0))]
+    def snapshots(self, cs): return [Snap(self.px.get(cs[0], 100.0), self.cr.get(cs[0], 0.0), self.op.get(cs[0]), self.chp.get(cs[0], 0.0))]
     def Order(self, **kw): return kw
     def place_order(self, contract, order): self.orders.append((contract, order)); return f'#{len(self.orders)}'
 C = types.SimpleNamespace(Action=types.SimpleNamespace(Buy='B', Sell='S'), StockPriceType=types.SimpleNamespace(LMT='LMT'),
@@ -123,7 +125,8 @@ import subprocess, datetime as _dt
 _env = {k: v for k, v in os.environ.items() if k != 'LEADER_WINDOW'}
 _root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 _w = lambda env: subprocess.run([sys.executable, '-c', 'import auto_trade as A; print(A.LEADER_WINDOW)'], cwd=_root, env=env, capture_output=True, text=True).stdout.strip()
-ok('⑭a 沒設 LEADER_WINDOW → 預設 open(開盤買)', _w(_env) == 'open', _w(_env))
+ok('⑭a ⏱️ V78.4.4 沒設 LEADER_WINDOW → 預設 split(看開盤情況分時段)', _w(_env) == 'split', _w(_env))
+ok('⑭c 設 LEADER_WINDOW=open → 換回舊的全部開盤', _w(dict(_env, LEADER_WINDOW='open')) == 'open')
 ok('⑭b 設 LEADER_WINDOW=eod → 照舊尾盤', _w(dict(_env, LEADER_WINDOW='eod')) == 'eod')
 # ⑮ 開盤時段:09:00 不下單、09:01 才做;第一次抓不到 → 重試;過 09:10 跳過
 def clock(mins_list):
@@ -156,6 +159,47 @@ ok('⑮c 過了 09:10 → 那天跳過、一單都不送', r is False and not ap
 r, api, st, n = open_run([541, 542, 543, 551], fail_first=99)
 ok('⑮d 一直抓不到 → 09:10 後放棄、⛔ 不下單', r is False and not api.orders, (r, n))
 _src = open(os.path.join(_root, 'auto_trade.py'), encoding='utf-8').read()
-ok('⑮e 尾盤那段只在 LEADER_WINDOW != open 時做領頭羊(⛔ 開盤錯過不在尾盤補)', "if LEADER and LEADER_WINDOW != 'open':" in _src and 'leader_open_window(api, sj, st)' in _src)
+ok('⑮e 尾盤那段只在 LEADER_WINDOW == eod 時做整套領頭羊(⛔ 開盤錯過不在尾盤補);open / split 都走開盤時段', "if LEADER and LEADER_WINDOW == 'eod':" in _src and "if LEADER and LEADER_WINDOW in ('open', 'split'):" in _src and 'leader_open_window(api, sj, st)' in _src)
+
+# ⑯ ⏱️ V78.4.4 split(預設):賣 = 開盤(開低 ≥3% 延到 09:30~10:00)・買 = 13:25(開低 ≥3% 開盤買)
+A.LEADER_WINDOW = 'split'
+A.LEADER_ACCOUNT, A.DRY_RUN, A.MAX_LOTS_PER_TRADE, A.MAX_AMT_PER_TRADE = 1_000_000, False, 99, 10**9
+A.save_state = lambda s: None
+A.fetch_json = lambda rel: mkD('2026-09-24') if 'screener' in rel else TW
+# 2000 開盤跌 4%(現價 96、漲跌 −4 → 參考價 100)→ 開盤就買;2001~2004 開高 1% → 延到 13:25
+apiA = FakeApi(px={'2000': 96.0}, op={'2000': 96.0, '2001': 101.0, '2002': 101.0, '2003': 101.0, '2004': 101.0}, chp={'2000': -4.0})
+stA = {'pos': {}, 'lead': {}}; A.leader_step(apiA, sj, stA, {'mkt': {'bear60': False}}, '2026-09-25')
+bA = [c for c, o in apiA.orders if o['action'] == 'B']
+ok('⑯a 開盤跌 ≥3% 的 2000 開盤就買,其他 4 檔延到 13:25(⛔ 開盤不買)', sorted(set(bA)) == ['2000'] and [x['sym'] for x in stA['lead_defer']['buy']] == ['2001', '2002', '2003', '2004'], (bA, stA.get('lead_defer')))
+# 13:25:2002 接近漲停 → 不追、⛔ 不往下補
+apiB = FakeApi(cr={'2002': 9.8})
+A.leader_defer_step(apiB, sj, stA, '2026-09-25', 'buy')
+ok('⑯b 13:25 買進延後的 2001/2003/2004(2002 接近漲停不追、不往下補),延後清單清空', sorted(set(c for c, o in apiB.orders if o['action'] == 'B')) == ['2001', '2003', '2004'] and sorted(stA['lead']) == ['2000', '2001', '2003', '2004'] and not stA['lead_defer']['buy'], (apiB.orders, stA))
+# 隔天才跑到那份延後清單 → ⛔ 不買(舊名單)
+stC = {'pos': {}, 'lead': {}, 'lead_defer': {'d': '2026-09-25', 'sell': [], 'buy': [{'sym': '2001', 'rank': 2, 'chg10': 29, 'att': 0}]}}
+apiC = FakeApi(); A.leader_defer_step(apiC, sj, stC, '2026-09-26', 'buy')
+ok('⑯c 延後的買單是前一天那份 → ⛔ 不買', not apiC.orders and not stC['lead_defer']['buy'], apiC.orders)
+# 賣:2003 開低 5% → 延到 09:30;2004 開平 → 開盤就賣
+A.fetch_json = lambda rel: mkD2('2026-10-08') if 'screener' in rel else TW
+stD = {'pos': {}, 'lead': copy.deepcopy(held)}
+apiD = FakeApi(px={'2003': 95.0}, op={'2003': 95.0, '2004': 100.0}, chp={'2003': -5.0})
+A.leader_step(apiD, sj, stD, {'mkt': {'bear60': False}}, '2026-10-09')
+sD = [c for c, o in apiD.orders if o['action'] == 'S']
+ok('⑯d 掉出前 10:開平的 2004 開盤就賣、開低 5% 的 2003 延到 09:30~10:00(還在手上)', sD == ['2004'] and '2003' in stD['lead'] and stD['lead_defer']['sell'] == ['2003'], (sD, stD.get('lead_defer')))
+# 09:30~10:00 時段:09:20 先等、09:31 賣掉
+def clk(ms):
+    it = iter(ms)
+    def f():
+        m = next(it); return _dt.datetime(2026, 10, 9, m // 60, m % 60), m, '2026-10-09'
+    return f
+apiE = FakeApi(); sl = []
+okE = A.leader_defer_sell_window(apiE, sj, stD, now_fn=clk([560, 571]), sleep_fn=lambda x: sl.append(x))
+ok('⑯e 09:20 先等(⛔ 不賣)、09:31 賣掉延後的 2003', okE and [c for c, o in apiE.orders if o['action'] == 'S'] == ['2003'] and '2003' not in stD['lead'] and len(sl) == 1, (apiE.orders, sl))
+# 過了 10:00 → ⛔ 不在這段賣,留給尾盤補賣
+stF = {'pos': {}, 'lead': {'2003': {'e': 100, 'sh': 1000}}, 'lead_defer': {'d': '2026-10-09', 'sell': ['2003'], 'buy': []}}
+apiF = FakeApi(); okF = A.leader_defer_sell_window(apiF, sj, stF, now_fn=clk([605]), sleep_fn=lambda x: None)
+ok('⑯f 過了 10:00 還沒賣成 → 這段不賣、清單留著(尾盤補賣)', okF is False and not apiF.orders and stF['lead_defer']['sell'] == ['2003'])
+ok('⑯g 尾盤那段會補賣 + 13:25 才買延後的(⛔ 13:25 之前不買)', "leader_defer_step(api, sj, st, day, 'sell')" in _src and "mins >= LEADER_DEFER_BUY_FROM" in _src and "leader_defer_sell_window(api, sj, st)" in _src)
+A.LEADER_WINDOW = 'open'
 print(f"\n{'❌' if bad_n else '✅'} AUTO_LEADER {ok_n}/{ok_n + bad_n}")
 sys.exit(1 if bad_n else 0)

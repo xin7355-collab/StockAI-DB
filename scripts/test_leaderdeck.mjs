@@ -145,7 +145,7 @@ ok('①e 欄位缺 → notyet(⛔ 不可拿 chg5/chg20 湊)', R.notyet === 'noty
 ok('①f ⭐ 決定性對照:把一檔改成 ma20 < ma60 → 被濾掉', R.filteredOut === true);
 ok('② 時鐘:起點那天 = 第 1 天且是換倉日;第 5 天還剩 6 天;第 11 天又是換倉日;沒傳起點 → 用共用錨點(09-24 起,09-25 是第 2 天)', R.c1.day === 1 && R.c1.isRebal && R.c5.day === 5 && !R.c5.isRebal && R.c5.left === 6 && R.c11.day === 11 && R.c11.isRebal && R.c0.day === 2 && !R.c0.isRebal, JSON.stringify([R.c1, R.c5, R.c11, R.c0]));
 ok('③ 畫面(V77.9.6 選 👑 → 手上每一檔個股都照這套):前 5 名 5 檔都是 🛒 買(V78.3.3 動作只剩 🛒 / 續抱,⛔ 不再寫「✅ 已有」)、1001 續抱、1041(第 21 名)/ 1000(沒過趨勢)/ 2330(池子外)都 keep=0', R.buyBtns === 5 && R.held['1001'] === '1' && R.held['1041'] === '0' && R.held['1000'] === '0' && R.held['2330'] === '0', JSON.stringify([R.buyBtns, R.held]));
-ok('⑪a 🎯 V78.2.2 今天要做的事 3~5 行(今天 / 怎麼買 / 怎麼賣 / 錢放哪)', R.todoN >= 3 && R.todoN <= 5 && /09:00 開盤買前 5 名/.test(R.todo) && /掉出前 10 名/.test(R.todo) && R.todo.replace(/<[^>]+>/g, '').length <= 220, R.todo.replace(/<[^>]+>/g, '').length);
+ok('⑪a 🎯 V78.2.2 今天要做的事 3~5 行(今天 / 怎麼買 / 怎麼賣 / 錢放哪;V78.4.4 起買的時間讀 _leadWhen)', R.todoN >= 3 && R.todoN <= 5 && /(13:25 買|09:00 開盤買)/.test(R.todo) && /買前 5 名/.test(R.todo) && /掉出前 10 名/.test(R.todo) && R.todo.replace(/<[^>]+>/g, '').length <= 220, R.todo.replace(/<[^>]+>/g, '').length);
 ok('⑪b 規則收在 <details>;🧹 V78.3.4 整塊(含展開)⛔ 沒有實測 / 回測 / 起點中位 / 含息字樣', R.hasInfo && !R.buyHowInDetails && !/實測|回測|條起點|含息/.test(R.txt) && !/實測|回測/.test(R.txtClosed), R.txt.slice(0, 200));
 ok('⑪c 決策台⛔ 沒有模擬帳,🧹 V78.3.4 連指路那行也拿掉(散戶 App 不提模擬成績)', !R.hasLedger && !R.ptr && !/<a [^>]*pro\.html/.test(SRC.slice(SRC.indexOf('async _leaderDeckHtml'), SRC.indexOf('_deckTodoLead({'))));
 ok('③b ⭐ 決定性對照(🧹 V78.3.4 反過來):把 `_LEADER_EDGE` 的數字改成 4321,散戶 App 畫面⛔ 不可跟著出現', !/4321/.test(R.constTxt) && !/4321/.test(R.txt));
