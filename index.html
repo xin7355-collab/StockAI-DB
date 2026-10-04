@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.4.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.4.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.4.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.4.3</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1756,9 +1756,7 @@
                         <span id="quoteAttBadge" class="hidden flex-shrink-0 self-center cursor-pointer" onclick="app._openFreeAiDispose(); app.vibrate(30);"></span>
                         <span id="quoteVolInfo" class="hidden ml-auto text-right text-[11px] text-gray-400 font-mono font-bold whitespace-nowrap flex-shrink-0 self-center"></span>
                     </div>
-                    <!-- 📊 V78.1.1 上漲下跌機率(使用者:「新增預判上漲下跌的機率」)—— 每個分頁都看得到,點了去報告頁完整表。
-                         ⛔ 只轉述 _probBox(chip 模式),⛔ 不另算;指數 / 算不出來時整條藏起來 -->
-                    <div id="quoteProbLine" class="hidden mt-1 cursor-pointer" onclick="app.switchSubTab &amp;&amp; app.switchSubTab('report'); app.vibrate(15);"></div>
+                    <!-- 📊 V78.4.3 頂端那行機率搬進總覽(#ovProbBox,改成圖)—— 使用者:「這段改在總覽裡面,一目了然」 -->
                     <!-- 📢 V51.6 法說會提醒(現價下方):此股 2 個交易日內有法說會才顯,提醒股價常大波動 -->
                     <div id="stockEarningsReminder" class="hidden"></div>
                     <!-- Row 2.5:V45.9 龍頭 / 產業別 / 概念股(仿籌碼K線,curated 對照,點概念丟免費查) -->
@@ -1794,6 +1792,10 @@
                      由 _initOvFold 搬進下面那個 ovMoreWrap(⛔ 一個字不刪,只是預設收起;⛔ 不開第二個摺疊) -->
                 <!-- 👑 V77.9.1 領頭羊(決策台預設)對這一檔怎麼說:名次 / 換倉日買 / 續抱 / 掉出就賣。⛔ 不在成交額前 100 大、也沒標「照這套買的」→ 整行不顯(不留空殼) -->
                 <div id="ovLeaderLine" class="hidden w-full"></div>
+                <!-- 📊 V78.4.3 機率圖(只轉述 _probBox chart 模式,⛔ 不另算;指數 / 算不出來時藏起來) -->
+                <div id="ovProbBox" class="hidden w-full"></div>
+                <!-- 📰 V78.4.3 這一檔今天碰到的專欄(跟決策台同一個開關,連點版本號 5 次解鎖後才有;沒碰到就藏起來) -->
+                <div id="ovColBox" class="hidden w-full"></div>
                 <div id="ovWhyBox" class="hidden w-full flex flex-col gap-2"></div>
                 <!-- 📂 原本的「現在怎麼做 / 加碼 / 出場」三個頁籤與所有明細卡 → 收進這裡(預設收起)。
                      ⛔ 刻意「收起」不是「刪除」:那些卡是**操作面**(進場劇本、四關卡、防守尺),
@@ -8679,10 +8681,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.4.2',
+    _APP_VERSION: 'V78.4.3',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.4.3', d: ['🚨 處置/注意股卡改成「怎麼做」:手上有的照出場規則走、別用市價單', '📊 上漲下跌機率從頂端搬進總覽,改成一張圖'] },
         { v: 'V78.4.2', d: ['🧹 內部整理與小修正'] },
         { v: 'V78.4.1', d: ['🧹 內部整理與小修正(畫面與判斷不變)'] },
         { v: 'V78.4.0', d: ['📰 大盤分頁新增「收盤」:今天大盤、三大法人、哪幾族漲跌最多、主動式 ETF 換了什麼、你的持股今天賺賠一頁看完;切「本週回顧」看這週', '👀 決策台多一段「差一點沒入選」:哪幾檔卡在哪一關(位階、波動、名次、空頭)', '📲 收盤後的 Telegram 摘要多三行大盤,週五多一段本週回顧'] },
@@ -18089,7 +18092,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
 
     // V19.4 — 處置股完整資訊卡(個股頁用,在 _renderAttentionBadge 之外提供完整 detail)
-    //          顯:狀態 / 分盤間隔 / 出關日 / 即將處置預警 / 怕關 vs 不怕關 通用提醒
+    // 🧹 V78.4.3 改寫(使用者截圖嘉晶:「處置股有沒有要改」)——
+    //   ⛔ 拿掉「觸發條件 已關禁閉」(沒意義)、「怕關 vs 不怕關:熱門股出關常噴 / 散戶股易崩」(從沒回測過,底部又重複一次)、
+    //      「慣犯・投機性高」判語、即將升級的閃爍;
+    //   ✅ 換成「💡 怎麼做」三行,說法跟決策台 `_dispoHoldNoteHtml` 同一套:
+    //      進處置⛔ 不能拿來猜漲跌(dispo_probe)・手上有⛔ 不用先賣(V77.6.8 FORCE_EXIT 17 條)・⛔ 別用市價單;
+    //      注意股前 5 天已漲 ≥30% 才要小心(專欄 avoid-attn30)。
+    _attSurge5(data) {
+        // 前 5 個交易日漲了幾 %(最後一根收盤 vs 6 根前收盤);K 線不足回 null
+        try {
+            const d = Array.isArray(data) ? data : [], n = d.length; if (n < 6) return null;
+            const a = +d[n - 6].close, b = +d[n - 1].close; if (!(a > 0 && b > 0)) return null;
+            return (b / a - 1) * 100;
+        } catch (_) { return null; }
+    },
     _renderAttentionDetailHtml(sym) {
         const info = this.attentionStatus?.[String(sym).trim()];
         if (!info) return '';
@@ -18106,44 +18122,46 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 if (Math.abs(chg) >= 9.5) limitDays++;
             }
         }
-        const willEscalate = isNotice && limitDays >= 3;   // 注意股 + 近 5 日 3 次漲跌停 → 即將處置
+        const willEscalate = isNotice && limitDays >= 3;   // 注意股 + 近 5 日 3 次漲跌停 → 可能被處置
         let daysToEnd = null;
         if (info.end_date) {
             daysToEnd = Math.ceil((new Date(info.end_date).getTime() - Date.now()) / 86400000);
         }
-        // 怕關 vs 不怕關(從股本/法人持股推估,沒資料就給通用提醒)
-        const falcon = this._falconScores?.scores?.[sym];
-        const instRatio = falcon?.inst_ratio || null;   // 若 falcon 有此因子
-        let fearLine;
-        if (instRatio != null && instRatio > 30)        fearLine = `🟢 <b>不怕關</b>:法人持股 ${instRatio.toFixed(0)}%,籌碼穩,出關常噴`;
-        else if (instRatio != null && instRatio < 10)   fearLine = `🔴 <b>怕被關</b>:法人持股僅 ${instRatio.toFixed(0)}%,散戶為主,關了流動性差易崩`;
-        else                                            fearLine = `💡 <b>怕關 vs 不怕關</b>:熱門題材股(AI/重電/低軌)被關常洗盤後噴出,投機散戶股被關易崩(看籌碼集中度自行判斷)`;
-        return `<div class="mt-2 bg-[#0d1117] border ${isDisp ? 'border-red-700/60' : 'border-orange-700/60'} rounded-lg p-3">
+        // 「觸發條件」只有寫出真的原因才顯示(⛔「已關禁閉」這種沒資訊的字不印)
+        const reason = String(info.threshold || '').trim();
+        const showReason = reason && !/禁閉|^—$|^-+$/.test(reason);
+        const held = (() => { try { return (this._getInventory() || []).some(i => i && String(i.symbol) === String(sym)); } catch (_) { return false; } })();
+        const surge = isNotice && !isDisp ? this._attSurge5(this.activeData) : null;
+        const hot = surge != null && surge >= 30;
+        const how = [
+            `${held ? '👜 <b>你手上有</b>' : '手上有的'}:⛔ 不用因為${isDisp ? '進處置' : '被列注意'}就先賣,<b>照你原本的出場規則走</b>(提早賣掉的常常是之後會漲的那檔)。`,
+            `還沒買的:${isDisp ? '進處置' : '被列注意'}⛔ 看不出之後會漲還會跌;要買照決策台走,⛔ <b>別用市價單</b>${isDisp ? '(分盤撮合、成交量少、價差大)' : ''}。`,
+        ];
+        if (hot) how.push(`⚠️ <b>前 5 天已經漲了 ${surge.toFixed(0)}% 才被列注意</b> → 手上有的分批減碼,沒有的別追。`);
+        if (isDisp) how.push(`處置期間有些要先把錢存進去(預收款)才能下單,看券商通知。`);
+        return `<div class="mt-2 bg-[#0d1117] border ${isDisp ? 'border-red-700/60' : 'border-orange-700/60'} rounded-lg p-3" data-attcard="${isDisp ? 'disp' : 'notice'}">
             <div class="flex items-center justify-between mb-2 pb-1.5 border-b ${isDisp ? 'border-red-700/40' : 'border-orange-700/40'}">
-                <h4 class="${isDisp ? 'text-red-300' : 'text-orange-300'} font-bold text-sm">🚨 處置股風控狀態 ${this._dChip(this._attentionUpdated, '名單')}</h4>
+                <h4 class="${isDisp ? 'text-red-300' : 'text-orange-300'} font-bold text-sm">${isDisp ? '🚨 處置股' : '⚠️ 注意股'}(證交所官方名單)${this._dChip(this._attentionUpdated, '名單')}</h4>
                 <span class="${isDisp ? 'text-red-200 bg-red-900/40' : 'text-orange-200 bg-orange-900/40'} px-2 py-0.5 rounded text-[11px] font-bold">${info.status || ''}</span>
             </div>
             <div class="text-[12px] space-y-1.5">
-                <div class="flex justify-between"><span class="text-gray-400">觸發條件</span><span class="text-gray-200">${info.threshold || '—'}</span></div>
+                ${showReason ? `<div class="flex justify-between gap-2"><span class="text-gray-400 flex-shrink-0">原因</span><span class="text-gray-200 text-right">${this._escHtml(reason)}</span></div>` : ''}
                 ${info.interval ? `<div class="flex justify-between"><span class="text-gray-400">分盤撮合</span><span class="text-amber-300 font-mono font-bold">每 ${info.interval} 分鐘 1 次</span></div>` : ''}
-                ${info.end_date ? `<div class="flex justify-between"><span class="text-gray-400">出關日期</span><span class="text-gray-200 font-mono">${info.end_date}${daysToEnd != null ? ` <b class="${daysToEnd <= 1 ? 'text-green-300' : 'text-gray-300'}">(${daysToEnd <= 0 ? '今出關' : daysToEnd + ' 天後'})</b>` : ''}</span></div>` : ''}
-                ${willEscalate ? `<div class="mt-2 p-2 bg-red-900/40 border border-red-700 rounded text-red-200 text-[11px] leading-relaxed font-bold animate-pulse">⚠️ <b>即將升級處置預警</b><br>已是注意股 + 近 5 日 ${limitDays} 次漲跌停 → 觸發再處置門檻,下個交易日很可能宣告 20 分鐘分盤 + 預收款</div>` : ''}
+                ${info.end_date ? `<div class="flex justify-between"><span class="text-gray-400">出關日期</span><span class="text-gray-200 font-mono">${info.end_date}${daysToEnd != null ? ` <b class="text-gray-300">(${daysToEnd <= 0 ? '今天出關' : daysToEnd + ' 天後'})</b>` : ''}</span></div>` : ''}
+                ${willEscalate ? `<div class="mt-2 p-2 bg-[#161b22] border-l-4 border-amber-500 rounded-r text-amber-200 text-[11px] leading-relaxed">⚠️ <b>可能被升級成處置</b>:已是注意股,近 5 日有 ${limitDays} 次漲跌停,下個交易日可能被宣告分盤撮合。</div>` : ''}
             </div>
-            <div class="mt-2 text-[11px] text-gray-400 leading-relaxed pt-2 border-t border-[#21262d]">${fearLine}</div>
+            <div class="mt-2 pt-2 border-t border-[#21262d]" data-atthow="1">
+                <div class="text-[11px] font-bold text-gray-200 mb-1">💡 怎麼做</div>
+                <ul class="text-[11px] text-gray-300 leading-relaxed space-y-1">${how.map(h => `<li>${h}</li>`).join('')}</ul>
+            </div>
             ${(() => {
-                // V20.9 — 顯近 30 / 90 天該股實際被列幾次(慣犯標籤)
+                // V20.9 — 近 30 / 90 天實際被列幾次(事實,⛔ 不下「投機性高」這種判語)
                 const h30 = this._attentionHistoryCount?.(sym, 30) || { notice: 0, disposed: 0 };
                 const h90 = this._attentionHistoryCount?.(sym, 90) || { notice: 0, disposed: 0 };
                 if (h90.notice + h90.disposed === 0) return '';
-                const isHabit = h90.disposed >= 3 || h90.notice >= 10;
-                const cls = isHabit ? 'bg-red-900/30 border-red-700/40 text-red-200' : 'bg-amber-900/20 border-amber-700/40 text-amber-200';
-                return `<div class="mt-2 px-2 py-1.5 rounded border ${cls} text-[10px] leading-snug">
-                    📜 <b>歷史紀錄(TWSE 實際公告)</b>:近 30 天 注意 ${h30.notice} 次 ・ 處置 ${h30.disposed} 次 ・ 近 90 天 注意 ${h90.notice} ・ 處置 ${h90.disposed}
-                    ${isHabit ? '<br>⚠️ <b>慣犯標記</b>:常被 TWSE 列管,投機性高,風險自負' : ''}
-                </div>`;
+                return `<div class="mt-2 text-[10px] text-gray-500 leading-snug">📜 被列管次數:近 30 天 注意 ${h30.notice} 次・處置 ${h30.disposed} 次 ・近 90 天 注意 ${h90.notice}・處置 ${h90.disposed}</div>`;
             })()}
-            <div class="mt-1 text-[9px] text-gray-600 leading-relaxed">💡 處置期間分盤撮合 → 流動性差、進出滑價大;熱門題材股出關常噴,投機散戶股關了易崩,請自行判斷</div>
-            <div class="mt-1 pt-1 border-t border-[#21262d] text-[9px] text-green-400/80 flex items-center gap-1">✅ 此區資料 100% 來自 <a href="https://openapi.twse.com.tw/" target="_blank" class="underline hover:text-green-300">TWSE 證交所官方 OpenAPI</a> ・ 每日盤後同步</div>
+            <div class="mt-1 text-[9px] text-gray-600">名單來自證交所 / 櫃買中心,每天盤後更新。</div>
         </div>`;
     },
 
@@ -20209,16 +20227,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         }
         return this._amtTopSet.has(String(sym));
     },
-    /** 📊 V78.1.1 個股頁頂端那一行(⛔ 綁 sym:切股時先清掉,陷阱 #19) */
-    _renderQuoteProb(sym) {
-        const el = document.getElementById('quoteProbLine'); if (!el) return;
+    /** 📊 V78.4.3 總覽的機率圖(原本是個股頁頂端那一行;⛔ 綁 sym:切股時先清掉,陷阱 #19) */
+    _renderOvProb(sym) {
+        const el = document.getElementById('ovProbBox'); if (!el) return;
         const off = () => { el.innerHTML = ''; el.classList.add('hidden'); };
         if (!sym || String(sym) !== String(this.currentSymbolId) || (this._isIndexSym && this._isIndexSym(sym))) return off();
-        const h = this._probBox(sym, { mode: 'chip', data: this.rawDailyData });
-        if (!h || !/data-probchip/.test(h)) return off();
-        el.innerHTML = h; el.classList.remove('hidden');
+        const h = this._probBox(sym, { mode: 'chart', data: this.rawDailyData });
+        if (!h || !/data-probchart/.test(h)) return off();
+        if (el.innerHTML !== h) el.innerHTML = h;
+        el.classList.remove('hidden');
         // screener 還沒載 → 載完再畫一次(成交額前 100 大要用到),⛔ 只補一次
-        if (this._scrData === undefined && !this._qpWait) { this._qpWait = 1; this._loadScreener().catch(() => null).then(() => { this._qpWait = 0; if (String(this.currentSymbolId) === String(sym)) this._renderQuoteProb(sym); }); }
+        if (this._scrData === undefined && !this._qpWait) { this._qpWait = 1; this._loadScreener().catch(() => null).then(() => { this._qpWait = 0; if (String(this.currentSymbolId) === String(sym)) this._renderOvProb(sym); }); }
     },
     /** 📊 V78.1.1 決策台每一列的機率(讀那一檔自己的 K 線:IndexedDB 有就用、沒有才抓 data/{sym}.json)。⛔ 只描述,不改排序與買賣判斷。 */
     async _deckProbFill(root) {
@@ -20274,6 +20293,57 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             // 📊 V78.1.1 個股頁頂端 / 決策台每一列:一行看完「明天」與「抱 20 天」,⭐ 一定附全市場基準與贏大盤
             const a = amtRow ? `<span class="text-amber-300/80" title="成交額前 100 大另外算的那一組(只用在「明天」)">💰</span>` : '';
             return `<div class="text-[10px] text-gray-400 leading-snug" data-probchip="1">📊 ${r1 && b1 ? `明天${a} <b class="text-red-300">漲 ${fmt1(r1[1])}</b>/平 ${fmt1(r1[2])}/<b class="text-green-300">跌 ${fmt1(r1[3])}</b>%<span class="text-gray-600">(全市場 ${fmt1(b1[1])}/${fmt1(b1[3])})</span> ・` : ''}20 天 漲 ${fmt1(r20[1])}%<span class="text-gray-600">(${fmt1(b20[1])})</span> ・🆚 贏大盤 <b class="font-mono">${fmt1(r20[11])}%</b><span class="text-gray-600">(${fmt1(b20[11])})</span>${o.link === false ? '' : ' <span class="text-sky-400">›</span>'}</div>`;
+        }
+        if (o.mode === 'chart') {
+            // 📊 V78.4.3 總覽的機率圖(使用者:「這段改在總覽裡面,並用圖表或其它方式一目了然」)——
+            //   ⛔ 數字只讀上面這一組 r1/b1/r20/b20(同 chip 那一行,⛔ 不另算);漲紅 / 平灰 / 跌綠,⛔ 不用紅綠講好壞。
+            //   每一個天期兩條:這一檔(粗)+ 一般股票(細,全市場基準)—— ⛔ 基準不可省(少了它「漲 45%」會被讀成很差)。
+            //   版面一律 inline style(沙箱沒有 Tailwind,陷阱 #40)。
+            const C = { up: '#d9534f', fl: '#6e7681', dn: '#3fb950' };
+            const seg = (w, c, lbl, big) => `<div style="width:${Math.max(0, w)}%;background:${c};display:flex;align-items:center;justify-content:center;overflow:hidden;min-width:0">${big && w >= 13 ? `<span style="font-size:10px;font-weight:700;color:#fff;white-space:nowrap">${lbl}</span>` : ''}</div>`;
+            const bar = (r, big) => `<div style="display:flex;height:${big ? 18 : 6}px;border-radius:4px;overflow:hidden;background:#21262d">
+                ${seg(r[1], C.up, '漲 ' + fmt1(r[1]), big)}${seg(r[2], C.fl, '平 ' + fmt1(r[2]), big)}${seg(r[3], C.dn, '跌 ' + fmt1(r[3]), big)}</div>`;
+            const say = (r, b) => {
+                const d = r[1] - b[1];
+                return Math.abs(d) < 3 ? '漲的機會跟一般股票差不多' : `漲的機會比一般股票${d > 0 ? '多' : '少'} ${Math.abs(d).toFixed(0)} 個百分點`;
+            };
+            // 條太窄寫不下數字的那幾段 → 在條下面補一行(⛔ 不可讓數字消失)
+            const narrow = r => [[r[1], '漲'], [r[2], '平'], [r[3], '跌']].filter(x => x[0] < 13).map(x => `${x[1]} ${fmt1(x[0])}%`).join(' ・');
+            const blk = (key, name, r, b, extra) => `<div style="margin-top:8px" data-probhz="${key}">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                    <span class="text-[12px] font-bold text-gray-200">${name}</span>
+                    <span class="text-[10px] text-gray-400" style="text-align:right">${say(r, b)}${extra || ''}</span>
+                </div>
+                <div style="margin-top:4px">${bar(r, true)}</div>
+                ${narrow(r) ? `<div class="text-[9px] text-gray-400" style="margin-top:1px;text-align:center">${narrow(r)}</div>` : ''}
+                <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+                    <span class="text-[9px] text-gray-500" style="flex:0 0 auto;width:48px">一般股票</span>
+                    <div style="flex:1 1 auto;min-width:0">${bar(b, false)}</div>
+                    <span class="text-[9px] text-gray-500 font-mono" style="flex:0 0 auto">${fmt1(b[1])}/${fmt1(b[2])}/${fmt1(b[3])}</span>
+                </div></div>`;
+            const w = r20[11], wb = b20[11];
+            const beat = (w == null || wb == null) ? '' : `<div style="margin-top:10px" data-probbeat="1">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                    <span class="text-[12px] font-bold text-gray-200">🆚 20 天後贏過大盤</span>
+                    <span class="text-[12px] font-black font-mono text-amber-200">${fmt1(w)}%</span>
+                </div>
+                <div style="position:relative;height:12px;margin-top:4px;border-radius:4px;background:#21262d">
+                    <div style="position:absolute;left:0;top:0;bottom:0;width:${Math.max(0, Math.min(100, w))}%;background:#d29922;border-radius:4px"></div>
+                    <div style="position:absolute;left:${Math.max(0, Math.min(100, wb))}%;top:-3px;bottom:-3px;width:2px;background:#e6edf3" title="一般股票"></div>
+                </div>
+                <div class="text-[9px] text-gray-500" style="margin-top:2px">白線 = 一般股票 ${fmt1(wb)}% ・${Math.abs(w - wb) < 3 ? '跟一般股票差不多' : `比一般股票${w > wb ? '高' : '低'} ${Math.abs(w - wb).toFixed(0)} 個百分點`}</div>
+            </div>`;
+            const amtTag = amtRow ? '<span class="text-[9px] text-amber-300/80" title="成交額前 100 大另外算的那一組(只用在「明天」)"> 💰</span>' : '';
+            return `<div class="bg-[#161b22] border border-[#30363d] rounded-lg p-3${o.link === false ? '' : ' cursor-pointer'}" data-probchart="1"${o.link === false ? '' : ` onclick="app.switchSubTab &amp;&amp; app.switchSubTab('report'); app.vibrate(15);"`}>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                    <span class="text-[12px] font-black text-gray-100">📊 跟它今天一樣狀態的股票,後來怎麼走</span>
+                    ${o.link === false ? '' : '<span class="text-[10px] text-sky-400" style="flex:0 0 auto">完整表 ›</span>'}
+                </div>
+                ${r1 && b1 ? blk('明天', '明天' + amtTag, r1, b1, '') : ''}
+                ${blk('抱 20 天', '抱 20 天', r20, b20, '')}
+                ${beat}
+                <div class="text-[9px] text-gray-500 leading-snug" style="margin-top:8px">${r1 && b1 ? '明天漲跌本來就接近一半一半,⛔ 別拿來猜明天。' : ''}⛔ 這是歷史上發生的比例,不是預測。</div>
+            </div>`;
         }
         if (o.mode === 'line') {
             // ⚠️ 總覽第一眼有字數上限(600)→ **只准一行**,⛔ 不可為了塞新東西把第一眼撐大
@@ -21458,6 +21528,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 try { this.saveSettings?.(); } catch (_) {}
                 this._leadCtx = null; this._invExitAt = 0;
                 try { this._renderStratBox(); this._renderDeckShowList(); this.renderDeck?.(); } catch (_) {}
+                try { this._renderOvCol(this.currentSymbolId).catch(() => {}); } catch (_) {}   // 📰 V78.4.3 總覽那一格跟著開關
                 try { this._syncPushSub?.(); this.telegramCloud?.sync?.(); } catch (_) {}
                 try { this.showToast?.(this.settings.stratUnlock ? '🔓 已顯示進階選項' : '🔒 已收起進階選項(改回 🧬)'); } catch (_) {}
             } else if (n >= 1) { try { this._showEnvInfo(); } catch (_) {} }
@@ -21606,7 +21677,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 🔓 V78.4.2 `unlock:true` = 只在「連點版本號 5 次」解鎖後才有(設定裡「🔓 進階功能」那一區開關,⛔ 不進一般勾選清單)
         //   ⭐ 使用者明示:有價值的研究型功能**統一放這裡**,而且要排好順序、⛔ 不盲目一直新增 —— 新增前先問「能不能併進既有那一項」
         { k: 'sell', n: '🚪 手上的要不要賣', d: '三條出場線(硬停損 / 你設定的線 / 抱滿天數)今天碰到或快碰到的;選 👑 時個股改由上面那塊講,這裡只剩 ETF。錢在你手上,建議開著。', def: true },
-        { k: 'col', unlock: true, n: '📰 今天碰到的專欄', d: '你的庫存、自選、大盤或日子碰到某種情況時(鎖漲停、跌停後收紅、進注意股、除息、連假前後、結算日…),把那一篇「怎麼做」拿出來;沒碰到就整區不出現。', def: true },
+        { k: 'col', unlock: true, n: '📰 今天碰到的專欄', d: '你的庫存、自選、大盤或日子碰到某種情況時(鎖漲停、跌停後收紅、進注意股、除息、連假前後、結算日…),把那一篇「怎麼做」拿出來;決策台與個股總覽都會出現,沒碰到就整區不出現。', def: true },
         { k: 'pb', st: 'gene', n: '🧬 今天可以買的(🔥 高檔飆股)', d: '這一套的買點:今天尾盤漲過觸發價才買。', def: true },
         { k: 'fit', st: 'gene', n: '📈 符合進場候選', d: '🧬 + 今天出現看多訊號的候選;⛔ 不是買進名單,點進個股頁再確認。', def: false },
     ],
@@ -21624,6 +21695,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         try { this.saveSettings?.(); } catch (_) {}
         try { this._renderDeckShowList(); this._renderStratBox(); } catch (_) {}
         try { this.renderDeck?.(); } catch (_) {}
+        if (k === 'col') { try { this._renderOvCol(this.currentSymbolId).catch(() => {}); } catch (_) {} }   // 📰 V78.4.3 個股總覽同一個開關
     },
     _renderDeckShowList() {
         const box = document.getElementById('deckShowList'); if (!box) return;
@@ -21679,7 +21751,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         { id: 'bear_on', sc: 'mkt' }, { id: 'crash20', sc: 'mkt' }, { id: 'floor300', sc: 'mkt' },
         { id: 'holiday_pre', sc: 'date' }, { id: 'holiday_post', sc: 'date' }, { id: 'settle', sc: 'date' }, { id: 'rev_day', sc: 'date' },
     ],
-    _COL_SC: { held: ['👜', '你的庫存', 0], fav: ['⭐', '你的自選', 1], mkt: ['🌡️', '大盤', 2], date: ['📅', '日子', 3] },
+    _COL_SC: { held: ['👜', '你的庫存', 0], view: ['🔎', '這一檔', 0], fav: ['⭐', '你的自選', 1], mkt: ['🌡️', '大盤', 2], date: ['📅', '日子', 3] },
     /** 台北今天的日期 + 是不是平日(週末不判日子類) */
     _colToday() {
         const tdy = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
@@ -21697,29 +21769,30 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const lastD = tw.length ? iso(tw[tw.length - 1].date) : '';
         const T = ctx.today || this._colToday();
         // 👜⭐ 個股類(⛔ ETF 不判 K 線型態;⛔ K 線日期追不上大盤最新收盤的不判)
+        // 🔎 V78.4.3 `ctx.view`(Set):個股總覽「正在看的這一檔」—— 沒在庫存也判持股類條件(要成本的 gain20 除外),scope = view
         for (const [sym, b] of (ctx.bars || new Map())) {
-            const isH = !!(ctx.held && ctx.held.has(sym)), etf = !!this._isEtfSym?.(sym);
-            const sc = isH ? 'held' : 'fav';
-            if (isH && ctx.div) {
+            const isH = !!(ctx.held && ctx.held.has(sym)), isV = !isH && !!(ctx.view && ctx.view.has && ctx.view.has(sym)), etf = !!this._isEtfSym?.(sym);
+            const sc = isH ? 'held' : isV ? 'view' : 'fav', P = isH || isV;
+            if (P && ctx.div) {
                 const up = (((ctx.div.d || {})[sym] || {}).up) || [];
                 const end = this._colAddDays(T.tdy, 7);
-                for (const u of up) { const d0 = iso(u && u[0]); if (d0 > T.tdy && d0 <= end) { add('exdiv', `${this._dW(d0)} 除息`, sym); break; } }
+                for (const u of up) { const d0 = iso(u && u[0]); if (d0 > T.tdy && d0 <= end) { add('exdiv', `${this._dW(d0)} 除息`, sym, sc); break; } }
             }
-            if (isH && this._heldAttention(sym)) add('attn', String(((this.attentionStatus || {})[sym] || {}).status || '被列為注意股').replace(/[⚠️🚨]/gu, '').trim() || '被列為注意股', sym);
+            if (P && (this._heldAttention(sym) || {}).notice) add('attn', String(((this.attentionStatus || {})[sym] || {}).status || '被列為注意股').replace(/[⚠️🚨]/gu, '').trim() || '被列為注意股', sym, sc);
             if (etf || !Array.isArray(b) || b.length < 30 || !lastD || iso(b[b.length - 1].date) < lastD) continue;
             const n = b.length, C = i => +b[i].close, dW = this._dW(b[n - 1].date);
             if (this._luLock(b, { anyTime: 1 })) add(isH ? 'lu_held' : 'lu_fav', `${dW} 收盤鎖漲停`, sym, sc);
             let ks = []; try { ks = (this._ovNewEdges(b, sym) || []).map(x => x.k).filter(Boolean); } catch (_) {}
             if (ks.includes('ld_redk')) add('ld_redk', `${dW} 前一天跌停、這天收紅`, sym, sc);
-            if (isH && ks.includes('desc_tri')) add('desc_tri', '最近走成下降三角(高點越來越低、低點守在同一帶)', sym);
-            if (isH && ks.includes('nh60_retest')) add('nh60_retest', '創 60 日新高後回檔沒破、收紅站回', sym);
-            if (isH && ks.includes('gap_hi')) add('gap_hi', `${dW} 向上跳空、而且在一年的高檔`, sym);
+            if (P && ks.includes('desc_tri')) add('desc_tri', '最近走成下降三角(高點越來越低、低點守在同一帶)', sym, sc);
+            if (P && ks.includes('nh60_retest')) add('nh60_retest', '創 60 日新高後回檔沒破、收紅站回', sym, sc);
+            if (P && ks.includes('gap_hi')) add('gap_hi', `${dW} 向上跳空、而且在一年的高檔`, sym, sc);
             const ma = e => { let t = 0; for (let j = e - 19; j <= e; j++) t += C(j); return t / 20; };
             const m0 = ma(n - 1), m1 = ma(n - 2);
-            if (isH && C(n - 1) < m0 && C(n - 2) >= m1) add('ma20_break', `${dW} 收盤跌破月線(20 日線)`, sym);
-            if (!isH && C(n - 1) < m0 && C(n - 1) >= m0 * 0.97) add('near_ma20', '收在月線(20 日線)下方 3% 以內', sym);
+            if (P && C(n - 1) < m0 && C(n - 2) >= m1) add('ma20_break', `${dW} 收盤跌破月線(20 日線)`, sym, sc);
+            if (!isH && C(n - 1) < m0 && C(n - 1) >= m0 * 0.97) add('near_ma20', '收在月線(20 日線)下方 3% 以內', sym, sc);
             const cost = isH ? +((ctx.held.get(sym) || {}).cost) : 0;
-            if (cost > 0 && C(n - 1) / cost - 1 >= 0.2) add('gain20', `帳面賺 ${((C(n - 1) / cost - 1) * 100).toFixed(0)}%`, sym);
+            if (cost > 0 && C(n - 1) / cost - 1 >= 0.2) add('gain20', `帳面賺 ${((C(n - 1) / cost - 1) * 100).toFixed(0)}%`, sym, sc);
         }
         // 🌡️ 大盤
         if (tw.length >= 70) {
@@ -21792,11 +21865,35 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 if (!events) { try { const r = await fetch(new URL('data/macro_risk.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }); if (r.ok) events = ((await r.json()) || {}).upcoming_macro_events || []; } catch (_) {} }
                 let floor = null; try { await this._loadBreadthHist(); floor = this._floorCountState(); } catch (_) {}
                 const hits = this._colTrigEval({ tw, held, bars, fav, div, events, floor });
-                this._colTrigCache = { at: Date.now(), lastD, hits, groups: this._colTrigGroups(hits), n: syms.length };
+                this._colTrigCache = { at: Date.now(), lastD, hits, groups: this._colTrigGroups(hits), n: syms.length, ctx: { tw, div, events, floor } };
                 return this._colTrigCache;
             } finally { this._colTrigP = null; }
         })();
         return this._colTrigP;
+    },
+    /** 📰 V78.4.3 個股總覽「這一檔今天碰到的專欄」(使用者:「個股總覽把今天碰到的專欄也加進來,一樣要有設定才看的到」)
+     *  ⛔ 同一個開關(`_DECK_SECTIONS` 的 col,連點版本號 5 次解鎖)、同一個判斷(`_colTrigEval`)、同一份大盤/日子資料(`_colTrigScan` 快取的 ctx),⛔ 不另寫。
+     *  這一檔的條件攤開;大盤 / 日子收進一個摺疊(每一檔都一樣,⛔ 不佔第一眼)。 */
+    async _renderOvCol(sym) {
+        const box = document.getElementById('ovColBox'); if (!box) return;
+        const off = () => { box.innerHTML = ''; box.classList.add('hidden'); };
+        sym = String(sym || '');
+        if (!sym || !this._deckShow().col || (this._isIndexSym && this._isIndexSym(sym))) return off();
+        const R = await this._colTrigScan().catch(() => null);
+        if (String(this.currentSymbolId) !== sym || !this._deckShow().col) return String(this.currentSymbolId) !== sym ? undefined : off();
+        const ctx = (R && R.ctx) || {};
+        let rows = Array.isArray(this.rawDailyData) ? this.rawDailyData : [];
+        if (rows.length && this.isMarketOpen() && this._lastBarIsToday(rows)) rows = rows.slice(0, -1);
+        const held = new Map(); for (const i of (this._getInventory() || [])) if (i && String(i.symbol) === sym) held.set(sym, i);
+        let mine = [];
+        try { mine = this._colTrigEval({ tw: ctx.tw || [], held, bars: new Map([[sym, rows]]), view: new Set([sym]), div: ctx.div, events: [], floor: null }).filter(h => h.sym === sym); } catch (_) { mine = []; }
+        const G = this._colTrigGroups(mine);
+        const F = (R && Array.isArray(R.groups) ? R.groups : []).filter(g => g.why.every(h => !h.sym));
+        const html = this._deckColHtml(G, { fold: F, attr: 'data-ovcol', title: G.length ? `📰 這一檔今天碰到的專欄(${G.length})` : '📰 今天碰到的專欄',
+            sub: G.length ? '這一檔碰到某種情況時,那一篇「怎麼做」。⛔ 不是買賣訊號,買賣照上面的結論。' : '這一檔今天沒碰到;大盤或日子有碰到的收在下面。' });
+        if (!html) return off();
+        if (box.innerHTML !== html) box.innerHTML = html;
+        box.classList.remove('hidden');
     },
     async _renderDeckCol() {
         const box = document.getElementById('deckCol'); if (!box) return;
@@ -21805,9 +21902,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (!this._deckShow().col) { box.innerHTML = ''; return; }
         box.innerHTML = this._deckColHtml(R && R.groups);
     },
-    _deckColHtml(groups) {
-        const G = Array.isArray(groups) ? groups : [];
-        if (!G.length) return '';   // ⛔ 今天什麼都沒碰到 → 整區不畫(不留空殼)
+    _deckColHtml(groups, o) {
+        o = o || {};
+        const G = Array.isArray(groups) ? groups : [], F = Array.isArray(o.fold) ? o.fold : [];
+        if (!G.length && !F.length) return '';   // ⛔ 今天什麼都沒碰到 → 整區不畫(不留空殼)
         const esc = t => this._escHtml(String(t || ''));
         const item = g => {
             const sc = this._COL_SC[g.sc] || ['📅', '', 9], c = g.col;
@@ -21823,11 +21921,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 </details></div>`;
         };
         const top = G.slice(0, 6), rest = G.slice(6);
-        return `<div class="bg-[#161b22] border-l-4 border-sky-700 border-y border-r border-[#30363d] rounded-r p-3" data-deckcol="${G.length}">
-            <div class="text-sm font-black text-sky-200">📰 今天碰到的專欄(${G.length})</div>
-            <div class="text-[10px] text-gray-500 mt-0.5 leading-snug">你的股票、大盤或日子碰到某種情況時,那一篇「怎麼做」。⛔ 不是買賣訊號,買賣照上面那幾塊。</div>
+        return `<div class="bg-[#161b22] border-l-4 border-sky-700 border-y border-r border-[#30363d] rounded-r p-3" ${o.attr || 'data-deckcol'}="${G.length + F.length}">
+            <div class="text-sm font-black text-sky-200">${o.title || `📰 今天碰到的專欄(${G.length})`}</div>
+            <div class="text-[10px] text-gray-500 mt-0.5 leading-snug">${o.sub || '你的股票、大盤或日子碰到某種情況時,那一篇「怎麼做」。⛔ 不是買賣訊號,買賣照上面那幾塊。'}</div>
             ${top.map(item).join('')}
             ${rest.length ? `<details class="mt-1"><summary class="cursor-pointer select-none text-[10px] text-gray-400" style="list-style:none">還有 ${rest.length} 則 ▾</summary>${rest.map(item).join('')}</details>` : ''}
+            ${F.length ? `<details class="mt-1" data-colfold="${F.length}"><summary class="cursor-pointer select-none text-[10px] text-gray-400" style="list-style:none">🌡️📅 大盤・日子也碰到 ${F.length} 篇 ▾</summary>${F.map(item).join('')}</details>` : ''}
         </div>`;
     },
     _openDeckShow() {
@@ -33940,7 +34039,7 @@ ${this._reportFacts(sym)}
                 // 📄 V75.1.1 報告分頁九段(全是 async 才填;不清會顯上一檔的估值/籌碼)
                 'rpLead', 'rpQuick', 'rpPaste', 'rpImg', 'rpWalls', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc',
                 'ovWhyBox',                               // 🧭 V76.0.7 主卡收進摺疊區的那一半(_renderOvCommand 才填)
-                'quoteProbLine',                          // 📊 V78.1.1 頂端機率那一行(_renderOvCommand 才填)
+                'ovProbBox', 'ovColBox',                  // 📊📰 V78.4.3 總覽機率圖 / 這一檔的專欄(_renderOvCommand 才填)
             ].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) { el.innerHTML = ''; el.classList.add('hidden'); }
@@ -36857,7 +36956,7 @@ ${this._reportFacts(sym)}
         this._ovLastData = data;
         const sym = String(this.currentSymbolId || '');
         // 🏛️ 指數沒有「買幾張/停損」可言(V71.8.2 的決定)→ 整區不顯示
-        if (!sym || (this._isIndexSym && this._isIndexSym())) { el.innerHTML = ''; el.classList.add('hidden'); return; }
+        if (!sym || (this._isIndexSym && this._isIndexSym())) { el.innerHTML = ''; el.classList.add('hidden'); ['ovProbBox', 'ovColBox'].forEach(id => { const x = document.getElementById(id); if (x) { x.innerHTML = ''; x.classList.add('hidden'); } }); return; }
         // 🎯 明日作戰清單(這一檔自己的觸發價)是非同步載入的 → 載完重畫一次
         if (this._pbEdge === undefined && !this._pbEdgePend) {
             this._pbEdgePend = 1;
@@ -36952,8 +37051,10 @@ ${this._reportFacts(sym)}
         // 📊 V77.4.6 歷史機率**一行**(使用者四個位置全選)——
         //   ⚠️ 第一眼有 600 字上限(`test_gauge ⑨`,實測基準 442)→ 這裡**只准一行**,
         //   完整表在「報告」分頁。⛔ 不可為了塞它把第一眼撐爆。
-        // 📊 V78.1.1 這一行搬到**個股頁頂端**(quoteProbLine,每個分頁都看得到)→ 總覽第一眼少一行、⛔ 不重複顯示
-        try { this._renderQuoteProb(sym); } catch (_) {}
+        // 📊 V78.4.3 機率改成總覽裡的一張圖(#ovProbBox;使用者:「這段改在總覽裡面,一目了然」)—— ⛔ 不放進 ovCommandCenter(第一眼 600 字那一格)
+        try { this._renderOvProb(sym); } catch (_) {}
+        // 📰 V78.4.3 這一檔今天碰到的專欄(跟決策台同一個開關,連點版本號 5 次解鎖後才有)
+        try { this._renderOvCol(sym).catch(() => {}); } catch (_) {}
         el.innerHTML = A + emg + urgentHtml + strip + ruler + bell;
         el.classList.remove('hidden');
         const why = document.getElementById('ovWhyBox');
@@ -37672,7 +37773,7 @@ ${this._reportFacts(sym)}
         } catch (_) {}
         // 🗑️ V77.5.2 這裡原本有四行「依舊卡 big 字串」推的出場警示(−10% 立刻出場 / 已破舊停損 / 反彈再出 / 停利出場)——
         //   ⛔ 它們吃的是舊的朱家泓劇本,會跟主卡(`_ovDecide` 三條出場)打架;出場警示一律由主卡的 🚨 預警列給。
-        try { const inf = this.attentionStatus?.[sy]; if (inf && /處置|注意|必關/.test(inf.status || inf.attention || '')) emg.push('🚨 這檔是處置/注意股 → 分盤交易、流動性差,新手別碰'); } catch (_) {}
+        try { const inf = this.attentionStatus?.[sy]; if (inf && /處置|注意|必關/.test(inf.status || inf.attention || '')) emgNote.push('📋 官方處置/注意股:分盤撮合、成交量少 → ⛔ 別用市價單;手上有的照出場規則走'); } catch (_) {}
         // 🗑️ V77.5.2 「今天高檔爆量收黑 → 疑主力出貨,明天不漲快跑」已拿掉 —— 從來沒回測過,
         //   而且它排在第一眼的緊急列,口氣比任何實測過的訊號都重(`_SIGNAL_EDGE` 的「長黑」類有實測成績,在 K線頁)。
         const emgHtml = (emg.length ? `<div class="bg-red-950/60 border border-red-500 rounded px-2.5 py-1.5 mb-2 animate-pulse">
@@ -48306,7 +48407,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         revenue:   '🚀 營收動能｜月營收 YoY 大爆發(年增率排行)。這叫「盈餘公布後漂移(PEAD)」— 營收超預期後股價常續漲一段,是全球最穩健的異常之一。⚠️ 這裡只排 YoY,點進去要再確認「技術有沒有起漲(站上均線/剛突破)」才進,別買基本面好但線型還在跌的。',
         pocket_pivot: '🎯 口袋支點(Pocket Pivot,Minervini)｜多頭沿均線整理時,某天「上漲量 > 近10日最大黑K量」且貼近10日線 = 主力趁盤整偷偷進場的早期買點,比突破更早、假訊號少。進場守 10 日線,跌破作廢。全市場純公式,盤後採礦更新。',
         rs_strong:   '🚀 相對強度 RS｜近20日漲幅「超額贏過大盤 ≥8%」的強勢股,按超額報酬由高到低排。強者恆強、主流資金所在 — 買股先買最強的,回檔就是買點;別買落後補漲的弱股。全市場純公式,盤後採礦更新。',
-        attention: '🚨 處置股風控區｜TWSE 官方注意/處置名單 + 出關倒數。處置股分盤撮合流動性差,新手勿碰;出關前後常爆量,高手才玩。',
+        attention: '🚨 處置股風控區｜證交所官方注意/處置名單 + 出關倒數。處置股分盤撮合、成交量少 → ⛔ 別用市價單;被列管⛔ 看不出之後會漲還會跌,手上有的照自己的出場規則走。',
         wrongkill: '🩹 錯殺撿便宜｜今天大跌 ≥4% 但體質沒壞(原多頭+回測支撐+法人沒跑+營收成長)。先「🔎查利空」確認沒公司壞消息,再等紅K站回5日線進 — 別今天接刀。',
         theme:     '🔥 題材脈動｜Google 新聞 3 日熱度排行 + 👑 同族群 5 日最強前3。點題材名=免費 AI 查最新發展、點新聞標題=看原文、點股名=進該股總覽。',
         aichain:   '🤖 AI 產業鏈地圖｜AI 演進五級(聊天機器人→推理者→智能體→創新者→組織者)對應台股受惠股:誰在哪一層賺錢、10 個正在發生的技術轉折(液冷/CPO/ASIC/機器人/記憶體循環)、每季該盯的檢核清單。⚠️ 名單與層級是<b>人工整理的產業說明書</b>(2026-08 版),不是官方分類 → ⛔ 不是買進名單;漲跌/籌碼是每日收盤快照。',
