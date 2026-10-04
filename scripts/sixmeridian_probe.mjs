@@ -26,7 +26,7 @@ import fs from 'fs';
 import path from 'path';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DATA = path.join(ROOT, 'data');
+const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');   // V78.4.7:可指到修好的 16 年資料
 const MAX_SYMS = +(process.argv[2] || 99999);
 const STEP = 3;
 const DEDUP = 10;

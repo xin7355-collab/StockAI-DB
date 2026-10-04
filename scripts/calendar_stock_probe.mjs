@@ -46,7 +46,7 @@ import { fileURLToPath } from 'url';
 import { DEADLINES } from './lib_fundamentals.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DATA = path.join(ROOT, 'data');
+const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');   // V78.4.7:可指到修好的資料
 const OUT = process.argv[2] || '';
 // ⭐ 共同窗口起點 —— V74.2.8 改成**執行時從實際檔案推**(⛔ 不再寫死)。
 //   🚨 原本寫死 `'2023-06-15'`(當時 data/ 就是從那天開始)。K 線補深到 2021 之後,

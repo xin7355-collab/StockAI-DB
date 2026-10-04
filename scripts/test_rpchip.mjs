@@ -66,7 +66,10 @@ ok('ⓕ 真實資料(2330)至少 6 列', R.rows.length >= 6, JSON.stringify(R.ro
 ok('ⓕb 沒有 undefined / NaN / ?pp', !/undefined|NaN|\?pp/.test(R.html), (R.html.match(/.{20}(undefined|NaN|\?pp).{10}/) || [''])[0]);
 ok('ⓐ 每一列的狀態都對得到 `_CHIP_VERDICT`(foreign/trust/both/dealer/fen/tdcc/margin)', R.rows.every(x => ['ok', 'no', 'weak', 'na'].includes(x.st)) && ['foreign', 'trust', 'both', 'fen', 'tdcc', 'margin'].every(k => R.rows.some(x => x.row === k)), JSON.stringify(R.rows.map(x => [x.row, x.st])));
 ok('ⓐ2 ⭐ 文案裡的 {key.field} 全部從常數讀到(⛔ 一個 ? 都不可以 —— 那是模板對不到欄位)', R.verdicts.every(x => x.v && !/\?/.test(x.v.txt)), JSON.stringify(R.verdicts.filter(x => !x.v || /\?/.test(x.v.txt)).map(x => x.k)));
-ok('ⓐ3 both 那列讀到 `_CHIP_EDGE.both.e`(0.99)、trust 那列讀到 `_FSTREAK_EDGE.t5.e`(0.79)', /0\.99pp/.test(R.verdicts.find(x => x.k === 'both').v.txt) && /0\.79pp/.test(R.verdicts.find(x => x.k === 'trust').v.txt), '');
+// 🔁 V78.4.7:數字讀常數本身(⛔ 不釘死 0.79 —— 重跑探針後 t5 變成 0.02,釘死的斷言會逼人回頭改常數)
+const _t5e = (SRC.match(/t5:\s*\{\s*e:\s*(-?[\d.]+)/) || [])[1];
+const _bothE = (SRC.match(/both:\s*\{\s*e:\s*(-?[\d.]+)/) || [])[1];
+ok('ⓐ3 both 那列讀到 `_CHIP_EDGE.both.e`、trust 那列讀到 `_FSTREAK_EDGE.t5.e`(數字跟常數一致)', !!_t5e && !!_bothE && R.verdicts.find(x => x.k === 'both').v.txt.includes(_bothE + 'pp') && R.verdicts.find(x => x.k === 'trust').v.txt.includes(_t5e + 'pp'), _t5e);
 ok('ⓑ 🚦 狀態文字⛔ 不可出現 看多/看空/偏多/偏空/⚠️/🔴/🟢', R.verdicts.every(x => !/看多|看空|偏多|偏空|⚠️|🔴|🟢/.test(x.v.tag + x.v.txt)), JSON.stringify(R.verdicts.filter(x => /看多|看空|偏多|偏空|⚠️|🔴|🟢/.test(x.v.tag + x.v.txt)).map(x => x.k)));
 ok('ⓑ2 四種標籤只有 ✅ 實測有效 / △ 證據偏弱 / ❌ 實測無效 / ○ 只描述', R.verdicts.every(x => /^(✅ 實測有效|△ 證據偏弱|❌ 實測無效|○ 只描述)$/.test(x.v.tag)), JSON.stringify(R.verdicts.map(x => x.v.tag)));
 // 🧹 V78.3.4 散戶 App ⛔ 不印籌碼型態的回測成績 → 命中只講名字、⛔ 不印 pp

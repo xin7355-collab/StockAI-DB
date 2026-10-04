@@ -22,7 +22,7 @@ import fs from 'fs';
 import path from 'path';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const DATA = path.join(ROOT, 'data');
+const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');   // V78.4.7:可指到修好的 16 年資料
 const HOR = [1, 3, 5, 10, 20];
 const COST = 0.44;            // 來回成本 %
 const DEDUP = 10;             // 同檔同事件 N 日去重

@@ -28,7 +28,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DATA = path.join(ROOT, 'data');
+const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');   // V78.4.7:可指到修好的資料
 const CAPITAL = 1_000_000;      // 總投入資金(跟打法回測同一個數字)
 const FEE = 0.001425 * 0.6;     // 手續費 6 折(跟 App 預設一致)
 const TAX_ETF = 0.001;          // ⚠️ ETF 證交稅 0.1%(⛔ 不是股票的 0.3%)

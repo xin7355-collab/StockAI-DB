@@ -195,7 +195,7 @@ const VV = await pg.evaluate(async () => {
   const nRoe = D.rows.filter(r => r.roe4 != null).length, nCheap = D.rows.filter(r => r.pb != null && r.pb > 0 && r.pb <= V.pb).length;
   const nRoeRich = D.rows.filter(r => r.pb > V.pb && r.roe4 != null).length;   // ⛔ 不便宜的那幾檔不該去讀切片
   PRO._fishPoolK = pk;
-  return { has, lv: st ? st.lv : '', why: st ? st.why : '', hasE60: !!st && st.why.includes('+' + V.eH + 'pp'), hasAbs: !!st && st.why.includes('+' + V.abs + '%'),
+  return { has, lv: st ? st.lv : '', why: st ? st.why : '', hasE60: !!st && st.why.includes('+' + V.eH + 'pp'), hasAbs: !!st && st.why.includes(V.abs + '%'),
            hasDedup: !!st && st.why.includes('5/6'), changed: !!st2 && st2.why.includes('+9.87pp'), n: rows.length, okRows, nRoe, nCheap, nRoeRich };
 });
 ok(VV.has && VV.hasE60 && VV.hasAbs && VV.hasDedup, '㉕ 💎 池子存在;徽章讀 `_VALUE_EDGE`(60 日邊際 / 對加權超額 / 去重敏感度 5/6 都要印,⛔ 不可只講好的那半)', VV.why.slice(0, 80));

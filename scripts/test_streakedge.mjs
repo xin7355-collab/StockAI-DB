@@ -67,35 +67,35 @@ await browser.close();
 
 const a = R.A.join(' '), b = R.B.join(' ');
 ok('① 🏔️「創60日高後回測不破」今天命中就要跳出來', /🏔️/.test(a), R.A.length ? R.A[0].slice(0, 60) : R.A);
-ok('② 🕳️「向上跳空 × 高位階」今天命中就要跳出來', /🕳️/.test(b), R.B.length ? R.B[0].slice(0, 60) : R.B);
+// 🗑️ V78.4.7:「向上跳空 × 高位階」16 年重跑沒過(前半段為負、扣成本為負)→ 下架;決定性對照:同一份會命中的 K 線,⛔ 不可再出現
+ok('② 🗑️ 🕳️「向上跳空 × 高位階」已下架,命中的 K 線也⛔ 不可再跳出來', !/🕳️/.test(b), R.B.length ? R.B[0].slice(0, 60) : R.B);
 // 🧹 V78.3.4 使用者:「散戶 App 不放實測數字」→ 決定性對照反過來:換假表,畫面⛔ 不可出現表裡的數字;
 //   基準勝率 / 扣成本 / 個百分點 這些研究數字一律在產業作戰室
 ok('③ 🧹 換假表,畫面⛔ 不可出現表裡的數字', !/8\.88|7\.77|66\.6|55\.5/.test(R.fakeA.join(' ') + R.fakeB.join(' ')), [R.fakeA.length, R.fakeB.length]);
 ok('④ 🧹 ⛔ 不印基準勝率 / 次數', !/41\.1%|基準|次實測/.test(a + b));
-ok('⑤ 🧹 仍要說「不是叫你重壓 / 不是進場指令」(⛔ 不印扣成本後的數字)', /不是叫你重壓|不是進場指令/.test(a) && /不是進場指令/.test(b) && !/0\.29|0\.19|實測/.test(a + b));
+ok('⑤ 🧹 仍要說「不是叫你重壓 / 不是進場指令」(⛔ 不印扣成本後的數字)', /不是叫你重壓|不是進場指令/.test(a) && !/0\.29|0\.19|實測/.test(a + b));
 ok('⑥ ⛔ 空頭時兩個都不可顯示(`_bearGate` 鐵則)',
    !/🏔️/.test(R.Abear.join(' ')) && !/🕳️/.test(R.Bbear.join(' ')), [R.Abear.length, R.Bbear.length]);
 ok('⑦ ⛔ 不可給買賣價位 / 不可下進場指令(單一劇本原則)',
    !/(掛單|買進價|進場價|目標價|停損價)/.test(a + b) && /(不是進場指令|不是叫你重壓|以總覽)/.test(a + b),
    (`${a} ${b}`.match(/掛單|買進價|進場價|目標價|停損價/) || [])[0]);
-ok('⑧ 跳空那條要點明「要配高位階才算數」(🧹 ⛔ 不印低位階的回測數字)', /配高位階/.test(b) && !/−0\.15|-0\.15/.test(b));
+ok('⑧ 🗑️ 跳空那條⛔ 不可復活(原始碼不可再有 gap_hi)', !/['"]gap_hi['"]/.test(SRC.replace(/^\s*\/\/.*$/gm, '')));
 // 🚧 空過守門:定義要跟探針一字不差 → 原始碼裡要出現那幾個關鍵門檻
 // ⚠️ 錨點用**定義**(`    _ovNewEdges(data, sym) {`)⛔ 不用呼叫字串 —— V77.5.2 新增的 `_ovFoldEdgesHtml` 先呼叫
 //    `_ovTopEdge(data, sym)` 再呼叫 `_ovNewEdges(data, sym)` → 用呼叫字串切會切到空字串(假紅燈;反過來也可能是假綠燈)
 const _i0 = SRC.indexOf('    _ovNewEdges(data, sym) {');
 const fn = SRC.slice(_i0, SRC.indexOf('    _ovTopEdge(data, sym) {', _i0) > 0 ? SRC.indexOf('    _ovTopEdge(data, sym) {', _i0) : _i0 + 8000);
-ok('⑨ 🚧 定義要跟 streak_probe 一字不差(0.95 / 0.98 / 缺口≥1 / 位階≥70)',
-   /0\.95/.test(fn) && /0\.98/.test(fn) && /gp >= 1/.test(fn) && /pos >= 70/.test(fn));
+ok('⑨ 🚧 定義要跟 streak_probe 一字不差(0.95 / 0.98)',
+   /0\.95/.test(fn) && /0\.98/.test(fn));
 ok('⑩ 載入無 pageerror', errs.length === 0, errs.join(' | '));
 console.log();
 // ⏱️ V74.8.7:這兩個實測**沒有反應時點**(前 5 天只走完 7% / 2%)→ 文案要說出來
 ok('⑪ ⏱️ 🏔️ 要寫「慢慢漂、別期待幾天內表態」(🧹 ⛔ 不印前 5 天比例)', /慢慢漂/.test(a) && /別期待/.test(a) && !/前 5 天只走完/.test(a));
-ok('⑪a ⏱️ 🕳️ 同上', /慢慢漂/.test(b) && /別期待/.test(b) && !/前 5 天只走完/.test(b));
 // ⚠️ 這時 browser 已關 → 直接從原始碼讀(⛔ 不可再 page.evaluate)
 const _r5 = k => { const m = SRC.match(new RegExp(k + ':\\s*\\{[^}]*r5:\\s*(\\d+)')); return m ? +m[1] : NaN; };
 ok('⑪b 常數要真的有 r5 這一欄(⛔ 不可只改文案不改資料)',
-    Number.isFinite(_r5('retest')) && Number.isFinite(_r5('gapHi')) && _r5('retest') < 25 && _r5('gapHi') < 25,
-    `retest.r5=${_r5('retest')} gapHi.r5=${_r5('gapHi')}`);
+    Number.isFinite(_r5('retest')) && _r5('retest') < 25 && !/gapHi:/.test(SRC),
+    `retest.r5=${_r5('retest')}`);
 
 console.log(fails.length ? `❌ ${fails.length} 條失敗` : '✅ STREAKEDGE_PASS(全部通過)');
 process.exit(fails.length ? 1 : 0);

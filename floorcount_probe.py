@@ -27,7 +27,7 @@ import json
 import statistics
 from pathlib import Path
 
-DATA = Path('data')
+DATA = Path(__import__('os').environ.get('DATA_DIR') or 'data')   # V78.4.7:可指到修好的資料
 HORIZONS = (5, 10, 20)
 MIN_BARS = 260          # 要夠長才算得出「自己的歷史分布」(同 _detectFloorBounce)
 PCTL = 5                # 乖離落在自己歷史最低 5%

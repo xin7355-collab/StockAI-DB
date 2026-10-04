@@ -23,7 +23,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DATA = path.join(ROOT, 'data');
+const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');   // V78.4.7:可指到修好的資料
 const CACHE = process.env.TRADES_CACHE || '/tmp/trades_official.json';
 const TWOII = process.env.TWOII || '/tmp/twoii.json';
 const COST = 0.44;

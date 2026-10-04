@@ -34,7 +34,7 @@ import statistics
 from collections import defaultdict
 from pathlib import Path
 
-DATA = Path('data')
+DATA = Path(__import__('os').environ.get('DATA_DIR') or 'data')   # V78.4.7:可指到修好的資料
 HORIZONS = (1, 3, 5)
 DEDUP = 5
 MIN_BUCKET = 200

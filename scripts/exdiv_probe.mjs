@@ -28,7 +28,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DATA = path.join(ROOT, 'data');
+const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');   // V78.4.7:可指到修好的資料
 const SELFTEST = process.argv.includes('--selftest');
 const DIVP = process.argv.find(a => a.endsWith('.json')) || path.join(DATA, 'dividends_hist.json');
 const FWDS = [5, 10, 20, 60];

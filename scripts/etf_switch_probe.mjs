@@ -33,7 +33,7 @@
 import fs from 'fs';
 
 const load = s => {
-    const rows = JSON.parse(fs.readFileSync(`data/${s}.json`, 'utf8'))
+    const rows = JSON.parse(fs.readFileSync(`${process.env.DATA_DIR || 'data'}/${s}.json`, 'utf8'))
         .filter(r => +r.close > 0)
         .map(r => ({ d: String(r.date).replace(/\//g, '-'), c: +r.close }));
     return rows;

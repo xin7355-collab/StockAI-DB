@@ -41,7 +41,7 @@ import json
 import statistics
 from pathlib import Path
 
-DATA_DIR = Path("data")
+DATA_DIR = Path(__import__("os").environ.get("DATA_DIR") or "data")   # V78.4.7:可指到修好的資料
 
 try:
     from radar_miner import SECTOR_MEMBERS
