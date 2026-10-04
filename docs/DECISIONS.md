@@ -3,6 +3,13 @@
 
 
 
+## ✂️ V78.5.0 舊主卡最後幾處「先賣一半 / 分批出 / 先減碼一半」改成照出場規則走(使用者:「依照你說的繼續」)
+- 位置:`_renderTrendCommand`(`#trendCommandCard`)空頭 / 跌破線 / 續抱三個分支 + 回檔診斷兩句。
+- ⭐ 先查清楚:這張卡從 V77.5.2 起跟 `[data-ovpane="now"]`、`#strategyMainBox` 一起被 `_initOvFold` 搬進 `#ovLegacyHold`(display:none)→ **畫面上看不到**;它存的 `_lastOvPlan.rules` 只餵 `#chuExitSopCard` 鏡射(也在 hold 裡),🔔 一鍵盯價早就改讀 `_exitDistance`。
+- 但它**每次切股都照常在算**,哪天有人把舊卡放出來就又叫你先賣一半(V78.4.9 回測兩段 17 條全輸)→ 只改字,判斷式與價位一個都沒動。
+- 測試 `test_comboplan ⑤`:函式本體(剝註解)⛔ 不可出現 先出一半 / 先賣一半 / 賣一半停利 / 分批出 / 先減碼一半 / 一半獲利(「⛔ 不用先賣一半」那句不算);注入舊字串必紅。
+- 同版:評估紀錄㊻ stockintelli.com(見 `docs/EXTERNAL_REVIEWS.md`)。
+
 ## ✂️ V78.4.9 「先出一半」回測:兩段 17 條全輸 → 手上的股票這類提醒只記錄、彈窗不再叫你先賣一半(使用者:「回測先出一半有沒有用」)
 - 引擎 `portfolio_backtest.mjs` 新增 `HALFSIG`:持有中出現 App 開 App 掃描會跳的看空 / 警示訊號(⛔ 不另寫判定:`_KBAR_DET_LIST` + `_tagPush` + `_alertWorthIt`)→ 當天收盤先賣一半、剩下照原規則。`gate` / `ovh20`(只看急漲過熱)/ `sham:P`(隨機,P 對齊觸發率);只在設了才進 CACHE_KEY;測試 `test_halfsig.mjs`。
 - 現行 🔥(位階 ≥85・吊燈 2 倍・20 天・bear60・每天 2 檔・15 萬)17 條中位:**4 年** 412.7 → gate 205.9 / ovh 163.6 / sham 338.2 萬;**16 年** 574.5 → 138.1 / 348.6 / 486.8 萬 —— 全部 0/17,而且 gate、ovh 對 sham 也 0/17 = 提醒剛好在最強的時候叫你賣。勝率 33.8 → 41.2%(4 年)= 「勝率高 ≠ 賺錢」第四次。

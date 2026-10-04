@@ -71,7 +71,13 @@ ok('③ 決定性對照:線 210.4 < 現價 → 第 2 擊照舊「跌破 → 賣�
 ok('③c ✂️ V78.4.9 第 1 擊⛔ 不再叫你先出一半', /不用先賣一半/.test(txt(R.belowHtml)) && !/先出一半 ≈/.test(txt(R.belowHtml)), txt(R.belowHtml));
 const SRC = fs.readFileSync(HTML, 'utf8');
 ok('④ 題材龍頭徽章⛔ 不用 👑', /🏅 \$\{leader\}/.test(SRC) && !/👑 \$\{leader\}/.test(SRC));
-ok('無 pageerror', errs.length === 0, errs.join(' | '));
+// ⑤ ✂️ V78.5.0 舊主卡 _renderTrendCommand(收在 #ovLegacyHold 看不到,但還在算)⛔ 不可再叫你先賣一半 / 分批出 / 先減碼一半
+const _tcI = SRC.indexOf('    _renderTrendCommand(data, ind, last) {');
+const _tcJ = SRC.indexOf('\n    _', _tcI + 40);
+const _tcBody = SRC.slice(_tcI, _tcJ).split('\n').map(l => l.replace(/^\s*\/\/.*$/, '').replace(/\s\/\/ .*$/, '')).join('\n');
+ok('⑤ 空過守門:抓得到 _renderTrendCommand 本體', _tcI > 0 && _tcBody.length > 20000, _tcBody.length);
+const _halfHit = _tcBody.replace(/不用先賣一半/g, '').match(/先出一半|先賣一半|賣一半停利|分批出|先減碼一半|一半獲利|先減碼,/g) || [];
+ok('⑤ _renderTrendCommand ⛔ 不可再叫你先賣一半(「⛔ 不用先賣一半」那句不算)', _halfHit.length === 0, _halfHit.join(' | '));
 await browser.close();
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ 全部通過');
 process.exit(fails ? 1 : 0);

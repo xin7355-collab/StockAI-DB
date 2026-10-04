@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.4.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.5.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.4.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.5.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8710,10 +8710,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.4.9',
+    _APP_VERSION: 'V78.5.0',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.5.0', d: ['🔧 小修正'] },
         { v: 'V78.4.9', d: ['🔧 小修正'] },
         { v: 'V78.4.8', d: ['🔧 小修正'] },
         { v: 'V78.4.7', d: ['🔧 小修正'] },
@@ -8862,7 +8863,6 @@ ${list}
         { v: 'V77.7.2', d: ['📏 <b>日 K 修好之後重算了兩張表</b>:K 線訊號成績(2,241 檔・A 級 48 個・基準勝率 36.5%)與「漲/平/跌」機率表(明天 33.6 / 29.9 / 36.5 沒變)。「量能動能發動」第一次有成績:統計上站得住,但<b>平均每趟 −0.93%</b>(會賠),所以它不會被當成進場理由。', '🏭 題材頁多一格「營收在加速 X/Y 檔」(只描述,實測挑加速最多的族群跟隨機一樣)。', '⏳ 決策台「這套實測賺多少」那段數字<b>還在重算中</b>(修好資料 + 股利入帳 + 二代健保),下一版更新。'] },
         { v: 'V77.7.1', d: ['🔬 產業作戰室「實測總表」:同一個題目以後<b>只改那一張</b>、不再開新卡;非「有用」那幾欄改成<b>最近更新的排最上面</b>,每一條標更新日。', '📅 逐年成績單多兩欄:<b>AI 前(2011~2022)</b>與 <b>AI 時代(2023 起)</b>各自加總 —— 現行那套 AI 前 +74.8 萬(0050 含息 +110.9 萬),AI 時代 +262.2 萬(+177.4 萬)。', '🧪 新回測工具:OBV 五種用法、供應鏈「哪一層營收在加速」、持有期間股利入帳(結論與決策台重算等資料修好再一起公布)。'] },
         { v: 'V77.7.0', d: ['🧱 <b>修好日 K「不是官方成交價」的問題</b>(上一版抓到的:上櫃股四成的列是還原過除權息的價格,比真價低 4~20%)。採礦機現在會用 FinMind 的官方原始價把那些列整段換回來,並且擋掉之後再從 Yahoo 補進還原價。離線模擬:上櫃不在跳動單位格上的列 <b>29 萬 → 7,650</b>、接縫處的假跳空 <b>667 → 24</b>。', '⏳ 要等下一輪採礦跑完才會生效;生效後會把 🧬 選股、決策台 49 個月、逐年成績表整批重跑,數字變了會再告訴你。'] },
-        { v: 'V77.6.9', d: ['📼 <b>5 分 K 歷史回補完成</b>(2021-05 起共 1,319 個交易日,含 2022 空頭),當沖的 5 分 K 規則全部用五年重測:開盤四法、停利停損 16 格、大盤順風、尾盤追漲停 —— 扣完成本仍然全部是負的。唯一統計上站得住的「開高 ≥2% 在昨高之上 → 09:05 放空」六關全過,<b>但 12.6% 會鎖漲停回補不了</b>,照隔天開盤回補只剩 +0.05% → ⛔ 不做(當沖頁「📊 當沖實測」摺疊區有數字)。', '🚨 <b>順手抓到:上櫃股的日 K 有四成的列不是官方成交價</b>(是還原過除權息的價格,比真價低 4~20%),接回官方價那天會出現假跳空。這一版只記錄、沒動任何資料,修法要先問你。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -37356,7 +37356,7 @@ ${this._reportFacts(sym)}
             if (cost) {
                 if (valleyMode) { big = '🕳️ 跌深了・反彈再出'; bigCls = 'text-orange-400'; cmdBorder = 'border-orange-500';
                     why = `最佳停損點在 <b>${nfP(slF)}</b>,現價已低它 <b>${((slF - C) / slF * 100).toFixed(0)}%</b> — 那個時機已錯過。現在${_vBias5 <= -5 ? `短線乖離 <b>${_vBias5.toFixed(1)}%</b>` : ''}${_vDownDays >= 4 ? `${_vBias5 <= -5 ? '、' : ''}連跌 <b>${_vDownDays} 天</b>` : ''},屬超賣區,恐慌市價砍最容易<b class="text-orange-300">砍在阿呆谷</b>。不凹單、但改「反彈減碼」出,別在最恐慌的一根砍光。`;
-                    if (ma5 != null && ma5 > C) rules.push(`🔺 反彈到 5 日線 ${nfP(ma5)} → 先減碼一半(比現在賣、每張約少虧 ${Math.round((ma5 - C) * 1000).toLocaleString()} 元)`);
+                    if (ma5 != null && ma5 > C) rules.push(`🔺 反彈到 5 日線 ${nfP(ma5)} 一帶 → 照你的出場規則走,⛔ 不用先賣一半`);
                     // 🐛 V71.5.8 分三種情況講,不再一律「再破 X 就全出」:
                     //   ① 防線在下方 → 正常防線;太貼近現價(<2%)要明講「盤中雜訊就會碰到」
                     //   ② 防線已被跌破 → 誠實說「近期支撐已全破、下方沒有結構支撐」,
@@ -37395,17 +37395,17 @@ ${this._reportFacts(sym)}
                     //   ⛔ 通用鐵則:任何「等它碰到 X」的指令,都要先確認**現價還沒到 X**;
                     //      已經到了就要改口說「已經站上/已經跌破」,⛔ 不可原文照顯示。
                     if (ma5 != null && C > ma5 * 1.005) {
-                        rules.push(`🔺 <b>已經站上 5 日線 ${nfP(ma5)}</b>(現價高它 ${((C - ma5) / ma5 * 100).toFixed(1)}%)→ 這波反彈已經在進行中,<b>要出就是現在這一帶分批出</b>,別再等它「碰到」5 日線`);
+                        rules.push(`🔺 <b>已經站上 5 日線 ${nfP(ma5)}</b>(現價高它 ${((C - ma5) / ma5 * 100).toFixed(1)}%)→ 這波反彈已經在進行中,<b>照你的出場規則走</b>,別再等它「碰到」5 日線`);
                     } else {
-                        rules.push(`🔺 反彈碰到 5 日線 ${nfP(ma5)} → 先出一半以上`);
+                        rules.push(`🔺 反彈到 5 日線 ${nfP(ma5)} 一帶 → 照你的出場規則走,⛔ 不用先賣一半`);   // ✂️ V78.5.0 回測先賣一半兩段 17 條全輸
                     }
                     if (slF != null) {
                         if (C < slF) rules.push(`🔻 <b>${nfP(slF)} 早就跌破了</b>(現價低它 ${((slF - C) / slF * 100).toFixed(1)}%)→ 這個價位已經不是「防守點」,是**上方壓力**;⛔ 別再拿它當停損掛單`);
                         else rules.push(`🔻 跌破 ${nfP(slF)} → 全部出,不等了`);
                     }
                 } else if (effTpS != null && C < effTpS) { big = '🟡 警戒・先減碼'; bigCls = 'text-yellow-400'; cmdBorder = 'border-yellow-500'; gridMode = 'full';
-                    why = pnlPct > 0 ? `${_ts.label}轉弱(跌破${effLineLbl})— 先把一半獲利放進口袋,剩下的讓它去跑。` : `${_ts.label}轉弱(跌破${effLineLbl})— 沒破停損前不砍,但也絕不加碼攤平。`;
-                    if (pnlPct > 0) rules.push('🔻 現在 → 先賣一半,鎖住獲利');
+                    why = pnlPct > 0 ? `${_ts.label}轉弱(跌破${effLineLbl})— 照你的出場規則走,⛔ 不用先賣一半。` : `${_ts.label}轉弱(跌破${effLineLbl})— 沒破停損前不砍,但也絕不加碼攤平。`;
+                    if (pnlPct > 0) rules.push('🔻 現在 → 照你的出場規則走,⛔ 不用先賣一半');
                     if (slF != null) rules.push(`🔻 再跌破 ${nfP(slF)} → 全部出場`);
                     rules.push(`🔺 站回${effLineLbl} ${nfP(effTpS)} → 解除警戒,續抱`);
                 } else { big = '🔴 續抱'; bigCls = 'text-red-400'; cmdBorder = 'border-red-500'; gridMode = 'full';
@@ -37418,7 +37418,7 @@ ${this._reportFacts(sym)}
                         if (tpL != null) rules.push(`🔻 跌破月線 ${nfP(tpL)} → 減碼/出場`);
                         if (tpS != null) rules.push(`🔺 跌破 5 日線 ${nfP(tpS)} 只是短線回檔,月線沒破續抱`);
                     } else {
-                        if (tpS != null) rules.push(`🔻 跌破 5 日線 ${nfP(tpS)} → 賣一半停利`);
+                        if (tpS != null) rules.push(`🔺 跌破 5 日線 ${nfP(tpS)} 只是參考 → 照你的出場規則走`);
                         if (tpL != null && tpL !== tpS) rules.push(`🌊 想抱大波段 → 改守月線 ${nfP(tpL)}(跌破才出)`);
                     }
                     if (slF != null) rules.push(`🔻 跌破 ${nfP(slF)} → 全部出場`);
@@ -37597,7 +37597,7 @@ ${this._reportFacts(sym)}
                 if (pnlPct <= -8) {
                     // 深套 4 分法(原 V58.8 套牢診斷,邏輯不變)
                     if (instFled && !wasBull) trappedHtml = diagBox('border-red-500', '🩹 套牢診斷:🔴 真轉弱,不是錯殺',
-                        `大戶 5 日賣超 <b>${Math.abs(Math.round(inst5)).toLocaleString()} 張</b>、季線也破了 → 趨勢真的壞掉,別凹單等解套。反彈到 5 日線 ${stop5} 先減碼,跌破 <b>${nf(slF)}</b> 全出。`);
+                        `大戶 5 日賣超 <b>${Math.abs(Math.round(inst5)).toLocaleString()} 張</b>、季線也破了 → 趨勢真的壞掉,別凹單等解套。照你的出場規則走,跌破 <b>${nf(slF)}</b> 全出。`);
                     else if (mktDrag && instStay && nearSup) trappedHtml = diagBox('border-yellow-500', '🩹 套牢診斷:🟡 大盤在洗,不是它出事',
                         `${twPct != null && twPct <= -0.5 ? `今天大盤跌 ${twPct.toFixed(1)}%,` : '大盤環境偏弱,'}大戶沒跑(5日 ${inst5 >= 0 ? '+' : ''}${Math.round(inst5).toLocaleString()} 張)、還守在均線附近${volShrink ? ',跌時量縮(沒人搶著賣)' : ''} → 是被大盤帶下來的。大盤止穩它就回,守 <b>${nf(slF)}</b> 不破別自己嚇出場。`);
                     else if (instStay && wasBull && nearSup) trappedHtml = diagBox('border-green-500', '🩹 套牢診斷:🟢 像錯殺,體質沒壞',
@@ -37607,7 +37607,7 @@ ${this._reportFacts(sym)}
                 } else if (pulling) {
                     // 一般回檔 3 分法(V65.5 新):危險回檔(大戶跑)/ 洗散戶(可加碼)/ 大盤拖累・量縮健康回檔
                     if (instFled) trappedHtml = diagBox('border-red-500', '📉 回檔健檢:⛔ 大戶在跑,危險回檔',
-                        `這波回檔大戶 5 日賣超 <b>${Math.abs(Math.round(inst5)).toLocaleString()} 張</b> — 不是洗盤,是真的在出。${pnlPct > 0 ? `你還有 +${pnlPct.toFixed(1)}% 獲利,先賣一半保住;` : '反彈就減碼;'}跌破 <b>${nf(slF)}</b> 全出。`);
+                        `這波回檔大戶 5 日賣超 <b>${Math.abs(Math.round(inst5)).toLocaleString()} 張</b> — 不是洗盤,是真的在出。${pnlPct > 0 ? `你還有 +${pnlPct.toFixed(1)}% 獲利,照你的出場規則走;` : '照你的出場規則走;'}跌破 <b>${nf(slF)}</b> 全出。`);
                     else if (instBuy && C >= ma20) {
                         trappedHtml = diagBox('border-green-500', '📉 回檔健檢:🟢 大戶沒走,在洗散戶',
                             `回檔但大戶 5 日反而<b>買超 +${Math.round(inst5).toLocaleString()} 張</b>${volShrink ? ',而且跌時量縮(被洗的是散戶,大戶沒賣)' : ''} → 這叫洗盤,守好停損就不用怕。`);
