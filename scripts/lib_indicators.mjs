@@ -30,16 +30,15 @@ export function obvSeries(c, vol) {
     return obv;
 }
 
-export function signalsFor(R) {
-  const N = R.length;
-  const C = R.map(r => r.c), H = R.map(r => r.h), L = R.map(r => r.l), V = R.map(r => r.v);
-  const TP = R.map(r => (r.h + r.l + r.c) / 3);
+export { EMA, SMA, WILD, HH, LL };
 
-  // ── ATR / TR ──
-  const tr = R.map((r, i) => i ? Math.max(r.h - r.l, Math.abs(r.h - C[i - 1]), Math.abs(r.l - C[i - 1])) : r.h - r.l);
-  const atr14 = WILD(tr, 14), atr10 = WILD(tr, 10);
-
-  // ── ① ADX / DMI(14)──
+/** 真實波幅 TR(第 0 根 = 高 − 低)—— signalsFor / seriesFor 共用 */
+export function trSeries(R) {
+    return R.map((r, i) => i ? Math.max(r.h - r.l, Math.abs(r.h - R[i - 1].c), Math.abs(r.l - R[i - 1].c)) : r.h - r.l);
+}
+/** ADX / DMI(14),Wilder 平滑 —— signalsFor / seriesFor 共用(⛔ 不複製第二份) */
+export function adxDmi(R, atr14) {
+  const H = R.map(r => r.h), L = R.map(r => r.l);
   const pDM = R.map((r, i) => { if (!i) return 0; const u = r.h - H[i - 1], d = L[i - 1] - r.l; return (u > d && u > 0) ? u : 0; });
   const nDM = R.map((r, i) => { if (!i) return 0; const u = r.h - H[i - 1], d = L[i - 1] - r.l; return (d > u && d > 0) ? d : 0; });
   const sP = WILD(pDM, 14), sN = WILD(nDM, 14);
@@ -47,6 +46,60 @@ export function signalsFor(R) {
   const nDI = sN.map((v, i) => (v == null || !atr14[i]) ? null : 100 * v / atr14[i]);
   const dx = pDI.map((v, i) => (v == null || nDI[i] == null || v + nDI[i] === 0) ? null : 100 * Math.abs(v - nDI[i]) / (v + nDI[i]));
   const adx = WILD(dx.map(v => v ?? 0), 14);
+  return { pDI, nDI, adx };
+}
+/** RSI(14),Wilder —— signalsFor / seriesFor 共用 */
+export function rsiSeries(C) {
+  const N = C.length, rsi = new Array(N).fill(null); let ag = 0, al = 0;
+  for (let i = 1; i < N; i++) { const ch = C[i] - C[i - 1], g = Math.max(ch, 0), l = Math.max(-ch, 0);
+    if (i <= 14) { ag += g / 14; al += l / 14; if (i === 14) rsi[i] = al > 0 ? 100 - 100 / (1 + ag / al) : 100; }
+    else { ag = (ag * 13 + g) / 14; al = (al * 13 + l) / 14; rsi[i] = al > 0 ? 100 - 100 / (1 + ag / al) : 100; } }
+  return rsi;
+}
+/** 錨定 VWAP(日 K 代理:典型價 × 量,在 key 換的那天重置)—— key = 週 / 月 */
+export function anchoredVwap(R, keyOf) {
+  const out = new Array(R.length).fill(null); let k = null, a = 0, b = 0;
+  for (let i = 0; i < R.length; i++) { const kk = keyOf(R[i].d);
+    if (kk !== k) { k = kk; a = 0; b = 0; }
+    const tp = (R[i].h + R[i].l + R[i].c) / 3; a += tp * R[i].v; b += R[i].v; out[i] = b > 0 ? a / b : null; }
+  return out;
+}
+const _wkKey = d => { const t = Date.parse(String(d).replace(/\//g, '-') + 'T00:00:00Z'); const day = (new Date(t).getUTCDay() + 6) % 7; return new Date(t - day * 86400000).toISOString().slice(0, 10); };
+const _moKey = d => String(d).replace(/\//g, '-').slice(0, 7);
+
+/**
+ * V78.4.6 整條指標序列(strat6_probe 用;每一個值都只用到那一根以前的資料)。
+ * R: [{d,o,h,l,c,v}];回傳陣列與 R 同長。
+ */
+export function seriesFor(R) {
+  const C = R.map(r => r.c), V = R.map(r => r.v);
+  const tr = trSeries(R), atr14 = WILD(tr, 14), atr20 = WILD(tr, 20);
+  const { pDI, nDI, adx } = adxDmi(R, atr14);
+  const ema10 = EMA(C, 10), ema50 = EMA(C, 50), ema12 = EMA(C, 12), ema26 = EMA(C, 26);
+  const macd = ema12.map((v, i) => v - ema26[i]), macdSig = EMA(macd, 9), macdHist = macd.map((v, i) => v - macdSig[i]);
+  const sma20 = SMA(C, 20), sma60 = SMA(C, 60), sma10 = SMA(C, 10);
+  const sd20 = new Array(R.length).fill(null);
+  for (let i = 19; i < R.length; i++) { let s2 = 0; for (let q = i - 19; q <= i; q++) s2 += (C[q] - sma20[i]) ** 2; sd20[i] = Math.sqrt(s2 / 20); }
+  const bbU = sma20.map((m, i) => m == null ? null : m + 2 * sd20[i]), bbL = sma20.map((m, i) => m == null ? null : m - 2 * sd20[i]);
+  const bbw = sma20.map((m, i) => m ? (bbU[i] - bbL[i]) / m : null);
+  const kcU = sma20.map((m, i) => (m == null || atr20[i] == null) ? null : m + 1.5 * atr20[i]);
+  const kcL = sma20.map((m, i) => (m == null || atr20[i] == null) ? null : m - 1.5 * atr20[i]);
+  const obv = Array.from(obvSeries(C, V));
+  return { C, V, atr14, atr20, pDI, nDI, adx, rsi: rsiSeries(C), ema10, ema50, macdHist, sma10, sma20, sma60, bbU, bbL, bbw, kcU, kcL, obv,
+    wvwap: anchoredVwap(R, _wkKey), mvwap: anchoredVwap(R, _moKey) };
+}
+
+export function signalsFor(R) {
+  const N = R.length;
+  const C = R.map(r => r.c), H = R.map(r => r.h), L = R.map(r => r.l), V = R.map(r => r.v);
+  const TP = R.map(r => (r.h + r.l + r.c) / 3);
+
+  // ── ATR / TR ──
+  const tr = trSeries(R);
+  const atr14 = WILD(tr, 14), atr10 = WILD(tr, 10);
+
+  // ── ① ADX / DMI(14)──
+  const { pDI, nDI, adx } = adxDmi(R, atr14);
 
   // ── ② Supertrend(10, 3)──
   const stDir = new Array(N).fill(0); { let up = 0, dn = 0, dir = 1;
@@ -89,10 +142,7 @@ export function signalsFor(R) {
   for (let i = 13; i < N; i++) { const hi = HH(H, 14, i), li = LL(L, 14, i); wr[i] = hi > li ? (hi - C[i]) / (hi - li) * -100 : -50; }
   const roc = C.map((v, i) => i >= 12 ? (v / C[i - 12] - 1) * 100 : null);
   // RSI(14) → StochRSI ・ CMO(14)
-  const rsi = new Array(N).fill(null); { let ag = 0, al = 0;
-    for (let i = 1; i < N; i++) { const ch = C[i] - C[i - 1], g = Math.max(ch, 0), l = Math.max(-ch, 0);
-      if (i <= 14) { ag += g / 14; al += l / 14; if (i === 14) rsi[i] = al > 0 ? 100 - 100 / (1 + ag / al) : 100; }
-      else { ag = (ag * 13 + g) / 14; al = (al * 13 + l) / 14; rsi[i] = al > 0 ? 100 - 100 / (1 + ag / al) : 100; } } }
+  const rsi = rsiSeries(C);
   const srsi = new Array(N).fill(null);
   for (let i = 28; i < N; i++) { const w = rsi.slice(i - 13, i + 1).filter(x => x != null);
     if (w.length < 14) continue; const mx = Math.max(...w), mn = Math.min(...w);
