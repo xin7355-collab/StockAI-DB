@@ -227,6 +227,13 @@ const BEAR_EXIT = (process.env.BEAR_EXIT || '').trim();
 // 🟥 V78.1.4 LUDEFER=1:「抱滿 MAXD 天」那天剛好收盤鎖漲停 → 延到隔天開盤賣
 //   (鎖漲停定義照 dt_daily_probe.lockUp:收盤 ≥ 昨收 × 1.09 且收在最高;只動時間到期那一條,停損 / 出場線不受影響)
 const LUDEFER = process.env.LUDEFER === '1';
+// ✂️ V78.4.9 HALFSIG:持有中出現「賣出彈窗那種訊號」→ 當天收盤先賣一半,剩下照原本出場規則(使用者:「回測先出一半有沒有用」)
+//   gate  = 跟 App 開 App 掃描同一條路:_KBAR_DET_LIST + _tagPush + _alertWorthIt(看空/警示且過入場券)→ = 連續技第 1 擊
+//   ovh20 = 只看「急漲過熱(連漲 ≥3 天累積 ≥20%)」(使用者截圖那一則)
+//   sham:P = 安慰劑:每個持有日用 hash(代號,日期) < P 隨機先賣一半(P 對齊 gate 的觸發率)
+//   ⛔ 進 CACHE_KEY;不設時一個字都不變。⚠️ 股利(DIV_TRADES)仍按整筆算 → 先賣一半那組略被高估(對它有利,不會冤枉它)
+const HALFSIG = process.env.HALFSIG || '';
+if (HALFSIG && !/^(gate|ovh20|sham:0?\.\d+)$/.test(HALFSIG)) { console.error(`🚨 HALFSIG=${HALFSIG} 不認得(gate / ovh20 / sham:0.05)`); process.exit(1); }
 if (BEAR_EXIT && !['strict', 'ma60', 'strictlose'].includes(BEAR_EXIT)) { console.error(`🚨 BEAR_EXIT=${BEAR_EXIT} 不認得(strict|ma60|strictlose)`); process.exit(1); }
 // 🐻 V77.7.4 strictlose = 同 strict 的空頭日,但**只賣帳面虧損的**(收盤 < 進場價),賺錢的照原規則抱(外部建議「空頭只保留浮盈股票」)
 const FORCE_EXIT = (process.env.FORCE_EXIT || '').trim();
@@ -324,10 +331,10 @@ if (BEAR_EXIT) {
 // ⚠️ STOPFILL 只在非預設時才進 key —— 預設值的 key 字串跟舊版一模一樣(既有快取照樣重用)
 const _ckStopFill = STOPFILL !== 'stop' ? { STOPFILL } : {};
 // 🐻🚨 V77.6.8 兩個強制出場一定進 key(沒設就是空物件 → key 字串跟舊版一模一樣)
-const _ckForce = { ...(BEAR_EXIT ? { BEAR_EXIT } : {}), ...(FORCE_EXIT ? { FORCE_EXIT: FORCE_HASH } : {}), ...(LUDEFER ? { LUDEFER: 1 } : {}) };
+const _ckForce = { ...(BEAR_EXIT ? { BEAR_EXIT } : {}), ...(FORCE_EXIT ? { FORCE_EXIT: FORCE_HASH } : {}), ...(LUDEFER ? { LUDEFER: 1 } : {}), ...(HALFSIG ? { HALFSIG } : {}) };
 const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE, ..._ckStopFill, ..._ckForce });
 const allTrades = [];        // {sym, key, inD, outD, ret, amt, entry, stop}
-let graceBlocked = 0;        // ⏳ 有幾個(交易·日)真的被寬限期擋下過(空過守門用)
+let graceBlocked = 0, hsDaysAll = 0, hsHitsAll = 0;   // ✂️ HALFSIG:算過幾個持有日、幾天亮        // ⏳ 有幾個(交易·日)真的被寬限期擋下過(空過守門用)
 let cacheHit = false;
 // 🔄 V77.7.6 EXIT_SCHED=<json {日期:「出場:最長天數」}> + SCHED_CACHES=「出場:天數=快取路徑,…」
 //   使用者:「情勢改變時自動改成其它策略」→ 先回測「照排程換出場規則」會不會比固定用一套好。
@@ -421,6 +428,30 @@ for (const sym of syms) {
         let gBlocked = 0;
         // 🐻🚨 V77.6.8 強制出場日(⛔ 一定要從 `a` 拿 —— 這段跑在瀏覽器裡)
         const BD = a.bearDays ? new Set(a.bearDays) : null, FS = a.forceSell ? new Set(a.forceSell) : null;
+        // ✂️ HALFSIG(⛔ 一定從 `a` 拿):每一天算一次、同一檔所有交易共用(memo)
+        const HS = a.halfSig || '', _hsM = new Map();
+        let hsDays = 0, hsHits = 0;
+        const hsAt = j => {
+            if (_hsM.has(j)) return _hsM.get(j);
+            let v = false;
+            if (HS.startsWith('sham:')) {
+                const key = a.sym + '|' + data[j].date; let h = 2166136261;
+                for (let q = 0; q < key.length; q++) { h ^= key.charCodeAt(q); h = Math.imul(h, 16777619) >>> 0; }
+                v = (h % 1000000) / 1000000 < +HS.slice(5);
+            } else {
+                const sl = data.slice(Math.max(0, j - 129), j + 1);
+                let push = [];
+                for (const [d, re] of app._KBAR_DET_LIST) {
+                    const b = push.length;
+                    try { app._tagPush(push, d, sl); } catch (_) {}
+                    if (re) push = push.slice(0, b).concat(push.slice(b).filter(s => re.test(s.title)));
+                }
+                v = push.some(s => (s.tone === 'bear' || s.tone === 'warn') &&
+                    (HS === 'ovh20' ? /急漲過熱/.test(s.title) : !!(app._alertWorthIt(s._d, s.title, s.tone) || {}).ok));
+            }
+            _hsM.set(j, v); hsDays++; if (v) hsHits++;
+            return v;
+        };
         for (const p of P) {
             let i = 45;
             // 🔁 買回:出場後 N 天內收盤站回 5 日線 → 把那一天當成「訊號又成立」丟進同一條路徑
@@ -570,6 +601,7 @@ for (const sym of syms) {
                             if (rrK > 0 && c >= entry + rrK * (entry - stop0)) { exitP = c; exitIdx = j; break; }
                             // ✂️ 分批:先出一半,剩下照底層規則走
                             if (halfP > 0 && !halfDone && c >= entry * (1 + halfP / 100)) { halfDone = 1; halfRet = (c - entry) / entry * 100; }
+                            if (HS && !halfDone && hsAt(j)) { halfDone = 1; halfRet = (c - entry) / entry * 100; }
                             // 🐢 唐奇安:收盤跌破前 N 日最低(⛔ 不含今天)
                             if (donN > 0 && (!donWait || j - donN >= eIdx)) {
                                 // 🐛 V77.4.9 `j − donN` 可能 < 0(don55 在歷史前段)→ 以前直接 `data[-3].low` 崩掉;
@@ -645,10 +677,11 @@ for (const sym of syms) {
         // ⏳ 把「被寬限期擋下幾次」帶回 Node 端 —— ⛔ 陣列的自訂屬性會被結構化複製丟掉,
         //    所以塞成一筆特殊列,外面收完立刻濾掉(⛔ 不可讓它混進交易清單)
         if (GR > 0) out.push({ __g: gBlocked });
+        if (HS) out.push({ __hs: [hsDays, hsHits] });
         return out;
     }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP, reentry: REENTRY, reMax: RE_MAX, grace: GRACE, stopFill: STOPFILL, luDefer: LUDEFER,
-         bearDays: BEAR_DAYS ? [...BEAR_DAYS] : null, bearMode: BEAR_EXIT, forceSell: fsell });
-    for (const t of tr) { if (t.__g != null) { graceBlocked += t.__g; continue; } allTrades.push({ ...t, sym }); }
+         bearDays: BEAR_DAYS ? [...BEAR_DAYS] : null, bearMode: BEAR_EXIT, forceSell: fsell, halfSig: HALFSIG, sym });
+    for (const t of tr) { if (t.__g != null) { graceBlocked += t.__g; continue; } if (t.__hs) { hsDaysAll += t.__hs[0]; hsHitsAll += t.__hs[1]; continue; } allTrades.push({ ...t, sym }); }
     if (++done % 50 === 0) {
         const el = (Date.now() - t0) / 1000;
         process.stdout.write(`\r   掃描 ${done}/${syms.length} ・${allTrades.length} 筆交易 ・${el.toFixed(0)}s`);
@@ -660,6 +693,11 @@ await browser.close();
     if (GRACE > 0) {
         console.log(`⏳ 寬限期 GRACE=${GRACE}:真的擋下 ${graceBlocked.toLocaleString()} 次移動/趨勢類出場訊號`);
         if (!graceBlocked) { console.error('❌ GRACE > 0 卻一次都沒擋到出場訊號 → 這個變體沒有生效(⛔ 不是「沒差別」)'); process.exit(1); }
+    }
+    // ✂️ 空過守門:設了 HALFSIG 卻一天都沒亮 → 變體沒生效(⛔ 不是「沒差別」)
+    if (HALFSIG) {
+        console.log(`✂️ HALFSIG=${HALFSIG}:算了 ${hsDaysAll.toLocaleString()} 個持有日、亮 ${hsHitsAll.toLocaleString()} 天(${hsDaysAll ? (hsHitsAll / hsDaysAll * 100).toFixed(2) : 0}%)・先賣一半 ${allTrades.filter(t => t.hf).length.toLocaleString()} / ${allTrades.length.toLocaleString()} 筆`);
+        if (!hsHitsAll) { console.error('❌ HALFSIG 一天都沒亮 → 這個變體沒有生效'); process.exit(1); }
     }
     if (TRADES_CACHE) {
         fs.writeFileSync(TRADES_CACHE, JSON.stringify({ key: CACHE_KEY, trades: allTrades }));
