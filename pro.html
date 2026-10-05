@@ -1007,7 +1007,7 @@ details.colart[open] .colsum{display:none}
       <button class="fpvbuzz" id="fpvBuzzBtn" onclick="PRO.fpvBuzzToggle()">📳 震動:開</button><span class="fpvsub" id="fpvBuzzNote"></span>
       <label id="fpvHaptic" aria-hidden="true" style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none"><input type="checkbox" switch tabindex="-1"></label></div>
     <div class="fpvwrap" id="fpvWrap"><canvas id="fpvCanvas"></canvas><div class="fpvhint" id="fpvHint"></div><span class="fpvskip hidden" id="fpvNet" onclick="PRO.fpvNet()">🕸️ 拋網</span></div>
-    <div class="fpvsub" id="fpvLegend" style="text-align:center;margin-top:8px">👆 點右下角的捲線器拋竿 ・在水面上拖曳可以移動落點 ・🎣 咬鉤後按住畫面收線 ・🕸️ 拋網一次全抓<br>🎨 魚越紅 = 股價在一年裡越高、越綠 = 越低(不是今天的漲跌)・📏 魚越大 = 公司越大</div>
+    <div class="fpvsub" id="fpvLegend" style="text-align:center;margin-top:8px">👆 點右下角的捲線器拋竿 ・在水面上拖曳可以移動落點 ・🎣 咬鉤後按住畫面收線 ・🕸️ 拋網一次全抓<br>🎨 魚越紅 = 股價在一年裡越高、越綠 = 越低(不是今天的漲跌)・📏 魚越大 = 公司越大<div id="fpvSeaDate" style="margin-top:4px;color:var(--dim)"></div></div>
     <div class="fpvsort hidden" id="fpvSort"></div>
     <div id="fpvCards"></div>
   </div>
@@ -3893,7 +3893,7 @@ const PRO = {
     const fish = rows.map(p => this._fpvFishRow(p));
     return { rows, fish, i: 0, seq: ['idle'] };
   },
-  _fpvFishRow(p) { return { ...this._fpvFishOf(p), rank: p.rank || 0, star: !!p.star, warn: p.warn || [], live: !!p.live, pxDate: p.pxDate || '', mcapSrc: p.mcapSrc || '' }; },
+  _fpvFishRow(p) { return { ...this._fpvFishOf(p), rank: p.rank || 0, star: !!p.star, warn: p.warn || [], live: !!p.live, liveNow: !!p.liveNow, pxDate: p.pxDate || '', mcapSrc: p.mcapSrc || '' }; },
   _fpvCanPlay() {
     const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
     return !reduce && !!(this._fpv && this._fpv.ctx);
@@ -3988,7 +3988,7 @@ const PRO = {
     const el = document.getElementById('fpvHint'); if (!el) return;
     el.innerHTML = html || ''; el.classList.toggle('on', !!html); el.classList.toggle('hot', !!strong);
   },
-  _FPV_EMPTY: '🌊 今天的魚都釣完了 —— 明天收盤後海裡會有新的魚',
+  _FPV_EMPTY: '🌊 這批魚都釣完了 —— 下個交易日收盤後海裡會有新的魚',
   /** 狀態列:剩幾條 / 拋網鈕 / 排序列(🎣 V78.0.2 起拋竿只能點捲線器,⛔ 沒有另外的拋竿鈕) */
   _fpvBtn() {
     const S = this._fpv, Q = S && S.Q, net = document.getElementById('fpvNet');
@@ -4356,11 +4356,11 @@ const PRO = {
     const warn = W.length ? `<div class="row" style="color:var(--amber)">⚠️ ${this._esc(W.map(w => WTXT[w] || String(w).replace(/<[^>]+>/g, '')).join('・').slice(0, 24))}</div>` : '';
     const el = document.createElement('div'); el.className = 'fpvcard'; el.dataset.fpv = F.sym; el.dataset.rank = F.rank || (i + 1);
     el.dataset.chg = F.chg; el.dataset.mcap = Number.isFinite(F.mcap) ? F.mcap : ''; el.dataset.pos = F.pos == null ? '' : F.pos;
-    const when = F.live ? '即時' : (F.pxDate ? F.pxDate.slice(5).replace('-', '/') + ' 收盤' : '');
+    const when = F.liveNow ? '即時' : (F.pxDate ? F.pxDate.slice(5).replace('-', '/') + ' 收盤' : '');
     el.innerHTML = `<span class="rk">${F.star ? '⭐' : ''}#${F.rank || (i + 1)}</span><span class="rar">${F.tag}</span><canvas title="點魚看卡片" style="cursor:pointer" onclick="PRO._fpvProfile('${F.sym}')"></canvas>
       <div class="nm">${this._esc(F.nm)}</div><div class="cd">${F.sym}</div>
       <div class="px ${this.cls(F.chg)}">${this._px(F.c)}</div>
-      <div class="row"><span>今日${when ? ` <span style="color:var(--dim);font-size:10px">${when}</span>` : ''}</span><b class="mono fpvchg ${this.cls(F.chg)}">${chgTxt}</b></div>
+      <div class="row"><span data-fpvchglb>${F.liveNow ? '今日' : '漲跌'}${when ? ` <span style="color:var(--dim);font-size:10px">${when}</span>` : ''}</span><b class="mono fpvchg ${this.cls(F.chg)}">${chgTxt}</b></div>
       <div class="row"><span>市值</span><b class="mono">${this._fpvMcapTxt(F.mcap)}</b></div>
       <div class="row"><span>🎨 一年高低位置</span><b class="mono">${F.pos == null ? '—' : Math.round(F.pos) + '%'}</b></div>${warn}
       <button class="lbtn" onclick="PRO._fpvProfile('${F.sym}')">🎴 看這條魚的卡片</button>
@@ -4610,7 +4610,9 @@ const PRO = {
     const lp = this._lqPx(r.sym), ld = this._lqDate(), base = String((D && D.date) || '').replace(/\//g, '-').slice(0, 10);
     if (lp === null || !ld || (base && ld < base)) return { ...r, pxDate: base };
     const q = this._lq.data[r.sym] || {};
-    return { ...r, c: lp, chg: Number.isFinite(+q.c) ? +q.c : r.chg, live: true, pxDate: ld };
+    // 🕐 V78.5.2 價用最新快照,但「即時」兩個字只在盤中且快照 30 分鐘內才給(⛔ 開盤前不可把上個交易日的漲跌寫成「今日 即時」)
+    const st = this._lqStamp();
+    return { ...r, c: lp, chg: Number.isFinite(+q.c) ? +q.c : r.chg, live: true, liveNow: !!(st && st.live), pxDate: ld };
   },
   _FPV_MAX: 10,
   /** 📏 市值備援(採礦的 `mcap` 欄還沒產出時):只對要釣的這幾條讀 `data/fin/{sym}.json`(每檔約 4 KB,一次 4 個排隊)。
@@ -4845,6 +4847,8 @@ const PRO = {
       sea = { date, order: keep.concat(add), caught: sea.caught.filter(x => bySym[x]) };
     }
     this._fpvSeaSave(sea);
+    // 🐟 V78.5.2 讓人看得出這批魚是哪一天的(使用者:「不是說釣魚每天都是新的魚?」—— 開盤前看到的是上個交易日收盤那批)
+    try { const sd = document.getElementById('fpvSeaDate'); if (sd) sd.textContent = date ? `🐟 這批是 ${date.replace(/\//g, '-').slice(5, 10).replace('-', '/')} 收盤的名單 ・每個交易日收盤後換一批` : ''; } catch (_) {}
     S.sea = sea; S.rowBy = bySym; S.dDate = date; S.lastPicked = R.picked.map(x => x.sym); S.lastRows = syms; S.G = null; S.N = null;
     const left = sea.order.filter(x => !sea.caught.includes(x)).map(x => bySym[x]);
     S.Q = this._fpvQueue(left); S.Q.total = rows.length;
@@ -8470,7 +8474,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V78.5.1',
+  VER: 'V78.5.2',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

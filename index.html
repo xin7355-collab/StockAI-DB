@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.5.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.5.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.5.1</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.5.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -1794,6 +1794,8 @@
                 <div id="ovLeaderLine" class="hidden w-full"></div>
                 <!-- 📊 V78.4.3 機率圖(只轉述 _probBox chart 模式,⛔ 不另算;指數 / 算不出來時藏起來) -->
                 <div id="ovProbBox" class="hidden w-full"></div>
+                <!-- 🌅 V78.5.2 開盤怎麼做(依昨收算開高/平/低的價位;只轉述既有規則,⛔ 不新編) -->
+                <div id="ovOpenBox" class="hidden w-full"></div>
                 <!-- 📰 V78.4.3 這一檔今天碰到的專欄(跟決策台同一個開關,連點版本號 5 次解鎖後才有;沒碰到就藏起來) -->
                 <div id="ovColBox" class="hidden w-full"></div>
                 <div id="ovWhyBox" class="hidden w-full flex flex-col gap-2"></div>
@@ -8710,10 +8712,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.5.1',
+    _APP_VERSION: 'V78.5.2',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.5.2', d: ['🔧 小修正'] },
         { v: 'V78.5.1', d: ['🔧 小修正'] },
         { v: 'V78.5.0', d: ['🔧 小修正'] },
         { v: 'V78.4.9', d: ['🔧 小修正'] },
@@ -8862,7 +8865,6 @@ ${list}
         { v: 'V77.7.4', d: ['📤 <b>實測總表匯出改成「好讀」的順序</b>:每一條先講<b>判定</b>(✅ 實測支持 / ⛔ 不支持 / 🧭 回測方法的坑 / ⏳ 還測不了),再講數字、怎麼用、完整說明,最後才是給程式維護用的技術備註;「做多」「配置」這類速記翻成白話,「六道關卡」「高原」「安慰劑」先解釋一次。', '🧪 回測工具新增:多檔 ETF 基準並排(0050 / 科技 / 半導體 / 中小 / 高股息)、每一筆跟 0050 比的機會成本、換股(錢不夠時賣掉最弱那檔)、成本加倍壓力測試。結論在下一版一起更新。'] },
         { v: 'V77.7.3', d: ['📤 <b>產業作戰室 → 實測總表 多一顆「匯出給 AI」</b>:把全部(或你搜尋到的那幾條)回測結論整理成一份文字,可以📋 複製或⬇️ 下載檔案,拿去問 ChatGPT / Claude / Gemini。開頭會自動附上「回測方法」與「提問範本」,避免 AI 把實測沒用的再推薦一次、或自己編數字。', '💡 最好的問法:<b>一次只問一個主題</b>(先搜「出場」再匯出),AI 回給你的新點子貼回來給我,先回測過關才上線。'] },
         { v: 'V77.7.2', d: ['📏 <b>日 K 修好之後重算了兩張表</b>:K 線訊號成績(2,241 檔・A 級 48 個・基準勝率 36.5%)與「漲/平/跌」機率表(明天 33.6 / 29.9 / 36.5 沒變)。「量能動能發動」第一次有成績:統計上站得住,但<b>平均每趟 −0.93%</b>(會賠),所以它不會被當成進場理由。', '🏭 題材頁多一格「營收在加速 X/Y 檔」(只描述,實測挑加速最多的族群跟隨機一樣)。', '⏳ 決策台「這套實測賺多少」那段數字<b>還在重算中</b>(修好資料 + 股利入帳 + 二代健保),下一版更新。'] },
-        { v: 'V77.7.1', d: ['🔬 產業作戰室「實測總表」:同一個題目以後<b>只改那一張</b>、不再開新卡;非「有用」那幾欄改成<b>最近更新的排最上面</b>,每一條標更新日。', '📅 逐年成績單多兩欄:<b>AI 前(2011~2022)</b>與 <b>AI 時代(2023 起)</b>各自加總 —— 現行那套 AI 前 +74.8 萬(0050 含息 +110.9 萬),AI 時代 +262.2 萬(+177.4 萬)。', '🧪 新回測工具:OBV 五種用法、供應鏈「哪一層營收在加速」、持有期間股利入帳(結論與決策台重算等資料修好再一起公布)。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -20277,6 +20279,131 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         el.classList.remove('hidden');
         // screener 還沒載 → 載完再畫一次(成交額前 100 大要用到),⛔ 只補一次
         if (this._scrData === undefined && !this._qpWait) { this._qpWait = 1; this._loadScreener().catch(() => null).then(() => { this._qpWait = 0; if (String(this.currentSymbolId) === String(sym)) this._renderOvProb(sym); }); }
+    },
+    /** 🌅 V78.5.2 總覽「開盤怎麼做」(使用者:「依照昨日該股收盤價,今天開高、平、低幾%,建議怎麼買賣」)——
+     *  ⛔ 一條新規則都不寫:每一列的動作只轉述本站已經在用的那幾條 ——
+     *   👑 換倉日 `_leadWhen`(開盤跌 ≥3% 那條)・🟥 鎖漲停隔天 `d.due.rules`(`_LUNEXT_EDGE` 四條)・
+     *   🔥 三條出場「尾盤收盤確認」・🔥 進場「尾盤收盤 ≥ 觸發價」・ETF 買了放著。
+     *  開多少都一樣的就只給一列,⛔ 不為了看起來有表而硬切。回 {base, baseLbl, when, live, open, rows:[{lbl, act, amt, hit}]} 或 null。 */
+    _ovOpenPlan(data, sym, d) {
+        if (!d || !Array.isArray(data) || data.length < 2) return null;
+        const live = this.isMarketOpen() && this._lastBarIsToday(data);
+        const n = data.length - 1, ct = this._closedTail(data), lastC = ct[ct.length - 1];
+        const fp = +this._fuglePrevClose;
+        const base = live ? (fp > 0 ? fp : +(lastC && lastC.close)) : +data[n].close;
+        if (!(base > 0)) return null;
+        const baseBar = live ? lastC : data[n];
+        const baseDate = String((baseBar && baseBar.date) || '').replace(/\//g, '-').slice(0, 10);
+        const dw = this._dueWhen(), when = live ? '今天' : dw.openWhen;
+        const ceilT = p => { const t = this._tickOf(p); return +(Math.ceil(p / t - 1e-9) * t).toFixed(2); };
+        const pxOf = x => x > 0 ? ceilT(base * (1 + x / 100)) : x < 0 ? this._floorTick(base * (1 + x / 100)) : base;
+        const LU = this._floorTick(base * 1.1), LD = ceilT(base * 0.9);
+        const f = v => (+v).toLocaleString(undefined, { maximumFractionDigits: 2 });
+        const strip = h => String(h || '').replace(/<[^>]+>/g, '').trim();
+        const segs = [];   // {lo, hi, act, sell, lbl?}:lo/hi 是相對基準的 %,−10 / 10 = 跌停 / 漲停那一端
+        const one = (act, sell) => segs.push({ lo: -10, hi: 10, act, sell: !!sell });
+        const byPx = (P, above, below, sell) => {   // 依某個價位切兩段(出場線 / 觸發價)
+            const x = (P / base - 1) * 100;
+            if (!(x > -10 && x < 10)) { one(x >= 10 ? below : above, sell); return; }
+            segs.push({ lo: -10, hi: x, act: below, sell: !!sell, lbl: `開在 ${f(P)} 元以下` });
+            segs.push({ lo: x, hi: 10, act: above, sell: false, lbl: `開在 ${f(P)} 元以上` });
+        };
+        const v = d.lead;
+        if (d.state === 'etfhold') one('持續抱著,開高開低都不用動');
+        else if (v && !v.err) {
+            const sp = this._leadTiming() === 'split';
+            const vDate = String(v.date || '').replace(/\//g, '-').slice(0, 10);
+            const tradeNext = !!(v.isRebal && vDate && vDate === baseDate);   // 名單日 = 基準那根 → 下一個開盤就是換倉的成交日
+            if (v.st === 'sell' && tradeNext) {
+                if (sp) { segs.push({ lo: -10, hi: -3, act: '等到 09:30~10:00 再賣', sell: true }); segs.push({ lo: -3, hi: 10, act: '09:00 開盤就賣', sell: true }); }
+                else one('09:00 開盤就賣', true);
+            } else if (v.st === 'buy' && tradeNext) {
+                if (sp) { segs.push({ lo: -10, hi: -3, act: '09:00 開盤就買' }); segs.push({ lo: -3, hi: 9.99, act: '下午 13:25 買' }); }
+                else segs.push({ lo: -10, hi: 9.99, act: '09:00 開盤就買' });
+                segs.push({ lo: 9.99, hi: 10, act: '不追(開盤就漲停買不到)' });
+            } else if (v.st === 'sell' || v.st === 'buy') one('名單還沒更新到最新收盤,更新後再看');
+            else one({ keep: '續抱 —— 換倉日才看排名,⛔ 沒有停損線',
+                       outwait: `續抱 —— 換倉日(還有 ${v.left} 個交易日)還在前 ${v.H} 名外才賣`,
+                       buywait: `不買 —— 換倉日還在前 ${v.N} 名才買`,
+                       bear: '不買 —— 大盤空頭不開新倉' }[v.st] || '不買 —— 不在這一套的名單裡');
+        } else if (d.held) {
+            const ed = d.exitDist;
+            if (d.state === 'exit' && d.due && d.due.lu && Array.isArray(d.due.rules) && d.due.rules.length >= 4) {
+                const R = d.due.rules.map(r => strip(r[1]));      // ⛔ 文字直接讀 `_LUNEXT_EDGE` 那四條(同一份)
+                segs.push({ lo: -10, hi: 0, act: R[3], sell: true });
+                segs.push({ lo: 0, hi: 5, act: R[2], sell: true });
+                segs.push({ lo: 5, hi: 9.99, act: R[1], sell: true });
+                segs.push({ lo: 9.99, hi: 10, act: R[0], sell: true });
+            } else if (d.state === 'exit' && d.due) one(`尾盤照收盤價賣 —— 時間到了,跟開多少無關`, true);
+            else if (d.state === 'exit') one(`尾盤照收盤價賣 —— 出場線已經跌破,跟開多少無關`, true);
+            else {
+                const ls = ((ed && ed.lines) || []).filter(l => +l.v > 0 && +l.v < base).sort((a, b) => b.v - a.v);
+                const L = ls[0];
+                if (L) { const Lp = this._floorTick(+L.v);
+                    byPx(Lp, `續抱 —— 收盤沒跌破 ${f(Lp)}(${this._escHtml(L.name)})就繼續抱`, `⛔ 別開盤殺 —— 收盤還在 ${f(Lp)} 以下才尾盤賣`, true); }
+                else one('續抱 —— 照三條出場規則,收盤確認才賣');
+            }
+        } else {
+            const K = this._keyLevels, trig = (K && String(K.sym) === String(sym) && +K.trigPx > 0) ? +K.trigPx : null;
+            if (trig) {
+                byPx(trig, `已經過觸發價,仍等尾盤:收盤前還在 ${f(trig)} 以上才買`, `等尾盤:收盤前漲到 ${f(trig)} 以上才買,沒到就不買`);
+                const top = segs[segs.length - 1]; if (top && top.hi >= 10) { top.hi = 9.99; segs.push({ lo: 9.99, hi: 10, act: '不追(開盤就漲停買不到)' }); }
+            } else one(`開多少都不買(${strip(d.badge).replace(/^[^一-鿿]+/, '') || '沒有進場價'})`);
+        }
+        // 相鄰動作一樣的合併(⛔ 不硬湊)
+        const M = [];
+        for (const g of segs) { const p = M[M.length - 1]; if (p && p.act === g.act && !p.lbl && !g.lbl) { p.hi = g.hi; } else M.push({ ...g }); }
+        const r1 = x => +(+x).toFixed(1);
+        const lblOf = g => {
+            if (g.lbl) return g.lbl;
+            const lo = g.lo, hi = g.hi;
+            if (lo >= 9.99) return `開盤就漲停(${f(LU)})`;
+            if (lo <= -10 && hi >= 10) return '開多少都一樣';
+            const topEnd = hi >= 9.99, botEnd = lo <= -10;
+            if (lo >= 0) return lo === 0 ? (topEnd ? `開平或開高(≥ ${f(base)})` : `開高 0~${r1(hi)}%(${f(base)}~${f(pxOf(hi))})`)
+                                         : (topEnd ? `開高 ${r1(lo)}% 以上(≥ ${f(pxOf(lo))})` : `開高 ${r1(lo)}~${r1(hi)}%(${f(pxOf(lo))}~${f(pxOf(hi))})`);
+            if (hi <= 0) return botEnd ? (hi === 0 ? `開平或開低(≤ ${f(base)})` : `開低 ${r1(-hi)}% 以上(≤ ${f(pxOf(hi))})`)
+                                       : `開低 ${r1(-hi)}~${r1(-lo)}%(${f(pxOf(lo))}~${f(pxOf(hi))})`;
+            if (botEnd) return `開高不到 ${r1(hi)}%、開平或開低(< ${f(pxOf(hi))})`;
+            if (topEnd) return `開低不到 ${r1(-lo)}%、開平或開高(> ${f(pxOf(lo))})`;
+            return `開低 ${r1(-lo)}% ~ 開高 ${r1(hi)}% 之間`;
+        };
+        const sh = +d.shares || 0, cost = +d.cost || 0;
+        const open = live ? +data[n].open : null, oPct = open > 0 ? (open / base - 1) * 100 : null;
+        const amtAt = P => this._netPL(cost, P, sh * 1000);
+        const rows = M.map(g => {
+            let amt = null;
+            if (g.sell && d.held && cost > 0 && sh > 0) {
+                const a = Math.max(LD, g.lo <= -10 ? LD : pxOf(g.lo)), b = Math.min(LU, g.hi >= 10 ? LU : pxOf(g.hi));
+                const x = amtAt(Math.min(a, b)), y = amtAt(Math.max(a, b));
+                if (Number.isFinite(x) && Number.isFinite(y)) amt = [x, y];
+            }
+            const hit = oPct != null && oPct >= g.lo - 1e-9 && (oPct < g.hi || (g.hi >= 10 && oPct <= 10.5));
+            return { lbl: lblOf(g), act: g.act, amt, hit, lo: g.lo, hi: g.hi };
+        });
+        if (oPct != null && rows.filter(r => r.hit).length > 1) { let k = false; rows.forEach(r => { if (r.hit && k) r.hit = false; else if (r.hit) k = true; }); }
+        return { base, baseLbl: live ? '昨收' : (this._lastBarIsToday(data) ? '今天收盤' : '最近收盤'), baseDate, when, live, open, rows };
+    },
+    _renderOvOpen(sym, data, d) {
+        const el = document.getElementById('ovOpenBox'); if (!el) return;
+        const off = () => { el.innerHTML = ''; el.classList.add('hidden'); };
+        if (!sym || String(sym) !== String(this.currentSymbolId) || (this._isIndexSym && this._isIndexSym(sym))) return off();
+        let P = null; try { P = this._ovOpenPlan(data, sym, d); } catch (_) { P = null; }
+        if (!P || !P.rows.length) return off();
+        const f = v => (+v).toLocaleString(undefined, { maximumFractionDigits: 2 });
+        const money = a => { const t = x => `${x >= 0 ? '+' : '−'}${Math.abs(Math.round(x)).toLocaleString()}`; return Math.round(a[0]) === Math.round(a[1]) ? `${t(a[0])} 元` : `${t(a[0])} ~ ${t(a[1])} 元`; };
+        const rowH = r => `<div class="py-1.5 border-b border-[#21262d] ${r.hit ? 'bg-amber-900/20' : ''}" data-ovopen-row="${r.lo},${r.hi}"${r.hit ? ' data-ovopen-hit="1"' : ''}>
+                <div class="text-[11px] font-bold text-gray-200">${r.hit ? '👉 ' : ''}${r.lbl}${r.hit ? `<span class="text-[10px] text-amber-300 font-normal"> ・今天開在 ${f(P.open)}</span>` : ''}</div>
+                <div class="text-[11px] text-gray-300 leading-snug" data-ovopen-act="1">→ ${r.act}</div>
+                ${r.amt ? `<div class="text-[10px] text-gray-500" data-ovopen-amt="1">賣在這一段約 ${money(r.amt)}(已扣手續費與稅)</div>` : ''}</div>`;
+        const h = `<div class="w-full" data-ovopen="1">
+            <div class="flex items-center justify-between text-[11px] text-gray-400 border-b border-[#21262d] pb-1">
+              <span class="font-black text-gray-200">🌅 ${P.when}開盤怎麼做</span>
+              <span class="font-mono">${P.baseLbl} ${f(P.base)}${P.baseDate ? `<span class="text-gray-600"> ・${this._dW ? this._dW(P.baseDate) : P.baseDate}</span>` : ''}</span></div>
+            ${P.rows.map(rowH).join('')}
+            <div class="text-[10px] text-gray-600 mt-1">價位 = ${P.baseLbl}算的開盤價(對到跳動單位)・照你選的策略與手上部位</div></div>`;
+        if (el.innerHTML !== h) el.innerHTML = h;
+        el.classList.remove('hidden');
     },
     /** 📊 V78.1.1 決策台每一列的機率(讀那一檔自己的 K 線:IndexedDB 有就用、沒有才抓 data/{sym}.json)。⛔ 只描述,不改排序與買賣判斷。 */
     async _deckProbFill(root) {
@@ -34104,7 +34231,7 @@ ${this._reportFacts(sym)}
                 // 📄 V75.1.1 報告分頁九段(全是 async 才填;不清會顯上一檔的估值/籌碼)
                 'rpLead', 'rpQuick', 'rpPaste', 'rpImg', 'rpWalls', 'rpVal', 'rpFund', 'rpInd', 'rpChip', 'rpRisk', 'rpAct', 'rpSrc',
                 'ovWhyBox',                               // 🧭 V76.0.7 主卡收進摺疊區的那一半(_renderOvCommand 才填)
-                'ovProbBox', 'ovColBox',                  // 📊📰 V78.4.3 總覽機率圖 / 這一檔的專欄(_renderOvCommand 才填)
+                'ovProbBox', 'ovOpenBox', 'ovColBox',     // 📊📰 V78.4.3 / 🌅 V78.5.2 總覽機率圖 / 這一檔的專欄(_renderOvCommand 才填)
             ].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) { el.innerHTML = ''; el.classList.add('hidden'); }
@@ -37021,7 +37148,7 @@ ${this._reportFacts(sym)}
         this._ovLastData = data;
         const sym = String(this.currentSymbolId || '');
         // 🏛️ 指數沒有「買幾張/停損」可言(V71.8.2 的決定)→ 整區不顯示
-        if (!sym || (this._isIndexSym && this._isIndexSym())) { el.innerHTML = ''; el.classList.add('hidden'); ['ovProbBox', 'ovColBox'].forEach(id => { const x = document.getElementById(id); if (x) { x.innerHTML = ''; x.classList.add('hidden'); } }); return; }
+        if (!sym || (this._isIndexSym && this._isIndexSym())) { el.innerHTML = ''; el.classList.add('hidden'); ['ovProbBox', 'ovOpenBox', 'ovColBox'].forEach(id => { const x = document.getElementById(id); if (x) { x.innerHTML = ''; x.classList.add('hidden'); } }); return; }
         // 🎯 明日作戰清單(這一檔自己的觸發價)是非同步載入的 → 載完重畫一次
         if (this._pbEdge === undefined && !this._pbEdgePend) {
             this._pbEdgePend = 1;
@@ -37118,6 +37245,7 @@ ${this._reportFacts(sym)}
         //   完整表在「報告」分頁。⛔ 不可為了塞它把第一眼撐爆。
         // 📊 V78.4.3 機率改成總覽裡的一張圖(#ovProbBox;使用者:「這段改在總覽裡面,一目了然」)—— ⛔ 不放進 ovCommandCenter(第一眼 600 字那一格)
         try { this._renderOvProb(sym); } catch (_) {}
+        try { this._renderOvOpen(sym, data, d); } catch (_) {}   // 🌅 V78.5.2 開盤怎麼做
         // 📰 V78.4.3 這一檔今天碰到的專欄(跟決策台同一個開關,連點版本號 5 次解鎖後才有)
         try { this._renderOvCol(sym).catch(() => {}); } catch (_) {}
         el.innerHTML = A + emg + urgentHtml + strip + ruler + bell;

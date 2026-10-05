@@ -192,6 +192,31 @@ ok(/\+?0\.0%/.test(N.row) && /\+?0 元/.test(N.row), 'ⓝ2 剛放進籃子賺賠
 ok(N.home.some(h => h.sym === N.sym && h.px === N.lp && h.d === '2099-01-02') && N.dec.some(a => a[0] === N.sym && a[1] === N.lp),
   'ⓞ 🏠 帶回家養:寫 fishHome_v1 + 匯入碼可解回同一份', JSON.stringify([N.home, N.dec]));
 
+// ── ⓝ3 🕐 V78.5.2 開盤前 ⛔ 不可把上個交易日的漲跌寫成「今日 即時」 ──
+const T = await pg.evaluate(() => {
+  const D = PRO._fishD, r = D.rows.find(x => x.c > 0), sym = r.sym;
+  const sv = { lq: PRO._lq, at: PRO._lqAt, open: PRO._twOpenNow };
+  const box = document.getElementById('fpvCards');
+  const card = openNow => {
+    PRO._twOpenNow = () => openNow;
+    PRO._lq = { updated: new Date(Date.now() - 60000).toISOString(), ts: 'x', data: { [sym]: { p: r.c, c: 2.5 } } }; PRO._lqAt = Date.now() + 1e9;
+    const F = PRO._fpvFishRow(PRO._fpvLive(r, D));
+    box && box.querySelectorAll(`[data-fpv="${sym}"]`).forEach(e => e.remove());
+    PRO._fpvShowCard(F, 0, null);
+    const el = box && box.querySelector(`[data-fpv="${sym}"] [data-fpvchglb]`);
+    const t = el ? el.innerText : '';
+    box && box.querySelectorAll(`[data-fpv="${sym}"]`).forEach(e => e.remove());
+    return t;
+  };
+  const pre = card(false), live = card(true);
+  PRO._lq = sv.lq; PRO._lqAt = sv.at; PRO._twOpenNow = sv.open;
+  const sd = document.getElementById('fpvSeaDate');
+  return { pre, live, sea: sd ? sd.innerText : null, hasBox: !!box };
+});
+ok(T.hasBox && !/即時|今日/.test(T.pre) && /\d\d\/\d\d 收盤/.test(T.pre), 'ⓝ3 開盤前卡片 ⛔「今日 即時」,寫「MM/DD 收盤」', JSON.stringify(T));
+ok(/今日/.test(T.live) && /即時/.test(T.live), 'ⓝ4 盤中(快照 30 分鐘內)才寫「今日 即時」', JSON.stringify(T));
+ok(T.sea === null || /\d\d\/\d\d 收盤的名單/.test(T.sea) || T.sea === '', 'ⓝ5 海面標出這批是哪天收盤的名單(有填就要有日期)', JSON.stringify(T.sea));
+
 // ── ⓕ reduced-motion ────────────────────────────────────
 const pg3 = await open('?app=fish', true);
 await pg3.waitForFunction(() => PRO._fishD, null, { timeout: 40000 }).catch(() => {});
