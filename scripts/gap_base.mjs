@@ -100,4 +100,5 @@ async function main() {
     console.log(`✅ ${syms} 檔・${H.n.toLocaleString()} 次開盤・${first}~${last}`);
     console.log(`   開高 ≥1% ${sh(1, 12).toFixed(1)}% ・平 ±1% ${sh(-1, 1).toFixed(1)}% ・開低 ≥1% ${sh(-12, -1).toFixed(1)}% ・開盤鎖漲停 ${(H.lu / H.n * 100).toFixed(2)}% ・鎖跌停 ${(H.ld / H.n * 100).toFixed(2)}%`);
 }
-main();
+import { fileURLToPath } from 'url';
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();   // ⛔ 被 import 時不跑(gap_after_probe 共用 tick)

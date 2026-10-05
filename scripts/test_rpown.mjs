@@ -195,6 +195,28 @@ const rep = await page.evaluate(() => {
        `💾c 🚨 下載失敗時還跟使用者說成功了:「${t}」—— 這正是他回報「壞掉」的原因(toast 不可無條件跳)`);
     ck(/長按圖片|存不起來/.test(t), `💾c2 失敗時沒告訴使用者可以怎麼辦:「${t}」`);
 }
+// 📐 V78.5.4 使用者截圖:長標籤壓到「今日 / 近 20 日」+ 收起來的 <details> 印進圖裡、<b> 剝掉少空白
+{
+    const h = await page.evaluate(async () => {
+        const A = window.app || app;
+        const L = A._rpLast; if (!L) return { no: 1 };
+        const dec0 = L.dec;
+        L.dec = { badge: '⏳ 續抱到換倉日(還有 6 個交易日)', why: '這一檔今天是<b>第 12 名</b>,隔天<b>09:00</b>開盤賣。<details><summary>為什麼不現在賣 ▾</summary>✅ 續抱條件:秘密內容</details>' };
+        A._rpDrawOwn(A.currentSymbolId || '2330');
+        const hb = A._rpOwnDbg && A._rpOwnDbg.headBadge;
+        const F = A._rpOwnFacts(A.currentSymbolId || '2330') || {};
+        L.dec = { badge: '續抱', why: 'x' };
+        A._rpDrawOwn(A.currentSymbolId || '2330');
+        const hb2 = A._rpOwnDbg && A._rpOwnDbg.headBadge;
+        L.dec = dec0; A._rpDrawOwn(A.currentSymbolId || '2330');
+        return { hb, hb2, why: F.why || '' };
+    });
+    ck(!h.no && h.hb, '📐a 量不到海報標籤(_rpOwnDbg.headBadge)');
+    if (h.hb) ck(h.hb.row === true && h.hb.left <= h.hb.chgR, `📐b 長標籤沒有換到下一行(會壓到今日 / 近 20 日):${JSON.stringify(h.hb)}`);
+    if (h.hb2) ck(h.hb2.row === false, `📐c 短標籤應該照舊放右上角:${JSON.stringify(h.hb2)}`);
+    ck(!/▾|秘密內容|為什麼不現在賣/.test(h.why), `📐d 收起來的 <details> 被印進海報:${h.why}`);
+    ck(/隔天 09:00/.test(h.why) && /第 12 名/.test(h.why), `📐e <b> 剝掉之後少了空白:${h.why}`);
+}
 await browser.close();
 
 ck(shimBad.length === 0, `📄0 版面 shim 有規則沒生效(${shimBad.join('、')})→ ⛔ 底下的報告頁幾何全部不可信`);

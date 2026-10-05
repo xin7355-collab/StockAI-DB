@@ -840,8 +840,9 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('📝e 🚨 鐵線:貼上的報告⛔ 不進「📋 複製整份報告」、⛔ 不進 _ovDecide、AI 的價位⛔ 不進 _keyLevels', !V.rail.copy && !V.rail.dec && !V.keyLv, JSON.stringify(V.rail));
     ok('📝f 版面順序(V76.2.5 使用者指定):📄 短評報告 → 📝 貼上區 → ⚡ 快速表',
        V.ord.indexOf('rpImg') < V.ord.indexOf('rpPaste') && V.ord.indexOf('rpPaste') < V.ord.indexOf('rpQuick'), V.ord.join(','));
-    // fresh 版(基準日 = 今天、價 544):不可亮「天數 / 偏離 / 法定日 / 除息」
-    const FR = await page.evaluate(async (txt) => { const A = app; document.getElementById('rpNoteIn').value = txt; A._rpNoteSave('2327'); await new Promise(r => setTimeout(r, 150)); return A._rpNoteStale(A._rpLast, A._rpNote('2327')); }, fresh);
+    // fresh 版(基準日 = 今天、價 = 今天的現價):不可亮「天數 / 偏離 / 法定日 / 除息」
+    const FR = await page.evaluate(async (txt) => { const A = app; txt = txt.replace(/544/g, String(Math.round(+A._rpLast.pC)));   // 「價位 = 現價」要用**今天的**現價(⛔ 寫死 544 會隨行情過期 → 長期紅燈)
+        document.getElementById('rpNoteIn').value = txt; A._rpNoteSave('2327'); await new Promise(r => setTimeout(r, 150)); return A._rpNoteStale(A._rpLast, A._rpNote('2327')); }, fresh);
     ok('📝c3 fresh 版(基準日今天、價位 = 現價):⛔ 不可亮天數 / 偏離 / 財報法定日 / 除息', !FR.reasons.some(r => /已經 \d+ 天|偏離|法定|除息/.test(r)), JSON.stringify(FR));
     // 舊格式(V76.1.8 存的,沒有 asof)照讀,基準日退回貼上日
     const OLD = await page.evaluate(async () => { const A = app; localStorage.setItem('rpNote_2327', JSON.stringify({ t: '舊格式筆記 沒有節', ts: Date.now() - 3 * 864e5 })); await A.idb.del('rpNote_2327'); await A._rpNoteLoad('2327'); A._rpRefreshPaste('2327'); await new Promise(r => setTimeout(r, 100)); const c = document.getElementById('rpPaste'); return { shown: /舊格式筆記/.test(c.innerText), asof: A._rpNoteAsofOf(A._rpNote('2327')), noSec: /沒切節/.test(c.innerText) }; });

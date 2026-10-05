@@ -5,8 +5,10 @@
  * 用法:node scripts/embed_gap_base.mjs gap_base.json
  */
 import fs from 'fs';
-const src = process.argv[2];
-if (!src) { console.error('用法:node scripts/embed_gap_base.mjs gap_base.json'); process.exit(1); }
+// V78.5.4 第二個參數(選用)= `gap_after_probe.mjs` 的產物 → 嵌成 `_GAP_BASE.after`(開盤後那天怎麼走,一般股票);
+//   沒給就沿用 index.html 裡現有那一份(⛔ 不會因為只重跑直方圖就把它洗掉)
+const src = process.argv[2], srcAfter = process.argv[3];
+if (!src) { console.error('用法:node scripts/embed_gap_base.mjs gap_base.json [gap_after.json]'); process.exit(1); }
 const G = JSON.parse(fs.readFileSync(src, 'utf8'));
 const sum = (G.bins || []).reduce((a, b) => a + b, 0);
 if (!Array.isArray(G.bins) || G.bins.length !== 220 || sum !== G.n) { console.error(`❌ 直方圖壞掉:${G.bins && G.bins.length} 格、總和 ${sum} ≠ n ${G.n}`); process.exit(1); }
@@ -16,6 +18,16 @@ const T = { v: 1, src: G.src, from: G.from, to: G.to, syms: G.syms, n: G.n, bin:
     note: '上市櫃個股(⛔ ETF、⛔ 興櫃)最近一年每一天「開盤 ÷ 前一天收盤」落在哪一格(0.1% 一格,−11%~+11%);|跳空|>11% 剔除;lu / ld = 開盤就鎖漲停 / 跌停的次數;⛔ 不是預測' };
 const lines = fs.readFileSync('index.html', 'utf8').split('\n');
 let k = lines.findIndex(l => l.trim().startsWith('_GAP_BASE:'));
+if (srcAfter) {
+    const A = JSON.parse(fs.readFileSync(srcAfter, 'utf8'));
+    const BK = ['lu', 'hi', 'flat', 'lo', 'ld'];
+    if (!A.buckets || BK.some(b => !A.buckets[b] || !(A.buckets[b].n >= 1000))) { console.error('❌ gap_after 每一桶要有 ≥1000 次'); process.exit(1); }
+    if (!(A.syms >= 1000)) { console.error(`❌ gap_after 只有 ${A.syms} 檔`); process.exit(1); }
+    T.after = { src: A.src, from: A.from, to: A.to, th: A.th, syms: A.syms };
+    for (const b of BK) { const x = A.buckets[b]; T.after[b] = { n: x.n, up: x.upPct, dn: x.dnPct, oc: x.ocMean, lock: x.lockPct, yrs: x.yearsSame }; }
+} else if (k >= 0) {
+    try { const old = JSON.parse(lines[k].trim().replace(/^_GAP_BASE:\s*/, '').replace(/,\s*$/, '')); if (old.after) T.after = old.after; } catch (_) {}
+}
 const line = '    _GAP_BASE: ' + JSON.stringify(T) + ',';
 if (k >= 0) lines[k] = line;
 else {
