@@ -218,15 +218,16 @@ const DS = await page.evaluate(() => {
         pbDesc: box ? (box.querySelector('[data-deckshowk="pb"]')?.innerText || '') : '' }; };
     app.settings.deckShow = null;
     out.lead = snap();                                        // 這支測試開頭切成 👑
-    app.settings.deckShow = { pb: true }; out.leadPbOn = snap();   // ⭐ 決定性對照:👑 時勾 pb 也⛔ 不會跑出來
+    app.settings.deckShow = { pb: false }; out.leadPbOn = snap();   // ⭐ 決定性對照:👑 時把 🔥 名單外的買點關掉 → 不顯
     app.settings.strategy = 'gene'; app.settings.deckShow = null;
     out.gene = snap();
     app.settings.deckShow = { fit: true }; out.geneFit = snap();
     app.settings.strategy = 'lead'; app.settings.deckShow = null;
     return out;
 });
-ok('⑧ 👑:只有領頭羊 + 要賣的兩塊(🧬 那三塊不列也不顯)', JSON.stringify((({ col, ...r }) => r)(DS.lead.def)) === JSON.stringify({ leader: true, sell: true, pb: false, fit: false })   /* 🔓 V78.4.2 `col` 是解鎖後的進階功能(另一區開關),⛔ 不算決策台一般區塊 */ && DS.lead.leader && !DS.lead.pb && DS.lead.hidN === undefined && JSON.stringify(DS.lead.keys) === JSON.stringify(['leader', 'sell']), JSON.stringify(DS.lead));
-ok('⑧b ⭐ 決定性對照:👑 時就算勾了 🧬 買點也⛔ 不顯示', DS.leadPbOn.pb === false, JSON.stringify(DS.leadPbOn));
+// 🔥 V78.5.5 使用者選「名單外買賣都改照 🔥」→ 👑 時多一塊「🔥 名單外的買點」(pb);📈 符合進場候選(fit)仍只在 🧬
+ok('⑧ 👑:領頭羊 + 要賣的 + 🔥 名單外的買點(📈 候選不列)', JSON.stringify((({ col, ...r }) => r)(DS.lead.def)) === JSON.stringify({ leader: true, sell: true, pb: true, fit: false })   /* 🔓 V78.4.2 `col` 是解鎖後的進階功能(另一區開關),⛔ 不算決策台一般區塊 */ && DS.lead.leader && DS.lead.pb && DS.lead.hidN === undefined && JSON.stringify(DS.lead.keys) === JSON.stringify(['leader', 'sell', 'pb']), JSON.stringify(DS.lead));
+ok('⑧b 👑 時 🔥 名單外的買點可以收起(設定關掉就不顯)', DS.leadPbOn.pb === false && DS.lead.pb === true, JSON.stringify(DS.leadPbOn));
 ok('⑧c 🧬(預設):🧬 買點 + 要賣的開、領頭羊⛔ 不列也不顯;「今天不用做」只講 🧬', DS.gene.def.pb === true && DS.gene.def.leader === false && !DS.gene.leader && DS.gene.pb && DS.gene.idle && !DS.gene.keys.includes('leader') && DS.gene.keys.length === 3 && DS.gene.checked === 2, JSON.stringify(DS.gene));
 ok('⑧d 🧬 收起的要寫出來(⛔ 不靜默);🧹 V78.3.4 說明⛔ 不印回測數字、⛔ 不拿領頭羊來比', DS.gene.hidN === '1' && !DS.geneFit.hidN && !/萬|實測|回測/.test(DS.gene.pbDesc) && !/領頭羊/.test(DS.gene.pbDesc) && /觸發價/.test(DS.gene.pbDesc), JSON.stringify([DS.gene.hidN, DS.geneFit.hidN, DS.gene.pbDesc]));
 

@@ -43,7 +43,7 @@ const R = await page.evaluate(() => {
     o.b1 = T.base[i1].slice(1, 4);
     o.noBox = !document.getElementById('ovProbBox');
     o.notCalled = !/_renderOvProb\(/.test(app._renderOvCommand.toString());
-    o.wired = /mode: 'tom'/.test(app._renderOvOpen.toString());
+    o.wired = /mode: 'tom'/.test(app._ovOpenHtml.toString());   // 🌅 V78.5.5 開盤卡 HTML 改由 _ovOpenHtml 產生
     const div = h => { const d = document.createElement('div'); d.innerHTML = h; return d; };
     const a = div(app._probBox('9999', { mode: 'tom', data }));
     o.a = a.innerText; o.aLink = (a.querySelector('[data-probtom]') || {}).getAttribute?.('onclick') || '';

@@ -62,6 +62,8 @@ const errs = [];
 page.on('pageerror', e => { const t = (e && e.message) ? e.message : String(e); if (!benign(t)) errs.push(t); });
 await page.goto('file://' + HTML, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof app !== 'undefined' && !!app._ovOpenPlan && !!app._renderOvOpen && !!app._netPL, null, { timeout: 30000 });
+// 🌅 V78.5.5 #ovOpenBox 搬進 #ovCommandCenter(由 _renderOvCommand 畫);這支測試直接呼叫 _renderOvOpen → 先擺一個同 id 的容器
+await page.evaluate(() => { if (!document.getElementById('ovOpenBox')) { const d = document.createElement('div'); d.id = 'ovOpenBox'; d.className = 'hidden w-full'; (document.getElementById('ovCommandCenter') || document.body).appendChild(d); } });
 
 const R = await page.evaluate(() => {
     const out = {};

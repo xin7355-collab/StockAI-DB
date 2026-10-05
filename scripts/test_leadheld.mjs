@@ -112,7 +112,8 @@ ok('ⓑ 曾是第 15 名 → 「掉出前 10 名」', /掉出前 10 名/.test(R.
 const cut = w => Math.round((1 - (w.all - 100) / (w.now - 100)) * 100);
 // 🧹 V78.3.6 散戶 App 不印回測 % → 改釘「會少賺很多」白話 + ⛔ 不可有 %;決定性對照:改 _LEAD_LU_EDGE 之後一般模式畫面仍不出現那些數字
 ok('📸a 上次換倉名單有這檔 → ✅ 第 3 名(⭐ 決定性對照:同一份 ctx 只改快照)', /data-leadsnap="in"/.test(R.sIn || '') && /✅ 第 3 名/.test(R.sIn) && /09\/24|09-24/.test(R.sIn), (R.sIn || '').slice(0, 300));
-ok('📸b 快照裡沒有這檔 → ❌ 不在名單上', /data-leadsnap="out"/.test(R.sOut || '') && /❌ 不在名單上/.test(R.sOut), (R.sOut || '').slice(0, 300));
+// 🔥 V78.5.5 使用者選「名單外改照 🔥」:快照裡沒有這檔的持股 → 改走 🔥(總覽第一句講不在上次換倉名單)
+ok('📸b 快照裡沒有這檔 → 🔥(不在上次換倉的 👑 名單上 → 照三條出場)', /data-leadfire="held"/.test(R.sOut || '') && /不在上次換倉/.test(R.sOut), (R.sOut || '').slice(0, 300));
 ok('📸c 讀不到 → 寫原因(⛔ 不可說成不在名單上)', /data-leadsnap="err"/.test(R.sErr || '') && /讀不到\(2026-09-24 換倉那天的名單沒有存到\)/.test(R.sErr) && !/不在名單上/.test(R.sErr), (R.sErr || '').slice(0, 300));
 ok('📸d 沒有快照資料 → 讀不到(還沒讀到)', /data-leadsnap="err"/.test(R.a.why || '') && /還沒讀到/.test(R.a.why), (R.a.why || '').slice(0, 300));
 ok('📸e 續抱(前 10 名內)也有快照那行', /data-leadsnap="in"/.test(R.sKeep || '') && /✅ 第 2 名/.test(R.sKeep), (R.sKeep || '').slice(0, 300));

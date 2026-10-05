@@ -105,7 +105,7 @@ const snap = async (page) => page.evaluate(() => {
     });
     const sr = cc.querySelector('[data-priceruler]');
     return {
-        sym: app.currentSymbolId, ccLen: txt(cc).length, ccTxt: txt(cc),
+        sym: app.currentSymbolId, ccLen: (c => { const ob = c.querySelector('#ovOpenBox'), d0 = ob ? ob.style.display : ''; if (ob) ob.style.display = 'none'; const t = (c.innerText || '').replace(/\s+/g, ' ').trim(); if (ob) ob.style.display = d0; return t; })(cc).length, ccTxt: (c => { const ob = c.querySelector('#ovOpenBox'), d0 = ob ? ob.style.display : ''; if (ob) ob.style.display = 'none'; const t = (c.innerText || '').replace(/\s+/g, ' ').trim(); if (ob) ob.style.display = d0; return t; })(cc),   // 🌅 V78.5.5 開盤卡搬進主區(價格圖上面)但⛔ 本來就不算第一眼字數
         gauges: g, dims: (app._lastGauge && String(app._lastGauge.sym) === String(app.currentSymbolId)) ? app._lastGauge.dims.map(d => [d.name, d.score]) : null,
         marks: sr ? [...sr.querySelectorAll('[data-mark]')].map(e => [e.dataset.mark, +e.dataset.v]) : [],
         bands: sr ? [...sr.querySelectorAll('[data-supplyband]')].map(e => e.dataset.supplyband) : [],
@@ -390,7 +390,7 @@ await page.close();
             pocK: (K.pocLo > 0 && K.pocHi > 0) ? `${Math.round(K.pocLo)}~${Math.round(K.pocHi)}` : null,
             stuck: pr ? [...pr.querySelectorAll('[data-stuck]')].map(e => e.dataset.stuck) : [],
             stuckK: Array.isArray(K.stuck) ? K.stuck.map(z => `${Math.round(z.lo)}~${Math.round(z.hi)}`) : [],
-            prHtml: pr ? pr.innerHTML : '', ccLen: (cc.innerText || '').replace(/\s+/g, ' ').trim().length };
+            prHtml: pr ? pr.innerHTML : '', ccLen: (c => { const ob = c.querySelector('#ovOpenBox'), d0 = ob ? ob.style.display : ''; if (ob) ob.style.display = 'none'; const t = (c.innerText || '').replace(/\s+/g, ' ').trim(); if (ob) ob.style.display = d0; return t; })(cc).length };
     });
     console.log(`   符號 ${V.rows.map(r => r.k + '=' + r.badge).join(',')} ・填色 ${V.fill}% ・密集區 ${V.poc} ・卡在哪 ${V.stuck.length} 段`);
     ok('㉔ ⭐ 每一格都要有符號提示(使用者:「除了大盤外其它面向沒有符號」;注入:pos 那兩格不給徽章 → 紅)',
@@ -419,7 +419,7 @@ await page.close();
         return { bear: app._bearGate(app.currentSymbolId), trend: (app._ovTrend || {}).trend,
             txt: pr ? pr.innerText : '', legs: pr ? [...pr.querySelectorAll('[data-leg]')].map(e => e.innerText.trim()) : [],
             marks: pr ? [...pr.querySelectorAll('[data-mark]')].map(e => [e.dataset.mark, +e.dataset.v]) : [],
-            addPx: K.addPx, buyPx: K.buyPx, ccLen: (cc.innerText || '').replace(/\s+/g, ' ').trim().length };
+            addPx: K.addPx, buyPx: K.buyPx, ccLen: (c => { const ob = c.querySelector('#ovOpenBox'), d0 = ob ? ob.style.display : ''; if (ob) ob.style.display = 'none'; const t = (c.innerText || '').replace(/\s+/g, ' ').trim(); if (ob) ob.style.display = d0; return t; })(cc).length };
     });
     console.log(`   2327 trend=${W.trend} ・圖例 ${W.legs.join(' / ')}`);
     // ⚠️ V78.1.2 2327 已經不是空頭了(trend=flat)→ 舊版這三條等於在量「多頭的尺」。改成 stub `_bearGate` = true,

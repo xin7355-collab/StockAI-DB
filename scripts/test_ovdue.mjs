@@ -86,7 +86,7 @@ const R = await page.evaluate(() => {
             app._renderOvCommand(rows);
             const el = document.getElementById('ovCommandCenter');
             const more = el && el.querySelector('[data-ovdue-more]');
-            const first = (() => { if (!el) return ''; const c = el.cloneNode(true); c.querySelectorAll('details').forEach(x => x.remove()); return c.textContent.replace(/\s/g, ''); })();
+            const first = (() => { if (!el) return ''; const c = el.cloneNode(true); c.querySelectorAll('details, #ovOpenBox').forEach(x => x.remove());   /* 🌅 V78.5.5 開盤卡搬進主區,⛔ 本來就不算這張卡的第一眼 */ return c.textContent.replace(/\s/g, ''); })();
             const tipRow = el && el.querySelector('[data-ovdue-row="提示"]');
             card = { html: el ? el.innerHTML : '', firstLen: first.length, moreLen: more ? more.textContent.replace(/\s/g, '').length : 0,
                      rules: el ? el.querySelectorAll('[data-ovdue-rule]').length : 0, rulesTxt: (el && el.querySelector('[data-ovdue-rules]') || {}).textContent || '',
