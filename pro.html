@@ -781,7 +781,7 @@ details.colart[open] .colsum{display:none}
 <body>
 <div id="ptr"></div>
 <div class="topbar"><div class="topbar-in">
-  <div class="brand"><div class="logo">🛰️</div><div><h1>產業作戰室 <span style="color:var(--cyan)">PRO</span></h1><div class="ver"><span class="verno" id="proVer">—</span> 估值 × 籌碼 × AI 產業鏈 <span class="datebadge" id="dataDate"></span></div></div></div>
+  <div class="brand"><div class="logo">🛰️</div><div><h1>產業作戰室 <span style="color:var(--cyan)">PRO</span></h1><div class="ver"><span class="verno" id="proVer" onclick="PRO._verTap()">—</span> 估值 × 籌碼 × AI 產業鏈 <span class="datebadge" id="dataDate"></span></div></div></div>
   <div class="tabs">
     <button class="tab-btn on" id="tabBtnVal" onclick="PRO.switchTab('val')">產業估值</button>
     <button class="tab-btn" id="tabBtnChain" onclick="PRO.switchTab('chain')">AI 產業鏈</button>
@@ -8470,7 +8470,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V78.5.0',
+  VER: 'V78.5.1',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -9797,6 +9797,38 @@ const PRO = {
   _renderVer() {
     const e = document.getElementById('proVer');
     if (e) e.textContent = this.VER;
+  },
+  // 🔓 V78.5.1 作戰室自己也能解鎖(使用者:「為什麼成績單取消了」)
+  //   iPhone 加到主畫面的網頁 App 各自一份儲存空間 → 散戶救星選了 👑,作戰室讀到的是空設定 → 👑 整頁藏起來。
+  //   同一個手勢:連點版本號 5 次(2.5 秒內)→ 選策略;已解鎖再點 5 次 = 收起、改回 🧬。
+  //   ⛔ 只改 proTerminalSettings 的 strategy / stratUnlock 兩個鍵(裡面還有金鑰,⛔ 不可整份覆蓋);
+  //   ⛔ 沒解鎖時畫面一個字都不多(V77.9.6)。測試 scripts/test_stratswitch.mjs 🔓。
+  _verTap() {
+    this._verTapN = (this._verTapN || 0) + 1;
+    clearTimeout(this._verTapT);
+    this._verTapT = setTimeout(() => {
+      const n = this._verTapN; this._verTapN = 0;
+      if (n < 5) return;
+      let st = {}; try { st = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}') || {}; } catch (_) { st = {}; }
+      if (st.stratUnlock) { this._stratSet('gene', false); return; }
+      const N = this.STRAT_NAMES || {};
+      const opts = [['leadpark', (N.lead || {}).n], ['lead', (N.leadcash || {}).n], ['park', (N.park || {}).n], ['gene', (N.hot || {}).n]];
+      this.openModal('🔓 你用哪一套', `<div style="display:flex;flex-direction:column;gap:6px;padding:4px 0">${opts.map(([k, t]) =>
+        `<button class="labbtn" data-stratpick="${k}" style="text-align:left;padding:8px 10px" onclick="PRO._stratSet('${k}', true)">${this._esc(String(t || k))}</button>`).join('')}
+        <div class="note" style="margin-top:4px">只改這個 App 的設定;再連點版本號 5 次 = 收起、改回 🔥 高檔飆股。</div></div>`);
+    }, 650);
+  },
+  _stratSet(k, unlock) {
+    try {
+      let st = {}; try { st = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}') || {}; } catch (_) { st = {}; }
+      st.strategy = unlock ? k : 'gene'; st.stratUnlock = !!unlock;
+      localStorage.setItem('proTerminalSettings', JSON.stringify(st));
+    } catch (_) { this.toast('⚠️ 存不下來(瀏覽器不讓寫設定)'); return; }
+    this.closeModal();
+    this._rl = null; this._rlSig = null; this._cmpAll = null; this._cmpAllSig = null;
+    if (!unlock) this._recoSrc = 'pb';
+    try { this.switchTab(this._tab || 'chain', true); } catch (_) {}
+    this.toast(unlock ? '🔓 已切換' : '🔒 已收起(改回 🔥 高檔飆股)');
   },
   _lowCoh(c) {
     const v = (this._tagCoh || {})[c];

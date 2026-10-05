@@ -143,6 +143,30 @@ const PS = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 const judge = s => (s.match(/\/\^lead\(park\)\?\$\/\.test\((?:s|st)\.strategy\) && !?!?(?:s|st)\.stratUnlock/) || [''])[0];
 ok('⑤f 兩邊判斷式同一條(strategy 是 lead 或 leadpark 且解鎖,V78.1.9)', /\/\^lead\(park\)\?\$\/\.test\(s\.strategy\) && s\.stratUnlock/.test(SRC) && /\/\^lead\(park\)\?\$\/\.test\(st\.strategy\) && !!st\.stratUnlock/.test(PS), [judge(SRC), judge(PS)]);
 
+// 🔓 V78.5.1 作戰室自己也能解鎖(iPhone 主畫面兩個 App 設定不互通 → 成績單少了 👑)
+const U = await pro.evaluate(async () => {
+    const o = {}, wait = ms => new Promise(r => setTimeout(r, ms));
+    const tap = async n => { const e = document.getElementById('proVer'); for (let i = 0; i < n; i++) e.click(); await wait(900); };
+    const tabs = () => [...document.querySelectorAll('[data-recosrc]')].map(e => e.dataset.recosrc);
+    const modalOpen = () => !document.getElementById('proModal').classList.contains('hidden');
+    localStorage.setItem('proTerminalSettings', JSON.stringify({ geminiKey1: 'FAKEKEY123' }));
+    PRO.switchTab('fish', true); await wait(200);
+    o.verTxt = document.getElementById('proVer').textContent; o.t0 = tabs();
+    await tap(4); o.after4 = modalOpen(); o.lead4 = PRO._isLead();
+    await tap(5); o.after5 = modalOpen(); o.picks = [...document.querySelectorAll('[data-stratpick]')].map(e => e.dataset.stratpick);
+    document.querySelector('[data-stratpick="leadpark"]').click(); await wait(300);
+    o.lead1 = PRO._isLead(); o.closed = !modalOpen(); o.t1 = tabs(); o.st1 = JSON.parse(localStorage.getItem('proTerminalSettings'));
+    await tap(5); o.lead2 = PRO._isLead(); o.t2 = tabs(); o.st2 = JSON.parse(localStorage.getItem('proTerminalSettings'));
+    localStorage.removeItem('proTerminalSettings');
+    return o;
+});
+ok('🔓a 沒解鎖:版本號一個字都不多、成績單沒有 👑', U.verTxt === PS.match(/VER: '(V[0-9.]+)'/)[1] && !U.t0.includes('lead') && U.t0.length >= 3, JSON.stringify([U.verTxt, U.t0]));
+ok('🔓b 只點 4 下 ⛔ 不跳選單、⛔ 不解鎖', U.after4 === false && U.lead4 === false);
+ok('🔓c 點 5 下跳選單,四套都在', U.after5 && ['leadpark', 'lead', 'park', 'gene'].every(k => U.picks.includes(k)), JSON.stringify(U.picks));
+ok('🔓d 選 👑 → 成績單出現 👑 分頁、選單關掉', U.lead1 && U.closed && U.t1.includes('lead'), JSON.stringify(U.t1));
+ok('🔓e ⛔ 其它設定(金鑰)不可被洗掉', U.st1.geminiKey1 === 'FAKEKEY123' && U.st2.geminiKey1 === 'FAKEKEY123' && U.st1.strategy === 'leadpark' && U.st1.stratUnlock === true, JSON.stringify([U.st1, U.st2]));
+ok('🔓f 再點 5 下 → 收起、改回 🧬、👑 分頁消失', U.lead2 === false && U.st2.strategy === 'gene' && U.st2.stratUnlock === false && !U.t2.includes('lead'), JSON.stringify([U.t2, U.st2]));
+
 // ⑥ Telegram worker
 const W = fs.readFileSync(path.join(ROOT, 'cloud-worker/worker.js'), 'utf8');
 const tmp = path.join(ROOT, 'scripts', '.tmp_worker_test.mjs'); fs.writeFileSync(tmp, W);
