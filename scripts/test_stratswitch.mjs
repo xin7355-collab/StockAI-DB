@@ -100,7 +100,7 @@ ok('②b 🧬:更新紀錄看不到 👑 那幾行;👑 時看得到(決定性�
 ok('②c 🧬:決策台 👑 那塊用 _isLead 擋(⛔ 連 DOM 都不放)', /_isLead\(\) \? await this\._leaderDeckHtml\(\) : ''/.test(R.src.rd));
 ok('③ 👑:手上每一檔**個股**都算(ETF 0050 除外)', JSON.stringify(R.mineLead) === JSON.stringify(['1001', '2330']), JSON.stringify(R.mineLead));
 ok('③b 👑 總覽:第 1 名 → 續抱;換倉日掉出前 10 → 明天開盤賣;不在名單的空手股 → 不在名單', R.lead1 && R.lead1.st === 'hold' && R.lead1.lead && /續抱/.test(R.lead1.b) && R.lead41.st === 'exit' && /明天\s*開盤賣/.test(R.lead41.b) && /不在名單|等換倉日|明天\s*(開盤|13:25 )買/.test(R.leadNo.b), JSON.stringify([R.lead1, R.lead41, R.leadNo]));
-ok('③c 👑 非換倉日 → ⛔ 不提早賣,寫「等換倉日」', R.lead41wait.st === 'hold' && /等換倉日/.test(R.lead41wait.b), JSON.stringify(R.lead41wait));
+ok('③c 👑 非換倉日 → ⛔ 不提早賣,寫「續抱到換倉日」(V78.5.3 短版)', R.lead41wait.st === 'hold' && /續抱到換倉日/.test(R.lead41wait.b), JSON.stringify(R.lead41wait));
 ok('③d ⭐ 決定性對照:同一檔切回 🧬 → 沒有 lead、⛔ 不是「掉出前 10」', R.gene41 && !R.gene41.lead && !/掉出前/.test(R.gene41.b), JSON.stringify(R.gene41));
 ok('④ 👑:第 2 擊(出場線)不喊;🧬 照喊', R.comboLead === false && R.comboGene === true, JSON.stringify([R.comboLead, R.comboGene]));
 ok('④b 換倉日提醒:一則,寫賣誰(掉出前 10)與買誰;同一天第二次不再跳', R.rebal1.length === 1 && /換倉日/.test(R.rebal1[0]) && /賣:.*1041/.test(R.rebal1[0]) && /買:/.test(R.rebal1[0]) && R.rebal2 === 1, JSON.stringify(R.rebal1));

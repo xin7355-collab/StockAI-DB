@@ -15,6 +15,13 @@
  *   ⓘ 盤中:基準 = 昨收(`_fuglePrevClose`),今天實際開盤那一列有 👉 且只有一列
  *   ⓙ 指數不顯示;切股不殘留;390px 不溢出;⛔ 研究字樣
  * 注入:拿掉 `_leadTiming` 判斷 / 線下改成「開盤賣」/ 價位不對跳動單位 → 各紅
+ * 🌅 V78.5.3 開盤卡合一(使用者:「開高、中、開盤機率」+ 機率圖「不是我要呈現的樣子」):
+ *   ⓟ 每一列 p(這檔過去一年開在那一段)+ pb(一般股票 `_GAP_BASE`)各自加總 = 100%
+ *   ⓟb ⭐ 決定性對照:K 線改成天天開高 2% → 「開低 3% 以內~開高」那列 = 100%;改成天天開低 4% → 第一列 = 100%
+ *   ⓟc |跳空| > 11%(分割)剔除;< 120 天 → 不給這檔、只列一般股票並寫原因
+ *   ⓟd 只有一列 → 三格 開高 1%↑ / 開平 ±1% / 開低 1%↓
+ *   ⓟe 📊 明天收盤那一行 == `_probBox` chip 同一組數字;總覽沒有 #ovProbBox
+ *   注入(INJECT=):hard(機率寫死)/ noskip(不剔除 >11%)/ nobase(拿掉一般股票)→ 各紅
  */
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -24,7 +31,16 @@ try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/inde
 catch (_) { ({ chromium } = await import('playwright')); }
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const HTML = process.env.INDEX_HTML || path.join(ROOT, 'index.html');
+let HTML = process.env.INDEX_HTML || path.join(ROOT, 'index.html');
+const INJ = process.env.INJECT || '';
+if (INJ) {
+    let S = fs.readFileSync(HTML, 'utf8'); const O = S;
+    if (INJ === 'hard') S = S.replace("rows.forEach(r => { r.p = gs ? this._gapShare(gs, r.lo, r.hi) : null;", "rows.forEach(r => { r.p = gs ? 50 : null;");
+    if (INJ === 'noskip') S = S.replace("if (Math.abs(g) > 11) continue;\n            rows.push({ g, lu: o >= this._floorTick", "rows.push({ g, lu: o >= this._floorTick");
+    if (INJ === 'nobase') S = S.replace("r.pb = this._gapShare(null, r.lo, r.hi);", "r.pb = null;");
+    if (S === O) { console.log('❌ 注入沒有注進去'); process.exit(1); }
+    HTML = path.join(ROOT, '.test_ovopen_inj.html'); fs.writeFileSync(HTML, S);
+}
 const { badOf } = await import(path.join(ROOT, 'scripts/lib_retailbad.mjs'));
 const { rwdShim } = await import(path.join(ROOT, 'scripts/lib_rwdshim.mjs'));
 const fails = [];
@@ -166,6 +182,67 @@ ok('ⓙc 收盤後標題「明天開盤怎麼做」', /🌅 明天開盤怎麼�
 const bad = [...badOf(R.dom.txt), ...badOf(R.closedTxt)];
 ok('ⓙd ⛔ 研究字樣', bad.length === 0, bad.join(' | '));
 
+
+// 🌅 V78.5.3 機率欄
+const Q = await page.evaluate(() => {
+    const o = {};
+    app._closedTail = d => d; app.isMarketOpen = () => false; app._lastBarIsToday = () => false;
+    app.currentSymbolId = '5483'; app.settings.leadTiming = 'split';
+    // n 根,第 i 根開盤 = 前收 × (1 + gOf(i)/100)
+    const mkG = (n, gOf, back = 0) => { const a = []; let c = 100; for (let i = 0; i < n; i++) { const o2 = i ? c * (1 + gOf(i) / 100) : c; c = back ? c : o2 * (1 + 0.003 * Math.sin(i)); const dt = new Date(Date.UTC(2025, 0, 1) + i * 86400000).toISOString().slice(0, 10); a.push({ date: dt, open: +o2.toFixed(4), high: Math.max(o2, c) * 1.01, low: Math.min(o2, c) * 0.99, close: +c.toFixed(4), volume: 1000 }); } return a; };
+    const G = [-5, -2.5, -0.4, 0, 0.6, 1.5, 3.5, 6];
+    const mix = mkG(300, i => G[i % G.length]);
+    const lead = (st, extra = {}) => ({ held: st !== 'buy', state: 'hold', cost: 200, shares: 2, lead: { st, isRebal: true, date: mix[mix.length - 1].date, left: 3, H: 10, N: 5, ...extra } });
+    const sum = (P, k) => P.rows.reduce((s, r) => s + (r[k] || 0), 0);
+    const P1 = app._ovOpenPlan(mix, '5483', lead('sell'));
+    o.p1 = { rows: P1.rows.map(r => [r.lbl, r.p, r.pb]), sp: sum(P1, 'p'), spb: sum(P1, 'pb'), n: P1.gapN };
+    const P1b = app._ovOpenPlan(mix, '5483', lead('buy', { held: false }));
+    o.p1b = { sp: sum(P1b, 'p'), spb: sum(P1b, 'pb'), n: P1b.rows.length };
+    // ⭐ 決定性對照
+    const up = mkG(300, () => 2), dn = mkG(300, () => -4, 1);   // dn:天天開低 4%、收盤回到前收(⛔ 價格不會跌到 0)
+    const Pu = app._ovOpenPlan(up, '5483', lead('sell')), Pd = app._ovOpenPlan(dn, '5483', lead('sell'));
+    o.det = { up: Pu.rows.map(r => r.p), dn: Pd.rows.map(r => r.p) };
+    // 分割:第 200 根開盤 ×2(+100%)→ 剔除
+    const sp = mkG(300, i => i === 200 ? 100 : 0.5);
+    o.split = app._gapStats(sp).n;
+    const short = mkG(80, () => 0.5);
+    const Ps = app._ovOpenPlan(short, '5483', lead('sell'));
+    o.short = { p: Ps.rows.map(r => r.p), pb: Ps.rows.map(r => r.pb), err: Ps.gapErr };
+    app._renderOvOpen('5483', short, lead('sell'));
+    o.shortTxt = document.getElementById('ovOpenBox').innerText;
+    // 只有一列 → 三格
+    const Pk = app._ovOpenPlan(up, '5483', lead('keep'));
+    o.tri = Pk.tri ? Pk.tri.map(t => [t.lbl, t.p, t.pb]) : null;
+    app._renderOvOpen('5483', up, lead('keep'));
+    const el = document.getElementById('ovOpenBox');
+    o.triDom = el.querySelectorAll('[data-ovopen-tricell]').length;
+    o.triTxt = el.innerText;
+    // 📊 明天那一行
+    app._renderOvOpen('5483', mix, lead('sell'));
+    const tomEl = el.querySelector('[data-probtom]');
+    o.tom = tomEl ? tomEl.innerText : '';
+    const chip = app._probBox('5483', { mode: 'chip', data: mix, link: false });
+    const d = document.createElement('div'); d.innerHTML = chip; o.chip = d.innerText;
+    o.noProbBox = !document.getElementById('ovProbBox') && !/_renderOvProb/.test(app._renderOvCommand.toString());
+    o.mixTxt = el.innerText;
+    const B = app._GAP_BASE; o.base = B ? { syms: B.syms, n: B.n, sum: B.bins.reduce((a, b) => a + b, 0) } : null;
+    return o;
+});
+const near = (a, b, e = 0.05) => Math.abs(a - b) < e;
+ok('ⓟ 這檔每列加總 = 100%(要賣兩列)', near(Q.p1.sp, 100) && Q.p1.n >= 240, JSON.stringify(Q.p1));
+ok('ⓟ2 一般股票每列加總 = 100%', near(Q.p1.spb, 100, 0.2), JSON.stringify(Q.p1));
+ok('ⓟ3 要買三列(含漲停那列)加總 = 100%', Q.p1b.n === 3 && near(Q.p1b.sp, 100) && near(Q.p1b.spb, 100, 0.2), JSON.stringify(Q.p1b));
+ok('ⓟ4 _GAP_BASE 直方圖總和 = n、≥1000 檔', Q.base && Q.base.sum === Q.base.n && Q.base.syms >= 1000, JSON.stringify(Q.base));
+ok('ⓟb ⭐ 天天開高 2% → 第二列 100%', near(Q.det.up[1], 100) && near(Q.det.up[0], 0), JSON.stringify(Q.det));
+ok('ⓟb2 ⭐ 天天開低 4% → 第一列 100%', near(Q.det.dn[0], 100) && near(Q.det.dn[1], 0), JSON.stringify(Q.det));
+ok('ⓟc 分割(+100%)那天剔除', Q.split === 249, Q.split);
+ok('ⓟc2 < 120 天 → 不給這檔、只列一般股票並寫原因', Q.short.p.every(x => x == null) && Q.short.pb.every(x => x > 0) && /只有 79 天/.test(Q.short.err) && /只列一般股票/.test(Q.shortTxt), JSON.stringify(Q.short) + Q.shortTxt);
+ok('ⓟd 只有一列 → 三格(天天開高 2% → 開高 1% 以上 100%)', Q.tri && Q.tri.length === 3 && near(Q.tri[0][1], 100) && Q.triDom === 3 && /開多少都一樣/.test(Q.triTxt), JSON.stringify(Q.tri));
+const num = (t, k) => { const m = t.match(new RegExp(k + ' (\\d+\\.\\d)')); return m ? m[1] : null; };
+ok('ⓟe 📊 明天收盤一行 == chip 同一組數字 + 完整表連結', !!Q.tom && num(Q.tom, '漲') != null && num(Q.tom, '漲') === num(Q.chip, '漲') && num(Q.tom, '跌') === num(Q.chip, '跌') && /完整表/.test(Q.tom), Q.tom + ' || ' + Q.chip);
+ok('ⓟe2 總覽沒有 #ovProbBox 圖', Q.noProbBox);
+ok('ⓟf 寫明「不是預測」+ ⛔ 研究字樣', /不是預測/.test(Q.mixTxt) && !badOf(Q.mixTxt + Q.triTxt + Q.shortTxt).length, badOf(Q.mixTxt + Q.triTxt + Q.shortTxt).join('|'));
+
 // 390px 不溢出
 await page.evaluate(rwdShim);
 const ov = await page.evaluate(() => {
@@ -180,5 +257,6 @@ ok('ⓙe 390px 不溢出', ov.w >= 350 && ov.worst <= 1, JSON.stringify(ov));
 ok('ⓩ 無 pageerror', errs.length === 0, errs.join(' | '));
 
 await browser.close();
+if (INJ) { try { fs.unlinkSync(HTML); } catch (_) {} }
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ 全部通過');
 process.exit(fails.length ? 1 : 0);

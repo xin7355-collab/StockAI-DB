@@ -102,12 +102,9 @@ const R = await page.evaluate(async () => {
     o.full = app._probBox('9999', { mode: 'full', data });
     T.amt1 = keep;
     // 頂端那一行:綁 sym
-    // 📊 V78.4.3 頂端那一行搬進總覽(#ovProbBox,圖)—— 一樣綁 sym
-    app.currentSymbolId = '9999'; app.rawDailyData = data; app._renderOvProb('9999');
-    const q = document.getElementById('ovProbBox');
-    o.qp = [q.classList.contains('hidden'), q.innerText];
-    app._renderOvProb('1234');   // 不是目前這一檔 → 清掉
-    o.qpOther = [q.classList.contains('hidden'), q.innerHTML];
+    // 🌅 V78.5.3 機率圖拿掉,「明天收盤」縮成開盤卡裡的一行(_probBox mode:'tom',同一組數字)
+    o.qp = app._probBox('9999', { mode: 'tom', data });
+    o.qpOther = !document.getElementById('ovProbBox');
     o.ovNoDup = !document.getElementById('quoteProbLine') && !/mode: 'line'/.test(app._renderOvCommand.toString());
     return o;
 });
@@ -136,7 +133,7 @@ ok('⑤a _PROB_TABLE 有成交額前 100 那一組(amt1)', R.hasAmt1);
 ok('⑤b chip 一行:明天 + 20 天 + 全市場基準 + 贏大盤', /明天/.test(R.chipOff) && /20 天/.test(R.chipOff) && /全市場/.test(R.chipOff) && /贏大盤/.test(R.chipOff), R.chipOff.slice(0, 200));
 ok('⑤c ⭐ 決定性對照:前 100 大時「明天」換成 amt1 那一列(漲 77.7)、還標 💰', /漲 77\.7/.test(R.chipOn) && /💰/.test(R.chipOn), R.chipOn.slice(0, 200));
 ok('⑤d 不在前 100 大 → ⛔ 不可用 amt1', !/77\.7/.test(R.chipNotTop) && !/💰/.test(R.chipNotTop));
-ok('⑤e 總覽機率圖有內容、而且綁 sym(換別檔就清掉)(V78.4.3 從頂端搬進總覽)', R.qp[0] === false && /明天/.test(R.qp[1]) && R.qpOther[0] === true && R.qpOther[1] === '', R.qp);
+ok('⑤e 總覽「明天收盤」那一行有內容(V78.5.3 併進開盤卡)、機率圖 #ovProbBox 已拿掉', /data-probtom/.test(R.qp || '') && /明天收盤/.test(R.qp) && R.qpOther === true, R.qp);
 ok('⑤f 頂端那一行已拿掉、總覽⛔ 不再印第二份', R.ovNoDup);
 ok('⑤g 燈號鐵則:機率那一行⛔ 不用 🔴🟢', !/[🔴🟢]/u.test(R.chipOff + R.chipOn));
 ok('⓪ 無 pageerror', !errs.length, errs.join(' | '));

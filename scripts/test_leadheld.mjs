@@ -12,6 +12,8 @@
  *   ⓓ 決定性對照:同一檔切回 🔥 → 硬停損 / 出場線回來
  *   ⓔ 最近一根收盤鎖漲停 → why 有「🔥 高檔飆股的規則,👑 不用」(🧹 V78.3.6 ⛔ 不印回測數字);沒鎖 → 沒有
  *   ⓕ `_LEAD_LU_EDGE` == leader_probe 實跑結果(三種都輸現行)
+ *   📸 V78.5.3 短版:上次換倉名單快照 在 / 不在 / 讀不到 三種;⭐ 決定性對照(快照改成有這檔 → ✅ 第 k 名);不要提早賣收進摺疊;
+ *      `_leaderRebPx` 順便回 rank(⛔ 不打第二次)
  *   ⓖ V78.2.1 卡片「⛔ 不要提早賣」(🧹 V78.3.6 改講「少賺很多」⛔ 不印 %) ・ⓗ 決策台持股清單「不在 / 掉出」分清楚
  */
 import fs from 'fs';
@@ -47,6 +49,16 @@ const R = await page.evaluate(async () => {
     o.a = { badge: d && d.badge, why: d && d.why };
     d = run(mk(false), ctx(15, true));
     o.b = { badge: d && d.badge, why: d && d.why };
+    // 📸 V78.5.3 換倉快照三種 + 決定性對照
+    const withSnap = (sn) => { const c = ctx(null, true); c.snap = sn; return c; };
+    d = run(mk(false), withSnap({ date: '2026-09-24', rank: new Map([['3443', 1], ['2327', 3]]), err: null })); o.sIn = d && d.why;
+    d = run(mk(false), withSnap({ date: '2026-09-24', rank: new Map([['3443', 1]]), err: null })); o.sOut = d && d.why;
+    d = run(mk(false), withSnap({ date: '2026-09-24', rank: null, err: '2026-09-24 換倉那天的名單沒有存到' })); o.sErr = d && d.why;
+    // keep 也有快照那行
+    { const c = ctx(4, true); c.snap = { date: '2026-09-24', rank: new Map([['2327', 2]]) }; d = run(mk(false), c); o.sKeep = d && d.why; }
+    // _leaderRebPx 回 rank(stub fetch)
+    { const f0 = window.fetch; window.fetch = async () => ({ ok: true, json: async () => ({ days: [{ d: '2026-09-24', lead: { rows: [{ s: '3443', c: 100, r: 1 }, { s: '2327', c: 500, r: 2 }] } }] }) });
+      A._leadRebPx = null; const rb = await A._leaderRebPx('2026-09-24'); o.rb = rb && rb.rank ? [...rb.rank.entries()] : null; window.fetch = f0; }
     // ⓖ 決定性對照:改 _LEAD_LU_EDGE → ⛔ 不提早賣那行的 % 跟著變
     const _E0 = JSON.parse(JSON.stringify(A._LEAD_LU_EDGE));
     A._LEAD_LU_EDGE = { ..._E0, ai: { ..._E0.ai, now: 300, all: 200 }, long: { ..._E0.long, now: 1100, all: 600 } };
@@ -93,12 +105,19 @@ const R = await page.evaluate(async () => {
 });
 await browser.close();
 
-ok('ⓐ V78.2.1 標題「⏳ 今日續抱・等換倉日(剩 7 個交易日)」', /今日續抱・等換倉日\(剩 7 個交易日\)/.test(R.a.badge || ''), R.a.badge);
-ok('ⓐ2 不在名單 → 「不在前 10 名」⛔ 不是「掉出」;今天不用賣 + 續抱條件 + 賣出條件 + 隔天開盤', /不在前 10 名/.test(R.a.why || '') && !/掉出/.test(R.a.why || '') && /今天不用賣/.test(R.a.why) && /續抱條件/.test(R.a.why) && /賣出條件/.test(R.a.why) && /隔天\s*(<b>)?(09:00 )?開盤賣/.test(R.a.why), (R.a.why || '').slice(0, 400));
+ok('ⓐ V78.5.3 標題「⏳ 續抱到換倉日(還有 7 個交易日)」', /續抱到換倉日\(還有 7 個交易日\)/.test(R.a.badge || ''), R.a.badge);
+ok('ⓐ2 不在名單 → 「不在前 10 名」⛔ 不是「掉出」;今天不用賣 + 續抱條件 + 賣出條件 + 隔天開盤', /不在前 10 名/.test(R.a.why || '') && !/掉出/.test(R.a.why || '') && /今天不用賣/.test(R.a.why) && /續抱條件/.test(R.a.why) && /換倉日那天還在 10 名外/.test(R.a.why) && /隔天\s*(<b>)?(09:00 )?開盤賣/.test(R.a.why), (R.a.why || '').slice(0, 400));
 ok('ⓐ3 趨勢條件方向對:「要 收盤 > 20日線 > 60日線 才算」、⛔ 沒有「收盤價 < 20日線」', /要 收盤 &gt; 20日線 &gt; 60日線 才算|要 收盤 > 20日線 > 60日線 才算/.test(R.a.why || '') && !/收盤價? *<|收盤價? *&lt;/.test(R.a.why || ''), (R.a.why || '').slice(0, 300));
-ok('ⓑ 曾是第 15 名 → 「掉出前 10 名」', /掉出前 10 名/.test(R.b.why || '') && /今日續抱/.test(R.b.badge || ''), R.b.badge);
+ok('ⓑ 曾是第 15 名 → 「掉出前 10 名」', /掉出前 10 名/.test(R.b.why || '') && /續抱到換倉日/.test(R.b.badge || ''), R.b.badge);
 const cut = w => Math.round((1 - (w.all - 100) / (w.now - 100)) * 100);
 // 🧹 V78.3.6 散戶 App 不印回測 % → 改釘「會少賺很多」白話 + ⛔ 不可有 %;決定性對照:改 _LEAD_LU_EDGE 之後一般模式畫面仍不出現那些數字
+ok('📸a 上次換倉名單有這檔 → ✅ 第 3 名(⭐ 決定性對照:同一份 ctx 只改快照)', /data-leadsnap="in"/.test(R.sIn || '') && /✅ 第 3 名/.test(R.sIn) && /09\/24|09-24/.test(R.sIn), (R.sIn || '').slice(0, 300));
+ok('📸b 快照裡沒有這檔 → ❌ 不在名單上', /data-leadsnap="out"/.test(R.sOut || '') && /❌ 不在名單上/.test(R.sOut), (R.sOut || '').slice(0, 300));
+ok('📸c 讀不到 → 寫原因(⛔ 不可說成不在名單上)', /data-leadsnap="err"/.test(R.sErr || '') && /讀不到\(2026-09-24 換倉那天的名單沒有存到\)/.test(R.sErr) && !/不在名單上/.test(R.sErr), (R.sErr || '').slice(0, 300));
+ok('📸d 沒有快照資料 → 讀不到(還沒讀到)', /data-leadsnap="err"/.test(R.a.why || '') && /還沒讀到/.test(R.a.why), (R.a.why || '').slice(0, 300));
+ok('📸e 續抱(前 10 名內)也有快照那行', /data-leadsnap="in"/.test(R.sKeep || '') && /✅ 第 2 名/.test(R.sKeep), (R.sKeep || '').slice(0, 300));
+ok('📸f 不要提早賣 / 續抱條件 收進摺疊(⛔ 不刪)', (() => { const w = R.a.why || ''; const i = w.indexOf('<details'); return i > 0 && w.indexOf('data-leadearly') > i && w.indexOf('data-leadkeepif') > i && w.indexOf('data-leadsellif') < i; })(), (R.a.why || '').slice(0, 500));
+ok('📸g _leaderRebPx 順便回 rank(照 r 欄)', JSON.stringify(R.rb) === JSON.stringify([['3443', 1], ['2327', 2]]), JSON.stringify(R.rb));
 ok('ⓖ ⛔ 不提早賣那行講「會少賺很多」、⛔ 不印回測 %(🧹 V78.3.6;改常數也⛔ 不出現數字)', /不要提早賣/.test(R.a.why || '') && /少賺很多/.test(R.a.why || '') && !/少 <b[^>]*>\d+%/.test(R.a.why || '') && !/少 <b[^>]*>\d+%/.test(R.g || '') && !/70%|50%/.test(R.g || '') && !/70%/.test(R.a.why || ''), (R.g || '').slice(-400));
 ok('ⓗ 決策台持股:沒過趨勢 → ⛔ 不寫「掉出」、寫「不在前 10 名」;第 15 名 → 「掉出前 10 名」;非換倉日用 ⏳', /不在前 10 名/.test(R.h.a || '') && !/掉出/.test(R.h.a || '') && /掉出前 10 名/.test(R.h.b || '') && /⏳/.test(R.h.a || '') && !/⛔ 掉出|⛔ 不在/.test(R.h.a + R.h.b), JSON.stringify(R.h));
 ok('ⓒ 👑 持有 → _keyLevels 沒有硬停損 / 出場線、標 lead', R.K.sl == null && R.K.rule == null && R.K.lead === true, JSON.stringify(R.K));
