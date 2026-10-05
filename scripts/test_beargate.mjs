@@ -115,7 +115,8 @@ const R = await page.evaluate(async ({ TW, rows }) => {
     // 📍 V78.0.5 起最上面可能是 👑 領頭羊那一筆(lead:true,換回 = setLeadPos)→ 這條驗「出場規則」那一類,取最新一筆非 lead 的
     const c0 = A._STRAT_CHANGES.find(c => !c.lead && c.back); o.chg = { back: c0.back, backBear: c0.backBear, v: c0.v };
     A._showStratChange(c0); o.modal = (document.getElementById('richHelpModal') || {}).innerHTML || '';
-    const cL = A._STRAT_CHANGES.find(c => c.lead);
+    // V78.4.4 起最新的 👑 那筆是「換倉時點」(backLeadTime)→ 這條驗的是「一年位置」那一筆(backLead),⛔ 不取第一筆 lead
+    const cL = A._STRAT_CHANGES.find(c => c.lead && c.backLead);
     if (cL) { A._showStratChange(cL); o.leadModal = (document.getElementById('richHelpModal') || {}).innerHTML || ''; }
     return o;
 }, { TW, rows });
