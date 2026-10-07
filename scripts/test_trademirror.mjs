@@ -76,8 +76,9 @@ ok('② 鈕上直接標「N 筆 · 勝率 X%」(⛔ 只寫名字的話不知道�
     /勝率鏡子/.test(R.btn) && /4 筆/.test(R.btn) && /勝率 75%/.test(R.btn), R.btn);
 ok('③ 一筆都沒有時鈕照顯示、標「還沒紀錄」(⛔ 不可整顆消失)',
     R.emptyBtnShown && /還沒紀錄/.test(R.emptyBtn), R.emptyBtn);
-ok('③b 而且點開要教他怎麼產生第一筆(結算平倉)',
-    R.emptyOpened && /結算平倉/.test(R.emptyTxt), R.emptyTxt.slice(0, 140));
+// 🎯 V78.5.7 產生第一筆的入口搬到「編輯庫存 → 🎯 賣出」(使用者:原本的位置很難按)
+ok('③b 而且點開要教他怎麼產生第一筆(編輯庫存 → 🎯 賣出)',
+    R.emptyOpened && /編輯庫存/.test(R.emptyTxt) && /🎯 賣出/.test(R.emptyTxt), R.emptyTxt.slice(0, 140));
 ok('④ 點了開懸浮視窗、標題是勝率鏡子', R.opened && /勝率鏡子/.test(R.title), R.title);
 ok('④b 內容還是完整的:勝率 / 賺賠比 / 總損益 三格都在',
     /勝率/.test(R.txt) && /賺賠比/.test(R.txt) && /總損益/.test(R.txt), R.txt.slice(0, 160));

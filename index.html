@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.5.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.5.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -898,7 +898,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.5.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.5.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8718,10 +8718,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.5.6',
+    _APP_VERSION: 'V78.5.7',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.5.7', d: ['🎯 賣出改在「✏️ 編輯庫存」裡:每一檔有一顆「🎯 賣出」,自己填賣價、股數、日期,可以只賣一部分', '💸 勝率鏡子的賺賠改成已扣手續費與證交稅(舊紀錄也一起換算)', '📼 即時頁「逐筆」收錄當天全部成交:從開盤第一筆到現在,可只看大單,開著畫面時新成交會自動補上'] },
         { v: 'V78.5.6', d: ['👁️ 灰色說明小字調亮,手機上比較看得清楚', '🤖 AI 供應商把模型下架時會自動換一個,不會整個失效'] },
         { v: 'V78.5.5', d: ['🔧 小修正'] },
         { v: 'V78.5.4', d: ['🔧 小修正'] },
@@ -8870,7 +8871,6 @@ ${list}
                              '🐢🛰️ <b>0050 核心 × 本站策略衛星第一次真的回測</b>(固定比例 + 月/季再平衡、17 條起點):把策略當衛星只是「拿報酬換回撤」—— 70/30 月再平衡 365 萬 vs 0050 含息 350 萬(11/17)、回撤 17/17 較小;<b>月再平衡比不再平衡多 15~20 萬、回撤一樣</b>;⛔ 所有混合的滾動 24 月超額都是負的(0050 後段太強)→ 列成參考、⛔ 不換預設。',
                              '💰 <b>更正「閒錢停 0050」的數字</b>:上一版寫「324 vs 324、多賺不多」是<b>漏算停泊本身的獲利</b>;新預設抱 20 天、閒錢更多,停泊實際多賺 <b>+110 萬</b>(434 vs 324 萬、17/17 條全贏、回撤 16/17 較小)。',
                              '📈 回測引擎補「逐日市值淨值」輸出與「外部逐日訊號」候選層鉤子(⛔ 不設時一字不變,兩支測試釘住)。'] },
-        { v: 'V77.7.6', d: ['🔁 <b>決策台預設換成「吊燈 ATR 2 倍・最長抱 20 天・大盤空頭不買」</b>(你說「以現在最厲害的執行」):用修好的日 K 重測,近 4 年 179 → 324 萬、16 年 285 → 494 萬,兩段都是 17 條全贏上一任;⚠️ 仍輸 0050 含息、而且 2011~2020 那十年反而比較差。開 App 會跳一次說明,可一鍵換回舊的。', '🔄 「情勢變了自動換規則」回測過了:贏得過隨機亂換,但<b>贏不了固定用最強那一套</b>(214~263 vs 324 萬)→ 沒有做成自動換。', '🛠️ 自動下單同步換成新出場;吊燈 ATR 的出場線改用<b>進場那天的 ATR</b>(跟回測、自動下單同一把尺)。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -12165,6 +12165,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                     if (m.event === 'data' && d && String(d.symbol) === String(sym)) {
                         const p = d.price ?? d.lastPrice ?? d.close;
                         if (p != null && +p > 0) this._applyWsTick(sym, +p);
+                        if (d.size != null || d.volume != null) this._dayTradesPush(sym, d);   // 📼 V78.5.7 每一筆都收進當日清單
                     }
                 } catch (_) {}
             };
@@ -41204,9 +41205,26 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (key === 'depth') {
             try { this._renderIntradayDepth(body, this._liveQuoteCur, this._liveVp); } catch (_) { body.innerHTML = '<div class="text-[10px] text-gray-500 py-3 text-center">五檔資料整備中</div>'; }
         } else if (key === 'ticks') {
-            if (this._liveTrades) { this._renderLiveTicks(this._liveTrades); return; }   // 用 loadIntradayKline 抓好的快取
-            if (userClick) body.innerHTML = '<div class="text-[10px] text-gray-500 py-4 text-center animate-pulse">📡 載入逐筆成交…</div>';
-            this._fetchFugleTrades(this.currentSymbolId).then(t => { if (this._liveTab === 'ticks') { this._liveTrades = Array.isArray(t) ? t : (t && t.data) || null; this._renderLiveTicks(this._liveTrades); } });
+            // 📼 V78.5.7 改看「當日全部」:先畫手上有的,再往回翻頁補齊(每翻一頁重畫一次進度)
+            const sym = String(this.currentSymbolId || '');
+            this._renderDayTicks();
+            const D0 = this._dayTrades;
+            if (D0 && D0.sym === sym && D0.loading) return;
+            // 自動刷新(非按鈕):補齊過的 20 秒內不再問、上次被擋 60 秒內不再試 —— 省免費額度
+            if (!userClick && D0 && D0.sym === sym && D0.lastTry && (Date.now() - D0.lastTry) < (D0.complete ? 20000 : 60000)) return;
+            this._fetchFugleTradesDay(sym, { onProgress: () => { if (this._liveTab === 'ticks' && String(this.currentSymbolId) === sym) this._renderDayTicks(); } })
+                .then(D => {
+                    if (this._liveTab !== 'ticks' || String(this.currentSymbolId) !== sym) return;
+                    this._renderDayTicks();
+                    // 🐋 大戶/散戶累積流向改從「當日第一筆」算起(重建一次,⛔ 不疊在舊的上面)
+                    try {
+                        if (D && D.list.length && D.complete && !(this._tickAcc && this._tickAcc.sym === sym && this._tickAcc.fromDay === D.list.length)) {
+                            this._tickAcc = null;
+                            this._updateTickAccum(sym, D.list.map(r => ({ time: r.t, price: r.p, size: r.v, bid: r.b, ask: r.a, serial: r.s })));
+                            if (this._tickAcc) { this._tickAcc.t0 = D.list[D.list.length - 1].t; this._tickAcc.fromDay = D.list.length; this._renderWhaleFlow(sym); }
+                        }
+                    } catch (_) {}
+                });
         } else if (key === 'volumes') {
             if (this._liveVolumesData) { this._renderLiveVolumes(this._liveVolumesData); return; }
             if (userClick) body.innerHTML = '<div class="text-[10px] text-gray-500 py-4 text-center animate-pulse">📡 載入價量分布…</div>';
@@ -41226,6 +41244,147 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             return arr;
         } catch (_) { return null; }
     },
+    // ═══ 📼 V78.5.7 當日全部逐筆成交 ═══
+    //   使用者:「目前只能看到 3 分鐘左右,改成完整買賣紀錄,當日買賣都收錄進來」。
+    //   ⭐ 真因:_fetchFugleTrades 只抓 limit=100,畫面再只畫 40 筆;即時串流每一筆都收到卻沒存。
+    //   ⭐ 做法:往回翻頁(limit=500&offset=k)抓到開盤 + 即時串流每一筆併進來 + 存 IndexedDB(關掉再開不用重抓)。
+    //   ⛔ 每頁大小不寫死(伺服器回幾筆就當一頁幾筆);⛔ 沒抓到開盤不可說「全日」;⛔ 只在逐筆分頁才翻頁(省額度)。
+    _tradeMs(t) {
+        if (t == null || t === '') return NaN;
+        const n = typeof t === 'number' ? t : (/^\d+$/.test(String(t)) ? +t : NaN);
+        if (Number.isFinite(n)) return n > 1e14 ? n / 1000 : n > 1e11 ? n : n * 1000;
+        const d = Date.parse(String(t));
+        return Number.isFinite(d) ? d : NaN;
+    },
+    _twDay(ms) { try { return new Date(ms).toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }); } catch (_) { return ''; } },
+    _twHms(ms) { try { return new Date(ms).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }); } catch (_) { return '--'; } },
+    _tradeNorm(x) {
+        const t = this._tradeMs(x.time ?? x.at ?? x.date);
+        const p = +(x.price ?? x.lastPrice ?? 0), v = this._tickLots(x);
+        if (!Number.isFinite(t) || !(p > 0) || !(v > 0)) return null;
+        return { t, p, v, b: +(x.bid ?? 0) || 0, a: +(x.ask ?? 0) || 0, s: x.serial ?? '' };
+    },
+    _tradeKey(r) { return `${r.t}|${r.p}|${r.v}|${r.s}`; },
+    _dayTradesFor(sym, day) {
+        sym = String(sym || '');
+        let D = this._dayTrades;
+        if (!D || D.sym !== sym || (day && D.day && D.day !== day)) {
+            D = this._dayTrades = { sym, day: day || '', list: [], seen: new Set(), complete: false, stop: '', pages: 0, loading: false };
+        }
+        if (day && !D.day) D.day = day;
+        return D;
+    },
+    // 併入一批(新舊都可),回傳新加了幾筆;清單永遠「新 → 舊」
+    _dayTradesMerge(D, rows) {
+        let added = 0;
+        for (const r of rows) {
+            if (!r) continue;
+            const day = this._twDay(r.t);
+            if (D.day && day && day !== D.day) continue;   // ⛔ 別天的不混進來
+            if (!D.day && day) D.day = day;
+            const k = this._tradeKey(r);
+            if (D.seen.has(k)) continue;
+            D.seen.add(k); D.list.push(r); added++;
+        }
+        if (added) D.list.sort((x, y) => (y.t - x.t) || (String(y.s) > String(x.s) ? 1 : String(y.s) < String(x.s) ? -1 : 0));
+        if (D.list.length > 80000) { D.list.length = 80000; D.complete = false; D.stop = 'cap'; }
+        return added;
+    },
+    _dayTradesSave(D) {
+        if (!D || !D.list.length) return;
+        clearTimeout(this._dayTradesSaveT);
+        this._dayTradesSaveT = setTimeout(() => {
+            try { this.idb.put(`ticks_${D.sym}`, { ts: Date.now(), day: D.day, complete: D.complete, stop: D.stop, rows: D.list.map(r => [r.t, r.p, r.v, r.b, r.a, r.s]) }); } catch (_) {}
+        }, 1500);
+    },
+    async _dayTradesLoad(sym) {
+        const D = this._dayTradesFor(sym);
+        if (D.list.length || D._loaded) return D;
+        D._loaded = true;
+        try {
+            const c = await this.idb.get(`ticks_${sym}`);
+            if (c && Array.isArray(c.rows) && c.rows.length && this._dayTrades === D) {
+                D.day = c.day || '';
+                this._dayTradesMerge(D, c.rows.map(a => ({ t: a[0], p: a[1], v: a[2], b: a[3], a: a[4], s: a[5] })));
+                D.complete = !!c.complete; D.stop = c.stop || '';
+            }
+        } catch (_) {}
+        return D;
+    },
+    // 即時串流的每一筆(盤中)
+    _dayTradesPush(sym, d) {
+        try {
+            const D = this._dayTrades;
+            if (!D || D.sym !== String(sym)) return;
+            const r = this._tradeNorm(d);
+            if (r && this._dayTradesMerge(D, [r])) {
+                this._dayTradesSave(D);
+                if (this._liveTab === 'ticks' && String(this.currentSymbolId) === D.sym) {
+                    clearTimeout(this._dayTicksDrawT);
+                    this._dayTicksDrawT = setTimeout(() => { try { this._renderDayTicks(); } catch (_) {} }, 800);
+                }
+            }
+        } catch (_) {}
+    },
+    async _fetchFugleTradesDay(sym, opt = {}) {
+        sym = String(sym || '');
+        const keys = this._getFugleKeys().filter(k => k && k.trim());
+        const D = await this._dayTradesLoad(sym);
+        if (!sym) return D;
+        if (!keys.length) { D.stop = 'nokey'; return D; }
+        if (D.loading) return D.loading;
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+        const LIM = 500, MAXP = opt.maxPages || 200;
+        const gap = opt.gapMs != null ? opt.gapMs : Math.max(250, Math.ceil(1100 / keys.length));
+        const wasComplete = D.complete;
+        D.lastTry = Date.now();
+        D.loading = (async () => {
+            let offset = 0, page = 0, maxLen = 0, stop = '';
+            try {
+                while (page < MAXP) {
+                    let res = null, tries = 0;
+                    for (;;) {
+                        const token = keys[this.fugleKeyIndex % keys.length]; this.fugleKeyIndex++;
+                        try {
+                            res = await fetch(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/trades/${sym}?limit=${LIM}&offset=${offset}`, { headers: { 'X-API-KEY': token }, signal: AbortSignal.timeout(8000) });
+                        } catch (_) { res = null; }
+                        if (res && res.status === 429 && tries < 3) { await sleep((opt.backoffMs || 2000) * 2 ** tries); tries++; continue; }
+                        break;
+                    }
+                    if (!res) { stop = 'net'; break; }
+                    if (!res.ok) { stop = (res.status === 429 || res.status === 403 || res.status === 401) ? 'quota' : 'error'; break; }
+                    let arr = [];
+                    try { const j = await res.json(); arr = j.data || j.trades || (Array.isArray(j) ? j : []); } catch (_) { stop = 'error'; break; }
+                    page++;
+                    if (!Array.isArray(arr) || !arr.length) { stop = 'end'; break; }
+                    const rows = arr.map(x => this._tradeNorm(x)).filter(Boolean);
+                    // 頁 1 決定「今天」是哪一天(盤前抓到的是上一個交易日)
+                    if (page === 1 && rows.length) {
+                        const day = this._twDay(rows[0].t);
+                        if (D.day && day && D.day !== day) { D.list = []; D.seen = new Set(); D.complete = false; }
+                        D.day = day;
+                    }
+                    const before = D.seen.size;
+                    const added = this._dayTradesMerge(D, rows);
+                    const hitKnown = added < rows.length && before > 0;
+                    D.pages = page;
+                    try { opt.onProgress && opt.onProgress(D); } catch (_) {}
+                    if (wasComplete && hitKnown) { stop = 'caughtup'; break; }   // 之前已有全日 → 只補新的
+                    if (maxLen > 0 && arr.length < maxLen) { stop = 'end'; break; }  // 最後一頁(比前面短)
+                    maxLen = Math.max(maxLen, arr.length);
+                    offset += arr.length;
+                    if (page < MAXP) await sleep(gap);
+                }
+                if (!stop) stop = 'cap';
+            } catch (_) { stop = stop || 'error'; }
+            if (stop === 'end' || stop === 'caughtup') D.complete = (stop === 'end') ? true : wasComplete;
+            D.stop = stop;
+            D.loading = false;
+            this._dayTradesSave(D);
+            return D;
+        })();
+        return D.loading;
+    },
     // 🐋 V69.7.3 — 盤中大戶vs散戶「累積流向」引擎(逐筆回推,對標付費籌碼App「大戶控盤」):
     //   每筆成交:貼賣價=主動買(+)、貼買價=主動賣(−);單筆 ≥50 張=大戶手筆、<10 張=散戶。
     //   免費 API 一次只給最近 100 筆 → 開頁後持續累積(去重),看得越久越完整;誠實標示非全日。
@@ -41243,7 +41402,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             const price = +(x.price ?? x.lastPrice ?? 0), vol = +(x.size ?? x.volume ?? x.unit ?? 0);
             if (!(price > 0) || !(vol > 0)) continue;
             const ts = String(x.time ?? x.at ?? x.date ?? '');
-            const key = `${ts}|${price}|${vol}|${x.serial ?? ''}`;
+            // 📼 V78.5.7 鍵跟當日清單同一把(_tradeKey):最新 100 筆與全日清單重疊的部分才不會算兩次
+            const _nr = this._tradeNorm(x);
+            const key = _nr ? this._tradeKey(_nr) : `${ts}|${price}|${vol}|${x.serial ?? ''}`;
             if (A.seen.has(key)) continue;
             A.seen.add(key); changed = true;
             const bid = +(x.bid ?? 0), ask = +(x.ask ?? 0);
@@ -41253,7 +41414,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             if (vol >= 50) A.big += net; else if (vol < 10) A.retail += net; else A.mid += net;
             A.pts.push({ t: ts, big: A.big, retail: A.retail });
             if (A.pts.length > 900) A.pts = A.pts.slice(-900);
-            if (A.seen.size > 3000) { A.seen = new Set([...A.seen].slice(-1500)); }
+            if (A.seen.size > 120000) { A.seen = new Set([...A.seen].slice(-60000)); }   // 📼 V78.5.7 全日也裝得下(舊版 3000 → 重餵全日會重複計)
         }
         if (changed) { try { this._renderWhaleFlow(sym); } catch (_) {} }
     },
@@ -41285,7 +41446,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         card.innerHTML = `
             <div class="bg-[#0d1117] border border-[#30363d] rounded-lg p-2">
                 <div class="flex items-center justify-between mb-1">
-                    <span class="text-[11px] font-black text-gray-100">🐋 大戶 vs 🐑 散戶 累積流向 <button onclick="app._helpBox('🐋 大戶控盤(逐筆回推)\\n\\n每一筆成交:成交在賣價=主動買(+)、成交在買價=主動賣(−)。\\n單筆 ≥50 張=大戶手筆;<10 張=散戶。\\n\\n・大戶累積線向上=主力邊拉邊買(偏多)\\n・大戶賣、散戶買=倒貨給散戶(危險)\\n・付費籌碼 App 的「大戶控盤」同原理\\n\\n⚠️ 免費資料一次只給最近 100 筆 → 從你開頁起持續累積,開越久越完整(非全日);確認以收盤後真實分點為準。'); event.stopPropagation();" class="text-[10px] text-gray-500">ⓘ</button></span>
+                    <span class="text-[11px] font-black text-gray-100">🐋 大戶 vs 🐑 散戶 累積流向 <button onclick="app._helpBox('🐋 大戶控盤(逐筆回推)\\n\\n每一筆成交:成交在賣價=主動買(+)、成交在買價=主動賣(−)。\\n單筆 ≥50 張=大戶手筆;<10 張=散戶。\\n\\n・大戶累積線向上=主力邊拉邊買(偏多)\\n・大戶賣、散戶買=倒貨給散戶(危險)\\n・付費籌碼 App 的「大戶控盤」同原理\\n\\n📼 打開「逐筆」分頁會往前補到開盤,補齊後從當天第一筆算起;還沒補齊前只算你開頁後收到的。確認以收盤後真實分點為準。'); event.stopPropagation();" class="text-[10px] text-gray-500">ⓘ</button></span>
                     <span class="text-[9px] text-gray-500">${_rangeTxt}・逐筆回推</span>
                 </div>
                 <div class="flex h-2.5 rounded-full overflow-hidden bg-[#21262d] mb-1">
@@ -41330,7 +41491,68 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             return j.data || j.volumes || (Array.isArray(j) ? j : null);
         } catch (_) { return null; }
     },
+    // 📼 V78.5.7 逐筆分頁:當日全部成交(摘要 + 篩大單 + 分段顯示,⛔ 不一次塞幾萬列)
+    _dayTicksMore() { this._dayTicksShow = (this._dayTicksShow || 200) + 500; this._renderDayTicks(); },
+    _dayTicksFilter(big) { this._dayTicksBig = !!big; this._dayTicksShow = 200; this._renderDayTicks(); },
+    _renderDayTicks() {
+        const body = document.getElementById('liveTabBody'); if (!body) return;
+        const sym = String(this.currentSymbolId || '');
+        const D = this._dayTrades;
+        if (this._dayTicksSym !== sym) { this._dayTicksSym = sym; this._dayTicksShow = 200; this._dayTicksBig = false; }
+        if (!D || D.sym !== sym || !D.list.length) {
+            const why = !D || D.sym !== sym || D.loading ? '<span class="animate-pulse">📡 載入當日逐筆成交…</span>'
+                : D.stop === 'nokey' ? '要先到 設定 → 填富果(Fugle)金鑰,才抓得到逐筆成交。'
+                : D.stop === 'quota' ? '⚠️ 富果免費額度用完,稍後再按 🔄 更新。'
+                : '📶 目前沒有逐筆成交(非盤中或還沒開盤)。<br>盤中(09:00–13:30)點「🔄 更新」再看。';
+            body.innerHTML = `<div class="text-[11px] text-gray-500 py-4 text-center leading-relaxed">${why}</div>`;
+            return;
+        }
+        const ref = this._liveRefClose || (this._liveQuoteCur && this._liveQuoteCur.prevClose) || 0;
+        const all = D.list;
+        let outV = 0, inV = 0, totV = 0;
+        const sideOf = r => (r.a > 0 && r.p >= r.a) ? 'out' : (r.b > 0 && r.p <= r.b) ? 'in' : ref > 0 ? (r.p > ref ? 'out' : r.p < ref ? 'in' : 'mid') : 'mid';
+        for (const r of all) { totV += r.v; const sd = sideOf(r); if (sd === 'out') outV += r.v; else if (sd === 'in') inV += r.v; }
+        const io = outV + inV;
+        const oldest = all[all.length - 1].t, newest = all[0].t;
+        const fmtLots = v => v >= 10000 ? `${(v / 10000).toFixed(1)} 萬張` : `${Math.round(v).toLocaleString()} 張`;
+        let st;
+        if (D.loading) st = `<span class="text-cyan-300 animate-pulse">⏳ 往前補資料中(已翻 ${D.pages || 0} 頁,目前到 ${this._twHms(oldest)})</span>`;
+        else if (D.complete) st = `<span class="text-gray-200">✅ 全日(從開盤第一筆到現在)</span>`;
+        else if (D.stop === 'quota') st = `<span class="text-yellow-300">⚠️ 富果免費額度用完,只拿到 ${this._twHms(oldest)} 之後;稍後按 🔄 會接著往前補</span>`;
+        else if (D.stop === 'cap') st = `<span class="text-yellow-300">⚠️ 今天成交筆數太多,只收到 ${this._twHms(oldest)} 之後</span>`;
+        else if (D.stop === 'nokey') st = `<span class="text-yellow-300">⚠️ 沒有富果金鑰,只有開著畫面時收到的</span>`;
+        else st = `<span class="text-yellow-300">⚠️ 連線中斷,只拿到 ${this._twHms(oldest)} 之後;稍後按 🔄 會接著往前補</span>`;
+        const big = !!this._dayTicksBig;
+        const view = big ? all.filter(r => r.v >= 50) : all;
+        const show = Math.min(view.length, this._dayTicksShow || 200);
+        const rows = view.slice(0, show).map(r => {
+            const sd = sideOf(r);
+            const pCls = ref > 0 ? (r.p > ref ? 'text-red-300' : r.p < ref ? 'text-green-300' : 'text-gray-300') : 'text-gray-200';
+            const vCls = sd === 'out' ? 'text-red-400' : sd === 'in' ? 'text-green-400' : 'text-gray-400';
+            return `<div class="grid grid-cols-[1fr_auto_auto] gap-2 items-baseline py-1 border-b border-[#21262d] text-[11px] font-mono" data-tickrow>
+                <span class="text-gray-500">${this._twHms(r.t)}</span>
+                <span class="${pCls} font-bold text-right w-16">${r.p.toFixed(2)}</span>
+                <span class="${vCls} font-black text-right w-14">${Math.round(r.v).toLocaleString()}${sd === 'out' ? ' ▲' : sd === 'in' ? ' ▼' : ''}</span>
+            </div>`;
+        }).join('');
+        const chip = (on, lbl, fn) => `<button onclick="${fn}" class="px-3 rounded border text-[12px] font-bold ${on ? 'bg-cyan-600/25 text-cyan-200 border-cyan-500/50' : 'bg-[#0d1117] text-gray-400 border-[#30363d]'}" style="min-height:32px">${lbl}</button>`;
+        let verdict = '';
+        try { verdict = this._bigOrderFlowHtml(all.slice(0, 100).map(r => ({ time: r.t, price: r.p, size: r.v, bid: r.b, ask: r.a })), ref); } catch (_) {}
+        body.innerHTML = `${verdict}
+            <div data-daytickssum class="text-[11px] text-gray-300 leading-relaxed pb-1.5 mb-1 border-b border-[#30363d]">
+                <div>📼 ${this._dW(this._twDay(oldest))} ${this._twHms(oldest)} ~ ${this._twHms(newest)} 共 <b class="font-mono text-gray-100">${all.length.toLocaleString()}</b> 筆・<b class="font-mono text-gray-100">${fmtLots(totV)}</b>${io > 0 ? `・外盤 <b class="text-red-300">${(outV / io * 100).toFixed(0)}%</b> / 內盤 <b class="text-green-300">${(inV / io * 100).toFixed(0)}%</b>` : ''}</div>
+                <div data-daytickstat class="text-[11px]">${st}</div>
+            </div>
+            <div class="flex items-center gap-2 mb-1">${chip(!big, '全部', 'app._dayTicksFilter(false)')}${chip(big, `大單 ≥50 張(${all.filter(r => r.v >= 50).length.toLocaleString()} 筆)`, 'app._dayTicksFilter(true)')}</div>
+            <div class="grid grid-cols-[1fr_auto_auto] gap-2 text-[10px] text-gray-500 border-b border-[#30363d] pb-1 mb-1 font-bold"><span>時間</span><span class="text-right w-16">成交價</span><span class="text-right w-14">量(張)</span></div>
+            ${rows || '<div class="text-[11px] text-gray-500 py-3 text-center">這個篩選沒有成交</div>'}
+            ${show < view.length ? `<button onclick="app._dayTicksMore()" class="w-full mt-2 rounded border border-[#30363d] text-[12px] font-bold text-gray-300" style="min-height:40px">再顯示 500 筆(還有 ${(view.length - show).toLocaleString()} 筆)</button>` : ''}
+            <div class="text-[10px] text-gray-500 mt-1.5">▲外盤(主動買·紅)/▼內盤(主動賣·綠)。開著這一頁時每一筆新成交會自動補上。</div>`;
+    },
     _renderLiveTicks(trades) {
+        // 📼 V78.5.7 逐筆分頁一律畫「當日全部」那份;這支只剩沒有當日清單時的備援
+        const _D = this._dayTrades;
+        if (_D && _D.sym === String(this.currentSymbolId) && _D.list.length) { this._renderDayTicks(); return; }
         const body = document.getElementById('liveTabBody'); if (!body) return;
         const arr = Array.isArray(trades) ? trades : (trades && trades.data) || [];
         if (!arr.length) { body.innerHTML = '<div class="text-[10px] text-gray-500 py-4 text-center leading-relaxed">📶 逐筆成交:目前無資料(非盤中或免費額度用盡)。<br>盤中(09:00–13:30)點「🔄 更新」再看。</div>'; return; }
@@ -47883,6 +48105,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
         // 用本地暫存陣列(離開不存,按儲存才寫回 inventory)
         this._invEditDraft = JSON.parse(JSON.stringify(this.inventory));
+        // 🎯 V78.5.7 每一列記下「它在原本庫存的第幾筆」—— 賣出是馬上寫回真正的庫存,
+        //   草稿裡刪掉別列後索引會位移,⛔ 不可拿草稿索引去改 this.inventory(會賣錯檔)
+        this._invEditDraft.forEach((it, i) => { it._oi = i; });
+        this._invSellIdx = null;
         this._renderInventoryEditPage(modal);
         modal.classList.remove('hidden');
         modal.style.display = 'block';
@@ -47921,7 +48147,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 <span class="text-[10px] text-gray-500 flex-shrink-0">📅 買進日</span>
                 <input type="date" value="${bd}" onchange="app._updateInvEditDraft(${idx}, 'buyDate', this.value)" class="bg-[#21262d] text-white text-[11px] font-mono px-1.5 py-0.5 rounded border border-[#30363d] outline-none focus:border-blue-500">
                 <span class="text-[9px] leading-tight flex-1 text-right ${bd ? 'text-gray-600' : 'text-amber-400/80'}" data-bdnote="${idx}">${bd ? '出場線會用這天起算' : '沒填 → 出場線只能用近 20 日代理'}</span>
+                <button onclick="app._invSellOpen(${idx}); app.vibrate(15);" data-sellbtn="${idx}" class="flex-shrink-0 text-[12px] font-black px-3 rounded-lg border ${this._invSellIdx === idx ? 'bg-orange-600 text-white border-orange-500' : 'bg-[#21262d] text-orange-300 border-orange-700/60'}" style="min-height:36px">🎯 賣出</button>
             </div>
+            ${this._invSellIdx === idx ? this._invSellPanelHtml(idx) : ''}
             </div>`;
         }).join('');
 
@@ -48141,7 +48369,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     saveInventoryEditPage() {
         if (!this._invEditDraft) { this.closeInventoryEditPage(); return; }
         // 過濾無效(無 symbol 或 shares <= 0)
-        const valid = this._invEditDraft.filter(i => i.symbol && +i.shares > 0 && +i.cost > 0);
+        const valid = this._invEditDraft.filter(i => i.symbol && +i.shares > 0 && +i.cost > 0).map(i => { const o = { ...i }; delete o._oi; return o; });
         const dropped = this._invEditDraft.length - valid.length;
         this.inventory = valid;
         try { localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory)); } catch (_) {}
@@ -48157,6 +48385,135 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const modal = document.getElementById('inventoryEditPageModal');
         if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
         this._invEditDraft = null;
+        this._invSellIdx = null;
+    },
+
+    // ═══ 🎯 V78.5.7 賣出(記入勝率鏡子)—— 全 App 只有這一份寫交易日誌的程式 ═══
+    //   使用者:「原本在個股附近點選賣出,很難按,請改在編輯庫存裡面」。
+    //   ⭐ 賣價 / 股數 / 日期都自己填(舊版直接拿現價、只能整檔全賣)。
+    //   ⭐ 損益一律走 _netPL(已扣買賣手續費 × 你的折數 + 賣出證交稅)—— 舊版是毛利。
+    //   ⭐ 按確認就馬上存(這是一個動作不是編輯),⛔ 不等 💾 儲存;
+    //      ⛔ 不用 showConfirm(z=300 會被編輯頁 z=9999 蓋住,V19.1 的坑)。
+    _invSellOpen(idx) {
+        this._invSellIdx = (this._invSellIdx === idx) ? null : idx;
+        const modal = document.getElementById('inventoryEditPageModal');
+        if (modal) this._renderInventoryEditPage(modal);
+        if (this._invSellIdx === idx) {
+            setTimeout(() => { try { document.querySelector('[data-sellpanel]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {} }, 30);
+        }
+    },
+    _invSellDefaults(item) {
+        const cp = parseFloat(item.currentPrice);
+        const price = cp > 0 ? cp : (parseFloat(item.cost) || 0);
+        const d = new Date(), today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        return { price, shares: Math.round((+item.shares || 0) * 1000), date: today };
+    },
+    _invSellPanelHtml(idx) {
+        const item = (this._invEditDraft || [])[idx];
+        if (!item) return '';
+        const df = this._invSellDefaults(item);
+        const inp = 'bg-[#0d1117] text-white text-[14px] font-mono px-2 rounded border border-[#30363d] outline-none focus:border-orange-500 text-right w-full';
+        const noOrig = !(Number.isInteger(item._oi) && this.inventory[item._oi]);
+        return `<div data-sellpanel="${idx}" class="mx-2 mb-2 px-2 py-2 border-l-4 border-orange-500 bg-orange-900/10">
+            <div class="text-[12px] font-black text-orange-200 mb-1.5">🎯 賣出這一檔(記入勝率鏡子)</div>
+            ${noOrig ? `<div class="text-[11px] text-yellow-300 leading-relaxed">這一列是剛新增、還沒儲存的,請先按下方 💾 儲存,再回來賣出。</div>` : `
+            <div class="grid grid-cols-3 gap-1.5 mb-1.5">
+                <label class="flex flex-col gap-0.5"><span class="text-[10px] text-gray-400">賣出價</span><input type="number" step="0.01" min="0" inputmode="decimal" value="${df.price}" data-sellf="price" oninput="app._invSellPreview(${idx})" class="${inp}" style="min-height:38px"></label>
+                <label class="flex flex-col gap-0.5"><span class="text-[10px] text-gray-400">賣出股數</span><input type="number" step="1" min="1" max="${df.shares}" inputmode="numeric" value="${df.shares}" data-sellf="shares" oninput="app._invSellPreview(${idx})" class="${inp}" style="min-height:38px"></label>
+                <label class="flex flex-col gap-0.5"><span class="text-[10px] text-gray-400">賣出日</span><input type="date" value="${df.date}" data-sellf="date" oninput="app._invSellPreview(${idx})" class="bg-[#0d1117] text-white text-[12px] font-mono px-1 rounded border border-[#30363d] outline-none focus:border-orange-500 w-full" style="min-height:38px"></label>
+            </div>
+            <div data-sellprev class="text-[12px] leading-relaxed mb-1.5">${this._invSellPreviewHtml(item, df.price, df.shares)}</div>
+            <div class="flex gap-2">
+                <button onclick="app._invSellCommit(${idx})" class="flex-1 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-[13px] font-black" style="min-height:40px">✅ 記入勝率鏡子</button>
+                <button onclick="app._invSellOpen(${idx})" class="flex-1 bg-transparent border border-gray-600 text-gray-300 rounded-lg text-[13px] font-bold" style="min-height:40px">取消</button>
+            </div>
+            <div data-sellmsg class="text-[11px] mt-1"></div>`}
+        </div>`;
+    },
+    _invSellPreviewHtml(item, price, shares) {
+        const cost = +item.cost || 0, own = Math.round((+item.shares || 0) * 1000);
+        if (!(price > 0) || !(shares > 0)) return '<span class="text-gray-500">請填賣出價與股數</span>';
+        if (shares > own) return `<span class="text-yellow-300">⚠️ 你只有 ${own.toLocaleString()} 股</span>`;
+        const net = this._netPL(cost, price, shares);
+        if (net == null) return '<span class="text-gray-500">請確認成本均價</span>';
+        const pct = cost > 0 ? net / (cost * shares) * 100 : 0;
+        const cls = net > 0 ? 'text-red-300' : net < 0 ? 'text-green-300' : 'text-gray-300';
+        const rest = own - shares;
+        return `<b class="${cls} font-mono">${net >= 0 ? '+' : ''}${net.toLocaleString()} 元(${net > 0 ? '獲利' : net < 0 ? '虧損' : '打平'})・${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%</b>
+            <div class="text-[10px] text-gray-500">已扣買賣手續費與證交稅・${rest > 0 ? `賣完還剩 ${rest.toLocaleString()} 股` : '全部賣出,這一檔會從庫存拿掉'}</div>`;
+    },
+    _invSellRead(idx) {
+        const p = document.querySelector(`[data-sellpanel="${idx}"]`);
+        if (!p) return null;
+        const v = k => p.querySelector(`[data-sellf="${k}"]`)?.value;
+        return { price: parseFloat(v('price')), shares: Math.round(+v('shares') || 0), date: String(v('date') || '').slice(0, 10) };
+    },
+    _invSellPreview(idx) {
+        const item = (this._invEditDraft || [])[idx], r = this._invSellRead(idx);
+        const el = document.querySelector(`[data-sellpanel="${idx}"] [data-sellprev]`);
+        if (item && r && el) el.innerHTML = this._invSellPreviewHtml(item, r.price, r.shares);
+    },
+    // 📓 交易日誌的唯一寫入點。opt 給測試 / 其他入口直接傳值用(⛔ 不另寫第二份)
+    _invSellCommit(idx, opt) {
+        const msg = t => { const m = document.querySelector(`[data-sellpanel="${idx}"] [data-sellmsg]`); if (m) m.innerHTML = t; };
+        try {
+            const item = (this._invEditDraft || [])[idx];
+            if (!item) return false;
+            const oi = item._oi;
+            const orig = Number.isInteger(oi) ? this.inventory[oi] : null;
+            if (!orig || orig.symbol !== item.symbol) { msg('<span class="text-yellow-300">⚠️ 找不到這一檔原本的庫存,請先按 💾 儲存再賣。</span>'); return false; }
+            const r = opt || this._invSellRead(idx) || {};
+            const cost = +item.cost || 0, own = Math.round((+item.shares || 0) * 1000);
+            const price = +r.price, shares = Math.round(+r.shares || 0);
+            if (!(price > 0)) { msg('<span class="text-yellow-300">⚠️ 請填賣出價</span>'); return false; }
+            if (!(shares > 0) || shares > own) { msg(`<span class="text-yellow-300">⚠️ 股數要在 1~${own.toLocaleString()} 之間</span>`); return false; }
+            const net = this._netPL(cost, price, shares);
+            if (net == null) { msg('<span class="text-yellow-300">⚠️ 請確認成本均價</span>'); return false; }
+            const sellDate = String(r.date || '').slice(0, 10) || this.getTodayStr().replace(/\//g, '-');
+            let holdDays = null;
+            try {
+                if (item.buyDate) {
+                    const bd = new Date(String(item.buyDate).replace(/\//g, '-') + 'T00:00:00');
+                    const sd = new Date(sellDate.replace(/\//g, '-') + 'T00:00:00');
+                    const dd = Math.round((sd - bd) / 86400000);
+                    if (Number.isFinite(dd) && dd >= 0) holdDays = dd;
+                }
+            } catch (_) {}
+            let nm = item.symbol; try { nm = this.getStockName(item.symbol) || item.symbol; } catch (_) {}
+            const pnlPct = cost > 0 ? +(net / (cost * shares) * 100).toFixed(2) : 0;
+            const log = { symbol: item.symbol, name: nm, cost, sellPrice: price, shares: shares / 1000, pnlNTD: net, pnlPct, buyDate: item.buyDate || null, date: sellDate.replace(/-/g, '/'), holdDays, net: 1 };
+            let tradeLog = [];
+            try { const raw = JSON.parse(localStorage.getItem('proTerminalTradeLog') || '[]'); if (Array.isArray(raw)) tradeLog = raw; } catch (_) { tradeLog = []; }   // 壞掉就重建(V68.4.8)
+            tradeLog.push(log);
+            const rest = own - shares;
+            // 真正的庫存:同步這一列在草稿裡的成本/買進日,再扣股數
+            const nextInv = this.inventory.slice();
+            if (rest > 0) nextInv[oi] = { ...orig, cost: item.cost, buyDate: item.buyDate, shares: rest / 1000 };
+            else nextInv.splice(oi, 1);
+            localStorage.setItem('proTerminalTradeLog', JSON.stringify(tradeLog));
+            localStorage.setItem('proTerminalInv', JSON.stringify(nextInv));
+            this.inventory = nextInv;
+            // 草稿跟著改,並重排 _oi(拿掉一筆後後面的原始索引要往前)
+            if (rest > 0) { item.shares = rest / 1000; }
+            else {
+                this._invEditDraft.splice(idx, 1);
+                this._invEditDraft.forEach(it => { if (Number.isInteger(it._oi) && it._oi > oi) it._oi -= 1; });
+            }
+            this._invSellIdx = null;
+            try { this.renderInventory(); } catch (_) {}
+            try { this.refreshStrategy?.(); } catch (_) {}
+            try { this.renderTradeJournal?.(); } catch (_) {}
+            const modal = document.getElementById('inventoryEditPageModal');
+            if (modal && modal.style.display !== 'none') this._renderInventoryEditPage(modal);
+            this.showToast?.(`✅ 已記入勝率鏡子:${nm} ${shares.toLocaleString()} 股 ${net >= 0 ? '+' : ''}${net.toLocaleString()} 元`, 'info');
+            this.vibrate?.([30, 30]);
+            return true;
+        } catch (e) {
+            console.warn('[_invSellCommit]', e);
+            msg('<span class="text-yellow-300">⚠️ 存不進去,請再試一次</span>');
+            this.showToast?.('⚠️ 賣出紀錄存不進去,請再試一次', 'error');
+            return false;
+        }
     },
 
     
@@ -48653,7 +49010,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 </div>
                 <button onclick="document.getElementById('invRowMenuModal').remove(); app.settleInventory(${idx}); app.vibrate(30);" class="w-full flex items-center gap-3 bg-orange-600 hover:bg-orange-500 text-white rounded-lg px-4 py-3 mb-2 transition-colors">
                     <span class="text-xl">🎯</span>
-                    <div class="text-left"><div class="text-sm font-black">結算平倉</div><div class="text-[10px] opacity-80">賣出並記入交易日誌(算你真實勝率)</div></div>
+                    <div class="text-left"><div class="text-sm font-black">賣出(記入勝率鏡子)</div><div class="text-[10px] opacity-80">打開編輯庫存,自己填賣價、股數、日期</div></div>
                 </button>
                 <button onclick="document.getElementById('invRowMenuModal').remove(); app.editInventoryCost(${idx}); app.vibrate(20);" class="w-full flex items-center gap-3 bg-[#21262d] hover:bg-[#30363d] text-gray-100 rounded-lg px-4 py-3 mb-2 border border-[#30363d] transition-colors">
                     <span class="text-xl">✏️</span>
@@ -48667,36 +49024,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </div>`;
     },
 
+    // 🎯 V78.5.7 舊入口(⋯ → 結算平倉)改成打開編輯庫存並展開那一列的賣出面板 —— ⛔ 不留第二份寫日誌的程式
     settleInventory(idx) {
-        const item = this.inventory[idx];
-        if (!item) return;
-        const price = parseFloat(item.currentPrice) || parseFloat(item.cost);
-        const cost = parseFloat(item.cost);
-        const shares = parseFloat(item.shares) || 1;
-        const pnlNTD = (price - cost) * shares * 1000;
-        const pnlPct = cost > 0 ? ((price - cost) / cost * 100).toFixed(2) : '0.00';
-        this.showConfirm(`🎯 結算平倉 ${item.symbol}？\n報酬: ${pnlNTD > 0 ? '+' : ''}${pnlNTD.toFixed(0)} 元 (${pnlPct}%)`, () => {
-            // 📓 V67.0 交易日誌加 buyDate/name/持有天數,供「真實勝率鏡子」算賺短賠長等行為分析
-            let holdDays = null;
-            try { if (item.buyDate) { const bd = new Date(String(item.buyDate).replace(/\//g, '-')); const dd = Math.round((Date.now() - bd.getTime()) / 86400000); if (Number.isFinite(dd) && dd >= 0) holdDays = dd; } } catch (_) {}
-            // 🐛 V68.4.8 修交易日誌「結算平倉沒反應」:原 JSON.parse 無 try/catch,localStorage 一旦壞掉整條 throw → 交易沒記、庫存也沒移除(看起來壞掉)。全程包 try/catch + parse 防呆。
-            try {
-                let nm = item.symbol; try { nm = this.getStockName(item.symbol) || item.symbol; } catch (_) {}
-                const log = { symbol: item.symbol, name: nm, cost, sellPrice: price, shares, pnlNTD, pnlPct: +pnlPct, buyDate: item.buyDate || null, date: this.getTodayStr(), holdDays };
-                let tradeLog = [];
-                try { const _raw = JSON.parse(localStorage.getItem('proTerminalTradeLog') || '[]'); if (Array.isArray(_raw)) tradeLog = _raw; } catch (_) { tradeLog = []; }   // 壞掉就重建,不讓一筆髒資料害整個功能失效
-                tradeLog.push(log);
-                localStorage.setItem('proTerminalTradeLog', JSON.stringify(tradeLog));
-                this.inventory.splice(idx, 1);
-                localStorage.setItem('proTerminalInv', JSON.stringify(this.inventory));
-                this.renderInventory();
-                this.refreshStrategy();
-                this.showToast?.('✅ 已結算並記入交易日誌', 'info');
-            } catch (e) {
-                console.warn('[settleInventory]', e);
-                this.showToast?.('⚠️ 結算失敗,請再試一次', 'error');
-            }
-        });
+        if (!this.inventory[idx]) return;
+        this.openInventoryEditPage();
+        this._invSellOpen(idx);
     },
 
     // 📓 V67.0 — 交易日誌 + 你的真實勝率鏡子(讀 proTerminalTradeLog,把每筆平倉變成自我檢討)
@@ -48707,14 +49039,27 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //        ⛔ 不可只寫「勝率鏡子」—— 那樣使用者不知道有沒有東西可看、也就不會點
     //        ③ 一筆都沒有時鈕照顯示(標「還沒紀錄」)—— 那正是要教他去結算平倉的時候。
     //   ⚠️ 舊的 `#tradeJournalCard` 容器已從庫存頁移除 → 這支現在只負責產 HTML。
-    _tradeJournalHtml() {
-        const box = { className: '', innerHTML: '', classList: { remove() {}, add() {} } };
+    // 💸 V78.5.7 一筆賣出的「淨損益」—— 有成本 / 賣價 / 股數就用 _netPL 重算(舊紀錄存的是毛利,一起換成淨的),
+    //   缺欄位的舊紀錄才退回原本存的數字。⛔ 鏡子裡的勝率 / 賺賠比 / 總損益一律讀這支。
+    _tradePnl(t) {
+        const cost = +t?.cost, sell = +t?.sellPrice, sh = Math.round((+t?.shares || 0) * 1000);
+        const net = (cost > 0 && sell > 0 && sh > 0) ? this._netPL(cost, sell, sh) : null;
+        if (net == null) return { ntd: +t?.pnlNTD || 0, pct: +t?.pnlPct || 0 };
+        return { ntd: net, pct: +(net / (cost * sh) * 100).toFixed(2) };
+    },
+    _tradeLogNet() {
         let log = [];
         try { log = JSON.parse(localStorage.getItem('proTerminalTradeLog') || '[]'); } catch (_) { log = []; }
+        if (!Array.isArray(log)) return [];
+        return log.map(t => { const p = this._tradePnl(t); return { ...t, pnlNTD: p.ntd, pnlPct: p.pct }; });
+    },
+    _tradeJournalHtml() {
+        const box = { className: '', innerHTML: '', classList: { remove() {}, add() {} } };
+        let log = this._tradeLogNet();
         if (!Array.isArray(log) || log.length === 0) {
             box.className = 'mx-2 mt-2 bg-[#161b22] border border-[#30363d] rounded-lg p-3';
             box.innerHTML = `<div class="text-[12px] font-black text-gray-100 mb-1">📓 交易日誌 · 你的真實勝率</div>
-                <div class="text-[11px] text-gray-400 leading-relaxed">還沒有平倉紀錄。點庫存股代號旁的 <b class="text-gray-200">⋯</b> → 選「🎯 結算平倉」,系統會自動記一筆,幫你算出<b>你本人</b>的勝率、平均賺賠、賺短賠長等——這是唯一能讓你進步的鏡子。</div>`;
+                <div class="text-[11px] text-gray-400 leading-relaxed">還沒有賣出紀錄。到庫存頁按 <b class="text-gray-200">✏️ 編輯庫存</b>,在那一檔按「🎯 賣出」填賣價和股數,系統會自動記一筆,幫你算出<b>你本人</b>的勝率、平均賺賠、賺短賠長等——這是唯一能讓你進步的鏡子。</div>`;
             return box.innerHTML;      // ⛔ 不可回 undefined —— 這條是「還沒有平倉紀錄」的教學文字,正是最該顯示的時候
         }
         const n = log.length;
@@ -48768,14 +49113,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             </div>
             ${insight ? `<div class="bg-[#0d1117] border border-[#30363d] rounded px-2.5 py-1.5 text-[11px] ${insightCls} leading-relaxed mb-1.5">${insight}</div>` : ''}
             <details><summary class="text-[10px] text-gray-500 cursor-pointer list-none">📜 最近 5 筆 · 獲利因子 ${profitFactor >= 99 ? '∞' : profitFactor.toFixed(2)} · 最大單筆虧損 ${_nf(maxLoss)}</summary><div class="mt-1">${recent}</div></details>
-            <div class="text-[9px] text-gray-600 mt-1.5">💡 只算「結算平倉」的單。純刪除不計入。這面鏡子照的是你自己——比任何訊號都重要。</div>`;
+            <div class="text-[9px] text-gray-600 mt-1.5">💡 只算在編輯庫存按「🎯 賣出」的單,損益已扣買賣手續費與證交稅。純刪除不計入。這面鏡子照的是你自己——比任何訊號都重要。</div>`;
         return box.innerHTML;
     },
     // 🪞 庫存股標題列那顆鈕:算出「N 筆 · 勝率 X%」讓使用者一眼知道有沒有東西可看
     _tradeMirrorBtnHtml() {
-        let log = [];
-        try { log = JSON.parse(localStorage.getItem('proTerminalTradeLog') || '[]'); } catch (_) { log = []; }
-        if (!Array.isArray(log)) log = [];
+        const log = this._tradeLogNet();
         const n = log.length;
         let label = '還沒紀錄', cls = 'text-gray-400 border-[#30363d] bg-white/5';
         if (n) {
