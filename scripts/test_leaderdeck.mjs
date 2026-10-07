@@ -79,9 +79,18 @@ const R = await page.evaluate(async () => {
     app._liveQuotes = {}; app._liveUpdated = null;
     app._leadRebPx = { D: '2026-09-24', v: { map: new Map([['1003', 80], ['1001', 125]]), err: null } };
     const _gsn = app.getStockName; app.getStockName = s => s === '1003' ? '測試三' : _gsn.call(app, s);
+    // 📌 V78.5.9 pick_history 沒存到的那幾檔用 K 線「那一天」的收盤補:1005 那天收 50(前一天 999 ⛔ 不可拿);其他檔沒有那天的 K 線
+    const _lk = app._loadKline; const kClose = { v: 50 };
+    app._loadKline = async sym => sym === '1005' ? [{ date: '2026/09/23', close: 999 }, { date: '2026/09/24', close: kClose.v }, { date: '2026/09/25', close: 888 }] : null;
+    app._leadRebK = null;
     host.innerHTML = await app._leaderDeckHtml();
     out.reb1003 = host.querySelector('[data-leaderrow="1003"] [data-leaderreb]')?.innerText || '';
-    out.reb1005 = host.querySelector('[data-leaderrow="1005"] [data-leaderreb]')?.dataset.leaderreb || '';
+    out.reb1005 = host.querySelector('[data-leaderrow="1005"] [data-leaderreb]')?.innerText || '';
+    out.reb1002 = [...host.querySelectorAll('[data-leaderrow]')].filter(e => !['1001', '1003', '1005'].includes(e.dataset.leaderrow)).map(e => e.querySelector('[data-leaderreb]')?.dataset.leaderreb).every(v => v === 'none') ? 'none' : 'bad';
+    out.rebHdr = host.querySelector('[data-leadersort="reb"]')?.innerText || '';
+    kClose.v = 40; app._leadRebK = null; host.innerHTML = await app._leaderDeckHtml();
+    out.reb1005b = host.querySelector('[data-leaderrow="1005"] [data-leaderreb]')?.innerText || '';
+    app._leadRebK = null; host.innerHTML = await app._leaderDeckHtml();
     out.acts = [...new Set([...host.querySelectorAll('[data-leaderact]')].map(e => e.innerText.trim()))];
     const nmEl = host.querySelector('[data-leadername="1003"]');
     out.nameTwoLayer = !!nmEl && nmEl.children.length === 2 && /測試三/.test(nmEl.children[0].innerText) && nmEl.children[1].innerText.trim() === '1003' && nmEl.children[1].getBoundingClientRect().top > nmEl.children[0].getBoundingClientRect().top;
@@ -103,6 +112,7 @@ const R = await page.evaluate(async () => {
     app._leadRebPx = null; const rpMiss = await app._leaderRebPx('2026-09-10'); out.rpMiss = rpMiss.err || '';
     window.fetch = async () => ({ ok: false }); app._leadRebPx = null; const rpErr = await app._leaderRebPx('2026-09-24'); out.rpErr = rpErr.err || '';
     window.fetch = _f;
+    app._loadKline = _lk;
     app._leadRebPx = { D: '2026-09-24', v: { map: new Map([['1003', 80], ['1001', 125]]), err: null } };
     host.innerHTML = await app._leaderDeckHtml();
     out.D = D; out.rankedSyms = L.ranked.map(r => r.sym);
@@ -158,13 +168,15 @@ ok('③l ⭐ V77.9.6 ⛔ 不再有「標了才算」:選 👑 時 1041 一律講
 ok('③e ⛔ 無 🔴🟢', !/[🔴🟢]/u.test(R.txt) && !/[🔴🟢]/u.test(R.bearTxt));
 ok('③f 390px 不橫捲、不超出', R.sx <= 2 && R.over === 0, `${R.sx} ${R.over}`);
 ok('③g 無 pageerror', !errs.length, errs.join(' | '));
-ok('⑫a 📌 V78.3.3 換倉價 = 換倉日 pick_history 的收盤 + 到現價 %;換倉時不在名單 → 「—」', /^80\.00\s*\+25\.0%$/.test(R.reb1003.trim()) && R.reb1005 === 'none', JSON.stringify([R.reb1003, R.reb1005]));
+ok('⑫a 📌 V78.5.9 「09/24價」= 換這一批那天的收盤 + 到現價 %:pick_history 有的照用;沒有的用 K 線「那一天」補(⛔ 不拿前一天/後一天);那天沒有 K 線 → 「—」', /^80\.00\s*\+25\.0%$/.test(R.reb1003.trim()) && /^50\.00\s*\+100\.0%$/.test(R.reb1005.trim()) && R.reb1002 === 'none', JSON.stringify([R.reb1003, R.reb1005, R.reb1002]));
+ok('⑫a2 ⭐ 決定性對照:K 線那天的收盤改成 40 → 畫面跟著變(+150%)', /^40\.00\s*\+150\.0%$/.test(R.reb1005b.trim()), R.reb1005b);
+ok('⑫a3 表頭名字 = 「09/24價」(⛔ 不再叫換倉價)', /09\/24價/.test(R.rebHdr) && !/換倉價/.test(R.rebHdr), R.rebHdr);
 ok('⑫b 動作欄只有「🛒 買 / 前10續抱」兩種(⛔ 位置低 / 空頭不買 / ✅ 已有 / 換倉日才買)', R.acts.length === 2 && R.acts.every(t => t === '🛒 買' || t === '前10續抱'), JSON.stringify(R.acts));
 ok('⑫c 股名兩層:中文名一列、代號在名字下面', R.nameTwoLayer === true);
 ok('⑫d ⭐ 決定性對照:即時快照是今天的 → 現價 = 快照價、今天 = 快照漲跌、換倉價後面的 % 跟著變;其他檔照舊收盤', R.live.c === '120.0' && R.live.flag === '1' && /\+50\.0%/.test(R.live.reb) && /\+2\.5%/.test(R.live.txt) && R.liveOther === '100.0', JSON.stringify([R.live, R.liveOther]));
 ok('⑫e 舊快照(不是今天)⛔ 不可當現價', R.stale === '100.0', R.stale);
 ok('⑫f _leaderRebPx 讀那一天(⛔ 不是前一天)的 lead.rows.c;沒存到 / 讀不到 → 寫原因(⛔ 不靜默)', JSON.stringify(R.rpx) === JSON.stringify([77, 55, false]) && /沒有存到/.test(R.rpMiss) && /讀不到/.test(R.rpErr), JSON.stringify([R.rpx, R.rpMiss, R.rpErr]));
-ok('⑫g 表下說明寫現價 / 換倉價的定義', /換倉價 = 2026-09-24 換倉那天的收盤/.test(R.rebNote), R.rebNote);
+ok('⑫g 表下說明寫現價 / 09/24價的定義', /09\/24價 = 換這一批那天\(2026-09-24\)的收盤/.test(R.rebNote), R.rebNote);
 ok('⑫h ⛔ 決策台沒有模擬成交 / 模擬成績(只在產業作戰室成績單)', !/_leaderEntries|data-leaderown|data-leaderent=|這套現在抱著/.test(SRC.slice(SRC.indexOf('async _leaderDeckHtml'), SRC.indexOf('_deckTodoLead({'))));
 ok('③h 名單裡有注意 / 處置股 → 寫「不要跳過」(🧹 V78.3.4 ⛔ 不附回測數字)', /不要跳過/.test(R.attTxt) && !/\+408%|實測/.test(R.attTxt), R.attTxt.slice(0, 200));
 
