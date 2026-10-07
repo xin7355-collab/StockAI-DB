@@ -66,18 +66,33 @@
 
 ---
 
-## 📦 外部技能（從 skl 技能庫裝進來的，2026-09-24）
+## 📦 外部技能（從 skl 技能庫裝進來的，2026-09-24 / 2026-10-07）
 
 用 `xin7355-collab/skl` 的 `bootstrap_app.py install --skills … --no-hook` 裝的，清單在 `.claude/skills/.skl-vendor.json`。
-⛔ **不要直接改這三支的內容** —— 下次 update 會被蓋回去；要改就去 skl 改。
+⛔ **不要直接改這幾支的內容** —— 下次 update 會被蓋回去；要改就去 skl 改。
 
 | 技能 | 為什麼留著 | ⛔ 不拿來做 |
 |---|---|---|
 | `senior-data-scientist` | 回測的統計方法：多重比較校正、信賴區間、資料洩漏 / 過度擬合檢查、基準對照 | 流程照 `/probe`；它教的 XGBoost / MLflow ⛔ 不套（`ml_probe` 已實測 ML 沒有樣本外預測力） |
 | `senior-prompt-engineer` | 餵給 AI 的提示詞（報告、做圖、新聞翻譯、純 JSON）：`scripts/prompt_optimizer.py` 量長度、冗詞，並跟上一版比對 | ⛔ 不拿來改 AI 模型分工（CLAUDE.md 已定案） |
 | `app-guardrails-audit` | 安裝器**一定會裝**；查 OOM、SQLite 鎖、API 限流與退避、金鑰進網址、工作流逾時 | 資料體檢與巡邏仍是 `/audit`；它是靜態掃描，每一條都要人工驗真偽 |
+| `sql-database-assistant` | `miner.py` 的 SQLite(`stock_hunter.db`,WAL):查詢、索引、鎖死排查 | ⛔ 不拿來改資料結構 / 加 migration —— 那份庫每輪都由 JSON 重建(`seed_db_from_json`),是丟棄式中介庫 |
+| `llm-cost-optimizer` | AI 額度:提示詞長度、`max_tokens`、快取(Gemini / Groq / OpenRouter) | ⛔ 不拿來改 AI 模型分工(CLAUDE.md 已定案);⛔ 不叫你改用 Claude API |
+| `strict-api` | 寫程式前先確認函式 / 套件版本真的存在(Shioaji 釘 `<1.7`、FinMind 資料集名曾猜錯) | ⛔ 不取代「先實跑再下結論」 —— 它只管 API 存不存在 |
 
-`scripts/test_skills.mjs` 對這三支**只檢查** name / 描述相似度 / 撞名，
+**2026-10-07 那次跳過的 9 支**(使用者點名 12 支,只裝 3 支):
+
+| 技能 | 為什麼不裝 |
+|---|---|
+| `env-secrets-manager` | 安裝器的安全掃描沒過(PROMPT-EXFIL)⛔ 不用 `--no-security-scan` 硬裝;改成實際查一次歷史(見 DECISIONS 2026-10-07) |
+| `security-guidance` | 本體是 PreToolUse hook,安裝器只會複製說明檔(hook 不會接上);就算接上,它看到 `.innerHTML =` 就擋,index.html 有上千處 |
+| `database-designer` | 選 SQL/NoSQL、設計 schema、migration —— 本 repo 的 SQLite 是每輪重建的中介庫 |
+| `api-design-reviewer` / `api-test-suite-builder` / `senior-backend` | 本 repo 沒有對外 REST API(`api.py` 沒接上、`cloud-worker` 是排程 + Telegram) |
+| `cost-aware-llm-pipeline` | 整篇是 Anthropic SDK 範例,本站沒用 Claude API;主題跟 `llm-cost-optimizer` 重疊 |
+| `prompt-optimizer` | 綁 ECC 生態(對應 ECC 的 skills/commands);改提示詞已有 `senior-prompt-engineer` |
+| `oil-ui` | 新介面一律要做三處動效 + 滾動敘事、推銷付費版;跟 CLAUDE.md 的 UI 規範(無框、克制動畫、終端機密度)衝突,設計判斷已有 frontend-design 外掛 |
+
+`scripts/test_skills.mjs` 對這幾支**只檢查** name / 描述相似度 / 撞名，
 不要求「⛔ 這支不做」與行數，因為那是本專案寫技能的規範；而專案自己的 5 支**不可**列進那份清單。
 
 **更新**：

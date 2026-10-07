@@ -2128,6 +2128,38 @@ W=240 那一條路徑(決策台成績單用的):🧬 +152.4 萬(−40.1%)・不�
 - ⚠️ 它的 token 數(1,851)用**英文的「字元 ÷ 4」估算**,對中文**嚴重低估** → ⛔ 不可拿來當中文提示詞的成本依據。
 - 它的建議(改成 JSON 輸出、加 few-shot)**不適用**:這份產出是 20 節 Markdown 報告,骨架本來就寫在提示詞裡。
 
+# 📦 2026-10-07 從 skl 技能庫再裝 3 支(使用者點名 12 支,9 支跳過)
+
+**做法**:`/tmp/skl` 更新到 c8a537e → `bootstrap_app.py install --dry-run` 試跑 → 正式裝,一律 `--no-hook`(跟上次一樣,不加開工自動健檢)。
+- ✅ 裝:`sql-database-assistant`(miner.py 的 SQLite)・`llm-cost-optimizer`(Gemini / Groq / OpenRouter 額度)・`strict-api`(防止編出不存在的函式);`app-guardrails-audit` 跟著更新(內容沒變)。
+- ⛔ 跳過 9 支,原因寫在 `.claude/skills/README.md`:
+  - `env-secrets-manager`:安全掃描沒過(PROMPT-EXFIL)。
+  - `security-guidance`:是 hook,安裝器只複製說明;接上會擋 index.html 上千處 innerHTML。
+  - `database-designer`:SQLite 是每輪重建的中介庫。
+  - 三支 REST API / 後端:本 repo 沒有對外 API。
+  - `cost-aware-llm-pipeline`:Anthropic SDK 專用。
+  - `prompt-optimizer`:綁 ECC 生態。
+  - `oil-ui`:強制動效 + 推銷付費版,跟 UI 規範衝突。
+- `test_skills.mjs` 全綠(12 支定義檔,最高描述相似度 0.39)。
+
+**🔍 guardrails 健檢**(掃 8,501 檔;index.html / pro.html / DECISIONS.md 太大被跳過 —— 那幾個要靠本 repo 自己的測試):
+
+| 規則 | 數量 | 人工判讀 |
+|---|---|---|
+| 🔴 secret-in-url | 2 | ❌ 誤報:`scripts/test_key_header.py` 自己的測資字串 |
+| 🟡 log-secret | 34 | ❌ 誤報:全部只印「token」這個字或第幾把,⛔ 沒有一處印出金鑰值(唯一帶變數的 `{secret}` 是機密的**名稱**) |
+| 🟡 workflow-no-timeout | 6 | ✅ 真的:`build_apk` / `deploy_worker` / `history_probe` / `insider_probe` / `macro_probe` / `orb_probe` 都沒寫 `timeout-minutes`(都是手動觸發,卡住會跑到 6 小時)—— ⛔ 改 workflow 要先問,這次只回報 |
+| 🟡 file-to-arraybuffer | 2 | 已知:`sw.js` 驗整份 index.html 完整性(陷阱 #20,V77.5.5 已記錄約 2.7MB/次導覽) |
+| 🟡 unbounded-promise-all | 1 | 低風險:`worker.js:831` 陣列最多 5~10 檔,而且 `stockLabel` 先讀 KV |
+| 🟡 hardcoded-model | 1 | 低風險:`macro_miner.py` 寫死 `gemini-2.5-flash`(穩定版;OpenRouter 才會下架) |
+| 🔵 http-no-retry | 39 | 提醒級,未逐條處理 |
+
+**🔐 金鑰檢查**(取代 env-secrets-manager):
+- 2,014 個 commit 從來沒加過 `.env` / `*.pem` / `credentials` 之類的檔。
+- 全歷史內容掃 Google / Groq / OpenRouter / GitHub / 私鑰 / JWT 樣式(排除 data/ 與 json):只命中 1 種 —— `analyst_probe.py` 裡的 **YouTube 網頁版公開 key**(youtube.com 前端本來就公開的那把,⛔ 不是使用者的金鑰;V72.8.0 已整組移除)。
+- `test_no_token_leak.py` / `test_key_header.py` 都通過。
+- → **沒有使用者的金鑰被 commit 過**。
+
 # 📦 2026-09-24 從 skl 技能庫裝 3 支外部技能(34 支候選挑 2 支 + 安裝器必裝的 1 支)
 
 使用者:「從 skl 取得技能庫…從候選中只挑真正用得到的(寧缺勿濫),每個寫一句理由」。

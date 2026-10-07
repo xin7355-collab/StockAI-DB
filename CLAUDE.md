@@ -2342,7 +2342,7 @@ Tailwind **具名** `grid-cols-N` 會編成 `minmax(0,1fr)`;**任意值** `[1fr_
 | `/uicard` | 加卡片 / 改版面 / 改文案 | 改判定門檻(要先回測) |
 | 代理 `scout` | 同時掃前端/採礦/workflow 找 bug | 改任何檔案(它只回清單) |
 
-📦 **另有 3 支外部技能**(skl 技能庫裝的:`senior-data-scientist` / `senior-prompt-engineer` / `app-guardrails-audit`)——
+📦 **另有 6 支外部技能**(skl 技能庫裝的:`senior-data-scientist` / `senior-prompt-engineer` / `app-guardrails-audit` / `sql-database-assistant` / `llm-cost-optimizer` / `strict-api`)——
 ⛔ 不要直接改內容(update 會蓋回去),說明與更新指令見 `.claude/skills/README.md` 最後一節。
 
 ⛔ **三條不可違反的設計**(`scripts/test_skills.mjs` 釘住):
@@ -2484,6 +2484,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 - 🐢🏁 V77.5.7 「回測 ETF 買賣,什麼訊號最強?」—— ⭐ **答案是不用訊號:買了放著(含息)**。新探針 `etf_signal_probe.py`(63 檔・2022-03~2026-09・含息・t+1 開盤・六關・12 路徑):唐奇安 4 組中位 −6.4~−9.2pp、絕對動能 −2.3~−4.2pp、跨 ETF 輪動/雙動能 18 格**全部輸 0050**(12 路徑 0/12)、唯一中位為正的「0050 站上 200 日線」是**孤峰**(175/225 日就歸零、12 路徑 4/12、只贏 2022 那一年)→ ⛔ 不改 App ・🧭 取捨型:唐奇安 20/10 在 0050 上回撤 −30% → −11%,代價 4.5 年少賺 89 萬/百萬 ・⭐ 含息對表 `total_return_probe` 差 ≤0.02pp
 - 🐢📢 V77.5.6 17 份唐奇安/海龜逐字稿檢視 —— 13 份進場端/已測過(CCI 反轉・費波那契回撤・假突破・8-10 天均值回歸)⛔ 不做,3 份 ATR 金字塔加碼(部位邏輯,衝突 V73.0.0)⛔ 不建,1 份唐奇安「中軌」出場(`donmid20`)是唯一新東西 → 已用 `breakout_exit_probe.mjs`(2,136 檔・15,533 事件・含 2022)實測:六關全過但**贏基準只有 +0.68pp,遠輸現行 don20 的 +1.43pp**(排 12 個出場裡第 10)→ ⛔ 不換預設、⛔ 不加 UI 選項,只留在 `lib_exitsim.mjs`/`_BREAKOUT_EXIT_EDGE` 供對照
 - 🔐📊⏱️ V77.5.5 用新裝的三支技能實際優化 —— 🔐 Gemini 金鑰改走標頭(掃描器只抓到 1 處、**實際 5 處**:index.html 太大被它跳過;`macro_miner` 那處會經 urllib3 重試 log 漏進**公開** Actions log)・⏱️ 共用部署鎖的 2 支加逾時 + 守門 ・📊 訊號分級加 **BH 多重比較校正**(A 54→48,掉的 6 個期望值全負,進場名單一個沒變)・🧾 提示詞量測:0 句重複、⛔ 工具的 token 數對中文嚴重低估
+- 📦 2026-10-07 從 skl 技能庫再裝 3 支(使用者點名 12 支:裝 sql-database-assistant / llm-cost-optimizer / strict-api,跳過 9 支並寫原因)・guardrails 健檢 2 必修 + 44 建議修,人工判讀只剩 6 支手動 workflow 沒設逾時是真的 ・全 git 歷史掃金鑰:沒有使用者的金鑰被 commit 過
 - 📦 2026-09-24 從 skl 技能庫裝 3 支外部技能(34 選 2 + 安裝器必裝 1)・`test_skills.mjs` 認得 `.skl-vendor.json`(外部只查 name/相似度/撞名)・🔍 guardrails 首跑抓到 `cloud-worker/worker.js` Gemini 金鑰放網址參數(⏳ 未修)
 - 🚪💳 V77.5.4 §21「你設的出場線」對**沒持有**的股票改講「你選的規則套在這一檔目前是 X ・⛔ 這只是參考」(提示詞同步註明)・💳 **FinMind 付費取消會影響什麼**:核心策略零影響;停的是分點(含唯一六關全過的 `_chipRunBuy`)+ 10 個付費資料集 + 官方融資維持率;夜間基本面變 4 晚輪一次 ・💡 付費選項排序:先免費設 `GH_DISPATCH_TOKEN`(`repository_dispatch` 仍 0 筆)
 - 📈 V77.5.3 報告頁「進場價 / 追買價」換成這一檔自己的觸發價(使用者:「照你推薦的直接執行」)—— 🚨 陷阱 #37 又一次:`_keyLevels.buyPx/addPx`(5 日線 / 月線 / 前高,沒實測)有四個消費端,V77.5.2 只換了價格尺 → §11 價格牆 / §21 / 海報改讀 `_keyLevels.trigPx`(產生端算一次,條件同主卡)・沒招就明寫「沒有進場價」⛔ 不退回均線 ・空頭 👀 觀察價照留 ・決定性對照 `trigPx=987.65` vs `buyPx=1234.56`
