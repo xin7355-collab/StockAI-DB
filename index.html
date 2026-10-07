@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.5.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.5.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -275,6 +275,12 @@
     })();
     </script>
     <style>
+        /* 👁️ V78.5.6 說明小字對比:Tailwind 的 gray-500(#6b7280)在 #0d1117 上只有約 4.0:1、gray-600(#4b5563)約 2.5:1(深灰 chip 底 #21262d 上只剩 2.0),
+           小字門檻是 4.5:1 → iPhone 上看不清楚。一條 CSS 統一調亮,⛔ 不逐一改 2,000 處 class。
+           深淺順序仍是 400 > 500 > 600(備註比次要淡)。特異度 (0,1,2) 贏 Tailwind 的 .text-gray-500 (0,1,0),
+           但輸給 hover: / group-hover:(0,2,0)→ 滑過變亮照舊。⛔ 程式動態加別的文字色時要一併拿掉灰色(test_contrast 釘住)。 */
+        html body .text-gray-500 { color: #8b949e; }
+        html body .text-gray-600 { color: #858e98; }
         html { font-size: 100%; touch-action: manipulation; width: 100%; height: 100%; overflow: hidden; margin: 0; padding: 0; background-color: #0d1117; }
         /* 預設中型字體微放大 6%（內容字 14px → ~15px），維持小於 text-base (16px) 不破格 */
         html[data-font="medium"] { font-size: 106%; }
@@ -892,7 +898,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.5.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.5.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8712,10 +8718,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.5.5',
+    _APP_VERSION: 'V78.5.6',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.5.6', d: ['👁️ 灰色說明小字調亮,手機上比較看得清楚', '🤖 AI 供應商把模型下架時會自動換一個,不會整個失效'] },
         { v: 'V78.5.5', d: ['🔧 小修正'] },
         { v: 'V78.5.4', d: ['🔧 小修正'] },
         { v: 'V78.5.3', d: ['🔧 小修正'] },
@@ -8864,7 +8871,6 @@ ${list}
                              '💰 <b>更正「閒錢停 0050」的數字</b>:上一版寫「324 vs 324、多賺不多」是<b>漏算停泊本身的獲利</b>;新預設抱 20 天、閒錢更多,停泊實際多賺 <b>+110 萬</b>(434 vs 324 萬、17/17 條全贏、回撤 16/17 較小)。',
                              '📈 回測引擎補「逐日市值淨值」輸出與「外部逐日訊號」候選層鉤子(⛔ 不設時一字不變,兩支測試釘住)。'] },
         { v: 'V77.7.6', d: ['🔁 <b>決策台預設換成「吊燈 ATR 2 倍・最長抱 20 天・大盤空頭不買」</b>(你說「以現在最厲害的執行」):用修好的日 K 重測,近 4 年 179 → 324 萬、16 年 285 → 494 萬,兩段都是 17 條全贏上一任;⚠️ 仍輸 0050 含息、而且 2011~2020 那十年反而比較差。開 App 會跳一次說明,可一鍵換回舊的。', '🔄 「情勢變了自動換規則」回測過了:贏得過隨機亂換,但<b>贏不了固定用最強那一套</b>(214~263 vs 324 萬)→ 沒有做成自動換。', '🛠️ 自動下單同步換成新出場;吊燈 ATR 的出場線改用<b>進場那天的 ATR</b>(跟回測、自動下單同一把尺)。'] },
-        { v: 'V77.7.5', d: ['🧪 <b>用修好的日 K 重新檢查決策台那一套</b>:現行做法(唐奇安 40 日・最長抱 40 天・大盤空頭不買)4 年只有約 179 萬,輸 0050 含息;出場改快的做法(移動停利 8% 或 ATR 吊燈,最長 20 天)明顯比較好,但它的優勢集中在 2021 年以後。⚠️ 預設<b>還沒換</b>,等你決定。', '🔬 實測總表新增 5 條:換股 / 空頭只賣虧損 / 多檔 ETF 基準 / 每筆跟 0050 比 / 成本加倍;「空頭全賣」那條在修好的資料上結論翻了,已改寫。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -9302,11 +9308,9 @@ ${list}
             if (!key) throw new Error('Groq 金鑰未填寫');
             const _msgs = systemInstruction ? [{ role: 'system', content: systemInstruction }, { role: 'user', content: pShort }] : [{ role: 'user', content: pShort }];
             this._setAIStatus('groq', 1, 'trying');
-            const res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: _msgs, max_tokens, temperature })
-            }, { timeout: 60000, maxRetries: 1 });
-            if (!res.ok) { this._recordAIFail('groq', 1, res.status); this._setAIStatus('groq', 1, 'rate-limited'); throw new Error(`Groq HTTP ${res.status}`); }
+            // 🤖 V78.5.6 走共用入口 `_groqFetch`(模型名先問官方清單,下架自動換)
+            const res = await this._groqFetch(key, { model: 'llama-3.3-70b-versatile', messages: _msgs, max_tokens, temperature }, { timeout: 60000, maxRetries: 1 });
+            if (!res.ok) { this._recordAIFail('groq', 1, res.status); this._setAIStatus('groq', 1, 'rate-limited'); throw new Error(this._aiErr('groq', res.status)); }
             const data = await res.json();
             const content = data?.choices?.[0]?.message?.content;
             if (!content) throw new Error('Groq 回應為空');
@@ -9354,11 +9358,9 @@ ${list}
         if (btn) { btn.disabled = false; btn.textContent = '🩺 測試所有金鑰'; btn.classList.remove('opacity-60'); }
     },
     async _pingGroqKey(key) {
-        const res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: '回OK' }], max_tokens: 5 })
-        }, { timeout: 20000, maxRetries: 0 });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // 🤖 V78.5.6 金鑰健檢也要走自我修復,否則模型下架會被誤報成「金鑰壞了」
+        const res = await this._groqFetch(key, { model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: '回OK' }], max_tokens: 5 }, { timeout: 20000, maxRetries: 0 });
+        if (!res.ok) throw new Error(this._aiErr('groq', res.status));
         return true;
     },
     async _pingOpenRouterKey(key) {
@@ -9461,6 +9463,136 @@ ${list}
         if (s === 429) return 'AI 用量到上限,等幾分鐘再試';
         if (s >= 500) return 'AI 供應商伺服器忙碌,稍後再試';
         return `AI 暫時無法使用(代碼 ${s})`;
+    },
+
+    // ═══ 🤖 Gemini / Groq 模型名自我修復(V78.5.6)══════════════════════
+    // 🐛 以前 `gemini-2.5-flash` / `llama-3.3-70b-versatile` / `llama-3.1-8b-instant` 寫死在 5 個呼叫點,
+    //    供應商一下架 → 全部 AI 功能同時失敗,而且畫面只寫「HTTP 404」(V73.8.0 OpenRouter、V73.9.0 Groq 各踩過一次)。
+    // ⭐ 照 `_orModel`(前端)與 groq_common.py(採礦)的做法:**先問官方現在有哪些模型**,
+    //    清單裡有呼叫端要的就用它,沒有才照規則挑同一級的。
+    // ⛔ 三個保險(⛔ 別簡化掉):
+    //   ① 清單問不到 → 用上次那份清單(過期也比亂猜好)→ 再不行就用呼叫端原本要的名字 = **絕不比改版前更糟**
+    //   ② 清單快取 24 小時(下架是常態,⛔ 不可永久快取)
+    //   ③ chat 回「模型不存在 / 已下架」→ 清快取、重問一次、換一個、**只重試一次**
+    // 🔐 Gemini 金鑰走 x-goog-api-key 標頭(⛔ 不放網址,test_key_header.py 釘住)
+    // ⚠️ Groq 偏好規則必須跟 groq_common.py 的 _PREFS 一致;Gemini 規則跟 macro_miner._pick_gemini_model 一致
+    //    (test_ai_model_pick.mjs 跨語言比對)
+    _AI_NONCHAT: /whisper|tts|orpheus|speech|audio|embed|guard|moderation|rerank|vision-only|playai/i,
+    _AI_GROQ_PREFS: {
+        heavy: [/llama-3\.3-70b/i, /llama-\d+(\.\d+)?-70b/i, /llama.*70b/i, /llama.*(instruct|versatile)/i, /^llama/i],
+        light: [/llama-3\.\d+-8b/i, /llama.*8b/i, /.*instant/i, /llama-3\.3-70b/i, /^llama/i],
+    },
+    _AI_GEM_BAD: /lite|image|tts|live|audio|embed|thinking|learnlm|gemma|aqa/i,
+    // 純函式:清單 ids + 呼叫端想要的 want → 實際要用的模型名(⛔ 永遠回字串)
+    _aiPickModel(provider, ids, want, avoid = []) {
+        const av = new Set(avoid || []);
+        const list = (ids || []).map(x => String(x || '').replace(/^models\//, '')).filter(x => x && !av.has(x));
+        if (!list.length) return want;
+        if (list.includes(want)) return want;
+        if (provider === 'gemini') {
+            const ver = x => { const m = x.match(/^gemini-(\d+(?:\.\d+)?)-/i); return m ? parseFloat(m[1]) : -1; };
+            const stable = list.filter(x => /^gemini-\d+(\.\d+)?-flash$/i.test(x));
+            const loose  = list.filter(x => /^gemini-\d+(\.\d+)?-flash/i.test(x) && !this._AI_GEM_BAD.test(x));
+            const pool = stable.length ? stable : loose;
+            if (!pool.length) return want;
+            return pool.slice().sort((a, b) => ver(b) - ver(a) || a.length - b.length || (a < b ? -1 : 1))[0];
+        }
+        if (provider === 'groq') {
+            const chat = list.filter(x => !this._AI_NONCHAT.test(x));
+            const tier = /70b|versatile/i.test(want || '') ? 'heavy' : 'light';
+            for (const re of this._AI_GROQ_PREFS[tier]) { const hit = chat.find(x => re.test(x)); if (hit) return hit; }
+            return want;
+        }
+        return want;
+    },
+    _aiModelMem: {},
+    _aiModelLsKey(provider) { return `proTerm_aiModels_${provider}`; },
+    _aiModelClear(provider) {
+        if (this._aiModelMem) delete this._aiModelMem[provider];
+        try { localStorage.removeItem(this._aiModelLsKey(provider)); } catch (_) {}
+    },
+    async _aiModelList(provider, key, { force = false } = {}) {
+        const TTL = 24 * 3600 * 1000, lk = this._aiModelLsKey(provider);
+        if (!this._aiModelMem) this._aiModelMem = {};
+        if (!force) {
+            const mem = this._aiModelMem[provider];
+            if (mem && (Date.now() - mem.ts) < TTL) return mem.ids;
+            const c = this._lsJson(lk, null);
+            if (c && Array.isArray(c.ids) && c.ids.length && (Date.now() - (c.ts || 0)) < TTL) { this._aiModelMem[provider] = c; return c.ids; }
+        }
+        let ids = [];
+        if (key) {
+            try {
+                if (provider === 'gemini') {
+                    const r = await this.safeFetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',
+                        { headers: { 'x-goog-api-key': key } }, { timeout: 12000, maxRetries: 0 });
+                    const j = r && r.ok ? await r.json().catch(() => ({})) : {};
+                    ids = (Array.isArray(j?.models) ? j.models : [])
+                        .filter(m => !Array.isArray(m?.supportedGenerationMethods) || m.supportedGenerationMethods.includes('generateContent'))
+                        .map(m => String(m?.name || '').replace(/^models\//, '')).filter(Boolean);
+                } else if (provider === 'groq') {
+                    const r = await this.safeFetch('https://api.groq.com/openai/v1/models',
+                        { headers: { 'Authorization': `Bearer ${key}` } }, { timeout: 12000, maxRetries: 0 });
+                    const j = r && r.ok ? await r.json().catch(() => ({})) : {};
+                    ids = (Array.isArray(j?.data) ? j.data : []).map(m => String(m?.id || '')).filter(Boolean);
+                }
+            } catch (e) { console.warn(`[${provider}] 問不到模型清單:`, e?.message || e); }
+        }
+        if (ids.length) {
+            const rec = { ids, ts: Date.now() };
+            this._aiModelMem[provider] = rec;
+            try { localStorage.setItem(lk, JSON.stringify(rec)); } catch (_) {}
+            return ids;
+        }
+        // ① 問不到 → 用上次那份(過期也比亂猜好)
+        const stale = this._lsJson(lk, null);
+        return (stale && Array.isArray(stale.ids)) ? stale.ids : [];
+    },
+    async _aiModel(provider, want, key, { force = false, avoid = [] } = {}) {
+        const ids = await this._aiModelList(provider, key, { force });
+        const pick = this._aiPickModel(provider, ids, want, avoid);
+        if (pick !== want) console.info(`[${provider}] 模型 ${want} 不在官方清單上,自動改用 ${pick}`);
+        return pick;
+    },
+    // 這個回應是不是「模型不存在 / 已下架」(⛔ 不是金鑰或額度問題)
+    async _aiModelGone(res) {
+        if (!res || res.ok) return false;
+        if (res.status === 404) return true;
+        if (res.status !== 400) return false;
+        try {
+            const t = typeof res.clone === 'function' ? await res.clone().text()
+                : (typeof res.text === 'function' ? await res.text() : JSON.stringify(await res.json()));
+            return /model_(decommissioned|not_found)|decommissioned|does not exist|is not found|not supported for generateContent/i.test(t || '');
+        } catch (_) { return false; }
+    },
+    // 🔁 Groq 對話(全 App 唯一入口)—— 模型不存在會自動重挑再試一次
+    //    ⛔ 別在別處自己 fetch groq chat/completions(陷阱 #37)
+    async _groqFetch(key, body, opt = {}) {
+        const URL = 'https://api.groq.com/openai/v1/chat/completions';
+        const H = { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' };
+        const want = (body && body.model) || 'llama-3.1-8b-instant';
+        const model = await this._aiModel('groq', want, key);
+        let res = await this.safeFetch(URL, { method: 'POST', headers: H, body: JSON.stringify({ ...body, model }) }, opt);
+        if (await this._aiModelGone(res)) {
+            console.warn(`[Groq] 模型 ${model} 不存在或已下架,重新問官方清單…`);
+            this._aiModelClear('groq');
+            const m2 = await this._aiModel('groq', want, key, { force: true, avoid: [model] });
+            if (m2 && m2 !== model) {
+                res = await this.safeFetch(URL, { method: 'POST', headers: H, body: JSON.stringify({ ...body, model: m2 }) }, opt);
+                if (res.ok) console.info(`[Groq] 已自動改用 ${m2}`);
+            }
+        }
+        return res;
+    },
+    // 🗣️ Gemini / Groq 的狀態碼翻成人話(V26.18)
+    _aiErr(provider, status) {
+        const s = Number(status), n = provider === 'gemini' ? 'Gemini' : 'Groq';
+        if (s === 404) return `${n} 的 AI 模型可能已下架(已自動試著換一個仍不成功)→ 設定 → 🩺 測試所有金鑰`;
+        if (s === 400) return `${n} 拒絕這次請求(內容太長或格式不符)→ 換個引擎或稍後再試`;
+        if (s === 401 || s === 403) return `${n} 金鑰無效或沒有權限 → 設定中心重新填一次`;
+        if (s === 429) return `${n} 用量到上限,等幾分鐘再試`;
+        if (s >= 500) return `${n} 伺服器忙碌,稍後再試`;
+        return `${n} 暫時無法使用(代碼 ${s})`;
     },
 
     // [AI 狀態追蹤] V14.16 — 擴充為「每次 attempt / 429 / switch / success / failed」5 狀態都更新
@@ -9669,6 +9801,10 @@ ${list}
             reqBody.systemInstruction = { parts: [{ text: systemInstruction }] };
         }
         let lastErr = null;
+        // 🤖 V78.5.6 模型名先問官方清單(呼叫端要的還在就照用;下架了換同級最新的 flash)
+        const _want = model;
+        model = await this._aiModel('gemini', _want, keys[this._geminiKeyIdx % keys.length]);
+        let _reMod = false;
         for (let attempt = 0; attempt < keys.length; attempt++) {
             const idx = (this._geminiKeyIdx + attempt) % keys.length;
             const key = keys[idx];
@@ -9707,7 +9843,16 @@ ${list}
                 lastErr = new Error(`Gemini HTTP ${res.status}`);
                 continue;
             }
+            // 🚑 V78.5.6 模型不存在 / 已下架 → 清快取、重問一次、換一個、同一把金鑰只重試一次
+            if (!_reMod && await this._aiModelGone(res)) {
+                _reMod = true;
+                console.warn(`[Gemini] 模型 ${model} 不存在或已下架,重新問官方清單…`);
+                this._aiModelClear('gemini');
+                const m2 = await this._aiModel('gemini', _want, key, { force: true, avoid: [model] });
+                if (m2 && m2 !== model) { model = m2; attempt--; continue; }
+            }
             const err = await res.json().catch(() => ({}));
+            if (res.status === 404) throw new Error(this._aiErr('gemini', 404));
             throw new Error(err?.error?.message || `Gemini 錯誤 HTTP ${res.status}`);
         }
         throw lastErr || new Error('Gemini 雙 key 皆撞 429/額度耗盡(三鏈會自動 fallback 到 Groq)');
@@ -12074,17 +12219,14 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             ? [{ role: 'system', content: systemInstruction }, { role: 'user', content: prompt }]
             : [{ role: 'user', content: prompt }];
         if (groqKeys.length && !this._isProviderCoolingDown('groq')) {
-            const body = JSON.stringify({ model, messages: _msgs, max_tokens, temperature });
+            const body = { model, messages: _msgs, max_tokens, temperature };
             for (let i = 0; i < groqKeys.length; i++) {
                 const key = groqKeys[i];
                 this._setAIStatus('groq', i + 1, 'trying');   // V14.16:嘗試前即時顯示
                 let res;
                 try {
-                    res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-                        body
-                    }, { timeout: 60000, maxRetries: i === 0 ? 1 : 2 });
+                    // 🤖 V78.5.6 走共用入口 `_groqFetch`(模型名先問官方清單,下架自動換)
+                    res = await this._groqFetch(key, body, { timeout: 60000, maxRetries: i === 0 ? 1 : 2 });
                 } catch (e) { console.warn(`[_callAI] Groq Key #${i + 1} 例外:`, e?.message || e); continue; }
                 if (res.ok) {
                     const data = await res.json();
@@ -12270,19 +12412,16 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             // _callAI 內含 Gemini → Groq → OpenRouter 三鏈,但 'groq-only' 要繞過 _callAI,直接打 Groq
             const groqKeys = this._getGroqKeys();
             if (!groqKeys.length) throw new Error('Groq 雙 key 未設定');
-            const body = JSON.stringify({
+            const body = {
                 model: 'llama-3.3-70b-versatile',
                 messages: _msgsSimple,   // V19.3 — 含 system role
                 max_tokens, temperature
-            });
+            };
             let lastErr;
             for (let i = 0; i < groqKeys.length; i++) {
                 try {
-                    const res = await this.safeFetch('https://api.groq.com/openai/v1/chat/completions', {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${groqKeys[i]}`, 'Content-Type': 'application/json' },
-                        body
-                    }, { timeout: 60000, maxRetries: 1 });
+                    // 🤖 V78.5.6 走共用入口 `_groqFetch`(模型名先問官方清單,下架自動換)
+                    const res = await this._groqFetch(groqKeys[i], body, { timeout: 60000, maxRetries: 1 });
                     if (res.ok) {
                         const data = await res.json();
                         const content = data?.choices?.[0]?.message?.content;
@@ -12294,7 +12433,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                         lastErr = new Error('Groq 回應為空');
                     } else {
                         this._recordAIFail('groq', i + 1, res.status);
-                        lastErr = new Error(`Groq HTTP ${res.status}`);
+                        lastErr = new Error(this._aiErr('groq', res.status));
                         if ((res.status === 429 || res.status === 401) && i < groqKeys.length - 1) {
                             await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
                             continue;
@@ -53135,7 +53274,7 @@ App 會在那個時段幫你盯,到價自動提醒。
             const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
             if (!res.ok) return;
             const d = await res.json();
-            if (srcEl) { srcEl.textContent = (d && (d.updated || d.date)) ? `📅 ${this._dW(d.updated || d.date, { rel: 1 })}` : 'Bubble Burst Sniffer'; srcEl.classList.remove('opacity-60'); srcEl.classList.add('text-red-500/60'); srcEl.classList.add('font-mono'); }
+            if (srcEl) { srcEl.textContent = (d && (d.updated || d.date)) ? `📅 ${this._dW(d.updated || d.date, { rel: 1 })}` : 'Bubble Burst Sniffer'; srcEl.classList.remove('opacity-60', 'text-gray-500'); srcEl.classList.add('text-red-500/60'); srcEl.classList.add('font-mono'); }
             const LEVEL_COLOR = {
                 red:    'text-red-300',
                 orange: 'text-orange-300',

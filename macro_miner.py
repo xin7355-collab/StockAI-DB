@@ -13,6 +13,7 @@ macro_miner.py — 輕量級總經風險採礦機
 import os
 import json
 import sys
+import re
 import time      # 🕐 V71.1.7 融資歷史回補的節流 sleep(原本只在某函式內 import,模組層級缺)
 import traceback
 from pathlib import Path
@@ -109,7 +110,55 @@ def _groq_chat_mm(messages, label="", max_tokens=1400, temperature=0.4):
 #   ⚠️ 拿不到 key 或呼叫失敗一律回 None → 上層自動退回 Groq,不會讓行事曆解讀開天窗。
 GEMINI_KEYS_MM = [t.strip() for t in (os.environ.get("GEMINI_API_KEYS")
                                       or os.environ.get("GEMINI_API_KEY", "")).split(",") if t.strip()]
-GEMINI_MODEL_MM = "gemini-2.5-flash"
+GEMINI_MODEL_MM = "gemini-2.5-flash"   # 🤖 V78.5.6 只是「想要的」,實際用哪個由 _gemini_model_mm() 問官方清單決定
+_GEM_BAD = re.compile(r"lite|image|tts|live|audio|embed|thinking|learnlm|gemma|aqa", re.I)
+_gem_cache = {"ids": None, "at": 0.0}
+
+
+def _pick_gemini_model(ids, want, avoid=()):
+    """🤖 V78.5.6 純函式:清單有 want 就用它;沒有就挑版號最新的 gemini-X-flash。
+    ⛔ 規則必須跟 index.html `_aiPickModel('gemini', …)` 一致(test_ai_model_pick.mjs 跨語言比對)。
+    ⛔ 永遠回字串(清單空的 → 回 want = 不比改版前更糟)。"""
+    av = set(avoid or ())
+    lst = [str(x or "").replace("models/", "", 1) for x in (ids or [])]
+    lst = [x for x in lst if x and x not in av]
+    if not lst or want in lst:
+        return want
+    stable = [x for x in lst if re.fullmatch(r"gemini-\d+(\.\d+)?-flash", x, re.I)]
+    loose = [x for x in lst if re.match(r"gemini-\d+(\.\d+)?-flash", x, re.I) and not _GEM_BAD.search(x)]
+    pool = stable or loose
+    if not pool:
+        return want
+
+    def _ver(x):
+        m = re.match(r"gemini-(\d+(?:\.\d+)?)-", x, re.I)
+        return float(m.group(1)) if m else -1.0
+    return sorted(pool, key=lambda x: (-_ver(x), len(x), x))[0]
+
+
+def _gemini_model_mm(force=False, avoid=()):
+    """問 Gemini 官方現在有哪些模型(6 小時快取),挑一個。⛔ 失敗退回 GEMINI_MODEL_MM;🔐 只印第幾把 key。"""
+    if force or _gem_cache["ids"] is None or (time.time() - _gem_cache["at"]) > 6 * 3600:
+        ids = []
+        for i, key in enumerate(GEMINI_KEYS_MM):
+            try:
+                r = http.get("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200",
+                             headers={"x-goog-api-key": key}, timeout=15)
+                if r.status_code != 200:
+                    print(f"  ⚠️ [Gemini] 模型清單 key#{i+1} HTTP {r.status_code}")
+                    continue
+                ids = [str(m.get("name", "")).replace("models/", "", 1) for m in (r.json().get("models") or [])
+                       if "generateContent" in (m.get("supportedGenerationMethods") or ["generateContent"])]
+                if ids:
+                    break
+            except Exception as e:
+                print(f"  ⚠️ [Gemini] 模型清單 key#{i+1} {type(e).__name__}")
+        if ids or _gem_cache["ids"] is None:
+            _gem_cache.update(ids=ids, at=time.time())
+    pick = _pick_gemini_model(_gem_cache["ids"] or [], GEMINI_MODEL_MM, avoid)
+    if pick != GEMINI_MODEL_MM:
+        print(f"  🔁 [Gemini] {GEMINI_MODEL_MM} 不在官方清單上,自動改用 {pick}")
+    return pick
 
 
 def _gemini_chat_mm(sys_msg, user_msg, label="", max_tokens=1400, temperature=0.4):
@@ -124,30 +173,45 @@ def _gemini_chat_mm(sys_msg, user_msg, label="", max_tokens=1400, temperature=0.
             "HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH",
             "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT")],
     }
-    for i, key in enumerate(GEMINI_KEYS_MM):
+    model = _gemini_model_mm()
+    remod = False
+    i = 0
+    while i < len(GEMINI_KEYS_MM):
+        key = GEMINI_KEYS_MM[i]
+        i += 1
         try:
             # 🔐 金鑰走 x-goog-api-key 標頭 ⛔ 不放網址:http 掛了 urllib3 Retry,重試時會用 logging
             #    印出含 query 的網址 → 沒設 logging 就落到 stderr = 公開的 Actions log(test_key_header.py 釘住)
             url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-                   f"{GEMINI_MODEL_MM}:generateContent")
+                   f"{model}:generateContent")
             r = http.post(url, json=payload,
                           headers={"Content-Type": "application/json", "x-goog-api-key": key}, timeout=60)
             if r.status_code == 429:
-                print(f"  ⏳ [Gemini] key#{i+1} 429,換下一把")
+                print(f"  ⏳ [Gemini] key#{i} 429,換下一把")
                 continue
+            # 🚑 V78.5.6 模型不存在 / 已下架 → 重問清單、換一個、同一把 key 只重試一次
+            if not remod and (r.status_code == 404 or (r.status_code == 400 and re.search(
+                    r"not found|not supported for generateContent|decommissioned", r.text or "", re.I))):
+                remod = True
+                m2 = _gemini_model_mm(force=True, avoid=(model,))
+                if m2 and m2 != model:
+                    print(f"  🔁 [Gemini] 模型 {model} 回 {r.status_code}(下架?),改用 {m2} 再試一次")
+                    model = m2
+                    i -= 1
+                    continue
             if r.status_code != 200:
-                print(f"  ⚠️ [Gemini] HTTP {r.status_code} key#{i+1}: {r.text[:120]}")
+                print(f"  ⚠️ [Gemini] HTTP {r.status_code} key#{i}: {r.text[:120]}")
                 continue
             j = r.json()
             parts = ((j.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
             txt = "".join(p.get("text", "") for p in parts).strip()
             if txt:
-                print(f"  🧠 [Gemini {GEMINI_MODEL_MM}] {label} 成功")
+                print(f"  🧠 [Gemini {model}] {label} 成功")
                 return txt
-            print(f"  ⚠️ [Gemini] key#{i+1} 回空(finishReason="
+            print(f"  ⚠️ [Gemini] key#{i} 回空(finishReason="
                   f"{(j.get('candidates') or [{}])[0].get('finishReason')})")
         except Exception as e:
-            print(f"  ⚠️ [Gemini] 例外 key#{i+1}: {type(e).__name__}")
+            print(f"  ⚠️ [Gemini] 例外 key#{i}: {type(e).__name__}")
     return None
 
 
@@ -241,7 +305,7 @@ def build_macro_events_ai(out):
         # 🧠 V71.3.9 誠實標示實際用哪個引擎產的(前端/日後除錯要看得出來)
         # ⚠️ V73.9.1 Groq 的模型名現在是動態解析的 → 這裡也要問一次同一支解析器,
         #    ⛔ 不可寫死(否則 JSON 上標的引擎跟實際用的會對不起來 = 又一個「同名不同義」)
-        "model": (GEMINI_MODEL_MM if _engine == "gemini" else _groq_pick(GROQ_KEYS_MM, GROQ_TIER_MM)),
+        "model": (_gemini_model_mm() if _engine == "gemini" else _groq_pick(GROQ_KEYS_MM, GROQ_TIER_MM)),
         "summary": str(data.get("summary", ""))[:400],
         "focus": [{
             "date": str(f.get("date", ""))[:10],

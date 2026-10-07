@@ -3,6 +3,43 @@
 
 
 
+## 🤖👁️⏱️ V78.5.6 Repo X-Ray 六項診斷逐條查證 → 前 3 項動手(AI 模型自動換 / 說明字對比 / workflow 逾時)
+
+使用者:「依照你推薦做」+ 貼 Repo X-Ray 的六項診斷,要依影響排前 3、直接改,並用實際資料或 Playwright 驗證、分開回報驗過與沒驗到。
+
+### ⭐ 先查證六項(⛔ 不照單全收)
+| 診斷 | 實際狀況 | 處置 |
+|---|---|---|
+| 🤖 AI 模型名寫死 | 前端 `gemini-2.5-flash` 5 處、Groq 兩個名字 4 個呼叫點、`macro_miner.py` 與 `cloud-worker/worker.js` 各 1 處;`_callGemini` 碰到 404 **只換金鑰不換模型** → 下架那天全部 AI 同時失敗。這個坑踩過兩次(V73.8.0 OpenRouter、V73.9.0 Groq) | **① 做** |
+| 👁️ 字夠大、對比夠 | `text-gray-600`(558 處)在 `#0d1117` 上 2.5:1、`text-gray-500`(1,419 處)3.9:1;深灰 chip 底 `#21262d` 上更低(2.0 / 3.2)。WCAG 小字門檻 4.5:1 | **② 做** |
+| 🐍 錯誤處理 / 重試 | 健檢 39 條「沒重試」多數在探針與測試,日常採礦沒有失敗證據;**真的會出事的是 6 支手動 workflow 沒設逾時**(卡住會跑滿 6 小時燒分鐘數) | **③ 做逾時**,重試只回報 |
+| 🗄️ SQLite 鎖死 | `miner.py` / `api.py` 每個連線都已 WAL + `timeout=15`;執行緒只抓資料,寫入全在主執行緒 | ⛔ 不用改 |
+| 🔐 機密被 commit | 上一輪已掃完全部 2,014 個 commit,沒有使用者金鑰;健檢報的 2 筆 `secret-in-url` 是 `test_key_header.py` 自己的測試字串 | ⛔ 不用改 |
+| 🔌 API 設計與測試 | `api.py` 沒接上,沒有對外 API | 不適用 |
+| 💰 AI 費用預算 | `max_tokens` 已全設、`_aiCacheKey` 已快取、金鑰是使用者自己的免費層 → 不會產生帳單 | ⛔ 不加預算上限 |
+
+### ① AI 模型名自我修復(照 `_orModel` / `groq_common.py` 的既有做法,⛔ 不另發明)
+- `index.html`:純函式 `_aiPickModel(provider, ids, want, avoid)` + `_aiModelList`(問官方 `/models`,24 小時快取,問不到用上次那份)+ `_aiModel` + `_aiModelGone`(404,或 400 且內文寫 decommissioned / not found)+ **Groq 唯一入口 `_groqFetch`** + `_aiErr` 人話錯誤。
+  - 規則:清單有呼叫端要的 → 照用;沒有 → Gemini 挑版號最新的穩定 `gemini-X-flash`(⛔ 不挑 lite/preview/image),Groq 照 `groq_common._PREFS` 分 70b / 8b 兩級、先濾掉語音類;清單空 → 原名(⛔ 不比改版前更糟)。
+  - 下架時清快取、重問、換一個、**只重試一次**;一般 400(內容太長)⛔ 不換模型。
+- `macro_miner.py`:`_pick_gemini_model` + `_gemini_model_mm`(6 小時快取);🐛 順手抓到 `re` 沒在模組層 import(`check_undefined_py` 當場報 3 處)。
+- `cloud-worker/worker.js`:`pickGeminiModel` + `geminiModel`,404 重挑一次。
+- 測試 `scripts/test_ai_model_pick.mjs` 23 條:真載入 index + stub,三份 Gemini 規則跨檔比對;注入「拿掉 Gemini 重挑」→ 3 紅、「拿掉 Groq 重挑」→ 1 紅。
+
+### ② 說明字對比:一條 CSS(⛔ 不逐一改 2,000 處 class)
+`html body .text-gray-500{#8b949e}`(6.2:1)/ `.text-gray-600{#858e98}`(5.7:1;`#21262d` 上 4.6)。特異度 (0,1,2):贏 Tailwind 的 (0,1,0),輸 `hover:` 的 (0,2,0)→ 滑過變亮照舊。深淺順序 400 > 500 > 600 不變。
+- 🐛 `bubbleSource` 程式加 `text-red-500/60` 時灰色沒拿掉 → 新規則會蓋過紅色 → 已改成一起拿掉。其他 9 處「同時有灰和別色」的都是三元式,互斥。
+- 測試 `scripts/test_contrast.mjs`:2330 的 8 個個股分頁 + 決策台 / 大盤 / 選股 / 庫存 / 自選,**324 段小字 100% ≥4.5:1**;⭐ 決定性對照:拿掉那兩行 → **0%**(而且「覆寫贏過後插入的 Tailwind」那條也紅)。Tailwind 色規則刻意**追加在 head 最後**(= CDN 實際插入位置);底色照 class 名解析(解析不了的計數不量)。
+- ⚠️ 量測本身踩到一個假紅燈:沙箱沒有 Tailwind preflight → `<button>` 是瀏覽器預設灰底,21 段被算成 2.7:1 → 照 preflight 把 button/input 的預設底色當透明。
+
+### ③ 6 支手動 workflow 加 `timeout-minutes`
+build_apk 30 / deploy_worker 10 / history_probe、insider_probe、macro_probe、orb_probe 各 45。健檢 `workflow-no-timeout` 6 → 0。
+
+### ⏳ 沒驗到的(要真實環境)
+- Tailwind CDN 在真瀏覽器的插入順序:靠特異度推論 + 測試模擬「插在最後」,要使用者 iPhone 看一眼。
+- 兩家 AI 的真實 `/models` 與下架回應:沙箱沒有金鑰、連不到,全部用 stub。
+- workflow 逾時要等下次手動執行才生效;worker 要等 `deploy_worker` 跑過。
+
 ## 🌅🔥 V78.5.5 開盤卡搬到價格圖上面 + 上色 ・收盤後日期 ・👑 名單外改照 🔥(使用者截圖國巨 2327,👑,18:20)
 
 **① 為什麼日期是 10/02(五)** —— ⭐ 先查產物:今天 10/05 是交易日,但今天的 daily_miner **一筆 run 都沒有**(上一筆 10/02 14:49 UTC;排程常遲到 4~6 小時)→ K 線最後一根停在 10/02。

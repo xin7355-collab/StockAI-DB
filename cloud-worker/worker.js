@@ -1412,6 +1412,39 @@ async function handleCost(env, chatId, text) {
 
 // ── F4: Gemini AI 短評(只在每日總結用)────────────────────────────────
 
+// 🤖 V78.5.6 Gemini 模型名自我修復(⛔ 規則跟 index.html `_aiPickModel('gemini')` 一致,test_ai_model_pick.mjs 跨檔比對)
+const GEM_WANT = 'gemini-2.5-flash';
+const GEM_BAD = /lite|image|tts|live|audio|embed|thinking|learnlm|gemma|aqa/i;
+let _gemModelCache = null;   // { ids, at } — worker 執行個體活著時有效
+function pickGeminiModel(ids, want, avoid = []) {
+    const av = new Set(avoid);
+    const list = (ids || []).map(x => String(x || '').replace(/^models\//, '')).filter(x => x && !av.has(x));
+    if (!list.length || list.includes(want)) return want;
+    const ver = x => { const m = x.match(/^gemini-(\d+(?:\.\d+)?)-/i); return m ? parseFloat(m[1]) : -1; };
+    const stable = list.filter(x => /^gemini-\d+(\.\d+)?-flash$/i.test(x));
+    const loose = list.filter(x => /^gemini-\d+(\.\d+)?-flash/i.test(x) && !GEM_BAD.test(x));
+    const pool = stable.length ? stable : loose;
+    if (!pool.length) return want;
+    return pool.slice().sort((a, b) => ver(b) - ver(a) || a.length - b.length || (a < b ? -1 : 1))[0];
+}
+async function geminiModel(env, avoid = []) {
+    if (!_gemModelCache || Date.now() - _gemModelCache.at > 6 * 3600 * 1000) {
+        let ids = [];
+        try {
+            const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', {
+                headers: { 'x-goog-api-key': env.GEMINI_API_KEY }, signal: AbortSignal.timeout(6000),
+            });
+            if (r.ok) {
+                const j = await r.json();
+                ids = (j.models || []).filter(m => !Array.isArray(m.supportedGenerationMethods) || m.supportedGenerationMethods.includes('generateContent'))
+                    .map(m => String(m.name || '').replace(/^models\//, ''));
+            }
+        } catch (_) { /* 問不到 → 用原本的名字,不比改版前更糟 */ }
+        _gemModelCache = { ids, at: Date.now() };
+    }
+    return pickGeminiModel(_gemModelCache.ids, GEM_WANT, avoid);
+}
+
 async function gemini(env, prompt, systemInstruction = null) {
     if (!env.GEMINI_API_KEY) return null;
     // V19.3 — 同步 frontend 三大強化:safetySettings BLOCK_NONE × 4 + thinkingBudget=0
@@ -1432,16 +1465,20 @@ async function gemini(env, prompt, systemInstruction = null) {
             ],
         };
         if (systemInstruction) body.systemInstruction = { parts: [{ text: systemInstruction }] };
-        const r = await fetch(
-            // 🔐 金鑰走標頭 ⛔ 不放網址(test_key_header.py 釘住)
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-                body: JSON.stringify(body),
-                signal: AbortSignal.timeout(8000),
-            }
-        );
+        // 🤖 V78.5.6 模型名先問官方清單(下架自動換);🔐 金鑰走標頭 ⛔ 不放網址(test_key_header.py 釘住)
+        const post = m => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(8000),
+        });
+        let model = await geminiModel(env);
+        let r = await post(model);
+        if (r.status === 404) {   // 🚑 模型下架 → 重問一次、換一個、只重試一次
+            _gemModelCache = null;
+            const m2 = await geminiModel(env, [model]);
+            if (m2 !== model) { model = m2; r = await post(model); }
+        }
         if (!r.ok) return null;
         const j = await r.json();
         return (j.candidates?.[0]?.content?.parts?.[0]?.text || '').trim() || null;

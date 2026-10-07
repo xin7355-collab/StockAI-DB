@@ -12,6 +12,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30   # ⏱️ V78.5.6 卡住最多跑這麼久(預設 6 小時會燒光分鐘數)
 
     steps:
       - name: 📥 下載程式碼
