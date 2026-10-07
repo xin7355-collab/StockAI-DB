@@ -7013,7 +7013,20 @@ const PRO = {
   pkSort(k) { const S = this._pkSort; this._pkSort = S && S.k === k ? { k, dir: -S.dir } : { k, dir: k === 'n' ? 1 : -1 }; this.renderPick(); },
   pkOpen(k) { this._pkOpen = this._pkOpen === k ? null : k; this.renderPick(); },
   pkWhy(q) { this._labSel = 'ok'; this.labSearch(q); const el = document.getElementById('labQ'); if (el) el.value = q; },
-  // 🏆 V78.1.0 「選哪一套」—— ⛔ 數字全部讀 `_PROFIT_BOARD`(同一組 17 個起點),⛔ 不寫死、不現算、⛔ 沒有融合總分
+  // 📈 V78.5.8 「每年 / 每月平均賺幾 %」—— 從看板的「100 萬變多少」+ 起訖日換算(複利),⛔ 不另存一份
+  //   使用者:「我這個最強的策略,每月的投報率還是每年的投報率是多少?」;⚠️ 是平均,不是每年都賺
+  _cagr(fin, from, to) {
+    const t0 = Date.parse(from), t1 = Date.parse(to), yrs = (t1 - t0) / (365.25 * 864e5);
+    if (!(fin > 0) || !(yrs > 0.5)) return null;
+    const y = Math.pow(fin / 1e6, 1 / yrs) - 1, m = Math.pow(1 + y, 1 / 12) - 1;
+    return { y: y * 100, m: m * 100, yrs };
+  },
+  _cagrTxt(fin, from, to, short) {
+    const c = this._cagr(fin, from, to); if (!c) return '';
+    const f = v => (v < 0 ? '−' : '+') + Math.abs(v).toFixed(1) + '%';
+    return short ? `每年 ${f(c.y)}` : `每年平均 ${f(c.y)}・每月平均 ${f(c.m)}`;
+  },
+  // 🏆 V78.1.0 「選哪一套」—— ⛔ 數字全部讀 `_PROFIT_BOARD`(同一組 17 個起點),⛔ 不寫死、⛔ 沒有融合總分(每年 / 每月是由同一格換算)
   //   ⭐ 0050 含息 = 一條「及格線」;線以下的列整列變淡 + 寫「輸 0050」
   //   ⛔ 中途最多賠不可拿掉;🚦 金額白字(是「變成多少」不是漲跌),好壞只用 ✅⚠️⛔
   renderPick() {
@@ -7047,9 +7060,10 @@ const PRO = {
       <div class="pk-k">🏆 實測最強(同一組 ${P} 個起點、含息、已扣手續費和稅)</div>
       <div class="pk-n">${best.n}</div>
       <div class="pk-big">
-        <div><div class="pk-s">100 萬放 ${A.from.slice(0, 4)}-${A.from.slice(5, 7)} 起(近 4 年)</div><div class="pk-v">${wan(best.a.fin)}</div><div class="pk-s">📏 0050 含息 ${wan(e50a.fin)}</div></div>
-        <div><div class="pk-s">100 萬放 ${L.from.slice(0, 4)} 起(16 年)</div><div class="pk-v">${wan(best.l.fin)}</div><div class="pk-s">📏 0050 含息 ${wan(e50l.fin)}</div></div>
+        <div><div class="pk-s">100 萬放 ${A.from.slice(0, 4)}-${A.from.slice(5, 7)} 起(近 4 年)</div><div class="pk-v">${wan(best.a.fin)}</div><div class="pk-s" data-pkcagr="a">📈 ${this._cagrTxt(best.a.fin, A.from, B.to)}</div><div class="pk-s">📏 0050 含息 ${wan(e50a.fin)}(${this._cagrTxt(e50a.fin, A.from, B.to, 1)})</div></div>
+        <div><div class="pk-s">100 萬放 ${L.from.slice(0, 4)} 起(16 年)</div><div class="pk-v">${wan(best.l.fin)}</div><div class="pk-s" data-pkcagr="l">📈 ${this._cagrTxt(best.l.fin, L.from, B.to)}</div><div class="pk-s">📏 0050 含息 ${wan(e50l.fin)}(${this._cagrTxt(e50l.fin, L.from, B.to, 1)})</div></div>
       </div>
+      <div class="pk-line">📈 <b>每年 / 每月是「平均」,不是每年都賺</b>:16 年裡只有 ${best.l.yrBeat ?? '—'} 年贏 0050、中途最多賠 ${pc(best.l.mdd)}。近 4 年碰上 AI 大多頭(0050 每年也有 ${this._cagrTxt(e50a.fin, A.from, B.to, 1).replace('每年 ', '')}),<b>看 16 年那個比較實在</b>。</div>
       <div class="pk-line"><b>${verdict(best)}</b>(${P} 個起點裡贏 ${best.a.beat ?? '—'} / ${best.l.beat ?? '—'} 個)・⚠️ 代價:中途最多賠 <b>${pc(best.a.mdd)}</b>(例:200 萬會一度掉到 ${wan(2e6 * (1 + best.a.mdd / 100))};0050 是 ${pc(e50a.mdd)})</div>
       <div class="pk-line">${meLine}</div>${parkWarn}</div>`;
     // ── ② 排行榜(0050 = 及格線)──
@@ -7062,13 +7076,13 @@ const PRO = {
     const ar = k => Sx.k === k ? (Sx.dir < 0 ? ' ▼' : ' ▲') : '';
     const th = (k, h) => `<th class="ybsort${Sx.k === k ? ' on' : ''}" onclick="PRO.pkSort('${k}')">${h}${ar(k)}</th>`;
     const tr = x => {
-      if (x.bar) return `<tr class="pk-bar" data-pk="0050"><td class="txtcell" style="white-space:normal"><b>${x.n}</b><div class="sigfrom">買了放著・⬆️ 比這條高才算贏</div></td><td class="mono"><b style="font-size:14px">${wan(x.a.fin)}</b></td><td class="mono"><b style="font-size:14px">${wan(x.l.fin)}</b></td><td class="mono">${pc(x.a.mdd)}</td><td class="mono">—</td></tr>`;
+      if (x.bar) return `<tr class="pk-bar" data-pk="0050"><td class="txtcell" style="white-space:normal"><b>${x.n}</b><div class="sigfrom">買了放著・⬆️ 比這條高才算贏</div></td><td class="mono"><b style="font-size:14px">${wan(x.a.fin)}</b><div class="sigfrom">${this._cagrTxt(x.a.fin, A.from, B.to, 1)}</div></td><td class="mono"><b style="font-size:14px">${wan(x.l.fin)}</b><div class="sigfrom">${this._cagrTxt(x.l.fin, L.from, B.to, 1)}</div></td><td class="mono">${pc(x.a.mdd)}</td><td class="mono">—</td></tr>`;
       const lose = x[lw] && !x[lw].late && x[lw].fin <= e50.fin;
       const tag = x.isRef ? '<div class="sigfrom">參考・ETF 買了放著</div>' : `<div class="sigfrom">${verdict(x)}${x.k === cur ? ' ・👉 你現在用的' : ''}</div>`;
       const row = `<tr class="${lose ? 'pk-lose' : ''}${x.k === best.k ? ' sigbest' : ''}" data-pk="${x.k}" style="cursor:pointer" onclick="PRO.pkOpen('${x.k}')">
         <td class="txtcell" style="white-space:normal"><b>${this._esc(x.n)}</b>${tag}</td>
-        <td class="mono"><b style="font-size:14px">${wan(x.a.fin)}</b></td>
-        <td class="mono">${x.l && !x.l.late ? `<b style="font-size:14px">${wan(x.l.fin)}</b>` : '<span class="sigfrom" title="上市晚於 2011,⛔ 不硬比">⏳ 太晚</span>'}</td>
+        <td class="mono"><b style="font-size:14px">${wan(x.a.fin)}</b><div class="sigfrom">${this._cagrTxt(x.a.fin, A.from, B.to, 1)}</div></td>
+        <td class="mono">${x.l && !x.l.late ? `<b style="font-size:14px">${wan(x.l.fin)}</b><div class="sigfrom">${this._cagrTxt(x.l.fin, L.from, B.to, 1)}</div>` : '<span class="sigfrom" title="上市晚於 2011,⛔ 不硬比">⏳ 太晚</span>'}</td>
         <td class="mono">${pc(x.a.mdd)}</td>
         <td class="mono">${x.a.beat == null ? '—' : x.a.beat + '/' + P}${x.l && x.l.beat != null ? `<div class="sigfrom">16年 ${x.l.beat}</div>` : ''}</td></tr>`;
       if (this._pkOpen !== x.k) return row;
@@ -8475,7 +8489,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V78.5.2',
+  VER: 'V78.5.8',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

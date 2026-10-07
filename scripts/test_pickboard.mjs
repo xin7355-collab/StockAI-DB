@@ -52,8 +52,10 @@ const run = async (strategy) => {
     o.hdr = [...box().querySelectorAll('#pkTbl th.ybsort')].map(th => (th.getAttribute('onclick').match(/'(\w+)'/) || [])[1]);
     // 決定性對照:改看板一格 → 一句答案跟著變
     const Bd = PRO._PROFIT_BOARD, top = o.rows.find(r => r.k !== '0050');
+    o.cagrA = (document.querySelector('[data-pkcagr="a"]') || {}).innerText || ''; o.cagrL = (document.querySelector('[data-pkcagr="l"]') || {}).innerText || '';
     const row = Bd.wins.ai.rows.find(r => r.k === top.k), keep = row.fin; row.fin = 98765432; PRO.renderPick();
-    o.inj = (document.getElementById('pkHero') || {}).innerText.includes('9,877 萬'); row.fin = keep; PRO.renderPick();
+    o.inj = (document.getElementById('pkHero') || {}).innerText.includes('9,877 萬');
+    o.cagrInj = (document.querySelector('[data-pkcagr="a"]') || {}).innerText || ''; row.fin = keep; PRO.renderPick();
     // 排序:點 16 年 → 第一列換;再點反向
     PRO.pkSort('l'); o.s1 = box().querySelector('#pkTbl tbody tr').dataset.pk; PRO.pkSort('l'); o.s2 = box().querySelector('#pkTbl tbody tr').dataset.pk; PRO._pkSort = null; PRO.renderPick();
     // 點開一列 → 三行怎麼做 + 看證據
@@ -88,6 +90,17 @@ ok('②b 一句答案寫:贏幾個起點 + 代價(中途最多賠)', /贏 \d+ \/
 ok('②c 最強不是你現在用的 → 要寫「你現在用的是 🔥 高檔飆股」+ 它的金額與結論', geneBest.k === 'hot' || (/你現在用的是\s*🔥 高檔飆股/.test(G.hero) && G.hero.includes(wan(f(aiRows, 'hot').fin))), G.hero);
 ok('②d 停車 0050 是最強時要寫「自動下單還沒做」', geneBest.k !== 'park' || /自動下單還沒做/.test(G.hero), G.hero);
 ok('②e ⭐ 決定性對照:改看板一格 → 一句答案跟著變', G.inj);
+
+// ②f 📈 V78.5.8 每年 / 每月平均(獨立重算:複利、起訖日 ÷ 365.25)
+const cg = (fin, from) => { const y = (Date.parse(B.to) - Date.parse(from)) / (365.25 * 864e5), r = Math.pow(fin / 1e6, 1 / y) - 1; return { y: r * 100, m: (Math.pow(1 + r, 1 / 12) - 1) * 100 }; };
+const fx = v => (v < 0 ? '−' : '+') + Math.abs(v).toFixed(1) + '%';
+if (geneBest) {
+  const ca = cg(geneBest.a.fin, B.wins.ai.from), cl = cg(geneBest.l.fin, B.wins.long.from);
+  ok('②f 📈 一句答案的每年 / 每月平均 == 獨立重算(近 4 年 / 16 年)', G.cagrA.includes(`每年平均 ${fx(ca.y)}`) && G.cagrA.includes(`每月平均 ${fx(ca.m)}`) && G.cagrL.includes(`每年平均 ${fx(cl.y)}`) && G.cagrL.includes(`每月平均 ${fx(cl.m)}`), `${G.cagrA} | ${G.cagrL} | 期望 ${fx(ca.y)} ${fx(ca.m)} / ${fx(cl.y)} ${fx(cl.m)}`);
+}
+ok('②g ⭐ 決定性對照:改看板一格 → 每年平均跟著變', G.cagrInj && G.cagrInj !== G.cagrA, G.cagrInj + ' vs ' + G.cagrA);
+ok('②h 寫明「是平均,不是每年都賺」+ 16 年贏 0050 幾年', /是「平均」,不是每年都賺/.test(G.hero) && /16 年裡只有 \d+ 年贏 0050/.test(G.hero), G.hero);
+ok('②i 0050 及格線那一列也有每年 %', /每年 \+\d/.test(G.rows.find(r => r.k === '0050')?.t || ''), G.rows.find(r => r.k === '0050')?.t);
 
 // ③ 及格線
 const idx50 = G.rows.findIndex(r => r.k === '0050');
