@@ -38,7 +38,8 @@ jobs:
 
       - name: 1️⃣ node --check(index.html inline JS 語法)
         run: |
-          awk '/<script>/{f=1;next}/<\/script>/{f=0}f' index.html > /tmp/inline.js
+          # 同一行開又關的 <script>(檔頭自我修復那段)直接跳過,否則 awk 會從那行一路收到檔尾
+          awk '/<script>/{ if ($0 ~ /<\/script>/) next; f=1; next } /<\/script>/{f=0} f' index.html > /tmp/inline.js
           node --check /tmp/inline.js
           echo "✅ inline JS 語法 OK"
 
