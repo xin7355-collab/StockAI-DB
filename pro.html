@@ -4637,9 +4637,37 @@ const PRO = {
     await Promise.all(Array.from({ length: Math.min(4, need.length) }, worker));
     return rows.map(r => (Number.isFinite(r.mcap) && r.mcap > 0) ? r : { ...r, mcap: this._fpvMcapCache[r.sym] == null ? null : this._fpvMcapCache[r.sym], mcapSrc: this._fpvMcapCache[r.sym] == null ? '' : 'fin' });
   },
-  _fpvTen(D, R) {
+  /** 📦 V78.6.0 「正在養的那一批」(使用者:「釣魚 App 要每天最新的魚,不要跟散戶救星領頭羊一模一樣」)
+   *  換倉日 = 今天前 10 名;其他日子 = 上次換倉那天 pick_history 存的名單。回 {date, syms, today} 或 {err}。 */
+  async _fpvBatchOf(D) {
+    const LD = (D && D.LD) || {};
+    if (LD.err || !LD.date) return { err: '今天的名單算不出來' };
+    try { await this._twiiLoad(); } catch (_) {}
+    const clk = this._leadClock(LD.date);
+    if (!clk || !clk.day || !clk.reb) return { err: '算不出上一次換這一批是哪一天' };
+    if (clk.isRebal) return { date: LD.date, syms: (LD.ranked || []).map(r => r.sym), today: true };
+    const C = this._fpvBatch; if (C && C.date === clk.reb && C.syms) return C;
+    let H = null; try { H = await this.fetchJson('data/pick_history.json', 12000); } catch (_) {}
+    const day = H && Array.isArray(H.days) ? H.days.find(x => x && String(x.d || '').replace(/\//g, '-').slice(0, 10) === clk.reb) : null;
+    const rows = day && day.lead && Array.isArray(day.lead.rows) ? day.lead.rows : null;
+    if (!rows || !rows.length) return { err: `${clk.reb} 那一批沒有存到` };
+    return (this._fpvBatch = { date: clk.reb, syms: rows.map(r => String(r.s)), today: false });
+  },
+  _fpvTen(D, R, batch) {
     const byS = {}; for (const r of (D.rows || [])) byS[r.sym] = r;
     const out = [], seen = new Set();
+    // 📦 V78.6.0 股海釣手只釣「這一批以外」的魚:今天過趨勢的完整排名扣掉正在養的那一批,取前 10 條
+    //   ⛔ 沒有星號(這些都不是今天會買的)、名次 = 今天的真名次;⚠️ 這個池子沒有回測過(只是看新魚)
+    if (R && R.lead && batch && Array.isArray(batch.syms)) {
+      const LD = D.LD || {}; if (LD.err || !LD.all) return [];
+      const inB = new Set(batch.syms);
+      const full = Object.values(LD.all).filter(r => !inB.has(r.sym)).sort((a, b) => a.rank - b.rank).slice(0, this._FPV_MAX);
+      return full.map(x => { const r = byS[x.sym] || x, w = [];
+        if (r.amt != null && r.amt < this.CAST_MIN_AMT) w.push('thin');
+        if (r.att === 2) w.push('disp');
+        if (r.att >= 1 && r.chg5 >= 30) w.push('hot');
+        return { ...(byS[x.sym] || { sym: x.sym, nm: this._nmTxt ? this._nmTxt(x.sym) : x.sym, c: x.c, chg: x.chg }), sym: x.sym, warn: w, rank: x.rank, fresh: true }; });
+    }
     const add = (sym, extra, force) => {
       sym = String(sym || ''); if (!sym || seen.has(sym) || (!force && out.length >= this._FPV_MAX)) return;
       seen.add(sym); out.push({ ...(byS[sym] || { sym, nm: this._nmTxt ? this._nmTxt(sym) : sym, c: 0, chg: 0 }), sym, ...(extra || {}) });
@@ -4836,7 +4864,8 @@ const PRO = {
     try { await this._twiiLoad(); } catch (_) {}
     try { await this._lqLoad(); } catch (_) {}          // 📡 V77.9.9 卡片 / 釣起價用即時價(⛔ 不拿選股那天的收盤)
     const R = this._castPick(D); this._cast = R;
-    let rows = this._fpvTen(D, R).map(r => this._fpvLive(r, D));
+    let batch = null; try { batch = await this._fpvBatchOf(D); } catch (_) { batch = { err: '讀不到' }; }
+    let rows = this._fpvTen(D, R, batch && batch.syms ? batch : null).map(r => this._fpvLive(r, D));
     try { rows = await this._fpvMcapFill(rows); } catch (_) {}
     const bySym = {}; for (const r of rows) bySym[r.sym] = r;
     const date = String(D.date || D.data_date || ''), syms = rows.map(r => r.sym);
@@ -4848,7 +4877,12 @@ const PRO = {
     }
     this._fpvSeaSave(sea);
     // 🐟 V78.5.2 讓人看得出這批魚是哪一天的(使用者:「不是說釣魚每天都是新的魚?」—— 開盤前看到的是上個交易日收盤那批)
-    try { const sd = document.getElementById('fpvSeaDate'); if (sd) sd.textContent = date ? `🐟 這批是 ${date.replace(/\//g, '-').slice(5, 10).replace('-', '/')} 收盤的名單 ・每個交易日收盤後換一批` : ''; } catch (_) {}
+    // 📦 V78.6.0 寫出「不含正在養的那一批」;讀不到那一批 → 說出來(⛔ 不靜默)
+    const md = x => String(x || '').replace(/\//g, '-').slice(5, 10).replace('-', '/');
+    try { const sd = document.getElementById('fpvSeaDate'); if (sd) sd.textContent = !date ? ''
+      : batch && batch.syms ? `🐟 ${md(date)} 收盤的新魚 ・不含 ${md(batch.date)} 換的那一批 ・每個交易日收盤後換`
+      : `🐟 這批是 ${md(date)} 收盤的名單 ・⚠️ 讀不到正在養的那一批(${(batch && batch.err) || '讀不到'}),今天照排行 ・每個交易日收盤後換一批`; } catch (_) {}
+    S.batch = batch;
     S.sea = sea; S.rowBy = bySym; S.dDate = date; S.lastPicked = R.picked.map(x => x.sym); S.lastRows = syms; S.G = null; S.N = null;
     const left = sea.order.filter(x => !sea.caught.includes(x)).map(x => bySym[x]);
     S.Q = this._fpvQueue(left); S.Q.total = rows.length;
@@ -5627,10 +5661,11 @@ const PRO = {
   /** 👑 換倉節拍(= index `_leaderClock` / lib_leader `leader_clock`):錨點那天 = 第 1 天,每 R 個交易日一次。回 {day, isRebal, left, next}(next = 下次換倉的日期,算不到 = null) */
   _leadClock(date) {
     const T = this._twii, P = this._LEAD; if (!T || !date) return null;
-    const day = T.days.filter(d => d >= P.anchor && d <= date).length;
-    if (!day) return { day: 0, isRebal: false, left: null, next: null };
+    const days = T.days.filter(d => d >= P.anchor && d <= date), day = days.length;
+    if (!day) return { day: 0, isRebal: false, left: null, next: null, reb: null };
     const k = (day - 1) % P.R, left = k === 0 ? 0 : P.R - k;
-    return { day, isRebal: k === 0, left, next: null };
+    // 📦 V78.6.0 reb = 最近一次換倉日(= index `_leaderClock().reb`)—— 股海釣手扣掉「那一批」要用
+    return { day, isRebal: k === 0, left, next: null, reb: days[day - 1 - k] || null };
   },
   _leadBearAt(D) {
     // 🐻 = index.html `_bear60Of`:收盤 < 60 日線 且 20 日線 < 60 日線(用到那一天為止的加權)
@@ -8489,7 +8524,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V78.5.9',
+  VER: 'V78.6.0',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

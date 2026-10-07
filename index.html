@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.5.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.6.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -898,7 +898,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.5.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.6.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8718,10 +8718,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.5.9',
+    _APP_VERSION: 'V78.6.0',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.6.0', d: ['👑 決策台領頭羊名單改成只列「這一批」:平常日子列的是上次換倉那天的 10 檔(10 天不變),右邊寫它今天排第幾名;換倉那天才換成新的一批', '🎣 股海釣手改成每天釣「這一批以外」的新魚,跟決策台那 10 檔不會重複'] },
         { v: 'V78.5.9', d: ['👑 決策台領頭羊名單的「換倉價」改成「09/24價」(換這一批那天的收盤):以前只有那天也在名單上的才有價格、其他寫「—」,現在每一檔都補上那天的價,底下是那天到現在漲跌多少'] },
         { v: 'V78.5.8', d: ['📈 策略比較表多了「每年平均、每月平均」:100 萬變多少之外,直接看得到平均一年、一個月大約賺幾 %(是平均,不是每年都賺)'] },
         { v: 'V78.5.7', d: ['🎯 賣出改在「✏️ 編輯庫存」裡:每一檔有一顆「🎯 賣出」,自己填賣價、股數、日期,可以只賣一部分', '💸 勝率鏡子的賺賠改成已扣手續費與證交稅(舊紀錄也一起換算)', '📼 即時頁「逐筆」收錄當天全部成交:從開盤第一筆到現在,可只看大單,開著畫面時新成交會自動補上'] },
@@ -8865,7 +8866,6 @@ ${list}
         { v: 'V77.8.2', d: ['🎲 <b>外部策略平台 FinPilot 評估完了:它「自動找出來的高報酬策略」擋不住亂挑</b> —— 照它的抽法跑 300 組,再拿「每個月隨便抽股票」的 300 組走同一套門檻:它的門檻放行了 <b>51 組純亂挑</b>。','🚨 讀它的程式碼抓到兩個錯:① 「樣本外要贏 0050 + 5%」用的是<b>沒還原分割的價格</b>(0050 去年 1 拆 4)→ 門檻從 50% 掉到 5%,等於只要不賠就過 ② 統計顯著那一關公式多乘了 √12,形同虛設。兩個修好之後,300 組一組都過不了;樣本外贏 0050 的只有 1 組。','⭐ 學到的一條方法(已寫進實測總表「回測方法」):<b>任何「一直搜尋、過門檻就留」的做法,都要拿亂挑的走同一套門檻</b>,看它放行多少。⛔ App 判定一行都沒改。'] },
         { v: 'V77.8.1', d: ['🧾 <b>App 內 AI 的回答會自動「核對數字」了</b>(上一版 go-stock 那一項,你說要做)—— 盤前速報、總經深度分析、新聞綜合分析、行事曆事件影響、報告頁 App 內模型那五個地方:AI 回答裡的每一個數字(價位、%、億、張、點…)都拿去跟本站<b>這一次真的給它的資料</b>比對,<b>找不到的會列在最下面</b>(⚠️ 可能是它自己算的或編的,別拿來下單)。全部對得上就不顯示。⛔ 回答本身一個字都不改。','✅ 用台積電真的報告提示詞實測:同一批數字換個寫法(四捨五入、千分位、億↔兆、「約」)⛔ 不會誤報;偷插一個編的「季線 707.4 元」(真值 704.4)一定抓得到。⚠️ 外部 AI(Perplexity 那種)貼回來的報告不核對 —— 它會上網,數字本來就不是本站給的。','😱 <b>「美股恐慌指數衝高之後 0050 會怎樣」量過了:⛔ 沒有穩定方向</b>(35 格只有 1 格像有東西,而且 VIX ≥25 那組 20 天反而比平常差 2.8%)。5 年裡 VIX ≥30 只有 6 次 = 樣本根本不夠。','🌪️ <b>加權跌 20% 之後多久回來</b>:16 年 5 次、全部回到前高,但中位要 393 個交易日(含股利約 251 天),最久約 2.8 年;而且跌到 −20% 那天通常不是底,中位還要再跌到 −28.7%。⛔ 只有 5 次,不能當「跌 20% 就加碼」的訊號。'] },
         { v: 'V77.8.0', d: ['🗽 <b>川普發文 → 台股,量過了:⛔ 方向量不到,只有「隔天開盤跳比較大」</b>(你問的 trump-code 那個專案)。拿它公開的 4.4 萬則發文,對到台股下一個能交易的盤、用 0050 自己的開→收算:就任後講關稅的日子 137 天(台股交易日的<b>一半</b>)開→收只比沒講的日子差 −0.04%,講中國 −0.11%、講晶片 −0.11%(13 天)、講「協議」+0.09% —— 全部遠小於來回成本 0.44%,也都不顯著。','⚠️ <b>唯一看得到的是跳空變大</b>:講中國那幾天的隔天開盤平均跳 1.11%(平常 0.84%)—— 但那一段開盤前就跳完了,<b>買不到</b>。跟上一版「美股隔夜異常」是同一個結論。','🚨 <b>那個專案說的「命中率 61.3%、566 筆驗證」要打折</b>:566 筆全部是 2026-03-14 同一天回頭補算過去的日子(0 筆真的事先預測),而且是從 3,150 萬種組合裡挑出來的;做多命中 62.8% 對比同期標普開→收本來就 52.8% 會漲,做空只有 47%(比丟銅板還差)。','🖥️ go-stock 那份的評估也一起記下來了:大部分本站早就有或測過,它的「AI 回測」有模型本身知道未來的問題。'] },
-        { v: 'V77.7.9', d: ['🗣️ <b>實測總表改成白話版</b>(照你給的附件做)—— 每一條先講三句:<b>一句話 → 對你的意思 → 白話數字</b>;原本的結論、數字、怎麼操作、完整說明一個字都沒刪,點開就看得到。','📂 <b>「✅ 實測有用」分成五組</b>:✅ 可以照做 ・📌 當參考 ・🚫 要避開 ・🐢 長期存股 ・🗄️ 已被新版取代(舊的排最後)。每條標環節(選股/進場/出場…)與可信度 ●●○;點環節 = 搜尋它。排名 🥇🥈🥉 照舊。','✏️ <b>附件有幾處我改了</b>:「美股隔夜對隔天台股有參考價值」改成「隔天開盤會跟著動(時差),但實測買不到優勢」;補上附件沒有的「0050 當主力、策略當小部位」;分組與可信度⛔ 不用紅綠(紅綠只講漲跌)。','🧾 <b>提示詞稽核</b>:App 內會叫 AI 寫東西的地方逐一查過,修掉 4 個違規 —— 盤前速報的「三劇本機率」是沒驗證過的係數湊的(已拿掉)、盤前速報會叫 AI 點名個股進場(大盤偏多那天熱門股實測反而 −0.27%)、總經深度分析會叫 AI 給「部位幾成」、事件影響會問利多利空並叫 AI 自己寫股票代號(它沒連網,代號可能是錯的)。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -22434,7 +22434,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     /** 👑 V77.9.1 名單表頭排序(使用者明示:表格一律可點排序;同一欄再點一次反向)。⛔ 換倉動作(買/續抱)不跟著排序變 */
     _LEADER_SORT_COLS: [
         { k: 'rank', n: '名次', asc: true }, { k: 'c', n: '現價', asc: false }, { k: 'reb', n: '換倉價', asc: false },
-        { k: 'chg', n: '今天', asc: false }, { k: 'amt20', n: '億/日', asc: false },
+        { k: 'chg', n: '今天', asc: false }, { k: 'amt20', n: '億/日', asc: false }, { k: 'trank', n: '今天名次', asc: true },
     ],
     leaderSortBy(k) {
         const cur = this._leaderSort || { k: 'rank', asc: true };
@@ -22459,7 +22459,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const rows = day && day.lead && Array.isArray(day.lead.rows) ? day.lead.rows : null;
         if (!rows || !rows.length) return { map: null, err: `${D} 換倉那天的名單沒有存到` };
         // 📸 V78.5.3 順便回 rank(那天的名次;續抱卡「上次換倉名單有沒有它」讀這個,⛔ 不打第二次)
-        const v = { map: new Map(rows.filter(r => +r.c > 0).map(r => [String(r.s), +r.c])), rank: new Map(rows.map((r, i) => [String(r.s), +r.r > 0 ? +r.r : i + 1])), err: null };
+        // 📦 V78.6.0 順便回 list(那天名單的原順序)—— 決策台非換倉日只列「這一批」(10 天不變),⛔ 不再列今天的排名
+        const v = { map: new Map(rows.filter(r => +r.c > 0).map(r => [String(r.s), +r.c])), rank: new Map(rows.map((r, i) => [String(r.s), +r.r > 0 ? +r.r : i + 1])),
+                    list: rows.map((r, i) => ({ sym: String(r.s), r: +r.r > 0 ? +r.r : i + 1, c: +r.c > 0 ? +r.c : null })).filter(x => /^\d{4}$/.test(x.sym)), err: null };
         if (!side) this._leadRebPx = { D, v };   // side = 另一天(上一次換倉),⛔ 不蓋掉主快取
         return v;
     },
@@ -22511,12 +22513,26 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const rb = await this._leaderRebPx(clk.reb);
         // 📌 V78.5.9 使用者:「我要當初換這一批股票那天的價格」—— pick_history 只存那天前 10 名的價,
         //   其餘的(那天不在前 10、今天在名單上)用 K 線補「那一天」的收盤(⛔ 不是模擬成交價;實測兩邊同一天是同一個數字)
-        const rebK = await this._leaderRebKline(clk.reb, L.ranked.concat(L.buy).map(r => r.sym).filter(s => !(rb.map && rb.map.get(s) > 0)));
-        for (const r of L.ranked.concat(L.buy)) {
+        // 📦 V78.6.0 使用者:「散戶 App 裡面的領頭羊的魚是每 10 天換一批」→ 非換倉日這張表只列**這一批**(上次換倉那天的前 10 名,10 天不變),
+        //   今天的名次寫在動作欄;換倉日 = 今天的排名就是新的一批。讀不到那一批 → 退回今天的排名並寫原因(⛔ 不靜默)。
+        //   ⛔ 只改「表上列哪幾檔」,買賣規則(_deckTodoLead / _leaderMine / _leadOwns / auto_trade.py)一行不動。
+        const batchList = (!clk.isRebal && clk.reb && rb.list && rb.list.length) ? rb.list : null;
+        const batchErr = (!clk.isRebal && clk.reb && !batchList) ? (rb.err || `${clk.reb} 那一批的名單讀不到`) : null;
+        let bRows = null;
+        if (batchList) {
+            const CI = Object.fromEntries(((D && D.cols) || []).map((c, i) => [c, i]));
+            const scr = s => { const v = D && D.rows && D.rows[s]; if (!v) return null; const g = k => CI[k] != null && v[CI[k]] != null && isFinite(+v[CI[k]]) ? +v[CI[k]] : null;
+                return { sym: s, c: g('c'), chg: g('chg') || 0, amt20: g('amt20'), chg10: g('chg10'), lim: g('lim') || 0, att: g('att') || 0 }; };
+            bRows = batchList.map(b => { const t = L.all.get(b.sym), base = t || scr(b.sym) || { sym: b.sym, c: null, chg: 0, amt20: null, lim: 0, att: 0 };
+                return { ...base, sym: b.sym, rank: b.r, trank: t ? t.rank : null, inPool: L.poolSet.has(b.sym), batch: true }; });
+        }
+        const pxRows = bRows || L.ranked.concat(L.buy);
+        const rebK = await this._leaderRebKline(clk.reb, pxRows.map(r => r.sym).filter(s => !(rb.map && rb.map.get(s) > 0)));
+        for (const r of pxRows) {
             if (r._c0 == null) { r._c0 = r.c; r._chg0 = r.chg; }
             const lq = this._liveQuote(r.sym);
             r.live = !!(lq && Number(lq.p) > 0);
-            r.c = r.live ? +lq.p : r._c0;
+            r.c = r.live ? +lq.p : r._c0;   // 📦 這一批裡今天收盤讀不到的 → null(顯示「—」)
             r.chg = r.live && lq.c != null && isFinite(+lq.c) ? +lq.c : r._chg0;
             r.reb = (rb.map && rb.map.get(r.sym) > 0) ? rb.map.get(r.sym) : (rebK.get(r.sym) ?? null);
             r.rebPct = r.reb > 0 && r.c > 0 ? (r.c / r.reb - 1) * 100 : null;
@@ -22531,18 +22547,22 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const sort = this._leaderSort || { k: 'rank', asc: true };
         const buySet = new Set(L.buy.map(r => r.sym));
         // 📍 V78.0.5 位置不夠被跳過時,真正要買的可能在第 10 名以後 → 也列出來(⛔ 不可只列前 10 名,那樣會看不到買誰)
-        const rows = L.ranked.concat(L.buy.filter(r => !L.ranked.some(x => x.sym === r.sym))).sort((a, b) => {
-            const va = a[sort.k], vb = b[sort.k];
-            const d = (va == null ? -Infinity : +va) - (vb == null ? -Infinity : +vb);
+        const rows = (bRows || L.ranked.concat(L.buy.filter(r => !L.ranked.some(x => x.sym === r.sym)))).sort((a, b) => {
+            const va = a[sort.k], vb = b[sort.k], nil = sort.k === 'trank' ? Infinity : -Infinity;   // 今天名次:沒有名次的排最後
+            const d = (va == null ? nil : +va) - (vb == null ? nil : +vb);
             return (sort.asc ? d : -d) || (a.rank - b.rank);
         });
-        const COLS = 'grid-template-columns:18px minmax(0,1fr) 54px 56px 46px 40px 44px';
+        const COLS = 'grid-template-columns:18px minmax(0,1fr) 54px 56px 46px 40px 50px';
         const rebLbl = clk.reb ? `${String(clk.reb).slice(5, 7)}/${String(clk.reb).slice(8, 10)}價` : '換倉日價';   // 📌 V78.5.9 例:09/24價
         const th = c => { const on = sort.k === c.k; return `<button onclick="app.leaderSortBy('${c.k}')" data-leadersort="${c.k}" class="text-right ${on ? 'text-cyan-300 font-bold' : 'text-gray-500'}">${c.k === 'reb' ? rebLbl : c.n}${on ? (sort.asc ? '▲' : '▼') : ''}</button>`; };
         const C = Object.fromEntries(this._LEADER_SORT_COLS.map(c => [c.k, c]));
-        const hdr = `<div class="text-[9px] py-0.5 border-b border-[#30363d] items-baseline" style="display:grid;${COLS};gap:4px" data-leaderhdr="1">${th(C.rank)}<span class="text-gray-500">股票</span>${th(C.c)}${th(C.reb)}${th(C.chg)}${th(C.amt20)}<span class="text-gray-500 text-right">動作</span></div>`;
+        const hdr = `<div class="text-[9px] py-0.5 border-b border-[#30363d] items-baseline" style="display:grid;${COLS};gap:4px" data-leaderhdr="1">${th(C.rank)}<span class="text-gray-500">股票</span>${th(C.c)}${th(C.reb)}${th(C.chg)}${th(C.amt20)}${bRows ? th(C.trank) : '<span class="text-gray-500 text-right">動作</span>'}</div>`;
         // 📌 V78.3.3 動作只有兩種:🛒 買 / 前N續抱(空頭那天不買 → 全部續抱,bearTxt 已講「今天不開新倉」)
-        const act = r => (buySet.has(r.sym) && !bearOn)
+        // 📦 V78.6.0 這一批模式:動作欄 = 今天第幾名(還在前 N×hyst 名 ✅;掉出 ⏳ —— 換倉日才賣,⛔ 不是今天叫你賣)
+        const actBatch = r => r.trank != null && r.trank <= H
+            ? `<span class="text-[9px] text-right text-gray-200" data-leaderact="in" title="今天排第 ${r.trank} 名,還在前 ${H} 名">✅ 今第${r.trank}</span>`
+            : `<span class="text-[9px] text-right text-amber-300" data-leaderact="out" title="換倉日(還有 ${clk.left ?? '?'} 天)還不在前 ${H} 名才賣,⛔ 不是今天賣">⏳ ${r.trank != null ? `今第${r.trank}` : (r.inPool ? '沒過趨勢' : `不在前${R.U}`)}</span>`;
+        const act = r => r.batch ? actBatch(r) : (buySet.has(r.sym) && !bearOn)
             ? `<span class="text-[9px] font-bold text-right text-amber-300" data-leaderact="buy">🛒 買</span>`
             : `<span class="text-[9px] text-gray-500 text-right" data-leaderact="keep">前${H}續抱</span>`;
         const nameCell = r => { const nm = this._nmDual(r.sym); const tag = `${r.lim === 1 ? `<span class="text-[9px] text-amber-300/80"> 漲停</span>` : ''}${r.att ? `<span class="text-[9px] text-orange-300"> ${r.att === 2 ? '處置' : '注意'}</span>` : ''}`;
@@ -22551,15 +22571,19 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             ? `<span class="text-right leading-tight" data-leaderreb="${r.reb}" title="${esc(clk.reb)} 換這一批那天的收盤"><span class="font-mono text-[11px] text-gray-100 block">${px(r.reb)}</span><span class="font-mono text-[9px] ${r.rebPct >= 0 ? 'text-red-400' : 'text-green-400'}">${pct(r.rebPct)}</span></span>`
             : `<span class="text-[11px] text-gray-500 text-right" data-leaderreb="none" title="${esc(clk.reb || '')} 那天沒有這一檔的 K 線(停牌或還沒上市)">—</span>`;
         const row = r => `<div class="py-1 border-b border-[#21262d] items-center" style="display:grid;${COLS};gap:4px" data-leaderrow="${r.sym}" data-leaderrank="${r.rank}">
-            <span class="font-mono text-[10px] text-gray-500 text-right" title="近 10 日 ${pct(r.chg10)}(排名依據)">${r.rank}</span>
+            <span class="font-mono text-[10px] text-gray-500 text-right" title="${r.batch ? `${esc(clk.reb)} 換這一批那天排第 ${r.rank} 名` : `近 10 日 ${pct(r.chg10)}(排名依據)`}">${r.rank}</span>
             ${nameCell(r)}
             <span class="font-mono text-[11px] text-gray-100 text-right" data-leaderclose="${r.c}" data-leaderlive="${r.live ? 1 : 0}">${px(r.c)}</span>
             ${rebCell(r)}
             <span class="font-mono text-[10px] text-right ${r.chg >= 0 ? 'text-red-400/80' : 'text-green-400/80'}">${pct(r.chg)}</span>
-            <span class="font-mono text-[10px] text-gray-500 text-right">${r.amt20.toFixed(0)}</span>
+            <span class="font-mono text-[10px] text-gray-500 text-right">${r.amt20 == null ? '—' : (+r.amt20).toFixed(0)}</span>
             ${act(r)}
         </div>`;
         const clockTxt = `<div class="text-[10px] ${clk.isRebal ? 'text-amber-300' : 'text-gray-400'} mb-1" data-leaderclock="${clk.isRebal ? 'rebal' : 'wait'}">⏱️ ${esc(L.date)} 是第 <b class="font-mono">${clk.day || '?'}</b> 個交易日(${esc(E.anchor)} 起算,自動下單同一個起點)→ ${clk.isRebal ? `<b>換倉日</b>:下一個交易日照下面做(要賣的${this._leadWhen('sell', true)}、要買的${this._leadWhen('buy', true)})` : `還有 <b class="font-mono">${clk.left ?? '?'}</b> 個交易日才換倉,<b>這幾天不動</b>`}</div>`;
+        const reb5 = clk.reb ? `${String(clk.reb).slice(5, 7)}/${String(clk.reb).slice(8, 10)}` : '';
+        const batchTxt = bRows ? `<div class="text-[10px] text-gray-300 mb-1" data-leaderbatch="ok">📦 下面這 ${bRows.length} 檔 = <b>${esc(reb5)} 換的這一批</b>(10 天不變,下一次換倉還有 <b class="font-mono">${clk.left ?? '?'}</b> 天);右邊寫今天排第幾名</div>`
+            : batchErr ? `<div class="text-[10px] text-amber-300 mb-1" data-leaderbatch="err">⚠️ ${esc(reb5)} 那一批讀不到(${esc(batchErr)})→ 下面先列今天的排名</div>`
+            : (clk.isRebal ? `<div class="text-[10px] text-gray-300 mb-1" data-leaderbatch="today">📦 今天換倉 → 下面這幾檔就是新的一批(接下來 10 天不變)</div>` : '');
         const sellWhen = clk.isRebal ? `明天 ${this._leadWhen('sell', true)}` : `換倉日再賣(還有 ${clk.left ?? '?'} 天)`;
         const heldRow = h => {
             const where = h.r ? `第 ${h.r.rank} 名` : (h.inPool ? '沒過趨勢條件' : `不在成交額前 ${R.U} 大`);
@@ -22577,12 +22601,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const attTxt = attN ? `<div class="text-[10px] text-gray-400 mb-1">🚨 名單裡 ${attN} 檔在注意 / 處置名單上 → ⛔ <b>不要跳過</b>,⛔ <b>也別在處置前先賣、等大跌或出關再買回</b> —— 照名單買、照規則賣就好。⚠️ 第二次處置要預收款券。</div>` : '';
         const bearTxt = bearOn ? `<div class="text-[10px] text-amber-300 mb-1">🐻 大盤嚴格空頭(收盤 ${esc(bear.c)} < 60 日線 ${esc(bear.ma60)},且 20 日線 < 60 日線)→ <b>今天不開新倉</b>,手上的照規則。</div>` : '';
         const rebMiss = !clk.reb || rows.every(r => !(r.reb > 0));
-        const rebNote = `<div class="text-[9px] ${rebMiss ? 'text-amber-300' : 'text-gray-500'} mt-0.5" data-leaderrebnote="${rebMiss ? 'err' : 'ok'}">${rebMiss ? `⚠️ ${esc(rebLbl)}讀不到:${clk.reb ? esc(rb.err || '那天的 K 線讀不到') : '算不出上次換這一批是哪一天(加權指數讀不到)'}` : `現價 = ${L.ranked.some(r => r.live) ? '盤中即時快照' : `${esc(L.date)} 收盤`};${esc(rebLbl)} = 換這一批那天(${esc(clk.reb)})的收盤,底下是那天到現價漲跌多少`}</div>${this._liveStaleNote()}`;
-        const list = L.ranked.length ? hdr + rows.map(row).join('') + rebNote : `<div class="text-[11px] text-gray-400">今天池子裡沒有一檔同時「收盤 > 20 日線 > 60 日線」→ 名單是空的(${L.n} 檔全被趨勢過濾擋掉)</div>`;
+        const rebNote = `<div class="text-[9px] ${rebMiss ? 'text-amber-300' : 'text-gray-500'} mt-0.5" data-leaderrebnote="${rebMiss ? 'err' : 'ok'}">${rebMiss ? `⚠️ ${esc(rebLbl)}讀不到:${clk.reb ? esc(rb.err || '那天的 K 線讀不到') : '算不出上次換這一批是哪一天(加權指數讀不到)'}` : `現價 = ${rows.some(r => r.live) ? '盤中即時快照' : `${esc(L.date)} 收盤`};${esc(rebLbl)} = 換這一批那天(${esc(clk.reb)})的收盤,底下是那天到現價漲跌多少`}</div>${this._liveStaleNote()}`;
+        const list = (L.ranked.length || bRows) ? hdr + rows.map(row).join('') + rebNote : `<div class="text-[11px] text-gray-400">今天池子裡沒有一檔同時「收盤 > 20 日線 > 60 日線」→ 名單是空的(${L.n} 檔全被趨勢過濾擋掉)</div>`;
         // 🎯 V78.2.2 「今天要做的事」那幾行(使用者:「決策頁面裡面我只要你告訴我怎麼做,不用講太多敘述」)—— ⛔ 只轉述上面算好的,⛔ 不另算
         try { this._leadTodo = this._deckTodoLead({ clk, bearOn, L, held, H }); const tb = document.getElementById('deckTodoLead'); if (tb) { tb.innerHTML = this._leadTodo; tb.dataset.decktodo = 'ok'; } } catch (_) {}
         return `<div class="mt-2" data-leader="ok" data-leaderdate="${esc(L.date)}">${head}
-            ${clockTxt}${bearTxt}
+            ${clockTxt}${bearTxt}${L.ranked.length || bRows ? batchTxt : ''}
             <div class="mt-1">${list}</div>${heldHtml}${this._parkAmountHtml()}
             <details class="mt-1.5" data-leaderinfo="1"><summary class="text-[10px] text-gray-400 cursor-pointer select-none">📖 規則 <span class="text-gray-500">展開 ▾</span></summary>
             <div class="text-[10px] text-gray-400 leading-relaxed mt-1">
