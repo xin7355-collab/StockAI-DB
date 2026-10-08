@@ -150,23 +150,30 @@ export function summarize(out) {
  *    閒錢停 0050 含息;安慰劑 = 同一天換成同樣多檔「今天買得到、流動性夠」的隨機股票;起點每 3 天一條共 17 條。
  */
 export function portfolio(ctx, events, opt = {}) {
-    const { cal, stocks, etf } = ctx, n = cal.length, SLOTS = opt.slots || 5, HOLD = opt.hold || 10, sham = !!opt.sham;
+    const { cal, stocks, etf } = ctx, n = cal.length, SLOTS = opt.slots || 5, HOLD = opt.hold ?? 10, sham = !!opt.sham;
     let seed = opt.seed || 1; const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
     const byT = new Map(); for (const e of events) (byT.get(e.t) || byT.set(e.t, []).get(e.t)).push(e.k);
-    const okBuy = (k, t) => { const S = stocks[k]; return S.C[t] > 0 && S.A[t] > 0 && S.val20[t] >= MIN_VAL && !lockUp(S, t, cal); };
+    // V78.6.5 opt.entry='open':事件 t = 買進那天,用開盤價買(lu_split_probe:今天鎖漲停 → 隔天開盤買);預設仍是 t 日收盤買,⛔ 不設時逐位相同
+    const openE = opt.entry === 'open', limOf = d => (d < '2015-06-01' ? 0.07 : 0.10);
+    const baseOf = (S, t) => (openE && S.O[t] > 0 ? S.A[t] * S.O[t] / S.C[t] : S.A[t]);
+    const okBuy = (k, t) => { const S = stocks[k]; if (!(S.C[t] > 0 && S.A[t] > 0 && S.val20[t] >= MIN_VAL)) return false;
+        return openE ? (S.O[t] > 0 && S.C[t - 1] > 0 && S.O[t] < S.C[t - 1] * (1 + limOf(cal[t]) - 0.003)) : !lockUp(S, t, cal); };
     let cash = 1e6; const pos = []; let trades = 0, wins = 0;
     const s0 = opt.start, end = opt.end ?? n - 1;
     for (let t = s0; t <= end; t++) {
         if (t > s0 && etf.tr[t] > 0 && etf.tr[t - 1] > 0) cash *= etf.tr[t] / etf.tr[t - 1];
         for (let j = pos.length - 1; j >= 0; j--) { const p = pos[j], S = stocks[p.k];
-            if (t >= p.t + HOLD && S.A[t] > 0) { const v = p.amt * (S.A[t] / S.A[p.t]) * (1 - COST / 100); cash += v; trades++; if (v > p.amt) wins++; pos.splice(j, 1); } }
+            if (t >= p.t + HOLD && S.A[t] > 0) { const v = p.amt * (S.A[t] / p.base) * (1 - COST / 100); cash += v; trades++; if (v > p.amt) wins++; pos.splice(j, 1); } }
         let cand = byT.get(t) || [];
         if (sham && cand.length) { const m = cand.length; cand = []; let tries = 0; while (cand.length < m && tries++ < 5000) { const k = Math.floor(rnd() * stocks.length); if (okBuy(k, t) && !cand.includes(k)) cand.push(k); } }
         for (const k of cand) { if (pos.length >= SLOTS || pos.some(p => p.k === k)) continue;
-            const eq = cash + pos.reduce((a, p) => a + p.amt * (stocks[p.k].A[t] > 0 ? stocks[p.k].A[t] / stocks[p.k].A[p.t] : 1), 0);
-            const amt = Math.min(cash, eq / SLOTS); if (amt < 1000) break; cash -= amt; pos.push({ k, t, amt }); }
+            const eq = cash + pos.reduce((a, p) => a + p.amt * (stocks[p.k].A[t] > 0 ? stocks[p.k].A[t] / p.base : 1), 0);
+            const amt = Math.min(cash, eq / SLOTS); if (amt < 1000) break; cash -= amt; pos.push({ k, t, amt, base: baseOf(stocks[k], t) }); }
+        if (HOLD === 0 && openE) {                     // V78.6.5 hold:0 = 開盤買、同一天收盤賣(當沖口徑;成本仍用 COST)
+            for (let j = pos.length - 1; j >= 0; j--) { const p = pos[j]; if (p.t !== t) continue; const S = stocks[p.k];
+                const v = p.amt * (S.C[t] / S.O[t]) * (1 - COST / 100); cash += v; trades++; if (v > p.amt) wins++; pos.splice(j, 1); } }
     }
-    const fin = cash + pos.reduce((a, p) => a + p.amt * (stocks[p.k].A[end] > 0 ? stocks[p.k].A[end] / stocks[p.k].A[p.t] : 1), 0);
+    const fin = cash + pos.reduce((a, p) => a + p.amt * (stocks[p.k].A[end] > 0 ? stocks[p.k].A[end] / p.base : 1), 0);
     return { fin, trades, win: trades ? 100 * wins / trades : NaN };
 }
 
