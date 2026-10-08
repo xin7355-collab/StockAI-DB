@@ -264,7 +264,8 @@ ok('⑫b 第 2 擊 = 你設定的出場線(設定改成唐奇安 → 名字與�
     const fn = i >= 0 ? SRC.slice(i, j) : '';
     ok('⑫b2 靜態:_comboPlan 讀 this._exitRuleKey()(⛔ 不可寫死某一條)', fn.length > 100 && /this\._exitRuleKey\(\)/.test(fn) && !/key = '(ma5|atr2|don|trail8)'/.test(fn));
 }
-ok('⑫c 零股族股數要對(0.07 張 = 70 股 → 一半 35 股,⛔ 不是 1 張)', !!R.plan && R.plan.sh === 70 && R.plan.half === 35 && /35 股/.test(R.comboTxt), JSON.stringify(R.plan));
+// ✂️ V78.4.9 第 1 擊⛔ 不再叫人「先賣一半」(回測 17 條全輸)→ 文案⛔ 不可再出現「賣一半 35 股」;改釘用意:零股族股數要對、⛔ 不可寫成「1 張」
+ok('⑫c 零股族股數要對(0.07 張 = 70 股,⛔ 不是 1 張)且⛔ 不再叫人先賣一半', !!R.plan && R.plan.sh === 70 && !/1 張/.test(R.comboTxt) && !/35 股/.test(R.comboTxt) && /不用先賣一半/.test(R.comboTxt), JSON.stringify(R.plan) + ' ' + R.comboTxt.slice(0, 160));
 // 🧹 V78.3.6 散戶 App 不放回測研究字樣 →「串起來沒有另外回測」那句拿掉;改釘:仍寫「不是自動下單」+ ⛔ 不可出現研究字樣
 ok('⑫d 🚨 必須寫「不是自動下單」+ 以個股頁為準,⛔ 不可出現實測/回測研究字樣(🧹 V78.3.6)', /不是自動下單/.test(R.comboTxt) && /現在該做什麼/.test(R.comboTxt) && !/實測|回測|勝率\s*\d|期望值|對照組|基準/.test(R.comboTxt), R.comboTxt.slice(-120));
 ok('⑫e 有貨才顯示「幫我盯第 2 擊」', R.armShown === true);

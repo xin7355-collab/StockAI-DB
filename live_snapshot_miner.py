@@ -180,6 +180,14 @@ def main():
                 if cl is None or float(cl) <= 0:
                     continue          # 未成交(停牌/無量)→ 略過,不塞 0 汙染前端
                 rec = {'p': round(float(cl), 2), 'v': int(tv or 0)}
+                # 🟥 V78.6.7 開盤價(漲停隔天開低提醒要算「今天開在哪」;昨收 = p/(1+c/100))
+                op = _snap_num(snap, 'open')
+                if op is not None:
+                    try:
+                        if float(op) > 0:
+                            rec['o'] = round(float(op), 2)
+                    except Exception:
+                        pass
                 if cr is not None:
                     rec['c'] = round(float(cr), 2)
                 # 🆕 量比(volume_ratio):今日量 vs 均量,>1.5=爆量 → 當沖雷達「有量的強勢股」用

@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.6.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.6.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -898,7 +898,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.6.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.6.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4902,7 +4902,8 @@ const app = {
             if (!q || q.c == null || !isFinite(+q.c)) continue;
             const c = +q.c, vr = (q.vr != null && isFinite(+q.vr)) ? +q.vr : null;
             const name = this.getStockName(sym) || sym;
-            if (c >= 9.4) alerts.push({ sym, title: `⚡ 隔日沖提醒｜${name}`, body: `${name}(${sym}) 昨天漲停鎖死 → 今天隔日沖客最可能出貨:開高不破開盤價可續抱、開高走低快閃、開低別接刀` });
+            // 🟥 V78.6.7 改口:舊版「開高不破開盤價可續抱、開低別接刀」跟實測相反(limitup-hold:開高沒鎖 → 開盤賣;lu-gapdown:開低反而會彈)
+            if (c >= 9.4) alerts.push({ sym, title: `⚡ 隔日沖提醒｜${name}`, body: `${name}(${sym}) 昨天漲停鎖死 → 手上有的:開盤就鎖住先抱著、開高沒鎖開盤賣、開平開低別在開盤殺(等尾盤);沒有的別追開高` });
             else if (c >= 5 && vr != null && vr >= 2) alerts.push({ sym, title: `⚡ 隔日沖提醒｜${name}`, body: `${name}(${sym}) 昨天爆量大漲 +${c.toFixed(1)}%(量 ${vr.toFixed(1)} 倍)→ 今天隔日沖客可能倒貨:開高別追、開高走低快閃` });
         }
         if (!alerts.length) return;
@@ -4910,6 +4911,61 @@ const app = {
         //   (碰 +1.5% 機率 53~72%,但務實損益全負)→ 不該每天主動推。
         alerts.slice(0, 3).forEach(a => this._alertQuiet(a.title, a.body, a.sym));
         if (alerts.length > 3) this._alertQuiet('⚡ 隔日沖盤點', `你有 ${alerts.length} 檔昨天爆量大漲/漲停,今天留意隔日沖賣壓`, '');
+    },
+
+    // 🟥 V78.6.7 漲停隔天開低提醒(使用者:「做成提醒」)—— 判斷全部用既有的:昨天鎖漲停 = `_luLock`、今天開盤 = live_quotes 的 o
+    //   ⛔ 散戶 App 只講怎麼做,⛔ 不放實測數字(成績在產業作戰室 LAB `lu-gapdown`)
+    //   庫存:開平或開低(≤ +1%)→ 別在開盤殺,等尾盤(同 limitup-hold 那條);👑 的持股⛔ 不套(漲停隔天四條套到 👑 回測全輸,V78.2.0)
+    //   自選:開低 ≥ 3% 而且昨天是第 1 根漲停 → 想當沖接,等開盤 5 分鐘後買、收盤前賣(開盤價是撮合價,⛔ 不叫人掛開盤)
+    _LUGAP: { held: 1, fav: -3, from: 540, to: 630 },
+    /** 純判斷(測試直接餵)。rows = 已收盤 K(最後一根 = 昨天);q = live_quotes 那一筆 {p, c, o};回 {gap, kind} 或 null */
+    _luGapPick(rows, q, held) {
+        try {
+            rows = rows || [];
+            const n = rows.length;
+            if (n < 26 || !q || !(+q.o > 0) || !(+q.p > 0) || q.c == null || !isFinite(+q.c)) return null;
+            if (!this._luLock(rows, { anyTime: 1 })) return null;
+            const pc = +q.p / (1 + (+q.c) / 100);
+            if (!(pc > 0) || Math.abs(pc / +rows[n - 1].close - 1) > 0.02) return null;   // 昨收對不上(快照是別天的 / 除權息)→ ⛔ 不判
+            const gap = Math.round((+q.o / pc - 1) * 1000) / 10;
+            if (held) return gap <= this._LUGAP.held ? { gap, kind: 'held' } : null;
+            if (this._luLock(rows.slice(0, -1), { anyTime: 1 })) return null;               // 連續第 2 根以上的漲停 → 不算
+            return gap <= this._LUGAP.fav ? { gap, kind: 'fav' } : null;
+        } catch (_) { return null; }
+    },
+    async _luGapSweep(opt = {}) {
+        try {
+            const now = opt.now || new Date();
+            const tp = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', weekday: 'short', hour12: false }).formatToParts(now);
+            const g = t => (tp.find(x => x.type === t) || {}).value;
+            const mins = (+g('hour') % 24) * 60 + (+g('minute'));
+            if (['Sat', 'Sun'].includes(g('weekday')) || mins < this._LUGAP.from || mins > this._LUGAP.to) return [];
+            if (!opt.force && !this._liveFresh()) return [];
+            const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(now);
+            const C = opt.scan || await this._colTrigScan();
+            const bars = (C && C.bars) || new Map();
+            const seen = this._lsJson('luGapAlert_v1', {}) || {};
+            const done = new Set(seen.d === today ? (seen.s || []) : []);
+            const out = [];
+            for (const [sym, rows] of bars) {
+                if (done.has(sym) || this._isEtfSym?.(sym)) continue;
+                const held = this._invHas(sym);
+                if (held && this._isLead() && this._leadOwns(sym, true)) continue;
+                const pk = this._luGapPick(rows, (opt.quotes || {})[sym] || this._liveQuote(sym), held);
+                if (!pk) continue;
+                const name = this.getStockName(sym) || sym, gs = `${pk.gap > 0 ? '+' : ''}${pk.gap.toFixed(1)}%`;
+                const a = pk.kind === 'held'
+                    ? { sym, title: `🟥 漲停隔天開低｜${name}`, body: `${name}(${sym}) 你手上有:昨天收盤鎖漲停、今天開盤 ${gs} → 別在開盤殺,等尾盤(13:25 前後)再決定要不要賣` }
+                    : { sym, title: `🟥 漲停隔天開低｜${name}`, body: `${name}(${sym}) 昨天收盤鎖漲停、今天開低 ${gs}。想當沖接的話:等開盤 5 分鐘後再買、當天收盤前賣完;沒有現股當沖資格就別做` };
+                out.push(a); done.add(sym);
+            }
+            if (out.length) {
+                try { localStorage.setItem('luGapAlert_v1', JSON.stringify({ d: today, s: [...done] })); } catch (_) {}
+                if (!opt.dry) out.slice(0, 3).forEach(a => this._fireAlert(a.title, a.body, a.sym));
+                if (!opt.dry && out.length > 3) this._alertQuiet('🟥 漲停隔天開低', `還有 ${out.length - 3} 檔昨天鎖漲停、今天開低`, '');
+            }
+            return out;
+        } catch (_) { return []; }
     },
 
     // 🔮 V69.1.10 — 每日開 App 掃「明日劇本(籌碼面)」:庫存+自選有分點的股,籌碼偏空就推 1 則(當日去重)
@@ -5875,6 +5931,8 @@ const app = {
      *  🔒 `lock:1` = ⛔ **不給關**:那是「你自己的錢到了你自己設的點」,不是預測
      *     (CLAUDE.md 既有鐵則:停損/停利/到價⛔ 不走任何統計守門)。 */
     _ALERT_CATS: [
+        { k: 'lunext', n: '🟥 漲停隔天開低',     re: /漲停隔天/,
+          d: '昨天收盤鎖漲停的庫存 / 自選,今天開盤開低時提醒一次:庫存的「別在開盤殺」、自選的「想當沖接要怎麼接」。不做當沖、手上也很少有漲停股就可以關掉。' },
         { k: 'day',    n: '⚡ 當沖',              re: /當沖|09:15|13:25|平倉倒數/,
           d: '09:15 候選名單、13:25 平倉倒數。不做當沖就可以關掉。' },
         { k: 'pos',    n: '👜 你的部位',          re: /停損|停利|抱滿|庫存|第 ?\d ?擊/, lock: 1,
@@ -8718,10 +8776,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.6.6',
+    _APP_VERSION: 'V78.6.7',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.6.7', d: ['🟥 新提醒「漲停隔天開低」:庫存或自選的股票昨天收盤鎖漲停、今天開盤開低時,09:00~10:30 提醒一次 —— 手上有的:別在開盤殺,等尾盤再決定;自選開低 3% 以上:想當沖接的話等開盤 5 分鐘後再買、收盤前賣完。設定裡可以單獨關掉這一類。','⚡ 隔日沖盤點的舊說法「開低別接刀」拿掉了,改成:開盤就鎖住先抱著、開高沒鎖開盤賣、開平開低等尾盤。'] },
         { v: 'V78.6.6', d: ['🧹 內部更新(畫面沒有變動)'] },
         { v: 'V78.6.5', d: ['🧹 內部更新(畫面沒有變動)'] },
         { v: 'V78.6.4', d: ['🧹 內部更新(畫面沒有變動)'] },
@@ -8865,7 +8924,6 @@ ${list}
         { v: 'V77.8.9', d: ['🤖 <b>領頭羊接上自動下單了</b>(第二套,⛔ 預設關):電腦上的自動下單程式設「LEADER=1」+「LEADER_ACCOUNT=這套要用的錢」才會動,而且預設仍是<b>模擬單</b>;它只動「領頭羊」自己那一格的部位,⛔ 不碰你手動買的股票和決策台那套', '⏱️ 換倉日改成<b>大家同一天</b>(從 2026-09-24 起每 10 個交易日),手機跟自動下單對得上,⛔ 不用再按「開始」', '⏱️ 實測:自動下單是隔天<b>尾盤</b>照前一晚的名單買,比回測的「隔天開盤買」差一點(AI 時代 670% vs 760%)但仍贏 0050;想跟回測一模一樣可設「LEADER_WINDOW=open」改在開盤下', '🚨 <b>名單裡有注意股 / 處置股:⛔ 不要跳過</b> —— 實測跳過處置股只剩 341%(照常買 760%),會進注意 / 處置的正是漲最多的那幾檔', '🚧 決策台每一列加「量薄」標記(近 20 天平均一天成交不到 1 億)—— 一買就可能把價格墊高;⛔ 名單照留', '📐 選股頁「K棒轉多 / 轉空」榜每一列多了那個訊號的<b>實測成績</b>(A/B/C 級 + 每趟期望值);單根變盤線定義不同,標「未驗證」', '💳 修掉「融資 5 日增減 −100%」的假數字(61 檔):那是採礦沒抓到那天寫的 0,現在當成「不知道」'] },
         { v: 'V77.8.8', d: ['👑 <b>「領頭羊短線輪動」做進決策台了</b>(決策台最下面,第二套;⛔ 沒有換掉原本的預設):近 20 日平均成交額前 100 大裡,收盤站上 20 日線、20 日線又在 60 日線之上的,照近 10 日漲幅排前 10 名;前 5 名明天開盤買、你手上的掉出前 10 名就賣', '⏱️ 按「開始」把今天當第 1 天,之後每 10 個交易日才換一次倉(其他日子畫面會寫「今天不動」);大盤嚴格空頭時名單照列但不買', '⚠️ 採礦要補兩個欄位(10 日漲幅、20 日平均成交額),下一輪全市場掃描跑完才會有名單,在那之前畫面會寫「今天算不出名單」;自動下單⛔ 沒有接這一套,你看過名單再說'] },
         { v: 'V77.8.7', d: ['🌙 <b>自創「當沖 / 隔日沖」變種測完</b>(實測總表 ✅ 有用,排名很後面):拿領頭羊池子(成交額前 100)壓到一天、一夜 —— <b>當沖 5 種全部賠</b>(池子本身早上買收盤賣就 −0.46%)', '🌙 隔日沖唯一過關:<b>近 10 日最強的 20 檔裡,今天跌超過 2% 的,尾盤買、明天開盤賣 +0.14%/趟</b>(勝率 55%、5/6 年、9 格門檻全正);但抱到明天收盤就變賠', '⚠️ 錢很小:每天最多做 5 檔,5 年只有 +22%,同期 0050 +225% → 只當「已經想留倉」時的參考,⛔ 不是拿來賺錢的'] },
-        { v: 'V77.8.6', d: ['👑 <b>領頭羊短線輪動第二輪:找「更穩、更高勝率」的版本</b>(實測總表同一條更新)—— 測了 14 種變體,<b>沒有又穩又賺更多的</b>,只有「報酬換回撤」', '🐢 <b>最穩的一個:永遠一半放 0050</b>:16 年 2,345% vs 0050 1,097%(17 條起點全贏、最差那條也多 643pp)、中途最多賠 42%(原版 61%)、最差一年只輸 0050 46pp(原版 79pp)', '⛔ <b>停利是陷阱</b>:賺 5% 就跑,勝率 50% → 63%,但賺的錢變成跟 0050 一樣(16 年還輸);跌破 20 日線賣、風險調整、分散 10 檔也都沒有比較好'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -22292,7 +22350,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                 if (!events) { try { const r = await fetch(new URL('data/macro_risk.json', base).href + `?t=${Date.now()}`, { signal: AbortSignal.timeout(8000) }); if (r.ok) events = ((await r.json()) || {}).upcoming_macro_events || []; } catch (_) {} }
                 let floor = null; try { await this._loadBreadthHist(); floor = this._floorCountState(); } catch (_) {}
                 const hits = this._colTrigEval({ tw, held, bars, fav, div, events, floor });
-                this._colTrigCache = { at: Date.now(), lastD, hits, groups: this._colTrigGroups(hits), n: syms.length, ctx: { tw, div, events, floor } };
+                this._colTrigCache = { at: Date.now(), lastD, hits, groups: this._colTrigGroups(hits), n: syms.length, ctx: { tw, div, events, floor }, bars };   // V78.6.7 bars 給 _luGapSweep 用(⛔ 不重抓)
                 return this._colTrigCache;
             } finally { this._colTrigP = null; }
         })();
@@ -55294,6 +55352,7 @@ ${topPicksLine ? `\n【AI 戰略選股 Top5(三位一體篩選)】\n${topPicksLi
             if (document.hidden) return;
             const changed = await this._loadLiveQuotes();
             if (!changed) return;
+            try { this._luGapSweep(); } catch (_) {}   // 🟥 V78.6.7 漲停隔天開低(09:00~10:30;一檔一天一次)
             try { this.renderVolSurgeRadar(); } catch (_) {}   // 🤖 V68.3.3 頂部 AI 爆量泡泡:全域,每次快照更新都刷(不限大盤頁)
             // 快照更新 → 若正在看 自選/庫存 頁,重畫價格列(帶跳動 flash)
             try {
