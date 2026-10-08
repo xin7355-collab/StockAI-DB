@@ -834,7 +834,7 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('📝b2 貼上區第一眼 ≤ 800 字(⛔ 整份 6k 全攤開就是資訊爆炸)', V.chars <= 800 && V.chars > 150, `${V.chars} 字`);
     ok('📝b3 §19 因子評分 / §20 星等 / §14 機率那三節標「AI 主觀」', V.subj.length === 3 && V.subj.every(Boolean), JSON.stringify(V.subj));
     ok('📝b4 重點詞真的被上色(≥5 個琥珀 mark),而且 ⛔ 不是紅綠', V.marks >= 5 && !V.markRG, `marks=${V.marks}`);
-    ok('📝c 🔁 過期判斷(基準日 2026-07-20、報告寫 480 元):8 月營收已公布 + 第 2 季財報法定日已過 + 股價偏離 + 已經 N 天(注入:拿掉月營收那條 → 這條紅)', V.stale.stale && V.stale.reasons.some(r => /8 月營收已公布/.test(r)) && V.stale.reasons.some(r => /第 2 季財報法定公布日/.test(r)) && V.stale.reasons.some(r => /偏離報告寫的 480 元/.test(r)) && V.stale.reasons.some(r => /已經 \d+ 天/.test(r)), JSON.stringify(V.stale));
+    ok('📝c 🔁 過期判斷(基準日 2026-07-20、報告寫 480 元):基準日之後的月營收已公布(跟著日期走,8 月起任何一個月都算)+ 第 2 季財報法定日已過 + 股價偏離 + 已經 N 天(注入:拿掉月營收那條 → 這條紅)', V.stale.stale && V.stale.reasons.some(r => /(8|9|1[0-2]) 月營收已公布/.test(r)) && V.stale.reasons.some(r => /第 2 季財報法定公布日/.test(r)) && V.stale.reasons.some(r => /偏離報告寫的 480 元/.test(r)) && V.stale.reasons.some(r => /已經 \d+ 天/.test(r)), JSON.stringify(V.stale));
     ok('📝c2 提醒**在頁內顯示**(「🔁 建議重新產出」)+ 快速表第 11 列標「已有 … 的報告 ・🔁 需更新」', V.staleShown && /已有/.test(V.q11) && /需更新/.test(V.q11), V.q11);
     ok('📝d 🆚 AI 價位對照本站的牆:每個抽到的價位一列(第一買點 / 第二買點 / 第三買點 / 保守合理價)+「AI 說 / 本站說」並排', V.vs.length >= 4 && V.vs.includes('第一買點') && /AI 說/.test(V.vsTxt) && /本站說/.test(V.vsTxt) && /等待買點/.test(V.vsTxt), JSON.stringify(V.vs) + ' ' + V.vsTxt);
     ok('📝e 🚨 鐵線:貼上的報告⛔ 不進「📋 複製整份報告」、⛔ 不進 _ovDecide、AI 的價位⛔ 不進 _keyLevels', !V.rail.copy && !V.rail.dec && !V.keyLv, JSON.stringify(V.rail));
@@ -1264,6 +1264,11 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
                try { A.setFontSize('medium'); } catch (_) {} await new Promise(r => setTimeout(r, 200));
                return x > m;
            }));
+    }
+    {   // 📅 V78.6.3 收盤後頂端「📅 日期」要讀併過即時價那份(⛔ 不可只在盤中才讀 → 價是今天、日期是昨天)
+        const q0 = SRC.indexOf("const vEl = document.getElementById('quoteVolInfo');"), q1 = SRC.indexOf('vEl.classList.remove', q0);
+        const seg = SRC.slice(q0, q1);
+        ok('📅q1 頂端資料日期一律讀 rawDailyData(併過即時價);⛔ 不可再寫成「盤中才讀」', q0 > 0 && /const _dRow = String\(\(_live\.length \? _live\[_live\.length - 1\]/.test(seg) && !/isMarketOpen\?\.\(\) && _live\.length/.test(seg), seg.slice(0, 120));
     }
     ok('§a1 ⛔ 整頁不給 ★ 評等(V76.2.5 結論卡下架後,這條改掃整個報告頁)',
        !/★{2,}/.test(Object.values(R5.txt).join(' ')), Object.values(R5.txt).join(' ').slice(0, 200));

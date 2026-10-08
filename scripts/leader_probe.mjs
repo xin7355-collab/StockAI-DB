@@ -90,7 +90,8 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
     dispNow: false, dispOracle: 0, attSell: 0, attWin: 5, rebuy: 'none', rebuyDrop: 0.15, blockDays: 10, shamSell: 0,
     indCap: 0, wRank: null, posMin: 85, posRaw: true, volUp: 0, finAcc: false, fsync: 0, rankUp: false, shamKeep: 0,
     capital: 0, minFee: 20, add: 0, glide: 0, parkMin: 5000, luExit: '', phase: 0, join: '', limitRepl: false, limitRetry: '', pickFrom: 0,
-    dip: 0, hold: 5, dipSort: 'drop', dipMin: 0, bearCore: null, bearN: 0, bearTop: 0, pool: '', themeK: 3, themeL: 20, themeSham: false };
+    dip: 0, hold: 5, dipSort: 'drop', dipMin: 0, bearCore: null, bearN: 0, bearTop: 0, pool: '', themeK: 3, themeL: 20, themeSham: false,
+    dRank: 0, stop: 0, trail: 0, shamOut: 0, refill: false };
 // 🛒 V78.2.2 「怎麼買」(使用者:「前 5 名還是 6~10 也可以?開盤買還是 13:00~13:30?漲停要不要換第 6 名?」)⛔ 不設時逐位相同:
 //   limitRepl  = 成交價接近漲停買不到 → 換候選名單上的下一名(仍要過位置門檻、沒持有)
 //   limitRetry = 'close':開盤接近漲停買不到 → 當天收盤沒鎖就用收盤價買(只在 fill='open' 有意義)
@@ -103,6 +104,11 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
 //   pool = 'theme':換倉日收盤,每個題材(pro.html THEMES,ctx.themes)算成員 themeL 日動能中位數(≥3 檔算得出才算),
 //          取前 themeK 個題材 → 候選 = 那幾個題材的成員(⛔ 不再取成交額前 U 大),之後照原規則(趨勢、位置、名次前 N、掉出前 2N 才賣)
 //   themeSham = true:題材隨機挑 themeK 個(另一顆亂數)= 安慰劑
+// 🔄 V78.6.3 期中換股(使用者:「換倉第一天買前 5,某隻掉到某個程度、還沒到 10 天就賣掉改買新的前 5」)⛔ 不設時逐位相同(selftest ㊲):
+//   每天收盤:dRank = K → 持股今天名次 > K(或掉出趨勢名單)・stop = x → 收盤 < 進場價 ×(1−x)・trail = x → 收盤 < 持有期最高收盤 ×(1−x)
+//            ・shamOut = p → 每檔每天以機率 p 隨機賣(安慰劑,另一顆亂數)→ 隔天開盤賣
+//   refill = true:同一個收盤用當下名次(同 posMin 等候選濾網)補滿空位、隔天開盤買;嚴格空頭不補;換倉日的空位也算進這些賣掉的
+//   refill = false:賣掉的錢停 0050 到下一次換倉(= V77.8.6 maExit 的做法)
 //   ⚠️ 題材名單是 2026 年人工整理的 = 事後挑過 → 結果只能當上限
 // 🐻 V78.3.0 空頭季節招式(使用者:「空頭那年要改什麼策略,給我自創招式,結束後再改回最強策略」)⛔ 不設時逐位相同(selftest ㉞):
 //   空頭 = ctx.bear(嚴格空頭,收盤才知道)→ 一律用「昨天收盤」的空頭狀態決定今天收盤的動作(晚一天 = 保守,⛔ 不用當天)
@@ -212,6 +218,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     let bearMode = false;                                     // 🐻 昨天收盤是不是空頭(只在 bearCore / bearN / bearTop 設了才用)
     const FORCE = P.dispNow || P.dispOracle > 0 || P.attSell > 0 || P.shamSell > 0;
     const rand3 = rng(seed * 104729 + 7);
+    const rand4 = rng(seed * 15485863 + 3);                   // 🔄 shamOut 專用(⛔ 不動別人的亂數)
+    const MID = P.dRank > 0 || P.stop > 0 || P.trail > 0 || P.shamOut > 0;
     const themeUniv = i => {
         const sc = [];
         for (const T of ctx.themes) {
@@ -332,6 +340,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         }
         // ② 收盤:除權息、斷崖、吊燈
         let dipSold = 0;
+        let midRank = null;
+        if (P.dRank > 0 && pos.size) { midRank = new Map(); rankAt(i).ranked.forEach((S, k) => midRank.set(S.sym, k)); }
         for (const p of [...pos.values()]) {
             const S = p.S;
             if (S.F[i] !== 1 && S.C[i] > 0) p.sh *= S.F[i];
@@ -342,6 +352,10 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             if (P.chand > 0 && i > p.entry && p.atr > 0 && S.C[i] < p.hc - P.chand * p.atr) sell(p, S.C[i], i);
             else if (P.sellDisp && i > p.entry && ctx.disp && evWithin(ctx.disp.get(S.sym), i, 1)) dailySell.add(S.sym);
             else if (i > p.entry && ((P.maExit === 20 && S.C[i] < S.ma20[i]) || (P.maExit === 60 && S.C[i] < S.ma60[i]) || (P.tp > 0 && S.C[i] >= p.cost * (1 + P.tp)))) dailySell.add(S.sym);
+            if (MID && pos.has(S.sym) && i > p.entry && !dailySell.has(S.sym) && i + 1 < n) {
+                const k = midRank ? midRank.get(S.sym) : undefined;
+                if ((P.dRank > 0 && !(k < P.dRank)) || (P.stop > 0 && S.C[i] < p.cost * (1 - P.stop)) || (P.trail > 0 && S.C[i] < p.hc * (1 - P.trail)) || (P.shamOut > 0 && rand4() < P.shamOut)) { dailySell.add(S.sym); st.midOut = (st.midOut || 0) + 1; }
+            }
             if (FORCE && pos.has(S.sym) && i > p.entry && !dailySell.has(S.sym) && i + 1 < n) {
                 st.posDays++;
                 const why = forceWhy(S, i);
@@ -367,6 +381,17 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             for (const x of ord.slice(P.bearN)) { if (!dailySell.has(x.s)) { dailySell.add(x.s); st.bearCut = (st.bearCut || 0) + 1; } }
         }
         if (dailySell.size && i + 1 < n) { pending = pending || { sell: [], buy: [] }; for (const sym of dailySell) if (!pending.sell.includes(sym)) pending.sell.push(sym); dailySell.clear(); }
+        // 🔄 V78.6.3 refill:不是換倉日 → 今天收盤就照當下名次補滿空位(換倉日交給 ③)
+        const isReb = !DIP && ((i - s0 + P.phase) % P.R === 0 || (P.join === 'now' && i === s0));
+        if (P.refill && !isReb && pending && pending.sell.length && i + 1 < n && !(P.bear && ctx.bear[i])) {
+            const room = P.N - (pos.size - pending.sell.filter(s => pos.has(s)).length) - pending.buy.length;
+            if (room > 0) {
+                const { ranked } = rankAt(i);
+                const cand = CAND ? ranked.filter((S, k) => candOk(S, i, new Map(), k)) : ranked;
+                const add = cand.filter(S => !pos.has(S.sym) && !pending.buy.includes(S) && !blocked.has(S.sym)).slice(0, room);
+                pending.buy.push(...add); st.refill = (st.refill || 0) + add.length;
+            }
+        }
         eq.push(value(i));
         // ③ 換倉日收盤:決定明天開盤要做什麼
         if (P.join === 'wait' && P.phase > 0 && i === s0 && (i - s0 + P.phase) % P.R !== 0 && i + 1 < n) pending = { sell: [], buy: [] };   // 🕐 等的那幾天錢停 0050
@@ -399,7 +424,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 cand = ranked.filter((S, k) => { const pass = candOk(S, i, prevRank, k); if (k < P.N * 2) { st.fTot++; if (pass) st.fPass++; } return pass; });
             }
             if (blocked.size) cand = cand.filter(S => !blocked.has(S.sym));
-            const room = Math.max(0, N - (pos.size - sellL.length));
+            const room = Math.max(0, N - (pos.size - (P.refill ? new Set([...sellL, ...(pending ? pending.sell : [])].filter(s => pos.has(s))).size : sellL.length)));
             let buyL;
             if (bearNow && P.bearTop > 0) buyL = cand.slice(0, P.bearTop).filter(S => !pos.has(S.sym)).slice(0, Math.max(0, P.bearTop - (pos.size - sellL.length)));
             else if (bearNow) buyL = [];
@@ -875,6 +900,19 @@ function selftest() {
     t(l0.eq.every((v, k) => v === l1.eq[k]) && buys.length > 0 && sells.length === l1.trades && sells.every(x => x.why === 'pend' && x.dd < x.d)
         && l2.st.ipxHit === sells.length && l2.eq.at(-1) > l0.eq.at(-1) && l3.st.ipxMiss > 0 && l3.eq.every((v, k) => v === l0.eq[k]),
         `㊱ log / intraPx:不設逐位相同・記到 ${buys.length} 買 ${sells.length} 賣・賣價換成 +2% → 淨值變高・對不到就照開盤(miss ${l3.st.ipxMiss})`);
+    // ㊲ V78.6.3 期中換股:A 先漲最快(換倉日買 A),第 125 天起每天跌 3%(連 8 天;⛔ 一天跌 12% 會被當資料斷崖)→ stop 0.08 隔天開盤賣;refill 同一個收盤補 B;沒 refill 錢就空著;不設逐位相同
+    const mkM = () => { const A3 = mk('5101', i => i < 125 ? 100 + i * 0.6 : (100 + 124 * 0.6) * Math.pow(0.97, Math.min(i - 124, 8))), B3 = mk('5102', i => 100 + i * 0.2);
+        return { cal, stocks: [A3, B3], etf: flat, bear: new Uint8Array(n) }; };
+    const cfgM = { U: 2, N: 1, R: 1000, L: 20, chand: 0, park: false, trend: false };
+    const m0 = simulate(mkM(), 100, cfgM), m00 = simulate(mkM(), 100, { ...cfgM, dRank: 0, stop: 0, trail: 0, shamOut: 0, refill: false });
+    const mS = simulate(mkM(), 100, { ...cfgM, stop: 0.08 }), mR = simulate(mkM(), 100, { ...cfgM, stop: 0.08, refill: true });
+    const mT = simulate(mkM(), 100, { ...cfgM, trail: 0.08, refill: true }), mD = simulate(mkM(), 100, { ...cfgM, dRank: 1, refill: true });
+    const mB = (() => { const c = mkM(); c.bear = new Uint8Array(n).fill(1); c.bear[100] = 0; return simulate(c, 100, { ...cfgM, stop: 0.08, refill: true }); })();
+    const lgM = []; simulate(mkM(), 100, { ...cfgM, stop: 0.08, refill: true, log: lgM });
+    const sellA = lgM.find(x => x.side === 'S' && x.s === '5101'), buyB = lgM.find(x => x.side === 'B' && x.s === '5102');
+    t(m0.eq.every((v, k) => v === m00.eq[k]) && mS.st.midOut === 1 && mS.held === 0 && !mS.st.refill && mR.held === 1 && mR.st.refill === 1
+        && sellA && buyB && sellA.d === buyB.d && sellA.d > cal[125] && mT.st.midOut === 1 && mT.held === 1 && mD.held === 1 && mB.held === 0 && mR.eq.at(-1) > mS.eq.at(-1),
+        `㊲ 期中換股:不設逐位相同・跌破 8% 隔天開盤賣(${sellA && sellA.d})・refill 同一天開盤補 B・沒 refill 空著・trail / dRank 也觸發・空頭不補`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }

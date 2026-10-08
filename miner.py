@@ -893,6 +893,50 @@ def fetch_mis_closing_snapshot(sym: str) -> dict:
 
 
 # ── TWSE 三大法人（每日全市場批次）──────────────────────────────────────────
+def _otc_inst_rows(j):
+    """上櫃三大法人回應 → (資料列, 欄名)。新站 {tables:[{fields,data}]}、舊站 {aaData:[...]} 都吃。"""
+    if isinstance(j, dict) and j.get('tables'):
+        for t in j.get('tables') or []:
+            if t.get('data'):
+                return t.get('data') or [], t.get('fields') or []
+        return [], []
+    if isinstance(j, dict):
+        return (j.get('aaData') or j.get('data') or []), (j.get('fields') or [])
+    return [], []
+
+
+def _otc_inst_parse(rows, fields):
+    """欄位用名稱找(⛔ 寫死位置是舊站專用的最後備援):
+    外資 = 「外資及陸資(不含外資自營商)」的買賣超(跟上市 T86 同一個口徑)・投信買賣超・自營商買賣超(合計,不是自行/避險)。"""
+    F = [str(f or '') for f in fields]
+    def find(pred):
+        for i, f in enumerate(F):
+            if pred(f):
+                return i
+        return None
+    i_id = find(lambda f: '代號' in f)
+    i_f = find(lambda f: '外資' in f and '買賣超' in f and '不含' in f) if F else None
+    if i_f is None and F:
+        i_f = find(lambda f: '外資' in f and '買賣超' in f and '自營' not in f)
+    i_t = find(lambda f: '投信' in f and '買賣超' in f) if F else None
+    i_d = find(lambda f: '自營' in f and '買賣超' in f and not any(x in f for x in ('外資', '自行', '避險'))) if F else None
+    if None in (i_id, i_f, i_t, i_d):
+        if F and len(F) < 19:
+            return {}
+        i_id, i_f, i_t, i_d = 0, 4, 11, 18   # 舊站 aaData 的位置(V78.6.3 前就是這樣寫死、2026-09 以前實測可用)
+    out = {}
+    for r in rows:
+        try:
+            sid = str(r[i_id]).strip()
+            if not _valid_stock(sid):
+                continue
+            num = lambda x: int(float(str(x).replace(',', '').strip() or 0))
+            out[sid] = {'foreign_net': num(r[i_f]), 'trust_net': num(r[i_t]), 'dealer_net': num(r[i_d])}
+        except (ValueError, IndexError, TypeError):
+            pass
+    return out
+
+
 def fetch_market_institutional(d: date) -> dict:
     """整合 TWSE (上市) 與 TPEX (上櫃) 的三大法人買賣超；缺漏時用 FinMind 補齊"""
     res = {}
@@ -943,18 +987,42 @@ def fetch_market_institutional(d: date) -> dict:
     time.sleep(random.uniform(3.0, 5.0))
 
     # 2. 抓取上櫃 (TPEX)
-    try:
-        url_otc = f'https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php?l=zh-tw&o=json&se=EW&t=D&d={d_tpex}'
-        j = http_session.get(url_otc, headers=_rnd_hdrs(), timeout=15).json()
-        for r in (j.get('aaData') or []):
+    # 🚨 V78.6.3:舊端點(/web/stock/3insti/...)從 2026-10-01 起上櫃股全部變 0(log 沒報錯,只是沒資料列)
+    #   → 照上櫃融資券(V75.1.x)的做法:新站優先、舊站備援,欄位用**名稱**找,一條都沒拿到要把每條的原因印出來
+    #   ⛔ 新站網址沒在 runner 上驗過(沙箱連不到 TPEx,陷阱 #23)→ 由 log 的 [上櫃法人] 那行說了算
+    _ce = d.strftime('%Y/%m/%d')
+    _otc_cands = [
+        f'https://www.tpex.org.tw/www/zh-tw/insti/dailyTrade?type=Daily&sect=EW&date={_ce}&response=json',
+        f'https://www.tpex.org.tw/www/zh-tw/insti/dailyTrade?type=Daily&sect=EW&date={d_tpex}&response=json',
+        f'https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php?l=zh-tw&o=json&se=EW&t=D&d={d_tpex}',
+    ]
+    _why, n_otc = [], 0
+    for url_otc in _otc_cands:
+        _tag = url_otc.split('tpex.org.tw')[-1][:40]
+        try:
+            r_otc = http_session.get(url_otc, headers=_rnd_hdrs(), timeout=15)
+            if r_otc.status_code != 200:
+                _why.append(f"{_tag}→HTTP {r_otc.status_code}"); continue
             try:
-                res[str(r[0]).strip()] = {
-                    'foreign_net': int(str(r[4]).replace(',','')), # 外資買賣超
-                    'trust_net': int(str(r[11]).replace(',','')),  # 投信買賣超
-                    'dealer_net': int(str(r[18]).replace(',',''))  # 自營買賣超總計
-                }
-            except: pass
-    except Exception as e: print(f"  ⚠️ 上櫃法人失敗: {e}")
+                j = r_otc.json()
+            except Exception:
+                _why.append(f"{_tag}→非 JSON {str(r_otc.text or '')[:120].strip()!r}"); continue
+            rows, fields = _otc_inst_rows(j)
+            if not rows:
+                _why.append(f"{_tag}→200 但無資料列 raw={str(j)[:160]!r}"); continue
+            got = _otc_inst_parse(rows, fields)
+            if len(got) < 100:
+                _why.append(f"{_tag}→只解析出 {len(got)} 檔 fields={[str(f)[:12] for f in fields][:20]}"); continue
+            for k, v in got.items():
+                res[k] = v
+            n_otc = len(got)
+            print(f"  [上櫃法人] {_tag} → {n_otc} 檔")
+            break
+        except Exception as e:
+            _why.append(f"{_tag}→{type(e).__name__}: {str(e)[:80]}")
+    if not n_otc:
+        print(f"  ⚠️ 上櫃法人 0 檔(正常約 800):" + ' | '.join(_why))
+    fetch_market_institutional.last_otc = {'n': n_otc, 'why': _why}
     time.sleep(random.uniform(3.0, 5.0))
 
     # 3. FinMind 備援：TPEX 新版 API 可能變動，缺漏的上櫃股（如 8299/4904）用 FinMind 補齊
