@@ -61,7 +61,10 @@ SLEEP = float(os.environ.get('FIN_SLEEP') or 0.05)
 WANT = {
     'TaiwanStockBalanceSheet':        {'inv': 'Inventories',
                                        'eq': 'Equity',                 # 權益總額(淨值)→ 股價淨值比
-                                       'cap': 'OrdinaryShare'},        # 股本(元;÷10 = 股數)→ 每股淨值
+                                       'cap': 'OrdinaryShare',         # 股本(元;÷10 = 股數)→ 每股淨值
+                                       # 📑 V78.6.9 負債比 / 流動比(同一個資料集、⛔ 不多打請求;type 名稱同 index.html 的 X 光機)
+                                       'ta': 'TotalAssets', 'li': 'Liabilities',
+                                       'ca': 'CurrentAssets', 'cl': 'CurrentLiabilities'},
     'TaiwanStockCashFlowsStatement':  {'capex': 'PropertyAndPlantAndEquipment',
                                        'dep': 'Depreciation',
                                        'ocf': 'CashFlowsFromOperatingActivities'},
@@ -74,7 +77,7 @@ WANT = {
 # ⚠️ V74.9.3 加 eq / cap / eps(⭐ 為了解鎖「估值 5 條」的回測:fund_yoy_gm 的 qeps 只有 8 季,
 #    而這裡本來就有 34 季 —— 差的只是這三個欄位)。⛔ 新欄位一律**加在最後面**,
 #    舊檔的陣列用位置對應,插在中間會讓舊資料的欄位錯位。
-FIELDS = ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev', 'eq', 'cap', 'eps', 'ni', 'opi']   # V76.2.0 ni / V77.3.0 opi 加在最後(舊檔補抓只打損益表那一個資料集)
+FIELDS = ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev', 'eq', 'cap', 'eps', 'ni', 'opi', 'ta', 'li', 'ca', 'cl']   # V76.2.0 ni / V77.3.0 opi / V78.6.9 ta li ca cl 加在最後(舊檔補抓只打缺欄位的那個資料集)
 REASON = {}
 
 

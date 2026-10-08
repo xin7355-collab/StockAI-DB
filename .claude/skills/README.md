@@ -15,11 +15,12 @@
 | `/mining` | 「採礦沒跑」「資料停在舊日期」 | ① 先問有沒有被觸發過 ② 看產物日期 ③ 確認那個日期是誰的 ④ 才查程式 |
 | `/uicard` | 「加一張卡」「改版面」「改文案」 | 燈號鐵則 + 兩道守門 + 共用函式清單 + 連動檢查 + 390px／橫版驗證 |
 
-## 1 支代理
+## 2 支代理
 
 | 名字 | 什麼時候用 |
 |---|---|
 | `scout`（`.claude/agents/scout.md`） | 要**同時**掃前端／採礦／workflow 找 bug 時，一次派 2~3 個，只回「問題 + 行號 + 失敗情境 + CONFIRMED/SUSPICIOUS」 |
+| `financial-analyst`（`.claude/agents/financial-analyst.md`） | 「幫我整理某一檔的財報數字」—— 先讀本站 `data/fin` 切片、本站沒有才上網；每個數字附季別與來源、查不到寫 null，⛔ 不評分不給買賣。網頁版是產業作戰室「📑 財報」分頁（同一份資料） |
 
 ## 1 支既有的 slash command（⛔ 不要再包一支同樣的 Skill）
 

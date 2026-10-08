@@ -105,6 +105,24 @@ ok('⑥c sliceAll 每檔都切得出來', Object.keys(all.files).length === 6, S
     ok('⑧c 沒有 opi 那欄 → opi / oim 一律 null,⛔ 不補 0', s3.q.every(x => x.opi === null && x.oim === null), JSON.stringify(s3.q[0]));
     ok('⑧d ⭐ 舊檔(只有 9~10 欄、沒有 opi)照樣切得出來而且 oim 是 null(回算跑完前 gh-pages 上就是這種)', t1.q.every(x => x.oim === null) && t1.nq === 12, JSON.stringify(t1.q[0]));
 }
+// ── ⑨ V78.6.9 負債比 / 流動比(資產負債表期末值,⛔ 不做累計還原)──────────────
+//   注入:① debt 寫成 li/eq(⑨a 紅)② 舊檔補 0(⑨c 紅)③ li 先減上一季再算(⑨b 紅)
+{
+    const F9 = ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev', 'eq', 'cap', 'eps', 'ni', 'opi', 'ta', 'li', 'ca', 'cl'];
+    const s9 = {}; Q.forEach((q, i) => { const k = i % 4;
+        const row = { inv: 150, cogs: 100, capex: CUMV.capex[k], dep: CUMV.dep[k], ocf: CUMV.ocf[k], rev: 200, eq: 1000, cap: 1e9, eps: 1.0, ni: 25, opi: 30,
+                      ta: 4000, li: [1000, 1200, 1400, 1600][k], ca: 900, cl: 600 };
+        s9[q] = F9.map(f => row[f]); });
+    const F9d = { q: Q, f: F9, meta: { updated: '2026-10-08', n: 1, quarters: Q.length, src: 'test' }, s: { B1: s9 } };
+    const b1 = sliceOne(F9d, detectAll(F9d), 'B1');
+    const b4 = b1.q.find(x => x.p === '2025-12-31');
+    ok('⑨a 負債比 = 負債 ÷ 總資產(1600/4000 = 40.0%);流動比 = 流動資產 ÷ 流動負債(900/600 = 150%)', b4.debt === 40 && b4.cur === 150 && b4.ta === 4000 && b4.li === 1600, JSON.stringify([b4.debt, b4.cur]));
+    ok('⑨b ⭐ 期末值⛔ 不相減還原(Q4 li 1600 照原值,⛔ 不是 1600−1400 = 200)', b4.li === 1600 && b4.debt === 40, String(b4.li));
+    ok('⑨c 舊檔(沒有 ta/li/ca/cl 四欄)→ debt / cur 一律 null,⛔ 不補 0', t1.q.every(x => x.debt === null && x.cur === null && x.ta === null), JSON.stringify(t1.q[0]));
+    const F9z = JSON.parse(JSON.stringify(F9d)); Object.values(F9z.s.B1).forEach(r => { r[F9.indexOf('ta')] = 0; r[F9.indexOf('cl')] = 0; });
+    const bz = sliceOne(F9z, detectAll(F9z), 'B1');
+    ok('⑨d 分母 0 → null(⛔ 不給 Infinity)', bz.q.every(x => x.debt === null && x.cur === null), JSON.stringify(bz.q[0]));
+}
 // ⑦ 真檔(有的話)
 const FIN = process.env.FIN || path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'fin_deep', 'fin_deep.json');
 if (fs.existsSync(FIN)) {

@@ -54,6 +54,9 @@ export function sliceOne(F, CUM, sym, nq = N_Q) {
         const capex = quarterValue(F, sym, q, 'capex', CUM), dep = quarterValue(F, sym, q, 'dep', CUM), ocf = quarterValue(F, sym, q, 'ocf', CUM);
         const opi = quarterValue(F, sym, q, 'opi', CUM);   // 📈 V77.3.0 營業利益(舊檔沒這欄 → null,⛔ 不補 0)
         const inv = pt('inv'), eq = pt('eq'), cap = pt('cap'), eps = pt('eps'), niOff = pt('ni');
+        // 📑 V78.6.9 資產負債表是「期末值」⛔ 不做累計還原;舊檔沒這四欄 → null(⛔ 不補 0)
+        const ta = pt('ta'), li = pt('li'), ca = pt('ca'), cl = pt('cl');
+        const debt = (ta > 0 && li != null) ? li / ta * 100 : null, cur = (ca != null && cl > 0) ? ca / cl * 100 : null;
         const shares = cap > 0 ? cap / 10 : null;
         const gm = (rev > 0 && cogs != null) ? (rev - cogs) / rev * 100 : null;
         // ⭐ 官方稅後淨利優先;沒有才退回「EPS × 股本÷10」(假設面額 10,見檔頭 🚨)
@@ -67,7 +70,9 @@ export function sliceOne(F, CUM, sym, nq = N_Q) {
                  eq: r0(eq), cap: r0(cap), eps: r2(eps), gm: r1(gm), nm: (nm != null && Math.abs(nm) <= 100) ? r1(nm) : null,
                  opi: r0(opi), oim: (oim != null && Math.abs(oim) <= 100) ? r1(oim) : null,
                  doi: (() => { const d = doi(inv, cogs); return (d != null && d < 2000) ? r0(d) : null; })(),
-                 fcf: r0(fcf), ni: r0(ni), ni_src: niSrc };
+                 fcf: r0(fcf), ni: r0(ni), ni_src: niSrc,
+                 ta: r0(ta), li: r0(li), debt: (debt != null && debt >= 0 && debt <= 200) ? r1(debt) : null,
+                 cur: (cur != null && cur >= 0 && cur < 10000) ? r0(cur) : null };
     });
     // 🚨 V76.2.0 面額變更守門(只在**沒有**官方淨利、只能用 EPS×股數推的時候):
     //   單季 EPS 掉 ≥50% + 營收/毛利沒掉 + 股本金額沒動 → 股數很可能變了 → 那一季起 nm/ni 一律 null + 寫原因。

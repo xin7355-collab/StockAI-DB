@@ -793,6 +793,7 @@ details.colart[open] .colsum{display:none}
     <button class="tab-btn" id="tabBtnConf" onclick="PRO.switchTab('conf')" title="法說會時間表 + 官方擇要;只描述,不下多空">法說會</button>
     <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
     <button class="tab-btn" id="tabBtnCol" onclick="PRO.switchTab('col')" title="把實測總表裡有價值的結論寫成白話文章">📰 專欄</button>
+    <button class="tab-btn" id="tabBtnFin" onclick="PRO.switchTab('fin')" title="這一檔 12 季財報:營收・毛利率・營益率・現金流・負債比;每個數字附季別與來源">📑 財報</button>
     <button class="tab-btn" id="tabBtnExp" onclick="PRO.switchTab('exp')" title="這一檔自己的回測、K 線訊號成績、自訂回測(散戶救星一般畫面看不到的)">🔬 個股實測</button>
     <!-- 🧹 V74.6.2 使用者:「把散戶救星裡面的 V74.6.1 及 🧹 雜訊清單搬移到產業作戰室裡面」
          ⭐ 這**推翻了 V74.5.6** 的做法(當時只做一顆會跳走的鈕)。
@@ -1166,6 +1167,26 @@ details.colart[open] .colsum{display:none}
     </div>
     <div id="expNote" style="font-size:12px;color:var(--mut,#8b949e);margin-bottom:6px">輸入代號後按上面任一顆。下面是散戶救星的「實驗室模式」(跟一般畫面同一份程式,多了成績與回測)。</div>
     <iframe id="expFrame" title="個股實測" style="width:100%;height:80vh;border:0;background:#0d1117;display:none" loading="lazy"></iframe>
+  </div>
+</div>
+
+<!-- 📑 V78.6.9 財報(使用者貼 financial-analyst 子代理:「只做營收/毛利率/營益率趨勢、現金流、負債比,每個數字附來源與期間,查不到寫 null,禁止推估」)
+     ⭐ 網頁叫不到 Claude Code 子代理 → 這頁直接讀本站 data/fin/{代號}.json(fin_slice.mjs 切的,累計現金流已還原單季、面額變更有守門)。
+     ⛔ 前端不另算比率(負債比/流動比在 fin_slice 算好);唯一現算的是季營收年增,跟散戶救星 _finTrend 同一條(第 i 季 vs 第 i−4 季)。
+     ⛔ 不評分、不給好壞顏色、不給買賣。 -->
+<div id="tabFin" class="hidden">
+  <div class="panel">
+    <h2>📑 財報 <span class="sub">12 季數字・每格附季別與來源・查不到就寫「—」與原因</span></h2>
+    <div class="inrow">
+      <div><label>股票代號或名稱</label><input type="text" id="finSym" value="2330" inputmode="text" autocomplete="off" onkeydown="if(event.key==='Enter')PRO.finLoad()"></div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
+      <button class="lbtn" onclick="PRO.finLoad()">📑 查詢</button>
+      <button class="lbtn" id="finNBtn" onclick="PRO.finToggleN()">顯示 12 季</button>
+      <button class="lbtn" onclick="PRO.finCopy(this)">📋 複製給 AI</button>
+      <button class="lbtn" onclick="PRO.finAsk()">🔎 問 AI 解讀</button>
+    </div>
+    <div id="finBody"><div class="emp">輸入代號後按「查詢」。</div></div>
   </div>
 </div>
 
@@ -2042,12 +2063,13 @@ const PRO = {
     if (this._tab === 'rot') await this.renderRot();
     if (this._tab === 'star') { this._starData = undefined; await this.renderStar(); }
     if (this._tab === 'fish') await this.renderFish();
+    if (this._tab === 'fin') { this._finD = null; await this.finLoad(); }
     if (this._tab === 'rod') { this._starData = undefined; this._fishDP = null; this._fishD = null; await (this._rodP = this.renderRod()); }
     if (this._valRows && this._valRows.length) await this.runValuation(true);
     this.toast('✅ 已更新');
   },
 
-  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['sig', 'Sig'], ['conf', 'Conf'], ['lab', 'Lab'], ['col', 'Col'], ['exp', 'Exp'], ['noise', 'Noise']],
+  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['sig', 'Sig'], ['conf', 'Conf'], ['lab', 'Lab'], ['col', 'Col'], ['fin', 'Fin'], ['exp', 'Exp'], ['noise', 'Noise']],
   // 🔬 V78.3.7 個股實測:內嵌 index.html?lab=1(⛔ 不複製偵測器;同一份程式)
   expOpen(what) {
     const el = document.getElementById('expSym'), fr = document.getElementById('expFrame'), note = document.getElementById('expNote');
@@ -2082,6 +2104,7 @@ const PRO = {
     if (t === 'noise') this.renderNoise();
     if (t === 'conf') this.renderConf();
     if (t === 'col') this.renderCol();
+    if (t === 'fin' && !this._finD) this.finLoad();
     // 📊 'calc' 已併進實測總表(V74.5.0)—— 舊書籤/舊連結進來時自動導到那一欄,⛔ 不可整個失效
     if (t === 'calc') { this._tab = 'lab'; this._labSel = 'bt'; document.getElementById('tabLab').classList.remove('hidden'); document.getElementById('tabBtnLab').classList.add('on'); }
     if (this._tab === 'lab') this.renderLab();
@@ -8497,7 +8520,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V78.6.8',
+  VER: 'V78.6.9',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -8821,6 +8844,116 @@ const PRO = {
   // 📦 V77.7.1 題材「營收在加速幾檔」(評估紀錄㊲、layer_accel_probe 實測 ⛔ 沒有預測力 → 只描述)
   //   ⛔⛔ 函式體是 index.html `_finAccelOn` 的**逐字複製**(pro.html 不能 import;lib_finaccel 是同一條公式)
   //      → scripts/test_finfilter.mjs ⑦c 比對兩份函式體一字不差,改一邊沒改另一邊當場紅。
+  // ═══════════ 📑 V78.6.9 財報分頁(使用者貼的 financial-analyst 子代理 → 網頁版)═══════════
+  // ⛔ 四條:① 只讀 data/fin/{代號}.json(fin_slice.mjs 切的),⛔ 前端不另算比率
+  //   ② 每一格都要看得到「哪一季 + 法定公布期限 + 來源」③ null 一律「—」+ 原因,⛔ 不補 0、⛔ 不推估
+  //   ④ ⛔ 不評分、⛔ 不給好壞顏色、⛔ 不給買賣。唯一現算的季營收年增 = 散戶救星 `_finTrend` 同一條(第 i 季 ÷ 第 i−4 季)
+  //   → scripts/test_profin.mjs 跨檔比對。
+  _finD: null, _finSym: '', _finN: 8, _finWhy: '',
+  _FIN_ROWS: [
+    ['rev', '營收(單季)', 'b', '損益表'],
+    ['yoy', '季營收年增', 'p', '本頁算:這一季 ÷ 去年同一季 − 1'],
+    ['gm', '毛利率', 'p', '損益表:(營收 − 營業成本)÷ 營收'],
+    ['oim', '營益率', 'p', '損益表:營業利益 ÷ 營收'],
+    ['nm', '淨利率', 'p', '損益表:稅後淨利 ÷ 營收'],
+    ['ocf', '營業現金流(單季)', 'b', '現金流量表'],
+    ['fcf', '自由現金流(單季)', 'b', '現金流量表:營業現金流 + 資本支出'],
+    ['debt', '負債比', 'p', '資產負債表(期末):負債 ÷ 總資產'],
+    ['cur', '流動比', 'p0', '資產負債表(期末):流動資產 ÷ 流動負債'],
+  ],
+  _finYoy(q) {   // ⚠️ 跟 index.html `_finTrend` 的 yoy 同一條:位置往前 4 格(⛔ 不改成 i−1)
+    return q.map((r, i) => (i >= 4 && r.rev != null && q[i - 4].rev > 0) ? (r.rev / q[i - 4].rev - 1) * 100 : null);
+  },
+  _finCell(d, i, k) {
+    const q = d.q[i], num = v => (v != null && Number.isFinite(+v)) ? +v : null;
+    const v = k === 'yoy' ? this._finYoy(d.q)[i] : num(q[k]);
+    if (v != null) return { v, why: '' };
+    const has = f => d.q.some(r => r[f] != null);
+    const cum = (d.cum_fixed || []).includes('ocf');
+    let why = '這一季沒有資料';
+    if (k === 'yoy') why = i < 4 ? '前面不足 4 季,沒有去年同季可比' : '去年同季或這一季的營收沒有';
+    else if (k === 'nm' && q.nm_error) why = q.nm_error;
+    else if ((k === 'debt' || k === 'cur') && !has('ta')) why = '資產負債表的總資產 / 負債四欄 V78.6.9 才開始存 → 要等「財報三表深歷史回算」跑過一次';
+    else if (k === 'oim' && !has('opi')) why = '營業利益欄 V77.3.0 才開始存 → 要等財報回算';
+    else if ((k === 'ocf' || k === 'fcf') && cum) why = '現金流量表是累計數,上一季缺 → 這一季還原不出單季';
+    else if (k === 'nm' || k === 'oim') why = '沒有資料,或超過 ±100%(離譜值不顯示)';
+    return { v: null, why };
+  },
+  _finFmt(v, f) {
+    if (v == null) return '—';
+    if (f === 'b') return (v / 1e8).toLocaleString('zh-TW', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' 億';
+    if (f === 'p0') return Math.round(v).toLocaleString('zh-TW') + '%';
+    return v.toFixed(1) + '%';
+  },
+  _finQLabel(p) { const m = String(p || '').match(/^(\d{4})-(\d{2})/); return m ? `${m[1].slice(2)}Q${Math.ceil(+m[2] / 3)}` : String(p || ''); },
+  async _finResolve(raw) {
+    const s = String(raw || '').trim().toUpperCase(); if (!s) return '';
+    if (/^[0-9A-Z]{4,8}$/.test(s)) return s;
+    const m = await this.loadNames().catch(() => ({})) || {};
+    const t = String(raw).trim();
+    const hit = Object.keys(m).find(k => m[k] === t) || Object.keys(m).find(k => String(m[k]).includes(t));
+    return hit || '';
+  },
+  async finLoad() {
+    const el = document.getElementById('finSym'), box = document.getElementById('finBody'); if (!box) return;
+    const sym = await this._finResolve(el ? el.value : '2330');
+    if (!sym) { box.innerHTML = '<div class="emp">⚠️ 找不到這一檔(代號 4~8 碼,或打完整中文名)。</div>'; return; }
+    box.innerHTML = `<div class="emp">讀取 ${sym} 的財報切片中…</div>`;
+    let d = null; try { d = await this._loadFinSlim(sym); } catch (_) { d = null; }
+    this._finSym = sym; this._finD = d;
+    this._finWhy = d ? '' : `本站沒有 ${sym} 的財報切片(data/fin/${sym}.json 讀不到)—— ETF、興櫃、剛上市的沒有;或那一檔還沒被財報回算涵蓋`;
+    this.finRender();
+  },
+  finToggleN() { this._finN = this._finN === 8 ? 12 : 8; const b = document.getElementById('finNBtn'); if (b) b.textContent = this._finN === 8 ? '顯示 12 季' : '顯示 8 季'; this.finRender(); },
+  finRender() {
+    const box = document.getElementById('finBody'); if (!box) return;
+    const d = this._finD, sym = this._finSym;
+    if (!d) { box.innerHTML = `<div class="emp">⚠️ ${this._finWhy || '還沒查詢'}</div>`; return; }
+    const n = d.q.length, idx = []; for (let i = n - 1; i >= Math.max(0, n - this._finN); i--) idx.push(i);   // 最新一季在最左邊
+    const whys = [];
+    const head = idx.map(i => `<th data-finq="${d.q[i].p}">${this._finQLabel(d.q[i].p)}<div style="font-weight:400;color:var(--dim);font-size:9.5px">公布≤${String(d.q[i].pub || '').slice(5)}</div></th>`).join('');
+    const body = this._FIN_ROWS.map(([k, lb, f, src]) => {
+      const tds = idx.map(i => {
+        const c = this._finCell(d, i, k);
+        if (c.v == null && !whys.some(w => w[0] === lb && w[1] === c.why)) whys.push([lb, c.why]);
+        return `<td data-fink="${k}" data-fini="${i}"${c.v == null ? ` title="${c.why.replace(/"/g, '&quot;')}"` : ''} style="text-align:right;white-space:nowrap;font-family:ui-monospace,monospace">${this._finFmt(c.v, f)}</td>`;
+      }).join('');
+      return `<tr><td>${lb}<div style="font-weight:400;color:var(--dim);font-size:9.5px;white-space:normal">${src}</div></td>${tds}</tr>`;
+    }).join('');
+    const cum = (d.cum_fixed || []).length ? `現金流量表原本是「今年累計」,本站已還原成單季(${d.cum_fixed.join('・')})` : '';
+    const flags = (d.flags || []).map(x => `<li>${x.t}</li>`).join('');
+    box.innerHTML = `
+      <div style="font-size:15px;font-weight:800;margin:4px 0 2px">${this._nmFull(sym)}</div>
+      <div data-finsrc style="font-size:11px;color:var(--sub);line-height:1.6;margin-bottom:6px">📄 來源:${d.src || 'FinMind'} ・資料更新 ${String(d.updated || '').slice(0, 10) || '—'} ・共 ${n} 季${cum ? '<br>' + cum : ''}<br>⏳ 「公布≤」是法定最晚公布日(多數公司會提早),⛔ 不是實際公布日。</div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="rmtbl" style="min-width:0">
+        <thead><tr><th>項目</th>${head}</tr></thead><tbody>${body}</tbody></table></div>
+      ${whys.length ? `<div data-finwhy style="font-size:11px;color:var(--sub);line-height:1.6;margin-top:6px"><b>「—」是什麼意思</b><ul style="margin:2px 0 0 18px">${whys.map(([a, b]) => `<li>${a}:${b}</li>`).join('')}</ul></div>` : ''}
+      ${flags ? `<div style="font-size:11px;color:var(--sub);line-height:1.6;margin-top:6px"><b>○ 財報事實標記</b><ul style="margin:2px 0 0 18px">${flags}</ul></div>` : ''}
+      <div style="font-size:11px;color:var(--dim);line-height:1.6;margin-top:6px">${d.caveat || ''} 本頁只列數字,⛔ 不評分、不判好壞、不給買賣。</div>`;
+  },
+  _finText() {
+    const d = this._finD, sym = this._finSym; if (!d) return '';
+    const n = d.q.length, idx = []; for (let i = n - 1; i >= Math.max(0, n - this._finN); i--) idx.push(i);
+    const lines = [`【${this._nmFull(sym)} 財報數字】來源:${d.src || 'FinMind'};資料更新 ${String(d.updated || '').slice(0, 10)};單位:金額億元、比率 %`];
+    if ((d.cum_fixed || []).length) lines.push(`現金流量表已由累計數還原成單季(${d.cum_fixed.join('・')})`);
+    lines.push('季別(法定最晚公布日) | ' + this._FIN_ROWS.map(r => r[1]).join(' | '));
+    for (const i of idx) lines.push(`${this._finQLabel(d.q[i].p)}(≤${d.q[i].pub || '—'}) | ` + this._FIN_ROWS.map(([k, , f]) => { const c = this._finCell(d, i, k); return c.v == null ? 'null' : this._finFmt(c.v, f).replace(' 億', ''); }).join(' | '));
+    const whys = new Set(); for (const i of idx) for (const [k, lb] of this._FIN_ROWS) { const c = this._finCell(d, i, k); if (c.v == null) whys.add(`${lb}:${c.why}`); }
+    if (whys.size) lines.push('null 的原因:' + [...whys].join(';'));
+    for (const x of d.flags || []) lines.push('財報事實標記:' + x.t);
+    lines.push('', '請只根據上面這張表解讀:營收 / 毛利率 / 營益率的趨勢、現金流、負債比。',
+      '⛔ 不要自己推估或計算表格沒有的數字;表格寫 null 的就說「本站沒有」,⛔ 不要補。',
+      '要引用外部數字(例如最新一季本站還沒有的),每一個都附來源網址與期間,查不到就寫「查不到」。',
+      '⛔ 不要評分、⛔ 不要給買賣建議、⛔ 不要預測股價。');
+    return lines.join('\n');
+  },
+  finCopy(btn) { const t = this._finText(); if (!t) { this.toast('先查詢一檔'); return; } this._copy(t, btn); },
+  finAsk() {
+    const t = this._finText(); if (!t) { this.toast('先查詢一檔'); return; }
+    const short = `${this._nmFull(this._finSym)} 最近幾季營收、毛利率、營益率、現金流、負債比為什麼這樣變?只講事實、每個數字附來源與期間,不要給買賣建議。(完整數字表已複製到剪貼簿,可貼上)`;
+    const r = this._askAi(short, null, t);
+    if (r && r.copied) this.toast('📋 完整數字表已複製,開啟後可貼上');
+  },
   async _loadFinSlim(sym) {
     const d = await this.fetchJson(`data/fin/${sym}.json`, 6000);
     return (d && Array.isArray(d.q)) ? d : null;
