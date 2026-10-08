@@ -33,7 +33,7 @@ on:
         required: false
         default: '300'
       universe:
-        description: '母體:auto(top100 補完才換 lead)/ top100 / lead(領頭羊池子裡 top100 沒收到的 → kbar5_lead 分支)'
+        description: '母體:auto(top100 補完後依序做 lu → lead)/ top100 / lead(領頭羊池子 → kbar5_lead)/ lu(漲停隔天 → kbar5_lu)'
         required: false
         default: 'auto'
       chain:
@@ -73,9 +73,9 @@ jobs:
         run: pip install "shioaji<1.7"   # 📌 同 kbar5 / live_snapshot:1.7 移除 login(fetch_contract=)
 
       # ⚠️ 用 git archive | tar(⛔ 不用 git checkout —— 會把整批 stage 進 index 弄髒工作區,V49.4)
-      - name: 📂 還原 klines_deep(算母體用)與 kbar5_deep / kbar5_lead(接續用)
+      - name: 📂 還原 klines_deep(算母體用)與 kbar5_deep / kbar5_lead / kbar5_lu / kbar5(接續與跳過已有的)
         run: |
-          for b in klines_deep kbar5_deep kbar5_lead; do
+          for b in klines_deep kbar5_deep kbar5_lead kbar5_lu kbar5; do
             git fetch origin "$b" --depth=1 2>/dev/null || echo "ℹ️ $b 分支還不存在"
             mkdir -p "$b"
             if git rev-parse --verify -q "origin/$b" >/dev/null; then
@@ -83,9 +83,12 @@ jobs:
             fi
             echo "📂 $b:$(ls $b/*.json.gz 2>/dev/null | wc -l) 檔"
           done
+          # V78.6.6 lu 模式要最新的日 K(klines_deep 只到最後一次回算)→ 只取 data 分支的 data/ 那一層
+          git fetch origin data --depth=1 2>/dev/null && git archive origin/data data | tar -x -C . 2>/dev/null || echo "ℹ️ data 分支拿不到 → lu 只用 klines_deep"
+          echo "📂 data:$(ls data/*.json 2>/dev/null | wc -l) 檔"
           N=$(ls klines_deep/*.json.gz 2>/dev/null | wc -l)
           [ "$N" -ge 500 ] || { echo "❌ klines_deep 只有 $N 檔(<500)→ 算不出母體,⛔ 不可拿半份湊"; exit 1; }
-          for b in kbar5_deep kbar5_lead; do
+          for b in kbar5_deep kbar5_lead kbar5_lu; do
             du -sb "$b" 2>/dev/null | cut -f1 > "/tmp/$b.old_bytes" || echo 0 > "/tmp/$b.old_bytes"
           done
 
@@ -104,16 +107,16 @@ jobs:
           python3 kbar5_backfill.py --selftest
           python3 kbar5_backfill.py
 
-      # V78.4.6 兩個分支各推各的(kbar5_lead = 領頭羊池子裡 top100 沒收到的);沒變動的那個不推
-      - name: 🚀 推上 kbar5_deep / kbar5_lead 分支
+      # V78.4.6 各推各的(kbar5_lead = 領頭羊池子裡 top100 沒收到的;V78.6.6 kbar5_lu = 漲停隔天);沒變動的不推
+      - name: 🚀 推上 kbar5_deep / kbar5_lead / kbar5_lu 分支
         run: |
           set -e
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           HERE=$(git rev-parse HEAD)
           # ⚠️ 先把兩份都複製出去(切 orphan 時 git clean 會把另一份也清掉)
-          for x in kbar5_deep kbar5_lead; do rm -rf "/tmp/${x}_out"; [ -d "$x" ] && cp -r "$x" "/tmp/${x}_out"; done
-          for b in kbar5_deep kbar5_lead; do
+          for x in kbar5_deep kbar5_lead kbar5_lu; do rm -rf "/tmp/${x}_out"; [ -d "$x" ] && cp -r "$x" "/tmp/${x}_out"; done
+          for b in kbar5_deep kbar5_lead kbar5_lu; do
             [ -d "/tmp/${b}_out" ] || { echo "ℹ️ $b 沒有任何產物 → 不推"; continue; }
             NEW=$(du -sb "/tmp/${b}_out" | cut -f1); OLD=$(cat "/tmp/$b.old_bytes" 2>/dev/null || echo 0)
             # 🚧 orphan force-push 會整個取代 → 新的不可比舊的小(⛔ 不可用半份蓋掉)

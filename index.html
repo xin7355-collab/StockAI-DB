@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V78.6.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V78.6.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -898,7 +898,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.6.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V78.6.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8718,10 +8718,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V78.6.5',
+    _APP_VERSION: 'V78.6.6',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V78.6.6', d: ['🧹 內部更新(畫面沒有變動)'] },
         { v: 'V78.6.5', d: ['🧹 內部更新(畫面沒有變動)'] },
         { v: 'V78.6.4', d: ['🧹 內部更新(畫面沒有變動)'] },
         { v: 'V78.6.3', d: ['🔓 決策台「👑 領頭羊短線輪動」標題連點 5 次 → 多列「今天最新前 10 名」(再點 5 次收起;不是今天要買的,換倉日才照名次買)','📅 個股頁頂端:收盤後日期寫成前一天(價是今天的)→ 修好','🏪 上櫃股三大法人 10/01 起抓不到(全部變 0)→ 改抓櫃買新網站,抓不到會寫原因'] },
@@ -8865,7 +8866,6 @@ ${list}
         { v: 'V77.8.8', d: ['👑 <b>「領頭羊短線輪動」做進決策台了</b>(決策台最下面,第二套;⛔ 沒有換掉原本的預設):近 20 日平均成交額前 100 大裡,收盤站上 20 日線、20 日線又在 60 日線之上的,照近 10 日漲幅排前 10 名;前 5 名明天開盤買、你手上的掉出前 10 名就賣', '⏱️ 按「開始」把今天當第 1 天,之後每 10 個交易日才換一次倉(其他日子畫面會寫「今天不動」);大盤嚴格空頭時名單照列但不買', '⚠️ 採礦要補兩個欄位(10 日漲幅、20 日平均成交額),下一輪全市場掃描跑完才會有名單,在那之前畫面會寫「今天算不出名單」;自動下單⛔ 沒有接這一套,你看過名單再說'] },
         { v: 'V77.8.7', d: ['🌙 <b>自創「當沖 / 隔日沖」變種測完</b>(實測總表 ✅ 有用,排名很後面):拿領頭羊池子(成交額前 100)壓到一天、一夜 —— <b>當沖 5 種全部賠</b>(池子本身早上買收盤賣就 −0.46%)', '🌙 隔日沖唯一過關:<b>近 10 日最強的 20 檔裡,今天跌超過 2% 的,尾盤買、明天開盤賣 +0.14%/趟</b>(勝率 55%、5/6 年、9 格門檻全正);但抱到明天收盤就變賠', '⚠️ 錢很小:每天最多做 5 檔,5 年只有 +22%,同期 0050 +225% → 只當「已經想留倉」時的參考,⛔ 不是拿來賺錢的'] },
         { v: 'V77.8.6', d: ['👑 <b>領頭羊短線輪動第二輪:找「更穩、更高勝率」的版本</b>(實測總表同一條更新)—— 測了 14 種變體,<b>沒有又穩又賺更多的</b>,只有「報酬換回撤」', '🐢 <b>最穩的一個:永遠一半放 0050</b>:16 年 2,345% vs 0050 1,097%(17 條起點全贏、最差那條也多 643pp)、中途最多賠 42%(原版 61%)、最差一年只輸 0050 46pp(原版 79pp)', '⛔ <b>停利是陷阱</b>:賺 5% 就跑,勝率 50% → 63%,但賺的錢變成跟 0050 一樣(16 年還輸);跌破 20 日線賣、風險調整、分散 10 檔也都沒有比較好'] },
-        { v: 'V77.8.5', d: ['👑 <b>自創「領頭羊短線輪動」回測完成</b>(實測總表 → ✅ 有用):成交額前 100 大裡挑近 10 日漲最多的 5 檔、每 10 天換一次、掉出前 10 名就賣、閒錢停 0050、大盤空頭不買', '📊 AI 時代 760% vs 0050 含息 375%(17 條贏 15);2011~2026 3,176% vs 1,097%(17/17);同一個池子隨機挑只有 361% / 79% → 賺的是排名本身', '⚠️ 代價:中途最多賠 50~61%(0050 約 30%)、16 年裡有 7 年輸 0050、交易頻繁;⛔ 還沒做進 App,也⛔ 沒有換掉決策台'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
