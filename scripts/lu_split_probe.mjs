@@ -179,7 +179,7 @@ if (process.argv[1] && process.argv[1].endsWith('lu_split_probe.mjs')) {
     const ctx = loadCtx(process.env.DATA_DIR, process.env.DIV);
     const mkt = {}; if (process.env.NAMES) { const j = JSON.parse(fs.readFileSync(process.env.NAMES, 'utf8')); for (const [s, v] of Object.entries(j.names || {})) if (Array.isArray(v) && v[2]) mkt[s] = v[2]; }
     const ind = process.env.IND_MAP ? JSON.parse(fs.readFileSync(process.env.IND_MAP, 'utf8')) : {};
-    let k5 = null; if (process.env.KBAR5_DIR) { const { loadKbar5 } = await import('./dt_kbar5_probe.mjs'); const L = loadKbar5(process.env.KBAR5_DIR); k5 = L.days; console.log(`kbar5 ${Object.keys(k5).length} 天(${L.bias || '當日量前 N / 每月初前 100'})`); }
+    let k5 = null; if (process.env.KBAR5_DIR) { const { loadKbar5 } = await import('./dt_kbar5_probe.mjs'); const L = loadKbar5(process.env.KBAR5_DIR, { mergeSyms: true }); /* V78.6.6 kbar5_lu(漲停隔天)只補 deep 沒有的檔 → 一定要按檔合併 */ k5 = L.days; console.log(`kbar5 ${Object.keys(k5).length} 天(${L.bias || '當日量前 N / 每月初前 100'})`); }
     console.log(`${ctx.stocks.length} 檔 ・市場別 ${Object.keys(mkt).length} ・產業 ${Object.keys(ind).length}`);
     const FROM = process.env.FROM || '';
     const out = scan(ctx, { mkt, ind, k5, FROM });
