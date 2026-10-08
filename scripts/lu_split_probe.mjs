@@ -48,7 +48,10 @@ export function scan(ctx, opt = {}) {
     const allMean = (i, h) => { const key = i * 100 + h; if (dayAll.has(key)) return dayAll.get(key); const a = [];
         for (const S of stocks) { const r = fwd(S, i, h, cal); if (typeof r === 'number') a.push(r); }
         const v = a.length >= 30 ? mean(a) : NaN; dayAll.set(key, v); return v; };
-    const bench = (i, h) => (etf.tr[i + h] > 0 && etf.tr[i] > 0 ? (etf.tr[i + h] / etf.tr[i] - 1) * 100 : NaN);
+    // 🚨 V78.6.8 進場是「隔天開盤」→ 0050 也要從隔天開盤算(開盤→當天收盤 × 之後的含息),⛔ 不可用收盤→收盤(大盤跳空那天會把跳空當成超額,陷阱 #47 同型)
+    const bench = (i, h) => { if (!(etf.tr[i + h] > 0 && etf.tr[i + 1] > 0)) return NaN;
+        if (etf.oc && Number.isFinite(etf.oc[i + 1])) return ((1 + etf.oc[i + 1] / 100) * (etf.tr[i + h] / etf.tr[i + 1]) - 1) * 100;
+        return etf.tr[i] > 0 ? (etf.tr[i + h] / etf.tr[i] - 1) * 100 : NaN; };
     // 🎯 開低那桶的真正對照:同一天**同樣開低幅度**、但昨天沒鎖漲停的全部股票(開盤買→收盤賣)—— 回答「是漲停股才反彈,還是任何開低的股票都會反彈」
     const gBin = g => (g < -5 ? 3 : g < -3 ? 2 : g < -1 ? 1 : g < -0.5 ? 0 : -1);
     const dayGD = new Map();
@@ -76,12 +79,14 @@ export function scan(ctx, opt = {}) {
             const g = ind[S.sym]; if (g) { const c = grp[g]; tags.push('族群同日:' + (c >= 3 ? '≥3家' : `${c}家`)); }
             const gap = S.O[i + 1] > 0 ? 100 * (S.O[i + 1] / S.C[i] - 1) : NaN;
             if (Number.isFinite(gap)) tags.push('隔天開盤:' + (gap < -1 ? '開低<−1%' : gap <= 1 ? '開平±1%' : gap < 5 ? '開高1~5%' : '開高≥5%'));
-            if (k5) { const D = k5[cal[i]]; const bars = D && D.k && D.k[S.sym]; if (bars) { const lm = lockMin(bars, S.C[i]);
+            const kL = opt.k5lock || k5;   // 🚨 V78.6.8 鎖住時間只用「當日量前 N / 每月前 100」那幾份;kbar5_lu 只收漲停**隔天** → 拿它判鎖住那天只會剩連續漲停,選樣偏誤
+            if (kL) { const D = kL[cal[i]]; const bars = D && D.k && D.k[S.sym]; if (bars) { const lm = lockMin(bars, S.C[i]);
                 if (lm != null) tags.push('鎖住時間:' + (lm === 'never' ? '收盤才到' : lm <= 545 ? '09:05前' : lm <= 600 ? '10:00前' : lm <= 720 ? '12:00前' : '12:00後')); } }
             // ⏱️ 隔天的 5 分 K(只有熱門股有):「開盤價」買不買得到?→ 同一批事件改用 09:05 那根的開盤價進場,當天收盤賣(扣 0050 同期與成本)
             let r905 = null, r900 = null;
             if (k5) { const D1 = k5[cal[i + 1]]; const b1 = D1 && D1.k && D1.k[S.sym];
-                if (b1 && b1.length > 2 && b1[0][0] === 540 && b1[1][0] === 545 && b1[1][1] > 0 && S.C[i + 1] > 0 && Number.isFinite(bench(i, 1))) {
+                if (b1 && b1.length > 2 && b1[0][0] === 540 && b1[1][0] === 545 && b1[1][1] > 0 && S.C[i + 1] > 0 && Number.isFinite(bench(i, 1))
+                    && (Math.abs(b1[0][1] / S.O[i + 1] - 1) <= 0.02 || ((out.cnt.k5scale = (out.cnt.k5scale || 0) + 1), false))) {   // 🚧 5 分 K 第一根開盤 ≠ 日 K 開盤 ±2% → 尺標不同(還原價 / 分割),⛔ 不混
                     r905 = (S.C[i + 1] / b1[1][1] - 1) * 100 - bench(i, 1) - COST;            // 09:05 那根的第一筆成交(= 開盤後 5 分鐘)
                     r900 = (S.C[i + 1] / S.O[i + 1] - 1) * 100 - bench(i, 1) - COST; } }    // 同一批事件用日 K 開盤價(對照)
             if (m === 'twse') { if (Number.isFinite(vr) && vr <= 0.6) tags.push('上市×量縮≤0.6'); if (st === 1) tags.push('上市×第1根'); }
@@ -119,7 +124,9 @@ export function summarize(out) {
             const gd = arr.filter(o => Number.isFinite(o.incGD)).map(o => o.incGD);
             const gdT = gd.length > 30 ? (() => { const m = mean(gd), sd = Math.sqrt(mean(gd.map(a => (a - m) ** 2))); return { n: gd.length, inc: +m.toFixed(2), t: +(m / (sd / Math.sqrt(gd.length) || 1)).toFixed(1) }; })() : null;
             res[k][h] = { n: arr.length, ex: +mean(arr.map(o => o.ex)).toFixed(2), win: +(100 * arr.filter(o => o.raw > 0).length / arr.length).toFixed(1), nlu: +(100 * mean(arr.map(o => o.nlu))).toFixed(1), inc: g.inc, t: g.t, abs: g.abs, pass: g.pass, A: g.A, B: g.B, years: g.years,
-                gd: gdT, k5: k9.length ? { n: k9.length, open: +mean(k9.map(o => o.r900)).toFixed(2), at905: +mean(k9.map(o => o.r905)).toFixed(2), win905: +(100 * k9.filter(o => o.r905 > 0).length / k9.length).toFixed(1) } : null }; } }
+                gd: gdT, k5: k9.length ? { n: k9.length, open: +mean(k9.map(o => o.r900)).toFixed(2), at905: +mean(k9.map(o => o.r905)).toFixed(2), win905: +(100 * k9.filter(o => o.r905 > 0).length / k9.length).toFixed(1),
+                    med905: +(k9.map(o => o.r905).sort((a, b) => a - b)[k9.length >> 1]).toFixed(2), medOpen: +(k9.map(o => o.r900).sort((a, b) => a - b)[k9.length >> 1]).toFixed(2),
+                    yr905: (() => { const Y = {}; for (const o of k9) { const y = o.d.slice(0, 4); (Y[y] = Y[y] || []).push(o.r905); } return Object.fromEntries(Object.entries(Y).sort().map(([y, a]) => [y, [a.length, +mean(a).toFixed(2)]])); })() } : null }; } }
     res._lim = { n: lim.length, total: out.cnt.ev, pct: out.cnt.ev ? +(100 * lim.length / out.cnt.ev).toFixed(1) : NaN };
     return res;
 }
@@ -169,6 +176,20 @@ function selftest() {
     const o5 = scan({ cal, stocks: [P, ...others], etf: ctx.etf }, { mkt: { 1006: 'twse' } });
     t(((o5.ev['位階:≥75'] || {})[1] || []).some(e => e.s === '1006'), '⑪ 一路漲上來的在一年位階 ≥75 那桶');
     const s = summarize(o); t(s._lim.n === 1 && s['全部'] && s['全部'][1].n >= 2, '⑫ summarize 帶買不到比例與各桶六關');
+    // ⑬ 5 分 K 尺標守門:第一根開盤 = 日 K 開盤 → 收 r905;差 ×10(還原價 / 分割)→ 剔除並計數
+    const Q = mk('1008', S => { lockAt(S, 300); });
+    const o6 = Q.O[301], k5ok = { [cal[301]]: { k: { 1008: [[540, o6, o6, o6, o6, 1], [545, o6, o6, o6, o6, 1], [550, o6, o6, o6, o6, 1]] } } };
+    const k5bad = { [cal[301]]: { k: { 1008: [[540, o6 * 10, o6 * 10, o6 * 10, o6 * 10, 1], [545, o6 * 10, o6 * 10, o6 * 10, o6 * 10, 1], [550, o6 * 10, o6 * 10, o6 * 10, o6 * 10, 1]] } } };
+    const q1 = scan({ cal, stocks: [Q, ...others], etf: ctx.etf }, { mkt: { 1008: 'twse' }, k5: k5ok }), q2 = scan({ cal, stocks: [Q, ...others], etf: ctx.etf }, { mkt: { 1008: 'twse' }, k5: k5bad });
+    const f = (oo) => ((oo.ev['全部'] || {})[1] || []).find(e => e.s === '1008');
+    t(f(q1) && Number.isFinite(f(q1).r905) && f(q2) && !Number.isFinite(f(q2).r905) && q2.cnt.k5scale === 1, '⑬ 5 分 K 第一根開盤跟日 K 開盤差 >2% → ⛔ 不算 09:05(尺標不同),並計數');
+    // ⑭ 基準 = 0050 隔天開盤→收盤:0050 隔夜跳空 −3% 但開盤後沒動 → 超額要跟「大盤沒動」一樣(收盤→收盤會多算 +3)
+    const trGap = new Float64Array(n).fill(1); for (let j = 301; j < n; j++) trGap[j] = 0.97;
+    const oc0 = new Float64Array(n).fill(0);
+    const R1 = mk('1009', S => { lockAt(S, 300); });
+    const eA = ((scan({ cal, stocks: [R1, ...others], etf: { tr: new Float64Array(n).fill(1), oc: oc0 } }, { mkt: { 1009: 'twse' } }).ev['全部'] || {})[1] || []).find(e => e.s === '1009');
+    const eB = ((scan({ cal, stocks: [R1, ...others], etf: { tr: trGap, oc: oc0 } }, { mkt: { 1009: 'twse' } }).ev['全部'] || {})[1] || []).find(e => e.s === '1009');
+    t(eA && eB && Math.abs(eA.ex - eB.ex) < 1e-9, '⑭ 0050 隔夜跳空但開盤後沒動 → 超額不變(基準用開盤→收盤,⛔ 不用收盤→收盤)');
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }
@@ -177,12 +198,17 @@ if (process.argv[1] && process.argv[1].endsWith('lu_split_probe.mjs')) {
     if (process.argv.includes('--selftest')) process.exit(selftest());
     const { loadCtx } = await import('./leader_probe.mjs');
     const ctx = loadCtx(process.env.DATA_DIR, process.env.DIV);
+    { const bp = process.env.DATA_DIR + '/_bench0050.json';   // 0050 開盤→收盤(對齊 cal);拿不到 → 退回收盤→收盤並印出來
+      const m = new Map(); if (fs.existsSync(bp)) for (const r of JSON.parse(fs.readFileSync(bp, 'utf8'))) if (+r.open > 0 && +r.close > 0) m.set(String(r.date).replace(/\//g, '-').slice(0, 10), (+r.close / +r.open - 1) * 100);
+      ctx.etf.oc = Float64Array.from(ctx.cal, d => m.has(d) ? m.get(d) : NaN);
+      console.log(`0050 開盤→收盤 ${ctx.etf.oc.filter(Number.isFinite).length}/${ctx.cal.length} 天${m.size ? '' : '(⚠️ 沒有 _bench0050.json → 基準退回收盤→收盤)'}`); }
     const mkt = {}; if (process.env.NAMES) { const j = JSON.parse(fs.readFileSync(process.env.NAMES, 'utf8')); for (const [s, v] of Object.entries(j.names || {})) if (Array.isArray(v) && v[2]) mkt[s] = v[2]; }
     const ind = process.env.IND_MAP ? JSON.parse(fs.readFileSync(process.env.IND_MAP, 'utf8')) : {};
+    let k5lock = null; if (process.env.KBAR5_LOCK_DIR) { const { loadKbar5 } = await import('./dt_kbar5_probe.mjs'); k5lock = loadKbar5(process.env.KBAR5_LOCK_DIR, { mergeSyms: true }).days; console.log(`鎖住時間只用 ${Object.keys(k5lock).length} 天(KBAR5_LOCK_DIR)`); }
     let k5 = null; if (process.env.KBAR5_DIR) { const { loadKbar5 } = await import('./dt_kbar5_probe.mjs'); const L = loadKbar5(process.env.KBAR5_DIR, { mergeSyms: true }); /* V78.6.6 kbar5_lu(漲停隔天)只補 deep 沒有的檔 → 一定要按檔合併 */ k5 = L.days; console.log(`kbar5 ${Object.keys(k5).length} 天(${L.bias || '當日量前 N / 每月初前 100'})`); }
     console.log(`${ctx.stocks.length} 檔 ・市場別 ${Object.keys(mkt).length} ・產業 ${Object.keys(ind).length}`);
     const FROM = process.env.FROM || '';
-    const out = scan(ctx, { mkt, ind, k5, FROM });
+    const out = scan(ctx, { mkt, ind, k5, k5lock, FROM });
     if (process.env.PORT_KEYS) {
         const s0 = ctx.cal.findIndex(d => d >= (FROM || '2011-01-03')); const med = a => [...a].sort((x, y) => x - y)[a.length >> 1];
         const endI = process.env.END ? ctx.cal.findLastIndex(d => d <= process.env.END) : ctx.cal.length - 1;
@@ -197,13 +223,13 @@ if (process.argv[1] && process.argv[1].endsWith('lu_split_probe.mjs')) {
     }
     const res = summarize(out);
     if (out.cnt.ev < 5000) { console.log('❌ 事件 <5,000,資料不對'); process.exit(1); }
-    console.log(`事件 ${out.cnt.ev} ・隔天開盤就在漲停買不到 ${res._lim.n}(${res._lim.pct}%)`);
+    console.log(`事件 ${out.cnt.ev} ・隔天開盤就在漲停買不到 ${res._lim.n}(${res._lim.pct}%)・5 分K 尺標對不上剔除 ${out.cnt.k5scale || 0}`);
     const ORDER = ['全部', '市場:', '量:', '連續:', '位階:', '位階b:', '族群同日:', '隔天開盤:', '鎖住時間:', '上市×', '量縮≤0.6×', '開低深:', '開低×'];
     const keys = Object.keys(res).filter(k => k !== '_lim').sort((a, b) => ORDER.findIndex(p => a.startsWith(p)) - ORDER.findIndex(p => b.startsWith(p)) || a.localeCompare(b, 'zh-Hant'));
     for (const k of keys) { const r = res[k];
         const h = HS.map(x => r[x] ? `h${x} 超額${r[x].ex} 贏${r[x].win}% 增量${r[x].inc} t${r[x].t} 扣本${r[x].abs} 關${r[x].pass}` : '').join(' | ');
         const gds = r[1] && r[1].gd ? ` ・🎯 vs 同天同樣開低但沒漲停的股票 增量 ${r[1].gd.inc}%(t ${r[1].gd.t}, n ${r[1].gd.n})` : '';
-        const k5s = r[1] && r[1].k5 ? ` ・⏱️ 5分K子集 n=${r[1].k5.n} 開盤價買→收盤 ${r[1].k5.open}% / 09:05 買→收盤 ${r[1].k5.at905}%(贏 ${r[1].k5.win905}%)` : '';
+        const k5s = r[1] && r[1].k5 ? ` ・⏱️ 5分K子集 n=${r[1].k5.n} 開盤價買→收盤 ${r[1].k5.open}% / 09:05 買→收盤 ${r[1].k5.at905}%(中位 ${r[1].k5.med905}% ・贏 ${r[1].k5.win905}% ・逐年 ${Object.entries(r[1].k5.yr905).map(([y, v]) => y.slice(2) + ':' + v[1] + '/' + v[0]).join(' ')})` : '';
         console.log(`${k.padEnd(18)} n=${String((r[1] || {}).n || 0).padStart(6)} 隔天又鎖 ${(r[1] || {}).nlu}% ${h}${gds}${k5s}`); }
     if (process.argv[2]) fs.writeFileSync(process.argv[2], JSON.stringify({ from: FROM || ctx.cal[0], to: ctx.cal.at(-1), res }));
 }
