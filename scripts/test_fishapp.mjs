@@ -73,18 +73,12 @@ const C = await pg.evaluate(async () => {
   PRO._fpv.Q = null; await PRO.fpvCast(); const stub = PRO._fpv.lastPicked.slice();
   PRO._fpvOne = saved; PRO._fpv.Q = null; localStorage.removeItem('fpvSea_v1');
   const t0 = performance.now(); PRO.fpvCast(); for (let k = 0; k < 100 && !PRO._fpv.G; k++) await new Promise(r => setTimeout(r, 50)); const real = PRO._fpv.lastPicked.slice();
-  // 📦 V78.6.0 海裡的魚 = 今天過趨勢的完整排名扣掉正在養的那一批(PRO._fpv.batch),取前 10
-  const batch = PRO._fpv.batch, bSyms = (batch && batch.syms) || [];
-  // 獨立重算「上一次換倉日」(⛔ 不呼叫 _leadClock):錨點起每 R 個加權交易日
-  const dd = PRO._twii.days.filter(d => d >= PRO._LEAD.anchor && d <= D.LD.date); const expReb = dd.filter((d, i) => i % PRO._LEAD.R === 0).pop() || null;
-  const fresh = Object.values(D.LD.all || {}).filter(r => !bSyms.includes(r.sym)).sort((a, b) => a.rank - b.rank).slice(0, 10);
-  const freshSyms = fresh.map(r => r.sym), freshRanks = fresh.map(r => r.rank);
-  const ten = PRO._fpvTen(D, PRO._castPick(D), batch).map(x => x.sym);
-  const tenNoBatch = PRO._fpvTen(D, PRO._castPick(D), null).map(x => x.sym);          // 讀不到那一批 → 退回今天前 10
-  const tenRebal = PRO._fpvTen(D, PRO._castPick(D), { date: D.LD.date, syms: lead10, today: true });   // 換倉日:那一批 = 今天前 10
-  // 🚫 不補魚:那一批以外只剩 3 條 → 只有 3 條(⛔ 不拿魚池後段補)
-  const saveL = D.LD; const keep3 = Object.fromEntries(Object.entries(saveL.all).filter(([k]) => bSyms.includes(k)).concat(fresh.slice(0, 3).map(r => [r.sym, r])));
-  D.LD = { ...saveL, all: keep3 }; const three = PRO._fpvTen(D, PRO._castPick(D), batch).length; D.LD = saveL;
+  // 🐟 V78.6.2 改回每天換:海裡的魚 = 今天排行前 10 條(⛔ 不扣決策台那一批)
+  const ten = PRO._fpvTen(D, PRO._castPick(D)).map(x => x.sym);
+  // 決定性對照:把「那一批」塞成今天前 10 → 名單一條都不可以變(⛔ 不可再扣)
+  PRO._fpvBatch = { date: D.LD.date, syms: lead10.slice(), today: true }; const tenInj = PRO._fpvTen(D, PRO._castPick(D), PRO._fpvBatch).map(x => x.sym); delete PRO._fpvBatch;
+  // 🚫 不補魚:排行只剩 3 條 → 只有 3 條(⛔ 不拿魚池後段補)
+  const saveL = D.LD; const r3 = saveL.ranked.slice(0, 3); D.LD = { ...saveL, ranked: r3, buy: saveL.buy.filter(x => r3.some(y => y.sym === x.sym)) }; const three = PRO._fpvTen(D, PRO._castPick(D)).length; D.LD = saveL;
   // 🎣 手動釣第 1 條:等咬鉤 → 按住收線(魚衝或張力高就放手)→ 破水 → 出卡
   const S = PRO._fpv, seen = [];
   for (let k = 0; k < 400 && S.G; k++) {
@@ -98,7 +92,7 @@ const C = await pg.evaluate(async () => {
   const ranks = [...document.querySelectorAll('#fpvCards .fpvcard')].map(e => [e.dataset.fpv, e.querySelector('.rk') ? e.querySelector('.rk').textContent : '']);
   const sea2 = JSON.parse(localStorage.getItem('fpvSea_v1') || '{}');
   const again = await PRO.fpvCast();
-  return { expect, isLead, lead: R0.lead === true, lead10, stub, batch, expReb, freshSyms, freshRanks, tenNoBatch, tenRebal: tenRebal.map(x => [x.sym, x.rank]), seaDate: document.getElementById('fpvSeaDate').innerText, real, calls, ms: performance.now() - t0, seq: S.Q ? S.Q.seq : [], seen, cards1, i1, sub1, sea1, sea2, netR,
+  return { expect, isLead, lead: R0.lead === true, lead10, stub, tenInj, seaDate: document.getElementById('fpvSeaDate').innerText, real, calls, ms: performance.now() - t0, seq: S.Q ? S.Q.seq : [], seen, cards1, i1, sub1, sea1, sea2, netR,
            cards: document.querySelectorAll('#fpvCards .fpvcard').length, rows: S.lastRows.slice(), ten, three, ranks, again, gAfter: !!S.G,
            hint: document.getElementById('fpvHint').innerText, netHidden: document.getElementById('fpvNet').classList.contains('hidden') };
 });
@@ -106,15 +100,12 @@ ok(C.lead && !C.isLead, 'ⓒ ⭐ App 模式沒有任何設定也一律 👑(主�
 ok(C.calls === 1 && JSON.stringify(C.stub) === JSON.stringify(C.expect) && JSON.stringify(C.real) === JSON.stringify(C.expect),
   'ⓒ2 ⭐ 名單 == _castPick;動畫 stub 掉前後名單一樣', JSON.stringify([C.stub, C.real, C.expect, C.calls]));
 const exSet = new Set(C.expect);
-ok(C.batch && Array.isArray(C.batch.syms) && C.batch.syms.length > 0 && C.batch.date === C.expReb, 'ⓛ0 🚧 空過守門:測資有讀到正在養的那一批(pick_history),而且是「上一次換倉日」那天(獨立重算)', JSON.stringify([C.batch, C.expReb]));
-ok(C.freshSyms.length > 0 && JSON.stringify(C.rows) === JSON.stringify(C.freshSyms) && JSON.stringify(C.ten) === JSON.stringify(C.freshSyms) && C.three === 3,
-  'ⓛ 📦 V78.6.0 海裡的魚 == 今天排名扣掉那一批的前 10 條(照名次)、⛔ 不補魚(只剩 3 條 → 3 條)', JSON.stringify([C.freshSyms, C.rows, C.three]));
-ok(C.rows.every(s => !C.batch.syms.includes(s)), 'ⓛ1 ⭐ 跟正在養的那一批(散戶救星決策台那張表)交集 = 0', JSON.stringify([C.rows, C.batch.syms]));
-ok(JSON.stringify(C.tenNoBatch) === JSON.stringify(C.lead10) && C.tenRebal.length > 0 && C.tenRebal.every(([s, r]) => !C.lead10.includes(s) && r > C.lead10.length),
-  'ⓛ1b 決定性對照:讀不到那一批 → 退回今天前 10;換倉日 → 只剩今天第 11 名以後', JSON.stringify([C.tenNoBatch, C.tenRebal]));
-ok(C.ranks.length === C.rows.length && C.ranks.every(([s, r]) => r.endsWith('#' + C.freshRanks[C.freshSyms.indexOf(s)]) && !/⭐/.test(r)),
-  'ⓛ2 每張卡的名次 = 今天的真名次、⛔ 沒有 ⭐(這些都不是今天會買的)', JSON.stringify([C.ranks, C.freshRanks]));
-ok(/新魚/.test(C.seaDate) && /不含 \d\d\/\d\d 換的那一批/.test(C.seaDate), 'ⓛ3 說明寫「新魚・不含 MM/DD 換的那一批」', C.seaDate);
+ok(C.lead10.length > 0 && JSON.stringify(C.rows) === JSON.stringify(C.lead10) && JSON.stringify(C.ten) === JSON.stringify(C.lead10) && C.three === 3,
+  'ⓛ 🐟 V78.6.2 海裡的魚 == 今天排行前 10 條(照名次)、⛔ 不補魚(排行只剩 3 條 → 3 條)', JSON.stringify([C.lead10, C.rows, C.three]));
+ok(JSON.stringify(C.tenInj) === JSON.stringify(C.lead10), 'ⓛ1 決定性對照:就算傳入「那一批」,名單也⛔ 不扣(每天換回今天前 10)', JSON.stringify([C.tenInj, C.lead10]));
+ok(C.ranks.length === C.rows.length && C.ranks.every(([s, r], i) => r.endsWith('#' + (i + 1)) && (/⭐/.test(r) === exSet.has(s))),
+  'ⓛ2 每張卡有名次 #1~#N(預設照名次排)、只有今天會買的那幾條掛 ⭐', JSON.stringify(C.ranks));
+ok(/\d\d\/\d\d 收盤的名單/.test(C.seaDate) && /每個交易日收盤後換/.test(C.seaDate) && !/新魚|那一批/.test(C.seaDate), 'ⓛ3 說明寫「MM/DD 收盤的名單・每個交易日收盤後換」⛔ 不再寫新魚/那一批', C.seaDate);
 const txt1 = await pg.evaluate(() => document.body.innerText);
 ok(!BAN.test(txt1), 'ⓑ2 拋竿之後(卡片 + 漁獲籃)也⛔ 沒有選股規則用語', (txt1.match(BAN) || [])[0]);
 
@@ -229,7 +220,7 @@ const T = await pg.evaluate(() => {
 });
 ok(T.hasBox && !/即時|今日/.test(T.pre) && /\d\d\/\d\d 收盤/.test(T.pre), 'ⓝ3 開盤前卡片 ⛔「今日 即時」,寫「MM/DD 收盤」', JSON.stringify(T));
 ok(/今日/.test(T.live) && /即時/.test(T.live), 'ⓝ4 盤中(快照 30 分鐘內)才寫「今日 即時」', JSON.stringify(T));
-ok(T.sea === null || /\d\d\/\d\d 收盤的(名單|新魚)/.test(T.sea) || T.sea === '', 'ⓝ5 海面標出這批是哪天收盤的名單(有填就要有日期)', JSON.stringify(T.sea));
+ok(T.sea === null || /\d\d\/\d\d 收盤的名單/.test(T.sea) || T.sea === '', 'ⓝ5 海面標出這批是哪天收盤的名單(有填就要有日期)', JSON.stringify(T.sea));
 
 // ── ⓕ reduced-motion ────────────────────────────────────
 const pg3 = await open('?app=fish', true);
