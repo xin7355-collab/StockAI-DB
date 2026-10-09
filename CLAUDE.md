@@ -467,13 +467,13 @@ futures_cache.json、macro_cache.json、margin_cache_stock.json
 
 ## 採礦機重點（miner.py）
 
-### ⭐ FinMind 是「付費版」（使用者多次明示，鐵律，別再當免費版看待）
-- **使用者的 `FINMIND_TOKENS`（GitHub Secrets，逗號分隔多把）是付費會員 Token**，額度約 **6000 req/hr/把**，**不是**匿名免費額度。
-- 🚨 **2026-09-23 使用者確認:目前只有 1 把付費,其餘是免費(register 層,600 req/hr/把)**。付費那把失效時 `miner.detect_finmind_paid()` 會自動降版:分點 + 10 個付費資料集**停止更新、舊檔保留**;⭐ **核心策略(🧬 選股 / 決策台 / 三條出場 / `auto_trade.py`)一行 FinMind 都不用**,只讀 TWSE/TPEX 日K。降版影響清單見 `docs/DECISIONS.md` V77.5.4。
-- 因此**分點（`TaiwanStockTradingDailyReport`）採礦端抓得到**（付費版沒有 402 付費牆）→ 全市場滾動採礦靠的就是這個付費額度。
-- **前端手機端**用的是使用者自己 localStorage 填的 key（可能也是付費），**跟採礦端的 GitHub Secrets Token 不同把、不同 IP，額度分開算**。
-- ⛔ 舊文件寫「FinMind 免費版限制 / 匿名額度 / 分點被付費牆擋(402)」是**早期免費版時代的紀錄**，現在**已付費**，那些限制**多數已不適用**（保留在下方「V35.x」只作歷史脈絡，別再拿來當「做不到」的理由）。
-- **要更全/更快** → 加更多 `FINMIND_TOKENS`（多把輪動額度倍增）或調高 `HOT_TURNOVER_TOP`。
+### 🗑️ FinMind 付費金鑰 2026-10-01 失效 → V79.0.0 起**沒有付費資料**(使用者決定整組移除)
+- `FINMIND_TOKENS` 現在只剩**免費層**(register,約 600 req/hr/把)。⛔ 別再寫「付費版 6000/hr」、⛔ 別再設計任何要付費資料集的功能。
+- **已移除(畫面 + 採礦)**:券商分點(含 `chips_deep` 累加、BSR 爬蟲、主力雷達、券商勝率榜、分點檔案)+ 10 個付費資料集(八大行庫 / 借券 / 集保分級 holders / 官方處置 / 產業鏈細項 / 當沖比 / 外資水位 / 鉅額 / 可轉債 / 權證)+ 官方融資維持率。決策紀錄見 `docs/DECISIONS.md` V79.0.0。
+- ⭐ **`data/chips/{sym}.json` 路徑照舊,但只放 `fundamentals`**(`miner.fetch_free_fundamentals`)—— X 光機 / 報告頁 / `top_picks` 讀它,⛔ 不可整個刪。
+- ⛔ `chips_deep` 分支**沒刪**(兩年分點歷史,探針還讀得到);只是不再寫入。
+- 核心策略(🧬 / 決策台 / 三條出場 / 👑 / `auto_trade.py`)本來就一行 FinMind 都不用,不受影響。
+- 想加回分點:要使用者重新買 Sponsor,⛔ 而且要先問 —— 那是採礦 + workflow + 畫面的大改。
 
 #### ⚠️ 2026-07-30 實測:目前 `FINMIND_TOKENS` 沒有一把能開台指 VIX(**帳號問題,不是程式問題**)
 V71.5.7 補上「每一把 token × 4 個候選資料集名稱」全輪動後,FinMind 回的原文是:
@@ -509,7 +509,7 @@ tok3/TaiwanOptionVix:400/Token is illegal.          ← 第 3 把:同第 1 把
 ### 資料來源與極限防禦
 1. **OHLCV 與法人**：直接抓取 TWSE/TPEX 免費 API，並具備 SQLite WAL 鎖死防護與 JSON 分散式合併。
 2. **盤中快照補丁**：若當天歷史 K 線尚未產出，會自動去證交所 MIS 抓取即時快照填補。
-3. **分點籌碼**：透過 **FinMind 付費版 Token**（使用者已付費，見下方鐵律）抓取，自動 Token 輪動防 429 封鎖。
+3. ~~分點籌碼~~:🗑️ V79.0.0 已移除(付費金鑰失效)。`data/chips/{sym}.json` 只剩每檔基本面。
 4. **外資期貨**：優先直連 **TAIFEX (期交所) 官方 CSV** 解析多空淨額，不再依賴容易斷線或缺漏的第三方 API。
 5. **美股大盤**：yfinance
 
@@ -520,7 +520,7 @@ tok3/TaiwanOptionVix:400/Token is illegal.          ← 第 3 把:同第 1 把
 - **採礦補挖機制**:每次 daily_miner 跑都全市場重抓,沒有「N 次後永久放棄」黑名單。某支股票連續 10 天 FinMind 拉失敗,下次跑還是會試。週末無 cron(只跑週一~五 16:30),所以週六/日資料缺只能等週一或手動觸發 Actions UI 重跑
 
 ### 監控清單
-`CHIP_WATCHLIST` = 約50檔上市上櫃熱門股 + ETF，分點籌碼只追蹤這些。
+`CHIP_WATCHLIST` = 約50檔上市上櫃熱門股 + ETF(V79.0.0 起只用來決定「熱門股先補基本面」)。
 
 ---
 
@@ -694,7 +694,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
    + **`node scripts/test_noframe.mjs`**(🧱 全站無框守門 — V77.0.0 新增:量 **computed style** 證明「一整段的外框真的拉平了」+「⚠️ 警示左色條 / 按鈕 / 輸入框 / `.keepbox` 格子一個都沒被拉平」,含 `pro.html` 的 `.panel`。⛔ 不釘 class 字串)
    + **`node scripts/test_fishapp.mjs`**(🎣 V77.9.7 股海釣手 = `pro.html?app=fish`:作戰室分頁/池子/規則段藏起來、⛔ 整頁不可有選股規則用語、⭐ 名單 == `_castPick`(一般模式同一支,動畫 stub 前後相同)、台股配色、reduced-motion、安全閥、manifest/圖示;V77.9.9 一次 10 條前面 == `_castPick`、四魚種外形不同、釣起價 = 即時價、帶回家養;V78.0.0 一按只釣一條(cast→wait→bite→fight→breach→show)、斷線同一條留佇列最前、魚色 = 一年高低位置且⛔ 不受今天漲跌影響、大小 = 市值、震動開關、公司簡介無選股用語)
    + **`python3 scripts/test_futures_night_gate.py`**(🌙 V78.1.4 個股期貨夜盤採礦:平日台北 08:45~15:00 ⛔ 不登入、不寫(排程被延到白天時會把日盤寫成夜盤);注入「拿掉守門」必紅)
-   + **`node scripts/test_chipstale.mjs`**(💳 V78.7.0 分點停住要說原因:`broker_chip:false` + 落後 ≥2 交易日才講、有抓到的⛔ 不冤枉(決定性對照)、切股殘留不講、籌碼卡與明日劇本讀同一支 `_chipStaleWhy`)
+   + **`node scripts/test_nobroker.mjs`**(🗑️ V79.0.0 券商分點 + 付費資料集移除:付費檔⛔ 不可再 fetch、刪掉的 id / 函式⛔ 不可復活、籌碼頁三大法人 / 融資券 / 集保沒刪過頭、報告頁本益比讀 chips fundamentals 的決定性對照)+ **`python3 scripts/test_free_fund.py`**(`fetch_free_fundamentals` 用假網路跑:chips 檔只剩 fundamentals、舊分點欄位被洗掉、冷門股零 API)
    + **`node scripts/test_profin.mjs`**(📑 V78.6.9 產業作戰室財報分頁:每格 == `data/fin` JSON、季營收年增跟 `_finTrend` 同一條、每欄季別 + 公布期限 + 來源、「—」附原因⛔ 不補 0、⛔ 評分 / 買賣字、390px;3 種注入全紅)
    + **`node scripts/test_lugap.mjs`**(🟥 V78.6.7 漲停隔天開低提醒:庫存開平開低 / 自選(V78.6.8)開低 ≥5% 或量縮鎖(量 ≤ 前 20 天六成,⛔ 基準不含鎖那天)開低 ≥1%,且第 1 根 ・09:00~10:30 ・一檔一天一次 ・👑 持股⛔ 不套 ・決定性對照(門檻改 −7 / 量縮改 0.4)・隔日沖盤點⛔「開低別接刀」)
    + **`node scripts/test_leadtiming.mjs`**(⏱️ V78.4.4 👑 換倉那天幾點買賣:`_leadWhen` 全 App 唯一一份 ・設定 leadTiming=open 決定性對照(⛔ 不再出現 13:25)・App 預設 == `auto_trade.py LEADER_WINDOW=split` ・Telegram 讀同一個設定 ・`_STRAT_CHANGES` 換回鈕)+ `python3 scripts/test_auto_leader.py` ⑯a~⑯g(split:開盤跌 ≥3% 例外、13:25 才買、過 10:00 尾盤補賣、隔天不買舊名單)
@@ -1149,7 +1149,7 @@ CLAUDE.md 自己早就寫了「巡邏 grep 只能抓你想得到的說法 → **
 | **顯示「距出場線多遠 / 今天會不會碰到 / 智慧單觸發價」** | ⛔ 一律走 `app._exitDistance(data, sym)`(V77.4.9,全 App 唯一一份;決策台 / 總覽主卡 / 價格位置圖 / 報告 §11 / 到價監控 / 跑馬燈共用)。⭐ **三條都算**(使用者選的,跟 `portfolio_backtest` 與 `auto_trade.py` 同一把尺、三條先到先賣):① 硬停損 = `_unifiedExitPlan().stopFinal` ② 你設定的線 = `_exitPrimary()` ③ 抱滿 `_maxHold()` 個交易日(K 線根數;V77.6.5 起跟著出場規則走:唐奇安 40 日 = 40 天、其他 = 20 天,`_MAX_HOLD_BY_RULE` 三份實作 index/pro/auto_trade 由 `test_beargate` 跨檔比對)。⭐ 「今天會不會碰到」= 距最近那條 ÷ **今天的** ATR14(`_atrTR14(data, n)`,⛔ 不是 `_exitLines.atr` —— 那是進場日的);門檻讀 `_EXIT_DIST`(≤1 🚨 / ≤2 ⚠️)。⛔ 觸發價一律 `_floorTick`。⛔ 算不出的那條寫進 `missing` 並印原因(陷阱 #22)。🚨 **⛔ 不可再寫寫死的「兩條一致」宣稱** —— V77.4.9 使用者截圖:主卡「守住 511」(唐奇安)vs 價格位置圖「停損 533」(硬停損),文案卻寫它們一致。⚠️ 掃**手上每一檔**時 `ind` 傳 `{}`(`this.indicators` 只對齊當前個股,陷阱 #19)。測試 `scripts/test_exitdist.mjs` |
 | **新增任何「停損價 / 觸發價 / 掛單價」** | ⛔ 一律對到**台股跳動單位**(V76.2.9):停損價走 `app._floorTick(p)`(**無條件捨去**)、觸發價走 `Math.ceil`。⭐ 同一個原則:**買要真的漲過、賣要真的跌破**,⛔ 不在條件還沒成立時就動作 —— 四捨五入(`_roundTick`)會把停損價修到比 −5% **還高** = 提早把使用者洗出去。🚨 實測(V76.2.9):`playbook_edge.json` 300 檔裡 **257 檔(85.7%)的停損價對不到跳動單位**,那種價格**掛不出去**,而 `auto_trade.py` 正是拿它掛**真的**停損單;而同一份檔案的**觸發價 300/300 全對** —— 只差 11 行外的停損沒接上(陷阱 #37)。⚠️ 階梯有**三份**(`index.html._tickOf` / `pro.html._tickOf` / `playbook_scan.mjs` 的 `tickOf`)—— 三個檔沒辦法互相 import,靠 `scripts/test_ticksize.mjs` 跨檔比對擋住「只改一邊」。⚠️ **回測端(`portfolio_backtest.mjs`)刻意還沒對**(差半檔、中位 0.088%)→ 實際下單會比回測略差,已寫在畫面免責裡;要改就得重跑 49 個月回測並更新 `_DECK_TRACK49`。測試 `scripts/test_ticksize.mjs` |
 | **報告頁 §10 籌碼總表要加一列 / 改狀態** | ⛔ 狀態一律走 `app._chipVerdict(row)` 讀 `_CHIP_VERDICT`(V77.3.4);文案裡的數字用 `{key.field}` 模板從 `_CHIP_EDGE` / `_FSTREAK_EDGE` 帶入,⛔ 不寫死(探針重跑只改常數)。四種標籤只有 ✅ 實測有效 / △ 證據偏弱 / ❌ 實測無效 / ○ 只描述,⛔ 不可出現看多/看空/⚠️(這張表講「能不能預測」不是方向)。⛔ 這張表**不新增指標**,每一列的數字仍由既有取數函式來。測試 `scripts/test_rpchip.mjs` |
-| **顯示或計分用到「券商/分點的成績」** | ⛔ 一律走 `app._brokerLeagueHtml()`(V76.2.8)—— 選股頁「🏅 券商」與券商頁「🏅 高手券商」**同一支**;`_godBrokerHtml()` 只剩一行轉呼叫。🚨 三件事⛔ 不可省:① **對照組** `broker_perf.base[榜]`(pooled 全部分點 =「隨便挑一家」)——⛔ 沒有基準時**不可退回 50%**,改顯「⏳ 待基準」;② **樣本** `_wrEnough`(n≥10)以下不進榜,**而且要寫出擋掉幾家**;③ **誠實話**:三支探針(`broker_habit`/`broker_ally`/`broker_ind`)實測「跟著分點做」沒有預測力 → 這是**成績記錄不是買進名單**。⚠️ 當沖榜(`dt`)是「**同日雙向成交**」的**估計**(min(買,賣)),⛔ 不是官方當沖;⛔ 它**不能**從 `periods` 的 `buy_top`/`sell_top` 撈(那是按淨額取前 15,純當沖淨額≈0 會被整批截掉)→ 走 `miner._dt_collect()`。🚨 **新增任何「要用買賣兩側」的統計前,先確認那個欄位在『還原 / 快取 / 壓縮』那條路上活得下來**(V76.3.6:`chips_deep` 與 `hist` 都只存淨額 → 當沖榜從上線到那一版**一筆都沒有**,而且全綠零訊息)。測試 `scripts/test_broker_league.py` / `.mjs` / **`scripts/test_broker_dt.py`** |
+| **顯示或計分用到「券商/分點」** | 🗑️ **V79.0.0 已整組移除**(FinMind 付費金鑰失效,使用者決定)。⛔ 不可再做任何讀分點 / `broker_*.json` / 付費資料集的功能 —— `test_nobroker.mjs` 會擋。研究結論(三支探針:跟著分點做沒有預測力)照留在 LAB。 |
 | **顯示或計分用到「這一族排第幾 / 族群強弱」** | ⛔ 一律走 `app._stockRegime(sym)` / `app._regimeStats()`(V76.0.0)—— K 棒戰法卡與報告頁**共用同一份**。🚨 `sector_rot.json` **只准拿來畫走勢與資金流**,⛔ 不可拿它再排一次名次:實測一注入「自己從 sector_rot 排」,同一檔當場變成「排第 **29**」vs 真值「排第 **27**」= 兩個「排第幾」打架。⚠️ 名次是**官方產業**的,而分群可能是**題材** → 顯示時名次一定要帶自己的族名(⛔ 不可只寫「這一族排第 N」)。⚠️ 那四條資金流(`flow.f/t/dl/mg`)是**描述用**,實測排不出有效順序。測試 `scripts/test_report.mjs` 🏭b |
 | **新增任何「每檔一份」的 localStorage 快取** | ⛔ 一律接上 `app._lruTrim(prefix, keep)`(V76.2.7;全 App 只有這一份)—— 實測 `brokerChips_v2_` **一檔 108 KB 且無上限**,看 45 檔就把 iOS 的 ~5 MB 配額吃光,使用者存自己的東西時就會跳「存不下來」。⭐ **使用者自己產的、不可重建**的資料(貼上的報告 `rpNote_`、AI 圖 `rpImg_`)一律放 **IndexedDB**,⛔ 不跟可重算的快取搶 localStorage;放進去就要在 `idb.prune()` 開白名單(它的規則是「ts 超過 7 天**或沒有 ts**就刪」)。⚠️ `idb.put` 回 true/false(V76.2.7 前成功回 `undefined`,害判斷式永遠當成失敗)。測試 `scripts/test_report.mjs` 💾a~💾e2 |
 | **改報告頁的卡片(新增/下架/搬家)** | ⛔ 下架一張卡之前先問「**它是不是某個東西的唯一產生者**」——`_rpActHtml` 那張可以刪,但它上面那兩行 `_ovDecide()` / `_regaugeStrip()` **一行都不能拿掉**(⚡ 快速判別表整張讀前者,總覽儀表列靠後者重畫;同 V76.1.2 `_overallGaugeHtml` 的教訓)。⭐ 各節卡片一律**照 § 由小到大**排(V76.2.5;使用者拿外部 AI 的 20 節報告逐節對照),`§0 資料日期`是附錄排最後。⛔ 搬數字到別頁時先查目的地**有沒有同一個數字**(基本頁 X 光機已有本益比/殖利率/股價淨值比/月營收 → 重點數字卡刻意不重複放,並在卡底指路)。測試 `scripts/test_report.mjs` ⑪a2/⑪a3/📄a2/📄c3 |
@@ -1768,16 +1768,7 @@ done
 - **REST 60/min/把**:庫存輪詢間隔 `_invPollMs()` = clamp(檔數/key×900ms, 2.5s, 12s),每把 key <1.2 req/s 遠低於 60/min;當沖加速 `_dtAccelMs()` = clamp(3000/key, 1s, 3s)。速度**隨金鑰數自動調**(分發給別人:1 把也穩、多把自動快),加 key 當場變快。
 - **WS 純加值層**:失敗/協定不符/盤後靜默關,REST 一定頂著,現價不會消失。
 
-### 🐛 籌碼分點「沒開過的股 App 當掉」(V68.9.2 修,無限迴圈)
-- **症狀**:開「券商分點」頁對一支**沒有 `data/chips/{sym}.json`** 的股(分點只追約 50 檔熱門股/ETF,一般股沒有)→ App 凍結/當掉。
-- **根因**:`_renderBrokerFenDian` 的 `!P` 分支 `.then(ok => ...再 render)` **沒判 ok** → 該股 load 永遠回 false、render 又進 `!P` 又 load → **無限 fetch 迴圈**(每圈還 `?t=Date.now()` 破快取狂打)。有 chips 的股載一次就停,所以只有無資料股會爆。
-- **修法**:`.then` 只有 **`ok=true` 才重繪**;`false` 顯誠實空狀態(此股無分點資料,一般股看三大法人/融資券即可)+ `_fenLoading` 防重入。**教訓:任何「load 失敗還無條件重呼叫 render」的遞歸都要 gate 在成功條件上,否則無資料 = 無限迴圈。**
-
-### 🧙 券商分點勝率榜「前瞻回測」為何要等(broker_perf.json)
-- `miner.py::_broker_perf`:①每日把當日 top5 分點買超存 `broker_signals.json`(滾動 45 交易日)②**前瞻回測用 SQLite `stock_history`(5 年 K)算訊號日後 1/5/20 交易日收盤勝率** → 隔日沖/短線/波段三榜。
-- **「outcome 已用歷史即時算,不用等」**;要等的只是**訊號日數累積**(波段需 ~20 交易日份訊號)。
-- **不能完整回填的原因**:`data/chips/*.json` 是**滾動 20 日快照**,沒逐日保存過往每天的分點,免費分點史又被付費牆/BSR 擋 → 過去每日訊號無從重建。
-- **可做的近似回推(待評估)**:把現有 chips 的 5d/10d/20d 買超均價當「-5/-10/-20 交易日的合成訊號」forward-test 到今日 → 立刻有短線/波段樣本(近似,非逐日精確)。屬 miner 改動,上前先確認。
+⭐ 通則(從 V68.9.2 分點無限迴圈留下來的):**任何「load 失敗還無條件重呼叫 render」的遞歸都要 gate 在成功條件上,否則無資料 = 無限迴圈**。(原始說明與分點勝率榜「為何要等」已隨 V79.0.0 移除,搬進 `docs/DECISIONS.md`。)
 
 ## 🎯 V72.2.0 「今天出現實測會賺的訊號」—— 全市場掃描
 使用者:「只要給我最好、勝率最高的資料」。
@@ -2411,6 +2402,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 🗑️ V79.0.0 券商分點 + 10 個付費資料集整組移除(畫面 + 採礦;chips 檔只剩基本面、`fetch_free_fundamentals` 接手免費那半;⛔ chips_deep 分支沒刪)・🐛 順手:報告頁 Promise.all 刪一格要數空位
 - 💳 V78.7.0 FinMind 付費金鑰 10/01 起失效:付費 10 個產物 + 分點全停在 09/30(核心策略零影響)・籌碼頁改成講原因(`_chipStaleWhy`,⛔ 只寫「N 天前」)
 - 📑 V78.6.9 產業作戰室「財報」分頁(讀 `data/fin`,每格附季別與來源、⛔ 不評分)+ financial-analyst 子代理改成「先讀本站、本站沒有才上網、回在對話」+ 資產負債表補四欄算負債比(要手動跑一次財報回算)
 - 🟥⏰ V78.6.6~V78.6.8 漲停隔天開低:做成提醒 + 補挖 5 分 K(kbar5_lu,369 → 3,883 次)→ 重跑抓到我自己兩個錯(0050 基準用收盤→收盤高估 0.5~1pp、5 分 K 與日 K 尺標對不上 640 筆)・改完:一般開低 09:05 轉負、漲停股只有開低 ≥5% / 量縮鎖死又開低還留得住 → 自選提醒門檻改這兩種

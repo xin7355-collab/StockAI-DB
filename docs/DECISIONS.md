@@ -1,3 +1,41 @@
+# 🗑️ V79.0.0 券商分點 + 10 個付費資料集整組移除(畫面 + 採礦一起)
+使用者:「FinMind 付費金鑰過期,把策略刪除,還有券商分點…還有籌碼頁刪除,報告裡面會有影響嗎?」
+→ 問清楚三件:策略 = **只刪靠付費資料的**;籌碼頁 = **只刪分點那幾塊**(三大法人 / 融資券 / 集保照留);採礦 = **一起拿掉**。
+
+## ⭐ 先講「不能整檔整支刪」的那兩件
+- `data/chips/{sym}.json` **不只放分點,也放每檔基本面**(X 光機 / 報告頁 / `top_picks` / radar 都讀它的 `fundamentals`)→ 路徑不改,**只寫 fundamentals**。
+- `miner.fetch_broker_chips` 同時是 `fundamentals_cache` / `industry_map` / `industry_pe` / `stock_names` / `company_geo` / `market_stats` 的**唯一產生者** → 先把免費那半原樣搬成 `fetch_free_fundamentals()`(⛔ 邏輯一行沒改),再刪剩下的。
+
+## 移除清單
+- **畫面(index.html)**:底部「券商」分頁、選股「🏅 券商」模式、籌碼頁「券商分點」子頁籤(預設改「籌碼進出」)、明日劇本(籌碼面 + 總覽那格 + 重點判讀那一項)、借券 / 八大行庫卡、`_loadFmx` 七合一(當沖比 / 外資水位 / 可轉債 / 鉅額 / 權證 / 官方處置備援 / 產業鏈細項)、主力成本線、朱家泓 🐋 主力同向、地緣 / 關鍵分點、大戶來回做、分點連買、隔日沖分點(含當沖頁那三支沒在用的)、持股身份的外資段、holders.json 備援、`fetchChipCost`(前端用使用者自己的金鑰打付費分點)。
+- **計分會變**:`_lastChipScore` 拿掉「分點 ±0.8」「借券 ±0.8」;多空計分卡拿掉 C6(分點集中)、C10(當沖比)→ 26 條(⭐ 「28 條」那句改讀 `rules.length`);出貨徵兆 8 → 7 條;注意股 8 款的第 5、8 款變佔位(沒有資料源)。
+- **報告頁**:§10 分點列、§3 細項分類、§0 與日期列的「分點日」。基本面備援照舊(`_loadChipFund` 只要 fundamentals 不要 periods)。
+- 🐛 **順手抓到我自己這一版的 bug**:`renderReportTab` 的 `Promise.all` 拿掉 `_loadFmx` 一格之後,解構的空位沒跟著少一個 → `finSlim` 拿到 `_loadTopCorr` 的東西 → §4 印「尚未切出」(`test_report §f8b` 抓到;拿 HEAD 跑同一支是綠的才確認是我造成的)。⭐ 通用:**`Promise.all` 用位置解構時,刪一格就要數空位**。
+- **pro.html**:股海釣手遊戲卡不再讀 `industry_chain.json`。
+- **採礦**:`miner.py` 刪 BSR 驗證碼爬蟲 / 分點批次 / 付費 token 池 / `detect_finmind_paid` / 10 個付費 fetch / 主力雷達 / 券商勝率 / 分點檔案 / flip / 官方融資維持率(付費,改只留推估);`radar_miner.py` 刪三處讀分點(狙擊手主路徑 / 獵鷹「主力 3 日連續」/ 板塊同券商)。`daily_miner.yml` 拿掉 ddddocr、chips_deep 累加、付費產物上傳,**部署前 `rm -f` 付費舊檔**(⛔ 否則鋪底層 `git archive origin/data` 會一直帶著 09/30 的)。刪 `chips_backfill.yml` / `finmind_check.yml` / `scripts/chips_backfill.py` / `finmind_check.py`。
+- ⛔ **`chips_deep` 分支沒刪**(兩年分點歷史,刪了救不回;只是不再寫入)。LAB 研究結論一條沒動。
+
+## 測試
+- 刪:22 支只測分點 / 付費的測試 + `test_cbparity` + `finance_runbuy_scan.mjs`(一次性掃描,函式已不在)。
+- 改(釘用意):test_chiplead / dtverdict / emptyshell / exitmode / verdictclash / retail_clean / rpchip / report / marginofficial / snaphist / marketstats_indep。
+- 新:`test_nobroker.mjs`(付費檔 ⛔ 不可再 fetch、刪掉的 id / 函式 ⛔ 不可復活、籌碼頁沒刪過頭、報告頁本益比的決定性對照)、`test_free_fund.py`(用假網路跑真的 `fetch_free_fundamentals`:chips 檔只剩 fundamentals、舊分點欄位被洗掉、冷門股零 API)。
+- ⚠️ 本地 `data/` 是空的 → 一堆測試「2330 資料同步中」假失敗,先跑 `bash scripts/fetch_testdata.sh`(陷阱 #40 那條老話)。
+
+⏭️ 驗收(下一輪 daily_miner 跑完):`data/chips/2330.json` 只剩 fundamentals、`broker_perf.json` 等不在 gh-pages、`fundamentals_cache` / `stock_names` / `market_stats` 的 `updated` 是新的。
+
+## 📜 從 CLAUDE.md 搬來的舊說明(功能已移除,留作紀錄)
+### 🐛 籌碼分點「沒開過的股 App 當掉」(V68.9.2 修,無限迴圈)
+- **症狀**:開「券商分點」頁對一支**沒有 `data/chips/{sym}.json`** 的股(分點只追約 50 檔熱門股/ETF,一般股沒有)→ App 凍結/當掉。
+- **根因**:`_renderBrokerFenDian` 的 `!P` 分支 `.then(ok => ...再 render)` **沒判 ok** → 該股 load 永遠回 false、render 又進 `!P` 又 load → **無限 fetch 迴圈**(每圈還 `?t=Date.now()` 破快取狂打)。有 chips 的股載一次就停,所以只有無資料股會爆。
+- **修法**:`.then` 只有 **`ok=true` 才重繪**;`false` 顯誠實空狀態(此股無分點資料,一般股看三大法人/融資券即可)+ `_fenLoading` 防重入。**教訓:任何「load 失敗還無條件重呼叫 render」的遞歸都要 gate 在成功條件上,否則無資料 = 無限迴圈。**
+
+### 🧙 券商分點勝率榜「前瞻回測」為何要等(broker_perf.json)
+- `miner.py::_broker_perf`:①每日把當日 top5 分點買超存 `broker_signals.json`(滾動 45 交易日)②**前瞻回測用 SQLite `stock_history`(5 年 K)算訊號日後 1/5/20 交易日收盤勝率** → 隔日沖/短線/波段三榜。
+- **「outcome 已用歷史即時算,不用等」**;要等的只是**訊號日數累積**(波段需 ~20 交易日份訊號)。
+- **不能完整回填的原因**:`data/chips/*.json` 是**滾動 20 日快照**,沒逐日保存過往每天的分點,免費分點史又被付費牆/BSR 擋 → 過去每日訊號無從重建。
+- **可做的近似回推(待評估)**:把現有 chips 的 5d/10d/20d 買超均價當「-5/-10/-20 交易日的合成訊號」forward-test 到今日 → 立刻有短線/波段樣本(近似,非逐日精確)。屬 miner 改動,上前先確認。
+
+
 # 💳 V78.7.0 FinMind 付費金鑰失效實況(2026-10-01 起)+ 籌碼頁講原因
 使用者截圖 2330 籌碼頁「分點日 09/30 ⚠️ 9天前」:「我有一把 FinMind 付費 999 的,應該已經變成免費版,這樣會影響什麼?全部列出來」。
 
