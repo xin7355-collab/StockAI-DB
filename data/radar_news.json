@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-09 16:17 UTC",
+  "updated": "2026-10-09 17:11 UTC",
   "count": 15,
   "data": [
     {
@@ -11,8 +11,8 @@
         "奈米"
       ],
       "cat": "🧪 技術突破",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利空",
+      "ai_reason": "新廠商搶奪台積電外溢訂單",
       "important": true
     },
     {
@@ -24,8 +24,8 @@
         "財報"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI企業推動獲利成長，提振市場",
       "important": true
     },
     {
@@ -44,8 +44,8 @@
         "資本支出"
       ],
       "cat": "⚡ 供需價格",
-      "ai_sentiment": "利多",
-      "ai_reason": "市場關注AI需求與先進製程，預期法說會釋出正面指引",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
     },
     {
@@ -59,7 +59,7 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利空",
-      "ai_reason": "美債殖利率飆升恐壓抑全球風險資產估值",
+      "ai_reason": "美債殖利率飆升恐壓抑台股估值",
       "important": true
     },
     {
@@ -72,8 +72,8 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "文章中提到了台股個股、供應鏈和半導體，因此判斷文章有實質影響",
-      "title_zh": "標題若非繁體中文則翻成繁中(30字內);已是繁中就回空字串",
+      "ai_reason": "該新聞主題為台股個股/供應鏈/半導體/大盤，分析和討論可能有",
+      "title_zh": "標題為繁中，如果標題為繁體中文，則翻譯為繁中，如果標題為繁體中文，則為空字串。",
       "important": true
     },
     {
@@ -85,21 +85,22 @@
         "先進封裝"
       ],
       "cat": "🧪 技術突破",
-      "ai_sentiment": "利空",
-      "ai_reason": "英特爾技術可能削弱台積電封裝市場",
+      "ai_sentiment": "利多",
+      "ai_reason": "台積電目前穩定為全球前浪領導品牌，輝達接近合作使用英特爾的先",
+      "title_zh": "台積電穩定，輝達近合作使用英特爾封裝技術，可能對台股有實質影響，新聞內容無關台積電，不影響台股",
       "important": true
     },
     {
-      "source_name": "中央社財經",
-      "title": "川普排除選前攻擊伊朗　亞股多收紅油價回落",
-      "link": "https://www.cna.com.tw/news/afe/202610090172.aspx",
-      "published_time": "Fri, 09 Oct 2026 16:40:21 +0800",
+      "source_name": "Yahoo 即時財經",
+      "title": "快訊／OpenAI營收衝擊暫平息！科技股反彈　SpaceX大漲",
+      "link": "https://tw.news.yahoo.com/%E5%BF%AB%E8%A8%8A-openai%E7%87%9F%E6%94%B6%E8%A1%9D%E6%93%8A%E6%9A%AB%E5%B9%B3%E6%81%AF-%E7%A7%91%E6%8A%80%E8%82%A1%E5%8F%8D%E5%BD%88-spacex%E5%A4%A7%E6%BC%B2-164400617.html",
+      "published_time": "Fri, 09 Oct 2026 16:44:00 +0800",
       "matched_keywords": [
-        "油價"
+        "營收"
       ],
-      "cat": "💱 匯率成本",
+      "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "油價回落降低通膨壓力，支撐亞股",
+      "ai_reason": "美股科技股回暖助台半導體",
       "important": true
     },
     {
@@ -111,8 +112,9 @@
         "收購"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利多",
+      "ai_reason": "安踏體育收購Puma，對台股市有實質影響。",
+      "title_zh": "標題若非繁體中文則翻成繁中（30字內）",
       "important": true
     },
     {
@@ -125,8 +127,8 @@
         "調漲"
       ],
       "cat": "⚡ 供需價格",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利空",
+      "ai_reason": "記憶體漲價致蘋果砍單，衝擊供應鏈",
       "important": true
     },
     {
@@ -138,8 +140,9 @@
         "漲價"
       ],
       "cat": "⚡ 供需價格",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利多",
+      "ai_reason": "Apple 因半導體成本增加而削減 iPhone 18 Pr",
+      "title_zh": "Apple 因半導體成本增加而削減 iPhone 18 Pro 訂單：對供應鏈和小盤股票有實質影響",
       "important": true
     },
     {
@@ -164,9 +167,8 @@
         "營收"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "新聞中提到母女創業者投資了50萬美元，產品研發及市場創新，社",
-      "title_zh": "標題為繁體中文，文章中提到創業成功和市場創新，可能有對台股市的影響。",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
     },
     {
@@ -179,7 +181,8 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "OpenAI營收疑慮緩解，科技股跌幅收斂",
+      "ai_reason": "OpenAI營收的報導有幫助推減業界疑慮，科技股跌幅隨之收斂",
+      "title_zh": "OpenAI營收報導緩解業界疑慮，科技股跌幅收斂。",
       "important": true
     },
     {
@@ -193,8 +196,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "光寶科第三季營收增長9%，推動供應鏈和半導體產業的市場壓力。",
-      "title_zh": "光寶科光寶科第三季營收增長9%，推動供應鏈和半導體產業的市場壓力。",
+      "ai_reason": "營收季增9%且AI電源需求提升",
       "important": true
     },
     {
@@ -207,7 +209,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "台積電法說預期釋出正面訊息，支撐大盤高檔整理",
+      "ai_reason": "台積電說明會或釋出正面訊息支撐大盤",
       "important": true
     }
   ]
