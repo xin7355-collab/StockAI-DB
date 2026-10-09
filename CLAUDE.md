@@ -694,7 +694,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
    + **`node scripts/test_noframe.mjs`**(🧱 全站無框守門 — V77.0.0 新增:量 **computed style** 證明「一整段的外框真的拉平了」+「⚠️ 警示左色條 / 按鈕 / 輸入框 / `.keepbox` 格子一個都沒被拉平」,含 `pro.html` 的 `.panel`。⛔ 不釘 class 字串)
    + **`node scripts/test_fishapp.mjs`**(🎣 V77.9.7 股海釣手 = `pro.html?app=fish`:作戰室分頁/池子/規則段藏起來、⛔ 整頁不可有選股規則用語、⭐ 名單 == `_castPick`(一般模式同一支,動畫 stub 前後相同)、台股配色、reduced-motion、安全閥、manifest/圖示;V77.9.9 一次 10 條前面 == `_castPick`、四魚種外形不同、釣起價 = 即時價、帶回家養;V78.0.0 一按只釣一條(cast→wait→bite→fight→breach→show)、斷線同一條留佇列最前、魚色 = 一年高低位置且⛔ 不受今天漲跌影響、大小 = 市值、震動開關、公司簡介無選股用語)
    + **`python3 scripts/test_futures_night_gate.py`**(🌙 V78.1.4 個股期貨夜盤採礦:平日台北 08:45~15:00 ⛔ 不登入、不寫(排程被延到白天時會把日盤寫成夜盤);注入「拿掉守門」必紅)
-   + **`node scripts/test_nobroker.mjs`**(🗑️ V79.0.0 券商分點 + 付費資料集移除:付費檔⛔ 不可再 fetch、刪掉的 id / 函式⛔ 不可復活、籌碼頁三大法人 / 融資券 / 集保沒刪過頭、報告頁本益比讀 chips fundamentals 的決定性對照)+ **`python3 scripts/test_free_fund.py`**(`fetch_free_fundamentals` 用假網路跑:chips 檔只剩 fundamentals、舊分點欄位被洗掉、冷門股零 API)
+   + **`node scripts/test_nobroker.mjs`**(🗑️ V79.0.0 券商分點 + 付費資料集移除:付費檔⛔ 不可再 fetch、刪掉的 id / 函式⛔ 不可復活、籌碼頁三大法人 / 融資券 / 集保沒刪過頭、報告頁本益比讀 chips fundamentals 的決定性對照)+ **`node scripts/test_trapbal.mjs`**(⚖️ V79.0.1 上面套牢 vs 下面賺錢:數字只讀 `_trappedRatio`、上方量 ×2 決定性對照、⛔「的人」、K 線不足 / 指數藏起來、總覽那行同一個數字)+ **`python3 scripts/test_free_fund.py`**(`fetch_free_fundamentals` 用假網路跑:chips 檔只剩 fundamentals、舊分點欄位被洗掉、冷門股零 API)
    + **`node scripts/test_profin.mjs`**(📑 V78.6.9 產業作戰室財報分頁:每格 == `data/fin` JSON、季營收年增跟 `_finTrend` 同一條、每欄季別 + 公布期限 + 來源、「—」附原因⛔ 不補 0、⛔ 評分 / 買賣字、390px;3 種注入全紅)
    + **`node scripts/test_lugap.mjs`**(🟥 V78.6.7 漲停隔天開低提醒:庫存開平開低 / 自選(V78.6.8)開低 ≥5% 或量縮鎖(量 ≤ 前 20 天六成,⛔ 基準不含鎖那天)開低 ≥1%,且第 1 根 ・09:00~10:30 ・一檔一天一次 ・👑 持股⛔ 不套 ・決定性對照(門檻改 −7 / 量縮改 0.4)・隔日沖盤點⛔「開低別接刀」)
    + **`node scripts/test_leadtiming.mjs`**(⏱️ V78.4.4 👑 換倉那天幾點買賣:`_leadWhen` 全 App 唯一一份 ・設定 leadTiming=open 決定性對照(⛔ 不再出現 13:25)・App 預設 == `auto_trade.py LEADER_WINDOW=split` ・Telegram 讀同一個設定 ・`_STRAT_CHANGES` 換回鈕)+ `python3 scripts/test_auto_leader.py` ⑯a~⑯g(split:開盤跌 ≥3% 例外、13:25 才買、過 10:00 尾盤補賣、隔天不買舊名單)
@@ -2402,6 +2402,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- ⚖️ V79.0.1 「有幾%套牢那個不見了」= 籌碼頁分點版「上面想逃 vs 下面挺你」隨 V79.0.0 刪掉 → 改用 K 線成交量(`_trappedRatio`)補回籌碼頁 + 總覽一行;文案只講成交量 ⛔ 不講人
 - 🗑️ V79.0.0 券商分點 + 10 個付費資料集整組移除(畫面 + 採礦;chips 檔只剩基本面、`fetch_free_fundamentals` 接手免費那半;⛔ chips_deep 分支沒刪)・🐛 順手:報告頁 Promise.all 刪一格要數空位
 - 💳 V78.7.0 FinMind 付費金鑰 10/01 起失效:付費 10 個產物 + 分點全停在 09/30(核心策略零影響)・籌碼頁改成講原因(`_chipStaleWhy`,⛔ 只寫「N 天前」)
 - 📑 V78.6.9 產業作戰室「財報」分頁(讀 `data/fin`,每格附季別與來源、⛔ 不評分)+ financial-analyst 子代理改成「先讀本站、本站沒有才上網、回在對話」+ 資產負債表補四欄算負債比(要手動跑一次財報回算)
