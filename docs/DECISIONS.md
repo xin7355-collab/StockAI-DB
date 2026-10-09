@@ -1,3 +1,21 @@
+# 💳 V78.7.0 FinMind 付費金鑰失效實況(2026-10-01 起)+ 籌碼頁講原因
+使用者截圖 2330 籌碼頁「分點日 09/30 ⚠️ 9天前」:「我有一把 FinMind 付費 999 的,應該已經變成免費版,這樣會影響什麼?全部列出來」。
+
+## ⭐ 先量(gh-pages 實際產物,2026-10-09)
+- 付費專屬 10 個產物 `updated` **全部停在 2026-09-30 15:02~15:05 UTC**:govbank / lending / disposition / daytrade / foreign_hold / blocktrade / industry_chain / cb_overview / warrant_premium / holders → 付費約 10/01 起失效。
+- `data/chips/2330.json`:`chips_fetched_on 2026-10-08` 但 `data_date 2026-09-30`、`data_completeness.broker_chip: false` = **每天照跑、這一輪重寫了檔、但分點是空的**。
+- `broker_perf` / `broker_radar` / `fmx_pack` / `pe_band` 照常更新(前兩個吃的是停住的分點,內容不會再變)。
+- `detect_finmind_paid()` 降版:跳過、舊檔保留、workflow 全綠 → Actions 頁看不出來(陷阱 #9 型)。
+- 影響清單同 V77.5.4 那一節(核心策略零影響;分點 + 10 個付費資料集停;官方融資維持率退回自估;夜間基本面變慢)。
+
+## 修:籌碼頁講原因(陷阱 #22)
+- `_chipStaleWhy()`:`_fenDc.broker_chip === false` 且落後 ≥2 個交易日(`_fenLagInfo`)且 `_fenSym === currentSymbolId` → 一句原因;否則 ''。
+- 兩處讀它:籌碼卡最上方一行 `[data-chipstale]`、明日劇本「落後」那句(以前寫「這檔這輪還沒輪到、下次採礦補上就會變最新」—— 付費失效時那句是錯的)。
+- ⭐ 判準用 `broker_chip` 旗標 ⛔ 不用日曆天:「這一輪沒輪到」的檔不會被重寫,旗標還是 true → 不會被冤枉成付費失效(決定性對照 ⓑ)。
+- ⚠️ chips 檔沒有「付費」旗標 → 文案寫「多半是付費金鑰失效」⛔ 不斷言。
+- 測試 `scripts/test_chipstale.mjs`(注入 nogate → ⓑⓔ 紅)。
+- 💡 續費後不用改程式,下一輪自動偵測回付費;缺的分點 FinMind 保留 3 年,`chips_backfill` 可補。
+
 # 📑 V78.6.9 產業作戰室「財報」分頁 + financial-analyst 子代理(使用者貼了一支 Claude Code 子代理:「放到產業 app 開新頁籤、提示詞要不要修、你會怎麼做」)
 
 使用者的原版:`tools: WebSearch, WebFetch, Read, Write` / 只做營收・毛利率・營益率趨勢、現金流、負債比 / 輸出 JSON 到 `reports/financial.json` / 每個數字附來源與期間 / 查不到寫 null、禁止推估。
