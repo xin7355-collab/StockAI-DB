@@ -46,23 +46,18 @@ CADENCE_H = {
     'radar.json': 30,
     'top_picks.json': 30,
     'breadth.json': 30,
-    'daytrade.json': 30,
-    'fmx_pack.json': 30,
     'sector_heat.json': 30,
     'sector_chip_flow.json': 30,
     'attention_status.json': 30,
-    'disposition.json': 30,
     'lowbase_picks.json': 30,
-    'broker_radar.json': 30,
-    'broker_perf.json': 30,
     'global_news.json': 12,
     'radar_news.json': 12,
     'industry_pe.json': 72,
     'industry_map.json': None,
     'concept_stocks.json': 168,
-    'holders.json': 240,         # 集保週更
     'insider.json': 800,         # 董監月更
-    'day_trade.json': None,      # V71.5.4 已被 daytrade.json 取代,不再要求新鮮
+    'day_trade.json': None,      # V71.5.4 已被 daytrade.json 取代;🗑️ V79.0.0 前端兩個都不讀了
+    # 🗑️ V79.0.0 券商分點 + 10 個付費資料集(daytrade/fmx_pack/disposition/broker_*/holders…)已移除,不再檢查
     # 🕐 盤中才產出的:收盤後 / 假日本來就會舊,不算問題
     'live_quotes.json': None,
     'tick_flow.json': None,

@@ -81,10 +81,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install requests yfinance fastapi httpx pydantic uvicorn duckduckgo-search feedparser ta pandas numpy
-          # 🎯 分點 Sniper(TWSE BSR 驗證碼 OCR)只在節點 0 跑,故只在節點 0 裝重套件 ddddocr/bs4
-          if [ "${{ matrix.batch }}" == "0" ]; then
-            pip install ddddocr beautifulsoup4 || echo "⚠️ ddddocr/bs4 安裝失敗,Sniper 自動停用退回 FinMind"
-          fi
 
       - name: 📂 還原昨天的快取 (取得基準資料)
         run: |
@@ -181,13 +177,13 @@ jobs:
 
   # ══════════════════════════════════════════════════════════════════════════
   # 🎯 階段一·五:V15.0 chips_miner 獨立平行 job
-  # 把 fetch_broker_chips + futures + macro + radar + bubble + sector + top_picks
+  # 把 fetch_free_fundamentals(V79.0.0 前是 fetch_broker_chips)+ futures + macro + radar + bubble + sector + top_picks
   # 從 batch 0 抽出來,避免 batch 0 一人扛全市場 fundamentals 撞 90 分 timeout
   # ══════════════════════════════════════════════════════════════════════════
   chips_miner:
     name: 🎯 Chips + Fundamentals 採礦(平行)
     runs-on: ubuntu-latest
-    timeout-minutes: 80   # V68.9.8 45→80:分點改全市場滾動(CHIPS_TIME_BUDGET=35分)+ 後處理(broker_radar/perf/futures/macro/radar/top_picks ~25分)+ govbank/借券/集保(~5分),80 留足餘裕不砍後段
+    timeout-minutes: 80   # V79.0.0 分點已移除:每檔基本面(CHIPS_TIME_BUDGET)+ futures/macro/radar/top_picks
     steps:
       - name: 📥 下載程式碼
         uses: actions/checkout@v4.2.2
@@ -203,7 +199,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install requests yfinance fastapi httpx pydantic uvicorn duckduckgo-search feedparser ta pandas numpy
-          pip install ddddocr beautifulsoup4 || echo "⚠️ ddddocr/bs4 安裝失敗,Sniper 自動停用退回 FinMind"
 
       - name: 📂 還原昨天的資料(OHLCV 從 origin/data,讓 build_radar 等可讀)
         run: |
@@ -225,7 +220,7 @@ jobs:
           GROQ_API_KEYS: ${{ secrets.GROQ_API_KEYS }}
           GROQ_API_KEY:  ${{ secrets.GROQ_API_KEY }}
           ONLY_CHIPS: '1'   # V15.0:miner.py 走 chips 專用流程,跳過 OHLCV
-          CHIPS_TIME_BUDGET: '2100'   # V68.9.8 全市場分點時間預算 35 分,到點收工;剩餘下輪「今日已抓→跳過」續抓(熱門股排最前天天新鮮)
+          CHIPS_TIME_BUDGET: '2100'   # 每檔基本面時間預算 35 分,到點收工(熱門股排最前)
         run: |
           python3 miner.py
 
@@ -246,7 +241,6 @@ jobs:
           #    要註解請寫在這裡(block 之外),或用 scripts/check_workflow_paths.py 擋。
           path: |
             data/chips/
-            chips_deep/
             data/radar.json
             data/top_picks.json
             data/bubble_warning.json
@@ -265,30 +259,11 @@ jobs:
             data/sector_rot.json
             data/stock_tags.json
             data/miner_status.json
-            data/govbank.json
-            data/lending.json
-            data/disposition.json
-            data/daytrade.json
-            data/foreign_hold.json
-            data/blocktrade.json
-            data/blocktrade_hist.json
-            data/lending_hist.json
             data/margin_limit_hist.json
-            data/industry_chain.json
-            data/cb_overview.json
-            data/warrant_premium.json
-            data/fmx_pack.json
-            data/broker_radar.json
-            data/broker_perf.json
-            data/broker_book.json
-            data/broker_signals.json
-            data/broker_dt.json
-            data/holders.json
             data/lowbase_picks.json
             data/wrongkill_picks.json
             data/sector_chip_flow.json
             data/factor_quantiles.json
-            broker_names.json
             futures_cache.json
             macro_cache.json
           retention-days: 1
@@ -379,10 +354,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: chips-data
-          path: .   # data/chips/, data/radar.json, broker_names.json, futures_cache.json 等同層展開
+          path: .   # data/chips/, data/radar.json, futures_cache.json 等同層展開
         continue-on-error: true   # chips_miner 若失敗(timeout/限流),仍部署 mine 結果
 
-      # 🚧 V74.6.9 累積型歷史「只增不減」守門(鉅額交易 / 借券 / 融資限額)
+      # 🚧 V74.6.9 累積型歷史「只增不減」守門(融資限額;V79.0.0 鉅額/借券已停)
       #   🚨 為什麼一定要有這一層:miner.py 自己那層**只看得到本機那一份** ——
       #   如果 batch job 的「還原」步驟失敗(網路/權限),它會以為「本來就沒有歷史」→
       #   寫出只有今天的一份 → artifact 疊上來就把幾百天洗掉了,而且**完全不會報錯**。
@@ -391,7 +366,7 @@ jobs:
       - name: 🚧 累積型歷史只增不減守門
         run: |
           cp scripts/news_hist_guard.py /tmp/hist_guard.py 2>/dev/null || echo "⚠️ 守門腳本沒複製到"
-          for f in blocktrade_hist lending_hist margin_limit_hist; do
+          for f in margin_limit_hist; do
             git show origin/data:data/$f.json > /tmp/${f}_prev.json 2>/dev/null || rm -f /tmp/${f}_prev.json
             if [ -s /tmp/${f}_prev.json ] && [ -f /tmp/hist_guard.py ]; then
               python3 /tmp/hist_guard.py data/$f.json /tmp/${f}_prev.json "$f" || true
@@ -621,6 +596,15 @@ jobs:
           git checkout origin/main -- fish.webmanifest fish-192.png fish-512.png 2>/dev/null || true   # 🎣 V77.9.7 金鱗釣場(漏了 = 每輪 orphan 部署把它洗掉)
           git checkout origin/main -- data/scr_edge.json 2>/dev/null || true   # 🏅 V74.3.8 選股條件實測成績(釣魚池讀;⚠️ 這裡是 orphan force-push,不接就每天被洗掉)
 
+          # 🗑️ V79.0.0 FinMind 付費金鑰 10/01 失效 → 券商分點 + 10 個付費資料集整組移除。
+          #   ⚠️ 不清的話,鋪底層(git archive origin/data)會一直把 09/30 的舊檔帶上 gh-pages / data。
+          for f in govbank lending lending_hist disposition daytrade foreign_hold blocktrade blocktrade_hist \
+                   industry_chain cb_overview warrant_premium fmx_pack holders \
+                   broker_radar broker_perf broker_book broker_signals broker_dt broker_flip; do
+            rm -f "data/$f.json"
+          done
+          rm -f broker_names.json data/broker_names.json
+
           # 備份合併後的完整資料
           mkdir -p /tmp/mine/data/chips
           cp data/*.json           /tmp/mine/data/          2>/dev/null || true
@@ -629,7 +613,6 @@ jobs:
           cp macro_cache.json      /tmp/mine/               2>/dev/null || true
           cp margin_cache_stock.json /tmp/mine/             2>/dev/null || true
           cp inst_cache_stock.json /tmp/mine/               2>/dev/null || true
-          cp broker_names.json     /tmp/mine/               2>/dev/null || true
           cp index.html            /tmp/mine/               2>/dev/null || true
           cp sw.js                 /tmp/mine/               2>/dev/null || true
           cp manifest.json         /tmp/mine/               2>/dev/null || true   # V17.0 PWA
@@ -658,7 +641,6 @@ jobs:
           cp /tmp/mine/pro.html . 2>/dev/null || true   # 🛰️ V74.0.1(⚠️ 下面一定要 git add)
           for f in fish.webmanifest fish-192.png fish-512.png; do cp "/tmp/mine/$f" . 2>/dev/null || true; done   # 🎣 V77.9.7
           [ -f /tmp/mine/scr_edge.json ] && mkdir -p data && cp /tmp/mine/scr_edge.json data/scr_edge.json 2>/dev/null || true   # 🏅 V74.3.8(⚠️ 下面 git add -f data/ 會收)
-          cp /tmp/mine/broker_names.json    .               2>/dev/null || true
           cp /tmp/mine/margin_cache_stock.json . 2>/dev/null || true
           # 🧹 V69.9.6 P3-7:inst_cache_stock 不再上 gh-pages(18.5MB 純採礦中介、前端 0 引用)→ 改隨 data 分支保存
 
@@ -703,7 +685,6 @@ jobs:
           [ -f pro.html ] && git add -f pro.html || true   # 🛰️ V74.0.1 產業作戰室 PRO
           for f in fish.webmanifest fish-192.png fish-512.png; do [ -f "$f" ] && git add -f "$f" || true; done   # 🎣 V77.9.7 金鱗釣場
           [ -f data/scr_edge.json ] && git add -f data/scr_edge.json || true   # 🏅 V74.3.8(data/ 已整包 add,這行只是明示)
-          [ -f broker_names.json ]       && git add -f broker_names.json       || true
           [ -f futures_cache.json ]      && git add -f futures_cache.json      || true
           [ -f macro_cache.json ]        && git add -f macro_cache.json        || true
           [ -f margin_cache_stock.json ] && git add -f margin_cache_stock.json || true
@@ -773,48 +754,3 @@ jobs:
           done
           echo "✅ data 分支已更新"
 
-      # 📚 V74.0.8 把今天新抓的全市場分點累加進 `chips_deep` 分支(回測深歷史)。
-      #   🚨 沒有這步的話,回測資料會**永遠停在最後一次手動回算那天** ——
-      #      採礦每天抓到的全市場分點寫進個股檔後就被 22 天上限截掉丟棄。
-      #   ⛔ 設計成「只增不減」:先把分支現有的天還原回來,再加今天的,
-      #      天數比分支上少就**拒絕推送**(orphan force-push 會整個取代,少了就是真的沒了)。
-      - name: 📚 累加 chips_deep(回測深歷史)
-        if: always()
-        continue-on-error: true      # ⛔ 這步失敗不可影響 gh-pages/data 的部署
-        run: |
-          set -e
-          if [ ! -d chips_deep ] || [ -z "$(ls chips_deep/*.json.gz 2>/dev/null)" ]; then
-            echo "ℹ️ 這輪沒有新的 chips_deep 檔(可能全部日期都已存在)→ 跳過"
-            exit 0
-          fi
-          NEW=$(ls chips_deep/*.json.gz | wc -l)
-          mkdir -p /tmp/deepnew && cp chips_deep/*.json.gz /tmp/deepnew/
-          OLD=0
-          if git fetch origin chips_deep --depth=1 2>/dev/null; then
-            OLD=$(git ls-tree -r --name-only origin/chips_deep | grep -c '\.json\.gz$' || echo 0)
-            git archive origin/chips_deep | tar -x -C . 2>/dev/null || true
-          fi
-          cp -n /tmp/deepnew/*.json.gz chips_deep/ 2>/dev/null || true
-          cp -f /tmp/deepnew/*.json.gz chips_deep/ 2>/dev/null || true
-          N=$(ls chips_deep/*.json.gz | wc -l)
-          # 🚧 只增不減(⛔ orphan force-push 會整個取代)
-          if [ "$N" -lt "$OLD" ]; then
-            echo "❌ 現在 $N 天 < 分支上已有的 $OLD 天 → 拒絕推送(會弄丟資料)"
-            exit 1
-          fi
-          if [ "$N" -eq "$OLD" ]; then
-            echo "ℹ️ $OLD 天沒有變化 → 不推送"
-            exit 0
-          fi
-          echo "📦 chips_deep $OLD → $N 天(本輪新增 $NEW 天)・$(du -sh chips_deep | cut -f1)"
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout --orphan _deep_daily
-          git rm -rf --cached . -q 2>/dev/null || true
-          git add -f chips_deep/
-          git commit -q -m "📚 分點深歷史 ${N} 天($(date -u '+%Y-%m-%d %H:%M UTC'))"
-          for i in 1 2 3 4 5; do
-            git push origin HEAD:chips_deep --force && { echo "✅ chips_deep 已更新"; break; }
-            [ "$i" -eq 5 ] && { echo "❌ chips_deep push 連 5 次失敗"; exit 1; }
-            sleep $((i * 5))
-          done

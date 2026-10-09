@@ -1084,31 +1084,7 @@ def main():
             bias_20 = (c - ma20) / ma20 * 100
             sniper_added = False
             if -2 <= bias_20 <= 3:  # 股價在月線附近盤整
-                # 主路徑:分點籌碼集中(僅 CHIP_WATCHLIST ~50 檔有資料)
-                chip_file = CHIPS_DIR / f"{sym}.json"
-                if chip_file.exists():
-                    chip_data = json.loads(chip_file.read_text(encoding='utf-8'))
-                    chips_list = chip_data.get('chips', [])
-                    if chips_list:
-                        latest_chip = chips_list[-1]
-                        tot_buy = latest_chip.get('tot_buy', 0)
-                        if tot_buy > 0:
-                            top3_buy = sum(
-                                b.get('buy', 0)
-                                for b in sorted(
-                                    latest_chip.get('buyers', []),
-                                    key=lambda x: -x.get('net', 0)
-                                )[:3]
-                            )
-                            concentration = top3_buy / tot_buy * 100
-                            if concentration >= 30:
-                                matrix['sniper'].append({
-                                    'sym': sym, 'close': round(c, 2),
-                                    'turnover_e': turnover_e, 'gain': day_gain,
-                                    'status': f"主力高度集中 {round(concentration, 1)}%"
-                                })
-                                sniper_added = True
-
+                # 🗑️ V79.0.0 分點籌碼集中那條主路徑已移除(券商分點停了)→ 只走全市場可判的法人路徑
                 # 🎯 替代路徑(全市場可判,不需分點):法人連買 + 貼月線 + 量增
                 # 解決原本 sniper 常 0 檔(分點只覆蓋 50 檔)→ 讓 1900+ 檔也有機會入選
                 if not sniper_added and turnover >= 100_000_000:
@@ -1594,34 +1570,7 @@ def build_falcon_scores():
                 elif sector_chg[sec] < -1:
                     base -= 5; factors.append("族群弱-5")
 
-            # ── 主力分點 3 日連續性 (±8 或 ±3,僅 ~50 檔有 chips) ──
-            # 改為「最近 3 日 majority」防隔日沖騙線:單日暴增不再 +8,只給 +3
-            try:
-                cf = CHIPS_DIR / f"{sym}.json"
-                if cf.exists():
-                    cj = json.loads(cf.read_text(encoding='utf-8'))
-                    days = cj if isinstance(cj, list) else (cj.get('chips') or [])
-                    recent3 = days[-3:] if days else []
-                    sigs = []
-                    for d in recent3:
-                        bnet = sum(b.get('net', 0) for b in (d.get('buyers') or []))
-                        snet = sum(abs(s.get('net', 0)) for s in (d.get('sellers') or []))
-                        if bnet > snet * 1.2:   sigs.append('buy')
-                        elif snet > bnet * 1.2: sigs.append('sell')
-                        else:                   sigs.append('flat')
-                    buy_days = sigs.count('buy')
-                    sell_days = sigs.count('sell')
-                    if buy_days >= 2:
-                        base += 8; factors.append(f"主力連{buy_days}日買超+8")
-                    elif sell_days >= 2:
-                        base -= 8; factors.append(f"主力連{sell_days}日賣超-8")
-                    elif sigs and sigs[-1] == 'buy':
-                        # 只當日暴增、前 2 日反向/平淡 → 半信半疑(防隔日沖)
-                        base += 3; factors.append("主力單日暴增+3")
-                    elif sigs and sigs[-1] == 'sell':
-                        base -= 3; factors.append("主力單日大賣-3")
-            except Exception:
-                pass
+            # 🗑️ V79.0.0 「主力分點 3 日連續性」(±8/±3)已移除:券商分點是 FinMind 付費資料,10/01 起停了
 
             # ── 🚨 V27.4 出貨/追高風險扣分(降低套牢率;資料皆在 rows,缺值 graceful 跳過)──
             try:
@@ -1979,35 +1928,10 @@ def build_sector_chip_flow():
             #   三個天期全面優於基本版 → 前端把這一層標成更強的訊號。
             #   ⚠️ 樣本仍薄(外資資料只回溯到 2026/05),當參考不當保證。
             stealth_deep = bool(stealth and avg_dd60 >= 12)
-            # 券商分點:板塊內同一家券商在 ≥2 檔都買超 → 疑似整族群布局
-            broker_cnt = {}
-            for sym in syms:
-                cp = DATA_DIR / "chips" / f"{sym}.json"
-                if not cp.exists():
-                    continue
-                try:
-                    cj = json.loads(cp.read_text(encoding='utf-8'))
-                    chips = cj.get('chips') or []
-                    if not chips:
-                        continue
-                    for b in (chips[-1].get('buyers') or [])[:5]:
-                        nm = str(b.get('bnm') or '').strip()
-                        net = float(b.get('net') or 0)
-                        if nm and net > 0:
-                            e = broker_cnt.setdefault(nm, {"n": 0, "lots": 0.0, "syms": []})
-                            e["n"] += 1
-                            e["lots"] += net / 1000.0
-                            if sym not in e["syms"]:
-                                e["syms"].append(sym)
-                except Exception:
-                    continue
-            multi = sorted([{"name": k, "n": v["n"], "lots": int(v["lots"]), "syms": v["syms"][:4]}
-                            for k, v in broker_cnt.items() if v["n"] >= 2],
-                           key=lambda x: (-x["n"], -x["lots"]))[:3]
             out[sk] = {
                 "fi1": int(fi[1]), "fi5": int(fi[5]), "fi20": int(fi[20]),
                 "ti5": int(ti[5]), "px5": round(avg_px5, 2), "dd60": round(avg_dd60, 1),
-                "stealth": stealth, "stealth_deep": stealth_deep, "n": hit, "brokers": multi,
+                "stealth": stealth, "stealth_deep": stealth_deep, "n": hit,
             }
         if len(out) < 5:
             print(f"   ⚠️ 板塊籌碼命中僅 {len(out)} 個(<5)→ 不覆寫")

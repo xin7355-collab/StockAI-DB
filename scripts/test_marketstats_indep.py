@@ -96,7 +96,7 @@ for _k in range(_i, -1, -1):
         _cur = _ind
     if _ind == 0 and _l.strip():
         break
-_bad = [g for g in _guards if re.search(r'twse_fund|fund_cache|fundamentals|pb_pct', g)]
+_bad = [g for g in _guards if not g.startswith('def ') and re.search(r'twse_fund|fund_cache|fundamentals|pb_pct', g)]   # 🗑️ V79.0.0 函式改名 fetch_free_fundamentals → 函式頭本身不算「條件」
 ok('⑥b ⭐⛔ market_stats 區塊不可被任何「基本面」條件包住(要追到函式頂層)',
    not _bad, f'被這些條件包住:{_bad}｜完整鏈:{_guards}')
 print(f'   ↳ 由內而外的守門鏈:{_guards}')

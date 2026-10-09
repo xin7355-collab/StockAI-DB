@@ -67,8 +67,8 @@ ok('⑨b 天數變多 → 照過(⛔ 不可誤擋)', len(json.load(open(gn))['da
 # ⑩ workflow 真的有接上那道守門(⛔ 寫好卻沒接 = 等於沒有)
 WF = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                        '.github', 'workflows', 'daily_miner.yml'), encoding='utf-8').read()
-ok('⑩ daily_miner 有接上外層守門,而且三個檔都在清單裡',
-   'hist_guard.py' in WF and all(f in WF for f in ['blocktrade_hist', 'lending_hist', 'margin_limit_hist']))
+ok('⑩ daily_miner 有接上外層守門,而且融資限額在清單裡(🗑️ V79.0.0 鉅額/借券是付費資料,已移除)',
+   'hist_guard.py' in WF and 'margin_limit_hist' in WF)
 ok('⑩b 守門腳本要先 cp 到 /tmp(⛔ 後面會切分支,那裡沒有 scripts/)', 'cp scripts/news_hist_guard.py /tmp/' in WF)
 
 # ⑤ 滾動保留:超過 keep_days 的要被裁掉,而且⛔ 不可因此觸發「只增不減」誤擋
@@ -83,12 +83,12 @@ ok('⑥ _tw_today_str 用台北時區', miner._tw_today_str() == tw(0), miner._t
 
 # ⑦ 三個呼叫端都接上了(⛔ 寫好卻沒接 = 陷阱 #37)
 src = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'miner.py'), encoding='utf-8').read()
-for f in ['blocktrade_hist.json', 'lending_hist.json', 'margin_limit_hist.json']:
+for f in ['margin_limit_hist.json']:   # 🗑️ V79.0.0 blocktrade_hist / lending_hist(付費)已移除
     ok(f'⑦ {f} 有被 _snap_hist 寫出', f"_snap_hist('{f}'" in src)
 ok('⑦b 融資限額有接進主流程', 'fetch_margin_limit' in src.split("if __name__")[0] and '_safe_step("融資限額 fetch_margin_limit"' in src)
 
 # ⑧ 🚧 融資限額:解析不到 200 檔一律不寫(⛔ 不可寫半份)
-_fml = src[src.index('def fetch_margin_limit()'):src.index('\ndef _fm_bulk_days(')]
+_fml = src[src.index('def fetch_margin_limit()'):src.index("\nif __name__ == '__main__'")]
 ok('⑧ 融資限額有「<200 檔不寫」守門', 'len(mm) < 200' in _fml or 'len(m) < 200' in _fml)
 ok('⑧b 融資限額有誠實揭露「只有上市」', 'TPEx' in src and '403' in src)
 
