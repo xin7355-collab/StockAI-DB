@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.0.0 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.0.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -897,7 +897,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.0.0</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.0.1</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -2046,6 +2046,8 @@
                 </div>
                 <!-- 籌碼進出頁:法人 / 融資券 -->
                 <div id="chipPaneFlow" class="flex flex-col gap-3">
+                <!-- ⚖️ V79.0.1 上面套牢的量 vs 下面賺錢的量(K 線成交量版,⛔ 不用分點;app._trapBalanceHtml) -->
+                <div id="chipTrapBal" class="hidden"></div>
 
                 <!-- 🐘 V69.4.1 chipVerdictCard 已 hoist 到 #subContentChip 最上方(always visible);此處移除,避免重複 id -->
                 <!-- 🧹 V68.3.5 籌碼進出頁精簡:綜合評分/法人反轉 移入下方「看原始數據」收合;ETF 跟車/成分股 移到總覽 -->
@@ -8449,6 +8451,7 @@ ${list}
         }
         if (tab === 'chip' && this.currentSymbolId) {
             this.switchChipTab(this._activeChipTab || 'flow');   // 🕵️ 兩分頁,預設籌碼進出(V79.0.0 券商分點已移除)
+            this._renderTrapBal();                               // ⚖️ V79.0.1 只要 K 線,進頁就先畫
             this.fetchChipTimeline(this.currentSymbolId, true);
             this.loadChipFund(this.currentSymbolId);
             // renderChipGlobal 由 loadChipFund/fetchChipTimeline 非同步完成後呼叫，不在此同步觸發
@@ -8560,10 +8563,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.0.0',
+    _APP_VERSION: 'V79.0.1',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.0.1', d: ['⚖️ <b>「上面套牢 vs 下面賺錢」那條回來了</b>:上一版拿掉券商分點時被一起刪掉,現在改用 K 線成交量算(近 120 日有幾 % 的量成交在比現在貴的價位、漲到多少附近會有回本賣壓)。放在籌碼頁最上面,總覽價格位置圖底下也有一行同一個數字。⚠️ 這是成交量不是人數,只拿來把期待值放低,不是賣出訊號。'] },
         { v: 'V79.0.0', d: ['🗑️ <b>券商分點拿掉了</b>(FinMind 付費金鑰 10/01 到期,你決定一起刪):選股的「🏅 券商」、底部「券商」分頁、籌碼頁「券商分點」子頁籤、主力雷達、地緣/關鍵分點、隔日沖分點、分點連買、明日劇本(籌碼面)、借券 / 八大行庫 / 當沖比 / 外資水位 / 可轉債 / 鉅額 / 產業鏈細項 —— 全部移除,⛔ 不再顯示 09/30 的舊資料', '✅ 照留:三大法人、融資券、集保大戶分佈、處置/注意股(官方名單)、當沖雷達、K 棒、題材、AI 鏈、選股策略 —— 這些都是免費資料,每天照常更新', '📄 報告頁:只少了「分點」那一列、「細項分類」標籤、來源列的「分點日」;基本面(本益比/季 EPS/三率)照舊', '🧹 第一次打開會自動清掉手機上舊的分點快取(一檔約 108 KB)'] },
         { v: 'V78.7.0', d: ['💳 <b>籌碼頁「分點日 09/30 ⚠️ 9天前」現在會講原因了</b>:你那把 FinMind 付費金鑰約 10/01 起失效,而券商分點只有付費層抓得到 → 全市場分點停在 09/30。卡片最上面多一行說明;「明日劇本」那句「這檔這輪還沒輪到、下次就補上」也改掉(那句已經不對)', '✅ <b>選股・決策台・三條出場・領頭羊・自動下單一個都不受影響</b>(都不用 FinMind);停在 09/30 的是分點與八大行庫、借券、當沖比、外資持股、鉅額交易、產業鏈、可轉債、權證、集保分級這幾類,舊資料照顯示', '💡 續費後不用改任何東西,下一輪採礦會自動接回去'] },
         { v: 'V78.6.9', d: ['📑 <b>產業作戰室新增「財報」分頁</b>(你貼的財報分析代理,改成網頁版):輸入代號或名稱,看 12 季的營收・季營收年增・毛利率・營益率・淨利率・營業現金流・自由現金流・負債比・流動比;<b>每一格都標哪一季、最晚公布日、來源</b>,查不到就寫「—」並說原因', '⛔ 不評分、不判好壞、不給買賣;「📋 複製給 AI」會連來源與期間一起帶走,並要求 AI 只解讀不推估', '⏳ 負債比 / 流動比要等你手動跑一次「📦 財報三表深歷史回算」才有數字(資產負債表這四欄這一版才開始存,不多花額度)'] },
@@ -8707,7 +8711,6 @@ ${list}
         ] },
         { v: 'V77.9.3', d: ['👑 <b>領頭羊加進產業作戰室的 📒 成績單(第 4 頁)</b>:照規則自己模擬買賣 —— 每 10 個交易日換倉那天出名單,<b>隔天收盤</b>買前 5 名、掉出前 10 名才賣(⛔ 不設停損),大盤嚴格空頭那天不買;跟自動下單(LEADER=1)同一套', '📸 採礦每天收盤後把領頭羊名單存下來(以前只有當天那份、隔天就被蓋掉);09-24 第一次換倉的名單用 K 線補算回來', '🔄 名單出了、隔天還沒成交時,成績單會先列「會買 / 會賣」哪幾檔,⛔ 不算進成績', '🎑 另外三頁:中秋 / 教師節那種假日多出來的快照⛔ 不再算成一天', '🔎 順手發現:09-24 那天決策台上的領頭羊名單有被中秋那根假 K 棒影響(少數幾檔的 10 日漲幅算偏了);採礦下一輪清掉假 K 之後就會正常'] },
         { v: 'V77.9.2', d: ['🎑 <b>09-25 不是缺資料 —— 那天中秋節、09-28 教師節都沒開盤</b>。真正的問題相反:採礦在這兩天幫約 1,240 檔<b>多寫了假 K 棒</b>(收盤跟 09-24 一樣、兩天的量一模一樣),「抱滿幾天」、均線、10 日漲幅都會多算 2 天', '🔧 修兩處:① 盤後快照改看交易所自己帶的<b>成交日期</b>,不是今天的就不補 ② 已經寫進去的假日 K 棒,等加權指數確認那天沒開盤後自動刪掉(也順手清掉 06-19 端午、07-10 颱風那兩天留下的)', '⏳ 09-25 / 09-28 那兩根要等加權有 09-29 那天的資料(明天收盤後那一輪)才會被清掉'] },
-        { v: 'V77.9.1', d: ['👑 <b>決策台預設換成「領頭羊」並排最上面</b>(實測最強:近 4 年 100 萬 → 860 萬;上一任 🧬 那套 324 萬、輸 0050 含息約 350 萬)', '⚙️ 決策台太多 → 設定中心「🎯 決策台要顯示哪些」可勾選:預設只開 👑 領頭羊 + 🚪 手上的要不要賣;🧬 舊買點 / 符合進場 / 長說明預設收起(⛔ 沒刪,勾回來就有),收起的會在頂端寫一行', '💲 領頭羊名單加<b>收盤價</b>與「今天漲跌」,表頭(名次 / 收盤 / 10 日 / 今天 / 億/日)<b>可點排序</b>,再點一次反向;🛒 買仍只看名次', '👜 手上的股票按「這檔是照這套買的」標起來,才會照領頭羊規則講要不要賣(⛔ 不再套三條出場線,同一檔不會兩套說法);沒標的只顯示名次', '📊 個股總覽多一行「👑 領頭羊怎麼說」:第幾名 → 換倉日買 / 續抱 / 掉出就賣(不在成交額前 100 大的整行不顯)', '🏅 產業作戰室實測總表:領頭羊排第一(🥇);已檢查 92 支探針全部都有收錄'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -25540,7 +25543,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const lines = (dec && Array.isArray(dec.lines) && dec.lines.length)
             ? dec.lines.map(x => this._rpRow(`${x.lbl}${x.cur ? ' <span class="text-amber-300">(你設定的)</span>' : ''}`, `${(+x.v).toFixed(2)} 元`)).join('')
             : this._rpNa('出場線還沒算出來(指標載入中)');
-        const trap = C.trap && Number.isFinite(+C.trap.pct) ? this._rpRow('近 120 日買進的人還在賠錢的比例', `${Math.round(+C.trap.pct)}%`) : '';
+        const trap = C.trap && Number.isFinite(+C.trap.pct) ? this._rpRow('近 120 日成交量在現價之上的比例(套牢)', `${Math.round(+C.trap.pct)}%`) : '';
         const pb = C.pbE ? (C.pbE.loose || !(+C.pbE.trig > 0)
                 ? this._rpRow('明日作戰清單', `這檔在清單裡(${this._escHtml(C.pbE.k || '')}),⛔ 不靠固定價位觸發`)
                 : this._rpRow('明日作戰清單觸發價', `漲過 ${(+C.pbE.trig).toFixed(2)} 才算數(${this._escHtml(C.pbE.k || '')})`))
@@ -29801,21 +29804,65 @@ ${this._reportFacts(sym)}
               L = b => +((b?.low ?? b?.l) || 0), V = b => +(b?.volume || 0);
         const pC = C(data[last]); if (!(pC > 0)) return null;
         const win = data.slice(-121);
-        let tot = 0, above = 0;
+        let tot = 0, above = 0, aboveVal = 0;
         for (const b of win) {
             const v = V(b); if (!(v > 0)) continue;
             const typ = (H(b) + L(b) + C(b)) / 3;      // 典型價,⛔ 不用收盤(振幅大的日子會失真)
-            tot += v; if (typ > pC) above += v;
+            tot += v; if (typ > pC) { above += v; aboveVal += typ * v; }
         }
         if (!(tot > 0)) return null;
         const pct = above / tot * 100;
+        // ⚖️ V79.0.1 補回「上面套牢 vs 下面賺錢」那條(V79.0.0 隨分點一起被刪的是**分點均價**版)——
+        //   ⭐ 這裡只多回三個描述用的數字,⛔ pct 與下面的分段一個字都沒改(那是 trapped_probe 的口徑)。
+        //   unlockPx = 現價上方那部分成交量的**量加權典型價**(舊卡「漲到 X 附近會卡住」的 K 線版)。
+        //   ⚠️ 量是**股**,張 = ÷1000;⛔ 文案只准講「成交量」不准講「幾 % 的人」(買了又賣掉的也算在內)。
+        const extra = { aboveLots: Math.round(above / 1000), belowLots: Math.round((tot - above) / 1000),
+                        unlockPx: above > 0 ? aboveVal / above : null, pC };
         // 實測對照(⛔ 寫死的是回測結果,不是猜的;改判定就要重跑 trapped_probe.py)
-        const band = pct >= 80 ? { w60: 24.5, rng: 23.8, tag: '⛔ 幾乎人人套牢' }
+        //   V79.0.1 tag 改講「量在上面/下面」⛔ 不講「人人」(那是成交量不是人數);門檻與數字一個沒動
+        const band = pct >= 80 ? { w60: 24.5, rng: 23.8, tag: '⛔ 幾乎都在上面套牢' }
                    : pct >= 60 ? { w60: 24.2, rng: 24.4, tag: '⚠️ 套牢偏多' }
                    : pct >= 40 ? { w60: 25.2, rng: 26.7, tag: '➖ 一半左右套牢' }
-                   : pct >= 20 ? { w60: 27.1, rng: 29.4, tag: '✅ 多數人有賺' }
-                   :             { w60: 29.8, rng: 32.5, tag: '✅ 幾乎人人賺錢' };
-        return { pct, ...band, baseW60: 25.9 };
+                   : pct >= 20 ? { w60: 27.1, rng: 29.4, tag: '✅ 大多在下面賺錢' }
+                   :             { w60: 29.8, rng: 32.5, tag: '✅ 幾乎都在下面賺錢' };
+        return { pct, ...band, baseW60: 25.9, ...extra };
+    },
+
+    // ⚖️ V79.0.1 籌碼頁那條「上面套牢的量 vs 下面賺錢的量」(使用者:「個股的壓力,有幾%套牢那個不見了」)
+    //   ⛔ 數字全部讀 `_trappedRatio`(唯一一份);第一道套牢區讀 `_upsideStash`(⛔ 不自己再算 `_overheadSupply`)。
+    //   ⛔ 位置類 → 橙/藍,⛔ 不用紅綠;⛔ 不下買賣指令(實測只能把期待值放低)。
+    _trapBalanceHtml(data, sym) {
+        if (sym && this._isIndexSym && this._isIndexSym(sym)) return '';
+        const T = (() => { try { return this._trappedRatio(data); } catch (_) { return null; } })();
+        if (!T) return '';
+        const p = Math.max(0, Math.min(100, Math.round(T.pct)));
+        const U = this._upsideStash;
+        const z = (U && Math.abs(+U.pC - +T.pC) < 0.01 && Array.isArray(U.list)) ? U.list.find(x => +x.sup > 0) : null;
+        const lots = n => (+n || 0).toLocaleString();
+        const fmt = v => (+v >= 100 ? (+v).toFixed(0) : (+v).toFixed(2));
+        const unlock = (T.unlockPx > 0 && p > 0) ? `漲到 <b class="font-mono text-orange-300">${fmt(T.unlockPx)}</b> 附近(上方那些量的平均成交價),在那裡買的人回本想賣 → <b>壓力</b>;` : '';
+        const wall = z ? `往上第一道套牢區 <b class="font-mono text-gray-200">${Math.round(z.lo)}~${Math.round(z.hi)}</b>(佔 ${(+z.sup).toFixed(0)}% 的量)。` : '';
+        return `<div data-trapbal="${p}" style="padding:6px 2px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px">
+                <span class="text-[11px] font-black text-gray-200">⚖️ 上面套牢的量 vs 下面賺錢的量 <span class="text-[10px] text-gray-500 font-normal">近 120 日</span></span>
+                <span class="text-[10px] text-gray-300" style="flex-shrink:0">${T.tag}</span>
+            </div>
+            <div style="display:flex;height:16px;border-radius:4px;overflow:hidden;background:#21262d">
+                <div style="width:${p}%;background:rgba(249,115,22,.75);display:flex;align-items:center;justify-content:center;min-width:0">${p >= 18 ? `<span class="text-[9px] text-white font-mono font-bold" style="white-space:nowrap;overflow:hidden">套牢 ${p}%</span>` : ''}</div>
+                <div style="width:${100 - p}%;background:rgba(59,130,246,.7);display:flex;align-items:center;justify-content:center;min-width:0">${(100 - p) >= 18 ? `<span class="text-[9px] text-white font-mono font-bold" style="white-space:nowrap;overflow:hidden">賺錢 ${100 - p}%</span>` : ''}</div>
+            </div>
+            <div class="text-[10px] text-gray-400 leading-snug" style="margin-top:4px">近 120 日成交量裡 <b class="text-orange-300">${p}%</b>(約 ${lots(T.aboveLots)} 張)成交在比現在貴的價位、<b class="text-blue-300">${100 - p}%</b>(約 ${lots(T.belowLots)} 張)比現在便宜。${unlock}${wall}</div>
+            <div class="text-[9px] text-gray-500 leading-snug" style="margin-top:2px">⚠️ 這是「<b>成交量</b>」不是「人數」(買了又賣掉的也算在內)。套牢越多,之後越像在箱子裡走、越不會噴,但⛔ <b>不是賣出訊號</b>,只能把期待值放低。</div>
+        </div>`;
+    },
+    // 總覽「📏 價格位置圖」底下那一行(同一份數字,⛔ 不另算)
+    _trapBalanceLine(data, sym) {
+        if (sym && this._isIndexSym && this._isIndexSym(sym)) return '';
+        const T = (() => { try { return this._trappedRatio(data); } catch (_) { return null; } })();
+        if (!T || !(T.pC > 0)) return '';
+        const p = Math.round(T.pct);
+        const fmt = v => (+v >= 100 ? (+v).toFixed(0) : (+v).toFixed(2));
+        return `<div class="text-[10px] text-gray-400 leading-snug" style="margin-top:3px" data-trapline="${p}">⚖️ 近 120 日 <b class="text-orange-300">${p}%</b> 的成交量在現價之上${T.unlockPx > 0 && p > 0 ? `・漲到 <b class="font-mono">${fmt(T.unlockPx)}</b> 附近有回本賣壓` : ''} <span class="text-gray-500">(完整那條在籌碼頁)</span></div>`;
     },
 
     // 🧑‍🤝‍🧑 散戶結構(集保官方週資料)—— ⛔ 只做**事實描述**,不下預測。
@@ -30576,6 +30623,16 @@ ${this._reportFacts(sym)}
         this._renderInstBars(n);
         this._renderMarginBars(n);
         this.renderChipPeriod(period);
+        this._renderTrapBal();
+    },
+    // ⚖️ V79.0.1 籌碼頁頂端那條(切股/進頁都重畫;算不出來就整格藏起來,⛔ 不留空殼)
+    _renderTrapBal() {
+        const el = document.getElementById('chipTrapBal');
+        if (!el) return;
+        const sym = this.currentSymbolId;
+        const h = sym ? this._trapBalanceHtml(this.rawDailyData || [], sym) : '';
+        el.innerHTML = h;
+        el.className = h ? '' : 'hidden';
     },
 
     _renderInstBars(n) {
@@ -36329,6 +36386,8 @@ ${this._reportFacts(sym)}
         const exitNote = (ex && K.exitNote)
             ? `<div class="text-[9px] text-orange-200 leading-snug" style="margin-top:4px">📌 ${String(K.exitNote).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')}想「彈回來了繼續抱」= 沒有規則、是情緒 —— 反彈到位就照表減碼,之後真轉強(解除警報)再買回來。</div>` : '';
         const farTxt = far.length ? `<div class="text-[8px] text-gray-500 leading-snug mt-0.5">↑ 更遠 ${far.map(z => `${Math.round(+z.lo)}~${Math.round(+z.hi)}(${(+z.sup).toFixed(0)}%)`).join('、')} 也有套牢量</div>` : '';
+        // ⚖️ V79.0.1 「近 120 日幾 % 的量在現價之上」一行(同 `_trappedRatio`,⛔ 不另算;完整那條在籌碼頁)
+        const trapLine = (() => { try { return this._trapBalanceLine(this.rawDailyData || [], sym); } catch (_) { return ''; } })();
         // 🧱 V76.4.1 無框(外框只是把東西圍起來;⛔ 裡面每一格 `cell()` 的框**保留** —— 它在分「這是哪一個價位」)
         //   ⚠️ V77.0.0 左右留 **3px** —— 全站去框之後這支貼齊容器邊,軌道最左邊那個**標記**會凸出 1.32px
         //      (test_gauge ⑱ 抓到的)。⛔ 不是把斷言放寬,是刻度兩端本來就不該貼著邊;3px 換 51px 的增益。
@@ -36343,7 +36402,7 @@ ${this._reportFacts(sym)}
                 <div data-rulerfill="${Math.round(fillW)}" style="position:absolute;left:0;top:10px;height:6px;width:${fillW.toFixed(1)}%;border-radius:9999px;${this._gaugeFill('pos', 50)}"></div>
                 ${pocBand}${bands}${mk}
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:5px">${legend}</div>${flatNote}${exitNote}${bearNote}${leadNote}${farTxt}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:5px">${legend}</div>${flatNote}${exitNote}${bearNote}${leadNote}${farTxt}${trapLine}
             ${stuckHtml}
 
             <!-- 🔗 V76.1.2 原本這裡逐項解釋灰帶/虛線/🎯 —— 併進來之後**每一格自己就寫了**(cell 的第三行),
