@@ -1,0 +1,201 @@
+{
+  "updated": "2026-10-09 16:16",
+  "stocks": {
+    "2492": {
+      "status": "⚠️ 注意股",
+      "threshold": "注意條款觸發"
+    },
+    "1709": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-15"
+    },
+    "2033": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-13"
+    },
+    "2466": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-15"
+    },
+    "3016": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-12"
+    },
+    "3055": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-12"
+    },
+    "3094": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-14"
+    },
+    "3167": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-12"
+    },
+    "3518": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-14"
+    },
+    "3701": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-15"
+    },
+    "6213": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-19"
+    },
+    "6533": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-13"
+    },
+    "6672": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-13"
+    },
+    "6957": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-15"
+    },
+    "8021": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-16"
+    },
+    "8201": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-13"
+    },
+    "8996": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "end_date": "2026-10-12"
+    },
+    "3441": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-19"
+    },
+    "4174": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-12"
+    },
+    "4760": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-15"
+    },
+    "5205": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-15"
+    },
+    "8358": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-15"
+    },
+    "4556": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-14"
+    },
+    "5013": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-14"
+    },
+    "8084": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 10,
+      "end_date": "2026-10-08"
+    },
+    "3455": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-13"
+    },
+    "6708": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-13"
+    },
+    "8227": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-08"
+    },
+    "2221": {
+      "status": "🚨 處置中",
+      "threshold": "已關禁閉",
+      "interval": 2,
+      "end_date": "2026-10-12"
+    }
+  },
+  "diag": {
+    "tw_notice": {
+      "hit": "notetrans",
+      "n": 1,
+      "tried": [
+        {
+          "u": "notetrans",
+          "ok": true,
+          "n": 1
+        }
+      ]
+    },
+    "tw_punish": {
+      "hit": "punish",
+      "n": 16,
+      "tried": [
+        {
+          "u": "punish",
+          "ok": true,
+          "n": 16
+        }
+      ]
+    },
+    "otc_notice": {
+      "hit": null,
+      "n": 0,
+      "note": "TPEx 未開放上櫃注意 OpenAPI(V67.10 實測 11 slug 全 404),不再打"
+    },
+    "otc_punish": {
+      "hit": "tpex_disposal_information",
+      "n": 12,
+      "tried": [
+        {
+          "u": "tpex_disposal_information",
+          "ok": true,
+          "n": 12
+        }
+      ]
+    }
+  }
+}
