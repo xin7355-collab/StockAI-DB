@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.xin7355collab.stockai",
+      "sha256_cert_fingerprints": [
+        "F8:30:CE:D6:9F:5C:13:B9:43:B4:E8:0F:BA:33:49:3A:29:ED:00:6F:2F:03:DD:CB:26:9F:3C:95:2B:A9:24:93"
+      ]
+    }
+  }
+]

@@ -1,0 +1,214 @@
+{
+  "updated": "2026-10-09 16:17 UTC",
+  "count": 15,
+  "data": [
+    {
+      "source_name": "自由財經",
+      "title": "Rapidus拚明年2奈米量產   搶台積電外溢訂單成頭號挑戰",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5601384",
+      "published_time": "Fri, 09 Oct 2026 23:08:26 +0800",
+      "matched_keywords": [
+        "奈米"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "財報季即將登場　AI相關企業成美股第3季獲利成長主力",
+      "link": "https://www.cna.com.tw/news/aopl/202610090225.aspx",
+      "published_time": "Fri, 09 Oct 2026 19:57:20 +0800",
+      "matched_keywords": [
+        "財報"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "與馬斯克合作有戲？台積電法說會10/15登場 分析師最想知道的事1次看",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5601207",
+      "published_time": "Fri, 09 Oct 2026 19:22:29 +0800",
+      "matched_keywords": [
+        "漲價",
+        "先進封裝",
+        "CoWoS",
+        "奈米",
+        "法說",
+        "毛利率",
+        "展望",
+        "資本支出"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利多",
+      "ai_reason": "市場關注AI需求與先進製程，預期法說會釋出正面指引",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "PIMCO：美10年期公債殖利率恐升至6%　26年來首見",
+      "link": "https://www.cna.com.tw/news/aopl/202610090207.aspx",
+      "published_time": "Fri, 09 Oct 2026 18:20:40 +0800",
+      "matched_keywords": [
+        "油價",
+        "新高"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利空",
+      "ai_reason": "美債殖利率飆升恐壓抑全球風險資產估值",
+      "important": true
+    },
+    {
+      "source_name": "Reddit r/stocks",
+      "title": "r/Stocks Daily Discussion & Fundamentals Friday Oct 09, 2026",
+      "link": "https://www.reddit.com/r/stocks/comments/1x1gv8s/rstocks_daily_discussion_fundamentals_friday_oct/",
+      "published_time": "2026-10-09T09:30:11+00:00",
+      "matched_keywords": [
+        "EPS"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "文章中提到了台股個股、供應鏈和半導體，因此判斷文章有實質影響",
+      "title_zh": "標題若非繁體中文則翻成繁中(30字內);已是繁中就回空字串",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "台積電要小心？輝達、英特爾爆重大合作  2028年是關鍵",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5601035",
+      "published_time": "Fri, 09 Oct 2026 17:16:27 +0800",
+      "matched_keywords": [
+        "先進封裝"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利空",
+      "ai_reason": "英特爾技術可能削弱台積電封裝市場",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "川普排除選前攻擊伊朗　亞股多收紅油價回落",
+      "link": "https://www.cna.com.tw/news/afe/202610090172.aspx",
+      "published_time": "Fri, 09 Oct 2026 16:40:21 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利多",
+      "ai_reason": "油價回落降低通膨壓力，支撐亞股",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "Puma被中資買走了！中國安踏體育砸555億現金入主 成最大股東",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5601036",
+      "published_time": "Fri, 09 Oct 2026 16:35:17 +0800",
+      "matched_keywords": [
+        "收購"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "記憶體漲價扛不住了！傳蘋果砍iPhone 18 Pro元件訂單逾15％",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5601031",
+      "published_time": "Fri, 09 Oct 2026 16:28:17 +0800",
+      "matched_keywords": [
+        "漲價",
+        "調漲"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "日經亞洲：需求疲軟 蘋果削減iPhone 18 Pro訂單",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5601001",
+      "published_time": "Fri, 09 Oct 2026 16:01:46 +0800",
+      "matched_keywords": [
+        "漲價"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "日經亞洲：需求疲軟　蘋果削減iPhone 18 Pro訂單",
+      "link": "https://www.cna.com.tw/news/aopl/202610090154.aspx",
+      "published_time": "Fri, 09 Oct 2026 15:44:42 +0800",
+      "matched_keywords": [
+        "漲價"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "從日常需求意外找到商機！母女檔創業半年 海撈近1600萬營收",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5600666",
+      "published_time": "Fri, 09 Oct 2026 15:36:10 +0800",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "新聞中提到母女創業者投資了50萬美元，產品研發及市場創新，社",
+      "title_zh": "標題為繁體中文，文章中提到創業成功和市場創新，可能有對台股市的影響。",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "OpenAI營收疑慮緩解　日經跌幅收斂",
+      "link": "https://www.cna.com.tw/news/afe/202610090147.aspx",
+      "published_time": "Fri, 09 Oct 2026 15:22:27 +0800",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "OpenAI營收疑慮緩解，科技股跌幅收斂",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "光寶科第三季營收季增 9%，康舒單季首破百億元",
+      "link": "https://finance.technews.tw/2026/10/09/ai-power-demand-remains-strong-liteon-q3-revenue-up-9-percent-acbel-hits-new-high/",
+      "published_time": "Fri, 09 Oct 2026 06:46:13 +0000",
+      "matched_keywords": [
+        "合併",
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "光寶科第三季營收增長9%，推動供應鏈和半導體產業的市場壓力。",
+      "title_zh": "光寶科光寶科第三季營收增長9%，推動供應鏈和半導體產業的市場壓力。",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "法人：台積電法說會15日登場　有助支撐台股高檔整理",
+      "link": "https://www.cna.com.tw/news/afe/202610090133.aspx",
+      "published_time": "Fri, 09 Oct 2026 14:40:57 +0800",
+      "matched_keywords": [
+        "法說"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "台積電法說預期釋出正面訊息，支撐大盤高檔整理",
+      "important": true
+    }
+  ]
+}
