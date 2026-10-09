@@ -38,7 +38,6 @@ const COST = 0.44;
 const DEDUP = 20;
 const HOR = [5, 10, 20];
 const WIN = +(process.env.WIN || 120);      // 套牢層回看窗口(index.html 用 120)
-const NB = 40;                              // 價格分 40 格(同 _overheadSupply)
 // 🚨 STEP 必須是 1:selftest 用 2 的時候,300 檔注入只收到 74 筆 —— **被壓回的事件天生只在牆上待 1~2 根**,
 //    隔根取樣會把它們整批漏掉 → 真實資料的「被壓回率」會被系統性低估。⛔ 別為了跑快改回 2。
 const STEP = 1;
@@ -49,39 +48,7 @@ const med = a => { const b = [...a].sort((x, y) => x - y); return b.length % 2 ?
 const f = (v, d = 2) => v == null || !Number.isFinite(v) ? '  —  ' : (v >= 0 ? '+' : '') + v.toFixed(d);
 const pad = (s, w) => String(s).padEnd(w, ' ');
 
-// ═══ 判定邏輯(搬自 index.html:_overheadSupply,⛔ 改那邊要同步)═══
-//  回傳:由近到遠最多 3 層 {lo, hi, mid, pct, dist}
-//  ⭐ buckets 只算一次,所有 MIN_SHARE 門檻共用(⛔ 否則敏感度掃描要跑 5 遍)
-function buildBuckets(win) {
-  const w2 = [];
-  for (const b of win) if (b.c > 0 && b.v > 0) w2.push(b);
-  if (w2.length < 40) return null;
-  let mn = Infinity, mx = -Infinity;
-  for (const b of w2) { const p = (b.h + b.l + b.c) / 3; if (p < mn) mn = p; if (p > mx) mx = p; }
-  if (!(mx > mn)) return null;
-  const w = (mx - mn) / NB, bk = new Float64Array(NB);
-  for (const b of w2) bk[Math.min(NB - 1, Math.floor(((b.h + b.l + b.c) / 3 - mn) / w))] += b.v;
-  let tot = 0; for (let i = 0; i < NB; i++) tot += bk[i];
-  return tot > 0 ? { mn, w, bk, tot } : null;
-}
-function layersFrom(B, pC, minShare) {
-  if (!B) return [];
-  const hot = [];
-  for (let i = 0; i < NB; i++) {
-    const lo = B.mn + i * B.w;
-    if (lo <= pC * 1.01) continue;                      // 只看現價上方(留 1% 緩衝)
-    if (B.bk[i] / B.tot >= minShare) hot.push({ i, lo, hi: lo + B.w, v: B.bk[i] });
-  }
-  if (!hot.length) return [];
-  const L = [];
-  for (const b of hot) {                                 // 相鄰併層(最多容忍隔 1 格)
-    const t = L[L.length - 1];
-    if (t && b.i - t.iEnd <= 2) { t.hi = b.hi; t.v += b.v; t.iEnd = b.i; }
-    else L.push({ lo: b.lo, hi: b.hi, v: b.v, iEnd: b.i });
-  }
-  return L.map(x => ({ lo: x.lo, hi: x.hi, mid: (x.lo + x.hi) / 2, pct: x.v / B.tot * 100 }))
-          .sort((a, b) => a.lo - b.lo).slice(0, 3);
-}
+import { NB, buildBuckets, layersFrom } from './lib_overhead.mjs';   // ⛔ 判定邏輯只有那一份
 
 // ═══ 資料 ═══
 function loadTwii(dir) {

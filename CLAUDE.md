@@ -2198,6 +2198,7 @@ Tailwind **具名** `grid-cols-N` 會編成 `minmax(0,1fr)`;**任意值** `[1fr_
 | `edge_probe.py` | 8 個機構因子在台股有沒有效 | 走完一次空頭後(目前結論來自 3 年多頭,低波動/反轉/流動性三個因子當時是反向的) |
 | `broker_habit_probe.py` | 隔日沖分點有沒有慣性(V71.7.x) | `data/chips/*.json` 的 `hist` 累積到 1~2 個月後(目前只有 7~8 天) |
 | `overhead_probe.mjs` | 🪤 **上方套牢區**(現價上方的量堆積層)撞上去之後穿不穿得過、賺不賺得到(V76.0.6) | ⛔ 「能不能當買賣訊號」已驗**六關 0 過、門檻 5 格 0 過**,別再測一次;⭐ **改了 `_overheadSupply` 的判定就要重跑**(`_SUPPLY_EDGE` 的數字會對不上);⭐ 走完下一次空頭後可重跑。⭐ 方法備忘:`STEP` 必須是 1 —— **被壓回的事件天生只在牆上待 1~2 根**,隔根取樣會把它們整批漏掉 |
+| `trap_compare_probe.mjs` + `lib_overhead.mjs` | ⚖️ **付費分點「解套價」vs K 線套牢區,哪條線比較壓得住股價**(V79.0.2;chips_deep 2 年、同一檔另一天同距離假線當對照、碰到後 10 天先跌回 3% 的比例;`--selftest` 埋線注入 / 前視注入必紅) | ⛔ 結論已定:分點版沒有比較準(配對 +1.8 / +2.9 vs K 線加權價 +4.6pp),四條都只比假線多 1~5pp → 別再測;分點資料已停。跑法:`git archive origin/chips_deep \| tar -x -C $S/cd && CHIPS_DEEP_DIR=$S/cd/chips_deep DATA_DIR=$S/od/data node --max-old-space-size=10000 scripts/trap_compare_probe.mjs out.json`(約 1 分) |
 | `gap_after_probe.mjs` | 🌅 **開盤落在哪一段 → 當天開盤到收盤**(V78.5.4;五段 3%;全部股票逐年 12/12 同方向;這一檔前一年猜下一年輸全部股票;`--selftest` 9 條)| ⛔ 結論已定:用全部股票。產物給 `embed_gap_base.mjs gap_base.json gap_after.json` → `_GAP_BASE.after`。跑法:`DATA_DIR=$S/d10n NAMES=$S/od/data/stock_names.json node --max-old-space-size=8000 scripts/gap_after_probe.mjs out.json`(約 1 分)|
 | `gap_base.mjs` + `embed_gap_base.mjs` | 🌅 **開盤跳空分布的一般股票基準**(V78.5.3;上市櫃 4 碼個股最近 250 根、\|跳空\|>11% 剔除、開盤鎖漲停 / 跌停另記;0.1% 一格直方圖;`--selftest` 7 條;embed 交叉驗證總和 = n、≥1000 檔、讀回一字不差)| ⛔ 描述型不是訊號。⭐ 資料過一陣子可重跑更新 `_GAP_BASE`:`git archive origin/data \| tar -x -C $S/od` → `DATA_DIR=$S/od/data node scripts/gap_base.mjs $S/g.json && node scripts/embed_gap_base.mjs $S/g.json`(幾秒)。⚠️ 改了 `_gapStats` 規則兩邊一起改 |
 | `prob_factor_probe.mjs` | 📊🧪 **機率表能不能更準**(V78.1.1):6 個別處證明有東西的因子(營收加速 / 外資∧投信同步 / 成交額前 100 / 下降三角 / 跌停後收紅 / 創高回測不破)切進 72 格,前半學後半驗 + 反方向 + 5 次同觸發率安慰劑,看 Brier;方向用**同期同格有 vs 沒有**(⛔ 不拿學習段當對照);`--selftest` 9 條(注入 +25pp 要過、假因子不可過、零前視);`rowOf` 跟 prob_probe 共用(搬進 lib_prob) | ✅ 只有「成交額前 100」在「明天」樣本外更準 → `_PROB_TABLE.amt1`(⚠️ 準在「平」少,⛔ 不是優勢);其餘 5 個加了反而不準 → 別再測一次。⭐ 改 lib_prob 分桶或窗口變長後可重跑。跑法:`DATA_DIR=$S/dd2 FIN_DEEP=$S/fin_deep_now.json node --max-old-space-size=10240 scripts/prob_factor_probe.mjs out.json`(約 3 分)→ 合併進 `_PROB_TABLE` 再 `embed_prob_table.mjs` |
@@ -2402,6 +2403,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- ⚖️ V79.0.2 付費分點版「解套價」沒有比 K 線版準(配對下 K 線加權價 +4.6pp 最好、分點 3 日 +1.8;都只比同距離假線多 1~5pp)→ ⛔ 不為它買回 Sponsor
 - ⚖️ V79.0.1 「有幾%套牢那個不見了」= 籌碼頁分點版「上面想逃 vs 下面挺你」隨 V79.0.0 刪掉 → 改用 K 線成交量(`_trappedRatio`)補回籌碼頁 + 總覽一行;文案只講成交量 ⛔ 不講人
 - 🗑️ V79.0.0 券商分點 + 10 個付費資料集整組移除(畫面 + 採礦;chips 檔只剩基本面、`fetch_free_fundamentals` 接手免費那半;⛔ chips_deep 分支沒刪)・🐛 順手:報告頁 Promise.all 刪一格要數空位
 - 💳 V78.7.0 FinMind 付費金鑰 10/01 起失效:付費 10 個產物 + 分點全停在 09/30(核心策略零影響)・籌碼頁改成講原因(`_chipStaleWhy`,⛔ 只寫「N 天前」)
