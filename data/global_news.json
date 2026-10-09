@@ -1,95 +1,59 @@
 {
-  "updated": "2026-10-09 17:11 UTC",
+  "updated": "2026-10-09 17:45 UTC",
   "items": [
     {
-      "source": "🧪 技術突破",
-      "title": "Boston Dynamics gives more insight into its redesigned humanoid hand - The Robot Report",
-      "url": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQVE9FVndDaTRvd0VmWG5CRzc0MUt0YjJjVlY1bWNtYzNtanFXM3NYa3dwQS1VanZpMEM1d0NJTnB0VEFEYjJIM1B5SnpxWGdiaTQ0V01YNmJncktvV3pFM3h2T1dGcFhYZFZxLTZ0MGRhQ3U0SURBWWJiUFBSa05EUVlxU2FvVmtraGFXcjBfRUM1SXh2cWNrRFlZeVZpNHlieEE?oc=5",
-      "published": "Fri, 09 Oct 2026 17:09:06 GMT",
-      "title_zh": "波士頓動力揭示新型人形手",
-      "impact": "波士頓動力新型機械手提升機器人技術，利好台灣相關產業，股價或",
+      "source": "BBC Business",
+      "title": "Anthropic bans users from being 'cruel' to its AI systems",
+      "url": "https://www.bbc.co.uk/news/articles/c6j9k1l72wkgo?at_medium=RSS&at_campaign=rss",
+      "published": "Fri, 09 Oct 2026 12:34:27 GMT",
+      "title_zh": "Anthropic禁止用戶虐待AI",
+      "impact": "此舉強化AI安全合規，長期利好AI產業發展，對台股影響中性。",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "BBC Business",
+      "title": "Fired OpenAI researchers say they were let go for 'prioritising safety'",
+      "url": "https://www.bbc.co.uk/news/articles/cvlydn8d3lkjo?at_medium=RSS&at_campaign=rss",
+      "published": "Fri, 09 Oct 2026 09:30:49 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "BBC Business",
+      "title": "Nvidia-backed data centre firm scraps IPO as AI valuation concerns deepen",
+      "url": "https://www.bbc.co.uk/news/articles/ck9dzpw4ll8po?at_medium=RSS&at_campaign=rss",
+      "published": "Fri, 09 Oct 2026 07:14:30 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "BBC Business",
+      "title": "Trump wants to reduce the cost of fuel as the midterms loom - will it work?",
+      "url": "https://www.bbc.co.uk/news/articles/cv2d6x749lwro?at_medium=RSS&at_campaign=rss",
+      "published": "Fri, 09 Oct 2026 04:55:14 GMT",
+      "title_zh": "特朗普欲降油價，臨近中期選舉",
+      "impact": "油價下降降低台灣製造業成本，提振企業獲利，對台股偏多。",
       "impact_level": "bullish"
     },
     {
-      "source": "🔥 停產事故",
-      "title": "Chemical Safety Board video on refinery fire urges facilities to plan ahead - Safety+Health Magazine",
-      "url": "https://news.google.com/rss/articles/CBMitwFBVV95cUxQRmtWV2lGZ2NXSGFMZzBISVliT2xSeEItX3RMWTF5MGhYSExUSGFvNHV4SmxxVmduZWJHYWZiNlRTRmZTb0lMamxMdkZJX3dBN1BTQWxCWmdoQmw4Wkp6MFFkdmwwLXRFbmoxY3B2NlB0S0oxTXB2T2hDZUtJLXNFcnJMczFPSVlqcXo0cmtSWk1CTnBXR2doT1Y5Yy15bXRxaFZnUnBRdFV5Q2FhRTJoZGE5SkFMYUE?oc=5",
-      "published": "Fri, 09 Oct 2026 16:55:53 GMT",
-      "title_zh": "化學安全委員會籲煉油廠提前規劃防火",
-      "impact": "強化安全合規或增加成本，對台股影響有限。",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "🚫 出口管制",
-      "title": "Taiwan Semiconductor Vs. ASML: If I Had to Choose One For the Next 5 Years, It’s This One - AOL.com",
-      "url": "https://news.google.com/rss/articles/CBMiggFBVV95cUxOQkZCckZDc1lhRm9oQWxTUXNvMDFfWC1waF8xcUxZbUlHVkZ2UTFoSHFWNWxOMjlMU1RlcHJyd1ExcFZLczlaY1NxWDRCdmZFX2xicjNNcUVhSExEQTZ2M3czRUV2WWczNU5hOXgwSi1lUUJwcWI4QVJubHdRbmFaeXhn?oc=5",
-      "published": "Fri, 09 Oct 2026 16:45:59 GMT",
-      "title_zh": "",
-      "impact": "AI 回的內容看不懂(JSONDecodeError)",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "🌍 地緣突發",
-      "title": "Russian losses in the war with Ukraine. Mediazona count, updated - Mediazona",
-      "url": "https://news.google.com/rss/articles/CBMia0FVX3lxTE5FQ1dzSjJZODdNeC1vODJ2QXV4WTlBRGVSUHRkZjFxeGNSU3hicHE2NHpHYXF2X0hLZG9PVmdETXFTdUtCbWhqbUJYRmJwclM3NzRVUXkyMkRVTllNNjdjNXRrN1lJYnc4d3dv?oc=5",
-      "published": "Fri, 09 Oct 2026 16:30:43 GMT",
-      "title_zh": "",
-      "impact": "AI 回的內容看不懂(JSONDecodeError)",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "🔥 停產事故",
-      "title": "2 workers seriously injured in an explosion at oil refinery near Athens, officials say - WQOW",
-      "url": "https://news.google.com/rss/articles/CBMihgJBVV95cUxNLWh4TXQwLUlxYmZMZW5hTG1zempid0VUQlYwRFQwd1dZMlBGZTlXZjh2RVdLSWRyX0dLam9OOFZBX09xZFdUNGdobWRFd3p6Vkp6OXN3N1VnWHE1OGh2YklLdXE1blpjekZyVjJVTFhyNXFHRGpCcGQxZ0l4SmRQeVVwM0xTcmpZVW9zR3BuU2l0SVpqVmkzQ0xjVWtEdWhJZHJYbW1jTTZtVWVuUU5sUkFjVFZ2LVdHOWlVN0NhQW1ZRGRYam9ieU0yOWJXb1ZTRGV4TlA4U1RHOTNzbE9KSWNFVHJBS2IzdnFSNmlSYzdYWkFvQnJZRFNuQ3gteHVZOE5RZ2Zn?oc=5",
-      "published": "Fri, 09 Oct 2026 16:30:00 GMT",
-      "title_zh": "",
-      "impact": "AI 回的內容看不懂(JSONDecodeError)",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "📊 巨頭財報",
-      "title": "Nvidia-Backed Data Center IPO Collapses—OpenAI Revenue Questions—Apple customers Are Not Price Insensitiv - Benzinga",
-      "url": "https://news.google.com/rss/articles/CBMi6gFBVV95cUxNUWwteWVBbnlLSGNTcnM1cjVPTTRLMkp1MlIwOUcwcms2SnlQZHVjWnlMbWgzQWlkRnh5OUhqbHZBU294djczTEY0bXhSZkJWVzRwOGxzSEVQX3dwcmctZE4xQUVicVFwQW5zemVraV9oa1EwTElCNk43U1BSMy0ybEptNE1CZ0xBTHFVSDJRNHlOVmhzWlk4V2FSbXUtTHlSR3V6cHN6NFNFQURZa3EwVHhseGJ2Q3ozb3Q4ZlAzeDBiYkM4ejdCaFZnX1NaLU50bENvMmVyX1QxMk9ITHNkX3dQbkVqTThualE?oc=5",
-      "published": "Fri, 09 Oct 2026 16:28:58 GMT",
-      "title_zh": "輝達系數據中心IPO破發 蘋果定價受質疑",
-      "impact": "AI商業模式疑慮加劇，恐引發科技股估值修正。",
-      "impact_level": "bearish"
-    },
-    {
-      "source": "🌍 油價航運",
-      "title": "Anxiety Rankings, Week 6: Brent Venables under pressure, USC and Penn State both need to get back on track - CBS Sports",
-      "url": "https://news.google.com/rss/articles/CBMiswFBVV95cUxNWlhPVmZTOGlHNlJkOWVYUlZTNEpLNHRST0FCeWJZam5FWHhTMEJNNXpoVEliSHZfV3M3Xy1oVWxBWUw5andYdDRNSUN0WGFmbVQtTkVIczlpcUlIcThHQjB2Q1Vmby03U1ZEcE9xMDlKa1l3cHd2aE9tMElpTzZoODJnQnhkX3JzVjFDTWpDcmx6V1BDVVlWQmpCbURqbHZ4ZEFDQ250dFVhMWdoeVlSVGE0TQ?oc=5",
-      "published": "Fri, 09 Oct 2026 16:00:19 GMT",
-      "title_zh": "",
-      "impact": "AI 回的內容看不懂(JSONDecodeError)",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "Huang Nvidia",
-      "title": "Nvidia and AMD Lead the AI Market. 1 Chip Stock Has Far Greater Upside. - The Motley Fool",
-      "url": "https://news.google.com/rss/articles/CBMijAFBVV95cUxNdXdhamota1R2aFM2amlnakFkN0h1TERQa3puNERMaS1ONFlFRW9jTlAzZEZWRHE0SThmMDRWM2hTUUl3dVQ5RVNCUXJvU1d2WXRndUdveFI0VUU1U3ZwUlhrNzE0ZU9XTnk5a3QzYm1vcmNsNWJ2NzgwbEstVUNyNXByR010bzdmNkF4Mw?oc=5",
-      "published": "Fri, 09 Oct 2026 15:54:55 GMT",
-      "title_zh": "Nvidia和AMD導領深度學習市場，1個芯片股未來更大潛值。",
-      "impact": "台灣股市可能會看到與這些公司相關的投資或投資機會，特別是在深",
+      "source": "BBC Business",
+      "title": "Mark Zuckerberg has an image problem - so why is Meta's business booming?",
+      "url": "https://www.bbc.co.uk/news/articles/cq8rzjv8g7ejo?at_medium=RSS&at_campaign=rss",
+      "published": "Thu, 08 Oct 2026 23:14:02 GMT",
+      "title_zh": "扎克伯格形象有爭議，Meta業務卻蓬勃發展",
+      "impact": "Meta業務強勁增長可能提振科技股情緒，對台股科技類股形成正",
       "impact_level": "bullish"
     },
     {
-      "source": "🚫 出口管制",
-      "title": "China and the European Union agree to strengthen dialogue on export controls. - صوت الإمارات",
-      "url": "https://news.google.com/rss/articles/CBMixwFBVV95cUxOWnFDTHlEV3ZBMFllcGp3Yzc1RDN3VlkxRGdMbDJrRHU1UGZZMmlfVW1QTWt4S2t0MzhzZHBHeEFLNjg0Q0ZuYk9iSDBTaVJQWTVnUUdqNW45Nm5oRWFocHFIQ1hTM1gtamEzZ0dFSVVwVzJiQWREaTZJd3VFZWwyTGJsOHlZaXpxX2VmRnVhZ2stUDk0dklIS0FCTUliUjdUQmpEeURpMDhEQ0ZzY1FsNURBQ1AxOEVhajEtdUZGZVV5UDY1MGlR?oc=5",
-      "published": "Fri, 09 Oct 2026 15:44:27 GMT",
-      "title_zh": "中歐同意加強出口管制對話",
-      "impact": "可能加劇出口管制，對台股半導體及高科技產業帶來壓力",
-      "impact_level": "bearish"
-    },
-    {
-      "source": "AMD Amazon",
-      "title": "Jeff Bezos says a 3-day workweek and more single-income households are on the way thanks to AI - Fortune",
-      "url": "https://news.google.com/rss/articles/CBMixgFBVV95cUxNQ3ZBV1lnZjV6R2VRUHBaTENHWC13UDVzSDc1Y2xNZm1Vd1B1aWpOUmYweklhRFJIQnkydUNRTWh0MTBKbXh6aXJGZFdvci1VNXE3d3h5V1JfWFZIWDZCYWRVOXpzNzNmcm93LWtsWFZqSjludllIRThSdHNwZzlNc3paUjNQNVEyMEVkbTNiTGN6NGtybVFMS0UtVVgtaXNJMHYwbXNJVzdPelFHUTR6QnZ3WGhRWmoxaDVycGN5ZTF4UzVuY3c?oc=5",
-      "published": "Fri, 09 Oct 2026 15:36:00 GMT",
-      "title_zh": "貝佐斯：AI將促成三週工作與單薪家庭",
-      "impact": "AI提升生產力預期利好科技股，但可能引發對就業市場結構變化的",
-      "impact_level": "bullish"
+      "source": "BBC Business",
+      "title": "White House blocks Microsoft from foreign worker hiring programme",
+      "url": "https://www.bbc.co.uk/news/articles/ck5yngl2y4gpo?at_medium=RSS&at_campaign=rss",
+      "published": "Thu, 08 Oct 2026 21:37:35 GMT",
+      "title_zh": "白宮阻止微軟外籍員工計畫",
+      "impact": "此舉可能削弱微軟在美國的擴張動能，對台股受惠於美國科技需求的",
+      "impact_level": "neutral"
     }
   ]
 }

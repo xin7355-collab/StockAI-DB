@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-09 17:11 UTC",
+  "updated": "2026-10-09 17:45 UTC",
   "count": 15,
   "data": [
     {
@@ -11,8 +11,8 @@
         "奈米"
       ],
       "cat": "🧪 技術突破",
-      "ai_sentiment": "利空",
-      "ai_reason": "新廠商搶奪台積電外溢訂單",
+      "ai_sentiment": "中立",
+      "ai_reason": "Rapidus競爭不影響台積電主導地位",
       "important": true
     },
     {
@@ -25,7 +25,8 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "AI企業推動獲利成長，提振市場",
+      "ai_reason": "經濟景氣正好，AI相關企業成為推動獲利成長的主要動力。",
+      "title_zh": "標題若非繁體中文則翻譯為繁體中文，標題長度應少於30字。",
       "important": true
     },
     {
@@ -44,8 +45,8 @@
         "資本支出"
       ],
       "cat": "⚡ 供需價格",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI需求與先進製程提升營收",
       "important": true
     },
     {
@@ -59,21 +60,20 @@
       ],
       "cat": "💱 匯率成本",
       "ai_sentiment": "利空",
-      "ai_reason": "美債殖利率飆升恐壓抑台股估值",
+      "ai_reason": "美債收益上升壓低股市",
       "important": true
     },
     {
-      "source_name": "Reddit r/stocks",
-      "title": "r/Stocks Daily Discussion & Fundamentals Friday Oct 09, 2026",
-      "link": "https://www.reddit.com/r/stocks/comments/1x1gv8s/rstocks_daily_discussion_fundamentals_friday_oct/",
-      "published_time": "2026-10-09T09:30:11+00:00",
+      "source_name": "Yahoo 即時財經",
+      "title": "股市震盪錢往哪逃！這6檔規模、單位數雙增　小資防禦首選",
+      "link": "https://tw.news.yahoo.com/%E8%82%A1%E5%B8%82%E9%9C%87%E7%9B%AA%E9%8C%A2%E5%BE%80%E5%93%AA%E9%80%83-%E9%80%996%E6%AA%94%E8%A6%8F%E6%A8%A1-%E5%96%AE%E4%BD%8D%E6%95%B8%E9%9B%99%E5%A2%9E-%E5%B0%8F%E8%B3%87%E9%98%B2%E7%A6%A6%E9%A6%96%E9%81%B8-172600773.html",
+      "published_time": "Fri, 09 Oct 2026 17:26:00 +0800",
       "matched_keywords": [
-        "EPS"
+        "油價"
       ],
-      "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "該新聞主題為台股個股/供應鏈/半導體/大盤，分析和討論可能有",
-      "title_zh": "標題為繁中，如果標題為繁體中文，則翻譯為繁中，如果標題為繁體中文，則為空字串。",
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利空",
+      "ai_reason": "資金流向美國債券，台股資金外移",
       "important": true
     },
     {
@@ -85,9 +85,8 @@
         "先進封裝"
       ],
       "cat": "🧪 技術突破",
-      "ai_sentiment": "利多",
-      "ai_reason": "台積電目前穩定為全球前浪領導品牌，輝達接近合作使用英特爾的先",
-      "title_zh": "台積電穩定，輝達近合作使用英特爾封裝技術，可能對台股有實質影響，新聞內容無關台積電，不影響台股",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
     },
     {
@@ -100,7 +99,21 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "美股科技股回暖助台半導體",
+      "ai_reason": "OpenAI營收衝擠暫平息，科技股反彈，SpaceX大漲。這",
+      "title_zh": "OpenAI營收衝擠暫平息，科技股反彈，SpaceX大漲。",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "川普排除選前攻擊伊朗　亞股多收紅油價回落",
+      "link": "https://www.cna.com.tw/news/afe/202610090172.aspx",
+      "published_time": "Fri, 09 Oct 2026 16:40:21 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利多",
+      "ai_reason": "油價回落減緩通膨壓力，支撐亞股",
       "important": true
     },
     {
@@ -113,8 +126,8 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "安踏體育收購Puma，對台股市有實質影響。",
-      "title_zh": "標題若非繁體中文則翻成繁中（30字內）",
+      "ai_reason": "中國安踏體股收購德國Puma，提高市場寧靜，可能會對台股有所",
+      "title_zh": "Puma被中國安踏體股收購，可能會對台股有所影響。",
       "important": true
     },
     {
@@ -127,8 +140,9 @@
         "調漲"
       ],
       "cat": "⚡ 供需價格",
-      "ai_sentiment": "利空",
-      "ai_reason": "記憶體漲價致蘋果砍單，衝擊供應鏈",
+      "ai_sentiment": "利多",
+      "ai_reason": "蘋果通知部份供應商削減iPhone 18 Pro和iPhon",
+      "title_zh": "蘋果通知部份供應商削減iPhone 18 Pro和iPhone 18 Pro Max的元件訂單，表示",
       "important": true
     },
     {
@@ -140,9 +154,8 @@
         "漲價"
       ],
       "cat": "⚡ 供需價格",
-      "ai_sentiment": "利多",
-      "ai_reason": "Apple 因半導體成本增加而削減 iPhone 18 Pr",
-      "title_zh": "Apple 因半導體成本增加而削減 iPhone 18 Pro 訂單：對供應鏈和小盤股票有實質影響",
+      "ai_sentiment": "利空",
+      "ai_reason": "記憶體晶片需求下降，衝擊台灣相關供應鏈",
       "important": true
     },
     {
@@ -154,8 +167,9 @@
         "漲價"
       ],
       "cat": "⚡ 供需價格",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利多",
+      "ai_reason": "Apple 因記憶體片成本飛揮而削減 iPhone 18 P",
+      "title_zh": "標題：Apple 因記憶體成本漲而削減 iPhone 18 Pro 和 iPhone 18 Pro ",
       "important": true
     },
     {
@@ -180,9 +194,8 @@
         "營收"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "OpenAI營收的報導有幫助推減業界疑慮，科技股跌幅隨之收斂",
-      "title_zh": "OpenAI營收報導緩解業界疑慮，科技股跌幅收斂。",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
     },
     {
@@ -196,20 +209,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "營收季增9%且AI電源需求提升",
-      "important": true
-    },
-    {
-      "source_name": "中央社財經",
-      "title": "法人：台積電法說會15日登場　有助支撐台股高檔整理",
-      "link": "https://www.cna.com.tw/news/afe/202610090133.aspx",
-      "published_time": "Fri, 09 Oct 2026 14:40:57 +0800",
-      "matched_keywords": [
-        "法說"
-      ],
-      "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "台積電說明會或釋出正面訊息支撐大盤",
+      "ai_reason": "AI需求帶動電源營收季增",
       "important": true
     }
   ]
