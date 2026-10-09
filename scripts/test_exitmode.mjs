@@ -145,16 +145,13 @@ const R5 = await page.evaluate(async (sym) => {
     out.sigTabFirst = Object.keys(app._RADAR_TABS || {})[0] || null;   // 它是物件不是陣列,第一個 key = 第一個榜單
     out.sigViewExists = !!document.getElementById('radarTodaySigView');
 
-    // (3) 分點:綁 sym 防跨股污染 + 文案不可再說「只追約 50 檔」
+    // (3) 🗑️ V79.0.0 出貨徵兆「分點主力近 5 日賣超」已隨券商分點移除 → 驗它不會再出現
     const r = await fetch(`data/${sym}.json`);
     const d = (await r.json()).map(x => ({ ...x, close: +x.close, open: +x.open, high: +x.high, low: +x.low, volume: +x.volume }));
-    app._chipSym = '9999'; app._chipPeriods = { '5d': { buy: [{ broker_name: 'X', net: -9999000 }], sell: [] } };
     app.currentSymbolId = sym;
     const w = app._distributionWatch(d, sym);
-    out.crossWhy = w.items.find(x => x.name.includes('分點主力'))?.why || '';
-    app._chipSym = sym;
-    out.sameWhy = app._distributionWatch(d, sym).items.find(x => x.name.includes('分點主力'))?.why || '';
-    out.srcWatch = app._distributionWatch.toString();
+    out.hasFen = !!(w && w.items.find(x => x.name.includes('分點')));
+    out.nItems = w ? w.items.length : 0;
     return out;
 }, SYM);
 
@@ -163,14 +160,7 @@ const R5 = await page.evaluate(async (sym) => {
 ok('⑤ 🗑️ 深度診斷已刪除,⛔ 不可復活', R5.pane === 'n/a' && !R5.vis?.now, JSON.stringify(R5.vis));
 ok('⑤ ⭐ 「今天最該看」是選股頁的第一個榜單(⛔ 不可被埋到後面)',
    R5.sigTabFirst === 'todaysig' && R5.sigViewExists === true, `first=${R5.sigTabFirst} view=${R5.sigViewExists}`);
-ok('⑤ ⭐⛔ 分點必須綁 _chipSym(⛔ 不可拿上一檔的分點算這一檔)',
-   /_chipSym === String\(sym\)/.test(R5.srcWatch || ''), (R5.srcWatch || '').slice(0, 120));
-ok('⑤ 上一檔分點殘留時要判成「沒有」', /載入中/.test(R5.crossWhy), R5.crossWhy);
-ok('⑤ 綁對時吃得到數字', /前 15 大分點/.test(R5.sameWhy), R5.sameWhy);
-// ⚠️ 只驗**顯示給使用者的字串**,⛔ 不驗註解(註解裡本來就要記「這句話為什麼過期」——
-//    同「禁止出現某句話的測試要先 strip 否定形」那條教訓,本 session 第 7 次踩到)
-ok('⑤ ⭐⛔ 顯示文案不可再寫「只追約 50 檔」(實測 gh-pages 有 2,653 檔)',
-   !/只追約 ?50 ?檔/.test(R5.crossWhy + R5.sameWhy), `${R5.crossWhy} | ${R5.sameWhy}`);
+ok('⑤ 🗑️ 出貨徵兆⛔ 不可再有分點那一條(V79.0.0)', R5.hasFen === false && R5.nItems >= 5, `hasFen=${R5.hasFen} n=${R5.nItems}`);
 
 // ── ⑥ V72.5.6 出場守門要接到**全部**進場類卡片(⛔ 不可只接發現的那兩張)────────
 //    V72.4.7 只接了「進場劇本」與「上檔空間」→ 四關卡、分批進場計畫、進場體檢

@@ -176,7 +176,7 @@ const SCAN = async (w, h, font, opener) => {
             //   ⛔ 只切 switchAppTab 只量得到預設那個「策略」,新加的券商榜(4×3=12 格)整個掃不到。
             try { A.switchAppTab('radar'); } catch (_) {}
             await nap(1200);
-            for (const [mode, nm] of [['strategy', '策略'], ['etf', 'ETF'], ['custom', '自訂'], ['broker', '券商']]) {
+            for (const [mode, nm] of [['strategy', '策略'], ['etf', 'ETF'], ['custom', '自訂']]) {
                 try { A.switchRadarMode(mode); } catch (_) {}
                 await nap(1400);
                 const m = measure(); m.tab = nm; res.push(m);

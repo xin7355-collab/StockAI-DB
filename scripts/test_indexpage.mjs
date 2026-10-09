@@ -73,8 +73,8 @@ const R = await pg.evaluate(() => {
     out.stockTxt = document.getElementById('trendCommandCard').innerText;
     out.tabsBack = ['entry', 'exit'].map(k => document.querySelector(`[data-ovtab="${k}"]`)?.classList.contains('hidden'));
     out.subBack = ['Corp', 'DayTrade', 'Backtest', 'Live', 'Chip', 'BullBear', 'Report'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
-    app.switchChipTab('broker');
-    out.chipBack = ['broker', 'flow', 'dist'].map(k => document.getElementById('chipTabBtn-' + k)?.classList.contains('hidden'));
+    app.switchChipTab('dist');
+    out.chipBack = ['flow', 'dist'].map(k => document.getElementById('chipTabBtn-' + k)?.classList.contains('hidden'));
     out.chipTabBack = app._activeChipTab;
     out.subShownBack = ['Chip', 'BullBear'].map(t => document.getElementById(`subTabBtn${t}`)?.classList.contains('hidden'));
     // ⛔ 一般個股**整段不可出現**(不留空殼)
@@ -113,8 +113,8 @@ const _SUBS = ['Corp', 'DayTrade', 'Backtest', 'Live', 'Chip', 'BullBear', 'Repo
 ok('⑦ 換回個股:基本/當沖/回測/即時/籌碼/報告要回來', R.subBack.every((v, i) => _SUBS[i] === 'BullBear' ? true : v === false), JSON.stringify(R.subBack));
 ok('⑦b 🗂️ 多空分頁換回個股也**維持藏著**(_SUBTAB_OFF 刻意收起;注入:拿掉 _SUBTAB_OFF 判斷 → 必紅)', R.subBack[_SUBS.indexOf('BullBear')] === true, JSON.stringify(R.subBack));
 ok('⑦c 換回個股:籌碼分頁要回來', R.subShownBack[0] === false, JSON.stringify(R.subShownBack));
-ok('⑦ 換回個股:三個籌碼分頁都要回來', R.chipBack.every(v => v === false), JSON.stringify(R.chipBack));
-ok('⑦ 換回個股:券商分點點得進去', R.chipTabBack === 'broker', String(R.chipTabBack));
+ok('⑦ 換回個股:兩個籌碼分頁都要回來(🗑️ V79.0.0 券商分點已移除)', R.chipBack.every(v => v === false), JSON.stringify(R.chipBack));
+ok('⑦ 換回個股:籌碼分佈點得進去', R.chipTabBack === 'dist', String(R.chipTabBack));
 
 // 🏛️🚨 V76.1.2 使用者回報「分點籌碼頁面怎麼不見了」—— 查完不是壞掉,是指數刻意藏七個分頁,
 //   而理由以前**只寫在 JS 註解裡、畫面上一個字都沒有**(違反陷阱 #28 / #22)。

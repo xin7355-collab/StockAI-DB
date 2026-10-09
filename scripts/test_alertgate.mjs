@@ -153,7 +153,7 @@ const SRC = RAW.split('\n').map(l => {
 }
 {
   // ③ 方法已被實測打掉的三類 ⛔ 不可再主動推
-  const DEAD = [['🔮 明日劇本偏空｜', '明日劇本'], ['🧙 跟單:', '分點跟單'], ['🎯 主打型態觸發｜', '主打型態']];
+  const DEAD = [['🎯 主打型態觸發｜', '主打型態']];   // 🗑️ V79.0.0 明日劇本 / 分點跟單 已隨券商分點整組刪除(test_nobroker 釘⛔ 不可復活)
   let bad = [];
   for (const [k, nm] of DEAD) {
     const i = SRC.indexOf(k);

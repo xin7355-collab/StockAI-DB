@@ -32,8 +32,8 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
     const s = SRC.indexOf('<details id="chipMoreWrap"');
     const e = SRC.indexOf('</details>', s);
     const seg = SRC.slice(s, e);
-    ok('① 主結論卡/明日劇本/乾淨度 都在摺疊裡',
-        ['id="chipVerdictCard"', 'id="chipScenarioSlot"', 'id="chipCleanCard"'].every(x => seg.includes(x)));
+    ok('① 主結論卡/乾淨度 都在摺疊裡(V79.0.0 明日劇本已隨分點移除)',
+        ['id="chipVerdictCard"', 'id="chipCleanCard"'].every(x => seg.includes(x)) && !/id="chipScenarioSlot"/.test(SRC));
     ok('① 頁首(#chipLead)在摺疊**外**', SRC.indexOf('id="chipLead"') < s);
     // ② 只轉述不重算:_renderChipLead 收 renderChipVerdict 傳進來的值
     const f = SRC.indexOf('_renderChipLead(sym, o) {');
@@ -106,13 +106,6 @@ const R = await page.evaluate(async () => {
     o.riskGone = !/融資追繳區|融資賣壓區|融資壓力區/.test((document.getElementById('chipLead') || { innerText: '' }).innerText);
     app._marginCallState = realMc;
 
-    // ⑥ 其他籌碼指標怎麼說:stub 一組「方向分歧」→ 頁首要點出來
-    const realCons = app._chipConsensusLine;
-    app._chipConsensusLine = () => '<div id="__consProbe">🧭 其他籌碼指標怎麼說 ⚠️ 籌碼面分歧:1 項偏多、1 項偏空</div>';
-    app.renderChipVerdict('2330');
-    o.consInLead = !!document.querySelector('#chipLead #__consProbe');
-    app._chipConsensusLine = realCons;
-
     // ④ 沒有資料 → 頁首收掉
     //   ⚠️ 第一版寫 `renderChipVerdict('9999')` —— **測資前提是錯的**:這支讀的是
     //      `this.rawDailyData`(還是 2330 的),換 sym 不會讓它沒資料 → 那條等於沒驗到。
@@ -137,7 +130,7 @@ ok('① 摺疊實跑也是收起的、完整卡片在裡面', R.closed && R.card
 ok('① ⛔ 收起 ≠ 刪除:完整卡片內容還在', R.cardLen > 500, R.cardLen);
 ok('⑤ 🚨 融資追繳風險要露在頁首(⛔ 不可只埋在分頁+兩層收合裡)', R.riskShown, R.riskTxt.slice(0, 220));
 ok('⑤b 安全時⛔ 不顯示(條件觸發,別留噪音)', R.riskGone === true, '');
-ok('⑥ ⭐ 「其他籌碼指標怎麼說」要在頁首(方向分歧才看得到)', R.consInLead === true, '');
+ok('⑥ 🗑️ V79.0.0「其他籌碼指標怎麼說」只看分點 → 已移除,⛔ 不可復活', !/_chipConsensusLine\(/.test(SRC), '');
 ok('⑦ ⛔ 頁首不給買賣價位、要指路總覽(單一劇本原則)',
     !/進場價|掛單|停損 \d|目標價 \d/.test(R.txt) && /總覽/.test(R.txt), R.txt.slice(-160));
 ok('④ 沒有資料時頁首收掉(⛔ 不殘留上一檔)', R.goneNoData === true, '');

@@ -52,63 +52,9 @@ ok('② 中期過關時才准說「偏多格局,可偏多操作」', R.strong.in
 ok('③ 雷達沒資料時不 throw、維持舊行為', typeof R.none === 'string' && R.none.includes('可偏多操作'), String(R.none).slice(-200));
 ok('④ 短線偏空時結論不變(仍是偏空格局)', R.bear.includes('偏空格局'), R.bear.slice(-200));
 
+// 🗑️ V79.0.0 「🔮 明日劇本」(_tomorrowPlaybookHtml,技術 + 分點)已隨券商分點移除 → ⛔ 不可復活
 // ══════════════════════════════════════════════════════════════════
-// 🔮 V72.0.7 第二處同類打架:「明日劇本」vs 總覽主結論(使用者 2327 截圖)
-//   截圖同一畫面:總評儀表板「🟢 空方・避開 —— 反彈是給你出場用的」,
-//   下面「🔮 明日劇本」卻寫「🟡 明日偏多(力道普通)」+
-//   「開高站上昨高 583.00 → 可順勢做多/抱單」。
-//   ⚠️ 兩張都沒算錯 —— 明日劇本看**明天一天**、總評看**中期趨勢**;
-//      錯在**兩張都在下操作指令**。修法是讓短線那張改口,⛔ 不是改它的分數。
-// ══════════════════════════════════════════════════════════════════
-{
-    const b2 = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
-    const p2 = await b2.newPage();
-    await p2.goto('file://' + ROOT + '/index.html', { waitUntil: 'domcontentloaded' });
-    await p2.waitForFunction(() => typeof app !== 'undefined' && !!app._tomorrowPlaybookHtml, null, { timeout: 20000 });
-    // ⭐ 用**真實** 2327 日 K 重現那張截圖(⛔ 不用合成資料)
-    // ⚠️ V75.1.5:⛔ 不可直接吃「最新的」真實資料 —— 這段重現的是 2026-08 那張截圖的情境
-    //   (均線空排),而 data/2327.json 會一直往後長 → 走勢一變 ⑤ 就會假失敗、
-    //   底下 ⑥~⑨ 全部變成空過。⭐ 把窗口釘在截圖那天,情境才是可重現的。
-    const rows2327 = JSON.parse(fs.readFileSync(ROOT + '/data/2327.json', 'utf8'))
-        .filter(r => String(r.date).replace(/\//g, '-') <= '2026-08-03');
-    const R2 = await p2.evaluate(rows => {
-        rows = rows.slice();
-        rows.push({ date: '2026/08/04', open: 552, high: 568, low: 550, close: 565, volume: 9e6 });
-        app.currentSymbolId = '2327'; app.rawDailyData = rows; app.activeData = rows;
-        const cl = rows.map(r => +r.close);
-        const ma = k => cl.map((_, i) => i < k - 1 ? null : cl.slice(i - k + 1, i + 1).reduce((a, v) => a + v, 0) / k);
-        app.indicators = { ma5: ma(5), ma20: ma(20), ma60: ma(60) };
-        const L = rows.length - 1;
-        const o = { ma5: ma(5)[L], ma20: ma(20)[L], ma60: ma(60)[L] };
-        app._ovTrend = { sym: '2327', trend: 'bear', txt: '空頭' };  o.bear = app._tomorrowPlaybookHtml();
-        app._ovTrend = { sym: '2327', trend: 'bull', txt: '多頭' };  o.bull = app._tomorrowPlaybookHtml();
-        app._ovTrend = { sym: '9999', trend: 'bear', txt: '空頭' };  o.other = app._tomorrowPlaybookHtml();  // 別檔的結論不可套用
-        app._ovTrend = null;                                        o.none = app._tomorrowPlaybookHtml();
-        return o;
-    }, rows2327);
-    const strip2 = h => String(h).replace(/<[^>]+>/g, '');
-
-    ok('⑤ ⭐ 這組真實資料的均線真的是空排(⛔ 否則下面全是空過)',
-       R2.ma5 < R2.ma20 && R2.ma20 < R2.ma60, JSON.stringify(R2).slice(0, 120));
-    ok('⑥ ⭐⛔ 主結論空頭時,明日劇本不可再說「可順勢做多/抱單」',
-       !/可順勢做多|抱單/.test(strip2(R2.bear)), strip2(R2.bear).slice(0, 300));
-    ok('⑥ ⭐ 開高要改講「反彈減碼」', /反彈減碼/.test(strip2(R2.bear)), strip2(R2.bear).slice(0, 300));
-    ok('⑥ ⭐ 要點出「別因為一根紅K就改看多」', /別因為一根紅K就改看多/.test(strip2(R2.bear)), '');
-    ok('⑥ 要給「中期轉折的第一個條件」= 站回月線', /站回月線/.test(strip2(R2.bear)) && /中期轉折/.test(strip2(R2.bear)), '');
-// NOTE V74.5.4: V73.2.9 起「大盤過熱/轉弱/盤整」時,那句刻意從「可順勢做多/抱單」
-//   改成「有貨的可以續抱 … 空手的先不要追」→ 舊斷言釘死那個字串會**假失敗**。
-//   改釘用意:非空頭情境不可套用空頭措辭,而且要留得住正向動詞。
-    const _pos = t => /可順勢做多|可以續抱|續抱/.test(t);
-    // NOTE: the 開低 line contains 別搶反彈 in BOTH branches -> only 中期是空頭 marks the bear branch.
-    const _bearWords = t => /中期是空頭/.test(t);
-    ok('⑦ ⭐ 主結論多頭時維持舊行為(⛔ 別把正常情境弄壞)',
-       _pos(strip2(R2.bull)) && !_bearWords(strip2(R2.bull)), strip2(R2.bull).slice(0, 250));
-    ok('⑧ ⭐ 主結論是**別檔**的 → 不可套用(切股殘留守門)',
-       _pos(strip2(R2.other)) && !_bearWords(strip2(R2.other)), strip2(R2.other).slice(0, 250));
-    ok('⑨ 主結論還沒算出來 → 維持舊行為,不可 throw',
-       typeof R2.none === 'string' && _pos(strip2(R2.none)) && !_bearWords(strip2(R2.none)), String(R2.none).slice(0, 200));
-    await b2.close();
-}
+ok('⑤ 🗑️ 明日劇本已移除', !/_tomorrowPlaybookHtml\(/.test(fs.readFileSync(ROOT + '/index.html', 'utf8')), '');
 
 // ══════════════════════════════════════════════════════════════════
 // 🌡️ V72.0.8 第三處同類打架:「本股 vs 大盤」也在下多方指令
@@ -175,10 +121,8 @@ ok('④ 短線偏空時結論不變(仍是偏空格局)', R.bear.includes('偏�
 
     // ⭐ V72.0.9 第 4 處:「⭐ 重點判讀」在**常顯區**,比摺疊區裡的更該守
     const src6 = await p3.evaluate(() => app._ovStrongSignals.toString());
-    ok('⑬ ⭐ 重點判讀的「明日劇本偏多」也要走守門', /_bearGate\(sym\)/.test(src6), '');
-    ok('⑬ ⭐ 空頭時要改講「反彈減碼用,不是買點」', /反彈減碼用/.test(src6), '');
-    ok('⑬ ⛔ 空頭時不可再說「開低量縮是較好買點」',
-       /_bearGate\(sym\)[\s\S]{0,400}?不是買點/.test(src6), '');
+    // 🗑️ V79.0.0 重點判讀的「🔮 明日劇本」那一項已隨分點移除 → 改釘:⛔ 不可復活、⛔ 不可再講「開低量縮是較好買點」
+    ok('⑬ 🗑️ 重點判讀不可再有明日劇本那一項', !/明日劇本/.test(src6) && !/開低量縮是較好買點/.test(src6), '');
 
     // 🏷️ V72.0.9 「大戶站買方(大戶倒貨給散戶)」自相矛盾
     const src7 = await p3.evaluate(() => app._chipAnalystLine.toString());

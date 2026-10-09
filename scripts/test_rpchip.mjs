@@ -64,7 +64,7 @@ await browser.close();
 
 ok('ⓕ 真實資料(2330)至少 6 列', R.rows.length >= 6, JSON.stringify(R.rows.map(x => x.row)));
 ok('ⓕb 沒有 undefined / NaN / ?pp', !/undefined|NaN|\?pp/.test(R.html), (R.html.match(/.{20}(undefined|NaN|\?pp).{10}/) || [''])[0]);
-ok('ⓐ 每一列的狀態都對得到 `_CHIP_VERDICT`(foreign/trust/both/dealer/fen/tdcc/margin)', R.rows.every(x => ['ok', 'no', 'weak', 'na'].includes(x.st)) && ['foreign', 'trust', 'both', 'fen', 'tdcc', 'margin'].every(k => R.rows.some(x => x.row === k)), JSON.stringify(R.rows.map(x => [x.row, x.st])));
+ok('ⓐ 每一列的狀態都對得到 `_CHIP_VERDICT`(foreign/trust/both/dealer/tdcc/margin;🗑️ V79.0.0 fen 分點列已移除)', !R.rows.some(x => x.row === 'fen') && R.rows.every(x => ['ok', 'no', 'weak', 'na'].includes(x.st)) && ['foreign', 'trust', 'both', 'tdcc', 'margin'].every(k => R.rows.some(x => x.row === k)), JSON.stringify(R.rows.map(x => [x.row, x.st])));
 ok('ⓐ2 ⭐ 文案裡的 {key.field} 全部從常數讀到(⛔ 一個 ? 都不可以 —— 那是模板對不到欄位)', R.verdicts.every(x => x.v && !/\?/.test(x.v.txt)), JSON.stringify(R.verdicts.filter(x => !x.v || /\?/.test(x.v.txt)).map(x => x.k)));
 // 🔁 V78.4.7:數字讀常數本身(⛔ 不釘死 0.79 —— 重跑探針後 t5 變成 0.02,釘死的斷言會逼人回頭改常數)
 const _t5e = (SRC.match(/t5:\s*\{\s*e:\s*(-?[\d.]+)/) || [])[1];

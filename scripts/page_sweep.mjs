@@ -285,7 +285,7 @@ for (const sym of SYMS) {
 //   ⭐ 這些頁不綁個股 → `_ovTrend` 不適用,**只掃缺值與空殼**(⛔ 不掃講反話,大盤層級的
 //      建議本來就跟個股趨勢無關,掃了全是誤報 —— 見報告尾巴的誤報說明)。
 process.stdout.write('\n🌐 主分頁 ');
-for (const tab of ['desk', 'market', 'radar', 'hunt', 'broker', 'inv', 'fav']) {
+for (const tab of ['desk', 'market', 'radar', 'hunt', 'inv', 'fav']) {
     const cards = await page.evaluate(async t => {
         try { app.switchAppTab(t); } catch (_) { return []; }
         await new Promise(r => setTimeout(r, 1800));

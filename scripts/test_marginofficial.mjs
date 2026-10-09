@@ -100,16 +100,13 @@ let off;
     ok('⑥f 三個低位階同向(全負)', E.rel.lo5 < 0 && E.rel.lo10 < 0 && E.rel.lo20 < 0, JSON.stringify(E.rel));
 }
 
-// ⑦ 採礦端:官方優先 + 有留 error
+// ⑦ 採礦端(V79.0.0):官方維持率是 FinMind 付費資料集 → 已移除,只留推估值並標 src
 {
     const fs = await import('fs');
     const src = fs.readFileSync(path.join(ROOT, 'miner.py'), 'utf8');
-    ok('⑦ miner 要有官方抓取函式', /def fetch_official_margin_maintenance/.test(src), '');
-    ok('⑦b 官方值要覆蓋 ratio 並標 src', /mh\['src'\] = 'official'/.test(src), '');
-    ok('⑦c 推估值要降級保留成 est_ratio(可回頭對照)', /mh\['est_ratio'\]/.test(src), '');
-    ok('⑦d 抓不到官方要留 *_error(陷阱 #22)', /margin_official_error/.test(src), '');
-    ok('⑦e ⛔ 要有離譜值守門', /50 <= float\(v\) <= 400/.test(src), '');
-    ok('⑦f 每一把 token 都要試(V72.5.3)', /for i in range\(len\(toks\)\)/.test(src), '');
+    ok('⑦ ⛔ miner 不可再呼叫付費的官方維持率', !/fetch_official_margin_maintenance\(/.test(src), '');
+    ok('⑦b 推估值要標 src=estimate(前端才會寫「推估・非官方」)', /mh\['src'\] = 'estimate'/.test(src), '');
+    ok('⑦c 舊的官方欄位要清掉(⛔ 不可留 09/30 的官方值冒充現在)', /existing_ms\.pop\('margin_hist_official'/.test(src), '');
 }
 
 ok('⑧ 無 pageerror', errs.length === 0, errs.join(' | '));

@@ -155,12 +155,13 @@ await page.evaluate((F) => {
     A._scrData = F.scr; A._scrC = {}; (F.scr.cols || []).forEach((k, i) => { A._scrC[k] = i; });
     A._tagsCache = F.tags; A._secRotCache = F.rot; A._corrCache = F.corr;
     A._fmxCache = (F.fmx && F.fmx.data) || {};
-    // 分點:用真實 chips/5483.json 餵 _loadFenPeriodsDirect 的結果(它抓不到 file://)
+    // 每檔基本面:用真實 chips/5483.json 餵 _loadChipFund 的結果(它抓不到 file://)
+    //   🗑️ V79.0.0 chips 檔只剩 fundamentals(分點已移除)
     window.__chips = { '5483': F.chips5483 };
-    A._loadFenPeriodsDirect = async function (sym) {
-        sym = String(sym); const raw = window.__chips[sym]; if (!raw) return false;
-        this._fenPeriods = raw.periods; this._fenSym = sym; this._fenDataDate = raw.data_date || null;
-        this._fenFund = raw.fundamentals || null; this._fenHist = raw.hist || null; return true;
+    A._loadChipFund = async function (sym) {
+        sym = String(sym); const raw = window.__chips[sym]; if (!raw || !raw.fundamentals) return false;
+        this._fenSym = sym; this._fenDataDate = raw.data_date || null;
+        this._fenFund = raw.fundamentals; return true;
     };
     window.__K = { '5483': F.k5483, '2330': F.k2330, '2327': F.k2327 };
     A._divFileCache = { ts: Date.now(), data: F.div };
@@ -517,8 +518,9 @@ ok('⑮a 反查器 UI 存在', /rpRevIn/.test(R.html.rpVal) && /rpRevOut/.test(R
         ok('💾d 刪得掉(IndexedDB 與同步快取都要清)', ST.cleared, String(ST.cleared));
         ok('💾e 🧹 `_lruTrim(prefix, keep)` 語意 = 留 keep 筆,而且留**最新**的',
            ST.lruLeft === 7 && ST.lruNewest, JSON.stringify({ left: ST.lruLeft, newest: ST.lruNewest }));
-        ok('💾e2 ⭐ `brokerChips_v2_`(實測一檔 108 KB)要接上 LRU —— ⛔ 沒有上限就是配額爆掉的真兇',
-           /_lruTrim\('brokerChips_v2_', 7\)/.test(SRC), '');
+        ok('💾e2 🗑️ V79.0.0 分點快取 `brokerChips_v2_` 已不再寫,而且開 App 會把手機上舊的清掉(一檔 108 KB)',
+           !/setItem\(cacheKey/.test(SRC.slice(SRC.indexOf('async loadChipFund('), SRC.indexOf('async loadChipFund(') + 800))
+           && /k\.startsWith\('brokerChips_v2_'\)[^;]*localStorage\.removeItem\(k\)/.test(SRC), '');
     }
     // 🗑️ V76.2.7 做圖提示詞的入口全 App 只留一個(使用者:「有何不同?是否保留上方就好」→ 是同一支函式)
     ok('🗑️b 🎨 做圖提示詞只有**短評報告**那張卡有入口(⛔ 完整報告卡那顆已刪 —— 同一支 _reportCopyChart)',

@@ -32,11 +32,10 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 ok('② ⛔ 判斷式全 App 只能有一份(⛔ 不可再出現複製品)',
    (SRC.match(/regime === 'bull' && \/\^8 成\//g) || []).length === 1,
    `找到 ${(SRC.match(/regime === 'bull' && \/\^8 成\//g) || []).length} 份`);
-ok('③ 三個呼叫點都在(明日劇本 / 打法適配儀 / 多空計分卡)',
-   (SRC.match(/_mktGate\?\.\(\)|this\._mktGate\(\)/g) || []).length >= 3,
+ok('③ 呼叫點都在(打法適配儀 / 多空計分卡;🗑️ V79.0.0 明日劇本已刪)',
+   (SRC.match(/_mktGate\?\.\(\)|this\._mktGate\(\)/g) || []).length >= 2,
    `${(SRC.match(/_mktGate\?\.\(\)|this\._mktGate\(\)/g) || []).length} 處`);
-ok('③b 明日劇本已改走共用入口(⛔ 不留自己那份)',
-   /_mktCap = this\._mktGate\(\)/.test(SRC), '');
+ok('③b 🗑️ 明日劇本(它有自己那份 _mktCap)已刪,⛔ 不可復活', !/_tomorrowPlaybookHtml\(/.test(SRC), '');
 
 // ── 動態 ──
 const browser = await chromium.launch({

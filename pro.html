@@ -4506,7 +4506,7 @@ const PRO = {
   },
   async _fpvCardHtml(sym, row, nm, qf) {
     const get = (u, ms) => this.fetchJson(u, ms || 9000).catch(() => null);
-    const [chain, tags, geo, fin, conf] = await Promise.all([get('data/industry_chain.json'), get('data/stock_tags.json'), get('data/company_geo.json'),
+    const [tags, geo, fin, conf] = await Promise.all([get('data/stock_tags.json'), get('data/company_geo.json'),
       get(`data/fin/${sym}.json`), get('data/confcall.json', 12000)]);
     const D = this._fishD, E = s => this._esc(String(s == null ? '' : s));
     if (!(Number.isFinite(row.mcap) && row.mcap > 0)) { try { await this._fpvMcapFill([row]); } catch (_) {} }   // 不在今天名單裡的魚也補市值(讀財報切片)
@@ -4514,7 +4514,7 @@ const PRO = {
     const F = this._fpvFishOf({ ...row, nm, mcap }); this._fpvCardFish = F;
     const tier = F.tier, RA = this._FPV_RARE[tier] || this._FPV_RARE[2];
     const ind = row.ind || '';
-    const cc = chain && chain.data && Array.isArray(chain.data[sym]) ? chain.data[sym] : [];
+    // 🗑️ V79.0.0 產業鏈細項分類(industry_chain.json)是 FinMind 付費資料,10/01 起停了 → 不再讀
     const T = tags || {}, bs = (T.by_stock || {})[sym] || {}, tn = T.names || {};
     const themes = [...new Set([...(bs.s || []), ...((bs.n || []).map(x => x[0]))])].map(k => tn[k]).filter(Boolean);
     const city = geo && geo.data ? geo.data[sym] : '';
@@ -4565,7 +4565,6 @@ const PRO = {
     const traits = [...good.map(t => `<li>✨ ${E(t)}</li>`), ...warn.map(t => `<li class="w">⚠️ ${E(t)}</li>`)];
     // 圖鑑說明
     const lore = [];
-    if (cc.length) lore.push(`在產業鏈裡:${cc.slice(0, 2).map(x => `${E(x[0])} → ${E(x[1])}`).join(';')}`);
     if (CH) lore.push(`AI 供應鏈角色:${E(CH[3])}(${E(this.CHAIN.seg[CH[2]] || '')});主要風險:${E(CH[6])}`);
     if (ql) {
       const y = q[q.length - 5], ry = y && Number.isFinite(ql.rev) && Number.isFinite(y.rev) && y.rev > 0 ? (ql.rev / y.rev - 1) * 100 : null;
@@ -4578,7 +4577,7 @@ const PRO = {
     if (city) lore.push(`總部:${E(city)}`);
     const up = conf && Array.isArray(conf.upcoming) ? conf.upcoming.find(c => c && c.s === sym) : null;
     if (up) lore.push(`🗓️ 下次法說會:${E(up.d)}${up.t ? ' ' + E(up.t) : ''}`);
-    const typeLine = [F.tag, ind || (cc[0] ? cc[0][0] : ''), cc[0] ? cc[0][1] : ''].filter(Boolean).map(E).join(' ・ ');
+    const typeLine = [F.tag, ind].filter(Boolean).map(E).join(' ・ ');
     const star = qf && qf.star ? '<span class="sx">⭐</span>' : '';
     const qtxt = encodeURIComponent(`${nm}(${sym})主要產品與營收比重、主要客戶、未來1~3年營運目標與資本支出計畫、最近一次法說會重點。請附來源網址。`);
     return `<div class="fpvtcg r${tier}" style="--fr:linear-gradient(135deg,${RA[1]})">

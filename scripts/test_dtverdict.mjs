@@ -101,8 +101,7 @@ ok('⑤ ⭐ 非空頭時不可誤傷(不該出現那句)', !/不要凹成波段�
 //    ⚠️ emoji 一律用 \u{...} 寫,⛔ 別寫成字元類 `[🔴🟢]` —— 沒有 u flag 會拆代理對,
 //       本專案已踩過兩次(一次在測試、一次在正式碼)。
 const RISK_EMOJI = /(\u{1F534}|\u{1F7E1}|\u{1F7E2}|\u{1F7E0})/u;
-const srcSpec = await page.evaluate(() => app._dtOvernightSpec.toString());
-ok('⑥ 隔日沖風險等級改用 ⛔/⚠️/✅', /⛔ 高/.test(srcSpec) && /⚠️ 中/.test(srcSpec) && /✅ 低/.test(srcSpec), '');
+ok('⑥ 🗑️ V79.0.0 隔日沖判斷(_dtOvernightSpec,靠分點)已移除', await page.evaluate(() => typeof app._dtOvernightSpec === 'undefined'), '');
 const srcHero = await page.evaluate(() => app.renderDayTradeTab.toString());
 ok('⑥ 當沖資格燈改用 ⛔/⚠️/✅', /⛔ 今天不要當沖/.test(srcHero) && /✅ 具備當沖條件/.test(srcHero), srcHero.slice(0, 80));
 // 主結論那行(方向)可以用 🔴🟢,但「不值得當沖」那行不可以
@@ -126,19 +125,6 @@ ok('⑧ ⛔ 寫死門檻 55/45 已移除', !/>=\s*55\b/.test(src) && !/<=\s*45\b
 const st = await page.evaluate(b => { const s = app._dtLongStats(b); return { has: 'sumR' in s.all, n: s.all.n, exp: s.all.sumR / s.all.n }; }, barsB);
 ok('⑨ _dtLongStats 有 sumR', st.has, JSON.stringify(st));
 ok('⑨ 期望值算對(每天 −0.1%)', Math.abs(st.exp - (-0.1)) < 0.01, JSON.stringify(st));
-
-// ── ⑩ 隔日沖:只靠分點佔比觸發時,⛔ 不可謊稱「今天大漲爆量」────────────
-const hOv = await page.evaluate(b => {
-    app._fenSym = 'T1';
-    app._fenPeriods = {
-        '1d': { buy: [{ broker_id: 'X', broker_name: '甲券商', net: 900000 }], sell: [] },
-        '5d': { buy: [{ broker_id: 'X', broker_name: '甲券商', net: 1000 }], sell: [] },
-    };
-    return app._dtOvernightSpec('T1', 0.3, 100, 99.7, b);
-}, barsB);
-const tOv = txt(hOv);
-ok('⑩ 有觸發(分點隔日沖佔比高)', /隔日沖判斷/.test(tOv), tOv.slice(0, 160));
-ok('⑩ ⭐ 今天只漲 0.3% → ⛔ 不可寫「今天大漲爆量」', !/今天大漲爆量/.test(tOv), tOv.slice(0, 220));
 
 ok('⑪ 無 pageerror', errs.length === 0, errs.join(' | '));
 

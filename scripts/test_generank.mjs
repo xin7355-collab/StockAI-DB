@@ -51,8 +51,10 @@ ok('⑥d pro 今天的清單排序 / 徽章走 `_hqOf`,`_recoPicks`(重建過去
 ok('⑥e auto_trade 用 gene_hq 重排(⛔ 不過濾)', /raw = sorted\(raw, key=lambda p: -gene_hq\(p\)\)/.test(AT), '');
 
 // ⑤ 彈窗
-const sc = (/_STRAT_CHANGES: \[\s*\{([\s\S]{0,3000}?)\n        \},/.exec(IDX) || [])[1] || '';
-ok('⑤ 最新一筆策略變更是 V78.0.7 的 🧬 門檻、有 backGene + 代價(逐年)', /v: 'V78\.0\.7'/.test(sc) && /backGene: 75/.test(sc) && /7 年比舊門檻差/.test(sc), sc.slice(0, 200));
+// ⚠️ V79.0.0 修長期紅燈:V78.4.4 之後最前面那筆已不是 V78.0.7 → 改成「找到 V78.0.7 那一筆」(⛔ 不釘它一定排第一)
+const _scAll = (IDX.split('_STRAT_CHANGES: [')[1] || '').split('\n    ],')[0];
+const sc = (_scAll.split(/\n        \{/).find(b => /v: 'V78\.0\.7'/.test(b))) || '';
+ok('⑤ 策略變更裡有 V78.0.7 的 🧬 門檻那一筆、有 backGene + 代價(逐年)', /v: 'V78\.0\.7'/.test(sc) && /backGene: 75/.test(sc) && /7 年比舊門檻差/.test(sc), sc.slice(0, 200));
 ok('⑤b 「換回舊的」按鈕接到 setGeneRank', /c\.backGene \? `app\.setGeneRank\(\$\{\+c\.backGene\}\);`/.test(IDX), '');
 
 // ④ auto_trade 行為(Python)
