@@ -124,6 +124,13 @@ const R = await page.evaluate(async () => {
             LL.fcf = f0;
             return { a, b };
         })(),
+        // 🏦 V79.0.8 負債比 / 流動比(產業作戰室財報分頁刪除後搬來這裡)
+        bs: (() => {
+            const mk = over => { const q = []; for (let i = 0; i < 12; i++) q.push(Object.assign({ p: `202${3 + (i >> 2)}-${['03-31', '06-30', '09-30', '12-31'][i & 3]}`, rev: 100e8, gm: 40, eps: 1, nm: 10, fcf: 5e8, ocf: 8e8, doi: 60 }, over(i) || {})); return { fin: { q, updated: '2026-10-10' } }; };
+            const tail = (h, nm) => { const m = new RegExp(`data-rptrend="${nm}"[\\s\\S]{0,4000}?text-align:right">([^<]*)<`).exec(String(h || '')); return m ? m[1].trim() : null; };
+            const has = A._rpTrendHtml(mk(i => ({ debt: 40 + i, cur: 150 - i }))), none = A._rpTrendHtml(mk(() => null));
+            return { debt: tail(has, '負債比'), cur: tail(has, '流動比'), noneDraw: /data-rptrend="負債比"/.test(none), noneNote: /負債比 \/ 流動比<\/b>要等下一次財報回算/.test(none), noneZero: /負債比[^<]*0\.0%/.test(none) };
+        })(),
         flip: vd2 && vd2.verdict ? vd2.verdict.key : null,
         back: vd3 && vd3.verdict ? vd3.verdict.key : null,
         // B:事件
@@ -136,6 +143,8 @@ const R = await page.evaluate(async () => {
     };
 });
 
+ok('🏦a 有資料 → 畫負債比 / 流動比,尾巴 = 最新一季(51.0% / 139%)', R.bs.debt === '51.0%' && R.bs.cur === '139%', JSON.stringify(R.bs));
+ok('🏦b 沒資料 → ⛔ 不畫、⛔ 不補 0,而且要寫原因', !R.bs.noneDraw && R.bs.noneNote && !R.bs.noneZero, JSON.stringify(R.bs));
 // ── A ──
 ok('ⓐ0 抓得到 12 季趨勢(空過守門)', R.n >= 8, String(R.n));
 ok('ⓐ ⭐ 年增只有 i≥4 之後才有值(⛔ 前 4 季算不出「跟去年同季比」)', R.yoyN === R.n - 4, `${R.yoyN} vs ${R.n - 4}`);

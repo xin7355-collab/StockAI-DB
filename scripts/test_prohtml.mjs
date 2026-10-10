@@ -630,114 +630,33 @@ const T = await page.evaluate(async () => {
     return out;
 });
 // ㉔ 🔬 實測總表
-// ㉜ 🎯 今日訊號頁(V74.4.5 使用者:「開一個高勝率訊號頁面併寫出勝率、還有要怎麼操作、注意什麼」)
-//   ⛔ 這一頁最危險的是「讓人以為照著買就會賺」→ 五條釘死:
-//     ① 勝率一定配次數,次數<10 要標「不能當結論」
-//     ② 必須寫「基準勝率 36% 不是 50%」
-//     ③ ⛔ 整頁不可出現「開盤買」指令(實測那樣少賺一半)
-//     ④ 空頭趨勢(bear)的標的要標出來
-//     ⑤ 檔案沒產出要說出來,⛔ 不可靜默空白
+// ㉜ 🗑️ V79.0.8 今日訊號頁刪除(使用者:「今日訊號頁面,沒有用的話就刪除」—— 內容跟散戶 App 選股頁 / 決策台重複,
+//   「每檔最會賺的那招」名單穩定度 ≈ 隨機)。⭐ 只有它有的兩塊(盤前分數 / 未來 30 天除權息)搬到 📰 專欄頁頂端。
+// ㉝ 🌅 盤前分數(V74.4.5,實測 6 年同向)—— 公式與文案照舊,只是住址換到專欄頁
 const SIG = await page.evaluate(async () => {
     const out = {};
-    // 測資照**真實產物格式**(⛔ 憑印象編會測不到真的問題 —— 陷阱 #40)
-    PRO._names = Object.assign({}, PRO._names, { '6949': '測試甲', '1303': '南亞', '9999': '測試乙', '8888': '測試丙' });
-    PRO._cache['data/playbook_edge.json'] = {
-        updated: 'x', data_date: new Date(Date.now() - 864e5).toISOString().slice(0, 10),
-        scanned: 2319, min_n: 8, cost: 0.44, picks_total: 3,
-        picks: [
-            { s: '9999', c: 100, k: '💪 發動棒破昨高', w: 42.4, po: 9.9, exp: 11.66, lb: 4.97, n: 33, trig: 105, loose: 0, hq: 0, bear: 0, up: 3, stop: 95 },
-            { s: '6949', c: 200, k: '🌊 威科夫吸籌', w: 50, po: 3, exp: 5, lb: 2.0, n: 40, trig: 210, loose: 0, hq: 1, bear: 0, up: 5, stop: 190 },
-            { s: '8888', c: 50, k: '🕯️ 守住長紅K', w: 60, po: 2, exp: 8, lb: 6.0, n: 5, trig: 52, loose: 1, hq: 0, bear: 1, up: 2, stop: 47 },
-        ],
-    };
-    PRO._cache['data/today_signals.json'] = {
-        updated: 'x', data_date: '2026-08-31', scanned: 2319, base_win: 36.39,
-        cost_note: '期望值未扣交易成本(來回約 0.44%,當沖 0.25%)', bull_total: 2,
-        bull: [{ s: '1303', c: 242.5, v: 1, d: '2026-08-31', t: '換手量(洗籌續攻)', g: 'A', n: 1309, w: 42.4, exp: 0.68, po: 1.56 }],
-    };
-    const scr = PRO._cache['data/screener.json'];
-    scr.data_date = '2026-08-31';
-    if (!scr.cols.includes('chg5')) scr.cols.push('chg5');
-    if (!scr.cols.includes('att')) scr.cols.push('att');
-    const Ci = {}; scr.cols.forEach((c, i) => Ci[c] = i);
-    scr.rows['1303'] = new Array(scr.cols.length).fill(0);
-    scr.rows['1303'][Ci.chg5] = 45; scr.rows['1303'][Ci.att] = 1;   // 噴 45% 又掛注意 → 要進避雷
-    scr.rows['6949'] = new Array(scr.cols.length).fill(0);
-    scr.rows['6949'][Ci.chg5] = 45; scr.rows['6949'][Ci.att] = 0;   // 噴但沒掛注意 → ⛔ 不可進避雷
-    // 🌅 盤前分數:公式必須跟探針 STRICT 模式一致(⛔ 同名不同義)
-    //   這組值算出來:那指 +1 / 標普 +1 / 費半 +1.5 / 台積ADR +2 / VIX +0.5 / 日經 +1 / 韓股 +1 / 台幣 +0.5 = 8.5 分
     PRO._cache['data/macro_risk.json'] = {
       nasdaq_chg_pct: 1.2, sp500_chg_pct: 0.8, sox_chg_pct: 2.1, tsm_chg_pct: 1.5,
       vix_chg_pct: -3.0, nikkei_chg_pct: 0.9, kospi_chg_pct: 1.1, usdtwd_chg_pct: -0.2,
     };
-    PRO.switchTab('sig');
-    await PRO.renderSig();
-    await new Promise(r => setTimeout(r, 60));
-    out.how = document.getElementById('sigHow').innerText;
+    PRO.switchTab('col', true);
+    await PRO._renderColCal();
+    out.how = document.getElementById('colPremkt').textContent;   // ⚠️ 在摺疊裡 → innerText 讀不到(關著的 details)
+    out.inCol = !!document.querySelector('#tabCol #colCal #colPremkt') && !!document.querySelector('#tabCol #colCal #sigDiv');
+    out.div = document.getElementById('sigDiv').textContent;
     out.premktScore = PRO._premktScore(PRO._cache['data/macro_risk.json']);
-    // 成分不足 → ⛔ 不硬給分數
     out.premktThin = PRO._premktHtml({ nasdaq_chg_pct: 1, sp500_chg_pct: 1 });
-    // 資料沒到 → 要說出來
     out.premktNone = PRO._premktHtml(null);
-    out.picks = document.getElementById('sigPicks').innerText;
-    out.pickRows = document.querySelectorAll('#sigPicks tbody tr').length;
-    out.firstRow = (document.querySelector('#sigPicks tbody tr') || {}).innerText || '';
-    out.today = document.getElementById('sigToday').innerText;
-    out.avoid = document.getElementById('sigAvoid').innerText;
-    out.all = document.getElementById('tabSig').innerText;
-    out.inWrap = !!document.querySelector('.wrap #tabSig');
-    out.btn = (document.getElementById('tabBtnSig') || {}).textContent || '';
-    // 過期清單要警告
-    PRO._cache['data/playbook_edge.json'].data_date = '2026-01-01';
-    await PRO.renderSig();
-    out.stale = document.getElementById('sigPicks').innerText;
-    // 檔案沒產出 → 要說出來(⛔ 不可靜默空白)
-    PRO._cache['data/playbook_edge.json'] = null;
-    PRO._cache['data/today_signals.json'] = null;
-    await PRO.renderSig();
-    out.missing = document.getElementById('sigPicks').innerText + ' ' + document.getElementById('sigToday').innerText;
+    out.noTab = !document.getElementById('tabSig') && !document.getElementById('tabBtnSig');
     return out;
 });
-ok('㉜ 分頁註冊 + 容器在 .wrap 裡 + 按鈕文字無 emoji(使用者要求刪過分頁圖示)',
-   SIG.inWrap && SIG.btn === '今日訊號' && /'sig', 'Sig'/.test(src), `btn=${SIG.btn} wrap=${SIG.inWrap}`);
-ok('㉜a 作戰清單真的渲染出列', SIG.pickRows === 3, `rows=${SIG.pickRows}`);
-ok('㉜b 🚨 排序:🧬 優先(6949 hq=1 要排第一,即使它的保守成績比 9999 低)',
-   /6949/.test(SIG.firstRow) && /🧬/.test(SIG.firstRow), SIG.firstRow.slice(0, 60));
-ok('㉜c 🚨 勝率一定配次數;次數 <10 要標「不能當結論」',
-   /42% ・33 次/.test(SIG.picks.replace(/\s+/g, ' ')) && /次數太少/.test(SIG.picks), '');
-ok('㉜d 🚨 必須寫「基準勝率 36%、不是 50%」(⛔ 少了會讓人覺得 30% 勝率很爛)',
-   /36%/.test(SIG.all) && /不是 50%/.test(SIG.all));
-ok('㉜e 🚨🚨 ⛔ 整頁不可出現「開盤買」這種指令 —— 實測那樣少賺一半',
-   !/開盤就買|開盤買進|明天開盤買/.test(SIG.all.replace(/隔天一開盤就買|開盤前掛/g, '')),
-   (SIG.all.match(/[^。\n]{0,12}開盤買[^。\n]{0,12}/g) || []).join(' | '));
-ok('㉜f ⭐ 必須把「掛前一日收盤價」的實測結果寫出來(使用者提的方法,實測最糟)',
-   /前一天收盤價/.test(SIG.how) && /46\.1%/.test(SIG.how) && /12\.4 萬/.test(SIG.how), SIG.how.slice(0, 120));
-ok('㉜g 空頭趨勢的標的要標出來(bear=1 → 建議跳過)', /空頭趨勢/.test(SIG.picks));
-ok('㉜h 不是靠價位觸發的招要標明(loose=1 → 盤中重算)', /盤中重新算/.test(SIG.picks));
-ok('㉜i 清單過期(>3 天)要警告不能拿去掛單', /不能直接拿去掛單/.test(SIG.stale));
-ok('㉜j ⛔ 檔案沒產出要說出來,不可靜默空白', /還沒產出/.test(SIG.missing), SIG.missing.slice(0, 80));
-ok('㉜k ⚠️ 避雷只收「噴 ≥30% 且掛注意股」的(⛔ 只噴不掛注意的不可進來)',
-   /1303/.test(SIG.avoid) && !/6949/.test(SIG.avoid), SIG.avoid.slice(0, 150));
-// ㉜l V74.4.6 使用者明示要「建議掛單價格直接告訴我」→ ⛔ 舊的「不給任何買賣價位建議」作廢
-//   (那句話本來就跟表格已經在顯示觸發價/停損自相矛盾)。改成釘**誠實揭露**:
-//   價位是用昨天收盤算的估計值、盤中以散戶救星重算為準,而且要講清楚那是「站上才買」不是「跌到才撿」。
-ok('㉜l 🚨 有給掛單價,就必須同時講「是估計值、盤中重算為準」',
-   /昨天收盤算的估計值/.test(SIG.how) && /散戶救星/.test(SIG.how));
-ok('㉜m 💰 建議掛單價要出現,而且⛔ 必須同時給昨收與要漲幾 %(否則看不出遠近)',
-   /建議掛單價/.test(SIG.picks) && /昨收 100\.00/.test(SIG.picks) && /要漲 \+3\.0%/.test(SIG.picks),
-   SIG.picks.replace(/\s+/g, ' ').slice(0, 200));
-ok('㉜n ⛔ 沒有固定價位的招(loose)不可硬給一個掛單價',
-   /這招沒有固定價位/.test(SIG.picks));
-ok('㉜o 🚨 要講清楚是「站上才買」不是「等它跌回來撿」(⛔ 掛錯方向 = 買到走弱的那批)',
-   /站上去才算數/.test(SIG.picks));
-ok('㉜p 🏷️ 中文名在上、代號在下(使用者明示:認股票是認名字不是認號碼)',
-   /class="signm">\$\{nm\(x\.s\) \|\| x\.s\}<\/span><br><span class="sigcode">/.test(src),
-   '標的欄結構');
-// ㉝ 🌅 盤前分數(V74.4.5,使用者:「這個分數我覺得還滿準」→ 實測支持)
+ok('㉜ 🗑️ 今日訊號分頁已刪(⛔ 不可復活)', SIG.noTab && !/'sig', 'Sig'/.test(src));
+ok('㉜b 盤前分數 + 除權息搬到 📰 專欄頁頂端(⛔ 只有它有的那兩塊不可跟著消失)', SIG.inCol);
+ok('㉜c 除權息那格有內容(有資料列出、沒資料要說出來,⛔ 不可靜默空白)', SIG.div.trim().length > 10, SIG.div.slice(0, 80));
 ok('㉝ 分數算式跟探針 STRICT 一致(那指1+標普1+費半1.5+台積2+VIX0.5+日經1+韓股1+台幣0.5=8.5)',
    SIG.premktScore && Math.abs(SIG.premktScore.s - 8.5) < 1e-9 && SIG.premktScore.n === 8,
    JSON.stringify(SIG.premktScore && { s: SIG.premktScore.s, n: SIG.premktScore.n }));
-ok('㉝b 高分要對照到「≥3 分」那格的歷史數字(84.7% 開高)', /84\.7%/.test(SIG.how));
+ok('㉝b 高分要對照到「≥3 分」那格的歷史數字(84.7% 開高)', /84\.7%/.test(SIG.how), SIG.how.slice(0, 120));
 ok('㉝c 🚨🚨 必須點出「開高有一大半是廢話」(同義反覆)+ 真正的預測力是開盤後那段',
    /有一大半是廢話/.test(SIG.how) && /0\.574/.test(SIG.how) && /開盤之後還會不會繼續漲/.test(SIG.how));
 ok('㉝d 🚨 必須寫「⛔ 不是叫你買什麼」+「拿大盤方向篩個股反而少賺」',
@@ -745,6 +664,55 @@ ok('㉝d 🚨 必須寫「⛔ 不是叫你買什麼」+「拿大盤方向篩個�
 ok('㉝e ⚠️ 要誠實說只算得到海外連動那一半', /海外連動那一半/.test(SIG.how));
 ok('㉝f 🚧 成分不足 5 項 → ⛔ 不硬給分數', /不硬給分數/.test(SIG.premktThin), SIG.premktThin.slice(0, 80));
 ok('㉝g ⛔ 資料沒到要說出來(不可靜默空白)', /盤前資料還沒到/.test(SIG.premktNone));
+
+// ㊿ 📰⭐ V79.0.8 使用者:「新增可信度星星排行」+「有進專欄的就把原本刪除,實測總表也一樣,我不要重複訊息」
+const DEDUP = await page.evaluate(async () => {
+    const out = {};
+    PRO.switchTab('lab'); PRO.selLab('ok');
+    out.okItems = document.querySelectorAll('#labList .labitem').length;
+    out.okNote = (document.querySelector('#labList [data-labincol]') || {}).innerText || '';
+    PRO.selLab('trap');
+    out.trapItems = document.querySelectorAll('#labList .labitem').length;
+    out.trapNoCol = (PRO._labOf('trap') || []).filter(x => !(x.col && x.col.q)).length;
+    // 決定性對照:關掉去重 → 有專欄的回來
+    const bk = PRO._labInCol; PRO._labInCol = () => false; PRO.selLab('trap');
+    out.trapAll = document.querySelectorAll('#labList .labitem').length; PRO._labInCol = bk;
+    // 搜尋:有專欄的只留一行連結
+    PRO.labSearch('布林'); out.searchColRows = document.querySelectorAll('#labList [data-labcol]').length;
+    out.searchLinkTxt = (document.querySelector('#labList [data-labcol]') || {}).innerText || '';
+    PRO.labSearch('');
+    // ⭐ 可信度排行:實測總表與專欄同一份順序
+    PRO.selLab('star');
+    out.labStar = [...document.querySelectorAll('#labList [data-labstar]')].map(e => e.dataset.labstar);
+    out.labStarTxt = (document.getElementById('labList').innerText || '').slice(0, 400);
+    PRO._colS = PRO.STAR_SER; PRO._colQ = ''; PRO.switchTab('col', true);
+    out.colStar = [...document.querySelectorAll('#colList [data-colstar]')].map(e => e.dataset.colstar);
+    out.colPill = [...document.querySelectorAll('#colBar .colpill.on')].some(b => b.dataset.colser === PRO.STAR_SER);
+    const stars = PRO.LAB.ok.filter(x => out.colStar.includes(x.k)).map(x => ({ k: x.k, c: +x.pl[2] }));
+    const byK = Object.fromEntries(stars.map(x => [x.k, x.c]));
+    out.mono = out.colStar.every((k, i) => i === 0 || byK[k] <= byK[out.colStar[i - 1]]);
+    // 決定性對照:把排最後那一條的可信度改成 3 → 它的名次要往前
+    const last = PRO.LAB.ok.find(x => x.k === out.colStar[out.colStar.length - 1]);
+    const c0 = last.pl[2]; last.pl[2] = 3; PRO.renderCol();
+    out.moved = [...document.querySelectorAll('#colList [data-colstar]')].map(e => e.dataset.colstar).indexOf(last.k);
+    last.pl[2] = c0; PRO._colS = ''; PRO.renderCol();
+    // 從總表跳到專欄那一篇
+    PRO.colGo(out.labStar[0]);
+    const art = [...document.querySelectorAll('#colList details.colart')].find(d => d.dataset.colk === out.labStar[0]);
+    out.goOpen = !!(art && art.open) && PRO._tab === 'col';
+    out.stars = PRO._stars(2);
+    return out;
+});
+ok('㊿a ✅ 有用那頁:有專欄的⛔ 不再重印(條目 0 條)+ 一行指路「在專欄」', DEDUP.okItems === 0 && /已經寫成專欄/.test(DEDUP.okNote) && /可信度排行/.test(DEDUP.okNote), JSON.stringify([DEDUP.okItems, DEDUP.okNote.slice(0, 80)]));
+ok('㊿b ⛔ 沒用那頁只列沒寫成專欄的', DEDUP.trapItems === DEDUP.trapNoCol && DEDUP.trapNoCol > 0, `${DEDUP.trapItems} vs ${DEDUP.trapNoCol}`);
+ok('㊿c 決定性對照:關掉去重 → 有專欄的回來(證明是去重擋掉的)', DEDUP.trapAll > DEDUP.trapItems, `${DEDUP.trapAll} > ${DEDUP.trapItems}`);
+ok('㊿d 搜尋到有專欄的 → 只留一行「📰 看專欄」(⛔ 不重印內容)', DEDUP.searchColRows >= 1 && /看專欄/.test(DEDUP.searchLinkTxt), DEDUP.searchLinkTxt);
+ok('㊿e ⭐ 總表的可信度排行 == 專欄的可信度排行(同一支 _starRank)', DEDUP.labStar.length > 10 && JSON.stringify(DEDUP.labStar) === JSON.stringify(DEDUP.colStar), JSON.stringify([DEDUP.labStar.slice(0, 5), DEDUP.colStar.slice(0, 5)]));
+ok('㊿f ⭐ 照星數由多到少', DEDUP.mono);
+ok('㊿g 決定性對照:排最後那條改成 ★★★ → 名次往前', DEDUP.moved >= 0 && DEDUP.moved < DEDUP.colStar.length - 1, DEDUP.moved);
+ok('㊿h 專欄有「⭐ 可信度排行」那顆,點了會亮', DEDUP.colPill);
+ok('㊿i 總表「📰 看專欄」會打開那一篇', DEDUP.goOpen);
+ok('㊿j 星星統一 ★★☆(⛔ 不再用 ●○)', DEDUP.stars === '★★☆' && !/'●'\.repeat/.test(src), DEDUP.stars);
 
 // ㉞ 🧮 回測計算機(V74.4.7 使用者:「新增回測計算機頁面…這樣我就不要請你一直回測」)
 //   ⛔ 這頁最危險的兩件事,直接釘死:
@@ -846,6 +814,8 @@ ok('㉞h5 窗口要標 49 個月 + 含 2022,而且贏家 ≥5 條、輸家 ≥6 
    /49 個月/.test(CALC.xW) && /2022/.test(CALC.xNote + CALC.xW) && CALC.winRows >= 5 && CALC.badRows >= 6, `w=${CALC.xW} win=${CALC.winRows} bad=${CALC.badRows}`);
 
 const L = await page.evaluate(async () => {
+    // 📰 V79.0.8 有專欄的條目在總表畫面上不再重印 → 這一段驗的是「條目資料 + 列的版型」,先關掉去重(去重本身在 ㊿ 另外驗)
+    const _bkIn = PRO._labInCol; PRO._labInCol = () => false;
     PRO.switchTab('lab');
     await new Promise(r => setTimeout(r, 60));
     // 🚨 <details> 收合時 innerText **不含內文** → 不先展開的話,
@@ -886,11 +856,14 @@ const L = await page.evaluate(async () => {
     out.counts.rm = (PRO.RM && PRO.RM.strats || []).length;          // 🌦️ rm 數的是策略數(資料在 PRO.RM 不在 LAB)
     out.counts.prob = (PRO._PROB_TABLE && PRO._PROB_TABLE.cells) ? Object.keys(PRO._PROB_TABLE.cells).length : 0;   // 📊 V77.4.6 機率表數的是「可用的格數」
     out.btDims = PRO.BT.dims.length;
+    out.counts.star = PRO._labCnt('star');
+    PRO._labInCol = _bkIn;
     return out;
 });
 // ㉛ V74.4.4 使用者:「做一個排名,爾後加進來的自動去重新排名」——
 //    ✅實測有用 依 r 遞減**渲染時排序**(新條目帶 r 就自動插進名次);⛔ 每條 ok 都要帶 r。
 const RANK = await page.evaluate(() => {
+  const _bkIn = PRO._labInCol; PRO._labInCol = () => false;   // 📰 驗的是排名機制,先關掉去重
   PRO.switchTab('lab'); PRO.selLab('ok');
   const items = [...document.querySelectorAll('#labList .labitem .lrank')].map(e => e.textContent.trim());
   const rs = PRO.LAB.ok.map(x => x.r);
@@ -898,6 +871,7 @@ const RANK = await page.evaluate(() => {
   const firstTitle = document.querySelector('#labList .labitem .lt')?.textContent || '';
   const top = PRO.LAB.ok.slice().sort((a, b) => (b.r ?? -1) - (a.r ?? -1))[0];
   const topP = PRO._labPlainOf(top).p;
+  PRO._labInCol = _bkIn;
   return { n: PRO.LAB.ok.length, badges: items.length, missR: rs.filter(r => r == null).length,
            mono: sortedRs.every((v, i) => i === 0 || v <= sortedRs[i - 1]), firstTitle,
            medal1: items[0], topP };
@@ -1241,6 +1215,7 @@ ok('㊷g ⚠️ 要誠實說「八格沒有一格通過逐年同向」(⛔ 不�
 //   ⛔ 這條一定要在**手機寬度**量(430 寬塞得下 → 三條斷言全部假通過,陷阱 #40)。
 await page.setViewportSize({ width: 360, height: 900 });
 const LAY = await page.evaluate(() => {
+  const _bkIn = PRO._labInCol; PRO._labInCol = () => false;   // 📰 驗的是列的版型,先關掉去重
   PRO.switchTab('lab'); PRO.selLab('ok');
   const rows = [...document.querySelectorAll('#labList .labitem')].map(e => {
     const lt = e.querySelector('.lt');
@@ -1259,7 +1234,7 @@ const LAY = await page.evaluate(() => {
            txt: document.getElementById('labList').innerText,
            // ⛔ 「避雷」不可被畫成「做空」(兩件事完全不同)
            avoidCls: PRO._wCls('避雷(先決條件)'), longCls: PRO._wCls('做多(佐證)'),
-           neuCls: PRO._wCls('長期配置') };
+           neuCls: PRO._wCls('長期配置'), _r: (PRO._labInCol = _bkIn, 0) };
 });
 await page.setViewportSize({ width: 430, height: 900 });
 ok('㊸ 📱 手機寬度下標題不可被擠成一條窄柱(⛔ 這是使用者截圖回報的)',
@@ -1619,9 +1594,10 @@ ok('㉒l ⛔ 切走分頁要停掉動畫(不可留背景 timer)', T.playing && T
 // ㉔ 🔬 實測總表
 // ⭐ V74.9.1 改釘「用意」(每一個必要頁籤都在、順序對)⛔ 不釘死頁籤總數 —— 加一頁就假失敗
 // 🧭 V78.0.9 頁籤分兩排:結論(有用 / 沒用 / 回測的坑 / 還沒測 = 還測不了 + 推薦下一步)+ 數字表(回測數字 / 情境 / 機率 / 指標)
-ok('㉔ 頁籤:結論 [有用 / 沒用 / 回測的坑 / 還沒測] + 數字表 [回測數字 / 情境 / 機率 / 指標]',
-   L.tabs.length === 8 && /有用/.test(L.tabs[0]) && /沒用/.test(L.tabs[1]) && /回測的坑/.test(L.tabs[2])
-   && /還沒測/.test(L.tabs[3]) && /回測數字/.test(L.tabs[4]) && /情境/.test(L.tabs[5]) && /機率/.test(L.tabs[6]) && /指標/.test(L.tabs[7]), L.tabs);
+// ⭐ V79.0.8 結論那一排最前面多一顆「⭐ 可信度」(使用者:「新增可信度星星排行」)
+ok('㉔ 頁籤:結論 [可信度 / 有用 / 沒用 / 回測的坑 / 還沒測] + 數字表 [回測數字 / 情境 / 機率 / 指標]',
+   L.tabs.length === 9 && /可信度/.test(L.tabs[0]) && /有用/.test(L.tabs[1]) && /沒用/.test(L.tabs[2]) && /回測的坑/.test(L.tabs[3])
+   && /還沒測/.test(L.tabs[4]) && /回測數字/.test(L.tabs[5]) && /情境/.test(L.tabs[6]) && /機率/.test(L.tabs[7]) && /指標/.test(L.tabs[8]), L.tabs);
 ok('㉔a2 🚧 空過守門:展開後內文真的抓得到(⛔ <details> 收合時 innerText 不含內文 = 假通過)',
    L.all.length > 6000 && /六道關卡|來回成本/.test(L.all), L.all.length);
 ok('㉔b 每一欄都有內容,切換真的換掉列表',
@@ -1631,7 +1607,7 @@ ok('㉔b 每一欄都有內容,切換真的換掉列表',
    && L.ok.txt !== L.trap.txt && L.trap.txt !== L.method.txt,
    [L.ok.n, L.trap.n, L.method.n, L.blocked.n, L.next.n]);
 ok('㉔c 頁籤數字要跟實際筆數一致(⛔ 不可寫死)',
-   ['ok', 'trap', 'method', 'blocked', 'bt', 'rm', 'prob', 'zoo'].every((k, i) => L.tabs[i].includes('(' + (k === 'bt' ? L.btDims : k === 'blocked' ? L.counts.blocked + L.counts.next : L.counts[k]) + ')')), L.tabs);
+   ['star', 'ok', 'trap', 'method', 'blocked', 'bt', 'rm', 'prob', 'zoo'].every((k, i) => L.tabs[i].includes('(' + (k === 'bt' ? L.btDims : k === 'blocked' ? L.counts.blocked + L.counts.next : L.counts[k]) + ')')), L.tabs);
 ok('㉔d 🚨 **每一欄**每一條都要附實測來源(⛔ 沒有數字的意見不准進來)', L.srcMissing === 0, L.srcMissing);
 // 📌 V74.5.0 使用者:「把 portfolio_backtest.mjs 等等這種資訊隱藏,不需要呈現」
 //   ⛔ 但資料裡的 `s:` 一個字都不刪(那是決策紀錄)→ 只是**顯示層**不給看檔名。

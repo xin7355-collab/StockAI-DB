@@ -140,6 +140,10 @@ const R3 = await p2.evaluate(async () => {
     PRO._idxData.TIDY = [['zz', '假卡片名稱', '假理由']];
     PRO._noiseSub = 'noise'; await PRO.renderNoise();
     noise.fakeTxt = document.getElementById('noiseBody').innerText;
+    // 📰 V79.0.8 決定性對照:專欄一篇都沒有 → 那幾條要回來
+    const bk = PRO._colItems; PRO._colItems = () => [];
+    await PRO.renderNoise(); noise.noColTxt = document.getElementById('noiseBody').innerText;
+    PRO._colItems = bk;
     return noise;
 });
 ok('⑦ pro.html 真的解析成功(⛔ 解析壞掉 = 這一頁等於沒有)',
@@ -152,6 +156,12 @@ ok('⑦c 內容要真的搬過來(留著的 / 已刪的 / 收起的卡 三段都
 ok('⑦d 更新紀錄那一欄要顯示散戶救星**現在的**版本號(⛔ 兩邊不可各寫一份)',
     !!R3.ver && R3.logTxt.includes(R3.ver), JSON.stringify({ ver: R3.ver }));
 ok('⑦e ⛔ 這一頁不可用紅綠 emoji', !/[🔴🟢]/u.test(R3.html));
+// ⑧ 📰 V79.0.8 使用者:「有進專欄的就把原本刪除…我不要重複訊息」
+ok('⑧a 已寫成專欄的(低檔布局 / 布林壓縮 / 盤中連量 / 隔日沖勝率)⛔ 不再重複列',
+    !/低檔布局|布林壓縮|盤中連量偵測|隔日沖勝率回測/.test(R3.txt), (R3.txt.match(/[^\n]*(低檔布局|布林壓縮|盤中連量)[^\n]*/) || [''])[0]);
+ok('⑧b 要說「另有 N 條在專欄」+ 一顆看專欄鈕(⛔ 不可默默消失)', /另有\s*\d+\s*條已經寫成專欄/.test(R3.txt) && /看專欄/.test(R3.txt));
+ok('⑧c 決定性對照:專欄清空 → 那幾條回來(證明是專欄擋掉的)', /低檔布局/.test(R3.noColTxt) && /盤中連量偵測/.test(R3.noColTxt));
+ok('⑧d 沒進專欄的照列(投信佔成交量比 / 分析師焦點)', /投信買超佔成交量比/.test(R3.txt) && /分析師焦點/.test(R3.txt));
 
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ NOISE_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

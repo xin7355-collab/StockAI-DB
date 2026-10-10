@@ -57,7 +57,8 @@ ok('⓪c ⛔ 兩個窗口的數字不可混用(_PB_TRACK 是 36 個月、_DECK_T
 // ① 落地頁 + 分頁接線
 ok('① 預設落地在決策台(⛔ 帶股票代號的深連結仍進個股頁)',
    /switchAppTab\(this\._deepLinkSym \? 'diag' : 'desk'\)/.test(SRC));
-ok('①b 舊 9 個分頁一個都沒少', /\['Desk', 'Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Broker', 'Potential'\]/.test(SRC));
+// 🗑️ V79.0.0 券商分點整組移除 → Broker 分頁刻意拿掉(⛔ 不是漏掉);其餘 8 個一個都不可少
+ok('①b 舊分頁一個都沒少(Broker 是 V79.0.0 刻意刪的)', /\['Desk', 'Diag', 'Market', 'Fav', 'Inv', 'Radar', 'Hunt', 'Potential'\]/.test(SRC));
 ok('①c 有接 render 分派', /tabId === 'desk'.{0,80}renderDeck\(\)/s.test(SRC));
 
 // ② 排序:全 App 唯一一份

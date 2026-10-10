@@ -38,7 +38,10 @@ const R = await page.evaluate(() => {
     const brief = PRO.labExportText({ scope: 'all', full: false });
     const noAsk = PRO.labExportText({ scope: 'all', ask: false });
     // ⑦ 排序:V77.7.9 ✅ 改成「分組 → r」(白話層),⭐ 釘的是用意 =「匯出順序 = 畫面順序」—— 直接讀畫面上的原始標題
+    //   📰 V79.0.8 ✅ 那頁畫面上不再重印(全部在專欄)→ 比「排序機制」時先關掉去重;⭐ 匯出照舊匯全部(給 AI 讀,不是畫面上的重複)
+    const _bkIn = PRO._labInCol; PRO._labInCol = () => false;
     PRO.switchTab('lab'); PRO.labSearch(''); PRO.selLab('ok');
+    PRO._labInCol = _bkIn;
     const norm = t => String(t).replace(/——|\*\*|\s/g, '');
     const okSorted = [...document.querySelectorAll('#labList .labitem .lot')].map(e => e.textContent);
     const okSortedN = okSorted.map(norm);

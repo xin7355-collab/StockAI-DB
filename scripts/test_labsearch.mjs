@@ -46,6 +46,7 @@ await page.waitForTimeout(1200);
 
 const R = await page.evaluate(async () => {
     const P = window.PRO;
+    P._labInCol = () => false;   // 📰 V79.0.8 有專欄的條目畫面上不再重印 —— 這支驗搜尋機制,先關掉去重(去重在 test_prohtml ㊿)
     P.switchTab('lab'); await new Promise(r => setTimeout(r, 900));
     P.selLab('ok'); await new Promise(r => setTimeout(r, 200));   // 🏆 V78.1.0 一進來是「選哪一套」→ 這支測的是「有用」清單
     const n = () => document.querySelectorAll('#labList .labitem').length;
