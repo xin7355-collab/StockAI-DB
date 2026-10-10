@@ -1,58 +1,94 @@
 {
-  "updated": "2026-10-09 17:45 UTC",
+  "updated": "2026-10-10 09:40 UTC",
   "items": [
     {
-      "source": "BBC Business",
-      "title": "Anthropic bans users from being 'cruel' to its AI systems",
-      "url": "https://www.bbc.co.uk/news/articles/c6j9k1l72wkgo?at_medium=RSS&at_campaign=rss",
-      "published": "Fri, 09 Oct 2026 12:34:27 GMT",
-      "title_zh": "Anthropic禁止用戶虐待AI",
-      "impact": "此舉強化AI安全合規，長期利好AI產業發展，對台股影響中性。",
+      "source": "Musk Tesla",
+      "title": "Elon Musk says SpaceX could one day be worth vastly more than Earth's economy. Here's what that would take. - Business Insider",
+      "url": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxNaF9YdkctaHUyMDAzUk9hbzRxclBCZWhRWVUxcWJKNDllaWY3OU9VQ2xkNmZ0ZDNTYzdVLXhDbDJHUlFYZ095MGsyNzhiZk14SUxyRGZRbnhSWlhOY2pXZGEzUmNwUFY4NERnd0ktS1J1b21QTk5HQWVIUWJVX00ydjlHRWhTWWU2cUpsd3FIN0w3ZTgtN0lETkc1bThxcXl1SUMxM0NHYWNuWVE?oc=5",
+      "published": "Sat, 10 Oct 2026 09:34:00 GMT",
+      "title_zh": "佛羅里達州商業時報：Elon Musk說地球經濟可能比太空公司SpaceX價值多",
+      "impact": "SpaceX的潛力可能會對台股产生引起影響，尤其是在投資者期",
+      "impact_level": "bullish"
+    },
+    {
+      "source": "🧪 技術突破",
+      "title": "Robot Entertainment Kombat, recently held a fight in San Francisco between its 6-foot humanoid robot \"Terminator\", and humans. - The Daily News | Texas' Oldest Newspaper",
+      "url": "https://news.google.com/rss/articles/CBMilAJBVV95cUxPM1BmUGlQMmxSZXlaZVRMU1hYOUpLcnNDR3lRZVZJdFdIaGNZc2JvUWdibnEwNnFaekp6dWtWcnl0WHVKRFhTcGQ0UWg0MHpSRkRhLVgyR2pfalhaU1NXTGJOQVQ0TDI4WlEyOTF5b3hpQlM0Z0k4aG9UUG83ZDA3V2hkeXU3Q2pFZTlUMUlKb2gzWUVuZTc0VnhBX29uX3NiM1dYdl82MV9LSnlZTjhlbFpiVVF4aC1CbEJPR3RWeVJlMjJ0NUNGUUxGYmRCc1lGQ3RtaVgzT3lQVERGbml2SWpiaWFCRWZaVDhLcWlDMU9hSU4tODJTTmY4eVVOeV9qQnRBWnRYSUY4VGpVQzVzUERqUXU?oc=5",
+      "published": "Sat, 10 Oct 2026 09:06:25 GMT",
+      "title_zh": "比擠比擠，於旧亞弗利茲會員區域大會場內於旧亞弗利茲举行過會員對戰",
+      "impact": "比擠比擠的參與在台灣股市上的影響未確定，但此次比擠比擠對比擠",
       "impact_level": "neutral"
     },
     {
-      "source": "BBC Business",
-      "title": "Fired OpenAI researchers say they were let go for 'prioritising safety'",
-      "url": "https://www.bbc.co.uk/news/articles/cvlydn8d3lkjo?at_medium=RSS&at_campaign=rss",
-      "published": "Fri, 09 Oct 2026 09:30:49 GMT",
+      "source": "Huang Nvidia",
+      "title": "The 1 Number That Would Change My Mind About Nvidia Stock - The Motley Fool",
+      "url": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQM0hUOUVoTHVkSS0xUGFNMTBOUkNCWVFwT1NTVjFhQTFwSHg2clJPX1RQYW13RGYxM2FDektwNEduWTJoX18wdjdaYktLSnR3bnI1ejVXN1VlLVdUWTdUV3FOdl85RHhCVnUxY2tjUE5Bb1M4b2RvdUhKZGtSa0Q4aDY0ajRNSHVPa3ZKUGNWd1RvMXBTbHNpenBxUXdZdDQzTkE?oc=5",
+      "published": "Sat, 10 Oct 2026 08:47:00 GMT",
+      "title_zh": "英偉達股價關鍵指標",
+      "impact": "市場關注英偉達核心數據，若指標轉弱可能引發拋售，對台積電等供",
+      "impact_level": "bearish"
+    },
+    {
+      "source": "🏢 雲端巨頭",
+      "title": "Microsoft's AI Economics Are Quietly Starting To Change (NASDAQ:MSFT) - Seeking Alpha",
+      "url": "https://news.google.com/rss/articles/CBMimgFBVV95cUxQVDI3TE5XLWxJYWxCZ1l3SjE2OU9wWUFtazJnZFRuYUJUM0FSU1NBZ0dZUUo5cVdwaGpzcGU5Y09LOHVLUEJNUzFFSk9xaGgtVFhRSVRrdkhMd0d6VU95b2hMdXZtMFUxRzd5TzlsVFJROUxrczVxQXhaeFdSSEhwNnhxN0MwR1d4QW9RSkdhVk1yWW1kM3FKbVlR?oc=5",
+      "published": "Sat, 10 Oct 2026 08:21:19 GMT",
+      "title_zh": "微軟AI經濟悄然變化",
+      "impact": "微軟AI成本下降與需求提升，將利好台灣半導體與相關供應鏈。",
+      "impact_level": "bullish"
+    },
+    {
+      "source": "🚫 出口管制",
+      "title": "China and the European Union agreed on these 16 resolutions from their joint Trade Talks in Beijing - The Tanzania Times",
+      "url": "https://news.google.com/rss/articles/CBMixAFBVV95cUxQRTFDSkkyNG12TTBPb0lqbzIxSHVOTnpxOTZRUGh4NjZCeFJpY0xONHk2cFdYZTZ0bi1vcDVGZkVydHBsQlNScFRjQW1ZeDYwMVZCbzhuM3JrWGpqUncwS1dld0FLaDVNMVhZWEJBeTdjNGZZZzlmTzZpTjFwaGJyeWJ4a2tZdlNLWUFuOWs0bW5xMnRTRW54VV9GQTU2RzRMWGd3c1B0dDBDc3B4TWMtSEw5TWtIOGNyWXEtUkxiRUc5Vmg1?oc=5",
+      "published": "Sat, 10 Oct 2026 08:16:23 GMT",
+      "title_zh": "中歐達成16項貿易決議",
+      "impact": "中歐貿易關係改善有助於穩定全球供應鏈，對台股正面。",
+      "impact_level": "bullish"
+    },
+    {
+      "source": "Huang Nvidia",
+      "title": "Super Micro Contractor Pleads Guilty in $2.5B China AI Server Scheme - NVIDIA (NASDAQ:NVDA) - Benzinga",
+      "url": "https://news.google.com/rss/articles/CBMimwFBVV95cUxQWFFqVndRYy1CM2M4OThZYUF3VkZYTjYyZ0FSSWF3ME1wNC1Dd3dnc29SaTlYSEc2Y01aMGdvT09XLW9lc29hSGg5dVU1Z05Gck8xSE55UVUwS0ZZT1hQVXZGRHhLR1dJTlF1SUd3alVKcVNZUGVkRlZaMmRTMzRrcjk3YlpyRy1BNDRmQjZRcmdVLTFHbjlzUExiZw?oc=5",
+      "published": "Sat, 10 Oct 2026 08:13:47 GMT",
       "title_zh": "",
       "impact": "AI 回的內容看不懂(JSONDecodeError)",
       "impact_level": "neutral"
     },
     {
-      "source": "BBC Business",
-      "title": "Nvidia-backed data centre firm scraps IPO as AI valuation concerns deepen",
-      "url": "https://www.bbc.co.uk/news/articles/ck9dzpw4ll8po?at_medium=RSS&at_campaign=rss",
-      "published": "Fri, 09 Oct 2026 07:14:30 GMT",
+      "source": "📊 巨頭財報",
+      "title": "The 1 Number That Would Change My Mind About Nvidia Stock - The Motley Fool",
+      "url": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQM0hUOUVoTHVkSS0xUGFNMTBOUkNCWVFwT1NTVjFhQTFwSHg2clJPX1RQYW13RGYxM2FDektwNEduWTJoX18wdjdaYktLSnR3bnI1ejVXN1VlLVdUWTdUV3FOdl85RHhCVnUxY2tjUE5Bb1M4b2RvdUhKZGtSa0Q4aDY0ajRNSHVPa3ZKUGNWd1RvMXBTbHNpenBxUXdZdDQzTkE?oc=5",
+      "published": "Sat, 10 Oct 2026 08:01:25 GMT",
       "title_zh": "",
       "impact": "AI 回的內容看不懂(JSONDecodeError)",
       "impact_level": "neutral"
     },
     {
-      "source": "BBC Business",
-      "title": "Trump wants to reduce the cost of fuel as the midterms loom - will it work?",
-      "url": "https://www.bbc.co.uk/news/articles/cv2d6x749lwro?at_medium=RSS&at_campaign=rss",
-      "published": "Fri, 09 Oct 2026 04:55:14 GMT",
-      "title_zh": "特朗普欲降油價，臨近中期選舉",
-      "impact": "油價下降降低台灣製造業成本，提振企業獲利，對台股偏多。",
+      "source": "📊 巨頭財報",
+      "title": "Google optimises its own revenue. Advertisers have to optimise theirs - PPC Land",
+      "url": "https://news.google.com/rss/articles/CBMijwFBVV95cUxQcnFTSlRIbnJwLWpaT1g4ZV91eHV0ME81WXZ5bks1YV9xVmFFNzVKdmZnaHA1elQ5NndldGdaWURSWU1salQzUC05Z2VIRDlSQUxOMWFwdExYTWpUTW9SbFNuemZ2cEx3d3l4dzhyY0Z2NjQ3RmtCYmUtLWpEbWt1QTVYRE80S0YtQjlLQU54RQ?oc=5",
+      "published": "Sat, 10 Oct 2026 07:55:16 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "Huang Nvidia",
+      "title": "NVIDIA Throws Free RTX Spark Party in Berlin Oct. 16 [2026] - shattered.io",
+      "url": "https://news.google.com/rss/articles/CBMicEFVX3lxTE95WHo0cnp2ZmJ4WV82WGxMVk9ZVkJmMHVnT0pwUk5NU3NMWk5iMHhwazVMS1pTZ054cWtBaHlmN05QOGpLTDJzbVM2N3U4SlpoN1R1RVBYV0VwRFg0cXBPOWlsdnJsMi1KXzlKRHNLTlQ?oc=5",
+      "published": "Sat, 10 Oct 2026 06:56:09 GMT",
+      "title_zh": "NVIDIA柏林免費RTX派對",
+      "impact": "此活動顯示NVIDIA持續推廣RTX，提振半導體需求，對台積",
       "impact_level": "bullish"
     },
     {
-      "source": "BBC Business",
-      "title": "Mark Zuckerberg has an image problem - so why is Meta's business booming?",
-      "url": "https://www.bbc.co.uk/news/articles/cq8rzjv8g7ejo?at_medium=RSS&at_campaign=rss",
-      "published": "Thu, 08 Oct 2026 23:14:02 GMT",
-      "title_zh": "扎克伯格形象有爭議，Meta業務卻蓬勃發展",
-      "impact": "Meta業務強勁增長可能提振科技股情緒，對台股科技類股形成正",
-      "impact_level": "bullish"
-    },
-    {
-      "source": "BBC Business",
-      "title": "White House blocks Microsoft from foreign worker hiring programme",
-      "url": "https://www.bbc.co.uk/news/articles/ck5yngl2y4gpo?at_medium=RSS&at_campaign=rss",
-      "published": "Thu, 08 Oct 2026 21:37:35 GMT",
-      "title_zh": "白宮阻止微軟外籍員工計畫",
-      "impact": "此舉可能削弱微軟在美國的擴張動能，對台股受惠於美國科技需求的",
+      "source": "韓股記憶體",
+      "title": "SK Hynix sends memory chips into orbit for testing - digitimes",
+      "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxOb2FMM1Q2aWxGWmkxZWNCUkdQMDhWZ0FSV0F1VHVfdXF1LXM1bWFFN3lvYm03WWdFYnFCWWZjYUtDOUNQS2lUV3VjNVpiOTdxbXpDUE9WNktMeGRoM21XVEF0X01ubExXaWtVNGYwQ3RLVk10MkVzMlRIblZWNzhDYllpMUItbzMxR202blluVzNEeDVTYWc?oc=5",
+      "published": "Sat, 10 Oct 2026 06:26:32 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
       "impact_level": "neutral"
     }
   ]

@@ -1,215 +1,207 @@
 {
-  "updated": "2026-10-09 17:45 UTC",
+  "updated": "2026-10-10 09:40 UTC",
   "count": 15,
   "data": [
     {
       "source_name": "自由財經",
-      "title": "Rapidus拚明年2奈米量產   搶台積電外溢訂單成頭號挑戰",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5601384",
-      "published_time": "Fri, 09 Oct 2026 23:08:26 +0800",
+      "title": "中油宣布下週油價凍漲 汽柴油已吸收267.9億元",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5601991",
+      "published_time": "Sat, 10 Oct 2026 17:12:57 +0800",
       "matched_keywords": [
-        "奈米"
-      ],
-      "cat": "🧪 技術突破",
-      "ai_sentiment": "中立",
-      "ai_reason": "Rapidus競爭不影響台積電主導地位",
-      "important": true
-    },
-    {
-      "source_name": "中央社財經",
-      "title": "財報季即將登場　AI相關企業成美股第3季獲利成長主力",
-      "link": "https://www.cna.com.tw/news/aopl/202610090225.aspx",
-      "published_time": "Fri, 09 Oct 2026 19:57:20 +0800",
-      "matched_keywords": [
-        "財報"
-      ],
-      "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "經濟景氣正好，AI相關企業成為推動獲利成長的主要動力。",
-      "title_zh": "標題若非繁體中文則翻譯為繁體中文，標題長度應少於30字。",
-      "important": true
-    },
-    {
-      "source_name": "自由財經",
-      "title": "與馬斯克合作有戲？台積電法說會10/15登場 分析師最想知道的事1次看",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5601207",
-      "published_time": "Fri, 09 Oct 2026 19:22:29 +0800",
-      "matched_keywords": [
-        "漲價",
-        "先進封裝",
-        "CoWoS",
-        "奈米",
-        "法說",
-        "毛利率",
-        "展望",
-        "資本支出"
-      ],
-      "cat": "⚡ 供需價格",
-      "ai_sentiment": "利多",
-      "ai_reason": "AI需求與先進製程提升營收",
-      "important": true
-    },
-    {
-      "source_name": "中央社財經",
-      "title": "PIMCO：美10年期公債殖利率恐升至6%　26年來首見",
-      "link": "https://www.cna.com.tw/news/aopl/202610090207.aspx",
-      "published_time": "Fri, 09 Oct 2026 18:20:40 +0800",
-      "matched_keywords": [
-        "油價",
-        "新高"
-      ],
-      "cat": "💱 匯率成本",
-      "ai_sentiment": "利空",
-      "ai_reason": "美債收益上升壓低股市",
-      "important": true
-    },
-    {
-      "source_name": "Yahoo 即時財經",
-      "title": "股市震盪錢往哪逃！這6檔規模、單位數雙增　小資防禦首選",
-      "link": "https://tw.news.yahoo.com/%E8%82%A1%E5%B8%82%E9%9C%87%E7%9B%AA%E9%8C%A2%E5%BE%80%E5%93%AA%E9%80%83-%E9%80%996%E6%AA%94%E8%A6%8F%E6%A8%A1-%E5%96%AE%E4%BD%8D%E6%95%B8%E9%9B%99%E5%A2%9E-%E5%B0%8F%E8%B3%87%E9%98%B2%E7%A6%A6%E9%A6%96%E9%81%B8-172600773.html",
-      "published_time": "Fri, 09 Oct 2026 17:26:00 +0800",
-      "matched_keywords": [
+        "戰爭",
         "油價"
       ],
-      "cat": "💱 匯率成本",
-      "ai_sentiment": "利空",
-      "ai_reason": "資金流向美國債券，台股資金外移",
-      "important": true
-    },
-    {
-      "source_name": "自由財經",
-      "title": "台積電要小心？輝達、英特爾爆重大合作  2028年是關鍵",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5601035",
-      "published_time": "Fri, 09 Oct 2026 17:16:27 +0800",
-      "matched_keywords": [
-        "先進封裝"
-      ],
-      "cat": "🧪 技術突破",
+      "cat": "🌍 地緣管制",
       "ai_sentiment": "中立",
       "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
     },
     {
-      "source_name": "Yahoo 即時財經",
-      "title": "快訊／OpenAI營收衝擊暫平息！科技股反彈　SpaceX大漲",
-      "link": "https://tw.news.yahoo.com/%E5%BF%AB%E8%A8%8A-openai%E7%87%9F%E6%94%B6%E8%A1%9D%E6%93%8A%E6%9A%AB%E5%B9%B3%E6%81%AF-%E7%A7%91%E6%8A%80%E8%82%A1%E5%8F%8D%E5%BD%88-spacex%E5%A4%A7%E6%BC%B2-164400617.html",
-      "published_time": "Fri, 09 Oct 2026 16:44:00 +0800",
+      "source_name": "自由財經",
+      "title": "不要以為台積電股價已漲689％就夠了 外媒直指勿輕忽「這股強大力量」",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5601862",
+      "published_time": "Sat, 10 Oct 2026 17:07:01 +0800",
       "matched_keywords": [
-        "營收"
+        "展望"
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "OpenAI營收衝擠暫平息，科技股反彈，SpaceX大漲。這",
-      "title_zh": "OpenAI營收衝擠暫平息，科技股反彈，SpaceX大漲。",
+      "ai_reason": "新聞中提到OpenAI和ChatGPT的新聞，表示人工智慧的",
+      "title_zh": "不要誤解台股未來，外國媒體及廣告業可能會有影響，市場可能將有潛在利潤",
       "important": true
     },
     {
       "source_name": "中央社財經",
-      "title": "川普排除選前攻擊伊朗　亞股多收紅油價回落",
-      "link": "https://www.cna.com.tw/news/afe/202610090172.aspx",
-      "published_time": "Fri, 09 Oct 2026 16:40:21 +0800",
+      "title": "俄羅斯擬向美國增供柴油　專家：難紓解高油價壓力",
+      "link": "https://www.cna.com.tw/news/aopl/202610100136.aspx",
+      "published_time": "Sat, 10 Oct 2026 16:12:14 +0800",
       "matched_keywords": [
         "油價"
       ],
       "cat": "💱 匯率成本",
-      "ai_sentiment": "利多",
-      "ai_reason": "油價回落減緩通膨壓力，支撐亞股",
-      "important": true
-    },
-    {
-      "source_name": "自由財經",
-      "title": "Puma被中資買走了！中國安踏體育砸555億現金入主 成最大股東",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5601036",
-      "published_time": "Fri, 09 Oct 2026 16:35:17 +0800",
-      "matched_keywords": [
-        "收購"
-      ],
-      "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "中國安踏體股收購德國Puma，提高市場寧靜，可能會對台股有所",
-      "title_zh": "Puma被中國安踏體股收購，可能會對台股有所影響。",
-      "important": true
-    },
-    {
-      "source_name": "自由財經",
-      "title": "記憶體漲價扛不住了！傳蘋果砍iPhone 18 Pro元件訂單逾15％",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5601031",
-      "published_time": "Fri, 09 Oct 2026 16:28:17 +0800",
-      "matched_keywords": [
-        "漲價",
-        "調漲"
-      ],
-      "cat": "⚡ 供需價格",
-      "ai_sentiment": "利多",
-      "ai_reason": "蘋果通知部份供應商削減iPhone 18 Pro和iPhon",
-      "title_zh": "蘋果通知部份供應商削減iPhone 18 Pro和iPhone 18 Pro Max的元件訂單，表示",
-      "important": true
-    },
-    {
-      "source_name": "自由財經",
-      "title": "日經亞洲：需求疲軟 蘋果削減iPhone 18 Pro訂單",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5601001",
-      "published_time": "Fri, 09 Oct 2026 16:01:46 +0800",
-      "matched_keywords": [
-        "漲價"
-      ],
-      "cat": "⚡ 供需價格",
-      "ai_sentiment": "利空",
-      "ai_reason": "記憶體晶片需求下降，衝擊台灣相關供應鏈",
-      "important": true
-    },
-    {
-      "source_name": "中央社財經",
-      "title": "日經亞洲：需求疲軟　蘋果削減iPhone 18 Pro訂單",
-      "link": "https://www.cna.com.tw/news/aopl/202610090154.aspx",
-      "published_time": "Fri, 09 Oct 2026 15:44:42 +0800",
-      "matched_keywords": [
-        "漲價"
-      ],
-      "cat": "⚡ 供需價格",
-      "ai_sentiment": "利多",
-      "ai_reason": "Apple 因記憶體片成本飛揮而削減 iPhone 18 P",
-      "title_zh": "標題：Apple 因記憶體成本漲而削減 iPhone 18 Pro 和 iPhone 18 Pro ",
-      "important": true
-    },
-    {
-      "source_name": "自由財經",
-      "title": "從日常需求意外找到商機！母女檔創業半年 海撈近1600萬營收",
-      "link": "https://ec.ltn.com.tw/article/breakingnews/5600666",
-      "published_time": "Fri, 09 Oct 2026 15:36:10 +0800",
-      "matched_keywords": [
-        "營收"
-      ],
-      "cat": "📊 財務事件",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
-      "important": true
-    },
-    {
-      "source_name": "中央社財經",
-      "title": "OpenAI營收疑慮緩解　日經跌幅收斂",
-      "link": "https://www.cna.com.tw/news/afe/202610090147.aspx",
-      "published_time": "Fri, 09 Oct 2026 15:22:27 +0800",
-      "matched_keywords": [
-        "營收"
-      ],
-      "cat": "📊 財務事件",
       "ai_sentiment": "中立",
       "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
     },
     {
       "source_name": "科技新報",
-      "title": "光寶科第三季營收季增 9%，康舒單季首破百億元",
-      "link": "https://finance.technews.tw/2026/10/09/ai-power-demand-remains-strong-liteon-q3-revenue-up-9-percent-acbel-hits-new-high/",
-      "published_time": "Fri, 09 Oct 2026 06:46:13 +0000",
+      "title": "台股高檔震盪「高息型」最吃香！盤點 12 檔 ETF 規模逆勢創新高",
+      "link": "https://finance.technews.tw/2026/10/10/high-interest-type/",
+      "published_time": "Sat, 10 Oct 2026 07:20:05 +0000",
       "matched_keywords": [
-        "合併",
+        "新高"
+      ],
+      "cat": "📈 股價異動",
+      "ai_sentiment": "利多",
+      "ai_reason": "台股大盤創新高，包括群益半導體、國泰永續高股息等具體影響因素",
+      "title_zh": "標題為繁體中文時，則為繁體中文；如果標題為繁中，則為空字串。",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "訂單滿手擠爆產線！智崴砸 24 億併 Flyover 通吃沉浸式娛樂產業鏈",
+      "link": "https://finance.technews.tw/2026/10/10/flyover/",
+      "published_time": "Sat, 10 Oct 2026 05:21:37 +0000",
+      "matched_keywords": [
         "營收"
       ],
       "cat": "📊 財務事件",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "台積電10/15財報前該進場嗎？外媒分析曝答案 關鍵要看這",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5601707",
+      "published_time": "Sat, 10 Oct 2026 12:54:41 +0800",
+      "matched_keywords": [
+        "財報",
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "中立",
+      "ai_reason": "營收佳但獲利未必超預期",
+      "important": true
+    },
+    {
+      "source_name": "Reddit r/stocks",
+      "title": "Does MU's quarter actually help SNDK?",
+      "link": "https://www.reddit.com/r/stocks/comments/1x24b13/does_mus_quarter_actually_help_sndk/",
+      "published_time": "2026-10-10T02:53:08+00:00",
+      "matched_keywords": [
+        "HBM"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "造紙業第4季迎旺季　需求溫和回升原料成本為變數",
+      "link": "https://www.cna.com.tw/news/afe/202610100041.aspx",
+      "published_time": "Sat, 10 Oct 2026 10:28:42 +0800",
+      "matched_keywords": [
+        "拉貨",
+        "出貨"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "國際油價震盪！川普一句話牽動行情 墨西哥灣颶風再添變數",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5601510",
+      "published_time": "Sat, 10 Oct 2026 09:32:30 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "利空",
+      "ai_reason": "油價上漲提成本，壓低大盤",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "中油：12日起汽柴油價格不調整　累計吸收約267億元",
+      "link": "https://tw.news.yahoo.com/%E4%B8%AD%E6%B2%B9-12%E6%97%A5%E8%B5%B7%E6%B1%BD%E6%9F%B4%E6%B2%B9%E5%83%B9%E6%A0%BC%E4%B8%8D%E8%AA%BF%E6%95%B4-%E7%B4%AF%E8%A8%88%E5%90%B8%E6%94%B6%E7%B4%84267%E5%84%84%E5%85%83-091943570.html",
+      "published_time": "Sat, 10 Oct 2026 09:19:43 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "中油宣布下週油價凍漲 汽柴油已吸收267.9億元",
+      "link": "https://tw.news.yahoo.com/%E4%B8%AD%E6%B2%B9%E5%AE%A3%E5%B8%83%E4%B8%8B%E9%80%B1%E6%B2%B9%E5%83%B9%E5%87%8D%E6%BC%B2-%E6%B1%BD%E6%9F%B4%E6%B2%B9%E5%B7%B2%E5%90%B8%E6%94%B6267-9%E5%84%84%E5%85%83-091257191.html",
+      "published_time": "Sat, 10 Oct 2026 09:12:57 +0800",
+      "matched_keywords": [
+        "戰爭",
+        "油價"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "下週油價持續凍漲！中油已吸收267億",
+      "link": "https://tw.news.yahoo.com/%E4%B8%8B%E9%80%B1%E6%B2%B9%E5%83%B9%E6%8C%81%E7%BA%8C%E5%87%8D%E6%BC%B2-%E4%B8%AD%E6%B2%B9%E5%B7%B2%E5%90%B8%E6%94%B6267%E5%84%84-091201131.html",
+      "published_time": "Sat, 10 Oct 2026 09:12:01 +0800",
+      "matched_keywords": [
+        "油價"
+      ],
+      "cat": "💱 匯率成本",
       "ai_sentiment": "利多",
-      "ai_reason": "AI需求帶動電源營收季增",
+      "ai_reason": "中油公司宣布接受267億元合約買入油價，預計會導致油價維持不",
+      "title_zh": "標題如果為繁體中文，則翻譯為繁中，否則為空字串。",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "獲利分紅成主戰場，勞資都要面對的課題，台灣美光釀罷工危機，高科技業新考驗",
+      "link": "https://finance.technews.tw/2026/10/10/strike-risk-looms-at-micron-taiwan/",
+      "published_time": "Sat, 10 Oct 2026 01:00:31 +0000",
+      "matched_keywords": [
+        "罷工"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "美光罷工危機恐衝擊記憶體產能與供應鏈穩定",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "供應鏈指蘋果追加iPhone Duo約30%訂單　iPhone 18  Pro系列總訂單未變",
+      "link": "https://tw.stock.yahoo.com/news/%E4%BE%9B%E6%87%89%E9%8F%88%E6%8C%87%E8%98%8B%E6%9E%9C%E8%BF%BD%E5%8A%A0iphone-duo%E7%B4%8430-%E8%A8%82%E5%96%AE-iphone-18-082000432.html",
+      "published_time": "Sat, 10 Oct 2026 08:20:00 +0800",
+      "matched_keywords": [
+        "出貨"
+      ],
+      "cat": "⚡ 供需價格",
+      "ai_sentiment": "利空",
+      "ai_reason": "需求低於預期，零組件訂單削減15%",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "毛利率衝破 87% 遠超台積電！川湖 40 年只做滑軌，AI 伺服器市占近八成",
+      "link": "https://finance.technews.tw/2026/10/10/king-slide-success-story-revealed/",
+      "published_time": "Sat, 10 Oct 2026 00:00:27 +0000",
+      "matched_keywords": [
+        "毛利率"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "毛利率遠超台積電，AI伺服器市占近八成",
       "important": true
     }
   ]
