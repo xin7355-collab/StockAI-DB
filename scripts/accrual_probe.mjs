@@ -23,37 +23,15 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { quarterValue } from './lib_fundamentals.mjs';
-import { valuePrep, valueSeries } from './lib_value.mjs';
+import { valuePrep } from './lib_value.mjs';
+import { accrualSeries, knownBefore } from './lib_accrual.mjs';
 import { baseAdd, increments, gates, negate, fmtG } from './lib_evgate.mjs';
 
 const HOLDS = [20, 60], HI = 0, NQ = 5, MINY = 6;
 const D = s => String(s || '').slice(0, 10).replace(/\//g, '-');
 
-/** 一檔 → 依公布日排序的 [{p, pub, acc, earn}](acc 算不出來就不放) */
-export function accrualSeries(FD, sym, P) {
-    const ser = valueSeries(FD, sym, P); if (!ser) return [];
-    const byP = new Map(ser.map(q => [q.p, q]));
-    const qs = FD.q, iEq = P.I.eq, rec = FD.s[sym] || {};
-    const out = [];
-    for (const q of ser) {
-        const k = qs.indexOf(q.p); if (k < 3) continue;
-        let ni = 0, ocf = 0, ok = true;
-        for (let j = k - 3; j <= k; j++) {
-            const r = byP.get(qs[j]);
-            const o = quarterValue(FD, sym, qs[j], 'ocf', P.CUM);
-            if (!r || !Number.isFinite(r.ni) || o == null || !Number.isFinite(+o)) { ok = false; break; }
-            ni += r.ni; ocf += +o;
-        }
-        const eq = +((rec[q.p] || [])[iEq]);
-        if (!ok || !(eq > 0)) continue;
-        out.push({ p: q.p, pub: q.pub, acc: (ni - ocf) / eq * 100, earn: Number.isFinite(q.nImp) ? q.nImp >= 1 : null });
-    }
-    return out.sort((a, b) => a.pub < b.pub ? -1 : 1);
-}
-
-/** 排名日那天「已經公布」的最後一季(⛔ 公布日要嚴格早於排名日) */
-export const knownBefore = (ser, day) => { let best = null; for (const x of ser) { if (x.pub < day) best = x; else break; } return best; };
+// ⭐ V79.0.7 公式搬進 lib_accrual.mjs(🔥 / 👑 組合回測共用,⛔ 不留第二份)
+export { accrualSeries, knownBefore };
 
 /** universe: [{sym, rows}];ACC: Map sym → accrualSeries → {Q: [[{d,r}] per hold] × NQ, base, earnShare, qNoEarn, months} */
 export function run(universe, ACC) {

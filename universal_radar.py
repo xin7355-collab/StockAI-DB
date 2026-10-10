@@ -325,6 +325,24 @@ def analyze_sentiment(title: str, summary: str) -> tuple:
             bool(parsed.get("important", True)))
 
 
+# 🐛 V79.0.7 AI 把「指令」當成翻譯回來(news_hist 33 天實測 15/642 則):
+#    「標題若非繁體中文則為繁中…」「根據新聞摘要,…」「…則為true,否則為false」→ 個股消息面顯示的是這串,不是原標題。
+#    ⭐ 兩道:① 原標題已經是中文 → ⛔ 不用 AI 的版本(那欄本來就只該翻英文)② 回來的字串長得像指令 → 丟掉
+_ZH_ECHO = re.compile(r'繁體中文|繁中|標題若|標題為|新聞摘要|true|false|JSON|市場情緒|空字串')
+
+
+def _cjk_ratio(t):
+    t = re.sub(r'[\s\d\W_]+', '', str(t or ''))
+    return (sum(1 for c in t if '\u4e00' <= c <= '\u9fff') / len(t)) if t else 0.0
+
+
+def _clean_title_zh(orig, zh):
+    zh = str(zh or '').strip()
+    if not zh or _cjk_ratio(orig) >= 0.3 or _ZH_ECHO.search(zh):
+        return ''
+    return zh
+
+
 def _fetch_rss_with_encoding_fallback(url: str):
     """抓 RSS feed,若 feedparser 直連 parse 失敗(常見:鉅亨網/MoneyDJ 因
     XML 宣告 us-ascii 但實際是 utf-8/windows-1252 → bozo 但 entries 空),
@@ -705,6 +723,36 @@ STOCK_NAME_CODE = {
 }
 _TONE_MAP = {'利多': 'pos', '利空': 'neg', '中立': 'neu'}
 
+# 🏷️ V79.0.7 股名誤配守門(標題「含股名」就歸該股 → 兩個字的股名常被別的詞吃到)
+# 🚨 先量再定(news_hist 33 天 09-01~10-10 實跑):三星 19/19 全是 Samsung、和大 5/5 是「和大盤」、
+#    東南亞→南亞、億光年→億光、海力士→力士、聯合國→聯合、房地合一→合一、李長榮→長榮 … 共約 40 則。
+#  ・_NAME_FP   :這些詞先從標題裡蓋掉,詞裡面的股名就比對不到(⛔ 不改標題本身,只影響比對)
+#  ・_NAME_NEED :股名本身就是常用詞 → 要看到額外證據(全名 / 代號)才算
+# ⚠️ index.html 的 _NAME_GUARD 是同一份抄本(總覽「近期有事件」比對),scripts/test_namematch.py 跨檔比對
+_NAME_FP = [
+    '東南亞', '和大盤', '和大陸', '億光年', '海力士', '李長榮', '三大成長', '新產品', '美國眾', '大同質', '大同小異',
+    '金聯成', '旺矽晶圓', '擴大中', '大中華', '卡達能', '台中工', '億泰銖', '世界兩大', '世界正視', '三商美邦',
+    '精華生醫', '南亞電子',
+]
+_NAME_NEED = {
+    '三星': r'三星科|5007', '世界': r'世界先進|世界[0-9０-９]|世界[:：︰]|5347', '聯合': r'聯合骨|4129',
+    '合一': r'合一生|4743', '冠軍': r'冠軍建|1806', '全國': r'全國加|9937', '國產': r'國產實|國產建|2504',
+    '大量': r'大量科|3167|大買大量', '全台': r'全台晶|3038', '大成': r'大成長城|大成[0-9０-９]|大成[:：︰]|1210',
+    '新產': r'新產[0-9０-９:：︰]|新光產|2850', '進階': r'進階生|3118', '台南': r'台南企|1473',
+}
+
+
+def _title_hits(title, names_by_len):
+    """標題 → 命中的股名(已去子字串、已過誤配守門)。names_by_len 要長的在前。"""
+    masked = title
+    for w in _NAME_FP:
+        if w in masked:
+            masked = masked.replace(w, '□' * len(w))
+    hits = [nm for nm in names_by_len if nm in masked]
+    # 去子字串:若某股名是另一個已命中股名的子字串(如「南亞」⊂「南亞科」),丟掉短的
+    hits = [nm for nm in hits if not any(nm != o and nm in o for o in hits)]
+    return [nm for nm in hits if nm not in _NAME_NEED or re.search(_NAME_NEED[nm], title)]
+
 
 def _fetch_full_name_map():
     """📰 V69.7.2 全市場股名→代號(使用者要求:庫存/自選任何股的新聞都要挖得到,不只 90 檔熱門股)。
@@ -867,9 +915,7 @@ def build_stock_news(news_items):
             title = (it.get('title_zh') or it.get('title') or '').strip()
             if not title:
                 continue
-            hits = [nm for nm in names_by_len if nm in title]
-            # 去子字串:若某股名是另一個已命中股名的子字串(如「南亞」⊂「南亞科」),丟掉短的
-            hits = [nm for nm in hits if not any(nm != o and nm in o for o in hits)]
+            hits = _title_hits(title, names_by_len)   # 🏷️ V79.0.7 含誤配守門(三星≠Samsung)
             if not hits:
                 continue
             tone = _TONE_MAP.get(it.get('ai_sentiment', '中立'), 'neu')
@@ -1083,6 +1129,7 @@ def main():
         item.pop("_ts", None)
         item["ai_sentiment"] = sentiment
         item["ai_reason"]    = reason
+        title_zh = _clean_title_zh(item.get("title", ""), title_zh)   # 🐛 V79.0.7 擋掉 AI 把指令當標題
         if title_zh:
             item["title_zh"] = title_zh
         item["important"] = important

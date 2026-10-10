@@ -27,6 +27,8 @@ import fs from 'fs';
 import path from 'path';
 import { trSeries, loadPx } from './lib_totalreturn.mjs';
 import { finSeries, finOnAt } from './lib_finaccel.mjs';
+import { valuePrep } from './lib_value.mjs';
+import { accrualSeries, accrualMonthCut, accrualHiAt } from './lib_accrual.mjs';
 import { gates } from './maxim_kbar5_probe.mjs';
 import { parseThemes } from './lib_themes.mjs';
 
@@ -91,7 +93,7 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
     indCap: 0, wRank: null, posMin: 85, posRaw: true, volUp: 0, finAcc: false, fsync: 0, rankUp: false, shamKeep: 0,
     capital: 0, minFee: 20, add: 0, glide: 0, parkMin: 5000, luExit: '', phase: 0, join: '', limitRepl: false, limitRetry: '', pickFrom: 0,
     dip: 0, hold: 5, dipSort: 'drop', dipMin: 0, bearCore: null, bearN: 0, bearTop: 0, pool: '', themeK: 3, themeL: 20, themeSham: false,
-    dRank: 0, stop: 0, trail: 0, shamOut: 0, refill: false };
+    dRank: 0, stop: 0, trail: 0, shamOut: 0, refill: false, accAvoid: false, accSham: 0 };
 // 🛒 V78.2.2 「怎麼買」(使用者:「前 5 名還是 6~10 也可以?開盤買還是 13:00~13:30?漲停要不要換第 6 名?」)⛔ 不設時逐位相同:
 //   limitRepl  = 成交價接近漲停買不到 → 換候選名單上的下一名(仍要過位置門檻、沒持有)
 //   limitRetry = 'close':開盤接近漲停買不到 → 當天收盤沒鎖就用收盤價買(只在 fill='open' 有意義)
@@ -144,6 +146,7 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
 //   indCap = 同產業最多幾檔 ・wRank = 名次加權(陣列,第 k 名的錢 × w[k])・posMin = 一年位置 ≥ ・volUp = 5 日均額 ÷ 20 日均額 ≥
 //   finAcc = 營收年增加速(lib_finaccel,公布日才算知道;沒資料剔除並計數)・fsync = N:外資與投信近 N 天都買超 ・rankUp = 動能名次比 R 天前進步
 //   shamKeep = p:每個候選以機率 p 留下(p 對齊真濾網實測的通過率)
+//   accAvoid = 💵 V79.0.7 盈餘品質避雷:進場那個月應計比率在全市場最高 40% → 不買(lib_accrual;⭐ 不知道 = 保留,避雷型)
 // V77.8.6 穩定度變體:core = 永遠留幾成在 0050 ・maExit = 收盤跌破 N 日線隔天開盤賣 ・tp = 收盤賺 x 就隔天開盤停利 ・skip = 動能不算最近幾天 ・riskadj = 動能 ÷ ATR 排名
 
 /**
@@ -211,8 +214,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     const rand2 = rng(seed * 7919 + 13);
     const blocked = new Map();                                // sym → {S, px, i, rel}
     let retryBuy = null, retryNow = false;
-    const st = { repl: 0, retried: 0, forced: 0, rebought: 0, fTot: 0, fPass: 0, finMiss: 0, posDays: 0, luOpen: 0, luClose: 0, luHold: 0, luLock: 0 };
-    const CAND = P.posMin > 0 || P.volUp > 0 || P.finAcc || P.fsync > 0 || P.rankUp || P.shamKeep > 0;
+    const st = { accCut: 0, accUnk: 0, accKnown: 0, repl: 0, retried: 0, forced: 0, rebought: 0, fTot: 0, fPass: 0, finMiss: 0, posDays: 0, luOpen: 0, luClose: 0, luHold: 0, luLock: 0 };
+    const CAND = P.posMin > 0 || P.volUp > 0 || P.finAcc || P.fsync > 0 || P.rankUp || P.shamKeep > 0 || P.accAvoid;
     const DIP = P.dip > 0;
     const BC = P.bearCore != null;
     let bearMode = false;                                     // 🐻 昨天收盤是不是空頭(只在 bearCore / bearN / bearTop 設了才用)
@@ -255,6 +258,11 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         if (P.finAcc) { const ser = ctx.fin ? ctx.fin(S.sym) : null; const on = ser ? finOnAt(ser, cal[i]) : null; if (on === null) { st.finMiss++; return false; } if (!on) return false; }
         if (P.fsync > 0) { if (!S.FN) return false; let c = 0, j = i; while (j >= 0 && c < P.fsync) { if (S.C[j] > 0) { if (!(S.FN[j] > 0 && S.TN[j] > 0)) return false; c++; } j--; } if (c < P.fsync) return false; }
         if (P.rankUp) { const pr = prevRank.get(S.sym); if (pr !== undefined && !(rankNow < pr)) return false; }
+        if (P.accAvoid) {   // accAvoid='sham' = 安慰劑:有資料的候選以機率 accSham 隨機剔除(⛔ 跟應計無關;位置等其他濾網照樣先過)
+            const hi = ctx.accHi ? ctx.accHi(S.sym, cal[i]) : null;
+            if (hi === null) st.accUnk++;
+            else { st.accKnown++; const drop = P.accAvoid === 'sham' ? rand2() < P.accSham : hi; if (drop) { st.accCut++; return false; } }
+        }
         return true;
     };
     const forceWhy = (S, i) => {
@@ -561,8 +569,17 @@ export function loadCtx(DATA, DIV) {
     if (process.env.THEMES_SRC && fs.existsSync(process.env.THEMES_SRC)) { themes = parseThemes(fs.readFileSync(process.env.THEMES_SRC, 'utf8')); bySym = new Map(stocks.map(S => [S.sym, S])); }
     let ind = null; if (process.env.IND_MAP && fs.existsSync(process.env.IND_MAP)) ind = JSON.parse(fs.readFileSync(process.env.IND_MAP, 'utf8'));
     let fin = null;
-    if (process.env.FIN_DEEP && fs.existsSync(process.env.FIN_DEEP)) { const FD = JSON.parse(fs.readFileSync(process.env.FIN_DEEP, 'utf8')); const cache = new Map(); fin = sym => { if (!cache.has(sym)) cache.set(sym, finSeries(FD, sym)); return cache.get(sym); }; }
-    return { cal, stocks, etf: { tr }, bear, att, disp, dper, ind, fin, themes, bySym, meta: { themes: themes ? themes.length : 0,  stocks: stocks.length, skipped, divSkip, d50: d50.length, att: att ? att.n : 0, disp: disp ? disp.n : 0, dper: dperN, ind: ind ? Object.keys(ind).length : 0, fin: !!fin, flows: !!process.env.FLOWS } };
+    let accHi = null;
+    if (process.env.FIN_DEEP && fs.existsSync(process.env.FIN_DEEP)) {
+        const FD = JSON.parse(fs.readFileSync(process.env.FIN_DEEP, 'utf8')); const cache = new Map(); fin = sym => { if (!cache.has(sym)) cache.set(sym, finSeries(FD, sym)); return cache.get(sym); };
+        if (ind) {   // 💵 V79.0.7 應計門檻要排除金融股(銀行的營業現金流沒意義)→ 沒有產業表就不建(need() 會擋)
+            const P = valuePrep(FD), ACC = new Map();
+            for (const S of stocks) { if (String(ind[S.sym] || '') === '17') continue; const a = accrualSeries(FD, S.sym, P); if (a.length) ACC.set(S.sym, a); }
+            const cut = accrualMonthCut(ACC, 0.6, 100);
+            accHi = (sym, day) => accrualHiAt(ACC, cut, sym, day);
+        }
+    }
+    return { cal, stocks, etf: { tr }, bear, att, disp, dper, ind, fin, accHi, themes, bySym, meta: { themes: themes ? themes.length : 0,  stocks: stocks.length, skipped, divSkip, d50: d50.length, att: att ? att.n : 0, disp: disp ? disp.n : 0, dper: dperN, ind: ind ? Object.keys(ind).length : 0, fin: !!fin, flows: !!process.env.FLOWS } };
 }
 
 // ⚠️ 起點間距預設 3(⛔ 不是 5):換倉每 R 天一次,間距 5 碰上 R=10 只會有 2 種換倉相位,17 條其實只有 2 條獨立路徑(實測當場抓到)。
@@ -602,7 +619,7 @@ function runSet(ctx, name, cfg, startDate, paths = 17) {
         tot: med(r => r.m.tot), b0050: med(r => r.m.b0050), ex: med(r => r.m.ex), cagr: med(r => r.m.cagr), mdd: med(r => r.m.mdd), mdd0050: med(r => r.m.mdd0050),
         beat: res.filter(r => r.m.ex > 0).length, worstEx: r2(Math.min(...res.map(r => r.m.ex))), roll12: med(r => r.m.roll12), worstYr: r2(Math.min(...res.map(r => Math.min(...Object.values(r.y).map(v => v.s - v.c))))), yrBeat: med(r => Object.values(r.y).filter(v => v.s > v.c).length),
         forced: med(r => r.st.forced), rebought: med(r => r.st.rebought), sellRate: r2(res.reduce((a, r) => a + r.st.forced, 0) / Math.max(1, res.reduce((a, r) => a + r.st.posDays, 0)) * 1e4),
-        passRate: (() => { const T = res.reduce((a, r) => a + r.st.fTot, 0); return T ? r2(res.reduce((a, r) => a + r.st.fPass, 0) / T * 100) : null; })(), finMiss: med(r => r.st.finMiss),
+        passRate: (() => { const T = res.reduce((a, r) => a + r.st.fTot, 0); return T ? r2(res.reduce((a, r) => a + r.st.fPass, 0) / T * 100) : null; })(), finMiss: med(r => r.st.finMiss), accCut: med(r => r.st.accCut), accUnk: med(r => r.st.accUnk), accDropRate: (() => { const K = res.reduce((a, r) => a + r.st.accKnown, 0); return K ? r2(res.reduce((a, r) => a + r.st.accCut, 0) / K * 100) : null; })(),
         eqEnd: res.map(r => r2(r.m.tot)),
         lu: cfg.luExit ? { lock: med(r => r.st.luLock), hold: med(r => r.st.luHold), open: med(r => r.st.luOpen), close: med(r => r.st.luClose) } : null,
         trades: med(r => r.trades), win: med(r => r.win * 100), avg: med(r => r.avg * 100), turnYr: med(r => r.turnover / ((r.eq.length - 1) / 244)),
@@ -788,6 +805,12 @@ function selftest() {
     const k1b = simulate({ cal, stocks: [B], etf: flat, bear: new Uint8Array(n) }, 100, { ...base0, pick: 'mom', shamKeep: 1 });
     const kb = simulate({ cal, stocks: [B], etf: flat, bear: new Uint8Array(n) }, 100, { ...base0, pick: 'mom' });
     t(k0.eq.at(-1) === 1 && k1b.eq.at(-1) === kb.eq.at(-1) && k0.st.fTot > 0, '㉔ shamKeep:幾乎 0 → 一檔都不買;1 → 跟不設一模一樣(通過率有記)');
+    {   // 💵 V79.0.7 accAvoid:判定 false → 跟不設一模一樣;true → 一檔都不買;null(不知道)→ 保留並計數
+        const cA = h => ({ cal, stocks: [B], etf: flat, bear: new Uint8Array(n), accHi: () => h });
+        const aF = simulate(cA(false), 100, { ...base0, pick: 'mom', accAvoid: true }), aT = simulate(cA(true), 100, { ...base0, pick: 'mom', accAvoid: true }), aN = simulate(cA(null), 100, { ...base0, pick: 'mom', accAvoid: true });
+        t(aF.eq.at(-1) === kb.eq.at(-1) && aT.eq.at(-1) === 1 && aT.st.accCut > 0 && aN.eq.at(-1) === kb.eq.at(-1) && aN.st.accUnk > 0,
+          '㊳ accAvoid:不在最高 40% → 跟不設一樣;在 → 不買;不知道 → 保留並計數(避雷型)');
+    }
     const I1 = mk('1234', i => 100 + i * 0.4), I2 = mk('1235', i => 100 + i * 0.3), I3 = mk('1236', i => 100 + i * 0.2);
     const cI = { cal, stocks: [I1, I2, I3], etf: flat, bear: new Uint8Array(n), ind: { 1234: 'A', 1235: 'A', 1236: 'B' } };
     const ic = simulate(cI, 100, { U: 3, N: 2, R: 1000, L: 20, chand: 0, park: false, trend: false, indCap: 1 }), ic0 = simulate(cI, 100, { U: 3, N: 2, R: 1000, L: 20, chand: 0, park: false, trend: false });
@@ -940,7 +963,7 @@ function main() {
     // 🚧 V78.0.5 空過守門:要事件 / 產業 / 財報 / 法人的變體,沒給資料 → ⛔ 不跑(否則會安靜地變成「什麼都沒做」= 跟基準一樣)
     const need = (k, has, what) => { if (SETS.some(([, c]) => c[k]) && !has) { console.error(`🚨 有變體用到 ${k} 但沒給 ${what},拒跑`); process.exit(1); } };
     need('dispNow', ctx.dper, 'DISP_PERIODS'); need('dispOracle', ctx.dper, 'DISP_PERIODS'); need('attSell', ctx.att, 'ATT_EVENTS');
-    need('indCap', ctx.ind, 'IND_MAP'); need('finAcc', ctx.fin, 'FIN_DEEP'); need('fsync', ctx.meta.flows, 'FLOWS=1');
+    need('indCap', ctx.ind, 'IND_MAP'); need('finAcc', ctx.fin, 'FIN_DEEP'); need('accAvoid', ctx.accHi, 'FIN_DEEP + IND_MAP'); need('fsync', ctx.meta.flows, 'FLOWS=1');
     // 📅 V78.0.8 YEARLY_OUT=檔:只產「逐年成績單」那幾列(👑 四種做法 × 2011~今年 × 5 起點 + 一路滾 17 條)→ embed_yearly_bt.mjs --merge
     if (process.env.YEARLY_OUT) {
         const YS = JSON.parse(process.env.YEARLY_SETS || 'null') || [

@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.0.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.0.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -898,7 +898,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.0.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.0.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8565,10 +8565,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.0.6',
+    _APP_VERSION: 'V79.0.7',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.0.7', d: ['🏷️ 個股新聞不再把「三星(Samsung)」「東南亞」「聯合國」「億光年」這類字誤歸到同名的台股,總覽的「近期有事件」也一樣;國際新聞翻譯偶爾回一段指令文字當標題的情況也擋掉了。'] },
         { v: 'V79.0.6', d: ['📰 個股新聞:同一件事被好幾家報導,現在合成一則,後面寫「另 N 家也報」,清單比較短;新聞的來源和時間以前是空白的,也補上了。'] },
         { v: 'V79.0.5', d: ['🔬 研究用的實驗室模式多兩樣:K 線可以畫出「這檔最會賺的那一招」過去每一趟從買到賣的區間,自訂回測跑完會自動存起來、可以勾兩筆並排比。散戶 App 一般畫面沒有變動。'] },
         { v: 'V79.0.4', d: ['🔬 產業作戰室的實測總表多兩條紀錄(參考兩個外部交易軟體的做法):帳戶賠了就先停手、回測買賣有沒有吃掉一整天的量。散戶 App 畫面沒有變動。'] },
@@ -8695,11 +8696,6 @@ ${list}
         ], dt: '2026-09-29' },
         { v: 'V77.9.8', d: [
             '🎣 釣魚 App 改名「<b>股海釣手</b>」,而且<b>只能從它自己的網址或主畫面圖示打開</b>:產業作戰室的釣魚按鈕、個股面板的「放下水」都拿掉了;📒 成績單點股名改成開個股面板。',
-        ], dt: '2026-09-29' },
-        { v: 'V77.9.7', d: [
-            '🎣 <b>釣魚變成獨立 App「金鱗釣場」</b>:第一人稱視角 —— 甩竿、魚咬鉤、拉扯、<b>破水飛向你</b>(慢動作 + 水花濺上鏡頭),最後一張張行情卡。魚的顏色照台股:漲 = 紅金、跌 = 翠綠;股價越高魚越大,平常越會跳的擺尾越猛。',
-            '📲 打開方法:產業作戰室上方「🎣 金鱗釣場 ↗」→ 用瀏覽器「加到主畫面」,就會多一顆金魚圖示;釣到的魚按「🧺 放進漁獲籃」一樣自動算賺賠。📒 成績單與自動下單照舊留在產業作戰室。',
-            '🔔 Telegram 的「跌破 5 日均價」與「賺到 +20%」庫存提醒<b>恢復了</b>(兩個都只是提醒,⛔ 不是回測過的出場條件,訊息裡有寫)。',
         ], dt: '2026-09-29' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -34949,7 +34945,7 @@ ${this._reportFacts(sym)}
                 const evs = (this._macroRiskCache && this._macroRiskCache.upcoming_macro_events) || this._upcomingMacroEvents || [];
                 const nm = String(this.getStockName(sym) || '').replace(/-KY|\*|　/g, '').trim();
                 if (nm && Array.isArray(evs)) {
-                    const hit = evs.find(e => String(e.title || e.event || '').includes(nm));
+                    const hit = evs.find(e => this._nameInTitle(nm, e.title || e.event));   // 🏷️ V79.0.7 三星≠Samsung
                     if (hit) alerts.push({ ic: '📅', t: `近期有事件:${String(hit.title || hit.event).slice(0, 24)}`, sub: '事件前後波動會放大,停損容易被掃到' });
                 }
             } catch (_) {}
@@ -36790,6 +36786,29 @@ ${this._reportFacts(sym)}
             // 🔗 V76.1.2 併進「📏 價格位置圖」—— 同上,只算不顯。
             return '';
         } catch (_) { return ''; }
+    },
+
+    // 🏷️ V79.0.7 股名誤配守門 —— universal_radar.py 的 _NAME_FP / _NAME_NEED 抄本(scripts/test_namematch.py 跨檔比對,⛔ 只改一邊會紅)
+    //   三星≠Samsung、東南亞≠南亞、聯合國≠聯合 … 標題「含股名」不等於講這一檔
+    _NAME_GUARD: {
+        fp: ['東南亞', '和大盤', '和大陸', '億光年', '海力士', '李長榮', '三大成長', '新產品', '美國眾', '大同質', '大同小異',
+            '金聯成', '旺矽晶圓', '擴大中', '大中華', '卡達能', '台中工', '億泰銖', '世界兩大', '世界正視', '三商美邦',
+            '精華生醫', '南亞電子'],
+        need: {
+            '三星': '三星科|5007', '世界': '世界先進|世界[0-9０-９]|世界[:：︰]|5347', '聯合': '聯合骨|4129',
+            '合一': '合一生|4743', '冠軍': '冠軍建|1806', '全國': '全國加|9937', '國產': '國產實|國產建|2504',
+            '大量': '大量科|3167|大買大量', '全台': '全台晶|3038', '大成': '大成長城|大成[0-9０-９]|大成[:：︰]|1210',
+            '新產': '新產[0-9０-９:：︰]|新光產|2850', '進階': '進階生|3118', '台南': '台南企|1473',
+        },
+    },
+    _nameInTitle(nm, title) {
+        nm = String(nm || ''); const t = String(title || '');
+        if (!nm || !t) return false;
+        let m = t;
+        for (const w of this._NAME_GUARD.fp) if (m.includes(w)) m = m.split(w).join('□'.repeat(w.length));
+        if (!m.includes(nm)) return false;
+        const need = this._NAME_GUARD.need[nm];
+        return !need || new RegExp(need).test(t);
     },
 
     // 🧩 V79.0.6 同一件事被幾家報(採礦端歸群,⛔ 不叫 AI):「・另 N 家也報」灰字,滑過去看是哪幾家;沒有就空字串

@@ -31,6 +31,7 @@ import { DEADLINES } from './lib_fundamentals.mjs';
 import { turnCuts, turnBucket } from './lib_turnover.mjs';
 import { finSeries, finOnAt } from './lib_finaccel.mjs';
 import { valuePrep, valueSeries, valueOnAt, KINDS as VAL_KINDS, CYC_IND } from './lib_value.mjs';
+import { accrualSeries, accrualMonthCut, accrualHiAt } from './lib_accrual.mjs';
 import { trSeries, scaleFor, loadPx, nhiRate } from './lib_totalreturn.mjs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -98,6 +99,12 @@ const VAL = process.env.VAL || '';
 const VAL_KIND = VAL.startsWith('sham:') ? VAL.slice(5) : VAL;
 if (VAL && !VAL_KINDS.includes(VAL_KIND)) { console.error(`🚨 VAL=${VAL} 不認得(${VAL_KINDS.join('|')}|sham:<kind>)`); process.exit(1); }
 const AUX_DIR = process.env.AUX_DIR || DATA;
+// 💵 V79.0.7 盈餘品質避雷 ACCR = hi | sham(accrual_probe:應計最高 40% 抱 60 天 −0.70pp、六關全過)—— 疊在**候選階段**,⛔ 不進 CACHE_KEY
+//   hi  :進場那個月,應計比率 ≥ 當月全市場(不含金融 17)第 60 百分位 → 剔除(公式一律 lib_accrual,⛔ 這裡不寫第二份)
+//   sham:在「有應計資料」的候選裡隨機剔除**同比例**(通過率實測對齊 hi;⛔ 沒有 sham 就分不出「少挑一點」的效果,V77.3.3)
+//   ⭐ 這是**避雷**濾網 → 不知道(金融股 / 季數不夠 / 那個月樣本不足)= **保留並計數**(跟 FIN/VAL 的「剔除」刻意相反)
+const ACCR = process.env.ACCR || '';
+if (ACCR && !['hi', 'sham'].includes(ACCR)) { console.error(`🚨 ACCR=${ACCR} 不認得(hi|sham)`); process.exit(1); }
 // 💾 掃描結果快取:同一組 ENTRY/EXIT/STOP/MAXD/GAPCAP 的交易完全一樣 →
 //    存起來重用,後面每試一個行事曆假設就從 3 分鐘變成 3 秒。
 //    ⛔ 參數不同一定要重掃(檔案內有 meta,對不上會拒絕載入)。
@@ -1179,6 +1186,33 @@ const valOk = t => {
     }
     return v === true;
 };
+// 💵 ACCR 濾網(lib_accrual):每檔季序列一次算好;月門檻排除金融股
+const accSer = new Map(); let accCut = null, accFrac = null; const accSeen = { unk: new Set(), cut: new Set(), all: new Set() };
+if (ACCR) {
+    let FD = null;
+    try { FD = JSON.parse(fs.readFileSync(FIN_DEEP, 'utf8')); } catch (_) { console.error(`🚨 ACCR 要用 fin_deep.json,但讀不到 ${FIN_DEEP} → ⛔ 不靜默放行,直接停`); process.exit(1); }
+    let IND = null;
+    try { IND = JSON.parse(fs.readFileSync(path.join(AUX_DIR, 'industry_map.json'), 'utf8')); } catch (_) { console.error(`🚨 ACCR 要 industry_map.json 排除金融股(門檻會被銀行拉歪),讀不到(AUX_DIR=${AUX_DIR})→ 停`); process.exit(1); }
+    const P = valuePrep(FD);
+    for (const sym of syms) { if (String(IND[sym] || '') === '17') continue; const a = accrualSeries(FD, sym, P); if (a.length) accSer.set(sym, a); }
+    accCut = accrualMonthCut(accSer, 0.6, 100);
+    console.log(`💵 盈餘品質避雷 ACCR=${ACCR}:${accSer.size} 檔有應計序列(金融與缺資料的一律保留)・fin_deep ${FD.q[0]} ~ ${FD.q[FD.q.length - 1]}`);
+    if (accSer.size < 100) { console.error('🚨 有應計序列的檔不到 100 → 資料不對,停'); process.exit(1); }
+}
+const accrOk = t => {
+    if (!ACCR) return true;
+    const key = `${t.sym}|${t.inD}`; accSeen.all.add(key);
+    const hi = accrualHiAt(accSer, accCut, t.sym, t.inD);
+    if (hi == null) { accSeen.unk.add(key); return true; }                 // 不知道 → 保留(避雷型)
+    if (ACCR === 'sham') {
+        if (accFrac == null) { let on = 0, n = 0; for (const arr of byIn.values()) for (const x of arr) { const w = accrualHiAt(accSer, accCut, x.sym, x.inD); if (w == null) continue; n++; if (w) on++; } accFrac = n ? on / n : 0; console.log(`🎲 ACCR=sham 剔除率對齊 ACCR=hi:${(accFrac * 100).toFixed(1)}%(${on}/${n} 筆有資料的候選)`); }
+        const drop = (_shamHash(`${t.sym}|${t.inD}|acc`) % 10000) < accFrac * 10000;
+        if (drop) accSeen.cut.add(key);
+        return !drop;
+    }
+    if (hi) accSeen.cut.add(key);
+    return !hi;
+};
 // 🏷️ V77.7.1 EMERGING=exclude|sham:興櫃股(沒有漲跌幅限制、流動性差、實際常常買不到)要不要排除
 //   🚨 為什麼:修資料前的 4 年回測每條路徑約 61 筆興櫃交易、賺約 81 萬 → 要知道那一塊是不是撐起成績的關鍵。
 //   sham = 隨機丟掉**同比例**的候選(⛔ 沒有 sham 的話,「少挑一點」本身就會改變結果,V77.3.3 的教訓)。
@@ -1409,7 +1443,7 @@ for (let i = 0; i < days.length; i++) {
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
                   && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF)
                   && indCycOk(x.t.sym, d)
-                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t) && valOk(x.t) && emOk(x.t) && usOk(x.t) && poolOk(x.t) && rkShamOk(x.t))
+                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t) && valOk(x.t) && accrOk(x.t) && emOk(x.t) && usOk(x.t) && poolOk(x.t) && rkShamOk(x.t))
         .sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
     if (RANKBY === 'rand') { for (let k = cand.length - 1; k > 0; k--) { const j = Math.floor(_rnd() * (k + 1)); [cand[k], cand[j]] = [cand[j], cand[k]]; } }
     else if (RANKBY === 'mkt') cand.sort((a, b) => (b.m.sum / b.m.n) - (a.m.sum / a.m.n));
@@ -1655,6 +1689,10 @@ console.log(`   累積損益      ${totalPnL >= 0 ? '+' : '−'}${nf(Math.abs(to
 console.log(`   對本金報酬    ${pct(totalPnL / capital * 100)}  ${yrs >= 0.5 ? `(年化約 ${pct((Math.pow(1 + totalPnL / capital, 1 / yrs) - 1) * 100)})` : ''}`);
 if (_outFix) console.log(`   🗓️ 出場日不在大盤日曆上 ${_outFix} 筆 → 已挪到下一個大盤交易日(V77.7.2 以前這些部位會從權益曲線消失)`);
 console.log(`   📉 最大回撤    ${mdd.toFixed(2)}%  ← 中途最難熬的時候(⚠️ 這是會不會半路砍在最低點的關鍵)`);
+if (ACCR) {
+    console.log(`   💵 盈餘品質避雷 ACCR=${ACCR}:看過 ${accSeen.all.size.toLocaleString()} 筆候選 ・剔除 ${accSeen.cut.size.toLocaleString()} 筆 ・不知道(保留)${accSeen.unk.size.toLocaleString()} 筆`);
+    if (!accSeen.cut.size) { console.error('🚨 ACCR 一筆都沒剔除 → 濾網沒作用(空過),停'); process.exit(1); }
+}
 if (VAL) console.log(`   💎 價值濾網 VAL=${VAL}:候選裡「不知道」(那天還沒有可用財報 / 缺欄位)剔除 ${valNoData.toLocaleString()} 筆${VAL_CYC ? ` ・非循環產業剔除 ${valNotCyc.toLocaleString()} 筆` : ''}(⛔ 不當成通過)`);
 if (PARK) {
     // 🚧 空過守門:設了 PARK 卻**一天都沒有進入空頭** → 輸出會跟基準一字不差,看起來像「沒差別」
@@ -1748,6 +1786,7 @@ if (process.env.SUMMARY_OUT) {
         per: +(taken.reduce((a, t) => a + net(t), 0) / taken.length).toFixed(2), cum: Math.round(totalPnL), ret: +(totalPnL / capital * 100).toFixed(2),
         dd: +mdd.toFixed(2), skipped, twii: +twiiRet.toFixed(2), etf0050: ret50 == null ? null : +ret50.toFixed(2), etf0050tr: ret50tr == null ? null : +ret50tr.toFixed(2), byYear,
     };
+    if (ACCR) summary.accr = { mode: ACCR, seen: accSeen.all.size, cut: accSeen.cut.size, unknown: accSeen.unk.size };   // 💵 V79.0.7
     if (PARK) summary.park = Math.round(parkPnL);   // 🅿️ 停泊 0050 的損益(⛔ 不混進 cum)
     if (VOLCAP > 0) summary.volcap = { pct: VOLCAP, mode: VOLCAP_MODE, hit: vcHit, cut: vcCut, skip: vcSkip };
     if (EQ_BLOCK) summary.eqgate = { rule: EQGATE, days: EQ_BLOCK.size, blocked: eqBlk };
