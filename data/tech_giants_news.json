@@ -1,20 +1,23 @@
 {
-  "updated": "2026-10-10 09:42 UTC",
+  "updated": "2026-10-10 11:59 UTC",
   "trump": [
-    {
-      "title": "Your child may be automatically enrolled in a Trump Account. Here's what to know - PBS",
-      "url": "https://news.google.com/rss/articles/CBMitAFBVV95cUxPV2Rkc2dMQnJQSURrV0pPLVk2UEVMSGtHYTlVcDFtTDJhUk5mQ0UxNzM5WWdVUDRNY3V0TVc1VFRmTVNiUlIzbDR2cW04WEZPbG5QS1Y2b0UwM0hieGRSeXh1M2FYc1VPVkgxb1FDSEZnSng5X2t0SjJXLWhOS2xJbGlrUm4tbDkwNjJsdXZFOWhKQXZVUjFCSkFBb0dwaTRObzFybXgyN2tWZi15TDZVeUdZM3I?oc=5",
-      "published": "Fri, 09 Oct 2026 13:44:49 GMT"
-    },
     {
       "title": "Donald Trump’s approval rating - The Economist",
       "url": "https://news.google.com/rss/articles/CBMibEFVX3lxTE5Wa2FQWEl6Q01iTWhxV2M3c1VoTzFnSDR3VEhRTWU3cU5YOUlEckYyTWVORVFGRi1fOUJCZFVSUVR6cmROcjl0MlZnVWxSQmxReGZSTHJDM05pSnF2eFl4Z2o0TUpMUmlUYTJiNg?oc=5",
-      "published": "Tue, 06 Oct 2026 07:00:00 GMT"
+      "published": "Tue, 06 Oct 2026 07:00:00 GMT",
+      "title_zh": "維基期刊：特朗普同意評分"
+    },
+    {
+      "title": "Your child may be automatically enrolled in a Trump Account. Here's what to know - PBS",
+      "url": "https://news.google.com/rss/articles/CBMitAFBVV95cUxPV2Rkc2dMQnJQSURrV0pPLVk2UEVMSGtHYTlVcDFtTDJhUk5mQ0UxNzM5WWdVUDRNY3V0TVc1VFRmTVNiUlIzbDR2cW04WEZPbG5QS1Y2b0UwM0hieGRSeXh1M2FYc1VPVkgxb1FDSEZnSng5X2t0SjJXLWhOS2xJbGlrUm4tbDkwNjJsdXZFOWhKQXZVUjFCSkFBb0dwaTRObzFybXgyN2tWZi15TDZVeUdZM3I?oc=5",
+      "published": "Fri, 09 Oct 2026 13:44:49 GMT",
+      "title_zh": "您的孩子可能已自動登記川普帳戶，請注意以下事項"
     },
     {
       "title": "Trump’s Steel Policy Is Working. That’s the Problem - Bloomberg.com",
       "url": "https://news.google.com/rss/articles/CBMivgFBVV95cUxQQ05EX0hZSmlhNW5mbWtibzhrUVRnLWlTWlBIS0phRFFoSWJlSXNnbWFnUTYxNXlGc3FLa2tkYmJoNlVQYTA1c3UxMzk3OG85cWVFV2FOWlhSSWxJUGRER0ZPckhpNWUzUEw1T1NlNGdyZDEwT0RNSUJoVXRXVjhCSXVoQUtYd1R2dlBoY2xPU0xWWFZ2SDdCTmpIa29odlRvckd2WWFIQmFLRTdrMjlOUkpQbUs4bW1IcFhaRDlB?oc=5",
-      "published": "Thu, 08 Oct 2026 09:30:22 GMT"
+      "published": "Thu, 08 Oct 2026 09:30:22 GMT",
+      "title_zh": "川普鋼鐵政策奏效，問題正出在此"
     },
     {
       "title": "Trump’s Approval Rating Drops as Fewer Americans Are Confident in His Handling of the Economy, Other Issues - Pew Research Center",
@@ -31,17 +34,20 @@
     {
       "title": "Super Micro contractor pleads guilty in scheme to divert AI servers with Nvidia chips to China - Reuters",
       "url": "https://news.google.com/rss/articles/CBMizAFBVV95cUxOd1RmaEFMYlkxNEZMMFBaYmd6dlMxMkpXSW9rTDA2TVMxeHBDOFlJVjZPOE4zOWhCRUx5ZUVxcTdBQnhHd2c5TzJzQ25SQ2Y4SnhBb1I2M01Ndmh5V2NNMFFHODhlSHZVUHBCeUYzdUxDVFc5dlc1cFhYWkVFVVRjdWlEeExfbmJCZWhZLWJyMmFhM0l1TVJhd3RyamJoU1d5WFA1Z2NQSEw3bWtBc1h5SVhINEVMRmFRenVYRi12QkhaRlhJYWI0RHJGU1M?oc=5",
-      "published": "Fri, 09 Oct 2026 22:27:00 GMT"
+      "published": "Fri, 09 Oct 2026 22:27:00 GMT",
+      "title_zh": "微型設計工廠同意在將帕特里克AI機器人帶入中國的行為中認罪 - 瑞諾斯"
     },
     {
       "title": "AI chip stocks wobble even as investors get clarity on a key OpenAI issue - MarketWatch",
       "url": "https://news.google.com/rss/articles/CBMivwFBVV95cUxPeGdDX19XYWJWaVFjMk4zRFo3QWVzbVZYZGpOT0RfUDFQRVBta3RuR3ZObVRqU0oyakUzdmxlNWljZVRrX1pHOTJuZFp1dE44end2UkFQLTFmVTRyRWVSM0t5VE9mYndrUnNEeVg1OHllbTNSeXpwTHdSNUxTbC1kdUppU2lucDVEYlVSU0hqMFdBN0VRd25waWlkZ3VpN1JsUlY2bVhha25EZzdnMGxUUTZQaUdKSWh5VE90alk2MA?oc=5",
-      "published": "Fri, 09 Oct 2026 21:27:00 GMT"
+      "published": "Fri, 09 Oct 2026 21:27:00 GMT",
+      "title_zh": "OpenAI關鍵問題明朗化，AI晶片股仍震盪"
     },
     {
       "title": "Microsoft to sell $2,599 Surface Laptop Ultra containing Nvidia AI chip - CNBC",
       "url": "https://news.google.com/rss/articles/CBMiogFBVV95cUxPb3RwVEx5UDFWcFpvRFBFR2hFR3pUUjRuOVE2MUNQVElscTdfNlZZZzNOQzZIRndNcUNKZzFCOVVRbXh2MklhT1NfaHlTTXdIS3Rma29DU3ZRMWtHQWlGdExBYm9oR1M3Wk1kU09LYWNNVDNTNFFBazhNWnQ3X0NOT0FhNXRWTVlHdDloek9GX1dvSFRucjB4U3kxTEpPTkhMNHfSAacBQVVfeXFMUGtjTngzVGppRjdrNnB2OElDaXhfWXRRWnRKTFFXZm04Rkx6U28tZ1loNjJMYms1VnRLZzY2d2hubmVLdGU0WWtlaHBCNGlfcXQ0VzNJVFhFS0NRMzdJdXJwc2Y3Z1RHMlNpLXJPTUEyTTFRVUt1UWJfc3dtdXFyaGpSMlY4bnpLSWdXLTBRaERvN1BPamJhdUd5c1ZpRlFXS21fSEZYZTg?oc=5",
-      "published": "Wed, 07 Oct 2026 18:30:52 GMT"
+      "published": "Wed, 07 Oct 2026 18:30:52 GMT",
+      "title_zh": "微軟將販售2599美元的Surface Laptop Ultra，內搭Nvidia AI芯片 - C"
     },
     {
       "title": "Super Micro Contractor Pleads Guilty in $2.5B China AI Server Scheme - NVIDIA (NASDAQ:NVDA) - Benzinga",
@@ -58,20 +64,13 @@
     {
       "title": "Starship Flight 14 - SpaceX",
       "url": "https://news.google.com/rss/articles/CBMiX0FVX3lxTFBpYThOaTctbk9jeFBjOFJYamJqaEFqZEwzd3lVV1NRSHNZN3BzMms0NGNLeHJYY24xR3VOTFZYZl81OFFXVmpENkNrckNXeVo2N2JJVkdBd3VTSGh2SDhZ?oc=5",
-      "published": "Mon, 28 Sep 2026 07:00:00 GMT",
-      "title_zh": "航天船14 - SpaceX"
+      "published": "Mon, 28 Sep 2026 07:00:00 GMT"
     },
     {
-      "title": "SpaceX's Starship makes orbital debut deploying Starlinks before early ending - Reuters",
-      "url": "https://news.google.com/rss/articles/CBMitgFBVV95cUxPRUxONEdtUHZ5SjVIV3RpTVhrdlIzVTRucmFYRThFZ014SGlwX2cxTk80MjB3UHc5c2ZmZTlkOE1kMDJLS1BCM2hyREJhdjVaMExEUXhUemw4UlB2NXJCTm1pdkphM0hXRFdVNDQ1UlBueXpYcTdtcmNwT3ZtcGpXWTlDVW0xUmowZmFpdzVFemlVbGtwckxIM3NzNkhEenhENUVkWXByU09TQW9rUlNBUUNocEtBQQ?oc=5",
-      "published": "Mon, 28 Sep 2026 07:00:00 GMT",
-      "title_zh": "SpaceX的太空船在進入宇宙後頭部開始部署Starlink，後被早日結束 - Reuters"
-    },
-    {
-      "title": "SpaceX to make another attempt to launch 21 data satellites for the Space Development Agency - Spaceflight Now",
+      "title": "SpaceX launches 21 data satellites for the Space Development Agency - Spaceflight Now",
       "url": "https://news.google.com/rss/articles/CBMixgFBVV95cUxOcTNwSkFjSE1zZHBUT05GcTRKd3FkaHNySnZJblhYMEp4bUpQSXFfanpvXzVJUW9LSHk3OVF3ZVAtTE5BWktiZXU5S3pQZTRmaWI1TnFmOWlrMjBQeTBxdFdNdE5YQ3NRUTg5cVJxSzBOM3J5SUxqS2p1U1RnVkc3TjFDVGJOTXJ1dkFNNW1sNVVjdTR2RGQtQ2hKbXFXdGJDeFFRTUQ0dDEzanRxcURxNi0zbUtUeTJ5M0ZCODZEdElsSlFFTXc?oc=5",
-      "published": "Fri, 09 Oct 2026 21:43:28 GMT",
-      "title_zh": "SpaceX 將再次試發爆發21架空間開發機構的數據星球 - Spaceflight Now"
+      "published": "Sat, 10 Oct 2026 08:26:33 GMT",
+      "title_zh": "SpaceX為太空發展局發射21顆資料衛星"
     },
     {
       "title": "Midnight SpaceX launch could bring loud sonic booms to Southern California - KTLA",
@@ -79,27 +78,34 @@
       "published": "Fri, 09 Oct 2026 20:16:04 GMT"
     },
     {
-      "title": "SpaceX says Starlink is set to become a \"major mobile carrier\" after spectrum deal - CBS News",
-      "url": "https://news.google.com/rss/articles/CBMigAFBVV95cUxOOU9Dd2lfNUVNVjdjY2NCTGdweHpnX3lUWF9MVy1xZElETGhMSTZ4ZUowQjhoUXdvVThkNkU4NEV4VDVmTjl4NDZ5SGZ3YS0yQ0dhQ0RNX1E1Z3gyOFlxelIzd0FzNmtJMlQzZzM3M0FzZWFtM3gwUUN0dGswNUoyMQ?oc=5",
-      "published": "Fri, 09 Oct 2026 17:00:24 GMT"
+      "title": "SpaceX Falcon 9 Set to Launch SDA's Fourth Tranche 1 Mission - BASENOR",
+      "url": "https://news.google.com/rss/articles/CBMimgFBVV95cUxPNnkwdjVIdlg4WGVhRmNReHlyM0NlWkFYVms1d3NaY2F0NlA5UzNwalhNZXRqSVpMX1NFVVkxcjZLU3hRZ21ya0FWT2J6U2k1SmlyaXFNRVJPMWR4VjFsaHRmRGxIMGt5b3dUOXNUQ2VqVzB1N25uM1RKQm5kRWtid1ZvTXR1aFZITmVtZDJZaTc1QjFjcFlzcFN3?oc=5",
+      "published": "Sat, 10 Oct 2026 07:03:14 GMT"
+    },
+    {
+      "title": "Venezuela president authorizes SpaceX's Starlink to operate in the country - Reuters",
+      "url": "https://news.google.com/rss/articles/CBMivwFBVV95cUxNVVNFOHFaa1NEMlRfcVpEckRFRkV1Nll5N3ZEcHR5V2xod3pmX2NMV1o1aE9relZVeDF1UmhNeEVJRDJxbGhua19mSl8wQ09sQm9IOUZwbVc3V1FnS182YW1KMGdqeDRzdmJDZV9DdVN2MEU5Y3pGQ0dYZk1MUkFILUtQaFF2UEJBYXQ4OXhNVGY2WlFWd3lFYXAxcHBCZnZOVVY4VUJrQUlURDBZUFg4NG9ucURRNkdZSnR4QzBSZw?oc=5",
+      "published": "Sat, 10 Oct 2026 00:02:00 GMT"
     }
   ],
   "kuiper": [
     {
       "title": "Amazon builds 1,000th satellite, will launch space internet service by end of year - Ars Technica",
       "url": "https://news.google.com/rss/articles/CBMisAFBVV95cUxOWjVEeWF3WDR6alMtMTdjWGRoNS0zVDd3WFZOWXVBRlhCV0J0YTFEcm45bDV3R1NiN3luN0pkSlZLNHBhcVI3ZUt5VDBObXg3Y2VzM0N0MXpZMlBMYkxBRE80Rlo2SEk5MzBhRFZVRG5YSkxZTi1FZXVFUkhPaXcxUGd2Z0g1bmprNHFBOV91SURTRUYyYm1LLWNCWXA2RUJSaEh1MWgtQWZKb1VrZ1c1Sw?oc=5",
-      "published": "Thu, 08 Oct 2026 15:28:36 GMT"
+      "published": "Thu, 08 Oct 2026 15:28:36 GMT",
+      "title_zh": "亞馬遜建造第1000顆衛星，年底前啟動太空網路服務"
     },
     {
       "title": "From zero to 1,000: How Amazon Leo built one of the world's largest satellite production lines - About Amazon",
       "url": "https://news.google.com/rss/articles/CBMid0FVX3lxTFBKWUFwWS1TbVE5M1dIbmlrVDdXb0tNYURKNzVmMUp1NFpwakczLVoyVVJVV3dLVjY0OWZyUDQtbmN3aThYZVhGSUd5XzBJdm1icE9JYWx1ODg0RW9yM243V1FBUGZDS2hnbDMtSzBlQ01HSlhjREhN?oc=5",
-      "published": "Thu, 08 Oct 2026 16:07:53 GMT"
+      "published": "Thu, 08 Oct 2026 16:07:53 GMT",
+      "title_zh": "從零到千：亞馬遜Leo如何打造全球最大衛星產線"
     },
     {
       "title": "Amazon Leo Aiming to Sway Consumers From Starlink With Prime, Other Bundles - Broadband Breakfast",
       "url": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxOUTN2N3JTS3UtWERFMFpDdTlsREF4RDVsOTFVdkp6eHlxc2FLSjBJVjVCYUZPTmc1SlFkeHZoTWxVT1Iycl82VmNKMGpMcFNPR2RpRnNQNnZFUFl4Wm9rakhPS21uZElkeWJVakh0YUpoMjY4TUdCUlprcFowa1VFLWdwTllyNnJZLVZfSzBlMVVWYXdpakdQVDBVUi1VMlVHYTJDS2J4aUpUZw?oc=5",
       "published": "Sat, 10 Oct 2026 03:00:46 GMT",
-      "title_zh": "亞馬遜Leo擬以Prime等捆綁方案搶攻Starlink用戶"
+      "title_zh": "亞馬遜利奧欲以Prime等捆綁方案搶攻星鏈用戶"
     },
     {
       "title": "Amazon Leo is on track to launch its satellite internet service in 2026 - How-To Geek",

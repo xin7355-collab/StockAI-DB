@@ -1,13 +1,85 @@
 {
-  "updated": "2026-10-10 09:40 UTC",
+  "updated": "2026-10-10 11:57 UTC",
   "items": [
+    {
+      "source": "📊 巨頭財報",
+      "title": "Tim Cook's Final Apple Earnings Call Showed the Company Made More Quarterly Revenue Than It Booked in All of Fiscal 2011, the Year He Became CEO. What Does That Growth Curve Mean for Apple Under John Ternus? - Yahoo Finance",
+      "url": "https://news.google.com/rss/articles/CBMimwFBVV95cUxPbXh4QXg2QklxVVBZc0tGSFUwbE9GeEZaTllPdjlMZ2VPWkMzVEVZcTM4c09TU2d4akhyR0JKc1dESXVlcHQ0aUpmQlZFdi1vMEl5OTdzSzVveTdCc254WWV4LUFOVWoyTElyX01SaWxZQkk3MF90a1R4WmlHb3FhcnphSmhaLV9SQVBmSFJyNzBqZDN1bDdoZld6WQ?oc=5",
+      "published": "Sat, 10 Oct 2026 11:20:00 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "📊 巨頭財報",
+      "title": "Tim Cook's Final Apple Earnings Call Showed the Company Made More Quarterly Revenue Than It Booked in All of Fiscal 2011, the Year He Became CEO. What Does That Growth Curve Mean for Apple Under John Ternus? - The Motley Fool",
+      "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxQX3ZJSkRUQVZZOVl5VUQyRHNPbk9iSHFOb1V4VExiVk9qQzBHek51SHc1V1g4NHk5YW40MTN2bExGc1pEcjZKNWdkMm1Xc3Z4Zk02WlpRRXppTnQ4MlZqRWdCdGpDWlZQZnBEUVNGMWlYM0hQS2ltSnNoQjVtWE83ZExCRC1aQWhtaXRZejVaSlJDYk5BMmVDeg?oc=5",
+      "published": "Sat, 10 Oct 2026 11:09:21 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🧪 技術突破",
+      "title": "What Are Humanoid Robots? Inside The Growing Industry And Where It’s Headed - Forbes",
+      "url": "https://news.google.com/rss/articles/CBMifkFVX3lxTFAyWTE2Qm1IajJPdnRZUGxiaThPWV84TVJPeUd5S0VoSGNJV0M4QXBWeC05MVVMWGN2NUs0MF9Id0lLR0pwMDN3NXA0UG9iZVNWcUFEWUdrNUJRNVNlS20wTkNpM282bUFHM3pGQUtuOWw2M0RIbUE4YTh1cHFTdw?oc=5",
+      "published": "Sat, 10 Oct 2026 11:00:00 GMT",
+      "title_zh": "什麼是人形機器人？產業成長與未來趨勢",
+      "impact": "此報導凸顯人形機器人市場擴張，利好台灣相關科技股，提升投資者",
+      "impact_level": "bullish"
+    },
+    {
+      "source": "🌍 地緣突發",
+      "title": "Germany sticks to Russia sanctions after Trump announcement on diesel - Reuters",
+      "url": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxPYUFXZDgzaHN2T1FRdnc3Njh3R0t5cGppS3pJUm8xREprWk54RFdON1pYY1BBbFRKS2pEajVWVzJJcmNiQVVJVGI1czM0U0F1U04zUEFZZVNDZzUtVWZ6UzdPQlItRzNyX3ZseVdmeVlaY1B5M203LWhwWFJTZjh0TlBFVm4zbm9SQjVvRGpXclhWWnJDYmdOWVRmaFhCVDBRNV9uU0UtZmo?oc=5",
+      "published": "Sat, 10 Oct 2026 10:59:43 GMT",
+      "title_zh": "德國堅守俄制裁，因特朗普柴油言論",
+      "impact": "德國維持制裁顯示歐洲能源政策不變，對台股整體影響有限，僅可能",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🏢 雲端巨頭",
+      "title": "As companies pour billions into Earth-based AI infrastructure, Google taking the data center race off-planet - Fortune",
+      "url": "https://news.google.com/rss/articles/CBMigAJBVV95cUxOTzhfYkpTNjVCNnJvemwzOTlKRkRzNEkwWHZUS053NklQc29YYUlxZld5OHdVelJtVWVkeXI2WmZyZUpSbWlFOFhtRDA1X1lBallDNFF0aG0xb1gyRzFSQmNNbkp2d1pzQnByVVlmRS1wdER4aVJldWRVeXBwLXh5M2MxZTFsanMzNXE3dzZvY21LNVVkZ1loU2tOQ2JXNEhkOG5HdlB6SGQxZTJaNE13R2FvVkRBUG5xYkMxX2RaNGdid1lDQVdiZks4X1E0Tkt6M0dnTEJPakNxWWh1cWV2UE9XZGJnc24wZWdLSUhQQi1KWnBfekJlZWFmTXZKeXdU?oc=5",
+      "published": "Sat, 10 Oct 2026 10:44:00 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "AMD Amazon",
+      "title": "Amazon's List Of Best-Selling CPUs Proves Which Brand Is More Popular In 2026 - www.bgr.com",
+      "url": "https://news.google.com/rss/articles/CBMihAFBVV95cUxQaWxiMUpfQXNwTlpySEtlMlYxajg2clF5S2p1SGRUSXNISF9tNmNFMHJ2NVlIajV2VGZueFlFbU5HTF8taGZ5VURXODhuTklSZzhnVEVRWllpdDEwX1JtWFB3ajU0QV9td1ZndXNaaTBDdjY1b01qZU9qdUZ0N1FGcF9nQ1o?oc=5",
+      "published": "Sat, 10 Oct 2026 10:17:00 GMT",
+      "title_zh": "Amazon 2026最畢竟CPU排行榜顯示品牌市場實力 - www.bgr.c",
+      "impact": "這款新聞揭示了2026年Amazon所銷售的CPU品牌市場實",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🌍 油價航運",
+      "title": "How Young Brothers keeps Hawaiʻi connected through interisland shipping - The Business Journals",
+      "url": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPaDlUREF0Zkh2YnNpMC14bmlBSURYdTZfZkpsdndfbi1nclBvOHRnbUJ6bVFiNkQyOHU0WjV0M05fd1ltSDZMWmFBWUUwZkZHOGlxdXhBNV8xZGtnSUxMSkhGUXZDMmdnSVRoSjJLZjlHLXFTUEV5WXBqekJNVDhfRjJPWkk1MFpOclVRRjFzdWpRQmdXMjh2MXhtT1hCZkFNRkh0Tm1CYlZyUQ?oc=5",
+      "published": "Sat, 10 Oct 2026 10:00:00 GMT",
+      "title_zh": "Young Brothers 以島間航運連結夏威夷",
+      "impact": "此報導與台灣市場關聯有限，對台股整體影響屬中性。",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🌍 油價航運",
+      "title": "The Houthi-Saudi conflict is directly affecting African countries in the Red Sea region — and beyond - DW.com",
+      "url": "https://news.google.com/rss/articles/CBMivgFBVV95cUxOQnBha3VpVVVrYTg2Wi1WLVJUQjRPNzNyaG1EYklBZFZuQ1A2T0hxRDFTMWJycnZjVm0zc2Q3dXR1OVBHdWh3elVBMHhxLS14RU9fcVJ4WkdqUGVZd05iVHJYU3BpcmRnbTlRdkZkcXpKX2pYZ0hIS00yOG0yMl9LaXBTSjVnaG9LQmhmTGp3dVRfbXFFQ1RtTTQ2NS10b3c5WkdwRmFHcklDdmxOSlNkT3hYS0dRRGZBM0JpWWtB0gG-AUFVX3lxTE9XT2JMLVBaekkxTy1OQ0w4R2d0bnk4SF85RlBwNDMzSE1BN1M5TmZaUVRsSFJsaE1BYjBmTnZ1TVRieUVPbVZIYmRNbHZzbmRsVXJ2cExLUVBxV2p4cnB0a3BJUHctbVc5bWJHRUQ1ZWgyNGFmZ0tCMGs2eUZhbWhwd2FtVWVnV2ZwbDhEcjRTRGlGWDZBMTBwRWtwTFBxNVd4Y3NzdS1pUGdfcE80b0lNb2hKVFFMXzFRVHdpN2c?oc=5",
+      "published": "Sat, 10 Oct 2026 09:45:44 GMT",
+      "title_zh": "胡塞與沙特衝突波及紅海非洲國家",
+      "impact": "衝突升高油價與航運風險，可能拖累台灣出口與製造業，對台股偏空",
+      "impact_level": "bearish"
+    },
     {
       "source": "Musk Tesla",
       "title": "Elon Musk says SpaceX could one day be worth vastly more than Earth's economy. Here's what that would take. - Business Insider",
       "url": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxNaF9YdkctaHUyMDAzUk9hbzRxclBCZWhRWVUxcWJKNDllaWY3OU9VQ2xkNmZ0ZDNTYzdVLXhDbDJHUlFYZ095MGsyNzhiZk14SUxyRGZRbnhSWlhOY2pXZGEzUmNwUFY4NERnd0ktS1J1b21QTk5HQWVIUWJVX00ydjlHRWhTWWU2cUpsd3FIN0w3ZTgtN0lETkc1bThxcXl1SUMxM0NHYWNuWVE?oc=5",
       "published": "Sat, 10 Oct 2026 09:34:00 GMT",
-      "title_zh": "佛羅里達州商業時報：Elon Musk說地球經濟可能比太空公司SpaceX價值多",
-      "impact": "SpaceX的潛力可能會對台股产生引起影響，尤其是在投資者期",
+      "title_zh": "太空公司倡議成本多於地球經濟的時候",
+      "impact": "可能會對台股产生非常重大的影響，這可能意味著空間業界的成長和",
       "impact_level": "bullish"
     },
     {
@@ -15,78 +87,6 @@
       "title": "Robot Entertainment Kombat, recently held a fight in San Francisco between its 6-foot humanoid robot \"Terminator\", and humans. - The Daily News | Texas' Oldest Newspaper",
       "url": "https://news.google.com/rss/articles/CBMilAJBVV95cUxPM1BmUGlQMmxSZXlaZVRMU1hYOUpLcnNDR3lRZVZJdFdIaGNZc2JvUWdibnEwNnFaekp6dWtWcnl0WHVKRFhTcGQ0UWg0MHpSRkRhLVgyR2pfalhaU1NXTGJOQVQ0TDI4WlEyOTF5b3hpQlM0Z0k4aG9UUG83ZDA3V2hkeXU3Q2pFZTlUMUlKb2gzWUVuZTc0VnhBX29uX3NiM1dYdl82MV9LSnlZTjhlbFpiVVF4aC1CbEJPR3RWeVJlMjJ0NUNGUUxGYmRCc1lGQ3RtaVgzT3lQVERGbml2SWpiaWFCRWZaVDhLcWlDMU9hSU4tODJTTmY4eVVOeV9qQnRBWnRYSUY4VGpVQzVzUERqUXU?oc=5",
       "published": "Sat, 10 Oct 2026 09:06:25 GMT",
-      "title_zh": "比擠比擠，於旧亞弗利茲會員區域大會場內於旧亞弗利茲举行過會員對戰",
-      "impact": "比擠比擠的參與在台灣股市上的影響未確定，但此次比擠比擠對比擠",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "Huang Nvidia",
-      "title": "The 1 Number That Would Change My Mind About Nvidia Stock - The Motley Fool",
-      "url": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQM0hUOUVoTHVkSS0xUGFNMTBOUkNCWVFwT1NTVjFhQTFwSHg2clJPX1RQYW13RGYxM2FDektwNEduWTJoX18wdjdaYktLSnR3bnI1ejVXN1VlLVdUWTdUV3FOdl85RHhCVnUxY2tjUE5Bb1M4b2RvdUhKZGtSa0Q4aDY0ajRNSHVPa3ZKUGNWd1RvMXBTbHNpenBxUXdZdDQzTkE?oc=5",
-      "published": "Sat, 10 Oct 2026 08:47:00 GMT",
-      "title_zh": "英偉達股價關鍵指標",
-      "impact": "市場關注英偉達核心數據，若指標轉弱可能引發拋售，對台積電等供",
-      "impact_level": "bearish"
-    },
-    {
-      "source": "🏢 雲端巨頭",
-      "title": "Microsoft's AI Economics Are Quietly Starting To Change (NASDAQ:MSFT) - Seeking Alpha",
-      "url": "https://news.google.com/rss/articles/CBMimgFBVV95cUxQVDI3TE5XLWxJYWxCZ1l3SjE2OU9wWUFtazJnZFRuYUJUM0FSU1NBZ0dZUUo5cVdwaGpzcGU5Y09LOHVLUEJNUzFFSk9xaGgtVFhRSVRrdkhMd0d6VU95b2hMdXZtMFUxRzd5TzlsVFJROUxrczVxQXhaeFdSSEhwNnhxN0MwR1d4QW9RSkdhVk1yWW1kM3FKbVlR?oc=5",
-      "published": "Sat, 10 Oct 2026 08:21:19 GMT",
-      "title_zh": "微軟AI經濟悄然變化",
-      "impact": "微軟AI成本下降與需求提升，將利好台灣半導體與相關供應鏈。",
-      "impact_level": "bullish"
-    },
-    {
-      "source": "🚫 出口管制",
-      "title": "China and the European Union agreed on these 16 resolutions from their joint Trade Talks in Beijing - The Tanzania Times",
-      "url": "https://news.google.com/rss/articles/CBMixAFBVV95cUxQRTFDSkkyNG12TTBPb0lqbzIxSHVOTnpxOTZRUGh4NjZCeFJpY0xONHk2cFdYZTZ0bi1vcDVGZkVydHBsQlNScFRjQW1ZeDYwMVZCbzhuM3JrWGpqUncwS1dld0FLaDVNMVhZWEJBeTdjNGZZZzlmTzZpTjFwaGJyeWJ4a2tZdlNLWUFuOWs0bW5xMnRTRW54VV9GQTU2RzRMWGd3c1B0dDBDc3B4TWMtSEw5TWtIOGNyWXEtUkxiRUc5Vmg1?oc=5",
-      "published": "Sat, 10 Oct 2026 08:16:23 GMT",
-      "title_zh": "中歐達成16項貿易決議",
-      "impact": "中歐貿易關係改善有助於穩定全球供應鏈，對台股正面。",
-      "impact_level": "bullish"
-    },
-    {
-      "source": "Huang Nvidia",
-      "title": "Super Micro Contractor Pleads Guilty in $2.5B China AI Server Scheme - NVIDIA (NASDAQ:NVDA) - Benzinga",
-      "url": "https://news.google.com/rss/articles/CBMimwFBVV95cUxQWFFqVndRYy1CM2M4OThZYUF3VkZYTjYyZ0FSSWF3ME1wNC1Dd3dnc29SaTlYSEc2Y01aMGdvT09XLW9lc29hSGg5dVU1Z05Gck8xSE55UVUwS0ZZT1hQVXZGRHhLR1dJTlF1SUd3alVKcVNZUGVkRlZaMmRTMzRrcjk3YlpyRy1BNDRmQjZRcmdVLTFHbjlzUExiZw?oc=5",
-      "published": "Sat, 10 Oct 2026 08:13:47 GMT",
-      "title_zh": "",
-      "impact": "AI 回的內容看不懂(JSONDecodeError)",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "📊 巨頭財報",
-      "title": "The 1 Number That Would Change My Mind About Nvidia Stock - The Motley Fool",
-      "url": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQM0hUOUVoTHVkSS0xUGFNMTBOUkNCWVFwT1NTVjFhQTFwSHg2clJPX1RQYW13RGYxM2FDektwNEduWTJoX18wdjdaYktLSnR3bnI1ejVXN1VlLVdUWTdUV3FOdl85RHhCVnUxY2tjUE5Bb1M4b2RvdUhKZGtSa0Q4aDY0ajRNSHVPa3ZKUGNWd1RvMXBTbHNpenBxUXdZdDQzTkE?oc=5",
-      "published": "Sat, 10 Oct 2026 08:01:25 GMT",
-      "title_zh": "",
-      "impact": "AI 回的內容看不懂(JSONDecodeError)",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "📊 巨頭財報",
-      "title": "Google optimises its own revenue. Advertisers have to optimise theirs - PPC Land",
-      "url": "https://news.google.com/rss/articles/CBMijwFBVV95cUxQcnFTSlRIbnJwLWpaT1g4ZV91eHV0ME81WXZ5bks1YV9xVmFFNzVKdmZnaHA1elQ5NndldGdaWURSWU1salQzUC05Z2VIRDlSQUxOMWFwdExYTWpUTW9SbFNuemZ2cEx3d3l4dzhyY0Z2NjQ3RmtCYmUtLWpEbWt1QTVYRE80S0YtQjlLQU54RQ?oc=5",
-      "published": "Sat, 10 Oct 2026 07:55:16 GMT",
-      "title_zh": "",
-      "impact": "AI 回的內容看不懂(JSONDecodeError)",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "Huang Nvidia",
-      "title": "NVIDIA Throws Free RTX Spark Party in Berlin Oct. 16 [2026] - shattered.io",
-      "url": "https://news.google.com/rss/articles/CBMicEFVX3lxTE95WHo0cnp2ZmJ4WV82WGxMVk9ZVkJmMHVnT0pwUk5NU3NMWk5iMHhwazVMS1pTZ054cWtBaHlmN05QOGpLTDJzbVM2N3U4SlpoN1R1RVBYV0VwRFg0cXBPOWlsdnJsMi1KXzlKRHNLTlQ?oc=5",
-      "published": "Sat, 10 Oct 2026 06:56:09 GMT",
-      "title_zh": "NVIDIA柏林免費RTX派對",
-      "impact": "此活動顯示NVIDIA持續推廣RTX，提振半導體需求，對台積",
-      "impact_level": "bullish"
-    },
-    {
-      "source": "韓股記憶體",
-      "title": "SK Hynix sends memory chips into orbit for testing - digitimes",
-      "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxOb2FMM1Q2aWxGWmkxZWNCUkdQMDhWZ0FSV0F1VHVfdXF1LXM1bWFFN3lvYm03WWdFYnFCWWZjYUtDOUNQS2lUV3VjNVpiOTdxbXpDUE9WNktMeGRoM21XVEF0X01ubExXaWtVNGYwQ3RLVk10MkVzMlRIblZWNzhDYllpMUItbzMxR202blluVzNEeDVTYWc?oc=5",
-      "published": "Sat, 10 Oct 2026 06:26:32 GMT",
       "title_zh": "",
       "impact": "AI 回的內容看不懂(JSONDecodeError)",
       "impact_level": "neutral"
