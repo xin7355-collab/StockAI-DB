@@ -7,7 +7,7 @@
  *      掛單計畫/已達進場閃爍 ・VWAP ・開盤定調 ・ORB ・相對大盤強弱 ・量能達標度 ・隔日沖 T+1 ・隔日沖判斷 ・
  *      打開漲停指令 ・族群補漲候選 ・當沖候選掃描(含 09:15 推播)
  *   ② 當沖頁⛔ 不可再有主動推播(`_fireAlert`)—— 被刪的那兩個推播都是實測不成立的方法
- *   ③ 第一眼順序:🚦 今天這檔怎麼做 → 💰 成本關卡 → 📊 當沖實測(data-dtedge)
+ *   ③ 第一眼順序(🧭 V79.0.3 使用者選「事實在上、結論精簡」):⚡ 第一行(data-dttop)→ 💰 成本關卡 → 🚦(只在實驗室模式)→ 📊 當沖實測
  *   ④ 留下來的:成本關卡 / 🚦 / 當沖實測 / 損益試算機 都還在(⛔ 不可「刪過頭」)
  * ⚠️ 原始碼斷言一律先剝 // 註解(被自己的註解救活已經七次)
  */
@@ -39,8 +39,8 @@ ok('①c 🗑️ 當沖候選掃描卡(dtScanCard)與 09:15 自動掃描⛔ 不�
 ok('② ⛔ 當沖頁與作戰室⛔ 不可再有主動推播(_fireAlert)', !/_fireAlert\(/.test(rdt) && !/_fireAlert\(/.test(bx));
 ok('④ 留下來的四樣還在:成本關卡 / 🚦 / 當沖實測 / 損益試算機',
    /_dtCostGateHtml\(price\)/.test(rdt) && /_dtVerdictInner\(sym/.test(rdt) && /_dtEdgeHtml\(sym\)/.test(rdt) && /當沖損益試算機/.test(rdt));
-const iV = rdt.indexOf('this._dtVerdictInner(sym'), iC = rdt.indexOf('${this._dtCostGateHtml(price)}'), iE = rdt.indexOf('${this._dtEdgeHtml(sym)}');
-ok('③ 原始碼順序:🚦 → 成本關卡 → 當沖實測', iV > 0 && iV < iC && iC < iE, [iV, iC, iE]);
+const iT = rdt.indexOf('${this._dtTopLine()}'), iV = rdt.indexOf('this._dtVerdictInner(sym'), iC = rdt.indexOf('${this._dtCostGateHtml(price)}'), iE = rdt.indexOf('${this._dtEdgeHtml(sym)}');
+ok('③ 原始碼順序(V79.0.3):第一行 → 成本關卡 → 🚦 → 當沖實測', iT > 0 && iT < iC && iC < iV && iV < iE, [iT, iC, iV, iE]);
 
 // ── 動態:真的渲染一次 ──
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
@@ -67,7 +67,7 @@ const R = await page.evaluate(async () => {
     o.hero = /今日當沖作戰指令/.test(html);
     const strip = h => String(h).replace(/<[^>]+>/g, ' ');
     const t = strip(html);
-    o.iV = t.indexOf('🚦'); o.iC = t.indexOf('成本關卡'); o.iE = html.indexOf('data-dtedge');
+    o.iV = t.indexOf('🚦'); o.iC = t.indexOf('成本關卡'); o.iE = html.indexOf('data-dtedge'); o.iT = html.indexOf('data-dttop');
     o.iCh = html.indexOf('成本關卡');
     o.bad = (t.match(/掛單計畫|已達進場|劇本成真度|隔日沖 T\+1/) || [])[0] || '';
     o.adv = strip(app._dtAdvancedHtml || '');
@@ -80,7 +80,7 @@ const R = await page.evaluate(async () => {
     try { await app.renderDayTradeTab(app.currentSymbolId); } catch (_) { }
     await new Promise(r => setTimeout(r, 2500));
     { const h2 = (document.getElementById('dayTradeBody') || {}).innerHTML || ''; const t2 = strip(h2);
-      o.lab = { iV: t2.indexOf('🚦'), iC: t2.indexOf('成本關卡'), iCh: h2.indexOf('成本關卡'), iE: h2.indexOf('data-dtedge') }; }
+      o.lab = { iV: t2.indexOf('🚦'), iC: t2.indexOf('成本關卡'), iCh: h2.indexOf('成本關卡'), iE: h2.indexOf('data-dtedge'), iVh: h2.indexOf('🚦 今天這檔怎麼做') }; }
     document.documentElement.classList.remove('lab');
     return o;
 });
@@ -90,8 +90,9 @@ ok('⑤0 空過守門:當沖頁真的渲染出作戰指令', R.hero && R.len > 1
 ok('⑤ 渲染後第一眼⛔ 沒有掛單計畫 / 已達進場 / 劇本成真度 / 隔日沖 T+1', !R.bad, R.bad);
 ok('⑤b 📊 進階視窗⛔ 沒有 VWAP / 開盤定調 / ORB / 相對大盤 / 量能達標度', !R.advBad, R.advBad);
 // 🧹 V78.3.6 當沖實測只在實驗室模式:一般模式⛔ 不可出現 data-dtedge;順序改在 lab 模式量
-ok('⑤c 渲染後順序(一般模式):🚦 在成本關卡之前,⛔ 當沖實測摺疊不出現(🧹 V78.3.6)', R.iV >= 0 && R.iV < R.iC && R.normE === -1, [R.iV, R.iC, R.normE]);
-ok('⑤c2 🔬 實驗室模式:🚦 → 成本關卡 → 當沖實測(data-dtedge)順序不變', R.lab && R.lab.iV >= 0 && R.lab.iV < R.lab.iC && R.lab.iE > 0 && R.lab.iCh < R.lab.iE, JSON.stringify(R.lab));
+// 🧭 V79.0.3 一般模式:第一行在成本關卡之前、⛔ 沒有 🚦 勝率那塊(收進實驗室)、⛔ 沒有當沖實測摺疊
+ok('⑤c 渲染後順序(一般模式):第一行 → 成本關卡,⛔ 🚦 勝率塊與當沖實測摺疊都不出現', R.iT >= 0 && R.iT < R.iCh && R.iV === -1 && R.normE === -1, [R.iT, R.iCh, R.iV, R.normE]);
+ok('⑤c2 🔬 實驗室模式:成本關卡 → 🚦 → 當沖實測(data-dtedge)', R.lab && R.lab.iCh >= 0 && R.lab.iVh > R.lab.iCh && R.lab.iE > R.lab.iVh, JSON.stringify(R.lab));
 ok('⑤d 進當沖頁⛔ 不會觸發任何主動推播', R.fired === 0, R.fired);
 ok('⑤e 頁面上沒有當沖候選掃描卡', !R.scan);
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ DTPRUNE_PASS(全部通過)');

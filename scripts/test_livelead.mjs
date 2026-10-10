@@ -28,9 +28,9 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 
 // ── 靜態 ──
 {
-    const m = SRC.match(/<details id="liveMoreWrap"[^>]*>/);
+    const m = SRC.match(/<details data-labonly="1" id="liveMoreWrap"[^>]*>/);   // 🔬 V79.0.3 整個摺疊只在實驗室模式(test_dtlab 釘一般模式看不到)
     ok('① 摺疊存在且**預設收起**(⛔ 不可掛 open)', !!m && !/\bopen\b/.test(m[0]), m && m[0]);
-    const s = SRC.indexOf('<details id="liveMoreWrap"'), e = SRC.indexOf('</details>', s);
+    const s = SRC.indexOf('<details data-labonly="1" id="liveMoreWrap"'), e = SRC.indexOf('</details>', s);
     const seg = SRC.slice(s, e);
     ok('① 當沖總結燈 + 盤中作戰室 都在摺疊裡',
         seg.includes('id="dayTradeLight"') && seg.includes('id="intradayWarRoom"'));
@@ -68,6 +68,9 @@ await page.waitForFunction(() => typeof app !== 'undefined' && !!app.renderDayTr
 
 const R = await page.evaluate(async () => {
     const o = {};
+    // 🔬 V79.0.3 總結燈 / 作戰室收進實驗室模式 → 這支驗的是「卡片本身的用意」,一律在實驗室模式量;
+    //   一般模式「看不到、不推播」由 test_dtlab.mjs 釘住(⛔ 兩邊不重複驗)
+    document.documentElement.classList.add('lab');
     try { app.switchAppTab('diag'); app.switchSubTab('live'); } catch (_) { }
     await new Promise(r => setTimeout(r, 500));
     // 🚧 空過守門:先確認 stub 真的被走到(⛔ 否則下面全是假通過)

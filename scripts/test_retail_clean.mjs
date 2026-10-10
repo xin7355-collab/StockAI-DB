@@ -85,6 +85,15 @@ for (const strat of STRATS) {
     await grab('ov_exit', () => app.switchOvTab('exit'));
     for (const st of ['report', 'live', 'daytrade', 'chart', 'chip', 'corp', 'backtest', 'bullbear']) await grab('diag_' + st, st => app.switchSubTab(st), st);
     for (const t of ['flow', 'dist']) await grab('diag_chip_' + t, async t => { app.switchSubTab('chip'); app.switchChipTab(t); }, t, 2500);
+    // 🔬 V79.0.3 即時頁的判讀卡沒有 Fugle 金鑰就畫不出來 → 直接餵一份會亮的盤中資料(一般模式下要什麼都不剩)
+    await grab('diag_live_forced', async () => {
+        app.switchSubTab('live');
+        const bars = []; let c = 100, pv = 0, vv = 0;
+        for (let i = 0; i < 80; i++) { c *= 1.0015; pv += c * 100; vv += 100; const m = 540 + i; bars.push({ t: `2026-10-08T${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:00+08:00`, open: c, high: c, low: c, close: c, volume: 100, average: pv / vv }); }
+        const q = { price: c, prevClose: 99, openPrice: 100, high: c, low: 100 };
+        try { app._renderIntradayWarRoom(bars, q); } catch (_) {}
+        try { app._renderIntradaySix(bars, q); } catch (_) {}
+    }, null, 800);
     await grab('pa', async () => { app.openPriceAlertModal('2330'); }, null, 2500);
     await page.evaluate(() => { const m = document.getElementById('priceAlertModal'); if (m) m.classList.add('hidden'); });
     await grab('settings', () => { app.openSettings(); });
@@ -105,7 +114,7 @@ for (const strat of STRATS) {
     // 🔎 V78.3.9 靜態段:條件式卡片的原始碼裡,研究字只能出現在有 _labMode 判斷的那一行
     //   (分點集中 ≥40% / 夜盤先漲 / 分點檔案勝率 —— 巡邏時剛好沒觸發就看不到,所以直接讀函式本身)
     if (!SCOPE || SCOPE.has('pages')) {
-        const COND_FNS = ['_tomorrowWatchHtml', '_dtBattleExtras'];   // 🗑️ V79.0.0 分點/券商頁那幾支已刪除
+        const COND_FNS = ['_tomorrowWatchHtml', '_dtBattleExtras', '_dtTopLine'];   // 🗑️ V79.0.0 分點/券商頁那幾支已刪除
         const srcs = await page.evaluate(fs => fs.map(f => [f, typeof app[f] === 'function' ? app[f].toString() : '']), COND_FNS);
         if (process.env.INJECT) srcs.push(['__inject', "x = `<div>實測 20 日 +1.2pp</div>`;"]);
         for (const [f, src] of srcs) {

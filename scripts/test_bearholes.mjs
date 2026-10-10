@@ -60,7 +60,10 @@ const R = await pg.evaluate(() => {
         out.sm = (document.getElementById('sixMeridianCard') || {}).innerHTML || '';
         try { app.renderChuKbarVerdict(daily); } catch (e) { out.ckErr = String(e); }
         out.ck = (document.getElementById('chuVerdictCard') || {}).innerHTML || '';
+        // 🔬 V79.0.3 當沖總結燈只在實驗室模式畫(一般模式看不到由 test_dtlab 釘)→ ⑪ 在實驗室模式驗守門用意
+        document.documentElement.classList.add('lab');
         try { app.renderDayTradeLight(bars, q); } catch (e) { out.dtErr = String(e); }
+        document.documentElement.classList.remove('lab');
         out.dt = (document.getElementById('dayTradeLight') || {}).innerHTML || '';
         out.lead = (document.getElementById('liveLead') || {}).innerHTML || '';
         return out;
