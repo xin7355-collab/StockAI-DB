@@ -29,6 +29,9 @@ await page.waitForFunction(() => !!window.PRO, null, { timeout: 30000 });
 await page.waitForTimeout(800);
 
 const R = await page.evaluate(() => {
+    // 📰 V79.0.8 起有專欄的條目不在總表重印 → ✅ 那頁全部都有專欄、會是空的;這支量的是版面 → 跟 test_prohtml 一樣先關掉去重
+    //   (去重本身由 test_prohtml ㊿ 驗)
+    PRO._labInCol = () => false;
     const G = PRO.LAB_GRP.map(z => z[0]), SEG = PRO.LAB_SEG;
     const bad = [];
     for (const x of PRO.LAB.ok) {

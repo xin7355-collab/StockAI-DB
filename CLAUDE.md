@@ -698,6 +698,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
    + **`node scripts/test_noframe.mjs`**(🧱 全站無框守門 — V77.0.0 新增:量 **computed style** 證明「一整段的外框真的拉平了」+「⚠️ 警示左色條 / 按鈕 / 輸入框 / `.keepbox` 格子一個都沒被拉平」,含 `pro.html` 的 `.panel`。⛔ 不釘 class 字串)
    + **`node scripts/test_fishapp.mjs`**(🎣 V77.9.7 股海釣手 = `pro.html?app=fish`:作戰室分頁/池子/規則段藏起來、⛔ 整頁不可有選股規則用語、⭐ 名單 == `_castPick`(一般模式同一支,動畫 stub 前後相同)、台股配色、reduced-motion、安全閥、manifest/圖示;V77.9.9 一次 10 條前面 == `_castPick`、四魚種外形不同、釣起價 = 即時價、帶回家養;V78.0.0 一按只釣一條(cast→wait→bite→fight→breach→show)、斷線同一條留佇列最前、魚色 = 一年高低位置且⛔ 不受今天漲跌影響、大小 = 市值、震動開關、公司簡介無選股用語)
    + **`python3 scripts/test_futures_night_gate.py`**(🌙 V78.1.4 個股期貨夜盤採礦:平日台北 08:45~15:00 ⛔ 不登入、不寫(排程被延到白天時會把日盤寫成夜盤);注入「拿掉守門」必紅)
+   + **`node scripts/test_retailsign.mjs`**(👥 V79.0.9 散戶多空比正負號:正值 = 散戶淨多;情緒卡 / 主力出貨指數 / 因子卡 / Telegram 同一支 `_retailLsDir` ↔ worker `retailLsDir` 逐值比;+54.7 比 0 多 20 分、−54.7 少 15 分的決定性對照;⛔ 舊寫法「< −25 = 過度看多」不可復活)
    + **`node scripts/test_nobroker.mjs`**(🗑️ V79.0.0 券商分點 + 付費資料集移除:付費檔⛔ 不可再 fetch、刪掉的 id / 函式⛔ 不可復活、籌碼頁三大法人 / 融資券 / 集保沒刪過頭、報告頁本益比讀 chips fundamentals 的決定性對照)+ **`node scripts/test_trapbal.mjs`**(⚖️ V79.0.1 上面套牢 vs 下面賺錢:數字只讀 `_trappedRatio`、上方量 ×2 決定性對照、⛔「的人」、K 線不足 / 指數藏起來、總覽那行同一個數字)+ **`python3 scripts/test_free_fund.py`**(`fetch_free_fundamentals` 用假網路跑:chips 檔只剩 fundamentals、舊分點欄位被洗掉、冷門股零 API)
    + **`node scripts/test_dtlab.mjs`**(🔬 V79.0.3 即時頁 / 當沖頁 / 當沖雷達沒回測過的判讀只在實驗室模式:一般模式看不到、⛔ 不推播(六脈 / 09:15 候選 / 逐筆動能)、實驗室同一份資料看得到(決定性對照)・大戶散戶日期 = 成交日・當沖頁第一行在成本關卡前・即時頁現價 → 分時圖 → 五檔;3 種注入全紅)
    + **`node scripts/test_deckbuytbl.mjs`**(🎯 V79.0.8 決策台「今天可以買的」= 👑 那種表格:表頭排序 / 同欄反向 / 沒觸發價排最後、標籤走 `_pbTagsHtml`、張數走 `_lotsForPlaybook`(決定性對照)、⛔ 研究數字)
@@ -2205,6 +2206,8 @@ Tailwind **具名** `grid-cols-N` 會編成 `minmax(0,1fr)`;**任意值** `[1fr_
 | `edge_probe.py` | 8 個機構因子在台股有沒有效 | 走完一次空頭後(目前結論來自 3 年多頭,低波動/反轉/流動性三個因子當時是反向的) |
 | `broker_habit_probe.py` | 隔日沖分點有沒有慣性(V71.7.x) | `data/chips/*.json` 的 `hist` 累積到 1~2 個月後(目前只有 7~8 天) |
 | `overhead_probe.mjs` | 🪤 **上方套牢區**(現價上方的量堆積層)撞上去之後穿不穿得過、賺不賺得到(V76.0.6) | ⛔ 「能不能當買賣訊號」已驗**六關 0 過、門檻 5 格 0 過**,別再測一次;⭐ **改了 `_overheadSupply` 的判定就要重跑**(`_SUPPLY_EDGE` 的數字會對不上);⭐ 走完下一次空頭後可重跑。⭐ 方法備忘:`STEP` 必須是 1 —— **被壓回的事件天生只在牆上待 1~2 根**,隔根取樣會把它們整批漏掉 |
+| `factor_skew_probe.mjs` | 🧮 **偏態 / alpha / beta 單因子挑股 + 定期換股**(V79.0.9,外部 repo AlexChiang0208 的做法;母體 = 每個換股日過去 60 天成交額前 150、只用當天以前;隔天開盤買、扣 0.44%;對照 = 同母體等權 + 同檔數隨機(⛔ 一年才重抽 —— 每月重抽會多付手續費變成假對照)+ 0050 價格 / 含息;17 條起點;`--selftest` 7 條含零前視 / 母體不看未來兩種注入)| ⛔ 結論已定:它的預設(年報酬偏態最大 5 檔、240 天換)9.6%/年 < 同母體等權 11.6% < 0050 含息 20.3%;32 組只有「每月・alpha 最大・20 檔」六關全過(16.7%)但贏 0050 含息 0/17,而且它就是一年動能(👑 已在用)→ 別再測。⚠️ 2012~2020 只有上市倖存股、個股沒含息。跑法:`DATA_DIR=$S/d10n node --max-old-space-size=9000 scripts/factor_skew_probe.mjs out.json`(約 4 分;d10n = `merge_k66_history.py <k66>/stocks_full $S/dd2 $S/d10n --idx-long idx_long.json`)|
+| `retail_ls_probe.mjs` + `taifex_hist_miner.py` `rl` | 👥 **小台散戶多空比 → 隔天 0050**(V79.0.9;App 拿它計分卻從沒回測過;兩種算法:App 現行(−淨 ÷ 法人多+空)+ 門檻 30/15/−25、正式(−淨 ÷ 小台全市場未平倉)+ 自己位階;訊號日數字只用在下一個交易日;同年平均當對照;六關;`RISK_HIST=` 校準 App 每天存的值;`--selftest` 5 條)| ⏳ 等 📚 歷史補挖跑完(`rl` 2016 起)。跑法:`git show origin/data:data/taifex_hist.json > $S/th.json && TAIFEX_HIST=$S/th.json DATA_DIR=$S/d10n RISK_HIST=<risk_history.json> node scripts/retail_ls_probe.mjs out.json` |
 | `bestfour_probe.mjs` + `lib_evgate.mjs` | 🧭 **grs 四大買賣點**(量大收紅 / 量縮價不跌 / 三日均轉上 / 三日均 > 六日均 + 四個賣點;V79.0.6 評估㊾;隔天開盤買、對照 = 同一天全部股票、10 日去重、量的基準只比昨天;`--selftest` 6 條)| ⛔ 結論已定:八條 −0.13~+0.02pp、「3 日均剛上穿 6 日均」方向相反 → 別再測。⚠️ B1 / B2 互斥,四條同時不可能。`lib_evgate`(六關 + 每天平均)可給新的事件探針共用。跑法:`DATA_DIR=$S/dd2 node --max-old-space-size=9000 scripts/bestfour_probe.mjs out.json`(約 1 分)|
 | `accrual_probe.mjs` | 💵 **盈餘品質(應計 = 近 4 季淨利 − 營業現金流,÷ 權益)**(V79.0.6 評估㊾;每月月初排五等分、只用已公布財報(截止日嚴格早於)、累計現金流還原單季、金融排除、對照 = 同一天有排名的全部股票、去重疊三組;`--selftest` 5 條)| ✅ 應計最高 40% 抱 60 天 −0.70pp 避雷 6/6、逐年全負含 2022;⛔ 最低那組不顯著 → 只當避雷。🔄 **V79.0.7 疊上決策台兩套都變差**(🔥 458 → 203 萬、👑 958 → 603%,都輸隨機刪一樣多)→ ⛔ 不接 App、別再測。組合層跑法:`portfolio_backtest` 加 `ACCR=hi|sham FIN_DEEP=… AUX_DIR=…`;`leader_probe` 加 `{accAvoid:true}` / `{accAvoid:'sham',accSham:p}` + `FIN_DEEP= IND_MAP=`。事件層級跑法:`git show origin/fin_deep:fin_deep/fin_deep.json > $S/fin_deep.json && DATA_DIR=$S/dd2 FIN_DEEP=$S/fin_deep.json AUX_DIR=$S/od/data node scripts/accrual_probe.mjs out.json`(約 10 秒)|
 | `fill_cap_probe.mjs` + `portfolio_backtest.mjs` `VOLCAP=P` / `EQGATE=ma:N\|dd:X\|shift:…:K` `EQGATE_SRC=` | 🧱🛡️ **回測買賣吃掉當天多少量 + 帳戶賠了就停手有沒有用**(V79.0.4,StockSharp 評估㊼;參與率 = 每筆 ÷ 訊號日 / 出場日整天成交額;閘門用「不設閘門那次」的市值淨值、只用前一天;安慰劑 = 暫停日整段平移;`--selftest` 4 條)| ⛔ 結論已定:閘門六種 0/17 全輸(回撤還更深)→ 別再測;成交量上限 1/2/5% 只差約 2~5% → 不改預設,⭐ 每筆金額或本金放大時重量。跑法:`DATA_DIR=$S/dd2 LOT=150000 node scripts/fill_cap_probe.mjs tk_*.json`(TAKEN_OUT);閘門先跑一次 `EQUITY_OUT=eq_$W.json` 再 `EQGATE=dd:15 EQGATE_SRC=eq_$W.json` |
@@ -2414,6 +2417,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 👥🧮 V79.0.9 Repo X-Ray 九個 repo(㊿):🐛 App 自己的「散戶多空比」正負號兩套說法(主力出貨指數 / Telegram 反了)→ 統一 `_retailLsDir` ・補挖小台散戶多空比歷史回測 ・偏態 / alpha / beta 選股照原樣 9.6% < 大型股等權 11.6% < 0050 含息 20.3%
 - 🎯🗑️ V79.0.8 決策台「今天可以買的」改 👑 那種表格(可排序)・⭐ 可信度排行(專欄 + 實測總表同一份)・有專欄的條目實測總表 / 雜訊清單不再重印 ・刪 pro 個股實測 / 今日訊號 / 財報三頁(盤前分數 + 除權息搬專欄、負債比 / 流動比搬報告頁 §4)
 - 🏷️💵 V79.0.7 新聞股名誤配(33 天 57 則錯配:三星 = Samsung、和大盤、東南亞、聯合國…)+ AI 把指令當標題 ・應計避雷疊上決策台兩套都變差(🔥 458 → 203 萬、👑 958 → 603%,都輸安慰劑)→ ⛔ 不接
 - 🧩💵🧭 V79.0.6 九個 repo(㊾):新聞同一事件歸群(Jaccard 0.6 只併得到 221 對裡的 2 對 → 改三條規則,併 40 對全對)+ 個股新聞來源 / 時間一直是空的 ・grs 四大買點 ≈ 0 ・應計最高 40% 抱 60 天 −0.70pp 避雷 6/6(還沒接 App)
@@ -2828,6 +2832,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/EXTERNAL_REVIEWS.md` 章節索引
 
+- 🔬 外部參考資料的評估紀錄㊿:Repo X-Ray 九個台股 repo(kevin801221 / XQStrategy / Robo-Advisor / pythonTWstock / 振幅篩選 / TwStockApp / MyStockAnalyzer / 法人認養股 / 妖股雷達)—— 只有 kevin801221 是 MIT;沒有樣本外驗證過的預測模型;對出 App 自己的散戶多空比正負號 bug;偏態因子照原樣跑不贏大型股等權
 - 🧭 外部參考資料的評估紀錄㊾:九個 repo(LSTM / 強化學習 / 均線 / MIS 爬蟲 / grs / 財報儀表板 / 現金流 API / 分點爬蟲)—— ML 類早就測過沒用;grs 四大買點測了 ≈ 0;現金流規則不做分數,背後的應計現象是真的避雷
 - 📦 外部參考資料的評估紀錄㊽:五個 A 股開源 repo(pythonstock / wkingnet / garydai / StockQuant / StockAgent)—— 大半早就有或測過、沒有公開回測成績的策略可測;借兩個介面做法,新聞歸群要先問
 - 🧱 外部參考資料的評估紀錄㊼:StockSharp(C# 交易平台,授權專有)—— 經典指標 / 連續 K / 報表本站早就測過;借的兩個回測邏輯一個沒差(成交量上限)、一個有害(帳戶淨值閘門)
