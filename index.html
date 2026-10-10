@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.0.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -897,7 +897,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.0.3</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.0.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8564,10 +8564,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.0.3',
+    _APP_VERSION: 'V79.0.4',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.0.4', d: ['🔬 產業作戰室的實測總表多兩條紀錄(參考兩個外部交易軟體的做法):帳戶賠了就先停手、回測買賣有沒有吃掉一整天的量。散戶 App 畫面沒有變動。'] },
         { v: 'V79.0.3', d: ['⚡ <b>即時頁、當沖頁、當沖雷達整理過了</b>:你問「這些有回測過嗎?」—— 量過了,<b>這檔過去開盤買收盤賣的勝率、當沖雷達、盤中六脈、總結燈</b>換到之後的日子都不準,扣完成本沒有一個站得住(大戶散戶流向沒有歷史可以量)', '🧭 照你選的「事實在上、結論精簡」:即時頁最上面是<b>現價・內外盤 → 分時圖 → 五檔</b>;當沖頁第一行直接講「沒有可以天天照做的當沖方向,只有手上股票收盤鎖漲停可以留到隔天」,接著是成本關卡', '🔬 那幾張判讀卡沒有刪,收進研究用的實驗室模式;它們的盤中推播(六脈共振、09:15 當沖候選、逐筆動能)一般模式不再跳', '📅 順手修:大戶散戶流向的日期以前用手機時鐘,週末打開會標成週六 → 改用成交那天'] },
         { v: 'V79.0.2', d: ['⚖️ 產業作戰室「套牢比例」那條補上:舊的付費券商分點版跟現在的 K 線成交量版比一次,分點版沒有比較準 → 不用為它再買付費金鑰,K 線版照用。散戶 App 畫面沒有變動。'] },
         { v: 'V79.0.1', d: ['⚖️ <b>「上面套牢 vs 下面賺錢」那條回來了</b>:上一版拿掉券商分點時被一起刪掉,現在改用 K 線成交量算(近 120 日有幾 % 的量成交在比現在貴的價位、漲到多少附近會有回本賣壓)。放在籌碼頁最上面,總覽價格位置圖底下也有一行同一個數字。⚠️ 這是成交量不是人數,只拿來把期待值放低,不是賣出訊號。'] },
@@ -8705,12 +8706,6 @@ ${list}
         { v: 'V77.9.5', d: [
             '👑 <b>成績單的「領頭羊」頁為什麼是 0 筆</b>:存名單的那一步是前一版才加的,而新程式<b>到現在還沒被採礦跑到過</b>(改版那一輪照規則被跳過)→ 已手動補跑,09-24 那次換倉的 5 檔會先顯示成「待成交」,今天收盤資料進來後就會變成真的買進紀錄。',
             '🎑 順手修掉一個會「永遠記錯」的地方:中秋 / 教師節的假 K 線還沒清掉時,當天的領頭羊名單會被墊歪(09-24 前 5 名會錯 3 檔);現在遇到這種情況改用乾淨的 K 線重算,⛔ 不再把歪掉的那份存下來。',
-        ] },
-        { v: 'V77.9.4', d: [
-            '🎣 <b>產業作戰室的釣魚頁點進來不會再是空的</b>。以前它要先把全站的大檔、選股快照、還有 190 個財報小檔<b>全部下載完才開始畫</b>(手機要等幾十秒,而且畫面上什麼都沒寫)。現在選股快照一到就先畫魚,財報在背後慢慢補,💎 那一池沒讀完會寫「讀取財報中 x/y」。',
-            '👑 <b>釣魚預設池改成「領頭羊池」= 近 20 日平均成交額前 100 大</b>:上層(一年高點附近)、中層、底層的魚全部都在,魚缸上下就是一年位階;今天前 5 名戴 👑、第 6~10 名有小金點。🎣 <b>拋竿改成釣領頭羊前 5 名</b> —— 跟散戶救星決策台現在的預設是同一份名單;不是換倉日會寫還要幾天,大盤空頭會寫「今天不買」。舊的 🧬 那一池還在,點「換一池」就看得到。',
-            '💰 <b>回測數字頁最上面改成「100 萬放進去,到今天變多少」</b>:👑 領頭羊(全攻 / 一半放 0050 / 先衝再穩 / 自動下單的尾盤做法)跟 0050、006208、科技型、高股息等 12 檔 ETF 放在同一張表,<b>全部用同一組 17 個起點</b>,每一欄都能點來排序。AI 時代(2022-09 起)100 萬 → 領頭羊 860 萬、0050 含息 475 萬;代價是中途最多賠 −50%(0050 −27%)。舊的 79 種逐年總表與情境庫收進「📦 研究用」,一行都沒刪。',
-            '🌱 <b>新增「錢不多的話」分頁</b>(用真實股數、零股、手續費最低 20 元重跑):① 錢少不會讓報酬率變差(10 萬跟 100 萬都是約 8.6 倍)② 真正讓錢變大的是每個月繼續放錢(10 萬不加 → 86 萬;每月再投 1 萬 → 290 萬)③ 「先衝再穩」(帳戶翻倍後改一半放 0050)賺得跟全攻差不多、中途最多賠從 −50% 降到 −37%。⛔ 錢少不代表可以冒更大的險 —— 虧損是照比例算的。',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },

@@ -278,6 +278,40 @@ const COST = COST0 * COST_X;
 const ROTATE = (process.env.ROTATE || '').trim();
 if (ROTATE && !['weak', 'lose', 'sham', 'shamlose'].includes(ROTATE)) { console.error(`🚨 ROTATE=${ROTATE} 不認得(weak|lose|sham|shamlose)`); process.exit(1); }
 const ROT_MIN = +(process.env.ROT_MIN || 5);
+// 🧱 V79.0.4 成交量參與率上限 VOLCAP(StockSharp 回測模擬器的做法:一筆不可吃掉當根太多量)
+//   VOLCAP=P → 這一筆投入金額 ⛔ 不可超過訊號日成交金額的 P%(訊號日尾盤成交 → 分母用訊號日整天的成交額,已經是寬鬆的那一邊)
+//   VOLCAP_MODE=cut(預設,減量到上限;減完不到 LOT 一成就跳過)| skip(超過就整筆不買,換下一個候選)
+//   ⛔ 不進 CACHE_KEY(只動資金層);不設時一個字都不變;設了卻 0 筆被限 → 印出來(⛔ 不是「沒差別」)。
+const VOLCAP = +(process.env.VOLCAP || 0);
+const VOLCAP_MODE = process.env.VOLCAP_MODE || 'cut';
+if (!['cut', 'skip'].includes(VOLCAP_MODE)) { console.error(`🚨 VOLCAP_MODE=${VOLCAP_MODE} 不認得(cut|skip)`); process.exit(1); }
+let vcHit = 0, vcCut = 0, vcSkip = 0;
+// 🛡️ V79.0.4 帳戶淨值閘門 EQGATE(StockSharp 的 Risk Manager:帳戶虧到某個程度就暫停)—— 只擋「開新倉」,手上的照原規則出場
+//   EQGATE=ma:N   → 「不設閘門那一套」的市值淨值,昨天收盤 < 自己 N 日均線 → 今天不開新倉
+//   EQGATE=dd:X   → 昨天收盤從歷史最高回撤 ≥ X% → 今天不開新倉
+//   EQGATE=shift:<ma:N|dd:X>:K → 安慰劑:同一份暫停日的排列整段平移 K 天(暫停天數、連續長度一模一樣,只是跟淨值無關)
+//   EQGATE_SRC = 同一組設定、⛔ 不設閘門跑出來的 EQUITY_OUT(用「理論淨值」判,不然一暫停淨值就凍住、永遠開不回來)
+//   ⛔ 只用昨天以前的值(零前視);⛔ 不進 CACHE_KEY;src 讀不到 / 暫停 0 天 → exit 1。
+const EQGATE = (process.env.EQGATE || '').trim();
+let EQ_BLOCK = null, eqBlk = 0;
+if (EQGATE) {
+    const m = /^(?:shift:)?(ma|dd):(\d+(?:\.\d+)?)(?::(-?\d+))?$/.exec(EQGATE);
+    if (!m || (EQGATE.startsWith('shift:') && m[3] == null)) { console.error(`🚨 EQGATE=${EQGATE} 不認得(ma:N | dd:X | shift:ma:N:K | shift:dd:X:K)`); process.exit(1); }
+    let src; try { src = JSON.parse(fs.readFileSync(process.env.EQGATE_SRC || '', 'utf8')); } catch (e) { console.error(`🚨 EQGATE 需要 EQGATE_SRC(不設閘門那一次的 EQUITY_OUT):${e.message}`); process.exit(1); }
+    const rows = (src.rows || []).filter(r => r && r.d);
+    if (rows.length < 100) { console.error(`🚨 EQGATE_SRC 只有 ${rows.length} 天`); process.exit(1); }
+    const v = rows.map(r => (r.cash || 0) + (r.park || 0) + (r.mv || 0));
+    const blk = rows.map((_, k) => {
+        if (k < 1) return false;
+        const y = v[k - 1];
+        if (m[1] === 'ma') { const N = +m[2]; if (k < N) return false; let s = 0; for (let j = k - N; j < k; j++) s += v[j]; return y < s / N; }
+        let pk = 0; for (let j = 0; j < k; j++) pk = Math.max(pk, v[j]); return y < pk * (1 - +m[2] / 100);
+    });
+    const K = m[3] != null ? +m[3] : 0, L = blk.length;
+    EQ_BLOCK = new Set(rows.filter((_, k) => blk[(((k - K) % L) + L) % L]).map(r => r.d));
+    if (!EQ_BLOCK.size) { console.error(`🚨 EQGATE=${EQGATE} 一天都沒暫停 → 沒生效(⛔ 不是「沒差別」)`); process.exit(1); }
+    console.log(`🛡️ 淨值閘門 ${EQGATE}:${EQ_BLOCK.size}/${L} 天暫停開新倉(${(EQ_BLOCK.size / L * 100).toFixed(1)}%)`);
+}
 const LOT = +(process.env.LOT || 100000);        // 每筆投入(等權)
 const CAPITAL = +(process.env.CAPITAL || 1000000); // 💰 你手上的總本金 —— 錢用完就買不了(這才貼近現實)
 
@@ -1360,6 +1394,7 @@ for (let i = 0; i < days.length; i++) {
         }
     }
     // 📅 行事曆濾網:這一天不准開新倉(既有部位照原規則出場,⛔ 不受影響)
+    if (EQ_BLOCK && EQ_BLOCK.has(d)) { eqBlk++; openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); pushEq(i, d); continue; }
     if (CAL.length && !calOk(d, i)) { openCnt.push(live.length); equity.push(cash + live.reduce((a2, x) => a2 + (x._amt || LOT), 0)); pushEq(i, d); continue; }
     const todays = (EXIT_SCHED ? (byInR.get(schedRuleOf(d)) || new Map()).get(d) : byIn.get(d)) || [];
     // 🤝 同一檔今天有幾招同時觸發(共振)
@@ -1436,6 +1471,14 @@ for (let i = 0; i < days.length; i++) {
             }
             amt = Math.round(LOT * k);
         }
+        if (VOLCAP > 0) {
+            const lim = (+t.amt || 0) * 1e8 * VOLCAP / 100;
+            if (amt > lim) {
+                vcHit++;
+                if (VOLCAP_MODE === 'skip' || lim < LOT * 0.1) { vcSkip++; continue; }
+                amt = Math.floor(lim); vcCut++;
+            }
+        }
         // 🅿️ PARK=idle:現金不夠就先賣掉需要的那部分 0050(⛔ 不賣超過需要的)
         if (PARK === 'idle' && cash < amt && parkSh > 0 && parkOf && parkOf(i) > 0) {
             const _pps = parkOf(i) * (1 - PARK_COST / 200), _need = amt - cash;
@@ -1511,6 +1554,8 @@ if (process.env.STOPDIAG) {
 
 // 📤 把實際成交的交易(含當天市場環境)倒出來 —— 用來算「哪一種盤這套打法比較行」
 //    ⛔ 這是**事實統計**不是預測;要當成訊號用之前一定要過穩健性檢定。
+if (VOLCAP > 0) console.log(`🧱 成交量上限 VOLCAP=${VOLCAP}%(${VOLCAP_MODE}):超過的候選 ${vcHit} 次 ・減量 ${vcCut} ・跳過 ${vcSkip}` + (vcHit === 0 ? '  ⚠️ 0 次 = 這個上限在這組設定下碰不到' : ''));
+if (EQ_BLOCK) console.log(`🛡️ 淨值閘門 ${EQGATE}:實際擋掉 ${eqBlk} 個交易日的新倉`);
 if (ADD !== 'off') console.log(`📈 加碼模式 ${ADD}(往上 ${ADD_UP}% ・同檔上限 ${ADD_MAX} 筆):實際加碼 ${addCnt} 筆` + (addCnt === 0 ? '  🚨 0 筆 = 這個變體根本沒生效,⛔ 別把它的結果當成「沒差別」' : ''));
 if (process.env.TAKEN_OUT) {
     const rows = taken.map(t => {
@@ -1704,6 +1749,8 @@ if (process.env.SUMMARY_OUT) {
         dd: +mdd.toFixed(2), skipped, twii: +twiiRet.toFixed(2), etf0050: ret50 == null ? null : +ret50.toFixed(2), etf0050tr: ret50tr == null ? null : +ret50tr.toFixed(2), byYear,
     };
     if (PARK) summary.park = Math.round(parkPnL);   // 🅿️ 停泊 0050 的損益(⛔ 不混進 cum)
+    if (VOLCAP > 0) summary.volcap = { pct: VOLCAP, mode: VOLCAP_MODE, hit: vcHit, cut: vcCut, skip: vcSkip };
+    if (EQ_BLOCK) summary.eqgate = { rule: EQGATE, days: EQ_BLOCK.size, blocked: eqBlk };
     if (ROTATE) summary.rot = { mode: ROTATE, n: rotN, minHold: ROT_MIN };
     if (COST_X !== 1) summary.costX = COST_X;
     if (EXIT_SCHED) { const c = {}; for (const t of taken) c[t._r] = (c[t._r] || 0) + 1; summary.sched = { file: EXIT_SCHED.split('/').pop(), taken: c }; }   // 🔄 實際成交各用了哪一套

@@ -670,6 +670,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
    + **`node scripts/test_ussig.mjs`**(🇺🇸 V77.7.7 回測引擎 `USSIG=<kind>|sham:<kind>` 外部逐日訊號候選層濾網:⛔ 不進 CACHE_KEY、不設時逐位相同;全部日期放行 → 筆數同基準;缺鍵 = 剔除並計數 ⛔ 不放行;⭐ 反向注入(只放行基準裡賠錢那幾筆)成績必低於基準;sham 通過率對齊實測、固定種子;對照表讀不到 / <100 鍵 → exit 1。真跑引擎約 3 分)
    + **`node scripts/test_equity_out.mjs`**(📈 V77.7.7 回測引擎 `EQUITY_OUT` 逐日市值淨值:不設時 summary 逐位相同(mdd 仍用舊的成本計 equity);天數 = 暖身後每一個交易日(bear60 擋掉的日子也有);最後一天 cash+park+cost−CAPITAL == 已出場筆的淨損益(從 TAKEN_OUT 重算);市值真的在動。約 2 分)
    + **`node scripts/test_exitsched.mjs`**(🔄 V77.7.6 回測引擎 `EXIT_SCHED`(照排程換出場規則):⛔ 不進 CACHE_KEY、不設時一字不變;⭐ 決定性對照 = 排程全期同一套 == 直接跑那一套(逐位相同);交替排程兩套都要真的成交;缺快取 / 快取參數對不上 → exit 1;含 `exit_switch_probe --selftest`(零前視 / STEP)。真跑引擎約 4 分)
+   + **`node scripts/test_volcap.mjs`**(🧱🛡️ V79.0.4 回測引擎 `VOLCAP`(一筆不可超過訊號日成交額 P%)與 `EQGATE`(看不設閘門那次的淨值決定暫停開新倉):⛔ 不進 CACHE_KEY、不設時逐位相同;上限很寬 = 不設;shift K=0 決定性對照;沒給 src / 一天沒暫停 → exit 1。真跑引擎約 3 分)
    + **`node scripts/test_rotate.mjs`**(🔁💸 V77.7.4 回測引擎 `ROTATE`(錢不夠時賣掉最弱那檔換新候選;`lose` 只換帳面虧損的、`shamlose` 安慰劑)與 `COST_X` 成本壓力:兩個都⛔ 不進 CACHE_KEY、⛔ 不改 `vic.ret`(選股門檻的歷史成績)、換掉那筆用實際賣出價與賣出前的股利、0050 對照⛔ 不跟著放大成本;真跑引擎約 3 分)
    + **`node scripts/test_labplain.mjs`**(🗣️ V77.7.9 實測總表白話層:✅ 每條必帶 `pl:[分組,環節,可信度,一句話,對你的意思,白話數字]`、分組順序、第一張仍 🧬 🥇、⛔ 白話層不可有 🔴🟢、沒 pl 的欄照附件 build.py 規則推、點環節 = 搜尋、匯出 = 畫面順序;⭐ 決定性對照:改 pl 畫面與匯出一起變;5 種注入全紅)
    + **`node scripts/test_selllog.mjs`**(🎯 V78.5.7 編輯庫存賣出:淨損益 / 部分賣 / `_oi` 決定性對照 / 只有一處寫日誌)+ **`node scripts/test_daytrades.mjs`**(📼 當日全部逐筆:翻頁到開盤、每頁大小不寫死、額度用完不假裝完整、只補新的、即時串流併入、IndexedDB)
@@ -2200,6 +2201,7 @@ Tailwind **具名** `grid-cols-N` 會編成 `minmax(0,1fr)`;**任意值** `[1fr_
 | `edge_probe.py` | 8 個機構因子在台股有沒有效 | 走完一次空頭後(目前結論來自 3 年多頭,低波動/反轉/流動性三個因子當時是反向的) |
 | `broker_habit_probe.py` | 隔日沖分點有沒有慣性(V71.7.x) | `data/chips/*.json` 的 `hist` 累積到 1~2 個月後(目前只有 7~8 天) |
 | `overhead_probe.mjs` | 🪤 **上方套牢區**(現價上方的量堆積層)撞上去之後穿不穿得過、賺不賺得到(V76.0.6) | ⛔ 「能不能當買賣訊號」已驗**六關 0 過、門檻 5 格 0 過**,別再測一次;⭐ **改了 `_overheadSupply` 的判定就要重跑**(`_SUPPLY_EDGE` 的數字會對不上);⭐ 走完下一次空頭後可重跑。⭐ 方法備忘:`STEP` 必須是 1 —— **被壓回的事件天生只在牆上待 1~2 根**,隔根取樣會把它們整批漏掉 |
+| `fill_cap_probe.mjs` + `portfolio_backtest.mjs` `VOLCAP=P` / `EQGATE=ma:N\|dd:X\|shift:…:K` `EQGATE_SRC=` | 🧱🛡️ **回測買賣吃掉當天多少量 + 帳戶賠了就停手有沒有用**(V79.0.4,StockSharp 評估㊼;參與率 = 每筆 ÷ 訊號日 / 出場日整天成交額;閘門用「不設閘門那次」的市值淨值、只用前一天;安慰劑 = 暫停日整段平移;`--selftest` 4 條)| ⛔ 結論已定:閘門六種 0/17 全輸(回撤還更深)→ 別再測;成交量上限 1/2/5% 只差約 2~5% → 不改預設,⭐ 每筆金額或本金放大時重量。跑法:`DATA_DIR=$S/dd2 LOT=150000 node scripts/fill_cap_probe.mjs tk_*.json`(TAKEN_OUT);閘門先跑一次 `EQUITY_OUT=eq_$W.json` 再 `EQGATE=dd:15 EQGATE_SRC=eq_$W.json` |
 | `dt_selfgap_probe.mjs` + `intraday_six_probe.mjs` | 🚦 **當沖頁「這檔做多/做空勝率」、當沖雷達、盤中六脈換到之後的日子準不準**(V79.0.3;每天只用前 150 天算、照畫面同一套規則、對照 = 同天同桶其他股、成本 0.25%、鎖漲停空單隔天補;熱門股另用 5 分 K 09:05 進場;六脈直接從 index.html 抽函式跑 5 分 K;`--selftest` 6 / 4 條)| ⛔ 結論已定:做多熱門股 −0.59%/趟、做空 +0.03pp 不顯著、雷達做空 440 次 t 1.8、六脈 +0.00pp → 一般畫面收掉,別再測。⏳ 外資台指期 → 開盤方向只有 68 天、大戶散戶沒有逐筆歷史 → 測不了。跑法:`KBAR5_DIR=$S/k5d/kbar5_deep:$S/k5/kbar5 DATA_DIR=$S/od/data node --max-old-space-size=10000 scripts/dt_selfgap_probe.mjs out.json`(約 1 分;`LIQ=` 拆流動性)/ `KBAR5_DIR=… node scripts/intraday_six_probe.mjs out.json`(20 秒) |
 | `trap_compare_probe.mjs` + `lib_overhead.mjs` | ⚖️ **付費分點「解套價」vs K 線套牢區,哪條線比較壓得住股價**(V79.0.2;chips_deep 2 年、同一檔另一天同距離假線當對照、碰到後 10 天先跌回 3% 的比例;`--selftest` 埋線注入 / 前視注入必紅) | ⛔ 結論已定:分點版沒有比較準(配對 +1.8 / +2.9 vs K 線加權價 +4.6pp),四條都只比假線多 1~5pp → 別再測;分點資料已停。跑法:`git archive origin/chips_deep \| tar -x -C $S/cd && CHIPS_DEEP_DIR=$S/cd/chips_deep DATA_DIR=$S/od/data node --max-old-space-size=10000 scripts/trap_compare_probe.mjs out.json`(約 1 分) |
 | `gap_after_probe.mjs` | 🌅 **開盤落在哪一段 → 當天開盤到收盤**(V78.5.4;五段 3%;全部股票逐年 12/12 同方向;這一檔前一年猜下一年輸全部股票;`--selftest` 9 條)| ⛔ 結論已定:用全部股票。產物給 `embed_gap_base.mjs gap_base.json gap_after.json` → `_GAP_BASE.after`。跑法:`DATA_DIR=$S/d10n NAMES=$S/od/data/stock_names.json node --max-old-space-size=8000 scripts/gap_after_probe.mjs out.json`(約 1 分)|
@@ -2406,6 +2408,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 🧱🛡️ V79.0.4 StockSharp / go-stock 參考清單:StockSharp 授權是專有的(⛔ 不抄);借兩個回測邏輯 —— 帳戶淨值閘門(賠了就停手)六種 0/17 全輸 ⛔ 不做・成交量參與率上限:14% 的買進超過當天量 1% 但成績只差約 2~5% ⛔ 不改
 - 🔬 V79.0.3 「當沖這些有回測過嗎?」→ 當沖頁勝率 / 當沖雷達 / 盤中六脈 / 總結燈換到之後的日子都不準(做多熱門股 09:05 −0.59%/趟、六脈 +0.00pp)→ 整張收進實驗室模式、即時頁改「現價 → 分時圖 → 五檔」、當沖頁第一行講結論・🐛 大戶散戶流向日期用手機時鐘
 - ⚖️ V79.0.2 付費分點版「解套價」沒有比 K 線版準(配對下 K 線加權價 +4.6pp 最好、分點 3 日 +1.8;都只比同距離假線多 1~5pp)→ ⛔ 不為它買回 Sponsor
 - ⚖️ V79.0.1 「有幾%套牢那個不見了」= 籌碼頁分點版「上面想逃 vs 下面挺你」隨 V79.0.0 刪掉 → 改用 K 線成交量(`_trappedRatio`)補回籌碼頁 + 總覽一行;文案只講成交量 ⛔ 不講人
@@ -2815,6 +2818,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/EXTERNAL_REVIEWS.md` 章節索引
 
+- 🧱 外部參考資料的評估紀錄㊼:StockSharp(C# 交易平台,授權專有)—— 經典指標 / 連續 K / 報表本站早就測過;借的兩個回測邏輯一個沒差(成交量上限)、一個有害(帳戶淨值閘門)
 - 🧠 外部參考資料的評估紀錄㊻:stockintelli.com(股市智投,2026-10-04)—— 網站與 App 商店頁都連不進去,只看搜尋結果;多數本站已有,大戶 / 新聞多空 / 分點排行本站測過沒用,鉅額交易還在存,討論區 / 邀請制要後端 → 沒有可直接搬的新功能
 - 📰 外部參考資料的評估紀錄㊺:signova.tw(台股 AI 解盤,2026-10-03)—— 真的新的只有盤後晚報 / 週報 / 透明漏斗(V78.4.0 已做);AI 體檢分數 ⛔ 不做;登入安全性評估(真鎖要網站登入 + repo 私有,私有 repo 採礦估每月 US$100+)
 - 🧩 外部參考資料的評估紀錄㊹:MOFI_XQ(XQ XScript 15 支,2026-10-01)—— 全部已有或已測過、沒有回測數字、All Rights Reserved → ⛔ 不做
