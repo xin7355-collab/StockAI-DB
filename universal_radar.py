@@ -17,7 +17,10 @@ import traceback
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-import feedparser
+try:
+    import feedparser
+except ImportError:          # 🧪 --selftest / 測試不打網路,本機沒裝也要能跑(正式採礦 workflow 有裝)
+    feedparser = None
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -739,6 +742,120 @@ def _fetch_full_name_map():
     return dict(STOCK_NAME_CODE)
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# 🧩 V79.0.6 新聞「同一事件」歸群(外部評估㊾ StockAgent 的做法,⛔ 不叫 AI)
+#
+# 以前只擋「標題一字不差」→ 同一件事被 5 家報就是 5 則,把別的新聞擠掉。
+# 🚨 先量再定規則(news_hist.json 33 天・同一檔同一天的 221 對標題):
+#    原本想的「字元 2-gram Jaccard ≥0.6」只合併得到 **2 對** —— 同一件事各家寫法差很多
+#    (「華邦電8月營收273.09億元」vs「華邦電8月營收達273億元,連續13個月為新高」只有 0.36)。
+#    → 改成三條任一成立(實測合併 40 對,逐條人工看過**全部是同一件事**):
+#      J 用字幾乎一樣(Jaccard ≥ 0.5)
+#      N 有同一個 3 位數以上的數字(273.09 / 11.6 / 539;⛔ 年份 2000~2039 不算)
+#      R 同一個「N 月營收」(⛔「前 N 月」不算)
+# ⛔ 只在同一檔、同一天之內比(不同天的同一件事是後續報導,不合併)。
+# ⛔ 寧可漏併,⛔ 不可誤併:把兩件不同的事併成一則 = 一則新聞從畫面上消失。
+_EV_JACCARD = 0.5
+_EV_MIN_CHARS = 8          # 標題剩不到 8 個字 → 2-gram 太少,不判 J
+
+
+def _norm_title(t):
+    """去掉「 - 媒體名」尾巴、全形轉半形。"""
+    import unicodedata
+    t = unicodedata.normalize('NFKC', str(t or ''))
+    return re.sub(r'\s+-\s+[^-]{1,20}$', '', t).strip()
+
+
+def _title_grams(t):
+    c = re.sub(r'[\W_]+', '', _norm_title(t))
+    return {c[i:i + 2] for i in range(len(c) - 1)} if len(c) >= _EV_MIN_CHARS else set()
+
+
+def _title_nums(t):
+    out = set()
+    for m in re.finditer(r'\d[\d,]*(?:\.\d+)?', _norm_title(t)):
+        s = m.group().replace(',', '')
+        if re.fullmatch(r'20[0-3]\d', s):
+            continue
+        if '.' in s:
+            s = s.rstrip('0').rstrip('.')
+        if len(s.replace('.', '')) >= 3:
+            out.add(s)
+    return out
+
+
+def _title_revmonth(t):
+    return {m.group(1) for m in re.finditer(r'(?<!前)(\d{1,2})\s*月\s*(?:合併)?\s*營收', _norm_title(t))}
+
+
+def _same_event(a, b, th=None):
+    """回傳成立的那一條('J'/'N'/'R'),不成立回 None。"""
+    th = _EV_JACCARD if th is None else th
+    A, B = _title_grams(a), _title_grams(b)
+    if A and B and len(A & B) / len(A | B) >= th:
+        return 'J'
+    if th >= 1.0:          # 決定性對照:門檻 1.0 = 退回「只擋幾乎一模一樣」
+        return None
+    if _title_nums(a) & _title_nums(b):
+        return 'N'
+    if _title_revmonth(a) & _title_revmonth(b):
+        return 'R'
+    return None
+
+
+def _pub_tpe(s):
+    """RSS 的 published(RFC 822)→ 台北 'YYYY-MM-DD HH:MM';讀不懂回 ''。"""
+    try:
+        from email.utils import parsedate_to_datetime
+        dt = parsedate_to_datetime(str(s))
+        if dt.tzinfo is None:
+            return dt.strftime('%Y-%m-%d %H:%M')
+        from datetime import timezone as _tz
+        return dt.astimezone(_tz(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M')
+    except Exception:
+        return ''
+
+
+def _publisher(it):
+    """來源名:Google News 標題尾巴的「 - 媒體名」優先,其次 RSS 來源名。"""
+    t = str(it.get('title') or '')
+    m = re.search(r'\s+-\s+([^-]{1,20})$', t)
+    if m:
+        return m.group(1).strip()[:20]
+    return str(it.get('source') or it.get('source_name') or '')[:20]
+
+
+def _merge_into(bucket, rec, th=None):
+    """把 rec 併進 bucket(同一檔的清單)。同一天且同一件事 → 舊那則 dup+1,回 True。"""
+    day = (rec.get('date') or '')[:10]
+    for x in bucket:
+        xday = (x.get('date') or '')[:10]
+        if day and xday and day != xday:
+            continue
+        titles = [x.get('title', '')] + list(x.get('_alt') or [])
+        if not any(_same_event(rec['title'], t, th) for t in titles):
+            continue
+        x['dup'] = int(x.get('dup') or 0) + 1 + int(rec.get('dup') or 0)
+        also = list(x.get('also') or [])
+        src = rec.get('source') or ''
+        if src and src != x.get('source') and src not in also and len(also) < 3:
+            also.append(src)
+        if also:
+            x['also'] = also
+        x.setdefault('_alt', []).append(rec['title'])
+        # 舊那則是中性、新那則有方向 → 換成有方向那則(⛔ dup / also 留著)
+        #    ⭐ 來源也一起換(標題換了、來源沒換 = 對不起來),舊那家改記進 also
+        if x.get('tone') == 'neu' and rec.get('tone') in ('pos', 'neg'):
+            if src and x.get('source') and x['source'] != src:
+                x['also'] = [x['source']] + [a for a in (x.get('also') or []) if a not in (src, x['source'])][:2]
+                x['source'] = src
+            for k in ('title', 'url', 'tone', 'reason', 'cat'):
+                if rec.get(k):
+                    x[k] = rec[k]
+        return True
+    return False
+
+
 def build_stock_news(news_items):
     """📰 把已判讀情緒的新聞,依標題含哪些股名 → data/stock_news.json(個股消息面)。
     純加值:失敗只印警告,不影響 radar_news 主輸出。標題同時命中「南亞/南亞科」時只留較長者(去子字串誤判)。"""
@@ -756,26 +873,35 @@ def build_stock_news(news_items):
             if not hits:
                 continue
             tone = _TONE_MAP.get(it.get('ai_sentiment', '中立'), 'neu')
+            # 🐛 V79.0.6:fetch_feed 給的欄位是 source_name / published_time / link / ai_reason,
+            #    這裡以前讀 source / published / reason → 個股消息面的來源、日期、理由**從來都是空的**。
             rec = {
                 'title': title[:60],
-                'source': (it.get('source') or '')[:20],
+                'source': _publisher(it),
                 'url': it.get('url') or it.get('link') or '#',
-                'date': (it.get('published') or '')[:16],
+                'date': _pub_tpe(it.get('published') or it.get('published_time') or ''),
                 'tone': tone,
                 'cat': (it.get('cat') or '')[:8],      # 🗂️ V74.2.8 歷史要存分類(前端徽章本來就用這欄)
-                'reason': (it.get('reason') or '')[:40],
+                'reason': (it.get('reason') or it.get('ai_reason') or '')[:40],
             }
             for nm in hits:
                 code = name_map[nm]
                 bucket = stocks.setdefault(code, [])
                 if any(x.get('url') == rec['url'] or x.get('title') == rec['title'] for x in bucket):
                     continue
-                bucket.append(rec)
+                if _merge_into(bucket, dict(rec)):      # 🧩 V79.0.6 同一天同一件事 → 併進舊那則
+                    continue
+                bucket.append(dict(rec))
         # 每檔:利多/利空優先、最多 6 則
         out_stocks = {}
+        n_merged = 0
         for code, arr in stocks.items():
+            for x in arr:
+                x.pop('_alt', None)
+                n_merged += int(x.get('dup') or 0)
             arr.sort(key=lambda x: 0 if x['tone'] != 'neu' else 1)
             out_stocks[code] = {'items': arr[:6]}
+        print(f"  🧩 同一事件歸群:併掉 {n_merged} 則(同一檔、同一天、同一件事)")
         # 🛡️ 守門(V71.6.6 重新校準)——**改看「上游有沒有真的壞掉」,不是看輸出檔數**。
         #
         #   為什麼要改(實測抓到的,不是理論):V69.8.4 訂的是「<20 檔就不寫檔」,理由寫
@@ -891,9 +1017,21 @@ def build_news_history(out_stocks):
                 t = (it.get('title') or '')[:48]
                 if not t or t in seen:
                     continue
+                # 🧩 V79.0.6 同一天同一件事 → 不新增一列,把那一列的第 4 欄(另外幾家報)加上去
+                #    ⭐ 這樣 news_event_probe 算「被報導幾則」時用 1 + 第 4 欄,意思不變
+                hit = next((x for x in arr if isinstance(x, list) and x and _same_event(t, x[0])), None)
+                if hit is not None:
+                    while len(hit) < 4:
+                        hit.append('' if len(hit) == 2 else 0)
+                    hit[3] = int(hit[3] or 0) + 1 + int(it.get('dup') or 0)
+                    seen.add(t)
+                    continue
                 if len(arr) >= NEWS_HIST_PERSY:
                     break
-                arr.append([t, it.get('tone') or 'neu', it.get('cat') or ''])
+                row = [t, it.get('tone') or 'neu', it.get('cat') or '']
+                if int(it.get('dup') or 0):
+                    row.append(int(it['dup']))
+                arr.append(row)
                 seen.add(t); n_add += 1
             if not arr:
                 day.pop(code, None)
@@ -994,5 +1132,79 @@ def main():
             traceback.print_exc()
 
 
+def _selftest(th=None):
+    """🧩 V79.0.6 同一事件歸群自我測試(⛔ 不打網路)。回傳失敗條數。
+    th 給 1.0 = 決定性對照(退回只擋幾乎一模一樣)→ 呼叫端要看到合併數變少。"""
+    import tempfile
+    fails = []
+
+    def ok(n, c, e=''):
+        print(('✅ ' if c else '❌ ') + n + ('' if c else f'  {e}'))
+        if not c:
+            fails.append(n)
+
+    def mk(title, tone='neu', date='2026-10-08 09:00', src='A報'):
+        return {'title': title, 'source': src, 'url': 'u:' + title, 'date': date, 'tone': tone, 'cat': '', 'reason': ''}
+
+    def run(titles, th_=th):
+        b = []
+        for r in titles:
+            if not _merge_into(b, dict(r), th_):
+                b.append(dict(r))
+        return b
+
+    # ① 同一件事不同寫法要合併(三條各一個實例,都是 news_hist 裡的真標題)
+    b = run([mk('華邦電8月營收衝上273億元 連續13個月創新高'), mk('華邦電8月營收273.09 億元', src='B報'),
+             mk('華邦電 8 月營收年增一口氣提升 289.43%,前八個月營收也增加逾 177%', src='C報')])
+    ok('① 月營收三種寫法 → 一則、另 2 家', len(b) == 1 and b[0].get('dup') == 2, [(x['title'], x.get('dup')) for x in b])
+    ok('① 另外的來源記在 also', b and b[0].get('also') == ['B報', 'C報'], b and b[0].get('also'))
+    b = run([mk('國泰金上修今年GDP至11.6%、央行9月利率凍'), mk('AI動能強勁!國泰金上修今年GDP至11.6% 明年估5.1%')])
+    ok('① 同一個數字(11.6)→ 合併', len(b) == 1)
+    # ② 同一檔不同事件不可合併
+    b = run([mk('與馬斯克合作有戲?台積電法說會10/15登場 分析師最想知道的事1次看'),
+             mk('台積電要小心?輝達、英特爾爆重大合作 2028年是關鍵'),
+             mk('台積電明除息「每股配發7元股利」創歷史新高')])
+    ok('② 不同事件 → 三則都留', len(b) == 3, [x.get('dup') for x in b])
+    b = run([mk('中華電8月每股賺0.57元居冠 台灣大前8月EPS蟬聯第一'), mk('中華電8月營收月增17.2%')])
+    ok('② 同一個月份但一個是獲利、一個是營收 → 不合併', len(b) == 2)
+    b = run([mk('家登8月營收8.40 億元'), mk('家登前八個月營收年增 31%,持續布局先進封裝載具市場')])
+    ok('② 「前八個月」⛔ 不算同一個月營收', len(b) == 2)
+    b = run([mk('SEMICON Taiwan 2026今登場 環球晶看旺矽晶圓'), mk('台積電挑戰曝光 2026美國廠最大難題')])
+    ok('② 年份 2026 ⛔ 不算共同數字', len(b) == 2)
+    # ③ 不同天同一件事不合併
+    b = run([mk('華邦電8月營收273億元', date='2026-10-08 09:00'), mk('華邦電8月營收273.09億元', date='2026-10-09 09:00')])
+    ok('③ 不同天 → 不合併', len(b) == 2)
+    # ④ 中性被利多取代、dup / also 留著
+    b = run([mk('宏碁8月營收301.80億元', tone='neu'), mk('宏碁8月營收301億元年增38% 創13年來同期新高', tone='pos', src='B報')])
+    ok('④ 有方向的那則取代中性、dup 留著', len(b) == 1 and b[0]['tone'] == 'pos' and b[0].get('dup') == 1 and '年增38%' in b[0]['title'], b)
+    # ⑤ 歷史:同一天同一件事 → 第 4 欄 +1;舊 3 欄格式照讀
+    global NEWS_HIST_FILE
+    _old = NEWS_HIST_FILE
+    try:
+        tmp = Path(tempfile.mkdtemp(prefix='ncl_'))
+        NEWS_HIST_FILE = tmp / 'news_hist.json'
+        today = (datetime.utcnow() + timedelta(hours=8)).strftime('%Y-%m-%d')
+        NEWS_HIST_FILE.write_text(json.dumps({'days': {today: {'2344': [['華邦電8月營收衝上273億元 連續13個月創新高', 'pos', '']]}}},
+                                             ensure_ascii=False), encoding='utf-8')
+        build_news_history({'2344': {'items': [{'title': '華邦電8月營收273.09 億元', 'tone': 'neu', 'cat': '', 'dup': 2},
+                                               {'title': '華邦電砸354億買英飛凌NOR Flash', 'tone': 'pos', 'cat': ''}]}})
+        rows = json.loads(NEWS_HIST_FILE.read_text(encoding='utf-8'))['days'][today]['2344']
+        ok('⑤ 歷史:舊 3 欄那列 → 第 4 欄 = 1 + 2(這一則自己也帶 dup 2)', len(rows) == 2 and len(rows[0]) == 4 and rows[0][3] == 3, rows)
+        ok('⑤ 歷史:不同事件照新增一列(3 欄)', len(rows) == 2 and len(rows[1]) == 3, rows)
+    finally:
+        NEWS_HIST_FILE = _old
+    # ⑥ 欄位對應:fetch_feed 給的名字要讀得到(以前來源/日期/理由永遠是空的)
+    it = {'title': '台積電法說會登場 - 經濟日報', 'source_name': 'Google TW', 'published_time': 'Thu, 08 Oct 2026 01:30:00 GMT',
+          'link': 'https://x', 'ai_reason': '理由'}
+    ok('⑥ 來源讀到「 - 媒體名」', _publisher(it) == '經濟日報', _publisher(it))
+    ok('⑥ 日期換成台北時間', _pub_tpe(it['published_time']) == '2026-10-08 09:30', _pub_tpe(it['published_time']))
+    return len(fails)
+
+
 if __name__ == "__main__":
+    import sys as _sys
+    if '--selftest' in _sys.argv:
+        _n = _selftest()
+        print(f"\n{'❌ ' + str(_n) + ' 條失敗' if _n else '✅ universal_radar 歸群自我測試全過'}")
+        _sys.exit(1 if _n else 0)
     main()

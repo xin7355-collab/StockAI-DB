@@ -83,7 +83,7 @@ const tone = t => {
 };
 
 const evByStock = new Map();     // sym -> [{d(新聞台北日), tone}]
-let nTick = 0, nNoTick = 0, nItems = 0;
+let nTick = 0, nNoTick = 0, nItems = 0, nEvents = 0;
 const dayCount = new Map();      // `${sym}|${d}` -> 幾則
 let newsDays = [];
 
@@ -106,16 +106,19 @@ if (HIST) {
       for (const it of items) {
         const title = Array.isArray(it) ? String(it[0] || '') : String((it && it.title) || '');
         if (!title) continue;
-        nItems++;
+        // 🧩 V79.0.6 起採礦會把同一天同一件事併成一列,第 4 欄 = 另外幾家也報
+        //    → 「被報導幾則」= 1 + 第 4 欄(意思跟以前一樣:報導總數);事件數另外記
+        const extra = Array.isArray(it) ? (+it[3] || 0) : (+(it && it.dup) || 0);
+        nItems += 1 + extra; nEvents++;
         evByStock.get(sym).push({ d, tone: tone(title) });
-        dayCount.set(`${sym}|${d}`, (dayCount.get(`${sym}|${d}`) || 0) + 1);
+        dayCount.set(`${sym}|${d}`, (dayCount.get(`${sym}|${d}`) || 0) + 1 + extra);
       }
     }
   }
   newsDays = Object.keys(days).sort();
   const tradeDays = newsDays.filter(d => mIdx.has(d));
   console.log(`\n🗞️ 本站自己的消息面歷史 ${HISTF}`);
-  console.log(`   ${newsDays.length} 天(其中交易日 ${tradeDays.length} 天)・${nItems} 則 ・涵蓋 ${evByStock.size} 檔 ・(股·日) ${dayCount.size} 筆`);
+  console.log(`   ${newsDays.length} 天(其中交易日 ${tradeDays.length} 天)・${nItems} 則報導(${nEvents} 件事)・涵蓋 ${evByStock.size} 檔 ・(股·日) ${dayCount.size} 筆`);
   console.log(`   台北日期 ${newsDays[0] || '-'} ~ ${newsDays[newsDays.length - 1] || '-'}`);
   console.log(`   ⛔ 情緒**用標題重判**(關鍵詞規則,利多 ${POS.length} 詞 / 利空 ${NEG.length} 詞),⛔ 不用檔案裡 AI 判的那欄`);
   console.log(`   ⚠️ 這裡的日期是**採礦當天**不是發布時間 → 但進場仍是「之後第一個交易日開盤」,`);

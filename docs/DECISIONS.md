@@ -1,3 +1,18 @@
+# 🧩💵🧭 V79.0.6 九個 repo(評估紀錄㊾)→ 新聞同一事件歸群 + 兩支探針:grs 四大買點 ≈ 0、「帳上賺、現金沒進來」是真的避雷
+- 🧩 **新聞歸群**(`universal_radar.py`,使用者核准;⛔ 不叫 AI):同一檔、同一天、三條任一 → 併成一則,舊那則 `dup += 1`、`also` 記來源(最多 3)。
+  - J 用字幾乎一樣(2-gram Jaccard ≥0.5;標題 <8 字不判)・N 有同一個 3 位數以上數字(⛔ 年份 2000~2039 不算)・R 同一個「N 月營收」(⛔「前 N 月」不算)。
+  - 🚨 **先量再定**:上一份提的「Jaccard ≥0.6」在 `news_hist.json` 33 天、221 對同檔同日標題裡只合併 2 對(同一件事各家寫法差太多,0.2~0.45);新規則 40 對、逐條人工看過都是同一件事。真資料 642 則 → 611 個事件。
+  - 中性那則被有方向的取代時,**來源也一起換**(⛔ 標題換了來源沒換 = 對不起來)。
+  - 歷史 `news_hist.json` 列多第 4 欄 n(另幾家也報;0 省略,舊 3 欄照讀)→ `news_event_probe --hist` 的「被報導幾則」改成 1 + n(意思不變),事件數另印。
+  - 前端 `_newsDupTxt`:總覽消息面 + AI 股神最新焦點印「・另 N 家也報」灰字,滑過去看是哪幾家(⚠️ `_escHtml` 不跳脫引號 → 屬性裡另外換 `&quot;`)。
+  - 🐛 順手:`build_stock_news` 讀 `source` / `published` / `reason`,但 `fetch_feed` 給的是 `source_name` / `published_time` / `ai_reason` → **個股新聞的來源、時間、理由從上線到現在都是空的**;改讀對的欄位,時間換成台北。
+  - 測試 `test_newscluster.py`(自我測試 / 門檻 1.0 決定性對照 / 正式入口 / 真資料併太多守門:台積電剩 ≥90%)+ `test_newsdup.mjs`;注入 7 種都紅。`universal_radar.py` 的 `feedparser` 改成沒裝也能 import(測試不打網路)。
+- 🧭 **grs 四大買點**(`bestfour_probe.mjs`,2,259 檔・2021~2026):八條 −0.13~+0.02pp;「3 日均剛上穿 6 日均」−0.13pp p=0.005 方向相反;B1 量門檻 ×1~×3 越嚴越差。→ LAB trap `grs-bestfour`。
+- 💵 **應計**(`accrual_probe.mjs`,1,937 檔・69 個月):應計最高 40% 抱 60 天 −0.70pp、避雷 6/6、逐年全負、去重疊三組 p 0.002~0.003;最低那組 +0.53pp 但去重疊後不顯著 → 只當避雷。→ LAB ok `avoid-accrual`(還沒接進 App)+ next(疊決策台 vs 安慰劑)。
+- 🚦 共用 `lib_evgate.mjs`:對照 = 同一天全部股票、檢定先每天平均。🚨 我自己第一版兩個錯:增量用逐筆平均、其他關用每天平均(出現「全期 + 但前後半都 −」);bestfour selftest ⑤ 期望值用 `DEDUP` 變數 → 去重拿掉也照樣過。都改了並注入確認。
+- 🔢 順手:V79.0.5 只改了 index.html 的版本,`pro.html VER` 還停在 V79.0.4(`test_prohtml ㊳` 抓到)→ 兩邊一起到 V79.0.6。
+- ⏳ 沒修:股名「三星」把 Samsung 新聞配到 5007。
+
 # 📦📚 V79.0.5 五個 A 股開源 repo 參考清單(評估紀錄㊽)→ 實驗室模式多兩樣:K 線回測持有區間、自訂回測紀錄 + 並排比較
 - 清單與授權見 `docs/EXTERNAL_REVIEWS.md` ㊽;沒有公開回測成績的策略可測 → 只借介面。
 - 📦 **K 線持有區間**:`_patternFitBacktest` 的 `bt()` 多回 `trips:[{i,j,r}]`(既有欄位不變;⛔ 寫 `playbook_` 快取前剝掉,不佔 localStorage)。挑法同 🃏 打法雷達主打(期望值正 + `_wrEnough`),都不夠就不畫;`_holdShadeTrips` 快取綁 sym + 根數 + 末日 + 出場規則(renderChart 縮放會一直叫)。K 線設定裡 `toggleHoldShade`(data-labonly,預設關),賺紅底賠綠底。測試 `test_holdshade.mjs`(⭐ 顏色用收盤獨立驗 —— 拿 trips.r 跟自己比,r 算反了照樣過,注入當場抓到)。
