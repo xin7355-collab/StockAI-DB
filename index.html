@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.0.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -898,7 +898,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.0.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.0.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8565,10 +8565,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.0.7',
+    _APP_VERSION: 'V79.0.8',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.0.8', d: ['🎯 決策台「今天可以買的」改成跟 👑 領頭羊一樣的表格:一列一檔(股名・現價・觸發價・停損・買幾張),點表頭可以排序,再點一次反過來。', '📑 個股報告頁的財報趨勢多了「負債比」「流動比」兩條(下一次財報資料更新後才會出現)。'] },
         { v: 'V79.0.7', d: ['🏷️ 個股新聞不再把「三星(Samsung)」「東南亞」「聯合國」「億光年」這類字誤歸到同名的台股,總覽的「近期有事件」也一樣;國際新聞翻譯偶爾回一段指令文字當標題的情況也擋掉了。'] },
         { v: 'V79.0.6', d: ['📰 個股新聞:同一件事被好幾家報導,現在合成一則,後面寫「另 N 家也報」,清單比較短;新聞的來源和時間以前是空白的,也補上了。'] },
         { v: 'V79.0.5', d: ['🔬 研究用的實驗室模式多兩樣:K 線可以畫出「這檔最會賺的那一招」過去每一趟從買到賣的區間,自訂回測跑完會自動存起來、可以勾兩筆並排比。散戶 App 一般畫面沒有變動。'] },
@@ -8694,9 +8695,6 @@ ${list}
             '💰 修掉「<b>釣到馬上就賺</b>」:以前釣起價用的是選股那天的收盤(可能是好幾天前),籃子卻拿今天的即時價去比。現在釣起價 = 釣到那一刻的價,剛放進去就是 0 元。',
             '🏠 新增「<b>帶回家養</b>」:漁獲籃按一下,魚就搬到散戶救星「自選 → 🎣 魚池」,每一列寫釣起日、釣起價 → 現價、賺賠 % 和一張賺賠多少元(已扣手續費與稅)。魚池跟一般自選一樣會收 Telegram 買點提醒;⛔ 不會放進庫存。手機把股海釣手裝在主畫面時兩邊可能讀不到彼此,這時到魚池按「📥 貼上匯入碼」(按帶回家養時已經幫你複製好了)。',
         ], dt: '2026-09-29' },
-        { v: 'V77.9.8', d: [
-            '🎣 釣魚 App 改名「<b>股海釣手</b>」,而且<b>只能從它自己的網址或主畫面圖示打開</b>:產業作戰室的釣魚按鈕、個股面板的「放下水」都拿掉了;📒 成績單點股名改成開個股面板。',
-        ], dt: '2026-09-29' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -8755,27 +8753,29 @@ ${list}
     //      ⛔ 寫死第二份的話,重跑回測之後這頁就開始說謊。
     //   ③ 每一條都要有**實測數字**與**在哪一頁**,否則使用者無從判斷該不該刪。
     //   ④ ⛔ 不用紅綠(講的是「有沒有用」不是漲跌方向,燈號鐵則)。
+    //   ⑤ 📰 V79.0.8 最後一欄(選填)= 已經講同一個結論的專欄條目主題鍵(pro.html LAB 的 k)——
+    //      產業作戰室的雜訊清單看到它在專欄裡就**不再重複列**(使用者:「我不要重複訊息」);⛔ 只填結論完全一樣的。
     _NOISE_GONE: [
         ['🚦 總覽「現在怎麼做」舊劇本(交易風格 5 日線/月線・目標與賺賠比・回後買上漲・明日劇本・綜合信心分)+ 進場明細(進場體檢分數・朱老師四關卡・位階溫度計・法人目標價)+ 進場劇本(打法雷達・3-3-4 分批)+ 防守出場(20MA 保衛價・島狀反轉逃命價・突破棒・四大金剛・出場總表)', 'V77.5.2 移出總覽', '5 日線出場在 49 個月組合回測裡墊底(數字見 `_EXIT_EDGE`);分數是自編權重(陷阱 #38);加碼 / 分批 / 提早減碼回測都沒有這一步。⚠️ 照算不顯示(裡面有別處的唯一產生者)'],
         ['🔔 一鍵盯價的舊價位(5 日線停利・帶量過前高買・回月線找買點)與價格尺的 🛒 買進 / 🔺 追買', 'V77.5.2 換掉', '改盯現行三條出場的價格線(有庫存)/ 這一檔自己的招的觸發價(空手)'],
-        ['🔬 X 光機:📊 投資屬性 3 軸雷達・🧬 體質分 /100・🎯 市場預期 & 定價・PEG / 比同業「便宜昂貴」標籤・數字的紅綠好壞色', 'V77.5.2 刪除', '雷達與體質分是自編權重(陷阱 #38);本益比便宜單調反向(pe_probe)、比同業便宜 +0.01pp、PEG<1 扣成本 +0.06 且 2021/2022 為負(valuation_deep_probe)。數字照留、只拿掉好壞判斷'],
-        ['📋 當沖掛單計畫(突破進場・停損・停利)+「✅ 已達進場」閃爍', 'V77.5.1 刪除', '開盤區間突破 / 昨高低突破進場扣完成本全負,停利停損 16 種組合**期望值全負**;而且它常跟上面那句「➖ 不值得當沖」同時出現 = 自己打架'],
-        ['🩸 分時均價線 VWAP・🔔 開盤定調・🚀 開盤區間突破 ORB・⚖️ 相對大盤強弱・⚡ 量能達標度', 'V77.5.1 刪除', 'VWAP 5/15/60 分K 全負;開盤跳空越大越糟;開高空/開低買是開盤撮合價假象(晚 1 分鐘進場就沒了);盤中「大盤順風」方向相反;量比 <1 = 假突破沒有鑑別力'],
+        ['🔬 X 光機:📊 投資屬性 3 軸雷達・🧬 體質分 /100・🎯 市場預期 & 定價・PEG / 比同業「便宜昂貴」標籤・數字的紅綠好壞色', 'V77.5.2 刪除', '雷達與體質分是自編權重(陷阱 #38);本益比便宜單調反向(pe_probe)、比同業便宜 +0.01pp、PEG<1 扣成本 +0.06 且 2021/2022 為負(valuation_deep_probe)。數字照留、只拿掉好壞判斷', 'myth-value5'],
+        ['📋 當沖掛單計畫(突破進場・停損・停利)+「✅ 已達進場」閃爍', 'V77.5.1 刪除', '開盤區間突破 / 昨高低突破進場扣完成本全負,停利停損 16 種組合**期望值全負**;而且它常跟上面那句「➖ 不值得當沖」同時出現 = 自己打架', 'myth-daytrade22'],
+        ['🩸 分時均價線 VWAP・🔔 開盤定調・🚀 開盤區間突破 ORB・⚖️ 相對大盤強弱・⚡ 量能達標度', 'V77.5.1 刪除', 'VWAP 5/15/60 分K 全負;開盤跳空越大越糟;開高空/開低買是開盤撮合價假象(晚 1 分鐘進場就沒了);盤中「大盤順風」方向相反;量比 <1 = 假突破沒有鑑別力', 'myth-daytrade22'],
         ['⚡ 隔日沖 T+1 攻防預判 + 隔日沖判斷 + 打開漲停 + 族群補漲候選', 'V77.5.1 刪除', '跟著分點/隔日沖佔比做,三支探針都打掉(佔比高反而 +1.39pp);「劇本成真度 %」是憑空權重;補漲候選拿掉最好年轉負'],
-        ['🎯 當沖候選掃描(含 09:15 自動推播)', 'V77.5.1 刪除', '用 VWAP/內外盤/開盤條件列做多做空名單 —— 那幾條都已實測不成立,還會主動推播'],
+        ['🎯 當沖候選掃描(含 09:15 自動推播)', 'V77.5.1 刪除', '用 VWAP/內外盤/開盤條件列做多做空名單 —— 那幾條都已實測不成立,還會主動推播', 'myth-daytrade22'],
         ['📊 5 日訊號準確度排行', 'V74.2.0 刪除', '只拿自選 ≤30 檔做小樣本回測,已被全市場 129 個訊號的實測表取代'],
         ['🏦 法人近 20 日推估成本', 'V74.2.0 刪除', '站上/跌破它的後續報酬只差 ±0.2pp,六道關卡 0 過 = 沒有鑑別力'],
-        ['🎯 隔日沖勝率回測', 'V74.2.0 刪除', '「盤中最高碰得到 +1.5%」的機率有 53~72%,但用做得到的方式出場、扣掉成本之後**每一種都是負的** —— 碰得到 ≠ 賺得到'],
-        ['⚡ 盤中連量偵測', 'V74.2.0 刪除', '日線版與真分 K 版各測一次都不成立,而且方向跟坊間說法相反(分 K 版八種情境勝率 18~32%,對照組 49~52%)'],
+        ['🎯 隔日沖勝率回測', 'V74.2.0 刪除', '「盤中最高碰得到 +1.5%」的機率有 53~72%,但用做得到的方式出場、扣掉成本之後**每一種都是負的** —— 碰得到 ≠ 賺得到', 'myth-dtflip'],
+        ['⚡ 盤中連量偵測', 'V74.2.0 刪除', '日線版與真分 K 版各測一次都不成立,而且方向跟坊間說法相反(分 K 版八種情境勝率 18~32%,對照組 49~52%)', 'myth-volturn'],
         ['🎙️ 分析師焦點', 'V72.8.0 整組移除', '機房 IP 拿不到逐字稿與新聞正文,只抓得到標題 —— 而標題對操作沒有用'],
         ['🚨 處置股 8 款推估', 'V70.3.1 下架', '第 8 款(權證溢價)永遠沒有資料源,8 款推估撐不起來;官方名單那部分留著'],
+        ['🗺️ 地緣分點(券商跟公司同縣市)', 'V79.0.0 隨分點整組移除', '+0.01pp(11 萬筆),排除雙北 −0.07pp,前後半段還不同向'],
+        ['🎣 拋竿舊漏斗(位階 → 板塊 → 板塊內最強)', 'V76.3.0 換掉', '每一層單獨都六關全過,但串起來相對「強勢板塊裡隨便挑」是 −0.52pp → 改用決策台那一套'],
     ],
     _NOISE_KEEP: [
-        ['🧊 低檔布局(便宜就買)', '總覽・現在怎麼做', '10/20/60 日**三個天期全是負的**(−0.15 / −0.25 / −0.58pp,樣本 16,358 筆)', '照顯示但卡上直接標「實測沒有優勢」—— 刪掉的話使用者會以為「沒有這種情況」'],
+        ['🧊 低檔布局(便宜就買)', '總覽・現在怎麼做', '10/20/60 日**三個天期全是負的**(−0.15 / −0.25 / −0.58pp,樣本 16,358 筆)', '照顯示但卡上直接標「實測沒有優勢」—— 刪掉的話使用者會以為「沒有這種情況」', 'myth-lowbuy'],
         ['👩 投信買超佔成交量比', '籌碼頁', '七個級距的優勢**只存在 2026 這一段**,六道關卡一關都沒過;而且投信「賣超」那端也是正的 = 活躍度不是方向', '只做單位換算、⛔ 不下多空、不計分'],
-        ['🗺️ 地緣分點(券商跟公司同縣市)', '籌碼頁', '+0.01pp(11 萬筆),排除雙北 −0.07pp,前後半段還不同向', '只做事實描述,卡上附實測數字'],
-        ['🎣 拋竿(產業作戰室)', '產業作戰室・釣魚池', '每一層單獨都六關全過,但**串起來**相對「強勢板塊裡隨便挑」是 −0.52pp', '保留成「候選清單」,卡上直接寫出那兩個負數'],
-        ['📐 布林壓縮 / 夾娃娃', '(沒有做)', '壓縮那一格是全表最差(−0.89pp),「壓縮後擴張」也是負的 —— 方向跟坊間說法相反', '⛔ 不做;寫在這裡是因為很多人會問'],
+        ['📐 布林壓縮 / 夾娃娃', '(沒有做)', '壓縮那一格是全表最差(−0.89pp),「壓縮後擴張」也是負的 —— 方向跟坊間說法相反', '⛔ 不做;寫在這裡是因為很多人會問', 'myth-bbsqueeze'],
     ],
     _noiseHtml() {
         // ① K 棒訊號:分級與期望值都從 `_SIGNAL_EDGE` **現算**(⛔ 不寫死)
@@ -26016,6 +26016,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const Q = F.q.slice(-12);
         const rows = Q.map(q => ({ p: String(q.p || ''), rev: num(q.rev), gm: num(q.gm), eps: num(q.eps), nm: num(q.nm), fcf: num(q.fcf),
                                    ocf: num(q.ocf), doi: num(q.doi), oim: num(q.oim),   // V77.3.0:營業現金流 / 存貨天數 / 營益率(回算前是 null)
+                                   debt: num(q.debt), cur: num(q.cur),   // V79.0.8 負債比 / 流動比(fin_slice 算好的期末值;回算前是 null)
                                    par: !!(parQ && String(q.p) >= String(parQ)) }));
         // 📍 V77.3.0 三種事實標記(⛔ 純事實、⛔ 不進計分、⛔ 只在這一處算 —— HTML 與 canvas 只讀 `marks`):
         //   gm:毛利率 QoQ 掉 ≥ th pp ・ocf:營業現金流(單季)正→負 ・doi:存貨天數 QoQ +th% 以上
@@ -26068,7 +26069,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         } catch (_) { struct = null; }
         const parN = rows.filter(r => r.par).length;
         const hasOim = rows.some(r => r.oim != null);
-        return { rows, yoy, verdict, struct, parQ, parN, marks, hasOim, n: rows.length, disp: Math.min(rows.length, this._RP_TREND_N), updated: F.updated || '' };
+        const hasBs = rows.some(r => r.debt != null || r.cur != null);
+        return { rows, yoy, verdict, struct, parQ, parN, marks, hasOim, hasBs, n: rows.length, disp: Math.min(rows.length, this._RP_TREND_N), updated: F.updated || '' };
     },
     // 📉 極簡 sparkline(inline SVG,零依賴)—— ⛔ 不用 ECharts(V74.7.2:圖表元件載不到會把整個 App 帶走)
     //   ⚠️ `gap` 為 true 的那幾點**斷線**(面額變更 → EPS 不同尺,連起來會看成崩掉)。
@@ -26132,7 +26134,10 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             + line('每股盈餘', col('eps'), '#38bdf8', eL == null ? '—' : `${f(eL, 2)} 元`, { gap: gaps, zero: 0 })
             + line('營業現金流(單季)', col('ocf'), '#38bdf8', ocL == null ? '—' : `${f(ocL / 1e8, 1)} 億`, { zero: 1, marks: mkOf('ocf') })
             + line('自由現金流(單季)', col('fcf'), '#38bdf8', cL == null ? '—' : `${f(cL / 1e8, 1)} 億`, { zero: 1 })
-            + line('存貨天數', col('doi'), '#38bdf8', dL == null ? '—' : `${f(dL, 0)} 天`, { marks: mkOf('doi') });
+            + line('存貨天數', col('doi'), '#38bdf8', dL == null ? '—' : `${f(dL, 0)} 天`, { marks: mkOf('doi') })
+            // 🏦 V79.0.8 產業作戰室財報分頁刪除 → 只有它有的負債比 / 流動比搬到這裡(⛔ 不另算:fin_slice 算好的期末值)
+            + (T.hasBs ? line('負債比', col('debt'), '#38bdf8', lastOf(col('debt')) == null ? '—' : `${f(lastOf(col('debt')), 1)}%`)
+                       + line('流動比', col('cur'), '#38bdf8', lastOf(col('cur')) == null ? '—' : `${f(lastOf(col('cur')), 0)}%`) : '');
         if (!body) return '';
         // 🚨 只描述,⛔ 不給方向 —— 本站**本站沒有回測過**「毛利率背離」能不能預測股價
         const vd = T.verdict ? `<div class="text-[10px] leading-snug mt-0.5" data-rptrendvd="${T.verdict.key}">
@@ -26148,7 +26153,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             return `<div class="text-[10px] text-gray-300 leading-snug mt-0.5" data-rpstruct="${T.struct.key}">📊 <b>${up ? '賺的錢在成長,但收得到的現金在縮' : '賺的錢在縮,但收得到的現金反而變多'}</b>(近 4 季稅後淨利 ${T.struct.dNi >= 0 ? '+' : ''}${f(T.struct.dNi, 0)}%、自由現金流 ${T.struct.dFcf >= 0 ? '+' : ''}${f(T.struct.dFcf, 0)}%,都跟一年前的近 4 季比)<br><span class="text-gray-500" data-rpstructbase="${B.hit}">⚠️ <b>這不是罕見事件</b>:全市場算得出來的 ${B.n.toLocaleString()} 檔裡有 <b>${B.hit} 檔(${Math.round(B.hit / B.n * 100)}%)</b>現在也是兩邊方向相反(${this._dW(B.d) || B.d})。${up ? '常見原因是應收帳款或存貨變多、資本支出拉高 —— ⛔ 本站沒有這幾欄,查不出是哪一個。' : '常見原因是資本支出退潮或存貨去化 —— 同樣⛔ 查不出是哪一個。'}⛔ 這只是事實,不是買賣訊號。</span></div>`;
         })() : '';
         // 📈 營益率:V77.3.0 起採礦回算會抓損益表的營業利益(OperatingIncome)→ 回算跑完前那條線不畫、只說明(⛔ 不寫「資料源沒有」—— 上方「📈 三率(近三季)」就有 3 季)
-        const oimNote = T.hasOim ? '' : '<br>⏳ <b>營益率</b>那條線要等財報回算跑完才會出現(採礦端已加欄位);在那之前上面「📈 三率(近三季)」有 <b>3 季</b>的營益率可看。';
+        const oimNote = (T.hasOim ? '' : '<br>⏳ <b>營益率</b>那條線要等財報回算跑完才會出現(採礦端已加欄位);在那之前上面「📈 三率(近三季)」有 <b>3 季</b>的營益率可看。')
+            + (T.hasBs ? '' : '<br>⏳ <b>負債比 / 流動比</b>要等下一次財報回算才有(資產負債表那幾欄是新加的);⛔ 沒有就不畫、不補 0。');
         return `<div class="text-[10px] font-bold text-gray-300 mt-2 mb-0.5">📈 近 ${T.disp} 季趨勢(左舊 → 右新)</div>${body}${mkLine}${vd}${st}${parNote}
             <div class="text-[9px] text-gray-500 leading-snug">⛔ 這是<b>事實描述</b> —— 拿它看「成長有沒有品質」,⛔ 別拿它當買賣訊號。${oimNote}</div>`;
     },
@@ -48016,7 +48022,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     <div class="text-[10px] text-gray-500 mt-1 leading-snug">⚙️ 設定中心可以關掉這一條。</div>
                     ${this._idle0050NoteHtml()}${this._parkAmountHtml()}
                     ${gl.length || gf.length ? `<details class="mt-1.5"><summary class="cursor-pointer text-[10px] text-gray-500 select-none">👀 如果照買會是哪幾檔(${gl.length + gf.length})—— ⛔ 今天不買 <span class="text-gray-600">展開 ▾</span></summary>
-                        <div class="space-y-1 mt-1 opacity-70">${gl.map((x, i) => this._pbRowHtml(x, mine, i + 1, 0, false)).join('')}${gf.map(x => `<div class="text-[10px] text-gray-500 font-mono">${this._escHtml(String(x.s || x.sym || ''))}</div>`).join('')}</div></details>` : ''}
+                        <div class="mt-1 opacity-70">${gl.length ? this._deckBuyTableHtml(gl, mine) : ''}${gf.map(x => `<div class="text-[10px] text-gray-500 font-mono">${this._escHtml(String(x.s || x.sym || ''))}</div>`).join('')}</div></details>` : ''}
                 </div>`;
             } else if (st.buy.length) {
                 const mine = this._mySyms();
@@ -48058,7 +48064,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                             ⭐ 一天最多 ${this._DECK_TRACK49.picks} 檔;${st.hqN} 檔符合 🧬,只取前 ${this._DECK_TRACK49.picks} 名。
                         </div>
                     </details>
-                    <div class="space-y-1">${st.buy.map((x, i) => this._pbRowHtml(x, mine, i + 1, 0, st.finOn && (st.finUnknown || []).includes(String(x.s))) + `<div data-deckprob="${this._escHtml(String(x.s))}" class="pl-2 -mt-0.5"></div>`).join('')}</div>
+                    ${this._deckBuyTableHtml(st.buy, mine, sym => !!(st.finOn && (st.finUnknown || []).includes(sym)))}
                     <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">
                         📅 用 <b class="text-gray-500">${this._escHtml(st.pbDate || '—')}</b> 的收盤算的${st.pbUpd ? ` ・採礦 ${this._escHtml(this._fmtNewsTime(st.pbUpd))} 跑完` : ''}
                         ・全市場 ${st.total} 筆裡符合 🧬 且非空頭的有 ${st.hqN} 檔${st.bearN ? ` ・已排除空頭 ${st.bearN} 檔` : ''}
@@ -48267,13 +48273,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     },
 
     _DECK_THIN_AMT: 1,   // 🚧 億元;= 產業作戰室那邊的 CAST_MIN_AMT(test_leaderdeck ⑥ 跨檔比對)
-    _pbRowHtml(x, mine, rank, dupN, noFin) {
-        const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? n : ''; };
-        const isMine = mine.has(String(x.s));
-        const c = +x.c, stop = +x.stop;
-        // ⚠️ `trig` 可能是 null(這招不是靠價位觸發)→ 一律用現價當基準,⛔ 不可拿 null 去算
-        const hasTrig = x.trig != null && +x.trig > 0;
-        const trig = hasTrig ? +x.trig : c;
+    /** 🏷️ V79.0.8 一列股票的標籤(⛔處置 / 🚧量薄 / 🏷️非上市櫃 / 🏷️沒財報)—— 抽出來給 `_pbRowHtml` 與決策台表格共用,⛔ 不各寫一份 */
+    _pbTagsHtml(x, noFin) {
         // 🚨 V76.3.0 使用者問「還有什麼可以更好」→ **決策台自己也該標處置股**。
         //   實測 `_deckState` 就是「🧬 過關 + 非空頭」取前 2,**完全沒有**處置股守門 ——
         //   而 V74.5.6 使用者已明示「推薦處置中的股票不對」(釣魚池那邊當時修了、這裡漏接 = 陷阱 #37)。
@@ -48307,6 +48308,85 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const _noFinTag = noFin
             ? '<span class="text-[9px] flex-shrink-0 font-bold text-gray-400 border border-gray-600 rounded px-1" title="🏷️ 你開了「只挑營收年增加速的」,但本站沒有這一檔的財報切片(或季數不足 6 季算不出「比上一季加速多少」)。⛔ 這是「不知道」不是「沒通過」 —— 所以它仍然留在名單上,但⛔ 沒有被那道濾網驗過。">🏷️沒財報</span>'
             : '';
+        return { dispTag, thinTag, _offTag, _noFinTag };
+    },
+    /** 🎯 V79.0.8 決策台「今天可以買的」改成 👑 那種表格(使用者:「今天可以買的介面我要跟領頭羊一樣」)
+     *   ⭐ 版面照抄 `_leaderDeckHtml`:CSS grid、表頭可點排序、同一欄再點反向;每列點名字進個股頁。
+     *   ⛔ 名單 / 觸發價 / 停損 / 張數一個都不改 —— 標籤走 `_pbTagsHtml`、張數走 `_lotsForPlaybook`(⛔ 不另算)。
+     *   ⛔ 期望值本來就沒顯示,這裡也不加(散戶 App 不放研究數字)。 */
+    _DECK_BUY_SORT_COLS: [
+        { k: 'rank', n: '#', asc: true }, { k: 'c', n: '現價', asc: false }, { k: 'trig', n: '觸發價', asc: false },
+        { k: 'stop', n: '停損', asc: false },
+    ],
+    deckBuySortBy(k) {
+        const cur = this._deckBuySort || { k: 'rank', asc: true };
+        const def = (this._DECK_BUY_SORT_COLS.find(c => c.k === k) || {}).asc;
+        this._deckBuySort = cur.k === k ? { k, asc: !cur.asc } : { k, asc: !!def };
+        const box = document.querySelector('[data-deckbuytbl]'), L = this._deckBuyLast;
+        if (!box || !L) return;
+        box.outerHTML = this._deckBuyTableHtml(L.rows, L.mine, L.noFin);
+        try { this._deckProbFill(document.querySelector('[data-deckbuytbl]')); } catch (_) {}
+    },
+    _deckBuyTableHtml(list, mine, noFin) {
+        noFin = noFin || (() => false);
+        this._deckBuyLast = { rows: list, mine, noFin };
+        const esc = v => this._escHtml(String(v ?? ''));
+        const px = v => (v == null || !isFinite(+v) || +v <= 0) ? '—' : (+v).toLocaleString(undefined, { maximumFractionDigits: 2 });
+        const sort = this._deckBuySort || { k: 'rank', asc: true };
+        const rows = list.map((x, i) => {
+            const hasTrig = x.trig != null && +x.trig > 0;
+            return { x, rank: i + 1, c: +x.c, trig: hasTrig ? +x.trig : null, up: hasTrig && x.up != null ? +x.up : null, stop: +x.stop > 0 ? +x.stop : null };
+        }).sort((a, b) => {
+            const va = a[sort.k], vb = b[sort.k], nil = sort.asc ? Infinity : -Infinity;   // 沒有值的一律排最後
+            const d = (va == null ? nil : +va) - (vb == null ? nil : +vb);
+            return (sort.asc ? d : -d) || (a.rank - b.rank);
+        });
+        const COLS = 'grid-template-columns:18px minmax(0,1fr) 50px 58px 48px 64px';
+        const C = Object.fromEntries(this._DECK_BUY_SORT_COLS.map(c => [c.k, c]));
+        const th = c => { const on = sort.k === c.k; return `<button onclick="app.deckBuySortBy('${c.k}')" data-deckbuysort="${c.k}" class="text-right ${on ? 'text-cyan-300 font-bold' : 'text-gray-500'}">${c.n}${on ? (sort.asc ? '▲' : '▼') : ''}</button>`; };
+        const hdr = `<div class="text-[9px] py-0.5 border-b border-[#30363d] items-baseline" style="display:grid;${COLS};gap:4px" data-deckbuyhdr="1">${th(C.rank)}<span class="text-gray-500">股票</span>${th(C.c)}${th(C.trig)}${th(C.stop)}<span class="text-gray-500 text-right">買幾張</span></div>`;
+        let noAcc = false;
+        const row = r => {
+            const x = r.x, sym = String(x.s), isMine = mine.has(sym), nf = noFin(sym);
+            const T = this._pbTagsHtml(x, nf);
+            const nm = this._nmDual ? this._nmDual(sym) : { n: sym, sub: '' };
+            const ps = this._lotsForPlaybook(r.trig != null ? r.trig : r.c, +x.stop);
+            const lots = ps.acc > 0 ? (ps.shares > 0 ? `<b class="text-red-300">${esc(ps.howTxt)}</b>` : '<span class="text-yellow-400">買不起</span>') : '<span class="text-gray-500" title="先到 ⚙️ 設定填「帳戶總資金」">—</span>';
+            // 沒填帳戶資金 → 每一列⛔ 不重複同一句提示(表格底下講一次)
+            const sub = ps.acc > 0 && ps.shares > 0
+                ? `約 ${Math.round(ps.investAmt).toLocaleString()} 元(佔本金 ${ps.investPct.toFixed(0)}%)・停損時虧 <b>${(ps.maxLoss ?? 0).toLocaleString()} 元</b>${ps.oddOnly ? '・🧩 <b>零股</b>' : ''}${ps.riskPct > 2 ? '<span class="text-yellow-400">・⚠️ 停損很寬,可考慮減量</span>' : ''}`
+                : ps.acc > 0 ? `本金太小,這檔 1 股要 ${Math.round(r.trig || r.c).toLocaleString()} 元` : '';
+            if (!(ps.acc > 0)) noAcc = true;
+            const trigCell = r.trig != null
+                ? `<span class="text-right leading-tight" data-deckbuytrig="${r.trig}"><span class="font-mono text-[11px] text-gray-100 block">${px(r.trig)}</span><span class="font-mono text-[9px] text-gray-500">${r.up != null ? `+${r.up.toFixed(1)}%` : ''}</span></span>`
+                : `<span class="text-[9px] text-gray-500 text-right leading-tight" data-deckbuytrig="none" title="這招不是靠「漲過某個數字」成立,App 盤中會用即時價重算">盤中算</span>`;
+            return `<div class="py-1 border-b border-[#21262d] ${isMine ? 'bg-amber-900/15' : ''}" data-deckbuyrow="${esc(sym)}" data-deckbuyrank="${r.rank}">
+                <div class="items-center" style="display:grid;${COLS};gap:4px">
+                    <span class="font-mono text-[10px] ${r.rank <= 3 ? 'text-amber-300' : 'text-gray-500'} text-right">${r.rank}</span>
+                    <span class="min-w-0 cursor-pointer leading-tight" onclick="app.analyze('${esc(sym)}'); app.switchAppTab('diag'); app.vibrate(15);" data-deckbuyname="${esc(sym)}"><span class="block truncate text-[12px] text-gray-100">${isMine ? '👜 ' : ''}${esc(nm.n)}</span><span class="flex items-center gap-1 flex-wrap"><span class="text-[9px] text-gray-500 font-mono">${esc(nm.sub || sym)}</span>${T.dispTag}${T.thinTag}${T._offTag}${T._noFinTag}${+x.bear ? '<span class="text-[9px] text-yellow-300" title="收盤同時跌破 20 日線與 60 日線">⚠️破線</span>' : ''}</span></span>
+                    <span class="font-mono text-[11px] text-gray-100 text-right">${px(r.c)}</span>
+                    ${trigCell}
+                    <span class="font-mono text-[11px] text-gray-100 text-right">${px(r.stop)}</span>
+                    <span class="text-[10px] text-right">${lots}</span>
+                </div>
+                <div class="flex items-center justify-between gap-2 mt-0.5 pl-[22px]" style="${sub || r.trig != null ? '' : 'display:none'}">
+                    <span class="text-[9px] text-gray-400 leading-snug min-w-0" style="flex:1 1 0">${sub}</span>
+                    ${r.trig != null ? `<button onclick="event.stopPropagation();app._copyCondOrder('${esc(sym)}')" class="text-[9px] text-cyan-300 border border-cyan-700/50 rounded px-1.5 py-0.5 flex-shrink-0">📋 條件單</button>` : ''}
+                </div>
+                <div data-deckprob="${esc(sym)}" class="pl-[22px]"></div>
+            </div>`;
+        };
+        const body = rows.map(row).join('');
+        return `<div data-deckbuytbl="1">${hdr}${body}${noAcc ? '<div class="text-[10px] text-gray-400 mt-1" data-deckbuynoacc="1">買幾張?先到 ⚙️ 設定填「帳戶總資金」就會幫你算</div>' : ''}<div class="text-[9px] text-gray-600 mt-1 leading-snug">觸發價 = 收盤前<b>漲過</b>它才買(底下「+%」= 離現價還差多少)・停損 = 跌破就賣・點股名看個股・點表頭可排序</div></div>`;
+    },
+    _pbRowHtml(x, mine, rank, dupN, noFin) {
+        const nm = s => { const n = this.getStockName ? (this.getStockName(s) || '') : ''; return (n && n !== s) ? n : ''; };
+        const isMine = mine.has(String(x.s));
+        const c = +x.c, stop = +x.stop;
+        // ⚠️ `trig` 可能是 null(這招不是靠價位觸發)→ 一律用現價當基準,⛔ 不可拿 null 去算
+        const hasTrig = x.trig != null && +x.trig > 0;
+        const trig = hasTrig ? +x.trig : c;
+        const { dispTag, thinTag, _offTag, _noFinTag } = this._pbTagsHtml(x, noFin);
         // ⭐ V73.0.1 改用**等權**(⛔ 不是風險法)—— 理由見 `_lotsForPlaybook` 上方的實測數字
         const ps = this._lotsForPlaybook(trig, stop);
         // 📐 主數字用**保守下界**(期望值 − 1.28×標準差/√次數),⛔ 不可用原始期望值 ——
