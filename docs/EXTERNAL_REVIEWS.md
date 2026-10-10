@@ -7,6 +7,21 @@
 
 ---
 
+### 📦 外部參考資料的評估紀錄㊽:五個 A 股開源 repo(2026-10-10 使用者貼網址)—— ⭐ **沒有可以拿來回測的新策略;借兩個介面做法(K 線持有區間 / 回測紀錄比較),新聞歸群要先問**
+使用者:「看一下網站內容有沒有什麼可以參考的、升級的程式、更好的邏輯、適合回測的策略、介面調整,都列出來」。
+| repo | 是什麼 | 授權 |
+|---|---|---|
+| pythonstock/stock | A 股資料庫 + stockstats 17 種指標表(KDJ/RSI 超買超賣)+ tornado 資料表 | Apache-2.0 |
+| wkingnet/stock-analysis | 通達信本地資料 + 訊號先算好存 CSV 再丟 RQalpha + pyecharts 標持有區間 | MPL-2.0 |
+| garydai/stock | 雪球討論量 vs 股價、貝氏情緒(作者自己測約 5 成)| 沒寫 → 只借想法 |
+| Gary-Hertel/StockQuant | Tushare + easytrader 下單 + 釘釘/Email 提醒 | 沒寫 → 只借想法 |
+| qilihei/StockAgent | 微服務 + 多來源新聞 + LLM 同事件歸群 + AI 報告 + 單股/多因子回測 + 回測紀錄 | MIT |
+
+- **早就有或測過**:指標訊號(indicator_zoo 48 個 0 過;KAMA 沒單獨測,但「多加一個指標」zoo / strat6 兩次都沒增量 → ⛔ 不測)・訊號先算好再回測(= `TRADES_CACHE`)・前復權(`_backadjust_splits` + 陷阱 #46)・討論量 / 情緒(`news_event_probe`:活躍度 ≠ 方向)・提醒(Telegram / PWA)・自動下單(`auto_trade.py`)・AI 報告 + 早報晚報(而且本站有 `_aiNumGate`,它們沒有)・多因子組合回測(`portfolio_backtest` + `factor_search_probe` 安慰劑)・單股回測 / 自選分組 / 觸發提醒。
+- **做不到 / 不該做**:台股沒有可回測的討論區歷史 ・微服務 / 向量庫 / MySQL(本站只有 Pages + Actions)・表頭 shift 多欄排序(手機沒有 shift)・**五個 repo 沒有一個公開回測成績** → 沒有策略可照抄來測。
+- ✅ **V79.0.5 做了**(都只在實驗室模式):① K 線「📦 回測持有區間」(wkingnet)= `_patternFitBacktest` 每一趟的 trips,⛔ 不另寫回測 ② 自訂回測「📚 回測紀錄 + 並排比較」(StockAgent)。
+- ⏳ **要先問**:新聞「同一事件」歸群(StockAgent 用 LLM;本站可用標題字元相似度)—— 是 `universal_radar.py` 的採礦改動。
+
 ### 🧱 外部參考資料的評估紀錄㊼:StockSharp(C# 交易平台,2026-10-10 使用者貼網址)—— ⭐ **授權是專有的(⛔ 不是 Apache);能借的只有兩個回測邏輯,一個沒差、一個有害**
 - 是什麼:Windows/.NET 桌面平台,連 90+ 券商、回測模擬器(撮合、延遲、手續費)、資料儲存(Hydra)、視覺化策略編輯器(Designer)、參數最佳化、風控規則。整個搬不上 GitHub Pages。
 - 🚨 LICENSE:「StockSharp Custom License Notice・Copyright StockSharp Platform LLC・All rights reserved」→ 條款以官網 EULA 為準 → ⛔ 不抄程式碼(Repo X-Ray 認不出授權就是因為這個)。

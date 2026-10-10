@@ -1,3 +1,9 @@
+# 📦📚 V79.0.5 五個 A 股開源 repo 參考清單(評估紀錄㊽)→ 實驗室模式多兩樣:K 線回測持有區間、自訂回測紀錄 + 並排比較
+- 清單與授權見 `docs/EXTERNAL_REVIEWS.md` ㊽;沒有公開回測成績的策略可測 → 只借介面。
+- 📦 **K 線持有區間**:`_patternFitBacktest` 的 `bt()` 多回 `trips:[{i,j,r}]`(既有欄位不變;⛔ 寫 `playbook_` 快取前剝掉,不佔 localStorage)。挑法同 🃏 打法雷達主打(期望值正 + `_wrEnough`),都不夠就不畫;`_holdShadeTrips` 快取綁 sym + 根數 + 末日 + 出場規則(renderChart 縮放會一直叫)。K 線設定裡 `toggleHoldShade`(data-labonly,預設關),賺紅底賠綠底。測試 `test_holdshade.mjs`(⭐ 顏色用收盤獨立驗 —— 拿 trips.r 跟自己比,r 算反了照樣過,注入當場抓到)。
+- 📚 **回測紀錄**:跑完(沒取消)存摘要到 IndexedDB `cbtLog`(留 20 筆,⛔ 每一趟不存;`idb.prune` 白名單加 `cbtLog`);表頭五欄可排序、勾兩筆並排(後−前),母體或窗口不同就寫「⛔ 不可直接說哪個條件比較好」。🐛 測試抓到 id 用 `Date.now()` 同一毫秒會撞號 → 🗑️ 一次刪兩筆 → 改成比現有最大再 +1。測試 `test_cbtlog.mjs`。
+- ⏳ 新聞同事件歸群沒做(採礦改動,要先問)。
+
 # 🧱🛡️ V79.0.4 StockSharp / go-stock 參考清單 → 兩個沒測過的邏輯回測完:帳戶淨值閘門 ⛔ 全輸、成交量上限只差約 2~5%
 使用者:「看一下兩個 repo 有沒有可以參考的、升級的程式、更好的邏輯、適合回測的策略,都列出來」。
 - go-stock(GPL-3.0)= 評估紀錄㊴,沒有新的可拿(唯一值得借的 AI 數字核對 V77.8.1 已做)。

@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.0.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.0.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -850,6 +850,7 @@
                     <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleExDiv" checked onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">除權息</span></label>
                     <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleFinRpt" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">財報公告</span></label>
                     <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="toggleRev" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">月營收</span></label>
+                    <label data-labonly="1" class="flex items-center gap-2 cursor-pointer" title="實驗室:把「這檔歷史最會賺的那一招」照你設定的出場規則在 K 線上一趟一趟畫出來(紅底 = 那一趟賺、綠底 = 那一趟賠)"><input type="checkbox" id="toggleHoldShade" onchange="app.renderChart()" class="w-4 h-4 accent-orange-500 flex-shrink-0"><span class="text-[13px] text-gray-200">📦 回測持有區間</span></label>
                 </div>
                 <button onclick="app._resetAllKchart()" class="w-full mt-3 py-2 text-[12px] font-bold text-gray-300 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded-lg">↺ 還原全部預設(均線+指標+旗標)</button>
                 <div class="text-[9px] text-gray-600 leading-snug mt-2">💡 拖拉桿改均線週期(2-240,即時預覽);此為圖表顯示線,朱家泓判讀仍固定用 MA5/20/60。副圖也可直接在各副圖左上角小選單切換。</div>
@@ -897,7 +898,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.0.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.0.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8564,10 +8565,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.0.4',
+    _APP_VERSION: 'V79.0.5',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.0.5', d: ['🔬 研究用的實驗室模式多兩樣:K 線可以畫出「這檔最會賺的那一招」過去每一趟從買到賣的區間,自訂回測跑完會自動存起來、可以勾兩筆並排比。散戶 App 一般畫面沒有變動。'] },
         { v: 'V79.0.4', d: ['🔬 產業作戰室的實測總表多兩條紀錄(參考兩個外部交易軟體的做法):帳戶賠了就先停手、回測買賣有沒有吃掉一整天的量。散戶 App 畫面沒有變動。'] },
         { v: 'V79.0.3', d: ['⚡ <b>即時頁、當沖頁、當沖雷達整理過了</b>:你問「這些有回測過嗎?」—— 量過了,<b>這檔過去開盤買收盤賣的勝率、當沖雷達、盤中六脈、總結燈</b>換到之後的日子都不準,扣完成本沒有一個站得住(大戶散戶流向沒有歷史可以量)', '🧭 照你選的「事實在上、結論精簡」:即時頁最上面是<b>現價・內外盤 → 分時圖 → 五檔</b>;當沖頁第一行直接講「沒有可以天天照做的當沖方向,只有手上股票收盤鎖漲停可以留到隔天」,接著是成本關卡', '🔬 那幾張判讀卡沒有刪,收進研究用的實驗室模式;它們的盤中推播(六脈共振、09:15 當沖候選、逐筆動能)一般模式不再跳', '📅 順手修:大戶散戶流向的日期以前用手機時鐘,週末打開會標成週六 → 改用成交那天'] },
         { v: 'V79.0.2', d: ['⚖️ 產業作戰室「套牢比例」那條補上:舊的付費券商分點版跟現在的 K 線成交量版比一次,分點版沒有比較準 → 不用為它再買付費金鑰,K 線版照用。散戶 App 畫面沒有變動。'] },
@@ -8702,10 +8704,6 @@ ${list}
             '🎯 <b>設定多了「我的策略」</b>:總覽、決策台、提醒、通知(連 Telegram)<b>全部照你選的那一套講</b>,⛔ 不會兩套同時跳通知讓你錯亂。預設是 🧬 高基期高波動。',
             '🔕 🧬 的 Telegram 盤中提醒只留「跌破成本 −5%」(= 三條出場的硬停損);「跌破 5 日線」「賺 20% 停利」不是這一套的出場,已拿掉。',
             '👑 選領頭羊時:手上的個股一律「換倉日掉出前 10 名才賣」、沒有停損線(回測:五組持股這種賣法都比三條出場好);換倉日會跳一則「明天開盤買 / 賣哪幾檔」,Telegram 早上 8 點也會推。',
-        ] },
-        { v: 'V77.9.5', d: [
-            '👑 <b>成績單的「領頭羊」頁為什麼是 0 筆</b>:存名單的那一步是前一版才加的,而新程式<b>到現在還沒被採礦跑到過</b>(改版那一輪照規則被跳過)→ 已手動補跑,09-24 那次換倉的 5 檔會先顯示成「待成交」,今天收盤資料進來後就會變成真的買進紀錄。',
-            '🎑 順手修掉一個會「永遠記錯」的地方:中秋 / 教師節的假 K 線還沒清掉時,當天的領頭羊名單會被墊歪(09-24 前 5 名會錯 3 檔);現在遇到這種情況改用乾淨的 K 線重算,⛔ 不再把歪掉的那份存下來。',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -11415,7 +11413,7 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
                             //   ⛔ 新增任何「使用者資料」進這個 store,都要在這裡開白名單。
                             //   💾 V76.2.7 完整報告(rpNote_)也搬進來了 → 一起開白名單。
                             //   📚 V77.1.8 多模型版本庫(rpNoteV_)同理 —— 那是他自己產的好幾份報告。
-                            if (/^(rpImg_|rpNoteV?_)/.test(String(c.key || ''))) { c.continue(); return; }
+                            if (/^(rpImg_|rpNoteV?_|cbtLog$)/.test(String(c.key || ''))) { c.continue(); return; }   // 🧪 V79.0.5 自訂回測紀錄(cbtLog)也是使用者自己跑出來的
                             const ts = c.value && c.value.ts;
                             if (!ts || (now - ts) > maxAgeMs) { try { c.delete(); removed++; } catch (_) {} }
                             c.continue();
@@ -42337,6 +42335,20 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             }
         } catch (_) {}
 
+        // 📦 V79.0.5 回測持有區間(實驗室模式・日線・預設關;參考 wkingnet/stock-analysis 外部評估㊽)——
+        //   ⛔ 不另寫回測:讀 `_holdShadeTrips`(= `_patternFitBacktest` 每一趟的 trips,出場走你設定的那一條)。
+        let _holdArea;
+        try {
+            if (this.currentTF === 'D' && this._labMode() && document.getElementById('toggleHoldShade')?.checked) {
+                const hs = this._holdShadeTrips(data);
+                if (hs && hs.trips.length) _holdArea = { silent: true, data: hs.trips.map((t, k) => [
+                    { xAxis: dates[t.i], itemStyle: { color: t.r > 0 ? 'rgba(248,113,113,0.13)' : 'rgba(74,222,128,0.13)' },
+                      label: k === hs.trips.length - 1 ? { show: true, position: 'insideTop', formatter: hs.key, color: '#9ca3af', fontSize: 9 } : { show: false } },
+                    { xAxis: dates[Math.min(t.j, dates.length - 1)] },
+                ]) };
+            }
+        } catch (_) { _holdArea = undefined; }
+
         // 🎛️ V61.9 雙副圖版面:依 subChart1/subChart2 幾個非「無」決定 3 格(主圖+副1+副2)高度;標籤放最底格
         const _subModes = [this.subChart1, this.subChart2].map(m => m || 'NONE').filter(m => m !== 'NONE');
         const _nSub = _subModes.length;
@@ -42359,7 +42371,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 { type: 'slider', xAxisIndex: [0, 1, 2], start: currentZoomStart, end: currentZoomEnd, height: 18, bottom: 4, borderColor: '#30363d', backgroundColor: '#0d1117', fillerColor: 'rgba(96, 165, 250, 0.25)', handleStyle: { color: '#3b82f6', borderColor: '#1d4ed8' }, textStyle: { color: '#8b949e', fontSize: 9 }, brushSelect: false, throttle: 50 }
             ],
             series: [
-                { name: 'K線', type: 'candlestick', data: kData, xAxisIndex: 0, yAxisIndex: 0, itemStyle: { color: '#f87171', color0: '#4ade80', borderColor: '#f87171', borderColor0: '#4ade80' }, markPoint: { data: markPointData }, markLine: { symbol: ['none', 'none'], data: markLineData, animation: false } }
+                { name: 'K線', type: 'candlestick', data: kData, xAxisIndex: 0, yAxisIndex: 0, itemStyle: { color: '#f87171', color0: '#4ade80', borderColor: '#f87171', borderColor0: '#4ade80' }, markPoint: { data: markPointData }, markArea: _holdArea, markLine: { symbol: ['none', 'none'], data: markLineData, animation: false } }
             ]
         };
 
@@ -42887,6 +42899,23 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         return this._playbookPatternDefs(data).filter(p => { try { return !!p.test(last); } catch (_) { return false; } }).map(p => p.key);
     },
     // 🎯 V41.31 — 型態實戰回測:對這檔歷史逐根測每個進場型態(訊號日收盤進、跌破5MA或-5%停損出),排勝率+期望值
+    // 📦 V79.0.5 K 線「回測持有區間」用的那一招 + 每一趟(實驗室模式)
+    //   挑法同 🃏 打法雷達的「主打」:期望值為正且樣本夠(`_wrEnough`)的第一名;都不夠 → null(⛔ 不畫樣本不足的那一招)。
+    //   快取綁 sym + 根數 + 最後一天 + 出場規則(renderChart 每次縮放都會叫,⛔ 不可每次重跑整套回測)。
+    _holdShadeTrips(data) {
+        if (!Array.isArray(data) || data.length < 80) return null;
+        const key = `${this.currentSymbolId}|${data.length}|${data[data.length - 1]?.date}|${this._exitRuleKey()}`;
+        if (this._holdShadeCache && this._holdShadeCache.key === key) return this._holdShadeCache.v;
+        let v = null;
+        try {
+            const ranked = this._patternFitBacktest(data) || [];
+            const top = ranked.find(r => r.expectancy > 0 && this._wrEnough(r.count));
+            if (top && Array.isArray(top.trips)) v = { key: top.key, trips: top.trips };
+        } catch (_) { v = null; }
+        this._holdShadeCache = { key, v };
+        return v;
+    },
+
     _patternFitBacktest(data) {
         if (!Array.isArray(data) || data.length < 80) return null;
         const last = data.length - 1;
@@ -42895,7 +42924,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         // 🚪 用哪一條出場 —— 跟全站唯一判斷點走(設定中心可換)
         const exKey = this._exitRuleKey();
         const bt = test => {
-            const trades = [];
+            const trades = [], trips = [];   // 📦 V79.0.5 trips = 每一趟的 {i 進場根, j 出場根, r 報酬%} —— 給 K 線畫持有區間(實驗室模式),既有欄位不變
             let i = 45;
             while (i < last) {
                 let fired = false; try { fired = test(i); } catch (_) {}
@@ -42915,6 +42944,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                             if (j === endJ) { exitP = c; exitIdx = j; }
                         }
                         trades.push((exitP - entry) / entry * 100);
+                        trips.push({ i, j: exitIdx, r: (exitP - entry) / entry * 100 });
                         i = exitIdx + 1; continue;
                     }
                 }
@@ -42932,7 +42962,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             //   → `playbook_scan.mjs` 改用 `expectancy − 1.28×sd/√n` 當排序與門檻。
             //   ⚠️ 既有呼叫端只是多一個欄位,行為不變(向後相容)。
             const sd = n > 1 ? Math.sqrt(trades.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1)) : 0;
-            return { count: n, winRate: wins.length / n * 100, expectancy: mean, sd,
+            return { count: n, winRate: wins.length / n * 100, expectancy: mean, sd, trips,
                      plRatio: avgLoss < 0 ? Math.abs(avgWin / avgLoss) : (avgWin > 0 ? 99 : 0) };
         };
         const ranked = P.map(p => {
@@ -43011,7 +43041,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (!body) return;
         let cfg = this._cbtDefaultCfg(), last = null;
         try { const c = this._lsJson('signalScorecard', null); if (c && c.v === 2 && c.cfg) { cfg = Object.assign(cfg, c.cfg); last = c; } } catch (_) {}
-        body.innerHTML = this._cbtControlsHtml(cfg) + `<div id="cbtResult">${last && last.html ? last.html : '<div class="text-center text-gray-500 text-[11px] py-6 leading-relaxed">挑好條件按「▶ 跑回測」。第一次會逐檔抓 K 線(自選 40 檔約 1 分鐘,全市場 200 檔約 5 分鐘),可以隨時取消。</div>'}</div>`;
+        body.innerHTML = this._cbtControlsHtml(cfg) + `<div id="cbtResult">${last && last.html ? last.html : '<div class="text-center text-gray-500 text-[11px] py-6 leading-relaxed">挑好條件按「▶ 跑回測」。第一次會逐檔抓 K 線(自選 40 檔約 1 分鐘,全市場 200 檔約 5 分鐘),可以隨時取消。</div>'}</div><div id="cbtLogBox" class="mt-3"></div>`;
+        try { this._cbtLogRender().catch(() => {}); } catch (_) {}
     },
     async _runSignalScorecard(force) { return this._customBacktest(); },   // 舊入口(V68.1.2)→ 全部走自訂回測
     /** 一檔股票:照 cfg 跑每一個型態,回每一趟 {key, i, d, ret, hold, gene}(ret = 未扣成本的 %) */
@@ -43134,6 +43165,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             out.innerHTML = html;
             if (!st.abort) { try { localStorage.setItem('signalScorecard', JSON.stringify({ v: 2, date: this.getTodayStr?.() || '', cfg, html })); } catch (_) {} }
             this._cbtLast = res;
+            if (!st.abort && res.overall && res.overall.n) { try { await this._cbtLogAdd(res); this._cbtLogRender(); } catch (_) {} }   // 🧪 V79.0.5 跑完存一筆(取消的⛔ 不存)
         } catch (e) {
             console.warn('[customBacktest]', e);
             out.innerHTML = '<div class="text-center text-gray-500 text-[11px] py-6">計算失敗,稍後再按一次。</div>';
@@ -43142,6 +43174,107 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             if (runBtn) runBtn.disabled = false; if (stopBtn) stopBtn.classList.add('hidden');
             if (st.abort) setProg(`✖ 已取消(跑了 ${st.done}/${st.total} 檔,下面是跑到一半的結果)`);
         }
+    },
+    // 🧪 V79.0.5 自訂回測紀錄 + 並排比較(外部評估㊽:StockAgent 的回測歷史)——
+    //   ⛔ 只存「這一次跑出來的摘要」(條件 + 全部那一列 + 最好那一招),⛔ 不存每一趟(手機空間)。
+    //   存 IndexedDB 一個鍵 `cbtLog`(陣列,留最近 `_CBT_LOG_KEEP` 筆;⚠️ 單一鍵用 `_lruTrim` 沒有作用 → 自己 slice)。
+    //   ⛔ 母體 / 出場 / 窗口不同的兩筆,比的是「條件不同的結果」—— 畫面寫明,⛔ 不可說成誰比較強。
+    _CBT_LOG_KEY: 'cbtLog', _CBT_LOG_KEEP: 20,
+    _cbtLogRow(res) {
+        const O = res.overall || {}, c = res.cfg || {};
+        const best = Object.entries(res.byKey || {}).filter(([, S]) => S.enough).sort((a, b) => b[1].per - a[1].per)[0];
+        const d = new Date(), p2 = x => String(x).padStart(2, '0');
+        return { id: Date.now(), at: `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`,
+            uni: c.universe, n: res.syms, exit: c.exit, gene: !!c.gene, pats: c.patterns ? c.patterns.length : null,
+            tr: O.n || 0, win: O.win, per: O.per, pl: O.pl, hold: O.hold, from: O.from, to: O.to,
+            g: O.gates ? Object.values(O.gates).filter(Boolean).length : -1,
+            best: best ? { k: best[0], per: best[1].per, n: best[1].n } : null };
+    },
+    async _cbtLogGet() {
+        try { const v = await this.idb.get(this._CBT_LOG_KEY); return v && Array.isArray(v.rows) ? v.rows : []; } catch (_) { return []; }
+    },
+    async _cbtLogAdd(res) {
+        const rows = await this._cbtLogGet();
+        const row = this._cbtLogRow(res);
+        row.id = Math.max(row.id, ...rows.map(r => +r.id + 1 || 0));   // ⛔ 同一毫秒存兩筆 → id 撞號,刪一筆會刪掉兩筆(測試抓到)
+        rows.unshift(row);
+        return this.idb.put(this._CBT_LOG_KEY, { ts: Date.now(), rows: rows.slice(0, this._CBT_LOG_KEEP) });
+    },
+    async _cbtLogDel(id) {
+        const rows = (await this._cbtLogGet()).filter(r => r.id !== id);
+        await this.idb.put(this._CBT_LOG_KEY, { ts: Date.now(), rows });
+        (this._cbtPick ||= new Set()).delete(id);
+        this._cbtLogRender();
+    },
+    _CBT_LOG_COLS: [
+        { k: 'id', t: '時間' }, { k: 'tr', t: '趟數' }, { k: 'win', t: '勝率' }, { k: 'per', t: '每趟' }, { k: 'g', t: '關卡' },
+    ],
+    _cbtLogSortBy(k) {
+        const s = this._cbtLogSort || { k: 'id', dir: -1 };
+        this._cbtLogSort = s.k === k ? { k, dir: -s.dir } : { k, dir: -1 };   // 同一欄再點一次 → 反向
+        this._cbtLogRender();
+    },
+    _cbtLogPick(id, on) {
+        const P = (this._cbtPick ||= new Set());
+        if (on) P.add(id); else P.delete(id);
+        while (P.size > 2) P.delete(P.values().next().value);   // 最多兩筆 → 留最近勾的兩筆
+        this._cbtLogRender();
+    },
+    _cbtLogCond(r) {
+        const u = (this._CBT_UNIVERSES.find(x => x.k === r.uni) || {}).t || r.uni;
+        return `${u}${r.uni === 'top' ? ` ${r.n}` : `(${r.n} 檔)`}・${this._exitRuleName(r.exit)}${r.gene ? '・🧬' : ''}${r.pats != null ? `・${r.pats} 種型態` : ''}`;
+    },
+    async _cbtLogRender() {
+        const box = document.getElementById('cbtLogBox');
+        if (!box) return;
+        const rows = await this._cbtLogGet();
+        if (!rows.length) { box.innerHTML = '<div class="text-[10px] text-gray-500 pt-2 border-t border-[#21262d]">📚 回測紀錄:還沒有 —— 每次跑完(沒取消)會自動存一筆,最多留 ' + this._CBT_LOG_KEEP + ' 筆,可以勾兩筆並排比。</div>'; return; }
+        const S = this._cbtLogSort || { k: 'id', dir: -1 };
+        const v = (r, k) => { const x = r[k]; return x == null ? -Infinity : +x; };
+        const sorted = rows.slice().sort((a, b) => (v(a, S.k) - v(b, S.k)) * S.dir);
+        const P = (this._cbtPick ||= new Set());
+        for (const id of [...P]) if (!rows.some(r => r.id === id)) P.delete(id);
+        const nf2 = x => x == null ? '—' : (x >= 0 ? '+' : '') + (+x).toFixed(2);
+        const head = this._CBT_LOG_COLS.map(c => {
+            const on = S.k === c.k;
+            return `<button onclick="app._cbtLogSortBy('${c.k}')" data-cbtsort="${c.k}" class="px-2 py-0.5 rounded text-[10px] font-bold border ${on ? 'border-emerald-600 text-emerald-200' : 'border-[#30363d] text-gray-400'}">${c.t}${on ? (S.dir < 0 ? ' ▼' : ' ▲') : ''}</button>`;
+        }).join('');
+        const list = sorted.map(r => `<div class="py-1.5 border-b border-[#21262d]" data-cbtlog="${r.id}">
+            <div class="flex items-center gap-2 text-[10px] text-gray-400">
+                <input type="checkbox" class="cbt-logpick" ${P.has(r.id) ? 'checked' : ''} onchange="app._cbtLogPick(${r.id}, this.checked)">
+                <span class="font-mono">${this._escHtml(r.at)}</span>
+                <span class="flex-1 min-w-0 truncate text-gray-300">${this._escHtml(this._cbtLogCond(r))}</span>
+                <button onclick="app._cbtLogDel(${r.id})" class="text-gray-500 px-1" title="刪掉這一筆">🗑️</button>
+            </div>
+            <div class="text-[11px] text-gray-200 font-mono pl-5">${r.tr} 趟 ・勝率 ${r.win ?? '—'}% ・每趟 <b class="${(r.per || 0) > 0 ? 'text-red-300' : 'text-green-300'}">${nf2(r.per)}%</b> ・${r.g < 0 ? '⏳ 樣本不足' : `關卡 ${r.g}/4`}${r.best ? ` ・最好:${this._escHtml(r.best.k)} ${nf2(r.best.per)}%` : ''}</div>
+        </div>`).join('');
+        const pick = rows.filter(r => P.has(r.id)).sort((a, b) => a.id - b.id);
+        let cmp = '';
+        if (pick.length === 2) {
+            const [A, B] = pick;
+            const line = (t, a, b, d) => `<div class="contents"><div class="text-gray-400">${t}</div><div class="font-mono text-gray-200">${a}</div><div class="font-mono text-gray-200">${b}</div><div class="font-mono text-gray-400">${d}</div></div>`;
+            const dd = (a, b, f = 2) => (a == null || b == null) ? '—' : nf2(+(b - a).toFixed(f));
+            const sameCond = A.uni === B.uni && A.n === B.n && A.from === B.from && A.to === B.to;
+            cmp = `<div class="mt-2 pt-2 border-t border-[#21262d]" data-cbtcmp="1">
+                <div class="text-[11px] font-bold text-emerald-300 mb-1">🆚 並排比較(較早那筆 → 較晚那筆)</div>
+                <div class="grid text-[10px] gap-x-2 gap-y-1" style="grid-template-columns:minmax(0,0.9fr) minmax(0,1.6fr) minmax(0,1.6fr) minmax(0,0.8fr)">
+                    ${line('', A.at.slice(5), B.at.slice(5), '後−前')}
+                    ${line('條件', this._escHtml(this._cbtLogCond(A)), this._escHtml(this._cbtLogCond(B)), '')}
+                    ${line('趟數', A.tr, B.tr, dd(A.tr, B.tr, 0))}
+                    ${line('勝率 %', A.win ?? '—', B.win ?? '—', dd(A.win, B.win, 1))}
+                    ${line('每趟 %', nf2(A.per), nf2(B.per), dd(A.per, B.per))}
+                    ${line('賺賠比', A.pl ?? '—', B.pl ?? '—', dd(A.pl, B.pl))}
+                    ${line('平均抱', A.hold ?? '—', B.hold ?? '—', dd(A.hold, B.hold, 1))}
+                    ${line('關卡', A.g < 0 ? '⏳' : A.g + '/4', B.g < 0 ? '⏳' : B.g + '/4', '')}
+                </div>
+                <div class="text-[10px] text-gray-500 mt-1 leading-relaxed">${sameCond ? '✅ 兩筆母體與窗口一樣,差別只在你換的條件。' : '⚠️ 兩筆的母體或資料窗口不一樣 —— 差距有一部分來自「挑的股票 / 期間不同」,⛔ 不可直接說哪個條件比較好。'}⛔ 這是「每一趟」的統計,⛔ 不跟決策台的資金模擬比。</div>
+            </div>`;
+        } else if (pick.length === 1) {
+            cmp = '<div class="text-[10px] text-gray-500 mt-1">再勾一筆就會並排比較。</div>';
+        }
+        box.innerHTML = `<div class="pt-2 border-t border-[#21262d]">
+            <div class="flex items-center justify-between gap-2 mb-1"><span class="text-[11px] font-bold text-gray-200">📚 回測紀錄(${rows.length}/${this._CBT_LOG_KEEP})</span><span class="text-[9px] text-gray-500">勾兩筆並排比</span></div>
+            <div class="flex flex-wrap gap-1 mb-1">${head}</div>${list}${cmp}</div>`;
     },
     _cbtRender(res) {
         const nf1 = v => (v >= 0 ? '+' : '') + (+v).toFixed(1), nf2 = v => (v >= 0 ? '+' : '') + (+v).toFixed(2);
@@ -43478,7 +43611,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     </div>
                     <div class="text-[9px] text-gray-600 mt-1.5 leading-snug">💡 進場=型態訊號日收盤、出場=跌破5MA或跌破進場K低/−5%停損,最多抱20天。純公式歷史回測,過去績效不代表未來、僅供參考。</div>`;
                 box.classList.remove('hidden'); box.innerHTML = html;
-                try { localStorage.setItem(ckey, JSON.stringify({ date: dateStr, html, ranked, per })); } catch (_) {}
+                try { localStorage.setItem(ckey, JSON.stringify({ date: dateStr, html, ranked: ranked.map(({ trips, ...r }) => r), per })); } catch (_) {}   // 📦 V79.0.5 每一趟的明細(trips)⛔ 不進 localStorage
             } catch (e) {
                 box.classList.remove('hidden'); box.innerHTML = `<div class="text-[11px] text-gray-400 py-2 text-center">分析失敗,稍後再試。</div>`;
             } finally {
