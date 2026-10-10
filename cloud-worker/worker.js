@@ -113,6 +113,14 @@ function tplDeepLink(sym) {
 // V21.3 ── 統一分隔線
 const SEP = '━━━━━━━━━━━━━━━━━━━━';
 
+// 👥 V79.0.9 散戶多空比(小台)方向 —— 跟 index.html `_retailLsDir` 同一條(test_retailsign.mjs 跨檔比)
+//   採礦算的是 −(三大法人小台淨未平倉)÷未平倉 → ⭐ 正值 = 散戶淨多。舊版這裡寫 < −25 = 散戶過度看多(正負號反了)
+const RETAIL_LS_CUT = { hot: 30, long: 15, panic: -25 };
+function retailLsDir(v) {
+    if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+    return v >= RETAIL_LS_CUT.hot ? 'hot' : v >= RETAIL_LS_CUT.long ? 'long' : v <= RETAIL_LS_CUT.panic ? 'panic' : 'flat';
+}
+
 // V21.3 ── 計算進場/停損/目標價(統一規則,避免每個模板自己算)
 //   進場區:現價 ± 1%(寬鬆;盤中追價或拉回都接得到)
 //   停損:現價 × 0.95(-5%)  ← 對齊朱家泓紀律(3~10%、常用 -5%)
@@ -1634,7 +1642,7 @@ async function handleMacro(env, chatId) {
 
     // 主力出貨指數簡算(同 runPreMarket 邏輯)
     let mmIndex = 0; const factors = [];
-    if (m.retail_ls_pct != null && m.retail_ls_pct < -25) { mmIndex += 20; factors.push('散戶過度看多'); }
+    if (retailLsDir(m.retail_ls_pct) === 'hot') { mmIndex += 20; factors.push('散戶過度看多'); }
     if (m.taifex_backwardation != null && m.taifex_backwardation < -100) { mmIndex += 25; factors.push('期貨大貼水'); }
     if (m.business_signal?.light === 'red') { mmIndex += 20; factors.push('景氣紅燈'); }
     if (m.vix != null && m.vix >= 25) { mmIndex += 25; factors.push('VIX 恐慌'); }
@@ -2177,7 +2185,7 @@ async function runPreMarket(env) {
     const factors = [];
     if (macro) {
         const retail = macro.retail_ls_pct;
-        if (retail < -25) { mmIndex += 20; factors.push('散戶過度看多'); }
+        if (retailLsDir(retail) === 'hot') { mmIndex += 20; factors.push('散戶過度看多'); }
         if (macro.taifex_backwardation < -100) { mmIndex += 25; factors.push('期貨大貼水'); }
         if (macro.business_signal?.light === 'red') { mmIndex += 20; factors.push('景氣紅燈'); }
         if (macro.vix >= 25) { mmIndex += 25; factors.push('VIX 恐慌'); }

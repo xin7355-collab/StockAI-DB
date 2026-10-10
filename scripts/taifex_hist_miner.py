@@ -36,6 +36,10 @@ OPENAPI_LT = 'https://openapi.taifex.com.tw/v1/OpenInterestOfLargeTradersFutures
 # ⚠️ 候選(⛔ 沒在 runner 上驗過;log 說了算)
 DOWN_PC = 'https://www.taifex.com.tw/cht/3/pcRatioDown'
 DOWN_LT = 'https://www.taifex.com.tw/cht/3/largeTraderFutDown'
+# 👥 V79.0.9 小台散戶多空比(App 拿它計分卻從沒回測過):三大法人小台未平倉 + 小台全市場未平倉
+#   散戶多空比 = −(三大法人小台淨未平倉)÷ 小台全市場未平倉 → 正值 = 散戶淨多(同 macro_miner.fetch_retail_long_short)
+DOWN_INST = 'https://www.taifex.com.tw/cht/3/futContractsDateDown'
+DOWN_FUT = 'https://www.taifex.com.tw/cht/3/futDataDown'
 
 
 def _num(s):
@@ -144,6 +148,72 @@ def parse_lt_csv(text):
     return out, None
 
 
+def parse_inst_csv(text):
+    """期交所「三大法人-區分各期貨契約」下載檔 → {date: [三大法人小台淨未平倉, 三大法人小台(多+空)未平倉]}。
+    只收「小型臺指」(⛔ 不含微型)。淨額 = 多方未平倉口數 − 空方未平倉口數(期交所欄名「多空未平倉口數淨額」)。"""
+    rows = [r for r in csv.reader(io.StringIO(text)) if r and any(c.strip() for c in r)]
+    if not rows:
+        return {}, '空檔'
+    h = rows[0]
+    iD, iP = _col(h, '日期'), _col(h, '商品')
+    iL, iS = _col(h, '多方', '未平倉', '口數'), _col(h, '空方', '未平倉', '口數')
+    iN = _col(h, '未平倉', '淨額', '口數')
+    need = (iD, iP, iL, iS, iN)
+    if None in need:
+        return {}, f'表頭對不上:{",".join(h)[:200]}'
+    out = {}
+    for r in rows[1:]:
+        if len(r) <= max(need):
+            continue
+        prod = r[iP].strip()
+        if not ('小型臺指' in prod or '小型台指' in prod or prod.upper() in ('MXF', 'MTX')) or '微型' in prod:
+            continue
+        d = _date(r[iD]); lo, sh, nt = _num(r[iL]), _num(r[iS]), _num(r[iN])
+        if not d or None in (lo, sh, nt):
+            continue
+        cur = out.setdefault(d, [0, 0])
+        cur[0] += int(nt); cur[1] += int(lo + sh)
+    return out, None
+
+
+def parse_fut_csv(text):
+    """期交所「期貨每日交易行情」下載檔(小台)→ {date: 小台全市場未沖銷契約數}。
+    只加總「一般」交易時段、⛔ 不含價差單(到期月份帶 /)。"""
+    rows = [r for r in csv.reader(io.StringIO(text)) if r and any(c.strip() for c in r)]
+    if not rows:
+        return {}, '空檔'
+    h = rows[0]
+    iD, iC, iM, iOI = _col(h, '日期'), _col(h, '契約'), _col(h, '到期月份'), _col(h, '未沖銷')
+    iSess = _col(h, '交易時段')
+    need = (iD, iC, iM, iOI)
+    if None in need:
+        return {}, f'表頭對不上:{",".join(h)[:200]}'
+    out = {}
+    for r in rows[1:]:
+        if len(r) <= max(need):
+            continue
+        if r[iC].strip().upper() != 'MTX' or '/' in r[iM]:
+            continue
+        if iSess is not None and len(r) > iSess and r[iSess].strip() and r[iSess].strip() != '一般':
+            continue
+        d, oi = _date(r[iD]), _num(r[iOI])
+        if not d or oi is None:
+            continue
+        out[d] = out.get(d, 0) + int(oi)
+    return out, None
+
+
+def merge_rl(inst, fut):
+    """兩份接起來 → {date: [淨, 法人多+空, 全市場未平倉, 散戶多空比%]};全市場未平倉缺 → 那天⛔ 不收(不拿近似分母補)。"""
+    out = {}
+    for d, (nt, ls) in inst.items():
+        oi = fut.get(d)
+        if not oi or oi <= 0:
+            continue
+        out[d] = [nt, ls, oi, round(-nt / oi * 100, 2)]
+    return out
+
+
 def parse_openapi_pc(data):
     out = {}
     for r in data if isinstance(data, list) else []:
@@ -205,19 +275,25 @@ def _month_end(y, m):
     return calendar.monthrange(y, m)[1]
 
 
-def fetch_down(sess, url, parse, months, tag):
-    """按月 POST 下載;回 (合併結果, 錯誤摘要或 None)。前 3 個月全失敗 → 提早收工(⛔ 不空打 120 個月)。"""
+def fetch_down(sess, url, parse, months, tag, extra=None):
+    """按月 POST 下載(POST 不行再試一次 GET 同樣參數);回 (合併結果, 錯誤摘要或 None)。
+    前 3 個月全失敗 → 提早收工(⛔ 不空打 120 個月)。"""
     got, errs, fails = {}, {}, 0
     for k, (y, m) in enumerate(months):
         form = {'down_type': '1', 'queryStartDate': f'{y}/{m:02d}/01', 'queryEndDate': f'{y}/{m:02d}/{_month_end(y, m):02d}'}
         if 'largeTrader' in url:
             form['commodity_id'] = 'TX'
-        try:
-            r = sess.post(url, data=form, headers=UA, timeout=40)
-            head = _decode(r.content[:400])
-            why = classify(r.status_code, r.headers.get('content-type', ''), head)
-        except Exception as e:
-            r, head, why = None, '', classify(0, '', '', e)
+        form.update(extra or {})
+        r, head, why = None, '', None
+        for meth in ('post', 'get'):
+            try:
+                r = sess.post(url, data=form, headers=UA, timeout=40) if meth == 'post' else sess.get(url, params=form, headers=UA, timeout=40)
+                head = _decode(r.content[:400])
+                why = classify(r.status_code, r.headers.get('content-type', ''), head)
+            except Exception as e:
+                r, head, why = None, '', classify(0, '', '', e)
+            if why is None:
+                break
         if why is None:
             part, perr = parse(_decode(r.content))
             if perr:
@@ -252,6 +328,13 @@ def main():
     dlt, src_err['lt_down'] = fetch_down(s, DOWN_LT, parse_lt_csv, months, '大額交易人')
     pc.update(dpc); lt.update(dlt)
     src['pc_down'], src['lt_down'] = len(dpc), len(dlt)
+    # 👥 V79.0.9 小台散戶多空比(兩份接起來;任一份抓不到 → rl 整段空、⛔ 不影響 pc / lt)
+    dinst, src_err['inst_down'] = fetch_down(s, DOWN_INST, parse_inst_csv, months, '三大法人小台', {'commodityId': 'MXF', 'commodity_id': 'MXF'})
+    dfut, src_err['fut_down'] = fetch_down(s, DOWN_FUT, parse_fut_csv, months, '小台行情', {'commodity_id': 'MTX', 'commodity_id2': ''})
+    rl = merge_rl(dinst, dfut)
+    src['inst_down'], src['fut_down'], src['rl'] = len(dinst), len(dfut), len(rl)
+    if dinst and dfut and not rl:
+        src_err['rl'] = f'兩份都有資料但日期對不上(法人 {min(dinst)}~{max(dinst)} ・行情 {min(dfut)}~{max(dfut)})'
     # ② OpenAPI(實跑寫入優先 → 最後覆蓋)
     for url, parse, tgt, key in ((OPENAPI_PC, parse_openapi_pc, pc, 'pc_openapi'), (OPENAPI_LT, parse_openapi_lt, lt, 'lt_openapi')):
         try:
@@ -265,15 +348,21 @@ def main():
             src_err[key] = classify(0, '', '', e); src[key] = 0
     print(f'📊 P/C {len(pc)} 天(下載頁 {src["pc_down"]} ・OpenAPI {src.get("pc_openapi")})'
           f' ・大額交易人 {len(lt)} 天(下載頁 {src["lt_down"]} ・OpenAPI {src.get("lt_openapi")})', flush=True)
+    print(f'👥 小台散戶多空比 {len(rl)} 天(三大法人 {src["inst_down"]} ・全市場未平倉 {src["fut_down"]})', flush=True)
+    if rl:
+        last = sorted(rl)[-3:]
+        print('   最近三天 [淨, 法人多+空, 全市場未平倉, 散戶多空比%]:' + ' ・'.join(f'{d} {rl[d]}' for d in last), flush=True)
     print(f'   錯誤:{json.dumps({k: v for k, v in src_err.items() if v}, ensure_ascii=False)}', flush=True)
     if len(pc) < MIN_DAYS and len(lt) < MIN_DAYS:
         print(f'❌ 兩個都不到 {MIN_DAYS} 天 → ⛔ 不寫(上面那幾行就是原因)')
         return 1
     ds = sorted(set(pc) | set(lt))
     out = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'from': ds[0], 'to': ds[-1],
-           'n': {'pc': len(pc), 'lt': len(lt)}, 'pc': dict(sorted(pc.items())), 'lt': dict(sorted(lt.items())),
+           'n': {'pc': len(pc), 'lt': len(lt), 'rl': len(rl)}, 'pc': dict(sorted(pc.items())), 'lt': dict(sorted(lt.items())),
+           'rl': dict(sorted(rl.items())),
            'src': src, 'src_error': {k: v for k, v in src_err.items() if v} or None,
-           'note': 'pc=[成交量比%, 未平倉比%] ・lt=[前5大淨, 前10大淨, 全市場未平倉](台指期主力近月;all=全部交易人 spec=特定法人)'}
+           'note': 'pc=[成交量比%, 未平倉比%] ・lt=[前5大淨, 前10大淨, 全市場未平倉](台指期主力近月;all=全部交易人 spec=特定法人)'
+                   ' ・rl=[三大法人小台淨未平倉, 法人多+空, 小台全市場未平倉, 散戶多空比%(正=散戶淨多)]'}
     with open(OUT, 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
     print(f'✅ {OUT}:{ds[0]} ~ {ds[-1]} ・{os.path.getsize(OUT) / 1024:.0f} KB')
@@ -307,6 +396,26 @@ def selftest():
     ok('④ 分類:連不上 / 被擋 / 回網頁 三種分開;content-type 標 html 但內容是 CSV → 照收(實跑踩到)', classify(0, '', '', OSError()).startswith('連不上')
        and classify(403, '', '').startswith('被擋') and '網頁' in classify(200, 'text/html', '<html>') and classify(200, 'text/csv', '日期') is None
        and classify(200, 'text/html;charset=MS950', '日期,賣權成交量,買權成交量\r\n2016/01/30,1,2') is None)
+    inst_csv = ('日期,商品名稱,身份別,多方交易口數,多方交易契約金額(千元),空方交易口數,空方交易契約金額(千元),多空交易口數淨額,多空交易契約金額淨額(千元),'
+                '多方未平倉口數,多方未平倉契約金額(千元),空方未平倉口數,空方未平倉契約金額(千元),多空未平倉口數淨額,多空未平倉契約金額淨額(千元)\n'
+                '2026/10/08,小型臺指期貨,自營商,1,1,1,1,0,0,"1,000",1,"3,000",1,"-2,000",1\n'
+                '2026/10/08,小型臺指期貨,投信,1,1,1,1,0,0,500,1,100,1,400,1\n'
+                '2026/10/08,小型臺指期貨,外資及陸資,1,1,1,1,0,0,2000,1,10400,1,-8400,1\n'
+                '2026/10/08,微型臺指期貨,外資及陸資,1,1,1,1,0,0,9,1,99999,1,-99990,1\n'
+                '2026/10/08,臺股期貨,外資及陸資,1,1,1,1,0,0,9,1,99999,1,-99990,1\n')
+    ii, e = parse_inst_csv(inst_csv)
+    ok('⑥ 三大法人:只加總小台三個身份、⛔ 不含微台與大台;淨 = 多 − 空', e is None and ii == {'2026-10-08': [-10000, 17000]}, (ii, e))
+    fut_csv = ('交易日期,契約,到期月份(週別),開盤價,最高價,最低價,收盤價,漲跌價,漲跌%,成交量,結算價,未沖銷契約數,最後最佳買價,最後最佳賣價,歷史最高價,歷史最低價,是否因訊息面暫停交易,交易時段,價差對單式委託成交量\n'
+               '2026/10/08,MTX,202610,1,1,1,1,0,0,100,1,"30,000",1,1,1,1,,一般,0\n'
+               '2026/10/08,MTX,202611,1,1,1,1,0,0,100,1,"10,000",1,1,1,1,,一般,0\n'
+               '2026/10/08,MTX,202610,1,1,1,1,0,0,100,1,-,1,1,1,1,,盤後,0\n'
+               '2026/10/08,MTX,202610/202611,1,1,1,1,0,0,100,1,500,1,1,1,1,,一般,0\n'
+               '2026/10/08,TX,202610,1,1,1,1,0,0,100,1,99999,1,1,1,1,,一般,0\n')
+    ff, e = parse_fut_csv(fut_csv)
+    ok('⑦ 小台行情:只加總一般時段、⛔ 不含盤後 / 價差單 / 大台', e is None and ff == {'2026-10-08': 40000}, (ff, e))
+    rl = merge_rl(ii, ff)
+    ok('⑧ 散戶多空比 = −淨 ÷ 全市場未平倉:法人淨空 10,000 / 40,000 → +25%(正 = 散戶淨多)', rl == {'2026-10-08': [-10000, 17000, 40000, 25.0]}, rl)
+    ok('⑧b 全市場未平倉缺那天 → ⛔ 不收(不拿近似分母補)', merge_rl({'2026-10-09': [5, 9]}, {}) == {})
     ok('⑤ 月份清單含頭尾', _months('2025-11', date(2026, 2, 3)) == [(2025, 11), (2025, 12), (2026, 1), (2026, 2)])
     print('❌ ' + str(len(fails)) + ' 條失敗' if fails else '✅ TAIFEX_HIST_SELFTEST_PASS')
     return 1 if fails else 0

@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.0.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.0.9 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -898,7 +898,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.0.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.0.9</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8565,10 +8565,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.0.8',
+    _APP_VERSION: 'V79.0.9',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.0.9', d: [
+            '👥 修正「散戶多空比」兩張卡講相反的話:大盤頁的情緒卡把正數當散戶看多(對的),旁邊的主力出貨指數和 Telegram 盤前摘要卻把負數當散戶看多。現在統一成「正數 = 散戶看多」,三處用同一個判斷。今天這個數字是 +54.7%,以前主力出貨指數會寫「散戶極度看空(反向利多)」,現在改寫「散戶過度看多」。',
+        ], dt: '2026-10-10' },
         { v: 'V79.0.8', d: ['🎯 決策台「今天可以買的」改成跟 👑 領頭羊一樣的表格:一列一檔(股名・現價・觸發價・停損・買幾張),點表頭可以排序,再點一次反過來。', '📑 個股報告頁的財報趨勢多了「負債比」「流動比」兩條(下一次財報資料更新後才會出現)。'] },
         { v: 'V79.0.7', d: ['🏷️ 個股新聞不再把「三星(Samsung)」「東南亞」「聯合國」「億光年」這類字誤歸到同名的台股,總覽的「近期有事件」也一樣;國際新聞翻譯偶爾回一段指令文字當標題的情況也擋掉了。'] },
         { v: 'V79.0.6', d: ['📰 個股新聞:同一件事被好幾家報導,現在合成一則,後面寫「另 N 家也報」,清單比較短;新聞的來源和時間以前是空白的,也補上了。'] },
@@ -8688,12 +8691,6 @@ ${list}
             '🎨 魚的顏色改成<b>股價在一年裡的高低</b>:越高越紅、越低越綠,中間是黃橘漸變(⚠️ 不是今天的漲跌 —— 今天漲跌只看卡片上的數字)。📏 魚的大小改看<b>公司市值</b>,大公司真的是大魚(以前每條都被放大到一樣大)。',
             '🏢 每張卡多一顆「<b>公司簡介</b>」:產業、在產業鏈做什麼、市場題材、總部、市值、最近一季營收 / 毛利率 / 營益率、下次法說會;「未來計畫」本站沒有資料,按鈕直接帶你去 Perplexity 查(會附來源)。',
             '📳 右上新增<b>震動開關</b>(咬鉤、魚衝、斷線、釣起各一種震法)。⚠️ iPhone 要 iOS 18 以上才會震。卡片拿掉「一張約多少元」。'
-        ], dt: '2026-09-29' },
-        { v: 'V77.9.9', d: [
-            '🎣 股海釣手<b>一次釣 10 條</b>,照名次排(#1~#10);打 ⭐ 的是今天真正會買的那幾條,後面是同一份名單往下排的。第 2 條起動畫加快,一樣可以按「跳過」。',
-            '🐟 四種魚<b>長得不一樣了</b>:小魚圓胖有白條紋、鮪魚是魚雷身 + 新月尾 + 黃色小鰭、旗魚有長長的尖嘴和大帆背鰭、龍魚是金邊大鱗 + 兩根鬍鬚。主畫面圖示也換了。',
-            '💰 修掉「<b>釣到馬上就賺</b>」:以前釣起價用的是選股那天的收盤(可能是好幾天前),籃子卻拿今天的即時價去比。現在釣起價 = 釣到那一刻的價,剛放進去就是 0 元。',
-            '🏠 新增「<b>帶回家養</b>」:漁獲籃按一下,魚就搬到散戶救星「自選 → 🎣 魚池」,每一列寫釣起日、釣起價 → 現價、賺賠 % 和一張賺賠多少元(已扣手續費與稅)。魚池跟一般自選一樣會收 Telegram 買點提醒;⛔ 不會放進庫存。手機把股海釣手裝在主畫面時兩邊可能讀不到彼此,這時到魚池按「📥 貼上匯入碼」(按帶回家養時已經幫你複製好了)。',
         ], dt: '2026-09-29' },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -15341,6 +15338,17 @@ const marginByDate = {};
         }
     },
 
+    // 👥 V79.0.9 散戶多空比(小台)方向的唯一判斷點 —— 情緒卡 / 主力出貨指數 / 因子卡共用
+    //   採礦 macro_miner.fetch_retail_long_short 算的是 −(三大法人小台淨未平倉)÷未平倉
+    //   → ⭐ 正值 = 散戶淨多(法人淨空),負值 = 散戶淨空。worker.js 的 retailLsDir 是同一條(test_retailsign.mjs 跨檔比)
+    //   回 'hot'(≥30 過熱)/ 'long'(≥15 偏多)/ 'panic'(≤−25 偏空恐慌)/ 'flat' / null
+    _RETAIL_LS_CUT: { hot: 30, long: 15, panic: -25 },
+    _retailLsDir(v) {
+        if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+        const C = this._RETAIL_LS_CUT;
+        return v >= C.hot ? 'hot' : v >= C.long ? 'long' : v <= C.panic ? 'panic' : 'flat';
+    },
+
     // 🐂 Q1:主力出貨指數五合一(0-100,越高越像主力倒貨)
     //   1 散戶過度看多 / 2 期貨大幅貼水 / 3 景氣燈號過熱 / 4 VIX 跳升 / 5 融資水位過高
     _renderMarketMakerIndex(j) {
@@ -15350,12 +15358,15 @@ const marginByDate = {};
         const reasons = [];   // 出貨壓力 +
         const counters = []; // 託盤 / 反向利多 -
 
-        // 1️⃣ 散戶情緒(retail_ls_pct < 0 = 散戶偏多 → 主力反向出貨)
+        // 1️⃣ 散戶情緒(retail_ls_pct > 0 = 散戶偏多 → 主力反向出貨)
+        //   🐛 V79.0.9 正負號更正:採礦算的是 −(三大法人小台淨未平倉)÷未平倉 → 正值 = 散戶淨多
+        //   (舊版這裡把負值當偏多,跟同一頁情緒卡講相反;唯一判斷點 _retailLsDir,測試 test_retailsign.mjs)
         const retail = j.retail_ls_pct;
         if (typeof retail === 'number') {
-            if (retail <= -25)      { score += 20; reasons.push(`散戶過度樂觀 ${retail.toFixed(1)}% → 主力反向`); }
-            else if (retail <= -15) { score += 10; reasons.push(`散戶偏多 ${retail.toFixed(1)}%`); }
-            else if (retail >= 25)  { score -= 15; counters.push(`散戶極度看空 +${retail.toFixed(1)}% (反向利多)`); }
+            const rd = this._retailLsDir(retail);
+            if (rd === 'hot')       { score += 20; reasons.push(`散戶過度看多 +${retail.toFixed(1)}% → 主力反向`); }
+            else if (rd === 'long') { score += 10; reasons.push(`散戶偏多 +${retail.toFixed(1)}%`); }
+            else if (rd === 'panic'){ score -= 15; counters.push(`散戶極度看空 ${retail.toFixed(1)}% (反向利多)`); }
         }
 
         // 2️⃣ 期貨升貼水(大貼水 = 法人對沖空)
@@ -15502,7 +15513,7 @@ const marginByDate = {};
             const na = '<span class="text-gray-600">--</span>';
             // 各因子值 + 多空(沿用上方打分門檻;偏空=利於下跌、偏多=利於上漲)
             let rVal = na, rDir = '中性';
-            if (typeof retail === 'number') { rVal = `${retail > 0 ? '+' : ''}${retail.toFixed(1)}%`; rDir = retail <= -15 ? '偏空' : retail >= 25 ? '偏多' : '中性'; }
+            if (typeof retail === 'number') { rVal = `${retail > 0 ? '+' : ''}${retail.toFixed(1)}%`; const rd = this._retailLsDir(retail); rDir = (rd === 'hot' || rd === 'long') ? '偏空' : rd === 'panic' ? '偏多' : '中性'; }
             let bVal = na, bDir = '中性';
             if (typeof back === 'number') { bVal = `${back > 0 ? '+' : ''}${back.toFixed(0)}`; bDir = back <= -50 ? '偏空' : back >= 50 ? '偏多' : '中性'; }
             let pVal = na, pDir = '中性';
@@ -33754,17 +33765,18 @@ ${this._reportFacts(sym)}
         const fgText = fg == null ? '--' : `${Math.round(fg)}`;
         const fgColor = fg == null ? 'text-gray-500' : fg >= 75 ? 'text-red-400' : fg >= 55 ? 'text-orange-400' : fg >= 45 ? 'text-yellow-300' : 'text-green-400';
         if ($('sccFg')) setTxt('sccFg', fgText, fgColor);
-        // 散戶多空比（負值＝散戶偏多，逆向偏空）
+        // 散戶多空比（正值＝散戶偏多，逆向偏空;V79.0.9 更正註解,判斷走 _retailLsDir）
         const rl = num(j.retail_ls_pct);
         // V25.4 — 散戶情緒「逆向警示」(散戶看多 >+30% = 過熱警告 / <-25% = 恐慌機會)
         //   原邏輯顏色寫反:散戶看多顯綠 → 使用者誤以為「該跟」,實際逆向指標該空
-        const rlIcon = rl == null ? '' : (rl >= 30 ? ' 🚨' : rl >= 15 ? ' ⚠️' : rl <= -25 ? ' 💡' : '');
+        const rlD = this._retailLsDir(rl);
+        const rlIcon = rlD === 'hot' ? ' 🚨' : rlD === 'long' ? ' ⚠️' : rlD === 'panic' ? ' 💡' : '';
         const rlText = rl == null ? '--' : `${rl > 0 ? '+' : ''}${rl.toFixed(1)}%${rlIcon}`;
         const rlColor = rl == null ? 'text-gray-500'
-            : rl >= 30  ? 'text-red-400 animate-pulse'      // 散戶過熱(該逆向看空)
-            : rl >= 15  ? 'text-orange-400'                  // 散戶偏多
-            : rl <= -25 ? 'text-green-300 font-bold'         // 散戶恐慌(該逆向看多)
-            : 'text-gray-400';                                // 中性
+            : rlD === 'hot'   ? 'text-red-400 animate-pulse'      // 散戶過熱(該逆向看空)
+            : rlD === 'long'  ? 'text-orange-400'                  // 散戶偏多
+            : rlD === 'panic' ? 'text-green-300 font-bold'         // 散戶恐慌(該逆向看多)
+            : 'text-gray-400';                                     // 中性
         if ($('sccRetail')) setTxt('sccRetail', rlText, rlColor);
         // 台幣匯率
         const twd = num(j.usdtwd);
@@ -50842,7 +50854,7 @@ App 會在那個時段幫你盯,到價自動提醒。
         const us10yStr  = fmtMr(mr.us10y_yield,            '%');
         const us2yStr   = fmtMr(mr.us2y_yield,             '%');
         const fgStr     = fmtMr(mr.fear_greed);
-        const retailStr = fmtMr(mr.retail_ls_pct,          '%');
+        const retailStr = fmtMr(mr.retail_ls_pct,          '%') + (mr.retail_ls_pct == null ? '' : '(小台;正值=散戶淨多、負值=散戶淨空)');
         // 💱 V57.8 台幣附 5 日趨勢(貶=外資提款風向),讓首席 AI 判讀有據
         const twdStr    = fmtMr(mr.usdtwd) + (Number.isFinite(+mr.usdtwd_chg_5d) ? `(5日${+mr.usdtwd_chg_5d > 0 ? '貶' : '升'}${Math.abs(+mr.usdtwd_chg_5d).toFixed(1)}%${+mr.usdtwd_chg_5d >= 1 ? ',外資匯出提款風向' : ''})` : '');
         const backStr   = fmtMr(mr.taifex_backwardation);

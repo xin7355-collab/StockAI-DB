@@ -2,6 +2,7 @@
 #
 # 兩件「回測要用、但每天的採礦只存當天」的歷史,一次挖回來推 data 分支:
 #   🎰 taifex:期交所 選擇權 P/C 比 + 台指期大額交易人(當沖 🚦 那張卡拿它們投票,權重從來沒回測過)
+#              + 👥 小台散戶多空比(V79.0.9:三大法人小台未平倉 + 小台全市場未平倉;主力出貨指數拿它計分,從沒回測過)
 #              → data/taifex_hist.json(scripts/taifex_hist_miner.py)
 #   🎤 confcall:法說會場次往回補到約 5 年前,只合併進 data/confcall.json 的 hist
 #              (⛔ 不動 upcoming / recent → 檔案不會變大到拖慢手機)
@@ -9,7 +10,7 @@
 # ⭐ 推 data 分支就會被 daily_miner 的 `git archive origin/data` 帶上 gh-pages(同 us_hist / fin_backfill)。
 # ⚠️ 驗證⛔ 不可只看綠燈(陷阱 #9)→ `git show origin/data:data/taifex_hist.json | head -c 300`。
 # 🚨 期交所下載頁的網址是候選(沙箱連不到期交所)→ 失敗時 log 會分「連不上 / 被擋 / 名字猜錯」三種(陷阱 #23)。
-name: 📚 歷史補挖 (期交所 P/C・大額交易人 / 法說會)
+name: 📚 歷史補挖 (期交所 P/C・大額交易人・散戶多空比 / 法說會)
 
 on:
   workflow_dispatch:

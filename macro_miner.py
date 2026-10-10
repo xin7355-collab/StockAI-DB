@@ -2286,7 +2286,8 @@ def _taifex_oi_rows(commodity_id: str):
 
 def fetch_retail_long_short():
     """散戶多空比 — 用小型臺指期(MTX) 三大法人淨未平倉推算
-    散戶多空比 ≈ -(三大法人 MTX 淨未平倉口數) / 全市場 MTX 未平倉量 ×100%（負值＝散戶偏多）
+    散戶多空比 ≈ -(三大法人 MTX 淨未平倉口數) / 全市場 MTX 未平倉量 ×100%（⭐ 正值＝散戶淨多 —— 法人淨空時散戶就是淨多）
+    🐛 V79.0.9 更正:舊註解寫「負值＝散戶偏多」是反的,害主力出貨指數與 Telegram 跟著寫反(前端唯一判斷點 _retailLsDir)
     ① 優先官方 OpenAPI JSON（schema 穩定）② 失敗退原 CSV 解析
     """
     # ── ① 官方 OpenAPI JSON ──
