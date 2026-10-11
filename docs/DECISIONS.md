@@ -7,7 +7,7 @@
 - **test_idxparse**:網站上的 index.html 不是壓縮版。真因 = `scripts/build_min.mjs` 的關鍵字抽樣清單留著 `_brokerEl`,V79.0.0 刪分點時一起刪掉了 → 「壓縮後遺失關鍵字串」→ deploy_pages 退回原檔部署(4.6MB → 本來可壓到 2.8MB,省 39.7%),workflow 全綠零訊息。
   - 修:清單換成活著的名字;原始碼裡本來就沒有的只警告不算(那是清單過期,不是壓縮吃掉東西),但活著的至少 5 個。
   - 測試改成自己用 build_min 壓一份來驗(⛔ 不再拿 gh-pages 當壓縮版測資 —— daily_miner 的部署本來就推原檔,形狀看最後誰部署)。注入「清單放回 `_brokerEl`」→ ①a 紅。
-  - ⏳ daily_miner 部署推原檔:要改 workflow,先問使用者。
+  - ✅ **V79.1.4 已做(使用者同意)**:daily_miner 部署也在 `cp index.html /tmp/mine/` 之後呼叫同一支 build_min(只動 /tmp/mine 那份、esbuild 裝 /tmp/esb、壓不過照推原檔);`test_idxparse` ④ 釘順序,注入「拿掉 / 排到後面」都紅。
 - **test_contrast**:兩個分頁名寫錯(`realtime` / `deck`,真名 `live` / `desk`)→ 切換靜默失敗、量到的是上一頁;回測分頁 V79.0.8 起只在實驗室模式。
   - 修:改名 + 每一頁切完確認容器看得見;總數守門從「≥300 段」改成「每頁都量得到 + ≥150 段」(段數會隨功能下架變少,⛔ 不釘當時的總數)。
   - 注入:拿掉覆寫 CSS → 紅;分頁名改回 realtime → 紅。

@@ -93,5 +93,18 @@ ok(calls === 1, '③b 只抓一次 index.html(共用同一個 promise)', `fetch 
 await A.loadIdx();
 ok(calls === 1, '③c 已經有資料就不再抓', `fetch ${calls} 次`);
 
+// ④ V79.1.4 兩條部署路都要壓縮(⛔ daily_miner 以前直接推原檔 → 每輪採礦後網站變回 4.6MB)
+{
+  const wf = n => readFileSync(new URL('../.github/workflows/' + n, import.meta.url), 'utf8');
+  const dp = wf('deploy_pages.yml'), dm = wf('daily_miner.yml');
+  ok(/node scripts\/build_min\.mjs/.test(dp), '④a deploy_pages.yml 有呼叫 build_min.mjs');
+  const iCp = dm.indexOf('cp index.html            /tmp/mine/');
+  const iMin = dm.indexOf('node scripts/build_min.mjs /tmp/mine/index.html');
+  const iBack = dm.indexOf('cp /tmp/mine/index.html');
+  ok(iMin > 0, '④b daily_miner.yml 部署前有壓縮 /tmp/mine/index.html');
+  ok(iCp > 0 && iBack > 0 && iCp < iMin && iMin < iBack, '④c 壓縮排在「備份 index.html」之後、「放回 gh-pages」之前', `cp=${iCp} min=${iMin} back=${iBack}`);
+  ok(/build_min\.mjs[^\n]*\/tmp\/index\.min\.html[^\n]*\n[^\n]*cp \/tmp\/index\.min\.html \/tmp\/mine\/index\.html/.test(dm), '④d 壓成功才換掉那一份(壓不過照推原檔、⛔ 不擋部署)');
+}
+
 console.log(fail ? `\n❌ IDXPARSE_FAIL(${fail})` : '\n✅ IDXPARSE_PASS(全部通過)');
 process.exit(fail ? 1 : 0);

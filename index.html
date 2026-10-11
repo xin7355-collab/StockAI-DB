@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.1.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.1.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -890,7 +890,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.1.3</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.1.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8518,10 +8518,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.1.3',
+    _APP_VERSION: 'V79.1.4',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.1.4', d: [
+            '⚡ 每天下午採礦更新後,網站檔案也維持縮小版(以前採礦後會變回大的)',
+        ], dt: '2026-10-12' },
         { v: 'V79.1.3', d: [
             '⚡ 網站檔案縮小約 4 成,開 App 比較快(之前縮小那一步一直失敗、默默推了沒縮小的版本)',
         ], dt: '2026-10-12' },
@@ -8632,10 +8635,6 @@ ${list}
             '👑 <b>領頭羊:買進多一道「一年位置 ≥ 85%」</b>(你問「還有辦法抓出更容易漲的方法嗎?」)。我測了 7 種沒測過的加法,只有這一種每一關都過:AI 時代 760% → <b>953%</b>、2011~2026 3,176% → <b>6,783%</b>(起點挪 17 次 15/17、17/17 條都贏;同樣比例隨機擋掉反而變差 → 賺的是「靠近一年最高」這件事)。⚠️ 16 年裡有 5 年比舊規則差。續抱 / 賣出規則不變;位置不夠的標「位置低」、往下一名找;決策台那區有按鈕可以換回舊的。自動下單同時換(LEADER_POS=0 = 舊的)。',
             '👑 <b>處置股「先跟、處置前賣、大跌再買回」→ 回測不成立</b>(你問的)。公告前 10 天確實大漲(那就是被處置的條件),但<b>處置期間沒有大跌</b>(到出關平均還比同名次的股票好 3.6pp),可交易的做法全部輸「照常抱著」:公告當晚就知道隔天賣 781%、就算能提前一天猜到 905%、注意 3 次就賣再出關買回 756%(照常 953%)。→ 照常抱著。',
             '🔧 順手修:背景提醒設定寫不進手機快取時,不會再冒出一個沒人接住的錯誤。',
-        ] },
-        { v: 'V78.0.4', d: [
-            '🎣 <b>沒在釣的時候,線收在竿尖了</b>(你說「拋竿的線永遠都顯示已拋出去」)。以前不管有沒有拋,鉤子都畫在遠遠的水面上,看起來像已經拋出去;現在沒在釣就是一小段線吊在竿尖下面,海裡沒魚時收得更短。',
-            '🌊 <b>可以把魚放回海裡了</b>(你說「新增放魚回去」)。每張釣起來的卡片多一顆「🌊 放回海裡」,上方多一顆「🌊 全部放回」—— 放回去的魚會回到水裡游,今天可以再釣一次。⭐ <b>只動今天的海,⛔ 不碰漁獲籃</b>(已經放進 🧺 的照舊在);正在釣的時候不能放(線上那條要先處理完)。',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },

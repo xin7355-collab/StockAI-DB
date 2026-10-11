@@ -614,6 +614,16 @@ jobs:
           cp margin_cache_stock.json /tmp/mine/             2>/dev/null || true
           cp inst_cache_stock.json /tmp/mine/               2>/dev/null || true
           cp index.html            /tmp/mine/               2>/dev/null || true
+          # 🗜️ V79.1.4 跟 deploy_pages.yml 同一支壓縮(壓不過就用原檔,⛔ 不擋部署)
+          #   以前這裡直接推原檔 → 每輪採礦後網站變回 4.6MB,直到下次只改前端才又變小。
+          #   ⚠️ 只動 /tmp/mine 那一份、esbuild 裝在 /tmp/esb → 工作區不髒,下面的 checkout --orphan 不受影響。
+          git checkout origin/main -- scripts/build_min.mjs 2>/dev/null || true
+          npm i --no-audit --no-fund --silent --prefix /tmp/esb esbuild >/dev/null 2>&1 || true
+          if NODE_PATH=/tmp/esb/node_modules node scripts/build_min.mjs /tmp/mine/index.html /tmp/index.min.html && [ -s /tmp/index.min.html ]; then
+            cp /tmp/index.min.html /tmp/mine/index.html; echo "✅ 使用壓縮版部署"
+          else
+            echo "⚠️ 壓縮沒過 → 用未壓縮原檔部署(功能優先於體積)"
+          fi
           cp sw.js                 /tmp/mine/               2>/dev/null || true
           cp manifest.json         /tmp/mine/               2>/dev/null || true   # V17.0 PWA
           cp apple-touch-icon.jpg icon-192.jpg icon-512.jpg /tmp/mine/ 2>/dev/null || true   # ⚡ V69.8.7
