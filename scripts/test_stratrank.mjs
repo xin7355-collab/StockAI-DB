@@ -40,6 +40,7 @@ const R = await page.evaluate(async () => {
     A.settings.stratUnlock = true;
     A.settings.strategy = 'gene'; A._renderStratBox();
     o.box = [...document.querySelectorAll('#stratBox [data-stratopt]')].map(x => x.dataset.stratopt);
+    o.boxAdv = [...document.querySelectorAll('#stratBox [data-advbox] [data-stratopt]')].map(x => x.dataset.stratopt);
     o.exitOrd = A._exitOrder();
     o.exitRob = JSON.parse(JSON.stringify(A._EXIT_EDGE.rob));
     o.exitBtns = [...document.querySelectorAll('[id^="btn_exit_"]')].map(b => b.id.replace('btn_exit_', ''));
@@ -81,7 +82,11 @@ if (R.rank.e50.a !== Math.round(g('ai', '0050').fin / 1e4) || R.rank.e50.l !== M
 ok('① 設定裡的策略數字 == 實測總表看板(同一組 17 個起點)', bad.length === 0, bad.join(' / '));
 // ② 順序(獨立重算)
 const want = Object.keys(MAP).sort((x, y) => (g('long', MAP[y]).fin - g('long', MAP[x]).fin) || (g('ai', MAP[y]).fin - g('ai', MAP[x]).fin));
-ok('② 設定裡的策略照 16 年 → 近 4 年由強到弱排', JSON.stringify(R.box) === JSON.stringify(want), `${R.box} vs ${want}`);
+// 🔒 V79.1.2 👑 兩個搬進「🔓 進階功能」→ 上面那組(📈/🅿️)與進階那組(👑)各自照強弱排;👑 一定在進階區裡
+const LK = ['leadpark', 'lead'];
+const wantMain = want.filter(k => !LK.includes(k)), wantLead = want.filter(k => LK.includes(k));
+ok('② 設定裡的策略照 16 年 → 近 4 年由強到弱排(上面一組・👑 在進階區一組)',
+    JSON.stringify(R.box) === JSON.stringify([...wantMain, ...wantLead]) && JSON.stringify(R.boxAdv) === JSON.stringify(wantLead), `${R.box} | adv ${R.boxAdv} vs ${wantMain} | ${wantLead}`);
 // ③ 出場規則
 const L = (R.exitRob.long || {}).rows || {}, v = k => [L[k] ? L[k].med : -1, R.exitRob.rows[k] ? R.exitRob.rows[k].med : -1];
 const wantE = R.exitOrd.slice().sort((x, y) => (v(y)[0] - v(x)[0]) || (v(y)[1] - v(x)[1]));

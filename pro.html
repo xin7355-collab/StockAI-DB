@@ -2713,6 +2713,10 @@ const PRO = {
     try { const st = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); return /^(lead)?park$/.test(st.strategy) && !!st.stratUnlock; }
     catch (_) { return false; }
   },
+  /** 📒 V79.1.2 使用者:「產業 app 裡面的成績單沒有領頭羊策略」→ 選「作戰室成績單永遠顯示 👑」。
+   *  iPhone 兩個主畫面 App 的設定不互通,作戰室常常沒解鎖 → 成績單這一頁⛔ 不再看解鎖;
+   *  ⛔ 只放寬成績單(分頁 / 同一起點比一比 / 模擬帳),池子 / 回測數字 / 實測總表 / 更新紀錄照舊要解鎖。 */
+  _recoLeadOn() { return true; },
   _LEAD_HIDE_RE: /領頭羊|👑|成交額前 ?100/,
   _exitRule() {
     try {
@@ -5447,7 +5451,7 @@ const PRO = {
     ['lead', '👑 領頭羊',      '成交額前 100 大挑近 10 日最強 5 檔,每 10 個交易日換一次'],
   ],
   _recoSrc: 'pb',
-  selRecoSrc(k) { this.buzz(10); this._recoSrc = (k === 'lead' && !this._isLead()) ? 'pb' : k; this._recoLedgerRender(); },
+  selRecoSrc(k) { this.buzz(10); this._recoSrc = (k === 'lead' && !this._recoLeadOn()) ? 'pb' : k; this._recoLedgerRender(); },
 
   /** 🧬 門檻與黑名單一律讀 index.html 的 `_EDGE_RULES`(由 `loadIdx` 原地解析)。
    *  ⛔ 讀不到就回 null → 呼叫端要誠實說「算不出來」,⛔ 不可用預設值猜(陷阱 #22)。 */
@@ -5776,7 +5780,7 @@ const PRO = {
   ],
   selCmpAllSort(k) { this.buzz(8); const c = this._cmpAllSort || { k: 'avg', asc: false }; this._cmpAllSort = c.k === k ? { k, asc: !c.asc } : { k, asc: false }; this._recoCmpAllRender(); },
   async _recoCmpAllLoad() {
-    const srcs = this._RECO_SRCS.filter(([k]) => k !== 'lead' || this._isLead());
+    const srcs = this._RECO_SRCS.filter(([k]) => k !== 'lead' || this._recoLeadOn());
     const H = await this.fetchJson('data/pick_history.json', 12000).catch(() => null);
     const days = (H && Array.isArray(H.days) ? H.days : []).filter(d => d && d.d && String(d.d).slice(0, 10) >= this._RECO_COMMON).sort((a, b) => (a.d < b.d ? -1 : 1));
     const last = days[days.length - 1] || null;
@@ -5826,7 +5830,7 @@ const PRO = {
   },
   _recoCmpAllRender() {
     const el = document.getElementById('recoCmpAll'); if (!el) return;
-    const sig = 'cmpAll|' + this._exitRule() + '|' + (this._isLead() ? 1 : 0);
+    const sig = 'cmpAll|' + this._exitRule() + '|' + (this._recoLeadOn() ? 1 : 0);
     if (this._cmpAllSig !== sig || !this._cmpAll) {
       if (this._cmpAllSig !== sig) {
         this._cmpAllSig = sig; this._cmpAll = null;
@@ -5870,10 +5874,10 @@ const PRO = {
     if (!document.getElementById('recoCmpAll')) el.insertAdjacentHTML('beforebegin', '<div id="recoCmpAll"></div>');   // 🏁 V78.2.2 同一起點比一比(獨立渲染,⛔ 不擋下面的分頁)
     this._recoCmpAllRender();
     // 📈 V77.2.5 快取鍵要含「哪一張清單」—— ⛔ 少了它換分頁會吃到上一張的結果
-    const SRC = (this._recoSrc === 'lead' && !this._isLead()) ? 'pb' : (this._recoSrc || 'pb');   // 🔒 V77.9.6
+    const SRC = (this._recoSrc === 'lead' && !this._recoLeadOn()) ? 'pb' : (this._recoSrc || 'pb');   // 🔒 V77.9.6
     const sig = 'reco|' + this._exitRule() + '|' + SRC;
     // 🔖 分頁列(三張清單)—— 放在最上面,⛔ 不管載入到哪一步都要看得到(不然按不到)
-    const tabBar = `<div class="labbar" style="margin:6px 0 2px">${this._RECO_SRCS.filter(([k]) => k !== 'lead' || this._isLead()).map(([k, t, sub]) =>
+    const tabBar = `<div class="labbar" style="margin:6px 0 2px">${this._RECO_SRCS.filter(([k]) => k !== 'lead' || this._recoLeadOn()).map(([k, t, sub]) =>
       `<span class="labbtn ${SRC === k ? 'on' : ''}" data-recosrc="${k}" title="${this._esc(sub)}" onclick="PRO.selRecoSrc('${k}')">${t}</span>`).join('')}</div>`;
     if (this._rlSig !== sig || !this._rl) {
       this._rlSig = sig; this._rl = null;
@@ -8353,7 +8357,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V79.1.1',
+  VER: 'V79.1.2',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

@@ -124,6 +124,7 @@ await page.evaluate(rwdShim);
                  has: !!d, rows: document.querySelectorAll('[data-deckfitrow]').length,
                  costWarn: !!document.querySelector('[data-deckfitcost]'),
                  txt: d ? d.innerText.replace(/\s+/g, ' ') : '',
+                 pbOn: !!app._deckShow().pb,
                  buyTxt: (buy && buy.innerText || '').replace(/\s+/g, ' '),
                  idleLen: (idle && idle.innerHTML || '').length,
                  // 🧹 V78.3.6 一般模式每列只寫「⛔ 扣完手續費不划算」(數字只在實驗室模式)
@@ -138,7 +139,8 @@ await page.evaluate(rwdShim);
     ok('ⓓ 空過守門:掃到的母體要合理(≥1000 檔、🧬 ≥10 檔)', r.F.ready && r.F.scanned >= 1000 && r.F.gene >= 10, JSON.stringify(r.F));
     ok('ⓓ2 決策台要有「符合進場」那一段', r.has, r.buyTxt.slice(-150));
     ok('ⓓ3 列出的檔數 == 掃出來的檔數(⛔ 顯示端不另外截斷)', r.rows === r.F.n, `畫面 ${r.rows} vs 掃出 ${r.F.n}`);
-    ok('ⓓ4 要寫明它跟「今天可以買的」不是同一個問題', /不是同一個問題/.test(r.txt), r.txt.slice(0, 150));
+    // 📈 V79.1.2 🔥 那塊預設收起 → 只在 🔥 也開著時才講「不是同一個問題」(⛔ 不可指著看不到的東西);收起時要寫它列的是什麼
+    ok('ⓓ4 要寫明它列的是什麼(🔥 開著時再寫「跟 🔥 不是同一個問題」)', /總覽那個 📈 符合進場徽章/.test(r.txt) && (r.pbOn ? /不是同一個問題/.test(r.txt) : !/不是同一個問題/.test(r.txt)), [r.pbOn, r.txt.slice(0, 150)]);
     ok('ⓓ5 要寫明這是候選、最終判定在個股頁(⛔ 這裡算不出空頭守門)', /候選/.test(r.txt) && /個股頁/.test(r.txt), r.txt.slice(-250));
     // 💸 扣成本後為負的一定要講(⛔ 不可列一排股票卻不說它賺不到手續費)
     const allNeg = r.exps.length > 0 && r.exps.every(e => e - 0.44 < 0);

@@ -5,7 +5,7 @@
 //     ② 🧬 時:決策台 👑 那塊連 DOM 都沒有、總覽那一行不出現、更新紀錄看不到 👑 那幾行、_leaderMine 是空的
 //     ③ 👑 時:總覽主卡換成領頭羊規則(⭐ 決定性對照:同一檔同一份資料,切回 🧬 就回到三條出場)
 //     ④ 👑 時:三條出場的掃描 / 第 2 擊 / 背景 −5% 提醒一律跳過個股(ETF 照舊);換倉日提醒一天一則
-//     ⑤ 產業作戰室:同一個判斷(讀同一份設定);🧬 時池子 / 成績單分頁 / 回測數字 / 實測總表 / 更新紀錄都沒有 👑
+//     ⑤ 產業作戰室:同一個判斷(讀同一份設定);🧬 時池子 / 回測數字 / 實測總表 / 更新紀錄都沒有 👑(📒 V79.1.2 起成績單例外:永遠有 👑)
 //     ⑥ Telegram worker:名單規則 / 錨點 == App;推播只講你選的那一套
 import fs from 'fs';
 import path from 'path';
@@ -122,7 +122,7 @@ const P = await pro.evaluate(async () => {
         const pb = document.getElementById('profitBody').innerText;
         let n = 0; for (const t of PRO.LAB_TABS) n += (PRO._labOf(t[0]) || []).length;
         const labT = []; for (const t of PRO.LAB_TABS) for (const it of (PRO._labOf(t[0]) || [])) labT.push(String(it.t || ''));
-        const tabs = PRO._RECO_SRCS.filter(([k]) => k !== 'lead' || PRO._isLead()).map(x => x[0]);
+        const tabs = PRO._RECO_SRCS.filter(([k]) => k !== 'lead' || PRO._recoLeadOn()).map(x => x[0]);   // 📒 V79.1.2 成績單讀 _recoLeadOn(同 pro.html 那一行)
         return { lead: PRO._isLead(), pb, labN: n, labLead: labT.filter(t => /領頭羊|👑/.test(t)).length, tabs };
     };
     localStorage.removeItem('proTerminalSettings'); o.def = snap();
@@ -137,7 +137,8 @@ const P = await pro.evaluate(async () => {
 ok('⑤ 產業作戰室預設 🧬;存了 lead 沒解鎖 → 仍 🧬', P.def.lead === false && P.locked.lead === false && P.on.lead === true);
 ok('⑤b 🧬:回測數字頁沒有 👑 的列、沒有「錢不多的話」;👑 時有(決定性對照)', !/領頭羊/.test(P.def.pb) && !/錢不多/.test(P.def.pb) && /領頭羊/.test(P.on.pb) && /錢不多/.test(P.on.pb), [P.def.pb.slice(0, 80)]);
 ok('⑤c 🧬:實測總表不列標題有 👑 / 領頭羊的條目;👑 時全部列出(⛔ 沒刪)', P.def.labLead === 0 && P.on.labLead > 0 && P.on.labN > P.def.labN, JSON.stringify([P.def.labN, P.on.labN, P.on.labLead]));
-ok('⑤d 🧬:成績單沒有 👑 分頁、選了也退回 🧬', !P.def.tabs.includes('lead') && P.on.tabs.includes('lead') && P.recoGene === 'pb', JSON.stringify([P.def.tabs, P.recoGene]));
+// 📒 V79.1.2 使用者:「產業 app 裡面的成績單沒有領頭羊策略」→ 選「作戰室成績單永遠顯示 👑」(只放寬成績單;⑤b/⑤c 回測數字・實測總表照舊要解鎖)
+ok('⑤d 成績單:沒解鎖也有 👑 分頁、選得到(V79.1.2)', P.def.tabs.includes('lead') && P.on.tabs.includes('lead') && P.recoGene === 'lead', JSON.stringify([P.def.tabs, P.recoGene]));
 ok('⑤e 拋竿 🧬 走舊版本(_castPickGene),👑 才走領頭羊;🎣 V78.0.2 股海釣手(App 模式)一律 👑', /_isLead\(\) && !this\._fpvOn\(\)\) return this\._castPickGene/.test(P.castSrc));
 const PS = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 const judge = s => (s.match(/\/\^lead\(park\)\?\$\/\.test\((?:s|st)\.strategy\) && !?!?(?:s|st)\.stratUnlock/) || [''])[0];
@@ -160,12 +161,12 @@ const U = await pro.evaluate(async () => {
     localStorage.removeItem('proTerminalSettings');
     return o;
 });
-ok('🔓a 沒解鎖:版本號一個字都不多、成績單沒有 👑', U.verTxt === PS.match(/VER: '(V[0-9.]+)'/)[1] && !U.t0.includes('lead') && U.t0.length >= 3, JSON.stringify([U.verTxt, U.t0]));
+ok('🔓a 沒解鎖:版本號一個字都不多、成績單照樣有 👑(V79.1.2)', U.verTxt === PS.match(/VER: '(V[0-9.]+)'/)[1] && U.t0.includes('lead') && U.t0.length >= 4, JSON.stringify([U.verTxt, U.t0]));
 ok('🔓b 只點 4 下 ⛔ 不跳選單、⛔ 不解鎖', U.after4 === false && U.lead4 === false);
 ok('🔓c 點 5 下跳選單,四套都在', U.after5 && ['leadpark', 'lead', 'park', 'gene'].every(k => U.picks.includes(k)), JSON.stringify(U.picks));
 ok('🔓d 選 👑 → 成績單出現 👑 分頁、選單關掉', U.lead1 && U.closed && U.t1.includes('lead'), JSON.stringify(U.t1));
 ok('🔓e ⛔ 其它設定(金鑰)不可被洗掉', U.st1.geminiKey1 === 'FAKEKEY123' && U.st2.geminiKey1 === 'FAKEKEY123' && U.st1.strategy === 'leadpark' && U.st1.stratUnlock === true, JSON.stringify([U.st1, U.st2]));
-ok('🔓f 再點 5 下 → 收起、改回 🧬、👑 分頁消失', U.lead2 === false && U.st2.strategy === 'gene' && U.st2.stratUnlock === false && !U.t2.includes('lead'), JSON.stringify([U.t2, U.st2]));
+ok('🔓f 再點 5 下 → 收起、改回 🧬(成績單 👑 分頁照留,V79.1.2)', U.lead2 === false && U.st2.strategy === 'gene' && U.st2.stratUnlock === false && U.t2.includes('lead'), JSON.stringify([U.t2, U.st2]));
 
 // ⑥ Telegram worker
 const W = fs.readFileSync(path.join(ROOT, 'cloud-worker/worker.js'), 'utf8');

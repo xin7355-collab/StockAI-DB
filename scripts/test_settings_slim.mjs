@@ -68,6 +68,7 @@ const R = await page.evaluate(async () => {
     app.settings.strategy = 'park'; o.parkLocked = [app._park(), app._strat()];
     app.settings.stratUnlock = true; app._renderStratBox();
     o.optsUnlocked = [...sbx.querySelectorAll('[data-stratopt]')].map(x => x.getAttribute('data-stratopt'));
+    o.optsAdv = [...sbx.querySelectorAll('[data-advbox] [data-stratopt]')].map(x => x.getAttribute('data-stratopt'));
     app.setStrategy('park');
     o.parkOn = [app._park(), app._strat(), app._isLead(), app._stratKey()];
     o.parkChecked = !!sbx.querySelector('[data-stratopt="park"] input:checked');
@@ -119,8 +120,8 @@ ok('③f 常用順序:我的策略 → 出場 → 手續費/本金 → 字體', 
 ok(`③g 第一眼字數有上限(實測 ${R.firstGlance},上限 1600;改版前 6,670)`, R.firstGlance > 300 && R.firstGlance <= 1600, R.firstGlance);
 ok('④a 沒解鎖:只有 🔥 一個選項', JSON.stringify(R.optsLocked) === '["gene"]', R.optsLocked);
 ok('④b 沒解鎖時就算存著 park 也當 🔥(_park false)', R.parkLocked[0] === false && R.parkLocked[1] === 'gene', R.parkLocked);
-// 🏆 V78.1.9 解鎖後四個、照實測由強到弱(16 年中位):👑+停車 → 👑 錢放現金 → 🅿️ → 🔥
-ok('④c 解鎖後:四個、照實測由強到弱排', JSON.stringify(R.optsUnlocked) === '["leadpark","lead","park","gene"]', R.optsUnlocked);
+// 🏆 V78.1.9 解鎖後四個、照實測由強到弱(16 年中位);🔒 V79.1.2 👑 兩個搬進「🔓 進階功能」那一區(使用者:「要點進階才能是領頭羊」)
+ok('④c 解鎖後:上面 🅿️ → 📈、👑 兩個在進階區(各自照實測由強到弱)', JSON.stringify(R.optsUnlocked) === '["park","gene","leadpark","lead"]' && JSON.stringify(R.optsAdv) === '["leadpark","lead"]', [R.optsUnlocked, R.optsAdv]);
 ok('④d 選 🅿️:_strat() 仍是 gene(選股/出場/提醒/Telegram 同 🔥)', R.parkOn[0] === true && R.parkOn[1] === 'gene' && R.parkOn[2] === false && R.parkOn[3] === 'park' && R.parkChecked, R.parkOn);
 const wanOf = h => (h.match(/該停在 0050 約 <b[^>]*>([\d.,]+) 萬/) || [])[1];
 ok('④e 停車金額 = 帳戶 − 個股市值(100 萬 − 30 萬 = 70 萬)', wanOf(R.parkH1) === '70', wanOf(R.parkH1));
