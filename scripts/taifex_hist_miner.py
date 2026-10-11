@@ -203,6 +203,113 @@ def parse_fut_csv(text):
     return out, None
 
 
+def html_hint(text):
+    """期交所回網頁時,把裡面的中文錯誤訊息撈出來(去標籤、只留含「錯誤 / 查無 / 區間 / 超過 / 日期 / 請」的句子)。"""
+    import re
+    t = re.sub(r'<script[\s\S]*?</script>|<style[\s\S]*?</style>', ' ', text or '')
+    t = re.sub(r'<[^>]+>', ' ', t)
+    t = re.sub(r'\s+', ' ', t)
+    hits = re.findall(r'[^。 ]{0,30}(?:錯誤|查無|區間|超過|僅提供|請選擇|請輸入|格式)[^。 ]{0,40}', t)
+    return ' | '.join(dict.fromkeys(hits))[:300] or t[:200]
+
+
+def form_fields(html):
+    """官方查詢頁 → 每個 <form> 的 action 與欄位名(input / select)。讓官方自己說要送什麼(陷阱 #23)。"""
+    import re
+    out = []
+    for m in re.finditer(r'<form\b([^>]*)>([\s\S]*?)</form>', html or '', re.I):
+        act = re.search(r'action\s*=\s*["\']([^"\']*)', m.group(1), re.I)
+        names = re.findall(r'<(?:input|select)\b[^>]*\bname\s*=\s*["\']([^"\']+)', m.group(2), re.I)
+        out.append({'action': act.group(1) if act else '', 'fields': list(dict.fromkeys(names))})
+    return out
+
+
+def parse_finmind_inst(rows):
+    """FinMind TaiwanFuturesInstitutionalInvestors(data_id=MTX)→ {date: [淨, 多+空]};三個身份加總。"""
+    out = {}
+    for r in rows or []:
+        d = _date(r.get('date'))
+        lo, sh = _num(r.get('long_open_interest_balance_volume')), _num(r.get('short_open_interest_balance_volume'))
+        if not d or lo is None or sh is None:
+            continue
+        cur = out.setdefault(d, [0, 0])
+        cur[0] += int(lo - sh); cur[1] += int(lo + sh)
+    return out
+
+
+def fetch_finmind_inst(sess, y0, y1):
+    """FinMind 備援(GitHub Secrets 的 FINMIND_TOKENS,免費層就有這個資料集)→ 按年抓,輪 token。回 (結果, 錯誤)。"""
+    toks = [''.join(t.split()) for t in (os.environ.get('FINMIND_TOKENS') or '').split(',') if t.strip()] or ['']
+    got, errs = {}, {}
+    for k, y in enumerate(range(y0, y1 + 1)):
+        url = 'https://api.finmindtrade.com/api/v4/data'
+        prm = {'dataset': 'TaiwanFuturesInstitutionalInvestors', 'data_id': 'MTX', 'start_date': f'{y}-01-01', 'end_date': f'{y}-12-31'}
+        ok = False
+        for t in toks:
+            try:
+                h = dict(UA); h.update({'Authorization': f'Bearer {t}'} if t else {})
+                r = sess.get(url, params=prm, headers=h, timeout=60)
+                j = r.json()
+                if r.status_code == 200 and j.get('data'):
+                    if not got:
+                        print(f'  ℹ️ FinMind 三大法人小台欄位:{sorted(j["data"][0].keys())} ・身份:{sorted({x.get("name") for x in j["data"]})}', flush=True)
+                    got.update(parse_finmind_inst(j['data'])); ok = True; break
+                why = f'HTTP {r.status_code} {str(j.get("msg") or "")[:60]}'
+            except Exception as e:
+                why = classify(0, '', '', e)
+            errs[why] = errs.get(why, 0) + 1
+        if not ok and k < 2:
+            print(f'  ⚠️ FinMind 三大法人小台 {y}:{why}', flush=True)
+        time.sleep(1.0)
+    return got, (' ・'.join(f'{k}×{v}' for k, v in errs.items()) or None)
+
+
+def probe_inst(sess):
+    """三大法人下載頁:先讀官方查詢頁的表單,再拿最近一個月試幾組參數;印出每一組的結果與網頁裡的錯誤字。
+    回 (可用的 extra 參數 或 None)。"""
+    try:
+        r = sess.get('https://www.taifex.com.tw/cht/3/futContractsDate', headers=UA, timeout=40)
+        ff = form_fields(_decode(r.content))
+        print(f'  🔎 官方查詢頁表單:{json.dumps(ff, ensure_ascii=False)[:600]}', flush=True)
+    except Exception as e:
+        ff = []
+        print(f'  🔎 官方查詢頁讀不到:{type(e).__name__}', flush=True)
+    t = date.today()
+    y, m = (t.year, t.month - 1) if t.month > 1 else (t.year - 1, 12)
+    a, b = f'{y}/{m:02d}/01', f'{y}/{m:02d}/{_month_end(y, m):02d}'
+    names = {n for f in ff for n in f['fields']}
+    cands = [
+        {'queryStartDate': a, 'queryEndDate': b, 'commodityId': 'MXF'},
+        {'firstDate': a, 'lastDate': b, 'queryStartDate': a, 'queryEndDate': b, 'commodityId': 'MXF'},
+        {'down_type': '1', 'queryStartDate': a, 'queryEndDate': b, 'commodityId': 'MXF'},
+        {'queryStartDate': a, 'queryEndDate': b, 'commodityId': ''},
+    ]
+    if names:   # 官方表單上的每一個欄位都帶上(日期欄用我們的區間)
+        g = {n: '' for n in names}
+        for n in names:
+            if 'Start' in n or 'first' in n.lower(): g[n] = a
+            elif 'End' in n or 'last' in n.lower(): g[n] = b
+            elif 'commodity' in n.lower(): g[n] = 'MXF'
+        cands.insert(0, g)
+    for k, c in enumerate(cands):
+        for meth in ('post', 'get'):
+            try:
+                r = sess.post(DOWN_INST, data=c, headers=UA, timeout=40) if meth == 'post' else sess.get(DOWN_INST, params=c, headers=UA, timeout=40)
+                txt = _decode(r.content)
+                why = classify(r.status_code, r.headers.get('content-type', ''), txt[:400])
+                if why is None:
+                    part, perr = parse_inst_csv(txt)
+                    if part:
+                        print(f'  ✅ 三大法人下載頁第 {k} 組({meth})可用:{list(c)} → {len(part)} 天', flush=True)
+                        return {kk: ('@S' if vv == a else '@E' if vv == b else vv) for kk, vv in c.items()}
+                    why = '格式不同:' + str(perr)
+                print(f'  ⚠️ 第 {k} 組 {meth} {list(c)}:{why} ・網頁說:{html_hint(txt)}', flush=True)
+            except Exception as e:
+                print(f'  ⚠️ 第 {k} 組 {meth}:{classify(0, "", "", e)}', flush=True)
+            time.sleep(0.6)
+    return None
+
+
 def merge_rl(inst, fut):
     """兩份接起來 → {date: [淨, 法人多+空, 全市場未平倉, 散戶多空比%]};全市場未平倉缺 → 那天⛔ 不收(不拿近似分母補)。"""
     out = {}
@@ -283,7 +390,12 @@ def fetch_down(sess, url, parse, months, tag, extra=None):
         form = {'down_type': '1', 'queryStartDate': f'{y}/{m:02d}/01', 'queryEndDate': f'{y}/{m:02d}/{_month_end(y, m):02d}'}
         if 'largeTrader' in url:
             form['commodity_id'] = 'TX'
-        form.update(extra or {})
+        if extra and any(v in ('@S', '@E') for v in extra.values()):
+            # probe_inst 試出來的那一組:⛔ 不多塞欄位,只把日期欄換成這個月的區間
+            S0, E0 = form['queryStartDate'], form['queryEndDate']
+            form = {kk: (S0 if vv == '@S' else E0 if vv == '@E' else vv) for kk, vv in extra.items()}
+        else:
+            form.update(extra or {})
         r, head, why = None, '', None
         for meth in ('post', 'get'):
             try:
@@ -329,7 +441,16 @@ def main():
     pc.update(dpc); lt.update(dlt)
     src['pc_down'], src['lt_down'] = len(dpc), len(dlt)
     # 👥 V79.0.9 小台散戶多空比(兩份接起來;任一份抓不到 → rl 整段空、⛔ 不影響 pc / lt)
-    dinst, src_err['inst_down'] = fetch_down(s, DOWN_INST, parse_inst_csv, months, '三大法人小台', {'commodityId': 'MXF', 'commodity_id': 'MXF'})
+    ex = probe_inst(s)
+    if ex is not None:
+        dinst, src_err['inst_down'] = fetch_down(s, DOWN_INST, parse_inst_csv, months, '三大法人小台', ex)
+    else:
+        dinst, src_err['inst_down'] = {}, '期交所下載頁每一組參數都不行(上面印了網頁說什麼)'
+    if len(dinst) < MIN_DAYS:   # 🆘 備援:FinMind(只缺的日子才補,⛔ 不蓋掉期交所的)
+        fm, src_err['inst_finmind'] = fetch_finmind_inst(s, int(FROM[:4]), date.today().year)
+        src['inst_finmind'] = len(fm)
+        for d, v in fm.items():
+            dinst.setdefault(d, v)
     dfut, src_err['fut_down'] = fetch_down(s, DOWN_FUT, parse_fut_csv, months, '小台行情', {'commodity_id': 'MTX', 'commodity_id2': ''})
     rl = merge_rl(dinst, dfut)
     src['inst_down'], src['fut_down'], src['rl'] = len(dinst), len(dfut), len(rl)
@@ -416,6 +537,13 @@ def selftest():
     rl = merge_rl(ii, ff)
     ok('⑧ 散戶多空比 = −淨 ÷ 全市場未平倉:法人淨空 10,000 / 40,000 → +25%(正 = 散戶淨多)', rl == {'2026-10-08': [-10000, 17000, 40000, 25.0]}, rl)
     ok('⑧b 全市場未平倉缺那天 → ⛔ 不收(不拿近似分母補)', merge_rl({'2026-10-09': [5, 9]}, {}) == {})
+    ok('⑨ FinMind 三大法人小台:三個身份加總、淨 = 多 − 空', parse_finmind_inst([
+        {'date': '2026-10-08', 'name': 'Foreign_Investor', 'long_open_interest_balance_volume': 2000, 'short_open_interest_balance_volume': 10400},
+        {'date': '2026-10-08', 'name': 'Investment_Trust', 'long_open_interest_balance_volume': 500, 'short_open_interest_balance_volume': 100},
+        {'date': '2026-10-08', 'name': 'Dealer', 'long_open_interest_balance_volume': 1000, 'short_open_interest_balance_volume': 3000}]) == {'2026-10-08': [-10000, 17000]})
+    ff = form_fields('<form action="/cht/3/futContractsDateDown" method="post"><input name="queryStartDate" value=""><select name="commodityId"></select><input name="queryStartDate"></form>')
+    ok('⑩ 讀官方表單:action + 欄位名(去重)', ff == [{'action': '/cht/3/futContractsDateDown', 'fields': ['queryStartDate', 'commodityId']}], ff)
+    ok('⑪ 網頁錯誤字撈得出來', '日期區間' in html_hint('<html><body><p>查詢日期區間不可超過一個月</p></body></html>'))
     ok('⑤ 月份清單含頭尾', _months('2025-11', date(2026, 2, 3)) == [(2025, 11), (2025, 12), (2026, 1), (2026, 2)])
     print('❌ ' + str(len(fails)) + ' 條失敗' if fails else '✅ TAIFEX_HIST_SELFTEST_PASS')
     return 1 if fails else 0

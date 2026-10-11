@@ -59,6 +59,8 @@ jobs:
           # 🔧 inputs.* 可能是空字串 → Python 端一律 `or 預設`(check_env_default.py)
           FROM: ${{ github.event.inputs.from }}
           OUT: /tmp/taifex_hist.json
+          # 👥 V79.1.1 三大法人小台:期交所下載頁不給時,用 FinMind TaiwanFuturesInstitutionalInvestors 補(免費層就有)
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
         run: |
           python3 scripts/taifex_hist_miner.py --selftest
           python3 scripts/taifex_hist_miner.py || echo "⚠️ 期交所補挖沒過守門(原因在上面)→ 這一份不推"
