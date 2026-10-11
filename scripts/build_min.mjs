@@ -80,9 +80,16 @@ if (codeAfter < codeBefore * 0.4) fail(`壓縮後只剩 ${(codeAfter / codeBefor
 
 // ③ 關鍵字串抽樣(版本號 + 幾個一定要活著的 onclick 目標 + 使用者看得到的文案)
 const ver = (html.match(/_APP_VERSION:\s*'([^']+)'/) || [])[1];
-const MUST = [ver, 'renderSectorGapTable', '_brokerEl', '_renderGuardRuler',
+// 🚨 V79.1.3:清單裡的名字被功能下架刪掉時(V79.0.0 刪 _brokerEl),這關會把「清單過期」誤判成
+//    「壓縮吃掉東西」→ 每次都退回未壓縮版部署(4.7MB),而且 workflow 全綠零訊息。
+//    → 原始碼裡本來就沒有的,是清單的問題不是壓縮的問題:印出來、不算;但活著的至少要 5 個。
+const MUST = [ver, 'renderSectorGapTable', '_renderGuardRuler', '_exitDistance', 'renderDeck',
                '_scheduleChart', 'renderDayTradeTab', '偷布局', '防守價一覽'].filter(Boolean);
-const missing = MUST.filter(s => !minHtml.includes(s));
+const stale = MUST.filter(s => !html.includes(s));
+if (stale.length) console.warn('⚠️ 抽樣清單過期(原始碼裡本來就沒有,請更新 build_min.mjs):' + stale.join(', '));
+const live = MUST.filter(s => html.includes(s));
+if (live.length < 5) fail(`抽樣清單只剩 ${live.length} 個還活著(<5),驗證沒有鑑別力`);
+const missing = live.filter(s => !minHtml.includes(s));
 if (missing.length) fail('壓縮後遺失關鍵字串:' + missing.join(', '));
 
 // ④ HTML 部分不可被動到(只換 script 內容,前後長度差應等於 script 的差)

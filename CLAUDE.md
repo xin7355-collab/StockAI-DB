@@ -665,7 +665,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
    + **`python3 scripts/check_dup_def.py`**(同一個檔案裡重複定義同名函式 → Python 用最後那個,前面等於死碼 — V74.6.9 新增,實跑踩到才寫的)
    + **`python3 scripts/check_env_default.py`**(🔧 workflow 從 `inputs.*` 餵的環境變數,Python 端必須 `or 預設` —— 排程觸發時是**空字串**不是不存在;V75.1.3 新增,pe_band 四個週日零產出就是這個坑,V74.7.0 intraday_probe 是第一次)
    + **`python3 scripts/test_intraday_relay.py`**(🛟 盤中即時檔「留不留得住」—— 2026-09-10 新增:兩支盤中 workflow 都要**也推 data 分支**,⭐ 開真的 git repo 實跑 yaml 裡抽出來的 `deploy()`,而且有**決定性對照組**(拿掉那段必須重現「daily_miner 洗版後消失」)
-   + **`node scripts/test_idxparse.mjs`**(🎣 pro.html 從**正式網站的壓縮版** index.html 解析常數 —— V77.6.7 新增:讀 `origin/gh-pages:index.html`,舊 regex 在那份上六個全滅,而讀原檔的測試永遠綠)
+   + **`node scripts/test_idxparse.mjs`**(🎣 pro.html 從**正式網站的壓縮版** index.html 解析常數 —— V77.6.7 新增:讀 `origin/gh-pages:index.html`,舊 regex 在那份上六個全滅,而讀原檔的測試永遠綠) 🗜️ V79.1.3 起①改成自己用 `build_min.mjs` 壓一份來驗(gh-pages 是哪種形狀要看最後誰部署:deploy_pages 壓縮、daily_miner 推原檔),同時擋住「壓縮在部署時默默失敗」(V79.0.0~V79.1.2 抽樣清單留著已刪的 `_brokerEl`,每次退回未壓縮版、workflow 全綠)
    + **`node scripts/test_ovtruth.mjs`**(總覽/決策台講的話跟回測一致 —— V77.6.7:量堆積包住現價 / 不挑 🧬 少賺幾 % 讀常數 / 閒錢停 0050 數字 / 16 年輸 0050 含息那句;V77.6.8 ⑤ 決策台「看錯要不要先跑」七問全部讀常數、空頭清倉沒跑完要明說)
    + **`node scripts/test_ussig.mjs`**(🇺🇸 V77.7.7 回測引擎 `USSIG=<kind>|sham:<kind>` 外部逐日訊號候選層濾網:⛔ 不進 CACHE_KEY、不設時逐位相同;全部日期放行 → 筆數同基準;缺鍵 = 剔除並計數 ⛔ 不放行;⭐ 反向注入(只放行基準裡賠錢那幾筆)成績必低於基準;sham 通過率對齊實測、固定種子;對照表讀不到 / <100 鍵 → exit 1。真跑引擎約 3 分)
    + **`node scripts/test_equity_out.mjs`**(📈 V77.7.7 回測引擎 `EQUITY_OUT` 逐日市值淨值:不設時 summary 逐位相同(mdd 仍用舊的成本計 equity);天數 = 暖身後每一個交易日(bear60 擋掉的日子也有);最後一天 cash+park+cost−CAPITAL == 已出場筆的淨損益(從 TAKEN_OUT 重算);市值真的在動。約 2 分)
@@ -2418,6 +2418,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 🗜️ V79.1.3 部署壓縮從 V79.0.0 起每次都失敗(build_min 抽樣清單留著已刪的 `_brokerEl`)→ 網站一直推未壓縮版、workflow 全綠 ・清單過期改成只警告 ・`test_idxparse` 改自己壓一份驗 ・`test_contrast` 兩個分頁名寫錯(realtime / deck 不存在,量到的是上一頁)+ 逐頁確認真的切到 ・⏳ daily_miner 部署本來就推原檔(要改 workflow,先問)
 - 🔒🗑️ V79.1.2 跑馬燈移除 ・預設改「📈 符合進場」(🔥 觸發價預設收起)・👑 搬進設定「🔓 進階功能」・沒解鎖時畫面露餡的 8 處補掉(更新紀錄 5 行、機率框「成交額前 100」、決策台設定說明「選 👑 時」)・讀不到全市場快照不再卡到關 App ・產業作戰室成績單固定顯示 👑
 - 👥🧮 V79.0.9~V79.1.1 Repo X-Ray 九個 repo(㊿):🐛 App 自己的「散戶多空比」正負號兩套說法(主力出貨指數 / Telegram 反了)→ 統一 `_retailLsDir` ・補挖小台散戶多空比 2,033 天回測:對隔天大盤沒有方向 → 拿掉計分、只描述 ・偏態 / alpha / beta 選股照原樣 9.6% < 大型股等權 11.6% < 0050 含息 20.3%
 - 🎯🗑️ V79.0.8 決策台「今天可以買的」改 👑 那種表格(可排序)・⭐ 可信度排行(專欄 + 實測總表同一份)・有專欄的條目實測總表 / 雜訊清單不再重印 ・刪 pro 個股實測 / 今日訊號 / 財報三頁(盤前分數 + 除權息搬專欄、負債比 / 流動比搬報告頁 §4)

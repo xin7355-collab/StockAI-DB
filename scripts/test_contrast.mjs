@@ -119,15 +119,23 @@ const PROBE = (PAL) => {
 };
 
 const tot = { n: 0, pass: 0, fails: [], unknown: 0, faded: 0, pages: 0 };
-const add = (name, r) => { tot.n += r.n; tot.pass += r.pass; tot.unknown += r.unknown; tot.faded += r.faded; if (r.n) tot.pages++; r.fails.forEach(f => tot.fails.push({ page: name, ...f })); };
-for (const t of ['strategy', 'realtime', 'daytrade', 'chart', 'chip', 'corp', 'backtest', 'report']) {
+const perPage = [];
+const add = (name, r) => { perPage.push(name + ':' + r.n); tot.n += r.n; tot.pass += r.pass; tot.unknown += r.unknown; tot.faded += r.faded; if (r.n) tot.pages++; r.fails.forEach(f => tot.fails.push({ page: name, ...f })); };
+// 🚨 V79.1.3:舊版寫 'realtime' / 'deck' —— 這兩個分頁名不存在(真名 live / desk),切換靜默失敗,
+//    量到的是上一頁 → 頁數看起來夠、內容其實少兩頁。→ 每一頁切完都要確認容器真的看得見。
+const shown = id => page.evaluate(id => { const e = document.getElementById(id); return !!e && getComputedStyle(e).display !== 'none'; }, id);
+const notSwitched = [];
+for (const [t, id] of [['strategy', 'subContentStrategy'], ['live', 'subContentLive'], ['daytrade', 'subContentDayTrade'], ['chart', 'subContentChart'],
+    ['chip', 'subContentChip'], ['corp', 'subContentCorp'], ['report', 'subContentReport']]) {   // 回測分頁 V79.0.8 起只在實驗室模式(?lab=1)
     await page.evaluate(t => { app.switchAppTab('diag'); try { app.switchSubTab(t); } catch (_) {} }, t);
     await page.waitForTimeout(1500);
+    if (!(await shown(id))) { notSwitched.push(t); continue; }
     add('個股/' + t, await page.evaluate(PROBE, PAL));
 }
-for (const o of ['deck', 'market', 'radar', 'inv', 'fav']) {
+for (const [o, id] of [['desk', 'tabContentDesk'], ['market', 'tabContentMarket'], ['radar', 'tabContentRadar'], ['inv', 'tabContentInv'], ['fav', 'tabContentFav']]) {
     await page.evaluate(o => { try { app.switchAppTab(o); } catch (_) {} }, o);
     await page.waitForTimeout(1500);
+    if (!(await shown(id))) { notSwitched.push(o); continue; }
     add(o, await page.evaluate(PROBE, PAL));
 }
 // ③ hover 仍要變亮
@@ -142,10 +150,15 @@ await browser.close();
 if (tmp) fs.unlinkSync(tmp);
 
 const pct = tot.n ? tot.pass / tot.n * 100 : 0;
+console.log('   每頁段數:', perPage.join(' '));
 console.log(`📊 量了 ${tot.pages} 頁 ${tot.n} 段小字:通過 ${tot.pass}(${pct.toFixed(1)}%)・底色解析不了 ${tot.unknown}・刻意淡化 ${tot.faded}`);
 const byBg = {}; tot.fails.forEach(f => { byBg[f.bg] = (byBg[f.bg] || 0) + 1; });
 if (tot.fails.length) console.log('   沒過的底色分布:', JSON.stringify(byBg), '\n   例:', tot.fails.slice(0, 6).map(f => `${f.page} ${f.r} [${f.bg}] 「${f.txt}」`).join(' / '));
-ck(tot.n >= 300 && tot.pages >= 8, `🚧 空過守門:量到 ${tot.n} 段 / ${tot.pages} 頁(太少 = 沒切到頁或選擇器過時)`);
+ck(notSwitched.length === 0, `🚧 每一頁都真的切過去了(沒切到:${notSwitched.join('、') || '無'})`);
+// V79.1.3:有沒有切到頁已逐頁直接驗(上一條)→ 這條只擋「選擇器整個失效」。
+//   段數會隨功能下架變少(V79.0.0 分點 / V79.0.8 回測分頁進實驗室 / V79.1.2 跑馬燈),⛔ 不釘當時的總數。
+const emptyPages = perPage.filter(x => /:0$/.test(x));
+ck(emptyPages.length === 0 && tot.n >= 150 && tot.pages >= 10, `🚧 空過守門:量到 ${tot.n} 段 / ${tot.pages} 頁・一段都沒有的頁:${emptyPages.join('、') || '無'}(太少 = 選擇器過時)`);
 ck(pct >= 97, `⭐ 灰色小字對比 ≥4.5:1 的比例 ${pct.toFixed(1)}%(門檻 97%;剩下的是彩色 chip 底)`);
 ck(hov === 'rgb(139, 148, 158)', `覆寫有贏過後插入的 Tailwind 規則(量到 ${hov})`);
 ck(hov2 === 'rgb(229, 231, 235)', `hover: 仍能變亮(量到 ${hov2})`);
