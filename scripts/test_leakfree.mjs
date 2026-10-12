@@ -105,7 +105,7 @@ const dk = await page.evaluate(() => {
     return o;
 });
 ok('④ 預設:📈 符合進場開、🔥 觸發價收起', dk.gene.fit === true && dk.gene.pb === false, JSON.stringify(dk.gene));
-ok('④b 👑 時 🔥 預設開(那時它是名單外的買點)', dk.lead.pb === true, JSON.stringify(dk.lead));
+ok('④b 👑 時 🔥 不列(👑 V79.1.6 使用者:「不是選擇這個策略就隱藏」+ 名單外的也一起改 → 選 👑 只講 👑)', dk.lead.pb === false && dk.lead.leader === true, JSON.stringify(dk.lead));
 // ④c 搬家:把 index.html 那一段原樣抽出來,拿假的 settings 跑(⛔ 測試裡不另寫一份邏輯)
 {
     const SRC = (await import('fs')).readFileSync(path.join(ROOT, 'index.html'), 'utf8');

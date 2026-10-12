@@ -86,10 +86,15 @@ const R = await page.evaluate(async () => {
     host.innerHTML = await app._leaderDeckHtml();
     out.reb1003 = host.querySelector('[data-leaderrow="1003"] [data-leaderreb]')?.innerText || '';
     out.reb1005 = host.querySelector('[data-leaderrow="1005"] [data-leaderreb]')?.innerText || '';
+    // 📡 V79.1.6 「從 09/24 到現價漲跌多少」搬到現價底下([data-lqr])
+    out.lqr1003 = host.querySelector('[data-leaderrow="1003"] [data-lqr]')?.innerText || '';
+    out.lqr1005 = host.querySelector('[data-leaderrow="1005"] [data-lqr]')?.innerText || '';
+    out.cols = [...(host.querySelector('[data-leaderrow="1003"]')?.children || [])].map(e => e.matches('[data-leaderreb]') ? 'reb' : e.matches('[data-leaderpx]') ? 'px' : e.matches('[data-lqc]') ? 'chg' : e.matches('[data-leaderact]') ? 'act' : e.matches('[data-leadername]') ? 'name' : 'rank');
     out.reb1002 = [...host.querySelectorAll('[data-leaderrow]')].filter(e => !['1001', '1003', '1005'].includes(e.dataset.leaderrow)).map(e => e.querySelector('[data-leaderreb]')?.dataset.leaderreb).every(v => v === 'none') ? 'none' : 'bad';
     out.rebHdr = host.querySelector('[data-leadersort="reb"]')?.innerText || '';
     kClose.v = 40; app._leadRebK = null; host.innerHTML = await app._leaderDeckHtml();
     out.reb1005b = host.querySelector('[data-leaderrow="1005"] [data-leaderreb]')?.innerText || '';
+    out.lqr1005b = host.querySelector('[data-leaderrow="1005"] [data-lqr]')?.innerText || '';
     app._leadRebK = null; host.innerHTML = await app._leaderDeckHtml();
     out.acts = [...new Set([...host.querySelectorAll('[data-leaderact]')].map(e => e.innerText.trim()))];
     const nmEl = host.querySelector('[data-leadername="1003"]');
@@ -99,11 +104,13 @@ const R = await page.evaluate(async () => {
     app._liveQuotes = { '1003': { p: 120, c: 2.5 } }; app._liveUpdated = new Date().toISOString();
     host.innerHTML = await app._leaderDeckHtml();
     const r3 = host.querySelector('[data-leaderrow="1003"]');
-    out.live = { c: r3.querySelector('[data-leaderclose]').textContent, flag: r3.querySelector('[data-leaderclose]').dataset.leaderlive, reb: r3.querySelector('[data-leaderreb]').innerText, txt: r3.innerText };
+    out.live = { c: r3.querySelector('[data-leaderclose]').textContent, flag: r3.querySelector('[data-leaderclose]').dataset.leaderlive, reb: r3.querySelector('[data-leaderreb]').innerText, lqr: r3.querySelector('[data-lqr]').innerText, txt: r3.innerText };
+    out.liveHdr = host.querySelector('[data-lqhdr="px"]')?.innerText || '';
     out.liveOther = host.querySelector('[data-leaderrow="1005"] [data-leaderclose]').textContent;
     app._liveQuotes = { '1003': { p: 120, c: 2.5 } }; app._liveUpdated = '2020-01-01T05:00:00Z';   // 舊快照 ⛔ 不可當現價
     host.innerHTML = await app._leaderDeckHtml();
     out.stale = host.querySelector('[data-leaderrow="1003"] [data-leaderclose]').textContent;
+    out.staleHdr = [host.querySelector('[data-lqhdr="px"]')?.innerText || '', host.querySelector('[data-lqhdr="chg"]')?.innerText || ''];
     app._liveQuotes = {}; app._liveUpdated = null; app.getStockName = _gsn;
     // _leaderRebPx 讀 pick_history 那天的 lead.rows.c(fetch stub)
     const _f = window.fetch; app._leadRebPx = null;
@@ -127,10 +134,14 @@ const R = await page.evaluate(async () => {
     out.close1 = host.querySelector('[data-leaderrow="1001"] [data-leaderclose]')?.textContent || '';
     out.hdr = [...host.querySelectorAll('[data-leadersort]')].map(e => e.dataset.leadersort);
     out.firstDefault = out.rows[0];
-    app._leaderSort = { k: 'amt20', asc: true }; host.innerHTML = await app._leaderDeckHtml();
-    out.firstAsc = host.querySelector('[data-leaderrow]').dataset.leaderrow; out.ascMark = /億\/日▲/.test(host.innerText);
+    // 📡 V79.1.6 億/日那一欄拿掉了 → 排序的決定性對照改用「現價」:讓 1009 有一筆今天的富果價 50(其他都是 100)
+    app._deckQ = { '1009': { p: 50, prev: 100, d: app._tpeMinutes().ymd, at: 600, src: 'ws' } };
+    app._leaderSort = { k: 'c', asc: true }; host.innerHTML = await app._leaderDeckHtml();
+    out.firstAsc = host.querySelector('[data-leaderrow]').dataset.leaderrow; out.ascMark = /(現價|今天收盤)▲/.test(host.querySelector('[data-leadersort="c"]')?.innerText || '');
     out.buyAfterSort = (host.innerText.match(/🛒 買/g) || []).length;
-    app._leaderSort = null;
+    app._leaderSort = { k: 'amt20', asc: true }; host.innerHTML = await app._leaderDeckHtml();   // 舊的排序鍵(億/日)→ 退回名次,⛔ 不可整張壞掉
+    out.firstOldKey = host.querySelector('[data-leaderrow]')?.dataset.leaderrow || '';
+    app._leaderSort = null; app._deckQ = {};
     localStorage.removeItem('leaderMine_v1'); host.innerHTML = await app._leaderDeckHtml();
     out.unmarked = host.querySelector('[data-leaderheld="1041"]')?.innerText || '';
     localStorage.setItem('leaderMine_v1', JSON.stringify(['1041'])); host.innerHTML = await app._leaderDeckHtml();
@@ -203,24 +214,24 @@ ok('③b ⭐ 決定性對照(🧹 V78.3.4 反過來):把 `_LEADER_EDGE` 的數�
 ok('③c 空頭:名單照列(10 列)、但一個「🛒 買」都沒有、寫「今天不開新倉」', R.bearRows === 10 && !/🛒 買/.test(R.bearTxt) && /今天不開新倉/.test(R.bearTxt) && /前10續抱/.test(R.bearTxt) && !/空頭不買/.test(R.bearTxt));
 ok('③d 一定寫代價(只講白話,⛔ 不給數字)+ 標明是你選的策略', /中途可能賠掉一半/.test(R.txt) && /你選的策略/.test(R.txt) && !/年贏 0050|預設・實測最強/.test(R.txt));
 ok('③i 每一列有收盤價(讀 screener 的 c)', R.close1 === '100.0', R.close1);
-ok('③j 表頭可排序:名次/現價/換倉價/今天/億/日 五欄(V78.3.3)', JSON.stringify(R.hdr) === JSON.stringify(['rank', 'c', 'reb', 'chg', 'amt20']), JSON.stringify(R.hdr));
-ok('③k ⭐ 決定性對照:照 億/日 由小到大排 → 第一列換人 + ▲;「🛒 買」仍只有前 5 名(⛔ 動作不跟排序變)', R.firstDefault === '1001' && R.firstAsc !== '1001' && R.ascMark && R.buyAfterSort === 5, JSON.stringify([R.firstDefault, R.firstAsc, R.ascMark, R.buyAfterSort]));
+ok('③j 📡 V79.1.6 表頭可排序:名次 / 09/24價 / 現價 / 今天 四欄(⛔ 億/日已取消;09/24價在現價左邊)', JSON.stringify(R.hdr) === JSON.stringify(['rank', 'reb', 'c', 'chg']) && JSON.stringify(R.cols) === JSON.stringify(['rank', 'name', 'reb', 'px', 'chg', 'act']) && !/億\/日/.test(R.txt), JSON.stringify([R.hdr, R.cols]));
+ok('③k ⭐ 決定性對照:照「現價」由小到大排 → 1009(富果今天 50)排第一 + ▲;「🛒 買」仍只有前 5 名(⛔ 動作不跟排序變);舊的億/日排序鍵 → 退回名次', R.firstDefault === '1001' && R.firstAsc === '1009' && R.ascMark && R.buyAfterSort === 5 && R.firstOldKey === '1001', JSON.stringify([R.firstDefault, R.firstAsc, R.ascMark, R.buyAfterSort, R.firstOldKey]));
 ok('③l ⭐ V77.9.6 ⛔ 不再有「標了才算」:選 👑 時 1041 一律講要賣,舊的 leaderMine_v1 標記有沒有都一樣、也⛔ 沒有標記按鈕', /掉出前 10 名/.test(R.unmarked) && /開盤賣|換倉日再賣/.test(R.unmarked) && R.marked === R.unmarked && !/照這套買的/.test(R.unmarked) && R.markedMine === '1', JSON.stringify([R.unmarked, R.marked]));
 ok('③e ⛔ 無 🔴🟢', !/[🔴🟢]/u.test(R.txt) && !/[🔴🟢]/u.test(R.bearTxt));
 ok('③f 390px 不橫捲、不超出', R.sx <= 2 && R.over === 0, `${R.sx} ${R.over}`);
 ok('③g 無 pageerror', !errs.length, errs.join(' | '));
-ok('⑫a 📌 V78.5.9 「09/24價」= 換這一批那天的收盤 + 到現價 %:pick_history 有的照用;沒有的用 K 線「那一天」補(⛔ 不拿前一天/後一天);那天沒有 K 線 → 「—」', /^80\.00\s*\+25\.0%$/.test(R.reb1003.trim()) && /^50\.00\s*\+100\.0%$/.test(R.reb1005.trim()) && R.reb1002 === 'none', JSON.stringify([R.reb1003, R.reb1005, R.reb1002]));
-ok('⑫a2 ⭐ 決定性對照:K 線那天的收盤改成 40 → 畫面跟著變(+150%)', /^40\.00\s*\+150\.0%$/.test(R.reb1005b.trim()), R.reb1005b);
+ok('⑫a 📌 V78.5.9 「09/24價」= 換這一批那天的收盤:pick_history 有的照用;沒有的用 K 線「那一天」補(⛔ 不拿前一天/後一天);那天沒有 K 線 → 「—」;📡 V79.1.6 到現價 % 在現價底下', R.reb1003.trim() === '80.00' && R.lqr1003.trim() === '+25.0%' && R.reb1005.trim() === '50.00' && R.lqr1005.trim() === '+100.0%' && R.reb1002 === 'none', JSON.stringify([R.reb1003, R.lqr1003, R.reb1005, R.lqr1005, R.reb1002]));
+ok('⑫a2 ⭐ 決定性對照:K 線那天的收盤改成 40 → 畫面跟著變(+150%)', R.reb1005b.trim() === '40.00' && R.lqr1005b.trim() === '+150.0%', JSON.stringify([R.reb1005b, R.lqr1005b]));
 ok('⑫a3 表頭名字 = 「09/24價」(⛔ 不再叫換倉價)', /09\/24價/.test(R.rebHdr) && !/換倉價/.test(R.rebHdr), R.rebHdr);
 ok('⑫b 動作欄只有「🛒 買 / 前10續抱」兩種(⛔ 位置低 / 空頭不買 / ✅ 已有 / 換倉日才買)', R.acts.length === 2 && R.acts.every(t => t === '🛒 買' || t === '前10續抱'), JSON.stringify(R.acts));
 ok('⑫c 股名兩層:中文名一列、代號在名字下面', R.nameTwoLayer === true);
-ok('⑫d ⭐ 決定性對照:即時快照是今天的 → 現價 = 快照價、今天 = 快照漲跌、換倉價後面的 % 跟著變;其他檔照舊收盤', R.live.c === '120.0' && R.live.flag === '1' && /\+50\.0%/.test(R.live.reb) && /\+2\.5%/.test(R.live.txt) && R.liveOther === '100.0', JSON.stringify([R.live, R.liveOther]));
-ok('⑫e 舊快照(不是今天)⛔ 不可當現價', R.stale === '100.0', R.stale);
+ok('⑫d ⭐ 決定性對照:即時快照是今天的 → 現價 = 快照價、今天 = 快照漲跌、現價底下的 % 跟著變;其他檔照舊收盤;表頭寫「現價」', R.live.c === '120.0' && R.live.flag === '1' && R.live.reb.trim() === '80.00' && /\+50\.0%/.test(R.live.lqr) && /\+2\.5%/.test(R.live.txt) && R.liveOther === '100.0' && /^(現價|今天收盤)$/.test(R.liveHdr), JSON.stringify([R.live, R.liveOther, R.liveHdr]));
+ok('⑫e 舊快照(不是今天)⛔ 不可當現價;📅 V79.1.6 表頭寫「09/28收盤 / 09/28漲跌」(⛔ 不可寫「現價 / 今天」)', R.stale === '100.0' && R.staleHdr[0] === '09/28收盤' && R.staleHdr[1] === '09/28漲跌', JSON.stringify([R.stale, R.staleHdr]));
 ok('⑫f _leaderRebPx 讀那一天(⛔ 不是前一天)的 lead.rows.c;沒存到 / 讀不到 → 寫原因(⛔ 不靜默)', JSON.stringify(R.rpx) === JSON.stringify([77, 55, false]) && /沒有存到/.test(R.rpMiss) && /讀不到/.test(R.rpErr), JSON.stringify([R.rpx, R.rpMiss, R.rpErr]));
 ok('⑫g 表下說明寫現價 / 09/24價的定義', /09\/24價 = 換這一批那天\(2026-09-24\)的收盤/.test(R.rebNote), R.rebNote);
 ok('⑬a 📦 V78.6.0 非換倉日:表上只列這一批(pick_history 上次換倉那天的名單,照原順序),⛔ 不是今天的排名', JSON.stringify(R.bRows) === JSON.stringify(['1003', '1015', '1031', '1000', '1100']), JSON.stringify(R.bRows));
-ok('⑬b 動作欄 = 今天第幾名:還在前 10 → ✅;掉出 / 沒過趨勢 / 不在池子 → ⏳(⛔ 沒有 🛒,換倉日才賣)', R.bActs['1003'] === 'in|✅ 今第2' && R.bActs['1015'] === 'in|✅ 今第8' && R.bActs['1031'] === 'out|⏳ 今第16' && R.bActs['1000'] === 'out|⏳ 沒過趨勢' && R.bActs['1100'] === 'out|⏳ 不在前100' && R.bBuy === 0, JSON.stringify([R.bActs, R.bBuy]));
-ok('⑬c 表上方寫「09/24 換的這一批・10 天不變」+ 表頭可照今天名次排序(沒名次排最後)', /^ok\|📦 下面這 5 檔 = 09\/24 換的這一批/.test(R.bTxt) && /今天名次/.test(R.bHdr) && JSON.stringify(R.bSortT) === JSON.stringify(['1003', '1015', '1031', '1000', '1100']) && /^60\.00/.test(R.bReb1015.trim()), JSON.stringify([R.bTxt, R.bHdr, R.bSortT, R.bReb1015]));
+ok('⑬b 動作欄 = 第幾名(📅 V79.1.6 日期寫在表頭,格子只寫「第N」):還在前 10 → ✅;掉出 / 沒過趨勢 / 不在池子 → ⏳(⛔ 沒有 🛒,換倉日才賣)', R.bActs['1003'] === 'in|✅ 第2' && R.bActs['1015'] === 'in|✅ 第8' && R.bActs['1031'] === 'out|⏳ 第16' && R.bActs['1000'] === 'out|⏳ 沒過趨勢' && R.bActs['1100'] === 'out|⏳ 不在前100' && R.bBuy === 0, JSON.stringify([R.bActs, R.bBuy]));
+ok('⑬c 表上方寫「09/24 換的這一批・10 天不變」+ 表頭可照名次排序(沒名次排最後);📅 V79.1.6 資料日不是今天 → 表頭寫「09/28名次」(⛔ 不寫「今天名次」)', /^ok\|📦 下面這 5 檔 = 09\/24 換的這一批/.test(R.bTxt) && /09\/28 收盤排第幾名/.test(R.bTxt) && /^09\/28名次/.test(R.bHdr) && !/今天/.test(R.bHdr) && JSON.stringify(R.bSortT) === JSON.stringify(['1003', '1015', '1031', '1000', '1100']) && /^60\.00/.test(R.bReb1015.trim()), JSON.stringify([R.bTxt, R.bHdr, R.bSortT, R.bReb1015]));
 ok('⑬d ⭐ 決定性對照:換倉日 → 列的是今天的排名(1001 起),寫「今天換倉 → 新的一批」', R.rRows[0] === '1001' && R.rRows.length >= 10 && R.rBatch === 'today', JSON.stringify([R.rRows, R.rBatch]));
 ok('⑬e 讀不到那一批 → 退回今天的排名並寫原因(⛔ 不靜默)', R.eRows[0] === '1001' && /^err\|⚠️ 09\/24 那一批讀不到/.test(R.eBatch), JSON.stringify([R.eRows.slice(0, 3), R.eBatch]));
 ok('⑬f 🔓 標題連點 5 次才打開(4 次不動)・預設關 → 沒有「今天最新前 10 名」', R.tOff === 0 && R.tap4 === false && R.tap5 === true && R.tapWired, JSON.stringify([R.tOff, R.tap4, R.tap5, R.tapWired]));
@@ -278,16 +289,17 @@ const DS = await page.evaluate(() => {
         pbDesc: box ? (box.querySelector('[data-deckshowk="pb"]')?.innerText || '') : '' }; };
     app.settings.deckShow = null;
     out.lead = snap();                                        // 這支測試開頭切成 👑
-    app.settings.deckShow = { pb: false }; out.leadPbOn = snap();   // ⭐ 決定性對照:👑 時把 🔥 名單外的買點關掉 → 不顯
+    app.settings.deckShow = { pb: true }; out.leadPbOn = snap();   // ⭐ 決定性對照:👑 時就算以前存過 🔥 開著 → 照樣不顯、不列
     app.settings.strategy = 'gene'; app.settings.deckShow = null;
     out.gene = snap();
     app.settings.deckShow = { pb: true }; out.geneFit = snap();   // 📈 V79.1.2 預設收起的是 🔥 → 勾回來就沒有收起的
     app.settings.strategy = 'lead'; app.settings.deckShow = null;
     return out;
 });
-// 🔥 V78.5.5 使用者選「名單外買賣都改照 🔥」→ 👑 時多一塊「🔥 名單外的買點」(pb);📈 符合進場候選(fit)仍只在 🧬
-ok('⑧ 👑:領頭羊 + 要賣的 + 🔥 名單外的買點(📈 候選不列)', JSON.stringify(Object.entries((({ col, ...r }) => r)(DS.lead.def)).sort()) === JSON.stringify(Object.entries({ leader: true, sell: true, pb: true, fit: false }).sort())   /* 🔓 V78.4.2 `col` 是解鎖後的進階功能(另一區開關),⛔ 不算決策台一般區塊 */ && DS.lead.leader && DS.lead.pb && DS.lead.hidN === undefined && JSON.stringify(DS.lead.keys) === JSON.stringify(['leader', 'sell', 'pb']), JSON.stringify(DS.lead));
-ok('⑧b 👑 時 🔥 名單外的買點可以收起(設定關掉就不顯)', DS.leadPbOn.pb === false && DS.lead.pb === true, JSON.stringify(DS.leadPbOn));
+// 👑 V79.1.6 使用者:「今天可以買的(最多 2 檔)依照我選擇的策略出現,不是選擇這個策略就隱藏」+ 選「名單外的也一起改」
+//   → 👑 時只有 領頭羊 + 要賣的;🔥 / 📈 都不列、不顯,也⛔ 不算「收起來的」
+ok('⑧ 👑:只有 領頭羊 + 要賣的(🔥 觸發價 / 📈 候選都不列、不顯,⛔ 不算收起)', JSON.stringify(Object.entries((({ col, ...r }) => r)(DS.lead.def)).sort()) === JSON.stringify(Object.entries({ leader: true, sell: true, pb: false, fit: false }).sort())   /* 🔓 V78.4.2 `col` 是解鎖後的進階功能(另一區開關),⛔ 不算決策台一般區塊 */ && DS.lead.leader && !DS.lead.pb && DS.lead.hidN === undefined && JSON.stringify(DS.lead.keys) === JSON.stringify(['leader', 'sell']), JSON.stringify(DS.lead));
+ok('⑧b ⭐ 決定性對照:👑 時就算以前存過 🔥 開著 → 照樣不顯、設定清單也不列', DS.leadPbOn.pb === false && JSON.stringify(DS.leadPbOn.keys) === JSON.stringify(['leader', 'sell']), JSON.stringify(DS.leadPbOn));
 // 📈 V79.1.2 使用者:「預設策略符合進場」「只留 📈、🔥 預設收起」
 ok('⑧c 🧬(預設):📈 符合進場 + 要賣的開、🔥 觸發價收起、領頭羊⛔ 不列也不顯;「今天不用做」照 📈 講', DS.gene.def.fit === true && DS.gene.def.pb === false && DS.gene.def.leader === false && !DS.gene.leader && !DS.gene.pb && DS.gene.idle && !DS.gene.keys.includes('leader') && JSON.stringify(DS.gene.keys) === JSON.stringify(['sell', 'fit', 'pb']) && DS.gene.checked === 2, JSON.stringify(DS.gene));
 ok('⑧d 🧬 收起的要寫出來(⛔ 不靜默);🧹 V78.3.4 說明⛔ 不印回測數字、⛔ 不拿領頭羊來比', DS.gene.hidN === '1' && !DS.geneFit.hidN && !/萬|實測|回測/.test(DS.gene.pbDesc) && !/領頭羊/.test(DS.gene.pbDesc) && /觸發價/.test(DS.gene.pbDesc), JSON.stringify([DS.gene.hidN, DS.geneFit.hidN, DS.gene.pbDesc]));

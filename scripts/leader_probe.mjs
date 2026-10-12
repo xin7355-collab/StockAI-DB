@@ -93,7 +93,17 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
     indCap: 0, wRank: null, posMin: 85, posRaw: true, volUp: 0, finAcc: false, fsync: 0, rankUp: false, shamKeep: 0,
     capital: 0, minFee: 20, add: 0, glide: 0, parkMin: 5000, luExit: '', phase: 0, join: '', limitRepl: false, limitRetry: '', pickFrom: 0,
     dip: 0, hold: 5, dipSort: 'drop', dipMin: 0, bearCore: null, bearN: 0, bearTop: 0, pool: '', themeK: 3, themeL: 20, themeSham: false,
-    dRank: 0, stop: 0, trail: 0, shamOut: 0, refill: false, accAvoid: false, accSham: 0 };
+    dRank: 0, stop: 0, trail: 0, shamOut: 0, refill: false, accAvoid: false, accSham: 0,
+    rkLu: '', rkLd: '', rkTh: 0, rkSham: 0, parkGate: '', parkGateP: 0 };
+// 🟥 V79.1.6 換倉日收盤就漲停 / 跌停的候選(使用者:「如果換倉日漲跌停,隔天還要買嗎?還是就都買 0050」)⛔ 不設時逐位相同(selftest ㊴):
+//   判定(同 luExit / dt_daily_probe.lockUp):換倉日收盤 ≥ 前收 ×(1+漲跌幅−1%)且收在最高 = 漲停;≤ 前收 ×(1−漲跌幅+1%)且收在最低 = 跌停;除權息日不判
+//   rkLu / rkLd = 'park':本來會買的那一檔不買,那一份錢留在 0050 到下一次換倉 ・'next':改買名單上的下一名
+//   rkTh = x:改用「換倉日漲跌幅 ≥ x(或 ≤ −x)」判定(不管有沒有收在最高 / 最低)= 高原檢定 7 / 8 / 9%
+//   rkSham = p:本來會買的每一檔以機率 p 隨機不買(安慰劑,另一顆亂數)—— 'park' 少買那幾份,⛔ 跟漲停無關的「少買一點」本身會不會比較好
+//   trace = 陣列:每次換倉把「本來會買的」記下來 {d, s, f 換倉日 lu/ld/'', g 換倉日漲跌 %, r 隔天開盤→下次換倉日收盤 %, b 0050 同期 %, lock 隔天開盤就漲停}(只分析用)
+// 🅿️ V79.1.6 parkGate(使用者:「0050 變貴了,我進場後墊高了成本,這樣對嗎」→ 「等便宜一點再停」有沒有比較好)⛔ 不設時逐位相同(selftest ㊵):
+//   'ma20' 0050 含息指數 ≤ 自己 20 日均線才停 ・'hi20' 不是 20 日新高才停 ・'sham' 每天以機率 parkGateP 開(安慰劑)
+//   關著的時候錢留現金(⛔ 不賣已經停的 0050),每天收盤再看一次;開了就照原規則停進去。
 // 🛒 V78.2.2 「怎麼買」(使用者:「前 5 名還是 6~10 也可以?開盤買還是 13:00~13:30?漲停要不要換第 6 名?」)⛔ 不設時逐位相同:
 //   limitRepl  = 成交價接近漲停買不到 → 換候選名單上的下一名(仍要過位置門檻、沒持有)
 //   limitRetry = 'close':開盤接近漲停買不到 → 當天收盤沒鎖就用收盤價買(只在 fill='open' 有意義)
@@ -223,6 +233,31 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     const rand3 = rng(seed * 104729 + 7);
     const rand4 = rng(seed * 15485863 + 3);                   // 🔄 shamOut 專用(⛔ 不動別人的亂數)
     const MID = P.dRank > 0 || P.stop > 0 || P.trail > 0 || P.shamOut > 0;
+    // 🟥 V79.1.6 換倉日漲停 / 跌停(⛔ 不設時下面兩支都不會被呼叫,亂數也不會被消耗)
+    const RK = !!(P.rkLu || P.rkLd || P.rkSham > 0);
+    const rand5 = rng(seed * 6700417 + 11);
+    const rkFlag = (S, i) => {
+        const c = S.C[i], pc = lastC(S, i - 1);
+        if (!(c > 0 && pc > 0) || S.F[i] !== 1) return '';
+        if (P.rkTh > 0) { const r = c / pc - 1; return r >= P.rkTh ? 'lu' : (r <= -P.rkTh ? 'ld' : ''); }
+        const lim = limitOf(cal[i]);
+        if (c >= pc * (1 + lim - 0.01) && c >= S.H[i] - 1e-9) return 'lu';
+        if (c <= pc * (1 - lim + 0.01) && c <= S.L[i] + 1e-9) return 'ld';
+        return '';
+    };
+    const rkMode = (S, i) => { const f = rkFlag(S, i); return f === 'lu' ? (P.rkLu || '') : f === 'ld' ? (P.rkLd || '') : ''; };
+    // 🅿️ V79.1.6 parkGate(⛔ 不設 → 一律回 true;sham 一天只抽一次)
+    const rand6 = rng(seed * 2147483 + 29), gateMemo = new Map();
+    let deferPark = false;                                    // 閘門擋過一次 → 之後每天收盤看閘門開了沒(⛔ 沒擋過就不提早停 → p=1 跟沒閘門逐位相同)
+    const gateOpen = ti => {
+        if (!P.parkGate) return true;
+        if (P.parkGate === 'sham') { if (!gateMemo.has(ti)) gateMemo.set(ti, rand6() < P.parkGateP); return gateMemo.get(ti); }
+        const tr = etf.tr; if (!(ti >= 20) || !(tr[ti] > 0)) return true;
+        if (P.parkGate === 'ma20') { let s = 0; for (let k = ti - 19; k <= ti; k++) s += tr[k]; return tr[ti] <= s / 20; }
+        if (P.parkGate === 'hi20') { let m = -Infinity; for (let k = ti - 19; k < ti; k++) m = Math.max(m, tr[k]); return tr[ti] < m; }
+        return true;
+    };
+    const parkOk = ti => { if (gateOpen(ti)) return true; deferPark = true; return false; };
     const themeUniv = i => {
         const sc = [];
         for (const T of ctx.themes) {
@@ -322,13 +357,13 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 pos.set(S.sym, { sh, cost: o, paid, atr: S.atr[i - 1], hc: o, S, entry: (P.fill === 'open' && !retryNow) ? i : i + 0.5 });
                 if (LOG) LOG.push({ s: S.sym, side: 'B', d: cal[i], dd: cal[i - 1], px: o, why: retryNow ? 'retry' : 'buy' });   // 收盤成交那天⛔ 不可再跑當天的吊燈 / 出場檢查
             }
-            if (P.park && !(BC && bearMode) && cash > 0.01 * value(ti) && (!CAP || cash >= P.parkMin)) { const units = CAP ? (cash - feeOf(cash)) / etf.tr[ti] : cash * (1 - FEE) / etf.tr[ti]; park += units; turnover += cash; cash = 0; }
+            if (P.park && !(BC && bearMode) && cash > 0.01 * value(ti) && (!CAP || cash >= P.parkMin) && parkOk(ti)) { const units = CAP ? (cash - feeOf(cash)) / etf.tr[ti] : cash * (1 - FEE) / etf.tr[ti]; park += units; turnover += cash; cash = 0; }
             pending = null;
         };
         bearMode = i > s0 && ctx.bear[i - 1] === 1;
         if (pending && P.fill === 'open') execPending((S, k) => S.O[k], i - 1);
         // 🟥 V78.2.0 luExit:昨天收盤鎖漲停的持股,今天開盤照規則賣(⛔ 不設時整段不跑)
-        const parkCash = ti => { if (P.park && !(BC && bearMode) && cash > 0.01 * value(ti) && (!CAP || cash >= P.parkMin)) { const units = CAP ? (cash - feeOf(cash)) / etf.tr[ti] : cash * (1 - FEE) / etf.tr[ti]; park += units; turnover += cash; cash = 0; } };
+        const parkCash = ti => { if (P.park && !(BC && bearMode) && cash > 0.01 * value(ti) && (!CAP || cash >= P.parkMin) && parkOk(ti)) { const units = CAP ? (cash - feeOf(cash)) / etf.tr[ti] : cash * (1 - FEE) / etf.tr[ti]; park += units; turnover += cash; cash = 0; } };
         let luClose = null;
         if (P.luExit && i > s0) {
             let sold = 0;
@@ -400,6 +435,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 pending.buy.push(...add); st.refill = (st.refill || 0) + add.length;
             }
         }
+        // 🅿️ V79.1.6 parkGate:閘門關著時留下的現金,哪天收盤開了就停進 0050(⛔ 不設時整段不跑)
+        if (P.parkGate) { st.gTot = (st.gTot || 0) + 1; const g = gateOpen(i); if (g) st.gOpen = (st.gOpen || 0) + 1; if (g && deferPark) { deferPark = false; parkCash(i); } }
         eq.push(value(i));
         // ③ 換倉日收盤:決定明天開盤要做什麼
         if (P.join === 'wait' && P.phase > 0 && i === s0 && (i - s0 + P.phase) % P.R !== 0 && i + 1 < n) pending = { sell: [], buy: [] };   // 🕐 等的那幾天錢停 0050
@@ -433,6 +470,13 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             }
             if (blocked.size) cand = cand.filter(S => !blocked.has(S.sym));
             const room = Math.max(0, N - (pos.size - (P.refill ? new Set([...sellL, ...(pending ? pending.sell : [])].filter(s => pos.has(s))).size : sellL.length)));
+            // 🟥 V79.1.6 'next':換倉日漲停 / 跌停的候選從名單拿掉 → 下一名補上(⛔ 持股不受影響,續抱看 keepSet)
+            //   rkNext 只算「本來會買、被換掉」的那幾檔(名單後段被拿掉的不算)
+            if (RK && !bearNow && (P.rkLu === 'next' || P.rkLd === 'next')) {
+                const would = (P.pickFrom > 0 ? cand.slice(P.pickFrom) : cand).filter(S => !pos.has(S.sym)).slice(0, room);
+                st.rkNext = (st.rkNext || 0) + would.filter(S => rkMode(S, i) === 'next').length;
+                cand = cand.filter(S => pos.has(S.sym) || rkMode(S, i) !== 'next');
+            }
             let buyL;
             if (bearNow && P.bearTop > 0) buyL = cand.slice(0, P.bearTop).filter(S => !pos.has(S.sym)).slice(0, Math.max(0, P.bearTop - (pos.size - sellL.length)));
             else if (bearNow) buyL = [];
@@ -442,6 +486,23 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 buyL = [];
                 for (const S of cand) { if (buyL.length >= room) break; if (pos.has(S.sym)) continue; const g = ctx.ind[S.sym] || '?'; if ((cnt.get(g) || 0) >= P.indCap) continue; cnt.set(g, (cnt.get(g) || 0) + 1); buyL.push(S); }
             } else buyL = (P.pickFrom > 0 ? cand.slice(P.pickFrom) : cand).filter(S => !pos.has(S.sym)).slice(0, room);
+            // 🟥 V79.1.6 trace:記下「本來會買的」那幾檔之後 10 天的表現(只分析用,⛔ 不影響交易)
+            if (Array.isArray(P.trace) && !bearNow && i + 1 < nEnd) for (const S of buyL) {
+                const nc = P.fill === 'nextclose', o = nc ? S.C[i + 1] : S.O[i + 1], e = Math.min(nEnd - 1, i + P.R), c = lastC(S, e), pc = lastC(S, i - 1);
+                if (!(o > 0 && c > 0 && pc > 0 && S.C[i] > 0) || e <= i + 1) continue;
+                let f = 1; for (let j = i + 2; j <= e; j++) f *= S.F[j];
+                P.trace.push({ d: cal[i], s: S.sym, f: rkFlag(S, i), g: (S.C[i] / pc - 1) * 100, r: (c * f / o - 1) * 100, b: (etf.tr[e] / etf.tr[nc ? i + 1 : i] - 1) * 100,
+                               lock: o / S.C[i] - 1 > limitOf(cal[i + 1]) - 0.003 });
+            }
+            // 🟥 V79.1.6 'park':換倉日漲停 / 跌停的那一檔這次不買(那一份錢留 0050);rkSham 隨機不買同比例(安慰劑)
+            if (RK && !bearNow && buyL.length) {
+                st.rkSeen = (st.rkSeen || 0) + buyL.length;   // 本來會買幾檔(算「少買的比例」給安慰劑對齊用)
+                buyL = buyL.filter(S => {
+                    if (rkMode(S, i) === 'park') { st.rkPark = (st.rkPark || 0) + 1; return false; }
+                    if (P.rkSham > 0 && rand5() < P.rkSham) { st.rkSham = (st.rkSham || 0) + 1; return false; }
+                    return true;
+                });
+            }
             const altL = (P.limitRepl && !bearNow) ? (P.pickFrom > 0 ? cand.slice(P.pickFrom) : cand).filter(S => !pos.has(S.sym) && !buyL.includes(S)).slice(0, 10) : null;
             if (sellL.length || buyL.length || (P.park && cash > 0) || pending || trimNow) pending = { sell: [...new Set([...(pending ? pending.sell : []), ...sellL])], buy: buyL, trim: trimNow, alt: altL };
             if (P.wRank && pending) { pending.w = new Map(); for (const S of buyL) { const k = ranked.indexOf(S); pending.w.set(S.sym, P.wRank[Math.min(k, P.wRank.length - 1)] ?? 1); } }
@@ -622,6 +683,8 @@ function runSet(ctx, name, cfg, startDate, paths = 17) {
         passRate: (() => { const T = res.reduce((a, r) => a + r.st.fTot, 0); return T ? r2(res.reduce((a, r) => a + r.st.fPass, 0) / T * 100) : null; })(), finMiss: med(r => r.st.finMiss), accCut: med(r => r.st.accCut), accUnk: med(r => r.st.accUnk), accDropRate: (() => { const K = res.reduce((a, r) => a + r.st.accKnown, 0); return K ? r2(res.reduce((a, r) => a + r.st.accCut, 0) / K * 100) : null; })(),
         eqEnd: res.map(r => r2(r.m.tot)),
         lu: cfg.luExit ? { lock: med(r => r.st.luLock), hold: med(r => r.st.luHold), open: med(r => r.st.luOpen), close: med(r => r.st.luClose) } : null,
+        rk: (cfg.rkLu || cfg.rkLd || cfg.rkSham) ? { seen: med(r => r.st.rkSeen || 0), park: med(r => r.st.rkPark || 0), next: med(r => r.st.rkNext || 0), sham: med(r => r.st.rkSham || 0) } : null,
+        gate: cfg.parkGate ? r2(res.reduce((a, r) => a + (r.st.gOpen || 0), 0) / Math.max(1, res.reduce((a, r) => a + (r.st.gTot || 0), 0)) * 100) : null,
         trades: med(r => r.trades), win: med(r => r.win * 100), avg: med(r => r.avg * 100), turnYr: med(r => r.turnover / ((r.eq.length - 1) / 244)),
         years: Object.fromEntries(years.map(y => [y, { s: med(r => r.y[y]?.s ?? NaN), c: med(r => r.y[y]?.c ?? NaN) }])) };
 }
@@ -936,6 +999,37 @@ function selftest() {
     t(m0.eq.every((v, k) => v === m00.eq[k]) && mS.st.midOut === 1 && mS.held === 0 && !mS.st.refill && mR.held === 1 && mR.st.refill === 1
         && sellA && buyB && sellA.d === buyB.d && sellA.d > cal[125] && mT.st.midOut === 1 && mT.held === 1 && mD.held === 1 && mB.held === 0 && mR.eq.at(-1) > mS.eq.at(-1),
         `㊲ 期中換股:不設逐位相同・跌破 8% 隔天開盤賣(${sellA && sellA.d})・refill 同一天開盤補 B・沒 refill 空著・trail / dRank 也觸發・空頭不補`);
+    // ㊴ V79.1.6 換倉日漲停 / 跌停:X 動能第 1(只會在第 115 天換倉一次),Y 第 2;X 第 115 天收盤 +10% 收在最高(= 漲停)
+    //   預設照買 X ・park 不買(錢留著)・next 改買 Y ・跌停版同理 ・沒收在最高不算(rkTh 0.07 才算)・除權息日不判 ・安慰劑 p=1 全不買、p=0 = 預設 ・trace 標 lu ・不設逐位相同
+    const mkR = (fx) => { const X = mk('7101', i => 100 + i * 0.6), Y = mk('7102', i => 100 + i * 0.3); fx(X); return { cal, stocks: [X, Y], etf: flat, bear: new Uint8Array(n) }; };
+    const luDay = X => { X.C[115] = X.C[114] * 1.10; X.H[115] = X.C[115]; X.O[116] = X.C[115] * 1.01; };
+    const ldDay = X => { X.C[115] = X.C[114] * 0.90; X.L[115] = X.C[115]; X.O[116] = X.C[115] * 1.01; };
+    const cfgR = { U: 2, N: 1, R: 1000, L: 20, chand: 0, park: false, trend: false };
+    const runR = (fx, extra) => { const lg = []; const r = simulate(mkR(fx), 115, { ...cfgR, ...extra, log: lg }); return { r, buy: (lg.find(x => x.side === 'B') || {}).s || null }; };
+    const rBase = runR(luDay, {}), rPark = runR(luDay, { rkLu: 'park' }), rNext = runR(luDay, { rkLu: 'next' });
+    const rLdP = runR(ldDay, { rkLd: 'park' }), rLdN = runR(ldDay, { rkLd: 'next' }), rLdLu = runR(ldDay, { rkLu: 'park' });
+    const notHi = X => { luDay(X); X.H[115] = X.C[115] * 1.02; };
+    const rNotHi = runR(notHi, { rkLu: 'park' }), rTh = runR(notHi, { rkLu: 'park', rkTh: 0.07 });
+    const exDiv = X => { luDay(X); X.F[115] = 1.05; }, rExDiv = runR(exDiv, { rkLu: 'park' });
+    const rSh1 = runR(() => {}, { rkSham: 1 }), rSh0 = runR(() => {}, { rkSham: 0 }), rPlain = runR(() => {}, {});
+    const rOff = simulate(mkR(luDay), 115, { ...cfgR, rkLu: '', rkLd: '', rkTh: 0, rkSham: 0, parkGate: '', parkGateP: 0 }), rOn = simulate(mkR(luDay), 115, cfgR);
+    const trc = []; simulate(mkR(luDay), 115, { ...cfgR, trace: trc });
+    const trcL = []; simulate(mkR(X => { luDay(X); X.O[116] = X.C[115] * 1.10; }), 115, { ...cfgR, trace: trcL });
+    t(rBase.buy === '7101' && rPark.buy === null && rPark.r.st.rkPark === 1 && rPark.r.eq.at(-1) === 1 && rNext.buy === '7102' && rNext.r.st.rkNext === 1
+        && rLdP.buy === null && rLdN.buy === '7102' && rLdLu.buy === '7101' && rNotHi.buy === '7101' && rTh.buy === null && rExDiv.buy === '7101'
+        && rSh1.buy === null && rSh1.r.st.rkSham === 1 && rSh0.r.eq.every((v, k) => v === rPlain.r.eq[k]) && rOff.eq.every((v, k) => v === rOn.eq[k])
+        && trc.length === 1 && trc[0].s === '7101' && trc[0].f === 'lu' && Math.abs(trc[0].g - 10) < 1e-6 && !trc[0].lock && trcL.length === 1 && trcL[0].lock,
+        `㊴ 換倉日漲停:預設買 X・park 不買(錢留著)・next 改買 Y・跌停同理(rkLu 不管跌停)・沒收在最高不算・rkTh 7% 才算・除權息日不判・安慰劑 p=1 全不買 / p=0 = 預設・trace 標 lu、隔天開盤漲停標 lock・不設逐位相同`);
+    // ㊵ V79.1.6 parkGate:0050 一路漲(每天都比 20 日均線高、每天都是 20 日新高)→ ma20 / hi20 都不停(錢留現金);一路跌 → 跟沒閘門一樣;安慰劑 p=0 不停、p=1 = 沒閘門
+    const trRise = new Float64Array(n).map((_, i) => 1 + 0.002 * i), trFall = new Float64Array(n).map((_, i) => 2 - 0.002 * i);
+    const cfgG = { U: 1, N: 1, R: 1, L: 20, chand: 0, park: true, trend: false };
+    const gRun = (tr, extra) => simulate({ cal, stocks: [], etf: { tr }, bear: new Uint8Array(n) }, 100, { ...cfgG, ...extra }, 5);
+    const gUp0 = gRun(trRise, {}), gUpM = gRun(trRise, { parkGate: 'ma20' }), gUpH = gRun(trRise, { parkGate: 'hi20' });
+    const gDn0 = gRun(trFall, {}), gDnM = gRun(trFall, { parkGate: 'ma20' });
+    const gS0 = gRun(trRise, { parkGate: 'sham', parkGateP: 0 }), gS1 = gRun(trRise, { parkGate: 'sham', parkGateP: 1 });
+    t(gUp0.eq.at(-1) > 1.1 && gUpM.eq.every(v => v === 1) && gUpM.st.gOpen === undefined && gUpH.eq.every(v => v === 1)
+        && gDnM.eq.every((v, k) => Math.abs(v - gDn0.eq[k]) < 1e-12) && gS0.eq.every(v => v === 1) && gS1.eq.every((v, k) => Math.abs(v - gUp0.eq[k]) < 1e-12),
+        `㊵ parkGate:0050 一路漲 → ma20 / hi20 都不停(淨值一直 1)・一路跌 → 跟沒閘門一樣・安慰劑 p=0 不停、p=1 = 沒閘門(${r2(gUp0.eq.at(-1))})`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }
@@ -997,6 +1091,28 @@ function main() {
         if (out) fs.writeFileSync(out, JSON.stringify(out2));
         return;
     }
+    // 🟥 V79.1.6 RK_TRACE=1:現行規則每次換倉「本來會買的」那幾檔,依換倉日收盤狀態分組,看隔天開盤 → 下次換倉日收盤比 0050 多賺多少
+    //   (17 條起點合併、同一天同一檔只算一次;隔天開盤就漲停的買不到 → 另外計數、⛔ 不算進平均)
+    if (process.env.RK_TRACE) {
+        const out3 = {};
+        const fills = (process.env.RK_FILLS || 'open').split(',');
+        for (const w of WINS) for (const fill of fills) {
+            const s0 = ctx.cal.findIndex(d => d >= w), seen = new Map();
+            for (let k = 0; k < 17; k++) { const tr = []; simulate(ctx, s0 + STEP * k, { fill, trace: tr }, 1000 + k); for (const x of tr) seen.set(x.d + '|' + x.s, x); }
+            const all = [...seen.values()];
+            const grp = { lu: x => x.f === 'lu', ld: x => x.f === 'ld', none: x => !x.f, g95: x => x.g >= 9.5, g7: x => x.g >= 7 && x.g < 9.5, g5: x => x.g >= 5 && x.g < 7, glt5: x => x.g < 5 };
+            const st3 = a => { const v = a.map(x => x.r - x.b), n = v.length; if (!n) return { n: 0 };
+                const m = v.reduce((p, q) => p + q, 0) / n, sd = Math.sqrt(v.reduce((p, q) => p + (q - m) ** 2, 0) / Math.max(1, n - 1));
+                const yr = {}; for (const x of a) { const y = x.d.slice(0, 4); (yr[y] = yr[y] || []).push(x.r - x.b); }
+                return { n, mean: r2(m), med: r2(median(v)), t: r2(sd > 0 ? m / (sd / Math.sqrt(n)) : 0), win: r2(v.filter(q => q > 0).length / n * 100),
+                         years: Object.fromEntries(Object.entries(yr).map(([y, a2]) => [y, { n: a2.length, m: r2(a2.reduce((p, q) => p + q, 0) / a2.length) }])) }; };
+            const row = {}; for (const [k, f] of Object.entries(grp)) { const a = all.filter(f), buyable = a.filter(x => !x.lock); row[k] = { ...st3(buyable), lockOpen: a.length - buyable.length }; }
+            out3[`${w}|${fill}`] = row;
+            for (const [k, v] of Object.entries(row)) console.log(`[${w}|${fill}] 🟥 ${k}:n=${v.n}(隔天開盤就漲停買不到 ${v.lockOpen})・比 0050 平均 ${v.mean}pp 中位 ${v.med} t=${v.t} 贏 ${v.win}% ・逐年 ${JSON.stringify(v.years || {})}`);
+        }
+        if (out) fs.writeFileSync(out, JSON.stringify(out3));
+        return;
+    }
     const res = { asof: new Date().toISOString().slice(0, 10), meta: ctx.meta, def: DEF, sets: [], etf: {} };
     // 🪜 V77.9.4 ETFS=0050,006208,…:每一檔 ETF「買了放著(含息)」用**跟策略同一組 17 個起點**算中位(⛔ 不從窗口第一天單算一次 ——
     //    那就是 0050 同期出現 375 / 342.7 / 349.9 三個數字的原因)。上市晚於起點 → 原因,⛔ 不硬比。
@@ -1014,6 +1130,8 @@ function main() {
         console.log(`[${w}] ${name}:總報酬 ${R.tot}% vs 0050 含息 ${R.b0050}%(超額 ${R.ex}pp,17 條贏 ${R.beat},最差 ${R.worstEx})・年化 ${R.cagr}% ・回撤 ${R.mdd}%(0050 ${R.mdd0050}%)・交易 ${R.trades} 筆 勝率 ${R.win}% 每筆 ${R.avg}% ・年換手 ${r2(R.turnYr)}x ・📈 滾動 12 月贏 0050 ${R.roll12}% ・贏 ${R.yrBeat}/${Object.keys(R.years).length} 年 最差年 ${R.worstYr}pp`);
         if (R.forced || R.passRate != null) console.log(`    🧪 強制賣 ${R.forced} 次(每萬持股日 ${R.sellRate})・買回 ${R.rebought} 次・候選通過率 ${R.passRate}%${R.finMiss ? `・財報沒資料剔除 ${R.finMiss}` : ''}`);
         if (R.lu) console.log(`    🟥 持股鎖漲停 ${R.lu.lock} 次(中位):一字鎖抱 ${R.lu.hold}・開盤賣 ${R.lu.open}・收盤賣 ${R.lu.close}`);
+        if (R.rk) console.log(`    🟥 換倉日漲跌停(中位):本來會買 ${R.rk.seen} 檔 ・不買放 0050 ${R.rk.park} ・換下一名 ${R.rk.next} ・安慰劑少買 ${R.rk.sham}`);
+        if (R.gate != null) console.log(`    🅿️ 0050 閘門開著的日子 ${R.gate}%`);
         console.log('    逐年 ' + Object.entries(R.years).map(([y, v]) => `${y} ${r2(v.s)}/${r2(v.c)}`).join(' ・'));
     }
     if (out) fs.writeFileSync(out, JSON.stringify(res));

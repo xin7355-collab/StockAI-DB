@@ -114,10 +114,10 @@ ok('①d 週五換倉 / 週六 → 下週一', R.eveFri.when === '下週一' && 
 ok('①e 今天就是換倉日(資料日是前一天)→ rebalToday、週五 → 下週一買賣', R.rebT.ph === 'rebalToday' && R.rebT.buyWhen === '下週一', JSON.stringify(R.rebT));
 ok('①f 其他日子:剩幾天從今天算(資料日剩 4 → 今天剩 3)', R.wait.ph === 'wait' && R.wait.leftNow === 3, JSON.stringify(R.wait));
 // ②
-ok('② 買賣那天:寫「今天」、⛔ 沒有「明天」,賣大立光、買台積電 + 聯發科', /今天要做/.test(R.todoActTxt) && !/明天/.test(R.todoActTxt.split('🛒 怎麼買')[0]) && /今天\s*09:00\s*開盤賣:大立光/.test(R.todoActTxt) && /今天\s*13:25\s*買:台積電/.test(R.todoActTxt), R.todoActTxt);
+ok('② 買賣那天:寫「今天就要做」、⛔ 沒有「明天」,賣大立光、買台積電 + 聯發科', /今天就要做/.test(R.todoActTxt) && !/明天/.test(R.todoActTxt.split('🛒 怎麼買')[0]) && /今天\s*09:00\s*開盤賣:大立光/.test(R.todoActTxt) && /今天\s*13:25\s*買:台積電/.test(R.todoActTxt), R.todoActTxt);
 ok('②b 換倉日收盤後:名單已定案 → 明天', /名單已定案/.test(R.todoEveTxt) && /明天\s*13:25\s*買:台積電/.test(R.todoEveTxt), R.todoEveTxt);
 ok('②c 今天要動的那行有琥珀左色條 + 時間琥珀小框;⛔ 不用 🔴🟢', /data-todohot="1"/.test(R.todoAct) && /border-l-4 border-amber-500/.test(R.todoAct) && /data-todochip="1"/.test(R.todoAct) && !/[🔴🟢]/u.test(R.todoAct + R.todoWait), '');
-ok('②d 平常日子也列「現在會買」+ 現價 + 會變', /現在會買:台積電 1450\.0 \+1\.2%/.test(R.todoWaitTxt) && /會變/.test(R.todoWaitTxt), R.todoWaitTxt);
+ok('②d 平常日子也列「換倉時會買」+ 現價 + 會變(📌 V79.1.6 口吻:還沒到換倉日,今天不用動)', /換倉時會買:台積電 1450\.0 \+1\.2%/.test(R.todoWaitTxt) && /會變/.test(R.todoWaitTxt) && /還沒到換倉日,今天不用動/.test(R.todoWaitTxt), R.todoWaitTxt);
 const ordA = ['台積電', '聯發科', '鴻海'].map(n => R.todoWaitTxt.indexOf(n)), ordB = ['台積電', '聯發科', '鴻海'].map(n => R.todoWaitRevTxt.indexOf(n));
 ok('②e ⭐ 決定性對照:名單倒過來,畫面跟著倒(⛔ 不另排一份)', ordA[0] < ordA[1] && ordA[1] < ordA[2] && ordB[2] < ordB[1] && ordB[1] < ordB[0], JSON.stringify([ordA, ordB]));
 // ③
