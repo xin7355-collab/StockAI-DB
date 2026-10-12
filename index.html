@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.1.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.1.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -890,7 +890,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.1.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.1.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -4196,6 +4196,7 @@ const app = {
                 tg_level:         app.settings?.tg_level || 'all',
                 strategy:         app._strat?.() || 'gene',   // 🎯 V77.9.6 Telegram 只推你選的那一套
                 leadPosOff:       !!app.settings?.leadPosOff,   // 📍 V78.0.5 領頭羊「換回舊的」(不看一年位置)—— Telegram 換倉推播跟 App 同一條
+                leadTiming:       app._leadTiming?.() || 'split',   // ⏱️ V79.1.5 換倉那天幾點買賣(以前沒送 → setLeadTiming 說會同步其實沒有)
             };
 
             // V21.3 ── 股名對照表:從自選股 + 庫存 + 監控 + 限價單收集所有 sym,
@@ -5373,10 +5374,10 @@ const app = {
                     const r = this._entryCheckup(kdata);
                     const pC = +(kdata[kdata.length - 1].close || 0);
                     const cost = costBy[sym] || 0;
-                    const cut = cost > 0 && pC > 0 && pC <= cost * 0.95;   // 跌破成本 -5%
+                    const hs = cost > 0 ? this._hardStopOf(kdata, sym, cost) : null;   // 🛑 V79.1.5 同盤中那支(⛔ 不寫死 ×0.95)
+                    const cut = !!(hs && pC > 0 && pC < hs.px);
                     if (cut && !this._kbarFiredToday(`stoploss_${sym}`)) {
-                        const lossPct = ((pC - cost) / cost * 100).toFixed(1);
-                        this._fireAlert('🩸 庫存鐵血停損', `${name}(${sym}) 現價 ${pC.toFixed(2)} 已破成本 -5%(${lossPct}%)→ 朱老師鐵律:停損就是保命,別凹單`, sym);
+                        this._fireAlert('🩸 庫存跌破硬停損', `${name}(${sym}) ${this._hardStopTxt(pC, hs, this._lastBarIsToday?.(kdata) && this.isMarketOpen?.())}`, sym);
                     } else if (r && r.vColor === 'green' && !this._kbarFiredToday(`invbear_${sym}`)) {
                         this._fireAlert('🔻 庫存轉偏空', `${name}(${sym}) 進場體檢轉 🟢 偏空(${r.score}分)→ 顧好停損、別放任凹單,留意分批減碼`, sym);
                     }
@@ -5509,6 +5510,7 @@ const app = {
                 this._patchQuoteVol(fugle, sym);   // 🔊 V67.8 上櫃即時量兜底(盤中掃描量比/帶量訊用正確累積量)
                 const nowPrice = fugle?.price;
                 if (!nowPrice || nowPrice <= 0) continue;
+                try { (this._livePx = this._livePx || {})[sym] = { p: +nowPrice, at: Date.now() }; } catch (_) {}   // 🥊 V79.1.5 連續技用同一個現價
                 this._comboCheck(sym, +nowPrice);   // 🥊 第 2 擊接力(碰到出場線 → 大視窗)
 
                 const name = this.getStockName(sym) || sym;
@@ -5602,11 +5604,15 @@ const app = {
                 if (prevClose >= ma20 && nowPrice < ma20) trigger('dn20',   '🟢 跌破 20MA',  `現價 ${nowPrice.toFixed(2)} 跌破月線 ${ma20.toFixed(2)}(⚠️ 提醒不是賣訊:跌破月線常常幾天內就站回)${dnTag}`);
                 if (nowPrice > hi20)                      trigger('hi20',   '🚀 創 20 日新高', `現價 ${nowPrice.toFixed(2)} 突破 ${hi20.toFixed(2)}${upTag}`);
                 if (nowPrice < lo20)                      trigger('lo20',   '⚠️ 創 20 日新低', `現價 ${nowPrice.toFixed(2)} 跌破 ${lo20.toFixed(2)}${dnTag}`);
-                // V18.8 — 朱家泓鐵血停損:跌破進場成本 -5%(只對庫存股,SW 已有 background 推同邏輯,此處盤中即時補)
+                // 🛑 V79.1.5 硬停損(盤中先提醒,⛔ 不叫你現在賣):
+                //   ① 停損價 = 全站唯一那份 `_hardStopOf`(min(買進當天最低, 成本 −5%),同回測 / auto_trade.py)
+                //   ② 回測是「收盤還在線下才賣」(`_STOPFILL_EDGE`)→ 文案講尾盤確認
+                //   ③ 👑 名單上的持股沒有停損線(同每日那支 `_leaderMine` 排除)
                 const entryCost = costBy[sym];
-                if (entryCost && nowPrice < entryCost * 0.95) {
-                    const stopPx = (entryCost * 0.95).toFixed(2);
-                    trigger('stop5', '🚨 鐵血停損 -5%', `現價 ${nowPrice.toFixed(2)} 跌破成本 ${entryCost.toFixed(2)} 的停損價 ${stopPx}(朱:認賠出場)`);
+                if (entryCost && !this._leaderMine().has(String(sym))) {
+                    const hs = this._hardStopOf(kdata, sym, entryCost);
+                    if (hs && nowPrice < hs.px)
+                        trigger('stop5', '🚨 跌破硬停損', this._hardStopTxt(nowPrice, hs, true));
                 }
                 // ⚠️ V32.0 ① 跌破扣抵保衛價(20MA 今日恐下彎,比跌破均線本身更早 1-2 天):今收 < kdata[len-20]
                 if (kdata.length >= 20) {
@@ -5780,7 +5786,7 @@ const app = {
     // 🥊 V74.9.2 使用者:「通知視窗與有些彈跳視窗很像,請以大視窗為主」→ 賣訊/風險類**全部**改走大視窗
     //   (頂背離 / 停利 / 減碼 / 出貨 / 賣訊 / 過熱 / 轉弱 / 做頭 / 壓力沉重 / 逃命)。
     //   ⛔ 仍然只有「賣出/風險」那一側 —— 進場/點火/共振類照舊 toast(多空不對稱鐵則)。
-    _URGENT_ALERT: /停損|出場|平倉|跌破|熄火|轉偏空|處置|斷頭|追繳|警報|強制|背離|停利|減碼|出貨|賣訊|末段|過熱|轉弱|做頭|壓力沉重|逃命|第 ?\d ?擊/,
+    _URGENT_ALERT: /👑 換倉日|停損|出場|平倉|跌破|熄火|轉偏空|處置|斷頭|追繳|警報|強制|背離|停利|減碼|出貨|賣訊|末段|過熱|轉弱|做頭|壓力沉重|逃命|第 ?\d ?擊/,
     _isUrgentAlert(title) { try { return this._URGENT_ALERT.test(String(title || '')); } catch (_) { return false; } },
 
     /** 🔔 V77.2.2 **通知種類總表**(使用者:「列出通知的選單,我想要變成我能控制勾選選擇的方式」)
@@ -5796,6 +5802,10 @@ const app = {
      *  🔒 `lock:1` = ⛔ **不給關**:那是「你自己的錢到了你自己設的點」,不是預測
      *     (CLAUDE.md 既有鐵則:停損/停利/到價⛔ 不走任何統計守門)。 */
     _ALERT_CATS: [
+        // 👑 V79.1.5 換倉日買賣提醒 —— ⚠️ 必須排第一:標題裡有「13:25」會先被下面的 ⚡ 當沖吃掉(那一類關得掉)
+        //   `lead:1` = 只在你選 👑 時列在設定裡(⛔ 沒解鎖的人看不到,test_leakfree)
+        { k: 'lead',   n: '👑 換倉日',           re: /👑 換倉日/, lock: 1, lead: 1,
+          d: '你選的策略換倉那天:開盤賣哪幾檔、13:25 買哪幾檔。⛔ 不給關 —— 這是你自己選的策略要動手的時間。' },
         { k: 'lunext', n: '🟥 漲停隔天開低',     re: /漲停隔天/,
           d: '昨天收盤鎖漲停的庫存 / 自選,今天開盤開低時提醒一次:庫存的「別在開盤殺」、自選的「想當沖接要怎麼接」。不做當沖、手上也很少有漲停股就可以關掉。' },
         { k: 'day',    n: '⚡ 當沖',              re: /當沖|09:15|13:25|平倉倒數/,
@@ -5849,7 +5859,7 @@ const app = {
         const box = document.getElementById('alertCatList');
         if (!box) return;
         const off = (this.settings && this.settings.alertOff) || {};
-        box.innerHTML = (this._ALERT_CATS || []).map(c => {
+        box.innerHTML = (this._ALERT_CATS || []).filter(c => !c.lead || this._isLead?.()).map(c => {
             const on = c.lock ? true : off[c.k] !== true;
             const dsc = String(c.d).replace(/\*\*([^*<>]+)\*\*/g, '<b class="text-gray-200">$1</b>');
             return `<label class="flex items-start gap-2 py-1.5 ${c.lock ? 'opacity-90' : 'cursor-pointer'}">
@@ -6092,10 +6102,12 @@ const app = {
     _comboPlan(sym, kdata) {
         try {
             const L = this._exitLines(kdata, sym); if (!L) return null;
+            // 🥊 V79.1.5 彈窗標題用的是盤中即時價、這裡讀的是 K 線快取 → 5 分鐘內有即時價就用它(⛔ 同一個視窗不可兩個現價)
+            try { const lp = this._livePx && this._livePx[String(sym)]; if (lp && lp.p > 0 && Date.now() - lp.at < 5 * 60e3) L.pC = lp.p; } catch (_) {}
             // 👑 V78.4.8 選領頭羊時手上的個股:⛔ 不排三擊(那是 🔥 的出場線),只講換倉日排名(轉述 _leadVerdict,⛔ 不另算)
             if (this._leaderMine().has(String(sym))) {
                 let v = null; try { v = this._leadVerdict(sym, true); } catch (_) {}
-                return { lead: true, held: true, left: v && v.left != null ? v.left : null, isRebal: !!(v && v.isRebal), H: (v && v.H) || 10, cost: L.cost, pC: L.pC };
+                return { lead: true, held: true, left: v && v.left != null ? v.left : null, isRebal: !!(v && v.isRebal), ph: v && v.ph || null, H: (v && v.H) || 10, cost: L.cost, pC: L.pC };
             }
             const key = this._exitRuleKey();
             const val = { atr2: L.atr2, don40: L.don40, don: L.don, trail8: L.trail8, ma5: L.ma5 };
@@ -6119,19 +6131,20 @@ const app = {
         const step = (n, tt, dd) => `<div class="flex gap-1.5 items-start py-1 border-t border-[#21262d]"><span class="text-[10px] font-black text-amber-300 whitespace-nowrap">第 ${n} 擊</span><div class="text-[10.5px] text-gray-200 leading-snug"><b>${tt}</b>${dd ? `<div class="text-[10px] text-gray-400">${dd}</div>` : ''}</div></div>`;
         let h = `<div class="text-[11px] font-black text-amber-200 mb-0.5">🥊 連續技(這一擊之後怎麼接)</div>`;
         if (plan.lead) {
-            const when = plan.isRebal ? '今天就是換倉日' : (plan.left != null && plan.left !== '?' ? `下一次換倉日還有 ${plan.left} 個交易日` : '等下一次換倉日');
+            const when = this._leadPhaseTxt(plan.ph || { ph: plan.isRebal ? 'eve' : 'wait', when: '明天', leftNow: plan.left });   // 👑 V79.1.5 同一份「今天/明天」
             return `<div class="text-[11px] font-black text-amber-200 mb-0.5" data-combolead="1">👑 你選的是領頭羊:這一檔照換倉日排名賣</div>`
                 + `<div class="text-[10.5px] text-gray-200 leading-snug">${when} —— 那天還在前 ${plan.H} 名就續抱、掉出去隔天開盤賣。⛔ 這則提醒不用照做:領頭羊沒有停損線,也⛔ 不先賣一半。</div>`
                 + `<div class="text-[9px] text-gray-500 mt-1 leading-snug">⛔ 這不是自動下單,以個股頁「現在該做什麼」為準。</div>`;
         }
         if (plan.held) {
             // 🚨 V78.4.8 線已經在現價上面 = 早就跌破 → 第 1 擊直接講「全部出場」(⛔ 不先出一半、⛔ 不印賣不到的價)
-            if (plan.prim.above) h += step(1, `<span data-comboabove="1">你設定的 ${plan.prim.nm} <span class="font-mono">${nf(plan.prim.px)}</span> 已經在現價上面 = 已經跌破了 → 照規則全部出場</span>`,
+            // 🛑 V79.1.5 出場線一樣是收盤確認(同決策台 V77.6.5「尾盤確認再賣」)→ 寫出哪一天的尾盤
+            if (plan.prim.above) h += step(1, `<span data-comboabove="1">你設定的 ${plan.prim.nm} <span class="font-mono">${nf(plan.prim.px)}</span> 已經在現價上面 = 已經跌破了 → 照規則 <b data-comboeod="1">${this._dueWhen().when} ${this._eodTxt()} 尾盤</b>全部出場</span>`,
                       `現價 ${nf(plan.pC)} 賣:${money(plan.pl(plan.pC))}(已扣費,你的成本 ${nf(plan.cost)})・⚙️ 這是你設定的出場規則`);
             // ✂️ V78.4.9 ⛔ 不再叫你先出一半(回測兩段 17 條全輸「照出場規則走」)
             else h += step(1, `<span data-combonohalf="1">現在:${String(title || '').replace(/^[^\w一-鿿]+/, '')} → 照你的出場規則走,⛔ 不用先賣一半</span>`,
                       `現價 ${nf(plan.pC)}(你的成本 ${nf(plan.cost)}・現在全賣:${money(plan.pl(plan.pC))},已扣費)`);
-            if (!plan.prim.above) h += step(2, `跌破 ${plan.prim.nm} <span class="font-mono">${nf(plan.prim.px)}</span> → 全部出場`,
+            if (!plan.prim.above) h += step(2, `收盤跌破 ${plan.prim.nm} <span class="font-mono">${nf(plan.prim.px)}</span> → 尾盤全部出場`,
                       `賣在這裡 ${money(plan.pl(plan.prim.px))}・⚙️ 這是你設定的出場規則,出場提醒與自動下單也用這一條`);
             if (plan.others.length) h += step(plan.prim.above ? 2 : 3, `參考:${plan.others.map(o => `${o.nm} <span class="font-mono">${nf(o.px)}</span>${o.above ? '(已在現價上方)' : ''}`).join(' ・ ')}`,
                       `⛔ 不是你設定的那條,列出來只是讓你知道還有哪幾條線在附近`);
@@ -8518,10 +8531,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.1.4',
+    _APP_VERSION: 'V79.1.5',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.1.5', d: [
+            '🛑 庫存跌破停損的提醒:停損價改成跟出場規則同一條(買進當天最低 vs 成本 −5% 取低的);盤中只先提醒,收盤前還在線下才尾盤賣',
+            '🥊 提醒視窗裡「接下來怎麼做」的現價,跟標題用同一個即時價(以前會出現兩個不同的現價)',
+            '👑 決策台「今天要做的事」:換倉後那天白天寫「今天」(以前寫成明天)、每天列出現在會買哪 5 檔 + 現價、今天要動的那行加顏色',
+            '👑 換倉後那天開盤 / 13:20 會提醒一次(App 開著跳視窗;Telegram 也會推)',
+        ], dt: '2026-10-12' },
         { v: 'V79.1.4', d: [
             '⚡ 每天下午採礦更新後,網站檔案也維持縮小版(以前採礦後會變回大的)',
         ], dt: '2026-10-12' },
@@ -8630,12 +8649,6 @@ ${list}
             '🐛 順手修:產業作戰室「100 萬變多少」那張表點過表頭排序之後,「最強招式」清單跟推薦順序會壞掉(兩個東西同名)。',
         ] },
         { v: 'V78.0.6', d: ['👑 <b>領頭羊的說明文字跟上新規則了</b>(你問「最強的都換上去了嗎」):規則本身上一版就全部換好(自動下單、決策台、成績單、股海釣手、Telegram 同一份),但設定裡的選項說明、決策台區塊說明、換倉提醒、Telegram 換倉訊息、產業作戰室拋竿那句還寫「前 5 名」—— 現在都寫「一年位置 ≥85% 的前 5 名」;你按「換回舊規則」的話會自動變回舊說法。', '🎣 釣魚跟領頭羊<b>是同一份名單</b>,不是兩個策略:換一次兩邊一起變。另一套 🧬 這次沒有動(沒有新的回測贏過它)。'] },
-        { v: 'V78.0.5', d: [
-            '🐟 <b>魚會游過去咬餌了</b>(你說「魚要有跑去咬餌的動作」)。等咬鉤的時候,那條魚會慢慢轉頭、游到浮標下面,假咬時衝過去碰一下再退開,真的咬下去那一刻剛好在鉤子上(以前是突然出現在鉤子下)。',
-            '👑 <b>領頭羊:買進多一道「一年位置 ≥ 85%」</b>(你問「還有辦法抓出更容易漲的方法嗎?」)。我測了 7 種沒測過的加法,只有這一種每一關都過:AI 時代 760% → <b>953%</b>、2011~2026 3,176% → <b>6,783%</b>(起點挪 17 次 15/17、17/17 條都贏;同樣比例隨機擋掉反而變差 → 賺的是「靠近一年最高」這件事)。⚠️ 16 年裡有 5 年比舊規則差。續抱 / 賣出規則不變;位置不夠的標「位置低」、往下一名找;決策台那區有按鈕可以換回舊的。自動下單同時換(LEADER_POS=0 = 舊的)。',
-            '👑 <b>處置股「先跟、處置前賣、大跌再買回」→ 回測不成立</b>(你問的)。公告前 10 天確實大漲(那就是被處置的條件),但<b>處置期間沒有大跌</b>(到出關平均還比同名次的股票好 3.6pp),可交易的做法全部輸「照常抱著」:公告當晚就知道隔天賣 781%、就算能提前一天猜到 905%、注意 3 次就賣再出關買回 756%(照常 953%)。→ 照常抱著。',
-            '🔧 順手修:背景提醒設定寫不進手機快取時,不會再冒出一個沒人接住的錯誤。',
-        ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -9462,7 +9475,7 @@ ${list}
         const nKey = a => (Array.isArray(a) ? a.filter(x => x && (x.key || x.k || x.v || typeof x === 'string') && x.on !== false).length : 0);
         const tg = S.cloudCode ? 'Telegram 已綁定' : 'Telegram 沒綁定';
         let cats = '';
-        try { const C = this._ALERT_CATS || [], off = S.alertOff || {}; cats = C.length ? `${C.filter(c => c.lock || off[c.k] !== true).length}/${C.length} 類通知會跳出來` : ''; } catch (_) {}
+        try { const C = (this._ALERT_CATS || []).filter(c => !c.lead || this._isLead?.()), off = S.alertOff || {}; cats = C.length ? `${C.filter(c => c.lock || off[c.k] !== true).length}/${C.length} 類通知會跳出來` : ''; } catch (_) {}
         put('notify', [cats, tg, S.watchlistAlert ? '盤中即時警報開' : '盤中即時警報關'].filter(Boolean).join('・'));
         const nf = nKey(S.fugleKeys), nm = nKey(S.finmindKeys), na = nKey(S.groqKeys) + nKey(S.openrouterKeys) + nKey(S.geminiKeys);
         put('keys', `Fugle ${nf} 把・FinMind ${nm} 把・AI ${na} 把`);
@@ -21051,7 +21064,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         else st = inBuy ? (X.bearOn ? 'bear' : (clk.isRebal ? 'buy' : 'buywait')) : 'none';
         const sn = X.snap || {};
         const snap = { date: sn.date || null, err: sn.err || null, rank: sn.rank instanceof Map ? (sn.rank.get(sym) ?? null) : null };
-        return { st, rank: r ? r.rank : null, where, isRebal: !!clk.isRebal, left, H, N: R.N, date: X.date, bearOn: X.bearOn, snap };
+        const ph = this._leadPhase(clk, X.date);   // 👑 V79.1.5 今天 / 明天唯一一份
+        return { st, rank: r ? r.rank : null, where, isRebal: !!clk.isRebal, left: ph.leftNow != null ? ph.leftNow : left, ph, H, N: R.N, date: X.date, bearOn: X.bearOn, snap };
     },
     /** 👑 總覽主卡的字(⛔ 只轉述 `_leadVerdict`,不另算)。回 {badge, cls, why, plan, state} */
     _leadOvText(v, held, pnlAmt, luPrev) {
@@ -21061,7 +21075,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const pre = _pk ? '👑 你選的策略(領頭羊+停車 0050):' : '👑 你選的策略(領頭羊・錢放現金):', cash = _pk ? '0050' : '現金';
         if (!v) return { badge: '⏳ 名單讀取中', cls: GRAY, why: pre + '正在讀今天的名單,幾秒後自動更新。', plan: [], state: 'wait' };
         if (v.err) return { badge: '⏳ 今天算不出名單', cls: GRAY, why: pre + '全市場特徵快照還沒產出或缺欄位(採礦完成後就會有)—— ⛔ 這不是「沒事」,是還不知道。', plan: [], state: 'wait' };
-        const nxt = v.isRebal ? '今天就是換倉日' : `下一次換倉日還有 <b class="font-mono">${v.left}</b> 個交易日`;
+        const P = v.ph || { ph: v.isRebal ? 'eve' : 'wait', when: '明天', leftNow: v.left };
+        const nxt = this._leadPhaseTxt(P).replace(/(\d+) 個交易日/, '<b class="font-mono">$1</b> 個交易日');
+        const W = P.when || '明天';   // 👑 V79.1.5 買賣那天白天要寫「今天」(⛔ 不再一律「明天」)
         // 🟥 V78.2.0 使用者:「漲停隔天那四條(一字鎖抱 / 開高開盤賣…)不用照做嗎?」—— 那是 🔥 的規則,👑 不用(回測見 `_LEAD_LU_EDGE`)
         const luTxt = (held && luPrev) ? `<br><span class="text-[11px] text-gray-300" data-leadlu="1">🟥 最近一根收盤鎖漲停 —— 「一字鎖抱・開高開盤賣・開平開低尾盤賣」那四條是 <b>🔥 高檔飆股</b>的規則,👑 不用:照換倉日排名。${this._leadLuEdgeTxt()}</span>` : '';
         // ⏳ V78.2.0 「掉出」只給**曾經在名單上**的(有名次但 > 前 2N);沒過趨勢過濾 / 不在前 100 大的從來沒在名單上 → 「不在」
@@ -21073,8 +21089,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const T = {
             keep: { badge: '👑 續抱', cls: CYAN, state: 'hold', why: `${pre}這一檔現在是<b>第 ${v.rank} 名</b>(前 ${v.H} 名內)→ <b>續抱</b>。${nxt},那天還在前 ${v.H} 名就繼續抱。⛔ 這一套沒有停損線。<br>${snapL}${luTxt}`,
                     plan: [{ t: `換倉日看排名:還在前 ${v.H} 名續抱、掉出去<b>隔天 ${this._leadWhen('sell', true)}</b>`, sub: `${nxt.replace(/<[^>]+>/g, '')} ・⛔ 不設停損`, money: pnlAmt }] },
-            sell: { badge: `👑 掉出前 ${v.H} 名 → 明天 ${this._leadWhen('sell', true)}`, cls: RED, state: 'exit', why: `${pre}今天是<b>換倉日</b>,這一檔 ${v.where} → 照規則明天<b>${this._leadWhen('sell')}</b>,錢先放${cash}等下一次換倉。`,
-                    plan: [{ t: `明天 ${this._leadWhen('sell', true)} → 錢先放${cash}`, sub: '換倉日掉出前 ' + v.H + ' 名 ・同自動下單', money: pnlAmt }] },
+            sell: { badge: `👑 掉出前 ${v.H} 名 → ${W} ${this._leadWhen('sell', true)}`, cls: RED, state: 'exit', why: `${pre}${P.ph === 'act' ? '換倉名單已定' : '今天是<b>換倉日</b>'},這一檔 ${v.where} → 照規則${W}<b>${this._leadWhen('sell')}</b>,錢先放${cash}等下一次換倉。`,
+                    plan: [{ t: `${W} ${this._leadWhen('sell', true)} → 錢先放${cash}`, sub: '換倉日掉出前 ' + v.H + ' 名 ・同自動下單', money: pnlAmt }] },
             // ⏳ V78.5.3 使用者:「應該是剛換倉時會有快照,換倉後直接告訴是否還在倉內」→ 短版三行:
             //   📸 上次換倉那天的名單有沒有它 ・📍 今天排第幾 ・🚪 一句結論;續抱條件 / 不要提早賣收進摺疊(⛔ 不刪)
             outwait: { badge: `⏳ 續抱到換倉日(還有 ${v.left} 個交易日)`, cls: AMB, state: 'hold',
@@ -21085,9 +21101,9 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                         + `<div class="text-[11px] text-gray-300 leading-relaxed"><span data-leadkeepif="1">✅ <b>續抱條件</b>:換倉日當天回到前 ${v.H} 名。</span>`
                         + `<br><span data-leadearly="1">⛔ <b>不要提早賣</b>:${this._leadEarlyTxt()} —— 提早賣等於把最會漲的那幾檔先砍掉。</span></div></details>`,
                     plan: [{ t: `換倉日(還有 ${v.left} 個交易日)還在前 ${v.H} 名外 → 隔天 ${this._leadWhen('sell', true)}`, sub: '⛔ 沒有停損線', money: pnlAmt }] },
-            buy: { badge: `👑 第 ${v.rank} 名 → 明天 ${this._leadWhen('buy', true)}`, cls: RED, state: 'add', why: `${pre}今天是<b>換倉日</b>,這一檔是<b>第 ${v.rank} 名</b>(前 ${v.N} 名)→ 明天<b>${this._leadWhen('buy')}</b>,等權買進(5 檔各一份,沒用到的錢放${cash}${_pk ? ',買的錢先從 0050 賣出' : ''})。`,
-                    plan: [{ t: `明天 ${this._leadWhen('buy', true)},等權買進(5 檔各一份)`, sub: `之後每 10 個交易日看一次排名,掉出前 ${v.H} 名才賣 ・⛔ 不設停損` }] },
-            buywait: { badge: `⏳ 第 ${v.rank} 名・等換倉日`, cls: AMB, state: 'wait', why: `${pre}這一檔是<b>第 ${v.rank} 名</b>,但今天不是換倉日 → ${nxt}:那天還在前 ${v.N} 名才買。⛔ 不提早買。`, plan: [] },
+            buy: { badge: `👑 第 ${v.rank} 名 → ${W} ${this._leadWhen('buy', true)}`, cls: RED, state: 'add', why: `${pre}${P.ph === 'act' ? '換倉名單已定' : '今天是<b>換倉日</b>'},這一檔是<b>第 ${v.rank} 名</b>(前 ${v.N} 名)→ ${W}<b>${this._leadWhen('buy')}</b>,等權買進(5 檔各一份,沒用到的錢放${cash}${_pk ? ',買的錢先從 0050 賣出' : ''})。`,
+                    plan: [{ t: `${W} ${this._leadWhen('buy', true)},等權買進(5 檔各一份)`, sub: `之後每 10 個交易日看一次排名,掉出前 ${v.H} 名才賣 ・⛔ 不設停損` }] },
+            buywait: { badge: `⏳ 第 ${v.rank} 名・等換倉日`, cls: AMB, state: 'wait', why: `${pre}這一檔是<b>第 ${v.rank} 名</b>,但名單還沒定案 → ${nxt}:那天收盤還在前 ${v.N} 名才買。⛔ 不提早買。`, plan: [] },
             bear: { badge: '🐻 空頭不開新倉', cls: GRAY, state: 'wait', why: `${pre}這一檔是<b>第 ${v.rank} 名</b>,但大盤是嚴格空頭(收盤 < 60 日線且 20 日線 < 60 日線)→ <b>今天不開新倉</b>。`, plan: [] },
             none: { badge: '➖ 不在名單', cls: GRAY, state: 'wait', why: `${pre}這一檔 ${v.where} → 這一套不買它。${_pk ? '空手的錢照停在 0050(金額看決策台)。' : ''}`, plan: [] },
         };
@@ -21095,20 +21111,83 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     },
     /** 👑 換倉日提醒(一天一則):收盤後(或名單日期是換倉日時)告訴你「明天開盤買哪幾檔 / 賣哪幾檔」。
      *  ⛔ 只轉述 `_leadCtx`;非換倉日安靜;大盤嚴格空頭只講賣。走 `_fireAlert`(進 🔔 歷史 + 通知分類開關)。 */
+    /** 👑 V79.1.5 換倉要動的那幾檔(決策台「今天要做的事」/ 換倉提醒 / 開盤提醒共用,⛔ 不各算一份)。
+     *  mine = 歸 👑 的持股(`_leaderMine`,上次換倉名單上有的);回 {sell, keep, buy}(代號陣列) */
+    _leadActs(L, bearOn, mineIn) {
+        const R = this._LEADER_EDGE.rule, H = R.N * R.hyst;
+        const mine = Array.isArray(mineIn) ? mineIn.map(String) : [...this._leaderMine()];
+        const sell = mine.filter(s => { const r = L.all.get(s); return !(r && r.rank <= H); });
+        const keep = mine.filter(s => !sell.includes(s));
+        const buy = bearOn ? [] : L.buy.map(r => r.sym).filter(s => !mine.includes(s)).slice(0, Math.max(0, R.N - keep.length));
+        return { sell, keep, buy, H };
+    },
+    /** 👑 V79.1.5 一檔的開盤狀態:{p 現價, o 開盤, prev 昨收, gap 開盤跳空 %}。先讀全市場快照,沒有才問報價商(⛔ 一次最多 10 檔) */
+    async _leadQuoteOf(sym) {
+        try {
+            const q = this._liveQuote(sym);
+            if (q && +q.p > 0 && +q.o > 0 && q.c != null) { const prev = +q.p / (1 + (+q.c) / 100); return { p: +q.p, o: +q.o, prev, gap: (+q.o / prev - 1) * 100 }; }
+            const f = await this.fetchFugleData(sym).catch(() => null);
+            if (f && +f.price > 0 && +f.prevClose > 0 && +f.open > 0) return { p: +f.price, o: +f.open, prev: +f.prevClose, gap: (+f.open / +f.prevClose - 1) * 100 };
+        } catch (_) {}
+        return null;
+    },
+    /** ⏰ V79.1.5 換倉後那一天的開盤 / 13:20 提醒(使用者:「買賣當天開盤的買賣提醒告知」)—— App 開著才會跳;關著靠 Telegram。
+     *  只在 `_leadPhase` = 'act'(今天就是照名單買賣的日子)。每個時點一天一則(localStorage 蓋章)。
+     *  ⛔ 只轉述既有規則(`_leadWhen`):要賣的開盤賣、開盤跌 ≥3% 等到 09:30~10:00;要買的 13:25、開盤跌 ≥3% 開盤就買、開盤漲停不追。 */
+    async _leadDayPulse() {
+        if (!this._isLead()) return;
+        const t = this._tpeMinutes();
+        if (t.min < 9 * 60 + 1 || t.min > 13 * 60 + 28) return;
+        const X = await this._leadCtxLoad(); if (!X || X.err || !X.clk) return;
+        const P = this._leadPhase(X.clk, X.date); if (P.ph !== 'act') return;
+        const A = this._leadActs(X.L, X.bearOn);
+        if (!A.sell.length && !A.buy.length) return;
+        const sp = this._leadTiming() === 'split';
+        const nm = s => `${this.getStockName(s) || s}(${s})`;
+        const seen = k => { try { return localStorage.getItem(k) === t.ymd; } catch (_) { return false; } };
+        const stamp = k => { try { localStorage.setItem(k, t.ymd); } catch (_) {} };
+        try { if (!this._liveQuotes) await this._loadLiveQuotes(); } catch (_) {}
+        const Q = {};
+        for (const s of [...A.sell, ...A.buy].slice(0, 10)) Q[s] = await this._leadQuoteOf(s);
+        const gapTxt = s => Q[s] ? `開 ${Q[s].gap >= 0 ? '+' : ''}${Q[s].gap.toFixed(1)}%` : '開盤價讀不到';
+        const down3 = s => !!(Q[s] && Q[s].gap <= -3), lu = s => !!(Q[s] && Q[s].gap >= 9.5);
+        // ① 開盤那一則(開盤價要讀得到;讀不到的話 09:10 前再等,之後照規則講)
+        const kOpen = 'leadDayOpen';
+        if (!seen(kOpen) && (t.min >= 9 * 60 + 10 || [...A.sell, ...A.buy].every(s => Q[s]))) {
+            const L1 = [];
+            if (A.sell.length) {
+                const now = A.sell.filter(s => !(sp && down3(s))), wait = A.sell.filter(s => sp && down3(s));
+                if (now.length) L1.push(`🚪 現在開盤賣:${now.map(s => `${nm(s)} ${gapTxt(s)}`).join('、')}`);
+                if (wait.length) L1.push(`🚪 開盤就跌 3% 以上 → 等到 09:30~10:00 再賣:${wait.map(s => `${nm(s)} ${gapTxt(s)}`).join('、')}`);
+            }
+            if (A.buy.length) {
+                const nowB = A.buy.filter(s => (!sp || down3(s)) && !lu(s)), noB = A.buy.filter(lu), laterB = A.buy.filter(s => sp && !down3(s) && !lu(s));
+                if (nowB.length) L1.push(`🛒 ${sp ? '開盤就跌 3% 以上 → ' : ''}現在開盤買:${nowB.map(s => `${nm(s)} ${gapTxt(s)}`).join('、')}`);
+                if (laterB.length) L1.push(`🛒 下午 13:25 再買:${laterB.map(nm).join('、')}`);
+                if (noB.length) L1.push(`⛔ 開盤就漲停 → 不追:${noB.map(nm).join('、')}`);
+            }
+            this._fireAlert('👑 換倉日・開盤要做的事', L1.join('\n') + '\n(⛔ 這是提醒不是自動下單;沒用到的錢放 0050)', null);
+            stamp(kOpen);
+        }
+        // ② 13:20 那一則(只有 split:要買的 13:25 買)
+        const k1320 = 'leadDay1320';
+        if (sp && A.buy.length && t.min >= 13 * 60 + 20 && !seen(k1320)) {
+            const left = A.buy.filter(s => !down3(s) && !lu(s));
+            if (left.length) this._fireAlert('👑 換倉日・13:25 要買', `🛒 5 分鐘後 13:25 買:${left.map(s => `${nm(s)}${Q[s] ? ` 現價 ${Q[s].p}` : ''}`).join('、')}(每檔一樣多錢;開盤跌 3% 以上的應該已經開盤買了、開盤漲停的不追)`, null);
+            stamp(k1320);
+        }
+    },
     async _leadRebalAlert() {
         if (!this._isLead()) return;
         const X = await this._leadCtxLoad(); if (!X || X.err || !X.clk || !X.clk.isRebal) return;
         const key = 'leadRebal_' + X.date;
         try { if (localStorage.getItem('leadRebalFired') === key) return; } catch (_) {}
-        const R = this._LEADER_EDGE.rule, H = R.N * R.hyst;
-        const mine = [...this._leaderMine()];
-        const sell = mine.filter(s => { const r = X.L.all.get(s); return !(r && r.rank <= H); });
-        const keep = mine.filter(s => !sell.includes(s));
-        const slots = Math.max(0, R.N - keep.length);
-        const buy = X.bearOn ? [] : X.L.buy.map(r => r.sym).filter(s => !mine.includes(s)).slice(0, slots);
+        const R = this._LEADER_EDGE.rule;
+        const { sell, buy, H } = this._leadActs(X.L, X.bearOn);   // 👑 V79.1.5 同決策台那一份
         if (!sell.length && !buy.length) { try { localStorage.setItem('leadRebalFired', key); } catch (_) {} return; }
+        const P = this._leadPhase(X.clk, X.date), W = P.when || '明天';   // 買賣那天白天打開 = 「今天」
         const nm = a => a.map(s => `${this.getStockName(s) || s}(${s})`).join('、');
-        const body = (sell.length ? `賣:${nm(sell)}(掉出前 ${H} 名)。` : '') + (buy.length ? `買:${nm(buy)}(${this._leadPos() ? `一年位置 ≥ ${this._leadPos()}% 的` : ''}前 ${R.N} 名,等權)。` : '') + (X.bearOn ? '大盤嚴格空頭 → 不開新倉。' : '') + `明天:要賣的${this._leadWhen('sell')};要買的${this._leadWhen('buy')}。沒用到的錢放 0050。`;
+        const body = (sell.length ? `賣:${nm(sell)}(掉出前 ${H} 名)。` : '') + (buy.length ? `買:${nm(buy)}(${this._leadPos() ? `一年位置 ≥ ${this._leadPos()}% 的` : ''}前 ${R.N} 名,等權)。` : '') + (X.bearOn ? '大盤嚴格空頭 → 不開新倉。' : '') + `${W}:要賣的${this._leadWhen('sell')};要買的${this._leadWhen('buy')}。沒用到的錢放 0050。`;
         this._fireAlert(`👑 換倉日(${X.date.slice(5)})`, body, null);
         try { localStorage.setItem('leadRebalFired', key); } catch (_) {}
     },
@@ -21448,6 +21527,36 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 📸 V78.5.5 prev = 再上一次換倉日(換倉日當天,手上那幾檔是**上一次**名單買的 → 要看那一份)
         return { started: true, day, isRebal: k === 0, left: k === 0 ? 0 : R - k, reb: days[day - 1 - k] || null, prev: days[day - 1 - k - R] || null };
     },
+    /** 👑 V79.1.5 「今天 / 明天」全站唯一一份(使用者:「只有 5 分鐘判斷太短」—— 真因是買賣那天白天畫面還寫「明天 13:25 買」)。
+     *  `clk` 是照採礦資料日(screener `data_date`)算的;採礦在收盤後才跑 → 台北今天比資料日新,就代表**今天又往前走了一個交易日**。
+     *  回 ph:
+     *   'eve'        換倉日收盤後(名單剛定案)→ when = 明天 / 下週一
+     *   'act'        今天就是照名單買賣的日子 → when = 今天;past = 13:30 已過
+     *   'rebalToday' 今天就是換倉日(收盤才定名單)→ buyWhen = 明天 / 下週一
+     *   'wait'       其他日子,leftNow = 從今天算還有幾個交易日換倉
+     *  ⚠️ 國定假日不知道(本站沒有行事曆,同 `_dueWhen`)→ 遇休市順延,畫面用 title 註明。 */
+    _leadPhase(clk, dataDate) {
+        try {
+            if (!clk || (!clk.isRebal && !(clk.started && clk.day))) return { ph: 'none', leftNow: clk && clk.left != null ? clk.left : null };
+            const t = this._tpeMinutes(), wk = /Sat|Sun/.test(t.wd), fri = /Fri/.test(t.wd);
+            const dd = String(dataDate || '').replace(/\//g, '-').slice(0, 10);
+            const step = !!dd && t.ymd > dd && !wk;           // 今天是資料日之後的交易日(採礦還沒更新)
+            const next = (wk || fri) ? '下週一' : '明天';
+            if (clk.isRebal) return step ? { ph: 'act', when: '今天', past: t.min > 13 * 60 + 30, leftNow: null }
+                                         : { ph: 'eve', when: next, leftNow: null };
+            const leftNow = clk.left != null ? (step ? clk.left - 1 : clk.left) : null;
+            if (leftNow === 0) return { ph: 'rebalToday', when: '今天', buyWhen: next, leftNow: 0 };
+            return { ph: 'wait', leftNow };
+        } catch (_) { return { ph: clk && clk.isRebal ? 'eve' : 'wait', when: '明天', leftNow: clk && clk.left }; }
+    },
+    /** 👑 V79.1.5 一句話講「今天在換倉節拍的哪裡」(總覽 / 連續技 / 出場說明共用,⛔ 不各寫一份) */
+    _leadPhaseTxt(P) {
+        P = P || {};
+        if (P.ph === 'act') return P.past ? '今天是照換倉名單買賣的日子(已收盤)' : '今天就是照換倉名單買賣的日子';
+        if (P.ph === 'eve') return `今天換倉、名單已定,${P.when}照名單買賣`;
+        if (P.ph === 'rebalToday') return `今天就是換倉日(收盤才定名單,${P.buyWhen}買賣)`;
+        return P.leftNow != null && P.leftNow !== '?' ? `下一次換倉日還有 ${P.leftNow} 個交易日` : '等下一次換倉日';
+    },
     /** 👑 V77.9.1「這檔是照領頭羊買的」標記(使用者:「程式不知道哪幾檔是照這套買的」→ 自己標)。
      *  ⛔ 只存這台手機;標了的:決策台照領頭羊規則講要不要賣、⛔ 不再套上面三條出場(同一檔不可兩套規則打架)。 */
     _leaderMine() {
@@ -21541,6 +21650,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const bearOn = !!(bear && bear.on);
         let twii = null; try { twii = await this._getTwiiRows(); } catch (_) {}
         const clk = this._leaderClock(twii, L.date, E.anchor);
+        const PH = this._leadPhase(clk, L.date), leftNow = PH.leftNow ?? clk.left;   // 👑 V79.1.5 今天 / 明天唯一一份
         this._leaderState = { isRebal: !!clk.isRebal, buyN: bearOn ? 0 : L.buy.length, date: L.date };
         const H = R.N * R.hyst;
         // 📌 V78.3.3 使用者:「收盤價就是現價,買進價改成換倉的時候價格,動作就是購物車及前10續抱」
@@ -21598,7 +21708,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         // 📦 V78.6.0 這一批模式:動作欄 = 今天第幾名(還在前 N×hyst 名 ✅;掉出 ⏳ —— 換倉日才賣,⛔ 不是今天叫你賣)
         const actBatch = r => r.trank != null && r.trank <= H
             ? `<span class="text-[9px] text-right text-gray-200" data-leaderact="in" title="今天排第 ${r.trank} 名,還在前 ${H} 名">✅ 今第${r.trank}</span>`
-            : `<span class="text-[9px] text-right text-amber-300" data-leaderact="out" title="換倉日(還有 ${clk.left ?? '?'} 天)還不在前 ${H} 名才賣,⛔ 不是今天賣">⏳ ${r.trank != null ? `今第${r.trank}` : (r.inPool ? '沒過趨勢' : `不在前${R.U}`)}</span>`;
+            : `<span class="text-[9px] text-right text-amber-300" data-leaderact="out" title="換倉日(還有 ${leftNow ?? '?'} 天)還不在前 ${H} 名才賣,⛔ 不是今天賣">⏳ ${r.trank != null ? `今第${r.trank}` : (r.inPool ? '沒過趨勢' : `不在前${R.U}`)}</span>`;
         const act = r => r.batch ? actBatch(r) : (buySet.has(r.sym) && !bearOn)
             ? `<span class="text-[9px] font-bold text-right text-amber-300" data-leaderact="buy">🛒 買</span>`
             : `<span class="text-[9px] text-gray-500 text-right" data-leaderact="keep">前${H}續抱</span>`;
@@ -21616,12 +21726,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <span class="font-mono text-[10px] text-gray-500 text-right">${r.amt20 == null ? '—' : (+r.amt20).toFixed(0)}</span>
             ${act(r)}
         </div>`;
-        const clockTxt = `<div class="text-[10px] ${clk.isRebal ? 'text-amber-300' : 'text-gray-400'} mb-1" data-leaderclock="${clk.isRebal ? 'rebal' : 'wait'}">⏱️ ${esc(L.date)} 是第 <b class="font-mono">${clk.day || '?'}</b> 個交易日(${esc(E.anchor)} 起算,自動下單同一個起點)→ ${clk.isRebal ? `<b>換倉日</b>:下一個交易日照下面做(要賣的${this._leadWhen('sell', true)}、要買的${this._leadWhen('buy', true)})` : `還有 <b class="font-mono">${clk.left ?? '?'}</b> 個交易日才換倉,<b>這幾天不動</b>`}</div>`;
+        const clockTxt = `<div class="text-[10px] ${clk.isRebal || PH.ph === 'rebalToday' ? 'text-amber-300' : 'text-gray-400'} mb-1" data-leaderclock="${clk.isRebal ? 'rebal' : 'wait'}" data-leaderphase="${PH.ph}">⏱️ ${esc(L.date)} 是第 <b class="font-mono">${clk.day || '?'}</b> 個交易日(${esc(E.anchor)} 起算,自動下單同一個起點)→ ${clk.isRebal ? `<b>換倉日</b>:${PH.ph === 'act' ? '<b>今天</b>' : esc(PH.when || '下一個交易日')}照下面做(要賣的${this._leadWhen('sell', true)}、要買的${this._leadWhen('buy', true)})` : PH.ph === 'rebalToday' ? '<b>今天就是換倉日</b>,收盤後名單才定案' : `還有 <b class="font-mono">${leftNow ?? '?'}</b> 個交易日才換倉,<b>這幾天不動</b>`}</div>`;
         const reb5 = clk.reb ? `${String(clk.reb).slice(5, 7)}/${String(clk.reb).slice(8, 10)}` : '';
-        const batchTxt = bRows ? `<div class="text-[10px] text-gray-300 mb-1" data-leaderbatch="ok">📦 下面這 ${bRows.length} 檔 = <b>${esc(reb5)} 換的這一批</b>(10 天不變,下一次換倉還有 <b class="font-mono">${clk.left ?? '?'}</b> 天);右邊寫今天排第幾名</div>`
+        const batchTxt = bRows ? `<div class="text-[10px] text-gray-300 mb-1" data-leaderbatch="ok">📦 下面這 ${bRows.length} 檔 = <b>${esc(reb5)} 換的這一批</b>(10 天不變,下一次換倉還有 <b class="font-mono">${leftNow ?? '?'}</b> 天);右邊寫今天排第幾名</div>`
             : batchErr ? `<div class="text-[10px] text-amber-300 mb-1" data-leaderbatch="err">⚠️ ${esc(reb5)} 那一批讀不到(${esc(batchErr)})→ 下面先列今天的排名</div>`
             : (clk.isRebal ? `<div class="text-[10px] text-gray-300 mb-1" data-leaderbatch="today">📦 今天換倉 → 下面這幾檔就是新的一批(接下來 10 天不變)</div>` : '');
-        const sellWhen = clk.isRebal ? `明天 ${this._leadWhen('sell', true)}` : `換倉日再賣(還有 ${clk.left ?? '?'} 天)`;
+        const sellWhen = clk.isRebal ? `${PH.ph === 'act' ? '今天' : (PH.when || '明天')} ${this._leadWhen('sell', true)}` : `換倉日再賣(還有 ${leftNow ?? '?'} 天)`;
         const heldRow = h => {
             const where = h.r ? `第 ${h.r.rank} 名` : (h.inPool ? '沒過趨勢條件' : `不在成交額前 ${R.U} 大`);
             const verdict = h.mine
@@ -21674,26 +21784,56 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     /** 🎯 V78.2.2 決策台「今天要做的事」👑 那幾行:今天做什麼 + 怎麼買 + 怎麼賣 + 錢放哪(⛔ 每行一句;規則都是回測過的,依據在 📖 裡)。
      *  ⛔ 只吃 `_leaderDeckHtml` 算好的 clk / L / held,⛔ 不另算名單。 */
     _deckTodoLead({ clk, bearOn, L, held, H }) {
-        const R = this._LEADER_EDGE.rule, nm = s => this._escHtml(this.getStockName ? (this.getStockName(s) || s) : s);
-        const names = a => a.map(s => `<b>${nm(s)}</b>`).join('、');
-        const sells = held.filter(h => h.mine && !h.keep).map(h => h.sym);
-        const heldSet = new Set(held.map(h => h.sym));
-        const room = Math.max(0, R.N - (held.filter(h => h.mine).length - sells.length));
-        const buys = bearOn ? [] : L.buy.filter(r => !heldSet.has(r.sym)).slice(0, room).map(r => r.sym);
+        // 🎨 V79.1.5 使用者:「把今天要做的事在重點用顏色標註,直接告訴我要買前 5 名哪幾隻」
+        //   ① 「今天 / 明天」走 `_leadPhase`(⛔ 不再一律寫「明天」—— 買賣那天白天採礦還沒更新,舊版寫成明天)
+        //   ② 每一天都列「現在會買哪 5 檔」+ 現價(全市場快照,沒有就用收盤);名單在換倉日收盤才定案 → 沒定案前標「會變」
+        //   ③ 顏色:今天要動的那一行琥珀左色條 + 股名琥珀粗體、時間做成琥珀小框;⛔ 不用 🔴🟢(燈號鐵則:紅綠只講漲跌,只用在漲跌幅)
+        const R = this._LEADER_EDGE.rule, esc = x => this._escHtml(String(x ?? ''));
+        const nm = s => esc(this.getStockName ? (this.getStockName(s) || s) : s);
+        const P = this._leadPhase(clk, L.date);
+        const A = this._leadActs(L, bearOn, held.filter(h => h.mine).map(h => h.sym));   // ⛔ 只吃 _leaderDeckHtml 算好的 held
+        const chip = t => `<span class="font-mono font-bold text-amber-200 bg-amber-900/40 px-1 rounded whitespace-nowrap" data-todochip="1">${t}</span>`;
+        const when = side => { const t = this._leadWhen(side, true); return /\d{2}:\d{2}/.test(t) ? t.replace(/(\d{2}:\d{2})/, m => chip(m)) : `${chip('09:00')} ${t}`; };
+        const pxOf = s => {
+            const q = this._liveQuote ? this._liveQuote(s) : null, r = L.all.get(s);
+            const p = q && +q.p > 0 ? +q.p : (r && r.c > 0 ? r.c : null);
+            const c = q && q.c != null && isFinite(+q.c) ? +q.c : (r ? r.chg : null);
+            return { p, c };
+        };
+        const stk = (s, tag) => { const { p, c } = pxOf(s);
+            return `<span class="whitespace-nowrap" data-todostk="${s}"><b class="font-black text-amber-200">${nm(s)}</b>${p ? ` <span class="font-mono text-[11px] text-gray-100">${p >= 100 ? p.toFixed(1) : p.toFixed(2)}</span>` : ''}${c != null ? ` <span class="font-mono text-[10px] ${c >= 0 ? 'text-red-400' : 'text-green-400'}">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(1)}%</span>` : ''}${tag || ''}</span>`; };
+        const list = (a, tagOf) => a.map(s => stk(s, tagOf ? tagOf(s) : '')).join('<span class="text-gray-600"> ・</span>');
+        const box = (t, k, hot) => `<div class="text-[12px] text-gray-100 leading-relaxed ${hot ? 'border-l-4 border-amber-500 bg-amber-900/15 pl-2 py-1 rounded-r' : ''}" data-todo="${k}" data-todohot="${hot ? 1 : 0}">${t}</div>`;
+        const dd = String(L.date || '').replace(/\//g, '-');
+        const asOf = dd ? `${dd.slice(5, 7)}/${dd.slice(8, 10)}` : '';
+        const holTip = ' title="遇休市就順延到下一個交易日"';
         let now;
-        if (!clk.isRebal) now = `⏳ <b>今天不用動</b> ・下次換倉還有 <b class="font-mono">${clk.left ?? '?'}</b> 個交易日`;
-        else {
+        if (P.ph === 'act' || P.ph === 'eve') {
+            const W = P.ph === 'act' ? '今天' : P.when;
             const p = [];
-            if (sells.length) p.push(`🚪 明天 ${this._leadWhen('sell', true)} ${names(sells)}`);
-            if (buys.length) p.push(`🛒 明天 ${this._leadWhen('buy', true)} ${names(buys)}`);
-            if (bearOn) p.push('🐻 大盤空頭,這次不買');
-            now = p.length ? p.join(' ・') : '✅ 換倉日:名單沒變,<b>不用動</b>';
+            if (A.sell.length) p.push(`🚪 <b>${W}</b> ${when('sell')}:${list(A.sell)}`);
+            if (A.buy.length) p.push(`🛒 <b>${W}</b> ${when('buy')}:${list(A.buy)}`);
+            if (bearOn) p.push('🐻 大盤空頭 → 這次<b>不買</b>,手上的照規則');
+            const head = P.ph === 'act'
+                ? (P.past ? `✅ <b>今天的換倉買賣時間已過</b>(已收盤)` : `🎯 <b>今天要做</b>(${asOf ? esc(asOf) + ' ' : ''}收盤的名單,已定案)`)
+                : `🎯 <b>名單已定案</b>(${asOf ? esc(asOf) + ' ' : ''}換倉日收盤)→ <b${holTip}>${esc(P.when)}</b>照做`;
+            now = box(`${head}${p.length ? '<br>' + p.join('<br>') : '<br>✅ 名單沒變,<b>不用動</b>'}`, 'now', !P.past && (p.length > 0));
+        } else {
+            const left = P.leftNow ?? clk.left ?? '?';
+            const soon = P.ph === 'rebalToday' || (+left > 0 && +left <= 2);
+            const headTxt = P.ph === 'rebalToday'
+                ? `⏰ <b>今天就是換倉日</b> → 收盤後名單定案,<b${holTip}>${esc(P.buyWhen)}</b>照做`
+                : `⏳ <b>今天不用動</b> ・下次換倉還有 <b class="font-mono ${soon ? 'text-amber-300' : ''}">${esc(left)}</b> 個交易日`;
+            const held = new Set(A.keep.concat(A.sell));
+            const pre = bearOn ? '' : `<br><span data-todopreview="1">👀 照 ${asOf ? esc(asOf) + ' ' : '最新'}收盤排名,現在會買:${L.buy.length ? list(L.buy.map(r => r.sym), s => held.has(s) ? '<span class="text-[10px] text-gray-400"> 已有</span>' : '') : '<span class="text-gray-400">沒有一檔過門檻</span>'}<span class="text-[10px] text-gray-500">(換倉日收盤才定案,會變)</span></span>`;
+            const preSell = A.sell.length ? `<br><span data-todopresell="1">👀 現在掉在前 ${A.H} 名外:${list(A.sell)}<span class="text-[10px] text-gray-500">(換倉日還在名外才賣)</span></span>` : '';
+            now = box(headTxt + pre + preSell, 'now', soon);
         }
-        const line = (t, k) => `<div class="text-[12px] text-gray-200 leading-relaxed" data-todo="${k}">${t}</div>`;
-        return line(now, 'now')
-            + line(`🛒 <b>怎麼買</b>:換倉日隔天 ${this._leadWhen('buy')};買前 ${R.N} 名${R.pos ? `(一年位置 ≥ ${R.pos}%)` : ''}、每檔一樣多錢,漲停買不到的 → 不補`, 'buy')
-            + line(`🚪 <b>怎麼賣</b>:換倉日掉出前 ${H} 名 → 隔天 ${this._leadWhen('sell')};其餘續抱,不設停損`, 'sell')
-            + line(`💰 沒用到的錢${this._park() ? '放 0050' : '放現金'}`, 'park');
+        const line = (t, k) => `<div class="text-[12px] text-gray-300 leading-relaxed mt-0.5" data-todo="${k}">${t}</div>`;
+        return now
+            + line(`🛒 <b class="text-gray-100">怎麼買</b>:換倉日隔天 ${this._leadTiming() === 'split' ? `${chip('13:25')} 買(開盤就跌 3% 以上 → 開盤就買;<b class="text-gray-100">開盤就漲停 → 不追</b>)` : `${chip('09:00')} 開盤買(<b class="text-gray-100">開盤就漲停 → 不追</b>)`};買前 ${R.N} 名${R.pos ? `(一年位置 ≥ ${R.pos}%)` : ''}、每檔一樣多錢,漲停買不到的 → 不補`, 'buy')
+            + line(`🚪 <b class="text-gray-100">怎麼賣</b>:換倉日掉出前 ${H} 名 → 隔天 ${when('sell')}${this._leadTiming() === 'split' ? '(開盤就跌 3% 以上 → 等到 ' + chip('09:30~10:00') + ' 再賣)' : ''};其餘續抱,<b class="text-gray-100">不設停損</b>`, 'sell')
+            + line(`💰 沒用到的錢${this._park() ? '放 <b class="text-gray-100">0050</b>' : '放現金'}`, 'park');
     },
     /** 👑 V77.9.1 個股總覽一行:領頭羊(決策台預設)對這一檔怎麼說(使用者:「領頭羊怎麼買賣就收錄在總覽裡面」)。
      *  ⛔ 只轉述 `_leaderCalc` + `_leaderClock`(同決策台那一份),⛔ 不另算。切股先清空、await 回來比對 sym(陷阱 #19)。 */
@@ -21713,7 +21853,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         let twii = null; try { twii = await this._getTwiiRows(); } catch (_) {}
         if (String(this.currentSymbolId) !== sym) return;
         const clk = this._leaderClock(twii, L.date, E.anchor);
-        const when = clk.isRebal ? '下一個交易日開盤' : `換倉日(還有 ${clk.left ?? '?'} 個交易日)`;
+        const PH = this._leadPhase(clk, L.date);   // 👑 V79.1.5
+        const when = clk.isRebal ? (PH.ph === 'act' ? '今天' : `${PH.when || '下一個交易日'}`) : `換倉日(還有 ${PH.leftNow ?? clk.left ?? '?'} 個交易日)`;
         let st, txt;
         const inBuy = !!(r && L.buy.some(b => b.sym === sym));
         if (inBuy) { st = 'buy'; txt = mine ? `第 <b>${r.rank}</b> 名 → ✅ 續抱` : `第 <b>${r.rank}</b> 名(買進名單)→ 🛒 ${when}買`; }
@@ -27156,7 +27297,7 @@ ${this._reportFacts(sym)}
         let ed = null; try { ed = this._exitDistance(this.rawDailyData, sym); } catch (_) {}
         // 👑 V78.2.0 選 👑 的持股:⛔ 不講 🔥 的三條出場(那會跟總覽「沒有停損線」打架)
         if (K && K.lead) { ed = null; const v = (() => { try { return this._leadVerdict(sym, true); } catch (_) { return null; } })();
-            out.push(`👑 你選的是領頭羊:沒有停損線;${v && v.left != null && v.left !== '?' ? (v.isRebal ? '今天就是換倉日' : `下一次換倉日還有 ${v.left} 個交易日`) + ',' : ''}那天掉出前 ${this._LEADER_EDGE.rule.N * this._LEADER_EDGE.rule.hyst} 名才隔天 ${this._leadWhen("sell")}。`); }
+            out.push(`👑 你選的是領頭羊:沒有停損線;${v && v.left != null && v.left !== '?' ? this._leadPhaseTxt(v.ph) + ',' : ''}那天掉出前 ${this._LEADER_EDGE.rule.N * this._LEADER_EDGE.rule.hyst} 名才隔天 ${this._leadWhen("sell")}。`); }
         if (ed && ed.etf && ed.cost > 0) { const _en = this._etfHoldNote(sym); if (_en) out.push(_en.short + '。'); }   // 🐢 V77.6.8
         if (ed && ed.cost > 0 && (ed.lines.length || ed.maxd)) {
             if (ed.broken.length) {
@@ -36333,7 +36474,7 @@ ${this._reportFacts(sym)}
             .concat(poc ? [cell('🧲', '量價密集區(60日)', `${fmt(poc.lo)}~${fmt(poc.hi)}`, K.pocRel || '近60日量最大的那一格', 'text-amber-300', '密集')] : []).join('');
         // ⚠️ 空頭時那句但書 —— ⛔ 不可只在後面補「但是」(V75.1.9 的教訓:人只會讀比較強的那半),
         //   要直接說「這兩個不是叫你買」。
-        const leadNote = K.lead ? (() => { let left = ''; try { const v = this._leadVerdict(sym, true); if (v && v.left != null && v.left !== '?') left = v.isRebal ? '(今天就是換倉日)' : `(下一次換倉日還有 ${v.left} 個交易日)`; } catch (_) {}
+        const leadNote = K.lead ? (() => { let left = ''; try { const v = this._leadVerdict(sym, true); if (v && v.left != null && v.left !== '?') left = `(${this._leadPhaseTxt(v.ph)})`; } catch (_) {}
             return `<div class="text-[10px] text-gray-300 leading-snug" style="margin-top:3px" data-leadnote="1">👑 你選的是領頭羊:<b>沒有停損線、沒有出場線</b>,要不要賣只看<b>換倉日排名</b>${left}—— 上面的價位只是位置參考。</div>`; })() : '';
         const bearNote = (bear && (K.buyPx > 0 || K.addPx > 0))
             ? `<div class="text-[9px] text-gray-300 leading-snug" style="margin-top:3px">👀 <b>現在是空頭</b> —— 上面那兩個是「漲到這裡才值得重看」的<b>觀察價</b>,⛔ 不是叫你買。</div>` : '';
@@ -37156,6 +37297,27 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
     //   ⚠️ 沒填買進日 → 找不到「買進當天」→ 只用成本 −5%(會比回測略緊),**文案要說出來**(`stopWhy`)。
     //   ⛔ 回傳欄位名不變(`stopFinal` / `stopA` / `stopADropped` / `stopARaw`)—— 十幾個讀取點照舊。
     //   🚪 V77.4.9 第 4 參數 `ind`:決策台掃**手上每一檔**時傳 `{}`(硬停損用不到均線)。
+    /** 🛑 V79.1.5 提醒用的硬停損(盤中掃描 / 每日體檢共用,⛔ 不再寫死成本 × 0.95)。
+     *  = `_unifiedExitPlan().stopFinal`(min(買進當天最低, 成本 −5%));買進日從庫存那一筆取。
+     *  ⚠️ 掃的是「別的股票」→ ind 傳 {}(`this.indicators` 只對齊目前個股,陷阱 #19)。回 {px, why} 或 null */
+    _hardStopOf(kdata, sym, cost) {
+        try {
+            cost = +cost; if (!(cost > 0)) return null;
+            const p = (this._getInventory() || []).find(i => String(i.symbol) === String(sym) && +i.cost > 0);
+            const bd = p && p.buyDate || null;
+            let plan = null;
+            try { plan = (Array.isArray(kdata) && kdata.length >= 25) ? this._unifiedExitPlan(kdata, cost, bd, {}) : null; } catch (_) {}
+            if (plan && plan.stopFinal > 0) return { px: +plan.stopFinal, why: plan.stopWhy || '成本 −5%', cost };
+            return { px: this._floorTick ? this._floorTick(cost * 0.95) : +(cost * 0.95).toFixed(2), why: '成本 −5%(K 線不夠,只能用成本算)', cost };
+        } catch (_) { return null; }
+    },
+    /** 🛑 V79.1.5 硬停損提醒文案(回測是收盤成交 → 盤中只提醒、尾盤確認才賣;⛔ 不再寫「朱:認賠出場」) */
+    _hardStopTxt(price, hs, intraday) {
+        const eod = this._eodTxt ? this._eodTxt() : '13:00~13:28';
+        const pl = (+price - hs.cost) / hs.cost * 100;
+        return `現價 ${(+price).toFixed(2)}(成本 ${hs.cost.toFixed(2)},${pl >= 0 ? '+' : ''}${pl.toFixed(1)}%)跌破硬停損 ${hs.px.toFixed(2)}(${hs.why})`
+            + (intraday ? ` → 照規則:收盤前 ${eod} 還在 ${hs.px.toFixed(2)} 以下就尾盤賣,⛔ 不用現在急賣` : ` → 照規則:${this._dueWhen ? this._dueWhen().when : '今天'} ${eod} 尾盤賣`);
+    },
     _unifiedExitPlan(data, cost, buyDate, ind) {
         try {
             const last = (data?.length || 0) - 1;
@@ -49092,7 +49254,7 @@ App 會在那個時段幫你盯,到價自動提醒。
         if (this._eodTimer) return;
         const tick = () => {
             // 🎯 V77.9.6 你選哪一套就只跑那一套的提醒(⛔ 兩套同時推 = 使用者會錯亂)
-            if (this._isLead()) { this._leadRebalAlert().catch(() => { }); return; }
+            if (this._isLead()) { this._leadRebalAlert().catch(() => { }); this._leadDayPulse().catch(() => { }); return; }   // ⏰ V79.1.5 換倉後那天的開盤 / 13:20 提醒
             this._eodTriggerSweep().catch(() => { });
             // 🚪 出場守望:⛔ **不受 13:00 時窗限制** —— 停損是整個交易時段都要盯的
             //   (進場錯過還有下一次,出場錯過就是住套房)。非交易時段 fetch 拿不到即時價會自己跳過。

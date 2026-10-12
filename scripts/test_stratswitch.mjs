@@ -30,6 +30,8 @@ const R = await page.evaluate(async () => {
     for (let i = 0; i < 120; i++) { const sym = String(1000 + i); const ok = i % 2 === 1; rows[sym] = [100, 1, 1, 60 - i * 0.5, 10, 50, 500 - i, ok ? 5 : -1, ok ? 9 : 3, 0, 0, 0, 95]; }
     const D = { data_date: '2026-09-28', cols, rows };
     const tw = Array.from({ length: 80 }, (_, i) => ({ date: new Date(Date.UTC(2026, 6, 1) + i * 86400000).toISOString().slice(0, 10), close: 100 }));
+    // ⏰ V79.1.5 「今天 / 明天」看台北時間 vs 資料日(`_leadPhase`)→ 釘在換倉日收盤後(資料日當天 18:00),⛔ 不受跑測試那天影響
+    app._tpeMinutes = () => ({ wd: 'Mon', min: 18 * 60, ymd: '2026-09-28' });
     app._scrData = D; app._loadScreener = async () => D; app._getTwiiRows = async () => tw; app._mktBear60 = async () => ({ on: false });
     // ① 預設 / 解鎖
     app.settings.strategy = 'gene'; app.settings.stratUnlock = false;
@@ -106,7 +108,7 @@ ok('④ 👑:第 2 擊(出場線)不喊;🧬 照喊', R.comboLead === false && R
 ok('④b 換倉日提醒:一則,寫賣誰(掉出前 10)與買誰;同一天第二次不再跳', R.rebal1.length === 1 && /換倉日/.test(R.rebal1[0]) && /賣:.*1041/.test(R.rebal1[0]) && /買:/.test(R.rebal1[0]) && R.rebal2 === 1, JSON.stringify(R.rebal1));
 ok('④c 👑:背景 −5% 提醒只留 ETF(個股沒有停損線)', R.swCfg && R.swCfg.alerts.map(a => a.symbol).join() === '0050', JSON.stringify(R.swCfg || R.swErr));
 const SRC = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-ok('④d 👑 時 _startEodWatcher ⛔ 不跑 🧬 的買點 / 出場掃描,改跑換倉日提醒', /if \(this\._isLead\(\)\) \{ this\._leadRebalAlert\(\)\.catch\(\(\) => \{ \}\); return; \}\s*\n\s*this\._eodTriggerSweep\(\)/.test(SRC));
+ok('④d 👑 時 _startEodWatcher ⛔ 不跑 🧬 的買點 / 出場掃描,改跑換倉日提醒', /if \(this\._isLead\(\)\) \{ this\._leadRebalAlert\(\)\.catch\(\(\) => \{ \}\);( this\._leadDayPulse\(\)\.catch\(\(\) => \{ \}\);)? return; \}[^\n]*\n\s*this\._eodTriggerSweep\(\)/.test(SRC));
 ok('④e _invExitScan / 庫存 −5% / 第 2 擊 / 背景提醒都讀同一個 _leaderMine(⛔ 各寫一份判斷)', (SRC.match(/_leaderMine\(\)\.has\(/g) || []).length >= 3 && /if \(_lm\.has\(sym\)\) continue;/.test(SRC));
 
 // ⑤ 產業作戰室

@@ -17,7 +17,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ORIG = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 let SRC = ORIG;
 const INJ = process.env.INJECT || '';
-if (INJ === 'hard') SRC = SRC.replace("if (buys.length) p.push(`🛒 明天 ${this._leadWhen('buy', true)} ${names(buys)}`);", "if (buys.length) p.push(`🛒 明天 09:00 開盤買 ${names(buys)}`);");
+if (INJ === 'hard') SRC = SRC.replace("if (A.buy.length) p.push(`🛒 <b>${W}</b> ${when('buy')}:${list(A.buy)}`);", "if (A.buy.length) p.push(`🛒 <b>${W}</b> 09:00 開盤買:${list(A.buy)}`);");
 if (INJ && SRC === ORIG) { console.log('❌ 注入沒有注進去'); process.exit(1); }
 const TMP = path.join(ROOT, '.test_leadtiming.html');
 fs.writeFileSync(TMP, SRC);
@@ -56,7 +56,8 @@ const AT = fs.readFileSync(path.join(ROOT, 'auto_trade.py'), 'utf8');
 const WK = fs.readFileSync(path.join(ROOT, 'cloud-worker/worker.js'), 'utf8');
 ok('ⓐ 預設 split:買 13:25(開盤跌 3% 例外)・賣 09:00(開盤跌 3% 等到 09:30~10:00)', R.split.tm === 'split' && /13:25/.test(R.split.buy) && /跌 3%/.test(R.split.buy) && /09:00/.test(R.split.sell) && /09:30~10:00/.test(R.split.sell), JSON.stringify(R.split));
 ok('ⓑ ⭐ 決定性對照:設 open → 全部 09:00 開盤、⛔ 沒有 13:25', R.open.tm === 'open' && /09:00 開盤買/.test(R.open.buy) && !/13:25/.test(R.open.buy + R.open.todo + R.open.ovBuy), JSON.stringify(R.open));
-ok('ⓒ 決策台「今天要做的事」跟著設定變(split 有 13:25、open 沒有)', /13:25 買 台積電/.test(R.split.todo) && /開盤賣 大立光/.test(R.split.todo) && !/13:25/.test(R.open.todo) && /開盤買 台積電/.test(R.open.todo), [R.split.todo, R.open.todo]);
+// 🎨 V79.1.5 格式改成「13:25 買:台積電 現價…」(時間做成琥珀小框)→ 冒號可有可無
+ok('ⓒ 決策台「今天要做的事」跟著設定變(split 有 13:25、open 沒有)', /13:25 買:?\s*台積電/.test(R.split.todo) && /開盤賣:?\s*大立光/.test(R.split.todo) && !/13:25/.test(R.open.todo) && /開盤買:?\s*台積電/.test(R.open.todo), [R.split.todo, R.open.todo]);
 ok('ⓒ2 總覽主卡 買 / 賣 跟著設定變', /13:25/.test(R.split.ovBuy) && /09:30~10:00/.test(R.split.ovSell) && !/13:25/.test(R.open.ovBuy), [R.split.ovBuy.slice(0, 160), R.split.ovSell.slice(0, 160)]);
 ok('ⓒ3 換倉提醒讀 _leadWhen', /_leadWhen\('sell'\)/.test(R.alertSrc) && /_leadWhen\('buy'\)/.test(R.alertSrc));
 ok('ⓓ App 預設 split == auto_trade.py LEADER_WINDOW 預設 split', /LEADER_WINDOW = \(os\.getenv\('LEADER_WINDOW'\) or 'split'\)/.test(AT) && R.split.tm === 'split');
