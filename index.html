@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.1.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.1.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.1.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.1.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8534,10 +8534,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.1.6',
+    _APP_VERSION: 'V79.1.7',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.1.7', d: [
+            '📌 換倉日那天講清楚:排名照上一個交易日收盤排、盤中不會變,今天收盤後晚上資料更新才定案',
+            '⏭️ 明天(或下週一)才是買賣日:要賣的 09:00 開盤賣、要買的 13:25 買(不是一早就買;開盤跌 3% 以上 / 開盤漲停各怎麼做也寫出來)',
+        ] },
         { v: 'V79.1.6', d: [
             '👑 決策台名單的現價改成盤中真的會跳(要先在設定填富果金鑰);09/24價移到現價左邊,現價底下小字 = 從那天到現在漲跌多少',
             '👑 漲停 / 處置 / 👜(你手上有)移到股票代號右邊;拿掉「億/日」那一欄;名次那欄靠左',
@@ -8653,12 +8657,6 @@ ${list}
             '📅 <b>產業作戰室 → 實測總表 → 回測數字 → 逐年成績單,「⭐ 決策台現行」那一列換成現在的規則</b>(🧬 位階 ≥85 + 吊燈 ATR 2 倍 + 最長 20 天 + 空頭不開新倉),而且是用<b>修好的日 K</b> 重跑的:一個帳戶從 2011 一路滾 <b>+574.5 萬</b>(17 條起點最差 +554 萬、中途最多賠 −37%)vs 同一份資料的 0050 含息 +1,089 萬;每年重新放 100 萬的話 16 年裡贏 0050 含息 <b>10 年</b>,最慘 2025 −42.6%。舊的那列(唐奇安 40 日)改標「⏮️ 上一任」。',
             '👑 <b>領頭羊四種做法也進了這張表</b>(全攻 / 一半放 0050 / 先衝再穩 / 尾盤成交),一樣每年一格 + 一路滾 16 年:全攻一路滾 <b>+6,779 萬</b>(0050 含息 +1,097 萬),但每年重新放 100 萬的話只贏 0050 <b>8/16 年</b>、16 年加起來 +411 萬 —— 它的大賺集中在少數幾年(2017 +98%、2023 +84%、2025 +122%),一路滾把那幾年複利放大了。',
             '⚠️ 這張表有兩批資料:標 🆕 的幾列是修好日 K 之後重跑的(跟 0050 含息比),其他列還是修好之前的數字(偏高),⛔ 名次不要跨兩批比。'
-        ] },
-        { v: 'V78.0.7', d: [
-            '🧬 <b>🧬 選股門檻從「一年位階 ≥ 75%」提高到「≥ 85%」</b>(你問「🧬 那套也再回測看看有沒有更強的」)。我在現行規則上測了四種加法,只有這一條每一關都過:近 4 年 <b>324 萬 → 413 萬</b>、2011~2026 <b>494 萬 → 574 萬</b>(起點挪 17 次兩段都全贏);同樣比例<b>隨機</b>擋掉只有 258 / 508 萬 → 賺的是「更靠近一年高點」,不是少買;80 / 85 / 90 都贏 = 一片高原;手續費加倍也還是贏。⚠️ 16 年裡有 7 年比舊門檻差(2022 空頭那年也是)。出場規則、最長 20 天、空頭不買全部沒變;設定中心有開關可以換回 75%。自動下單跟著新清單走(GENE_RANK=75 = 舊的)。',
-            '💰 <b>「沒用到的錢停在 0050」16 年也測完了</b>:同一套 4 年 413 → <b>513 萬</b>、16 年 574 → <b>1,221 萬</b>(都 17/17 贏、中途最多賠更小,16 年還贏「全部買 0050 放著」)。⚠️ 自動下單目前<b>不會</b>幫你做這件事,要不要做成選項等你決定。',
-            '⛔ 另外兩個沒用:候選改照「近 10 日漲最多」排(一樣 324 萬)、只挑成交額前 50 / 100 / 200 大(掉到 106~157 萬)—— 👑 領頭羊那套的做法搬到 🧬 上不成立。',
-            '🐛 順手修:產業作戰室「100 萬變多少」那張表點過表頭排序之後,「最強招式」清單跟推薦順序會壞掉(兩個東西同名)。',
         ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
@@ -21493,6 +21491,17 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                                        : (short ? '開盤買' : '09:00 開盤買(開盤就漲停 → 不追)');
         return sp ? (short ? '開盤賣' : '09:00 開盤賣(開盤就跌 3% 以上 → 等到 09:30~10:00 再賣)') : (short ? '開盤賣' : '09:00 開盤賣');
     },
+    /** ⏭️ V79.1.7 換倉日隔天幾點賣、幾點買 —— 一句話(使用者:「明天才是買的日子嗎?何時買?一早直接買?」)。
+     *  ⛔ 時間只從 `_leadWhen` 來(跟著 leadTiming 設定),決策台 / 時鐘 / 總覽共用。
+     *  short = 精簡版(「09:00 賣、13:25 買」);fmt = 把時間包成 chip 的函式 */
+    _leadNextDayTxt(short, fmt) {
+        const f = fmt || (x => x), sp = this._leadTiming() === 'split';
+        const sellT = '09:00', buyT = sp ? '13:25' : '09:00';
+        if (short) return `${f(sellT)} 賣、${f(buyT)} 買`;
+        const sell = this._leadWhen('sell', false).replace(sellT, f(sellT)).replace('09:30~10:00', f('09:30~10:00'));
+        const buy = this._leadWhen('buy', false).replace(/^下午 /, '').replace(`${buyT} 買`, `${f(buyT)} 買${sp ? ',<b>⛔ 不是一早就買</b>' : ''}`);
+        return `🚪 要賣的 ${sell}・🛒 要買的 ${buy}`;
+    },
     setLeadTiming(v) {
         this.settings.leadTiming = v === 'open' ? 'open' : 'split';
         try { this.saveSettings?.(); } catch (_) {}
@@ -21574,7 +21583,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         P = P || {};
         if (P.ph === 'act') return P.past ? '今天是照換倉名單買賣的日子(已收盤)' : '今天就是照換倉名單買賣的日子';
         if (P.ph === 'eve') return `今天換倉、名單已定,${P.when}照名單買賣`;
-        if (P.ph === 'rebalToday') return `今天就是換倉日(收盤才定名單,${P.buyWhen}買賣)`;
+        if (P.ph === 'rebalToday') return `今天就是換倉日(今天收盤後、晚上資料更新才定名單;${P.buyWhen}才買賣:${this._leadNextDayTxt(true)})`;
         return P.leftNow != null && P.leftNow !== '?' ? `下一次換倉日還有 ${P.leftNow} 個交易日` : '等下一次換倉日';
     },
     /** 👑 V77.9.1「這檔是照領頭羊買的」標記(使用者:「程式不知道哪幾檔是照這套買的」→ 自己標)。
@@ -21778,7 +21787,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             ${chgCell(r)}
             ${act(r)}
         </div>`;
-        const clockTxt = `<div class="text-[10px] ${clk.isRebal || PH.ph === 'rebalToday' ? 'text-amber-300' : 'text-gray-400'} mb-1" data-leaderclock="${clk.isRebal ? 'rebal' : 'wait'}" data-leaderphase="${PH.ph}">⏱️ ${esc(L.date)} 是第 <b class="font-mono">${clk.day || '?'}</b> 個交易日(${esc(E.anchor)} 起算,自動下單同一個起點)→ ${clk.isRebal ? `<b>換倉日</b>:${PH.ph === 'act' ? '<b>今天</b>' : esc(PH.when || '下一個交易日')}照下面做(要賣的${this._leadWhen('sell', true)}、要買的${this._leadWhen('buy', true)})` : PH.ph === 'rebalToday' ? '<b>今天就是換倉日</b>,收盤後名單才定案' : `還有 <b class="font-mono">${leftNow ?? '?'}</b> 個交易日才換倉,<b>這幾天不動</b>`}</div>`;
+        const clockTxt = `<div class="text-[10px] ${clk.isRebal || PH.ph === 'rebalToday' ? 'text-amber-300' : 'text-gray-400'} mb-1" data-leaderclock="${clk.isRebal ? 'rebal' : 'wait'}" data-leaderphase="${PH.ph}">⏱️ ${esc(L.date)} 是第 <b class="font-mono">${clk.day || '?'}</b> 個交易日(${esc(E.anchor)} 起算,自動下單同一個起點)→ ${clk.isRebal ? `<b>換倉日</b>:${PH.ph === 'act' ? '<b>今天</b>' : esc(PH.when || '下一個交易日')}照下面做(要賣的${this._leadWhen('sell', true)}、要買的${this._leadWhen('buy', true)})` : PH.ph === 'rebalToday' ? `<b>今天就是換倉日</b>:名次照 ${esc(L.date)} 收盤排,<b>今天收盤後、晚上資料更新</b>才定案 → <b>${esc(PH.buyWhen || '明天')}</b>${this._leadNextDayTxt(true)}` : `還有 <b class="font-mono">${leftNow ?? '?'}</b> 個交易日才換倉,<b>這幾天不動</b>`}</div>`;
         const reb5 = clk.reb ? `${String(clk.reb).slice(5, 7)}/${String(clk.reb).slice(8, 10)}` : '';
         const batchTxt = bRows ? `<div class="text-[10px] text-gray-300 mb-1" data-leaderbatch="ok">📦 下面這 ${bRows.length} 檔 = <b>${esc(reb5)} 換的這一批</b>(10 天不變,下一次換倉還有 <b class="font-mono">${leftNow ?? '?'}</b> 天);最右邊是 ${esc(md)} 收盤排第幾名</div>`
             : batchErr ? `<div class="text-[10px] text-amber-300 mb-1" data-leaderbatch="err">⚠️ ${esc(reb5)} 那一批讀不到(${esc(batchErr)})→ 下面先列 ${esc(md)} 收盤的排名</div>`
@@ -21914,17 +21923,20 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         } else if (P.ph === 'rebalToday') {
             const p = [];
             const acts = [A.sell.length ? `🚪 賣 ${list(A.sell)}` : '', A.buy.length ? `🛒 ${A.sell.length || A.keep.length ? '改買' : '買'} ${list(A.buy)}` : '', A.keep.length ? `✅ 續抱 ${names(A.keep)}` : ''].filter(Boolean);
-            p.push(acts.length ? `🔁 照現在的排名(<b>收盤才定案</b>):${acts.join('<span class="text-gray-600"> ・</span>')}` : '✅ 照現在的排名,<b>不用換</b>');
+            const rkD = md ? `${esc(md)} 收盤` : '最新收盤';
+            p.push(`⏭️ <b${holTip}>${esc(P.buyWhen)}才是買賣日</b>:${this._leadNextDayTxt(false, chip)}`);
+            p.push(acts.length ? `🔁 照 ${rkD}的排名(<b>今天收盤後可能會變</b>):${acts.join('<span class="text-gray-600"> ・</span>')}` : `✅ 照 ${rkD}的排名,<b>不用換</b>(今天收盤後可能會變)`);
             if (bearOn) p.push('🐻 大盤嚴格空頭 → 這次<b>不買新的</b>');
             p.push(...moneyLines());
-            now = box(`📌 <b>今天就是換倉日</b> → 收盤定名單,<b${holTip}>${esc(P.buyWhen)}</b>照做<br>${p.join('<br>')}`, 'now', true);
-            open = true;
+            p.push('<span class="text-[11px] text-gray-400" data-todofinal="1">🌙 晚上資料更新後,這裡會換成「🎯 名單已定案」→ 照那一份做(排程遲到時會更晚)</span>');
+            now = box(`📌 <b>今天就是換倉日</b>:名次照 ${rkD}排,盤中不會變 → <b>今天收盤後、晚上資料更新</b>才定案<br>${p.join('<br>')}`, 'now', true);
+            open = false;   // ⏭️ V79.1.7 幾點買賣已經寫在上面那行 → 規則收進 📖(⛔ 同一段時間不講兩次)
         } else {
             const left = P.leftNow ?? clk.left ?? '?';
             const tom = +left === 1;
             const nx1 = (wk || fri) ? '下週一' : '明天', nx2 = (wk || fri) ? '下週二' : thu ? '下週一' : '後天';
             const head = P.ph === 'none' ? '⏳ <b>今天不用動</b>(換倉日還算不出來:加權指數讀不到)'
-                : tom ? `⏰ <b${holTip}>${nx1}收盤換倉</b> → <b${holTip}>${nx2}</b>照名單買賣`
+                : tom ? `⏰ <b${holTip}>${nx1}收盤換倉</b> → <b${holTip}>${nx2}</b>照名單買賣(${this._leadNextDayTxt(true)})`
                 : `⏳ <b>還沒到換倉日,今天不用動</b> ・<b class="font-mono">${esc(left)}</b> 個交易日後收盤換倉`;
             const p = [];
             if (mineKeep.length || A.sell.length) p.push(`👜 你的 👑:${mineKeep.length ? `${names(mineKeep)} → 續抱` : ''}${mineKeep.length && A.sell.length ? ';' : ''}${A.sell.length ? `${names(A.sell)} → 換倉日還在 ${H} 名外才賣` : ''}`);

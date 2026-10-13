@@ -194,6 +194,8 @@ const R = await page.evaluate(async () => {
     o.p2b = todo(W1, '2026-10-08', ['2026-10-08', 'Thu', 18 * 60]);
     o.p3 = todo(W1, '2026-10-12', ['2026-10-13', 'Tue', 10 * 60]);
     o.p4 = todo(RB, '2026-10-13', ['2026-10-13', 'Tue', 18 * 60]);
+    app.settings.leadTiming = 'open'; o.p3open = todo(W1, '2026-10-12', ['2026-10-13', 'Tue', 10 * 60]); o.p2open = todo(W1, '2026-10-08', ['2026-10-08', 'Thu', 18 * 60]); o.ptxtOpen = app._leadPhaseTxt({ ph: 'rebalToday', buyWhen: '明天' }); delete app.settings.leadTiming;
+    o.ptxt = app._leadPhaseTxt({ ph: 'rebalToday', buyWhen: '明天' });
     app._deckQ = { 2317: { p: 105, prev: 100, o: 102, d: '2026-10-14', at: 600 }, 2382: { p: 110, prev: 100, o: 110, d: '2026-10-14', at: 600 } };
     o.p5 = todo(RB, '2026-10-13', ['2026-10-14', 'Wed', 10 * 60]);
     o.p6 = todo(RB, '2026-10-13', ['2026-10-14', 'Wed', 14 * 60]);
@@ -260,7 +262,10 @@ ok('④ 庫存頁走共用 `_fugleWsOpen`:7 檔 2 把金鑰 → 5 + 2、不同�
 // ⑤
 ok('⑤a 還沒到(4 天):「還沒到換倉日,今天不用動」+ 你的 👑 續抱 / 換倉日才賣 + 名單外持股 + 規則收起來', /還沒到換倉日,今天不用動/.test(R.p1.first) && /4 個交易日後收盤換倉/.test(R.p1.first) && /台積電 第2、聯發科 第7 → 續抱/.test(R.p1.t) && /大立光 第14 → 換倉日還在 10 名外才賣/.test(R.p1.t) && /緯穎 第4 不在上次名單/.test(R.p1.t) && /data-todorules="1"/.test(R.p1.h) && !/data-todohot="1"/.test(R.p1.h), R.p1.t);
 ok('⑤b 明天換倉(週二):「明天收盤換倉 → 後天照名單買賣」+ 琥珀色;週四 → 下週一', /明天收盤換倉/.test(R.p2.first) && /後天/.test(R.p2.first) && /data-todohot="1"/.test(R.p2.h) && /明天收盤換倉/.test(R.p2b.first) && /下週一/.test(R.p2b.first), JSON.stringify([R.p2.first, R.p2b.first]));
-ok('⑤c 今天就是換倉日:「今天就是換倉日 → 收盤定名單,明天照做」+ 賣 / 改買 / 續抱 + 規則攤開', /今天就是換倉日/.test(R.p3.first) && /明天/.test(R.p3.first) && /賣 大立光/.test(R.p3.t) && /改買 鴻海/.test(R.p3.t) && /續抱 台積電/.test(R.p3.t) && /收盤才定案/.test(R.p3.t) && !/data-todorules/.test(R.p3.h), R.p3.t);
+ok('⑤c 今天就是換倉日:名次照幾號收盤排、今天收盤後晚上資料更新才定案 + 賣 / 改買 / 續抱 + 規則收進 📖(時間已在上面那行)', /今天就是換倉日/.test(R.p3.first) && /10\/12/.test(R.p3.first) && /盤中不會變/.test(R.p3.first) && /今天收盤後、晚上資料更新/.test(R.p3.first) && /賣 大立光/.test(R.p3.t) && /改買 鴻海/.test(R.p3.t) && /續抱 台積電/.test(R.p3.t) && !/照現在的排名/.test(R.p3.t) && /名單已定案/.test(R.p3.t) && /data-todorules/.test(R.p3.h), R.p3.t);
+ok('⑤c2 換倉日:「明天才是買賣日」+ 要賣的 09:00、要買的 13:25(不是一早就買)', /明天才是買賣日/.test(R.p3.t) && /要賣的\s*09:00 開盤賣/.test(R.p3.t) && /要買的\s*13:25 買,⛔ 不是一早就買/.test(R.p3.t) && /data-todochip="1">13:25/.test(R.p3.h), R.p3.t);
+ok('⑤c3 決定性對照:設定「全部開盤」→ 要買的 09:00 開盤買,⛔ 沒有 13:25', /要買的\s*09:00 開盤買/.test(R.p3open.t) && !/13:25/.test(R.p3open.t.split('怎麼買')[0]) && !/不是一早就買/.test(R.p3open.t) && /09:00 賣、09:00 買/.test(R.p2open.t) && !/13:25/.test(R.ptxtOpen) && /09:00 賣、13:25 買/.test(R.ptxt) && /今天收盤後/.test(R.ptxt), R.p3open.t + ' || ' + R.ptxtOpen);
+ok('⑤c4 明天收盤換倉 → 後天幾點賣 / 買', /09:00 賣、13:25 買/.test(R.p2b.first) || /09:00 賣、13:25 買/.test(R.p2b.t), R.p2b.t);
 ok('⑤d 名單已定案:「名單已定案 → 明天照做」+ 明天 09:00 賣 / 13:25 買 / 續抱(含名單外但在前 10 的緯穎)', /名單已定案/.test(R.p4.first) && /明天\s*09:00\s*開盤賣:大立光/.test(R.p4.t) && /明天\s*13:25\s*買:鴻海/.test(R.p4.t) && /廣達/.test(R.p4.t.split('續抱')[0]) && /續抱:台積電 第2、聯發科 第7、緯穎 第4/.test(R.p4.t), R.p4.t);
 ok('⑤e 買賣當天:「今天就要做」+ 每檔開盤開在哪 → 照規則講(開 +2.0% → 13:25 照買;開盤就漲停 → 不追)', /今天就要做/.test(R.p5.first) && /鴻海[^・]*開 \+2\.0% → 13:25 照買/.test(R.p5.t) && /廣達[^・]*開盤就漲停,不追/.test(R.p5.t) && !/明天/.test(R.p5.t.split('🛒 怎麼買')[0]), R.p5.t);
 ok('⑤f 買賣當天收盤後:「今天的換倉時間已過」+「沒趕上的不用急」、⛔ 不再是琥珀色', /今天的換倉時間已過/.test(R.p6.first) && /沒趕上的不用急/.test(R.p6.t) && !/data-todohot="1"/.test(R.p6.h), R.p6.t);
