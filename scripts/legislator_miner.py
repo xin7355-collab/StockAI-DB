@@ -20,6 +20,7 @@ import os
 import re
 import sys
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -305,13 +306,18 @@ def code_map(leg, prices):
     return m
 
 
+def _nk(x):
+    """股名比對用:全形轉半形 + 去空白(公報常寫成「北極星藥業－ K Y」)"""
+    return re.sub(r'\s+', '', unicodedata.normalize('NFKC', str(x or '')))
+
+
 def lookup(m, name):
     n = str(name or '').strip()
     if n in m:
         return m[n]
-    n2 = re.sub(r'\s+', '', n)
+    n2 = _nk(n)
     for k, v in m.items():
-        if re.sub(r'\s+', '', k) == n2:
+        if _nk(k) == n2:
             return v
     return norm_sym(n)
 
@@ -337,7 +343,7 @@ def build_person(slug, leg, documents, prices):
                 continue
             items = (((d.get('securities') or {}).get('stocks') or {}).get('items')) or []
             key = (dt, d.get('declarationForm'), len(items))
-            if key in seen_d:
+            if not items or key in seen_d:   # 空的那份(多半是信託申報表)⛔ 不當成「那天什麼都沒有」
                 continue
             seen_d.add(key)
             rows = []
@@ -356,12 +362,14 @@ def build_person(slug, leg, documents, prices):
                           'rows': dedup_rows(rows)})
         elif d.get('type') == 'change':
             per = d.get('changePeriod') or {}
+            # ⚠️ 去重以「整份文件」為單位(同一份會從 documents.json 與 changes 各來一次);
+            #    ⛔ 不可逐列去重 —— 同一天同價同股數的兩筆,是真的分兩批成交
+            k = (roc_to_iso(d.get('declarationDate')), per.get('from'), per.get('to'), len(d.get('stocks') or []))
+            if k in seen_t:
+                continue
+            seen_t.add(k)
             for it in d.get('stocks') or []:
                 td = roc_to_iso(it.get('changeDate'))
-                k = (td, it.get('name'), it.get('owner'), it.get('shares'), it.get('changePrice'), it.get('changeReason'))
-                if k in seen_t:
-                    continue
-                seen_t.add(k)
                 trades.append({'d': td, 'sym': lookup(cm, it.get('name')), 'name': it.get('name'),
                                'owner': owner_rel(it.get('owner'), name, sp), 'shares': to_num(it.get('shares')),
                                'px': to_num(it.get('changePrice')), 'why': it.get('changeReason') or '',
@@ -477,6 +485,14 @@ def selftest():
     t(P and P['trades'] and P['trades'][0]['sym'] == '2317' and P['trades'][0]['side'] == 'buy' and P['trades'][0]['px'] == 150.5,
       'API:變動申報 → 交易(代號 / 方向 / 價格)')
     t(build_person('x', {}, [], {}) is None, 'API:空的回 None')
+    leg2 = dict(leg, changes=[{'type': 'change', 'declarationDate': '2025/11/01', 'stocks': [
+        {'name': '鴻海', 'shares': 1000, 'changePrice': 100, 'changeDate': '2025/01/02', 'changeReason': '賣'},
+        {'name': '鴻海', 'shares': 1000, 'changePrice': 100, 'changeDate': '2025/01/02', 'changeReason': '賣'}]}])
+    docs2 = docs + [leg2['changes'][0]]
+    P2 = build_person('x', leg2, docs2, {'鴻海': {'code': '2317'}})
+    t(P2 and len(P2['trades']) == 2, 'API:同一份文件兩筆一樣的成交都留(⛔ 逐列去重)、同一份文件來兩次只算一次')
+    t(lookup({'北極星藥業 - KY': '6550'}, '北極星藥業－ K Y') == '6550', '股名全形/空白也對得上')
+    t(all(d['rows'] for d in P['decls']), 'API:空的申報表不收')
     print(f'✅ selftest {ok}/{n}' if ok == n else f'❌ selftest {ok}/{n}')
     return 0 if ok == n else 1
 
