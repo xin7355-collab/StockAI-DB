@@ -53,10 +53,12 @@ const R = await page.evaluate(async () => {
   o.sort = { f1, f2, a1, a2 }; PRO._pfSort = null;
   o.pbFn = typeof PRO._pbSort === 'function';   // 🐛 V78.0.7 排序狀態以前也叫 _pbSort → 點表頭就把股票清單排序函式蓋掉
   const rows = [...box().querySelectorAll('#pbTbl tbody tr')].map(tr => tr.innerText);
+  o.cagrRows = [...box().querySelectorAll('#pbTbl tbody tr')].map(tr => ({ t: tr.innerText, m: (tr.querySelector('[data-pfcagr]') || {}).innerText || '' }));
   o.lateLast = (() => { const k = rows.findIndex(t => /上市晚於/.test(t)); return k < 0 || rows.slice(k).every(t => /上市晚於/.test(t)); })();
   PRO.pbTab('long'); o.long = box().innerText; o.longRows = box().querySelectorAll('#pbTbl tbody tr').length;
   PRO.pbTab('small'); o.small = box().innerText;
-  PRO.pbSet('Cap', 1e6); PRO.pbSet('Add', 10000); o.small2 = box().innerText; PRO.pbSet('Cap', 1e5); PRO.pbSet('Add', 0);
+  o.smallCagr = [...box().querySelectorAll('#pbSmallTbl [data-pfcagr]')].length;
+  PRO.pbSet('Cap', 1e6); PRO.pbSet('Add', 10000); o.small2 = box().innerText; o.small2Cagr = [...box().querySelectorAll('#pbSmallTbl [data-pfcagr]')].length; PRO.pbSet('Cap', 1e5); PRO.pbSet('Add', 0);
   PRO.pbTab('ai');
   o.sx = (window.scrollTo(80, 0), window.scrollX);
   { const t = document.getElementById('pbTbl'); o.fit = t.scrollWidth - t.parentElement.clientWidth; }
@@ -77,6 +79,15 @@ ok('③c 口徑寫清楚(同一組起點 / 含息 / 已扣手續費和稅 / 倖�
 ok('④ 小資金:同樣的錢買 0050 那一列 + 三件事(錢少不會變差 / 每月投入 / 先衝再穩)', /同樣的錢/.test(R.small) && /錢少不會讓報酬率變差/.test(R.small) && /每個月繼續放錢/.test(R.small) && /先衝再穩/.test(R.small));
 ok('④b ⛔ 要明寫「錢少不代表可以冒更大的險」', /錢少\s*⛔?\s*不代表可以冒更大的險/.test(R.small));
 ok('④c 切到 100 萬 + 每月 1 萬 → 投入總額跟著變(147 萬)', /總共投入 147 萬/.test(R.small2), R.small2.slice(0, 200));
+// 📅 V79.1.8 每月報酬:每一列(沒上市太晚的)都有每年 / 每月,== 獨立重算;小資金「每月再投」那組⛔ 不換算
+{
+  const cg = fin => { const y = (Date.parse(B.to) - Date.parse(B.wins.ai.from)) / (365.25 * 864e5), r = Math.pow(fin / 1e6, 1 / y) - 1; return (Math.pow(1 + r, 1 / 12) - 1) * 100; };
+  const fx = v => (v < 0 ? '−' : '+') + Math.abs(v).toFixed(1) + '%';
+  const live = R.cagrRows.filter(r => !/上市晚於/.test(r.t));
+  const bad = B.wins.ai.rows.filter(r => !r.late).filter(r => !live.some(x => x.m.includes(`每月 ${fx(cg(r.fin))}`)));
+  ok('④d 📅 回測數字每一列都有「每年 / 每月」,每月 == 獨立重算', live.length >= 10 && live.every(r => /每年 [+−]\d/.test(r.m) && /每月 [+−]\d/.test(r.m)) && !bad.length, JSON.stringify(bad.map(r => r.k)));
+  ok('④e 小資金:不加錢時每列有每月;選「每月再投」⛔ 不換算', R.smallCagr >= 4 && R.small2Cagr === 0, `${R.smallCagr} / ${R.small2Cagr}`);
+}
 ok('⑤ 舊的逐年總表 + 情境庫仍在,收進「研究用」摺疊(預設關)', R.research && R.researchClosed);
 ok('⑤b 390px 不橫捲,而且 5 欄一眼看得完(表格不超出外框)', R.sx <= 2 && R.fit <= 2, `${R.sx} / ${R.fit}`);
 ok('⑤c ⛔ 無 🔴🟢', !/[🔴🟢]/u.test(R.txt + R.long + R.small));

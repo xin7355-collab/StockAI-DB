@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.1.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.1.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.1.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.1.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8534,10 +8534,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.1.7',
+    _APP_VERSION: 'V79.1.8',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.1.8', d: [
+            '📅 產業作戰室「實測總表」那幾張表,每一列都多了<b>每月平均報酬</b>(原本只有每年);小資金那張選「每月再投」時不換算(中途加錢,換算出來的 % 沒有意義)',
+            '🔬 實測總表改成不用另外解鎖就能看到全部做法的回測數字',
+        ] },
         { v: 'V79.1.7', d: [
             '📌 換倉日那天講清楚:排名照上一個交易日收盤排、盤中不會變,今天收盤後晚上資料更新才定案',
             '⏭️ 明天(或下週一)才是買賣日:要賣的 09:00 開盤賣、要買的 13:25 買(不是一早就買;開盤跌 3% 以上 / 開盤漲停各怎麼做也寫出來)',
@@ -8653,11 +8657,6 @@ ${list}
             '🧪 回測 6 個「能不能讓機率更準」的因子:只有「成交額前 100 大」在「明天」這一格樣本外更準(主要是很少收平盤),已加進去;其餘 5 個加了反而變不準 → 不加'] },
         { v: 'V78.1.0', d: ['🏆 產業作戰室「實測總表」重新規劃:一進來就是「選哪一套」—— 每一套 100 萬放 4 年 / 16 年變多少、跟 0050 含息比(📏 及格線,比它低的變淡)、中途最多賠、點開看怎麼做。分三層:選哪一套 / 為什麼(實測結論)/ 原始數字。', '🔥 你現在用的那一套正式叫「高檔飆股」(⛔ 不再用版本號當名字):100 萬近 4 年 → 513 萬(0050 含息 475 萬)、16 年 → 675 萬(0050 含息 1,197 萬,輸)。🅿️ 同一套 + 沒買股票的錢停在 0050 → 614 / 1,323 萬,兩段都贏 —— 自動下單還沒做,下一版先重跑確認再決定要不要換成預設。'] },
         { v: 'V78.0.9', d: ['🔬 產業作戰室「實測總表」改版:拿掉每一條的外框(文字寬度變大)・收起來只剩「名次 + 一句話 + 數字」,其他收進展開・頁籤分成「結論 / 數字表」兩排・⛔ 沒用那欄也排名(最多人以為有用、實測最差的排最前面),前 10 名攤開、其餘照主題收起・✅ 有用那欄全部重新排名'] },
-        { v: 'V78.0.8', d: [
-            '📅 <b>產業作戰室 → 實測總表 → 回測數字 → 逐年成績單,「⭐ 決策台現行」那一列換成現在的規則</b>(🧬 位階 ≥85 + 吊燈 ATR 2 倍 + 最長 20 天 + 空頭不開新倉),而且是用<b>修好的日 K</b> 重跑的:一個帳戶從 2011 一路滾 <b>+574.5 萬</b>(17 條起點最差 +554 萬、中途最多賠 −37%)vs 同一份資料的 0050 含息 +1,089 萬;每年重新放 100 萬的話 16 年裡贏 0050 含息 <b>10 年</b>,最慘 2025 −42.6%。舊的那列(唐奇安 40 日)改標「⏮️ 上一任」。',
-            '👑 <b>領頭羊四種做法也進了這張表</b>(全攻 / 一半放 0050 / 先衝再穩 / 尾盤成交),一樣每年一格 + 一路滾 16 年:全攻一路滾 <b>+6,779 萬</b>(0050 含息 +1,097 萬),但每年重新放 100 萬的話只贏 0050 <b>8/16 年</b>、16 年加起來 +411 萬 —— 它的大賺集中在少數幾年(2017 +98%、2023 +84%、2025 +122%),一路滾把那幾年複利放大了。',
-            '⚠️ 這張表有兩批資料:標 🆕 的幾列是修好日 K 之後重跑的(跟 0050 含息比),其他列還是修好之前的數字(偏高),⛔ 名次不要跨兩批比。'
-        ] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },

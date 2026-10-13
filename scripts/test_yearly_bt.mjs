@@ -80,7 +80,7 @@ const R = await page.evaluate(async () => {
     const firstId = () => { const tr = box().querySelector('tbody tr[onclick]'); return tr ? tr.getAttribute('onclick') : ''; };
     const rowIds = () => [...box().querySelectorAll('tbody tr[onclick]')].map(tr => (tr.getAttribute('onclick').match(/'([^']+)'/) || [])[1]);
     // 🏦 預設照「一路滾」排:第一列 = c.med 最大的那個
-    const VIS = Y.strats.filter(s => s.g !== 'lead');   // 預設 🧬:👑 那幾列⛔ 不出現
+    const VIS = Y.strats.slice();   // 🔬 V79.1.8 實測總表永遠有 👑(`_labLeadOn`)→ 預設 🧬 也看得到全部列
     const bestC = VIS.slice().sort((a, b) => (b.c ? b.c.med : -1e18) - (a.c ? a.c.med : -1e18))[0];
     o.defaultC = firstId().includes(`'${bestC.id}'`) && /一路滾/.test(box().querySelector('th.ybsort.on') ? box().querySelector('th.ybsort.on').innerText : '');
     // 決定性對照:改 base 2024 的賺賠,細節卡要跟著變
@@ -123,7 +123,8 @@ const R = await page.evaluate(async () => {
     o.noToggle = !/2022~2026\(本站資料/.test(box().innerText) && !box().querySelector('[onclick*="ybSet"]');
     // 📦 舊情境庫表頭可排序
     // 🔒 V78.0.8 🧬(預設)看不到 👑;解鎖選 👑 之後才出現,而且 🆕 那幾列跟 0050 含息比
-    o.gLeadHidden = !/領頭羊|👑/.test(box().innerText) && !box().querySelector('[onclick*="ybPick(\'lead"]');
+    PRO._ybGrp = 'all'; PRO._ybSort = null; PRO.renderYearly();
+    o.gLeadShown = /👑/.test(box().innerText) && rowIds().filter(id => /^lead/.test(id)).length === 4;   // 🔬 V79.1.8 沒解鎖也看得到
     localStorage.setItem('proTerminalSettings', JSON.stringify({ strategy: 'lead', stratUnlock: true }));
     PRO._ybGrp = 'all'; PRO._ybSort = null; PRO.renderYearly();
     o.leadRows = rowIds().filter(id => /^lead/.test(id)).length; o.leadTag = box().querySelectorAll('[data-ybv2]').length;
@@ -144,8 +145,8 @@ const R = await page.evaluate(async () => {
 });
 await browser.close();
 ok('③ 沒有 pageerror', !errs.length, errs.join(' | '));
-ok('③b 總表列數 = 🧬 策略數 + 3 列對照(0050 不含息 / 含息 / 加權);預設 🧬 ⛔ 不含 👑', Y && R.rows === Y.strats.filter(s => s.g !== 'lead').length + 3, `${R.rows}`);
-ok('③m 🔒 🧬 看不到任何 👑 字樣;選 👑 之後出現 4 列、都標 🆕、細節跟同一份資料的 0050 含息比', R.gLeadHidden && R.leadRows === 4 && R.leadTag >= 5 && R.leadBeat, JSON.stringify({ h: R.gLeadHidden, n: R.leadRows, t: R.leadTag, b: R.leadBeat }));
+ok('③b 總表列數 = 全部策略數(V79.1.8 含 👑)+ 3 列對照(0050 不含息 / 含息 / 加權)', Y && R.rows === Y.strats.length + 3, `${R.rows}`);
+ok('③m 🔬 沒解鎖也看得到 👑 4 列(V79.1.8);選 👑 之後一樣 4 列、都標 🆕、細節跟同一份資料的 0050 含息比', R.gLeadShown && R.leadRows === 4 && R.leadTag >= 5 && R.leadBeat, JSON.stringify({ h: R.gLeadHidden, n: R.leadRows, t: R.leadTag, b: R.leadBeat }));
 ok('③c 決定性對照:改常數,畫面要跟著變(⛔ 不寫死)', R.inj);
 ok('③c2 決定性對照:改「一路滾」中位,畫面要跟著變', R.injC);
 ok('③d 每一欄都可排序(名稱 + 一路滾 3 欄 + 每一年 + 加起來 + 🤖 AI 前/AI 時代兩段 + 贏幾年),點了排對、有箭頭、再點反向', Y && R.headers === 1 + 3 + Y.years.length + 2 + 2 && R.headClick && R.sortOk && R.sortArrow && R.sortRev && R.sortLo && R.sortName, JSON.stringify({ h: R.headers, s: R.sortOk, r: R.sortRev, lo: R.sortLo }));

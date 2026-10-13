@@ -112,6 +112,7 @@ ok('④d 👑 時 _startEodWatcher ⛔ 不跑 🧬 的買點 / 出場掃描,改�
 ok('④e _invExitScan / 庫存 −5% / 第 2 擊 / 背景提醒都讀同一個 _leaderMine(⛔ 各寫一份判斷)', (SRC.match(/_leaderMine\(\)\.has\(/g) || []).length >= 3 && /if \(_lm\.has\(sym\)\) continue;/.test(SRC));
 
 // ⑤ 產業作戰室
+const PS0 = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 const pro = await browser.newPage({ viewport: { width: 390, height: 900 } });
 pro.on('pageerror', e => errs.push('pro: ' + e.message));
 await pro.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domcontentloaded' });
@@ -137,8 +138,10 @@ const P = await pro.evaluate(async () => {
     return o;
 });
 ok('⑤ 產業作戰室預設 🧬;存了 lead 沒解鎖 → 仍 🧬', P.def.lead === false && P.locked.lead === false && P.on.lead === true);
-ok('⑤b 🧬:回測數字頁沒有 👑 的列、沒有「錢不多的話」;👑 時有(決定性對照)', !/領頭羊/.test(P.def.pb) && !/錢不多/.test(P.def.pb) && /領頭羊/.test(P.on.pb) && /錢不多/.test(P.on.pb), [P.def.pb.slice(0, 80)]);
-ok('⑤c 🧬:實測總表不列標題有 👑 / 領頭羊的條目;👑 時全部列出(⛔ 沒刪)', P.def.labLead === 0 && P.on.labLead > 0 && P.on.labN > P.def.labN, JSON.stringify([P.def.labN, P.on.labN, P.on.labLead]));
+// 🔬 V79.1.8 使用者選「整個實測總表都顯示」(`_labLeadOn`)→ 沒解鎖也看得到 👑 的列、「錢不多的話」、👑 條目
+ok('⑤b 🧬(沒解鎖):回測數字頁也有 👑 的列與「錢不多的話」(V79.1.8 `_labLeadOn`)', /領頭羊/.test(P.def.pb) && /錢不多/.test(P.def.pb) && /領頭羊/.test(P.on.pb) && /錢不多/.test(P.on.pb), [P.def.pb.slice(0, 80)]);
+ok('⑤c 🧬(沒解鎖):實測總表列出全部條目(含 👑),跟解鎖時一樣多', P.def.labLead > 0 && P.def.labN === P.on.labN && P.def.labLead === P.on.labLead, JSON.stringify([P.def.labN, P.on.labN, P.def.labLead]));
+ok('⑤g ⛔ 只放寬實測總表:更新紀錄 / 釣魚池子 / 拋竿 / 「你現在用的」照舊讀 _isLead', /this\._isLead\(\) \? e : \(\{ \.\.\.e/.test(PS0) && /const _lead = this\._isLead\(\);\n\s*if \(!_lead\) \{ for \(let i = pools/.test(PS0) && /const cur = this\._isLead\(\) \? \(this\._isPark\(\)/.test(PS0) && /_labLeadOn\(\) \{ return true; \}/.test(PS0));
 // 📒 V79.1.2 使用者:「產業 app 裡面的成績單沒有領頭羊策略」→ 選「作戰室成績單永遠顯示 👑」(只放寬成績單;⑤b/⑤c 回測數字・實測總表照舊要解鎖)
 ok('⑤d 成績單:沒解鎖也有 👑 分頁、選得到(V79.1.2)', P.def.tabs.includes('lead') && P.on.tabs.includes('lead') && P.recoGene === 'lead', JSON.stringify([P.def.tabs, P.recoGene]));
 ok('⑤e 拋竿 🧬 走舊版本(_castPickGene),👑 才走領頭羊;🎣 V78.0.2 股海釣手(App 模式)一律 👑', /_isLead\(\) && !this\._fpvOn\(\)\) return this\._castPickGene/.test(P.castSrc));

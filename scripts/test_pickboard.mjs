@@ -55,7 +55,8 @@ const run = async (strategy) => {
     o.cagrA = (document.querySelector('[data-pkcagr="a"]') || {}).innerText || ''; o.cagrL = (document.querySelector('[data-pkcagr="l"]') || {}).innerText || '';
     const row = Bd.wins.ai.rows.find(r => r.k === top.k), keep = row.fin; row.fin = 98765432; PRO.renderPick();
     o.inj = (document.getElementById('pkHero') || {}).innerText.includes('9,877 萬');
-    o.cagrInj = (document.querySelector('[data-pkcagr="a"]') || {}).innerText || ''; row.fin = keep; PRO.renderPick();
+    o.cagrInj = (document.querySelector('[data-pkcagr="a"]') || {}).innerText || '';
+    o.rowInj = ((box().querySelector(`#pkTbl tr[data-pk="${top.k}"]`) || {}).innerText || ''); o.rowInjK = top.k; row.fin = keep; PRO.renderPick();
     // 排序:點 16 年 → 第一列換;再點反向
     PRO.pkSort('l'); o.s1 = box().querySelector('#pkTbl tbody tr').dataset.pk; PRO.pkSort('l'); o.s2 = box().querySelector('#pkTbl tbody tr').dataset.pk; PRO._pkSort = null; PRO.renderPick();
     // 點開一列 → 三行怎麼做 + 看證據
@@ -84,7 +85,8 @@ const aiRows = B.wins.ai.rows, lgRows = B.wins.long.rows, f = (rows, k) => rows.
 
 // ② 一句答案
 const e50a = f(aiRows, '0050'), e50l = f(lgRows, '0050');
-const geneBest = ['park', 'hot', 'don'].map(k => ({ k, a: f(aiRows, k), l: f(lgRows, k) })).filter(x => x.a.fin > e50a.fin && x.l.fin > e50l.fin).sort((a, b) => b.a.fin - a.a.fin)[0];
+// 🔬 V79.1.8 實測總表永遠有 👑 → 🧬 模式的最強也從全部做法挑
+const geneBest = ['lead', 'leadcash', 'glide', 'stable', 'close', 'park', 'hot', 'don'].map(k => ({ k, a: f(aiRows, k), l: f(lgRows, k) })).filter(x => x.a.fin > e50a.fin && x.l.fin > e50l.fin).sort((a, b) => b.a.fin - a.a.fin)[0];
 ok('② 🧬 模式:一句答案的金額 == 看板(近 4 年 / 16 年 / 0050 含息)', geneBest && G.hero.includes(wan(geneBest.a.fin)) && G.hero.includes(wan(geneBest.l.fin)) && G.hero.includes(wan(e50a.fin)) && G.hero.includes(wan(e50l.fin)), G.hero);
 ok('②b 一句答案寫:贏幾個起點 + 代價(中途最多賠)', /贏 \d+ \/ \d+ 個/.test(G.hero) && /代價/.test(G.hero) && /中途最多賠/.test(G.hero), G.hero);
 ok('②c 最強不是你現在用的 → 要寫「你現在用的是 🔥 高檔飆股」+ 它的金額與結論', geneBest.k === 'hot' || (/你現在用的是\s*🔥 高檔飆股/.test(G.hero) && G.hero.includes(wan(f(aiRows, 'hot').fin))), G.hero);
@@ -100,6 +102,18 @@ if (geneBest) {
 }
 ok('②g ⭐ 決定性對照:改看板一格 → 每年平均跟著變', G.cagrInj && G.cagrInj !== G.cagrA, G.cagrInj + ' vs ' + G.cagrA);
 ok('②h 寫明「是平均,不是每年都賺」+ 16 年贏 0050 幾年', /是「平均」,不是每年都賺/.test(G.hero) && /16 年裡只有 \d+ 年贏 0050/.test(G.hero), G.hero);
+// 📅 V79.1.8 使用者:「每月報酬也要給我」→ 每一列(含 0050、參考 ETF)兩格都有每月,而且 == 獨立重算
+{
+  const bad = G.rows.filter(r => {
+    const a = f(aiRows, r.k), l = f(lgRows, r.k); if (!a) return true;
+    const ma = fx(cg(a.fin, B.wins.ai.from).m), ya = fx(cg(a.fin, B.wins.ai.from).y);
+    if (!r.t.includes(`每月 ${ma}`) || !r.t.includes(`每年 ${ya}`)) return true;
+    if (l && !l.late && !r.t.includes(`每月 ${fx(cg(l.fin, B.wins.long.from).m)}`)) return true;
+    return false;
+  });
+  ok('②j 📅 每一列近 4 年 / 16 年都有「每年 + 每月」,數字 == 獨立重算', G.rows.length >= 9 && !bad.length, JSON.stringify(bad.map(r => r.k + ':' + r.t.replace(/\s+/g, ' '))));
+  ok('②k ⭐ 決定性對照:改看板一格 → 那一列的每月跟著變', G.rowInj.includes(`每月 ${fx(cg(98765432, B.wins.ai.from).m)}`), G.rowInjK + ' ' + G.rowInj);
+}
 ok('②i 0050 及格線那一列也有每年 %', /每年 \+\d/.test(G.rows.find(r => r.k === '0050')?.t || ''), G.rows.find(r => r.k === '0050')?.t);
 
 // ③ 及格線
@@ -121,7 +135,9 @@ ok('④c ⛔ 畫面(選哪一套 / 回測數字 / 逐年表)不再用「決策�
 ok('④d 逐年成績單也改用名字表(🔥 / 🐢)', /🔥 高檔飆股/.test(G.yb) && /🐢 唐奇安長抱/.test(G.yb), G.yb.slice(0, 300));
 
 // ⑤ 策略開關
-ok('⑤ 🧬 模式:選哪一套 / 回測數字 / 逐年表都看不到 👑 / 領頭羊', !/👑|領頭羊/.test(G.txt + G.pf + G.yb), (G.txt + G.pf + G.yb).match(/.{0,40}(👑|領頭羊).{0,40}/)?.[0]);
+// 🔬 V79.1.8 使用者選「整個實測總表都顯示」→ 沒解鎖也看得到 👑;但「你現在用的」仍照你選的(🔥)
+ok('⑤ 🧬 模式(沒解鎖):選哪一套 / 回測數字 / 逐年表都看得到 👑 領頭羊', /👑 領頭羊/.test(G.txt) && /👑/.test(G.pf) && /👑/.test(G.yb), [G.txt, G.pf, G.yb].map(t => /👑/.test(t)).join(','));
+ok('⑤a 🧬 模式:「你現在用的」仍是 🔥 高檔飆股(⛔ 不因為看得到 👑 就改)', /你現在用的是\s*🔥 高檔飆股|這就是你現在用的/.test(G.hero) && G.rows.some(r => r.k === 'hot' && /你現在用的/.test(r.t)) && !G.rows.some(r => /^lead/.test(r.k) && /你現在用的/.test(r.t)), G.hero);
 const leadA = f(aiRows, 'lead');
 ok('⑤b 👑 模式:答案換成 👑 領頭羊+停車 0050、金額 == 看板(決定性對照)', /👑 領頭羊\+停車 0050/.test(L.hero) && L.hero.includes(wan(leadA.fin)), L.hero);
 

@@ -2717,6 +2717,10 @@ const PRO = {
    *  iPhone 兩個主畫面 App 的設定不互通,作戰室常常沒解鎖 → 成績單這一頁⛔ 不再看解鎖;
    *  ⛔ 只放寬成績單(分頁 / 同一起點比一比 / 模擬帳),池子 / 回測數字 / 實測總表 / 更新紀錄照舊要解鎖。 */
   _recoLeadOn() { return true; },
+  /** 🔬 V79.1.8 使用者:「附圖沒有領頭羊」→ 選「整個實測總表都顯示」(選哪一套 / 回測數字 含 🌱 錢不多的話 / 逐年表 / 有用沒用條目 / 專欄)。
+   *  同 `_recoLeadOn` 的理由:兩個主畫面 App 設定不互通。⛔ 只放寬「看得到」;「你現在用的」照舊讀 `_isLead()`,
+   *  釣魚池子 / 拋竿 / 更新紀錄照舊要解鎖。 */
+  _labLeadOn() { return true; },
   _LEAD_HIDE_RE: /領頭羊|👑|成交額前 ?100/,
   _exitRule() {
     try {
@@ -6822,6 +6826,8 @@ const PRO = {
   _cagrTxt(fin, from, to, short) {
     const c = this._cagr(fin, from, to); if (!c) return '';
     const f = v => (v < 0 ? '−' : '+') + Math.abs(v).toFixed(1) + '%';
+    // 📅 V79.1.8 'ym' = 表格每一列兩行(每年 / 每月),使用者:「每月報酬也要給我」
+    if (short === 'ym') return `<span data-cagr-y>每年 ${f(c.y)}</span><br><span data-cagr-m>每月 ${f(c.m)}</span>`;
     return short ? `每年 ${f(c.y)}` : `每年平均 ${f(c.y)}・每月平均 ${f(c.m)}`;
   },
   // 🏆 V78.1.0 「選哪一套」—— ⛔ 數字全部讀 `_PROFIT_BOARD`(同一組 17 個起點),⛔ 不寫死、⛔ 沒有融合總分(每年 / 每月是由同一格換算)
@@ -6831,12 +6837,12 @@ const PRO = {
     const box = document.getElementById('pickBody'); if (!box) return;
     const B = this._PROFIT_BOARD;
     if (!B || !B.wins || !B.wins.ai || !B.wins.long) { box.innerHTML = '<div class="note">🏆 成績表沒載到(要先跑 <code>scripts/embed_profit_board.mjs</code>)。</div>'; return; }
-    const LEADV = this._isLead();
+    const LEADV = this._labLeadOn();   // 🔬 V79.1.8 實測總表永遠有 👑
     const A = B.wins.ai, L = B.wins.long, gA = k => A.rows.find(r => r.k === k), gL = k => L.rows.find(r => r.k === k);
     const keys = (LEADV ? ['lead', 'leadcash', 'glide', 'stable', 'close'] : []).concat(['park', 'hot', 'don']);
     // 🅿️ V78.1.1 散戶救星設定選了「高檔飆股+停車 0050」(進階選項)→ 對到 park 那列;判斷式同 index `_park()`
     // 👑 V78.1.9 'leadpark'(停 0050)= 看板的 lead 列;'lead'(錢放現金)= leadcash 列
-    const cur = LEADV ? (this._isPark() ? 'lead' : 'leadcash') : (this._isPark() ? 'park' : 'hot');
+    const cur = this._isLead() ? (this._isPark() ? 'lead' : 'leadcash') : (this._isPark() ? 'park' : 'hot');
     const e50a = gA('0050'), e50l = gL('0050');
     if (!e50a || !e50l || keys.some(k => !gA(k) || !gL(k))) {
       box.innerHTML = `<div class="note">⏳ 有幾套做法還沒放上看板(${keys.filter(k => !gA(k) || !gL(k)).map(k => this._stratName(k)).join('、') || '0050'}),要先跑 <code>scripts/gene_board.mjs</code> + <code>embed_profit_board.mjs --gene</code>。⛔ 不拿別的起點的數字湊。</div>`; return;
@@ -6858,8 +6864,8 @@ const PRO = {
       <div class="pk-k">🏆 實測最強(同一組 ${P} 個起點、含息、已扣手續費和稅)</div>
       <div class="pk-n">${best.n}</div>
       <div class="pk-big">
-        <div><div class="pk-s">100 萬放 ${A.from.slice(0, 4)}-${A.from.slice(5, 7)} 起(近 4 年)</div><div class="pk-v">${wan(best.a.fin)}</div><div class="pk-s" data-pkcagr="a">📈 ${this._cagrTxt(best.a.fin, A.from, B.to)}</div><div class="pk-s">📏 0050 含息 ${wan(e50a.fin)}(${this._cagrTxt(e50a.fin, A.from, B.to, 1)})</div></div>
-        <div><div class="pk-s">100 萬放 ${L.from.slice(0, 4)} 起(16 年)</div><div class="pk-v">${wan(best.l.fin)}</div><div class="pk-s" data-pkcagr="l">📈 ${this._cagrTxt(best.l.fin, L.from, B.to)}</div><div class="pk-s">📏 0050 含息 ${wan(e50l.fin)}(${this._cagrTxt(e50l.fin, L.from, B.to, 1)})</div></div>
+        <div><div class="pk-s">100 萬放 ${A.from.slice(0, 4)}-${A.from.slice(5, 7)} 起(近 4 年)</div><div class="pk-v">${wan(best.a.fin)}</div><div class="pk-s" data-pkcagr="a">📈 ${this._cagrTxt(best.a.fin, A.from, B.to)}</div><div class="pk-s">📏 0050 含息 ${wan(e50a.fin)}(${this._cagrTxt(e50a.fin, A.from, B.to)})</div></div>
+        <div><div class="pk-s">100 萬放 ${L.from.slice(0, 4)} 起(16 年)</div><div class="pk-v">${wan(best.l.fin)}</div><div class="pk-s" data-pkcagr="l">📈 ${this._cagrTxt(best.l.fin, L.from, B.to)}</div><div class="pk-s">📏 0050 含息 ${wan(e50l.fin)}(${this._cagrTxt(e50l.fin, L.from, B.to)})</div></div>
       </div>
       <div class="pk-line">📈 <b>每年 / 每月是「平均」,不是每年都賺</b>:16 年裡只有 ${best.l.yrBeat ?? '—'} 年贏 0050、中途最多賠 ${pc(best.l.mdd)}。近 4 年碰上 AI 大多頭(0050 每年也有 ${this._cagrTxt(e50a.fin, A.from, B.to, 1).replace('每年 ', '')}),<b>看 16 年那個比較實在</b>。</div>
       <div class="pk-line"><b>${verdict(best)}</b>(${P} 個起點裡贏 ${best.a.beat ?? '—'} / ${best.l.beat ?? '—'} 個)・⚠️ 代價:中途最多賠 <b>${pc(best.a.mdd)}</b>(例:200 萬會一度掉到 ${wan(2e6 * (1 + best.a.mdd / 100))};0050 是 ${pc(e50a.mdd)})</div>
@@ -6874,13 +6880,13 @@ const PRO = {
     const ar = k => Sx.k === k ? (Sx.dir < 0 ? ' ▼' : ' ▲') : '';
     const th = (k, h) => `<th class="ybsort${Sx.k === k ? ' on' : ''}" onclick="PRO.pkSort('${k}')">${h}${ar(k)}</th>`;
     const tr = x => {
-      if (x.bar) return `<tr class="pk-bar" data-pk="0050"><td class="txtcell" style="white-space:normal"><b>${x.n}</b><div class="sigfrom">買了放著・⬆️ 比這條高才算贏</div></td><td class="mono"><b style="font-size:14px">${wan(x.a.fin)}</b><div class="sigfrom">${this._cagrTxt(x.a.fin, A.from, B.to, 1)}</div></td><td class="mono"><b style="font-size:14px">${wan(x.l.fin)}</b><div class="sigfrom">${this._cagrTxt(x.l.fin, L.from, B.to, 1)}</div></td><td class="mono">${pc(x.a.mdd)}</td><td class="mono">—</td></tr>`;
+      if (x.bar) return `<tr class="pk-bar" data-pk="0050"><td class="txtcell" style="white-space:normal"><b>${x.n}</b><div class="sigfrom">買了放著・⬆️ 比這條高才算贏</div></td><td class="mono"><b style="font-size:14px">${wan(x.a.fin)}</b><div class="sigfrom">${this._cagrTxt(x.a.fin, A.from, B.to, 'ym')}</div></td><td class="mono"><b style="font-size:14px">${wan(x.l.fin)}</b><div class="sigfrom">${this._cagrTxt(x.l.fin, L.from, B.to, 'ym')}</div></td><td class="mono">${pc(x.a.mdd)}</td><td class="mono">—</td></tr>`;
       const lose = x[lw] && !x[lw].late && x[lw].fin <= e50.fin;
       const tag = x.isRef ? '<div class="sigfrom">參考・ETF 買了放著</div>' : `<div class="sigfrom">${verdict(x)}${x.k === cur ? ' ・👉 你現在用的' : ''}</div>`;
       const row = `<tr class="${lose ? 'pk-lose' : ''}${x.k === best.k ? ' sigbest' : ''}" data-pk="${x.k}" style="cursor:pointer" onclick="PRO.pkOpen('${x.k}')">
         <td class="txtcell" style="white-space:normal"><b>${this._esc(x.n)}</b>${tag}</td>
-        <td class="mono"><b style="font-size:14px">${wan(x.a.fin)}</b><div class="sigfrom">${this._cagrTxt(x.a.fin, A.from, B.to, 1)}</div></td>
-        <td class="mono">${x.l && !x.l.late ? `<b style="font-size:14px">${wan(x.l.fin)}</b><div class="sigfrom">${this._cagrTxt(x.l.fin, L.from, B.to, 1)}</div>` : '<span class="sigfrom" title="上市晚於 2011,⛔ 不硬比">⏳ 太晚</span>'}</td>
+        <td class="mono"><b style="font-size:14px">${wan(x.a.fin)}</b><div class="sigfrom">${this._cagrTxt(x.a.fin, A.from, B.to, 'ym')}</div></td>
+        <td class="mono">${x.l && !x.l.late ? `<b style="font-size:14px">${wan(x.l.fin)}</b><div class="sigfrom">${this._cagrTxt(x.l.fin, L.from, B.to, 'ym')}</div>` : '<span class="sigfrom" title="上市晚於 2011,⛔ 不硬比">⏳ 太晚</span>'}</td>
         <td class="mono">${pc(x.a.mdd)}</td>
         <td class="mono">${x.a.beat == null ? '—' : x.a.beat + '/' + P}${x.l && x.l.beat != null ? `<div class="sigfrom">16年 ${x.l.beat}</div>` : ''}</td></tr>`;
       if (this._pkOpen !== x.k) return row;
@@ -6917,7 +6923,7 @@ const PRO = {
     const box = document.getElementById('profitBody'); if (!box) return;
     const B = this._PROFIT_BOARD;
     if (!B || !B.wins) { box.innerHTML = '<div class="note">💰 成績表沒載到(要先跑 <code>scripts/embed_profit_board.mjs</code>)。</div>'; return; }
-    const LEADV = this._isLead();   // 🔒 V77.9.6 沒選 👑 → 領頭羊那幾列與「錢不多的話」(全是領頭羊)都不出現
+    const LEADV = this._labLeadOn();   // 🔬 V79.1.8 實測總表永遠有 👑(含「錢不多的話」);V77.9.6 那時是沒選 👑 就不出現
     const W = (!LEADV && this._pbWin === 'small') ? 'ai' : (this._pbWin || 'ai'), P = this._LEAD;
     const wan = v => v == null ? '—' : Math.round(v / 10000).toLocaleString() + ' 萬';
     const pc = v => v == null ? '—' : (v < 0 ? '−' : '') + Math.abs(v).toFixed(0) + '%';
@@ -6928,7 +6934,7 @@ const PRO = {
     const tabs = `<div class="ybchips">${tab('ai', '🤖 AI 時代(' + aiF.slice(0, 7) + ' 起)')}${tab('long', '📚 16 年(' + lgF.slice(0, 4) + ' 起)')}${LEADV ? tab('small', '🌱 錢不多的話') : ''}</div>`;
     const foot = `<div class="sigfrom" style="margin-top:6px">📏 <b>口徑</b>:每一列都用<b>同一組 ${B.paths} 個起點</b>(每隔 ${B.step} 個交易日挪一次)算到 ${B.to || '最新'},取中間那一條;「最差那一條」= ${B.paths} 條裡最少的。
       「變成」= 一開始的 100 萬<b>加上</b>賺的(想看淨賺就減掉 100 萬);賺的錢會滾回去繼續買(複利)。
-      含息、已扣手續費和稅(⛔ 不是毛利)${LEADV ? ';👑 是照規則<b>隔天開盤</b>成交(尾盤成交那一列是自動下單選尾盤 LEADER_WINDOW=eod 的做法)' : ';🔥 / 🅿️ / 🐢 是收盤成交(= 自動下單的做法)'}。
+      含息、已扣手續費和稅(⛔ 不是毛利);👑 是照規則<b>隔天開盤</b>成交(尾盤成交那一列是自動下單選尾盤 LEADER_WINDOW=eod 的做法)、🔥 / 🅿️ / 🐢 是收盤成交(= 自動下單的做法)。
       ⚠️ 用的是<b>現在還在交易的股票</b>(已下市的不算 = 倖存者偏誤),而且<b>過去 ≠ 未來</b>。(${B.src})</div>`;
     if (W === 'small') { box.innerHTML = `<div class="warnbox" style="margin:0 0 8px">💰 <b>錢不多的話,怎麼做會變最多?</b>${tabs}${this._pbSmallHtml(B, wan, pc)}${foot}</div>`; return; }
     const Wd = B.wins[W], rows = Wd.rows.filter(r => LEADV || r.grp !== 'lead');
@@ -6947,7 +6953,7 @@ const PRO = {
       ? `<tr><td class="txtcell" style="white-space:normal">${this._esc(r.n)}<div class="sigfrom">${KIND[r.kind] || ''}</div></td><td class="mono" colspan="4" style="color:var(--dim2)">⏳ 上市晚於 ${Wd.from.slice(0, 7)},⛔ 不硬比</td></tr>`
       : `<tr class="${r.k === '0050' ? 'sigbase' : r.k === 'lead' ? 'sigbest' : ''}">
           <td class="txtcell" style="white-space:normal">${this._esc(r.grp === 'etf' ? r.n : (this._stratName(r.k) || r.n))}<div class="sigfrom">${r.grp === 'lead' || r.grp === 'gene' ? '自己挑股' + (r.k === 'park' ? ' ・⚠️ 停車 0050 自動下單還沒做' : '') : (KIND[r.kind] || '') + ' ・買了放著'}${r.k === '0050' ? ' ・<b>基準</b>' : ''}</div></td>
-          <td class="mono"><b style="font-size:14px">${wan(r.fin)}</b>${x(r.fin, 1e6)}</td>
+          <td class="mono"><b style="font-size:14px">${wan(r.fin)}</b>${x(r.fin, 1e6)}<div class="sigfrom" data-pfcagr>${this._cagrTxt(r.fin, Wd.from, B.to, 'ym')}</div></td>
           <td class="mono">${wan(r.worst)}</td>
           <td class="mono">${pc(r.mdd)}</td>
           <td class="mono">${r.beat == null ? '—' : r.beat + '/' + B.paths}${r.yrs ? `<div class="sigfrom">逐年 ${r.yrBeat}/${r.yrs}</div>` : ''}</td></tr>`).join('');
@@ -6977,7 +6983,7 @@ const PRO = {
     const ctl = `<div class="ybchips">${chip('SW', 'ai', '🤖 ' + B.small.ai.from.slice(0, 7) + ' 起', W)}${chip('SW', 'long', '📚 ' + B.small.long.from.slice(0, 4) + ' 起', W)}</div>
       <div class="ybchips">${[1e5, 3e5, 1e6].map(v => chip('Cap', v, '一開始 ' + (v / 1e4) + ' 萬', cap)).join('')}</div>
       <div class="ybchips">${chip('Add', 0, '之後不加錢', add)}${chip('Add', 10000, '每月再投 1 萬', add)}</div>`;
-    const tr = (n, r, isB) => `<tr class="${isB ? 'sigbase' : ''}"><td class="txtcell" style="white-space:normal">${n}</td><td class="mono"><b style="font-size:14px">${wan(isB ? b50 : r.fin)}</b><div class="sigfrom">${((isB ? b50 : r.fin) / contrib).toFixed(1)} 倍</div></td><td class="mono">${isB ? '—' : wan(r.worst)}</td><td class="mono">${isB ? '—' : pc(r.mdd)}</td><td class="mono">${isB ? '—' : r.beat + '/' + B.paths}</td></tr>`;
+    const tr = (n, r, isB) => `<tr class="${isB ? 'sigbase' : ''}"><td class="txtcell" style="white-space:normal">${n}</td><td class="mono"><b style="font-size:14px">${wan(isB ? b50 : r.fin)}</b><div class="sigfrom">${((isB ? b50 : r.fin) / contrib).toFixed(1)} 倍</div>${add ? '' : `<div class="sigfrom" data-pfcagr>${this._cagrTxt((isB ? b50 : r.fin) * 1e6 / cap, Sm.from, B.to, 'ym')}</div>`}</td><td class="mono">${isB ? '—' : wan(r.worst)}</td><td class="mono">${isB ? '—' : pc(r.mdd)}</td><td class="mono">${isB ? '—' : r.beat + '/' + B.paths}</td></tr>`;
     const tbl = `<div class="tblwrap" style="margin-top:6px;max-height:none"><table class="grid sigtbl" id="pbSmallTbl"><thead><tr><th>做法(總共投入 ${wan(contrib)})</th><th>變成</th><th>最差那個<br>起點</th><th>中途<br>最多賠</th><th>贏同樣錢<br>買 0050</th></tr></thead><tbody>
       ${rs.map(o => tr(NM[o.m], o.r)).join('')}${tr('🆚 同樣的錢、同樣時間投入,全買 0050(含息)', null, true)}</tbody></table></div>`;
     // ⭐ 三句結論全部從表裡現讀
@@ -6987,6 +6993,7 @@ const PRO = {
       <br>① <b>錢少不會讓報酬率變差</b>:一開始 10 萬 → ${wan(s10.fin)}(${(s10.fin / s10.contrib).toFixed(1)} 倍);100 萬 → ${wan(s100.fin)}(${(s100.fin / s100.contrib).toFixed(1)} 倍)。整張買不起就買零股,手續費最低 20 元吃掉的很少。
       <br>② <b>真正讓錢變大的是「每個月繼續放錢」</b>:10 萬之後不加 → ${wan(s10.fin)};每月再投 1 萬(總共投 ${wan(s10a.contrib)})→ <b>${wan(s10a.fin)}</b>。
       <br>③ <b>「先衝再穩」</b>(帳戶翻倍後改一半放 0050):${g10 ? `10 萬 → ${wan(g10.fin)}、中途最多賠 ${pc(g10.mdd)};全攻 ${wan(s10.fin)}、${pc(s10.mdd)}` : ''} —— 少賺一點、少賠很多,適合「想先衝一段、之後求穩」的人。
+      <br>📅 每年 / 每月是「一開始放的錢」換算的複利平均;選了「每月再投 1 萬」就不算(中途加錢,換算出來的 % 沒有意義)。
       <br>🚨 <b>錢少 ⛔ 不代表可以冒更大的險</b>:虧損是照比例算的,10 萬賠 50% 一樣是賠一半;而且有每月投入時,新錢會把回撤沖淡(看起來比較小)。</div>` : '';
     return ctl + tbl + concl;
   },
@@ -7021,7 +7028,7 @@ const PRO = {
     const sort = this._ybSort;
     const NOW = Y.nowId || 'base';
     // 🔒 V78.0.8 👑 領頭羊那幾列只給選了 👑 的人看(同 renderProfit;沒選 = 一列都不出現、群組籤也不出現)
-    const LEADV = this._isLead();
+    const LEADV = this._labLeadOn();   // 🔬 V79.1.8 實測總表永遠有 👑
     const ALL = Y.strats.filter(s => LEADV || s.g !== 'lead');
     if (!this._ybSel || !ALL.some(s => s.id === this._ybSel)) this._ybSel = NOW;
     let rows = ALL.filter(s => grp === 'all' || s.g === grp || s.id === 'base' || s.id === NOW);
@@ -7299,7 +7306,7 @@ const PRO = {
   /** 🏆 第一篇:該選哪一套 —— 讀 `_PROFIT_BOARD`(⛔ 不手打金額) */
   _colPickArt() {
     const B = this._PROFIT_BOARD; if (!B || !B.wins) return '';
-    const keys = this._isLead() ? ['lead', 'stable', 'hot', 'park', '0050'] : ['hot', 'park', '0050'];
+    const keys = this._labLeadOn() ? ['lead', 'stable', 'hot', 'park', '0050'] : ['hot', 'park', '0050'];
     const w = (win, k) => ((B.wins[win] && B.wins[win].rows) || []).find(r => r.k === k);
     const wan = v => v == null ? '—' : `${Math.round(v / 10000).toLocaleString()} 萬`;
     const esc = v => this._esc(String(v || ''));
@@ -8004,7 +8011,7 @@ const PRO = {
 
   /** 目前條件下要顯示哪些條目。搜尋時**跨全部判定欄**,並帶上它來自哪一欄。 */
   /** 🔒 V77.9.6 沒選 👑 → 實測總表不列那一套相關的條目(標題有 👑 / 領頭羊;⛔ 不改 LAB 原文、⛔ 不刪) */
-  _labOf(col) { const a = this.LAB[col]; if (!Array.isArray(a)) return a; return this._isLead() ? a : a.filter(it => !this._LEAD_HIDE_RE.test(String(it.t || '') + ' ' + String(it.k || '').replace(/^leader.*/, '領頭羊'))); },
+  _labOf(col) { const a = this.LAB[col]; if (!Array.isArray(a)) return a; return this._labLeadOn() ? a : a.filter(it => !this._LEAD_HIDE_RE.test(String(it.t || '') + ' ' + String(it.k || '').replace(/^leader.*/, '領頭羊'))); },
   _labRows() {
     const cols = (this._labQ || !Array.isArray(this.LAB[this._labSel]) && this._labSel !== 'blocked')   // 🏆 在「選哪一套」選主題 = 跨全部判定欄
         ? this.LAB_TABS.filter(t => Array.isArray(this.LAB[t[0]])).map(t => t[0])
@@ -8359,7 +8366,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V79.1.7',
+  VER: 'V79.1.8',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

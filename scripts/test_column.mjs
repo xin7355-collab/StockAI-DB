@@ -6,7 +6,7 @@
  *   ② ⛔ 只有 AI 看得懂的字:pp / 六關 / p= / n= / 安慰劑 / 樣本外 / 探針 / 檔名 / 函式名
  *   ③ 決定性對照:改條目 `pl[5]` → 專欄的「📊 數字說話」跟著變(⛔ 數字不重抄)
  *   ④ 🔁 爾後規則:`u ≥ 2026-10-03` 的 ✅ 有用條目沒有 col → 紅(擋住「回測完忘了寫專欄」)
- *   ⑤ 🧬 模式看不到 👑 專欄(走 `_labOf`)
+ *   ⑤ 🧬 模式也看得到 👑 專欄(V79.1.8 `_labOf` 走 `_labLeadOn`)
  *   ⑥ 第一篇「該選哪一套」金額 == `_PROFIT_BOARD`(決定性對照:改 fin → 畫面跟著變)
  *   ⑦ 搜尋 / 系列篩選真的會篩
  *   ⑧ 破解迷思那幾篇(沒有 pl)要自帶 a / num / mean
@@ -128,7 +128,7 @@ const AIW = /(?<![A-Za-z])pp\b|六關|\bp\s*=|\bn\s*=|安慰劑|樣本外|探針
 ok('② ⛔ 只有 AI 看得懂的字(專欄畫面)', !AIW.test(R.text), (R.text.match(AIW) || [])[0]);
 ok('③ 決定性對照:改條目 pl[5] → 專欄數字跟著變', /決定性對照數字 777/.test(R.t3 || ''), (R.t3 || '').slice(0, 80));
 ok('④ 🔁 u ≥ 2026-10-03 的 ✅ 條目都要有專欄', !R.newOkNoCol.length, JSON.stringify(R.newOkNoCol));
-ok('⑤ 🧬 模式看不到 👑 專欄', !R.geneHasLead);
+ok('⑤ 🧬 模式(沒解鎖)也看得到 👑 專欄(V79.1.8 實測總表永遠有 👑)', R.geneHasLead);
 ok('⑥ 第一篇金額 == _PROFIT_BOARD(決定性對照)', R.pick.includes(R.hotWan + ' 萬') && R.pick2.includes('1,234 萬'), `${R.hotWan} | ${R.pick2.slice(0, 120)}`);
 ok('⑦ 搜尋「跌停」只剩跌停那幾篇、第一篇收起', R.qN >= 2 && R.qN < R.items.length && !R.qPick, `qN=${R.qN}`);
 ok('⑦b 系列「破解迷思」只剩那一系列', R.sN.length >= 5 && R.sN.every(s => s === '破解迷思'), JSON.stringify(R.sN));
@@ -141,7 +141,7 @@ ok('⑫ 閱讀時間跟著字數變', R.mins[0] && R.mins[0] !== R.mins[1], JSON
 ok('⑬ 分類篇數 == 實際篇數', !R.pillBad.length, JSON.stringify(R.pillBad));
 ok('⑭ NEW 只標最新那一天(而且有標)', R.newN > 0 && R.newBad === 0, `${R.newN} / bad ${R.newBad}`);
 ok('⑮ ⛔ 沒有瀏覽 / 按讚 / 留言數', !/瀏覽|按讚|留言|👁|❤️/.test(R.allText), (R.allText.match(/瀏覽|按讚|留言|👁|❤️/) || [])[0]);
-ok('⑯ 🧬 沒有 👑 領頭羊分類、👑 模式有', !R.serGene.includes('👑 領頭羊') && R.serLead.includes('👑 領頭羊') && R.leadN > R.n, `${R.serLead.join(',')} n=${R.leadN}/${R.n}`);
+ok('⑯ 🧬(沒解鎖)與 👑 模式都有 👑 領頭羊分類、篇數一樣(V79.1.8)', R.serGene.includes('👑 領頭羊') && R.serLead.includes('👑 領頭羊') && R.leadN === R.n, `${R.serLead.join(',')} n=${R.leadN}/${R.n}`);
 ok('⑯b 👑 模式也⛔ AI 才懂的字', !AIW.test(R.leadText), (R.leadText.match(AIW) || [])[0]);
 ok('⑨ 390px 不橫捲 + 無 pageerror', R.scrollX <= 2 && !errs.length, `scrollX=${R.scrollX} ${errs.join(' | ')}`);
 // ⑰⑱ 觸發式專欄(V78.4.2)
