@@ -29,6 +29,11 @@ ok('⑤ 先跑 selftest 才抓', WF.index('--selftest') < WF.index('--out /tmp/l
 ok('⑥ probe 模式不推(推那步要 mode == out)', "if: ${{ inputs.mode == 'out' }}" in WF)
 ok('⑦ 不給任何機密', not re.findall(r'secrets\.(\w+)', WF))
 ok('⑧ 有失敗就 exit 1 且不寫檔(寫檔在 fails 判斷之後)', CODE.index('if fails:') < CODE.index('json.dump(out, f'))
+ok('⑩ 也推 gh-pages(5 次重試 + pull --rebase),排在 data 分支之後,而且只在 mode == out',
+   'git checkout -f -B gh-pages origin/gh-pages' in WF and 'git push origin gh-pages' in WF
+   and 'pull --rebase origin gh-pages' in WF
+   and WF.index('git push origin data') < WF.index('git push origin gh-pages')
+   and WF.count("if: ${{ inputs.mode == 'out' }}") == 2)
 r = subprocess.run([sys.executable, os.path.join(ROOT, 'scripts/legislator_miner.py'), '--selftest'],
                    capture_output=True, text=True)
 ok('⑨ selftest 全綠', r.returncode == 0 and '❌' not in r.stdout)

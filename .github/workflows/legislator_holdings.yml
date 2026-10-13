@@ -3,7 +3,8 @@ name: 🏛️ 政治人物持股(財產申報,手動)
 # 🏛️ V79.2.0 使用者:「新增政治人物持股追蹤,特別是顏寬恒,我要的是他的報酬率」
 #   來源 legislator-wealth.tw(原始出處監察院財產申報公報);沙箱連不到 → 只能在 Actions 抓。
 #   mode=probe:只印網站結構(狀態碼 / 表格 / 內嵌 JSON / 引用網址),⛔ 不寫檔、不推
-#   mode=out  :解析 → data/legislator_holdings.json 推 data 分支(daily_miner 的 git archive 底層會帶上 gh-pages)
+#   mode=out  :解析 → data/legislator_holdings.json 推 data 分支 + gh-pages
+#              (data 分支 = 讓 daily_miner 的 orphan 部署留得住,陷阱 #41;gh-pages = 網站馬上看得到,⛔ 不必等 17:00 那輪)
 # ⛔ 只有手動觸發(沒有 cron → 不吃排程配額)。
 on:
   workflow_dispatch:
@@ -76,4 +77,29 @@ jobs:
               git pull --rebase origin data 2>/dev/null || true
             done
             [ "$pushed" -eq 1 ] || { echo "❌ push 連 5 次失敗"; exit 1; }
+          fi
+
+      - name: 🌐 也推 gh-pages(網站馬上看得到,⛔ 不必等下一輪 daily_miner)
+        if: ${{ inputs.mode == 'out' }}
+        run: |
+          set -e
+          [ -s /tmp/legislator_holdings.json ] || { echo "❌ 沒有產物 → 不推"; exit 1; }
+          git fetch origin "+refs/heads/gh-pages:refs/remotes/origin/gh-pages" --depth=1
+          git reset --hard -q 2>/dev/null || true
+          git clean -fdq 2>/dev/null || true
+          git checkout -f -B gh-pages origin/gh-pages
+          mkdir -p data
+          cp /tmp/legislator_holdings.json data/legislator_holdings.json
+          git add -f data/legislator_holdings.json
+          if git diff --cached --quiet; then
+            echo "ℹ️ gh-pages 上已經是這一份,沒東西可推"
+          else
+            git commit -q -m "🏛️ 政治人物持股 → gh-pages ($(date -u '+%Y-%m-%d %H:%M UTC'))" -- data/legislator_holdings.json
+            pushed=0
+            for i in 1 2 3 4 5; do
+              git push origin gh-pages && { pushed=1; echo "✅ data/legislator_holdings.json 已推上 gh-pages (第 $i 次)"; break; }
+              sleep $((i * 3))
+              git pull --rebase origin gh-pages 2>/dev/null || true
+            done
+            [ "$pushed" -eq 1 ] || { echo "❌ gh-pages push 連 5 次失敗"; exit 1; }
           fi
