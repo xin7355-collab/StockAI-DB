@@ -1,0 +1,79 @@
+name: 🏛️ 政治人物持股(財產申報,手動)
+
+# 🏛️ V79.2.0 使用者:「新增政治人物持股追蹤,特別是顏寬恒,我要的是他的報酬率」
+#   來源 legislator-wealth.tw(原始出處監察院財產申報公報);沙箱連不到 → 只能在 Actions 抓。
+#   mode=probe:只印網站結構(狀態碼 / 表格 / 內嵌 JSON / 引用網址),⛔ 不寫檔、不推
+#   mode=out  :解析 → data/legislator_holdings.json 推 data 分支(daily_miner 的 git archive 底層會帶上 gh-pages)
+# ⛔ 只有手動觸發(沒有 cron → 不吃排程配額)。
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'probe = 只看網站結構 / out = 解析並推 data 分支'
+        required: false
+        default: 'probe'
+      slugs:
+        description: '網址上的名字(逗號分隔)'
+        required: false
+        default: 'yan-kuan-heng'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: legislator-holdings   # ⛔ 不可跟別人共用 group(V73.7.9)
+  cancel-in-progress: false
+
+jobs:
+  mine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🏛️ 抓 + 守門(0 次申報或 0 筆持股不寫檔)
+        env:
+          SLUGS: ${{ inputs.slugs }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          python3 scripts/legislator_miner.py --selftest
+          if [ "${MODE:-probe}" = "out" ]; then
+            python3 scripts/legislator_miner.py --out /tmp/legislator_holdings.json
+          else
+            python3 scripts/legislator_miner.py --probe
+          fi
+
+      - name: 🚀 推 data 分支(data/legislator_holdings.json)
+        if: ${{ inputs.mode == 'out' }}
+        run: |
+          set -e
+          [ -s /tmp/legislator_holdings.json ] || { echo "❌ 沒有產物 → 不推"; exit 1; }
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin "+refs/heads/data:refs/remotes/origin/data" --depth=1
+          git reset --hard -q 2>/dev/null || true
+          git clean -fdq 2>/dev/null || true
+          git checkout -f -B data origin/data
+          mkdir -p data
+          cp /tmp/legislator_holdings.json data/legislator_holdings.json
+          git add -f data/legislator_holdings.json
+          if git diff --cached --quiet; then
+            echo "ℹ️ data/legislator_holdings.json 跟分支上一樣,沒東西可推"
+          else
+            git commit -q -m "🏛️ 政治人物持股 → data 分支 ($(date -u '+%Y-%m-%d %H:%M UTC'))" -- data/legislator_holdings.json
+            pushed=0
+            for i in 1 2 3 4 5; do
+              git push origin data && { pushed=1; echo "✅ data/legislator_holdings.json 已推上 data 分支 (第 $i 次)"; break; }
+              sleep $((i * 3))
+              git pull --rebase origin data 2>/dev/null || true
+            done
+            [ "$pushed" -eq 1 ] || { echo "❌ push 連 5 次失敗"; exit 1; }
+          fi
