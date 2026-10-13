@@ -171,6 +171,17 @@ def json_shape(o, depth=0, maxd=4):
 
 
 # ───────────── probe ─────────────
+def next_flight(body):
+    """Next.js App Router 把資料放在 self.__next_f.push([1,"…"]) 的 JS 字串裡 → 解回來串成一段文字"""
+    out = []
+    for m in re.finditer(r'self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)', body):
+        try:
+            out.append(json.loads(m.group(1)))
+        except Exception:
+            pass
+    return ''.join(out)
+
+
 def probe(slug):
     url = f'{BASE}/legislator/{slug}/'
     st, ct, body = http_get(url)
@@ -207,6 +218,24 @@ def probe(slug):
     for k in range(0, min(len(txt), 6000), 200):
         print('  ', txt[k:k + 200])
     ok = bool(tabs) or bool(js)
+    hrefs = sorted(set(re.findall(r'href="([^"#]+)"', body)))
+    print(f'連結:{len(hrefs)}')
+    for h in hrefs:
+        if 'github' in h or slug in h or h.endswith('.pdf') or '/api' in h or 'trade' in h or 'change' in h:
+            print('   ', h)
+    fl = next_flight(body)
+    print(f'__next_f 資料:{len(fl)} 字元')
+    keys = {}
+    for k in re.findall(r'"([A-Za-z_][A-Za-z0-9_]{1,30})":', fl):
+        keys[k] = keys.get(k, 0) + 1
+    print('  鍵(次數):', sorted(keys.items(), key=lambda x: -x[1])[:60])
+    for needle in ('3374', '精材', '交易', 'trade', 'Trade', 'date'):
+        i = fl.find(needle)
+        print(f'  ── 「{needle}」第一次出現 @{i}')
+        if i >= 0:
+            print('    ', fl[max(0, i - 600):i + 1400].replace('\n', ' '))
+    for k in range(0, min(len(fl), 12000), 400):
+        print('  F', fl[k:k + 400].replace('\n', ' '))
     print('🧭 結論:' + ('抓到了,但格式還沒對 → 照上面的結構寫 parser' if ok else '抓到網頁但沒有表格也沒有內嵌 JSON → 可能要 JS 渲染(看引用的 .json / /api/)'))
     for r in refs[:8]:
         u = r if r.startswith('http') else BASE + r
