@@ -10,7 +10,8 @@
  *   ⑤ `_leadDayPulse`:買賣那天 09:05 一則、13:21 一則,同一個時點不重跳,非買賣日不跳
  *   ⑥ 提醒分類:「13:25」⛔ 不可被 ⚡ 當沖吃掉(那一類關得掉);沒選 👑 時設定清單看不到
  *   ⑦ worker:leadOwnedFrom(名單外的持股 ⛔ 不算 👑)/ leadDayLines / leadTiming 有同步也有收
- * 注入:INJECT=tomorrow(_leadPhase 一律回明天)/ c95(硬停損寫死 ×0.95)/ nomine(盤中硬停損不排除 👑)—— 都要紅
+ *   ⑧ V79.1.9 資料遲到:算「落後幾個交易日」⛔ 不只推一天(actStale / stale);換倉日收盤後講「等資料更新」;週末 / 休市不算一天
+ * 注入:INJECT=tomorrow(_leadPhase 一律回明天)/ onestep(只推一天)/ noclosed(收盤後照盤中講)/ c95(硬停損寫死 ×0.95)/ nomine(盤中硬停損不排除 👑)—— 都要紅
  */
 import fs from 'fs';
 import path from 'path';
@@ -19,7 +20,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ORIG = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 let SRC = ORIG;
 const INJ = process.env.INJECT || '';
-if (INJ === 'tomorrow') SRC = SRC.replace("if (clk.isRebal) return step ? { ph: 'act', when: '今天'", "if (clk.isRebal) return false ? { ph: 'act', when: '今天'");
+if (INJ === 'tomorrow') SRC = SRC.replace("if (lag === 1 && todayTrade) return { ...base, ph: 'act'", "if (false) return { ...base, ph: 'act'");
+if (INJ === 'onestep') SRC = SRC.replace('                    lag++;\n', '                    lag = 1;\n');
+if (INJ === 'noclosed') SRC = SRC.replace('const closed = todayTrade ? t.min >= 13 * 60 + 30 : true;', 'const closed = false;');
 if (INJ === 'c95') SRC = SRC.replace("if (plan && plan.stopFinal > 0) return { px: +plan.stopFinal,", "if (false) return { px: +plan.stopFinal,");
 if (INJ === 'nomine') SRC = SRC.replace("if (entryCost && !this._leaderMine().has(String(sym))) {", "if (entryCost) {");
 if (INJ && SRC === ORIG) { console.log('❌ 注入沒有注進去'); process.exit(1); }
@@ -50,6 +53,17 @@ const R = await page.evaluate(async () => {
     T('2026-10-10', 'Sat', 10 * 60); o.eveSat = app._leadPhase(reb, '2026-10-09');
     T('2026-10-09', 'Fri', 10 * 60); o.rebT = app._leadPhase({ started: true, day: 10, isRebal: false, left: 1 }, '2026-10-08');
     T('2026-10-09', 'Fri', 10 * 60); o.wait = app._leadPhase({ started: true, day: 7, isRebal: false, left: 4 }, '2026-10-08');
+    // ⑧ V79.1.9 資料遲到
+    const w1 = { started: true, day: 10, isRebal: false, left: 1 };
+    T('2026-10-09', 'Fri', 10 * 60); o.actStale = app._leadPhase(w1, '2026-10-07');
+    T('2026-10-09', 'Fri', 10 * 60); o.stale = app._leadPhase(reb, '2026-10-07');
+    T('2026-10-08', 'Thu', 19 * 60); o.rebClosed = app._leadPhase(w1, '2026-10-07');
+    T('2026-10-08', 'Thu', 11 * 60); o.rebOpen = app._leadPhase(w1, '2026-10-07');
+    T('2026-10-12', 'Mon', 10 * 60); o.wkLag = app._leadPhase({ started: true, day: 9, isRebal: false, left: 2 }, '2026-10-08');
+    const _mc = app._mktClosedToday; app._mktClosedToday = () => true;
+    T('2026-10-09', 'Fri', 10 * 60); o.closedMkt = app._leadPhase(reb, '2026-10-08');
+    app._mktClosedToday = _mc;
+    o.txtClosed = app._leadPhaseTxt(o.rebClosed); o.txtStale = app._leadPhaseTxt(o.actStale);
     // ② 決策台今天要做的事
     app.settings = app.settings || {}; delete app.settings.leadTiming;
     app.getStockName = s => ({ 2330: '台積電', 2454: '聯發科', 3008: '大立光', 2317: '鴻海' })[s] || s;
@@ -64,6 +78,11 @@ const R = await page.evaluate(async () => {
     const wclk = { started: true, day: 7, isRebal: false, left: 4 };
     o.todoWait = app._deckTodoLead({ clk: wclk, bearOn: false, L: mkL(['2330', '2454', '2317']), held: [], H: 10 });
     o.todoWaitRev = app._deckTodoLead({ clk: wclk, bearOn: false, L: mkL(['2317', '2454', '2330']), held: [], H: 10 });
+    T('2026-10-08', 'Thu', 19 * 60);
+    o.todoRebClosedTxt = txt(app._deckTodoLead({ clk: w1, bearOn: false, L: { ...mkL(['2330', '2454']), date: '2026-10-07' }, held, H: 10 }));
+    T('2026-10-09', 'Fri', 10 * 60);
+    o.todoActStale = app._deckTodoLead({ clk: w1, bearOn: false, L: { ...mkL(['2330', '2454']), date: '2026-10-07' }, held, H: 10 });
+    o.todoActStaleTxt = txt(o.todoActStale);
     o.todoActTxt = txt(o.todoAct); o.todoEveTxt = txt(o.todoEve); o.todoWaitTxt = txt(o.todoWait); o.todoWaitRevTxt = txt(o.todoWaitRev);
     // ③ 硬停損
     const k = Array.from({ length: 60 }, (_, i) => ({ date: new Date(Date.UTC(2026, 6, 1) + i * 86400000).toISOString().slice(0, 10), open: 100, high: 102, low: 98, close: 100, volume: 1000 }));
@@ -113,6 +132,16 @@ ok('①c 買賣那天 14:00 → 標已收盤', R.actPast.ph === 'act' && R.actPa
 ok('①d 週五換倉 / 週六 → 下週一', R.eveFri.when === '下週一' && R.eveSat.ph === 'eve' && R.eveSat.when === '下週一', JSON.stringify([R.eveFri, R.eveSat]));
 ok('①e 今天就是換倉日(資料日是前一天)→ rebalToday、週五 → 下週一買賣', R.rebT.ph === 'rebalToday' && R.rebT.buyWhen === '下週一', JSON.stringify(R.rebT));
 ok('①f 其他日子:剩幾天從今天算(資料日剩 4 → 今天剩 3)', R.wait.ph === 'wait' && R.wait.leftNow === 3, JSON.stringify(R.wait));
+// ⑧
+ok('⑧ ⭐ 資料落後 2 天、今天是買賣日 → actStale(⛔ 不可講成「今天換倉、明天才買」)', R.actStale.ph === 'actStale' && R.actStale.lag === 2, JSON.stringify(R.actStale));
+ok('⑧b 換倉日的資料落後 2 天 → stale', R.stale.ph === 'stale' && R.stale.lag === 2, JSON.stringify(R.stale));
+ok('⑧c 換倉日收盤後(資料還沒更新)→ rebalToday + closed;盤中 closed=false', R.rebClosed.ph === 'rebalToday' && R.rebClosed.closed === true && R.rebClosed.buyWhen === '明天' && R.rebOpen.ph === 'rebalToday' && R.rebOpen.closed === false, JSON.stringify([R.rebClosed, R.rebOpen]));
+ok('⑧d 週末不算一天(週四資料、週一早上 → 落後 2 天:週五 + 週一)', R.wkLag.lag === 2 && R.wkLag.ph === 'rebalToday', JSON.stringify(R.wkLag));
+ok('⑧e 今天休市不算一天 → 照舊 eve', R.closedMkt.ph === 'eve' && R.closedMkt.lag === 0, JSON.stringify(R.closedMkt));
+ok('⑧f 文案:收盤後講「等資料更新」;actStale 講「先別動」「⛔ 不要照舊名單買」+ 資料日', /等資料更新/.test(R.txtClosed) && /先別動/.test(R.txtStale) && /不要照舊名單買/.test(R.txtStale) && /10\/07/.test(R.txtStale), JSON.stringify([R.txtClosed, R.txtStale]));
+ok('⑧g 今天要做的事:收盤後「已收盤,正在等資料更新」+「資料更新後可能會變」;盤中照舊', /已收盤,正在等資料更新/.test(R.todoRebClosedTxt) && /資料更新後可能會變/.test(R.todoRebClosedTxt), R.todoRebClosedTxt);
+ok('⑧h actStale:今天要做的事⛔ 不列賣 / 買名單,講先別動', /先別動/.test(R.todoActStaleTxt) && !/開盤賣:/.test(R.todoActStaleTxt) && !/13:25\s*買:/.test(R.todoActStaleTxt) && /data-todophase="actStale"/.test(R.todoActStale), R.todoActStaleTxt);
+ok('⑧i 🔓 預覽表頭:換倉日改寫「要買的預覽」(⛔ 不寫「不是今天要買的」)', /data-leadtodayhdr="\$\{PH\.ph === 'rebalToday' \? 'rebal'/.test(ORIG) && /要買的預覽:照/.test(ORIG), '');
 // ②
 ok('② 買賣那天:寫「今天就要做」、⛔ 沒有「明天」,賣大立光、買台積電 + 聯發科', /今天就要做/.test(R.todoActTxt) && !/明天/.test(R.todoActTxt.split('🛒 怎麼買')[0]) && /今天\s*09:00\s*開盤賣:大立光/.test(R.todoActTxt) && /今天\s*13:25\s*買:台積電/.test(R.todoActTxt), R.todoActTxt);
 ok('②b 換倉日收盤後:名單已定案 → 明天', /名單已定案/.test(R.todoEveTxt) && /明天\s*13:25\s*買:台積電/.test(R.todoEveTxt), R.todoEveTxt);
