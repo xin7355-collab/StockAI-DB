@@ -22,6 +22,12 @@ on:
     - cron: '0 12 * * 1-5'
   workflow_dispatch:
     # 手動觸發時，直接點擊 Run workflow，就會自動啟動 5 台機器併發！
+  # ⏰ V79.1.9 使用者:「換倉名單請改成最早的時間,不然沒時間看」——
+  #   GitHub 排程在這個 repo 常遲到好幾小時(10/12 那輪凌晨 02:03 才跑)→
+  #   Cloudflare Worker 台北 17:00 那一輪看到資料還不是今天就發 `daily-miner`(⛔ 不吃排程配額)。
+  #   ⛔ 事件名要跟 cloud-worker/worker.js 的 minerKick 完全一致(test_miner_kick / test_intraday_relay ④)
+  repository_dispatch:
+    types: [daily-miner]
   push:
     branches: [main]
     paths:

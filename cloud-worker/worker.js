@@ -326,9 +326,41 @@ async function intradayWatchdog(env) {
     }
 }
 
-const WORKER_VER = 'V22.3 (2026-08-11)';
+// ⏰ V79.1.9 收盤後叫醒每日採礦(使用者:「換倉名單請改成最早的時間,不然沒時間看」)
+//   GitHub 排程在這個 repo 常遲到好幾小時(2026-10-12 那輪凌晨 02:03 才跑)→ 換倉名單拖到半夜。
+//   ⭐ 台北 17:00 那一輪:平日、而且 gh-pages 的 screener 還不是今天 → 發 `daily-miner`
+//     (⛔ 不吃排程配額;daily_miner 跑完 playbook_scan 會接手產出換倉名單)
+//   ⛔ 已經是今天就不發 —— daily_miner 是 cancel-in-progress,亂發會砍掉正在跑的那輪
+//   ⚠️ screener.json 約 1MB → 只讀開頭一小段拿 data_date(⛔ 不整包 parse,免費版 CPU 上限)
+async function _screenerDate(fetchFn) {
+    const r = await fetchFn(`${GH_PAGES_BASE}/data/screener.json?t=${Date.now()}`);
+    if (!r || !r.ok) return null;
+    let head = '';
+    if (r.body && r.body.getReader) {
+        const rd = r.body.getReader(), dec = new TextDecoder();
+        while (head.length < 600) { const { value, done } = await rd.read(); if (done) break; head += dec.decode(value, { stream: true }); }
+        try { await rd.cancel(); } catch (_) {}
+    } else head = String(await r.text()).slice(0, 600);
+    const m = head.match(/"data_date"\s*:\s*"(\d{4}-\d{2}-\d{2})"/);
+    return m ? m[1] : null;
+}
+async function minerKick(env, now = Date.now(), fetchFn = fetch, dispatchFn = ghDispatch) {
+    if (!env.GH_DISPATCH_TOKEN) return { sent: false, why: 'no-token' };
+    const tw = new Date(now + 8 * 3600e3);
+    const wd = tw.getUTCDay();
+    if (wd === 0 || wd === 6) return { sent: false, why: 'weekend' };
+    const today = tw.toISOString().slice(0, 10);
+    let dd = null;
+    try { dd = await _screenerDate(fetchFn); } catch (_) { dd = null; }
+    if (dd && dd >= today) return { sent: false, why: 'fresh', dd };
+    const r = await dispatchFn(env, 'daily-miner');
+    return { sent: !!(r && r.ok), why: r && r.why, dd };
+}
+
+const WORKER_VER = 'V22.4 (2026-10-13)';
 const WORKER_FEAT = ['push', 'vapid', 'names', 'sync'];   // 有 push/vapid 才支援「關 App 推播」
 
+export { minerKick, _screenerDate };
 export default {
     async fetch(request, env, ctx) {
         if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -372,6 +404,7 @@ export default {
         //   只留「盤前精選(08:00)」「盤後精選(17:00)」+ 開盤掃 + 盤中個人警報。
         if (event.cron === '0 9 * * 1-5') {
             ctx.waitUntil(runDailySummary(env));
+            ctx.waitUntil(minerKick(env));   // ⏰ V79.1.9 資料還不是今天 → 叫醒每日採礦(換倉名單最早出來)
         } else if (event.cron === '0 1 * * 1-5') {
             // 🧹 V78.1.1 朱家泓 5MA 早上推播已刪除(使用者:設定裡沒用/過時的刪掉;它推的是沒實測過的買點)。
             //   App 端 V78.1.1 起一律送 chuMorningPush:false,舊版 worker 也會跳過;函式保留以免舊 KV 誤觸。

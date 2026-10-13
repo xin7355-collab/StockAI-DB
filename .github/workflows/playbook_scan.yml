@@ -55,12 +55,14 @@ jobs:
     runs-on: ubuntu-latest
     # ⛔ 掛 workflow_run 之後要擋兩種情況,否則會白跑 25 分鐘:
     #   ① 採礦**失敗**了 → 資料不完整,掃了也是垃圾
-    #   ② 採礦是被 **push 觸發**的(改 miner.py 一天可能好幾次)→ 只跟排程那一輪
+    #   ② 採礦是被 **push 觸發**的(改 miner.py 一天可能好幾次)→ 只跟「每天那一輪」
+    # ⏰ V79.1.9 「每天那一輪」= 排程 / Worker 17:00 叫醒(repository_dispatch)/ 手動 dispatch 三種
+    #   (排程常遲到到半夜 → 換倉名單來不及看;⛔ push 那輪照舊不跟)
     # ⚠️ 手動 dispatch 與 cron 備援不受這個 if 影響(它們的 event 不是 workflow_run)
     if: >-
       github.event_name != 'workflow_run' ||
       (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'schedule')
+       contains(fromJSON('["schedule","repository_dispatch","workflow_dispatch"]'), github.event.workflow_run.event))
     timeout-minutes: 75   # 掃描 ~25 分 + 還原資料 ~5 分 + 安裝 ~3 分,給足餘裕
     steps:
       - name: 📥 下載程式碼 (main)

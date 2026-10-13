@@ -142,6 +142,7 @@ done
 **雙向**比(發了沒人收 / 收了沒人發 都要叫得出來)。
 ⚠️ Cloudflare 免費版 cron 上限 5 個而**已用滿** → 新功能一律掛在既有 handler 裡,⛔ 別想加第 6 個。
 ⚠️ 需要使用者設 `GH_DISPATCH_TOKEN`(步驟在 `cloud-worker/README.md`);沒設就整段跳過。
+⏰ **V79.1.9 daily_miner 也由 worker 台北 17:00 叫醒**(`minerKick`,event `daily-miner`,只在 gh-pages screener 還不是今天才發);`playbook_scan` 跟 schedule / repository_dispatch / workflow_dispatch 那輪(⛔ push 不跟)。測試 `scripts/test_miner_kick.mjs`。
 
 ---
 
