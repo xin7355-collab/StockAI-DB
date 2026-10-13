@@ -790,6 +790,7 @@ details.colart[open] .colsum{display:none}
     <button class="tab-btn" id="tabBtnFish" onclick="PRO.switchTab('fish')">📒 成績單</button>
     <!-- 🎣 V77.9.8 釣魚已獨立成「股海釣手」—— 使用者:「其它程式都不能連進來」→ ⛔ 作戰室不放任何入口,只能從它自己的網址 / 主畫面圖示打開 -->
     <button class="tab-btn" id="tabBtnConf" onclick="PRO.switchTab('conf')" title="法說會時間表 + 官方擇要;只描述,不下多空">法說會</button>
+    <button class="tab-btn" id="tabBtnPoli" onclick="PRO.switchTab('poli')" title="政治人物申報的持股,照著抱的話報酬多少(跟 0050 比)">🏛️ 政治人物持股</button>
     <button class="tab-btn" id="tabBtnLab" onclick="PRO.switchTab('lab')">實測總表</button>
     <button class="tab-btn" id="tabBtnCol" onclick="PRO.switchTab('col')" title="把實測總表裡有價值的結論寫成白話文章">📰 專欄</button>
     <!-- 🧹 V74.6.2 使用者:「把散戶救星裡面的 V74.6.1 及 🧹 雜訊清單搬移到產業作戰室裡面」
@@ -1111,6 +1112,25 @@ details.colart[open] .colsum{display:none}
   </div>
 </div>
 
+<!-- 🏛️ V79.2.0 政治人物持股(使用者:「新增政治人物持股追蹤,特別是顏寬恒,我要的是他的報酬率」)
+     資料 = data/legislator_holdings.json(legislator_holdings.yml 從 legislator-wealth.tw 的公開 JSON API 抓;原始出處 = 監察院財產申報公報)。
+     ⛔ 申報一年一次 → 只看得到申報日手上有什麼、看不到中間怎麼買賣 → 報酬是「照申報那天的持股抱著」的試算,不是他真實的買賣成績。 -->
+<div id="tabPoli" class="hidden">
+  <div class="panel">
+    <h2>政治人物持股 <span class="sub">照申報的持股抱著,算出來的報酬 ・ 跟 0050 比</span></h2>
+    <div class="labbar" id="poliBar"></div>
+    <div id="poliBody"></div>
+    <details class="sbnote" style="margin-top:8px"><summary>📖 這頁在算什麼 <span style="color:var(--dim2)">展開 ▾</span></summary>
+      <div class="note">
+        📄 來源:監察院財產申報公報(經 legislator-wealth.tw 整理成資料;本站每次手動更新一次)。<br>
+        ⚠️ <b>財產申報一年一次</b>,只看得到「申報那一天」手上有什麼 —— 中間買了什麼、賣了什麼,只有「變動申報」列出來的那幾筆看得到。<br>
+        🧮 <b>報酬怎麼算</b>:申報那天的股數 × 那天收盤價 = 起點;抱到今天,配息照當天收盤再買回、配股照實際多出來的股數加上去(含息)。0050 用同一段日子、同一種算法。<br>
+        🔗 <b>每次申報換一次持股</b>:第一次申報的持股抱到第二次申報日,再換成第二次申報的持股抱到今天,兩段接起來。<br>
+        ⛔ <b>這不是他真實的報酬</b>(不含中間的買賣、不含未上市股票、不含手續費與稅),只是「如果照他申報的持股抱著」會怎樣。⛔ 也不是叫你跟著買。
+      </div>
+    </details>
+  </div>
+</div>
 <div id="tabCol" class="hidden">
   <div class="panel">
     <!-- 📰 V78.4.0 專欄:實測總表條目的白話文章版(⛔ 不另存一份資料,見 PRO.renderCol)・V78.4.1 改封面卡版面 -->
@@ -2009,11 +2029,12 @@ const PRO = {
     if (this._tab === 'star') { this._starData = undefined; await this.renderStar(); }
     if (this._tab === 'fish') await this.renderFish();
     if (this._tab === 'rod') { this._starData = undefined; this._fishDP = null; this._fishD = null; await (this._rodP = this.renderRod()); }
+    if (this._tab === 'poli') { this._poliD = undefined; this._poliK = {}; await this.renderPoli(); }
     if (this._valRows && this._valRows.length) await this.runValuation(true);
     this.toast('✅ 已更新');
   },
 
-  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['conf', 'Conf'], ['lab', 'Lab'], ['col', 'Col'], ['noise', 'Noise']],
+  TABS: [['val', 'Val'], ['chain', 'Chain'], ['rot', 'Rot'], ['star', 'Star'], ['fish', 'Fish'], ['rod', 'Rod'], ['conf', 'Conf'], ['poli', 'Poli'], ['lab', 'Lab'], ['col', 'Col'], ['noise', 'Noise']],
   switchTab(t, silent) {
     this.closeStock();                    // 🔗 切頁一律收起快捷面板(⛔ 不可蓋在別頁上面)
     this.closeModal();                    // 📖 懸浮視窗同理
@@ -2034,6 +2055,7 @@ const PRO = {
     if (t === 'rod') this._rodP = this.renderRod();
     if (t === 'noise') this.renderNoise();
     if (t === 'conf') this.renderConf();
+    if (t === 'poli') this.renderPoli();
     if (t === 'col') this.renderCol();
     // 📊 'calc' 已併進實測總表(V74.5.0)—— 舊書籤/舊連結進來時自動導到那一欄,⛔ 不可整個失效
     if (t === 'calc') { this._tab = 'lab'; this._labSel = 'bt'; document.getElementById('tabLab').classList.remove('hidden'); document.getElementById('tabBtnLab').classList.add('on'); }
@@ -8366,7 +8388,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V79.1.9',
+  VER: 'V79.2.0',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -10553,6 +10575,215 @@ ${M.news || '(無)'}
     body.innerHTML = this._confHtml(this._confRows());
     const rc = document.getElementById('confReact'); if (rc) rc.innerHTML = this._confReactHtml(this._confSym);
   },
+  // ═══════════════════════════════════════════════════════════════════════
+  // 🏛️ V79.2.0 政治人物持股 —— 「照申報的持股抱著」的含息報酬,跟 0050 同一段日子比
+  //   資料:data/legislator_holdings.json(legislator_miner.py);K 線 data/{sym}.json 一檔一檔讀(⛔ 不併發);股利 data/dividends_hist.json
+  //   ⛔ 申報一年一次 → 這是試算,不是他真實的買賣成績;⛔ 不給「跟著買」
+  // ═══════════════════════════════════════════════════════════════════════
+  /** 股利尺標對齊 —— scripts/lib_totalreturn.mjs scaleFor 的複製品(test_polihold 跨檔比對) */
+  _poliScale(before, closeOnDate) {
+    if (!(before > 0) || !(closeOnDate > 0)) return { k: 1, why: 'no-before' };
+    const ratio = closeOnDate / before;
+    if (ratio > 0.9 && ratio < 1.1) return { k: 1, why: 'same' };
+    for (const m of [2, 3, 4, 5, 6, 8, 10]) {
+      if (Math.abs(ratio - 1 / m) / (1 / m) < 0.08) return { k: 1 / m, why: `split1:${m}` };
+      if (Math.abs(ratio - m) / m < 0.08) return { k: m, why: `merge${m}:1` };
+    }
+    return { k: null, why: `ratio=${ratio.toFixed(3)}` };
+  },
+  /** 含息逐日指數 —— lib_totalreturn.mjs trSeries 的複製品(opt.stock 以外逐點相同,test_polihold 比對)。
+   *  ⭐ opt.stock:配股('權')照 前價÷後價 把股數加上去 —— 本站 K 線**沒有**還原配股(全訊 2026-08-20 117.5 → 105.5),
+   *     不加的話配股多的股票會被算成大跌。前一天收盤要對得上「前價」(±8%)才加;對不上 = K 線可能已還原 → ⛔ 不重複加 */
+  _poliTr(bars, divs, opt = {}) {
+    const num = x => (x === null || x === undefined || !Number.isFinite(+x) ? null : +x);
+    const d10 = s => String(s || '').replace(/\//g, '-').slice(0, 10);
+    const idx = new Map(bars.map((b, i) => [b.d, i]));
+    const add = new Map(), stk = new Map();
+    for (const [dt, amt, typ, before, after] of (divs || [])) {
+      const D = d10(dt), i = idx.get(D);
+      if (i === undefined) continue;
+      if (typ === '權') {
+        if (!opt.stock || i < 1) continue;
+        const b = num(before), a = num(after);
+        if (!(b > 0 && a > 0 && b / a > 1.0005 && b / a < 2)) continue;
+        if (Math.abs(bars[i - 1].c / b - 1) > 0.08) continue;
+        stk.set(i, (stk.get(i) || 1) * (b / a));
+        continue;
+      }
+      const c = num(amt); if (!(c > 0)) continue;
+      const { k } = this._poliScale(num(before), bars[i].c);
+      if (k === null) continue;
+      add.set(i, (add.get(i) || 0) + c * k);
+    }
+    const out = { d: [], v: [] };
+    let sh = 1;
+    for (let i = 0; i < bars.length; i++) {
+      const m = stk.get(i); if (m) sh *= m;
+      const cash = add.get(i);
+      if (cash) sh += (sh * cash) / bars[i].c;
+      out.d.push(bars[i].d);
+      out.v.push(sh * bars[i].c / bars[0].c);
+    }
+    return out;
+  },
+  _poliBars(raw) {
+    if (!Array.isArray(raw)) return null;
+    const out = [];
+    for (const r of raw) { const c = +r.close; if (Number.isFinite(c) && c > 0) out.push({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c }); }
+    out.sort((a, b) => a.d < b.d ? -1 : 1);
+    return out.length ? out : null;
+  },
+  /** 最後一根 ≤ date 的位置(申報日當天沒開盤 → 用前一個交易日收盤);沒有回 -1 */
+  _poliAt(bars, date) { let r = -1; for (let i = 0; i < bars.length; i++) { if (bars[i].d <= date) r = i; else break; } return r; },
+  /** 一組持股從 start 抱到 end(null = 今天)。回 {v0, v1, ret, items, miss} */
+  _poliHold(rows, start, end, K, D) {
+    const items = [], miss = [];
+    let v0 = 0, v1 = 0;
+    for (const r of rows || []) {
+      const bars = K[r.sym];
+      if (!bars) { miss.push({ ...r, why: '讀不到這一檔的 K 線' }); continue; }
+      const i0 = this._poliAt(bars, start);
+      if (i0 < 0) { miss.push({ ...r, why: '申報日早於本站 K 線起點' }); continue; }
+      const i1 = end ? this._poliAt(bars, end) : bars.length - 1;
+      if (i1 <= i0) { miss.push({ ...r, why: '這段日子沒有成交' }); continue; }
+      const sub = bars.slice(i0, i1 + 1);
+      const tr = this._poliTr(sub, ((D || {})[r.sym] || {}).h || [], { stock: true });
+      const g = tr.v[tr.v.length - 1];
+      const a = r.shares * sub[0].c, b = a * g;
+      v0 += a; v1 += b;
+      items.push({ ...r, p0: sub[0].c, p1: sub[sub.length - 1].c, d0: sub[0].d, d1: sub[sub.length - 1].d, ret: g - 1, v0: a, v1: b });
+    }
+    for (const it of items) it.w = v0 > 0 ? it.v0 / v0 : 0;
+    return { v0, v1, ret: v0 > 0 ? v1 / v0 - 1 : null, items, miss };
+  },
+  _poliBench(start, end, B, D0050) {
+    if (!B) return null;
+    const i0 = this._poliAt(B, start), i1 = end ? this._poliAt(B, end) : B.length - 1;
+    if (i0 < 0 || i1 <= i0) return null;
+    const tr = this._poliTr(B.slice(i0, i1 + 1), D0050 || [], { stock: true });
+    return tr.v[tr.v.length - 1] - 1;
+  },
+  /** A:每一次申報抱到今天;B:每次申報換一次持股、串起來到今天 */
+  _poliCalc(P, K, D, B) {
+    const decls = (P && P.decls || []).filter(d => (d.rows || []).length).slice().sort((a, b) => a.date < b.date ? -1 : 1);
+    const D50 = ((D || {})['0050'] || {}).h || [];
+    const A = decls.map(dc => ({ date: dc.date, ...this._poliHold(dc.rows, dc.date, null, K, D), bench: this._poliBench(dc.date, null, B, D50) }));
+    let chain = null;
+    if (decls.length >= 2) {
+      let g = 1; const segs = [];
+      for (let i = 0; i < decls.length; i++) {
+        const end = i + 1 < decls.length ? decls[i + 1].date : null;
+        const h = this._poliHold(decls[i].rows, decls[i].date, end, K, D);
+        if (h.ret === null) { g = null; break; }
+        g *= 1 + h.ret;
+        segs.push({ from: decls[i].date, to: end, ret: h.ret, bench: this._poliBench(decls[i].date, end, B, D50) });
+      }
+      chain = g === null ? null : { ret: g - 1, segs, from: decls[0].date, bench: this._poliBench(decls[0].date, null, B, D50) };
+    }
+    return { A, chain };
+  },
+  _poliPct(x) { return x === null || x === undefined || !Number.isFinite(x) ? '—' : (x >= 0 ? '+' : '') + (x * 100).toFixed(1) + '%'; },
+  _poliCls(x) { return !Number.isFinite(x) ? '' : x > 0 ? 'up' : x < 0 ? 'dn' : 'flat'; },
+  _poliMoney(v) {
+    if (!Number.isFinite(v)) return '—';
+    const s = v >= 0 ? '+' : '−', a = Math.abs(v);
+    return s + (a >= 1e8 ? (a / 1e8).toFixed(2) + ' 億' : a >= 1e4 ? Math.round(a / 1e4).toLocaleString() + ' 萬' : Math.round(a).toLocaleString() + ' 元');
+  },
+  async renderPoli() {
+    const body = document.getElementById('poliBody'), bar = document.getElementById('poliBar');
+    if (!body || !bar) return;
+    if (this._poliD === undefined) {
+      body.innerHTML = `<div class="note">⏳ 正在讀申報資料…</div>`;
+      const [J] = await Promise.all([this.fetchJson('data/legislator_holdings.json'), this.loadNames()]);
+      this._poliD = J || null;
+      this._poliDiv = await this.fetchJson('data/dividends_hist.json').catch(() => null);
+    }
+    const J = this._poliD;
+    if (!J || !J.people || !Object.keys(J.people).length) {
+      bar.innerHTML = '';
+      body.innerHTML = `<div class="warnbox" data-poli-nofile="1">⚠️ <b>讀不到 data/legislator_holdings.json</b>(檔案還沒產出,或網路失敗)。<br>
+        它由「🏛️ 政治人物持股」那支採礦手動跑一次產出,再等下一輪每日採礦把它帶上網站。</div>`;
+      return;
+    }
+    const slugs = Object.keys(J.people);
+    if (!this._poliSlug || !J.people[this._poliSlug]) this._poliSlug = slugs.includes('yan-kuan-heng') ? 'yan-kuan-heng' : slugs[0];
+    bar.innerHTML = slugs.length > 1 ? slugs.map(s => `<button class="lbtn${s === this._poliSlug ? ' on' : ''}" onclick="PRO.poliPick('${s}')">${this._esc(J.people[s].name)}</button>`).join('') : '';
+    const P = J.people[this._poliSlug], mySlug = this._poliSlug;
+    // 📥 K 線一檔一檔讀(⛔ 不併發:二十幾檔同時打 GitHub Pages 會互相拖慢,失敗也查不出是哪檔)
+    this._poliK = this._poliK || {};
+    const need = new Set(['0050']);
+    for (const d of P.decls || []) for (const r of d.rows || []) need.add(r.sym);
+    for (const t of P.trades || []) if (t.sym) need.add(t.sym);
+    const todo = [...need].filter(s => this._poliK[s] === undefined);
+    let n = 0;
+    for (const s of todo) {
+      body.innerHTML = `<div class="note">⏳ 讀 K 線 ${++n}/${todo.length}(${this._esc(this._nmFull(s))})…</div>`;
+      const raw = await this.fetchJson(`data/${s}.json`, 9000).catch(() => null);
+      this._poliK[s] = this._poliBars(raw);
+    }
+    if (this._poliSlug !== mySlug) return;   // 讀 K 線途中換了人 → 讓新的那一輪畫
+    body.innerHTML = this._poliHtml(P, J);
+  },
+  poliPick(s) { this._poliSlug = s; this.renderPoli(); },
+  poliSort(k) {
+    const S = this._poliSortK || { k: 'w', dir: -1 };
+    this._poliSortK = S.k === k ? { k, dir: -S.dir } : { k, dir: k === 'name' ? 1 : -1 };
+    const J = this._poliD; if (J && J.people[this._poliSlug]) document.getElementById('poliBody').innerHTML = this._poliHtml(J.people[this._poliSlug], J);
+  },
+  _poliHtml(P, J) {
+    const K = this._poliK || {}, D = (this._poliDiv || {}).d || {}, B = K['0050'];
+    const C = this._poliCalc(P, K, D, B);
+    const pc = x => `<span class="${this._poliCls(x)}">${this._poliPct(x)}</span>`;
+    const last = C.A[C.A.length - 1];
+    if (!last) return `<div class="warnbox">⚠️ ${this._esc(P.name)} 的申報裡沒有任何一檔對得上上市櫃股票。</div>`;
+    const diff = (a, b) => Number.isFinite(a) && Number.isFinite(b) ? `${a >= b ? '贏' : '輸'} 0050 <b>${Math.abs((a - b) * 100).toFixed(1)}</b> 個百分點` : '0050 算不出來';
+    const endD = (B && B[B.length - 1] || {}).d || '—';
+    const head = `<div class="poli-head" data-poli-a="${last.ret}">
+      <div class="note" style="margin:0 0 4px">👤 <b>${this._esc(P.name)}</b>${P.party ? `・${this._esc(P.party)}` : ''} ・ 申報 ${C.A.length} 次(${C.A.map(a => this._esc(a.date)).join('、')})・ 現價到 ${this._esc(endD)}</div>
+      <div style="font-size:13px">📌 照 <b>${this._esc(last.date)}</b> 申報的持股抱到今天(含息)</div>
+      <div style="font-size:26px;font-weight:900;font-family:var(--mono)">${pc(last.ret)} <span style="font-size:14px">${this._poliMoney(last.v1 - last.v0)}</span></div>
+      <div class="note">同一段日子 0050(含息)${pc(last.bench)} → ${diff(last.ret, last.bench)}</div>
+      ${C.chain ? `<div style="margin-top:8px;font-size:13px" data-poli-b="${C.chain.ret}">🔗 從 <b>${this._esc(C.chain.from)}</b> 起、每次申報換一次持股,串到今天:<b style="font-size:18px">${pc(C.chain.ret)}</b>
+          <span class="note">0050 同期 ${pc(C.chain.bench)} → ${diff(C.chain.ret, C.chain.bench)}</span>
+          <div class="sigfrom">${C.chain.segs.map(s => `${this._esc(s.from)} → ${this._esc(s.to || '今天')}:${this._poliPct(s.ret)}(0050 ${this._poliPct(s.bench)})`).join(' ・ ')}</div></div>`
+        : `<div class="note" style="margin-top:6px">🔗 「每次申報換一次持股」要兩次以上的申報才算得出來,目前只有一次。</div>`}
+      ${C.A.length > 1 ? `<div class="sigfrom" style="margin-top:6px">${C.A.slice(0, -1).map(a => `📌 照 ${this._esc(a.date)} 的持股一直抱到今天:${this._poliPct(a.ret)}(0050 ${this._poliPct(a.bench)})`).join('<br>')}</div>` : ''}
+    </div>`;
+    // ⛔ 算不出的:寫出來 + 佔多少(⛔ 不靜默丟掉)
+    const sk = ((J.skipped || {})[this._poliSlug] || []).filter(x => x.d === last.date);
+    const missTxt = [...last.miss.map(m => `${this._esc(m.name)}(${this._esc(m.why)})`), ...sk.map(x => `${this._esc(x.name)}(${this._esc(x.why)})`)];
+    const missFace = sk.reduce((a, x) => a + (+x.val || 0), 0) + last.miss.reduce((a, m) => a + (+m.val || 0), 0);
+    const faceAll = (P.decls.find(d => d.date === last.date) || { rows: [] }).rows.reduce((a, r) => a + (+r.val || 0), 0) + sk.reduce((a, x) => a + (+x.val || 0), 0);
+    const miss = missTxt.length ? `<div class="warnbox" style="margin-top:8px" data-poli-miss="${missTxt.length}">⛔ <b>${missTxt.length} 檔沒算進報酬</b>:${missTxt.join('、')}。
+      <br>依申報金額(面額)算,這幾檔佔 ${faceAll > 0 ? (missFace / faceAll * 100).toFixed(1) : '—'}%(⚠️ 面額不是市值,未上市股票的市值查不到)。</div>` : '';
+    // 📋 個股明細(表頭可排序)
+    const S = this._poliSortK || { k: 'w', dir: -1 };
+    const val = (it, k) => k === 'name' ? (it.name || '') : k === 'gain' ? it.v1 - it.v0 : it[k];
+    const items = last.items.slice().sort((a, b) => { const x = val(a, S.k), y = val(b, S.k); return (x > y ? 1 : x < y ? -1 : 0) * S.dir; });
+    const th = (k, h) => `<th class="ybsort${S.k === k ? ' on' : ''}" data-poli-th="${k}" onclick="PRO.poliSort('${k}')">${h}${S.k === k ? (S.dir < 0 ? ' ▼' : ' ▲') : ''}</th>`;
+    const tbl = `<div class="tblwrap" style="margin-top:10px;max-height:none"><table class="grid sigtbl" id="poliTbl"><thead><tr>
+      ${th('name', '股名')}${th('shares', '股數')}${th('p0', '申報日價')}${th('p1', '現價')}${th('ret', '含息報酬')}${th('gain', '賺賠')}${th('w', '起點佔比')}</tr></thead><tbody>
+      ${items.map(it => `<tr data-poli-row="${it.sym}"><td class="txtcell">${this._esc(this._nmFull(it.sym))}${it.owner && it.owner !== '本人' ? `<div class="sigfrom">${this._esc(it.owner)}</div>` : ''}</td>
+        <td>${Math.round(it.shares).toLocaleString()}</td><td>${it.p0}</td><td>${it.p1}</td><td>${pc(it.ret)}</td>
+        <td class="${this._poliCls(it.v1 - it.v0)}">${this._poliMoney(it.v1 - it.v0)}</td><td>${(it.w * 100).toFixed(1)}%</td></tr>`).join('')}
+      </tbody></table></div>`;
+    // 🧾 變動申報裡的每一筆(買 / 賣 / 配股):成交之後到今天漲跌多少(只算價格)
+    const tr = (P.trades || []).map(t => {
+      const b = t.sym && K[t.sym], now = b ? b[b.length - 1].c : null;
+      const chg = now && t.px > 0 ? now / t.px - 1 : null;
+      const lab = t.side === 'buy' ? '買' : t.side === 'sell' ? '賣' : this._esc(t.why || '—');
+      const note = t.side === 'sell' && chg !== null ? (chg > 0 ? '賣掉之後又漲' : '賣掉之後跌了') : t.side === 'buy' && chg !== null ? (chg > 0 ? '買了之後漲' : '買了之後跌') : '';
+      return `<tr><td class="txtcell">${this._esc(t.d || '—')}</td><td class="txtcell">${this._esc(t.sym ? this._nmFull(t.sym) : t.name)}</td><td>${lab}</td>
+        <td>${t.shares ? Math.round(t.shares).toLocaleString() : '—'}</td><td>${t.px ?? '—'}</td><td>${now ?? '—'}</td><td>${pc(chg)}${note ? `<div class="sigfrom">${note}</div>` : ''}</td></tr>`;
+    }).join('');
+    const trades = (P.trades || []).length ? `<details class="sbnote" style="margin-top:10px"><summary>🧾 變動申報裡的 ${P.trades.length} 筆成交(之後漲跌多少)<span style="color:var(--dim2)"> 展開 ▾</span></summary>
+      <div class="tblwrap" style="max-height:none"><table class="grid sigtbl" id="poliTrTbl"><thead><tr><th>日期</th><th>股名</th><th>動作</th><th>股數</th><th>成交價</th><th>現價</th><th>到今天</th></tr></thead><tbody>${tr}</tbody></table></div>
+      <div class="note">只算價格(不含息)。「配發」是配股,不是他自己買的。</div></details>` : '';
+    const foot = `<div class="note" style="margin-top:8px">⛔ 這是「如果照 ${this._esc(P.name)} 申報的持股抱著」的試算,<b>不是他真實的報酬</b>:申報一年一次、看不到中間的買賣;不含未上市股票、手續費與稅。⛔ 也不是叫你跟著買。
+      <br>📄 資料:${this._esc(J.src || 'legislator-wealth.tw')}(原始出處監察院財產申報公報)・更新 ${this._esc(String(J.updated || '').slice(0, 10))}</div>`;
+    return head + miss + tbl + trades + foot;
+  },
+
   async renderConf() {
     const body = document.getElementById('confBody'), meta = document.getElementById('confMeta');
     if (!body || !meta) return;
