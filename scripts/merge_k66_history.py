@@ -151,13 +151,21 @@ def apply_idx_long(DD, OUT, idx_path):
     if J.get('twoii') and not J.get('twoii_error'):
         po = [dict(date=r[0], open=r[1], high=r[2], low=r[3], close=r[4], volume=0, amount=r[5]) for r in J['twoii']]
         if os.path.exists(f'{DD}/^TWOII.json'):
-            O = json.load(open(f'{DD}/^TWOII.json')); o0 = O[0]['date']
-            ro = {r[0]: r for r in J['twoii']}
-            if o0 not in ro or abs(ro[o0][4] / O[0]['close'] - 1) > 0.005:
-                ot_note = f'櫃買接點對不上:{o0} 本站 {O[0]["close"]} vs 長歷史 {ro.get(o0, ["", 0, 0, 0, None])[4]} → ⛔ 不寫 ^TWOII.json'
+            O = json.load(open(f'{DD}/^TWOII.json'))
+            nd = lambda d: str(d).replace('-', '/')[:10]   # 🚨 本站那份日期格式**混用**(第一列 2024/10/12、之後 2025-08-21)→ 比對前一律轉斜線
+            ro = {nd(r[0]): r for r in J['twoii']}
+            # ⭐ 接點 = 本站那份**第一個長歷史也有的日期**(實測本站 ^TWOII 第一列是 2024/10/12 **星期六**,長歷史當然沒有那天;
+            #   ⛔ 不拿第一列硬對);接點之前的本站列(那個假日列)丟掉,接點之後照本站
+            oc = next((r for r in O if nd(r['date']) in ro), None)
+            if not oc:
+                ot_note = '櫃買接點對不上:本站那份沒有任何一天在長歷史裡 → ⛔ 不寫 ^TWOII.json'
+            elif abs(ro[nd(oc['date'])][4] / oc['close'] - 1) > 0.005:
+                ot_note = f'櫃買接點對不上:{nd(oc["date"])} 本站 {oc["close"]} vs 長歷史 {ro[nd(oc["date"])][4]} → ⛔ 不寫 ^TWOII.json'
             else:
+                o0 = nd(oc['date']); dropped = sum(1 for r in O if nd(r['date']) < o0)
                 po = [r for r in po if r['date'] < o0]
-                json.dump(po + O, open(f'{OUT}/^TWOII.json', 'w')); ot_days, ot_from = len(po), (po[0]['date'] if po else None)
+                json.dump(po + [r for r in O if nd(r['date']) >= o0], open(f'{OUT}/^TWOII.json', 'w')); ot_days, ot_from = len(po), (po[0]['date'] if po else None)
+                if dropped: ot_note = f'接點 {o0};本站在接點之前的 {dropped} 列(不在長歷史日曆上,多半是假日列)沒接進去'
         else:
             json.dump(po, open(f'{OUT}/^TWOII.json', 'w')); ot_days, ot_from = len(po), (po[0]['date'] if po else None)
     else:

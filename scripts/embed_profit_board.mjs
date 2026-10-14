@@ -139,7 +139,8 @@ for (const wk of Object.keys(WIN)) {
   if (Math.abs(a.fin - b.fin) / b.fin > 0.01) die(`${wk} 小資金 100 萬全攻 ${a.fin} 跟主表 ${b.fin} 差超過 1%`);
 }
 
-const out = { asof: new Date().toISOString().slice(0, 10), to: toArg || null, paths: 17, step: 3, src: 'scripts/leader_probe.mjs', wins, small };
+const out = { asof: new Date().toISOString().slice(0, 10), to: toArg || null, paths: 17, step: 3, src: 'scripts/leader_probe.mjs', wins, small,
+  ...(geneArg ? { geneSrc: JSON.parse(fs.readFileSync(geneArg, 'utf8')).src } : {}) };   // 🧭 V79.2.4 整張重嵌帶 --gene 時 geneSrc 也要寫(test_pickboard ①c)
 const line = '  _PROFIT_BOARD: ' + JSON.stringify(out) + ',';
 const P = 'pro.html', html = fs.readFileSync(P, 'utf8');
 const re = /^  _PROFIT_BOARD: \{.*\},$/m;

@@ -99,10 +99,19 @@ export function trendOk(S, i, mode = true) {
     return S.C[i] > S.ma20r[i] && S.ma20r[i] > S.ma60r[i];
 }
 /** 動能:近 L 個「有交易的」日子的調整後報酬(只用 ≤ i) */
-function momSkip(S, i, L, k) { let j = i, c = 0; while (j > 0 && c < k) { j--; if (S.A[j] > 0) c++; } return c === k ? mom(S, j, L) : NaN; }
+function momSkip(S, i, L, k, mf = mom) { let j = i, c = 0; while (j > 0 && c < k) { j--; if (S.A[j] > 0) c++; } return c === k ? mf(S, j, L) : NaN; }
 export function mom(S, i, L) { if (!(S.A[i] > 0)) return NaN; let j = i, c = 0; while (j > 0 && c < L) { j--; if (S.A[j] > 0) c++; } return c === L ? S.A[i] / S.A[j] - 1 : NaN; }
+/** 🧪 V79.2.4 rankRaw:動能用**原始收盤**(= App screener 的 chg10;除息那幾天會把配息算成下跌)—— 只給「App 跟回測差多少」用 */
+export function momRaw(S, i, L) { if (!(S.C[i] > 0)) return NaN; let j = i, c = 0; while (j > 0 && c < L) { j--; if (S.C[j] > 0) c++; } return c === L ? S.C[i] / S.C[j] - 1 : NaN; }
+/** 🧪 V79.2.4 fipMin:近 L 個交易日裡「上漲天數」的比例(調整價;穩穩漲 vs 幾根長紅撐出來的) */
+export function upShare(S, i, L) { if (!(S.A[i] > 0)) return NaN; let j = i, c = 0, up = 0, later = S.A[i]; while (j > 0 && c < L) { j--; if (!(S.A[j] > 0)) continue; if (later > S.A[j]) up++; later = S.A[j]; c++; } return c === L ? up / L : NaN; }
+/** 🧪 V79.2.4 volMin:近 20 個交易日振幅(最高 − 最低)÷ 收盤(原始價);每檔算一次快取(只對進到池子的算) */
+export function amp20(S, i) {
+    if (!S._amp) { const n = S.C.length, out = new Float64Array(n).fill(NaN), hq = [], lq = []; for (let k = 0; k < n; k++) { if (!(S.C[k] > 0)) continue; hq.push(S.H[k] > 0 ? S.H[k] : S.C[k]); lq.push(S.L[k] > 0 ? S.L[k] : S.C[k]); if (hq.length > 20) { hq.shift(); lq.shift(); } if (hq.length === 20) out[k] = (Math.max(...hq) - Math.min(...lq)) / S.C[k]; } S._amp = out; }
+    return S._amp[i];
+}
 
-export const FILLS = ['open', 'nextclose', 'sameclose'];   // 🚧 V79.2.4 simulate 只認這幾種成交時點,別的要 throw(selftest ㊸)
+export const FILLS = ['open', 'nextclose', 'sameclose', 'open2'];   // 🚧 V79.2.4 simulate 只認這幾種成交時點,別的要 throw(selftest ㊸);open2 = 決策後第 2 天開盤(T+2)
 // ⭐ 預設 = 兩個窗口網格(216 + 81 + 9 組)驗出來的中心點;⛔ 最初設計的「60 日動能 + 吊燈 2 倍 + 每週換」實測是輸的(見 DECISIONS V77.8.5)
 export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: true, trend: true, hyst: 2, pick: 'mom', core: 0, maExit: 0, tp: 0, skip: 0, riskadj: false, fill: 'open', noAtt: 0, noDisp: 0, sellDisp: false,
     dispNow: false, dispOracle: 0, attSell: 0, attWin: 5, rebuy: 'none', rebuyDrop: 0.15, blockDays: 10, shamSell: 0,
@@ -110,7 +119,11 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
     capital: 0, minFee: 20, add: 0, glide: 0, parkMin: 5000, luExit: '', phase: 0, join: '', limitRepl: false, limitRetry: '', pickFrom: 0,
     dip: 0, hold: 5, dipSort: 'drop', dipMin: 0, bearCore: null, bearN: 0, bearTop: 0, pool: '', themeK: 3, themeL: 20, themeSham: false,
     dRank: 0, stop: 0, trail: 0, shamOut: 0, refill: false, accAvoid: false, accSham: 0,
-    rkLu: '', rkLd: '', rkTh: 0, rkSham: 0, parkGate: '', parkGateP: 0 };
+    rkLu: '', rkLd: '', rkTh: 0, rkSham: 0, parkGate: '', parkGateP: 0,
+    // 🧪 V79.2.4 沒測過的做法(⛔ 不設時逐位相同,selftest ㊺~㊿b):momMin = 候選 L 日動能 ≥ x% 才買(null = 不看;0 也算一個門檻)・fipMin = L 日裡上漲天數比例 ≥ p 才買
+    //   ・volMin = 池內 20 日振幅位階(%)≥ 才買 ・rankRaw = 動能用原始收盤(= App 的 chg10)・bearIdx = 空頭守門看哪個指數('' / twii / otc / both / either)
+    //   ・pick 多兩種:'blend'(5/10/20 日名次平均)/ 'rel'(減同產業中位,要 IND_MAP)
+    momMin: null, fipMin: 0, volMin: 0, rankRaw: false, bearIdx: '' };
 // 🟥 V79.1.6 換倉日收盤就漲停 / 跌停的候選(使用者:「如果換倉日漲跌停,隔天還要買嗎?還是就都買 0050」)⛔ 不設時逐位相同(selftest ㊴):
 //   判定(同 luExit / dt_daily_probe.lockUp):換倉日收盤 ≥ 前收 ×(1+漲跌幅−1%)且收在最高 = 漲停;≤ 前收 ×(1−漲跌幅+1%)且收在最低 = 跌停;除權息日不判
 //   rkLu / rkLd = 'park':本來會買的那一檔不買,那一份錢留在 0050 到下一次換倉 ・'next':改買名單上的下一名
@@ -169,6 +182,7 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
 //   'drop' 擋住期間收盤比賣價跌 ≥ rebuyDrop 且仍在前 2N 名就買回、'none' 只是擋住(之後照換倉日)
 //   shamSell  = p:安慰劑 —— 每天每個持股以機率 p 隨機賣掉、一樣擋 blockDays 天、一樣的買回規則
 // V78.0.5 使用者:「領頭羊還能更容易漲嗎?」—— 候選只擋**買進**(續抱名單照舊 = 前 2N 名),濾網一律配 shamKeep 安慰劑:
+//   🧪 V79.2.4:momMin / fipMin / volMin(買進濾網)・rankRaw(原始價動能)・bearIdx(空頭看哪個指數)・pick 'blend' / 'rel'(見 DEF 註解)
 //   indCap = 同產業最多幾檔 ・wRank = 名次加權(陣列,第 k 名的錢 × w[k])・posMin = 一年位置 ≥ ・volUp = 5 日均額 ÷ 20 日均額 ≥
 //   finAcc = 營收年增加速(lib_finaccel,公布日才算知道;沒資料剔除並計數)・fsync = N:外資與投信近 N 天都買超 ・rankUp = 動能名次比 R 天前進步
 //   shamKeep = p:每個候選以機率 p 留下(p 對齊真濾網實測的通過率)
@@ -243,7 +257,12 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     const blocked = new Map();                                // sym → {S, px, i, rel}
     let retryBuy = null, retryNow = false;
     const st = { accCut: 0, accUnk: 0, accKnown: 0, repl: 0, retried: 0, forced: 0, rebought: 0, fTot: 0, fPass: 0, finMiss: 0, posDays: 0, luOpen: 0, luClose: 0, luHold: 0, luLock: 0 };
-    const CAND = P.posMin > 0 || P.volUp > 0 || P.finAcc || P.fsync > 0 || P.rankUp || P.shamKeep > 0 || P.accAvoid;
+    const CAND = P.posMin > 0 || P.volUp > 0 || P.finAcc || P.fsync > 0 || P.rankUp || P.shamKeep > 0 || P.accAvoid || P.momMin != null || P.fipMin > 0 || P.volMin > 0;
+    // 🏪 V79.2.4 bearIdx:空頭守門看哪個指數('' / 'twii' = 加權(預設,逐位相同)・'otc' 櫃買・'both' 兩個都空頭才算・'either' 任一空頭就算;櫃買那天沒資料(標 2)→ 退回加權並計數)
+    if (P.bearIdx && !['twii', 'otc', 'both', 'either'].includes(P.bearIdx)) throw new Error(`bearIdx 只認 twii / otc / both / either,收到 ${JSON.stringify(P.bearIdx)}`);
+    const bearAt = i => { const b = ctx.bear[i]; if (!P.bearIdx || P.bearIdx === 'twii') return b; const o = ctx.bearOtc ? ctx.bearOtc[i] : 2;
+        if (o === 2) { if (st._otcLast !== i) { st._otcLast = i; st.otcMiss = (st.otcMiss || 0) + 1; } return b; }
+        return P.bearIdx === 'otc' ? o : P.bearIdx === 'both' ? ((b && o) ? 1 : 0) : ((b || o) ? 1 : 0); };
     const DIP = P.dip > 0;
     const BC = P.bearCore != null;
     let bearMode = false;                                     // 🐻 昨天收盤是不是空頭(只在 bearCore / bearN / bearTop 設了才用)
@@ -300,13 +319,29 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         let ranked;
         if (P.pick === 'sham') { ranked = ok.map(S => ({ S, k: rand() })).sort((a, b) => a.k - b.k).map(x => x.S); }
         else if (P.pick === 'all') { ranked = ok; }
-        else { ranked = ok.map(S => { let m = P.skip ? momSkip(S, i, P.L, P.skip) : mom(S, i, P.L); if (P.riskadj && S.atr[i] > 0) m = m / (S.atr[i] / S.C[i]); return { S, m }; }).filter(x => Number.isFinite(x.m)).sort((a, b) => b.m - a.m).map(x => x.S); }
+        else {
+            const mf = P.rankRaw ? momRaw : mom;                                   // 🧪 V79.2.4 rankRaw(⛔ 不設 = 調整價,逐位相同)
+            const momOf = S => { let m = P.skip ? momSkip(S, i, P.L, P.skip, mf) : mf(S, i, P.L); if (P.riskadj && S.atr[i] > 0) m = m / (S.atr[i] / S.C[i]); return m; };
+            if (P.pick === 'blend') {                                              // 🧪 V79.2.4 5 / 10 / 20 日動能各排一次名次,取名次總和最小(三個都算得出來才進榜;同分照代號)
+                const rk = new Map();
+                for (const L of [5, 10, 20]) { const arr = ok.map(S => ({ S, m: mf(S, i, L) })).filter(x => Number.isFinite(x.m)).sort((a, b) => b.m - a.m); arr.forEach((x, k) => { const r = rk.get(x.S) || { n: 0, s: 0 }; r.n++; r.s += k; rk.set(x.S, r); }); }
+                ranked = [...rk.entries()].filter(([, r]) => r.n === 3).map(([S, r]) => ({ S, m: -r.s })).sort((a, b) => b.m - a.m || a.S.sym.localeCompare(b.S.sym)).map(x => x.S);
+            } else if (P.pick === 'rel') {                                         // 🧪 V79.2.4 同產業相對動能:減掉同產業(池內 ≥3 檔才算一組,否則減全池)的中位
+                const rows = ok.map(S => ({ S, m: momOf(S), g: (ctx.ind && ctx.ind[S.sym]) || '?' })).filter(x => Number.isFinite(x.m));
+                const byG = new Map(); for (const x of rows) { if (!byG.has(x.g)) byG.set(x.g, []); byG.get(x.g).push(x.m); }
+                const all = median(rows.map(x => x.m)) || 0, medG = new Map([...byG].map(([g, a]) => [g, a.length >= 3 ? median(a) : all]));
+                ranked = rows.map(x => ({ S: x.S, m: x.m - medG.get(x.g) })).sort((a, b) => b.m - a.m).map(x => x.S);
+            } else ranked = ok.map(S => ({ S, m: momOf(S) })).filter(x => Number.isFinite(x.m)).sort((a, b) => b.m - a.m).map(x => x.S);
+        }
         return { ranked, ok };
     };
     // 🧪 V78.0.5 買進候選濾網(⛔ 只擋買進,續抱名單照舊)
-    const candOk = (S, i, prevRank, rankNow) => {
+    const candOk = (S, i, prevRank, rankNow, volRank) => {
         if (P.shamKeep > 0) return rand2() < P.shamKeep;
         if (P.posMin > 0) { const v = pos252(S, i, P.posRaw); if (!(v >= P.posMin)) return false; }
+        if (P.momMin != null) { const m = (P.rankRaw ? momRaw : mom)(S, i, P.L); if (!(m >= P.momMin / 100)) return false; }   // 🧪 V79.2.4 動能地板(%):沒過的不買,錢留 0050
+        if (P.fipMin > 0) { const u = upShare(S, i, P.L); if (!(u >= P.fipMin)) return false; }                               // 🧪 V79.2.4 上漲天數比例
+        if (P.volMin > 0) { const v = volRank ? volRank.get(S.sym) : undefined; if (!(v >= P.volMin)) return false; }           // 🧪 V79.2.4 池內 20 日振幅位階(%)
         if (P.volUp > 0) { const v5 = val5(S, i); if (!(v5 / S.val20[i] >= P.volUp)) return false; }
         if (P.finAcc) { const ser = ctx.fin ? ctx.fin(S.sym) : null; const on = ser ? finOnAt(ser, cal[i]) : null; if (on === null) { st.finMiss++; return false; } if (!on) return false; }
         if (P.fsync > 0) { if (!S.FN) return false; let c = 0, j = i; while (j >= 0 && c < P.fsync) { if (S.C[j] > 0) { if (!(S.FN[j] > 0 && S.TN[j] > 0)) return false; c++; } j--; } if (c < P.fsync) return false; }
@@ -372,14 +407,15 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                     if (sh < 1) continue;
                     const cost = sh * o + feeOf(sh * o); cash -= cost; turnover += sh * o; paid = cost;
                 } else { sh = need / (o * (1 + FEE)); cash -= need; turnover += need; paid = need; }
-                pos.set(S.sym, { sh, cost: o, paid, atr: S.atr[i - 1], hc: o, S, entry: (P.fill === 'open' && !retryNow) ? i : i + 0.5 });
+                pos.set(S.sym, { sh, cost: o, paid, atr: S.atr[i - 1], hc: o, S, entry: ((P.fill === 'open' || P.fill === 'open2') && !retryNow) ? i : i + 0.5 });
                 if (LOG) LOG.push({ s: S.sym, side: 'B', d: cal[i], dd: cal[i - 1], px: o, why: retryNow ? 'retry' : 'buy' });   // 收盤成交那天⛔ 不可再跑當天的吊燈 / 出場檢查
             }
             if (P.park && !(BC && bearMode) && cash > 0.01 * value(ti) && (!CAP || cash >= P.parkMin) && parkOk(ti)) { const units = CAP ? (cash - feeOf(cash)) / etf.tr[ti] : cash * (1 - FEE) / etf.tr[ti]; park += units; turnover += cash; cash = 0; }
             pending = null;
         };
-        bearMode = i > s0 && ctx.bear[i - 1] === 1;
+        bearMode = i > s0 && bearAt(i - 1) === 1;
         if (pending && P.fill === 'open') execPending((S, k) => S.O[k], i - 1);
+        if (pending && P.fill === 'open2') { if ((pending.age || 0) >= 1) execPending((S, k) => S.O[k], i - 1); else pending.age = (pending.age || 0) + 1; }   // 🧪 V79.2.4 T+2 開盤成交(決策日之後第 2 個交易日)
         // 🟥 V78.2.0 luExit:昨天收盤鎖漲停的持股,今天開盤照規則賣(⛔ 不設時整段不跑)
         const parkCash = ti => { if (P.park && !(BC && bearMode) && cash > 0.01 * value(ti) && (!CAP || cash >= P.parkMin) && parkOk(ti)) { const units = CAP ? (cash - feeOf(cash)) / etf.tr[ti] : cash * (1 - FEE) / etf.tr[ti]; park += units; turnover += cash; cash = 0; } };
         let luClose = null;
@@ -444,7 +480,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         if (dailySell.size && i + 1 < n) { pending = pending || { sell: [], buy: [] }; for (const sym of dailySell) if (!pending.sell.includes(sym)) pending.sell.push(sym); dailySell.clear(); }
         // 🔄 V78.6.3 refill:不是換倉日 → 今天收盤就照當下名次補滿空位(換倉日交給 ③)
         const isReb = !DIP && ((i - s0 + P.phase) % P.R === 0 || (P.join === 'now' && i === s0));
-        if (P.refill && !isReb && pending && pending.sell.length && i + 1 < n && !(P.bear && ctx.bear[i])) {
+        if (P.refill && !isReb && pending && pending.sell.length && i + 1 < n && !(P.bear && bearAt(i))) {
             const room = P.N - (pos.size - pending.sell.filter(s => pos.has(s)).length) - pending.buy.length;
             if (room > 0) {
                 const { ranked } = rankAt(i);
@@ -468,7 +504,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             if (P.dipSort === 'sham') list = pool.filter(S => !pos.has(S.sym) && S.C[i] > 0).map(S => ({ S, k: rand2() })).sort((a, b) => a.k - b.k).slice(0, sig.length).map(x => x.S);
             else if (P.dipSort === 'shamDip') list = sig.map(x => ({ S: x.S, k: rand2() })).sort((a, b) => a.k - b.k).map(x => x.S);
             else list = sig.sort((a, b) => a.r - b.r).map(x => x.S);
-            const buyL = (P.bear && ctx.bear[i]) ? [] : list.slice(0, Math.max(0, P.N - pos.size));
+            const buyL = (P.bear && bearAt(i)) ? [] : list.slice(0, Math.max(0, P.N - pos.size));
             if (buyL.length || pending) pending = { sell: pending ? pending.sell : [], buy: buyL };
             else parkCash(i);
         }
@@ -478,13 +514,15 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             const { ranked, ok } = rankAt(i);
             const keepSet = new Set(ranked.slice(0, P.pick === 'all' ? ranked.length : P.N * P.hyst).map(S => S.sym));
             const sellL = [...pos.keys()].filter(s => !keepSet.has(s));
-            const bearNow = P.bear && ctx.bear[i];
+            const bearNow = P.bear && bearAt(i);
             const N = P.pick === 'all' ? Math.max(1, ranked.length) : P.N;
             let cand = ranked;
             if (CAND) {
                 let prevRank = new Map();
                 if (P.rankUp) { const pr = ok.map(S => ({ S, m: mom(S, i - P.R, P.L) })).filter(x => Number.isFinite(x.m)).sort((a, b) => b.m - a.m); pr.forEach((x, k) => prevRank.set(x.S.sym, k)); }
-                cand = ranked.filter((S, k) => { const pass = candOk(S, i, prevRank, k); if (k < P.N * 2) { st.fTot++; if (pass) st.fPass++; } return pass; });
+                let volRank = null;   // 🧪 V79.2.4 volMin:振幅位階是「池內」的橫斷面名次(0~100),決策日當場算
+                if (P.volMin > 0) { const arr = ok.map(S => ({ S, a: amp20(S, i) })).filter(x => Number.isFinite(x.a)).sort((a, b) => a.a - b.a); volRank = new Map(arr.map((x, k) => [x.S.sym, arr.length > 1 ? k / (arr.length - 1) * 100 : 50])); }
+                cand = ranked.filter((S, k) => { const pass = candOk(S, i, prevRank, k, volRank); if (k < P.N * 2) { st.fTot++; if (pass) st.fPass++; } return pass; });
             }
             if (blocked.size) cand = cand.filter(S => !blocked.has(S.sym));
             const room = Math.max(0, N - (pos.size - (P.refill ? new Set([...sellL, ...(pending ? pending.sell : [])].filter(s => pos.has(s))).size : sellL.length)));
@@ -538,7 +576,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 if (!want) { if (i >= b.rel) blocked.delete(sym); continue; }
                 top = top || new Set(rankAt(i).ranked.slice(0, P.N * P.hyst).map(x => x.sym));
                 blocked.delete(sym);
-                if (!top.has(sym) || (P.bear && ctx.bear[i])) continue;
+                if (!top.has(sym) || (P.bear && bearAt(i))) continue;
                 pending = pending || { sell: [], buy: [] };
                 if (!pending.buy.some(x => x.sym === sym) && !pending.sell.includes(sym)) { pending.buy.push(S); st.rebought++; }
             }
@@ -600,12 +638,22 @@ export function yearly(eq, trSlice, dates) {
 }
 
 export function loadCtx(DATA, DIV) {
-    const tw = loadPx(DATA, '^TWII'); if (!tw) throw new Error('DATA_DIR 沒有 ^TWII.json');
+    let tw = loadPx(DATA, '^TWII'); if (!tw) throw new Error('DATA_DIR 沒有 ^TWII.json');
+    // 📅 V79.2.4 END=YYYY-MM-DD:日曆截到這一天(含)—— 給「同一張看板要同一個截止日」用(🧬 那幾列是別的引擎跑到 09-24,👑 重算就截到同一天);不設 = 跑到最後一天
+    if (process.env.END) { const e = process.env.END.replace(/\//g, '-'); tw = tw.filter(x => x.d <= e); if (tw.length < 300) throw new Error(`END=${e} 之後日曆只剩 ${tw.length} 天`); }
     const cal = tw.map(x => x.d);
     const idx = new Map(cal.map((d, i) => [d, i]));
     // 大盤嚴格空頭(同 portfolio_backtest bear60):收盤 < 60 日線 且 20 日線 < 60 日線
     const bear = new Uint8Array(cal.length);
     for (let i = 59; i < tw.length; i++) { let a = 0, b = 0; for (let j = i - 59; j <= i; j++) { b += tw[j].c; if (j > i - 20) a += tw[j].c; } a /= 20; b /= 60; bear[i] = tw[i].c < b && a < b ? 1 : 0; }
+    // 🏪 V79.2.4 bearIdx:櫃買指數的嚴格空頭(同一條定義;^TWOII.json 沒有的日子標 2 = 不知道 → simulate 退回加權)
+    let bearOtc = null, otcDays = 0;
+    const ot = loadPx(DATA, '^TWOII');
+    if (ot && ot.length >= 60) {
+        bearOtc = new Uint8Array(cal.length).fill(2);
+        const pts = ot.filter(x => idx.has(x.d) && x.c > 0);
+        for (let k = 59; k < pts.length; k++) { let a = 0, b = 0; for (let j = k - 59; j <= k; j++) { b += pts[j].c; if (j > k - 20) a += pts[j].c; } a /= 20; b /= 60; bearOtc[idx.get(pts[k].d)] = pts[k].c < b && a < b ? 1 : 0; otcDays++; }
+    }
     // 0050 含息
     const b50p = path.join(DATA, '_bench0050.json');
     const bars = fs.existsSync(b50p) ? JSON.parse(fs.readFileSync(b50p, 'utf8')).map(r => ({ d: String(r.date).replace(/\//g, '-').slice(0, 10), c: +r.close })).filter(x => x.c > 0) : loadPx(DATA, '0050');
@@ -658,7 +706,7 @@ export function loadCtx(DATA, DIV) {
             accHi = (sym, day) => accrualHiAt(ACC, cut, sym, day);
         }
     }
-    return { cal, stocks, etf: { tr }, bear, att, disp, dper, ind, fin, accHi, themes, bySym, meta: { themes: themes ? themes.length : 0,  stocks: stocks.length, skipped, divSkip, d50: d50.length, att: att ? att.n : 0, disp: disp ? disp.n : 0, dper: dperN, ind: ind ? Object.keys(ind).length : 0, fin: !!fin, flows: !!process.env.FLOWS } };
+    return { cal, stocks, etf: { tr }, bear, bearOtc, att, disp, dper, ind, fin, accHi, themes, bySym, meta: { themes: themes ? themes.length : 0,  stocks: stocks.length, skipped, divSkip, otc: otcDays, d50: d50.length, att: att ? att.n : 0, disp: disp ? disp.n : 0, dper: dperN, ind: ind ? Object.keys(ind).length : 0, fin: !!fin, flows: !!process.env.FLOWS } };
 }
 
 // ⚠️ 起點間距預設 3(⛔ 不是 5):換倉每 R 天一次,間距 5 碰上 R=10 只會有 2 種換倉相位,17 條其實只有 2 條獨立路徑(實測當場抓到)。
@@ -703,6 +751,7 @@ function runSet(ctx, name, cfg, startDate, paths = 17) {
         lu: cfg.luExit ? { lock: med(r => r.st.luLock), hold: med(r => r.st.luHold), open: med(r => r.st.luOpen), close: med(r => r.st.luClose) } : null,
         rk: (cfg.rkLu || cfg.rkLd || cfg.rkSham) ? { seen: med(r => r.st.rkSeen || 0), park: med(r => r.st.rkPark || 0), next: med(r => r.st.rkNext || 0), sham: med(r => r.st.rkSham || 0) } : null,
         gate: cfg.parkGate ? r2(res.reduce((a, r) => a + (r.st.gOpen || 0), 0) / Math.max(1, res.reduce((a, r) => a + (r.st.gTot || 0), 0)) * 100) : null,
+        otcMiss: (cfg.bearIdx && cfg.bearIdx !== 'twii') ? med(r => r.st.otcMiss || 0) : null,   // 🏪 櫃買沒資料、退回加權的日子(中位)
         trades: med(r => r.trades), win: med(r => r.win * 100), avg: med(r => r.avg * 100), turnYr: med(r => r.turnover / ((r.eq.length - 1) / 244)),
         years: Object.fromEntries(years.map(y => [y, { s: med(r => r.y[y]?.s ?? NaN), c: med(r => r.y[y]?.c ?? NaN) }])) };
 }
@@ -1076,6 +1125,59 @@ function selftest() {
         const src = fs.readFileSync(path.join(here, f), 'utf8').replace(/\/\/.*$/gm, '');
         return { f, own: /S\.C\[i\] > S\.ma20\[i\]/.test(src), uses: /\btrendOk\(/.test(src) }; });
     t(copies.every(x => !x.own && x.uses), `㊹ 三支探針都走 trendOk、沒有第二份(${copies.map(x => `${x.f.replace('_probe.mjs', '')}:${x.own ? '有自己的' : x.uses ? 'ok' : '沒接'}`).join(' ')})`);
+    // ㊺ V79.2.4 momMin:兩檔都緩漲但 20 日動能只有 +2.6% / +1.8% → momMin 5 不買(錢留現金,淨值一直 1)、momMin 0 照買、不設(null)逐位相同
+    const ctxM = { cal, stocks: [mk('7401', i => 100 + i * 0.15), mk('7402', i => 100 + i * 0.1)], etf: flat, bear: new Uint8Array(n) };
+    const cfgM2 = { U: 2, N: 1, R: 1000, L: 20, chand: 0, park: false, trend: false };
+    const m0Z = simulate(ctxM, 115, cfgM2), mN = simulate(ctxM, 115, { ...cfgM2, momMin: null }), m5 = simulate(ctxM, 115, { ...cfgM2, momMin: 5 }), mZ = simulate(ctxM, 115, { ...cfgM2, momMin: 0 });
+    t(m0Z.eq.every((v, k) => v === mN.eq[k]) && m5.eq.every(v => v === 1) && mZ.eq.every((v, k) => v === m0Z.eq[k]) && m0Z.eq.at(-1) > 1.05,
+        `㊺ momMin:動能 2.6% 碰到門檻 5% → 不買(淨值 1)・門檻 0 照買・不設逐位相同(${r2(m0Z.eq.at(-1))})`);
+    // ㊻ fipMin:J 用每 5 天一根 +8% 長紅撐出 +26%(其餘天 −0.3%,上漲比例 4/20 = 0.2)、K 每天 +0.8% 穩穩漲(上漲比例 1.0、動能 +17%)
+    //   預設挑動能最高的 J;fipMin 0.6 → J 被擋改買 K;不設逐位相同
+    const pj = [100]; for (let i = 1; i < n; i++) pj.push(pj[i - 1] * (i % 5 === 0 ? 1.08 : 0.997));
+    const ctxF = { cal, stocks: [mk('7411', i => pj[i]), mk('7412', i => 100 * Math.pow(1.008, i))], etf: flat, bear: new Uint8Array(n) };
+    const buyOf = (ctxX, extra) => { const lgZ = []; const r = simulate(ctxX, 115, { ...cfgM2, ...extra, log: lgZ }); return { r, s: (lgZ.find(x => x.side === 'B') || {}).s || null, d: (lgZ.find(x => x.side === 'B') || {}).d || null, px: (lgZ.find(x => x.side === 'B') || {}).px || null }; };
+    const f0 = buyOf(ctxF, {}), fU = buyOf(ctxF, { fipMin: 0 }), f6 = buyOf(ctxF, { fipMin: 0.6 });
+    const uJ = upShare(ctxF.stocks[0], 115, 20), uK = upShare(ctxF.stocks[1], 115, 20);
+    t(f0.s === '7411' && fU.r.eq.every((v, k) => v === f0.r.eq[k]) && f6.s === '7412' && Math.abs(uJ - 0.2) < 1e-9 && uK === 1,
+        `㊻ fipMin:預設買長紅撐出來的 J(上漲比例 ${r2(uJ)})、fipMin 0.6 改買穩穩漲的 K(${uK})、不設逐位相同`);
+    // ㊼ volMin:V1 / V2 收盤路徑一模一樣,V2 的日內高低點拉到 ±6%(振幅位階 100)、V1 ±0.5%(位階 0)→ volMin 50 只買得到 V2;不設逐位相同
+    const mkHL = (sym, w) => prepStock(sym, cal.map((d, i) => { const c = 100 + i * 0.3; return { d, o: c, h: c * (1 + w), l: c * (1 - w), c, v: 1e7 }; }), cal, []);
+    const ctxV = { cal, stocks: [mkHL('7421', 0.005), mkHL('7422', 0.06)], etf: flat, bear: new Uint8Array(n) };
+    const v0 = buyOf(ctxV, {}), vU = buyOf(ctxV, { volMin: 0 }), v50 = buyOf(ctxV, { volMin: 50 });
+    t(v0.s === '7421' && vU.r.eq.every((v, k) => v === v0.r.eq[k]) && v50.s === '7422' && amp20(ctxV.stocks[1], 115) > amp20(ctxV.stocks[0], 115) * 2,
+        `㊼ volMin:同樣的收盤、振幅大的那檔位階 100 → volMin 50 只買它(振幅 ${r2(amp20(ctxV.stocks[1], 115) * 100)}% vs ${r2(amp20(ctxV.stocks[0], 115) * 100)}%)、不設逐位相同`);
+    // ㊽ pick 'blend' / 'rel':P 先跌 15 天再連噴 5 天(10 日動能最高、20 日最差)・Q +0.7%/天 ・Z +0.5% ・W +0.4% ・X +0.1% ・Y 不動
+    //   預設(10 日)買 P;blend(5/10/20 名次總和)買 Q;rel(P/Q/Z 同一產業、W/X/Y 另一產業)→ W 減掉弱產業中位後最強 → 買 W;沒給產業表的 rel 要 throw(main 的 need 守門)
+    const Pf = i => i <= 110 ? 100 * Math.pow(0.99, i) : 100 * Math.pow(0.99, 110) * Math.pow(1.03, i - 110);
+    const stB = [mk('7431', Pf), mk('7432', i => 100 * Math.pow(1.007, i)), mk('7433', i => 100 * Math.pow(1.005, i)), mk('7434', i => 100 * Math.pow(1.004, i)), mk('7435', i => 100 * Math.pow(1.001, i)), mk('7436', () => 100)];
+    const indB = { 7431: 'A', 7432: 'A', 7433: 'A', 7434: 'B', 7435: 'B', 7436: 'B' };
+    const ctxB = { cal, stocks: stB, etf: flat, bear: new Uint8Array(n), ind: indB };
+    const cfgB2 = { U: 6, N: 1, R: 1000, L: 10, chand: 0, park: false, trend: false };
+    const b0Z = buyOf(ctxB, cfgB2), bB = buyOf(ctxB, { ...cfgB2, pick: 'blend' }), bRZ = buyOf(ctxB, { ...cfgB2, pick: 'rel' });
+    t(b0Z.s === '7431' && bB.s === '7432' && bRZ.s === '7434', `㊽ pick:預設(10 日)買 P=${b0Z.s}・blend 買三個天期都穩的 Q=${bB.s}・rel 買弱產業裡相對最強的 W=${bRZ.s}`);
+    // ㊾ rankRaw:D 第 110 天除息 10%(原始收盤掉 9.1%,F = 1.10)、E 緩漲;調整價動能 D(+8.3%)> E(+6.2%)→ 預設買 D;原始價動能 D 變負 → rankRaw 買 E;
+    //   ⭐ 決定性對照:D 沒有股利(同一條原始價、沒有那一跳)→ rankRaw 跟預設逐位相同
+    const rowsD = cal.map((d, i) => { const c = 100 * Math.pow(1.004, i) * (i >= 110 ? 1 / 1.10 : 1); return { d, o: c, h: c * 1.005, l: c * 0.995, c, v: 1e7 }; });
+    const Dd = prepStock('7441', rowsD, cal, [[cal[110], 0, 0, rowsD[109].c, rowsD[109].c / 1.10]]);
+    const Ee = mk('7442', i => 100 * Math.pow(1.003, i)), DnZ = mk('7443', i => 100 * Math.pow(1.004, i));
+    const ctxD = { cal, stocks: [Dd, Ee], etf: flat, bear: new Uint8Array(n) }, ctxDn = { cal, stocks: [DnZ, Ee], etf: flat, bear: new Uint8Array(n) };
+    const d0 = buyOf(ctxD, cfgM2), dR = buyOf(ctxD, { ...cfgM2, rankRaw: true }), dn0 = buyOf(ctxDn, cfgM2), dnR = buyOf(ctxDn, { ...cfgM2, rankRaw: true });
+    t(Math.abs(Dd.F[110] - 1.10) < 1e-9 && d0.s === '7441' && dR.s === '7442' && momRaw(Dd, 115, 20) < 0 && mom(Dd, 115, 20) > 0.08
+        && dn0.s === '7443' && dnR.s === '7443' && dn0.r.eq.every((v, k) => v === dnR.r.eq[k]),
+        `㊾ rankRaw:除息那檔原始價動能 ${r2(momRaw(Dd, 115, 20) * 100)}%(調整價 ${r2(mom(Dd, 115, 20) * 100)}%)→ 預設買 D、rankRaw 改買 E;沒股利時逐位相同`);
+    // ㊿ fill:'open2':決策日 115 → open 在 116 開盤成交、open2 在 117 開盤;成交價 = 那天的開盤;entry 記成交那天
+    const o1 = buyOf(ctxM, {}), o2 = buyOf(ctxM, { fill: 'open2' });
+    t(o1.d === cal[116] && o2.d === cal[117] && o1.px === ctxM.stocks[0].O[116] && o2.px === ctxM.stocks[0].O[117] && o2.r.eq.at(-1) > 1.05 && o2.r.eq[1] === 1 && o1.r.eq[1] !== 1,
+        `㊿ fill open2:open 成交在 ${o1.d}、open2 在 ${o2.d}(晚一個交易日)、價 = 那天開盤`);
+    // ㊿b bearIdx:加權全不空、櫃買全空 → 'otc' / 'either' 不買(淨值 1)、'both' == 預設、'twii' == 預設;櫃買標 2(不知道)→ 退回加權 == 預設;亂寫要 throw
+    const otcAll = new Uint8Array(n).fill(1), otcUnk = new Uint8Array(n).fill(2);
+    const ctxO = { ...ctxM, bear: new Uint8Array(n), bearOtc: otcAll }, cfgO = { ...cfgM2, bear: true };
+    const oB = simulate(ctxO, 115, cfgO), oT = simulate(ctxO, 115, { ...cfgO, bearIdx: 'twii' }), oO = simulate(ctxO, 115, { ...cfgO, bearIdx: 'otc' }), oE = simulate(ctxO, 115, { ...cfgO, bearIdx: 'either' }), oBo = simulate(ctxO, 115, { ...cfgO, bearIdx: 'both' });
+    const oU = simulate({ ...ctxO, bearOtc: otcUnk }, 115, { ...cfgO, bearIdx: 'otc' });
+    let threwB = ''; try { simulate(ctxO, 115, { ...cfgO, bearIdx: 'xyz' }); } catch (e) { threwB = String(e.message); }
+    t(oB.eq.at(-1) > 1.05 && oT.eq.every((v, k) => v === oB.eq[k]) && oO.eq.every(v => v === 1) && oE.eq.every(v => v === 1) && oBo.eq.every((v, k) => v === oB.eq[k])
+        && oU.eq.every((v, k) => v === oB.eq[k]) && oU.st.otcMiss > 0 && /bearIdx/.test(threwB),
+        `㊿b bearIdx:otc / either 看櫃買空頭不買、both / twii == 預設、櫃買沒資料退回加權(計 ${oU.st.otcMiss} 天)、亂寫 throw`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }
@@ -1086,7 +1188,7 @@ function main() {
     const t0 = Date.now();
     const ctx = loadCtx(DATA, DIV);
     console.log(`📅 事件:注意 ${ctx.meta.att} 筆・處置 ${ctx.meta.disp} 筆`);
-    console.log(`📂 ${ctx.meta.stocks} 檔・日曆 ${ctx.cal[0]}~${ctx.cal.at(-1)}・0050 股利 ${ctx.meta.d50} 筆・除權息對不上排除 ${ctx.meta.divSkip}・${((Date.now() - t0) / 1000).toFixed(0)}s`);
+    console.log(`📂 ${ctx.meta.stocks} 檔・日曆 ${ctx.cal[0]}~${ctx.cal.at(-1)}・0050 股利 ${ctx.meta.d50} 筆・除權息對不上排除 ${ctx.meta.divSkip}・櫃買 ${ctx.meta.otc} 天・${((Date.now() - t0) / 1000).toFixed(0)}s`);
     if (ctx.meta.stocks < 1000) { console.error('🚨 檔數 < 1000,拒跑'); process.exit(1); }
     if (ctx.meta.d50 < 10) { console.error('🚨 0050 股利 < 10 筆 → 對照組不含息會讓策略看起來比較好,拒跑'); process.exit(1); }
     const GRID = process.env.GRID ? JSON.parse(process.env.GRID) : null;   // {L:[..],chand:[..],N:[..],R:[..],U:[..]}
@@ -1104,6 +1206,8 @@ function main() {
     const need = (k, has, what) => { if (SETS.some(([, c]) => c[k]) && !has) { console.error(`🚨 有變體用到 ${k} 但沒給 ${what},拒跑`); process.exit(1); } };
     need('dispNow', ctx.dper, 'DISP_PERIODS'); need('dispOracle', ctx.dper, 'DISP_PERIODS'); need('attSell', ctx.att, 'ATT_EVENTS');
     need('indCap', ctx.ind, 'IND_MAP'); need('finAcc', ctx.fin, 'FIN_DEEP'); need('accAvoid', ctx.accHi, 'FIN_DEEP + IND_MAP'); need('fsync', ctx.meta.flows, 'FLOWS=1');
+    if (SETS.some(([, c]) => c.bearIdx && c.bearIdx !== 'twii') && !ctx.bearOtc) { console.error('🚨 有變體用到 bearIdx 但 DATA_DIR 沒有 ^TWOII.json(≥60 根),拒跑'); process.exit(1); }
+    if (SETS.some(([, c]) => c.pick === 'rel') && !ctx.ind) { console.error('🚨 有變體用到 pick:rel 但沒給 IND_MAP,拒跑'); process.exit(1); }
     // 📅 V78.0.8 YEARLY_OUT=檔:只產「逐年成績單」那幾列(👑 四種做法 × 2011~今年 × 5 起點 + 一路滾 17 條)→ embed_yearly_bt.mjs --merge
     if (process.env.YEARLY_OUT) {
         const YS = JSON.parse(process.env.YEARLY_SETS || 'null') || [
@@ -1178,6 +1282,7 @@ function main() {
         if (R.lu) console.log(`    🟥 持股鎖漲停 ${R.lu.lock} 次(中位):一字鎖抱 ${R.lu.hold}・開盤賣 ${R.lu.open}・收盤賣 ${R.lu.close}`);
         if (R.rk) console.log(`    🟥 換倉日漲跌停(中位):本來會買 ${R.rk.seen} 檔 ・不買放 0050 ${R.rk.park} ・換下一名 ${R.rk.next} ・安慰劑少買 ${R.rk.sham}`);
         if (R.gate != null) console.log(`    🅿️ 0050 閘門開著的日子 ${R.gate}%`);
+        if (R.otcMiss != null) console.log(`    🏪 櫃買沒資料退回加權的日子 ${R.otcMiss}(中位)`);
         console.log('    逐年 ' + Object.entries(R.years).map(([y, v]) => `${y} ${r2(v.s)}/${r2(v.c)}`).join(' ・'));
     }
     if (out) fs.writeFileSync(out, JSON.stringify(res));

@@ -51,7 +51,10 @@ const run = async (strategy) => {
     o.rows = [...box().querySelectorAll('#pkTbl tbody tr[data-pk]')].map(tr => ({ k: tr.dataset.pk, lose: tr.classList.contains('pk-lose'), t: tr.innerText }));
     o.hdr = [...box().querySelectorAll('#pkTbl th.ybsort')].map(th => (th.getAttribute('onclick').match(/'(\w+)'/) || [])[1]);
     // 決定性對照:改看板一格 → 一句答案跟著變
-    const Bd = PRO._PROFIT_BOARD, top = o.rows.find(r => r.k !== '0050');
+    // V79.2.4 一句答案的「最強」= 兩段都贏 0050 裡先看 16 年、同分再看近 4 年(= renderPick / index _STRAT_RANK 同一套)→ 注入要注在**它**身上,⛔ 不是表格第一列(表格預設照近 4 年排,修尺後第一名是 🌇)
+    const Bd = PRO._PROFIT_BOARD, _e50a = Bd.wins.ai.rows.find(r => r.k === '0050'), _e50l = Bd.wins.long.rows.find(r => r.k === '0050');
+    const _cands = Bd.wins.ai.rows.filter(r => r.grp !== 'etf').map(r => ({ k: r.k, a: r, l: Bd.wins.long.rows.find(x => x.k === r.k) })).filter(x => x.l && x.a.fin > _e50a.fin && x.l.fin > _e50l.fin);
+    const top = _cands.sort((a, b) => (b.l.fin - a.l.fin) || (b.a.fin - a.a.fin))[0] || o.rows.find(r => r.k !== '0050');
     o.cagrA = (document.querySelector('[data-pkcagr="a"]') || {}).innerText || ''; o.cagrL = (document.querySelector('[data-pkcagr="l"]') || {}).innerText || '';
     const row = Bd.wins.ai.rows.find(r => r.k === top.k), keep = row.fin; row.fin = 98765432; PRO.renderPick();
     o.inj = (document.getElementById('pkHero') || {}).innerText.includes('9,877 萬');
@@ -86,7 +89,7 @@ const aiRows = B.wins.ai.rows, lgRows = B.wins.long.rows, f = (rows, k) => rows.
 // ② 一句答案
 const e50a = f(aiRows, '0050'), e50l = f(lgRows, '0050');
 // 🔬 V79.1.8 實測總表永遠有 👑 → 🧬 模式的最強也從全部做法挑
-const geneBest = ['lead', 'leadcash', 'glide', 'stable', 'close', 'park', 'hot', 'don'].map(k => ({ k, a: f(aiRows, k), l: f(lgRows, k) })).filter(x => x.a.fin > e50a.fin && x.l.fin > e50l.fin).sort((a, b) => b.a.fin - a.a.fin)[0];
+const geneBest = ['lead', 'leadcash', 'glide', 'stable', 'close', 'park', 'hot', 'don'].map(k => ({ k, a: f(aiRows, k), l: f(lgRows, k) })).filter(x => x.a.fin > e50a.fin && x.l.fin > e50l.fin).sort((a, b) => (b.l.fin - a.l.fin) || (b.a.fin - a.a.fin))[0];   // V79.2.4 先看 16 年、同分再看近 4 年(= index _STRAT_RANK 判準)
 ok('② 🧬 模式:一句答案的金額 == 看板(近 4 年 / 16 年 / 0050 含息)', geneBest && G.hero.includes(wan(geneBest.a.fin)) && G.hero.includes(wan(geneBest.l.fin)) && G.hero.includes(wan(e50a.fin)) && G.hero.includes(wan(e50l.fin)), G.hero);
 ok('②b 一句答案寫:贏幾個起點 + 代價(中途最多賠)', /贏 \d+ \/ \d+ 個/.test(G.hero) && /代價/.test(G.hero) && /中途最多賠/.test(G.hero), G.hero);
 ok('②c 最強不是你現在用的 → 要寫「你現在用的是 🔥 高檔飆股」+ 它的金額與結論', geneBest.k === 'hot' || (/你現在用的是\s*🔥 高檔飆股/.test(G.hero) && G.hero.includes(wan(f(aiRows, 'hot').fin))), G.hero);

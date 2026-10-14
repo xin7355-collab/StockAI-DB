@@ -43,6 +43,7 @@ const R = await page.evaluate(async () => {
   const box = () => document.getElementById('profitBody'), o = {};
   o.txt = box().innerText;
   o.firstRow = (box().querySelector('#pbTbl tbody tr td') || {}).innerText || '';
+  o.finCol = [...box().querySelectorAll('#pbTbl tbody tr')].map(tr => ((tr.children[1] || {}).innerText || '').replace(/[^\d]/g, '')).filter(x => x).map(Number);
   o.hdr = [...box().querySelectorAll('#pbTbl th.ybsort')].map(th => (th.getAttribute('onclick').match(/'(\w+)'/) || [])[1]);
   // 決定性對照:改常數
   const L = PRO._PROFIT_BOARD.wins.ai.rows.find(r => r.k === 'lead'), keep = L.fin; L.fin = 12345678; PRO.renderProfit();
@@ -71,7 +72,7 @@ ok('②b ⭐ 決定性對照:改 `_PROFIT_BOARD` 一格,畫面跟著變', R.inj)
 ok('②c 表頭每一欄都可排序(做法 / 變成 / 最差 / 中途最多賠 / 贏 0050)', JSON.stringify(R.hdr) === JSON.stringify(['n', 'fin', 'worst', 'mdd', 'beat']), JSON.stringify(R.hdr));
 ok('②d 排序再點反向、有 ▼/▲、第一列換人', R.sort.f1 !== R.sort.f2 && /[▼▲]/.test(R.sort.a1) && /[▼▲]/.test(R.sort.a2) && R.sort.a1 !== R.sort.a2, JSON.stringify(R.sort));
 ok('②d2 🐛 點過表頭之後 `_pbSort` 仍是函式(⛔ 排序狀態不可跟股票清單排序同名)', R.pbFn);
-ok('②e 預設照「100 萬變成」由大到小,第一列是 👑', /👑/.test(R.firstRow), R.firstRow);
+ok('②e 預設照「100 萬變成」由大到小(第一列 = 變成最多的那一套,⛔ 不釘是哪一套 —— V79.2.4 修尺後近 4 年第一名換人)', R.finCol.length >= 10 && R.finCol.every((v, i) => i === 0 || v <= R.finCol[i - 1]), JSON.stringify(R.finCol.slice(0, 6)) + ' ' + R.firstRow);
 ok('②f 上市太晚的 ETF 排最後、寫「上市晚於」', R.lateLast && /上市晚於/.test(R.long) && R.longRows >= 10);
 ok('③ ⛔「中途最多賠」那一欄在,一句話結論寫代價', /中途\s*最多賠/.test(R.txt) && /代價/.test(R.txt) && /運氣最差的那個起點/.test(R.txt));
 ok('③b 科技 / 半導體 ETF 要寫「事後才知道的產業押注」', /事後才知道/.test(R.txt));
