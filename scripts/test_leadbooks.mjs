@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * 📚 V79.2.5 👑 領頭羊「兩本帳、換倉日錯開 4 天」守門
+ * 📚 V79.2.5 👑 領頭羊「兩本帳、換倉日錯開 4 天」守門 —— 📚 V79.2.6 改成選項、預設關,兩本叫甲帳・乙帳
+ *   ⓪ 預設一本帳(四份實作:index `_leadBooks` / lib_leader / pro / worker + Telegram 同步);開關在 🔓 進階功能(`_DECK_SECTIONS` books,只在 👑 + 解鎖時列)
+ *   ⑧ 甲帳・乙帳區別:`_LEAD_BOOK_ID` 兩個顏色不同、⛔ 不用紅綠琥珀;決策台頂端一行各自換倉日;每檔標 甲 / 乙 / 甲乙
  *   ① 錨點 / 本數 四份實作一字不差:index `_LEADER_EDGE.anchor2/books` = lib_leader `LEADER_ANCHOR2/LEADER_BOOKS` = pro `_LEAD.anchor2/books` = worker `LEAD_ANCHOR2`;
  *      而且 anchor2 = 錨點起第 5 個交易日(錯開 4 天;用 gh-pages / 本地 ^TWII 日曆算)
  *   ② App `_leadClk`:兩本 ⛔ 不同一天換倉;第 1 本換倉日 book 'A'、第 2 本 'B';一本帳(leadBooks 1)== `_leaderClock` 逐欄相同(決定性對照)
@@ -9,8 +11,8 @@
  *   ④ `_leadSlot`:兩本帳每檔 = 總資金 ÷ 10;一本帳 ÷ 5
  *   ⑤ App `_leadActs` == worker `leadActs`(同一組輸入,sell / buy / half / waitOther 一模一樣)
  *   ⑥ 決策台「今天要做的事」兩本帳寫出是哪一本 + 一半 / 再買一份;一本帳一個字都不多(⛔ 不可出現「本帳」)
- *   ⑦ `_STRAT_CHANGES` 有這一筆 + 「換回舊的」= setLeadBooks(1);Telegram 同步有送 leadBooks、worker 有收
- * 注入:INJECT=nohalf(兩本都有也全賣)/ sameday(第 2 本錨點 = 第 1 本)—— 都要紅
+ *   ⑦ 預設沒換 → `_STRAT_CHANGES` ⛔ 不可有兩本帳那一筆;Telegram 同步有送 leadBooks、worker 有收(兩邊預設都是 1)
+ * 注入:INJECT=nohalf(兩本都有也全賣)/ sameday(第 2 本錨點 = 第 1 本)/ default2(預設改回兩本)/ samecolor(兩本同色)—— 都要紅
  */
 import fs from 'fs';
 import path from 'path';
@@ -20,7 +22,9 @@ const ORIG = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 let SRC = ORIG;
 const INJ = process.env.INJECT || '';
 if (INJ === 'nohalf') SRC = SRC.replace('const half = sell.filter(inO);', 'const half = [];');
-if (INJ === 'sameday') SRC = SRC.replace("books: 2, anchor2: '2026-10-02',", "books: 2, anchor2: '2026-09-24',");
+if (INJ === 'sameday') SRC = SRC.replace("books: 1, anchor2: '2026-10-02',", "books: 1, anchor2: '2026-09-24',");
+if (INJ === 'default2') SRC = SRC.replace("return (s.leadBooks === 2 && this._LEADER_EDGE.anchor2) ? 2 : 1;", "return s.leadBooks === 1 ? 1 : 2;");
+if (INJ === 'samecolor') SRC = SRC.replace("cls: 'bg-violet-900/40 text-violet-200'", "cls: 'bg-cyan-900/40 text-cyan-200'");
 if (INJ && SRC === ORIG) { console.log('❌ 注入沒有注進去'); process.exit(1); }
 const TMP = path.join(ROOT, '.test_leadbooks.html');
 fs.writeFileSync(TMP, SRC);
@@ -52,6 +56,18 @@ await page.waitForFunction(() => typeof app !== 'undefined' && typeof app._leadC
 
 const R = await page.evaluate(() => {
     const o = {};
+    // ⓪ 預設(沒設過)= 一本帳;開關在 🔓 進階功能
+    app.settings = app.settings || {}; delete app.settings.leadBooks;
+    o.def = app._leadBooks();
+    app._strat = () => 'lead'; app.settings.stratUnlock = true;
+    o.advLead = app._advBoxHtml('');
+    o.showDef = app._deckShow().books;
+    app.setLeadBooks = function (n) { this.settings.leadBooks = n === 1 ? 1 : 2; };
+    app.toggleDeckShow('books', true); o.afterOn = app.settings.leadBooks; o.showOn = app._deckShow().books; o.deckShowStored = !!(app.settings.deckShow && 'books' in app.settings.deckShow);
+    app.toggleDeckShow('books', false); o.afterOff = app.settings.leadBooks;
+    app._strat = () => 'gene';
+    o.advGene = app._advBoxHtml('');
+    o.ID = app._LEAD_BOOK_ID;
     const days = ['2026-09-24', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09',
         '2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-19', '2026-10-20', '2026-10-21'];
     const tw = days.map(d => ({ date: d }));
@@ -84,14 +100,20 @@ const R = await page.evaluate(() => {
     app._deckQuoteOf = () => null;
     const txt = h => { const d = document.createElement('div'); d.innerHTML = h; return d.innerText || d.textContent; };
     app.settings.leadBooks = 2;
-    app._leadCtx = { snap: { kRank: new Map([['1001', 1], ['1011', 11], ['1020', 9]]), oRank: new Map([['1020', 9], ['1004', 4]]) } };
     const clkB = app._leadClk(tw, '2026-10-02');
+    app._leadCtx = { clk: clkB, snap: { kRank: new Map([['1001', 1], ['1011', 11], ['1020', 9]]), oRank: new Map([['1020', 9], ['1004', 4]]), oDate: '2026-09-24' } };
+    o.bookOf = { a1001: app._leadBookOf('1001'), a1020: app._leadBookOf('1020'), a1004: app._leadBookOf('1004'), a9999: app._leadBookOf('9999') };
+    o.strip2 = app._leadBooksStrip(clkB, '2026-10-02');
     const held = ['1001', '1011', '1020', '1004'].map(s => ({ sym: s, mine: true }));
-    o.todo2 = txt(app._deckTodoLead({ clk: clkB, bearOn: false, L: { ...L, date: '2026-10-02' }, held, H: 10, inv: held.map(h => h.sym) }));
+    o.todo2h = app._deckTodoLead({ clk: clkB, bearOn: false, L: { ...L, date: '2026-10-02' }, held, H: 10, inv: held.map(h => h.sym) });
+    o.todo2 = txt(o.todo2h);
     app.settings.leadBooks = 1; app._leadCtx = { snap: {} };
     const clkA = app._leadClk(tw, '2026-10-08');
     app._tpeMinutes = () => ({ ymd: '2026-10-08', wd: 'Thu', min: 18 * 60 });
-    o.todo1 = txt(app._deckTodoLead({ clk: clkA, bearOn: false, L: { ...L, date: '2026-10-08' }, held, H: 10, inv: held.map(h => h.sym) }));
+    o.todo1h = app._deckTodoLead({ clk: clkA, bearOn: false, L: { ...L, date: '2026-10-08' }, held, H: 10, inv: held.map(h => h.sym) });
+    o.todo1 = txt(o.todo1h);
+    o.strip1 = app._leadBooksStrip(clkA, '2026-10-08');
+    o.chip1 = app._leadBookChip('AB');
     o.chg = (app._STRAT_CHANGES || []).find(c => c.backBooks);
     return o;
 });
@@ -114,10 +136,21 @@ ok('③ 另一本有、這本沒有、在買進名單(1004)→ 這本照樣買�
 ok('③ 決定性對照:這本名單讀不到 → 跟一本帳逐欄相同', R.nullSame);
 ok('③ 一本帳:手上掉出的全部賣(1011 / 1012 / 1020)、沒有 half', ['1011', '1012', '1020'].every(s => R.a1.sell.includes(s)) && !(R.a1.half || []).length, JSON.stringify(R.a1));
 ok('④ 每檔金額:兩本帳 = 總資金 ÷ 10、一本帳 ÷ 5', R.slot2 === 100000 && R.slot1 === 200000, `${R.slot2} / ${R.slot1}`);
-ok('⑥ 今天要做的事(兩本帳):寫出「第 2 本帳」+ 1020 只賣一半 + 1004 再買一份', /第 2 本帳/.test(R.todo2) && /只賣這本那一份/.test(R.todo2) && /再買一份/.test(R.todo2), R.todo2);
-ok('⑥ 一本帳:一個字都不多(⛔「本帳」只出現在換回按鈕那一行)', !/第 [12] 本帳|只賣這本|再買一份/.test(R.todo1), R.todo1);
-ok('⑦ 策略變更跳窗有這一筆 + 換回舊的 = setLeadBooks(1)', R.chg && R.chg.lead && /setLeadBooks\(1\)/.test(SRC) && /backBooks \? 'app\.setLeadBooks\(1\);'/.test(SRC), JSON.stringify(R.chg));
-ok('⑦ Telegram:App 有送 leadBooks、worker 有收', /leadBooks:\s+app\.settings\?\.leadBooks === 1 \? 1 : 2/.test(SRC) && /leadBooks: payload\.settings\.leadBooks === 1 \? 1 : 2/.test(WK));
+ok('⑥ 今天要做的事(兩本帳):寫出「乙帳」+ 1020 甲乙都有只賣乙帳那一份 + 1004 甲帳已有、乙帳再買一份', /乙帳/.test(R.todo2) && /只賣乙帳那一份/.test(R.todo2) && /甲帳已有一份 → 乙帳再買一份/.test(R.todo2), R.todo2);
+ok('⑥ 一本帳:一個字都不多(⛔ 甲帳 / 乙帳 / 本帳 / 只賣 / 再買一份)', !/甲帳|乙帳|本帳|只賣|再買一份|data-leadbook/.test(R.todo1 + R.todo1h), R.todo1);
+ok('⑦ 預設沒換 → ⛔ 不跳策略變更視窗(沒有兩本帳那一筆)', !R.chg, JSON.stringify(R.chg));
+ok('⑦ Telegram:App 送 leadBooks(預設 1)、worker 收(預設 1)、每位使用者 leadBooks !== 2 = 一本帳',
+    /leadBooks:\s+app\.settings\?\.leadBooks === 2 \? 2 : 1/.test(SRC) && /leadBooks: payload\.settings\.leadBooks === 2 \? 2 : 1/.test(WK) && (WK.match(/const b1 = u\.settings\?\.leadBooks !== 2;/g) || []).length === 2);
+ok('⓪ 預設(沒設過)= 一本帳', R.def === 1, R.def);
+ok('⓪ lib_leader / pro 預設一本帳', lB === '1' && /st\.leadBooks === 2 && this\._LEAD\.anchor2 \? 2 : 1/.test(PRO), JSON.stringify({ lB }));
+ok('⓪ 開關在 🔓 進階功能:選 👑 時列出、預設沒勾;選 🔥/📈 時不列', /data-advk="books"/.test(R.advLead) && R.showDef === false && !/data-advk="books"/.test(R.advGene), R.advLead.slice(0, 300));
+ok('⓪ 勾 = leadBooks 2、取消 = 1(⛔ 不另存進 deckShow)', R.afterOn === 2 && R.showOn === true && R.afterOff === 1 && !R.deckShowStored, JSON.stringify([R.afterOn, R.showOn, R.afterOff, R.deckShowStored]));
+const ID = R.ID || {};
+ok('⑧ 甲帳・乙帳兩個顏色不同,⛔ 不用紅綠琥珀(燈號鐵則)', ID.A && ID.B && ID.A.name === '甲帳' && ID.B.name === '乙帳' && ID.A.cls !== ID.B.cls && ![ID.A.cls, ID.B.cls].some(c => /red|green|amber|orange|yellow/.test(c)), JSON.stringify(ID));
+ok('⑧ 每檔標它屬於哪一本:1001 只乙帳(這本)、1020 甲乙都有、1004 只甲帳、不在名單 → 空', R.bookOf.a1001 === 'B' && R.bookOf.a1020 === 'AB' && R.bookOf.a1004 === 'A' && R.bookOf.a9999 === '', JSON.stringify(R.bookOf));
+ok('⑧ 決策台頂端一行:甲帳、乙帳各自一段(data-leadbookline A / B),乙帳今天換倉', /data-leadbookline="A"/.test(R.strip2) && /data-leadbookline="B"/.test(R.strip2) && /甲帳/.test(R.strip2) && /乙帳/.test(R.strip2) && /今天換倉/.test(R.strip2), R.strip2);
+ok('⑧ 今天要做的事每檔有標籤(1020 = 甲 + 乙)', /data-todostk="1020"[^]*?data-leadbookchip="A"[^]*?data-leadbookchip="B"/.test(R.todo2h), R.todo2h.slice(0, 400));
+ok('⑧ 一本帳:頂端那行 / 標籤一個字都沒有', R.strip1 === '' && R.chip1 === '', JSON.stringify([R.strip1, R.chip1]));
 
 // ⑤ worker leadActs == App(同一組輸入)
 const tmpW = path.join(ROOT, 'scripts', '.tmp_worker_leadbooks.mjs'); fs.writeFileSync(tmpW, WK);

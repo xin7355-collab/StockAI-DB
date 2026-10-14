@@ -21,8 +21,8 @@ LEADER_ANCHOR = '2026-09-24'
 # 📚 V79.2.5 兩本帳(使用者:「依照你說的做」):錢平分兩本帳、換倉日錯開 4 個交易日,每本帳完全獨立(各自的持股 / 各自的錢)。
 #    第 2 本帳的錨點 = 第 1 本錨點起第 5 個交易日(錯開 4 天)。回測 leader_probe books:2 bookOff:4(兩窗口 × 17 條):
 #    中位不掉、最差那條 AI 603 → 761%、16 年 3,524 → 5,058%;錯開 3~7 天全部成立(高原);成本 ×2 仍成立。⚠️ 攤平「哪一天開始」的運氣,⛔ 不是新優勢。
-#    換回舊的(一本帳):books=1(auto_trade.py 用 LEADER_BOOKS=1)。
-LEADER_BOOKS = 2
+#    📚 V79.2.6 使用者:「預設關閉」→ 預設一本帳;兩本帳(甲帳 = LEADER_ANCHOR、乙帳 = LEADER_ANCHOR2)要自己開(auto_trade.py 用 LEADER_BOOKS=2)。
+LEADER_BOOKS = 1
 LEADER_ANCHOR2 = '2026-10-02'
 
 

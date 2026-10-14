@@ -800,7 +800,8 @@ function isValidCode(code) {
 // ⛔ 規則同 index.html `_leaderCalc` / `_leaderClock` / lib_leader.py(scripts/test_stratswitch.mjs 跨檔比對)。
 export const LEAD_RULE = { U: 100, N: 5, R: 10, L: 10, hyst: 2, pos: 85 };   // 📍 V78.0.5 pos = 買進要一年位置 ≥ pos%(只擋買,續抱照舊)
 export const LEAD_ANCHOR = '2026-09-24';
-// 📚 V79.2.5 兩本帳(同 App `_LEADER_EDGE.books / anchor2` / lib_leader LEADER_ANCHOR2):錢各一半、第 2 本換倉日晚 4 個交易日;App 設定 leadBooks = 1 → 一本帳
+// 📚 V79.2.5 兩本帳(同 App `_LEADER_EDGE.books / anchor2` / lib_leader LEADER_ANCHOR2):錢各一半、第 2 本換倉日晚 4 個交易日;V79.2.6 起預設一本帳,App 設定 leadBooks = 2 才是甲帳・乙帳
+export const LEAD_BOOK_NAME = { A: '甲帳', B: '乙帳' };   // 📚 V79.2.6 名字跟 App `_LEAD_BOOK_ID` 同一組
 export const LEAD_ANCHOR2 = '2026-10-02';
 // 📸 V79.1.5 _LEAD_OWNED = 這一輪讀到的「歸 👑 的代號」(KV leadstate);null = 讀不到 → 照舊全部當 👑(⛔ 不猜)
 let _LEAD_OWNED = null;
@@ -881,7 +882,7 @@ export function leadDayLines(st, mine, split, q, slot, posOff, nm = s => s) {
     if (slot === 'open') {
         const now = sell.filter(s => !(split && d3(s))), wait = sell.filter(s => split && d3(s));
         const hf = s => A.half.includes(s) ? '(只賣這本那一份,約一半)' : '';
-        if (st.book && st.kOwn) L.push(`📚 這次換的是第 ${st.book === 'B' ? 2 : 1} 本帳(錢的一半)`);
+        if (st.book && st.kOwn) L.push(`📚 這次換的是${LEAD_BOOK_NAME[st.book === 'B' ? 'B' : 'A']}(錢的一半)`);
         if (now.length) L.push(`🚪 現在開盤賣:${now.map(s => nm(s) + hf(s) + g(s)).join('、')}`);
         if (wait.length) L.push(`🚪 開盤就跌 3% 以上 → 等到 09:30~10:00 再賣:${wait.map(s => nm(s) + g(s)).join('、')}`);
         const nowB = buy.filter(s => (!split || d3(s)) && !lu(s)), laterB = buy.filter(s => split && !d3(s) && !lu(s)), noB = buy.filter(lu);
@@ -912,7 +913,7 @@ async function runLeaderRebalPush(env) {
     const L0 = leadCalc(D), L = L0; if (L.err) return;
     const Lold = leadCalc(D, 0);   // 📍 V78.0.5 使用者在 App 按了「換回舊的」(leadPosOff)→ 用不看位置的舊名單
     const date = String(L.date).replace(/\//g, '-').slice(0, 10);
-    const clk = leadClocks(tw, date, 2), clk1 = leadClocks(tw, date, 1);   // 📚 V79.2.5 兩本帳(預設)/ 一本帳(App 設定 leadBooks = 1)
+    const clk = leadClocks(tw, date, 2), clk1 = leadClocks(tw, date, 1);   // 📚 一本帳(預設)/ 甲帳・乙帳(App 設定 leadBooks = 2)
     const bear = leadBear(tw.filter(r => String(r.date || '').replace(/\//g, '-').slice(0, 10) <= date));
     const H = LEAD_RULE.N * LEAD_RULE.hyst;
     // 📸 V79.1.5 哪幾檔歸 👑 + 今天的名單 → 存 KV 一天(盤中 15 分鐘那幾輪只讀這個小檔,⛔ 不每輪重抓大檔)
@@ -933,7 +934,7 @@ async function runLeaderRebalPush(env) {
                 const u = JSON.parse((await env.KV.get(key.name)) || '{}');
                 if (!u.chat_id || u.settings?.strategy !== 'lead') continue;
                 if (u.muted_until && u.muted_until > Date.now()) continue;
-                const b1 = u.settings?.leadBooks === 1;   // 📚 V79.2.5 這位用一本帳
+                const b1 = u.settings?.leadBooks !== 2;   // 📚 V79.2.6 預設一本帳;設 2 才是甲帳・乙帳
                 if (!(b1 ? clk1.isRebal : clk.isRebal)) continue;
                 const sentKey = `leadpush:${u.chat_id}:${date}`;
                 if (await env.KV.get(sentKey)) continue;
@@ -948,12 +949,12 @@ async function runLeaderRebalPush(env) {
                 const split = u.settings?.leadTiming !== 'open';   // ⏱️ V78.4.4 換倉那天幾點買賣(App 設定 leadTiming;預設 split)
                 const text = [
                     `👑 *換倉日* _${date} 收盤的名單 → 今天照做_`, SEP,
-                    (!b1 && sets.kOwn) ? `📚 這次換的是第 ${clk.book === 'B' ? 2 : 1} 本帳(錢的一半,每檔 = 總資金 ÷ ${LEAD_RULE.N * 2})` : '',
+                    (!b1 && sets.kOwn) ? `📚 這次換的是${LEAD_BOOK_NAME[clk.book === 'B' ? 'B' : 'A']}(錢的一半,每檔 = 總資金 ÷ ${LEAD_RULE.N * 2})` : '',
                     sell.length ? `🔻 賣:${await lab(sell)}(掉出前 ${H} 名)・${split ? '09:00 開盤賣;開盤就跌 3% 以上 → 等到 09:30~10:00 再賣' : '09:00 開盤賣'}` : '🔻 賣:沒有',
                     buy.length ? `🛒 買:${await lab(buy)}(${u.settings?.leadPosOff ? '' : `一年位置 ≥ ${LEAD_RULE.pos}% 的`}前 ${LEAD_RULE.N} 名,等權)・${split ? '下午 13:25 買;開盤就跌 3% 以上 → 開盤就買;漲停不追' : '09:00 開盤買;漲停不追'}` : (bear ? '🐻 大盤嚴格空頭 → 今天不開新倉' : '🛒 買:沒有(要買的你都有了)'),
                     keep.length ? `✅ 續抱:${await lab(keep)}` : '',
-                    A.half.length ? `✂️ 兩本帳都有的:${await lab(A.half)} → 只賣這本那一份(約一半)` : '',
-                    A.waitOther.length ? `⏳ 另一本帳的:${await lab(A.waitOther)} → 這次不動,等它自己的換倉日` : '',
+                    A.half.length ? `✂️ 兩本帳都有的:${await lab(A.half)} → 只賣${LEAD_BOOK_NAME[clk.book === 'B' ? 'B' : 'A']}那一份(約一半)` : '',
+                    A.waitOther.length ? `⏳ ${LEAD_BOOK_NAME[clk.book === 'B' ? 'A' : 'B']}的:${await lab(A.waitOther)} → 這次不動,等它自己的換倉日` : '',
                     fire.length ? `🔥 不在上次換倉名單上的:${await lab(fire)} → 照 🔥 三條出場(硬停損 / 出場線 / 抱滿天數),⛔ 不照換倉賣` : '',
                     '💰 沒用到的錢放 0050 ・⛔ 沒有停損線',
                     `📱 [決策台](${GH_PAGES_BASE}/)`,
@@ -986,7 +987,7 @@ async function runLeaderDayPing(env, st) {
         try {
             const sentKey = `leadday:${u.chat_id}:${ymd}:${slot}`;
             if (await env.KV.get(sentKey)) continue;
-            const b1 = u.settings?.leadBooks === 1;   // 📚 V79.2.5
+            const b1 = u.settings?.leadBooks !== 2;   // 📚 V79.2.6 預設一本帳
             if (!(b1 ? st.act1 : st.act)) continue;
             const stU = b1 ? { ...st, kOwn: null, oOwn: null, book: null } : st;
             _LEAD_OWNED = (b1 ? st.owned1 : st.owned) ? new Set((b1 ? st.owned1 : st.owned).map(String)) : null;
@@ -1090,8 +1091,8 @@ function sanitizePayload(payload) {
             leadPosOff: payload.settings.leadPosOff === true,
             // ⏱️ V79.1.5 換倉那天幾點買賣('split' 預設 / 'open')—— 以前這裡沒收,App 改了 Telegram 也不會跟著變
             leadTiming: payload.settings.leadTiming === 'open' ? 'open' : 'split',
-            // 📚 V79.2.5 兩本帳(預設 2;App 按「換回一本帳」→ 1)
-            leadBooks: payload.settings.leadBooks === 1 ? 1 : 2,
+            // 📚 V79.2.6 預設一本帳;App 🔓 進階功能打開甲帳・乙帳 → 2
+            leadBooks: payload.settings.leadBooks === 2 ? 2 : 1,
         };
         const ft = String(payload.settings.fugleToken1 || '').trim();
         if (ft && ft.length >= 8 && ft.length <= 100) out.settings.fugleToken1 = ft;

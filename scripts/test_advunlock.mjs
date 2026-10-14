@@ -55,7 +55,7 @@ const ui = page => page.evaluate(async () => {
         col: app._deckShow().col,
         adv: !!(sb && sb.querySelector('[data-advbox]')),
         advKeys: sb ? [...sb.querySelectorAll('[data-advk]')].map(e => e.dataset.advk) : [],
-        regKeys: app._DECK_SECTIONS.filter(c => c.unlock).map(c => c.k),
+        regKeys: app._DECK_SECTIONS.filter(c => c.unlock && (!c.st || c.st === app._strat())).map(c => c.k),   // 📚 V79.2.6 綁策略的那項只在選那套時列
         listUnlock: dl ? [...dl.querySelectorAll('[data-deckshowk]')].map(e => e.dataset.deckshowk).filter(k => (app._DECK_SECTIONS.find(c => c.k === k) || {}).unlock) : ['no-list'],
         deckCol: (document.getElementById('deckCol') || {}).innerHTML || '',
     };

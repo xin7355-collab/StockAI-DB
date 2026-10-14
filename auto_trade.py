@@ -145,8 +145,8 @@ LEADER_OPEN_FROM, LEADER_OPEN_TO = 9 * 60 + 1, 9 * 60 + 10   # ⛔ 09:00 那一�
 import lib_leader as _LL
 LEADER_RULE = _LL.LEADER_RULE
 LEADER_ANCHOR = os.getenv('LEADER_ANCHOR') or _LL.LEADER_ANCHOR
-# 📚 V79.2.5 兩本帳(預設 2;LEADER_BOOKS=1 = 換回舊的一本帳):錢平分兩本、換倉日錯開 4 天,
-#    第 1 本記在 st['lead'](你原本的部位全部算這本,⛔ 不強迫減半)、第 2 本記在 st['lead2'];兩本⛔ 不會同一天換倉。
+# 📚 V79.2.5 兩本帳 / V79.2.6 改成選項(預設 1 = 一本帳;LEADER_BOOKS=2 才開):錢平分兩本、換倉日錯開 4 天,
+#    甲帳記在 st['lead'](你原本的部位全部算這本,⛔ 不強迫減半)、乙帳記在 st['lead2'];兩本⛔ 不會同一天換倉。
 LEADER_BOOKS = int(os.getenv('LEADER_BOOKS') or _LL.LEADER_BOOKS)
 LEADER_ANCHOR2 = os.getenv('LEADER_ANCHOR2') or _LL.LEADER_ANCHOR2
 # 📍 V78.0.5 買進的一年位置門檻(預設跟 App 同一個 = lib_leader 的 pos);LEADER_POS=0 = 換回舊規則(不看位置)
@@ -216,7 +216,7 @@ def leader_step(api, sj, st, meta, today):
         st['lead_day'] = today; save_state(st); return
     book, day, is_rebal, left = _LL.leader_books_clock(dates, dd, LEADER_BOOKS, [LEADER_ANCHOR] if LEADER_BOOKS == 1 else [LEADER_ANCHOR, LEADER_ANCHOR2])
     held = st.setdefault(book, {})
-    bname = '' if LEADER_BOOKS == 1 else ('第 1 本帳' if book == 'lead' else '第 2 本帳')
+    bname = '' if LEADER_BOOKS == 1 else ('甲帳' if book == 'lead' else '乙帳')   # 📚 V79.2.6 名字跟 App 同一組
     if not is_rebal:
         others = {k: list(st.get(k) or {}) for k in ('lead', 'lead2')[:LEADER_BOOKS]}
         log(f"👑 {dd} 不是換倉日 → 下一個換倉的是{bname or '這本帳'},還有 {left} 天。手上 {others}")
@@ -562,7 +562,7 @@ def main():
     if LEADER:
         log(f"👑 領頭羊短線輪動:開(LEADER=1)・時段 {'⏱️ 看開盤情況分時段(預設):賣 = 開盤(開低 ≥3% 等 09:30~10:00)・買 = 13:25(開低 ≥3% 開盤買)' if LEADER_WINDOW == 'split' else '全部開盤 09:01~09:10(舊)' if LEADER_WINDOW == 'open' else '全部尾盤(更舊)'}"
             f"・分給它 {LEADER_ACCOUNT:,} 元(每檔 {LEADER_ACCOUNT / (LEADER_RULE['N'] * LEADER_BOOKS):,.0f})・換倉起點 {LEADER_ANCHOR}"
-            + (f"・📚 兩本帳(第 2 本起點 {LEADER_ANCHOR2},錯開 4 天;換回一本帳:LEADER_BOOKS=1)" if LEADER_BOOKS == 2 else "・一本帳(LEADER_BOOKS=1)"))
+            + (f"・📚 甲帳・乙帳(乙帳起點 {LEADER_ANCHOR2},錯開 4 天;換回一本帳:LEADER_BOOKS=1)" if LEADER_BOOKS == 2 else "・一本帳(預設;甲帳・乙帳:LEADER_BOOKS=2)"))
     if ACCOUNT_SIZE <= 0:
         log("⚠️⚠️ 你沒有設 ACCOUNT_SIZE(帳戶總資金)→ POS_PCT 這個設定**完全沒有作用**,"
             "每筆一律買 1,000 股(再被 MAX_LOTS_PER_TRADE / MAX_AMT_PER_TRADE 壓一次)"
