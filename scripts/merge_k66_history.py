@@ -128,6 +128,8 @@ def apply_idx_long(DD, OUT, idx_path):
       ・_bench0050.json = 真的 0050(本站那份第一天以前)+ 本站那份 —— 給 portfolio_backtest 的 BENCH0050 用,
         ⛔ 不動股票池裡的 0050.json(那會改變 0050 當候選股的交易、交易快取就不能重用)
       ・_div0050.json = 0050 除息紀錄(dividends_hist 的格式),給 DIV 用(本站那份只從 2021 起)
+      ・🏪 V79.2.4 ^TWOII.json = 真的櫃買(本站那份第一天以前)+ 本站那份(本站只有 2024-10 起;idx_long 有 `twoii` 且沒有 `twoii_error` 才接;
+        接點價差 >0.5% 就停手;DD 沒有 ^TWOII.json 就整段用長歷史)—— 只給 leader_probe `bearIdx` 用,⛔ 前端不讀
     """
     J = json.load(open(idx_path))
     T = json.load(open(f'{DD}/^TWII.json')); t0 = T[0]['date']
@@ -144,8 +146,25 @@ def apply_idx_long(DD, OUT, idx_path):
     json.dump(pe + E, open(f'{OUT}/_bench0050.json', 'w'))
     dv = [[r[0].replace('/', '-'), r[1], r[2], r[3], r[4]] for r in J.get('div0050') or []]
     json.dump({'d': {'0050': {'h': dv}}}, open(f'{OUT}/_div0050.json', 'w'))
+    # 🏪 V79.2.4 櫃買指數(選用)
+    ot_days, ot_from, ot_note = 0, None, None
+    if J.get('twoii') and not J.get('twoii_error'):
+        po = [dict(date=r[0], open=r[1], high=r[2], low=r[3], close=r[4], volume=0, amount=r[5]) for r in J['twoii']]
+        if os.path.exists(f'{DD}/^TWOII.json'):
+            O = json.load(open(f'{DD}/^TWOII.json')); o0 = O[0]['date']
+            ro = {r[0]: r for r in J['twoii']}
+            if o0 not in ro or abs(ro[o0][4] / O[0]['close'] - 1) > 0.005:
+                ot_note = f'櫃買接點對不上:{o0} 本站 {O[0]["close"]} vs 長歷史 {ro.get(o0, ["", 0, 0, 0, None])[4]} → ⛔ 不寫 ^TWOII.json'
+            else:
+                po = [r for r in po if r['date'] < o0]
+                json.dump(po + O, open(f'{OUT}/^TWOII.json', 'w')); ot_days, ot_from = len(po), (po[0]['date'] if po else None)
+        else:
+            json.dump(po, open(f'{OUT}/^TWOII.json', 'w')); ot_days, ot_from = len(po), (po[0]['date'] if po else None)
+    else:
+        ot_note = J.get('twoii_error') or '沒有 twoii'
     print({'twii_real_days': len(pre), 'twii_from': pre[0]['date'] if pre else None,
-           'e0050_days': len(pe), 'e0050_from': pe[0]['date'] if pe else None, 'div0050': len(dv)})
+           'e0050_days': len(pe), 'e0050_from': pe[0]['date'] if pe else None, 'div0050': len(dv),
+           'twoii_real_days': ot_days, 'twoii_from': ot_from, 'twoii_note': ot_note})
 
 
 if __name__ == '__main__':

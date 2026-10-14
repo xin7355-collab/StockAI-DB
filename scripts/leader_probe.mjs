@@ -54,14 +54,14 @@ export function prepStock(sym, rows, cal, divs) {
         if (!(b > 0 && a > 0 && b / a > 1 && b / a < 1.6 && C[p] > 0 && Math.abs(b / C[p] - 1) < 0.03)) { divSkip++; continue; }
         F[i] *= b / a;
     }
-    const ind = { val20: new Float64Array(n).fill(NaN), ma20: new Float64Array(n).fill(NaN), ma60: new Float64Array(n).fill(NaN), atr: new Float64Array(n).fill(NaN), jump: new Int32Array(n).fill(-1e9) };
+    const ind = { val20: new Float64Array(n).fill(NaN), ma20: new Float64Array(n).fill(NaN), ma60: new Float64Array(n).fill(NaN), ma20r: new Float64Array(n).fill(NaN), ma60r: new Float64Array(n).fill(NaN), atr: new Float64Array(n).fill(NaN), jump: new Int32Array(n).fill(-1e9) };
     // 調整後收盤(把除權息倍數累乘回去 → 動能不會被除息日誤判成下跌)
     const A = new Float64Array(n).fill(NaN); let k = 1, lastA = NaN;
     for (let i = 0; i < n; i++) { k *= F[i]; if (C[i] > 0) { A[i] = C[i] * k; lastA = A[i]; } }
     let lastJump = -1e9, prevI = -1;
     const vals = [], cls = [], trs = [];
-    let sV = 0, s20 = 0, s60 = 0, sTR = 0;
-    const cl20 = [], cl60 = [];
+    let sV = 0, s20 = 0, s60 = 0, sTR = 0, s20r = 0, s60r = 0;
+    const cl20 = [], cl60 = [], cl20r = [], cl60r = [];       // r = 原始收盤(App 的 b20/b60 用的尺,V79.2.4)
     for (let i = 0; i < n; i++) {
         if (!(C[i] > 0)) continue;
         if (prevI >= 0) {
@@ -77,16 +77,32 @@ export function prepStock(sym, rows, cal, divs) {
         cl60.push(A[i]); s60 += A[i]; if (cl60.length > 60) s60 -= cl60.shift();
         if (cl20.length === 20) ind.ma20[i] = s20 / 20;
         if (cl60.length === 60) ind.ma60[i] = s60 / 60;
+        cl20r.push(C[i]); s20r += C[i]; if (cl20r.length > 20) s20r -= cl20r.shift();
+        cl60r.push(C[i]); s60r += C[i]; if (cl60r.length > 60) s60r -= cl60r.shift();
+        if (cl20r.length === 20) ind.ma20r[i] = s20r / 20;
+        if (cl60r.length === 60) ind.ma60r[i] = s60r / 60;
         ind.jump[i] = lastJump;
         prevI = i;
     }
     return { sym, O, H, L, C, V, F, A, ...ind, divSkip };
 }
 
+/** 🧭 V79.2.4 趨勢過濾 —— 全 repo 唯一一份(fresh_fish / leader_exit / leader_dispo 都 import 這支,⛔ 不可再各抄一份;selftest ㊹ 釘住)
+ *  mode true  = 收盤 > 20 日線 > 60 日線,三個數字**全部用原始收盤**(= App:screener b20/b60、lib_leader.py、pro/index _leaderCalc、worker leadCalc 都是 b20 > 0 && b20 < b60)
+ *  mode 'adj' = 同一條但三個數字全部用調整價 A(只給對照;除權息那 60 天內會跟 App 差一點)
+ *  mode false = 不過濾
+ *  🚨 V79.2.4 之前這裡是「原始收盤 vs 調整價均線」兩把尺(陷阱 #49):倍數 k 從 2021 起累乘、2026 池子中位 1.17
+ *     → 等於要求收盤比 20 日線高 17% 才算多頭、配息越多越被擋(抽 10 個換倉日:錯尺放行 14.5%、App 那條 48%)→ 回測跑的不是 App 在跑的規則 */
+export function trendOk(S, i, mode = true) {
+    if (!mode) return true;
+    if (mode === 'adj') return S.A[i] > S.ma20[i] && S.ma20[i] > S.ma60[i];
+    return S.C[i] > S.ma20r[i] && S.ma20r[i] > S.ma60r[i];
+}
 /** 動能:近 L 個「有交易的」日子的調整後報酬(只用 ≤ i) */
 function momSkip(S, i, L, k) { let j = i, c = 0; while (j > 0 && c < k) { j--; if (S.A[j] > 0) c++; } return c === k ? mom(S, j, L) : NaN; }
 export function mom(S, i, L) { if (!(S.A[i] > 0)) return NaN; let j = i, c = 0; while (j > 0 && c < L) { j--; if (S.A[j] > 0) c++; } return c === L ? S.A[i] / S.A[j] - 1 : NaN; }
 
+export const FILLS = ['open', 'nextclose', 'sameclose'];   // 🚧 V79.2.4 simulate 只認這幾種成交時點,別的要 throw(selftest ㊸)
 // ⭐ 預設 = 兩個窗口網格(216 + 81 + 9 組)驗出來的中心點;⛔ 最初設計的「60 日動能 + 吊燈 2 倍 + 每週換」實測是輸的(見 DECISIONS V77.8.5)
 export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: true, trend: true, hyst: 2, pick: 'mom', core: 0, maExit: 0, tp: 0, skip: 0, riskadj: false, fill: 'open', noAtt: 0, noDisp: 0, sellDisp: false,
     dispNow: false, dispOracle: 0, attSell: 0, attWin: 5, rebuy: 'none', rebuyDrop: 0.15, blockDays: 10, shamSell: 0,
@@ -206,6 +222,8 @@ export function dipEvents(ctx, from, P) {
 export function simulate(ctx, s0, cfg, seed = 1) {
     const { cal, stocks, etf } = ctx;
     const P = { ...DEF, ...cfg };
+    // 🚧 V79.2.4 fill 認不得 → throw(以前打錯字會讓 pending 永遠不執行、整段只剩 0050,安靜地變成錯的對照)
+    if (!FILLS.includes(P.fill)) throw new Error(`fill 只認 ${FILLS.join(' / ')},收到 ${JSON.stringify(P.fill)}`);
     const n = cal.length;
     // 📅 V78.0.8 endIdx:跑到這一天收盤就停(逐年成績單:每年 1 月重放 100 萬、年底以市值計)—— 不設 = 跑到最後一天(逐位相同)
     const nEnd = P.endIdx != null ? Math.min(n, P.endIdx + 1) : n;
@@ -276,7 +294,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         for (const S of (THEME ? themeUniv(i) : stocks)) { if (S.val20[i] > 0 && S.C[i] > 0 && i - S.jump[i] > 120 && S.ma60[i] > 0 && S.atr[i] > 0) univ.push(S); }
         univ.sort((a, b) => b.val20[i] - a.val20[i]);
         const pool = THEME ? univ : univ.slice(0, P.U);
-        let ok = pool.filter(S => !P.trend || (S.C[i] > S.ma20[i] && S.ma20[i] > S.ma60[i]));
+        let ok = pool.filter(S => trendOk(S, i, P.trend));
         if (P.noAtt && ctx.att) ok = ok.filter(S => !evWithin(ctx.att.get(S.sym), i, P.noAtt));
         if (P.noDisp && ctx.disp) ok = ok.filter(S => !evWithin(ctx.disp.get(S.sym), i, P.noDisp));
         let ranked;
@@ -394,7 +412,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             p.hc = Math.max(p.hc, S.C[i]);
             if (P.chand > 0 && i > p.entry && p.atr > 0 && S.C[i] < p.hc - P.chand * p.atr) sell(p, S.C[i], i);
             else if (P.sellDisp && i > p.entry && ctx.disp && evWithin(ctx.disp.get(S.sym), i, 1)) dailySell.add(S.sym);
-            else if (i > p.entry && ((P.maExit === 20 && S.C[i] < S.ma20[i]) || (P.maExit === 60 && S.C[i] < S.ma60[i]) || (P.tp > 0 && S.C[i] >= p.cost * (1 + P.tp)))) dailySell.add(S.sym);
+            else if (i > p.entry && ((P.maExit === 20 && S.C[i] < S.ma20r[i]) || (P.maExit === 60 && S.C[i] < S.ma60r[i]) || (P.tp > 0 && S.C[i] >= p.cost * (1 + P.tp)))) dailySell.add(S.sym);
             if (MID && pos.has(S.sym) && i > p.entry && !dailySell.has(S.sym) && i + 1 < n) {
                 const k = midRank ? midRank.get(S.sym) : undefined;
                 if ((P.dRank > 0 && !(k < P.dRank)) || (P.stop > 0 && S.C[i] < p.cost * (1 - P.stop)) || (P.trail > 0 && S.C[i] < p.hc * (1 - P.trail)) || (P.shamOut > 0 && rand4() < P.shamOut)) { dailySell.add(S.sym); st.midOut = (st.midOut || 0) + 1; }
@@ -1030,6 +1048,34 @@ function selftest() {
     t(gUp0.eq.at(-1) > 1.1 && gUpM.eq.every(v => v === 1) && gUpM.st.gOpen === undefined && gUpH.eq.every(v => v === 1)
         && gDnM.eq.every((v, k) => Math.abs(v - gDn0.eq[k]) < 1e-12) && gS0.eq.every(v => v === 1) && gS1.eq.every((v, k) => Math.abs(v - gUp0.eq[k]) < 1e-12),
         `㊵ parkGate:0050 一路漲 → ma20 / hi20 都不停(淨值一直 1)・一路跌 → 跟沒閘門一樣・安慰劑 p=0 不停、p=1 = 沒閘門(${r2(gUp0.eq.at(-1))})`);
+    // ㊶ V79.2.4 趨勢過濾的尺:XD 第 100 天配一次 10% 股利(F = 1.10 → 之後 A = 1.1 × C),股價貼著均線緩漲
+    //   舊寫法「原始收盤 vs 調整價均線」在除息後把它擋掉(收盤要比 20 日線高 10% 才過);trendOk(true) 三個數字同一把尺 → 放行
+    //   ⭐ 決定性對照:同一條價格沒有股利(XN)→ 原始均線 == 調整價均線逐位相同、新舊判法同一個答案
+    const divRows = cal.map((d, i) => { const c = 100 + i * 0.3; return { d, o: c, h: c * 1.005, l: c * 0.995, c, v: 1e7 }; });
+    const XD = prepStock('7301', divRows, cal, [[cal[100], 0, 0, divRows[99].c, divRows[99].c / 1.10]]);
+    const XN = prepStock('7302', divRows, cal, []);
+    const legacyOk = (S, i) => S.C[i] > S.ma20[i] && S.ma20[i] > S.ma60[i];   // ⛔ 只在這裡重現舊寫法當對照
+    const chk = [120, 150, 190];
+    const maSame = Array.from({ length: n }, (_, i) => i).every(i => (Number.isNaN(XN.ma20[i]) && Number.isNaN(XN.ma20r[i])) || Math.abs(XN.ma20[i] - XN.ma20r[i]) < 1e-9);
+    const rTD = simulate({ cal, stocks: [XD], etf: flat, bear: new Uint8Array(n) }, 115, { U: 1, N: 1, R: 1000, L: 20, chand: 0, park: false, trend: true, pick: 'all' });
+    t(Math.abs(XD.F[100] - 1.10) < 1e-9 && chk.every(i => !legacyOk(XD, i) && trendOk(XD, i, true)) && rTD.eq.at(-1) > 1.05
+        && maSame && chk.every(i => trendOk(XN, i, true) === legacyOk(XN, i) && trendOk(XN, i, true)),
+        `㊶ 趨勢過濾同一把尺:配過 10% 股利的緩漲股 舊寫法擋掉 / trendOk 放行且真的買得到(${r2(rTD.eq.at(-1))});沒股利時原始均線 == 調整價均線、答案相同`);
+    // ㊷ trend:'adj'(全調整價)vs true(全原始價):沒股利時逐位相同;trend:false 一定放行
+    const cfgTr = { U: 1, N: 1, R: 1000, L: 20, chand: 0, park: false, pick: 'all' };
+    const rA = simulate({ cal, stocks: [XN], etf: flat, bear: new Uint8Array(n) }, 115, { ...cfgTr, trend: 'adj' }), rT = simulate({ cal, stocks: [XN], etf: flat, bear: new Uint8Array(n) }, 115, { ...cfgTr, trend: true });
+    t(rA.eq.every((v, k) => v === rT.eq[k]) && rA.eq.at(-1) > 1.05 && chk.every(i => trendOk(XD, i, false) && trendOk(XD, i, 'adj')),
+        `㊷ trend 'adj' == true(沒股利逐位相同)・false 一律放行・'adj' 對配過股利的也放行(${r2(rA.eq.at(-1))})`);
+    // ㊸ fill 打錯字要 throw(以前會安靜地變成「永遠不買、只剩 0050」)
+    let threw = '';
+    try { simulate({ cal, stocks: [XN], etf: flat, bear: new Uint8Array(n) }, 115, { ...cfgTr, trend: false, fill: 'typo' }); } catch (e) { threw = String(e.message); }
+    t(/fill/.test(threw) && /typo/.test(threw), `㊸ fill:'typo' → throw(${threw.slice(0, 40)})`);
+    // ㊹ 靜態:三支吃領頭羊池子的探針⛔ 不可再各抄一份趨勢判斷(先剝 // 註解再比;只比程式碼)
+    const here = path.dirname(new URL(import.meta.url).pathname);
+    const copies = ['fresh_fish_probe.mjs', 'leader_exit_probe.mjs', 'leader_dispo_probe.mjs'].map(f => {
+        const src = fs.readFileSync(path.join(here, f), 'utf8').replace(/\/\/.*$/gm, '');
+        return { f, own: /S\.C\[i\] > S\.ma20\[i\]/.test(src), uses: /\btrendOk\(/.test(src) }; });
+    t(copies.every(x => !x.own && x.uses), `㊹ 三支探針都走 trendOk、沒有第二份(${copies.map(x => `${x.f.replace('_probe.mjs', '')}:${x.own ? '有自己的' : x.uses ? 'ok' : '沒接'}`).join(' ')})`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }

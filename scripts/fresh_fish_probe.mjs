@@ -20,7 +20,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { loadCtx, mom, rng, DEF, prepStock } from './leader_probe.mjs';
+import { loadCtx, mom, rng, DEF, prepStock, trendOk } from './leader_probe.mjs';
 import { gates } from './maxim_kbar5_probe.mjs';
 
 const FEE = 0.001425, TAX = 0.003, COST = 2 * FEE + TAX;
@@ -35,7 +35,7 @@ export function rankAt(ctx, i, P) {
     const univ = [];
     for (const S of ctx.stocks) { if (S.val20[i] > 0 && S.C[i] > 0 && i - S.jump[i] > 120 && S.ma60[i] > 0 && S.atr[i] > 0) univ.push(S); }
     univ.sort((a, b) => b.val20[i] - a.val20[i]);
-    const ok = univ.slice(0, P.U).filter(S => S.C[i] > S.ma20[i] && S.ma20[i] > S.ma60[i]);
+    const ok = univ.slice(0, P.U).filter(S => trendOk(S, i, true));   // V79.2.4 唯一一份(原始收盤同一把尺)   // V79.2.4 唯一一份(原始收盤同一把尺)
     const ranked = ok.map(S => ({ S, m: mom(S, i, P.L) })).filter(x => Number.isFinite(x.m)).sort((a, b) => b.m - a.m).map(x => x.S);
     return { ranked, ok };
 }
@@ -169,7 +169,7 @@ function selftest() {
     const r0 = rebOf(i, i % R, R); const F0 = freshOf(ranked, new Set(rankAt(ctx, r0, P).ranked.slice(0, 10)), 10);
     ok(r0 === i && F0.every((S, k) => S === ranked[10 + k]), '⑤ 換倉日:新魚 = 今天第 11~20 名');
     // ② 零前視:i+1 之後價格 ×3,排名 / 這一批不變
-    const ctx2 = synthCtx(); for (const S of ctx2.stocks) for (let k = i + 1; k < ctx2.cal.length; k++) { S.C[k] *= 3; S.A[k] *= 3; S.val20[k] *= 3; S.ma20[k] *= 3; S.ma60[k] *= 3; }
+    const ctx2 = synthCtx(); for (const S of ctx2.stocks) for (let k = i + 1; k < ctx2.cal.length; k++) { S.C[k] *= 3; S.A[k] *= 3; S.val20[k] *= 3; S.ma20[k] *= 3; S.ma60[k] *= 3; S.ma20r[k] *= 3; S.ma60r[k] *= 3; }
     const ra = ranked.map(S => S.sym).join(), rb = rankAt(ctx2, i, P).ranked.map(S => S.sym).join();
     ok(ra === rb, '② 零前視:未來價格 ×3,第 i 天的排名一字不變');
     // ③ 報酬口徑:隔天開盤 100、h 天後收盤 110

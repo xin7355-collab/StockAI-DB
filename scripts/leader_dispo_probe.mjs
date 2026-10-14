@@ -16,7 +16,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { loadCtx, mom } from './leader_probe.mjs';
+import { loadCtx, mom, trendOk } from './leader_probe.mjs';
 
 const r2 = x => x == null || !Number.isFinite(x) ? null : Math.round(x * 100) / 100;
 const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
@@ -65,7 +65,7 @@ function main() {
     const poolAt = i => {
         if (poolCache.has(i)) return poolCache.get(i);
         const univ = stocks.filter(S => S.val20[i] > 0 && S.C[i] > 0 && i - S.jump[i] > 120 && S.ma60[i] > 0 && S.atr[i] > 0).sort((a, b) => b.val20[i] - a.val20[i]).slice(0, 100);
-        const ranked = univ.filter(S => S.C[i] > S.ma20[i] && S.ma20[i] > S.ma60[i]).map(S => ({ S, m: mom(S, i, 10) })).filter(x => Number.isFinite(x.m)).sort((a, b) => b.m - a.m).map(x => x.S.sym);
+        const ranked = univ.filter(S => trendOk(S, i, true)).map(S => ({ S, m: mom(S, i, 10) })).filter(x => Number.isFinite(x.m)).sort((a, b) => b.m - a.m).map(x => x.S.sym);
         const r = { pool: new Set(univ.map(S => S.sym)), top10: new Set(ranked.slice(0, 10)) };
         poolCache.set(i, r); return r;
     };

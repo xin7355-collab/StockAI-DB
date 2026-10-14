@@ -1,4 +1,4 @@
-name: 📚 加權指數 + 0050 長歷史(2010 起,手動)
+name: 📚 加權指數 + 0050 + 櫃買 長歷史(2010 起,手動)
 
 # 📚 V77.6.3 給長歷史回測用(`merge_k66_history.py --idx-long`):
 #   2021-09 以前的大盤原本是「等權代理」,而「嚴格空頭不做」正是吃大盤判斷的 → 補真的加權;
@@ -35,7 +35,7 @@ jobs:
       - name: 📦 安裝相依
         run: pip install requests
 
-      - name: 📂 取對表用的參考檔(本站 ^TWII / 0050)
+      - name: 📂 取對表用的參考檔(本站 ^TWII / 0050;櫃買 ^TWOII 選用)
         run: |
           set -e
           git fetch origin "+refs/heads/data:refs/remotes/origin/data" --depth=1
@@ -45,6 +45,8 @@ jobs:
             git show "origin/data:data/$f.json" > "/tmp/idx_ref/$f.json"
             [ -s "/tmp/idx_ref/$f.json" ] || { echo "❌ 參考檔 $f.json 是空的"; exit 1; }
           done
+          # 🏪 V79.2.4 櫃買參考檔(選用):data 分支沒有就跳過(backfill 會寫 twoii_error 說明沒對表,⛔ 不擋前四份)
+          if git show "origin/data:data/^TWOII.json" > "/tmp/idx_ref/^TWOII.json" 2>/dev/null && [ -s "/tmp/idx_ref/^TWOII.json" ]; then echo "✅ ^TWOII 參考檔"; else rm -f "/tmp/idx_ref/^TWOII.json"; echo "⚠️ data 分支沒有 ^TWOII.json,櫃買只存不對表"; fi
           ls -l /tmp/idx_ref
 
       - name: 📚 抓 + 守門(第一根日期 / 根數 / 重疊期對表)

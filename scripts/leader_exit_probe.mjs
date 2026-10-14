@@ -21,7 +21,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { loadCtx, mom, DEF } from './leader_probe.mjs';
+import { loadCtx, mom, DEF, trendOk } from './leader_probe.mjs';
 
 const FEE = 0.001425, TAX = 0.003, ETF_TAX = 0.001;
 const r2 = x => x == null || !Number.isFinite(x) ? null : Math.round(x * 100) / 100;
@@ -41,7 +41,7 @@ export function dailyStatus(ctx, from, P = DEF) {
         const pool = univ.slice(0, P.U), rest = univ.slice(P.U);
         for (const k of rest) st[k][i] = 5;
         const ok = [];
-        for (const k of pool) { const S = stocks[k]; if (S.C[i] > S.ma20[i] && S.ma20[i] > S.ma60[i]) ok.push(k); else st[k][i] = 4; }
+        for (const k of pool) { const S = stocks[k]; if (trendOk(S, i, true)) ok.push(k); else st[k][i] = 4; }   // V79.2.4 唯一一份
         const ranked = ok.map(k => ({ k, m: mom(stocks[k], i, P.L) })).filter(x => Number.isFinite(x.m)).sort((a, b) => b.m - a.m);
         const seen = new Set(ranked.map(x => x.k));
         for (const k of ok) if (!seen.has(k)) st[k][i] = 3;

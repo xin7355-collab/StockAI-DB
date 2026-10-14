@@ -25,14 +25,19 @@
  *   ③ 重疊不足 20 天 → **整檔跳過**(⛔ 不敢憑幾天就調尺標)。
  *   ④ 🚧 合併後**逐檔驗接縫**:相鄰兩根收盤差 >1.5 倍就報出來(⛔ 不可靜默放行)。
  *
- * 用法:node scripts/merge_deep_klines.mjs <klines_deep 解出來的目錄> [data 目錄]
+ * 用法:node scripts/merge_deep_klines.mjs <klines_deep 解出來的目錄> [data 目錄] [--delisted-out <目錄>]
+ *   🪦 V79.2.4 `--delisted-out`:klines_deep 標 `dl:1`(已下市)而 data/ 沒有的那幾檔(實測 54 檔),**另外**寫到指定目錄
+ *   (給回測量倖存者偏誤用;⛔ 絕不寫進 data/ —— 下市股混進選股母體會害到 App)。沒給就照舊只計數。
  */
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
 
 const SRC = process.argv[2];
-const DST = process.argv[3] || 'data';
+const _dlI = process.argv.indexOf('--delisted-out');
+const DL_OUT = _dlI > 0 ? process.argv[_dlI + 1] : null;
+const DST = (process.argv[3] && !process.argv[3].startsWith('--')) ? process.argv[3] : 'data';
+if (DL_OUT && path.resolve(DL_OUT) === path.resolve(DST)) { console.error('🚨 --delisted-out 不可以是 data 目錄本身'); process.exit(1); }
 if (!SRC || !fs.existsSync(SRC)) { console.error('用法:node scripts/merge_deep_klines.mjs <deepDir> [dataDir]'); process.exit(1); }
 
 const norm = d => String(d || '').replace(/\//g, '-').slice(0, 10);
@@ -40,14 +45,25 @@ const med = a => { const b = a.slice().sort((x, y) => x - y); return b.length ? 
 
 const files = fs.readdirSync(SRC).filter(f => f.endsWith('.json.gz'));
 console.log(`深歷史檔:${files.length}`);
-let merged = 0, skipped = 0, noBase = 0, added = 0, rescaled = 0, thinOverlap = 0;
+let merged = 0, skipped = 0, noBase = 0, added = 0, rescaled = 0, thinOverlap = 0, dlOut = 0, dlSkip = 0;
+if (DL_OUT) fs.mkdirSync(DL_OUT, { recursive: true });
 const cliffs = [];
 const beforeD = [], afterD = [];
 
 for (const f of files) {
   const sym = f.replace('.json.gz', '');
   const dstPath = path.join(DST, sym + '.json');
-  if (!fs.existsSync(dstPath)) { noBase++; continue; }   // ⛔ 只補既有的檔(⛔ 下市股不新增到 data/,會混進選股母體)
+  if (!fs.existsSync(dstPath)) {   // ⛔ 只補既有的檔(⛔ 下市股不新增到 data/,會混進選股母體)
+    noBase++;
+    if (DL_OUT) {   // 🪦 只有標 dl:1 的才另外寫出去(沒標的是「本站沒有但還在市」,⛔ 不當下市股)
+      let deep; try { deep = JSON.parse(zlib.gunzipSync(fs.readFileSync(path.join(SRC, f))).toString('utf8')); } catch { dlSkip++; continue; }
+      if (!deep || !deep.dl || !Array.isArray(deep.k) || deep.k.length < 120) { dlSkip++; continue; }
+      const rows = deep.k.filter(([, o, , , c]) => c > 0 && o > 0).map(([d, o, h, l, c, v]) => ({ date: String(d).replace(/-/g, '/'), open: o, high: h, low: l, close: c, volume: v || 0, _dl: 1 }));
+      if (rows.length < 120) { dlSkip++; continue; }
+      fs.writeFileSync(path.join(DL_OUT, sym + '.json'), JSON.stringify(rows)); dlOut++;
+    }
+    continue;
+  }
   let base, deep;
   try {
     base = JSON.parse(fs.readFileSync(dstPath, 'utf8'));
@@ -98,7 +114,7 @@ for (const f of files) {
 }
 const medS = a => { const b = a.slice().sort(); return b[Math.floor(b.length / 2)] || '-'; };
 console.log(`✅ 合併 ${merged} 檔 ・共補 ${added.toLocaleString()} 根 K 線 ・其中 ${rescaled} 檔需要調整尺標(分割/減資)`);
-console.log(`   跳過 ${skipped} ・重疊不足 20 天 ${thinOverlap}(⛔ 不敢調尺標)・data/ 沒有的 ${noBase}(下市股,刻意不加)`);
+console.log(`   跳過 ${skipped} ・重疊不足 20 天 ${thinOverlap}(⛔ 不敢調尺標)・data/ 沒有的 ${noBase}(下市股,刻意不加)` + (DL_OUT ? `・🪦 另外寫到 ${DL_OUT}:${dlOut} 檔(不合格 ${dlSkip})` : ''));
 console.log(`   最早日期中位:${medS(beforeD)} → ${medS(afterD)}`);
 if (cliffs.length) {
   console.log(`⛔ ${cliffs.length} 檔合併後仍有斷崖 → **已放棄合併、維持原本的淺版**(前 8):`);

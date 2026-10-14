@@ -5,11 +5,13 @@
 
 背景:V77.6.2 把回測拉到 2011~2026,但 2021-09 以前的「大盤」是**等權代理**,
 而「嚴格空頭不做」(`FILTER=bear60`)正是吃大盤判斷的;2022 以前也沒有 0050 可比。
-→ 這支只抓 **4 次** FinMind(付費金鑰,一次呼叫可回 18 年,history_probe 實測):
+→ 這支只抓 **5 次** FinMind(一次呼叫可回 18 年,history_probe 實測):
     ① TaiwanStockPrice              TAIEX  (加權指數 OHLC + 成交金額)
     ② TaiwanStockTotalReturnIndex   TAIEX  (報酬指數;拿不到只寫 *_error,⛔ 不擋)
     ③ TaiwanStockPrice              0050   (原始價 → 錨在本站那份第一天換成同一把尺;2025 的 1:4 分割在錨點之後)
     ④ TaiwanStockDividendResult     0050   (除息日 / 現金股利 / 除息前價 / 參考價)
+    ⑤ TaiwanStockPrice              TPEx   (🏪 V79.2.4 櫃買指數;`miner._fetch_otc_history_finmind` 已驗 **`TPEx` 才對、`OTC` 回空**;
+                                           拿不到 / 不夠深 / 對不上本站 → 只寫 `twoii_error`,⛔ 不擋前四份 —— 它只給「空頭守門改看櫃買」的回測用)
 輸出**一個**檔 data/idx_long.json(前端不讀,只給回測)。
 
 守門(⛔ 都不可拿掉;任一不過 → exit 1、⛔ 不寫檔):
@@ -102,7 +104,7 @@ def to_price_rows(rows):
     return out
 
 
-def build(fm, ref_twii, ref_0050, today=None):
+def build(fm, ref_twii, ref_0050, today=None, ref_twoii=None):
     """純邏輯(fm 可注入)→ (obj, errors)。errors 非空 = 不可寫檔。"""
     errs = []
     end = today or date.today().isoformat()
@@ -164,6 +166,25 @@ def build(fm, ref_twii, ref_0050, today=None):
     obj['div0050'] = dv
     if not dv:
         obj['div0050_error'] = f'除息紀錄拿不到({e or "回空"})—— 0050 含息報酬算不了'
+
+    # ⑤ 🏪 V79.2.4 櫃買指數(給 leader_probe `bearIdx` 回測用)—— ⛔ 不進 errs:本站那份 ^TWOII 只從 2024-10 起,
+    #   對表用現有重疊;重疊不足 / 對不上 / 回空 → 一律只寫 twoii_error(陷阱 #22:None 一定要有原因)
+    ot_raw, e = fm('TaiwanStockPrice', {'data_id': 'TPEx', 'start_date': START, 'end_date': end})
+    ot = to_price_rows(ot_raw)
+    print(f'⑤ 櫃買:{len(ot)} 根 ・{ot[0]["date"] if ot else "—"} ~ {ot[-1]["date"] if ot else "—"}' + (f' ・{e}' if e else ''))
+    obj['twoii'] = [[x['date'], x['open'], x['high'], x['low'], x['close'], x['amount']] for x in ot]
+    if not ot:
+        obj['twoii_error'] = f'櫃買指數拿不到({e or "回空"})—— bearIdx 回測只能用本站那份(2024-10 起)'
+    else:
+        if ref_twoii:
+            ok, ratio, n = overlap_check({x['date']: x['close'] for x in ot}, ref_twoii, min_n=min(MIN_OVERLAP, max(50, len(ref_twoii) // 2)))
+            print(f'   對表 data/^TWOII.json:{n} 天重疊,差 <0.5% 的 {ratio:.1%}')
+            if not ok:
+                obj['twoii_error'] = f'櫃買對不上本站(重疊 {n} 天、只有 {ratio:.1%} 在 0.5% 內)—— ⛔ 不可接到 ^TWOII 前面'
+        else:
+            obj['twoii_error'] = '沒有本站 ^TWOII.json 可對表 —— 資料照存,接之前先人工看一眼'
+        if ot[0]['date'] > d_slash(FIRST_MAX):
+            obj['twoii_note'] = f'第一根 {ot[0]["date"]},比加權晚(2011 起的回測前面那段沒有櫃買可看)'
     return obj, errs
 
 
@@ -194,12 +215,15 @@ def selftest():
         def f(ds, q):
             if ds == 'TaiwanStockPrice' and q['data_id'] == 'TAIEX':
                 return ([dict(r, close=tw[min(i + 1, len(tw) - 1)]['close']) for i, r in enumerate(tw)] if shift else tw), None
+            if ds == 'TaiwanStockPrice' and q['data_id'] == 'TPEx':
+                return ([] if f.no_otc else [dict(r, close=r['close'] / 50) for r in tw]), None
             if ds == 'TaiwanStockPrice':
                 return [dict(r) for r in e5], None
             if ds == 'TaiwanStockTotalReturnIndex':
                 return [{'date': r['date'], 'price': r['close'] * 2} for r in tw], None
             return [{'date': '2024-07-16', 'stock_and_cache_dividend': 1.0, 'stock_or_cache_dividend': '息',
                      'before_price': 190, 'after_price': 189}], None
+        f.no_otc = False
         return f
     o, errs = build(fake_fm(), ref_tw, ref_05, today='2026-09-25')
     ok('⑤ 正常資料 → 沒有錯誤、錨點之前的 0050 已換成本站的尺', not errs and abs(o['e0050'][0][4] - 40) < 1e-6)
@@ -220,6 +244,16 @@ def selftest():
     o, errs = build(fake_fm(), ref_tw, ref_05, today='2026-09-25')
     ok('⑦c 分割發生在錨點之後 → 照樣錨得起來、第一根 = 還原後的價', not errs and abs(o['e0050'][0][4] - 40) < 1e-6 and o['e0050_anchor']['k'] == 0.25)
     ok('⑧ 參考檔不在 → load_ref 回 None', load_ref('/nonexistent/x.json') is None)
+    # ⑨ 🏪 櫃買:有本站那份(只有 276 天)→ 用現有重疊對表、過了就沒有 twoii_error;對不上 → 只寫 twoii_error、⛔ 不進 errs;回空 → 只寫 twoii_error
+    ref_ot = {d_slash(r['date']): r['close'] / 50 for r in tw[-276:]}
+    o9, errs9 = build(fake_fm(), ref_tw, ref_05, today='2026-09-25', ref_twoii=ref_ot)
+    ok('⑨ 櫃買對得上本站 276 天 → 有 twoii、沒有 twoii_error、不影響 errs', not errs9 and len(o9['twoii']) == len(tw) and 'twoii_error' not in o9)
+    ref_bad_ot = {d: v * 1.3 for d, v in ref_ot.items()}
+    o9b, errs9b = build(fake_fm(), ref_tw, ref_05, today='2026-09-25', ref_twoii=ref_bad_ot)
+    ok('⑨b 櫃買對不上 → 只寫 twoii_error(⛔ 不擋前四份)', not errs9b and '對不上' in o9b.get('twoii_error', ''))
+    f9 = fake_fm(); f9.no_otc = True
+    o9c, errs9c = build(f9, ref_tw, ref_05, today='2026-09-25', ref_twoii=ref_ot)
+    ok('⑨c 櫃買回空 → twoii 空陣列 + twoii_error', not errs9c and o9c['twoii'] == [] and '拿不到' in o9c.get('twoii_error', ''))
     print(f'\n{"❌ " + str(len(fails)) + " 條沒過" if fails else "✅ IDX_LONG_SELFTEST_PASS"}')
     return 1 if fails else 0
 
@@ -232,12 +266,13 @@ def main():
     out = arg('--out', os.getenv('IDX_OUT') or 'data/idx_long.json')
     ref_tw = load_ref(os.path.join(ref_dir, '^TWII.json'))
     ref_05 = load_ref(os.path.join(ref_dir, '0050.json'))
+    ref_ot = load_ref(os.path.join(ref_dir, '^TWOII.json'))   # 🏪 選用:沒有就只存不對表(twoii_error 會寫原因)
     if not ref_tw or not ref_05:
         print(f'❌ 對表用的參考檔讀不到({ref_dir}/^TWII.json={bool(ref_tw)}、0050.json={bool(ref_05)})→ 不抓(⛔ 沒驗過的資料不寫)')
         sys.exit(1)
     from dispo_probe import fm, TOKENS
     print(f'🔑 token:{len(TOKENS)} 把 ・起點 {START}')
-    obj, errs = build(fm, ref_tw, ref_05)
+    obj, errs = build(fm, ref_tw, ref_05, ref_twoii=ref_ot)
     if errs:
         print('❌ 守門沒過 → 不寫檔:\n  ' + '\n  '.join(errs))
         sys.exit(1)
