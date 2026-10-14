@@ -151,8 +151,24 @@ const T = await page.evaluate(() => {
     R.luTouch = ids(run({ bars: new Map([['2454', kTouch]]), fav: ['2454'] }));
     R.luTouchLock = ids(run({ bars: new Map([['2454', kLock]]), fav: ['2454'] }));
     R.luTouchHeld = ids(run({ held: new Map([['2454', { cost: 0 }]]), bars: new Map([['2454', kTouch]]) }));
+    R.luTouchHeldSc = run({ held: new Map([['2454', { cost: 0 }]]), bars: new Map([['2454', kTouch]]) }).filter(x => x.id === 'lu_touch').map(x => x.sc).join(',');
     app.isMarketOpen = () => true;
     R.luTouchLive = ids(run({ bars: new Map([['2454', kTouch]]), fav: ['2454'] }));
+    // 📅 V79.2.3 收盤後今天那根日 K 還沒採礦 → 用富果報價補(_colTodayBar)
+    {
+        const ac = app._afterCloseNow, gt = app.getTodayStr, fc = app._fugleCache;
+        const base = mkK(40, '2026-10-16'), q = { price: 349, open: 321, high: 350.5, low: 320, volume: 161420, date: '2026/10/19' };
+        app.getTodayStr = () => '2026/10/19';
+        const tb = (open, after, qq, rows) => { app.isMarketOpen = () => open; app._afterCloseNow = () => after; app._fugleCache = qq ? { '1303': { data: qq, ts: 0 } } : {}; const r = app._colTodayBar('1303', rows || base); return r.length - (rows || base).length + ':' + (r[r.length - 1].high); };
+        R.tbOk = tb(false, true, q);
+        R.tbOpen = tb(true, true, q);
+        R.tbPre = tb(false, false, q);
+        R.tbYday = tb(false, true, Object.assign({}, q, { date: '2026/10/16' }));
+        R.tbVol0 = tb(false, true, Object.assign({}, q, { volume: 0 }));
+        R.tbHas = tb(false, true, q, base.concat([{ date: '2026-10-19', open: 1, high: 1, low: 1, close: 1, volume: 1 }]));
+        R.tbNoQ = tb(false, true, null);
+        app._afterCloseNow = ac; app.getTodayStr = gt; app._fugleCache = fc;
+    }
     app.isMarketOpen = mo;
     R.etf = ids(run({ held: new Map([['0050', { cost: 0 }]]), bars: new Map([['0050', kLock]]) }));
     R.stale = ids(run({ held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kOld]]) }));
@@ -190,7 +206,8 @@ const T = await page.evaluate(() => {
 const has = (a, x) => a.some(v => v === x || v.startsWith(x + ':'));
 ok('③a 庫存鎖漲停 → lu_held;沒鎖 → 沒有', has(T.luHeld, 'lu_held') && !has(T.luHeldNo, 'lu_held'), JSON.stringify([T.luHeld, T.luHeldNo]));
 ok('③b 自選鎖漲停 → lu_fav(⛔ 不是 lu_held)', has(T.luFav, 'lu_fav') && !has(T.luFav, 'lu_held'), JSON.stringify(T.luFav));
-ok('③b2 自選盤中碰漲停收盤沒鎖 → lu_touch;收盤鎖住 / 庫存 / 盤中 → 沒有', has(T.luTouch, 'lu_touch') && !has(T.luTouchLock, 'lu_touch') && !has(T.luTouchHeld, 'lu_touch') && !has(T.luTouchLive, 'lu_touch'), JSON.stringify([T.luTouch, T.luTouchLock, T.luTouchHeld, T.luTouchLive]));
+ok('③b2 盤中碰漲停收盤沒鎖 → lu_touch(自選 + V79.2.3 庫存也判、scope=held);收盤鎖住 / 盤中 → 沒有', has(T.luTouch, 'lu_touch') && !has(T.luTouchLock, 'lu_touch') && has(T.luTouchHeld, 'lu_touch') && T.luTouchHeldSc === 'held' && !has(T.luTouchLive, 'lu_touch'), JSON.stringify([T.luTouch, T.luTouchLock, T.luTouchHeld, T.luTouchHeldSc, T.luTouchLive]));
+ok('③b3 V79.2.3 收盤後用富果報價補今天那根(high 讀報價);盤中 / 盤前 / 報價是昨天 / 沒量 / 已經有今天 / 沒報價 → 不補', T.tbOk === '1:350.5' && [T.tbOpen, T.tbPre, T.tbYday, T.tbVol0, T.tbHas, T.tbNoQ].every(x => /^0:/.test(x)), JSON.stringify([T.tbOk, T.tbOpen, T.tbPre, T.tbYday, T.tbVol0, T.tbHas, T.tbNoQ]));
 ok('③c ETF ⛔ 不判 K 線型態', !has(T.etf, 'lu_held'), JSON.stringify(T.etf));
 ok('③d K 線日期追不上大盤 ⛔ 不判(舊資料不冒充今天)', !has(T.stale, 'lu_held'), JSON.stringify(T.stale));
 ok('③e 帳面 +25% → gain20;+11% → 沒有', has(T.gain, 'gain20') && !has(T.gainNo, 'gain20'), JSON.stringify([T.gain, T.gainNo]));
