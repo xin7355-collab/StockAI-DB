@@ -144,6 +144,16 @@ const T = await page.evaluate(() => {
     R.luHeld = ids(run({ held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kLock]]) }));
     R.luHeldNo = ids(run({ held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kFlat]]) }));
     R.luFav = ids(run({ bars: new Map([['2454', kLock]]), fav: ['2454'] }));
+    // 🟥🔓 V79.2.2 盤中碰到漲停、收盤沒鎖 → lu_touch(收盤後才判;盤中 ⛔ 不判)
+    const touch = k => { const n = k.length, p = k[n - 2].close; Object.assign(k[n - 1], { open: p, high: app._floorTick(p * 1.1), close: +(p * 1.07).toFixed(2), low: p }); };
+    const kTouch = mkK(80, '2026-10-16', touch), mo = app.isMarketOpen;
+    app.isMarketOpen = () => false;
+    R.luTouch = ids(run({ bars: new Map([['2454', kTouch]]), fav: ['2454'] }));
+    R.luTouchLock = ids(run({ bars: new Map([['2454', kLock]]), fav: ['2454'] }));
+    R.luTouchHeld = ids(run({ held: new Map([['2454', { cost: 0 }]]), bars: new Map([['2454', kTouch]]) }));
+    app.isMarketOpen = () => true;
+    R.luTouchLive = ids(run({ bars: new Map([['2454', kTouch]]), fav: ['2454'] }));
+    app.isMarketOpen = mo;
     R.etf = ids(run({ held: new Map([['0050', { cost: 0 }]]), bars: new Map([['0050', kLock]]) }));
     R.stale = ids(run({ held: new Map([['2330', { cost: 0 }]]), bars: new Map([['2330', kOld]]) }));
     R.gain = ids(run({ held: new Map([['2330', { cost: 80 }]]), bars: new Map([['2330', kFlat]]) }));
@@ -180,6 +190,7 @@ const T = await page.evaluate(() => {
 const has = (a, x) => a.some(v => v === x || v.startsWith(x + ':'));
 ok('③a 庫存鎖漲停 → lu_held;沒鎖 → 沒有', has(T.luHeld, 'lu_held') && !has(T.luHeldNo, 'lu_held'), JSON.stringify([T.luHeld, T.luHeldNo]));
 ok('③b 自選鎖漲停 → lu_fav(⛔ 不是 lu_held)', has(T.luFav, 'lu_fav') && !has(T.luFav, 'lu_held'), JSON.stringify(T.luFav));
+ok('③b2 自選盤中碰漲停收盤沒鎖 → lu_touch;收盤鎖住 / 庫存 / 盤中 → 沒有', has(T.luTouch, 'lu_touch') && !has(T.luTouchLock, 'lu_touch') && !has(T.luTouchHeld, 'lu_touch') && !has(T.luTouchLive, 'lu_touch'), JSON.stringify([T.luTouch, T.luTouchLock, T.luTouchHeld, T.luTouchLive]));
 ok('③c ETF ⛔ 不判 K 線型態', !has(T.etf, 'lu_held'), JSON.stringify(T.etf));
 ok('③d K 線日期追不上大盤 ⛔ 不判(舊資料不冒充今天)', !has(T.stale, 'lu_held'), JSON.stringify(T.stale));
 ok('③e 帳面 +25% → gain20;+11% → 沒有', has(T.gain, 'gain20') && !has(T.gainNo, 'gain20'), JSON.stringify([T.gain, T.gainNo]));
