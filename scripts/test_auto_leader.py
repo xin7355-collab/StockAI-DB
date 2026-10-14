@@ -11,6 +11,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 import auto_trade as A
 # ⏱️ V78.4.4 預設改 split;①~⑮ 測的是「全部開盤」那個模式(換回舊的 LEADER_WINDOW=open 仍要能用)→ 先固定成 open,split 在 ⑯ 另測
 A.LEADER_WINDOW = 'open'
+# 📚 V79.2.5 預設兩本帳;①~⑯ 測的是一本帳的機制(LEADER_BOOKS=1 換回舊的仍要能用)→ 先固定成 1,兩本帳在 ⑰ 另測
+A.LEADER_BOOKS = 1
 
 ok_n = bad_n = 0
 def ok(name, c, extra=''):
@@ -200,6 +202,33 @@ stF = {'pos': {}, 'lead': {'2003': {'e': 100, 'sh': 1000}}, 'lead_defer': {'d': 
 apiF = FakeApi(); okF = A.leader_defer_sell_window(apiF, sj, stF, now_fn=clk([605]), sleep_fn=lambda x: None)
 ok('⑯f 過了 10:00 還沒賣成 → 這段不賣、清單留著(尾盤補賣)', okF is False and not apiF.orders and stF['lead_defer']['sell'] == ['2003'])
 ok('⑯g 尾盤那段會補賣 + 13:25 才買延後的(⛔ 13:25 之前不買)', "leader_defer_step(api, sj, st, day, 'sell')" in _src and "mins >= LEADER_DEFER_BUY_FROM" in _src and "leader_defer_sell_window(api, sj, st)" in _src)
+# ⑰ 📚 V79.2.5 兩本帳:第 2 本錨點 10-01(TW 第 6 天)→ 兩本⛔ 不會同一天換倉;各記各的部位、各一半錢;賣只賣自己那一本的股數
+A.LEADER_WINDOW, A.LEADER_BOOKS, A.LEADER_ANCHOR2 = 'open', 2, '2026-10-01'
+import lib_leader as LLm
+_d = [r['date'] for r in TW]
+ok('⑰a 時鐘:09-24 = 第 1 本換倉、10-01 = 第 2 本換倉、09-25 都不是;books=1 == leader_clock',
+   LLm.leader_books_clock(_d, '2026-09-24', 2, ['2026-09-24', '2026-10-01'])[:3] == ('lead', 1, True)
+   and LLm.leader_books_clock(_d, '2026-10-01', 2, ['2026-09-24', '2026-10-01'])[:3] == ('lead2', 1, True)
+   and LLm.leader_books_clock(_d, '2026-09-25', 2, ['2026-09-24', '2026-10-01'])[2] is False
+   and all(LLm.leader_books_clock(_d, d, 1, ['2026-09-24'])[1:] == LLm.leader_clock(_d, d, '2026-09-24') for d in _d))
+stG = {'pos': {}, 'lead': {'2000': {'e': 100, 'sh': 2000}}, 'lead2': {}}
+stG, bG, sG, apiG = run('2026-10-02', '2026-10-01', st=stG)
+ok('⑰b 第 2 本換倉日:買進記在 lead2(第 1 本的 2000 照留)、每檔 = 100 萬 ÷ 10 = 1,000 股、同一檔兩本都可以有',
+   sorted(stG['lead2']) == ['2000', '2001', '2002', '2003', '2004'] and stG['lead'] == {'2000': {'e': 100, 'sh': 2000}}
+   and all(o['quantity'] == 1 for c, o in apiG.orders) and not sG, (stG, apiG.orders))
+stH = {'pos': {}, 'lead': {'2003': {'e': 100, 'sh': 2000}}, 'lead2': {'2003': {'e': 100, 'sh': 1000}}}
+A.fetch_json = lambda rel: mkD2('2026-10-01') if 'screener' in rel else TW
+apiH = FakeApi(); A.leader_step(apiH, sj, stH, {'mkt': {'bear60': True}}, '2026-10-02')
+sH = [(c, o['quantity'], o['order_lot']) for c, o in apiH.orders if o['action'] == 'S']
+ok('⑰c 第 2 本換倉、2003 掉出前 10 → 只賣第 2 本那 1,000 股,第 1 本那 2,000 股照留(等它自己的換倉日)',
+   sH == [('2003', 1, 'C')] and '2003' not in stH['lead2'] and stH['lead'] == {'2003': {'e': 100, 'sh': 2000}}, (sH, stH))
+stI = {'pos': {}, 'lead': {'2003': {'e': 100, 'sh': 2000}}, 'lead2': {'2003': {'e': 100, 'sh': 1000}},
+       'lead_defer': {'d': '2026-10-02', 'sell': ['2003'], 'buy': [], 'book': 'lead2'}}
+apiI = FakeApi(); A.leader_defer_step(apiI, sj, stI, '2026-10-02', 'sell')
+ok('⑰d 延後要賣的記得是哪一本帳(lead2)→ 只賣那 1,000 股',
+   [(c, o['quantity']) for c, o in apiI.orders] == [('2003', 1)] and stI['lead'] == {'2003': {'e': 100, 'sh': 2000}} and '2003' not in stI['lead2'], apiI.orders)
+ok('⑰e 每天重置狀態時 lead2 ⛔ 不可被清掉', "'lead2': st.get('lead2') or {}" in _src)
+A.LEADER_BOOKS = 1
 A.LEADER_WINDOW = 'open'
 print(f"\n{'❌' if bad_n else '✅'} AUTO_LEADER {ok_n}/{ok_n + bad_n}")
 sys.exit(1 if bad_n else 0)

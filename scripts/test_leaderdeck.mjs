@@ -34,7 +34,7 @@ const pyRule = (LIBL.match(/LEADER_RULE = \{'U': (\d+), 'N': (\d+), 'R': (\d+), 
 ok('⑤ 規則 App == lib_leader.py(U,N,R,L,hyst,pos),auto_trade.py 從它 import', jsRule && jsRule === pyRule && /LEADER_RULE = _LL\.LEADER_RULE/.test(AT), `${jsRule} vs ${pyRule}`);
 const jsAnc = (SRC.match(/anchor: '(\d{4}-\d{2}-\d{2})'/) || [])[1], pyAnc = /LEADER_ANCHOR = os\.getenv\('LEADER_ANCHOR'\) or _LL\.LEADER_ANCHOR/.test(AT) ? (LIBL.match(/LEADER_ANCHOR = '(\d{4}-\d{2}-\d{2})'/) || [])[1] : null;
 ok('⑤b 換倉錨點 App == auto_trade.py(⛔ 不存在手機上)', jsAnc && jsAnc === pyAnc && !/proTerm_leaderStart/.test(SRC), `${jsAnc} vs ${pyAnc}`);
-ok('⑤c 領頭羊預設關(LEADER=1 才開)、⛔ 只動 lead 那一格的部位、空頭只擋買', /LEADER = os\.getenv\('LEADER'\) == '1'/.test(AT) && /held = st\.setdefault\('lead', \{\}\)/.test(AT) && /'lead': st\.get\('lead'\) or \{\}/.test(AT) && /BEAR_GATE and _mkt\.get\('bear60'\) is True:\n\s+log\("   👑 🐻/.test(AT));
+ok('⑤c 領頭羊預設關(LEADER=1 才開)、⛔ 只動 lead 那一格的部位、空頭只擋買', /LEADER = os\.getenv\('LEADER'\) == '1'/.test(AT) && /held = st\.setdefault\((?:'lead'|book), \{\}\)/.test(AT) && /'lead': st\.get\('lead'\) or \{\}/.test(AT) && /BEAR_GATE and _mkt\.get\('bear60'\) is True:\n\s+log\("   👑 🐻/.test(AT));
 ok('⑤d 舊名單⛔ 不下單(用「今天之前最近的交易日」判,不用天數)', /if not dates or dd != prev:/.test(AT));
 
 let chromium; try { ({ chromium } = await import('/opt/node22/lib/node_modules/playwright/index.mjs')); } catch (_) { ({ chromium } = await import('playwright')); }
@@ -231,7 +231,7 @@ ok('⑫f _leaderRebPx 讀那一天(⛔ 不是前一天)的 lead.rows.c;沒存到
 ok('⑫g 表下說明寫現價 / 09/24價的定義', /09\/24價 = 換這一批那天\(2026-09-24\)的收盤/.test(R.rebNote), R.rebNote);
 ok('⑬a 📦 V78.6.0 非換倉日:表上只列這一批(pick_history 上次換倉那天的名單,照原順序),⛔ 不是今天的排名', JSON.stringify(R.bRows) === JSON.stringify(['1003', '1015', '1031', '1000', '1100']), JSON.stringify(R.bRows));
 ok('⑬b 動作欄 = 第幾名(📅 V79.1.6 日期寫在表頭,格子只寫「第N」):還在前 10 → ✅;掉出 / 沒過趨勢 / 不在池子 → ⏳(⛔ 沒有 🛒,換倉日才賣)', R.bActs['1003'] === 'in|✅ 第2' && R.bActs['1015'] === 'in|✅ 第8' && R.bActs['1031'] === 'out|⏳ 第16' && R.bActs['1000'] === 'out|⏳ 沒過趨勢' && R.bActs['1100'] === 'out|⏳ 不在前100' && R.bBuy === 0, JSON.stringify([R.bActs, R.bBuy]));
-ok('⑬c 表上方寫「09/24 換的這一批・10 天不變」+ 表頭可照名次排序(沒名次排最後);📅 V79.1.6 資料日不是今天 → 表頭寫「09/28名次」(⛔ 不寫「今天名次」)', /^ok\|📦 下面這 5 檔 = 09\/24 換的這一批/.test(R.bTxt) && /09\/28 收盤排第幾名/.test(R.bTxt) && /^09\/28名次/.test(R.bHdr) && !/今天/.test(R.bHdr) && JSON.stringify(R.bSortT) === JSON.stringify(['1003', '1015', '1031', '1000', '1100']) && /^60\.00/.test(R.bReb1015.trim()), JSON.stringify([R.bTxt, R.bHdr, R.bSortT, R.bReb1015]));
+ok('⑬c 表上方寫「09/24 換的這一批・10 天不變」+ 表頭可照名次排序(沒名次排最後);📅 V79.1.6 資料日不是今天 → 表頭寫「09/28名次」(⛔ 不寫「今天名次」)', /^ok\|📦 下面這 5 檔 = (?:第 [12] 本帳 )?09\/24 換的這一批/.test(R.bTxt) && /09\/28 收盤排第幾名/.test(R.bTxt) && /^09\/28名次/.test(R.bHdr) && !/今天/.test(R.bHdr) && JSON.stringify(R.bSortT) === JSON.stringify(['1003', '1015', '1031', '1000', '1100']) && /^60\.00/.test(R.bReb1015.trim()), JSON.stringify([R.bTxt, R.bHdr, R.bSortT, R.bReb1015]));
 ok('⑬d ⭐ 決定性對照:換倉日 → 列的是今天的排名(1001 起),寫「今天換倉 → 新的一批」', R.rRows[0] === '1001' && R.rRows.length >= 10 && R.rBatch === 'today', JSON.stringify([R.rRows, R.rBatch]));
 ok('⑬e 讀不到那一批 → 退回今天的排名並寫原因(⛔ 不靜默)', R.eRows[0] === '1001' && /^err\|⚠️ 09\/24 那一批讀不到/.test(R.eBatch), JSON.stringify([R.eRows.slice(0, 3), R.eBatch]));
 ok('⑬f 🔓 標題連點 5 次才打開(4 次不動)・預設關 → 沒有「今天最新前 10 名」', R.tOff === 0 && R.tap4 === false && R.tap5 === true && R.tapWired, JSON.stringify([R.tOff, R.tap4, R.tap5, R.tapWired]));

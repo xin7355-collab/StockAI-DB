@@ -800,6 +800,8 @@ function isValidCode(code) {
 // ⛔ 規則同 index.html `_leaderCalc` / `_leaderClock` / lib_leader.py(scripts/test_stratswitch.mjs 跨檔比對)。
 export const LEAD_RULE = { U: 100, N: 5, R: 10, L: 10, hyst: 2, pos: 85 };   // 📍 V78.0.5 pos = 買進要一年位置 ≥ pos%(只擋買,續抱照舊)
 export const LEAD_ANCHOR = '2026-09-24';
+// 📚 V79.2.5 兩本帳(同 App `_LEADER_EDGE.books / anchor2` / lib_leader LEADER_ANCHOR2):錢各一半、第 2 本換倉日晚 4 個交易日;App 設定 leadBooks = 1 → 一本帳
+export const LEAD_ANCHOR2 = '2026-10-02';
 // 📸 V79.1.5 _LEAD_OWNED = 這一輪讀到的「歸 👑 的代號」(KV leadstate);null = 讀不到 → 照舊全部當 👑(⛔ 不猜)
 let _LEAD_OWNED = null;
 function _leadStock(strategy, sym) { return strategy === 'lead' && /^\d{4}$/.test(String(sym)) && !String(sym).startsWith('00') && (!_LEAD_OWNED || _LEAD_OWNED.has(String(sym))); }
@@ -822,12 +824,39 @@ export function leadCalc(D, pos = LEAD_RULE.pos) {
     const ranked = ok.map((r, i) => ({ ...r, rank: i + 1, posOk: !pos || (Number.isFinite(r.pos) && r.pos >= pos) }));
     return { ranked: ranked.slice(0, LEAD_RULE.N * LEAD_RULE.hyst), buy: ranked.filter(r => r.posOk).slice(0, LEAD_RULE.N), all: new Map(ranked.map(r => [r.sym, r])), date: D.data_date || '', pos };
 }
-export function leadClock(twiiRows, dataDate) {
-    const days = (twiiRows || []).map(r => String(r.date || r.d || '').replace(/\//g, '-').slice(0, 10)).filter(d => d && d >= LEAD_ANCHOR && d <= dataDate);
+export function leadClock(twiiRows, dataDate, anchor = LEAD_ANCHOR) {
+    const days = (twiiRows || []).map(r => String(r.date || r.d || '').replace(/\//g, '-').slice(0, 10)).filter(d => d && d >= anchor && d <= dataDate);
     const day = days.length; if (!day) return { day: 0, isRebal: false };
     const k = (day - 1) % LEAD_RULE.R;
     // 📸 V79.1.5 reb = 最近一次換倉日、prev = 再上一次(同 App `_leaderClock`;算「哪幾檔歸 👑」要用)
     return { day, isRebal: k === 0, left: k === 0 ? 0 : LEAD_RULE.R - k, reb: days[day - 1 - k] || null, prev: days[day - 1 - k - LEAD_RULE.R] || null };
+}
+/** 📚 V79.2.5 兩本帳的時鐘(= App `_leadClk`):回 leadClock 同樣的欄位(今天 / 下一個換倉的那一本)+ book('A' / 'B')、books、other(另一本)。books 1 = 舊的 */
+export function leadClocks(twiiRows, dataDate, books = 2) {
+    const A = leadClock(twiiRows, dataDate, LEAD_ANCHOR);
+    if (books < 2) return { ...A, book: 'A', books: 1, other: null };
+    const B = leadClock(twiiRows, dataDate, LEAD_ANCHOR2);
+    if (!B.day) return { ...A, book: 'A', books: 2, other: B };
+    const k = A.isRebal ? 'A' : B.isRebal ? 'B' : ((A.left ?? 99) <= (B.left ?? 99) ? 'A' : 'B');
+    return { ...(k === 'A' ? A : B), book: k, books: 2, other: k === 'A' ? B : A };
+}
+/** 📚 V79.2.5 兩本帳各自手上有什麼(= App `_leadCtxLoad` 的 kRank / oRank):kOwn = 這本上次換倉的名單(換倉日當天 = 再上一次)、oOwn = 另一本上次的。讀不到 → null */
+export function leadBookSets(hist, clk) {
+    if (!clk || clk.books !== 2 || !hist || !Array.isArray(hist.days)) return { kOwn: null, oOwn: null };
+    const rowsOf = d => { if (!d) return null; const day = hist.days.find(x => x && String(x.d || '').replace(/\//g, '-').slice(0, 10) === d); return day && day.lead && Array.isArray(day.lead.rows) ? day.lead.rows.map(r => String(r.s)) : null; };
+    return { kOwn: rowsOf(clk.isRebal ? clk.prev : clk.reb), oOwn: rowsOf(clk.other && clk.other.reb) };
+}
+/** 📚 V79.2.5 換倉那天要賣 / 續抱 / 買什麼(= App `_leadActs` 的兩本帳版;kOwn = null → 一本帳舊做法)。top = 前 2N 名、buyL = 買進名單 */
+export function leadActs(mine, top, buyL, bear, kOwn, oOwn) {
+    const T = new Set(top), two = Array.isArray(kOwn), K = new Set(kOwn || []), O = new Set(oOwn || []);
+    const inK = s => !two || K.has(s);
+    const sell = mine.filter(s => !T.has(s) && inK(s)), waitOther = two ? mine.filter(s => !T.has(s) && !inK(s)) : [];
+    const half = two ? sell.filter(s => O.has(s)) : [];
+    const keep = mine.filter(s => !sell.includes(s) && !waitOther.includes(s));
+    const kHeld = two ? mine.filter(s => inK(s) && T.has(s)) : keep;
+    const has = s => two ? (kHeld.includes(s) || (mine.includes(s) && !O.has(s))) : mine.includes(s);
+    const buy = bear ? [] : buyL.filter(s => !has(s)).slice(0, Math.max(0, LEAD_RULE.N - kHeld.length));
+    return { sell, keep, buy, half, waitOther, addOne: two ? buy.filter(s => mine.includes(s)) : [] };
 }
 /** 📸 V79.1.5 哪幾檔歸 👑(同 App `_leadOwns`):上次換倉那天 pick_history 名單上有的;換倉日當天再加上上上次那份
  *  (手上的是上一次名單買的)。讀不到快照 → null(呼叫端照舊全部當 👑,⛔ 不猜)。 */
@@ -837,21 +866,23 @@ export function leadOwnedFrom(hist, clk) {
     const a = rowsOf(clk.reb); if (!a || !a.length) return null;
     const out = new Set(a.map(r => String(r.s)));
     if (clk.isRebal && clk.prev) for (const r of (rowsOf(clk.prev) || [])) out.add(String(r.s));
+    if (clk.books === 2 && clk.other && clk.other.reb) for (const r of (rowsOf(clk.other.reb) || [])) out.add(String(r.s));   // 📚 另一本帳的
     return out;
 }
 /** ⏰ V79.1.5 換倉後那一天的提醒內容(純函式,方便測):st = KV 的 leadstate;mine = 歸 👑 的持股;q = Map(sym → {z 現價, y 昨收, o 開盤})。
  *  slot 'open' = 開盤後那一則(要賣的 / 開盤跌 ≥3% 的買)、'buy' = 13:15 那一則(13:25 要買的)。回字串陣列(空 = 不用推) */
 export function leadDayLines(st, mine, split, q, slot, posOff, nm = s => s) {
-    const top = new Set(posOff ? st.topOld : st.top), buyL = posOff ? st.buyOld : st.buy;
-    const sell = mine.filter(s => !top.has(s)), keep = mine.filter(s => top.has(s));
-    const buy = st.bear ? [] : buyL.filter(s => !mine.includes(s)).slice(0, Math.max(0, LEAD_RULE.N - keep.length));
+    const A = leadActs(mine, posOff ? st.topOld : st.top, posOff ? st.buyOld : st.buy, st.bear, st.kOwn || null, st.oOwn || null);   // 📚 V79.2.5
+    const sell = A.sell, buy = A.buy;
     const gap = s => { const x = q && q.get(s); return x && x.o > 0 && x.y > 0 ? (x.o / x.y - 1) * 100 : null; };
     const g = s => { const v = gap(s); return v == null ? '' : `(開 ${v >= 0 ? '+' : ''}${v.toFixed(1)}%)`; };
     const d3 = s => { const v = gap(s); return v != null && v <= -3; }, lu = s => { const v = gap(s); return v != null && v >= 9.5; };
     const L = [];
     if (slot === 'open') {
         const now = sell.filter(s => !(split && d3(s))), wait = sell.filter(s => split && d3(s));
-        if (now.length) L.push(`🚪 現在開盤賣:${now.map(s => nm(s) + g(s)).join('、')}`);
+        const hf = s => A.half.includes(s) ? '(只賣這本那一份,約一半)' : '';
+        if (st.book && st.kOwn) L.push(`📚 這次換的是第 ${st.book === 'B' ? 2 : 1} 本帳(錢的一半)`);
+        if (now.length) L.push(`🚪 現在開盤賣:${now.map(s => nm(s) + hf(s) + g(s)).join('、')}`);
         if (wait.length) L.push(`🚪 開盤就跌 3% 以上 → 等到 09:30~10:00 再賣:${wait.map(s => nm(s) + g(s)).join('、')}`);
         const nowB = buy.filter(s => (!split || d3(s)) && !lu(s)), laterB = buy.filter(s => split && !d3(s) && !lu(s)), noB = buy.filter(lu);
         if (nowB.length) L.push(`🛒 ${split ? '開盤就跌 3% 以上 → ' : ''}現在買:${nowB.map(s => nm(s) + g(s)).join('、')}`);
@@ -881,18 +912,19 @@ async function runLeaderRebalPush(env) {
     const L0 = leadCalc(D), L = L0; if (L.err) return;
     const Lold = leadCalc(D, 0);   // 📍 V78.0.5 使用者在 App 按了「換回舊的」(leadPosOff)→ 用不看位置的舊名單
     const date = String(L.date).replace(/\//g, '-').slice(0, 10);
-    const clk = leadClock(tw, date);
+    const clk = leadClocks(tw, date, 2), clk1 = leadClocks(tw, date, 1);   // 📚 V79.2.5 兩本帳(預設)/ 一本帳(App 設定 leadBooks = 1)
     const bear = leadBear(tw.filter(r => String(r.date || '').replace(/\//g, '-').slice(0, 10) <= date));
     const H = LEAD_RULE.N * LEAD_RULE.hyst;
     // 📸 V79.1.5 哪幾檔歸 👑 + 今天的名單 → 存 KV 一天(盤中 15 分鐘那幾輪只讀這個小檔,⛔ 不每輪重抓大檔)
-    let owned = null;
-    try { const hR = await fetch(`${GH_PAGES_BASE}/data/pick_history.json?t=${t}`).catch(() => null); const hist = hR?.ok ? await hR.json().catch(() => null) : null; owned = leadOwnedFrom(hist, clk); } catch (_) {}
+    let owned = null, owned1 = null, sets = { kOwn: null, oOwn: null };
+    try { const hR = await fetch(`${GH_PAGES_BASE}/data/pick_history.json?t=${t}`).catch(() => null); const hist = hR?.ok ? await hR.json().catch(() => null) : null; owned = leadOwnedFrom(hist, clk); owned1 = leadOwnedFrom(hist, clk1); sets = leadBookSets(hist, clk); } catch (_) {}
     const ymd = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
-    const st = { ymd, date, isRebal: !!clk.isRebal, act: !!clk.isRebal && ymd > date, bear: !!bear,
+    const st = { ymd, date, isRebal: !!clk.isRebal, act: !!clk.isRebal && ymd > date, bear: !!bear, book: clk.book, kOwn: sets.kOwn, oOwn: sets.oOwn,
+                 isRebal1: !!clk1.isRebal, act1: !!clk1.isRebal && ymd > date, owned1: owned1 ? [...owned1] : null,
                  top: L.ranked.map(r => r.sym), topOld: Lold.ranked.map(r => r.sym), buy: L.buy.map(r => r.sym), buyOld: Lold.buy.map(r => r.sym),
                  owned: owned ? [...owned] : null };
     try { await env.KV.put('leadstate', JSON.stringify(st), { expirationTtl: 2 * 86400 }); } catch (_) {}
-    if (!clk.isRebal) return;
+    if (!clk.isRebal && !clk1.isRebal) return;
     let cursor;
     while (true) {
         const list = await env.KV.list({ prefix: 'user:', cursor });
@@ -901,22 +933,27 @@ async function runLeaderRebalPush(env) {
                 const u = JSON.parse((await env.KV.get(key.name)) || '{}');
                 if (!u.chat_id || u.settings?.strategy !== 'lead') continue;
                 if (u.muted_until && u.muted_until > Date.now()) continue;
+                const b1 = u.settings?.leadBooks === 1;   // 📚 V79.2.5 這位用一本帳
+                if (!(b1 ? clk1.isRebal : clk.isRebal)) continue;
                 const sentKey = `leadpush:${u.chat_id}:${date}`;
                 if (await env.KV.get(sentKey)) continue;
                 const L = u.settings?.leadPosOff ? Lold : L0;
-                _LEAD_OWNED = owned;
-                const mine = (u.inventory || []).map(i => i.sym).filter(s => _leadStock('lead', s));   // 📸 V79.1.5 名單外的持股照 🔥(同 App)
-                const fire = owned ? (u.inventory || []).map(i => String(i.sym)).filter(s => /^\d{4}$/.test(s) && !s.startsWith('00') && !owned.has(s)) : [];
-                const sell = mine.filter(s => { const r = L.all.get(s); return !(r && r.rank <= H); });
-                const keep = mine.filter(s => !sell.includes(s));
-                const buy = bear ? [] : L.buy.map(r => r.sym).filter(s => !mine.includes(s)).slice(0, Math.max(0, LEAD_RULE.N - keep.length));
+                const ownU = b1 ? owned1 : owned;
+                _LEAD_OWNED = ownU;
+                const mine = (u.inventory || []).map(i => String(i.sym)).filter(s => _leadStock('lead', s));   // 📸 V79.1.5 名單外的持股照 🔥(同 App)
+                const fire = ownU ? (u.inventory || []).map(i => String(i.sym)).filter(s => /^\d{4}$/.test(s) && !s.startsWith('00') && !ownU.has(s)) : [];
+                const A = leadActs(mine, L.ranked.map(r => r.sym), L.buy.map(r => r.sym), bear, b1 ? null : sets.kOwn, b1 ? null : sets.oOwn);
+                const sell = A.sell, keep = A.keep, buy = A.buy;
                 const lab = async a => (await Promise.all(a.map(s => stockLabel(env, s)))).join('、');
                 const split = u.settings?.leadTiming !== 'open';   // ⏱️ V78.4.4 換倉那天幾點買賣(App 設定 leadTiming;預設 split)
                 const text = [
                     `👑 *換倉日* _${date} 收盤的名單 → 今天照做_`, SEP,
+                    (!b1 && sets.kOwn) ? `📚 這次換的是第 ${clk.book === 'B' ? 2 : 1} 本帳(錢的一半,每檔 = 總資金 ÷ ${LEAD_RULE.N * 2})` : '',
                     sell.length ? `🔻 賣:${await lab(sell)}(掉出前 ${H} 名)・${split ? '09:00 開盤賣;開盤就跌 3% 以上 → 等到 09:30~10:00 再賣' : '09:00 開盤賣'}` : '🔻 賣:沒有',
                     buy.length ? `🛒 買:${await lab(buy)}(${u.settings?.leadPosOff ? '' : `一年位置 ≥ ${LEAD_RULE.pos}% 的`}前 ${LEAD_RULE.N} 名,等權)・${split ? '下午 13:25 買;開盤就跌 3% 以上 → 開盤就買;漲停不追' : '09:00 開盤買;漲停不追'}` : (bear ? '🐻 大盤嚴格空頭 → 今天不開新倉' : '🛒 買:沒有(要買的你都有了)'),
                     keep.length ? `✅ 續抱:${await lab(keep)}` : '',
+                    A.half.length ? `✂️ 兩本帳都有的:${await lab(A.half)} → 只賣這本那一份(約一半)` : '',
+                    A.waitOther.length ? `⏳ 另一本帳的:${await lab(A.waitOther)} → 這次不動,等它自己的換倉日` : '',
                     fire.length ? `🔥 不在上次換倉名單上的:${await lab(fire)} → 照 🔥 三條出場(硬停損 / 出場線 / 抱滿天數),⛔ 不照換倉賣` : '',
                     '💰 沒用到的錢放 0050 ・⛔ 沒有停損線',
                     `📱 [決策台](${GH_PAGES_BASE}/)`,
@@ -949,12 +986,16 @@ async function runLeaderDayPing(env, st) {
         try {
             const sentKey = `leadday:${u.chat_id}:${ymd}:${slot}`;
             if (await env.KV.get(sentKey)) continue;
+            const b1 = u.settings?.leadBooks === 1;   // 📚 V79.2.5
+            if (!(b1 ? st.act1 : st.act)) continue;
+            const stU = b1 ? { ...st, kOwn: null, oOwn: null, book: null } : st;
+            _LEAD_OWNED = (b1 ? st.owned1 : st.owned) ? new Set((b1 ? st.owned1 : st.owned).map(String)) : null;
             const mine = (u.inventory || []).map(i => String(i.sym)).filter(s => _leadStock('lead', s));
             const split = u.settings?.leadTiming !== 'open';
             const posOff = !!u.settings?.leadPosOff;
             const need = [...new Set([...mine, ...(posOff ? st.buyOld : st.buy)])];
             const labs = new Map(); for (const s of need) labs.set(s, (await stockLabel(env, s).catch(() => null)) || s);
-            const lines = leadDayLines(st, mine, split, q, slot, posOff, s => labs.get(s) || s);
+            const lines = leadDayLines(stU, mine, split, q, slot, posOff, s => labs.get(s) || s);
             if (!lines.length) { await env.KV.put(sentKey, '1', { expirationTtl: 2 * 86400 }); continue; }
             const body = lines.join('\n');
             await tg(env, u.chat_id, [`👑 *換倉日・${slot === 'open' ? '開盤要做的事' : '13:25 要買'}* _${st.date} 收盤的名單_`, SEP, body, '⛔ 這是提醒不是自動下單 ・沒用到的錢放 0050', `📱 [決策台](${GH_PAGES_BASE}/)`].join('\n'));
@@ -1049,6 +1090,8 @@ function sanitizePayload(payload) {
             leadPosOff: payload.settings.leadPosOff === true,
             // ⏱️ V79.1.5 換倉那天幾點買賣('split' 預設 / 'open')—— 以前這裡沒收,App 改了 Telegram 也不會跟著變
             leadTiming: payload.settings.leadTiming === 'open' ? 'open' : 'split',
+            // 📚 V79.2.5 兩本帳(預設 2;App 按「換回一本帳」→ 1)
+            leadBooks: payload.settings.leadBooks === 1 ? 1 : 2,
         };
         const ft = String(payload.settings.fugleToken1 || '').trim();
         if (ft && ft.length >= 8 && ft.length <= 100) out.settings.fugleToken1 = ft;
@@ -1152,7 +1195,7 @@ async function runScan(env) {
     try { leadSt = JSON.parse((await env.KV.get('leadstate')) || 'null'); } catch (_) {}
     const _ymd = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
     _LEAD_OWNED = (leadSt && leadSt.ymd === _ymd && Array.isArray(leadSt.owned)) ? new Set(leadSt.owned.map(String)) : null;
-    if (leadSt && leadSt.ymd === _ymd && leadSt.act) { try { await runLeaderDayPing(env, leadSt); } catch (_) {} }
+    if (leadSt && leadSt.ymd === _ymd && (leadSt.act || leadSt.act1)) { try { await runLeaderDayPing(env, leadSt); } catch (_) {} _LEAD_OWNED = (leadSt.owned ? new Set(leadSt.owned.map(String)) : null); }
     const [radarRes, macroRes] = await Promise.all([
         fetch(`${GH_PAGES_BASE}/data/radar.json?t=${t}`).catch(() => null),
         fetch(`${GH_PAGES_BASE}/data/macro_risk.json?t=${t}`).catch(() => null),

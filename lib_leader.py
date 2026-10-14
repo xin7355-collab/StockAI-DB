@@ -18,6 +18,12 @@ LEADER_RULE = {'U': 100, 'N': 5, 'R': 10, 'L': 10, 'hyst': 2, 'pos': 85}
 #    🧭 V79.2.4 引擎修尺(趨勢過濾兩把尺)後重算:AI 時代 648 → 902%、16 年 3,924 → 6,687%(規則沒變;修尺前寫的是 760 → 953 / 3,176 → 6,783)。
 #    換回舊規則:pos=0(auto_trade.py 用 LEADER_POS=0)。
 LEADER_ANCHOR = '2026-09-24'
+# 📚 V79.2.5 兩本帳(使用者:「依照你說的做」):錢平分兩本帳、換倉日錯開 4 個交易日,每本帳完全獨立(各自的持股 / 各自的錢)。
+#    第 2 本帳的錨點 = 第 1 本錨點起第 5 個交易日(錯開 4 天)。回測 leader_probe books:2 bookOff:4(兩窗口 × 17 條):
+#    中位不掉、最差那條 AI 603 → 761%、16 年 3,524 → 5,058%;錯開 3~7 天全部成立(高原);成本 ×2 仍成立。⚠️ 攤平「哪一天開始」的運氣,⛔ 不是新優勢。
+#    換回舊的(一本帳):books=1(auto_trade.py 用 LEADER_BOOKS=1)。
+LEADER_BOOKS = 2
+LEADER_ANCHOR2 = '2026-10-02'
 
 
 def leader_calc(D, U=None, N=None, pos=None):
@@ -67,3 +73,21 @@ def leader_clock(dates, data_date, anchor=None):
         return 0, False, None
     k = (day - 1) % R
     return day, k == 0, (0 if k == 0 else R - k)
+
+
+def leader_books_clock(dates, data_date, books=None, anchors=None):
+    """📚 V79.2.5 兩本帳的時鐘(= App `_leadClk`):回 (book, day, is_rebal, left)。
+    book = 'lead'(第 1 本)/ 'lead2'(第 2 本)= 今天換倉的那一本;都不是換倉日 → 下一個要換的那一本。
+    books=1 → 跟 leader_clock 一模一樣(book 一律 'lead')。兩本錯開 1~R−1 天 → ⛔ 不會同一天換倉。"""
+    books = LEADER_BOOKS if books is None else books
+    anchors = anchors or ([LEADER_ANCHOR] if books == 1 else [LEADER_ANCHOR, LEADER_ANCHOR2])
+    keys = ['lead', 'lead2'][:len(anchors)]
+    cl = [leader_clock(dates, data_date, a) for a in anchors]
+    for k, (day, reb, left) in zip(keys, cl):
+        if reb:
+            return k, day, reb, left
+    live = [(left, k, day) for k, (day, reb, left) in zip(keys, cl) if day and left is not None]
+    if not live:
+        return keys[0], cl[0][0], cl[0][1], cl[0][2]
+    left, k, day = min(live)
+    return k, day, False, left

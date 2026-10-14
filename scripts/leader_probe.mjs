@@ -123,7 +123,11 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
     // 🧪 V79.2.4 沒測過的做法(⛔ 不設時逐位相同,selftest ㊺~㊿b):momMin = 候選 L 日動能 ≥ x% 才買(null = 不看;0 也算一個門檻)・fipMin = L 日裡上漲天數比例 ≥ p 才買
     //   ・volMin = 池內 20 日振幅位階(%)≥ 才買 ・rankRaw = 動能用原始收盤(= App 的 chg10)・bearIdx = 空頭守門看哪個指數('' / twii / otc / both / either)
     //   ・pick 多兩種:'blend'(5/10/20 日名次平均)/ 'rel'(減同產業中位,要 IND_MAP)
-    momMin: null, fipMin: 0, volMin: 0, rankRaw: false, bearIdx: '' };
+    momMin: null, fipMin: 0, volMin: 0, rankRaw: false, bearIdx: '',
+    // 📚 V79.2.5 兩本帳(使用者:「依照你說的做」)⛔ 不設(books 1)時逐位相同(selftest ㊿c):
+    //   books = B → 錢平分 B 本帳,每本帳是**完全獨立**的帳戶(各自的現金 / 0050 / 持股,同一檔兩本都買 = 各持一份),
+    //   第 j 本帳的換倉日 = 第 1 本 + j × bookOff 個交易日(phase = R − j×bookOff);bookJoin = 'now' 第 0 天就照當下名單買 / 'wait' 錢先停 0050 等自己的換倉日
+    books: 1, bookOff: 5, bookJoin: 'now' };
 // 🟥 V79.1.6 換倉日收盤就漲停 / 跌停的候選(使用者:「如果換倉日漲跌停,隔天還要買嗎?還是就都買 0050」)⛔ 不設時逐位相同(selftest ㊴):
 //   判定(同 luExit / dt_daily_probe.lockUp):換倉日收盤 ≥ 前收 ×(1+漲跌幅−1%)且收在最高 = 漲停;≤ 前收 ×(1−漲跌幅+1%)且收在最低 = 跌停;除權息日不判
 //   rkLu / rkLd = 'park':本來會買的那一檔不買,那一份錢留在 0050 到下一次換倉 ・'next':改買名單上的下一名
@@ -233,7 +237,31 @@ export function dipEvents(ctx, from, P) {
     return { ev, cnt };
 }
 
+/** 📚 V79.2.5 兩本帳:每本帳各跑一次 simulate(錢 ÷ B、換倉日錯開),淨值加總(真實本金)或平均(單位淨值)。⛔ 帳戶之間沒有任何互動 */
+function simulateBooks(ctx, s0, cfg, seed) {
+    const P = { ...DEF, ...cfg }, B = P.books | 0, CAP = P.capital > 0;
+    if (!(B >= 2) || !(P.bookOff >= 1) || P.bookOff >= P.R) throw new Error(`books 要 ≥2、bookOff 要 1~R−1,收到 books=${P.books} bookOff=${P.bookOff}`);
+    if (!['now', 'wait'].includes(P.bookJoin)) throw new Error(`bookJoin 只認 now / wait,收到 ${JSON.stringify(P.bookJoin)}`);
+    const subs = [];
+    for (let j = 0; j < B; j++) {
+        const off = (j * P.bookOff) % P.R, ph = off ? P.R - off : 0;
+        const c = { ...cfg, books: 1, phase: ((P.phase || 0) + ph) % P.R, join: off ? P.bookJoin : (cfg.join || ''),
+            capital: CAP ? P.capital / B : 0, add: CAP ? (P.add || 0) / B : (P.add || 0) };
+        subs.push(simulate(ctx, s0, c, seed + j * 7907));
+    }
+    const len = Math.min(...subs.map(r => r.eq.length)), eq = [];
+    for (let i = 0; i < len; i++) { let v = 0; for (const r of subs) v += r.eq[i]; eq.push(CAP ? v : v / B); }
+    const sum = f => subs.reduce((a, r) => a + (f(r) || 0), 0), trades = sum(r => r.trades);
+    const st = {}; for (const r of subs) for (const [k, v] of Object.entries(r.st || {})) if (typeof v === 'number') st[k] = (st[k] || 0) + v;
+    return { eq, trades, win: trades ? sum(r => (r.win || 0) * r.trades) / trades : null, avg: trades ? sum(r => (r.avg || 0) * r.trades) / trades : null,
+        turnover: CAP ? sum(r => r.turnover) : sum(r => r.turnover) / B, skipLimit: sum(r => r.skipLimit), jumpExit: sum(r => r.jumpExit), from: subs[0].from,
+        contributed: CAP ? sum(r => r.contributed) : 1, glideAt: null, st, sumAmt: sum(r => r.sumAmt),
+        worstAmt: (() => { const a = subs.map(r => r.worstAmt).filter(v => v != null); return a.length ? Math.min(...a) : null; })(),
+        bestAmt: (() => { const a = subs.map(r => r.bestAmt).filter(v => v != null); return a.length ? Math.max(...a) : null; })(),
+        held: sum(r => r.held), openPnl: sum(r => r.openPnl), books: subs };
+}
 export function simulate(ctx, s0, cfg, seed = 1) {
+    if (cfg && cfg.books > 1) return simulateBooks(ctx, s0, cfg, seed);
     const { cal, stocks, etf } = ctx;
     const P = { ...DEF, ...cfg };
     // 🚧 V79.2.4 fill 認不得 → throw(以前打錯字會讓 pending 永遠不執行、整段只剩 0050,安靜地變成錯的對照)
@@ -1178,6 +1206,23 @@ function selftest() {
     t(oB.eq.at(-1) > 1.05 && oT.eq.every((v, k) => v === oB.eq[k]) && oO.eq.every(v => v === 1) && oE.eq.every(v => v === 1) && oBo.eq.every((v, k) => v === oB.eq[k])
         && oU.eq.every((v, k) => v === oB.eq[k]) && oU.st.otcMiss > 0 && /bearIdx/.test(threwB),
         `㊿b bearIdx:otc / either 看櫃買空頭不買、both / twii == 預設、櫃買沒資料退回加權(計 ${oU.st.otcMiss} 天)、亂寫 throw`);
+    // ㊿c 📚 V79.2.5 兩本帳:books 1 == 預設逐位相同;books 2 == 兩個獨立帳戶(phase 0 / R−k)淨值平均(⛔ 帳戶之間不可互動);
+    //      真實本金模式 = 兩本(各一半錢)加總;第 2 本帳的換倉日真的晚 k 天;亂寫 throw
+    const cfgK = { U: 20, N: 3, R: 5, L: 20, chand: 0, park: false, trend: false };
+    const ctxK = { cal, stocks: Array.from({ length: 20 }, (_, k) => mk(String(6100 + k), i => 100 + i * 0.05 + 12 * Math.sin((i + k * 3) / 6))), etf: flat, bear: new Uint8Array(n) };
+    const kb0 = simulate(ctxK, 100, cfgK, 7), kb1 = simulate(ctxK, 100, { ...cfgK, books: 1, bookOff: 2 }, 7);
+    const kb2 = simulate(ctxK, 100, { ...cfgK, books: 2, bookOff: 2 }, 7);
+    const kA = simulate(ctxK, 100, { ...cfgK, phase: 0 }, 7), kB = simulate(ctxK, 100, { ...cfgK, phase: 3, join: 'now' }, 7 + 7907);
+    const kc = simulate(ctxK, 100, { ...cfgK, books: 2, bookOff: 2, capital: 1e6 }, 7);
+    const kcA = simulate(ctxK, 100, { ...cfgK, capital: 5e5 }, 7), kcB = simulate(ctxK, 100, { ...cfgK, phase: 3, join: 'now', capital: 5e5 }, 7 + 7907);
+    const lgA = [], lgB = []; simulate(ctxK, 100, { ...cfgK, trace: lgA }, 7); simulate(ctxK, 100, { ...cfgK, phase: 3, join: 'now', trace: lgB }, 7 + 7907);
+    const dA = [...new Set(lgA.map(x => x.d))].sort(), dB = [...new Set(lgB.map(x => x.d))].sort();
+    const offOk = dA.length >= 3 && dB.length >= 3 && dB.some(d => !dA.includes(d)) && dA.every(d => (cal.indexOf(d) - 100) % 5 === 0) && dB.every(d => { const ia = cal.indexOf(d); return ia === 100 || (ia - 102) % 5 === 0; });
+    let threwK = ''; try { simulate(ctxK, 100, { ...cfgK, books: 2, bookOff: 5 }, 7); } catch (e) { threwK = String(e.message); }
+    t(kb1.eq.every((v, k) => v === kb0.eq[k]) && kb2.eq.length === kA.eq.length && kb2.eq.every((v, k) => Math.abs(v - (kA.eq[k] + kB.eq[k]) / 2) < 1e-12)
+        && kb2.eq.at(-1) !== kA.eq.at(-1) && kc.eq.every((v, k) => Math.abs(v - (kcA.eq[k] + kcB.eq[k])) < 1e-6) && kb2.trades === kA.trades + kB.trades
+        && offOk && /bookOff/.test(threwK),
+        `㊿c 兩本帳:books 1 逐位相同、books 2 = 兩個獨立帳戶平均(${r2(kb2.eq.at(-1))} = (${r2(kA.eq.at(-1))}+${r2(kB.eq.at(-1))})/2)、本金模式加總、第 2 本換倉晚 2 天(${dB.slice(0, 3).join(',')})、bookOff ≥ R throw`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }

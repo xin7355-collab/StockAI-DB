@@ -180,6 +180,7 @@ const R = await page.evaluate(async () => {
     o.invNoKey = { ws: window.__ws.length, syms: app._invWsSyms };
 
     // ⑤ 「今天要做的事」口吻 + 個人化
+    app.settings.leadBooks = 1;   // 📚 V79.2.5 ⑤⑥ 測的是一本帳的口吻與金額(÷ 5);兩本帳在 test_leadbooks.mjs
     app.getStockName = s => ({ 2330: '台積電', 2454: '聯發科', 3008: '大立光', 2317: '鴻海', 2382: '廣達', 6669: '緯穎', 3231: '緯創' })[s] || s;
     app._deckQ = {}; app._liveQuotes = {}; app._mktSeen = null;
     const rk = { 2317: 1, 2330: 2, 2382: 3, 6669: 4, 3231: 5, 2454: 7, 3008: 14 };

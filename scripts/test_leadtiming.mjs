@@ -47,7 +47,7 @@ const R = await page.evaluate(() => {
     o.open = { tm: app._leadTiming(), buy: app._leadWhen('buy'), sell: app._leadWhen('sell'), todo: todo(), ovBuy: ov('buy'), ovSell: ov('sell') };
     delete app.settings.leadTiming;
     const c = (app._STRAT_CHANGES || []).find(x => x.backLeadTime);
-    o.chg = c ? { v: c.v, lead: c.lead, first: (app._STRAT_CHANGES.find(x => x.lead) === c) } : null;
+    o.chg = c ? { v: c.v, lead: c.lead, first: (app._STRAT_CHANGES.find(x => x.backLeadTime) === c) } : null;
     o.showSrc = app._showStratChange.toString();
     o.alertSrc = app._leadRebalAlert.toString();
     return o;

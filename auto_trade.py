@@ -145,6 +145,10 @@ LEADER_OPEN_FROM, LEADER_OPEN_TO = 9 * 60 + 1, 9 * 60 + 10   # ⛔ 09:00 那一�
 import lib_leader as _LL
 LEADER_RULE = _LL.LEADER_RULE
 LEADER_ANCHOR = os.getenv('LEADER_ANCHOR') or _LL.LEADER_ANCHOR
+# 📚 V79.2.5 兩本帳(預設 2;LEADER_BOOKS=1 = 換回舊的一本帳):錢平分兩本、換倉日錯開 4 天,
+#    第 1 本記在 st['lead'](你原本的部位全部算這本,⛔ 不強迫減半)、第 2 本記在 st['lead2'];兩本⛔ 不會同一天換倉。
+LEADER_BOOKS = int(os.getenv('LEADER_BOOKS') or _LL.LEADER_BOOKS)
+LEADER_ANCHOR2 = os.getenv('LEADER_ANCHOR2') or _LL.LEADER_ANCHOR2
 # 📍 V78.0.5 買進的一年位置門檻(預設跟 App 同一個 = lib_leader 的 pos);LEADER_POS=0 = 換回舊規則(不看位置)
 LEADER_POS = None if (os.getenv('LEADER_POS') or '') == '' else float(os.getenv('LEADER_POS'))
 
@@ -210,15 +214,17 @@ def leader_step(api, sj, st, meta, today):
         # ⛔ 名單必須是「今天之前最近一個交易日」收盤算的(用交易日判,⛔ 不用天數 —— 過年休 9 天也不會誤擋)
         log(f"👑 ⏭️ 名單日期 {dd} 不是今天之前最近的交易日 {prev}(今天 {today})→ ⛔ 不用舊名單下單")
         st['lead_day'] = today; save_state(st); return
-    day, is_rebal, left = leader_clock(dates, dd)
-    held = st.setdefault('lead', {})
+    book, day, is_rebal, left = _LL.leader_books_clock(dates, dd, LEADER_BOOKS, [LEADER_ANCHOR] if LEADER_BOOKS == 1 else [LEADER_ANCHOR, LEADER_ANCHOR2])
+    held = st.setdefault(book, {})
+    bname = '' if LEADER_BOOKS == 1 else ('第 1 本帳' if book == 'lead' else '第 2 本帳')
     if not is_rebal:
-        log(f"👑 {dd} 是第 {day} 個交易日({LEADER_ANCHOR} 起)→ 不是換倉日,還有 {left} 天。手上 {list(held) or '(無)'}")
+        others = {k: list(st.get(k) or {}) for k in ('lead', 'lead2')[:LEADER_BOOKS]}
+        log(f"👑 {dd} 不是換倉日 → 下一個換倉的是{bname or '這本帳'},還有 {left} 天。手上 {others}")
         st['lead_day'] = today; save_state(st); return
     keep = {r['sym'] for r in L['ranked']}
     SPLIT = LEADER_WINDOW == 'split'
-    defer = {'d': today, 'sell': [], 'buy': []}
-    log(f"👑 換倉!名單日 {dd}(第 {day} 天)・池子 {L['n']} 檔・過趨勢 {L['passed']} 檔・前 {R['N']}:"
+    defer = {'d': today, 'sell': [], 'buy': [], 'book': book}
+    log(f"👑 換倉!{bname}名單日 {dd}(第 {day} 天)・池子 {L['n']} 檔・過趨勢 {L['passed']} 檔・前 {R['N']}:"
         + ' '.join(f"{r['sym']}({r['chg10']:+.1f}%{'・注意' if r['att'] == 1 else '・處置' if r['att'] == 2 else ''})" for r in L['buy']))
     _skip = [r for r in L['ranked'][:R['N']] if not r.get('posOk', True)]
     if _skip:
@@ -255,7 +261,7 @@ def leader_step(api, sj, st, meta, today):
     elif LEADER_ACCOUNT <= 0:
         log("   👑 ⚠️ 沒設 LEADER_ACCOUNT(分給這套的錢)→ 不買。要買請設 LEADER_ACCOUNT=<金額>")
     else:
-        slot = LEADER_ACCOUNT / R['N']
+        slot = LEADER_ACCOUNT / (R['N'] * LEADER_BOOKS)   # 📚 每本帳一半錢、每檔一份
         for r in L['buy']:
             sym = r['sym']
             if sym in held:
@@ -314,7 +320,7 @@ def leader_defer_step(api, sj, st, today, phase):
     """⏱️ split 的第二段:phase='sell'(09:30~10:00 / 尾盤補賣)賣掉開盤跌 ≥3% 延後的;phase='buy'(13:25)買進延後的。
     ⛔ 只動 st['lead'];賣的跨日也要賣(⛔ 不可留著不賣),買的只買當天那一份(隔天就是舊名單)。"""
     df = st.get('lead_defer') or {}
-    held = st.setdefault('lead', {})
+    held = st.setdefault(df.get('book') or 'lead', {})   # 📚 延後的是哪一本帳的(舊格式沒有 book = 第 1 本)
     if phase == 'sell':
         for sym in list(df.get('sell') or []):
             pos = held.get(sym)
@@ -342,7 +348,7 @@ def leader_defer_step(api, sj, st, today, phase):
                 log(f"   👑 ⏭️ 延後要買的是 {df.get('d')} 那一份(不是今天)→ ⛔ 不用舊名單下單")
             df['buy'] = []
         R = LEADER_RULE
-        slot = LEADER_ACCOUNT / R['N'] if LEADER_ACCOUNT > 0 else 0
+        slot = LEADER_ACCOUNT / (R['N'] * LEADER_BOOKS) if LEADER_ACCOUNT > 0 else 0
         for r in list(df.get('buy') or []):
             sym = r['sym']
             df['buy'].remove(r)
@@ -555,7 +561,8 @@ def main():
     log(f"🐻 大盤嚴格空頭不開新倉:{'開' if BEAR_GATE else '關(BEAR_GATE=0)'}")
     if LEADER:
         log(f"👑 領頭羊短線輪動:開(LEADER=1)・時段 {'⏱️ 看開盤情況分時段(預設):賣 = 開盤(開低 ≥3% 等 09:30~10:00)・買 = 13:25(開低 ≥3% 開盤買)' if LEADER_WINDOW == 'split' else '全部開盤 09:01~09:10(舊)' if LEADER_WINDOW == 'open' else '全部尾盤(更舊)'}"
-            f"・分給它 {LEADER_ACCOUNT:,} 元(每檔 {LEADER_ACCOUNT / LEADER_RULE['N']:,.0f})・換倉起點 {LEADER_ANCHOR}")
+            f"・分給它 {LEADER_ACCOUNT:,} 元(每檔 {LEADER_ACCOUNT / (LEADER_RULE['N'] * LEADER_BOOKS):,.0f})・換倉起點 {LEADER_ANCHOR}"
+            + (f"・📚 兩本帳(第 2 本起點 {LEADER_ANCHOR2},錯開 4 天;換回一本帳:LEADER_BOOKS=1)" if LEADER_BOOKS == 2 else "・一本帳(LEADER_BOOKS=1)"))
     if ACCOUNT_SIZE <= 0:
         log("⚠️⚠️ 你沒有設 ACCOUNT_SIZE(帳戶總資金)→ POS_PCT 這個設定**完全沒有作用**,"
             "每筆一律買 1,000 股(再被 MAX_LOTS_PER_TRADE / MAX_AMT_PER_TRADE 壓一次)"
@@ -595,7 +602,7 @@ def main():
     _, _, today = tpe_now()
     if st.get('d') != today:
         # ⚠️ `done`(今天買過誰)每天重置,但 `pos`(還沒賣掉的部位)⛔ 絕不可跟著清掉
-        st = {'d': today, 'done': [], 'pos': st.get('pos') or {}, 'lead': st.get('lead') or {}, 'lead_day': st.get('lead_day'), 'lead_defer': st.get('lead_defer') or {}}   # ⏱️ 延後要賣的跨日也要賣   # ⚠️ 領頭羊的部位也⛔ 不可跟著清
+        st = {'d': today, 'done': [], 'pos': st.get('pos') or {}, 'lead': st.get('lead') or {}, 'lead2': st.get('lead2') or {}, 'lead_day': st.get('lead_day'), 'lead_defer': st.get('lead_defer') or {}}   # ⏱️ 延後要賣的跨日也要賣   # ⚠️ 領頭羊的部位也⛔ 不可跟著清
     log(f"📒 今天已下過:{st['done'] or '(無)'}")
 
     # 👑 開盤時段(LEADER_WINDOW=open / split):09:01~09:10 做一次,之後照常等尾盤
