@@ -4,6 +4,7 @@
 //          ③ 決定性對照:改一檔股數,報酬要跟著變
 //          ④ 算不出的那幾檔要寫出來 + 佔多少(⛔ 不靜默丟)
 //          ⑤ 表頭排序同欄反向 ⑥ 讀不到檔要講原因 ⑦ ⛔ 不給買進指令
+//          ⑨ 🏆 排行:poli_rank.mjs(抽 pro.html 函式)算的 == 頁面算的;表照「贏/輸 0050」排、算不出的排最後、可反向、點列換人、meta 跟著資料
 //          ⑧ 配股要加股數(本站 K 線沒還原配股);⛔ 前一天收盤對不上「前價」不加(免得重複)
 //   真資料:REAL=1 讀 origin/data 的 legislator_holdings + K 線 + 股利,印出顏寬恒兩種報酬(不設門檻)
 //   注入:PRO_FILE=<改過的 pro.html> 跑同一套,應該要紅
@@ -15,6 +16,7 @@ import { resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { trSeries, scaleFor } from './lib_totalreturn.mjs';
+import { extractPoli, rankAll } from './poli_rank.mjs';
 
 let bad = 0;
 const ok = (c, n, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${e ? ' — ' + e : ''}`); if (!c) bad++; };
@@ -107,6 +109,36 @@ ok(/不是他真實的報酬/.test(R.txt), '⑦b 畫面要寫明「不是他真�
 await load(FIX(3000)); await pg.evaluate(() => PRO.renderPoli()); await pg.waitForTimeout(300);
 const a3 = await pg.evaluate(() => +(document.querySelector('[data-poli-a]') || {}).dataset?.poliA);
 ok(Number.isFinite(a3) && Math.abs(a3 - R.a) > 1e-6 && Math.abs(a3 - ((6000 + 18000 * 3) / (5500 + 20000 * 3) - 1)) < 1e-9, '③ 決定性對照:乙的股數 1000 → 3000,報酬跟著變', `${R.a} → ${a3}`);
+// ⑨ 🏆 排行
+const RK = rankAll(FIX(), extractPoli(SRC), s => (K[s] ? K[s].map((c, i) => ({ date: DT[i], close: c })) : null), {});
+ok(RK.rows.length === 1 && Math.abs(RK.rows[0].ret - R.a) < 1e-12 && Math.abs(RK.rows[0].chain - R.b) < 1e-12,
+  '⑨a poli_rank(抽 pro.html 的函式)算的 == 頁面畫出來的(A、B 逐位)', `${RK.rows[0] && RK.rows[0].ret} vs ${R.a}`);
+ok(Math.abs(RK.rows[0].cov - 0.75) < 1e-12, '⑨a2 算得出比例 = 1 − 丙的面額 5000 / 20000 = 75%(跟單人頁的「佔 25.0%」同一份)', String(RK.rows[0].cov));
+const FIXR = (beat = 1) => { const F = FIX(); F.people['z-w'] = JSON.parse(JSON.stringify(F.people['x-y'])); F.people['z-w'].name = '另一人';
+  F.rank = [{ slug: 'x-y', name: '測試人', party: '某黨', date: '2024-01-05', v0: 25500, ret: -0.06, bench: 0.05, ex: -0.11, chain: 0.03, cov: 0.8 },
+            { slug: 'z-w', name: '另一人', party: '某黨', date: '2024-01-05', v0: 5e6, ret: 0.4, bench: 0.05, ex: 0.35, chain: null, cov: 0.5 },
+            { slug: 'q-q', name: '算不出', party: '', date: '2024-01-05', v0: 0, ret: 0.1, bench: null, ex: null, chain: null, cov: null }];
+  F.rank_meta = { asof: '2024-01-08', n_people: 3, beat0050: beat, median_ex: 0.12 }; F.nostock = [{ slug: 'n', name: '沒股票', why: '申報裡沒有股票' }]; return F; };
+await load(FIXR()); await pg.evaluate(() => PRO.renderPoli());
+await pg.waitForFunction(() => !!document.querySelector('#poliRankTbl'), null, { timeout: 8000 }).catch(() => {});
+const rk = await pg.evaluate(() => ({ rows: [...document.querySelectorAll('[data-poli-rrow]')].map(e => e.dataset.poliRrow),
+  txt: (document.getElementById('poliRank') || {}).innerText || '', raw: (document.getElementById('poliRank') || {}).textContent || '', meta: (document.querySelector('[data-poli-meta]') || {}).dataset?.poliMeta,
+  bar: document.getElementById('poliBar').innerText }));
+ok(rk.rows.join(',') === 'z-w,x-y,q-q' && /贏\/輸 0050\(百分點\) ▼/.test(rk.txt), '⑨b 預設照「贏/輸 0050」由高到低、算不出的排最後、表頭看得出來', rk.rows.join(','));
+ok(/⚠️ 多數持股算不出/.test(rk.txt) && /金額小/.test(rk.txt) && /排第一 ≠ 會選股/.test(rk.txt) && /沒股票/.test(rk.raw) && !rk.bar,
+  '⑨c 算得出 <60% / 金額小 標出來、運氣提醒、沒持股的那幾位列出來、按鈕列不重複出現');
+const r1 = await pg.evaluate(() => { PRO.poliRankSort('ex'); return [...document.querySelectorAll('[data-poli-rrow]')].map(e => e.dataset.poliRrow).join(','); });
+ok(r1 === 'x-y,z-w,q-q', '⑨d 同一個表頭再點一次要反向(算不出的仍在最後)', r1);
+await pg.evaluate(() => document.querySelector('[data-poli-rrow="z-w"]').click()); await pg.waitForTimeout(400);
+const who = await pg.evaluate(() => PRO._poliSlug + '|' + ((document.getElementById('poliBody').innerText.match(/另一人|測試人/) || [])[0] || ''));
+ok(who === 'z-w|另一人', '⑨e 點一列 → 底下換成那一位的明細', who);
+ok(!BUY.test(rk.txt), '⑨f 排行表 ⛔ 不給買進指令', (rk.txt.match(BUY) || [])[0]);
+await load(FIXR(2)); await pg.evaluate(() => PRO.renderPoli()); await pg.waitForTimeout(300);
+const meta2 = await pg.evaluate(() => (document.querySelector('[data-poli-meta]') || {}).dataset?.poliMeta);
+ok(rk.meta === '1/3' && meta2 === '2/3', '⑨g 決定性對照:「幾位贏 0050」讀 rank_meta,改了畫面跟著變', `${rk.meta} → ${meta2}`);
+await load(FIX()); await pg.evaluate(() => PRO.renderPoli()); await pg.waitForTimeout(300);
+const noRk = await pg.evaluate(() => !document.querySelector('#poliRankTbl') && !!document.querySelector('[data-poli-a]'));
+ok(noRk, '⑨h 舊檔(沒有 rank)→ 不畫排行、單人明細照常');
 // ⑥ 讀不到檔
 await pg.evaluate(() => { PRO._cache = {}; PRO.fetchJson = async () => null; PRO._poliD = undefined; return PRO.renderPoli(); });
 const nf = await pg.evaluate(() => !!document.querySelector('[data-poli-nofile]') && /讀不到/.test(document.getElementById('poliBody').innerText));

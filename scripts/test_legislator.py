@@ -33,9 +33,14 @@ ok('⑩ 也推 gh-pages(5 次重試 + pull --rebase),排在 data 分支之後,�
    'git checkout -f -B gh-pages origin/gh-pages' in WF and 'git push origin gh-pages' in WF
    and 'pull --rebase origin gh-pages' in WF
    and WF.index('git push origin data') < WF.index('git push origin gh-pages')
-   and WF.count("if: ${{ inputs.mode == 'out' }}") == 2)
+   and WF.count("if: ${{ inputs.mode == 'out' }}") == 3)
+ok('⑪ 排行在推送之前算、先跑 selftest、預設全部立委、逾時 30 分',
+   WF.index('node scripts/poli_rank.mjs --selftest') < WF.index('node scripts/poli_rank.mjs /tmp/legislator_holdings.json')
+   < WF.index('git push origin data') and re.search(r"default: 'all'", WF) is not None and 'timeout-minutes: 30' in WF)
 r = subprocess.run([sys.executable, os.path.join(ROOT, 'scripts/legislator_miner.py'), '--selftest'],
                    capture_output=True, text=True)
 ok('⑨ selftest 全綠', r.returncode == 0 and '❌' not in r.stdout)
+r2 = subprocess.run(['node', os.path.join(ROOT, 'scripts/poli_rank.mjs'), '--selftest'], capture_output=True, text=True)
+ok('⑫ poli_rank selftest 全綠(抽 pro.html 的函式)', r2.returncode == 0 and 'POLI_RANK_SELFTEST' in r2.stdout)
 print(f'\n{"❌ " + str(len(fails)) + " 條沒過" if fails else "✅ LEGISLATOR_PASS"}')
 sys.exit(1 if fails else 0)

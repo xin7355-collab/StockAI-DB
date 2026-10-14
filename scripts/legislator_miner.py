@@ -12,7 +12,7 @@
   --out PATH     解析成 legislator_holdings.json;一個人 0 次申報或 0 筆持股 → ⛔ 不寫檔、exit 1
   --selftest     只測純函式,⛔ 不打網路
 
-  slug 由環境變數 SLUGS(逗號分隔,預設 yan-kuan-heng)決定。
+  slug 由環境變數 SLUGS(逗號分隔,預設 yan-kuan-heng)決定;SLUGS=all = 先讀 /api/legislators.json 拿全部立委。
 """
 import html as _html
 import json
@@ -381,6 +381,37 @@ def build_person(slug, leg, documents, prices):
             'trades': trades, 'skipped': skipped}
 
 
+def slugs_from_list(o):
+    """/api/legislators.json → [(slug, name)];形狀容錯(list 或 {results|legislators|items|data: [...]});認不得回 None"""
+    if isinstance(o, dict):
+        for k in ('results', 'legislators', 'items', 'data'):
+            if isinstance(o.get(k), list):
+                o = o[k]
+                break
+    if not isinstance(o, list):
+        return None
+    out, seen = [], set()
+    for x in o:
+        if isinstance(x, dict) and x.get('slug') and x['slug'] not in seen:
+            seen.add(x['slug'])
+            out.append((str(x['slug']), x.get('name') or ''))
+    return out or None
+
+
+def judge(all_mode, n_total, errs, nostock, n_people):
+    """回 [] = 可以寫檔;否則回原因清單。
+    單一人模式:任何一位抓不到 / 沒持股都算失敗(原本的守門)。
+    全部模式:沒有上市櫃持股是正常的(⛔ 不算失敗);抓不到 > 10% 或有持股的人 < 5 → 不寫。"""
+    if not all_mode:
+        return list(errs) + [f'{s}: 0 次申報或 0 筆持股' for s, _, _ in nostock]
+    out = []
+    if n_total and len(errs) > 0.1 * n_total:
+        out.append(f'{len(errs)}/{n_total} 位抓不到(> 10%):' + ' / '.join(errs[:5]))
+    if n_people < 5:
+        out.append(f'有上市櫃持股的只有 {n_people} 位(< 5)')
+    return out
+
+
 def get_json(url):
     st, ct, body = http_get(url)
     if st != 200:
@@ -392,7 +423,7 @@ def get_json(url):
 
 
 def main(out_path):
-    people, skipped, fails = {}, {}, []
+    people, skipped, errs, nostock = {}, {}, [], []
     docs, e1 = get_json(f'{BASE}/api/documents.json')
     prices, e2 = get_json(f'{BASE}/api/stocks/prices.json')
     if e1:
@@ -401,35 +432,53 @@ def main(out_path):
         print('⚠️ prices.json 讀不到 → 代號只靠持股自帶的 stockCode:', e2)
     if isinstance(docs, dict):
         docs = docs.get('documents') or docs.get('items') or []
-    for slug in SLUGS:
+    all_mode = SLUGS == ['all']
+    slugs = SLUGS
+    if all_mode:
+        L, e = get_json(f'{BASE}/api/legislators.json')
+        lst = slugs_from_list(L) if not e else None
+        if not lst:
+            print('🚧 ⛔ 不寫檔:/api/legislators.json', e or '形狀認不得 →')
+            if L is not None:
+                print(json_shape(L)[:3000])
+            return 1
+        slugs = [s for s, _ in lst]
+        print(f'📋 立委清單 {len(slugs)} 位')
+    for slug in slugs:
         leg, e = get_json(f'{BASE}/api/legislators/{slug}.json')
+        time.sleep(1.5)
         if e:
-            fails.append(f'{slug}: {e}')
+            errs.append(f'{slug}: {e}')
             continue
         p = build_person(slug, leg, docs if isinstance(docs, list) else [], prices)
         if not p:
-            fails.append(f'{slug}: 格式認不得')
+            errs.append(f'{slug}: 格式認不得')
             continue
         nrow = sum(len(d['rows']) for d in p['decls'])
         print(f'👤 {slug} {p["name"]}:申報 {len(p["decls"])} 次 {[d["date"] for d in p["decls"]]}・持股 {nrow} 列・交易 {len(p["trades"])} 筆・略過 {len(p["skipped"])}')
-        for sk in p['skipped']:
-            print('   ⏭️', sk)
+        if not all_mode:
+            for sk in p['skipped']:
+                print('   ⏭️', sk)
         if not p['decls'] or not nrow:
-            fails.append(f'{slug}: 0 次申報或 0 筆持股')
+            nostock.append((slug, p['name'], '申報裡沒有對得上的上市櫃股票' if p['skipped'] else '申報裡沒有股票'))
             continue
         skipped[slug] = p.pop('skipped')
         people[slug] = p
-        time.sleep(1.5)
+    fails = judge(all_mode, len(slugs), errs, nostock, len(people))
+    if errs and not fails:
+        print('⚠️ 抓不到(比例在容許內,照寫):', ' / '.join(errs))
     if fails:
         print('🚧 ⛔ 不寫檔:', ' / '.join(fails))
         return 1
     out = {'updated': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'src': BASE,
            'note': '財產申報一年一次,只看得到申報日的持股;原始出處監察院財產申報公報',
-           'people': people, 'skipped': skipped}
+           'people': people, 'skipped': skipped,
+           'nostock': [{'slug': s, 'name': n, 'why': w} for s, n, w in nostock],
+           'errs': errs}
     if out_path:
         with open(out_path, 'w', encoding='utf-8') as f:
             json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
-        print(f'✅ 寫入 {out_path}:{len(people)} 人')
+        print(f'✅ 寫入 {out_path}:{len(people)} 人(沒有上市櫃持股 {len(nostock)} 位・抓不到 {len(errs)} 位)')
     else:
         print(json.dumps(out, ensure_ascii=False)[:6000])
     return 0
@@ -493,6 +542,14 @@ def selftest():
     t(P2 and len(P2['trades']) == 2, 'API:同一份文件兩筆一樣的成交都留(⛔ 逐列去重)、同一份文件來兩次只算一次')
     t(lookup({'北極星藥業 - KY': '6550'}, '北極星藥業－ K Y') == '6550', '股名全形/空白也對得上')
     t(all(d['rows'] for d in P['decls']), 'API:空的申報表不收')
+    t(slugs_from_list([{'slug': 'a', 'name': '甲'}, {'slug': 'a'}, {'x': 1}]) == [('a', '甲')], '清單:list 形狀、重複去掉')
+    t(slugs_from_list({'results': [{'slug': 'b'}]}) == [('b', '')] and slugs_from_list({'legislators': [{'slug': 'c'}]}) == [('c', '')],
+      '清單:{results|legislators: [...]} 形狀')
+    t(slugs_from_list({'foo': 1}) is None and slugs_from_list([]) is None, '清單:認不得回 None')
+    t(judge(True, 100, [], [('s', 'n', 'w')] * 30, 70) == [], '全部模式:沒有持股的人 ⛔ 不算失敗')
+    t(judge(True, 100, ['x'] * 11, [], 80) and not judge(True, 100, ['x'] * 10, [], 80), '全部模式:抓不到 > 10% 才擋')
+    t(judge(True, 100, [], [], 4) != [], '全部模式:有持股的 < 5 位擋')
+    t(judge(False, 1, [], [('s', 'n', 'w')], 0) != [], '單一人模式:沒持股照舊算失敗')
     print(f'✅ selftest {ok}/{n}' if ok == n else f'❌ selftest {ok}/{n}')
     return 0 if ok == n else 1
 
@@ -501,7 +558,7 @@ if __name__ == '__main__':
     if '--selftest' in sys.argv:
         sys.exit(selftest())
     if '--probe' in sys.argv:
-        for s in SLUGS:
+        for s in (SLUGS if SLUGS != ['all'] else ['yan-kuan-heng']):
             probe(s)
         sys.exit(0)
     if '--out' in sys.argv:

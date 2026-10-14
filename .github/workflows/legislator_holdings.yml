@@ -3,7 +3,7 @@ name: 🏛️ 政治人物持股(財產申報,手動)
 # 🏛️ V79.2.0 使用者:「新增政治人物持股追蹤,特別是顏寬恒,我要的是他的報酬率」
 #   來源 legislator-wealth.tw(原始出處監察院財產申報公報);沙箱連不到 → 只能在 Actions 抓。
 #   mode=probe:只印網站結構(狀態碼 / 表格 / 內嵌 JSON / 引用網址),⛔ 不寫檔、不推
-#   mode=out  :解析 → data/legislator_holdings.json 推 data 分支 + gh-pages
+#   mode=out  :解析 → 🏆 poli_rank.mjs 算排行(抽 pro.html 的函式,⛔ 不另寫)→ data/legislator_holdings.json 推 data 分支 + gh-pages
 #              (data 分支 = 讓 daily_miner 的 orphan 部署留得住,陷阱 #41;gh-pages = 網站馬上看得到,⛔ 不必等 17:00 那輪)
 # ⛔ 只有手動觸發(沒有 cron → 不吃排程配額)。
 on:
@@ -14,9 +14,9 @@ on:
         required: false
         default: 'probe'
       slugs:
-        description: '網址上的名字(逗號分隔)'
+        description: 'all = 全部立委(排行用);或網址上的名字(逗號分隔)'
         required: false
-        default: 'yan-kuan-heng'
+        default: 'all'
 
 permissions:
   contents: write
@@ -28,7 +28,7 @@ concurrency:
 jobs:
   mine:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: 📥 下載程式碼
         uses: actions/checkout@v4
@@ -51,6 +51,14 @@ jobs:
           else
             python3 scripts/legislator_miner.py --probe
           fi
+
+      - name: 🏆 算排行(K 線讀 data 分支;算得出的人太少 → 紅燈、不推)
+        if: ${{ inputs.mode == 'out' }}
+        run: |
+          set -e
+          git fetch origin "+refs/heads/data:refs/remotes/origin/data" --depth=1
+          node scripts/poli_rank.mjs --selftest
+          node scripts/poli_rank.mjs /tmp/legislator_holdings.json --ref origin/data
 
       - name: 🚀 推 data 分支(data/legislator_holdings.json)
         if: ${{ inputs.mode == 'out' }}

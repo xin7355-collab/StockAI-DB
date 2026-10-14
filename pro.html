@@ -1118,6 +1118,7 @@ details.colart[open] .colsum{display:none}
 <div id="tabPoli" class="hidden">
   <div class="panel">
     <h2>政治人物持股 <span class="sub">照申報的持股抱著,算出來的報酬 ・ 跟 0050 比</span></h2>
+    <div id="poliRank"></div>
     <div class="labbar" id="poliBar"></div>
     <div id="poliBody"></div>
     <details class="sbnote" style="margin-top:8px"><summary>📖 這頁在算什麼 <span style="color:var(--dim2)">展開 ▾</span></summary>
@@ -8388,7 +8389,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V79.2.0',
+  VER: 'V79.2.1',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,
@@ -10682,6 +10683,23 @@ ${M.news || '(無)'}
     }
     return { A, chain };
   },
+  /** 算不出的那幾檔佔多少(依申報面額)—— 單人頁與排行共用(⛔ 不各算一份) */
+  _poliCov(P, sk, last) {
+    const s2 = (sk || []).filter(x => x.d === last.date);
+    const missFace = s2.reduce((a, x) => a + (+x.val || 0), 0) + last.miss.reduce((a, m) => a + (+m.val || 0), 0);
+    const faceAll = ((P.decls || []).find(d => d.date === last.date) || { rows: [] }).rows.reduce((a, r) => a + (+r.val || 0), 0) + s2.reduce((a, x) => a + (+x.val || 0), 0);
+    return { sk: s2, missFace, faceAll, n: s2.length + last.miss.length };
+  },
+  /** 🏆 排行的一列 —— scripts/poli_rank.mjs 在 Actions 把這支(連同上面幾支)從本檔抽出來跑,手機只讀結果(⛔ 不另寫一份) */
+  _poliRankRow(slug, P, J, K, D, B) {
+    const C = this._poliCalc(P, K, D, B), last = C.A[C.A.length - 1];
+    if (!last || last.ret === null) return null;
+    const cv = this._poliCov(P, ((J && J.skipped) || {})[slug], last);
+    return { slug, name: P.name, party: P.party || '', date: last.date, v0: Math.round(last.v0),
+      ret: last.ret, bench: last.bench, ex: Number.isFinite(last.bench) ? last.ret - last.bench : null,
+      chain: C.chain ? C.chain.ret : null, chainBench: C.chain ? C.chain.bench : null, from: C.chain ? C.chain.from : null,
+      cov: cv.faceAll > 0 ? 1 - cv.missFace / cv.faceAll : null, n: last.items.length, nMiss: cv.n };
+  },
   _poliPct(x) { return x === null || x === undefined || !Number.isFinite(x) ? '—' : (x >= 0 ? '+' : '') + (x * 100).toFixed(1) + '%'; },
   _poliCls(x) { return !Number.isFinite(x) ? '' : x > 0 ? 'up' : x < 0 ? 'dn' : 'flat'; },
   _poliMoney(v) {
@@ -10707,7 +10725,9 @@ ${M.news || '(無)'}
     }
     const slugs = Object.keys(J.people);
     if (!this._poliSlug || !J.people[this._poliSlug]) this._poliSlug = slugs.includes('yan-kuan-heng') ? 'yan-kuan-heng' : slugs[0];
-    bar.innerHTML = slugs.length > 1 ? slugs.map(s => `<button class="lbtn${s === this._poliSlug ? ' on' : ''}" onclick="PRO.poliPick('${s}')">${this._esc(J.people[s].name)}</button>`).join('') : '';
+    const rk = document.getElementById('poliRank'), hasRank = !!(J.rank || []).length;
+    if (rk) rk.innerHTML = hasRank ? this._poliRankHtml(J) : '';
+    bar.innerHTML = hasRank ? '' : slugs.length > 1 ? slugs.map(s => `<button class="lbtn${s === this._poliSlug ? ' on' : ''}" onclick="PRO.poliPick('${s}')">${this._esc(J.people[s].name)}</button>`).join('') : '';
     const P = J.people[this._poliSlug], mySlug = this._poliSlug;
     // 📥 K 線一檔一檔讀(⛔ 不併發:二十幾檔同時打 GitHub Pages 會互相拖慢,失敗也查不出是哪檔)
     this._poliK = this._poliK || {};
@@ -10725,6 +10745,45 @@ ${M.news || '(無)'}
     body.innerHTML = this._poliHtml(P, J);
   },
   poliPick(s) { this._poliSlug = s; this.renderPoli(); },
+  poliRankSort(k) {
+    const S = this._poliRankK || { k: 'ex', dir: -1 };
+    this._poliRankK = S.k === k ? { k, dir: -S.dir } : { k, dir: k === 'name' || k === 'party' ? 1 : -1 };
+    const rk = document.getElementById('poliRank'); if (rk && this._poliD) rk.innerHTML = this._poliRankHtml(this._poliD);
+  },
+  /** 🏆 立委持股排行(讀檔案裡算好的 rank;⛔ 手機不重算 —— 一百多人的持股要讀幾百檔 K 線) */
+  _poliRankHtml(J) {
+    const R = (J.rank || []).slice(), M = J.rank_meta || {};
+    const S = this._poliRankK || { k: 'ex', dir: -1 };
+    const val = (r, k) => k === 'name' ? (r.name || '') : k === 'party' ? (r.party || '') : r[k];
+    R.sort((a, b) => {
+      const x = val(a, S.k), y = val(b, S.k);
+      const nx = x === null || x === undefined || (typeof x === 'number' && !Number.isFinite(x)), ny = y === null || y === undefined || (typeof y === 'number' && !Number.isFinite(y));
+      if (nx || ny) return nx === ny ? 0 : nx ? 1 : -1;   // 算不出的一律排最後
+      return (x > y ? 1 : x < y ? -1 : 0) * S.dir;
+    });
+    const pc = x => `<span class="${this._poliCls(x)}">${this._poliPct(x)}</span>`;
+    const th = (k, h) => `<th class="ybsort${S.k === k ? ' on' : ''}" data-poli-rth="${k}" onclick="PRO.poliRankSort('${k}')">${h}${S.k === k ? (S.dir < 0 ? ' ▼' : ' ▲') : ''}</th>`;
+    const pp = x => Number.isFinite(x) ? `${x >= 0 ? '贏' : '輸'} ${Math.abs(x * 100).toFixed(1)}` : '—';
+    const money = v => !Number.isFinite(v) ? '—' : v >= 1e8 ? (v / 1e8).toFixed(2) + ' 億' : Math.round(v / 1e4).toLocaleString() + ' 萬';
+    const rows = R.map(r => {
+      const flags = [Number.isFinite(r.cov) && r.cov < 0.6 ? `<span class="sigtag warn">⚠️ 多數持股算不出</span>` : '',
+        r.v0 < 1e6 ? `<span class="sigtag">金額小</span>` : ''].join('');
+      return `<tr data-poli-rrow="${this._esc(r.slug)}" onclick="PRO.poliPick('${this._esc(r.slug)}')" style="cursor:pointer${r.slug === this._poliSlug ? ';background:var(--bg3,#21262d)' : ''}">
+        <td class="txtcell">${this._esc(r.name)}${flags}<div class="sigfrom">${this._esc(r.party || '')}</div></td>
+        <td class="txtcell">${this._esc(r.date || '—')}</td><td>${money(r.v0)}</td><td>${pc(r.ret)}</td><td>${pc(r.bench)}</td>
+        <td class="${this._poliCls(r.ex)}">${pp(r.ex)}</td><td>${r.chain === null || r.chain === undefined ? '—' : pc(r.chain)}</td>
+        <td>${Number.isFinite(r.cov) ? Math.round(r.cov * 100) + '%' : '—'}</td></tr>`;
+    }).join('');
+    const med = Number.isFinite(M.median_ex) ? `${M.median_ex >= 0 ? '+' : '−'}${Math.abs(M.median_ex * 100).toFixed(1)}` : '—';
+    const meta = `<div class="note" data-poli-meta="${M.beat0050 ?? ''}/${M.n_people ?? ''}" style="margin:0 0 6px">🏆 <b>立委持股排行</b>:有上市櫃持股、算得出來的 <b>${M.n_people ?? R.length}</b> 位裡,
+      <b>${M.beat0050 ?? '—'}</b> 位「照最新申報抱到今天」贏同期 0050(含息),中位數 ${med} 個百分點 ・ 現價到 ${this._esc(M.asof || '—')}。
+      <br>⚠️ 一百多個人裡本來就一定有人剛好押中,<b>排第一 ≠ 會選股</b>;申報一年一次、不是他真實的買賣。點一列看那一位的明細。</div>`;
+    const ns = (J.nostock || []).length ? `<details class="sbnote" style="margin-top:6px"><summary>👤 沒有上市櫃持股(或對不上代號)的 ${J.nostock.length} 位<span style="color:var(--dim2)"> 展開 ▾</span></summary>
+      <div class="note">${J.nostock.map(x => `${this._esc(x.name || x.slug)}(${this._esc(x.why || '')})`).join('、')}</div></details>` : '';
+    return `${meta}<div class="tblwrap" style="max-height:420px"><table class="grid sigtbl" id="poliRankTbl"><thead><tr>
+      ${th('name', '立委')}${th('date', '申報日')}${th('v0', '持股市值')}${th('ret', '抱到今天')}${th('bench', '0050 同期')}${th('ex', '贏/輸 0050(百分點)')}${th('chain', '串起來')}${th('cov', '算得出')}</tr></thead>
+      <tbody>${rows}</tbody></table></div>${ns}`;
+  },
   poliSort(k) {
     const S = this._poliSortK || { k: 'w', dir: -1 };
     this._poliSortK = S.k === k ? { k, dir: -S.dir } : { k, dir: k === 'name' ? 1 : -1 };
@@ -10750,10 +10809,8 @@ ${M.news || '(無)'}
       ${C.A.length > 1 ? `<div class="sigfrom" style="margin-top:6px">${C.A.slice(0, -1).map(a => `📌 照 ${this._esc(a.date)} 的持股一直抱到今天:${this._poliPct(a.ret)}(0050 ${this._poliPct(a.bench)})`).join('<br>')}</div>` : ''}
     </div>`;
     // ⛔ 算不出的:寫出來 + 佔多少(⛔ 不靜默丟掉)
-    const sk = ((J.skipped || {})[this._poliSlug] || []).filter(x => x.d === last.date);
+    const { sk, missFace, faceAll } = this._poliCov(P, (J.skipped || {})[this._poliSlug], last);
     const missTxt = [...last.miss.map(m => `${this._esc(m.name)}(${this._esc(m.why)})`), ...sk.map(x => `${this._esc(x.name)}(${this._esc(x.why)})`)];
-    const missFace = sk.reduce((a, x) => a + (+x.val || 0), 0) + last.miss.reduce((a, m) => a + (+m.val || 0), 0);
-    const faceAll = (P.decls.find(d => d.date === last.date) || { rows: [] }).rows.reduce((a, r) => a + (+r.val || 0), 0) + sk.reduce((a, x) => a + (+x.val || 0), 0);
     const miss = missTxt.length ? `<div class="warnbox" style="margin-top:8px" data-poli-miss="${missTxt.length}">⛔ <b>${missTxt.length} 檔沒算進報酬</b>:${missTxt.join('、')}。
       <br>依申報金額(面額)算,這幾檔佔 ${faceAll > 0 ? (missFace / faceAll * 100).toFixed(1) : '—'}%(⚠️ 面額不是市值,未上市股票的市值查不到)。</div>` : '';
     // 📋 個股明細(表頭可排序)
