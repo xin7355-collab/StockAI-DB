@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.2.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.2.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.2.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.2.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8535,10 +8535,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.2.7',
+    _APP_VERSION: 'V79.2.8',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.2.8', d: ['🔀 決策台 👑 表格:「今天漲跌 %」與「現價」換位置,現在是 換倉日價 → 今天 % → 現價(底下「收盤前 10 名」那張也一樣)'] },
         { v: 'V79.2.7', d: ['📅 👑 決策台那一行改成先講「<b>上次換倉 10/13(一)收盤 → 10/14(二)照名單買賣了</b> ・下次換倉還有幾個交易日」(以前開頭寫「10-14 是第 12 個交易日(09-24 起算)」,讀起來像很久以前換的;換倉日本來就是對的)',
             '📝 設定「我的策略」逐條對過:👑 那兩個說的「不在名單上的持股照 🔥 高檔飆股的三條出場」改成「照三條出場(硬停損 / 你設定的線 / 抱滿天數)」(🔥 不是設定裡選得到的名字);🅿️ 改名「<b>符合進場+停車 0050</b>」(它本來就跟 📈 符合進場一模一樣,只差閒錢停 0050)'] },
         { v: 'V79.2.6', d: ['📚 👑 兩本帳改回<b>選項、預設關閉</b>(一本帳照舊每 10 天一起換);想用的話到 ⚙️ 設定「🔓 進階功能」打開。打開後兩本叫 <b>甲帳</b>(青)・<b>乙帳</b>(紫):決策台頂端各自寫上次哪天換、再幾天換,每一檔標它屬於哪一本,動作寫成「乙帳 買 / 甲帳 賣」'] },
@@ -8657,7 +8658,6 @@ ${list}
         { v: 'V78.2.2', d: ['🛒 <b>👑 怎麼買,回測過了</b>(17 條起點 × 4 年 / 16 年):<b>換倉隔天 09:00 開盤買前 5 名最好</b>(953% / 6,783%);隔天尾盤 817% / 3,342%、換倉日當天尾盤 916% / 5,882%、買前 10 名 625% / 1,939%、只買第 6~10 名 412% / 791%(16 年輸 0050);開盤就漲停改買第 6 名 920% / 7,210% = 跟不補差不多(4 年只約 4 次)→ 不補', '🎯 決策台「今天要做的事」只講怎麼做:今天要不要動 / 怎麼買 / 怎麼賣 / 錢放哪;規則與實測收進 📖 摺疊', '📒 模擬成績搬到產業作戰室 → 成績單 → 👑(決策台只留一行指路);🏁 成績單頂端新增「同一起點比一比」:每一套都從 09-24 起算,表頭可排序,每列附今天推薦', '⚠️ 自動下單預設是尾盤買,要跟回測最好那組一樣請設 LEADER_WINDOW=open'] },
         { v: 'V78.2.1', d: ['⏳ <b>👑 總覽「等換倉」那張卡照你的格式改</b>:標題「今日續抱・等換倉日(剩 N 個交易日)」+ 目前狀況 / ✅ 續抱條件 / 🚪 賣出條件 / ⛔ 不要提早賣;兩處更正你的草稿 —— 趨勢條件是「收盤 > 20日線 > 60日線」(沒過 ≠ 三條反過來排)、「少賺 70%」只對 16 年那組,近 4 年是少 32%(兩個都寫出來)', '🗂️ 決策台持股清單:沒過趨勢的⛔ 不再寫「⛔ 掉出前 10 名」→ 改「⏳ 不在前 10 名」(還沒到賣的那天不是危險)', '🕐 回測「第一天沒買後面還能進嗎」:可以 —— 當天照名單買 vs 等下一個換倉日,最後的錢中位差 0% ・💰「15 萬分散 5 檔零股 vs 專攻 1 檔」:分散 5 檔(專攻 1 檔最差那條只剩 37 萬、16 年最差輸 0050)'] },
         { v: 'V78.2.0', d: ['👑 <b>選領頭羊的持股:總覽只講領頭羊的規則</b>(使用者國巨截圖:「漲停隔天那四條不用照做嗎?我看到你改策略直接請我賣出」)—— App 寫的其實是「等換倉日」,但兩處讓人誤會:① 國巨從來不在名單上,徽章卻寫「掉出前 10 名」→ 改「不在前 10 名」並在第一句講「今天不用賣」② 同一頁價格位置圖還畫 🔥 的硬停損 / 出場線 → 選 👑 時拿掉(價格位置圖・報告・海報・提示詞一起)', '🟥 <b>「漲停隔天四條」套到 👑 會不會比較好?回測過:不會</b> —— 100 萬近 4 年 1,053 → 752 萬、16 年約 6,883 → 1,828 萬(17 條起點只贏 4 / 0 條;只賣「開高 ≥5%」也是 4 / 1 條)= 漲停隔天賣掉等於把最會漲的那幾檔提早砍掉。⛔ 自動下單一行沒動'] },
-        { v: 'V78.1.9', d: ['🏆 <b>👑 領頭羊+停車 0050 vs 🅿️ 高檔飆股+停車 0050:👑 強很多</b>(同一組 17 個起點、100 萬、含息):近 4 年 1,053 萬 vs 614 萬、16 年 6,879 萬 vs 1,323 萬;代價是中途最多賠 −49% vs −25%。原本的「👑 領頭羊」回測本來就是沒用到的錢停 0050 → 設定拆成兩個選項(停車 / 錢放現金,現金版 782 / 4,583 萬),比較放在產業作戰室 → 實測總表 → 🏆 選哪一套。你原本選 👑 的會自動變成「👑 領頭羊+停車 0050」。', '🔢 設定裡的「我的策略」與「出場規則」都照實測由強到弱排,每個策略旁邊直接寫 100 萬近 4 年 / 16 年變多少、中途最多賠多少。', '🎯 個股總覽跟決策台講同一句話:這一檔在決策台「今天可以買的」名單上 → 總覽寫「今天可以買(決策台第 N 名)」+ 什麼時候買 + 停損(以前沒有固定觸發價的那種會被寫成「觀望」);選 🅿️ / 👑 停車時會提醒「買的錢先從 0050 賣出」。', '🗑️ 拿掉「📦 決策台只挑營收年增加速」開關(實測少賺、連隨機少挑都贏不了);通知分類的說明改成現在真的會跳的那些。'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -21896,13 +21896,13 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const chgLbl = anyLive ? '今天' : (md ? `${md}漲跌` : '漲跌');
         const rkLbl = dd && dd === today ? '今天名次' : (md ? `${md}名次` : '名次');
         // 🗑️ V79.1.6 使用者:「億/日這列取消」(池子本來就是成交額前 100 大)・「09/24價改在左側,再來是現價」・「今天名次這列裡面文字置左」
-        const COLS = 'grid-template-columns:18px minmax(0,1fr) 54px 60px 50px 54px';
+        const COLS = 'grid-template-columns:18px minmax(0,1fr) 54px 50px 60px 54px';   // 🔀 V79.2.8 使用者:「現價與今天的百分比互換位置」→ 換倉日價 | 今天% | 現價
         const rebLbl = clk.reb ? `${String(clk.reb).slice(5, 7)}/${String(clk.reb).slice(8, 10)}價` : '換倉日價';   // 📌 V78.5.9 例:09/24價
         const LBL = { rank: '名', reb: rebLbl, c: pxLbl, chg: chgLbl, trank: rkLbl };   // 名次欄只有 18px → 只寫「名」(⛔ 「名次▲」會壓到股票欄)
         const th = (c, left) => { const on = sort.k === c.k, hk = c.k === 'c' ? 'px' : c.k === 'chg' ? 'chg' : '';
             return `<button onclick="app.leaderSortBy('${c.k}')" data-leadersort="${c.k}" class="${left ? 'text-left' : 'text-right'} whitespace-nowrap ${on ? 'text-cyan-300 font-bold' : 'text-gray-500'}"><span${hk ? ` data-lqhdr="${hk}"` : ''}>${esc(LBL[c.k] || c.n)}</span>${on ? (sort.asc ? '▲' : '▼') : ''}</button>`; };
         const C = Object.fromEntries(this._LEADER_SORT_COLS.map(c => [c.k, c]));
-        const hdr = `<div class="text-[9px] py-0.5 border-b border-[#30363d] items-baseline" style="display:grid;${COLS};gap:4px" data-leaderhdr="1">${th(C.rank)}<span class="text-gray-500">股票</span>${th(C.reb)}${th(C.c)}${th(C.chg)}${bRows ? th(C.trank, true) : '<span class="text-gray-500 text-left">動作</span>'}</div>`;
+        const hdr = `<div class="text-[9px] py-0.5 border-b border-[#30363d] items-baseline" style="display:grid;${COLS};gap:4px" data-leaderhdr="1">${th(C.rank)}<span class="text-gray-500">股票</span>${th(C.reb)}${th(C.chg)}${th(C.c)}${bRows ? th(C.trank, true) : '<span class="text-gray-500 text-left">動作</span>'}</div>`;
         // 📌 V78.3.3 動作只有兩種:🛒 買 / 前N續抱(空頭那天不買 → 全部續抱,bearTxt 已講「今天不開新倉」)
         // 📦 V78.6.0 這一批模式:動作欄 = 第幾名(還在前 N×hyst 名 ✅;掉出 ⏳ —— 換倉日才賣,⛔ 不是今天叫你賣)
         //   📅 V79.1.6 名次是 `L.date` 收盤排的 → 日期寫在表頭,格子裡只寫「第N」(⛔ 不再寫「今第」)
@@ -21928,8 +21928,8 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             <span class="font-mono text-[10px] text-gray-500 text-right" title="${r.batch ? `${esc(clk.reb)} 換這一批那天排第 ${r.rank} 名` : `近 10 日 ${pct(r.chg10)}(排名依據)`}">${r.rank}</span>
             ${nameCell(r)}
             ${rebCell(r)}
-            ${pxCell(r)}
             ${chgCell(r)}
+            ${pxCell(r)}
             ${act(r)}
         </div>`;
         const reb5L = clk.reb ? `${String(clk.reb).slice(5, 7)}/${String(clk.reb).slice(8, 10)}` : '上次換倉';
@@ -21972,15 +21972,15 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         let todayHtml = '';
         if (todayRows.length) {
             const bSet = new Set(bRows.map(r => r.sym));
-            const C2 = 'grid-template-columns:18px minmax(0,1fr) 60px 50px 58px';
+            const C2 = 'grid-template-columns:18px minmax(0,1fr) 50px 60px 58px';
             const tRow = r => { const q = this._deckQuoteOf(r.sym), live = !!q;
                 const c = live ? q.p : r.c, chg = live ? q.chg : r.chg, inB = bSet.has(r.sym), rr = { ...r, c, chg, live };
                 return `<div class="py-1 border-b border-[#21262d] items-center" style="display:grid;${C2};gap:4px" data-leadtodayrow="${r.sym}" data-leadtodayrank="${r.rank}">
                 <span class="font-mono text-[10px] text-gray-500 text-right">${r.rank}</span>${nameCell(rr)}
-                <span class="text-right"><span class="font-mono text-[11px] ${this._deckLimCls(this._deckLimOf(chg))}" data-lqp="${r.sym}"${live ? '' : ' data-lqdim="1"'}>${px(c)}</span></span>
                 <span class="font-mono text-[10px] text-right ${chg == null ? 'text-gray-500' : chg >= 0 ? 'text-red-400' : 'text-green-400'}" data-lqc="${r.sym}"${live ? '' : ' data-lqdim="1"'}>${pct(chg)}</span>
+                <span class="text-right"><span class="font-mono text-[11px] ${this._deckLimCls(this._deckLimOf(chg))}" data-lqp="${r.sym}"${live ? '' : ' data-lqdim="1"'}>${px(c)}</span></span>
                 <span class="text-[9px] text-left ${inB ? 'text-gray-400' : 'text-cyan-300 font-bold'}" data-leadtodaytag="${inB ? 'batch' : 'new'}">${inB ? '📦 這一批' : '🆕 新進'}${r.posOk === false ? '<span class="text-gray-500"> 位置低</span>' : ''}</span></div>`; };
-            const tHdr = `<div class="text-[9px] py-0.5 border-b border-[#30363d] text-gray-500" style="display:grid;${C2};gap:4px"><span class="text-right">名</span><span>股票</span><span class="text-right whitespace-nowrap" data-lqhdr="px">${esc(pxLbl)}</span><span class="text-right whitespace-nowrap" data-lqhdr="chg">${esc(chgLbl)}</span><span class="text-left">跟這一批比</span></div>`;
+            const tHdr = `<div class="text-[9px] py-0.5 border-b border-[#30363d] text-gray-500" style="display:grid;${C2};gap:4px"><span class="text-right">名</span><span>股票</span><span class="text-right whitespace-nowrap" data-lqhdr="chg">${esc(chgLbl)}</span><span class="text-right whitespace-nowrap" data-lqhdr="px">${esc(pxLbl)}</span><span class="text-left">跟這一批比</span></div>`;
             todayHtml = `<div class="mt-2" data-leadtoday="on"><div class="text-[11px] font-bold text-cyan-300 border-b border-[#21262d] pb-0.5">🔓 ${esc(md)} 收盤前 ${L.ranked.length} 名 <span class="text-[9px] font-normal text-gray-500" data-leadtodayhdr="${PH.ph === 'rebalToday' ? 'rebal' : 'wait'}">${PH.ph === 'rebalToday' ? `(${esc(PH.buyWhen || '明天')}要買的預覽:照 ${esc(md)} 收盤排,${PH.closed ? '等資料更新' : '今天收盤'}才定案)` : '(⛔ 不是今天要買的,換倉日才照名次買)'}</span></div><div data-lqtable="1" data-lqany="${anyLive ? 1 : 0}">${tHdr}${L.ranked.map(tRow).join('')}</div></div>`;
         }
         const list = (L.ranked.length || bRows) ? `<div data-lqtable="1" data-lqany="${anyLive ? 1 : 0}">${hdr}${rows.map(row).join('')}</div>` + rebNote + todayHtml : `<div class="text-[11px] text-gray-400">今天池子裡沒有一檔同時「收盤 > 20 日線 > 60 日線」→ 名單是空的(${L.n} 檔全被趨勢過濾擋掉)</div>`;

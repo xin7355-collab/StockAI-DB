@@ -248,7 +248,9 @@ fs.unlinkSync(TMP);
 await browser.close();
 
 // ①
-ok('① 欄位順序:名次 | 股票 | 09/24價 | 現價 | 今天 | 名次(⛔ 沒有億/日)', JSON.stringify(R.cols) === JSON.stringify(['rank', 'name', 'reb', 'px', 'chg', 'act']) && JSON.stringify(R.hdr) === JSON.stringify(['rank', 'reb', 'c', 'chg', 'trank']) && R.noAmt, JSON.stringify([R.cols, R.hdr, R.noAmt]));
+ok('① 欄位順序:名次 | 股票 | 09/24價 | 今天 | 現價 | 名次(⛔ 沒有億/日;V79.2.8 今天 % 與現價互換)', JSON.stringify(R.cols) === JSON.stringify(['rank', 'name', 'reb', 'chg', 'px', 'act']) && JSON.stringify(R.hdr) === JSON.stringify(['rank', 'reb', 'chg', 'c', 'trank']) && R.noAmt, JSON.stringify([R.cols, R.hdr, R.noAmt]));
+{ const i = ORIG.indexOf('const tHdr ='), t = i > 0 ? ORIG.slice(i, ORIG.indexOf('\n', i)) : '';
+  ok('①h 🔓 收盤前 10 名預覽表也是「今天 % 在現價左邊」(兩張表欄位順序一致)', t && t.indexOf('data-lqhdr="chg"') > 0 && t.indexOf('data-lqhdr="chg"') < t.indexOf('data-lqhdr="px"'), t.slice(0, 200)); }
 ok('①b 漲停 / 處置在代號那一行(⛔ 不在名字那一行);👜 = 手上有', !/漲停|處置/.test(R.tag3[0] || '') && /1003\s*漲停/.test(R.tag3[1] || '') && !/處置/.test(R.tag5[0] || '') && /1005.*處置/.test(R.tag5[1] || '') && /1001\s*👜/.test(R.tag1), JSON.stringify([R.tag3, R.tag5, R.tag1]));
 ok('①c 最後一欄(名次 / 動作)靠左,表頭也靠左', R.actLeft && R.rkHdrLeft, JSON.stringify([R.actLeft, R.rkHdrLeft]));
 ok('①f 時鐘那一行先講「上次換倉 MM/DD → 隔天照名單買賣」,日期 = _leadClk 的 reb(決定性對照)', R.lastReb && R.lastReb === R.clkReb && /^⏱️\s*上次換倉 09\/24/.test(R.clock) && /09\/25\([一二三四五六日]\)\s*照名單買賣/.test(R.clock), JSON.stringify([R.clkPh, R.lastReb, R.clkReb, R.clock]));
