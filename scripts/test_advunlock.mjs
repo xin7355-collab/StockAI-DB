@@ -195,6 +195,23 @@ const T = await page.evaluate(() => {
     // 📉 V79.3.2 加權最新收盤跌 ≥3% → idx_drop3;跌 2% → 沒有
     { const mk = r => { const t = mkK(120, '2026-10-16'); const n = t.length; Object.assign(t[n - 1], { close: +(t[n - 2].close * (1 + r)).toFixed(2) }); return t; };
       R.d3 = ids(run({ tw: mk(-0.035) })); R.d3No = ids(run({ tw: mk(-0.02) })); }
+    // 📰 V79.3.3 再接 6 篇專欄
+    { const H = new Map([['2330', { cost: 0 }]]);
+      const drop = mkK(80, '2026-10-16', k => { k[k.length - 1].close = 95; });
+      const hi = mkK(80, '2026-10-16', k => { k[k.length - 1].close = 105; });
+      R.ma5 = ids(run({ held: H, bars: new Map([['2330', drop]]) })); R.ma5No = ids(run({ held: H, bars: new Map([['2330', kFlat]]) })); R.ma5Fav = ids(run({ bars: new Map([['2454', drop]]), fav: ['2454'] }));
+      R.nh = ids(run({ held: H, bars: new Map([['2330', hi]]) })); R.nhNo = ids(run({ held: H, bars: new Map([['2330', kFlat]]) }));
+      const fi = m => mkK(80, '2026-10-16', k => { const n = k.length; k.forEach(r => r.foreign_net = -1); for (let j = n - 1 - m; j <= n - 2; j++) k[j].foreign_net = 1000; k[n - 1].foreign_net = 0; });
+      R.fi = ids(run({ bars: new Map([['2454', fi(5)]]), fav: ['2454'] })); R.fiNo = ids(run({ bars: new Map([['2454', fi(4)]]), fav: ['2454'] }));
+      const sh = last => mkK(150, '2026-10-16', k => { k.forEach(r => { r.margin_balance = 1000; r.short_balance = 10; }); k[k.length - 1].short_balance = last; });
+      R.sh = ids(run({ bars: new Map([['2454', sh(50)]]), fav: ['2454'] })); R.shNo = ids(run({ bars: new Map([['2454', sh(10)]]), fav: ['2454'] }));
+      const rb = mkK(80, '2026-10-16', k => { k[k.length - 1].close = 103; });
+      R.rb = ids(run({ bars: new Map([['3008', rb]]), sold: new Map([['3008', { date: '2026-10-14', px: 101 }]]) }));
+      R.rbNo = ids(run({ bars: new Map([['3008', rb]]), sold: new Map([['3008', { date: '2026-10-14', px: 105 }]]) }));
+      R.rbOld = ids(run({ bars: new Map([['3008', rb]]), sold: new Map([['3008', { date: '2026-08-01', px: 101 }]]) }));
+      R.rbOnly = ids(run({ bars: new Map([['3008', kLock]]), sold: new Map([['3008', { date: '2026-10-14', px: 200 }]]) }));
+      const bu = mkK(120, '2026-10-16'); bu.forEach((r, i) => { const c = i < 110 ? 300 - i : 191 + (i - 109) * 4; Object.assign(r, { open: c, high: c, low: c, close: c }); });
+      R.bull = ids(run({ tw: bu })); R.bullNo = ids(run({ tw: dn })); }
     const cv = app._calDayVol; app._calDayVol = () => ({ gap: 5, date: '2026-10-19' }); R.post = ids(run({})); app._calDayVol = () => ({ gap: 3, date: '2026-10-19' }); R.postNo = ids(run({})); app._calDayVol = cv;
     // ④ 分組排序
     const G = app._colTrigGroups([{ id: 'settle', why: 'x' }, { id: 'bear_on', why: 'y' }, { id: 'lu_fav', why: 'z', sym: '2454', sc: 'fav' }, { id: 'lu_held', why: 'w', sym: '2330', sc: 'held' }, { id: 'ld_redk', why: 'a', sym: '2330', sc: 'held' }]);
@@ -226,6 +243,12 @@ ok('③i 休市前最後一個交易日 → holiday_pre;前兩天 → 沒有', h
 ok('③j 休市 5 天後第一天 → holiday_post;一般週末後 → 沒有', has(T.post, 'holiday_post') && !has(T.postNo, 'holiday_post'), JSON.stringify([T.post, T.postNo]));
 ok('③l 盤前分數 ≤20 → premkt_low;21 分 / 沒算過 / 週末 → 沒有', has(T.pm, 'premkt_low') && !has(T.pmNo, 'premkt_low') && !has(T.pmNull, 'premkt_low') && !has(T.pmWk, 'premkt_low'), JSON.stringify([T.pm, T.pmNo, T.pmNull, T.pmWk]));
 ok('③m 加權最新收盤跌 3.5% → idx_drop3;跌 2% → 沒有', has(T.d3, 'idx_drop3') && !has(T.d3No, 'idx_drop3'), JSON.stringify([T.d3, T.d3No]));
+ok('③n 手上的跌破 5 日線 → ma5_break;沒跌破 / 自選 → 沒有', has(T.ma5, 'ma5_break') && !has(T.ma5No, 'ma5_break') && !has(T.ma5Fav, 'ma5_break'), JSON.stringify([T.ma5, T.ma5No, T.ma5Fav]));
+ok('③o 手上的收盤創 60 日新高 → nh60_held;平盤 → 沒有', has(T.nh, 'nh60_held') && !has(T.nhNo, 'nh60_held'), JSON.stringify([T.nh, T.nhNo]));
+ok('③p 外資連買 5 天(最後一根 0 = 沒公布,從前一根算)→ fi_streak5;4 天 → 沒有', has(T.fi, 'fi_streak5') && !has(T.fiNo, 'fi_streak5'), JSON.stringify([T.fi, T.fiNo]));
+ok('③q 券資比衝到自己歷史最高 10% → short_hi;一樣 → 沒有', has(T.sh, 'short_hi') && !has(T.shNo, 'short_hi'), JSON.stringify([T.sh, T.shNo]));
+ok('③r 賣掉 2 天後收盤站回賣價 → rebuy;沒站回 / 賣掉太久 → 沒有;只賣掉的那檔⛔ 判別的條件', has(T.rb, 'rebuy') && !has(T.rbNo, 'rebuy') && !has(T.rbOld, 'rebuy') && !T.rbOnly.length, JSON.stringify([T.rb, T.rbNo, T.rbOld, T.rbOnly]));
+ok('③s 大盤剛脫離空頭 → bull_on;一路跌 → 沒有', has(T.bull, 'bull_on') && !has(T.bullNo, 'bull_on'), JSON.stringify([T.bull, T.bullNo]));
 ok('③k 週末⛔ 不判日子類', !has(T.weekend, 'settle'), JSON.stringify(T.weekend));
 ok('④ 排序:庫存 > 自選 > 大盤 > 日子;同一篇只列一次', JSON.stringify([...T.order].sort((a, b) => ['held', 'fav', 'mkt', 'date'].indexOf(a) - ['held', 'fav', 'mkt', 'date'].indexOf(b))) === JSON.stringify(T.order) && T.order[0] === 'held' && T.order.at(-1) === 'date' && T.dupe === 1, JSON.stringify([T.order, T.dupe]));
 const txt = T.html;
