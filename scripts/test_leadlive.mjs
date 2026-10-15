@@ -93,9 +93,17 @@ const R = await page.evaluate(async () => {
     T('2026-10-12', 'Mon', 8 * 60);
     host.innerHTML = await app._leaderDeckHtml();
     const r3 = host.querySelector('[data-leaderrow="1003"]');
-    o.cols = r3 ? [...r3.children].map(e => e.matches('[data-leaderreb]') ? 'reb' : e.matches('[data-leaderpx]') ? 'px' : e.matches('[data-lqc]') ? 'chg' : e.matches('[data-leaderact]') ? 'act' : e.matches('[data-leadername]') ? 'name' : 'rank') : [];
+    o.cols = r3 ? [...r3.children].map(e => e.matches('[data-leaderreb]') ? 'reb' : e.matches('[data-leaderpx]') ? 'px' : e.matches('[data-leaderrebpct]') ? 'rebpct' : e.matches('[data-leaderact]') ? 'act' : e.matches('[data-leadername]') ? 'name' : 'rank') : [];
     o.hdr = [...host.querySelectorAll('[data-leadersort]')].map(e => e.dataset.leadersort);
     o.noAmt = !/億\/日/.test(host.innerText);
+    { const pc = host.querySelector('[data-leaderpx="1003"]'), rp = host.querySelector('[data-leaderrebpct="1003"]');
+      o.pctSwap = !!(pc && pc.querySelector('[data-lqc="1003"]') && !pc.querySelector('[data-lqr]') && rp && rp.matches('[data-lqr="1003"]'));
+      o.rebHdr = (host.querySelector('[data-leadersort="rebPct"]') || {}).innerText || ''; }
+    { const rd = () => [...host.querySelectorAll('[data-leaderrebpct]')].map(e => parseFloat(e.textContent)).filter(x => !isNaN(x));
+      app._leaderSort = { k: 'rebPct', asc: false }; host.innerHTML = await app._leaderDeckHtml(); const dn = rd();
+      app._leaderSort = { k: 'rebPct', asc: true }; host.innerHTML = await app._leaderDeckHtml(); const up = rd();
+      app._leaderSort = { k: 'rank', asc: true }; host.innerHTML = await app._leaderDeckHtml();
+      o.rebSort = dn.length >= 2 && dn.every((x, i) => !i || dn[i - 1] >= x) && up.every((x, i) => !i || up[i - 1] <= x) && JSON.stringify(dn) !== JSON.stringify(up); o.rebSortV = [dn, up]; }
     const nm3 = host.querySelector('[data-leadername="1003"]'), nm5 = host.querySelector('[data-leadername="1005"]'), nm1 = host.querySelector('[data-leadername="1001"]');
     o.tag3 = nm3 ? [nm3.children[0].innerText, nm3.children[1].innerText] : [];
     o.tag5 = nm5 ? [nm5.children[0].innerText, nm5.children[1].innerText] : [];
@@ -248,9 +256,11 @@ fs.unlinkSync(TMP);
 await browser.close();
 
 // ①
-ok('① 欄位順序:名次 | 股票 | 09/24價 | 今天 | 現價 | 名次(⛔ 沒有億/日;V79.2.8 今天 % 與現價互換)', JSON.stringify(R.cols) === JSON.stringify(['rank', 'name', 'reb', 'chg', 'px', 'act']) && JSON.stringify(R.hdr) === JSON.stringify(['rank', 'reb', 'chg', 'c', 'trank']) && R.noAmt, JSON.stringify([R.cols, R.hdr, R.noAmt]));
+ok('① 欄位順序:名次 | 股票 | 09/24價 | 現價 | 自09/24% | 名次(⛔ 沒有億/日;V79.2.9 只換兩個 %,欄位不動)', JSON.stringify(R.cols) === JSON.stringify(['rank', 'name', 'reb', 'px', 'rebpct', 'act']) && JSON.stringify(R.hdr) === JSON.stringify(['rank', 'reb', 'c', 'rebPct', 'trank']) && R.noAmt, JSON.stringify([R.cols, R.hdr, R.noAmt]));
+ok('①j 點「自MM/DD」表頭照從換倉日 % 排,再點反向', R.rebSort, JSON.stringify(R.rebSortV));
+ok('①i 🔀 V79.2.9 現價底下小字 = 今天 %(data-lqc);旁邊那欄 = 從換倉日到現價(data-lqr),表頭寫「自MM/DD」', R.pctSwap && /^自\d\d\/\d\d/.test(R.rebHdr), JSON.stringify([R.pctSwap, R.rebHdr]));
 { const i = ORIG.indexOf('const tHdr ='), t = i > 0 ? ORIG.slice(i, ORIG.indexOf('\n', i)) : '';
-  ok('①h 🔓 收盤前 10 名預覽表也是「今天 % 在現價左邊」(兩張表欄位順序一致)', t && t.indexOf('data-lqhdr="chg"') > 0 && t.indexOf('data-lqhdr="chg"') < t.indexOf('data-lqhdr="px"'), t.slice(0, 200)); }
+  ok('①h 🔓 收盤前 10 名預覽表:現價在今天 % 左邊(跟上表一樣現價在前)', t && t.indexOf('data-lqhdr="px"') > 0 && t.indexOf('data-lqhdr="px"') < t.indexOf('data-lqhdr="chg"'), t.slice(0, 200)); }
 ok('①b 漲停 / 處置在代號那一行(⛔ 不在名字那一行);👜 = 手上有', !/漲停|處置/.test(R.tag3[0] || '') && /1003\s*漲停/.test(R.tag3[1] || '') && !/處置/.test(R.tag5[0] || '') && /1005.*處置/.test(R.tag5[1] || '') && /1001\s*👜/.test(R.tag1), JSON.stringify([R.tag3, R.tag5, R.tag1]));
 ok('①c 最後一欄(名次 / 動作)靠左,表頭也靠左', R.actLeft && R.rkHdrLeft, JSON.stringify([R.actLeft, R.rkHdrLeft]));
 ok('①f 時鐘那一行先講「上次換倉 MM/DD → 隔天照名單買賣」,日期 = _leadClk 的 reb(決定性對照)', R.lastReb && R.lastReb === R.clkReb && /^⏱️\s*上次換倉 09\/24/.test(R.clock) && /09\/25\([一二三四五六日]\)\s*照名單買賣/.test(R.clock), JSON.stringify([R.clkPh, R.lastReb, R.clkReb, R.clock]));
