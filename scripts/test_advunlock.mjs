@@ -187,6 +187,11 @@ const T = await page.evaluate(() => {
     R.pre = ids(run({ today: { tdy: '2026-10-22', wk: 4, weekday: true }, events: ev }));
     R.preNo = ids(run({ today: { tdy: '2026-10-20', wk: 2, weekday: true }, events: ev }));
     R.weekend = ids(run({ today: { tdy: '2026-10-21', wk: 6, weekday: false } }));
+    // 🌅 V79.3.1 盤前分數 ≤20 → premkt_low;21 分 / 沒算過 / 週末 → 沒有
+    R.pm = ids(run({ premkt: { sPct: 0 } }));
+    R.pmNo = ids(run({ premkt: { sPct: 21 } }));
+    R.pmNull = ids(run({ premkt: null }));
+    R.pmWk = ids(run({ premkt: { sPct: 5 }, today: { tdy: '2026-10-24', wk: 6, weekday: false } }));
     const cv = app._calDayVol; app._calDayVol = () => ({ gap: 5, date: '2026-10-19' }); R.post = ids(run({})); app._calDayVol = () => ({ gap: 3, date: '2026-10-19' }); R.postNo = ids(run({})); app._calDayVol = cv;
     // ④ 分組排序
     const G = app._colTrigGroups([{ id: 'settle', why: 'x' }, { id: 'bear_on', why: 'y' }, { id: 'lu_fav', why: 'z', sym: '2454', sc: 'fav' }, { id: 'lu_held', why: 'w', sym: '2330', sc: 'held' }, { id: 'ld_redk', why: 'a', sym: '2330', sc: 'held' }]);
@@ -216,6 +221,7 @@ ok('③g 大盤剛轉空頭 → bear_on;一直是空頭 → 沒有', has(T.bearF
 ok('③h 第三個星期三 → settle;第二個 → 沒有', has(T.settle, 'settle') && !has(T.settleNo, 'settle'), JSON.stringify([T.settle, T.settleNo]));
 ok('③i 休市前最後一個交易日 → holiday_pre;前兩天 → 沒有', has(T.pre, 'holiday_pre') && !has(T.preNo, 'holiday_pre'), JSON.stringify([T.pre, T.preNo]));
 ok('③j 休市 5 天後第一天 → holiday_post;一般週末後 → 沒有', has(T.post, 'holiday_post') && !has(T.postNo, 'holiday_post'), JSON.stringify([T.post, T.postNo]));
+ok('③l 盤前分數 ≤20 → premkt_low;21 分 / 沒算過 / 週末 → 沒有', has(T.pm, 'premkt_low') && !has(T.pmNo, 'premkt_low') && !has(T.pmNull, 'premkt_low') && !has(T.pmWk, 'premkt_low'), JSON.stringify([T.pm, T.pmNo, T.pmNull, T.pmWk]));
 ok('③k 週末⛔ 不判日子類', !has(T.weekend, 'settle'), JSON.stringify(T.weekend));
 ok('④ 排序:庫存 > 自選 > 大盤 > 日子;同一篇只列一次', JSON.stringify([...T.order].sort((a, b) => ['held', 'fav', 'mkt', 'date'].indexOf(a) - ['held', 'fav', 'mkt', 'date'].indexOf(b))) === JSON.stringify(T.order) && T.order[0] === 'held' && T.order.at(-1) === 'date' && T.dupe === 1, JSON.stringify([T.order, T.dupe]));
 const txt = T.html;
