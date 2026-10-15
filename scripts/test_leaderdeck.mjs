@@ -214,7 +214,7 @@ ok('③b ⭐ 決定性對照(🧹 V78.3.4 反過來):把 `_LEADER_EDGE` 的數�
 ok('③c 空頭:名單照列(10 列)、但一個「🛒 買」都沒有、寫「今天不開新倉」', R.bearRows === 10 && !/🛒 買/.test(R.bearTxt) && /今天不開新倉/.test(R.bearTxt) && /前10續抱/.test(R.bearTxt) && !/空頭不買/.test(R.bearTxt));
 ok('③d 一定寫代價(只講白話,⛔ 不給數字)+ 標明是你選的策略', /中途可能賠掉一半/.test(R.txt) && /你選的策略/.test(R.txt) && !/年贏 0050|預設・實測最強/.test(R.txt));
 ok('③i 每一列有收盤價(讀 screener 的 c)', R.close1 === '100.0', R.close1);
-ok('③j 📡 V79.1.6 表頭可排序:名次 / 09/24價 / 現價 / 今天 四欄(⛔ 億/日已取消;09/24價在現價左邊)', JSON.stringify(R.hdr) === JSON.stringify(['rank', 'reb', 'c', 'chg']) && JSON.stringify(R.cols) === JSON.stringify(['rank', 'name', 'reb', 'px', 'chg', 'act']) && !/億\/日/.test(R.txt), JSON.stringify([R.hdr, R.cols]));
+ok('③j 📡 V79.1.6 表頭可排序:名次 / 09/24價 / 今天 / 現價 四欄(⛔ 億/日已取消;09/24價在最左;V79.2.8 今天 % 與現價互換)', JSON.stringify(R.hdr) === JSON.stringify(['rank', 'reb', 'chg', 'c']) && JSON.stringify(R.cols) === JSON.stringify(['rank', 'name', 'reb', 'chg', 'px', 'act']) && !/億\/日/.test(R.txt), JSON.stringify([R.hdr, R.cols]));
 ok('③k ⭐ 決定性對照:照「現價」由小到大排 → 1009(富果今天 50)排第一 + ▲;「🛒 買」仍只有前 5 名(⛔ 動作不跟排序變);舊的億/日排序鍵 → 退回名次', R.firstDefault === '1001' && R.firstAsc === '1009' && R.ascMark && R.buyAfterSort === 5 && R.firstOldKey === '1001', JSON.stringify([R.firstDefault, R.firstAsc, R.ascMark, R.buyAfterSort, R.firstOldKey]));
 ok('③l ⭐ V77.9.6 ⛔ 不再有「標了才算」:選 👑 時 1041 一律講要賣,舊的 leaderMine_v1 標記有沒有都一樣、也⛔ 沒有標記按鈕', /掉出前 10 名/.test(R.unmarked) && /開盤賣|換倉日再賣/.test(R.unmarked) && R.marked === R.unmarked && !/照這套買的/.test(R.unmarked) && R.markedMine === '1', JSON.stringify([R.unmarked, R.marked]));
 ok('③e ⛔ 無 🔴🟢', !/[🔴🟢]/u.test(R.txt) && !/[🔴🟢]/u.test(R.bearTxt));
