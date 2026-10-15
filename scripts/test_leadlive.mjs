@@ -114,6 +114,12 @@ const R = await page.evaluate(async () => {
     o.live3 = host.querySelector('[data-leaderrow="1003"] [data-lqp]')?.textContent;
     app._deckQ = {};
 
+    // 📅 V79.2.7 時鐘那一行:先講「上次換倉哪天 → 哪天照名單買賣」,「第幾個交易日」排句尾(使用者:前天換倉怎麼看起來像 14 天前)
+    T('2026-09-28', 'Mon', 20 * 60);
+    host.innerHTML = await app._leaderDeckHtml();
+    { const ck = host.querySelector('[data-leaderclock]'); o.clock = ck ? ck.innerText : '';
+      o.lastReb = host.querySelector('[data-leaderlastreb]')?.dataset.leaderlastreb || '';
+      o.clkReb = app._leadClk(tw, D.data_date).reb; o.clkPh = ck ? ck.dataset.leaderphase : ''; }
     // ③a 分片:14 檔、3 把金鑰
     app._getFugleKeys = () => ['K1', 'K2', 'K3'];
     app._deckTabOn = () => true;
@@ -245,6 +251,8 @@ await browser.close();
 ok('① 欄位順序:名次 | 股票 | 09/24價 | 現價 | 今天 | 名次(⛔ 沒有億/日)', JSON.stringify(R.cols) === JSON.stringify(['rank', 'name', 'reb', 'px', 'chg', 'act']) && JSON.stringify(R.hdr) === JSON.stringify(['rank', 'reb', 'c', 'chg', 'trank']) && R.noAmt, JSON.stringify([R.cols, R.hdr, R.noAmt]));
 ok('①b 漲停 / 處置在代號那一行(⛔ 不在名字那一行);👜 = 手上有', !/漲停|處置/.test(R.tag3[0] || '') && /1003\s*漲停/.test(R.tag3[1] || '') && !/處置/.test(R.tag5[0] || '') && /1005.*處置/.test(R.tag5[1] || '') && /1001\s*👜/.test(R.tag1), JSON.stringify([R.tag3, R.tag5, R.tag1]));
 ok('①c 最後一欄(名次 / 動作)靠左,表頭也靠左', R.actLeft && R.rkHdrLeft, JSON.stringify([R.actLeft, R.rkHdrLeft]));
+ok('①f 時鐘那一行先講「上次換倉 MM/DD → 隔天照名單買賣」,日期 = _leadClk 的 reb(決定性對照)', R.lastReb && R.lastReb === R.clkReb && /^⏱️\s*上次換倉 09\/24/.test(R.clock) && /09\/25\([一二三四五六日]\)\s*照名單買賣/.test(R.clock), JSON.stringify([R.clkPh, R.lastReb, R.clkReb, R.clock]));
+ok('①g 「第幾個交易日・起算日」排在句尾(⛔ 不可再放開頭)', R.clock.indexOf('上次換倉') >= 0 && R.clock.indexOf('個交易日') > R.clock.indexOf('上次換倉') && /2026-09-24 起算/.test(R.clock), R.clock);
 ok('①d 390px 不超出', R.over === 0, R.over);
 // ②
 ok('② 📅 資料停在 09/28、沒有今天的價 → 表頭「09/28收盤 / 09/28漲跌 / 09/28名次」(⛔ 不寫現價 / 今天)', R.lblPre.px === '09/28收盤' && R.lblPre.chg === '09/28漲跌' && /^09\/28名次/.test(R.lblPre.rk || ''), JSON.stringify(R.lblPre));
@@ -284,7 +292,7 @@ ok('⑥d 沒填 → 引導去設定填', /到 ⚙️ 設定填「帳戶總資金
 // ⑦
 ok('⑦a 👑+停車 0050 平常日子:只講「換倉日之間不用調整、不用等它便宜」,⛔ 沒有加碼 / 賣出指令', /換倉日之間不用調整/.test(R.k1) && /不用等它便宜/.test(R.k1) && !/還可以再買|0050 多了|該停在 0050/.test(R.k1), R.k1);
 ok('⑦b 帳戶總資金過期 → ⛔ 不叫你賣 0050(👑 與 🅿️ 都一樣)', /比手上的股票 \+ 0050/.test(R.k2) && !/0050 多了|還可以再買/.test(R.k2) && /比手上的股票 \+ 0050/.test(R.k3) && !/0050 多了|還可以再買/.test(R.k3), JSON.stringify([R.k2, R.k3]));
-ok('⑦c 🅿️(高檔飆股+停車)帳戶正常 → 照舊算該停多少在 0050', /該停在 0050/.test(R.k4), R.k4);
+ok('⑦c 🅿️(符合進場+停車)帳戶正常 → 照舊算該停多少在 0050', /該停在 0050/.test(R.k4), R.k4);
 // ⑧
 ok('⑧ 選 👑 → 13:00 🔥 尾盤買點提醒不讀名單;⭐ 決定性對照:🧬 時會讀', R.eodLead === 0 && R.eodGene === 1, JSON.stringify([R.eodLead, R.eodGene]));
 // ⑨
