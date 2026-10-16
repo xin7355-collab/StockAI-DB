@@ -1,0 +1,95 @@
+{
+  "updated": "2026-10-16 14:25 UTC",
+  "items": [
+    {
+      "source": "🌍 油價航運",
+      "title": "Apple iPhone Duo preorders push shipping dates into January - Quartz",
+      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE10Z0Fzd1lQdHZURmJ0bFlsNTY2UFBsV05kak15cjJ1MlBWZTBFUjg0YzhMYnlyb2xUYjhQVWFnV0tJR2I2bXRxRnZySlowWlNJSnlheWVFMC1ENEJOSm9kZXJHdEFpWXF0RGVfblE0MGE2dw?oc=5",
+      "published": "Fri, 16 Oct 2026 13:40:46 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "韓股記憶體",
+      "title": "SK Hynix, SanDisk, and Micron Drop 3% Despite Goldman Sachs Calling China Chip Fears Overdone - 24/7 Wall St.",
+      "url": "https://news.google.com/rss/articles/CBMizwFBVV95cUxQQ1ZZZTY4bmhPSzZ1cjV0WllQWGZOVTRMN2t3emE5blRHUHNTekFGelpNZ2ZZU2lHUmRDTE4tYzZPeVZiVWxpTVVUaURYeE5XQWNyM2pQNlg2LTFGMkpnVmVNM19IcDR1VUdvQ0IzWnU1bFk4aFp0ZGYxVjFWR2hiTkxmUndGUzl1MEZmSm52TE5jTE9pNU1JZEYyMnJSaUIxTXJlb2RSUnZXMzZwM2NkcUNBSkJoQWhYaXcyNnpFcDhveTlVTGVIb25rR3h6WnM?oc=5",
+      "published": "Fri, 16 Oct 2026 13:30:00 GMT",
+      "title_zh": "SK Hynix、SanDisk和Micron降低3％，對於財團法人銀行判斷是否",
+      "impact": "市場因Goldman Sachs認為中國電子硬體應用硬體應用",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🚫 出口管制",
+      "title": "China Proposes Solar Export Ban: 12 Technologies [2026] - https://tech-insider.org/",
+      "url": "https://news.google.com/rss/articles/CBMieEFVX3lxTFBuem9XSWFNNVhlaE5zQzFZbUYtbkNsMFpPZE5ZNnBZR1dZemdoSUs3TjY0ejlRZ1BhWjhYZjFnWWthZU8zSWRRNHgwcldBNGNCRExjTDRlZ1NpeFB2MDBna3lmdnBGZk9Gd2wtUDlMUmdvYUVBQVRSZg?oc=5",
+      "published": "Fri, 16 Oct 2026 13:25:07 GMT",
+      "title_zh": "建議對來自中國的太陽能設備定期封價",
+      "impact": "建議對台股票市場帶來影響，可能導致中國太陽能公司在台灣市場減",
+      "impact_level": "bearish"
+    },
+    {
+      "source": "🌍 地緣突發",
+      "title": "Voters more worried about Iran war than immigration or crime: polls - Responsible Statecraft",
+      "url": "https://news.google.com/rss/articles/CBMia0FVX3lxTE5mQ1NUZHVuRHpOWjVIZ2o2WmZma25NbzRBOW9aUjZaVnU1OWYwdTdCV2VFRDJNdlhlbWlMM1dmMTNOZW1XaktqZWVraEFzdENyeTBubGlndEQ4OG56Z2NEQlE1d010a0J0NkFR?oc=5",
+      "published": "Fri, 16 Oct 2026 13:24:30 GMT",
+      "title_zh": "民調：選民較關注伊朗戰爭",
+      "impact": "民眾對伊朗戰爭的擔憂升高，可能引發市場避險情緒，對台股造成壓",
+      "impact_level": "bearish"
+    },
+    {
+      "source": "韓股記憶體",
+      "title": "SK Hynix Seeks Washington Approval to Export US Chip Equipment to China - TIKR.com",
+      "url": "https://news.google.com/rss/articles/CBMihwFBVV95cUxOaHg4Z053ODQ4ZDRKd0FWWDRxQm9nT3BUbU9pUUlDd25XQ0l0VW9NSjdTdVpOUFU4MFRvMnBVUDJTbTdKUFRDanVXakRwSEZqa2hqTE9wYk12dm9SS2R5cmNOZ3pEM2pZanBDLXZJcVg5UmxJMHY2bU5DaUpBNzlMenJTWGdVQmc?oc=5",
+      "published": "Fri, 16 Oct 2026 13:14:03 GMT",
+      "title_zh": "SK海力士尋求美批准對中出口晶片設備",
+      "impact": "若獲批准，將緩解全球晶片供應鏈緊張，有利於台積電等供應鏈夥伴",
+      "impact_level": "bullish"
+    },
+    {
+      "source": "🏢 雲端巨頭",
+      "title": "UT Wins Award From Google.org to Apply AI in Fusion Energy Research - College of Natural Sciences",
+      "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNNVJHSmF4QVR0QXlvNkpVek4zRjF2WDAzbzdjMTd0WnNsQ2wwZjVtTjdhVjR2XzNIcFppNDBQQk1kb2ZydHBoR0RySjJseG5YRk9ZWmNxMDdDQTR0NHdPdmxla1NTTC1LMWd3Um1IV2ozOC0yRm96dk83YUJLS3VPd3Y2OUxtNEJ6R3NISlEzQzEtX3l2UmdGbg?oc=5",
+      "published": "Fri, 16 Oct 2026 13:11:09 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🌍 地緣突發",
+      "title": "Trump says US may need to strike Iran's Pickaxe Mountain - Reuters",
+      "url": "https://news.google.com/rss/articles/CBMimgFBVV95cUxPTWRtOEIzSmZRLXc0aEx6YkF3cGY5a2RwX1pzYmdQZnhqcmkzQUFkbndObFlvZEZybDNwU0lYT1I3U0pUdG9tZzNQTldkRktZajhWaXY2Vjh1NFQtU3BSbE10T2tXREh0dUVVWFQ0TVVsMmcyWDVUS21mQ21FVHVLaTF6M1dCX0NCZndtUy1fd3dXMzZPVDc1WXh3?oc=5",
+      "published": "Fri, 16 Oct 2026 12:54:29 GMT",
+      "title_zh": "從美國可能需要對伊朗的挖鼠山行動 - 商業時報",
+      "impact": "可能對台股市帶來影響，對投資的態度可能會變得擠縮（beari",
+      "impact_level": "bearish"
+    },
+    {
+      "source": "Huang Nvidia",
+      "title": "Nvidia: Jensen Can't Spend His Way Out Of This One - Seeking Alpha",
+      "url": "https://news.google.com/rss/articles/CBMikwFBVV95cUxQRWJLUnJzR2ZXQlhEOVc0RkpwWDktb0xpVzNHeGhCN1hCbHhGaVowd1hSMWNLMmNLOTljVlN6NE1DMkVRd29EZl9TQW5sd0FIUFF2T0lVcVFTcXBLcVhsUjBhNzJ4bHVpNVhKZ1FoQnVRVlJ5ekhiWU10djhucFZUVC10d3l1XzdVT0tTLVNyTkVtYzQ?oc=5",
+      "published": "Fri, 16 Oct 2026 12:49:14 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "Huang Nvidia",
+      "title": "Why Nvidia Stock Can Defy the Broader Chip Sector Slump - Barron's",
+      "url": "https://news.google.com/rss/articles/CBMicEFVX3lxTE5PVVcyTUpzN3dWbVBTZ3ZmX19KNHc1UFoyUm9JeGFfa01DWXA3Mkh3VXNtMFJ1ZTZNU1BFN3EzbTk5SnR1VXU0NERRRHlwaW5hSmMxdnhJN0t4cTNNVlNXdG1Wbjd6TG1KMVRONkYtRmY?oc=5",
+      "published": "Fri, 16 Oct 2026 12:48:00 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "📊 巨頭財報",
+      "title": "TSMC earnings surge as AI demand fuels US expansion - Fox Business",
+      "url": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE4xUUg2dFpkOW9iMXpudG83b3hhdUpqOFRYLWpwcVB3cHM4UHpiWldTM3ZncmxkX1J0UXZpVTAxY3RLQ0RxMnVMaV9PSnp2NTNWRXpHaS12ZTBsR1E?oc=5",
+      "published": "Fri, 16 Oct 2026 12:45:42 GMT",
+      "title_zh": "台積電因AI需求美國擴張 營收激增",
+      "impact": "AI需求推升營收並擴大美國布局，提升台積電獲利前景，對台股具",
+      "impact_level": "bullish"
+    }
+  ]
+}

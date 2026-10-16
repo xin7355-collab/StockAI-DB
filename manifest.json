@@ -1,0 +1,40 @@
+{
+  "name": "散戶救星",
+  "short_name": "散戶救星",
+  "description": "台股 AI 終端機 - 朱老師心法 / 獵鷹建倉分 / 即時雷達 / 全球巨頭脈動",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0d1117",
+  "theme_color": "#3b82f6",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "icon-192.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "雷達矩陣",
+      "short_name": "雷達",
+      "description": "今日 4 大策略雷達 + 送分題",
+      "url": "./?tab=radar&source=pwa"
+    },
+    {
+      "name": "庫存追蹤",
+      "short_name": "庫存",
+      "description": "持股獵鷹分 + 朱老師建議",
+      "url": "./?tab=inv&source=pwa"
+    }
+  ]
+}
