@@ -1,7 +1,20 @@
 {
-  "updated": "2026-10-16 14:25 UTC",
+  "updated": "2026-10-16 15:14 UTC",
   "count": 15,
   "data": [
+    {
+      "source_name": "科技新報",
+      "title": "台灣將收緊對中國先進晶片出口，未許可輸出產品將首度列刑事犯罪",
+      "link": "https://finance.technews.tw/2026/10/16/taiwan-to-tighten-export-controls-on-advanced-chips-to-china/",
+      "published_time": "Fri, 16 Oct 2026 14:35:11 +0000",
+      "matched_keywords": [
+        "出口管制"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "限制對華出口，減少營收",
+      "important": true
+    },
     {
       "source_name": "科技新報",
       "title": "彭博專訪　龔明鑫：台灣準備對中國緊縮 AI 晶片出口管制並打擊走私",
@@ -11,8 +24,8 @@
         "出口管制"
       ],
       "cat": "🌍 地緣管制",
-      "ai_sentiment": "利空",
-      "ai_reason": "限制中國AI晶片出口，減少營收",
+      "ai_sentiment": "利多",
+      "ai_reason": "台灣經濟部長龍明鑫對台灣半導體業務推動和台灣與中國關係問題對",
       "important": true
     },
     {
@@ -25,7 +38,7 @@
       ],
       "cat": "🧪 技術突破",
       "ai_sentiment": "利多",
-      "ai_reason": "文章中提到台灣市場對台股市有實質影響，重視台股個股、供應鏈及",
+      "ai_reason": "Nvidia用台積電CoWoS推高階PC",
       "important": true
     },
     {
@@ -38,7 +51,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "台積電擴大美國投資，強化先進製程產能佈局",
+      "ai_reason": "根據新聞內容，台積電創業長魏哲家於15日在法語會議上宣布，已",
       "important": true
     },
     {
@@ -51,7 +64,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利空",
-      "ai_reason": "資料庫遭攻擊恐影響營運及聲譽",
+      "ai_reason": "資料庫被攻擊，恐致營運與信任受損",
       "important": true
     },
     {
@@ -64,7 +77,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "擴大設備服務能力，提升競爭力",
+      "ai_reason": "收購提升技術與客戶基礎",
       "important": true
     },
     {
@@ -77,7 +90,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "糖尿病足新藥臨床三期收案進度符合預期",
+      "ai_reason": "將完成三期收案，推進新藥上市",
       "important": true
     },
     {
@@ -90,8 +103,8 @@
         "奈米"
       ],
       "cat": "🧪 技術突破",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利多",
+      "ai_reason": "新聞中提到海德漢（HEIDENHAIN）美國分公司總裁兼執行",
       "important": true
     },
     {
@@ -103,8 +116,8 @@
         "EPS"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利多",
+      "ai_reason": "台股情報文章，未提及特定個股或事件，只涉及台股時況及市場觀測",
       "important": true
     },
     {
@@ -129,8 +142,8 @@
         "展望"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利空",
+      "ai_reason": "日本經濟衰退或削弱台灣出口需求",
       "important": true
     },
     {
@@ -142,8 +155,8 @@
         "出口管制"
       ],
       "cat": "🌍 地緣管制",
-      "ai_sentiment": "利空",
-      "ai_reason": "AI晶片出口受限，相關公司營收受衝擊",
+      "ai_sentiment": "利多",
+      "ai_reason": "龔明鑫發言，對台股市有實質影響。AI晶片將與先進半導體加入出",
       "important": true
     },
     {
@@ -155,21 +168,8 @@
         "營收"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "利多",
-      "ai_reason": "營收破千億、海外比重提升，成長可期",
-      "important": true
-    },
-    {
-      "source_name": "科技新報",
-      "title": "日本緊急地震速報大烏龍，規模 6.9 誤判 9.9 氣象廳致歉",
-      "link": "https://technews.tw/2026/10/16/japan-emergency-earthquake-early-warning-blunder-magnitude-6-9-misjudged-9-9-jma-apologizes/",
-      "published_time": "Fri, 16 Oct 2026 07:40:14 +0000",
-      "matched_keywords": [
-        "地震"
-      ],
-      "cat": "🔥 事故天災",
-      "ai_sentiment": "利多",
-      "ai_reason": "新聞中提到日本地震速報誤判，造成台股個股、供應鏈、半導體及大",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
     },
     {
@@ -181,17 +181,17 @@
         "禁令"
       ],
       "cat": "🌍 地緣管制",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利空",
+      "ai_reason": "美擴大 DUV 禁令衝擊台灣晶圓廠供應鏈",
       "important": true
     },
     {
       "source_name": "Yahoo 即時財經",
-      "title": "外資爆砍461億大逃殺！郭哲榮曝「逢低布局」契機：台股第四季勝率九成",
-      "link": "https://tw.news.yahoo.com/%E5%A4%96%E8%B3%87%E7%88%86%E7%A0%8D461%E5%84%84%E5%A4%A7%E9%80%83%E6%AE%BA-%E9%83%AD%E5%93%B2%E6%A6%AE%E6%9B%9D-%E9%80%A2%E4%BD%8E%E5%B8%83%E5%B1%80-%E5%A5%91%E6%A9%9F-%E5%8F%B0%E8%82%A1%E7%AC%AC%E5%9B%9B%E5%AD%A3%E5%8B%9D%E7%8E%87%E4%B9%9D%E6%88%90-140300224.html",
-      "published_time": "Fri, 16 Oct 2026 14:03:00 +0800",
+      "title": "鴻海重大宣布！砸233億「攜手三菱電機」進攻車市",
+      "link": "https://tw.news.yahoo.com/%E9%B4%BB%E6%B5%B7%E9%87%8D%E5%A4%A7%E5%AE%A3%E5%B8%83-%E7%A0%B8233%E5%84%84-%E6%94%9C%E6%89%8B%E4%B8%89%E8%8F%B1%E9%9B%BB%E6%A9%9F-%E9%80%B2%E6%94%BB%E8%BB%8A%E5%B8%82-145300649.html",
+      "published_time": "Fri, 16 Oct 2026 14:53:00 +0800",
       "matched_keywords": [
-        "法說"
+        "收購"
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "中立",
