@@ -357,10 +357,47 @@ async function minerKick(env, now = Date.now(), fetchFn = fetch, dispatchFn = gh
     return { sent: !!(r && r.ok), why: r && r.why, dd };
 }
 
-const WORKER_VER = 'V22.4 (2026-10-13)';
+// 🌅 V79.3.4 盤前體檢以前永遠拿「美股盤中」的數字 —— macro_cron 自己的 cron 從來進不來,
+//   跟車的那幾支都在台北下午到半夜 → 美股收盤後到台股開盤前一輪都沒有。
+//   ⭐ 台北 08:00 那一輪:平日、gh-pages 的 macro_risk 還停在「最近一次美股收盤」之前 → 發 `macro-cron`
+//   ⛔ 已經是收盤後的就不發(不重複跑)
+// 最近一次美股收盤(紐約 16:00,夏令 = 20:00 UTC、冬令 = 21:00 UTC)的 UTC 毫秒;⛔ 沒管美國假日(只差一天早上多跑一次)
+function _lastUsCloseMs(now = Date.now()) {
+    const fmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hourCycle: 'h23' });
+    for (let k = 0; k < 8; k++) {
+        const day = Math.floor((now - k * 86400e3) / 86400e3) * 86400e3;
+        const wd = new Date(day).getUTCDay();
+        if (wd === 0 || wd === 6) continue;
+        let cand = day + 20 * 3600e3;
+        if (+fmt.format(new Date(cand)) !== 16) cand = day + 21 * 3600e3;
+        if (cand <= now) return cand;
+    }
+    return null;
+}
+// "2026-10-15 23:57 +0800"(台北)→ UTC 毫秒;⛔ 不丟給 Date.parse(格式不保證)
+function _twStampMs(raw) {
+    const m = String(raw || '').match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+    return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - 8 * 3600e3 : null;
+}
+async function macroKick(env, now = Date.now(), fetchFn = fetch, dispatchFn = ghDispatch) {
+    if (!env.GH_DISPATCH_TOKEN) return { sent: false, why: 'no-token' };
+    const wd = new Date(now + 8 * 3600e3).getUTCDay();
+    if (wd === 0 || wd === 6) return { sent: false, why: 'weekend' };
+    const close = _lastUsCloseMs(now);
+    let upd = null;
+    try {
+        const r = await fetchFn(`${GH_PAGES_BASE}/data/macro_risk.json?t=${now}`);
+        if (r && r.ok) upd = _twStampMs((await r.json())?.updated);
+    } catch (_) { upd = null; }
+    if (upd && close && upd >= close) return { sent: false, why: 'fresh', upd, close };
+    const r = await dispatchFn(env, 'macro-cron');
+    return { sent: !!(r && r.ok), why: r && r.why, upd, close };
+}
+
+const WORKER_VER = 'V22.5 (2026-10-16)';
 const WORKER_FEAT = ['push', 'vapid', 'names', 'sync'];   // 有 push/vapid 才支援「關 App 推播」
 
-export { minerKick, _screenerDate };
+export { minerKick, _screenerDate, macroKick, _lastUsCloseMs, _twStampMs };
 export default {
     async fetch(request, env, ctx) {
         if (request.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -414,6 +451,7 @@ export default {
         } else if (event.cron === '0 0 * * 1-5') {
             ctx.waitUntil(runPreMarket(env));      // V21.4 盤前簡報(台北 08:00)
             ctx.waitUntil(runLeaderRebalPush(env));   // 👑 V77.9.6 選 👑 的人:換倉日「今天開盤買 / 賣哪幾檔」
+            ctx.waitUntil(macroKick(env));   // 🌅 V79.3.4 總經資料還停在美股收盤前 → 叫醒 macro_cron(盤前體檢)
             // 🚀 順便把盤中快照的主迴圈叫起來(GitHub 排程實測整天不進來,見上面那段)。
             //    ⭐ 08:00 發沒問題 —— `intraday_window.py` 會自己 SLEEP 到 08:45 那一拍。
             ctx.waitUntil(ghDispatch(env, 'intraday-quotes'));

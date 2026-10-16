@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.3.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.3.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.3.3</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.3.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8535,10 +8535,11 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.3.3',
+    _APP_VERSION: 'V79.3.4',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.3.4', d: ['🌅 盤前體檢的美股數字以前常是「美股還沒收盤」時抓的(最後一次在台北半夜)→ 現在每天早上 08:00 會在美股收盤後再抓一次;還沒更新時標題下會寫「美股收盤後還沒更新」'] },
         { v: 'V79.3.3', d: ['📰 再多 9 篇專欄會在碰到時自動列出來:手上的跌破 5 日線、手上的創 60 日新高、外資連買 5 天、券資比衝高、帳面賺 20%(過熱要不要先賣)、最近賣掉的又漲回賣價、大盤剛脫離 / 剛轉成空頭、盤前體檢分數很低'] },
         { v: 'V79.3.2', d: ['📰 新增一篇專欄(大盤一天跌超過 3% 時怎麼撿便宜);那種日子會自動列出來'] },
         { v: 'V79.3.1', d: ['📰 新增一篇專欄(大跌那天要不要撿便宜、一次買還是分批買);盤前體檢分數很低那天,「那天怎麼辦」那篇會自動列出來'] },
@@ -8657,7 +8658,6 @@ ${list}
         { v: 'V78.2.7', d: ['🎤 <b>法說會開完隔天就買,實測是略差的</b>:往回補了 5 年(1.6 萬場),開完隔天開盤買,比同一天其他股票平均差 0.2%(抱 1 天)到 0.7%(抱 20 天),2021~2026 每一年都是負的 → 「剛開完法說會」⛔ 不是買進理由(差得不多,也不值得放空)。', '🎰 期交所 P/C 比與大額交易人的歷史第一次沒補到,查 log 發現期交所其實有給資料,是程式判斷寫錯把它丟掉 → 已修,重新補挖中,補到後再測當沖 🚦 那兩條準不準。'] },
         { v: 'V78.2.6', d: ['📉 <b>「熱門股收盤跌 ≥3% → 隔天開盤買、抱 5 天」組合回測做完了:⛔ 不能用</b>。一筆一筆算是賺的(16 年 3.6 萬次、平均比同一天其他熱門股多 0.35%、16 年每年都正),但真的拿 100 萬去做(17 個起點):近 4 年 −49%(0050 含息 +375%)、16 年 −99%,17 條全輸。原因:賺的那些其實是「整個盤一起大跌、隔天反彈」那幾百天;平常日子一檔熱門股跌 3% 之後是賠的,而 5 格錢先被平常日子塞滿,大跌日來時沒錢買。只在大跌日才買也仍然輸 0050 → 想吃大盤反彈,抱 0050 就吃得到(實測總表 → ⛔ 沒用)。'] },
         { v: 'V78.2.5', d: ['🧹 <b>挖礦盤點</b>:① 修掉「PE 自身位階」連兩晚停在 618 檔(守門用 UTC 日期,把台北隔天那一輪誤判成「今天跑過了」;半成品也不再算跑過)② 關掉兩支沒在用的自動採礦(全市場基本面輪動:資料跟別支重複還搶付費額度;美股日線:每次都重抓 5 年、App 不讀),都還能手動跑 ③ 盤中口訣三條(下午大漲不追 / 開盤大跌 10 分鐘站回 / 第一根上影太長不追)用 5 年 5 分 K 測完 —— <b>一條都沒過</b> ④ 新增「📚 歷史補挖」(手動):期交所 P/C 比與大額交易人、法說會往回補 5 年,補完才能回測 🚦 那兩條與法說會後的反應', '🖐️ 想手動換倉?⛔ 沒有按鈕(換倉日是決策台・自動下單・成績單・推播共用的同一天)—— 想今天就照名單買,直接照決策台前 5 名做;回測過「哪天開始」中位差 0%,只是那幾筆不會算進成績單'] },
-        { v: 'V78.2.4', d: ['🤖 <b>👑 自動下單預設改成「換倉隔天開盤買」</b>(你點頭的):回測隔天開盤買前 5 名 953% / 6,783% vs 尾盤 817% / 3,342%。電腦上的自動下單程式不用另外設定,09:01~09:10 下單(⛔ 09:00 那一分鐘開盤價可能還沒出來);資料抓不到會在 09:10 前重試,過了 09:10 那天就跳過、⛔ 不改到尾盤補', '⚠️ 開盤用開盤價掛限價單,開盤後很快拉上去的幾檔可能買不到;開盤就漲停的照舊不追。要回尾盤設 LEADER_WINDOW=eod'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -15734,6 +15734,36 @@ const marginByDate = {};
     //      ・放到 3 個平日 → 連假(1 天國定假日)也不會誤報,而真的停產(4 天)一定擋得住
     //   ⚠️ `todayISO` 只給測試用 —— ⛔ 不可用「今天剛好是星期幾」驗週末那條規則,
     //      那會變成「一週只有星期一才驗得到」= 其餘六天是假綠燈(注入驗證當場抓到)。
+    // 🌅 V79.3.4 最近一次美股收盤(紐約 16:00 → 夏令 20:00 / 冬令 21:00 UTC)的 UTC 毫秒
+    //   ⚠️ 跟 cloud-worker/worker.js 的 _lastUsCloseMs 同一條規則(test_macro_kick ③ 跨檔比對);⛔ 沒管美國假日
+    _lastUsCloseMs(now = Date.now()) {
+        try {
+            const fmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hourCycle: 'h23' });
+            for (let k = 0; k < 8; k++) {
+                const day = Math.floor((now - k * 86400e3) / 86400e3) * 86400e3;
+                const wd = new Date(day).getUTCDay();
+                if (wd === 0 || wd === 6) continue;
+                let cand = day + 20 * 3600e3;
+                if (+fmt.format(new Date(cand)) !== 16) cand = day + 21 * 3600e3;
+                if (cand <= now) return cand;
+            }
+        } catch (_) {}
+        return null;
+    },
+    // 🌅 V79.3.4 盤前體檢:總經資料是不是「美股收盤前」抓的(那時美股漲跌是盤中數字)
+    //   只在收盤後 12 小時內講(= 台北隔天上午到下午);回 null = 不用講
+    _macroPreUsClose(now = Date.now()) {
+        try {
+            const m = String((this._macroRiskCache || {}).updated || '').match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+            if (!m) return null;
+            const upd = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - 8 * 3600e3;
+            const close = this._lastUsCloseMs(now);
+            if (!close || upd >= close || now - close > 12 * 3600e3) return null;
+            const tw = new Date(close + 8 * 3600e3);
+            return { upd, close, closeTxt: `${String(tw.getUTCHours()).padStart(2, '0')}:00` };
+        } catch (_) { return null; }
+    },
+
     _macroFresh(todayISO) {
         try {
             const raw = String((this._macroRiskCache || {}).updated || '');
@@ -16703,6 +16733,11 @@ const marginByDate = {};
                 下面的美股/VIX/外資期貨/開盤預判<b>都是那一天的</b>,⛔ 不是今天的。
                 <span class="text-orange-300/80">這是採礦端沒跑成功,不是你的設定問題;⛔ 今天先別照這張卡調部位。</span>
             </div>`;
+        // 🌅 V79.3.4 資料是美股收盤前抓的 → 灰字說明(⛔ 不改分數;整份過期時上面那條已經講了)
+        const _usPre = _mFresh.ok ? this._macroPreUsClose() : null;
+        const _usPreWarn = _usPre
+            ? `<div class="mt-1 text-[10px] text-gray-500 leading-snug" data-uspre="1">⚠️ 美股收盤後還沒更新 —— 這份是收盤前抓的(美股台北 ${_usPre.closeTxt} 收盤),美股 / 費半 / 台積 ADR 的漲跌是盤中數字,收盤後會再抓一次。</div>`
+            : '';
         const _lagWarn = _lagI2.lag > 0
             ? `<div class="mt-1 text-[10px] text-amber-300 bg-amber-900/15 border-l-2 border-amber-500 pl-2 py-1 rounded-r leading-snug">⚠️ 加權指數資料落後 ${_lagI2.lag} 天(最新交易日 ${this._dW(_lagI2.mktD)})— 下方點位與解讀用的是 ${this._dW(_lagI2.twiiD)} 收盤</div>`
             : '';
@@ -16771,6 +16806,7 @@ const marginByDate = {};
                     </div>
                 </div>
                 ${_staleWarn}
+                ${_usPreWarn}
                 ${_lagWarn}
                 ${(() => {   // 🔗 V71.2.1 中期視角:引用反攻條件雷達的結論,短中期一起看
                     const rv = this._reboundVerdict;

@@ -143,6 +143,7 @@ done
 ⚠️ Cloudflare 免費版 cron 上限 5 個而**已用滿** → 新功能一律掛在既有 handler 裡,⛔ 別想加第 6 個。
 ⚠️ 需要使用者設 `GH_DISPATCH_TOKEN`(步驟在 `cloud-worker/README.md`);沒設就整段跳過。
 ⏰ **V79.1.9 daily_miner 也由 worker 台北 17:00 叫醒**(`minerKick`,event `daily-miner`,只在 gh-pages screener 還不是今天才發);`playbook_scan` 跟 schedule / repository_dispatch / workflow_dispatch 那輪(⛔ push 不跟)。測試 `scripts/test_miner_kick.mjs`。
+🌅 **V79.3.4 macro_cron 也由 worker 台北 08:00 叫醒**(`macroKick`,event `macro-cron`,只在 gh-pages `macro_risk.updated` 還早於最近一次美股收盤(紐約 16:00 = 夏令 20:00 / 冬令 21:00 UTC)才發)+ 跟車多掛 `news_premarket`(07:46~10:40 飄,備援)—— 以前最後一輪都在台北 20:30~02:30,盤前體檢永遠是美股盤中的數字。前端 `_macroPreUsClose` 灰字說明;`_lastUsCloseMs` index / worker 同一條規則。測試 `scripts/test_macro_kick.mjs`。
 
 ---
 
@@ -2431,6 +2432,7 @@ UI 規範・使用者偏好・探針登記表・資料體檢・連動檢查清�
 
 ### 📇 `docs/DECISIONS.md` 章節索引(標題本身就是結論)
 
+- 🌅 V79.3.4 「盤前體檢沒更新」= 總經資料最後一次在台北 23:57(美股盤中);macro_cron 自己的 cron 從來進不來、跟車的都在下午到半夜 → 美股收盤後到台股開盤一輪都沒有 → worker 台北 08:00 叫醒(資料已是收盤後就不發)+ 跟車 news_premarket 備援 + 灰字說明
 - 📰 V79.3.3 散戶 App 觸發專欄 27 → 36 篇:跌破 5 日線 / 手上創 60 日新高 / 外資連買 5 天 / 券資比自己最高一成 / 賺 20% 過熱 / 賣掉又站回賣價 / 剛脫離空頭 / 盤前分數低(其餘 81 篇是每天都適用或資料不夠,⛔ 不接)
 - 📉🔥 V79.3.2 大跌那天撿 👑 前 5 還是前 10?—— 只在加權跌 ≥3%(跌 2% 沒差);最好的是「成交額前 100 大裡當天跌最多 10 檔、隔天開盤買、抱 20~40 天」(增量 +5.5pp t 3.6、vs 0050 +2.6pp、20 段 4 段賠);前 5 > 前 10 但都不顯著勝過熱門股全部;觸發專欄 `idx_drop3`
 - 📉 V79.3.1 大跌那天撿便宜?第一天買 0050 ≈ 隨便一天(每段只算一次;每天都算的 p<0.001 是 2020/2025 V 型被重複計算)・同一段第二次跌 ≥3% 才有差(10 次)・決定要買就一次買(分批贏的只有 41%)・存錢等大跌 10 年 0/26 輸定期定額 ・觸發專欄新條件 `premkt_low`(盤前分數 ≤20)

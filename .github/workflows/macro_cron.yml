@@ -21,7 +21,14 @@ on:
     workflows:
       - "📲 Telegram 警報系統"
       - "⚡ 當沖熱度採礦 (daytrade_probe)"
+      # 🌅 V79.3.4 美股收盤(台北 04:00/05:00)之後唯一每天進得來的排程 → 盤前體檢的備援
+      #   (實測 07:46~10:40 之間飄;主路徑是下面的 repository_dispatch)
+      - "🗞️ 盤前新聞晨採 (news_premarket)"
     types: [completed]
+  # 🌅 V79.3.4 盤前體檢以前永遠拿「美股盤中」的數字(最後一輪都在台北 20:30~02:30)
+  #   → Cloudflare worker 台北 08:00 那一輪發 `macro-cron`(⛔ 不吃排程配額;資料已是美股收盤後就不發)
+  repository_dispatch:
+    types: [macro-cron]
   workflow_dispatch:
   schedule:
     - cron: '0 0,4,12,16,20 * * 1-5'   # ⚡ V69.8.6 P3-3:原每 4 小時全天全週(週末 12 輪抓不更新的資料);改交易日 5 輪並避開 08:00(daily_miner 08:30 自帶一輪)

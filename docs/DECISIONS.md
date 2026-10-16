@@ -2,6 +2,23 @@
 
 使用者(附三張截圖):「1.跑馬燈移除 2.app 預設策略符合進場,我想要的是我要點進階才能是領頭羊策略,所以 app 內容要注意文字敘述,不要露餡,現在有些文字有點疑似露餡了 3.產業 app 裡面的成績單沒有領頭羊策略」。追問後選:預設 = 決策台的「📈 符合進場」、🔥 觸發價預設收起;👑 搬進「🔓 進階功能」;作戰室成績單永遠顯示 👑。
 
+
+## 🌅 V79.3.4 盤前體檢沒更新 —— 美股收盤後沒有任何一輪總經採礦
+
+使用者截圖(10/16 09:22):盤前體檢「資料採集 10/15 23:57」。
+- `macro_risk.json` 最後一次 10/15 23:57 台北 = 美股才開盤 2.5 小時。
+- `macro_cron` 自己的 cron(台北 04:00 / 08:00 那幾輪)近一個月 **0 筆 schedule run**(排程配額,V75.2.0);它只跟在 `telegram_alert` / `daytrade_probe` 的排程後面,而那兩支在台北下午到半夜 → 近 4 天最後一輪都在台北 20:30~02:30。
+- 美股收盤 = 台北 04:00(夏令)/ 05:00(冬令,11/1 起)→ 收盤到台股開盤之間一輪都沒有 → **盤前體檢每天都拿美股盤中的數字**,不是程式壞。
+- 查證可用的路:`repository_dispatch` 確實在跑(daily_miner / live_snapshot / tick_flow 都有 dispatch run = GH_DISPATCH_TOKEN 已設);`news_premarket` 排程每天都進得來但時間飄 07:46~10:40;`theme_news` 有一輪在 03:57(美股還沒收)。
+
+修法(使用者同意改 workflow):
+1. `macro_cron.yml` 加 `repository_dispatch: [macro-cron]` + 跟車多掛 `news_premarket`(cron 一行不刪,job `if` 本來就放行)。
+2. worker `macroKick`:掛在既有台北 08:00 那一輪(⛔ 不加第 6 個 cron),平日、macro_risk 還早於最近一次美股收盤才發;已是收盤後不發。⚠️ 要使用者重新部署 worker 才生效(WORKER_VER V22.5)。
+3. 前端 `_macroPreUsClose`:收盤後 12 小時內、資料仍是收盤前抓的 → 標題下灰字「美股收盤後還沒更新」;⛔ 分數不動。
+4. `_lastUsCloseMs` 兩份(index / worker),測試逐時一整年比對;⛔ 沒管美國假日(假日只是早上多跑一次 / 多一行灰字)。
+測試 `scripts/test_macro_kick.mjs`(注入「已更新也發」「冬令也當 20:00」都紅)。
+⏭️ 驗收:隔天 08:10 看 `git show origin/gh-pages:data/macro_risk.json | grep updated` 晚於台北 04:00,Actions 看是 repository_dispatch 或 workflow_run(news_premarket)。
+
 ## 📰 V79.3.3 「有適合放在散戶 App 的專欄提醒的嗎?」—— 90 篇沒觸發的逐篇看,再接 9 篇
 
 ⭐ 挑的標準:① 是手上 / 自選那一檔**真的發生的事**,而且那一刻會想照江湖說法動作 ② App 已經載的資料判得出來 ③ 定義照該篇探針、⛔ 不新編門檻 ④ 不會天天跳。
