@@ -1,23 +1,22 @@
 {
-  "updated": "2026-10-16 15:16 UTC",
+  "updated": "2026-10-16 15:49 UTC",
   "trump": [
     {
       "title": "Donald Trump’s approval rating - The Economist",
       "url": "https://news.google.com/rss/articles/CBMibEFVX3lxTE5Wa2FQWEl6Q01iTWhxV2M3c1VoTzFnSDR3VEhRTWU3cU5YOUlEckYyTWVORVFGRi1fOUJCZFVSUVR6cmROcjl0MlZnVWxSQmxReGZSTHJDM05pSnF2eFl4Z2o0TUpMUmlUYTJiNg?oc=5",
       "published": "Wed, 14 Oct 2026 07:00:00 GMT",
-      "title_zh": "唐納德·特朗普的支持率 - 經濟學人"
+      "title_zh": "川普支持率——《經濟學人》"
     },
     {
       "title": "Bad news for Trump ahead of the midterms: it’s still the economy, stupid - The Guardian",
       "url": "https://news.google.com/rss/articles/CBMihwFBVV95cUxNeGVMcFdTWjhOQUxraHZreXMta3lMM1VONVh2R2JsMHMteG53TDdUTHUweVRVclE1Q1VQc2k5b1F3T2F4QTZLWVhtQlhMOElKNll3QXVDaC1NMld3bzJsejMyY2lBNWNwTlB6TTdQeGgyZ2ZTcVd0aU04QWcxc3p3R1FsdUhCWXc?oc=5",
-      "published": "Thu, 15 Oct 2026 20:47:00 GMT",
-      "title_zh": "中期選舉前特朗普壞消息：仍是經濟問題"
+      "published": "Thu, 15 Oct 2026 20:47:00 GMT"
     },
     {
       "title": "Trump touts booming economy at Montana rally, but supporters feel the pinch - NBC News",
       "url": "https://news.google.com/rss/articles/CBMivAFBVV95cUxOUElDdnY1N0xvZ1k5d3Jvbm1OT1JqaDVRWFJ3UEZsSFdhc25BcjZYRFVHMmMyMENJUndyRmVDX3pJZjZFb2tZMk9CaUlaUHlrQTcyTkN6LXUwMXg1ZkxqcXJ6TnhjR1NERVZBbDdFb1ZIQ094M0MtZzdUbzJOdEd3bmoyZHVjdk1Nc2s0R25SM1Jrc3dWLWNvcW9NMmpFQ0pPRkhRaGhUZTM2a3NKTVlkZXFsTGRZdGN5azc5VA?oc=5",
       "published": "Thu, 15 Oct 2026 05:20:00 GMT",
-      "title_zh": "川普蒙大拿集會吹捧經濟，支持者卻感壓力"
+      "title_zh": "特朗普在蒙大拿招揚經濟發展 - NBC 新聞"
     },
     {
       "title": "Trump tariff threat built a US copper mountain, but the effects are fading - Reuters",
@@ -32,20 +31,20 @@
   ],
   "huang": [
     {
+      "title": "AI Stocks Plunge, but Jensen Huang Says Nvidia Gets New Chip Orders Almost Daily - Yahoo Finance",
+      "url": "https://news.google.com/rss/articles/CBMimgFBVV95cUxNV3ZzSjJ2VUh6VHQ0TEE2QV92SFR5enRpRlhQZ2ZqcWVmZjhOTnhMRHlFVWdnTkJUV3ZDZTRIZFpwSDhBTWJDcGo0QnN1eWIxZjZYc3lSblVYS242OFRjM1VteW1NYVlZOHFiTElVS3FodWFLUUppSlRPMVJfZWppTV94UW1IQ2hud1FkUXNCcjlmSmw0RUFfZHlR?oc=5",
+      "published": "Thu, 15 Oct 2026 18:37:17 GMT",
+      "title_zh": "AI股市突破壓力，而許納森·霍华爾表示，尼迪士克每日接收新芯片訂單不斷。"
+    },
+    {
+      "title": "Nvidia CEO Jensen Huang rips 'the Band-Aid off' as AI chip giant resets expectations - Fox Business",
+      "url": "https://news.google.com/rss/articles/CBMirgFBVV95cUxQYnVJSlMzZjBScTl0MHA3a1lhRng4bTdkRlJQVjgzUjEtbEhHRU04TTRfVk4tZ191dTUwU3hzSFNYaDBuM2FvUC1ONEVjRFpSdXhkU2tOZ2d4cV9TYnYyVjlYOVNtSUtCcDhlSU1nblZCM1RsUFE2amhoUDNCbzJ2bnJxR3hWbVNURVNpb3RfTHprX0d0NmRsQVctVXd5MTFCSTQtMWFJWDRPeDdkVVHSAbMBQVVfeXFMTTBOekluSFRMM1ZYTk1PSWI2VF9wOTF4UHByUFZnb09PcWZJR1J5a3ZYM3NtekpULTlxeHRqbG0yVXpiNXgwV1BUY0NsYU1Cd1dzeXVYbTVKS0lfZmU0Yl9FRVA1dmZfNEZxU2lIY2FIYnR2dGc2ZUthc1VIWUJVU3dJbGtaQnZYWnZjLVprRjE1SEJXaXJoanljdTVfallrTERPTVVJZnZUWHhXMWVlVVdVQmM?oc=5",
+      "published": "Thu, 27 Aug 2026 07:00:00 GMT"
+    },
+    {
       "title": "NVIDIA and Semiconductor Leaders Advance AI Across Chip Design and Manufacturing for AI-Defined Fabs - NVIDIA Newsroom",
       "url": "https://news.google.com/rss/articles/CBMi0AFBVV95cUxQY0JQSW1rVk16Vk96aEt1QzRJeHNUNXZfclVRVlBFdmhhQ09HS2N3YUlfRnRTejgtdGkwc040QWdHbXkyVXFJcW1uaTdZdV9EMUo0ZDN6cnFiOWxneTlidVpIYmljSHJkTVJaNmhUTDRwb2czQXNtN00taFQ5MkhBZVlITUN6QTBYcUVrdV8tQXFtcDJ2d2EwRjVONU1VdGRCNUhRRnBUbUp1UFRfMmNqaWFJMVdRVXRLa2UzTF9yVmhnM0VadXk3TzRSTjJMZGJn?oc=5",
       "published": "Wed, 14 Oct 2026 16:19:53 GMT"
-    },
-    {
-      "title": "I watched Nvidia's Jensen Huang work the room in London. He brought big checks — and a blunt message - CNBC",
-      "url": "https://news.google.com/rss/articles/CBMicEFVX3lxTFAwWWppVDBqc1Z6ZnFXdmZjdmlwZ055TFVzZmEwUkxTNUU3WWhNck1qcVVHdjV2UkU4WGlmMnFXMVdXMUFXN1lTYmJSakNXQ3ZicW5POE1ZN2RzejZ2V0gxYVhCOGxkVXBFTmUtSEh1WEvSAXZBVV95cUxPLXBHZGZOc241XzhKSG1FYWZHNGpQcDhoVzlwS3BVbjg5ejhQb1FoRkNxdXVzbUR1dVBpdXpQSXE1QkpKYXZpbG10U2xKMVhRckt5VFpHYmtQQmNmMjB3WFRQcXA1ajEtXzJKUnJCSmRycUM5VVRB?oc=5",
-      "published": "Fri, 16 Oct 2026 11:00:01 GMT",
-      "title_zh": "我在倫敦見黃仁勳送巨額支票、直言不諱"
-    },
-    {
-      "title": "Nvidia CEO Jensen Huang Rejects Sam Altman's Advice to 'Accept' AI Cybersecurity Risks: ‘We Should Do Everything...to Avoid Them’ - Yahoo Finance",
-      "url": "https://news.google.com/rss/articles/CBMimwFBVV95cUxQd1VYaXU0U2tmTi1ScUlGdTE1OUVMZ3JBSlVwX2RWM19QMzh3ODRra2RYNC1sNHJSMEp5b1FVdE9Ha3MzNmdDNHU3UWlETWp1VVZ1WUdIakFpNTNtNThIY25aeFhTSEFFVnJ4bE5kS25USTdKeWxOUmZQdHFTRWJvQ0VBV1JlQ1d0d0trNjllYXNTYkU3VUg0TmJIcw?oc=5",
-      "published": "Fri, 16 Oct 2026 11:00:10 GMT"
     },
     {
       "title": "Nvidia's China AI-chip share falls as Huawei closes gap, report finds - Reuters",
@@ -53,27 +52,28 @@
       "published": "Tue, 13 Oct 2026 02:33:00 GMT"
     },
     {
-      "title": "Why Nvidia Stock Can Defy the Broader Chip Sector Slump - Barron's",
-      "url": "https://news.google.com/rss/articles/CBMicEFVX3lxTE5PVVcyTUpzN3dWbVBTZ3ZmX19KNHc1UFoyUm9JeGFfa01DWXA3Mkh3VXNtMFJ1ZTZNU1BFN3EzbTk5SnR1VXU0NERRRHlwaW5hSmMxdnhJN0t4cTNNVlNXdG1Wbjd6TG1KMVRONkYtRmY?oc=5",
-      "published": "Fri, 16 Oct 2026 12:48:00 GMT"
+      "title": "I watched Nvidia's Jensen Huang work the room in London. He brought big checks — and a blunt message - CNBC",
+      "url": "https://news.google.com/rss/articles/CBMicEFVX3lxTFAwWWppVDBqc1Z6ZnFXdmZjdmlwZ055TFVzZmEwUkxTNUU3WWhNck1qcVVHdjV2UkU4WGlmMnFXMVdXMUFXN1lTYmJSakNXQ3ZicW5POE1ZN2RzejZ2V0gxYVhCOGxkVXBFTmUtSEh1WEvSAXZBVV95cUxPLXBHZGZOc241XzhKSG1FYWZHNGpQcDhoVzlwS3BVbjg5ejhQb1FoRkNxdXVzbUR1dVBpdXpQSXE1QkpKYXZpbG10U2xKMVhRckt5VFpHYmtQQmNmMjB3WFRQcXA1ajEtXzJKUnJCSmRycUM5VVRB?oc=5",
+      "published": "Fri, 16 Oct 2026 11:00:01 GMT"
     }
   ],
   "spacex": [
     {
       "title": "When will SpaceX Starship launch from Florida? What we know - Florida Today",
       "url": "https://news.google.com/rss/articles/CBMi7gFBVV95cUxQSWpPMG9Uc25oU1pZQ0NYU19HbXdYTkhZSWJ3UDJZal9KbWJsbjNvS005VzY0NUlIb0h3elhhckZZbDEwZnpDOVk1bnZscDlIWWNENk85bjg2Skg3b3pJWUZvRjFhVGNRajFxbG1maW5sd2hUYVU2NVgxMVFkY2hQV1RHNmZXSDYwR2FGQUpLeEd2bXBZQzhySUpOcFNfdS1XQmNvN2VkXzVxbkRGLUZHUXd4MmtXY004NlJhOG1uVmpxS1Z5UFpNUkE4M2NHbjVCQmZ2RFZFMzRwbnhwVUJ6Y0F0MG4tX3RfWTM0d0Fn?oc=5",
-      "published": "Thu, 15 Oct 2026 09:06:00 GMT"
+      "published": "Thu, 15 Oct 2026 09:06:00 GMT",
+      "title_zh": "SpaceX星艦何時從佛州發射？目前已知資訊"
     },
     {
       "title": "Starship Flight 14 - SpaceX",
       "url": "https://news.google.com/rss/articles/CBMiX0FVX3lxTFBpYThOaTctbk9jeFBjOFJYamJqaEFqZEwzd3lVV1NRSHNZN3BzMms0NGNLeHJYY24xR3VOTFZYZl81OFFXVmpENkNrckNXeVo2N2JJVkdBd3VTSGh2SDhZ?oc=5",
-      "published": "Mon, 28 Sep 2026 07:00:00 GMT"
+      "published": "Mon, 28 Sep 2026 07:00:00 GMT",
+      "title_zh": "星艦14號試飛 - SpaceX"
     },
     {
       "title": "EXCLUSIVE: Order to limit Starshield for Ukraine came from inside White House, sources say - Reuters",
       "url": "https://news.google.com/rss/articles/CBMitgFBVV95cUxQTFVmdXZNRHVvVzZhYTJWZTRETDgtRElBT0RibUJvX2VfUkI1NGt6Q1lTVmdON21mNjdXTjFNcXBkZlJ5X0NFYkMzOVQwWjZZTjNPN3hlY09Ta3ZUMUVoRm9lWWV4N29rWXV6dXpQNTNCRUhXTHVySUlUZTNaR2dORUVPd3l0SEJOTmJFaTJURnNyTi1icE5qZmsxSDNuNFRKTEd5Q21iSEdtUXJCWEI0UWNwOGZDdw?oc=5",
-      "published": "Thu, 15 Oct 2026 23:07:00 GMT",
-      "title_zh": "獨家：白宮內部指令限制烏克蘭星盾計畫"
+      "published": "Thu, 15 Oct 2026 23:07:00 GMT"
     },
     {
       "title": "SpaceX launches a classified payload for U.S. Space Force - Spaceflight Now",
@@ -95,14 +95,13 @@
     {
       "title": "Amazon Leo Plans Prime Subscription Bundling to Challenge Starlink in Consumer Satellite Broadband Market - SatNews Publishers",
       "url": "https://news.google.com/rss/articles/CBMi0wFBVV95cUxOOGhsaFNOSURYZHNjWlE4OTJSSTNyOEN0dktuTFhpRFg4d0dMSXAxTkRqZUlOVkVpN2NVVjA3Y3E2Z0Ridm13czRjUzg1UGJ4anNBTkgxb1Q0czhSc3VoaU1nTEtfb093ZFAyc3VLREh3RC04MzNBV0dKWHhRNl9BajBveWFkblQzNnRseDlDUEx5U3cwQkdUV3VpSDhScXhWa2wzRHNudVdkME1JdGExd2NmNXhrS2FTNTVpcGFjZjN2YVBheTNhTVpzVDlwR0NZSUJB?oc=5",
-      "published": "Sun, 11 Oct 2026 23:21:45 GMT",
-      "title_zh": "AMAZON LEO計畫將主機包整合，對消費者卫星广泛型网络市场对格斗-SatNews 公司报道"
+      "published": "Sun, 11 Oct 2026 23:21:45 GMT"
     },
     {
       "title": "Amazon builds 1,000th satellite, will launch space internet service by end of year - Ars Technica",
       "url": "https://news.google.com/rss/articles/CBMisAFBVV95cUxOWjVEeWF3WDR6alMtMTdjWGRoNS0zVDd3WFZOWXVBRlhCV0J0YTFEcm45bDV3R1NiN3luN0pkSlZLNHBhcVI3ZUt5VDBObXg3Y2VzM0N0MXpZMlBMYkxBRE80Rlo2SEk5MzBhRFZVRG5YSkxZTi1FZXVFUkhPaXcxUGd2Z0g1bmprNHFBOV91SURTRUYyYm1LLWNCWXA2RUJSaEh1MWgtQWZKb1VrZ1c1Sw?oc=5",
       "published": "Thu, 08 Oct 2026 15:28:36 GMT",
-      "title_zh": "建立第1000個卫星，雲端商業巨头Amazon於本年底將發射空間網路服務 - Ars Technic"
+      "title_zh": "廣州建立1000間卫星，將於本年底推出太空網路服務 - Ars Technica"
     },
     {
       "title": "Amazon returns to Everett warehouse it previously left, possibly for satellite unit - The Business Journals",

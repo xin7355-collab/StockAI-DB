@@ -1,95 +1,95 @@
 {
-  "updated": "2026-10-16 15:15 UTC",
+  "updated": "2026-10-16 15:47 UTC",
   "items": [
     {
-      "source": "📊 巨頭財報",
-      "title": "Magnificent Seven Earnings Preview: Is the AI Boom Facing Its Biggest Test Yet? - StoneX",
-      "url": "https://news.google.com/rss/articles/CBMiwwFBVV95cUxOUkc2YU1XQkgxWDY4MW9lVFdvTnBSNjdtOERDSDJ6Z3VQZFprcWllZTE1V2JmUzJjckxtTThLaVc4V1RuUkU1aTNXV3NBSjFleGk3bmxGTndkOGNvTlJxNUViWnIzeVZNYWI0VkZLZnUwa29IS3JSMzdieXAyUDF5OVNGRXhTU01oRG1wUzlwX3BqaXRXUERCZWRQem5LNDlRcE50NGoyaHJ1MnBkbHBySlFEb2lyTVBmQ0UwbVJUNmwzM2c?oc=5",
-      "published": "Fri, 16 Oct 2026 14:39:48 GMT",
-      "title_zh": "七大科技巨頭財測：AI熱潮迎最大考驗",
-      "impact": "若財報不及預期，恐引發科技股拋售，拖累台積電等供應鏈。",
+      "source": "🏢 雲端巨頭",
+      "title": "Google HBCU RISE Summit Equips FAMU Students, Faculty with AI Skills - Florida A&M University - FAMU",
+      "url": "https://news.google.com/rss/articles/CBMinwFBVV95cUxQYnEzNXBacDlCLUpkTnhQTGhnWk9fNm5GUHZjOS1zc1d2U0dQMnhMaDlLMy12QVpCaVhzY3B6dF9JQk93YlY3d2JCaDA2dVEyNFJfTlhrWjl5YW42RjlrcW9xbXBUeWQ2TmRENDR1eFJRbHJIOV9aV3YwTXhmZ2VfMkhIdjlMMlVwdWI2YklpWFFrRks2dktBY0t2VXBUMHc?oc=5",
+      "published": "Fri, 16 Oct 2026 15:31:24 GMT",
+      "title_zh": "谷歌AI峰會助力佛羅里達農工大學師生",
+      "impact": "此活動屬於教育與社區層面的合作，對台股的直接影響極小。",
+      "impact_level": "neutral"
+    },
+    {
+      "source": "🚫 出口管制",
+      "title": "Chinese government pursues export ban on select biopharma tech - Endpoints News",
+      "url": "https://news.google.com/rss/articles/CBMif0FVX3lxTFB2VHp4YUE3Y1BzT1FsWHM4ZU12a0pwTlNOT2haRGVPSzlzZXB6Y0lqT1YyNHRlNWV5dEZ6RGhZa0t4eVpSQW96NlR2TkMwSXlvMkZ2X2xLYUhPSVdoNjZrNTBqa2NMUnQzSUo2TzU2azh3VFhRUzMtZVdWUjY1Tk0?oc=5",
+      "published": "Fri, 16 Oct 2026 15:28:00 GMT",
+      "title_zh": "中國政府禁輸部分生物製藥技術",
+      "impact": "此禁令可能削弱台灣生物製藥企業對中國市場的出口，對台股生技板",
+      "impact_level": "bearish"
+    },
+    {
+      "source": "🔥 停產事故",
+      "title": "Homer City Gas Plant Wastewater Permit Draws Fire at DEP Hearing - Marcellus Drilling News",
+      "url": "https://news.google.com/rss/articles/CBMipgFBVV95cUxNd0E5NEZvQWFnakRpa3B1TWllaXFOeGdaakJ3cWtocUdLMnhLd3dpQVh5UWdMN0hVVzB0TXU2eUh6V3JwU0ZDdFcwOTBMdXZidTVxTnNhelZfeVRlcElvejkyUnNUOVM5MTFHcW1jMWM0NFE4bEsxeXpmbHhUQjQ4U1NMLUtpRXh0RVRIdC01dGt1MTlNdUNzay1kUXVaWUk2b3BoTDR3?oc=5",
+      "published": "Fri, 16 Oct 2026 15:24:14 GMT",
+      "title_zh": "台灣股市：雙重影響！",
+      "impact": "當地政府對台灣公司的法律注意力，可能會帶來泡沫或抵擋力量。",
       "impact_level": "neutral"
     },
     {
       "source": "🌍 地緣突發",
       "title": "Zelenskiy blasts Trump's diesel deal and calls Russian peace moves a 'parody' - Reuters",
       "url": "https://news.google.com/rss/articles/CBMixwFBVV95cUxOY0hRTnFuN3FTNE1pY1cyNVRLbEJ3MmZ0UWZzUDhWbEhIU3R1RjY4dENuVi12U0hpeXRXM25vQTBOSWFjUFRrYlgxSWo0Y2tZVTU0bk9FQmlJRW9zcjhCMzRiNFNod1RuSWdoUUJwbDVaMmtNYi1peWgwMFhpQnVlbkZRUFZvSXliM3FYRW9IeXpzaUdGdW11Y2pNWlZwUGh2ZWdyRGZ3blhqUW9lUkcwNnI1UVk5OUJ4bk5PUEJLYVRkNVh5aHVV?oc=5",
-      "published": "Fri, 16 Oct 2026 14:01:02 GMT",
-      "title_zh": "謝爾尼基爆發批議通過民進黨主席李宗義批評美國電力公司對於民進黨政府推動的汽油汽車",
-      "impact": "評論台灣股市影響力較小，但政治敏感性可能會對投資者感染。",
-      "impact_level": "neutral"
-    },
-    {
-      "source": "🌍 油價航運",
-      "title": "Apple iPhone Duo preorders push shipping dates into January - Quartz",
-      "url": "https://news.google.com/rss/articles/CBMickFVX3lxTE10Z0Fzd1lQdHZURmJ0bFlsNTY2UFBsV05kak15cjJ1MlBWZTBFUjg0YzhMYnlyb2xUYjhQVWFnV0tJR2I2bXRxRnZySlowWlNJSnlheWVFMC1ENEJOSm9kZXJHdEFpWXF0RGVfblE0MGE2dw?oc=5",
-      "published": "Fri, 16 Oct 2026 13:40:46 GMT",
+      "published": "Fri, 16 Oct 2026 15:17:30 GMT",
       "title_zh": "",
       "impact": "AI 回的內容看不懂(JSONDecodeError)",
       "impact_level": "neutral"
     },
     {
-      "source": "韓股記憶體",
-      "title": "SK Hynix, SanDisk, and Micron Drop 3% Despite Goldman Sachs Calling China Chip Fears Overdone - 24/7 Wall St.",
-      "url": "https://news.google.com/rss/articles/CBMizwFBVV95cUxQQ1ZZZTY4bmhPSzZ1cjV0WllQWGZOVTRMN2t3emE5blRHUHNTekFGelpNZ2ZZU2lHUmRDTE4tYzZPeVZiVWxpTVVUaURYeE5XQWNyM2pQNlg2LTFGMkpnVmVNM19IcDR1VUdvQ0IzWnU1bFk4aFp0ZGYxVjFWR2hiTkxmUndGUzl1MEZmSm52TE5jTE9pNU1JZEYyMnJSaUIxTXJlb2RSUnZXMzZwM2NkcUNBSkJoQWhYaXcyNnpFcDhveTlVTGVIb25rR3h6WnM?oc=5",
-      "published": "Fri, 16 Oct 2026 13:30:00 GMT",
-      "title_zh": "SK海力士等記憶體股跌3% 高盛稱中國芯片擔憂過度",
-      "impact": "記憶體大廠股價下跌可能引發台系供應鏈如南電、華邦電等跟跌，但",
-      "impact_level": "bearish"
+      "source": "🧪 技術突破",
+      "title": "5 Q’s with Daniele Pucci, CEO of Generative Bionics - Center for Data Innovation",
+      "url": "https://news.google.com/rss/articles/CBMijgFBVV95cUxNN2RGbUpjQmliWHJJTUR6UUVHTDdYbVk5QkdIWVlVM0x0YzlRaGdKSWFGalZKNGZqSVBIUVZXNHRLTzItZ18yR3RsMVJORkdhcWNvUkhnQmc0ZmZleTZKZTFPWmZzX3RfT0hMVHh4OThNWkJNeXdXSUhNQkM4ZnMxTE1rVlhmc19SZkxnbHNB?oc=5",
+      "published": "Fri, 16 Oct 2026 15:16:41 GMT",
+      "title_zh": "數位創新中心與生物工程師Daniele Pucci訪問",
+      "impact": "台灣股市可能會獲得投資意識提升，產業發展潛力有所增強。",
+      "impact_level": "bullish"
     },
     {
-      "source": "🚫 出口管制",
-      "title": "China Proposes Solar Export Ban: 12 Technologies [2026] - https://tech-insider.org/",
-      "url": "https://news.google.com/rss/articles/CBMieEFVX3lxTFBuem9XSWFNNVhlaE5zQzFZbUYtbkNsMFpPZE5ZNnBZR1dZemdoSUs3TjY0ejlRZ1BhWjhYZjFnWWthZU8zSWRRNHgwcldBNGNCRExjTDRlZ1NpeFB2MDBna3lmdnBGZk9Gd2wtUDlMUmdvYUVBQVRSZg?oc=5",
-      "published": "Fri, 16 Oct 2026 13:25:07 GMT",
-      "title_zh": "中國擬禁12項太陽能技術出口",
-      "impact": "此舉可能限制台廠取得關鍵技術，對供應鏈造成壓力。",
-      "impact_level": "bearish"
+      "source": "🏢 雲端巨頭",
+      "title": "Jack Henry Expands Collaboration with Google Cloud to Deliver Tokenized Deposits for Banks and Credit Unions - PR Newswire",
+      "url": "https://news.google.com/rss/articles/CBMi9wFBVV95cUxNTWpDOHhXQ3JlbFlFak05d3hrLVhaaDhSNFB0ZEIzOXdqbTM4RzJ3ZFRVc1ZidThja1ViUHp6TzFfel8wOHhNVFA4ZUdPWm52VENVSkRwU0NRRlZzTEZiZWEwT0lxZ252dnkydTZyQzliQWZlbGtqc1BoSERvY3MtLUU1TUpSYmVISTN3UklWTkV5NE1nQnFISlJNYlg0OWR0bUdmTUtaM191TzNvZ2NpVU5EdTNOYWlZWlhqLWIxV0lIRVZNTzFsU21NdngwVTBOT0RDR1JMMUxKWDJOaklwY1AxX2FKX3ZUMnR0cFZ5LUJRTU9nMzI4?oc=5",
+      "published": "Fri, 16 Oct 2026 15:00:00 GMT",
+      "title_zh": "Jack Henry Google Cloud合作擴展，推出銀行和信用合作社的價",
+      "impact": "此消息表示Jack Henry與Google Cloud擴展",
+      "impact_level": "bullish"
     },
     {
-      "source": "🌍 地緣突發",
-      "title": "Voters more worried about Iran war than immigration or crime: polls - Responsible Statecraft",
-      "url": "https://news.google.com/rss/articles/CBMia0FVX3lxTE5mQ1NUZHVuRHpOWjVIZ2o2WmZma25NbzRBOW9aUjZaVnU1OWYwdTdCV2VFRDJNdlhlbWlMM1dmMTNOZW1XaktqZWVraEFzdENyeTBubGlndEQ4OG56Z2NEQlE1d010a0J0NkFR?oc=5",
-      "published": "Fri, 16 Oct 2026 13:24:30 GMT",
-      "title_zh": "民調：選民較關心伊朗戰爭",
-      "impact": "地緣政治緊張升溫，投資人風險偏好下降，台股可能受壓。",
-      "impact_level": "bearish"
+      "source": "🧪 技術突破",
+      "title": "Boar-chasing humanoid robot is among first visitors to Lithuanian AI exhibit: L.A. arts and culture this weekend - Los Angeles Times",
+      "url": "https://news.google.com/rss/articles/CBMiugFBVV95cUxPamlWanhoRUkzQXNXY05sMjFFYUtwdkJTY0ZYTDdzbEU0VjlleGdhZ3FkTUhpM3hZQktnaG1EdTB3V0JMTmlwa3JwcGpXcWkyQkNpLTZIeHNuMGs5OS1lRldZSUpabEFzelNpQ0tnTko3X3FTX01OQkxXMzk5NUh3bF8yVGNzVHl3VEVlX0tpZ0dyZjB1d0d6TnZ4MUZyOEZra1h1dDRiLWs2TXEwQzFqczNQSTNFVUI1cmc?oc=5",
+      "published": "Fri, 16 Oct 2026 15:00:00 GMT",
+      "title_zh": "追豬機器人亮相立陶宛AI展",
+      "impact": "此新聞屬於科技娛樂類新奇報導，與台灣產業基本面無直接關聯，對",
+      "impact_level": "neutral"
     },
     {
       "source": "Huang Nvidia",
-      "title": "Why Nvidia Stock Can Defy the Broader Chip Sector Slump - Barron's",
-      "url": "https://news.google.com/rss/articles/CBMicEFVX3lxTE5PVVcyTUpzN3dWbVBTZ3ZmX19KNHc1UFoyUm9JeGFfa01DWXA3Mkh3VXNtMFJ1ZTZNU1BFN3EzbTk5SnR1VXU0NERRRHlwaW5hSmMxdnhJN0t4cTNNVlNXdG1Wbjd6TG1KMVRONkYtRmY?oc=5",
-      "published": "Fri, 16 Oct 2026 12:48:00 GMT",
-      "title_zh": "輝達股價何以逆勢抗跌",
-      "impact": "顯示AI龍頭韌性，可能提振台積電等供應鏈信心。",
-      "impact_level": "bullish"
+      "title": "Intel and AMD Drop 3% as Rotation Out of AI Chip Stocks Continues; NVIDIA Holds Steady - 24/7 Wall St.",
+      "url": "https://news.google.com/rss/articles/CBMixwFBVV95cUxOYkx0cUlYODFLcFU1VmZRLThzT01WVVlib1hPV0NvTmJYTnhzbFZjZTNpelZjdDd0ZEZmWGNLVE5xYTVHWWhYS2JaNklfQ3hnMGVPRVJCVTlBOFJSQ1hFTXBjWmZMdDdzZ1dWS2ZtOE14SWxFMmJTeU82YmhWVjlMQ1BxN3B6MGNjTkxVa21tTnViRmxXSDZMZEhtZWVpbVRCOFVTM2VDUS0tS05vT1o1d1NPYW41VV9YMjhJellwSjh3dGQ5Mk5j?oc=5",
+      "published": "Fri, 16 Oct 2026 14:54:00 GMT",
+      "title_zh": "兩大處理器公司跌3%，機器學習與虛擬智能芯片股票繼續旋轉時效影響",
+      "impact": "該新聞對台股市的影響未定然，但可能會對公司的股價有所影響。",
+      "impact_level": "neutral"
     },
     {
-      "source": "📊 巨頭財報",
-      "title": "TSMC earnings surge as AI demand fuels US expansion - Fox Business",
-      "url": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE4xUUg2dFpkOW9iMXpudG83b3hhdUpqOFRYLWpwcVB3cHM4UHpiWldTM3ZncmxkX1J0UXZpVTAxY3RLQ0RxMnVMaV9PSnp2NTNWRXpHaS12ZTBsR1E?oc=5",
-      "published": "Fri, 16 Oct 2026 12:45:42 GMT",
-      "title_zh": "台積電AI需求推美擴張 營收激增",
-      "impact": "AI需求提升台積電營收，提振台股科技股表現，市場情緒偏多。",
-      "impact_level": "bullish"
+      "source": "🌍 油價航運",
+      "title": "Container ship attacks escalate in Strait of Hormuz - FreightWaves",
+      "url": "https://news.google.com/rss/articles/CBMijgFBVV95cUxPS3o3MVhfeERTd3hzVm90ZUtyMGhDWC1XUXQyU3ZDMGY0V0Q4aGNFR0hYajJWSGpQcW8zbEhOMUJ0cWxWMHlDWW5GcENPRFhEenNzbnROWHZRc20wTmxCWXFuUTlwMF9Ra2ZERG9MRlBsV0ZScXpubkJkQ3dLaFppUEJ3Slc0RzZOSGEtLXln?oc=5",
+      "published": "Fri, 16 Oct 2026 14:51:24 GMT",
+      "title_zh": "",
+      "impact": "AI 回的內容看不懂(JSONDecodeError)",
+      "impact_level": "neutral"
     },
     {
-      "source": "BBC Business",
-      "title": "Watch: Did Tesla really just unveil a flying car?",
-      "url": "https://www.bbc.co.uk/news/videos/ckly4mj1g3n9o?at_medium=RSS&at_campaign=rss",
-      "published": "Fri, 16 Oct 2026 12:32:31 GMT",
-      "title_zh": "難以置信：電動車大師難道剛創立飛行汽車？",
-      "impact": "難以置信的發布將激發投資市場的激情，尤其是台灣股市。",
-      "impact_level": "bullish"
-    },
-    {
-      "source": "Musk Tesla",
-      "title": "Watch: Did Tesla really just unveil a flying car? - BBC",
-      "url": "https://news.google.com/rss/articles/CBMiWEFVX3lxTFBUMmU5WE9uYmZpRHRWekh5YUlUZHozdlk1V2h4cjI3SnliZlJ3S1A4SnFZcXNIRUZKREVpcnhzdWxjdWxZd1U3MG1KaTJROFBFWTRpMDJzbXk?oc=5",
-      "published": "Fri, 16 Oct 2026 12:32:31 GMT",
-      "title_zh": "特斯拉真的發布飛行汽車了嗎？",
-      "impact": "特斯拉展示飛行汽車概念，若技術落地將開拓新市場，短期內對台股",
-      "impact_level": "bullish"
+      "source": "🔥 停產事故",
+      "title": "Judge Orders Temporary Shutdown Of Pullman Innovations Feed Plant Amid Lawsuit Over Foul Odors - Patch",
+      "url": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxQRVJKbzJZZEFTWUJ6YVc1VEFhUUM0NTZfNUpHLV9PdFpwaFNPLU0wQUliUVhheGdZWTNfel9WcVlHd2Y1ck85REtYNUNrZ2Y1Z2pIUU5DQTlhdGtjVGxTY0pvSTUtMm4yenBjSlJpMnJ5a1FpZFFQZ3l5eDdneFpYZWVJZkU5OUZET2xJMEdEN1RDQVd2Um9wZHVkc3ZROVk0aHY0NnBsWlBtQUpYNF8taXd1VTdMMW5F?oc=5",
+      "published": "Fri, 16 Oct 2026 14:50:46 GMT",
+      "title_zh": "法官下令關閉普爾曼創新飼料廠",
+      "impact": "此事件為單一企業局部法律爭議，對整體台股影響極小。",
+      "impact_level": "neutral"
     }
   ]
 }

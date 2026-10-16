@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-16 15:14 UTC",
+  "updated": "2026-10-16 15:47 UTC",
   "count": 15,
   "data": [
     {
@@ -11,8 +11,8 @@
         "出口管制"
       ],
       "cat": "🌍 地緣管制",
-      "ai_sentiment": "利空",
-      "ai_reason": "限制對華出口，減少營收",
+      "ai_sentiment": "利多",
+      "ai_reason": "台灣正在準備收緊人工智能（AI）晶片，這樣可能會對台股個股、",
       "important": true
     },
     {
@@ -25,7 +25,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利多",
-      "ai_reason": "台灣經濟部長龍明鑫對台灣半導體業務推動和台灣與中國關係問題對",
+      "ai_reason": "出口管制加嚴，強化AI晶片供給稀缺性與溢價",
       "important": true
     },
     {
@@ -37,8 +37,8 @@
         "CoWoS"
       ],
       "cat": "🧪 技術突破",
-      "ai_sentiment": "利多",
-      "ai_reason": "Nvidia用台積電CoWoS推高階PC",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
       "important": true
     },
     {
@@ -51,7 +51,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "根據新聞內容，台積電創業長魏哲家於15日在法語會議上宣布，已",
+      "ai_reason": "擴大美國投資，提升產能與市場份額",
       "important": true
     },
     {
@@ -64,7 +64,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利空",
-      "ai_reason": "資料庫被攻擊，恐致營運與信任受損",
+      "ai_reason": "資料庫遭攻擊恐損信任與營運",
       "important": true
     },
     {
@@ -77,7 +77,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "收購提升技術與客戶基礎",
+      "ai_reason": "擴充半導體設備服務，提升競爭力",
       "important": true
     },
     {
@@ -90,7 +90,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "將完成三期收案，推進新藥上市",
+      "ai_reason": "該新聞中提到華安醫學將在明年上半年完成專屬「ENERGI」小",
       "important": true
     },
     {
@@ -104,7 +104,7 @@
       ],
       "cat": "🧪 技術突破",
       "ai_sentiment": "利多",
-      "ai_reason": "新聞中提到海德漢（HEIDENHAIN）美國分公司總裁兼執行",
+      "ai_reason": "面板級封裝技術突破，利好半導體設備供應鏈",
       "important": true
     },
     {
@@ -117,7 +117,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "台股情報文章，未提及特定個股或事件，只涉及台股時況及市場觀測",
+      "ai_reason": "台股整體情緒為利多，因為多部分個股進入利多動機，如源電、台灣",
       "important": true
     },
     {
@@ -130,7 +130,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利多",
-      "ai_reason": "AI基建提升營收前景",
+      "ai_reason": "AI基建助攻，營收目標上看千億",
       "important": true
     },
     {
@@ -143,7 +143,7 @@
       ],
       "cat": "📊 財務事件",
       "ai_sentiment": "利空",
-      "ai_reason": "日本經濟衰退或削弱台灣出口需求",
+      "ai_reason": "日本經濟衰退可能削弱對台需求",
       "important": true
     },
     {
@@ -156,7 +156,7 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利多",
-      "ai_reason": "龔明鑫發言，對台股市有實質影響。AI晶片將與先進半導體加入出",
+      "ai_reason": "台灣政府對AI智能制造業的實質干預，對台股市有影響。措施將影",
       "important": true
     },
     {
@@ -168,8 +168,8 @@
         "營收"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利多",
+      "ai_reason": "東元董事長利明献於台股晚報台股晚報報導，對台股有實質影響，因",
       "important": true
     },
     {
@@ -182,20 +182,21 @@
       ],
       "cat": "🌍 地緣管制",
       "ai_sentiment": "利空",
-      "ai_reason": "美擴大 DUV 禁令衝擊台灣晶圓廠供應鏈",
+      "ai_reason": "中國加速自主化恐衝擊台設備商訂單",
       "important": true
     },
     {
       "source_name": "Yahoo 即時財經",
-      "title": "鴻海重大宣布！砸233億「攜手三菱電機」進攻車市",
-      "link": "https://tw.news.yahoo.com/%E9%B4%BB%E6%B5%B7%E9%87%8D%E5%A4%A7%E5%AE%A3%E5%B8%83-%E7%A0%B8233%E5%84%84-%E6%94%9C%E6%89%8B%E4%B8%89%E8%8F%B1%E9%9B%BB%E6%A9%9F-%E9%80%B2%E6%94%BB%E8%BB%8A%E5%B8%82-145300649.html",
-      "published_time": "Fri, 16 Oct 2026 14:53:00 +0800",
+      "title": "伺服器、光模組、IC載板三劍齊發！「PCB龍頭」目標價喊上680元　 潛在漲幅逾2成",
+      "link": "https://tw.stock.yahoo.com/news/%E4%BC%BA%E6%9C%8D%E5%99%A8-%E5%85%89%E6%A8%A1%E7%B5%84-ic%E8%BC%89%E6%9D%BF%E4%B8%89%E5%8A%8D%E9%BD%8A%E7%99%BC-pcb%E9%BE%8D%E9%A0%AD-%E7%9B%AE%E6%A8%99%E5%83%B9%E5%96%8A%E4%B8%8A680%E5%85%83-153000208.html",
+      "published_time": "Fri, 16 Oct 2026 15:30:00 +0800",
       "matched_keywords": [
-        "收購"
+        "營收",
+        "新高"
       ],
       "cat": "📊 財務事件",
-      "ai_sentiment": "中立",
-      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "ai_sentiment": "利多",
+      "ai_reason": "公司營運成績優勢，營收超過原始預期，預訂量增長",
       "important": true
     }
   ]
