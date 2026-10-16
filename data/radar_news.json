@@ -1,0 +1,202 @@
+{
+  "updated": "2026-10-16 14:25 UTC",
+  "count": 15,
+  "data": [
+    {
+      "source_name": "科技新報",
+      "title": "彭博專訪　龔明鑫：台灣準備對中國緊縮 AI 晶片出口管制並打擊走私",
+      "link": "https://technews.tw/2026/10/16/bloomberg-interview-gong-ming-hsin-taiwan-tightens-ai-chip-export-controls-china/",
+      "published_time": "Fri, 16 Oct 2026 14:07:29 +0000",
+      "matched_keywords": [
+        "出口管制"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "限制中國AI晶片出口，減少營收",
+      "important": true
+    },
+    {
+      "source_name": "中央社財經",
+      "title": "台積電CoWoS助力　輝達RTX Spark電腦強攻高階市場",
+      "link": "https://www.cna.com.tw/news/afe/202610160345.aspx",
+      "published_time": "Fri, 16 Oct 2026 21:40:01 +0800",
+      "matched_keywords": [
+        "CoWoS"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "利多",
+      "ai_reason": "文章中提到台灣市場對台股市有實質影響，重視台股個股、供應鏈及",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "台積電德州新廠傳砸3.8兆？魏哲家證實派人勘查 美媒揭神秘選址",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5608798",
+      "published_time": "Fri, 16 Oct 2026 18:44:39 +0800",
+      "matched_keywords": [
+        "法說"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "台積電擴大美國投資，強化先進製程產能佈局",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "91APP 資料庫遭攻擊，已報案調查、呼籲消費者小心詐騙",
+      "link": "https://infosecu.technews.tw/2026/10/16/91app-ky-20261016/",
+      "published_time": "Fri, 16 Oct 2026 10:39:32 +0000",
+      "matched_keywords": [
+        "重訊"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利空",
+      "ai_reason": "資料庫遭攻擊恐影響營運及聲譽",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "台灣光罩斥資1.6億元 收購日本半導體設備服務商TCK",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5608725",
+      "published_time": "Fri, 16 Oct 2026 18:23:42 +0800",
+      "matched_keywords": [
+        "收購"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "擴大設備服務能力，提升競爭力",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "華安醫學糖尿病足潰瘍凝膠新藥 預計明年上半年完成臨床三期收案",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5608772",
+      "published_time": "Fri, 16 Oct 2026 18:22:59 +0800",
+      "matched_keywords": [
+        "法說"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "糖尿病足新藥臨床三期收案進度符合預期",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "布局面板級先進封裝！海德漢推出新平台，運動控制精度瞄準 5 奈米",
+      "link": "https://technews.tw/2026/10/16/heidenhain-semicon-west-david-doyle/",
+      "published_time": "Fri, 16 Oct 2026 09:45:26 +0000",
+      "matched_keywords": [
+        "先進封裝",
+        "奈米"
+      ],
+      "cat": "🧪 技術突破",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "Reddit r/stocks",
+      "title": "r/Stocks Daily Discussion & Fundamentals Friday Oct 16, 2026",
+      "link": "https://www.reddit.com/r/stocks/comments/1x7bnqc/rstocks_daily_discussion_fundamentals_friday_oct/",
+      "published_time": "2026-10-16T09:30:04+00:00",
+      "matched_keywords": [
+        "EPS"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "東元 70 週年揭藍圖，AI 基建助攻千億營收目標",
+      "link": "https://technews.tw/2026/10/16/teco-70th-anniversary-blueprint-ai-infrastructure-boosts-100-billion-revenue-target/",
+      "published_time": "Fri, 16 Oct 2026 09:10:55 +0000",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "AI基建提升營收前景",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "日本經濟地位再下滑！IMF預測：2027年GDP將輸印度、英國",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5608525",
+      "published_time": "Fri, 16 Oct 2026 17:00:26 +0800",
+      "matched_keywords": [
+        "展望"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "台灣出手了！龔明鑫證實：AI晶片違規輸中恐負刑責",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5608633",
+      "published_time": "Fri, 16 Oct 2026 16:51:35 +0800",
+      "matched_keywords": [
+        "出口管制"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "利空",
+      "ai_reason": "AI晶片出口受限，相關公司營收受衝擊",
+      "important": true
+    },
+    {
+      "source_name": "自由財經",
+      "title": "東元董座利明献：未來2-3年營收拼破千億 2027年海外營收過半",
+      "link": "https://ec.ltn.com.tw/article/breakingnews/5608588",
+      "published_time": "Fri, 16 Oct 2026 16:23:42 +0800",
+      "matched_keywords": [
+        "營收"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "利多",
+      "ai_reason": "營收破千億、海外比重提升，成長可期",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "日本緊急地震速報大烏龍，規模 6.9 誤判 9.9 氣象廳致歉",
+      "link": "https://technews.tw/2026/10/16/japan-emergency-earthquake-early-warning-blunder-magnitude-6-9-misjudged-9-9-jma-apologizes/",
+      "published_time": "Fri, 16 Oct 2026 07:40:14 +0000",
+      "matched_keywords": [
+        "地震"
+      ],
+      "cat": "🔥 事故天災",
+      "ai_sentiment": "利多",
+      "ai_reason": "新聞中提到日本地震速報誤判，造成台股個股、供應鏈、半導體及大",
+      "important": true
+    },
+    {
+      "source_name": "科技新報",
+      "title": "ASML 警告美擴大 DUV 禁令，恐加速中國半導體自主化",
+      "link": "https://technews.tw/2026/10/16/asml-calls-us-restrictions-on-duv-sales-to-china-counterproductive-stance-reflects-strategic-dilemma-amid-pressure/",
+      "published_time": "Fri, 16 Oct 2026 07:30:27 +0000",
+      "matched_keywords": [
+        "禁令"
+      ],
+      "cat": "🌍 地緣管制",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    },
+    {
+      "source_name": "Yahoo 即時財經",
+      "title": "外資爆砍461億大逃殺！郭哲榮曝「逢低布局」契機：台股第四季勝率九成",
+      "link": "https://tw.news.yahoo.com/%E5%A4%96%E8%B3%87%E7%88%86%E7%A0%8D461%E5%84%84%E5%A4%A7%E9%80%83%E6%AE%BA-%E9%83%AD%E5%93%B2%E6%A6%AE%E6%9B%9D-%E9%80%A2%E4%BD%8E%E5%B8%83%E5%B1%80-%E5%A5%91%E6%A9%9F-%E5%8F%B0%E8%82%A1%E7%AC%AC%E5%9B%9B%E5%AD%A3%E5%8B%9D%E7%8E%87%E4%B9%9D%E6%88%90-140300224.html",
+      "published_time": "Fri, 16 Oct 2026 14:03:00 +0800",
+      "matched_keywords": [
+        "法說"
+      ],
+      "cat": "📊 財務事件",
+      "ai_sentiment": "中立",
+      "ai_reason": "AI 回的內容看不懂(JSONDecodeError)",
+      "important": true
+    }
+  ]
+}
