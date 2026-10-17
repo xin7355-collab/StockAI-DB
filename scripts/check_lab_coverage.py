@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""🔍 巡邏:CLAUDE.md 探針登記表 vs `pro.html` 的實測總表(PRO.LAB)有沒有漏收錄
+"""🔍 巡邏:探針登記表(docs/PROBES.md) vs `pro.html` 的實測總表(PRO.LAB)有沒有漏收錄
 
 ⭐ CLAUDE.md 鐵則:「爾後每一次回測/探針,結論都要同步記進 PRO.LAB」——
    但那條規則本身很容易只活在文件裡(陷阱 #37),所以把巡邏自動化。
@@ -16,7 +16,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-cm = (ROOT / 'CLAUDE.md').read_text(encoding='utf-8')
+# ⚠️ 2026-10-17 探針登記表從 CLAUDE.md 搬去 docs/PROBES.md;兩份都讀(⛔ 只讀一份會漏)
+cm = '\n'.join((ROOT / f).read_text(encoding='utf-8') for f in ('docs/PROBES.md', 'docs/INDEX.md', 'CLAUDE.md') if (ROOT / f).exists())
 pro = (ROOT / 'pro.html').read_text(encoding='utf-8')
 
 probes = {p.split('/')[-1] for p in
@@ -24,7 +25,7 @@ probes = {p.split('/')[-1] for p in
 srcs = ' '.join(re.findall(r"s:\s*'([^']+)'", pro) + re.findall(r's:\s*"([^"]+)"', pro))
 
 miss = sorted(p for p in probes if p.split('_probe')[0] not in srcs)
-print(f'📋 CLAUDE.md 探針登記表:{len(probes)} 支')
+print(f'📋 探針登記表(docs/PROBES.md + INDEX + CLAUDE.md):{len(probes)} 支')
 print(f'🔬 PRO.LAB 來源欄字數:{len(srcs)}')
 if miss:
     print(f'\n⚠️ 登記表有、但 LAB 來源欄找不到的 {len(miss)} 支(要人工確認是不是真的漏收):')

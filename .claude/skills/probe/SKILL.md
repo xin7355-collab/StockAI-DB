@@ -14,7 +14,7 @@ description: 驗證一個交易策略、指標或想法有沒有用。要回測�
 
 ```bash
 grep -n "關鍵字" docs/DECISIONS.md docs/EXTERNAL_REVIEWS.md
-grep -n "關鍵字" CLAUDE.md        # 探針登記表（📋 一大張表，每支寫了「何時該重跑」）
+grep -n "關鍵字" docs/PROBES.md   # 探針登記表（📋 一大張表，每支寫了「何時該重跑」）
 ```
 ⭐ 登記表裡標 **⛔ 已驗不成立** 的**別再測一次**；標 **⭐ 走完一次空頭後要重跑**的才值得重跑。
 
@@ -70,9 +70,9 @@ grep -n "關鍵字" CLAUDE.md        # 探針登記表（📋 一大張表，每
    - 🔁 **先改舊的,⛔ 不要開新卡**(使用者 2026-09-27):grep `k:` 找同主題那一條 → 改數字 + `u:` + 舊數字進「📜 歷次」;
      找不到才新增,新增一律帶 `k` + `u`(`node scripts/test_labkey.mjs` 釘 k 唯一)
    - 文字要**一般散戶看得懂**：非必要英文翻中文，新術語補進「📖 名詞速查」
-2. **`docs/DECISIONS.md`** —— Claude 看的那一份（新增一節 + 在 CLAUDE.md 索引補一行）
+2. **`docs/DECISIONS.md`** —— Claude 看的那一份（新增一節 + 在 `docs/INDEX.md` 最上面補一行）
    ⛔ 決策內文不要再往 CLAUDE.md 累加（它已經爆過一次 context window）
-3. **CLAUDE.md 的探針登記表**加一列：這支回答什麼、**何時該重跑**
+3. **`docs/PROBES.md` 的探針登記表**加一列：這支回答什麼、**何時該重跑**
 
 ```bash
 python3 scripts/check_lab_coverage.py    # 巡邏:登記表有、LAB 沒引用的就是漏收錄的
