@@ -10,6 +10,7 @@
 用假網路跑真的那支函式(⛔ 測試裡不複製一份邏輯)。
 """
 import json, os, sys, tempfile, shutil
+from datetime import date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -23,6 +24,13 @@ def ok(name, cond, extra=''):
 tmp = tempfile.mkdtemp()
 cwd = os.getcwd()
 os.chdir(tmp)
+# 🧊 V79.3.5 修測資(⛔ 斷言一條都沒放寬):舊版兩檔都有成交值 → 9999 其實在「成交值前 220 名」裡 = **熱門**,
+#   ②③ 只是靠快取日期寫死 2026-10-08、還在 FUND_CACHE_DAYS(7 天)內才綠 → 10-16 起每天紅(測資自己過期,陷阱 #40)。
+#   → 熱門名額設 0:熱門 = 精選清單(2330),9999 真的是冷門;快取日期刻意放「早就過期」,
+#     證明冷門股⛔ 打 FinMind 跟快取新不新無關。⑤ 決定性對照:同一份過期快取、9999 換回熱門 → 就要去抓。
+_old_hot = os.environ.get('HOT_TURNOVER_TOP')
+os.environ['HOT_TURNOVER_TOP'] = '0'
+STALE = (date.today() - timedelta(days=30)).isoformat()
 try:
     import miner
     Path('data/chips').mkdir(parents=True, exist_ok=True)
@@ -32,7 +40,7 @@ try:
         rows = [{'date': f'2026/10/0{i}', 'close': 100.0, 'volume': 1e6} for i in range(1, 8)]
         Path(f'data/{sym}.json').write_text(json.dumps(rows), encoding='utf-8')
     # 舊格式 chips 檔:帶著分點欄位 + 有效基本面快取(冷門股那檔)
-    old = {'fundamentals': {'eps': 1.0, 'generated': '2026-10-08', 'miner_version': miner.MINER_VERSION},
+    old = {'fundamentals': {'eps': 1.0, 'generated': STALE, 'miner_version': miner.MINER_VERSION},
            'chips': [{'date': '2026-09-30', 'buyers': [{'bnm': 'X', 'net': 1}]}],
            'periods': {'1d': {'buy': [], 'sell': []}}, 'hist': [{'d': '2026-09-30'}],
            'bstat': {'b': {}}, 'data_completeness': {'broker_chip': False}}
@@ -67,9 +75,19 @@ try:
     ok('③ 冷門股 ⛔ 不打 FinMind', calls['fm'] == ['2330'], calls['fm'])
     fc = json.loads(Path('data/fundamentals_cache.json').read_text(encoding='utf-8'))
     ok('③b fundamentals_cache 有寫出(含 YoY 併入)', fc.get('2330', {}).get('rev_yoy') == 12.0 and fc.get('9999', {}).get('pe') == 8.0, fc.get('2330'))
+    # ⑤ 決定性對照:同一份「過期」快取,9999 換回熱門(成交值前 220)→ 這次一定要打 FinMind;否則 ③ 綠燈沒有鑑別力
+    Path('data/chips/9999.json').write_text(json.dumps(old), encoding='utf-8')
+    os.environ['HOT_TURNOVER_TOP'] = '220'
+    calls['fm'] = []
+    miner.fetch_free_fundamentals()
+    ok('⑤ 對照:同一份過期快取、9999 改成熱門 → 會去抓 FinMind(證明 ③ 是冷門那條在擋)', '9999' in calls['fm'], calls['fm'])
 finally:
     os.chdir(cwd)
     shutil.rmtree(tmp, ignore_errors=True)
+    if _old_hot is None:
+        os.environ.pop('HOT_TURNOVER_TOP', None)
+    else:
+        os.environ['HOT_TURNOVER_TOP'] = _old_hot
 
 src = (ROOT / 'miner.py').read_text(encoding='utf-8')
 code = '\n'.join(l for l in src.split('\n') if not l.lstrip().startswith('#'))
