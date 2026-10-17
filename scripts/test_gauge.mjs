@@ -136,9 +136,12 @@ const page = await boot({ width: 390, height: 844 });
 //   量到的「跑出卡片外」也是假的(陷阱 #40)。→ 這支 helper:stub `_bearGate` / 在 `_upsideStash`
 //   最前面塞一道遠牆 → 畫進 358px 容器 → 量完一定還原。
 const rulerIn = (pg, o = {}) => pg.evaluate(o => {
-    const sv = { bg: app._bearGate, U: app._upsideStash }; let r = null;
+    const sv = { bg: app._bearGate, U: app._upsideStash, KL: app._keyLevels }; let r = null;
     try {
         if (o.bear != null) app._bearGate = () => o.bear;
+        // 🧪 V79.3.5 `forceAdd`:真實資料這一天剛好沒有「帶量過前高」價(2327 現在 addPx = null)時注入一個,
+        //   ⛔ 不放寬 ㉛b 的斷言 —— 它要比的是「空頭分支畫出來的價 == _keyLevels 的價」,資料剛好沒有就比不出東西(長期紅燈)
+        if (o.forceAdd && app._keyLevels && !(app._keyLevels.addPx > 0)) app._keyLevels = { ...app._keyLevels, addPx: +((+app._keyLevels.C || 100) * 1.05).toFixed(2) };
         const K = app._keyLevels || {}, C = +K.C;
         let far = null;
         if (o.far && app._upsideStash) {
@@ -158,7 +161,7 @@ const rulerIn = (pg, o = {}) => pg.evaluate(o => {
               K: { sl: K.slPx, buy: K.buyPx, add: K.addPx, C, trig: K.trigPx, ex: K.exitRulePx,
                    inst: (app._instTargetStash && String(app._instTargetStash.sym) === String(app.currentSymbolId)) ? app._instTargetStash.mid : null } };
         d.remove();
-    } finally { app._bearGate = sv.bg; app._upsideStash = sv.U; }
+    } finally { app._bearGate = sv.bg; app._keyLevels = sv.KL; app._upsideStash = sv.U; }
     return r;
 }, o);
 
@@ -424,7 +427,7 @@ await page.close();
     console.log(`   2327 trend=${W.trend} ・圖例 ${W.legs.join(' / ')}`);
     // ⚠️ V78.1.2 2327 已經不是空頭了(trend=flat)→ 舊版這三條等於在量「多頭的尺」。改成 stub `_bearGate` = true,
     //   空頭分支**一定**被走到;再 stub false 當對照(多頭時⛔ 不可冒出觀察價 = 那兩個標記真的是空頭分支畫的)。
-    const R31 = await rulerIn(p6, { bear: true }), R31n = await rulerIn(p6, { bear: false });
+    const R31 = await rulerIn(p6, { bear: true, forceAdd: true }), R31n = await rulerIn(p6, { bear: false, forceAdd: true });
     ok('㉛ ⭐ 空頭股的價格尺⛔ 不可出現「追買 / 買進」,要改成觀察價(注入:拿掉 _bearGate → 紅)',
        R31 && !/追買|買進/.test(R31.txt) && /觀察/.test(R31.txt) && R31n && !/觀察/.test(R31n.txt), JSON.stringify(R31 && R31.marks));
     ok('㉛b ⭐ 但**價位一個都沒變**(事實不竄改,只改叫人怎麼做的那句話)',

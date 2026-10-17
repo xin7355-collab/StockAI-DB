@@ -2657,23 +2657,59 @@ def fetch_taifex_backwardation():
         return None, str(e)[:100]
 
 
-def judge_fi_complex(net_futures, net_spot):
+def fi_fut_state(net, hist_vals):
+    """🏦 V79.3.5 外資台指期「相對自己」的狀態 —— 跟前端 `_fiFutState()` 同一條規則(⛔ 不用絕對口數):
+    5 日增減 ≤ −8,000 → danger(急遽加空)/ ≥ +8,000 → good;近 20 筆區間位階 ≤15 → warn(空單近期最重)/ ≥85 → good;
+    5 日 ≤ −3,000 → warn(空單增加中)/ ≥ +3,000 → good;其他 neutral;沒有歷史 → unknown。
+    hist_vals:過去的淨口數(舊→新,⛔ 不含今天);net:今天。回 (level, chg5, pct)。"""
+    vals = [float(v) for v in (hist_vals or []) if v is not None]
+    if net is None:
+        return 'unknown', None, None
+    seq = vals + [float(net)]
+    chg5 = seq[-1] - seq[-6] if len(seq) >= 6 else None
+    win = seq[-20:]
+    pct = None
+    if len(win) >= 8 and max(win) > min(win):
+        pct = (float(net) - min(win)) / (max(win) - min(win)) * 100
+    if chg5 is None and pct is None:
+        return 'unknown', None, None
+    if chg5 is not None and chg5 <= -8000:
+        return 'danger', chg5, pct
+    if chg5 is not None and chg5 >= 8000:
+        return 'good', chg5, pct
+    if pct is not None and pct <= 15:
+        return 'warn', chg5, pct
+    if pct is not None and pct >= 85:
+        return 'good', chg5, pct
+    if chg5 is not None and chg5 <= -3000:
+        return 'warn', chg5, pct
+    if chg5 is not None and chg5 >= 3000:
+        return 'good', chg5, pct
+    return 'neutral', chg5, pct
+
+
+def judge_fi_complex(net_futures, net_spot, hist_vals=None):
     """
-    複合邏輯判定（補完死區後）：
-    - 期貨空單 > 30000 且現貨買超 > 0 億          → 套利避險
-    - 期貨空單 > 30000 且現貨賣超 > 100 億        → 真實偏空警戒
-    - 期貨空單 > 30000 且現貨 -100~0 億（接近持平）→ 暗流湧動，持續觀察
-    - 其他                                         → 中性
+    外資期現一句話(只描述)。🔕 V79.3.5 改用**相對自己**判「期貨空單偏重」(⛔ 舊的「空單 > 30,000 口」
+    在小台/微台上市後天天成立 —— 近一個月淨額都在 −75,000 以下,等於這三句輪流天天出現):
+    - 期貨偏空(急遽加空 / 空單近期最重 / 空單增加中)且現貨買超 > 0 億   → 期現不同調(多半是避險)
+    - 期貨偏空 且現貨賣超 > 100 億                                     → 期現同步偏空
+    - 期貨偏空 且現貨 −100~0 億                                         → 期貨偏空、現貨持平
+    - 沒有歷史可比 → 基準累積中;其他 → 中性
+    ⛔ 只描述外資部位,不是賣出訊號(crash_warn_probe:沒有一種大盤警示能穩定預告大跌)
     """
     if net_futures is None or net_spot is None:
         return "資料整編中（待對接）"
-    fut_short = -net_futures if net_futures < 0 else 0
-    if fut_short > 30000 and net_spot > 0:
-        return "外資期現不同調：套利避險狀態"
-    if fut_short > 30000 and net_spot < -100:
-        return "外資期現同步倒貨：真實偏空警戒"
-    if fut_short > 30000 and -100 <= net_spot <= 0:
-        return "外資期貨大量布空、現貨持平：暗流湧動觀察"
+    level, _, _ = fi_fut_state(net_futures, hist_vals)
+    if level == 'unknown':
+        return "外資期貨基準累積中"
+    heavy = level in ('danger', 'warn')
+    if heavy and net_spot > 0:
+        return "外資期現不同調：期貨偏空、現貨買超(多半是避險)"
+    if heavy and net_spot < -100:
+        return "外資期現同步偏空：期貨偏空、現貨也賣超"
+    if heavy and -100 <= net_spot <= 0:
+        return "外資期貨偏空、現貨持平"
     return "外資動向中性"
 
 
@@ -2724,7 +2760,7 @@ def fi_ratio_alert_level(fi_spot, fi_futures, twii_spot=None):
        舊碼 `spot_equiv = abs(fi_spot * 1e8 / 50000)` 把一口台指期的合約價值當成 5 萬元,
        但台指期一口 = 指數 × 200 元(指數 43,000 時約 860 萬),**差了約 175 倍**
        → 分母被灌大 175 倍 → ratio 恆為 0.0x,顯示成 0.0,而且 ratio 那兩個分支永遠不會觸發
-       (之所以還會亮警戒,是靠 OR 的 `fi_futures < -30000` 那條,等於比值本身完全沒作用)。
+       (之所以還會亮警戒,是靠 OR 的「期貨淨額小於負三萬口」那條,等於比值本身完全沒作用;V79.3.5 已拿掉那條)。
        改用真實合約乘數;拿不到指數時退回近似值 43,000(寧可粗估也不要 175 倍的錯)。
     任一資料源缺值時回字串「⏳ 期現比待採」(而非 None),讓前端顯示提示而非空白。
     """
@@ -2741,12 +2777,13 @@ def fi_ratio_alert_level(fi_spot, fi_futures, twii_spot=None):
     _idx = twii_spot if (twii_spot and twii_spot > 1000) else 43000.0
     spot_equiv = abs(fi_spot * 1e8) / (_idx * 200.0)
     ratio = abs(fi_futures) / max(spot_equiv, 1)
-    # 改 OR:期現大幅背離(ratio>2.5) 或 期貨超級空(< -30000) 任一觸發即警戒,避免漏報
-    if (ratio > 2.5 and fi_futures < 0) or fi_futures < -30000:
-        return f"⚠️ 期現比 {ratio:.1f}(警戒) — 期貨先空,現貨恐跟跌"
+    # 🔕 V79.3.5 拿掉 OR 的「期貨 < −30,000 口」—— 小台/微台上市後天天成立 → 這句「警戒」天天亮(比值本身反而沒作用);
+    #   而且「現貨恐跟跌」是預告,沒驗過 → 只描述期貨空單相對現貨的輕重
+    if ratio > 2.5 and fi_futures < 0:
+        return f"⚠️ 期現比 {ratio:.1f} — 期貨空單比現貨賣超重很多(可能是避險,只描述)"
     elif ratio > 1.8 and fi_futures < 0:
-        return f"🟡 期現比 {ratio:.1f}(留意) — 期貨稍超前現貨"
-    return f"✅ 期現比 {ratio:.1f}(健康) — 期現同步"
+        return f"🟡 期現比 {ratio:.1f} — 期貨空單稍重於現貨"
+    return f"✅ 期現比 {ratio:.1f} — 期現差不多"
 
 
 def main():
@@ -3056,7 +3093,16 @@ def main():
     }
     print(f"   🦅 黑天鵝旗標:{out['blackswan']}")
 
-    out["fi_complex_conclusion"] = judge_fi_complex(fut, spot)
+    # 🏦 V79.3.5 期貨偏空與否改看「相對自己」→ 讀 risk_history.json 的過去淨口數(⛔ 不含今天;讀不到 → 基準累積中)
+    _fi_hist = []
+    try:
+        _rh = json.loads((DATA_DIR / 'risk_history.json').read_text(encoding='utf-8'))
+        _rh = _rh if isinstance(_rh, list) else (_rh.get('data') or [])
+        _today = (out.get('updated') or '')[:10]
+        _fi_hist = [h.get('fi_futures_net') for h in _rh if isinstance(h, dict) and h.get('date') != _today]
+    except Exception as _e:
+        print(f"   ⚠️ risk_history 讀不到 → 外資期貨相對狀態待累積:{str(_e)[:60]}")
+    out["fi_complex_conclusion"] = judge_fi_complex(fut, spot, _fi_hist)
     print(f"\n🎯 複合判定：{out['fi_complex_conclusion']}")
 
     # 🛡️ 斷崖防護：對每個 None 欄位，用「上一次的 macro_risk.json」補值，

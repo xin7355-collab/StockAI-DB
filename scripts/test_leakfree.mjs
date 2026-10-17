@@ -81,18 +81,20 @@ ok('②b 👑 兩個選項在「🔓 進階功能」那一區,上面只有 📈 
 // ③ 跑馬燈已移除、推播照舊
 const mq = await page.evaluate(() => {
     const o = { banner: !!document.getElementById('marketAlertBanner'), track: !!document.querySelector('.marquee-track') };
-    const f = []; const _f = app._fireAlert, _r = app._calcRiskScore;
-    app._fireAlert = (t) => f.push(t); app._calcRiskScore = () => 85; app._alertCache = {};
+    const f = [], q = []; const _f = app._fireAlert, _r = app._calcRiskScore, _h = app._recordNotifHistory;
+    app._fireAlert = (t) => f.push(t); app._recordNotifHistory = (t) => q.push(t); app._calcRiskScore = () => 85; app._alertCache = {};
+    try { Object.keys(localStorage).filter(k => k.startsWith('mktrisk_')).forEach(k => localStorage.removeItem(k)); } catch (_) {}
     const _s = { ...app.settings }; app.settings.watchlistAlert = true; app.settings.riskAlertThreshold = 60;
     const N = window.Notification; try { Object.defineProperty(window, 'Notification', { value: { permission: 'granted' }, configurable: true }); } catch (_) {}
     try { app._checkMarketAlerts(); } catch (e) { o.err = String(e); }
-    app._fireAlert = _f; app._calcRiskScore = _r; Object.assign(app.settings, _s);
+    app._fireAlert = _f; app._calcRiskScore = _r; app._recordNotifHistory = _h; Object.assign(app.settings, _s);
     try { Object.defineProperty(window, 'Notification', { value: N, configurable: true }); } catch (_) {}
-    o.fired = f; o.track2 = !!document.querySelector('.marquee-track');
+    o.fired = f; o.quiet = q; o.track2 = !!document.querySelector('.marquee-track');
     return o;
 });
 ok('③ 跑馬燈已移除(⛔ #marketAlertBanner / .marquee-track)', !mq.banner && !mq.track && !mq.track2, JSON.stringify(mq));
-ok('③b 大盤風險推播照舊(85 分 → _fireAlert 一次)', mq.fired.length === 1 && /大盤極度恐慌/.test(mq.fired[0]) && !mq.err, JSON.stringify(mq));
+// 🔕 V79.3.5 使用者:「回測沒過的推播拿掉、改成只描述」→ 大盤風險 ⛔ 不跳通知、只進 🔔 鈴鐺一次(test_mktwarn ③a 釘細節)
+ok('③b 大盤風險 85 分 → ⛔ 不跳通知、只進鈴鐺一次', mq.fired.length === 0 && mq.quiet.length === 1 && /大盤外部壓力/.test(mq.quiet[0]) && !mq.err, JSON.stringify(mq));
 
 // ④ 預設決策台
 const dk = await page.evaluate(() => {

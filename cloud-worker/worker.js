@@ -192,22 +192,9 @@ function tplChu5MA(label, sym, price, ma5, volRatio) {
     ].join('\n');
 }
 
-function tplBlackswan(reason, severity, vix, foreignNet) {
-    const tag = severity === 'high' ? '★★★ 緊急' : '★★ 警示';
-    const action = severity === 'high'
-        ? `🎯 *操作建議*\n  ▸ *持股減 50%*(現金為王)\n  ▸ 別接刀(等紅 K 反包再考慮)\n  ▸ 避開:航運/金融/中小型題材股\n  ▸ 防禦:電信/民生必需(中華電 / 統一 / 全家)`
-        : `🎯 *操作建議*\n  ▸ 持股減 1/3(留半碼觀察)\n  ▸ 新單暫緩 1-2 日\n  ▸ 關注 VIX 是否續升 + 美股反應`;
-    return [
-        `🚨 *【黑天鵝 ${tag}】*`,
-        SEP,
-        `⚠️ ${reason}`,
-        Number.isFinite(vix) ? `📊 VIX *${vix.toFixed(1)}* / 外資 *${foreignNet > 0 ? '+' : ''}${foreignNet} 億*` : '',
-        '',
-        action,
-        '',
-        `📱 [看完整總經分析](${GH_PAGES_BASE}/)`,
-    ].filter(Boolean).join('\n');
-}
+// 🗑️ V79.3.5 `tplBlackswan`(「持股減 50% / 1/3、別接刀」)已刪 —— 觸發它的只是「今天 / 明天有重大事件」,
+//   calendar_stock_probe:37 種行事曆日方向 0 個成立;crash_warn_probe:沒有一種大盤警示過關。
+//   重大事件改在 08:00 盤前簡報裡當一行描述(`premarketEventLine`),⛔ 不另發、⛔ 不給部位指令。
 
 function tplAttention(label, sym, status, endDate, daysLeft) {
     return [
@@ -1244,7 +1231,7 @@ async function runScan(env) {
     const macro = macroRes?.ok ? await macroRes.json().catch(() => null) : null;
 
     const falconMap = buildFalconMap(radar);
-    const macroAlert = buildMacroAlert(macro);
+    const macroAlert = null;   // 🔕 V79.3.5 重大事件改進盤前簡報(⛔ 盤中不再單獨推)
 
     // V15.9 — 收集所有 user 的監看股 + 庫存,一批打 TWSE MIS 拿即時報價
     const allSymbols = new Set();
@@ -1340,6 +1327,27 @@ function buildFalconMap(radar) {
     return map;
 }
 
+/** 📅 V79.3.5 今天 / 明天的高重要性事件 → 盤前簡報一行(⛔ 只講波動、⛔ 不給方向與部位)*/
+export function premarketEventLine(macro) {
+    const t = buildMacroAlert(macro);
+    if (!t) return '';
+    const names = t.split('\n').map(x => x.replace(/^⚠️\s*/, '').trim()).filter(Boolean).slice(0, 3);
+    return names.length ? `📅 重大事件:${names.join('、')} → 那幾天波動會變大,⛔ 不預設漲跌` : '';
+}
+
+/** 🏦 V79.3.5 外資台指期 5 日增減(口)—— 跟 App `_fiFutState()` 同一條:risk_history 最後一筆 − 往前第 5 筆;
+ *  不夠 6 筆 → null(⛔ 不用絕對口數硬判:小台/微台上市後 −40,000 天天成立) */
+export function fiFutChg5(hist) {
+    const rows = Array.isArray(hist) ? hist : ((hist && hist.data) || []);
+    const v = rows.map(r => (r && r.fi_futures_net != null && isFinite(+r.fi_futures_net)) ? +r.fi_futures_net : null).filter(x => x != null);
+    return v.length >= 6 ? v[v.length - 1] - v[v.length - 6] : null;
+}
+
+/** 🔕 V79.3.5 主力出貨指數的那句話 → 只描述(⛔「主力可能殺出」這種預告;燈號鐵則:🔴🟢 只講漲跌)*/
+export function mmVerdictOf(mmIndex) {
+    return mmIndex >= 70 ? '⚠️ 外面壓力很高' : mmIndex >= 40 ? '⚠️ 外面壓力偏高' : '➖ 平穩';
+}
+
 function buildMacroAlert(macro) {
     if (!macro) return null;
     const events = macro.upcoming_macro_events || macro.events || [];
@@ -1379,11 +1387,7 @@ async function scanUser(env, user, falconMap, macroAlert, liveQuotes, volBaseCac
     const invAlerts = [];   // 💼 V21.4 — 庫存盤中觸發彙總(-5%/跌破5MA/+20%),結尾合成「一則」發送(不一檔一則轟炸)
     const huntAlerts = [];  // 🎯 V21.4 — 獵殺清單盤中買點(帶量站上5MA)彙總,結尾合成「一則」
 
-    if (macroAlert && !(await wasPushed(env, user.chat_id, '__macro__', 'daily'))) {
-        const severity = macroAlert.includes('★★★') || macroAlert.includes('暴跌') ? 'high' : 'medium';
-        queue.push({ stars: 3, text: tplBlackswan(macroAlert, severity, null, null) });
-        await markPushed(env, user.chat_id, '__macro__', 'daily', 24 * 3600);
-    }
+    // 🔕 V79.3.5 重大事件 ⛔ 不再單獨推(舊版附「持股減 1/3」)→ 改在 08:00 盤前簡報當一行描述(premarketEventLine)
 
     for (const sym of symbols) {
         const stock = falconMap.get(sym) || { sym };
@@ -1860,7 +1864,7 @@ async function handleMacro(env, chatId) {
     if (m.taifex_backwardation != null && m.taifex_backwardation < -100) { mmIndex += 25; factors.push('期貨大貼水'); }
     if (m.business_signal?.light === 'red') { mmIndex += 20; factors.push('景氣紅燈'); }
     if (m.vix != null && m.vix >= 25) { mmIndex += 25; factors.push('VIX 恐慌'); }
-    const mmVerdict = mmIndex >= 70 ? '🔴 主力可能殺出' : mmIndex >= 40 ? '🟠 警戒' : mmIndex >= 0 ? '🟡 中性' : '🟢 託盤';
+    const mmVerdict = mmVerdictOf(mmIndex);   // 🔕 V79.3.5 只描述
 
     await tg(env, chatId,
         `🌐 *總經成桌* ${new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit' })}\n${SEP}\n` +
@@ -2384,12 +2388,14 @@ async function runOvernightUS(env) {
 // 🌅 08:30 台北 — 盤前簡報
 async function runPreMarket(env) {
     const t = Date.now();
-    const [macroRes, radarRes, attentionRes] = await Promise.all([
+    const [macroRes, radarRes, attentionRes, rhRes] = await Promise.all([
         fetch(`${GH_PAGES_BASE}/data/macro_risk.json?t=${t}`).catch(() => null),
         fetch(`${GH_PAGES_BASE}/data/radar.json?t=${t}`).catch(() => null),
         fetch(`${GH_PAGES_BASE}/data/attention_status.json?t=${t}`).catch(() => null),
+        fetch(`${GH_PAGES_BASE}/data/risk_history.json?t=${t}`).catch(() => null),   // 🏦 V79.3.5 外資台指期 5 日增減要用
     ]);
     const macro = macroRes?.ok ? await macroRes.json().catch(() => null) : null;
+    const riskHist = rhRes?.ok ? await rhRes.json().catch(() => null) : null;
     const radar = radarRes?.ok ? await radarRes.json().catch(() => null) : null;
     const attention = attentionRes?.ok ? await attentionRes.json().catch(() => null) : {};
     const falconMap = buildFalconMap(radar);
@@ -2403,7 +2409,7 @@ async function runPreMarket(env) {
         if (macro.business_signal?.light === 'red') { mmIndex += 20; factors.push('景氣紅燈'); }
         if (macro.vix >= 25) { mmIndex += 25; factors.push('VIX 恐慌'); }
     }
-    const mmVerdict = mmIndex >= 70 ? '🔴 主力可能殺出' : mmIndex >= 40 ? '🟠 警戒' : mmIndex >= 0 ? '🟡 中性' : '🟢 託盤';
+    const mmVerdict = mmVerdictOf(mmIndex);   // 🔕 V79.3.5 只描述
 
     // 🌅 V21.4 — 開盤方向(簡易純公式,對齊前端盤前體檢的「開高偏多/開低偏空」)
     let dScore = 0;
@@ -2412,7 +2418,9 @@ async function runPreMarket(env) {
         dScore += sgn(macro.sp500_chg_pct) + sgn(macro.nasdaq_chg_pct);
         if (Number.isFinite(+macro.vix)) { if (macro.vix < 20) dScore += 1; else if (macro.vix > 30) dScore -= 2; else if (macro.vix > 25) dScore -= 1; }
         if (Number.isFinite(+macro.fi_spot_net)) { if (macro.fi_spot_net > 0) dScore += 1; else if (macro.fi_spot_net < -200) dScore -= 1; }
-        if (Number.isFinite(+macro.fi_futures_net)) { if (macro.fi_futures_net > 0) dScore += 0.5; else if (macro.fi_futures_net <= -40000) dScore -= 1; }
+        // 🏦 V79.3.5 ⛔ 絕對口數 −40,000(小台/微台上市後天天成立)→ 跟 App `_fiFutState()` 同一條:5 日增減 ±8,000 口
+        const fc = fiFutChg5(riskHist);
+        if (fc != null) { if (fc >= 8000) dScore += 0.5; else if (fc <= -8000) dScore -= 1; }
     }
     const dV = dScore >= 2 ? { e: '🔴', t: '開高偏多' } : dScore <= -2 ? { e: '🟢', t: '開低偏空' } : { e: '🟡', t: '中性震盪' };   // 紅漲綠跌:偏多🔴 偏空🟢
 
@@ -2465,6 +2473,7 @@ async function runPreMarket(env) {
                     `🐂 主力出貨指數 ${mmIndex} ${mmVerdict}${factors.length ? `(${factors.slice(0, 2).join('/')})` : ''}`,
                     focus.length ? `🎯 自選重點:${focus.join('、')}` : '',
                     outSoon.length ? `⚠️ 處置出獄:${outSoon.join('、')}` : '',
+                    premarketEventLine(macro),
                     `📱 [完整盤前體檢](${GH_PAGES_BASE}/)`,
                 ].filter(Boolean).join('\n');
                 await tg(env, userData.chat_id, text);

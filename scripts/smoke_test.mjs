@@ -82,8 +82,8 @@ const detectorReport = await page.evaluate(() => {
 //    資料/DOM 缺造成的 TypeError 不算(正常防呆),只揪 ReferenceError/SyntaxError。
 const renderReport = await page.evaluate(() => {
   if (typeof app !== 'object' || !app) return { fails: [] };
-  const targets = ['renderMarketRegime', 'renderMarketBreadth', 'renderVolSurgeRadar',
-    'renderMarketBreadthCard', '_marketRegime', 'renderTradeJournal', 'renderFavList'];
+  const targets = ['renderMarketBreadth', 'renderVolSurgeRadar',
+    'renderMarketBreadthCard', 'renderTradeJournal', 'renderFavList'];   // 🗑️ V79.3.5 renderMarketRegime / _marketRegime 已刪(死卡)
   const fails = [];
   for (const fn of targets) {
     if (typeof app[fn] !== 'function') continue;

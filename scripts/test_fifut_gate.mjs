@@ -43,6 +43,20 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
        (SRC.match(/_fiFutState\??\.?\(\)/g) || []).length >= 10,
        `${(SRC.match(/_fiFutState\??\.?\(\)/g) || []).length} 處`);
 }
+// ── ③ 🔕 V79.3.5 Telegram(worker)與採礦(macro_miner)也 ⛔ 不可再拿外資台指期跟絕對口數比 ──
+//   (V71.1.6 / V75.1.7 只掃了 index.html → worker 的 −40,000、macro_miner 的 ±30,000 天天成立,陷阱 #37)
+{
+    const W = fs.readFileSync(path.join(ROOT, 'cloud-worker/worker.js'), 'utf8');
+    const M = fs.readFileSync(path.join(ROOT, 'macro_miner.py'), 'utf8');
+    const badW = W.split('\n').map((l, i) => [l, i]).filter(([l]) => !/^\s*(\/\/|\*)/.test(l))
+        .filter(([l]) => /fi_futures_net[^\n]{0,12}?[<>]=?\s*-?\s*(1[0-9]{4,}|[2-9][0-9]{4,})/.test(l)).map(([l, i]) => `worker L${i + 1}: ${l.trim().slice(0, 100)}`);
+    const badM = M.split('\n').map((l, i) => [l, i]).filter(([l]) => !/^\s*#/.test(l))
+        .filter(([l]) => /\b(fut_short|fi_futures|net_futures)\b[^\n]{0,12}?[<>]=?\s*-?\s*(1[0-9]{4,}|[2-9][0-9]{4,})/.test(l)).map(([l, i]) => `macro_miner L${i + 1}: ${l.trim().slice(0, 100)}`);
+    ok('③ ⛔ worker / macro_miner 也不可再用外資台指期的絕對口數門檻', badW.length + badM.length === 0, badW.concat(badM).join('\n   '));
+    ok('③ 🚧 空過守門:worker 有 `fiFutChg5`、macro_miner 有 `fi_fut_state`(⛔ 否則上面那條只是掃不到)',
+       /export function fiFutChg5\(/.test(W) && /def fi_fut_state\(/.test(M), '');
+}
+
 // ── ② 靜態:新鮮度判斷只能有一份 ──
 // 🗑️ V78.2.9 那兩票拿掉後,`_dtPackFresh` 已經沒有呼叫端(⛔ 不是漏接 —— 是 daytrade_pack 整份不再進判定);
 //   定義仍只能有一份,哪天有人把 pack 接回來就會被下面那條「⛔ 不可再讀 pcRatio」擋住
@@ -113,6 +127,21 @@ ok('② ⛔ index.html 不可再讀 pcRatio / largeTrader、也不再載 daytrad
    !/pcRatio|largeTrader/.test(_src) && !/this\._loadDaytradePack\(\)/.test(_src), '');
 const _mn = fs.readFileSync(new URL('../daytrade_data_miner.py', import.meta.url), 'utf8').split('def main')[1] || '';
 ok('② ⛔ daytrade_data_miner 的 main 不可再抓 P/C / 大額交易人', !/get_pc_ratio\(|get_large_trader\(/.test(_mn.replace(/#[^\n]*/g, '')), '');
+
+// ── ③b 三份實作同一條規則:App `_fiFutState` / worker `fiFutChg5` / macro_miner `fi_fut_state`(⭐ 同一組測資跨檔比)──
+{
+    const { fiFutChg5 } = await import(pathToFileURL(path.join(ROOT, 'cloud-worker/worker.js')).href);
+    const flat = Array.from({ length: 22 }, () => -80000);
+    const surge = flat.slice(); for (let i = 17; i < 22; i++) surge[i] = -80000 - (i - 16) * 3000;
+    const wF = fiFutChg5(flat.map(v => ({ fi_futures_net: v }))), wS = fiFutChg5(surge.map(v => ({ fi_futures_net: v })));
+    const { execFileSync } = await import('child_process');
+    const py = execFileSync('python3', ['-c', `import sys, json; sys.path.insert(0, ${JSON.stringify(ROOT)}); import macro_miner as m
+f = ${JSON.stringify(flat)}; s = ${JSON.stringify(surge)}
+print(json.dumps([m.fi_fut_state(f[-1], f[:-1])[0], m.fi_fut_state(s[-1], s[:-1])[0], m.fi_fut_state(s[-1], s[:-1])[1]]))`], { encoding: 'utf8', cwd: ROOT }).trim().split('\n').pop();
+    const [pF, pS, pChg] = JSON.parse(py);
+    ok('③b ⭐ 一直都這麼空(−80,000)→ App / worker / 採礦 ⛔ 都不可判急遽加空', R.stateFlat.level !== 'danger' && wF === 0 && pF !== 'danger', `${R.stateFlat.level} / ${wF} / ${pF}`);
+    ok('③b ⭐ 5 日內急遽加空 → 三份都要判到(同一個 5 日增減)', R.stateSurge.level === 'danger' && wS <= -8000 && pS === 'danger' && pChg === wS && R.stateSurge.chg5 === wS, `${R.stateSurge.level}/${R.stateSurge.chg5} / ${wS} / ${pS}/${pChg}`);
+}
 
 console.log(fails ? `❌ ${fails} 條失敗` : '✅ FIFUT_GATE_PASS(全部通過)');
 process.exit(fails ? 1 : 0);
