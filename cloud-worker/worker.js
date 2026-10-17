@@ -381,7 +381,7 @@ async function macroKick(env, now = Date.now(), fetchFn = fetch, dispatchFn = gh
     return { sent: !!(r && r.ok), why: r && r.why, upd, close };
 }
 
-const WORKER_VER = 'V22.5 (2026-10-16)';
+const WORKER_VER = 'V22.6 (2026-10-17)';   // 🔕 V79.3.5 黑天鵝範本刪除・外資台指期改相對規則・重大事件併進盤前簡報
 const WORKER_FEAT = ['push', 'vapid', 'names', 'sync'];   // 有 push/vapid 才支援「關 App 推播」
 
 export { minerKick, _screenerDate, macroKick, _lastUsCloseMs, _twStampMs };
