@@ -21,19 +21,32 @@
   ・對表用的參考檔不在 / 是空的 → exit 1(⛔ 沒驗過的資料不寫)
 
 ⛔ 安全:只印「第幾把 token」,絕不印 token 值(dispo_probe.fm 已照做)。
+🕰️ 早期模式(V79.3.5,`IDX_START` 早於 2010-01-01 時自動切換;使用者:「要,補抓 2000 年起」):
+  ・⛔ 只要指數(① 加權 ② 報酬指數 ⑤ 櫃買),⛔ 不抓 0050 / 除息 —— 0050 2003 才上市,早期回測只拿指數用
+  ・只抓到 **2010 年底**:跟回測用那份 `idx_long.json` 重疊一整年,拿那一年對表(⛔ 沒有重疊就沒辦法驗)
+  ・守門跟著起點走:第一根 ≤ 起點 + 14 天、根數 ≥ 起點~終點平日數 × 0.88、重疊年 ≥95% 在 0.5% 內
+  ・FinMind 不夠深 → 備援**證交所官方** `MI_5MINS_HIST`(1999 起,每月一份)+ 成交金額走 `miner._fetch_fmtqik_months`
+    (⛔ 不改 miner.py —— 改它會觸發 30~60 分的 daily_miner)
+  ・寫**另一個檔**(workflow 決定檔名 `data/idx_long_early.json`)→ 既有回測讀的 `idx_long.json` 一個字都不動
 用法:python3 scripts/idx_long_backfill.py [--ref-dir DIR] [--out FILE] | --selftest
 """
 import json
 import os
+import random
 import sys
-from datetime import date
+import time
+from datetime import date, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 START = os.getenv('IDX_START') or '2010-01-01'
+DEFAULT_START = '2010-01-01'      # 回測用那份(idx_long.json)的起點;早於它 = 早期模式
 FIRST_MAX = '2010-01-15'
 MIN_TWII = 3800
+EARLY_END = '2010-12-31'          # 早期檔只到 2010 年底:跟 idx_long.json 重疊一整年拿來對表
+EARLY_FRAC = 0.88                 # 早期守門:根數 ≥ 平日數 × 0.88(台股一年約 245 個交易日 / 261 個平日;2000 年還有週六盤)
+TWSE_TRIES = 3
 TOL = 0.005
 MIN_RATIO = 0.95
 MIN_OVERLAP = 200
@@ -188,6 +201,166 @@ def build(fm, ref_twii, ref_0050, today=None, ref_twoii=None):
     return obj, errs
 
 
+# ── 🕰️ 早期模式(V79.3.5)──────────────────────────────────────────────────────
+def first_max(start):
+    """第一根要落在起點 14 天內(預設起點 → '2010-01-15',跟 FIRST_MAX 一字不差 —— selftest ⑩ 釘住)。"""
+    return (date.fromisoformat(start) + timedelta(days=14)).isoformat()
+
+
+def min_bars(start, end, frac=EARLY_FRAC):
+    """起點~終點的平日數 × frac = 早期守門的最少根數。"""
+    d0, d1 = date.fromisoformat(start), date.fromisoformat(end)
+    n = sum(1 for k in range((d1 - d0).days + 1) if (d0 + timedelta(days=k)).weekday() < 5)
+    return int(n * frac)
+
+
+def month_list(start, end):
+    """起點~終點涵蓋的 (年, 月),由舊到新。"""
+    y, m, y1, m1 = int(start[:4]), int(start[5:7]), int(end[:4]), int(end[5:7])
+    out = []
+    while (y, m) <= (y1, m1):
+        out.append((y, m))
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    return out
+
+
+def twse_index_rows(start, end, _get=None, _sleep=None):
+    """🏛️ 證交所官方加權指數(MI_5MINS_HIST,1999 起每月一份)+ 成交金額(FMTQIK)→ 跟 to_price_rows 同形狀。
+    回 (rows, err)。只在 FinMind 不夠深時才叫;抓不到的月份 / 沒有成交金額的天數一律寫進 err(陷阱 #22)。
+    ⛔ 不改 miner.py:只借它現成的 `_roc_to_iso` / `HEADERS` / `_rnd_hdrs` / `_fetch_fmtqik_months`。
+    `_get` / `_sleep` 只給 selftest 注入(沙箱連不到證交所)。"""
+    import miner
+    get = _get or (lambda url: __import__('requests').get(
+        url, headers={**miner.HEADERS, **miner._rnd_hdrs()}, timeout=15, allow_redirects=True))
+    sleep = _sleep or time.sleep
+    months = month_list(start, end)
+    rows, bad, empty = {}, [], []
+    num = lambda x: float(str(x).replace(',', ''))
+    for i, (y, m) in enumerate(months):
+        if i:
+            sleep(random.uniform(0.3, 0.5))      # ⛔ 證交所對連續快速請求會擋(同 miner FMTQIK 的理由)
+        url = f'https://www.twse.com.tw/rwd/zh/TAIEX/MI_5MINS_HIST?response=json&date={y:04d}{m:02d}01'
+        got = None
+        for t in range(1, TWSE_TRIES + 1):
+            try:
+                r = get(url)
+                if r.status_code != 200:
+                    raise RuntimeError(f'HTTP {r.status_code}')
+                j = r.json()
+                got = []
+                if j.get('stat') and j.get('stat') != 'OK':
+                    break                          # 官方明講沒資料 → 重試也沒用
+                for row in j.get('data') or []:
+                    d = miner._roc_to_iso(row[0])
+                    try:
+                        o, h, lo, c = num(row[1]), num(row[2]), num(row[3]), num(row[4])
+                    except (IndexError, ValueError):
+                        continue
+                    if d and c > 0:
+                        got.append({'date': d, 'open': o, 'high': h, 'low': lo, 'close': c, 'volume': 0, 'amount': 0})
+                break
+            except Exception as e:
+                if t < TWSE_TRIES:
+                    sleep(t * 1.5)                 # 307 / 403 多半是間歇 WAF,退避後換 UA 再試
+                else:
+                    bad.append(f'{y}/{m:02d} {str(e)[:40]}')
+        if got == []:
+            empty.append(f'{y}/{m:02d}')
+        for x in got or []:
+            rows[x['date']] = x
+    try:
+        vol = miner._fetch_fmtqik_months(months, _get=_get)
+    except Exception as e:
+        vol, _ = {}, bad.append(f'FMTQIK {str(e)[:40]}')
+    n_amt = 0
+    for d, x in rows.items():
+        va = vol.get(d)
+        if va and va[1]:
+            x['amount'] = int(va[1])
+            n_amt += 1
+    out = sorted(rows.values(), key=lambda x: x['date'])
+    notes = []
+    if bad:
+        notes.append(f'{len(bad)} 個月份抓不到(例:{bad[0]})')
+    if empty:
+        notes.append(f'{len(empty)} 個月份官方回空(例:{empty[0]})')
+    if out and n_amt < len(out):
+        notes.append(f'成交金額 {len(out) - n_amt}/{len(out)} 天沒有(FMTQIK)')
+    return out, (' ・'.join(notes) or None)
+
+
+def load_long_ref(path):
+    """回測用那份 idx_long.json → {'twii': {d: close}, 'twoii': {d: close}};讀不到 / 沒有 twii → None。"""
+    try:
+        with open(path) as f:
+            j = json.load(f)
+    except Exception:
+        return None
+    if not isinstance(j, dict):
+        return None
+    out = {k: {d_slash(r[0]): float(r[4]) for r in (j.get(k) or []) if isinstance(r, list) and len(r) >= 5 and r[4]}
+           for k in ('twii', 'twoii')}
+    return out if out['twii'] else None
+
+
+def build_early(fm, ref_long, today=None, start=None, twse=None):
+    """🕰️ 早期模式(起點 < 2010):⛔ 只要指數、只抓到 2010 年底。→ (obj, errors);errors 非空 = 不可寫檔。"""
+    errs = []
+    st = start or START
+    upd = today or date.today().isoformat()
+    end = min(EARLY_END, upd)
+    fmax, nmin = first_max(st), min_bars(st, end)
+    obj = {'updated': upd, 'from': st, 'to': end, 'mode': 'early', 'src': {},
+           'caveat': f'回測專用(前端不讀)。只有指數。{EARLY_END[:4]} 那一年跟 idx_long.json 重疊、拿來對表 —— '
+                     '接起來時用 idx_long.json 第一天「以前」的列,重疊那段以 idx_long.json 為準。'}
+
+    tw_raw, e = fm('TaiwanStockPrice', {'data_id': 'TAIEX', 'start_date': st, 'end_date': end})
+    tw, src = to_price_rows(tw_raw), 'FinMind'
+    print(f'① 加權(FinMind):{len(tw)} 根 ・{tw[0]["date"] if tw else "—"} ~ {tw[-1]["date"] if tw else "—"}' + (f' ・{e}' if e else ''))
+    deep = bool(tw) and tw[0]['date'] <= d_slash(fmax) and len(tw) >= nmin
+    if not deep and twse:
+        print(f'   FinMind 不夠深(要第一根 ≤ {fmax}、≥ {nmin} 根)→ 改抓證交所官方月份檔')
+        tw2, e2 = twse(st, end)
+        print(f'   證交所:{len(tw2)} 根 ・{tw2[0]["date"] if tw2 else "—"} ~ {tw2[-1]["date"] if tw2 else "—"}' + (f' ・{e2}' if e2 else ''))
+        if tw2 and (not tw or tw2[0]['date'] < tw[0]['date'] or len(tw2) > len(tw)):
+            tw, src, e = tw2, 'TWSE', e2
+            if e2:
+                obj['twii_note'] = e2
+    if not tw or tw[0]['date'] > d_slash(fmax) or len(tw) < nmin:
+        errs.append(f'加權不夠深({len(tw)} 根、第一根 {tw[0]["date"] if tw else "—"};要 ≤ {fmax} 且 ≥ {nmin} 根;{e or ""})')
+    else:
+        ok, ratio, n = overlap_check({x['date']: x['close'] for x in tw}, ref_long['twii'])
+        print(f'   對表 idx_long.json(重疊那一年):{n} 天重疊,差 <0.5% 的 {ratio:.1%}')
+        if not ok:
+            errs.append(f'加權對不上 idx_long.json(重疊 {n} 天、只有 {ratio:.1%} 在 0.5% 內)')
+    obj['src']['twii'] = src
+    obj['twii'] = [[x['date'], x['open'], x['high'], x['low'], x['close'], x['amount']] for x in tw]
+
+    tr_raw, e = fm('TaiwanStockTotalReturnIndex', {'data_id': 'TAIEX', 'start_date': st, 'end_date': end})
+    tr = sorted([[d_slash(r['date']), float(r['price'])] for r in (tr_raw or [])
+                 if r.get('price') not in (None, '', 0)], key=lambda x: x[0])
+    print(f'② 報酬指數:{len(tr)} 根 ・{tr[0][0] if tr else "—"} 起' + (f' ・{e}' if e else ''))
+    obj['twii_tr'] = tr
+    if not tr:
+        obj['twii_tr_error'] = f'報酬指數拿不到({e or "回空"})—— 早期只能用價格指數'
+    elif tr[0][0] > d_slash(fmax):
+        obj['twii_tr_note'] = f'報酬指數第一根 {tr[0][0]}(證交所報酬指數較晚才編)—— 更早只能用價格指數'
+
+    ot_raw, e = fm('TaiwanStockPrice', {'data_id': 'TPEx', 'start_date': st, 'end_date': end})
+    ot = to_price_rows(ot_raw)
+    print(f'⑤ 櫃買:{len(ot)} 根 ・{ot[0]["date"] if ot else "—"} ~ {ot[-1]["date"] if ot else "—"}' + (f' ・{e}' if e else ''))
+    obj['twoii'] = [[x['date'], x['open'], x['high'], x['low'], x['close'], x['amount']] for x in ot]
+    if not ot:
+        obj['twoii_error'] = f'櫃買指數拿不到({e or "回空"})'
+    elif not ref_long.get('twoii'):
+        obj['twoii_error'] = 'idx_long.json 沒有 twoii 可對表 —— 資料照存,接之前先人工看一眼'
+    else:
+        ok, ratio, n = overlap_check({x['date']: x['close'] for x in ot}, ref_long['twoii'])
+        if not ok:
+            obj['twoii_error'] = f'櫃買對不上 idx_long.json(重疊 {n} 天、只有 {ratio:.1%} 在 0.5% 內)—— ⛔ 不可接'
+    return obj, errs
+
+
 def selftest():
     fails = []
     ok = lambda name, c: (print(('✅ ' if c else '❌ ') + name), c or fails.append(name))
@@ -254,6 +427,67 @@ def selftest():
     f9 = fake_fm(); f9.no_otc = True
     o9c, errs9c = build(f9, ref_tw, ref_05, today='2026-09-25', ref_twoii=ref_ot)
     ok('⑨c 櫃買回空 → twoii 空陣列 + twoii_error', not errs9c and o9c['twoii'] == [] and '拿不到' in o9c.get('twoii_error', ''))
+
+    # ⑩~⑮ 🕰️ 早期模式(V79.3.5)
+    ok('⑩ 預設起點的守門跟舊的一樣(first_max(2010-01-01) == FIRST_MAX)', first_max(DEFAULT_START) == FIRST_MAX)
+    ed = [x.isoformat() for x in (date(2000, 1, 3) + timedelta(days=k) for k in range(4200))
+          if x.weekday() < 5 and x <= date(2010, 12, 31)]
+    epx = [6000 + 400 * ((i * 7) % 11 - 5) for i in range(len(ed))]
+    erows = [{'date': d, 'open': epx[i], 'max': epx[i] + 30, 'min': epx[i] - 30, 'close': epx[i], 'Trading_money': 5}
+             for i, d in enumerate(ed)]
+    ref_long = {'twii': {d_slash(r['date']): r['close'] for r in erows if r['date'] >= '2010-01-01'}, 'twoii': {}}
+    calls = []
+
+    def fm_e(depth_from='2000-01-03'):
+        def f(ds, q):
+            calls.append((ds, q.get('data_id')))
+            if ds == 'TaiwanStockPrice' and q['data_id'] == 'TAIEX':
+                return [r for r in erows if r['date'] >= depth_from], None
+            if ds == 'TaiwanStockTotalReturnIndex':
+                return [{'date': r['date'], 'price': r['close'] * 2} for r in erows if r['date'] >= '2003-01-02'], None
+            if ds == 'TaiwanStockPrice' and q['data_id'] == 'TPEx':
+                return [], None
+            return [{'date': '2004-01-01', 'close': 1}], None      # 0050 / 除息:早期模式⛔ 不該叫到(⑫ 檢查)
+        return f
+    o10, errs10 = build_early(fm_e(), ref_long, today='2026-10-17', start='2000-01-01')
+    ok('⑪ 早期:FinMind 夠深 → 過、src=FinMind、只到 2010 年底、報酬指數晚編要寫 note',
+       not errs10 and o10['src']['twii'] == 'FinMind' and o10['twii'][0][0] == '2000/01/03'
+       and o10['twii'][-1][0] <= '2010/12/31' and 'twii_tr_note' in o10 and o10['mode'] == 'early')
+    ok('⑫ 早期:⛔ 不碰 0050 / 除息', not any(c[1] == '0050' or c[0] == 'TaiwanStockDividendResult' for c in calls))
+    tw_twse = [{'date': d_slash(r['date']), 'open': r['open'], 'high': r['max'], 'low': r['min'], 'close': r['close'],
+                'volume': 0, 'amount': 7} for r in erows]
+    o13, errs13 = build_early(fm_e('2005-01-03'), ref_long, today='2026-10-17', start='2000-01-01',
+                              twse=lambda a, b: (tw_twse, None))
+    ok('⑬ 早期:FinMind 只到 2005 → 改用證交所、過關、src=TWSE',
+       not errs13 and o13['src']['twii'] == 'TWSE' and o13['twii'][0][0] == '2000/01/03')
+    _, errs13b = build_early(fm_e('2005-01-03'), ref_long, today='2026-10-17', start='2000-01-01',
+                             twse=lambda a, b: ([], '連不到'))
+    ok('⑬b 早期:兩邊都不夠深 → 報錯(⛔ 不寫檔)', any('不夠深' in x for x in errs13b))
+    bad_ref = {'twii': {d: c * 1.02 for d, c in ref_long['twii'].items()}, 'twoii': {}}
+    _, errs14 = build_early(fm_e(), bad_ref, today='2026-10-17', start='2000-01-01')
+    ok('⑭ 早期:重疊那一年對不上 idx_long.json → 報錯', any('對不上' in x for x in errs14))
+
+    class _R:
+        def __init__(self, j, code=200):
+            self.j, self.status_code = j, code
+
+        def json(self):
+            return self.j
+
+    def fake_get(url):
+        ym = url.split('date=')[1][:6]
+        y, m = int(ym[:4]) - 1911, int(ym[4:])
+        if 'MI_5MINS_HIST' in url:
+            return _R({'stat': 'OK', 'data': [[f'{y}/{m:02d}/{d:02d}', '8,000.10', '8,100.00', '7,900.00', f'8,0{d:02d}.00']
+                                              for d in (3, 4)]})
+        if 'FMTQIK' in url:
+            return _R({'stat': 'OK', 'fields': ['日期', '成交股數', '成交金額', '成交筆數', '發行量加權股價指數', '漲跌點數'],
+                       'data': [[f'{y}/{m:02d}/03', '1,000', '123,456,789', '1', '8,003.00', '1']]})
+        return _R({}, 404)
+    rr, ee = twse_index_rows('2000-01-01', '2000-02-28', _get=fake_get, _sleep=lambda s: None)
+    ok('⑮ 證交所月份檔:民國→西元、千分位、成交金額併上、缺金額的天數寫進 err',
+       len(rr) == 4 and rr[0]['date'] == '2000/01/03' and rr[0]['close'] == 8003.0
+       and rr[0]['amount'] == 123456789 and rr[1]['amount'] == 0 and bool(ee) and '成交金額' in ee)
     print(f'\n{"❌ " + str(len(fails)) + " 條沒過" if fails else "✅ IDX_LONG_SELFTEST_PASS"}')
     return 1 if fails else 0
 
@@ -264,15 +498,30 @@ def main():
     arg = lambda k, dflt: sys.argv[sys.argv.index(k) + 1] if k in sys.argv else dflt
     ref_dir = arg('--ref-dir', os.getenv('IDX_REF_DIR') or 'data')
     out = arg('--out', os.getenv('IDX_OUT') or 'data/idx_long.json')
-    ref_tw = load_ref(os.path.join(ref_dir, '^TWII.json'))
-    ref_05 = load_ref(os.path.join(ref_dir, '0050.json'))
-    ref_ot = load_ref(os.path.join(ref_dir, '^TWOII.json'))   # 🏪 選用:沒有就只存不對表(twoii_error 會寫原因)
-    if not ref_tw or not ref_05:
-        print(f'❌ 對表用的參考檔讀不到({ref_dir}/^TWII.json={bool(ref_tw)}、0050.json={bool(ref_05)})→ 不抓(⛔ 沒驗過的資料不寫)')
-        sys.exit(1)
-    from dispo_probe import fm, TOKENS
-    print(f'🔑 token:{len(TOKENS)} 把 ・起點 {START}')
-    obj, errs = build(fm, ref_tw, ref_05, ref_twoii=ref_ot)
+    if START < DEFAULT_START:
+        # 🕰️ 早期模式:只要指數,拿回測用那份 idx_long.json 重疊的那一年對表
+        try:
+            date.fromisoformat(START)
+        except ValueError:
+            print(f'❌ IDX_START 格式要 YYYY-MM-DD(收到 {START!r})')
+            sys.exit(1)
+        ref_long = load_long_ref(os.path.join(ref_dir, 'idx_long.json'))
+        if not ref_long:
+            print(f'❌ 早期模式要拿 {ref_dir}/idx_long.json(2010 起那份)的重疊年對表,讀不到 → 不抓(⛔ 沒驗過的資料不寫)')
+            sys.exit(1)
+        from dispo_probe import fm, TOKENS
+        print(f'🔑 token:{len(TOKENS)} 把 ・🕰️ 早期模式 {START} ~ {EARLY_END}(只有指數)')
+        obj, errs = build_early(fm, ref_long, twse=twse_index_rows)
+    else:
+        ref_tw = load_ref(os.path.join(ref_dir, '^TWII.json'))
+        ref_05 = load_ref(os.path.join(ref_dir, '0050.json'))
+        ref_ot = load_ref(os.path.join(ref_dir, '^TWOII.json'))   # 🏪 選用:沒有就只存不對表(twoii_error 會寫原因)
+        if not ref_tw or not ref_05:
+            print(f'❌ 對表用的參考檔讀不到({ref_dir}/^TWII.json={bool(ref_tw)}、0050.json={bool(ref_05)})→ 不抓(⛔ 沒驗過的資料不寫)')
+            sys.exit(1)
+        from dispo_probe import fm, TOKENS
+        print(f'🔑 token:{len(TOKENS)} 把 ・起點 {START}')
+        obj, errs = build(fm, ref_tw, ref_05, ref_twoii=ref_ot)
     if errs:
         print('❌ 守門沒過 → 不寫檔:\n  ' + '\n  '.join(errs))
         sys.exit(1)

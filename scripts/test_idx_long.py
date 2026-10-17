@@ -22,9 +22,21 @@ on = WF.split('\non:')[1].split('\npermissions')[0]
 ok('① 只有 workflow_dispatch(⛔ 沒有 cron / push → 不吃排程配額、不會被 push 觸發)',
    'workflow_dispatch' in on and 'schedule' not in on and 'push' not in on)
 ok('② 自己的 concurrency group(⛔ 不共用)', re.search(r'group:\s*idx-long\b', WF) is not None)
-ok('③ 推 data 分支、只 commit 那一個檔、5 次重試 + pull --rebase',
-   'git checkout -f -B data origin/data' in WF and '-- data/idx_long.json' in WF
+ok('③ 推 data 分支、只 commit 那一個檔(檔名由起點決定)、5 次重試 + pull --rebase',
+   'git checkout -f -B data origin/data' in WF and '-- "data/$OUT_NAME"' in WF
    and 'git push origin data' in WF and 'pull --rebase origin data' in WF and '--force' not in WF)
+# 🕰️ V79.3.5 起點輸入:預設 2010-01-01(行為不變);早於 2010 → 另存 idx_long_early.json;⛔ inputs 只經 env 進來、先驗格式
+_runs = '\n'.join(l for l in WF.split('\n') if 'inputs.' in l)
+ok('⑭ 起點輸入預設 2010-01-01、⛔ inputs 只出現在 env(不直接塞進指令)、先驗 YYYY-MM-DD',
+   re.search(r"start:\s*\n(?:\s+\w+:.*\n)*?\s+default:\s*'2010-01-01'", WF) is not None
+   and _runs.strip().startswith('IN_START: ${{ inputs.start }}') and _runs.count('inputs.') == 1
+   and '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' in WF)
+ok('⑭b 早於 2010 → idx_long_early.json;否則 idx_long.json(⛔ 早期資料不可蓋掉回測用那份)',
+   'if [[ "$S" < "2010-01-01" ]]; then OUT=idx_long_early.json; else OUT=idx_long.json; fi' in WF
+   and '--out "/tmp/$OUT_NAME"' in WF)
+ok('⑮ 腳本早期模式:起點早於預設才切、拿 idx_long.json 對表、FinMind 不夠深退證交所(⛔ 不改 miner.py)',
+   'if START < DEFAULT_START:' in CODE and "load_long_ref(os.path.join(ref_dir, 'idx_long.json'))" in CODE
+   and 'build_early(fm, ref_long, twse=twse_index_rows)' in CODE and "EARLY_END = '2010-12-31'" in CODE)
 ok('④ 參考檔取完驗大小(⛔ 0 bytes 陷阱)', '[ -s "/tmp/idx_ref/$f.json" ]' in WF)
 ok('⑤ 先跑 selftest 才抓', WF.index('--selftest') < WF.index('--ref-dir /tmp/idx_ref'))
 ok('⑥ 只給 FINMIND_TOKENS(⛔ 不給用不到的機密)', set(re.findall(r'secrets\.(\w+)', WF)) == {'FINMIND_TOKENS'})

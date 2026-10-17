@@ -1,4 +1,4 @@
-name: 📚 加權指數 + 0050 + 櫃買 長歷史(2010 起,手動)
+name: 📚 加權指數 + 0050 + 櫃買 長歷史(2010 起,手動;可另存更早的指數)
 
 # 📚 V77.6.3 給長歷史回測用(`merge_k66_history.py --idx-long`):
 #   2021-09 以前的大盤原本是「等權代理」,而「嚴格空頭不做」正是吃大盤判斷的 → 補真的加權;
@@ -7,8 +7,17 @@ name: 📚 加權指數 + 0050 + 櫃買 長歷史(2010 起,手動)
 # 🏛️ 推 data 分支的 data/idx_long.json(照 fin_backfill「✂️ 推 data 分支」那段):
 #   進了 data 分支,daily_miner 的 `git archive origin/data` 底層 + 🛟 撿回就會保住它,daily_miner 一行不改。
 # ⛔ 只有手動觸發(沒有 cron → 不吃排程配額);前端不讀這個檔。
+# 🕰️ V79.3.5 輸入「起點」(使用者:「要,補抓」2000~2009 給崩盤預警回測):
+#   預設 2010-01-01 = 回測用那份 data/idx_long.json(行為一字不變);
+#   更早(例 2000-01-01)= 早期模式:只有指數、抓到 2010 年底、另存 data/idx_long_early.json
+#   (⛔ 不動 idx_long.json —— 既有回測讀的那份),對表用 idx_long.json 重疊的那一年。
 on:
   workflow_dispatch:
+    inputs:
+      start:
+        description: '起點 YYYY-MM-DD(預設 2010-01-01 = 回測用那份;更早 = 另存 idx_long_early.json,只有指數)'
+        required: false
+        default: '2010-01-01'
 
 permissions:
   contents: write
@@ -47,34 +56,49 @@ jobs:
           done
           # 🏪 V79.2.4 櫃買參考檔(選用):data 分支沒有就跳過(backfill 會寫 twoii_error 說明沒對表,⛔ 不擋前四份)
           if git show "origin/data:data/^TWOII.json" > "/tmp/idx_ref/^TWOII.json" 2>/dev/null && [ -s "/tmp/idx_ref/^TWOII.json" ]; then echo "✅ ^TWOII 參考檔"; else rm -f "/tmp/idx_ref/^TWOII.json"; echo "⚠️ data 分支沒有 ^TWOII.json,櫃買只存不對表"; fi
+          # 🕰️ V79.3.5 早期模式拿 idx_long.json 重疊的那一年對表(選用:讀不到時早期模式自己會 exit 1,預設模式用不到)
+          if git show "origin/data:data/idx_long.json" > "/tmp/idx_ref/idx_long.json" 2>/dev/null && [ -s "/tmp/idx_ref/idx_long.json" ]; then echo "✅ idx_long.json 參考檔"; else rm -f "/tmp/idx_ref/idx_long.json"; echo "⚠️ data 分支沒有 idx_long.json(只有早期模式需要)"; fi
           ls -l /tmp/idx_ref
+
+      - name: 🕰️ 起點與檔名
+        env:
+          IN_START: ${{ inputs.start }}
+        run: |
+          set -e
+          # ⛔ 輸入只經 env 進來、先驗格式(不直接把 inputs 塞進指令)
+          S="${IN_START:-2010-01-01}"
+          [[ "$S" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || { echo "❌ 起點格式要 YYYY-MM-DD(收到 $S)"; exit 1; }
+          if [[ "$S" < "2010-01-01" ]]; then OUT=idx_long_early.json; else OUT=idx_long.json; fi
+          echo "IDX_START=$S" >> "$GITHUB_ENV"
+          echo "OUT_NAME=$OUT" >> "$GITHUB_ENV"
+          echo "📌 起點 $S → data/$OUT"
 
       - name: 📚 抓 + 守門(第一根日期 / 根數 / 重疊期對表)
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
         run: |
           python3 scripts/idx_long_backfill.py --selftest
-          python3 scripts/idx_long_backfill.py --ref-dir /tmp/idx_ref --out /tmp/idx_long.json
+          python3 scripts/idx_long_backfill.py --ref-dir /tmp/idx_ref --out "/tmp/$OUT_NAME"
 
-      - name: 🚀 推 data 分支(data/idx_long.json)
+      - name: 🚀 推 data 分支(data/idx_long.json 或 data/idx_long_early.json)
         run: |
           set -e
-          [ -s /tmp/idx_long.json ] || { echo "❌ 沒有產物 → 不推"; exit 1; }
+          [ -s "/tmp/$OUT_NAME" ] || { echo "❌ 沒有產物 → 不推"; exit 1; }
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git reset --hard -q 2>/dev/null || true
           git clean -fdq 2>/dev/null || true
           git checkout -f -B data origin/data
           mkdir -p data
-          cp /tmp/idx_long.json data/idx_long.json
-          git add -f data/idx_long.json
+          cp "/tmp/$OUT_NAME" "data/$OUT_NAME"
+          git add -f "data/$OUT_NAME"
           if git diff --cached --quiet; then
-            echo "ℹ️ data/idx_long.json 跟分支上一樣,沒東西可推"
+            echo "ℹ️ data/$OUT_NAME 跟分支上一樣,沒東西可推"
           else
-            git commit -q -m "📚 加權 + 0050 長歷史 → data 分支 ($(date -u '+%Y-%m-%d %H:%M UTC'))" -- data/idx_long.json
+            git commit -q -m "📚 加權指數長歷史 $OUT_NAME → data 分支 ($(date -u '+%Y-%m-%d %H:%M UTC'))" -- "data/$OUT_NAME"
             pushed=0
             for i in 1 2 3 4 5; do
-              git push origin data && { pushed=1; echo "✅ data/idx_long.json 已推上 data 分支 (第 $i 次)"; break; }
+              git push origin data && { pushed=1; echo "✅ data/$OUT_NAME 已推上 data 分支 (第 $i 次)"; break; }
               sleep $((i * 3))
               git pull --rebase origin data 2>/dev/null || true
             done
