@@ -3,6 +3,19 @@
 使用者(附三張截圖):「1.跑馬燈移除 2.app 預設策略符合進場,我想要的是我要點進階才能是領頭羊策略,所以 app 內容要注意文字敘述,不要露餡,現在有些文字有點疑似露餡了 3.產業 app 裡面的成績單沒有領頭羊策略」。追問後選:預設 = 決策台的「📈 符合進場」、🔥 觸發價預設收起;👑 搬進「🔓 進階功能」;作戰室成績單永遠顯示 👑。
 
 
+## 📦 2026-10-17 skl 技能盤點:6 支更新、新裝 dependency-auditor / context-budget、移除 sql-database-assistant(SQLite 是每輪重建的中介庫)・可選 4 支沒裝(env-secrets-manager 安全掃描仍 FAIL)・🚨 CLAUDE.md 已 602KB(比 09-09 爆掉那次大)
+
+使用者:讀 repo 對照 skl 技能庫(463 支、12 個組合),分必裝 / 建議 / 可選列出 → 「依照你推薦的做」。
+
+- **更新**:已裝 6 支從 skl c8a537e(10/07)→ 5223088;`--no-hook`,⛔ 沒加開工健檢 hook、沒動 CLAUDE.md。
+- **新裝**:
+  - `dependency-auditor` —— 依賴沒釘版:`index.html:25` `sortablejs@latest`、`requirements.txt` 全 `>=`、`cloud-worker/package.json` `wrangler ^3`;V74.7.2 踩過 CDN 套件載不到整個 App 打不開。⛔ 不拿來自動升級。
+  - `context-budget` —— CLAUDE.md 量到 **602,287 bytes**,比 2026-09-09 搬家前爆掉那次(507KB)還大。⛔ 這支不會自動瘦身;要瘦身照 09-09 把決策紀錄搬去 `docs/`(待使用者決定)。
+- **移除** `sql-database-assistant` —— SQLite 只在 `miner.py` / `api.py`,而且 `seed_db_from_json` 每輪重建,README 自己寫「⛔ 不拿來改資料結構」→ 用不到。
+- **可選、沒裝**:`performance-profiler`、`pw`(本 repo 測試慣例已完整)、`llm-trading-agent-security`(`auto_trade.py` 可對照,但一半在講加密錢包)、`env-secrets-manager`(安裝器安全掃描**仍 FAIL PROMPT-EXFIL**,同 10/07)。
+- **不建議的組合**:core(跟 `/ship`、`/audit`、內建 `/code-review` 重疊)・stock(`tw-stock` = 第二份採礦;`financial-analyst` 跟 `.claude/agents/financial-analyst.md` 撞名)・ai(`_aiModel` V78.5.6 已做)・其餘沒有對外 API / 流程已由專案技能管。
+- 驗證:`node scripts/test_skills.mjs`。
+
 ## 🌅 V79.3.4 盤前體檢沒更新 —— 美股收盤後沒有任何一輪總經採礦
 
 使用者截圖(10/16 09:22):盤前體檢「資料採集 10/15 23:57」。

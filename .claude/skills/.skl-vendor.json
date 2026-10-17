@@ -1,21 +1,23 @@
 {
   "skills": [
     "app-guardrails-audit",
+    "context-budget",
+    "dependency-auditor",
     "llm-cost-optimizer",
     "senior-data-scientist",
     "senior-prompt-engineer",
-    "sql-database-assistant",
     "strict-api"
   ],
   "source_repo": "https://github.com/xin7355-collab/skl",
-  "source_commit": "c8a537e",
-  "updated_at": "2026-10-07T00:59:30Z",
+  "source_commit": "5223088",
+  "updated_at": "2026-10-17T12:02:23Z",
   "packs": [],
   "extra_skills": [
+    "ecc/skills/context-budget",
     "engineering-team/skills/senior-data-scientist",
     "engineering-team/skills/senior-prompt-engineer",
     "engineering/llm-cost-optimizer/skills/llm-cost-optimizer",
-    "engineering/skills/sql-database-assistant",
+    "engineering/skills/dependency-auditor",
     "engineering/strict-api"
   ]
 }
