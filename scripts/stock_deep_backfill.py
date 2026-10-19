@@ -1,0 +1,503 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+🗄️ 個股深歷史補挖(V79.3.8,「變因因子」研究的資料底)—— FinMind 免費層「一檔一次」→ 獨立分支 `stock_deep`
+
+使用者(2026-10-20):「我想做的是變因因子…把能測試的都列出來再來執行。要挖礦就挖礦。」
+⭐ 盤點時發現:2010~2020 的個股價格只有外部 k66 那份(約 1,000 檔、只有上市、只有活到現在的、沒有除權息)
+   → 上櫃與下市股整段不在、inst_deep 2012~2020 有 448 檔法人資料掛不上去。所以第一優先是 price10 + div10。
+
+資料集(登記表 DATASETS;一檔一次呼叫,全部 FinMind 標「Free(w/ data_id)」):
+  price10  TaiwanStockPrice              2010-01-01 ~ 2021-03-31  → 跟 klines_deep 重疊 3 個月接縫 + 對表
+  div10    TaiwanStockDividendResult     2010-01-01 ~ 2021-03-31  → 含息報酬(⛔ 不動既有 dividends_hist.json)
+  margin   TaiwanStockMarginPurchaseShortSale 2010-01-01 ~ 2023-06-30 → 跟 data/*.json 2023-05 起對表
+  rev      TaiwanStockMonthRevenue       2009-01-01 ~ 今天
+  per      TaiwanStockPER                2010-01-01 ~ 今天
+  share    TaiwanStockShareholding       2010-01-01 ~ 今天
+  dt       TaiwanStockDayTrading         2014-01-01 ~ 今天
+  sbl      TaiwanDailyShortSaleBalances  2010-01-01 ~ 今天
+
+⛔ 欄位不憑印象寫:除了 price10 / margin(既有程式已驗過的欄名),其他一律「整份數字欄照存」
+   (拿掉字串欄與整段都一樣的欄),每個資料集開工前先抓 2330 印出欄位與最早日期(探路)。
+
+架構(照 klines_backfill / inst_backfill deep 的決定,⛔ 別改回去):
+  ① 寫 `stock_deep/{ds}/{代號}.json.gz`,推**獨立 orphan 分支 stock_deep**(⛔ 不進 data / gh-pages,陷阱 #41)
+  ② 已有就跳過(冪等,可續跑);那段期間沒資料也寫一個空檔(下次才不會一直重抓)
+  ③ token 輪動 / 免費層節流 / 402·429 等額度:**直接用 `inst_backfill.fm`**(⛔ 不抄第二份)
+  ④ ⭐ 避開共用金鑰的排程時段(PROTECT;selftest 拿去跟那幾支 workflow 的 cron 比對)
+  ⑤ 時間預算用完 → GitHub output `more=1`,workflow 用 workflow_dispatch 接力自己
+
+守門(⛔ 都不可拿掉):探路失敗那個資料集整個跳過並記原因 ・對表 <90% 那個資料集這一輪新寫的全部刪掉不推 ・
+  一檔都沒寫 → 那個資料集算失敗 ・收尾把每個資料集的狀態寫進 `stock_deep/_status.json`(只記「第幾把」不記金鑰值)
+
+跑法:python3 scripts/stock_deep_backfill.py           (env:QUEUE / MAX_MIN / LIMIT / UNIVERSE / OUT_DIR / DATA_DIR / KLINES_DIR)
+      python3 scripts/stock_deep_backfill.py --selftest
+"""
+import gzip
+import json
+import os
+import sys
+import time
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'scripts'))
+
+OUT = Path(os.getenv('OUT_DIR') or 'stock_deep')
+DATA_DIR = Path(os.getenv('DATA_DIR') or 'data')
+KLINES_DIR = Path(os.getenv('KLINES_DIR') or 'klines_deep')
+UNIVERSE = os.getenv('UNIVERSE') or ''
+QUEUE = [x.strip() for x in (os.getenv('QUEUE') or 'price10,div10,margin,rev,per,share,dt,sbl').split(',') if x.strip()]
+MAX_MIN = float(os.getenv('MAX_MIN') or 330)          # 一棒總時間(含等保護時段);job 上限 355
+LIMIT = int(os.getenv('LIMIT') or 99999)               # 這一棒每個資料集最多抓幾檔(試跑用)
+CHECK_MIN_N = 50                                       # 對表至少要這麼多檔「兩邊都有」才判
+CHECK_MIN_RATE = 0.90
+TODAY = date.today().isoformat()
+
+DATASETS = {
+    'price10': {'ds': 'TaiwanStockPrice', 'start': '2010-01-01', 'end': '2021-03-31', 'kind': 'price', 'check': 'price', 'min_nonempty': 0.5},
+    'div10':   {'ds': 'TaiwanStockDividendResult', 'start': '2010-01-01', 'end': '2021-03-31', 'kind': 'generic', 'check': None, 'min_nonempty': 0.2},
+    'margin':  {'ds': 'TaiwanStockMarginPurchaseShortSale', 'start': '2010-01-01', 'end': '2023-06-30', 'kind': 'generic', 'check': 'margin', 'min_nonempty': 0.5},
+    'rev':     {'ds': 'TaiwanStockMonthRevenue', 'start': '2009-01-01', 'end': TODAY, 'kind': 'generic', 'check': None, 'min_nonempty': 0.5},
+    'per':     {'ds': 'TaiwanStockPER', 'start': '2010-01-01', 'end': TODAY, 'kind': 'generic', 'check': None, 'min_nonempty': 0.5},
+    'share':   {'ds': 'TaiwanStockShareholding', 'start': '2010-01-01', 'end': TODAY, 'kind': 'generic', 'check': None, 'min_nonempty': 0.5},
+    'dt':      {'ds': 'TaiwanStockDayTrading', 'start': '2014-01-01', 'end': TODAY, 'kind': 'generic', 'check': None, 'min_nonempty': 0.3},
+    'sbl':     {'ds': 'TaiwanDailyShortSaleBalances', 'start': '2010-01-01', 'end': TODAY, 'kind': 'generic', 'check': None, 'min_nonempty': 0.1},
+}
+
+# ⭐ 共用 FINMIND_TOKENS 的排程(UTC;週一=1 … 週日=7 用 ISO weekday)。每一列 = (星期集合, 開始, 結束)。
+#    ⛔ 改了那幾支 workflow 的 cron 要回來改這裡 —— selftest ⑥ 會把 cron 讀出來比對,蓋不到就紅。
+WK = {1, 2, 3, 4, 5}
+PROTECT = [
+    (WK, '08:15', '14:45'),      # daily_miner 08:30 / 12:00(兩輪各 2 小時多)+ worker 17:00 台北叫醒
+    (WK, '17:45', '22:00'),      # fund_sweep 18:00 → pe_band(workflow_run 接在後面,cron 19:30 備援)
+    (WK, '00:00', '00:12'),      # macro_cron(8 分鐘)
+    (WK, '04:00', '04:12'),
+    (WK, '16:00', '16:12'),
+    ({6}, '21:15', '23:30'),     # dividend_sweep 週六 21:30
+    ({5}, '22:45', '23:59'),     # tdcc_sweep 週五 23:00
+    ({6}, '00:00', '00:15'),
+]
+SHORT_WAIT_MIN = 30              # 短的保護時段(macro_cron 那種)就地等;長的停手接力
+
+
+def _hm(s):
+    h, m = s.split(':')
+    return int(h) * 60 + int(m)
+
+
+def protect_state(now):
+    """回 (在保護時段裡嗎, 還要等幾分鐘, 距下一個保護時段開始還有幾分鐘)。now = aware UTC datetime。"""
+    inside, wait = False, 0.0
+    cur = now.isoweekday()
+    mins = now.hour * 60 + now.minute + now.second / 60
+    for days, a, b in PROTECT:
+        if cur in days and _hm(a) <= mins < _hm(b) + 1:
+            inside = True
+            wait = max(wait, _hm(b) + 1 - mins)
+    nxt = None
+    for k in range(0, 8):                      # 往後找 8 天內最近的一個開始
+        d = now + timedelta(days=k)
+        for days, a, _b in PROTECT:
+            if d.isoweekday() not in days:
+                continue
+            st = d.replace(hour=_hm(a) // 60, minute=_hm(a) % 60, second=0, microsecond=0)
+            if st > now:
+                m = (st - now).total_seconds() / 60
+                nxt = m if nxt is None else min(nxt, m)
+        if nxt is not None and k >= 1:
+            break
+    return inside, wait, (nxt if nxt is not None else 1e9)
+
+
+# ── 資料打包 ─────────────────────────────────────────────────────
+def _d(x):
+    return str(x or '').replace('/', '-')[:10]
+
+
+def _num(v):
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, (int, float)):
+        return v
+    try:
+        s = str(v).replace(',', '').strip()
+        return float(s) if s not in ('', '-', '--', 'None', 'nan') else None
+    except Exception:
+        return None
+
+
+def pack_generic(rows):
+    """FinMind 列 → 欄位式 {d:[日期], c:[欄名], v:[[每一列的值]]}。只留數字欄,拿掉整段都一樣的欄(沒有資訊)。
+    同一天多列 → 留最後一列(FinMind 回傳已依日期排序)。⛔ 不猜欄名:欄位是從資料本身讀出來的。"""
+    by = {}
+    for r in rows or []:
+        d = _d(r.get('date'))
+        if d:
+            by[d] = r
+    ds = sorted(by)
+    if not ds:
+        return {'d': [], 'c': [], 'v': []}
+    keys = []
+    for r in by.values():
+        for k in r:
+            if k not in keys and k not in ('date', 'stock_id', 'stock_name'):
+                keys.append(k)
+    cols = []
+    for k in keys:
+        vals = [_num(by[d].get(k)) for d in ds]
+        nn = [x for x in vals if x is not None]
+        if len(nn) < max(1, len(ds) * 0.5):
+            continue                                   # 大多不是數字 → 字串欄,不存
+        if len(set(nn)) <= 1 and len(ds) > 1:
+            continue                                   # 整段一樣 → 沒資訊
+        cols.append(k)
+    v = [[(lambda x: (int(x) if isinstance(x, float) and x.is_integer() and abs(x) < 9e15 else x))(_num(by[d].get(k))) for k in cols] for d in ds]
+    return {'d': ds, 'c': cols, 'v': v}
+
+
+def pack_price(rows, sym, delisted=False):
+    """TaiwanStockPrice → 跟 klines_deep 一樣的格式 {s, dl, k:[[date,o,h,l,c,vol]], m:[成交金額]};寫檔前套 miner._backadjust_splits(共用)。"""
+    recs = []
+    for r in rows or []:
+        try:
+            c = float(r['close'])
+            if c <= 0:
+                continue
+            recs.append({'date': _d(r['date']), 'open': float(r['open']), 'high': float(r['max']), 'low': float(r['min']),
+                         'close': c, 'volume': int(r.get('Trading_Volume') or 0), 'money': int(r.get('Trading_money') or 0)})
+        except (KeyError, TypeError, ValueError):
+            continue
+    recs.sort(key=lambda x: x['date'])
+    if recs:
+        import miner                                    # 只在真的要調整時才載(selftest 也走這條)
+        miner._backadjust_splits(recs, sym=sym)
+    return {'s': sym, 'dl': 1 if delisted else 0,
+            'k': [[x['date'], x['open'], x['high'], x['low'], x['close'], x['volume']] for x in recs],
+            'm': [x['money'] for x in recs]}
+
+
+def is_empty(obj):
+    return not (obj.get('k') if 'k' in obj else obj.get('d'))
+
+
+# ── 對表 ─────────────────────────────────────────────────────────
+def check_price(obj, kd):
+    """price10 跟 klines_deep 重疊那段(2021-01~03):每天收盤比例要是常數(klines_deep 已做過分割回調 → 比例可以 ≠1,但要一樣)。
+    回 None(沒得比)/ True / False。"""
+    if not kd or not obj.get('k'):
+        return None
+    mine = {r[0]: r[4] for r in obj['k']}
+    rat = [mine[r[0]] / r[4] for r in kd.get('k') or [] if r[0] in mine and r[4] and mine[r[0]]]
+    if len(rat) < 20:
+        return None
+    return max(rat) / min(rat) - 1 <= 0.005
+
+
+def check_margin(pk, rows):
+    """margin 跟 data/*.json 重疊那段(2023-05 起):融資餘額(張)1 張或 1% 以內才算一致。回 (可比天數, 一致天數)。"""
+    if not pk.get('c') or 'MarginPurchaseTodayBalance' not in pk['c']:
+        return 0, 0
+    i = pk['c'].index('MarginPurchaseTodayBalance')
+    have = {_d(r.get('date')): r.get('margin_balance') for r in (rows or []) if r.get('margin_balance')}
+    n = hit = 0
+    for d, row in zip(pk['d'], pk['v']):
+        a, b = have.get(d), row[i]
+        if not a or b is None:
+            continue
+        n += 1
+        hit += abs(a - b) <= max(1, abs(a) * 0.01)
+    return n, hit
+
+
+# ── 母體 ─────────────────────────────────────────────────────────
+def read_universe(path):
+    out, seen = [], set()
+    try:
+        toks = Path(path).read_text(encoding='utf-8').split()
+    except Exception:
+        return []
+    for x in toks:
+        x = x.strip()
+        if len(x) == 4 and x.isdigit() and not x.startswith('0') and x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
+
+def delisted_since(start):
+    """TaiwanStockDelisting(資料集層級,沒有 data_id)→ start 之後下市的 4 碼個股。抓不到回 (set(), 原因)。"""
+    from dispo_probe import fm as fm_any                 # 通用版(只有這支能不帶 data_id)
+    rows, err = fm_any('TaiwanStockDelisting', {})
+    if not rows:
+        return set(), err or 'empty'
+    out = set()
+    for r in rows:
+        sid, d = str(r.get('stock_id') or ''), _d(r.get('date'))
+        if len(sid) == 4 and sid.isdigit() and not sid.startswith('0') and d >= start:
+            out.add(sid)
+    return out, None
+
+
+# ── 主流程 ───────────────────────────────────────────────────────
+def gh_out(**kw):
+    p = os.getenv('GITHUB_OUTPUT')
+    for k, v in kw.items():
+        print(f'::notice::{k}={v}')
+        if p:
+            with open(p, 'a', encoding='utf-8') as f:
+                f.write(f'{k}={v}\n')
+
+
+def main():
+    import inst_backfill as IB                          # fm(token 輪動 / 不印金鑰)+ TOKENS
+    if not IB.TOKENS:
+        print('❌ 沒有 FINMIND_TOKENS → 補挖需要金鑰')
+        return 1
+    t0 = time.time()
+    deadline = t0 + MAX_MIN * 60
+    now = datetime.now(timezone.utc)
+    inside, wait, _ = protect_state(now)
+    if inside:
+        w = min(wait, MAX_MIN - 15)
+        print(f'⏸️ 現在在共用金鑰的排程時段(UTC {now:%a %H:%M})→ 先等 {w:.0f} 分(⛔ 不搶 daily_miner / fund_sweep 的額度)', flush=True)
+        time.sleep(max(0, w) * 60)
+    base = read_universe(UNIVERSE)
+    dl, dl_err = delisted_since('2010-01-01')
+    if dl_err:
+        print(f'⚠️ 下市名單抓不到({dl_err})→ 這一棒只有現存股(倖存者偏誤還在,誠實記錄)')
+    syms = base + sorted(dl - set(base))
+    if len(syms) < 1500:
+        print(f'❌ 母體只有 {len(syms)} 檔(< 1,500)→ UNIVERSE 可能沒做好,⛔ 不跑')
+        return 1
+    pace = max(0.12, 6.2 / max(1, len(IB.TOKENS)))
+    print(f'🗄️ 母體 {len(syms)} 檔(現存 {len(base)} + 2010 後下市 {len(dl - set(base))})・token {len(IB.TOKENS)} 把 ・每次間隔 {pace:.1f} 秒 ・預算 {MAX_MIN:.0f} 分 ・排隊 {QUEUE}', flush=True)
+    st_path = OUT / '_status.json'
+    try:
+        status = json.loads(st_path.read_text(encoding='utf-8'))
+    except Exception:
+        status = {}
+    left_q, more, reason = [], False, ''
+    for qi, key in enumerate(QUEUE):
+        spec = DATASETS.get(key)
+        if not spec:
+            print(f'⚠️ 認不得的資料集 {key} → 跳過')
+            continue
+        if time.time() > deadline - 120:
+            more, reason = True, 'time'
+            left_q = QUEUE[qi:]
+            break
+        dd = OUT / key
+        dd.mkdir(parents=True, exist_ok=True)
+        todo = [s for s in syms if not (dd / f'{s}.json.gz').exists()]
+        st = status.setdefault(key, {})
+        if not todo:
+            print(f'✅ {key}:{len(syms)} 檔都有了')
+            st.update({'done': True, 'have': len(syms)})
+            continue
+        # 🚧 探路:2330(⛔ 別 2,000 檔打完才發現資料集名 / 層級 / 深度不對)
+        rows, err = IB.fm(spec['ds'], '2330', spec['start'], end_date=spec['end'], timeout=90)
+        if not rows:
+            print(f'❌ {key} 探路失敗({spec["ds"]}:{err or "0 列"})→ 這個資料集整個跳過')
+            st.update({'probe_err': (err or 'empty')[:120], 'at': TODAY})
+            continue
+        pk = pack_price(rows, '2330') if spec['kind'] == 'price' else pack_generic(rows)
+        first = (pk['k'][0][0] if spec['kind'] == 'price' else pk['d'][0]) if not is_empty(pk) else '?'
+        cols = ['o', 'h', 'l', 'c', 'v', 'money'] if spec['kind'] == 'price' else pk['c']
+        print(f'🔎 {key} 探路 2330:{len(rows)} 列 ・最早 {first} ・欄位 {cols} ・樣本 {json.dumps(rows[0], ensure_ascii=False)[:160]}', flush=True)
+        st.update({'probe_first': first, 'cols': cols})
+        wrote_now, empty_now, waits, n_try = [], 0, 0, 0
+        chk_n = chk_hit = 0
+        stop = None
+        for s in todo:
+            if n_try >= LIMIT:
+                stop = 'limit'
+                break
+            while True:                                   # 保護時段:短的就地等、長的停手接力(⛔ 不搶排程的額度)
+                inside, wait, nxt = protect_state(datetime.now(timezone.utc))
+                if inside:
+                    if wait <= SHORT_WAIT_MIN and time.time() + wait * 60 < deadline - 120:
+                        print(f'   ⏸️ 短的保護時段 → 就地等 {wait:.0f} 分', flush=True)
+                        time.sleep(wait * 60)
+                        continue
+                    stop = 'time'
+                elif nxt < 2:
+                    time.sleep(nxt * 60 + 5)
+                    continue
+                break
+            if stop or time.time() > deadline - 120:
+                stop = stop or 'time'
+                break
+            data, err = None, None
+            for _ in range(6):
+                data, err = IB.fm(spec['ds'], s, spec['start'], end_date=spec['end'], timeout=90)
+                if data is not None or not err or not (err.startswith('http402') or err.startswith('http429')):
+                    break
+                waits += 1
+                print(f'   ⏳ {s} 額度用完({err})→ 等 5 分鐘', flush=True)
+                time.sleep(300)
+            time.sleep(pace)
+            n_try += 1
+            if data is None:
+                IB._rec(f'{key}_' + (err or '?')[:14])
+                continue
+            obj = pack_price(data, s, delisted=(s in dl)) if spec['kind'] == 'price' else pack_generic(data)
+            if is_empty(obj):
+                empty_now += 1
+            with gzip.open(dd / f'{s}.json.gz', 'wt', encoding='utf-8') as f:
+                json.dump(obj, f, ensure_ascii=False, separators=(',', ':'))
+            wrote_now.append(s)
+            if spec['check'] == 'price' and not is_empty(obj):
+                kp = KLINES_DIR / f'{s}.json.gz'
+                if kp.exists():
+                    try:
+                        with gzip.open(kp, 'rt', encoding='utf-8') as f:
+                            r = check_price(obj, json.load(f))
+                        if r is not None:
+                            chk_n += 1
+                            chk_hit += bool(r)
+                    except Exception:
+                        pass
+            elif spec['check'] == 'margin' and not is_empty(obj):
+                p = DATA_DIR / f'{s}.json'
+                if p.exists():
+                    try:
+                        a, b = check_margin(obj, json.loads(p.read_text(encoding='utf-8')))
+                        if a >= 5:
+                            chk_n += 1
+                            chk_hit += (b / a >= 0.9)
+                    except Exception:
+                        pass
+            if len(wrote_now) % 100 == 0:
+                print(f'   … {key} {len(wrote_now)} 檔 ・{(time.time() - t0) / 60:.0f} 分 ・空 {empty_now} ・等額度 {waits} ・對表 {chk_hit}/{chk_n}', flush=True)
+        have = sum(1 for s in syms if (dd / f'{s}.json.gz').exists())
+        ne = len(wrote_now) - empty_now
+        rate = (chk_hit / chk_n) if chk_n else None
+        print(f'📊 {key}:這一棒寫 {len(wrote_now)}(空 {empty_now})・等額度 {waits} ・累計 {have}/{len(syms)}'
+              + (f' ・對表 {chk_hit}/{chk_n}({rate:.1%})' if chk_n else ''), flush=True)
+        bad = None
+        if n_try > 0 and not wrote_now:
+            bad = '處理了但一檔都沒寫(金鑰 / 額度 / 資料集名)'
+        elif spec['check'] and chk_n >= CHECK_MIN_N and rate < CHECK_MIN_RATE:
+            bad = f'對表 {rate:.1%} < {CHECK_MIN_RATE:.0%}(單位 / 欄位 / 接縫不對)'
+        elif len(wrote_now) >= 200 and ne / len(wrote_now) < spec['min_nonempty']:
+            bad = f'有資料的只有 {ne}/{len(wrote_now)}(< {spec["min_nonempty"]:.0%})'
+        if bad:
+            for s in wrote_now:
+                (dd / f'{s}.json.gz').unlink(missing_ok=True)
+            print(f'❌ {key}:{bad} → 這一棒新寫的 {len(wrote_now)} 檔全部刪掉不推,⛔ 不接力這個資料集', flush=True)
+            st.update({'fail': bad, 'at': TODAY})
+            continue
+        st.update({'have': have, 'of': len(syms), 'chk': [chk_hit, chk_n], 'at': TODAY, 'done': have >= len(syms)})
+        if stop:
+            more, reason = True, stop
+            left_q = QUEUE[qi:]
+            break
+    st_path.parent.mkdir(parents=True, exist_ok=True)
+    st_path.write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding='utf-8')
+    if IB.REASON:
+        print('   失敗分類:' + ' ・'.join(f'{k}×{v}' for k, v in sorted(IB.REASON.items(), key=lambda x: -x[1])[:10]))
+    gh_out(more='1' if more else '0', reason=reason, queue=','.join(left_q) if more else '', minutes=f'{(time.time() - t0) / 60:.0f}')
+    return 0
+
+
+# ── 🧪 selftest ───────────────────────────────────────────────────
+def selftest():
+    bad = []
+
+    def ok(name, cond, extra=''):
+        print(f"  {'✅' if cond else '❌'} {name}{(' ・' + str(extra)[:200]) if not cond else ''}")
+        if not cond:
+            bad.append(name)
+
+    rows = [{'date': '2015-03-03', 'stock_id': '2330', 'PER': 12.5, 'PBR': 3.1, 'dividend_yield': 2.0, 'note': 'x', 'lim': 49.99},
+            {'date': '2015/03/02', 'stock_id': '2330', 'PER': 12.0, 'PBR': '3,050', 'dividend_yield': 2.1, 'note': 'y', 'lim': 49.99},
+            {'date': '2015-03-03', 'stock_id': '2330', 'PER': 12.6, 'PBR': 3.2, 'dividend_yield': 2.0, 'note': 'z', 'lim': 49.99}]
+    pk = pack_generic(rows)
+    ok('① 日期排序、斜線日期、同一天留最後一列', pk['d'] == ['2015-03-02', '2015-03-03'] and pk['v'][1][pk['c'].index('PER')] == 12.6, pk)
+    ok('① 字串欄不存、整段一樣的欄不存、千分位數字照讀', 'note' not in pk['c'] and 'lim' not in pk['c'] and pk['v'][0][pk['c'].index('PBR')] == 3050, pk)
+    ok('① 空的 → 空包', pack_generic([]) == {'d': [], 'c': [], 'v': []} and is_empty(pack_generic([])))
+    # ② price:格式跟 klines_deep 一樣 + 分割回調(1:2 → 舊的價格減半)
+    pr = []
+    c = 100.0
+    for i in range(80):
+        d = (date(2015, 1, 5) + timedelta(days=i)).isoformat()
+        if i == 40:
+            c = c / 2                                      # 第 40 天起 1:2 分割(物理上不可能的單日 −50%)
+        pr.append({'date': d, 'open': c, 'max': c * 1.01, 'min': c * 0.99, 'close': c, 'Trading_Volume': 1000, 'Trading_money': int(c * 1000)})
+    po = pack_price(pr, '9999')
+    ok('② price 格式 {s, dl, k:[[date,o,h,l,c,vol]], m}', set(po) == {'s', 'dl', 'k', 'm'} and len(po['k'][0]) == 6 and len(po['m']) == len(po['k']), po.get('k', [None])[0])
+    ok('② 分割回調:分割前的收盤被調成分割後的尺(⛔ 不留斷崖)', abs(po['k'][0][4] - 50.0) < 0.6 and abs(po['k'][-1][4] - 50.0) < 0.6, (po['k'][0][4], po['k'][-1][4]))
+    # ③ price 對表:比例是常數 → 一致;比例在變 → 不一致;重疊太短 → 沒得比
+    obj = {'k': [[f'2021-01-{i:02d}', 0, 0, 0, 100 + i, 0] for i in range(1, 29)]}
+    kd = {'k': [[f'2021-01-{i:02d}', 0, 0, 0, (100 + i) / 2, 0] for i in range(1, 29)]}
+    ok('③ 接縫比例 2 倍但是常數 → 一致(klines_deep 有做過分割回調)', check_price(obj, kd) is True)
+    kd2 = {'k': [[f'2021-01-{i:02d}', 0, 0, 0, (100 + i) * (1 + i / 100), 0] for i in range(1, 29)]}
+    ok('③ 比例一路在變 → 不一致', check_price(obj, kd2) is False)
+    ok('③ 重疊 < 20 天 → 沒得比', check_price({'k': obj['k'][:10]}, kd) is None)
+    # ④ margin 對表:張數一致才算;單位差 1,000 倍 → 對不上
+    mp = {'d': ['2023-05-22', '2023-05-23', '2023-05-24'], 'c': ['MarginPurchaseTodayBalance', 'ShortSaleTodayBalance'], 'v': [[1000, 5], [1010, 6], [990, 7]]}
+    dr = [{'date': '2023/05/22', 'margin_balance': 1000}, {'date': '2023/05/23', 'margin_balance': 1011}, {'date': '2023/05/24', 'margin_balance': 0}]
+    ok('④ 融資對表:兩邊都有才比、1 張或 1% 以內算一致', check_margin(mp, dr) == (2, 2), check_margin(mp, dr))
+    mp2 = dict(mp, v=[[x[0] * 1000, x[1]] for x in mp['v']])
+    ok('④ 單位差 1,000 倍 → 對不上', check_margin(mp2, dr) == (2, 0), check_margin(mp2, dr))
+    # ⑤ 保護時段
+    utc = timezone.utc
+    ins, w, nx = protect_state(datetime(2026, 10, 20, 9, 0, tzinfo=utc))       # 週二 09:00 = daily_miner
+    ok('⑤ 週二 09:00 在保護時段、要等到 14:46', ins and abs(w - (14 * 60 + 46 - 9 * 60)) < 1, (ins, w))
+    ins, w, nx = protect_state(datetime(2026, 10, 20, 15, 0, tzinfo=utc))
+    ok('⑤ 週二 15:00 不在,下一個是 16:00(macro_cron)', (not ins) and abs(nx - 60) < 1, (ins, nx))
+    ins, w, nx = protect_state(datetime(2026, 10, 25, 9, 0, tzinfo=utc))       # 週日
+    ok('⑤ 週日 09:00 不在保護時段', not ins, (ins, w))
+    ins, w, nx = protect_state(datetime(2026, 10, 24, 21, 40, tzinfo=utc))     # 週六 21:40 dividend_sweep
+    ok('⑤ 週六 21:40 在保護時段(dividend_sweep)', ins, (ins, w))
+    # ⑥ 每一支共用金鑰的排程 cron 都要落在保護時段裡(⛔ 改了 cron 沒回來改 PROTECT 就紅)
+    import re
+    wf = ROOT / '.github' / 'workflows'
+    miss, seen = [], 0
+    for name in ('daily_miner.yml', 'fund_sweep.yml', 'pe_band.yml', 'macro_cron.yml', 'dividend_sweep.yml', 'tdcc_sweep.yml'):
+        try:
+            txt = (wf / name).read_text(encoding='utf-8')
+        except Exception:
+            miss.append(f'{name} 讀不到')
+            continue
+        for m in re.finditer(r"cron:\s*'([^']+)'", txt):
+            mi, hr, _dom, _mon, dow = m.group(1).split()[:5]
+            dows = set()
+            for part in dow.split(','):
+                if part == '*':
+                    dows |= set(range(1, 8))
+                elif '-' in part:
+                    a, b = part.split('-')
+                    dows |= set(range(int(a), int(b) + 1))
+                else:
+                    dows.add(7 if int(part) == 0 else int(part))
+            for h in hr.split(','):
+                for dw in sorted(dows):
+                    seen += 1
+                    base = datetime(2026, 10, 19, tzinfo=utc) + timedelta(days=dw - 1)   # 2026-10-19 是週一
+                    t = base.replace(hour=int(h), minute=int(mi)) + timedelta(minutes=1)
+                    if not protect_state(t)[0]:
+                        miss.append(f'{name} {m.group(1)} 週{dw} {h}:{mi}')
+    ok('⑥ 共用金鑰排程的每一個 cron 都在保護時段裡', seen >= 15 and not miss, f'seen={seen} miss={miss[:6]}')
+    # ⑦ 母體
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        u = Path(td) / 'u.txt'
+        u.write_text('2330\n0050\n2330\n1101\n00878\nabcd\n 2317 \n6488\n', encoding='utf-8')
+        ok('⑦ 母體:只留 4 碼、不收 0 開頭、去重保序', read_universe(u) == ['2330', '1101', '2317', '6488'], read_universe(u))
+    # ⑧ 登記表 / workflow 一致
+    ok('⑧ 預設排隊都在登記表裡', all(k in DATASETS for k in 'price10,div10,margin,rev,per,share,dt,sbl'.split(',')))
+    wtxt = (wf / 'stock_deep_backfill.yml').read_text(encoding='utf-8') if (wf / 'stock_deep_backfill.yml').exists() else ''
+    ok('⑧ workflow 存在、接力叫的是自己、有 actions: write', 'gh workflow run stock_deep_backfill.yml' in wtxt and 'actions: write' in wtxt)
+    ok('⑧ workflow ⛔ 不加排程(手動 + 接力)', 'schedule:' not in wtxt)
+    print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
+    return 0 if not bad else 1
+
+
+if __name__ == '__main__':
+    if '--selftest' in sys.argv:
+        sys.exit(selftest())
+    sys.exit(main())

@@ -1,0 +1,138 @@
+name: 🗄️ 個股深歷史補挖(變因因子用,手動 + 自動接力)
+
+# 🧪 V79.3.8 使用者(2026-10-20):「我想做的是變因因子…把能測試的都列出來再來執行。要挖礦就挖礦。」
+# ⭐ 盤點:2010~2020 的個股價格只有外部 k66(約 1,000 檔、只有上市、只有活到現在的)→ 先補全市場價格 + 除權息,
+#    再補融資券 / 月營收 / 每日本益比 / 外資持股 / 當沖 / 借券(全部 FinMind 免費層「一檔一次」)。
+# 架構(照 inst_backfill deep 與 kbar5_backfill 的接力):
+#   ① 寫獨立 orphan 分支 stock_deep(⛔ 不進 data / gh-pages,陷阱 #41;分支只增不減)
+#   ② ⛔ 不加排程;時間用完就 workflow_dispatch 接力自己(最多 40 棒)
+#   ③ ⭐ 避開共用 FINMIND_TOKENS 的排程時段(程式裡的 PROTECT 表,selftest 跟那幾支的 cron 比對)
+#   ④ 對表 <90% / 探路失敗 → 那個資料集不推、不接力,原因寫進 stock_deep/_status.json
+on:
+  workflow_dispatch:
+    inputs:
+      queue:
+        description: '要挖的資料集(逗號分隔,依序):price10,div10,margin,rev,per,share,dt,sbl'
+        required: false
+        default: 'price10,div10,margin,rev,per,share,dt,sbl'
+      limit:
+        description: '每個資料集這一棒最多抓幾檔(試跑填 30;全部 99999)'
+        required: false
+        default: '99999'
+      max_min:
+        description: '這一棒最多幾分鐘(含等保護時段;job 上限 355)'
+        required: false
+        default: '330'
+      chain:
+        description: '(內部用)第幾棒接力'
+        required: false
+        default: '0'
+
+permissions:
+  contents: write
+  actions: write                # 接力用(gh workflow run)
+
+concurrency:
+  # ⛔ 不可跟別人共用 group(V73.7.9:長工作佔共用鎖會把部署整串擠掉)
+  group: stock-deep-backfill
+  cancel-in-progress: false     # 長工作,⛔ 不可被第二次手動觸發砍掉
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 🐍 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依
+        run: pip install requests
+
+      - name: 🧪 selftest(⛔ 沒過不開工)
+        run: python3 scripts/stock_deep_backfill.py --selftest
+
+      # ⚠️ V49.4 教訓:還原用 git archive,⛔ 不要 git checkout origin/x -- dir(會弄髒 index)
+      - name: 📂 還原已挖的 + 對表要用的 + 母體清單
+        run: |
+          set -e
+          mkdir -p stock_deep
+          if git fetch --depth=1 origin stock_deep 2>/dev/null; then
+            git archive FETCH_HEAD stock_deep | tar -x || true
+          fi
+          echo "已挖:$(find stock_deep -name '*.json.gz' | wc -l) 檔"
+          git fetch --depth=1 origin klines_deep
+          git archive FETCH_HEAD klines_deep | tar -x
+          git fetch --depth=1 origin data
+          mkdir -p data
+          git archive FETCH_HEAD data | tar -x
+          n=$(ls data/*.json 2>/dev/null | wc -l)
+          echo "data/*.json $n 個 ・klines_deep $(ls klines_deep/*.json.gz | wc -l) 個"
+          if [ "$n" -lt 500 ]; then echo "::error::data 只還原到 $n 檔 → 中止"; exit 1; fi
+          ls klines_deep/*.json.gz | sed -E 's#^klines_deep/##; s#\.json\.gz$##' > /tmp/universe.txt
+          ls data/*.json | sed -E 's#^data/##; s#\.json$##' >> /tmp/universe.txt
+          echo "母體候選 $(sort -u /tmp/universe.txt | wc -l) 個代號(程式只留 4 碼個股、再加 2010 後下市)"
+
+      - name: 🗄️ 補挖
+        id: run
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          QUEUE: ${{ github.event.inputs.queue }}
+          LIMIT: ${{ github.event.inputs.limit }}
+          MAX_MIN: ${{ github.event.inputs.max_min }}
+          UNIVERSE: /tmp/universe.txt
+        run: python3 scripts/stock_deep_backfill.py
+
+      # ⚠️ 順序:先把 stock_deep/ 搬到 /tmp,切完分支再搬回來(⛔ 不然 checkout 會蓋掉整輪的結果)
+      - name: 🚀 推到 stock_deep 分支
+        if: always()
+        run: |
+          set -e
+          n=$(find stock_deep -name '*.json.gz' 2>/dev/null | wc -l)
+          echo "要推 $n 檔"
+          [ "$n" -gt 0 ] || { echo "一檔都沒有 → 不推"; exit 0; }
+          rm -rf /tmp/sdeep && mkdir -p /tmp/sdeep && cp -a stock_deep/. /tmp/sdeep/
+          git config user.name  "StockAI Bot"
+          git config user.email "bot@users.noreply.github.com"
+          git reset --hard -q && git clean -fdq
+          if git fetch --depth=1 origin stock_deep 2>/dev/null; then
+            git checkout -f -B stock_deep FETCH_HEAD
+            old=$(find stock_deep -name '*.json.gz' | wc -l)
+          else
+            git checkout -q --orphan stock_deep
+            git rm -rq --cached . 2>/dev/null || true
+            git clean -fdq
+            old=0
+          fi
+          # 🚧 只增不減:這一棒的檔數比分支上少 → 有東西不對,⛔ 不推
+          if [ "$n" -lt "$old" ]; then echo "::error::這一棒 $n 檔 < 分支上 $old 檔 → 不推"; exit 1; fi
+          rm -rf stock_deep && mkdir -p stock_deep && cp -a /tmp/sdeep/. stock_deep/
+          git add -f stock_deep
+          if git diff --cached --quiet; then echo "✅ 沒有新檔 → 不 commit"; exit 0; fi
+          git commit -q -m "🗄️ 個股深歷史補挖 $n 檔 $(date -u +%Y-%m-%d)"
+          pushed=0
+          # ⛔ 這個 retry 迴圈不可拿掉
+          for i in 1 2 3 4 5; do
+            git push origin stock_deep && { pushed=1; echo "✅ 已推上 stock_deep(第 $i 次)"; break; }
+            sleep $((i * 3))
+            git pull --rebase origin stock_deep 2>/dev/null || true
+          done
+          [ "$pushed" -eq 1 ] || { echo "::error::push 連 5 次失敗"; exit 1; }
+
+      # 🔁 只有「時間用完」才接力(試跑的 limit 停手 / 資料集失敗 ⛔ 不接力)
+      - name: 🔁 接力
+        if: steps.run.outputs.more == '1' && steps.run.outputs.reason == 'time'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHAIN: ${{ github.event.inputs.chain }}
+          Q: ${{ steps.run.outputs.queue }}
+          LIM: ${{ github.event.inputs.limit }}
+        run: |
+          C=$(( ${CHAIN:-0} + 1 ))
+          if [ "$C" -gt 40 ]; then echo "⛔ 已經接力 40 棒 → 停(防無限迴圈);剩 $Q"; exit 0; fi
+          gh workflow run stock_deep_backfill.yml --ref main -f queue="$Q" -f chain="$C" -f limit="${LIM:-99999}" -f max_min=330
+          echo "🔁 已觸發第 $C 棒(剩 $Q)"
