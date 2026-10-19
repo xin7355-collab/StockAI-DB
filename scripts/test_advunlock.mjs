@@ -207,6 +207,10 @@ const T = await page.evaluate(() => {
       R.nh = ids(run({ held: H, bars: new Map([['2330', hi]]) })); R.nhNo = ids(run({ held: H, bars: new Map([['2330', kFlat]]) }));
       const fi = m => mkK(80, '2026-10-16', k => { const n = k.length; k.forEach(r => r.foreign_net = -1); for (let j = n - 1 - m; j <= n - 2; j++) k[j].foreign_net = 1000; k[n - 1].foreign_net = 0; });
       R.fi = ids(run({ bars: new Map([['2454', fi(5)]]), fav: ['2454'] })); R.fiNo = ids(run({ bars: new Map([['2454', fi(4)]]), fav: ['2454'] }));
+      // 🏦 V79.3.7 外資突然一大筆:過去 200 天在 −500~+500 晃,最後一根(已公布的)買 big → big 很大才算;⛔ 門檻不含當天;過去 < 120 個值不判
+      const fb = (big, n = 220) => mkK(n, '2026-10-16', k => { k.forEach((r, i) => r.foreign_net = ((i * 37) % 1001) - 500); k[k.length - 2].foreign_net = big; k[k.length - 1].foreign_net = 0; });
+      R.fb = ids(run({ bars: new Map([['2454', fb(50000)]]), fav: ['2454'] })); R.fbNo = ids(run({ bars: new Map([['2454', fb(450)]]), fav: ['2454'] }));
+      R.fbShort = ids(run({ bars: new Map([['2454', fb(50000, 100)]]), fav: ['2454'] }));
       const sh = last => mkK(150, '2026-10-16', k => { k.forEach(r => { r.margin_balance = 1000; r.short_balance = 10; }); k[k.length - 1].short_balance = last; });
       R.sh = ids(run({ bars: new Map([['2454', sh(50)]]), fav: ['2454'] })); R.shNo = ids(run({ bars: new Map([['2454', sh(10)]]), fav: ['2454'] }));
       const rb = mkK(80, '2026-10-16', k => { k[k.length - 1].close = 103; });
@@ -251,6 +255,7 @@ ok('③m2 外資台指期急遽加空 → fifut_cut;空單近期最重 / 沒資�
 ok('③n 手上的跌破 5 日線 → ma5_break;沒跌破 / 自選 → 沒有', has(T.ma5, 'ma5_break') && !has(T.ma5No, 'ma5_break') && !has(T.ma5Fav, 'ma5_break'), JSON.stringify([T.ma5, T.ma5No, T.ma5Fav]));
 ok('③o 手上的收盤創 60 日新高 → nh60_held;平盤 → 沒有', has(T.nh, 'nh60_held') && !has(T.nhNo, 'nh60_held'), JSON.stringify([T.nh, T.nhNo]));
 ok('③p 外資連買 5 天(最後一根 0 = 沒公布,從前一根算)→ fi_streak5;4 天 → 沒有', has(T.fi, 'fi_streak5') && !has(T.fiNo, 'fi_streak5'), JSON.stringify([T.fi, T.fiNo]));
+ok('③p2 外資單日買超 ≥ 自己過去 250 天第 99 百分位(最後一根 0 = 沒公布,看前一根)→ fi_burst;只是平常大小 / 過去不到 120 天 → 沒有', has(T.fb, 'fi_burst') && !has(T.fbNo, 'fi_burst') && !has(T.fbShort, 'fi_burst'), JSON.stringify([T.fb, T.fbNo, T.fbShort]));
 ok('③q 券資比衝到自己歷史最高 10% → short_hi;一樣 → 沒有', has(T.sh, 'short_hi') && !has(T.shNo, 'short_hi'), JSON.stringify([T.sh, T.shNo]));
 ok('③r 賣掉 2 天後收盤站回賣價 → rebuy;沒站回 / 賣掉太久 → 沒有;只賣掉的那檔⛔ 判別的條件', has(T.rb, 'rebuy') && !has(T.rbNo, 'rebuy') && !has(T.rbOld, 'rebuy') && !T.rbOnly.length, JSON.stringify([T.rb, T.rbNo, T.rbOld, T.rbOnly]));
 ok('③s 大盤剛脫離空頭 → bull_on;一路跌 → 沒有', has(T.bull, 'bull_on') && !has(T.bullNo, 'bull_on'), JSON.stringify([T.bull, T.bullNo]));

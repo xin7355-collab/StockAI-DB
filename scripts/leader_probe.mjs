@@ -1340,12 +1340,13 @@ function main() {
     // 🟥 V79.1.6 RK_TRACE=1:現行規則每次換倉「本來會買的」那幾檔,依換倉日收盤狀態分組,看隔天開盤 → 下次換倉日收盤比 0050 多賺多少
     //   (17 條起點合併、同一天同一檔只算一次;隔天開盤就漲停的買不到 → 另外計數、⛔ 不算進平均)
     if (process.env.RK_TRACE) {
-        const out3 = {};
+        const out3 = {}, raw3 = {};   // RK_TRACE_RAW=檔名:另存每一筆「本來會買的」(給 fstreak_probe ⑤ 對外資突然一大筆用)
         const fills = (process.env.RK_FILLS || 'open').split(',');
         for (const w of WINS) for (const fill of fills) {
             const s0 = ctx.cal.findIndex(d => d >= w), seen = new Map();
             for (let k = 0; k < 17; k++) { const tr = []; simulate(ctx, s0 + STEP * k, { fill, trace: tr }, 1000 + k); for (const x of tr) seen.set(x.d + '|' + x.s, x); }
             const all = [...seen.values()];
+            raw3[`${w}|${fill}`] = all;
             const grp = { lu: x => x.f === 'lu', ld: x => x.f === 'ld', none: x => !x.f, g95: x => x.g >= 9.5, g7: x => x.g >= 7 && x.g < 9.5, g5: x => x.g >= 5 && x.g < 7, glt5: x => x.g < 5 };
             const st3 = a => { const v = a.map(x => x.r - x.b), n = v.length; if (!n) return { n: 0 };
                 const m = v.reduce((p, q) => p + q, 0) / n, sd = Math.sqrt(v.reduce((p, q) => p + (q - m) ** 2, 0) / Math.max(1, n - 1));
@@ -1357,6 +1358,7 @@ function main() {
             for (const [k, v] of Object.entries(row)) console.log(`[${w}|${fill}] 🟥 ${k}:n=${v.n}(隔天開盤就漲停買不到 ${v.lockOpen})・比 0050 平均 ${v.mean}pp 中位 ${v.med} t=${v.t} 贏 ${v.win}% ・逐年 ${JSON.stringify(v.years || {})}`);
         }
         if (out) fs.writeFileSync(out, JSON.stringify(out3));
+        if (process.env.RK_TRACE_RAW) fs.writeFileSync(process.env.RK_TRACE_RAW, JSON.stringify(raw3));
         return;
     }
     const res = { asof: new Date().toISOString().slice(0, 10), meta: ctx.meta, def: DEF, sets: [], etf: {} };

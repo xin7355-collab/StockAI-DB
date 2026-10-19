@@ -53,6 +53,8 @@
   python3 scripts/fstreak_probe.py             # 全市場
   python3 scripts/fstreak_probe.py --selftest  # 合成 3 檔驗 harness(訊號數 / 零前視 / 鎖漲停剔除 / 去重)
   DATA_DIR=... 指定資料夾;MAX_SYMS=200 試跑
+  LEAD_TRACE=lead_trace_raw.json python3 scripts/fstreak_probe.py   # ⑤ 只跑「👑 本來會買的 × 外資突然一大筆」
+      (lead_trace_raw.json = `RK_TRACE=1 RK_TRACE_RAW=… node scripts/leader_probe.mjs` 產的每一筆;約 1 分鐘)
 """
 import json
 import math
@@ -235,7 +237,8 @@ def collect(data=None, files=None, verbose=True):
                     prior = 1 if (len(pw) >= 15 and sum(pw) < 0) else (0 if len(pw) >= 15 else -1)
                     bp, bt = idx.get(d[i - 1]), idx.get(d[i])
                     mdown = 1 if (bp and bt and bt / bp - 1 <= -0.01) else 0
-                    lu = 1 if (cl[i - 1] > 0 and c0 >= cl[i - 1] * 1.095 and c0 >= hi[i] - 1e-9) else 0
+                    lim = 0.07 if d[i] < '2015-06-01' else 0.10          # 2015-06-01 前漲跌幅是 7%(⛔ 寫死 9.5% 會讓 2012~2015 一根漲停都找不到)
+                    lu = 1 if (cl[i - 1] > 0 and c0 >= cl[i - 1] * (1 + lim - 0.005) and c0 >= hi[i] - 1e-9) else 0
                     for P in hit:
                         pvB = last.get(('b', P))
                         if pvB is not None and dn_i - pvB < DEDUP:
@@ -470,8 +473,118 @@ def analyse(ctrl, ev, all_dates, n_sym, syms, data=None):
         show('⭐ 增量:同樣的外資突然大買,「大盤跌的那天」− 「大盤沒跌的那天」', r, base_note='對照 = 大盤沒跌那幾天的同類事件')
 
     print('📎 既有對照(登記表;⛔ 這支不重測):`_SCR_EDGE.fdays7`(7 天裡 ≥5 天)−0.24pp / 37.8% ・板塊 C 變體(10 日 ≥6 天)孤峰 ・投信單腿六關 0 過')
-    print('⚠️ 限制:窗口不含 2022 空頭(法人欄 2023-06 起)・單位股 ・賣方未測 ・最後一根 0 = 未公布已剔除')
+    yrs_ev = sorted(set(int(x) for x in ev['y']))
+    print(f'⚠️ 限制:事件年份 {yrs_ev[0] if yrs_ev else "—"}~{yrs_ev[-1] if yrs_ev else "—"}(法人欄從哪年起看 DATA_DIR:data/ 是 2023-06 起、d10n + inst_deep 是 2012 起)'
+          '・單位股 ・賣方未測 ・最後一根 0 = 未公布已剔除')
     return out
+
+
+# ── ⑤ 👑 本來會買的 × 外資突然一大筆(V79.3.7)──────────────────
+LEAD_K = 5          # 換倉日(含)往前 5 個交易日內有過一次 → 算「剛被外資突然大買」
+
+
+def burst_days(data=None, P=99):
+    """每檔「外資單日淨買 ≥ 自己過去 250 天第 P 百分位」的日子 → {sym: {date: prior}}(prior 1 = 前 20 天外資合計在賣)。
+    ⛔ 門檻不含當天(burst_thresholds);只看當天以前的資料。"""
+    data = data or DATA
+    out = {}
+    for f in sorted(data.glob('*.json')):
+        if not (f.stem.isdigit() and len(f.stem) == 4):
+            continue
+        rows = load(f) or []
+        d, fn = [], []
+        for r in rows:
+            if not r or r.get('close') is None:
+                continue
+            d.append(str(r.get('date') or '').replace('/', '-')[:10])
+            fn.append(None if r.get('foreign_net') is None else float(r['foreign_net']))
+        if sum(1 for v in fn if v is not None) < BURST_MIN:
+            continue
+        fn, _ = clean_unpublished(fn, [None] * len(fn))
+        bt = burst_thresholds(fn)[P]
+        ok0 = next((i for i in range(len(bt)) if np.isfinite(bt[i])), None)
+        if ok0 is None:
+            continue
+        hit = {}
+        for i, v in enumerate(fn):
+            if v is not None and v > 0 and np.isfinite(bt[i]) and bt[i] > 0 and v >= bt[i]:
+                pw = [fn[j] for j in range(max(0, i - 20), i) if fn[j] is not None]
+                hit[d[i]] = 1 if (len(pw) >= 15 and sum(pw) < 0) else 0
+        out[f.stem] = (d, hit, d[ok0])     # 第三格 = 第一天算得出門檻(那天以前 = 不知道,⛔ 不可當「沒被大買」)
+    return out
+
+
+def lead_split(trace, bdays, k=LEAD_K):
+    """trace = leader_probe 的每一筆 {d 換倉日, s, r 隔天開盤→下次換倉日 %, b 0050 同期 %, lock};
+    回 {'burst': [...], 'prior': [...], 'none': [...], 'nodata': n}。⛔ 只看換倉日(含)以前 k 個交易日 —— 換倉日之後的大買不算(零前視)。"""
+    g = {'burst': [], 'prior': [], 'none': [], 'nodata': 0}
+    for x in trace:
+        if x.get('lock'):
+            continue
+        bd = bdays.get(x['s'])
+        if not bd:
+            g['nodata'] += 1
+            continue
+        dates, hit = bd[0], bd[1]
+        if len(bd) > 2 and x['d'] < bd[2]:
+            g['nodata'] += 1                 # 那天還算不出門檻(法人資料不夠 250 天)→ 不知道
+            continue
+        try:
+            i = dates.index(x['d'])
+        except ValueError:
+            g['nodata'] += 1
+            continue
+        win = [hit[dd] for dd in dates[max(0, i - k + 1):i + 1] if dd in hit]
+        v = x['r'] - x['b']
+        if win:
+            g['burst'].append((x['d'], v))
+            if max(win) == 1:
+                g['prior'].append((x['d'], v))
+        else:
+            g['none'].append((x['d'], v))
+    return g
+
+
+def lead_section(trace_path, data=None):
+    raw = load(trace_path)
+    if not raw:
+        print(f'❌ 讀不到 {trace_path}')
+        return 1
+    print(f'📌 ⑤ 👑 本來會買的那幾檔 × 換倉日前 {LEAD_K} 天內「外資突然一大筆」(P99)—— 富喬 10/16 那種(當天就在 👑 前 10)')
+    bd = burst_days(data)
+    print(f'   有法人資料、算得出門檻的 {len(bd):,} 檔')
+
+    def st(a):
+        if not a:
+            return None
+        v = np.array([x[1] for x in a])
+        yr = {}
+        for dd, x in a:
+            yr.setdefault(dd[:4], []).append(x)
+        sd = float(v.std(ddof=1)) if len(v) > 1 else 0.0
+        return {'n': len(v), 'm': float(v.mean()), 'med': float(np.median(v)), 't': float(v.mean() / (sd / math.sqrt(len(v)))) if sd > 0 else 0.0,
+                'yr': {y: (len(q), float(np.mean(q))) for y, q in sorted(yr.items())}}
+    rc = 0
+    for key, tr in raw.items():
+        g = lead_split(tr, bd)
+        print(f'   [{key}] 本來會買 {len(tr):,} 筆(開盤就漲停買不到的不算)・查不到法人 {g["nodata"]:,}')
+        A, B, C = st(g['burst']), st(g['prior']), st(g['none'])
+        for lab, r in (('剛被外資突然大買', A), ('  └ 而且前 20 天外資在賣(富喬那種)', B), ('其他(沒被突然大買)', C)):
+            if not r:
+                print(f'      {lab}:沒有樣本'); continue
+            ys = ' '.join(f'{y}:{m:+.1f}({n})' for y, (n, m) in r['yr'].items())
+            print(f'      {lab}:n={r["n"]:,} ・比 0050 平均 {r["m"]:+.2f}pp 中位 {r["med"]:+.2f} t={r["t"]:.1f}\n         逐年 {ys}')
+        if A and C:
+            yrs = sorted(set(A['yr']) & set(C['yr']))
+            pos = sum(1 for y in yrs if A['yr'][y][1] > C['yr'][y][1])
+            print(f'      ⭐ 增量(突然大買 − 其他)= {A["m"] - C["m"]:+.2f}pp ・逐年 {pos}/{len(yrs)} 年比較好')
+        if B and C:
+            yrs = sorted(set(B['yr']) & set(C['yr']))
+            pos = sum(1 for y in yrs if B['yr'][y][1] > C['yr'][y][1])
+            print(f'      ⭐ 增量(富喬那種 − 其他)= {B["m"] - C["m"]:+.2f}pp ・逐年 {pos}/{len(yrs)} 年比較好')
+        if not A and not C:
+            rc = 1
+    return rc
 
 
 # ── 🧪 selftest ──────────────────────────────────────────────────
@@ -556,6 +669,17 @@ def selftest():
         fnN = [None] * 200 + [1.0] * 200
         btN = burst_thresholds(fnN)
         ok('⑧b 過去 250 天有資料 < 120 天 → 不給門檻', not np.isfinite(btN[95][300]) and np.isfinite(btN[95][399]), f'{btN[95][300]} / {btN[95][399]}')
+        # ⑨ V79.3.7 👑 × 突然大買:換倉日前 k 天內有才算、換倉日之後的 ⛔ 不算(零前視)、開盤就漲停的不算
+        dts = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7']
+        bdT = {'A': (dts, {'d2': 1}, 'd0'), 'B': (dts, {'d6': 0}, 'd0'), 'D': (dts, {}, 'd4')}
+        trT = [{'d': 'd5', 's': 'A', 'r': 5, 'b': 1}, {'d': 'd5', 's': 'B', 'r': 2, 'b': 1}, {'d': 'd5', 's': 'C', 'r': 0, 'b': 0},
+               {'d': 'd7', 's': 'A', 'r': 9, 'b': 0, 'lock': True}, {'d': 'd1', 's': 'A', 'r': 3, 'b': 0},
+               {'d': 'd3', 's': 'D', 'r': 7, 'b': 0}]
+        gT = lead_split(trT, bdT, k=5)
+        ok('⑨ 👑 × 突然大買:A 換倉日 d5 前 5 天內(d2)有 → 算;B 的大買在 d6(換倉日之後)⛔ 不算;d1 那筆還沒發生 ⛔ 不算;開盤漲停那筆不算;C 查不到;D 那天還算不出門檻 → 不知道(⛔ 不當「沒被大買」)',
+           [v for _, v in gT['burst']] == [4] and [v for _, v in gT['prior']] == [4] and sorted(v for _, v in gT['none']) == [1, 3] and gT['nodata'] == 2, str(gT))
+        gT2 = lead_split(trT, bdT, k=3)
+        ok('⑨b 窗口縮成 3 天(d3~d5)→ A 那次 d2 的大買就不算了', [v for _, v in gT2['burst']] == [], str(gT2))
         st_a = streaks([5000, 5000, 0])
         st_b = streaks([5000, 5000, None])
         ok('⑦b `streaks`:0 或 None 都讓連續中斷(0 = 沒買;最後一根的 0 由 collect 改成 None)', st_a == [1, 2, 0] and st_b == [1, 2, 0], f'{st_a} {st_b}')
@@ -566,6 +690,8 @@ def selftest():
 def main():
     if SELFTEST:
         sys.exit(selftest())
+    if os.environ.get('LEAD_TRACE'):
+        sys.exit(lead_section(os.environ['LEAD_TRACE']))
     res = collect()
     if not res:
         sys.exit(1)
