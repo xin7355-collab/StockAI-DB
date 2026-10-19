@@ -38,6 +38,17 @@
   ④ 強度互控(N=5)佔量比 買得少 +0.67 / 中 +0.18 / 買得多 −0.09pp(單調)→ 外資狂掃 = 已經擠了
   處置:⛔ 不做提醒、不進計分;LAB ok r:44 / trap r:30;走完一次空頭重跑再決定進不進 `_SCR_EDGE`。
 
+════════════════════════════════════════════════════════════════
+🆕 V79.3.6 ④ 外資「突然一大筆」(使用者 2026-10-19:「今天大盤這麼差,富喬還能漲停 —— 能先看出來嗎?還是外資炒作?」)
+════════════════════════════════════════════════════════════════
+  富喬 1815:9/9~10/15 外資 24 天裡 19 天賣,10/16 單日買 35,941 張(約 50 億)+ 收漲停;10/19 再漲停。
+  事件 = 外資單日淨買 ≥ 自己過去 250 天(⛔ 不含當天)的第 P 百分位(P = 95 / 98 / 99 / 99.5,高原)
+         ・prior = 前 20 天外資合計是賣超(「賣了一陣子,突然一大筆」)
+         ・mdown = 那天加權跌 ≥1%(= 今天這種盤)・lu = 那天收盤漲停(收 ≥ 前收 ×1.095 且收在最高)
+  ⭐ 一樣隔天開盤買、隔天開盤鎖漲停剔除、同檔同 P 20 日去重、六關、對照 = 全部股·日。
+  ⭐ 法人深歷史:DATA_DIR 用「d10n + inst_deep 合併」那份(2012 起;inst_backfill.py MODE=deep → inst_deep 分支),
+     逐年那一關才驗得到 2015 / 2018 / 2022。
+
 跑法:
   python3 scripts/fstreak_probe.py             # 全市場
   python3 scripts/fstreak_probe.py --selftest  # 合成 3 檔驗 harness(訊號數 / 零前視 / 鎖漲停剔除 / 去重)
@@ -60,6 +71,27 @@ COST = 0.44
 MIN_N = 200
 NS = (3, 4, 5, 6, 7)          # 高原檢定
 TRUST_WIN = 3                 # 投信「同步」= 訊號日往前 3 天內任一天淨買 >0
+BURST_PS = (95, 98, 99, 99.5)  # ④ 外資突然一大筆:單日淨買 ≥ 自己過去 250 天第 P 百分位(高原)
+BURST_WIN, BURST_MIN = 250, 120
+
+
+def burst_thresholds(fn):
+    """每一天「過去 BURST_WIN 天(⛔ 不含當天)」外資淨買的各百分位門檻;有資料 < BURST_MIN 天 → nan。回 {P: np.array}"""
+    a = np.array([np.nan if v is None else v for v in fn], dtype=float)
+    n = len(a)
+    out = {P: np.full(n, np.nan) for P in BURST_PS}
+    if n <= BURST_WIN:
+        return out
+    win = np.lib.stride_tricks.sliding_window_view(a, BURST_WIN)[:-1]     # win[k] = a[k .. k+W−1] → 給第 k+W 天用
+    cnt = np.sum(~np.isnan(win), axis=1)
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', category=RuntimeWarning)
+        q = np.nanpercentile(win, list(BURST_PS), axis=1)
+    for j, P in enumerate(BURST_PS):
+        v = np.where(cnt >= BURST_MIN, q[j], np.nan)
+        out[P][BURST_WIN:] = v
+    return out
 
 
 def nf(x, d=2):
@@ -127,6 +159,8 @@ def collect(data=None, files=None, verbose=True):
     E = {k: [] for k in ('e5', 'e10', 'e20', 'y', 'dn', 'pos', 'vola', 'amt', 'st', 'tr', 'trst', 'ratio', 'si', 'r10')}
     # ⭐ 第二個事件庫:**投信**連買剛好到 N 天的那天(另一把去重)→ 給「反向增量」用:投信連買之上,外資有沒有加成?
     ET = {k: [] for k in ('e5', 'e10', 'e20', 'y', 'dn', 'pos', 'vola', 'amt', 'st', 'fs', 'si', 'r10')}
+    # ⭐ 第三個事件庫(V79.3.6):外資「突然一大筆」—— 每個百分位 P 各自去重
+    EB = {k: [] for k in ('e5', 'e10', 'e20', 'y', 'dn', 'pos', 'vola', 'amt', 'lvl', 'prior', 'mdown', 'lu', 'si', 'r10')}
     n_sym = n_cliff = n_lim = 0
     syms = []
     for f in files:
@@ -164,6 +198,7 @@ def collect(data=None, files=None, verbose=True):
         cl_a = np.asarray(cl)
         st = streaks(fn)
         stT = streaks(tn)
+        bth = burst_thresholds(fn)
         last = {}
         for i in range(WARM, n - 21):
             c0, o1 = cl[i], op[i + 1]
@@ -191,6 +226,24 @@ def collect(data=None, files=None, verbose=True):
             yr = int(d[i][:4])
             C['e5'].append(e5); C['e10'].append(e10); C['e20'].append(e20)
             C['y'].append(yr); C['dn'].append(dn_i); C['pos'].append(pos); C['vola'].append(vola); C['amt'].append(amt); C['r10'].append(r10)
+            # ④ 外資突然一大筆(收盤後公布 → 隔天開盤買;門檻只用過去 250 天)
+            fi_ = fn[i]
+            if fi_ is not None and fi_ > 0:
+                hit = [P for P in BURST_PS if np.isfinite(bth[P][i]) and fi_ >= bth[P][i] and bth[P][i] > 0]
+                if hit:
+                    pw = [fn[j] for j in range(max(0, i - 20), i) if fn[j] is not None]
+                    prior = 1 if (len(pw) >= 15 and sum(pw) < 0) else (0 if len(pw) >= 15 else -1)
+                    bp, bt = idx.get(d[i - 1]), idx.get(d[i])
+                    mdown = 1 if (bp and bt and bt / bp - 1 <= -0.01) else 0
+                    lu = 1 if (cl[i - 1] > 0 and c0 >= cl[i - 1] * 1.095 and c0 >= hi[i] - 1e-9) else 0
+                    for P in hit:
+                        pvB = last.get(('b', P))
+                        if pvB is not None and dn_i - pvB < DEDUP:
+                            continue
+                        last[('b', P)] = dn_i
+                        EB['e5'].append(e5); EB['e10'].append(e10); EB['e20'].append(e20)
+                        EB['y'].append(yr); EB['dn'].append(dn_i); EB['pos'].append(pos); EB['vola'].append(vola); EB['amt'].append(amt)
+                        EB['lvl'].append(P); EB['prior'].append(prior); EB['mdown'].append(mdown); EB['lu'].append(lu); EB['si'].append(si); EB['r10'].append(r10)
             sT = stT[i]
             if NS[0] <= sT <= NS[-1]:
                 pvT = last.get(('t', sT))
@@ -223,6 +276,7 @@ def collect(data=None, files=None, verbose=True):
     ctrl = {k: np.asarray(v, dtype=float) for k, v in C.items()}
     ev = {k: np.asarray(v, dtype=float) for k, v in E.items()}
     ev['_trust'] = {k: np.asarray(v, dtype=float) for k, v in ET.items()}   # 掛在 ev 底下,呼叫端簽名不變
+    ev['_burst'] = {k: np.asarray(v, dtype=float) for k, v in EB.items()}
     return ctrl, ev, all_dates, n_sym, syms
 
 
@@ -393,6 +447,28 @@ def analyse(ctrl, ev, all_dates, n_sym, syms, data=None):
                   f' n={int(mm.sum()):,} ・10日 {sg(r["d10"]) + nf(r["d10"]) if r else "—"}pp ・勝率 {nf(r["w"], 1) if r else "—"}%')
         print()
 
+    evB = ev['_burst']
+    print('📌 ④ 外資「突然一大筆」(單日淨買 ≥ 自己過去 250 天第 P 百分位)—— 富喬那種:賣了一陣子,突然一大筆')
+    if len(evB['e10']) == 0:
+        print('   ⏳ 沒有事件(法人欄位太短?)\n')
+    else:
+        tblB = []
+        for P in BURST_PS:
+            m = (evB['lvl'] == P) & (evB['prior'] == 1)
+            r = stats(m, ev=evB)
+            show(f'P{P} ∧ 前 20 天外資在賣', r)
+            tblB.append((P, r))
+            out.append({'name': f'burst{P}', 'r': r})
+        print('   ⛰️ 高原(10 日增量 pp):' + ' / '.join(f'P{P} {sg(r["d10"]) + nf(r["d10"]) if r else "—"}' for P, r in tblB))
+        show('P99(不管前 20 天)', stats(evB['lvl'] == 99, ev=evB))
+        m99 = (evB['lvl'] == 99) & (evB['prior'] == 1)
+        r = stats(m99 & (evB['mdown'] == 1), ev=evB); show('P99 ∧ 前 20 天在賣 ∧ 那天加權跌 ≥1%(今天這種盤)', r); out.append({'name': 'burst99_mdown', 'r': r})
+        r = stats((evB['lvl'] == 99) & (evB['lu'] == 1), ev=evB); show('P99 ∧ 那天收漲停', r); out.append({'name': 'burst99_lu', 'r': r})
+        r = stats(m99 & (evB['lu'] == 1), ev=evB); show('P99 ∧ 前 20 天在賣 ∧ 那天收漲停(富喬 10/16 那種)', r); out.append({'name': 'burst99_prior_lu', 'r': r})
+        r = stats(m99 & (evB['lu'] == 1) & (evB['mdown'] == 1), ev=evB); show('P99 ∧ 在賣 ∧ 漲停 ∧ 大盤跌 ≥1%', r)
+        r = stats(m99 & (evB['mdown'] == 1), base_mask=m99 & (evB['mdown'] == 0), ev=evB)
+        show('⭐ 增量:同樣的外資突然大買,「大盤跌的那天」− 「大盤沒跌的那天」', r, base_note='對照 = 大盤沒跌那幾天的同類事件')
+
     print('📎 既有對照(登記表;⛔ 這支不重測):`_SCR_EDGE.fdays7`(7 天裡 ≥5 天)−0.24pp / 37.8% ・板塊 C 變體(10 日 ≥6 天)孤峰 ・投信單腿六關 0 過')
     print('⚠️ 限制:窗口不含 2022 空頭(法人欄 2023-06 起)・單位股 ・賣方未測 ・最後一根 0 = 未公布已剔除')
     return out
@@ -470,6 +546,16 @@ def selftest():
         # ⑦ 最後一根 foreign_net=0 = 還沒公布 → 改 None(⚠️ 直接測那支函式 —— 事件窗口碰不到最後一根,走 collect 測不出來)
         f7, t7 = clean_unpublished([5000, 5000, 0], [1, 1, 0])
         ok('⑦ 最後一根 0 → None(還沒公布),前面的不動;最後一根非 0 就不動', f7 == [5000, 5000, None] and t7 == [1, 1, None] and clean_unpublished([1, -5], [0, 0])[0] == [1, -5], f'{f7} {t7}')
+        # ⑧ V79.3.6 外資突然一大筆:門檻不含當天、樣本 < 120 不給
+        fnT = [float(x % 7) for x in range(400)]
+        for k in range(300, 310):
+            fnT[k] = 1e6                                   # 第 300~309 天連 10 天一大筆
+        bt = burst_thresholds(fnT)
+        ok('⑧ 突然大買的門檻:當天那一大筆 ⛔ 不算進自己的門檻(第 300 天門檻仍 ≤6)、之後才會墊高(第 310 天 >6)、前 250 天沒有門檻',
+           np.isfinite(bt[99][300]) and bt[99][300] <= 6 and not np.isfinite(bt[99][100]) and bt[99][310] > 6, f'{bt[99][300]} / {bt[99][100]} / {bt[99][310]}')
+        fnN = [None] * 200 + [1.0] * 200
+        btN = burst_thresholds(fnN)
+        ok('⑧b 過去 250 天有資料 < 120 天 → 不給門檻', not np.isfinite(btN[95][300]) and np.isfinite(btN[95][399]), f'{btN[95][300]} / {btN[95][399]}')
         st_a = streaks([5000, 5000, 0])
         st_b = streaks([5000, 5000, None])
         ok('⑦b `streaks`:0 或 None 都讓連續中斷(0 = 沒買;最後一根的 0 由 collect 改成 None)', st_a == [1, 2, 0] and st_b == [1, 2, 0], f'{st_a} {st_b}')

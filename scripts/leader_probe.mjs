@@ -24,6 +24,7 @@
  *       node scripts/leader_probe.mjs --selftest
  */
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { trSeries, loadPx } from './lib_totalreturn.mjs';
 import { finSeries, finOnAt } from './lib_finaccel.mjs';
@@ -127,7 +128,12 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
     // 📚 V79.2.5 兩本帳(使用者:「依照你說的做」)⛔ 不設(books 1)時逐位相同(selftest ㊿c):
     //   books = B → 錢平分 B 本帳,每本帳是**完全獨立**的帳戶(各自的現金 / 0050 / 持股,同一檔兩本都買 = 各持一份),
     //   第 j 本帳的換倉日 = 第 1 本 + j × bookOff 個交易日(phase = R − j×bookOff);bookJoin = 'now' 第 0 天就照當下名單買 / 'wait' 錢先停 0050 等自己的換倉日
-    books: 1, bookOff: 5, bookJoin: 'now' };
+    books: 1, bookOff: 5, bookJoin: 'now',
+    // 🛑 V79.3.6 停手(使用者:「高檔 + 外資拋售 + 大盤收綠,👑 要不要先不操作?」)⛔ 不設時逐位相同(selftest ㊿d):
+    //   pause = Uint8Array(對齊 cal;1 = 那天收盤 ⛔ 不開新倉 —— 換倉日碰到就只賣不買、閒錢照停 0050,跟空頭守門同一個做法)
+    //   pauseFile = JSON 檔(['YYYY-MM-DD', …] 或 {日期: 1})= 訊號日 ・pauseK = 訊號當天起 K 個交易日都不開新倉(0 = 只有訊號當天)
+    //   pauseShift = s:整段循環平移 s 個交易日(安慰劑:停手天數一樣,只是日子不對)
+    pause: null, pauseFile: '', pauseK: 0, pauseShift: 0 };
 // 🟥 V79.1.6 換倉日收盤就漲停 / 跌停的候選(使用者:「如果換倉日漲跌停,隔天還要買嗎?還是就都買 0050」)⛔ 不設時逐位相同(selftest ㊴):
 //   判定(同 luExit / dt_daily_probe.lockUp):換倉日收盤 ≥ 前收 ×(1+漲跌幅−1%)且收在最高 = 漲停;≤ 前收 ×(1−漲跌幅+1%)且收在最低 = 跌停;除權息日不判
 //   rkLu / rkLd = 'park':本來會買的那一檔不買,那一份錢留在 0050 到下一次換倉 ・'next':改買名單上的下一名
@@ -260,6 +266,30 @@ function simulateBooks(ctx, s0, cfg, seed) {
         bestAmt: (() => { const a = subs.map(r => r.bestAmt).filter(v => v != null); return a.length ? Math.max(...a) : null; })(),
         held: sum(r => r.held), openPnl: sum(r => r.openPnl), books: subs };
 }
+/** 🛑 V79.3.6 停手陣列(對齊 ctx.cal):P.pause 直接用;P.pauseFile 讀訊號日 → 訊號當天起 pauseK 個交易日;pauseShift 循環平移(安慰劑)。
+ *  ⛔ 都沒設回 null;結果快取在 ctx(同一個檔 + K + 平移只建一次);訊號日不是交易日 → 下一個交易日 */
+export function pauseArr(ctx, P) {
+    if (!P.pause && !P.pauseFile) return null;
+    const n = ctx.cal.length;
+    const key = P.pause ? null : `${P.pauseFile}|${P.pauseK}|${P.pauseShift}`;
+    if (key && ctx._pz && ctx._pz.has(key)) return ctx._pz.get(key);
+    let base;
+    if (P.pause) {
+        if (P.pause.length !== n) throw new Error(`pause 長度 ${P.pause.length} ≠ 日曆 ${n}`);
+        base = P.pause;
+    } else {
+        const raw = JSON.parse(fs.readFileSync(P.pauseFile, 'utf8'));
+        const ds = (Array.isArray(raw) ? raw : Object.keys(raw).filter(k => raw[k])).map(d => String(d).replace(/\//g, '-').slice(0, 10)).sort();
+        if (!ds.length) throw new Error(`pauseFile ${P.pauseFile} 沒有任何日期(⛔ 空的停手 = 跟不設一樣,會被誤讀成「停手沒差」)`);
+        base = new Uint8Array(n); let j = 0;
+        for (const d of ds) { while (j < n && ctx.cal[j] < d) j++; if (j >= n) break; for (let k = 0; k <= P.pauseK && j + k < n; k++) base[j + k] = 1; }
+    }
+    let out = base;
+    if (P.pauseShift) { out = new Uint8Array(n); const sh = ((P.pauseShift % n) + n) % n; for (let i = 0; i < n; i++) out[(i + sh) % n] = base[i]; }
+    if (key) { ctx._pz = ctx._pz || new Map(); ctx._pz.set(key, out); }
+    return out;
+}
+
 export function simulate(ctx, s0, cfg, seed = 1) {
     if (cfg && cfg.books > 1) return simulateBooks(ctx, s0, cfg, seed);
     const { cal, stocks, etf } = ctx;
@@ -298,6 +328,9 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     const rand3 = rng(seed * 104729 + 7);
     const rand4 = rng(seed * 15485863 + 3);                   // 🔄 shamOut 專用(⛔ 不動別人的亂數)
     const MID = P.dRank > 0 || P.stop > 0 || P.trail > 0 || P.shamOut > 0;
+    // 🛑 V79.3.6 停手:pause / pauseFile → 對齊 cal 的 0/1 陣列(⛔ 都沒設 → PZ = null,noBuy 跟以前的 P.bear && bearAt(i) 完全一樣)
+    const PZ = pauseArr(ctx, P);
+    const noBuy = i => (P.bear && bearAt(i)) || (PZ ? PZ[i] === 1 : false);
     // 🟥 V79.1.6 換倉日漲停 / 跌停(⛔ 不設時下面兩支都不會被呼叫,亂數也不會被消耗)
     const RK = !!(P.rkLu || P.rkLd || P.rkSham > 0);
     const rand5 = rng(seed * 6700417 + 11);
@@ -508,7 +541,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
         if (dailySell.size && i + 1 < n) { pending = pending || { sell: [], buy: [] }; for (const sym of dailySell) if (!pending.sell.includes(sym)) pending.sell.push(sym); dailySell.clear(); }
         // 🔄 V78.6.3 refill:不是換倉日 → 今天收盤就照當下名次補滿空位(換倉日交給 ③)
         const isReb = !DIP && ((i - s0 + P.phase) % P.R === 0 || (P.join === 'now' && i === s0));
-        if (P.refill && !isReb && pending && pending.sell.length && i + 1 < n && !(P.bear && bearAt(i))) {
+        if (P.refill && !isReb && pending && pending.sell.length && i + 1 < n && !noBuy(i)) {
             const room = P.N - (pos.size - pending.sell.filter(s => pos.has(s)).length) - pending.buy.length;
             if (room > 0) {
                 const { ranked } = rankAt(i);
@@ -532,7 +565,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             if (P.dipSort === 'sham') list = pool.filter(S => !pos.has(S.sym) && S.C[i] > 0).map(S => ({ S, k: rand2() })).sort((a, b) => a.k - b.k).slice(0, sig.length).map(x => x.S);
             else if (P.dipSort === 'shamDip') list = sig.map(x => ({ S: x.S, k: rand2() })).sort((a, b) => a.k - b.k).map(x => x.S);
             else list = sig.sort((a, b) => a.r - b.r).map(x => x.S);
-            const buyL = (P.bear && bearAt(i)) ? [] : list.slice(0, Math.max(0, P.N - pos.size));
+            const buyL = noBuy(i) ? [] : list.slice(0, Math.max(0, P.N - pos.size));
             if (buyL.length || pending) pending = { sell: pending ? pending.sell : [], buy: buyL };
             else parkCash(i);
         }
@@ -542,7 +575,8 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             const { ranked, ok } = rankAt(i);
             const keepSet = new Set(ranked.slice(0, P.pick === 'all' ? ranked.length : P.N * P.hyst).map(S => S.sym));
             const sellL = [...pos.keys()].filter(s => !keepSet.has(s));
-            const bearNow = P.bear && bearAt(i);
+            const bearNow = noBuy(i);
+            if (PZ && PZ[i] === 1 && !(P.bear && bearAt(i))) st.pauseReb = (st.pauseReb || 0) + 1;   // 🛑 換倉日因為停手才沒買(空頭本來就不買的不算)
             const N = P.pick === 'all' ? Math.max(1, ranked.length) : P.N;
             let cand = ranked;
             if (CAND) {
@@ -604,7 +638,7 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 if (!want) { if (i >= b.rel) blocked.delete(sym); continue; }
                 top = top || new Set(rankAt(i).ranked.slice(0, P.N * P.hyst).map(x => x.sym));
                 blocked.delete(sym);
-                if (!top.has(sym) || (P.bear && bearAt(i))) continue;
+                if (!top.has(sym) || noBuy(i)) continue;
                 pending = pending || { sell: [], buy: [] };
                 if (!pending.buy.some(x => x.sym === sym) && !pending.sell.includes(sym)) { pending.buy.push(S); st.rebought++; }
             }
@@ -1223,6 +1257,23 @@ function selftest() {
         && kb2.eq.at(-1) !== kA.eq.at(-1) && kc.eq.every((v, k) => Math.abs(v - (kcA.eq[k] + kcB.eq[k])) < 1e-6) && kb2.trades === kA.trades + kB.trades
         && offOk && /bookOff/.test(threwK),
         `㊿c 兩本帳:books 1 逐位相同、books 2 = 兩個獨立帳戶平均(${r2(kb2.eq.at(-1))} = (${r2(kA.eq.at(-1))}+${r2(kB.eq.at(-1))})/2)、本金模式加總、第 2 本換倉晚 2 天(${dB.slice(0, 3).join(',')})、bookOff ≥ R throw`);
+    // ㊿d 🛑 V79.3.6 停手:不設 == pause 全 0(逐位相同);pause 全 1 == 空頭天天亮(同一個「只擋買」做法,逐位相同);
+    //      pauseFile:非交易日的訊號 → 下一個交易日、K=2 蓋 3 天;平移後天數一樣、位置換了;空檔 throw;換倉日因停手沒買要計數
+    const pzOff = simulate(ctxK, 100, cfgK, 7), pz0 = simulate(ctxK, 100, { ...cfgK, pause: new Uint8Array(n) }, 7);
+    const pz1 = simulate(ctxK, 100, { ...cfgK, pause: new Uint8Array(n).fill(1) }, 7);
+    const pzB = simulate({ ...ctxK, bear: new Uint8Array(n).fill(1) }, 100, cfgK, 7);
+    const tmpPz = path.join(os.tmpdir(), `pz_${process.pid}.json`), tmpPz0 = path.join(os.tmpdir(), `pz0_${process.pid}.json`);
+    const calG = cal.filter((_, i) => i !== 130);                          // cal[130] 當成休市日 → 訊號落在那天要算到下一個交易日(calG[130] = cal[131])
+    fs.writeFileSync(tmpPz, JSON.stringify([cal[120], cal[130]])); fs.writeFileSync(tmpPz0, '[]');
+    const pa = pauseArr({ cal: calG }, { pauseFile: tmpPz, pauseK: 2, pauseShift: 0 }), ps = pauseArr({ cal: calG }, { pauseFile: tmpPz, pauseK: 2, pauseShift: 7 });
+    const nxt = 130, sum = a => a.reduce((x, y) => x + y, 0);
+    let threwP = ''; try { pauseArr({ cal: calG }, { pauseFile: tmpPz0, pauseK: 0 }); } catch (e) { threwP = String(e.message); }
+    const pzR = simulate(ctxK, 100, { ...cfgK, pause: (() => { const a = new Uint8Array(n); for (let i = 100; i < n; i += 5) a[i] = 1; return a; })() }, 7);
+    try { fs.unlinkSync(tmpPz); fs.unlinkSync(tmpPz0); } catch (_) {}
+    t(pz0.eq.every((v, k) => v === pzOff.eq[k]) && pz1.eq.every((v, k) => v === pzB.eq[k]) && pz1.eq.at(-1) !== pzOff.eq.at(-1)
+        && pa[120] === 1 && pa[121] === 1 && pa[122] === 1 && pa[123] === 0 && pa[119] === 0 && pa[nxt] === 1 && pa[nxt + 2] === 1 && sum(pa) === 6
+        && sum(ps) === 6 && ps[127] === 1 && ps[120] === 0 && /沒有任何日期/.test(threwP) && (pzR.st.pauseReb || 0) > 0 && pzR.eq.at(-1) !== pzOff.eq.at(-1),
+        `㊿d 停手:不設 == 全 0、全 1 == 空頭天天亮、非交易日訊號 → 下一個交易日、K=2 蓋 3 天、平移天數不變、空檔 throw、換倉日停手 ${pzR.st.pauseReb || 0} 次`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }
