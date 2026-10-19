@@ -28,7 +28,7 @@
  *   IDX_LONG=$S/cw_idx_long.json IDX_EARLY=$S/cw_idx_long_early.json TWII_NOW=$S/cw_^TWII.json FI_MKT=$S/fi_mkt_hist.json \
  *   DATA_DIR=$S/d10n DIV=data/dividends_hist.json node --max-old-space-size=8192 scripts/hightop_sell_probe.mjs out.json
  *   (不給 DATA_DIR → 只跑 ① 大盤那一段)・LEAD_K=10 停手天數 ・SHAMS=20 安慰劑次數(停手日子整段平移)
- *   HIDROP_GRID=1 → 改跑「近高 × 跌幅 × 停手天數」高原(3×5×3 格 × 兩窗口,沒有安慰劑)
+ *   HIDROP_GRID=1 → 改跑「近高 × 跌幅 × 停手天數」高原(3×5×3 格 × 兩窗口,沒有安慰劑);再加 GRID_KEY=fiSell5h 等 → 那個訊號自己的門檻格 × 停手天數
  *   node scripts/hightop_sell_probe.mjs --selftest
  */
 import fs from 'fs';
@@ -224,8 +224,12 @@ export function leaderGrid(M, env, log = console.log) {
         return out; };
     const base = Object.fromEntries(WINS.map(w => [w, runW(w, {})]));
     const F = M.F, rows = [];
-    for (const nr of NEARS) for (const th of THS) {
-        const sd = M.dates.filter((_, i) => F.dd252[i] != null && F.dd252[i] >= -nr / 100 && F.ret[i] != null && F.ret[i] <= -th / 100);
+    // GRID_KEY=訊號 key → 改跑那個訊號自己的門檻格(def.grid)× 停手天數;不設 = 近高 × 跌幅
+    const gdef = env.GRID_KEY ? M.defs.find(d => d.key === env.GRID_KEY) : null;
+    if (env.GRID_KEY && !gdef) throw new Error(`GRID_KEY=${env.GRID_KEY} 不認得(⛔ 不可安靜地改跑別的)`);
+    const combos = gdef ? gdef.grid.map(th => ({ nr: null, th, sd: M.dates.filter((_, i) => gdef.build(th)[i] === 1) }))
+                        : NEARS.flatMap(nr => THS.map(th => ({ nr, th, sd: M.dates.filter((_, i) => F.dd252[i] != null && F.dd252[i] >= -nr / 100 && F.ret[i] != null && F.ret[i] <= -th / 100) })));
+    for (const { nr, th, sd } of combos) {
         for (const K of KS) {
             const r = { near: nr, th, K, win: {} };
             for (const w of WINS) {
@@ -236,7 +240,7 @@ export function leaderGrid(M, env, log = console.log) {
                 r.win[w] = { nSig: inW.length, tot: r2(median(rs.map(x => (x.fin - 1) * 100))), mdd: r2(median(rs.map(x => x.m.mdd))), beat: rs.filter((x, k) => x.fin > base[w][k].fin + 1e-12).length };
             }
             rows.push(r);
-            log(`   ⛰️ 近高 ≤${nr}% ・跌 ≥${th}% ・停 ${K} 天:` + WINS.map(w => { const z = r.win[w]; return z.nSig ? `[${w.slice(0, 4)}] 訊號 ${z.nSig} ・${z.tot}% ・贏 ${z.beat}/17 ・回撤 ${z.mdd}%` : `[${w.slice(0, 4)}] 沒訊號`; }).join(' ・'));
+            log(`   ⛰️ ${gdef ? `${gdef.key} 門檻 ${th}` : `近高 ≤${nr}% ・跌 ≥${th}%`} ・停 ${K} 天:` + WINS.map(w => { const z = r.win[w]; return z.nSig ? `[${w.slice(0, 4)}] 訊號 ${z.nSig} ・${z.tot}% ・贏 ${z.beat}/17 ・回撤 ${z.mdd}%` : `[${w.slice(0, 4)}] 沒訊號`; }).join(' ・'));
         }
     }
     return { base: Object.fromEntries(WINS.map(w => [w, { tot: r2(median(base[w].map(x => (x.fin - 1) * 100))), mdd: r2(median(base[w].map(x => x.m.mdd))) }])), rows };
