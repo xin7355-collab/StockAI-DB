@@ -28,6 +28,7 @@
  *   IDX_LONG=$S/cw_idx_long.json IDX_EARLY=$S/cw_idx_long_early.json TWII_NOW=$S/cw_^TWII.json FI_MKT=$S/fi_mkt_hist.json \
  *   DATA_DIR=$S/d10n DIV=data/dividends_hist.json node --max-old-space-size=8192 scripts/hightop_sell_probe.mjs out.json
  *   (不給 DATA_DIR → 只跑 ① 大盤那一段)・LEAD_K=10 停手天數 ・SHAMS=20 安慰劑次數(停手日子整段平移)
+ *   HIDROP_GRID=1 → 改跑「近高 × 跌幅 × 停手天數」高原(3×5×3 格 × 兩窗口,沒有安慰劑)
  *   node scripts/hightop_sell_probe.mjs --selftest
  */
 import fs from 'fs';
@@ -213,6 +214,34 @@ export function leaderPart(M, env, log = console.log) {
     return out;
 }
 
+/** ⛰️ 高原:近高 × 跌幅 × 停手天數(⛔ 沒有安慰劑,只看「贏現行幾條」跟總報酬;安慰劑看中心點那一格)。HIDROP_GRID=1 才跑 */
+export function leaderGrid(M, env, log = console.log) {
+    const ctx = loadCtx(env.DATA_DIR, env.DIV);
+    const cal = ctx.cal, ci = new Map(cal.map((d, i) => [d, i]));
+    const NEARS = [3, 5, 7], THS = [1, 1.5, 2, 2.5, 3], KS = [5, 10, 20];
+    const runW = (w, cfg) => { const s0 = cal.findIndex(d => d >= w), out = [];
+        for (let k = 0; k < PATHS; k++) { const s = s0 + STEP * k, r = simulate(ctx, s, cfg, 1000 + k); const trS = Array.from(ctx.etf.tr.slice(s, s + r.eq.length)); out.push({ fin: r.eq.at(-1), m: metrics(r.eq, trS) }); }
+        return out; };
+    const base = Object.fromEntries(WINS.map(w => [w, runW(w, {})]));
+    const F = M.F, rows = [];
+    for (const nr of NEARS) for (const th of THS) {
+        const sd = M.dates.filter((_, i) => F.dd252[i] != null && F.dd252[i] >= -nr / 100 && F.ret[i] != null && F.ret[i] <= -th / 100);
+        for (const K of KS) {
+            const r = { near: nr, th, K, win: {} };
+            for (const w of WINS) {
+                const inW = sd.filter(x => x >= w && ci.has(x));
+                if (!inW.length) { r.win[w] = { nSig: 0 }; continue; }
+                const a = new Uint8Array(cal.length); for (const d of inW) { const i = ci.get(d); for (let k = 0; k <= K && i + k < cal.length; k++) a[i + k] = 1; }
+                const rs = runW(w, { pause: a });
+                r.win[w] = { nSig: inW.length, tot: r2(median(rs.map(x => (x.fin - 1) * 100))), mdd: r2(median(rs.map(x => x.m.mdd))), beat: rs.filter((x, k) => x.fin > base[w][k].fin + 1e-12).length };
+            }
+            rows.push(r);
+            log(`   ⛰️ 近高 ≤${nr}% ・跌 ≥${th}% ・停 ${K} 天:` + WINS.map(w => { const z = r.win[w]; return z.nSig ? `[${w.slice(0, 4)}] 訊號 ${z.nSig} ・${z.tot}% ・贏 ${z.beat}/17 ・回撤 ${z.mdd}%` : `[${w.slice(0, 4)}] 沒訊號`; }).join(' ・'));
+        }
+    }
+    return { base: Object.fromEntries(WINS.map(w => [w, { tot: r2(median(base[w].map(x => (x.fin - 1) * 100))), mdd: r2(median(base[w].map(x => x.m.mdd))) }])), rows };
+}
+
 function printMarket(M, log = console.log) {
     const s = x => x == null ? '—' : (x >= 0 ? '+' : '') + x;
     log(`\n🧭 基準:任何一天「之後 60 天再跌 ≥10%」= ${M.base}%(訊號一律晚一天才算)`);
@@ -232,11 +261,12 @@ function main() {
     const t0 = Date.now();
     const M = marketPart(process.env);
     printMarket(M);
-    let L = null;
-    if (process.env.DATA_DIR) L = leaderPart(M, process.env);
+    let L = null, G = null;
+    if (process.env.DATA_DIR && process.env.HIDROP_GRID) G = leaderGrid(M, process.env);
+    else if (process.env.DATA_DIR) L = leaderPart(M, process.env);
     const R = { meta: { generated: new Date().toISOString(), from: M.dates[0], to: M.dates.at(-1), base: M.base, near: NEAR, lag: '訊號晚一天才算(⛔ 不用當天收盤)', segs: SEGS.map(x => x[1]) },
         market: M.res.map(r => ({ key: r.key, name: r.name, th: r.th, on: r.on, prec: r.prec, lift: r.lift, p: r.p, q: r.q, segs: r.segs, years: r.years, dropBest: r.dropBest, plateau: r.plateau,
-            gates: r.gates, nPass: r.nPass, pass: r.pass, first: r.first, today: r.today, act: r.act, epi: r.epi, ons: r.ons })), now: M.now, leader: L };
+            gates: r.gates, nPass: r.nPass, pass: r.pass, first: r.first, today: r.today, act: r.act, epi: r.epi, ons: r.ons })), now: M.now, leader: L, grid: G };
     if (out) { fs.writeFileSync(out, JSON.stringify(R)); console.log(`\n💾 ${out}`); }
     console.log(`⏱️ ${((Date.now() - t0) / 1000).toFixed(0)}s`);
 }
