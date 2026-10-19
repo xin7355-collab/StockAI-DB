@@ -11,9 +11,18 @@ name: 🏦 法人/融資券 歷史回補
 #    ⛔ 這也避免跟 daily_miner 的 gh-pages force-push 打架。
 #
 # ⛔ 只能手動觸發。可分批跑(LIMIT),重跑會自己跳過已補滿的檔。
+#
+# 🗄️ V79.3.6 mode=deep:2012~2023-06 每檔法人(外資/投信/自營,單位:股)→ **獨立分支 inst_deep**
+#    (inst_deep/{代號}.json.gz,欄位式 {d,f,t,dl})。⛔ 不碰 data/*.json、⛔ 不進 data / gh-pages(避開陷阱 #41)。
+#    母體 = klines_deep 分支的 4 碼個股(含已下市)∪ data 分支的 4 碼個股;已經有的檔跳過 → 可以分好幾輪跑完。
+#    推之前要過對表(跟 data/*.json 重疊的 2023-06 那段外資一致率 ≥90%),沒過 → ⛔ 不推。
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'fill = 補 data/*.json 缺的法人/融資券(原本的做法)・deep = 2012~2023-06 個股法人 → inst_deep 分支'
+        required: false
+        default: 'fill'
       limit:
         description: '這一輪最多補幾檔(想先小量驗證可填 30;全市場填 99999)'
         required: false
@@ -58,6 +67,7 @@ jobs:
           if [ "$n" -lt 500 ]; then echo "::error::只還原到 $n 檔,data 分支可能有問題 → 中止"; exit 1; fi
 
       - name: 🏦 回補法人 / 融資券
+        if: github.event.inputs.mode != 'deep'
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
           LIMIT: ${{ github.event.inputs.limit }}
@@ -65,6 +75,7 @@ jobs:
         run: python3 inst_backfill.py
 
       - name: 📊 回補後的實際深度(⛔ 不只看綠燈,要確認真的變深了)
+        if: github.event.inputs.mode != 'deep'
         run: |
           python3 - <<'PY'
           import json, glob, statistics
@@ -84,6 +95,7 @@ jobs:
       # ⚠️ 順序很重要:`git checkout` 會蓋掉工作目錄的 data/ →
       #    ⛔ 一定要**先把回補結果搬到 /tmp**,切完分支再搬回來,否則整輪白做。
       - name: 💾 推回 data 分支
+        if: github.event.inputs.mode != 'deep'
         run: |
           set -e
           rm -rf /tmp/bf && mkdir -p /tmp/bf
@@ -111,5 +123,64 @@ jobs:
             echo "✅ 已推回 data 分支"
           fi
 
+      # ── 🗄️ deep 模式 ───────────────────────────────────────────────
+      - name: 🗄️ deep:還原已抓過的 + 做母體清單
+        if: github.event.inputs.mode == 'deep'
+        run: |
+          set -e
+          mkdir -p inst_deep
+          if git fetch --depth=1 origin inst_deep 2>/dev/null; then
+            git archive FETCH_HEAD inst_deep | tar -x || true
+          fi
+          echo "已經有 $(ls inst_deep/*.json.gz 2>/dev/null | wc -l) 檔(這些會跳過)"
+          git fetch --depth=1 origin klines_deep
+          git ls-tree --name-only FETCH_HEAD klines_deep/ | sed -E 's#^klines_deep/##; s#\.json\.gz$##' > /tmp/universe.txt
+          ls data/*.json | sed -E 's#^data/##; s#\.json$##' >> /tmp/universe.txt
+          echo "母體候選 $(sort -u /tmp/universe.txt | wc -l) 個代號(程式會再只留 4 碼個股)"
+
+      - name: 🗄️ deep:抓 2012~2023-06 個股法人
+        if: github.event.inputs.mode == 'deep'
+        env:
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          LIMIT: ${{ github.event.inputs.limit }}
+          MAX_MIN: ${{ github.event.inputs.max_min }}
+          MODE: deep
+          UNIVERSE: /tmp/universe.txt
+        run: |
+          python3 inst_backfill.py --selftest
+          python3 inst_backfill.py
+
+      # ⚠️ 順序同上:先把 inst_deep/ 搬到 /tmp,切完分支再搬回來
+      - name: 🗄️ deep:推到 inst_deep 分支
+        if: github.event.inputs.mode == 'deep'
+        run: |
+          set -e
+          n=$(ls inst_deep/*.json.gz 2>/dev/null | wc -l)
+          echo "要推 $n 檔"
+          [ "$n" -gt 0 ] || { echo "::error::一檔都沒有 → 不推"; exit 1; }
+          rm -rf /tmp/deep && mkdir -p /tmp/deep && cp -a inst_deep/. /tmp/deep/
+          git config user.name  "StockAI Bot"
+          git config user.email "bot@users.noreply.github.com"
+          git reset --hard -q && git clean -fdq
+          if git fetch --depth=1 origin inst_deep 2>/dev/null; then
+            git checkout -f -B inst_deep FETCH_HEAD
+          else
+            git checkout -q --orphan inst_deep
+            git rm -rq --cached . 2>/dev/null || true
+            git clean -fdq
+          fi
+          rm -rf inst_deep && mkdir -p inst_deep && cp -a /tmp/deep/. inst_deep/
+          git add -f inst_deep
+          if git diff --cached --quiet; then echo "✅ 沒有新檔 → 不 commit"; exit 0; fi
+          git commit -q -m "🗄️ 個股法人深歷史 $n 檔 $(date -u +%Y-%m-%d)"
+          pushed=0
+          # ⛔ 這個 retry 迴圈不可拿掉
+          for i in 1 2 3 4 5; do
+            git push origin inst_deep && { pushed=1; echo "✅ 已推上 inst_deep(第 $i 次)"; break; }
+            sleep $((i * 3))
+            git pull --rebase origin inst_deep 2>/dev/null || true
+          done
+          [ "$pushed" -eq 1 ] || { echo "::error::push 連 5 次失敗"; exit 1; }
+
       - name: ✅ 完成
-        run: echo "回補完成。明天 daily_miner 會把它讀回 SQLite 再匯出,前端隔天自動看得到。"
+        run: echo "回補完成(fill:明天 daily_miner 會把它讀回 SQLite 再匯出 ・deep:git ls-tree origin/inst_deep 看檔數)"

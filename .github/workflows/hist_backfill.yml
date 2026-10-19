@@ -4,23 +4,25 @@
 #   🎰 taifex:期交所 選擇權 P/C 比 + 台指期大額交易人(當沖 🚦 那張卡拿它們投票,權重從來沒回測過)
 #              + 👥 小台散戶多空比(V79.0.9:三大法人小台未平倉 + 小台全市場未平倉;主力出貨指數拿它計分,從沒回測過)
 #              → data/taifex_hist.json(scripts/taifex_hist_miner.py)
+#   📉 fimkt(V79.3.6):上市外資現貨 / 外資台指期淨未平倉 / 整體融資 長歷史(App 的外資台指期規則從來沒回測過)
+#              → data/fi_mkt_hist.json(scripts/fi_mkt_miner.py;⚠️ 只在 which=fimkt 時跑,both 不含它)
 #   🎤 confcall:法說會場次往回補到約 5 年前,只合併進 data/confcall.json 的 hist
 #              (⛔ 不動 upcoming / recent → 檔案不會變大到拖慢手機)
 #
 # ⭐ 推 data 分支就會被 daily_miner 的 `git archive origin/data` 帶上 gh-pages(同 us_hist / fin_backfill)。
 # ⚠️ 驗證⛔ 不可只看綠燈(陷阱 #9)→ `git show origin/data:data/taifex_hist.json | head -c 300`。
 # 🚨 期交所下載頁的網址是候選(沙箱連不到期交所)→ 失敗時 log 會分「連不上 / 被擋 / 名字猜錯」三種(陷阱 #23)。
-name: 📚 歷史補挖 (期交所 P/C・大額交易人・散戶多空比 / 法說會)
+name: 📚 歷史補挖 (期交所 P/C・大額交易人・散戶多空比 / 法說會 / 大盤外資)
 
 on:
   workflow_dispatch:
     inputs:
       which:
-        description: '補哪一個:taifex / confcall / both'
+        description: '補哪一個:taifex / confcall / both / fimkt'
         required: false
         default: 'both'
       from:
-        description: '期交所最早補到哪個月(YYYY-MM,留空 = 2016-01)'
+        description: '最早補到哪個月(YYYY-MM;期交所留空 = 2016-01、fimkt 留空 = 2004-01)'
         required: false
         default: ''
       confcall_days:
@@ -54,7 +56,7 @@ jobs:
         run: pip install --quiet requests
 
       - name: 🎰 期交所 P/C + 大額交易人
-        if: github.event.inputs.which != 'confcall'
+        if: github.event.inputs.which != 'confcall' && github.event.inputs.which != 'fimkt'
         env:
           # 🔧 inputs.* 可能是空字串 → Python 端一律 `or 預設`(check_env_default.py)
           FROM: ${{ github.event.inputs.from }}
@@ -65,8 +67,23 @@ jobs:
           python3 scripts/taifex_hist_miner.py --selftest
           python3 scripts/taifex_hist_miner.py || echo "⚠️ 期交所補挖沒過守門(原因在上面)→ 這一份不推"
 
+      - name: 📉 大盤外資現貨 / 外資台指期 / 整體融資 長歷史
+        if: github.event.inputs.which == 'fimkt'
+        env:
+          # 🔧 inputs.* 可能是空字串 → Python 端一律 `or 預設`(check_env_default.py)
+          FROM: ${{ github.event.inputs.from }}
+          OUT: /tmp/fi_mkt_hist.json
+          RISK_HIST: /tmp/risk_history.json
+          FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+        run: |
+          python3 scripts/fi_mkt_miner.py --selftest
+          git fetch -q origin data
+          # 對表用:risk_history.json(每天的快照,裡面有外資現貨 / 外資台指期 / 融資)
+          git show origin/data:data/risk_history.json > /tmp/risk_history.json || rm -f /tmp/risk_history.json
+          python3 scripts/fi_mkt_miner.py || echo "⚠️ 大盤外資長歷史沒過守門(原因在上面)→ 這一份不推"
+
       - name: 🎤 法說會往回補(只合併 hist)
-        if: github.event.inputs.which != 'taifex'
+        if: github.event.inputs.which != 'taifex' && github.event.inputs.which != 'fimkt'
         env:
           CONFCALL_BACKFILL: ${{ github.event.inputs.confcall_days || '1900' }}
           DATA_DIR: data
@@ -86,7 +103,8 @@ jobs:
           FILES=""
           [ -s /tmp/taifex_hist.json ] && FILES="$FILES taifex_hist.json"
           [ -s /tmp/confcall.json ] && FILES="$FILES confcall.json"
-          [ -n "$FILES" ] || { echo "❌ 兩份都沒產出 → 沒東西可推"; exit 1; }
+          [ -s /tmp/fi_mkt_hist.json ] && FILES="$FILES fi_mkt_hist.json"
+          [ -n "$FILES" ] || { echo "❌ 一份都沒產出 → 沒東西可推"; exit 1; }
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git reset --hard -q 2>/dev/null || true

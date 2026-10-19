@@ -46,6 +46,17 @@ SLEEP = float(os.getenv('SLEEP', '0.12'))
 # ⭐ 補到「已經有 K 線的那些日子」即可 —— K 線本身只有 2~3 年,補更早也沒有價格可以配對
 MIN_FILL_RATIO = float(os.getenv('MIN_FILL_RATIO', '0.80'))   # 已補到這個比例就跳過
 
+# 🗄️ V79.3.6 deep 模式(MODE=deep):2012~2023-06 每檔法人 → 獨立分支 inst_deep(⛔ 不碰 data/*.json)
+#   為什麼:data/*.json 的法人只有 2023-06 起(K 線就那麼長)→「外資連買」「外資突然大買」那幾條都沒驗過空頭。
+#   使用者:「沒有資料,該回測就回測、該挖礦就挖礦」。
+MODE = (os.getenv('MODE') or 'fill').strip()
+DEEP_FROM = os.getenv('DEEP_FROM') or '2012-01-01'
+DEEP_TO = os.getenv('DEEP_TO') or '2023-06-30'          # 跟 data/*.json 重疊一個月 → 對表用
+DEEP_DIR = Path(os.getenv('DEEP_DIR') or 'inst_deep')
+UNIVERSE = os.getenv('UNIVERSE') or ''                   # 檔案:一行一個代號
+CHECK_MIN_DAYS = 200                                     # 對表至少要這麼多「兩邊都有、而且不是 0」的天
+CHECK_MIN_RATE = 0.90
+
 _tok_i = 0
 STAT = {'ok': 0, 'skip': 0, 'nodata': 0, 'fail': 0, 'filled_inst': 0, 'filled_margin': 0}
 REASON = {}
@@ -55,14 +66,17 @@ def _rec(k):
     REASON[k] = REASON.get(k, 0) + 1
 
 
-def fm(dataset, data_id, start_date, timeout=45):
-    """回 (rows, err)。每一把 token 都試過才放棄(V72.5.3:403/400 要換 token,⛔ 不可當成沒資料)。"""
+def fm(dataset, data_id, start_date, timeout=45, end_date=None):
+    """回 (rows, err)。每一把 token 都試過才放棄(V72.5.3:403/400 要換 token,⛔ 不可當成沒資料)。
+    end_date 預設 None = 網址跟 V79.3.5 以前一字不差(fill 模式不受影響);deep 模式才帶。"""
     global _tok_i
     tries = max(1, len(TOKENS))
     last = 'no-token'
     for k in range(tries):
         i = (_tok_i + k) % max(1, len(TOKENS))
         q = {'dataset': dataset, 'data_id': data_id, 'start_date': start_date}
+        if end_date:
+            q['end_date'] = end_date
         if TOKENS:
             q['token'] = TOKENS[i]
         try:
@@ -126,6 +140,150 @@ def agg_margin(rows):
             'sb': float(r.get('ShortSaleTodayBalance') or 0),
         }
     return out
+
+
+def deep_pack(m):
+    """agg_inst 的 {date:{f,t,d}}(股)→ 欄位式 {d:[日期], f:[], t:[], dl:[]}(整數股,⛔ 不換成張 —— 跟 data/*.json 同單位)。"""
+    ds = sorted(m)
+    return {'d': ds,
+            'f': [int(round(m[x]['f'])) for x in ds],
+            't': [int(round(m[x]['t'])) for x in ds],
+            'dl': [int(round(m[x]['d'])) for x in ds]}
+
+
+def deep_check(pack, rows):
+    """跟 data/*.json 重疊那段對表(外資):回 (可比天數, 一致天數)。只比兩邊都不是 0 的天(0 可能是「當時沒抓到」)。"""
+    have = {_d(r.get('date')): r.get('foreign_net') for r in (rows or []) if r.get('foreign_net')}
+    n = hit = 0
+    for d, f in zip(pack.get('d') or [], pack.get('f') or []):
+        v = have.get(d)
+        if not v or not f:
+            continue
+        n += 1
+        hit += abs(v - f) <= max(1000, abs(v) * 0.01)     # 1 張或 1% 以內
+    return n, hit
+
+
+def read_universe(path):
+    """一行一個代號 → 只留 4 碼、⛔ 不收 00 開頭(ETF);去重保序。"""
+    out, seen = [], set()
+    try:
+        lines = Path(path).read_text(encoding='utf-8').split()
+    except Exception:
+        return []
+    for x in lines:
+        x = x.strip()
+        if len(x) == 4 and x.isdigit() and not x.startswith('0') and x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
+
+
+def main_deep():
+    """deep 模式:已經有檔的跳過(可續跑);額度用完(402/429)就等 5 分鐘再試,最多 6 次。"""
+    import gzip
+    if not TOKENS:
+        print('❌ 沒有 FINMIND_TOKENS → 回補需要金鑰')
+        return 1
+    syms = read_universe(UNIVERSE)
+    if len(syms) < 500:
+        print(f'❌ 母體只有 {len(syms)} 檔(< 500)→ UNIVERSE 可能沒做好,⛔ 不跑')
+        return 1
+    DEEP_DIR.mkdir(parents=True, exist_ok=True)
+    pace = max(SLEEP, 6.2 / max(1, len(TOKENS)))          # 免費層 600 次/小時/把 → 每把每 6 秒一次
+    todo = [x for x in syms if not (DEEP_DIR / f'{x}.json.gz').exists()]
+    print(f'🗄️ 法人深歷史 {DEEP_FROM} ~ {DEEP_TO} ・母體 {len(syms)} 檔 ・已有 {len(syms) - len(todo)} ・要抓 {len(todo)} '
+          f'・token {len(TOKENS)} 把 ・每次間隔 {pace:.1f} 秒 ・預算 {MAX_MIN} 分', flush=True)
+    t0 = time.time()
+    done = wrote = empty = waits = 0
+    cn = ch = 0
+    for sym in todo:
+        if done >= LIMIT or (time.time() - t0) / 60 > MAX_MIN:
+            print(f'⏹️ 到達上限(LIMIT {LIMIT} / {MAX_MIN} 分)→ 本輪結束,下次接著補', flush=True)
+            break
+        data, err = None, None
+        for _ in range(6):
+            data, err = fm('TaiwanStockInstitutionalInvestorsBuySell', sym, DEEP_FROM, end_date=DEEP_TO, timeout=90)
+            if data is not None or not err or not (err.startswith('http402') or err.startswith('http429')):
+                break
+            waits += 1
+            print(f'   ⏳ {sym} 額度用完({err})→ 等 5 分鐘', flush=True)
+            time.sleep(300)
+        time.sleep(pace)
+        done += 1
+        if data is None:
+            _rec('deep_' + (err or '?')[:14])
+            continue
+        pack = deep_pack(agg_inst(data))
+        if not pack['d']:
+            empty += 1                                   # 那段期間還沒上市 → 照寫空檔,下次才不會一直重抓
+        with gzip.open(DEEP_DIR / f'{sym}.json.gz', 'wt', encoding='utf-8') as f:
+            json.dump(pack, f, separators=(',', ':'))
+        wrote += 1
+        p = DATA_DIR / f'{sym}.json'
+        if p.exists():
+            try:
+                a, b = deep_check(pack, json.loads(p.read_text(encoding='utf-8')))
+                cn += a; ch += b
+            except Exception:
+                pass
+        if done % 100 == 0:
+            print(f'   … {done} 檔 ・{(time.time() - t0) / 60:.0f} 分 ・寫入 {wrote}(空 {empty})・等額度 {waits} 次 '
+                  f'・對表 {ch}/{cn}', flush=True)
+    have = sum(1 for x in syms if (DEEP_DIR / f'{x}.json.gz').exists())
+    print(f'\n📊 本輪 {done} 檔 ・寫入 {wrote}(那段期間沒資料 {empty})・等額度 {waits} 次 ・累計 {have}/{len(syms)}')
+    if REASON:
+        print('   失敗分類:' + ' ・'.join(f'{k}×{v}' for k, v in sorted(REASON.items(), key=lambda x: -x[1])[:8]))
+    rate = (ch / cn) if cn else None
+    print(f'   🔎 跟 data/*.json 重疊那段對表(外資):{ch}/{cn}' + (f'({rate:.1%})' if cn else ''))
+    # 🚧 空過守門(陷阱 #9)+ 對表守門(陷阱 #17:單位 / 欄位對不上 = 不是同一個東西)
+    if done > 0 and wrote == 0:
+        print('❌ 處理了但一檔都沒寫 → 這一輪無效(金鑰 / 額度 / 資料集名),⛔ 不推')
+        return 1
+    if wrote >= 50 and cn < CHECK_MIN_DAYS:
+        print(f'❌ 寫了 {wrote} 檔但可對表只有 {cn} 天(< {CHECK_MIN_DAYS})→ 重疊那段可能沒抓到,⛔ 不推')
+        return 1
+    if cn >= CHECK_MIN_DAYS and rate < CHECK_MIN_RATE:
+        print(f'❌ 對表一致率 {rate:.1%} < {CHECK_MIN_RATE:.0%} → 單位或欄位跟 data/*.json 不一樣,⛔ 不推')
+        return 1
+    return 0
+
+
+def selftest():
+    bad = []
+
+    def ok(name, cond, extra=''):
+        print(f"  {'✅' if cond else '❌'} {name}{(' ・' + str(extra)) if extra and not cond else ''}")
+        if not cond:
+            bad.append(name)
+
+    m = agg_inst([
+        {'date': '2015-03-02', 'name': 'Foreign_Investor', 'buy': 5000, 'sell': 2000},
+        {'date': '2015-03-02', 'name': 'Foreign_Dealer_Self', 'buy': 100, 'sell': 0},
+        {'date': '2015-03-02', 'name': 'Investment_Trust', 'buy': 0, 'sell': 700},
+        {'date': '2015-03-02', 'name': 'Dealer_Hedging', 'buy': 10, 'sell': 0},
+        {'date': '2015/03/03', 'name': 'Foreign_Investor', 'buy': 0, 'sell': 9000},
+    ])
+    pk = deep_pack(m)
+    ok('① 外資 = 外資 + 外資自營、日期排序、斜線日期', pk['d'] == ['2015-03-02', '2015-03-03'] and pk['f'] == [3100, -9000], pk)
+    ok('① 投信 / 自營分開(單位:股)', pk['t'] == [-700, 0] and pk['dl'] == [10, 0], pk)
+    rows = [{'date': '2015/03/02', 'foreign_net': 3100}, {'date': '2015/03/03', 'foreign_net': 0}, {'date': '2015/03/04', 'foreign_net': 50}]
+    ok('② 對表:兩邊都有才算、0 不算', deep_check(pk, rows) == (1, 1), deep_check(pk, rows))
+    ok('② 單位差 1,000 倍 → 對不上', deep_check({'d': pk['d'], 'f': [x * 1000 for x in pk['f']]}, rows) == (1, 0))
+    ok('② 正負號反 → 對不上', deep_check({'d': pk['d'], 'f': [-x for x in pk['f']]}, rows) == (1, 0))
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        u = Path(td) / 'u.txt'
+        u.write_text('2330\n0050\n2330\n1101\n00878\nabcd\n 2317 \n', encoding='utf-8')
+        ok('③ 母體:只留 4 碼、不收 0 開頭、去重', read_universe(u) == ['2330', '1101', '2317'], read_universe(u))
+        ok('③ 母體檔不存在 → 空', read_universe(Path(td) / 'nope.txt') == [])
+    # ④ fill 模式的網址一字不變(沒帶 end_date 就沒有 end_date)
+    import inspect
+    src = inspect.getsource(fm)
+    ok('④ end_date 只有帶了才放進網址', "if end_date:\n            q['end_date'] = end_date" in src)
+    ok('④ 預設模式是 fill', (os.getenv('MODE') or 'fill').strip() == 'fill' or MODE == 'deep')
+    print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
+    return 0 if not bad else 1
 
 
 def main():
@@ -226,4 +384,6 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    if '--selftest' in sys.argv:
+        sys.exit(selftest())
+    sys.exit(main_deep() if MODE == 'deep' else main())
