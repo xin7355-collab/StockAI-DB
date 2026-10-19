@@ -544,7 +544,7 @@ export function run(env, log = console.log) {
         signals: res, now: nowF,
         untestable: [
             { name: '風險指數(六因子合成)', why: 'VIX/外資期貨/美元/標普/日圓/黃金沒有同一段長歷史,而且權重是憑空訂的(陷阱 #38)' },
-            { name: '外資台指期「急遽加空 / 空單最重」', why: 'risk_history.json 只有 90 天;期交所外資未平倉沒有長歷史(taifex_hist 的 inst 段抓不到)' },
+            { name: '外資台指期「急遽加空 / 空單最重」', why: 'V79.3.6 已補資料(fi_mkt_hist.json,2018 起)→ 改在 hightop_sell_probe.mjs 測:急遽加空 +6.2pp 4/6、空單最重 +0.4pp;照著讓 👑 停手兩段都少賺' },
             { name: '反攻雷達黑天鵝層(VIX 爆表 / 日圓急升 / 日韓股 −5%)', why: '日圓、日經、韓股沒有存逐日歷史;VIX 只有 2021-10 起' },
             { name: '全球熔斷(標普/那指 ≤ −7%、日經/韓股 ≤ −8%)', why: '2021-10 起標普、那指沒有任何一天跌到 −7%;日韓沒有歷史' },
         ],

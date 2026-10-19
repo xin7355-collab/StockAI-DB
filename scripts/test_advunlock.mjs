@@ -195,6 +195,10 @@ const T = await page.evaluate(() => {
     // 📉 V79.3.2 加權最新收盤跌 ≥3% → idx_drop3;跌 2% → 沒有
     { const mk = r => { const t = mkK(120, '2026-10-16'); const n = t.length; Object.assign(t[n - 1], { close: +(t[n - 2].close * (1 + r)).toFixed(2) }); return t; };
       R.d3 = ids(run({ tw: mk(-0.035) })); R.d3No = ids(run({ tw: mk(-0.02) })); }
+    // 🛑 V79.3.6 外資台指期「急遽加空」(_fiFutState danger)→ fifut_cut;「空單近期最重」(warn)/ 沒資料 → 沒有
+    R.ff = ids(run({ fifut: { level: 'danger', chg5: -10481, net: -93675 } }));
+    R.ffNo = ids(run({ fifut: { level: 'warn', chg5: -2000, net: -93675 } }));
+    R.ffNull = ids(run({ fifut: null }));
     // 📰 V79.3.3 再接 6 篇專欄
     { const H = new Map([['2330', { cost: 0 }]]);
       const drop = mkK(80, '2026-10-16', k => { k[k.length - 1].close = 95; });
@@ -243,6 +247,7 @@ ok('③i 休市前最後一個交易日 → holiday_pre;前兩天 → 沒有', h
 ok('③j 休市 5 天後第一天 → holiday_post;一般週末後 → 沒有', has(T.post, 'holiday_post') && !has(T.postNo, 'holiday_post'), JSON.stringify([T.post, T.postNo]));
 ok('③l 盤前分數 ≤20 → premkt_low;21 分 / 沒算過 / 週末 → 沒有', has(T.pm, 'premkt_low') && !has(T.pmNo, 'premkt_low') && !has(T.pmNull, 'premkt_low') && !has(T.pmWk, 'premkt_low'), JSON.stringify([T.pm, T.pmNo, T.pmNull, T.pmWk]));
 ok('③m 加權最新收盤跌 3.5% → idx_drop3;跌 2% → 沒有', has(T.d3, 'idx_drop3') && !has(T.d3No, 'idx_drop3'), JSON.stringify([T.d3, T.d3No]));
+ok('③m2 外資台指期急遽加空 → fifut_cut;空單近期最重 / 沒資料 → 沒有', has(T.ff, 'fifut_cut') && !has(T.ffNo, 'fifut_cut') && !has(T.ffNull, 'fifut_cut'), JSON.stringify([T.ff, T.ffNo, T.ffNull]));
 ok('③n 手上的跌破 5 日線 → ma5_break;沒跌破 / 自選 → 沒有', has(T.ma5, 'ma5_break') && !has(T.ma5No, 'ma5_break') && !has(T.ma5Fav, 'ma5_break'), JSON.stringify([T.ma5, T.ma5No, T.ma5Fav]));
 ok('③o 手上的收盤創 60 日新高 → nh60_held;平盤 → 沒有', has(T.nh, 'nh60_held') && !has(T.nhNo, 'nh60_held'), JSON.stringify([T.nh, T.nhNo]));
 ok('③p 外資連買 5 天(最後一根 0 = 沒公布,從前一根算)→ fi_streak5;4 天 → 沒有', has(T.fi, 'fi_streak5') && !has(T.fiNo, 'fi_streak5'), JSON.stringify([T.fi, T.fiNo]));
