@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.4.3 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.4.4 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.4.3</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.4.4</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8539,10 +8539,13 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.4.3',
+    _APP_VERSION: 'V79.4.4',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.4.4', d: [
+            '📚 產業作戰室:選股條件「優於大盤」那一條補回 2010 年起的資料(散戶 App 的用法不變)',
+        ], dt: '2026-10-20' },
         { v: 'V79.4.3', d: [
             '💧 板塊輪動頁的一句話改成「最強幾族之後通常比較強、最弱幾族先避開」;板塊表的 🕵️ 標記改成只描述(價跌但外資在買),⛔ 不是買進訊號',
             '📚 產業作戰室:板塊、外資連買、投信、技術指標、選股條件、行事曆那幾條改用 2010 年起(含後來下市的股票)的資料重新整理(散戶 App 的用法不變)',
@@ -8668,7 +8671,6 @@ ${list}
         { v: 'V78.3.7', d: ['🔬 <b>這一檔自己的回測成績搬到產業作戰室</b>:新分頁「🔬 個股實測」輸入代號就能看回測排名、K 線訊號成績,還有自訂回測與盲測練習;散戶救星一般畫面不再有任何「看完整回測」的按鈕'] },
         { v: 'V78.3.6', d: ['🧹 <b>散戶 App 拿掉回測研究文字(第三批)</b>:K 線、當沖、籌碼、選股、ETF、大盤、券商、提醒與所有說明視窗只講「怎麼看、怎麼做」;勝率、期望值、樣本數、對照組一律收到產業作戰室', '⏳ 抱滿天數那張卡與「鎖漲停隔天」只留怎麼賣的規則,不再列歷史平均'] },
         { v: 'V78.3.5', d: ['🧹 <b>散戶 App 拿掉回測研究文字(第二批:個股報告頁)</b>:快速判別表、籌碼總表、產業節、機率框、價格牆、財報趨勢、事件、圖與提示詞只講事實與怎麼看 —— 成績與對照數字一律在產業作戰室'] },
-        { v: 'V78.3.4', d: ['🧹 <b>散戶 App 拿掉回測研究文字(第一批)</b>:決策台、總覽、設定、策略變更視窗只講「怎麼做」 —— 怎麼選、什麼時候買、怎麼賣、錢放哪;成績與對照數字一律在產業作戰室', '🔬 自訂回測、盲測練習、個股「回測」分頁收進實驗室模式(一般畫面看不到)'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -47387,6 +47389,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         nh5: [-1.186, 39.8, 175403, 0, -0.04],
         vollo: [-1.242, 40.2, 117626, 0, -0.05],
         vr150: [-1.147, 39.9, 166136, 0, -0.05],
+        beatmkt: [-1.217, 39.7, 195898, 0, -0.05],
         vnh5: [-1.201, 39.8, 191218, 0, -0.06],
         ma5up: [-1.191, 39.7, 189892, 0, -0.07],
         macdd: [-1.44, 39.1, 87813, 0, -0.07],
