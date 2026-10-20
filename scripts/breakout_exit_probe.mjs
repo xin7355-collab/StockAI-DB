@@ -37,6 +37,8 @@
 import fs from 'fs';
 import path from 'path';
 import { simExits, exitName } from './lib_exitsim.mjs';
+import { limitOf } from './lib_limit.mjs';
+import { cliffPrefix, cliffIn } from './lib_cliff.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');
@@ -52,6 +54,8 @@ const STOPFILL = process.env.STOPFILL || 'close';   // ⭐ V77.6.0 預設改收�
 // 🕯️ V77.5.9 突破那根 K 的幅度 ÷ ATR14(ATR 逐字稿:「1~2 倍 ATR 的突破 K 才進場」)
 //   ⭐ ATR 只用**訊號日之前**的 14 根(陷阱 #43:基準⛔ 不可包含被判斷的那根)
 const TA_BINS = [[0, 1], [1, 1.5], [1.5, 2], [2, 3], [3, Infinity]];
+// 📏 V79.4.2 訊號日收盤鎖漲停 → 尾盤買不到(2015-06 前漲跌幅 ±7%,lib_limit;⛔ 不再寫死 1.095)
+export const lockedClose = (date, c, pc) => c >= pc * (1 + limitOf(date) - 0.005);
 export function trAtr(R, i) {
     if (i < 15) return null;
     const tr = q => Math.max(R[q].h - R[q].l, Math.abs(R[q].h - R[q - 1].c), Math.abs(R[q].l - R[q - 1].c));
@@ -142,8 +146,9 @@ if (SELFTEST) {
     }
     // ⑤ 鎖漲停剔除:訊號日 +9.6% → 尾盤買不到
     {
-        const lim = (c, pc) => c >= pc * 1.095;
-        ok('⑤ 鎖漲停(+9.6%)要被剔除、+9.4% 不剔除', lim(109.6, 100) && !lim(109.4, 100), [lim(109.6, 100), lim(109.4, 100)]);
+        const L = lockedClose;
+        ok('⑤ 鎖漲停(+9.6%)要被剔除、+9.4% 不剔除', L('2020-03-02', 109.6, 100) && !L('2020-03-02', 109.4, 100), [L('2020-03-02', 109.6, 100), L('2020-03-02', 109.4, 100)]);
+        ok('⑤b 2015-06 前漲跌幅 ±7%:+6.6% 就是鎖漲停、+6.4% 不是', L('2012-03-01', 106.6, 100) && !L('2012-03-01', 106.4, 100) && !L('2016-03-01', 106.6, 100), [L('2012-03-01', 106.6, 100), L('2012-03-01', 106.4, 100)]);
     }
     // ⑥ 20 日去重
     {
@@ -223,13 +228,10 @@ for (const sym of syms) {
     const R = d.map(r => ({ d: r.date, o: +r.open, h: +r.high, l: +r.low, c: +r.close, v: +(r.volume || 0) }));
     const n = R.length;
     if (!R.every(r => r.c > 0)) continue;
-    // 🚧 斷崖守門:相鄰收盤 ±40% 物理上不可能是真實漲跌(非整數比減資/除權留下的尺標斷層,
-    //    CLAUDE.md V77.2.1 實測上市櫃 12 檔)→ 整檔剔除,⛔ 不可讓壞掉的價格進到出場模擬。
-    {
-        let cliff = false;
-        for (let q = 1; q < R.length; q++) { const rr = R[q].c / R[q - 1].c; if (rr > 1.4 || rr < 0.6) { cliff = true; break; } }
-        if (cliff) { nCliff++; continue; }
-    }
+    // 🚧 斷崖守門(lib_cliff):相鄰收盤 / 開盤差超過 ×1.5 / ×0.67 物理上不可能是真實漲跌(減資 / 停牌恢復 / 資料洞)
+    //    → V79.4.2 起只剔「碰到斷崖的那幾根」(訊號前 maxN 根到抱滿那天),⛔ 不再整檔剔除
+    //    (整檔剔除會把減過資的困難股整批拿掉 = 倖存者偏誤;16 年資料 345 檔有斷崖)
+    const cliffPre = cliffPrefix(R.map(r => r.c), R.map(r => r.o));
     nSym++;
 
     const lastHit = {}; for (const k in EV) lastHit[k] = -999;
@@ -237,7 +239,8 @@ for (const sym of syms) {
     for (let i = maxN; i < n - MAXD - 1; i++) {
         nBar++;
         const c = R[i].c, pc = R[i - 1].c;
-        if (c >= pc * 1.095) { skipLimit++; continue; }          // 鎖漲停買不到
+        if (lockedClose(R[i].d, c, pc)) { skipLimit++; continue; }          // 鎖漲停買不到(2015-06 前 ±7%)
+        if (cliffIn(cliffPre, i - Math.max(...HORIZ) - 1, i + MAXD + 1)) { nCliff++; continue; }   // 窗口碰到斷崖 → 這一根不算(事件 / 對照同一條)
         // 量比(基準⛔ 不含今天)
         let vb = 0; for (let q = i - 20; q < i; q++) vb += R[q].v; vb /= 20;
         const vr = vb > 0 ? R[i].v / vb : 0;
@@ -263,7 +266,7 @@ for (const sym of syms) {
     }
     if (nSym % 400 === 0) process.stdout.write(`\r   ${nSym} 檔 …`);
 }
-console.log(`\r   ✅ ${nSym} 檔 ・${nBar.toLocaleString()} 股·日 ・鎖漲停剔除 ${skipLimit.toLocaleString()} 筆 ・🚧 斷崖剔除 ${nCliff} 檔 ・對照組 ${BASE.length.toLocaleString()} 筆`);
+console.log(`\r   ✅ ${nSym} 檔 ・${nBar.toLocaleString()} 股·日 ・鎖漲停剔除 ${skipLimit.toLocaleString()} 筆 ・🚧 窗口碰到斷崖剔除 ${nCliff.toLocaleString()} 根 ・對照組 ${BASE.length.toLocaleString()} 筆`);
 {   // ⛔ 窗口要印出來(⛔ 不可讓「含不含 2022」用猜的)
     const ds = BASE.map(e => e.date); ds.sort();
     console.log(`   📅 事件窗口:${ds[0]} ~ ${ds[ds.length - 1]}\n`);
@@ -335,9 +338,10 @@ if (arr60.length >= 30) {
     for (const r of RULES) {
         const ee = exOf(arr60, r), bb = exOf(BASE, r);
         const all = mean(ee) - mean(bb);
-        const mid = Math.floor(arr60.length / 2);
-        const h1 = mean(exOf(arr60.slice(0, mid), r)) - mean(bb);
-        const h2 = mean(exOf(arr60.slice(mid), r)) - mean(bb);
+        // V79.4.2:前後半照**日期**切、各跟同一半的對照組比(舊版照陣列順序切 = 照股票代號切,那一關沒有意義)
+        const midD = [...arr60].map(e => e.date).sort()[Math.floor(arr60.length / 2)];
+        const h1 = mean(exOf(arr60.filter(e => e.date < midD), r)) - mean(exOf(BASE.filter(e => e.date < midD), r));
+        const h2 = mean(exOf(arr60.filter(e => e.date >= midD), r)) - mean(exOf(BASE.filter(e => e.date >= midD), r));
         const yr = years.map(y => {
             const a = arr60.filter(e => yearOf(e) === y), b = BASE.filter(e => yearOf(e) === y);
             if (a.length < 20 || b.length < 20) return null;
@@ -369,8 +373,9 @@ for (const N of [20, 60, 120]) {
         const lab = `${lo}~${isFinite(hi) ? hi : ''}`.padEnd(8);
         if (a.length < 30) { console.log(`${lab} 樣本不足(${a.length})`); continue; }
         const ea = exOf(a, 'don20'), d = mean(ea) - mAll;
-        const mid = Math.floor(a.length / 2);
-        const h1 = mean(exOf(a.slice(0, mid), 'don20')) - mAll, h2 = mean(exOf(a.slice(mid), 'don20')) - mAll;
+        const midD = a.map(e => e.date).sort()[Math.floor(a.length / 2)];   // V79.4.2:照日期切、跟同一半的全部突破比
+        const h1 = mean(exOf(a.filter(e => e.date < midD), 'don20')) - mean(exOf(all.filter(e => e.date < midD), 'don20'));
+        const h2 = mean(exOf(a.filter(e => e.date >= midD), 'don20')) - mean(exOf(all.filter(e => e.date >= midD), 'don20'));
         const yr = years.map(y => { const aa = a.filter(e => yearOf(e) === y), bb = all.filter(e => yearOf(e) === y);
             return aa.length >= 20 ? mean(exOf(aa, 'don20')) - mean(exOf(bb, 'don20')) : null; }).filter(x => x != null);
         // ⚠️ 關卡以「這一桶自己的方向」判(增量為負的桶 = 避雷,也要能判得出來)
