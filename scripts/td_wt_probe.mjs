@@ -27,7 +27,7 @@ import fs from 'fs';
 import path from 'path';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const DATA = path.join(ROOT, 'data');
+const DATA = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(ROOT, 'data');   // V79.4.0:可指到 d16(16 年全市場)
 const HOR = [1, 3, 5, 10, 20];
 const COST = 0.44;
 const DEDUP = 10;

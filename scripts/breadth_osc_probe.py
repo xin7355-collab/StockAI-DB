@@ -22,7 +22,7 @@ import json
 import statistics
 from pathlib import Path
 
-DATA = Path('data')
+DATA = Path(__import__('os').environ.get('DATA_DIR') or 'data')   # V79.4.0:可指到 d16(16 年全市場)
 HORIZONS = (5, 10, 20)
 MIN_BARS = 260
 LOOK = 250
