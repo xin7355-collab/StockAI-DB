@@ -28,7 +28,7 @@ DESC = {
     'fut': '外資台指期淨未平倉(口)',
     'fut5': '外資台指期 5 日增減(口)',
     'mg20': '整體融資 20 日增減(%)',
-    'bs': '台指期近月 − 加權(點,負 = 逆價差)',
+    'bs': '台指期近月 − 加權(佔加權 %,負 = 逆價差)',
     'pc': '選擇權 P/C 未平倉比',
     'lt': '台指期大額交易人前 10 大淨部位(口)',
     'twd20': '美元兌台幣 20 日變化(%,正 = 台幣變弱)',
@@ -123,9 +123,13 @@ def build(fi=None, tx=None, us=None, twii=None, two=None):
         st['fut5'] = chg(fut, 5, pct=False)
         mg = {d10(d): _num(v) for d, v in (fi.get('mg') or {}).items()}
         st['mg20'] = chg(mg, 20)
-        bs = {d10(d): _num(v[0] if isinstance(v, list) else v) for d, v in (fi.get('bs') or {}).items()}
+        # 價差換成「佔加權幾 %」(⛔ 用點數的話 2004 年 6,000 點跟 2026 年 47,000 點不能比)
+        bs = {}
+        for d, v in (fi.get('bs') or {}).items():
+            if isinstance(v, list) and len(v) >= 3 and _num(v[0]) is not None and _num(v[2]):
+                bs[d10(d)] = _num(v[0]) / _num(v[2]) * 100
         if bs:
-            st['bs'] = {d: v for d, v in bs.items() if v is not None}
+            st['bs'] = bs
     if tx:
         st['pc'] = {d10(d): _num(a[1]) for d, a in (tx.get('pc') or {}).items() if isinstance(a, list) and len(a) > 1 and _num(a[1]) is not None}
         st['lt'] = {d10(d): _num(o['all'][1]) for d, o in (tx.get('lt') or {}).items()
@@ -205,6 +209,8 @@ def selftest():
     ok('⑤ P/C 取第二格、大額取 all 的第二格', st['pc'][days[0]] == 1.0 and st['lt'][days[2]] == 100)
     ok('⑤ 櫃買相對加權 = 兩邊 20 日漲跌相減', abs(st['otc_rel20'][days[25]] - ((250 / 210 - 1) - (10025 / 10005 - 1)) * 100) < 1e-6)
     ok('⑤ 沒有順逆價差那份 → 就沒有 bs(⛔ 不補 0)', 'bs' not in st)
+    st2, _ = build({'bs': {'2020-01-02': [-50.0, 9950.0, 10000.0], '2020-01-03': [12.0, 1.0]}}, None, None, {}, {})
+    ok('⑤ 價差換成佔加權 %(−50 點 / 10,000 = −0.5%);缺加權那格的不收', st2.get('bs') == {'2020-01-02': -0.5}, st2.get('bs'))
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
     return 0 if not bad else 1
 

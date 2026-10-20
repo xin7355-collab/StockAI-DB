@@ -11,7 +11,8 @@
  *   ⭐ 可交易的做法(處置前賣 / 出關買回 / 大跌買回)的成績在 leader_probe 的 dispNow / dispOracle / attSell / rebuy 選項。
  *
  * 零前視:分組只用公告當天收盤看得到的(成交額排名、動能排名);報酬是事後量的 = 描述。
- * 跑法:DATA_DIR=$S/d10n DIV=data/dividends_hist.json DISP_PERIODS=$S/disp_periods.json node scripts/leader_dispo_probe.mjs out.json
+ * 跑法:DATA_DIR=$S/d10n DIV=data/dividends_hist.json DISP_PERIODS=$S/disp_periods.json [DISP_FROM=2011-01-01] node scripts/leader_dispo_probe.mjs out.json
+ *       ⭐ V79.3.8:DISP_PERIODS 可用 dispo_probe ④ 的 P| 行轉成 {代號: [[公告, 起, 迄]]}(證交所官網,2005 起、只有上市)
  *       node scripts/leader_dispo_probe.mjs --selftest
  */
 import fs from 'fs';
@@ -56,6 +57,8 @@ function selftest() {
 
 function main() {
     const out = process.argv[2], DATA = process.env.DATA_DIR;
+    // 📅 V79.3.8 處置期間改用證交所官網(dispo_probe ④,2005 起、只有上市)→ 起點可設;不設 = 舊的 2023-06(FinMind 那份的起點)
+    const DISP_FROM = (process.env.DISP_FROM || '2023-06-01').trim();
     if (!DATA || !process.env.DISP_PERIODS) { console.error('要 DATA_DIR + DISP_PERIODS'); process.exit(1); }
     const ctx = loadCtx(DATA, process.env.DIV);
     if (!ctx.dper || ctx.meta.dper < 500) { console.error(`🚨 處置事件只有 ${ctx.meta.dper} 筆,拒跑`); process.exit(1); }
@@ -75,7 +78,7 @@ function main() {
     for (const [sym, arr] of ctx.dper) {
         const S = bySym.get(sym); if (!S) continue;
         for (const ev of arr) {
-            const a = Math.floor(ev.a); if (a < 260 || cal[a] < '2023-06-01') continue;
+            const a = Math.floor(ev.a); if (a < 260 || cal[a] < DISP_FROM) continue;
             const P = poolAt(a), grp = P.top10.has(sym) ? 'top10' : P.pool.has(sym) ? 'pool' : 'other';
             const g = segs(S, etf.tr, ev); G[grp].push({ sym, d: cal[a], len: ev.e - a, ...g }); used++;
             // 對照:同一天同池子(同組)沒被處置的其他股票,同樣長度的四段
