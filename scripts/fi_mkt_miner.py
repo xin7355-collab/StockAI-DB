@@ -50,6 +50,11 @@ MATCH_N = 5
 SHIFT_DAYS = 4
 TOL = {'spot': (1.0, 0.01), 'fut': (50, 0.005), 'mg': (5.0, 0.01), 'bs': (3.0, 0.0)}   # (絕對, 相對) 取大者;價差 ±3 點
 RH_KEY = {'spot': 'fi_spot_net', 'fut': 'fi_futures_net', 'mg': 'margin_100m', 'bs': 'taifex_backwardation'}
+# 🚨 V79.3.8 價差快照修好之前的那段⛔ 不拿來對表:App 的 taifex_backwardation 在 2026-08 初以前
+#    期貨與現貨常常不是同一天(陷阱 #22,V71.8.0)、而且被「沿用昨天」填回去(陷阱 #34,V72.1.2)→
+#    那段快照正負號天天亂跳(06-30 −576、07-02 +487、07-06 +410…),第二次實跑對表 35/49 的 14 筆對不上全在那段。
+#    ⭐ 只看修好之後的快照(⛔ 不是放寬門檻:之後那段照樣要 ≥80%、至少 5 筆)。
+RH_FROM = {'bs': '2026-08-05'}
 
 F_NAMES = ('Foreign_Investor', 'Foreign_Dealer_Self')
 T_NAMES = ('Investment_Trust',)
@@ -183,10 +188,14 @@ def _close(a, b, tol):
 def cross_check(series, kind, hist):
     """跟 risk_history 快照對表。回 (ok, 說明)。series 的值:spot 取外資那一格。"""
     key, tol = RH_KEY[kind], TOL[kind]
-    seen, n, hit, miss = set(), 0, 0, []
+    rh_from = RH_FROM.get(kind) or ''
+    seen, n, hit, miss, skipped = set(), 0, 0, [], 0
     for h in hist or []:
         v, d = h.get(key), _date(h.get('date'))
         if v is None or not d or v in seen:          # 重複快照值只算一次(陷阱 #16)
+            continue
+        if rh_from and d < rh_from:                    # 快照本身還沒修好的那段(見 RH_FROM)→ 不算、但要數出來
+            skipped += 1
             continue
         seen.add(v)
         base = datetime.strptime(d, '%Y-%m-%d').date()
@@ -200,10 +209,11 @@ def cross_check(series, kind, hist):
             hit += 1
         elif len(miss) < 8:
             miss.append(f'{d} 快照 {v} vs 我們 {have[0]}')
+    note = f'(另略過 {rh_from} 以前快照 {skipped} 筆:那段快照本身有錯,陷阱 #22/#34)' if skipped else ''
     if n < MATCH_N:
-        return False, f'可對表只有 {n} 筆(< {MATCH_N})'
+        return False, f'可對表只有 {n} 筆(< {MATCH_N}){note}'
     r = hit / n
-    msg = f'對表 {hit}/{n}({r:.0%})' + (f' ・例:{"; ".join(miss)}' if miss else '')
+    msg = f'對表 {hit}/{n}({r:.0%})' + (f' ・例:{"; ".join(miss)}' if miss else '') + note
     return r >= MATCH_MIN, msg
 
 
@@ -449,6 +459,21 @@ def selftest():
     ok('⑩ 價差對表取第一格(價差)', good, why)
     good, why = cross_check({d: [-v[0], 1.0, 1.0] for d, v in sb.items()}, 'bs', hb)
     ok('⑩ 正負號反(拿加權 − 期貨)→ 對表必紅', not good, why)
+    # ⑩b RH_FROM:快照修好之前那段亂跳 → 不算(但要數出來);修好之後對不上 → 照樣紅(⛔ 不是放寬)
+    pre = ['2026-07-01', '2026-07-02', '2026-07-03', '2026-07-06', '2026-07-07', '2026-07-08']
+    post = ['2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14', '2026-08-17']
+    hb2 = [{'date': d, 'taifex_backwardation': (500.0 if i % 2 else -500.0) + i} for i, d in enumerate(pre)] + \
+          [{'date': d, 'taifex_backwardation': -50.0 - i} for i, d in enumerate(post)]
+    sb2 = {d: [7.0 + i, 1.0, 1.0] for i, d in enumerate(pre)}
+    sb2.update({d: [-50.0 - i, 1.0, 1.0] for i, d in enumerate(post)})
+    good, why = cross_check(sb2, 'bs', hb2)
+    ok('⑩b 修好之前的快照亂跳 → 不算進對表、而且數得出略過幾筆', good and '略過 2026-08-05 以前快照 6 筆' in why, why)
+    sb3 = dict(sb2)
+    sb3.update({d: [99.0, 1.0, 1.0] for d in post})
+    good, why = cross_check(sb3, 'bs', hb2)
+    ok('⑩b 決定性對照:修好之後那段對不上 → 照樣紅(⛔ 不是放寬門檻)', not good, why)
+    good, why = cross_check(sb2, 'spot', [{'date': d, 'fi_spot_net': v[0]} for d, v in sb2.items()])
+    ok('⑩b RH_FROM 只管價差(外資現貨照舊全部對表)', good and '略過' not in why, why)
     # ⑨ 金鑰⛔ 不進網址
     src = open(__file__, encoding='utf-8').read()
     needle = 'q[' + "'token']"
