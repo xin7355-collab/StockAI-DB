@@ -67,7 +67,8 @@ export function buildRows({ scores, futMap, spotMap, techMap, bars, exdiv, cal }
         if (bi == null || bi < 1 || bars[bi - 1].d !== P) continue;   // 0050 也要有 T−1(⛔ 對不上就不算)
         if (exdiv.has(T)) continue;
         const o = bars[bi].o, c = bars[bi].c, pc = bars[bi - 1].c;
-        if (!(o > 0 && c > 0 && pc > 0)) continue;
+        if (!(c > 0 && pc > 0)) continue;
+        const hasO = o > 0;                                      // 加權當結果時沒有可信的開盤(陷阱 #47)→ 只算收→收
         let fut = null;
         if (futIdx.has(P)) fut = futPart(futVals.slice(0, futIdx.get(P) + 1));
         const sp = spotMap[P];
@@ -75,7 +76,7 @@ export function buildRows({ scores, futMap, spotMap, techMap, bars, exdiv, cal }
         const inst = sp ? flowPart(sp[0] + sp[1] + sp[2]) : null;
         const tech = techPart(techMap[P]);
         rows.push({ T, P, ovs: scores[T], fut, spot, inst, tech,
-                    gap: (o / pc - 1) * 100, oc: (c / o - 1) * 100, cc: (c / pc - 1) * 100 });
+                    gap: hasO ? (o / pc - 1) * 100 : null, oc: hasO ? (c / o - 1) * 100 : null, cc: (c / pc - 1) * 100 });
     }
     return rows;
 }
@@ -95,21 +96,26 @@ export function spearman(x, y) {
 const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
 const r2 = x => x == null || !isFinite(x) ? null : +x.toFixed(2);
 
-export function analyze(rows) {
-    const dom = r => [r.fut, r.spot, r.inst, r.tech].every(v => v != null) ? r.fut + r.spot + r.inst + r.tech : null;
-    const full = rows.filter(r => dom(r) != null);
-    const res = { n: rows.length, nFull: full.length, from: full[0]?.T, to: full.at(-1)?.T, ic: {}, buckets: {}, within: {}, parts: {} };
+export const PARTS = ['fut', 'spot', 'inst', 'tech'];
+export function analyze(rows0, need = PARTS) {
+    const dom = r => need.every(p => r[p] != null) ? need.reduce((s, p) => s + r[p], 0) : null;
+    const full0 = rows0.filter(r => dom(r) != null);
+    const res = { n: rows0.length, nFull: full0.length, from: full0[0]?.T, to: full0.at(-1)?.T, need, ic: {}, buckets: {}, within: {}, parts: {} };
     for (const k of ['gap', 'oc', 'cc']) {
+        const full = full0.filter(r => r[k] != null);
+        if (full.length < 100) continue;
         res.ic[k] = {
             ovs: spearman(full.map(r => r.ovs), full.map(r => r[k])),
             dom: spearman(full.map(dom), full.map(r => r[k])),
             sum: spearman(full.map(r => r.ovs + dom(r)), full.map(r => r[k])),
         };
-        for (const p of ['fut', 'spot', 'inst', 'tech']) (res.parts[p] = res.parts[p] || {})[k] = spearman(full.map(r => r[p]), full.map(r => r[k]));
+        for (const p of need) (res.parts[p] = res.parts[p] || {})[k] = spearman(full.map(r => r[p]), full.map(r => r[k]));
     }
     // App 的門檻:分數 ≥3 / ≤−3(LAB premkt-score)→ 方向命中率:海外半 vs 加上國內半
     const hit = (sel, k, dir) => { const a = sel.map(r => r[k]); return a.length ? a.filter(v => dir > 0 ? v > 0 : v < 0).length / a.length * 100 : null; };
     for (const k of ['gap', 'oc', 'cc']) {
+        const full = full0.filter(r => r[k] != null);
+        if (full.length < 100) continue;
         const b = {};
         for (const [nm, f] of [['ovs', r => r.ovs], ['sum', r => r.ovs + dom(r)]]) {
             const hi = full.filter(r => f(r) >= 3), lo = full.filter(r => f(r) <= -3);
@@ -129,7 +135,7 @@ export function analyze(rows) {
     }
     // 逐年:國內半單獨的名次相關(收→收)
     const yrs = {};
-    for (const r of full) (yrs[r.T.slice(0, 4)] = yrs[r.T.slice(0, 4)] || []).push(r);
+    for (const r of full0) (yrs[r.T.slice(0, 4)] = yrs[r.T.slice(0, 4)] || []).push(r);
     res.years = Object.fromEntries(Object.entries(yrs).map(([y, a]) => [y, { n: a.length, dom_cc: r2(spearman(a.map(dom), a.map(r => r.cc)).rho), ovs_cc: r2(spearman(a.map(r => r.ovs), a.map(r => r.cc)).rho) }]));
     return res;
 }
@@ -169,14 +175,17 @@ async function main() {
     const fm = loadJ(process.env.FI_MKT || '') || {};
     const tw = loadJ(process.env.TWII || '') || [];
     const DIR = process.env.DATA_DIR || '';
-    const b = loadJ(path.join(DIR, '_bench0050.json')) || [];
+    const NEED = (process.env.NEED || PARTS.join(',')).split(',').map(x => x.trim()).filter(x => PARTS.includes(x));
+    const OUTC = process.env.OUTCOME || '0050';                // 0050(開盤 / 收盤都有,2010 起)或 twii(只有收→收,更早)
+    const b = OUTC === 'twii' ? (loadJ(process.env.TWII || '') || []) : (loadJ(path.join(DIR, '_bench0050.json')) || []);
     const dv = loadJ(path.join(DIR, '_div0050.json')) || {};
     const divs = ((dv.d || dv)['0050'] || {}).h || [];
     if (Object.keys(scores).length < 500) { console.error('❌ 海外半分數不到 500 天(PREMKT_SCORES)'); process.exit(1); }
     if (!fm.fut || !fm.spot) { console.error('❌ FI_MKT 沒有 fut / spot'); process.exit(1); }
     if (tw.length < 500 || !tw.some(r => +r.volume > 0)) { console.error('❌ TWII 太短或沒有成交量欄(技術面要量)'); process.exit(1); }
+    if (!NEED.length) { console.error('❌ NEED 一項都認不得'); process.exit(1); }
     if (!divs.length) { console.error('❌ 讀不到 0050 除息日'); process.exit(1); }
-    const bars = b.map(x => ({ d: d10(x.date), o: num(x.open), c: num(x.close) })).filter(x => x.c > 0 && x.o > 0).sort((x, y) => x.d < y.d ? -1 : 1);
+    const bars = b.map(x => ({ d: d10(x.date), o: OUTC === 'twii' ? null : num(x.open), c: num(x.close) })).filter(x => x.c > 0 && (OUTC === 'twii' || x.o > 0)).sort((x, y) => x.d < y.d ? -1 : 1);
     const cal = tw.map(r => d10(r.date)).sort();
     const need = [...new Set(Object.keys(scores).map(T => cal[cal.indexOf(T) - 1]).filter(Boolean))];
     console.log(`🌅 海外半 ${Object.keys(scores).length} 天 ・技術面要算 ${need.length} 天(App _entryCheckup)…`);
@@ -188,18 +197,20 @@ async function main() {
     const futMap = Object.fromEntries(Object.entries(fm.fut).map(([k, v]) => [d10(k), v]));
     const spotMap = Object.fromEntries(Object.entries(fm.spot).map(([k, v]) => [d10(k), v]));
     const rows = buildRows({ scores, futMap, spotMap, techMap, bars, exdiv: new Set(divs.map(x => d10(x[0]))), cal });
-    const R = analyze(rows);
-    console.log(`📊 對得上 ${R.n} 天 ・四項國內都有 ${R.nFull} 天(${R.from} ~ ${R.to})`);
+    const R = analyze(rows, NEED);
+    console.log(`📊 對得上 ${R.n} 天 ・國內 ${NEED.join('+')} 都有 ${R.nFull} 天(${R.from} ~ ${R.to})・結果用 ${OUTC}`);
     for (const k of ['gap', 'oc', 'cc']) {
+        if (!R.ic[k]) continue;
         const ic = R.ic[k], bk = R.buckets[k], w = R.within[k];
         console.log(`\n【${k === 'gap' ? '隔天開盤跳空' : k === 'oc' ? '開→收' : '收→收'}】名次相關:海外半 ${r2(ic.ovs.rho)}(t ${r2(ic.ovs.t)})・國內半 ${r2(ic.dom.rho)}(t ${r2(ic.dom.t)})・合計 ${r2(ic.sum.rho)}(t ${r2(ic.sum.t)})`);
-        console.log(`   各項:` + ['fut', 'spot', 'inst', 'tech'].map(p => `${p} ${r2(R.parts[p][k].rho)}(t ${r2(R.parts[p][k].t)})`).join(' ・'));
+        console.log(`   各項:` + NEED.map(p => `${p} ${r2(R.parts[p][k].rho)}(t ${r2(R.parts[p][k].t)})`).join(' ・'));
         for (const nm of ['ovs', 'sum']) { const x = bk[nm]; console.log(`   ${nm === 'ovs' ? '海外半' : '合計  '} ≥3:${x.hiN} 天 漲 ${x.hiHit}%(平均 ${x.hiMean}%)・≤−3:${x.loN} 天 跌 ${x.loHit}%(平均 ${x.loMean}%)`); }
         console.log(`   基準:漲 ${bk.base.up}% / 跌 ${bk.base.down}% ・平均 ${bk.base.mean}%`);
         console.log(`   海外半同一格裡,國內半 ≥+2 − ≤−2:${w.diff}pp ・${JSON.stringify(w.cells)}`);
     }
     console.log('\n逐年(收→收名次相關):' + Object.entries(R.years).map(([y, v]) => `${y} 國內 ${v.dom_cc} / 海外 ${v.ovs_cc}(${v.n})`).join(' ・'));
     if (out) fs.writeFileSync(out, JSON.stringify(R, null, 1));
+    if (process.env.ROWS_OUT) fs.writeFileSync(process.env.ROWS_OUT, JSON.stringify(rows));   // 逐日明細(給逐年 / 門檻左右挪的對照用)
 }
 
 function selftest() {
@@ -223,6 +234,8 @@ function selftest() {
     const rowsB = buildRows({ scores, futMap: { ...futMap, '2022-01-11': -99999 }, spotMap: { ...spotMap, '2022-01-11': [-9999, 0, 0] }, techMap: { ...techMap, '2022-01-11': 'green' }, bars, exdiv: new Set(), cal });
     T(JSON.stringify(rowsB.find(r => r.T === '2022-01-11')) === JSON.stringify(r11), '③ 零前視:改 T 當天的外資 / 技術面,T 日那一列一個字都不變');
     T(buildRows({ scores, futMap, spotMap, techMap, bars, exdiv: new Set(['2022-01-11']), cal }).every(r => r.T !== '2022-01-11'), '③ T 日除息 → 剔除');
+    const rowsT = buildRows({ scores, futMap, spotMap, techMap, bars: bars.map(x => ({ ...x, o: null })), exdiv: new Set(), cal });
+    T(rowsT.length === 2 && rowsT.every(r => r.gap === null && r.oc === null && r.cc != null), '③ 加權當結果(沒有可信開盤)→ 只算收→收、開盤那兩欄 null(陷阱 #47)', rowsT);
     // ④ 合成:國內半真的有效 → 抓得到;打亂 → 抓不到(決定性對照)
     let seed = 7; const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
     const gauss = () => { let u = 0, v = 0; while (!u) u = rnd(); while (!v) v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
@@ -235,6 +248,8 @@ function selftest() {
     }
     const A = analyze(syn);
     T(A.ic.cc.dom.rho > 0.15 && A.within.cc.diff > 0.5, '④ 合成:國內半有效 → 名次相關與「海外同一格內」的增量都抓得到', { ic: A.ic.cc.dom, w: A.within.cc });
+    const A3 = analyze(syn.map(r => ({ ...r, fut: null })), ['spot', 'inst', 'tech']);
+    T(A3.nFull === syn.length && A3.ic.cc.dom.rho > 0.1, '④ NEED 少一項(期貨沒有)→ 用剩下三項照樣算(⛔ 不因缺期貨整列丟掉)', { n: A3.nFull, ic: A3.ic.cc?.dom });
     const shuf = syn.map(r => ({ ...r })); const ccs = shuf.map(r => r.cc).sort(() => rnd() - 0.5); shuf.forEach((r, i) => { r.cc = ccs[i]; });
     const B = analyze(shuf);
     T(Math.abs(B.ic.cc.dom.rho) < 0.08 && Math.abs(B.within.cc.diff || 0) < 0.35, '④ 決定性對照:報酬打亂 → 抓不到(⛔ 不是寫死會過)', { ic: B.ic.cc.dom, w: B.within.cc });

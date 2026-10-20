@@ -2417,11 +2417,11 @@ async function runPreMarket(env) {
         const sgn = v => (Number.isFinite(+v) ? (v > 0 ? 1 : v < 0 ? -1 : 0) : 0);
         dScore += sgn(macro.sp500_chg_pct) + sgn(macro.nasdaq_chg_pct);
         if (Number.isFinite(+macro.vix)) { if (macro.vix < 20) dScore += 1; else if (macro.vix > 30) dScore -= 2; else if (macro.vix > 25) dScore -= 1; }
-        if (Number.isFinite(+macro.fi_spot_net)) { if (macro.fi_spot_net > 0) dScore += 1; else if (macro.fi_spot_net < -200) dScore -= 1; }
-        // 🏦 V79.3.5 ⛔ 絕對口數 −40,000(小台/微台上市後天天成立)→ 跟 App `_fiFutState()` 同一條:5 日增減 ±8,000 口
-        const fc = fiFutChg5(riskHist);
-        if (fc != null) { if (fc >= 8000) dScore += 0.5; else if (fc <= -8000) dScore -= 1; }
+        // 🧪 V79.3.8 外資現貨 / 外資台指期 ⛔ 不再算進方向分(同 App 盤前體檢:國內四項只列出來、不計分)——
+        //   premkt_dom_probe 2004~2026:這幾項對隔天開盤 / 收盤的名次相關每年都 ≈ 0,算進去「開高偏多」反而比只看海外不準。
+        //   下面那行照樣列出外資現貨與台指期(描述),⛔ 不影響「今天開高 / 開低」那句。
     }
+    const fc5 = macro ? fiFutChg5(riskHist) : null;
     const dV = dScore >= 2 ? { e: '🔴', t: '開高偏多' } : dScore <= -2 ? { e: '🟢', t: '開低偏空' } : { e: '🟡', t: '中性震盪' };   // 紅漲綠跌:偏多🔴 偏空🟢
 
     // 對每用戶推:加入個人化重點 3 檔
@@ -2469,7 +2469,7 @@ async function runPreMarket(env) {
                     SEP,
                     `${dV.e} *今天 ${dV.t}*(方向分 ${dScore > 0 ? '+' : ''}${dScore})`,
                     macro ? `🇺🇸 SP500 ${macro.sp500_chg_pct >= 0 ? '+' : ''}${macro.sp500_chg_pct?.toFixed(2)}% / NASDAQ ${macro.nasdaq_chg_pct >= 0 ? '+' : ''}${macro.nasdaq_chg_pct?.toFixed(2)}% / VIX ${macro.vix?.toFixed(1)}` : '',
-                    (macro && (Number.isFinite(+macro.fi_spot_net) || Number.isFinite(+macro.fi_futures_net))) ? `🏦 外資現貨 ${Number.isFinite(+macro.fi_spot_net) ? (macro.fi_spot_net >= 0 ? '+' : '') + macro.fi_spot_net + '億' : '—'} / 台指期 ${Number.isFinite(+macro.fi_futures_net) ? macro.fi_futures_net.toLocaleString() + '口' : '—'}` : '',
+                    (macro && (Number.isFinite(+macro.fi_spot_net) || Number.isFinite(+macro.fi_futures_net))) ? `🏦 外資現貨 ${Number.isFinite(+macro.fi_spot_net) ? (macro.fi_spot_net >= 0 ? '+' : '') + macro.fi_spot_net + '億' : '—'} / 台指期 ${Number.isFinite(+macro.fi_futures_net) ? macro.fi_futures_net.toLocaleString() + '口' : '—'}${fc5 != null ? `(5 日 ${fc5 >= 0 ? '+' : ''}${Math.round(fc5).toLocaleString()} 口)` : ''}(只列出來,不算進方向分)` : '',
                     `🐂 主力出貨指數 ${mmIndex} ${mmVerdict}${factors.length ? `(${factors.slice(0, 2).join('/')})` : ''}`,
                     focus.length ? `🎯 自選重點:${focus.join('、')}` : '',
                     outSoon.length ? `⚠️ 處置出獄:${outSoon.join('、')}` : '',

@@ -14,8 +14,11 @@
      (OpenAPI 的 notetrans 只有「今天的快照」;rwd 是官網「注意股票資訊」查詢頁背後的 API)
      ⚠️ TPEx 整站對 GitHub runner 回 403(V73.6.1 實測)→ 上櫃注意股不用試,誠實缺席。
   ③ FinMind 有沒有注意股 dataset?(候選名全試 + datalist 掃描)
+  ④ (V79.3.8)處置歷史的免費來源:FinMind 處置期間是付費層(2026-10-20 實跑 400 Your level is register)
+     → 改問證交所官網「處置有價證券」查詢頁背後的 rwd/zh/announcement/punish(同 ② 注意股那支的兄弟端點):
+     吃不吃日期區間、回溯到哪一年、欄位長怎樣;通了就逐月 dump P| 行(⚠️ 只有上市,TPEx 對 runner 403)。
 
-輸出:摘要 + **壓縮事件 dump**(D|/N| 行)印進 log —— 之後本地回測直接從 job log 收,
+輸出:摘要 + **壓縮事件 dump**(D|/N|/P| 行)印進 log —— 之後本地回測直接從 job log 收,
 ⛔ 不寫任何檔案、不碰任何分支。
 
 ⛔ 安全:只印「第幾把 token」,絕不印 token 值(全專案鐵律,repo 是 public)。
@@ -25,6 +28,7 @@
 import json
 import os
 import re
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -117,7 +121,143 @@ def is_stockish(sid):
     return bool(re.match(r'^\d{4}$', sid) or re.match(r'^00\d{3,4}$', sid))
 
 
+ROC_DT = re.compile(r'(\d{2,4})[./-](\d{1,2})[./-](\d{1,2})')
+
+
+def punish_period(cell):
+    """處置起迄欄(如「113/03/05～113/03/18」「113.03.05~113.03.18」)→ (起, 迄) ISO;抓不到回 ('', '')。
+    ⛔ 只吃「兩個日期」都在的格(只有一個日期的不猜迄日)。"""
+    ds = []
+    for m in ROC_DT.finditer(str(cell or '')):
+        y = int(m.group(1))
+        y = y + 1911 if y < 1000 else y
+        ds.append(f'{y}-{int(m.group(2)):02d}-{int(m.group(3)):02d}')
+    return (ds[0], ds[-1]) if len(ds) >= 2 else ('', '')
+
+
+def punish_cols(fields):
+    """官方欄位名 → 欄位索引(⛔ 不寫死位置,用名字找;找不到的回 None 讓呼叫端印樣本)。"""
+    fs = [str(f) for f in (fields or [])]
+    def find(*keys):
+        return next((i for i, f in enumerate(fs) if any(k in f for k in keys)), None)
+    return {
+        'sym': find('代號'),
+        'ann': find('公布日期', '公告日期'),
+        'per': find('起迄', '處置期間', '期間'),
+        'cnt': find('累計'),
+        'how': find('處置措施', '措施'),
+    }
+
+
+def punish_level(text):
+    """處置措施文字 → 1(第一次:5 分鐘撮合)/ 2(第二次:20 分鐘);看不出來回 ''。"""
+    t = str(text or '')
+    if '第二次' in t or '二十分鐘' in t or '20分鐘' in t:
+        return 2
+    if '第一次' in t or '五分鐘' in t or '5分鐘' in t:
+        return 1
+    return ''
+
+
+def selftest():
+    bad = 0
+    def ok(name, cond):
+        nonlocal bad
+        print(f"  {'✅' if cond else '❌'} {name}")
+        bad += 0 if cond else 1
+    ok('① 民國斜線 + 全形波浪', punish_period('113/03/05～113/03/18') == ('2024-03-05', '2024-03-18'))
+    ok('① 民國點分隔(V74.4.2 首跑踩過)', punish_period('113.03.05~113.03.18') == ('2024-03-05', '2024-03-18'))
+    ok('① 西元也吃', punish_period('2024/03/05 至 2024/03/18') == ('2024-03-05', '2024-03-18'))
+    ok('① 只有一個日期 → 不猜', punish_period('113/03/05') == ('', ''))
+    ok('① 空值', punish_period(None) == ('', ''))
+    c = punish_cols(['編號', '公布日期', '證券代號', '證券名稱', '累計', '處置條件', '處置起迄時間', '處置措施', '處置內容', '備註'])
+    ok('② 欄位用名字找(不寫死位置)', c == {'sym': 2, 'ann': 1, 'per': 6, 'cnt': 4, 'how': 7})
+    ok('② 欄位順序換了照樣找得到', punish_cols(['證券代號', '處置起迄時間', '公布日期'])['per'] == 1)
+    ok('② 找不到的回 None(⛔ 不回 0 —— 0 是合法索引)', punish_cols(['A', 'B'])['sym'] is None)
+    ok('③ 第一次 / 第二次處置', punish_level('第一次處置') == 1 and punish_level('第二次處置') == 2 and punish_level('') == '')
+    ok('④ 權證不算(沿用 is_stockish)', not is_stockish('069954') and is_stockish('2330') and is_stockish('0050') and is_stockish('00878'))
+    print(f'selftest {"全過" if not bad else f"{bad} 條失敗"}')
+    return bad == 0
+
+
+def dump_punish(ctrl_ok):
+    """④ 證交所處置歷史(rwd/zh/announcement/punish)。只印不寫。"""
+    print('\n═══ ④ TWSE 處置歷史(rwd/zh/announcement/punish,免費)═══')
+    base = 'https://www.twse.com.tw/rwd/zh/announcement/punish'
+    probe = f'{base}?startDate=20240301&endDate=20240331&response=json'
+    try:
+        j, ct, err = http_json(probe)
+    except Exception as e:
+        j, ct, err = None, '', f'{type(e).__name__}: {str(e)[:100]}'
+    if not j or j.get('stat') != 'OK' or not j.get('data'):
+        print(f'  ❌ 2024-03 探測失敗:stat={j.get("stat") if j else None} err={err}')
+        print(f'  {"(對照組是通的 → 端點或參數不對,看下面回應鍵)" if ctrl_ok else "(對照組也失敗 → runner 連不到 TWSE,不能解讀成端點不存在)"}')
+        if j:
+            print(f'  回應鍵:{list(j.keys())[:12]} ・樣本:{str(j)[:300]}')
+        return
+    fields = j.get('fields') or []
+    col = punish_cols(fields)
+    print(f'  ✅ 2024-03 回 {len(j["data"])} 列 ・fields={fields}')
+    for smp in j['data'][:2]:
+        print(f'  樣本列:{smp}')
+    print(f'  欄位對照:{col}')
+    if col['sym'] is None or col['per'] is None:
+        print('  ⚠️ 欄位自動對照失敗 → 用上面的樣本人工定欄位(⛔ 不猜)')
+        return
+    # 回溯深度:由舊往新試,第一個有資料的年份當起點(一年一次呼叫)
+    first = None
+    for y in range(2005, date.today().year + 1):
+        try:
+            jj, _, _ = http_json(f'{base}?startDate={y}0101&endDate={y}1231&response=json')
+        except Exception:
+            jj = None
+        n = len((jj or {}).get('data') or [])
+        print(f'  {y}:{n} 列' + ('' if (jj or {}).get('stat') == 'OK' else f'(stat={(jj or {}).get("stat")})'))
+        if n and first is None:
+            first = y
+        import time as _t
+        _t.sleep(1.2)
+    if first is None:
+        print('  ⚠️ 逐年都沒有資料(但 2024-03 有)→ 可能不吃整年區間,改逐月從 2023-06 起')
+        first = 2023
+    # 全量:逐月(一個月一次呼叫;整年區間若有上限會被截斷 → 逐月最穩)
+    print(f'DUMP_P_BEGIN from={first}')
+    total, bad_per = 0, 0
+    y, m = first, 1
+    today = date.today()
+    while (y, m) <= (today.year, today.month):
+        ed = date(y + (m == 12), (m % 12) + 1, 1)
+        url = f'{base}?startDate={y}{m:02d}01&endDate={y}{m:02d}{(ed - date(y, m, 1)).days:02d}&response=json'
+        try:
+            jj, _, _ = http_json(url)
+        except Exception:
+            jj = None
+        for row in (jj or {}).get('data') or []:
+            try:
+                sid = str(row[col['sym']]).strip()
+            except Exception:
+                continue
+            if not is_stockish(sid):
+                continue
+            st, en = punish_period(row[col['per']])
+            if not st:
+                bad_per += 1
+                continue
+            ann = roc2iso(row[col['ann']]) if col['ann'] is not None else ''
+            cnt = str(row[col['cnt']]).strip() if col['cnt'] is not None else ''
+            lvl = punish_level(row[col['how']]) if col['how'] is not None else ''
+            print(f'P|{sid}|{ann}|{st}|{en}|{cnt}|{lvl}')
+            total += 1
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+        import time as _t
+        _t.sleep(1.2)
+    print('DUMP_P_END')
+    print(f'  📊 處置事件合計:{total} 筆(上市;起迄格解析失敗 {bad_per} 筆;⚠️ TPEx 對 runner 403 → 上櫃缺席)')
+
+
 def main():
+    if not selftest():
+        sys.exit(1)        # ⛔ 解析工具沒過不開工(陷阱 #40:點分隔日期那次 271 列全被丟掉、零訊息)
     print(f'🔑 token:{len(TOKENS)} 把(只報序號不印值)')
 
     # ───── 對照組:已知會通的 TWSE 端點(它也掛 = runner 被擋,下面的失敗不能解讀成「沒有」)─────
@@ -210,6 +350,9 @@ def main():
             print('DUMP_N_END')
             print(f'  📊 注意股事件合計:{total} 筆(上市;⚠️ TPEx 對 runner 403 → 上櫃缺席,誠實限制)')
 
+    # ───── ④ 證交所處置歷史(免費;FinMind 那份是付費層)─────
+    dump_punish(ctrl_ok)
+
     # ───── ③ FinMind 注意股 dataset 候選 ─────
     print('\n═══ ③ FinMind 注意股 dataset 候選 ═══')
     for name in ('TaiwanStockMarketNotice', 'TaiwanStockNotice',
@@ -235,4 +378,6 @@ def main():
 
 
 if __name__ == '__main__':
+    if '--selftest' in sys.argv:
+        sys.exit(0 if selftest() else 1)
     main()

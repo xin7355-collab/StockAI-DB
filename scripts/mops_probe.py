@@ -75,6 +75,46 @@ def table_rows(html, min_td=4):
     return out
 
 
+# 🧭 V79.3.8 第一次 runner 實跑(2026-10-20):9 條全是 HTTP 200、0 列,而 body 是 MOPS **自己的提示訊息**
+#   (「未指定公司代號時，僅能查詢單日重大訊息」「資料庫中查無需求資料」)→ 端點是對的、**參數不對**,
+#   舊判定一律寫「名字猜錯」= 把第四種失敗講成第三種(下一步完全不同:該改的是表單欄位,⛔ 不是換網址)
+MOPS_MSG = ('查無需求資料', '未指定公司代號', '僅能查詢', '請輸入', '查詢條件', '輸入錯誤', '日期錯誤', '不得')
+
+
+def mops_msg(text):
+    """body 是 MOPS 自己的提示訊息 → 回那句話(去標籤、80 字);不是 → None。"""
+    t = strip_tags(text or '')
+    for k in MOPS_MSG:
+        i = t.find(k)
+        if i != -1:
+            a = max(0, t.rfind(' ', 0, max(0, i - 30)) + 1)
+            return t[a:a + 80]
+    return None
+
+
+def form_fields(html):
+    """官方頁面上的表單欄位 [(tag, name, value)]、form action 與每一個 ajax_ 的上下文 —— 讓官方頁面自己說參數是什麼(陷阱 #23)。"""
+    out, seen = [], set()
+    for m in re.finditer(r'<(input|select|textarea)\b([^>]*)>', html or '', flags=re.I):
+        attrs = m.group(2)
+        nm = re.search(r'name\s*=\s*["\']?([\w\-\[\]]+)', attrs, flags=re.I)
+        if not nm:
+            continue
+        val = re.search(r'value\s*=\s*["\']([^"\']*)', attrs, flags=re.I)
+        key = (m.group(1).lower(), nm.group(1))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append((m.group(1).lower(), nm.group(1), (val.group(1) if val else '')[:40]))
+    actions = sorted(set(re.findall(r'action\s*=\s*["\']([^"\']+)', html or '', flags=re.I)))[:10]
+    ajax = []
+    for m in re.finditer(r'ajax_\w+', html or ''):
+        ajax.append(re.sub(r'\s+', ' ', html[max(0, m.start() - 120):m.end() + 160]))
+        if len(ajax) >= 6:
+            break
+    return {'fields': out[:80], 'actions': actions, 'ajax': ajax}
+
+
 def verdict(status, ctype, text):
     """一個候選端點的判定 —— ⛔ 只看 status 不算數(陷阱 #23)。"""
     if status != 200:
@@ -86,6 +126,9 @@ def verdict(status, ctype, text):
         return f'✅ 有資料({n} 列)'
     if 'json' in (ctype or '').lower():
         return '回 JSON 但沒有資料列(要改解析方式)'
+    msg = mops_msg(text)
+    if msg:
+        return f'🔧 端點對、**參數不對**(MOPS 回它自己的提示:「{msg}」)'
     return '⚠️ HTTP 200 但**沒有任何資料列**(多半是名字猜錯 → 拿到一頁網頁)'
 
 
@@ -135,6 +178,8 @@ def try_one(session, path, form, tries=3):
                     'head': strip_tags(txt[:1200])[:300],
                     'sample': [r2[:8] for r2 in rows[:3]],
                     'verdict': verdict(r.status_code, r.headers.get('Content-Type', ''), txt)}
+            if 'ajax' not in path:                          # 整頁:把官方表單的欄位印出來(下一輪照它改參數)
+                last['form_info'] = form_fields(txt)
             if r.status_code == 200 and not is_blocked(txt):
                 return last
         except Exception as e:
@@ -162,6 +207,13 @@ def selftest():
     ok('⑦ 民國年換算', roc(date(2026, 9, 21)) == '115')
     ok('⑧ 候選清單:host 一律 mopsov(⛔ mops. 對 runner 是擋的)', HOST.startswith('https://mopsov.'), HOST)
     ok('⑨ 空過守門:候選端點不可是空的', len(candidates(date(2026, 9, 21), date(2026, 9, 18), date(2025, 8, 17))) >= 8)
+    # ⑩ V79.3.8:MOPS 自己的提示訊息 = 參數不對(⛔ 不可再判成「名字猜錯」);一般網頁照舊
+    msg_page = '<html><body>公開資訊觀測站 未指定公司代號時，僅能查詢單日重大訊息 <script>x</script></body></html>'
+    ok('⑩ MOPS 自己的提示 → 判成「參數不對」(⛔ 不是名字猜錯)', '參數不對' in verdict(200, 'text/html', msg_page) and '名字猜錯' not in verdict(200, 'text/html', msg_page), verdict(200, 'text/html', msg_page))
+    ok('⑩ 一般網頁(沒有 MOPS 提示)照舊判「名字猜錯」', '名字猜錯' in verdict(200, 'text/html', page), verdict(200, 'text/html', page))
+    ff = form_fields('<form action="/mops/web/ajax_t05st01" method=post><input type="hidden" name="step" value="1"><input name=co_id value="">'
+                     '<select name="TYPEK"><option>sii</option></select><script>ajax1(document.form1,"ajax_t05st01")</script></form>')
+    ok('⑪ 官方表單欄位解析:input / select 名字、action、ajax 上下文', [x[1] for x in ff['fields']] == ['step', 'co_id', 'TYPEK'] and ff['actions'] == ['/mops/web/ajax_t05st01'] and len(ff['ajax']) >= 1, ff)
     print('❌ %d 條失敗' % len(fails) if fails else '✅ MOPS_PROBE_SELFTEST_PASS')
     return 1 if fails else 0
 
@@ -190,6 +242,12 @@ def main():
             print(f"   body 開頭:{r['head'][:220]}")
             for row in r.get('sample', []):
                 print(f"   📄 {row}")
+            fi = r.get('form_info')
+            if fi:
+                print(f"   🧾 官方表單 action:{fi['actions']}")
+                print(f"   🧾 欄位({len(fi['fields'])}):" + ' ・'.join(f'{t}:{n}={v}' for t, n, v in fi['fields']))
+                for a in fi['ajax']:
+                    print(f"   🧾 ajax 上下文:…{a}…")
         time.sleep(0.8)
     hit = [r for r in res if str(r.get('verdict', '')).startswith('✅')]
     nerr, nblk = sum(1 for r in res if 'err' in r), sum(1 for r in res if r.get('blocked'))
@@ -203,6 +261,8 @@ def main():
         head = '⛔ **一條都連不上**(網路層就掛了)—— ⛔ 這⛔ 不是「名字猜錯」的證據,端點對不對這一輪根本沒測到'
     elif nblk:
         head = f'⛔ 被主機擋了 {nblk} 次 —— 這是 **IP/UA 的問題**,⛔ 不是端點名字的問題'
+    elif any('參數不對' in str(r.get('verdict', '')) for r in res):
+        head = '🔧 連得上、沒被擋,而且 MOPS 回的是**它自己的提示訊息** → 端點是對的、**表單欄位不對** —— 照上面 🧾 官方表單的欄位改參數再跑一輪(⛔ 不是換網址)'
     else:
         head = '⛔ 連得上、也沒被擋,但候選全部沒拿到資料列 → **名字猜錯**的機率最高(陷阱 #23);⛔ 不可據此寫採礦'
     print(f"1️⃣ 端點:{head}")

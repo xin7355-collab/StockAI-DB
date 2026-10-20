@@ -1,7 +1,8 @@
 name: 🚨 處置/注意股歷史探針 (dispo probe)
 
 # 純驗證用:回答「處置/注意股的歷史事件抓不抓得到、回溯多深」(V74.4.2)。
-# 只讀、不寫任何產物、不碰任何分支;事件以壓縮行(D|/N|)印進 log,本地回測從 log 收。
+# 只讀、不寫任何產物、不碰任何分支;事件以壓縮行(D|/N|/P|)印進 log,本地回測從 log 收。
+# V79.3.8 ④:FinMind 處置期間是付費層 → 加問證交所官網處置查詢端點(免費、只有上市)。
 # ⛔ 手動觸發 only —— 不佔排程配額(V73.9.0:全 repo 一天只進得來 7~10 筆 schedule run)。
 on:
   workflow_dispatch:
@@ -17,7 +18,7 @@ jobs:
   probe:
     name: 🚨 dispo 探針
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30      # V79.3.8 ④ 處置歷史逐月 dump(2005 起最多 ~260 次 × 1.2 秒節流)
     steps:
       - name: 📥 下載程式碼
         uses: actions/checkout@v4.2.2
