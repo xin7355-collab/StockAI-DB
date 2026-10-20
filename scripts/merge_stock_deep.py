@@ -261,6 +261,27 @@ def merge_divs(old, new):
     return out
 
 
+def scale_divs(divs, skmap):
+    """除權息那幾筆的價格(合計 / 除權息前價 / 參考價)是**當時的原始價**;d16 在分割 / 面額變更前那段的價格已經 × k(= 1 / 股數倍數)
+    → 「除權息前價要跟前一天收盤差 3% 以內」那道驗證(factor_panel / leader_probe 同一條)會把它們全擋掉(實測約 72 檔)。
+    → 那幾天的三個價格一起乘 k,換成 d16 的尺標(比例不變,現金跟配股的倍數一樣)。就地改,回換了幾筆。"""
+    n = 0
+    for sym, h in divs.items():
+        m = skmap.get(sym)
+        if not m:
+            continue
+        for e in h:
+            sk = m.get(_d(e[0]))
+            if not sk or sk == 1:
+                continue
+            k = 1.0 / sk
+            for j in (1, 3, 4):
+                if j < len(e) and isinstance(e[j], (int, float)) and e[j]:
+                    e[j] = round(e[j] * k, 4)
+            n += 1
+    return n
+
+
 def build(dd, kd, sd, base, out, div_in=None, div_out=None, verbose=True):
     dd, kd, sd, base, out = Path(dd), Path(kd), Path(sd), Path(base), Path(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -272,6 +293,7 @@ def build(dd, kd, sd, base, out, div_in=None, div_out=None, verbose=True):
     for p in p10_dir.glob('*.json.gz'):
         if is_stock(p.name[:4]):
             syms.add(p.name[:4])
+    skmap = {}                                   # sym → {日期: 股數倍數}(只記不是 1 的那幾天;除權息價格換尺標用)
     st = {'joined': 0, 'bridged': 0, 'base_only': 0, 'early_only': 0, 'kd_dl': 0, 'skip_short': 0, 'reasons': {}, 'cliffs': 0, 'cliff_syms': 0, 'margin_rows': 0, 'div_syms': 0, 'share_rows': 0, 'share_syms': 0}
     for sym in sorted(syms):
         bp = dd / f'{sym}.json'
@@ -327,6 +349,8 @@ def build(dd, kd, sd, base, out, div_in=None, div_out=None, verbose=True):
         k_sh = apply_share_scale(rows, raw)
         st['share_rows'] += k_sh
         st['share_syms'] += k_sh > 0
+        if k_sh:
+            skmap[sym] = {_d(r['date']): r['_sk'] for r in rows if r.get('_sk')}
         if dl:
             for r in rows:
                 r['_dl'] = 1
@@ -350,10 +374,11 @@ def build(dd, kd, sd, base, out, div_in=None, div_out=None, verbose=True):
                 new[p.name[:4]] = r
         st['div_syms'] = len(new)
         merged = merge_divs(old, new)
+        st['div_scaled'] = scale_divs(merged, skmap)
         Path(div_out).write_text(json.dumps({'d': {s: {'h': h} for s, h in merged.items()}, 'src': 'dividends_hist + stock_deep/div10'}, ensure_ascii=False), encoding='utf-8')
     if verbose:
         print(f"🗄️ d16:接上 {st['joined']} 檔(其中 🌉 經 klines_deep 橋接 {st['bridged']})・只有現成 {st['base_only']} ・只有 2010~2021(下市){st['early_only']} ・2021 後下市 {st['kd_dl']} ・太短不收 {st['skip_short']}")
-        print(f"   接不上的原因:{st['reasons']} ・融資券補了 {st['margin_rows']:,} 列 ・除權息 {st['div_syms']} 檔 ・斷崖 {st['cliffs']} 次 / {st['cliff_syms']} 檔(探針自己有守門)")
+        print(f"   接不上的原因:{st['reasons']} ・融資券補了 {st['margin_rows']:,} 列 ・除權息 {st['div_syms']} 檔(換成 d16 尺標 {st.get('div_scaled', 0)} 筆)・斷崖 {st['cliffs']} 次 / {st['cliff_syms']} 檔(探針自己有守門)")
         print(f"   🔢 股數換算(分割 / 面額變更前那段的法人、融資券換成跟成交量同一個基準):{st['share_syms']} 檔 / {st['share_rows']:,} 列")
     return st
 
@@ -422,7 +447,8 @@ def selftest():
         M = json.loads((T / 'out/6666.json').read_text())
         ok('⑤ 融資券只補 None(第一列本來有 777 → 不動;第二列補 222)', M[0]['margin_balance'] == 777 and M[1]['margin_balance'] == 222 and M[1]['short_balance'] == 2 and 'margin_balance' not in M[2])
         dv = json.loads((T / 'out/_div16.json').read_text())['d']['1111']['h']
-        ok('⑥ 除權息合併:同一天以 dividends_hist 為準、2020 那筆補進來', [x[0] for x in dv] == ['2020-07-15', '2021-03-17'] and dv[1][1] == 2.5 and dv[0][3:] == [100, 97], dv)
+        ok('⑥ 除權息合併:同一天以 dividends_hist 為準(2.5 不是 3)、2020 那筆補進來;1111 是拆過股的 → 價格一起換成 d16 尺標(× 0.5)',
+           [x[0] for x in dv] == ['2020-07-15', '2021-03-17'] and dv[1][1] == 1.25 and dv[0][3:] == [50.0, 48.5], dv)
         ok('⑦ 非個股檔從 base 複製', (T / 'out/^TWII.json').exists())
         # ⑧ 決定性對照:把容忍度改成 0 → A 也接不上(⛔ 不是寫死會接)
         global RATIO_TOL
@@ -496,8 +522,13 @@ def selftest():
         (T / 'dd/2327.json').write_text(json.dumps(base10))
         gz(T / 'kd/2327.json.gz', {'s': '2327', 'dl': 0, 'k': [[d, rawc(d), rawc(d), rawc(d), rawc(d), rawv(d)] for d in kd_days]})
         gz(T / 'sd/price10/2327.json.gz', {'s': '2327', 'dl': 0, 'k': [[d, P[d], P[d], P[d], P[d], 1000] for d in early]})
-        st3 = build(T / 'dd', T / 'kd', T / 'sd', T / 'base', T / 'out', verbose=False)
+        gz(T / 'sd/div10/2327.json.gz', {'d': ['2019-07-15'], 'c': ['before_price', 'after_price', 'stock_and_cache_dividend'], 'v': [[round(P['2019-07-15'], 4), round(P['2019-07-15'] - 4, 4), 4]]})
+        st3 = build(T / 'dd', T / 'kd', T / 'sd', T / 'base', T / 'out', None, T / 'out/_div16.json', verbose=False)
         Z = {_d(r['date']): r for r in json.loads((T / 'out/2327.json').read_text())}
+        dv3 = json.loads((T / 'out/_div16.json').read_text())['d']['2327']['h'][0]
+        pc = Z[[d for d in sorted(Z) if d < '2019-07-15'][-1]]['close']
+        ok('⑩ 拆股前那段的除權息價格換成 d16 尺標(前價 ≈ 前一天收盤、合計 4 → 1、前價 ÷ 參考價不變)',
+           abs(dv3[3] / pc - 1) < 0.03 and abs(dv3[1] - 1) < 1e-9 and abs(dv3[3] / dv3[4] - P['2019-07-15'] / (P['2019-07-15'] - 4)) < 1e-6 and st3['div_scaled'] == 1, (dv3, pc))
         pre_b, post_b, p10_r = Z['2022-06-01'], Z['2024-06-03'], Z['2019-06-03']
         rat = lambda r: r['foreign_net'] / r['volume']
         ok('⑩ 拆股前那段:法人 / 融資換成新基準(100 → 400、50 → 200)、標 _sk=4;拆股後 ⛔ 不動、不標',

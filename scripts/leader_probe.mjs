@@ -32,12 +32,13 @@ import { valuePrep } from './lib_value.mjs';
 import { accrualSeries, accrualMonthCut, accrualHiAt } from './lib_accrual.mjs';
 import { gates } from './maxim_kbar5_probe.mjs';
 import { parseThemes } from './lib_themes.mjs';
+import { limitOf } from './lib_limit.mjs';
 
 const COST_X = +(process.env.COST_X || 1);            // 成本壓力(×2 = 手續費與稅都加倍)
 const FEE = 0.001425 * COST_X, TAX = 0.003 * COST_X, ETF_TAX = 0.001 * COST_X;
 const median = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; };
 const r2 = x => x == null || !Number.isFinite(x) ? null : Math.round(x * 100) / 100;
-const limitOf = d => d < '2015-06-01' ? 0.07 : 0.10;
+// 漲跌幅限制(2015-06 前 ±7%)—— 全 repo 一份(lib_limit.mjs)
 
 export function rng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
 

@@ -17,7 +17,7 @@
  *
  * 設計(全部沿用本專案回測鐵則):
  *   ・進場 = 事件日的**隔一個交易日開盤**(公告是收盤後出的;⛔ 用公告日收盤 = 前視)
- *   ・排除隔日開盤仍鎖死(漲跌停一價到底買不到)—— 對照組同一條
+ *   ・排除隔日開盤仍鎖死(漲跌停一價到底買不到)—— 對照組同一條;2015-06 前漲跌幅是 ±7%(lib_limit,⛔ 寫死 9.7% 會漏掉那五年的鎖死)
  *   ・🚨 V79.4.1 對照組 = **同一個進場日**的全市場平均(⛔ 不是整段平均)。
  *     舊版對照組寫死 2023-06 起,事件拉長到 2005 / 2010 之後 2010~2022 的事件被拿去跟 2023 年以後的平均比
  *     → 那幾年的邊際整段被墊高或壓低(V79.3.9 / V79.4.0 的 2005 / 2010 起數字就是這樣算的,已作廢重算)。
@@ -34,6 +34,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { lockedBar } from './lib_limit.mjs';
 
 // 📦 V79.3.9 事件行兩種格式都吃:逐日 N|日期|代號,… / 一個月一行 NM|YYYY-MM|日期=代號,…;日期=…(dispo_probe 預設)
 //   ⚠️ GitHub 的 job log 工具只回最後 5,000 行 → 逐日一行 2010 起會被截掉 → 探針改成一個月一行
@@ -96,7 +97,7 @@ function lastLE(K, d) {
   while (lo <= hi) { const m = (lo + hi) >> 1; if (K.dates[m] <= d) { ans = m; lo = m + 1; } else hi = m - 1; }
   return ans;
 }
-const locked = (K, e) => Math.abs((K.o[e] / K.c[e - 1] - 1) * 100) >= 9.7 && K.h[e] === K.l[e];
+const locked = (K, e) => lockedBar(K.dates[e], K.c[e - 1], K.o[e], K.h[e], K.l[e]) !== 0;   // 2015-06 前是 ±7%(lib_limit)
 
 export function mkIndex(twii) {
   const idx = new Map();
@@ -369,6 +370,11 @@ function selftest() {
     const thinCtrl = { by: new Map([[days[41], (() => { const x = new Float64Array(9); x[1] = x[4] = x[7] = 5; return x; })()]]) };
     const rD = collect(tmp, thinCtrl, mktRet, { dispo: [], noticeByDay: one });
     ok('④ 那一天對照組不到 30 檔 → 整筆不算(原因 ctrl)', rD.nEv.length === 0 && rD.skip.ctrl === 1, JSON.stringify(rD.skip));
+    // 2012 年(漲跌幅 ±7%)隔天開盤一價到底鎖漲停 +7% → 買不到,不算(⛔ 寫死 9.7% 會當成買得到)
+    const kL7 = days.indexOf('2012-03-01');
+    fs.writeFileSync(path.join(tmp, '4100.json'), JSON.stringify(mkRows(() => 0, rows => { const p = rows[kL7].close * 1.07; for (let k = kL7 + 1; k < rows.length; k++) for (const f of ['open', 'high', 'low', 'close']) rows[k][f] = +(rows[k][f] * 1.07).toFixed(4); const r = rows[kL7 + 1]; r.open = r.high = r.low = r.close = +p.toFixed(4); })));
+    const rL7 = collect(tmp, ctrl, mktRet, { dispo: [], noticeByDay: new Map([['2012-03-01', ['4100']]]) });
+    ok('③ 2012 年隔天開盤鎖 +7%(那時漲跌幅 ±7%)→ 買不到、整筆不算', rL7.nEv.length === 0 && rL7.skip.lock === 1, JSON.stringify(rL7.skip));
     // 事件日前 10 天內沒有 K(資料洞)→ 不算
     const rG = collect(tmp, ctrl, mktRet, { dispo: [], noticeByDay: new Map([['2026-01-05', ['1106']]]) });
     ok('④ 事件日離最後一根 K 太遠(資料洞)→ 不算(原因 gap)', rG.nEv.length === 0 && rG.skip.gap === 1, JSON.stringify(rG.skip));
