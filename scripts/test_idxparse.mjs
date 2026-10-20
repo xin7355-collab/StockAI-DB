@@ -23,7 +23,7 @@ const grab = name => {
   return m[0].trim().replace(/,$/, '');
 };
 const obj = new Function('return ({' + grab('_cutLiteral') + ',' + grab('loadIdx') + ',' + grab('async _loadIdxOnce') + '})')();
-const NAMES = ['_SIGNAL_EDGE', '_TIDY', '_NOISE_GONE', '_NOISE_KEEP', '_CHANGELOG', '_EDGE_RULES'];
+const NAMES = ['_SIGNAL_EDGE', '_SIGNAL_EDGE_META', '_TIDY', '_NOISE_GONE', '_NOISE_KEEP', '_CHANGELOG', '_EDGE_RULES'];   // 💸 V79.4.5 + META(雜訊清單讀成本)
 const val = (src, n) => { const lit = obj._cutLiteral(src, n); return lit ? new Function('return (' + lit + ')')() : null; };
 
 // ① 正式網站上的 index.html 有兩種形狀,⛔ 兩種都要解析得到:

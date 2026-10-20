@@ -49,7 +49,26 @@ ok('① meta 總數 = 資料筆數', cross.tot === meta.A + meta.B + meta.C, JSO
 
 // ── ② 查表 ────────────────────────────────────────────────
 const e1 = await page.evaluate(() => app._sigEdge('_detectStarPatterns', '晨星轉折'));
-ok('② 查得到晨星轉折', e1 && e1.grade === 'A' && e1.n > 50, JSON.stringify(e1));
+// 🔁 V79.4.5 16 年版晨星轉折是 C 級 → ⛔ 不釘分級(那是資料),釘「查得到、而且跟表上那一列一模一樣」
+const g1 = await page.evaluate(() => (app._SIGNAL_EDGE['_detectStarPatterns｜晨星轉折'] || [])[0]);
+ok('② 查得到晨星轉折(欄位 = 表上那一列)', e1 && e1.n > 50 && !!g1 && e1.grade === g1, JSON.stringify(e1));
+// 🔁 V79.4.5 每一列都要查得到(⛔ 不可有「表上有、App 永遠查不到」的列 —— 16 年表的「接刀要小心」那列就差點變這樣)
+const reach = await page.evaluate(() => {
+    const bad = [];
+    for (const [k, v] of Object.entries(app._SIGNAL_EDGE)) {
+        const i = k.indexOf('｜');
+        const e = app._sigEdge(k.slice(0, i), k.slice(i + 1));
+        const e2 = app._sigEdgeByTitle(k.slice(i + 1));
+        if (!e || e.grade !== v[0] || e.n !== v[1] || e.xr !== (v[8] ?? null)) bad.push('det:' + k);
+        if (!e2 || e2.n !== v[1]) bad.push('title:' + k);
+    }
+    // 舊標題(畫面字改過)也要查得到同一列
+    const fb = Object.keys(app._SIGNAL_EDGE).find(k => /接刀/.test(k));
+    const legacy = fb ? app._sigEdge(fb.split('｜')[0], '極端超跌・有量(接刀要小心)') : 'nofb';
+    return { bad, fb, legacyOk: fb ? !!legacy : true, n: Object.keys(app._SIGNAL_EDGE).length };
+});
+ok('② ⭐ 表上每一列 `_sigEdge` / `_sigEdgeByTitle` 都查得到、而且數字一致', reach.bad.length === 0 && reach.n > 100, reach.bad.slice(0, 5).join(' / '));
+ok('② ⭐ 「接刀要小心」(畫面上的新字)查得到表上那一列', reach.legacyOk, reach.fb);
 ok('② 欄位齊全(grade/n/e10/w10/p)',
    e1 && ['grade', 'n', 'e10', 'w10', 'p'].every(k => e1[k] != null), JSON.stringify(e1));
 ok('② ⛔ 查不到 → null(不假裝有成績)',
@@ -119,7 +138,8 @@ const helpTxt = await page.evaluate(() => {
 });
 ok('④ ⭐ K線頁的教學鈕必須呼叫共用的 _showEdgeHelp(⛔ 不可再內嵌第二份文案)',
    /_showEdgeHelp\(\)/.test(html) && !/我拿 \d+ 檔股票/.test(html), html.slice(0, 600));
-ok('④ 教學要說明交易成本另計(🧹 V78.3.6 白話「手續費和稅另計」)', /沒有扣交易成本|未扣交易成本|沒有.{0,4}扣.{0,4}交易成本|手續費和稅另計/.test(helpTxt), helpTxt.slice(-300));
+// 💸 V79.4.5 起成績已經扣了來回成本(`_sigProven`)→ 教學要講「扣掉手續費和稅還有賺頭」(⛔ 不可再寫「另計」—— 那會跟事實相反)
+ok('④ 教學要說明已扣手續費和稅(V79.4.5;舊版是「另計」)', /扣掉手續費和稅/.test(helpTxt) && !/手續費和稅另計/.test(helpTxt), helpTxt.slice(0, 300));
 ok('④ ⭐ 教學要說明「不是保證」', /不是保證/.test(helpTxt), helpTxt.slice(-300));
 // ⭐ 內嵌那份的數字曾經對不上 meta → 共用版一律從 meta 帶入,這裡交叉驗一次
 // ⭐ V72.1.7:回測窗口受 ^TWII 長度限制(實測 486 根 ≈ 2 年),

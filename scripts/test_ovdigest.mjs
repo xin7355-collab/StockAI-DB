@@ -55,7 +55,8 @@ ok('⓪ 取樣守門:blk 真的只有 `_ovDigest` 這一支', blk.length > 1500 
     // ⚠️ 這裡要釘的是「**挑訊號的那條規則**只有一份」,
     //    ⛔ 不是「_entryCheckup 只被呼叫一次」—— 它有 5 個**不同**的消費端(進場體檢卡自己等),
     //    那不是重複。第一版訂錯了,寫下來免得再改回去。
-    const picks = src.match(/x\.tone === 'bull' \? \(x\._e\.exp != null && x\._e\.exp > 0\) : true/g) || [];
+    // 💸 V79.4.5 挑法改成 `_sigProven`(扣成本還贏同一天平均股票)—— 釘的仍是「這條挑法只有一份」
+    const picks = src.match(/x\.tone === 'bull' \? this\._sigProven\(x\._e\) : true/g) || [];
     ok('⑦b ⛔ 「挑哪個實測訊號」的規則只可有一份',
        picks.length === 1, `找到 ${picks.length} 份`);
 }

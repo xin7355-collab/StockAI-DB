@@ -12,9 +12,10 @@
  *      (實測 95.5%)→ 一律先把那根整根切掉,榜上就是**上一個交易日的收盤訊號**(`bar_closed:false`)。
  *
  * ⛔ 三條鐵則(跟顯示端一致,別在這裡另立一套):
- *   ① **看多只收 `exp > 0`** —— 常對但不賺的不該進榜(V72.0.3 的教訓)
+ *   ① **看多只收 `app._sigProven(e)`**(💸 V79.4.5:A/B 級 且 每趟比同一天平均股票多賺的 > 來回成本;
+ *      使用者 10/20 決定「名單跟提醒同一把尺」)—— 舊尺 `exp > 0` 退役(只贏加權、不扣成本)
  *   ② **看空/警示照收**,但另外分組 —— 風險提醒不打折(V72.0.6 多空不對稱)
- *   ③ 期望值**未扣交易成本**(來回約 0.44%)→ 輸出裡標明,顯示端要寫
+ *   ③ V79.4.5 起榜單本身**已扣來回成本**(meta.cost);輸出 `x` = xr、`exp` 只留參考
  *
  * 跑法:node scripts/daily_signal_scan.mjs [最多幾檔]
  */
@@ -135,7 +136,9 @@ for (const f of files) {
                 if (!x || !x.title) continue;
                 const e = app._sigEdge(d, x.title);
                 if (!e) continue;
-                out.push({ d, t: x.title, tone: x.tone || 'flat', g: e.grade, n: e.n, w: e.w10, exp: e.exp, po: e.payoff });
+                // 💸 V79.4.5 看多值不值得做 → 問 App 的唯一判斷 `_sigProven`(⛔ 採礦端不另寫一份 exp>0)
+                out.push({ d, t: x.title, tone: x.tone || 'flat', g: e.grade, n: e.n, w: e.w10, exp: e.exp, po: e.payoff,
+                           xr: e.xr, ok: (x.tone === 'bull') ? !!app._sigProven(e) : null });
             }
         }
         return out;
@@ -150,9 +153,9 @@ for (const f of files) {
     const _amtArr = rows.slice(-20).map(r => r.close * r.volume / 1e4).filter(x => x >= 0).sort((a, b) => a - b);
     const a20 = _amtArr.length ? Math.round(_amtArr[Math.floor(_amtArr.length / 2)]) : 0;
     for (const h of hits) {
-        const row = { s: sym, c: Math.round(last.close * 100) / 100, v: Math.round(last.volume / 1000), a20, d: last.date, t: h.t, g: h.g, n: h.n, w: h.w, exp: h.exp, po: h.po };
-        // ① 看多只收 exp>0(常對但不賺的不進榜)
-        if (h.tone === 'bull' && h.exp != null && h.exp > 0) bull.push(row);
+        const row = { s: sym, c: Math.round(last.close * 100) / 100, v: Math.round(last.volume / 1000), a20, d: last.date, t: h.t, g: h.g, n: h.n, w: h.w, exp: h.exp, po: h.po, x: h.xr };
+        // ① 看多只收過 `_sigProven` 的(💸 V79.4.5 使用者:扣成本還贏同一天的平均股票才算;舊尺 exp>0 已退役)
+        if (h.tone === 'bull' && h.ok) bull.push(row);
         // ② 看空/警示照收(風險提醒不打折),但分開放
         else if (h.tone === 'bear' || h.tone === 'warn') risk.push(row);
     }
@@ -182,7 +185,7 @@ const droppedStale = (bullDrop - bullKept.length) + (riskDrop - riskKept.length)
 bull.length = 0; bull.push(...bullKept);
 risk.length = 0; risk.push(...riskKept);
 
-bull.sort((a, b) => (b.exp - a.exp) || (b.v - a.v));
+bull.sort((a, b) => ((b.x ?? -9) - (a.x ?? -9)) || (b.v - a.v));
 
 const out = {
     updated: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
@@ -198,8 +201,9 @@ const out = {
     scanned: used,
     edge_syms: meta.syms || null,
     base_win: meta.base_win || null,
-    // ⚠️ 顯示端一定要寫:期望值未扣交易成本(來回約 0.44%)
-    cost_note: '期望值未扣交易成本(來回約 0.44%,當沖 0.25%)',
+    // 💸 V79.4.5 榜單已經只收「扣掉來回成本還贏同一天平均股票」的(`_sigProven`)→ x = 每趟比同一天平均多賺幾 %
+    cost: meta.cost ?? null,
+    cost_note: `已扣來回成本 ${meta.cost ?? 0.44}%(只收扣完還比同一天平均股票多賺的;exp 欄是舊的「贏加權、未扣成本」,只留參考)`,
     // ⛔ **有截斷就要講**(CLAUDE.md「no silent caps」):只給 `bull` 的話,
     //   顯示端會把「被 slice 剩下的筆數」當成「今天的總數」。
     //   實測 2026-08-04 就剛好卡在 60(= 舊上限)→ 前端顯「只有 60 檔」,而真值不是 60。
@@ -209,6 +213,8 @@ const out = {
     bull_syms: new Set(bull.map(b => b.s)).size,               // 截斷前的不重複股票數
     bull_cap: BULL_CAP,
     bull: bull.slice(0, BULL_CAP),
+    // ⭐ 空的時候要講為什麼(⛔ 不可跟「沒跑」長得一樣;data_audit D2 讀這個欄位)
+    ...(bull.length ? {} : { bull_why: `今天掃了 ${used.toLocaleString()} 檔,沒有扣掉來回成本還比同一天平均股票多賺的看多訊號(不是沒跑)` }),
     // ⛔ **刻意不輸出風險股清單** —— 全市場實測有 6,158 筆風險訊號,
     //   取前 60 只是**任意截斷**(同一個訊號的期望值完全一樣,排序沒有意義),
     //   而且「全市場哪些股票有風險」對使用者沒有可操作性 ——
@@ -219,7 +225,7 @@ const out = {
 };
 fs.writeFileSync(path.join(DATA, 'today_signals.json'), JSON.stringify(out), 'utf-8');
 log(`\n✅ ${used} 檔 ・${((Date.now() - t0) / 1000).toFixed(0)}s`);
-log(`   🎯 正期望值看多訊號:${bull.length} 筆 / ${out.bull_syms} 檔(輸出前 ${out.bull.length} 筆)`);
+log(`   🎯 扣成本還贏同一天平均股票的看多訊號:${bull.length} 筆 / ${out.bull_syms} 檔(輸出前 ${out.bull.length} 筆)`);
 if (bull.length > out.bull.length) log(`   ⚠️ 有截斷:${bull.length} → ${out.bull.length}(上限 ${BULL_CAP});bull_total/bull_syms 已寫進 JSON,顯示端要用那兩個講總數`);
 log(`   ⚠️ 風險提醒:${out.risk_n} 筆 / ${out.risk_syms} 檔(⛔ 不輸出清單,只給總數當大盤氛圍)`);
 log(`   📅 資料日期 ${out.data_date}(${out.data_date_n}/${used} 檔 = ${out.data_date_pct}% 的最後一根是這天)`);

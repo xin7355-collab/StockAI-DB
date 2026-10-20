@@ -37,6 +37,14 @@ const errs = [];
 page.on('pageerror', e => { const t = (e && e.message) ? e.message : String(e); if (!benign(t)) errs.push(t); });
 await page.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof app !== 'undefined' && !!app._renderTodaySignalView, null, { timeout: 20000 });
+// 💸 V79.4.5 起榜單 / 紅點用**標題查成績表**再過 `_sigProven`(⛔ 不信產物自帶的 exp)→ 合成標題要先登記進表:
+//   x / y / 🕯️ 測試訊號 = 過關(A 級、比同一天平均股票 +2~3%);z = 沒過(+0.05%,付不起成本)
+const STUB_EDGE = () => {
+    const T = app._SIGNAL_EDGE;
+    const row = xr => ['A', 100, 0.5, 42, 0.01, 0.5, 1.2, 0.5, xr, 'bull'];
+    T['_detectT｜x'] = row(3); T['_detectT｜y'] = row(2); T['_detectT｜z'] = row(0.05); T['_detectT｜🕯️ 測試訊號'] = row(2);
+};
+await page.evaluate(STUB_EDGE);
 
 // ⭐ 用**採礦端真的產出的檔**當測資(⛔ 不用合成的,那驗不到欄位對接)
 let real = null;
@@ -52,8 +60,10 @@ ok('① ⭐ 拿得到 today_signals.json(本地或 gh-pages)', !!real,
    '兩邊都沒有 —— 這個產物不在版控裡,要 `git fetch origin gh-pages` 之後才驗得到');
 if (real) {
     ok('① 有 bull 榜且是陣列', Array.isArray(real.bull), typeof real.bull);
-    ok('① ⭐ bull 榜每筆的期望值都必須 > 0(⛔ 常對但不賺的不進榜)',
-       real.bull.every(x => x.exp > 0), JSON.stringify(real.bull.filter(x => !(x.exp > 0)).slice(0, 3)));
+    // 💸 V79.4.5 新產物(有 x 欄)= 每筆都要扣成本還贏同一天平均股票;舊產物(還沒重跑)照舊 exp > 0
+    const _rowOk = x => (x.x != null) ? x.x > (real.cost ?? 0.44) : x.exp > 0;
+    ok('① ⭐ bull 榜每筆都要過關(新:比同一天平均股票多賺的 > 成本;舊產物:exp > 0)',
+       real.bull.every(_rowOk), JSON.stringify(real.bull.filter(x => !_rowOk(x)).slice(0, 3)));
     ok('① ⭐⛔ 不可輸出風險股清單(只給總數)',
        !Array.isArray(real.risk), `risk 欄位型別 ${typeof real.risk}`);
     ok('① 有給風險總數當大盤氛圍', Number.isFinite(real.risk_n) && Number.isFinite(real.risk_syms),
@@ -84,7 +94,8 @@ if (real) {
            offDate.length === 0,
            `${offDate.length} 筆對不上:${JSON.stringify(offDate.slice(0, 3))} vs data_date=${real.data_date}`);
     }
-    ok('① ⭐ 必須帶交易成本免責欄位', /未扣交易成本/.test(String(real.cost_note)), real.cost_note);
+    ok('① ⭐ 必須帶交易成本欄位(新:已扣來回成本;舊產物:未扣交易成本)',
+       real.cost != null ? /已扣來回成本/.test(String(real.cost_note)) : /未扣交易成本/.test(String(real.cost_note)), real.cost_note);
     ok('① 價格要 round(⛔ 不可出現 62.70000076293945 這種)',
        real.bull.every(x => String(x.c).replace(/^-?\d+\.?/, '').length <= 2),
        JSON.stringify(real.bull.map(x => x.c).slice(0, 5)));
@@ -162,7 +173,7 @@ ok('②b ⭐ 教學⛔ 不可拿截斷後的陣列長度講「今天有幾檔」
 ok('②b 🧹 V78.3.6 教學⛔ 不可出現研究統計(期望值為正的共 / 129 個訊號 / 基準勝率)', !/期望值為正|129 個訊號|基準勝率|實測/.test(h2), h2.slice(0, 400));
 // ⭐ exp=0.1 全都賺不回成本 → 主區要誠實說「今天沒有一檔賺得回交易成本」,⛔ 不可留白
 const R3 = await render({ ...(real || {}), bull_total: 3, bull_syms: 3,
-    bull: [{ s: '1', c: 1, t: 'x', g: 'A', n: 100, w: 42, exp: 0.1 }, { s: '2', c: 1, t: 'x', g: 'A', n: 100, w: 42, exp: 0.1 }, { s: '3', c: 1, t: 'x', g: 'A', n: 100, w: 42, exp: 0.1 }],
+    bull: [{ s: '1', c: 1, t: 'z', g: 'A', n: 100, w: 42, exp: 0.1 }, { s: '2', c: 1, t: 'z', g: 'A', n: 100, w: 42, exp: 0.1 }, { s: '3', c: 1, t: 'z', g: 'A', n: 100, w: 42, exp: 0.1 }],
     scanned: 2316, base_win: 36.4, data_date: '2026-08-04', cost_note: '未扣交易成本', risk_n: 1, risk_syms: 1 });
 ok('②b ⭐ 全部賺不回成本時要誠實講「今天沒有值得做的」,並勸阻硬找理由進場(🧹 V78.3.6 文案改白話)',
    /今天沒有值得做的/.test(txt(R3.html)) && /不划算/.test(txt(R3.html)) && /別硬找理由進場/.test(txt(R3.html)), txt(R3.html).slice(0, 300));
@@ -223,14 +234,17 @@ const badge = async d => page.evaluate(async j => {
 let bg = await badge({ bull: [{ s: '1', c: 1, t: 'x', n: 100, w: 42, exp: 3 }, { s: '1', c: 1, t: 'y', n: 100, w: 42, exp: 2 }, { s: '2', c: 1, t: 'z', n: 100, w: 42, exp: 0.05 }], scanned: 1 });
 ok('⑤b ⭐ 紅點算「檔數」不是「筆數」(同一檔兩個訊號只算 1)', bg.n === 1 && bg.txt === '1', JSON.stringify(bg));
 ok('⑤b ⭐⛔ 賺不回成本的不計入紅點', bg.n === 1, JSON.stringify(bg));
-bg = await badge({ bull: [{ s: '1', c: 1, t: 'x', n: 100, w: 42, exp: 0.05 }], scanned: 1 });
+bg = await badge({ bull: [{ s: '1', c: 1, t: 'z', n: 100, w: 42, exp: 0.05 }], scanned: 1 });
 ok('⑤b ⛔ 沒有會賺的訊號 → 紅點隱藏(不留空殼)', bg.n === 0 && bg.hidden, JSON.stringify(bg));
 
 // ── ⑥ 採礦腳本本身的鐵則(⛔ 別在那裡另立一套判定)──────────────
 const scan = fs.readFileSync(path.join(ROOT, 'scripts/daily_signal_scan.mjs'), 'utf8');
 ok('⑥ ⭐ 掃描腳本要跑**真的**偵測器(⛔ 不複製判定邏輯)',
    /app\[d\]\(rows\)/.test(scan) && /不複製一份判定邏輯/.test(scan), '');
-ok('⑥ ⭐ 看多必須 exp>0 才進榜', /h\.tone === 'bull' && h\.exp != null && h\.exp > 0/.test(scan), '');
+ok('⑥ ⭐ 看多要過 App 的唯一判斷 `_sigProven` 才進榜(V79.4.5;⛔ 採礦端不另寫一份)',
+   /app\._sigProven\(e\)/.test(scan) && /h\.tone === 'bull' && h\.ok\)/.test(scan), '');
+ok('⑥ ⭐⛔ 舊尺「exp > 0 就進榜」不可復活', !/h\.tone === 'bull' && h\.exp != null && h\.exp > 0/.test(scan), '');
+ok('⑥ ⭐ 榜單空的時候要寫 bull_why(⛔ 不可跟「沒跑」長得一樣;資料體檢 D2 讀它)', /bull_why:/.test(scan), '');
 ok('⑥ ⭐⛔ 註解要寫明「不輸出風險股清單」的理由', /刻意不輸出風險股清單/.test(scan), '');
 ok('⑥ ⛔ 不可在採礦端重複存股票名稱(前端已有 getStockName)',
    /刻意\*\*不存股票名稱\*\*/.test(scan), '');
@@ -260,8 +274,12 @@ const withMine = (syms, d) => page.evaluate(async a => {
     return out;
 }, { syms, d });
 
-const SAMPLE = real && real.bull && real.bull.length ? real : { bull: [{ s: '8464', c: 382.5, t: '換手量', g: 'A', n: 1309, w: 42.4, exp: 0.68 }], scanned: 2315, base_win: 36.4, data_date: '2026-08-03', cost_note: '期望值未扣交易成本(來回約 0.44%,當沖 0.25%)', risk_n: 6158, risk_syms: 2079 };
-const onList = String(SAMPLE.bull[0].s);
+// 💸 V79.4.5 命中的那檔要挑「榜上真的過關」的(沒過關的會收進摺疊 → 本來就不在第一列);真產物沒有過關的就用合成的
+const _synth = { bull: [{ s: '8464', c: 382.5, t: 'x', g: 'A', n: 1309, w: 42.4, exp: 0.68 }], scanned: 2315, base_win: 36.4, data_date: '2026-08-03', cost_note: '已扣來回成本 0.44%', risk_n: 6158, risk_syms: 2079 };
+const _realHit = (real && real.bull && real.bull.length)
+    ? await page.evaluate(b => { const r = b.find(x => app._sigProven(app._sigEdgeByTitle(x.t))); return r ? String(r.s) : null; }, real.bull) : null;
+const SAMPLE = _realHit ? real : _synth;
+const onList = _realHit || String(_synth.bull[0].s);
 
 const M1 = await withMine([onList], SAMPLE);
 const m1 = txt(M1.html);
@@ -529,6 +547,7 @@ ok('⑨ 無 pageerror', errs.length === 0, errs.join(' | '));
             await pg.goto('file://' + tmp);
             // ⛔ 陷阱 #5:`const app = {}` **沒有掛上 window** → 判斷式要用 `typeof app`
             await pg.waitForFunction(() => typeof app !== 'undefined' && !!app._renderTodaySignalView, null, { timeout: 20000 });
+            await pg.evaluate(STUB_EDGE);
             const bad = await pg.evaluate(async a => {
                 app._todaySig = a;
                 // ⛔ 陷阱 #8:頁面本來就有一個同 id 的容器 → 無條件 createElement 會拿到「看不見的第二份」,

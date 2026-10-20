@@ -35,7 +35,10 @@ for (const f of ['screener.json', 'today_signals.json', 'macro_risk.json', 'play
     ok('ⓓs2 黑名單一律走 _ovBlockWhy(⛔ 不在這裡另寫一份)', /_ovBlockWhy\(/.test(fn), '');
     ok('ⓓs3 載不到時 ready=false(⛔ 不可把「抓不到」講成「今天沒有」)', /ready:\s*false/.test(fn) && /out\.ready = true/.test(fn), '');
     const fh = strip(SRC.slice(SRC.indexOf('    _deckFitHtml(F) {'), SRC.indexOf('    async _deckFitScan() {')));
-    ok('ⓓs4 成本讀產物 playbook_edge.cost(⛔ 不寫死)', /_pbEdge[\s\S]{0,40}\.cost/.test(fh), '');
+    // 💸 V79.4.5 成本跟 `_sigProven` 同一個(`_sigCost()` 讀成績表 meta,嵌入時從 playbook_scan 的 COST 帶進來)
+    ok('ⓓs4 成本走 `_sigCost()`(跟提醒同一把尺,⛔ 不寫死)', /this\._sigCost\(\)/.test(fh) && !/0\.44/.test(fh.replace(/\/\/[^\n]*/g, '')), '');
+    const fs2 = strip(SRC.slice(SRC.indexOf('    async _deckFitScan() {'), SRC.indexOf('    async _deckFitScan() {') + 3000));
+    ok('ⓓs5 ⭐ 名單只收過 `_sigProven` 的(用標題查同一張成績表,⛔ 不信產物自帶的 exp)', /_sigProven\(e\)/.test(fs2) && /_sigEdgeByTitle\(x\.t\)/.test(fs2), '');
     const pp = strip(SRC.slice(SRC.indexOf('        // ③ 開盤方向計分(純公式)'), SRC.indexOf('        const _usClosed = (() =>')));
     // ⭐ `_add` 自己那一行 `s += d;` 是合法的 → 釘「只准有那一處」,⛔ 其餘一律要走 _add
     const nAdd = (pp.match(/(^|\n)\s*s \+=/g) || []).length, nSub = (pp.match(/(^|\n)\s*s -=/g) || []).length;
@@ -120,7 +123,7 @@ await page.evaluate(rwdShim);
         const d = document.querySelector('[data-deckfit]');
         const buy = document.getElementById('deckBuy'), idle = document.getElementById('deckIdle');
         return { F: { n: F.list.length, scanned: F.scanned, bull: F.bullSyms, gene: F.geneN, ready: F.ready },
-                 syms: F.list.map(x => String(x.s)), exps: F.list.map(x => +x.exp),
+                 syms: F.list.map(x => String(x.s)), exps: F.list.map(x => +x._xr), cost: app._sigCost(),
                  has: !!d, rows: document.querySelectorAll('[data-deckfitrow]').length,
                  costWarn: !!document.querySelector('[data-deckfitcost]'),
                  txt: d ? d.innerText.replace(/\s+/g, ' ') : '',
@@ -143,9 +146,11 @@ await page.evaluate(rwdShim);
     ok('ⓓ4 要寫明它列的是什麼(🔥 開著時再寫「跟 🔥 不是同一個問題」)', /總覽那個 📈 符合進場徽章/.test(r.txt) && (r.pbOn ? /不是同一個問題/.test(r.txt) : !/不是同一個問題/.test(r.txt)), [r.pbOn, r.txt.slice(0, 150)]);
     ok('ⓓ5 要寫明這是候選、最終判定在個股頁(⛔ 這裡算不出空頭守門)', /候選/.test(r.txt) && /個股頁/.test(r.txt), r.txt.slice(-250));
     // 💸 扣成本後為負的一定要講(⛔ 不可列一排股票卻不說它賺不到手續費)
-    const allNeg = r.exps.length > 0 && r.exps.every(e => e - 0.44 < 0);
+    // 💸 V79.4.5 exps = 每列的 xr(比同一天平均股票多賺幾 %),成本 = `_sigCost()`
+    const allNeg = r.exps.length > 0 && r.exps.every(e => e - r.cost < 0);
     // 🧹 V78.3.6 散戶 App 不印期望值/勝率/成本數字 → 一般模式釘「賺不到手續費的那幾列要標出來」+ ⛔ 不可有數字;數字在 lab 模式照舊
-    const negN = r.exps.filter(e => e - 0.44 < 0).length;
+    const negN = r.exps.filter(e => e - r.cost < 0).length;
+    ok('ⓓ6a ⭐ V79.4.5 名單每一列都過 `_sigProven` → 扣完成本一定是正的', negN === 0, `負的 ${negN} 列`);
     ok('ⓓ6 一般模式:扣完成本為負的每一列都要寫「扣完手續費不划算」(🧹 V78.3.6)', r.negMarked === negN, `標了 ${r.negMarked} / 應標 ${negN}`);
     ok('ⓓ6b 🧹 V78.3.6 一般模式⛔ 不可出現期望值/勝率/扣掉來回成本 X% 這類研究數字', !/期望 -?\d|勝率 \d|扣掉來回成本/.test(r.txt), r.txt.slice(0, 250));
     ok('ⓓ6c 實驗室模式每一列仍要寫「扣掉來回成本之後」', r.rows === 0 || /扣掉來回成本/.test(r.labTxt), r.labTxt.slice(0, 250));

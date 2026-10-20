@@ -53,6 +53,13 @@ const MIN_N = 30;
 const MIN_CTRL = 30;         // 同一天的對照組至少要這麼多「股·日」才算得出那天的基準(⛔ 不拿別天湊)
 const WIN = Math.max(260, +(process.env.SIG_WIN || 1200));
 const PAGES = Math.max(1, Math.min(6, +(process.env.PAGES || 3)));
+// 🧬 V79.4.5 GENE=85:60(使用者 10/20 決定 3 的附帶研究):另算「🧬 股票(位階 ≥85、20 日波動 ≥60,同 portfolio_backtest selfFeat)
+//   出現這個訊號」的子集 —— xrg = 比同一天全部股票、xrg0 = 比同一天 🧬 股票(= 這個訊號疊在 🧬 上還有沒有增量)、前後半、逐年。
+//   ⛔ 不設時輸出逐位相同(只多算、原本任何數字都不動);設了改寫 signal_edge_gene.json(⛔ 不蓋掉正式那份)。
+//   ⛔ 研究用:有組合過關只回報,⛔ 不自動加進 App 名單(使用者選的)。
+const GENE = (() => { const m = /^(\d+):(\d+)$/.exec(process.env.GENE || ''); return m ? { rank: +m[1], vol: +m[2] } : null; })();
+if (process.env.GENE && !GENE) { console.error(`🚨 GENE=${process.env.GENE} 不認得(格式 85:60)`); process.exit(1); }
+const MIN_CTRL_G = 10;       // 同一天的 🧬 對照至少要這麼多「股·日」(🧬 本來就少,⛔ 不拿別天湊)
 
 const log = s => console.log(s);
 
@@ -106,6 +113,36 @@ export function sigStats(ev, db, horizons = HORIZONS) {
 }
 
 /** 指標陣列切到跟 K 線同一段(off..end),非陣列欄位照搬。 */
+/** 🧬 第 i 根的位階(近 250 根收盤百分位,含當天)與 20 日年化波動 —— ⛔ 跟 portfolio_backtest.mjs selfFeat 同一個算式(selftest ⑤ 釘住)。i < 60 回 null。 */
+export function geneFeat(closes, i) {
+    if (i < 60) return null;
+    let rk = 0; const lo = Math.max(0, i - 249), ci = closes[i];
+    for (let k = lo; k <= i; k++) if (closes[k] <= ci) rk++;
+    let s3 = 0; for (let k = i - 19; k <= i; k++) s3 += Math.pow((closes[k] - closes[k - 1]) / closes[k - 1], 2);
+    return { rank: rk / (i - lo + 1) * 100, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100 };
+}
+
+/** 🧬 子集統計(10 日):ev = { d:[日期], x:{10:[..]}, g:[0|1] };dbAll / dbGene = dateBase 的結果(10 日);mid = 前後半的分界日。
+ *  回 { n, xrg(比同一天全部股票), xrg0(比同一天 🧬 股票), t0, h1, h2(xrg0 前後半), yp / yn(xrg0 為正的年份 / 有 ≥10 筆的年份)}。 */
+export function geneStats(ev, dbAll, dbGene, mid) {
+    const a = [], g = [], h1 = [], h2 = [], yrs = {};
+    for (let k = 0; k < ev.d.length; k++) {
+        if (!ev.g || !ev.g[k]) continue;
+        const v = ev.x[10][k];
+        if (v == null) continue;
+        const d = ev.d[k], bA = dbAll.get(d), bG = dbGene.get(d);
+        if (!bA || !bG) continue;
+        a.push(v - bA.mean); g.push(v - bG.mean);
+        (d < mid ? h1 : h2).push(v - bG.mean);
+        (yrs[d.slice(0, 4)] = yrs[d.slice(0, 4)] || []).push(v - bG.mean);
+    }
+    const mean = x => x.length ? x.reduce((s, y) => s + y, 0) / x.length : null;
+    const n = g.length, m0 = mean(g);
+    const sd = n > 1 ? Math.sqrt(g.reduce((s, y) => s + (y - m0) ** 2, 0) / (n - 1)) : 0;
+    const yl = Object.values(yrs).filter(x => x.length >= 10);
+    return { n, xrg: mean(a), xrg0: m0, t0: sd > 0 ? m0 / sd * Math.sqrt(n) : 0, h1: mean(h1), h2: mean(h2), yp: yl.filter(x => mean(x) > 0).length, yn: yl.length };
+}
+
 export function sliceInd(ind, off, end, arrKeys) {
     const v = {};
     for (const k in ind) v[k] = arrKeys.has(k) ? ind[k].slice(off, end) : ind[k];
@@ -167,6 +204,44 @@ if (SELFTEST) {
         const ind = { k: [0, 1, 2, 3, 4, 5], x: 'meta', dif: [10, 11, 12, 13, 14, 15] };
         const v = sliceInd(ind, 2, 5, new Set(['k', 'dif']));
         ok('④ 指標切到 off..end:長度 = K 線那段、最後一個 = 當天(不會讀到未來)', v.k.length === 3 && v.k[2] === 4 && v.dif[0] === 12 && v.x === 'meta', v);
+    }
+    // ⑤ 🧬 位階 / 波動跟 portfolio_backtest 同一個算式
+    {
+        const up = Array.from({ length: 300 }, (_, k) => 100 * Math.pow(1.01, k));        // 每天 +1%
+        const f = geneFeat(up, 299), f0 = geneFeat(up, 59);
+        ok('⑤ 一路漲:位階 100、波動 = 1% × √252(≈15.9);第 59 根還沒滿 60 → null', f && Math.abs(f.rank - 100) < 1e-9 && Math.abs(f.vol - Math.sqrt(252)) < 1e-6 && f0 === null, f);
+        const pb = fs.readFileSync(path.join(ROOT, 'scripts', 'portfolio_backtest.mjs'), 'utf-8');
+        ok('⑤ portfolio_backtest selfFeat 的兩條算式還是這兩條(改了要一起改)',
+           pb.includes('for (let k = _lo; k <= i; k++) if (dd[k].c <= _ci) _rk++;') && pb.includes('Math.pow((dd[k].c - dd[k - 1].c) / dd[k - 1].c, 2)') && pb.includes('vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100'));
+    }
+    // ⑥ 🧬 子集:⭐ 決定性對照 —— 只有 🧬 那幾筆注入 +2(訊號在 🧬 上有增量)→ xrg0 ≈ 2;不注入 → ≈ 0;非 🧬 的筆一律不算
+    {
+        let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+        const allBy = new Map(), geneBy = new Map(), dates = [];
+        for (let t = 0; t < 300; t++) {
+            const d = `${2011 + Math.floor(t / 30)}-0${1 + (t % 9)}-1${t % 10}`;
+            dates.push(d);
+            allBy.set(d, Array.from({ length: 60 }, () => (rnd() - 0.5) * 6));        // 全部股票:平均 0
+            geneBy.set(d, Array.from({ length: 20 }, () => 1 + (rnd() - 0.5) * 6));   // 🧬 股票:平均 +1(🧬 本身就比較強)
+        }
+        const dbA = dateBase(allBy), dbG = dateBase(geneBy, MIN_CTRL_G);
+        const mk = (bump) => {
+            const ev = { d: [], x: { 10: [] }, g: [] };
+            for (const d of dates) {
+                ev.d.push(d); ev.x[10].push(1 + bump + (rnd() - 0.5) * 2); ev.g.push(1);      // 🧬 那一筆
+                ev.d.push(d); ev.x[10].push(50); ev.g.push(0);                               // 非 🧬:就算報酬很誇張也不算
+            }
+            return ev;
+        };
+        const mid = dates[150];
+        const sY = geneStats(mk(2), dbA, dbG, mid), sN = geneStats(mk(0), dbA, dbG, mid);
+        ok(`⑥ 注入 +2 → xrg0 ${sY.xrg0.toFixed(2)} ≈ 2、xrg ${sY.xrg.toFixed(2)} ≈ 3;前後半都正;非 🧬 那幾筆沒混進來(n=${sY.n})`,
+           Math.abs(sY.xrg0 - 2) < 0.4 && Math.abs(sY.xrg - 3) < 0.4 && sY.h1 > 1 && sY.h2 > 1 && sY.n === 300 && sY.yp === sY.yn && sY.yn >= 8, sY);
+        ok(`⑥ ⭐ 決定性對照:不注入 → xrg0 ${sN.xrg0.toFixed(2)} ≈ 0(🧬 本身強不算訊號的功勞)、xrg ${sN.xrg.toFixed(2)} ≈ 1`,
+           Math.abs(sN.xrg0) < 0.4 && Math.abs(sN.xrg - 1) < 0.4, sN);
+        const dbG2 = dateBase(new Map([...geneBy].map(([d, v], k) => [d, k % 2 ? v.slice(0, 5) : v])), MIN_CTRL_G);
+        const sS = geneStats(mk(2), dbA, dbG2, mid);
+        ok('⑥ 那天 🧬 對照不到 10 筆 → 那天不算(⛔ 不拿別天湊)', sS.n === 150, sS.n);
     }
     console.log(bad ? `\n❌ ${bad} 條失敗` : '\n✅ SIGNAL_BACKTEST_SELFTEST_PASS');
     process.exit(bad ? 1 : 0);
@@ -234,6 +309,7 @@ log(`🔎 偵測器:${alive.length}/${DETECTORS.length} 存在` +
 const acc = new Map();
 const baseByDate = { 5: new Map(), 10: new Map(), 20: new Map() };   // 對照組:同一天所有掃到的「股·日」
 const baseAll = { 5: [], 10: [], 20: [] };                          // 整段(只拿來印出新舊口徑的差,⛔ 不再當基準)
+const baseGeneByDate = new Map();                                    // 🧬 V79.4.5 GENE:同一天的 🧬「股·日」(10 日)
 const skip = { lu: 0, cliff: 0, twii: 0, end: 0 };
 let used = 0, t0 = Date.now(), dMin = '9999', dMax = '0000';
 const usedPrefix = {};   // ⭐ V72.1.7 代號開頭分布,用來自我檢查有沒有選樣偏誤
@@ -280,10 +356,21 @@ async function runStock(page, rows) {
 
 function absorb(rows, fired) {
     const pre = cliffPrefix(rows.map(r => r.close), rows.map(r => r.open));
+    const closes = GENE ? rows.map(r => r.close) : null;
     const lastSeen = new Map();
     for (const [i, names] of fired) {
         const e = eventEx(rows, i, TWII, pre);
         if (e.skip) { skip[e.skip] += e.skip === 'cliff' ? e.cliff : 1; continue; }
+        let isG = 0;
+        if (GENE) {
+            const f = geneFeat(closes, i);
+            isG = (f && f.rank >= GENE.rank && f.vol >= GENE.vol) ? 1 : 0;
+            if (isG && e.ex[10] != null) {
+                let arr = baseGeneByDate.get(rows[i].date);
+                if (!arr) baseGeneByDate.set(rows[i].date, (arr = []));
+                arr.push(e.ex[10]);
+            }
+        }
         skip.cliff += e.cliff || 0;
         const d0 = rows[i].date;
         if (d0 < dMin) dMin = d0;
@@ -302,9 +389,10 @@ function absorb(rows, fired) {
             if (prev != null && i - prev < DEDUP) continue;   // ③ 事件去重
             lastSeen.set(key, i);
             let a = acc.get(key);
-            if (!a) { a = { tone, d: [], x: { 5: [], 10: [], 20: [] } }; acc.set(key, a); }
+            if (!a) { a = { tone, d: [], x: { 5: [], 10: [], 20: [] }, ...(GENE ? { g: [] } : {}) }; acc.set(key, a); }
             a.d.push(d0);
             for (const h of HORIZONS) a.x[h].push(e.ex[h] ?? null);
+            if (GENE) a.g.push(isG);
         }
     }
 }
@@ -421,6 +509,45 @@ log('   ⚠️ 低勝率但高賺賠比也可能是好訊號(巨人傑:「賺賠
 }
 log('   p 值 = 假設這個訊號其實沒用,純靠運氣出現這種成績的機率(⚠️ 同一天很多檔一起亮不是獨立樣本,p 值偏樂觀)。');
 
+// 🧬 V79.4.5 GENE:「🧬 股票出現這個訊號」—— ⛔ 只回報,不自動加進名單
+let geneOut = null;
+if (GENE) {
+    const COST_G = (() => { const m = fs.readFileSync(path.join(ROOT, 'scripts', 'playbook_scan.mjs'), 'utf-8').match(/^const COST = ([\d.]+)/m); return m ? +m[1] : null; })();
+    if (!(COST_G > 0)) { console.log('❌ 讀不到 playbook_scan.mjs 的 COST'); process.exit(1); }
+    const DBG = dateBase(baseGeneByDate, MIN_CTRL_G);
+    if (!DBG.size) { console.log('❌ GENE:沒有任何一天湊得到 🧬 對照(門檻太嚴?)→ 不寫檔'); await browser.close(); process.exit(1); }
+    const ds = [...DB[10].keys()].sort(), mid = ds[Math.floor(ds.length / 2)];
+    // 🧬 本身(不看訊號):每一天 🧬 股票平均 − 全部股票平均,照 🧬 股·日數加權
+    let wS = 0, wN = 0;
+    for (const [d, bG] of DBG) { const bA = DB[10].get(d); if (!bA) continue; wS += (bG.mean - bA.mean) * bG.n; wN += bG.n; }
+    const base = wN ? wS / wN : null;
+    const accBy = new Map([...acc]);
+    const cand = [];
+    for (const r of withP) {
+        const a = accBy.get(r.key); if (!a) continue;
+        const gs = geneStats(a, DB[10], DBG, mid);
+        r.g = { n: gs.n, xrg: gs.xrg == null ? null : +gs.xrg.toFixed(3), xrg0: gs.xrg0 == null ? null : +gs.xrg0.toFixed(3), t0: +gs.t0.toFixed(2),
+                h1: gs.h1 == null ? null : +gs.h1.toFixed(3), h2: gs.h2 == null ? null : +gs.h2.toFixed(3), yp: gs.yp, yn: gs.yn };
+        if (gs.n >= MIN_N) cand.push(r);
+    }
+    // 多重比較:t0 → 雙尾 p(常態近似)→ BH(⛔ 135 個一起看,純雜訊也會冒出幾個)
+    const phi = z => 0.5 * (1 + Math.sign(z) * Math.sqrt(1 - Math.exp(-2 * z * z / Math.PI)));   // 常態 CDF 近似(誤差 < 0.01,只拿來排 BH)
+    for (const r of cand) r.g.p = +Math.min(1, 2 * (1 - phi(Math.abs(r.g.t0)))).toFixed(4);
+    const sorted = [...cand].sort((a, b) => a.g.p - b.g.p); let mq = 1;
+    for (let k = sorted.length - 1; k >= 0; k--) { mq = Math.min(mq, sorted[k].g.p * sorted.length / (k + 1)); sorted[k].g.q = +mq.toFixed(4); }
+    const pass = cand.filter(r => r.tone === 'bull' && r.g.xrg != null && r.g.xrg > COST_G && r.g.xrg0 > 0 && r.g.h1 > 0 && r.g.h2 > 0)
+                     .sort((a, b) => b.g.xrg0 - a.g.xrg0);
+    log('');
+    log(`🧬 GENE ${GENE.rank}:${GENE.vol}:🧬 股·日 ${wN.toLocaleString()} ・${DBG.size.toLocaleString()} 天(每天 ≥${MIN_CTRL_G})・🧬 本身比同一天全部股票 ${base == null ? '—' : (base >= 0 ? '+' : '') + base.toFixed(2)}%/10 日 ・成本 ${COST_G}%`);
+    log(`   過關(看多・🧬 子集扣成本還贏同一天平均股票 xrg > ${COST_G}・比同一天 🧬 股票多 xrg0 > 0・前後半都 > 0):${pass.length} 個`);
+    for (const r of pass.slice(0, 25)) log(`   ${r.grade} ${r.key.slice(0, 40).padEnd(42)} n=${String(r.g.n).padStart(6)} xrg ${(r.g.xrg >= 0 ? '+' : '') + r.g.xrg.toFixed(2)} xrg0 ${(r.g.xrg0 >= 0 ? '+' : '') + r.g.xrg0.toFixed(2)} 前 ${r.g.h1.toFixed(2)} 後 ${r.g.h2.toFixed(2)} 年 ${r.g.yp}/${r.g.yn} q ${r.g.q}`);
+    const top = [...cand].filter(r => r.tone === 'bull').sort((a, b) => b.g.xrg0 - a.g.xrg0).slice(0, 10);
+    log('   看多 xrg0 前 10(不管過不過關):');
+    for (const r of top) log(`     ${r.key.slice(0, 40).padEnd(42)} n=${String(r.g.n).padStart(6)} xrg ${(r.g.xrg >= 0 ? '+' : '') + (r.g.xrg ?? 0).toFixed(2)} xrg0 ${(r.g.xrg0 >= 0 ? '+' : '') + r.g.xrg0.toFixed(2)} t ${r.g.t0} q ${r.g.q} 年 ${r.g.yp}/${r.g.yn}`);
+    geneOut = { rank: GENE.rank, vol: GENE.vol, min_ctrl: MIN_CTRL_G, days: DBG.size, n: wN, base: base == null ? null : +base.toFixed(3), cost: COST_G, mid,
+                pass: pass.map(r => r.key) };
+}
+
 const out = {
     updated: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
     syms: used, step: STEP, dedup: DEDUP, min_n: MIN_N, win_bars_detector: WIN,
@@ -433,8 +560,10 @@ const out = {
     base: { n: baseAll[10].length, med: baseMed, win: baseWin },
     grades: { A: nA, B: nB, C: withP.length - nA - nB },
     signals: withP,
+    ...(geneOut ? { gene: geneOut } : {}),
 };
-fs.writeFileSync(path.join(DATA, 'signal_edge.json'), JSON.stringify(out), 'utf-8');
-log(`\n💾 已寫 ${path.join(DATA, 'signal_edge.json')}(${withP.length} 個訊號通過樣本門檻)`);
+const OUT_NAME = GENE ? 'signal_edge_gene.json' : 'signal_edge.json';   // 🧬 研究版⛔ 不蓋掉正式那份
+fs.writeFileSync(path.join(DATA, OUT_NAME), JSON.stringify(out), 'utf-8');
+log(`\n💾 已寫 ${path.join(DATA, OUT_NAME)}(${withP.length} 個訊號通過樣本門檻)`);
 
 await browser.close();

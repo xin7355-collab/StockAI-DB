@@ -64,7 +64,9 @@ const R = await page.evaluate(async () => {
         return d;
     };
     const K = mk(400, () => 0.01);
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' }).replace(/-/g, '/');
+    // ⚠️ 「今天」一律用 App 自己的定義(`getTodayStr` = 裝置時區)—— 寫死台北時區的話,
+    //    UTC 16:00~24:00(台北已經是隔天)跑測試時兩邊差一天 → 假紅燈(2026-10-20 22:00 UTC 實測踩到)
+    const today = A.getTodayStr();
     K[K.length - 1].date = today;                       // 最後一根是「今天」→ 必須被 _closedTail 砍掉
     // 大盤:每天 +0.5%,日期跟 K 同一套
     const TW = K.map((b, i) => ({ date: b.date, close: 10000 * Math.pow(1.005, i) }));

@@ -75,8 +75,8 @@ const R = await page.evaluate(async () => {
         A._ecCache = null;
         A._entryCheckup = () => ({
             verdict: '測試', score: 50,
-            proven: [{ tone: 'bull', title: '低檔布局(測試用)', _e: { exp: 1.5 } },
-                     { tone: 'bull', title: '補漲候選(測試用)', _e: { exp: 1.2 } }],
+            proven: [{ tone: 'bull', title: '低檔布局(測試用)', _e: { grade: 'A', n: 500, exp: 1.5, xr: 1.5 } },
+                     { tone: 'bull', title: '補漲候選(測試用)', _e: { grade: 'A', n: 500, exp: 1.2, xr: 1.2 } }],
             bullets: [],
         });
         // ⚠️ 理由收在 <details> 裡,而**收起的 details 的 innerText 只給 summary**
@@ -189,7 +189,7 @@ const R = await page.evaluate(async () => {
     A.inventory = [];
     A._ecCache = { sym: '2330', at: Date.now(), r: {
         score: 70, verdict: '測試', bullets: [{ good: false, txt: '低檔布局(便宜就買)' }, { good: false, txt: '跌破月線' }],
-        proven: [{ tone: 'bull', title: '補漲候選', _e: { exp: 5 } }, { tone: 'bull', title: '底部頸線突破', _e: { exp: 1.2 } }] } };
+        proven: [{ tone: 'bull', title: '補漲候選', _e: { grade: 'A', n: 500, exp: 5, xr: 5 } }, { tone: 'bull', title: '底部頸線突破', _e: { grade: 'A', n: 500, exp: 1.2, xr: 1.2 } }] } };
     out.blk = draw();
     out.blocked = ['低檔布局', '撿便宜', '補漲', '布林壓縮'].map(t => A._ovBlocked(t));
     out.notBlocked = ['底部頸線突破', '晨星轉折', '爆量長紅'].map(t => A._ovBlocked(t));
@@ -200,19 +200,19 @@ const R = await page.evaluate(async () => {
     A._scrV = (row, k) => (k === 'pos252' ? 90 : k === 'amp20' ? 6 : null);
     A.inventory = [];
     A._ecCache = { sym: '2330', at: Date.now(), r: { score: 70, verdict: 'x', bullets: [],
-        proven: [{ tone: 'bull', title: '補漲候選', _e: { exp: 5 } }] } };
+        proven: [{ tone: 'bull', title: '補漲候選', _e: { grade: 'A', n: 500, exp: 5, xr: 5 } }] } };
     out.dOnlyBlocked = A._ovDecide(A.activeData, '2330');
     A._ecCache = { sym: '2330', at: Date.now(), r: { score: 70, verdict: 'x', bullets: [],
-        proven: [{ tone: 'bull', title: '爆量長紅', _e: { exp: -1 } }] } };
+        proven: [{ tone: 'bull', title: '爆量長紅', _e: { grade: 'A', n: 500, exp: -1, xr: -1 } }] } };
     out.dNegExp = A._ovDecide(A.activeData, '2330');          // 期望值為負 → 也不可以判成加碼
     A._ecCache = { sym: '2330', at: Date.now(), r: { score: 70, verdict: 'x', bullets: [],
-        proven: [{ tone: 'bull', title: '爆量長紅', _e: { exp: 1.5 } }] } };
+        proven: [{ tone: 'bull', title: '爆量長紅', _e: { grade: 'A', n: 500, exp: 1.5, xr: 1.5 } }] } };
     out.dAdd = A._ovDecide(A.activeData, '2330');             // 白名單 → 才可以
     // ③ 🚨 V77.5.0:黑名單與白名單**同時**出現、而且這一檔符合 🧬 → 一定會產生行動計畫,
     //   才驗得到「計畫裡⛔ 不可有黑名單項目」(舊版的情境根本不產生計畫 = 那條永遠會過)
     A._ecCache = { sym: '2330', at: Date.now(), r: { score: 70, verdict: 'x',
         bullets: [{ good: false, txt: '低檔布局(便宜就買)' }],
-        proven: [{ tone: 'bull', title: '補漲候選', _e: { exp: 5 } }, { tone: 'bull', title: '底部頸線突破', _e: { exp: 1.2 } }] } };
+        proven: [{ tone: 'bull', title: '補漲候選', _e: { grade: 'A', n: 500, exp: 5, xr: 5 } }, { tone: 'bull', title: '底部頸線突破', _e: { grade: 'A', n: 500, exp: 1.2, xr: 1.2 } }] } };
     out.blkPlan = draw();
     out.dBlkPlan = A._ovDecide(A.activeData, '2330');
     A._scrData = _sd; A._scrV = _sv;

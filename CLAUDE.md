@@ -31,7 +31,7 @@
 | `daily_miner.yml` | cron / 手動 / push `miner.py`·`macro_miner.py`·`radar_miner.py`·`chief_ai_batch.py`·`daily_miner.yml` | 完整採礦 + 部署 gh-pages/data | 30-60 分 |
 | `deploy_pages.yml` | push `index.html` / `sw.js` 到 main / 手動 | **只部署 index.html + sw.js 到 gh-pages,不採礦** | **~1 分鐘** |
 | `macro_probe.yml` | (自身用途) | 總經探針 | — |
-| `weekly_backtest.yml` | `workflow_run` ← daily_miner(**只在週五**那一輪真的跑;手動 force=true)/ ⛔ 無 cron | 🔁 **每週自動回測**:`signal_backtest`(129 個 K 線訊號)+ `portfolio_backtest` ×2(決策台 49 個月,🧬 / 不挑)→ `data/backtest_edge.json`(推 gh-pages + data)。App `_sigEdge` **產物優先、`_SIGNAL_EDGE` 備援**;`_btEdgeNote` 印最新日期 + 跟嵌入版的 diff;⛔ **只標示不換預設**(V75.0.9 五條件由人判);空過守門 訊號 n / 成績單筆數 < 上一版 80% 不推。測試 `scripts/test_backtest_edge.mjs` | ~45 分 |
+| `weekly_backtest.yml` | `workflow_run` ← daily_miner(**只在週五**那一輪真的跑;手動 force=true)/ ⛔ 無 cron | 🔁 **每週自動回測**:`signal_backtest`(135 個 K 線訊號,最近 3 年)+ `portfolio_backtest` ×2(決策台,🧬 / 不挑)→ `data/backtest_edge.json`(推 gh-pages + data)。🔁 **V79.4.5 起 App 一律讀內嵌的 16 年 `_SIGNAL_EDGE`**(使用者選的),產物只在實驗室模式當「最近幾年」參考(`_btEdgeNote`);成績單設定 = **App 現行預設**(= `_DECK_TRACK49`:🧬 85/60・chand2・MAXD 20・bear60・收盤成交・股利 + 二代健保,`test_backtest_edge ③h` 跨檔比對 —— ⚠️ 改 App 預設要一起改);⛔ **只標示不換預設**(V75.0.9 五條件由人判);空過守門 訊號 n / 成績單筆數 < 上一版 80% 不推,**cfg 或訊號方法換了那一次重新起算**(⛔ 但絕對下限 `FLOOR` 照樣要過)。🚨 9/21~10/20 每週都被擋 = 守門拿舊引擎的 1,233 筆比(同設定現在 926)。測試 `scripts/test_backtest_edge.mjs` | ~45 分 |
 
 - **`daily_miner.yml` 執行策略**：採 **20 批次同步併發 (Matrix Parallel)**，打破時間限制，大幅縮短全市場採礦時間。
 - **無損合併**：每個子任務獨立抓取負責的股票後，`merge` 任務將 JSON 完美合併。
@@ -1806,7 +1806,8 @@ done
 📊 **實測:2,315 檔 / 177 秒 / 產出僅 3.6 KB**;命中 **17 檔**(全市場!)。
 
 ⛔ **五條鐵則**:
-- **看多只收 `exp > 0`** —— 常對但不賺的不進榜(V72.0.3 的教訓)。
+- **看多只收 `app._sigProven(e)`**(🔁 V79.4.5 使用者選的;舊版是 `exp > 0`)—— A/B 級 **且** `xr`(每趟比同一天平均股票)**> 來回成本**(`_sigCost()` = meta.cost = `playbook_scan.mjs` COST)**且** 樣本 ≥ `_wrEnough`。
+  ⛔ `exp` 是對加權算的、**沒扣成本**,拿它判「會賺」會放行一堆扣完成本就白做的。沒過關的日子寫 `bull_why`(⛔ 不可跟「沒跑」長得一樣)。
 - ⛔ **不逐檔列風險股** —— 全市場 6,158 筆,取前 N 只是**任意截斷**
   (同一訊號的期望值完全一樣,排序沒有意義),而且「全市場哪些有風險」
   對使用者沒有可操作性(他要看自己手上那幾檔,前端 `_entryCheckup` 本來就做得到)。
@@ -1951,6 +1952,13 @@ done
 `scripts/signal_backtest.mjs` —— **跑真正的 JS 偵測器**跑歷史(⛔ 不複製一份判定邏輯)。
 250 檔 × 每 2 根 K × 40 個偵測器,報酬扣同期加權,同檔同訊號 5 日內只算一次。
 結果嵌成 `index.html` 的 **`_SIGNAL_EDGE`**(122 筆,約 10KB),用 `app._sigEdge(det, title)` 查。
+
+🔁 **V79.4.5 起是 16 年版**(2010-12 ~ 2026-09・2,422 檔含下市・135 個訊號・對照組 = 同一天的全部股票),每列 **10 欄**
+`[等級, n, e10, w10, p, e20, 賺賠比, exp, xr, tone]`。⭐ **全 App 判「這個看多訊號值不值得照做」只有一支 `app._sigProven(e)`**
+(A/B 級 且 `xr > _sigCost()` 且 n ≥ `_wrEnough`)—— 提醒 / K 線頁「值得參考」/ 進場體檢 / 總覽「📈 符合進場」/ 今日訊號 / 決策台名單 / 雜訊清單(pro)同一把尺。
+⛔ **App 一律讀內嵌表**(`_sigTable()`),每週自動回測的產物只在實驗室模式當「最近幾年」參考(使用者選的,⛔ 不可再蓋掉內嵌表)。
+⚠️ 舊 key「(接刀要小心)」16 年表改叫「(接刀請看實測)」→ `_sigEdge` 先查原 key 再查舊 key(⛔ 不然那列永遠查不到)。
+📊 那把尺過關的看多訊號只有 **1 種**(換手量,xr +0.80 > 0.44)→ 每天新出現的看多訊號 5 種 ≈ 48 個(原本在用的每週 3 年表、exp>0)→ 19 種 ≈ 536 個(16 年 exp>0)→ **1 種 ≈ 4 個**;很多天一個都沒有是**正常的**。
 
 ### ⚠️ 兩個一定會被誤讀的地方(⛔ 改文案前先讀)
 1. **基準勝率是 34.6%,不是 50%** —— 超額報酬是對**市值加權**的加權指數算的,
@@ -2189,7 +2197,7 @@ Tailwind **具名** `grid-cols-N` 會編成 `minmax(0,1fr)`;**任意值** `[1fr_
 ⭐ **唯一守門 `app._alertWorthIt(det, sigTitle, tone)`** —— 一個原則、**兩把尺**:
 | 訊號自稱 | 過關條件 | 為什麼 |
 |---|---|---|
-| 多方 `tone==='bull'` | `exp > 0` 且 `n ≥ _wrEnough()` | 買了要**真的賺得到**(期望值已含賺賠比)|
+| 多方 `tone==='bull'` | 🔁 V79.4.5 `_sigProven(e)` = A/B 級 且 `xr > _sigCost()`(扣來回成本還比同一天平均股票賺)且 `n ≥ _wrEnough()` | 買了要**真的賺得到**(⛔ 舊版的 `exp > 0` 沒扣成本)|
 | 空方/警示 `bear`/`warn` | `e10 < 0` 且 `p ≤ 0.25` | 警告之後要**真的比大盤差**,而且不是雜訊 |
 | 查不到成績 | ⛔ 一律擋 | 未驗證 ≠ 有效 |
 

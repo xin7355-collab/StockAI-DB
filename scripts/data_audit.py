@@ -288,6 +288,32 @@ def _err_parts(v):
     return [('', v)]
 
 
+def d2_findings(fname, j, keys):
+    """D2 類(V72.2.6,V79.4.5 抽出來才測得動):檔案在,但「該有的那半」沒有。
+
+    回 [(icon, msg)]:
+      ❌ 沒有值、也沒有 `{k}_error` → 查不出是算不出來還是根本沒跑到(陷阱 #9 / #22)
+      ⚠️ 沒有值、但有 `{k}_error`  → 守門刻意擋掉並留了原因
+      ℹ️ **空的**、但有 `{k}_why`  → 💸 V79.4.5「今天就是沒有」有交代(例:today_signals 的 bull 今天沒有過關的),⛔ 不算缺
+         ⚠️ `_why` 只認「空的」(空 list / dict / 字串);整個欄位不見 ⛔ 不可以拿 `_why` 搪塞
+    """
+    out = []
+    for k, what in keys:
+        v = j.get(k)
+        if v is None or (isinstance(v, (dict, list, str)) and len(v) == 0):
+            err = j.get(f'{k}_error')
+            why = j.get(f'{k}_why')
+            if v is not None and why:
+                out.append(('ℹ️', f'{fname} 的 `{k}` 是空的,有交代原因:{str(why)[:90]}'))
+            elif err:
+                # ⭐ 有寫原因 = 守門刻意擋掉的(陷阱 #22 的正確做法)→ 降級成警告,不是明確錯誤
+                out.append(('⚠️', f'{fname} 少了 `{k}`({what}),但有寫原因:{str(err)[:90]}'))
+            else:
+                out.append(('❌', f'{fname} 少了 `{k}`({what}),而且**沒有 {k}_error** '
+                                 f'→ 查不出是「算不出來」還是「根本沒跑到」(同陷阱 #9/#22)'))
+    return out
+
+
 def c_findings(f, j):
     """C 類:把一個檔的 `*_error` 掃成 [(圖示, 訊息)]。
 
@@ -610,17 +636,12 @@ def audit(ref):
             j, _e = read_json(ref, f'data/{fname}')
         if not isinstance(j, dict):
             continue          # 檔案不存在/不是物件 → A 類已經報過,這裡不重複吵
-        for k, what in keys:
-            v = j.get(k)
-            if v is None or (isinstance(v, (dict, list, str)) and len(v) == 0):
-                err = j.get(f'{k}_error')
-                # ⭐ 有寫原因 = 守門刻意擋掉的(陷阱 #22 的正確做法)→ 降級成警告,不是明確錯誤
-                if err:
-                    add('⚠️', 'D2', f'{fname} 少了 `{k}`({what}),但有寫原因:{str(err)[:90]}')
-                else:
-                    add('❌', 'D2', f'{fname} 少了 `{k}`({what}),而且**沒有 {k}_error** '
-                                    f'→ 查不出是「算不出來」還是「根本沒跑到」(同陷阱 #9/#22)')
-                _d2 += 1
+        for icon, msg in d2_findings(fname, j, keys):
+            if icon == 'ℹ️':
+                print(f'   ℹ️ {msg}')        # 有交代的空(`{k}_why`)→ 只印,⛔ 不算缺
+                continue
+            add(icon, 'D2', msg)
+            _d2 += 1
     print(f'   檢查 {sum(len(v) for v in EXPECTED_KEYS.values())} 個關鍵欄位 → 缺 {_d2} 個')
 
     # ── E. 連動一致性 ────────────────────────────────────────────────
@@ -768,6 +789,16 @@ def selftest():
 
     def icons(j, f='confcall.json'):
         return [i for i, _m in c_findings(f, j)]
+
+    print('🧪 D2 —— 空的欄位什麼時候算缺(V79.4.5)')
+    K = [('bull', '今日訊號榜')]
+    d2i = lambda j: [i for i, _m in d2_findings('today_signals.json', j, K)]
+    ok('D2① 有值 → 不報', d2i({'bull': [{'s': '2330'}]}) == [])
+    ok('D2② 空的、沒交代 → ❌', d2i({'bull': []}) == ['❌'], d2i({'bull': []}))
+    ok('D2③ 空的、有 bull_why → ℹ️(⛔ 不算缺)', d2i({'bull': [], 'bull_why': '今天沒有過關的'}) == ['ℹ️'])
+    ok('D2④ 整個欄位不見、只有 bull_why → 照樣 ❌(⛔ 不可以拿 _why 搪塞)',
+       d2i({'bull_why': '今天沒有過關的'}) == ['❌'], d2i({'bull_why': 'x'}))
+    ok('D2⑤ 不見但有 bull_error → ⚠️', d2i({'bull_error': '採礦失敗'}) == ['⚠️'])
 
     print('🧪 _err_parts —— 什麼叫「error 真的有值」')
     ok('① None / False / 空字串 / 空 dict / 空 list 都不算有值',

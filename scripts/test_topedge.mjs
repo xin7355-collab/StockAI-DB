@@ -41,8 +41,10 @@ const pick = proven => page.evaluate(pv => {
     const h = app._ovTopEdge([1, 2, 3], 'T1');
     return h == null ? null : h;
 }, proven);
-const mk = (title, tone, exp, grade = 'A') =>
-    ({ title, tone, _e: { grade, n: 500, e10: 1, w10: 42, p: 0.01, e20: 1, payoff: 1.1, exp } });
+// 💸 V79.4.5 看多的門檻改成 `_sigProven`(A/B 級 且 xr > 來回成本)→ 測資的 xr 跟著「正 = 會賺」走:
+//    正的給 exp + 0.5(一定過成本 0.44)、負的 / null 照原值(一定不過)
+const mk = (title, tone, exp, grade = 'A', xr = (exp == null ? null : exp > 0 ? exp + 0.5 : exp)) =>
+    ({ title, tone, _e: { grade, n: 500, e10: 1, w10: 42, p: 0.01, e20: 1, payoff: 1.1, exp, xr } });
 
 // ── ① 只放一個(⛔ 不整份搬過來)────────────────────────────
 let h = await pick([mk('訊號A', 'bull', 0.9), mk('訊號B', 'bull', 0.5), mk('訊號C', 'bull', 0.3)]);
@@ -56,6 +58,8 @@ h = await pick([mk('常對但不賺', 'bull', -0.8), mk('真的會賺', 'bull', 
 ok('② ⭐ 跳過期望值為負的看多訊號', /真的會賺/.test(h) && !/常對但不賺/.test(h), h);
 ok('② 沒有正期望值的看多 → 不顯示', (await pick([mk('只有這個', 'bull', -0.5)])) === null);
 ok('② 期望值為 null 的看多 → 不顯示', (await pick([mk('沒成績', 'bull', null)])) === null);
+// ⭐ V79.4.5 決定性對照:期望值是正的、但比同一天平均股票只多 0.2%(付不起成本)→ 也不顯示(舊尺會放它上第一眼)
+ok('②b ⭐ 期望值為正但付不起來回成本 → 不顯示(V79.4.5 同一把尺)', (await pick([mk('贏加權但不夠付成本', 'bull', 0.6, 'A', 0.2)])) === null);
 
 // ── ③ ⛔ 看空/警示不設期望值門檻(風險提醒不打折)──────────────
 h = await pick([mk('爆量長黑', 'bear', -1.4)]);

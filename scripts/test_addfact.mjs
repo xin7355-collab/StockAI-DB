@@ -51,10 +51,10 @@ const R = await page.evaluate(() => {
         app._scrData = { rows: { T: { pos252: 92, amp20: 6.5 } } };
         const realV = app._scrV; app._scrV = (row, k) => row ? row[k] : null;
         // 期望值為正的看多訊號:`_entryCheckup` 回的是 `proven`(⛔ 不是 bullets),
-        //   而且每一筆要有 `tone:'bull'` 與 `_e.exp > 0`(⛔ 少一個就篩掉了)
+        //   而且每一筆要有 `tone:'bull'` 與過 `_sigProven`(💸 V79.4.5:A/B 級 且 xr > 來回成本;⛔ 少一個就篩掉了)
         app._ecCache = null;
         const realEC = app._entryCheckup;
-        app._entryCheckup = () => ({ verdict: '', proven: [{ tone: 'bull', title: '測試訊號', _e: { exp: 1.2 } }] });
+        app._entryCheckup = () => ({ verdict: '', proven: [{ tone: 'bull', title: '測試訊號', _e: { grade: 'A', n: 500, exp: 1.2, xr: 1.2 } }] });
         let html = '';
         // ⚠️ 簽名是 (data, sym),回傳的是**物件**不是 HTML(第一版兩個都寫錯 → 三條假失敗)
         try { const d = app._ovDecide(rows, 'T'); html = d ? (d.badge + ' ｜ ' + d.why) : ''; }

@@ -39,6 +39,7 @@
 import gzip
 import json
 import os
+import re
 import sys
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -171,6 +172,70 @@ def protect_state(now):
         if nxt is not None and k >= 1:
             break
     return inside, wait, (nxt if nxt is not None else 1e9)
+
+
+# ── ⑩ 🔁 2026-10-20 第 5 棒實測:額度暫時用完 ≠ 資料集壞掉 ─────────────────
+#    那一棒在保護時段等了 255 分,22:01 一開工剛好撞上 pe_band(排程晚 3.5 小時)正在用同一組金鑰 →
+#    六個資料集「探路」全部 http402(額度用完)→ 舊版當成「資料集名 / 層級不對」整個跳過 → more=0、接力停了
+#    (workflow 全綠、零訊息)。⛔ 兩個病:① 探路前沒問保護時段 / 動態保護(只印了一行)② 暫時用完被當成永久失敗。
+#    → 探路前先 `wait_turn`;402 / 429 一律 `fetch_retry` 等 5 分鐘再試,等不到就停手接力(⛔ 不跳過、不寫 probe_err)。
+def is_quota(err):
+    """FinMind 額度暫時用完(402 / 429)。兩種格式都認:inst_backfill.fm 的 `http402:…`、dispo_probe.fm 的 `第N把/HTTP 402/quota/…`。"""
+    e = str(err or '')
+    return e.startswith('http402') or e.startswith('http429') or bool(re.search(r'(?i)HTTP 40[29]\b|/quota/|upper limit', e))
+
+
+def probe_verdict(rows, err):
+    """探路結果 → 'ok' / 'quota'(額度暫時用完:⛔ 不跳過,停手接力)/ 'skip'(資料集名 / 層級 / 深度不對:這個資料集跳過)"""
+    if rows:
+        return 'ok'
+    return 'quota' if is_quota(err) else 'skip'
+
+
+def fetch_retry(fm, ds, sym, start, end, deadline, sleep=time.sleep, clock=time.time, tries=6):
+    """抓一檔;額度用完就等 5 分鐘再試(最多 tries 次、⛔ 不等過 deadline)。回 (rows, err, 等了幾次)。"""
+    data, err, waits = None, None, 0
+    for _ in range(tries):
+        data, err = fm(ds, sym, start, end_date=end, timeout=90)
+        if data is not None and len(data) > 0 or not is_quota(err):
+            break
+        if clock() + 300 > deadline - 120:
+            break
+        waits += 1
+        print(f'   ⏳ {sym} 額度用完({str(err)[:60]})→ 等 5 分鐘', flush=True)
+        sleep(300)
+    return data, err, waits
+
+
+def wait_turn(deadline, sleep=time.sleep, clock=time.time, now_fn=None, busy=None):
+    """保護時段 + 動態保護:輪到我們了回 None;該停手接力就回 'time'。
+    短的保護時段就地等、長的停手;共用金鑰的 workflow 在跑就每 BUSY_WAIT_MIN 分看一次。"""
+    now_fn = now_fn or (lambda: datetime.now(timezone.utc))
+    busy = busy or others_busy
+    while True:
+        inside, wait, nxt = protect_state(now_fn())
+        if inside:
+            if wait <= SHORT_WAIT_MIN and clock() + wait * 60 < deadline - 120:
+                print(f'   ⏸️ 短的保護時段 → 就地等 {wait:.0f} 分', flush=True)
+                sleep(wait * 60)
+                continue
+            return 'time'
+        if nxt < 2:
+            sleep(nxt * 60 + 5)
+            continue
+        b, why = busy()
+        if b:
+            if clock() + BUSY_WAIT_MIN * 60 < deadline - 120:
+                if why != _BUSY['said']:
+                    print(f'   ⏸️ 共用金鑰的 {why} 正在跑 → 每 {BUSY_WAIT_MIN} 分看一次(⛔ 不搶它的額度)', flush=True)
+                    _BUSY['said'] = why
+                sleep(BUSY_WAIT_MIN * 60)
+                continue
+            return 'time'
+        if _BUSY['said']:
+            print(f'   ▶️ 它們跑完了({_BUSY["said"]})→ 接著抓', flush=True)
+            _BUSY['said'] = ''
+        return None
 
 
 # ── 資料打包 ─────────────────────────────────────────────────────
@@ -364,9 +429,21 @@ def main():
         print(f'⏸️ 現在在共用金鑰的排程時段(UTC {now:%a %H:%M})→ 先等 {w:.0f} 分(⛔ 不搶 daily_miner / fund_sweep 的額度)', flush=True)
         time.sleep(max(0, w) * 60)
     base = read_universe(UNIVERSE)
-    dl, dl_err = delisted_since('2010-01-01')
+    dl_quota = False
+    if wait_turn(deadline) == 'time':                   # ⑩ 下市名單也吃同一組額度 → 先等輪到我們
+        print('⏸️ 開工前就輪不到(保護時段 / 共用金鑰的 workflow 一直在跑)→ 停手接力', flush=True)
+        gh_out(more='1', reason='time', queue=','.join(QUEUE), minutes=f'{(time.time() - t0) / 60:.0f}')
+        return 0
+    for i in range(4):
+        dl, dl_err = delisted_since('2010-01-01')
+        if not dl_err or not is_quota(dl_err) or time.time() + 300 > deadline - 600:
+            break
+        print(f'   ⏳ 下市名單:額度用完({str(dl_err)[:60]})→ 等 5 分鐘再試', flush=True)
+        time.sleep(300)
     if dl_err:
-        print(f'⚠️ 下市名單抓不到({dl_err})→ 這一棒只有現存股(倖存者偏誤還在,誠實記錄)')
+        dl_quota = is_quota(dl_err)
+        print(f'⚠️ 下市名單抓不到({dl_err})→ 這一棒只有現存股(倖存者偏誤還在,誠實記錄)'
+              + (';是額度用完 → 收工時照樣接力,下一棒再補下市那幾檔' if dl_quota else ''))
     syms = base + sorted(dl - set(base))
     if len(syms) < 1500:
         print(f'❌ 母體只有 {len(syms)} 檔(< 1,500)→ UNIVERSE 可能沒做好,⛔ 不跑')
@@ -399,8 +476,19 @@ def main():
             st.update({'done': True, 'have': len(syms)})
             continue
         # 🚧 探路:2330(⛔ 別 2,000 檔打完才發現資料集名 / 層級 / 深度不對)
-        rows, err = IB.fm(spec['ds'], '2330', spec['start'], end_date=spec['end'], timeout=90)
-        if not rows:
+        #    ⑩ 探路前先等輪到我們;額度用完(402/429)⛔ 不是資料集壞掉 → 等,等不到就停手接力
+        if wait_turn(deadline) == 'time':
+            more, reason, left_q = True, 'time', QUEUE[qi:]
+            break
+        rows, err, _w = fetch_retry(IB.fm, spec['ds'], '2330', spec['start'], spec['end'], deadline)
+        pv = probe_verdict(rows, err)
+        if pv == 'quota':
+            print(f'⏳ {key} 探路:額度一直用完({spec["ds"]}:{str(err)[:80]})→ ⛔ 不跳過,這一棒停手、接力下一棒再試', flush=True)
+            st.update({'probe_quota': TODAY})
+            # ⚠️ workflow 只對 reason=time 接力(LIMIT 試跑停下來才不會無限接力)→ 額度暫時用完也走 time
+            more, reason, left_q = True, 'time', QUEUE[qi:]
+            break
+        if pv == 'skip':
             print(f'❌ {key} 探路失敗({spec["ds"]}:{err or "0 列"})→ 這個資料集整個跳過')
             st.update({'probe_err': (err or 'empty')[:120], 'at': TODAY})
             continue
@@ -431,42 +519,15 @@ def main():
             if n_try >= LIMIT:
                 stop = 'limit'
                 break
-            while True:                                   # 保護時段:短的就地等、長的停手接力(⛔ 不搶排程的額度)
-                inside, wait, nxt = protect_state(datetime.now(timezone.utc))
-                if inside:
-                    if wait <= SHORT_WAIT_MIN and time.time() + wait * 60 < deadline - 120:
-                        print(f'   ⏸️ 短的保護時段 → 就地等 {wait:.0f} 分', flush=True)
-                        time.sleep(wait * 60)
-                        continue
-                    stop = 'time'
-                elif nxt < 2:
-                    time.sleep(nxt * 60 + 5)
-                    continue
-                else:
-                    busy, why = others_busy()
-                    if busy:
-                        if time.time() + BUSY_WAIT_MIN * 60 < deadline - 120:
-                            if why != _BUSY['said']:
-                                print(f'   ⏸️ 共用金鑰的 {why} 正在跑 → 每 {BUSY_WAIT_MIN} 分看一次(⛔ 不搶它的額度)', flush=True)
-                                _BUSY['said'] = why
-                            time.sleep(BUSY_WAIT_MIN * 60)
-                            continue
-                        stop = 'time'
-                    elif _BUSY['said']:
-                        print(f'   ▶️ 它們跑完了({_BUSY["said"]})→ 接著抓', flush=True)
-                        _BUSY['said'] = ''
-                break
+            stop = wait_turn(deadline)                    # 保護時段:短的就地等、長的停手接力(⛔ 不搶排程的額度)
             if stop or time.time() > deadline - 120:
                 stop = stop or 'time'
                 break
-            data, err = None, None
-            for _ in range(6):
-                data, err = IB.fm(spec['ds'], s, spec['start'], end_date=spec['end'], timeout=90)
-                if data is not None or not err or not (err.startswith('http402') or err.startswith('http429')):
-                    break
-                waits += 1
-                print(f'   ⏳ {s} 額度用完({err})→ 等 5 分鐘', flush=True)
-                time.sleep(300)
+            data, err, w = fetch_retry(IB.fm, spec['ds'], s, spec['start'], spec['end'], deadline)
+            waits += w
+            if data is None and is_quota(err):            # ⑩ 等到 deadline 還是用完 → 停手接力(⛔ 不把這檔記成失敗)
+                stop = 'time'
+                break
             time.sleep(pace)
             n_try += 1
             if data is None:
@@ -531,6 +592,8 @@ def main():
             more, reason = True, stop
             left_q = QUEUE[qi:]
             break
+    if dl_quota and not more:                           # ⑩ 下市名單是額度用完才沒拿到 → 照樣接力,下一棒補下市那幾檔
+        more, reason, left_q = True, 'time', list(QUEUE)
     st_path.parent.mkdir(parents=True, exist_ok=True)
     st_path.write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding='utf-8')
     if IB.REASON:
@@ -673,7 +736,41 @@ def selftest():
             need.append(f.name)
     ok('⑨ 會自動跑又吃 FINMIND_TOKENS 的 workflow 全在動態保護清單(⛔ 新增了沒加就紅)',
        len(need) >= 6 and set(need) <= set(SHARED_WF), (need, SHARED_WF))
-    ok('⑨ 抓資料的迴圈真的有問動態保護(⛔ 只寫函式沒接上 = 陷阱 #37)', inspect.getsource(main).count('others_busy()') >= 2)
+    ok('⑨ 抓資料的迴圈真的有問動態保護(⛔ 只寫函式沒接上 = 陷阱 #37)',
+       'others_busy' in inspect.getsource(wait_turn) and inspect.getsource(main).count('wait_turn(deadline)') >= 3)
+    # ⑩ 2026-10-20 第 5 棒:額度暫時用完 ≠ 資料集壞掉
+    ok('⑩a 探路:有資料 → ok;402 / 429(兩種錯誤格式)→ quota(⛔ 不跳過);名字錯 / 0 列 → skip',
+       probe_verdict([{'x': 1}], None) == 'ok' and probe_verdict(None, 'http402:Requests reach the upper limit.') == 'quota'
+       and probe_verdict([], 'http429:too many') == 'quota' and probe_verdict(None, '第4把/HTTP 402/quota/Requests reach the upper limit.') == 'quota'
+       and probe_verdict(None, 'http400:dataset not found') == 'skip' and probe_verdict([], None) == 'skip' and probe_verdict(None, 'empty') == 'skip',
+       [probe_verdict(None, 'http402:x'), probe_verdict(None, 'http400:x')])
+    seq = [(None, 'http402:limit'), (None, 'http402:limit'), ([{'d': 1}], None)]
+    calls, slept = [], []
+    def _fm(ds, sym, start, end_date=None, timeout=90):
+        calls.append(sym); return seq[min(len(calls) - 1, len(seq) - 1)]
+    rr, ee, ww = fetch_retry(_fm, 'X', '2330', 'a', 'b', deadline=1e12, sleep=slept.append, clock=lambda: 0)
+    ok('⑩b 額度用完 → 等 5 分鐘再試,第三次拿到(等了 2 次、每次 300 秒)', rr == [{'d': 1}] and ww == 2 and slept == [300, 300] and len(calls) == 3, (rr, ww, slept))
+    calls.clear(); slept.clear(); seq[:] = [(None, 'http402:limit')]
+    rr, ee, ww = fetch_retry(_fm, 'X', '2330', 'a', 'b', deadline=400, sleep=slept.append, clock=lambda: 0)   # 再等 5 分就過 deadline−2 分
+    ok('⑩c 快到 deadline → ⛔ 不再等(交給接力),回 quota 錯誤', rr is None and is_quota(ee) and slept == [] and len(calls) == 1, (ee, slept, calls))
+    calls.clear(); slept.clear(); seq[:] = [(None, 'http400:bad dataset')]
+    rr, ee, ww = fetch_retry(_fm, 'X', '2330', 'a', 'b', deadline=1e12, sleep=slept.append, clock=lambda: 0)
+    ok('⑩d 不是額度問題(400)→ 不等、直接回', rr is None and ee.startswith('http400') and slept == [] and len(calls) == 1, (ee, slept))
+    free = datetime(2026, 10, 20, 23, 0, tzinfo=timezone.utc)           # 週二 23:00 UTC:不在任何保護時段
+    seqb = [(True, 'pe_band.yml(in_progress)'), (False, '')]
+    slept.clear(); _BUSY.update(said='')
+    r = wait_turn(1e12, sleep=slept.append, clock=lambda: 0, now_fn=lambda: free, busy=lambda: seqb.pop(0) if len(seqb) > 1 else seqb[0])
+    ok('⑩e 共用金鑰的 pe_band 在跑 → 等一輪(5 分)→ 它跑完了 → 輪到我們(None)', r is None and slept == [BUSY_WAIT_MIN * 60], (r, slept))
+    inside_long = datetime(2026, 10, 20, 9, 0, tzinfo=timezone.utc)      # 週二 09:00 UTC:daily_miner 那段長保護
+    slept.clear()
+    r = wait_turn(1e12, sleep=slept.append, clock=lambda: 0, now_fn=lambda: inside_long, busy=lambda: (False, ''))
+    ok('⑩f 在長的保護時段裡 → 回 time(停手接力,⛔ 不硬抓)', r == 'time' and slept == [], (r, slept))
+    src = inspect.getsource(main)
+    i_wait, i_probe = src.find('wait_turn(deadline)', src.find('探路:2330')), src.find('fetch_retry(IB.fm, spec[\'ds\'], \'2330\'')
+    ok('⑩g 探路之前先 wait_turn、探路用 fetch_retry、quota 走接力(⛔ 不寫 probe_err)',
+       0 < i_wait < i_probe and "if pv == 'quota'" in src and src.find("probe_err", src.find("if pv == 'quota'")) > src.find("if pv == 'skip'"),
+       (i_wait, i_probe))
+    ok('⑩h 下市名單額度用完 → 重試 + 收工時照樣接力', 'dl_quota' in src and src.count('is_quota(dl_err)') >= 2)
     ok('⑨ workflow 有把 GH_TOKEN 傳給補挖那一步(沒有就只能退回時段表)', wtxt.count('GH_TOKEN: ${{ github.token }}') >= 2)
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
     return 0 if not bad else 1

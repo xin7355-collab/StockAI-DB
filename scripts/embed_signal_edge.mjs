@@ -57,7 +57,19 @@ if (!sigs.length) { console.error('❌ signal_edge.json 沒有訊號,不嵌入')
 // 📊 嵌入前一律重新分級(舊 json 也吃得到 BH),計數以重新分級後為準
 j.grades = regrade(sigs);
 
-// 資料表:key = "偵測器｜標題",value = [grade, n, e10, w10, p, e20, payoff, exp]
+// 💸 V79.4.5 來回成本:⛔ 不在這裡另寫一份 —— 讀 playbook_scan.mjs 的 COST(決策台「今天可以買的」那份同一個數字)
+//   App 的唯一判斷 `_sigProven` = A/B 級 且 xr > meta.cost(使用者 10/20:「扣成本還贏同一天的平均股票才算」)
+const COST = (() => {
+    const m = fs.readFileSync(path.join(ROOT, 'scripts', 'playbook_scan.mjs'), 'utf-8').match(/^const COST = ([\d.]+)/m);
+    if (!m || !(+m[1] > 0)) { console.error('❌ 讀不到 playbook_scan.mjs 的 COST(來回成本)→ 不嵌入'); process.exit(1); }
+    return +m[1];
+})();
+const SAME_DAY = j.match === 'same-day';
+
+// 資料表:key = "偵測器｜標題",value = [grade, n, e10, w10, p, e20, payoff, exp, xr, tone]
+//   ⭐ V79.4.5 第 9 欄 xr = 每趟比「同一天全部股票平均」多賺幾 %(16 年同一天版才有;舊 json 沒有就是 null)
+//              第 10 欄 tone = 偵測器自稱的方向(bull/bear/warn/flat/mid)—— 表自己要能回答「看多訊號有幾個」,
+//              ⛔ 不然 App 只能拿全部訊號混在一起數(看空訊號的 xr 是另一回事)
 const table = {};
 // ⚠️ 欄位名以 signal_edge.json 實際輸出為準:key 本身就是「偵測器｜標題」
 //   (第一版猜成 s.det / s.title → 全部變成 "undefined｜undefined",
@@ -68,6 +80,8 @@ for (const s of sigs) {
         s.grade, s.n, s.e10, s.w10, s.p, s.e20,
         s.payoff == null ? null : s.payoff,
         s.exp == null ? null : s.exp,
+        (typeof s.xr === 'number' && isFinite(s.xr)) ? Math.round(s.xr * 1000) / 1000 : null,
+        s.tone || null,
     ];
 }
 // ⚠️ base.win / base.med 是**依天期分的物件**({5:..,10:..,20:..}),不是純數字。
@@ -96,6 +110,8 @@ const meta = {
     n_base: j.base.n, A: j.grades.A, B: j.grades.B, C: j.grades.C,
     ...(j.cover ? { cover: j.cover } : {}),
     fdr: FDR_TAG,
+    cost: COST,
+    ...(j.match ? { match: j.match } : {}),
 };
 
 // ⭐ 兩行都是**單獨一行** → 用行號整行替換,⛔ 不用跨行 regex(那正是上次只換一半的原因)
@@ -119,6 +135,14 @@ const bad = [];
 if (cnt.A !== m2.A || cnt.B !== m2.B || cnt.C !== m2.C) bad.push(`分級數不符 meta=${JSON.stringify({ A: m2.A, B: m2.B, C: m2.C })} 實際=${JSON.stringify(cnt)}`);
 if (Object.keys(t2).length !== sigs.length) bad.push(`筆數不符 ${Object.keys(t2).length} vs ${sigs.length}`);
 if (m2.syms !== j.syms) bad.push(`檔數不符 ${m2.syms} vs ${j.syms}`);
+if (m2.cost !== COST) bad.push(`來回成本不符 meta=${m2.cost} vs playbook_scan ${COST}`);
+// 💸 同一天版:每一列都要有 xr(少一列 = 那個訊號永遠過不了 `_sigProven`,而且零訊息)
+if (SAME_DAY) {
+    const noXr = Object.entries(t2).filter(([, v]) => !(typeof v[8] === 'number' && isFinite(v[8]))).map(([k]) => k);
+    if (noXr.length) bad.push(`同一天版卻有 ${noXr.length} 列沒有 xr:${noXr.slice(0, 3).join('、')}`);
+    const noTone = Object.entries(t2).filter(([, v]) => typeof v[9] !== 'string').map(([k]) => k);
+    if (noTone.length) bad.push(`有 ${noTone.length} 列沒有 tone:${noTone.slice(0, 3).join('、')}`);
+}
 if (bad.length) { console.error('❌ 交叉驗證失敗:\n  ' + bad.join('\n  ')); process.exit(1); }
 
 const kb = (after[iData].length / 1024).toFixed(1);
@@ -126,5 +150,10 @@ console.log(`✅ 已嵌入:${Object.keys(t2).length} 個訊號(${kb} KB)`);
 console.log(`   涵蓋 ${m2.syms} 檔・基準勝率 ${m2.base_win.toFixed(1)}%・A=${m2.A} B=${m2.B} C=${m2.C}`);
 if (m2.cover) console.log(`   代號開頭分布:${JSON.stringify(m2.cover)}`);
 if (m2.win_bars) console.log(`   回測窗口:${m2.win_from} ~ ${m2.win_to}(${m2.win_bars} 個交易日,受 ^TWII 長度限制)`);
+if (SAME_DAY) {
+    const proven = Object.entries(t2).filter(([, v]) => v[9] === 'bull' && (v[0] === 'A' || v[0] === 'B') && v[8] > COST).map(([k]) => k.split('｜')[1]);
+    const nBull = Object.values(t2).filter(v => v[9] === 'bull').length;
+    console.log(`   💸 看多 ${nBull} 個裡過 _sigProven(A/B 級且 xr > 成本 ${COST}%)的:${proven.length} 個 → ${proven.join('、') || '(無)'}`);
+}
 console.log('   ⭐ 交叉驗證通過(meta 與資料表一致)');
 console.log('   👉 接著跑:node scripts/test_sigedge.mjs');

@@ -360,8 +360,8 @@ const KB = await page.evaluate(() => {
     app.renderRadarMatrix('kbar_bull'); const bull = body ? body.innerHTML : '';
     app.renderRadarMatrix('kbar_bear'); const bear = body ? body.innerHTML : '';
     const L = app._kbarRadarEdge('晨星轉折 + 低檔十字變盤線(轉折警訊,次日確認)');
-    const save = app._SIGNAL_EDGE; const alt = JSON.parse(JSON.stringify(save)); alt[star] = ['A', 999, 1, 50, 0.01, 1, 1, 7.77];
-    const saveBt = app._btEdge; app._btEdge = null;   // ⚠️ 每週回測產物(data/backtest_edge.json)優先 → 要先拿掉,否則改常數量不到(本地有抓 gh-pages 資料時假失敗)
+    const save = app._SIGNAL_EDGE; const alt = JSON.parse(JSON.stringify(save)); alt[star] = ['A', 999, 1, 50, 0.01, 1, 1, 7.77, 7.77, 'bull'];   // 🔁 V79.4.5 十欄:第 9 欄 xr(比同一天平均股票)、第 10 欄方向
+    const saveBt = app._btEdge; app._btEdge = null;   // 🔁 V79.4.5 起 App 一律讀內嵌表(每週產物只當實驗室參考)→ 這行已不必要,留著無害
     app._SIGNAL_EDGE = alt; app._kbarTitleIdx = null; const moved = app._kbarRadarEdgeHtml('晨星轉折', true);
     document.documentElement.classList.remove('lab');
     const movedN = app._kbarRadarEdgeHtml('晨星轉折', true);   // 一般模式:改了常數也⛔ 不印
@@ -369,12 +369,12 @@ const KB = await page.evaluate(() => {
     if (body) app.renderRadarMatrix('kbar_bull');
     return { hasBody: !!body, bull, bear, bullN, bearN, movedN, L: L.map(x => [x.t, x.det, x.e && x.e.grade]), eS, moved, starDet: star.split('｜')[0], nightOk: !!night };
 });
-ok('⑦ 轉多榜:晨星對到偵測器並印實測等級 + 每趟期望值;單根變盤線 → 未驗證', KB.hasBody && KB.L[0][1] === KB.starDet && KB.L[0][2] === KB.eS.grade && KB.L[1][1] === null && /data-kbedge/.test(KB.bull) && /data-kbg="na"/.test(KB.bull) && new RegExp(`每趟${KB.eS.exp >= 0 ? '\\+' : ''}${(+KB.eS.exp).toFixed(2)}%`).test(KB.bull), JSON.stringify(KB.L));
-ok('⑦b 轉空榜看 10 日邊際(⛔ 不看期望值)', KB.nightOk && /data-kbg="[ABC]"[^>]*>[^<]*10日[+-]?\d/.test(KB.bear) && !/data-kbg="[ABC]"[^>]*>[^<]*每趟/.test(KB.bear));
-ok('⑦c ⭐ 決定性對照:成績表改成 7.77 → 標籤跟著變(⛔ 不是寫死)', /每趟\+7\.77%/.test(KB.moved) && /data-kbg="A"/.test(KB.moved), KB.moved.slice(0, 200));
+ok('⑦ 轉多榜:晨星對到偵測器並印實測等級 + 比同一天平均股票(xr);單根變盤線 → 未驗證', KB.hasBody && KB.L[0][1] === KB.starDet && KB.L[0][2] === KB.eS.grade && KB.L[1][1] === null && /data-kbedge/.test(KB.bull) && /data-kbg="na"/.test(KB.bull) && typeof KB.eS.xr === 'number' && new RegExp(`比同日均${KB.eS.xr >= 0 ? '\\+' : ''}${(+KB.eS.xr).toFixed(2)}%`).test(KB.bull) && !/每趟[+-]/.test(KB.bull), JSON.stringify(KB.L));
+ok('⑦b 轉空榜看 10 日邊際(⛔ 不看期望值 / 比同日均)', KB.nightOk && /data-kbg="[ABC]"[^>]*>[^<]*10日[+-]?\d/.test(KB.bear) && !/data-kbg="[ABC]"[^>]*>[^<]*(每趟|比同日均)/.test(KB.bear));
+ok('⑦c ⭐ 決定性對照:成績表改成 xr 7.77 → 標籤跟著變、扣成本還贏才打 ✅(⛔ 不是寫死)', /比同日均\+7\.77%✅/.test(KB.moved) && /data-kbg="A"/.test(KB.moved), KB.moved.slice(0, 200));
 ok('⑦d 標籤⛔ 無 🔴🟢', !/[🔴🟢]/u.test(KB.bull + KB.bear));
 ok('⑦e 🧹 V78.3.6 一般模式:K棒轉多/轉空榜⛔ 不印實測成績標籤(等級 / 每趟 / 10日 / 未驗證),改常數也一樣',
-   KB.hasBody && !/data-kbedge|data-kbg|每趟[+-]|10日[+-]?\d|未驗證/.test(KB.bullN + KB.bearN) && KB.movedN === '' && /2330/.test(KB.bullN), KB.bullN.slice(0, 200));
+   KB.hasBody && !/data-kbedge|data-kbg|每趟[+-]|比同日均|10日[+-]?\d|未驗證/.test(KB.bullN + KB.bearN) && KB.movedN === '' && /2330/.test(KB.bullN), KB.bullN.slice(0, 200));
 const PROH = fs.readFileSync(path.join(ROOT, 'pro.html'), 'utf8');
 const proMin = (PROH.match(/CAST_MIN_AMT: ([\d.]+),/) || [])[1], idxMin = (SRC.match(/_DECK_THIN_AMT: ([\d.]+),/) || [])[1];
 ok('⑥e 門檻 index `_DECK_THIN_AMT` == pro `CAST_MIN_AMT`(同一條線)', proMin && proMin === idxMin, `${idxMin} vs ${proMin}`);

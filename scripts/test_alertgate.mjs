@@ -37,9 +37,21 @@ const R = await pg.evaluate(() => {
     const keys = Object.keys(E);
     const det = k => k.split('｜')[0], ttl = k => k.split('｜')[1];
 
-    // ⓐ 多方尺:期望值 > 0 且樣本夠
+    // ⓐ 多方尺(💸 V79.4.5 使用者決定):A/B 級 且 xr(比同一天平均股票多賺)> 來回成本 且 樣本夠
+    //   ⭐ 直接從表算一次當對照(⛔ 不呼叫 `_sigProven` —— 那等於拿受測者驗受測者)
+    const COST = +((app._SIGNAL_EDGE_META || {}).cost);
+    out.cost = COST;
     out.bullPass = keys.filter(k => app._alertWorthIt(det(k), ttl(k), 'bull').ok);
-    out.bullExpect = keys.filter(k => E[k][7] > 0 && app._wrEnough(E[k][1]));
+    out.bullExpect = keys.filter(k => (E[k][0] === 'A' || E[k][0] === 'B') && typeof E[k][8] === 'number' && E[k][8] > COST && app._wrEnough(E[k][1]));
+    // ⓐ2 決定性對照:把成本調到很高 → 一個都不過;調到 0 → 至少跟 xr > 0 的 A/B 一樣多(⛔ 不可寫死在 App 裡)
+    const M0 = app._SIGNAL_EDGE_META.cost;
+    app._SIGNAL_EDGE_META.cost = 99; out.costHigh = keys.filter(k => app._alertWorthIt(det(k), ttl(k), 'bull').ok).length;
+    app._SIGNAL_EDGE_META.cost = 0.0001; out.costLow = keys.filter(k => app._alertWorthIt(det(k), ttl(k), 'bull').ok).length;
+    out.costLowExpect = keys.filter(k => (E[k][0] === 'A' || E[k][0] === 'B') && E[k][8] > 0.0001 && app._wrEnough(E[k][1])).length;
+    app._SIGNAL_EDGE_META.cost = M0;
+    // ⓐ3 C 級 xr 再高也不算(統計上站不住)
+    const kC = keys.find(k => E[k][0] === 'C');
+    if (kC) { const v0 = E[kC].slice(); E[kC][8] = 9; out.cHigh = app._alertWorthIt(det(kC), ttl(kC), 'bull').ok; E[kC] = v0; }
     // ⓑ 空方尺:10 日邊際 < 0 且 p ≤ 0.25
     out.bearPass = keys.filter(k => app._alertWorthIt(det(k), ttl(k), 'bear').ok);
     out.bearExpect = keys.filter(k => E[k][2] < 0 && E[k][4] <= 0.25);
@@ -54,14 +66,16 @@ const R = await pg.evaluate(() => {
     out.unknown = app._alertWorthIt('_detectNotExist', '天下第一招', 'bull');
     out.unknownBear = app._alertWorthIt('_detectNotExist', '天下第一招', 'bear');
 
-    // ⓖ 使用者截圖那 6 則
+    // ⓖ 使用者截圖那 6 則(V76.1.7 是「5 砍 1 留」)
+    //   🔁 V79.4.5 換 16 年表後「長黑遭遇(一日封口)」p 0.94 → 跟沒警告沒差 → 也砍(6 砍 0 留);
+    //      ⛔ 這是**資料換了**的結果、不是規則鬆了 —— 規則仍是 e10 < 0 且 p ≤ 0.25(ⓑ 釘住)
     const CASES = [
         ['_detect2BarReversal', '長紅遭遇(一日封口)', 'bull', false],
         ['_detectBoxBreakout', 'K線橫盤突破', 'bull', false],
         ['_detectFibRetrace', '📐 費波納契回撤買點', 'bull', false],
         ['_detectBoxBreakout', 'K線橫盤跌破', 'bear', false],
         ['_detectHeavyResistance', '壓力沉重‧反覆過不了', 'warn', false],
-        ['_detect2BarReversal', '長黑遭遇(一日封口)', 'bear', true],
+        ['_detect2BarReversal', '長黑遭遇(一日封口)', 'bear', false],
     ];
     out.shots = CASES.map(([d, t, tone, want]) => {
         const v = app._alertWorthIt(d, t, tone);
@@ -78,10 +92,16 @@ await b.close();
 
 ok('渲染無 pageerror', errs.length === 0, errs[0] || '');
 console.log(`   多方過 ${R.bullPass.length} 種 ・空方過 ${R.bearPass.length} 種`);
-ok('ⓐ 多方尺 = 「期望值>0 且樣本夠」,一個不多一個不少',
-   R.bullPass.length === R.bullExpect.length && R.bullPass.length > 0,
-   `守門 ${R.bullPass.length} / 直接算 ${R.bullExpect.length}`);
-ok('ⓐ 多方過關的應該是個位數(129 種裡期望值為正的只有 9 種)', R.bullPass.length <= 12, String(R.bullPass.length));
+ok('ⓐ 多方尺 = 「A/B 級 且 比同一天平均股票多賺的 > 來回成本 且 樣本夠」,一個不多一個不少(V79.4.5)',
+   R.bullPass.length === R.bullExpect.length && R.bullPass.length > 0
+   && R.bullPass.every(k => R.bullExpect.includes(k)),
+   `守門 ${R.bullPass.length} / 直接算 ${R.bullExpect.length}・成本 ${R.cost}`);
+ok('ⓐ 成本讀成績表 meta(>0)', R.cost > 0, String(R.cost));
+ok('ⓐ 多方過關的應該是個位數', R.bullPass.length <= 12, String(R.bullPass.length));
+ok('ⓐ2 ⭐ 決定性對照:成本調到 99% → 一個都不過', R.costHigh === 0, String(R.costHigh));
+ok('ⓐ2 ⭐ 決定性對照:成本調到 0 → 變成「xr>0 的 A/B」那麼多(成本真的有被讀)', R.costLow === R.costLowExpect && R.costLow > R.bullPass.length,
+   `${R.costLow} vs 預期 ${R.costLowExpect}`);
+ok('ⓐ3 C 級 xr 再高也不算(統計上站不住)', R.cHigh === false, String(R.cHigh));
 ok('ⓑ 空方尺 = 「10日邊際<0 且 p≤0.25」', R.bearPass.length === R.bearExpect.length && R.bearPass.length > 0,
    `守門 ${R.bearPass.length} / 直接算 ${R.bearExpect.length}`);
 ok('ⓑ warn 跟 bear 走同一把尺', R.warnSame === R.bearPass.length, `${R.warnSame} vs ${R.bearPass.length}`);
@@ -99,7 +119,7 @@ for (const s of R.shots) {
     if (!good) shotFail++;
     console.log(`     ${good ? '✅' : '❌'} ${s.want ? '應留' : '應砍'} / 實際${s.got ? '留' : '砍'}  ${s.t}  — ${s.why}`);
 }
-ok('ⓖ 截圖那 6 則:5 砍 1 留', shotFail === 0, `${shotFail} 則判錯`);
+ok('ⓖ 截圖那 6 則:16 年表 6 砍 0 留(V79.4.5;V76.1.7 是 5 砍 1 留)', shotFail === 0, `${shotFail} 則判錯`);
 ok('🔁 關掉嚴格模式 → 回到舊行為(全放行)', R.loose === true, String(R.loose));
 
 // ── 原始碼層(⚠️ 斷言範圍縮到被改的那一段,⛔ 不可全檔 grep:同樣的字別處也有 = 假綠燈)──

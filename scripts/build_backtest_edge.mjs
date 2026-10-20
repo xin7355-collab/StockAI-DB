@@ -10,8 +10,16 @@
  *
  * ⛔ 三條不可改:
  *   ① **只標示不換預設**:等級變動(A↔C)、成績單勝率差 >5pp 都寫進 `diff`,⛔ 不改 App 常數(V75.0.9 五條件由人判)
- *   ② **空過守門**:訊號總 n 或成績單筆數 < 上一版(或嵌入版)的 80% → exit 1、不寫檔(資料不完整就不推)
- *   ③ **產物格式跟嵌入版一模一樣**(signal.table 的 value 就是 `_SIGNAL_EDGE` 那 8 欄)→ App `_sigEdge` 可以直接換讀
+ *   ② **空過守門**:訊號總 n 或成績單筆數 < 上一版的 80% → exit 1、不寫檔(資料不完整就不推);另外一律要過絕對下限 `FLOOR`
+ *   ③ **產物格式跟嵌入版一模一樣**(signal.table 的 value 就是 `_SIGNAL_EDGE` 那 10 欄)
+ *      🔁 V79.4.5 起 App 一律讀內嵌的 16 年表,這份只在實驗室模式當「最近幾年」的參考(⛔ 不再蓋掉內嵌表)
+ *
+ * 🔁 V79.4.5 「換設定那一次重新起算基準」(使用者選:查清楚再改成現行設定):
+ *   🚨 真因:9/21 那份產物是**舊引擎**產的(`EXIT=don` 沒被認得 + 停損用停損價成交,V77.4.9 / V77.6.0 修掉)→ 1,233 筆;
+ *      之後同設定只剩 918~926 筆,而守門一直拿凍結的 1,233 比 → 9/28 起每週都擋、產物停在 9/21(全綠零訊息)。
+ *   規則:成績單 cfg(`DECK_SIG` 那幾欄)或訊號方法(`match`)跟上一版不同 → **這一次不比 80%**,重新起算並印「舊 → 新」;
+ *         ⛔ 但絕對下限 `FLOOR` 照樣要過(防「換設定」被拿來掩護一次真的壞掉的產物);
+ *         沒有上一版 → ⛔ 不拿內嵌表當基準(內嵌是 16 年、每週是最近 3 年,樣本差好幾倍 → 永遠擋)。
  *
  * 用法:SUMMARY_GENE=/tmp/g.json [SUMMARY_PLAIN=/tmp/p.json] [PREV=data/backtest_edge.json] node scripts/build_backtest_edge.mjs [out]
  */
@@ -20,6 +28,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// 🔁 V79.4.5 成績單「設定」的簽章:這幾欄任一不同 = 換設定(那一次重新起算基準)
+export const DECK_SIG = ['syms', 'picks', 'lot', 'capital', 'exit', 'stop', 'entry', 'self', 'filter', 'rankMin', 'volatMin', 'stopFill', 'maxd', 'warmup', 'div'];
+export const deckSig = cfg => DECK_SIG.map(k => `${k}=${cfg && cfg[k] != null ? cfg[k] : ''}`).join('|');
+// 🔁 V79.4.5 絕對下限(⛔ 不管有沒有換設定都要過):2026-10-20 本機重現(同 workflow 的資料與設定)成績單 1,024 筆・47 個月、
+//   3 年訊號樣本 1,915,189 → 取約一半。⚠️ 改了成績單設定 / 訊號回測的方法,要重現一次再改這裡。
+export const FLOOR = { deckN: 500, months: 36, sigN: 900000 };
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 
 /** 從 index.html 抓嵌入版常數(同 embed_signal_edge 的做法:兩行都是單獨一行) */
@@ -46,23 +60,33 @@ export function readEmbedded(html) {
 /** 把 signal_edge.json 轉成跟 `_SIGNAL_EDGE` 一模一樣的表(⛔ 同 embed_signal_edge 的 8 欄) */
 export function signalTable(j) {
     const table = {};
-    for (const s of (j.signals || [])) { if (!s.key) throw new Error('訊號缺 key'); table[s.key] = [s.grade, s.n, s.e10, s.w10, s.p, s.e20, s.payoff == null ? null : s.payoff, s.exp == null ? null : s.exp]; }
+    // 🔁 V79.4.5 跟內嵌表一樣 10 欄:第 9 欄 xr(每趟比同一天平均股票)、第 10 欄 tone(bull / bear / warn)
+    for (const s of (j.signals || [])) { if (!s.key) throw new Error('訊號缺 key'); table[s.key] = [s.grade, s.n, s.e10, s.w10, s.p, s.e20, s.payoff == null ? null : s.payoff, s.exp == null ? null : s.exp, (typeof s.xr === 'number' && isFinite(s.xr)) ? s.xr : null, s.tone || null]; }
     return table;
 }
 
-export function build({ sig, gene, plain = null, embedded, prev = null, now = new Date() }) {
+export function build({ sig, gene, plain = null, embedded, prev = null, now = new Date(), floor = FLOOR }) {
     const table = signalTable(sig);
     const keys = Object.keys(table);
     if (!keys.length) throw new Error('signal_edge 沒有訊號');
     const nSig = keys.reduce((s, k) => s + (+table[k][1] || 0), 0);
     const cnt = { A: 0, B: 0, C: 0 }; for (const k of keys) cnt[table[k][0]] = (cnt[table[k][0]] || 0) + 1;
-    // 空過守門:跟上一版(沒有就跟嵌入版)比 80%
-    const baseSigN = prev && prev.signal ? prev.signal.n : (embedded.table ? Object.values(embedded.table).reduce((s, v) => s + (+v[1] || 0), 0) : 0);
-    const baseDeckN = prev && prev.deck && prev.deck.gene ? prev.deck.gene.n : null;
+    // 空過守門:跟上一版比 80%(🔁 V79.4.5 換設定 / 換訊號方法那一次重新起算;沒有上一版 ⛔ 不拿內嵌表比)+ 絕對下限
+    const pGene = prev && prev.deck && prev.deck.gene ? prev.deck.gene : null;
+    const sigMatch = sig.match || null, prevMatch = prev && prev.signal ? (prev.signal.match || null) : null;
+    const sigRebase = !!(prev && prev.signal) && prevMatch !== sigMatch;
+    const deckRebase = !!pGene && !!gene && deckSig(pGene.cfg) !== deckSig(gene.cfg);
+    const baseSigN = prev && prev.signal && !sigRebase ? prev.signal.n : null;
+    const baseDeckN = pGene && !deckRebase ? pGene.n : null;
     const errs = [];
-    if (baseSigN && nSig < baseSigN * 0.8) errs.push(`訊號總樣本 ${nSig.toLocaleString()} < 基準 ${baseSigN.toLocaleString()} 的 80%`);
+    if (!(nSig >= floor.sigN)) errs.push(`訊號總樣本 ${nSig.toLocaleString()} < 絕對下限 ${floor.sigN.toLocaleString()}`);
+    if (baseSigN && nSig < baseSigN * 0.8) errs.push(`訊號總樣本 ${nSig.toLocaleString()} < 上一版 ${baseSigN.toLocaleString()} 的 80%`);
     if (!gene || !(gene.n > 0)) errs.push('成績單(🧬)沒有筆數');
-    else if (baseDeckN && gene.n < baseDeckN * 0.8) errs.push(`成績單筆數 ${gene.n} < 上一版 ${baseDeckN} 的 80%`);
+    else {
+        if (gene.n < floor.deckN) errs.push(`成績單筆數 ${gene.n} < 絕對下限 ${floor.deckN}`);
+        if (!(gene.months >= floor.months)) errs.push(`成績單窗口 ${gene.months} 個月 < ${floor.months} 個月`);
+        if (baseDeckN && gene.n < baseDeckN * 0.8) errs.push(`成績單筆數 ${gene.n} < 上一版 ${baseDeckN} 的 80%`);
+    }
     if (errs.length) { const e = new Error('空過守門:' + errs.join(';')); e.gate = true; throw e; }
     // diff(⛔ 只標示):訊號等級 A↔C 跳兩級、或 A/B ↔ C;成績單勝率差 >5pp、累積差 >30%
     const diff = [];
@@ -80,13 +104,19 @@ export function build({ sig, gene, plain = null, embedded, prev = null, now = ne
         if (Math.abs(Math.abs(gene.dd) - embedded.deck.geneDD) > 5) diff.push({ k: 'deck.geneDD', what: 'dd', old: embedded.deck.geneDD, new: Math.abs(gene.dd) });
         void winOld;
     }
-    if (prev && prev.deck && prev.deck.gene && gene && Math.abs(gene.win - prev.deck.gene.win) > 5) diff.push({ k: 'deck.win', what: 'win_vs_prev', old: prev.deck.gene.win, new: gene.win });
+    // 勝率跟上一版比(⛔ 換設定那一次不比 —— 那是兩套規則,差多少都不代表「變了」)
+    if (pGene && gene && !deckRebase && Math.abs(gene.win - pGene.win) > 5) diff.push({ k: 'deck.win', what: 'win_vs_prev', old: pGene.win, new: gene.win });
+    const rebase = (deckRebase || sigRebase) ? {
+        deck: deckRebase ? { from: deckSig(pGene.cfg), to: deckSig(gene.cfg), oldN: pGene.n, newN: gene.n } : null,
+        signal: sigRebase ? { from: prevMatch, to: sigMatch, oldN: prev.signal.n, newN: nSig } : null,
+    } : null;
     return {
         run_at: now.toISOString().slice(0, 10), kind: 'weekly',
-        signal: { table, n: nSig, grades: cnt, syms: sig.syms, base_win: sig.base && sig.base.win ? sig.base.win['10'] : null, window: sig.window || null },
+        signal: { table, n: nSig, grades: cnt, syms: sig.syms, base_win: sig.base && sig.base.win ? sig.base.win['10'] : null, window: sig.window || null, match: sigMatch, cost: sig.cost ?? null },
+        rebase, floor,
         deck: { gene, plain },
         embedded: { sigA: embedded.meta ? embedded.meta.A : null, sigB: embedded.meta ? embedded.meta.B : null, sigC: embedded.meta ? embedded.meta.C : null,
-                    sigN: baseSigN || null, deck: embedded.deck },
+                    deck: embedded.deck },
         diff, prev: prev ? { run_at: prev.run_at } : null,
         note: '⛔ 只標示不換預設:等級或成績有變一律寫在 diff,App 的預設要換得過 V75.0.9 那五個條件(由人判)',
     };
@@ -104,6 +134,8 @@ if (isMain) {
     let r;
     try { r = build({ sig, gene, plain, embedded, prev }); } catch (e) { console.error(`❌ ${e.message}${e.gate ? '(⛔ 不寫檔、不推)' : ''}`); process.exit(1); }
     fs.writeFileSync(out, JSON.stringify(r));
+    if (r.rebase && r.rebase.deck) console.log(`🔁 成績單換設定 → 這一次重新起算守門基準(⛔ 不跟舊設定比 80%):\n   舊 ${r.rebase.deck.from}(${r.rebase.deck.oldN} 筆)\n   新 ${r.rebase.deck.to}(${r.rebase.deck.newN} 筆)`);
+    if (r.rebase && r.rebase.signal) console.log(`🔁 訊號回測換方法 ${r.rebase.signal.from || '(舊:整段平均)'} → ${r.rebase.signal.to || '(未標)'}:重新起算(樣本 ${r.rebase.signal.oldN.toLocaleString()} → ${r.rebase.signal.newN.toLocaleString()})`);
     console.log(`✅ backtest_edge.json:訊號 ${Object.keys(r.signal.table).length} 個(A=${r.signal.grades.A} B=${r.signal.grades.B} C=${r.signal.grades.C},n=${r.signal.n.toLocaleString()})・成績單 🧬 ${gene.n} 筆 / 勝率 ${gene.win}% / 累積 ${gene.cum.toLocaleString()} / 回撤 ${gene.dd}%${plain ? ` ・不挑 🧬 ${plain.cum.toLocaleString()}` : ''}`);
     console.log(`   跟嵌入版的差異 ${r.diff.length} 項${r.diff.length ? ':' + r.diff.slice(0, 8).map(d => `${d.k}(${d.what} ${d.old}→${d.new})`).join(' / ') : ''}`);
     console.log('   ⛔ 只標示不換預設');

@@ -48,7 +48,8 @@ const R = await page.evaluate(() => {
     out.html = document.getElementById('updateLogBody').innerHTML;
     // ① 換一張假成績表 → 數字要跟著變
     const bak = A._SIGNAL_EDGE;
-    A._SIGNAL_EDGE = { x: ['A', 10, 1, 50, 0.01, 1, 1, 0.5], y: ['C', 10, 1, 50, 0.9, 1, 1, -0.5], z: ['C', 10, 1, 50, 0.9, 1, 1, -0.5] };
+    // 💸 V79.4.5 第 9 欄 xr(比同一天平均股票)、第 10 欄 tone;「值得做」= `_sigProven`(A/B 且 xr > 成本)
+    A._SIGNAL_EDGE = { '_d｜x': ['A', 10, 1, 50, 0.01, 1, 1, 0.5, 2.0, 'bull'], '_d｜y': ['C', 10, 1, 50, 0.9, 1, 1, -0.5, 2.0, 'bull'], '_d｜z': ['C', 10, 1, 50, 0.9, 1, 1, -0.5, -0.5, 'bear'] };
     out.fake = document.createElement('div');
     out.fakeTxt = A._noiseHtml().replace(/<[^>]+>/g, ' ');
     A._SIGNAL_EDGE = bak;
@@ -70,7 +71,10 @@ ok('① 🚨 K 棒訊號分級數字**現算自 _SIGNAL_EDGE**(換假表數字�
     /1個統計上站得住腳/.test(norm(R.fakeTxt)) && /2個跟隨機沒差/.test(norm(R.fakeTxt))
     && !/1個統計上站得住腳\(/.test(norm(R.txt)),
     norm(R.fakeTxt).slice(0, 160));
-ok('①b 要點出「常對 ≠ 會賺」(期望值為負的個數)', /期望值是負的/.test(R.txt) && /常對 ≠ 會賺|常對/.test(R.txt));
+// 💸 V79.4.5 「值得做」改成跟提醒同一把尺 → 要講「看多 N 個裡扣成本還贏的只有 M 個」;假表:看多 2 個(x A 級 / y C 級)、過關 1 個
+ok('①b 要點出「常對 ≠ 會賺」+ 看多裡扣成本還贏同一天平均股票的個數(V79.4.5 同一把尺)',
+    /常對 ≠ 會賺/.test(R.txt) && /扣掉來回成本還比同一天平均股票多賺/.test(R.txt), R.txt.slice(0, 300));
+ok('①c ⭐ 假表的過關數 = 1(C 級 xr 再高也不算、看空不算)', /看多的2個裡/.test(norm(R.fakeTxt)) && /只有1個/.test(norm(R.fakeTxt)), norm(R.fakeTxt).slice(0, 300));
 ok('② 🗂️ 已收起的卡**現算自 _TIDY**(換假清單要跟著變)',
     /假卡片名稱/.test(R.fakeTidy) && !/假卡片名稱/.test(R.txt) && R.tidyN >= 1);
 ok('③ 「留著」那幾條**每一列**都要有:在哪一頁 + 實測數字 + 處置',
@@ -162,6 +166,23 @@ ok('⑧a 已寫成專欄的(低檔布局 / 布林壓縮 / 盤中連量 / 隔日�
 ok('⑧b 要說「另有 N 條在專欄」+ 一顆看專欄鈕(⛔ 不可默默消失)', /另有\s*\d+\s*條已經寫成專欄/.test(R3.txt) && /看專欄/.test(R3.txt));
 ok('⑧c 決定性對照:專欄清空 → 那幾條回來(證明是專欄擋掉的)', /低檔布局/.test(R3.noColTxt) && /盤中連量偵測/.test(R3.noColTxt));
 ok('⑧d 沒進專欄的照列(投信佔成交量比 / 分析師焦點)', /投信買超佔成交量比/.test(R3.txt) && /分析師焦點/.test(R3.txt));
+
+// ⑨ 💸 V79.4.5 產業作戰室那份「值得做」的條件跟散戶救星 `_sigProven` 同一條(pro 叫不到 index 的函式,條件照抄一行 → 這裡兩邊比)
+{
+    const IDX = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const sp = (IDX.match(/_sigProven\(e\) \{[\s\S]*?\n    \},/) || [''])[0];
+    const pn = (PRO_SRC.match(/_noiseHtml\(\) \{[\s\S]*?\n  \},/) || [''])[0];
+    ok('⑨ index `_sigProven` = A/B 級 且 xr > 成本 且 樣本夠', /e\.grade === 'A' \|\| e\.grade === 'B'/.test(sp) && /e\.xr > this\._sigCost\(\)/.test(sp) && /_wrEnough/.test(sp), sp.slice(0, 200));
+    ok('⑨b pro `_noiseHtml` 照同一條數(看多・A/B・xr > meta.cost・樣本 ≥10)',
+        /v\[9\] === 'bull'/.test(pn) && /\(g === 'A' \|\| g === 'B'\)/.test(pn) && /v\[8\] > cost/.test(pn) && /v\[1\] >= 10/.test(pn) && /SIGNAL_EDGE_META/.test(pn), pn.slice(0, 200));
+    // 數字一致:用 index 的表在 node 裡照兩邊的條件各算一次(⛔ 不一致 = 有一邊改了沒改另一邊)
+    const line = n => IDX.split('\n').find(l => l.trimStart().startsWith(n + ':'));
+    const T = JSON.parse(line('_SIGNAL_EDGE').trim().replace(/^_SIGNAL_EDGE:\s*/, '').replace(/,$/, ''));
+    const M = JSON.parse(line('_SIGNAL_EDGE_META').trim().replace(/^_SIGNAL_EDGE_META:\s*/, '').replace(/,$/, ''));
+    const nProven = Object.values(T).filter(v => v[9] === 'bull' && (v[0] === 'A' || v[0] === 'B') && typeof v[8] === 'number' && v[8] > M.cost && v[1] >= 10).length;
+    const okN = (R.txt.match(/只有\s*(\d+)\s*個/) || [])[1];
+    ok('⑨c ⭐ 散戶救星雜訊清單的過關數 = 照那條規則直接從表算的數', okN !== undefined && +okN === nProven, `畫面 ${okN} / 直接算 ${nProven}`);
+}
 
 console.log(fails ? `\n❌ ${fails} 條失敗` : '\n✅ NOISE_PASS(全部通過)');
 process.exit(fails ? 1 : 0);
