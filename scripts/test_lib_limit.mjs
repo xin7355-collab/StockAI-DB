@@ -51,6 +51,8 @@ const MIGRATED = [
     'scripts/value_probe.mjs', 'scripts/prob_factor_probe.mjs', 'scripts/breadth_osc_probe.py', 'scripts/breakoutdist_probe.mjs',
     'scripts/genezone_probe.mjs', 'floorcount_probe.py', 'scripts/indicator_zoo_probe.mjs', 'scripts/calendar_stock_probe.mjs',
     'scripts/regime_probe.mjs',
+    // 💰 V79.4.6 重大訊息事件研究(減資類公告就是會出現斷崖的那種)
+    'scripts/mops_event_probe.py',
 ];
 const BANNED = [
     [/\*\s*1\.095\b/, '× 1.095(寫死 ±10% 的鎖漲停)'],

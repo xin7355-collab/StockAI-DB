@@ -12,7 +12,8 @@
     (⛔ 盤中 / 盤後公告用當天價 = 偷看;`STRICT=1` 一律下一個交易日開盤當敏感度)
   ・報酬 = 開盤進場 → 5 / 10 / 20 個交易日後收盤,減「同一天、同樣進場方式」全部股票的平均(= 比同一天隨便挑一檔多多少)
   ・同一檔同一類 20 個交易日內只算第一次(⛔ 一波連發的公告不重複計)
-  ・進場那天開盤鎖漲停 / 跌停 = 買不到 → 剔除
+  ・進場那天開盤鎖漲停 / 跌停 = 買不到 → 剔除(lib_limit,2015-06 前 ±7%)
+  ・🧱 V79.4.6 窗口裡有價格斷崖(減資 / 分割沒還原)→ 那個窗口剔除(lib_limit.cliff_*;事件與對照組同一條)
   ・關卡(先寫死):全部類別一起 BH q ≤ 0.05(t 用「每天的平均」再算,⛔ 同一天多檔不當獨立樣本)
     + 前後半同向 + 逐年 ≥70% 同向(≥5 年有樣本)+ 扣成本 0.44 後同向 → 過關
   ・⛔ 過關也只是「描述」,要當訊號還得疊在 👑 / 🔥 上跑真引擎(第三層)
@@ -28,6 +29,9 @@ import os
 import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import lib_limit as LL  # noqa: E402  🔁 V79.4.6 漲跌幅制度 + 斷崖守門共用(⛔ 不在這裡各寫一份)
 
 COST = 0.44
 HS = (5, 10, 20)
@@ -115,11 +119,19 @@ def load_k(path):
 
 
 def locked(K, i):
-    """開盤就鎖死(一字):開 = 高 = 低,而且跟前一天收盤差 ≥9%(2015-06 前 6.5%)。"""
+    """開盤就鎖死(一價到底):走 lib_limit.locked_bar(2015-06 前 ±7%,⛔ 不在這裡各寫一份)。"""
     if i <= 0:
         return False
-    lim = 0.065 if K['d'][i] < '2015-06-01' else 0.09
-    return K['o'][i] == K['h'][i] == K['l'][i] and abs(K['o'][i] / K['c'][i - 1] - 1) >= lim
+    return LL.locked_bar(K['d'][i], K['c'][i - 1], K['o'][i], K['h'][i], K['l'][i]) != 0
+
+
+def cliff(K, i, h):
+    """🧱 V79.4.6 進場那根之後 h 根內有價格斷崖(減資 / 分割沒還原,×1.5 / ×0.67)→ 那個窗口剔除(⛔ 不整檔剔除)。
+    ⭐ 減資類公告(現金減資 / 減資彌補虧損)剛好就是會出現斷崖的那種 —— 不擋會量到假的大漲 / 大跌。"""
+    pre = K.get('_cl')
+    if pre is None:
+        pre = K['_cl'] = LL.cliff_prefix(K['c'], K['o'])
+    return LL.cliff_in(pre, i, i + h)
 
 
 def mean(a):
@@ -166,7 +178,7 @@ def study(events, K, strict=False):
             Ks = K[s]
             import bisect
             i = bisect.bisect_left(Ks['d'], day)
-            if i < len(Ks['d']) and Ks['d'][i] == day and i + h < len(Ks['d']) and not locked(Ks, i):
+            if i < len(Ks['d']) and Ks['d'][i] == day and i + h < len(Ks['d']) and not locked(Ks, i) and not cliff(Ks, i, h):
                 acc.append((Ks['c'][i + h] / Ks['o'][i] - 1) * 100)
         base[key] = mean(acc) if len(acc) >= 30 else float('nan')
         return base[key]
@@ -187,7 +199,7 @@ def study(events, K, strict=False):
         day = Ks['d'][i]
         rec = {'d': day}
         for h in HS:
-            if i + h < len(Ks['d']):
+            if i + h < len(Ks['d']) and not cliff(Ks, i, h):
                 b = base_ret(day, h)
                 if b == b:
                     rec[h] = (Ks['c'][i + h] / Ks['o'][i] - 1) * 100 - b
@@ -359,6 +371,25 @@ def selftest():
     ev2 = [(a, b, '15:00:00', c) for a, b, _t, c in ev]
     r2 = study(ev2, K).get('buyback', {})
     ok('④ 決定性對照:同一批改成盤後公告 → 隔天開盤才進場,吃不到公告當天那 +2%(少 ≥1pp)', r2.get('m10', 9) < rb.get('m10', 0) - 1, (r2.get('m10'), rb.get('m10')))
+    # ⑤ 🧱 V79.4.6 斷崖守門:減資公告之後第 3 天價格 ×2(減資沒還原)→ 那個窗口要剔除(⛔ 量到假的 +100%)
+    global cliff
+    K5 = {s_: {kk: (vv[:] if isinstance(vv, list) else vv) for kk, vv in K[s_].items() if not kk.startswith('_')} for s_ in K}
+    ev5 = []
+    for s in range(0, 60, 3):
+        sym = f'{1100 + s}'
+        Kx = K5[sym]
+        for i0 in range(200, 1500, 97):
+            ev5.append((sym, Kx['d'][i0], '07:00:00', 'cap_red_loss'))
+            for j in range(i0 + 3, len(Kx['d'])):                          # 第 3 天起整段 ×2(像減資彌補虧損恢復交易)
+                for kk in ('o', 'c', 'h', 'l'):
+                    Kx[kk][j] *= 2
+    r5 = study(ev5, K5).get('cap_red_loss', {})
+    _cliff = cliff
+    cliff = lambda K_, i, h: False                                           # 決定性對照:拿掉守門
+    r5x = study(ev5, {s_: {kk: vv for kk, vv in K5[s_].items() if not kk.startswith('_')} for s_ in K5}).get('cap_red_loss', {})
+    cliff = _cliff
+    ok('⑤ 斷崖守門:減資沒還原的那段窗口剔除(⛔ 量到假的 +100%)', not r5 or abs(r5.get('m10', 0)) < 20, r5.get('m10'))
+    ok('⑤ 決定性對照:拿掉守門 → 量到 >+50% 的假大漲', r5x.get('m10', 0) > 50, r5x.get('m10'))
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
     return 0 if not bad else 1
 
