@@ -90,6 +90,59 @@ PROTECT = [
 ]
 SHORT_WAIT_MIN = 30              # 短的保護時段(macro_cron 那種)就地等;長的停手接力
 
+# ⑨ 🔁 2026-10-20 動態保護:GitHub 排程常常晚好幾小時(fund_sweep cron 18:00 那天 22:12 才跑)→ 只看 cron 時間擋不住,
+#    當晚 pe_band 一輪成功 0 檔(402×503)、另一輪只新抓 195 檔(其餘沿用上一輪)。
+#    → 每抓一檔前(快取 BUSY_TTL 秒)問 GitHub API:共用 FINMIND_TOKENS 又會自動跑的那幾支有沒有 in_progress / queued → 有就暫停。
+#    ⛔ 新增「會自動跑、又吃 FINMIND_TOKENS」的 workflow 要加進 SHARED_WF —— selftest ⑨ 會掃 .github/workflows/ 比對,漏了就紅。
+SHARED_WF = ('daily_miner.yml', 'fund_sweep.yml', 'pe_band.yml', 'dividend_sweep.yml', 'tdcc_sweep.yml',
+             'macro_cron.yml', 'rotation_probe.yml')
+BUSY_TTL = 60                    # 秒:同一分鐘內只問一次 API
+BUSY_WAIT_MIN = 5                # 有人在跑 → 每 5 分鐘再看一次
+BUSY_FAIL_MAX = 3                # API 連 3 次查不到 → 退回只靠時段表(照舊)並明說
+_BUSY = {'t': 0.0, 'v': (False, ''), 'fail': 0, 'said': ''}
+
+
+def _gh_runs(status):
+    import requests
+    repo = os.environ.get('GITHUB_REPOSITORY') or 'xin7355-collab/StockAI-DB'
+    tok = os.environ.get('GH_TOKEN') or os.environ.get('GITHUB_TOKEN') or ''
+    h = {'Accept': 'application/vnd.github+json'}
+    if tok:
+        h['Authorization'] = f'Bearer {tok}'
+    r = requests.get(f'https://api.github.com/repos/{repo}/actions/runs',
+                     params={'status': status, 'per_page': 100}, headers=h, timeout=20)
+    r.raise_for_status()
+    return r.json().get('workflow_runs') or []
+
+
+def others_busy(fetch=None, now=None):
+    """共用金鑰的那幾支 workflow 現在有沒有在跑?回 (True/False, 說明)。
+    fetch(status) 可注入(selftest);預設問 GitHub API 並快取 BUSY_TTL 秒。
+    API 查不到 → 保守當成「有人在跑」;連 BUSY_FAIL_MAX 次查不到 → 退回只靠時段表,並把原因寫出來(⛔ 不靜默)。"""
+    real = fetch is None
+    fetch = fetch or _gh_runs
+    now = time.time() if now is None else now
+    if real and _BUSY['t'] and now - _BUSY['t'] < BUSY_TTL:
+        return _BUSY['v']
+    try:
+        hit = set()
+        for st in ('in_progress', 'queued'):
+            for r in fetch(st) or []:
+                wf = os.path.basename(str(r.get('path') or '').split('@')[0])
+                if wf in SHARED_WF:
+                    hit.add(f'{wf}({st})')
+        _BUSY['fail'] = 0
+        v = (bool(hit), '、'.join(sorted(hit)))
+    except Exception as e:
+        _BUSY['fail'] += 1
+        if _BUSY['fail'] >= BUSY_FAIL_MAX:
+            v = (False, f'⚠️ 連 {_BUSY["fail"]} 次查不到其他 workflow 的狀態({type(e).__name__})→ 只靠時段表(照舊)')
+        else:
+            v = (True, f'查不到其他 workflow 的狀態({type(e).__name__})→ 保守先等')
+    if real:
+        _BUSY.update(t=now, v=v)
+    return v
+
 
 def _hm(s):
     h, m = s.split(':')
@@ -320,6 +373,8 @@ def main():
         return 1
     pace = max(0.12, 6.2 / max(1, len(IB.TOKENS)))
     print(f'🗄️ 母體 {len(syms)} 檔(現存 {len(base)} + 2010 後下市 {len(dl - set(base))})・token {len(IB.TOKENS)} 把 ・每次間隔 {pace:.1f} 秒 ・預算 {MAX_MIN:.0f} 分 ・排隊 {QUEUE}', flush=True)
+    b0, w0 = others_busy()
+    print(f'🛡️ 動態保護:共用金鑰的 {len(SHARED_WF)} 支 workflow ' + (f'正在跑 → {w0}(先等它跑完)' if b0 else (w0 or '目前都沒在跑')), flush=True)
     st_path = OUT / '_status.json'
     try:
         status = json.loads(st_path.read_text(encoding='utf-8'))
@@ -387,6 +442,19 @@ def main():
                 elif nxt < 2:
                     time.sleep(nxt * 60 + 5)
                     continue
+                else:
+                    busy, why = others_busy()
+                    if busy:
+                        if time.time() + BUSY_WAIT_MIN * 60 < deadline - 120:
+                            if why != _BUSY['said']:
+                                print(f'   ⏸️ 共用金鑰的 {why} 正在跑 → 每 {BUSY_WAIT_MIN} 分看一次(⛔ 不搶它的額度)', flush=True)
+                                _BUSY['said'] = why
+                            time.sleep(BUSY_WAIT_MIN * 60)
+                            continue
+                        stop = 'time'
+                    elif _BUSY['said']:
+                        print(f'   ▶️ 它們跑完了({_BUSY["said"]})→ 接著抓', flush=True)
+                        _BUSY['said'] = ''
                 break
             if stop or time.time() > deadline - 120:
                 stop = stop or 'time'
@@ -578,6 +646,35 @@ def selftest():
     ok('⑧ workflow ⛔ 不加排程(手動 + 接力)', 'schedule:' not in wtxt)
     ok('⑧ workflow 預設排隊 = 程式預設排隊(⛔ 兩邊各寫一份會漏)', ("default: '" + ','.join(QUEUE) + "'") in wtxt or bool(os.getenv('QUEUE')))
     ok('⑧ workflow 有還原 fin_deep(季報對表用)', 'origin fin_deep' in wtxt)
+    # ⑨ 動態保護(2026-10-20:GitHub 排程晚 4 小時 → pe_band 撞上補挖)
+    import inspect
+    _BUSY.update(t=0.0, v=(False, ''), fail=0, said='')
+    b, w = others_busy(fetch=lambda st: [{'path': '.github/workflows/pe_band.yml'}] if st == 'in_progress' else [])
+    ok('⑨ 共用金鑰的 pe_band 正在跑 → 暫停', b and 'pe_band.yml' in w, (b, w))
+    b, w = others_busy(fetch=lambda st: [{'path': '.github/workflows/daily_miner.yml@refs/heads/main'}] if st == 'queued' else [])
+    ok('⑨ daily_miner 排隊中(還沒開跑)也算 → 暫停', b and 'daily_miner.yml(queued)' in w, (b, w))
+    b, w = others_busy(fetch=lambda st: [{'path': '.github/workflows/deploy_pages.yml'}, {'path': '.github/workflows/stock_deep_backfill.yml'}])
+    ok('⑨ 不相干的 workflow(含補挖自己)在跑 → 照抓', not b, (b, w))
+    b, w = others_busy(fetch=lambda st: [])
+    ok('⑨ 沒人在跑 → 照抓', not b, (b, w))
+
+    def _boom(st):
+        raise RuntimeError('api down')
+    _BUSY.update(fail=0)
+    r1, r2, r3 = others_busy(fetch=_boom), others_busy(fetch=_boom), others_busy(fetch=_boom)
+    ok('⑨ 查不到 → 先保守等;連 3 次查不到 → 退回只靠時段表並明說(⛔ 不靜默)',
+       r1[0] and r2[0] and not r3[0] and '時段表' in r3[1], (r1, r2, r3))
+    _BUSY.update(t=0.0, v=(False, ''), fail=0, said='')
+    need = []
+    for f in sorted(wf.glob('*.yml')):
+        t = f.read_text(encoding='utf-8')
+        if f.name != 'stock_deep_backfill.yml' and 'FINMIND_TOKENS' in t \
+                and re.search(r'^\s*(schedule|workflow_run|repository_dispatch)\s*:', t, re.M):
+            need.append(f.name)
+    ok('⑨ 會自動跑又吃 FINMIND_TOKENS 的 workflow 全在動態保護清單(⛔ 新增了沒加就紅)',
+       len(need) >= 6 and set(need) <= set(SHARED_WF), (need, SHARED_WF))
+    ok('⑨ 抓資料的迴圈真的有問動態保護(⛔ 只寫函式沒接上 = 陷阱 #37)', inspect.getsource(main).count('others_busy()') >= 2)
+    ok('⑨ workflow 有把 GH_TOKEN 傳給補挖那一步(沒有就只能退回時段表)', wtxt.count('GH_TOKEN: ${{ github.token }}') >= 2)
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
     return 0 if not bad else 1
 

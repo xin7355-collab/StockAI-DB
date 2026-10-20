@@ -86,6 +86,8 @@ jobs:
         id: run
         env:
           FINMIND_TOKENS: ${{ secrets.FINMIND_TOKENS }}
+          # 🛡️ 動態保護:問 GitHub API 共用金鑰的 workflow 有沒有在跑(有就暫停;2026-10-20 pe_band 被擋的教訓)
+          GH_TOKEN: ${{ github.token }}
           QUEUE: ${{ github.event.inputs.queue }}
           LIMIT: ${{ github.event.inputs.limit }}
           MAX_MIN: ${{ github.event.inputs.max_min }}
