@@ -159,6 +159,38 @@ def punish_level(text):
     return ''
 
 
+# 📦 V79.3.9 一個月一行(NM| 注意股 / PM| 處置):GitHub 的 job log 工具只回「最後 5,000 行」→
+#   逐日一行(2010 起約 4,000 天 + 處置 3,000 筆)前面整段被截掉、零訊息(2026-10-20 實測只拿到 2019-04 以後)。
+#   DUMP_PACK=0 退回舊的逐日 N| / 逐筆 P|。解開:unpack_nm / unpack_pm(dispo_backtest.mjs 有同一份 JS)。
+def pack_days(ym, by_day):
+    return f'NM|{ym}|' + ';'.join(f'{dt}={",".join(by_day[dt])}' for dt in sorted(by_day))
+
+
+def unpack_nm(line):
+    """NM|YYYY-MM|d=a,b;d=c → {日期: [代號]};不是 NM 行回 {}。"""
+    m = re.search(r'NM\|(\d{4}-\d{2})\|(\S*)', str(line or ''))
+    out = {}
+    if not m:
+        return out
+    for seg in filter(None, m.group(2).split(';')):
+        dt, _, syms = seg.partition('=')
+        if re.match(r'^\d{4}-\d{2}-\d{2}$', dt):
+            out[dt] = [x for x in syms.split(',') if x]
+    return out
+
+
+def pack_punish(ym, rows):
+    return f'PM|{ym}|' + ';'.join(','.join(str(v) for v in r) for r in rows)
+
+
+def unpack_pm(line):
+    """PM|YYYY-MM|sid,ann,st,en,cnt,lvl;… → [(sid, ann, st, en, cnt, lvl)];不是 PM 行回 []。"""
+    m = re.search(r'PM\|(\d{4}-\d{2})\|(\S*)', str(line or ''))
+    if not m:
+        return []
+    return [tuple(seg.split(',')) for seg in filter(None, m.group(2).split(';')) if seg.count(',') == 5]
+
+
 def selftest():
     bad = 0
     def ok(name, cond):
@@ -176,6 +208,12 @@ def selftest():
     ok('② 找不到的回 None(⛔ 不回 0 —— 0 是合法索引)', punish_cols(['A', 'B'])['sym'] is None)
     ok('③ 第一次 / 第二次處置', punish_level('第一次處置') == 1 and punish_level('第二次處置') == 2 and punish_level('') == '')
     ok('④ 權證不算(沿用 is_stockish)', not is_stockish('069954') and is_stockish('2330') and is_stockish('0050') and is_stockish('00878'))
+    _bd = {'2024-03-05': ['2330', '2317'], '2024-03-01': ['1101']}
+    _ln = pack_days('2024-03', _bd)
+    ok('⑤ 注意股一個月一行:打包 → 解開一模一樣(日期由舊到新)', unpack_nm(_ln) == _bd and _ln.startswith('NM|2024-03|2024-03-01=1101;'))
+    ok('⑤ 不是 NM 行 → 空(⛔ 不可把逐日 N| 行誤解)', unpack_nm('N|2024-03-05|2330') == {} and unpack_nm('') == {})
+    _pr = [('2330', '2024-03-08', '2024-03-11', '2024-03-22', '1', '1'), ('1503', '2024-03-22', '2024-03-25', '2024-04-09', '2', '')]
+    ok('⑤ 處置一個月一行:打包 → 解開一模一樣(空欄位也保住)', unpack_pm(pack_punish('2024-03', _pr)) == _pr)
     print(f'selftest {"全過" if not bad else f"{bad} 條失敗"}')
     return bad == 0
 
@@ -221,7 +259,8 @@ def dump_punish(ctrl_ok):
         print('  ⚠️ 逐年都沒有資料(但 2024-03 有)→ 可能不吃整年區間,改逐月從 2023-06 起')
         first = 2023
     # 全量:逐月(一個月一次呼叫;整年區間若有上限會被截斷 → 逐月最穩)
-    print(f'DUMP_P_BEGIN from={first}')
+    pack = (os.getenv('DUMP_PACK') or '1').strip() != '0'
+    print(f'DUMP_P_BEGIN from={first} pack={int(pack)}')
     total, bad_per = 0, 0
     y, m = first, 1
     today = date.today()
@@ -232,6 +271,7 @@ def dump_punish(ctrl_ok):
             jj, _, _ = http_json(url)
         except Exception:
             jj = None
+        mrows = []
         for row in (jj or {}).get('data') or []:
             try:
                 sid = str(row[col['sym']]).strip()
@@ -246,8 +286,13 @@ def dump_punish(ctrl_ok):
             ann = roc2iso(row[col['ann']]) if col['ann'] is not None else ''
             cnt = str(row[col['cnt']]).strip() if col['cnt'] is not None else ''
             lvl = punish_level(row[col['how']]) if col['how'] is not None else ''
-            print(f'P|{sid}|{ann}|{st}|{en}|{cnt}|{lvl}')
+            if pack:
+                mrows.append((sid, ann, st, en, cnt, lvl))
+            else:
+                print(f'P|{sid}|{ann}|{st}|{en}|{cnt}|{lvl}')
             total += 1
+        if pack and mrows:
+            print(pack_punish(f'{y}-{m:02d}', mrows))
         y, m = (y + 1, 1) if m == 12 else (y, m + 1)
         import time as _t
         _t.sleep(1.2)
@@ -322,7 +367,8 @@ def main():
             # 全量:逐月抓(一個月一次呼叫)。🔁 V79.3.8 起點可設(NOTICE_FROM,預設 2010-01;舊版寫死 2023-06)
             #   → 處置那份(④)證交所回溯到 2005,注意股很可能也行;拉長才能驗「噴著進注意股」那條的逐年同向
             nf = (os.getenv('NOTICE_FROM') or '2010-01').strip()
-            print(f'DUMP_N_BEGIN from={nf}')
+            pack = (os.getenv('DUMP_PACK') or '1').strip() != '0'
+            print(f'DUMP_N_BEGIN from={nf} pack={int(pack)}')
             total = 0
             y, m = int(nf[:4]), int(nf[5:7])
             today = date.today()
@@ -343,8 +389,11 @@ def main():
                         continue
                     if is_stockish(sid) and dt and sid not in by_day.setdefault(dt, []):
                         by_day[dt].append(sid)
+                if pack and by_day:
+                    print(pack_days(f'{y}-{m:02d}', by_day))
                 for dt in sorted(by_day):
-                    print(f'N|{dt}|{",".join(by_day[dt])}')
+                    if not pack:
+                        print(f'N|{dt}|{",".join(by_day[dt])}')
                     total += len(by_day[dt])
                 y, m = (y + 1, 1) if m == 12 else (y, m + 1)
                 import time as _t

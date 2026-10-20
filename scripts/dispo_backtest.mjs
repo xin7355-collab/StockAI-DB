@@ -26,23 +26,48 @@
 import fs from 'fs';
 import path from 'path';
 
+// 📦 V79.3.9 事件行兩種格式都吃:逐日 N|日期|代號,… / 一個月一行 NM|YYYY-MM|日期=代號,…;日期=…(dispo_probe 預設)
+//   ⚠️ GitHub 的 job log 工具只回最後 5,000 行 → 逐日一行 2010 起會被截掉 → 探針改成一個月一行
+export function parseEvents(text) {
+  const dispo = [], noticeByDay = new Map();
+  const add = (d, syms) => noticeByDay.set(d, (noticeByDay.get(d) || []).concat(syms.filter(Boolean)));
+  for (const line of String(text || '').split('\n')) {
+    const nm = line.match(/NM\|(\d{4}-\d{2})\|(\S*)/);
+    if (nm) {
+      for (const seg of nm[2].split(';')) {
+        const [dt, syms] = seg.split('=');
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dt || '')) add(dt, String(syms || '').split(','));
+      }
+      continue;
+    }
+    const m = line.match(/D\|(\d{4,6})\|([\d-]+)\|([\d-]*)\|([\d-]*)\|(\d*)/);
+    if (m) { dispo.push({ sym: m[1], d: m[2], ps: m[3], pe: m[4], cnt: +m[5] || 1 }); continue; }
+    const n = line.match(/N\|([\d-]+)\|([\d,]+)/);
+    if (n) add(n[1], n[2].split(','));
+  }
+  return { dispo, noticeByDay };
+}
+
+if (process.argv.includes('--selftest')) {
+  const a = parseEvents('2026-10-20T01:00:00Z N|2024-03-01|1101\nN|2024-03-05|2330,2317\nD|2330|2024-03-08|2024-03-11|2024-03-22|1');
+  const b = parseEvents('2026-10-20T01:00:00Z NM|2024-03|2024-03-01=1101;2024-03-05=2330,2317\nD|2330|2024-03-08|2024-03-11|2024-03-22|1');
+  const same = JSON.stringify([...a.noticeByDay]) === JSON.stringify([...b.noticeByDay]) && a.dispo.length === 1 && b.dispo.length === 1;
+  const none = parseEvents('PM|2024-03|2330,2024-03-08,2024-03-11,2024-03-22,1,1').noticeByDay.size === 0;
+  console.log(`${same ? '✅' : '❌'} 逐日 N| 與一個月一行 NM| 讀出來一模一樣`);
+  console.log(`${none ? '✅' : '❌'} 處置打包行 PM| ⛔ 不可被當成注意股`);
+  process.exit(same && none ? 0 : 1);
+}
+
 const EV_FILE = process.argv[2] || '';
 const GDATA = process.argv[3] || 'data';
-if (!EV_FILE || !fs.existsSync(EV_FILE)) { console.error('用法:node scripts/dispo_backtest.mjs <events.txt> [gdataDir]'); process.exit(1); }
+if (!EV_FILE || !fs.existsSync(EV_FILE)) { console.error('用法:node scripts/dispo_backtest.mjs <events.txt> [gdataDir] ・node scripts/dispo_backtest.mjs --selftest'); process.exit(1); }
 
 const iso = s => String(s || '').replace(/\//g, '-');
 const COST = 0.44;                   // 來回成本 %
 const HOLDS = [5, 10, 20];
 
-// ── 讀事件 ──
-const dispo = [];                    // {sym, d(公告), ps, pe, cnt}
-const noticeByDay = new Map();       // date -> [sym]
-for (const line of fs.readFileSync(EV_FILE, 'utf8').split('\n')) {
-  const m = line.match(/D\|(\d{4,6})\|([\d-]+)\|([\d-]*)\|([\d-]*)\|(\d*)/);
-  if (m) { dispo.push({ sym: m[1], d: m[2], ps: m[3], pe: m[4], cnt: +m[5] || 1 }); continue; }
-  const n = line.match(/N\|([\d-]+)\|([\d,]+)/);
-  if (n) noticeByDay.set(n[1], (noticeByDay.get(n[1]) || []).concat(n[2].split(',').filter(Boolean)));
-}
+// ── 讀事件 ──(dispo = {sym, d(公告), ps, pe, cnt};noticeByDay = date -> [sym])
+const { dispo, noticeByDay } = parseEvents(fs.readFileSync(EV_FILE, 'utf8'));
 console.log(`事件檔:處置 ${dispo.length} 筆 ・注意日 ${noticeByDay.size} 天`);
 
 // ── 讀 K 線(只讀被事件點名的股票 + 對照組抽全市場)──
