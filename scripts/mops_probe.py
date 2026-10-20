@@ -138,22 +138,28 @@ def roc(d):
 
 # ───────────────────────── 候選端點(⛔ 猜的,由 log 說了算) ─────────────────────────
 def candidates(today, back_day, deep_day):
-    """每個 = (標籤, path, form)。⚠️ 這些參數是**照 t100sb02_1 的慣例推的**,
-    對不對由 runner 上的 log 決定 —— ⛔ 不可因為「看起來合理」就寫進採礦。"""
+    """每個 = (標籤, path, form)。
+    🧭 V79.3.8 第二輪:照 runner 上抓到的**官方表單欄位**改(第一輪 log 的 🧾 那幾行):
+       form1 → /mops/web/ajax_t05st01,欄位 firstin / TYPEK / step / co_id / funcName / queryName / inpuType / off /
+       year(民國)/ month / b_date / e_date(都是下拉選單);MOPS 自己的提示「未指定公司代號時,僅能查詢單日」
+       → 全市場一定要 b_date = e_date(單日),指定公司才可以一段。
+    ⚠️ 下拉選單的值是 1 還是 01 不知道 → 兩種都送,由 log 說了算(⛔ 不猜一種就寫進採礦)。"""
+    base = {'encodeURIComponent': '1', 'firstin': '1', 'step': '1', 'off': '1', 'funcName': 't05st01',
+            'queryName': 'co_id', 'inpuType': 'co_id', 'keyword': '', 'keycon': ''}
     C = []
     for typek in ('sii', 'otc'):
         for d, tag in ((today, '今天'), (back_day, f'{BACK_DAYS} 天前'), (deep_day, f'{DEEP_DAYS} 天前')):
-            C.append((f'當日重大訊息 t05st01 / {typek} / {tag}({d})', '/mops/web/ajax_t05st01',
-                      {'encodeURIComponent': '1', 'step': '1', 'firstin': '1', 'off': '1',
-                       'TYPEK': typek, 'year': roc(d), 'month': f'{d.month:02d}', 'day': f'{d.day:02d}'}))
-    C.append((f'單一公司歷史 t05st01_1 / {SAMPLE}', '/mops/web/ajax_t05st01_1',
-              {'encodeURIComponent': '1', 'step': '1', 'firstin': '1', 'off': '1',
-               'TYPEK': 'sii', 'co_id': SAMPLE, 'year': roc(today), 'month': f'{today.month:02d}'}))
-    C.append((f'歷史重大訊息 t05st02 / {SAMPLE}(⭐ 能不能一次回補就看這條)', '/mops/web/ajax_t05st02',
-              {'encodeURIComponent': '1', 'step': '1', 'firstin': '1', 'off': '1',
-               'TYPEK': 'sii', 'co_id': SAMPLE, 'keyword4': '', 'code1': '', 'TYPEK2': '', 'checkbtn': '',
-               'queryName': 'co_id', 'inpuType': 'co_id', 'b_date': deep_day.strftime('%Y%m%d'),
-               'e_date': today.strftime('%Y%m%d')}))
+            for pad in (False, True):
+                mm, dd = (f'{d.month:02d}', f'{d.day:02d}') if pad else (str(d.month), str(d.day))
+                C.append((f'全市場單日 t05st01 / {typek} / {tag}({d})/ {"01" if pad else "1"} 格式', '/mops/web/ajax_t05st01',
+                          {**base, 'TYPEK': typek, 'co_id': '', 'year': roc(d), 'month': mm, 'b_date': dd, 'e_date': dd}))
+    # 指定公司:可以查一段 → 一整個月 / 整年 / 5 年前(⭐ 回補深度看這幾條)
+    for y, mm, b, e, tag in ((today.year, str(today.month), '1', str(today.day), '這個月'),
+                             (today.year, '', '', '', '今年整年(月份留空)'),
+                             (today.year - 5, '', '', '', '5 年前整年'),
+                             (today.year - 5, '6', '1', '30', '5 年前 6 月')):
+        C.append((f'單一公司 t05st01 / {SAMPLE} / {tag}', '/mops/web/ajax_t05st01',
+                  {**base, 'TYPEK': 'all', 'co_id': SAMPLE, 'year': str(y - 1911), 'month': mm, 'b_date': b, 'e_date': e}))
     C.append(('整頁(⛔ 非 ajax)t05st01 —— 只為了看官方表單長什麼樣', '/mops/web/t05st01', None))
     return C
 
@@ -224,6 +230,11 @@ def main():
     import requests
     today = datetime.now(TW).date()
     back, deep = today - timedelta(days=BACK_DAYS), today - timedelta(days=DEEP_DAYS)
+    # 週末沒有重大訊息 → 往前挪到平日(⛔ 不然「0 列」分不出是週末還是參數不對)
+    while back.weekday() >= 5:
+        back -= timedelta(days=1)
+    while deep.weekday() >= 5:
+        deep -= timedelta(days=1)
     print(f'🧨 MOPS 重大訊息探針 —— host {HOST} ・今天(台北){today}')
     print('🔐 金鑰:這支**一把都沒用**(既有 MOPS 抓法就是零 Secrets)——')
     print('   log 裡若出現要登入/驗證碼的字樣,那才是「需要金鑰」的證據。')
@@ -267,8 +278,8 @@ def main():
         head = '⛔ 連得上、也沒被擋,但候選全部沒拿到資料列 → **名字猜錯**的機率最高(陷阱 #23);⛔ 不可據此寫採礦'
     print(f"1️⃣ 端點:{head}")
     print(f"2️⃣ 筆數/欄位:{'見上面 📄 那幾行' if hit else '—'}")
-    deep_hit = [r for r in hit if str(DEEP_DAYS) in r['label'] or 't05st02' in r['path']]
-    print(f"3️⃣ ⭐ 歷史:{'✅ 拿得到 %d 天前的 → **現在就測得動**' % DEEP_DAYS if deep_hit else ('⛔ 這一輪連都連不上,歷史這件事**沒測到**' if allerr else '⛔ 沒拿到舊資料 → 很可能只能從今天開始存(要再等約三個月才測得動)')}")
+    deep_hit = [r for r in hit if str(DEEP_DAYS) in r['label'] or '5 年前' in r['label']]
+    print(f"3️⃣ ⭐ 歷史:{'✅ 拿得到舊的(' + '、'.join(r['label'] for r in deep_hit) + ')→ **現在就測得動**' if deep_hit else ('⛔ 這一輪連都連不上,歷史這件事**沒測到**' if allerr else '⛔ 沒拿到舊資料 → 很可能只能從今天開始存(要再等約三個月才測得動)')}")
     print(f"4️⃣ 耗時/被擋:全部 {round(time.time() - t0, 1)}s ・被擋 {nblk} 次 ・連不上 {nerr} 次 / 共 {len(res)} 條")
     print('5️⃣ 金鑰:這一輪**一把金鑰都沒用**。'
           + ('⛔ 但這一輪連都連不上 → 「要不要金鑰」這件事還沒測到。' if allerr
