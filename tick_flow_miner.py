@@ -54,6 +54,20 @@ def _to_lots(v):
     return v
 
 
+
+def _usage_line(api, tag=''):
+    """📶 2026-10-20 診斷:Shioaji 每天有流量上限,10/19、10/20 兩天 12:50 起快照都回 0 檔、台指期 list index out of range
+    (登入正常)→ 懷疑是當天流量用完。把用量印出來,下一次就看得出是不是這個原因(⛔ 不改任何判斷)。"""
+    try:
+        u = api.usage()
+        used, lim = getattr(u, 'bytes', None), getattr(u, 'limit_bytes', None)
+        rem = getattr(u, 'remaining_bytes', None)
+        mb = lambda x: f'{x / 1e6:,.1f} MB' if isinstance(x, (int, float)) else '?'
+        print(f'📶 Shioaji 今日流量{tag}:已用 {mb(used)} / 上限 {mb(lim)} ・剩 {mb(rem)}', flush=True)
+    except Exception as e:
+        print(f'📶 Shioaji 流量查不到{tag}({type(e).__name__}: {str(e)[:80]})', flush=True)
+
+
 def main():
     key = os.environ.get('SHIOAJI_API_KEY', '').strip()
     sec = os.environ.get('SHIOAJI_SECRET_KEY', '').strip()
@@ -73,6 +87,7 @@ def main():
     except Exception as e:
         print(f'❌ Shioaji 登入失敗:{e}')
         sys.exit(1)
+    _usage_line(api, '(開始前)')
 
     today = datetime.now(TW).strftime('%Y-%m-%d')
 
@@ -159,6 +174,7 @@ def main():
         time.sleep(0.12)   # 溫柔節流
 
     print(f'✅ 逐筆內外盤/大單 {len(out)} 檔')
+    _usage_line(api, '(抓完逐筆)')       # 📶 跟「開始前」那行相減 = 這一輪逐筆吃掉多少流量
     try:
         api.logout()
     except Exception:

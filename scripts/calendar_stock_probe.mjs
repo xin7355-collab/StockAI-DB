@@ -36,6 +36,18 @@
  *      → 改用**對照組**:跟「不分日子的個股強弱延續性」比。贏不過對照 = 只是「強股恆強」,
  *        ⛔ 不是「這檔喜歡星期五」。
  *
+ * 🔁 V79.4.3(16 年全市場 d16 重跑前修三件):
+ *   ① 對照組改「同年份」:行事曆是**全市場同一天**的事件 → 同一天的橫斷面對照沒有意義(那天大家都是事件日),
+ *      所以仍跟「別天」比,但每一個事件日只跟**同一年**的非事件日比,再照事件日在各年的天數加權(`ymCmp`)。
+ *      ⛔ 不再拿整個窗口(d16 是 2015~2026)的平均比 —— 各年行情差很多,事件日在各年分布不均
+ *      (第一年 / 最後一年不完整:2026 沒有 11、12 月;封關開紅盤一年只有一天)就會把「那幾年本來就比較好」算成「這種日子比較好」。
+ *      那一年非事件日 < MIN_CTRL(30)天 → 那年的事件日不算(印出幾筆)。前後半段照日期切(本來就是)。
+ *   ② 事件日**收盤後買**(【C】隔 1 / 5 日):收盤停在漲停 → 買不到,那兩格不算(事件與對照同一條;lib_limit.upLimitClose,
+ *      2015-06 前漲跌幅 ±7%)。當天報酬(【A】【B】)是描述那一天,⛔ 不是買進,照舊。
+ *   ③ 斷崖(lib_cliff ×1.5 / ×0.67)取代舊的「|漲跌| > 40% 那一列不算」:當天那根碰到 → 整列不算;
+ *      隔 1 / 5 日的窗口碰到 → 那一格不算(舊版隔 5 日的窗口完全沒守門)。
+ *   MAX_SYMS=N 只等距抽 N 檔(冒煙測試用,守門跟著縮)・node scripts/calendar_stock_probe.mjs --selftest(不需要真資料)
+ *
  * ⛔ 只讀 data/,不打 API、不寫任何會被部署的產物(輸出 JSON 只給人看)。
  *
  * 用法:node --max-old-space-size=4096 scripts/calendar_stock_probe.mjs [輸出.json]
@@ -44,37 +56,20 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { DEADLINES } from './lib_fundamentals.mjs';
+import { upLimitClose } from './lib_limit.mjs';
+import { cliffPrefix, cliffIn } from './lib_cliff.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = process.env.DATA_DIR || path.join(ROOT, 'data');   // V78.4.7:可指到修好的資料
 const OUT = process.argv[2] || '';
-// ⭐ 共同窗口起點 —— V74.2.8 改成**執行時從實際檔案推**(⛔ 不再寫死)。
-//   🚨 原本寫死 `'2023-06-15'`(當時 data/ 就是從那天開始)。K 線補深到 2021 之後,
-//      那一行會把**多出來的兩年半(含 2022 空頭)整段丟掉**,而且畫面上看不出來 ——
-//      報告只會印一個看起來很正常的窗口。⭐ 通用:任何「窗口起點」都要從資料推,
-//      ⛔ 不可寫死;寫死的那一刻它就開始過期了。
-//   規則不變:取各檔起始日的 p75(涵蓋約 75% 檔數),再往後 3 天緩衝。
-const WIN_FROM = (() => {
-  const env = process.env.WIN_FROM; if (env) return env;
-  const firsts = [];
-  for (const fn of fs.readdirSync(DATA).filter(x => /^\d{4}\.json$/.test(x) && !x.startsWith('00'))) {
-    try {
-      const a = JSON.parse(fs.readFileSync(path.join(DATA, fn), 'utf8'));
-      if (Array.isArray(a) && a.length >= 500) firsts.push(String(a[0].date || '').replace(/\//g, '-').slice(0, 10));
-    } catch (_) { }
-  }
-  firsts.sort();
-  if (firsts.length < 200) return '2023-06-15';        // 🚧 空過守門:推不出來就退回舊值
-  const p75 = firsts[Math.floor(firsts.length * 0.75)];
-  const t = new Date(p75 + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + 3);
-  return t.toISOString().slice(0, 10);
-})();
 const MIN_BARS = 500;            // 太新的股票不收(不然季節桶只涵蓋部分窗口)
 const MIN_STOCKS = 500;          // 空過守門
 const MIN_ROWS = 200000;         // 空過守門
 const MIN_DAYS = 20;             // 事件**天數**不足就不下判定(⛔ 股·日 再多也不算)
 const MIN_YEAR_ROWS = 20000;     // 逐年檢定:該年至少幾列才納入
 const PS_MIN_N = 20;             // 逐檔:每檔每事件、每半段至少幾筆
+export const MIN_CTRL = 30;      // 🔁 V79.4.3 同年份對照:那一年的非事件日至少幾天
+const MAX_SYMS = Math.max(0, parseInt(process.env.MAX_SYMS || '0', 10) || 0);   // 🔁 V79.4.3 冒煙測試用
 
 const nd = d => String(d || '').replace(/\//g, '-').slice(0, 10);
 const sum = a => a.reduce((x, y) => x + y, 0);
@@ -99,6 +94,98 @@ function welch(a, b) {
     const t = d / se;
     return { t, p: pFromZ(t), d };
 }
+
+/**
+ * 🔁 V79.4.3 同年份對照(行事曆是「全市場同一天」的事件 → 同一天的橫斷面對照沒有意義):
+ *   每一個事件日只跟**同一年**的非事件日比,再照事件日在各年的天數加權。
+ *   那一年非事件日 < MIN_CTRL 天 → 那年的事件日不算(dropped)。
+ *   回傳的 a / b = 減掉「同一年非事件日平均」之後的值 → welch(a, b) 的差 d = 同年份對照差;
+ *   evMean = 事件日原始平均、ctrlMean = evMean − d(照事件年份加權的「同年其他日」平均)。
+ */
+export function ymCmp(ds, isEv, val) {
+    const byY = new Map();
+    for (let i = 0; i < ds.length; i++) {
+        const x = val(ds[i], i);
+        if (x == null || !Number.isFinite(x)) continue;
+        const y = ds[i].slice(0, 4);
+        let g = byY.get(y); if (!g) byY.set(y, g = { e: [], o: [] });
+        (isEv(ds[i], i) ? g.e : g.o).push(x);
+    }
+    const a = [], b = [], aRaw = [], bRaw = [];
+    let dropped = 0;
+    for (const [, g] of byY) {
+        if (!g.e.length) continue;
+        if (g.o.length < MIN_CTRL) { dropped += g.e.length; continue; }
+        const mu = mean(g.o);
+        for (const x of g.e) { a.push(x - mu); aRaw.push(x); }
+        for (const x of g.o) { b.push(x - mu); bRaw.push(x); }
+    }
+    const w = welch(a, b);
+    const evMean = mean(aRaw);
+    return { ...w, n: a.length, a, b, aRaw, bRaw, evMean, ctrlMean: evMean - w.d, dropped };
+}
+
+/**
+ * 一檔在窗口內的逐日資料(w = 已過濾、照日期排好的 {d, c, o}):當天報酬 r / 扣大盤 ex / 收盤後買隔 1、5 日的超額。
+ *   🔁 V79.4.3 ・斷崖(lib_cliff):當天那根碰到 → 整列不算(取代舊的 |r| > 40);隔 1 / 5 日的窗口碰到 → 那一格 null
+ *              ・當天收盤停在漲停(lib_limit,2015-06 前 ±7%)→ 收盤買不到 → 隔 1 / 5 日那兩格 null(事件與對照同一條)
+ */
+export function scanBars(w, twiiRet) {
+    const pre = cliffPrefix(w.map(b => b.c), w.map(b => b.o));
+    const rows = [];
+    let nCliff = 0, nLimit = 0;
+    for (let i = 1; i < w.length; i++) {
+        const d = w[i].d;
+        const tw = twiiRet.get(d);
+        const r = (w[i].c - w[i - 1].c) / w[i - 1].c * 100;
+        if (!isFinite(r) || cliffIn(pre, i - 1, i)) { nCliff++; continue; }    // 減資 / 停牌恢復 / 資料洞的斷崖列
+        const ex = r - tw;
+        const lim = upLimitClose(d, w[i].c, w[i - 1].c);
+        if (lim) nLimit++;
+        // 事件日**收盤後**買的可操作報酬(⛔ 跟當日報酬是兩件事)
+        const fwd = k => {
+            if (lim || !w[i + k] || cliffIn(pre, i, i + k)) return null;
+            let acc = 0;
+            for (let q = i + 1; q <= i + k; q++) {
+                const tq = twiiRet.get(w[q].d);
+                if (tq === undefined) return null;
+                acc += (w[q].c - w[q - 1].c) / w[q - 1].c * 100 - tq;
+            }
+            return acc;
+        };
+        rows.push({ i, d, r, ex, f1: fwd(1), f5: fwd(5) });
+    }
+    return { rows, nCliff, nLimit };
+}
+
+if (process.argv.includes('--selftest')) process.exit(selftest());
+
+// 🔁 V79.4.3 檔案清單(MAX_SYMS = 等距抽樣,⛔ 不取前 N 檔 —— 代號排序會偏某幾個產業;抽樣時守門跟著縮)
+const ALL_FILES = fs.readdirSync(DATA).filter(x => /^\d{4}\.json$/.test(x) && !x.startsWith('00')).sort();
+const FILES = MAX_SYMS && ALL_FILES.length > MAX_SYMS
+    ? Array.from({ length: MAX_SYMS }, (_, k) => ALL_FILES[Math.floor(k * ALL_FILES.length / MAX_SYMS)]) : ALL_FILES;
+const SUB = FILES.length / Math.max(1, ALL_FILES.length);
+// ⭐ 共同窗口起點 —— V74.2.8 改成**執行時從實際檔案推**(⛔ 不再寫死)。
+//   🚨 原本寫死 `'2023-06-15'`(當時 data/ 就是從那天開始)。K 線補深到 2021 之後,
+//      那一行會把**多出來的兩年半(含 2022 空頭)整段丟掉**,而且畫面上看不出來 ——
+//      報告只會印一個看起來很正常的窗口。⭐ 通用:任何「窗口起點」都要從資料推,
+//      ⛔ 不可寫死;寫死的那一刻它就開始過期了。
+//   規則不變:取各檔起始日的 p75(涵蓋約 75% 檔數),再往後 3 天緩衝。
+const WIN_FROM = (() => {
+  const env = process.env.WIN_FROM; if (env) return env;
+  const firsts = [];
+  for (const fn of FILES) {
+    try {
+      const a = JSON.parse(fs.readFileSync(path.join(DATA, fn), 'utf8'));
+      if (Array.isArray(a) && a.length >= 500) firsts.push(String(a[0].date || '').replace(/\//g, '-').slice(0, 10));
+    } catch (_) { }
+  }
+  firsts.sort();
+  if (firsts.length < 200 * SUB) return '2023-06-15';  // 🚧 空過守門:推不出來就退回舊值(抽樣時門檻跟著縮)
+  const p75 = firsts[Math.floor(firsts.length * 0.75)];
+  const t = new Date(p75 + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + 3);
+  return t.toISOString().slice(0, 10);
+})();
 
 // ═══════════════ 1. 讀大盤,建交易日曆 ═══════════════
 const twiiRaw = JSON.parse(fs.readFileSync(path.join(DATA, '^TWII.json'), 'utf8'))
@@ -200,36 +287,37 @@ const EVENTS = [
     ['findl', '財報截止日±3(⚠️不是法說會)', d => finDl.has(d)],
     ['divseason', '除權息旺季(7-8 月)', d => ['07', '08'].includes(d.slice(5, 7))],
 ];
+const NYRS = new Set(days.map(d => d.slice(0, 4))).size;   // 🔁 V79.4.3 年數從資料推(d16 有 11~12 年,⛔ 不再寫死「3 年」)
 for (let m = 1; m <= 12; m++) {
     const mm = String(m).padStart(2, '0');
-    EVENTS.push([`mon${mm}`, `${m} 月(⚠️只有 3 年)`, d => d.slice(5, 7) === mm]);
+    EVENTS.push([`mon${mm}`, `${m} 月(⚠️只有 ${NYRS} 年)`, d => d.slice(5, 7) === mm]);
 }
 const evDays = new Map();   // key → Set(日期)
 for (const [k, , fn] of EVENTS) evDays.set(k, new Set(days.filter(fn)));
 
 // ═══════════════ 3. 掃全市場 ═══════════════
-const files = fs.readdirSync(DATA).filter(x => /^\d{4}\.json$/.test(x) && !x.startsWith('00'));
 
 // 每日橫截面(⭐ 檢定的樣本單位)
 const dRaw = new Map(), dEx = new Map(), dF1 = new Map(), dF5 = new Map();
 for (const d of days) { dRaw.set(d, []); dEx.set(d, []); dF1.set(d, []); dF5.set(d, []); }
 // 股·日 累計(只做描述)
 const ALL = { n: 0, up: 0, sum: 0, ex: 0, exUp: 0 };
-const AGG = {}; for (const [k] of EVENTS) AGG[k] = { n: 0, up: 0, sum: 0, ex: 0, exUp: 0, absSum: 0 };
+const AGG = {}; for (const [k] of EVENTS) AGG[k] = { n: 0, up: 0, sum: 0, ex: 0, exUp: 0, absSum: 0, yn: {} };
+const ALLY = new Map();         // 🔁 V79.4.3 年 → {n, up}(【A】的同年份對照)
 const PS = new Map();
 // ⭐ 逐檔 × 逐日超額矩陣 —— 給【E3】安慰劑檢定用(隨機挑同樣天數,量出這個統計量本身的雜訊)
 const MAT = new Map();          // sym → Float64Array(days.length),沒有資料的日子放 NaN
 const dPos = new Map(days.map((d, i) => [d, i]));
-let rows = 0, used = 0, minD = '9999', maxD = '0000';
+let rows = 0, used = 0, minD = '9999', maxD = '0000', nCliffRows = 0, nLimitRows = 0;
 const HALF = days[Math.floor(days.length / 2)];
 const HALF_I = Math.floor(days.length / 2);
 
-for (const fn of files) {
+for (const fn of FILES) {
     let arr;
     try { arr = JSON.parse(fs.readFileSync(path.join(DATA, fn), 'utf8')); } catch (_) { continue; }
     if (!Array.isArray(arr) || arr.length < MIN_BARS) continue;
     const sym = fn.slice(0, 4);
-    const bars = arr.map(r => ({ d: nd(r.date), c: +r.close }))
+    const bars = arr.map(r => ({ d: nd(r.date), c: +r.close, o: +r.open }))
         .filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.d) && r.c > 0)
         .sort((a, b) => a.d < b.d ? -1 : 1);
     // ⭐ 共同窗口:起始日要早於窗口起點,否則季節桶只涵蓋一部分 → 會扭曲月份統計
@@ -240,31 +328,19 @@ for (const fn of files) {
     const ps = {}; PS.set(sym, ps);
     const vec = new Float64Array(days.length).fill(NaN); MAT.set(sym, vec);
 
-    for (let i = 1; i < w.length; i++) {
-        const d = w[i].d;
-        const tw = twiiRet.get(d);
-        const r = (w[i].c - w[i - 1].c) / w[i - 1].c * 100;
-        if (!isFinite(r) || Math.abs(r) > 40) continue;    // 分割/減資殘留的離譜列
-        const ex = r - tw;
+    // 🔁 V79.4.3 逐日資料交給 scanBars(斷崖 lib_cliff / 收盤漲停買不到 lib_limit,事件與對照同一條)
+    const sb = scanBars(w, twiiRet);
+    nCliffRows += sb.nCliff; nLimitRows += sb.nLimit;
+    for (const { d, r, ex, f1, f5 } of sb.rows) {
         if (d < minD) minD = d; if (d > maxD) maxD = d;
         dRaw.get(d).push(r); dEx.get(d).push(ex);
         vec[dPos.get(d)] = ex;
-        // 事件日**收盤後**買的可操作報酬(⛔ 跟當日報酬是兩件事)
-        const fwd = k => {
-            if (!w[i + k]) return null;
-            let acc = 0;
-            for (let q = i + 1; q <= i + k; q++) {
-                const tq = twiiRet.get(w[q].d);
-                if (tq === undefined) return null;
-                acc += (w[q].c - w[q - 1].c) / w[q - 1].c * 100 - tq;
-            }
-            return acc;
-        };
-        const f1 = fwd(1), f5 = fwd(5);
         if (f1 !== null) dF1.get(d).push(f1);
         if (f5 !== null) dF5.get(d).push(f5);
 
         ALL.n++; ALL.sum += r; ALL.ex += ex; if (r > 0) ALL.up++; if (ex > 0) ALL.exUp++;
+        const y = d.slice(0, 4), Y = ALLY.get(y) || ALLY.set(y, { n: 0, up: 0 }).get(y);
+        Y.n++; if (r > 0) Y.up++;
         (ps.__all ||= { n1: 0, s1: 0, n2: 0, s2: 0 });
         if (d < HALF) { ps.__all.n1++; ps.__all.s1 += ex; } else { ps.__all.n2++; ps.__all.s2 += ex; }
 
@@ -272,6 +348,7 @@ for (const fn of files) {
             if (!evDays.get(k).has(d)) continue;
             const A = AGG[k];
             A.n++; A.sum += r; A.ex += ex; A.absSum += Math.abs(r); if (r > 0) A.up++; if (ex > 0) A.exUp++;
+            A.yn[y] = (A.yn[y] || 0) + 1;
             const p = (ps[k] ||= { n: 0, up: 0, sum: 0, sumEx: 0, n1: 0, s1: 0, n2: 0, s2: 0 });
             p.n++; p.sum += r; p.sumEx += ex; if (r > 0) p.up++;
             if (d < HALF) { p.n1++; p.s1 += ex; } else { p.n2++; p.s2 += ex; }
@@ -279,19 +356,20 @@ for (const fn of files) {
         rows++;
     }
 }
-if (used < MIN_STOCKS || rows < MIN_ROWS) {
-    console.error(`❌ 空過守門:只掃到 ${used} 檔 / ${rows} 列(門檻 ${MIN_STOCKS} / ${MIN_ROWS})`);
+if (used < MIN_STOCKS * SUB || rows < MIN_ROWS * SUB) {
+    console.error(`❌ 空過守門:只掃到 ${used} 檔 / ${rows} 列(門檻 ${Math.round(MIN_STOCKS * SUB)} / ${Math.round(MIN_ROWS * SUB)})`);
     process.exit(1);
 }
 
 // 每天的橫截面中位數(⭐ 之後所有檢定都用這個當「一個樣本」)
 // ⚠️ 用**等權平均**不用中位數:實測全市場當日中位個股常常剛好 0.00%(跳動單位造成)
 //    → 中位數會**飽和在 0**,整排長一樣、完全看不出差別(第一版就是這樣)。
-const okDays = days.filter(d => dEx.get(d).length >= 200);
+const okDays = days.filter(d => dEx.get(d).length >= Math.max(30, Math.round(200 * SUB)));   // 抽樣時跟著縮
 const mdRaw = new Map(okDays.map(d => [d, mean(dRaw.get(d))]));
 const mdEx = new Map(okDays.map(d => [d, mean(dEx.get(d))]));
-const mdF1 = new Map(okDays.map(d => [d, mean(dF1.get(d))]));
-const mdF5 = new Map(okDays.map(d => [d, mean(dF5.get(d))]));
+// 🔁 V79.4.3 沒有隔 1 / 5 日資料的日子(窗口最後幾天)⛔ 不再當成 0 —— 那會被算進「同年其他日」
+const mdF1 = new Map(okDays.filter(d => dF1.get(d).length).map(d => [d, mean(dF1.get(d))]));
+const mdF5 = new Map(okDays.filter(d => dF5.get(d).length).map(d => [d, mean(dF5.get(d))]));
 // ⭐ 每日「波動」= 當天全市場個股漲跌幅的平均絕對值(⛔ 跟方向無關)
 const mdVol = new Map(okDays.map(d => [d, mean(dRaw.get(d).map(Math.abs))]));
 
@@ -306,18 +384,27 @@ console.log(`⚠️ 扣掉同一天加權指數:贏大盤 ${P0EX.toFixed(2)}% �
 console.log(`   ⭐ 「上漲只有 ${P0.toFixed(1)}%」不是空頭 —— 那是台股個股的常態(漲跌家數本來就常是 4 成多)。`);
 console.log(`      看下表一律跟 ${P0.toFixed(1)}% 比,⛔ 不是跟 50% 比。`);
 console.log('   🚨 檢定用的樣本單位是「天」不是「股·日」—— 同一天 2 千檔一起漲跌,不是 2 千個獨立樣本。');
+console.log(`   🔁 V79.4.3 下面每一節的「對照 / 其他日」= **同一年**的非事件日(照事件日在各年的天數加權),⛔ 不再拿整個窗口平均;`);
+console.log(`      斷崖(×1.5 / ×0.67)剔除 ${nCliffRows.toLocaleString()} 列 ・收盤停在漲停(收盤買不到,【C】那兩格不算)${nLimitRows.toLocaleString()} 列`
+    + (FILES.length < ALL_FILES.length ? `  【⚠️ MAX_SYMS 等距抽樣 ${FILES.length}/${ALL_FILES.length} 檔,只給冒煙測試用】` : ''));
 
 console.log('\n' + '─'.repeat(104));
 console.log('【A】每一種日子:當天的漲跌(⚠️ 要在前一天收盤前買才吃得到)');
 console.log('─'.repeat(104));
-console.log('事件                        天數   股·日     上漲%  vs對照   平均%    典型日漲跌  平均波動   超額均');
+console.log('事件                        天數   股·日     上漲%  vs同年   平均%    典型日漲跌  平均波動   超額均');
+// 🔁 V79.4.3 「vs 對照」= 同年份的所有股·日上漲比例,照這個事件的股·日在各年的筆數加權(⛔ 不再跟整個窗口的 P0 比)
+const p0Year = A => {
+    let s0 = 0, n0 = 0;
+    for (const [y, c] of Object.entries(A.yn)) { const Y = ALLY.get(y); if (!Y || Y.n < MIN_CTRL) continue; s0 += c * pct(Y.up, Y.n); n0 += c; }
+    return n0 ? s0 / n0 : P0;
+};
 const out = [];
 for (const [k, name] of EVENTS) {
     const A = AGG[k], nd_ = [...evDays.get(k)].filter(d => mdEx.has(d));
     if (!A.n) continue;
     const up = pct(A.up, A.n);
     const o = {
-        k, name, days: nd_.length, n: A.n, up, dUp: up - P0,
+        k, name, days: nd_.length, n: A.n, up, p0y: p0Year(A), dUp: up - p0Year(A),
         avg: A.sum / A.n, med: med(nd_.map(d => mdRaw.get(d))), absAvg: A.absSum / A.n, exAvg: A.ex / A.n,
     };
     out.push(o);
@@ -330,15 +417,16 @@ console.log('     ⭐ 這才是能講「有沒有差」的那張表(【A】的�
 console.log('     ⚠️ 「當天全市場個股」用**等權平均**(⛔ 不用中位數 —— 它會飽和在 0.00%)');
 console.log('─'.repeat(104));
 console.log('     ⚠️ 同時看「平均」與「中位」—— 兩者差很多 = 那是**偶爾重摔**,不是**常常跌**(做法完全不同)');
-console.log('事件                        天數  事件日平均  其他日平均   差(pp)     t      p    事件日典型 其他日典型  判定');
+console.log('     🔁 V79.4.3「其他日」= 同一年的非事件日(照事件日在各年的天數加權);差 / t / p 都是同年份對照');
+console.log('事件                        天數  事件日平均  同年其他日   差(pp)     t      p    事件日典型 其他日典型  判定');
 for (const o of out) {
     const S = evDays.get(o.k);
-    const a = okDays.filter(d => S.has(d)).map(d => mdRaw.get(d));
-    const b = okDays.filter(d => !S.has(d)).map(d => mdRaw.get(d));
-    const { t, p, d } = welch(a, b);
-    o.dayDiff = d; o.t = t; o.p = p; o.dayMedE = med(a); o.dayMedO = med(b);
-    const verdict = a.length < MIN_DAYS ? `⛔ 天數不足(${a.length})` : p <= 0.01 ? '⭐⭐ 差異明確' : p <= 0.05 ? '⭐ 有差異' : '➖ 跟其他日沒差';
-    console.log(`${o.name.padEnd(24)} ${String(a.length).padStart(5)} ${f(mean(a), 9)} ${f(mean(b), 9)} ${f(d, 8)} ${t.toFixed(2).padStart(6)} ${p.toFixed(3)}  ${f(med(a), 8)} ${f(med(b), 8)}  ${verdict}`);
+    const R = ymCmp(okDays, d => S.has(d), d => mdRaw.get(d));
+    const { t, p, d } = R;
+    o.dayDiff = d; o.t = t; o.p = p; o.dayMedE = med(R.aRaw); o.dayMedO = med(R.bRaw); o.ymDrop = R.dropped;
+    const verdict = R.n < MIN_DAYS ? `⛔ 天數不足(${R.n})` : p <= 0.01 ? '⭐⭐ 差異明確' : p <= 0.05 ? '⭐ 有差異' : '➖ 跟其他日沒差';
+    console.log(`${o.name.padEnd(24)} ${String(R.n).padStart(5)} ${f(R.evMean, 9)} ${f(R.ctrlMean, 9)} ${f(d, 8)} ${t.toFixed(2).padStart(6)} ${p.toFixed(3)}  ${f(med(R.aRaw), 8)} ${f(med(R.bRaw), 8)}  ${verdict}`
+        + (R.dropped ? `(⚠️ 同年非事件日 < ${MIN_CTRL} 天 → 丟掉 ${R.dropped} 天)` : ''));
 }
 
 console.log('\n' + '─'.repeat(104));
@@ -346,17 +434,19 @@ console.log('【C】可操作版:事件日**收盤後**買、隔 1 日 / 5 日�
 console.log('     ⚠️ 隔 5 日的視窗**互相重疊** → 即使用天數當單位,p 值仍然偏樂觀,⛔ 別直接當顯著性看。');
 console.log('     ⚠️ 上旬/中旬/下旬 是同一個切分 → 上旬差就必然襯托中下旬好,⛔ 不是三個獨立發現。');
 console.log('─'.repeat(104));
-const allF1 = okDays.map(d => mdF1.get(d)), allF5 = okDays.map(d => mdF5.get(d));
+const allF1 = [...mdF1.values()], allF5 = [...mdF5.values()];
 console.log(`(對照組:所有交易日)      ${String(okDays.length).padStart(5)}  隔1日 ${f(mean(allF1), 8)}   隔5日 ${f(mean(allF5), 8)}`);
+console.log('     🔁 V79.4.3 vs對照 = 同一年的非事件日;收盤停在漲停的(收盤買不到)不算');
 console.log('事件                        天數   隔1日超額   vs對照     p      隔5日超額   vs對照     p');
+let dropC = 0;
 for (const o of out) {
     const S = evDays.get(o.k);
-    const a1 = okDays.filter(d => S.has(d)).map(d => mdF1.get(d)), b1 = okDays.filter(d => !S.has(d)).map(d => mdF1.get(d));
-    const a5 = okDays.filter(d => S.has(d)).map(d => mdF5.get(d)), b5 = okDays.filter(d => !S.has(d)).map(d => mdF5.get(d));
-    const w1 = welch(a1, b1), w5 = welch(a5, b5);
-    o.f1 = mean(a1); o.d1 = w1.d; o.p1 = w1.p; o.f5 = mean(a5); o.d5 = w5.d; o.p5 = w5.p;
-    console.log(`${o.name.padEnd(24)} ${String(a1.length).padStart(5)}  ${f(o.f1, 9)}  ${f(w1.d, 7)}  ${w1.p.toFixed(3)}   ${f(o.f5, 9)}  ${f(w5.d, 7)}  ${w5.p.toFixed(3)}`);
+    const w1 = ymCmp(okDays, d => S.has(d), d => mdF1.get(d)), w5 = ymCmp(okDays, d => S.has(d), d => mdF5.get(d));
+    o.f1 = w1.evMean; o.d1 = w1.d; o.p1 = w1.p; o.f5 = w5.evMean; o.d5 = w5.d; o.p5 = w5.p;
+    dropC += w1.dropped + w5.dropped;
+    console.log(`${o.name.padEnd(24)} ${String(w1.n).padStart(5)}  ${f(o.f1, 9)}  ${f(w1.d, 7)}  ${w1.p.toFixed(3)}   ${f(o.f5, 9)}  ${f(w5.d, 7)}  ${w5.p.toFixed(3)}`);
 }
+if (dropC) console.log(`(⚠️ 同年非事件日 < ${MIN_CTRL} 天 → 這一節共丟掉 ${dropC} 個事件日)`);
 
 console.log('\n' + '─'.repeat(104));
 console.log('【D】穩健性:① 前後半段同向 ② 每一年都同向(⭐ 這關比「數字好看」重要得多)');
@@ -367,9 +457,10 @@ console.log(`(納入逐年檢定的年份:${yrs.join(' / ')} —— ⛔ 資料�
 console.log('事件                        全期(pp)  前半    後半   同向   ' + yrs.map(y => y.slice(2)).join('     ') + '   逐年一致  判定');
 for (const o of out) {
     const S = evDays.get(o.k);
+    // 🔁 V79.4.3 半段裡也是同年份對照(單一年那格本來就是同年)
     const seg = ds => {
-        const a = ds.filter(d => S.has(d)).map(d => mdRaw.get(d)), b = ds.filter(d => !S.has(d)).map(d => mdRaw.get(d));
-        return (a.length >= 3 && b.length >= 3) ? mean(a) - mean(b) : null;
+        const R = ymCmp(ds, d => S.has(d), d => mdRaw.get(d));
+        return (R.n >= 3 && R.b.length >= 3) ? R.d : null;
     };
     const h1 = seg(okDays.filter(d => d < HALF)), h2 = seg(okDays.filter(d => d >= HALF));
     const yv = yrs.map(y => seg(okDays.filter(d => d.slice(0, 4) === y)));
@@ -499,32 +590,35 @@ console.log('【G】📊 波動(當天全市場個股漲跌幅的平均絕對值
 console.log('═'.repeat(104));
 const volAll = okDays.map(d => mdVol.get(d));
 console.log(`對照組(所有交易日):平均波動 ${mean(volAll).toFixed(3)}%\n`);
+console.log('     🔁 V79.4.3 vs對照 = 同一年的非事件日(波動各年差很多:2011 / 2020 / 2022 特別顛);位移對照也用同一把尺');
 console.log('事件                        天數   平均波動   vs對照     倍數     p     位移對照 z   判定');
 const volRows = [];
+let dropG = 0;
 for (const o of out) {
     const S = evDays.get(o.k);
-    const a = okDays.filter(d => S.has(d)).map(d => mdVol.get(d));
-    const b = okDays.filter(d => !S.has(d)).map(d => mdVol.get(d));
-    if (a.length < 3) continue;
-    const { p, d } = welch(a, b);
+    const R = ymCmp(okDays, d => S.has(d), d => mdVol.get(d));
+    dropG += R.dropped;
+    if (R.n < 3) continue;
+    const { p, d } = R;
     // 環狀位移對照(同【E3】的理由:保留疏密結構)
     const base = Uint8Array.from(okDays.map(x => S.has(x) ? 1 : 0));
+    const L = base.length;
     const nul = [];
     for (let t = 0; t < 40; t++) {
-        const off = Math.max(3, Math.floor(rnd() * (base.length - 6)) + 3);
-        const ea = [], eb = [];
-        for (let i = 0; i < base.length; i++) (base[(i - off % base.length + base.length) % base.length] ? ea : eb).push(volAll[i]);
-        if (ea.length >= 3) nul.push(mean(ea) - mean(eb));
+        const off = Math.max(3, Math.floor(rnd() * (L - 6)) + 3);
+        const Rn = ymCmp(okDays, (x, i) => base[(i - off % L + L) % L] === 1, x => mdVol.get(x));
+        if (Rn.n >= 3) nul.push(Rn.d);
     }
     const nm = mean(nul), nsd = Math.sqrt(vari(nul));
     const z = nsd > 0 ? (d - nm) / nsd : 0;
-    o.vol = mean(a); o.volD = d; o.volP = p; o.volZ = z;
+    o.vol = R.evMean; o.volD = d; o.volP = p; o.volZ = z;
     volRows.push(o);
     // ⭐ 以**位移對照 z** 為主判準,⛔ 不用 Welch p —— 事件本身波動大時,Welch 會用它自己那組
     //    被效應撐大的變異數去除,反而把真的效應判成不顯著(實測「長假後第一天」z=5.8 但 p=0.108)。
-    const verdict = a.length < MIN_DAYS ? `⛔ 天數不足(${a.length})` : Math.abs(z) >= 2 ? (d > 0 ? '⭐ 真的比較顛' : '⭐ 真的比較穩') : '➖ 跟其他日差不多';
-    console.log(`${o.name.padEnd(24)} ${String(a.length).padStart(5)}   ${mean(a).toFixed(3).padStart(7)}  ${f(d, 7)}   ${(mean(a) / mean(b)).toFixed(2)}x  ${p.toFixed(3)}   ${z.toFixed(2).padStart(6)}    ${verdict}`);
+    const verdict = R.n < MIN_DAYS ? `⛔ 天數不足(${R.n})` : Math.abs(z) >= 2 ? (d > 0 ? '⭐ 真的比較顛' : '⭐ 真的比較穩') : '➖ 跟其他日差不多';
+    console.log(`${o.name.padEnd(24)} ${String(R.n).padStart(5)}   ${R.evMean.toFixed(3).padStart(7)}  ${f(d, 7)}   ${(R.evMean / R.ctrlMean).toFixed(2)}x  ${p.toFixed(3)}   ${z.toFixed(2).padStart(6)}    ${verdict}`);
 }
+if (dropG) console.log(`(⚠️ 同年非事件日 < ${MIN_CTRL} 天 → 這一節共丟掉 ${dropG} 個事件日)`);
 
 // ── 【G2】機制檢查:星期一 與 長假後第一天 是不是同一件事(= 休市後第一個交易日)? ──
 // ⭐ 為什麼要做:兩個發現如果是同一個機制,就該合成**一個**,⛔ 不可當成兩個獨立證據
@@ -534,17 +628,18 @@ console.log('\n── 【G2】機制檢查:波動 vs 「距上一個交易日隔
     const gapOf = new Map();
     for (let i = 1; i < allDays.length; i++) gapOf.set(allDays[i], gapDays(allDays[i - 1], allDays[i]));
     const bk = {};
-    for (const d of okDays) {
-        const g = gapOf.get(d) || 1;
-        const k = g <= 1 ? '1 天(隔天)' : g <= 3 ? '2-3 天(週末)' : g <= 5 ? '4-5 天' : '6 天以上(長假)';
-        (bk[k] ||= []).push(mdVol.get(d));
-    }
+    const gb = d => { const g = gapOf.get(d) || 1; return g <= 1 ? '1 天(隔天)' : g <= 3 ? '2-3 天(週末)' : g <= 5 ? '4-5 天' : '6 天以上(長假)'; };
+    for (const d of okDays) (bk[gb(d)] ||= []).push(mdVol.get(d));
     const order = ['1 天(隔天)', '2-3 天(週末)', '4-5 天', '6 天以上(長假)'];
-    console.log('   休市間隔          天數    平均波動   相對隔天');
-    const b0 = mean(bk[order[0]] || [1]);
+    console.log('   休市間隔          天數    平均波動   相對隔天(🔁 同一年的隔天日)');
     for (const k of order) {
         const a = bk[k]; if (!a || !a.length) continue;
-        console.log(`   ${k.padEnd(16)} ${String(a.length).padStart(4)}   ${mean(a).toFixed(3).padStart(7)}   ${(mean(a) / b0).toFixed(2)}x`);
+        let rel = 1;
+        if (k !== order[0]) {
+            const R = ymCmp(okDays.filter(d => gb(d) === k || gb(d) === order[0]), d => gb(d) === k, d => mdVol.get(d));
+            rel = R.n ? R.evMean / R.ctrlMean : NaN;
+        }
+        console.log(`   ${k.padEnd(16)} ${String(a.length).padStart(4)}   ${mean(a).toFixed(3).padStart(7)}   ${rel.toFixed(2)}x`);
     }
     console.log('   ⭐ 若單調遞增 → 「星期一比較顛」與「長假後比較顛」是**同一件事**:');
     console.log('      休市越久,累積越多沒反映的消息,開市第一天一次反映完。⛔ 不是兩個獨立發現。');
@@ -607,13 +702,15 @@ if (oosAll.length < 100) {
         if (!EVENTS.find(e => e[0] === k)) continue;
         const fn = EVENTS.find(e => e[0] === k)[2];
         const name = EVENTS.find(e => e[0] === k)[1];
+        // 🔁 V79.4.3 期內 / 期外各自用同年份對照
         const seg = arr => {
-            const a = arr.filter(x => fn(x.d)).map(x => x.r), b = arr.filter(x => !fn(x.d)).map(x => x.r);
-            return { n: a.length, ...welch(a, b) };
+            const R = ymCmp(arr.map(x => x.d), d => fn(d), (d, i) => arr[i].r);
+            return { n: R.n, t: R.t, p: R.p, d: R.d, dropped: R.dropped };
         };
         const A = seg(insAll), B2 = seg(oosAll);
         const same = A.n >= 20 && B2.n >= 20 && (A.d > 0) === (B2.d > 0);
-        console.log(`${name.padEnd(22)} ${String(A.n).padStart(6)} ${f(A.d, 9)}  ${A.p.toFixed(3)}   ${String(B2.n).padStart(6)} ${f(B2.d, 9)}  ${B2.p.toFixed(3)}    ${B2.n < 20 ? '⛔天數不足' : same ? '✅ 同向' : '❌ 期外反向 → 很可能是碰巧'}`);
+        console.log(`${name.padEnd(22)} ${String(A.n).padStart(6)} ${f(A.d, 9)}  ${A.p.toFixed(3)}   ${String(B2.n).padStart(6)} ${f(B2.d, 9)}  ${B2.p.toFixed(3)}    ${B2.n < 20 ? '⛔天數不足' : same ? '✅ 同向' : '❌ 期外反向 → 很可能是碰巧'}`
+            + (A.dropped + B2.dropped ? `(⚠️ 同年非事件日 < ${MIN_CTRL} 天 → 丟掉 ${A.dropped + B2.dropped} 天)` : ''));
     }
     console.log('');
     console.log(`⚠️ 多重比較的算術:本次共檢定 ${out.length} 個切法 → 就算完全沒有效應,`);
@@ -626,12 +723,66 @@ console.log('⛔ 讀這份報告的四條規則');
 console.log(`  ① 「上漲%」跟對照組 ${P0.toFixed(1)}% 比,⛔ 不是跟 50% 比。`);
 console.log('  ② 只信【D】判定「⭐ 通過」的(天數夠 + p≤0.05 + 前後半段同向 + 每年同向)。');
 console.log('  ③ 【E】判定「➖ 跟對照沒差」= 「這檔喜歡星期幾」**看得到但學不到**,⛔ 不可做成個股標籤。');
-console.log(`  ④ 未扣交易成本(來回約 0.44%);窗口 ${days[0]} ~ ${days[days.length - 1]};倖存者偏誤(已下市的不在裡面)。`);
+console.log(`  ④ 未扣交易成本(來回約 0.44%);窗口 ${days[0]} ~ ${days[days.length - 1]};倖存者偏誤(已下市的不在裡面;d16 有)。`);
+console.log('  ⑤ 🔁 V79.4.3 所有「對照 / 其他日」都是同一年的非事件日(⛔ 不跟整個窗口比 —— 那會把各年行情差當成日子的效應)。');
 
 if (OUT) {
     fs.writeFileSync(OUT, JSON.stringify({
-        meta: { stocks: used, rows, days: okDays.length, from: minD, to: maxD, half: HALF, p0: P0, p0ex: P0EX, years: yrs, basePersist: baseP },
+        meta: { stocks: used, rows, days: okDays.length, from: minD, to: maxD, half: HALF, p0: P0, p0ex: P0EX, years: yrs, basePersist: baseP,
+                ctrl: 'year-matched', minCtrl: MIN_CTRL, cliffRows: nCliffRows, limitRows: nLimitRows },
         events: out, perstock: psOut,
     }, null, 1));
     console.log(`\n💾 ${OUT}`);
+}
+
+// ═══ selftest(不需要真資料;每一條都有決定性對照)═══
+function selftest() {
+    const bad = [];
+    const ok = (name, c, x = '') => { console.log(`  ${c ? '✅' : '❌'} ${name}${c ? '' : ' ・' + String(x).slice(0, 220)}`); if (!c) bad.push(name); };
+    const wk = (a, b) => { const o = []; for (let t = Date.parse(a + 'T00:00:00Z'); t <= Date.parse(b + 'T00:00:00Z'); t += 86400000) {
+        const dd = new Date(t); if (dd.getUTCDay() % 6 !== 0) o.push(dd.toISOString().slice(0, 10)); } return o; };
+    // ① 同年份對照:2012~2014 每天 +1、2015~2017 每天 −1(各年行情不同);事件(每月 1~5 日)只出現在前三年、沒有任何效應
+    const ds = wk('2012-01-02', '2017-12-29');
+    const val = (d, i) => (d < '2015-01-01' ? 1 : -1) + (i % 2 ? 0.1 : -0.1);
+    const isEv = d => d < '2015-01-01' && +d.slice(8, 10) <= 5;
+    const R = ymCmp(ds, isEv, val);
+    ok('① 事件只在前三年、跟同年的日子一模一樣 → 同年份對照差 ≈ 0', R.n > 100 && Math.abs(R.d) < 0.05 && R.dropped === 0, JSON.stringify({ n: R.n, d: R.d }));
+    ok('① 「同年其他日」= 那三年的水準(≈ +1),⛔ 不是整段的 ≈ −0.5', Math.abs(R.ctrlMean - 1) < 0.05, R.ctrlMean);
+    const old = mean(ds.map((d, i) => isEv(d) ? val(d, i) : null).filter(x => x != null)) - mean(ds.map((d, i) => !isEv(d) ? val(d, i) : null).filter(x => x != null));
+    ok('① 決定性對照:整段比(舊版)→ 憑空 > +1pp', old > 1, old);
+    // ①b 事件在各年分布不均(2012 多、2013 少)而兩年水準不同 → 要照事件年份**加權**才會 ≈ 0(只限同年份但不加權也會歪)
+    const isEvB = d => (d.startsWith('2012') && +d.slice(8, 10) <= 15) || (d.startsWith('2013') && +d.slice(8, 10) <= 2);
+    const valB = (d, i) => (d < '2013-01-01' ? 1 : -1) + (i % 2 ? 0.1 : -0.1);
+    const RB = ymCmp(ds.filter(d => d < '2014-01-01'), isEvB, valB);
+    ok('①b 事件 2012 多、2013 少 → 照事件年份加權的同年份對照 ≈ 0', Math.abs(RB.d) < 0.05, JSON.stringify({ n: RB.n, d: RB.d }));
+    // ② 每一年事件日都真的多 +0.3 → 量得到
+    const isEv2 = d => +d.slice(8, 10) <= 5;
+    const R2 = ymCmp(ds, isEv2, (d, i) => val(d, i) + (isEv2(d) ? 0.3 : 0));
+    ok('② 每年事件日都多 +0.3 → 同年份對照量到 +0.3、p 很小', Math.abs(R2.d - 0.3) < 0.05 && R2.p < 0.01, JSON.stringify({ d: R2.d, p: R2.p }));
+    // ③ 那一年非事件日 < MIN_CTRL → 那年的事件日不算
+    const ds3 = [...ds, ...wk('2018-03-01', '2018-03-14')];
+    const R3 = ymCmp(ds3, d => isEv(d) || d <= '2018-03-02' && d >= '2018-01-01', val);
+    ok(`③ 那一年非事件日 < ${MIN_CTRL} 天 → 那年的事件日不算(丟掉 2 天)`, R3.dropped === 2 && R3.n === R.n, JSON.stringify([R3.dropped, R3.n, R.n]));
+    // ④ 收盤停在漲停 → 收盤買不到(隔 1 / 5 日那兩格不算);2012 年 +6.6% 就是漲停、2020 年不是
+    const mkW = (from, closes, opens = null) => { const dd = wk(from, '2030-12-31').slice(0, closes.length);
+        return dd.map((d, k) => ({ d, c: closes[k], o: opens ? opens[k] : closes[k] })); };
+    const cl = [100, 100, 106.6, 106.6, 107, 107, 107, 107, 107, 107, 107, 107];
+    const tr = w => new Map(w.map(b => [b.d, 0]));
+    const w12 = mkW('2012-03-01', cl), w20 = mkW('2020-03-02', cl);
+    const r12 = scanBars(w12, tr(w12)).rows.find(x => x.i === 2), r20 = scanBars(w20, tr(w20)).rows.find(x => x.i === 2);
+    ok('④ 2012 年(±7%)收盤 +6.6% = 停在漲停 → 收盤買不到:隔 1 / 5 日不算,當天漲跌照算', r12 && r12.f1 === null && r12.f5 === null && Math.abs(r12.r - 6.6) < 1e-9,
+        JSON.stringify(r12));
+    ok('④ 同一根放到 2020 年(±10%)→ 買得到、照算', r20 && r20.f1 !== null && r20.f5 !== null, JSON.stringify(r20));
+    // ⑤ 斷崖:第 8 根減資恢復交易 ×1.6 → 那一列不算、碰到它的隔 1 / 5 日窗口不算;窗口外照算(⛔ 不整檔剔除)
+    const cc = Array.from({ length: 20 }, (_, k) => (k >= 8 ? 160 : 100) * (1 + 0.001 * k));
+    const wc = mkW('2016-03-01', cc), sc = scanBars(wc, tr(wc)).rows, at = i => sc.find(x => x.i === i);
+    ok('⑤ 斷崖那一列(×1.6)不算', !at(8), JSON.stringify(at(8)));
+    ok('⑤ 隔 1 日 / 隔 5 日窗口碰到斷崖 → null', at(7) && at(7).f1 === null && at(3) && at(3).f5 === null && at(3).f1 !== null, JSON.stringify([at(7), at(3)]));
+    ok('⑤ 窗口外照算:第 2 根隔 5 日、第 9 根之後都在', at(2) && at(2).f5 !== null && at(9) && at(9).f5 !== null, JSON.stringify([at(2), at(9)]));
+    // 開盤跳 ×1.6、收盤看起來連續的那種也算斷崖(lib_cliff)
+    const op = cc.map((c, k) => k === 12 ? c * 1.6 : c);
+    const so = scanBars(mkW('2016-03-01', cc, op), tr(wc)).rows;
+    ok('⑤ 開盤跳 ×1.6(收盤連續)也算斷崖', !so.find(x => x.i === 12), so.length);
+    console.log(`\n${bad.length ? '❌ 失敗:' + bad.join(', ') : '✅ selftest 全過'}`);
+    return bad.length ? 1 : 0;
 }

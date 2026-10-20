@@ -40,7 +40,7 @@ const meta = await page.evaluate(() => {
     const E = app._SCR_EDGE;
     const ids = Object.entries(E.c);
     return {
-        n: E.n, syms: E.syms, base: E.base, fwd: E.fwd, cost: E.cost, cnt: ids.length,
+        n: E.n, syms: E.syms, base: E.base, fwd: E.fwd, cost: E.cost, cnt: ids.length, win: E.win,
         best: ids.slice().sort((a, b) => b[1][4] - a[1][4])[0],
         worst: ids.slice().sort((a, b) => a[1][4] - b[1][4])[0],
         pass: ids.filter(x => x[1][3]).length,
@@ -88,7 +88,8 @@ ok('②a 🚨 總結一定要寫「沒有一個條件自己會賺」',
     /沒有一個條件自己會賺/.test(note), note.slice(0, 400));
 ok('②b 🚨 總結一定要寫「不是勾了就會賺」',
     /不是「?勾了就會賺/.test(note), note.slice(0, 500));
-ok('②c 總結要交代「六道穩健性檢定全過的是 0 個」', /全過的是 0 個/.test(note));
+// 🔁 V79.4.3 16 年版第一次有條件全過 → ⛔ 不釘「0 個」(那是當時的資料),釘「講的數字 == 成績表算出來的」
+ok('②c 總結要交代「六道穩健性檢定全過的是 N 個」,N 跟成績表一致', new RegExp(`全過的是 ${meta.pass} 個`).test(note), note.slice(0, 400));
 ok('②d 沒選條件時 → 整條不顯示(⛔ 不留空殼)',
     (await page.evaluate(() => app._scrEdgeNote([]))) === '');
 ok('②e ⛔ 總結不可下操作指令',
@@ -109,7 +110,8 @@ ok('⑦a 教學要交代「沒成績的是因為沒有歷史,不是它們沒用�
     /沒有歷史/.test(help) && /不是它們沒用/.test(help), help.slice(-300));
 ok('⑦b 教學要提醒「單一條件領先 ≠ 組合起來會賺」',
     /單一條件領先\s*≠\s*組合起來會賺/.test(help));
-ok('⑦c 教學要提醒窗口偏多頭 / 空頭沒驗證', /空頭沒驗證過/.test(help));
+// 🔁 V79.4.3 窗口拉長到 2010 起之後「空頭沒驗證過」不成立 → 釘用意:要交代窗口從哪一年起、有沒有含空頭
+ok('⑦c 教學要交代窗口(起訖年)與有沒有含空頭', help.includes(`${meta.win[0].slice(0, 4)}~${meta.win[1].slice(0, 4)}`) && /空頭沒驗證過|已含 2015、2018、2022/.test(help), help.slice(-700));
 ok('③c 教學數字現算(換算窗口與事件數要對得上)',
     help.includes(meta.n.toLocaleString()) && help.includes(meta.syms.toLocaleString()));
 
@@ -118,21 +120,32 @@ ok('③c 教學數字現算(換算窗口與事件數要對得上)',
 //    第一版就是複製的,結果「把它改成只看當前分組」的注入缺陷**完全抓不到**
 //    (那份複製品變成第二份真相)。這是 CLAUDE.md 記過的坑,當場再犯一次。
 const filt = await page.evaluate(() => {
+    // 🔁 V79.4.3 16 年版「明顯領先」只剩 3 個 → ⛔ 不再釘「≥5 個 / ≥3 個分組」(那是舊資料的大小),
+    //   改釘用意:① 跟「直接從成績表數出來的」一模一樣(獨立的答案,⛔ 不呼叫被測函式)
+    //   ② ⭐ 決定性對照:把目前分組切到「不含第一名」的那一組,第一名照樣要在清單裡(= 真的跨分組)
+    const exp = app._SCR_CONDS.filter(c => app._SCR_EDGE.c[c.id] && app._SCR_EDGE.c[c.id][4] >= 1).map(c => c.id).sort();
+    const top = exp.length ? app._SCR_CONDS.find(c => c.id === exp.slice().sort((a, b) => app._SCR_EDGE.c[b][4] - app._SCR_EDGE.c[a][4])[0]) : null;
+    const gBak = app._scrGroup, sBak = app._scrSub;
+    const other = top ? app._SCR_CONDS.find(c => c.g !== top.g) : null;
+    if (other) { app._scrGroup = other.g; app._scrSub = other.s; }
     app._scrEdgeOnly = true;
     const on = app._scrCondList();
     app._scrEdgeOnly = false;
+    app._scrGroup = gBak; app._scrSub = sBak;
     return {
-        n: on.length,
+        n: on.length, exp: exp.length,
+        same: JSON.stringify(on.map(c => c.id).sort()) === JSON.stringify(exp),
+        crossTop: !!top && !!other && on.some(c => c.id === top.id),
         first: on[0] && on[0].id,
         sorted: on.every((c, i) => i === 0 || app._scrEdge(on[i - 1].id).vs >= app._scrEdge(c.id).vs),
         groups: [...new Set(on.map(c => c.s))].length,
         allLead: on.every(c => app._scrEdge(c.id).vs >= 1),
     };
 });
-ok('⑥a 🚧 空過守門:切換後真的挑得出條件', filt.n >= 5, `只有 ${filt.n} 個`);
+ok('⑥a 🚧 空過守門:切換後挑得出條件,而且跟成績表數出來的一模一樣', filt.n >= 1 && filt.same, `清單 ${filt.n} / 成績表 ${filt.exp}`);
 ok('⑥b 只留「實測明顯領先」的(⛔ 不可混進沒過的)', filt.allLead);
 ok('⑥c 依成績由強到弱排序', filt.sorted);
-ok('⑥d ⭐ 要跨分組(⛔ 照分組看永遠拼不出全貌)', filt.groups >= 3, `只涵蓋 ${filt.groups} 個分組`);
+ok('⑥d ⭐ 要跨分組(⛔ 照分組看永遠拼不出全貌):目前分組切到別組,第一名照樣在清單裡', filt.crossTop, `涵蓋 ${filt.groups} 個分組`);
 ok('⑥e 第一名就是成績表裡領先最多的那個', filt.first === meta.best[0], `${filt.first} vs ${meta.best[0]}`);
 ok('⑥f 切換函式存在且會重繪', /scrToggleEdgeOnly\(\)\s*\{[^}]*_renderCustomScreener\(\)/.test(SRC));
 // ⚠️ 第一版這條寫成「全檔不可出現 `_scrEdgeOnly ?`」→ 被切換鈕自己的樣式三元擋下(假失敗)。
@@ -188,8 +201,19 @@ const fakeD = await page.evaluate(() => {
 });
 ok('⑨f 換一份假衰退資料 → 畫面跟著變',
     /2099年/.test(fakeD) && /測試招式/.test(fakeD) && /-9\.99/.test(fakeD), fakeD.slice(0, 200));
-ok('⑨g 教學也要寫衰退(⛔ 兩處都要,別只改一邊)',
-    /正在變小/.test(help) && help.includes(decay.D.eg[0][0]), help.slice(-400));
+ok('⑨g 教學也要寫逐年(⛔ 兩處都要,別只改一邊)',
+    /正在變小|沒有一路變小/.test(help) && help.includes(decay.D.eg[0][0]), help.slice(-400));
+// 🔁 V79.4.3 決定性對照:「正在變小」只在最差那一年多半是最近一年時才說(⛔ 不寫死)
+const brD = await page.evaluate(() => {
+    const bak = JSON.parse(JSON.stringify(app._SCR_EDGE.decay));
+    app._SCR_EDGE.decay = { worst26: 5, top: 7, yrs: ['a', 'b', '2099年'], eg: [['測試招式', 1, 2, -9.99]] };
+    const shrink = app._scrDecayLine();
+    app._SCR_EDGE.decay = { worst26: 1, top: 7, yrs: ['a', 'b', '2099年'], eg: [['測試招式', 1, 2, -9.99]] };
+    const flat = app._scrDecayLine();
+    app._SCR_EDGE.decay = bak;
+    return { shrink, flat };
+});
+ok('⑨h 最差年份多半是最近一年 → 說「正在變小」;不是 → ⛔ 不可說', /正在變小/.test(brD.shrink) && !/正在變小/.test(brD.flat) && /沒有一路變小/.test(brD.flat), JSON.stringify(brD).slice(0, 300));
 
 // ── ⑩ 🧹 V78.3.6 一般模式(拿掉 lab):⛔ 不可出現任何條件成績 ─────────────
 const norm = await page.evaluate(b => {

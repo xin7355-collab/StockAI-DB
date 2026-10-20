@@ -33,6 +33,9 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / 'scripts'))
+import lib_limit as LL  # noqa: E402  📏 漲跌幅制度(2015-06 前 ±7%)—— 全 repo 一份,跟 lib_limit.mjs 跨語言比對
+
 DATA = Path(os.getenv('DATA_DIR') or 'data')
 OUT = DATA / 'screener.json'
 MIN_OK = int(os.getenv('SCREENER_MIN_OK') or 800)
@@ -212,9 +215,10 @@ def build_one(rows, twii_chg=None):
     v[CI['c']] = rd(c)
     if n >= 2 and cl[-2] > 0:
         v[CI['chg']] = rd((c / cl[-2] - 1) * 100)
-        # 漲跌停:±10% 容許四捨五入誤差(⛔ 別寫死 9.9,新股/ETF 另有級距)
+        # 漲跌停:限制 −0.4 個百分點容許四捨五入誤差(⛔ 別寫死 9.9,新股/ETF 另有級距)
+        # 📏 V79.4.3:限制看那一天 —— 2015-06-01 前 ±7%(陷阱 #52;16 年回測會用到),之後 ±10% = 跟舊寫法逐值相同
         p = (c / cl[-2] - 1) * 100
-        v[CI['lim']] = 1 if p >= 9.6 else (-1 if p <= -9.6 else 0)
+        v[CI['lim']] = LL.limit_flag(rows[-1].get('date'), p)
     for k, d in (('chg3', 3), ('chg5', 5), ('chg10', 10), ('chg20', 20), ('chg60', 60)):
         if n > d and cl[-1 - d] > 0:
             v[CI[k]] = rd((c / cl[-1 - d] - 1) * 100)

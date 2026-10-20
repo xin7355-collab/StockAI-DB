@@ -37,7 +37,7 @@
 import fs from 'fs';
 import path from 'path';
 import { simExits, exitName } from './lib_exitsim.mjs';
-import { limitOf } from './lib_limit.mjs';
+import { limitOf, upLimitClose } from './lib_limit.mjs';
 import { cliffPrefix, cliffIn } from './lib_cliff.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
@@ -55,7 +55,7 @@ const STOPFILL = process.env.STOPFILL || 'close';   // ⭐ V77.6.0 預設改收�
 //   ⭐ ATR 只用**訊號日之前**的 14 根(陷阱 #43:基準⛔ 不可包含被判斷的那根)
 const TA_BINS = [[0, 1], [1, 1.5], [1.5, 2], [2, 3], [3, Infinity]];
 // 📏 V79.4.2 訊號日收盤鎖漲停 → 尾盤買不到(2015-06 前漲跌幅 ±7%,lib_limit;⛔ 不再寫死 1.095)
-export const lockedClose = (date, c, pc) => c >= pc * (1 + limitOf(date) - 0.005);
+export const lockedClose = (date, c, pc) => upLimitClose(date, c, pc);   // 共用 lib_limit(同一條,⛔ 別再寫一份)
 export function trAtr(R, i) {
     if (i < 15) return null;
     const tr = q => Math.max(R[q].h - R[q].l, Math.abs(R[q].h - R[q - 1].c), Math.abs(R[q].l - R[q - 1].c));

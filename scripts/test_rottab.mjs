@@ -136,6 +136,9 @@ await pw.close();
 // ⑥ 空過守門:選股快照抓不到 → 誠實空狀態,⛔ 不留空殼、⛔ 不假造排名
 const p2 = await boot({ width: 390, height: 844 });
 const e = await p2.evaluate(async () => {
+    // 🔁 V79.4.3 V79.1.2 起 _loadScreener 讀不到不會記住失敗、會自動再抓 → 光把 _scrData 設 null,
+    //   它馬上又從 data/screener.json 讀回來(這條從那版起一直是假紅燈)。⭐ 改成真的模擬「讀不到」。
+    app._loadScreener = async () => { app._scrData = null; app._scrErr = 'HTTP 404'; return null; };
     app._scrData = null; app._scrErr = 'HTTP 404'; app._regCache = null;
     app.switchAppTab('market'); app.switchMarketSubTab('rot');
     await new Promise(r => setTimeout(r, 800));

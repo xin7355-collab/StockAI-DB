@@ -10,6 +10,27 @@ export const LIMIT_CHANGE = '2015-06-01';
 /** 那一天的漲跌幅限制(小數:0.07 / 0.10)。日期 'YYYY-MM-DD' 或 'YYYY/MM/DD' 都收。 */
 export const limitOf = d => String(d || '').replace(/\//g, '-').slice(0, 10) < LIMIT_CHANGE ? 0.07 : 0.10;
 
+/** 同上,百分比(7 / 10),給「漲跌幅 %」那種欄位用。 */
+export const limitPct = d => limitOf(d) === 0.07 ? 7 : 10;
+
+/**
+ * 收盤漲跌幅(%)有沒有到漲跌停:1 / -1 / 0。slackPct 預設 0.4 個百分點(= 舊寫法 ±9.6% 在 ±10% 制度下的寬度)。
+ * ⭐ Python 版 lib_limit.limit_flag 同一條(test_lib_limit 跨語言比對)。
+ */
+export function limitFlag(date, chgPct, slackPct = 0.4) {
+    const p = +chgPct;
+    if (!Number.isFinite(p)) return 0;
+    const lim = limitPct(date) - slackPct;
+    return p >= lim ? 1 : (p <= -lim ? -1 : 0);
+}
+
+/**
+ * 收盤停在漲停價(含排隊沒成交的)→「今天尾盤買」買不到。slack 預設 0.5 個百分點(漲停價有跳動單位捨入)。
+ * ⭐ Python 版 lib_limit.up_limit_close 同一條(test_lib_limit 跨語言比對)。
+ */
+export const upLimitClose = (date, close, prevClose, slack = 0.005) =>
+    prevClose > 0 && close > 0 && close >= prevClose * (1 + limitOf(date) - slack);
+
 /**
  * 那一根是不是「一價到底鎖死」(開 = 高 = 低 = 收、跟前收差到接近限制)→ 買不到 / 賣不掉。
  * slack = 離限制多近就算(預設 0.3 個百分點:漲停價有跳動單位捨入)。回 1 = 鎖漲停、-1 = 鎖跌停、0 = 沒鎖。

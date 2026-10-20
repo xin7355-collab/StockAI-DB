@@ -3,6 +3,13 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🔁 V79.4.3(2026-10-20)16 年重跑:方法統一 + 這幾支已經用 d16 跑過(⛔ 別再用舊寫法重跑)
+⭐ 下列探針已改成:**同一天對照**(大盤層級:同年份 / 當時看得到的擴張中位數)・漲跌停走 `lib_limit`(2015-06 前 ±7%,Python 版 `scripts/lib_limit.py`)・斷崖只剔窗口 ・吃 `DATA_DIR`。
+跑法:`DATA_DIR=<d16 或 d16_fi_z> node|python3 <探針>`(法人類用補 0 的 `d16_fi_z`,陷阱 #53)。結果與結論見 `docs/DECISIONS.md` V79.4.3 那節。
+`signal_backtest` / `screener_edge_probe` / `sector_flow_probe` / `sector_rotation_probe` / `floorcount_probe` / `fstreak_probe` / `trustvol_probe` / `regime_probe` /
+`breadth_osc_probe` / `indicator_zoo_probe` / `calendar_stock_probe` / `genezone_probe` / `prob_factor_probe`(已跑)・`breakoutdist_probe` / `value_probe`(已修,等除權息 div10 到齊再跑)。
+⚠️ 還沒改的 31 支由 `node scripts/test_lib_limit.mjs` ④ 列出來 —— 重跑哪一支就先改哪一支,改完加進 MIGRATED。
+
 ### 🧪 三支探針(只讀 data/、不打 API、不花額度,隨時可重跑)
 | 腳本 | 回答什麼 | 何時該重跑 |
 |------|---------|-----------|

@@ -81,6 +81,8 @@ const _b10 = (o, k) => {
 //   個股再長也只能算到 ^TWII 有的那段)。實測 ^TWII 只有 486 根 ≈ 2 年,
 //   但教學文案一直寫「3 年歷史」→ **對不上**。這裡直接從資料算,⛔ 別再寫死。
 const _win = (() => {
+    // ⭐ V79.4.3 回測自己記下的實際窗口優先(16 年跑在別的資料夾時,data/^TWII.json 會是另一段)
+    if (j.window && j.window.from && j.window.to) return { from: j.window.from, to: j.window.to, bars: j.window.days || null };
     try {
         const t = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', '^TWII.json'), 'utf-8'));
         const ds = t.map(r => String(r.date || '').replace(/\//g, '-')).filter(Boolean).sort();

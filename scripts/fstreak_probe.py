@@ -14,9 +14,10 @@
 
 方法(照 `short_probe.py` 那套,⛔ 不另立標準):
   ・訊號日 t = 外資連續淨買**剛好到 N 天**的那天(⛔ 不是「≥N 的每一天」—— 那會把同一段連買算好幾次)
-  ・法人買賣超**收盤後才公布** → **t+1 開盤**進場;t+1 開盤鎖漲停(買不到)剔除
+  ・法人買賣超**收盤後才公布** → **t+1 開盤**進場;t+1 開盤一價到底鎖漲停(買不到)剔除(2015-06 前 ±7%,lib_limit)
   ・報酬 = 持有到 t+1+h 收盤,扣同期加權(超額);主判準 10 日;來回成本 0.44pp
-  ・對照組 = 同一批股票**全部**可交易的股·日;同檔同 N 20 日去重;斷崖守門(相鄰收盤 ±40%)
+  ・對照組 = 同一批股票、**同一天**、法人資料已知的可交易股·日(🔁 V79.4.3);同檔同 N 20 日去重;
+    斷崖只剔「位階 250 根 + 持有 20 天」碰到的窗口(×1.5 / ×0.67;🔁 V79.4.3 ⛔ 不再整檔剔除)
   ・最後一根 `foreign_net === 0` = **還沒公布**(不是「外資沒動」)→ 那一天不算連買、也不當訊號日
   ・六關:全期正 / 前後半同向 / 逐年同向 / 去最好年 / 扣成本 / 格內對照(位階 × 波動 × 成交金額)
   ・強度互控:N 天外資淨買總股數 ÷ N 天總成交股數 三分位 × N —— 檢驗「是連續在說話,還是量在說話」
@@ -44,14 +45,26 @@
   富喬 1815:9/9~10/15 外資 24 天裡 19 天賣,10/16 單日買 35,941 張(約 50 億)+ 收漲停;10/19 再漲停。
   事件 = 外資單日淨買 ≥ 自己過去 250 天(⛔ 不含當天)的第 P 百分位(P = 95 / 98 / 99 / 99.5,高原)
          ・prior = 前 20 天外資合計是賣超(「賣了一陣子,突然一大筆」)
-         ・mdown = 那天加權跌 ≥1%(= 今天這種盤)・lu = 那天收盤漲停(收 ≥ 前收 ×1.095 且收在最高)
-  ⭐ 一樣隔天開盤買、隔天開盤鎖漲停剔除、同檔同 P 20 日去重、六關、對照 = 全部股·日。
+         ・mdown = 那天加權跌 ≥1%(= 今天這種盤)・lu = 那天收盤漲停(lib_limit.up_limit_close,2015-06 前 ±7%;且收在最高)
+  ⭐ 一樣隔天開盤買、隔天開盤鎖漲停剔除、同檔同 P 20 日去重、六關、對照 = 同一天、算得出門檻的股·日(🔁 V79.4.3)。
   ⭐ 法人深歷史:DATA_DIR 用「d10n + inst_deep 合併」那份(2012 起;inst_backfill.py MODE=deep → inst_deep 分支),
      逐年那一關才驗得到 2015 / 2018 / 2022。
 
+════════════════════════════════════════════════════════════════
+🔁 V79.4.3(16 年全市場 d16 重跑前修好,陷阱 #50 / #52)
+════════════════════════════════════════════════════════════════
+  ・對照組改**同一天**:每一筆事件(跟對照組的每一個股·日)都先減掉「同一天、同一個母體」的平均再比
+    —— ⛔ 不再拿整段平均:d16 的 K 線 2010 起、法人欄 2012 起才有,整段平均會把沒有法人資料的那兩年算進對照
+       (陷阱 #50:事件在各年份分布不均時,整段平均會憑空造出「優勢」)。
+    母體 = 那個事件需要的資料當天已知(外資連買 / 突然大買看外資、投信連買看投信;突然大買另外要算得出門檻);
+    缺值 = 不知道(⛔ 不當 0);那一天不到 MIN_CTRL(30)檔 → 那天的事件不算,印出丟了幾筆。
+  ・勝率 / 絕對報酬旁的「對照」= 同一批日子的對照(⛔ 不是整段);前後半照**日期**切(對照組的日期中位數)。
+  ・隔天開盤鎖漲停 / 那天收漲停 → lib_limit(2015-06 前 ±7%,⛔ 不再寫死 10%)。
+  ・斷崖:只剔碰到的窗口(lib_limit.cliff_*,×1.5 / ×0.67),⛔ 不整檔剔除(整檔丟掉減過資的股票 = 倖存者偏誤)。
+
 跑法:
   python3 scripts/fstreak_probe.py             # 全市場
-  python3 scripts/fstreak_probe.py --selftest  # 合成 3 檔驗 harness(訊號數 / 零前視 / 鎖漲停剔除 / 去重)
+  python3 scripts/fstreak_probe.py --selftest  # 合成資料驗 harness(訊號數 / 零前視 / 鎖漲停剔除 / 去重 / 同一天對照 / 2012 ±7% / 斷崖窗口)
   DATA_DIR=... 指定資料夾;MAX_SYMS=200 試跑
   LEAD_TRACE=lead_trace_raw.json python3 scripts/fstreak_probe.py   # ⑤ 只跑「👑 本來會買的 × 外資突然一大筆」
       (lead_trace_raw.json = `RK_TRACE=1 RK_TRACE_RAW=… node scripts/leader_probe.mjs` 產的每一筆;約 1 分鐘)
@@ -64,6 +77,9 @@ from pathlib import Path
 
 import numpy as np
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import lib_limit as LL  # noqa: E402  🔁 V79.4.3 漲跌幅制度 + 斷崖守門共用(⛔ 不在這裡各寫一份)
+
 DATA = Path(os.environ.get('DATA_DIR') or 'data')
 SELFTEST = '--selftest' in sys.argv
 WARM = int(os.environ.get('WARM') or 250)
@@ -71,6 +87,9 @@ MAX_SYMS = int(os.environ.get('MAX_SYMS') or 0)
 DEDUP = 20
 COST = 0.44
 MIN_N = 200
+MIN_CTRL = 30                 # 🔁 V79.4.3 同一天的對照組至少要這麼多檔,不夠 → 那天的事件不算(⛔ 不拿別天湊)
+CLIFF_LOOK = 249              # 🔁 V79.4.3 斷崖窗口往回看到位階那 250 根(位階 / 波動碰到斷崖一樣是假的)
+FWD_MAX = 20                  # 最長持有天期(e20)
 NS = (3, 4, 5, 6, 7)          # 高原檢定
 TRUST_WIN = 3                 # 投信「同步」= 訊號日往前 3 天內任一天淨買 >0
 BURST_PS = (95, 98, 99, 99.5)  # ④ 外資突然一大筆:單日淨買 ≥ 自己過去 250 天第 P 百分位(高原)
@@ -157,7 +176,8 @@ def collect(data=None, files=None, verbose=True):
             files = files[::step][:MAX_SYMS]     # ⭐ 等距抽樣(⛔ 不取前 N 檔 = 按產業取樣,V72.1.7)
     if verbose:
         print(f'📂 掃描 {len(files)} 檔個股(4 碼純數字;⛔ 不含 ETF)・暖身 {WARM} 根 ・去重 {DEDUP} 日 ・進場 = 隔天開盤')
-    C = {k: [] for k in ('e5', 'e10', 'e20', 'y', 'dn', 'pos', 'vola', 'amt', 'r10')}
+    # 🔁 V79.4.3 對照組多三個旗標 = 那個股·日「外資已知 / 投信已知 / 突然大買的門檻算得出來」→ 每個事件庫只跟自己那個母體比
+    C = {k: [] for k in ('e5', 'e10', 'e20', 'y', 'dn', 'pos', 'vola', 'amt', 'r10', 'kf', 'kt', 'kb')}
     E = {k: [] for k in ('e5', 'e10', 'e20', 'y', 'dn', 'pos', 'vola', 'amt', 'st', 'tr', 'trst', 'ratio', 'si', 'r10')}
     # ⭐ 第二個事件庫:**投信**連買剛好到 N 天的那天(另一把去重)→ 給「反向增量」用:投信連買之上,外資有沒有加成?
     ET = {k: [] for k in ('e5', 'e10', 'e20', 'y', 'dn', 'pos', 'vola', 'amt', 'st', 'fs', 'si', 'r10')}
@@ -189,9 +209,8 @@ def collect(data=None, files=None, verbose=True):
         if n < WARM + 25 or min(cl) <= 0:
             continue
         fn, tn = clean_unpublished(fn, tn)
-        if any((cl[i] / cl[i - 1] > 1.4 or cl[i] / cl[i - 1] < 0.6) for i in range(1, n)):
-            n_cliff += 1
-            continue
+        # 🔁 V79.4.3 斷崖只剔「碰到的窗口」(下面迴圈裡判),⛔ 不整檔剔除 —— 整檔丟掉減過資的股票 = 倖存者偏誤
+        pre = LL.cliff_prefix(cl, op)
         if sum(1 for v in fn if v is not None) < 120:
             continue
         n_sym += 1
@@ -206,8 +225,13 @@ def collect(data=None, files=None, verbose=True):
             c0, o1 = cl[i], op[i + 1]
             if not (c0 > 0 and o1 > 0):
                 continue
-            if o1 >= c0 * 1.0995 and hi[i + 1] == lo[i + 1]:
+            # 🔁 V79.4.3 隔天開盤一價到底鎖漲停 → 買不到(lib_limit:2015-06 前 ±7%,⛔ 不再寫死 10%)
+            if LL.locked_bar(d[i + 1], c0, o1, hi[i + 1], lo[i + 1]) == 1:
                 n_lim += 1
+                continue
+            # 🔁 V79.4.3 位階 250 根 + 持有 20 天這一段碰到價格斷崖 → 這個股·日事件、對照一起不算
+            if LL.cliff_in(pre, i - CLIFF_LOOK, i + FWD_MAX):
+                n_cliff += 1
                 continue
             b0, b5, b10, b20 = idx.get(d[i + 1]), idx.get(d[i + 5]), idx.get(d[i + 10]), idx.get(d[i + 20])
             dn_i = dnum.get(d[i])
@@ -228,6 +252,10 @@ def collect(data=None, files=None, verbose=True):
             yr = int(d[i][:4])
             C['e5'].append(e5); C['e10'].append(e10); C['e20'].append(e20)
             C['y'].append(yr); C['dn'].append(dn_i); C['pos'].append(pos); C['vola'].append(vola); C['amt'].append(amt); C['r10'].append(r10)
+            # 🔁 V79.4.3 缺值 = 不知道(⛔ 不當 0):這個股·日只進「它的資料已知」的那幾個對照母體
+            C['kf'].append(fn[i] is not None)
+            C['kt'].append(tn[i] is not None)
+            C['kb'].append(fn[i] is not None and bool(np.isfinite(bth[BURST_PS[0]][i])))
             # ④ 外資突然一大筆(收盤後公布 → 隔天開盤買;門檻只用過去 250 天)
             fi_ = fn[i]
             if fi_ is not None and fi_ > 0:
@@ -237,8 +265,8 @@ def collect(data=None, files=None, verbose=True):
                     prior = 1 if (len(pw) >= 15 and sum(pw) < 0) else (0 if len(pw) >= 15 else -1)
                     bp, bt = idx.get(d[i - 1]), idx.get(d[i])
                     mdown = 1 if (bp and bt and bt / bp - 1 <= -0.01) else 0
-                    lim = 0.07 if d[i] < '2015-06-01' else 0.10          # 2015-06-01 前漲跌幅是 7%(⛔ 寫死 9.5% 會讓 2012~2015 一根漲停都找不到)
-                    lu = 1 if (cl[i - 1] > 0 and c0 >= cl[i - 1] * (1 + lim - 0.005) and c0 >= hi[i] - 1e-9) else 0
+                    # 🔁 V79.4.3 收盤漲停改走共用 lib_limit(同一條:2015-06 前 ±7%、差 0.5 個百分點內算)
+                    lu = 1 if (LL.up_limit_close(d[i], c0, cl[i - 1]) and c0 >= hi[i] - 1e-9) else 0
                     for P in hit:
                         pvB = last.get(('b', P))
                         if pvB is not None and dn_i - pvB < DEDUP:
@@ -273,9 +301,9 @@ def collect(data=None, files=None, verbose=True):
             E['y'].append(yr); E['dn'].append(dn_i); E['pos'].append(pos); E['vola'].append(vola); E['amt'].append(amt)
             E['st'].append(s); E['tr'].append(tr); E['trst'].append(stT[i]); E['ratio'].append(ratio); E['si'].append(si); E['r10'].append(r10)
     if verbose and n_cliff:
-        print(f'   ⚠️ {n_cliff} 檔因為「相鄰收盤跳超過 ±40%」被整檔剔除(未還原分割/壞 K 棒)')
+        print(f'   🧱 {n_cliff:,} 個股·日的「位階 250 根 + 持有 20 天」碰到價格斷崖(×1.5 / ×0.67)→ 事件、對照一起不算(⛔ 不整檔剔除)')
     if verbose:
-        print(f'   ⚠️ 隔天開盤鎖漲停(買不到)剔除 {n_lim:,} 個股·日')
+        print(f'   ⚠️ 隔天開盤鎖漲停(買不到;2015-06 前 ±7%)剔除 {n_lim:,} 個股·日')
     ctrl = {k: np.asarray(v, dtype=float) for k, v in C.items()}
     ev = {k: np.asarray(v, dtype=float) for k, v in E.items()}
     ev['_trust'] = {k: np.asarray(v, dtype=float) for k, v in ET.items()}   # 掛在 ev 底下,呼叫端簽名不變
@@ -283,19 +311,68 @@ def collect(data=None, files=None, verbose=True):
     return ctrl, ev, all_dates, n_sym, syms
 
 
+def same_day(ctrl, ev, key):
+    """🔁 V79.4.3 同一天對照(陷阱 #50):每一筆都先減掉「同一天、同一個母體」的平均 —— ⛔ 不再減整段平均。
+    key = 對照組裡的母體旗標('kf' 外資已知 / 'kt' 投信已知 / 'kb' 突然大買的門檻算得出來;缺值 = 不知道,⛔ 不當 0)。
+    回 (ctl, ev2, dropped):
+      ctl = 該母體的對照組(只留那天 ≥ MIN_CTRL 檔的日子),多 a5 / a10 / a20 = 減掉同一天平均後的超額
+      ev2 = 事件(同上多 a5 / a10 / a20,另外 cw / craw / crawW = 同一天對照組的贏大盤率 / 絕對 10 日 / 賺錢機率)
+      dropped = 那天對照組不到 MIN_CTRL 檔、被丟掉的事件數(⛔ 不拿別天的平均湊)"""
+    k = np.asarray(ctrl[key]) > 0
+    cdn = np.asarray(ctrl['dn'])[k].astype(np.int64)
+    edn = np.asarray(ev['dn']).astype(np.int64)
+    nd = int(max(cdn.max() if cdn.size else -1, edn.max() if edn.size else -1)) + 1
+
+    def day_mean(vals):
+        v = np.asarray(vals, dtype=float)
+        f = np.isfinite(v)
+        s = np.bincount(cdn[f], weights=v[f], minlength=nd)
+        c = np.bincount(cdn[f], minlength=nd)
+        return np.where(c > 0, s / np.maximum(c, 1), np.nan), c
+
+    e10c = np.asarray(ctrl['e10'], dtype=float)[k]
+    m10, n10 = day_mean(e10c)
+    m5, _ = day_mean(np.asarray(ctrl['e5'], dtype=float)[k])
+    m20, _ = day_mean(np.asarray(ctrl['e20'], dtype=float)[k])
+    w10, _ = day_mean((e10c > 0).astype(float))
+    r10c = np.asarray(ctrl['r10'], dtype=float)[k]
+    mr, _ = day_mean(r10c)
+    wr, _ = day_mean((r10c > 0).astype(float))
+    okd = n10 >= MIN_CTRL
+    keep = okd[cdn] if cdn.size else np.zeros(0, bool)
+    ctl = {kk: np.asarray(v)[k][keep] for kk, v in ctrl.items() if isinstance(v, np.ndarray)}
+    dc = ctl['dn'].astype(np.int64)
+    ctl['a10'], ctl['a5'], ctl['a20'] = ctl['e10'] - m10[dc], ctl['e5'] - m5[dc], ctl['e20'] - m20[dc]
+    eok = okd[edn] if edn.size else np.zeros(0, bool)
+    dropped = int((~eok).sum())
+    ev2 = {kk: np.asarray(v)[eok] for kk, v in ev.items() if isinstance(v, np.ndarray)}
+    de = ev2['dn'].astype(np.int64)
+    ev2['a10'], ev2['a5'], ev2['a20'] = ev2['e10'] - m10[de], ev2['e5'] - m5[de], ev2['e20'] - m20[de]
+    ev2['cw'], ev2['craw'], ev2['crawW'] = w10[de] * 100, mr[de], wr[de] * 100
+    ev2['_fam'] = key
+    return ctl, ev2, dropped
+
+
 def analyse(ctrl, ev, all_dates, n_sym, syms, data=None):
+    # 🔁 V79.4.3 三個事件庫各自跟「同一天、自己需要的資料已知」的對照組比(⛔ 不再拿整段平均,陷阱 #50)
+    CF, evF, dropF = same_day(ctrl, ev, 'kf')
+    CT, evT, dropT = same_day(ctrl, ev['_trust'], 'kt')
+    CB, evB, dropB = same_day(ctrl, ev['_burst'], 'kb')
+    ctrl, ev = CF, evF
     N = len(ctrl['e10'])
     if N < 5000:
-        print(f'❌ 對照組只有 {N} 筆 —— 資料不足,不下結論')
+        print(f'❌ 對照組只有 {N} 筆(外資資料已知、那天 ≥{MIN_CTRL} 檔)—— 資料不足,不下結論')
         return []
-    print(f'📊 {n_sym} 檔 ・對照組 {N:,} 個(股·日)・事件 {len(ev["e10"]):,} 筆(N=3~7 各自去重)\n')
+    print(f'📊 {n_sym} 檔 ・對照組 {N:,} 個(股·日;外資資料已知)・事件 {len(ev["e10"]):,} 筆(N=3~7 各自去重)')
+    print(f'🔁 V79.4.3 對照 = **同一天**、同一個母體(資料已知、可交易)的平均;那天不到 {MIN_CTRL} 檔 → 事件不算:'
+          f'外資連買丟 {dropF:,} ・投信連買丟 {dropT:,} ・突然大買丟 {dropB:,} 筆\n')
     volaP60 = float(np.percentile(ctrl['vola'], 60))
     hq_c = (ctrl['pos'] >= 75) & (ctrl['vola'] >= volaP60)
     hq_e = (ev['pos'] >= 75) & (ev['vola'] >= volaP60)
     c10, c5, c20 = float(np.mean(ctrl['e10'])), float(np.nanmean(ctrl['e5'])), float(np.nanmean(ctrl['e20']))
     cw = float((ctrl['e10'] > 0).mean() * 100)
-    cRaw, cRawW = float(np.mean(ctrl['r10'])), float((ctrl['r10'] > 0).mean() * 100)
-    print(f'🆚 對照組(同一批股票,全部可交易的股·日):5日 {nf(c5)}% ・10日 {nf(c10)}% ・20日 {nf(c20)}% ・勝率 {nf(cw, 1)}%')
+    print(f'🆚 對照組(同一批股票、外資已知的可交易股·日;整段平均只當描述):5日 {nf(c5)}% ・10日 {nf(c10)}% ・20日 {nf(c20)}% ・勝率 {nf(cw, 1)}%')
+    print('   🔁 V79.4.3 下面每一個「pp」都是**同一天對照**(事件 − 同一天母體平均);勝率旁的「對照」= 同一批日子的對照勝率')
     print(f'   🧬 波動 P60 = {nf(volaP60, 1)}%(⛔ 基準不是 0% 也不是 50%)\n')
     dn = np.sort(ctrl['dn'])
     MID, LO, HI = float(dn[len(dn) // 2]), float(dn[0]), float(dn[-1]) + 1
@@ -322,46 +399,51 @@ def analyse(ctrl, ev, all_dates, n_sym, syms, data=None):
         return ((m['pos'] > cP[1]).astype(int) + (m['pos'] > cP[0]).astype(int)) * 9 \
             + ((m['vola'] > cV[1]).astype(int) + (m['vola'] > cV[0]).astype(int)) * 3 \
             + ((m['amt'] > cA[1]).astype(int) + (m['amt'] > cA[0]).astype(int))
-    cell_c = cell(ctrl)
-    e10c = ctrl['e10']
-    evT = ev['_trust']
+    # 🔁 V79.4.3 每個事件庫配自己的對照母體(同一天、資料已知);格子 / 🧬 也各算一份
+    FAM = {'kf': CF, 'kt': CT, 'kb': CB}
+    FAMX = {fk: (cell(c_), (c_['pos'] >= 75) & (c_['vola'] >= volaP60)) for fk, c_ in FAM.items()}
 
     def stats(mask, base_e10=None, base_mask=None, ev=ev):
-        """六關數字;base_* 給「增量檢定」用(對照 = 另一群事件,⛔ 不是全市場)。`ev` 可換成投信那個事件庫。"""
+        """六關數字;base_* 給「增量檢定」用(對照 = 另一群事件,⛔ 不是全市場)。`ev` 可換成投信 / 突然大買那個事件庫。
+        🔁 V79.4.3 一律用 a10(= 減掉同一天母體平均的超額)比;勝率仍是「贏大盤」(e10 > 0),旁邊的對照 = 同一批日子的對照勝率。"""
         g = int(mask.sum())
         if g < MIN_N:
             return None
+        ctl = FAM[ev['_fam']]
+        cell_c, hq_c = FAMX[ev['_fam']]
         cell_e = cell(ev)
         if base_mask is None:
-            bE, bM = e10c, np.ones(N, bool)
-            bdn, by = ctrl['dn'], ctrl['y']
+            bE, bM = ctl['a10'], np.ones(len(ctl['a10']), bool)
+            bdn, by = ctl['dn'], ctl['y']
         else:
-            bE, bM = ev['e10'], base_mask
+            bE, bM = ev['a10'], base_mask
             bdn, by = ev['dn'], ev['y']
         b10 = float(np.mean(bE[bM]))
-        d10 = float(np.mean(ev['e10'][mask])) - b10
-        d5 = float(np.nanmean(ev['e5'][mask])) - (c5 if base_mask is None else float(np.nanmean(ev['e5'][bM])))
-        d20 = float(np.nanmean(ev['e20'][mask])) - (c20 if base_mask is None else float(np.nanmean(ev['e20'][bM])))
+        d10 = float(np.mean(ev['a10'][mask])) - b10
+        d5 = float(np.nanmean(ev['a5'][mask])) - (float(np.nanmean(ctl['a5'])) if base_mask is None else float(np.nanmean(ev['a5'][bM])))
+        d20 = float(np.nanmean(ev['a20'][mask])) - (float(np.nanmean(ctl['a20'])) if base_mask is None else float(np.nanmean(ev['a20'][bM])))
         w = float((ev['e10'][mask] > 0).mean() * 100)
         raw = float(np.mean(ev['r10'][mask])); rawW = float((ev['r10'][mask] > 0).mean() * 100)   # 絕對報酬(⛔ 使用者問的是這個,不只給超額)
+        cwm = float(np.mean(ev['cw'][mask]))                                                       # 🔁 V79.4.3 同一批日子的對照
+        crw, crwW = float(np.mean(ev['craw'][mask])), float(np.mean(ev['crawW'][mask]))
 
         def half(a, b):
             em = mask & (ev['dn'] >= a) & (ev['dn'] < b)
             cm = bM & (bdn >= a) & (bdn < b)
             if em.sum() < 60 or cm.sum() < 100:
                 return np.nan
-            return float(np.mean(ev['e10'][em])) - float(np.mean(bE[cm]))
+            return float(np.mean(ev['a10'][em])) - float(np.mean(bE[cm]))
         q1, q2 = half(LO, MID), half(MID, HI)
         yr = {}
         for y in years:
             em = mask & (ev['y'] == y)
             cm = bM & (by == y)
-            yr[y] = (float(np.mean(ev['e10'][em])) - float(np.mean(bE[cm]))) if em.sum() > 40 and cm.sum() > 100 else np.nan
+            yr[y] = (float(np.mean(ev['a10'][em])) - float(np.mean(bE[cm]))) if em.sum() > 40 and cm.sum() > 100 else np.nan
         fin = {y: v for y, v in yr.items() if np.isfinite(v)}
         bestY = max(fin, key=fin.get) if fin else None
         if bestY is not None:
             em, cm = mask & (ev['y'] != bestY), bM & (by != bestY)
-            exBest = (float(np.mean(ev['e10'][em])) - float(np.mean(bE[cm]))) if em.sum() > 40 else np.nan
+            exBest = (float(np.mean(ev['a10'][em])) - float(np.mean(bE[cm]))) if em.sum() > 40 else np.nan
         else:
             exBest = np.nan
         ws = wn = cells = 0.0
@@ -370,27 +452,27 @@ def analyse(ctrl, ev, all_dates, n_sym, syms, data=None):
             c = (cell_c == k) if base_mask is None else (bM & (cell_e == k))
             if a.sum() < 20 or c.sum() < (200 if base_mask is None else 50):
                 continue
-            ws += (float(np.mean(ev['e10'][a])) - float(np.mean(bE[c]))) * a.sum()
+            ws += (float(np.mean(ev['a10'][a])) - float(np.mean(bE[c]))) * a.sum()
             wn += a.sum(); cells += 1
         dCell = ws / wn if wn else np.nan
         hqE = (ev['pos'] >= 75) & (ev['vola'] >= volaP60)
         a = mask & hqE
         c = hq_c if base_mask is None else (bM & hqE)
-        dHQ = (float(np.mean(ev['e10'][a])) - float(np.mean(bE[c]))) if a.sum() >= 100 and c.sum() >= 100 else np.nan
+        dHQ = (float(np.mean(ev['a10'][a])) - float(np.mean(bE[c]))) if a.sum() >= 100 and c.sum() >= 100 else np.nan
         yv = list(fin.values())
         passed = bool(d10 > 0 and np.isfinite(q1) and np.isfinite(q2) and (q1 > 0) == (q2 > 0)
                       and yv and all(v > 0 for v in yv) and np.isfinite(exBest) and exBest > 0
                       and d10 - COST > 0 and np.isfinite(dCell) and dCell > COST)
         gates = sum([d10 > 0, bool(np.isfinite(q1) and np.isfinite(q2) and (q1 > 0) == (q2 > 0)), bool(yv and all(v > 0 for v in yv)),
                      bool(np.isfinite(exBest) and exBest > 0), d10 - COST > 0, bool(np.isfinite(dCell) and dCell > COST)])
-        return dict(n=g, d5=d5, d10=d10, d20=d20, w=w, raw=raw, rawW=rawW, q1=q1, q2=q2, yr=yr, bestY=bestY, exBest=exBest, dCell=dCell, cells=cells, wn=wn, dHQ=dHQ, nHQ=int(a.sum()), passed=passed, gates=gates)
+        return dict(n=g, d5=d5, d10=d10, d20=d20, w=w, raw=raw, rawW=rawW, cw=cwm, craw=crw, crawW=crwW, q1=q1, q2=q2, yr=yr, bestY=bestY, exBest=exBest, dCell=dCell, cells=cells, wn=wn, dHQ=dHQ, nHQ=int(a.sum()), passed=passed, gates=gates)
 
-    def show(name, r, base_note='對照全市場'):
+    def show(name, r, base_note='對照 = 同一天全市場'):
         if r is None:
             print(f'─ {name}:⏳ 樣本不足(需 ≥{MIN_N})\n'); return
         print(f'─ {name}  n={r["n"]:,}({base_note})')
-        print(f'   5日 {sg(r["d5"])}{nf(r["d5"])}pp ・10日 {sg(r["d10"])}{nf(r["d10"])}pp ・20日 {sg(r["d20"])}{nf(r["d20"])}pp ・勝率 {nf(r["w"], 1)}%(對照 {nf(cw, 1)}%)'
-              f' ・💰 絕對:10 日 {sg(r["raw"])}{nf(r["raw"])}% ・賺錢機率 {nf(r["rawW"], 1)}%(對照 {nf(cRaw)}% / {nf(cRawW, 1)}%)')
+        print(f'   5日 {sg(r["d5"])}{nf(r["d5"])}pp ・10日 {sg(r["d10"])}{nf(r["d10"])}pp ・20日 {sg(r["d20"])}{nf(r["d20"])}pp ・勝率 {nf(r["w"], 1)}%(對照 {nf(r["cw"], 1)}%)'
+              f' ・💰 絕對:10 日 {sg(r["raw"])}{nf(r["raw"])}% ・賺錢機率 {nf(r["rawW"], 1)}%(對照 {nf(r["craw"])}% / {nf(r["crawW"], 1)}%)')
         print(f'   前半 {sg(r["q1"])}{nf(r["q1"])} / 後半 {sg(r["q2"])}{nf(r["q2"])}'
               + ('' if (np.isfinite(r['q1']) and np.isfinite(r['q2']) and (r['q1'] > 0) == (r['q2'] > 0)) else ' 🚨不同向')
               + ' ・逐年 ' + ' '.join(f'{y % 100}:{sg(v)}{nf(v, 1)}' for y, v in r['yr'].items()))
@@ -450,7 +532,7 @@ def analyse(ctrl, ev, all_dates, n_sym, syms, data=None):
                   f' n={int(mm.sum()):,} ・10日 {sg(r["d10"]) + nf(r["d10"]) if r else "—"}pp ・勝率 {nf(r["w"], 1) if r else "—"}%')
         print()
 
-    evB = ev['_burst']
+    # evB = 突然大買事件庫(🔁 V79.4.3 已在開頭換成「同一天、算得出門檻的股·日」那個對照母體)
     print('📌 ④ 外資「突然一大筆」(單日淨買 ≥ 自己過去 250 天第 P 百分位)—— 富喬那種:賣了一陣子,突然一大筆')
     if len(evB['e10']) == 0:
         print('   ⏳ 沒有事件(法人欄位太短?)\n')
@@ -616,6 +698,42 @@ def make_selftest(tmp):
     return dates
 
 
+def _st_days(start, n):
+    """🔁 V79.4.3 selftest 用:從 start 起 n 個平日('YYYY-MM-DD')。"""
+    import datetime as dt
+    d0, out = dt.date.fromisoformat(start), []
+    while len(out) < n:
+        if d0.weekday() < 5:
+            out.append(d0.isoformat())
+        d0 += dt.timedelta(days=1)
+    return out
+
+
+def _st_path(n, drift_of, seed):
+    """🔁 V79.4.3 selftest 用:每天漂移 drift_of(i) + ±1% 雜訊的 K 線 [(開, 高, 低, 收)]。"""
+    import random
+    rnd, c, px = random.Random(seed), 100.0, []
+    for i in range(n):
+        c *= 1 + drift_of(i) + rnd.uniform(-0.01, 0.01)
+        o = c * (1 + rnd.uniform(-0.004, 0.004))
+        px.append((o, max(o, c) * 1.004, min(o, c) * 0.996, c))
+    return px
+
+
+def _st_write(tmp, sym, dates, px, fn, tn):
+    """🔁 V79.4.3 selftest 用:fn / tn 是 None 的那天 → 欄位整個不寫(= d16 的「沒有資料」,⛔ 不是 0)。日期照 d16 寫 YYYY/MM/DD。"""
+    rows = []
+    for i, d in enumerate(dates):
+        o, h, l_, c = px[i]
+        r = {'date': d.replace('-', '/'), 'open': round(o, 4), 'high': round(h, 4), 'low': round(l_, 4), 'close': round(c, 4), 'volume': 1000000}
+        if fn[i] is not None:
+            r['foreign_net'] = fn[i]
+        if tn[i] is not None:
+            r['trust_net'] = tn[i]
+        rows.append(r)
+    (tmp / f'{sym}.json').write_text(json.dumps(rows))
+
+
 def selftest():
     import tempfile
     global WARM
@@ -683,6 +801,84 @@ def selftest():
         st_a = streaks([5000, 5000, 0])
         st_b = streaks([5000, 5000, None])
         ok('⑦b `streaks`:0 或 None 都讓連續中斷(0 = 沒買;最後一根的 0 由 collect 改成 None)', st_a == [1, 2, 0] and st_b == [1, 2, 0], f'{st_a} {st_b}')
+        # ⑩c 🔁 V79.4.3 同一天對照組不到 MIN_CTRL 檔 → 那天的事件不算(⛔ 拿別天湊):這組只有 3 檔
+        ctrl0, ev0 = res[0], res[1]
+        _, evx, dropx = same_day(ctrl0, ev0, 'kf')
+        ok(f'⑩c 同一天只有 3 檔(< {MIN_CTRL})→ 事件全部不算、而且數得出丟了幾筆', len(evx['e10']) == 0 and dropx == len(ev0['e10']) > 0, f'{len(evx["e10"])} / {dropx}')
+
+    # ⑩ 🔁 V79.4.3 同一天對照(陷阱 #50)—— ⭐ 決定性對照:事件跟同一天的大家一模一樣 → 新算法 ≈ 0,舊算法憑空量出一截
+    #    A 組 40 檔:前 380 天沒有法人資料、每天 +1%;380~559 天有法人、每天 −0.2%(外資每 25 天連買 5 天 = 事件只在這段);560 天起 +0.6%
+    #    B 組 20 檔:380~599 天(跟 A 的事件同一批日子)法人資料缺、每天 +1% —— 缺值若被當成「有資料」就會混進同一天的對照
+    import contextlib
+    import io
+    with tempfile.TemporaryDirectory() as t2:
+        tmp2 = Path(t2)
+        n2, REG, MID2, BREG = 760, 380, 560, 600
+        days2 = _st_days('2011-01-03', n2)
+        (tmp2 / '^TWII.json').write_text(json.dumps([{'date': d, 'close': 8000} for d in days2]))
+        driftA = lambda i: 0.01 if i < REG else (-0.002 if i < MID2 else 0.006)   # noqa: E731
+        driftB = lambda i: 0.01 if i < BREG else 0.006                            # noqa: E731
+        for s in range(40):
+            ph = (s * 3) % 25
+            fnA = [None if i < REG else (5000 if (i < MID2 and (i - REG + ph) % 25 < 5) else -1000) for i in range(n2)]
+            _st_write(tmp2, str(2001 + s), days2, _st_path(n2, driftA, 100 + s), fnA, [None if i < REG else -100 for i in range(n2)])
+        for s in range(20):
+            _st_write(tmp2, str(3001 + s), days2, _st_path(n2, driftB, 300 + s),
+                      [None if i < BREG else -1000 for i in range(n2)], [None if i < BREG else -100 for i in range(n2)])
+        res2 = collect(tmp2, verbose=False)
+        ctrl2, ev2b = res2[0], res2[1]
+        m5 = ev2b['st'] == 5
+        old_all = float(np.mean(ev2b['e10'][m5])) - float(np.mean(ctrl2['e10']))                 # 舊口徑:整段、不管法人資料
+        kf2 = ctrl2['kf'] > 0
+        old_kf = float(np.mean(ev2b['e10'][m5])) - float(np.mean(ctrl2['e10'][kf2]))             # 整段、但只留法人已知
+        c_all = dict(ctrl2)
+        c_all['kf'] = np.ones(len(ctrl2['e10']))
+        _, ev_all, _ = same_day(c_all, ev2b, 'kf')                                                # 同一天、但缺值也算進對照
+        row_all = float(np.mean(ev_all['a10'][ev_all['st'] == 5]))
+        with contextlib.redirect_stdout(io.StringIO()):
+            out2 = analyse(*res2, data=tmp2)
+        r5 = next((o['r'] for o in out2 if o['name'] == 'fstreak5'), None)
+        ok(f'⑩ 決定性對照:整段平均(舊)憑空 {old_all:+.2f}pp、整段但只留法人已知 {old_kf:+.2f}pp、同一天但缺值也算 {row_all:+.2f}pp(三個都 < −1)',
+           old_all < -1 and old_kf < -1 and row_all < -1, f'{old_all} / {old_kf} / {row_all}')
+        ok(f'⑩ 同一天、法人已知的對照 → analyse() 的 N=5 超額 ≈ 0(|{(r5 or {}).get("d10", float("nan")):+.2f}| < 0.5;n = {(r5 or {}).get("n")})',
+           r5 is not None and abs(r5['d10']) < 0.5 and r5['n'] >= MIN_N, str(r5 and {k: r5[k] for k in ('n', 'd10', 'q1', 'q2')}))
+        cw_whole = float((ctrl2['e10'][kf2] > 0).mean() * 100)
+        ok(f'⑩b 勝率旁的「對照」= 同一批日子的對照勝率(事件 {(r5 or {}).get("w", 0):.1f}% vs 同日對照 {(r5 or {}).get("cw", 0):.1f}%;整段的是 {cw_whole:.1f}%)',
+           r5 is not None and abs(r5['w'] - r5['cw']) < 10 and abs(r5['w'] - cw_whole) > 20, str(r5 and (r5['w'], r5['cw'], cw_whole)))
+
+    # ⑪ 🔁 V79.4.3 2015-06 前漲跌幅 ±7%:2012 年隔天一價到底 +7% = 鎖漲停(買不到);同一根放到 2020 年(要 +10%)→ 買得到
+    with tempfile.TemporaryDirectory() as t3:
+        tmp3 = Path(t3)
+        n3 = 400
+        dA, dB = _st_days('2011-01-03', n3), _st_days('2019-01-01', n3)
+        (tmp3 / '^TWII.json').write_text(json.dumps([{'date': d, 'close': 8000} for d in dA + dB]))
+        for sym, days_ in (('1011', dA), ('1012', dB)):
+            px = _st_path(n3, lambda i: 0.0, 7)
+            c4 = px[304][3]
+            px = px[:305] + [(c4 * 1.07,) * 4] + [tuple(v * 1.07 for v in p) for p in px[306:]]   # 後面跟著同一個尺標(⛔ 不製造斷崖)
+            _st_write(tmp3, sym, days_, px, [5000 if 300 <= i <= 304 else -1000 for i in range(n3)], [-100] * n3)
+        _, ev3, _, _, sy3 = collect(tmp3, verbose=False)
+        byN = {s: sorted(int(st) for st, si in zip(ev3['st'], ev3['si']) if sy3[int(si)] == s) for s in ('1011', '1012')}
+        ok(f'⑪ 2012 年隔天鎖 +7% → N=5 那筆買不到、不算({dA[305]});同一根在 2020 年({dB[305]})→ 照算',
+           byN.get('1011') == [3, 4] and byN.get('1012') == [3, 4, 5], str(byN))
+
+    # ⑫ 🔁 V79.4.3 斷崖只剔碰到的窗口(⛔ 不整檔剔除):第 650 根起 ×1.6(減資恢復交易)
+    #    事件 A 在第 304 根(窗口 55~324 乾淨)→ 留;事件 B 在第 644 根(持有 20 天會碰到 650)→ 剔;第 630 根起的對照也剔(位階 250 根往回看會碰到)
+    with tempfile.TemporaryDirectory() as t4:
+        tmp4 = Path(t4)
+        n4, KC = 760, 650
+        days4 = _st_days('2016-01-04', n4)
+        (tmp4 / '^TWII.json').write_text(json.dumps([{'date': d, 'close': 9000} for d in days4]))
+        px = _st_path(n4, lambda i: 0.0, 11)
+        px = px[:KC] + [tuple(v * 1.6 for v in p) for p in px[KC:]]
+        _st_write(tmp4, '1021', days4, px, [5000 if (300 <= i <= 304 or 640 <= i <= 644) else -1000 for i in range(n4)], [-100] * n4)
+        ctrl4, ev4, _, ns4, sy4 = collect(tmp4, verbose=False)
+        dn5 = sorted(int(x) for x, st in zip(ev4['dn'], ev4['st']) if int(st) == 5)
+        cdn4 = ctrl4['dn'].astype(int)
+        ok('⑫ 有斷崖的股票 ⛔ 不整檔剔除:窗口乾淨的第 304 根事件照算、碰到斷崖的第 644 根不算',
+           ns4 == 1 and sy4 == ['1021'] and dn5 == [304], f'n_sym={ns4} N5={dn5}')
+        ok('⑫ 對照組也只剔碰到的窗口(第 250~629 根全留、630 根起全剔)',
+           len(cdn4) == 380 and int(cdn4.min()) == 250 and int(cdn4.max()) == KC - 21, f'{len(cdn4)} {cdn4.min() if len(cdn4) else None}~{cdn4.max() if len(cdn4) else None}')
     print(f'\n{"✅ selftest 全過" if not fails else "❌ " + str(len(fails)) + " 條失敗:" + " / ".join(fails)}')
     return 0 if not fails else 1
 
