@@ -138,6 +138,69 @@ def bridge(base, mid, early, sym):
     return rows, f'bridge k={k1 * k2:.4f}+{len(pre_early)}+{len(pre_mid)}'
 
 
+SHARE_F = ('foreign_net', 'trust_net', 'dealer_net', 'margin_balance', 'short_balance')
+_SNAP = sorted({float(m) for m in range(2, 11)} | {1.0 / m for m in range(2, 11)})
+
+
+SHARE_PERSIST = 5
+
+
+def share_scale(rows, raw_close):
+    """🔢 每一列的「股數倍數」:這一列的成交量被接縫比例 / `_backadjust_splits` 放大了幾倍(分割 / 面額變更 / 整數倍減資)。
+    為什麼要算:那兩步只換價格與成交量的尺標,⛔ 不動法人買賣超與融資券(那是當時真實的張數)→
+    「外資 20 日買超 ÷ 成交量」在事件之前那段會差 2~10 倍(實測 d16 約 45 檔,2327 國巨 ×4、3086 ×10、2380 ×0.2…)。
+    判準用收盤價(⛔ 不用成交量:現成那份跟 FinMind 的成交量口徑本來就差 0~7%):d16 收盤 ÷ 當天原始收盤 = 價格尺標 k →
+    只認 2~10 倍或其倒數(±2%),其餘當 1(除權息還原那種小比例 ⛔ 不是股數變化)→ 股數倍數 = 1/k。
+    ⚠️ 換成拆股倍數要連續 SHARE_PERSIST 個有原始價的日子、而且那幾天比例差 ≤1%(⛔ 單一天的巧合 / 一路在漂的髒資料不算);
+    當天沒有原始價 → 沿用前一段的倍數(倍數是一段一段的常數)。回 [倍數, …](跟 rows 一樣長)。"""
+    cand, qs = [], []
+    for r in rows:
+        c, w = float(r.get('close') or 0), raw_close.get(_d(r.get('date')))
+        if c > 0 and w and w > 0:
+            q = c / w
+            hit = next((m for m in _SNAP if abs(q / m - 1) <= 0.02), None)
+            cand.append((1.0 / hit) if hit else 1.0)
+            qs.append(q)
+        else:
+            cand.append(None)
+            qs.append(None)
+    # 一段一段看:換成拆股倍數要「連續 SHARE_PERSIST 天 + 那幾天的比例幾乎一樣(差 ≤1%,真的拆股是固定比例)」;
+    # 換回 1 只要連續 SHARE_PERSIST 天(1 那一段的比例本來就會散:除權息還原 / 口徑差)
+    idx = [i for i, x in enumerate(cand) if x is not None]
+    acc, cur, i = {}, 1.0, 0
+    while i < len(idx):
+        j = i
+        while j + 1 < len(idx) and cand[idx[j + 1]] == cand[idx[i]]:
+            j += 1
+        c0, n_run = cand[idx[i]], j - i + 1
+        qq = [qs[idx[t]] for t in range(i, j + 1)]
+        tight = max(qq) / min(qq) - 1 <= 0.01
+        if c0 == cur or (n_run >= SHARE_PERSIST and (c0 == 1.0 or tight)):
+            cur = c0
+        for t in range(i, j + 1):
+            acc[idx[t]] = cur
+        i = j + 1
+    out, last = [], (acc[idx[0]] if idx else 1.0)
+    for k in range(len(rows)):
+        last = acc.get(k, last)
+        out.append(last)
+    return out
+
+
+def apply_share_scale(rows, raw_close):
+    """把股數欄位換成跟成交量同一個基準,並在列上標 `_sk`(merge_inst_deep 之後補進來的法人照這個倍數換)。回換了幾列。"""
+    n = 0
+    for r, sk in zip(rows, share_scale(rows, raw_close)):
+        if sk == 1.0:
+            continue
+        r['_sk'] = round(sk, 6)
+        for f in SHARE_F:
+            if r.get(f) is not None:
+                r[f] = round(r[f] * sk)
+        n += 1
+    return n
+
+
 def cliffs(rows):
     n = 0
     for a, b in zip(rows, rows[1:]):
@@ -209,7 +272,7 @@ def build(dd, kd, sd, base, out, div_in=None, div_out=None, verbose=True):
     for p in p10_dir.glob('*.json.gz'):
         if is_stock(p.name[:4]):
             syms.add(p.name[:4])
-    st = {'joined': 0, 'bridged': 0, 'base_only': 0, 'early_only': 0, 'kd_dl': 0, 'skip_short': 0, 'reasons': {}, 'cliffs': 0, 'cliff_syms': 0, 'margin_rows': 0, 'div_syms': 0}
+    st = {'joined': 0, 'bridged': 0, 'base_only': 0, 'early_only': 0, 'kd_dl': 0, 'skip_short': 0, 'reasons': {}, 'cliffs': 0, 'cliff_syms': 0, 'margin_rows': 0, 'div_syms': 0, 'share_rows': 0, 'share_syms': 0}
     for sym in sorted(syms):
         bp = dd / f'{sym}.json'
         base_rows, dl = None, 0
@@ -253,6 +316,17 @@ def build(dd, kd, sd, base, out, div_in=None, div_out=None, verbose=True):
         mg = load_gz(mg_dir / f'{sym}.json.gz')
         if mg:
             st['margin_rows'] += fill_margin(rows, mg)
+        raw = {}
+        for src in (load_gz(kd / f'{sym}.json.gz'), pk):     # 原始價(⛔ 沒調過分割):price10 優先,klines_deep 補後段
+            for r0 in (src or {}).get('k') or []:
+                try:
+                    if r0[4] and r0[4] > 0:
+                        raw[_d(r0[0])] = float(r0[4])
+                except Exception:
+                    pass
+        k_sh = apply_share_scale(rows, raw)
+        st['share_rows'] += k_sh
+        st['share_syms'] += k_sh > 0
         if dl:
             for r in rows:
                 r['_dl'] = 1
@@ -280,6 +354,7 @@ def build(dd, kd, sd, base, out, div_in=None, div_out=None, verbose=True):
     if verbose:
         print(f"🗄️ d16:接上 {st['joined']} 檔(其中 🌉 經 klines_deep 橋接 {st['bridged']})・只有現成 {st['base_only']} ・只有 2010~2021(下市){st['early_only']} ・2021 後下市 {st['kd_dl']} ・太短不收 {st['skip_short']}")
         print(f"   接不上的原因:{st['reasons']} ・融資券補了 {st['margin_rows']:,} 列 ・除權息 {st['div_syms']} 檔 ・斷崖 {st['cliffs']} 次 / {st['cliff_syms']} 檔(探針自己有守門)")
+        print(f"   🔢 股數換算(分割 / 面額變更前那段的法人、融資券換成跟成交量同一個基準):{st['share_syms']} 檔 / {st['share_rows']:,} 列")
     return st
 
 
@@ -333,9 +408,12 @@ def selftest():
         st = build(T / 'dd', T / 'kd', T / 'sd', T / 'base', T / 'out', T / 'div_in.json', T / 'out/_div16.json', verbose=False)
         A = json.loads((T / 'out/1111.json').read_text())
         ok('① 比例常數(0.5)→ 接上、2010 那段乘 0.5、日期連續', _d(A[0]['date']) == early[0] and abs(A[0]['close'] - 50) < 0.01 and len(A) == len(set(_d(r['date']) for r in A)), A[0])
-        ok('① 現成那段一個字都不動(含籌碼欄)', A[-len(baseA):] == baseA, A[-1])
+        PV = ('date', 'open', 'high', 'low', 'close', 'volume')
+        pv = lambda rs: [{k: r.get(k) for k in PV} for r in rs]
+        ok('① 現成那段的價格與成交量一個字都不動', pv(A[-len(baseA):]) == pv(baseA), A[-1])
+        ok('① 現成那段是拆過股的(價格 ×0.5、成交量 ×2)→ 外資張數跟著換基準(5 → 10)、標 _sk=2', all(r['foreign_net'] == 10 and r.get('_sk') == 2 for r in A[-len(baseA):]), A[-1])
         B = json.loads((T / 'out/2222.json').read_text())
-        ok('② 比例一路在變 → ⛔ 不接、只留現成', B == baseA and st['reasons'].get('ratio-drift') == 1, st['reasons'])
+        ok('② 比例一路在變 → ⛔ 不接、只留現成(單一天碰巧像拆股的 ⛔ 不換算)', B == baseA and st['reasons'].get('ratio-drift') == 1, (st['reasons'], [r for r in B if r.get('_sk')][:1]))
         C = json.loads((T / 'out/3333.json').read_text())
         ok('③ 2021 前下市 → 單獨成檔、每列標 _dl', len(C) == 400 and all(r.get('_dl') == 1 for r in C))
         ok('③ 太短(<250 根)→ 不收', not (T / 'out/4444.json').exists())
@@ -402,6 +480,35 @@ def selftest():
         # 整段比例檢查(⛔ 只看接縫)會被 2024 那次變化擋掉 → 證明 win 真的在起作用
         k_full, why_full = _scale(baseB, p10_rows({'k': kdk}))
         ok('⑨ 決定性對照:同一份資料改用「整段都要同一個比例」→ 被接縫後很遠的那次尺標變化擋掉', k_full is None and why_full.startswith('ratio-drift'), why_full)
+    # ⑩ 🔢 股數換算:2023-01-02 一拆四(現成那份照 App 的做法:價格 ÷4、成交量 ×4,法人張數 ⛔ 沒換)
+    P = {d: 100.0 * (1 + i * 0.0003) for i, d in enumerate(alld)}
+    SPL = '2023-01-02'
+    rawc = lambda d: P[d] if d < SPL else P[d] / 4
+    rawv = lambda d: 1000 if d < SPL else 4000
+    base10 = [{'date': d.replace('-', '/'), 'open': round(P[d] / 4, 6), 'high': round(P[d] / 4 * 1.01, 6), 'low': round(P[d] / 4 * 0.99, 6),
+               'close': round(P[d] / 4, 6), 'volume': rawv(d) * (4 if d < SPL else 1), 'foreign_net': 100 if d < SPL else 400,
+               'margin_balance': 50 if d < SPL else 200} for d in kd_days]
+    with tempfile.TemporaryDirectory() as td:
+        T = Path(td)
+        for sub in ('dd', 'kd', 'sd/price10', 'sd/margin', 'sd/div10', 'base', 'out'):
+            (T / sub).mkdir(parents=True)
+        gz = lambda p, o: gzip.open(p, 'wt', encoding='utf-8').write(json.dumps(o))
+        (T / 'dd/2327.json').write_text(json.dumps(base10))
+        gz(T / 'kd/2327.json.gz', {'s': '2327', 'dl': 0, 'k': [[d, rawc(d), rawc(d), rawc(d), rawc(d), rawv(d)] for d in kd_days]})
+        gz(T / 'sd/price10/2327.json.gz', {'s': '2327', 'dl': 0, 'k': [[d, P[d], P[d], P[d], P[d], 1000] for d in early]})
+        st3 = build(T / 'dd', T / 'kd', T / 'sd', T / 'base', T / 'out', verbose=False)
+        Z = {_d(r['date']): r for r in json.loads((T / 'out/2327.json').read_text())}
+        pre_b, post_b, p10_r = Z['2022-06-01'], Z['2024-06-03'], Z['2019-06-03']
+        rat = lambda r: r['foreign_net'] / r['volume']
+        ok('⑩ 拆股前那段:法人 / 融資換成新基準(100 → 400、50 → 200)、標 _sk=4;拆股後 ⛔ 不動、不標',
+           pre_b['foreign_net'] == 400 and pre_b['margin_balance'] == 200 and pre_b.get('_sk') == 4 and post_b['foreign_net'] == 400 and '_sk' not in post_b,
+           (pre_b, post_b))
+        ok('⑩ 外資買超 ÷ 成交量 拆股前後同一個比例(都是 0.1)', abs(rat(pre_b) - rat(post_b)) < 1e-9, (rat(pre_b), rat(post_b)))
+        ok('⑩ price10 那段(2019,還沒有法人)也標 _sk=4 —— merge_inst_deep 補進來的法人會跟著乘', p10_r.get('_sk') == 4 and p10_r['volume'] == 4000, p10_r)
+        ok('⑩ 決定性對照:不換算的話拆股前比例是 0.025(差 4 倍)', abs(100 / pre_b['volume'] - 0.025) < 1e-9 and st3['share_syms'] == 1, (100 / pre_b['volume'], st3['share_syms']))
+        # 只有除權息還原那種小比例(收盤 ÷ 原始 = 0.97)→ ⛔ 不算股數變化
+        sc = share_scale([{'date': '2020-01-02', 'close': 97.0}], {'2020-01-02': 100.0})
+        ok('⑩ 收盤 ÷ 原始 = 0.97(除權息還原)→ 倍數 1(⛔ 不是拆股)', sc == [1.0], sc)
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
     return 0 if not bad else 1
 

@@ -31,9 +31,10 @@ def merge_rows(rows, pack):
         if v is None:
             continue
         hit = False
+        sk = r.get('_sk') or 1        # 🔢 merge_stock_deep 標的股數倍數(分割 / 面額變更前那段,成交量已經換過基準)
         for k, x in zip(('foreign_net', 'trust_net', 'dealer_net'), v):
             if r.get(k) is None:
-                r[k] = x
+                r[k] = x if (x is None or sk == 1) else round(x * sk)
                 hit = True
         n += hit
     return rows, n
@@ -80,6 +81,9 @@ def selftest():
     ok('③ 深歷史那天沒資料 → 照舊沒有(⛔ 不補 0)', 'foreign_net' not in out[2], out[2])
     ok('④ 本來是 0 的 ⛔ 不覆蓋(0 不是 None)', out[3]['foreign_net'] == 0, out[3])
     ok('⑤ 補到幾列', n == 2, n)
+    # ⑥ 分割前那段(merge_stock_deep 標了 _sk=4:成交量已乘 4)→ 補進來的法人也要乘 4,⛔ 不然買超 ÷ 成交量差 4 倍
+    out2, _ = merge_rows([{'date': '2015/03/02', 'close': 2.5, 'volume': 4000, '_sk': 4}], pack)
+    ok('⑥ 有 _sk 的列 → 法人跟著換基準(100 → 400)', out2[0]['foreign_net'] == 400 and out2[0]['trust_net'] == 4 and out2[0]['dealer_net'] == -4, out2[0])
     print(f"\n{'✅ selftest 全過' if not bad else '❌ ' + ', '.join(bad)}")
     return 0 if not bad else 1
 

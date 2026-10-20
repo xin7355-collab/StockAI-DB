@@ -33,15 +33,64 @@ import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
 
+const norm = d => String(d || '').replace(/\//g, '-').slice(0, 10);
+const med = a => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(b.length / 2)] : null; };
+
+// 深歷史接到既有前面那一段:重疊期中位比值 = 尺標差;只取比既有最早一天更早的列。回 {ratio, pre, firstBase} 或 {why}
+// 🔢 V79.4.1:成交量要跟價格**反向**換尺標(價格 ÷ ratio → 股數 × ratio)。之前漏了 → 分割 / 面額變更 / 整數倍減資的股票
+//    2021-01~2023-05 那段「價格是新尺標、成交量還是舊股數」→ 成交金額少算 ratio 倍(2327 國巨 ×4),
+//    👑 用成交金額排池子、決策台成績單的「買得到嗎」都會把它們擠出去。同 miner._backadjust_splits 的做法(股數與價格反向)。
+function deepPre(base, deepK) {
+  const firstBase = norm(base[0].date);
+  const baseMap = new Map();
+  for (const r of base) if (+r.close > 0) baseMap.set(norm(r.date), +r.close);
+  const ratios = [];
+  for (const [d, , , , c] of deepK) {
+    const b = baseMap.get(norm(d));
+    if (b > 0 && c > 0) ratios.push(c / b);
+  }
+  if (ratios.length < 20) return { why: 'thin', firstBase };
+  const ratio = med(ratios);
+  if (!(ratio > 0)) return { why: 'bad', firstBase };
+  const pre = [];
+  for (const [d, o, h, l, c, v] of deepK) {
+    if (norm(d) >= firstBase) break;                     // ⛔ 到既有範圍就停(⛔ 不覆蓋既有列)
+    if (!(c > 0 && o > 0)) continue;
+    pre.push({ date: String(d).replace(/-/g, '/'),
+               open: o / ratio, high: h / ratio, low: l / ratio, close: c / ratio, volume: Math.round((v || 0) * ratio) });
+  }
+  return { ratio, pre, firstBase };
+}
+
+if (process.argv.includes('--selftest')) {
+  // 2025-09-01 一拆四;既有那份照 App(價格 ÷4、成交量 ×4,2023-06 起);深歷史是原始價(2021-01 起,拆股那天有斷崖)
+  const days = [];
+  for (let t = Date.UTC(2021, 0, 4); t <= Date.UTC(2026, 5, 30); t += 86400000) { const x = new Date(t); if (x.getUTCDay() % 6) days.push(x.toISOString().slice(0, 10)); }
+  const P = Object.fromEntries(days.map((d, i) => [d, 100 * (1 + i * 0.0003)]));
+  const SPL = '2025-09-01';
+  const deepK = days.map(d => { const c = d < SPL ? P[d] : P[d] / 4, v = d < SPL ? 1000 : 4000; return [d, c, c, c, c, v]; });
+  const base = days.filter(d => d >= '2023-06-01').map(d => ({ date: d.replace(/-/g, '/'), open: P[d] / 4, high: P[d] / 4, low: P[d] / 4, close: P[d] / 4, volume: 4000 }));
+  const r = deepPre(base, deepK);
+  const amt = x => x.close * x.volume;
+  const p0 = r.pre && r.pre[0], b0 = base[0];
+  const raw0 = deepK[0][4] * deepK[0][5];
+  const okA = r.ratio === 4 && r.pre.length > 500 && Math.abs(p0.close - P[days[0]] / 4) < 1e-9;
+  const okB = r.pre.every(x => x.volume === 4000) && Math.abs(amt(p0) / raw0 - 1) < 1e-9;
+  const okC = Math.abs(amt(r.pre[r.pre.length - 1]) / amt(b0) - 1) < 0.01;
+  const old = deepK[0][4] / r.ratio * deepK[0][5];
+  console.log(`${okA ? '✅' : '❌'} ① 尺標比 4、前段價格 ÷4、補了 ${r.pre ? r.pre.length : 0} 根`);
+  console.log(`${okB ? '✅' : '❌'} ② 前段成交量 ×4 → 成交金額 = 原始成交金額(${amt(p0)} vs ${raw0})`);
+  console.log(`${okC ? '✅' : '❌'} ③ 接縫兩邊成交金額連續(沒有一刀砍成四分之一)`);
+  console.log(`${old / raw0 < 0.3 ? '✅' : '❌'} ④ 決定性對照:舊寫法(成交量不換)成交金額只剩 ${(old / raw0 * 100).toFixed(0)}%`);
+  process.exit(okA && okB && okC && old / raw0 < 0.3 ? 0 : 1);
+}
+
 const SRC = process.argv[2];
 const _dlI = process.argv.indexOf('--delisted-out');
 const DL_OUT = _dlI > 0 ? process.argv[_dlI + 1] : null;
 const DST = (process.argv[3] && !process.argv[3].startsWith('--')) ? process.argv[3] : 'data';
 if (DL_OUT && path.resolve(DL_OUT) === path.resolve(DST)) { console.error('🚨 --delisted-out 不可以是 data 目錄本身'); process.exit(1); }
 if (!SRC || !fs.existsSync(SRC)) { console.error('用法:node scripts/merge_deep_klines.mjs <deepDir> [dataDir]'); process.exit(1); }
-
-const norm = d => String(d || '').replace(/\//g, '-').slice(0, 10);
-const med = a => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(b.length / 2)] : null; };
 
 const files = fs.readdirSync(SRC).filter(f => f.endsWith('.json.gz'));
 console.log(`深歷史檔:${files.length}`);
@@ -73,27 +122,12 @@ for (const f of files) {
   const firstBase = norm(base[0].date);
   beforeD.push(firstBase);
 
-  // ── ⭐ 尺標對齊:用重疊期的中位比值 ──
-  const baseMap = new Map();
-  for (const r of base) if (+r.close > 0) baseMap.set(norm(r.date), +r.close);
-  const ratios = [];
-  for (const [d, , , , c] of deep.k) {
-    const b = baseMap.get(norm(d));
-    if (b > 0 && c > 0) ratios.push(c / b);
-  }
-  if (ratios.length < 20) { thinOverlap++; afterD.push(firstBase); continue; }
-  const ratio = med(ratios);
-  if (!(ratio > 0)) { skipped++; afterD.push(firstBase); continue; }
+  // ── ⭐ 尺標對齊:用重疊期的中位比值(deepPre;成交量反向換尺標)──
+  const dp = deepPre(base, deep.k);
+  if (dp.why === 'thin') { thinOverlap++; afterD.push(firstBase); continue; }
+  if (dp.why) { skipped++; afterD.push(firstBase); continue; }
+  const ratio = dp.ratio, pre = dp.pre;
   if (Math.abs(ratio - 1) > 0.02) rescaled++;            // 尺標不同(多半是分割/減資)
-
-  // ── 只補「比既有最早日期更早」的列,並除以尺標比 ──
-  const pre = [];
-  for (const [d, o, h, l, c, v] of deep.k) {
-    if (norm(d) >= firstBase) break;                     // ⛔ 到既有範圍就停(⛔ 不覆蓋既有列)
-    if (!(c > 0 && o > 0)) continue;
-    pre.push({ date: String(d).replace(/-/g, '/'),
-               open: o / ratio, high: h / ratio, low: l / ratio, close: c / ratio, volume: v || 0 });
-  }
   if (!pre.length) { skipped++; afterD.push(firstBase); continue; }
   const out = pre.concat(base);
   // 🚧🚧 守門:合併後只要有斷崖就**整檔不寫**(保留原本的淺版)——
