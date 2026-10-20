@@ -129,7 +129,9 @@ def parse_mg(rows):
 
 def parse_txnear(rows):
     """TaiwanFuturesDaily(TX)→ {date: (合約月, 收盤)}:只收一般盤(夜盤 after_market ⛔)、單一月份(價差單 202301/202302 ⛔)、
-    收盤 > 0,取那天**最小的**合約月 = 近月(結算日當天到期的那個仍算近月,同 App 的口徑)。"""
+    收盤 > 0;「近月」= **未平倉量最大**的那個合約月(⭐ 跟 App 那份快照同一條:macro_miner._taifex_openapi_tx_fut_close
+    「以未沖銷量最大者當近月」;第一版取「最小的合約月」,結算週前後差到幾百點 → 對表只有 65%)。
+    未平倉一樣(或沒有這個欄)→ 取月份小的。"""
     best = {}
     for r in rows or []:
         d = _date(r.get('date'))
@@ -141,9 +143,11 @@ def parse_txnear(rows):
         c = _num(r.get('close'))
         if c is None or c <= 0:
             continue
-        if d not in best or cd < best[d][0]:
-            best[d] = (cd, c)
-    return best
+        oi = _num(r.get('open_interest')) or 0
+        b = best.get(d)
+        if b is None or oi > b[2] or (oi == b[2] and cd < b[0]):
+            best[d] = (cd, c, oi)
+    return {d: (v[0], v[1]) for d, v in best.items()}
 
 
 def parse_ix(rows):
@@ -194,7 +198,7 @@ def cross_check(series, kind, hist):
         n += 1
         if any(_close(x, float(v), tol) for x in have):
             hit += 1
-        elif len(miss) < 3:
+        elif len(miss) < 8:
             miss.append(f'{d} 快照 {v} vs 我們 {have[0]}')
     if n < MATCH_N:
         return False, f'可對表只有 {n} 筆(< {MATCH_N})'
@@ -430,7 +434,13 @@ def selftest():
         {'date': '2026-10-14', 'contract_date': '202610', 'close': 22800, 'trading_session': 'position'},
     ]
     txn = parse_txnear(txr)
-    ok('⑩ 近月 = 最小的單一月份、⛔ 夜盤、⛔ 價差單、收盤 0 不收', txn.get('2026-10-16') == ('202610', 23050.0) and txn.get('2026-10-15') == ('202611', 22900.0), txn)
+    ok('⑩ 沒有未平倉欄 → 取月份小的、⛔ 夜盤、⛔ 價差單、收盤 0 不收', txn.get('2026-10-16') == ('202610', 23050.0) and txn.get('2026-10-15') == ('202611', 22900.0), txn)
+    txo = parse_txnear([
+        {'date': '2026-10-14', 'contract_date': '202610', 'close': 22800, 'trading_session': 'position', 'open_interest': 30000},
+        {'date': '2026-10-14', 'contract_date': '202611', 'close': 22700, 'trading_session': 'position', 'open_interest': 80000},
+        {'date': '2026-10-14', 'contract_date': '202611', 'close': 22100, 'trading_session': 'after_market', 'open_interest': 99999},
+    ])
+    ok('⑩ 近月 = 一般盤未平倉最大的那個月份(同 App 快照;夜盤那列 ⛔ 不算)', txo.get('2026-10-14') == ('202611', 22700.0), txo)
     bs = combine_bs(txn, parse_ix([{'date': '2026-10-16', 'close': 23181}, {'date': '2026-10-15', 'close': 22850.5}]))
     ok('⑩ 價差 = 期貨 − 加權(負 = 逆價差)、兩邊都有才算(10-14 沒有加權 → 不算)', bs == {'2026-10-15': [49.5, 22900.0, 22850.5], '2026-10-16': [-131.0, 23050.0, 23181.0]}, bs)
     hb = [{'date': d, 'taifex_backwardation': -100.0 - i} for i, d in enumerate(days)]
