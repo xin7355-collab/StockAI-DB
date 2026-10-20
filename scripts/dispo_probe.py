@@ -319,10 +319,12 @@ def main():
         if i_sym is None or i_dt is None:
             print(f'  ⚠️ 欄位自動對照失敗(i_sym={i_sym}, i_dt={i_dt})→ 用上面的樣本人工定欄位')
         else:
-            # 全量:2023-06 起逐月抓(一個月一次呼叫,~28 次)
-            print('DUMP_N_BEGIN')
+            # 全量:逐月抓(一個月一次呼叫)。🔁 V79.3.8 起點可設(NOTICE_FROM,預設 2010-01;舊版寫死 2023-06)
+            #   → 處置那份(④)證交所回溯到 2005,注意股很可能也行;拉長才能驗「噴著進注意股」那條的逐年同向
+            nf = (os.getenv('NOTICE_FROM') or '2010-01').strip()
+            print(f'DUMP_N_BEGIN from={nf}')
             total = 0
-            y, m = 2023, 6
+            y, m = int(nf[:4]), int(nf[5:7])
             today = date.today()
             while (y, m) <= (today.year, today.month):
                 ed = date(y + (m == 12), (m % 12) + 1, 1)
