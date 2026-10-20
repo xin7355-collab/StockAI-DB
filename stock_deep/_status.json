@@ -1,0 +1,41 @@
+{
+ "price10": {
+  "probe_first": "2010-01-04",
+  "cols": [
+   "o",
+   "h",
+   "l",
+   "c",
+   "v",
+   "money"
+  ],
+  "have": 2548,
+  "of": 2548,
+  "chk": [
+   1939,
+   1940
+  ],
+  "at": "2026-10-19",
+  "done": true
+ },
+ "div10": {
+  "probe_first": "2010-07-06",
+  "cols": [
+   "before_price",
+   "after_price",
+   "stock_and_cache_dividend",
+   "max_price",
+   "min_price",
+   "open_price",
+   "reference_price"
+  ],
+  "have": 570,
+  "of": 2548,
+  "chk": [
+   0,
+   0
+  ],
+  "at": "2026-10-19",
+  "done": false
+ }
+}
