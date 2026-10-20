@@ -79,9 +79,18 @@ const R = await page.evaluate(async (K) => {
     const gmPrompt = captured[captured.length - 1] || '';
     const gmHtml = (document.getElementById('globalAIModalBody') || document.getElementById('globalAIResult') || {}).innerHTML || '';
     // 盤前速報的忠實回答:拿它自己的提示詞重述
-    reply = restate(gmPrompt).slice(0, 1500) || '沒有數字';
-    try { await A.runGlobalMarketAI(); } catch (_) {}
-    const gmHtml2 = (document.getElementById('globalAIModalBody') || document.getElementById('globalAIResult') || {}).innerHTML || '';
+    // 🔁 V79.4.3 機器滿載時,總經 / 報價這些非同步資料可能在兩次呼叫之間才到 → 第二次的提示詞數字跟第一次不同,
+    //   「拿第一次重述」就會被當成編的(假紅燈,四驗證實際踩到)。⭐ 改成:重述上一次的提示詞,直到這一次的提示詞
+    //   跟上一次一模一樣(資料穩定)才算數;⛔ 斷言本身一個字都沒放寬。
+    let gmHtml2 = '', prevP = gmPrompt;
+    for (let t = 0; t < 4; t++) {
+        reply = restate(prevP).slice(0, 1500) || '沒有數字';
+        try { await A.runGlobalMarketAI(); } catch (_) {}
+        const curP = captured[captured.length - 1] || '';
+        gmHtml2 = (document.getElementById('globalAIModalBody') || document.getElementById('globalAIResult') || {}).innerHTML || '';
+        if (curP === prevP) break;
+        prevP = curP;
+    }
     const gmGate = G(gmPrompt, restate(gmPrompt));
     // 總經
     A._macroRiskCache = Object.assign({}, A._macroRiskCache || {}, { upcoming_macro_events: [{ date: '2026-10-01', event: 'FOMC', level: '高', days: 3 }] });
