@@ -62,6 +62,27 @@
    881
   ],
   "at": "2026-10-20",
-  "done": false
+  "done": false,
+  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/"
+ },
+ "rev": {
+  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
+  "at": "2026-10-20"
+ },
+ "per": {
+  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
+  "at": "2026-10-20"
+ },
+ "share": {
+  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
+  "at": "2026-10-20"
+ },
+ "dt": {
+  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
+  "at": "2026-10-20"
+ },
+ "sbl": {
+  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
+  "at": "2026-10-20"
  }
 }
