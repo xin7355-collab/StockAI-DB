@@ -78,25 +78,64 @@ def p10_rows(pk):
     return out
 
 
+def _scale(base, early, win=None):
+    """early 要乘多少才跟 base 同一把尺。win=None:整段重疊都要是同一個比例(price10 跟現成只重疊約 3 個月);
+    win=N:只看接縫那一端(base 最早的 N 個重疊日)—— 給「base 很晚才開始、後面又有別的公司行動」的橋接用,
+    後面那些行動本來就跟接縫無關(⛔ 不是放寬:接縫附近照樣要 ≥20 天、漂移 ≤0.5%)。回 (k, 原因)。"""
+    bmap = {_d(r['date']): float(r['close']) for r in base if float(r.get('close') or 0) > 0}
+    pairs = sorted((_d(r['date']), bmap[_d(r['date'])] / r['close']) for r in early if _d(r['date']) in bmap and r['close'] > 0)
+    if win:
+        pairs = pairs[:win]
+    rat = [x for _, x in pairs]
+    if len(rat) < MIN_OVERLAP:
+        return None, f'overlap={len(rat)}'
+    if max(rat) / min(rat) - 1 > RATIO_TOL:
+        return None, f'ratio-drift={max(rat) / min(rat) - 1:.4f}'
+    return sorted(rat)[len(rat) // 2], 'ok'
+
+
+def _pre(early, k, first):
+    return [{'date': r['date'], 'open': round(r['open'] * k, 4), 'high': round(r['high'] * k, 4), 'low': round(r['low'] * k, 4),
+             'close': round(r['close'] * k, 4), 'volume': round((r['volume'] or 0) / k)} for r in early if _d(r['date']) < first]
+
+
 def join(base, early, sym):
     """early(2010~2021-03)接到 base 前面。回 (rows, 說明);接不上回 (base, 原因)。"""
     if not base:
         return early, 'only-early'
-    bmap = {_d(r['date']): float(r['close']) for r in base if float(r.get('close') or 0) > 0}
-    rat = [bmap[_d(r['date'])] / r['close'] for r in early if _d(r['date']) in bmap and r['close'] > 0]
-    if len(rat) < MIN_OVERLAP:
-        return base, f'overlap={len(rat)}'
-    if max(rat) / min(rat) - 1 > RATIO_TOL:
-        return base, f'ratio-drift={max(rat) / min(rat) - 1:.4f}'
-    k = sorted(rat)[len(rat) // 2]
-    first = _d(base[0]['date'])
-    pre = [{'date': r['date'], 'open': round(r['open'] * k, 4), 'high': round(r['high'] * k, 4), 'low': round(r['low'] * k, 4),
-            'close': round(r['close'] * k, 4), 'volume': round((r['volume'] or 0) / k)} for r in early if _d(r['date']) < first]
+    k, why = _scale(base, early)
+    if k is None:
+        return base, why
+    pre = _pre(early, k, _d(base[0]['date']))
     if not pre:
         return base, 'no-earlier'
     import miner
     rows = miner._backadjust_splits(pre + [dict(r) for r in base], sym=sym)
     return rows, f'k={k:.4f}+{len(pre)}'
+
+
+BRIDGE_WIN = 60
+
+
+def bridge(base, mid, early, sym):
+    """🌉 現成那份(dd)很晚才開始(多半 2023-05/06:當初 klines_deep 整段有斷崖就整檔不接)、跟 price10 沒有重疊 →
+    拿 klines_deep(2021-01 起)當中間那段:price10 →(2021 Q1 重疊,整段同一比例)→ klines_deep →(接縫附近 60 天)→ 現成。
+    ⛔ 現成的列一個都不動;中間那段裡本來就有的非整數倍斷崖(減資 / 增資)照留 —— 跟 data/ 一樣不猜比例,探針自己有斷崖守門。
+    price10 那一縫接不上 → 只補 klines_deep 那段(2021~2023 也比沒有好)。回 (rows, 說明)。"""
+    first = _d(base[0]['date'])
+    k2, why2 = _scale(base, mid, win=BRIDGE_WIN)
+    if k2 is None:
+        return base, f'kd-seam:{why2}'
+    k1, why1 = _scale(mid, early)
+    pre_mid = _pre(mid, k2, first)
+    if not pre_mid:
+        return base, 'kd-seam:no-earlier'
+    pre_early = _pre(early, k1 * k2, _d(pre_mid[0]['date'])) if k1 is not None else []
+    import miner
+    rows = miner._backadjust_splits(pre_early + pre_mid + [dict(r) for r in base], sym=sym)
+    if k1 is None:
+        return rows, f'bridge-kd-only({why1})+{len(pre_mid)}'
+    return rows, f'bridge k={k1 * k2:.4f}+{len(pre_early)}+{len(pre_mid)}'
 
 
 def cliffs(rows):
@@ -170,7 +209,7 @@ def build(dd, kd, sd, base, out, div_in=None, div_out=None, verbose=True):
     for p in p10_dir.glob('*.json.gz'):
         if is_stock(p.name[:4]):
             syms.add(p.name[:4])
-    st = {'joined': 0, 'base_only': 0, 'early_only': 0, 'kd_dl': 0, 'skip_short': 0, 'reasons': {}, 'cliffs': 0, 'cliff_syms': 0, 'margin_rows': 0, 'div_syms': 0}
+    st = {'joined': 0, 'bridged': 0, 'base_only': 0, 'early_only': 0, 'kd_dl': 0, 'skip_short': 0, 'reasons': {}, 'cliffs': 0, 'cliff_syms': 0, 'margin_rows': 0, 'div_syms': 0}
     for sym in sorted(syms):
         bp = dd / f'{sym}.json'
         base_rows, dl = None, 0
@@ -190,9 +229,17 @@ def build(dd, kd, sd, base, out, div_in=None, div_out=None, verbose=True):
             dl = 1
         if base_rows and early:
             rows, why = join(base_rows, early, sym)
-            key = why.split('=')[0] if not why.startswith('k=') else 'joined'
+            if why.startswith('overlap') and not dl:
+                kp = load_gz(kd / f'{sym}.json.gz')
+                mid = p10_rows(kp) if kp else []
+                if mid:
+                    rows, why = bridge(base_rows, mid, early, sym)
+            key = 'joined' if why.startswith('k=') else ('bridged' if why.startswith('bridge k=') else
+                  ('bridged_kd_only' if why.startswith('bridge-kd-only') else why.split('=')[0]))
             st['reasons'][key] = st['reasons'].get(key, 0) + 1
-            st['joined' if why.startswith('k=') else 'base_only'] += 1
+            st['joined' if key in ('joined', 'bridged', 'bridged_kd_only') else 'base_only'] += 1
+            if key.startswith('bridged'):
+                st['bridged'] += 1
         elif base_rows:
             rows = base_rows
             st['base_only'] += 1
@@ -231,7 +278,7 @@ def build(dd, kd, sd, base, out, div_in=None, div_out=None, verbose=True):
         merged = merge_divs(old, new)
         Path(div_out).write_text(json.dumps({'d': {s: {'h': h} for s, h in merged.items()}, 'src': 'dividends_hist + stock_deep/div10'}, ensure_ascii=False), encoding='utf-8')
     if verbose:
-        print(f"🗄️ d16:接上 {st['joined']} 檔 ・只有現成 {st['base_only']} ・只有 2010~2021(下市){st['early_only']} ・2021 後下市 {st['kd_dl']} ・太短不收 {st['skip_short']}")
+        print(f"🗄️ d16:接上 {st['joined']} 檔(其中 🌉 經 klines_deep 橋接 {st['bridged']})・只有現成 {st['base_only']} ・只有 2010~2021(下市){st['early_only']} ・2021 後下市 {st['kd_dl']} ・太短不收 {st['skip_short']}")
         print(f"   接不上的原因:{st['reasons']} ・融資券補了 {st['margin_rows']:,} 列 ・除權息 {st['div_syms']} 檔 ・斷崖 {st['cliffs']} 次 / {st['cliff_syms']} 檔(探針自己有守門)")
     return st
 
@@ -306,6 +353,55 @@ def selftest():
         rows, why = join(baseA, p10_rows({'k': mk(early, grow)}), '1111')
         RATIO_TOL = keep
         ok('⑧ 決定性對照:容忍度設成不可能 → 接不上', rows == baseA and why.startswith('ratio-drift'), why)
+    # ⑨ 🌉 橋接:現成那份 2023-06 才開始(跟 price10 沒重疊);klines_deep 2021-01 起,2024-03 有一次 2:1 分割它沒調
+    #   → 現成 ÷ klines_deep 在 2024-03 前是 0.6、之後是 1.2。⚠️ 刻意用非整數 0.6:整數倍的接縫錯了會被 _backadjust_splits
+    #   自己修回去(注入「中間那段不乘比例」照樣全綠 = 沒有鑑別力,實測踩到)
+    alld = []
+    d0 = _dt.date(2019, 1, 2)
+    while d0 <= _dt.date(2024, 6, 28):
+        if d0.weekday() < 5:
+            alld.append(d0.isoformat())
+        d0 += _dt.timedelta(days=1)
+    R = {d: 100.0 * (1 + i * 0.0003) for i, d in enumerate(alld)}
+    kd_days = [d for d in alld if d >= '2021-01-04']
+    base_days = [d for d in alld if d >= '2023-06-01']
+    kdc = lambda d: R[d] if d < '2024-03-01' else R[d] / 2
+    bar = lambda d, c: [d, round(c, 6), round(c * 1.01, 6), round(c * 0.99, 6), round(c, 6), 1000]
+    p10k = [bar(d, R[d]) for d in early]
+    kdk = [bar(d, kdc(d)) for d in kd_days]
+    mkb = lambda d, c: {'date': d.replace('-', '/'), 'open': round(c, 6), 'high': round(c * 1.01, 6), 'low': round(c * 0.99, 6), 'close': round(c, 6), 'volume': 2000, 'foreign_net': 7}
+    baseB = [mkb(d, R[d] * 0.6) for d in base_days]
+    with tempfile.TemporaryDirectory() as td:
+        T = Path(td)
+        for sub in ('dd', 'kd', 'sd/price10', 'sd/margin', 'sd/div10', 'base', 'out'):
+            (T / sub).mkdir(parents=True)
+        gz = lambda p, o: gzip.open(p, 'wt', encoding='utf-8').write(json.dumps(o))
+        (T / 'dd/7777.json').write_text(json.dumps(baseB))
+        gz(T / 'kd/7777.json.gz', {'s': '7777', 'dl': 0, 'k': kdk})
+        gz(T / 'sd/price10/7777.json.gz', {'s': '7777', 'dl': 0, 'k': p10k})
+        # 決定性對照:同一份現成 + price10,但沒有 klines_deep → 照舊接不上(只留現成)
+        (T / 'dd/8888.json').write_text(json.dumps(baseB))
+        gz(T / 'sd/price10/8888.json.gz', {'s': '8888', 'dl': 0, 'k': p10k})
+        # 接縫附近比例就不穩(現成那邊第 16 天起換了尺標,在接縫 60 天內)→ ⛔ 不橋接
+        baseC = [mkb(d, R[d] * 0.6 * (1 if i < 15 else 0.8)) for i, d in enumerate(base_days)]
+        (T / 'dd/9999.json').write_text(json.dumps(baseC))
+        gz(T / 'kd/9999.json.gz', {'s': '9999', 'dl': 0, 'k': kdk})
+        gz(T / 'sd/price10/9999.json.gz', {'s': '9999', 'dl': 0, 'k': p10k})
+        st2 = build(T / 'dd', T / 'kd', T / 'sd', T / 'base', T / 'out', verbose=False)
+        Bb = json.loads((T / 'out/7777.json').read_text())
+        bd = [_d(r['date']) for r in Bb]
+        ok('⑨ 橋接:price10 → klines_deep → 現成,從 2019 一路接到 2024、日期不重複', bd[0] == early[0] and bd[-1] == base_days[-1] and len(bd) == len(set(bd)) and st2['bridged'] == 1, (bd[0], bd[-1], st2['reasons']))
+        ok('⑨ 橋接後現成那段一個字都不動(含籌碼欄)', Bb[-len(baseB):] == baseB, Bb[-1])
+        jj = bd.index(base_days[0])
+        ok('⑨ 兩個接縫都沒有斷崖、2019 第一天 = 100 × 0.6(price10 → klines_deep 1.0、klines_deep → 現成 0.6)',
+           cliffs(Bb) == 0 and abs(Bb[jj - 1]['close'] / Bb[jj]['close'] - 1) < 0.01 and abs(Bb[0]['close'] - 60.0) < 0.01, (Bb[0], Bb[jj - 1], Bb[jj]))
+        Nn = json.loads((T / 'out/8888.json').read_text())
+        ok('⑨ 決定性對照:沒有 klines_deep → 照舊接不上、只留現成', Nn == baseB and st2['reasons'].get('overlap') == 1, st2['reasons'])
+        Cc = json.loads((T / 'out/9999.json').read_text())
+        ok('⑨ 接縫附近比例就不穩 → ⛔ 不橋接(只留現成、原因寫 kd-seam)', Cc == baseC and st2['reasons'].get('kd-seam:ratio-drift') == 1, st2['reasons'])
+        # 整段比例檢查(⛔ 只看接縫)會被 2024 那次變化擋掉 → 證明 win 真的在起作用
+        k_full, why_full = _scale(baseB, p10_rows({'k': kdk}))
+        ok('⑨ 決定性對照:同一份資料改用「整段都要同一個比例」→ 被接縫後很遠的那次尺標變化擋掉', k_full is None and why_full.startswith('ratio-drift'), why_full)
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
     return 0 if not bad else 1
 
