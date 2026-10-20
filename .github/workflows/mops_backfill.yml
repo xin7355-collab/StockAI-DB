@@ -1,0 +1,119 @@
+name: 📰 重大訊息歷史回補(公開資訊觀測站,變因因子用,手動 + 自動接力)
+
+# 🧪 V79.3.8 使用者(2026-10-20):「把能測試的都列出來再來執行。要挖礦就挖礦。」
+# ⭐ mops_probe 第二輪實測(run 39352940986):全市場單日 / 上市上櫃 / 400 天前 / 台積電 5 年前整年都抓得到,零金鑰、沒被擋。
+# 架構(照 stock_deep_backfill 的接力):
+#   ① 寫獨立 orphan 分支 mops_deep(⛔ 不進 data / gh-pages,陷阱 #41;分支只增不減)
+#   ② ⛔ 不加排程;時間用完就 workflow_dispatch 接力自己(最多 20 棒);被擋 / 對表沒過 ⛔ 不接力
+#   ③ ⛔ 不吃 FinMind 額度(不用任何金鑰)
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: '最早補到哪個月(YYYY-MM;由新往舊補)'
+        required: false
+        default: '2010-01'
+      max_min:
+        description: '這一棒最多幾分鐘(job 上限 355)'
+        required: false
+        default: '330'
+      chain:
+        description: '(內部用)第幾棒接力'
+        required: false
+        default: '0'
+
+permissions:
+  contents: write
+  actions: write                # 接力用(gh workflow run)
+
+concurrency:
+  # ⛔ 不可跟別人共用 group(V73.7.9)
+  group: mops-backfill
+  cancel-in-progress: false     # 長工作,⛔ 不可被第二次手動觸發砍掉
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 🐍 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 安裝相依
+        run: pip install requests
+
+      - name: 🧪 selftest(⛔ 沒過不開工)
+        run: |
+          python3 scripts/mops_probe.py --selftest
+          python3 scripts/mops_backfill.py --selftest
+
+      # ⚠️ V49.4 教訓:還原用 git archive,⛔ 不要 git checkout origin/x -- dir(會弄髒 index)
+      - name: 📂 還原已抓的
+        run: |
+          mkdir -p mops_deep
+          if git fetch --depth=1 origin mops_deep 2>/dev/null; then
+            git archive FETCH_HEAD mops_deep | tar -x || true
+          fi
+          echo "已抓:$(find mops_deep -name '*.json.gz' | wc -l) 個月"
+
+      - name: 📰 回補
+        id: run
+        env:
+          FROM: ${{ github.event.inputs.from }}
+          MAX_MIN: ${{ github.event.inputs.max_min }}
+          OUT_DIR: mops_deep
+        run: python3 scripts/mops_backfill.py
+
+      # ⚠️ 順序:先把 mops_deep/ 搬到 /tmp,切完分支再搬回來(⛔ 不然 checkout 會蓋掉整輪的結果)
+      - name: 🚀 推到 mops_deep 分支
+        if: always() && steps.run.outputs.push == '1'
+        run: |
+          set -e
+          n=$(find mops_deep -name '*.json.gz' 2>/dev/null | wc -l)
+          echo "要推 $n 個月"
+          [ "$n" -gt 0 ] || { echo "一個月都沒有 → 不推"; exit 0; }
+          rm -rf /tmp/mdeep && mkdir -p /tmp/mdeep && cp -a mops_deep/. /tmp/mdeep/
+          git config user.name  "StockAI Bot"
+          git config user.email "bot@users.noreply.github.com"
+          git reset --hard -q && git clean -fdq
+          if git fetch --depth=1 origin mops_deep 2>/dev/null; then
+            git checkout -f -B mops_deep FETCH_HEAD
+            old=$(find mops_deep -name '*.json.gz' | wc -l)
+          else
+            git checkout -q --orphan mops_deep
+            git rm -rq --cached . 2>/dev/null || true
+            git clean -fdq
+            old=0
+          fi
+          # 🚧 只增不減:這一棒的月份數比分支上少 → 有東西不對,⛔ 不推
+          if [ "$n" -lt "$old" ]; then echo "::error::這一棒 $n 個月 < 分支上 $old 個月 → 不推"; exit 1; fi
+          rm -rf mops_deep && mkdir -p mops_deep && cp -a /tmp/mdeep/. mops_deep/
+          git add -f mops_deep
+          if git diff --cached --quiet; then echo "✅ 沒有新東西 → 不 commit"; exit 0; fi
+          git commit -q -m "📰 重大訊息回補 $n 個月 $(date -u +%Y-%m-%d)"
+          pushed=0
+          # ⛔ 這個 retry 迴圈不可拿掉
+          for i in 1 2 3 4 5; do
+            git push origin mops_deep && { pushed=1; echo "✅ 已推上 mops_deep(第 $i 次)"; break; }
+            sleep $((i * 3))
+            git pull --rebase origin mops_deep 2>/dev/null || true
+          done
+          [ "$pushed" -eq 1 ] || { echo "::error::push 連 5 次失敗"; exit 1; }
+
+      # 🔁 只有「時間用完」才接力(被擋 / 對表沒過 ⛔ 不接力)
+      - name: 🔁 接力
+        if: steps.run.outputs.more == '1' && steps.run.outputs.reason == 'time' && steps.run.outputs.push == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHAIN: ${{ github.event.inputs.chain }}
+          FROM_M: ${{ github.event.inputs.from }}
+        run: |
+          C=$(( ${CHAIN:-0} + 1 ))
+          if [ "$C" -gt 20 ]; then echo "⛔ 已經接力 20 棒 → 停(防無限迴圈)"; exit 0; fi
+          gh workflow run mops_backfill.yml --ref main -f from="${FROM_M:-2010-01}" -f chain="$C" -f max_min=330
+          echo "🔁 已觸發第 $C 棒"
