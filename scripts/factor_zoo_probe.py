@@ -14,6 +14,10 @@
   ・六關:全期 / 前後半同向 / 逐年 ≥80% 同向 / 去最好年 / 扣成本(最好那一等分 − 0.44)/ 格內(成交額 × 波動 × 位階 三分位 27 格,格內排名仍同向且 t ≥ 2)
   ・**過第一層(先寫死,⛔ 跑完不改)**:BH q ≤ 0.05 + 前後半同向 + 逐年 ≥80% + 格內 + 五等分單調(名次相關 ≥ 0.9)
   ・另外:每個變因 × 大盤狀態(嚴格空頭 / 多頭、加權波動高 / 低)、變因彼此相關表(|ρ| ≥ 0.7 = 同一件事換名字)
+📐 大盤狀態分層(MKT_STATE,mkt_state_build.py 產的;V79.3.8):每個變因 × 每個大盤狀態(外資 / 融資 / P/C / 匯率 / 美債 / 油金 /
+  美股 / 櫃買相對 …)→ 狀態在「過去 750 天」的前三分之一 vs 後三分之一,那個變因的「最高 − 最低」差多少(Newey-West 迴歸 t)、
+  全部變因 × 狀態 × 母體一起 BH、前後半同向才算 —— **只描述「在什麼盤比較有效」,⛔ 不是訊號**;
+  狀態值一律取橫切面那一天**以前**(⛔ 不含當天)最近的一筆 = 零前視(selftest ⑩ 有「偷看當天」的決定性對照)。
 📐 第二層(👑 增量,LEAD_TRACE + POOL_DIR):leader_probe 每次換倉「本來會買的」那幾檔,依變因在當天前 100 大池子裡的名次
   切三份比(r − 0050);池內控制住 chg10(👑 排名用的)之後的 Fama-MacBeth 係數。
   **過第二層**:兩窗口都 ≥ +1pp/筆(照第一層的方向)+ ≥60% 年份同向 + 池內 t ≥ 2。
@@ -49,6 +53,9 @@ L2_MIN_PP, L2_YR = 1.0, 0.6                       # 第二層:每筆 ≥ +1pp、
 L2_YR_LONG = 8                                     # 長窗口裡這個變因至少要有 8 年有資料(⛔ 只有近幾年的變因,兩個窗口其實是同一批筆數)
 FM_LAG = 10                                        # 池子面板每天一列、10 天報酬重疊
 MAP_MIN = 0.8                                      # 👑 本來會買的,對得上池子面板的比例 < 80% → 面板跟回測不是同一份資料,⛔ 不判
+MKT = os.getenv('MKT_STATE') or ''
+MS_WIN, MS_MIN = 750, 250                          # 大盤狀態:跟自己過去 750 筆比(至少 250 筆才分)
+MS_DATES = 60                                      # 高 / 低兩邊各至少 60 個橫切面(約 1.2 年)才判
 
 
 # ── 統計 ─────────────────────────────────────────────────────────
@@ -66,6 +73,88 @@ def nw_t(x, lag):
         v += 2 * (1 - L / (lag + 1)) * (e[:-L] @ e[L:]) / n
     se = math.sqrt(max(v, 1e-300) / n)
     return float(mu), float(mu / se)
+
+
+def nw_ols(y, x, lag):
+    """y = a + b·x 的 b 與 Newey-West t(Bartlett)。x 是 0/1(高 / 低狀態)。"""
+    y, x = np.asarray(y, float), np.asarray(x, float)
+    m = np.isfinite(y) & np.isfinite(x)
+    y, x = y[m], x[m]
+    n = len(y)
+    if n < 20 or x.min() == x.max():
+        return float('nan'), float('nan')
+    xc = x - x.mean()
+    sxx = (xc * xc).sum()
+    b = (xc * (y - y.mean())).sum() / sxx
+    e = y - y.mean() - b * xc
+    u = xc * e
+    S = (u * u).sum()
+    for l in range(1, lag + 1):
+        S += 2 * (1 - l / (lag + 1)) * (u[l:] * u[:-l]).sum()
+    se = math.sqrt(S) / sxx if S > 0 else float('nan')
+    return float(b), float(b / se) if se and se == se else float('nan')
+
+
+def mkt_split(dates, series):
+    """每個橫切面日:+1 = 狀態在自己過去 750 筆的前三分之一、−1 = 後三分之一、0 = 中間或還不知道。
+    ⭐ 只用**嚴格早於那一天**的值(⛔ 不含當天)= 零前視。"""
+    ks = sorted(series)
+    vs = np.array([series[k] if series[k] is not None else np.nan for k in ks], float)
+    out = np.zeros(len(dates), int)
+    j = 0
+    for i, d in enumerate(dates):
+        while j < len(ks) and ks[j] < d:
+            j += 1
+        if j < 2:
+            continue
+        cur = vs[j - 1]
+        past = vs[max(0, j - 1 - MS_WIN):j - 1]
+        past = past[np.isfinite(past)]
+        if not np.isfinite(cur) or len(past) < MS_MIN:
+            continue
+        pr = (past < cur).mean() + 0.5 * (past == cur).mean()
+        out[i] = 1 if pr >= 2 / 3 else (-1 if pr <= 1 / 3 else 0)
+    return out
+
+
+def mkt_layer(meta, L1m, names, states, lag, verbose=True):
+    """第一層 10 天那份的每日「最高 − 最低」× 每個大盤狀態 → 高狀態 − 低狀態差多少。回 {'res': [...], 'n_tests': k}。"""
+    cal = meta['cal']
+    res = []
+    for u in ('U1', 'U2'):
+        sp_all, dates = L1m.get(u, {}).get('_sp'), L1m.get(u, {}).get('_dates')
+        if sp_all is None or not len(dates):
+            continue
+        dts = [cal[i] for i in dates]
+        mid = np.median(dates)
+        for sname, ser in states.items():
+            lab = mkt_split(dts, ser)
+            if (lab == 1).sum() < MS_DATES or (lab == -1).sum() < MS_DATES:
+                continue
+            for j, f in enumerate(names):
+                sp = sp_all[:, j]
+                m = np.isfinite(sp) & (lab != 0)
+                if m.sum() < 2 * MS_DATES:
+                    continue
+                x = (lab[m] == 1).astype(float)
+                b, t = nw_ols(sp[m], x, lag)
+                if not np.isfinite(t):
+                    continue
+                hb = []
+                for half in (dates < mid, dates >= mid):
+                    mh = m & half
+                    xh = lab[mh] == 1
+                    hb.append(float(sp[mh][xh].mean() - sp[mh][~xh].mean()) if xh.sum() >= 10 and (~xh).sum() >= 10 else float('nan'))
+                res.append({'f': f, 's': sname, 'u': u, 'b': b, 't': t, 'p': p_two(t),
+                            'hi': float(sp[m][x == 1].mean()), 'lo': float(sp[m][x == 0].mean()),
+                            'n_hi': int(x.sum()), 'n_lo': int((1 - x).sum()), 'h1': hb[0], 'h2': hb[1]})
+    qs = bh([r['p'] for r in res]) if res else []
+    for r, q in zip(res, qs):
+        r['q_bh'] = float(q)
+        r['passM'] = bool(q <= 0.05 and np.isfinite(r['h1']) and np.isfinite(r['h2']) and r['h1'] * r['b'] > 0 and r['h2'] * r['b'] > 0)
+    if verbose:
+        print(f'   大盤分層:{len(res)} 個(變因 × 狀態 × 母體)一起 BH', flush=True)
+    return {'res': res, 'n_tests': len(res)}
 
 
 def p_two(t):
@@ -293,7 +382,8 @@ def layer1(meta, P, names, h_idx=1, stride=5, verbose=True):
                 'top_minus_cost': float(top * sg - COST) if np.isfinite(top) else None, 'top': float(top),
                 'cell': float(csm), 'cell_t': float(cst), 'reg': reg,
             })
-        out[uname] = {'dates': int(len(dates)), 'rows': int(U.sum()), 'res': res}
+        out[uname] = {'dates': int(len(dates)), 'rows': int(U.sum()), 'res': res,
+                      '_sp': (qm[:, :, 4] - qm[:, :, 0]) if len(dates) else None, '_dates': dates}   # 大盤分層用(dump 前拿掉)
         if verbose:
             print(f'   {uname}:{len(dates)} 個橫切面 ・{int(U.sum()):,} 列', flush=True)
     # BH(兩個母體 × 全部變因一起)
@@ -490,6 +580,19 @@ def main():
         print('🔗 變因相關表', flush=True)
         res['corr'] = corr_table(meta, P, names)
     main10 = res['L1']['10']
+    if MKT:
+        if l1f:
+            print('⚠️ 重用第一層(L1_FROM)時沒有每日 spread → 大盤分層這一輪不跑(⛔ 不拿舊的湊)', flush=True)
+        else:
+            ms = json.loads(Path(MKT).read_text(encoding='utf-8'))
+            states = ms.get('states') or {}
+            print(f'🌐 大盤分層:{len(states)} 個狀態({MKT})', flush=True)
+            res['M'] = mkt_layer(meta, main10, names, states, max(1, math.ceil(meta['hs'][1] / meta.get('stride', 5))))
+            res['M']['desc'] = ms.get('desc') or {}
+    for hk in res['L1']:
+        for uk in res['L1'][hk]:
+            for pk in ('_sp', '_dates'):
+                res['L1'][hk][uk].pop(pk, None)
     dirs = {r['f']: r['dir'] for r in main10['U2']['res'] if 'dir' in r}
     for r in main10['U1']['res']:
         if 'dir' in r and r['f'] not in dirs:
@@ -525,6 +628,15 @@ def report(res):
             print(f'{r["f"]:<11}{r["spread"]:>+9.2f}{r["t"]:>7.1f}{r["q_bh"]:>7.3f}{r["mono"]:>6.2f}{r["cell"]:>+7.2f}'
                   f'{r["h1"]:>+7.2f}/{r["h2"]:>+6.2f}{r["yr_same"][0]:>4}/{r["yr_same"][1]:<2}{r["top_minus_cost"] if r["top_minus_cost"] is not None else float("nan"):>+12.2f}  '
                   f'{"✅" if r["pass1"] else "  "}{"".join(k[0] for k, v in g.items() if not v)}')
+    if res.get('M'):
+        mr = res['M']['res']
+        ok = [r for r in mr if r.get('passM')]
+        print(f'\n=== 🌐 大盤分層(10 天 ・高狀態 − 低狀態的「最高 − 最低」差,pp)・{res["M"]["n_tests"]} 個一起 BH ・過 {len(ok)} 個 ===')
+        for r in sorted(ok or sorted(mr, key=lambda r: -abs(r['t']))[:12], key=lambda r: -abs(r['t']))[:25]:
+            print(f'   {r["u"]} {r["f"]:<11}× {r["s"]:<10}{r["b"]:>+7.2f}pp t={r["t"]:>5.1f} q={r.get("q_bh", 1):.3f} '
+                  f'・高 {r["hi"]:>+6.2f} / 低 {r["lo"]:>+6.2f} ・前/後半 {r["h1"]:>+6.2f}/{r["h2"]:>+6.2f} {"✅" if r.get("passM") else ""}')
+        if not ok:
+            print('   (上面是 |t| 最大的幾個,⛔ 沒有一個過 BH + 前後半同向)')
     if res.get('L2'):
         print('\n=== 第二層 👑(本來會買的,依池內名次:好的那三分之一 − 差的那三分之一,r−0050 每筆 pp)===')
         for w, v in res['L2'].items():
@@ -678,6 +790,37 @@ def selftest():
     # ⑨b 代號全對不上 → map_rate 0(main 會拿它擋,⛔ 不判)
     L2m, _ = layer2(mp, Pp, n2, {'w1': [dict(x, s='Z' + x['s']) for x in picks]}, dirs)
     ok('⑨b 代號全對不上 → map_rate = 0 且數得出來(⛔ 不可安靜地當成 0 筆)', L2m['w1'].get('map_rate', 1) == 0 and L2m['w1']['miss']['sym'] == len(picks), L2m['w1'].get('miss'))
+    # ⑩ 大盤分層(V79.3.8):e 只在「狀態高」有效、「狀態低」反向 → 抓得到;b 雜訊抓不到;
+    #    偷看當天的狀態(LEAK = 當天的 spread)用「嚴格早於」→ 抓不到;狀態打亂 → 抓不到
+    rng2 = np.random.default_rng(7)
+    calm, d0 = [], np.datetime64('2012-01-02')
+    while len(calm) < 2600:
+        if np.is_busday(d0):
+            calm.append(str(d0))
+        d0 += np.timedelta64(1, 'D')
+    S = {d: float(np.sin(2 * np.pi * i / 260) + rng2.normal(0, 0.1)) for i, d in enumerate(calm)}
+    dts = np.arange(5, len(calm), 5)
+    prev = np.array([S[calm[i - 1]] for i in dts])
+    sp_e = np.sign(prev) * 1.0 + rng2.normal(0, 1, len(dts))
+    sp_b = rng2.normal(0, 1, len(dts))
+    sp_g = rng2.normal(0, 1, len(dts))
+    LEAK = {d: float(rng2.normal()) for d in calm}
+    for k, i in enumerate(dts):
+        LEAK[calm[i]] = float(sp_g[k])                       # 當天的值 = 當天的 spread(偷看)
+    L1m = {'U1': {'_sp': np.stack([sp_e, sp_b, sp_g], axis=1), '_dates': dts}}
+    mt = {'cal': calm}
+    shuf = dict(zip(S.keys(), rng2.permutation(list(S.values()))))
+    M = mkt_layer(mt, L1m, ['e', 'b', 'g'], {'S': S, 'LEAK': LEAK, 'SHUF': shuf}, 2, verbose=False)
+    rm = {(r['f'], r['s']): r for r in M['res']}
+    re_ = rm.get(('e', 'S'), {})
+    ok('⑩ 大盤分層:e 只在狀態高時有效 → 抓得到(BH 過、前後半同向、b ≈ +2)', re_.get('passM') and 1.5 < re_.get('b', 0) < 2.5, re_)
+    ok('⑩ 雜訊變因 b × 狀態 → 抓不到', not rm.get(('b', 'S'), {}).get('passM'), rm.get(('b', 'S')))
+    ok('⑩ ⭐ 決定性對照:偷看當天(LEAK)→ 用「嚴格早於」抓不到(⛔ 不可偷看)', not rm.get(('g', 'LEAK'), {}).get('passM'), rm.get(('g', 'LEAK')))
+    ok('⑩ 決定性對照:狀態打亂 → e 抓不到', not rm.get(('e', 'SHUF'), {}).get('passM'), rm.get(('e', 'SHUF')))
+    stp = {d: (100.0 if d >= calm[1000] else float(i % 7)) for i, d in enumerate(calm)}
+    stp[calm[999]] = -1.0                                   # 跳上去前一天放全期最低 → 那天該判「低」
+    lab = mkt_split([calm[1000], calm[1001]], stp)
+    ok('⑩ mkt_split 零前視:跳上去那天還是看前一天(低)、隔天才算高', lab[0] == -1 and lab[1] == 1, lab)
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
     return 0 if not bad else 1
 

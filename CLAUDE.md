@@ -663,6 +663,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
 1. `node scripts/smoke_test.mjs`(headless 真載入:app init / 43 個偵測器 / render 函式 / 無 pageerror。比舊的 `node --check` 只驗語法強得多)
 2. `python3 -m py_compile *.py`(後端語法)+ **`python3 scripts/check_main_order.py`**(採礦進入點順序 — V71.1.1 新增,見下方陷阱 #9)
    + **`python3 scripts/check_workflow_paths.py`**(採礦產物有沒有真的被 artifact 上傳 — V71.4.7 新增,見下方陷阱 #11)
+   + **`python3 scripts/check_wf_bash.py`**(🐚 每支 workflow 的 run 步驟先過 `bash -n` —— V79.3.8 新增:`stock_deep_backfill.yml` 還原步驟少一個右引號,YAML 合法、其他檢查全綠,**只有接力的下一棒真的跑到才會語法錯** → 補挖整串半夜無聲斷掉;有 `--selftest`)
    + **`python3 scripts/check_undefined_py.py`**(用到不存在的名字 = 潛在 NameError — V72.3.0 新增)
    + **`python3 scripts/check_dup_def.py`**(同一個檔案裡重複定義同名函式 → Python 用最後那個,前面等於死碼 — V74.6.9 新增,實跑踩到才寫的)
    + **`python3 scripts/check_env_default.py`**(🔧 workflow 從 `inputs.*` 餵的環境變數,Python 端必須 `or 預設` —— 排程觸發時是**空字串**不是不存在;V75.1.3 新增,pe_band 四個週日零產出就是這個坑,V74.7.0 intraday_probe 是第一次)

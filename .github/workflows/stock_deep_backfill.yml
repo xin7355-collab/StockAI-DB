@@ -71,7 +71,7 @@ jobs:
           if git fetch --depth=1 origin fin_deep 2>/dev/null; then
             git archive FETCH_HEAD fin_deep | tar -x || true
           fi
-          ls -la fin_deep/ 2>/dev/null | head -3 || echo "⚠️ fin_deep 分支拿不到
+          ls -la fin_deep/ 2>/dev/null | head -3 || echo "⚠️ fin_deep 分支拿不到"
           git fetch --depth=1 origin data
           mkdir -p data
           git archive FETCH_HEAD data | tar -x
