@@ -29,11 +29,37 @@
    "open_price",
    "reference_price"
   ],
-  "have": 2386,
+  "have": 2548,
   "of": 2548,
   "chk": [
    0,
    0
+  ],
+  "at": "2026-10-20",
+  "done": true
+ },
+ "margin": {
+  "probe_first": "2010-01-04",
+  "cols": [
+   "MarginPurchaseBuy",
+   "MarginPurchaseCashRepayment",
+   "MarginPurchaseLimit",
+   "MarginPurchaseSell",
+   "MarginPurchaseTodayBalance",
+   "MarginPurchaseYesterdayBalance",
+   "OffsetLoanAndShort",
+   "ShortSaleBuy",
+   "ShortSaleCashRepayment",
+   "ShortSaleLimit",
+   "ShortSaleSell",
+   "ShortSaleTodayBalance",
+   "ShortSaleYesterdayBalance"
+  ],
+  "have": 1078,
+  "of": 2548,
+  "chk": [
+   881,
+   881
   ],
   "at": "2026-10-20",
   "done": false
