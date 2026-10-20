@@ -133,7 +133,12 @@ export const DEF = { U: 100, N: 5, R: 10, L: 10, chand: 0, park: true, bear: tru
     //   pause = Uint8Array(對齊 cal;1 = 那天收盤 ⛔ 不開新倉 —— 換倉日碰到就只賣不買、閒錢照停 0050,跟空頭守門同一個做法)
     //   pauseFile = JSON 檔(['YYYY-MM-DD', …] 或 {日期: 1})= 訊號日 ・pauseK = 訊號當天起 K 個交易日都不開新倉(0 = 只有訊號當天)
     //   pauseShift = s:整段循環平移 s 個交易日(安慰劑:停手天數一樣,只是日子不對)
-    pause: null, pauseFile: '', pauseK: 0, pauseShift: 0 };
+    pause: null, pauseFile: '', pauseK: 0, pauseShift: 0,
+    // 🦓 V79.3.8 外部變因表(變因因子研究第三層)⛔ 不設時逐位相同(selftest ㊿e):
+    //   xsFile = JSON {日期: {代號: 名次%(0~100,越大越好)}} ・xsMin = 名次 ≥ x 才買(null = 不濾)・xsUnk = 'keep' / 'drop'(那天沒值怎麼辦)
+    //   xsSham = p:候選以機率 p 隨機不買(同通過率安慰劑,另一顆亂數;⛔ 不用 shamKeep —— 它會順便關掉位置門檻)
+    //   xsW = w:排名改成 (1−w)×動能名次 + w×變因名次(0 = 照舊只看動能)
+    xsFile: '', xsMin: null, xsUnk: 'keep', xsSham: 0, xsW: 0 };
 // 🟥 V79.1.6 換倉日收盤就漲停 / 跌停的候選(使用者:「如果換倉日漲跌停,隔天還要買嗎?還是就都買 0050」)⛔ 不設時逐位相同(selftest ㊴):
 //   判定(同 luExit / dt_daily_probe.lockUp):換倉日收盤 ≥ 前收 ×(1+漲跌幅−1%)且收在最高 = 漲停;≤ 前收 ×(1−漲跌幅+1%)且收在最低 = 跌停;除權息日不判
 //   rkLu / rkLd = 'park':本來會買的那一檔不買,那一份錢留在 0050 到下一次換倉 ・'next':改買名單上的下一名
@@ -290,6 +295,19 @@ export function pauseArr(ctx, P) {
     return out;
 }
 
+/** 🦓 外部變因表:{日期: {代號: 名次%}} → Map(日期 → Map(代號 → 值));同一個檔只讀一次(掛在 ctx 上)。空檔 / 讀不到 → throw(⛔ 空表 = 跟不設一樣,會被誤讀成「沒差」) */
+export function xsMap(ctx, file) {
+    if (!file) return null;
+    ctx._xs = ctx._xs || new Map();
+    if (ctx._xs.has(file)) return ctx._xs.get(file);
+    const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const m = new Map(); let k = 0;
+    for (const [d, row] of Object.entries(raw || {})) { const mm = new Map(Object.entries(row || {}).map(([s, v]) => [s, +v])); if (mm.size) { m.set(String(d).replace(/\//g, '-').slice(0, 10), mm); k += mm.size; } }
+    if (!k) throw new Error(`xsFile ${file} 沒有任何值`);
+    ctx._xs.set(file, m);
+    return m;
+}
+
 export function simulate(ctx, s0, cfg, seed = 1) {
     if (cfg && cfg.books > 1) return simulateBooks(ctx, s0, cfg, seed);
     const { cal, stocks, etf } = ctx;
@@ -315,7 +333,13 @@ export function simulate(ctx, s0, cfg, seed = 1) {
     const blocked = new Map();                                // sym → {S, px, i, rel}
     let retryBuy = null, retryNow = false;
     const st = { accCut: 0, accUnk: 0, accKnown: 0, repl: 0, retried: 0, forced: 0, rebought: 0, fTot: 0, fPass: 0, finMiss: 0, posDays: 0, luOpen: 0, luClose: 0, luHold: 0, luLock: 0 };
-    const CAND = P.posMin > 0 || P.volUp > 0 || P.finAcc || P.fsync > 0 || P.rankUp || P.shamKeep > 0 || P.accAvoid || P.momMin != null || P.fipMin > 0 || P.volMin > 0;
+    const CAND = P.posMin > 0 || P.volUp > 0 || P.finAcc || P.fsync > 0 || P.rankUp || P.shamKeep > 0 || P.accAvoid || P.momMin != null || P.fipMin > 0 || P.volMin > 0
+        || P.xsMin != null || P.xsSham > 0;
+    // 🦓 V79.3.8 外部變因表(⛔ 不設 → XS = null,下面兩處都不會碰,亂數也不消耗)
+    const XS = (P.xsMin != null || P.xsW > 0) ? xsMap(ctx, P.xsFile) : null;
+    if ((P.xsMin != null || P.xsW > 0) && !XS) throw new Error('xsMin / xsW 要配 xsFile');
+    const xsAt = (sym, d) => { const r = XS && XS.get(d); const v = r ? r.get(sym) : undefined; return Number.isFinite(v) ? v : null; };
+    const rand7 = rng(seed * 2971215073 + 17);
     // 🏪 V79.2.4 bearIdx:空頭守門看哪個指數('' / 'twii' = 加權(預設,逐位相同)・'otc' 櫃買・'both' 兩個都空頭才算・'either' 任一空頭就算;櫃買那天沒資料(標 2)→ 退回加權並計數)
     if (P.bearIdx && !['twii', 'otc', 'both', 'either'].includes(P.bearIdx)) throw new Error(`bearIdx 只認 twii / otc / both / either,收到 ${JSON.stringify(P.bearIdx)}`);
     const bearAt = i => { const b = ctx.bear[i]; if (!P.bearIdx || P.bearIdx === 'twii') return b; const o = ctx.bearOtc ? ctx.bearOtc[i] : 2;
@@ -392,6 +416,10 @@ export function simulate(ctx, s0, cfg, seed = 1) {
                 const byG = new Map(); for (const x of rows) { if (!byG.has(x.g)) byG.set(x.g, []); byG.get(x.g).push(x.m); }
                 const all = median(rows.map(x => x.m)) || 0, medG = new Map([...byG].map(([g, a]) => [g, a.length >= 3 ? median(a) : all]));
                 ranked = rows.map(x => ({ S: x.S, m: x.m - medG.get(x.g) })).sort((a, b) => b.m - a.m).map(x => x.S);
+            } else if (P.xsW > 0) {                                                // 🦓 V79.3.8 動能名次 × 變因名次加權(那天沒值 = 中間 0.5)
+                const arr = ok.map(S => ({ S, m: momOf(S) })).filter(x => Number.isFinite(x.m)).sort((a, b) => b.m - a.m), N = arr.length;
+                ranked = arr.map((x, k) => { const v = xsAt(x.S.sym, cal[i]); return { S: x.S, s: (1 - P.xsW) * (N > 1 ? 1 - k / (N - 1) : 1) + P.xsW * (v === null ? 0.5 : v / 100) }; })
+                    .sort((a, b) => b.s - a.s).map(x => x.S);
             } else ranked = ok.map(S => ({ S, m: momOf(S) })).filter(x => Number.isFinite(x.m)).sort((a, b) => b.m - a.m).map(x => x.S);
         }
         return { ranked, ok };
@@ -412,6 +440,13 @@ export function simulate(ctx, s0, cfg, seed = 1) {
             if (hi === null) st.accUnk++;
             else { st.accKnown++; const drop = P.accAvoid === 'sham' ? rand2() < P.accSham : hi; if (drop) { st.accCut++; return false; } }
         }
+        if (P.xsMin != null) {                                                     // 🦓 V79.3.8 外部變因表濾網
+            const v = xsAt(S.sym, cal[i]);
+            if (v === null) { st.xsUnk = (st.xsUnk || 0) + 1; if (P.xsUnk === 'drop') return false; }
+            else if (!(v >= P.xsMin)) { st.xsCut = (st.xsCut || 0) + 1; return false; }
+            else st.xsPass = (st.xsPass || 0) + 1;
+        }
+        if (P.xsSham > 0) { if (rand7() < P.xsSham) { st.xsCut = (st.xsCut || 0) + 1; return false; } st.xsPass = (st.xsPass || 0) + 1; }
         return true;
     };
     const forceWhy = (S, i) => {
@@ -1274,6 +1309,26 @@ function selftest() {
         && pa[120] === 1 && pa[121] === 1 && pa[122] === 1 && pa[123] === 0 && pa[119] === 0 && pa[nxt] === 1 && pa[nxt + 2] === 1 && sum(pa) === 6
         && sum(ps) === 6 && ps[127] === 1 && ps[120] === 0 && /沒有任何日期/.test(threwP) && (pzR.st.pauseReb || 0) > 0 && pzR.eq.at(-1) !== pzOff.eq.at(-1),
         `㊿d 停手:不設 == 全 0、全 1 == 空頭天天亮、非交易日訊號 → 下一個交易日、K=2 蓋 3 天、平移天數不變、空檔 throw、換倉日停手 ${pzR.st.pauseReb || 0} 次`);
+    // ㊿e 🦓 V79.3.8 外部變因表:不設 == 全部 100 分 + xsMin 50(什麼都沒擋)== xsSham 0 == xsW 0(逐位相同);全部 0 分 → 一筆都不買;
+    //      擋掉某一檔 → 那檔永遠不會被買;xsSham 0.5 → 有東西被擋而且跟不設不同;xsMin 沒配檔 → throw;空檔 → throw
+    const xsDays = cal.slice(0, n);
+    const mkXs = f => { const o = {}; for (const d of xsDays) { o[d] = {}; for (const S of ctxK.stocks) o[d][S.sym] = f(S.sym); } return o; };
+    const tX1 = path.join(os.tmpdir(), `xs1_${process.pid}.json`), tX0 = path.join(os.tmpdir(), `xs0_${process.pid}.json`), tXd = path.join(os.tmpdir(), `xsd_${process.pid}.json`), tXe = path.join(os.tmpdir(), `xse_${process.pid}.json`);
+    const victim = (simulate(ctxK, 100, { ...cfgK, trace: [] }, 7), (() => { const tr = []; simulate(ctxK, 100, { ...cfgK, trace: tr }, 7); return tr.length ? tr[0].s : ctxK.stocks[0].sym; })());
+    fs.writeFileSync(tX1, JSON.stringify(mkXs(() => 100))); fs.writeFileSync(tX0, JSON.stringify(mkXs(() => 0)));
+    fs.writeFileSync(tXd, JSON.stringify(mkXs(s2 => s2 === victim ? 0 : 100))); fs.writeFileSync(tXe, '{}');
+    const xOff = simulate(ctxK, 100, cfgK, 7);
+    const xAll = simulate({ ...ctxK, _xs: null }, 100, { ...cfgK, xsFile: tX1, xsMin: 50 }, 7);
+    const xS0 = simulate(ctxK, 100, { ...cfgK, xsSham: 0 }, 7), xW0 = simulate(ctxK, 100, { ...cfgK, xsW: 0 }, 7);
+    const xNone = simulate({ ...ctxK, _xs: null }, 100, { ...cfgK, xsFile: tX0, xsMin: 50 }, 7);
+    const trV = []; simulate({ ...ctxK, _xs: null }, 100, { ...cfgK, xsFile: tXd, xsMin: 50, trace: trV }, 7);
+    const xSh = simulate(ctxK, 100, { ...cfgK, xsSham: 0.5 }, 7);
+    let thX = '', thE = ''; try { simulate(ctxK, 100, { ...cfgK, xsMin: 50 }, 7); } catch (e) { thX = String(e.message); }
+    try { simulate({ ...ctxK, _xs: null }, 100, { ...cfgK, xsFile: tXe, xsMin: 50 }, 7); } catch (e) { thE = String(e.message); }
+    try { for (const f of [tX1, tX0, tXd, tXe]) fs.unlinkSync(f); } catch (_) {}
+    t([xAll, xS0, xW0].every(r => r.eq.every((v, k) => v === xOff.eq[k])) && xNone.trades === 0 && !trV.some(x => x.s === victim)
+        && (xSh.st.xsCut || 0) > 0 && xSh.eq.at(-1) !== xOff.eq.at(-1) && /xsFile/.test(thX) && /沒有任何值/.test(thE),
+        `㊿e 外部變因表:全 100 分 / sham 0 / w 0 都逐位相同、全 0 分 → 0 筆、擋掉 ${victim} 就永遠不買、sham 0.5 擋了 ${xSh.st.xsCut || 0} 次、沒配檔 / 空檔 throw`);
     console.log(`\n${bad ? '❌' : '✅'} selftest ${ok}/${ok + bad}`);
     return bad ? 1 : 0;
 }

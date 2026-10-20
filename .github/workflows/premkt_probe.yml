@@ -15,6 +15,11 @@ on:
         type: boolean
         required: false
         default: false
+      long:
+        description: '加權改用長歷史(data 分支 idx_long_early + idx_long,2000 年起;海外歷史請配 years=max)'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -39,12 +44,34 @@ jobs:
       - name: 📦 安裝相依
         run: pip install yfinance --quiet
 
-      - name: 📈 從 gh-pages 撈加權指數日線(⛔ main 的 data/ 在 gitignore)
+      # 🧪 V79.3.8 long=true:加權改用 data 分支的長歷史(2000 起),給「盤前分數另一半」重建用
+      #   (變因研究盤點 1a;分數只看海外 T−1 收盤,加權只決定有哪些日子 + 結果)
+      - name: 📈 撈加權指數日線(⛔ main 的 data/ 在 gitignore)
+        env:
+          LONG: ${{ inputs.long && '1' || '' }}
         run: |
-          git fetch origin gh-pages --depth=1
           mkdir -p data
-          git show origin/gh-pages:data/^TWII.json > 'data/^TWII.json'
-          python3 -c "import json;d=json.load(open('data/^TWII.json'));print(f'✅ 加權 {len(d)} 根 ・{d[0][\"date\"]} ~ {d[-1][\"date\"]}')"
+          if [ "$LONG" = "1" ]; then
+            git fetch origin data --depth=1
+            git show origin/data:data/idx_long_early.json > /tmp/idx_e.json
+            git show origin/data:data/idx_long.json > /tmp/idx_l.json
+            python3 - <<'PY'
+          import json
+          d = lambda s: str(s).replace('/', '-')[:10]
+          rows = {}
+          for f in ('/tmp/idx_e.json', '/tmp/idx_l.json'):
+              for r in json.load(open(f))['twii']:
+                  rows[d(r[0])] = {'date': d(r[0]), 'open': r[1], 'high': r[2], 'low': r[3], 'close': r[4]}
+          out = [rows[k] for k in sorted(rows)]
+          assert len(out) > 6000, f'長歷史加權只有 {len(out)} 根'
+          json.dump(out, open('data/^TWII.json', 'w'))
+          print(f'✅ 長歷史加權 {len(out)} 根 ・{out[0]["date"]} ~ {out[-1]["date"]}')
+          PY
+          else
+            git fetch origin gh-pages --depth=1
+            git show origin/gh-pages:data/^TWII.json > 'data/^TWII.json'
+            python3 -c "import json;d=json.load(open('data/^TWII.json'));print(f'✅ 加權 {len(d)} 根 ・{d[0][\"date\"]} ~ {d[-1][\"date\"]}')"
+          fi
 
       - name: 🌅 回測盤前分數
         env:

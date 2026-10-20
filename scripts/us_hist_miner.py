@@ -36,9 +36,14 @@ TICKERS = [
     'ES=F', 'NQ=F',
 ]
 FUTURES = {'ES=F', 'NQ=F'}   # 連續合約換月會製造假報酬 → 探針只當附屬欄,⛔ 不當事件源
+# 🧪 V79.3.8 變因研究的「大盤狀態」用:匯率 / 美債 10 年殖利率 / 美元指數 / 原油 / 黃金 → 另放 `mac`(⛔ 不進 syms:
+#   us_tw_lead_probe 會把 syms 每一檔都當事件源;也⛔ 不讓它們的交易日進 `days` —— 匯率在美股休市日也有報價,
+#   混進來會讓美股那天變成 None、隔天的報酬算不出來(陷阱 #17 的日曆版)→ mac 只對齊美股的交易日)
+MACRO = ['TWD=X', '^TNX', 'DX-Y.NYB', 'CL=F', 'GC=F']
 
 # 🔧 排程/workflow_run 觸發時 inputs.* 是**空字串**不是不存在 → 一律 `or 預設`(check_env_default.py)
 YEARS = os.environ.get('YEARS') or '5y'
+START = (os.environ.get('START') or '').strip()   # V79.3.8:YYYY-MM-DD → 從那天抓起(yfinance period 沒有 17y 這種;max 會抓回 1927 年)
 OUT = os.environ.get('OUT') or 'data/us_hist.json'
 MIN_SYMS = int(os.environ.get('MIN_SYMS') or 30)
 MIN_DAYS = int(os.environ.get('MIN_DAYS') or 1000)
@@ -46,13 +51,19 @@ MAX_STALE_DAYS = int(os.environ.get('MAX_STALE_DAYS') or 5)
 SPLIT_SUSPECT = 0.40   # 單日 |報酬| 超過這個就不可能是真實行情(美股沒有漲跌停,但 40% 單日只會是分割沒調到)
 
 
-def fetch_all(tickers=TICKERS, years=YEARS):
+def hist_kwargs(years=YEARS, start=START):
+    """yfinance history 的參數:有 START 就從那天抓起,否則照 period。"""
+    return {'start': start, 'auto_adjust': True} if start else {'period': years, 'auto_adjust': True}
+
+
+def fetch_all(tickers=TICKERS + MACRO, years=YEARS, start=START):
     """回 ({ticker: {date: (o, c, v)}}, {ticker: error})。逐檔 try/except,一檔壞不拖累其他檔。"""
     import yfinance as yf
     frames, errors = {}, {}
+    kw = hist_kwargs(years, start)
     for t in tickers:
         try:
-            h = yf.Ticker(t).history(period=years, auto_adjust=True)
+            h = yf.Ticker(t).history(**kw)
             ser = {}
             for idx, row in h.iterrows():
                 d = str(idx)[:10]
@@ -75,9 +86,9 @@ def fetch_all(tickers=TICKERS, years=YEARS):
 
 
 def compact(frames, errors, years=YEARS):
-    """欄式壓縮:日期聯集共用,缺值 None;順手做分割守門。"""
-    days = sorted({d for ser in frames.values() for d in ser})
-    syms, first, split_suspect = {}, {}, {}
+    """欄式壓縮:日期聯集共用(⛔ 只用 syms 那幾檔的交易日,MACRO 對齊過來),缺值 None;順手做分割守門。"""
+    days = sorted({d for t, ser in frames.items() if t not in MACRO for d in ser})
+    syms, mac, first, split_suspect = {}, {}, {}, {}
     for t, ser in frames.items():
         o_arr, c_arr, v_arr = [], [], []
         prev_c, susp_c = None, None   # prev_c = 最近一個「可信」收盤;susp_c = 上一個被判可疑的收盤
@@ -100,16 +111,19 @@ def compact(frames, errors, years=YEARS):
                 continue
             o_arr.append(round(o, 2)); c_arr.append(round(c, 2)); v_arr.append(int(v))
             prev_c, susp_c = c, None
-        syms[t] = {'o': o_arr, 'c': c_arr, 'v': v_arr}
+        (mac if t in MACRO else syms)[t] = {'o': o_arr, 'c': c_arr, 'v': v_arr}
         first[t] = min(ser)
     asof = days[-1] if days else None
-    return {
-        'asof': asof, 'adj': True, 'years': years, 'generated': _dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
+    doc = {
+        'asof': asof, 'adj': True, 'years': (f'from {START}' if START else years), 'generated': _dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
         'days': days, 'syms': syms,
         'meta': {'n_syms': len(syms), 'n_days': len(days), 'first': first, 'futures': sorted(FUTURES & set(syms)),
-                 'split_suspect': split_suspect},
+                 'split_suspect': split_suspect, 'mac': sorted(mac)},
         'errors': errors,
     }
+    if mac:
+        doc['mac'] = mac
+    return doc
 
 
 def guard(doc, today=None):
@@ -138,12 +152,12 @@ def write(doc, out=OUT):
 
 
 def main():
-    print(f'🇺🇸 美股日線歷史 ・{len(TICKERS)} 檔 ・period={YEARS} ・adjusted')
+    print(f'🇺🇸 美股日線歷史 ・{len(TICKERS)} 檔 + 大盤狀態 {len(MACRO)} 檔 ・' + (f'從 {START} 起' if START else f'period={YEARS}') + ' ・adjusted')
     frames, errors = fetch_all()
     doc = compact(frames, errors)
     ok, why = guard(doc)
     m = doc['meta']
-    print(f'📊 {m["n_syms"]} 檔 ・{m["n_days"]} 天 ・asof {doc["asof"]} ・抓不到 {len(errors)} 檔 ・分割守門 {sum(len(v) for v in m["split_suspect"].values())} 天')
+    print(f'📊 {m["n_syms"]} 檔 + 大盤狀態 {len(m.get("mac") or [])} 檔 ・{m["n_days"]} 天({doc["days"][0] if doc["days"] else "-"} 起)・asof {doc["asof"]} ・抓不到 {len(errors)} 檔 ・分割守門 {sum(len(v) for v in m["split_suspect"].values())} 天')
     if errors:
         for t, e in errors.items():
             print(f'   ⚠️ {t}: {e}')
@@ -221,6 +235,17 @@ def selftest():
     fsk, _ = _synth(skip_for={'T09'})
     doc_k = compact(fsk, {}, '5y')
     ok('⑥ 交易日不同 → days 聯集、缺的補 None', len(doc_k['days']) == len(days) and doc_k['syms']['T09']['c'][1] is None and doc_k['syms']['T09']['c'][0] is not None and doc_k['syms']['T00']['c'][1] is not None)
+    # ⑨ V79.3.8 MACRO:另放 mac、⛔ 不進 syms、⛔ 自己的交易日不進 days(匯率在美股休市日也有報價)
+    fm_, _ = _synth()
+    fx = {d: (30.0, 30.0 + i / 1000, 0.0) for i, d in enumerate(days)}
+    extra_day = '2099-01-01'
+    fx[extra_day] = (31.0, 31.0, 0.0)
+    fm_['TWD=X'] = fx
+    doc_m = compact(fm_, {}, '5y')
+    ok('⑨ MACRO 另放 mac、不進 syms、不算進 n_syms', 'TWD=X' in doc_m.get('mac', {}) and 'TWD=X' not in doc_m['syms'] and doc_m['meta']['n_syms'] == 37 and doc_m['meta']['mac'] == ['TWD=X'])
+    ok('⑨ MACRO 自己的交易日 ⛔ 不進 days(美股那天才不會變 None)', extra_day not in doc_m['days'] and len(doc_m['days']) == len(days) and len(doc_m['mac']['TWD=X']['c']) == len(days))
+    ok('⑨ 沒有 MACRO 時檔案形狀跟以前一樣(沒有 mac 鍵)', 'mac' not in doc)
+    ok('⑩ START 有設 → 用 start、沒設 → 用 period', hist_kwargs('5y', '2009-01-01') == {'start': '2009-01-01', 'auto_adjust': True} and hist_kwargs('5y', '') == {'period': '5y', 'auto_adjust': True})
     # ⑧ write 原子替換 + 不覆蓋:guard 沒過時 main 路徑不會呼叫 write(這裡只驗 write 本身可讀回)
     import tempfile
     with tempfile.TemporaryDirectory() as td:

@@ -12,9 +12,9 @@ on:
   workflow_dispatch:
     inputs:
       queue:
-        description: '要挖的資料集(逗號分隔,依序):price10,div10,margin,rev,per,share,dt,sbl'
+        description: '要挖的資料集(逗號分隔,依序):price10,div10,margin,rev,per,share,dt,sbl,fis10,fbs10,fcf10'
         required: false
-        default: 'price10,div10,margin,rev,per,share,dt,sbl'
+        default: 'price10,div10,margin,rev,per,share,dt,sbl,fis10,fbs10,fcf10'
       limit:
         description: '每個資料集這一棒最多抓幾檔(試跑填 30;全部 99999)'
         required: false
@@ -67,6 +67,11 @@ jobs:
           echo "已挖:$(find stock_deep -name '*.json.gz' | wc -l) 檔"
           git fetch --depth=1 origin klines_deep
           git archive FETCH_HEAD klines_deep | tar -x
+          # 季報三表(fis10 / fbs10 / fcf10)跟 fin_deep.json 重疊兩季對表;拿不到 → 程式那邊會判「沒對表」不推
+          if git fetch --depth=1 origin fin_deep 2>/dev/null; then
+            git archive FETCH_HEAD fin_deep | tar -x || true
+          fi
+          ls -la fin_deep/ 2>/dev/null | head -3 || echo "⚠️ fin_deep 分支拿不到
           git fetch --depth=1 origin data
           mkdir -p data
           git archive FETCH_HEAD data | tar -x

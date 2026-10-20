@@ -16,6 +16,9 @@
   share    TaiwanStockShareholding       2010-01-01 ~ 今天
   dt       TaiwanStockDayTrading         2014-01-01 ~ 今天
   sbl      TaiwanDailyShortSaleBalances  2010-01-01 ~ 今天
+  fis10 / fbs10 / fcf10  綜合損益表 / 資產負債表 / 現金流量表 2010-01-01 ~ 2018-06-30
+           → 只留 fin_backfill.WANT 那幾個科目(⛔ 不抄第二份);跟 fin_deep.json 重疊的 2018 前兩季逐欄對表
+           (fin_deep 只到 2018 起 → 基本面變因只有 8 年;補完變 16 年,含 2011 / 2015 / 2018 三段跌勢)
 
 ⛔ 欄位不憑印象寫:除了 price10 / margin(既有程式已驗過的欄名),其他一律「整份數字欄照存」
    (拿掉字串欄與整段都一樣的欄),每個資料集開工前先抓 2330 印出欄位與最早日期(探路)。
@@ -49,7 +52,8 @@ OUT = Path(os.getenv('OUT_DIR') or 'stock_deep')
 DATA_DIR = Path(os.getenv('DATA_DIR') or 'data')
 KLINES_DIR = Path(os.getenv('KLINES_DIR') or 'klines_deep')
 UNIVERSE = os.getenv('UNIVERSE') or ''
-QUEUE = [x.strip() for x in (os.getenv('QUEUE') or 'price10,div10,margin,rev,per,share,dt,sbl').split(',') if x.strip()]
+QUEUE = [x.strip() for x in (os.getenv('QUEUE') or 'price10,div10,margin,rev,per,share,dt,sbl,fis10,fbs10,fcf10').split(',') if x.strip()]
+FIN_DEEP = Path(os.getenv('FIN_DEEP') or 'fin_deep/fin_deep.json')   # 季報對表用(fin_deep 分支)
 MAX_MIN = float(os.getenv('MAX_MIN') or 330)          # 一棒總時間(含等保護時段);job 上限 355
 LIMIT = int(os.getenv('LIMIT') or 99999)               # 這一棒每個資料集最多抓幾檔(試跑用)
 CHECK_MIN_N = 50                                       # 對表至少要這麼多檔「兩邊都有」才判
@@ -65,6 +69,10 @@ DATASETS = {
     'share':   {'ds': 'TaiwanStockShareholding', 'start': '2010-01-01', 'end': TODAY, 'kind': 'generic', 'check': None, 'min_nonempty': 0.5},
     'dt':      {'ds': 'TaiwanStockDayTrading', 'start': '2014-01-01', 'end': TODAY, 'kind': 'generic', 'check': None, 'min_nonempty': 0.3},
     'sbl':     {'ds': 'TaiwanDailyShortSaleBalances', 'start': '2010-01-01', 'end': TODAY, 'kind': 'generic', 'check': None, 'min_nonempty': 0.1},
+    # 季報三表:end 刻意壓到 2018-06-30 → 跟 fin_deep.json(2018 起)重疊兩季拿來對表
+    'fis10':   {'ds': 'TaiwanStockFinancialStatements', 'start': '2010-01-01', 'end': '2018-06-30', 'kind': 'long', 'check': 'fin', 'min_nonempty': 0.5},
+    'fbs10':   {'ds': 'TaiwanStockBalanceSheet', 'start': '2010-01-01', 'end': '2018-06-30', 'kind': 'long', 'check': 'fin', 'min_nonempty': 0.5},
+    'fcf10':   {'ds': 'TaiwanStockCashFlowsStatement', 'start': '2010-01-01', 'end': '2018-06-30', 'kind': 'long', 'check': 'fin', 'min_nonempty': 0.5},
 }
 
 # ⭐ 共用 FINMIND_TOKENS 的排程(UTC;週一=1 … 週日=7 用 ISO weekday)。每一列 = (星期集合, 開始, 結束)。
@@ -179,6 +187,27 @@ def pack_price(rows, sym, delisted=False):
             'm': [x['money'] for x in recs]}
 
 
+def fin_want(ds):
+    """季報資料集 → {FinMind 科目名: fin_deep 欄位};直接讀 fin_backfill.WANT(⛔ 不抄第二份)。"""
+    from fin_backfill import WANT
+    return {t: f for f, t in (WANT.get(ds) or {}).items()}
+
+
+def pack_long(rows, want):
+    """長表(date, type, value)→ 欄位式 {d:[季別], c:[科目], v:[[值]]};只留 want 那幾個科目。"""
+    by = {}
+    for r in rows or []:
+        d, t = _d(r.get('date')), str(r.get('type') or '')
+        if not d or t not in want:
+            continue
+        v = _num(r.get('value'))
+        if v is not None:
+            by.setdefault(d, {})[t] = v
+    ds = sorted(by)
+    cols = [t for t in want if any(t in by[d] for d in ds)]
+    return {'d': ds, 'c': cols, 'v': [[by[d].get(t) for t in cols] for d in ds]}
+
+
 def is_empty(obj):
     return not (obj.get('k') if 'k' in obj else obj.get('d'))
 
@@ -209,6 +238,23 @@ def check_margin(pk, rows):
             continue
         n += 1
         hit += abs(a - b) <= max(1, abs(a) * 0.01)
+    return n, hit
+
+
+def check_fin(obj, rec, fidx, tmap):
+    """季報跟 fin_deep.json 重疊那幾季逐欄比:同一個上游 → 值要一樣(0.1% 或 0.01 以內)。
+    rec = FD.s[代號](季 → 陣列)、fidx = {欄位: FD.f 的位置}、tmap = {科目: 欄位}。回 (可比格數, 一致格數)。"""
+    n = hit = 0
+    for d, row in zip(obj.get('d') or [], obj.get('v') or []):
+        q = (rec or {}).get(d)
+        if not q:
+            continue
+        for t, v in zip(obj.get('c') or [], row):
+            i = fidx.get(tmap.get(t))
+            if i is None or i >= len(q) or q[i] is None or v is None:
+                continue
+            n += 1
+            hit += abs(v - q[i]) <= max(0.01, abs(q[i]) * 0.001)
     return n, hit
 
 
@@ -303,13 +349,28 @@ def main():
             print(f'❌ {key} 探路失敗({spec["ds"]}:{err or "0 列"})→ 這個資料集整個跳過')
             st.update({'probe_err': (err or 'empty')[:120], 'at': TODAY})
             continue
-        pk = pack_price(rows, '2330') if spec['kind'] == 'price' else pack_generic(rows)
+        want = fin_want(spec['ds']) if spec['kind'] == 'long' else None
+        pk = pack_price(rows, '2330') if spec['kind'] == 'price' else (pack_long(rows, want) if want is not None else pack_generic(rows))
         first = (pk['k'][0][0] if spec['kind'] == 'price' else pk['d'][0]) if not is_empty(pk) else '?'
         cols = ['o', 'h', 'l', 'c', 'v', 'money'] if spec['kind'] == 'price' else pk['c']
         print(f'🔎 {key} 探路 2330:{len(rows)} 列 ・最早 {first} ・欄位 {cols} ・樣本 {json.dumps(rows[0], ensure_ascii=False)[:160]}', flush=True)
+        if want is not None:
+            # ⚠️ 2013 年前是舊會計準則(ROC GAAP),科目名可能不一樣 → 每個科目最早出現在哪一季要印出來(⛔ 不憑印象)
+            fst = {t: next((d for d, row in zip(pk['d'], pk['v']) if row[pk['c'].index(t)] is not None), None) if t in pk['c'] else None for t in want}
+            y0 = pk['d'][0][:4] if pk['d'] else ''
+            other = sorted({str(r.get('type')) for r in rows if _d(r.get('date'))[:4] == y0} - set(want))[:25]
+            print(f'   科目最早一季:{fst} ・{y0} 年有、但不在清單裡的科目(前 25):{other}', flush=True)
+            st.update({'first_by_type': fst})
         st.update({'probe_first': first, 'cols': cols})
         wrote_now, empty_now, waits, n_try = [], 0, 0, 0
         chk_n = chk_hit = 0
+        fd, fidx = None, {}
+        if spec['check'] == 'fin':
+            try:
+                fd = json.loads(FIN_DEEP.read_text(encoding='utf-8'))
+                fidx = {f: i for i, f in enumerate(fd.get('f') or [])}
+            except Exception as e:
+                print(f'⚠️ {key}:{FIN_DEEP} 讀不到({type(e).__name__})→ 沒得對表 → 這一棒寫了也不推(⛔ 沒對表 ≠ 對過了)', flush=True)
         stop = None
         for s in todo:
             if n_try >= LIMIT:
@@ -343,7 +404,7 @@ def main():
             if data is None:
                 IB._rec(f'{key}_' + (err or '?')[:14])
                 continue
-            obj = pack_price(data, s, delisted=(s in dl)) if spec['kind'] == 'price' else pack_generic(data)
+            obj = pack_price(data, s, delisted=(s in dl)) if spec['kind'] == 'price' else (pack_long(data, want) if want is not None else pack_generic(data))
             if is_empty(obj):
                 empty_now += 1
             with gzip.open(dd / f'{s}.json.gz', 'wt', encoding='utf-8') as f:
@@ -360,6 +421,11 @@ def main():
                             chk_hit += bool(r)
                     except Exception:
                         pass
+            elif spec['check'] == 'fin' and fd and not is_empty(obj):
+                a, b = check_fin(obj, (fd.get('s') or {}).get(s), fidx, want)
+                if a >= 3:
+                    chk_n += 1
+                    chk_hit += (b / a >= 0.9)
             elif spec['check'] == 'margin' and not is_empty(obj):
                 p = DATA_DIR / f'{s}.json'
                 if p.exists():
@@ -380,6 +446,8 @@ def main():
         bad = None
         if n_try > 0 and not wrote_now:
             bad = '處理了但一檔都沒寫(金鑰 / 額度 / 資料集名)'
+        elif spec['check'] and len(wrote_now) - empty_now >= 300 and chk_n < CHECK_MIN_N:
+            bad = f'寫了 {len(wrote_now)} 檔、能對表的只有 {chk_n}(< {CHECK_MIN_N})→ 對表的資料沒拿到(⛔ 沒對表 ≠ 對過了)'
         elif spec['check'] and chk_n >= CHECK_MIN_N and rate < CHECK_MIN_RATE:
             bad = f'對表 {rate:.1%} < {CHECK_MIN_RATE:.0%}(單位 / 欄位 / 接縫不對)'
         elif len(wrote_now) >= 200 and ne / len(wrote_now) < spec['min_nonempty']:
@@ -443,6 +511,21 @@ def selftest():
     ok('④ 融資對表:兩邊都有才比、1 張或 1% 以內算一致', check_margin(mp, dr) == (2, 2), check_margin(mp, dr))
     mp2 = dict(mp, v=[[x[0] * 1000, x[1]] for x in mp['v']])
     ok('④ 單位差 1,000 倍 → 對不上', check_margin(mp2, dr) == (2, 0), check_margin(mp2, dr))
+    # ④b 季報:長表 → 只留清單裡的科目;跟 fin_deep 重疊那幾季逐欄比(同一個上游 → 值要一樣)
+    want = fin_want('TaiwanStockFinancialStatements')
+    ok('④b 季報科目清單直接讀 fin_backfill.WANT(Revenue → rev、EPS → eps)', want.get('Revenue') == 'rev' and want.get('EPS') == 'eps', want)
+    lr = [{'date': '2018-03-31', 'type': 'Revenue', 'value': 1000}, {'date': '2018-03-31', 'type': 'EPS', 'value': 1.5},
+          {'date': '2018-03-31', 'type': 'OtherThing', 'value': 9}, {'date': '2017-12-31', 'type': 'Revenue', 'value': '900'},
+          {'date': '2018-06-30', 'type': 'Revenue', 'value': 1100}, {'date': '2018-06-30', 'type': 'EPS', 'value': 1.6}]
+    lp = pack_long(lr, want)
+    ok('④b 長表 → {d, c, v}、清單外的科目不存、字串數字照讀', lp['d'] == ['2017-12-31', '2018-03-31', '2018-06-30'] and 'OtherThing' not in lp['c'] and lp['v'][0][lp['c'].index('Revenue')] == 900, lp)
+    fdf = ['inv', 'cogs', 'capex', 'dep', 'ocf', 'rev', 'eq', 'cap', 'eps']
+    fidx = {f: i for i, f in enumerate(fdf)}
+    rec = {'2018-03-31': [None, None, None, None, None, 1000, None, None, 1.5], '2018-06-30': [None, None, None, None, None, 1100, None, None, 1.6]}
+    ok('④b 季報對表:重疊兩季 4 格全對', check_fin(lp, rec, fidx, want) == (4, 4), check_fin(lp, rec, fidx, want))
+    lp2 = dict(lp, v=[[x * 1000 if isinstance(x, (int, float)) else x for x in row] for row in lp['v']])
+    ok('④b 單位差 1,000 倍 → 對不上', check_fin(lp2, rec, fidx, want)[1] == 0, check_fin(lp2, rec, fidx, want))
+    ok('④b 沒有 fin_deep 那一檔 → 沒得比(0, 0)', check_fin(lp, None, fidx, want) == (0, 0))
     # ⑤ 保護時段
     utc = timezone.utc
     ins, w, nx = protect_state(datetime(2026, 10, 20, 9, 0, tzinfo=utc))       # 週二 09:00 = daily_miner
@@ -489,10 +572,12 @@ def selftest():
         u.write_text('2330\n0050\n2330\n1101\n00878\nabcd\n 2317 \n6488\n', encoding='utf-8')
         ok('⑦ 母體:只留 4 碼、不收 0 開頭、去重保序', read_universe(u) == ['2330', '1101', '2317', '6488'], read_universe(u))
     # ⑧ 登記表 / workflow 一致
-    ok('⑧ 預設排隊都在登記表裡', all(k in DATASETS for k in 'price10,div10,margin,rev,per,share,dt,sbl'.split(',')))
+    ok('⑧ 預設排隊都在登記表裡', all(k in DATASETS for k in QUEUE) and {'price10', 'fis10', 'fbs10', 'fcf10'} <= set(QUEUE))
     wtxt = (wf / 'stock_deep_backfill.yml').read_text(encoding='utf-8') if (wf / 'stock_deep_backfill.yml').exists() else ''
     ok('⑧ workflow 存在、接力叫的是自己、有 actions: write', 'gh workflow run stock_deep_backfill.yml' in wtxt and 'actions: write' in wtxt)
     ok('⑧ workflow ⛔ 不加排程(手動 + 接力)', 'schedule:' not in wtxt)
+    ok('⑧ workflow 預設排隊 = 程式預設排隊(⛔ 兩邊各寫一份會漏)', ("default: '" + ','.join(QUEUE) + "'") in wtxt or bool(os.getenv('QUEUE')))
+    ok('⑧ workflow 有還原 fin_deep(季報對表用)', 'origin fin_deep' in wtxt)
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
     return 0 if not bad else 1
 

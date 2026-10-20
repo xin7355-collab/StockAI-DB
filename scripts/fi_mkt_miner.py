@@ -11,6 +11,9 @@
   spot  TaiwanStockTotalInstitutionalInvestors        上市整體三大法人(元)→ [外資, 投信, 自營](億)
   fut   TaiwanFuturesInstitutionalInvestors data_id=TX 外資台指期(大台)淨未平倉 = 多方餘額 − 空方餘額(口)
   mg    TaiwanStockTotalMarginPurchaseShortSale        整體融資餘額(MarginPurchaseMoney 的 TodayBalance,元 → 億)
+  bs    TaiwanFuturesDaily data_id=TX + TaiwanStockPrice data_id=TAIEX(V79.3.8)
+        台指期近月(一般盤、單一月份、最小的那個合約月)收盤 − 加權收盤 = 順逆價差(點;負 = 逆價差)→ [價差, 期貨, 加權]
+        ⭐ 外資台指期空單有一部分是避險,單看口數會誤判(CLAUDE.md「順逆價差」那節)→ 變因研究的大盤狀態要它
 
 守門(三份各自判,沒過的那一份 ⛔ 不寫、原因寫進 src_error;三份都沒過 → exit 1 不寫檔):
   ① 天數 ≥ 那一段平日數的 85%(國定假日約 4%)
@@ -45,8 +48,8 @@ MIN_RATIO = 0.85
 MATCH_MIN = 0.80
 MATCH_N = 5
 SHIFT_DAYS = 4
-TOL = {'spot': (1.0, 0.01), 'fut': (50, 0.005), 'mg': (5.0, 0.01)}   # (絕對, 相對) 取大者
-RH_KEY = {'spot': 'fi_spot_net', 'fut': 'fi_futures_net', 'mg': 'margin_100m'}
+TOL = {'spot': (1.0, 0.01), 'fut': (50, 0.005), 'mg': (5.0, 0.01), 'bs': (3.0, 0.0)}   # (絕對, 相對) 取大者;價差 ±3 點
+RH_KEY = {'spot': 'fi_spot_net', 'fut': 'fi_futures_net', 'mg': 'margin_100m', 'bs': 'taifex_backwardation'}
 
 F_NAMES = ('Foreign_Investor', 'Foreign_Dealer_Self')
 T_NAMES = ('Investment_Trust',)
@@ -122,6 +125,40 @@ def parse_mg(rows):
         if v is not None:
             out[d] = round(v / 1e8, 2)
     return out
+
+
+def parse_txnear(rows):
+    """TaiwanFuturesDaily(TX)→ {date: (合約月, 收盤)}:只收一般盤(夜盤 after_market ⛔)、單一月份(價差單 202301/202302 ⛔)、
+    收盤 > 0,取那天**最小的**合約月 = 近月(結算日當天到期的那個仍算近月,同 App 的口徑)。"""
+    best = {}
+    for r in rows or []:
+        d = _date(r.get('date'))
+        cd = str(r.get('contract_date') or '').strip()
+        if not d or len(cd) != 6 or not cd.isdigit():
+            continue
+        if str(r.get('trading_session') or 'position') != 'position':
+            continue
+        c = _num(r.get('close'))
+        if c is None or c <= 0:
+            continue
+        if d not in best or cd < best[d][0]:
+            best[d] = (cd, c)
+    return best
+
+
+def parse_ix(rows):
+    """TaiwanStockPrice(TAIEX)→ {date: 收盤}。"""
+    out = {}
+    for r in rows or []:
+        d, c = _date(r.get('date')), _num(r.get('close'))
+        if d and c and c > 0:
+            out[d] = c
+    return out
+
+
+def combine_bs(tx, ix):
+    """{date: [價差, 期貨近月收盤, 加權收盤]};兩邊都有那天才算(⛔ 不拿不同天的相減,陷阱 #22 V71.4.9 那條)。"""
+    return {d: [round(tx[d][1] - ix[d], 2), tx[d][1], ix[d]] for d in sorted(set(tx) & set(ix))}
 
 
 def weekdays(a, b):
@@ -233,7 +270,8 @@ def fetch(dataset, parse, y0, y1, data_id=None, tag=''):
 def build(parts, hist, frm, to, check=True):
     """parts = {kind: series}。逐份守門 + 對表 → (產物 dict, 有幾份過關)。"""
     out = {'updated': datetime.now(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M'), 'from': frm, 'to': to,
-           'unit': {'spot': '億元(買−賣;[外資, 投信, 自營];上市)', 'fut': '口(外資台指期大台 多−空 未平倉)', 'mg': '億元(整體融資餘額)'},
+           'unit': {'spot': '億元(買−賣;[外資, 投信, 自營];上市)', 'fut': '口(外資台指期大台 多−空 未平倉)', 'mg': '億元(整體融資餘額)',
+                    'bs': '點([期貨近月 − 加權, 期貨近月收盤, 加權收盤];負 = 逆價差;一般盤)'},
            'src': {}, 'src_error': {}, 'check': {}}
     good = 0
     for kind, s in parts.items():
@@ -273,16 +311,21 @@ def main():
     spot, e1 = fetch('TaiwanStockTotalInstitutionalInvestors', parse_spot, y0, y1, tag='外資現貨')
     fut, e2 = fetch('TaiwanFuturesInstitutionalInvestors', parse_fut, max(y0, int(FUT_FROM[:4])), y1, data_id='TX', tag='外資台指期')
     mg, e3 = fetch('TaiwanStockTotalMarginPurchaseShortSale', parse_mg, y0, y1, tag='整體融資')
-    out, good = build({'spot': spot, 'fut': fut, 'mg': mg}, hist, frm, to, check=not NO_CHECK)
-    for k, e in (('spot', e1), ('fut', e2), ('mg', e3)):
+    tx, e4 = fetch('TaiwanFuturesDaily', parse_txnear, y0, y1, data_id='TX', tag='台指期近月')
+    ix, e5 = fetch('TaiwanStockPrice', parse_ix, y0, y1, data_id='TAIEX', tag='加權收盤')
+    bs = combine_bs(tx, ix)
+    print(f'  順逆價差:期貨 {len(tx)} 天 ・加權 {len(ix)} 天 ・兩邊都有 {len(bs)} 天', flush=True)
+    parts = {'spot': spot, 'fut': fut, 'mg': mg, 'bs': bs}
+    out, good = build(parts, hist, frm, to, check=not NO_CHECK)
+    for k, e in (('spot', e1), ('fut', e2), ('mg', e3), ('bs', e4 or e5)):
         if e:
             out['src_error'][f'{k}_fetch'] = e
     if not good:
-        print('❌ 三份都沒過守門 → ⛔ 不寫')
+        print(f'❌ {len(parts)} 份都沒過守門 → ⛔ 不寫')
         return 1
     with open(OUT, 'w', encoding='utf-8') as f:
         json.dump(out, f, ensure_ascii=False, separators=(',', ':'))
-    print(f'✅ 寫入 {OUT}:{good}/3 份過關 ・{os.path.getsize(OUT):,} bytes')
+    print(f'✅ 寫入 {OUT}:{good}/{len(parts)} 份過關 ・{os.path.getsize(OUT):,} bytes')
     return 0
 
 
@@ -376,6 +419,26 @@ def selftest():
     ok('⑧ 0 天 → good=0', good == 0)
     out, good = build({'spot': full}, None, '2004-01-01', '2005-12-31', check=True)
     ok('⑧ 沒有快照 → 對表不過(⛔ 不可默默當成過)', good == 0, out.get('src_error'))
+    # ⑩ V79.3.8 順逆價差:近月 = 最小的單一月份合約、⛔ 夜盤、⛔ 價差單;兩邊都有那天才算
+    txr = [
+        {'date': '2026-10-16', 'contract_date': '202611', 'close': 23100, 'trading_session': 'position'},
+        {'date': '2026-10-16', 'contract_date': '202610', 'close': 23050, 'trading_session': 'position'},
+        {'date': '2026-10-16', 'contract_date': '202610', 'close': 22000, 'trading_session': 'after_market'},
+        {'date': '2026-10-16', 'contract_date': '202610/202611', 'close': 50, 'trading_session': 'position'},
+        {'date': '2026-10-15', 'contract_date': '202610', 'close': 0, 'trading_session': 'position'},
+        {'date': '2026-10-15', 'contract_date': '202611', 'close': 22900},
+        {'date': '2026-10-14', 'contract_date': '202610', 'close': 22800, 'trading_session': 'position'},
+    ]
+    txn = parse_txnear(txr)
+    ok('⑩ 近月 = 最小的單一月份、⛔ 夜盤、⛔ 價差單、收盤 0 不收', txn.get('2026-10-16') == ('202610', 23050.0) and txn.get('2026-10-15') == ('202611', 22900.0), txn)
+    bs = combine_bs(txn, parse_ix([{'date': '2026-10-16', 'close': 23181}, {'date': '2026-10-15', 'close': 22850.5}]))
+    ok('⑩ 價差 = 期貨 − 加權(負 = 逆價差)、兩邊都有才算(10-14 沒有加權 → 不算)', bs == {'2026-10-15': [49.5, 22900.0, 22850.5], '2026-10-16': [-131.0, 23050.0, 23181.0]}, bs)
+    hb = [{'date': d, 'taifex_backwardation': -100.0 - i} for i, d in enumerate(days)]
+    sb = {d: [-100.0 - i, 1.0, 1.0] for i, d in enumerate(days)}
+    good, why = cross_check(sb, 'bs', hb)
+    ok('⑩ 價差對表取第一格(價差)', good, why)
+    good, why = cross_check({d: [-v[0], 1.0, 1.0] for d, v in sb.items()}, 'bs', hb)
+    ok('⑩ 正負號反(拿加權 − 期貨)→ 對表必紅', not good, why)
     # ⑨ 金鑰⛔ 不進網址
     src = open(__file__, encoding='utf-8').read()
     needle = 'q[' + "'token']"
