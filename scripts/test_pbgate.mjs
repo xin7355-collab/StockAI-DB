@@ -16,6 +16,8 @@
  *   ⓑ GATE=lb 預設值真的生效、cfg 記下
  *   ⓒ 一檔前 1 招:每一筆成交的招 = 那天這檔下界第 1 名(用快取逐筆重算);決定性對照:不限招數時至少一筆不是第 1 名
  *   ⓓ CLIFF:注入 1 拆 20 → 不設時有 −90% 的假虧損;CLIFF=0 剔除筆數 == 用 lib_cliff 逐筆算的數、成交裡沒有跨過斷崖的
+ *   ⓚ 🧾 LISTK(照前一晚名單前 K 檔、觸發才買):三件都拿掉 + K 很大 == 不設(決定性對照)/ LISTK=1 一天最多 1 筆 /
+ *      昨天已觸發的那一招只會佔格子(快取裡同一招不會連兩天觸發)、拿掉這件名單會變 / WARMUPS 一次跑 == 一個一個跑 / 設錯 exit 1
  *   ⓔ 設錯格式 → exit 1
  * ⚠️ 真跑引擎(repo data/ 少數幾檔 + 一份注入過的暫存資料夾),約 2~3 分鐘。
  */
@@ -198,6 +200,39 @@ else {
         let ordOk = true;
         if (k === 'amt' && K.t) { const byD = new Map(); for (const t of K.t) (byD.get(t.d) || byD.set(t.d, []).get(t.d)).push(t); const ca = new Map(C.map(t => [`${t.sym}|${t.key}|${t.inD}`, +t.amt || 0])); for (const arr of byD.values()) if (arr.length >= 2) { const a0 = ca.get(`${arr[0].sym}|${arr[0].key}|${arr[0].d}`), a1 = ca.get(`${arr[1].sym}|${arr[1].key}|${arr[1].d}`); if (!(a0 >= a1)) ordOk = false; } }
         ok(`ⓡ2 RANKBY=${k} 跑得起來、cfg 記下${k === 'amt' ? '、同一天先成交的成交額比較大' : ''}`, K.r.status === 0 && K.s && K.s.cfg.rankby === k && ordOk, `status=${K.r.status} ${(K.r.stderr || '').slice(-160)}`);
+    }
+
+    // ⓚ 🧾 LISTK:照前一晚的名單買(前 K 檔、名單上那一招今天觸發才買)
+    {
+        const B0 = run('kb0', { GATE: 'lb' }, DATA);
+        const KI = run('kinf', { GATE: 'lb', LISTK: '99999', LIST_FIRED: '0', LIST_BEST: '0', LIST_SELF: '0' }, DATA);
+        ok('ⓚ1 決定性對照:LISTK 很大 + 三件都拿掉(LIST_FIRED/BEST/SELF=0)== 不設(成績 + 逐日淨值逐位相同)', KI.s && B0.s && core(KI.s) === core(B0.s) && KI.e === B0.e, `${core(KI.s)} vs ${core(B0.s)}`);
+        const K2 = run('k2', { GATE: 'lb', LISTK: '2' }, DATA);
+        ok('ⓚ2 LISTK=2 生效:成績變了、cfg 與 summary.listk 都記下、名單上觸發 ≤ 名單格數', K2.s && core(K2.s) !== core(B0.s) && K2.s.cfg.listK === 2 && K2.s.listk && K2.s.listk.hit <= K2.s.listk.slots && K2.s.listk.slots <= 2 * K2.s.listk.days, JSON.stringify(K2.s && K2.s.listk));
+        // ⓚ3 名單只有 1 檔 → 一天最多買 1 筆(對照組要真的有「一天買 2 筆」的日子,否則這條沒有鑑別力)
+        const perDay = T => { const m = new Map(); for (const t of (T || [])) m.set(t.d, (m.get(t.d) || 0) + 1); return Math.max(0, ...m.values()); };
+        const N0 = run('kn0', { GATE: 'lb', SELF: '' }, DATA), N1 = run('kn1', { GATE: 'lb', SELF: '', LISTK: '1' }, DATA);
+        ok(`ⓚ3 LISTK=1 → 一天最多買 1 筆(對照組一天最多 ${perDay(N0.t)} 筆)`, perDay(N0.t) >= 2 && N1.t && perDay(N1.t) === 1, `${perDay(N0.t)} / ${perDay(N1.t)}`);
+        // ⓚ4 「昨天已觸發」那一招:交易快取裡同一檔同一招**不會連兩天都有交易**(引擎找下一次觸發是從出場隔天開始)
+        //   → 它今天一定買不到,唯一的作用是**佔掉名單的一格**;App 把它移到「今天已觸發」→ 那一格讓給下一檔
+        const tw = JSON.parse(fs.readFileSync(path.join(DATA, '^TWII.json'), 'utf8')).map(r => String(r.date).replace(/\//g, '-').slice(0, 10));
+        const di = new Map(tw.map((d, i) => [d, i])), fired = new Set(C.map(t => `${t.sym}|${t.key}|${t.inD}`));
+        const consec = C.filter(t => { const i = di.get(t.inD); return i > 0 && fired.has(`${t.sym}|${t.key}|${tw[i - 1]}`); }).length;
+        ok(`ⓚ4a 交易快取裡同一檔同一招沒有連兩天都觸發(${C.length} 筆裡 ${consec} 筆)`, C.length > 50 && consec === 0, consec);
+        const F1 = run('kf1', { GATE: 'lb', SELF: '', LISTK: '3' }, DATA), F0 = run('kf0', { GATE: 'lb', SELF: '', LISTK: '3', LIST_FIRED: '0' }, DATA);
+        const lk = R => R.s && R.s.listk ? `${R.s.listk.slots}/${R.s.listk.hit}` : '?';
+        ok(`ⓚ4b LIST_FIRED 真的有作用:名單格數 / 當天觸發 ${lk(F1)} vs 拿掉 ${lk(F0)}(⛔ 一樣 = 開關沒接上)`, F1.s && F0.s && lk(F1) !== lk(F0), `${lk(F1)} / ${lk(F0)}`);
+        // ⓚ5 WARMUPS 一次跑 == 一個一個跑(名單的狀態每個起點要重來)
+        const WS = [240, 262];
+        const M = spawnSync(process.execPath, ['--max-old-space-size=3000', FILE, '25', '2'], { env: { ...base, DATA_DIR: DATA, TRADES_CACHE: path.join(tmp, 'c.json'), GATE: 'lb', LISTK: '2', WARMUPS: WS.join(','), SUMMARY_OUT: path.join(tmp, 'kms_{W}.json'), EQUITY_OUT: path.join(tmp, 'kme_{W}.json') }, encoding: 'utf8', timeout: 420000, maxBuffer: 64 << 20 });
+        let same = M.status === 0;
+        for (const w of WS) { const one = run(`kw${w}`, { GATE: 'lb', LISTK: '2', WARMUP: String(w) }, DATA); let ms = null, me = null; try { ms = JSON.parse(fs.readFileSync(path.join(tmp, `kms_${w}.json`), 'utf8')); me = fs.readFileSync(path.join(tmp, `kme_${w}.json`), 'utf8'); } catch (_) {} if (!(ms && core(ms) === core(one.s) && me === one.e && JSON.stringify(ms.listk) === JSON.stringify(one.s && one.s.listk))) same = false; }
+        ok('ⓚ5 LISTK + WARMUPS 一次跑 == 一個一個跑(含名單統計)', same, `${M.status} ${(M.stderr || '').slice(-200)}`);
+        const kbad = (tag, env, re) => { const B = run(tag, env, DATA); ok(`ⓚ6 ${JSON.stringify(env)} → exit 1 並說原因`, B.r.status === 1 && re.test(B.r.stderr || ''), (B.r.stderr || '').slice(-200)); };
+        kbad('kb1', { LISTK: '2' }, /LISTK 要配 GATE=lb/);
+        kbad('kb2', { GATE: 'lb', LISTK: '0' }, /LISTK=0 不認得/);
+        kbad('kb3', { GATE: 'lb', LISTK: '2', RANKBY: 'amt' }, /LISTK 只支援 RANKBY/);
+        kbad('kb4', { GATE: 'lb', LISTK: '2', TURN: 'hi' }, /LISTK 還沒驗過/);
     }
 
     // ⓔ 設錯格式

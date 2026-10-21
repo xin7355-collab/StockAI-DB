@@ -439,7 +439,11 @@ def fetch_picks():
             continue
         seen.add(sy)
         picks.append(p)
-    log(f"📋 明日作戰清單:{len(raw)} 筆 / 去重後 {len(picks)} 檔"
+    # 🧬 V79.4.7 🧬 是**必要條件**不是排序加分(V73.2.9:不挑它整套輸給 0050)+ 這一檔自己空頭不買 ——
+    #   跟決策台 `_deckBuyOf` 同一條(以前只排前面不擋 → 🧬 不夠 2 檔時會買到非 🧬 的;test_pbpick_same 跨檔比對)
+    uniq = len(picks)
+    picks = [p for p in picks if gene_hq(p) == 1 and not p.get('bear')]
+    log(f"📋 明日作戰清單:{len(raw)} 筆 / 去重後 {uniq} 檔 / 🧬 且不是空頭 {len(picks)} 檔"
         f"(資料日 {j.get('data_date')});本機取前 {MAX_PICKS} 檔")
     return j, picks
 

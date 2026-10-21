@@ -96,6 +96,7 @@ await page.waitForFunction(() => typeof app !== 'undefined' && !!app._patternFit
 
 const picks = [], firedToday = [];
 let used = 0, latest = '', noEdge = 0, tooFar = 0;
+let errN = 0; const errErr = [];   // 🧯 每檔分析丟出例外的次數 + 前幾則原文(⛔ 不可吞掉,見迴圈裡的 catch)
 for (const f of files) {
     if (used >= MAX_SYMS) break;
     const sym = f.slice(0, 4);
@@ -135,6 +136,11 @@ for (const f of files) {
                 if (!p) return false;
                 try { return !!p.test(ext.length - 1); } catch (_) { return false; }
             };
+            // 📏 跳動單位:這段跑在**瀏覽器裡**(page.evaluate),看不到檔案最上面那個 Node 端的 tickOf
+            //   → 一律借 App 自己的 `_tickOf`(test_ticksize 跨檔比對兩份一字不差)。
+            //   🚨 V76.2.9 把 tickOf 搬到檔案最上面之後,這裡就 ReferenceError → 被下面的 catch 吞掉
+            //      → 凡是「有真的觸發價」的股票整檔消失,2026-09-14 ~ 10-20 名單一筆觸發價都沒有(陷阱 #57)
+            const tickOf = p => app._tickOf(p);
             // 由低到高粗掃找「最低會觸發的價」→ 再二分細修
             //   ⛔ 不假設單調(有些型態高太多反而不算突破)→ 粗掃才不會漏
             const trigOf = key => {
@@ -219,7 +225,12 @@ for (const f of files) {
             // ⚠️ 收盤價會帶浮點誤差(實跑出現 42.04999923706055)→ 一律 round 到 2 位
             return { c: Math.round(c0 * 100) / 100, v: Math.round(rows[last].volume / 1000), d: rows[last].date, rank: selfRank, vol: selfVol, bear: selfBear, out, fired };
         }, { rows, minN: MIN_N, cost: COST, near: NEAR });
-    } catch (_) { continue; }
+    } catch (e) {
+        // ⛔ 不可再靜默 continue(陷阱 #57):上面每一個會碰到外部資料的地方都已經各自 try 過,
+        //   會掉到這裡的幾乎都是**程式本身的錯**(拼錯字、用到瀏覽器裡沒有的名字)→ 記下來,最後超過門檻就 exit 1
+        errN++; if (errErr.length < 5) errErr.push(`${sym}:${String(e && e.message || e).slice(0, 160)}`);
+        continue;
+    }
     if (!r) continue;
     if (r.none) { noEdge++; continue; }
     if (r.d > latest) latest = r.d;
@@ -261,6 +272,17 @@ await browser.close();
 if (used === 0) { log('❌ 一檔都沒掃到 → 資料沒還原?(不寫檔)'); process.exit(1); }
 if (used >= 200 && picks.length === 0 && firedToday.length === 0) {
     log(`❌ 掃了 ${used} 檔卻一筆候選都沒有 → 極可能是 index.html 沒載起來或偵測器掛了(不寫檔)`);
+    process.exit(1);
+}
+// 🧯 V79.4.7 陷阱 #57:分析程式自己丟例外 → 那幾檔整檔消失,而 rc=0、檔案照寫 → 5 週沒人發現
+log(`   🧯 分析丟出例外:${errN} 檔${errErr.length ? '\n      ' + errErr.join('\n      ') : ''}`);
+if (errN >= 3 && errN > used * 0.01) {
+    log(`❌ ${errN} / ${used} 檔分析時程式出錯(> 1%)→ 是程式壞了不是資料(不寫檔)`);
+    process.exit(1);
+}
+// 🧯 有一批候選、卻沒有任何一筆有觸發價 → 實測正常的日子 20~30 筆裡有 14~27 筆有觸發價,全沒有 = 觸發價那段壞了
+if (picks.length >= 20 && !picks.some(x => x.trig != null)) {
+    log(`❌ ${picks.length} 筆候選全部沒有觸發價 → 觸發價那段多半壞了(不寫檔)`);
     process.exit(1);
 }
 
