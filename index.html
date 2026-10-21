@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.4.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.4.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.4.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.4.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8539,10 +8539,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.4.5',
+    _APP_VERSION: 'V79.4.6',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.4.6', d: [
+            '📚 產業作戰室:領頭羊那幾條補上 2010~2020 的股利和後來下市、上櫃的股票重新整理(規則一條都沒換,散戶 App 的用法不變)',
+            '📚 產業作戰室:高檔飆股那幾列先標「舊資料」,下一版用全市場重新整理(散戶 App 的用法不變)',
+            '📚 產業作戰室:補上選股條件、重大訊息、領頭羊各種做法這幾條(散戶 App 的用法不變)',
+        ], dt: '2026-10-21' },
         { v: 'V79.4.5', d: [
             '🎯 K 線訊號提醒、總覽的「符合進場」、今日訊號、決策台名單改成同一把尺:只留扣掉手續費和稅之後還有賺頭的看多訊號 —— 很多天會一個都沒有,這是正常的',
             '🔔 沒過這把尺的訊號不再跳出來,改成只記在鈴鐺通知裡;K 線頁照常顯示',
@@ -8673,7 +8678,6 @@ ${list}
         { v: 'V78.3.9', d: ['🧹 散戶救星第二輪全文檢查:券商的勝率排行(高手券商、券商勝率、勝率王、神秘黑馬、分點歷史勝率)搬到產業作戰室;分點集中、大盤風險偏高、夜盤先漲那幾句只講怎麼看'] },
         { v: 'V78.3.8', d: ['🔒 散戶救星網址後面加參數也打不開研究清單了(只有產業作戰室打得開)'] },
         { v: 'V78.3.7', d: ['🔬 <b>這一檔自己的回測成績搬到產業作戰室</b>:新分頁「🔬 個股實測」輸入代號就能看回測排名、K 線訊號成績,還有自訂回測與盲測練習;散戶救星一般畫面不再有任何「看完整回測」的按鈕'] },
-        { v: 'V78.3.6', d: ['🧹 <b>散戶 App 拿掉回測研究文字(第三批)</b>:K 線、當沖、籌碼、選股、ETF、大盤、券商、提醒與所有說明視窗只講「怎麼看、怎麼做」;勝率、期望值、樣本數、對照組一律收到產業作戰室', '⏳ 抱滿天數那張卡與「鎖漲停隔天」只留怎麼賣的規則,不再列歷史平均'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -21136,10 +21140,12 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
     _STRAT_RANK: {
         // 🧭 V79.2.4 👑 兩列用修尺後的引擎重算(END=2026-09-24,跟 🧬 列同一個截止日);park / gene / e50 沒動
         // 📚 V79.2.6 兩本帳改回選項(預設關)→ 👑 兩列回到一本帳的數字(兩本帳那組只留在 `_LEADER_EDGE.booksEdge`)
+        // 💰 V79.4.6 👑 兩列改用 d16(含上櫃 / 後來下市)+ 2010 起個股股利:leadpark 932 / 6,611 → 1,019 / 9,544 ・lead 765 / 4,921 → 827 / 7,851;
+        //   ⏳ park / gene 兩列還是舊資料(600 檔抽樣、2010~2020 沒算個股股利)→ 下一版全市場重算(看板那幾列標 old)
         asof: '2026-09-24', paths: 17, e50: { a: 475, l: 1197 },
         rows: {
-            leadpark: { a: 932,  l: 6611, mdd: -44.2, mddL: -57.4 },
-            lead:     { a: 765,  l: 4921, mdd: -45.6, mddL: -52 },
+            leadpark: { a: 1019, l: 9544, mdd: -44.2, mddL: -58.37 },
+            lead:     { a: 827,  l: 7851, mdd: -45.61, mddL: -55.29 },
             park:     { a: 614,  l: 1323, mdd: -24.9, mddL: -32.9 },
             gene:     { a: 513,  l: 675,  mdd: -23.8, mddL: -37.7 },
         },

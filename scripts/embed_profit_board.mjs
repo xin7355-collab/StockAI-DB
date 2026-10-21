@@ -4,6 +4,7 @@
  *
  *   node scripts/embed_profit_board.mjs <board.json> <board2.json> <small.json> [--to 2026-09-24] [--gene gene.json]
  *   node scripts/embed_profit_board.mjs --gene gene.json   ← 只換 🧬 那幾列(V78.1.0,gene_board.mjs 產物)
+ *   … board.json board2.json small.json --keep-gene  ← V79.4.6 👑 換新、🧬 那幾列沿用舊的並標 `old`(畫面寫「舊資料」;0050 起點對不上就 exit 1)
  *     board.json  = ETFS=… 那一輪(`etf[窗口]` 每檔 17 個起點的含息中位 / 最差)
  *     board2.json = CAPITAL=1000000 的四種領頭羊做法(`cap.fin / worstFin`)
  *     small.json  = 10萬/30萬/100萬 × 每月加碼 × 三種打法(`cap`)
@@ -17,6 +18,7 @@ import fs from 'fs';
 const toArg = (() => { const i = process.argv.indexOf('--to'); return i > 0 ? process.argv[i + 1] : null; })();
 const geneArg = (() => { const i = process.argv.indexOf('--gene'); return i > 0 ? process.argv[i + 1] : null; })();
 const [bf, b2f, sf] = process.argv.slice(2).filter((a, i, A) => !a.startsWith('--') && !['--to', '--gene', '--leadcash'].includes(A[i - 1]));
+const keepGene = process.argv.includes('--keep-gene');
 const RE_LINE = /^  _PROFIT_BOARD: \{.*\},$/m;
 // 🔥 V78.1.0 把 🧬 那幾套(scripts/gene_board.mjs 產物)加進看板:grp 'gene'
 //   ⭐ 交叉驗證:gene 那邊每個起點的 0050 中位 == 看板的 0050(同一組起點),差超過 0.3% → exit 1(⛔ 不嵌半套)
@@ -114,6 +116,16 @@ for (const [wk, from] of Object.entries(WIN)) {
     delete r.b0050;
   }
   if (geneArg) rows.push(...geneRows(JSON.parse(fs.readFileSync(geneArg, 'utf8')), wk, from, e50.fin, die));
+  // ⏳ V79.4.6 --keep-gene:👑 換新、🧬 那幾列沿用舊的(下一版全市場重算前的過渡)→ 每列標 `old`(畫面寫「舊資料」,⛔ 不可靜默混在一起)
+  //   ⭐ 只有在看板的 0050 跟舊的一樣(同一組起點)才准沿用,差超過 1,000 元就 exit 1
+  if (!geneArg && keepGene) {
+    let oldPB = null; try { oldPB = JSON.parse(fs.readFileSync('pro.html', 'utf8').match(RE_LINE)[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, '')); } catch (_) {}
+    const ow = oldPB && oldPB.wins && oldPB.wins[wk]; if (!ow) die(wk + ' --keep-gene 但 pro.html 沒有舊看板');
+    const o50 = ow.rows.find(r => r.k === '0050');
+    if (!o50 || Math.abs(o50.fin - e50.fin) > 1000) die(`${wk} --keep-gene:新看板 0050 ${e50.fin} ≠ 舊的 ${o50 && o50.fin}(起點不同 → 舊 🧬 列不能沿用)`);
+    const og = ow.rows.filter(r => r.grp === 'gene'); if (og.length !== 3) die(`${wk} --keep-gene:舊看板的 🧬 列應為 3 種,實際 ${og.length}`);
+    rows.push(...og.map(r => ({ ...r, old: r.old || 1 })));
+  }
   // 💵 V78.1.9 整張重嵌時 ⛔ 不可把 leadcash 那列弄丟(它來自另一份產物)→ 從現在的 pro.html 帶過來並提醒要重跑 --leadcash
   try {
     const old = JSON.parse(fs.readFileSync('pro.html', 'utf8').match(RE_LINE)[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, ''));
@@ -140,7 +152,8 @@ for (const wk of Object.keys(WIN)) {
 }
 
 const out = { asof: new Date().toISOString().slice(0, 10), to: toArg || null, paths: 17, step: 3, src: 'scripts/leader_probe.mjs', wins, small,
-  ...(geneArg ? { geneSrc: JSON.parse(fs.readFileSync(geneArg, 'utf8')).src } : {}) };   // 🧭 V79.2.4 整張重嵌帶 --gene 時 geneSrc 也要寫(test_pickboard ①c)
+  ...(geneArg ? { geneSrc: JSON.parse(fs.readFileSync(geneArg, 'utf8')).src } : {}),   // 🧭 V79.2.4 整張重嵌帶 --gene 時 geneSrc 也要寫(test_pickboard ①c)
+  ...(!geneArg && keepGene ? (() => { try { const o = JSON.parse(fs.readFileSync('pro.html', 'utf8').match(RE_LINE)[0].replace(/^  _PROFIT_BOARD: /, '').replace(/,$/, '')); return o.geneSrc ? { geneSrc: o.geneSrc } : {}; } catch (_) { return {}; } })() : {}) };   // ⏳ --keep-gene 沿用舊的來源
 const line = '  _PROFIT_BOARD: ' + JSON.stringify(out) + ',';
 const P = 'pro.html', html = fs.readFileSync(P, 'utf8');
 const re = /^  _PROFIT_BOARD: \{.*\},$/m;

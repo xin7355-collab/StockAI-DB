@@ -55,6 +55,17 @@ const WARMUP = Math.max(60, +(process.env.WARMUP || 240) || 240);   // 暖身:�
 //     ⛔ 不是全市場平均。→ 成績改成 **per-stock × per-pattern**。
 const MIN_N = +(process.env.MIN_N || 4);   // **這一檔**在**這個型態**打過幾次才准用
 const MIN_MKT_N = 20;                       // 全市場該型態的最低樣本(第二層門檻)
+// 🪟 V79.4.6 STATS_WIN=<交易日> / STATS_FROM=<YYYY-MM-DD>:每檔打法成績(stat)與全市場型態成績(mkt)只算
+//   「進場日在最近 N 個交易日內」/「這一天以後進場」的交易。
+//   ⭐ 為什麼:App 的 K 線最多 1,200 根(miner.py 匯出 `LIMIT 1200`)→ playbook_scan 只看得到最近 ≤1,200 根算每檔成績;
+//     這支引擎以前從資料第一天一路累加 → d16(2010 起)到 2022 年已經吃了 12 年歷史 →
+//     近 4 年 🔥 同 17 個起點:只有 2021-10 起資料時 +413 萬、d16 +159 萬(2022-06 起兩份價格逐筆相同)。
+//   → 要對齊 App 一律設 STATS_WIN=1200。⛔ 不進 CACHE_KEY(只影響模擬階段)、不設時一個字都不變。
+const _swRaw = (process.env.STATS_WIN || '').trim();
+if (_swRaw && !/^\d+$/.test(_swRaw)) { console.error(`🚨 STATS_WIN=${_swRaw} 不認得(要正整數,單位 = 交易日)`); process.exit(1); }
+const STATS_WIN = _swRaw ? +_swRaw : 0;
+const STATS_FROM = (process.env.STATS_FROM || '').trim();
+if (STATS_FROM && !/^\d{4}-\d{2}-\d{2}$/.test(STATS_FROM)) { console.error(`🚨 STATS_FROM=${STATS_FROM} 不認得(要 YYYY-MM-DD)`); process.exit(1); }
 const ENTRY = process.env.ENTRY || 'close';   // close | nextopen | nextclose | nextopen_lim | prevclose_lim(見 page.evaluate 內註解)
 // 🧪 V72.9.7 濾網實驗(使用者問「有沒有更好的策略提高勝率」)
 //   ⛔ 籌碼濾網做不了 —— 實測 foreign_net 每檔只有中位 28 天有值、trust_net 203/291 檔完全沒有、
@@ -1048,6 +1059,8 @@ const calOk = (d, i) => {
 };
 
 const dIdx = new Map(days.map((d, i) => [d, i]));
+// 🪟 STATS_WIN 用:日期 → 大盤日曆上「≥ 該日」的第一天(進場日本來都在日曆上;不在的照 outIdx 的做法往後找)
+const calIdx = d => { const k = dIdx.get(d); if (k !== undefined) return k; let lo = 0, hi = days.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (days[m] < d) lo = m + 1; else hi = m; } return lo; };
 // 🐛 V77.7.2 出場日不在大盤日曆上 → 以前 `dIdx.get()` 回 undefined,部位**從權益曲線直接消失**(錢沒回來、live 也少一筆)。
 //   最常見:個股比大盤多一根(實測 dd2:349 檔最後一根 09/25、^TWII 停在 09/24)→ 最後 40 天進場的部位全部蒸發
 //   → 最大回撤被灌成 −55%、錢被鎖住少開倉。⭐ 改成「大盤日曆上 ≥ 出場日的第一天」,超過最後一天就算最後一天。
@@ -1342,6 +1355,10 @@ for (const t of allTrades) { if (dIdx.has(t.outD)) (byOut.get(t.outD) || byOut.s
 
 const stat = {};             // 「sym|key」→ {n, sum}(⭐ 每檔自己的打法成績)
 const mkt = {};              // key → {n, sum}(全市場該型態,當第二層門檻)
+const swBkt = [];            // 🪟 STATS_WIN:進場日索引 → [stat 鍵, mkt 鍵, ret, …](掉出視窗時照這份扣回去)
+let swPtr = 0, swOut = 0;    // 🪟 下一個要檢查的進場日索引 / 已經扣回幾筆
+if (STATS_WIN || STATS_FROM) console.log(`🪟 每檔打法成績只算${STATS_WIN ? `進場日在最近 ${STATS_WIN} 個交易日內` : ''}${STATS_WIN && STATS_FROM ? '、而且' : ''}${STATS_FROM ? ` ${STATS_FROM} 以後進場` : ''}的交易`);
+else if (days.length > 1200) console.log(`⚠️ 每檔打法成績會用到最多 ${days.length} 個交易日的歷史(App 的 K 線最多 1,200 根)→ 要對齊 App 請設 STATS_WIN=1200`);
 const taken = [];            // 實際成交的交易
 const openCnt = [];          // 每天同時持有幾筆
 let live = [];               // 目前持有
@@ -1386,10 +1403,25 @@ for (let i = 0; i < days.length; i++) {
     live = live.filter(x => outIdx(x) > i);
     // (a) 先把「今天之前已出場」的交易計入成績(⛔ 今天出場的還不能用 —— 那是今天才知道的)
     if (i > 0) for (const t of (byOut.get(days[i - 1]) || [])) {
-        const s = (stat[`${_rk(t)}${t.sym}|${t.key}`] ||= { n: 0, sum: 0 });
+        if (STATS_FROM && !(t.inD >= STATS_FROM)) continue;              // 🪟 這一天以前進場的不算
+        const swI = STATS_WIN ? calIdx(t.inD) : -1;
+        if (STATS_WIN && swI < i - STATS_WIN) continue;                   // 🪟 進場日已經掉出視窗
+        const kS = `${_rk(t)}${t.sym}|${t.key}`, kM = _rk(t) + t.key;
+        const s = (stat[kS] ||= { n: 0, sum: 0 });
         s.n++; s.sum += t.ret;
-        const m = (mkt[_rk(t) + t.key] ||= { n: 0, sum: 0 });
+        const m = (mkt[kM] ||= { n: 0, sum: 0 });
         m.n++; m.sum += t.ret;
+        if (STATS_WIN) (swBkt[swI] ||= []).push(kS, kM, t.ret);
+    }
+    // 🪟 STATS_WIN:進場日掉出「最近 N 個交易日」的交易,從成績裡扣回去(n 歸零時 sum 直接設 0,⛔ 不留浮點殘差)
+    if (STATS_WIN) for (; swPtr < i - STATS_WIN; swPtr++) {
+        const b = swBkt[swPtr]; if (!b) continue;
+        for (let q = 0; q < b.length; q += 3) {
+            const s = stat[b[q]], m = mkt[b[q + 1]];
+            s.n--; s.sum = s.n ? s.sum - b[q + 2] : 0;
+            m.n--; m.sum = m.n ? m.sum - b[q + 2] : 0;
+        }
+        swOut += b.length / 3; swBkt[swPtr] = null;
     }
     if (i < YR_FROM) continue;
     // 📅 逐年模式:過了那一年就不再開新倉,只讓手上的部位照規則出場;全部出清就結束
@@ -1783,7 +1815,7 @@ if (process.env.SUMMARY_OUT) {
     const summary = {
         // 🔁 V79.4.5 cfg 補記 rankMin / volatMin / stopFill / maxd / warmup / div(只多欄位,結果逐位相同)——
         //   每週回測(build_backtest_edge.mjs)靠這幾欄判斷「換設定了沒」:換了那一次重新起算守門基準(⛔ 不拿舊設定的筆數比)
-        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '', bearExit: BEAR_EXIT || '', forceExit: FORCE_EXIT ? FORCE_HASH : '', ...(POOL ? { pool: POOL } : {}), ...(RKSHAM ? { rksham: RKSHAM } : {}), ...(RANKBY !== 'self' ? { rankby: RANKBY } : {}),
+        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '', bearExit: BEAR_EXIT || '', forceExit: FORCE_EXIT ? FORCE_HASH : '', ...(POOL ? { pool: POOL } : {}), ...(RKSHAM ? { rksham: RKSHAM } : {}), ...(RANKBY !== 'self' ? { rankby: RANKBY } : {}), ...(STATS_WIN ? { statsWin: STATS_WIN } : {}), ...(STATS_FROM ? { statsFrom: STATS_FROM } : {}),
                rankMin: RANK_MIN, volatMin: VOLAT_MIN, stopFill: STOPFILL, maxd: MAXD, warmup: WARMUP, div: DIV_TRADES ? (NHI ? 'nhi' : 'gross') : '' },
         from, to, months: mons.length, n: taken.length, win: +(wins.length / taken.length * 100).toFixed(1),
         per: +(taken.reduce((a, t) => a + net(t), 0) / taken.length).toFixed(2), cum: Math.round(totalPnL), ret: +(totalPnL / capital * 100).toFixed(2),
@@ -1791,6 +1823,7 @@ if (process.env.SUMMARY_OUT) {
     };
     if (ACCR) summary.accr = { mode: ACCR, seen: accSeen.all.size, cut: accSeen.cut.size, unknown: accSeen.unk.size };   // 💵 V79.0.7
     if (PARK) summary.park = Math.round(parkPnL);   // 🅿️ 停泊 0050 的損益(⛔ 不混進 cum)
+    if (STATS_WIN || STATS_FROM) summary.stats = { win: STATS_WIN || null, from: STATS_FROM || null, dropped: swOut };   // 🪟 V79.4.6 每檔成績回看視窗(dropped = 掉出視窗被扣回的筆數)
     if (VOLCAP > 0) summary.volcap = { pct: VOLCAP, mode: VOLCAP_MODE, hit: vcHit, cut: vcCut, skip: vcSkip };
     if (EQ_BLOCK) summary.eqgate = { rule: EQGATE, days: EQ_BLOCK.size, blocked: eqBlk };
     if (ROTATE) summary.rot = { mode: ROTATE, n: rotN, minHold: ROT_MIN };

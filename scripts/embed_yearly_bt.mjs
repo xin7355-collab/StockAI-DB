@@ -10,6 +10,7 @@
  *     ⑤ 嵌進去之後再讀回來,跟 json 逐格相同
  * 用法:SET=long … node scripts/yearly_bt.mjs --collect y.json && node scripts/embed_yearly_bt.mjs y.json [--proxy]
  *       V78.0.8 只換單列:node scripts/embed_yearly_bt.mjs --merge now.json lead.json(⚠️ 整張模式不會帶 👑 那幾列,整張重跑完要再 --merge 一次)
+ *       V79.4.6 只換 👑 那幾列:node scripts/embed_yearly_bt.mjs --merge-lead lead.json(「⭐ 現行」那一列照舊;👑 列記進 v2.d16 = 2010 起全市場 + 股利那一批)
  */
 import fs from 'fs';
 import path from 'path';
@@ -28,6 +29,38 @@ const slimRow = (s, extra = {}) => ({ id: s.id, g: s.g, t: s.t, ...(s.na ? { na:
 // 🔀 V78.0.8 --merge <現行.json> <領頭羊.json>:⛔ 不用整張 79 種重跑,只換「⭐ 現行」那一列 + 加 👑 領頭羊四列
 //   現行.json = ONLY=now807 SET=long yearly_bt.mjs --collect(帶 CONT_DIR)・領頭羊.json = leader_probe.mjs YEARLY_OUT
 //   ⚠️ 這幾列是**修好日 K 之後**的資料,其餘是修好之前的 → 每一列標 `dv`(2 = 修好後),畫面分批標示,⛔ 不可靜默混在一起
+// 👑 V79.4.6 --merge-lead <領頭羊.json>:只換 👑 那幾列(d16 = 2010 起全市場含上櫃 / 下市 + 2010 起個股股利),「⭐ 現行」那一列照舊
+//   ⭐ 交叉驗證同 --merge:👑 全攻的一路滾 == 💰「100 萬變多少」16 年全攻(差 ≤1,000 元);v2.d16 記下哪幾列是新那一批(畫面分開標)
+if (process.argv[2] === '--merge-lead') {
+    const leadF = process.argv[3];
+    if (!leadF) die('用法:node scripts/embed_yearly_bt.mjs --merge-lead <lead.json>');
+    const L = JSON.parse(fs.readFileSync(leadF, 'utf8'));
+    const { ls, i: idx, v: Y } = readCur();
+    const YRS = Y.years;
+    const leads = L.rows.map(r => slimRow(r, { dv: 2 }));
+    if (leads.length < 1 || leads.some(r => r.g !== 'lead')) die('領頭羊.json 的列不是 g=lead');
+    for (const r of leads) {
+        for (const y of YRS) { const a = r.y[y]; if (a == null && !(r.na && y < r.na.from)) die(`${r.id} 缺 ${y}`); if (a && a.length !== cols.length) die(`${r.id} ${y} 欄位數不對`); }
+        if (!r.c || r.c.paths !== 17) die(`${r.id} 沒有一路滾 17 條`);
+        if (!r.yb || !r.bc) die(`${r.id} 沒有自己的 0050 對照(yb / bc)`);
+    }
+    const pbLine = ls.find(l => /^\s*_PROFIT_BOARD: \{/.test(l));
+    if (!pbLine) die('pro.html 沒有 _PROFIT_BOARD(要先嵌看板)');
+    { const PB = JSON.parse(pbLine.replace(/^\s*_PROFIT_BOARD: /, '').replace(/,$/, '')); const a = (PB.wins.long.rows || []).find(x => x.k === 'lead'), b = leads.find(x => x.id === 'lead');
+      if (!a || !b || Math.abs((a.fin - 1e6) - b.c.med) > 1000) die(`👑 全攻一路滾 ${b && b.c.med} ≠ 💰 表的 ${a && a.fin - 1e6}(引擎或資料對不上)`); }
+    const nowR = Y.strats.find(s => s.id === Y.nowId); if (!nowR) die('找不到現行那一列');
+    Y.strats = [nowR, ...leads, ...Y.strats.filter(s => s.id !== Y.nowId && s.g !== 'lead')];
+    Y.groups = { lead: '👑 領頭羊短線輪動', ...Y.groups };
+    const ids = [...new Set([...((Y.v2 && Y.v2.ids) || []).filter(id => id === Y.nowId), ...leads.map(r => r.id)])];
+    Y.v2 = { ...(Y.v2 || {}), asof: L.asof, to: L.data_to, ids, d16: leads.map(r => r.id) };
+    ls[idx] = `  ${KEY}: ` + JSON.stringify(Y) + ',';
+    fs.writeFileSync(P, ls.join('\n'));
+    const back = readCur().v;
+    for (const r of leads) { const b = back.strats.find(x => x.id === r.id); if (!b || b.c.med !== r.c.med || JSON.stringify(b.y) !== JSON.stringify(r.y)) die(`讀回來對不上:${r.id}`); }
+    if (back.strats.length !== Y.strats.length || !back.strats.some(s => s.id === 'base') || back.nowId !== Y.nowId) die('讀回來列數 / 現行不對');
+    console.log(`✅ 已併入 ${KEY}:👑 ${leads.length} 列(現行 ${Y.nowId} 照舊,共 ${back.strats.length} 列)・交叉驗證通過`);
+    process.exit(0);
+}
 if (process.argv[2] === '--merge') {
     const [nowF, leadF] = process.argv.slice(3);
     if (!nowF || !leadF) die('用法:node scripts/embed_yearly_bt.mjs --merge <now.json> <lead.json>');
@@ -53,7 +86,7 @@ if (process.argv[2] === '--merge') {
     Y.strats = [nr, ...leads, ...keep];
     Y.nowId = nr.id;
     Y.groups = { lead: '👑 領頭羊短線輪動', ...Y.groups };
-    Y.v2 = { asof: L.asof, to: L.data_to, ids: [nr.id, ...leads.map(r => r.id)] };
+    Y.v2 = { asof: L.asof, to: L.data_to, ids: [nr.id, ...leads.map(r => r.id)], d16: [nr.id, ...leads.map(r => r.id)] };   // 🆕 V79.4.6 起 --merge 一律用 d16(2010 起全市場 + 股利)跑 → 兩種都記進 d16
     ls[idx] = `  ${KEY}: ` + JSON.stringify(Y) + ',';
     fs.writeFileSync(P, ls.join('\n'));
     const back = readCur().v;
