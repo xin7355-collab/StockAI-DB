@@ -118,18 +118,19 @@ ok('③d 常用四件在摺疊外', R.commonOut.every(x => x[1] === false), R.co
 ok('③e 其他的都收進四組', R.restIn.every(x => x[1] === true), R.restIn);
 ok('③f 常用順序:我的策略 → 出場 → 手續費/本金 → 字體', R.order.every(x => x >= 0) && R.order.every((x, i) => i === 0 || x > R.order[i - 1]), R.order);
 ok(`③g 第一眼字數有上限(實測 ${R.firstGlance},上限 1600;改版前 6,670)`, R.firstGlance > 300 && R.firstGlance <= 1600, R.firstGlance);
-ok('④a 沒解鎖:只有 🔥 一個選項', JSON.stringify(R.optsLocked) === '["gene"]', R.optsLocked);
-ok('④b 沒解鎖時就算存著 park 也當 🔥(_park false)', R.parkLocked[0] === false && R.parkLocked[1] === 'gene', R.parkLocked);
+// 🅿️ V79.4.9 🅿️ 改預設(使用者:「改預設,自動下單也幫我買」)→ 沒解鎖也有 🅿️ / 📈 兩個;🅿️ ⛔ 不用解鎖
+ok('④a 沒解鎖:🅿️ / 📈 兩個選項(⛔ 沒有 👑)', JSON.stringify(R.optsLocked) === '["park","gene"]', R.optsLocked);
+ok('④b 沒解鎖、存著 park → 就是 🅿️(_park 真、選股照 🔥)', R.parkLocked[0] === true && R.parkLocked[1] === 'gene', R.parkLocked);
 // 🏆 V78.1.9 解鎖後四個、照實測由強到弱(16 年中位);🔒 V79.1.2 👑 兩個搬進「🔓 進階功能」那一區(使用者:「要點進階才能是領頭羊」)
 ok('④c 解鎖後:上面 🅿️ → 📈、👑 兩個在進階區(各自照實測由強到弱)', JSON.stringify(R.optsUnlocked) === '["park","gene","leadpark","lead"]' && JSON.stringify(R.optsAdv) === '["leadpark","lead"]', [R.optsUnlocked, R.optsAdv]);
 ok('④d 選 🅿️:_strat() 仍是 gene(選股/出場/提醒/Telegram 同 🔥)', R.parkOn[0] === true && R.parkOn[1] === 'gene' && R.parkOn[2] === false && R.parkOn[3] === 'park' && R.parkChecked, R.parkOn);
 const wanOf = h => (h.match(/該停在 0050 約 <b[^>]*>([\d.,]+) 萬/) || [])[1];
 ok('④e 停車金額 = 帳戶 − 個股市值(100 萬 − 30 萬 = 70 萬)', wanOf(R.parkH1) === '70', wanOf(R.parkH1));
 ok('④f ⭐ 決定性對照:個股漲了 → 停車金額跟著變(100 − 40 = 60 萬)', wanOf(R.parkH2) === '60', wanOf(R.parkH2));
-ok('④g 說明「自動下單不會幫你做」', /自動下單不會幫你做/.test(R.parkH1));
+ok('④g 🅿️ V79.4.9 說明「自動下單會照同一個算法」(⛔ 不再寫「不會幫你做」)', /自動下單會在收盤前照同一個算法/.test(R.parkH1) && !/自動下單不會/.test(R.parkH1));
 ok('④h 沒填本金 → 叫你去填,⛔ 不編金額', /帳戶總資金/.test(R.parkNoAcc) && !wanOf(R.parkNoAcc), R.parkNoAcc.slice(0, 120));
 ok('④i 🔥 時沒有停車那一行', R.geneAmt === '');
-ok('④j 收起進階選項 → 改回 🔥', R.afterLock[0] === false && R.afterLock[1] === 'gene' && R.afterLock[2] === false, R.afterLock);
+ok('④j 收起進階選項 → 選 🅿️ 的人照舊是 🅿️(⛔ 只有 👑 才改回 🅿️)', R.afterLock[0] === false && R.afterLock[1] === 'park' && R.afterLock[2] === true, R.afterLock);
 ok('⑤a _PROB_TABLE 有成交額前 100 那一組(amt1)', R.hasAmt1);
 ok('⑤b chip 一行:明天 + 20 天 + 全市場基準 + 贏大盤', /明天/.test(R.chipOff) && /20 天/.test(R.chipOff) && /全市場/.test(R.chipOff) && /贏大盤/.test(R.chipOff), R.chipOff.slice(0, 200));
 ok('⑤c ⭐ 決定性對照:前 100 大時「明天」換成 amt1 那一列(漲 77.7)、還標 💰', /漲 77\.7/.test(R.chipOn) && /💰/.test(R.chipOn), R.chipOn.slice(0, 200));

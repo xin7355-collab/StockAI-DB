@@ -70,8 +70,10 @@ ok('② 🚨 排序式子全 App 只准有一份(⛔ 三處手抄遲早只改到
 ok('②b 清單/推播/決策台三處都呼叫 `_pbSort`', (SRC.match(/this\._pbSort\(/g) || []).length === 3);
 ok('②c `_mySyms` 也只有一份(⛔ 不可再手抄 Set)',
    (SRC.match(/for \(const g of Object\.values\(this\.favGroups/g) || []).length === 1);
-ok('②d ⛔ 排序不可用原始期望值 exp(V72.9.2:必定挑到僥倖股)',
-   /_lb\(b\) - _lb\(a\)/.test(SRC) && !/\(b\.exp - a\.exp\)/.test(SRC));
+// 🔁 V79.4.9 使用者選「換,次數維持 8 次」→ 排序值跟著 `_hotRule()` 走(預設照平均、換回舊的照保守下界);⛔ 不可在排序式子裡寫死某一個欄位
+ok('②d 排序值只走 `_pbKey`(跟著 `_hotRule()`),⛔ 不可寫死 exp 或 lb',
+   /this\._pbKey\(b\) - this\._pbKey\(a\)/.test(SRC) && !/\(b\.exp - a\.exp\)/.test(SRC) && !/\(b\.lb - a\.lb\)/.test(SRC)
+   && /_pbKey\(x\) \{ return this\._hotRule\(\) === 'lb' \? /.test(SRC));
 
 // ③ ⛔ 整頁不可出現「開盤買」(⚠️ 先剝註解 —— 說明它的註解本身就含那三個字)
 const deck = SRC.slice(SRC.indexOf('async renderDeck()'), SRC.indexOf('async renderDeck()') + 9000);

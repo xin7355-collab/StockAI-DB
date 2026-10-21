@@ -2456,7 +2456,7 @@ const PRO = {
       f: (r, S) => r.sc && r.sc.plus.length >= 2 && r.sc.sum > 0, sort: 'score' },
     // 🏆 V74.4.6 使用者:「把最厲害的招式加到釣魚區裡面」——
     //    ⭐ 本站實測最強的**不是**拋竿漏斗(它合起來是負的),是「每檔自己最會賺的招」那份清單。
-    //    ⛔ 排序走共用的 `_pbSort`(🧬 優先 → 保守下界),不在這裡另寫一份。
+    //    ⛔ 排序走共用的 `_pbSort`(🧬 優先 → 選股規則的值:V79.4.9 起照平均),不在這裡另寫一份。
     { k: 'pb', n: '🏆 最強招式', d: '明日作戰清單:每一檔「自己歷史上最會賺的那一招」明天會觸發的(實測數字由 _rodStatus 讀 _SIG_DEEP,⛔ 不寫死在這裡)',
       f: (r, S) => true, sort: 'pb' },
     { k: 'avoid', n: '⚠️ 避雷池', d: '符合「實測落後」條件比較多的(⛔ 不是放空訊號,是別在這裡挑)',
@@ -2540,7 +2540,7 @@ const PRO = {
     const rows = D.rows || [];
     const byS = {}; for (const r of rows) byS[r.sym] = r;
     // ① 決策台名單(⛔ 不在這裡另寫一份挑法 —— `_recoPicks` 是唯一那一份,📒 推薦成績單也用它)
-    const reco = this._recoPicks((this._pbJ && this._pbJ.picks) || []) || [];
+    const reco = this._recoPicks((this._pbJ && this._pbJ.picks) || [], this._pbJ && this._pbJ.rule ? this._hotRule() : 'lb') || [];
     if (!reco.length) return { picked: [], warnN: 0, thin: 0, avoided: [], disposed: [],
                                srcNone: this._pbJ ? 'empty' : 'noFile', fromDeck: true };
     // ② 三道守門改成**標註**,⛔ 不從名單裡刪 ——
@@ -2674,7 +2674,7 @@ const PRO = {
       <div class="note" style="margin-top:4px">
         ① 🏆 <b>這一檔自己歷史上最會賺的那一招:${x.k || '—'}</b> —— 勝率 <b>${x.w == null ? '—' : x.w + '%'}</b>
         ・打過 <b>${x.n == null ? '—' : x.n}</b> 次 ・每趟平均 <b>${num(x.exp, '%')}</b>
-        (保守下界 <b>${num(x.lb, '%')}</b>,⭐ 排序用的是<b>下界</b>不是平均 —— 排平均會挑到僥倖股)。<br>
+        (保守下界 <b>${num(x.lb, '%')}</b>;🔁 V79.4.9 起排序照<b>平均</b>、每一招都算 —— 全市場 16 年照 App 實際買法實測,照下界排連隨機排都輸,照平均排兩段都贏)。<br>
         ② 🧬 <b>位階 ${x.rank == null ? '—' : Math.round(x.rank)} ・年化波動率 ${x.vol == null ? '—' : Math.round(x.vol) + '%'}</b>
         —— 過了採礦端的「位階 ≥${H.pos} 且<b>年化波動率</b> ≥${H.vol}%」。這一關是決策台的規定(只買 🧬);它到底有沒有幫上忙,全市場重算後兩段不一樣(16 年挑的好、近 4 年看哪天起跑,有時不挑的反而好,見下面成績)。<br>
         <span style="color:var(--dim2)">🚨 ⛔ 這跟<b>池子</b>那一邊的 🧬 不是同一個數字 ——
@@ -2739,9 +2739,14 @@ const PRO = {
     try { const st = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); return /^lead(park)?$/.test(st.strategy) && !!st.stratUnlock; }
     catch (_) { return false; }
   },
+  /** 🅿️ V79.4.9 🅿️ 改預設(使用者:「改預設,自動下單也幫我買」)→ ⛔ 不用解鎖;判斷式同 index `_park()`。
+   *  ⚠️ 作戰室可能是獨立的主畫面 App(⛔ 不一定先開過散戶救星)→ 同 index 的搬家旗標:沒存過設定、或存著 'gene' 但沒有 hotMigr7949 = 當 🅿️ */
   _isPark() {
-    try { const st = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); return /^(lead)?park$/.test(st.strategy) && !!st.stratUnlock; }
-    catch (_) { return false; }
+    try {
+      const st = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}') || {};
+      const k = (!st.hotMigr7949 && (!st.strategy || st.strategy === 'gene')) ? 'park' : st.strategy;
+      return /^(lead)?park$/.test(k);
+    } catch (_) { return true; }
   },
   /** 📒 V79.1.2 使用者:「產業 app 裡面的成績單沒有領頭羊策略」→ 選「作戰室成績單永遠顯示 👑」。
    *  iPhone 兩個主畫面 App 的設定不互通,作戰室常常沒解鎖 → 成績單這一頁⛔ 不再看解鎖;
@@ -2889,7 +2894,7 @@ const PRO = {
     const R = this._cast, ps = (R && R.picked) || [];
     if (!ps.length || !ps.some(x => x.sym === sym)) return '';
     const src = `<br>📋 名單來源 = 散戶救星<b>決策台「🎯 今天可以買的」那一套</b>
-      (每一檔自己最會賺的招 → 🧬 高位階+高波動 → 非空頭 → 照<b>保守下界</b>排,一天最多 ${this._RECO_PICKS} 檔)。
+      (每一檔自己最會賺的招 → 🧬 高位階+高波動 → 非空頭 → 照<b>這一招的平均</b>排(V79.4.8 以前是保守下界),一天最多 ${this._RECO_PICKS} 檔)。
       <br>⚠️ <b>跟決策台看到的可能不一樣</b>:決策台會把 👜 <b>你的庫存/自選排到最前面</b>,
       這裡刻意用<b>不含持股</b>的版本 —— 🧺 漁獲籃要量的是「<b>這套推薦</b>」的成績,
       混進自選股就量不到了。⛔ 兩邊都沒算錯,是<b>問的問題不一樣</b>。`;
@@ -2900,8 +2905,8 @@ const PRO = {
     return `<div class="note" style="margin:0 0 8px">🎣 今天拋竿上鉤 <b>${ps.length}</b> 條(點下面切換):
       ${ps.map(x => `<span class="sigtag" style="cursor:pointer${x.sym === sym ? ';border-color:var(--amber);color:var(--amber)' : ''}"
           onclick="PRO._fishPick('${x.sym}')">${this._nmTxt(x.sym)}${x.tier === 2 ? ' 🥈' : ''}</span>`).join(' ')}
-      <br>⛔ <b>它們之間沒有強弱之分</b> —— 排序用的是「保守下界」(⛔ 不是原始期望值,那會挑到僥倖股),
-      而<b>那個排序本身沒有被單獨回測過</b> → <b>先出現的那一條 ⛔ 不代表比較強</b>,兩條都只是候選。
+      <br>⛔ <b>它們之間沒有強弱之分</b> —— 這裡的先後是拋竿自己的順序,<b>這個排序本身沒有被單獨回測過</b>
+      → <b>先出現的那一條 ⛔ 不代表比較強</b>,兩條都只是候選。
       ${src}</div>
       ${this._castStickyHtml(ps)}`;
   },
@@ -3005,7 +3010,8 @@ const PRO = {
     // 🚨 同一檔可能出現**多次**(不同招;實測 206 筆裡 6949 就出現兩次)。
     //    清單已經照 _pbSort 排好 → ⭐ 一律保留**第一筆(最好的那一招)**,
     //    ⛔ 直接覆寫的話會留到排名較後面的那一招 = 卡上顯示的不是它最強的招。
-    if (this._pbJ) for (const x of this._pbJ.picks) if (x && x.s && !this._pbMap[x.s]) this._pbMap[x.s] = x;
+    // 🔁 V79.4.9 只收這套規則的列,同一檔留排序值最高的那一招(⛔ 不靠檔案順序 —— 換規則之後第一列可能是另一套的)
+    if (this._pbJ) for (const x of this._pbJ.picks) if (x && x.s && this._pbRuleOk(x) && (!this._pbMap[x.s] || this._pbKeyOf(x) > this._pbKeyOf(this._pbMap[x.s]))) this._pbMap[x.s] = x;
     if (!scr || !scr.rows || !scr.cols) return null;
     const C = scr.cols, ix = k => C.indexOf(k);
     const iC = ix('c'), iChg = ix('chg'), i20 = ix('chg20'), iAmt = ix('amt'), iPos = ix('pos252'),
@@ -3231,7 +3237,7 @@ const PRO = {
       + '<br>⭐ 所以它不是「懶得做」,是<b>量過之後判它死刑</b>。<span style="color:var(--dim2)">(' + C.src + ')</span>'
       + '<br>⭐ <b>現在拋竿 = 決策台那套</b>:每一檔自己最會賺的那招 → 帶 🧬 旗標(採礦端用「位階 ≥'
       + H.pos + ' 且<b>年化波動率</b> ≥' + H.vol + '%」標的,🚨 <b>跟池子的振幅門檻不是同一個數字</b>)'
-      + ' → 非空頭 → 照<b>保守下界</b>排(⛔ 不是原始期望值 —— 排平均會挑到僥倖股)→ 一天最多 <b>'
+      + ' → 非空頭 → 照<b>這一招的平均</b>排、每一招都算(V79.4.9 起;以前照保守下界,全市場實測連隨機排都輸)→ 一天最多 <b>'
       + this._RECO_PICKS + '</b> 檔。'
       + '<br>📊 <b>實測成績</b>(全市場、照 App 實際怎麼買:前一晚名單前 ' + this._RECO_PICKS + ' 名、觸發才買):' + S.months + ' 個月(' + S.from + ' 起)、出場 <b>' + S.exitName
       + '</b> → 🧬 <b>+' + w(S.gene) + ' 萬</b>(中途最多賠 <b>−' + S.geneDD + '%</b>);同期 <b>0050 買了放著(含息)+' + w(S.etf0050) + ' 萬</b>'
@@ -3268,7 +3274,7 @@ const PRO = {
       + '<br>⭐ 所以它不是「懶得做」,是<b>量過之後判它死刑</b>。<span style="color:var(--dim2)">(' + C.src + ')</span>'
       + '<br>⭐ <b>現在拋竿 = 決策台那套</b>:每一檔自己最會賺的那招 → 帶 🧬 旗標(採礦端用「位階 ≥'
       + H.pos + ' 且<b>年化波動率</b> ≥' + H.vol + '%」標的,🚨 <b>跟池子的振幅門檻不是同一個數字</b>)'
-      + ' → 非空頭 → 照<b>保守下界</b>排(⛔ 不是原始期望值 —— 排平均會挑到僥倖股)→ 一天最多 <b>'
+      + ' → 非空頭 → 照<b>這一招的平均</b>排、每一招都算(V79.4.9 起;以前照保守下界,全市場實測連隨機排都輸)→ 一天最多 <b>'
       + this._RECO_PICKS + '</b> 檔。'
       + '<br>📊 <b>實測成績</b>(全市場、照 App 實際怎麼買:前一晚名單前 ' + this._RECO_PICKS + ' 名、觸發才買):' + S.months + ' 個月(' + S.from + ' 起)、出場 <b>' + S.exitName
       + '</b> → 🧬 <b>+' + w(S.gene) + ' 萬</b>(中途最多賠 <b>−' + S.geneDD + '%</b>);同期 <b>0050 買了放著(含息)+' + w(S.etf0050) + ' 萬</b>'
@@ -3396,7 +3402,7 @@ const PRO = {
     L.push('👑 另一池「成交額前 ' + K.top + '」:六關全過 +' + K.e10 + 'pp(勝率 ' + K.w + '% 對 ' + K.baseW + '%),但絕對 10 日 ' + K.abs
       + '%;外部那套再疊的六層 +' + K.funnel.e10 + 'pp = 零 → 只當池子,⛔ 不進拋竿');
     L.push('🎣 拋竿(另一套,跟池子不是同一個門檻):決策台「今天可以買的」—— 每檔自己最會賺的招 → 🧬 旗標(位階 ≥ ' + H.pos
-      + ' 且年化波動率 ≥ ' + H.vol + '%)→ 非空頭 → 照保守下界排 → 一天最多 ' + this._RECO_PICKS + ' 檔');
+      + ' 且年化波動率 ≥ ' + H.vol + '%)→ 非空頭 → 照這一招的平均排 → 一天最多 ' + this._RECO_PICKS + ' 檔');
     L.push('⛔ 不下多空、不計分排名、不給買賣價位;要不要買、買幾張、停損在哪以散戶救星「現在怎麼做」為準。');
     return L.join('\n');
   },
@@ -5464,11 +5470,12 @@ const PRO = {
   // 🏁 V78.2.2 四頁共用起點(使用者:「給我同一個起點,之前的可以刪除」)= 👑 第一次換倉日(四張都有資料的最早一天)。
   //   ⛔ 不刪 pick_history.json,只是這天以前的推薦不算(四張才比得了)
   _RECO_COMMON: '2026-09-24',
-  _recoPicks(pb) {
+  _recoPicks(pb, rule) {
     const rows = (pb || []).filter(x => x && x.s && ('hq' in x));
     if (!rows.length) return null;                                   // 舊快照沒有旗標 → 重建不出來(⛔ 不猜)
-    const lb = x => Number.isFinite(+x.lb) ? +x.lb : -1e9;
-    const sorted = rows.slice().sort((a, b) => ((+b.hq || 0) - (+a.hq || 0)) || (lb(b) - lb(a)));   // 同 index._pbSort(不含 mine)
+    // 🔁 V79.4.9 照**那一天**名單的規則重建(pick_history 每天的 `rule`;沒寫 = V79.4.8 以前 = 舊的保守排法)→ 成績單照實,⛔ 不拿今天的規則改寫過去
+    const R = rule || 'lb';
+    const sorted = rows.filter(x => this._pbRuleOk(x, R)).sort((a, b) => ((+b.hq || 0) - (+a.hq || 0)) || (this._pbKeyOf(b, R) - this._pbKeyOf(a, R)));   // 同 index._pbSort(不含 mine)
     const seen = new Set(), uniq = [];
     for (const x of sorted) { const k = String(x.s); if (seen.has(k)) continue; seen.add(k); uniq.push(x); }   // 同一檔只留排最前面那一招
     return uniq.filter(x => (+x.hq || 0) === 1 && !(+x.bear || 0)).slice(0, this._RECO_PICKS);
@@ -5543,9 +5550,9 @@ const PRO = {
     // 🧪 混搭 = 兩張聯集。⛔ 任一張重建不出來就整天跳過 ——
     //   只算得出來的那一半會讓它看起來像「兩張都買」,但其實只買了一張(同名不同義)。
     const picksOf = (day) => {
-      if (src === 'pb') return this._recoPicks(day.pb);
+      if (src === 'pb') return this._recoPicks(day.pb, day.rule);
       if (src === 'fit') return this._recoFitPicks(day);
-      const a = this._recoPicks(day.pb), b = this._recoFitPicks(day);
+      const a = this._recoPicks(day.pb, day.rule), b = this._recoFitPicks(day);
       if (!a || !b) return null;
       const seen = new Set(), uniq = [];
       for (const x of a.concat(b)) { const k = String(x.s); if (seen.has(k)) continue; seen.add(k); uniq.push(x); }
@@ -5835,7 +5842,7 @@ const PRO = {
     const todayOf = (k, R) => {
       if (k === 'lead') { const pl = (R.rebs || []).filter(x => x.plan).slice(-1)[0]; if (pl) return { t: '下次開盤買', s: pl.plan.buy.map(String) }; return { t: '抱著', s: (R.trades || []).filter(t => t.st && t.st.open).map(t => t.sym) }; }
       if (!last) return { t: '今天推薦', s: [] };
-      const a = k === 'pb' ? this._recoPicks(last.pb) : k === 'fit' ? this._recoFitPicks(last) : (() => { const x = this._recoPicks(last.pb) || [], y = this._recoFitPicks(last) || []; const seen = new Set(); return x.concat(y).filter(r => !seen.has(String(r.s)) && seen.add(String(r.s))); })();
+      const a = k === 'pb' ? this._recoPicks(last.pb, last.rule) : k === 'fit' ? this._recoFitPicks(last) : (() => { const x = this._recoPicks(last.pb, last.rule) || [], y = this._recoFitPicks(last) || []; const seen = new Set(); return x.concat(y).filter(r => !seen.has(String(r.s)) && seen.add(String(r.s))); })();
       return { t: `${String(last.d).slice(5, 10)} 推薦`, s: (a || []).map(r => String(r.s)) };
     };
     const rows = [];
@@ -6495,10 +6502,15 @@ const PRO = {
   },
 
   // 🏆 明日作戰清單(playbook_edge)—— **全 App 唯一一份排序**
-  //   ⭐ 跟散戶救星的尾盤推播完全一致:🧬 優先 → **保守下界 lb**
-  //   ⛔ 不可改排原始期望值 `exp` —— 那會挑到「只做過幾次剛好很賺」的僥倖股(V72.9.2)。
-  //   ⛔ 也不可在別處再寫一份(陷阱 #37:同一套規則寫兩份,遲早只改到一邊)。
-  _pbSort(a, b) { return PRO._hqOf(b) - PRO._hqOf(a) || (b.lb ?? -9) - (a.lb ?? -9); },
+  //   ⭐ 跟散戶救星 `_pbSort` 同一條:🧬 優先 → 選股規則的值 `_pbKey`
+  //   🔁 V79.4.9 使用者選「換,次數維持 8 次」:預設照這一招的**平均** exp・每一招都算(只留 r > 0);
+  //     散戶救星設定裡關掉 = 換回舊的**保守下界** lb・一檔最多 2 招(只留 o > 0)。舊格式名單(沒有 r / o)不篩。
+  //   ⛔ 不可在別處再寫一份(陷阱 #37:同一套規則寫兩份,遲早只改到一邊)。
+  //   ⚠️ 兩個主畫面 App 的設定不互通(iPhone)→ 作戰室讀不到散戶救星的開關時一律照預設(新排法)
+  _hotRule() { try { return JSON.parse(localStorage.getItem('proTerminalSettings') || '{}').hotRule === 'lb' ? 'lb' : 'mean'; } catch (_) { return 'mean'; } },
+  _pbKeyOf(x, rule) { const r = rule || this._hotRule(), a = r === 'lb' ? x.lb : x.exp, b = r === 'lb' ? x.exp : x.lb; return Number.isFinite(+a) ? +a : (Number.isFinite(+b) ? +b : -9); },
+  _pbRuleOk(x, rule) { return !('r' in x || 'o' in x) ? true : ((rule || this._hotRule()) === 'lb' ? +x.o > 0 : +x.r > 0); },
+  _pbSort(a, b) { return PRO._hqOf(b) - PRO._hqOf(a) || PRO._pbKeyOf(b) - PRO._pbKeyOf(a); },
   _pbPick(sym) { return (this._pbMap || {})[sym] || null; },
   // 🏆 釣到的魚:如果它在作戰清單裡,把「它自己最會賺的那一招」攤開
   //   ⭐ 這才是本站實測最強的東西(36 個月 +289.6 萬),⛔ 拋竿漏斗合起來反而是負的。
@@ -6836,8 +6848,8 @@ const PRO = {
   STRAT_NAMES: {
     hot:  { n: '🔥 高檔飆股', ids: ['now807'], ver: 'V78.0.7 起・決策台現行・自動下單照這套', q: '吊燈',
             how: ['🎯 選股:一年位置在最高 15% 以內 + 很會跳(波動率排前 40%)+ 這一招以前在這檔有賺', '🚪 賣:從買進後最高收盤回落 2 倍 ATR / 跌破買進當天最低或 −5% / 最長抱 20 天,先到先賣', '💵 錢:每天最多 2 檔、每筆 15 萬;大盤嚴格空頭不開新倉;沒買的錢放著現金'] },
-    park: { n: '🅿️ 高檔飆股+停車 0050', ids: [], ver: 'V78.0.7 實測・⚠️ 自動下單還沒做', q: '閒錢',
-            how: ['🎯 選股:跟 🔥 高檔飆股 一模一樣', '🚪 賣:跟 🔥 高檔飆股 一模一樣', '🅿️ 錢:沒買股票的錢先停在 0050,要買股票時才賣 0050 —— ⚠️ 自動下單還沒做,要自己買'] },
+    park: { n: '🅿️ 高檔飆股+停車 0050', ids: [], ver: 'V79.4.9 起預設・自動下單也會買賣 0050', q: '閒錢',
+            how: ['🎯 選股:跟 🔥 高檔飆股 一模一樣', '🚪 賣:跟 🔥 高檔飆股 一模一樣', '🅿️ 錢:沒買股票的錢先停在 0050,要買股票時才賣 0050 —— 自動下單(設好帳戶總資金)也會照做,一天最多約 30 萬'] },
     don:  { n: '🐢 唐奇安長抱(已換掉)', ids: ['now765'], ver: 'V77.6.5~V78.0.6 的預設,已被 🔥 高檔飆股 取代', q: '唐奇安',
             how: ['🎯 選股:一年位置 ≥75% + 很會跳', '🚪 賣:跌破 40 日最低 / 硬停損 / 最長抱 40 天', '💵 錢:每天最多 2 檔、每筆 15 萬;大盤嚴格空頭不開新倉'] },
     base: { n: '📤 唐奇安 20 日(更早的舊預設)', ids: ['base'], ver: 'V77.6.5 以前' },
@@ -6912,7 +6924,8 @@ const PRO = {
     const me = S.find(x => x.k === cur);
     const meLine = best.k === cur ? `👉 <b>這就是你現在用的那一套</b>。`
       : `👉 你現在用的是 <b>${me.n}</b>:近 4 年 → <b>${wan(me.a.fin)}</b>、16 年 → <b>${wan(me.l.fin)}</b> —— ${verdict(me)}。${me.a.old ? ' ⏳ 這一套的數字還是<b>舊資料</b>(只抽 600 檔、2010~2020 沒算個股股利),下一版用全市場重算,⛔ 先別拿來跟 👑 比。' : ''}`;
-    const parkWarn = best.k === 'park' ? `<div class="pk-line">⚠️ <b>${best.n}</b> 的「停車 0050」<b>自動下單還沒做</b>:選股和賣法跟 🔥 高檔飆股 一模一樣,差別只在沒買股票的錢要<b>自己</b>先買 0050、要買股票時再賣掉。已用全市場 + 照 App 實際怎麼買重跑過(兩段都比錢放現金多賺很多,但仍輸 0050 含息),要不要換成預設由你決定。</div>` : '';
+    // 🅿️ V79.4.9 🅿️ 已是預設、自動下單也會做 → 那句「還沒做 / 要不要換成預設由你決定」拿掉
+    const parkWarn = '';
     const hero = `<div class="pk-hero" id="pkHero">
       <div class="pk-k">🏆 實測最強(同一組 ${P} 個起點、含息、已扣手續費和稅)</div>
       <div class="pk-n">${best.n}</div>
@@ -7005,7 +7018,7 @@ const PRO = {
     const body = rows.map(r => r.late
       ? `<tr><td class="txtcell" style="white-space:normal">${this._esc(r.n)}<div class="sigfrom">${KIND[r.kind] || ''}</div></td><td class="mono" colspan="4" style="color:var(--dim2)">⏳ 上市晚於 ${Wd.from.slice(0, 7)},⛔ 不硬比</td></tr>`
       : `<tr class="${r.k === '0050' ? 'sigbase' : r.k === 'lead' ? 'sigbest' : ''}">
-          <td class="txtcell" style="white-space:normal">${this._esc(r.grp === 'etf' ? r.n : (this._stratName(r.k) || r.n))}<div class="sigfrom">${r.grp === 'lead' || r.grp === 'gene' ? '自己挑股' + (r.k === 'park' ? ' ・⚠️ 停車 0050 自動下單還沒做' : '') : (KIND[r.kind] || '') + ' ・買了放著'}${r.k === '0050' ? ' ・<b>基準</b>' : ''}${r.old ? '<div data-pbold>⏳ 舊資料:只抽 600 檔、2010~2020 沒算個股股利 → 下一版用全市場重算(⛔ 先別拿來跟 👑 比)</div>' : ''}</div></td>
+          <td class="txtcell" style="white-space:normal">${this._esc(r.grp === 'etf' ? r.n : (this._stratName(r.k) || r.n))}<div class="sigfrom">${r.grp === 'lead' || r.grp === 'gene' ? '自己挑股' + (r.k === 'park' ? ' ・閒錢停 0050(預設)' : '') : (KIND[r.kind] || '') + ' ・買了放著'}${r.k === '0050' ? ' ・<b>基準</b>' : ''}${r.old ? '<div data-pbold>⏳ 舊資料:只抽 600 檔、2010~2020 沒算個股股利 → 下一版用全市場重算(⛔ 先別拿來跟 👑 比)</div>' : ''}</div></td>
           <td class="mono"><b style="font-size:14px">${wan(r.fin)}</b>${x(r.fin, 1e6)}<div class="sigfrom" data-pfcagr>${this._cagrTxt(r.fin, Wd.from, B.to, 'ym')}</div></td>
           <td class="mono">${wan(r.worst)}</td>
           <td class="mono">${pc(r.mdd)}</td>
@@ -9790,25 +9803,27 @@ const PRO = {
       const n = this._verTapN; this._verTapN = 0;
       if (n < 5) return;
       let st = {}; try { st = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}') || {}; } catch (_) { st = {}; }
-      if (st.stratUnlock) { this._stratSet('gene', false); return; }
+      if (st.stratUnlock) { this._stratSet(null, false); return; }
       const N = this.STRAT_NAMES || {};
       const opts = [['leadpark', (N.lead || {}).n], ['lead', (N.leadcash || {}).n], ['park', (N.park || {}).n], ['gene', (N.hot || {}).n]];
       this.openModal('🔓 你用哪一套', `<div style="display:flex;flex-direction:column;gap:6px;padding:4px 0">${opts.map(([k, t]) =>
         `<button class="labbtn" data-stratpick="${k}" style="text-align:left;padding:8px 10px" onclick="PRO._stratSet('${k}', true)">${this._esc(String(t || k))}</button>`).join('')}
-        <div class="note" style="margin-top:4px">只改這個 App 的設定;再連點版本號 5 次 = 收起、改回 🔥 高檔飆股。</div></div>`);
+        <div class="note" style="margin-top:4px">只改這個 App 的設定;再連點版本號 5 次 = 收起(👑 改回 🅿️ 高檔飆股+停車 0050)。</div></div>`);
     }, 650);
   },
   _stratSet(k, unlock) {
     try {
       let st = {}; try { st = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}') || {}; } catch (_) { st = {}; }
-      st.strategy = unlock ? k : 'gene'; st.stratUnlock = !!unlock;
+      // 🅿️ V79.4.9 收起時:👑 改回預設 🅿️(⛔ 自己選 📈 錢放現金的不動);寫入時順手完成 index 那次搬家(空頭守門 🔥 預設關)
+      if (!st.hotMigr7949) { st.bearGate = false; if (!st.strategy || st.strategy === 'gene') st.strategy = 'park'; st.hotMigr7949 = 1; }
+      st.strategy = unlock ? k : (/^lead/.test(st.strategy || '') ? 'park' : (st.strategy || 'park')); st.stratUnlock = !!unlock;
       localStorage.setItem('proTerminalSettings', JSON.stringify(st));
     } catch (_) { this.toast('⚠️ 存不下來(瀏覽器不讓寫設定)'); return; }
     this.closeModal();
     this._rl = null; this._rlSig = null; this._cmpAll = null; this._cmpAllSig = null;
     if (!unlock) this._recoSrc = 'pb';
     try { this.switchTab(this._tab || 'chain', true); } catch (_) {}
-    this.toast(unlock ? '🔓 已切換' : '🔒 已收起(改回 🔥 高檔飆股)');
+    this.toast(unlock ? '🔓 已切換' : '🔒 已收起');
   },
   _lowCoh(c) {
     const v = (this._tagCoh || {})[c];

@@ -29,7 +29,9 @@ import { fileURLToPath } from 'url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // 🔁 V79.4.5 成績單「設定」的簽章:這幾欄任一不同 = 換設定(那一次重新起算基準)
-export const DECK_SIG = ['syms', 'picks', 'lot', 'capital', 'exit', 'stop', 'entry', 'self', 'filter', 'rankMin', 'volatMin', 'stopFill', 'maxd', 'warmup', 'div'];
+// 🔥 V79.4.9 補上選股規則 / 斷崖 / 回看天數 / 買法 / 停 0050(以前這幾欄換了守門看不出來 = 拿不同設定比 80%)
+export const DECK_SIG = ['syms', 'picks', 'lot', 'capital', 'exit', 'stop', 'entry', 'self', 'filter', 'rankMin', 'volatMin', 'stopFill', 'maxd', 'warmup', 'div',
+    'gate', 'minN', 'lbZ', 'lbTop', 'cliff', 'statsWin', 'allFire', 'listK', 'park', 'nolock', 'minMktN'];
 export const deckSig = cfg => DECK_SIG.map(k => `${k}=${cfg && cfg[k] != null ? cfg[k] : ''}`).join('|');
 // 🔁 V79.4.5 絕對下限(⛔ 不管有沒有換設定都要過):2026-10-20 本機重現(同 workflow 的資料與設定)成績單 1,024 筆・47 個月、
 //   3 年訊號樣本 1,915,189 → 取約一半。⚠️ 改了成績單設定 / 訊號回測的方法,要重現一次再改這裡。

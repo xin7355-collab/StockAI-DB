@@ -65,7 +65,10 @@ const R = await page.evaluate(async () => {
     d = A._ovDecide(rows, '3441'); o.ovOff = { badge: d && d.badge };
     // 空頭守門:在名單上但大盤嚴格空頭 → ⛔ 不叫你買
     A._pbEdge = { data_date: '2026-10-01', picks: [pk('3441')], mkt: { bear60: true } };
-    d = A._ovDecide(rows, '3441'); o.ovBear = { badge: d && d.badge, why: d && d.why };
+    const _bg0 = A.settings.bearGate;
+    A.settings.bearGate = true; d = A._ovDecide(rows, '3441'); o.ovBear = { badge: d && d.badge, why: d && d.why };   // 自己打開守門
+    A.settings.bearGate = false; d = A._ovDecide(rows, '3441'); o.ovBearOff = { badge: d && d.badge };                // 🐻 V79.4.9 預設關 = 照常買
+    A.settings.bearGate = _bg0;
     return o;
 });
 await browser.close();
@@ -94,13 +97,14 @@ ok('③ 出場規則照 16 年 → 近 4 年中位由強到弱', JSON.stringify(
 ok('③b 設定畫面的按鈕一打開就是這個順序(靜態 HTML)', JSON.stringify(R.exitBtns) === JSON.stringify(R.exitOrd) && JSON.stringify(R.exitBtnsAfter) === JSON.stringify(R.exitOrd), `${R.exitBtns} / ${R.exitBtnsAfter}`);
 // ④
 ok('④ leadpark = 👑 + 停車;lead = 👑 錢放現金;park = 🔥 + 停車', JSON.stringify(R.lp) === '["lead",true,"leadpark"]' && JSON.stringify(R.l) === '["lead",false,"lead"]' && JSON.stringify(R.p) === '["gene",true,"park"]', JSON.stringify([R.lp, R.l, R.p]));
-ok('④b 舊的 lead 搬家一次成 leadpark(旗標,⛔ 之後自己選回現金不會被換回去)', /if \(!this\.settings\.stratMigr819\) \{\s*if \(this\.settings\.strategy === 'lead'\) this\.settings\.strategy = 'leadpark';\s*this\.settings\.stratMigr819 = 1;/.test(SRC), '');
+ok('④b 舊的 lead 搬家一次成 leadpark(旗標看 saved,⛔ 之後自己選回現金不會被換回去)', /if \(!saved\.stratMigr819\) \{\s*if \(this\.settings\.strategy === 'lead'\) this\.settings\.strategy = 'leadpark';\s*this\.settings\.stratMigr819 = 1;/.test(SRC), '');
 ok('④c 👑 決策台會算「今天停多少錢在 0050」(選 leadpark 時)', /_leaderDeckHtml\(\) \{[\s\S]*?this\._parkAmountHtml\(\)/.test(SRC), '');
 // ⑤⑥
 ok('⑤ 決策台名單第 1 名(沒有固定觸發價)→ 總覽⛔ 不是觀望,寫「今天可以買(決策台第 1 名)」+ 尾盤 + 停損', R.ov.rank === 1 && /今天可以買\(決策台第 1 名\)/.test(R.ov.badge) && /13:00~13:28/.test(R.ov.why) && /還成立/.test(R.ov.why) && /停損/.test(R.ov.why), JSON.stringify(R.ov).slice(0, 300));
 ok('⑤b 🅿️ 時講「先從 0050 賣出」;🔥 時⛔ 不講', /先從 0050 賣出/.test(R.ov.why) && !/0050/.test(R.ovGene.why || ''), (R.ovGene.why || '').slice(0, 200));
 ok('⑥ 決定性對照:名單換掉 → 回到觀望', /觀望/.test(R.ovOff.badge || ''), R.ovOff.badge);
-ok('⑥b 大盤嚴格空頭 → ⛔ 不叫你買', !/今天可以買/.test(R.ovBear.badge || '') && /不開新倉/.test(R.ovBear.badge || ''), JSON.stringify(R.ovBear).slice(0, 200));
+ok('⑥b 大盤嚴格空頭 + 自己打開守門 → ⛔ 不叫你買', !/今天可以買/.test(R.ovBear.badge || '') && /不開新倉/.test(R.ovBear.badge || ''), JSON.stringify(R.ovBear).slice(0, 200));
+ok('⑥b2 🔬 決定性對照:守門關著(V79.4.9 預設)→ 照常列在今天可以買', /今天可以買/.test(R.ovBearOff.badge || ''), JSON.stringify(R.ovBearOff).slice(0, 200));
 ok('無 pageerror', errs.length === 0, errs.join(' | '));
 console.log(fails ? `\n❌ STRATRANK_FAIL(${fails})` : '\n✅ STRATRANK_PASS(全部通過)');
 process.exit(fails ? 1 : 0);

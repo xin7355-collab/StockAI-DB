@@ -96,7 +96,7 @@ const R = await page.evaluate(async () => {
 ok('① 預設 🧬;存了 lead 但沒解鎖 → 仍是 🧬', R.def === 'gene' && R.lockedLead === 'gene');
 ok('①b 點一下版本號 → 環境資訊(原本的功能)、⛔ 不解鎖', R.oneTapEnv === 1 && R.oneTapUnlock === false, JSON.stringify([R.oneTapEnv, R.oneTapUnlock]));
 ok('①c 連點 5 次 → 解鎖(⛔ 不跳環境資訊)、設定出現 👑 選項(V78.1.9 起 👑+停車 / 💵 錢放現金 / 🅿️ / 🔥 共 4 個)', R.unlocked && R.afterUnlock === 'lead' && R.envAfter5 === 1 && R.boxLead === 4, JSON.stringify([R.unlocked, R.afterUnlock, R.envAfter5, R.boxLead]));
-ok('①d 🔒 沒解鎖 → 設定只列 🧬、畫面上⛔ 看不到「領頭羊」四個字', R.boxGene === 1 && !/領頭羊|👑/.test(R.boxGeneTxt), R.boxGeneTxt);
+ok('①d 🔒 沒解鎖 → 設定只列 🅿️ / 📈 兩個(V79.4.9 🅿️ 改預設,⛔ 不用解鎖)、畫面上⛔ 看不到「領頭羊」四個字', R.boxGene === 2 && !/領頭羊|👑/.test(R.boxGeneTxt) && /停車 0050/.test(R.boxGeneTxt) && /錢放現金/.test(R.boxGeneTxt), R.boxGeneTxt);
 ok('② 🧬:_leaderMine 是空的(⛔ 沒有混搭)', R.mineGene === 0);
 ok('②b 🧬:更新紀錄看不到 👑 那幾行;👑 時看得到(決定性對照)', !/領頭羊/.test(R.logGene) && /領頭羊/.test(R.logLead) && R.logGene.length > 200, [R.logGene.length, /領頭羊/.test(R.logLead)]);
 ok('②c 🧬:決策台 👑 那塊用 _isLead 擋(⛔ 連 DOM 都不放)', /_isLead\(\) \? await this\._leaderDeckHtml\(\) : ''/.test(R.src.rd));
@@ -171,7 +171,7 @@ ok('🔓b 只點 4 下 ⛔ 不跳選單、⛔ 不解鎖', U.after4 === false && 
 ok('🔓c 點 5 下跳選單,四套都在', U.after5 && ['leadpark', 'lead', 'park', 'gene'].every(k => U.picks.includes(k)), JSON.stringify(U.picks));
 ok('🔓d 選 👑 → 成績單出現 👑 分頁、選單關掉', U.lead1 && U.closed && U.t1.includes('lead'), JSON.stringify(U.t1));
 ok('🔓e ⛔ 其它設定(金鑰)不可被洗掉', U.st1.geminiKey1 === 'FAKEKEY123' && U.st2.geminiKey1 === 'FAKEKEY123' && U.st1.strategy === 'leadpark' && U.st1.stratUnlock === true, JSON.stringify([U.st1, U.st2]));
-ok('🔓f 再點 5 下 → 收起、改回 🧬(成績單 👑 分頁照留,V79.1.2)', U.lead2 === false && U.st2.strategy === 'gene' && U.st2.stratUnlock === false && U.t2.includes('lead'), JSON.stringify([U.t2, U.st2]));
+ok('🔓f 再點 5 下 → 收起、👑 改回預設 🅿️(V79.4.9;成績單 👑 分頁照留,V79.1.2)', U.lead2 === false && U.st2.strategy === 'park' && U.st2.stratUnlock === false && U.t2.includes('lead'), JSON.stringify([U.t2, U.st2]));
 
 // ⑥ Telegram worker
 const W = fs.readFileSync(path.join(ROOT, 'cloud-worker/worker.js'), 'utf8');
@@ -184,6 +184,28 @@ ok('⑥b worker 規則 / 錨點 == App', M.LEAD_ANCHOR === R.anchor && ['U', 'N'
 ok('⑥c worker 時鐘:錨點那天 = 換倉日、第 2 天不是、第 11 天又是', M.leadClock([{ date: '2026-09-24' }], '2026-09-24').isRebal && !M.leadClock([{ date: '2026-09-24' }, { date: '2026-09-29' }], '2026-09-29').isRebal && M.leadClock(Array.from({ length: 11 }, (_, i) => ({ date: '2026-10-' + String(i + 1).padStart(2, '0') })).concat([{ date: '2026-09-24' }]), '2026-10-10').isRebal);
 ok('⑥d worker:settings 收 strategy、👑 個股不推 −5% 停損、5 日線 / +20% 提醒恢復(V77.9.7)、換倉日推播掛在 08:00', /strategy: payload\.settings\.strategy === 'lead' \? 'lead' : 'gene'/.test(W) && /const leadS = _leadStock\(user\.settings\?\.strategy, sym\)/.test(W) && /!leadS && ret <= -5/.test(W) && /'below5ma'/.test(W) && /'tp20'/.test(W) && /runLeaderRebalPush\(env\)/.test(W) && /if \(_leadStock\(rec\.strategy, it\.sym\)\) continue;/.test(W));
 ok('⑥e App 同步 Telegram 時帶 strategy', /strategy:\s+app\._strat\?\.\(\) \|\| 'gene'/.test(SRC) && /triggers: trig, strategy: this\._strat\(\)/.test(SRC));
+// ⑧ 🅿️ V79.4.9 改預設(使用者:「改預設,自動下單也幫我買」):散戶救星搬家 + 作戰室同一個判斷
+const mig = async (saved) => {
+    const pg = await browser.newPage();
+    if (saved !== null) await pg.addInitScript(v => { try { localStorage.setItem('proTerminalSettings', JSON.stringify(v)); } catch (_) {} }, saved);
+    await pg.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
+    await pg.waitForFunction(() => typeof app !== 'undefined' && app.settings && app._park, null, { timeout: 30000 });
+    const r = await pg.evaluate(() => ({ st: app.settings.strategy, park: app._park(), strat: app._strat(), key: app._stratKey() }));
+    await pg.close(); return r;
+};
+const proPark = async (saved) => {
+    const pg = await browser.newPage();
+    if (saved !== null) await pg.addInitScript(v => { try { localStorage.setItem('proTerminalSettings', JSON.stringify(v)); } catch (_) {} }, saved);
+    await pg.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domcontentloaded' });
+    await pg.waitForFunction(() => typeof PRO !== 'undefined' && PRO._isPark, null, { timeout: 30000 });
+    const r = await pg.evaluate(() => PRO._isPark()); await pg.close(); return r;
+};
+const G0 = await mig(null), G1 = await mig({ strategy: 'gene' }), G2 = await mig({ strategy: 'gene', hotMigr7949: 1 }), G3 = await mig({ strategy: 'leadpark', stratUnlock: true }), G4 = await mig({ strategy: 'lead', stratUnlock: true, stratMigr819: 1 });
+ok('⑧ 新裝的人預設 🅿️(_park 真、選股照 🔥/📈 那一套)', G0.st === 'park' && G0.park === true && G0.strat === 'gene' && G0.key === 'park', JSON.stringify(G0));
+ok('⑧b 舊用戶存著 📈 → 搬一次成 🅿️;搬過之後自己選回 📈 → ⛔ 不再動(決定性對照)', G1.st === 'park' && G1.park && G2.st === 'gene' && !G2.park && G2.key === 'gene', JSON.stringify([G1, G2]));
+ok('⑧c 👑 的人 ⛔ 一個都不動', G3.st === 'leadpark' && G3.key === 'leadpark' && G4.st === 'lead' && G4.key === 'lead', JSON.stringify([G3, G4]));
+const P0 = await proPark(null), P1 = await proPark({ strategy: 'gene' }), P2 = await proPark({ strategy: 'gene', hotMigr7949: 1 }), P3 = await proPark({ strategy: 'park', hotMigr7949: 1 });
+ok('⑧d 作戰室 `_isPark` 同一個判斷:沒存設定 / 存著 📈 但沒搬過 → 🅿️;搬過之後自己選 📈 → 不是 🅿️(⛔ 不用解鎖)', P0 === true && P1 === true && P2 === false && P3 === true, JSON.stringify([P0, P1, P2, P3]));
 ok('⑦ 無 pageerror', !errs.length, errs.join(' | '));
 await browser.close();
 console.log(fails.length ? `\n❌ ${fails.length} 條失敗` : '\n✅ STRATSWITCH_PASS');

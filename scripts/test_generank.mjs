@@ -47,15 +47,15 @@ ok('⑥b 決策台 🧬 名單 / 評級 / 徽章 / 計數都走 `_hqOf`(⛔ 不�
 ok('⑥c 自訂回測的 🧬 用 `_geneRank()`', /return rank >= this\._geneRank\(\) && vol >= this\._GENE_RULE\.vol;/.test(IDX), '');
 ok('⑥d pro 今天的清單排序 / 徽章走 `_hqOf`,`_recoPicks`(重建過去)刻意仍讀當時的 hq',
    /_pbSort\(a, b\) \{ return PRO\._hqOf\(b\) - PRO\._hqOf\(a\)/.test(PRO) && /this\._hqOf\(b\) - this\._hqOf\(a\)/.test(PRO)
-   && /_recoPicks\(pb\) \{[\s\S]{0,400}\(\+b\.hq \|\| 0\) - \(\+a\.hq \|\| 0\)/.test(PRO), '');
-ok('⑥e auto_trade 用 gene_hq 重排(⛔ 不過濾)', /raw = sorted\(raw, key=lambda p: -gene_hq\(p\)\)/.test(AT), '');
+   && /_recoPicks\(pb(, rule)?\) \{[\s\S]{0,900}\(\+b\.hq \|\| 0\) - \(\+a\.hq \|\| 0\)/.test(PRO), '');   // 🔥 V79.4.9 多一個 rule 參數(那天名單用哪一種排法)
+ok('⑥e auto_trade 用 gene_hq 重排(第一鍵 🧬、第二鍵照 HOT_RULE;V79.4.9)', /raw = sorted\(raw, key=lambda p: \(-gene_hq\(p\), -rule_key\(p, HOT_RULE\)\)\)/.test(AT), '');
 
 // ⑤ 彈窗
 // ⚠️ V79.0.0 修長期紅燈:V78.4.4 之後最前面那筆已不是 V78.0.7 → 改成「找到 V78.0.7 那一筆」(⛔ 不釘它一定排第一)
 const _scAll = (IDX.split('_STRAT_CHANGES: [')[1] || '').split('\n    ],')[0];
 const sc = (_scAll.split(/\n        \{/).find(b => /v: 'V78\.0\.7'/.test(b))) || '';
 ok('⑤ 策略變更裡有 V78.0.7 的 🧬 門檻那一筆、有 backGene + 代價(逐年)', /v: 'V78\.0\.7'/.test(sc) && /backGene: 75/.test(sc) && /7 年比舊門檻差/.test(sc), sc.slice(0, 200));
-ok('⑤b 「換回舊的」按鈕接到 setGeneRank', /c\.backGene \? `app\.setGeneRank\(\$\{\+c\.backGene\}\);`/.test(IDX), '');
+ok('⑤b 「換回舊的」按鈕接到 setGeneRank', /(c|x)\.backGene \? `app\.setGeneRank\(\$\{\+(c|x)\.backGene\}\);`/.test(IDX), '');
 
 // ④ auto_trade 行為(Python)
 const py = `

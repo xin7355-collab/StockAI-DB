@@ -37,7 +37,10 @@ export const BASE_PICKS = 2;
 export const STRATS = [
     // 🔁 V77.6.5 預設換了:`base` 留著當「舊預設」基底(下面每一條都是在它上面只換一件事),`now765` 是現行那一組
     // 🔁 V78.0.8 現行換成 V78.0.7 那一組(修好日 K 之後用 `ONLY=now807` 單獨重跑,再用 embed_yearly_bt.mjs --merge 併進去)
-    { g: 'now',  id: 'now807',     t: '⭐ 決策台現行(V78.0.7 起):🧬 位階 ≥85 ・吊燈 ATR 2 倍出場 ・最長抱 20 天 ・大盤嚴格空頭不開新倉', env: { EXIT: 'chand2', MAXD: '20', FILTER: 'bear60', RANK_MIN: '85' } },
+    // 🔥 V79.4.9 現行換成「每一招照平均排(lib_hotrule 預設)+ 空頭也照買 + 閒錢停 0050」,照 App 實際買法(LISTK / LIST_TRIG 由外面的 env 給)
+    //   SELF 多 nobear(這一檔自己破 20/60 日線不買 = App `_deckBuyOf`)、MIN_MKT_N=0(App 沒有全市場樣本門檻)—— A0 對齊檢查量到的兩個差
+    { g: 'now',  id: 'now949',     t: '⭐ 決策台現行(V79.4.9 起):🧬 位階 ≥85 ・每一招照平均排 ・吊燈 ATR 2 倍出場 ・最長抱 20 天 ・空頭也照買 ・沒用到的錢停 0050', env: { EXIT: 'chand2', MAXD: '20', RANK_MIN: '85', PARK: 'idle', SELF: 'high+hivolat+nobear', MIN_MKT_N: '0' } },
+    { g: 'prev', id: 'now807',     t: '⏮️ 上一任(V78.0.7~V79.4.8):🧬 位階 ≥85 ・吊燈 ATR 2 倍出場 ・最長抱 20 天 ・大盤嚴格空頭不開新倉', env: { EXIT: 'chand2', MAXD: '20', FILTER: 'bear60', RANK_MIN: '85' } },
     { g: 'prev', id: 'now765',     t: '⏮️ 上一任(V77.6.5~V77.7.5):🧬 ・唐奇安 40 日出場 ・最長抱 40 天 ・大盤嚴格空頭不開新倉', env: { EXIT: 'don40', MAXD: '40', FILTER: 'bear60' } },
     { g: 'prev', id: 'base',       t: '📤 舊預設(V77.6.5 以前):🧬 ・唐奇安 20 日出場 ・最長抱 20 天 —— 下面每一條都是在它上面只換一件事', env: {} },
     // 🚪 出場(只換賣的規則)
@@ -121,7 +124,7 @@ export const SKIPPED = [
     { t: '🧬 × 只做「加分偵測器訊號」', why: '要另外先產一份訊號對照檔(sig_x_playbook_probe),這一輪沒做' },
     { t: '窗口長度對照(13 → 36 → 49 個月)', why: '逐年成績單本身就是更清楚的版本(一年一格),不用再比窗口' },
 ];
-export const NOW_ID = 'now807';
+export const NOW_ID = 'now949';   // 🔥 V79.4.9(上一任 now807)
 export const GROUPS = { lead: '👑 領頭羊短線輪動', combo: '🧪 組合:兩三個改動一起', now: '⭐ 決策台現行', prev: '📤 舊預設', exit: '🚪 出場:只換賣的規則', entry: '⏰ 進場:只換買的時間', pick: '🧬 選股:只換挑哪幾檔', size: '💰 部位:每天幾檔、每筆多少', mkt: '🏛️ 大盤狀態:哪種盤才做', cal: '📆 行事曆:哪幾天不做', x: '⚔️ 其他組合' };
 
 // 🧪 V77.6.2 長歷史組合(`SET=long`):2011~2026,只跑不需要 2021 以後才有的資料(財報 / 週轉 / 價值)的那些

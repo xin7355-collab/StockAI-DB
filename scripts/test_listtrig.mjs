@@ -41,27 +41,32 @@ console.log(`── ① 跟真的 playbook_scan 同一份資料比(${have.length
 {
     const R = path.join(tmp, 'pb'); fs.mkdirSync(path.join(R, 'scripts'), { recursive: true }); fs.mkdirSync(path.join(R, 'data'));
     let src = fs.readFileSync(path.join(ROOT, 'scripts', 'playbook_scan.mjs'), 'utf8');
-    // 注入:把「每一檔前 2 招(含今天已觸發、明天觸發不了的)」也帶出來 —— 只多帶資料,⛔ 不動判法
-    const A1 = 'const out = [], fired = [];', A2 = "return { c: Math.round(c0 * 100) / 100, v: Math.round(rows[last].volume / 1000), d: rows[last].date, rank: selfRank, vol: selfVol, bear: selfBear, out, fired };";
+    // 注入:把「playbook_scan 每一檔真的判過觸發價的招(trigOf 的結果)+ 今天已觸發的招」帶出來 —— 只多帶資料,⛔ 不動判法
+    //   🔥 V79.4.9 名單改成新舊兩套排法一起寫(r / o)→ ⛔ 不再比「每檔前 2 招」,改比**每一個判過的招**:
+    //      list_trig 的 t(0 不列 / 1 有觸發價 / 2 不靠價位)== playbook_scan trigOf 的結果(null / trig / loose)
+    const A1 = 'const out = [...byKey.values()];';
+    const A2 = 'return { c: Math.round(c0 * 100) / 100, v: Math.round(rows[last].volume / 1000), d: rows[last].date, rank: selfRank, vol: selfVol, bear: selfBear, hqMaybe, out, fired };';
     const okInj = src.split(A1).length === 2 && src.split(A2).length === 2;
     ok('①0 playbook_scan 裡找得到要注入的兩行(改版就要更新這支測試)', okInj);
-    src = src.replace(A1, A1 + ' const good2 = good.slice(0, 2).map(g => [g.key, g.firedToday ? 1 : 0]);').replace(A2, A2.replace('out, fired };', 'out, fired, good2 };'));
+    src = src.replace(A1, A1 + ' const good2 = [...tried].map(([k, t]) => [k, 0, t ? (t.loose ? 2 : 1) : 0]).concat(fired.map(f => [f.k, 1, -1]));')
+             .replace(A2, A2.replace('out, fired };', 'out, fired, good2 };'));
     const A3 = 'if (r.none) { noEdge++; continue; }';
     ok('①0b playbook_scan 裡找得到「沒有招」那一行', src.split(A3).length === 2);
-    src = src.replace(A3, `(globalThis.__g2 ||= []).push(...((r.good2 || []).map(([k, z]) => [sym, k, z, r.d]))); ${A3}`);
+    src = src.replace(A3, `(globalThis.__g2 ||= []).push(...((r.good2 || []).map(([k, z, t]) => [sym, k, z, r.d, t]))); ${A3}`);
     src = src.replace("fs.writeFileSync(path.join(DATA, 'playbook_edge.json'), JSON.stringify(out), 'utf-8');", "out.__good2 = globalThis.__g2 || []; fs.writeFileSync(path.join(DATA, 'playbook_edge.json'), JSON.stringify(out), 'utf-8');");
     fs.writeFileSync(path.join(R, 'scripts', 'playbook_scan.mjs'), src);
     fs.copyFileSync(path.join(ROOT, 'index.html'), path.join(R, 'index.html'));
+    fs.copyFileSync(path.join(ROOT, 'scripts', 'lib_hotrule.mjs'), path.join(R, 'scripts', 'lib_hotrule.mjs'));   // 🔥 V79.4.9 playbook_scan import 它
     for (const s of have) fs.copyFileSync(path.join(DATA, `${s}.json`), path.join(R, 'data', `${s}.json`));
     fs.copyFileSync(path.join(DATA, '^TWII.json'), path.join(R, 'data', '^TWII.json'));
     const P = spawnSync(process.execPath, ['scripts/playbook_scan.mjs', String(have.length)], { cwd: R, encoding: 'utf8', timeout: 400000 });
     let J = null; try { J = JSON.parse(fs.readFileSync(path.join(R, 'data', 'playbook_edge.json'), 'utf8')); } catch (_) {}
-    ok('①1 playbook_scan 跑完、帶出每檔前 2 招', P.status === 0 && J && Array.isArray(J.__good2) && J.__good2.length >= 10, `${P.status} ${(P.stderr || P.stdout || '').slice(-300)} good2=${J && J.__good2 && J.__good2.length}`);
+    ok('①1 playbook_scan 跑完、帶出每一個判過的招', P.status === 0 && J && Array.isArray(J.__good2) && J.__good2.length >= 10, `${P.status} ${(P.stderr || P.stdout || '').slice(-300)} good2=${J && J.__good2 && J.__good2.length}`);
     if (J && J.__good2) {
-        const listed = new Map((J.picks || []).map(x => [`${x.s}|${x.k}`, x]));
-        const firedT = new Set((J.fired || []).map(x => `${x.s}|${x.k}`));
+        const tApp = new Map(J.__good2.filter(x => x[2] !== 1).map(([s, k, , , t]) => [`${s}|${k}`, t]));
+        const firedT = new Set(J.__good2.filter(x => x[2] === 1).map(([s, k]) => `${s}|${k}`));
         const cand = J.__good2;
-        // dump = 那一晚全部候選(⛔ 只拿 App 會判的那些:每檔前 2 招)
+        // dump = 那一晚要判的(⛔ 只拿 App 真的判過的那些)
         const dumpF = path.join(tmp, 'pbdump.ndjson');
         const byN = new Map(); for (const [s, k, , d] of cand) (byN.get(d) || byN.set(d, []).get(d)).push([s, k, 0]);   // 每一檔用它自己最後一天當「那一晚」
         fs.writeFileSync(dumpF, [...byN].map(([n, e]) => JSON.stringify({ d: '9999-12-31', n, e })).join('\n') + '\n');
@@ -69,6 +74,7 @@ console.log(`── ① 跟真的 playbook_scan 同一份資料比(${have.length
         const L1 = runLT(path.join(tmp, 'lt1.ndjson'), {});
         const res = rdL(path.join(tmp, 'lt1.ndjson')) || [];
         ok('①2 list_trig 跑完、每一筆都有判到', L1.status === 0 && res.length === cand.length, `${L1.status} ${res.length}/${cand.length} ${(L1.stderr || '').slice(-300)}`);
+        const listed = { has: k => (tApp.get(k) || 0) > 0, get: k => ({ trig: tApp.get(k) === 1 ? 1 : null, loose: tApp.get(k) === 2 }), size: [...tApp.values()].filter(t => t > 0).length };
         const m = new Map(res.map(o => [`${o.s}|${o.k}`, o]));
         let agree = 0, dis = [], zOk = 0, zBad = [], looseBad = [];
         for (const [s, k, z] of cand) {

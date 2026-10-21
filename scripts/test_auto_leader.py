@@ -84,6 +84,19 @@ st0 = {'pos': {}, 'lead': copy.deepcopy(held)}
 A.fetch_json = lambda rel: mkD2('2026-10-08') if 'screener' in rel else TW
 api3 = FakeApi(); A.leader_step(api3, sj, st0, {'mkt': {'bear60': True}}, '2026-10-09')
 ok('④ 大盤嚴格空頭:照賣(2003/2004)、一檔都不買', sorted(c for c, o in api3.orders if o['action'] == 'S') == ['2003', '2004'] and not [c for c, o in api3.orders if o['action'] == 'B'], api3.orders)
+# ④b 🐻 V79.4.9 🔥 的空頭守門預設關(BEAR_GATE=False),👑 那一份照擋(LEADER_BEAR_GATE 預設 True)—— ⛔ 不可跟著 🔥 一起關掉
+ok('④b0 預設值:🔥 BEAR_GATE 關、👑 LEADER_BEAR_GATE 開', A.BEAR_GATE is False and A.LEADER_BEAR_GATE is True, (A.BEAR_GATE, A.LEADER_BEAR_GATE))
+_bg0, _lbg0 = A.BEAR_GATE, A.LEADER_BEAR_GATE
+A.BEAR_GATE = False
+st0 = {'pos': {}, 'lead': copy.deepcopy(held)}
+A.fetch_json = lambda rel: mkD2('2026-10-08') if 'screener' in rel else TW
+api3b = FakeApi(); A.leader_step(api3b, sj, st0, {'mkt': {'bear60': True}}, '2026-10-09')
+ok('④b 🔥 守門關著,👑 照樣在空頭不買(照賣)', sorted(c for c, o in api3b.orders if o['action'] == 'S') == ['2003', '2004'] and not [c for c, o in api3b.orders if o['action'] == 'B'], api3b.orders)
+A.LEADER_BEAR_GATE = False
+st0 = {'pos': {}, 'lead': copy.deepcopy(held)}
+api3c = FakeApi(); A.leader_step(api3c, sj, st0, {'mkt': {'bear60': True}}, '2026-10-09')
+ok('④c 🔬 決定性對照:自己設 LEADER_BEAR_GATE=0 → 空頭也補買', sorted(set(c for c, o in api3c.orders if o['action'] == 'B')) == ['2005', '2006'], api3c.orders)
+A.BEAR_GATE, A.LEADER_BEAR_GATE = _bg0, _lbg0
 # ⑤ 舊名單
 st, b, s, _ = run('2026-09-29', '2026-09-24')
 ok('⑤ 名單日 09-24 但今天 09-29(中間還有交易日)→ ⛔ 一單都不送', not b and not s)
@@ -227,7 +240,7 @@ stI = {'pos': {}, 'lead': {'2003': {'e': 100, 'sh': 2000}}, 'lead2': {'2003': {'
 apiI = FakeApi(); A.leader_defer_step(apiI, sj, stI, '2026-10-02', 'sell')
 ok('⑰d 延後要賣的記得是哪一本帳(lead2)→ 只賣那 1,000 股',
    [(c, o['quantity']) for c, o in apiI.orders] == [('2003', 1)] and stI['lead'] == {'2003': {'e': 100, 'sh': 2000}} and '2003' not in stI['lead2'], apiI.orders)
-ok('⑰e 每天重置狀態時 lead2 ⛔ 不可被清掉', "'lead2': st.get('lead2') or {}" in _src)
+ok('⑰e 每天重置狀態時 lead2 ⛔ 不可被清掉(V79.4.9 改走 reset_day:只清當天的鍵)', A.reset_day({'d': '2026-10-01', 'lead2': {'2003': {'sh': 1}}}, '2026-10-02').get('lead2') == {'2003': {'sh': 1}} and 'st = reset_day(st, today)' in _src)
 A.LEADER_BOOKS = 1
 A.LEADER_WINDOW = 'open'
 print(f"\n{'❌' if bad_n else '✅'} AUTO_LEADER {ok_n}/{ok_n + bad_n}")

@@ -83,7 +83,7 @@ try { build({ sig: mkSig({}, { match: 'same-day' }), gene, embedded: emb, prev: 
 ok('②h 訊號方法換了(舊:整段平均 → same-day)→ 重新起算放行;方法一樣 → 照擋(決定性對照)',
    !msErr && ms && ms.rebase && ms.rebase.signal && ms.rebase.signal.to === 'same-day' && ms.signal.match === 'same-day' && msSame && msSame.gate === true,
    msErr ? msErr.message : JSON.stringify(ms && ms.rebase));
-ok('②i 絕對下限有合理數值(成績單 ≥200 筆、窗口 36 個月、訊號樣本 ≥10 萬)+ 簽章含 App 預設那幾欄', FLOOR.deckN >= 200 && FLOOR.months === 36 && FLOOR.sigN >= 100000 && ['exit', 'rankMin', 'maxd', 'filter', 'stopFill', 'div'].every(k => DECK_SIG.includes(k)) && deckSig(CFG_NEW) !== deckSig(CFG_OLD), JSON.stringify(FLOOR));
+ok('②i 絕對下限有合理數值(成績單 ≥200 筆、窗口 36 個月、訊號樣本 ≥10 萬)+ 簽章含 App 預設那幾欄', FLOOR.deckN >= 200 && FLOOR.months === 36 && FLOOR.sigN >= 100000 && ['exit', 'rankMin', 'maxd', 'filter', 'stopFill', 'div', 'gate', 'lbZ', 'lbTop', 'cliff', 'statsWin', 'park', 'listK', 'allFire'].every(k => DECK_SIG.includes(k)) && deckSig(CFG_NEW) !== deckSig(CFG_OLD), JSON.stringify(FLOOR));
 // ③ workflow
 ok('③a 掛 daily_miner 的 workflow_run,host 名字逐字相同(差一字永遠不觸發且零訊息)', WF.includes(`workflows: ["${HOST}"]`), HOST);
 ok('③b ⛔ 無 cron(排程配額早就不夠)', !/^\s*schedule:/m.test(WF) && !/cron:/.test(WF), '');
@@ -97,9 +97,13 @@ ok('③f 還原上一版產物當守門基準(PREV=data/backtest_edge.json)', /P
     const rank = +(/_GENE_RULE:\s*\{\s*rank:\s*(\d+),\s*vol:\s*(\d+)/.exec(HTML) || [])[1], vol = +(/_GENE_RULE:\s*\{\s*rank:\s*(\d+),\s*vol:\s*(\d+)/.exec(HTML) || [])[2];
     const T = /_DECK_TRACK49:[\s\S]{0,600}?exit:\s*'(\w+)'[\s\S]{0,80}?maxd:\s*(\d+),\s*bearGate:\s*(true|false)/.exec(HTML);
     const fill = (/_DECK_TRACK49:[\s\S]{0,4000}?fill:\s*'(\w+)'/.exec(HTML) || [])[1];
+    const park = (/_DECK_TRACK49:[\s\S]{0,400}?park:\s*'(\w+)'/.exec(HTML) || [])[1] || null;   // 🔥 V79.4.9 🅿️ 預設 → 'idle'
     const ALIAS = { atr2: 'chand2', atr: 'chand2', don: 'don20', don40: 'don40' };
-    const want = T ? { RANK_MIN: String(rank), VOLAT_MIN: String(vol), EXIT: ALIAS[T[1]] || T[1], MAXD: T[2], FILTER: T[3] === 'true' ? 'bear60' : null, STOPFILL: fill } : null;
-    const got = { RANK_MIN: envOf('RANK_MIN'), VOLAT_MIN: envOf('VOLAT_MIN'), EXIT: envOf('EXIT'), MAXD: envOf('MAXD'), FILTER: envOf('FILTER'), STOPFILL: envOf('STOPFILL') };
+    // 🔥 V79.4.9 加:App 選股規則(GATE=lb + 規則常數讀 lib_hotrule)・斷崖守門・只看最近 1,200 天・閒錢停 0050 跟著 `_DECK_TRACK49.park`
+    const want = T ? { RANK_MIN: String(rank), VOLAT_MIN: String(vol), EXIT: ALIAS[T[1]] || T[1], MAXD: T[2], FILTER: T[3] === 'true' ? 'bear60' : null, STOPFILL: fill,
+        GATE: 'lb', CLIFF: '20', STATS_WIN: '1200', PARK: park } : null;
+    const got = { RANK_MIN: envOf('RANK_MIN'), VOLAT_MIN: envOf('VOLAT_MIN'), EXIT: envOf('EXIT'), MAXD: envOf('MAXD'), FILTER: envOf('FILTER'), STOPFILL: envOf('STOPFILL'),
+        GATE: envOf('GATE'), CLIFF: envOf('CLIFF'), STATS_WIN: envOf('STATS_WIN'), PARK: envOf('PARK') };
     ok('③h ⭐ workflow 的成績單設定 == App 現行預設(`_GENE_RULE` 位階 / 振幅、`_DECK_TRACK49` 出場 / 天數 / 空頭守門 / 成交價)+ 股利入帳',
        !!want && rank > 0 && Object.keys(want).every(k => want[k] === got[k]) && /DIV_TRADES:\s*data\/dividends_hist\.json/.test(WF) && /\bDIV:\s*data\/dividends_hist\.json/.test(WF),
        JSON.stringify({ want, got }));

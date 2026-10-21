@@ -46,7 +46,7 @@ ok('③ ⛔ `_checkVersionUpdate` 仍然不跳窗(⛔ V75.0.0 使用者關掉的
    cvBlk.length > 200 && !/_showUpdateLog|_showRichModal|updateLogModal/.test(cvBlk), cvBlk.slice(0, 160));
 
 // ② 蓋章只准在 `_ackStratChange` 裡發生
-const shAt = noCmt.indexOf('_showStratChange(c) {');
+const shAt = noCmt.indexOf('_showStratChange(c, more) {');   // 🔁 V79.4.9 多一個參數:沒看過的較舊那幾筆疊在下面
 const shBlk = shAt < 0 ? '' : noCmt.slice(shAt, noCmt.indexOf('_ackStratChange(v) {', shAt));
 ok('②a 取樣守門:真的抓到 `_showStratChange`', shAt > 0 && shBlk.length > 300);
 ok('②b 🚨 `_showStratChange` 裡 ⛔ 不可蓋章(按了才算看過)',
@@ -147,7 +147,37 @@ const R = await page.evaluate(() => {
     out.chg = { back: cB.back, from: c0.from, to: c0.to, why: c0.why, cost: c0.cost, you: c0.you };
     return out;
 });
+// 🔁 V79.4.9 沒看過的不只一筆 → 同一個視窗由新到舊疊出來(⛔ 不可只跳最新那筆就把舊的蓋掉)+ backHot 三件一起換回
+const R2 = await page.evaluate(() => {
+    const A = window.app || app, K = 'proTerm_lastSeenStrat', o = {};
+    const _isL = A._isLead; A._isLead = () => false;
+    const gene = A._STRAT_CHANGES.filter(c => !c.lead);
+    o.newest = gene[0].v; o.second = gene[1] && gene[1].v;
+    localStorage.setItem(K, gene[2].v); A._firstRun = false;
+    document.getElementById('richHelpModal')?.classList.add('hidden');
+    A._checkStratChange();
+    const m = document.getElementById('richHelpModal');
+    o.html = m ? m.innerHTML : ''; o.shown = !!m && !m.classList.contains('hidden');
+    o.blocks = [...(m ? m.querySelectorAll('[data-stratchg]') : [])].map(e => e.dataset.stratchg);
+    const hot = A._STRAT_CHANGES.find(c => c.backHot);
+    o.hot = hot ? { v: hot.v, gene: !!hot.gene } : null;
+    if (hot) {   // 按「換回舊的」= 三件一起回去
+        const s0 = JSON.stringify(A.settings);
+        A._showStratChange(hot);
+        const btn = [...document.querySelectorAll('#richHelpModal button')].find(b => /換回舊的/.test(b.textContent));
+        o.btnJs = btn ? btn.getAttribute('onclick') : '';
+        A.settings.hotRule = 'mean'; A.settings.bearGate = false; A.settings.strategy = 'park';
+        try { btn && btn.click(); } catch (_) {}
+        o.after = { hotRule: A.settings.hotRule, bearGate: A.settings.bearGate, strategy: A.settings.strategy, stamp: localStorage.getItem(K) };
+        Object.assign(A.settings, JSON.parse(s0));
+    }
+    A._isLead = _isL;
+    return o;
+});
 await browser.close();
+ok('⑭ 🔁 沒看過兩筆以上 → 同一個視窗疊出來(最新在上、下一筆在下),⛔ 不可只跳最新那筆', R2.shown && R2.blocks[0] === R2.newest && R2.blocks[1] === R2.second && /data-stratchgmore/.test(R2.html), JSON.stringify(R2.blocks));
+ok('⑭b V79.4.9 那一筆:只跳給沒選 👑 的人、⛔ 視窗沒有 👑 / 領頭羊字樣', R2.hot && R2.hot.gene === true && !/👑|領頭羊/.test(R2.html), JSON.stringify(R2.hot));
+ok('⑭c 「換回舊的」= 三件一起回去(保守排法 lb・空頭不買・📈 錢放現金)、而且蓋章', R2.after && R2.after.hotRule === 'lb' && R2.after.bearGate === true && R2.after.strategy === 'gene' && R2.after.stamp === R2.hot.v, JSON.stringify([R2.after, R2.btnJs]));
 
 ok('⑤ 全新安裝:⛔ 不跳窗,只蓋章', R.firstShown === false && R.firstStamp);
 ok('⑤b 🚨 老用戶(還沒看過任何策略變更)→ **要跳**,而且⛔ 還沒蓋章',

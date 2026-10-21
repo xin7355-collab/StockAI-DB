@@ -9,7 +9,10 @@
  *      已搬過而且自己選回舊的 → 尊重
  *   ⑥ 策略變更彈窗:「換回舊的」= 最新那筆的 back;backBear:false 的那一代才同時關掉空頭守門
  *   ⑦ playbook_scan 直接呼叫 App 的 `_bear60Of`(⛔ 不另寫公式)、auto_trade 讀 `mkt.bear60` 擋買進
- * 注入(逐一確認會紅):_bear60Of 把 < 改成 <= / _MAX_HOLD_BY_RULE 改 30 / 決策台拿掉 gate 分支 / 搬家不設旗標
+ *   ⑧ 🐻 V79.4.9 守門拆兩份(使用者:「關掉:空頭也照買」):🔥 / 📈 / 🅿️ 預設關(App `_bearGateOn` / auto_trade BEAR_GATE),
+ *      👑 一律照擋(App `_leadBearOn` / auto_trade LEADER_BEAR_GATE);舊用戶存的 true 搬一次成 false,搬過之後自己打開 → 尊重
+ * 注入(逐一確認會紅):_bear60Of 把 < 改成 <= / _MAX_HOLD_BY_RULE 改 30 / 決策台拿掉 gate 分支 / 搬家不設旗標 /
+ *   _bearGateOn 改回 !== false / 👑 呼叫點改回 _bearGateOn / leader_step 改回 BEAR_GATE
  */
 import fs from 'fs';
 import path from 'path';
@@ -34,10 +37,24 @@ const norm = x => String(x || '').replace(/['"\s]/g, '');
 ok('② 最長天數三份實作一致(index / pro / auto_trade)', mhIdx && norm(mhIdx) === norm(mhPro) && norm(mhIdx) === norm(mhPy) && /don40:40/.test(norm(mhIdx)),
    `${mhIdx} / ${mhPro} / ${mhPy}`);
 ok('⑦ playbook_scan 直接呼叫 App 的 `_bear60Of`,產物有 `mkt`', /app\._bear60Of\(rows\)/.test(SCAN) && /\n\s+mkt,\n/.test(SCAN));
-ok('⑦b auto_trade 讀 `mkt.bear60` 擋買進(賣出在它之前處理)、預設開',
-   /_mkt\.get\('bear60'\) is True/.test(AT) && /BEAR_GATE = \(os\.getenv\('BEAR_GATE'\) or '1'\) == '1'/.test(AT)
-   && AT.indexOf("_mkt.get('bear60') is True", AT.indexOf('先處理出場')) > AT.indexOf('先處理出場'));   // ⚠️ V77.8.9 `leader_step` 也有一份同樣的守門(在前面)→ 找「出場之後」那一份
+ok('⑦b auto_trade 讀 `mkt.bear60` 擋買進(賣出在它之前處理)、🔥 預設關(V79.4.9)',
+   /_mkt\.get\('bear60'\) is True/.test(AT) && /\nBEAR_GATE = \(os\.getenv\('BEAR_GATE'\) or '0'\) == '1'/.test(AT)
+   && /\ndef hot_step\([\s\S]*?if BEAR_GATE and _mkt\.get\('bear60'\) is True:[\s\S]*?\ndef /.test(AT)
+   && AT.indexOf('hot_step(api, sj, st, meta, picks, day)', AT.indexOf('先處理出場')) > AT.indexOf('先處理出場'));   // ⚠️ V79.4.9 🔥 買進搬進 hot_step → 守門在 hot_step 裡、而 main 在「出場之後」才呼叫它
 ok('⑦c auto_trade 的持倉記下自己的上限(`mh`)—— 換規則前買的照舊規則走', /'mh': max_hold\(EXIT_RULE\)/.test(AT) && /pos\.get\('mh'\)/.test(AT));
+// 🐻 V79.4.9 守門拆兩份
+const lsSrc = (AT.match(/\ndef leader_step\([\s\S]*?\ndef /) || [''])[0];
+ok('⑧ 🐻 兩份守門分開:App `_bearGateOn` 只認 === true(🔥 預設關)、`_leadBearOn` 回 true;auto_trade LEADER_BEAR_GATE 預設 1、leader_step 只看它',
+   /_bearGateOn\(\) \{ return !!\(this\.settings && this\.settings\.bearGate === true\); \}/.test(IDX)
+   && /_leadBearOn\(\) \{ return true; \}/.test(IDX)
+   && /\nLEADER_BEAR_GATE = \(os\.getenv\('LEADER_BEAR_GATE'\) or '1'\) == '1'/.test(AT)
+   && /if LEADER_BEAR_GATE and _mkt\.get\('bear60'\) is True/.test(lsSrc) && !/(^|[^_])BEAR_GATE and/.test(lsSrc), lsSrc.slice(0, 80));
+ok('⑧b 👑 兩個呼叫點都走 `_leadBearOn()`、⛔ 不再跟 🔥 的開關;🔥 那兩處(清單 / 決策台)照舊走 `_bearGateOn()`',
+   (IDX.match(/this\._leadBearOn\(\) \? await this\._mktBear60\(null\)/g) || []).length === 2
+   && !/this\._bearGateOn\(\) \? await this\._mktBear60\(null\)/.test(IDX)
+   && (IDX.match(/this\._bearGateOn\(\) && /g) || []).length === 2);
+ok('⑧c 設定開關的勾選讀 === true(⛔ 不可 !== false:沒存過的人會被當成打開)',
+   /bgEl\.checked = this\.settings\.bearGate === true;/.test(IDX) && !/bgEl\.checked = this\.settings\.bearGate !== false/.test(IDX));
 
 // ── ③ 唐奇安 40 日:auto_trade.py 跟 App 同一個價 ──
 const sym = '2330';
@@ -60,10 +77,14 @@ const browser = await chromium.launch({ ...(fs.existsSync(_exec) ? { executableP
 // ⑤ 搬家:兩種人各開一次
 const mig = async (saved) => {
     const pg = await browser.newPage();
-    await pg.addInitScript(v => { try { localStorage.setItem('proTerminalSettings', JSON.stringify(v)); } catch (_) {} }, saved);
+    if (saved !== null) await pg.addInitScript(v => { try { localStorage.setItem('proTerminalSettings', JSON.stringify(v)); } catch (_) {} }, saved);
     await pg.goto('file://' + path.join(ROOT, 'index.html'), { waitUntil: 'domcontentloaded' });
     await pg.waitForFunction(() => typeof app !== 'undefined' && app.settings && app.settings.exitMigr765 !== undefined, null, { timeout: 30000 }).catch(() => {});
-    const r = await pg.evaluate(() => ({ k: app._exitRuleKey(), flag: app.settings.exitMigr765, flag2: app.settings.exitMigr776, mh: app._maxHold() }));
+    const r = await pg.evaluate(() => {
+        let st = null; try { st = JSON.parse(localStorage.getItem('proTerminalSettings')); } catch (_) {}
+        return { k: app._exitRuleKey(), flag: app.settings.exitMigr765, flag2: app.settings.exitMigr776, mh: app._maxHold(),
+                 bg: app._bearGateOn(), lb: app._leadBearOn(), hm: app.settings.hotMigr7949, stored: st };
+    });
     await pg.close(); return r;
 };
 const M1 = await mig({ exitRule: 'don' });
@@ -79,6 +100,19 @@ ok('⑤b 已搬過、自己選回 don 的人 → ⛔ 不再動(最長 20 天)', 
 ok('⑤c 自己選移動停利的人 → ⛔ 一個都不動', M3.k === 'trail8' && M3.mh === 20, JSON.stringify(M3));
 ok('⑤d 存著上一任預設 don40 的人 → 換成現行預設、記旗標', M4.k === DEF && M4.flag2 === 1, JSON.stringify(M4));
 ok('⑤e 已搬過、自己選回 don40 的人 → ⛔ 不再動(最長 40 天)', M5.k === 'don40' && M5.mh === 40, JSON.stringify(M5));
+// 🐛 V79.4.9 搬家旗標看 saved:新裝的人(預設值帶旗標)存檔後自己選唐奇安 40 → 下次開 ⛔ 不可被搬回吊燈
+const M6 = await mig({ exitRule: 'don40', exitMigr765: 1, exitMigr776: 1, hotMigr7949: 1 });
+const MN = await mig(null);
+ok('⑤f 新裝的人(沒存過設定)→ 預設值本身就帶旗標(之後存檔就不會被當成舊用戶搬)', MN.flag === 1 && MN.flag2 === 1 && MN.hm === 1, JSON.stringify(MN));
+ok('⑤g 存著旗標又自己選唐奇安 40 → ⛔ 不動', M6.k === 'don40', JSON.stringify(M6));
+// 🐻 V79.4.9 空頭守門搬家
+const B1 = await mig({ bearGate: true });                       // 舊用戶(以前預設開,大家存的都是 true)
+const B2 = await mig({ bearGate: true, hotMigr7949: 1 });       // 搬過之後自己打開
+const B3 = await mig({ bearGate: false });                      // 以前自己關掉的
+ok('⑧d 新裝的人:🔥 守門關、👑 守門開', MN.bg === false && MN.lb === true, JSON.stringify(MN));
+ok('⑧e 舊用戶存著 true → 搬一次成關、記旗標、寫回手機', B1.bg === false && B1.hm === 1 && B1.stored && B1.stored.bearGate === false && B1.stored.hotMigr7949 === 1 && B1.lb === true, JSON.stringify(B1));
+ok('⑧f 🔬 決定性對照:搬過之後自己打開 → ⛔ 不再動(照擋)', B2.bg === true && B2.lb === true, JSON.stringify(B2));
+ok('⑧g 以前自己關掉的 → 還是關', B3.bg === false, JSON.stringify(B3));
 
 const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
 const errs = []; page.on('pageerror', e => errs.push(e.message));
@@ -104,13 +138,20 @@ const R = await page.evaluate(async ({ TW, rows }) => {
     // ④ 決策台
     const pb = { data_date: '2026-09-16', updated: '2026-09-16T12:00:00Z', picks: [{ s: '2330', hq: 1, k: '測試招', trig: 1000, stop: 950, lb: 1, w: 30, n: 20, v: 1 }] };
     A._loadPlaybookEdge = async () => pb; A._invExitScan = async () => []; A._invExitSkip = []; A._invExitN = 0; A._deckFitScan = async () => null;
-    const draw = async () => { A._deckBusy = false; await A.renderDeck(); return { buy: document.getElementById('deckBuy').innerHTML, idle: document.getElementById('deckIdle').innerText }; };
+    const draw = async () => { A._deckBusy = false; await A.renderDeck(); return { buy: document.getElementById('deckBuy').innerHTML, idle: document.getElementById('deckIdle').innerText, park: (document.getElementById('deckPark') || {}).innerHTML || '' }; };
     A._mktBear60 = async () => ({ on: true, c: 40000, ma20: 41000, ma60: 42000, d: '2026-09-16' });
     A.settings.bearGate = true; o.gOn = await draw();
     A.settings.bearGate = false; o.gOff = await draw();
+    delete A.settings.bearGate; o.gDef = await draw();   // 🐻 V79.4.9 沒設定 = 預設關
     A.settings.bearGate = true; A._mktBear60 = async () => ({ on: false, c: 45000, ma20: 44000, ma60: 43000, d: '2026-09-16' }); o.gBull = await draw();
     // 💰 閒錢停 0050 那一行:數字讀常數(決定性對照)
-    const E = A._IDLE0050_EDGE, b0 = E.main.on; E.main.on = 98765; o.idleInj = (await draw()).buy; E.main.on = b0;
+    o.parkDef = (await draw()).park;   // 🅿️ V79.4.9 預設 🅿️ → 0050 那一塊是金額那行
+    const _st0 = A.settings.strategy; A.settings.strategy = 'gene';   // 📈 錢放現金 → 只有提醒那一行
+    o.parkGene = (await draw()).park;
+    A._mktBear60 = async () => ({ on: true, c: 40000, ma20: 41000, ma60: 42000, d: '2026-09-16' }); o.parkGeneBear = (await draw()).park;
+    A._mktBear60 = async () => ({ on: false, c: 45000, ma20: 44000, ma60: 43000, d: '2026-09-16' });
+    const E = A._IDLE0050_EDGE, b0 = E.main.on; E.main.on = 98765; o.idleInj = (await draw()).park; E.main.on = b0;
+    A.settings.strategy = _st0;
     // ⑥ 彈窗
     // 📍 V78.0.5 起最上面可能是 👑 領頭羊那一筆(lead:true,換回 = setLeadPos)→ 這條驗「出場規則」那一類,取最新一筆非 lead 的
     const c0 = A._STRAT_CHANGES.find(c => !c.lead && c.back); o.chg = { back: c0.back, backBear: c0.backBear, v: c0.v };
@@ -131,8 +172,13 @@ ok('④ 大盤嚴格空頭 → 決策台寫「不開新倉」,原本那檔收進
    /data-beargate="1"/.test(R.gOn.buy) && /不開新倉/.test(R.gOn.buy) && /<details/.test(R.gOn.buy) && /2330/.test(R.gOn.buy));
 ok('④b 🔬 決定性對照:關掉守門 → 回到原本清單', !/data-beargate/.test(R.gOff.buy) && /今天可以買的/.test(R.gOff.buy) && /2330/.test(R.gOff.buy));
 ok('④c 不是空頭 → 照常列出', !/data-beargate/.test(R.gBull.buy) && /2330/.test(R.gBull.buy));
-ok('④e 💰「閒錢停 0050」那一行在(一般清單與空頭那格都有),而且寫明自動下單不會做',
-   /data-idle0050="1"/.test(R.gBull.buy) && /data-idle0050="1"/.test(R.gOn.buy) && /自動下單不會/.test(R.gBull.buy));
+ok('④g 🐻 V79.4.9 守門關著(預設)又遇到大盤空頭 → 照常列出 + 只描述一行「你選的是照常買」(⛔ 不擋、⛔ 不叫人賣)',
+   !/data-beargate/.test(R.gDef.buy) && /2330/.test(R.gDef.buy) && /data-bearoff="1"/.test(R.gDef.buy) && /照常買/.test(R.gDef.buy)
+   && /data-bearoff="1"/.test(R.gOff.buy) && !/data-bearoff/.test(R.gBull.buy) && !/data-bearoff/.test(R.gOn.buy)
+   && !/(全部賣|出清|減碼)/.test(R.gDef.buy));
+ok('④e 🅿️ V79.4.9 0050 那一行獨立一塊(⛔ 不再藏在 🔥 那塊裡):預設 🅿️ = 金額那行;📈 錢放現金 = 提醒那行(大盤空頭也在)',
+   /data-parkamt="1"/.test(R.parkDef) && /data-idle0050="1"/.test(R.parkGene) && /data-idle0050="1"/.test(R.parkGeneBear)
+   && !/data-idle0050|data-parkamt/.test(R.gBull.buy) && !/data-idle0050|data-parkamt/.test(R.gOn.buy) && !/自動下單不會/.test(R.parkDef + R.parkGene), [R.parkDef.slice(0, 80), R.parkGene.slice(0, 80)]);
 ok('④f 🧹 V78.3.4 那一行⛔ 不印回測數字(改常數畫面⛔ 不可跟著出現)', !/98765|萬/.test(R.idleInj) && /停在 0050/.test(R.idleInj));
 ok('④d ⛔ 空頭那一格只擋買進 —— 不可叫人賣', !/(全部賣|出清|減碼)/.test(R.gOn.buy));
 ok('⑥ 最新一筆策略變更:「換回舊的」按鈕真的換回 back 那條;空頭守門只在 backBear:false 時才關',

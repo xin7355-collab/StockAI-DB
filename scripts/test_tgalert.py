@@ -37,6 +37,7 @@ def ok(name, cond, extra=''):
 SRC = (ROOT / 'alert_system.py').read_text(encoding='utf-8')
 WF = (ROOT / '.github/workflows/telegram_alert.yml').read_text(encoding='utf-8')
 
+sys.path.insert(0, str(ROOT))   # 🔥 V79.4.9 alert_system 會 import 根目錄的 lib_hotrule(workflow 從根目錄跑本來就找得到)
 spec = importlib.util.spec_from_file_location('als', ROOT / 'alert_system.py')
 A = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(A)

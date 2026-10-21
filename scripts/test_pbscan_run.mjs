@@ -37,6 +37,7 @@ const setup = (tag, mutate) => {
     let src = fs.readFileSync(path.join(ROOT, 'scripts/playbook_scan.mjs'), 'utf8');
     if (mutate) src = mutate(src);
     fs.writeFileSync(path.join(R, 'scripts/playbook_scan.mjs'), src);
+    fs.copyFileSync(path.join(ROOT, 'scripts/lib_hotrule.mjs'), path.join(R, 'scripts/lib_hotrule.mjs'));   // 🔥 V79.4.9 選股規則常數
     fs.copyFileSync(path.join(ROOT, 'index.html'), path.join(R, 'index.html'));
     for (const s of have) fs.copyFileSync(path.join(ROOT, 'data', `${s}.json`), path.join(R, 'data', `${s}.json`));
     const tw = path.join(ROOT, 'data', '^TWII.json'); if (fs.existsSync(tw)) fs.copyFileSync(tw, path.join(R, 'data', '^TWII.json'));

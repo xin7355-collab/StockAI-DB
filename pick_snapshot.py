@@ -73,7 +73,9 @@ def main():
                 's': str(x.get('s') or ''),
                 'c': x.get('c'),                 # 當時收盤(⭐ 事後算報酬要用它當基準)
                 'k': x.get('k'),                 # 打法名稱
-                'lb': x.get('lb'),               # 保守下界(當時的排序依據)
+                'lb': x.get('lb'),               # 保守下界(V79.4.8 以前的排序依據;換回舊的排法也用它)
+                'exp': x.get('exp'),             # 🔥 V79.4.9 這一招平均每趟 %(新排法的排序依據)
+                **({'r': x.get('r') or 0, 'o': x.get('o') or 0} if ('r' in x or 'o' in x) else {}),   # 新 / 舊排法這一檔第幾名(舊格式名單沒有就不寫)
                 'trig': x.get('trig'),           # 觸發價(⛔ 是估計值,已知)
                 'hq': 1 if (x.get('hq') or 0) == 1 else 0,   # 🧬 高位階+高波動(事實旗標)
                 'bear': 1 if x.get('bear') else 0,           # 空頭(事實旗標;決策台⛔ 不給進場)
@@ -81,6 +83,8 @@ def main():
         if d and picks:
             day['d'] = d
             day['pb'] = picks
+            if pe.get('rule'):
+                day['rule'] = pe.get('rule')   # 🔥 V79.4.9 那一天名單用哪一套規則排(⛔ 沒有 = 舊格式 = 舊排法;成績單照當天的規則重建)
 
     # ── ② 今天出現的實測訊號(today_signals)──
     # 📈 V77.2.5 使用者:「符合進場的也進到成績單裡面,重新回測」

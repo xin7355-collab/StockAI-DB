@@ -18,7 +18,8 @@ import { fileURLToPath, pathToFileURL } from 'url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : '  ' + String(e).slice(0, 400)}`); if (!c) fails++; };
-const LEAK = '領頭羊|👑|換倉|LEADER_|成交額前 ?100|停車 ?0050';
+// 🅿️ V79.4.9 🅿️ 改預設 →「停車 0050」解禁(⛔ 不再算洩漏);只擋 👑 的字樣
+const LEAK = '領頭羊|👑|換倉|LEADER_|成交額前 ?100';
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
@@ -111,8 +112,9 @@ ok('④b 👑 時 🔥 不列(👑 V79.1.6 使用者:「不是選擇這個策略
 // ④c 搬家:把 index.html 那一段原樣抽出來,拿假的 settings 跑(⛔ 測試裡不另寫一份邏輯)
 {
     const SRC = (await import('fs')).readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-    const i = SRC.indexOf('if (!this.settings.deckMigr7912) {'), j = SRC.indexOf('// 👑 V78.1.9 舊的「👑 領頭羊」選項', i);
-    const run = (st) => { const ctx = { settings: st }; globalThis.localStorage = { setItem() {} }; new Function(SRC.slice(i, j)).call(ctx); return ctx.settings; };
+    // 🐛 V79.4.9 搬家旗標改看 `saved`(⛔ 不看合併後的 this.settings)→ 抽出來那段要把 saved 一起傳進去;結尾停在 V79.4.9 那一段之前
+    const i = SRC.indexOf('if (!saved.deckMigr7912) {'), j = SRC.indexOf('// 🔥 V79.4.9 三件一起換', i);
+    const run = (st) => { const ctx = { settings: st }; globalThis.localStorage = { setItem() {} }; new Function('saved', SRC.slice(i, j)).call(ctx, { ...st }); return ctx.settings; };
     const g = run({ strategy: 'gene', deckShow: { pb: true, fit: false, sell: false, col: true } });
     const l = run({ strategy: 'leadpark', deckShow: { pb: true, fit: false } });
     const again = run({ strategy: 'gene', deckMigr7912: 1, deckShow: { pb: true } });

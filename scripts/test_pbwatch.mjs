@@ -128,16 +128,16 @@ ok('④c ⛔ 沒有殘留的第二份 inline 公式', inlineLots === 0, `還有 
 
 console.log('⑤ 採礦端:門檻與免責');
 const scan = fs.readFileSync(path.join(ROOT, 'scripts/playbook_scan.mjs'), 'utf8');
-// ⭐ V72.9.2 起門檻升級成「**保守下界**扣成本後仍為正」,⛔ 不是原始期望值。
-//   理由:2,317 檔 × 22 招排期望值取前面,前段班必然被「樣本少但剛好很賺」佔滿
-//   (首跑實測首名 每趟 +17.63%・賺賠比 12.63・只有 24 次 = 選樣偏誤)。
-ok('⑤a 門檻用**保守下界**扣成本(⛔ 不可退回原始期望值)', /\(lb\(x\) - cost\) > 0/.test(scan));
-ok('⑤a2 下界公式是 期望值 − 1.28×sd/√n', /x\.expectancy - 1\.28 \* \(x\.sd \|\| 0\) \/ Math\.sqrt/.test(scan));
-// ⚠️ V73.2.4 起 picks.sort 前面多了 hq(高位階+高波動)這一鍵 —— 但**下界仍必須在排序式子裡**,
-//    ⛔ 不可退回原始期望值。這條同時釘住「hq 只能是第一鍵、lb 必須緊接在後」。
-ok('⑤a3 ⛔ 排序也要用下界(只改門檻等於沒改)', /sort\(\(a, b\) => lb\(b\) - lb\(a\)\)/.test(scan) && /picks\.sort\(\(a, b\) => \(b\.hq - a\.hq\) \|\| \(b\.lb - a\.lb\)/.test(scan));
+// 🔁 V79.4.9 規則換成「照這一招的平均排・每一招都算」(使用者 10/21 選;V72.9.2 ~ V79.4.8 是保守下界・一檔前 2 招)
+//   ⭐ 改釘**用意**:門檻與排序用**同一個值**(kNew = 平均 − z×sd/√n,z 讀 lib_hotrule);保守下界照舊存在 lb 欄 + 舊排法名次 o
+ok('⑤a 門檻與排序用同一個值 kNew(⛔ 只改一邊等於沒改)', /\(kNew\(x\) - cost\) > 0/.test(scan) && /sort\(\(a, b\) => kNew\(b\) - kNew\(a\)\)/.test(scan));
+ok('⑤a2 公式只有一份:lbz(x, z) = 期望值 − z×sd/√n;lb 欄 = 舊排法的 z(1.28)、kNew = 現行規則的 z',
+   /const lbz = \(x, z\) => x\.expectancy - z \* \(x\.sd \|\| 0\) \/ Math\.sqrt\(Math\.max\(1, x\.count\)\);/.test(scan)
+   && /const lb = x => lbz\(x, zOld\);/.test(scan) && /const kNew = x => lbz\(x, zNew\);/.test(scan));
+ok('⑤a3 最後排序:hq 第一鍵、現行規則的值第二鍵(mean 照平均 / lb 照下界)',
+   /const keyOf = x => RULE === 'lb' \? x\.lb : x\.exp;/.test(scan) && /picks\.sort\(\(a, b\) => \(b\.hq - a\.hq\) \|\| \(keyOf\(b\) - keyOf\(a\)\)/.test(scan));
 // 🧬 V73.2.4 高位階+高波動(六道關卡全過的唯一一組)
-ok('⑤a3b 掃描端要算這檔自己的位階與波動率', /selfRank = Math\.round/.test(scan) && /selfVol = cn >= 10/.test(scan));
+ok('⑤a3b 掃描端要算這檔自己的位階與波動率(V79.4.9 存到小數一位 = 回測引擎不四捨五入)', /selfRank = Math\.round\(w\.filter\(c => c <= rows\[last\]\.close\)\.length \/ w\.length \* 1000\) \/ 10;/.test(scan) && /selfVol = cn >= 10 \? Math\.round\(Math\.sqrt\(s2 \/ cn\) \* Math\.sqrt\(252\) \* 1000\) \/ 10/.test(scan));
 ok('⑤a3c hq 門檻 85/60(V78.0.7 從 75 提高),且⛔ 不符合的仍要輸出(只標記不刪除)',
    /rank >= 85 && r\.vol != null && r\.vol >= 60/.test(scan) && /picks\.push\(\{ s: sym/.test(scan));
 ok('⑤a3d 尾盤推播 hq 優先,但只影響排序',
@@ -148,10 +148,11 @@ ok('⑤a3f 徽章⛔ 不可用紅綠(燈號鐵則:紅綠只表示漲跌方向)',
 ok('⑤a4 _patternFitBacktest 有回 sd', /const sd = n > 1 \? Math\.sqrt/.test(src) && /expectancy: mean, sd,/.test(src));
 // ⚠️ V75.0.0 排序整段抽進 `_pbSort`(本來兩處手抄,決策台是第三處)→ 斷言改釘**用意**:
 //    「顯示用下界」+「排序用下界」+「排序式子全 App 只准有一份」(⛔ 這比數兩份更嚴)
-ok('⑤a5 前端顯示用下界', /const shown = Number\.isFinite\(\+x\.lb\)/.test(src));
-ok('⑤a5b 🚨 排序也用下界,而且式子只准有一份(⛔ 手抄第二份遲早只改到一邊)',
-   (src.match(/const _lb = x => Number\.isFinite\(\+x\.lb\)/g) || []).length === 1
-   && /_lb\(b\) - _lb\(a\)/.test(src) && (src.match(/this\._pbSort\(/g) || []).length >= 3);
+// 🔁 V79.4.9 改釘用意:畫面主數字 = 排序用的那個值,而且「那個值」全 App 只有一份(`_pbKey`,跟著 `_hotRule()` 走)
+ok('⑤a5 前端顯示用排序的那個值(`_pbKey`)', /const shown = this\._pbKey\(x\);/.test(src));
+ok('⑤a5b 🚨 排序也用同一個值,而且式子只准有一份(⛔ 手抄第二份遲早只改到一邊)',
+   (src.match(/_pbKey\(x\) \{ return this\._hotRule\(\) === 'lb'/g) || []).length === 1
+   && /this\._pbKey\(b\) - this\._pbKey\(a\)/.test(src) && (src.match(/this\._pbSort\(/g) || []).length >= 3);
 ok('⑤a6 沒有觸發價(loose)時⛔ 不可顯示「漲過 null」', /const hasTrig = x\.trig != null/.test(src) && /這招不是靠價位觸發/.test(src));
 // ⚠️ V72.9.4 起這條由 ⑤a10 用「進位到跳動單位之後」的版本承接(更嚴)。
 //   ⛔ 這裡改驗「⛔ 不可退回成無條件回傳 b2」——原始 b2 沒對齊跳動單位也可能 <= 現價。

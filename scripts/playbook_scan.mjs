@@ -41,6 +41,7 @@
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs';
 import path from 'path';
+import { HOT_RULES, HOT_DEFAULT } from './lib_hotrule.mjs';
 
 // ⚙️ playwright 來源:本機開發是絕對路徑、CI 是 node_modules。
 //   ⛔ 別再用 workflow 裡 `sed` 改原始碼那招(daily_signal_scan 那樣做)——
@@ -58,7 +59,10 @@ catch (_) { ({ chromium } = await import('playwright')); }
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = path.join(ROOT, 'data');
 const MAX_SYMS = +(process.argv[2] || 99999);
-const MIN_N = +(process.env.MIN_N || 8);      // 這檔在這招打過幾次才算數(= 回測最好那組)
+// 🔥 V79.4.9 選股規則讀 lib_hotrule.mjs(全 repo 一份):預設「照這一招的平均排・每一招都算」;HOT_RULE=lb = 舊的保守下界排法
+const RULE = process.env.HOT_RULE || HOT_DEFAULT;
+if (!HOT_RULES[RULE]) { console.error(`🚨 HOT_RULE=${RULE} 不認得(只有 ${Object.keys(HOT_RULES).join(' / ')})`); process.exit(1); }
+const MIN_N = +(process.env.MIN_N || HOT_RULES[RULE].minN);      // 這檔在這招打過幾次才算數
 const COST = 0.44;                            // 來回成本 %:期望值扣完還要 > 0
 const CAP = +(process.env.CAP || 300);        // 輸出上限(⚠️ 總數另外寫進 JSON)
 const NEAR = +(process.env.NEAR || 6);        // 觸發價距離現價超過幾 % 就不列(明天到不了)
@@ -106,20 +110,23 @@ for (const f of files) {
     let r;
     try {
         r = await page.evaluate(a => {
-            const { rows, minN, cost, near } = a;
+            const { rows, minN, cost, near, zNew, topNew, minNOld, zOld, topOld } = a;
             // ① 這一檔自己的打法成績(⛔ 直接用 App 的,不複製邏輯)
             let ranked; try { ranked = app._patternFitBacktest(rows); } catch (_) { return null; }
             if (!ranked || !ranked.length) return null;
-            // ② ⭐⭐ V72.9.2 改用「**保守下界**」,⛔ 不可用原始期望值排序。
-            //   首跑實測抓到的問題:2,317 檔 × 22 招排期望值取前面 → 前段班全被
-            //   「樣本少但剛好很賺」佔滿(首名 每趟 +17.63%・賺賠比 12.63・只有 24 次)。
-            //   那是**選樣偏誤**不是實力(陷阱 #27「1÷1 也是 100%」的大規模版)。
-            //   下界 = 期望值 − 1.28×標準差/√n(約 90% 信心的下緣)→ 樣本越少罰得越重。
-            //   ⛔ 門檻與排序都要用它,只改一邊等於沒改。
-            const lb = x => x.expectancy - 1.28 * (x.sd || 0) / Math.sqrt(Math.max(1, x.count));
-            const good = ranked.filter(x => x.count >= minN && (lb(x) - cost) > 0)
-                               .sort((a, b) => lb(b) - lb(a));
-            if (!good.length) return { none: true };
+            // ② 🔁 V79.4.9 換規則(使用者 10/21 選「換,次數維持 8 次」):**照這一招的平均排・每一招都算**(zNew = 0、topNew = 99)。
+            //   V72.9.2 ~ V79.4.8 是「照保守下界 平均 − 1.28×標準差/√n 排・一檔最多 2 招」—— 當初怕前段班被「樣本少但剛好很賺」佔滿,
+            //   但全市場 16 年照 App 實際買法實測:保守下界連「同一批候選隨機排」都輸,照平均排贏隨機(LAB `next-hot-rule`)。
+            //   ⭐ `lb` 欄**照舊存保守下界**(A 級徽章 `_pbGrade` 與過去的 pick_history 都當它是下界);`o` = 舊排法這檔第幾名(換回舊的用)。
+            //   ⛔ 門檻與排序用同一個值(kNew),只改一邊等於沒改。
+            const lbz = (x, z) => x.expectancy - z * (x.sd || 0) / Math.sqrt(Math.max(1, x.count));
+            const lb = x => lbz(x, zOld);
+            const kNew = x => lbz(x, zNew);
+            const good = ranked.filter(x => x.count >= minN && (kNew(x) - cost) > 0)
+                               .sort((a, b) => kNew(b) - kNew(a));
+            const goodOld = ranked.filter(x => x.count >= minNOld && (lb(x) - cost) > 0)
+                                  .sort((a, b) => lb(b) - lb(a)).slice(0, topOld);
+            if (!good.length && !goodOld.length) return { none: true };
 
             const last = rows.length - 1;
             const c0 = rows[last].close;
@@ -191,13 +198,15 @@ for (const f of files) {
             let selfRank = null, selfVol = null, selfBear = 0;
             try {
                 const w = rows.slice(Math.max(0, last - 249), last + 1).map(r => r.close);
-                selfRank = Math.round(w.filter(c => c <= rows[last].close).length / w.length * 100);
+                // 📐 V79.4.9 存到小數一位(⛔ 不再四捨五入成整數):84.6 以前會被當成 85 → 比回測多收 3% 的 🧬(A0 實測);
+                //   位階 = k/250×100 本來就是 0.4 的倍數 → 一位小數就是精確值
+                selfRank = Math.round(w.filter(c => c <= rows[last].close).length / w.length * 1000) / 10;
                 let s2 = 0, cn = 0;
                 for (let k = Math.max(1, last - 19); k <= last; k++) {
                     const pr = (rows[k].close - rows[k - 1].close) / rows[k - 1].close;
                     s2 += pr * pr; cn++;
                 }
-                selfVol = cn >= 10 ? Math.round(Math.sqrt(s2 / cn) * Math.sqrt(252) * 100) : null;
+                selfVol = cn >= 10 ? Math.round(Math.sqrt(s2 / cn) * Math.sqrt(252) * 1000) / 10 : null;
                 // 📉 趨勢事實:跌破 20MA 且跌破 60MA = 全面破線(⛔ 只標記不排除 ——
                 //   實測「站上均線才做」單獨用多賺 24.7 萬,但疊在「高位階+高波動」之上
                 //   反而少賺 4~6 萬 → 沒有增量,不做成濾網)
@@ -208,23 +217,44 @@ for (const f of files) {
                 selfBear = (rows[last].close < m20 && m60 > 0 && rows[last].close < m60) ? 1 : 0;
             } catch (_) { }
 
-            const out = [], fired = [];
-            for (const g of good.slice(0, 2)) {          // 一檔最多留 2 招(⛔ 免得一檔洗版)
-                const row = { k: g.key, w: +g.winRate.toFixed(1), po: +g.plRatio.toFixed(2),
-                              exp: +g.expectancy.toFixed(2), lb: +lb(g).toFixed(2), n: g.count };
-                if (g.firedToday) { fired.push(row); continue; }      // 今天已觸發 → 明天買已太晚,另外放
-                const t = trigOf(g.key);
+            // 🔁 V79.4.9 兩套名次一起寫:`r` = 新排法(照平均・每一招都算)這檔第幾名、`o` = 舊排法(保守下界・一檔前 2 招)第幾名
+            //   → App / auto_trade 想換回舊的,只要「只留 o > 0、照 lb 排」就跟 V79.4.8 一模一樣(⛔ 不用重跑採礦)
+            //   新排法:照平均一路往下找,跳過今天已觸發(明天買太晚)與明天漲 6% 內觸發不了的,留下前 capNew 招可以觸發的
+            //     ⭐ 名單只看每檔最好那一招(App 一檔只留一列、回測 LIST_BEST 同一條)→ 🧬 可能的那幾檔多留第 2 招當備案,其他只留 1 招
+            //   舊排法:前 2 招(⛔ 已觸發 / 觸發不了的也佔名額 —— V72.9.2 ~ V79.4.8 就是這樣)
+            const rowOf = g => ({ k: g.key, w: +g.winRate.toFixed(1), po: +g.plRatio.toFixed(2),
+                                  exp: +g.expectancy.toFixed(2), lb: +lb(g).toFixed(2), n: g.count });
+            const oRank = new Map(goodOld.map((g, i) => [g.key, i + 1]));
+            const tried = new Map();   // 同一招只算一次觸發價(新舊兩套可能是同一招)
+            const trigOnce = key => { if (!tried.has(key)) tried.set(key, trigOf(key)); return tried.get(key); };
+            const byKey = new Map(), fired = [], firedK = new Set();
+            const onFired = g => { if (!firedK.has(g.key)) { firedK.add(g.key); fired.push({ ...rowOf(g), o: oRank.get(g.key) || 0 }); } };   // 今天已觸發 → 明天買已太晚,另外放
+            const hqMaybe = selfRank != null && selfRank >= 75 && selfVol != null && selfVol >= 60;   // 75 = 設定裡「位階門檻」的另一個選項
+            const capNew = hqMaybe ? 2 : 1;
+            let rN = 0;
+            for (let gi = 0; gi < good.length && gi < topNew && rN < capNew; gi++) {
+                const g = good[gi];
+                if (g.firedToday) { onFired(g); continue; }
+                const t = trigOnce(g.key);
                 if (!t) continue;
-                // 🚨 首跑抓到的顯示 bug:`loose`(連跌 6% 都觸發 = 不是價格閘門)那 37 筆
-                //   被寫成「漲過 168.26」而現價是 179 → **叫人漲過一個比現價低的數字**,
-                //   而且停損 = trig×0.95 變成離現價 −11%(不是 −5%)。
+                // 🚨 首跑抓到的顯示 bug:`loose`(連跌 6% 都觸發 = 不是價格閘門)那 37 筆被寫成「漲過 168.26」而現價是 179
                 //   → loose 一律**不給觸發價**,顯示端改講「這招不是靠價位,盤中重算才知道」。
-                if (t.loose) out.push({ ...row, trig: null, loose: 1 });
-                else out.push({ ...row, trig: t.trig, loose: 0 });   // ⚠️ trigOf 內已 round + 對齊跳動單位,⛔ 別在這裡再動
+                //   ⚠️ trigOf 內已 round + 對齊跳動單位,⛔ 別在這裡再動
+                rN++;
+                byKey.set(g.key, { ...rowOf(g), ...(t.loose ? { trig: null, loose: 1 } : { trig: t.trig, loose: 0 }), r: rN, o: oRank.get(g.key) || 0 });
             }
+            for (const g of goodOld) {
+                if (byKey.has(g.key)) continue;
+                if (g.firedToday) { onFired(g); continue; }
+                const t = trigOnce(g.key);
+                if (!t) continue;
+                byKey.set(g.key, { ...rowOf(g), ...(t.loose ? { trig: null, loose: 1 } : { trig: t.trig, loose: 0 }), r: 0, o: oRank.get(g.key) });
+            }
+            const out = [...byKey.values()];
             // ⚠️ 收盤價會帶浮點誤差(實跑出現 42.04999923706055)→ 一律 round 到 2 位
-            return { c: Math.round(c0 * 100) / 100, v: Math.round(rows[last].volume / 1000), d: rows[last].date, rank: selfRank, vol: selfVol, bear: selfBear, out, fired };
-        }, { rows, minN: MIN_N, cost: COST, near: NEAR });
+            return { c: Math.round(c0 * 100) / 100, v: Math.round(rows[last].volume / 1000), d: rows[last].date, rank: selfRank, vol: selfVol, bear: selfBear, hqMaybe, out, fired };
+        }, { rows, minN: MIN_N, cost: COST, near: NEAR, zNew: HOT_RULES[RULE].z, topNew: HOT_RULES[RULE].top,
+             minNOld: HOT_RULES.lb.minN, zOld: HOT_RULES.lb.z, topOld: HOT_RULES.lb.top });
     } catch (e) {
         // ⛔ 不可再靜默 continue(陷阱 #57):上面每一個會碰到外部資料的地方都已經各自 try 過,
         //   會掉到這裡的幾乎都是**程式本身的錯**(拼錯字、用到瀏覽器裡沒有的名字)→ 記下來,最後超過門檻就 exit 1
@@ -244,7 +274,7 @@ for (const f of files) {
         //   ⛔ 不符合的**照樣輸出**(同 _SIGNAL_EDGE 對 C 級的處置)—— 只標記,由顯示端決定要不要收起來
         const hq = (r.rank != null && r.rank >= 85 && r.vol != null && r.vol >= 60) ? 1 : 0;
         picks.push({ s: sym, c: r.c, v: r.v, d: r.d, ...x,
-                     rank: r.rank, vol: r.vol, hq, bear: r.bear || 0,
+                     rank: r.rank, vol: r.vol, hq, bear: r.bear || 0, _hm: r.hqMaybe ? 1 : 0,
                      up: x.trig != null ? +((x.trig - r.c) / r.c * 100).toFixed(2) : null,
                      // 📏 V76.2.9 停損價也要對到跳動單位 —— ⛔ 以前只有 `toFixed(2)`:
                      //   實測 300 檔裡 **257 檔(85.7%)掛不出去**(740.05 / 154.38 / 5177.5 那種),
@@ -286,12 +316,17 @@ if (picks.length >= 20 && !picks.some(x => x.trig != null)) {
     process.exit(1);
 }
 
-// 期望值高的排前面;同分用成交量(⛔ 別退化成代號順序 —— 那等於「1xxx 永遠排前面」)
 // 🧬 V73.2.4 hq(高位階+高波動)優先 —— 實測 +89% 且回撤更小(6 關全過)
 //   ⛔ 只是**排序**不是刪除:不符合的仍在清單裡,由顯示端決定收不收起來
-//   ⛔ 第二鍵仍是保守下界(不是原始期望值),第三鍵成交量(避免退化成代號序)
-picks.sort((a, b) => (b.hq - a.hq) || (b.lb - a.lb) || (b.v - a.v));
-firedToday.sort((a, b) => (b.lb - a.lb) || (b.v - a.v));
+// 🔁 V79.4.9 第二鍵 = 這套規則的排序值(預設照平均 exp;HOT_RULE=lb 照保守下界),第三鍵成交量(⛔ 別退化成代號序 —— 那等於「1xxx 永遠排前面」)
+const keyOf = x => RULE === 'lb' ? x.lb : x.exp;
+picks.sort((a, b) => (b.hq - a.hq) || (keyOf(b) - keyOf(a)) || (b.v - a.v));
+firedToday.sort((a, b) => (keyOf(b) - keyOf(a)) || (b.v - a.v));
+// ✂️ V79.4.9 截斷:「🧬 可能的」(位階 ≥75 且波動 ≥60 → 決策台 / 自動下單會看的)**一律保留**,CAP 只截其他的
+//   (每一招都算之後列數變多;⛔ 不可讓 CAP 把會買的那幾檔截掉 —— 那就是「無聲截斷」)
+const outPicks = []; let restN = 0, hmN = 0;
+for (const p of picks) { if (p._hm) { outPicks.push(p); hmN++; } else if (restN++ < CAP) outPicks.push(p); }
+for (const p of picks) delete p._hm;
 
 const out = {
     updated: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
@@ -306,11 +341,17 @@ const out = {
     entry_note: '有效的進場時點是「觸發當天的尾盤(13:00~13:25)」—— 打法的判定條件都是用收盤價算的。',
     trig_note: '觸發價是**估計值**(明天真正的開高低還不知道);盤中會用即時報價重算,以那次為準。',
     cost_note: `期望值已扣來回成本 ${COST}%(手續費+證交稅,未打折)`,
-    lb_note: '排序與門檻用的是「保守下界」= 期望值 − 1.28×標準差/√次數 —— 樣本少的會被罰,⛔ 免得前段班全是僥倖',
+    // 🔥 V79.4.9 這份名單用哪一套規則排(App / auto_trade 據此決定篩 r>0 還是 o>0;⛔ 沒有這一欄 = 舊格式,一律當舊排法)
+    rule: RULE,
+    rules: HOT_RULES,
+    lb_note: RULE === 'lb'
+        ? '排序與門檻用的是「保守下界」= 期望值 − 1.28×標準差/√次數(舊排法 HOT_RULE=lb)'
+        : '排序:照這一招的平均(扣成本後 > 0、打過 ≥ ' + MIN_N + ' 次)・每一招都算;r = 這一檔第幾名。lb 欄 = 保守下界(平均 − 1.28×標準差/√次數),o = 舊排法(照保守下界・一檔前 2 招)第幾名 → 換回舊的只要留 o > 0、照 lb 排',
     picks_total: picks.length,
     picks_syms: new Set(picks.map(p => p.s)).size,
     picks_cap: CAP,
-    picks: picks.slice(0, CAP),
+    hq_maybe_rows: hmN,
+    picks: outPicks,
     // 今天才觸發的:⛔ 明天買已經來不及(進場點是今天尾盤)→ 只當「這幾檔正在走」的參考
     fired_total: firedToday.length,
     fired: firedToday.slice(0, 60),
@@ -324,9 +365,9 @@ log(`   🧬 其中高位階+高波動(hq):${picks.filter(x => x.hq).length} 筆
 log(`   🔥 今天已觸發:${firedToday.length} 筆(⛔ 明天買太晚,只當參考)`);
 log(`   🐻 大盤嚴格空頭:${mkt ? (mkt.bear60 ? `是(${mkt.d})→ 明天不開新倉` : `否(${mkt.d})`) : '算不出來'}`);
 log(`   ➖ 沒有任何一招扣成本後為正的:${noEdge} 檔`);
-if (picks.length > out.picks.length) log(`   ⚠️ 有截斷:${picks.length} → ${out.picks.length};picks_total/picks_syms 已寫進 JSON`);
+if (picks.length > out.picks.length) log(`   ⚠️ 有截斷:${picks.length} → ${out.picks.length}(🧬 可能的 ${hmN} 列一律保留,只截其他的);picks_total/picks_syms 已寫進 JSON`);
 if (out.picks.length) {
-    log('\n🏆 期望值最高的 10 筆:');
+    log(`\n🏆 排最前面的 10 筆(規則 ${RULE}):`);
     for (const p of out.picks.slice(0, 10)) {
         log(`   ${p.s}  現價 ${String(p.c).padStart(8)} → ${p.trig != null ? `漲過 ${p.trig}(+${p.up}%)` : '無價格閘門(盤中重算)'}  ${p.k}`);
         log(`         停損 ${p.stop} ・勝率 ${p.w}% ・賺賠比 ${p.po} ・每趟 +${p.exp}%(保守下界 +${p.lb}%)・打過 ${p.n} 次${p.loose ? ' ・⚠️不是價格閘門' : ''}`);

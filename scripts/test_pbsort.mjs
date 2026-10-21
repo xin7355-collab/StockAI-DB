@@ -56,12 +56,14 @@ const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     const keys = {
         mine: (src.match(/M\.has\(String\(b\.s\)\) - M\.has\(String\(a\.s\)\)/g) || []).length,
         hq: (src.match(/_hq\(b\) - _hq\(a\)/g) || []).length,
-        lb: (src.match(/_lb\(b\) - _lb\(a\)/g) || []).length,
+        key: (src.match(/this\._pbKey\(b\) - this\._pbKey\(a\)/g) || []).length,
         exp: (src.match(/\(b\.exp - a\.exp\)/g) || []).length,
+        lb: (src.match(/\(b\.lb - a\.lb\)|_lb\(b\) - _lb\(a\)/g) || []).length,
     };
     ok('①c 🚨 三個排序鍵各只准有一份(⛔ 手抄第二份遲早只改到一邊)',
-        keys.mine === 1 && keys.hq === 1 && keys.lb === 1, JSON.stringify(keys));
-    ok('② ⛔ 排序不可用原始期望值 exp(V72.9.2:必定挑到僥倖股)', keys.exp === 0, JSON.stringify(keys));
+        keys.mine === 1 && keys.hq === 1 && keys.key === 1, JSON.stringify(keys));
+    // 🔁 V79.4.9 規則換成照平均(使用者選)→ 排序值一律走 `_pbKey`(跟著 `_hotRule()`),⛔ 不可在排序式子裡寫死 exp 或 lb
+    ok('② ⛔ 排序式子不可寫死 exp 或 lb(要走 `_pbKey`)', keys.exp === 0 && keys.lb === 0, JSON.stringify(keys));
 }
 ok('②b `pbHqOff` 開關仍在(使用者可關,但預設開)—— 抽成一份後只剩 1 處',
     (src.match(/settings\?\.pbHqOff \? 0 :/g) || []).length === 1,

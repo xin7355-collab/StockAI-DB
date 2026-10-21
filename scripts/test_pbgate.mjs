@@ -13,7 +13,7 @@
  *          STATS_WIN 扣回時平方和也扣;斷崖剔除在股利與 byIn 之前
  *   ⓛ lib_lb 跟 App 的公式逐筆比(playbook_scan 的 lb + index.html _patternFitBacktest 的 sd,從原始碼抽出來跑)
  *   ⓐ 決定性對照:GATE=lb LB_Z=0 MIN_N=4 LB_TOP=99 == 不設(成績 + 逐日淨值逐位相同)
- *   ⓑ GATE=lb 預設值真的生效、cfg 記下
+ *   ⓑ GATE=lb 預設值真的生效、cfg 記下(🔁 V79.4.9 預設 = lib_hotrule 的現行規則:照平均・每一招都算)
  *   ⓒ 一檔前 1 招:每一筆成交的招 = 那天這檔下界第 1 名(用快取逐筆重算);決定性對照:不限招數時至少一筆不是第 1 名
  *   ⓓ CLIFF:注入 1 拆 20 → 不設時有 −90% 的假虧損;CLIFF=0 剔除筆數 == 用 lib_cliff 逐筆算的數、成交裡沒有跨過斷崖的
  *   ⓚ 🧾 LISTK(照前一晚名單前 K 檔、觸發才買):三件都拿掉 + K 很大 == 不設(決定性對照)/ LISTK=1 一天最多 1 筆 /
@@ -27,6 +27,7 @@ import os from 'os';
 import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { lbOf } from './lib_lb.mjs';
+import { HOT_RULES, HOT_DEFAULT } from './lib_hotrule.mjs';
 import { cliffPrefix, cliffIn } from './lib_cliff.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -41,26 +42,31 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 // ── ⓢ 靜態 ──
 const ck = (CODE.match(/const CACHE_KEY = JSON\.stringify\(\{[^}]*\}\)/) || [''])[0];
 ok('ⓢ1 CACHE_KEY ⛔ 沒有 GATE / LB_Z / LB_TOP / CLIFF', ck && !/GATE|LB_Z|LB_TOP|CLIFF/.test(ck), ck);
-const scanMinN = +((SCAN.match(/const MIN_N = \+\(process\.env\.MIN_N \|\| (\d+)\)/) || [])[1]);
-const scanZ = +((SCAN.match(/const lb = x => x\.expectancy - ([\d.]+) \* \(x\.sd \|\| 0\) \/ Math\.sqrt\(Math\.max\(1, x\.count\)\);/) || [])[1]);
-const scanTop = +((SCAN.match(/for \(const g of good\.slice\(0, (\d+)\)\)/) || [])[1]);
-const pbMinN = +((CODE.match(/const MIN_N = \+\(process\.env\.MIN_N \|\| \(process\.env\.GATE === 'lb' \? (\d+) : 4\)\);/) || [])[1]);
-const pbZ = +((CODE.match(/const LB_Z = process\.env\.GATE === 'lb' \? \+\(process\.env\.LB_Z \?\? ([\d.]+)\) : 0;/) || [])[1]);
-const pbTop = +((CODE.match(/const LB_TOP = process\.env\.GATE === 'lb' \? \+\(process\.env\.LB_TOP \|\| (\d+)\) : 0;/) || [])[1]);
-ok(`ⓢ2 預設值跟 App 一樣(playbook_scan MIN_N ${scanMinN} / z ${scanZ} / 前 ${scanTop} 招 ↔ 引擎 ${pbMinN} / ${pbZ} / ${pbTop})`, scanMinN > 0 && scanZ > 0 && scanTop > 0 && scanMinN === pbMinN && scanZ === pbZ && scanTop === pbTop);
+// 🔁 V79.4.9 規則常數只有 lib_hotrule.mjs 一份:playbook_scan 與引擎的 GATE=lb 預設都要讀它(⛔ 各寫一個數字 = 陷阱 #56 再犯)
+const HR = HOT_RULES[HOT_DEFAULT];
+const scanUsesLib = /import \{ HOT_RULES, HOT_DEFAULT \} from '\.\/lib_hotrule\.mjs';/.test(SCAN)
+    && /const MIN_N = \+\(process\.env\.MIN_N \|\| HOT_RULES\[RULE\]\.minN\);/.test(SCAN)
+    && /zNew: HOT_RULES\[RULE\]\.z, topNew: HOT_RULES\[RULE\]\.top/.test(SCAN)
+    && /minNOld: HOT_RULES\.lb\.minN, zOld: HOT_RULES\.lb\.z, topOld: HOT_RULES\.lb\.top/.test(SCAN);
+const pbUsesLib = /import \{ HOT_RULES, HOT_DEFAULT \} from '\.\/lib_hotrule\.mjs';/.test(CODE)
+    && /const MIN_N = \+\(process\.env\.MIN_N \|\| \(process\.env\.GATE === 'lb' \? HOT_RULES\[HOT_DEFAULT\]\.minN : 4\)\);/.test(CODE)
+    && /const LB_Z = process\.env\.GATE === 'lb' \? \+\(process\.env\.LB_Z \?\? HOT_RULES\[HOT_DEFAULT\]\.z\) : 0;/.test(CODE)
+    && /const LB_TOP = process\.env\.GATE === 'lb' \? \+\(process\.env\.LB_TOP \|\| HOT_RULES\[HOT_DEFAULT\]\.top\) : 0;/.test(CODE);
+ok(`ⓢ2 預設值只有一份:playbook_scan 與引擎都讀 lib_hotrule(現行 ${HOT_DEFAULT}:≥${HR.minN} 次・z ${HR.z}・一檔 ${HR.top} 招)`, scanUsesLib && pbUsesLib && HR.minN > 0 && HR.z >= 0 && HR.top >= 1, `scan=${scanUsesLib} engine=${pbUsesLib}`);
+const scanZ = HOT_RULES.lb.z;   // ⓛ 用舊排法那個 z 驗下界公式(z = 0 另外驗 ⓛ2)
 ok('ⓢ3 下界公式只在 lib_lb.mjs(引擎兩處都呼叫 lbOf、⛔ 自己沒有 n − 1 的變異數)', /lbOf\(s2\.n, s2\.sum, s2\.sq, LB_Z\)/.test(CODE) && /lbOf\(s\.n, s\.sum, s\.sq, LB_Z\)/.test(CODE) && !/\(n - 1\)/.test(CODE));
 ok('ⓢ4 STATS_WIN 扣回時平方和也扣(⛔ 只扣總和 → 標準差越算越歪)', /s\.sq = s\.n \? s\.sq - b\[q \+ 2\] \* b\[q \+ 2\] : 0;/.test(CODE) && /s\.n\+\+; s\.sum \+= t\.ret; s\.sq \+= t\.ret \* t\.ret;/.test(CODE));
 ok('ⓢ5 斷崖剔除在算股利與 byIn 之前(⛔ 剔完還進每檔成績)', (() => { const a = CODE.indexOf('cliffIn(X.pre, a - CLIFF, b)'), b = CODE.indexOf('const DIV_TRADES = '), c = CODE.indexOf('const byIn = new Map()'); return a > 0 && b > a && c > a; })());
-ok('ⓢ6 兩種門檻共用同一份其餘濾網 restOk(⛔ 各寫一份)', (CODE.match(/restOk\(x\)/g) || []).length === 2 && /const restOk = x => x\.m && x\.m\.n >= MIN_MKT_N/.test(CODE));
+ok('ⓢ6 兩種門檻共用同一份其餘濾網 restOk(⛔ 各寫一份)', (CODE.match(/restOk\(x\)/g) || []).length === 2 && /const restOk = x => \(MIN_MKT_N === 0 \|\| \(x\.m && x\.m\.n >= MIN_MKT_N\)\)/.test(CODE));
 
 // ── ⓛ lib_lb 跟 App 的公式比 ──
 {
     const sdSrc = (HTML.match(/const sd = n > 1 \? Math\.sqrt\(trades\.reduce\(\(a, b\) => a \+ \(b - mean\) \*\* 2, 0\) \/ \(n - 1\)\) : 0;/) || [])[0];
-    const lbSrc = (SCAN.match(/const lb = x => x\.expectancy - [\d.]+ \* \(x\.sd \|\| 0\) \/ Math\.sqrt\(Math\.max\(1, x\.count\)\);/) || [])[0];
+    const lbSrc = (SCAN.match(/const lbz = \(x, z\) => x\.expectancy - z \* \(x\.sd \|\| 0\) \/ Math\.sqrt\(Math\.max\(1, x\.count\)\);/) || [])[0];
     ok('ⓛ0 從 index.html / playbook_scan.mjs 抽得到 App 的 sd 與 lb 原文', !!sdSrc && !!lbSrc);
     if (sdSrc && lbSrc) {
         const appSd = new Function('trades', 'n', 'mean', sdSrc + '\nreturn sd;');
-        const appLb = new Function('x', lbSrc + '\nreturn lb(x);');
+        const appLb = new Function('x', lbSrc + `\nreturn lbz(x, ${scanZ});`);
         let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
         let maxErr = 0, cases = 0, inc = 0;
         for (let k = 0; k < 400; k++) {
@@ -83,7 +89,7 @@ ok('ⓢ6 兩種門檻共用同一份其餘濾網 restOk(⛔ 各寫一份)', (COD
 const DATA = path.join(ROOT, 'data');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pbgate-'));
 const base = { ...process.env, LOT: '150000', SELF: 'high+hivolat', RANK_MIN: '75', VOLAT_MIN: '60', EXIT: 'chand2', MAXD: '20', FILTER: 'bear60', STOPFILL: 'close', WARMUP: '240' };
-for (const k of ['STATS_WIN', 'STATS_FROM', 'GATE', 'LB_Z', 'LB_TOP', 'MIN_N', 'CLIFF', 'RANKBY', 'WARMUPS', 'WARMUP', 'YEARRUNS', 'YEAR_OFFSET', 'VOLCAP', 'EQGATE', 'ROTATE', 'COST_X', 'PARK', 'DIV', 'DIV_TRADES', 'EQUITY_OUT', 'YEAR', 'EMERGING', 'BENCH0050']) delete base[k];
+for (const k of ['STATS_WIN', 'STATS_FROM', 'GATE', 'LB_Z', 'LB_TOP', 'MIN_N', 'CLIFF', 'RANKBY', 'WARMUPS', 'WARMUP', 'YEARRUNS', 'YEAR_OFFSET', 'VOLCAP', 'EQGATE', 'ROTATE', 'COST_X', 'PARK', 'DIV', 'DIV_TRADES', 'EQUITY_OUT', 'YEAR', 'EMERGING', 'BENCH0050', 'MIN_MKT_N', 'NOLOCK', 'EOD_DUMP', 'EOD_DUMP_SYMS', 'LISTK', 'LIST_TRIG', 'LIST_DUMP', 'ALLFIRE']) delete base[k];
 const run = (tag, extra, dataDir, maxSyms = '25', cache = 'c.json') => {
     const r = spawnSync(process.execPath, ['--max-old-space-size=3000', FILE, maxSyms, '2'], { env: { ...base, DATA_DIR: dataDir, TRADES_CACHE: path.join(tmp, cache), ...extra, SUMMARY_OUT: path.join(tmp, `s_${tag}.json`), EQUITY_OUT: path.join(tmp, `e_${tag}.json`), TAKEN_OUT: path.join(tmp, `t_${tag}.json`) }, encoding: 'utf8', timeout: 420000, maxBuffer: 64 << 20 });
     const rd = f => { try { return JSON.parse(fs.readFileSync(path.join(tmp, f), 'utf8')); } catch (_) { return null; } };
@@ -100,7 +106,7 @@ else {
     const Z = run('z', { GATE: 'lb', LB_Z: '0', MIN_N: '4', LB_TOP: '99' }, DATA);
     ok('ⓐ 決定性對照:GATE=lb LB_Z=0 MIN_N=4 LB_TOP=99 == 不設(成績 + 逐日淨值逐位相同)', Z.s && core(Z.s) === core(A.s) && Z.e === A.e, `${core(Z.s)} vs ${core(A.s)}`);
     const L = run('l', { GATE: 'lb' }, DATA);
-    ok('ⓑ GATE=lb 預設值真的生效(成績跟不設不一樣)、cfg 記下 8 / 1.28 / 2', L.r.status === 0 && L.s && core(L.s) !== core(A.s) && L.s.cfg.gate === 'lb' && L.s.cfg.minN === 8 && L.s.cfg.lbZ === 1.28 && L.s.cfg.lbTop === 2, `${JSON.stringify(L.s?.cfg)} ${(L.r.stderr || '').slice(-200)}`);
+    ok(`ⓑ GATE=lb 預設值真的生效(成績跟不設不一樣)、cfg 記下 lib_hotrule 的 ${HR.minN} / ${HR.z} / ${HR.top}`, L.r.status === 0 && L.s && core(L.s) !== core(A.s) && L.s.cfg.gate === 'lb' && L.s.cfg.minN === HR.minN && L.s.cfg.lbZ === HR.z && L.s.cfg.lbTop === HR.top, `${JSON.stringify(L.s?.cfg)} ${(L.r.stderr || '').slice(-200)}`);
 
     // ⓒ 一檔前 1 招:用快取把「那天以前出場的交易」逐筆重算成績 → 每一筆成交的招必須是這檔下界第 1 名
     const C = JSON.parse(fs.readFileSync(path.join(tmp, 'c.json'), 'utf8')).trades;
@@ -113,8 +119,9 @@ else {
         arr.sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
         return arr.length ? arr[0][0] : null;
     };
-    const T1 = run('t1', { GATE: 'lb', MIN_N: '4', LB_TOP: '1' }, DATA);
-    const T9 = run('t9', { GATE: 'lb', MIN_N: '4', LB_TOP: '99' }, DATA);
+    // ⚠️ V79.4.9 GATE=lb 預設 z 改成 0 → 這兩條明寫 LB_Z=1.28(驗的是「下界第 1 名」這件事本身)
+    const T1 = run('t1', { GATE: 'lb', MIN_N: '4', LB_TOP: '1', LB_Z: '1.28' }, DATA);
+    const T9 = run('t9', { GATE: 'lb', MIN_N: '4', LB_TOP: '99', LB_Z: '1.28' }, DATA);
     const bad1 = (T1.t || []).filter(t => topKey(t.sym, t.d) !== t.key), bad9 = (T9.t || []).filter(t => topKey(t.sym, t.d) !== t.key);
     ok(`ⓒ LB_TOP=1:${(T1.t || []).length} 筆成交全部是那天這檔下界第 1 名`, T1.t && T1.t.length >= 5 && bad1.length === 0, JSON.stringify(bad1.slice(0, 3)));
     ok(`ⓒ2 決定性對照:LB_TOP=99 有 ${bad9.length} 筆不是第 1 名(> 0 → ⓒ 有鑑別力)`, T9.t && bad9.length > 0, `n=${(T9.t || []).length}`);

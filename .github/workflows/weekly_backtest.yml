@@ -18,6 +18,11 @@ name: 🔁 每週自動回測 (weekly_backtest)
 #   → 成績單改成 **App 現行預設**(= `_DECK_TRACK49`:🧬 位階 ≥85・振幅 ≥60・吊燈 ATR 2 倍・最長 20 天・大盤嚴格空頭不開新倉・
 #      收盤成交・股利入帳 + 二代健保),build_backtest_edge.mjs 看到 cfg 換了 → 那一次重新起算守門基準(⛔ 不跟舊設定比 80%)。
 #   → K 線訊號表:App 一律讀內嵌的 16 年表,這份只在實驗室模式當「最近幾年」的參考(⛔ 不再蓋掉內嵌表)。
+#
+# 🔥 V79.4.9 跟著 App 預設換(使用者 10/21:換排法・空頭照買・閒錢停 0050)—— 最小對齊,⛔ 買法仍是 600 檔舊買法(全市場 + 尾盤買法在 V80.0.0):
+#   拿掉 FILTER=bear60(🔥 空頭照買)・加 GATE=lb(規則常數讀 scripts/lib_hotrule.mjs = App 現行:≥8 次・照平均・每一招都算)
+#   ・CLIFF=20(斷崖守門)・STATS_WIN=1200(每檔成績只看最近 1,200 天 = App 讀的 K 線長度)・PARK=idle(沒用到的錢停 0050)
+#   → DECK_SIG 換了,第一次會重新起算守門基準;FLOOR 用本機重現的筆數訂一半(build_backtest_edge.mjs)。
 on:
   workflow_run:
     workflows: ["🤖 每日籌碼採礦機 (平行宇宙版)"]
@@ -110,8 +115,9 @@ jobs:
           exit 0
 
       # ② 決策台 49 個月成績單(🔁 V79.4.5 = App 現行預設 = `_DECK_TRACK49`:🧬 位階 ≥85・振幅 ≥60・每筆 15 萬・每天 2 檔
-      #    ・吊燈 ATR 2 倍(App 的 atr2 = 回測的 chand2)・最長 20 天・大盤嚴格空頭不開新倉(bear60)・停損收盤成交
+      #    ・吊燈 ATR 2 倍(App 的 atr2 = 回測的 chand2)・最長 20 天・停損收盤成交
       #    ・持有期間股利入帳 + 二代健保;0050 對照含息。第二趟不挑 🧬 重用交易快取)
+      #    🔥 V79.4.9:🔥 空頭照買(⛔ 沒有 FILTER)・App 選股規則(GATE=lb + lib_hotrule 預設)・斷崖守門・只看最近 1,200 天・閒錢停 0050
       #    ⚠️ 改 App 預設(出場 / 門檻 / 天數 / 空頭守門)時這裡要一起改 —— 不然每週跑的是另一套
       - name: 💼 組合回測 (portfolio_backtest ×2)
         if: steps.gate.outputs.run == '1' && steps.sig.outputs.sig_rc == '0'
@@ -123,8 +129,11 @@ jobs:
           VOLAT_MIN: '60'
           EXIT: chand2
           MAXD: '20'
-          FILTER: bear60
           STOPFILL: close
+          GATE: lb
+          CLIFF: '20'
+          STATS_WIN: '1200'
+          PARK: idle
           DIV_TRADES: data/dividends_hist.json
           DIV: data/dividends_hist.json
           TRADES_CACHE: /tmp/trades.json

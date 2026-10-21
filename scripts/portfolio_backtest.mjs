@@ -35,6 +35,8 @@ import { accrualSeries, accrualMonthCut, accrualHiAt } from './lib_accrual.mjs';
 import { trSeries, scaleFor, loadPx, nhiRate } from './lib_totalreturn.mjs';
 import { cliffPrefix, cliffIn } from './lib_cliff.mjs';
 import { lbOf } from './lib_lb.mjs';
+import { HOT_RULES, HOT_DEFAULT } from './lib_hotrule.mjs';
+import { upLimitClose } from './lib_limit.mjs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'url';
 import fs from 'fs';
@@ -75,16 +77,27 @@ if (MULTI) {
 //   因為同一個型態當天可能 50 檔觸發,而它們的分數**完全一樣**,等於在亂挑。
 //   ⭐ 使用者要的是「**每個個股都有最好的打法**」= App 的「打法適配儀」(每檔自己的歷史),
 //     ⛔ 不是全市場平均。→ 成績改成 **per-stock × per-pattern**。
-const MIN_N = +(process.env.MIN_N || (process.env.GATE === 'lb' ? 8 : 4));   // **這一檔**在**這個型態**打過幾次才准用(GATE=lb 預設 8 = playbook_scan)
-const MIN_MKT_N = 20;                       // 全市場該型態的最低樣本(第二層門檻)
-// 🎯 V79.4.7 GATE=lb = **App 的 🔥 選股規則**(playbook_scan.mjs V72.9.2 起;以前這支引擎一直用舊規則 = 陷阱 #37):
-//   門檻:這檔這招 n ≥ MIN_N(預設 8)且 保守下界 lb = 平均 − LB_Z × 標準差 ÷ √n(LB_Z 預設 1.28)扣來回成本後 > 0
-//   排序:候選照 lb 排(⛔ 不照平均 —— 全市場時前段班會被「樣本少但剛好很賺」佔滿)
-//   一檔最多 LB_TOP 招(預設 2 = playbook_scan `good.slice(0, 2)`):只有這檔 lb 排前 LB_TOP 的招觸發才算候選
+const MIN_N = +(process.env.MIN_N || (process.env.GATE === 'lb' ? HOT_RULES[HOT_DEFAULT].minN : 4));   // **這一檔**在**這個型態**打過幾次才准用(GATE=lb 預設讀 lib_hotrule = playbook_scan)
+const MIN_MKT_N = (process.env.MIN_MKT_N ?? '') === '' ? 20 : +process.env.MIN_MKT_N;   // 全市場該型態的最低樣本(第二層門檻)
+//   🪞 V79.4.9 `MIN_MKT_N=0` = App 對齊(playbook_scan / 決策台沒有這一關);⛔ 不進 CACHE_KEY;不設 = 20,一個字都不變
+if (!(Number.isInteger(MIN_MKT_N) && MIN_MKT_N >= 0)) { console.error(`🚨 MIN_MKT_N=${process.env.MIN_MKT_N} 要 ≥ 0 的整數`); process.exit(1); }
+// 🟥 V79.4.9 NOLOCK=1:訊號那天**收盤停在漲停價**的候選不買(尾盤 / 收盤競價掛漲停價多半排不到;lib_limit upLimitClose,2015-06 前 ±7%)
+//   ⛔ 不進 CACHE_KEY(只多一道候選濾網);不設時一個字都不變
+const NOLOCK = process.env.NOLOCK === '1';
+// ⏱️ V79.4.9 EOD_DUMP=<檔>:每天「尾盤掃描」的候選(今天觸發 ∧ 過門檻 ∧ 其他濾網,照排序)寫一行 {d, c:[[sym, 招, 排序值, n]]}
+//   + EOD_DUMP_SYMS=<json>(陣列,或 {"YYYY-MM":[代號]}):那幾檔當天**所有過門檻的招**也寫進 q(不管今天有沒有觸發)
+//   → 給 eod_partial_probe(13:20 判 vs 收盤判)與 test_eod_scan(重播比對)用;⛔ 不進 CACHE_KEY;不設時一個字都不變
+const EOD_DUMP = (process.env.EOD_DUMP || '').trim(), EOD_DUMP_SYMS = (process.env.EOD_DUMP_SYMS || '').trim();
+// 🎯 V79.4.7 GATE=lb = **App 的 🔥 選股規則**(playbook_scan.mjs;以前這支引擎一直用舊規則 = 陷阱 #37):
+//   門檻:這檔這招 n ≥ MIN_N 且 排序值 v = 平均 − LB_Z × 標準差 ÷ √n 扣來回成本後 > 0;候選照 v 排
+//   一檔最多 LB_TOP 招:只有這檔 v 排前 LB_TOP 的招觸發才算候選
+//   🔁 V79.4.9 預設值 = lib_hotrule.mjs 的 HOT_DEFAULT(照平均:LB_Z 0・每一招都算 LB_TOP 99・MIN_N 8);
+//     V72.9.2 ~ V79.4.8 的舊排法 = LB_Z=1.28 LB_TOP=2(保守下界・一檔前 2 招)—— 實測連「同一批候選隨機排」都輸,使用者 10/21 選換
 //   ⭐ 決定性對照:GATE=lb LB_Z=0 MIN_N=4 LB_TOP=99 == 不設(test_pbgate 釘住);公式 = lib_lb.mjs(跟 App 跨檔比對)
 //   ⛔ 不進 CACHE_KEY(只改候選的門檻與排序,不改進出場)
-const LB_Z = process.env.GATE === 'lb' ? +(process.env.LB_Z ?? 1.28) : 0;
-const LB_TOP = process.env.GATE === 'lb' ? +(process.env.LB_TOP || 2) : 0;
+// 🔁 V79.4.9 GATE=lb 的預設值改讀 lib_hotrule.mjs(= App 現行:照平均排 z 0・每一招都算 99);舊排法 = LB_Z=1.28 LB_TOP=2
+const LB_Z = process.env.GATE === 'lb' ? +(process.env.LB_Z ?? HOT_RULES[HOT_DEFAULT].z) : 0;
+const LB_TOP = process.env.GATE === 'lb' ? +(process.env.LB_TOP || HOT_RULES[HOT_DEFAULT].top) : 0;
 if (process.env.GATE === 'lb' && (!(LB_Z >= 0) || !Number.isFinite(LB_Z) || !(LB_TOP >= 1) || !Number.isInteger(LB_TOP))) { console.error(`🚨 GATE=lb 參數不認得(LB_Z=${process.env.LB_Z} 要 ≥ 0 的數字、LB_TOP=${process.env.LB_TOP} 要 ≥ 1 的整數)`); process.exit(1); }
 // 🧾 V79.4.7 LISTK=K:照 App「前一天晚上排好的名單」買 —— 名單只留前 K 檔,今天**名單上那一招**觸發才買
 //   🚨 為什麼:App(決策台「今天可以買的」/ auto_trade.py)是前一晚先排好前 2 名、隔天觸發才買;
@@ -116,6 +129,17 @@ if (LIST_DUMP && (WARMUPS || YEARRUNS)) { console.error('🚨 LIST_DUMP 一次�
 if (LIST_DUMP && (process.env.RANKBY || 'self') !== 'self') { console.error('🚨 LIST_DUMP 只支援 RANKBY=self(App 照下界排)'); process.exit(1); }
 if (LIST_DUMP && !(Number.isInteger(LIST_DUMP_N) && LIST_DUMP_N >= 1)) { console.error(`🚨 LIST_DUMP_N=${process.env.LIST_DUMP_N} 要 ≥ 1 的整數`); process.exit(1); }
 if (LIST_DUMP) fs.writeFileSync(LIST_DUMP, '');   // 每一次重寫(⛔ 接在舊的後面 = 同一晚兩份)
+if (EOD_DUMP && process.env.GATE !== 'lb') { console.error('🚨 EOD_DUMP 要配 GATE=lb(尾盤候選就是 App 的選股規則)'); process.exit(1); }
+if (EOD_DUMP && LISTK) { console.error('🚨 EOD_DUMP 是「不限名單」的尾盤掃描 → 不可跟 LISTK 一起用'); process.exit(1); }
+if (EOD_DUMP && (WARMUPS || YEARRUNS)) { console.error('🚨 EOD_DUMP 一次只跑一個起點'); process.exit(1); }
+if (EOD_DUMP_SYMS && !EOD_DUMP) { console.error('🚨 EOD_DUMP_SYMS 要配 EOD_DUMP'); process.exit(1); }
+let EOD_SYMS = null;   // null = 不寫 q;Set = 每天同一批;Map(月 → Set)= 每月一批(kbar5_deep 的母體每月換)
+if (EOD_DUMP_SYMS) {
+    let _j; try { _j = JSON.parse(fs.readFileSync(EOD_DUMP_SYMS, 'utf8')); } catch (e) { console.error(`🚨 EOD_DUMP_SYMS=${EOD_DUMP_SYMS} 讀不到:${e.message}`); process.exit(1); }
+    EOD_SYMS = Array.isArray(_j) ? new Set(_j.map(String)) : new Map(Object.entries(_j).map(([m, a]) => [m, new Set((a || []).map(String))]));
+    if (!(Array.isArray(_j) ? EOD_SYMS.size : EOD_SYMS.size)) { console.error('🚨 EOD_DUMP_SYMS 是空的'); process.exit(1); }
+}
+if (EOD_DUMP) fs.writeFileSync(EOD_DUMP, '');   // 每一次重寫
 let TRIGM = null;
 if (LIST_TRIG) {
     if (!fs.existsSync(LIST_TRIG)) { console.error(`🚨 LIST_TRIG=${LIST_TRIG} 讀不到`); process.exit(1); }
@@ -253,6 +277,8 @@ const SCALE = process.env.SCALE || '';
 const SELF = (process.env.SELF || '').split('+').filter(Boolean);
 // ⚡ featOf 用:年線乖離 / 20・60 日線只有 SELF 的 nobias* / ma20・ma60・ma2060 用得到(⚠️ 要在掃描之前定義 —— ALLFIRE 建快取時就會呼叫 featOf)
 const NEED_B240 = SELF.some(c => c.startsWith('nobias')), NEED_MA = SELF.some(c => c === 'ma20' || c === 'ma60' || c === 'ma2060');
+// 🪞 V79.4.9 nobear 只存一個 0/1(⛔ 不存 ma20 / ma60 兩個浮點數 —— 全市場 16 年多出約 1GB,近 4 年那條 4.8GB 就爆了)
+const NEED_NB = SELF.includes('nobear');
 // 🔬 V73.2.5 偵測器訊號濾網(對照表由 sig_x_playbook_probe.mjs 的 SIGX_OUT 產生)
 //   plus  = 只做「命中至少 1 個加分訊號」的
 //   minus = 排除「命中任何扣分訊號」的
@@ -1273,7 +1299,13 @@ function featOf(rows) {
         if (NEED_MA && i >= 59) { let s60 = 0; for (let k = i - 59; k <= i; k++) s60 += dd[k].c; ma60 = s60 / 60; }
         let v5 = 0; for (let k = Math.max(0, i - 4); k <= i; k++) v5 += dd[k].v;   // 🔄 5 日成交股數(TURN 用)
         const m10 = (i >= 10 && dd[i - 10].c > 0) ? (dd[i].c / dd[i - 10].c - 1) * 100 : null;   // 🚀 RANKBY=mom10(⛔ 只用 ≤ i)
-        m.set(dd[i].d, { ma20, ma60, c: dd[i].c, rank, volr: (cn && av) ? dd[i].v / (av / cn) : null, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100, b240, v5, m10 });
+        const _o = { ma20, ma60, c: dd[i].c, rank, volr: (cn && av) ? dd[i].v / (av / cn) : null, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100, b240, v5, m10 };
+        if (NOLOCK) _o.pc = dd[i - 1].c;   // 🟥 前一天收盤(NOLOCK 判「收盤停在漲停價」用;⛔ 沒開就不多存)
+        if (NEED_NB) {   // 🪞 收盤同時跌破 20 與 60 日線 = 1(同 playbook_scan selfBear;i ≥ 60 → 兩條線都算得出來)
+            let a20 = 0, a60 = 0; for (let k = i - 19; k <= i; k++) a20 += dd[k].c; for (let k = i - 59; k <= i; k++) a60 += dd[k].c;
+            _o.nb = (dd[i].c < a20 / 20 && dd[i].c < a60 / 60) ? 1 : 0;
+        }
+        m.set(dd[i].d, _o);
     }
     return m;
 }
@@ -1303,12 +1335,19 @@ const selfOk = t => {
         if (c === 'ma20' && !(f.ma20 != null && f.c > f.ma20)) return false;
         if (c === 'ma60' && !(f.ma60 != null && f.c > f.ma60)) return false;
         if (c === 'ma2060' && !(f.ma20 != null && f.c > f.ma20 && f.ma60 != null && f.c > f.ma60)) return false;
+        // 🪞 V79.4.9 nobear = App「這一檔不是空頭」(playbook_scan selfBear / 決策台 `_deckBuyOf` / auto_trade):收盤同時跌破 20 與 60 日線才擋
+        //   ⚠️ 跟 ma2060(兩條都要站上)不同:這裡只擋「兩條都破」的
+        if (c === 'nobear' && f.nb === 1) return false;
         if (c === 'nobias200' && (f.b240 != null && f.b240 > 200)) return false;
         if (c === 'nobias150' && (f.b240 != null && f.b240 > 150)) return false;
         if (c === 'nobias100' && (f.b240 != null && f.b240 > 100)) return false;
     }
     return true;
 };
+
+// 🟥 NOLOCK:訊號那天收盤停在漲停價 → 收盤競價多半買不到(⛔ 算不出前收 = 不擋,selfOk 本來就會先擋掉算不出狀態的)
+const nolockOk = t => { const f = selfFeat.get(t.sym)?.get(t.inD); return !(f && f.pc > 0 && upLimitClose(t.inD, f.c, f.pc)); };
+if (NOLOCK && !SELF.length) { console.error('🚨 NOLOCK 要配 SELF(要用個股狀態表的前收)'); process.exit(1); }
 
 // 🔄 週轉率:每檔每日 turn5 + 每日橫斷面三分位切點(只用當天以前的資料 → 零前視:turn5 用的是含當天的 5 日量,而候選是當天收盤後才決定)
 const turnOf = new Map();      // `${sym}|${d}` -> turn5(%)
@@ -1668,11 +1707,12 @@ for (let i = 0; i < days.length; i++) {
     // GATE=stock:這檔到昨天為止「任何一招」的成績(⛔ 不看今天觸發的是哪一招)
     const stockBest = GATE === 'stock' ? (sym => { let b = null; for (const k in stat) { if (k.startsWith(sym + '|')) { const s2 = stat[k]; if (s2.n >= MIN_N) { const v = s2.sum / s2.n; if (b === null || v > b.v) b = { n: s2.n, v }; } } } return b; }) : null;
     // 其餘濾網(兩種門檻共用同一份,⛔ 不各寫一份;評估順序跟以前一樣 → 不設 GATE=lb 時逐位相同)
-    const restOk = x => x.m && x.m.n >= MIN_MKT_N
+    const restOk = x => (MIN_MKT_N === 0 || (x.m && x.m.n >= MIN_MKT_N))
                   && (!FILTER.includes('liq') || (x.t.amt || 0) >= LIQ)
                   && (!FILTER.includes('conf') || (hitCnt[x.t.sym] || 0) >= CONF)
                   && indCycOk(x.t.sym, d)
-                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t) && valOk(x.t) && accrOk(x.t) && emOk(x.t) && usOk(x.t) && poolOk(x.t) && rkShamOk(x.t);
+                  && selfOk(x.t) && sigOk(x.t) && turnOk(x.t) && finOk(x.t) && valOk(x.t) && accrOk(x.t) && emOk(x.t) && usOk(x.t) && poolOk(x.t) && rkShamOk(x.t)
+                  && (!NOLOCK || nolockOk(x.t));
     // 🎯 GATE=lb:這檔「過門檻的招」照下界排前 LB_TOP 名(一天一檔算一次;同分照鍵名排 → 固定)
     const lbTop = GATE === 'lb' ? new Map() : null;
     const topOk = (sym, kS) => {
@@ -1695,7 +1735,7 @@ for (let i = 0; i < days.length; i++) {
         const _unk0 = lkStat.unk, _inx0 = lkStat.inexact;
         for (const sym of lkDirty) {
             const arr = [];
-            for (const k of (symKeys.get(sym) || [])) { const s2 = stat[k]; if (s2.n >= MIN_N) { const v = lbOf(s2.n, s2.sum, s2.sq, LB_Z); const m2 = mkt[k.slice(k.indexOf('|') + 1)]; if (v - COST > 0 && m2 && m2.n >= MIN_MKT_N) arr.push([k, v]); } }
+            for (const k of (symKeys.get(sym) || [])) { const s2 = stat[k]; if (s2.n >= MIN_N) { const v = lbOf(s2.n, s2.sum, s2.sq, LB_Z); const m2 = mkt[k.slice(k.indexOf('|') + 1)]; if (v - COST > 0 && (MIN_MKT_N === 0 || (m2 && m2.n >= MIN_MKT_N))) arr.push([k, v]); } }
             arr.sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
             if (arr.length) lkTop.set(sym, arr.slice(0, LB_TOP)); else lkTop.delete(sym);
         }
@@ -1746,6 +1786,21 @@ for (let i = 0; i < days.length; i++) {
     else if (RANKBY === 'amt') cand.sort((a, b) => (+b.t.amt || 0) - (+a.t.amt || 0));
     else if (RANKBY === 'vol' || RANKBY === 'pos') { const _k = RANKBY === 'vol' ? 'vol' : 'rank', _f = x => { const f = selfFeat.get(x.t.sym)?.get(x.t.inD); return f && f[_k] != null ? f[_k] : -Infinity; }; cand.sort((a, b) => _f(b) - _f(a)); }
     else if (RANKBY === 'mom10') { const _m = x => { const f = selfFeat.get(x.t.sym)?.get(x.t.inD); return f && f.m10 != null ? f.m10 : -Infinity; }; cand.sort((a, b) => _m(b) - _m(a)); }
+    // ⏱️ EOD_DUMP:今天的尾盤候選(已照排序)+ 指定那幾檔今天所有過門檻的招(⛔ 不管有沒有觸發)
+    if (EOD_DUMP) {
+        const row = { d, c: cand.map(x => [x.t.sym, x.t.key, +(+(x.v ?? (x.s.sum / x.s.n))).toFixed(4), x.s.n]) };
+        const _set = EOD_SYMS ? (EOD_SYMS instanceof Set ? EOD_SYMS : EOD_SYMS.get(d.slice(0, 7))) : null;
+        if (_set) {
+            const q = [];
+            for (const sym of _set) for (const k of (symKeys.get(sym) || [])) {
+                const s2 = stat[k]; if (!(s2 && s2.n >= MIN_N)) continue;
+                const v = lbOf(s2.n, s2.sum, s2.sq, LB_Z);
+                if (v - COST > 0) q.push([sym, k.slice(k.indexOf('|') + 1), +v.toFixed(4), s2.n]);
+            }
+            row.q = q;
+        }
+        fs.appendFileSync(EOD_DUMP, JSON.stringify(row) + '\n');
+    }
     const seen = new Set(live.map(x => x.sym));
     let picked = 0;
     // 📐 參考 ATR% = 今天以前最近 VP_REF 筆候選的中位數(⛔ 今天的候選在迴圈後才放進去)
@@ -2081,7 +2136,7 @@ if (SUMMARY_OUT) {
     const summary = {
         // 🔁 V79.4.5 cfg 補記 rankMin / volatMin / stopFill / maxd / warmup / div(只多欄位,結果逐位相同)——
         //   每週回測(build_backtest_edge.mjs)靠這幾欄判斷「換設定了沒」:換了那一次重新起算守門基準(⛔ 不拿舊設定的筆數比)
-        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '', bearExit: BEAR_EXIT || '', forceExit: FORCE_EXIT ? FORCE_HASH : '', ...(POOL ? { pool: POOL } : {}), ...(RKSHAM ? { rksham: RKSHAM } : {}), ...(RANKBY !== 'self' ? { rankby: RANKBY } : {}), ...(STATS_WIN ? { statsWin: STATS_WIN } : {}), ...(STATS_FROM ? { statsFrom: STATS_FROM } : {}), ...(GATE === 'lb' ? { gate: 'lb', minN: MIN_N, lbZ: LB_Z, lbTop: LB_TOP } : {}), ...(CLIFF >= 0 ? { cliff: CLIFF } : {}), ...(LISTK ? { listK: LISTK, listFired: LIST_FIRED, listBest: LIST_BEST, listSelf: LIST_SELF } : {}), ...(TRIGM ? { listTrig: path.basename(LIST_TRIG), listLoose: LIST_LOOSE ? 1 : 0 } : {}), ...(ALLFIRE ? { allFire: 1 } : {}),
+        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '', bearExit: BEAR_EXIT || '', forceExit: FORCE_EXIT ? FORCE_HASH : '', ...(POOL ? { pool: POOL } : {}), ...(RKSHAM ? { rksham: RKSHAM } : {}), ...(RANKBY !== 'self' ? { rankby: RANKBY } : {}), ...(STATS_WIN ? { statsWin: STATS_WIN } : {}), ...(STATS_FROM ? { statsFrom: STATS_FROM } : {}), ...(GATE === 'lb' ? { gate: 'lb', minN: MIN_N, lbZ: LB_Z, lbTop: LB_TOP } : {}), ...(CLIFF >= 0 ? { cliff: CLIFF } : {}), ...(LISTK ? { listK: LISTK, listFired: LIST_FIRED, listBest: LIST_BEST, listSelf: LIST_SELF } : {}), ...(TRIGM ? { listTrig: path.basename(LIST_TRIG), listLoose: LIST_LOOSE ? 1 : 0 } : {}), ...(ALLFIRE ? { allFire: 1 } : {}), ...(PARK ? { park: PARK } : {}), ...(NOLOCK ? { nolock: 1 } : {}), ...(MIN_MKT_N !== 20 ? { minMktN: MIN_MKT_N } : {}),
                rankMin: RANK_MIN, volatMin: VOLAT_MIN, stopFill: STOPFILL, maxd: MAXD, warmup: WARMUP, div: DIV_TRADES ? (NHI ? 'nhi' : 'gross') : '' },
         from, to, months: mons.length, n: taken.length, win: +(wins.length / taken.length * 100).toFixed(1),
         per: +(taken.reduce((a, t) => a + net(t), 0) / taken.length).toFixed(2), cum: Math.round(totalPnL), ret: +(totalPnL / capital * 100).toFixed(2),

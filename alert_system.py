@@ -18,6 +18,7 @@ import sys
 import json
 from pathlib import Path
 from datetime import datetime
+from lib_hotrule import hot_rule, rule_rows, rule_key   # 🔥 V79.4.9 名單排序規則(= scripts/lib_hotrule.mjs)
 
 DATA_DIR = Path(__file__).parent / "data"
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
@@ -270,16 +271,14 @@ SITE = 'https://xin7355-collab.github.io/StockAI-DB/'
 
 
 def _rank_picks(picks):
-    """跟前端 `_eodTriggerSweep` **同一套排序**:🧬 高位階高波動優先 → 保守下界。
-    ⛔ 不可改成排原始期望值 —— V72.9.2 實測那樣必定挑到「樣本少但剛好很賺」的僥倖股。
+    """跟前端 `_pbSort` **同一套排序**:只留這套規則的列 → 🧬 高位階高波動優先 → 這套規則的值。
+    🔁 V79.4.9 規則讀 lib_hotrule.py(預設照這一招的平均・每一招都算;HOT_RULE=lb 換回舊的保守下界排法)。
     ⚠️ 雲端**讀不到**使用者的自選/庫存(那存在手機 localStorage)→ 少了「自己手上的優先」那一層,
        所以推播文案要誠實說「這是全市場排序」。
     """
-    def key(p):
-        lb = p.get('lb')
-        lb = float(lb) if isinstance(lb, (int, float)) else float(p.get('exp') or 0)
-        return (int(p.get('hq') or 0), lb)
-    return sorted(picks, key=key, reverse=True)
+    rule = hot_rule(os.getenv('HOT_RULE'))
+    rows = rule_rows(picks, rule)
+    return sorted(rows, key=lambda p: (int(p.get('hq') or 0), rule_key(p, rule)), reverse=True)
 
 
 def _pick_line(p, i):
@@ -300,7 +299,7 @@ def _pick_line(p, i):
         t += f"   ▸ 漲過 *{trig}* 才算成立(昨收 {p.get('c')})\n"
     if stop:
         t += f"   ▸ 停損 {stop}\n"
-    t += f"   ▸ 這招在這檔打過 {n} 次 ・ 勝率 {w}% ・ 保守期望 {lb}%\n"
+    t += f"   ▸ 這招在這檔打過 {n} 次 ・ 勝率 {w}% ・ 平均每趟 {p.get('exp')}%\n"
     if hq:
         t += "   ▸ 🧬 高位階+高波動(實測唯一每一關都過的條件)\n"
     if bear:
