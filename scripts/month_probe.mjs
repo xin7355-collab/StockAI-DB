@@ -228,7 +228,7 @@ function main() {
     const a60 = twiiAbove60Map(DATA);
     for (const k in legs) legs[k].predict = predictTests(legs[k].table, a60);
     const res = { asof: new Date().toISOString().slice(0, 10), from: legs.pb.table[0].m, to: legs.pb.table.at(-1).m, divs: divs.length, legs,
-                  note: '現行預設(吊燈 ATR 2 倍・最長 20 天・大盤嚴格空頭不開新倉・收盤成交・含股利)17 條起點;0050 含息 + 二代健保' };
+                  note: process.env.MB_NOTE || '現行預設(吊燈 ATR 2 倍・最長 20 天・大盤嚴格空頭不開新倉・收盤成交・含股利)17 條起點;0050 含息 + 二代健保' };   // 🔥 V79.4.9 MB_NOTE = 這一輪是哪一套(⛔ 不寫死)
     for (const k in legs) {
         const L = legs[k], d = L.desc;
         console.log(`\n══ ${k === 'pb' ? '現行預設' : '現行 + 閒錢停 0050'}(${L.paths} 條起點)══`);

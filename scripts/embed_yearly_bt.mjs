@@ -11,6 +11,7 @@
  * 用法:SET=long … node scripts/yearly_bt.mjs --collect y.json && node scripts/embed_yearly_bt.mjs y.json [--proxy]
  *       V78.0.8 只換單列:node scripts/embed_yearly_bt.mjs --merge now.json lead.json(⚠️ 整張模式不會帶 👑 那幾列,整張重跑完要再 --merge 一次)
  *       V79.4.6 只換 👑 那幾列:node scripts/embed_yearly_bt.mjs --merge-lead lead.json(「⭐ 現行」那一列照舊;👑 列記進 v2.d16 = 2010 起全市場 + 股利那一批)
+ *       V79.4.9 只換「⭐ 現行」那一列:node scripts/embed_yearly_bt.mjs --merge-now now.json(👑 列一個都不動)
  */
 import fs from 'fs';
 import path from 'path';
@@ -59,6 +60,40 @@ if (process.argv[2] === '--merge-lead') {
     for (const r of leads) { const b = back.strats.find(x => x.id === r.id); if (!b || b.c.med !== r.c.med || JSON.stringify(b.y) !== JSON.stringify(r.y)) die(`讀回來對不上:${r.id}`); }
     if (back.strats.length !== Y.strats.length || !back.strats.some(s => s.id === 'base') || back.nowId !== Y.nowId) die('讀回來列數 / 現行不對');
     console.log(`✅ 已併入 ${KEY}:👑 ${leads.length} 列(現行 ${Y.nowId} 照舊,共 ${back.strats.length} 列)・交叉驗證通過`);
+    process.exit(0);
+}
+// 🔥 V79.4.9 --merge-now <現行.json>:只換「⭐ 現行」那一列(👑 列一個都不動;⛔ 不用重跑 leader_probe)
+//   舊的現行那一列改標 g='prev'、標題「⭐ 決策台現行(…)」→「⏮️ 上一任(…)」(同 --merge);v2.ids / v2.d16 把新現行補進去
+//   ⚠️ 一路滾(c)的 17 條起點是 240+5k(⛔ 不是看板的 251+3k)→ ⛔ 不跟 💰 表互比
+if (process.argv[2] === '--merge-now') {
+    const nowF = process.argv[3];
+    if (!nowF) die('用法:node scripts/embed_yearly_bt.mjs --merge-now <now.json>');
+    const N = JSON.parse(fs.readFileSync(nowF, 'utf8'));
+    const { ls, i: idx, v: Y } = readCur();
+    const YRS = Y.years;
+    const nowRow = N.strats.find(s => s.id === N.nowId);
+    if (!nowRow || N.strats.length !== 1) die(`現行.json 應該只有一列(${N.nowId}),實際 ${N.strats.length}`);
+    if (nowRow.id === Y.nowId) die(`新現行 ${nowRow.id} 跟舊的一樣 —— 要換掉同一列請用整張重嵌`);
+    const nr = slimRow(nowRow, { dv: 2 });
+    for (const y of YRS) { const a = nr.y[y]; if (a == null && !(nr.na && y < nr.na.from)) die(`${nr.id} 缺 ${y}`); if (a && a.length !== cols.length) die(`${nr.id} ${y} 欄位數不對`); }
+    if (!nr.c || nr.c.paths !== 17) die(`${nr.id} 沒有一路滾 17 條`);
+    if (!nr.yb || !nr.bc) die(`${nr.id} 沒有自己的 0050 對照(yb / bc)→ ⛔ 不可拿舊表的 0050 跟新資料比`);
+    const oldNow = Y.nowId;
+    const leads = Y.strats.filter(s => s.g === 'lead');
+    const keep = Y.strats.filter(s => s.id !== nr.id && s.g !== 'lead').map(s => s.id === oldNow ? { ...s, g: 'prev', t: s.t.replace(/^⭐\s*決策台現行\(([^)]*)\)/, '⏮️ 上一任($1)') } : s);
+    Y.strats = [nr, ...leads, ...keep];
+    Y.nowId = nr.id;
+    const v2 = Y.v2 || {};
+    // ⚠️ 舊現行那一列如果本來就在 d16 那一批(V79.4.8 的 now807 就是)→ ⛔ 不可拿掉,不然畫面會把它標成舊資料
+    Y.v2 = { ...v2, ids: [nr.id, ...((v2.ids || []).filter(id => id !== nr.id))], d16: [nr.id, ...((v2.d16 || []).filter(id => id !== nr.id))] };
+    ls[idx] = `  ${KEY}: ` + JSON.stringify(Y) + ',';
+    fs.writeFileSync(P, ls.join('\n'));
+    const back = readCur().v;
+    const b = back.strats.find(x => x.id === nr.id);
+    if (!b || b.c.med !== nr.c.med || JSON.stringify(b.y) !== JSON.stringify(nr.y)) die(`讀回來對不上:${nr.id}`);
+    if (back.nowId !== nr.id || back.strats.length !== Y.strats.length || !back.strats.some(s => s.id === 'base') || !back.strats.some(s => s.id === oldNow && s.g === 'prev')) die('讀回來列數 / 現行 / 上一任不對');
+    if (back.strats.filter(s => s.g === 'lead').length !== leads.length) die('👑 列數變了(⛔ 這個模式不可以動 👑)');
+    console.log(`✅ 已併入 ${KEY}:現行 ${oldNow} → ${nr.id}(👑 ${leads.length} 列照舊,共 ${back.strats.length} 列)・交叉驗證通過`);
     process.exit(0);
 }
 if (process.argv[2] === '--merge') {

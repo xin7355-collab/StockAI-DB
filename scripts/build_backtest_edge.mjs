@@ -35,7 +35,8 @@ export const DECK_SIG = ['syms', 'picks', 'lot', 'capital', 'exit', 'stop', 'ent
 export const deckSig = cfg => DECK_SIG.map(k => `${k}=${cfg && cfg[k] != null ? cfg[k] : ''}`).join('|');
 // 🔁 V79.4.5 絕對下限(⛔ 不管有沒有換設定都要過):2026-10-20 本機重現(同 workflow 的資料與設定)成績單 1,024 筆・47 個月、
 //   3 年訊號樣本 1,915,189 → 取約一半。⚠️ 改了成績單設定 / 訊號回測的方法,要重現一次再改這裡。
-export const FLOOR = { deckN: 500, months: 36, sigN: 900000 };
+// 🔥 V79.4.9 照新設定(GATE=lb 照平均・≥8 次・斷崖・回看 1,200 天・停 0050)本機重現:成績單 1,108 筆・49 個月(不挑 🧬 675 筆)→ 550
+export const FLOOR = { deckN: 550, months: 36, sigN: 900000 };
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 
 /** 從 index.html 抓嵌入版常數(同 embed_signal_edge 的做法:兩行都是單獨一行) */

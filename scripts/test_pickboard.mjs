@@ -93,7 +93,8 @@ const geneBest = ['lead', 'leadcash', 'glide', 'stable', 'close', 'park', 'hot',
 ok('② 🧬 模式:一句答案的金額 == 看板(近 4 年 / 16 年 / 0050 含息)', geneBest && G.hero.includes(wan(geneBest.a.fin)) && G.hero.includes(wan(geneBest.l.fin)) && G.hero.includes(wan(e50a.fin)) && G.hero.includes(wan(e50l.fin)), G.hero);
 ok('②b 一句答案寫:贏幾個起點 + 代價(中途最多賠)', /贏 \d+ \/ \d+ 個/.test(G.hero) && /代價/.test(G.hero) && /中途最多賠/.test(G.hero), G.hero);
 ok('②c 最強不是你現在用的 → 要寫「你現在用的是 🔥 高檔飆股」+ 它的金額與結論', geneBest.k === 'hot' || (/你現在用的是\s*🔥 高檔飆股/.test(G.hero) && G.hero.includes(wan(f(aiRows, 'hot').fin))), G.hero);
-ok('②d 停車 0050 是最強時要寫「自動下單還沒做」', geneBest.k !== 'park' || /自動下單還沒做/.test(G.hero), G.hero);
+// 🅿️ V79.4.9 停 0050 已是預設、自動下單也會買賣 0050 → ⛔ 不可再寫「自動下單還沒做」
+ok('②d 🅿️ ⛔ 不可再寫「自動下單還沒做」(V79.4.9 起自動下單也會停 0050)', !/自動下單還沒做/.test(G.hero + G.txt), G.hero);
 ok('②e ⭐ 決定性對照:改看板一格 → 一句答案跟著變', G.inj);
 
 // ②f 📈 V78.5.8 每年 / 每月平均(獨立重算:複利、起訖日 ÷ 365.25)
@@ -135,7 +136,8 @@ const names = G.names, emo = names.map(n => n.split(' ')[0]);
 ok('④ 名字表沒有重複的名字、也沒有重複的 emoji', new Set(names).size === names.length && new Set(emo).size === emo.length, JSON.stringify(names));
 ok('④b 最強那套叫「🔥 高檔飆股」(使用者選的),畫面上有', /🔥 高檔飆股/.test(G.txt));
 ok('④c ⛔ 畫面(選哪一套 / 回測數字 / 逐年表)不再用「決策台現行 V…」「上一任」當名字', !/決策台現行\s*V|上一任/.test(G.txt + G.pf + G.yb), (G.txt + G.pf + G.yb).match(/.{0,20}(決策台現行\s*V|上一任).{0,20}/)?.[0]);
-ok('④d 逐年成績單也改用名字表(🔥 / 🐢)', /🔥 高檔飆股/.test(G.yb) && /🐢 唐奇安長抱/.test(G.yb), G.yb.slice(0, 300));
+// 🔥 V79.4.9 逐年「現行」那一列是 🅿️(now949);舊的保守排法(now807)叫 🧊(⛔ 不再借 🔥 的名字)
+ok('④d 逐年成績單也改用名字表(🅿️ 現行 / 🧊 上一套 / 🐢)', /🅿️ 高檔飆股\+停車 0050/.test(G.yb) && /🧊 保守排法/.test(G.yb) && /🐢 唐奇安長抱/.test(G.yb), G.yb.slice(0, 300));
 
 // ⑤ 策略開關
 // 🔬 V79.1.8 使用者選「整個實測總表都顯示」→ 沒解鎖也看得到 👑;但「你現在用的」仍照你選的(🔥)
