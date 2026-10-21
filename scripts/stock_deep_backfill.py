@@ -330,6 +330,38 @@ def is_empty(obj):
     return not (obj.get('k') if 'k' in obj else obj.get('d'))
 
 
+def cum_nonempty(dd, syms):
+    """這個資料集到現在為止全部的檔:(有資料的檔數, 檔數)"""
+    ne = n = 0
+    for s in syms:
+        p = dd / f'{s}.json.gz'
+        if not p.exists():
+            continue
+        n += 1
+        try:
+            with gzip.open(p, 'rt', encoding='utf-8') as f:
+                ne += not is_empty(json.load(f))
+        except Exception:
+            pass
+    return ne, n
+
+
+def nonempty_verdict(spec, n_now, ne_now, chk_ok, cum):
+    """⑪ 「有資料的太少」守門(V79.4.7 修)。回 None = 過;字串 = 原因。
+    🚨 舊版只看「這一棒」→ 母體照代號排,最後一棒是興櫃 / ETF / 下市股(本來就沒有融資、本益比)
+       → 2026-10-21 margin 最後一棒 371/866 有資料(對表 222/222 全對)整批被刪、資料集被踢出排隊。
+    ① 有對表而且對表過關(≥ CHECK_MIN_N 檔、≥ CHECK_MIN_RATE)= 資料集本身是好的 → 不判
+    ② 這一棒低於門檻 → 改看到現在為止全部的檔(cum() 這時才去讀,⛔ 不每棒都讀)
+    ⛔ 第一棒就幾乎全空(資料集名 / 層級不對)照樣擋:那時「全部的檔」就是這一棒"""
+    mn = spec['min_nonempty']
+    if n_now < 200 or ne_now / n_now >= mn or chk_ok:
+        return None
+    ne_all, n_all = cum()
+    if n_all and ne_all / n_all >= mn:
+        return None
+    return f'有資料的只有 {ne_all}/{n_all}(累計,< {mn:.0%};這一棒 {ne_now}/{n_now})'
+
+
 # ── 對表 ─────────────────────────────────────────────────────────
 def check_price(obj, kd):
     """price10 跟 klines_deep 重疊那段(2021-01~03):每天收盤比例要是常數(klines_deep 已做過分割回調 → 比例可以 ≠1,但要一樣)。
@@ -579,14 +611,16 @@ def main():
             bad = f'寫了 {len(wrote_now)} 檔、能對表的只有 {chk_n}(< {CHECK_MIN_N})→ 對表的資料沒拿到(⛔ 沒對表 ≠ 對過了)'
         elif spec['check'] and chk_n >= CHECK_MIN_N and rate < CHECK_MIN_RATE:
             bad = f'對表 {rate:.1%} < {CHECK_MIN_RATE:.0%}(單位 / 欄位 / 接縫不對)'
-        elif len(wrote_now) >= 200 and ne / len(wrote_now) < spec['min_nonempty']:
-            bad = f'有資料的只有 {ne}/{len(wrote_now)}(< {spec["min_nonempty"]:.0%})'
+        else:
+            chk_ok = bool(spec['check']) and chk_n >= CHECK_MIN_N and rate is not None and rate >= CHECK_MIN_RATE
+            bad = nonempty_verdict(spec, len(wrote_now), ne, chk_ok, lambda: cum_nonempty(dd, syms))
         if bad:
             for s in wrote_now:
                 (dd / f'{s}.json.gz').unlink(missing_ok=True)
             print(f'❌ {key}:{bad} → 這一棒新寫的 {len(wrote_now)} 檔全部刪掉不推,⛔ 不接力這個資料集', flush=True)
             st.update({'fail': bad, 'at': TODAY})
             continue
+        st.pop('fail', None)                              # 以前被擋過、這次過了 → 舊的原因拿掉(⛔ 不留矛盾的狀態)
         st.update({'have': have, 'of': len(syms), 'chk': [chk_hit, chk_n], 'at': TODAY, 'done': have >= len(syms)})
         if stop:
             more, reason = True, stop
@@ -772,6 +806,22 @@ def selftest():
        (i_wait, i_probe))
     ok('⑩h 下市名單額度用完 → 重試 + 收工時照樣接力', 'dl_quota' in src and src.count('is_quota(dl_err)') >= 2)
     ok('⑨ workflow 有把 GH_TOKEN 傳給補挖那一步(沒有就只能退回時段表)', wtxt.count('GH_TOKEN: ${{ github.token }}') >= 2)
+    # ⑪ 「有資料的太少」守門:⛔ 只看這一棒會誤殺母體尾巴(興櫃 / ETF / 下市本來就沒有融資)
+    called = []
+    cum = lambda v: (lambda: (called.append(1), v)[1])
+    m = DATASETS['margin']
+    ok('⑪a 決定性對照:10/21 那一棒(371/866、對表 222/222)舊規則會擋', 371 / 866 < m['min_nonempty'])
+    called.clear()
+    ok('⑪a 新規則:對表過關 → 不擋,而且不用去讀全部的檔', nonempty_verdict(m, 866, 371, True, cum((0, 1))) is None and not called, called)
+    ok('⑪b 沒對表、這一棒低、但累計 1380/2548 → 不擋', nonempty_verdict(DATASETS['per'], 866, 371, False, cum((1380, 2548))) is None)
+    called.clear()
+    r = nonempty_verdict(DATASETS['per'], 900, 3, False, cum((3, 900)))
+    ok('⑪c 第一棒就幾乎全空(資料集名 / 層級不對)→ 照樣擋,原因寫累計', bool(r) and '3/900' in r and called, r)
+    called.clear()
+    ok('⑪d 這一棒過門檻 → 不讀全部的檔', nonempty_verdict(m, 866, 600, False, cum((0, 1))) is None and not called)
+    ok('⑪e 這一棒不到 200 檔 → 不判', nonempty_verdict(m, 150, 0, False, cum((0, 150))) is None)
+    ok('⑪f main 用 nonempty_verdict,⛔ 舊的只看這一棒寫法不可復活', 'nonempty_verdict(spec' in src and "ne / len(wrote_now) < spec['min_nonempty']" not in src)
+    ok('⑪g 這次過關 → 舊的 fail 原因拿掉', "st.pop('fail', None)" in src)
     print(f"\n{'✅ selftest 全過' if not bad else '❌ 失敗:' + ', '.join(bad)}")
     return 0 if not bad else 1
 
