@@ -75,17 +75,30 @@
    "revenue_month",
    "revenue_year"
   ],
-  "have": 2139,
+  "have": 2548,
+  "of": 2548,
+  "chk": [
+   0,
+   0
+  ],
+  "done": true
+ },
+ "per": {
+  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
+  "at": "2026-10-21",
+  "probe_first": "2010-01-04",
+  "cols": [
+   "dividend_yield",
+   "PER",
+   "PBR"
+  ],
+  "have": 796,
   "of": 2548,
   "chk": [
    0,
    0
   ],
   "done": false
- },
- "per": {
-  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
-  "at": "2026-10-20"
  },
  "share": {
   "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
