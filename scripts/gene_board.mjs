@@ -4,6 +4,7 @@
  *
  *   node scripts/gene_board.mjs <out.json> --eq <EQUITY_OUT 檔所在目錄> --bench <放 0050 的 DATA_DIR> [--div dividends_hist.json] [--to 2026-09-24]
  *   node scripts/gene_board.mjs --selftest
+ *   --sets hot,park  只算這幾套(V79.4.8:🐢 那一列沿用舊的時用;embed_profit_board 配 --keep-don)
  *
  * ⭐ 同一把尺(⛔ 不可拿 portfolio_backtest 的 WARMUP 240~320 那 17 條直接放上去):
  *    看板的 17 個起點 = 窗口第一天起「每隔 3 個交易日」(leader_probe STEP=3)→
@@ -106,6 +107,8 @@ if (_isMain) {
   if (process.argv.includes('--selftest')) selftest();
   const arg = k => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
   const out = process.argv[2], EQ = arg('--eq'), BENCH = arg('--bench'), DIV = arg('--div'), TO = arg('--to');
+  const ONLY = arg('--sets') ? arg('--sets').split(',') : Object.keys(SETS);
+  if (!ONLY.length || ONLY.some(k => !SETS[k])) { console.error('❌ --sets 只認 ' + Object.keys(SETS).join(',')); process.exit(1); }
   const die = m => { console.error('❌ ' + m); process.exit(1); };
   if (!out || !EQ || !BENCH) die('用法: gene_board.mjs out.json --eq DIR --bench DATA_DIR [--div dividends_hist.json] [--to YYYY-MM-DD]');
   const tw = loadPx(BENCH, '^TWII'); if (!tw) die(BENCH + ' 沒有 ^TWII.json');
@@ -115,7 +118,7 @@ if (_isMain) {
   for (const [wk, from] of Object.entries(WIN)) {
     const s0 = cal.findIndex(d => d >= from); if (s0 < 0) die('日曆沒有 ' + from);
     const want = Array.from({ length: 17 }, (_, k) => cal[s0 + 3 * k]);
-    for (const k of Object.keys(SETS)) {
+    for (const k of ONLY) {
       const fs_ = files.filter(f => f.startsWith(`${wk}_${k}_`));
       if (fs_.length !== 17) die(`${wk} ${k} 應有 17 條,實際 ${fs_.length}`);
       const paths = fs_.map(f => { const j = JSON.parse(fs.readFileSync(path.join(EQ, f), 'utf8')); return pathStats(j.rows, cal, tr, TO); });

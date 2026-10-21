@@ -104,6 +104,27 @@ if (LISTK) {
     if (_lkBad.length) { console.error(`🚨 LISTK 還沒驗過跟 ${_lkBad.join(' / ')} 一起用(名單沒有套那些濾網 → 會佔名額)→ 先單獨跑`); process.exit(1); }
     if (!['self', 'rand', 'mean'].includes(process.env.RANKBY || 'self')) { console.error(`🚨 LISTK 只支援 RANKBY=self|rand|mean(實得 ${process.env.RANKBY})`); process.exit(1); }
 }
+// 🎯 V79.4.8 重現 App 名單那道「明天漲 6% 內觸發不了就不列」(playbook_scan trigOf;引擎自己算不出來,要逐晚跑偵測器)
+//   LIST_DUMP=<檔>:每晚排好的候選(昨天沒觸發・🧬・每檔前 LB_TOP 招,照下界排)前 LIST_DUMP_N 筆寫成一行 → 給 scripts/list_trig.mjs 判
+//   LIST_TRIG=<檔>:list_trig.mjs 的產物 → 名單只留「明天漲 6% 內會觸發」的招(t=1 有觸發價 / t=2 不靠價位;LIST_LOOSE=0 只留 t=1 = auto_trade.py 的買法)
+//     ⚠️ 名單排到產物沒判過的那一筆 → 當成不能觸發(偏保守),而且記下有幾晚「可能不準」(summary.listk.inexact)
+//   ⛔ 都不進 CACHE_KEY;不設時一個字都不變
+const LIST_DUMP = (process.env.LIST_DUMP || '').trim(), LIST_DUMP_N = +(process.env.LIST_DUMP_N || 60);
+const LIST_TRIG = (process.env.LIST_TRIG || '').trim(), LIST_LOOSE = process.env.LIST_LOOSE !== '0';
+if ((LIST_DUMP || LIST_TRIG) && !LISTK) { console.error('🚨 LIST_DUMP / LIST_TRIG 要配 LISTK(名單才有意思)'); process.exit(1); }
+if (LIST_DUMP && (WARMUPS || YEARRUNS)) { console.error('🚨 LIST_DUMP 一次只跑一個起點(名單跟起點無關,跑 WARMUP=最早那個就涵蓋全部)'); process.exit(1); }
+if (LIST_DUMP && (process.env.RANKBY || 'self') !== 'self') { console.error('🚨 LIST_DUMP 只支援 RANKBY=self(App 照下界排)'); process.exit(1); }
+if (LIST_DUMP && !(Number.isInteger(LIST_DUMP_N) && LIST_DUMP_N >= 1)) { console.error(`🚨 LIST_DUMP_N=${process.env.LIST_DUMP_N} 要 ≥ 1 的整數`); process.exit(1); }
+if (LIST_DUMP) fs.writeFileSync(LIST_DUMP, '');   // 每一次重寫(⛔ 接在舊的後面 = 同一晚兩份)
+let TRIGM = null;
+if (LIST_TRIG) {
+    if (!fs.existsSync(LIST_TRIG)) { console.error(`🚨 LIST_TRIG=${LIST_TRIG} 讀不到`); process.exit(1); }
+    TRIGM = new Map();
+    // ⚠️ z = 那一晚自己就已經觸發(App 放「今天已觸發,明天買太晚」不列)→ 當成不列(引擎的 LIST_FIRED 只看得到交易快取裡的觸發,看不到持有中又觸發的)
+    for (const ln of fs.readFileSync(LIST_TRIG, 'utf8').split('\n')) { if (!ln.trim()) continue; const o = JSON.parse(ln); TRIGM.set(`${o.n}|${o.s}|${o.k}`, o.z === 1 ? 0 : o.t); }
+    if (!TRIGM.size) { console.error(`🚨 LIST_TRIG=${LIST_TRIG} 是空的`); process.exit(1); }
+    console.log(`🎯 名單只留「明天漲 6% 內會觸發」的招(list_trig 判過 ${TRIGM.size.toLocaleString()} 筆${LIST_LOOSE ? '' : ';⛔ 不靠價位的那種也不留 = 自動下單的買法'})`);
+}
 // 🧱 V79.4.7 CLIFF=N:候選交易「進場前 N 根到出場那根」之間碰到價格斷崖(lib_cliff:相鄰兩根 ×1.5 / ×0.67)→ 整筆剔除
 //   🚨 為什麼:全市場第一條 5314(2025-03)/ 6949(2026-08)都是 1 拆 20 沒還原 → 回測當成 −92%,一筆賠 13.8 萬(資料問題,不是真的賠)
 //   ⛔ 只剔窗口、不整檔剔除(同 lib_cliff 的原則);剔掉的交易也⛔ 不進每檔成績;不進 CACHE_KEY;不設時一個字都不變
@@ -230,6 +251,8 @@ const SCALE = process.env.SCALE || '';
 //   ⛔ 但同一支探針也證明「每檔股票**各有**偏好」不成立(四種狀態延續性全部 ≈ 0)
 //      → 所以只能當**全市場通用**的濾網,⛔ 不可做成「這檔喜歡爆量」那種個股標籤。
 const SELF = (process.env.SELF || '').split('+').filter(Boolean);
+// ⚡ featOf 用:年線乖離 / 20・60 日線只有 SELF 的 nobias* / ma20・ma60・ma2060 用得到(⚠️ 要在掃描之前定義 —— ALLFIRE 建快取時就會呼叫 featOf)
+const NEED_B240 = SELF.some(c => c.startsWith('nobias')), NEED_MA = SELF.some(c => c === 'ma20' || c === 'ma60' || c === 'ma2060');
 // 🔬 V73.2.5 偵測器訊號濾網(對照表由 sig_x_playbook_probe.mjs 的 SIGX_OUT 產生)
 //   plus  = 只做「命中至少 1 個加分訊號」的
 //   minus = 排除「命中任何扣分訊號」的
@@ -274,6 +297,15 @@ const MAXD = +(process.env.MAXD || 20);    // 最長持有幾個交易日
 //   RE_MAX  = 同一個原始訊號最多買回幾次(⛔ 沒有上限的話會在均線上下打乒乓,每趟都付 0.44%)
 //   ⚠️ 買回的那一筆是**獨立的一趟**,portfolio 層會照樣扣一次來回成本 → 成本代價自動被算進去。
 const REENTRY = +(process.env.REENTRY || 0);
+// 🔥 V79.4.8 ALLFIRE=1:每一天觸發都算一個候選(⛔ 原本是「一筆出場後才找下一次觸發」—— 持有期間又觸發的那幾天不見了,
+//   名單上會真的觸發的招有一半在快取裡找不到;App 每天尾盤是看「今天有沒有觸發」)
+//   ⭐ 每檔每招的成績照舊只算「一筆接一筆」那幾筆(seq=1 = App `_patternFitBacktest` 的算法);其他那幾筆只當候選
+//   ⛔ 進 CACHE_KEY(交易清單不一樣);不設時一個字都不變;⛔ 不可跟 REENTRY 一起用(買回是另一種「再進場」)
+const ALLFIRE = process.env.ALLFIRE === '1';
+if (ALLFIRE && REENTRY > 0) { console.error('🚨 ALLFIRE 不可跟 REENTRY 一起用'); process.exit(1); }
+//   ⚠️ 全市場 16 年「每天觸發都留」約 3 倍筆數(記憶體裝不下)→ 多出來的那幾筆(seq=0)只留「訊號日是 🧬」的(候選本來就要過 🧬)
+//      → 只能配 SELF 含 high + hivolat;門檻(RANK_MIN / VOLAT_MIN)進 CACHE_KEY(換門檻要重建)
+if (ALLFIRE && !(SELF.includes('high') && SELF.includes('hivolat'))) { console.error('🚨 ALLFIRE 要配 SELF 含 high + hivolat(多出來的觸發只留 🧬 那幾天)'); process.exit(1); }
 // 🎯 V74.9.3 增量檢定(穩定度探針說「哪一招」不會延續 → 那排序到底有沒有在做事?)
 //   RANKBY = self(預設,這檔自己在這招的期望值)| rand(候選裡**隨機**排序,固定種子)| mkt(全市場該型態平均 = V1 舊法)
 //   GATE   = pat(預設:這檔在**這招**扣成本後為正)| stock(這檔在**任何一招**扣成本後為正 → 不看是哪一招)
@@ -473,9 +505,11 @@ if (BEAR_EXIT) {
 const _ckStopFill = STOPFILL !== 'stop' ? { STOPFILL } : {};
 // 🐻🚨 V77.6.8 兩個強制出場一定進 key(沒設就是空物件 → key 字串跟舊版一模一樣)
 const _ckForce = { ...(BEAR_EXIT ? { BEAR_EXIT } : {}), ...(FORCE_EXIT ? { FORCE_EXIT: FORCE_HASH } : {}), ...(LUDEFER ? { LUDEFER: 1 } : {}), ...(HALFSIG ? { HALFSIG } : {}) };
-const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE, ..._ckStopFill, ..._ckForce });
+// 🔥 ALLFIRE 的交易清單不一樣(多出來的只留 🧬 那幾天 → 門檻也要進)⛔ 寫成一個變數,CACHE_KEY 那一行不可有巢狀大括號(十幾支測試用 [^}]* 抽它)
+const _ckAllFire = ALLFIRE ? { ALLFIRE: 1, AF_RANK: RANK_MIN, AF_VOL: VOLAT_MIN } : {};
+const CACHE_KEY = JSON.stringify({ n: syms.length, ENTRY, EXIT, MAXD, STOP, GAPCAP, REENTRY, RE_MAX, GRACE, ..._ckStopFill, ..._ckForce, ..._ckAllFire });
 const allTrades = [];        // {sym, key, inD, outD, ret, amt, entry, stop}
-let graceBlocked = 0, hsDaysAll = 0, hsHitsAll = 0;   // ✂️ HALFSIG:算過幾個持有日、幾天亮        // ⏳ 有幾個(交易·日)真的被寬限期擋下過(空過守門用)
+let graceBlocked = 0, hsDaysAll = 0, hsHitsAll = 0, afDrop = 0;   // ⏳ 有幾個(交易·日)真的被寬限期擋下過(空過守門用)・✂️ HALFSIG:算過幾個持有日、幾天亮・🔥 afDrop:ALLFIRE 多出來但訊號日不是 🧬 → 不留的筆數
 let cacheHit = false;
 // 🔄 V77.7.6 EXIT_SCHED=<json {日期:「出場:最長天數」}> + SCHED_CACHES=「出場:天數=快取路徑,…」
 //   使用者:「情勢改變時自動改成其它策略」→ 先回測「照排程換出場規則」會不會比固定用一套好。
@@ -604,7 +638,7 @@ for (const sym of SCAN_SYMS) {
             let i = 45;
             // 🔁 買回:出場後 N 天內收盤站回 5 日線 → 把那一天當成「訊號又成立」丟進同一條路徑
             //   ⭐ 這樣做的好處是**完全重用底下的進場價/停損/出場模擬**,⛔ 不另寫一份(同名不同義的溫床)
-            let forceEntry = -1, reLeft = 0;
+            let forceEntry = -1, reLeft = 0, seqNext = 0;   // seqNext:ALLFIRE 時「一筆接一筆」的下一筆最早從哪一天開始找
             const ma5At = j => (j >= 4 ? (C(j) + C(j - 1) + C(j - 2) + C(j - 3) + C(j - 4)) / 5 : null);
             while (i < last) {
                 let fired = false;
@@ -807,6 +841,7 @@ for (const sym of SCAN_SYMS) {
                                    ret: retAll, tm: tmHit, hf: halfDone, re: (i === forceEntry ? 1 : 0),
                                    sx, sw, sg: sx ? (stop - exitP) / entry * 100 : 0, ap: _apAt(i), fx, ...(ld ? { ld } : {}) });
                         // 🔁 排下一次買回:原始訊號才重置次數,買回那一筆繼續用剩下的額度
+                        if (a.allFire) { out[out.length - 1].seq = i >= seqNext ? 1 : 0; if (i >= seqNext) seqNext = exitIdx + 1; i++; continue; }
                         if (i !== forceEntry) reLeft = a.reMax;
                         forceEntry = -1;
                         if (a.reentry > 0 && reLeft > 0) {
@@ -828,14 +863,21 @@ for (const sym of SCAN_SYMS) {
         if (HS) out.push({ __hs: [hsDays, hsHits] });
         return out;
     }, { rows, entry: ENTRY, gapCap: GAPCAP, exit: EXIT, maxD: MAXD, stop: STOP, reentry: REENTRY, reMax: RE_MAX, grace: GRACE, stopFill: STOPFILL, luDefer: LUDEFER,
-         bearDays: BEAR_DAYS ? [...BEAR_DAYS] : null, bearMode: BEAR_EXIT, forceSell: fsell, halfSig: HALFSIG, sym });
-    for (const t of tr) { if (t.__g != null) { graceBlocked += t.__g; continue; } if (t.__hs) { hsDaysAll += t.__hs[0]; hsHitsAll += t.__hs[1]; continue; } allTrades.push({ ...t, sym }); }
+         bearDays: BEAR_DAYS ? [...BEAR_DAYS] : null, bearMode: BEAR_EXIT, forceSell: fsell, halfSig: HALFSIG, sym, ...(ALLFIRE ? { allFire: 1 } : {}) });
+    // 🔥 ALLFIRE:多出來的(seq=0)只留訊號日是 🧬 的(同 selfOk 的 high + hivolat;featOf 同一份)
+    const _af = ALLFIRE ? featOf(rows) : null;
+    for (const t of tr) {
+        if (t.__g != null) { graceBlocked += t.__g; continue; } if (t.__hs) { hsDaysAll += t.__hs[0]; hsHitsAll += t.__hs[1]; continue; }
+        if (_af && t.seq === 0) { const f = _af.get(t.inD); if (!(f && f.rank >= RANK_MIN && f.vol >= VOLAT_MIN)) { afDrop++; continue; } }
+        allTrades.push({ ...t, sym });
+    }
     if (++done % 50 === 0) {
         const el = (Date.now() - t0) / 1000;
         process.stdout.write(`\r   掃描 ${done}/${syms.length} ・${allTrades.length} 筆交易 ・${el.toFixed(0)}s`);
     }
 }
 console.log(`\r   ✅ 掃描完成:${done} 檔 ・${allTrades.length} 筆候選交易 ・${((Date.now() - t0) / 1000).toFixed(0)}s      \n`);
+if (ALLFIRE) console.log(`🔥 ALLFIRE:一筆接一筆 ${allTrades.filter(t => t.seq === 1).length.toLocaleString()} 筆 + 持有中又觸發(訊號日 🧬)${allTrades.filter(t => t.seq === 0).length.toLocaleString()} 筆;不是 🧬 的 ${afDrop.toLocaleString()} 筆沒留`);
 await browser.close();
     // 🚧 空過守門:設了 GRACE 卻一筆都沒擋到 → 那個變體沒有生效,⛔ 不可讓它看起來只是「沒差別」
     if (GRACE > 0) {
@@ -1202,43 +1244,46 @@ const outIdx = x => {
     return (x._oi = k);
 };
 
+// 🧬 一檔的個股自身狀態(日期 → {rank, vol, …});⛔ 只用該日以前的資料。selfFeat 與 ALLFIRE 建快取時的 🧬 篩選共用這一份(⛔ 不各算一份)
+function featOf(rows) {
+    const dd = rows.map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close, v: +r.volume || 0 }))
+                   .filter(r => r.d && r.c > 0);
+    const m = new Map();
+    // ⚡ V79.4.7 位階改用「計數樹」(Fenwick):視窗裡 ≤ 今天收盤的根數是同一個整數 → 逐位相同;
+    //   ⛔ 舊寫法每天往回數 250 根,全市場 16 年 = 25 億次比較(一次回測 200 秒,佔八成)
+    const _u = Float64Array.from(new Set(dd.map(r => r.c))).sort(), _U = _u.length;
+    const _ix = dd.map(r => { let lo = 0, hi = _U - 1; while (lo < hi) { const md = (lo + hi) >> 1; if (_u[md] < r.c) lo = md + 1; else hi = md; } return lo; });
+    const _bit = new Int32Array(_U + 1);
+    const _add = (q, v) => { for (q++; q <= _U; q += q & -q) _bit[q] += v; };
+    const _cnt = q => { let t = 0; for (q++; q > 0; q -= q & -q) t += _bit[q]; return t; };
+    for (let k = 0; k < Math.min(60, dd.length); k++) _add(_ix[k], 1);   // 第 60 根的視窗 = 第 0..60 根
+    for (let i = 60; i < dd.length; i++) {
+        _add(_ix[i], 1); if (i - 250 >= 0) _add(_ix[i - 250], -1);        // 樹裡剛好是第 max(0, i−249)..i 根
+        const _rk = _cnt(_ix[i]), _lo = Math.max(0, i - 249);
+        const rank = _rk / (i - _lo + 1) * 100;
+        let av = 0, cn = 0; for (let k = Math.max(0, i - 19); k <= i; k++) { av += dd[k].v; cn++; }
+        let s3 = 0; for (let k = i - 19; k <= i; k++) s3 += Math.pow((dd[k].c - dd[k - 1].c) / dd[k - 1].c, 2);
+        // 📐 乖離年線(240MA)—— V72.x 實測:向上穿越 200% 後 60 日邊際 −6.24%(中期壓力)
+        //   ⚠️ 它跟「高位階」高度重疊 → 正好用來檢查「追高」策略的盲點
+        //   ⚡ V79.4.7 年線乖離 / 20・60 日線只有 SELF 的 nobias* / ma20・ma60・ma2060 用得到 → 沒用到就不算(⛔ 改成滾動加總 —— 浮點加總順序一變就不是逐位相同)
+        let b240 = null;
+        if (NEED_B240 && i >= 239) { let sm = 0; for (let k = i - 239; k <= i; k++) sm += dd[k].c; b240 = (dd[i].c / (sm / 240) - 1) * 100; }
+        let ma20 = null, ma60 = null;
+        if (NEED_MA) { let s20 = 0; for (let k = i - 19; k <= i; k++) s20 += dd[k].c; ma20 = s20 / 20; }
+        if (NEED_MA && i >= 59) { let s60 = 0; for (let k = i - 59; k <= i; k++) s60 += dd[k].c; ma60 = s60 / 60; }
+        let v5 = 0; for (let k = Math.max(0, i - 4); k <= i; k++) v5 += dd[k].v;   // 🔄 5 日成交股數(TURN 用)
+        const m10 = (i >= 10 && dd[i - 10].c > 0) ? (dd[i].c / dd[i - 10].c - 1) * 100 : null;   // 🚀 RANKBY=mom10(⛔ 只用 ≤ i)
+        m.set(dd[i].d, { ma20, ma60, c: dd[i].c, rank, volr: (cn && av) ? dd[i].v / (av / cn) : null, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100, b240, v5, m10 });
+    }
+    return m;
+}
 // 🧬 個股自身狀態表(⛔ 只用該日以前的資料 → 無前視偏誤)
-const NEED_B240 = SELF.some(c => c.startsWith('nobias')), NEED_MA = SELF.some(c => c === 'ma20' || c === 'ma60' || c === 'ma2060');
 const selfFeat = new Map();
 if (SELF.length || TURN || VAL || RANKBY === 'mom10' || RANKBY === 'vol' || RANKBY === 'pos') {
     for (const sym of syms) {
         let rows;
         try { rows = JSON.parse(fs.readFileSync(path.join(DATA, `${sym}.json`), 'utf8')); } catch (_) { continue; }
-        const dd = rows.map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close, v: +r.volume || 0 }))
-                       .filter(r => r.d && r.c > 0);
-        const m = new Map();
-        // ⚡ V79.4.7 位階改用「計數樹」(Fenwick):視窗裡 ≤ 今天收盤的根數是同一個整數 → 逐位相同;
-        //   ⛔ 舊寫法每天往回數 250 根,全市場 16 年 = 25 億次比較(一次回測 200 秒,佔八成)
-        const _u = Float64Array.from(new Set(dd.map(r => r.c))).sort(), _U = _u.length;
-        const _ix = dd.map(r => { let lo = 0, hi = _U - 1; while (lo < hi) { const md = (lo + hi) >> 1; if (_u[md] < r.c) lo = md + 1; else hi = md; } return lo; });
-        const _bit = new Int32Array(_U + 1);
-        const _add = (q, v) => { for (q++; q <= _U; q += q & -q) _bit[q] += v; };
-        const _cnt = q => { let t = 0; for (q++; q > 0; q -= q & -q) t += _bit[q]; return t; };
-        for (let k = 0; k < Math.min(60, dd.length); k++) _add(_ix[k], 1);   // 第 60 根的視窗 = 第 0..60 根
-        for (let i = 60; i < dd.length; i++) {
-            _add(_ix[i], 1); if (i - 250 >= 0) _add(_ix[i - 250], -1);        // 樹裡剛好是第 max(0, i−249)..i 根
-            const _rk = _cnt(_ix[i]), _lo = Math.max(0, i - 249);
-            const rank = _rk / (i - _lo + 1) * 100;
-            let av = 0, cn = 0; for (let k = Math.max(0, i - 19); k <= i; k++) { av += dd[k].v; cn++; }
-            let s3 = 0; for (let k = i - 19; k <= i; k++) s3 += Math.pow((dd[k].c - dd[k - 1].c) / dd[k - 1].c, 2);
-            // 📐 乖離年線(240MA)—— V72.x 實測:向上穿越 200% 後 60 日邊際 −6.24%(中期壓力)
-            //   ⚠️ 它跟「高位階」高度重疊 → 正好用來檢查「追高」策略的盲點
-            //   ⚡ V79.4.7 年線乖離 / 20・60 日線只有 SELF 的 nobias* / ma20・ma60・ma2060 用得到 → 沒用到就不算(⛔ 改成滾動加總 —— 浮點加總順序一變就不是逐位相同)
-            let b240 = null;
-            if (NEED_B240 && i >= 239) { let sm = 0; for (let k = i - 239; k <= i; k++) sm += dd[k].c; b240 = (dd[i].c / (sm / 240) - 1) * 100; }
-            let ma20 = null, ma60 = null;
-            if (NEED_MA) { let s20 = 0; for (let k = i - 19; k <= i; k++) s20 += dd[k].c; ma20 = s20 / 20; }
-            if (NEED_MA && i >= 59) { let s60 = 0; for (let k = i - 59; k <= i; k++) s60 += dd[k].c; ma60 = s60 / 60; }
-            let v5 = 0; for (let k = Math.max(0, i - 4); k <= i; k++) v5 += dd[k].v;   // 🔄 5 日成交股數(TURN 用)
-            const m10 = (i >= 10 && dd[i - 10].c > 0) ? (dd[i].c / dd[i - 10].c - 1) * 100 : null;   // 🚀 RANKBY=mom10(⛔ 只用 ≤ i)
-            m.set(dd[i].d, { ma20, ma60, c: dd[i].c, rank, volr: (cn && av) ? dd[i].v / (av / cn) : null, vol: Math.sqrt(s3 / 20) * Math.sqrt(252) * 100, b240, v5, m10 });
-        }
-        selfFeat.set(sym, m);
+        selfFeat.set(sym, featOf(rows));
     }
     console.log(`🧬 個股自身狀態表:${selfFeat.size} 檔`);
 }
@@ -1485,10 +1530,11 @@ const byInR = new Map();
 if (EXIT_SCHED) for (const t of allTrades) { if (!dIdx.has(t.inD)) continue; let m = byInR.get(t._r); if (!m) byInR.set(t._r, m = new Map()); (m.get(t.inD) || m.set(t.inD, []).get(t.inD)).push(t); }
 const _rk = t => t._r ? t._r + '#' : '';   // 不設 EXIT_SCHED 時是空字串 → stat 鍵跟舊版一模一樣
 const byOut = new Map();     // 出場日 → 已完成交易(用來累積成績)
-for (const t of allTrades) { if (dIdx.has(t.outD)) (byOut.get(t.outD) || byOut.set(t.outD, []).get(t.outD)).push(t); }
+for (const t of allTrades) { if (ALLFIRE && t.seq === 0) continue; if (dIdx.has(t.outD)) (byOut.get(t.outD) || byOut.set(t.outD, []).get(t.outD)).push(t); }   // 🔥 ALLFIRE:成績只算一筆接一筆那幾筆(= App)
 
 // 🔁 V79.4.7 WARMUPS:以下整段每個起點跑一次(⛔ byIn / byOut 上面那幾行只讀、不用重建);單一起點時只跑一次、一個字都不變
 const _EQ0 = EQUITY_OUT, _SO0 = process.env.SUMMARY_OUT || '', _TO0 = process.env.TAKEN_OUT || '', _YEAR0 = YEAR, _YOFF0 = YEAR_OFFSET, _WU0 = WARMUP;
+const lkCache = new Map();   // ⚡ 名單快取(日索引 → 這一晚的名單),跨起點共用
 for (const _R of RUN_LIST) {
 const WARMUP = _R.w != null ? _R.w : _WU0;
 const YEAR = _R.y != null ? _R.y : _YEAR0, YEAR_OFFSET = _R.y != null ? _R.o : _YOFF0;
@@ -1502,7 +1548,7 @@ const EQUITY_OUT = _nm(_EQ0), SUMMARY_OUT = _nm(_SO0), TAKEN_OUT = _nm(_TO0);
 const stat = {};             // 「sym|key」→ {n, sum, sq}(⭐ 每檔自己的打法成績;sq = 平方和,GATE=lb 算標準差用)
 const symKeys = new Map();   // 🎯 GATE=lb:sym -> 這檔出現過的 stat 鍵(⛔ 不掃整個 stat —— 全市場 5 萬多個鍵)
 const lkTop = new Map(), lkDirty = new Set();   // 🧾 LISTK:每檔過門檻的前 LB_TOP 招(只在成績有變的那幾檔重算)
-const lkStat = { days: 0, slots: 0, hit: 0, hitDays: 0 };   // 🧾 名單幾格、名單上當天觸發幾檔、有觸發的天數
+const lkStat = { days: 0, slots: 0, hit: 0, hitDays: 0, unk: 0, inexact: 0 };   // 🧾 名單幾格、名單上當天觸發幾檔、有觸發的天數(unk / inexact = LIST_TRIG 沒判過的筆數 / 可能不準的晚數)
 const mkt = {};              // key → {n, sum}(全市場該型態,當第二層門檻)
 const swBkt = [];            // 🪟 STATS_WIN:進場日索引 → [stat 鍵, mkt 鍵, ret, …](掉出視窗時照這份扣回去)
 let swPtr = 0, swOut = 0;    // 🪟 下一個要檢查的進場日索引 / 已經扣回幾筆
@@ -1641,7 +1687,12 @@ for (let i = 0; i < days.length; i++) {
     };
     // 🧾 LISTK:昨天晚上排好的名單(前 K 檔)→ 今天只有名單上那一招觸發才算候選
     let lkRank = null;
-    if (LISTK) {
+    // ⚡ V79.4.8 名單跟起點無關(成績 / 🧬 / 昨天觸發 / LIST_TRIG 都一樣)→ WARMUPS 一次跑多個起點時,同一天的名單算一次就重複用
+    //   ⛔ RANKBY=rand 不重複用(亂數順序跟著路徑走);沒算過的那天照常算(lkDirty 沒清掉 → lkTop 一定是新的)
+    const _lkC = (LISTK && MULTI && RANKBY !== 'rand') ? lkCache.get(i) : null;
+    if (_lkC) { lkRank = _lkC.rank; lkStat.days++; lkStat.slots += _lkC.slots; lkStat.unk += _lkC.unk; if (_lkC.inexact) lkStat.inexact++; }
+    else if (LISTK) {
+        const _unk0 = lkStat.unk, _inx0 = lkStat.inexact;
         for (const sym of lkDirty) {
             const arr = [];
             for (const k of (symKeys.get(sym) || [])) { const s2 = stat[k]; if (s2.n >= MIN_N) { const v = lbOf(s2.n, s2.sum, s2.sq, LB_Z); const m2 = mkt[k.slice(k.indexOf('|') + 1)]; if (v - COST > 0 && m2 && m2.n >= MIN_MKT_N) arr.push([k, v]); } }
@@ -1652,18 +1703,32 @@ for (let i = 0; i < days.length; i++) {
         const prevD = i > 0 ? days[i - 1] : null;
         const fired = new Set();
         if (LIST_FIRED && prevD) for (const t of (byIn.get(prevD) || [])) fired.add(`${_rk(t)}${t.sym}|${t.key}`);
-        const ent = [];
+        const ent = [], dumpEnt = (LIST_DUMP && prevD) ? [] : null;
+        let umax = -Infinity;   // 🎯 LIST_TRIG:list_trig 沒判過的那幾筆裡排序值最高的(比名單最後一名高 = 這一晚可能不準)
         for (const [sym, arr] of lkTop) {
             if (LIST_SELF && !(prevD && selfOk({ sym, inD: prevD }))) continue;
             let rem = LIST_FIRED ? arr.filter(([k]) => !fired.has(k)) : arr;
+            if (dumpEnt) for (const [k, v] of rem) dumpEnt.push([k, v, sym]);
+            if (TRIGM) rem = rem.filter(([k, v]) => {
+                const t = TRIGM.get(`${prevD}|${k}`);
+                if (t === undefined) { lkStat.unk++; const rv = RANKBY === 'mean' ? stat[k].sum / stat[k].n : v; if (rv > umax) umax = rv; return false; }
+                return t === 1 || (t === 2 && LIST_LOOSE);
+            });
             if (LIST_BEST) rem = rem.slice(0, 1);
             for (const [k, v] of rem) ent.push([k, RANKBY === 'mean' ? stat[k].sum / stat[k].n : v, sym]);
+        }
+        if (dumpEnt) {
+            dumpEnt.sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+            fs.appendFileSync(LIST_DUMP, JSON.stringify({ d, n: prevD, e: dumpEnt.slice(0, LIST_DUMP_N).map(([k, v, sym]) => [sym, k.slice(k.indexOf('|') + 1), +v.toFixed(6)]) }) + '\n');
         }
         if (RANKBY === 'rand') { ent.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)); for (let k = ent.length - 1; k > 0; k--) { const j = Math.floor(_rnd() * (k + 1)); [ent[k], ent[j]] = [ent[j], ent[k]]; } }
         else ent.sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
         lkRank = new Map(); const _syms = new Set();
-        for (const [k, , sym] of ent) { if (!_syms.has(sym)) { if (_syms.size >= LISTK) break; _syms.add(sym); } lkRank.set(k, lkRank.size); }
+        let _lastV = Infinity;
+        for (const [k, v, sym] of ent) { if (!_syms.has(sym)) { if (_syms.size >= LISTK) break; _syms.add(sym); } lkRank.set(k, lkRank.size); _lastV = v; }
+        if (TRIGM && umax > -Infinity && (_syms.size < LISTK || umax > _lastV)) lkStat.inexact++;
         lkStat.days++; lkStat.slots += _syms.size;
+        if (MULTI && RANKBY !== 'rand') lkCache.set(i, { rank: lkRank, slots: _syms.size, unk: lkStat.unk - _unk0, inexact: lkStat.inexact > _inx0 });
     }
     const cand = GATE === 'lb'
         ? todays
@@ -2016,7 +2081,7 @@ if (SUMMARY_OUT) {
     const summary = {
         // 🔁 V79.4.5 cfg 補記 rankMin / volatMin / stopFill / maxd / warmup / div(只多欄位,結果逐位相同)——
         //   每週回測(build_backtest_edge.mjs)靠這幾欄判斷「換設定了沒」:換了那一次重新起算守門基準(⛔ 不拿舊設定的筆數比)
-        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '', bearExit: BEAR_EXIT || '', forceExit: FORCE_EXIT ? FORCE_HASH : '', ...(POOL ? { pool: POOL } : {}), ...(RKSHAM ? { rksham: RKSHAM } : {}), ...(RANKBY !== 'self' ? { rankby: RANKBY } : {}), ...(STATS_WIN ? { statsWin: STATS_WIN } : {}), ...(STATS_FROM ? { statsFrom: STATS_FROM } : {}), ...(GATE === 'lb' ? { gate: 'lb', minN: MIN_N, lbZ: LB_Z, lbTop: LB_TOP } : {}), ...(CLIFF >= 0 ? { cliff: CLIFF } : {}), ...(LISTK ? { listK: LISTK, listFired: LIST_FIRED, listBest: LIST_BEST, listSelf: LIST_SELF } : {}),
+        cfg: { syms: syms.length, picks: PICKS_PER_DAY, lot: LOT, capital: CAPITAL, exit: EXIT, stop: STOP, entry: ENTRY, self: SELF.join('+'), filter: FILTER.join('+'), turn: TURN || '', fin: FIN || '', bearExit: BEAR_EXIT || '', forceExit: FORCE_EXIT ? FORCE_HASH : '', ...(POOL ? { pool: POOL } : {}), ...(RKSHAM ? { rksham: RKSHAM } : {}), ...(RANKBY !== 'self' ? { rankby: RANKBY } : {}), ...(STATS_WIN ? { statsWin: STATS_WIN } : {}), ...(STATS_FROM ? { statsFrom: STATS_FROM } : {}), ...(GATE === 'lb' ? { gate: 'lb', minN: MIN_N, lbZ: LB_Z, lbTop: LB_TOP } : {}), ...(CLIFF >= 0 ? { cliff: CLIFF } : {}), ...(LISTK ? { listK: LISTK, listFired: LIST_FIRED, listBest: LIST_BEST, listSelf: LIST_SELF } : {}), ...(TRIGM ? { listTrig: path.basename(LIST_TRIG), listLoose: LIST_LOOSE ? 1 : 0 } : {}), ...(ALLFIRE ? { allFire: 1 } : {}),
                rankMin: RANK_MIN, volatMin: VOLAT_MIN, stopFill: STOPFILL, maxd: MAXD, warmup: WARMUP, div: DIV_TRADES ? (NHI ? 'nhi' : 'gross') : '' },
         from, to, months: mons.length, n: taken.length, win: +(wins.length / taken.length * 100).toFixed(1),
         per: +(taken.reduce((a, t) => a + net(t), 0) / taken.length).toFixed(2), cum: Math.round(totalPnL), ret: +(totalPnL / capital * 100).toFixed(2),
@@ -2026,7 +2091,7 @@ if (SUMMARY_OUT) {
     if (PARK) summary.park = Math.round(parkPnL);   // 🅿️ 停泊 0050 的損益(⛔ 不混進 cum)
     if (STATS_WIN || STATS_FROM) summary.stats = { win: STATS_WIN || null, from: STATS_FROM || null, dropped: swOut };   // 🪟 V79.4.6 每檔成績回看視窗(dropped = 掉出視窗被扣回的筆數)
     if (CLIFF >= 0) summary.cliff = { back: CLIFF, dropped: cliffSeen.dropped, syms: cliffSeen.syms.size, unk: cliffSeen.unk };   // 🧱 V79.4.7
-    if (LISTK) summary.listk = { k: LISTK, days: lkStat.days, slots: lkStat.slots, hit: lkStat.hit, hitDays: lkStat.hitDays };   // 🧾 V79.4.7 名單幾格 / 幾格當天觸發 / 有觸發的天數
+    if (LISTK) summary.listk = { k: LISTK, days: lkStat.days, slots: lkStat.slots, hit: lkStat.hit, hitDays: lkStat.hitDays, ...(TRIGM ? { trig: 1, loose: LIST_LOOSE ? 1 : 0, unk: lkStat.unk, inexact: lkStat.inexact } : {}) };   // 🧾 V79.4.7 名單幾格 / 幾格當天觸發 / 有觸發的天數
     if (VOLCAP > 0) summary.volcap = { pct: VOLCAP, mode: VOLCAP_MODE, hit: vcHit, cut: vcCut, skip: vcSkip };
     if (EQ_BLOCK) summary.eqgate = { rule: EQGATE, days: EQ_BLOCK.size, blocked: eqBlk };
     if (ROTATE) summary.rot = { mode: ROTATE, n: rotN, minHold: ROT_MIN };
@@ -2045,7 +2110,7 @@ console.log(`   ① **倖存者偏誤**:data/ 只有「現在還在市場」的�
 console.log(`   ② 用收盤價成交,沒有滑價;實際掛單不一定買得到那個價`);
 console.log(`   ③ 回測窗口只有這段期間,而這段是什麼行情會決定結果(加權 ${pct(twiiRet)})`);
 console.log(`   ④ 每天最多 ${PICKS_PER_DAY} 檔、同一檔不重複開倉、錢用完就跳過(錯過 ${skipped} 次)`);
-if (LISTK) console.log(`   🧾 照前一晚名單買(前 ${LISTK} 檔):${lkStat.days} 天 ・名單平均 ${(lkStat.slots / Math.max(1, lkStat.days)).toFixed(2)} 檔 ・名單上當天觸發 ${lkStat.hit} 次 ・有觸發的天數 ${lkStat.hitDays}(${(lkStat.hitDays / Math.max(1, lkStat.days) * 100).toFixed(1)}%)`);
+if (LISTK) console.log(`   🧾 照前一晚名單買(前 ${LISTK} 檔):${lkStat.days} 天 ・名單平均 ${(lkStat.slots / Math.max(1, lkStat.days)).toFixed(2)} 檔 ・名單上當天觸發 ${lkStat.hit} 次 ・有觸發的天數 ${lkStat.hitDays}(${(lkStat.hitDays / Math.max(1, lkStat.days) * 100).toFixed(1)}%)${TRIGM ? ` ・🎯 只留明天會觸發的(沒判過 ${lkStat.unk} 筆 ・可能不準 ${lkStat.inexact} 晚)` : ''}`);
 console.log(`   ⑤ 選股用 walk-forward(只用當下已知的成績)→ **沒有**前視偏誤,但也因此比「事後最佳化」難看`);
 console.log('═'.repeat(74));
 }   // 🔁 WARMUPS 迴圈結束

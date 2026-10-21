@@ -5,6 +5,7 @@
  *   node scripts/embed_profit_board.mjs <board.json> <board2.json> <small.json> [--to 2026-09-24] [--gene gene.json]
  *   node scripts/embed_profit_board.mjs --gene gene.json   ← 只換 🧬 那幾列(V78.1.0,gene_board.mjs 產物)
  *   … board.json board2.json small.json --keep-gene  ← V79.4.6 👑 換新、🧬 那幾列沿用舊的並標 `old`(畫面寫「舊資料」;0050 起點對不上就 exit 1)
+ *   node scripts/embed_profit_board.mjs --gene gene.json --keep-don  ← V79.4.8 🔥 / 🅿️ 換新、🐢(已換掉的那套)沿用舊的並標 `old`
  *     board.json  = ETFS=… 那一輪(`etf[窗口]` 每檔 17 個起點的含息中位 / 最差)
  *     board2.json = CAPITAL=1000000 的四種領頭羊做法(`cap.fin / worstFin`)
  *     small.json  = 10萬/30萬/100萬 × 每月加碼 × 三種打法(`cap`)
@@ -18,13 +19,14 @@ import fs from 'fs';
 const toArg = (() => { const i = process.argv.indexOf('--to'); return i > 0 ? process.argv[i + 1] : null; })();
 const geneArg = (() => { const i = process.argv.indexOf('--gene'); return i > 0 ? process.argv[i + 1] : null; })();
 const [bf, b2f, sf] = process.argv.slice(2).filter((a, i, A) => !a.startsWith('--') && !['--to', '--gene', '--leadcash'].includes(A[i - 1]));
-const keepGene = process.argv.includes('--keep-gene');
+const keepGene = process.argv.includes('--keep-gene'), keepDon = process.argv.includes('--keep-don');
 const RE_LINE = /^  _PROFIT_BOARD: \{.*\},$/m;
 // 🔥 V78.1.0 把 🧬 那幾套(scripts/gene_board.mjs 產物)加進看板:grp 'gene'
 //   ⭐ 交叉驗證:gene 那邊每個起點的 0050 中位 == 看板的 0050(同一組起點),差超過 0.3% → exit 1(⛔ 不嵌半套)
 function geneRows(G, wk, from, e50fin, die) {
   const sets = G.sets.filter(s => s.from === from);
-  if (sets.length !== 3) die(`${wk} 🧬 做法應為 3 種,實際 ${sets.length}`);
+  const want = keepDon ? 2 : 3;
+  if (sets.length !== want || (keepDon && sets.some(s => s.k === 'don'))) die(`${wk} 🧬 做法應為 ${want} 種${keepDon ? '(hot / park;🐢 沿用舊的)' : ''},實際 ${sets.length}`);
   return sets.map(s => {
     if (Math.abs(s.b0050fin - e50fin) / e50fin > 0.003) die(`${wk} ${s.k} 的 0050 ${s.b0050fin} ≠ 看板 ${e50fin}(起點不同?)`);
     return { k: s.k, n: s.name, grp: 'gene', fin: s.fin, worst: s.worst, mdd: s.mdd, beat: s.beat, yrBeat: s.yrBeat, yrs: s.yrs };
@@ -39,7 +41,9 @@ if (geneArg && !bf) {
   const G = JSON.parse(fs.readFileSync(geneArg, 'utf8'));
   for (const [wk, W] of Object.entries(cur.wins)) {
     const e50 = W.rows.find(r => r.k === '0050'); if (!e50 || e50.late) die0(wk + ' 沒有 0050');
-    W.rows = W.rows.filter(r => r.grp !== 'gene').concat(geneRows(G, wk, W.from, e50.fin, die0));
+    const oldDon = keepDon ? W.rows.filter(r => r.grp === 'gene' && r.k === 'don').map(r => ({ ...r, old: r.old || 1 })) : [];
+    if (keepDon && oldDon.length !== 1) die0(`${wk} --keep-don 但看板上沒有舊的 🐢 那一列`);
+    W.rows = W.rows.filter(r => r.grp !== 'gene').concat(geneRows(G, wk, W.from, e50.fin, die0), oldDon);
   }
   cur.geneSrc = G.src;
   const ln = '  _PROFIT_BOARD: ' + JSON.stringify(cur) + ',';

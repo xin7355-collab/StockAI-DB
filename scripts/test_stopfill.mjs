@@ -31,7 +31,7 @@ for (const [k, v] of [['STOPFILL', 'clsoe'], ['SIZING', 'volpr']]) {
 }
 const SRC = strip(readFileSync('scripts/portfolio_backtest.mjs', 'utf8'));
 // ⓒ
-ok(/const _ckStopFill = STOPFILL !== 'stop' \? \{ STOPFILL \} : \{\};/.test(SRC) && /CACHE_KEY = JSON\.stringify\(\{[^}]*GRACE, \.\.\._ckStopFill(, \.\.\._ckForce)? \}\)/.test(SRC), 'ⓒ STOPFILL 只在非預設時進 CACHE_KEY');
+ok(/const _ckStopFill = STOPFILL !== 'stop' \? \{ STOPFILL \} : \{\};/.test(SRC) && /CACHE_KEY = JSON\.stringify\(\{[^}]*GRACE, \.\.\._ckStopFill(, \.\.\._ck\w+)* \}\)/.test(SRC), 'ⓒ STOPFILL 只在非預設時進 CACHE_KEY');
 // ⓓ
 ok(/const money = t => \(t\._amt \|\| LOT\) \* net\(t\) \/ 100;/.test(SRC) && !/const money = t => LOT \*/.test(SRC), 'ⓓ 累積損益用每一筆自己的投入金額');
 // ⓔ
