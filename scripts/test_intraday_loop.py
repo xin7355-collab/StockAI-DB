@@ -117,6 +117,17 @@ for k, s in srcs.items():
        int(re.search(r'timeout-minutes: (\d+)', s).group(1)) >= 270,
        re.search(r'timeout-minutes: (\d+)', s).group(1))
 
+# ⑦g V79.4.8 快照的時限要蓋得住「Worker 台北 08:00 叫醒 → 13:30 收盤那拍 + 90 秒」(10/21 實測 300 分在 13:02 被砍)
+_wk = open(os.path.join(ROOT, 'cloud-worker', 'worker.js'), encoding='utf-8').read()
+_br = _wk[_wk.find("event.cron === '0 0 * * 1-5'"):]
+_br = _br[:_br.find('} else')]
+ok('⑦g Worker 還是在台北 08:00 那一輪叫醒快照(改了叫醒時間要回來重算下面那條)',
+   "ghDispatch(env, 'intraday-quotes')" in _br, _br[:200])
+_tq = int(re.search(r'timeout-minutes: (\d+)', srcs['live_snapshot']).group(1))
+_need = (13 * 60 + 31.5) - 8 * 60 + 3          # 08:00 → 13:31:30 + 下載 / 部署約 3 分
+ok(f'⑦g live_snapshot 時限 {_tq} 分 ≥ {_need:.1f} 分(08:00 叫醒也拿得到 13:30 收盤那拍)且 ≤ 360(GitHub 上限)',
+   _need <= _tq <= 360, _tq)
+
 # tick_flow 專屬:累積型 tick_hist 不可在切分支時弄丟
 tb = srcs['tick_flow']
 ok('⑧ tick_flow 的累積歷史每輪都要還原(⛔ 否則每一拍都從零開始)',

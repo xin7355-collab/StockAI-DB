@@ -59,10 +59,12 @@ permissions:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    # ⏱️ 窗口 08:44~13:30(台北)= 4 小時 46 分 → 給 300 分(5 小時)含收尾緩衝。
-    #    ⚠️ 改 `intraday_window.py` 的 PROFILES['quotes'] 要同步改這裡,否則會被 GitHub 中途砍掉。
-    #    (GitHub 單一 job 上限 6 小時,300 分還有餘裕。)
-    timeout-minutes: 300
+    # ⏱️ V79.4.8 300 → 345 分(使用者 2026-10-21 選的):Cloudflare Worker 台北 08:00 就叫醒這支(不是 08:44 的 cron),
+    #    窗口一路到 13:30 收盤那拍 + 90 秒 → 08:00~13:31:30 = 331.5 分 + 下載 / 部署 → 300 分會在 13:02 被砍
+    #    (10/21 實測:00:00:52 開跑、05:02 cancelled,13:30 收盤那拍沒拿到)。
+    #    ⚠️ 改 `intraday_window.py` 的 PROFILES['quotes'] 或 worker 叫醒的時間要同步改這裡(test_intraday_loop ⑦g 釘住)。
+    #    (GitHub 單一 job 上限 360 分。)
+    timeout-minutes: 345
     steps:
       - name: 📥 下載程式碼
         uses: actions/checkout@v4

@@ -143,6 +143,7 @@ done
 ⚠️ Cloudflare 免費版 cron 上限 5 個而**已用滿** → 新功能一律掛在既有 handler 裡,⛔ 別想加第 6 個。
 ⚠️ 需要使用者設 `GH_DISPATCH_TOKEN`(步驟在 `cloud-worker/README.md`);沒設就整段跳過。
 ⏰ **V79.1.9 daily_miner 也由 worker 台北 17:00 叫醒**(`minerKick`,event `daily-miner`,只在 gh-pages screener 還不是今天才發);`playbook_scan` 跟 schedule / repository_dispatch / workflow_dispatch 那輪(⛔ push 不跟)。測試 `scripts/test_miner_kick.mjs`。
+📶 **V79.4.8 永豐帳號每天流量上限 524 MB(同一個帳號的 `auto_trade.py` 也吃這個額度)**:10/21 13:03 就用完 —— 逐筆內外盤每 10 分鐘把前 80 檔「開盤到現在的全部逐筆」重抓(每拍 3.5 → 26 MB,一天 449 MB = 86%)→ 13:30 收盤那拍快照與逐筆都沒有。→ 逐筆改**只抓上一拍之後的**(`tick_flow_miner.collect_ticks`:狀態存 /tmp、起點往前多抓 1 秒再用時間戳去重、每拍輪流抽一檔整天重抓對帳、對不上當天改回整天重抓;`TICK_INCR=0` 逃生門)+ 快照 timeout 300 → **345**(worker 08:00 叫醒要撐到 13:31:30)。⛔ 新增任何會用 Shioaji 的盤中採礦之前,先算一天要吃多少流量(log 每拍都印 `📶 今日流量`)。測試 `scripts/test_tick_incr.py` / `test_intraday_loop ⑦g`。
 🌅 **V79.3.4 macro_cron 也由 worker 台北 08:00 叫醒**(`macroKick`,event `macro-cron`,只在 gh-pages `macro_risk.updated` 還早於最近一次美股收盤(紐約 16:00 = 夏令 20:00 / 冬令 21:00 UTC)才發)+ 跟車多掛 `news_premarket`(07:46~10:40 飄,備援)—— 以前最後一輪都在台北 20:30~02:30,盤前體檢永遠是美股盤中的數字。前端 `_macroPreUsClose` 灰字說明;`_lastUsCloseMs` index / worker 同一條規則。測試 `scripts/test_macro_kick.mjs`。
 
 ---
@@ -668,6 +669,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
    + **`python3 scripts/check_dup_def.py`**(同一個檔案裡重複定義同名函式 → Python 用最後那個,前面等於死碼 — V74.6.9 新增,實跑踩到才寫的)
    + **`python3 scripts/check_env_default.py`**(🔧 workflow 從 `inputs.*` 餵的環境變數,Python 端必須 `or 預設` —— 排程觸發時是**空字串**不是不存在;V75.1.3 新增,pe_band 四個週日零產出就是這個坑,V74.7.0 intraday_probe 是第一次)
    + **`python3 scripts/test_intraday_relay.py`**(🛟 盤中即時檔「留不留得住」—— 2026-09-10 新增:兩支盤中 workflow 都要**也推 data 分支**,⭐ 開真的 git repo 實跑 yaml 裡抽出來的 `deploy()`,而且有**決定性對照組**(拿掉那段必須重現「daily_miner 洗版後消失」)
+   + **`python3 scripts/test_tick_incr.py`**(📶 V79.4.8 逐筆只抓上一拍之後的新成交:假行情商重放一整天 27 拍,每一拍 == 整天重抓、流量 < 25%(實測 9.5%);區間查詢不含起點那一秒 / 漏筆 / 丟例外 / 時間戳差 8 小時 / 換日 / 新進榜都要對;⭐ 決定性對照:拿掉多抓的 1 秒 + 拿掉每拍對帳 → 一定算錯)
    + **`node scripts/test_idxparse.mjs`**(🎣 pro.html 從**正式網站的壓縮版** index.html 解析常數 —— V77.6.7 新增:讀 `origin/gh-pages:index.html`,舊 regex 在那份上六個全滅,而讀原檔的測試永遠綠) 🗜️ V79.1.3 起①改成自己用 `build_min.mjs` 壓一份來驗(gh-pages 是哪種形狀要看最後誰部署:deploy_pages 壓縮、daily_miner 推原檔),同時擋住「壓縮在部署時默默失敗」(V79.0.0~V79.1.2 抽樣清單留著已刪的 `_brokerEl`,每次退回未壓縮版、workflow 全綠)
    + **`node scripts/test_ovtruth.mjs`**(總覽/決策台講的話跟回測一致 —— V77.6.7:量堆積包住現價 / 不挑 🧬 少賺幾 % 讀常數 / 閒錢停 0050 數字 / 16 年輸 0050 含息那句;V77.6.8 ⑤ 決策台「看錯要不要先跑」七問全部讀常數、空頭清倉沒跑完要明說)
    + **`node scripts/test_ussig.mjs`**(🇺🇸 V77.7.7 回測引擎 `USSIG=<kind>|sham:<kind>` 外部逐日訊號候選層濾網:⛔ 不進 CACHE_KEY、不設時逐位相同;全部日期放行 → 筆數同基準;缺鍵 = 剔除並計數 ⛔ 不放行;⭐ 反向注入(只放行基準裡賠錢那幾筆)成績必低於基準;sham 通過率對齊實測、固定種子;對照表讀不到 / <100 鍵 → exit 1。真跑引擎約 3 分)
