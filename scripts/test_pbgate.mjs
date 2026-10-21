@@ -81,7 +81,7 @@ ok('ⓢ6 兩種門檻共用同一份其餘濾網 restOk(⛔ 各寫一份)', (COD
 const DATA = path.join(ROOT, 'data');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pbgate-'));
 const base = { ...process.env, LOT: '150000', SELF: 'high+hivolat', RANK_MIN: '75', VOLAT_MIN: '60', EXIT: 'chand2', MAXD: '20', FILTER: 'bear60', STOPFILL: 'close', WARMUP: '240' };
-for (const k of ['STATS_WIN', 'STATS_FROM', 'GATE', 'LB_Z', 'LB_TOP', 'MIN_N', 'CLIFF', 'RANKBY', 'WARMUPS', 'WARMUP', 'VOLCAP', 'EQGATE', 'ROTATE', 'COST_X', 'PARK', 'DIV', 'DIV_TRADES', 'EQUITY_OUT', 'YEAR', 'EMERGING', 'BENCH0050']) delete base[k];
+for (const k of ['STATS_WIN', 'STATS_FROM', 'GATE', 'LB_Z', 'LB_TOP', 'MIN_N', 'CLIFF', 'RANKBY', 'WARMUPS', 'WARMUP', 'YEARRUNS', 'YEAR_OFFSET', 'VOLCAP', 'EQGATE', 'ROTATE', 'COST_X', 'PARK', 'DIV', 'DIV_TRADES', 'EQUITY_OUT', 'YEAR', 'EMERGING', 'BENCH0050']) delete base[k];
 const run = (tag, extra, dataDir, maxSyms = '25', cache = 'c.json') => {
     const r = spawnSync(process.execPath, ['--max-old-space-size=3000', FILE, maxSyms, '2'], { env: { ...base, DATA_DIR: dataDir, TRADES_CACHE: path.join(tmp, cache), ...extra, SUMMARY_OUT: path.join(tmp, `s_${tag}.json`), EQUITY_OUT: path.join(tmp, `e_${tag}.json`), TAKEN_OUT: path.join(tmp, `t_${tag}.json`) }, encoding: 'utf8', timeout: 420000, maxBuffer: 64 << 20 });
     const rd = f => { try { return JSON.parse(fs.readFileSync(path.join(tmp, f), 'utf8')); } catch (_) { return null; } };
@@ -155,6 +155,35 @@ else {
         }
         ok(`ⓦ ${nm}:WARMUPS=${WS.join(',')} 一次跑 == 三個起點各自單獨跑(成績・淨值・成交逐位相同)`, same, why);
     }
+    // ⓨ YEARRUNS:一次跑幾個「逐年模式」== 各自 YEAR=… YEAR_OFFSET=… 單獨跑(成績單逐位相同);那一年一筆都沒有 → 寫 n=0 換下一個(⛔ 整支結束)
+    const tw0 = JSON.parse(fs.readFileSync(path.join(DATA, '^TWII.json'), 'utf8')).map(r => String(r.date).replace(/\//g, '-').slice(0, 4));
+    const yrs = [...new Set(tw0)].filter(y => tw0.filter(x => x === y).length > 200).slice(-2);
+    const YR = [`${yrs[0]}:0`, `${yrs[0]}:5`, `${yrs[1]}:0`];
+    const YM = spawnSync(process.execPath, ['--max-old-space-size=3000', FILE, '25', '2'], { env: { ...base, DATA_DIR: DATA, TRADES_CACHE: path.join(tmp, 'c.json'), YEARRUNS: YR.join(','), SUMMARY_OUT: path.join(tmp, 'ys_{Y}_{O}.json') }, encoding: 'utf8', timeout: 420000, maxBuffer: 64 << 20 });
+    let ysame = YM.status === 0 && yrs.length === 2, ywhy = `status=${YM.status} yrs=${yrs} ${(YM.stderr || '').slice(-200)}`;
+    for (const yo of YR) {
+        if (!ysame) break;
+        const [y, o] = yo.split(':');
+        run(`y${y}_${o}`, { YEAR: y, YEAR_OFFSET: o }, DATA);
+        const a = (() => { try { return fs.readFileSync(path.join(tmp, `ys_${y}_${o}.json`), 'utf8'); } catch (_) { return null; } })(), b = (() => { try { return fs.readFileSync(path.join(tmp, `s_y${y}_${o}.json`), 'utf8'); } catch (_) { return null; } })();
+        if (!a || a !== b) { ysame = false; ywhy = `${yo}:${a ? (b ? '不同' : '單獨跑沒檔') : '一次跑沒檔'}`; }
+    }
+    ok(`ⓨ YEARRUNS=${YR.join(',')} 一次跑 == 三次 YEAR / YEAR_OFFSET 單獨跑(成績單逐位相同)`, ysame, ywhy);
+    const Y0 = spawnSync(process.execPath, ['--max-old-space-size=3000', FILE, '25', '2'], { env: { ...base, DATA_DIR: DATA, TRADES_CACHE: path.join(tmp, 'c.json'), RANK_MIN: '101', YEARRUNS: `${yrs[0]}:0,${yrs[1]}:0`, SUMMARY_OUT: path.join(tmp, 'y0_{Y}_{O}.json') }, encoding: 'utf8', timeout: 420000, maxBuffer: 64 << 20 });
+    const y0ok = [yrs[0], yrs[1]].every(y => { try { return JSON.parse(fs.readFileSync(path.join(tmp, `y0_${y}_0.json`), 'utf8')).n === 0; } catch (_) { return false; } });
+    ok('ⓨ2 那一年一筆都沒進場(位階門檻 101)→ 每一年都寫出 n=0、整支 rc=0(⛔ 第一年就結束)', Y0.status === 0 && y0ok, `status=${Y0.status} ${(Y0.stderr || '').slice(-200)}`);
+    // ⓨ4 yearly_bt YB_BATCH=1(一個策略一個程序)== 一格一格跑(逐年成績單每一格逐位相同)
+    const YB = path.join(ROOT, 'scripts', 'yearly_bt.mjs');
+    const ybEnv = o => ({ ...base, DATA_DIR: DATA, YB_SYMS: '25', ONLY: 'now807', YEARS_RUN: yrs.join(','), OUT_DIR: path.join(tmp, `yb_${o}`), CACHE_DIR: path.join(tmp, 'ybc'), LANES: '2', ...(o === 'b' ? { YB_BATCH: '1' } : {}) });
+    const YB1 = spawnSync(process.execPath, [YB], { env: ybEnv('s'), encoding: 'utf8', timeout: 900000, maxBuffer: 64 << 20 });
+    const YB2 = spawnSync(process.execPath, [YB], { env: ybEnv('b'), encoding: 'utf8', timeout: 900000, maxBuffer: 64 << 20 });
+    const fs1 = (() => { try { return fs.readdirSync(path.join(tmp, 'yb_s')).filter(f => f.endsWith('.json')).sort(); } catch (_) { return []; } })();
+    const fs2 = (() => { try { return fs.readdirSync(path.join(tmp, 'yb_b')).filter(f => f.endsWith('.json')).sort(); } catch (_) { return []; } })();
+    const ybSame = YB1.status === 0 && YB2.status === 0 && fs1.length === yrs.length * 5 && JSON.stringify(fs1) === JSON.stringify(fs2)
+        && fs1.every(f => fs.readFileSync(path.join(tmp, 'yb_s', f), 'utf8') === fs.readFileSync(path.join(tmp, 'yb_b', f), 'utf8'));
+    ok(`ⓨ4 yearly_bt YB_BATCH=1 == 一格一格跑(${fs1.length} 格逐位相同)`, ybSame, `rc ${YB1.status}/${YB2.status} 檔 ${fs1.length}/${fs2.length} ${(YB2.stderr || YB1.stderr || '').slice(-200)}`);
+    const YW = spawnSync(process.execPath, [FILE, '25', '2'], { env: { ...base, DATA_DIR: DATA, TRADES_CACHE: path.join(tmp, 'c.json'), YEARRUNS: `${yrs[0]}:0`, WARMUPS: '240' }, encoding: 'utf8', timeout: 120000 });
+    ok('ⓨ3 YEARRUNS 跟 WARMUPS 同時設 → exit 1', YW.status === 1 && /不可跟 WARMUPS/.test(YW.stderr || ''), (YW.stderr || '').slice(-200));
     const MB = spawnSync(process.execPath, [FILE, '25', '2'], { env: { ...base, DATA_DIR: DATA, TRADES_CACHE: path.join(tmp, 'c.json'), WARMUPS: '240,262', SUMMARY_OUT: path.join(tmp, 'nobrace.json') }, encoding: 'utf8', timeout: 120000 });
     ok('ⓦ2 WARMUPS 時輸出檔名沒有 {W} → exit 1(⛔ 後面的起點蓋掉前面的)', MB.status === 1 && /檔名要有 \{W\}/.test(MB.stderr || ''), (MB.stderr || '').slice(-200));
     const MV = spawnSync(process.execPath, [FILE, '25', '2'], { env: { ...base, DATA_DIR: DATA, TRADES_CACHE: path.join(tmp, 'c.json'), WARMUPS: '240,262', VOLCAP: '5' }, encoding: 'utf8', timeout: 120000 });

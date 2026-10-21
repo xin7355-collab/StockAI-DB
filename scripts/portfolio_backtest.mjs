@@ -55,13 +55,20 @@ const WARMUP = Math.max(60, +(process.env.WARMUP || 240) || 240);   // 暖身:�
 //   輸出檔名要有 {W}(SUMMARY_OUT / EQUITY_OUT / TAKEN_OUT 換成各自的起點);⛔ 有跨起點累積狀態、還沒驗過逐位相同的開關一律擋下
 const WARMUPS = (process.env.WARMUPS || '').trim();
 if (WARMUPS && !/^\d+(,\d+)*$/.test(WARMUPS)) { console.error(`🚨 WARMUPS=${WARMUPS} 不認得(要用逗號隔開的整數)`); process.exit(1); }
-const MULTI = !!WARMUPS;
-const WARMUP_LIST = MULTI ? WARMUPS.split(',').map(x => Math.max(60, +x || 0)) : [WARMUP];
+//   YEARRUNS=2011:0,2011:5,…:同理,一次跑好幾個「逐年模式」(YEAR:YEAR_OFFSET),檔名用 {Y} / {O};⛔ 跟 WARMUPS / YEAR 不可同時設
+const YEARRUNS = (process.env.YEARRUNS || '').trim();
+if (YEARRUNS && !/^\d{4}:\d+(,\d{4}:\d+)*$/.test(YEARRUNS)) { console.error(`🚨 YEARRUNS=${YEARRUNS} 不認得(要 2024:0,2024:5 這種)`); process.exit(1); }
+if (YEARRUNS && (WARMUPS || (process.env.YEAR || '').trim())) { console.error('🚨 YEARRUNS 不可跟 WARMUPS / YEAR 同時設'); process.exit(1); }
+const MULTI = !!WARMUPS || !!YEARRUNS;
+const RUN_LIST = WARMUPS ? WARMUPS.split(',').map(x => ({ w: Math.max(60, +x || 0) }))
+    : YEARRUNS ? YEARRUNS.split(',').map(x => { const [y, o] = x.split(':'); return { y, o: +o }; })
+    : [{ w: WARMUP }];
 if (MULTI) {
     const _bad = ['YEAR', 'VOLCAP', 'EQGATE', 'ACCR', 'ROTATE', 'EXIT_SCHED', 'USSIG', 'LUDEFER', 'CAL', 'ADD', 'HALFSIG', 'SCALE', 'POOL', 'RKSHAM', 'VAL', 'FIN', 'TURN', 'EMERGING', 'BEAR_EXIT', 'FORCE_EXIT'].filter(k => (process.env[k] || '').trim() && process.env[k] !== 'off');
     if ((process.env.SIZING || 'equal') !== 'equal') _bad.push('SIZING');
-    if (_bad.length) { console.error(`🚨 WARMUPS 還沒驗過跟 ${_bad.join(' / ')} 一起用會不會逐位相同 → 先一個起點一個起點單獨跑`); process.exit(1); }
-    for (const k of ['SUMMARY_OUT', 'EQUITY_OUT', 'TAKEN_OUT']) if (process.env[k] && !process.env[k].includes('{W}')) { console.error(`🚨 WARMUPS 時 ${k} 檔名要有 {W}(每個起點各寫一份)`); process.exit(1); }
+    if (_bad.length) { console.error(`🚨 ${WARMUPS ? 'WARMUPS' : 'YEARRUNS'} 還沒驗過跟 ${_bad.join(' / ')} 一起用會不會逐位相同 → 先一次一次單獨跑`); process.exit(1); }
+    const _ph = WARMUPS ? ['{W}'] : ['{Y}', '{O}'];
+    for (const k of ['SUMMARY_OUT', 'EQUITY_OUT', 'TAKEN_OUT']) if (process.env[k] && !_ph.every(h => process.env[k].includes(h))) { console.error(`🚨 ${WARMUPS ? 'WARMUPS' : 'YEARRUNS'} 時 ${k} 檔名要有 ${_ph.join(' 和 ')}(每一次各寫一份)`); process.exit(1); }
 }
 // 🚨 V2 改法(600 檔首跑抓到的真問題):第一版用「**全市場**型態平均期望值」排序,
 //   結果 576 筆裡有 **479 筆全押同一招**(站上長黑K壓力,每趟只有 +0.30%)——
@@ -1011,16 +1018,18 @@ const BENCH0050 = process.env.BENCH0050 || path.join(DATA, '0050.json');
 const YEAR = String(process.env.YEAR || '');
 const YEAR_OFFSET = Math.max(0, +(process.env.YEAR_OFFSET || 0) || 0);
 let YR_FROM = WARMUP, YR_TO = days.length - 1;
-if (YEAR) {
-    if (!/^\d{4}$/.test(YEAR)) { console.error(`🚨 YEAR=${YEAR} 不認得(要四位數年份)`); process.exit(1); }
-    const _y0 = days.findIndex(d => d.startsWith(YEAR));
-    if (_y0 < 0) { console.error(`🚨 YEAR=${YEAR}:指數日期軸裡沒有這一年(${days[0]} ~ ${days[days.length - 1]})`); process.exit(1); }
-    let _y1 = _y0; while (_y1 + 1 < days.length && days[_y1 + 1].startsWith(YEAR)) _y1++;
-    YR_FROM = _y0 + YEAR_OFFSET; YR_TO = _y1;
-    if (YR_FROM > YR_TO) { console.error(`🚨 YEAR_OFFSET=${YEAR_OFFSET} 超過 ${YEAR} 年的交易日數`); process.exit(1); }
-    if (YR_FROM < 60) { console.error(`🚨 ${YEAR} 年太早:指數日期軸只有 ${YR_FROM} 天歷史(< 60),每檔門檻沒辦法累積`); process.exit(1); }
-    console.log(`📅 逐年模式:${YEAR} 年 ・${days[YR_FROM]} ~ ${days[YR_TO]} 之間買進 ・本金 ${CAPITAL.toLocaleString()} 元從 ${days[YR_FROM]} 起算`);
-}
+const _yrRange = (Y, OFF) => {   // 逐年模式的區間(單次跑與 YEARRUNS 共用,⛔ 不各寫一份)
+    if (!/^\d{4}$/.test(Y)) { console.error(`🚨 YEAR=${Y} 不認得(要四位數年份)`); process.exit(1); }
+    const _y0 = days.findIndex(d => d.startsWith(Y));
+    if (_y0 < 0) { console.error(`🚨 YEAR=${Y}:指數日期軸裡沒有這一年(${days[0]} ~ ${days[days.length - 1]})`); process.exit(1); }
+    let _y1 = _y0; while (_y1 + 1 < days.length && days[_y1 + 1].startsWith(Y)) _y1++;
+    const from = _y0 + OFF, to = _y1;
+    if (from > to) { console.error(`🚨 YEAR_OFFSET=${OFF} 超過 ${Y} 年的交易日數`); process.exit(1); }
+    if (from < 60) { console.error(`🚨 ${Y} 年太早:指數日期軸只有 ${from} 天歷史(< 60),每檔門檻沒辦法累積`); process.exit(1); }
+    console.log(`📅 逐年模式:${Y} 年 ・${days[from]} ~ ${days[to]} 之間買進 ・本金 ${CAPITAL.toLocaleString()} 元從 ${days[from]} 起算`);
+    return { from, to };
+};
+if (YEAR) ({ from: YR_FROM, to: YR_TO } = _yrRange(YEAR, YEAR_OFFSET));
 if (PARK === '0050' || PARK === 'idle') {
     const _raw = JSON.parse(fs.readFileSync(BENCH0050, 'utf8'))
         .map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), c: +r.close })).filter(r => r.c > 0);
@@ -1174,8 +1183,8 @@ const outIdx = x => {
 };
 
 // 🧬 個股自身狀態表(⛔ 只用該日以前的資料 → 無前視偏誤)
-const selfFeat = new Map();
 const NEED_B240 = SELF.some(c => c.startsWith('nobias')), NEED_MA = SELF.some(c => c === 'ma20' || c === 'ma60' || c === 'ma2060');
+const selfFeat = new Map();
 if (SELF.length || TURN || VAL || RANKBY === 'mom10') {
     for (const sym of syms) {
         let rows;
@@ -1459,13 +1468,17 @@ const byOut = new Map();     // 出場日 → 已完成交易(用來累積成績
 for (const t of allTrades) { if (dIdx.has(t.outD)) (byOut.get(t.outD) || byOut.set(t.outD, []).get(t.outD)).push(t); }
 
 // 🔁 V79.4.7 WARMUPS:以下整段每個起點跑一次(⛔ byIn / byOut 上面那幾行只讀、不用重建);單一起點時只跑一次、一個字都不變
-const _EQ0 = EQUITY_OUT, _SO0 = process.env.SUMMARY_OUT || '', _TO0 = process.env.TAKEN_OUT || '';
-for (const _W of WARMUP_LIST) {
-const WARMUP = _W;
-if (MULTI) { YR_FROM = _W; YR_TO = days.length - 1; _seed = _SEED0; console.log(`\n🔁 WARMUPS:起點 ${_W}(${days[_W] || '?'})`); }
-const EQUITY_OUT = MULTI ? _EQ0.replace('{W}', _W) : _EQ0;
-const SUMMARY_OUT = MULTI ? _SO0.replace('{W}', _W) : _SO0;
-const TAKEN_OUT = MULTI ? _TO0.replace('{W}', _W) : _TO0;
+const _EQ0 = EQUITY_OUT, _SO0 = process.env.SUMMARY_OUT || '', _TO0 = process.env.TAKEN_OUT || '', _YEAR0 = YEAR, _YOFF0 = YEAR_OFFSET, _WU0 = WARMUP;
+for (const _R of RUN_LIST) {
+const WARMUP = _R.w != null ? _R.w : _WU0;
+const YEAR = _R.y != null ? _R.y : _YEAR0, YEAR_OFFSET = _R.y != null ? _R.o : _YOFF0;
+if (MULTI) {
+    _seed = _SEED0;
+    if (_R.y != null) { console.log(`\n🔁 YEARRUNS:${YEAR} 年 +${YEAR_OFFSET}`); ({ from: YR_FROM, to: YR_TO } = _yrRange(YEAR, YEAR_OFFSET)); }
+    else { YR_FROM = WARMUP; YR_TO = days.length - 1; console.log(`\n🔁 WARMUPS:起點 ${WARMUP}(${days[WARMUP] || '?'})`); }
+}
+const _nm = f => !MULTI ? f : f.replace('{W}', WARMUP).replace('{Y}', YEAR).replace('{O}', YEAR_OFFSET);
+const EQUITY_OUT = _nm(_EQ0), SUMMARY_OUT = _nm(_SO0), TAKEN_OUT = _nm(_TO0);
 const stat = {};             // 「sym|key」→ {n, sum, sq}(⭐ 每檔自己的打法成績;sq = 平方和,GATE=lb 算標準差用)
 const symKeys = new Map();   // 🎯 GATE=lb:sym -> 這檔出現過的 stat 鍵(⛔ 不掃整個 stat —— 全市場 5 萬多個鍵)
 const mkt = {};              // key → {n, sum}(全市場該型態,當第二層門檻)
@@ -1738,7 +1751,7 @@ if (PARK && parkOf && parkSh > 0) {
 if (!taken.length && YEAR && SUMMARY_OUT) {
     // 📅 逐年模式:那一年一筆都沒做 = 一個誠實的結果(⛔ 不可當成錯誤、⛔ 不可靜默消失)
     fs.writeFileSync(SUMMARY_OUT, JSON.stringify({ year: YEAR, offset: YEAR_OFFSET, from: days[YR_FROM], to: days[YR_TO], n: 0, pnl: 0, ret: 0, skipped, note: '這一年一筆都沒進場' }));
-    console.log(`📅 ${YEAR} 年一筆都沒進場 → 已寫出 n=0`); process.exit(0);
+    console.log(`📅 ${YEAR} 年一筆都沒進場 → 已寫出 n=0`); if (MULTI) continue; process.exit(0);
 }
 if (!taken.length) { console.log('❌ 暖身後一筆都沒進場(門檻太嚴或樣本太小)'); process.exit(1); }
 if (SIZING === 'volpar' || SIZING === 'volsham') {

@@ -225,13 +225,36 @@ for (const s of RUN_STRATS) { const c = cacheName(s); if (!byCache.has(c)) byCac
 const CONT = process.argv.includes('--cont');
 if (CONT && !process.env.CONT_DIR) { console.error('🚨 --cont 要 CONT_DIR'); process.exit(1); }
 if (CONT) fs.mkdirSync(process.env.CONT_DIR, { recursive: true });
-const groups = [...byCache.entries()].map(([c, ss]) => ({ c, jobs: CONT
-    ? ss.flatMap(s => CONT_WARMUPS.map(w => ({ s, w })))
-    : ss.flatMap(s => RUN_YEARS.filter(y => !_skipYear(s, y)).flatMap(y => OFFSETS.map(o => ({ s, y, o })))) }));
+// 🔁 V79.4.7 YB_BATCH=1:同一個策略的全部「年 × 起點」(--cont 時是 17 個起點)交給**一個**程序跑(引擎 YEARRUNS / WARMUPS:
+//   載入一次、每一格跟單獨跑逐位相同,test_pbgate ⓨ / ⓦ)→ 全市場一個策略 80 格約 70 分 → 幾分鐘。
+//   引擎說「還沒驗過」(那個策略用了有跨次累積狀態的開關)→ 那個策略自動退回一格一格跑;其他失敗 → 每一格都寫 .err。⛔ 不設時一個字都不變。
+const BATCH = process.env.YB_BATCH === '1';
+const cellsOf = s => CONT ? CONT_WARMUPS.map(w => ({ s, w })) : RUN_YEARS.filter(y => !_skipYear(s, y)).flatMap(y => OFFSETS.map(o => ({ s, y, o })));
+const groups = [...byCache.entries()].map(([c, ss]) => ({ c, jobs: BATCH ? ss.map(s => ({ s, batch: cellsOf(s) })) : ss.flatMap(cellsOf) }));
 // 已經有快取的組排後面(先把要產快取的慢工作分出去)
 groups.sort((a, b) => fs.existsSync(path.join(CACHE, a.c)) - fs.existsSync(path.join(CACHE, b.c)));
+const fileOf = ({ s, y, o, w }) => w != null ? path.join(process.env.CONT_DIR, `${s.id}_${w}.json`) : path.join(OUT, `${s.id}_${y}_${o}.json`);
+const runBatch = ({ s, batch }, c) => new Promise(res => {
+    const todo = batch.filter(j => !fs.existsSync(fileOf(j)));
+    if (!todo.length) return res(0);
+    const env = { ...process.env, ...envOf(s), TRADES_CACHE: path.join(CACHE, c) };
+    for (const k of ['YEAR', 'YEAR_OFFSET', 'WARMUPS', 'YEARRUNS']) delete env[k];
+    if (CONT) Object.assign(env, { WARMUPS: todo.map(j => j.w).join(','), SUMMARY_OUT: path.join(process.env.CONT_DIR, `${s.id}_{W}.json`) });
+    else Object.assign(env, { YEARRUNS: todo.map(j => `${j.y}:${j.o}`).join(','), SUMMARY_OUT: path.join(OUT, `${s.id}_{Y}_{O}.json`) });
+    const p = spawn('node', [`--max-old-space-size=${YB_HEAP}`, path.join(ROOT, 'scripts/portfolio_backtest.mjs'), YB_SYMS, String(s.picks || BASE_PICKS)], { env, cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+    let log = ''; p.stdout.on('data', d => { log += d; if (log.length > 40000) log = log.slice(-40000); }); p.stderr.on('data', d => { log += d; });
+    p.on('close', async code => {
+        if (code === 0) return res(0);
+        if (/還沒驗過/.test(log)) {   // 這個策略用了不能一次跑的開關 → 一格一格跑(⛔ 不算失敗)
+            console.log(`↩️ ${s.id}:引擎說不能一次跑 → 改一格一格跑(${todo.length} 格)`);
+            let rc = 0; for (const j of todo) rc = (await runOne(j, c)) || rc; return res(rc);
+        }
+        for (const j of todo) if (!fs.existsSync(fileOf(j))) fs.writeFileSync(fileOf(j).replace(/\.json$/, '.err'), log);
+        console.error(`❌ ${s.id} 一次跑 ${todo.length} 格 rc=${code}`); res(code);
+    });
+});
 const runOne = ({ s, y, o, w }, c) => new Promise(res => {
-    const f = w != null ? path.join(process.env.CONT_DIR, `${s.id}_${w}.json`) : path.join(OUT, `${s.id}_${y}_${o}.json`);
+    const f = fileOf({ s, y, o, w });
     if (fs.existsSync(f)) return res(0);
     const env = w != null
         ? { ...process.env, ...envOf(s), WARMUP: String(w), TRADES_CACHE: path.join(CACHE, c), SUMMARY_OUT: f }
@@ -246,7 +269,7 @@ let done = 0; const total = groups.reduce((a, g) => a + g.jobs.length, 0); const
 const ready = new Map();
 for (const g of groups) { let res; const p = new Promise(r => { res = r; }); ready.set(g.c, { p, res, built: fs.existsSync(path.join(CACHE, g.c)) }); if (fs.existsSync(path.join(CACHE, g.c))) res(); }
 const queue = [...groups.map(g => ({ ...g.jobs[0], c: g.c, builder: true })), ...groups.flatMap(g => g.jobs.slice(1).map(j => ({ ...j, c: g.c })))];
-const lane = async () => { while (queue.length) { const j = queue.shift(); const R = ready.get(j.c); if (!j.builder) await R.p; await runOne(j, j.c); if (j.builder) R.res(); done++; if (done % 50 === 0) console.log(`… ${done}/${total}(${((Date.now() - t0) / 60000).toFixed(1)} 分)`); } };
+const lane = async () => { while (queue.length) { const j = queue.shift(); const R = ready.get(j.c); if (!j.builder) await R.p; await (j.batch ? runBatch(j, j.c) : runOne(j, j.c)); if (j.builder) R.res(); done++; if (done % 50 === 0) console.log(`… ${done}/${total}(${((Date.now() - t0) / 60000).toFixed(1)} 分)`); } };
 await Promise.all(Array.from({ length: LANES }, () => lane()));
 const errs = fs.readdirSync(CONT ? process.env.CONT_DIR : OUT).filter(f => f.endsWith('.err'));
 console.log(`✅ 跑完 ${done}/${total} ・失敗 ${errs.length} 格${errs.length ? '(看 OUT_DIR/*.err)' : ''}・${((Date.now() - t0) / 60000).toFixed(1)} 分`);
