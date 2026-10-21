@@ -29,7 +29,7 @@ const ck = (CODE.match(/const CACHE_KEY = JSON\.stringify\(\{[^}]*\}\)/) || ['']
 ok('ⓐs CACHE_KEY ⛔ 沒有 STATS_WIN / STATS_FROM', ck && !/STATS_WIN|STATS_FROM/.test(ck), ck);
 ok('ⓒs 進場日判視窗(calIdx(t.inD)),⛔ 不是出場日', /const swI = STATS_WIN \? calIdx\(t\.inD\) : -1;/.test(CODE) && /if \(STATS_WIN && swI < i - STATS_WIN\) continue;/.test(CODE));
 ok('ⓒs2 每天把進場日掉出視窗的扣回去(stat 與 mkt 都扣)', /for \(; swPtr < i - STATS_WIN; swPtr\+\+\)/.test(CODE) && /s\.n--; s\.sum = s\.n \? s\.sum - b\[q \+ 2\] : 0;/.test(CODE) && /m\.n--; m\.sum = m\.n \? m\.sum - b\[q \+ 2\] : 0;/.test(CODE));
-ok('ⓒs3 扣回要在挑候選之前(⛔ 不然今天還用到掉出視窗的成績)', (() => { const a = CODE.indexOf('for (; swPtr < i - STATS_WIN; swPtr++)'), b = CODE.indexOf('const cand = todays'); return a > 0 && b > a; })());
+ok('ⓒs3 扣回要在挑候選之前(⛔ 不然今天還用到掉出視窗的成績)', (() => { const a = CODE.indexOf('for (; swPtr < i - STATS_WIN; swPtr++)'), b = CODE.indexOf('const cand = '); return a > 0 && b > a; })());
 ok('ⓓs 設錯格式要 exit 1', /STATS_WIN=\$\{_swRaw\} 不認得[^\n]*process\.exit\(1\)/.test(CODE) && /STATS_FROM=\$\{STATS_FROM\} 不認得[^\n]*process\.exit\(1\)/.test(CODE));
 
 // ── 執行期 ──

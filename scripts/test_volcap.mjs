@@ -27,7 +27,7 @@ const ck = (CODE.match(/const CACHE_KEY = JSON\.stringify\(\{[^}]*\}\)/) || ['']
 ok('ⓐs CACHE_KEY ⛔ 沒有 VOLCAP / EQGATE', ck && !/VOLCAP|EQGATE/.test(ck), ck);
 ok('ⓑs 上限分母 = 訊號日成交額 t.amt(億 → 元)', /const lim = \(\+t\.amt \|\| 0\) \* 1e8 \* VOLCAP \/ 100;/.test(CODE));
 ok('ⓒs 零前視:判第 k 天用 v[k - 1]', /const y = v\[k - 1\];/.test(CODE) && /for \(let j = k - N; j < k; j\+\+\)/.test(CODE) && /for \(let j = 0; j < k; j\+\+\) pk = Math\.max/.test(CODE));
-const iGate = CODE.indexOf('if (EQ_BLOCK && EQ_BLOCK.has(d))'), iExit = CODE.indexOf('live = live.filter(x => outIdx(x) > i);'), iCand = CODE.indexOf('const cand = todays');
+const iGate = CODE.indexOf('if (EQ_BLOCK && EQ_BLOCK.has(d))'), iExit = CODE.indexOf('live = live.filter(x => outIdx(x) > i);'), iCand = CODE.indexOf('const cand = ');
 ok('ⓒs2 閘門在「出場」之後、「挑候選」之前(只擋開新倉)', iExit > 0 && iGate > iExit && iGate < iCand, `${iExit} ${iGate} ${iCand}`);
 ok('ⓔs 一天都沒暫停 → exit 1', /一天都沒暫停[^\n]*\n?[^\n]*process\.exit\(1\)|一天都沒暫停.*process\.exit\(1\)/.test(CODE));
 
