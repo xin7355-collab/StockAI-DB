@@ -8685,7 +8685,6 @@ ${list}
         { v: 'V78.4.1', d: ['🧹 內部整理與小修正(畫面與判斷不變)'] },
         { v: 'V78.4.0', d: ['📰 大盤分頁新增「收盤」:今天大盤、三大法人、哪幾族漲跌最多、主動式 ETF 換了什麼、你的持股今天賺賠一頁看完;切「本週回顧」看這週', '👀 決策台多一段「差一點沒入選」:哪幾檔卡在哪一關(位階、波動、名次、空頭)', '📲 收盤後的 Telegram 摘要多三行大盤,週五多一段本週回顧'] },
         { v: 'V78.3.9', d: ['🧹 散戶救星第二輪全文檢查:券商的勝率排行(高手券商、券商勝率、勝率王、神秘黑馬、分點歷史勝率)搬到產業作戰室;分點集中、大盤風險偏高、夜盤先漲那幾句只講怎麼看'] },
-        { v: 'V78.3.8', d: ['🔒 散戶救星網址後面加參數也打不開研究清單了(只有產業作戰室打得開)'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -48447,7 +48446,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         if (kind !== 'html') return `每週自動回測 ${B.run_at}(訊號 ${Object.keys(B.signal.table).length} 個、A 級 ${B.signal.grades.A})${dl.length ? `;跟嵌入版有 ${dl.length} 項不同:${dTxt}(⛔ 未自動換預設)` : ';跟嵌入版一致'}。`;
         return `<div class="text-[10px] text-gray-400 mt-1 leading-snug" data-btedge="live" data-btdiff="${dl.length}">📅 <b class="text-gray-200">最新一次自動回測 ${this._dW(B.run_at) || B.run_at}</b>(每週,同一套配置重跑):${g ? `🧬 <b>${wan(g.cum)}</b>・勝率 ${g.win}%・中途最多賠 ${Math.abs(g.dd)}%・${g.n} 筆(${g.from}~${g.to})` : '成績單這輪沒跑'};K 線訊號 ${Object.keys(B.signal.table).length} 個、A 級 ${B.signal.grades.A} 個。
             ${dl.length ? `<br>🔔 <b class="text-amber-300">跟 App 內嵌的成績有 ${dl.length} 項不同</b>:${this._escHtml(dTxt)} —— <b>⛔ 沒有自動換預設</b>(要換得過「八道關卡」那套,由人判)。` : '<br>✅ 跟 App 內嵌的成績一致(等級、累積、回撤都在容許範圍內)。'}
-            <span class="text-gray-500">K 線訊號:App 判斷一律用內嵌的 16 年表,每週這份只看最近幾年(窗口不同,等級不一樣是正常的);成績單上面那組仍是嵌入版(${T.from}~${T.to}),每週資料多幾天、深歷史接縫也會動,差一點是正常的。</span></div>`;
+            <span class="text-gray-500">K 線訊號:App 判斷一律用內嵌的 16 年表,每週這份只看最近幾年(窗口不同,等級不一樣是正常的);成績單上面那組仍是嵌入版(${T.from}~${T.to}),每週資料多幾天、深歷史接縫也會動,差一點是正常的。⚠️ V79.4.8 起嵌入版是<b>全市場 + 照 App 實際怎麼買</b>重算的;每週自動回測還是只抽 600 檔、用舊的買法 → 兩邊的金額本來就對不起來,只看每週那份「跟上週比」的變化。</span></div>`;
     },
     async _loadPlaybookEdge() {
         if (this._pbEdge !== undefined) return this._pbEdge;
