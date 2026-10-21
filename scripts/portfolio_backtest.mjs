@@ -120,6 +120,35 @@ if (ACCR && !['hi', 'sham'].includes(ACCR)) { console.error(`🚨 ACCR=${ACCR} �
 //    存起來重用,後面每試一個行事曆假設就從 3 分鐘變成 3 秒。
 //    ⛔ 參數不同一定要重掃(檔案內有 meta,對不上會拒絕載入)。
 const TRADES_CACHE = process.env.TRADES_CACHE || '';
+// 🗃️ V79.4.7 TRADES_CACHE=*.ndjson:一行一筆(第一行 = 表頭 {key[, shard, syms, allSyms]})——
+//   🔥 改跑全市場(陷阱 #55)後 16 年的交易約 730MB,超過 node 單一字串上限 512MB → .json 的 readFileSync('utf8') / JSON.stringify 會直接炸;
+//   .json 舊格式照舊(不設時一個字都不變)。
+// 🧩 SHARD=k/K:只掃 syms 裡 `i % K === k` 那幾檔、寫一份分片快取就結束(⛔ 不跑模擬);K 份到齊用 scripts/merge_trades_cache.mjs 合併,
+//   合併後跟單一建逐筆相同(test_tradecache 決定性對照)。⛔ 分片那份不可直接拿來跑。⛔ SHARD 不進 CACHE_KEY。
+const TC_ND = TRADES_CACHE.endsWith('.ndjson');
+const SHARD = (process.env.SHARD || '').trim();
+let SHARD_K = 0, SHARD_N = 0;
+if (SHARD) {
+    const m = SHARD.match(/^(\d+)\/(\d+)$/);
+    if (!m || +m[2] < 2 || +m[1] >= +m[2]) { console.error(`🚨 SHARD=${SHARD} 不認得(要 k/K,0 ≤ k < K、K ≥ 2)`); process.exit(1); }
+    if (!TC_ND) { console.error('🚨 SHARD 一定要配 TRADES_CACHE=*.ndjson(分片快取要合併,⛔ 沒有快取等於白掃)'); process.exit(1); }
+    SHARD_K = +m[1]; SHARD_N = +m[2];
+}
+function readNdCache(f) {
+    const buf = fs.readFileSync(f); let a = 0, head = null; const trades = [];
+    while (a < buf.length) {
+        let b = buf.indexOf(10, a); if (b < 0) b = buf.length;
+        if (b > a) { const o = JSON.parse(buf.toString('utf8', a, b)); if (head === null) head = o; else trades.push(o); }
+        a = b + 1;
+    }
+    return { ...(head || {}), trades };
+}
+function writeNdCache(f, head, trades) {
+    const tmp = f + '.tmp', fd = fs.openSync(tmp, 'w'); let chunk = JSON.stringify(head) + '\n';
+    for (const t of trades) { chunk += JSON.stringify(t) + '\n'; if (chunk.length > 1 << 20) { fs.writeSync(fd, chunk); chunk = ''; } }
+    if (chunk) fs.writeSync(fd, chunk);
+    fs.closeSync(fd); fs.renameSync(tmp, f);
+}
 // ⏳ V75.1.1 GRACE=N —— 「進場後前 N 個交易日不執行移動/趨勢類出場」的**通用**寬限期。
 //   ⭐ 為什麼要有這支:V74.4.8 第一批實跑時,唐奇安寫錯的變體 `don10w`(進場後前 10 天
 //     只看停損)是**全表第一 +708 萬**,比正確版的 don10 還多 81 萬。程式碼註解當時就寫下
@@ -418,7 +447,12 @@ if (EXIT_SCHED) {
 const schedRuleOf = d => { if (!schedDays) return ''; let lo = 0, hi = schedDays.length - 1, a = 0; while (lo <= hi) { const m = (lo + hi) >> 1; if (schedDays[m] <= d) { a = m; lo = m + 1; } else hi = m - 1; } return schedRules[a]; };
 if (!EXIT_SCHED && TRADES_CACHE && fs.existsSync(TRADES_CACHE)) {
     try {
-        const j = JSON.parse(fs.readFileSync(TRADES_CACHE, 'utf8'));
+        const j = TC_ND ? readNdCache(TRADES_CACHE) : JSON.parse(fs.readFileSync(TRADES_CACHE, 'utf8'));
+        if (j.shard) {   // 🧩 分片快取:同一片 + 同參數 → 已經建好、直接結束;⛔ 不可拿來跑模擬
+            if (SHARD && j.shard === SHARD && j.key === CACHE_KEY) { console.log(`🧩 分片 ${SHARD} 已經建好(${j.trades.length} 筆)→ 跳過`); process.exit(0); }
+            console.error(`🚨 ${TRADES_CACHE} 是分片快取(${j.shard})→ 先用 scripts/merge_trades_cache.mjs 把 ${String(j.shard).split('/')[1]} 片合起來再跑`); process.exit(1);
+        }
+        if (SHARD) { console.error(`🚨 SHARD=${SHARD} 但 ${TRADES_CACHE} 已經是完整快取 → ⛔ 不覆蓋`); process.exit(1); }
         // ⛔ 參數對不上一定要重掃 —— 拿別組參數的交易來套等於結論全錯
         if (j.key === CACHE_KEY && Array.isArray(j.trades) && j.trades.length) {
             // ⛔ 不可用 push(...arr) —— 20 幾萬筆會直接爆呼叫堆疊,
@@ -446,7 +480,8 @@ await page.waitForFunction(() => typeof app !== 'undefined' && !!app._playbookPa
 //       停損 = min(訊號日最低, 進場×0.95) ・停利 = 跌破 5MA ・最長 20 日
 const t0 = Date.now();
 let done = 0;
-for (const sym of syms) {
+const SCAN_SYMS = SHARD ? syms.filter((_, i) => i % SHARD_N === SHARD_K) : syms;   // 🧩 分片只掃自己那一份
+for (const sym of SCAN_SYMS) {
     let rows;
     try {
         rows = JSON.parse(fs.readFileSync(path.join(DATA, `${sym}.json`), 'utf8'));
@@ -751,8 +786,14 @@ await browser.close();
         console.log(`✂️ HALFSIG=${HALFSIG}:算了 ${hsDaysAll.toLocaleString()} 個持有日、亮 ${hsHitsAll.toLocaleString()} 天(${hsDaysAll ? (hsHitsAll / hsDaysAll * 100).toFixed(2) : 0}%)・先賣一半 ${allTrades.filter(t => t.hf).length.toLocaleString()} / ${allTrades.length.toLocaleString()} 筆`);
         if (!hsHitsAll) { console.error('❌ HALFSIG 一天都沒亮 → 這個變體沒有生效'); process.exit(1); }
     }
+    if (SHARD) {   // 🧩 分片:寫完這一份就結束(⛔ 不跑模擬 —— 只有一部分股票,跑出來的成績沒有意義)
+        writeNdCache(TRADES_CACHE, { key: CACHE_KEY, shard: SHARD, syms: SCAN_SYMS, allSyms: syms }, allTrades);
+        console.log(`🧩 分片 ${SHARD} 已快取:${TRADES_CACHE}(${SCAN_SYMS.length} 檔 ・${allTrades.length} 筆)→ 到齊後跑 scripts/merge_trades_cache.mjs`);
+        process.exit(0);
+    }
     if (TRADES_CACHE) {
-        fs.writeFileSync(TRADES_CACHE, JSON.stringify({ key: CACHE_KEY, trades: allTrades }));
+        if (TC_ND) writeNdCache(TRADES_CACHE, { key: CACHE_KEY }, allTrades);
+        else fs.writeFileSync(TRADES_CACHE, JSON.stringify({ key: CACHE_KEY, trades: allTrades }));
         console.log(`💾 交易已快取:${TRADES_CACHE}`);
     }
 }

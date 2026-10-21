@@ -153,7 +153,10 @@ const _skipYear = (s, y) => !!(s.dataFrom && y < s.dataFrom);
 const RUN_YEARS = process.env.YEARS_RUN ? process.env.YEARS_RUN.split(',') : (SET === 'long' ? Array.from({ length: 16 }, (_, k) => String(2011 + k)) : YEARS);
 const CACHE_KEYS = ['ENTRY', 'EXIT', 'MAXD', 'STOP', 'GAPCAP', 'STOPFILL'];
 export const envOf = s => ({ ...BASE, ...s.env });
-export const cacheName = s => { const e = envOf(s); return 'tr_' + CACHE_KEYS.map(k => `${k}-${(e[k] || 'd').replace(/[^\w.]/g, '_')}`).join('_') + '.json'; };
+// 🗃️ V79.4.7 YB_SYMS=9999 = 全市場(陷阱 #55:只抽 600 檔換 41 檔成績差一倍)→ 交易快取自動改 .ndjson(全市場 16 年超過字串上限);YB_HEAP 給 node 的記憶體。
+//   ⛔ 不設時一個字都不變(600 檔、.json、5000)
+const YB_SYMS = String(process.env.YB_SYMS || '600'), YB_HEAP = String(process.env.YB_HEAP || '5000');
+export const cacheName = s => { const e = envOf(s); return 'tr_' + CACHE_KEYS.map(k => `${k}-${(e[k] || 'd').replace(/[^\w.]/g, '_')}`).join('_') + (YB_SYMS === '600' ? '.json' : '.ndjson'); };
 
 const _MAIN = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (_MAIN) await main();
@@ -233,7 +236,7 @@ const runOne = ({ s, y, o, w }, c) => new Promise(res => {
     const env = w != null
         ? { ...process.env, ...envOf(s), WARMUP: String(w), TRADES_CACHE: path.join(CACHE, c), SUMMARY_OUT: f }
         : { ...process.env, ...envOf(s), YEAR: y, YEAR_OFFSET: String(o), TRADES_CACHE: path.join(CACHE, c), SUMMARY_OUT: f };
-    const p = spawn('node', ['--max-old-space-size=5000', path.join(ROOT, 'scripts/portfolio_backtest.mjs'), '600', String(s.picks || BASE_PICKS)], { env, cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+    const p = spawn('node', [`--max-old-space-size=${YB_HEAP}`, path.join(ROOT, 'scripts/portfolio_backtest.mjs'), YB_SYMS, String(s.picks || BASE_PICKS)], { env, cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     let log = ''; p.stdout.on('data', d => { log += d; if (log.length > 20000) log = log.slice(-20000); }); p.stderr.on('data', d => { log += d; });
     p.on('close', code => { if (code !== 0) { fs.writeFileSync(f.replace(/\.json$/, '.err'), log); console.error(`❌ ${s.id} ${w != null ? 'W=' + w : y + ' +' + o} rc=${code}`); } res(code); });
 });
