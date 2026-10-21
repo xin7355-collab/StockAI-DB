@@ -61,13 +61,27 @@
    425,
    425
   ],
-  "at": "2026-10-20",
+  "at": "2026-10-21",
   "done": false,
-  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/"
+  "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
+  "fail": "有資料的只有 371/866(< 50%)"
  },
  "rev": {
   "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
-  "at": "2026-10-20"
+  "at": "2026-10-21",
+  "probe_first": "2009-01-01",
+  "cols": [
+   "revenue",
+   "revenue_month",
+   "revenue_year"
+  ],
+  "have": 337,
+  "of": 2548,
+  "chk": [
+   0,
+   0
+  ],
+  "done": false
  },
  "per": {
   "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
