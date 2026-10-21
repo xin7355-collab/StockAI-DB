@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.4.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.4.8 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.4.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.4.8</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8539,10 +8539,14 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.4.7',
+    _APP_VERSION: 'V79.4.8',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.4.8', d: [
+            '📚 產業作戰室:高檔飆股那幾列改用全市場(含上櫃、已下市)、照 App 實際的買法重新整理,拿掉「舊資料」標記(散戶 App 的用法不變)',
+            '📶 盤中的逐筆成交改成只抓新的那幾筆,省下每天的流量額度 —— 收盤前那幾拍不會再因為額度用完而抓不到',
+        ], dt: '2026-10-21' },
         { v: 'V79.4.7', d: [
             '🎯 明日作戰清單修好了:上個月中起觸發價一直算不出來 —— 名單只剩「不是靠價位」的那幾檔,自動下單也因此一檔都不會買。今晚的清單恢復正常',
             '🧯 選股掃描以後只要算到一半出錯,就會停下來、保留昨天的清單,⛔ 不再默默少掉股票',
@@ -48496,7 +48500,12 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                      // 🔁 V77.7.6 換成「吊燈 ATR 2 倍 + 最長 20 天 + 大盤嚴格空頭不開新倉」,**修好的日 K**(陷阱 #46)重跑
                      //   W=240 那一條,2022-09-16 ~ 2026-09-24,收盤成交・股利 + 二代健保;0050 = 含息
                      // 🧬 V78.0.7 位階門檻 75 → 85 重跑(W=240):🧬 3,242,238 → 4,164,361 元、回撤 −33.95% → −24.36%
-                     gene: 4164361, geneDD: 24.36, plain: 1922991, plainDD: 36.91, etf0050: 3423000, etfTr: true, geneRank: 85,
+                     // 🎯 V79.4.8 全市場(d16 2,543 檔含上櫃 / 已下市・2010 起個股股利)+ App 選股規則(GATE=lb・斷崖守門・每檔成績只看最近 1,200 天)
+                     //   + 照 App「實際怎麼買」(前一晚名單前 2 名・明天漲 6% 內觸發不了的不列・每天觸發都算,陷阱 #58)重跑同一天起點(2022-09-16 那一條):
+                     //   🧬 4,164,361 → 602,658 元(回撤 −24.36% → −21.54%);0050 含息同一條 3,428,264 元 → 大輸 0050。
+                     //   不挑 🧬 只能用舊買法(一筆接一筆・當天觸發的裡面挑最好)量 → plain 要跟同一種買法的 ogene 比(⛔ 不跟 gene 互減):
+                     //   近 4 年 挑 241,289 vs 不挑 833,377(17 條 0 條挑的贏;2022-11 起跑 53 vs 30 萬 12/17 挑的贏)、16 年 230 vs 143 萬(17/17 挑的贏)→ 🧬 這一關近 4 年不穩。
+                     gene: 602658, geneDD: 21.54, plain: 833377, plainDD: 33.7, etf0050: 3428264, ogene: 241289, ogeneDD: 52.58, etfTr: true, geneRank: 85, how: 'list',
                      // 📤 換掉之前的預設(位階 ≥75,其他一樣)同一條路徑、同一份資料 —— 留著當「換了差多少」的對照
                      prev: { ver: 'V78.0.7', exitName: '吊燈 ATR 2 倍・位階 ≥75(舊門檻)', bear: true, gene: 3242238, geneDD: 33.95, robMed: 324 },
                      // 📉 跌破 5 日線(空頭照買)同一段的成績 —— 留著當「換出場差多少」的對照(⏳ 不挑 🧬 那組修好資料後沒重跑 → null)
@@ -48505,7 +48514,9 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                      // 🛑 V77.6.0 起停損改收盤成交;old = 停損價成交的舊數字(高估,留著當對照)
                      fill: 'close', twii: 229.8, old: { gene: 5898128, plain: 3080625 },
                      // 🧭 17 條起點不同的路徑(同一份修好的資料)
-                     rob: { paths: 17, med: 413, lo: 370, hi: 416, dd: 25.1, pmed: 212, geneWins: 17, beat0050: 17 },
+                     // 🎯 V79.4.8 改成全市場 + 照 App 實際怎麼買那一輪(舊:med 413 / lo 370 / hi 416 / dd 25.1 / pmed 212 / geneWins 17 / beat0050 17,只抽 600 檔・舊買法)
+                     //   pmed / omed / geneWins = 同一種舊買法的 不挑 / 挑 🧬 中位與「挑的贏幾條」;b0050 = 同一組 17 個起點 0050 含息中位
+                     rob: { paths: 17, med: 60, lo: 58, hi: 60, dd: 21.5, pmed: 85, omed: 24, geneWins: 0, beat0050: 0, b0050: 375 },
                      // 🔀 V75.0.8「多頭做打法、空頭改抱 0050」切換策略實測(使用者提的)—— ⛔ 三關全滅。
                      //   🚨 ⚠️ 這一組是用**舊的 5 日線出場**跑的(換出場是 V75.0.9 才做的事)
                      //      → ⛔ **不可跟上面那三個數字直接相減**,它只回答「切換 vs 不切換」這一個問題。
@@ -49115,6 +49126,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     ⭐⭐ <b>最重要的一句</b>:🧬 <b>不是「加分項」,是「必要條件」</b> ——
                     不挑標記、照清單順序做的話,這套<b>輸給什麼都不做買 0050</b>。
                     <span class="text-gray-500">(舊版只有 13 個月、整段大多頭時看起來是贏的;窗口拉到 36 個月就翻轉了)</span>
+                    <br><span class="text-yellow-300">⚠️ 這是只抽 600 檔、36 個月那一輪的結論;V79.4.8 全市場(含上櫃 / 已下市)重算後,16 年是挑的好、近 4 年看哪天起跑(有時不挑反而好)—— 完整數字在產業作戰室 📊 回測數字。</span>
                 </div>
                 <div class="text-[10px] text-gray-200 mt-1.5 leading-relaxed">
                     📤 <b>出場一律照這三條</b>(⛔ 自己改就不算數):

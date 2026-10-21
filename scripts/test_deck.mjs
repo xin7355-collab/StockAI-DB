@@ -36,15 +36,18 @@ const ok = (n, c, e = '') => { if (c) console.log(`✅ ${n}`); else { fails++; c
 // ═══ 靜態 ═══
 // ⓪ 🚨 49 個月那組數字必須跟 pro.html 的 `_SIG_DEEP` **一模一樣**(⛔ 同名不同義)
 const grab = (txt, key) => { const m = txt.match(new RegExp(key + '\\s*:\\s*([0-9.]+)')); return m ? +m[1] : null; };
-const dt = SRC.slice(SRC.indexOf('_DECK_TRACK49:'), SRC.indexOf('_DECK_TRACK49:') + 1400);   // 🔁 V77.6.5 多了 prev / maxd / bearGate → 窗口放寬(⛔ 斷言本身沒放寬)
+const dt = SRC.slice(SRC.indexOf('_DECK_TRACK49:'), SRC.indexOf('_DECK_TRACK49:') + 2600);   // 🔁 V77.6.5 多了 prev / maxd / bearGate、V79.4.8 多了全市場那段註解 → 窗口放寬(⛔ 斷言本身沒放寬)
 const sd = PRO.slice(PRO.indexOf('_SIG_DEEP:'), PRO.indexOf('_SIG_DEEP:') + 300);
 for (const k of ['gene', 'geneDD', 'plain', 'plainDD', 'etf0050', 'months'])
     ok(`⓪ 跨檔案一致:${k}(index.html 的 _DECK_TRACK49 == pro.html 的 _SIG_DEEP)`,
        grab(dt, k) != null && grab(dt, k) === grab(sd, k), `${grab(dt, k)} vs ${grab(sd, k)}`);
-// ⓪b 🚨 真正的不變量是「**挑 🧬 比不挑好**」(⛔ 不是「輸給 0050」——
-//   V75.0.9 換成唐奇安出場之後方向就翻過來了。斷言要釘**用意**,⛔ 不可釘當時的方向)
-ok('⓪b 🚨 挑 🧬 一定要贏過不挑(這條在兩個窗口、兩種出場都成立)',
-   grab(dt, 'gene') > grab(dt, 'plain'));
+// ⓪b 🎯 V79.4.8:「挑 🧬 比不挑好」⛔ 不再是不變量 —— 全市場、同一種舊買法量,16 年挑的好(17/17)、近 4 年反過來(0/17)。
+//   釘**用意**:① 不挑 🧬 只能跟「同一種買法的 🧬」(ogene)比 —— 兩個檔案都要帶 ogene、而且相等(⛔ 拿 gene 跟 plain 比 = 兩種買法互減)
+//   ② 數字不支持時,⛔ 不可再寫「這一關是必要條件不是加分」(pro `_castWhyFullGene` ②)
+ok('⓪b 🧬 這一關要用同一種買法比:兩個檔案都帶 ogene(同一把尺)',
+   grab(dt, 'ogene') != null && grab(dt, 'ogene') === grab(sd, 'ogene'), `${grab(dt, 'ogene')} vs ${grab(sd, 'ogene')}`);
+ok('⓪b1 數字說 🧬 沒有比較好時,⛔ 不可再寫「這一關是必要條件不是加分」',
+   grab(dt, 'ogene') > grab(dt, 'plain') || !/這一關是<b>必要條件不是加分<\/b>/.test(PRO));
 // ⓪b2 🚨 而「跟 0050 誰贏」的**文案方向必須跟數字一致** —— 見動態段 ⑪。
 ok('⓪b2 🚨 出場規則要標出來(⛔ 沒標的話下次換預設又會對不上)',
    /exit: '/.test(dt) && /exitName: '/.test(dt) && /exit: '/.test(sd));

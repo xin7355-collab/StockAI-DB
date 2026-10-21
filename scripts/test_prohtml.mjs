@@ -734,6 +734,7 @@ const CALC = await page.evaluate(async () => {
     out.intro = document.getElementById('calcIntro').innerText + '\n' + document.getElementById('labIntro').innerText + '\n' + ((document.getElementById('btResearchIntro') || {}).innerText || '');
     out.body0 = document.getElementById('calcBody').innerText;
     out.rows0 = document.querySelectorAll('#calcBody tbody tr').length;
+    out.rowsExp0 = ((PRO.BT.dims[PRO._calcDim ?? 0] || {}).rows || []).length;   // 🎯 V79.4.8 預設分組換成「🔥 變因」→ 釘用意(那一組的列全部畫出來)
     out.dims = document.querySelectorAll('#calcBar .labbtn').length;
     PRO.selCalc(PRO.BT.dims.findIndex(d => d.k === 'mkt'));   // 🏛️ 大盤狀態那組(⛔ 不寫死索引,新增分組會位移)
     out.bodyMkt = document.getElementById('calcBody').innerText;
@@ -761,7 +762,7 @@ const CALC = await page.evaluate(async () => {
 });
 ok('㉞ V74.5.0 已併進實測總表:⛔ 不再有獨立分頁,舊入口 switchTab(\'calc\') 仍導得到「📊 回測數字」欄',
    CALC.onLab && CALC.noCalcTab, `onLab=${CALC.onLab} noCalcTab=${CALC.noCalcTab}`);
-ok('㉞a 預設分組真的渲染出列(進場時機 5 列)', CALC.rows0 === 5, `rows=${CALC.rows0}`);
+ok('㉞a 預設分組真的渲染出列(那一組的列全部畫出來,至少 5 列)', CALC.rows0 === CALC.rowsExp0 && CALC.rows0 >= 5, `rows=${CALC.rows0}/${CALC.rowsExp0}`);
 ok('㉞b 🚨 必須寫明是「真的跑過的回測」不是現場算的', /真的跑過的回測/.test(CALC.intro));
 ok('㉞c 🚨🚨 必須寫「沒列的組合 = 沒測過」(⛔ 不可讓人拿兩格數字相乘推估)',
    /沒列的(交叉|組合) = 沒測過/.test(CALC.intro));
