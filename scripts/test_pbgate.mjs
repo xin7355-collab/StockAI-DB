@@ -189,6 +189,17 @@ else {
     const MV = spawnSync(process.execPath, [FILE, '25', '2'], { env: { ...base, DATA_DIR: DATA, TRADES_CACHE: path.join(tmp, 'c.json'), WARMUPS: '240,262', VOLCAP: '5' }, encoding: 'utf8', timeout: 120000 });
     ok('ⓦ3 WARMUPS 配還沒驗過的開關(VOLCAP)→ exit 1', MV.status === 1 && /還沒驗過/.test(MV.stderr || ''), (MV.stderr || '').slice(-200));
 
+    // ⓡ 排序變因:RANKSEED 預設 == 不設;換種子要變;amt / vol / pos 會跑、cfg 記下;amt 同一天兩筆一定是成交額大的先
+    // ⚠️ 用「不挑 🧬」:25 檔挑 🧬 時一天常常只有 0~2 個候選 → 怎麼排都一樣、種子換了也看不出來(第一版就是這樣假失敗)
+    const R0 = run('r0', { SELF: '', RANKBY: 'rand' }, DATA), R1 = run('r1', { SELF: '', RANKBY: 'rand', RANKSEED: '20260907' }, DATA), R2 = run('r2', { SELF: '', RANKBY: 'rand', RANKSEED: '7' }, DATA);
+    ok('ⓡ RANKSEED=20260907 == 不設(預設種子);RANKSEED=7 成績不一樣(真的換了籤)', R0.s && R1.s && R2.s && core(R0.s) === core(R1.s) && R0.e === R1.e && core(R2.s) !== core(R0.s), `${core(R0.s)} / ${core(R2.s)}`);
+    for (const k of ['amt', 'vol', 'pos']) {
+        const K = run(`k_${k}`, { GATE: 'lb', MIN_N: '4', RANKBY: k }, DATA);
+        let ordOk = true;
+        if (k === 'amt' && K.t) { const byD = new Map(); for (const t of K.t) (byD.get(t.d) || byD.set(t.d, []).get(t.d)).push(t); const ca = new Map(C.map(t => [`${t.sym}|${t.key}|${t.inD}`, +t.amt || 0])); for (const arr of byD.values()) if (arr.length >= 2) { const a0 = ca.get(`${arr[0].sym}|${arr[0].key}|${arr[0].d}`), a1 = ca.get(`${arr[1].sym}|${arr[1].key}|${arr[1].d}`); if (!(a0 >= a1)) ordOk = false; } }
+        ok(`ⓡ2 RANKBY=${k} 跑得起來、cfg 記下${k === 'amt' ? '、同一天先成交的成交額比較大' : ''}`, K.r.status === 0 && K.s && K.s.cfg.rankby === k && ordOk, `status=${K.r.status} ${(K.r.stderr || '').slice(-160)}`);
+    }
+
     // ⓔ 設錯格式
     const bad = (tag, env, re) => { const B = run(tag, env, DATA); ok(`ⓔ ${JSON.stringify(env)} → exit 1 並說原因`, B.r.status === 1 && re.test(B.r.stderr || ''), (B.r.stderr || '').slice(-200)); };
     bad('b1', { GATE: 'xx' }, /GATE=xx 不認得/);

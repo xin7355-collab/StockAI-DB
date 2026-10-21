@@ -260,7 +260,8 @@ const REENTRY = +(process.env.REENTRY || 0);
 //   RANKBY = self(預設,這檔自己在這招的期望值)| rand(候選裡**隨機**排序,固定種子)| mkt(全市場該型態平均 = V1 舊法)
 //   GATE   = pat(預設:這檔在**這招**扣成本後為正)| stock(這檔在**任何一招**扣成本後為正 → 不看是哪一招)
 const RANKBY = process.env.RANKBY || 'self';
-if (!['self', 'rand', 'mkt', 'mom10', 'mean'].includes(RANKBY)) { console.error(`🚨 RANKBY=${RANKBY} 不認得(self|rand|mkt|mom10|mean)`); process.exit(1); }
+if (!['self', 'rand', 'mkt', 'mom10', 'mean', 'amt', 'vol', 'pos'].includes(RANKBY)) { console.error(`🚨 RANKBY=${RANKBY} 不認得(self|rand|mkt|mom10|mean|amt|vol|pos)`); process.exit(1); }
+//   RANKBY=amt / vol / pos = 🎯 V79.4.7 照訊號日成交額 / 近 20 日波動 / 一年位階排(⛔ 只用 ≤ 訊號日;拿來比「照每檔歷史成績排」到底有沒有比隨便挑好)
 //   RANKBY=mean     = 🎯 V79.4.7 照這檔這招的**平均**排(GATE=lb 時:門檻照 App、排序換回舊的平均 → 拿來分開「門檻」跟「排序」各自的貢獻;GATE=pat 時跟 self 一樣)
 // 🚀👑 V78.0.7 從 👑 領頭羊借來試 🧬 的兩件事(候選層,⛔ 不進 CACHE_KEY、不設時逐位相同):
 //   RANKBY=mom10    = 候選照「訊號日收盤 vs 10 個交易日前收盤」漲幅排(⛔ 只用 ≤ 訊號日)
@@ -274,7 +275,8 @@ const POOL_N = +(POOL.replace(/^sham:/, '') || 0);
 if (POOL && !(POOL_N > 0)) { console.error(`🚨 POOL=${POOL} 不認得(N|sham:N)`); process.exit(1); }
 const GATE = process.env.GATE || 'pat';
 if (!['pat', 'stock', 'lb'].includes(GATE)) { console.error(`🚨 GATE=${GATE} 不認得(pat|stock|lb)`); process.exit(1); }
-const _SEED0 = 20260907; let _seed = _SEED0; const _rnd = () => (_seed = (_seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+// 🎲 V79.4.7 RANKSEED:隨機排序換種子(一個種子只是一次抽籤,⛔ 不可拿一次的結果下結論)
+const _SEED0 = +(process.env.RANKSEED || 20260907); let _seed = _SEED0; const _rnd = () => (_seed = (_seed * 1103515245 + 12345) % 2147483648) / 2147483648;
 const RE_MAX = +(process.env.RE_MAX || 1);
 // 🛑 V72.9.9 停損距離實驗 —— ⭐ 這是整套裡**最沒根據**的一個參數:
 //   現行 `min(訊號日最低, 進場×0.95)` 的 −5% 是當初拍腦袋定的,從來沒驗過。
@@ -1185,7 +1187,7 @@ const outIdx = x => {
 // 🧬 個股自身狀態表(⛔ 只用該日以前的資料 → 無前視偏誤)
 const NEED_B240 = SELF.some(c => c.startsWith('nobias')), NEED_MA = SELF.some(c => c === 'ma20' || c === 'ma60' || c === 'ma2060');
 const selfFeat = new Map();
-if (SELF.length || TURN || VAL || RANKBY === 'mom10') {
+if (SELF.length || TURN || VAL || RANKBY === 'mom10' || RANKBY === 'vol' || RANKBY === 'pos') {
     for (const sym of syms) {
         let rows;
         try { rows = JSON.parse(fs.readFileSync(path.join(DATA, `${sym}.json`), 'utf8')); } catch (_) { continue; }
@@ -1627,6 +1629,8 @@ for (let i = 0; i < days.length; i++) {
     if (RANKBY === 'rand') { for (let k = cand.length - 1; k > 0; k--) { const j = Math.floor(_rnd() * (k + 1)); [cand[k], cand[j]] = [cand[j], cand[k]]; } }
     else if (RANKBY === 'mkt') cand.sort((a, b) => (b.m.sum / b.m.n) - (a.m.sum / a.m.n));
     else if (RANKBY === 'mean') cand.sort((a, b) => (b.s.sum / b.s.n) - (a.s.sum / a.s.n));
+    else if (RANKBY === 'amt') cand.sort((a, b) => (+b.t.amt || 0) - (+a.t.amt || 0));
+    else if (RANKBY === 'vol' || RANKBY === 'pos') { const _k = RANKBY === 'vol' ? 'vol' : 'rank', _f = x => { const f = selfFeat.get(x.t.sym)?.get(x.t.inD); return f && f[_k] != null ? f[_k] : -Infinity; }; cand.sort((a, b) => _f(b) - _f(a)); }
     else if (RANKBY === 'mom10') { const _m = x => { const f = selfFeat.get(x.t.sym)?.get(x.t.inD); return f && f.m10 != null ? f.m10 : -Infinity; }; cand.sort((a, b) => _m(b) - _m(a)); }
     const seen = new Set(live.map(x => x.sym));
     let picked = 0;
