@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.5.5 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.5.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.5.5</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.5.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -8569,10 +8569,16 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.5.5',
+    _APP_VERSION: 'V79.5.6',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.5.6', d: [
+            '🔧 基本頁:資料日期會正確顯示(以前一律寫「資料日期未知」);網路不穩、圖表沒載到時,下面的數字照常出來',
+            '📚 行事曆每個事件的說明改成「要看什麼」,不再叫你減碼、加碼或先賣一部分;個股頁頂端標籤也一樣,而且偏多改紅字 🔺、偏空改綠字 🔻(跟漲跌的顏色一致)',
+            '🔧 報告頁:收盤後「量能倍數」照常顯示(以前同一天一路寫「還沒收盤」寫到半夜)',
+            '🔧 背景整理:收盤後不再重抓整天的逐筆資料(省券商流量)',
+        ], dt: '2026-10-23' },
         { v: 'V79.5.5', d: [
             '🔧 背景整理:每天早上的盤前資料開始存下來,之後看得到準不準(畫面沒有變)',
         ], dt: '2026-10-22' },
@@ -8736,7 +8742,6 @@ ${list}
         { v: 'V78.4.9', d: ['🔧 小修正'] },
         { v: 'V78.4.8', d: ['🔧 小修正'] },
         { v: 'V78.4.7', d: ['🔧 小修正'] },
-        { v: 'V78.4.6', d: ['🔧 小修正'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -11572,7 +11577,14 @@ const todayStr = this.getTodayStr(), now = Date.now(), cacheKey = 'proTerminalMa
             const res  = await fetch(url + `?v=${Date.now()}`);
             if (!res.ok) return (this._localFundLast?.sym === sym) ? this._localFundLast.data : null;
             const raw  = await res.json();
-            const fund = Array.isArray(raw) ? null : (raw.fundamentals || null);
+            const f0   = Array.isArray(raw) ? null : (raw.fundamentals || null);
+            // 🐛 V79.5.6 檔頭的 data_date / generated 以前被丟掉(只回 fundamentals 那一塊)
+            //   → 基本頁最後一行一律寫「📅 資料日期未知」,還把前面寫好的「採礦日」蓋掉(V70.2.0 資料日期鐵則)。
+            //   ⭐ 帶進回傳的物件;⛔ fundamentals 本身有的欄位一個都不蓋
+            const fund = f0 ? Object.assign({}, f0, {
+                data_date: f0.data_date || raw.data_date || raw.generated || null,
+                generated: f0.generated || raw.generated || raw.data_date || null,
+            }) : null;
             if (fund) this._localFundLast = { sym, data: fund };
             return fund || ((this._localFundLast?.sym === sym) ? this._localFundLast.data : null);
         } catch(e) { return (this._localFundLast?.sym === sym) ? this._localFundLast.data : null; }
@@ -27389,8 +27401,11 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             //   ⭐ 所以 `open` 時只回 `open:true` + 已成交張數,⛔ 不給 `x` —— 顯示端與提示詞都會改口。
             //   ⛔ **刻意不做「按已交易時間換算成全日」** —— 那是一個沒有回測過的新推估,
             //     而且開盤量能天生前重後輕,換算會系統性高估(陷阱 #38:⛔ 不給沒驗證過的數字)。
+            //   🐛 V79.5.6 「最後一根是今天」⛔ 不等於「還沒收盤」—— 13:30 收盤之後那一根已經是整天的量了,
+            //     以前一路講「這一根還沒收盤」講到半夜(每個交易日晚上報告頁都講錯)→ 台北 13:31 起照常給倍數
+            //     (同決策台 `afterClose` 那條:台北時間 > 13:30)。
             if (base > 0 && vt > 0) {
-                const _open = !!this._lastBarIsToday(data);
+                const _open = !!this._lastBarIsToday(data) && this._tpeMinutes().min <= 13 * 60 + 30;
                 out.vr = { x: _open ? null : vt / base, open: _open, lots: vt / 1000, base5: base / 1000 };
             }
         }
@@ -27418,7 +27433,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
                                        s: '這是**位置**不是跌幅 ・⛔ 不用紅綠' });
         if (T.vr) cells.push({ k: '量能倍數', v: T.vr.x == null ? '盤中不比' : `${T.vr.x.toFixed(1)}×`, cls: 'text-gray-300',
                                s: T.vr.x == null
-                                  ? `這一根**還沒收盤** → ⛔ 不給倍數(現在只成交 ${this._lotTxt ? this._lotTxt(T.vr.lots * 1000) : Math.round(T.vr.lots) + ' 張'},而基準是前 5 日**整天**均量 ${Math.round(T.vr.base5).toLocaleString()} 張 —— 兩個期間不一樣,比了會騙人)`
+                                  ? `這一根**還沒收盤** → ⛔ 不給倍數(現在只成交 ${Math.round(T.vr.lots).toLocaleString()} 張,而基準是前 5 日**整天**均量 ${Math.round(T.vr.base5).toLocaleString()} 張 —— 兩個期間不一樣,比了會騙人)`
                                   : `最新收盤 ÷ 前 5 日均量(⛔ 基準不含今日)` });
         if (T.amp != null) cells.push({ k: '20 日振幅', v: `${T.amp.toFixed(1)}%`, cls: 'text-gray-300',
                                         s: '(最高−最低)÷收盤,近 20 日平均' });
@@ -33064,10 +33079,16 @@ ${this._reportFacts(sym)}
         } catch(_) {}
 
         // 每季 EPS 趨勢（最近4季）ECharts 柱狀圖
+        // 🐛 V79.5.6 圖表元件(echarts)沒載到(網路不穩)時,以前這裡直接丟例外 → 整支中斷,
+        //   後面的資料日期、體質總評、本地快取全部沒跑到(巡邏 swallow_hunt 在沙箱抓到)。
+        //   ⭐ 沒有圖表元件就只放一行說明,數字卡照常(同 V74.7.2「圖表元件載不到不可帶走整頁」)。
+        const _noChart = (el) => { el.innerHTML = '<div class="text-gray-500 text-[10px] text-center px-2" style="line-height:1.5;padding-top:60px">📊 圖表元件沒有載入(網路不穩)<br>數字照常,重新整理就會出現</div>'; };
         const epsSlice = epsRows.slice(-4);
         const epsTrendEl = document.getElementById('xrayEpsTrend');
         if (epsTrendEl) {
-            if (epsSlice.length > 0) {
+            if (epsSlice.length > 0 && typeof echarts === 'undefined') {
+                _noChart(epsTrendEl);
+            } else if (epsSlice.length > 0) {
                 const epsChart = echarts.getInstanceByDom(epsTrendEl) || echarts.init(epsTrendEl, 'dark');
                 this._observeChartResize(epsTrendEl);
                 epsChart.setOption({
@@ -33133,7 +33154,9 @@ ${this._reportFacts(sym)}
         }
         const rvTrendEl = document.getElementById('xrayRevTrend');
         if (rvTrendEl) {
-            if (rvSlice.length > 0) {
+            if (rvSlice.length > 0 && typeof echarts === 'undefined') {
+                _noChart(rvTrendEl);           // 🐛 V79.5.6 同上:⛔ 不可讓整支中斷
+            } else if (rvSlice.length > 0) {
                 // YoY array
                 const rvYoyArr = rvSlice.map(r => {
                     let yoyVal = r.revenue_year_growth;
@@ -33244,17 +33267,19 @@ ${this._reportFacts(sym)}
             //   隔一分鐘重載數字就跳(實測 21:39 → 21:40)。違反 V70.2.0 資料日期鐵則。
             //   ⭐ 改成標**資料本身的日期**;真的拿不到就誠實寫「日期未知」,⛔ 不可拿當下時間充數。
             const dateEl2 = document.getElementById('xrayDataDate');
-            if (dateEl2) {
-                const _dd = (localFund && (localFund.data_date || localFund.updated))
-                         || (this._fundCache && this._fundCache.data_date) || null;
-                dateEl2.textContent = _dd ? `📅 ${this._dW(_dd)}` : '📅 資料日期未知';
-            }
+            const _dd = (localFund && (localFund.data_date || localFund.updated))
+                     || (this._fundCache && this._fundCache.data_date) || null;
+            if (dateEl2) dateEl2.textContent = _dd ? `📅 ${this._dW(_dd)}` : '📅 資料日期未知';
             // 💾 持久化:存到 localStorage 供下次切 tab/開股直接顯示,免重抓
+            // 🐛 V79.5.6 這裡以前標「最後更新」+ 一個叫 _ts 的變數,而它在 V72.5.5 改「標資料日期」時就拿掉了
+            //   → ReferenceError 被下面的 catch 吞掉 → 這份快取從那之後**一次都沒存成功**(巡邏 swallow_hunt 抓到)。
+            //   ⭐ 改標資料日期(同上一行);修好之後會開始一檔存一份 → 接上 _lruTrim(⛔ 每檔一份的快取一定要有上限)
             try {
                 localStorage.setItem(`xrayCache_${sym}`, JSON.stringify({
-                    sym, ts: Date.now(), dateLabel: `最後更新 ${_ts}`,
+                    sym, ts: Date.now(), dateLabel: _dd ? `資料 ${this._dW(_dd)}` : '',
                     fund: this._fundCache, latestEps: this._latestEpsCache,
                 }));
+                this._lruTrim('xrayCache_', 40);
             } catch(_) {}
 
             // 🐛 V40.6 數字卡已渲染完成。skipAI=true(快取已還原 AI 文字)→ 到此即返回,不重打 AI 省額度,
@@ -35247,7 +35272,7 @@ ${this._reportFacts(sym)}
                 +   '<span class="text-[10px] font-mono text-amber-400 flex-shrink-0 w-10">' + dStr + '</span>'
                 +   sevBadge(sev)
                 +   '<span onclick="app._openEventPerplexity(\'' + evEscaped + '\')" class="text-[10px] text-gray-300 flex-1 truncate cursor-pointer hover:text-amber-300 underline decoration-dotted decoration-gray-600 underline-offset-2" title="點事件用 Perplexity 深查:預期值/前值/結果 + 對台股影響 + 因應">' + evText + '</span>'
-                +   '<button onclick="app.showMacroEventPlaybook(\'' + evEscaped + '\'); event.stopPropagation();" class="text-[11px] text-blue-400 hover:text-blue-300 flex-shrink-0 px-1" title="事前/事後操作教學">📚</button>'
+                +   '<button onclick="app.showMacroEventPlaybook(\'' + evEscaped + '\'); event.stopPropagation();" class="text-[11px] text-blue-400 hover:text-blue-300 flex-shrink-0 px-1" title="這個事件要看什麼">📚</button>'
                 +   '<button onclick="app.askEventImpactAI(\'' + evEscaped + '\', ' + idx + '); event.stopPropagation();" class="text-[11px] text-cyan-400 hover:text-cyan-300 flex-shrink-0 px-1" title="AI 推測影響族群">🔍</button>'
                 +   '<span class="text-[9px] ' + dColor + ' font-bold flex-shrink-0">' + dLabel + '</span>'
                 + '</div>'
@@ -39547,42 +39572,46 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
     },
 
-    // 📚 重大事件操作手冊:每個事件的「事前要做 / 事後要做」白話教學
+    // 📚 重大事件「要看什麼」(行事曆每一列的 📚)
+    // 🧹 V79.5.6 以前這裡叫「操作手冊」,事前 / 事後整段在下指令(減碼、現金拉到 30%、跳空高開買進、強力買進主流股、
+    //   先賣 1/3 鎖利、買 VIX Call)—— 違反 V76.3.5 鐵則:財經行事曆的日子**只准講波動會不會變大、盯哪個數字**
+    //   (calendar_stock_probe 37 種行事曆日,方向一個都不成立;先賣一部分 V78.5.0 回測兩段都輸照規則走)。
+    //   ⭐ 每一則只寫:這幾天波動、要看哪個數字;手上的照出場規則走 → 測試 scripts/test_nodirective.mjs 釘住。
     _MACRO_EVENT_PLAYBOOK: {
         'CPI': {
             title: '🇺🇸 美國 CPI 通膨數據',
-            before: '事前 1-2 天:減碼短線部位、現金比例拉到 30%。VIX 偏低 (<18) 可少量買 VIX Call 避險。預估高於市場共識 → 股市易跌。',
-            after: '若 CPI 高於預期 → 股市跳空低開,持有者守 5MA;若低於預期 → 跳空高開買進,但避免追高(可等回測 5MA 介入)。'
+            before: '公布前後這兩天,台股波動常常比較大;但漲跌方向沒有固定規律。',
+            after: '看實際數字比市場預估高還是低、差多少(差得越多,當天晃得越大)。手上的股票照你的出場規則走,⛔ 不用因為這個事件先賣或加碼;要不要買照決策台,事件本身不是買賣訊號。'
         },
         'PPI': {
             title: '🇺🇸 美國 PPI 生產者物價',
-            before: '事前 1 天:留意 CPI 結果做參考(同方向走勢機率高)。中小型股若已連漲 3 天,先賣 1/3 鎖利。',
-            after: 'PPI 通常影響不如 CPI 強;若兩數據同步高於預期,Fed 鷹派風險升高 → 持有者全面減碼、設停損。'
+            before: '通常排在 CPI 前後,影響一般比 CPI 小;波動放大的程度也比較小。',
+            after: '看它跟 CPI 是同一個方向(都比預估熱 / 都比預估冷)還是相反。手上的股票照你的出場規則走,⛔ 不用因為這個事件先賣或加碼;要不要買照決策台,事件本身不是買賣訊號。'
         },
         'FOMC': {
             title: '🏛️ FOMC 聯準會利率決議',
-            before: '事前 2-3 天:嚴禁追高,空手者按兵不動。重大持倉者可買台指期 Put 避險(5-10% 部位)。重點看「點陣圖」與「主席會後記者會」。',
-            after: '降息且鷹派淡化 → 強力買進主流股;升息或鷹派加碼 → 持有者守 20MA,跌破立刻減碼。會後 1 週為「鴿派/鷹派發酵期」,趨勢確認後再加碼。'
+            before: '台灣時間通常是半夜公布,隔天台股開盤波動常常比較大;方向沒有固定規律。',
+            after: '看三件事:利率有沒有動、點陣圖(之後還要升 / 降幾次)、主席記者會的口氣。會後幾天市場常常還在消化。手上的股票照你的出場規則走,⛔ 不用因為這個事件先賣或加碼;要不要買照決策台,事件本身不是買賣訊號。'
         },
         '日銀|BOJ': {
             title: '🇯🇵 日銀 BOJ 利率決議',
-            before: '事前 1 天:留意日圓走勢。若升息預期升溫 → 套息交易平倉 → 全球風險資產同步下殺(歷史多次發生)。',
-            after: '升息 → 日圓走強 + 全球股市易跌,持有者守均線停損;維持寬鬆 → 風險偏好回升,可順勢做多 AI/科技股。'
+            before: '先看日圓:市場開始猜升息時,日圓常常會先動,全球股市跟著晃。',
+            after: '看利率有沒有動、日圓是升還是貶。手上的股票照你的出場規則走,⛔ 不用因為這個事件先賣或加碼;要不要買照決策台,事件本身不是買賣訊號。'
         },
         '台指結算': {
-            title: '📅 台指期結算日(月第三週三)',
-            before: '事前 2-3 天:結算前主力常作價拉抬權值股(尤其台積電 / 鴻海 / 聯發科),可短線跟價但「結算日當天禁追高」。',
-            after: '結算日下午後,「結算行情」結束,易出現獲利了結賣壓;短線者可考慮結算日尾盤鎖利,等 2-3 天後再評估。'
+            title: '📅 台指期結算日(每月第三個週三)',
+            before: '結算前後,台積電 / 鴻海 / 聯發科這些權值股的成交量常常放大、波動也比較大。',
+            after: '結算當天的走勢不代表接下來幾天,要看的是結算後幾天的方向。手上的股票照你的出場規則走,⛔ 不用因為這個事件先賣或加碼;要不要買照決策台,事件本身不是買賣訊號。'
         },
         '四巫|巫': {
             title: '🔮 美股四巫日(季末選擇權結算)',
-            before: '事前 1 週:減碼追逐性的小型股(波動會放大 2-3 倍)。VIX 易飆 → 可預先做 VIX Call 避險。',
-            after: '當週週五波動極大,可能出現假突破/假跌破。空手者等下週一確認趨勢再進場;持有者守 20MA 不破不出場。'
+            before: '那一週美股波動常常放大,台股隔天也可能跟著晃;方向沒有固定規律。',
+            after: '當週可能出現假突破 / 假跌破,看下週走勢比看結算當天準。手上的股票照你的出場規則走,⛔ 不用因為這個事件先賣或加碼;要不要買照決策台,事件本身不是買賣訊號。'
         },
         'SPACEX|IPO': {
             title: '🚀 SpaceX / 重大 IPO 上市',
-            before: '事前 1 週:相關概念股(低軌衛星/火箭題材)會率先炒作,空手者可選最強勢龍頭少量試單;持有者鎖利出脫過熱標的。',
-            after: 'IPO 當天往往「利多出盡」,概念股易出現大幅獲利了結;追高風險極大,等回測 10-20MA 再考慮承接,設嚴格停損 -8%。'
+            before: '相關概念股(低軌衛星 / 火箭題材)的成交量和波動常常先放大。',
+            after: '上市後概念股的走勢沒有固定規律。手上的股票照你的出場規則走,⛔ 不用因為這個事件先賣或加碼;要不要買照決策台,事件本身不是買賣訊號。'
         }
     },
 
@@ -39593,7 +39622,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             if (kw.split('|').some(k => ev.includes(k))) { matched = pb; break; }
         }
         if (!matched) {
-            this.showToast('此事件暫無詳細操作教學', 'info');
+            this.showToast('這個事件還沒有整理「要看什麼」', 'info');
             return;
         }
         const modal = document.createElement('div');
@@ -39607,11 +39636,11 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                 </div>
                 <div class="space-y-3">
                     <div class="bg-amber-900/20 border-l-4 border-amber-500 p-2.5 rounded-r">
-                        <div class="text-amber-300 font-bold text-xs mb-1">🛡️ 事前要做</div>
+                        <div class="text-amber-300 font-bold text-xs mb-1">📌 事前留意</div>
                         <div class="text-gray-300 text-[11px] leading-relaxed">${matched.before}</div>
                     </div>
                     <div class="bg-cyan-900/20 border-l-4 border-cyan-500 p-2.5 rounded-r">
-                        <div class="text-cyan-300 font-bold text-xs mb-1">⚔️ 事後要做</div>
+                        <div class="text-cyan-300 font-bold text-xs mb-1">📌 事後看什麼</div>
                         <div class="text-gray-300 text-[11px] leading-relaxed">${matched.after}</div>
                     </div>
                 </div>
@@ -42726,13 +42755,18 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             danger:  'avoid',   // 空頭排列 / 大黑K / 跌破前低 → 空手別碰
             island:  'avoid',   // 島狀反轉 → 頭部訊號
         };
-        // V14.4:emoji 改用語意強的圖示(✅👀⚠️📉❌),背景統一深灰,不靠顏色辨識(防混亂 + 色盲友善)
+        // V14.4:emoji 改用語意強的圖示,背景統一深灰,不靠顏色辨識(防混亂 + 色盲友善)
+        // 🎨 V79.5.6 標籤改講方向(偏多 / 偏空)之後:🔺🔻 + 文字紅漲綠跌(燈號鐵則;⛔ 不再用 ✅❌ —— 那兩個是「安全 / 危險」的圖示,
+        //   以前偏多的字是綠色 = 跟台股慣例相反)
+        // 🧹 V79.5.6 這幾顆是**單一訊號的描述**(KD 交叉 / 破季線 / 大黑K…都沒有實測過的買賣優勢)
+        //   → 說明 ⛔ 不可再下指令(以前寫「可分批建倉」「持有者降低部位(賣 1/3 ~ 1/2)」「考慮減碼或出場」,
+        //   跟「照出場規則走、⛔ 不用先賣一半」打架)。測試 scripts/test_nodirective.mjs 釘住。
         const _actionCfg = {
-            buy:    { emoji: '✅', label: '布局', cls: 'bg-gray-800/60 text-green-200  border-gray-700', tip: '進場訊號,可分批建倉(配合風控)' },
-            watch:  { emoji: '👀', label: '觀察', cls: 'bg-gray-800/60 text-blue-200   border-gray-700', tip: '中性訊號,等多重確認(別單訊號進場)' },
-            warn:   { emoji: '⚠️', label: '警戒', cls: 'bg-gray-800/60 text-yellow-200 border-gray-700', tip: '略有風險,持有者收緊停利,空手繼續觀察' },
-            reduce: { emoji: '📉', label: '減碼', cls: 'bg-gray-800/60 text-orange-200 border-gray-700', tip: '走弱明顯,持有者降低部位(賣 1/3 ~ 1/2)' },
-            avoid:  { emoji: '❌', label: '避開', cls: 'bg-gray-800/60 text-red-200    border-gray-700', tip: '空手別碰,持有者考慮減碼或出場' },
+            buy:    { emoji: '🔺', label: '偏多', cls: 'bg-gray-800/60 text-red-200    border-gray-700', tip: '偏多的單一訊號 —— ⛔ 不是買進指令,要不要買看決策台' },
+            watch:  { emoji: '👀', label: '中性', cls: 'bg-gray-800/60 text-blue-200   border-gray-700', tip: '中性訊號,單看它沒有方向' },
+            warn:   { emoji: '⚠️', label: '留意', cls: 'bg-gray-800/60 text-yellow-200 border-gray-700', tip: '要留意的單一訊號 —— 手上的照你的出場規則走' },
+            reduce: { emoji: '📉', label: '偏弱', cls: 'bg-gray-800/60 text-green-200  border-gray-700', tip: '偏弱的單一訊號 —— ⛔ 不是賣出指令,手上的照你的出場規則走(⛔ 不用先賣一部分)' },
+            avoid:  { emoji: '🔻', label: '偏空', cls: 'bg-gray-800/60 text-green-200  border-gray-700', tip: '偏空的訊號 —— 手上的照你的出場規則走;要不要買看決策台' },
         };
         for (const t of featTags) {
             const action = t.action || _toneToAction[t.tone] || 'watch';

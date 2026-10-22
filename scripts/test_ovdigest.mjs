@@ -124,6 +124,8 @@ const R = await page.evaluate(async () => {
     //   ⭐ 決定性對照:同一個呼叫,只換代號,一個要有值、一個一定要是 null。
     out.chipSelf = !!app._chipEdgeState(String(app.currentSymbolId || ''));
     out.chipOther = app._chipEdgeState('ZZZZ');
+    // 🧾 V79.5.6 籌碼組合的**名字**本身帶門檻(「融資5日減3%以上」)= 條件定義、⛔ 不是研究數字 → 掃之前先拿掉名字
+    out.chipLabels = [app._CHIP_EDGE, app._FSTREAK_EDGE].flatMap(T => Object.values(T || {}).map(x => x && x.t).filter(Boolean));
     return out;
 });
 
@@ -144,7 +146,7 @@ for (const c of R.cases) {
        !/可以進場|可以買|可加碼|建議買進/.test(c.exit), c.exit.slice(0, 120));
     // 🧹 V78.3.6 散戶 App ⛔ 不印實測數字 / 基準勝率 → 改釘:三頁⛔ 不出現 % / pp / 基準 / 期望值,每條仍有一句白話「怎麼看」
     {
-        const all = c.now + ' ' + c.entry + ' ' + c.exit;
+        const all = (R.chipLabels || []).reduce((t, l) => t.split(l).join('〔組合名〕'), c.now + ' ' + c.entry + ' ' + c.exit);
         ok(`🧾 ${c.sym} 🧹 V78.3.6 ⛔ 不可附實測數字(% / pp / 期望值 / 勝率 / 基準)`,
            !/\d+(\.\d+)?\s*(%|pp)|期望值|勝率|基準|實測|回測/.test(all), (all.match(/\d+(\.\d+)?\s*(%|pp)|期望值|勝率|基準|實測|回測/) || [''])[0]);
         ok(`🧾b ${c.sym} 🧹 V78.3.6 每條仍有白話(風險提醒不是賣出指令 / 多半偏強 / 當背景看 / 別當進場理由 其一)`,

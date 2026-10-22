@@ -66,7 +66,9 @@ const R = await page.evaluate(async () => {
     const c = v.cloneNode(true);
     c.querySelectorAll('details:not([open])').forEach(d => { const s = d.querySelector('summary'); d.innerHTML = s ? s.outerHTML : ''; });
     const openTxt = (c.innerText || c.textContent || '').replace(/\s+/g, ' ');
-    const at = openTxt.search(/\d{4}\s/);
+    // ⚠️ V79.5.6 「第一檔股票」要找清單那一列(「#1 4958」),⛔ 不可只找 4 位數 —— 新排法之後標題的檔數會到 4 位數
+    //   (「明天要盯這 1398 檔」),舊的 /\d{4}\s/ 會把標題當成第一檔 → 前言變 10 個字、①⑤ 全部假失敗
+    const at = (() => { const i = openTxt.search(/#\d+\s+\d{4,6}[A-Z]?\s/); return i >= 0 ? i : openTxt.search(/\d{4}\s/); })();
     // ⚠️ 只認**這個**摺疊(標題含「上面那兩句的實測根據」)——
     //    第一版拿「頁面上所有收起的 details」當範圍,結果把數字整句刪掉之後
     //    n3/n6 還是 true(別的摺疊裡也有那些數字)→ 注入驗證只叫出 1/3 條。
@@ -115,8 +117,8 @@ ok('② ⛔ 一般模式沒有「實測根據」摺疊,2/3/6 檔回測數字整�
     R.foldFound === false && !/1,718,529|1,361,088|735,938|實測根據/.test(R.allTxt), JSON.stringify({ found: R.foldFound }));
 ok('🚧 空過守門:框得到「🎯 明天要盯這 N 檔」那張卡', R.cardTxt.length > 200 && /一天最多做前 2 檔/.test(R.cardTxt), R.cardTxt.length);
 ok('③ 🧬 那一行講「決策台會買的那一格」(或今天沒有),⛔ 這張卡不帶實測/回測研究字樣(🧹 V78.3.6)',
-    /決策台(唯一)?會買的那一格/.test(R.cardTxt) && !/實測|回測|期望值|勝率\s*\d|對照組|探針/.test(R.cardTxt),
-    (R.cardTxt.match(/實測|回測|勝率\s*\d|對照組|探針/) || [''])[0]);
+    /決策台(唯一)?會買的那一格/.test(R.cardTxt) && !/實測|回測|期望值|勝率\s*\d|對照組|(?<!中)探針/.test(R.cardTxt),   // 「中探針」(6217)是公司名
+    (R.cardTxt.match(/實測|回測|勝率\s*\d|對照組|(?<!中)探針/) || [''])[0]);
 ok('⑤ 前言瘦身:看到第一檔股票前 < 450 字(改版前是 593)', R.firstStockAt > 0 && R.firstStockAt < 450,
     `firstStockAt=${R.firstStockAt}`);
 console.log(`   ↳ 前言 ${R.firstStockAt} 字 ・攤開合計 ${R.openLen} 字`);

@@ -149,7 +149,13 @@ const R = await page.evaluate(() => {
     app._macroRiskCache = Object.assign({}, _m || {}, { taiex_ma240_bias: -8 });
     o.chuBear = app._chuPositionAdvice(); o.gateBear = !!app._mktGate();
     app._macroRiskCache = Object.assign({}, _m || {}, { taiex_ma240_bias: 8 });
+    // ⏰ V79.5.6 「多頭但已破月季線」要看真的加權 K 線(`_twiiBrokeMedium`)→ 測資一換(10/22 加權破了月線季線)
+    //   這條就跟著行情變紅。這一格驗的是「健康多頭那格一個字都沒被改到」→ 把月季線釘成「沒破」
+    const _bm = app._twiiBrokeMedium; app._twiiBrokeMedium = () => 0;
     o.chuBull = app._chuPositionAdvice();
+    app._twiiBrokeMedium = () => 2;
+    o.chuWeak = app._chuPositionAdvice();
+    app._twiiBrokeMedium = _bm;
     app._macroRiskCache = _m;
     // ③e 泡沫破裂卡:VIX 35 + 外資賣 500 億 → 兩格只叫你照出場規則
     ['bubbleCrashSection', 'bubbleCrashType', 'bubbleCrashReason', 'bubbleCrashHoldAction', 'bubbleCrashEmptyAction', 'bubbleCrashSectors', 'bubbleCrashSectorList'].forEach(id => mk(id, ''));
@@ -174,6 +180,7 @@ ok('③c ⭐ 決定性對照:同一份資料拿掉成交金額 → 0(證明是�
 ok('③d 大盤空頭 → 只擋新單(新單少量)、⛔ 空手 / 減碼;`_mktGate` 照樣守門',
    R.chuBear.regime === 'bear' && /新單少量/.test(R.chuBear.pct) && !/空手|減碼/.test(R.chuBear.pct + R.chuBear.advice) && R.gateBear, JSON.stringify(R.chuBear));
 ok('③d 大盤多頭 → 8 成照舊(⛔ 不可改到沒問題的那格)', R.chuBull.regime === 'bull' && /^8 成/.test(R.chuBull.pct), JSON.stringify(R.chuBull));
+ok('③d2 多頭但破月季線 → 保守、手上的照出場規則走(⛔ 不叫你賣)', R.chuWeak.regime === 'bull' && /保守/.test(R.chuWeak.pct) && /出場規則/.test(R.chuWeak.advice) && !/減碼|出清|空手/.test(R.chuWeak.advice), JSON.stringify(R.chuWeak));
 ok('③e 泡沫破裂卡:只描述、兩格都「照你的出場規則走」', /照你的出場規則走/.test(R.bubble) && !BAD.test(R.bubble) && /VIX/.test(R.bubble), R.bubble + (R.err3 || ''));
 ok('③ 全程無 pageerror', errs.length === 0, errs.join(' | '));
 

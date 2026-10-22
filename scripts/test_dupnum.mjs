@@ -336,8 +336,13 @@ await page.waitForTimeout(2500);
 // ⓚ 📊 §11 現在的盤面狀態(相對大盤 / 量能倍數 / 20 日振幅 / 距一年高)
 {
     const r = await page.evaluate(() => new Promise(res => {
+        // ⏰ V79.5.6 釘住「最後一根已收盤」:沙箱瀏覽器是 UTC → 測資更新後到 UTC 午夜之間,台北前一天收盤的那根
+        //   會被當成「今天、盤中」→ 量能倍數照規則不給(那條守門在 ⓦ 另外測)→ 這裡 `.toFixed` 讀到 null,
+        //   setTimeout 裡丟例外、Promise 永遠不回 → 整支測試死掉。這一組驗的是「收盤後的基準不含今日」。
+        const realLB = app._lastBarIsToday;
+        app._lastBarIsToday = () => false;
         app.switchSubTab && app.switchSubTab('report');
-        setTimeout(() => {
+        setTimeout(() => { try {
             const C = app._rpLast;
             // 🧪 決定性對照:注入一條假的加權序列 → 相對大盤那一格一定要跟著出現而且算得對
             const keep = app._macroTaiexSeries;
@@ -359,7 +364,7 @@ await page.waitForTimeout(2500);
                   want: k >= 3 ? +((+D[n - 1].volume || 0) / (s2 / k)).toFixed(4) : null,
                   dd: T && T.dd != null ? +T.dd.toFixed(3) : null,
                   bdd: (() => { const b = app._basePos(D); return b ? +b.dd.toFixed(3) : null; })() });
-        }, 2200);
+        } catch (e) { res({ err: String(e && e.message || e) }); } finally { app._lastBarIsToday = realLB; } }, 2200);
     }));
     ok('ⓚ 空過守門:報告頁畫得出「現在的盤面狀態」而且 ≥2 格', r.has && r.n >= 2, JSON.stringify(r).slice(0, 200));
     // ⭐ 期望值**當場算**(⛔ 不寫死 2.0 —— 等差序列的 20 日報酬不是 2.0%,我第一版就寫錯了)
@@ -722,10 +727,12 @@ await page.waitForTimeout(2500);
 {   // ⓦ 🚨 盤中的「量能倍數」是**口徑錯了**(分子半天、分母整天)→ ⛔ 不給數字
     //   ⭐ 決定性對照:**同一批資料**只換 `_lastBarIsToday` 的回答,兩邊必須不一樣。
     const w = await page.evaluate(() => {
-        const A = app, real = A._lastBarIsToday;
+        const A = app, real = A._lastBarIsToday, realT = A._tpeMinutes;
         const C = A._rpLast || { sym: A.currentSymbolId };
-        const grab = (open) => {
+        // ⏰ V79.5.6 「盤中」= 最後一根是今天 **而且** 台北還沒 13:30 → 時間也要一起釘(⛔ 依賴跑測試的時鐘 = 會時好時壞)
+        const grab = (open, min = 9 * 60 + 20) => {
             A._lastBarIsToday = () => open;
+            A._tpeMinutes = () => Object.assign(realT.call(A), { min });
             const T = A._rpTapeFacts(C);
             const h = A._rpTapeHtml(C), f = A._reportFacts(String(C.sym));
             const d = document.createElement('div'); d.innerHTML = h;
@@ -734,9 +741,9 @@ await page.waitForTimeout(2500);
                      txt: (cell?.innerText || '').replace(/\s+/g, ' '),
                      fact: (f.match(/量能倍數[^\n]*/) || [''])[0] };
         };
-        const closed = grab(false), open = grab(true);
-        A._lastBarIsToday = real;
-        return { closed, open };
+        const closed = grab(false), open = grab(true), after = grab(true, 14 * 60);
+        A._lastBarIsToday = real; A._tpeMinutes = realT;
+        return { closed, open, after };
     });
     ok('ⓦ 空過守門:兩種情境都抓得到「量能倍數」那一格', !!w.closed.txt && !!w.open.txt && w.closed.lots > 0,
        JSON.stringify(w).slice(0, 260));
@@ -744,11 +751,17 @@ await page.waitForTimeout(2500);
     ok('ⓦ3 🚨 盤中⛔ 不給倍數(分子是半天的量、分母是整天的均量)', w.open.x === null && !/\d×/.test(w.open.txt), w.open.txt);
     ok('ⓦ4 ⭐ 而且要講出「為什麼不給」(⛔ 不可只留空白 —— 陷阱 #22)',
        /還沒收盤/.test(w.open.txt) && /(期間|整天)/.test(w.open.txt), w.open.txt);
+    // 🐛 V79.5.6 同一句話裡「股」跟「張」混著講(「現在只成交 268,377 股,而基準…273 張」)→ 兩個一律講張
+    ok('ⓦ4b 同一句的兩個量⛔ 不可一個講股、一個講張', !/\d 股/.test(w.open.txt) && /成交 [\d,]+ 張/.test(w.open.txt), w.open.txt);
     // 🚨 提示詞那一份是**第二個出口**(V77.1.4 的教訓:顯示點永遠比你以為的多一個)
     ok('ⓦ5 🚨 餵給外部 AI 的提示詞也要一起改口,而且要明講⛔ 不可自己算',
        /量能倍數 —/.test(w.open.fact) && /不可以自己算/.test(w.open.fact)
        && /量能倍數 [\d.]+×/.test(w.closed.fact), `${w.open.fact} || ${w.closed.fact}`);
     ok('ⓦ6 ⭐ 決定性對照:同一批資料只換情境,兩邊必須不同', w.open.txt !== w.closed.txt && w.open.fact !== w.closed.fact, '');
+    // 🐛 V79.5.6 最後一根是今天、但已經過了 13:30 → 那一根是整天的量 → ⛔ 不可再說「還沒收盤」(以前一路講到半夜)
+    ok('ⓦ7 🚨 同一天收盤後(台北 14:00)照常給倍數,⛔ 不可再說「還沒收盤」',
+       typeof w.after.x === 'number' && /×/.test(w.after.txt) && !/還沒收盤/.test(w.after.txt) && w.after.x === w.closed.x,
+       `${w.after.txt} || x=${w.after.x} vs ${w.closed.x}`);
 }
 
 {   // 🪓 ⓧ V77.2.1 分拆/減資/除權留下的「價格斷崖」+ 🏷️ 興櫃 —— 使用者:「不要計算錯誤讓使用者誤解」

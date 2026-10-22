@@ -298,7 +298,62 @@ def collect_ticks(api, hot, today, S, qt_range=None, incr=None, log=print, pause
     return out, stat
 
 
+# ⏭️ V79.5.6 盤後才到的「排程備援」→ 今天的主迴圈已經跑到最後一拍就 ⛔ 不再整天重抓
+#   實測 10/22(📶 log):主迴圈 13:23 收工時永豐流量用了 181 MB;之後被 GitHub 延遲約 5 小時的兩條 cron
+#   (09:02 主迴圈 / 10:32 接手,實際 13:57 / 15:53 才跑)各把 80 檔「整天逐筆」重抓一次
+#   (78.6 萬筆、各約 50 MB)—— 換了一台機器、沒有增量狀態,而資料跟 13:23 那拍一樣。
+#   那 100 MB 本來是 5 分 K 歷史回補(kbar5_backfill,用到 85% 就停)在用的。
+#   ⛔ 只有「排程」而且「收盤後」才可能跳過:手動觸發(盤後測試靠首輪)、worker 叫醒、盤中的接手 → 照常;
+#   今天主迴圈沒跑到最後一拍(沒跑 / 中途掛掉)→ 照常整天抓(備援就是為這個存在的)。
+BACKUP_SKIP_AFTER = (13, 31)   # 台北這個時間以後才可能跳過(收盤後)
+BACKUP_DONE_FROM = (13, 20)    # 已發佈那份的時間 ≥ 這個 = 主迴圈跑到最後一拍(13:23)了
+
+
+def _backup_skip_reason(event, now_tw, published):
+    """回跳過的原因(字串)= 這輪不抓;None = 照常抓。published = 已發佈的 tick_flow.json(dict 或 None)。"""
+    if event != 'schedule':
+        return None
+    if now_tw.weekday() >= 5 or (now_tw.hour, now_tw.minute) < BACKUP_SKIP_AFTER:
+        return None
+    if not isinstance(published, dict) or len(published.get('data') or {}) < MIN_STOCKS:
+        return None
+    try:
+        upd = datetime.strptime(str(published.get('updated') or ''), '%Y-%m-%dT%H:%M:%SZ')
+    except ValueError:
+        return None
+    upd = upd.replace(tzinfo=timezone.utc).astimezone(TW)
+    if upd.date() != now_tw.date() or (upd.hour, upd.minute) < BACKUP_DONE_FROM:
+        return None
+    return f'今天的主迴圈 {upd:%H:%M} 已經抓到最後一拍({len(published["data"])} 檔)'
+
+
+def _fetch_published(timeout=20):
+    """讀已發佈的 tick_flow.json(gh-pages)→ (原始 bytes, dict);讀不到回 (None, None)(⛔ 讀不到就照常抓)。"""
+    import urllib.request
+    repo = os.environ.get('GITHUB_REPOSITORY') or 'xin7355-collab/StockAI-DB'
+    url = f'https://raw.githubusercontent.com/{repo}/gh-pages/data/tick_flow.json?t={int(time.time())}'
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            raw = r.read()
+        return raw, json.loads(raw.decode('utf-8'))
+    except Exception as e:
+        print(f'  ℹ️ 讀不到已發佈的 tick_flow.json({type(e).__name__})→ 照常抓')
+        return None, None
+
+
 def main():
+    # ⏭️ V79.5.6 ⛔ 一定要在登入之前判斷 —— 登入、抓合約本身也吃永豐流量
+    _ev = os.environ.get('GITHUB_EVENT_NAME', '')
+    _now = datetime.now(TW)
+    if _ev == 'schedule' and _now.weekday() < 5 and (_now.hour, _now.minute) >= BACKUP_SKIP_AFTER:
+        _raw, _pub = _fetch_published()
+        _why = _backup_skip_reason(_ev, _now, _pub)
+        if _why:
+            with open('tick_flow.json', 'wb') as f:
+                f.write(_raw)                    # 原樣交回 → 部署那步會是「無變更」;tick_hist 也不動
+            print(f'⏭️ 盤後才到的排程備援:{_why} → 這輪不重抓整天逐筆(省約 50 MB 永豐流量)')
+            return
+
     key = os.environ.get('SHIOAJI_API_KEY', '').strip()
     sec = os.environ.get('SHIOAJI_SECRET_KEY', '').strip()
     if not key or not sec:

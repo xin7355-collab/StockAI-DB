@@ -130,6 +130,15 @@ def main():
                     'vol': int(tv or 0),
                     'ts': _now_str(),
                 }
+                # 🔎 V79.5.6 漲跌的基準價 + 這筆快照自己的時間(原始值)—— 10/23 實測 271 檔裡,
+                #   漲跌的基準大多貼近「前一天」收盤、少數貼近「當天日盤」→ 夜盤有沒有成交、漲跌含不含白天
+                #   要靠這兩個欄位才分得出來(⛔ 前端還沒讀,先存證據;只加欄位、舊欄位一個都不動)。
+                cp = getattr(snap, 'change_price', None)
+                if cl is not None and cp is not None:
+                    out[str(sid)]['ref'] = round(float(cl) - float(cp), 2)
+                st = getattr(snap, 'ts', None)
+                if isinstance(st, (int, float)) and st > 0:
+                    out[str(sid)]['st'] = int(st)
             except Exception as e:
                 if len(diag['exc']) < 3:
                     diag['exc'].append(f'{sid}: {type(e).__name__}: {str(e)[:200]}')
@@ -151,6 +160,10 @@ def main():
         except Exception:
             pass
         sys.exit(1)
+
+    # 🔎 V79.5.6 成功的那幾輪也印前 3 筆原始快照(以前只有失敗才印)—— 要靠它判斷漲跌的基準是哪一天
+    for x in diag['sample']:
+        print(f'   🔎 快照樣本:{x}')
 
     try:
         api.logout()
