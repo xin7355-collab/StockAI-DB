@@ -83,7 +83,7 @@ try { build({ sig: mkSig({}, { match: 'same-day' }), gene, embedded: emb, prev: 
 ok('②h 訊號方法換了(舊:整段平均 → same-day)→ 重新起算放行;方法一樣 → 照擋(決定性對照)',
    !msErr && ms && ms.rebase && ms.rebase.signal && ms.rebase.signal.to === 'same-day' && ms.signal.match === 'same-day' && msSame && msSame.gate === true,
    msErr ? msErr.message : JSON.stringify(ms && ms.rebase));
-ok('②i 絕對下限有合理數值(成績單 ≥200 筆、窗口 36 個月、訊號樣本 ≥10 萬)+ 簽章含 App 預設那幾欄', FLOOR.deckN >= 200 && FLOOR.months === 36 && FLOOR.sigN >= 100000 && ['exit', 'rankMin', 'maxd', 'filter', 'stopFill', 'div', 'gate', 'lbZ', 'lbTop', 'cliff', 'statsWin', 'park', 'listK', 'allFire'].every(k => DECK_SIG.includes(k)) && deckSig(CFG_NEW) !== deckSig(CFG_OLD), JSON.stringify(FLOOR));
+ok('②i 絕對下限有合理數值(成績單 ≥100 筆 —— 🧾 V79.5.1 名單買法筆數只有舊買法的三成、窗口 36 個月、訊號樣本 ≥10 萬)+ 簽章含 App 預設那幾欄', FLOOR.deckN >= 100 && FLOOR.months === 36 && FLOOR.sigN >= 100000 && ['exit', 'rankMin', 'maxd', 'filter', 'stopFill', 'div', 'gate', 'lbZ', 'lbTop', 'cliff', 'statsWin', 'park', 'listK', 'allFire'].every(k => DECK_SIG.includes(k)) && deckSig(CFG_NEW) !== deckSig(CFG_OLD), JSON.stringify(FLOOR));
 // 🧾 V79.5.1 ②j 名單買法的守門(⭐ 決定性對照:同一份成績單只改 listk)
 {
     const CFG_LIST = { ...CFG_NEW, syms: 2833, filter: '', self: 'high+hivolat+nobear', listK: 2, allFire: 1, park: 'idle', minMktN: 0 };
@@ -99,6 +99,12 @@ ok('②i 絕對下限有合理數值(成績單 ≥200 筆、窗口 36 個月、�
        [eNoTrig, eDeep, eOk, eOld].map(e => e ? e.message : 'ok').join(' | '));
     const cashS = { ...gene, cfg: { ...CFG_LIST, park: undefined }, cum: 1234567 };
     const rc = build({ sig: mkSig(), gene: gL({ k: 2, days, trig: 1, loose: 1, unk: 0, inexact: 0 }), cash: cashS, embedded: emb, prev: null });
+    // 🅿️ ②l 停 0050 的成績單:跟嵌入版比要用「股票 + 0050」合計(⭐ 決定性對照:同一個 cum,有沒有 park 結果相反)
+    const E = emb.deck.gene, half = { ...gene, cfg: CFG_LIST, listk: { k: 2, days, trig: 1, loose: 1, unk: 0, inexact: 0 }, cum: Math.round(E * 0.5) };
+    const withPark = build({ sig: mkSig(), gene: { ...half, park: Math.round(E * 0.55) }, embedded: emb, prev: null });
+    const noPark = build({ sig: mkSig(), gene: half, embedded: emb, prev: null });
+    ok('②l 🅿️ 跟嵌入版比用「股票 + 0050」合計:股票一半 + 0050 0.55 倍 → 不算差異;同一個股票數字沒有 0050 → 算差異(⛔ 拿只算股票的 cum 跟合計比)',
+       !withPark.diff.some(d => d.k === 'deck.gene') && noPark.diff.some(d => d.k === 'deck.gene'), JSON.stringify([withPark.diff.filter(d => d.k === 'deck.gene'), noPark.diff.filter(d => d.k === 'deck.gene')]));
     ok('②k 💵 第二趟「錢放現金」寫進 deck.cash(⛔ 不再有 deck.plain)', rc.deck.cash && rc.deck.cash.cum === 1234567 && !('plain' in rc.deck), JSON.stringify(Object.keys(rc.deck)));
 }
 // ③ workflow
@@ -146,12 +152,12 @@ ok('③f 還原上一版產物當守門基準(PREV=data/backtest_edge.json)', /P
     const tm = +((/\n  backtest:[\s\S]*?timeout-minutes:\s*(\d+)/.exec(WF) || [])[1] || 0);
     const waits = (WF.match(/for p in \$pids; do wait \$p \|\| rc=1; done/g) || []).length;
     const passes = (WF.match(/SELF=high\+hivolat\+nobear LIST_TRIG=\/tmp\/trig\.ndjson /g) || []).length;
-    ok('③i 🧾 全市場(⛔ 抽 600 檔)・交易快取 4 片 + 每片結束碼都檢查 + 合併・名單前 60 筆・判觸發 TOPN=60(陷阱 #58)・兩趟都接 LIST_TRIG(🅿️ / 💵 PARK= )・回測 job 時限 ≥150 分',
+    ok('③i 🧾 全市場(⛔ 抽 600 檔)・交易快取 4 片 + 每片結束碼都檢查 + 合併・名單前 60 筆・判觸發 TOPN=60(陷阱 #58)・兩趟都接 LIST_TRIG(🅿️ / 💵 PARK= )・回測 job 時限 ≥90 分(本機量到整段約 20 分)',
        runs.length >= 4 && runs.every(n => n === '9999') && !/portfolio_backtest\.mjs 600\b/.test(WF)
        && /SELF=high\+hivolat SHARD=\$k\/4 TRADES_CACHE=\/tmp\/tc\.s\$k\.ndjson/.test(WF) && waits >= 2 && /scripts\/merge_trades_cache\.mjs \/tmp\/tc\.ndjson/.test(WF)
        && /LIST_DUMP_N:\s*'60'/.test(WF) && /TOPN=60 SHARD=\$k\/4 node scripts\/list_trig\.mjs/.test(WF)
        && passes === 2 && /LIST_TRIG=\/tmp\/trig\.ndjson PARK= SUMMARY_OUT=\/tmp\/summary_cash\.json/.test(WF) && /SUMMARY_CASH=\/tmp\/summary_cash\.json/.test(WF)
-       && tm >= 150, JSON.stringify({ runs, waits, passes, tm }));
+       && tm >= 90, JSON.stringify({ runs, waits, passes, tm }));
 }
 ok('③g 兩支回測都是「本機絕對路徑 / CI node_modules」雙來源載 playwright(⛔ 寫死沙箱路徑 = CI 一定炸)', ['scripts/portfolio_backtest.mjs', 'scripts/signal_backtest.mjs'].every(f => { const c = fs.readFileSync(path.join(ROOT, f), 'utf8'); return /catch \(_\) \{ \(\{ chromium \} = await import\('playwright'\)\); \}/.test(c) && /fs\.existsSync\(_exec\)/.test(c); }), '');
 // ④⑤ App
@@ -179,7 +185,7 @@ const R = await page.evaluate(async (aKey) => {
     const noteOn = A._btEdgeNote('html');
     const deckBefore = JSON.stringify(A._DECK_TRACK49);
     // 🧾 V79.5.1 每週改全市場 + 前一晚名單買法:同一個註記函式,產物換成名單買法那種
-    A._btEdge = { run_at: '2026-10-23', signal: { table, grades: { A: 53, B: 11, C: 65 }, n: 1500000 }, deck: { gene: { n: 800, win: 33, per: 3, cum: 4800000, dd: -27, from: '2022-10', to: '2026-10', cfg: { listK: 2, allFire: 1, park: 'idle' } }, cash: { cum: 1900000 } }, diff: [], note: 'x' };
+    A._btEdge = { run_at: '2026-10-23', signal: { table, grades: { A: 53, B: 11, C: 65 }, n: 1500000 }, deck: { gene: { n: 800, win: 33, per: 3, cum: 4800000, park: 1000000, dd: -27, from: '2022-10', to: '2026-10', cfg: { listK: 2, allFire: 1, park: 'idle' } }, cash: { cum: 1900000 } }, diff: [], note: 'x' };
     const noteList = A._btEdgeNote('html');
     A._btEdge = null;
     const backG = A._sigEdge(det, title);
@@ -196,7 +202,7 @@ ok('⑤b 有產物:註記印日期 + 差異數 + 「沒有自動換預設」', /
 ok('⑤c ⛔ 產物載入後 `_DECK_TRACK49` 一個字都沒變', R.deckSame === true, '');
 { const nl = String(R.noteList).replace(/<\/?b[^>]*>/g, ''), no = String(R.noteOn).replace(/<\/?b[^>]*>/g, '');
   ok('⑤e 🧾 每週產物是名單買法 → 註記寫「🅿️ 現行預設」「全市場 + 照 App 前一晚名單買」+ 錢放現金那趟;舊產物(沒有 listK)仍寫「抽 600 檔」(決定性對照:只換產物)',
-     /🅿️ 現行預設/.test(nl) && /全市場 \+ 照 App 前一晚名單買/.test(nl) && /錢放現金/.test(nl) && !/600 檔/.test(nl) && /600 檔/.test(no) && !/🅿️ 現行預設/.test(no), nl.slice(0, 160)); }
+     /🅿️ 現行預設 \+580 萬\(股票 \+480 萬・0050 \+100 萬\)/.test(nl) && /全市場 \+ 照 App 前一晚名單買/.test(nl) && /錢放現金 \+190 萬/.test(nl) && !/600 檔/.test(nl) && /600 檔/.test(no) && !/🅿️ 現行預設/.test(no), nl.slice(0, 200)); }
 // 🧹 V78.3.4 決策台「這套做法實測賺多少」整塊搬到產業作戰室 → 決策台⛔ 不再掛 `_btEdgeNote`
 // 🧹 V78.3.6 K 線教學(`_showEdgeHelp`)也改成只講「怎麼看、怎麼做」→ 散戶 App 畫面⛔ 任何地方都不再呼叫 `_btEdgeNote`
 //   (函式本身留著,⑤a/⑤b 仍直接驗它的內容;成績與差異改在產業作戰室看)。現在釘:① 沒有呼叫端 ② 教學彈窗沒有研究字樣 ③ 「怎麼看」的關鍵句還在

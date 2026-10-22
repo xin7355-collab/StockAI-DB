@@ -41,7 +41,12 @@ export const deckSig = cfg => DECK_SIG.map(k => `${k}=${cfg && cfg[k] != null ? 
 // 🔁 V79.4.5 絕對下限(⛔ 不管有沒有換設定都要過):2026-10-20 本機重現(同 workflow 的資料與設定)成績單 1,024 筆・47 個月、
 //   3 年訊號樣本 1,915,189 → 取約一半。⚠️ 改了成績單設定 / 訊號回測的方法,要重現一次再改這裡。
 // 🔥 V79.4.9 照新設定(GATE=lb 照平均・≥8 次・斷崖・回看 1,200 天・停 0050)本機重現:成績單 1,108 筆・49 個月(不挑 🧬 675 筆)→ 550
-export const FLOOR = { deckN: 550, months: 36, sigN: 900000, inexact: 5 };
+// 🧾 V79.5.1 全市場 + 照 App 前一晚名單買(2026-10-22 本機重現,每週同一份資料 2,369 檔):成績單 294 筆・47 個月・
+//   可能不準 2 / 974 晚 → 150(名單買法只在名單前 2 名當天觸發才買,筆數本來就只有舊買法的三成)
+export const FLOOR = { deckN: 150, months: 36, sigN: 900000, inexact: 5 };
+// 🅿️ V79.5.1 停 0050 的成績單:引擎的 cum 只算股票(0050 損益在 park 欄,⛔ 不混進 cum),
+//   而 `_DECK_TRACK49.gene` 是「股票 + 0050」的合計 → 比較一律用合計(⛔ 拿只算股票的 cum 跟合計比 = 兩把尺)
+export const deckTotal = g => (g ? (+g.cum || 0) + (+g.park || 0) : null);
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 
 /** 從 index.html 抓嵌入版常數(同 embed_signal_edge 的做法:兩行都是單獨一行) */
@@ -114,7 +119,8 @@ export function build({ sig, gene, cash = null, embedded, prev = null, now = new
     }
     if (embedded.deck && gene) {
         const winOld = null;   // 嵌入版沒存勝率 → 比累積與回撤
-        if (Math.abs(gene.cum - embedded.deck.gene) / Math.max(1, Math.abs(embedded.deck.gene)) > 0.30) diff.push({ k: 'deck.gene', what: 'cum', old: embedded.deck.gene, new: gene.cum });
+        const gTot = deckTotal(gene);
+        if (Math.abs(gTot - embedded.deck.gene) / Math.max(1, Math.abs(embedded.deck.gene)) > 0.30) diff.push({ k: 'deck.gene', what: 'cum', old: embedded.deck.gene, new: gTot });
         if (Math.abs(Math.abs(gene.dd) - embedded.deck.geneDD) > 5) diff.push({ k: 'deck.geneDD', what: 'dd', old: embedded.deck.geneDD, new: Math.abs(gene.dd) });
         void winOld;
     }
@@ -150,7 +156,7 @@ if (isMain) {
     fs.writeFileSync(out, JSON.stringify(r));
     if (r.rebase && r.rebase.deck) console.log(`🔁 成績單換設定 → 這一次重新起算守門基準(⛔ 不跟舊設定比 80%):\n   舊 ${r.rebase.deck.from}(${r.rebase.deck.oldN} 筆)\n   新 ${r.rebase.deck.to}(${r.rebase.deck.newN} 筆)`);
     if (r.rebase && r.rebase.signal) console.log(`🔁 訊號回測換方法 ${r.rebase.signal.from || '(舊:整段平均)'} → ${r.rebase.signal.to || '(未標)'}:重新起算(樣本 ${r.rebase.signal.oldN.toLocaleString()} → ${r.rebase.signal.newN.toLocaleString()})`);
-    console.log(`✅ backtest_edge.json:訊號 ${Object.keys(r.signal.table).length} 個(A=${r.signal.grades.A} B=${r.signal.grades.B} C=${r.signal.grades.C},n=${r.signal.n.toLocaleString()})・成績單 🅿️ ${gene.n} 筆 / 勝率 ${gene.win}% / 累積 ${gene.cum.toLocaleString()} / 回撤 ${gene.dd}%${gene.listk ? ` / 名單 ${gene.listk.days} 晚・可能不準 ${gene.listk.inexact ?? '?'} 晚` : ''}${cash ? ` ・💵 錢放現金 ${cash.cum.toLocaleString()}` : ''}`);
+    console.log(`✅ backtest_edge.json:訊號 ${Object.keys(r.signal.table).length} 個(A=${r.signal.grades.A} B=${r.signal.grades.B} C=${r.signal.grades.C},n=${r.signal.n.toLocaleString()})・成績單 🅿️ ${gene.n} 筆 / 勝率 ${gene.win}% / 累積 ${deckTotal(gene).toLocaleString()}${gene.park != null ? `(股票 ${gene.cum.toLocaleString()} + 0050 ${gene.park.toLocaleString()})` : ''} / 回撤 ${gene.dd}%${gene.listk ? ` / 名單 ${gene.listk.days} 晚・可能不準 ${gene.listk.inexact ?? '?'} 晚` : ''}${cash ? ` ・💵 錢放現金 ${cash.cum.toLocaleString()}` : ''}`);
     console.log(`   跟嵌入版的差異 ${r.diff.length} 項${r.diff.length ? ':' + r.diff.slice(0, 8).map(d => `${d.k}(${d.what} ${d.old}→${d.new})`).join(' / ') : ''}`);
     console.log('   ⛔ 只標示不換預設');
 }
