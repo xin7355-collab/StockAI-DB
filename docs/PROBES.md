@@ -3,6 +3,13 @@
 ⭐ 每支探針「回答什麼・何時該重跑」。做新探針前先在這裡 grep,做完在表裡加一列。
 ⚠️ `scripts/check_lab_coverage.py` 讀這份比對 `pro.html` 的實測總表。
 
+### 🔥 V79.4.9(2026-10-22)換預設之前「三件合起來」重測的跑法(🅿️ 新預設 = 照平均排・空頭照買・停 0050)
+- **🪞 App 對齊開關**(`portfolio_backtest.mjs`,⛔ 不設時逐位相同,`test_pbmirror.mjs`):`SELF=high+hivolat+nobear`(個股自己收盤同時跌破 20 與 60 日線不買 = playbook_scan bear / `_deckBuyOf` / auto_trade;🧬 第一次觸發裡 2.87%)・`MIN_MKT_N=0`(拿掉「型態全市場樣本 ≥20」,App 沒有這一關;不設 = 20)・`NOLOCK=1`(收盤鎖漲停的當成買不到,壓力測試用)・`PARK_RESERVE_PCT`(停 0050 時留幾 % 現金)・`EOD_DUMP=<檔>`(每天尾盤候選照排序寫出來,給 V80.0.0 的 13:20 核對 / 重播測試)。⚠️ 🧬 四捨五入:App 用**一位小數**(playbook_scan `Math.round(x*10)/10`),差 0.21% → 不加開關;⛔ 用整數四捨五入去量會誤報成 3.12%。
+- **名單判斷判到全部候選**:新舊兩種排法各 dump 一份(`LIST_DUMP_N=99999`,`MIN_N=8 LB_Z=0 LB_TOP=99` / `LB_Z=1.28 LB_TOP=2`)→ 合併 → `list_trig.mjs TOPN=99999 SKIP=<已判過的>` 3 片 → 只留會觸發的(`trigkeep.py`)→ `LIST_TRIG=trig_mall.ndjson`;summary `listk.inexact` = 0。
+- **組合**(每一組 `ALLFIRE=1 TRADES_CACHE=<tc_chand2af> GATE=lb CLIFF=20 STATS_WIN=1200 LISTK=2 LIST_TRIG=<trig_mall>` + `SELF=…+nobear MIN_MKT_N=0`,兩窗口各 17 條 `WARMUPS`):L1n 新排法 / L2n +`FILTER=`(空頭照買)/ L3n +`PARK=idle` / **L4n 兩個都開(新預設)** / L5o 舊排法 + 兩個都開 / L7o 舊排法(V79.4.8 預設)/ L6a·L6b `RANKBY=rand RANKSEED=20260907 / 1` / X4c `COST_X=2` / X4L `NOLOCK=1`;不挑 / 挑 🧬 那一對(`_DECK_TRACK49.plain / ogene`)只能用舊買法:PLn `SELF=` / OGn(不設 LISTK)。配對比較 `pair.mjs`、看板 `board_link.sh L2n L4n` → `gene_board.mjs --sets hot,park` → `embed_profit_board.mjs --gene … --keep-don`。
+- **逐年現行列**:`SET=long ONLY=now949 YB_BATCH=1 ALLFIRE=1 LISTK=2 LIST_TRIG=<trig_mall> GATE=lb CLIFF=20 STATS_WIN=1200 node scripts/yearly_bt.mjs`(+ `--cont` / `--collect now.json`)→ `embed_yearly_bt.mjs --merge-now now.json`(👑 列一個都不動;舊現行 now807 改標上一任、⛔ 不從 v2.d16 拿掉)。
+- **⏱️ `eod_partial_probe.mjs`**(V80.0.0 尾盤即時掃描的事前核對;V79.4.9 只有 `--selftest` 7 條):kbar5_deep(2021-05 起每月成交值前 100 大的 5 分 K)把 13:20 以前那幾根合成「13:20 的日 K」vs 整天那根,同一批候選(`EOD_DUMP`)各判一次 → 觸發 / 🧬 / 前 2 名一致率(成交量用原始值與「÷13:20 佔比」兩種);先量涵蓋率(尾盤買法的成交有幾 % 在那 100 檔裡)。
+
 ### 💰 V79.4.6(2026-10-21)16 年回測一律用 d16 + 2010 起個股股利(⛔ 別再用 d10n / 沒有 2010~2020 股利的資料跑 16 年)
 - **資料**:`d16`(2010 起全市場價格,含上櫃 / 後來下市;`merge_stock_deep.py` = stock_deep price10 + klines_deep 橋接 + 股數尺標)+ `d16/_div16.json`(stock_deep div10 → 2010 起除權息,2,163 檔)。
   🚨 `data/dividends_hist.json` 只從 **2021** 起 —— 拿它跑 16 年個股策略,2010~2020 一毛股利都沒算,卻跟「0050 含息」比 → 系統性低估(👑 16 年 7,047 → 只補股利 8,907 / 只換母體 7,253 / 兩個都換 9,357%)。
