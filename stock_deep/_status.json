@@ -85,14 +85,14 @@
  },
  "per": {
   "probe_err": "http402:Requests reach the upper limit. https://finmindtrade.com/",
-  "at": "2026-10-21",
+  "at": "2026-10-22",
   "probe_first": "2010-01-04",
   "cols": [
    "dividend_yield",
    "PER",
    "PBR"
   ],
-  "have": 796,
+  "have": 1001,
   "of": 2548,
   "chk": [
    0,
