@@ -65,6 +65,15 @@ CADENCE_H = {
     'daytrade_pack.json': None,
     'live_index.json': None,     # 🌅 V73.9.0 盤前(08:45~09:00)才產的台指期快照
     'paper_trades.json': None,   # 紙上交易,有訊號才寫
+    'premkt_log.json': 96,       # 🌅 V79.5.5 盤前紀錄:只有晚上 daily_miner 那輪寫(平日一天一次;週末 + 一天假 ≤96h)
+}
+
+# 🌅 V79.5.5 index.html 沒有 fetch、但也要體檢的檔(只有產業作戰室讀)
+#    first = 第一次應該出現在 gh-pages 的台北日期;在那之前不在是正常的(⛔ 過了那天照常報 ❌,不是無條件豁免)
+EXTRA_FILES = {
+    'premkt_log.json': {'first': '2026-10-26',
+                        'why': '盤前紀錄:平日早上 05:00~08:59 那幾輪先存進 macro_risk.premkt_recent,'
+                               '晚上 daily_miner 那輪才寫成這個檔'},
 }
 
 META_KEYS = {'updated', 'generated', 'date', 'data_date', 'ts', 'miner_version', 'count', 'total'}
@@ -447,9 +456,10 @@ def audit(ref):
     add = lambda lv, cat, msg: problems.append((lv, cat, msg))
     now = datetime.now(TW)
 
-    files = sorted(frontend_fetched_files())
+    front = frontend_fetched_files()
+    files = sorted(front | set(EXTRA_FILES))
     print(f'🩺 全盤資料體檢  ref={ref}  時間={now:%Y-%m-%d %H:%M} (台北)')
-    print(f'   前端 fetch 的 data/*.json 共 {len(files)} 個\n')
+    print(f'   前端 fetch 的 data/*.json 共 {len(front)} 個 + 另外要查的 {len(set(EXTRA_FILES) - front)} 個\n')
 
     cache = {}
     # ── A/B/C ────────────────────────────────────────────────────────
@@ -465,6 +475,9 @@ def audit(ref):
                       f'(要驗這個檔必須**盤中**再跑一次)')
             elif f in DELIBERATELY_ABSENT:
                 print(f'   ➖ data/{f} 不在 {ref} —— 刻意的,不是缺口:{DELIBERATELY_ABSENT[f]}')
+            elif f in EXTRA_FILES and f'{now:%Y-%m-%d}' < EXTRA_FILES[f]['first']:
+                print(f'   ⏳ data/{f} 還沒出現 —— 新檔,{EXTRA_FILES[f]["first"]} 以前沒有是正常的'
+                      f'({EXTRA_FILES[f]["why"]})')
             else:
                 add('❌', 'A', f'data/{f} 在 {ref} 不存在,但前端會去 fetch')
             continue

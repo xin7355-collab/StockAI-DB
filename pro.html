@@ -6926,6 +6926,92 @@ const PRO = {
     </div>`;
   },
 
+  // 🌅 V79.5.5 早上那份準不準 —— 每天開盤前最後一輪採礦的盤前資料(data/premkt_log.json,macro_miner 平日 05:00~08:59 寫)× 0050 真的開盤
+  //   ⛔ 判準跟 scripts/premkt_app_probe.mjs 一字不差:分數 s ≥3 講開高、≤−3 講開低;猜對 = 跳空方向對、開反 = 反方向超過 0.3%;
+  //     0050 除息日剔除;還沒有那天的 K(還沒開盤 / 還沒採礦)不算。分數一律用上面同一支 _premktScore(⛔ 不另算)。
+  //   ⛔ 不回算:早上當時看到的資料存不回來(重建版的 16 年數字上面那張卡已經有)。講話不到 20 天 → 不下結論。
+  _PREMKT_BAND: 0.3,
+  _PREMKT_TRACK_MIN: 20,
+  _premktTrack(log, raw50, div) {
+    const rows = (log && Array.isArray(log.rows)) ? log.rows.filter(e => e && typeof e.d === 'string' && e.x) : [];
+    const bars = Array.isArray(raw50) ? raw50.map(r => ({ d: String(r.date || '').replace(/\//g, '-').slice(0, 10), o: +r.open, c: +r.close }))
+      .filter(b => b.d && b.o > 0 && b.c > 0).sort((a, b) => a.d < b.d ? -1 : 1) : [];
+    const at = {}; bars.forEach((b, i) => { at[b.d] = i; });
+    const lastBar = bars.length ? bars[bars.length - 1].d : '';
+    const ex = new Set(((((div || {})['0050'] || {}).h) || []).map(h => String(h[0] || '').slice(0, 10)));
+    const B = this._PREMKT_BAND;
+    const out = rows.slice().sort((a, b) => a.d < b.d ? -1 : 1).map(e => {
+      const r = this._premktScore(e.x);
+      const us = String(e.x.sp500_date || e.x.nasdaq_date || '').slice(0, 10);
+      const stale = ['tsm', 'asx', 'umc'].filter(k => { const d = String(e.x[k + '_date'] || '').slice(0, 10); return d && us && d < us; }).length;
+      const o = { d: e.d, at: e.at || '', s: null, sPct: null, call: null, gap: null, res: null, why: '', stale };
+      if (!r || r.na) { o.why = `資料只有 ${r ? r.n : 0} 項,沒給分`; return o; }
+      o.s = r.s; o.sPct = r.sPct; o.call = r.s >= 3 ? 'up' : r.s <= -3 ? 'dn' : 'mid';
+      const i = at[e.d];
+      if (i == null) { o.why = e.d > lastBar ? '還沒有那天的 K' : '那天沒開盤'; return o; }
+      if (i < 1) { o.why = '沒有前一天收盤'; return o; }
+      if (ex.has(e.d)) { o.why = '0050 除息日(跳空是除息不是行情)'; return o; }
+      o.gap = (bars[i].o / bars[i - 1].c - 1) * 100;
+      if (o.call === 'up') o.res = o.gap > 0 ? 'hit' : (o.gap < -B ? 'wrong' : 'miss');
+      else if (o.call === 'dn') o.res = o.gap < 0 ? 'hit' : (o.gap > B ? 'wrong' : 'miss');
+      else o.res = 'quiet';
+      return o;
+    });
+    const sum = n => {
+      const ev = out.filter(o => o.res).slice(-n), call = ev.filter(o => o.call === 'up' || o.call === 'dn');
+      const hit = call.filter(o => o.res === 'hit').length, wrong = call.filter(o => o.res === 'wrong').length;
+      return { days: ev.length, call: call.length, hit, wrong,
+               hitPct: call.length ? hit / call.length * 100 : null, wrongPct: call.length ? wrong / call.length * 100 : null };
+    };
+    return { rows: out, sAll: sum(Infinity), s60: sum(60), first: out.length ? out[0].d : null, n: out.length, lastBar };
+  },
+  _premktTrackHtml(T) {
+    const P = this._PREMKT, MIN = this._PREMKT_TRACK_MIN;
+    if (!T || !T.n) return `<div class="note" style="margin-top:8px">🌅 <b>早上那份準不準</b>:從 2026-10-23 開始,每天開盤前最後一輪採礦的盤前資料會存下來(平日台北 05:00~08:59),之後這裡會列出跟 0050 真的開盤比起來準不準 —— ⏳ 目前還沒有任何一天的紀錄。</div>`;
+    const f = v => v == null ? '—' : v.toFixed(1) + '%';
+    const line = (lab, S) => S.call < MIN
+      ? `<div>📅 ${lab}:已記 <b>${S.days}</b> 天、講話 <b>${S.call}</b> 天 → ⏳ <b>還在累積</b>(講話要滿 ${MIN} 天才算得出來,⛔ 現在還不能說準不準)</div>`
+      : `<div>📅 ${lab}:講話 <b>${S.call}</b> 天 → 方向猜對 <b>${f(S.hitPct)}</b>、開反 <b>${f(S.wrongPct)}</b></div>`;
+    const callTxt = c => c === 'up' ? '開高偏多' : c === 'dn' ? '開低偏空' : c === 'mid' ? '中性(不講)' : '—';
+    const resTxt = o => o.res === 'hit' ? '✅ 對' : o.res === 'wrong' ? '⛔ 開反' : o.res === 'miss' ? '➖ 開平' : o.res === 'quiet' ? '➖ 沒講' : `⏳ ${o.why}`;
+    const S = this._premktTrackSort || { k: 'd', dir: -1 };
+    const key = (o, k) => k === 'd' ? o.d : k === 'sPct' ? o.sPct : k === 'gap' ? o.gap : k === 'res' ? ({ hit: 3, miss: 2, quiet: 1, wrong: 0 }[o.res] ?? null) : null;
+    const list = T.rows.slice(-10).sort((a, b) => {
+      const x = key(a, S.k), y = key(b, S.k);
+      if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1;
+      return (typeof x === 'string' ? x.localeCompare(y) : x - y) * S.dir;
+    });
+    const th = (k, h) => `<th class="ybsort${S.k === k ? ' on' : ''}" data-pmtrk-th="${k}" onclick="PRO.premktTrackSort('${k}')">${h}${S.k === k ? (S.dir < 0 ? ' ▼' : ' ▲') : ''}</th>`;
+    return `<div class="signote" style="margin-top:8px" id="premktTrackBox">
+      <div class="sighead">🌅 早上那份準不準 <span class="sigtag">每天開盤前最後一輪採礦的資料 ・從 ${T.first} 開始記 ・共 ${T.n} 天</span></div>
+      <div class="note">${line(`${T.first} 起全部`, T.sAll)}${T.sAll.days > 60 ? line('最近 60 天', T.s60) : ''}
+        <div>📊 對照:${P.from} 年起重建(用收盤後完整的資料)方向猜對 ${P.hit}%、開反 ${P.wrong}%;最近一年 ${P.hit250}% / ${P.wrong250}%。
+        兩邊差很多 → 多半是早上那份資料不齊或太舊(ADR / 亞股常常是兩天前的),⛔ 不是公式變了。</div>
+        <div>⚠️ 判準跟回測同一條:分數 ≥65 講開高、≤35 講開低;0050 開盤跳空方向對就算對,反方向超過 ${this._PREMKT_BAND}% 才算開反;0050 除息日不算。</div></div>
+      <div class="tblwrap"><table class="grid sigtbl" data-pmtrk-tbl><thead><tr>
+        ${th('d', '日期')}${th('sPct', '分數')}<th>講什麼</th>${th('gap', '0050 開盤')}${th('res', '結果')}</tr></thead><tbody>` +
+      list.map(o => `<tr data-pmtrk-row="${o.d}">
+        <td class="mono">${o.d.slice(5).replace('-', '/')}<div class="sigfrom">${o.at ? o.at + ' 的資料' : ''}</div></td>
+        <td class="mono">${o.sPct == null ? '—' : o.sPct}</td>
+        <td class="txtcell">${callTxt(o.call)}${o.stale ? `<div class="sigfrom">ADR 舊了 ${o.stale} 項(沒算分)</div>` : ''}</td>
+        <td class="mono" style="color:${o.gap == null ? 'inherit' : o.gap > 0 ? 'var(--up)' : o.gap < 0 ? 'var(--dn)' : 'inherit'}">${o.gap == null ? '—' : (o.gap >= 0 ? '+' : '') + o.gap.toFixed(2) + '%'}</td>
+        <td class="txtcell">${resTxt(o)}</td></tr>`).join('') +
+      `</tbody></table></div></div>`;
+  },
+  premktTrackSort(k) {
+    const S = this._premktTrackSort || { k: 'd', dir: -1 };
+    this._premktTrackSort = S.k === k ? { k, dir: -S.dir } : { k, dir: -1 };
+    const box = document.getElementById('premktTrackBox');
+    if (box && this._premktTrackLast) box.outerHTML = this._premktTrackHtml(this._premktTrackLast);
+  },
+  async _renderPremktTrack() {
+    const el = document.getElementById('colPremktTrack'); if (!el) return;
+    const [log, raw50] = await Promise.all([this.fetchJson('data/premkt_log.json', 9000), this.fetchJson('data/0050.json', 9000)]);
+    if (!this._poliDiv) this._poliDiv = await this.fetchJson('data/dividends_hist.json', 12000);
+    this._premktTrackLast = this._premktTrack(log, raw50, this._poliDiv && this._poliDiv.d);
+    el.innerHTML = this._premktTrackHtml(this._premktTrackLast);
+  },
+
   // 🏆 明日作戰清單(playbook_edge)—— **全 App 唯一一份排序**
   //   ⭐ 跟散戶救星 `_pbSort` 同一條:🧬 優先 → 選股規則的值 `_pbKey`
   //   🔁 V79.4.9 使用者選「換,次數維持 8 次」:預設照這一招的**平均** exp・每一招都算(只留 r > 0);
@@ -7910,7 +7996,8 @@ const PRO = {
   async _renderColCal() {
     const el = document.getElementById('colPremkt'); if (!el) return;
     const mr = await this.fetchJson('data/macro_risk.json');
-    el.innerHTML = this._premktHtml(mr);
+    el.innerHTML = this._premktHtml(mr) + '<div id="colPremktTrack"></div>';
+    await this._renderPremktTrack();
     await this._renderDivCal();
   },
   renderCol() {
@@ -8930,7 +9017,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V79.5.4',
+  VER: 'V79.5.5',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

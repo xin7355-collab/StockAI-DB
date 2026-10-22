@@ -1370,20 +1370,24 @@ _PREV_MACRO_URLS = (
 )
 
 
-def _load_prev_macro(local_path=None, getter=None):
-    """回 (上一份 macro_risk dict, 從哪裡讀到的)。⛔ 永遠不丟例外。"""
+def _load_prev_macro(local_path=None, getter=None, local=True):
+    """回 (上一份 macro_risk dict, 從哪裡讀到的)。⛔ 永遠不丟例外。
+    local=False → 不看本機、直接讀已發佈那份(V79.5.5 盤前紀錄用:daily_miner 本機那份是 data 分支的舊檔,沒有早上那筆)。"""
     p = Path(local_path) if local_path else OUTPUT_FILE
     why = []
-    try:
-        if p.exists():
-            j = json.loads(p.read_text(encoding="utf-8")) or {}
-            if isinstance(j, dict) and j:
-                return j, f"本機 {p.name}"
-            why.append("本機檔是空的")
-        else:
-            why.append("本機沒有上一份")
-    except Exception as e:
-        why.append(f"本機檔讀不到({str(e)[:40]})")
+    if not local:
+        why.append("只讀已發佈那份")
+    else:
+        try:
+            if p.exists():
+                j = json.loads(p.read_text(encoding="utf-8")) or {}
+                if isinstance(j, dict) and j:
+                    return j, f"本機 {p.name}"
+                why.append("本機檔是空的")
+            else:
+                why.append("本機沒有上一份")
+        except Exception as e:
+            why.append(f"本機檔讀不到({str(e)[:40]})")
     get = getter or (lambda u: http.get(u, timeout=12))
     for label, url in _PREV_MACRO_URLS:
         try:
@@ -1398,6 +1402,122 @@ def _load_prev_macro(local_path=None, getter=None):
         except Exception as e:
             why.append(f"{label} {str(e)[:60]}")
     return {}, "讀不到上一份 → 這一輪日期守門不作用(" + ";".join(why) + ")"
+
+
+# 🌅 V79.5.5 盤前體檢「早上那份」每天留一筆 → 產業作戰室「早上那份準不準」
+#   ⭐ 為什麼這樣存(⛔ 不寫進 risk_history):risk_history 只有 daily_miner 晚上那輪會寫並部署(macro_cron 只推 macro_risk.json),
+#     而且晚上那輪讀的「上一份」是 data 分支的舊檔,看不到早上那份;散戶 App 還有 3 處會下載 risk_history,撐大會拖慢 App。
+#   → ① 平日台北 05:00~08:59 的每一輪把計分欄位存進 macro_risk.json 的 premkt_recent(同一天後一輪蓋前一輪 = 開盤前最後一輪為準,
+#        也就是 09:00 時 App 顯示的那份);其他時間只沿用。每輪合併「本機上一份」與「已發佈那份」,所以晚上那輪讀得到早上寫的。
+#     ② daily_miner 那輪(本機本來就有底層資料)把 premkt_recent 併進 data/premkt_log.json(留 400 天),跟著 git add -f data/ 部署。
+#   ⛔ 只存產業作戰室 _premktScore 會讀的欄位 + 只列出來的亞股與日期(test_premkt_log ⑤ 跨檔抽 pro.html 原始碼比對)。
+PREMKT_SNAP_KEYS = (
+    "dji_chg_pct", "nasdaq_chg_pct", "sp500_chg_pct", "sox_chg_pct",
+    "tsm_chg_pct", "asx_chg_pct", "umc_chg_pct", "tsm_date", "asx_date", "umc_date",
+    "sp500_date", "nasdaq_date", "vix", "nq_fut_chg_pct", "ust10y_chg_pct", "taifex_tx_now",
+    "fear_greed", "usdtwd_chg_pct", "usdtwd_chg_5d", "krw_chg_5d", "cny_chg_5d",
+    "nikkei_chg_pct", "kospi_chg_pct", "hsi_chg_pct", "nikkei_date", "kospi_date", "hsi_date",
+    "taiex_date", "fi_three_date",
+)
+PREMKT_WIN = (5 * 60, 9 * 60)   # 台北 05:00~08:59:美股收盤之後、台股開盤之前
+PREMKT_RECENT_N = 5             # macro_risk.json 裡只留最近 5 天(約 4KB;晚上那輪漏跑一兩天也補得回來)
+PREMKT_LOG_N = 400
+PREMKT_LOG_FILE = DATA_DIR / "premkt_log.json"
+
+
+def _premkt_clean(v):
+    """NaN / inf → None(dict 往下走;taifex_tx_now 是 dict)。⛔ 寫檔用 allow_nan=False,沒清會整份寫不出來。"""
+    if isinstance(v, float) and (v != v or v in (float("inf"), float("-inf"))):
+        return None
+    if isinstance(v, dict):
+        return {k: _premkt_clean(x) for k, x in v.items()}
+    return v
+
+
+def _premkt_ok(e):
+    return isinstance(e, dict) and isinstance(e.get("d"), str) and len(e["d"]) == 10 and isinstance(e.get("x"), dict)
+
+
+def _premkt_pick(a, b):
+    """同一天兩筆 → 留比較晚寫的(都是開盤前寫的,越晚越接近 09:00 App 顯示的那份)。"""
+    if a is None:
+        return b
+    return b if str(b.get("at") or "") > str(a.get("at") or "") else a
+
+
+def _premkt_recent_step(out, prevs, now_tw):
+    """回 (recent 清單, 這一輪做了什麼)。prevs = [本機上一份, 已發佈那份](dict,可為 {} / None)。
+    平日 05:00~08:59 → 今天那一筆用這一輪的值蓋掉;其他時間只沿用上一份(⛔ 不寫新的)。"""
+    merged = {}
+    for pj in prevs:
+        for e in (pj or {}).get("premkt_recent") or []:
+            if _premkt_ok(e):
+                merged[e["d"]] = _premkt_pick(merged.get(e["d"]), e)
+    did = "只沿用"
+    mins = now_tw.hour * 60 + now_tw.minute
+    if now_tw.weekday() < 5 and PREMKT_WIN[0] <= mins < PREMKT_WIN[1]:
+        today = now_tw.strftime("%Y-%m-%d")
+        merged[today] = {"d": today, "at": now_tw.strftime("%H:%M"),
+                         "x": {k: _premkt_clean(out.get(k)) for k in PREMKT_SNAP_KEYS}}
+        did = f"寫入今天({now_tw.strftime('%H:%M')})"
+    recent = [merged[d] for d in sorted(merged)][-PREMKT_RECENT_N:]
+    return recent, did
+
+
+def _premkt_prevs(prev_json, prev_src, loader=None):
+    """要拿來合併的「上一份」們。本機那份不是已發佈那份(daily_miner:data 分支的舊檔)→ 另讀已發佈那份;
+    已經是線上那份(macro_cron)→ ⛔ 不再多打一次網路。回 (清單, log 文字)。"""
+    prevs = [prev_json or {}]
+    if str(prev_src or "").startswith("線上"):
+        return prevs, "上一份就是已發佈那份"
+    pub, src = (loader or _load_prev_macro)(local=False)
+    prevs.append(pub or {})
+    return prevs, f"另讀已發佈那份:{src}"
+
+
+def _premkt_log_merge(rows, recent, keep=PREMKT_LOG_N):
+    """把 recent 併進 log;同一天留比較晚寫的(log 只收早上寫的那幾筆,晚上那輪不會產生新的)。回 (新 rows, 新增天數, 更新天數)。"""
+    by = {}
+    for e in rows or []:
+        if _premkt_ok(e):
+            by[e["d"]] = e
+    add = upd = 0
+    for e in recent or []:
+        if not _premkt_ok(e):
+            continue
+        old = by.get(e["d"])
+        if old is None:
+            by[e["d"]] = e; add += 1
+        elif _premkt_pick(old, e) is not old:
+            by[e["d"]] = e; upd += 1
+    return [by[d] for d in sorted(by)][-keep:], add, upd
+
+
+def _premkt_log_write(recent, path=None, now_tw=None):
+    """daily_miner 那輪呼叫:併進 data/premkt_log.json。⛔ 永遠不丟例外;回一行 log 文字。"""
+    path = Path(path) if path else PREMKT_LOG_FILE
+    try:
+        old = {}
+        if path.exists():
+            try:
+                old = json.loads(path.read_text(encoding="utf-8")) or {}
+            except Exception as e:
+                return f"⚠️ premkt_log 讀不到(⛔ 不覆蓋,留著下一輪再試):{str(e)[:60]}"
+        rows, add, upd = _premkt_log_merge(old.get("rows") or [], recent)
+        if not rows:
+            return "ℹ️ premkt_log:還沒有任何一筆早上的紀錄(平日 05:00~08:59 的那一輪才會寫)"
+        now_tw = now_tw or datetime.now(timezone(timedelta(hours=8)))
+        doc = {
+            "updated": now_tw.strftime("%Y-%m-%d %H:%M %z"),
+            "note": "每天早上開盤前最後一輪採礦的盤前資料(台北 05:00~08:59);只給產業作戰室「早上那份準不準」用",
+            "win": "05:00-08:59",
+            "keys": list(PREMKT_SNAP_KEYS),
+            "rows": rows,
+        }
+        path.write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":"), allow_nan=False), encoding="utf-8")
+        return f"✅ premkt_log.json:{len(rows)} 天(新增 {add}、更新 {upd};最新 {rows[-1]['d']} {rows[-1].get('at')})"
+    except Exception as e:
+        return f"⚠️ premkt_log 寫入失敗(不影響其他):{str(e)[:80]}"
 
 
 def _apply_big_player(out, key, key_alias, val, chg, err, _new_d, _prev_json):
@@ -2900,6 +3020,8 @@ def fi_ratio_alert_level(fi_spot, fi_futures, twii_spot=None):
 
 def main():
     print("📡 macro_miner 啟動 — 抓取總經三維風險指標")
+    # 🌅 V79.5.5 有沒有底層資料(daily_miner 部署 job 先鋪 origin/data;macro_cron 是乾淨 checkout)→ 決定要不要寫 premkt_log
+    _had_base = (DATA_DIR / "risk_history.json").exists() or PREMKT_LOG_FILE.exists()
     out = {
         "updated":     datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M %z"),
         "us10y_yield": None,
@@ -3407,6 +3529,16 @@ def main():
         print(f"  ⚠️ 事件日曆演算法失敗(不影響主流程):{e}")
         out["upcoming_macro_events"] = []
 
+    # 🌅 V79.5.5 盤前體檢「早上那份」(說明見 PREMKT_SNAP_KEYS 上面)—— 失敗不影響其他
+    try:
+        _now_tw = datetime.now(timezone(timedelta(hours=8)))
+        _prevs, _pv_msg = _premkt_prevs(_prev_json, _prev_src)
+        print(f"  🌅 盤前紀錄的上一份:{_pv_msg}")
+        out["premkt_recent"], _did = _premkt_recent_step(out, _prevs, _now_tw)
+        print(f"  🌅 盤前紀錄 premkt_recent:{_did} ・共 {len(out['premkt_recent'])} 天")
+    except Exception as _e:
+        print(f"  ⚠️ 盤前紀錄略過(不影響其他):{_e}")
+
     # 寫檔（最輕量）— 任何 IO 錯誤不能讓整個 daily_miner 崩潰
     # 🛡️ NaN 最後防線:json.dumps 預設 allow_nan=True 會輸出字面 NaN(非法 JSON),
     # 瀏覽器 JSON.parse 直接 throw → 前端整頁(範例)。寫檔前遞迴掃成 None,再用 allow_nan=False 鎖死。
@@ -3433,6 +3565,12 @@ def main():
     except Exception as e:
         print(f"⚠️ macro_risk.json 寫檔失敗（不影響其他流程）：{e}")
         sys.exit(0)   # 強制 exit 0 避免污染 workflow
+
+    # 🌅 V79.5.5 daily_miner 那輪(有底層資料)才把早上那幾筆併進 data/premkt_log.json(macro_cron 只推 macro_risk.json,寫了也上不去)
+    if _had_base:
+        print("  " + _premkt_log_write(out.get("premkt_recent") or []))
+    else:
+        print("  ℹ️ premkt_log:這一輪沒有底層資料(macro_cron 乾淨 checkout)→ 不寫,由 daily_miner 那輪寫")
 
     # V27.6 — item 3:每日風險快照 append 到 data/risk_history.json(不覆蓋,保留歷史趨勢)
     #          讀既有(deploy 底層 git archive origin/data 會保留)→ 同日去重 → 留最近 90 筆 → 寫回
