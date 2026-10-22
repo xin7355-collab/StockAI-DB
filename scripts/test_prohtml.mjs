@@ -632,7 +632,7 @@ const T = await page.evaluate(async () => {
 // ㉔ 🔬 實測總表
 // ㉜ 🗑️ V79.0.8 今日訊號頁刪除(使用者:「今日訊號頁面,沒有用的話就刪除」—— 內容跟散戶 App 選股頁 / 決策台重複,
 //   「每檔最會賺的那招」名單穩定度 ≈ 隨機)。⭐ 只有它有的兩塊(盤前分數 / 未來 30 天除權息)搬到 📰 專欄頁頂端。
-// ㉝ 🌅 盤前分數(V74.4.5,實測 6 年同向)—— 公式與文案照舊,只是住址換到專欄頁
+// ㉝ 🌅 盤前分數(V74.4.5 → V79.5.4 改成跟 App 同一條)—— 住址在專欄頁
 const SIG = await page.evaluate(async () => {
     const out = {};
     PRO._cache['data/macro_risk.json'] = {
@@ -653,15 +653,16 @@ const SIG = await page.evaluate(async () => {
 ok('㉜ 🗑️ 今日訊號分頁已刪(⛔ 不可復活)', SIG.noTab && !/'sig', 'Sig'/.test(src));
 ok('㉜b 盤前分數 + 除權息搬到 📰 專欄頁頂端(⛔ 只有它有的那兩塊不可跟著消失)', SIG.inCol);
 ok('㉜c 除權息那格有內容(有資料列出、沒資料要說出來,⛔ 不可靜默空白)', SIG.div.trim().length > 10, SIG.div.slice(0, 80));
-ok('㉝ 分數算式跟探針 STRICT 一致(那指1+標普1+費半1.5+台積2+VIX0.5+日經1+韓股1+台幣0.5=8.5)',
-   SIG.premktScore && Math.abs(SIG.premktScore.s - 8.5) < 1e-9 && SIG.premktScore.n === 8,
-   JSON.stringify(SIG.premktScore && { s: SIG.premktScore.s, n: SIG.premktScore.n }));
-ok('㉝b 高分要對照到「≥3 分」那格的歷史數字(84.7% 開高)', /84\.7%/.test(SIG.how), SIG.how.slice(0, 120));
-ok('㉝c 🚨🚨 必須點出「開高有一大半是廢話」(同義反覆)+ 真正的預測力是開盤後那段',
-   /有一大半是廢話/.test(SIG.how) && /0\.574/.test(SIG.how) && /開盤之後還會不會繼續漲/.test(SIG.how));
+// 🌅 V79.5.4 起 = 散戶救星盤前體檢同一條(跨檔逐一比對在 test_premkt_formula ⑧);歷史數字 = premkt_app_probe 2010~2026、0050 真開盤
+ok('㉝ 分數 = App 盤前體檢同一條(那指 1 + 標普 1 + 費半 1.5 + 台積 2 + 台幣升 0.5 = 6;日經 / 韓股只列出來、VIX 沒水位不算)',
+   SIG.premktScore && SIG.premktScore.s === 6 && SIG.premktScore.sPct === 80 && SIG.premktScore.n === 5,
+   JSON.stringify(SIG.premktScore && { s: SIG.premktScore.s, sPct: SIG.premktScore.sPct, n: SIG.premktScore.n }));
+ok('㉝b 高分要對照到「≥65」那格的歷史數字(0050 開高 48.7%、開低 5.3%)', /開高 48\.7%/.test(SIG.how) && /開低 5\.3%/.test(SIG.how), SIG.how.slice(0, 160));
+ok('㉝c 🚨 只預測開盤:開盤之後只差 0.09 個百分點、扣成本是負的;⛔ 不可再寫舊的 0.574(加權開盤價湊出來的,陷阱 #47)',
+   /只預測開盤/.test(SIG.how) && /0\.09 個百分點/.test(SIG.how) && !/0\.574/.test(SIG.how) && /加權指數的開盤價/.test(SIG.how));
 ok('㉝d 🚨 必須寫「⛔ 不是叫你買什麼」+「拿大盤方向篩個股反而少賺」',
    /不是叫你買什麼/.test(SIG.how) && /篩個股反而會少賺/.test(SIG.how));
-ok('㉝e ⚠️ 要誠實說只算得到海外連動那一半', /海外連動那一半/.test(SIG.how));
+ok('㉝e ⚠️ 要誠實說哪幾項沒有歷史、亞股為什麼不算分', /夜盤/.test(SIG.how) && /沒有歷史/.test(SIG.how) && /亞股/.test(SIG.how) && /不算分/.test(SIG.how));
 ok('㉝f 🚧 成分不足 5 項 → ⛔ 不硬給分數', /不硬給分數/.test(SIG.premktThin), SIG.premktThin.slice(0, 80));
 ok('㉝g ⛔ 資料沒到要說出來(不可靜默空白)', /盤前資料還沒到/.test(SIG.premktNone));
 

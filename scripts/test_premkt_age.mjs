@@ -96,7 +96,7 @@ const R = await page.evaluate(async () => {
         return {
             s: C.s, sum: Math.round((C.parts || []).reduce((a, x) => a + x.d, 0) * 10) / 10,
             tsm: part('🏭 台積電 ADR'), asx: part('🔌 日月光 ADR'), umc: part('🔌 聯電 ADR'),
-            nk: part('🇯🇵 日經'), ks: part('🇰🇷 韓股'), hs: part('🇭🇰 恆指(半權重)'),
+            nk: part('🇯🇵 日經'), ks: part('🇰🇷 韓股'), hs: part('🇭🇰 恆指'),
             txt: (el.textContent || '').replace(/\s+/g, ' '),
             pp: (el.querySelector('[data-ppnote]') || {}).textContent || '',
             an: an ? { k: an.getAttribute('data-asianote'), t: an.textContent.replace(/\s+/g, ' ') } : null,
@@ -132,11 +132,12 @@ ok('② 空過守門:兩次都有渲染出分數', Number.isFinite(S.s) && Numbe
 ok('②a 舊的台積電 ADR → 0 分 + 寫「資料舊了」', S.tsm && S.tsm.d === 0 && /資料舊了/.test(S.tsm.note) && /不計分/.test(S.tsm.note), JSON.stringify(S.tsm));
 ok('②b 舊的日月光 ADR → 0 分', S.asx && S.asx.d === 0 && /資料舊了/.test(S.asx.note), JSON.stringify(S.asx));
 ok('②c 舊的日經 / 韓股 → 0 分', S.nk && S.nk.d === 0 && S.ks && S.ks.d === 0 && /資料舊了/.test(S.ks.note), JSON.stringify([S.nk, S.ks]));
-ok('②d 新的聯電 ADR / 恆指照常算分', S.umc && S.umc.d === 0.5 && S.hs && S.hs.d === -0.5, JSON.stringify([S.umc, S.hs]));
-ok('②e ⭐ 決定性對照:同一份資料日期改新 → 台積電 +2・日月光 +0.5・日經 −1・韓股 −1',
-    Fr.tsm && Fr.tsm.d === 2 && Fr.asx && Fr.asx.d === 0.5 && Fr.nk && Fr.nk.d === -1 && Fr.ks && Fr.ks.d === -1,
-    JSON.stringify([Fr.tsm, Fr.asx, Fr.nk, Fr.ks]));
-ok('②f 兩次分數差 == 舊的那幾項的分數(0.5 + 2 − 1 − 1 = 0.5)', Math.abs((Fr.s - S.s) - 0.5) < 0.051, `${Fr.s} − ${S.s}`);
+ok('②d 新的聯電 ADR 照常算分;恆指 V79.5.4 起只列出來(0 分・不計分,⛔ 不是「資料舊了」)',
+    S.umc && S.umc.d === 0.5 && S.hs && S.hs.d === 0 && /不計分/.test(S.hs.note) && !/資料舊了/.test(S.hs.note), JSON.stringify([S.umc, S.hs]));
+ok('②e ⭐ 決定性對照:同一份資料日期改新 → 台積電 +2・日月光 +0.5;日經 / 韓股 V79.5.4 起不管新舊都 0 分(premkt_app_probe)',
+    Fr.tsm && Fr.tsm.d === 2 && Fr.asx && Fr.asx.d === 0.5 && Fr.nk && Fr.nk.d === 0 && Fr.ks && Fr.ks.d === 0
+    && /不計分/.test(Fr.nk.note) && !/資料舊了/.test(Fr.nk.note), JSON.stringify([Fr.tsm, Fr.asx, Fr.nk, Fr.ks]));
+ok('②f 兩次分數差 == 舊的那幾項的分數(台積電 2 + 日月光 0.5 = 2.5;亞股不計分)', Math.abs((Fr.s - S.s) - 2.5) < 0.051, `${Fr.s} − ${S.s}`);
 ok('②g 逐項加總 == 分數(兩次都是)', Math.abs(S.sum - S.s) < 0.051 && Math.abs(Fr.sum - Fr.s) < 0.051, JSON.stringify([S.sum, S.s, Fr.sum, Fr.s]));
 
 // ③ 畫面文字(三種分數都看)

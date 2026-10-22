@@ -2093,7 +2093,8 @@ def fetch_business_signal():
         'Referer': 'https://index.ndc.gov.tw/n/zh_tw',
         'Accept': 'application/json, text/plain, */*',
         'Accept-Language': 'zh-TW,zh;q=0.9,en;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
+        # 🐛 V79.5.4 ⛔ 不可宣告 br:runner 沒裝 brotli → 回應是壓縮過的亂碼,JSON 解析失敗、官方頁面端點列舉也撈不到(macro_risk 的 last_error 開頭是 \x1bjV…)
+        'Accept-Encoding': 'gzip, deflate',
         'Sec-Fetch-Dest': 'empty',
         'Sec-Fetch-Mode': 'cors',
         'Sec-Fetch-Site': 'same-origin',
@@ -2772,6 +2773,33 @@ def fi_fut_state(net, hist_vals):
     return 'neutral', chg5, pct
 
 
+def _rh_from_local_or_published(get=None):
+    """🏦 V79.5.4 外資期貨「相對自己」的基準:本機 data/risk_history.json → 沒有就讀已發佈的(data 分支 raw → gh-pages)。
+    回 list / dict;全部拿不到回 None 並印原因(⛔ 不可靜默,陷阱 #22)。`get` 可注入假的 http.get(測試用)。"""
+    try:
+        return json.loads((DATA_DIR / 'risk_history.json').read_text(encoding='utf-8'))
+    except Exception as _e:
+        why = [f"本機 {str(_e)[:40]}"]
+    get = get or http.get
+    for label, url in (("data 分支 raw", "https://raw.githubusercontent.com/xin7355-collab/StockAI-DB/data/data/risk_history.json"),
+                       ("gh-pages", "https://xin7355-collab.github.io/StockAI-DB/data/risk_history.json")):
+        try:
+            r = get(url, timeout=12)
+            if getattr(r, 'status_code', 0) == 200:
+                j = r.json()
+                rows = j if isinstance(j, list) else (j.get('data') or [])
+                if rows:
+                    print(f"   🏦 本機沒有 risk_history → 外資期貨基準改讀 {label}({len(rows)} 天)")
+                    return j
+                why.append(f"{label} 內容是空的")
+            else:
+                why.append(f"{label} HTTP {getattr(r, 'status_code', '?')}")
+        except Exception as e:
+            why.append(f"{label} {str(e)[:40]}")
+    print(f"   ⚠️ risk_history 讀不到 → 外資期貨相對狀態待累積:{';'.join(why)}")
+    return None
+
+
 def judge_fi_complex(net_futures, net_spot, hist_vals=None):
     """
     外資期現一句話(只描述)。🔕 V79.3.5 改用**相對自己**判「期貨空單偏重」(⛔ 舊的「空單 > 30,000 口」
@@ -3166,14 +3194,15 @@ def main():
     print(f"   🦅 黑天鵝旗標:{out['blackswan']}")
 
     # 🏦 V79.3.5 期貨偏空與否改看「相對自己」→ 讀 risk_history.json 的過去淨口數(⛔ 不含今天;讀不到 → 基準累積中)
+    #   🐛 V79.5.4 macro_cron 是乾淨 checkout,本機沒有 data/risk_history.json → 一天 5~6 輪都寫「外資期貨基準累積中」
+    #     (10/22 08:13 那輪 log 逐字)→ 本機沒有就讀已發佈的那份(同下面斷崖防護 / V79.5.2 _prev_json 的做法)。
+    #     ⛔ 只拿來判斷,⛔ 不寫回(risk_history 由 daily_miner 那輪維護)。
     _fi_hist = []
-    try:
-        _rh = json.loads((DATA_DIR / 'risk_history.json').read_text(encoding='utf-8'))
+    _rh = _rh_from_local_or_published()
+    if _rh is not None:
         _rh = _rh if isinstance(_rh, list) else (_rh.get('data') or [])
         _today = (out.get('updated') or '')[:10]
         _fi_hist = [h.get('fi_futures_net') for h in _rh if isinstance(h, dict) and h.get('date') != _today]
-    except Exception as _e:
-        print(f"   ⚠️ risk_history 讀不到 → 外資期貨相對狀態待累積:{str(_e)[:60]}")
     out["fi_complex_conclusion"] = judge_fi_complex(fut, spot, _fi_hist)
     print(f"\n🎯 複合判定：{out['fi_complex_conclusion']}")
 

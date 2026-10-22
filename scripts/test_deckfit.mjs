@@ -39,11 +39,13 @@ for (const f of ['screener.json', 'today_signals.json', 'macro_risk.json', 'play
     ok('ⓓs4 成本走 `_sigCost()`(跟提醒同一把尺,⛔ 不寫死)', /this\._sigCost\(\)/.test(fh) && !/0\.44/.test(fh.replace(/\/\/[^\n]*/g, '')), '');
     const fs2 = strip(SRC.slice(SRC.indexOf('    async _deckFitScan() {'), SRC.indexOf('    async _deckFitScan() {') + 3000));
     ok('ⓓs5 ⭐ 名單只收過 `_sigProven` 的(用標題查同一張成績表,⛔ 不信產物自帶的 exp)', /_sigProven\(e\)/.test(fs2) && /_sigEdgeByTitle\(x\.t\)/.test(fs2), '');
-    const pp = strip(SRC.slice(SRC.indexOf('        // ③ 開盤方向計分(純公式)'), SRC.indexOf('        const _usClosed = (() =>')));
+    // 🧩 V79.5.4 算法搬進 `_preOpenScore`(全 App 唯一一份)→ 釘那一支的函式本體(test_premkt_formula ⓪ 也釘)
+    const _pi = SRC.indexOf('    _preOpenScore(x) {');
+    const pp = strip(SRC.slice(_pi, SRC.indexOf('\n    },\n', _pi)));
     // ⭐ `_add` 自己那一行 `s += d;` 是合法的 → 釘「只准有那一處」,⛔ 其餘一律要走 _add
     const nAdd = (pp.match(/(^|\n)\s*s \+=/g) || []).length, nSub = (pp.match(/(^|\n)\s*s -=/g) || []).length;
     ok('ⓒs 盤前分數每一筆都走 _add 記錄(⛔ 不可再有裸的 s += / s -=)',
-       /_pp\.push/.test(pp) && nAdd === 1 && nSub === 0, `s+= ${nAdd} 處 ・s-= ${nSub} 處`);
+       _pi > 0 && /parts\.push/.test(pp) && nAdd === 1 && nSub === 0, `s+= ${nAdd} 處 ・s-= ${nSub} 處`);
     const idl = strip(SRC.slice(SRC.indexOf('            idle.innerHTML = ('), SRC.indexOf('            idle.innerHTML = (') + 400));
     ok('ⓔs 「今天不用做」要把符合進場算進去(⛔ 否則同頁一邊列股票一邊說沒事)', /st\.fit/.test(idl), idl.slice(0, 140));
 }

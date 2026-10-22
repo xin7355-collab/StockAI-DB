@@ -56,6 +56,7 @@ CADENCE_H = {
     'industry_map.json': None,
     'concept_stocks.json': 168,
     'insider.json': 800,         # 董監月更
+    'dividends.json': 192,       # 💰 dividend_sweep 一週一次(週六 21:30 UTC);V79.5.4 前沒登記 → 預設 30h 天天誤報
     'day_trade.json': None,      # V71.5.4 已被 daytrade.json 取代;🗑️ V79.0.0 前端兩個都不讀了
     # 🗑️ V79.0.0 券商分點 + 10 個付費資料集(daytrade/fmx_pack/disposition/broker_*/holders…)已移除,不再檢查
     # 🕐 盤中才產出的:收盤後 / 假日本來就會舊,不算問題
