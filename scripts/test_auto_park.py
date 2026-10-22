@@ -15,6 +15,8 @@
    ⑳ 0050 沒報價 → retry(⛔ 不標做完)、下一輪補;重試 3 次  ㉑ 真實帳戶 0050 買單隔天用永豐庫存差對帳(全成交 / 退單 / 部分 / 查不到庫存不買)
    ㉒ 🛡️ PARK_LIVE_OK 沒開 → 真實帳戶只預覽 ㉓ 真實帳戶的 DRY_RUN 也查現金 ㉔ 👑 要留的錢不拿去停、湊交割款也算進去
    ㉕ DRY_RUN ⛔ 不寫狀態檔 ㉖ 模擬帳戶買的 0050 ⛔ 不在真實帳戶賣 ㉗ 湊不到交割款 → 🚨 講清楚要你做什麼
+   —— 第二輪檢查代理 ——
+   ㉘ 送單前再看一次鐘(過了 13:30 → 不送、🚨)㉙「過期」⛔ 算今天剛買的 ㉚ 0050 送單出錯:已送出的那段 ⛔ 不再送
 """
 import copy, json, math, os, re, subprocess, sys, types
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
@@ -36,8 +38,8 @@ class Bal:
 class Sett:
     def __init__(self, t=0.0, t1=0.0, t2=0.0): self.t_money, self.t1_money, self.t2_money = t, t1, t2
 class FakeApi:
-    def __init__(self, px=None, chp=None, cash=None, sett=None, real0050=None, bal_err=False, fail_quote=0, pos_err=False):
-        self.orders = []; self.px = px or {}; self.chp = chp or {}
+    def __init__(self, px=None, chp=None, cash=None, sett=None, real0050=None, bal_err=False, fail_quote=0, pos_err=False, fail_lot=None):
+        self.orders = []; self.px = px or {}; self.chp = chp or {}; self.fail_lot = fail_lot
         self.cash, self.sett, self.real0050, self.bal_err = cash, sett or [], real0050, bal_err
         self.fail_quote, self.pos_err = fail_quote, pos_err
         self.stock_account = 'ACC'
@@ -49,7 +51,10 @@ class FakeApi:
             self.fail_quote -= 1; raise RuntimeError('no quote')
         return [Snap(self.px.get(cs[0], 100.0), self.chp.get(cs[0], 0.0))]
     def Order(self, **kw): return kw
-    def place_order(self, contract, order): self.orders.append((contract, order)); return f'#{len(self.orders)}'
+    def place_order(self, contract, order):
+        if self.fail_lot and order['order_lot'] == self.fail_lot:
+            raise RuntimeError('委託失敗(假)')
+        self.orders.append((contract, order)); return f'#{len(self.orders)}'
     def account_balance(self):
         if self.bal_err or self.cash is None: raise RuntimeError('no balance')
         return Bal(self.cash)
@@ -72,6 +77,9 @@ def setv(**kw):
     for k, v in {**DEF, 'ACCOUNT_SIZE': 1_000_000, 'LIVE': False, 'DRY_RUN': False, **kw}.items():
         setattr(A, k, v)
 _REAL_SAVE = A.save_state   # ㉕ 用:真的寫檔那一支
+from datetime import datetime as _dt
+def _clock(h, m): return lambda: (_dt(2026, 10, 22, h, m, tzinfo=A.TW), h * 60 + m, '2026-10-22')
+A.tpe_now = _clock(13, 27)   # ⏰ park_step 送單前會再看一次鐘(過了 13:30 → late)→ 測試固定在 13:27,⛔ 不跟著實際時間變
 A.save_state = lambda s: None
 LOGS = []
 A.log = lambda *a, **k: LOGS.append(' '.join(str(x) for x in a))
@@ -351,6 +359,57 @@ ok('㉖b 🔬 對照:同一份資料標成真實帳戶買的 → 照規則賣多
 # ㉗ 湊不到交割款 → 🚨 講清楚
 LOGS.clear(); A._park_manual_alert({'hot_buy_amt': 150_000.0, 'park': {'sh': 3000}})
 ok('㉗ 湊交割款做不到 → 🚨 寫出金額、要你做什麼(盤後定價)、最多能賣幾股', any('🚨' in x and '150,000' in x and '盤後定價' in x and '3000' in x for x in LOGS), LOGS)
+
+# ═══ 🛠️ 10/22 第二輪檢查代理(每條都有舊寫法必紅的對照)═══
+# ㉘ 送單前再看一次鐘:過了 13:30 → 送不進去,⛔ 不送、🚨 講清楚(主迴圈的分鐘數是那一輪開頭讀的,報價重試可能拖過 13:30)
+setv()
+A.tpe_now = _clock(13, 31)
+st = {'pos': {'1111': {'sh': 1000, 'e': 100}}, 'park': {'sh': 3000}, 'hot_buy_amt': 100_000.0}
+api = FakeApi({'0050': 200.0, '1111': 100.0}, cash=10_000)
+LOGS.clear(); r = A.park_step(api, sj, st, D)
+ok('㉘ 已經 13:31 還要湊交割款 → ⛔ 不送(收盤後送不進去)、回 late、🚨 叫你盤後定價手動賣、標今天做完',
+   r == 'late' and not api.orders and st.get('park_day') == D and any('盤後定價' in x for x in LOGS), (r, api.orders, LOGS[-2:]))
+api = FakeApi({'0050': 200.0}, cash=2_000_000); st = {'pos': {}, 'park': {}}
+r = A.park_step(api, sj, st, D)
+ok('㉘b 已經 13:31 要買 0050 → ⛔ 不送、回 late', r == 'late' and not api.orders, (r, api.orders))
+A.tpe_now = _clock(13, 27)
+st = {'pos': {'1111': {'sh': 1000, 'e': 100}}, 'park': {'sh': 3000}, 'hot_buy_amt': 100_000.0}
+api = FakeApi({'0050': 200.0, '1111': 100.0}, cash=10_000)
+r = A.park_step(api, sj, st, D)
+ok('㉘c 🔬 對照:13:27 → 照送', r == 'sell' and shares(api, 'S') == math.ceil(100_000 / 198.0), (r, qty(api)))
+
+# ㉙ 「帳戶總資金過期」⛔ 算今天剛買的(那筆錢今天才要從 0050 換過來,不是帳戶變大了)
+ok('㉙ 0050 停滿 99 萬 + 今天買 15 萬 → ⛔ 不是「過期」,照算法該賣多出來的(舊寫法:1.14 倍 > 1.1 → stale、叫你改帳戶總資金)',
+   A.park_plan(1_000_000, 150_000, 990_000, today_buy=150_000)[2] == 'sell'
+   and A.park_plan(1_000_000, 150_000, 990_000)[2] == 'stale', (A.park_plan(1_000_000, 150_000, 990_000, today_buy=150_000), A.park_plan(1_000_000, 150_000, 990_000)))
+st = {'pos': {'1111': {'sh': 750, 'e': 100, 'd': D}, '2222': {'sh': 750, 'e': 100, 'd': D}}, 'park': {'sh': 4950}, 'hot_buy_amt': 150_000.0}
+api = FakeApi({'0050': 200.0, '1111': 100.0, '2222': 100.0}, cash=10_000)
+LOGS.clear(); r = A.park_step(api, sj, st, D)
+ok('㉙b 實際跑一次:賣 0050 湊 15 萬、⛔ 沒有「ACCOUNT_SIZE 可能過期」的假警告', r == 'sell' and shares(api, 'S') == math.ceil(150_000 / 198.0)
+   and not any('可能過期' in x for x in LOGS), (r, qty(api), [x for x in LOGS if '過期' in x]))
+ok('㉙c App `_parkPlan` 沒有「今天剛買」→ 預設 0 時跟以前一樣(⑰ 跨檔比對照常)', A.park_plan(1_000_000, 300_000, 800_000) == A.park_plan(1_000_000, 300_000, 800_000, today_buy=0))
+
+# ㉚ 0050 送單出錯:已送出的那段 ⛔ 不再送
+st = {'pos': {'1111': {'sh': 3000, 'e': 100}}, 'park': {'sh': 4000}, 'hot_buy_amt': 300_000.0}
+api = FakeApi({'0050': 200.0, '1111': 100.0}, cash=10_000, fail_lot='O')
+LOGS.clear(); r = A.park_step(api, sj, st, D)
+n30 = math.ceil(300_000 / 198.0)
+ok('㉚ 湊交割款要賣 %d 股、零股那筆出錯 → 已送出的 1000 股從自己的扣掉、標今天做完、🚨 叫你確認 / 手動補' % n30,
+   r == 'sell' and shares(api, 'S') == 1000 and st['park']['sh'] == 3000 and st.get('park_day') == D
+   and any('🚨' in x and '只送出 1000' in x for x in LOGS), (r, qty(api), st['park'], LOGS[-2:]))
+r2 = A.park_step(api, sj, st, D)
+ok('㉚b 🔬 同一天再叫一次 → ⛔ 不再送(舊寫法:例外 → retry、⛔ 沒扣股數 → 下一輪把整張再賣一次)', r2 == 'done' and shares(api, 'S') == 1000, (r2, qty(api)))
+st = {'pos': {'1111': {'sh': 3000, 'e': 100}}, 'park': {'sh': 4000}, 'hot_buy_amt': 300_000.0}
+api = FakeApi({'0050': 200.0, '1111': 100.0}, cash=10_000, fail_lot='C')
+r = A.park_step(api, sj, st, D)
+ok('㉚c 一股都沒送出 → retry、⛔ 不標做完、股數不動(下一輪再試)', r == 'retry' and not api.orders and st.get('park_day') != D and st['park']['sh'] == 4000, (r, st))
+st = {'pos': {}, 'park': {}}; api = FakeApi({'0050': 200.0}, cash=2_000_000, fail_lot='O')
+r = A.park_step(api, sj, st, D)
+ok('㉚d 買 0050 零股那筆出錯(模擬帳戶)→ 只記已送出的 1000 股', r == 'buy' and shares(api, 'B') == 1000 and st['park'].get('sh') == 1000, (r, st['park']))
+setv(LIVE=True, PARK_LIVE_OK=True)
+st = {'pos': {}, 'park': {}}; api = FakeApi({'0050': 200.0}, cash=2_000_000, real0050=0, fail_lot='O')
+r = A.park_step(api, sj, st, D)
+ok('㉚e 真實帳戶同上 → 待對帳的只記 1000 股', r == 'buy' and st['park'].get('pend', {}).get('sh') == 1000, (r, st['park']))
 setv()
 
 # 主迴圈:🔥 買完才停 0050,停完今天就收工

@@ -6,7 +6,7 @@
    ④ 沒到觸發價不買 ⑤ 今天買的金額記進 hot_buy_amt(🅿️ 收盤前要賣 0050 湊交割款)
    ⑥ DRY_RUN 不送單 ⑦ 一天最多 MAX_PICKS 檔、同一檔一天只買一次
    ⑧ fetch_picks 照 HOT_RULE 篩列 + 排序(mean 只留 r>0 照平均;lb 只留 o>0 照下界;舊格式不篩、照下界排)
-   ①c 模擬帳戶買的部位擋不住真實帳戶(只認同一個模式)
+   ①c 狀態檔裡是另一個模式(模擬 / 真實)的紀錄 → ⛔ 不買、⛔ 不蓋掉那一筆(V79.4.9 起兩個模式本來就分兩個檔)
 """
 import copy, io, json, os, sys, types
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
@@ -51,11 +51,12 @@ st = {'done': [], 'pos': {'2330': copy.deepcopy(old)}}
 A.hot_step(api, sj, st, BULL, PICKS, '2026-10-22')
 ok('① 🐛 2330 已經持有 → ⛔ 不再買、原本的持倉紀錄一個字都不動;名單第 2 名照買', bought(api) == ['2454'] and st['pos']['2330'] == old and '2330' in st['done'], (bought(api), st))
 ok('①b ⛔ 不往下補第 3 名(名單那一格空著,同回測)', '3008' not in bought(api))
-# ①c 模擬帳戶買的部位 ⛔ 擋不住真實帳戶(反之亦然):紀錄標了 m,只認同一個模式的(10/22 檢查代理順帶;沒標的舊紀錄照舊擋)
+# ①c 狀態檔裡是另一個模式的紀錄 → ⛔ 不買、⛔ 不蓋掉(10/22 第二輪檢查代理:以前會用新的一筆蓋掉 → 那個模式的停損 / 買進日不見了)
 setv(LIVE=True)
 api = FakeApi({'2330': 101.0, '2454': 101.0}); st = {'done': [], 'pos': {'2330': dict(old, m='sim')}}
 A.hot_step(api, sj, st, BULL, PICKS, '2026-10-22')
-ok('①c 2330 那筆是模擬帳戶買的 → 真實帳戶照名單買,新紀錄標成 live', '2330' in bought(api) and st['pos']['2330'].get('m') == 'live', (bought(api), st['pos'].get('2330')))
+ok('①c 2330 那筆是模擬帳戶買的(只有共用狀態檔才會遇到)→ 真實帳戶這次 ⛔ 不買、⛔ 不蓋掉那一筆;名單第 2 名照買',
+   '2330' not in bought(api) and st['pos']['2330'] == dict(old, m='sim') and '2454' in bought(api), (bought(api), st['pos'].get('2330')))
 api = FakeApi({'2330': 101.0, '2454': 101.0}); st = {'done': [], 'pos': {'2330': dict(old, m='live')}}
 A.hot_step(api, sj, st, BULL, PICKS, '2026-10-22')
 ok('①d 🔬 對照:同一筆標成真實帳戶買的 → 不再買', '2330' not in bought(api), bought(api))
