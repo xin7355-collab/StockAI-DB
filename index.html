@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.5.6 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.5.7 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -735,7 +735,7 @@
         🔴 ⚠️ 偵測到流量擠壓，進入防守模式
     </div>
 
-    <div id="seasonModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[22rem]" onclick="event.stopPropagation()"><h3 class="text-white font-black text-lg mb-3 border-b border-gray-700 pb-2">🎯 首席作戰週期 (春夏秋冬)</h3><div class="space-y-3 text-sm text-gray-300 leading-relaxed"><p><span class="text-pink-400 font-bold border border-pink-700 bg-pink-900/30 px-1.5 py-0.5 rounded">🌸 春 (打底)</span> 剛站上月線。主力撒種，適合分批建倉，耐心等待發芽。</p><p><span class="text-red-400 font-bold border border-red-700 bg-red-900/30 px-1.5 py-0.5 rounded">☀️ 夏 (主升)</span> 多頭排列沿布林上軌噴發。利潤最肥，不破5日線死命抱牢！</p><p><span class="text-orange-400 font-bold border border-orange-700 bg-orange-900/30 px-1.5 py-0.5 rounded">🍁 秋 (盤頭)</span> 高檔震盪、爆量不漲。主力準備收割，啟動分批停利，跌破月線全結帳。</p><p><span class="text-blue-300 font-bold border border-blue-700 bg-blue-900/30 px-1.5 py-0.5 rounded">❄️ 冬 (空頭)</span> 均線下彎。嚴禁摸底接刀！滿門抄斬，現金為王。</p></div><button onclick="document.getElementById('seasonModal').classList.add('hidden'); document.getElementById('seasonModal').style.display='none';" class="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">我知道了</button></div></div>
+    <div id="seasonModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[22rem]" onclick="event.stopPropagation()"><h3 class="text-white font-black text-lg mb-3 border-b border-gray-700 pb-2">🎯 首席作戰週期 (春夏秋冬)</h3><div class="space-y-3 text-sm text-gray-300 leading-relaxed"><p><span class="text-pink-400 font-bold border border-pink-700 bg-pink-900/30 px-1.5 py-0.5 rounded">🌸 春 (打底)</span> 剛站上月線。低檔整理;要不要買照決策台。</p><p><span class="text-red-400 font-bold border border-red-700 bg-red-900/30 px-1.5 py-0.5 rounded">☀️ 夏 (主升)</span> 多頭排列沿布林上軌噴發。多頭上漲;手上的照你的出場規則走。</p><p><span class="text-orange-400 font-bold border border-orange-700 bg-orange-900/30 px-1.5 py-0.5 rounded">🍁 秋 (盤頭)</span> 高檔震盪、爆量不漲。手上的照你的出場規則走(⛔ 不用先賣一部分)。</p><p><span class="text-blue-300 font-bold border border-blue-700 bg-blue-900/30 px-1.5 py-0.5 rounded">❄️ 冬 (空頭)</span> 均線下彎。別摸底接刀;新單先等,手上的照你的出場規則走。</p></div><button onclick="document.getElementById('seasonModal').classList.add('hidden'); document.getElementById('seasonModal').style.display='none';" class="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white py-2.5 rounded-lg text-sm font-bold transition-colors">我知道了</button></div></div>
     <div id="groupModal" class="modal-base hidden" onclick="this.classList.add('hidden'); this.style.display='none';"><div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()"><h3 class="text-white font-bold mb-3 text-sm" id="groupModalTitle">➕ 新增自選清單</h3><div class="w-full mb-4"><input type="text" id="groupNameInput" placeholder="請輸入清單名稱..." autocomplete="off" enterkeyhint="done" class="w-full bg-[#0d1117] text-white p-2.5 rounded-lg border border-[#30363d] outline-none focus:border-blue-500 text-base transition-colors" onkeydown="if(event.key === 'Enter') { document.activeElement.blur(); app.confirmGroupAction(); }"><input type="hidden" id="groupModalMode" value="create"></div><div class="flex justify-end gap-2"><button onclick="document.getElementById('groupModal').classList.add('hidden'); document.getElementById('groupModal').style.display='none';" class="px-4 py-2 text-gray-400 text-xs font-bold hover:bg-gray-800 rounded transition-colors w-1/2">取消</button><button onclick="app.confirmGroupAction()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded transition-colors shadow-lg w-1/2">確定</button></div></div></div>
     <div id="favPickerModal" class="modal-base hidden" onclick="if(event.target===this){this.classList.add('hidden');this.style.display='none';}">
         <div class="modal-content max-w-[20rem]" onclick="event.stopPropagation()">
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.5.6</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.5.7</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3147,7 +3147,7 @@
                             <div class="text-[9px] text-gray-500 mb-1 font-bold">📅 現在是哪個季節?</div>
                             <div id="weatherSeasonIcon" class="text-3xl mb-0.5">🍂</div>
                             <div id="weatherSeasonLabel" class="text-[11px] font-black text-orange-300">秋收</div>
-                            <div id="weatherSeasonSub" class="text-[9px] text-gray-500 leading-tight mt-0.5">高檔震盪、分批停利</div>
+                            <div id="weatherSeasonSub" class="text-[9px] text-gray-500 leading-tight mt-0.5">等待引擎掃描</div>
                         </div>
                         <div class="bg-[#0d1117] rounded-xl p-2.5 text-center border border-[#30363d]">
                             <div class="text-[9px] text-gray-500 mb-1 font-bold">🌀 大家在熱衷買股?</div>
@@ -3856,7 +3856,7 @@ const app = {
         '散戶多空比': '從小台指期貨未平倉推算的散戶部位。正值=散戶偏多、負值=散戶偏空。只描述散戶現在站哪一邊,不是買賣訊號,不用拿來判斷明天漲跌。',
         '台幣匯率': '美元兌新台幣。31 以下=熱錢湧入（外資看好）、33 以上=熱錢撤離（外資看空）。台股漲跌跟匯率高度同步。',
         '台指逆價差': '期貨價格 - 現貨價格。\n\n📈 正值 = 順價差(期貨比現貨貴 → 期貨主力樂觀):\n  ・ +50 點以上 = 大順差,期貨偏多\n  ・ +10~+50 點 = 微順差,樂觀\n\n📉 負值 = 逆價差(期貨比現貨便宜 → 期貨主力悲觀):\n  ・ -10~-50 點 = 微逆差,警戒\n  ・ -50~-100 點 = 逆差,期貨偏空\n  ・ -100 點以下 = 深逆差,主力空殺過頭,現貨通常即將反彈(逆向訊號)',
-        '景氣對策信號': '國發會每月公布的景氣燈號(月底/月初公佈上月)。\n\n🔵 藍燈 (9-16 分) = 景氣衰退,股市常超跌完底反彈\n🔷 黃藍 (17-22 分) = 景氣趨弱,股市底部震盪\n🟢 綠燈 (23-31 分) = 景氣穩定,股市中性適合長抱\n🟡 黃紅 (32-37 分) = 景氣轉強,股市多頭續強\n🔴 紅燈 (38-45 分) = 景氣過熱,股市常見泡沫,注意拉回\n\n📊 投資對策:藍燈進場長抱 ・ 紅燈分批停利\n💡 來源:國發會官網每月 27 號公佈\n   https://index.ndc.gov.tw/n/zh_tw',
+        '景氣對策信號': '國發會每月公布的景氣燈號(月底/月初公佈上月)。\n\n🔵 藍燈 (9-16 分) = 景氣衰退,股市常超跌完底反彈\n🔷 黃藍 (17-22 分) = 景氣趨弱,股市底部震盪\n🟢 綠燈 (23-31 分) = 景氣穩定,股市中性適合長抱\n🟡 黃紅 (32-37 分) = 景氣轉強,股市多頭續強\n🔴 紅燈 (38-45 分) = 景氣過熱,股市常見泡沫,注意拉回\n\n📊 怎麼看:燈號講的是景氣在哪個位置(每月公布一次、比股市慢)—— ⛔ 不是買賣訊號\n💡 來源:國發會官網每月 27 號公佈\n   https://index.ndc.gov.tw/n/zh_tw',
         '流動性熱度': '市場資金水溫，反映成交額相對 20MA。<30% 緊縮要小心斷頭、30-60% 健康、60-75% 過熱注意、>75% 隨時反轉。',
         '外資期現複合': '外資現貨買賣 + 期貨多空。同向=真實趨勢（雙多=噴、雙空=殺）；背離=套利或暗流，要更小心判讀。',
         '市場風險指數': 'VIX 恐慌+外資期+DXY+SPX+日圓+黃金 6 指標綜合 0-100 分,分數越高 = 外面的壓力越大。⚠️ 只描述現況,⛔ 不能拿來預告會不會大跌、也不是賣出訊號;手上的照你的出場規則走。',
@@ -3910,7 +3910,7 @@ const app = {
         '創新高': '收盤創近 60 日新高 = 上方無套牢賣壓(everyone is happy),最強勢的多頭訊號。但要配合量增才健康,無量創高小心假突破。',
         '量縮窒息': '成交量萎縮到 5 日均量的 6 成以下 = 買賣雙方都觀望。盤整末端的量縮常是變盤前兆,要等放量表態才知道方向。',
         '量價背離': '價量必須同向才健康:漲要帶量(有人追)、跌可縮量(沒人想賣)。「價漲量縮」= 漲假的、主力沒進場,易回檔;「價跌量縮」= 殺盤賣壓衰竭,可能止跌。判讀以個股自身價量為主,大盤走勢當背景參考(個股逆大盤上漲 = 相對強勢)。',
-        '高檔出貨': '股價衝到波段高點、當天卻爆大量(≥2 倍 5 日均量),但收一根「小實體變盤線」或「長上影線」= 主力趁高把貨倒給散戶。出現代表漲勢可能到頂:手上有貨分批停利,空手別追高。',
+        '高檔出貨': '股價衝到波段高點、當天卻爆大量(≥2 倍 5 日均量),但收一根「小實體變盤線」或「長上影線」= 主力趁高把貨倒給散戶。出現代表漲勢可能到頂 —— 別追高;手上的照你的出場規則走(⛔ 不用先賣一部分)。',
         '非上市櫃': '這一檔**不在上市櫃名單裡**,多半是「興櫃」。\n\n三件事跟你直接有關:\n• 🚨 **沒有漲跌幅限制** —— 上市櫃一天最多 ±10%,興櫃沒有。像 6696 曾經一天之內振幅將近 50%。\n• ⛔ **不能融資融券** —— 所以本站「融資追繳壓力區」那一格對它是空的,不是壞掉。\n• 💧 **成交量通常很小** —— 很多一天只成交幾十張。本站的進場方式是「尾盤觸價買」,一天只成交幾十張的股票,那個價你很可能**買不到**,或是你一買價格就被自己墊高。\n\n⚠️ **所以這一頁上那些門檻要打折看**:乖離、基期位階、追買價、套牢區,全都是拿上市櫃的規則調出來的。\n\n⭐ 本站**不把它從榜單刪掉**,改成在每一列標出來讓你自己判斷。\n\n💡 為什麼連中文名都沒有:本站股名來自官方「上市櫃公司基本資料」與「每日收盤行情」兩份,興櫃天生不在那兩份上。',
         '價格斷崖': '這一檔的歷史 K 線裡,有某一天的收盤價**跳得物理上不可能**(台股上市櫃一天最多 ±10%,但那天直接變成好幾倍或剩幾分之一)。\n\n三個常見原因:\n• 🔢 **股票分割 / 反分割**(例如 1 股拆成 4 股,價格變 1/4)\n• ✂️ **減資**(股數減少,價格等比例調高)\n• 💰 **除權息**(配股配息後,參考價往下調)\n\n🚨 **對你的影響**:那一天**以前**的價格是「另一把尺」量出來的 → 跨過那一天的**均線(季線/半年線/年線)、基期位階**都會失真。\n\n⭐ **本站的處理方式(誠實講清楚)**:採礦時會自動還原「**整數倍**的分割/減資」(2~10 倍),因為那種一定是尺標變了。但**除權息**與**非整數比例的減資**(例如價格變成 1.63 倍)**刻意不動** —— 那些比例是任意的,硬要「修掉」會把**真正的除權與真正的大跌也一起亂乘**,反而製造出新的錯誤。\n\n💡 **你該怎麼做**:看這一檔的長天期均線與位階時,先確認資料有沒有跨過那一天;跨過了就只當參考,別拿它當進出場依據。近期(斷崖之後)的價格是乾淨的。\n\n⚠️ 興櫃股**不會**出現這個提醒 —— 它本來就沒有漲跌幅限制,單日大跳是真實行情,不是壞資料。',
         '基期位階': '把「近 1 年的最高價~最低價」當成一把尺,現價落在這把尺的第幾 %。\n\n🧊 低基期(≤35% 且距高點跌 ≥25%):股價在相對低檔,分析師說的「低基期」就是這個。好處是萬一利多來,漲幅空間大(基期低=比較基準低);風險是「便宜還有更便宜」,低基期不等於會漲。\n\n📊 中基期(35~80%):不上不下。\n\n⛰️ 高基期(≥80%):股價在相對高檔,追高要嚴設停損。\n\n💡 用法:低基期 + 打底跡象(月線翻揚/底部抬高/外資回補/量能回溫)才是真的有爆發力 → 選股頁「🧊 低基期爆發」榜已經幫你篩好。單看低基期就買,常買到還在跌的股票。\n\n🚨 **不要跟「估值基期」搞混,那是另一個數字**(報告頁 §4 估值那一格):\n• 📊 **股價基期**(這一顆)= 股價在**近一年高低區間**的位置\n• 💰 **估值基期** = **本益比**在它自己**近三年**的位置\n\n⭐ **兩個常常相反,而且相反的時候最有意義**。實例(國巨 2327,2026/09/16):股價從 1220 跌到 536(股價基期只有 **37%**,跌了 56%),但本益比 36.2 倍落在近三年第 **89** 百分位(中位才 14.3 倍)→ 意思是**獲利掉得比股價還快**,所以「跌了一大段」不等於「變便宜了」。景氣循環股(被動元件/航運/面板/記憶體)在景氣高點過後常常長這樣。\n\n⛔ 所以看到「股價基期低」不要直接當成便宜,要同時看估值那一格。',
@@ -4853,11 +4853,11 @@ const app = {
             // 處置股:看 end_date 還剩幾天
             if (isDisp && info.end_date) {
                 const days = Math.ceil((new Date(info.end_date).getTime() - Date.now()) / 86400000);
-                if (days === 1)       alerts.push({ sym, title: '⏰ 你的股明天出關', body: `${name}(${sym}) ${info.interval || '?'}分撮今天最後一天 → 看尾盤量決定明天進出` });
-                else if (days === 0)  alerts.push({ sym, title: '🎉 你的股今天出獄!', body: `${name}(${sym}) 恢復 5 秒撮合 → 看開盤 30 分量價跟主力或別碰` });
-                else if (days <= 3 && days > 1) alerts.push({ sym, title: '🔒 你的股處置中', body: `${name}(${sym}) ${info.interval || '?'}分撮 ・ 還剩 ${days} 天出關` });
+                if (days === 1)       alerts.push({ sym, title: '⏰ 你的股明天出關', body: `${name}(${sym}) ${info.interval || '?'}分撮今天最後一天,明天恢復一般撮合 → 手上的照你的出場規則走` });
+                else if (days === 0)  alerts.push({ sym, title: '🎉 你的股今天出獄!', body: `${name}(${sym}) 今天恢復一般撮合 → 手上的照你的出場規則走(出關之後會漲還會跌看不出來)` });
+                else if (days <= 3 && days > 1) alerts.push({ sym, title: '🔒 你的股處置中', body: `${name}(${sym}) ${info.interval || '?'}分撮 ・ 還剩 ${days} 天出關 ・ 分盤撮合 ⛔ 別用市價單` });
             } else if (isNotice) {
-                alerts.push({ sym, title: '⚠️ 你的股被列注意', body: `${name}(${sym}) TWSE 注意股 ・ 再觸發可能升級處置 → 提防分批停利` });
+                alerts.push({ sym, title: '⚠️ 你的股被列注意', body: `${name}(${sym}) TWSE 注意股 ・ 再觸發可能升級處置 → 手上的照你的出場規則走(⛔ 不用先賣)` });
             }
         }
         if (!alerts.length) return;
@@ -5694,7 +5694,7 @@ const app = {
                             //   ⛔ 不可硬掛最接近那兩條的成績當背書(CLAUDE.md:查不到成績一律當未驗證,
                             //   不可假裝有成績)——而且那兩條方向還相反:`高檔出貨量` 空方站得住(−0.27pp,p=0.043),
                             //   `價漲量縮(高檔背離)` 卻是 **+0.55pp(警告方向相反)**。
-                            this._alertQuiet('📉 高檔出貨訊號', `${name}(${sym}) 近高爆量收小實體/長上影,主力恐高檔出貨,有貨分批停利`, sym);
+                            this._alertQuiet('📉 高檔出貨訊號', `${name}(${sym}) 近高爆量收小實體/長上影,可能是高檔出貨 —— 手上的照你的出場規則走`, sym);
                         }
                     }
                 } catch (_) {}
@@ -8569,10 +8569,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.5.6',
+    _APP_VERSION: 'V79.5.7',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.5.7', d: [
+            '🧹 永豐智慧單攻略「直接照抄」那塊改成照你的三條出場線算(以前寫停利價、先賣一半、回檔 5%、−10% 停損,跟 App 的出場規則打架)',
+            '🧹 提醒、K 線訊號說明、多空計分卡、主升段體檢、節氣卡、選股頁的大盤提醒:不再叫你先賣一部分、減碼或空手 —— 手上的照你的出場規則走,要不要買照決策台',
+            '📌 葛蘭碧八大法則、K 棒型態說明、朱老師選股說明:下面加一行講清楚「這是理論原本的說法,App 的規則是哪一套」',
+        ], dt: '2026-10-23' },
         { v: 'V79.5.6', d: [
             '🔧 基本頁:資料日期會正確顯示(以前一律寫「資料日期未知」);網路不穩、圖表沒載到時,下面的數字照常出來',
             '📚 行事曆每個事件的說明改成「要看什麼」,不再叫你減碼、加碼或先賣一部分;個股頁頂端標籤也一樣,而且偏多改紅字 🔺、偏空改綠字 🔻(跟漲跌的顏色一致)',
@@ -8741,7 +8746,6 @@ ${list}
         { v: 'V78.5.0', d: ['🔧 小修正'] },
         { v: 'V78.4.9', d: ['🔧 小修正'] },
         { v: 'V78.4.8', d: ['🔧 小修正'] },
-        { v: 'V78.4.7', d: ['🔧 小修正'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -13489,13 +13493,13 @@ const marginByDate = {};
                     //   (⛔ 不可跟頂端跑馬燈的「絕不追高」打架)。
                     ? (_mg ? `四面向同步攻擊,<b>但大盤${_mg.regimeLabel}、建議 ${_mg.pct}</b> → 有貨的續抱,<b>空手的別追高</b>`
                            : '四面向同步攻擊,可順勢操作(留意大盤)')
-                    : `局部優勢明顯(${RULES_N} 條命中 ${hits} 條),沿月線操作不破不出`;
+                    : `局部優勢明顯(${RULES_N} 條命中 ${hits} 條)—— 手上的照你的出場規則走`;
             oneLiner = _zero + oneLiner;
         } else if (ratio <= 0.35) {
             verdict = '空方優勢'; verdictTone = 'bear';
             const bad = ['chip','price','fund','tech'].filter(c => cats[c].bear > cats[c].bull);
             // ⛔ 空方(風險)那側**不加樣本門檻** —— 多空不對稱:少提醒的代價遠大於多提醒
-            oneLiner = _zero + (bad.length >= 3 ? '多面向警訊齊發,空手觀望或反向操作' : '弱勢明顯,持股分批停利、空手不接刀');
+            oneLiner = _zero + (bad.length >= 3 ? '多面向警訊齊發 —— 手上的照你的出場規則走,要不要買照決策台' : '弱勢明顯 —— 別接刀;手上的照你的出場規則走');
         } else {
             verdict = '均衡拉鋸'; verdictTone = 'neutral';
             oneLiner = '多空各有訊號,等突破/跌破均線再表態';
@@ -18309,7 +18313,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         const sigs = (window.StrategySim && window.StrategySim.volumeSignals(data)) || [];
         for (const s of sigs) {
             if (s.kind === 'attack') out.push({ tone: 'bull', title: '攻擊量(主力進貨)', val: s.val, msg: `量放大 ${s.vr.toFixed(1)}× 均量 + 紅K上漲、非高檔 → 攻擊量/主力進貨,起漲有量易續攻。` });
-            else if (s.kind === 'distribution') out.push({ tone: 'bear', title: '高檔出貨量', val: s.val, msg: `高檔爆量 ${s.vr.toFixed(1)}× + 黑K → 主力出貨量${s.doubled ? '(已自低點漲近一倍=主力目標區,出貨機率高)' : ''},有貨分批停利、別追。` });
+            else if (s.kind === 'distribution') out.push({ tone: 'bear', title: '高檔出貨量', val: s.val, msg: `高檔爆量 ${s.vr.toFixed(1)}× + 黑K → 主力出貨量${s.doubled ? '(已自低點漲近一倍=主力目標區,出貨機率高)' : ''};別追高,手上的照你的出場規則走。` });
             else if (s.kind === 'stall') out.push({ tone: 'flat', title: '止跌量(量縮窒息)', val: s.val, msg: `低檔量縮至 ${(s.vr * 100).toFixed(0)}% 均量 + 未破前低 → 量縮窒息,留意打底止跌(待紅K放量確認)。` });
             else if (s.kind === 'handover') out.push({ tone: 'bull', title: '換手量(洗籌續攻)', val: s.val, msg: `高檔大量黑K(${s.daysAgo}天前)被今日紅K收盤過高 ${s.hi.toFixed(2)} → 換手成功,強勢股洗掉浮額易再攻。` });
             else if (s.kind === 'rebound') out.push({ tone: 'warn', title: '強反彈量(非多頭)', val: s.val, msg: `低檔爆量 ${s.vr.toFixed(1)}× + 紅K過昨高 → 強反彈訊號(僅反彈非轉多),搶要設停利、跌破5MA就跑。` });
@@ -18822,7 +18826,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             const ind = s.kind === 'KD+MACD' ? 'KD 與 MACD 都' : s.kind;
             const when = s.daysAgo === 0 ? '今日' : s.daysAgo + '天前';
             if (s.side === 'bear') {
-                out.push({ tone: 'bear', title: `${s.kind} 頂背離`, val: s.close, msg: `股價${when}創波段新高 ${s.close.toFixed(2)}(>前高 ${s.prevClose.toFixed(2)}),但 ${ind}沒跟著創高=<b>上漲動能衰竭</b>(頂背離),高檔賣訊,別追高、有貨分批停利。` });
+                out.push({ tone: 'bear', title: `${s.kind} 頂背離`, val: s.close, msg: `股價${when}創波段新高 ${s.close.toFixed(2)}(>前高 ${s.prevClose.toFixed(2)}),但 ${ind}沒跟著創高=<b>上漲動能衰竭</b>(頂背離),高檔賣訊,別追高;手上的照你的出場規則走。` });
             } else {
                 out.push({ tone: 'bull', title: `${s.kind} 底背離`, val: s.close, msg: `股價${when}創波段新低 ${s.close.toFixed(2)}(<前低 ${s.prevClose.toFixed(2)}),但 ${ind}沒跟著創低=<b>跌勢動能趨緩</b>(底背離),低檔買訊,待紅K站上5日線可分批承接。` });
             }
@@ -18865,7 +18869,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (last - b <= FRESH && rsi[a] != null && rsi[b] != null && C(data[b]) > C(data[a]) && rsi[b] < rsi[a] && rsi[a] >= 65) {
                 const when = last - b === 0 ? '今日' : (last - b) + '天前';
                 out.push({ tone: 'bear', title: 'RSI 頂背離', val: C(data[b]),
-                    msg: `股價${when}創波段新高 ${C(data[b]).toFixed(2)}(>前高 ${C(data[a]).toFixed(2)}),但 <b>RSI 沒跟著創高</b>(${rsi[a].toFixed(0)}→${rsi[b].toFixed(0)})=上漲動能衰竭(頂背離);噴出末段賣訊,別追高、有貨分批停利。` });
+                    msg: `股價${when}創波段新高 ${C(data[b]).toFixed(2)}(>前高 ${C(data[a]).toFixed(2)}),但 <b>RSI 沒跟著創高</b>(${rsi[a].toFixed(0)}→${rsi[b].toFixed(0)})=上漲動能衰竭(頂背離);噴出末段賣訊,別追高;手上的照你的出場規則走。` });
             }
         }
         if (troughs.length >= 2) {
@@ -19010,7 +19014,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
         if (trend === 'bull' && c > ma20 && ma20 > ma60 && pos > 0.5) {
             out.push({ tone: 'bull', title: '🌊 威科夫·拉抬段', val: ma20, msg: `多頭排列 + 頭頭高,主力已在拉抬——威科夫「拉抬段(Markup)」。順勢抱波段,回檔到均線 ${ma20.toFixed(2)} 是買點,別做空。` });
         } else if (pos >= 0.75 && isBox && dnDominant) {
-            out.push({ tone: 'bear', title: '🌊 威科夫·出貨段', val: ll, msg: `高檔箱型橫盤 + 近20日下跌量>上漲量=主力高檔<b>派發出貨</b>(威科夫出貨段)。別追高,<b>跌破箱底 ${ll.toFixed(2)}</b> 就進入下跌段,持股減碼。` });
+            out.push({ tone: 'bear', title: '🌊 威科夫·出貨段', val: ll, msg: `高檔箱型橫盤 + 近20日下跌量>上漲量=主力高檔<b>派發出貨</b>(威科夫出貨段)。別追高;<b>跌破箱底 ${ll.toFixed(2)}</b> 就進入下跌段 —— 手上的照你的出場規則走。` });
         } else if (pos <= 0.35 && isBox && upDominant) {
             out.push({ tone: 'bull', title: '🌊 威科夫·吸籌段', val: hh, msg: `低檔箱型橫盤 + 近20日上漲量>下跌量=主力低檔<b>默默吸籌</b>(威科夫吸籌段)。打底中,<b>帶量突破箱頂 ${hh.toFixed(2)}</b>=拉抬啟動,可提前列觀察佈局。` });
         } else if (trend === 'bear' && c < ma60 && pos < 0.4) {
@@ -19257,7 +19261,7 @@ TWSE(證交所)監視標的之一,當股價/量能/籌碼異常時公告為「�
             if (last - b <= FRESH && C(data[b]) > C(data[a]) && obv[b] < obv[a]) {
                 const when = last - b === 0 ? '今日' : (last - b) + '天前';
                 out.push({ tone: 'bear', title: 'OBV 頂背離', val: C(data[b]),
-                    msg: `股價${when}創波段新高 ${C(data[b]).toFixed(2)}(>前高 ${C(data[a]).toFixed(2)}),但 <b>OBV 能量潮沒跟著創高</b>=買盤量能未同步,主力疑拉高出貨(頂背離);高檔賣訊,嚴禁追高、有貨分批停利。` });
+                    msg: `股價${when}創波段新高 ${C(data[b]).toFixed(2)}(>前高 ${C(data[a]).toFixed(2)}),但 <b>OBV 能量潮沒跟著創高</b>=買盤量能未同步,主力疑拉高出貨(頂背離);高檔賣訊,別追高;手上的照你的出場規則走。` });
             }
         }
         if (troughs.length >= 2) {
@@ -29894,13 +29898,13 @@ ${this._reportFacts(sym)}
                 stageMsg = '結構偏空或破季線,別接刀;等打底、站回季線+均線翻多再看。';
             } else if (overheat || (pos52 >= 0.9 && biasMa20 >= 18)) {
                 stage = '⚠️ 末升段過熱'; stageCol = 'text-orange-300'; stageBar = 'border-orange-500'; stageBias = -1;
-                stageMsg = '位階高、乖離大,主升段末端;別追高,有貨分批停利,拉回不破月線才續抱。';
+                stageMsg = '位階高、乖離大,主升段末端;別追高,手上的照你的出場規則走。';
             } else if (maBull && trend === 'bull' && eff >= 0.30 && pos52 < 0.9) {
                 stage = '🔥 主升段進行中'; stageCol = 'text-red-300'; stageBar = 'border-red-500'; stageBias = 2;
-                stageMsg = '均線多頭+趨勢效率高+頭頭高底底高 → 順勢抱波段最賺;回後不破月線可加碼,跌破月線先減。';
+                stageMsg = '均線多頭+趨勢效率高+頭頭高底底高 → 主升段;手上的照你的出場規則走,要不要買照決策台。';
             } else if (breakoutToday || (aboveMa60 && ma20Up && pos52 <= 0.7 && trend !== 'bear')) {
                 stage = '🚀 初升段啟動'; stageCol = 'text-red-300'; stageBar = 'border-red-500'; stageBias = 1.5;
-                stageMsg = '剛帶量突破/站上季線翻多 → 初升段起漲;回測不破頸線或月線是買點,設好停損別凹。';
+                stageMsg = '剛帶量突破/站上季線翻多 → 初升段起漲;要不要買照決策台,買了照你的出場規則走。';
             } else if (coil || eff < 0.25) {
                 stage = '🟡 盤整打底'; stageCol = 'text-yellow-300'; stageBar = 'border-yellow-500'; stageBias = 0;
                 stageMsg = '均線糾結/區間整理,能量累積中;等「帶量長紅突破」表態再進,別在區間追高殺低。';
@@ -34725,8 +34729,8 @@ ${this._reportFacts(sym)}
         }
         season = season || '--';
         const seasonMap = {
-            '春': { ic: '🌸', label: '春耕築底', sub: '主力撒種、分批建倉時節' },
-            '夏': { ic: '☀️', label: '夏耘主升', sub: '多頭噴發、不破 5MA 抱牢' },
+            '春': { ic: '🌸', label: '春耕築底', sub: '低檔整理;要不要買照決策台' },   // 🧹 V79.5.7 ⛔ 不叫人分批建倉
+            '夏': { ic: '☀️', label: '夏耘主升', sub: '多頭上漲;手上的照出場規則走' },   // 🧹 V79.5.7 ⛔「不破 5MA 抱牢」(5 日線不是出場規則)
             '秋': { ic: '🍂', label: '秋收盤頭', sub: '高檔震盪;手上的照出場規則走' },   // 🔕 V79.3.5 只描述(⛔ 不叫人停利)
             '冬': { ic: '❄️', label: '冬藏空頭', sub: '均線下彎;新單先等,手上的照出場規則走' },   // 🔕 V79.3.5 ⛔ 現金為王
         };
@@ -37146,7 +37150,7 @@ ${this._reportFacts(sym)}
         let posLbl, posCls, posDesc;
         if (exitBig || trend === 'bear') {
             posLbl = '🔴 空手 / 出場'; posCls = 'text-green-300';
-            posDesc = cost ? '照下方紀律減碼、破停損就出,別攤平接刀。' : '空頭 / 出場訊號 → 空手觀望,別接下落的刀。';
+            posDesc = cost ? '手上的照你的出場規則走,別攤平接刀。' : '空頭 / 出場訊號 → 先不買,別接下落的刀。';   // 🧹 V79.5.7 ⛔ 減碼 / 空手觀望
         } else {
             let lvl = total >= 72 ? 4 : total >= 60 ? 3 : total >= 48 ? 2 : total >= 38 ? 1 : 0;   // 0避開 1輕試 2輕倉 3標準 4重倉
             if (hiVol && lvl > 1) lvl -= 1;                                   // 高波動買太多易被洗 → 降級
@@ -38901,22 +38905,33 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const body = document.getElementById('sinopacGuideBody');
         const modal = document.getElementById('sinopacGuideModal');
         if (!body || !modal) return;
-        // ① 動態:這檔的建議單(有載入個股 + 有算出停損停利才顯)
+        // ① 動態:這檔的出場線(有載入個股 + 算得出出場線才顯)
+        // 🧹 V79.5.7 以前這裡寫「停利觸發 ≥ X(先賣一半,剩的守月線)」+「移動出場單 回檔 5%」+「−10% 鐵血停損」——
+        //   跟本站的出場規則(硬停損 / 你設定的出場線 / 抱滿 N 天,先到先賣、⛔ 不先賣一半、⛔ 不設停利)三件都打架,
+        //   而這塊標題叫「直接照抄」。→ 改讀 `_exitDistance`(全 App 唯一那份)+ `_exitDistSmartText`(決策台 📋 複製同一句)。
         let dyn = '';
         try {
             const data = this.baseRawData || this.rawDailyData;
-            let cost = null;
-            try { const inv = app._getInventory(); const p = inv.find(i => i.symbol === this.currentSymbolId && +i.cost > 0); if (p) cost = +p.cost; } catch (_) {}
-            const plan = (Array.isArray(data) && data.length >= 25) ? this._unifiedExitPlan(data, cost) : null;
-            const nm = this.getStockName?.(this.currentSymbolId) || this.currentSymbolId;
-            if (plan && (plan.stopFinal || plan.takeShort)) {
-                const nf = v => (v != null && isFinite(v)) ? (+v).toFixed(2) : '—';
+            const sym = this.currentSymbolId;
+            const ed = (Array.isArray(data) && data.length >= 30) ? this._exitDistance(data, sym) : null;
+            const nm = this.getStockName?.(sym) || sym;
+            const nf = v => (v != null && isFinite(v)) ? (+v).toFixed(2) : '—';
+            if (ed && ed.etf) {
                 dyn = `<div class="bg-amber-950/25 border border-amber-700/40 rounded-lg p-2.5 mb-3">
-                    <div class="text-[11px] font-black text-amber-200 mb-1.5">🎯 ${nm} 直接照抄(App 已幫你算好)</div>
+                    <div class="text-[11px] font-black text-amber-200 mb-1">🎯 ${nm}</div>
+                    <div class="text-[10px] text-gray-300 leading-relaxed">ETF 買了放著,⛔ 不套個股的三條出場 → 不用設停損條件單。</div>
+                </div>`;
+            } else if (ed && (ed.lines.length || ed.maxd)) {
+                const smart = this._exitDistSmartText(ed, nm);
+                const lineTxt = ed.lines.map(l => `${l.name} <b class="font-mono text-gray-100">${nf(l.v)}</b>`).join(' ・ ');
+                const held = ed.maxd ? `抱滿 ${ed.maxd.n} 個交易日(已抱 ${ed.maxd.held})` : '';
+                dyn = `<div class="bg-amber-950/25 border border-amber-700/40 rounded-lg p-2.5 mb-3" data-sinopacplan="1">
+                    <div class="text-[11px] font-black text-amber-200 mb-1.5">🎯 ${nm} 的出場線(App 已幫你算好)</div>
                     <div class="text-[10px] text-gray-300 leading-relaxed space-y-1">
-                        <div>• <b class="text-green-300">停損停利單</b>:停損觸發 ≤ <b class="font-mono text-green-300">${nf(plan.stopFinal)}</b>、停利觸發 ≥ <b class="font-mono text-red-300">${nf(plan.takeShort)}</b>(先賣一半,剩的守月線 ${nf(plan.takeLong)})</div>
-                        <div>• <b class="text-cyan-300">移動出場單</b>:想抱波段讓獲利奔跑 → 設「回檔 5% 出場」,停利線自動往上墊</div>
-                        ${cost ? '' : '<div class="text-[9px] text-amber-400">⚠️ 未填庫存成本,停利用技術價;填成本後會加「-10% 鐵血停損」對照</div>'}
+                        <div>• 三條出場線,先碰到哪條就賣哪條:${[lineTxt, held].filter(Boolean).join(' ・ ')}</div>
+                        ${smart ? `<div data-sinopacsmart="1">• <b class="text-green-300">停損條件單</b>:${this._escHtml ? this._escHtml(smart) : smart}</div>` : ''}
+                        <div>• ⛔ 不設停利單、⛔ 不先賣一半 —— 照上面三條走就好</div>
+                        ${ed.proxy ? '<div class="text-[9px] text-amber-400">⚠️ 你沒有這檔的庫存(或沒填買進日)→ 線是用最近的 K 線估的;填好買進日之後會照你的成本重算</div>' : ''}
                     </div>
                     <div class="text-[8px] text-gray-500 mt-1">※ 價位是 App 算的參考,實際去永豐 App 手動輸入;觸發≠成交,看流動性/漲跌停</div>
                 </div>`;
@@ -38955,7 +38970,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
                     <div>⑤ <b class="text-red-200">它只是輔助</b>:系統照你設的參數執行,判斷對錯還是你自己負責。</div>
                 </div>
             </div>`
-            + `<div class="text-[9px] text-gray-600 mt-3 leading-relaxed">💡 用法心法:先看本 App 的「照表操課 + 離場 SOP」算出<b>進場價/停損/停利</b>,再回永豐 App 挑對應單型照抄參數 — 分析在這邊做、執行交給永豐自動盯,克服人性、上班也不怕漏掉。資料來源:永豐證券官方說明,僅整理教學非投資建議。</div>`;
+            + `<div class="text-[9px] text-gray-600 mt-3 leading-relaxed">💡 用法心法:先看本 App 算出的<b>觸發價 / 出場線</b>,再回永豐 App 挑對應單型照抄參數 — 分析在這邊做、執行交給永豐自動盯,克服人性、上班也不怕漏掉。資料來源:永豐證券官方說明,僅整理教學非投資建議。</div>`;
         modal.classList.remove('hidden'); modal.style.display = 'flex';
         this.vibrate?.(15);
     },
@@ -43113,10 +43128,10 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         }
         
         let scoreSummary = "";
-        if (alpha.isFatal) { sHtml.push(`<div class="mt-3 p-2 bg-red-900/30 border border-red-800 rounded text-red-400 text-xs font-bold text-center">💀 致命風險：觸發一票否決，總分歸零。</div>`); scoreSummary = "極端危險，強烈建議空手觀望，嚴禁進場。"; } 
-        else if (totalScore >= 75) scoreSummary = "天時地利人和，動能極強，請依防守線勇敢建倉。";
-        else if (totalScore >= 45) scoreSummary = "動能溫吞或高檔面臨壓力，建議縮小部位或短線操作。";
-        else scoreSummary = "多頭動能耗盡或均弱勢，嚴禁追高，持股準備結帳。";
+        if (alpha.isFatal) { sHtml.push(`<div class="mt-3 p-2 bg-red-900/30 border border-red-800 rounded text-red-400 text-xs font-bold text-center">💀 致命風險：觸發一票否決，總分歸零。</div>`); scoreSummary = "極端危險(一票否決)—— 要不要買照決策台,手上的照你的出場規則走。"; } 
+        else if (totalScore >= 75) scoreSummary = "動能極強 —— 要不要買照決策台,手上的照你的出場規則走。";
+        else if (totalScore >= 45) scoreSummary = "動能溫吞或高檔面臨壓力 —— 手上的照你的出場規則走。";
+        else scoreSummary = "多頭動能耗盡或均弱勢 —— 別追高,手上的照你的出場規則走。";
 
         sHtml.push(`<div class="border-t border-gray-700 my-2"></div><div class="flex justify-between items-center py-1 text-yellow-400 font-black text-xl"><span>綜合動能評分</span><span>${totalScore}</span></div>`);
         sHtml.push(`<div class="mt-1 pt-2 border-t border-gray-700 text-gray-300 font-bold text-xs italic leading-relaxed">💡 系統總評：${scoreSummary}</div>`);
@@ -44838,7 +44853,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
             ${row('🟢 賣2', 'border-green-500', '假突破', '均線<b>持續下彎</b>,股價突破均線後<b>又跌回</b>(反彈無力)。', '突破過不了又跌回=空方主導,別追、有貨續減。', '✅ App 偵測:「葛蘭碧賣2(假突破跌回)」')}
             ${row('🟢 賣3', 'border-green-500', '反彈受阻', '均線下彎,股價反彈到均線附近<b>過不了又下跌</b>。', '月線變成天花板壓力,反彈就是減碼點,站上月線才解除。', '✅ App 偵測:「葛蘭碧賣3(反彈受阻)」')}
             ${row('🟢 賣4', 'border-green-500', '乖離過大(追高回落)', '均線上揚,股價<b>遠高於均線(正乖離過大)</b>,漲過頭。', '追高易套,漲多要分批停利、別追;等回檔到均線再找買點。', '✅ App 偵測:「正乖離過大」(K棒戰法卡)')}
-            <div class="text-[10px] text-gray-500 mt-2 leading-relaxed">💡 <b>實戰重點</b>:8 個點裡最實用、勝率最高的是 <b class="text-red-300">買3(回測支撐)</b> 和 <b class="text-green-300">賣1(跌破均線)</b> —— 一個順勢低接、一個果斷停損,正是「賺大賠小」。買4/賣4 是逆勢搶反彈/追高風險最高,只適合短打高手。<br><br>⚠️ 均線常用月線(20MA);快多頭可搭 5MA/10MA,大波段看季線(60MA)。純公式僅供參考,實際嚴守停損。</div>`;
+            <div class="text-[10px] text-gray-500 mt-2 leading-relaxed">📌 以上是葛蘭碧理論原本的說法 —— ⛔ 本站沒有拿這 8 個點當買賣訊號:<b>要不要買照決策台,手上的照你的出場規則走</b>(⛔ 不用因為單一訊號先賣一部分)。<br><br>⚠️ 均線常用月線(20MA);快多頭可搭 5MA/10MA,大波段看季線(60MA)。</div>`;
         this._showRichModal('📈 葛蘭碧八大法則(完整操作)', html);
     },
 
@@ -44880,7 +44895,8 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const sec = (lb, tx, c) => tx ? `<div class="mb-2"><div class="text-[11px] font-bold ${c || 'text-amber-300'} mb-0.5">${lb}</div><div class="text-[11px] text-gray-200 leading-relaxed">${tx}</div></div>` : '';
         this._showRichModal(`${e.icon} ${e.name}`,
             sec('【是什麼】', e.what, 'text-blue-300') + sec('【怎麼認】', e.spot) + sec('【怎麼做】', e.how, 'text-green-300') + sec('【小白提醒】', e.tip, 'text-yellow-300') +
-            `<div class="text-[9px] text-gray-600 mt-2">純公式偵測,僅供參考;實際看大盤與個股當下狀況,嚴守停損。你點的訊號:「${t}」</div>`);
+            `<div class="text-[10px] text-gray-400 mt-2" data-kbhelpnote="1">📌 【怎麼做】是這個型態原本的說法 —— 本站的買賣照決策台,手上的照你的出場規則走(⛔ 不用因為單一訊號先賣一部分)。</div>` +
+            `<div class="text-[9px] text-gray-600 mt-1">純公式偵測,僅供參考。你點的訊號:「${t}」</div>`);
     },
 
     // 📖 V41.33 — 四大金剛白話教學(小白:怎麼用這張卡)
@@ -49868,7 +49884,7 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         let riskLine = '';
         try {
             const rs = this._calcRiskScore();
-            if (Number.isFinite(+rs) && +rs >= 60) riskLine = `<div class="mt-1.5 bg-[#0d1117] border-l-4 border-orange-500 rounded-r px-2 py-1 text-[10px] text-orange-200 leading-snug">⚠️ <b>今天大盤風險 ${Math.round(+rs)} 分(偏高)</b> —— 清單照給,但這種盤建議<b>減量或空手</b>${this._labMode() ? ';實測 2026-07 那種月份整組是虧的' : ''}。</div>`;
+            if (Number.isFinite(+rs) && +rs >= 60) riskLine = `<div class="mt-1.5 bg-[#0d1117] border-l-4 border-orange-500 rounded-r px-2 py-1 text-[10px] text-orange-200 leading-snug">⚠️ <b>今天大盤風險 ${Math.round(+rs)} 分(偏高)</b> —— 清單照給;大盤風險高的日子波動常常比較大 —— 要不要買照決策台,手上的照你的出場規則走${this._labMode() ? ';實測 2026-07 那種月份整組是虧的' : ''}。</div>`;
         } catch (_) { }
         // 🧬 V73.2.4 高位階+高波動 —— 唯一「六道關卡全過」的條件(⛔ 只排序不刪除)
         //   實測(600 檔・13 個月・本金 100 萬・每天 2 檔):
@@ -50707,7 +50723,8 @@ App 會在那個時段幫你盯,到價自動提醒。
         });
         // 切換說明文字
         const desc = document.getElementById('chuTabDesc');
-        if (desc) desc.innerHTML = this._CHU_DESC[key] || '';
+        // 🧹 V79.5.7 這幾段「📋 操作」是朱老師原本的說法(跌破 5MA 立停 / 分批停利…)→ 底下補一行講清楚本站的規則是哪一套
+        if (desc) desc.innerHTML = (this._CHU_DESC[key] || '') + (this._CHU_DESC[key] ? '<div class="text-[10px] text-gray-400 mt-1.5" data-chudescnote="1">📌 上面是朱老師原本的操作說法;本站的買賣照決策台,手上的照你的出場規則走(⛔ 不用先賣一部分)。</div>' : '');
         // 渲染篩選結果
         this._renderChuPickList(key);
         this.vibrate(10);
