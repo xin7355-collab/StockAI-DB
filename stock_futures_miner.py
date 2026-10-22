@@ -42,6 +42,20 @@ def _is_day_session(dt=None):
     return 8 * 60 + 45 <= hm < 15 * 60
 
 
+def _usage_line(api, tag=''):
+    """📶 V79.5.2 同 tick_flow_miner / live_snapshot_miner 那支:把永豐今天的流量印出來(⛔ 不改任何判斷)。
+    🚨 10/20 起連 9 輪「找到 271 檔合約、報價 0 檔」而且沒有任何例外 —— 同一段時間白天的快照也在 12:50 之後回 0 檔
+    (那兩支查到是當天流量用完)。夜盤這支要靠 log 才分得出是不是同一件事。"""
+    try:
+        u = api.usage()
+        used, lim = getattr(u, 'bytes', None), getattr(u, 'limit_bytes', None)
+        rem = getattr(u, 'remaining_bytes', None)
+        mb = lambda x: f'{x / 1e6:,.1f} MB' if isinstance(x, (int, float)) else '?'
+        print(f'📶 Shioaji 今日流量{tag}:已用 {mb(used)} / 上限 {mb(lim)} ・剩 {mb(rem)}', flush=True)
+    except Exception as e:
+        print(f'📶 Shioaji 流量查不到{tag}({type(e).__name__}: {str(e)[:80]})', flush=True)
+
+
 def main():
     if _is_day_session():
         print(f'⏭️ 現在台北 {_now_str()} 是日盤時段(08:45~15:00)→ ⛔ 不可寫成夜盤,不登入、不產出(保留上一輪夜盤資料)')
@@ -81,23 +95,34 @@ def main():
         print(f'⚠️ 建合約對照出錯:{e}')
 
     print(f'📋 找到 {len(fut_by_stock)} 檔個股期貨(近月)')
+    _usage_line(api, '(開始)')
     contracts = list(fut_by_stock.items())   # [(stock_id, contract), ...]
     out = {}
+    # 🔎 V79.5.2 「0 檔」時要分得出是哪一種:快照整批沒回來 / 回來了但漲跌是空的 / 每筆都丟例外(以前三種都只印「0 檔」)
+    diag = {'sent': 0, 'got': 0, 'cr_none': 0, 'exc': [], 'sample': []}
     # 分批 snapshot(避免單次過多);snapshots 回傳與傳入同序
     B = 400
     for i in range(0, len(contracts), B):
         batch = contracts[i:i + B]
+        diag['sent'] += len(batch)
         try:
             snaps = api.snapshots([c for _, c in batch])
         except Exception as e:
             print(f'⚠️ snapshot batch {i} 失敗:{e}')
+            if len(diag['exc']) < 3:
+                diag['exc'].append(f'batch {i}: {type(e).__name__}: {str(e)[:200]}')
             continue
-        for (sid, _c), snap in zip(batch, snaps):
+        diag['got'] += len(snaps or [])
+        for (sid, _c), snap in zip(batch, snaps or []):
             try:
+                if len(diag['sample']) < 3:
+                    diag['sample'].append({k: getattr(snap, k, '—') for k in
+                                           ('code', 'ts', 'close', 'change_rate', 'change_price', 'total_volume')})
                 cr = getattr(snap, 'change_rate', None)     # 漲跌%
                 cl = getattr(snap, 'close', None)           # 最新價
                 tv = getattr(snap, 'total_volume', 0)       # 累計量(口)
                 if cr is None:
+                    diag['cr_none'] += 1
                     continue
                 out[str(sid)] = {
                     'nightChgPct': round(float(cr), 2),
@@ -105,20 +130,32 @@ def main():
                     'vol': int(tv or 0),
                     'ts': _now_str(),
                 }
-            except Exception:
+            except Exception as e:
+                if len(diag['exc']) < 3:
+                    diag['exc'].append(f'{sid}: {type(e).__name__}: {str(e)[:200]}')
                 continue
-
-    try:
-        api.logout()
-    except Exception:
-        pass
 
     # 🐛 自我修復:抓太少(如深夜多數無成交 change_rate=None)不覆寫,不寫檔 → workflow 略過部署,
     #    保留上一輪(22:00)的好資料,避免用空 {} 洗掉夜盤補漲卡。
     MIN_FUT = 30
     if len(out) < MIN_FUT:
         print(f'❌ 只抓到 {len(out)} 檔(< {MIN_FUT},夜盤多數無成交)→ 不產出 JSON,保留上一輪資料')
+        print(f'   🔎 送出 {diag["sent"]} 檔 ・快照回來 {diag["got"]} 筆 ・漲跌是空的 {diag["cr_none"]} 筆 ・例外 {len(diag["exc"])} 則')
+        for x in diag['sample']:
+            print(f'   🔎 快照樣本:{x}')
+        for x in diag['exc']:
+            print(f'   🔎 例外原文:{x}')
+        _usage_line(api, '(結束)')
+        try:
+            api.logout()
+        except Exception:
+            pass
         sys.exit(1)
+
+    try:
+        api.logout()
+    except Exception:
+        pass
 
     payload = {'updated': datetime.now(TW).isoformat(), 'data': out}
     with open('stock_futures_night.json', 'w', encoding='utf-8') as f:

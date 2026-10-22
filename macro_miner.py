@@ -1357,6 +1357,85 @@ def _should_keep_old(new_val, new_date, old_val, old_date):
     return str(new_date) < str(old_date)
 
 
+# 🌅 V79.5.2 「日期不可倒退」守門要有「上一份」可以比 —— 以前只讀本機 data/macro_risk.json,
+#   而 macro_cron 是乾淨 checkout、不還原舊檔(main 分支的 data/*.json 在 .gitignore)
+#   → `_prev_json` 永遠是 {} → 這道守門在雲端**從來沒有作用過**(test_yf_no_regress 只測了純函式)。
+#   🚨 2026-10-22 實例:前一晚 23:17 那份日經 / 韓股 / 恆指是正確的 10/21,00:17 起倒退成 10/20,
+#      早上 08:12 盤前體檢照樣拿 10/20 的亞股算分。
+#   → 本機沒有(或讀不到)就讀已發佈的那份:gh-pages 優先(macro_cron 只推 gh-pages,它比 data 分支新),
+#     再退 data 分支;兩個都讀不到 → 照舊跑(回 {}),⛔ 不擋採礦,並把原因印出來。
+_PREV_MACRO_URLS = (
+    ("gh-pages", "https://xin7355-collab.github.io/StockAI-DB/data/macro_risk.json"),
+    ("data 分支", "https://raw.githubusercontent.com/xin7355-collab/StockAI-DB/data/data/macro_risk.json"),
+)
+
+
+def _load_prev_macro(local_path=None, getter=None):
+    """回 (上一份 macro_risk dict, 從哪裡讀到的)。⛔ 永遠不丟例外。"""
+    p = Path(local_path) if local_path else OUTPUT_FILE
+    why = []
+    try:
+        if p.exists():
+            j = json.loads(p.read_text(encoding="utf-8")) or {}
+            if isinstance(j, dict) and j:
+                return j, f"本機 {p.name}"
+            why.append("本機檔是空的")
+        else:
+            why.append("本機沒有上一份")
+    except Exception as e:
+        why.append(f"本機檔讀不到({str(e)[:40]})")
+    get = getter or (lambda u: http.get(u, timeout=12))
+    for label, url in _PREV_MACRO_URLS:
+        try:
+            r = get(f"{url}?t={int(time.time())}")
+            if getattr(r, "status_code", 0) == 200:
+                j = r.json()
+                if isinstance(j, dict) and j:
+                    return j, f"線上 {label}(" + ";".join(why) + ")"
+                why.append(f"{label} 內容是空的")
+            else:
+                why.append(f"{label} HTTP {getattr(r, 'status_code', '?')}")
+        except Exception as e:
+            why.append(f"{label} {str(e)[:60]}")
+    return {}, "讀不到上一份 → 這一輪日期守門不作用(" + ";".join(why) + ")"
+
+
+def _apply_big_player(out, key, key_alias, val, chg, err, _new_d, _prev_json):
+    """V71.5.1 / V79.5.2 寫入一個全球指標,套「日期不可倒退」;回 True = 這次抓到的比上一份舊、保留上一份。"""
+    _old_d = _prev_json.get(f"{key}_date")
+    _old_v = _prev_json.get(key_alias[key])
+    if _should_keep_old(val, _new_d, _old_v, _old_d):
+        out[key_alias[key]]   = _old_v
+        out[f"{key}_chg_pct"] = _prev_json.get(f"{key}_chg_pct")
+        out[f"{key}_date"]    = _old_d
+        out[f"{key}_error"]   = f"來源回舊資料({_new_d}),已保留 {_old_d} 的值"
+        return True
+    out[key_alias[key]]      = val
+    out[f"{key}_chg_pct"]    = chg
+    out[f"{key}_error"]      = err
+    if _new_d:
+        out[f"{key}_date"]   = _new_d
+    elif _old_d and val is None:
+        out[f"{key}_date"]   = _old_d
+    return False
+
+
+def _apply_fx(out, key, val, c1, c5, err, new_d, prev):
+    """💱 V79.5.2 匯率也記日期 + 套「日期不可倒退」(以前沒有 `_date`,倒退了也看不出來)。回 True = 保留上一份。"""
+    old_d, old_v = prev.get(f"{key}_date"), prev.get(key)
+    if _should_keep_old(val, new_d, old_v, old_d):
+        out[key], out[f"{key}_chg_pct"], out[f"{key}_chg_5d"] = old_v, prev.get(f"{key}_chg_pct"), prev.get(f"{key}_chg_5d")
+        out[f"{key}_date"] = old_d
+        out[f"{key}_error"] = f"來源回舊資料({new_d}),已保留 {old_d} 的值"
+        return True
+    out[key], out[f"{key}_chg_pct"], out[f"{key}_chg_5d"], out[f"{key}_error"] = val, c1, c5, err
+    if new_d:
+        out[f"{key}_date"] = new_d
+    elif old_d and val is None:
+        out[f"{key}_date"] = old_d
+    return False
+
+
 def _fetch_yf_close(ticker, name):
     """通用 yfinance 收盤 + 日漲幅%。
     🛡️ 根治日經/恆生「休市回 NaN → 一直 null」:用 dropna() 取「最後兩筆有效收盤」,
@@ -2227,6 +2306,11 @@ def _fetch_fx(ticker, name):
         if not len(closes):
             return None, None, None, "無有效收盤"
         last = float(closes.iloc[-1])
+        # 💱 V79.5.2 記下這一筆是哪一天的(給「日期不可倒退」守門用)
+        try:
+            _YF_LAST_DATE[ticker] = str(closes.index[-1].date())
+        except Exception:
+            _YF_LAST_DATE.pop(ticker, None)
         chg1 = round((last / float(closes.iloc[-2]) - 1) * 100, 2) if len(closes) >= 2 and float(closes.iloc[-2]) > 0 else None
         chg5 = round((last / float(closes.iloc[-6]) - 1) * 100, 2) if len(closes) >= 6 and float(closes.iloc[-6]) > 0 else None
         return round(last, 3), chg1, chg5, None
@@ -2892,17 +2976,22 @@ def main():
     out["fi_futures_net"], out["fi_futures_error"] = fut, ferr
     print(f"     → {fut} 口（err={ferr}）")
 
+    # 🌅 V79.5.2 上一份(給下面匯率 / 全球指標的「日期不可倒退」守門比較;本機沒有就讀已發佈那份)
+    _prev_json, _prev_src = _load_prev_macro()
+    print(f"  🛡️ 日期守門的上一份:{_prev_src}")
+
     print("[5/8] 抓取新台幣匯率 (USD/TWD)…")
     twd, twd1, twd5, twderr = fetch_usdtwd()
-    out["usdtwd"], out["usdtwd_error"] = twd, twderr
-    out["usdtwd_chg_pct"], out["usdtwd_chg_5d"] = twd1, twd5   # 💱 V57.8 貶值=外資提款風向
-    print(f"     → {twd}（1日 {twd1}% / 5日 {twd5}%, err={twderr}）")
+    if _apply_fx(out, "usdtwd", twd, twd1, twd5, twderr, _YF_LAST_DATE.get("TWD=X"), _prev_json):   # 💱 V57.8 貶值=外資提款風向
+        print(f"     ⏭️ 台幣抓到 {_YF_LAST_DATE.get('TWD=X')} 的舊資料(已存 {_prev_json.get('usdtwd_date')})→ 保留上一份,不倒退")
+    print(f"     → {out['usdtwd']}（1日 {out['usdtwd_chg_pct']}% / 5日 {out['usdtwd_chg_5d']}%, {out.get('usdtwd_date')}, err={out['usdtwd_error']}）")
 
     # 💱 V57.9 韓元/人民幣(亞幣競貶偵測:台幣+韓元 5 日同貶=外資撤亞洲)
     for _tk, _nm, _key in (("KRW=X", "USD/KRW 韓元", "krw"), ("CNY=X", "USD/CNY 人民幣", "cny")):
         _fx, _fx1, _fx5, _fxerr = _fetch_fx(_tk, _nm)
-        out[_key], out[f"{_key}_chg_pct"], out[f"{_key}_chg_5d"], out[f"{_key}_error"] = _fx, _fx1, _fx5, _fxerr
-        print(f"     → {_nm}: {_fx}（1日 {_fx1}% / 5日 {_fx5}%, err={_fxerr}）")
+        if _apply_fx(out, _key, _fx, _fx1, _fx5, _fxerr, _YF_LAST_DATE.get(_tk), _prev_json):
+            print(f"     ⏭️ {_nm} 抓到 {_YF_LAST_DATE.get(_tk)} 的舊資料(已存 {_prev_json.get(f'{_key}_date')})→ 保留上一份,不倒退")
+        print(f"     → {_nm}: {out[_key]}（1日 {out[f'{_key}_chg_pct']}% / 5日 {out[f'{_key}_chg_5d']}%, {out.get(f'{_key}_date')}, err={out[f'{_key}_error']}）")
 
     print("[6/8] 抓取 CNN 恐懼與貪婪指數…")
     fg, fglabel, fgerr = fetch_fear_greed()
@@ -2970,13 +3059,8 @@ def main():
     #   美股三大期貨更嚴重 —— 07/28 收綠、07/30 清晨其實翻紅,方向整個反過來,
     #   而盤前看期貨就是為了判斷今天開盤方向,方向錯等於誤導。
     #   守門邏輯:新資料的日期若「明確早於」上次存的日期 → 保留舊值,不覆蓋,並記進 *_error 說明。
-    _prev_json = {}
-    try:
-        _pp = DATA_DIR / 'macro_risk.json'
-        if _pp.exists():
-            _prev_json = json.loads(_pp.read_text(encoding='utf-8')) or {}
-    except Exception:
-        _prev_json = {}
+    #   🌅 V79.5.2 上一份改在匯率之前用 `_load_prev_macro()` 讀好(本機沒有 → 讀已發佈那份)。
+    #   ⛔ 別再只讀本機 data/macro_risk.json —— macro_cron 是乾淨 checkout,那樣這道守門在雲端永遠不作用。
     _ticker_of = {k: t for k, t in _BIG_PLAYER_TICKERS.items()}
     _stale_kept = []
     for i, (name, key, fn) in enumerate(big_player_fns, 9):
@@ -2984,24 +3068,12 @@ def main():
         val, chg, err = fn()
         _tk = _ticker_of.get(key)
         _new_d = _YF_LAST_DATE.get(_tk) if _tk else None
-        _old_d = _prev_json.get(f"{key}_date")
-        _old_v = _prev_json.get(key_alias[key])
-        if _should_keep_old(val, _new_d, _old_v, _old_d):
+        if _apply_big_player(out, key, key_alias, val, chg, err, _new_d, _prev_json):
             # 這次抓到的比上次存的還舊 → 不覆蓋
+            _old_d = _prev_json.get(f"{key}_date")
             _stale_kept.append(f"{name}({_new_d}<{_old_d})")
-            print(f"     ⏭️ 抓到 {_new_d} 的舊資料(已存 {_old_d})→ 保留舊值 {_old_v},不倒退")
-            out[key_alias[key]]   = _old_v
-            out[f"{key}_chg_pct"] = _prev_json.get(f"{key}_chg_pct")
-            out[f"{key}_date"]    = _old_d
-            out[f"{key}_error"]   = f"來源回舊資料({_new_d}),已保留 {_old_d} 的值"
+            print(f"     ⏭️ 抓到 {_new_d} 的舊資料(已存 {_old_d})→ 保留舊值 {_prev_json.get(key_alias[key])},不倒退")
             continue
-        out[key_alias[key]]      = val
-        out[f"{key}_chg_pct"]    = chg
-        out[f"{key}_error"]      = err
-        if _new_d:
-            out[f"{key}_date"]   = _new_d
-        elif _old_d and val is None:
-            out[f"{key}_date"]   = _old_d
         if val is not None:
             sign = "+" if (chg or 0) > 0 else ""
             print(f"     → {val} ({sign}{chg}%){f' [{_new_d}]' if _new_d else ''}")
@@ -3141,6 +3213,7 @@ def main():
                         "fi_spot_mtd", "fi_spot_mtd_month", "fi_spot_mtd_src", "fi_spot_mtd_days",
                         "usdtwd", "usdtwd_chg_pct", "usdtwd_chg_5d",
                         "krw", "krw_chg_pct", "krw_chg_5d", "cny", "cny_chg_pct", "cny_chg_5d",
+                        "usdtwd_date", "krw_date", "cny_date",   # 💱 V79.5.2 匯率日期(下一輪守門要比)
                         "fear_greed", "fear_greed_label",
                         "retail_ls_pct", "taifex_backwardation",
                         # 🌍 全球巨頭脈動 10 指標斷崖防護(V21 加 SP500/NASDAQ)

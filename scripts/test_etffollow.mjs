@@ -28,9 +28,10 @@ const ok = (n, c, e = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '' : 
 
 // ── ⓪ 礦端原始碼守門(不用跑網路,直接驗邏輯存在)────────────────────
 const miner = fs.readFileSync(path.join(ROOT, 'etf_miner.py'), 'utf8');
-ok('⓪ ⭐ 礦端 prev 基準優先讀 hold_all(完整清單)', /e\.get\("hold_all"\) or e\.get\("holdings"/.test(miner));
+// 🗓️ V79.5.2 基準判定搬進 `_etf_day_step`(跟「前一個交易日最後那份」比);行為測試在 scripts/test_etf_chg.py
+ok('⓪ ⭐ 礦端 prev 基準優先讀 hold_all(完整清單)', /pe\.get\("hold_all"\) or pe\.get\("holdings"/.test(miner));
 ok('⓪ ⭐ 礦端有存 hold_all(給明天的 diff 當基準)', /"hold_all":\s*\[/.test(miner));
-ok('⓪ ⭐ 過渡輪守門:prev 沒 hold_all → 視同基準重建不算換股', /prev_has_full\.get\(s\)/.test(miner));
+ok('⓪ ⭐ 過渡輪守門:prev 沒 hold_all → 視同基準重建不算換股', /base_h = prev_h if prev_full else None/.test(miner));
 
 // ── ⓪b 礦端 diff 純函式:完整 vs 完整 不可再生出假 added ────────────
 // ⚠️ 第一版用 `python3 -c ${JSON.stringify(py)}` → shell 把 \n 當字面量、Python SyntaxError,

@@ -18,7 +18,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <!-- 📛 V54.2 程式名改「散戶救星」(使用者要求);iOS 推播「from …」來源顯 document.title,4 字仍可接受 -->
-    <!-- STRATEGY TERMINAL V79.5.1 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
+    <!-- STRATEGY TERMINAL V79.5.2 — 版本歷史見 CHANGELOG.md 與 App 內 _CHANGELOG;⛔ 鐵則:此行只留當前版本號,勿再累加歷史(曾累到單行 93.5KB) -->
     <title>散戶救星</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -892,7 +892,7 @@
         <!-- V19.5 — 高度從 max-h-[90vh] 改 [85vh],加 sticky header + X 關閉鈕(原本太高且無關閉鈕難關) -->
         <div class="modal-content max-w-[24rem] md:max-w-lg max-h-[85vh] p-0 flex flex-col" onclick="event.stopPropagation()" style="max-height: min(85vh, 700px);">
             <div class="sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between px-4 py-3 border-b border-[#30363d] rounded-t-lg">
-                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.5.1</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
+                <h3 class="text-white font-black text-base flex items-center gap-2">⚙️ 設定中心 <span title="你現在用的版本(更新紀錄已搬到產業作戰室)" class="text-[11px] font-mono font-bold text-cyan-400 tracking-wider px-1.5 py-0.5 rounded border border-cyan-500/30 bg-cyan-500/5 leading-none flex-shrink-0">V79.5.2</span> <span id="envBadge" onclick="app._verTap()" title="你現在用的是哪種版本?點看說明" class="hidden"></span></h3>
                 <button onclick="document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').style.display='none';" class="text-gray-400 hover:text-white text-2xl leading-none flex items-center justify-center" style="min-width:40px; min-height:40px;" title="關閉">✕</button>
             </div>
             <div class="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -3915,7 +3915,7 @@ const app = {
         '價格斷崖': '這一檔的歷史 K 線裡,有某一天的收盤價**跳得物理上不可能**(台股上市櫃一天最多 ±10%,但那天直接變成好幾倍或剩幾分之一)。\n\n三個常見原因:\n• 🔢 **股票分割 / 反分割**(例如 1 股拆成 4 股,價格變 1/4)\n• ✂️ **減資**(股數減少,價格等比例調高)\n• 💰 **除權息**(配股配息後,參考價往下調)\n\n🚨 **對你的影響**:那一天**以前**的價格是「另一把尺」量出來的 → 跨過那一天的**均線(季線/半年線/年線)、基期位階**都會失真。\n\n⭐ **本站的處理方式(誠實講清楚)**:採礦時會自動還原「**整數倍**的分割/減資」(2~10 倍),因為那種一定是尺標變了。但**除權息**與**非整數比例的減資**(例如價格變成 1.63 倍)**刻意不動** —— 那些比例是任意的,硬要「修掉」會把**真正的除權與真正的大跌也一起亂乘**,反而製造出新的錯誤。\n\n💡 **你該怎麼做**:看這一檔的長天期均線與位階時,先確認資料有沒有跨過那一天;跨過了就只當參考,別拿它當進出場依據。近期(斷崖之後)的價格是乾淨的。\n\n⚠️ 興櫃股**不會**出現這個提醒 —— 它本來就沒有漲跌幅限制,單日大跳是真實行情,不是壞資料。',
         '基期位階': '把「近 1 年的最高價~最低價」當成一把尺,現價落在這把尺的第幾 %。\n\n🧊 低基期(≤35% 且距高點跌 ≥25%):股價在相對低檔,分析師說的「低基期」就是這個。好處是萬一利多來,漲幅空間大(基期低=比較基準低);風險是「便宜還有更便宜」,低基期不等於會漲。\n\n📊 中基期(35~80%):不上不下。\n\n⛰️ 高基期(≥80%):股價在相對高檔,追高要嚴設停損。\n\n💡 用法:低基期 + 打底跡象(月線翻揚/底部抬高/外資回補/量能回溫)才是真的有爆發力 → 選股頁「🧊 低基期爆發」榜已經幫你篩好。單看低基期就買,常買到還在跌的股票。\n\n🚨 **不要跟「估值基期」搞混,那是另一個數字**(報告頁 §4 估值那一格):\n• 📊 **股價基期**(這一顆)= 股價在**近一年高低區間**的位置\n• 💰 **估值基期** = **本益比**在它自己**近三年**的位置\n\n⭐ **兩個常常相反,而且相反的時候最有意義**。實例(國巨 2327,2026/09/16):股價從 1220 跌到 536(股價基期只有 **37%**,跌了 56%),但本益比 36.2 倍落在近三年第 **89** 百分位(中位才 14.3 倍)→ 意思是**獲利掉得比股價還快**,所以「跌了一大段」不等於「變便宜了」。景氣循環股(被動元件/航運/面板/記憶體)在景氣高點過後常常長這樣。\n\n⛔ 所以看到「股價基期低」不要直接當成便宜,要同時看估值那一格。',
         '突破棒防守': '起漲那根「爆量長紅」的中點(開盤+收盤)÷2,約是主力與大戶的成本區、也是這波多頭的結構防線。跌破 = 這波結構壞了,多單該守;回檔到這條線附近又量縮、低點不破,就是朱老師「回後買上漲」的加碼買點。比單純看 5MA/20MA 更貼近真實主力成本。',
-        '盤前體檢': '朱老師「盤前分析」的純公式自動版 — 把今天開盤前該看的東西一次彙總,算出「今天大盤偏多/偏空」一句話總結:\n\n📊 計分材料(全部程式算,不靠 AI):\n  ・ 美股四雄(道瓊/NASDAQ/S&P500/費半)收紅收綠\n  ・ 台積電 ADR 漲跌(權重最高,最連動台積電開盤)\n  ・ VIX 恐慌指數(<20 安全 / >30 恐慌)\n  ・ 🌙 台指期夜盤(15:00~次日5:00,台灣資金對隔夜美股+盤後事件的即時反應,最直接的隔日開盤風向球;有真實漲跌%才計分,夜盤重挫權重略高)\n  ・ 🌍 亞股連動(日經/韓股同盤最直接風向,恆指半權重)+ 恐懼貪婪情緒(≥80 過熱偏空/≤20 極恐偏多,輕權重)(V50.2 新增)\n\n📋 只列出來看、不算進分數:外資台指期、外資現貨、三大法人合計、加權指數自己的技術面(這幾項對隔天開盤高低沒有幫助,算進去反而不準)\n\n🎯 總結:🔴 開高偏多 / 🟡 中性震盪 / 🟢 開低偏空(紅漲綠跌)。\n\n🔧 仍「採集中」的(下次採礦自動補):大盤融資券餘額、台指期夜盤源(修復中時暫不計分)。投信/自營商/三大法人合計、日月光/聯電 ADR 已納入採礦,16:30 跑完即顯示。\n\n⚠️ 開盤方向是機率不是保證(美股常被提前反映),僅供盤前風向參考,實際進出仍以開盤量價為準。',
+        '盤前體檢': '朱老師「盤前分析」的純公式自動版 — 把今天開盤前該看的東西一次彙總,算出「今天大盤偏多/偏空」一句話總結:\n\n📊 計分材料(全部程式算,不靠 AI):\n  ・ 美股四雄(道瓊/NASDAQ/S&P500/費半)收紅收綠\n  ・ 台積電 ADR 漲跌(權重最高,最連動台積電開盤)\n  ・ VIX 恐慌指數(<20 安全 / >30 恐慌)\n  ・ 🌙 台指期夜盤(15:00~次日5:00,台灣資金對隔夜美股+盤後事件的即時反應,最直接的隔日開盤風向球;有真實漲跌%才計分,夜盤重挫權重略高)\n  ・ 🌍 亞股連動(日經/韓股,恆指半權重)+ 恐懼貪婪情緒(≥80 過熱偏空/≤20 極恐偏多,輕權重)\n  ・ ⏳ 亞股、台積電/日月光/聯電 ADR 如果是比該有的那天還舊的資料(例如前天的),只列出來、不算分\n\n📋 只列出來看、不算進分數:外資台指期、外資現貨、三大法人合計、加權指數自己的技術面(這幾項對隔天開盤高低沒有幫助,算進去反而不準)\n\n🎯 總結:🔴 開高偏多 / 🟡 中性震盪 / 🟢 開低偏空(紅漲綠跌)。\n\n🔧 仍「採集中」的(下次採礦自動補):大盤融資券餘額、台指期夜盤源(修復中時暫不計分)。投信/自營商/三大法人合計、日月光/聯電 ADR 已納入採礦,16:30 跑完即顯示。\n\n🕘 這張卡只預判「開盤」偏高或偏低;開盤之後會不會繼續漲、會不會開高走低,這裡不預測。\n\n⚠️ 開盤方向是機率不是保證(美股常被提前反映),僅供盤前風向參考,實際進出仍以開盤量價為準。',
         '進場體檢': '把這支股票所有「純公式」技術訊號(三星轉折=晨星/夜星、吞噬、橫盤突破、量能=攻擊/出貨/換手量、均線排列)一次彙總,算出一個 0-100「進場友善度」+ 紅綠燈總結,給初學者一眼判斷:\n\n• 🔴 偏多(分數≥65)= 多方訊號 + 站上 5 日線/月線多頭排列 → 可分批試單,務必設停損。\n• 🟡 觀望(38~65 或多空打架)= 訊號不明或正在換手 → 先別進,等明確型態。\n• 🟢 偏空(分數≤38)= 空方訊號 + 跌破均線 → 別接刀,有貨者顧好停損。\n\n⚠️ 台股慣例 🔴=漲、🟢=跌(跟紅綠燈相反,別看反)。這是型態統計、不是預言:偏多不代表一定漲、偏空也不保證跌,真正的安全來自「進場就設好停損、跌破就走」。全部 JS 計算,絕不丟給 AI 算(防幻覺)。',
         '多頭待發射': '把你自選清單裡「剛打完底、橫盤盤整、最靠近上方突破壓力」的股票挑出來,用「離突破還差幾 %」由近到遠排序。\n\n⭐ 越靠近壓力的,越容易在幾天內站上去;⛔ 但站上去不等於賺得到。\n\n→ 所以它是「誰快碰到壓力了」的觀察清單,排第一⛔ 不代表最該買,也⛔ 不是買進順序。要不要進場看總覽「現在怎麼做」。\n\n已突破無壓力、振幅太大已噴/崩、或「均線空頭排列(現價還在 5日線+月線之下的逆勢股)」都會自動排除 — 這種首席頁會判偏空、要你別接刀,不會再列來這裡跟首席打架。',
         '跌破前低': '收盤跌破前 20 日最低點 = 短線結構破壞,前面進場的人全部套牢,容易引發停損賣壓連鎖。',
@@ -7557,6 +7557,9 @@ ${list}
 
         // 🕸️ 四檔重疊:哪些是共識、哪些是獨門(⭐ 這是四檔一起看才有的東西)
         const holdOf = x => ((x.f && x.f.hold_all) || (x.c && x.c.holdings) || []);
+        // 🗓️ V79.5.2 「今天」只在資料真的是今天的時候講;隔天早上看到的是昨天採的 → 寫日期(⛔ 不可講成今天)
+        const _dd = String(d.updated || '').slice(0, 10);
+        const dayW = (!_dd || _dd === new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' })) ? '今天' : `${this._dW(_dd)} `;
         const cnt = {}, wsum = {};
         picks.forEach(x => holdOf(x).forEach(h => {
             if (!h.sym) return;
@@ -7596,8 +7599,8 @@ ${list}
                     const xs = (arr || []).map(h => (key ? h[0] : h.sym)).filter(Boolean);
                     return xs.length ? `<div class="text-[10px] ${cls} mt-0.5">${ic} ${xs.map(x => chip(x)).join('')}</div>` : '';
                 };
-                const today = line(C.added, '🆕 今天新買', 'text-red-300') + line(C.removed, '❌ 今天賣光', 'text-green-300')
-                            + line(C.weight_up, '📈 今天加碼', 'text-red-300') + line(C.weight_down, '📉 今天減碼', 'text-green-300');
+                const today = line(C.added, `🆕 ${dayW}新買`, 'text-red-300') + line(C.removed, `❌ ${dayW}賣光`, 'text-green-300')
+                            + line(C.weight_up, `📈 ${dayW}加碼`, 'text-red-300') + line(C.weight_down, `📉 ${dayW}減碼`, 'text-green-300');
                 const past = H.slice(-6).reverse().map(x => `<div class="text-[10px] text-gray-400 mt-1 border-t border-[#21262d] pt-1">
                     <b class="font-mono text-gray-500">${x.d}</b>
                     ${(x.a || []).length ? ` 🆕${(x.a).map(c2 => nm(c2)).join('・')}` : ''}
@@ -7605,9 +7608,9 @@ ${list}
                     ${(x.u || []).length ? ` 📈${(x.u).map(z => nm(z[0])).join('・')}` : ''}
                     ${(x.w || []).length ? ` 📉${(x.w).map(z => nm(z[0])).join('・')}` : ''}</div>`).join('');
                 chg = today || past
-                    ? `${today || '<div class="text-[10px] text-gray-500 mt-0.5">今天沒有換股。</div>'}
+                    ? `${today || `<div class="text-[10px] text-gray-500 mt-0.5">${dayW}沒有換股。</div>`}
                        ${past ? `<details class="mt-1"><summary class="text-[10px] text-gray-500 cursor-pointer">📜 最近的換股紀錄(${H.length} 天有動作)</summary>${past}</details>` : ''}`
-                    : `<div class="text-[10px] text-gray-500 mt-0.5">今天沒有換股 ・ 換股紀錄從 V74.8.1 起累積,⛔ 還沒有歷史。</div>`;
+                    : `<div class="text-[10px] text-gray-500 mt-0.5">${dayW}沒有換股 ・ 換股紀錄從 V74.8.1 起累積,⛔ 還沒有歷史。</div>`;
             }
             const p = (f && f.perf) || {};
             const kv = [];
@@ -8566,10 +8569,15 @@ ${list}
     // 🆕 V68.0.0 — 版本更新提醒系統(使用者要求:每版跳一次告知更新內容,之後設定裡可回看)
     //   版本規則:V 大.中.小(如 V68.0.0)。小改=末位+1;末位滿9進位中位;大改=個位+1。
     //   ⚠️ 新增版本時:①更新置頂 badge + 此 _APP_VERSION ②在 _CHANGELOG 最前面補一筆簡述。
-    _APP_VERSION: 'V79.5.1',
+    _APP_VERSION: 'V79.5.2',
     /** 🔬 V78.3.4 實驗室模式(?lab=1,產業作戰室「🔬 個股實測」內嵌用)—— 全 App 唯一判斷點 */
     _labMode() { try { return document.documentElement.classList.contains('lab'); } catch (_) { return false; } },
     _CHANGELOG: [
+        { v: 'V79.5.2', d: [
+            '🌅 盤前體檢:亞股、台積電 / 日月光 / 聯電 ADR 如果是前兩天的舊資料,只列出來、不算分;拿掉沒有根據的「盤中型態・順勢做多」,改成「📌 今天怎麼看」只講開盤',
+            '🧩 晚報的主動式 ETF 那段改成「最近一次換股」並寫出日期,持股明細抓不全的會提醒;ETF 頁不再把昨天的換股說成「今天」',
+            '🔧 背景整理:總經資料不會再被比較舊的那份蓋掉、ETF 換股紀錄同一天重跑不會被洗掉',
+        ], dt: '2026-10-22' },
         { v: 'V79.5.1', d: [
             '🔧 背景整理:每週自動跑的那次計算,改成跟 App 一模一樣的選股與買法(畫面沒有變)',
         ], dt: '2026-10-22' },
@@ -8721,7 +8729,6 @@ ${list}
         { v: 'V78.4.5', d: ['🔧 小修正'] },
         { v: 'V78.4.4', d: ['🔧 小修正與資料更新'] },
         { v: 'V78.4.3', d: ['🚨 處置/注意股卡改成「怎麼做」:手上有的照出場規則走、別用市價單', '📊 上漲下跌機率從頂端搬進總覽,改成一張圖'] },
-        { v: 'V78.4.2', d: ['🧹 內部整理與小修正'] },
     ],
     _verTuple(v) { const m = String(v || '').replace(/^[Vv]/, '').split('.').map(x => parseInt(x, 10) || 0); return [m[0] || 0, m[1] || 0, m[2] || 0]; },
     _verCmp(a, b) { const A = this._verTuple(a), B = this._verTuple(b); for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; } return 0; },
@@ -15724,14 +15731,19 @@ const marginByDate = {};
             }
             // ② 外部:亞股 + 避險
             const ext = [];
-            const ks = num(mr.kospi_chg_pct), nk = num(mr.nikkei_chg_pct);
-            if ((ks != null && ks <= -1) || (nk != null && nk <= -1)) {
-                const b = [];
-                if (ks != null && ks <= -1) b.push(`韓股 ${ks.toFixed(1)}%`);
-                if (nk != null && nk <= -1) b.push(`日經 ${nk.toFixed(1)}%`);
-                ext.push(`今日開盤受亞股拖累（${b.join('、')}），同盤走弱、台股易開低同步承壓`);
-            } else if ((ks != null && ks >= 1) || (nk != null && nk >= 1)) {
-                ext.push('亞股同盤走強，開盤氣氛偏多');
+            // 🌏 V79.5.2 亞股那句看日期講:只有「今天」的才可以說今天;前一個交易日的 = 台股那天已經一起反映(⛔ 不可說成今天開盤);
+            //   比台股上一個交易日還舊的(2026-10-22 那份是兩天前的)⛔ 不講。⛔ 不再寫「易開低 / 偏多」—— 亞股前一天對台股隔天
+            //   幾乎沒有預測力(overseas_probe:日經 / 韓股對台股隔天的相關只有 0.05~0.06),那句是沒驗證過的推論。
+            const _ag = this._premktFieldAge(mr);
+            const _ad = k => _ag.at[k];
+            const asia = [['韓股', num(mr.kospi_chg_pct), 'kospi'], ['日經', num(mr.nikkei_chg_pct), 'nikkei']]
+                .filter(([, v, k]) => v != null && Math.abs(v) >= 1 && !_ag.stale[k]);
+            if (asia.length) {
+                const today = asia.every(([, , k]) => _ad(k) === _ag.today);
+                const txt = asia.map(([n, v]) => `${n} ${v > 0 ? '+' : ''}${v.toFixed(1)}%`).join('、');
+                ext.push(today
+                    ? `今天亞股開盤 ${txt}(還在盤中)`
+                    : `${this._dW(_ad(asia[0][2])) || ''}亞股 ${txt}(台股那天已經一起反映)`);
             }
             const gold = num(mr.gold_chg_pct), wti = num(mr.wti_chg_pct), dxy = num(mr.dxy_chg_pct);
             if ((gold != null && gold >= 1) || (wti != null && wti >= 2) || (dxy != null && dxy >= 0.3)) {
@@ -15769,17 +15781,20 @@ const marginByDate = {};
             // ④ 結論/操作
             // ⚖️ V71.7.7 跟反攻雷達對齊,避免「兩張卡下相反的指令」——
             //    使用者截圖抓到:這裡寫「偏多格局,可偏多操作」,但同一畫面的反攻雷達寫
-            //    「打底觀察中 7/10」、跑馬燈寫「多頭轉弱(破月季線)」,三個結論打架。
-            //    根因是**時間尺度不同**:這段算的是加權指數當下的技術分數(短線),
-            //    反攻雷達看的是「這一波跌完沒」(中期)。短線轉強不代表中期可以回場。
-            //    → 中期還沒過門檻時,這裡只准描述「短線轉強」,**不准下加碼指令**(單一劇本原則)。
+            //    「打底觀察中 7/10」→ 中期(這一波跌完沒)還沒過門檻時,這裡 ⛔ 不准下加碼指令(單一劇本原則)。
+            // 🧪 V79.5.2 sPct 是「盤前體檢」那個分數 = 只講今天開盤高或低 —— ⛔ 不是加權的技術分數
+            //    (V79.3.8 起技術面已不算分),也 ⛔ 不是「格局」。以前依它寫「偏空格局・空手別接刀・反彈多視為逃命波」
+            //    「壓力附近減、支撐附近加」,跟上面「📌 今天怎麼看」(手上的照出場規則走、不用因為分數低就整天不做)
+            //    打架,而且都沒驗證過 → 只講開盤 + 中期守門;其他照你自己的進出場規則。
             const _rv = this._reboundVerdict;
-            const _midWeak = _rv && _rv.total > 0 && _rv.passN < Math.max(6, _rv.total - 2);
-            if (sPct <= 35) parts.push('<b class="text-green-300">總結：偏空格局</b>，策略保守——有貨顧好停損、空手別急著接刀，反彈多視為逃命波；等季線站回或支撐帶量止穩再找買點。');
+            const _need = (_rv && _rv.total > 0) ? Math.max(6, _rv.total - 2) : null;
+            const _midWeak = _rv && _rv.total > 0 && _rv.passN < _need;
+            const _sp = Math.round(sPct);
+            if (sPct <= 35) parts.push(`<b class="text-green-300">總結:今天開盤偏弱</b>(盤前 ${_sp} 分,只講開盤高低)——手上的照你的出場規則走,⛔ 不用因為分數低就先賣;新買的先縮小部位、別在開盤前掛大單。`);
             else if (sPct >= 65) parts.push(_midWeak
-                ? `<b class="text-yellow-300">總結：短線轉強、但中期未過關</b>——技術分數 ${Math.round(sPct)} 分偏多，惟反攻條件雷達僅 ${_rv.passN}/${_rv.total}（門檻 ${Math.max(6, _rv.total - 2)}）→ 先當<b class="text-yellow-300">反彈</b>看，做短不加碼、原有停損照守；雷達過關再談回場。`
-                : '<b class="text-red-300">總結：偏多格局</b>，可偏多操作——回檔不破支撐找買點，留意追高、設好停利。');
-            else parts.push('<b class="text-yellow-300">總結：多空拉鋸</b>，區間操作——壓力附近減、支撐附近加，別追殺追高，等方向表態。');
+                ? `<b class="text-yellow-300">總結:今天開盤偏強、但中期未過關</b>——盤前 ${_sp} 分只講開盤高低,反攻條件雷達僅 ${_rv.passN}/${_rv.total}(門檻 ${_need})→ 先當<b class="text-yellow-300">反彈</b>看,不加碼、原有停損照守,⛔ 別在開盤追高;雷達過關再談回場。`
+                : `<b class="text-red-300">總結:今天開盤偏強</b>,可偏多操作——照你的進場規則做,⛔ 別在開盤追高,手上的照出場規則走。`);
+            else parts.push(`<b class="text-yellow-300">總結:今天開盤多空拉鋸</b>——照原本計畫做;上面寫的壓力、支撐是參考位置,⛔ 不是買賣點。`);
             if (!parts.length) return '';
             return `<div class="mb-2 bg-[#161b22] border-l-4 border-blue-500 border-y border-r border-[#30363d] rounded-r p-2.5">
                 <div class="text-[11px] font-black text-blue-300 mb-1">🎙️ 分析師盤勢解讀 <span class="text-[8px] text-gray-600 font-normal">純公式即時算 · 非投資建議</span></div>
@@ -15838,6 +15853,25 @@ const marginByDate = {};
             const tw = new Date(close + 8 * 3600e3);
             return { upd, close, closeTxt: `${String(tw.getUTCHours()).padStart(2, '0')}:00` };
         } catch (_) { return null; }
+    },
+
+    // 🌅 V79.5.2 盤前體檢「逐欄位」日期 —— ⛔ 全 App 唯一判斷點(`_macroFresh` 看的是整份檔的時間,這支看檔案裡每一格)
+    //   🚨 2026-10-22 實例:08:12 那份檔案時間是新的,但日經 / 韓股 / 恆指是 10/20(兩個交易日前)、
+    //      台積電 / 日月光 / 聯電 ADR 也是 10/20(美股指數已經是 10/21)→ 分數照樣把它們加減進去。
+    //   規則:亞股早於「台股上一個交易日」→ 舊;ADR 早於「美股指數那一天」→ 舊。
+    //   台股那一天取 taiex_date 與三大法人日期**比較早的那個**(盤中 taiex_date 可能已經是今天,⛔ 不可因此把昨天的亞股判成舊)。
+    //   ⛔ 沒有日期的欄位不判(舊檔沒有這些欄位時照舊)。
+    _premktFieldAge(mr, todayISO) {
+        mr = mr || this._macroRiskCache || {};
+        const iso = v => { const s = String(v || '').replace(/\//g, '-'); return /^\d{8}$/.test(s) ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : (/^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : ''); };
+        const tws = [iso(mr.taiex_date), iso(mr.fi_three_date)].filter(Boolean).sort();
+        const tw = tws[0] || '', us = iso(mr.sp500_date) || iso(mr.nasdaq_date);
+        const today = todayISO || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Taipei' });
+        const stale = {}, at = {};
+        const chk = (k, ref) => { const d = iso(mr[k + '_date']); at[k] = d || null; if (d && ref && d < ref) stale[k] = d; };
+        for (const k of ['nikkei', 'kospi', 'hsi']) chk(k, tw);
+        for (const k of ['tsm', 'asx', 'umc']) chk(k, us);
+        return { stale, at, tw, us, today };
     },
 
     _macroFresh(todayISO) {
@@ -16534,12 +16568,16 @@ const marginByDate = {};
         //   每一年都比只看海外的低(2010~2026 17/17 年;門檻 ±2 / ±4 也一樣;2018 起連外資台指期四項 9/9 年)
         //   → 算進去只會把分數拉歪。⭐ 照樣列在明細裡(看得到幾口 / 幾億 / 技術面怎麼說),只是 0 分。
         const _info = (nm, note) => _add(nm, 0, `${note} ・不計分`);
+        // 🌅 V79.5.2 逐欄位日期:亞股 / ADR 比該有的那天舊 → 只列出來、⛔ 不算分(2026-10-22 那份是兩個交易日前的)
+        const _age = this._premktFieldAge(mr);
+        const _old = (k, v) => `${v || '—'}・資料舊了(${this._dW(_age.stale[k]) || _age.stale[k]} 收盤)`;
         let s = 0;
         _add('🇺🇸 道瓊', sign(djiChg), djiChg || '沒有資料');
         _add('🇺🇸 那斯達克', sign(ndxChg), ndxChg || '沒有資料');
         _add('🇺🇸 S&P500', sign(spxChg), spxChg || '沒有資料');
         _add('💾 費半', sign(soxChg) * 1.5, soxChg || '沒有資料');
-        _add('🏭 台積電 ADR', sign(tsmChg) * 2, tsmChg || '沒有資料');
+        if (_age.stale.tsm) _info('🏭 台積電 ADR', _old('tsm', tsmChg));
+        else _add('🏭 台積電 ADR', sign(tsmChg) * 2, tsmChg || '沒有資料');
         const vixN = parseFloat((vix || '').replace(/[^0-9.]/g, ''));
         if (Number.isFinite(vixN)) _add('😱 VIX', vixN < 20 ? 1 : vixN > 30 ? -2 : vixN > 25 ? -1 : 0, `${vixN}`);
         // 🏦 V71.1.6 相對水位(舊絕對門檻天天成立 → 這條等於固定 -2 分)
@@ -16547,8 +16585,8 @@ const marginByDate = {};
           if (_f5.chg5 != null) _info('🏦 外資台指期(5日增減)', `${Math.round(_f5.chg5).toLocaleString()} 口`);
           else if (_f5.pct != null) _info('🏦 外資台指期(20日位階)', `${Math.round(_f5.pct)}%`); }
         if (Number.isFinite(+fiSpot)) _info('🏦 外資現貨買賣超', `${(+fiSpot).toFixed(0)} 億`);
-        if (asxChg != null) _add('🔌 日月光 ADR', asxChg > 0 ? 0.5 : asxChg < 0 ? -0.5 : 0, `${asxChg}%`);
-        if (umcChg != null) _add('🔌 聯電 ADR', umcChg > 0 ? 0.5 : umcChg < 0 ? -0.5 : 0, `${umcChg}%`);
+        if (asxChg != null) { if (_age.stale.asx) _info('🔌 日月光 ADR', _old('asx', `${asxChg}%`)); else _add('🔌 日月光 ADR', asxChg > 0 ? 0.5 : asxChg < 0 ? -0.5 : 0, `${asxChg}%`); }
+        if (umcChg != null) { if (_age.stale.umc) _info('🔌 聯電 ADR', _old('umc', `${umcChg}%`)); else _add('🔌 聯電 ADR', umcChg > 0 ? 0.5 : umcChg < 0 ? -0.5 : 0, `${umcChg}%`); }
         // 💡 V68.8.2 美股期貨(盤後即時,比昨收更新;那指最連動半導體)+ 美債 10Y 殖利率(飆升=科技股壓力)
         const _nqFutC = (mr.nq_fut_chg_pct != null && !isNaN(mr.nq_fut_chg_pct)) ? +mr.nq_fut_chg_pct : null;
         if (_nqFutC != null) _add('🔮 那指期夜盤', _nqFutC > 0.3 ? 1 : _nqFutC < -0.3 ? -1 : 0, `${_nqFutC}%`);
@@ -16566,9 +16604,13 @@ const marginByDate = {};
         // 🌍 V50.2 亞股連動(台股同盤最直接的開盤風向)+ 恐懼貪婪極端值 → 納入開盤方向分數(權重適中,補全球面)
         const _nk = +mr.nikkei_chg_pct, _ks = +mr.kospi_chg_pct, _hs = +mr.hsi_chg_pct;
         const _asiaScore = c => Number.isFinite(c) ? (c >= 1 ? 1 : c >= 0.3 ? 0.5 : c <= -1 ? -1 : c <= -0.3 ? -0.5 : 0) : 0;
-        _add('🇯🇵 日經', _asiaScore(_nk), Number.isFinite(_nk) ? `${_nk}%` : '沒有資料');
-        _add('🇰🇷 韓股', _asiaScore(_ks), Number.isFinite(_ks) ? `${_ks}%` : '沒有資料');
-        _add('🇭🇰 恆指(半權重)', _asiaScore(_hs) * 0.5, Number.isFinite(_hs) ? `${_hs}%` : '沒有資料');
+        const _asia = (nm, k, c, w) => {
+            if (_age.stale[k]) return _info(nm, _old(k, Number.isFinite(c) ? `${c}%` : ''));
+            _add(nm, _asiaScore(c) * w, Number.isFinite(c) ? `${c}%` : '沒有資料');
+        };
+        _asia('🇯🇵 日經', 'nikkei', _nk, 1);
+        _asia('🇰🇷 韓股', 'kospi', _ks, 1);
+        _asia('🇭🇰 恆指(半權重)', 'hsi', _hs, 0.5);
         const _fgN = +mr.fear_greed;
         if (Number.isFinite(_fgN)) _add('🧭 恐懼貪婪', _fgN >= 80 ? -0.5 : _fgN <= 20 ? 0.5 : 0, `${Math.round(_fgN)}`);   // 極貪(froth 偏空)/極恐(超跌偏多),輕權重反轉傾向
         // 💱 V57.8 台幣匯率(使用者要求):USDTWD 上升=台幣貶值=外資匯出(提款機模式)。
@@ -16582,13 +16624,7 @@ const marginByDate = {};
         if (_asiaFxDump) _add('💱 亞幣競貶', -1, `台幣 ${_twd5.toFixed(1)}% ・韓元 ${_krw5.toFixed(1)}%`);
         if (Number.isFinite(_cny5) && _cny5 >= 1.2) _add('💱 人民幣急貶', -0.5, `${_cny5.toFixed(2)}%`);
 
-        // 🐛 V40.0 外資台指期極空(≤-4萬口)時不可硬說「外資沒大空」(實測 -83,063 口卻顯偏多致矛盾)→ 動態加註
-        // 🏦 V71.1.6 相對水位:舊寫法 ≤-4萬口 天天成立 → 永遠掛「仍極空」的但書,反而變雜訊
-        const _fsN = this._fiFutState();
-        const _fiBigShort = (_fsN.level === 'danger' || (_fsN.pct != null && _fsN.pct <= 15));
-        const _fiNote = _fiBigShort
-            ? `惟外資台指期 ${fi != null ? (fi / 10000).toFixed(1) + ' 萬口' : ''}${_fsN.chg5 != null && _fsN.chg5 <= -3000 ? `近5日再加空 ${Math.abs(Math.round(_fsN.chg5)).toLocaleString()} 口` : '處近期最空區'}`
-            : '外資期貨無異常加空';
+        // 🧹 V79.5.2 刪掉只餵給死碼 `summary` 與舊盤中型態的「外資台指期極空」但書(兩者都已拿掉);外資台指期照舊在明細列出來
         s = Math.round(s * 10) / 10;   // 🐛 V57.7 順便修:0.5 權重連加的浮點誤差(避免顯示 -7.000000000000001)
         // 📊 V57.9 使用者要求「分數簡單一點」:內部 s(約 ±10)換算成「開盤風向 0~100」,50=中性,量條直接填到幾分,數字與條完全對得上
         const sPct = Math.max(0, Math.min(100, Math.round(50 + s * 5)));
@@ -16599,25 +16635,20 @@ const marginByDate = {};
         this._preOpenCalc = { s, sPct, raw: _sRaw, clamped: _sClamped, parts: _pp.slice() };
         // 🌙 V68.8.0 美股週末休市判斷(台灣週六日整天、週一 21:30 前 = 美股停在上週五收盤)
         const _usClosed = (() => { const d = new Date(), wd = d.getDay(), h = d.getHours(), mi = d.getMinutes(); if (wd === 6 || wd === 0) return true; if (wd === 1 && (h < 21 || (h === 21 && mi < 30))) return true; return false; })();
-        // 🎯 V68.8.0 盤中型態預判(不只開高/開低,加續航判斷 → 開高走低/開低走高)
-        const _bearIntra = _fiBigShort || (nightChg != null && nightChg <= -0.5) || (Number.isFinite(_twdC) && _twdC >= 0.4) || (Number.isFinite(_fgN) && _fgN >= 80);
-        const _bullRev = (Number.isFinite(_fgN) && _fgN <= 20) || (Number.isFinite(+fiSpot) && +fiSpot > 100) || (Number.isFinite(vixN) && vixN > 0 && vixN < 16);
-        let pattern, patCls, patNote;
-        if (s >= 3) {
-            if (_bearIntra) { pattern = '開高走低'; patCls = 'text-orange-300'; patNote = '隔夜偏多、但外資期貨大空/夜盤翻黑/情緒過熱 → 開高別追高(追高易被套);見開高走低=主力出貨,等回測支撐再看。'; }
-            else { pattern = '開高走高'; patCls = 'text-red-300'; patNote = '隔夜偏多、無明顯反轉訊號 → 順勢做多,站穩開盤價續抱、跌破開盤價才走。'; }
-        } else if (s <= -3) {
-            if (_bullRev) { pattern = '開低走高'; patCls = 'text-yellow-300'; patNote = '隔夜偏空、但情緒極恐/外資現貨買/VIX 低 → 開低可能是低接點,別追空,等止跌紅K搶反彈。'; }
-            else { pattern = '開低走低'; patCls = 'text-green-300'; patNote = '隔夜偏空、無止跌訊號 → 順勢偏空,反彈是逃命波、別接刀。'; }
-        } else {
-            pattern = _bearIntra ? '開平偏弱' : _bullRev ? '開平偏強' : '開平震盪'; patCls = 'text-yellow-300';
-            patNote = '多空拉扯、開平機率高 → 等第一小時表態,別開盤亂追,守 5 日線/月線順勢做。';
-        }
-        if (_usClosed) patNote = '🌙 美股週末休市(以下美股為上週五收盤,今天美股台灣晚間才開)→ 開盤預判改以台股技術+亞股+外資期貨為主,美股參考度降低。' + patNote;
-        let light, verdict, vColor, summary;
-        if (s >= 3) { light = '🔴'; verdict = '開高偏多'; vColor = 'red'; summary = `隔夜美股+台積電 ADR 偏強、${_fiNote},今天台股有機會開高;${_fiBigShort ? '順勢但開高別追高,外資台指期仍掛大空單,慎防開高走低、賣壓回測支撐。' : '順勢操作但別追高,留意上方壓力。'}`; }
-        else if (s <= -3) { light = '🟢'; verdict = '開低偏空'; vColor = 'green'; summary = '隔夜美股/ADR 偏弱或外資偏空,今天台股開低機率高;手上有貨顧好停損,空手別急著接刀。'; }
-        else { light = '🟡'; verdict = '中性震盪'; vColor = 'yellow'; summary = `多空訊號互有拉扯,今天大盤方向不明、開平機率高${_fiBigShort ? '(外資台指期極空,反彈偏空操作)' : ''};別重押,等站穩 5 日線/月線且帶量再順勢。`; }
+        // 🧪 V79.5.2 以前這裡是「盤中型態」(開高走高 / 開高走低 / 開低走高 / 開低走低 + 順勢做多那類指令)——
+        //   ⛔ 那四類**從來沒有回測過**,也沒過 `_mktGate` / 反攻雷達那兩道守門;2026-10-22 預判「開高走高 → 順勢做多」,
+        //      0050 開盤 +0.75%(開高對了)、開盤到收盤 −1.88%,同一頁分析師寫「做短不加碼」= 自己打架。
+        //   → 只講開盤(海外那一半有實測);開盤之後怎麼走 ⛔ 不預測。「別在開盤追高」有實測(dt_daily_probe D11:
+        //     偏多那天熱門股開盤買、收盤賣平均是賠的)→ 保留;其他做法照產業作戰室「盤前體檢分數準嗎」那篇專欄的 do。
+        let patNote;
+        if (s >= 3) patNote = '隔夜海外偏多,今天多半開高 → 照原本計畫做。開高大多是昨晚美股造成的,開盤之後會不會繼續漲這裡不預測,⛔ 別在開盤追高。';
+        else if (s <= -3) patNote = '隔夜海外偏弱,今天多半開低 → 新買的先縮小部位、別在開盤前掛大單;⛔ 不用因為分數低就整天不做,手上的照你的出場規則走。';
+        else patNote = '多空拉扯,今天多半開平 → 照原本計畫做;開盤之後怎麼走這裡不預測。';
+        if (_usClosed) patNote = '🌙 美股週末休市(以下美股為上週五收盤,今天美股台灣晚間才開)→ 美股那幾項參考度降低。' + patNote;
+        let light, verdict, vColor;
+        if (s >= 3) { light = '🔴'; verdict = '開高偏多'; vColor = 'red'; }
+        else if (s <= -3) { light = '🟢'; verdict = '開低偏空'; vColor = 'green'; }
+        else { light = '🟡'; verdict = '中性震盪'; vColor = 'yellow'; }
         // 🧹 V69.8.0 合併重複判斷(使用者要求):夜盤/情緒/匯率注記不再塞開盤預判卡的 💡 段
         //   (與分析師解讀重複),改收進 _analystNotes 統一由「🎙️ 分析師盤勢解讀」一段講完。
         //   亞股不收(分析師解讀 ② 已含,收了會重複講兩次)。
@@ -16735,23 +16766,16 @@ const marginByDate = {};
         //   採礦端(yfinance ^KS11/^N225/^HSI)對亞洲指數穩定落後,V71.5.1 的守門只能防「倒退」、
         //   沒辦法讓資料變新 → 至少要讓使用者看得出這是哪一天的,不要以為是最新收盤。
         //   ⚠️ 亞股在台股開盤前顯示「前一交易日收盤」是正常的;真正要警示的是「比前一交易日還舊」。
-        const _asiaStale = (() => {
-            const d = String(mr.kospi_date || mr.nikkei_date || '').slice(0, 10);
-            if (!d) return null;
-            const t = new Date(d + 'T00:00:00+08:00');
-            if (isNaN(t)) return null;
-            // 算「上一個交易日」(粗略:週末往前推),資料日比它更舊 → 過期
-            const now = new Date();
-            let prev = new Date(now); prev.setDate(prev.getDate() - 1);
-            while (prev.getDay() === 0 || prev.getDay() === 6) prev.setDate(prev.getDate() - 1);
-            const dayGap = Math.round((prev - t) / 86400000);
-            return { d, stale: dayGap >= 1, dayGap };
-        })();
-        const _asiaDateTag = _asiaStale
-            ? (_asiaStale.stale
-                ? `<span class="text-yellow-300">⚠️ ${this._dW ? this._dW(_asiaStale.d) : _asiaStale.d} 收盤(比上個交易日還舊)</span>`
-                : `<span class="text-gray-500">${this._dW ? this._dW(_asiaStale.d) : _asiaStale.d} 收盤</span>`)
-            : '';
+        // 🌏 V79.5.2 日期一律走 `_premktFieldAge`(跟分數同一把尺):今天盤中 / 前一個交易日收盤(台股那天已一起反映)/ 比那更舊(不算分)。
+        //   ⛔ 不再講「台股開盤同步承壓・別追多・今天別接刀」—— 亞股前一天對台股隔天幾乎沒有預測力(overseas_probe),
+        //      而大盤層級的警示一律只描述(V79.3.5)。分級顯示(🚨 / ⚠️ / 小字)照舊,讓大跌看得到。
+        const _agN = this._premktFieldAge(mr);
+        const _asiaD = _agN.at.kospi || _agN.at.nikkei || null;
+        const _asiaOld = !!(_agN.stale.kospi || _agN.stale.nikkei);
+        const _asiaDateTag = !_asiaD ? ''
+            : _asiaOld ? `<span class="text-yellow-300">⚠️ ${this._dW(_asiaD) || _asiaD} 收盤(比台股上一個交易日還舊,不算分)</span>`
+            : _asiaD === _agN.today ? `<span class="text-gray-500">今天盤中</span>`
+            : `<span class="text-gray-500">${this._dW(_asiaD) || _asiaD} 收盤・台股那天已一起反映</span>`;
         { const nk = +mr.nikkei_chg_pct, ks = +mr.kospi_chg_pct;
           const okN = Number.isFinite(nk), okK = Number.isFinite(ks);
           const worst = Math.min(okN ? nk : 99, okK ? ks : 99);
@@ -16760,17 +16784,16 @@ const marginByDate = {};
           const fmt = v => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
           const strong = okN && okK && nk >= 1 && ks >= 1;
           if (worst <= -5) {
-              asiaNote = `<div class="bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-r px-2 py-1.5 mt-1">
-                  <div class="text-[11px] font-bold text-orange-300 mb-0.5 animate-pulse">🚨 亞股重挫 ${nm} ${fmt(worst)} <span class="text-[9px] font-normal">${_asiaDateTag}</span></div>
-                  <div class="text-[10px] text-gray-200 leading-relaxed">同區域市場級崩跌,台股很難自外於此。<b>今天別接刀</b>,先確認是哪一國自己的事還是全區域事件(對照 VIX:VIX 沒動=亞洲區域性)。</div></div>`;
+              asiaNote = `<div class="bg-[#161b22] border-l-4 border-orange-500 border-y border-r border-[#30363d] rounded-r px-2 py-1.5 mt-1" data-asianote="crash">
+                  <div class="text-[11px] font-bold text-orange-300 mb-0.5">🚨 亞股重挫 ${nm} ${fmt(worst)} <span class="text-[9px] font-normal">${_asiaDateTag}</span></div>
+                  <div class="text-[10px] text-gray-200 leading-relaxed">同區域市場大跌。可以對照 VIX 看是不是全球的事(VIX 沒動 = 亞洲區域性);手上的照你的出場規則走。</div></div>`;
           } else if (worst <= -3 || both2) {
-              asiaNote = `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r px-2 py-1.5 mt-1">
-                  <div class="text-[11px] font-bold text-yellow-300 mb-0.5">⚠️ 亞股明顯走弱${okK ? ` ・韓 ${fmt(ks)}` : ''}${okN ? ` ・日 ${fmt(nk)}` : ''} <span class="text-[9px] font-normal">${_asiaDateTag}</span></div>
-                  <div class="text-[10px] text-gray-200 leading-relaxed">台股開盤大機率同步承壓,別追多;有持股先想好停損價再開盤。</div></div>`;
+              asiaNote = `<div class="bg-[#161b22] border-l-4 border-yellow-500 border-y border-r border-[#30363d] rounded-r px-2 py-1.5 mt-1" data-asianote="weak">
+                  <div class="text-[11px] font-bold text-yellow-300 mb-0.5">⚠️ 亞股明顯走弱${okK ? ` ・韓 ${fmt(ks)}` : ''}${okN ? ` ・日 ${fmt(nk)}` : ''} <span class="text-[9px] font-normal">${_asiaDateTag}</span></div></div>`;
           } else if (worst <= -1) {
-              asiaNote = `<div class="text-[9px] text-green-400/80 mt-1 leading-snug">📉 亞股同盤走弱 → 台股開盤同步承壓,別追多 ${_asiaDateTag}</div>`;
+              asiaNote = `<div class="text-[9px] text-gray-400 mt-1 leading-snug" data-asianote="soft">📉 亞股走弱 ${_asiaDateTag}</div>`;
           } else if (strong) {
-              asiaNote = `<div class="text-[9px] text-red-400/80 mt-1 leading-snug">📈 亞股同盤走強 → 台股開盤氣氛偏多 ${_asiaDateTag}</div>`;
+              asiaNote = `<div class="text-[9px] text-gray-400 mt-1 leading-snug" data-asianote="strong">📈 亞股走強 ${_asiaDateTag}</div>`;
           } }
         const globalRiskHtml = `
             <div class="border-t border-[#21262d] pt-1.5">
@@ -16905,7 +16928,6 @@ const marginByDate = {};
                     <div class="flex-1 min-w-0">
                         <div class="text-[9px] ${_mFresh.ok ? 'text-gray-500' : 'text-orange-300'} font-bold tracking-widest mb-0.5">${_mFresh.ok ? '今日開盤預判' : `⚠️ ${this._dW(_mFresh.date)} 那天的開盤預判(不是今天)`}${_usClosed ? ' <span class="text-yellow-500/80">🌙美股休市</span>' : ''}</div>
                         <div class="text-xl font-black ${sc} leading-none">${verdict}</div>
-                        <div class="text-[11px] font-black ${patCls} mt-1">📈 盤中型態:${pattern}</div>
                     </div>
                     <div class="text-right flex-shrink-0 pl-2 border-l border-[#30363d]">
                         <div class="font-mono font-black text-xl ${sc} leading-none">${sPct}<span class="text-[9px] font-normal text-gray-500">/100</span></div>
@@ -16951,7 +16973,7 @@ const marginByDate = {};
                         </div>
                     </details>`;
                 })()}
-                <div class="mt-2 pt-2 border-t border-[#30363d] text-[11px] text-gray-300 leading-relaxed"><b class="${patCls}">📈 ${pattern}:</b>${patNote}</div>
+                <div class="mt-2 pt-2 border-t border-[#30363d] text-[11px] text-gray-300 leading-relaxed" data-ppnote="1"><b class="${sc}">📌 今天怎麼看:</b>${patNote}</div>
                 <!-- 🧹 V69.8.0 原 💡 一句話總結已併入下方「🎙️ 分析師盤勢解讀」(使用者:兩段判斷重複) -->
             </div>
             <!-- 🎙️ V69.0.4 分析師盤勢解讀(常駐,不折疊) -->
@@ -34266,7 +34288,7 @@ ${this._reportFacts(sym)}
         const sec = this._eveSectors(1);
         out.push(this._eveSec('💧 今天哪幾族漲最多 / 跌最多', sec || '<span class="text-gray-500">⏳ 全市場快照還沒下載到。</span>', 'data-evesec="sect"'));
         // ④ 主動式 ETF 四檔
-        out.push(this._eveSec('🧩 主動式 ETF 四檔今天換了什麼', this._eveEtf(1), 'data-evesec="etf"'));
+        out.push(this._eveSec('🧩 主動式 ETF 四檔最近一次換股', this._eveEtf(1), 'data-evesec="etf"'));
         // ⑤ 你的持股
         const H = this._eveHold('chg');
         if (H.html) out.push(this._eveSec('👜 你的持股今天', H.html, 'data-evesec="hold"'));
@@ -34275,11 +34297,22 @@ ${this._reportFacts(sym)}
         return `<div data-eve="day">${out.join('')}<div class="text-[10px] text-gray-500 pt-2">⛔ 這一頁只整理今天發生什麼,不是買賣建議。</div></div>`;
     },
     /** 主動式 ETF:最近 `days` 個有異動的日子,新增 / 出清哪幾檔(讀 chg_hist,⛔ 不另算) */
+    // 🗓️ V79.5.2 以前標題寫「今天換了什麼」,可是每一行是「最近一次」(10/22 晚上看到的是 10/19)→ 標題改「最近一次」,
+    //   最近一次比資料日期舊的寫出「那天之後沒有新的換股」;持股明細抓不全(權重合計 < 70%,同 ETF 頁那條)要講,
+    //   ⛔ 不然「沒有換股」可能只是沒抓到。
     _eveEtf(days) {
         const E = this._etfCache; if (!E || !Array.isArray(E.etfs)) return '<span class="text-gray-500">⏳ ETF 資料還沒下載到。</span>';
+        const dataD = String(E.updated || '').slice(0, 10);
         const lines = [];
         for (const sy of (this.ETF_PIN || [])) {
-            const f = E.etfs.find(x => x && x.symbol === sy); if (!f || !Array.isArray(f.chg_hist) || !f.chg_hist.length) continue;
+            const f = E.etfs.find(x => x && x.symbol === sy); if (!f) continue;
+            const cover = (Array.isArray(f.hold_all) ? f.hold_all : []).reduce((s, h) => s + (+h.weight || 0), 0);
+            const thin = cover > 0 && cover < 70
+                ? ` <span class="text-orange-300" data-eveetfthin="${sy}">⚠️ 持股明細只抓到權重合計 ${cover.toFixed(0)}%,換股可能沒抓到</span>` : '';
+            if (!Array.isArray(f.chg_hist) || !f.chg_hist.length) {
+                if (thin) lines.push(`<div data-eveetf="${sy}"><span class="font-mono text-gray-400">${sy}</span> 還沒有換股紀錄${thin}</div>`);
+                continue;
+            }
             const last = f.chg_hist.slice(-days);
             const a = [...new Set(last.flatMap(h => h.a || []))], r = [...new Set(last.flatMap(h => h.r || []))];
             const dd = last[last.length - 1].d;
@@ -34287,7 +34320,9 @@ ${this._reportFacts(sym)}
             const txt = (a.length || r.length)
                 ? `${a.length ? `新增 ${a.slice(0, 5).map(nm).join('、')}` : ''}${a.length && r.length ? ' ・ ' : ''}${r.length ? `出清 ${r.slice(0, 5).map(nm).join('、')}` : ''}`
                 : '<span class="text-gray-500">沒有新增或出清(只有調權重)</span>';
-            lines.push(`<div data-eveetf="${sy}"><span class="font-mono text-gray-400">${sy}</span> ${this._dW(dd)}:${txt}</div>`);
+            const after = (days === 1 && dataD && dd && dd < dataD)
+                ? ` <span class="text-gray-500" data-eveetfold="${sy}">(之後到 ${this._dW(dataD)} 沒有新的換股)</span>` : '';
+            lines.push(`<div data-eveetf="${sy}"><span class="font-mono text-gray-400">${sy}</span> ${this._dW(dd)}:${txt}${after}${thin}</div>`);
         }
         return lines.length ? lines.join('') : '<span class="text-gray-500">這四檔最近沒有異動紀錄。</span>';
     },

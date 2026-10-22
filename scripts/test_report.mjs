@@ -803,18 +803,22 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     await render('2327');
     const V = await page.evaluate(async (txt) => {
         const A = app, sym = '2327';
+        // 🔁 V79.5.2 報告寫的價 = **當下現價 ÷ 1.25**(必偏離 +25%)—— ⛔ 不寫死 480:國巨 10/22 跌到 507 → 只偏 5.6% < 8% 門檻 → 長期紅燈。
+        //   ⭐ 而且判斷用**同一份**現價(C0 凍結):`analyze()` 的背景載入會在中途把 rawDailyData 換成本機那份 → `_rpLast.pC` 前後不同(競態)
+        const C0 = Object.assign({}, A._rpLast), p0 = Math.round(+C0.pC / 1.25);
+        txt = txt.replace('目前股價:480 元', `目前股價:${p0} 元`);
         document.getElementById('rpNoteIn').value = txt; A._rpNoteSave(sym);
         await new Promise(r => setTimeout(r, 200));
         const card = document.getElementById('rpPaste'), box = card.querySelector('[data-rpnote]');
         const seen = (card.innerText || '').replace(/\s+/g, '');
         const all = card.innerHTML;
-        const st = A._rpNoteStale(A._rpLast, A._rpNote(sym));
+        const st = A._rpNoteStale(C0, A._rpNote(sym));
         const q11 = document.querySelector('#rpQuick [data-rpq="§2・§5~§8・§13 質化"]');
         const vs = [...document.querySelectorAll('#rpWalls [data-rpvs]')].map(d => d.getAttribute('data-rpvs'));
         const vsTxt = (document.querySelector('#rpWalls [data-rpvs-say]') || {}).textContent || '';
         const dec = JSON.stringify(A._ovDecide(A.activeData, sym) || {}), cp = '';   // 🗑️ V76.2.5 複製功能已下架
         const ord = [...document.getElementById('subContentReport').children].map(d => d.id);
-        return { seen, chars: seen.length, has: { s1: /等待買點/.test(seen), s22: /買進理由/.test(seen), s5: /正向預期差/.test(seen), s4: /8月營收達163/.test(seen) },
+        return { p0, seen, chars: seen.length, has: { s1: /等待買點/.test(seen), s22: /買進理由/.test(seen), s5: /正向預期差/.test(seen), s4: /8月營收達163/.test(seen) },
                  secs: card.querySelectorAll('details[data-rpsec]').length, first: card.querySelectorAll('[data-rpsec-first]').length,
                  subj: [...card.querySelectorAll('details[data-rpsec="19"] summary, details[data-rpsec="20"] summary, details[data-rpsec="14"] summary')].map(e => /AI 主觀/.test(e.textContent)),
                  marks: box.querySelectorAll('mark.rp-hi').length, markRG: [...box.querySelectorAll('mark')].some(m => /text-(red|green)/.test(m.className)),
@@ -836,15 +840,15 @@ ok('⑯ 無 pageerror(環境限制已濾)', errs.length === 0, errs.join(' | '))
     ok('📝b2 貼上區第一眼 ≤ 800 字(⛔ 整份 6k 全攤開就是資訊爆炸)', V.chars <= 800 && V.chars > 150, `${V.chars} 字`);
     ok('📝b3 §19 因子評分 / §20 星等 / §14 機率那三節標「AI 主觀」', V.subj.length === 3 && V.subj.every(Boolean), JSON.stringify(V.subj));
     ok('📝b4 重點詞真的被上色(≥5 個琥珀 mark),而且 ⛔ 不是紅綠', V.marks >= 5 && !V.markRG, `marks=${V.marks}`);
-    ok('📝c 🔁 過期判斷(基準日 2026-07-20、報告寫 480 元):基準日之後的月營收已公布(跟著日期走,8 月起任何一個月都算)+ 第 2 季財報法定日已過 + 股價偏離 + 已經 N 天(注入:拿掉月營收那條 → 這條紅)', V.stale.stale && V.stale.reasons.some(r => /(8|9|1[0-2]) 月營收已公布/.test(r)) && V.stale.reasons.some(r => /第 2 季財報法定公布日/.test(r)) && V.stale.reasons.some(r => /偏離報告寫的 480 元/.test(r)) && V.stale.reasons.some(r => /已經 \d+ 天/.test(r)), JSON.stringify(V.stale));
+    ok('📝c 🔁 過期判斷(基準日 2026-07-20、報告寫的價 = 現價 ÷1.25):基準日之後的月營收已公布(跟著日期走,8 月起任何一個月都算)+ 第 2 季財報法定日已過 + 股價偏離 + 已經 N 天(注入:拿掉月營收那條 → 這條紅)', V.p0 > 0 && V.stale.stale && V.stale.reasons.some(r => /(8|9|1[0-2]) 月營收已公布/.test(r)) && V.stale.reasons.some(r => /第 2 季財報法定公布日/.test(r)) && V.stale.reasons.some(r => r.includes(`偏離報告寫的 ${V.p0} 元`)) && V.stale.reasons.some(r => /已經 \d+ 天/.test(r)), JSON.stringify(V.stale));
     ok('📝c2 提醒**在頁內顯示**(「🔁 建議重新產出」)+ 快速表第 11 列標「已有 … 的報告 ・🔁 需更新」', V.staleShown && /已有/.test(V.q11) && /需更新/.test(V.q11), V.q11);
     ok('📝d 🆚 AI 價位對照本站的牆:每個抽到的價位一列(第一買點 / 第二買點 / 第三買點 / 保守合理價)+「AI 說 / 本站說」並排', V.vs.length >= 4 && V.vs.includes('第一買點') && /AI 說/.test(V.vsTxt) && /本站說/.test(V.vsTxt) && /等待買點/.test(V.vsTxt), JSON.stringify(V.vs) + ' ' + V.vsTxt);
     ok('📝e 🚨 鐵線:貼上的報告⛔ 不進「📋 複製整份報告」、⛔ 不進 _ovDecide、AI 的價位⛔ 不進 _keyLevels', !V.rail.copy && !V.rail.dec && !V.keyLv, JSON.stringify(V.rail));
     ok('📝f 版面順序(V76.2.5 使用者指定):📄 短評報告 → 📝 貼上區 → ⚡ 快速表',
        V.ord.indexOf('rpImg') < V.ord.indexOf('rpPaste') && V.ord.indexOf('rpPaste') < V.ord.indexOf('rpQuick'), V.ord.join(','));
     // fresh 版(基準日 = 今天、價 = 今天的現價):不可亮「天數 / 偏離 / 法定日 / 除息」
-    const FR = await page.evaluate(async (txt) => { const A = app; txt = txt.replace(/544/g, String(Math.round(+A._rpLast.pC)));   // 「價位 = 現價」要用**今天的**現價(⛔ 寫死 544 會隨行情過期 → 長期紅燈)
-        document.getElementById('rpNoteIn').value = txt; A._rpNoteSave('2327'); await new Promise(r => setTimeout(r, 150)); return A._rpNoteStale(A._rpLast, A._rpNote('2327')); }, fresh);
+    const FR = await page.evaluate(async (txt) => { const A = app, C0 = Object.assign({}, A._rpLast); txt = txt.replace(/544/g, String(Math.round(+C0.pC)));   // 「價位 = 現價」要用**今天的**現價(⛔ 寫死 544 會隨行情過期 → 長期紅燈);🔁 V79.5.2 判斷用同一份 C0(⛔ 背景載入會中途換掉 _rpLast)
+        document.getElementById('rpNoteIn').value = txt; A._rpNoteSave('2327'); await new Promise(r => setTimeout(r, 150)); return A._rpNoteStale(C0, A._rpNote('2327')); }, fresh);
     ok('📝c3 fresh 版(基準日今天、價位 = 現價):⛔ 不可亮天數 / 偏離 / 財報法定日 / 除息', !FR.reasons.some(r => /已經 \d+ 天|偏離|法定|除息/.test(r)), JSON.stringify(FR));
     // 舊格式(V76.1.8 存的,沒有 asof)照讀,基準日退回貼上日
     const OLD = await page.evaluate(async () => { const A = app; localStorage.setItem('rpNote_2327', JSON.stringify({ t: '舊格式筆記 沒有節', ts: Date.now() - 3 * 864e5 })); await A.idb.del('rpNote_2327'); await A._rpNoteLoad('2327'); A._rpRefreshPaste('2327'); await new Promise(r => setTimeout(r, 100)); const c = document.getElementById('rpPaste'); return { shown: /舊格式筆記/.test(c.innerText), asof: A._rpNoteAsofOf(A._rpNote('2327')), noSec: /沒切節/.test(c.innerText) }; });

@@ -216,3 +216,104 @@ assert 'out[f"{key}_error"]      = err' in _msrc and 'out[key_alias[key]]      =
 print('✅ ⑳ 有原因字串也不會丟掉價位(值與 error 分開寫)')
 
 print('\n🎉 盤中/結算配對 + 守門必留原因 全過(合計 20 項)')
+
+
+# ══════════════════════════════════════════════════════════════════
+# 🌅 V79.5.2 守門要有「上一份」可以比 —— 以前只讀本機檔,而 macro_cron 是乾淨 checkout
+#   → `_prev_json` 永遠是 {} → 上面那道守門在雲端**從來沒有作用過**(這支測試以前只測純函式,所以抓不到)。
+#   🚨 2026-10-22:前一晚 23:17 日經 / 韓股 / 恆指是正確的 10/21,00:17 起倒退成 10/20,
+#      早上 08:12 盤前體檢照樣拿 10/20 的亞股算分。
+# ══════════════════════════════════════════════════════════════════
+import json as _json
+import tempfile as _tf
+
+
+class _R:
+    def __init__(self, code, j=None):
+        self.status_code, self._j = code, j
+
+    def json(self):
+        return self._j
+
+
+_PUB = {'nikkei': 49100.0, 'nikkei_chg_pct': -1.2, 'nikkei_date': '2026-10-21',
+        'usdtwd': 30.5, 'usdtwd_chg_pct': 0.1, 'usdtwd_chg_5d': 0.4, 'usdtwd_date': '2026-10-21'}
+_calls = []
+
+
+def _get_ok(u):
+    _calls.append(u)
+    return _R(200, dict(_PUB)) if 'github.io' in u else _R(500)
+
+
+with _tf.TemporaryDirectory() as _d:
+    _missing = Path(_d) / 'macro_risk.json'
+    prev, src = mm._load_prev_macro(_missing, getter=_get_ok)
+    assert prev.get('nikkei_date') == '2026-10-21' and '線上 gh-pages' in src and '本機沒有上一份' in src, (prev, src)
+    assert _calls and 'github.io' in _calls[0] and '?t=' in _calls[0], _calls
+    print(f'✅ ㉑ 本機沒有上一份 → 讀已發佈的 gh-pages 那份(加 ?t= 破快取):{src}')
+
+    _calls.clear()
+    def _get_pages_down(u):
+        _calls.append(u)
+        return _R(404) if 'github.io' in u else _R(200, dict(_PUB))
+    prev, src = mm._load_prev_macro(_missing, getter=_get_pages_down)
+    assert prev.get('nikkei_date') == '2026-10-21' and 'data 分支' in src and len(_calls) == 2, (src, _calls)
+    print('✅ ㉒ gh-pages 讀不到 → 退 data 分支')
+
+    def _get_boom(u):
+        raise RuntimeError('network down')
+    prev, src = mm._load_prev_macro(_missing, getter=_get_boom)
+    assert prev == {} and '讀不到上一份' in src and 'network down' in src, (prev, src)
+    print('✅ ㉓ 兩個都讀不到 → 回 {} + 寫原因,⛔ 不丟例外(不擋採礦)')
+
+    _missing.write_text(_json.dumps({'nikkei': 1.0, 'nikkei_date': '2026-10-19'}), encoding='utf-8')
+    _calls.clear()
+    prev, src = mm._load_prev_macro(_missing, getter=_get_ok)
+    assert prev.get('nikkei_date') == '2026-10-19' and src.startswith('本機') and not _calls, (prev, src, _calls)
+    print('✅ ㉔ 本機有上一份(daily_miner 鋪好的)→ 用本機,⛔ 不打網路')
+
+# ㉕ 真實那一組:已發佈 10/21,這一輪 yfinance 回 10/20 → 保留 10/21
+_alias = {'nikkei': 'nikkei'}
+_out = {}
+kept = mm._apply_big_player(_out, 'nikkei', _alias, 48500.0, -1.3, None, '2026-10-20', dict(_PUB))
+assert kept is True and _out['nikkei'] == 49100.0 and _out['nikkei_chg_pct'] == -1.2 \
+    and _out['nikkei_date'] == '2026-10-21' and '來源回舊資料(2026-10-20)' in _out['nikkei_error'], _out
+print('✅ ㉕ 已發佈 10/21、這一輪抓到 10/20 → 值 / 漲跌 / 日期都保留 10/21,error 寫原因')
+
+# ㉕b ⭐ 決定性對照:沒有上一份(= 以前雲端的情況)→ 10/20 直接蓋上去
+_out = {}
+kept = mm._apply_big_player(_out, 'nikkei', _alias, 48500.0, -1.3, None, '2026-10-20', {})
+assert kept is False and _out['nikkei_date'] == '2026-10-20' and _out['nikkei_chg_pct'] == -1.3, _out
+print('✅ ㉕b 決定性對照:沒有上一份 → 10/20 會蓋上去(這就是 10/22 早上看到的)')
+
+# ㉕c 同一天 / 較新 → 照常寫入(⛔ 不可擋成永遠不更新)
+_out = {}
+assert mm._apply_big_player(_out, 'nikkei', _alias, 48800.0, -0.6, None, '2026-10-22', dict(_PUB)) is False \
+    and _out['nikkei_date'] == '2026-10-22'
+print('✅ ㉕c 較新的照常寫入')
+
+# ㉖ 匯率也記日期 + 同一道守門
+_out = {}
+assert mm._apply_fx(_out, 'usdtwd', 30.6, 0.3, 0.2, None, '2026-10-20', dict(_PUB)) is True \
+    and _out['usdtwd'] == 30.5 and _out['usdtwd_chg_5d'] == 0.4 and _out['usdtwd_date'] == '2026-10-21' \
+    and '來源回舊資料' in _out['usdtwd_error'], _out
+_out = {}
+assert mm._apply_fx(_out, 'usdtwd', 30.6, 0.3, 0.2, None, '2026-10-22', dict(_PUB)) is False \
+    and _out['usdtwd'] == 30.6 and _out['usdtwd_date'] == '2026-10-22' and _out['usdtwd_error'] is None, _out
+print('✅ ㉖ 台幣 / 韓元 / 人民幣:比上一份舊 → 保留;較新 → 寫入並記日期')
+
+# ㉗ 接線(⛔ 函式寫好沒接上 = 沒修)
+_main = inspect.getsource(mm.main) if hasattr(mm, 'main') else _msrc
+_fxsrc = inspect.getsource(mm._fetch_fx)
+assert '_YF_LAST_DATE[ticker]' in _fxsrc, '㉗ _fetch_fx 要記日期'
+_i_load = _main.find('_load_prev_macro()')
+_i_twd = _main.find('fetch_usdtwd()')
+_i_loop = _main.find('for i, (name, key, fn) in enumerate(big_player_fns')
+assert 0 <= _i_load < _i_twd < _i_loop, ('㉗ 上一份要在匯率之前讀好', _i_load, _i_twd, _i_loop)
+assert "DATA_DIR / 'macro_risk.json'" not in _main, '㉗ ⛔ 別再只讀本機檔(macro_cron 是乾淨 checkout)'
+assert '_apply_big_player(out, key, key_alias' in _main and '_apply_fx(out, "usdtwd"' in _main and '_apply_fx(out, _key' in _main
+assert '"usdtwd_date", "krw_date", "cny_date"' in _msrc, '㉗ 匯率日期要進斷崖防護清單(下一輪守門要比)'
+print('✅ ㉗ main 接線:上一份在匯率之前讀好、全球指標與三個匯率都走守門、匯率日期進斷崖防護')
+
+print('\n🎉 V79.5.2 上一份讀已發佈的 + 匯率日期守門 全過(合計 27 項)')

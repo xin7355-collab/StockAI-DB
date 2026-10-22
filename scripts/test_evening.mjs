@@ -54,7 +54,10 @@ const R = await page.evaluate(async () => {
         { d: '2026/10/02', idx: -1.23, up: 700, dn: 1300, flat: 100, lu: 10, ld: 9, amt: 9800 },
     ];
     app._macroRiskCache = { fi_spot_net: 26.22, fi_trust_net: 57.69, fi_dealer_net: 20.26, fi_total_net: 104.17, updated: '2026-10-03 01:00 +0800' };
-    app._etfCache = { etfs: [{ symbol: '00981A', chg_hist: [{ d: '2026-10-02', a: ['2330'], r: ['2317'], u: [], w: [] }] }] };
+    app._etfCache = { updated: '2026-10-03', etfs: [
+        { symbol: '00981A', hold_all: [{ sym: '2330', weight: 50 }, { sym: '2454', weight: 45 }], chg_hist: [{ d: '2026-10-02', a: ['2330'], r: ['2317'], u: [], w: [] }] },
+        // 🗓️ V79.5.2 持股明細只抓到 17%(實測 00998A 就是這樣)→ 要講「換股可能沒抓到」
+        { symbol: '00998A', hold_all: [{ sym: '2330', weight: 17 }], chg_hist: [{ d: '2026-10-03', a: [], r: [], u: [['2330', 0.5]], w: [] }] }] };
     app.inventory = [{ symbol: '1000', cost: 90, shares: 2 }];
     app._pbEdge = { data_date: '2026-10-02', mkt: { bear60: false }, picks: [
         { s: '2001', rank: 95, vol: 80, bear: 0, k: 'a', lb: 9 }, { s: '2002', rank: 90, vol: 70, bear: 0, k: 'a', lb: 8 },
@@ -68,6 +71,9 @@ const R = await page.evaluate(async () => {
     try { app.settings.strategy = 'gene'; app.settings.geneRank = 85; } catch (_) {}
     const day = app._eveHtml();
     out.day = txt(day); out.dayHtml = day;
+    // 🗓️ V79.5.2 ETF 那段:最近一次比資料日舊要講;決定性對照:資料日改成同一天 → 不講
+    out.etf1 = app._eveEtf(1);
+    app._etfCache.updated = '2026-10-02'; out.etf1same = app._eveEtf(1); app._etfCache.updated = '2026-10-03';
     // ① 決定性對照:改 breadth 最後一天的 idx → 晚報跟著變
     app._breadthHist[4].idx = 3.33;
     out.day2 = txt(app._eveHtml());
@@ -106,6 +112,10 @@ ok('①b 漲跌家數 / 漲跌停讀 breadth', /上漲 700 家/.test(R.day) && /
 ok('①c 法人讀 macro_risk(決定性對照:改投信 → 跟著變)', R.day.includes('+57.7 億') && R.day3.includes('-12.3 億'));
 ok('①d 板塊名次讀 _regimeStats(1):最強 = 產業0、最弱 = 產業10', /最強:產業0/.test(R.day) && /最弱:產業10/.test(R.day), R.day.match(/最強[^\n]*/)?.[0]);
 ok('①e ETF 讀 chg_hist(新增 / 出清)', /00981A/.test(R.day) && /新增/.test(R.day) && /出清/.test(R.day));
+ok('①e2 🗓️ 標題寫「最近一次換股」(⛔ 不可再寫「今天換了什麼」——每一行是最近一次,不一定是今天)', R.day.includes('四檔最近一次換股') && !R.day.includes('今天換了什麼'));
+ok('①e3 最近一次(10/02)比資料日(10/03)舊 → 寫「之後到 10/03 沒有新的換股」', R.etf1.includes('data-eveetfold="00981A"') && /之後到 10\/03/.test(R.etf1), R.etf1.slice(0, 300));
+ok('①e4 決定性對照:資料日也是 10/02 → ⛔ 不寫那句', !R.etf1same.includes('data-eveetfold='), R.etf1same.slice(0, 200));
+ok('①e5 持股明細只抓到 17% → 講「換股可能沒抓到」;抓到 95% 的那檔不講', R.etf1.includes('data-eveetfthin="00998A"') && !R.etf1.includes('data-eveetfthin="00981A"') && /權重合計 17%/.test(R.etf1), R.etf1.slice(-300));
 ok('①f 持股:報價沒到 → 用 screener 收盤 × 今日漲跌', /合計/.test(R.day) && R.dayHtml.includes('data-evehold="1000"'));
 ok('①g 決策台:轉述 _deckBuyOf 的前 2 名', /2001/.test(R.day) || /明天可以留意/.test(R.day), R.day.match(/🎯 決策台[^]*?$/)?.[0]?.slice(0, 160));
 ok('② ⛔ 研究文字(晚報 + 週報 + 差一點)', !FORBID.test(R.day) && !FORBID.test(R.week) && !FORBID.test(R.nearHtml), (R.day + R.week + R.nearHtml).match(FORBID)?.[0]);

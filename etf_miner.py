@@ -528,11 +528,88 @@ def _push_chg(hist, day, changes):
     #    憑印象猜鍵名會**靜默**存成一整排 null(同 V74.7.1 股利檔那次)。
     u = [[h.get("sym"), h.get("dw")] for h in changes.get("weight_up", []) if h.get("sym")]
     w = [[h.get("sym"), h.get("dw")] for h in changes.get("weight_down", []) if h.get("sym")]
+    # 🗓️ V79.5.2 ⛔ 同一天已經有「有換股」的紀錄,不可被空的蓋掉 —— 以前第二輪(同一天重跑)跟第一輪的持股比
+    #   → 一定是空的 → 先刪掉當天那筆、再因為空的不寫回去 = 每天被洗掉(10/20 全空、10/21 只剩 1 筆)。
+    _had = [x for x in (hist or []) if x.get("d") == day and (x.get("a") or x.get("r") or x.get("u") or x.get("w"))]
+    if not (a or r or u or w) and _had:
+        out = list(hist or [])
+        out.sort(key=lambda x: x.get("d") or "")
+        return out[-CHG_KEEP:]
     out = [x for x in (hist or []) if x.get("d") != day]      # ⚠️ 同一天先移掉舊的
     if a or r or u or w:
         out.append({"d": day, "a": a, "r": r, "u": u, "w": w})
     out.sort(key=lambda x: x.get("d") or "")
     return out[-CHG_KEEP:]
+
+
+def _chg_empty(ch):
+    ch = ch or {}
+    return not (ch.get("added") or ch.get("removed") or ch.get("weight_up") or ch.get("weight_down"))
+
+
+def _etf_day_step(pe, prev_updated, today, curr_h):
+    """🗓️ V79.5.2 一檔主動式 ETF 這一輪的換股判定(純函式,`scripts/test_etf_chg.py` 直接驅動)。
+
+    🚨 以前:每一輪都拿「上一輪存的持股」當基準 → 同一天跑第二輪(daily_miner 一天常跑 2 輪以上)
+       = 拿今天比今天 → 一定是空的 → 今天的換股紀錄 / 今天的 changes / 經理人動向被洗掉,
+       換股頻率(turnover)一天還衰減兩次。
+    ✅ 現在:基準一律是「**前一個交易日最後那份持股**」:
+       ・上一份是**別天**的 → 它就是基準,存成 `base_all` / `base_d`(給今天之後幾輪用)
+       ・上一份是**今天**的 → 沿用它存的 `base_all`;換股頻率也從 `turnover_base`(今天更新前的值)重算
+       ・舊格式(沒有 `hold_d`)但整份檔是今天的 → 不知道基準 → 今天的換股照上一輪的結果留著(⛔ 不重算成空的)
+       ・抓不到持股 → 什麼都不動(持股沿用上一份、日期也留上一份的,換股頻率不衰減)
+    回 dict:hold / hold_d / base_all / base_d / changes / changed / chg_hist / turnover / turnover_base / got
+    """
+    pe = pe or {}
+    prev_h = pe.get("hold_all") or pe.get("holdings", []) or []
+    prev_full = bool(pe.get("hold_all"))
+    prev_hd = pe.get("hold_d")
+    hist0 = list(pe.get("chg_hist") or [])
+    carried = {
+        "changes": pe.get("changes") or dict(EMPTY_CHANGES), "changed": bool(pe.get("changed_today")),
+        "chg_hist": hist0, "turnover": pe.get("turnover_score") or 0, "turnover_base": pe.get("turnover_base"),
+    }
+    if prev_hd:
+        same_day = (prev_hd == today)
+    else:
+        same_day = bool(pe) and str(prev_updated or "")[:10] == today
+    # ① 抓不到 → 全部沿用上一份(⛔ 不誤判成全部換掉,⛔ 不洗掉今天已經記下的換股)
+    if not curr_h:
+        r = dict(carried) if same_day else {"changes": dict(EMPTY_CHANGES), "changed": False, "chg_hist": hist0,
+                                            "turnover": pe.get("turnover_score") or 0, "turnover_base": pe.get("turnover_base")}
+        r.update(hold=prev_h, hold_d=prev_hd, base_all=pe.get("base_all"), base_d=pe.get("base_d"), got=0)
+        return r
+    if same_day:
+        base_h = pe.get("base_all") if prev_hd else None
+        base_d = pe.get("base_d") if prev_hd else None
+        t_base = pe.get("turnover_base")
+    else:
+        base_h = prev_h if prev_full else None          # 舊 schema 只存前 15 大 → ⛔ 不能拿來比(會每天亂標換入)
+        base_d = prev_hd if prev_full else None
+        t_base = pe.get("turnover_score") or 0
+    # ② 今天的第二輪以後,而且不知道基準 → 照上一輪的結果留著
+    if same_day and not base_h:
+        r = dict(carried)
+        r.update(hold=curr_h, hold_d=today, base_all=None, base_d=None, got=1)
+        return r
+    # ③ 第一次(沒有基準)→ 建立基準,不算換股
+    if not base_h:
+        tb = t_base or 0
+        return {"hold": curr_h, "hold_d": today, "base_all": None, "base_d": None,
+                "changes": dict(EMPTY_CHANGES), "changed": False, "chg_hist": hist0,
+                "turnover": round(tb * 0.9, 2), "turnover_base": tb, "got": 1}
+    # ④ 正常:跟前一個交易日最後那份比
+    changes = diff_holdings(base_h, curr_h)
+    if same_day and _chg_empty(changes) and not _chg_empty(carried["changes"]):
+        r = dict(carried)                                  # ⛔ 今天先前那輪看到的換股,不可被空的蓋掉
+        r.update(hold=curr_h, hold_d=today, base_all=base_h, base_d=base_d, got=1)
+        return r
+    changed = bool(changes["added"] or changes["removed"])
+    if t_base is None:
+        t_base = pe.get("turnover_score") or 0
+    return {"hold": curr_h, "hold_d": today, "base_all": base_h, "base_d": base_d,
+            "changes": changes, "changed": changed, "chg_hist": _push_chg(hist0, today, changes),
+            "turnover": round(t_base * 0.9 + (1 if changed else 0), 2), "turnover_base": t_base, "got": 1}
 
 
 def diff_holdings(prev, curr):
@@ -664,14 +741,13 @@ def main():
     #   舊版只存前 15 大(holdings 截斷),卻拿完整 curr_h 去 diff 截斷的 prev
     #   → 排名 16 名以後的持股「每天」被重標 added(實測 added=38 > holdings=15,
     #     removed/up/down 全 0)→ 前端每檔長抱股都顯 🆕換入 +「共識加碼適合跟車」。
-    prev_hold = {e["symbol"]: (e.get("hold_all") or e.get("holdings", [])) for e in prev.get("etfs", [])}
-    prev_has_full = {e["symbol"]: bool(e.get("hold_all")) for e in prev.get("etfs", [])}
+    #   🗓️ V79.5.2 基準改成「前一個交易日最後那份」(`_etf_day_step`),⛔ 不再是「上一輪」。
     # 🆕 缺口8(12-4 主動靈活度):換股頻率 EWMA(decay 0.9)。日日換≈10、週換≈2,越高越常調整持股。
-    prev_turnover = {e["symbol"]: (e.get("turnover_score") or 0) for e in prev.get("etfs", [])}
     # 📜 V74.8.1 換股歷史(滾動 CHG_KEEP 個交易日)——
     #   ⚠️ 舊版只有 `changes`(今天 vs 昨天),⛔ 沒有歷史 → 使用者問「換了哪些股」只看得到今天。
     #   ⛔ 只存**有換股的那幾天**(多數天是空的)→ 體積很小。
-    prev_chg = {e["symbol"]: (e.get("chg_hist") or []) for e in prev.get("etfs", [])}
+    prev_ent = {e["symbol"]: e for e in prev.get("etfs", []) if e.get("symbol")}
+    prev_updated = prev.get("updated")
     today = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
 
     actives = list_active_etfs()
@@ -710,23 +786,11 @@ def main():
         # 估算每檔持股張數(必須在 diff 之前算,讓 diff 拿得到 est_shares 算 delta)
         if curr_h and fund_size:
             _attach_est_shares(curr_h, fund_size, price_cache)
-        prev_h = prev_hold.get(s, [])
-        if not curr_h:
-            # 抓不到 → 沿用上一版持股，不誤判換股
-            curr_h, changes, changed = prev_h, dict(EMPTY_CHANGES), False
-        elif not prev_h:
-            # 首次建立基準 → 不算換股
-            changes, changed = dict(EMPTY_CHANGES), False
-            got_holdings += 1
-        elif not prev_has_full.get(s):
-            # 過渡輪:prev 只有截斷的前 15 大(舊 schema 沒 hold_all)→ diff 必然是垃圾,
-            # 視同基準重建、不算換股;下一輪起 hold_all 就有了,diff 恢復正常。
-            changes, changed = dict(EMPTY_CHANGES), False
-            got_holdings += 1
-        else:
-            changes = diff_holdings(prev_h, curr_h)
-            changed = bool(changes["added"] or changes["removed"])
-            got_holdings += 1
+        # 🗓️ V79.5.2 抓不到 → 沿用上一版持股、不誤判換股;舊 schema(只存前 15 大)→ 視同重建基準;
+        #   同一天第二輪 → 跟「前一個交易日最後那份」比(⛔ 不跟今天前一輪比),判定全在 `_etf_day_step`
+        _st = _etf_day_step(prev_ent.get(s), prev_updated, today, curr_h)
+        curr_h, changes, changed = _st["hold"], _st["changes"], _st["changed"]
+        got_holdings += _st["got"]
 
         # 🆕 缺口6(12-4 主動式空頭防禦):現金水位 ≈ 100% − Σ(全部成分股權重)。
         #    主動 ETF 經理人可提高現金避險 → 現金水位上升 = 轉守訊號。用「完整」curr_h(截斷前)算,
@@ -736,8 +800,8 @@ def main():
         # 🆕 缺口7:單一成分股集中度(用現成 curr_h[0],零額外網路)。>40% 前端標「集中度過高」。
         _t1 = curr_h[0] if curr_h else None
         top1 = {"sym": _t1.get("sym"), "name": _t1.get("name"), "weight": _t1.get("weight")} if _t1 else None
-        # 🆕 缺口8:換股靈活度 EWMA(今日有換股 +1,舊值衰減 0.9)。
-        turnover_score = round(prev_turnover.get(s, 0) * 0.9 + (1 if changed else 0), 2)
+        # 🆕 缺口8:換股靈活度 EWMA(今日有換股 +1,舊值衰減 0.9)。🗓️ V79.5.2 一天只衰減一次(`_etf_day_step`)
+        turnover_score = _st["turnover"]
 
         etfs.append({
             "symbol": s,
@@ -755,9 +819,15 @@ def main():
                           **({"est_shares": h["est_shares"]} if h.get("est_shares") is not None else {})}
                          for h in curr_h if h.get("sym")],
             "holdings_count": len(curr_h),
+            # 🗓️ V79.5.2 hold_d = 上面那份持股是哪一天抓到的;base_* = 今天拿來比的「前一個交易日最後那份」
+            #   (同一天第二輪起靠它,⛔ 不可拿今天前一輪比);turnover_base = 今天更新前的換股頻率
+            "hold_d": _st["hold_d"],
+            "base_all": _st["base_all"],
+            "base_d": _st["base_d"],
+            "turnover_base": _st["turnover_base"],
             "changes": changes,
             "changed_today": changed,
-            "chg_hist": _push_chg(prev_chg.get(s, []), today, changes),
+            "chg_hist": _st["chg_hist"],
         })
         for h in curr_h:
             if h.get("sym"):

@@ -136,6 +136,21 @@ try:
 finally:
     A.load_json = _orig
 
+# ── 🧪 V79.5.2 summary 的「今日大盤」那句(手動 dispatch 才會跑)────────────
+# ⚠️ 兩組都放在門檻邊上(舊寫法 ±1 分就會翻):A = 1 分(中性)、B = 2 分(偏多)
+_bA = {'sp500_chg_pct': 0.6, 'nasdaq_chg_pct': -0.3, 'vix': 18}
+_bB = {'sp500_chg_pct': 0.6, 'nasdaq_chg_pct': 0.9, 'vix': 22}
+_base = _bB
+_d0 = A._market_direction(dict(_bB))
+ok('🧪 外資現貨 ⛔ 不算進方向(門檻邊上 +500 億 / −500 億 → 結果跟沒有一模一樣)',
+   A._market_direction({**_bA, 'fi_spot_net': 500}) == A._market_direction(dict(_bA))
+   and A._market_direction({**_bB, 'fi_spot_net': -500}) == _d0,
+   [A._market_direction({**_bA, 'fi_spot_net': 500}), A._market_direction({**_bB, 'fi_spot_net': -500})])
+ok('🧪 決定性對照:美股與 VIX 照樣決定方向(三項都偏空 → 偏空)',
+   A._market_direction({'sp500_chg_pct': -1, 'nasdaq_chg_pct': -1, 'vix': 31})[1] == '偏空' and _d0[1] == '偏多')
+_all = ' '.join(A._market_direction(m)[2] for m in (_base, {'sp500_chg_pct': -1, 'nasdaq_chg_pct': -1, 'vix': 31}, {}))
+ok('🧪 對策只講開盤 ⛔ 接刀 / 續抱 / 順勢 / 昨高', not re.search(r'接刀|續抱|順勢|昨高|昨低', _all), _all)
+
 print()
 print(f'❌ {len(fails)} 條失敗' if fails else '✅ TGALERT_PASS(全部通過)')
 sys.exit(1 if fails else 0)

@@ -45,12 +45,14 @@ const R = await pg.evaluate(() => {
 await b.close();
 
 ok('① 中期未過關時,不可出現「可偏多操作」', !R.weak.includes('可偏多操作'), R.weak.slice(-260));
-ok('① 要改講「短線轉強、但中期未過關」', R.weak.includes('短線轉強') && R.weak.includes('中期未過關'), R.weak.slice(-260));
+// 🧪 V79.5.2 那個分數是「盤前體檢」= 只講開盤高低(⛔ 不是技術分數)→ 改口「開盤偏強」;用意不變:中期沒過關 ⛔ 加碼
+ok('① 要改講「開盤偏強、但中期未過關」', R.weak.includes('開盤偏強') && R.weak.includes('中期未過關') && !R.weak.includes('技術分數'), R.weak.slice(-260));
 ok('① 要把雷達的實際條數講出來(可稽核)', R.weak.includes('7/10') && R.weak.includes('門檻 8'), R.weak.slice(-260));
 ok('① 要明確說「做短不加碼」', R.weak.includes('不加碼'), R.weak.slice(-260));
 ok('② 中期過關時才准說「偏多格局,可偏多操作」', R.strong.includes('可偏多操作'), R.strong.slice(-200));
 ok('③ 雷達沒資料時不 throw、維持舊行為', typeof R.none === 'string' && R.none.includes('可偏多操作'), String(R.none).slice(-200));
-ok('④ 短線偏空時結論不變(仍是偏空格局)', R.bear.includes('偏空格局'), R.bear.slice(-200));
+// 🧪 V79.5.2 盤前偏弱 → 只講開盤偏弱 + 手上的照出場規則(⛔「反彈多視為逃命波 / 空手別接刀」—— 沒驗證過,而且跟「📌 今天怎麼看」打架)
+ok('④ 盤前偏弱:講「開盤偏弱」+ 手上的照出場規則', R.bear.includes('開盤偏弱') && R.bear.includes('出場規則') && !/逃命波|接刀|偏空格局/.test(R.bear), R.bear.slice(-200));
 
 // 🗑️ V79.0.0 「🔮 明日劇本」(_tomorrowPlaybookHtml,技術 + 分點)已隨券商分點移除 → ⛔ 不可復活
 // ══════════════════════════════════════════════════════════════════
