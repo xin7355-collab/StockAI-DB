@@ -45,7 +45,11 @@ if (Y && Y.strats) {
     const pbLead = PBv && PBv.wins.long.rows.find(r => r.k === 'lead'), yLead = LD.find(s => s.id === 'lead');
     ok('②j2 ⭐ 決定性對照:👑 全攻的一路滾 == 💰「100 萬變多少」16 年全攻(同一個引擎、同一組起點;差 ≤1,000 元)', !!(pbLead && yLead && Math.abs(pbLead.fin - 1e6 - yLead.c.med) <= 1000), `${pbLead && pbLead.fin - 1e6} vs ${yLead && yLead.c.med}`);
     const NW = Y.strats.find(s => s.id === Y.nowId);
-    ok('②k ⭐ 現行那一列 = V78.0.7 那套(位階 ≥85・吊燈)、修好日 K 之後跑的,上一任(唐奇安 40)改標 ⏮️', !!NW && NW.dv === 2 && /V78\.0\.7/.test(NW.t) && /≥85/.test(NW.t) && Y.strats.some(s => s.id === 'now765' && s.g === 'prev' && /^⏮️/.test(s.t)), NW && NW.t);
+    // 🔥 V79.4.9 現行換成 now949(照平均排・空頭照買・停 0050);V78.0.7 那套(now807)改標上一任 —— ⛔ 不從 v2.d16 拿掉
+    ok('②k ⭐ 現行那一列 = V79.4.9 那套(位階 ≥85・照平均排・空頭照買・停 0050);V78.0.7~V79.4.8 那套與更早的唐奇安 40 都改標 ⏮️',
+       !!NW && NW.id === 'now949' && NW.dv === 2 && /V79\.4\.9/.test(NW.t) && /≥85/.test(NW.t) && /照平均排/.test(NW.t)
+       && Y.strats.some(s => s.id === 'now807' && s.g === 'prev' && /^⏮️/.test(s.t) && /V78\.0\.7~V79\.4\.8/.test(s.t))
+       && Y.strats.some(s => s.id === 'now765' && s.g === 'prev' && /^⏮️/.test(s.t)), NW && NW.t);
     const YEARS = Y.years || [];
     ok('②b2 年份是 2011 起的 16 年(⛔ 不再有只到 2022 的那一份)', YEARS[0] === '2011' && YEARS.length >= 16, YEARS.join(','));
     const badY = []; for (const s of Y.strats) for (const y of YEARS) { const v = s.y[y]; if (Array.isArray(v) && v.length === Y.cols.length) continue; if (v === null && s.na && y < s.na.from && s.na.why && s.na.why.length > 10) continue; badY.push(`${s.id}:${y}`); }
