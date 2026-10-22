@@ -262,12 +262,25 @@ def main():
         print('SCORES|' + ','.join(f"{r['d']}:{r['s']:.2f}" for r in rows[k:k + 100]))
     # 🧪 V79.5.4 原始收盤傾印(⛔ 只印不寫產物)—— 給 `scripts/premkt_app_probe.mjs` 在本機照 App 現在那條公式逐日重建
     #   (美股 / ADR / VIX / 那指期 / 美債 / 台幣在 data 分支的 us_hist.json 都有,⛔ 只缺亞股與韓元人民幣)。
-    #   格式:`RAWC|鍵|日期:收盤,...`(每行 150 天,2009 起);台北時間 08:30 看得到的是 T−1 那一根(⛔ 前視由本機那支處理)
+    #   台北時間 08:30 看得到的是 T−1 那一根(⛔ 前視由本機那支處理)。
+    #   ⚠️ 第一版 `RAWC|鍵|日期:收盤,...` 一天 21 個字、六個鍵 53 萬字 → 沙箱只能經 MCP 讀 log,讀不回來。
+    #   → 改成緊湊格式 `RAWB|鍵|第幾項起|第一天|第一天收盤|項,項,...`(每行 300 項):
+    #     每一項 = 這一根跟前一根的漲跌,單位 bp(0.01%,App 顯示的也是兩位小數的 %);
+    #     跟前一根差 1 個日曆天就只寫 bp,否則寫「天數:bp」(例:`12` = 隔天 +0.12%、`3:-45` = 隔 3 天 −0.45%)。
+    from datetime import date as _date
     for key in RAW_KEYS:
         ser = sorted((CLOSES.get(key) or {}).items())
         print(f'RAWN|{key}|{len(ser)}|{ser[0][0] if ser else "-"}|{ser[-1][0] if ser else "-"}')
-        for k in range(0, len(ser), 150):
-            print(f'RAWC|{key}|' + ','.join(f'{d}:{c:.4f}' for d, c in ser[k:k + 150]))
+        if len(ser) < 2:
+            continue
+        items, pd_, pc = [], _date.fromisoformat(ser[0][0]), ser[0][1]
+        for d, c in ser[1:]:
+            dd = _date.fromisoformat(d)
+            g, bp = (dd - pd_).days, (round((c / pc - 1) * 1e4) if pc else 0)
+            items.append(f'{bp}' if g == 1 else f'{g}:{bp}')
+            pd_, pc = dd, c
+        for k in range(0, len(items), 300):
+            print(f'RAWB|{key}|{k}|{ser[0][0]}|{ser[0][1]:.4f}|' + ','.join(items[k:k + 300]))
     print('done', datetime.utcnow().isoformat() + 'Z')
 
 
