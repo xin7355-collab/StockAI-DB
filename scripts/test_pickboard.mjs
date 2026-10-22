@@ -32,7 +32,8 @@ const _exec = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const browser = await chromium.launch({ ...(fs.existsSync(_exec) ? { executablePath: _exec } : {}), args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'] });
 const run = async (strategy) => {
   const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
-  await page.addInitScript(st => { try { const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); s.strategy = st; s.stratUnlock = st === 'lead'; localStorage.setItem('proTerminalSettings', JSON.stringify(s)); } catch (_) {} }, strategy);
+  // 🅿️ V79.4.9 存著 'gene' 但沒有 hotMigr7949 的人會被搬家成 🅿️(預設)→ 這裡模擬的是「搬家之後自己選回 📈」的人,旗標要帶上
+  await page.addInitScript(st => { try { const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); s.strategy = st; s.stratUnlock = st === 'lead'; s.hotMigr7949 = 1; localStorage.setItem('proTerminalSettings', JSON.stringify(s)); } catch (_) {} }, strategy);
   const errs = []; page.on('pageerror', e => errs.push(e.message));
   await page.goto('file://' + path.join(ROOT, 'pro.html'), { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof PRO !== 'undefined' && !!PRO.renderPick, null, { timeout: 30000 });
