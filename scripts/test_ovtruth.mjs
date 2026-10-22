@@ -50,7 +50,8 @@ ok(!/on: 864|on: 445/.test(src), '③b ⛔ 記錯的 864 / 445 不可再出現�
 
 // ④
 const L = (lit('_BEAR_GATE_EDGE') || {}).long;
-ok(!!(L && L.etfTr > L.on), '④ `_BEAR_GATE_EDGE.long` 有 0050 含息對照,而且它比這套多(16 年輸 0050 含息 = 事實)', L ? `${L.on} vs ${L.etfTr}` : 'null');
+// 🔥 V79.4.9 新預設(🅿️ 停 0050)16 年贏 0050 含息 → 「16 年輸 0050 含息」⛔ 不再是不變量;釘用意:開 / 關兩邊都有數字 + 0050 含息對照,而且文案⛔ 寫死方向(pro `_long0050Txt` 讀看板)
+ok(!!(L && L.etfTr > 0 && L.on > 0 && L.off > 0) && /_long0050Txt\(\)/.test(readFileSync(new URL('../pro.html', import.meta.url), 'utf8')), '④ `_BEAR_GATE_EDGE.long` 有開 / 關兩邊與 0050 含息對照;作戰室「16 年跟 0050 比」讀看板(⛔ 寫死輸 / 贏)', L ? `${L.on} / ${L.off} vs ${L.etfTr}` : 'null');
 // 🧹 V78.3.4 「這套做法實測賺多少」整塊搬到產業作戰室 → 散戶 App 決策台⛔ 不再有那一塊
 ok(src.indexOf('要打幾個折') < 0 && !/16 年來看這套輸 0050 含息/.test(src), '④b 🧹 決策台⛔ 不再有「打折 / 輸 0050 含息」那一塊(在產業作戰室)');
 

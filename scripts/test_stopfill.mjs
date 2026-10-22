@@ -127,7 +127,7 @@ ok(/const STOPFILL = process\.env\.STOPFILL \|\| 'close';/.test(SRC), 'ⓖ portf
     const IXs = readFileSync('index.html', 'utf8');
     ok(!/ATR 追蹤 <b class="text-gray-300">531 萬<\/b>/.test(IXs) && !/總獲利中位 <b>526 萬<\/b>/.test(IXs), 'ⓘ3 舊的寫死數字(531 / 526 萬)不可再出現在設定中心');
     const PR = readFileSync('pro.html', 'utf8');
-    const m = PR.match(/_STOPFILL_NOTE: \{[^}]*gene: (\d+), lo: (\d+), hi: (\d+), plain: (\d+), b0050: ([\d.]+)/);
+    const m = PR.match(/_STOPFILL_NOTE: \{[^}]*gene: (\d+), lo: (\d+), hi: (\d+), plain: (-?\d+), b0050: ([\d.]+)/);   // 🔥 V79.4.9 不挑 🧬 那組是負的
     // 🎯 V79.4.8 橫幅改引用「全市場 + 照 App 實際怎麼買」那一輪 → 0050 也要是同一輪(`_DECK_TRACK49.rob.b0050`),⛔ 不再跟 `_EXIT_EDGE`(舊出場研究那一輪)比
     ok(m && +m[1] === R.T.rob.med && +m[2] === R.T.rob.lo && +m[3] === R.T.rob.hi && +m[4] === R.T.rob.pmed && +m[5] === R.T.rob.b0050,
        'ⓘ4 pro.html 回測計算機橫幅的數字 == index.html `_DECK_TRACK49.rob`(同一輪,含 0050)', m ? m.slice(1).join('/') : 'no match');

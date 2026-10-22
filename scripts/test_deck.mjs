@@ -35,7 +35,7 @@ const ok = (n, c, e = '') => { if (c) console.log(`✅ ${n}`); else { fails++; c
 
 // ═══ 靜態 ═══
 // ⓪ 🚨 49 個月那組數字必須跟 pro.html 的 `_SIG_DEEP` **一模一樣**(⛔ 同名不同義)
-const grab = (txt, key) => { const m = txt.match(new RegExp(key + '\\s*:\\s*([0-9.]+)')); return m ? +m[1] : null; };
+const grab = (txt, key) => { const m = txt.match(new RegExp(key + '\\s*:\\s*(-?[0-9.]+)')); return m ? +m[1] : null; };   // 🔥 V79.4.9 不挑 🧬 那組是負的(賠錢)→ 要吃負號
 const dt = SRC.slice(SRC.indexOf('_DECK_TRACK49:'), SRC.indexOf('_DECK_TRACK49:') + 2600);   // 🔁 V77.6.5 多了 prev / maxd / bearGate、V79.4.8 多了全市場那段註解 → 窗口放寬(⛔ 斷言本身沒放寬)
 const sd = PRO.slice(PRO.indexOf('_SIG_DEEP:'), PRO.indexOf('_SIG_DEEP:') + 300);
 for (const k of ['gene', 'geneDD', 'plain', 'plainDD', 'etf0050', 'months'])
