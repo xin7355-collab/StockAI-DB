@@ -10,7 +10,8 @@ name: 🔁 每週自動回測 (weekly_backtest)
 #      → 只在**週五**那一輪真的跑(其他天 job 開頭就收工),手動 dispatch 用 force=true 跳過週五守門
 #   ③ **推兩個分支**(gh-pages + data,陷阱 #41):daily_miner 的 orphan force-push 會把只在 gh-pages 的檔洗掉
 #
-# ⏱️ 預算:還原 data ~3 分 + 合併深歷史 ~5 分 + playwright ~3 分 + signal_backtest ~17 分 + 組合回測 ×2 ~15 分 + 推 ~2 分 ≈ 45 分
+# ⏱️ 預算(🧾 V79.5.1 起):還原 data ~3 分 + 合併深歷史 ~5 分 + playwright ~3 分 + signal_backtest ~17 分
+#    + 組合回測(全市場:交易快取 4 片 → 名單 → 判觸發 4 片 → 兩趟)≈ PLACEHOLDER_BUDGET + 推 ~2 分
 #
 # 🔁 V79.4.5(使用者選:查清楚再改成現行設定):
 #   🚨 產物停在 9/21 的真因:9/21 那份是**舊引擎**產的(`EXIT=don` 沒被認得 + 停損價成交,V77.4.9 / V77.6.0 修掉)→ 1,233 筆;
@@ -19,7 +20,7 @@ name: 🔁 每週自動回測 (weekly_backtest)
 #      收盤成交・股利入帳 + 二代健保),build_backtest_edge.mjs 看到 cfg 換了 → 那一次重新起算守門基準(⛔ 不跟舊設定比 80%)。
 #   → K 線訊號表:App 一律讀內嵌的 16 年表,這份只在實驗室模式當「最近幾年」的參考(⛔ 不再蓋掉內嵌表)。
 #
-# 🔥 V79.4.9 跟著 App 預設換(使用者 10/21:換排法・空頭照買・閒錢停 0050)—— 最小對齊,⛔ 買法仍是 600 檔舊買法(全市場 + 尾盤買法在 V80.0.0):
+# 🔥 V79.4.9 跟著 App 預設換(使用者 10/21:換排法・空頭照買・閒錢停 0050)—— 最小對齊(當時買法仍是 600 檔舊買法):
 #   拿掉 FILTER=bear60(🔥 空頭照買)・加 GATE=lb(規則常數讀 scripts/lib_hotrule.mjs = App 現行:≥8 次・照平均・每一招都算)
 #   ・CLIFF=20(斷崖守門)・STATS_WIN=1200(每檔成績只看最近 1,200 天 = App 讀的 K 線長度)・PARK=idle(沒用到的錢停 0050)
 #   → DECK_SIG 換了,第一次會重新起算守門基準;FLOOR 用本機重現的筆數訂一半(build_backtest_edge.mjs)。
@@ -29,6 +30,10 @@ name: 🔁 每週自動回測 (weekly_backtest)
 #   (兩支都掛 daily_miner 的 workflow_run)進 gh-pages-push;鎖被別支佔著的時候,後到的會把排隊中的擠掉
 #   → 明日作戰清單那一輪被取消(10/13、10/14 ×2、10/16 週五、10/19 都是 1 秒內 cancelled;靠備援那一輪補回來,但晚了)。
 #   → 回測 job ⛔ 不拿鎖(只讀、不 push),產物用 artifact 交給部署 job;只有部署 job 拿鎖(約 1 分鐘)。
+#
+# 🧾 V79.5.1 成績單改成全市場 + 照 App「前一晚名單」買(使用者 10/22:放棄尾盤掃描、每週回測照樣改全市場、改用名單買法):
+#   以前抽 600 檔 + 舊買法(一筆接一筆、當天觸發的裡面挑最好)→ 跟 App 的金額對不起來(陷阱 #55 / #58)。
+#   第二趟「不挑 🧬」在名單買法下做不到 → 換成「💵 錢放現金」;build_backtest_edge.mjs 多兩道守門(名單有接上判觸發、判得夠深)。
 on:
   workflow_run:
     workflows: ["🤖 每日籌碼採礦機 (平行宇宙版)"]
@@ -117,12 +122,16 @@ jobs:
           [ "$rc" -ne 0 ] && echo "⚠️ signal_backtest rc=$rc"
           exit 0
 
-      # ② 決策台 49 個月成績單(🔁 V79.4.5 = App 現行預設 = `_DECK_TRACK49`:🧬 位階 ≥85・振幅 ≥60・每筆 15 萬・每天 2 檔
-      #    ・吊燈 ATR 2 倍(App 的 atr2 = 回測的 chand2)・最長 20 天・停損收盤成交
-      #    ・持有期間股利入帳 + 二代健保;0050 對照含息。第二趟不挑 🧬 重用交易快取)
-      #    🔥 V79.4.9:🔥 空頭照買(⛔ 沒有 FILTER)・App 選股規則(GATE=lb + lib_hotrule 預設)・斷崖守門・只看最近 1,200 天・閒錢停 0050
-      #    ⚠️ 改 App 預設(出場 / 門檻 / 天數 / 空頭守門)時這裡要一起改 —— 不然每週跑的是另一套
-      - name: 💼 組合回測 (portfolio_backtest ×2)
+      # ② 決策台成績單 = App 現行預設,而且是 App「實際怎麼買」(🧾 V79.5.1,陷阱 #55 / #58):
+      #    全市場(⛔ 不再抽 600 檔)・前一晚排好名單、只看前 2 名・明天漲 6% 內觸發不了的不列・隔天尾盤到觸發價才買
+      #    🅿️ 位階 ≥85・振幅 ≥60・每筆 15 萬・每天 2 檔・吊燈 ATR 2 倍(App 的 atr2 = 回測的 chand2)・最長 20 天・停損收盤成交
+      #    ・空頭照買・照平均排 ≥8 次每招都算(GATE=lb + lib_hotrule)・斷崖守門・只看最近 1,200 天・個股自己跌破 20 與 60 日線不買
+      #    ・持有期間股利入帳 + 二代健保・閒錢停 0050(第二趟 💵 錢放現金;0050 對照含息)
+      #    做法 = docs/PROBES.md「照 App 實際怎麼買」①~③:🧱 交易快取 4 片平行 → 合併 ・🧾 每一晚的名單(前 60 筆)
+      #    ・🎯 判明天會不會觸發(App 自己的偵測器,4 片;⛔ TOPN 一定要 60)・💼 兩趟(🅿️ 停 0050 / 💵 錢放現金)
+      #    ⚠️ 改 App 預設(出場 / 門檻 / 天數 / 空頭守門 / 排法 / 買法)時這裡要一起改(test_backtest_edge ③h / ③i 跨檔比對)
+      #    ⛔ 任何一段失敗 → 這一步紅燈(⛔ 不可全綠沒產物)
+      - name: 💼 組合回測(全市場・照 App 前一晚名單買・🅿️ / 💵 兩趟)
         if: steps.gate.outputs.run == '1' && steps.sig.outputs.sig_rc == '0'
         id: deck
         env:
@@ -136,19 +145,66 @@ jobs:
           GATE: lb
           CLIFF: '20'
           STATS_WIN: '1200'
+          MIN_MKT_N: '0'
+          ALLFIRE: '1'
+          LISTK: '2'
+          LIST_DUMP_N: '60'
           PARK: idle
           DIV_TRADES: data/dividends_hist.json
           DIV: data/dividends_hist.json
-          TRADES_CACHE: /tmp/trades.json
+          TRADES_CACHE: /tmp/tc.ndjson
         run: |
           set +e
           set -o pipefail
-          SELF=high+hivolat SUMMARY_OUT=/tmp/summary_gene.json node scripts/portfolio_backtest.mjs 600 2 | tail -25
+          T0=$(date +%s)
+          tsec () { echo "$(( $(date +%s) - T0 ))s"; }
+          fail () { echo "❌ $1"; echo "deck_rc=1" >> "$GITHUB_OUTPUT"; exit 1; }
+          echo "🖥️ $(nproc) 核心 ・記憶體 $(free -m | awk '/Mem:/{print $2}') MB(可用 $(free -m | awk '/Mem:/{print $7}'))・/tmp 可用 $(df -h /tmp | awk 'NR==2{print $4}')"
+
+          # 🧱 ① 交易快取:全市場 4 片平行(⛔ 每一片的結束碼都要檢查 —— 少一片 = 少四分之一的股票,成績照樣算得出來)
+          echo "::group::🧱 交易快取 4 片"
+          pids=""
+          for k in 0 1 2 3; do
+            SELF=high+hivolat SHARD=$k/4 TRADES_CACHE=/tmp/tc.s$k.ndjson node --max-old-space-size=3500 scripts/portfolio_backtest.mjs 9999 2 > /tmp/tc.s$k.log 2>&1 &
+            pids="$pids $!"
+          done
+          rc=0; for p in $pids; do wait $p || rc=1; done
+          for k in 0 1 2 3; do echo "── 片 $k"; tail -c 600 /tmp/tc.s$k.log; echo; done
+          echo "::endgroup::"
+          [ "$rc" -eq 0 ] || fail "交易快取有一片失敗(看上面各片最後幾行)"
+          node --max-old-space-size=6000 scripts/merge_trades_cache.mjs /tmp/tc.ndjson /tmp/tc.s0.ndjson /tmp/tc.s1.ndjson /tmp/tc.s2.ndjson /tmp/tc.s3.ndjson | tail -3 || fail "交易快取合併失敗"
+          rm -f /tmp/tc.s0.ndjson /tmp/tc.s1.ndjson /tmp/tc.s2.ndjson /tmp/tc.s3.ndjson
+          echo "🧱 交易快取 $(du -h /tmp/tc.ndjson | cut -f1) ・$(tsec)"
+
+          # 🧾 ② 每一晚的名單(前 60 筆;空頭照買 = 每一晚都有)
+          echo "::group::🧾 每一晚的名單"
+          SELF=high+hivolat+nobear PARK= LIST_DUMP=/tmp/dump.ndjson SUMMARY_OUT=/tmp/summary_dump.json node --max-old-space-size=6000 scripts/portfolio_backtest.mjs 9999 2 | tail -6
+          r=$?
+          echo "::endgroup::"
+          [ "$r" -eq 0 ] && [ -s /tmp/dump.ndjson ] || fail "名單沒產出(rc=$r)"
+          echo "🧾 名單 $(wc -l < /tmp/dump.ndjson) 晚 ・$(tsec)"
+
+          # 🎯 ③ 判「明天漲 6% 內會不會觸發」(App 自己的偵測器;⛔ TOPN 一定要 60:只判 30 筆時 16 年有 229 晚可能不準,陷阱 #58)
+          echo "::group::🎯 判觸發 4 片"
+          pids=""
+          for k in 0 1 2 3; do
+            TOPN=60 SHARD=$k/4 node scripts/list_trig.mjs /tmp/dump.ndjson /tmp/trig.s$k.ndjson > /tmp/trig.s$k.log 2>&1 &
+            pids="$pids $!"
+          done
+          rc=0; for p in $pids; do wait $p || rc=1; done
+          for k in 0 1 2 3; do tail -c 400 /tmp/trig.s$k.log; echo; done
+          echo "::endgroup::"
+          [ "$rc" -eq 0 ] || fail "判觸發有一片失敗"
+          cat /tmp/trig.s0.ndjson /tmp/trig.s1.ndjson /tmp/trig.s2.ndjson /tmp/trig.s3.ndjson > /tmp/trig.ndjson
+          echo "🎯 判了 $(wc -l < /tmp/trig.ndjson) 筆 ・$(tsec)"
+
+          # 💼 ④ 兩趟:🅿️ 停 0050(= App 預設)/ 💵 錢放現金(⛔ 不挑 🧬 那趟在名單買法下做不到 → 拿掉)
+          SELF=high+hivolat+nobear LIST_TRIG=/tmp/trig.ndjson SUMMARY_OUT=/tmp/summary_gene.json node --max-old-space-size=6000 scripts/portfolio_backtest.mjs 9999 2 | tail -25
           rc1=$?
-          SELF= SUMMARY_OUT=/tmp/summary_plain.json node scripts/portfolio_backtest.mjs 600 2 | tail -12
-          echo "deck_rc=$rc1" >> "$GITHUB_OUTPUT"
-          [ -s /tmp/summary_gene.json ] || { echo "❌ 沒有成績單 JSON"; echo "deck_rc=1" >> "$GITHUB_OUTPUT"; }
-          exit 0
+          SELF=high+hivolat+nobear LIST_TRIG=/tmp/trig.ndjson PARK= SUMMARY_OUT=/tmp/summary_cash.json node --max-old-space-size=6000 scripts/portfolio_backtest.mjs 9999 2 | tail -12
+          echo "💼 兩趟 ・$(tsec)"
+          [ "$rc1" -eq 0 ] && [ -s /tmp/summary_gene.json ] || fail "🅿️ 那趟沒有成績單(rc=$rc1)"
+          echo "deck_rc=0" >> "$GITHUB_OUTPUT"
 
       # ③ 合成產物 + 空過守門(訊號總 n / 成績單筆數 < 上一版 80% → exit 1 不寫檔;換設定那一次重新起算,但絕對下限照樣要過)
       - name: 🧩 合成 backtest_edge.json(⛔ 只標示不換預設)
@@ -156,7 +212,7 @@ jobs:
         id: build
         run: |
           set +e
-          SUMMARY_GENE=/tmp/summary_gene.json SUMMARY_PLAIN=/tmp/summary_plain.json PREV=data/backtest_edge.json node scripts/build_backtest_edge.mjs /tmp/backtest_edge.json
+          SUMMARY_GENE=/tmp/summary_gene.json SUMMARY_CASH=/tmp/summary_cash.json PREV=data/backtest_edge.json node scripts/build_backtest_edge.mjs /tmp/backtest_edge.json
           rc=$?
           echo "build_rc=$rc" >> "$GITHUB_OUTPUT"
           exit 0

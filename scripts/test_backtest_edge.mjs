@@ -84,6 +84,23 @@ ok('②h 訊號方法換了(舊:整段平均 → same-day)→ 重新起算放行
    !msErr && ms && ms.rebase && ms.rebase.signal && ms.rebase.signal.to === 'same-day' && ms.signal.match === 'same-day' && msSame && msSame.gate === true,
    msErr ? msErr.message : JSON.stringify(ms && ms.rebase));
 ok('②i 絕對下限有合理數值(成績單 ≥200 筆、窗口 36 個月、訊號樣本 ≥10 萬)+ 簽章含 App 預設那幾欄', FLOOR.deckN >= 200 && FLOOR.months === 36 && FLOOR.sigN >= 100000 && ['exit', 'rankMin', 'maxd', 'filter', 'stopFill', 'div', 'gate', 'lbZ', 'lbTop', 'cliff', 'statsWin', 'park', 'listK', 'allFire'].every(k => DECK_SIG.includes(k)) && deckSig(CFG_NEW) !== deckSig(CFG_OLD), JSON.stringify(FLOOR));
+// 🧾 V79.5.1 ②j 名單買法的守門(⭐ 決定性對照:同一份成績單只改 listk)
+{
+    const CFG_LIST = { ...CFG_NEW, syms: 2833, filter: '', self: 'high+hivolat+nobear', listK: 2, allFire: 1, park: 'idle', minMktN: 0 };
+    const gL = lk => ({ ...gene, cfg: CFG_LIST, listk: lk });
+    const tryB = g => { try { build({ sig: mkSig(), gene: g, embedded: emb, prev: null }); return null; } catch (e) { return e; } };
+    const days = 1000, lim = Math.max(FLOOR.inexact, Math.ceil(days * 0.01));
+    const eNoTrig = tryB(gL({ k: 2, days, slots: 1900, hit: 600, hitDays: 500 }));
+    const eDeep = tryB(gL({ k: 2, days, trig: 1, loose: 1, unk: 0, inexact: lim + 1 }));
+    const eOk = tryB(gL({ k: 2, days, trig: 1, loose: 1, unk: 0, inexact: lim }));
+    const eOld = tryB({ ...gene });   // 舊買法(cfg 沒有 listK)⛔ 不套這兩條
+    ok('②j 🧾 名單買法:沒接上判觸發 → 擋;可能不準的晚數超過上限 → 擋;剛好在上限 → 放行;舊買法不套(決定性對照只改 listk)',
+       FLOOR.inexact >= 1 && FLOOR.inexact <= 20 && eNoTrig && eNoTrig.gate && /LIST_TRIG/.test(eNoTrig.message) && eDeep && eDeep.gate && /太淺/.test(eDeep.message) && !eOk && !eOld,
+       [eNoTrig, eDeep, eOk, eOld].map(e => e ? e.message : 'ok').join(' | '));
+    const cashS = { ...gene, cfg: { ...CFG_LIST, park: undefined }, cum: 1234567 };
+    const rc = build({ sig: mkSig(), gene: gL({ k: 2, days, trig: 1, loose: 1, unk: 0, inexact: 0 }), cash: cashS, embedded: emb, prev: null });
+    ok('②k 💵 第二趟「錢放現金」寫進 deck.cash(⛔ 不再有 deck.plain)', rc.deck.cash && rc.deck.cash.cum === 1234567 && !('plain' in rc.deck), JSON.stringify(Object.keys(rc.deck)));
+}
 // ③ workflow
 ok('③a 掛 daily_miner 的 workflow_run,host 名字逐字相同(差一字永遠不觸發且零訊息)', WF.includes(`workflows: ["${HOST}"]`), HOST);
 ok('③b ⛔ 無 cron(排程配額早就不夠)', !/^\s*schedule:/m.test(WF) && !/cron:/.test(WF), '');
@@ -110,15 +127,31 @@ ok('③f 還原上一版產物當守門基準(PREV=data/backtest_edge.json)', /P
     const T = /_DECK_TRACK49:[\s\S]{0,600}?exit:\s*'(\w+)'[\s\S]{0,80}?maxd:\s*(\d+),\s*bearGate:\s*(true|false)/.exec(HTML);
     const fill = (/_DECK_TRACK49:[\s\S]{0,4000}?fill:\s*'(\w+)'/.exec(HTML) || [])[1];
     const park = (/_DECK_TRACK49:[\s\S]{0,400}?park:\s*'(\w+)'/.exec(HTML) || [])[1] || null;   // 🔥 V79.4.9 🅿️ 預設 → 'idle'
+    // 🧾 V79.5.1 成績單是「照 App 前一晚名單買」(`how: 'list'`)→ workflow 也要:每天觸發都當候選・名單前 picks 檔・全市場那一關拿掉(MIN_MKT_N=0)
+    const how = (/_DECK_TRACK49:[\s\S]{0,4000}?how:\s*'(\w+)'/.exec(HTML) || [])[1] || null;
+    const picks = (/_DECK_TRACK49:\s*\{[\s\S]{0,200}?picks:\s*(\d+)/.exec(HTML) || [])[1] || null;
     const ALIAS = { atr2: 'chand2', atr: 'chand2', don: 'don20', don40: 'don40' };
     // 🔥 V79.4.9 加:App 選股規則(GATE=lb + 規則常數讀 lib_hotrule)・斷崖守門・只看最近 1,200 天・閒錢停 0050 跟著 `_DECK_TRACK49.park`
     const want = T ? { RANK_MIN: String(rank), VOLAT_MIN: String(vol), EXIT: ALIAS[T[1]] || T[1], MAXD: T[2], FILTER: T[3] === 'true' ? 'bear60' : null, STOPFILL: fill,
-        GATE: 'lb', CLIFF: '20', STATS_WIN: '1200', PARK: park } : null;
+        GATE: 'lb', CLIFF: '20', STATS_WIN: '1200', PARK: park,
+        ALLFIRE: how === 'list' ? '1' : null, LISTK: how === 'list' ? picks : null, MIN_MKT_N: how === 'list' ? '0' : null } : null;
     const got = { RANK_MIN: envOf('RANK_MIN'), VOLAT_MIN: envOf('VOLAT_MIN'), EXIT: envOf('EXIT'), MAXD: envOf('MAXD'), FILTER: envOf('FILTER'), STOPFILL: envOf('STOPFILL'),
-        GATE: envOf('GATE'), CLIFF: envOf('CLIFF'), STATS_WIN: envOf('STATS_WIN'), PARK: envOf('PARK') };
+        GATE: envOf('GATE'), CLIFF: envOf('CLIFF'), STATS_WIN: envOf('STATS_WIN'), PARK: envOf('PARK'),
+        ALLFIRE: envOf('ALLFIRE'), LISTK: envOf('LISTK'), MIN_MKT_N: envOf('MIN_MKT_N') };
     ok('③h ⭐ workflow 的成績單設定 == App 現行預設(`_GENE_RULE` 位階 / 振幅、`_DECK_TRACK49` 出場 / 天數 / 空頭守門 / 成交價)+ 股利入帳',
-       !!want && rank > 0 && Object.keys(want).every(k => want[k] === got[k]) && /DIV_TRADES:\s*data\/dividends_hist\.json/.test(WF) && /\bDIV:\s*data\/dividends_hist\.json/.test(WF),
+       !!want && rank > 0 && how === 'list' && Object.keys(want).every(k => want[k] === got[k]) && /DIV_TRADES:\s*data\/dividends_hist\.json/.test(WF) && /\bDIV:\s*data\/dividends_hist\.json/.test(WF),
        JSON.stringify({ want, got }));
+    // 🧾 V79.5.1 ③i 全市場 + 照 App 前一晚名單買的做法(docs/PROBES.md「照 App 實際怎麼買」①~③)
+    const runs = [...WF.matchAll(/node(?: --max-old-space-size=\d+)? scripts\/portfolio_backtest\.mjs (\d+) (\d+)/g)].map(m => m[1]);
+    const tm = +((/\n  backtest:[\s\S]*?timeout-minutes:\s*(\d+)/.exec(WF) || [])[1] || 0);
+    const waits = (WF.match(/for p in \$pids; do wait \$p \|\| rc=1; done/g) || []).length;
+    const passes = (WF.match(/SELF=high\+hivolat\+nobear LIST_TRIG=\/tmp\/trig\.ndjson /g) || []).length;
+    ok('③i 🧾 全市場(⛔ 抽 600 檔)・交易快取 4 片 + 每片結束碼都檢查 + 合併・名單前 60 筆・判觸發 TOPN=60(陷阱 #58)・兩趟都接 LIST_TRIG(🅿️ / 💵 PARK= )・回測 job 時限 ≥150 分',
+       runs.length >= 4 && runs.every(n => n === '9999') && !/portfolio_backtest\.mjs 600\b/.test(WF)
+       && /SELF=high\+hivolat SHARD=\$k\/4 TRADES_CACHE=\/tmp\/tc\.s\$k\.ndjson/.test(WF) && waits >= 2 && /scripts\/merge_trades_cache\.mjs \/tmp\/tc\.ndjson/.test(WF)
+       && /LIST_DUMP_N:\s*'60'/.test(WF) && /TOPN=60 SHARD=\$k\/4 node scripts\/list_trig\.mjs/.test(WF)
+       && passes === 2 && /LIST_TRIG=\/tmp\/trig\.ndjson PARK= SUMMARY_OUT=\/tmp\/summary_cash\.json/.test(WF) && /SUMMARY_CASH=\/tmp\/summary_cash\.json/.test(WF)
+       && tm >= 150, JSON.stringify({ runs, waits, passes, tm }));
 }
 ok('③g 兩支回測都是「本機絕對路徑 / CI node_modules」雙來源載 playwright(⛔ 寫死沙箱路徑 = CI 一定炸)', ['scripts/portfolio_backtest.mjs', 'scripts/signal_backtest.mjs'].every(f => { const c = fs.readFileSync(path.join(ROOT, f), 'utf8'); return /catch \(_\) \{ \(\{ chromium \} = await import\('playwright'\)\); \}/.test(c) && /fs\.existsSync\(_exec\)/.test(c); }), '');
 // ④⑤ App
@@ -145,9 +178,12 @@ const R = await page.evaluate(async (aKey) => {
     const liveG = A._sigEdge(det, title);
     const noteOn = A._btEdgeNote('html');
     const deckBefore = JSON.stringify(A._DECK_TRACK49);
+    // 🧾 V79.5.1 每週改全市場 + 前一晚名單買法:同一個註記函式,產物換成名單買法那種
+    A._btEdge = { run_at: '2026-10-23', signal: { table, grades: { A: 53, B: 11, C: 65 }, n: 1500000 }, deck: { gene: { n: 800, win: 33, per: 3, cum: 4800000, dd: -27, from: '2022-10', to: '2026-10', cfg: { listK: 2, allFire: 1, park: 'idle' } }, cash: { cum: 1900000 } }, diff: [], note: 'x' };
+    const noteList = A._btEdgeNote('html');
     A._btEdge = null;
     const backG = A._sigEdge(det, title);
-    return { loaded, embG: embG && embG.grade, liveG: liveG && liveG.grade, backG: backG && backG.grade, noteOff, txtOff, noteOn, deckSame: deckBefore === JSON.stringify(A._DECK_TRACK49) };
+    return { loaded, embG: embG && embG.grade, liveG: liveG && liveG.grade, backG: backG && backG.grade, noteOff, txtOff, noteOn, noteList, deckSame: deckBefore === JSON.stringify(A._DECK_TRACK49) };
 }, aKey);
 await browser.close();
 // ⚠️ 沙箱用 file:// 載入,Cache API 本來就會丟「Request scheme 'file' is unsupported」(App 的 SW 快取,跟這支無關)→ 只擋跟產物載入有關的錯
@@ -158,6 +194,9 @@ ok('④b ⭐ 決定性對照:產物把那個訊號改成 C → `_sigEdge` 仍回
 ok('⑤a 沒產物:註記寫「嵌入版 / 還沒載到」(⛔ 不可假裝有日期)', /data-btedge="embedded"/.test(R.noteOff) && /還沒載到/.test(R.txtOff), R.noteOff.slice(0, 120) + ' | ' + R.txtOff);
 ok('⑤b 有產物:註記印日期 + 差異數 + 「沒有自動換預設」', /data-btedge="live"/.test(R.noteOn) && /data-btdiff="1"/.test(R.noteOn) && /沒有自動換預設/.test(R.noteOn) && /2026/.test(R.noteOn), R.noteOn.slice(0, 200));
 ok('⑤c ⛔ 產物載入後 `_DECK_TRACK49` 一個字都沒變', R.deckSame === true, '');
+{ const nl = String(R.noteList).replace(/<\/?b[^>]*>/g, ''), no = String(R.noteOn).replace(/<\/?b[^>]*>/g, '');
+  ok('⑤e 🧾 每週產物是名單買法 → 註記寫「🅿️ 現行預設」「全市場 + 照 App 前一晚名單買」+ 錢放現金那趟;舊產物(沒有 listK)仍寫「抽 600 檔」(決定性對照:只換產物)',
+     /🅿️ 現行預設/.test(nl) && /全市場 \+ 照 App 前一晚名單買/.test(nl) && /錢放現金/.test(nl) && !/600 檔/.test(nl) && /600 檔/.test(no) && !/🅿️ 現行預設/.test(no), nl.slice(0, 160)); }
 // 🧹 V78.3.4 決策台「這套做法實測賺多少」整塊搬到產業作戰室 → 決策台⛔ 不再掛 `_btEdgeNote`
 // 🧹 V78.3.6 K 線教學(`_showEdgeHelp`)也改成只講「怎麼看、怎麼做」→ 散戶 App 畫面⛔ 任何地方都不再呼叫 `_btEdgeNote`
 //   (函式本身留著,⑤a/⑤b 仍直接驗它的內容;成績與差異改在產業作戰室看)。現在釘:① 沒有呼叫端 ② 教學彈窗沒有研究字樣 ③ 「怎麼看」的關鍵句還在

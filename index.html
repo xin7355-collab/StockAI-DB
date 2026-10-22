@@ -48546,13 +48546,14 @@ K線圖才是你唯一能掌握的東西。基本面再好、消息再多、籌�
         const B = this._btEdge, T = this._DECK_TRACK49;
         const wan = v => `${v >= 0 ? '+' : '−'}${(Math.abs(v) / 1e4).toFixed(0)} 萬`;
         if (!B) return kind === 'html' ? `<div class="text-[10px] text-gray-500 mt-1" data-btedge="embedded">📅 成績來源:App 內嵌入版(每週自動回測的產物還沒載到;有的話這裡會顯示最新一次的日期與差異)</div>` : '每週自動回測的產物還沒載到。';
-        const g = B.deck && B.deck.gene;
+        const g = B.deck && B.deck.gene, cashS = B.deck && B.deck.cash;
+        const isList = !!(g && g.cfg && g.cfg.listK);   // 🧾 V79.5.1 每週改全市場 + 前一晚名單買法(舊產物沒有 listK → 舊說法)
         const dl = (B.diff || []);
         const dTxt = dl.length ? dl.slice(0, 6).map(d => d.what === 'grade' ? `「${String(d.k).split('｜')[1] || d.k}」${d.old} → ${d.new} 級` : d.what === 'cum' ? `🧬 累積 ${wan(d.old)} → ${wan(d.new)}` : d.what === 'dd' ? `回撤 ${d.old}% → ${d.new}%` : d.what === 'win_vs_prev' ? `勝率 ${d.old}% → ${d.new}%(跟上週比)` : `${d.k} ${d.what}`).join('、') : '';
         if (kind !== 'html') return `每週自動回測 ${B.run_at}(訊號 ${Object.keys(B.signal.table).length} 個、A 級 ${B.signal.grades.A})${dl.length ? `;跟嵌入版有 ${dl.length} 項不同:${dTxt}(⛔ 未自動換預設)` : ';跟嵌入版一致'}。`;
-        return `<div class="text-[10px] text-gray-400 mt-1 leading-snug" data-btedge="live" data-btdiff="${dl.length}">📅 <b class="text-gray-200">最新一次自動回測 ${this._dW(B.run_at) || B.run_at}</b>(每週,同一套配置重跑):${g ? `🧬 <b>${wan(g.cum)}</b>・勝率 ${g.win}%・中途最多賠 ${Math.abs(g.dd)}%・${g.n} 筆(${g.from}~${g.to})` : '成績單這輪沒跑'};K 線訊號 ${Object.keys(B.signal.table).length} 個、A 級 ${B.signal.grades.A} 個。
+        return `<div class="text-[10px] text-gray-400 mt-1 leading-snug" data-btedge="live" data-btdiff="${dl.length}">📅 <b class="text-gray-200">最新一次自動回測 ${this._dW(B.run_at) || B.run_at}</b>(每週,同一套配置重跑):${g ? `${isList ? '🅿️ 現行預設' : '🧬'} <b>${wan(g.cum)}</b>・勝率 ${g.win}%・中途最多賠 ${Math.abs(g.dd)}%・${g.n} 筆(${g.from}~${g.to})${cashS ? `・💵 錢放現金 <b>${wan(cashS.cum)}</b>` : ''}` : '成績單這輪沒跑'};K 線訊號 ${Object.keys(B.signal.table).length} 個、A 級 ${B.signal.grades.A} 個。
             ${dl.length ? `<br>🔔 <b class="text-amber-300">跟 App 內嵌的成績有 ${dl.length} 項不同</b>:${this._escHtml(dTxt)} —— <b>⛔ 沒有自動換預設</b>(要換得過「八道關卡」那套,由人判)。` : '<br>✅ 跟 App 內嵌的成績一致(等級、累積、回撤都在容許範圍內)。'}
-            <span class="text-gray-500">K 線訊號:App 判斷一律用內嵌的 16 年表,每週這份只看最近幾年(窗口不同,等級不一樣是正常的);成績單上面那組仍是嵌入版(${T.from}~${T.to}),每週資料多幾天、深歷史接縫也會動,差一點是正常的。⚠️ V79.4.8 起嵌入版是<b>全市場 + 照 App 實際怎麼買</b>重算的;每週自動回測還是只抽 600 檔、用舊的買法 → 兩邊的金額本來就對不起來,只看每週那份「跟上週比」的變化。</span></div>`;
+            <span class="text-gray-500">K 線訊號:App 判斷一律用內嵌的 16 年表,每週這份只看最近幾年(窗口不同,等級不一樣是正常的);成績單上面那組仍是嵌入版(${T.from}~${T.to}),每週資料多幾天、深歷史接縫也會動,差一點是正常的。${isList ? '🧾 每週這份也是<b>全市場 + 照 App 前一晚名單買</b>(跟嵌入版同一套買法,V79.5.1 起);起點與資料日期不同,金額差一點是正常的。' : '⚠️ 這一份還是舊的抽 600 檔、舊買法產的 → 金額跟嵌入版對不起來,只看「跟上週比」的變化(V79.5.1 起每週改成全市場 + 前一晚名單買法)。'}</span></div>`;
     },
     async _loadPlaybookEdge() {
         if (this._pbEdge !== undefined) return this._pbEdge;

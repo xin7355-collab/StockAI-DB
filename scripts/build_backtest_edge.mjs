@@ -4,7 +4,7 @@
  *
  * 吃三份輸入,合成一份「成績單 + 跟嵌入版差在哪」:
  *   ① data/signal_edge.json          ← scripts/signal_backtest.mjs(129 個 K 線訊號,~17 分)
- *   ② SUMMARY_GENE / SUMMARY_PLAIN  ← scripts/portfolio_backtest.mjs SUMMARY_OUT=(決策台那套 49 個月)
+ *   ② SUMMARY_GENE / SUMMARY_CASH   ← scripts/portfolio_backtest.mjs SUMMARY_OUT=(🅿️ 現行預設 / 💵 錢放現金;🧾 V79.5.1 起全市場 + 前一晚名單買法)
  *   ③ index.html 的 `_SIGNAL_EDGE` / `_SIGNAL_EDGE_META` / `_DECK_TRACK49`(嵌入版 = 目前 App 在用的成績)
  *   + 上一版 data/backtest_edge.json(從 data 分支還原)當空過守門的基準
  *
@@ -21,7 +21,12 @@
  *         ⛔ 但絕對下限 `FLOOR` 照樣要過(防「換設定」被拿來掩護一次真的壞掉的產物);
  *         沒有上一版 → ⛔ 不拿內嵌表當基準(內嵌是 16 年、每週是最近 3 年,樣本差好幾倍 → 永遠擋)。
  *
- * 用法:SUMMARY_GENE=/tmp/g.json [SUMMARY_PLAIN=/tmp/p.json] [PREV=data/backtest_edge.json] node scripts/build_backtest_edge.mjs [out]
+ * 🧾 V79.5.1 每週回測改成全市場 + 照 App「前一晚名單」買(使用者 10/22 選:放棄尾盤掃描、每週回測照樣改全市場、改用名單買法):
+ *   第二趟「不挑 🧬」在名單買法下做不到(`_DECK_TRACK49` 也這樣寫)→ 換成「💵 錢放現金」(`deck.cash`;App 從來沒讀 `deck.plain`)。
+ *   新守門:成績單是名單買法(cfg.listK)→ ① 一定要接上「明天會不會觸發」的判定(listk.trig)② 判得夠深:
+ *   「可能不準」的晚數 ≤ max(FLOOR.inexact, 1% 晚數)(陷阱 #58:只判前 30 筆時 16 年有 229 晚可能不準)。
+ *
+ * 用法:SUMMARY_GENE=/tmp/g.json [SUMMARY_CASH=/tmp/c.json] [PREV=data/backtest_edge.json] node scripts/build_backtest_edge.mjs [out]
  */
 import fs from 'fs';
 import path from 'path';
@@ -36,7 +41,7 @@ export const deckSig = cfg => DECK_SIG.map(k => `${k}=${cfg && cfg[k] != null ? 
 // 🔁 V79.4.5 絕對下限(⛔ 不管有沒有換設定都要過):2026-10-20 本機重現(同 workflow 的資料與設定)成績單 1,024 筆・47 個月、
 //   3 年訊號樣本 1,915,189 → 取約一半。⚠️ 改了成績單設定 / 訊號回測的方法,要重現一次再改這裡。
 // 🔥 V79.4.9 照新設定(GATE=lb 照平均・≥8 次・斷崖・回看 1,200 天・停 0050)本機重現:成績單 1,108 筆・49 個月(不挑 🧬 675 筆)→ 550
-export const FLOOR = { deckN: 550, months: 36, sigN: 900000 };
+export const FLOOR = { deckN: 550, months: 36, sigN: 900000, inexact: 5 };
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 
 /** 從 index.html 抓嵌入版常數(同 embed_signal_edge 的做法:兩行都是單獨一行) */
@@ -68,7 +73,7 @@ export function signalTable(j) {
     return table;
 }
 
-export function build({ sig, gene, plain = null, embedded, prev = null, now = new Date(), floor = FLOOR }) {
+export function build({ sig, gene, cash = null, embedded, prev = null, now = new Date(), floor = FLOOR }) {
     const table = signalTable(sig);
     const keys = Object.keys(table);
     if (!keys.length) throw new Error('signal_edge 沒有訊號');
@@ -89,6 +94,12 @@ export function build({ sig, gene, plain = null, embedded, prev = null, now = ne
         if (gene.n < floor.deckN) errs.push(`成績單筆數 ${gene.n} < 絕對下限 ${floor.deckN}`);
         if (!(gene.months >= floor.months)) errs.push(`成績單窗口 ${gene.months} 個月 < ${floor.months} 個月`);
         if (baseDeckN && gene.n < baseDeckN * 0.8) errs.push(`成績單筆數 ${gene.n} < 上一版 ${baseDeckN} 的 80%`);
+        // 🧾 V79.5.1 名單買法:判觸發要真的接上、而且判得夠深(⛔ 名單排到沒判過的那幾晚,買的可能不是 App 會買的)
+        if (gene.cfg && gene.cfg.listK) {
+            const lk = gene.listk || {}, lim = Math.max(floor.inexact ?? 5, Math.ceil((+lk.days || 0) * 0.01));
+            if (!lk.trig) errs.push('成績單是名單買法,但沒有接上「明天會不會觸發」的判定(LIST_TRIG)');
+            else if (!(+lk.inexact <= lim)) errs.push(`名單判斷太淺:${lk.inexact} 晚可能不準(上限 ${lim} 晚;把 TOPN / LIST_DUMP_N 加大)`);
+        }
     }
     if (errs.length) { const e = new Error('空過守門:' + errs.join(';')); e.gate = true; throw e; }
     // diff(⛔ 只標示):訊號等級 A↔C 跳兩級、或 A/B ↔ C;成績單勝率差 >5pp、累積差 >30%
@@ -117,7 +128,7 @@ export function build({ sig, gene, plain = null, embedded, prev = null, now = ne
         run_at: now.toISOString().slice(0, 10), kind: 'weekly',
         signal: { table, n: nSig, grades: cnt, syms: sig.syms, base_win: sig.base && sig.base.win ? sig.base.win['10'] : null, window: sig.window || null, match: sigMatch, cost: sig.cost ?? null },
         rebase, floor,
-        deck: { gene, plain },
+        deck: { gene, cash },
         embedded: { sigA: embedded.meta ? embedded.meta.A : null, sigB: embedded.meta ? embedded.meta.B : null, sigC: embedded.meta ? embedded.meta.C : null,
                     deck: embedded.deck },
         diff, prev: prev ? { run_at: prev.run_at } : null,
@@ -129,17 +140,17 @@ if (isMain) {
     const out = process.argv[2] || path.join(ROOT, 'data', 'backtest_edge.json');
     const sig = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'signal_edge.json'), 'utf8'));
     const gene = process.env.SUMMARY_GENE ? JSON.parse(fs.readFileSync(process.env.SUMMARY_GENE, 'utf8')) : null;
-    const plain = process.env.SUMMARY_PLAIN && fs.existsSync(process.env.SUMMARY_PLAIN) ? JSON.parse(fs.readFileSync(process.env.SUMMARY_PLAIN, 'utf8')) : null;
+    const cash = process.env.SUMMARY_CASH && fs.existsSync(process.env.SUMMARY_CASH) ? JSON.parse(fs.readFileSync(process.env.SUMMARY_CASH, 'utf8')) : null;
     const prevP = process.env.PREV || out;
     const prev = fs.existsSync(prevP) ? (() => { try { return JSON.parse(fs.readFileSync(prevP, 'utf8')); } catch (_) { return null; } })() : null;
     const embedded = readEmbedded(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'));
     if (!embedded.table || !embedded.deck) { console.error('🚨 index.html 讀不到嵌入版 _SIGNAL_EDGE / _DECK_TRACK49 → 停'); process.exit(1); }
     let r;
-    try { r = build({ sig, gene, plain, embedded, prev }); } catch (e) { console.error(`❌ ${e.message}${e.gate ? '(⛔ 不寫檔、不推)' : ''}`); process.exit(1); }
+    try { r = build({ sig, gene, cash, embedded, prev }); } catch (e) { console.error(`❌ ${e.message}${e.gate ? '(⛔ 不寫檔、不推)' : ''}`); process.exit(1); }
     fs.writeFileSync(out, JSON.stringify(r));
     if (r.rebase && r.rebase.deck) console.log(`🔁 成績單換設定 → 這一次重新起算守門基準(⛔ 不跟舊設定比 80%):\n   舊 ${r.rebase.deck.from}(${r.rebase.deck.oldN} 筆)\n   新 ${r.rebase.deck.to}(${r.rebase.deck.newN} 筆)`);
     if (r.rebase && r.rebase.signal) console.log(`🔁 訊號回測換方法 ${r.rebase.signal.from || '(舊:整段平均)'} → ${r.rebase.signal.to || '(未標)'}:重新起算(樣本 ${r.rebase.signal.oldN.toLocaleString()} → ${r.rebase.signal.newN.toLocaleString()})`);
-    console.log(`✅ backtest_edge.json:訊號 ${Object.keys(r.signal.table).length} 個(A=${r.signal.grades.A} B=${r.signal.grades.B} C=${r.signal.grades.C},n=${r.signal.n.toLocaleString()})・成績單 🧬 ${gene.n} 筆 / 勝率 ${gene.win}% / 累積 ${gene.cum.toLocaleString()} / 回撤 ${gene.dd}%${plain ? ` ・不挑 🧬 ${plain.cum.toLocaleString()}` : ''}`);
+    console.log(`✅ backtest_edge.json:訊號 ${Object.keys(r.signal.table).length} 個(A=${r.signal.grades.A} B=${r.signal.grades.B} C=${r.signal.grades.C},n=${r.signal.n.toLocaleString()})・成績單 🅿️ ${gene.n} 筆 / 勝率 ${gene.win}% / 累積 ${gene.cum.toLocaleString()} / 回撤 ${gene.dd}%${gene.listk ? ` / 名單 ${gene.listk.days} 晚・可能不準 ${gene.listk.inexact ?? '?'} 晚` : ''}${cash ? ` ・💵 錢放現金 ${cash.cum.toLocaleString()}` : ''}`);
     console.log(`   跟嵌入版的差異 ${r.diff.length} 項${r.diff.length ? ':' + r.diff.slice(0, 8).map(d => `${d.k}(${d.what} ${d.old}→${d.new})`).join(' / ') : ''}`);
     console.log('   ⛔ 只標示不換預設');
 }
