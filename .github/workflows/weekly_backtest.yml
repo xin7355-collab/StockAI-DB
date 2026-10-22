@@ -23,6 +23,12 @@ name: 🔁 每週自動回測 (weekly_backtest)
 #   拿掉 FILTER=bear60(🔥 空頭照買)・加 GATE=lb(規則常數讀 scripts/lib_hotrule.mjs = App 現行:≥8 次・照平均・每一招都算)
 #   ・CLIFF=20(斷崖守門)・STATS_WIN=1200(每檔成績只看最近 1,200 天 = App 讀的 K 線長度)・PARK=idle(沒用到的錢停 0050)
 #   → DECK_SIG 換了,第一次會重新起算守門基準;FLOOR 用本機重現的筆數訂一半(build_backtest_edge.mjs)。
+#
+# 🔒 V79.5.0 共用部署鎖只放在最後的部署 job(10/22 查到,⛔ 不可再搬回 workflow 層級):
+#   以前 `concurrency` 寫在 workflow 層級 → 每一輪(含不是週五、開頭就收工的那幾輪)都跟 playbook_scan 在**同一秒**
+#   (兩支都掛 daily_miner 的 workflow_run)進 gh-pages-push;鎖被別支佔著的時候,後到的會把排隊中的擠掉
+#   → 明日作戰清單那一輪被取消(10/13、10/14 ×2、10/16 週五、10/19 都是 1 秒內 cancelled;靠備援那一輪補回來,但晚了)。
+#   → 回測 job ⛔ 不拿鎖(只讀、不 push),產物用 artifact 交給部署 job;只有部署 job 拿鎖(約 1 分鐘)。
 on:
   workflow_run:
     workflows: ["🤖 每日籌碼採礦機 (平行宇宙版)"]
@@ -38,11 +44,6 @@ on:
         required: false
         default: '99999'
 
-# 與 deploy_pages / daily_miner deploy / playbook_scan 共用,避免同時 push gh-pages 打架
-concurrency:
-  group: gh-pages-push
-  cancel-in-progress: false
-
 permissions:
   contents: write
 
@@ -56,6 +57,8 @@ jobs:
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'schedule')
     timeout-minutes: 120
+    outputs:
+      ok: ${{ steps.pack.outputs.ok }}
     steps:
       - name: 📅 週五守門(每週只跑一次;手動 force=true 跳過)
         id: gate
@@ -158,17 +161,57 @@ jobs:
           echo "build_rc=$rc" >> "$GITHUB_OUTPUT"
           exit 0
 
-      - name: 🚀 部署 backtest_edge.json + signal_edge.json 到 gh-pages + data
+      - name: 📦 交給部署 job(產物 → artifact)
         if: steps.gate.outputs.run == '1' && steps.build.outputs.build_rc == '0'
+        id: pack
+        run: |
+          [ -s /tmp/backtest_edge.json ] || { echo "❌ 沒有產物(build 說成功卻沒有檔)→ 不部署"; exit 1; }
+          mkdir -p /tmp/edge_out
+          cp /tmp/backtest_edge.json /tmp/edge_out/backtest_edge.json
+          [ -s data/signal_edge.json ] && cp data/signal_edge.json /tmp/edge_out/signal_edge.json || echo "ℹ️ 沒有 signal_edge.json(只部署成績單)"
+          ls -la /tmp/edge_out
+          echo "ok=1" >> "$GITHUB_OUTPUT"
+
+      - name: ⬆️ 上傳產物
+        if: steps.pack.outputs.ok == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-edge
+          path: /tmp/edge_out/
+          retention-days: 3
+          if-no-files-found: error
+
+  # 🔒 只有這個 job 拿共用部署鎖(與 deploy_pages / daily_miner deploy / playbook_scan 共用,避免同時 push gh-pages 打架)
+  deploy:
+    name: 🚀 部署到 gh-pages + data
+    needs: backtest
+    if: needs.backtest.outputs.ok == '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: gh-pages-push
+      cancel-in-progress: false
+    steps:
+      - name: 📥 下載程式碼 (main)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ⬇️ 拿回產物
+        uses: actions/download-artifact@v4
+        with:
+          name: weekly-edge
+          path: /tmp/edge_out
+
+      - name: 🚀 部署 backtest_edge.json + signal_edge.json 到 gh-pages + data
         run: |
           set -e
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          [ -s /tmp/backtest_edge.json ] || { echo "❌ 沒有產物,跳過部署"; exit 0; }
-          cp data/signal_edge.json /tmp/signal_edge.json 2>/dev/null || true
+          [ -s /tmp/edge_out/backtest_edge.json ] || { echo "❌ 拿回的 artifact 裡沒有 backtest_edge.json"; exit 1; }
           restore_files () {
-            cp /tmp/backtest_edge.json data/backtest_edge.json
-            [ -s /tmp/signal_edge.json ] && cp /tmp/signal_edge.json data/signal_edge.json || true
+            cp /tmp/edge_out/backtest_edge.json data/backtest_edge.json
+            [ -s /tmp/edge_out/signal_edge.json ] && cp /tmp/edge_out/signal_edge.json data/signal_edge.json || true
           }
           deploy_branch () {
             local BR="$1"
