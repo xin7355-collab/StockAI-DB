@@ -10,9 +10,14 @@
    ⑤ 👑 延後的賣單(leader_defer_step)同 ④
    ⑥ 🅿️ 今天的 0050 已經處理過 → hot_step ⛔ 不再買(再買就沒有人湊交割款)
    ⑦ 🔐 真實 / 模擬帳戶用不同的狀態檔(舊寫法同一個檔 → 互相蓋掉);自己設 STATE_PATH 就照設的
-   ⑧ 🔐 真實帳戶第一次跑新版:沒標模式的舊部位跟永豐庫存對一次,對不上的搬到 legacy(⛔ 不自動賣 = 不會賣到你手動買的)
+   ⑧ 🔐 真實帳戶第一次跑新版:沒標模式的舊部位一律當成以前模擬帳戶留下的 → 搬到 legacy
+      (⛔ 不查永豐庫存、⛔ 不自動賣、⛔ 不擋買;使用者 10/22:沒用真實帳戶跑過、模擬是拿來參考的)
+      📒 模擬帳戶第一次跑新版(.sim.json 還不存在)→ 接著用以前那個檔的紀錄(⛔ 舊檔一個位元組都不動)
+   ⑨ 👑 換倉日賣單只送出一部分 → 剩下的放進今天延後要賣的(split / open 都一樣;舊寫法要等到下次換倉)
+   ⑩ 🅿️ 湊交割款的提醒看 🔥 + 👑 今天買的(⛔ 只看 🔥 會漏掉只有 👑 買的日子)
+   ⑪ 👑 買進標模式(模擬 / 真實)、另一個模式的紀錄 ⛔ 不賣
 """
-import copy, os, re, subprocess, sys, types
+import copy, inspect, json, os, re, subprocess, sys, tempfile, types
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 sys.path.insert(0, ROOT)
 import auto_trade as A
@@ -164,31 +169,135 @@ ok('⑦ 真實帳戶沿用原本的檔名(已經在跑的不受影響)', p_live 
 ok('⑦b 🔬 模擬帳戶改用另一個檔(舊寫法兩個一樣 → 模擬買的被當成真的去賣)', p_sim == '/tmp/fakehome/.stockai_auto_trade.sim.json' and p_sim != p_live, p_sim)
 ok('⑦c 自己設了 STATE_PATH → 照你設的', p_own == '/x/my.json', p_own)
 
-# ⑧ 🔐 真實帳戶第一次跑新版:舊部位(沒標模式)跟永豐庫存對一次
+# ⑧ 🔐 真實帳戶第一次跑新版:沒標模式的舊部位一律當成以前模擬帳戶留下的 → 搬到 legacy
 def st8(): return {'pos': {'2330': {'e': 900.0, 'sl': 850.0, 'd': '2026-10-01', 'sh': 1485}, '2454': {'e': 1000.0, 'sl': 950.0, 'd': '2026-10-01', 'sh': 150, 'm': 'live'}},
-                   'lead': {'2001': {'e': 100.0, 'd': '2026-10-01', 'sh': 2000}}}
+                   'lead': {'2001': {'e': 100.0, 'd': '2026-10-01', 'sh': 2000}}, 'lead2': {}}
 setv(LIVE=True)
-st = st8(); LOGS.clear(); A._legacy_check(FakeApi(inv={'2330': 0, '2001': 2000}), sj, st)
-ok('⑧ 2330 紀錄 1485 股、永豐庫存 0 股 → 當成以前模擬帳戶留下的:搬到 legacy(⛔ 不自動賣)、🚨 寫出來;2001 對得上 → 標成真實照舊管',
-   '2330' not in st['pos'] and st.get('legacy', {}).get('pos', {}).get('2330', {}).get('sh') == 1485 and st['lead']['2001'].get('m') == 'live'
-   and st['pos']['2454'] == st8()['pos']['2454'] and st.get('mv') == 1 and any('🚨' in x and '2330' in x for x in LOGS), (st, LOGS[-1:]))
-api = FakeApi({'2330': 800.0}); A.fetch_klines = lambda sym: []
+st = st8(); LOGS.clear(); A._legacy_check(st)
+ok('⑧ 真實帳戶:沒標模式的 2330(🔥)與 2001(👑)一律搬到 legacy、🚨 列出來;已標 live 的 2454 照舊管',
+   '2330' not in st['pos'] and '2001' not in st['lead'] and st.get('legacy', {}).get('pos', {}).get('2330') == st8()['pos']['2330']
+   and st['legacy'].get('lead', {}).get('2001') == st8()['lead']['2001'] and st['pos'].get('2454') == st8()['pos']['2454'] and st.get('mv') == 1
+   and any('🚨' in x and '2330' in x and '2001' in x for x in LOGS), (st, LOGS[-1:]))
+ok('⑧a 🔬 ⛔ 不查永豐庫存(舊寫法:庫存夠就當成它買的 → 你手動買的同一檔停損時被賣掉)',
+   list(inspect.signature(A._legacy_check).parameters) == ['st'] and 'list_positions' not in inspect.getsource(A._legacy_check))
+api = FakeApi({'2330': 800.0, '2454': 1001.0}); A.fetch_klines = lambda sym: []
 A.exit_step(api, sj, st)
-ok('⑧b 🔬 搬走之後 exit_step ⛔ 不賣 2330(舊寫法:跌破那筆紀錄的停損就賣 1485 股 → 賣到你手動買的)', not [o for c, o in api.orders if c == '2330'], api.orders)
-st = st8(); A._legacy_check(FakeApi(inv={'2330': 3000, '2001': 2000}), sj, st)
-ok('⑧c 對照:永豐庫存夠(3000 ≥ 1485)→ 標成真實、照舊管', st['pos']['2330'].get('m') == 'live' and 'legacy' not in st, st)
-st = st8(); LOGS.clear(); A._legacy_check(FakeApi(inv=None), sj, st)
-ok('⑧d 查不到庫存 → 這次照舊(⛔ 不搬、⛔ 不記已對過,下次再對)', st == st8() and any('查不到' in x for x in LOGS), (st, LOGS))
-st = st8(); st['mv'] = 1; A._legacy_check(FakeApi(inv={}), sj, st)
-ok('⑧e 對過一次(mv=1)→ 之後不再做', '2330' in st['pos'] and 'legacy' not in st, st)
+ok('⑧b 🔬 搬走之後跌破那筆紀錄的停損 → exit_step ⛔ 不賣 2330', not [o for c, o in api.orders if c == '2330'], api.orders)
+api = FakeApi({'2330': 101.0}); st['done'] = []
+A.hot_step(api, sj, st, BULL, PICKS, D)
+ok('⑧c ⛔ 不擋買:2330 今天在 🔥 名單上觸發 → 照買、新紀錄標 live(搬走的那筆照留在 legacy)',
+   shares(api, 'B') == 1485 and st['pos'].get('2330', {}).get('m') == 'live' and st['legacy']['pos']['2330']['sh'] == 1485, (api.orders, st))
+st2 = copy.deepcopy(st); LOGS.clear(); A._legacy_check(st2)
+ok('⑧d 做過一次(mv=1)→ 之後不再做(新買的 live 紀錄 ⛔ 不會被搬)', st2 == st and not any('🚨' in x for x in LOGS), st2)
 setv(LIVE=False)
-st = st8(); A._legacy_check(FakeApi(inv={}), sj, st)
-ok('⑧f 模擬帳戶 → 不做(不動真錢)', st == st8(), st)
-st = {'pos': {'2330': {'e': 1, 'sh': 1000}}, 'lead': {'2330': {'e': 1, 'sh': 1000}}}; setv(LIVE=True)
-A._legacy_check(FakeApi(inv={'2330': 1500}), sj, st)
-ok('⑧g 同一檔兩邊都有紀錄(合計 2000 股)、永豐只有 1500 → 兩筆都 ⛔ 不算(合計要對得上)', st['pos'] == {} and st['lead'] == {} and len(st['legacy']['pos']) == 1, st)
+st = st8(); A._legacy_check(st)
+ok('⑧e 模擬帳戶 → 不做(以前模擬的部位照常管)', st == st8(), st)
+setv(LIVE=True)
+st = {'pos': {'2454': {'e': 1, 'sh': 1, 'm': 'live'}}, 'lead': {}}; LOGS.clear(); A._legacy_check(st)
+ok('⑧f 沒有舊部位 → 只記 mv=1、⛔ 不吵', st.get('mv') == 1 and 'legacy' not in st and not any('🚨' in x for x in LOGS), (st, LOGS))
+setv()
+# 📒 模擬帳戶第一次跑新版:接著用以前那個檔的紀錄(子程序 + 暫存 HOME,⛔ 碰不到你真的狀態檔)
+LOAD = "import json, auto_trade as A; st = A.load_state(); print('@@' + json.dumps(st, ensure_ascii=False))"
+def run_sub(home, code, **env):
+    e = {k: v for k, v in os.environ.items() if k not in ('LIVE', 'STATE_PATH', 'DRY_RUN')}
+    e.update(HOME=home, **env)
+    return subprocess.check_output([sys.executable, '-c', code], cwd=ROOT, env=e, encoding='utf-8')
+def loaded(out):
+    return json.loads([l for l in out.splitlines() if l.startswith('@@')][-1][2:])
+OLD = {'d': '2026-10-21', 'done': [], 'pos': {'2330': {'e': 900.0, 'sl': 850.0, 'd': '2026-10-01', 'sh': 1485},
+                                              '2454': {'e': 1000.0, 'sl': 950.0, 'd': '2026-10-21', 'sh': 150, 'm': 'live'}},
+       'lead': {}, 'legacy': {'lead': {'2001': {'e': 100.0, 'd': '2026-10-01', 'sh': 2000}}}, 'mv': 1,
+       'park': {'sh': 3000, 'm': 'live'}}
+with tempfile.TemporaryDirectory() as home:
+    oldp, simp = os.path.join(home, '.stockai_auto_trade.json'), os.path.join(home, '.stockai_auto_trade.sim.json')
+    with open(oldp, 'w', encoding='utf-8') as f:
+        json.dump(OLD, f, ensure_ascii=False)
+    before = open(oldp, 'rb').read()
+    out = run_sub(home, LOAD); got = loaded(out)
+    ok('⑧g 📒 模擬帳戶第一次跑新版(.sim.json 還不存在)→ 接著用以前那個檔的部位(以前模擬買的 ⛔ 不會一夜之間不見)',
+       got.get('pos', {}).get('2330', {}).get('sh') == 1485 and '📒' in out, (got, out[-300:]))
+    ok('⑧g2 真實帳戶跑過時搬到 legacy 的(= 模擬留下的)→ 放回原本那本帳;legacy / mv 拿掉',
+       got.get('lead', {}).get('2001', {}).get('sh') == 2000 and 'legacy' not in got and 'mv' not in got, got)
+    ok('⑧g3 標 live 的部位與 0050(真實帳戶自己買的)⛔ 不搬進模擬帳戶', '2454' not in got.get('pos', {}) and 'park' not in got, got)
+    ok('⑧g4 🔬 舊檔一個位元組都沒動、只讀的時候 ⛔ 不寫任何檔', open(oldp, 'rb').read() == before and not os.path.exists(simp))
+    run_sub(home, LOAD + "; A.save_state(st)")
+    ok('⑧g5 之後寫進 .sim.json(舊檔照樣一個位元組都沒動)', os.path.exists(simp) and open(oldp, 'rb').read() == before
+       and json.load(open(simp, encoding='utf-8')).get('pos', {}).get('2330', {}).get('sh') == 1485)
+    with open(simp, 'w', encoding='utf-8') as f:
+        json.dump({'pos': {'2603': {'e': 1, 'sh': 1000}}}, f)
+    got = loaded(run_sub(home, LOAD))
+    ok('⑧g6 .sim.json 已經有了 → 只讀它(⛔ 不再去讀舊檔)', list(got.get('pos', {})) == ['2603'], got)
+    os.unlink(simp)
+    got = loaded(run_sub(home, LOAD, LIVE='1'))
+    ok('⑧g7 🔬 真實帳戶 → 讀原本那個檔、⛔ 不搬(legacy 照留)', 'legacy' in got and got.get('mv') == 1 and '2454' in got.get('pos', {}), got)
+    got = loaded(run_sub(home, LOAD, STATE_PATH=os.path.join(home, 'my.json')))
+    ok('⑧g8 自己設了 STATE_PATH → 照你設的(那個檔不存在就是空的,⛔ 不偷讀舊檔)', got == {}, got)
+    ok('⑧g9 舊檔從頭到尾一個位元組都沒動', open(oldp, 'rb').read() == before)
 _ms = open(os.path.join(ROOT, 'auto_trade.py'), encoding='utf-8').read()
-ok('⑧h main() 每天重置之後就對一次(要在任何買賣之前)', re.search(r"st = reset_day\(st, today\)\n\s+_legacy_check\(api, sj, st\)", _ms) is not None)
+ok('⑧h main() 每天重置之後就做(要在任何買賣之前)', re.search(r"st = reset_day\(st, today\)\n\s+_legacy_check\(st\)", _ms) is not None)
+
+# ⑨ 👑 換倉日賣單只送出一部分 → 剩下的今天就賣完(⛔ 等到下次換倉)
+COLS = ['c', 'chg', 'chg10', 'amt20', 'b20', 'b60', 'lim', 'att', 'etf', 'pos252']
+def mkD(date, out=()):
+    rows = {str(2000 + i): [100.0, 1.0, (-99 if str(2000 + i) in out else 30.0 - i), 100.0 - i, 3.0, 8.0, 0, 0, 0, 95.0] for i in range(20)}
+    return {'data_date': date, 'cols': COLS, 'rows': rows}
+TWD = [{'date': d} for d in ['2026-09-24', '2026-09-25', '2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01',
+                             '2026-10-02', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09']]
+_LW = (A.LEADER_WINDOW, A.LEADER_BOOKS, A.LEADER_ANCHOR, A.LEADER_ACCOUNT, A.fetch_json)
+A.LEADER_BOOKS, A.LEADER_ANCHOR, A.LEADER_ACCOUNT = 1, '2026-09-24', 0   # 錨點 09-24 → 10-08 名單 = 換倉日;不買(只看賣)
+A.fetch_json = lambda rel: mkD('2026-10-08', out=('2003',)) if 'screener' in rel else TWD
+def lead9(window, fail_lot='O', m=None):
+    A.LEADER_WINDOW = window
+    p3 = {'e': 100.0, 'd': '2026-09-25', 'sh': 1500, **({'m': m} if m else {})}
+    st = {'pos': {}, 'lead': {'2000': {'e': 100.0, 'd': '2026-09-25', 'sh': 2000}, '2003': p3}}
+    api = FakeApi({'2003': 100.0}, fail_lot=fail_lot)
+    LOGS.clear(); A.leader_step(api, sj, st, BULL, '2026-10-09')
+    return st, api
+setv()
+for w in ('split', 'open'):
+    st, api = lead9(w)
+    ok(f'⑨ {w}:2003 掉出前 10、賣 1500 股時零股出錯 → 已賣的 1000 股扣掉、剩 500 股放進今天延後要賣的、🚨 叫你不要自己手動賣',
+       shares(api, 'S') == 1000 and st['lead'].get('2003', {}).get('sh') == 500 and (st.get('lead_defer') or {}).get('sell') == ['2003']
+       and '2000' in st['lead'] and any('🚨' in x and '請不要自己手動賣' in x for x in LOGS), (w, api.orders, st, LOGS[-2:]))
+    api.fail_lot = None
+    A.leader_defer_step(api, sj, st, '2026-10-09', 'sell')
+    ok(f'⑨b {w}:延後那段只賣剩下的 500 股(兩次合計 = 原本 1500 股)、賣完從紀錄與清單移除',
+       shares(api, 'S') == 1500 and '2003' not in st['lead'] and (st.get('lead_defer') or {}).get('sell') == [], (w, api.orders, st))
+st, api = lead9('split', fail_lot=None)
+ok('⑨c 🔬 對照:整筆賣成功 → 不留延後要賣的', shares(api, 'S') == 1500 and '2003' not in st['lead'] and not (st.get('lead_defer') or {}).get('sell'), st)
+ok('⑨d 尾盤那段不分時段都會補賣延後要賣的(延後買只有 split)',
+   re.search(r"if LEADER:\n\s+_df = st\.get\('lead_defer'\) or \{\}\n\s+if _df\.get\('sell'\):", _ms) is not None
+   and "if LEADER_WINDOW == 'split' and _df.get('buy') and mins >= LEADER_DEFER_BUY_FROM:" in _ms)
+
+# ⑩ 🅿️ 只有 👑 有買的日子也要提醒湊交割款
+setv()
+ok('⑩ 今天花掉的錢 = 🔥 + 👑', A._today_buy({'hot_buy_amt': 100.0, 'lead_buy_amt': 50.0}) == 150.0 and A._today_buy({}) == 0)
+st = {'pos': {}, 'lead_buy_amt': 200_000.0, 'park': {'sh': 3000, 'm': 'sim'}}
+api = FakeApi({'0050': 0.0}); LOGS.clear()
+r = A.park_step(api, sj, st, D, sleep_fn=lambda x: None)
+ok('⑩b 🔬 只有 👑 買、0050 一直沒報價 → 🚨(舊寫法只看 🔥 → 只印 ⚠️)', r == 'retry' and any('🚨' in x and '湊' in x for x in LOGS), (r, LOGS))
+ok('⑩c main() 兩處「程式太晚 / 收盤前還湊不到」的提醒都看 🔥 + 👑', _ms.count('_today_buy(st) > 0 and _park_has_own(st)') == 2
+   and not re.search(r"float\(st\.get\('hot_buy_amt'\) or 0\) > 0 and _park_has_own", _ms))
+
+# ⑪ 👑 買進標模式;另一個模式的紀錄 ⛔ 不賣(自己把兩個模式設成同一個狀態檔時才會遇到)
+setv()
+st = {'lead': {}}
+A._buy_one(FakeApi({'2001': 100.0}), sj, st, st['lead'], {'sym': '2001', 'rank': 1, 'chg10': 9.0, 'att': 0}, 100.0, 150_000.0, D)
+setv(LIVE=True)
+A._buy_one(FakeApi({'2002': 100.0}), sj, st, st['lead'], {'sym': '2002', 'rank': 2, 'chg10': 8.0, 'att': 0}, 100.0, 150_000.0, D)
+ok('⑪ 👑 買進的紀錄標模擬 / 真實(舊寫法沒標 → 兩個模式共用一個檔時互相賣)',
+   st['lead']['2001'].get('m') == 'sim' and st['lead']['2002'].get('m') == 'live', st)
+setv()
+st, api = lead9('split', fail_lot=None, m='live')
+ok('⑪b 模擬帳戶跑到換倉日、2003 掉出前 10 但那筆是真實帳戶的紀錄 → ⛔ 不賣',
+   not api.orders and st['lead']['2003']['sh'] == 1500 and any('⏭️' in x and '2003' in x for x in LOGS), (api.orders, LOGS[-3:]))
+st['lead_defer'] = {'d': '2026-10-09', 'sell': ['2003'], 'buy': [], 'book': 'lead'}
+A.leader_defer_step(api, sj, st, '2026-10-09', 'sell')
+ok('⑪c 延後要賣的那段也一樣 ⛔ 不賣另一個模式的(從清單拿掉,⛔ 不會一直重試)',
+   not api.orders and st['lead']['2003']['sh'] == 1500 and st['lead_defer']['sell'] == [], (api.orders, st))
+st, api = lead9('split', fail_lot=None, m='sim')
+ok('⑪d 🔬 對照:同一筆標的是模擬 → 照賣', shares(api, 'S') == 1500 and '2003' not in st['lead'], (api.orders, st))
+A.LEADER_WINDOW, A.LEADER_BOOKS, A.LEADER_ANCHOR, A.LEADER_ACCOUNT, A.fetch_json = _LW
 setv()
 
 for k, v in DEF.items(): setattr(A, k, v)

@@ -73,7 +73,7 @@ ok('②c `_mySyms` 也只有一份(⛔ 不可再手抄 Set)',
 // 🔁 V79.4.9 使用者選「換,次數維持 8 次」→ 排序值跟著 `_hotRule()` 走(預設照平均、換回舊的照保守下界);⛔ 不可在排序式子裡寫死某一個欄位
 ok('②d 排序值只走 `_pbKey`(跟著 `_hotRule()`),⛔ 不可寫死 exp 或 lb',
    /this\._pbKey\(b\) - this\._pbKey\(a\)/.test(SRC) && !/\(b\.exp - a\.exp\)/.test(SRC) && !/\(b\.lb - a\.lb\)/.test(SRC)
-   && /_pbKey\(x\) \{ return this\._hotRule\(\) === 'lb' \? /.test(SRC));
+   && /_pbKey\(x\) \{ const R = \(x && \('r' in x \|\| 'o' in x\)\) \? this\._hotRule\(\) : 'lb'; return R === 'lb' \? /.test(SRC));   // 舊格式那一列(沒有 r / o)照舊排法 lb(10/22 檢查代理第 2 條;行為由 test_hotrule ②b~②d 驗)
 
 // ③ ⛔ 整頁不可出現「開盤買」(⚠️ 先剝註解 —— 說明它的註解本身就含那三個字)
 const deck = SRC.slice(SRC.indexOf('async renderDeck()'), SRC.indexOf('async renderDeck()') + 9000);

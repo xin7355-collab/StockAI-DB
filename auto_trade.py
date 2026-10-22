@@ -137,7 +137,9 @@ PARK_LIVE_OK = False
 POLL_SEC = int(os.getenv('POLL_SEC', '60'))
 # 🔐 V79.4.9 真實 / 模擬帳戶用不同的狀態檔(10/22 檢查代理:同一個檔會互相蓋掉 —— 模擬買的被當成真的去賣、真的部位被模擬那一筆蓋掉)
 #   真實帳戶沿用原本的檔名(已經在跑的 ⛔ 不受影響);模擬帳戶改用 .sim 那一個;自己設了 STATE_PATH 就照你設的。
-STATE_PATH = os.getenv('STATE_PATH') or os.path.expanduser('~/.stockai_auto_trade.json' if LIVE else '~/.stockai_auto_trade.sim.json')
+_STATE_LIVE = os.path.expanduser('~/.stockai_auto_trade.json')        # 真實帳戶(= V79.4.8 以前兩個模式共用的那個檔)
+_STATE_SIM = os.path.expanduser('~/.stockai_auto_trade.sim.json')     # 模擬帳戶(V79.4.9 起)
+STATE_PATH = os.getenv('STATE_PATH') or (_STATE_LIVE if LIVE else _STATE_SIM)
 
 TW = timezone(timedelta(hours=8))
 
@@ -152,6 +154,28 @@ def tpe_now():
 
 
 def load_state():
+    # 📒 V79.4.9 模擬帳戶改用自己的檔(.sim.json)→ 第一次跑新版時新檔還不存在:接著用以前那個檔的紀錄
+    #   (使用者 10/22:「永豐自動買賣我都是拿來參考,看模擬買賣賺不賺錢」→ ⛔ 不可讓以前模擬的部位一夜之間不見、成績斷掉)。
+    #   ⛔ 舊檔一個字都不動(之後寫進新檔);自己設了 STATE_PATH 就照你設的。
+    if not LIVE and not os.getenv('STATE_PATH') and not os.path.exists(STATE_PATH) and os.path.exists(_STATE_LIVE):
+        try:
+            with open(_STATE_LIVE, encoding='utf-8') as f:
+                st = json.load(f)
+        except Exception:
+            return {}
+        st = st if isinstance(st, dict) else {}
+        for k, book in (st.pop('legacy', None) or {}).items():   # 真實帳戶第一次跑時搬走的舊部位 = 模擬留下的 → 放回原本那本帳
+            for sym, p in (book or {}).items():
+                st.setdefault(k, {}).setdefault(sym, p)
+        st.pop('mv', None)
+        for k in ('pos', 'lead', 'lead2'):   # 真實帳戶自己買的(標 live)⛔ 不搬進模擬帳戶
+            for sym in [s for s, p in (st.get(k) or {}).items() if (p or {}).get('m') == 'live']:
+                st[k].pop(sym)
+        if (st.get('park') or {}).get('m') == 'live':
+            st.pop('park')
+        n = sum(len(st.get(k) or {}) for k in ('pos', 'lead', 'lead2'))
+        log(f"📒 模擬帳戶改用自己的狀態檔({STATE_PATH})→ 這次先接著用以前的紀錄({_STATE_LIVE},{n} 筆部位;⛔ 那個檔不會被改)")
+        return st
     try:
         with open(STATE_PATH, encoding='utf-8') as f:
             return json.load(f)
@@ -323,6 +347,8 @@ def leader_step(api, sj, st, meta, today):
         log(f"   👑 📍 一年位置不到 {L.get('pos')}% → 不買、往下一名找:" + ' '.join(f"{r['sym']}({r['pos'] if r['pos'] is not None else '—'}%)" for r in _skip))
     # ① 賣:掉出前 2N 名(含掉出池子 / 沒過趨勢)
     for sym, pos in list(held.items()):
+        if pos.get('m') and pos.get('m') != _mode():
+            log(f"   👑 ⏭️ {sym} 是{'模擬' if pos.get('m') == 'sim' else '真實'}帳戶的紀錄 → 這次⛔ 不賣"); continue
         if sym in keep:
             log(f"   👑 🛡️ {sym} 還在前 {R['N'] * R['hyst']} 名(第 {L['all'][sym]['rank']} 名)→ 續抱"); continue
         try:
@@ -347,8 +373,12 @@ def leader_step(api, sj, st, meta, today):
         except Exception as e:
             got = _sold_part(held, sym, pos, sh, e)
             if got:
+                if sym in held:
+                    defer['sell'].append(sym)   # ⏱️ 剩下的今天就賣完(10/22 第三輪檢查代理:以前要等到下次換倉 = 好幾天沒人管)
                 save_state(st)
-                log(f"      🚨 {sym} 賣單只送出 {got} 股就出錯({e})→ 剩下的下次再賣(⛔ 已送出的不會重送);請到永豐 App 確認")
+                log(f"      🚨 {sym} 賣單只送出 {got} 股就出錯({e})→ 剩下的今天稍後"
+                    + ("(09:30~10:00 或尾盤)" if SPLIT else "(尾盤)")
+                    + "再賣,⛔ 已送出的不會重送;⛔ 請不要自己手動賣剩下那段(不然會多賣),到永豐 App 確認就好")
             else:
                 log(f"      ❌ 賣出失敗:{e}")
     # ② 買:大盤嚴格空頭不買(讀作戰清單的 mkt.bear60,⛔ 這裡不另算)
@@ -386,9 +416,9 @@ def leader_step(api, sj, st, meta, today):
                 log(f"   👑 ⏱️ {sym} 開盤跌 {g * 100:.1f}% → 開盤就買(這種情況等到尾盤反而比較貴)")
             if _buy_one(api, sj, st, held, r, px, slot, today) == 'stop':
                 break
-    if SPLIT and (defer['sell'] or defer['buy']):
+    if defer['sell'] or defer['buy']:   # 買的只有 split 會延後;賣的 split 開盤跌 ≥3% + 任何時段賣單只送出一部分剩下的
         st['lead_defer'] = defer
-        log(f"   👑 ⏱️ 稍後要做:賣 {defer['sell'] or '(無)'}(09:30~10:00)・買 {[x['sym'] for x in defer['buy']] or '(無)'}(13:25)")
+        log(f"   👑 ⏱️ 稍後要做:賣 {defer['sell'] or '(無)'}({'09:30~10:00' if SPLIT else '尾盤'})・買 {[x['sym'] for x in defer['buy']] or '(無)'}(13:25)")
     st['lead_day'] = today; save_state(st)
 
 
@@ -413,21 +443,22 @@ def _buy_one(api, sj, st, held, r, px, slot, today):
             log(f"      ❌ 下單失敗:{e}")
             return 'fail'
         log(f"      🚨 {sym} 整張送出了、零股那筆出錯({e})→ 只記已送出的 {got} 股(⛔ 不會再送);請到永豐 App 確認")
-    held[sym] = {'e': px, 'd': today, 'sh': got}
+    held[sym] = {'e': px, 'd': today, 'sh': got, 'm': _mode()}
     st['lead_buy_amt'] = float(st.get('lead_buy_amt') or 0) + got * px   # 🅿️ 今天花掉的現金(買 0050 前要扣)
     save_state(st)   # ⚠️ 先記再說(⛔ 不可重複下單)
     return 'ok'
 
 
 def leader_defer_step(api, sj, st, today, phase):
-    """⏱️ split 的第二段:phase='sell'(09:30~10:00 / 尾盤補賣)賣掉開盤跌 ≥3% 延後的;phase='buy'(13:25)買進延後的。
+    """⏱️ 第二段:phase='sell'(split 09:30~10:00 / 尾盤補賣)賣掉延後要賣的(split 開盤跌 ≥3% 的・任何時段賣單只送出一部分剩下的);
+    phase='buy'(split 13:25)買進延後的。
     ⛔ 只動 st['lead'];賣的跨日也要賣(⛔ 不可留著不賣),買的只買當天那一份(隔天就是舊名單)。"""
     df = st.get('lead_defer') or {}
     held = st.setdefault(df.get('book') or 'lead', {})   # 📚 延後的是哪一本帳的(舊格式沒有 book = 第 1 本)
     if phase == 'sell':
         for sym in list(df.get('sell') or []):
             pos = held.get(sym)
-            if not pos:
+            if not pos or (pos.get('m') and pos.get('m') != _mode()):
                 df['sell'].remove(sym); continue
             try:
                 contract = api.Contracts.Stocks[sym]
@@ -437,7 +468,7 @@ def leader_defer_step(api, sj, st, today, phase):
             if px <= 0:
                 continue
             sh = int(pos.get('sh') or 0)
-            log(f"   👑 🚪 {sym}(開盤跌 ≥3% 延後的那筆)→ 賣 {sh} 股 @ {px}")
+            log(f"   👑 🚪 {sym}(延後要賣的那筆)→ 賣 {sh} 股 @ {px}")
             if DRY_RUN:
                 log("      🧪 DRY_RUN:不送單"); df['sell'].remove(sym); continue
             try:
@@ -900,42 +931,23 @@ def _broker_qty(api, sj, code):
         return None
 
 
-def _legacy_check(api, sj, st):
-    """🔐 V79.4.9 第一次用新版跑**真實帳戶**:狀態檔裡沒標模式的舊部位,跟永豐庫存對一次。
-    以前模擬 / 真實共用同一個狀態檔 → 如果你以前跑的是模擬帳戶,那幾筆不是真的買的;
-    真實帳戶照它去賣,就可能賣到你**手動買的**同一檔(10/22 第二輪檢查代理)。
-    永豐庫存 ≥ 紀錄的股數 → 標成真實帳戶的(照舊管);不夠 → 搬到 `legacy`(⛔ 不自動賣、⛔ 不擋買,🚨 寫出來請你確認)。
-    查不到庫存 → 這次照舊(下次再對)。對完記 `mv` = 1,之後不再做。"""
+def _legacy_check(st):
+    """🔐 V79.4.9 真實帳戶第一次用新版跑:狀態檔裡**沒標模式**的舊部位一律當成以前模擬帳戶留下的 → 搬到 `legacy`,
+    ⛔ 不自動賣、⛔ 不擋買,🚨 列出來。(V79.4.8 以前模擬 / 真實共用同一個檔;使用者 10/22:沒用真實帳戶跑過、模擬是拿來參考的)
+    ⛔ 不拿永豐庫存去猜是不是真的(10/22 第三輪檢查代理:庫存夠 ≠ 是自動下單買的 —— 你手動買的同一檔也會被當成它的 → 停損時賣掉你的)。
+    之後買的都會標模式;做完記 `mv` = 1,之後不再做。"""
     if not LIVE or st.get('mv') == 1:
         return
-    todo = [(k, sym) for k in ('pos', 'lead', 'lead2') for sym, p in (st.get(k) or {}).items() if not p.get('m')]
-    if not todo:
-        st['mv'] = 1
-        return
-    try:
-        inv = {}
-        for x in api.list_positions(api.stock_account, unit=sj.constant.Unit.Share):
-            c = str(getattr(x, 'code', ''))
-            inv[c] = inv.get(c, 0) + int(getattr(x, 'quantity', 0) or 0)
-    except Exception as e:
-        log(f"🔐 ⚠️ 查不到永豐庫存({e})→ 狀態檔裡 {len(todo)} 筆舊部位這次先照舊當成真實帳戶的;下次啟動再對一次")
-        return
-    need = {}
-    for k, sym in todo:
-        need[sym] = need.get(sym, 0) + int(st[k][sym].get('sh') or 0)
     moved = []
-    for k, sym in todo:
-        p = st[k][sym]
-        if inv.get(sym, 0) >= need[sym]:
-            p['m'] = 'live'
-        else:
-            st.setdefault('legacy', {}).setdefault(k, {})[sym] = st[k].pop(sym)
-            moved.append(f"{sym} {int(p.get('sh') or 0)} 股(永豐庫存 {inv.get(sym, 0)} 股)")
+    for k in ('pos', 'lead', 'lead2'):
+        book = st.get(k) or {}
+        for sym in [s for s, p in book.items() if not p.get('m')]:
+            p = book.pop(sym)
+            st.setdefault('legacy', {}).setdefault(k, {})[sym] = p
+            moved.append(f"{sym} {int(p.get('sh') or 0)} 股")
     if moved:
-        log("🔐 🚨 狀態檔裡這幾筆舊部位永豐庫存不夠 → 當成以前**模擬帳戶**留下的紀錄,⛔ 不自動賣、⛔ 不擋買:"
-            + '・'.join(moved) + "。如果其實是自動下單在真實帳戶買的(後來你手動賣掉一部分),剩下的請自己照出場規則處理")
-    else:
-        log(f"🔐 ✅ 狀態檔裡 {len(todo)} 筆舊部位跟永豐庫存對得上 → 照舊管")
+        log("🔐 🚨 狀態檔裡有以前留下、沒標「模擬 / 真實」的部位 → 一律當成以前模擬帳戶的紀錄:⛔ 不自動賣、⛔ 不擋買:"
+            + '・'.join(moved) + "。如果其實是你在真實帳戶用自動下單買的,請自己照 App 決策台的出場線處理,並把這段 log 傳給 Claude")
     st['mv'] = 1
     save_state(st)
 
@@ -1012,9 +1024,14 @@ def _past_close():
     return tpe_now()[1] >= 13 * 60 + 30
 
 
+def _today_buy(st):
+    """今天自動下單花掉的錢(🔥 + 👑)—— 湊交割款的提醒一律看這個(⛔ 只看 🔥 會漏掉只有 👑 買的日子)"""
+    return float(st.get('hot_buy_amt') or 0) + float(st.get('lead_buy_amt') or 0)
+
+
 def _park_manual_alert(st):
     """湊交割款做不到(0050 一直沒報價 / 程式太晚啟動)→ 🚨 講清楚要你做什麼(⛔ 不可安靜結束)"""
-    amt = float(st.get('hot_buy_amt') or 0) + float(st.get('lead_buy_amt') or 0)
+    amt = _today_buy(st)
     own = int((st.get('park') or {}).get('sh') or 0)
     log(f"🅿️ 🚨🚨 今天自動下單買了約 {amt:,.0f} 元的股票,但還沒賣 0050 湊交割款(0050 一直沒有報價,或程式太晚啟動)。"
         f"請確認交割戶在 T+2 早上 9 點前有這筆錢;不夠的話今天 14:00~14:30 可以用盤後定價手動賣它買的 0050(最多 {own} 股)")
@@ -1038,7 +1055,7 @@ def park_step(api, sj, st, day, sleep_fn=None):
     lead_buy = float(st.get('lead_buy_amt') or 0)
     px, ref = _park_quote(api, sleep_fn=sleep_fn)
     if px <= 0:
-        if hot_buy > 0 and _park_has_own(st):
+        if hot_buy + lead_buy > 0 and _park_has_own(st):
             log("🅿️ 🚨 0050 一直沒有報價 → 還沒賣 0050 湊今天買股票的錢,下一輪再試")
         else:
             log("🅿️ ⚠️ 0050 沒有報價 → 下一輪再試")
@@ -1226,10 +1243,10 @@ def main():
     _, _, today = tpe_now()
     # ⚠️ `done`(今天買過誰)每天重置,但部位(`pos` / `lead` / `lead2` / `park`)與延後要賣的(`lead_defer`)⛔ 絕不可跟著清掉
     st = reset_day(st, today)
-    _legacy_check(api, sj, st)   # 🔐 真實帳戶第一次跑新版:舊部位跟永豐庫存對一次(以前可能是模擬帳戶留下的)
+    _legacy_check(st)   # 🔐 真實帳戶第一次跑新版:沒標模式的舊部位一律當成模擬留下的(⛔ 不自動賣)
     log(f"📒 今天已下過:{st['done'] or '(無)'}")
     _, _m0, _ = tpe_now()
-    if _m0 >= 13 * 60 + 30 and st.get('park_day') != today and float(st.get('hot_buy_amt') or 0) > 0 and _park_has_own(st):
+    if _m0 >= 13 * 60 + 30 and st.get('park_day') != today and _today_buy(st) > 0 and _park_has_own(st):
         _park_manual_alert(st)   # 🅿️ 程式太晚啟動(或中途掛掉):今天買的還沒賣 0050 湊交割款 → 🚨 講清楚
 
     # 👑 開盤時段(LEADER_WINDOW=open / split):09:01~09:10 做一次,之後照常等尾盤
@@ -1248,7 +1265,7 @@ def main():
             #    PARK=0 但手上還有它買的 0050 也要做(湊交割款);還是做不到 → 🚨 講清楚要你手動做什麼
             if (PARK or _park_has_own(st)) and st.get('park_day') != day:
                 r = park_step(api, sj, st, day) if mins < 13 * 60 + 30 else 'retry'
-                if r == 'retry' and float(st.get('hot_buy_amt') or 0) > 0 and _park_has_own(st):
+                if r == 'retry' and _today_buy(st) > 0 and _park_has_own(st):
                     _park_manual_alert(st)
             log(f"⏰ 已過 {EOD_TO // 60}:{EOD_TO % 60:02d},今天結束"); break
         if mins < EOD_FROM:
@@ -1268,12 +1285,12 @@ def main():
         # 👑 領頭羊(尾盤時段):一天一次,⛔ 不受上面那套的空頭 continue 影響(它自己只擋買)
         if LEADER and LEADER_WINDOW == 'eod':
             leader_step(api, sj, st, meta, day)
-        # ⏱️ split:補賣沒賣成的 + 13:25 買進延後的(買只買今天那一份)
-        if LEADER and LEADER_WINDOW == 'split':
+        # ⏱️ 補賣延後要賣的(split 開盤跌 ≥3% 延後的・任何時段賣單只送出一部分剩下的)+ split 13:25 買進延後的(買只買今天那一份)
+        if LEADER:
             _df = st.get('lead_defer') or {}
             if _df.get('sell'):
-                log("👑 ⏱️ 早上延後要賣的還沒賣成 → 尾盤補賣"); leader_defer_step(api, sj, st, day, 'sell')
-            if _df.get('buy') and mins >= LEADER_DEFER_BUY_FROM:
+                log("👑 ⏱️ 延後要賣的還沒賣成 → 尾盤補賣"); leader_defer_step(api, sj, st, day, 'sell')
+            if LEADER_WINDOW == 'split' and _df.get('buy') and mins >= LEADER_DEFER_BUY_FROM:
                 leader_defer_step(api, sj, st, day, 'buy')
 
         # 🔥 買進(V79.4.9 搬進 hot_step 才測得到;⛔ 行為不變,只多「已經持有就不再買」)

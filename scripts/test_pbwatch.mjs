@@ -151,7 +151,7 @@ ok('⑤a4 _patternFitBacktest 有回 sd', /const sd = n > 1 \? Math\.sqrt/.test(
 // 🔁 V79.4.9 改釘用意:畫面主數字 = 排序用的那個值,而且「那個值」全 App 只有一份(`_pbKey`,跟著 `_hotRule()` 走)
 ok('⑤a5 前端顯示用排序的那個值(`_pbKey`)', /const shown = this\._pbKey\(x\);/.test(src));
 ok('⑤a5b 🚨 排序也用同一個值,而且式子只准有一份(⛔ 手抄第二份遲早只改到一邊)',
-   (src.match(/_pbKey\(x\) \{ return this\._hotRule\(\) === 'lb'/g) || []).length === 1
+   (src.match(/_pbKey\(x\) \{ const R = \(x && \('r' in x \|\| 'o' in x\)\) \? this\._hotRule\(\) : 'lb'; return R === 'lb'/g) || []).length === 1
    && /this\._pbKey\(b\) - this\._pbKey\(a\)/.test(src) && (src.match(/this\._pbSort\(/g) || []).length >= 3);
 ok('⑤a6 沒有觸發價(loose)時⛔ 不可顯示「漲過 null」', /const hasTrig = x\.trig != null/.test(src) && /這招不是靠價位觸發/.test(src));
 // ⚠️ V72.9.4 起這條由 ⑤a10 用「進位到跳動單位之後」的版本承接(更嚴)。

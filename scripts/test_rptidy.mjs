@@ -25,10 +25,11 @@ const ok = (n, c, extra = '') => { console.log(`${c ? '✅' : '❌'} ${n}${c ? '
     const _i0 = SRC.indexOf('_rpDateBarHtml(C) {');
     const fn = SRC.slice(_i0, SRC.indexOf('_RP_SNAP_KEEP:', _i0));
     ok('⓪a 切得到 _rpDateBarHtml(空過守門)', fn.length > 400, String(fn.length));
+    // 🗑️ V79.0.0 券商分點整組移除 → 日期列的「分點日期」那格跟著拿掉;現在三格 = 行情(_dChip)/ 營收月 / 財報季
     ok('ⓐs 日期走既有的 `_dChip`(⛔ 禁止自己拼日期字串 —— 過期提醒是它做的)',
-       /this\._dChip\(C\.kDate/.test(fn) && /this\._dChip\(C\.fenDate/.test(fn), '');
-    ok('ⓐs2 ⛔ 零新計算:四個值全部讀 ctx 既有欄位(⛔ 不可自己去翻 K 線或財報算)',
-       /C\.kDate/.test(fn) && /C\.yoyM/.test(fn) && /C\.fin\.q/.test(fn) && /C\.fenDate/.test(fn)
+       /this\._dChip\(C\.kDate/.test(fn), '');
+    ok('ⓐs2 ⛔ 零新計算:三個值全部讀 ctx 既有欄位(⛔ 不可自己去翻 K 線或財報算)',
+       /C\.kDate/.test(fn) && /C\.yoyM/.test(fn) && /C\.fin\.q/.test(fn)
        && !/_finTrend|rawDailyData|_loadFund/.test(fn), '');
     ok('ⓐs3 一格都沒有就整條不顯(⛔ 不留空殼)', /if \(!on\.length\) return '';/.test(fn), '');
     // ⚠️ 月份 / 季別不是日期 → ⛔ 不可套 _dChip 的「幾天沒更新」邏輯(8 月營收不會因為過了 5 天就變舊)
@@ -80,8 +81,8 @@ const R = await page.evaluate(async () => {
     const ctl = (() => {
         try {
             const h0 = A._rpDateBarHtml(C);
-            const h1 = A._rpDateBarHtml(Object.assign({}, C, { kDate: '1999-01-04', fenDate: '1999-01-05' }));
-            return { same: h0 === h1, hit: /01\/04/.test(h1) && /01\/05/.test(h1), h1: h1.replace(/<[^>]*>/g, ' ').trim() };
+            const h1 = A._rpDateBarHtml(Object.assign({}, C, { kDate: '1999-01-04' }));
+            return { same: h0 === h1, hit: /01\/04/.test(h1), h1: h1.replace(/<[^>]*>/g, ' ').trim() };
         } catch (e) { return { err: String(e) }; }
     })();
     // ⚠️ 斷言範圍縮到「被改的那一塊」:只取 rpQuick,⛔ 不掃整頁(§0 也有那些日期,會救活)
@@ -106,13 +107,13 @@ await browser.close();
 ok('ⓐ0 日期列渲染得出來(空過守門)', R.has && R.n >= 2, `has=${R.has} n=${R.n}`);
 ok('ⓐ 在 ⚡ 快速判別表卡內,而且在收起來也看得到的 summary 裡(資料日期鐵則:收起來看不到日期 = 沒標)',
    R.inQuick && R.headFirst, `inQuick=${R.inQuick} headFirst=${R.headFirst} | ${R.txt}`);
-ok('ⓐ2 四格的值逐字對得上 ctx(⛔ 不是另算一份)', (() => {
+ok('ⓐ2 三格的值逐字對得上 ctx(⛔ 不是另算一份)', (() => {
     const t = R.txt;
     const mm = R.ctx.yoyM ? String(R.ctx.yoyM).slice(5, 7) : null;
     const qm = R.ctx.q.match(/^(\d{4})-(\d{2})/);
     return (!mm || t.includes(`營收 ${mm}月`)) && (!qm || t.includes(`財報 ${qm[1]} Q${Math.ceil(+qm[2] / 3)}`));
 })(), `${R.txt} | ctx=${JSON.stringify(R.ctx)}`);
-ok('ⓐ3 ⭐⭐ 決定性對照:把 kDate/fenDate 覆寫成 1999-01-04/05 → 日期列必須跟著變(⛔ 寫死就紅)',
+ok('ⓐ3 ⭐⭐ 決定性對照:把 kDate 覆寫成 1999-01-04 → 日期列必須跟著變(⛔ 寫死就紅)',
    !R.ctl.err && !R.ctl.same && R.ctl.hit, JSON.stringify(R.ctl));
 ok('ⓐ4 指路到 §0(陷阱 #32:完整 10 個來源在下面,⛔ 不可讓使用者以為只有這 4 個)',
    /§0/.test(R.txt), R.txt);

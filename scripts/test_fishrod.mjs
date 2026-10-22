@@ -92,8 +92,9 @@ ok(R.pools.length >= 7 && needPools.every(k => R.st[k] && R.st[k].lv && R.st[k].
 ok(R.chips.every(c => c.tip.length >= 20), '③b 每一顆 chip 的說明都掛在 title 上', `最短 ${Math.min(...R.chips.map(c => c.tip.length))} 字`);
 ok(/振幅/.test(R.txt) && /年化波動率/.test(R.txt) && /不是同一個數字/.test(R.txt),
   '⑤ 🚨 池子的門檻(振幅)≠ 拋竿的門檻(年化波動率)—— 要主動講開');
-ok(/偏多頭/.test(R.txt) && /空頭沒有驗證過/.test(R.txt) && /取決於出場規則/.test(R.txt),
-  '⑥ 兩條限制⛔ 一條都不可省(窗口偏多頭 / 贏不贏大盤取決於出場)');
+// 🔁 V79.4.8 那兩條改寫成「16 年那一段在回測數字頁」+「出場那條是只抽 600 檔、舊買法那一輪,全市場還沒重驗」→ 改釘兩條限制本身還在
+ok(/偏多頭/.test(R.txt) && /取決於出場/.test(R.txt) && /只抽 600 檔/.test(R.txt) && /全市場還沒重驗/.test(R.txt),
+  '⑥ 兩條限制⛔ 一條都不可省(窗口偏多頭 / 贏不贏大盤取決於出場 —— 那一輪只抽 600 檔、全市場還沒重驗)');
 ok(R.txt.includes(String(R.dead.relSector)) && R.txt.includes(String(R.dead.relGene))
    && R.txt.includes(String(R.dead.drop2)) && new RegExp(R.dead.pass + '/' + R.dead.gates).test(R.txt),
   '⑦ 舊漏斗的死因要跟 `_CAST_DEAD` 對得上(⛔ 文案與常數脫鉤 = 重跑探針畫面不會變)');
