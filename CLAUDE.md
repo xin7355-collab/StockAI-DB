@@ -432,6 +432,7 @@ LAB 條目是手寫的、混著 `**x**`,而 **template literal 不會幫你轉**
 `daily_miner.yml` deploy job 內 `if [ "$STOCKS" -lt 100 ] then exit 1`：
 - 採礦結果不足 100 檔（artifact 下載失敗、merge 跑掉）→ 拒絕 force-push
 - 看到 workflow 整體 success 但 gh-pages 沒更新時，先看 deploy job log 有沒有這條訊息
+- ⏱️ V79.5.5 deploy job 時限 **30 → 40 分**、「🎯 今日訊號掃描」那一步**自己最多 8 分**(使用者 10/22 選):第二輪平常整個 job 就要 26 分,10/22 #634 再加上安裝瀏覽器卡 7 分 → 撞 30 分,撿回 / 部署 / 推 data 三步全部沒跑(資料由前一輪部署,沒遺失)。⭐ **標了「不擋部署」(`continue-on-error`)的步驟也要有自己的時限** —— 不然它照樣吃得掉整個 job 的時限。⛔ job 時限也別超過 60(共用部署鎖)。`test_deploy_relay ⑥` 釘住(兩個決定性對照)
 
 ### 修改後驗證流程
 1. 改 main → push（純前端 index.html 走 `deploy_pages.yml`；採礦 py 走 `daily_miner.yml`）
@@ -765,7 +766,7 @@ const ghBase = window.location.href.split('?')[0].split('#')[0];
      `except Exception as _e_mh` 吞成 `margin_error`)。⛔ 誤報率高的版本已丟棄(第一版 345 筆全是閉包誤判)。
 3. `python3 scripts/check_dom_ids.py`(DOM id 唯一性 — V71.0.7 起取代已失效的 check_prompt_vars.py)
    + **`node scripts/check_dup_key.mjs`**(同一個物件字面量裡重複定義同名鍵 → 後面那個贏、前面整段變死碼 — V74.7.4 新增,實跑踩到才寫的)
-   + **`python3 scripts/test_deploy_relay.py`**(🛟 daily_miner 部署窗口的「撿回」守門 — 2026-09-10 新增,見下方陷阱 #41)
+   + **`python3 scripts/test_deploy_relay.py`**(🛟 daily_miner 部署窗口的「撿回」守門 — 2026-09-10 新增,見下方陷阱 #41;⑥ V79.5.5 部署 job 時間預算:訊號掃描自己限時 + job 時限夠)
    + **`node scripts/test_dupnum.mjs`**(🔢 同一畫面⛔ 不可有兩個數字 / 文案⛔ 不可跟實測打架 —— V77.1.4 新增:今日漲跌幅唯一來源 ・行事曆⛔ 不給部位指令 ・前綴撞名 ・產業別⛔ 不印代碼 ・全市場統計要標日期 ・clamp 夾到要說出來。⭐ 6 種注入全部叫得出來)
    + **`node scripts/test_exitdist.mjs`**(🚪 距出場線多遠 / 今天會不會碰到 / 智慧單觸發價 —— V77.4.9 新增;三條線讀既有函式、ATR 用今天、觸發價 `_floorTick`、有要盯的就⛔ 不可寫「沒有」;5 種注入全紅)
    + **`node scripts/test_beargate.mjs`**(🐻 V77.6.5 新預設的守門:App `_bear60Of` 跟回測 `notBear60` **逐日一致** ・最長天數三份實作一致 ・唐奇安 40 日 App == `auto_trade.py`(會動真錢)・決策台空頭只擋買進 + 決定性對照 ・一次性搬家只動舊預設 `don`;4 種注入全紅)

@@ -209,6 +209,68 @@ print(len(base))
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+# ── ⑥ 部署 job 的時間預算(V79.5.5,10/22 #634 實測抓到)──────────────────
+# 🚨 #634:合併那步 22 分 + 「今日訊號掃描」安裝瀏覽器卡 7 分 → 撞 30 分 job 時限
+#    → 撿回 / 部署 / 推 data 三步全部沒跑(那一步寫著「不擋部署」,卻吃得掉整個 job 的時限)。
+#    10/21 第二輪整個 job 26 分(DEPLOY_NORMAL)= 原本只剩 4 分餘裕。
+#    ⭐ 使用者 10/22 選:訊號掃描自己最多 8 分 + job 時限 30 → 40。
+DEPLOY_NORMAL = 26
+SCAN_STEP = '🎯 今日實測訊號掃描(daily_signal_scan)'
+
+
+def deploy_budget(txt):
+    """回 (job 時限, {步驟名: (continue-on-error, 步驟時限)});只看 deploy job。"""
+    i = txt.find('\n  deploy:\n')
+    if i < 0:
+        return None, {}
+    blk = txt[i:]
+    m = re.search(r'\n    timeout-minutes: (\d+)', blk)
+    steps = {}
+    pos = [mm.start() for mm in re.finditer(r'\n      - name: ', blk)]
+    for k, st in enumerate(pos):
+        seg = blk[st:pos[k + 1] if k + 1 < len(pos) else len(blk)]
+        name = seg.split('\n')[1].replace('      - name: ', '').strip()
+        tm = re.search(r'\n        timeout-minutes: (\d+)', seg)
+        steps[name] = ('continue-on-error: true' in seg, int(tm.group(1)) if tm else None)
+    return (int(m.group(1)) if m else None), steps
+
+
+def budget_problems(txt):
+    job_t, steps = deploy_budget(txt)
+    bad = []
+    if SCAN_STEP not in steps:
+        return ['找不到訊號掃描那一步(名字改了?)']
+    coe, st = steps[SCAN_STEP]
+    if not coe:
+        bad.append('訊號掃描要 continue-on-error(不擋部署)')
+    if st is None or st > 10:
+        bad.append(f'訊號掃描要有自己的時限且 ≤ 10 分(現在 {st})')
+    if job_t is None:
+        bad.append('deploy job 沒有 timeout-minutes')
+    else:
+        need = DEPLOY_NORMAL + (st or 0) + 4
+        if job_t < need:
+            bad.append(f'job 時限 {job_t} < 平常 {DEPLOY_NORMAL} + 掃描上限 {st} + 4 = {need}')
+        if job_t > 60:
+            bad.append(f'job 時限 {job_t} > 60(共用部署鎖,卡太久會擠掉排隊中的其他部署)')
+    return bad
+
+
+_jt, _steps = deploy_budget(text)
+ok('⑥ 抽得到 deploy job 的步驟(≥ 15 步,否則是抽取器壞了)', len(_steps) >= 15, len(_steps))
+_bp = budget_problems(text)
+ok(f'⑥ ⭐ 部署 job 時間預算夠(job {_jt} 分・訊號掃描上限 {_steps.get(SCAN_STEP, (0, None))[1]} 分)', not _bp, _bp)
+# 決定性對照(兩條規則各自叫得出來):
+#   甲 拿掉訊號掃描自己的時限(= #634 那天)→ 紅
+#   乙 job 時限退回 30(掃描照樣 8 分)→ 26 + 8 + 4 = 38 > 30 → 紅
+_noscan = re.sub(r'(- name: ' + re.escape(SCAN_STEP) + r'\n(?:        [^\n]*\n)*?)        timeout-minutes: \d+\n', r'\1', text, count=1)
+_job30 = re.sub(r'(\n  deploy:\n(?:.*\n)*?    timeout-minutes: )\d+', r'\g<1>30', text, count=1)
+ok('⑥ 決定性對照甲:拿掉訊號掃描自己的時限 → 一定紅', _noscan != text and bool(budget_problems(_noscan)), budget_problems(_noscan))
+ok('⑥ 決定性對照乙:job 時限退回 30 分 → 一定紅', _job30 != text and bool(budget_problems(_job30)), budget_problems(_job30))
+_others = [n for n, (c, t) in _steps.items() if c and t is None and n != SCAN_STEP]
+if _others:
+    print(f"   ℹ️ 其他標了不擋部署、但沒有自己時限的步驟(目前沒卡過,先列出來):{', '.join(_others)}")
+
 run_case(single_branch=False)
 run_case(single_branch=True)
 

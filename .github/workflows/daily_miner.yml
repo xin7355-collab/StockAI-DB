@@ -286,7 +286,10 @@ jobs:
     # 各 batch 已 timeout-safe 修剪（manifest）+ origin/data 底層 + STOCKS<100 守門，三重保險擋空/髒部署。
     if: ${{ always() }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # ⏱️ V79.5.5 30 → 40(使用者 10/22 選):第二輪平常整個 job 就要 26 分(合併那步 16~22 分),
+    #   10/22 #634 再加上訊號掃描安裝瀏覽器卡 7 分 → 撞 30 分,撿回 / 部署 / 推 data 三步全部沒跑。
+    #   ⛔ 別再調回 30;也別超過 60(共用部署鎖,卡太久會擠掉排隊中的其他部署)。test_deploy_relay ⑥ 釘住。
+    timeout-minutes: 40
     # V14.12 — 與 deploy_pages.yml 共用 group,序列化 gh-pages push 避免 race
     #         只 deploy job 加 group(不加在整 workflow),確保 mine 90 分不會擋 deploy_pages
     concurrency:
@@ -503,6 +506,9 @@ jobs:
       #   ⛔ 失敗一律不擋部署(它是加值資料,前端讀不到就整條不顯示)。
       - name: 🎯 今日實測訊號掃描(daily_signal_scan)
         continue-on-error: true
+        # ⏱️ V79.5.5 自己最多 8 分(平常 2 分):「不擋部署」也要不能吃掉整個 job 的時限
+        #   (10/22 #634 安裝瀏覽器卡 7 分 → 後面的部署全部沒跑)。超過就跳過這一步,照常部署。
+        timeout-minutes: 8
         run: |
           git fetch origin main --depth=1 2>/dev/null || true
           git checkout origin/main -- index.html 2>/dev/null || true
