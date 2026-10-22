@@ -60,6 +60,8 @@ const browser = await chromium.launch({ ...(fs.existsSync(_exec) ? { executableP
 const page = await browser.newPage({ viewport: { width: 390, height: 900 } });
 await page.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); s.strategy = 'lead'; s.stratUnlock = true; localStorage.setItem('proTerminalSettings', JSON.stringify(s)); } catch (_) {} });   // 🎯 V77.9.6 這支測的是 👑 那一套 → 先切成 👑(🧬 預設另由 test_stratswitch 測)
 const errs = []; page.on('pageerror', e => errs.push(e.message));
+// 🏁 V79.5.3 成績單起算日預設 10/22 → 這支釘的是「錨點 9/24 起」的換倉規則 → 起算日設回 9/24(起算日本身由 test_recorace 測)
+await page.addInitScript(() => { try { localStorage.setItem('proRecoStart', '2026-09-24'); } catch (_) {} });
 await page.goto(pathToFileURL(path.join(ROOT, 'pro.html')).href, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof PRO !== 'undefined' && typeof PRO._leaderLedgerLoad === 'function', null, { timeout: 60000 });
 

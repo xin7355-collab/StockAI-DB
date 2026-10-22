@@ -5465,11 +5465,36 @@ const PRO = {
   //  ③ 結算 = `_settleReplay` + `_stlEnrich`(跟漁獲籃、回測一字不差;⛔ 不在這裡再寫一份持有迴圈)。
   //  ④ 同一檔還持有中 → 後面幾天再被推薦**不重複開倉**(決策台「已有部位不再買」+ cast_probe DEDUP 同一件事)。
   //  ⑤ 樣本 <10 筆⛔ 不下結論;這是紙上成績(進場 = 推薦日收盤),⛔ 不是實盤。
-  _RECO_PICKS: 2,                 // = index.html `_DECK_TRACK49.picks`(測試 📒㉛ 跨檔比對,⛔ 改一邊會被擋)
+  _RECO_PICKS: 2,                 // = index.html `_DECK_TRACK49.picks`(test_recorace ⓐ 跨檔比對,⛔ 改一邊會被擋)
   _RECO_SINCE: '2026-09-12',      // pick_snapshot 開始存 hq/bear 的那一天
   // 🏁 V78.2.2 四頁共用起點(使用者:「給我同一個起點,之前的可以刪除」)= 👑 第一次換倉日(四張都有資料的最早一天)。
   //   ⛔ 不刪 pick_history.json,只是這天以前的推薦不算(四張才比得了)
+  //   🔁 V79.5.3 起這個常數只是「起算日」的其中一個選項(9/24 四套都有資料);成績單一律讀 `_recoStart()`
   _RECO_COMMON: '2026-09-24',
+  // 🏁 V79.5.3 成績單**起算日可以換**(使用者 10/22:「成績單的部分設計重新計時日期起點」→ 選預設「10/22 新規則上線」)。
+  //   ⛔ 存 pro 自己的 `proRecoStart`(⛔ 不寫進 proTerminalSettings —— 那是散戶救星的設定,兩個主畫面 App 不互通);
+  //   成績單每一塊(🏁 100 萬同一天起跑 / 🏁 同一起點比一比 / 📒 每一頁)都讀這一支,⛔ 不再直接讀 `_RECO_COMMON`。
+  //   👑 錨點不動(換倉日照舊),只收「起算日當天或之後成交」的,而且從空手開始(= 那天才開始跟的人)。
+  _RECO_STARTS: [
+    ['2026-10-22', '10/22 新規則上線', '照平均排・空頭也照買・閒錢停 0050 的第一份名單(隔天收盤才可能買到)'],
+    ['2026-10-21', '10/21 觸發價修好', '明日作戰清單從這天起才有觸發價(之前五週都沒有,自動下單一檔都沒買)'],
+    ['2026-09-24', '9/24 四套都有資料', '👑 第一次換倉日 = 以前的共用起點'],
+  ],
+  _RECO_START_DEF: '2026-10-22',
+  _recoToday() { return new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10); },   // 台北日期(⛔ 不用裝置時區)
+  _recoStartOk(v) { return /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && v >= this._RECO_SINCE && v <= this._recoToday(); },
+  _recoStart() {
+    try { const v = localStorage.getItem('proRecoStart'); if (this._recoStartOk(v)) return v; } catch (_) {}
+    return this._RECO_START_DEF;
+  },
+  selRecoStart(v) {
+    if (this.buzz) this.buzz(10);
+    v = String(v || '').slice(0, 10);
+    // 選回預設 = 刪掉這個鍵(⛔ 不存死:以後預設換了,沒自己選過的人跟著新預設走);不合法的日期一律回預設
+    try { if (this._recoStartOk(v) && v !== this._RECO_START_DEF) localStorage.setItem('proRecoStart', v); else localStorage.removeItem('proRecoStart'); } catch (_) {}
+    this._cmpAllSig = null; this._cmpAll = null; this._rlSig = null; this._rl = null; this._rlCmpSig = null; this._rlCmp = null; this._raceSig = null; this._race = null;
+    this._recoLedgerRender();
+  },
   _recoPicks(pb, rule) {
     const rows = (pb || []).filter(x => x && x.s && ('hq' in x));
     if (!rows.length) return null;                                   // 舊快照沒有旗標 → 重建不出來(⛔ 不猜)
@@ -5532,6 +5557,7 @@ const PRO = {
     // 📈 V77.2.5 再收 `srcArg` —— 三張清單各自獨立跑(⛔ 三張的筆數不可相加)。
     const rule = ruleArg || this._exitRule();
     const src = srcArg || 'pb';
+    const S = this._recoStart();                  // 🏁 V79.5.3 起算日可以換(⛔ 不再直接讀 `_RECO_COMMON`)
     // 🧬 `fit` / `mix` 要用到 index.html 的門檻與黑名單 → 先把它載進來(⛔ 不在這裡抄一份)
     if (src !== 'pb') { try { await this.loadIdx(); } catch (_) {} }
     const H = await this.fetchJson('data/pick_history.json', 12000);
@@ -5540,13 +5566,25 @@ const PRO = {
     //   ⛔ 只丟「加權已經有更晚的日子、而那天不在加權日曆裡」的;加權還沒更新到的最新那天照留(無法判斷,⛔ 不猜)。
     const _T = this._twii, _tLast = _T && _T.days.length ? _T.days[_T.days.length - 1] : null;
     const _isGhost = d => !!(_T && _tLast && d < _tLast && !_T.m.has(d));
+    // 🎑 V79.5.3 假日快照只數**起算日之後**的(⛔ 以前把起算日之前的也算進去:畫面寫「27 天不算」,其實只有 9/25 一天)
     const days0 = (H && Array.isArray(H.days) ? H.days : [])
-      .filter(d => d && d.d && (Array.isArray(d.pb) || Array.isArray(d.sig)));
-    const days = days0.filter(d => !_isGhost(d.d) && String(d.d).slice(0, 10) >= this._RECO_COMMON).slice().sort((a, b) => (a.d < b.d ? -1 : 1));
-    const out = { rule, src, days: days.length, ghost: days0.length - days.length, since: null, skipped: 0, trades: [], noK: [],
+      .filter(d => d && d.d && (Array.isArray(d.pb) || Array.isArray(d.sig)) && String(d.d).slice(0, 10) >= S);
+    const days = days0.filter(d => !_isGhost(d.d)).slice().sort((a, b) => (a.d < b.d ? -1 : 1));
+    const out = { rule, src, start: S, days: days.length, ghost: days0.length - days.length, since: null, skipped: 0, trades: [], noK: [],
+                  // 🔥 V79.5.3 照 App 真正的買法(只有 🔥 這張):沒有觸發價 / 收盤沒到觸發價 / 名單是最新那份(明天才知道)/ 已經抱著
+                  mech: src === 'pb' ? 'trig' : 'paper', noTrig: [], miss: [], pend: [], heldSkip: 0,
                   geneErr: (src !== 'pb' && !this._geneRule()) ? (this._idxErr || '解析不到門檻') : null };
     const open = new Map();                       // sym → 那筆的出場日('9999' = 還持有中)
     const K = this._rlK = this._rlK || {};        // K 線快取(⛔ 同一檔不重抓)
+    const kOf = async s => {
+      if (K[s] === undefined) {
+        try { const raw = await this.fetchJson(`data/${s}.json`, 9000); K[s] = (Array.isArray(raw) ? raw : []).filter(r => r && +r.close > 0); }
+        catch (_) { K[s] = []; }
+      }
+      return K[s];
+    };
+    // 加權日曆上「名單那天的下一個交易日」(⛔ 加權還沒有那一天 = 這是最新那份名單,明天收盤才知道買不買)
+    const nextTd = d => { const A = _T ? _T.days : []; let lo = 0, hi = A.length; while (lo < hi) { const m = (lo + hi) >> 1; if (A[m] <= d) lo = m + 1; else hi = m; } return lo < A.length ? A[lo] : null; };
     // 🧪 混搭 = 兩張聯集。⛔ 任一張重建不出來就整天跳過 ——
     //   只算得出來的那一半會讓它看起來像「兩張都買」,但其實只買了一張(同名不同義)。
     const picksOf = (day) => {
@@ -5563,14 +5601,36 @@ const PRO = {
       if (!picks) { out.skipped++; continue; }
       out.since = out.since || day.d;
       for (const x of picks) {
+        if (src === 'pb') {
+          // 🔥 V79.5.3 = 自動下單 `hot_step` / 回測 LISTK=2:前一晚名單前 2 名 → 隔天收盤 ≥ 觸發價才買(收盤價成交)。
+          //   ⛔ 以前用「推薦那天的收盤」買 —— 名單要收盤後才出來,那個價**根本買不到**(陷阱 #58 在成績單又一次)。
+          //   ⛔ 沒有觸發價的不買(自動下單一律跳過;那一格⛔ 不遞補第 3 名)。
+          const ld = String(day.d).slice(0, 10), trig = +x.trig;
+          if (!(trig > 0)) { out.noTrig.push({ sym: String(x.s), ld, k: x.k }); continue; }
+          const F = nextTd(ld);
+          if (!F) { out.pend.push({ sym: String(x.s), ld, trig, k: x.k, c: +x.c }); continue; }
+          const until = open.get(x.s);
+          if (until && until >= F) { out.heldSkip++; continue; }   // ④ 還抱著 → 不重複買(= 自動下單「已持有的⛔ 不再買」)
+          const rows = await kOf(x.s);
+          let i1 = -1; for (let i = rows.length - 1; i >= 0; i--) { const dd = this._dstr(rows[i].date); if (dd === F) { i1 = i; break; } if (dd < F) break; }
+          const t = { sym: x.s, d: F, ld, trig, px: trig, k: `${x.k || ''}・${ld.slice(5).replace('-', '/')} 名單・觸發 ${this._px(trig)}`, st: null };
+          if (i1 < 1) { out.noK.push(x.s); out.trades.push(t); continue; }   // ⛔ 讀不到那天的 K → 照實寫,⛔ 不猜買沒買到
+          const c = +rows[i1].close;
+          if (!(c >= trig)) { out.miss.push({ sym: String(x.s), ld, d: F, trig, c }); continue; }   // 收盤沒到觸發價 → 那天不買(⛔ 不追)
+          const r = this._settleReplay(rows, i1, rule);
+          if (r) {
+            t.st = this._stlEnrich(r); t.px = c;
+            const pc = +rows[i1 - 1].close;
+            t.lu = pc > 0 && (c / pc - 1) * 100 >= this._LEAD.limUp;   // 🟥 收盤鎖漲停那天:實際排隊可能買不到(數字照買到算,畫面要講)
+          }
+          if (!t.st) out.noK.push(x.s);
+          open.set(x.s, (t.st && !t.st.open) ? t.st.d1 : '9999-99-99');
+          out.trades.push(t);
+          continue;
+        }
         const until = open.get(x.s);
         if (until && until >= day.d) continue;    // ④ 還持有中 → 不重複開倉
-        let rows = K[x.s];
-        if (rows === undefined) {
-          try { const raw = await this.fetchJson(`data/${x.s}.json`, 9000); rows = (Array.isArray(raw) ? raw : []).filter(r => r && +r.close > 0); }
-          catch (_) { rows = []; }
-          K[x.s] = rows;
-        }
+        const rows = await kOf(x.s);
         const t = { sym: x.s, d: day.d, px: +x.c, k: x.k, st: null };
         if (rows.length >= 12) {
           const d0 = this._dstr(day.d);
@@ -5645,15 +5705,18 @@ const PRO = {
     const ma20 = avg(n - 19, n), ma60 = avg(n - 59, n);
     return c[n] < ma60 && ma20 < ma60;
   },
-  async _leaderLedgerLoad() {
+  async _leaderLedgerLoad(opt) {
     const P = this._LEAD;
+    // 🏁 V79.5.3 起算日(預設 `_recoStart()`):錨點 / 換倉日**一天都不動**,只是起算日之前成交的那幾次換倉⛔ 不算,
+    //   而且從**空手**開始(= 那天才開始跟的人:第一次換倉就買滿前 N 名,⛔ 不會因為「以前就抱著」而少買)
+    const S = (opt && opt.from) || this._recoStart();
     const H = await this.fetchJson('data/pick_history.json', 12000);
     await this._twiiLoad();
     const leadBy = new Map();
     for (const day of (H && Array.isArray(H.days) ? H.days : [])) {
       if (day && day.d && day.lead && Array.isArray(day.lead.rows) && day.lead.rows.length) leadBy.set(String(day.d).slice(0, 10), day.lead);
     }
-    const out = { rule: 'lead', src: 'lead', days: leadBy.size, since: null, skipped: 0, trades: [], noK: [], rebs: [], bf: [], hUpd: H && H.updated ? String(H.updated).slice(0, 10) : null };
+    const out = { rule: 'lead', src: 'lead', start: S, days: leadBy.size, since: null, skipped: 0, trades: [], noK: [], rebs: [], bf: [], hUpd: H && H.updated ? String(H.updated).slice(0, 10) : null };
     const T = this._twii;
     if (!T) { out.err = '讀不到加權指數(換倉日曆要靠它)'; return out; }
     const cal = T.days.filter(d => d >= P.anchor);
@@ -5686,6 +5749,7 @@ const PRO = {
     const calB = cal.filter(d => d >= anc);
     for (let i = 0; i < calB.length; i += P.R) {
       const D = calB[i], F = calB[i + 1] || null, L = leadBy.get(D);
+      if ((F || D) < S) continue;                            // 🏁 V79.5.3 起算日之前成交的那次換倉⛔ 不算(手上維持空的)
       const reb = { d: D, F, has: !!L, bear: null, buys: [], sells: [], skips: [], plan: null, book: bk };
       out.rebs.push(reb);
       if (!L) { out.skipped++; continue; }
@@ -5826,8 +5890,333 @@ const PRO = {
         </div>
       </details></div>`;
   },
+  // ═══ 🏁 V79.5.3 100 萬同一天起跑(使用者 10/22:「成績單的部分設計重新計時日期起點,另外新增 0050 一起比拼」)═══
+  // ⛔ 五條鐵則(scripts/test_recorace.mjs 釘住):
+  //  ① 每一套都從起算日**收盤**拿 100 萬開始(`_CAP_RULE`)、逐日算錢;⛔ 不拿「每筆 10 萬加總」冒充帳戶(那是下面那張表)。
+  //  ② 🔥 / 🅿️ 照 App 真正的買法 = 回測 `portfolio_backtest LISTK=2 PARK=idle`:前一晚名單前 2 名(`_recoPicks`)、
+  //     隔天收盤 ≥ 觸發價才買(收盤價成交)、沒有觸發價 ⛔ 不買(= 自動下單)、已經抱著的不重買、每筆 15 萬、錢不夠就不買;
+  //     出場一律 `_settleReplay`(⛔ 不另寫一份持有迴圈)。
+  //  ③ 🅿️ 跟 🔥 只差錢放哪:收盤把沒用到的錢停進 0050、要買股票先用現金、不夠才賣 0050(⛔ 不賣超過需要的)。
+  //  ④ 👑 = `_leaderLedgerLoad({from})` 那幾筆(換倉隔天開盤成交);每檔 = 當時總資產 ÷ 檔數(= leader_probe 的 slot);停車照你的設定。
+  //  ⑤ 📏 0050 = 起算日收盤買、配息再買回去(`_poliTr`)。「現在價值」一律 = **今天收盤全部賣掉拿回多少**(股票扣來回 0.44%、0050 扣賣出那一半)。
+  _RACE_PCOST: 0.27,   // 0050 來回成本(= portfolio_backtest PARK_COST:手續費 0.1425%×6 折×2 + 證交稅 0.1%)
+  // 🎨 線的顏色只分「哪一套」(⛔ 紅綠:燈號鐵則 —— 紅綠只講漲跌)
+  _RACE_COLORS: { park: '#38bdf8', hot: '#a8b3c4', lead: '#c4b5fd', '0050': '#f1f5f9' },
+  /** 這一檔在 d(含)之前最近一根的收盤(停牌那幾天沿用最近一次;⛔ 找不到回 0) */
+  _raceCloseAt(rows, d) {
+    if (!rows || !rows.length || !d) return 0;
+    let lo = 0, hi = rows.length - 1, best = -1;
+    while (lo <= hi) { const m = (lo + hi) >> 1; if (this._dstr(rows[m].date) <= d) { best = m; lo = m + 1; } else hi = m - 1; }
+    return best >= 0 ? +rows[best].close : 0;
+  },
+  /** 0050({d, c} 陣列,`_poliBars` 的格式)在 d(含)之前最近一根的收盤 */
+  _raceAt50(b50, d) {
+    if (!b50 || !b50.length || !d) return 0;
+    let lo = 0, hi = b50.length - 1, best = -1;
+    while (lo <= hi) { const m = (lo + hi) >> 1; if (b50[m].d <= d) { best = m; lo = m + 1; } else hi = m - 1; }
+    return best >= 0 ? b50[best].c : 0;
+  },
+  /** K 線「日期 → 第幾根」(⛔ 每次找都掃一遍太慢;掛在陣列上、不列舉) */
+  _raceIdx(rows) {
+    if (!rows) return null;
+    if (!rows._ix) { const m = new Map(); rows.forEach((r, i) => m.set(this._dstr(r.date), i)); try { Object.defineProperty(rows, '_ix', { value: m, enumerable: false }); } catch (_) { return m; } }
+    return rows._ix;
+  },
+  /** 除息日 d 那天每一股拿到多少現金、股數要乘多少(配股)—— 規則 = `_poliTr`(⛔ 不另訂一套):
+   *  現金照 `_poliScale` 對尺標;配股要「前一天收盤 ≈ 除權前價(±8%)」才加(對不上 = K 線可能已還原 → ⛔ 不重複加) */
+  _raceDivOn(evs, d, closeD, prevC) {
+    let cash = 0, mult = 1;
+    for (const [dt, amt, typ, before, after] of (evs || [])) {
+      if (String(dt || '').replace(/\//g, '-').slice(0, 10) !== d) continue;
+      if (typ === '權') {
+        const b = +before, a = +after;
+        if (b > 0 && a > 0 && b / a > 1.0005 && b / a < 2 && prevC > 0 && Math.abs(prevC / b - 1) <= 0.08) mult *= b / a;
+        continue;
+      }
+      const c = +amt; if (!(c > 0) || !(closeD > 0)) continue;
+      const { k } = this._poliScale(+before, closeD);
+      if (k !== null) cash += c * k;
+    }
+    return { cash, mult };
+  },
+  /** 持有中的股票 + 停著的 0050 在 d 那天除息(買進那天收盤才買的 → 那天除息拿不到;賣出那天還拿得到 = 回測 DIV_TRADES 同一條) */
+  _raceDivDay(live, psh, d, dPrev, K, b50, div) {
+    for (const x of live) {
+      if (!(x.d < d)) continue;
+      const rows = K[x.sym] || [];
+      const r = this._raceDivOn(((div && div[x.sym]) || {}).h, d, this._raceCloseAt(rows, d), dPrev ? this._raceCloseAt(rows, dPrev) : 0);
+      if (r.mult !== 1) x.sh *= r.mult;
+      if (r.cash > 0) x.dv += x.sh * r.cash;
+    }
+    let cash = 0;
+    if (psh > 0) {
+      const r = this._raceDivOn(((div && div['0050']) || {}).h, d, this._raceAt50(b50, d), dPrev ? this._raceAt50(b50, dPrev) : 0);
+      if (r.mult !== 1) psh *= r.mult;
+      if (r.cash > 0) cash = psh * r.cash;
+    }
+    return { psh, cash };
+  },
+  _raceDd(eq) { let pk = 0, dd = 0; for (const p of eq || []) { if (p.v > pk) pk = p.v; if (pk > 0 && (pk - p.v) / pk > dd) dd = (pk - p.v) / pk; } return dd * 100; },
+  /** 🔥 / 🅿️(純函式,⛔ 不讀網路):o = {days, lists:Map(名單日 → 前 2 名), K:{代號:K 線}, b50, div, rule, park, cap?, lot?} */
+  _raceHot(o) {
+    const { days, lists, K, b50, div, rule } = o, park = !!o.park;
+    const cap = o.cap || this._CAP_RULE.cap, lot = o.lot || this._CAP_RULE.lot;
+    const COST = this._STL_COST, h = this._RACE_PCOST / 200;
+    let cash = cap, psh = 0;
+    const live = [], trades = [], eq = [];
+    const cnt = { buy: 0, sold: 0, miss: 0, notrig: 0, held: 0, nocash: 0, nobar: 0, nolist: 0, lu: 0 };
+    for (let i = 0; i < days.length; i++) {
+      const d = days[i], dPrev = i ? days[i - 1] : null, p = this._raceAt50(b50, d);
+      // ⓪ 除息(持有中的股票 + 停著的 0050)
+      const dv = this._raceDivDay(live, psh, d, dPrev, K, b50, div); psh = dv.psh; cash += dv.cash;
+      // ① 出場(收盤成交,錢當天回來 = 回測「今天到期的先出場」)
+      for (let q = live.length - 1; q >= 0; q--) {
+        const x = live[q];
+        if (x.exitD && x.exitD <= d) { cash += x.sh * x.exitP - x.a0 * COST / 100 + x.dv; x.sold = true; live.splice(q, 1); cnt.sold++; }
+      }
+      // ② 買進:前一個交易日晚上的名單(起算日當天收盤之前沒有名單 → 第一天只停車)
+      if (dPrev) {
+        const L = lists.get(dPrev);
+        if (!L) cnt.nolist++;
+        else for (const q of L) {
+          const s = String(q.s), trig = +q.trig;
+          if (!(trig > 0)) { cnt.notrig++; continue; }
+          if (live.some(x => x.sym === s)) { cnt.held++; continue; }
+          const rows = K[s] || [], ix = this._raceIdx(rows), j = ix ? ix.get(d) : undefined;
+          if (!(j >= 1)) { cnt.nobar++; continue; }
+          const c = +rows[j].close;
+          if (!(c >= trig)) { cnt.miss++; continue; }
+          if (park && cash < lot && psh > 0 && p > 0) {   // 🅿️ 現金不夠先賣掉需要的那部分 0050(⛔ 不賣超過需要的)
+            const pps = p * (1 - h), sh = Math.min(psh, (lot - cash) / pps);
+            cash += sh * pps; psh -= sh; if (psh < 1e-9) psh = 0;
+          }
+          if (cash < lot - 1e-6) { cnt.nocash++; continue; }
+          const st = this._settleReplay(rows, j, rule);
+          if (!st) { cnt.nobar++; continue; }
+          const pc = +rows[j - 1].close, lu = pc > 0 && (c / pc - 1) * 100 >= this._LEAD.limUp;
+          const x = { sym: s, d, ld: dPrev, trig, entry: c, a0: lot, sh: lot / c, exitD: st.open ? null : st.d1, exitP: st.exitP, why: st.why, dv: 0, lu };
+          cash -= lot; live.push(x); trades.push(x); cnt.buy++; if (lu) cnt.lu++;
+        }
+      }
+      // ③ 🅿️ 收盤把沒用到的錢停回 0050
+      if (park && p > 0 && cash > 1) { psh += cash * (1 - h) / p; cash = 0; }
+      // ④ 今天收盤全部賣掉拿回多少
+      let v = cash + (psh > 0 && p > 0 ? psh * p * (1 - h) : 0);
+      for (const x of live) { const c = this._raceCloseAt(K[x.sym], d); v += x.sh * (c > 0 ? c : x.entry) - x.a0 * COST / 100 + x.dv; }
+      eq.push({ d, v });
+    }
+    const pL = days.length ? this._raceAt50(b50, days[days.length - 1]) : 0;
+    return { eq, trades, live, cnt, cash, psh, parkV: psh > 0 && pL > 0 ? psh * pL * (1 - h) : 0, park };
+  },
+  /** 👑(純函式):o = {days, trades(`_leaderLedgerLoad` 的成交,換倉隔天開盤), K, b50, div, park, N}
+   *  賣 / 買都在開盤(0050 用前一天收盤進出 = leader_probe);每檔 = 前一天收盤的總資產 ÷ N,錢不夠就買少一點(< 兩成就不買) */
+  _raceLead(o) {
+    const { days, K, b50, div } = o, park = !!o.park, N = Math.max(1, +o.N || this._LEAD.N);
+    const cap = o.cap || this._CAP_RULE.cap, COST = this._STL_COST, h = this._RACE_PCOST / 200;
+    let cash = cap, psh = 0;
+    const live = [], eq = [], byBuy = new Map();
+    const cnt = { buy: 0, sold: 0, nocash: 0 };
+    for (const t of (o.trades || [])) { if (!t || !t.st || !t.st.d0) continue; const k = t.st.d0; if (!byBuy.has(k)) byBuy.set(k, []); byBuy.get(k).push(t); }
+    for (let i = 0; i < days.length; i++) {
+      const d = days[i], dPrev = i ? days[i - 1] : null, p = this._raceAt50(b50, d), pPrev = dPrev ? this._raceAt50(b50, dPrev) : p;
+      const dv = this._raceDivDay(live, psh, d, dPrev, K, b50, div); psh = dv.psh; cash += dv.cash;
+      let traded = false;
+      for (let q = live.length - 1; q >= 0; q--) {           // ① 賣(開盤)
+        const x = live[q];
+        if (x.exitD && x.exitD <= d) { cash += x.sh * x.exitP - x.a0 * COST / 100 + x.dv; live.splice(q, 1); cnt.sold++; traded = true; }
+      }
+      const B = byBuy.get(d) || [];
+      if (B.length) {                                         // ② 買(開盤)
+        traded = true;
+        let V = cash + psh * pPrev;
+        for (const x of live) { const c = this._raceCloseAt(K[x.sym], dPrev || d); V += x.sh * (c > 0 ? c : x.entry); }
+        const slot = V / N;
+        for (const t of B) {
+          const e = +t.st.entry; if (!(e > 0)) continue;
+          let need = slot;
+          if (park && cash < need && psh > 0 && pPrev > 0) { const pps = pPrev * (1 - h), sh = Math.min(psh, (need - cash) / pps); cash += sh * pps; psh -= sh; if (psh < 1e-9) psh = 0; }
+          need = Math.min(need, cash);
+          if (need < slot * 0.2) { cnt.nocash++; continue; }
+          live.push({ sym: t.sym, d, entry: e, a0: need, sh: need / e, exitD: t.st.open ? null : t.st.d1, exitP: +t.st.exitP, dv: 0 });
+          cash -= need; cnt.buy++;
+        }
+      }
+      // ③ 停車:有在開盤成交的那天用前一天收盤價;其餘(第一天 / 只有股利入帳)用當天收盤
+      const px = traded ? pPrev : p;
+      if (park && px > 0 && cash > 1) { psh += cash * (1 - h) / px; cash = 0; }
+      let v = cash + (psh > 0 && p > 0 ? psh * p * (1 - h) : 0);
+      for (const x of live) { const c = this._raceCloseAt(K[x.sym], d); v += x.sh * (c > 0 ? c : x.entry) - x.a0 * COST / 100 + x.dv; }
+      eq.push({ d, v });
+    }
+    const pL = days.length ? this._raceAt50(b50, days[days.length - 1]) : 0;
+    return { eq, live, cnt, cash, psh, parkV: psh > 0 && pL > 0 ? psh * pL * (1 - h) : 0, park };
+  },
+  /** 📏 0050 含息:起算日收盤買(扣買進那一半成本)、配息再買回去(`_poliTr`);起算日當天除息拿不到 */
+  _race50(o) {
+    const { days, b50, div } = o, cap = o.cap || this._CAP_RULE.cap, h = this._RACE_PCOST / 200;
+    if (!days || !days.length || !b50 || !b50.length) return null;
+    const last = days[days.length - 1], bars = b50.filter(b => b.d >= days[0] && b.d <= last);
+    if (!bars.length) return null;
+    const evs = (((div && div['0050']) || {}).h || []).filter(e => String(e[0] || '').replace(/\//g, '-').slice(0, 10) > bars[0].d);
+    const tr = this._poliTr(bars, evs, { stock: true });
+    const at = new Map(tr.d.map((d, i) => [d, tr.v[i]]));
+    let g = 1;
+    const eq = days.map(d => { if (at.has(d)) g = at.get(d); return { d, v: cap * (1 - h) * g * (1 - h) }; });
+    return { eq, buyD: bars[0].d, buyP: bars[0].c };
+  },
+  async _raceLoad() {
+    const S = this._recoStart(), cap = this._CAP_RULE.cap, h = this._RACE_PCOST / 200;
+    await this._twiiLoad();
+    const T = this._twii;
+    const out = { S, days: 0, last: null, rows: [], err: null, listN: 0, hot: null };
+    if (!T) { out.err = '讀不到加權指數(交易日曆要靠它)'; return out; }
+    const tLast = T.days[T.days.length - 1], days = T.days.filter(d => d >= S);
+    out.days = days.length; out.last = days.length ? days[days.length - 1] : null;
+    if (!days.length) return out;
+    const H = await this.fetchJson('data/pick_history.json', 12000).catch(() => null);
+    const raw50 = await this.fetchJson('data/0050.json', 9000).catch(() => null);
+    if (!this._poliDiv) this._poliDiv = await this.fetchJson('data/dividends_hist.json', 12000).catch(() => null);
+    const b50 = this._poliBars(raw50), div = this._poliDiv && this._poliDiv.d ? this._poliDiv.d : null;
+    if (!b50) { out.err = '讀不到 0050 的 K 線'; return out; }
+    out.divOk = !!div;
+    // 🔥 名單:起算日(含)之後每一晚的決策台前 2 名(= `_recoPicks`,⛔ 不另挑;假日幽靈快照⛔ 不算)
+    const lists = new Map();
+    for (const day of (H && Array.isArray(H.days) ? H.days : [])) {
+      const d = String((day && day.d) || '').slice(0, 10);
+      if (!d || d < S || !Array.isArray(day.pb) || (d < tLast && !T.m.has(d))) continue;
+      const p = this._recoPicks(day.pb, day.rule); if (p) lists.set(d, p);
+    }
+    out.listN = lists.size;
+    const K = this._rlK = this._rlK || {};
+    for (const L of lists.values()) for (const q of L) {
+      const s = String(q.s);
+      if (K[s] === undefined) { try { const raw = await this.fetchJson(`data/${s}.json`, 9000); K[s] = (Array.isArray(raw) ? raw : []).filter(r => r && +r.close > 0); } catch (_) { K[s] = []; } }
+    }
+    const base = { days, lists, K, b50, div, rule: this._exitRule() };
+    const P = this._raceHot({ ...base, park: true }), C = this._raceHot({ ...base, park: false });
+    out.hot = P.cnt;
+    const E = this._race50({ days, b50, div });
+    const fin = R => (R && R.eq && R.eq.length) ? R.eq[R.eq.length - 1].v : null;
+    const v50 = fin(E);
+    const cur = this._isLead() ? 'lead' : (this._isPark() ? 'park' : 'hot');
+    const mk = (k, name, R, extra) => { const v = fin(R); return Object.assign({ k, name, v, pnl: v == null ? null : v - cap, pct: v == null ? null : (v / cap - 1) * 100,
+      vs50: (v != null && v50 != null && k !== '0050') ? v - v50 : null, dd: R && R.eq ? this._raceDd(R.eq) : null, eq: (R && R.eq) || [], cur: k === cur }, extra || {}); };
+    out.rows.push(mk('park', this._stratName('park'), P, { buy: P.cnt.buy, sold: P.cnt.sold, hold: P.live.length, parkV: P.parkV }));
+    out.rows.push(mk('hot', this._stratName('hot'), C, { buy: C.cnt.buy, sold: C.cnt.sold, hold: C.live.length, nocash: C.cnt.nocash }));
+    if (this._recoLeadOn()) {
+      try {
+        const L = await this._leaderLedgerLoad({ from: S });
+        if (L.err) out.rows.push(mk('lead', this._stratName('lead'), null, { err: L.err }));
+        else {
+          const lp = this._isPark();
+          const R = this._raceLead({ days, trades: (L.trades || []).filter(t => t.st), K: this._rlK, b50, div, park: lp, N: this._LEAD.N * (L.books || 1) });
+          const nx = L.next && L.next.left != null ? L.next : null;
+          out.rows.push(mk('lead', this._stratName(lp ? 'lead' : 'leadcash'), R, { buy: R.cnt.buy, sold: R.cnt.sold, hold: R.live.length, parkV: R.parkV,
+            nextLeft: nx ? nx.left : null, plan: (L.rebs || []).filter(x => x.plan).slice(-1)[0] || null }));
+        }
+      } catch (e) { out.rows.push(mk('lead', this._stratName('lead'), null, { err: String(e).slice(0, 80) })); }
+    }
+    out.rows.push(mk('0050', this._stratName('0050'), E, E ? { buyD: E.buyD, buyP: E.buyP } : { err: '讀不到 0050 那幾天的 K 線' }));
+    out.e50 = E;
+    return out;
+  },
+  /** 📅 起算日選擇(成績單最上面;換了整張成績單一起重算) */
+  _recoStartBar() {
+    const S = this._recoStart(), known = this._RECO_STARTS.some(([d]) => d === S);
+    const chips = this._RECO_STARTS.map(([d, t, why]) =>
+      `<span class="labbtn ${S === d ? 'on' : ''}" data-recostart="${d}" title="${this._esc(why)}" onclick="PRO.selRecoStart('${d}')">${t}</span>`).join('');
+    return `<div class="labbar" style="margin:6px 0 2px;flex-wrap:wrap;align-items:center" data-recostartbar="1">
+      <span style="font-size:10.5px;color:var(--dim2)">📅 從哪天開始算:</span>${chips}
+      <label class="labbtn ${known ? '' : 'on'}" data-recostart="custom" style="cursor:pointer">📅 自訂
+        <input type="date" value="${S}" min="${this._RECO_SINCE}" max="${this._recoToday()}" onchange="PRO.selRecoStart(this.value)"
+          style="background:transparent;border:0;color:inherit;font:inherit;width:118px;padding:0;margin-left:2px"></label></div>`;
+  },
+  /** 折線圖(inline SVG;⛔ 不用圖表元件 —— V74.7.2 載不到會把整個頁面帶走) */
+  _raceSvg(rows, cap) {
+    const ser = (rows || []).filter(r => r.eq && r.eq.length >= 2 && !r.err);
+    if (!ser.length) return '';
+    const n = Math.max(...ser.map(r => r.eq.length));
+    let lo = cap, hi = cap;
+    for (const r of ser) for (const q of r.eq) { if (q.v < lo) lo = q.v; if (q.v > hi) hi = q.v; }
+    const pad = Math.max((hi - lo) * 0.12, cap * 0.004); lo -= pad; hi += pad;
+    const W = 340, Hh = 132, L = 4, R = 4, Tp = 6, B = 16;
+    const X = i => L + (W - L - R) * (n <= 1 ? 0 : i / (n - 1)), Y = v => Tp + (Hh - Tp - B) * (1 - (v - lo) / (hi - lo));
+    const line = r => `<polyline data-raceline="${r.k}" fill="none" stroke="${this._RACE_COLORS[r.k] || '#a8b3c4'}" stroke-width="${r.k === '0050' ? 1.5 : 2}"${r.k === '0050' ? ' stroke-dasharray="4 3"' : ''} stroke-linejoin="round" points="${r.eq.map((q, i) => X(i).toFixed(1) + ',' + Y(q.v).toFixed(1)).join(' ')}"/>`;
+    const y0 = Y(cap), md = d => String(d || '').slice(5).replace('-', '/');
+    return `<svg viewBox="0 0 ${W} ${Hh}" width="100%" style="display:block;margin:6px 0 2px;max-width:560px" role="img" aria-label="每一套 100 萬的逐日價值" data-racesvg="1">
+      <line x1="${L}" x2="${W - R}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}" stroke="#4b5563" stroke-width="1" stroke-dasharray="2 3"/>
+      <text x="${W - R}" y="${(y0 - 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#6b7280">本金 100 萬</text>
+      ${ser.map(line).join('')}
+      <text x="${L}" y="${Hh - 3}" font-size="9" fill="#6b7280">${md(ser[0].eq[0].d)}</text>
+      <text x="${W - R}" y="${Hh - 3}" text-anchor="end" font-size="9" fill="#6b7280">${md(ser[0].eq[ser[0].eq.length - 1].d)}</text></svg>`;
+  },
+  _raceRender() {
+    const el = document.getElementById('recoRace'); if (!el) return;
+    const sig = ['race', this._recoStart(), this._exitRule(), this._isPark() ? 1 : 0, this._isLead() ? 1 : 0].join('|');
+    if (this._raceSig !== sig || !this._race) {
+      if (this._raceSig !== sig) {
+        this._raceSig = sig; this._race = null;
+        this._raceLoad().then(r => { if (this._raceSig !== sig) return; this._race = r; this._raceRender(); })
+          .catch(e => { if (this._raceSig !== sig) return; this._race = { err: String(e).slice(0, 100), rows: [] }; this._raceRender(); });
+      }
+      el.innerHTML = `<div class="fishcard" style="margin-top:10px" data-race="loading"><div class="big">🏁 100 萬同一天起跑</div>${this._recoStartBar()}
+        <div class="note">⏳ 正在把每一套從 ${this._recoStart()} 收盤起逐日算一遍…</div></div>`;
+      return;
+    }
+    const R = this._race, cap = this._CAP_RULE.cap;
+    const head = `<div class="big">🏁 100 萬同一天起跑 <span class="sigtag">${this._esc(R.S || this._recoStart())} 起${R.days ? `・${R.days} 個交易日` : ''}</span></div>${this._recoStartBar()}`;
+    if (R.err && !(R.rows || []).length) { el.innerHTML = `<div class="fishcard" style="margin-top:10px" data-race="err">${head}<div class="note">⚠️ 算不出來(${this._esc(String(R.err))}),⛔ 不是 0 元。</div></div>`; return; }
+    if (!R.days) { el.innerHTML = `<div class="fishcard" style="margin-top:10px" data-race="wait">${head}<div class="note">⏳ ${this._esc(R.S)} 還沒有收盤資料 —— 那天收盤之後(採礦跑完)才開始算。</div></div>`; return; }
+    const COL = this._RACE_COLORS, money = v => v == null ? '—' : Math.round(v).toLocaleString() + ' 元';
+    const signed = v => v == null ? '—' : (v >= 0 ? '+' : '−') + Math.abs(Math.round(v)).toLocaleString() + ' 元';
+    const md = d => String(d || '').slice(5).replace('-', '/');
+    const row = r => `<div data-racerow="${r.k}" style="padding:6px 0;border-bottom:1px solid var(--line)">
+        <div style="display:flex;align-items:baseline;gap:6px;min-width:0">
+          <span style="flex:0 0 14px;height:3px;border-radius:2px;align-self:center;background:${COL[r.k] || '#a8b3c4'}${r.k === '0050' ? ';opacity:.8' : ''}"></span>
+          <b style="font-size:12px;min-width:0">${r.name}${r.cur ? ' <span style="font-size:9.5px;color:var(--cyan)">(你現在用的)</span>' : ''}</b>
+          <span class="mono" style="margin-left:auto;font-size:15px;font-weight:900;white-space:nowrap" data-racev="${r.v == null ? '' : Math.round(r.v)}">${money(r.v)}</span></div>
+        ${r.err ? `<div class="note" style="margin:2px 0 0 20px">⚠️ 這一套算不出來(${this._esc(String(r.err))}),⛔ 不是 0 元</div>`
+        : `<div style="display:flex;gap:3px 10px;flex-wrap:wrap;font-size:10.5px;color:var(--dim2);margin:2px 0 0 20px">
+          <span class="mono ${this.cls(r.pnl)}" data-racepnl="${r.k}">${signed(r.pnl)}(${r.pct == null ? '—' : this.fmt(r.pct, 2, true) + '%'})</span>
+          ${r.vs50 != null ? `<span data-racevs50="${r.k}">${Math.abs(r.vs50) < 0.5 ? '跟 0050 一樣' : `比 0050 ${r.vs50 >= 0 ? '多' : '少'} <b class="mono" style="color:#e5e7eb">${Math.abs(Math.round(r.vs50)).toLocaleString()} 元</b>`}</span>` : ''}
+          <span>中途最多賠 ${r.dd > 0.005 ? '−' + r.dd.toFixed(2) + '%' : '0%'}</span>
+          ${r.k === '0050' ? `<span>${r.buyD ? md(r.buyD) + ' 收盤買 ' + this._px(r.buyP) + ' 元・配息再買回去' : ''}</span>`
+            : `<span>買過 ${r.buy || 0} 筆・賣掉 ${r.sold || 0}・抱著 ${r.hold || 0} 檔</span>`}
+          ${r.parkV > 1 ? `<span>0050 停著 ${Math.round(r.parkV).toLocaleString()} 元</span>` : ''}
+          ${r.k === 'lead' && r.nextLeft != null ? `<span>🔄 ${r.nextLeft ? `下次換倉還有 ${r.nextLeft} 個交易日` : '今天是換倉日'}</span>` : ''}</div>`}
+      </div>`;
+    const strat = R.rows.filter(r => r.k !== '0050' && !r.err);
+    const minSold = strat.length ? Math.min(...strat.map(r => r.sold || 0)) : 0;
+    const enough = strat.length > 0 && minSold >= 10;
+    const best = enough ? R.rows.filter(r => r.v != null).slice().sort((a, b) => b.v - a.v)[0] : null;
+    const Hc = R.hot || {};
+    const hotLine = `🔥 / 🅿️ 這段時間:名單 ${R.listN} 晚・收盤到觸發價買了 ${Hc.buy || 0} 筆・沒到觸發價 ${Hc.miss || 0} 次・沒有觸發價(自動下單不買)${Hc.notrig || 0} 次`
+      + (Hc.held ? `・已經抱著不重買 ${Hc.held} 次` : '') + (Hc.nocash ? `・錢不夠沒買 ${Hc.nocash} 次` : '') + (Hc.nolist > 0 ? `・${Hc.nolist} 天沒有前一晚的名單` : '') + '。';
+    const verdict = enough
+      ? `🏆 <b>目前最多:${best.name}</b>(${money(best.v)})—— 同一段時間大家一起漲跌,⛔ 不代表以後也會贏。`
+      : `⏳ <b>才 ${R.days} 個交易日、最少的一套只賣掉 ${minSold} 筆 → ⛔ 現在還不能說誰比較厲害</b>(要每一套都賣掉 10 筆;幾天的差距大多是運氣)。`;
+    el.innerHTML = `<div class="fishcard" style="margin-top:10px;border-color:var(--cyan)" data-race="ok">
+      ${head}
+      <div class="note" style="margin:4px 0 2px">每一套都從 <b>${md(R.S)} 收盤</b>拿 <b>100 萬</b>開始,照 App 真正的買法逐日算錢;數字 = <b>今天收盤全部賣掉拿回多少</b>(已扣手續費、稅)。</div>
+      ${this._raceSvg(R.rows, cap)}
+      ${R.rows.map(row).join('')}
+      <div class="note" style="margin-top:6px" data-raceverdict="1">${verdict}</div>
+      <div class="note" style="margin-top:2px;font-size:10.5px" data-racehot="1">${hotLine}${Hc.lu ? ` 🟥 其中 ${Hc.lu} 筆是收盤鎖漲停那天買的 —— 實際排隊可能買不到(數字照買到算)。` : ''}</div>
+      <details style="margin-top:5px">
+        <summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim2)">📖 怎麼算的 <span style="color:var(--dim2)">展開 ▾</span></summary>
+        <div class="note" style="margin-top:5px;font-size:10.5px">
+          🏁 <b>起點</b>:${md(R.S)} 收盤每一套都有 100 萬(🅿️ 那天收盤先把錢停進 0050、📏 那天收盤買 0050)。上面那排可以換起算日,整張成績單一起重算。<br>
+          🔥 / 🅿️ <b>怎麼買</b>:前一晚的明日作戰清單(決策台「今天可以買的」那 ${this._RECO_PICKS} 檔)→ 隔天<b>收盤到觸發價才買</b>(收盤價成交);沒有觸發價的不買(跟自動下單一樣)、已經抱著的不重買;每筆 ${this._CAP_RULE.lot / 10000} 萬,錢不夠就不買。<br>
+          🚪 <b>怎麼賣</b>:${this._exitRuleName()} / 硬停損 min(買進那天最低, 買進價 −5%)/ 最長 ${this._stlMaxd()} 個交易日,先到先賣(收盤成交)。<br>
+          🅿️ 跟 🔥 <b>只差錢放哪</b>:沒用到的錢收盤停進 0050、要買股票先用現金、不夠才賣 0050。<br>
+          👑 每 ${this._LEAD.R} 個交易日換一次、換倉隔天開盤成交;每檔 = 當時總資產 ÷ ${this._LEAD.N};起算日之前的換倉不算(從空手開始)。<br>
+          📏 0050:${md(R.S)} 收盤買、一直放著、配息再買回去。<br>
+          💸 成本:股票來回 0.44%、0050 來回 ${this._RACE_PCOST}%;持有中碰到除息,現金股利入帳、配股加股數(二代健保沒扣)${R.divOk ? '' : '・⚠️ 這次股利檔沒載到,股利沒算進去'}。<br>
+          ⚠️ 收盤成交、沒有滑價 = <b>紙上成績</b>,⛔ 不是你的實際損益;同一段時間買的會一起漲跌,幾十筆 ⛔ 不等於幾十次獨立的證據。
+        </div></details></div>`;
+  },
   // ═══ 🏁 V78.2.2 同一起點比一比(使用者:「把目前推薦的購買抓到裡面,並做分類,讓我知道哪個策略厲害,給我同一個起點」)═══
-  // ⛔ 每一列的數字**直接讀各頁自己的結算**(`_recoLedgerLoad` / `_leaderLedgerLoad`,⛔ 不另算一份);起點一律 `_RECO_COMMON`。
+  // ⛔ 每一列的數字**直接讀各頁自己的結算**(`_recoLedgerLoad` / `_leaderLedgerLoad`,⛔ 不另算一份);起點一律 `_recoStart()`(V79.5.3 起可以換)。
   // ⛔ 樣本 <10 筆不下結論(不給 🏆);燈號鐵則:這張表只有漲跌用紅綠。
   _CMP_ALL_COLS: [
     { k: 'n', n: '推薦' }, { k: 'done', n: '已賣' }, { k: 'hold', n: '抱著' },
@@ -5837,7 +6226,8 @@ const PRO = {
   async _recoCmpAllLoad() {
     const srcs = this._RECO_SRCS.filter(([k]) => k !== 'lead' || this._recoLeadOn());
     const H = await this.fetchJson('data/pick_history.json', 12000).catch(() => null);
-    const days = (H && Array.isArray(H.days) ? H.days : []).filter(d => d && d.d && String(d.d).slice(0, 10) >= this._RECO_COMMON).sort((a, b) => (a.d < b.d ? -1 : 1));
+    const S = this._recoStart();
+    const days = (H && Array.isArray(H.days) ? H.days : []).filter(d => d && d.d && String(d.d).slice(0, 10) >= S).sort((a, b) => (a.d < b.d ? -1 : 1));
     const last = days[days.length - 1] || null;
     const todayOf = (k, R) => {
       if (k === 'lead') { const pl = (R.rebs || []).filter(x => x.plan).slice(-1)[0]; if (pl) return { t: '下次開盤買', s: pl.plan.buy.map(String) }; return { t: '抱著', s: (R.trades || []).filter(t => t.st && t.st.open).map(t => t.sym) }; }
@@ -5855,19 +6245,23 @@ const PRO = {
         money: st.length ? Math.round(st.reduce((a, x) => a + x.net, 0) * 1000) : null,
         beat: exs.filter(v => v > 0).length, beatN: exs.length, beatR: exs.length ? exs.filter(v => v > 0).length / exs.length : null, today: todayOf(k, R) });
     }
-    // 📏 0050 買了放著:同一天起算(起點隔天開盤買、最新收盤算),扣同樣的成本
+    // 📏 0050:🏁 V79.5.3 改讀 `_race50`(起算日收盤買、含息、0050 自己的成本)—— 跟上面「100 萬同一天起跑」那一列**同一個數字**
+    //   ⛔ 以前這裡是「起點隔天開盤買、不含息」→ 同一頁兩個「0050 買了放著」卻不一樣(同名不同義)
     try {
       await this._twiiLoad(); const T = this._twii;
-      const cal = T ? T.days.filter(d => d >= this._RECO_COMMON) : [];
+      const cal = T ? T.days.filter(d => d >= S) : [];
       const raw = await this.fetchJson('data/0050.json', 9000);
-      const K = (Array.isArray(raw) ? raw : []).filter(r => r && +r.close > 0);
-      const F = cal[1] || null;                              // 起點那天收盤出名單 → 隔天開盤買(= 👑 同一個節奏)
-      const bF = K.find(r => this._dstr(r.date) > this._RECO_COMMON), bL = K[K.length - 1];
-      if (bF && bL && F) { const x = this._stlEnrich({ entry: +bF.open > 0 ? +bF.open : +bF.close, exitP: +bL.close, d0: F, d1: this._dstr(bL.date), open: true });
-        rows.push({ k: 'etf', name: '📏 0050 買了放著', n: 1, done: 0, hold: 1, avg: x.net, money: Math.round(x.net * 1000), beat: x.ex > 0 ? 1 : 0, beatN: x.ex == null ? 0 : 1, beatR: x.ex == null ? null : (x.ex > 0 ? 1 : 0), today: { t: '', s: [] } }); }
-      else rows.push({ k: 'etf', name: '📏 0050 買了放著', err: !F ? `${this._RECO_COMMON} 之後還沒有第二個交易日` : '讀不到 0050 那幾天的 K 線', n: 0, done: 0, hold: 0, avg: null, money: null, beat: 0, beatN: 0, beatR: null, today: { t: '', s: [] } });
-    } catch (e) { rows.push({ k: 'etf', name: '📏 0050 買了放著', err: String(e).slice(0, 60), n: 0, done: 0, hold: 0, avg: null, money: null, beat: 0, beatN: 0, beatR: null, today: { t: '', s: [] } }); }
-    return { rows, start: this._RECO_COMMON, last: last ? String(last.d).slice(0, 10) : null };
+      if (!this._poliDiv) this._poliDiv = await this.fetchJson('data/dividends_hist.json', 12000).catch(() => null);
+      const E = this._race50({ days: cal, b50: this._poliBars(raw), div: this._poliDiv && this._poliDiv.d });
+      if (E && E.eq.length) {
+        const net = (E.eq[E.eq.length - 1].v / this._CAP_RULE.cap - 1) * 100;
+        const b0 = this._twiiAt(E.buyD), b1 = this._twiiAt(cal[cal.length - 1]);
+        const ex = (b0 > 0 && b1 > 0) ? net - (b1 / b0 - 1) * 100 : null;
+        rows.push({ k: 'etf', name: this._stratName('0050'), n: 1, done: 0, hold: 1, avg: net, money: Math.round(net * 1000), beat: ex > 0 ? 1 : 0, beatN: ex == null ? 0 : 1, beatR: ex == null ? null : (ex > 0 ? 1 : 0), today: { t: '', s: [] } });
+      }
+      else rows.push({ k: 'etf', name: this._stratName('0050'), err: !cal.length ? `${S} 還沒有收盤資料` : '讀不到 0050 那幾天的 K 線', n: 0, done: 0, hold: 0, avg: null, money: null, beat: 0, beatN: 0, beatR: null, today: { t: '', s: [] } });
+    } catch (e) { rows.push({ k: 'etf', name: this._stratName('0050'), err: String(e).slice(0, 60), n: 0, done: 0, hold: 0, avg: null, money: null, beat: 0, beatN: 0, beatR: null, today: { t: '', s: [] } }); }
+    return { rows, start: S, last: last ? String(last.d).slice(0, 10) : null };
   },
   // 📊 V78.2.3 每一套「有沒有回測過」(讀 `_PROFIT_BOARD`,⛔ 不寫死)—— 使用者看帳面問「📈 是不是比較厲害」
   _cmpBtTag(k) {
@@ -5885,14 +6279,14 @@ const PRO = {
   },
   _recoCmpAllRender() {
     const el = document.getElementById('recoCmpAll'); if (!el) return;
-    const sig = 'cmpAll|' + this._exitRule() + '|' + (this._recoLeadOn() ? 1 : 0);
+    const sig = 'cmpAll|' + this._exitRule() + '|' + (this._recoLeadOn() ? 1 : 0) + '|' + this._recoStart();
     if (this._cmpAllSig !== sig || !this._cmpAll) {
       if (this._cmpAllSig !== sig) {
         this._cmpAllSig = sig; this._cmpAll = null;
         this._recoCmpAllLoad().then(r => { if (this._cmpAllSig !== sig) return; this._cmpAll = r; this._recoCmpAllRender(); })
           .catch(e => { if (this._cmpAllSig !== sig) return; this._cmpAll = { err: String(e).slice(0, 100), rows: [] }; this._recoCmpAllRender(); });
       }
-      el.innerHTML = `<div class="fishcard" style="margin-top:10px" data-cmpall="loading"><div class="big">🏁 同一起點比一比</div><div class="note">⏳ 正在把每一套從 ${this._RECO_COMMON} 起的推薦逐筆結算…</div></div>`;
+      el.innerHTML = `<div class="fishcard" style="margin-top:10px" data-cmpall="loading"><div class="big">🏁 同一起點比一比</div><div class="note">⏳ 正在把每一套從 ${this._recoStart()} 起的推薦逐筆結算…</div></div>`;
       return;
     }
     const C = this._cmpAll, srt = this._cmpAllSort || { k: 'avg', asc: false };
@@ -5919,7 +6313,7 @@ const PRO = {
         ${r.today && r.today.t ? `<div style="font-size:10px;color:var(--dim2);margin-top:2px" data-cmptoday="${r.k}">${r.today.t}:${r.today.s.length ? r.today.s.map(x => this._nmc(x, `PRO._fishPick('${x}')`)).join(' ') : '沒有'}</div>` : ''}</div>`;
     el.innerHTML = `<div class="fishcard" style="margin-top:10px" data-cmpall="ok">
       <div class="big">🏁 同一起點比一比 <span class="sigtag">${C.start} 起</span></div>
-      <div class="note" style="margin:3px 0 5px">每一套都從 <b>${C.start}</b> 起算(之前的推薦不算)・報酬已扣來回成本 0.44%、抱著的用最新收盤算帳面 ・👆 表頭可點排序</div>
+      <div class="note" style="margin:3px 0 5px">每一套都從 <b>${C.start}</b> 起算(之前的推薦不算;起算日在最上面換)・股票扣來回成本 0.44%、0050 扣 ${this._RACE_PCOST}%、抱著的用最新收盤算帳面 ・👆 表頭可點排序</div>
       ${hdr}${rows.map(row).join('')}
       <div class="note" style="margin-top:6px">${enough ? `🏆 <b>目前平均每筆最高:${best.name}</b>(${this.fmt(best.avg, 2, true)}%)。` : `⏳ <b>最少的一套只賣掉 ${minDone} 筆(要每一套都賣掉 10 筆),⛔ 現在還不能說誰比較厲害</b> —— 筆數夠了這裡會自動標 🏆;在那之前先看每列底下的回測。`}
       <span data-cmpcorr>🚨 同一段時間買的會<b>一起漲跌</b>(大盤一漲全部一起賺)→ 帳面上幾十筆 ⛔ 不等於幾十次獨立的證據。</span>「每筆10萬合計」= 每一筆都投 10 萬加起來賺賠多少(⛔ 不是你的帳戶);🚨 同一檔可能同時在兩套裡,筆數⛔ 不可相加。</div></div>`;
@@ -5927,10 +6321,12 @@ const PRO = {
   _recoLedgerRender() {
     const el = document.getElementById('recoLedger'); if (!el) return;
     if (!document.getElementById('recoCmpAll')) el.insertAdjacentHTML('beforebegin', '<div id="recoCmpAll"></div>');   // 🏁 V78.2.2 同一起點比一比(獨立渲染,⛔ 不擋下面的分頁)
+    if (!document.getElementById('recoRace')) document.getElementById('recoCmpAll').insertAdjacentHTML('beforebegin', '<div id="recoRace"></div>');   // 🏁 V79.5.3 100 萬同一天起跑(最上面)
+    this._raceRender();
     this._recoCmpAllRender();
     // 📈 V77.2.5 快取鍵要含「哪一張清單」—— ⛔ 少了它換分頁會吃到上一張的結果
     const SRC = (this._recoSrc === 'lead' && !this._recoLeadOn()) ? 'pb' : (this._recoSrc || 'pb');   // 🔒 V77.9.6
-    const sig = 'reco|' + this._exitRule() + '|' + SRC;
+    const sig = 'reco|' + this._exitRule() + '|' + SRC + '|' + this._recoStart();
     // 🔖 分頁列(三張清單)—— 放在最上面,⛔ 不管載入到哪一步都要看得到(不然按不到)
     const tabBar = `<div class="labbar" style="margin:6px 0 2px">${this._RECO_SRCS.filter(([k]) => k !== 'lead' || this._recoLeadOn()).map(([k, t, sub]) =>
       `<span class="labbtn ${SRC === k ? 'on' : ''}" data-recosrc="${k}" title="${this._esc(sub)}" onclick="PRO.selRecoSrc('${k}')">${t}</span>`).join('')}</div>`;
@@ -5960,15 +6356,16 @@ const PRO = {
         ⛔ 這<b>不代表那幾天沒有符合進場的股票</b>,只代表現在判不出來。稍後再開一次,或先看「🔥 高檔飆股」那一張。</div></div>`;
       return;
     }
-    const since = R.since || this._RECO_SINCE;
+    const since = R.since || R.start || this._recoStart();   // 🏁 V79.5.3 沒有任何一天時寫起算日(⛔ 不寫 _RECO_SINCE —— 那是「快照開始存」的日子)
     const done = R.trades.filter(t => t.st && !t.st.open), hold = R.trades.filter(t => t.st && t.st.open), pend = R.trades.filter(t => !t.st);
     const row = t => {
       const st = t.st, fin = st && !st.open;
-      if (!st) return `<div class="bkrow"><div class="bkhd">${this._nmc(t.sym, `PRO._fishPick('${t.sym}')`)}<span class="sigtag">⏳ 讀不到 K 線</span></div>
+      if (!st) return `<div class="bkrow"><div class="bkhd">${this._nmc(t.sym, `PRO._fishPick('${t.sym}')`)}<span class="sigtag">⏳ 讀不到${t.ld ? ` ${(t.d || '').slice(5)} 的` : ''} K 線</span></div>
         <div class="bkpx"><span class="mono" style="color:var(--dim)">${(t.d || '').slice(5)} ${this._px(t.px)}</span><span style="color:var(--dim2)">・${t.k || ''}</span></div></div>`;
       return `<div class="bkrow ${fin ? 'done' : 'hold'}">
         <div class="bkhd">${this._nmc(t.sym, `PRO._fishPick('${t.sym}')`)}
           ${fin ? `<span class="sigtag">🧾 已結算・${st.why}</span>` : `<span class="sigtag good">📌 持有中</span>`}
+          ${t.lu ? `<span class="sigtag warn" data-recolu="1" title="那天收盤鎖漲停:實際排隊可能買不到(數字照買到算)">🟥 收盤鎖漲停</span>` : ''}
           <span style="margin-left:auto;font-size:10px;color:var(--dim2)">${t.k || ''}</span></div>
         <div class="bkpx">
           <span class="mono" style="color:var(--dim)">${(t.d || '').slice(5)} ${this._px(st.entry)}</span>
@@ -5989,7 +6386,8 @@ const PRO = {
     const _gr = this._geneRule();
     const _gtxt = _gr ? `位階 ≥${_gr.pos} 且振幅 ≥${_gr.amp}%` : '位階/振幅門檻';
     const srcNote = SRC === 'pb'
-      ? `⭐ <b>🔥 高檔飆股 = 散戶救星決策台「🎯 今天可以買的(最多 ${this._RECO_PICKS} 檔)」</b>,採礦每天收盤後自動存名單(⛔ 不靠你開 App)。<br>`
+      ? `⭐ <b>🔥 高檔飆股 = 散戶救星決策台「🎯 今天可以買的(最多 ${this._RECO_PICKS} 檔)」</b>,採礦每天收盤後自動存名單(⛔ 不靠你開 App)。<br>
+         🛒 <b>V79.5.3 起照 App 真正的買法</b>:前一晚名單 → 隔天<b>收盤到觸發價才買</b>(收盤價成交)、沒有觸發價的不買(跟自動下單一樣)、已經抱著的不重買。⛔ 以前用「推薦那天的收盤」—— 名單收盤後才出來,那個價其實買不到。<br>`
       : SRC === 'fit'
       ? `⭐ <b>📈 符合進場 = 總覽那顆徽章今天在哪幾檔亮</b>:今天出現<b>期望值為正的看多訊號</b>,而且 🧬 <b>${_gtxt}</b> 同時成立(黑名單那幾招不算)。<br>
          ⚠️ 這裡<b>沒有檔數上限</b>(決策台那張有,最多 ${this._RECO_PICKS} 檔)—— 實測大多數日子是 0~3 檔。<br>
@@ -6004,6 +6402,7 @@ const PRO = {
         <span>📅 ${since} 起</span><span>・快照 ${R.days} 天</span>
         <span style="color:var(--cyan)">・📌 持有中 ${hold.length}</span>
         <span style="color:var(--dim)">・🧾 已結算 ${done.length}</span>${pend.length ? `<span>・讀不到 K 線 ${pend.length}</span>` : ''}
+        ${R.mech === 'trig' ? `<span data-recomech="1">・收盤沒到觸發價 ${(R.miss || []).length} 次・沒有觸發價(不買)${(R.noTrig || []).length} 次${R.heldSkip ? `・已經抱著不重買 ${R.heldSkip} 次` : ''}</span>` : ''}
         ${SRC === 'lead' && R.next ? `<span>・🔄 ${R.next.left ? `下次換倉還有 ${R.next.left} 個交易日` : `${R.next.last.slice(5)} 是換倉日`}${R.books > 1 ? `(${this._LEAD_BOOK_NAME[R.next.book === 'B' ? 'B' : 'A']};📚 甲帳・乙帳各一半錢、錯開 4 天輪流換)` : ''}</span>` : ''}
         ${SRC === 'lead' && R.books > 1 ? ['A', 'B'].map(bk => { const tr = (R.trades || []).filter(t => t.book === bk && t.st), dn = tr.filter(t => !t.st.open), hd = tr.filter(t => t.st.open);
             const av = dn.length ? dn.reduce((a, t) => a + (+t.st.net || 0), 0) / dn.length : null;
@@ -6015,17 +6414,23 @@ const PRO = {
     const planBox = _pl ? `<div class="warnbox" style="margin:4px 0 8px;border-color:var(--cyan)" data-leadplan="1">🔄 <b>${_pl.d.slice(5)} 換倉訊號 → 下一個交易日開盤成交</b>(還沒到,⛔ 還沒算進成績)<br>
         🛒 會買:${_pl.plan.buy.length ? _pl.plan.buy.map(s => this._nmc(s, `PRO._fishPick('${s}')`)).join(' ') : (_pl.bear ? '🐻 大盤嚴格空頭,這次不買' : '(沒有要買的)')}
         ${_pl.plan.sell.length ? `<br>🚪 會賣:${_pl.plan.sell.map(s => this._nmc(s, `PRO._fishPick('${s}')`)).join(' ')}` : ''}</div>` : '';
+    // 🔥 V79.5.3 最新那份名單(隔天收盤才知道買不買)—— 講清楚「收盤要到多少才買」,⛔ 不假裝已成交
+    const _pp = R.mech === 'trig' && (R.pend || []).length ? R.pend : null;
+    const pbPlan = _pp ? `<div class="warnbox" style="margin:4px 0 8px;border-color:var(--cyan)" data-pbplan="1">🔄 <b>${_pp[0].ld.slice(5).replace('-', '/')} 名單 → 下一個交易日收盤到觸發價才買</b>(還沒到,⛔ 還沒算進成績)<br>
+        🛒 ${_pp.map(x => `${this._nmc(x.sym, `PRO._fishPick('${x.sym}')`)} 收盤 ≥ <b class="mono">${this._px(x.trig)}</b><span style="color:var(--dim2)">(名單那天收 ${this._px(x.c)})</span>`).join('・')}</div>` : '';
     const _rebLine = SRC === 'lead' && (R.rebs || []).length ? `<details style="margin:0 0 8px"><summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim2)">🔄 每一次換倉做了什麼(${R.rebs.length} 次)<span style="color:var(--dim2)"> 展開 ▾</span></summary>
         <div class="note" style="margin:5px 0 0;font-size:10.5px">${R.rebs.map(x => `${x.d.slice(5)}:${!x.has ? '⚠️ 沒有那天的名單(採礦沒存到)→ 這次沒動' : x.plan ? '⏳ 等下一個交易日開盤成交' : `${x.bear ? '🐻 空頭不買・' : ''}買 ${x.buys.length ? x.buys.join(' ') : '—'}・賣 ${x.sells.length ? x.sells.join(' ') : '—'}${x.skips.length ? '・' + x.skips.join('、') : ''}`}`).join('<br>')}</div></details>` : '';
     el.innerHTML = `<div class="fishcard" style="margin-top:10px;border-color:var(--cyan);background:rgba(56,189,248,.05)">
       ${head}
       ${statLine}
-      ${planBox}${_rebLine}
+      ${planBox}${pbPlan}${_rebLine}
       <details style="margin:0 0 8px">
         <summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--dim2)">📖 這張表在算什麼 <span style="color:var(--dim2)">展開 ▾</span></summary>
         <div class="note" style="margin:5px 0 0;font-size:10.5px">
           ${srcNote}
-          ${SRC === 'lead' ? '進場 / 出場 = 換倉訊號隔天的開盤(規則見上面;還抱著的用最新收盤算帳面)。' : `進場 = 推薦那天的收盤,出場 = <b>${this._exitRuleName()}</b>(換規則整張表重算)。`}
+          ${SRC === 'lead' ? '進場 / 出場 = 換倉訊號隔天的開盤(規則見上面;還抱著的用最新收盤算帳面)。'
+            : SRC === 'pb' ? `進場 = 名單隔天收盤到觸發價(收盤價成交),出場 = <b>${this._exitRuleName()}</b>(換規則整張表重算)。`
+            : `🧾 <b>紙上</b>:進場 = 訊號那天的收盤(這張沒有觸發價),出場 = <b>${this._exitRuleName()}</b>(換規則整張表重算)。`}
           ${R.skipped ? `📅 其中 ${R.skipped} 天重建不出這張清單(快照沒有那幾個欄位),⛔ 不硬湊。<br>` : ''}
           ⚠️ 決策台真正排序時會把<b>你自己持有的</b>排前面,這裡是<b>不含持股的純推薦版</b>;同一檔還持有中就不重複開倉。<br>
           🚨 <b>三張分頁的筆數⛔ 不可以相加</b> —— 它們問的是不同的問題,而且同一檔可能同時出現在兩張裡。<br>
@@ -6033,19 +6438,21 @@ const PRO = {
         </div>
       </details>
       ${R.trades.length ? '' : SRC === 'lead'
-        ? (_pl ? '' : `<div class="note">📭 還沒有任何一次換倉成交(第一次換倉日 ${this._LEAD.anchor})。</div>`)
+        ? (_pl ? '' : `<div class="note">📭 ${since} 之後還沒有任何一次換倉成交${R.next && R.next.left != null ? `(${R.next.left ? `下次換倉還有 ${R.next.left} 個交易日` : '今天是換倉日'},換倉隔天開盤成交)` : ''}。</div>`)
+        : (R.mech === 'trig' && (_pp || (R.miss || []).length || (R.noTrig || []).length))
+        ? (_pp && !(R.miss || []).length && !(R.noTrig || []).length ? '' : `<div class="note">📭 ${since} 之後名單上的還沒有一檔買到 —— 收盤沒到觸發價 ${(R.miss || []).length} 次、沒有觸發價(不買)${(R.noTrig || []).length} 次(⛔ 不是壞掉:觸發價就是要漲過才買)。</div>`)
         : (R.skipped >= R.days
         ? `<div class="note">⏳ <b>這一張還沒有資料</b> —— 快照裡那 ${R.days} 天都缺這張清單需要的欄位(${SRC === 'pb' ? '🧬/空頭旗標' : '訊號的位階/振幅'}),⛔ 重建不出來也⛔ 不硬湊。<br>採礦下一輪跑完就會開始累積;⭐ 這<b>不是</b>「那幾天沒有股票」。</div>`
         : `<div class="note">📭 ${since} 之後還沒有任何一天有符合的股票(⛔ 那不是壞掉 —— 條件本來就嚴)。</div>`)}
       ${hold.length ? `<div style="font-size:11px;color:var(--cyan);font-weight:700;margin:2px 0 5px;border-left:3px solid var(--cyan);padding-left:6px">📌 持有中 ${hold.length} 筆 <span style="font-weight:400;color:var(--dim2);font-size:10px">帳面浮動,會一直變</span></div>${hold.map(row).join('')}` : ''}
       ${done.length ? `<div style="font-size:11px;color:var(--dim);font-weight:700;margin:8px 0 5px;border-left:3px solid var(--line);padding-left:6px">🧾 已結算 ${done.length} 筆 <span style="font-weight:400;color:var(--dim2);font-size:10px">出場價已定,不會再變</span></div>${done.map(row).join('')}` : ''}
       ${pend.length ? pend.map(row).join('') : ''}
-      ${R.trades.length ? this._stlCard(R.trades, '推薦', SRC === 'lead') : ''}
+      ${R.trades.length ? this._stlCard(R.trades, '推薦', SRC === 'lead', R.mech === 'trig') : ''}
       ${R.trades.length && SRC !== 'lead' ? this._recoCmpHtml() : ''}
     </div>`;
   },
   // 📊 成績單:只算**已結算**的(持有中的⛔ 不可混進來 —— 那會讓還在虧的部位不計入)
-  _stlCard(rows, who = '釣起', lead = false) {
+  _stlCard(rows, who = '釣起', lead = false, trigMech = false) {
     const done = rows.map(r => r.st).filter(s => s && !s.open);
     const open = rows.filter(r => r.st && r.st.open).length;
     const pend = rows.filter(r => !r.st).length;
@@ -6088,14 +6495,15 @@ const PRO = {
       </div>
       <div class="note" style="margin-top:6px">
         ${enough ? '' : `⚠️ <b>只有 ${n} 筆,⛔ 還不能當結論</b>(全站規則:樣本 <10 筆不下判斷)。<br>`}
-        ${lead ? `🧾 <b>怎麼算的</b>:換倉訊號隔天收盤買、掉出前 ${this._LEAD.N * this._LEAD.hyst} 名那次換倉的隔天收盤賣,⛔ 不設停損、⛔ 沒有最長天數 —— 跟自動下單(LEADER=1)同一套。` : `🧾 <b>怎麼算的</b>:進場 = ${who}那天的收盤;停損 = <b>min(${who}日最低, ${who}價 −5%)</b>;
+        ${lead ? `🧾 <b>怎麼算的</b>:換倉訊號隔天開盤買、掉出前 ${this._LEAD.N * this._LEAD.hyst} 名那次換倉的隔天開盤賣,⛔ 不設停損、⛔ 沒有最長天數 —— 跟自動下單(LEADER=1,預設開盤)同一套。` : trigMech ? `🧾 <b>怎麼算的</b>:前一晚名單 → 隔天<b>收盤到觸發價</b>才買(收盤價成交);停損 = <b>min(買進那天最低, 買進價 −5%)</b>;` : `🧾 <b>怎麼算的</b>:進場 = ${who}那天的收盤;停損 = <b>min(${who}日最低, ${who}價 −5%)</b>;
         收盤跌破<b>${this._exitRuleName()}</b>就走,最長 ${this._stlMaxd()} 個交易日 ——
         ⭐ 跟「📖 回測計算機」那份<b>一字不差</b>(改出場規則這裡會全部重算)。`}
         每趟已扣<b>來回成本 0.44%</b>,「超額」再扣<b>同期加權指數</b>。<br>
-        🚨 <b>這是紙上成績,⛔ 不是你的實際損益</b>:回測的進場是訊號日<b>尾盤 13:00~13:28</b>,
+        🚨 <b>這是紙上成績,⛔ 不是你的實際損益</b>:${trigMech ? '自動下單是 <b>13:25 收盤競價</b>買' : '回測的進場是訊號日<b>尾盤 13:00~13:28</b>'},
         這裡用的是<b>收盤價</b>,而且沒有滑價。要記真的成交價請用散戶救星的「🪞 勝率鏡子」。<br>
         📉 「中途最多賠」是<b>一次做一張、照結算順序</b>算的,
-        ${lead ? '⛔ 不是帳戶回撤(領頭羊回測的帳戶回撤很大,數字見散戶救星決策台 👑 的 📖)。' : `⛔ 不是帳戶回撤(回測是同時抱 2 檔、每筆 15 萬 → ${this._SIG_DEEP.months} 個月最大回撤 −${this._SIG_DEEP.geneDD}%)。`}</div></div>`;
+        ${lead ? '⛔ 不是帳戶回撤(領頭羊回測的帳戶回撤很大,數字見散戶救星決策台 👑 的 📖)。' : `⛔ 不是帳戶回撤(回測是同時抱 2 檔、每筆 15 萬 → ${this._SIG_DEEP.months} 個月最大回撤 −${this._SIG_DEEP.geneDD}%)。`}
+        💰 想看「真的拿 100 萬照這樣做,現在剩多少」→ 成績單最上面的「🏁 100 萬同一天起跑」。</div></div>`;
   },
   // ═══ 📡 V74.6.8 即時報價(使用者:「漁獲籃裡面我想要即時價格,這樣才知道有沒有賺錢」)═══
   // ⭐ 走 gh-pages 的 `data/live_quotes.json` —— **零金鑰**:採礦端(永豐 Shioaji)盤中每 5 分鐘
@@ -8505,7 +8913,7 @@ const PRO = {
   //   ⛔ 兩邊是**兩個獨立檔案**,沒辦法互相 import → 只能各存一份,
   //     所以 `scripts/test_prohtml.mjs` ㊳ 直接比對 index.html 的 `_APP_VERSION`,
   //     忘了改就會被擋下來(⛔ 不可拿掉那條測試,否則這個號碼遲早對不上 = 比沒有更糟)。
-  VER: 'V79.5.2',
+  VER: 'V79.5.3',
   _ROT: {
     win: 20, spread: 1.44, top: 0.63, bot: -0.80,
     q1: 1.28, q2: 1.58, yr: '+0.9/+1.4/+1.2/+2.2', exBest: 1.27,

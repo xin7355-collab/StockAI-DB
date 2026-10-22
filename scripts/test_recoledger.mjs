@@ -30,6 +30,11 @@ for (const f of ['data/pick_history.json', 'data/2330.json']) {
   if (!existsSync(f)) { console.log(`❌ 沒有 ${f}(跑 bash scripts/fetch_testdata.sh)—— ⛔ 不跑假測試`); process.exit(1); }
 }
 const H = JSON.parse(readFileSync('data/pick_history.json', 'utf8'));
+// 🔥 V79.5.3 成績單 🔥 那頁改成 App 真正的買法(前一晚名單 → 隔天收盤 ≥ 觸發價才買)。
+//   ⚠️ 本機測資是 9/14~10/20 那段(觸發價壞掉的五週,陷阱 #57)→ 每一列都沒有 trig = 一筆都買不到 = 下面全部沒有鑑別力。
+//   ⭐ 沒有觸發價的列補「觸發價 = 名單那天收盤」(⛔ 不改任何 K 線)→ 照樣用真實 K 線走新買法(隔天收盤 ≥ 名單那天收盤才買)。
+let _trigFill = 0;
+for (const d of H.days || []) for (const x of d.pb || []) if (x && !(+x.trig > 0) && +x.c > 0) { x.trig = +x.c; _trigFill++; }
 const TW = existsSync('data/^TWII.json') ? JSON.parse(readFileSync('data/^TWII.json', 'utf8')) : null;
 const K2330 = JSON.parse(readFileSync('data/2330.json', 'utf8'));
 const syms = new Set();
@@ -51,7 +56,9 @@ const b = await chromium.launch({
   args: ['--no-sandbox', '--disable-gpu', '--allow-file-access-from-files'],
 });
 const pg = await b.newPage();
-await pg.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); s.strategy = 'lead'; s.stratUnlock = true; localStorage.setItem('proTerminalSettings', JSON.stringify(s)); } catch (_) {} });   // 🎯 V77.9.6 這支測的是 👑 那一套 → 先切成 👑(🧬 預設另由 test_stratswitch 測)
+await pg.addInitScript(() => { try { const s = JSON.parse(localStorage.getItem('proTerminalSettings') || '{}'); s.strategy = 'lead'; s.stratUnlock = true; localStorage.setItem('proTerminalSettings', JSON.stringify(s)); } catch (_) {} });
+// 🏁 V79.5.3 成績單起算日預設 10/22 → 本機測資只到 10 月上旬 → 起算日設回 9/24(四套都有資料的那天);起算日本身由 test_recorace 測
+await pg.addInitScript(() => { try { localStorage.setItem('proRecoStart', '2026-09-24'); } catch (_) {} });   // 🎯 V77.9.6 這支測的是 👑 那一套 → 先切成 👑(🧬 預設另由 test_stratswitch 測)
 const errs = []; pg.on('pageerror', e => errs.push(String(e).slice(0, 160)));
 await pg.goto(pathToFileURL(resolve('pro.html')).href);
 await pg.waitForFunction(() => typeof PRO !== 'undefined' && !!PRO._recoLedgerRender, null, { timeout: 30000 });
@@ -107,7 +114,7 @@ const R = await pg.evaluate(() => {
   for (const d of clone.querySelectorAll('details')) if (!d.open) for (const c of [...d.children]) if (c.tagName !== 'SUMMARY') c.remove();
   return {
     tabName: (document.getElementById('tabBtnFish').textContent || '').trim(),
-    ids: [...tab.querySelectorAll('[id]')].map(e => e.id).filter(i => i !== 'recoCmpAll'),   // 🏁 V78.2.2 同一起點比一比是成績單的一部分
+    ids: [...tab.querySelectorAll('[id]')].map(e => e.id).filter(i => i !== 'recoCmpAll' && i !== 'recoRace'),   // 🏁 V78.2.2 同一起點比一比 / V79.5.3 100 萬同一天起跑 是成績單的一部分
     // 🎣 V77.3.9 兩個分頁各司其職 —— 釣魚池的 8 個畫面 id 必須**全部在 #tabRod 底下**
     panes: (() => {
       const want = ['fishPoolPane', 'fishPickPane', 'fishBasketPane', 'fishCanvas', 'fishBasket', 'fishList', 'fishCard', 'fishPool'];
@@ -373,6 +380,24 @@ ok(!C.same || C.stop === C.n,
     '⑩a3 📏 採礦端匯出前也要收小數(⛔ 只修顯示端 = 資料還是髒的)');
 }
 
+// 🔥 V79.5.3 新買法在**真實 K 線**上走一遍:每一筆都在名單隔天收盤買、進場價 = 那天收盤 ≥ 觸發價(也要有「沒到觸發價」的)
+{
+  await pg.evaluate(x => PRO.selRecoSrc(x), 'pb');
+  await pg.waitForFunction(() => PRO._rl && PRO._rl.src === 'pb', null, { timeout: 40000 }).catch(() => {});
+  const T = await pg.evaluate(() => {
+    const R = PRO._rl || {}, K = PRO._rlK || {}, out = { n: 0, bad: [], mech: R.mech, miss: (R.miss || []).length };
+    for (const t of (R.trades || [])) {
+      if (!t.st) continue; out.n++;
+      const r = (K[t.sym] || []).find(x => PRO._dstr(x.date) === t.d), nxt = PRO._twii.days.find(d => d > t.ld);
+      if (!(t.d === nxt && r && +r.close === t.st.entry && t.st.entry >= t.trig)) out.bad.push(`${t.sym} ${t.ld}→${t.d} ${t.st.entry}/${t.trig}`);
+    }
+    return out;
+  });
+  ok(_trigFill > 0 && T.mech === 'trig' && T.n > 0 && !T.bad.length && T.miss > 0,
+    '🔥 V79.5.3 真實 K 線走新買法:每一筆都在名單隔天收盤買、進場價 = 那天收盤 ≥ 觸發價(也有沒到觸發價沒買的)',
+    `補觸發價 ${_trigFill} 列 ・買 ${T.n} 筆 ・沒到 ${T.miss} 次 ・錯 ${T.bad.slice(0, 3).join(' | ')}`);
+}
+
 // 🏁 V78.2.2 同一起點比一比(使用者:「給我同一個起點資訊,之前的可以刪除」)
 {
   const Q = await pg.evaluate(async () => {
@@ -381,16 +406,18 @@ ok(!C.same || C.stop === C.n,
     const st = pb.trades.map(t => t.st).filter(Boolean);
     const avgPb = st.length ? st.reduce((a, x) => a + x.net, 0) / st.length : null;
     const minD = Math.min(...pb.trades.map(t => +String(t.d).replace(/-/g, '')));
-    // 決定性對照:把起點往後挪 → 筆數只會變少或一樣
-    const keep = PRO._RECO_COMMON; PRO._RECO_COMMON = '2099-01-01'; const late = await PRO._recoLedgerLoad(null, 'pb'); PRO._RECO_COMMON = keep;
+    // 決定性對照:把起點往後挪 → 0 筆(🏁 V79.5.3 起點讀 `_recoStart()`;拿 📈 那張比 —— 它一定有東西)
+    const fitN = (await PRO._recoLedgerLoad(null, 'fit')).trades.length;
+    const keep = PRO._recoStart; PRO._recoStart = () => '2099-01-01'; const late = await PRO._recoLedgerLoad(null, 'fit'); PRO._recoStart = keep;
+    const def = (() => { const v = localStorage.getItem('proRecoStart'); localStorage.removeItem('proRecoStart'); const d = PRO._recoStart(); localStorage.setItem('proRecoStart', v); return d; })();
     PRO._cmpAllSig = null; PRO._recoCmpAllRender(); for (let i = 0; i < 120 && !(document.querySelector('[data-cmpall="ok"]')); i++) await new Promise(r => setTimeout(r, 250));
     const el = document.getElementById('recoCmpAll');
     return { start: C.start, ks: C.rows.map(r => r.k), lead: PRO._isLead(), etfErr: (C.rows.find(r => r.k === 'etf') || {}).err || null, avgRow: (C.rows.find(r => r.k === 'pb') || {}).avg, avgPb, nRow: (C.rows.find(r => r.k === 'pb') || {}).n, nPb: st.length,
-             minD, lateN: late.trades.length, ok: el && el.querySelector('[data-cmpall="ok"]') ? 1 : 0, sorts: el ? el.querySelectorAll('[data-cmpsort]').length : 0,
+             minD, lateN: late.trades.length, fitN, def, ok: el && el.querySelector('[data-cmpall="ok"]') ? 1 : 0, sorts: el ? el.querySelectorAll('[data-cmpsort]').length : 0,
              today: el ? el.querySelectorAll('[data-cmptoday]').length : 0, txt: el ? el.innerText : '' };
   });
-  ok(Q.start === '2026-09-24' && (!Number.isFinite(Q.minD) || Q.minD >= 20260924), '🏁a 四頁共用起點 09-24(之前的推薦不算)', `${Q.start} 最早 ${Q.minD}`);
-  ok(Q.lateN === 0, '🏁b ⭐ 決定性對照:起點挪到 2099 → 0 筆(起點真的有作用)', Q.lateN);
+  ok(Q.start === '2026-09-24' && Q.def === '2026-10-22' && (!Number.isFinite(Q.minD) || Q.minD >= 20260924), '🏁a 四頁共用起點讀 `_recoStart()`(這支設 9/24、預設 10/22;之前的推薦不算)', `${Q.start} 預設 ${Q.def} 最早 ${Q.minD}`);
+  ok(Q.fitN > 0 && Q.lateN === 0, '🏁b ⭐ 決定性對照:起點挪到 2099 → 0 筆(起點真的有作用)', `${Q.fitN} → ${Q.lateN}`);
   ok(Q.nRow === Q.nPb && (Q.avgRow == null ? Q.avgPb == null : Math.abs(Q.avgRow - Q.avgPb) < 1e-9), '🏁c 比較表每一列 == 那一頁自己的結算(⛔ 不另算)', JSON.stringify([Q.nRow, Q.nPb, Q.avgRow, Q.avgPb]));
   ok(Q.ks.includes('pb') && Q.ks.includes('fit') && Q.ks.includes('mix') && Q.ks.includes('etf') && Q.ks.includes('lead') === Q.lead, '🏁d 🔥/📈/🧪 + 📏 0050 都在;👑 只在選 👑 時出現', Q.ks.join(',') + ' lead=' + Q.lead + ' etfErr=' + Q.etfErr);
   ok(Q.ok && Q.sorts === 6 && Q.today >= 3 && !/[🔴🟢]/u.test(Q.txt), '🏁e 表頭 6 欄可排序、每一套有「今天推薦」那一行、⛔ 無 🔴🟢', JSON.stringify([Q.ok, Q.sorts, Q.today]));
@@ -400,7 +427,7 @@ ok(!C.same || C.stop === C.n,
 {
   const Q = await pg.evaluate(async () => {
     const keep = PRO._cmpAll, keepSig = PRO._cmpAllSig;
-    const sig = 'cmpAll|' + PRO._exitRule() + '|' + (PRO._isLead() ? 1 : 0);
+    const sig = 'cmpAll|' + PRO._exitRule() + '|' + (PRO._isLead() ? 1 : 0) + '|' + PRO._recoStart();   // 🏁 V79.5.3 快取鍵含起算日
     const mk = (done) => ({ start: '2026-09-24', rows: [
       { k: 'pb', name: '🔥 高檔飆股', n: 12, done, hold: 12 - done, avg: 1, money: 1, beat: 1, beatN: 1, beatR: 1, today: { t: '', s: [] } },
       { k: 'fit', name: '📈 符合進場', n: 30, done, hold: 30 - done, avg: 5, money: 5, beat: 1, beatN: 1, beatR: 1, today: { t: '', s: [] } },

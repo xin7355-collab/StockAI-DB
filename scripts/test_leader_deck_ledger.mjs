@@ -26,6 +26,8 @@ const norm = t => ({ sym: String(t.sym), d0: t.d0, entry: +(+t.entry).toFixed(2)
 
 // ── pro.html
 const pp = await b.newPage(); pp.on('pageerror', e => errs.push('pro ' + String(e).slice(0, 160)));
+// 🏁 V79.5.3 成績單起算日預設 10/22 → 這支釘的是錨點 9/24 起的成交 → 起算日設回 9/24(起算日本身由 test_recorace 測)
+await pp.addInitScript(() => { try { localStorage.setItem('proRecoStart', '2026-09-24'); } catch (_) {} });
 await pp.goto(pathToFileURL(resolve('pro.html')).href);
 await pp.waitForFunction(() => typeof PRO !== 'undefined' && PRO._leaderLedgerLoad, null, { timeout: 30000 });
 // 🧪 file:// 攔不到網路請求 → 直接把兩邊讀檔那一支換掉(同一份改過的名單)
