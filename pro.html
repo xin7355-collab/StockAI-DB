@@ -6509,7 +6509,8 @@ const PRO = {
   //   ⛔ 不可在別處再寫一份(陷阱 #37:同一套規則寫兩份,遲早只改到一邊)。
   //   ⚠️ 兩個主畫面 App 的設定不互通(iPhone)→ 作戰室讀不到散戶救星的開關時一律照預設(新排法)
   _hotRule() { try { return JSON.parse(localStorage.getItem('proTerminalSettings') || '{}').hotRule === 'lb' ? 'lb' : 'mean'; } catch (_) { return 'mean'; } },
-  _pbKeyOf(x, rule) { const r = rule || this._hotRule(), a = r === 'lb' ? x.lb : x.exp, b = r === 'lb' ? x.exp : x.lb; return Number.isFinite(+a) ? +a : (Number.isFinite(+b) ? +b : -9); },
+  //   ⚠️ 這一列沒有 r / o(舊格式名單 / V79.4.9 以前的 pick_history)→ 一律照舊排法的 lb(同 index `_pbKey`)
+  _pbKeyOf(x, rule) { const r = !(x && ('r' in x || 'o' in x)) ? 'lb' : (rule || this._hotRule()), a = r === 'lb' ? x.lb : x.exp, b = r === 'lb' ? x.exp : x.lb; return Number.isFinite(+a) ? +a : (Number.isFinite(+b) ? +b : -9); },
   _pbRuleOk(x, rule) { return !('r' in x || 'o' in x) ? true : ((rule || this._hotRule()) === 'lb' ? +x.o > 0 : +x.r > 0); },
   _pbSort(a, b) { return PRO._hqOf(b) - PRO._hqOf(a) || PRO._pbKeyOf(b) - PRO._pbKeyOf(a); },
   _pbPick(sym) { return (this._pbMap || {})[sym] || null; },

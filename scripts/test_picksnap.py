@@ -80,12 +80,15 @@ with tempfile.TemporaryDirectory() as td:
     for day in j3['days']:
         for x in day.get('pb') or []:
             keys |= set(x)
-    banned = {'exp', 'w', 'verdict', 'score', 'grade', 'advice', 'rank'}
+    # 🔥 V79.4.9 `exp`(這一招平均每趟)= 新排法的排序依據,跟 `lb` 一樣是「當時名單長怎樣」的事實 → 要存(成績單照當天的規則重建名單);
+    #    評分 / 結論 / 建議照樣⛔ 不存
+    banned = {'w', 'verdict', 'score', 'grade', 'advice', 'rank'}
     ok('④ ⛔ 不可存結論/評分(那會變成第二份真相)',
        not (keys & banned), f'存了不該存的:{sorted(keys & banned)}')
     ok('④b 該存的事實都在', {'s', 'c', 'k'} <= keys, f'keys={sorted(keys)}')
     # 📒 V76.0.4 決策台推薦成績單要用 hq / bear 重建「今天可以買的」名單(⛔ 少存 = 名單重建不出來,而且零錯誤訊息)
     ok('④c 📒 hq / bear 兩個事實旗標也要存(推薦成績單靠它重建決策台名單)', {'hq', 'bear'} <= keys, f'keys={sorted(keys)}')
+    ok('④d 🔥 V79.4.9 排序要用的 exp / lb 也要存(成績單照當天的規則重建名單)', {'exp', 'lb'} <= keys, f'keys={sorted(keys)}')
 
 # ⑤ 累積不足要明說(⛔ 不可在樣本不夠時給績效)
 with tempfile.TemporaryDirectory() as td:

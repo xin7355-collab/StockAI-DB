@@ -74,10 +74,13 @@ ok('⑤d 🚨 賣單送出後立刻從狀態檔移除(⛔ 不可重複送)',
    re.search(r"st\['pos'\]\.pop\(sym, None\); save_state\(st\)", SRC) is not None)
 ok('⑤e 買進時要把部位記下來(否則出場那段永遠沒東西可賣)',
    re.search(r"st\.setdefault\('pos', \{\}\)\[sym\]", SRC) is not None)
-ok('⑥ 🚨 跨日時 `pos` 不可跟 `done` 一起清掉',
-   re.search(r"'pos': st\.get\('pos'\) or \{\}", SRC) is not None)
-ok('⑦ 出場排在買進之前(錢先回來才買得起下一檔)',
-   SRC.index('先處理出場') < SRC.index('for p in picks[:MAX_PICKS]'))
+_st6 = at.reset_day({'d': '2026-01-01', 'done': ['2330'], 'pos': {'2330': {'sh': 1000, 'e': 100}}, 'park': {'sh': 5}}, '2026-01-02')
+ok('⑥ 🚨 跨日時 `pos` 不可跟 `done` 一起清掉(V79.4.9 起走 reset_day:只清當天的鍵)',
+   _st6['done'] == [] and _st6['pos'] == {'2330': {'sh': 1000, 'e': 100}} and _st6['park'] == {'sh': 5}, _st6)
+_main = SRC[SRC.index('def main():'):]
+ok('⑦ 出場排在買進之前(錢先回來才買得起下一檔;V79.4.9 起買進在 hot_step)',
+   '先處理出場' in _main and 'hot_step(api, sj, st, meta, picks, day)' in _main
+   and _main.index('先處理出場') < _main.index('hot_step(api, sj, st, meta, picks, day)'))
 ok('⑧ 停損與最長天數⛔ 不隨出場規則變(回測沒動過那兩條)',
    'MAX_HOLD_DAYS' in SRC and "pos.get('sl')" in SRC)
 ok('⑨ 🔐 賣單一樣要過 DRY_RUN 煞車',

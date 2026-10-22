@@ -40,7 +40,10 @@ def rule_rows(picks, rule):
 
 
 def rule_key(p, rule):
-    """排序用的值(同 App `_pbKey`):mean 照 exp(沒有就退回 lb);lb 照 lb(沒有就退回 exp)。"""
+    """排序用的值(同 App `_pbKey`):mean 照 exp(沒有就退回 lb);lb 照 lb(沒有就退回 exp)。
+    ⚠️ 這一列沒有 r / o(舊格式名單)→ 一律照 lb(= 舊排法)—— ⛔ 不可照平均:舊名單只有舊排法挑的那幾列,照平均排是兩套都不是的順序。"""
+    if 'r' not in p and 'o' not in p:
+        rule = 'lb'
     a, b = (p.get('lb'), p.get('exp')) if rule == 'lb' else (p.get('exp'), p.get('lb'))
     v = _num(a)
     if v is None:

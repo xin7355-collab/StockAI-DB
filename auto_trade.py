@@ -128,6 +128,12 @@ PARK_MAX_AMT_PER_DAY = int(os.getenv('PARK_MAX_AMT_PER_DAY') or 300000)   # 一�
 PARK_MIN_TRADE_PCT = float(os.getenv('PARK_MIN_TRADE_PCT') or 2)      # 差距 < 帳戶 2% 不動(⛔ 不為了一點點來回買賣;同 App)
 PARK_AT = int(os.getenv('PARK_AT_H') or 13) * 60 + int(os.getenv('PARK_AT_M') or 27)   # 一天一次:收盤競價時段(13:25~13:30)內
 PARK_STALE_X = 1.1                                                     # 手上的股票 + 0050 > 帳戶總資金 ×1.1 = 帳戶總資金過期 → 不動
+PARK_BUF_PCT = 1.0                                                     # 留帳戶 1% 現金當手續費 / 價差緩衝(買 0050、湊交割款都用這一個)
+# 🛡️ V79.4.9 真實帳戶先不真的買 0050 —— 永豐 `settlements`(交割款)的正負號官方文件沒寫,看反了會以為錢比較多 → 可能違約交割。
+#   使用者 10/22 選「等我看過你的 log 再開」:真實帳戶只**預覽**(印出今天會買幾股 + 永豐回的原始餘額 / 交割款),⛔ 不送 0050 買單;
+#   湊交割款的賣出照常(那時手上也還沒有它買的 0050);模擬帳戶照常跑(不動真錢)。
+#   Claude 看過 log、對完正負號後出下一版改成 True(⛔ 刻意不做成環境變數:你 git pull 就好,不用自己改設定)。
+PARK_LIVE_OK = False
 POLL_SEC = int(os.getenv('POLL_SEC', '60'))
 STATE_PATH = os.getenv('STATE_PATH', os.path.expanduser('~/.stockai_auto_trade.json'))
 
@@ -151,7 +157,17 @@ def load_state():
         return {}
 
 
+_DRY_SAVE_LOGGED = False
+
+
 def save_state(st):
+    # 🧪 V79.4.9 DRY_RUN ⛔ 不寫狀態檔(檢查代理 10/22 抓到:預覽跑過之後,同一天真的跑會以為「今天做過了」→ 跳過湊交割款)
+    global _DRY_SAVE_LOGGED
+    if DRY_RUN:
+        if not _DRY_SAVE_LOGGED:
+            log("🧪 DRY_RUN:狀態檔⛔ 不寫入(預覽不影響之後真的跑)")
+            _DRY_SAVE_LOGGED = True
+        return
     # ⚠️ 寫失敗不可讓整支掛掉(但要講出來 —— 沒存成功 = 可能重複下單)
     try:
         with open(STATE_PATH, 'w', encoding='utf-8') as f:
@@ -625,7 +641,8 @@ def hot_step(api, sj, st, meta, picks, day):
         sym, trig, stop = str(p.get('s')), p.get('trig'), p.get('stop')
         if sym in st['done']:
             continue
-        if sym in (st.get('pos') or {}):
+        _held = (st.get('pos') or {}).get(sym)
+        if _held and (not _held.get('m') or _held.get('m') == _mode()):
             log(f"⏭️ {sym} 已經持有(自動下單之前買的)→ 不再買(名單這一格空著,同回測)")
             st['done'].append(sym)   # 記進今天做過的 → 這一行只印一次
             continue
@@ -689,7 +706,7 @@ def hot_step(api, sj, st, meta, picks, day):
             st['done'].append(sym)
             # 🚪 記下部位,出場那段才知道「這是我買的」(⛔ 只賣自己買的,不碰手動庫存)
             st.setdefault('pos', {})[sym] = {'e': px, 'sl': float(stop), 'd': day,
-                                             'sh': shares, 'k': EXIT_RULE, 'mh': max_hold(EXIT_RULE)}
+                                             'sh': shares, 'k': EXIT_RULE, 'mh': max_hold(EXIT_RULE), 'm': _mode()}
             st['hot_buy_amt'] = float(st.get('hot_buy_amt') or 0) + shares * px   # 🅿️ 今天要付的錢(收盤前賣 0050 湊交割款)
             save_state(st)
         except Exception as e:
@@ -736,57 +753,160 @@ def _park_limits(px, ref):
     return buy, sell
 
 
-def _avail_cash(api):
-    """可動用的現金 = 交割戶餘額 + 還沒付的交割款(⛔ 還沒收到的不算 = 保守)。查不到回 None(⛔ 不猜)。
-    shioaji 1.5.x:`account_balance().acc_balance`;`settlements()` 有兩種格式(t_money / t1_money / t2_money 或 amount)→ 兩種都吃。"""
+def _mode():
+    """這一次是真實帳戶還是模擬帳戶(狀態檔裡的部位要分開算:模擬買的 ⛔ 不可在真實帳戶被當成自己的去賣)"""
+    return 'live' if LIVE else 'sim'
+
+
+def _cash_info(api):
+    """可動用的現金 = 交割戶餘額 + 還沒付的交割款(負數當應付;應收的不算 = 保守)+ 永豐回的原始資料(印給 Claude 對正負號)。
+    ⚠️ 正負號官方文件沒寫 → 真實帳戶在 `PARK_LIVE_OK` 打開之前只預覽,⛔ 不靠它下 0050 的買單。查不到回 (None, 原因)(⛔ 不猜)。
+    shioaji 1.5.x:`account_balance().acc_balance`;`settlements()` 有兩種格式(t_money / t1_money / t2_money 或 date / amount / T)→ 兩種都吃。"""
+    raw = []
     try:
         bal = api.account_balance()
-        cash = float(getattr(bal, 'acc_balance', None))
         if getattr(bal, 'errmsg', ''):
-            return None
-    except Exception:
-        return None
+            return None, f"餘額查詢回錯誤:{getattr(bal, 'errmsg', '')}"
+        cash = float(getattr(bal, 'acc_balance', None))
+        raw.append(f"餘額 {cash:,.0f}")
+    except Exception as e:
+        return None, f"查不到餘額({e})"
     try:
         rows = api.settlements(api.stock_account)
         rows = rows if isinstance(rows, (list, tuple)) else [rows]
         for r in rows:
-            vals = [getattr(r, k, None) for k in ('t_money', 't1_money', 't2_money')]
-            if all(v is None for v in vals):
-                vals = [getattr(r, 'amount', None)]
-            for v in vals:
-                if v is not None and float(v) < 0:
+            vals = [(k, getattr(r, k, None)) for k in ('t_money', 't1_money', 't2_money')]
+            if all(v is None for _, v in vals):
+                vals = [(f"T{getattr(r, 'T', '?')}({getattr(r, 'date', '?')})", getattr(r, 'amount', None))]
+            for k, v in vals:
+                if v is None:
+                    continue
+                raw.append(f"{k} {float(v):+,.0f}")
+                if float(v) < 0:
                     cash += float(v)
+    except Exception as e:
+        return None, '・'.join(raw + [f"查不到交割款({e})"])
+    return cash, '・'.join(raw)
+
+
+def _avail_cash(api):
+    return _cash_info(api)[0]
+
+
+def _broker_qty(api, sj, code):
+    """永豐庫存裡這一檔有幾股(股數);查不到回 None(⛔ 不猜)"""
+    try:
+        return sum(int(getattr(x, 'quantity', 0) or 0)
+                   for x in api.list_positions(api.stock_account, unit=sj.constant.Unit.Share)
+                   if str(getattr(x, 'code', '')) == code)
     except Exception:
         return None
-    return cash
 
 
-def park_step(api, sj, st, day):
-    """🅿️ 一天一次:照 `park_plan` 買或賣 0050(⛔ 同一天只做一邊,⛔ 不當沖 0050)。
-    ① 今天有買 🔥:先確保交割款夠 —— 現金不夠的部分一定賣 0050 補(查不到現金 → 今天買的全部用賣 0050 支應)
-    ② 賣:只賣「自己買的」0050(狀態檔 park.sh;真實模式再跟永豐的庫存比一次取小)
-    ③ 買:一天最多 PARK_MAX_AMT_PER_DAY;真實模式一定要查得到現金,買的金額 ⛔ 不超過現金(查不到那天不買)
-    回傳 'off' / 'done' / 'none' / 'stale' / 'ok' / 'sell' / 'buy' / 'nocash' / 'err'"""
-    if not PARK:
+def _lead_reserve(st):
+    """👑 要留著的錢 = 分給 👑 的錢 − 👑 持股成本(⛔ 用成本不用市值:漲上去那段不是現金)。沒開 👑 → 0。
+    ⛔ 停 0050 / 湊交割款都不可以用到這筆(檢查代理 10/22 抓到:以前上限只看總現金)"""
+    if not LEADER or LEADER_ACCOUNT <= 0:
+        return 0.0
+    cost = sum(int(p.get('sh') or 0) * float(p.get('e') or 0)
+               for k in ('lead', 'lead2') for p in (st.get(k) or {}).values())
+    return max(0.0, LEADER_ACCOUNT - cost)
+
+
+def _park_rec(st):
+    """這個模式(真實 / 模擬)自己買的 0050 紀錄。另一個模式留下的 ⛔ 不算自己的(不賣、不當成已經停了),直接換成新的一筆。"""
+    pk = st.get('park') or {}
+    if pk.get('m') and pk.get('m') != _mode():
+        log(f"🅿️ ⚠️ 狀態檔裡那 {int(pk.get('sh') or 0)} 股 0050 是{'模擬' if pk.get('m') == 'sim' else '真實'}帳戶買的"
+            f" → 這次({'真實' if LIVE else '模擬'})⛔ 不算自己的(不賣、不當成已經停了)")
+        pk = {}
+    st['park'] = pk
+    return pk
+
+
+def _park_has_own(st):
+    """這個模式手上還有沒有自己買的 0050(有的話就算 PARK=0 也要能湊交割款)"""
+    pk = st.get('park') or {}
+    if pk.get('m') and pk.get('m') != _mode():
+        return False
+    return int(pk.get('sh') or 0) > 0 or bool(pk.get('pend'))
+
+
+def _park_quote(api, tries=3, sleep_fn=None):
+    """0050 現價與參考價(昨收);失敗重試 tries 次,都失敗回 (0, 0)(⛔ 不猜價)"""
+    sl = sleep_fn or time.sleep
+    for i in range(tries):
+        try:
+            s0 = api.snapshots([api.Contracts.Stocks[PARK_SYM]])[0]
+            px = float(getattr(s0, 'close', 0) or 0)
+            if px > 0:
+                return px, px - float(getattr(s0, 'change_price', 0) or 0)
+        except Exception as e:
+            log(f"🅿️ ⚠️ 0050 報價失敗({e})")
+        if i + 1 < tries:
+            sl(2)
+    return 0.0, 0.0
+
+
+def _park_settle(api, sj, pk, day):
+    """昨天以前送出的 0050 買單(真實帳戶)→ 用永豐庫存差算「真的成交幾股」才算自己的
+    (⛔ 送出 ≠ 成交:颱風假 / 被退單也會「送出成功」;檢查代理 10/22 抓到以前送出就記 → 之後可能賣到你手動買的)。
+    回 (own, pend_sh):own = 確定是自己的股數(只有這些可以賣);pend_sh = 還沒對到帳的(⛔ 不賣,但算進「已經停了多少」免得一直加買)。"""
+    own = int(pk.get('sh') or 0)
+    pend = pk.get('pend')
+    if not pend:
+        return own, 0
+    psh = int(pend.get('sh') or 0)
+    if pend.get('d') == day:
+        return own, psh
+    real = _broker_qty(api, sj, PARK_SYM)
+    if real is None or pend.get('b') is None:
+        log(f"🅿️ ⚠️ 查不到永豐 0050 庫存 → {pend.get('d')} 那筆 0050 買單({psh} 股)還沒對帳,先⛔ 不算自己的、⛔ 不賣")
+        return own, psh
+    filled = max(0, min(psh, real - int(pend['b'])))
+    log(f"🅿️ 📒 {pend.get('d')} 那筆 0050 買單:送出 {psh} 股・永豐 0050 庫存 {int(pend['b'])} → {real} 股 → 算真的成交 {filled} 股")
+    pk['sh'] = own + filled
+    pk.pop('pend', None)
+    return own + filled, 0
+
+
+def _park_manual_alert(st):
+    """湊交割款做不到(0050 一直沒報價 / 程式太晚啟動)→ 🚨 講清楚要你做什麼(⛔ 不可安靜結束)"""
+    amt = float(st.get('hot_buy_amt') or 0) + float(st.get('lead_buy_amt') or 0)
+    own = int((st.get('park') or {}).get('sh') or 0)
+    log(f"🅿️ 🚨🚨 今天自動下單買了約 {amt:,.0f} 元的股票,但還沒賣 0050 湊交割款(0050 一直沒有報價,或程式太晚啟動)。"
+        f"請確認交割戶在 T+2 早上 9 點前有這筆錢;不夠的話今天 14:00~14:30 可以用盤後定價手動賣它買的 0050(最多 {own} 股)")
+
+
+def park_step(api, sj, st, day, sleep_fn=None):
+    """🅿️ 一天一次(13:27 收盤競價):
+    ① **先湊交割款**:今天自動下單買的(🔥 + 👑)+ 👑 要留的錢 + 1% 緩衝 > 可用現金 → 一定賣「自己的」0050 補
+       ⛔ 不管「帳戶總資金過期」/ 沒設帳戶 / PARK=0 —— 只要手上還有它買的 0050(檢查代理 10/22 抓到:以前會被「過期」擋掉 → 違約交割)
+       查不到現金 → 今天 🔥 買多少就賣多少 0050(保守)
+    ② 再照 `park_plan` 補買 / 賣多出來的(⛔ 同一天只做一邊、⛔ 不當沖 0050)
+    ③ 買:一天最多 PARK_MAX_AMT_PER_DAY;⛔ 不超過「現金 − 今天要付的 − 👑 要留的 − 緩衝」;
+       真實帳戶:查不到現金那天不買、`PARK_LIVE_OK` 還沒開 → 只預覽;送出前記下永豐庫存,隔天對帳才算自己的
+    回傳 'off' / 'done' / 'retry' / 'none' / 'stale' / 'ok' / 'sell' / 'buy' / 'preview' / 'nocash' / 'err'"""
+    if not PARK and not _park_has_own(st):
         return 'off'
     if st.get('park_day') == day:
         return 'done'
-    pk = st.setdefault('park', {})
-    if ACCOUNT_SIZE <= 0:
-        log("🅿️ 沒設 ACCOUNT_SIZE(帳戶總資金)→ 不停 0050(⛔ 不猜你有多少錢);要停請設 ACCOUNT_SIZE=<股票 + 0050 + 現金>")
-        st['park_day'] = day; save_state(st); return 'none'
-    try:
-        c0 = api.Contracts.Stocks[PARK_SYM]
-        s0 = api.snapshots([c0])[0]
-        px = float(getattr(s0, 'close', 0) or 0)
-        ref = px - float(getattr(s0, 'change_price', 0) or 0)
-    except Exception as e:
-        log(f"🅿️ ⚠️ 0050 報價失敗({e})→ 今天不動"); st['park_day'] = day; save_state(st); return 'err'
+    pk = _park_rec(st)
+    hot_buy = float(st.get('hot_buy_amt') or 0)
+    lead_buy = float(st.get('lead_buy_amt') or 0)
+    px, ref = _park_quote(api, sleep_fn=sleep_fn)
     if px <= 0:
-        log("🅿️ ⚠️ 0050 沒有報價 → 今天不動"); st['park_day'] = day; save_state(st); return 'err'
-    # 🔥 持股市值(⛔ 只算自己買的 pos;報價失敗那檔用買進價)
+        if hot_buy > 0 and _park_has_own(st):
+            log("🅿️ 🚨 0050 一直沒有報價 → 還沒賣 0050 湊今天買股票的錢,下一輪再試")
+        else:
+            log("🅿️ ⚠️ 0050 沒有報價 → 下一輪再試")
+        return 'retry'   # ⛔ 不標今天做完(下一輪補;收盤前還不行 → main 會跳 🚨)
+    own, pend_sh = _park_settle(api, sj, pk, day)
+    # 🔥 持股市值(⛔ 只算這個模式自己買的 pos;報價失敗那檔用買進價)
     stock_val = 0.0
     for sym, pos in (st.get('pos') or {}).items():
+        if pos.get('m') and pos.get('m') != _mode():
+            continue
         sh = int(pos.get('sh') or 0)
         p = 0.0
         try:
@@ -794,68 +914,96 @@ def park_step(api, sj, st, day):
         except Exception:
             p = 0.0
         stock_val += sh * (p if p > 0 else float(pos.get('e') or 0))
-    own = int(pk.get('sh') or 0)
     if LIVE and own > 0:
-        try:   # 真實模式:跟永豐的庫存比一次(買單沒成交的那部分 ⛔ 不算),取小
-            real = sum(int(getattr(x, 'quantity', 0) or 0) for x in api.list_positions(api.stock_account, unit=sj.constant.Unit.Share)
-                       if str(getattr(x, 'code', '')) == PARK_SYM)
-            if real < own:
-                log(f"🅿️ ⚠️ 狀態檔記自己買了 {own} 股 0050,永豐庫存只有 {real} 股 → 以 {real} 股為準")
-                own = real; pk['sh'] = own
-        except Exception as e:
-            log(f"🅿️ ⚠️ 查不到永豐庫存({e})→ 先照狀態檔的 {own} 股")
-    park_val = own * px
-    target, diff, act = park_plan(ACCOUNT_SIZE, stock_val, park_val, PARK_RESERVE_PCT, PARK_MIN_TRADE_PCT)
-    if act == 'stale':
-        log(f"🅿️ ⚠️ 手上股票 {stock_val:,.0f} + 0050 {park_val:,.0f} 比帳戶總資金 {ACCOUNT_SIZE:,} 的 1.1 倍還多 → ACCOUNT_SIZE 可能過期了,今天不動 0050(請改成現在的總資金)")
-        st['park_day'] = day; save_state(st); return 'stale'
+        real = _broker_qty(api, sj, PARK_SYM)   # 真實模式:跟永豐的庫存比一次(取小)
+        if real is None:
+            log(f"🅿️ ⚠️ 查不到永豐庫存 → 先照狀態檔的 {own} 股")
+        elif real < own:
+            log(f"🅿️ ⚠️ 狀態檔記自己買了 {own} 股 0050,永豐庫存只有 {real} 股 → 以 {real} 股為準")
+            own = real; pk['sh'] = own
+    park_val = (own + pend_sh) * px
+    cash, raw = _cash_info(api)
+    lead_res = _lead_reserve(st)
+    buf = ACCOUNT_SIZE * PARK_BUF_PCT / 100.0 if ACCOUNT_SIZE > 0 else 0.0
     buy_px, sell_px = _park_limits(px, ref)
-    hot_buy = float(st.get('hot_buy_amt') or 0)
-    cash = None if DRY_RUN else _avail_cash(api)
-    log(f"🅿️ 帳戶 {ACCOUNT_SIZE:,} − 個股 {stock_val:,.0f} = 該停 0050 {target:,.0f}(現在 {own} 股 ≈ {park_val:,.0f})"
-        f"・今天買股票 {hot_buy:,.0f}・現金 {'查不到' if cash is None else f'{cash:,.0f}'}")
-    # ① + ② 賣
-    sell_sh = math.ceil(-diff / sell_px) if act == 'sell' else 0
-    if hot_buy > 0:
-        need = hot_buy - (cash if cash is not None else 0.0)
-        if need > 0:
-            sell_sh = max(sell_sh, math.ceil(need / sell_px))
+    if LIVE:
+        log(f"🅿️ 🔎 永豐回的原始資料(給 Claude 對交割款正負號):{raw} ・今天自動下單買了 🔥 {hot_buy:,.0f} / 👑 {lead_buy:,.0f}")
+    # ① 湊交割款(只在今天有買的時候;⛔ 沒買東西時現金略低於緩衝 ⛔ 不賣 —— 那會變成天天小額來回)
+    need = 0.0
+    if hot_buy + lead_buy > 0:
+        need = (hot_buy + lead_buy + lead_res + buf - cash) if cash is not None else hot_buy
+    fund_sh = min(own, math.ceil(need / sell_px)) if need > 0 and own > 0 else 0
+    if need > 0 and own * sell_px < need:
+        log(f"🅿️ 🚨 今天買股票要付的錢,現金加上它自己的 0050 還差約 {need - own * sell_px:,.0f} 元 —— 請確認交割戶 T+2 早上 9 點前的錢夠")
+    # ② 停多少(⛔ 只影響補買 / 賣多出來的,⛔ 不影響上面湊交割款)
+    if not PARK:
+        target, diff, act = 0.0, 0.0, 'off'
+    else:
+        target, diff, act = park_plan(ACCOUNT_SIZE, stock_val, park_val, PARK_RESERVE_PCT, PARK_MIN_TRADE_PCT)
+    if act == 'none' and not fund_sh:
+        log("🅿️ 沒設 ACCOUNT_SIZE(帳戶總資金)→ 不停 0050(⛔ 不猜你有多少錢);要停請設 ACCOUNT_SIZE=<股票 + 0050 + 現金>")
+    if act == 'stale':
+        log(f"🅿️ ⚠️ 手上股票 {stock_val:,.0f} + 0050 {park_val:,.0f} 比帳戶總資金 {ACCOUNT_SIZE:,} 的 1.1 倍還多 → ACCOUNT_SIZE 可能過期了,"
+            "今天不照它補買 / 賣多出來的(請改成現在的總資金);湊交割款照做")
+    elif act not in ('none', 'off'):
+        log(f"🅿️ 帳戶 {ACCOUNT_SIZE:,} − 個股 {stock_val:,.0f} = 該停 0050 {target:,.0f}(自己的 {own} 股"
+            + (f" + 還沒對帳 {pend_sh} 股" if pend_sh else '') + f" ≈ {park_val:,.0f})"
+            f"・今天買股票 {hot_buy + lead_buy:,.0f}・現金 {'查不到' if cash is None else f'{cash:,.0f}'}")
+    sell_sh = max(fund_sh, math.ceil(-diff / sell_px) if act == 'sell' else 0)
     sell_sh = min(sell_sh, own)
     if sell_sh > 0:
-        log(f"🅿️ 🔻 賣 {sell_sh} 股 0050 @ {sell_px}(約 {sell_sh * sell_px:,.0f} 元;收盤競價)")
+        why = '湊今天買股票的交割款' if fund_sh else '比該停的多'
+        log(f"🅿️ 🔻 賣 {sell_sh} 股 0050 @ {sell_px}(約 {sell_sh * sell_px:,.0f} 元;{why};收盤競價)")
         if DRY_RUN:
             log("   🧪 DRY_RUN:不送單"); st['park_day'] = day; return 'sell'
+        c0 = api.Contracts.Stocks[PARK_SYM]
         try:
             log(f"   ✅ 賣單 {_send(api, sj, c0, sell_px, sell_sh, False)}")
-            pk['sh'] = own - sell_sh; st['park_day'] = day; save_state(st)   # ⚠️ 送出就記(⛔ 不可重複送)
-            return 'sell'
         except Exception as e:
-            log(f"   ❌ 賣 0050 失敗:{e}"); st['park_day'] = day; save_state(st); return 'err'
+            log(f"   🚨 賣 0050 送單出錯:{e} —— 可能已經送出一部分,⛔ 不重送;請到永豐 App 確認 0050 賣單,"
+                f"沒送出的話請手動賣 {sell_sh} 股(盤後定價 14:00~14:30 也可以),不然 T+2 交割款可能不夠")
+        pk['sh'] = own - sell_sh; pk['m'] = _mode(); st['park_day'] = day; save_state(st)   # ⚠️ 送出就扣(寧可少算,⛔ 不可重複賣)
+        return 'sell'
     if act != 'buy':
-        log("🅿️ ✅ 差不多了,不用動" if act == 'ok' else "🅿️ 不用動")
-        st['park_day'] = day; save_state(st); return 'ok'
+        if act == 'ok':
+            log("🅿️ ✅ 差不多了,不用動")
+        st['park_day'] = day; save_state(st)
+        return {'none': 'none', 'stale': 'stale', 'off': 'ok'}.get(act, 'ok')
     # ③ 買
     amt = min(diff, float(PARK_MAX_AMT_PER_DAY))
     if cash is None and LIVE:
-        log("🅿️ ⚠️ 查不到交割戶現金 → 今天⛔ 不買 0050(寧可少停一天,⛔ 不可買到錢不夠交割)")
+        log(f"🅿️ ⚠️ 查不到交割戶現金({raw})→ 今天⛔ 不買 0050(寧可少停一天,⛔ 不可買到錢不夠交割)")
         st['park_day'] = day; save_state(st); return 'nocash'
     if cash is not None:
-        spent = hot_buy + float(st.get('lead_buy_amt') or 0)
-        amt = min(amt, cash - spent - ACCOUNT_SIZE * 0.01)   # 留帳戶 1% 當手續費緩衝
+        amt = min(amt, cash - hot_buy - lead_buy - lead_res - buf)
     sh = int(max(0.0, amt) // buy_px)
     if sh <= 0:
         log("🅿️ 現金不夠買 0050(或差距太小)→ 今天不買"); st['park_day'] = day; save_state(st); return 'ok'
     left = max(0.0, diff - sh * buy_px)
-    log(f"🅿️ 🔺 買 {sh} 股 0050 @ {buy_px}(約 {sh * buy_px:,.0f} 元;收盤競價)"
-        + (f" ・還差約 {left:,.0f} 元,之後每天補(一天最多 {PARK_MAX_AMT_PER_DAY:,})" if left >= ACCOUNT_SIZE * PARK_MIN_TRADE_PCT / 100 else ''))
+    msg = (f"🅿️ 🔺 買 {sh} 股 0050 @ {buy_px}(約 {sh * buy_px:,.0f} 元;收盤競價)"
+           + (f" ・還差約 {left:,.0f} 元,之後每天補(一天最多 {PARK_MAX_AMT_PER_DAY:,})" if left >= ACCOUNT_SIZE * PARK_MIN_TRADE_PCT / 100 else ''))
+    if LIVE and not PARK_LIVE_OK:
+        log(msg.replace('🅿️ 🔺 買', '🅿️ 👀 預覽(⛔ 沒送單):今天會買'))
+        log("   ⏳ 真實帳戶的「停 0050」還沒開:等你把這段 log + 永豐 App「交割款查詢」的截圖傳給 Claude 對過正負號,下一版才會真的買")
+        st['park_day'] = day; save_state(st); return 'preview'
+    log(msg)
     if DRY_RUN:
         log("   🧪 DRY_RUN:不送單"); st['park_day'] = day; return 'buy'
+    c0 = api.Contracts.Stocks[PARK_SYM]
+    before = _broker_qty(api, sj, PARK_SYM) if LIVE else None
+    if LIVE and before is None:
+        log("🅿️ ⚠️ 查不到永豐 0050 庫存 → 今天⛔ 不買(買了之後沒辦法對帳哪些是自己的)")
+        st['park_day'] = day; save_state(st); return 'nocash'
     try:
         log(f"   ✅ 買單 {_send(api, sj, c0, buy_px, sh, True)}")
-        pk['sh'] = own + sh; st['park_day'] = day; save_state(st)
-        return 'buy'
     except Exception as e:
-        log(f"   ❌ 買 0050 失敗:{e}"); st['park_day'] = day; save_state(st); return 'err'
+        log(f"   🚨 買 0050 送單出錯:{e} —— 可能已經送出一部分;請到永豐 App 確認")
+    if LIVE:
+        pk['pend'] = {'d': day, 'sh': sh, 'b': before}   # ⛔ 送出 ≠ 成交:隔天用永豐庫存差對帳才算自己的
+    else:
+        pk['sh'] = own + sh   # 模擬帳戶:送出就算(不動真錢)
+    pk['m'] = _mode(); st['park_day'] = day; save_state(st)
+    return 'buy'
 
 
 def main():
@@ -885,7 +1033,8 @@ def main():
     if PARK:
         log(f"🅿️ 沒用到的錢停 0050:開(預設)・留現金 {PARK_RESERVE_PCT:g}%・一天最多買 {PARK_MAX_AMT_PER_DAY:,} 元"
             f"・{PARK_AT // 60}:{PARK_AT % 60:02d} 收盤競價做一次(之後今天不再買 🔥)"
-            + ("" if ACCOUNT_SIZE > 0 else " ⚠️ 但沒設 ACCOUNT_SIZE → 不會動"))
+            + ("" if ACCOUNT_SIZE > 0 else " ⚠️ 但沒設 ACCOUNT_SIZE → 不會動")
+            + (" ・👀 真實帳戶目前只預覽、⛔ 不送 0050 買單(等交割款正負號確認,見 PARK_LIVE_OK)" if LIVE and not PARK_LIVE_OK else ""))
     else:
         log("🅿️ 沒用到的錢停 0050:關(PARK=0)")
 
@@ -921,6 +1070,9 @@ def main():
     # ⚠️ `done`(今天買過誰)每天重置,但部位(`pos` / `lead` / `lead2` / `park`)與延後要賣的(`lead_defer`)⛔ 絕不可跟著清掉
     st = reset_day(st, today)
     log(f"📒 今天已下過:{st['done'] or '(無)'}")
+    _, _m0, _ = tpe_now()
+    if _m0 >= 13 * 60 + 30 and st.get('park_day') != today and float(st.get('hot_buy_amt') or 0) > 0 and _park_has_own(st):
+        _park_manual_alert(st)   # 🅿️ 程式太晚啟動(或中途掛掉):今天買的還沒賣 0050 湊交割款 → 🚨 講清楚
 
     # 👑 開盤時段(LEADER_WINDOW=open / split):09:01~09:10 做一次,之後照常等尾盤
     if LEADER and LEADER_WINDOW in ('open', 'split'):
@@ -935,8 +1087,11 @@ def main():
             log("週末不開盤,結束"); break
         if mins > EOD_TO:
             # 🅿️ 上一輪拖太久、錯過 13:27 那一拍 → 收盤競價(13:30)前補做一次(⛔ 不可整天沒停 0050 卻也沒賣 0050 湊交割款)
-            if PARK and st.get('park_day') != day and mins < 13 * 60 + 30:
-                park_step(api, sj, st, day)
+            #    PARK=0 但手上還有它買的 0050 也要做(湊交割款);還是做不到 → 🚨 講清楚要你手動做什麼
+            if (PARK or _park_has_own(st)) and st.get('park_day') != day:
+                r = park_step(api, sj, st, day) if mins < 13 * 60 + 30 else 'retry'
+                if r == 'retry' and float(st.get('hot_buy_amt') or 0) > 0 and _park_has_own(st):
+                    _park_manual_alert(st)
             log(f"⏰ 已過 {EOD_TO // 60}:{EOD_TO % 60:02d},今天結束"); break
         if mins < EOD_FROM:
             log(f"⏳ 還沒到 {EOD_FROM // 60}:{EOD_FROM % 60:02d}(現在 {now.strftime('%H:%M')}),等待…")
@@ -951,6 +1106,8 @@ def main():
         # ═══ 🚪 先處理出場(⛔ 排在買進之前:錢先回來,才買得起下一檔)═══
         if SELL_ENABLE and st.get('pos'):
             for sym, pos in list(st['pos'].items()):
+                if pos.get('m') and pos.get('m') != _mode():
+                    continue   # 模擬帳戶買的 ⛔ 不在真實帳戶賣(反之亦然);沒標的舊紀錄照舊
                 try:
                     contract = api.Contracts.Stocks[sym]
                     if contract is None:
@@ -1017,9 +1174,9 @@ def main():
         # 🔥 買進(V79.4.9 搬進 hot_step 才測得到;⛔ 行為不變,只多「已經持有就不再買」)
         hot_step(api, sj, st, meta, picks, day)
         # 🅿️ V79.4.9 沒用到的錢停 0050:一天一次、排在所有買進之後(要知道今天花了多少);跑完就收工(⛔ 之後不再買 🔥,免得錢不夠交割)
-        if PARK and mins >= PARK_AT:
-            park_step(api, sj, st, day)
-            log("🅿️ 0050 已處理 → 今天的買進到此為止"); break
+        if (PARK or _park_has_own(st)) and mins >= PARK_AT:
+            if park_step(api, sj, st, day) != 'retry':   # 0050 沒報價 → 下一輪再試(⛔ 不收工,收盤前還不行會跳 🚨)
+                log("🅿️ 0050 已處理 → 今天的買進到此為止"); break
 
         time.sleep(POLL_SEC)
 
