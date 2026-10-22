@@ -35,6 +35,11 @@ TICKERS = {
     'tsm': 'TSM', 'vix': '^VIX', 'nk': '^N225', 'ks': '^KS11', 'hs': '^HSI',
     'twd': 'TWD=X',
 }
+# 🧪 V79.5.4 只印原始收盤用(⛔ 不進 score):App 的「亞幣競貶 / 人民幣急貶」要 5 日變化,這裡沒有歷史就重建不出來
+RAW_ONLY = {'krw': 'KRW=X', 'cny': 'CNY=X'}
+RAW_KEYS = ('nk', 'ks', 'hs', 'twd', 'krw', 'cny')
+RAW_FROM = '2009-01-01'
+CLOSES = {}   # key → {日期: 收盤}(RAW 傾印用)
 YEARS = (os.getenv('PREMKT_YEARS') or '5y')
 
 
@@ -60,11 +65,12 @@ def load_twii():
 def fetch_all():
     import yfinance as yf
     out = {}
-    for k, t in TICKERS.items():
+    for k, t in list(TICKERS.items()) + list(RAW_ONLY.items()):
         try:
             h = yf.Ticker(t).history(period=YEARS, auto_adjust=False)
             ser = {}
             closes = list(h['Close'].items())
+            CLOSES[k] = {str(d)[:10]: float(c) for d, c in closes if c == c and c and str(d)[:10] >= RAW_FROM}
             for i in range(1, len(closes)):
                 d0, c0 = closes[i - 1]
                 d1, c1 = closes[i]
@@ -254,6 +260,14 @@ def main():
     #   格式:`SCORES|日期:分數,...`(內部 ±10 分;App 顯示 = 50 + 分數×5),每行 100 天。
     for k in range(0, len(rows), 100):
         print('SCORES|' + ','.join(f"{r['d']}:{r['s']:.2f}" for r in rows[k:k + 100]))
+    # 🧪 V79.5.4 原始收盤傾印(⛔ 只印不寫產物)—— 給 `scripts/premkt_app_probe.mjs` 在本機照 App 現在那條公式逐日重建
+    #   (美股 / ADR / VIX / 那指期 / 美債 / 台幣在 data 分支的 us_hist.json 都有,⛔ 只缺亞股與韓元人民幣)。
+    #   格式:`RAWC|鍵|日期:收盤,...`(每行 150 天,2009 起);台北時間 08:30 看得到的是 T−1 那一根(⛔ 前視由本機那支處理)
+    for key in RAW_KEYS:
+        ser = sorted((CLOSES.get(key) or {}).items())
+        print(f'RAWN|{key}|{len(ser)}|{ser[0][0] if ser else "-"}|{ser[-1][0] if ser else "-"}')
+        for k in range(0, len(ser), 150):
+            print(f'RAWC|{key}|' + ','.join(f'{d}:{c:.4f}' for d, c in ser[k:k + 150]))
     print('done', datetime.utcnow().isoformat() + 'Z')
 
 
