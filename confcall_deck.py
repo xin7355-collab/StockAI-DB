@@ -124,7 +124,7 @@ NOTE_RE = re.compile(r'^\s*(註|＊|\*|※|資料來源|來源|出處|Source|Ref
 # 只有標題字(「2026 年第 4 季市場展望」「營運展望」)⛔ 不算一句話
 TITLE_RE = re.compile(r'(展望|規劃|計畫|計劃|目標|策略|outlook|guidance|plan)\s*$', re.I)
 # 總經背景(OECD / IMF / 全球經濟 …)⛔ 是公司自己的展望 —— 挑「最有代表性的一句」時排後面
-MACRO_RE = re.compile(r'OECD|IMF|世界銀行|全球經濟|經濟成長率|GDP|通膨|聯準會|Fed\b|利率', re.I)
+MACRO_RE = re.compile(r'OECD|IMF|世界銀行|全球經濟|經濟成長|經濟展望|GDP|通膨|聯準會|Fed\b|利率|主計總處', re.I)
 COMPANY_RE = re.compile(r'本公司|公司|我們|集團|本集團|營收|訂單|產能|出貨|客戶|新產品|量產')
 POS_RE = re.compile(r'成長|增加|提升|強勁|優於|創新高|新高|擴產|樂觀|回溫|復甦|看好|倍增|growth|increase|strong|record|recover', re.I)
 NEG_RE = re.compile(r'下滑|減少|衰退|疲弱|保守|審慎|謹慎|調整|庫存去化|逆風|不確定|放緩|下修|decline|decrease|weak|cautious|headwind|soft', re.I)
@@ -267,15 +267,42 @@ def extract_safe(b, timeout=None):
     return (val, '') if kind == 'ok' else (None, val)
 
 
+_BULLET_RE = re.compile(r'^\s*([●•▪■◆◇○◎★☆※\-–—*]|\(?\d{1,2}[.、)]|[一二三四五六七八九十]+[、.]|[A-Za-z][.)]\s)')
+_END_RE = re.compile(r'[。！？!?；;：:]\s*$')
+
+
+def _join_wrapped(raw):
+    """🧩 PDF 一行一行斷的句子接回來(10/23 實跑:「…全球經濟面臨「科技投資強勁、」被切在半句)。
+    只接「長的那一行沒有句尾符號、下一行也不是新的條列」;表格那種短格子 ⛔ 接(會接成一串數字)。接完再照句號切開。"""
+    units, cur = [], ''
+    for ln in raw:
+        # 下一行也要夠長(≥8 字)或自己就是句尾 —— 表格格子(「營收」「1,234」)⛔ 被接進上一句
+        if (cur and len(cur) >= 18 and not _END_RE.search(cur) and not _BULLET_RE.match(ln) and len(cur) + len(ln) <= 300
+                and (len(ln) >= 8 or _END_RE.search(ln))):
+            sep = ' ' if (re.search(r'[A-Za-z0-9,]$', cur) and re.match(r'[A-Za-z0-9]', ln)) else ''
+            cur = cur + sep + ln
+        else:
+            if cur:
+                units.append(cur)
+            cur = ln
+    if cur:
+        units.append(cur)
+    out = []
+    for u in units:
+        out.extend(x for x in re.split(r'(?<=[。！？；])\s*', u) if x)
+    return out
+
+
 def page_lines(pages):
-    """[(頁碼, 一行)…];頁首頁尾那種每頁都出現的行(公司名、免責聲明)拿掉。"""
+    """[(頁碼, 一句)…];PDF 斷行接回整句;頁首頁尾那種每頁都出現的行(公司名、免責聲明)拿掉。"""
     per = []
     for i, t in enumerate(pages):
-        ls = []
+        raw = []
         for ln in re.split(r'[\r\n]+', t or ''):
             ln = ln.strip(' •·●▪-–—|')
             if 2 <= len(ln) <= 220 and not re.fullmatch(r'[\d\s/.:\-]+', ln):
-                ls.append(ln)
+                raw.append(ln)
+        ls = [x.strip() for x in _join_wrapped(raw) if 2 <= len(x.strip()) <= 300]
         per.append((i + 1, ls))
     n = max(1, sum(1 for _, ls in per if ls))
     freq = {}
@@ -327,16 +354,55 @@ def outlook_of(lines, limit=8):
                  and len(re.sub(r'\s', '', s)) >= 8, limit)
 
 
+# 不算「數字」的數字:年份 / 年月(2026、2026/09、2026年3月)、民國年(115年)、季別(Q3 / 3Q / H1)、晶圓尺寸(12吋)、條列編號(「5. 」)
+_NOFIG_RES = [re.compile(r'(?<!\d)(19|20)\d\d(?:\s*[/\-.年]\s*(?:0?[1-9]|1[0-2])(?!\d)\s*月?)?(?:\s*年|Q[1-4]|H[12]|E)?(?!\d)'),
+              re.compile(r'(?<!\d)1[01]\d\s*年'), re.compile(r'(?<![A-Za-z0-9])(?:[1-4]Q|Q[1-4]|H[12])(?![A-Za-z0-9])'),
+              re.compile(r'\d{1,2}\s*(?:吋|英寸|inch)'), re.compile(r'^\s*\d{1,2}[.、)]\s*')]
+
+
+def _has_figure(s):
+    """有真的數字(10/23 實跑:「2025 Sales Revenue」「截至2026/09未交貨訂單」「115年資本支出計畫」「出貨片數(約當12吋)」都只是標題)"""
+    for rx in _NOFIG_RES:
+        s = rx.sub(' ', s)
+    return bool(re.search(r'\d', s))
+
+
 def nums_of(lines, limit=10):
-    return _pick(lines, lambda s: bool(KPI_RE.search(s)) and bool(re.search(r'\d', s)) and not _not_said(s), limit)
+    return _pick(lines, lambda s: bool(KPI_RE.search(s)) and _has_figure(s) and len(re.sub(r'\s', '', s)) >= 6 and not _not_said(s), limit)
+
+
+def _cjk_share(texts):
+    """幾成的句子是中文(一句有 ≥4 個中文字)—— ⚠️ 不用字數比:一個中文字抵兩三個英文字母,雙語簡報用字數比會被判成英文簡報"""
+    texts = [t for t in texts if t]
+    return sum(1 for t in texts if len(re.findall(r'[\u4e00-\u9fff]', t)) >= 4) / max(1, len(texts))
+
+
+def _mostly_ascii(t):
+    letters = re.sub(r'[\s\d\W_]', '', t)
+    return len(letters) >= 8 and sum(1 for ch in letters if ch.isascii()) / len(letters) >= 0.8
+
+
+def drop_translation(lines):
+    """🌐 中文簡報裡的英文翻譯(10/23 實跑:同一頁每一句都有一句英文版)→ 中文為主的簡報才拿掉「幾乎全英文」的那幾句;
+    ⛔ 英文簡報不動。"""
+    if _cjk_share([t for _, t in lines]) < 0.3:
+        return lines
+    return [(p, t) for p, t in lines if not _mostly_ascii(t)]
+
+
+def _ol_score(t):
+    return (2 if _has_figure(t) else 0) + (2 if KPI_RE.search(t) else 0) + (1 if COMPANY_RE.search(t) else 0) - (3 if MACRO_RE.search(t) else 0)
+
+
+def rank_outlook(outlook):
+    """講到「之後」的句子照「有數字 / 講營運 / 講公司」排前面、總經背景排後面(同分照頁碼);⛔ 改寫原文"""
+    return [x for _, _, x in sorted(((-_ol_score(x[1]), i, x) for i, x in enumerate(outlook)), key=lambda z: (z[0], z[1]))]
 
 
 def best_outlook(outlook):
     """清單上那一句「公司講到之後」:有數字 / 講營運的優先,總經背景排後面(⛔ 改寫原文,只是挑一句)。"""
-    def sc(x):
-        t = x[1]
-        return (2 if re.search(r'\d', t) else 0) + (2 if KPI_RE.search(t) else 0) + (1 if COMPANY_RE.search(t) else 0) - (3 if MACRO_RE.search(t) else 0)
-    return max(outlook, key=lambda x: (sc(x), -outlook.index(x))) if outlook else None
+    r = rank_outlook(outlook or [])
+    return r[0] if r else None
 
 
 def terms_of(pages):
@@ -451,7 +517,8 @@ def feat_of(pages, meta):
         if DISCLAIM_RE.search(ln):
             dpg[p] = dpg.get(p, 0) + 1
     lines = [(p, ln) for p, ln in lines if dpg.get(p, 0) < 2]
-    ol = outlook_of(lines)
+    lines = drop_translation(lines)
+    ol = rank_outlook(outlook_of(lines))
     return {
         'pages': len(pages),
         'chars': sum(len(p or '') for p in pages),
@@ -517,7 +584,12 @@ def refilter(rec):
     if not isinstance(rec, dict) or rec.get('st') != 'ok':
         return rec
     ol = [x for x in (rec.get('outlook') or []) if isinstance(x, (list, tuple)) and len(x) == 2 and not _not_said(x[1]) and not _is_title(x[1])]
-    nm = [x for x in (rec.get('nums') or []) if isinstance(x, (list, tuple)) and len(x) == 2 and not _not_said(x[1])]
+    nm = [x for x in (rec.get('nums') or []) if isinstance(x, (list, tuple)) and len(x) == 2 and not _not_said(x[1]) and _has_figure(x[1])
+          and len(re.sub(r'\s', '', x[1])) >= 6]
+    if _cjk_share([t for _, t in ol + nm + [x for x in (rec.get('titles') or []) if isinstance(x, (list, tuple)) and len(x) == 2]]) >= 0.3:
+        ol = [x for x in ol if not _mostly_ascii(x[1])]
+        nm = [x for x in nm if not _mostly_ascii(x[1])]
+    ol = rank_outlook(ol)
     rec['outlook'], rec['nums'] = ol, nm
     rec['terms'] = {k: v for k, v in (rec.get('terms') or {}).items() if _term_ok(k)}
     rec['tone'] = tone_of(ol)

@@ -495,6 +495,22 @@ with tempfile.TemporaryDirectory() as tmp:
     ok('㉔b 再篩一次結果不變(冪等)', cdx.refilter(json.loads(json.dumps(rr))) == rr)
 
 
+# ㉕~㉘ 🧩 真資料第二批:PDF 斷行把一句切成兩半 / 中文簡報每句都有英文翻譯 / 圖表標題「2025 Sales Revenue」被當成數字
+J_ = cdm._join_wrapped(['水主機配管的需求出現結構性噴發，本公司目前已接訂單量', '已排至2027年6月。2026年之銷售目標維持不變', '營收', '1,234', '2,345', '● 新產品量產'])
+ok('㉕ 長的那一行沒有句尾 → 接上下一行,再照句號切開', '水主機配管的需求出現結構性噴發，本公司目前已接訂單量已排至2027年6月。' in J_, J_)
+ok('㉕a ⭐ 決定性對照:表格那種短格子 ⛔ 接、條列 ⛔ 接進上一句', '營收' in J_ and '1,234' in J_ and '2,345' in J_ and '● 新產品量產' in J_, J_)
+zh_ = [(1, '預期明年營收成長 15%,產能擴充一倍'), (1, 'Revenue is expected to grow 15% next year with capacity doubling'), (2, '毛利率維持 30% 以上')]
+en_ = [(1, 'Revenue is expected to grow 15% next year'), (2, 'Gross margin above 30%'), (3, '產能')]
+ok('㉖ 中文簡報裡幾乎全英文的翻譯句拿掉', [t for _, t in cdm.drop_translation(zh_)] == ['預期明年營收成長 15%,產能擴充一倍', '毛利率維持 30% 以上'], cdm.drop_translation(zh_))
+ok('㉖a ⭐ 決定性對照:英文簡報 ⛔ 動', cdm.drop_translation(en_) == en_)
+nm_ = [t for _, t in cdm.nums_of([(4, '2025 Sales Revenue'), (4, '2026Q3 營收'), (6, '截至2026/09未交貨訂單'), (11, '115年資本支出計畫'),
+                                   (5, '出貨片數(仟片-約當12吋片數)'), (2, '毛利率 35.2%'), (5, '2026 年營收 120 億元'), (12, '1. Q3營收NT$213億→ QoQ +23%')])]
+ok('㉗ 只是標題(年份 / 年月 / 民國年 / 季別 / 晶圓尺寸)⛔ 算公司給的數字;真的數字照收',
+   nm_ == ['毛利率 35.2%', '2026 年營收 120 億元', '1. Q3營收NT$213億→ QoQ +23%'], nm_)
+rk_ = cdm.rank_outlook([[11, '經濟合作暨發展組織(OECD)2026年經濟展望報告中指出全球經濟面臨科技投資強勁'], [14, '本公司目前已接訂單量已排至2027年6月,預期營收成長'], [12, '預期明年持續成長']])
+ok('㉘ 講到之後照「有數字 / 講營運 / 講公司」排前面,總經背景排最後(原文不改)', [p for p, _ in rk_] == [14, 12, 11], rk_)
+
+
 # ⑱ ⚡ 抽字引擎:有 pdftotext 用它(快好幾倍),沒有退回 pypdf —— 兩條路抽到的頁數與字要一樣
 import shutil as _sh
 _pdf3 = mini_pdf([['Outlook 2026', 'Revenue 1,350 million'], ['CapEx 42 billion'], ['Thank you']])
